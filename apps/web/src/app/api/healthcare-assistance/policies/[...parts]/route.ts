@@ -6,6 +6,9 @@ const ID=/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 function permitted(parts:string[],method:"GET"|"POST"){
  if(method==="GET"&&parts[0]==="centers"){
   if(parts.length===2&&parts[1]==="eligible")return true;
+  if(parts.length===5&&ID.test(parts[1])&&parts[2]==="services"&&
+    ["LAB","PHARMACY","NURSING","OT"].includes(parts[3])&&
+    parts[4]==="estimate")return true;
   if(parts.length===2&&ID.test(parts[1]))return true;
   if(parts.length===3&&ID.test(parts[1])&&parts[2]==="doctors")return true;
   if(parts.length===5&&ID.test(parts[1])&&parts[2]==="doctors"&&
@@ -21,6 +24,16 @@ function permitted(parts:string[],method:"GET"|"POST"){
  return method==="POST"&&parts.length===2&&
   ID.test(parts[0])&&parts[1]==="withdraw";
 }
+const allowedErrors=new Set([
+ "CG14_CENTER_SERVICE_NOT_VERIFIED","ASSISTANCE_POLICY_INVALID",
+ "ASSISTANCE_POLICY_DATES_INVALID","ASSISTANCE_POLICY_PERCENT_INVALID",
+ "ASSISTANCE_POLICY_CAP_INVALID","ASSISTANCE_POLICY_SOURCE_CHANGED",
+ "ASSISTANCE_POLICY_CLINICAL_SOURCE_CHANGED","ASSISTANCE_POLICY_OVERLAP_OR_REPLAY",
+ "ASSISTANCE_POLICY_REVISION_CHANGED","ASSISTANCE_POLICY_REQUEST_CONFLICT",
+ "ASSISTANCE_APPROVAL_NOT_READY","ASSISTANCE_APPROVAL_CHANGED",
+ "ASSISTANCE_REVIEW_CHANGED","ASSISTANCE_REVIEW_SOURCE_CHANGED",
+ "ASSISTANCE_INDEPENDENT_REVIEW_REQUIRED"
+]);
 function fail(status:number,message:string){
  return NextResponse.json({message},{status,
   headers:{"Cache-Control":"no-store","X-Content-Type-Options":"nosniff"}});
@@ -51,13 +64,30 @@ async function relay(req:NextRequest,parts:string[],method:"GET"|"POST"){
     "/api/v1/approvals/healthcare-assistance/cases/"+parts[1]+"/decision":
     "/api/v1/healthcare-assistance/policies/cases/"+parts[1]+"/activate":
    "/api/v1/healthcare-assistance/policies/"+parts.map(encodeURIComponent).join("/");
-  const response=await fetch(new URL(target,
-   endpoint),{method,body,cache:"no-store",signal:AbortSignal.timeout(15000),
+  const url=new URL(target,endpoint);
+  if(method==="GET"&&parts[2]==="services"){
+   const gross=req.nextUrl.searchParams.get("grossMinor");
+   if(!gross||!/^[1-9][0-9]{0,10}$/.test(gross)||
+      BigInt(gross)>10000000000n||[...req.nextUrl.searchParams.keys()]
+       .some(key=>key!=="grossMinor"))
+    return fail(400,"Enter a valid service amount in rupees and paise.");
+   url.searchParams.set("grossMinor",gross);
+  }
+  const response=await fetch(url,{method,body,cache:"no-store",signal:AbortSignal.timeout(15000),
     headers:{Authorization:"Bearer "+token,
      ...(body?{"Content-Type":"application/json"}:{})}});
   if(!response.ok){
    const status=[400,401,403,404,409,429].includes(response.status)?
     response.status:503;
+   const body:unknown=await response.json().catch(()=>null);
+   const safe=body&&typeof body==="object"&&!Array.isArray(body)?
+    body as Record<string,unknown>:null;
+   if(status<500&&safe&&typeof safe.code==="string"&&
+     allowedErrors.has(safe.code)&&typeof safe.message==="string"&&
+     safe.message.length>=16&&safe.message.length<=220&&
+     !/[<>\r\n]/.test(safe.message))
+    return NextResponse.json({message:safe.message},{
+     status,headers:{"Cache-Control":"no-store"}});
    return fail(status,status===401?"Your staff session expired. Sign in again.":
     status===403?"Your current role cannot perform this healthcare policy action.":
     status===404?"The currently verified center or doctor is unavailable.":

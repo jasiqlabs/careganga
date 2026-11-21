@@ -62,7 +62,7 @@ export function CmsSiteHeader({navigation,contact}:{
      <span className="cg-site-unavailable" aria-disabled="true">NGO Information</span>}
     <span className="cg-site-unavailable">Campaigns</span>
     <span className="cg-site-unavailable">Upcoming Projects</span>
-    <span className="cg-site-unavailable">Partnerships</span>
+    <Link href="/collaboration" className={pathname.startsWith("/collaboration")?"cg-site-active":undefined}>Partnerships</Link>
     <span className="cg-site-unavailable">Events</span>
     <Menu label="Media & Resources" items={media.map(text=>({text,
      href:text==="Gallery"&&isPublished("/gallery")?"/gallery":

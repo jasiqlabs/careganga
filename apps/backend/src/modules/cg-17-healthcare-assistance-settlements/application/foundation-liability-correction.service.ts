@@ -45,6 +45,8 @@ type Summary={liabilityRef:string;sourcePosted:boolean;canCorrect:boolean;
 @Injectable()
 /** CG17 owns corrected liability source. CG09 alone creates the opposite
  * balanced journal; neither original record nor any payout is modified.
+ * Supports genuine independently accepted CG17 partner services using the
+ * SAME original liability, independent CG09 reversal, and verified recovery.
  * Historical already-proposed/paid settlements require independent real bank
  * recovery/reconciliation and are deliberately NOT fake-reversed here.
  */
@@ -102,7 +104,7 @@ export class FoundationLiabilityCorrectionService{
    (lock?"FOR UPDATE OF l":"FOR SHARE OF l"),
    [root,center,liability]);
   const v=q.rows[0];
-  if(!v||v.source_kind!=="CG15_CONSULTATION"||
+  if(!v||!["CG15_CONSULTATION","CG17_PARTNER_SERVICE"].includes(v.source_kind)||
     v.source_digest!==v.effect_digest)
    throw new NotFoundException({code:"CG17_CORRECTION_ORIGINAL_UNAVAILABLE"});
   return v;

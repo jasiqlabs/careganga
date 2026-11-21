@@ -16,6 +16,7 @@ type Summary={month:string;state:string;settlementRef?:string;revision?:number;
  outstandingMinor:string;patientCollectionNotFoundationIncome:true;paidVerified:boolean;
  centerGrossServicesMinor?:string;patientPayableMinor?:string;
  patientCollectedVerifiedMinor?:string;patientRefundedMinor?:string;
+ partnerPatientCollectedAttestedMinor?:string;
  foundationApprovedLiabilityMinor?:string;
  originalApprovedFoundationMinor?:string;
  effectiveState?:string;originalClaimState?:string;adjustedFoundationMinor?:string;
@@ -201,6 +202,8 @@ export function NativeMonthlyProviderSettlement({token,canPropose,canReview,canP
       money(source.patientPayableMinor??"0")}</Text>
      <Text style={styles.note}>Center collections verified to date: {
       money(source.patientCollectedVerifiedMinor??"0")}</Text>
+     <Text style={styles.note}>Partner-attested patient collections for approved
+      pharmacy/nursing/OT: {money(source.partnerPatientCollectedAttestedMinor??"0")}</Text>
      <Text style={styles.note}>Center refunds/corrections to date: {
       money(source.patientRefundedMinor??"0")}</Text>
      <Text style={styles.amount}>Original Foundation obligation: {

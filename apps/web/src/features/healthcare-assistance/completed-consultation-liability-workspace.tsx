@@ -1,6 +1,7 @@
 "use client";
 import {useCallback,useEffect,useRef,useState} from "react";
 import {FoundationJournalPostingPanel} from "./foundation-journal-posting-panel";
+import {PendingPartnerServiceClaims} from "./pending-partner-service-claims";
 type Center={centerRef:string;name:string};
 type Appointment={appointmentRef:string;bookingLabel:string;centerName:string;
  doctorName:string;completedAt:string;approvedSupportMinor:string;
@@ -208,5 +209,6 @@ export function CompletedConsultationLiabilityWorkspace({canManage,canPost}:Prop
    <button type="button" disabled={busy} onClick={()=>void check()}>
     {busy?"Checking…":"Check original obligation status"}</button>
   </section>}
+  {!!center&&<PendingPartnerServiceClaims centerRef={center} mode="foundation"/>}
  </section>;
 }

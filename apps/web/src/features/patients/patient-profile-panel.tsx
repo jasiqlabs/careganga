@@ -2,6 +2,7 @@
 import {useCallback,useEffect,useRef,useState} from "react";
 import {MyConsultationHistory} from "../appointments/my-consultation-history";
 import {PatientPrivateFilesPanel} from "./patient-private-files-panel";
+import {PatientPartnerClaims} from "./patient-partner-claims";
 import {PatientPrivateDetailsPanel} from "./patient-private-details-panel";
 
 type Profile={virtualPatientId:string;firstName:string;lastName:string;
@@ -428,6 +429,9 @@ export function PatientProfilePanel(){
       consentGranted={profile.consentGranted}/>}
     {profile?.profileStatus==="VERIFIED"&&
      <PatientPrivateFilesPanel key={profile.virtualPatientId}
+      consentGranted={profile.consentGranted}/>}
+    {profile?.profileStatus==="VERIFIED"&&
+     <PatientPartnerClaims key={profile.virtualPatientId+":claims"}
       consentGranted={profile.consentGranted}/>}
     {profile&&<section aria-label="Manage patient-care consent">
      <h2>My consent</h2>

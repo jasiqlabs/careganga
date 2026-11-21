@@ -1,5 +1,6 @@
 "use client";
 import {useCallback,useEffect,useState} from "react";
+import {PartnerPublicOffersWorkspace} from "./partner-public-offers-workspace";
 type Case={caseRef:string;reference:string;centerRef:string;centerName:string;
  status:string;readyToPublish:boolean;isCurrentPublished:boolean;
  publicationGeneration:number|null;approvedRevisionRef:string|null};
@@ -83,5 +84,6 @@ export function CenterContentPublisherQueue(){
     </div></td>
    </tr>)}</tbody>
   </table></div>
+  <PartnerPublicOffersWorkspace mode="foundation"/>
  </section>;
 }

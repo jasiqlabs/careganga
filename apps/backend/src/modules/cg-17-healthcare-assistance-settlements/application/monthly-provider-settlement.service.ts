@@ -94,7 +94,7 @@ export class MonthlyProviderSettlementService{
     "SELECT 1 FROM journal offset_j WHERE offset_j.root_realm_id=j.root_realm_id "+
     "AND offset_j.reversal_of_id=j.id AND offset_j.status='POSTED') "+
    "WHERE l.root_realm_id=$1 AND l.center_ref=$2 "+
-   "AND l.source_kind='CG15_CONSULTATION' "+
+   "AND l.source_kind IN('CG15_CONSULTATION','CG17_PARTNER_SERVICE') "+
    "AND l.service_local_date >=$3::date "+
    "AND l.service_local_date <($3::date+interval '1 month') "+
    (forClaim?
@@ -159,7 +159,7 @@ export class MonthlyProviderSettlementService{
   const result=await c.query<{
    gross_minor:string;patient_due_minor:string;
    foundation_liability_minor:string;verified_center_minor:string;
-   center_refund_minor:string}>(
+   center_refund_minor:string;partner_patient_attested_minor:string}>(
    // Original charge/center-collected patient cash is historical,
    // independent of whether Foundation later offsets its OWN liability.
    // Only the effective Foundation contribution becomes zero.
@@ -176,6 +176,26 @@ export class MonthlyProviderSettlementService{
    "JOIN patient_charge charge ON charge.root_realm_id=liability.root_realm_id "+
    "AND charge.id=liability.charge_ref AND charge.center_ref=liability.center_ref "+
    "WHERE liability.root_realm_id=$1 AND liability.center_ref=$2 "+
+   "AND liability.service_local_date >=$3::date "+
+   "AND liability.service_local_date <($3::date+interval '1 month') "+
+   "UNION ALL SELECT liability.charge_ref,"+
+   "CASE WHEN EXISTS(SELECT 1 FROM cg17_provider_claim_correction corrected "+
+   "WHERE corrected.root_realm_id=liability.root_realm_id "+
+   "AND corrected.liability_ref=liability.id) "+
+   "THEN 0 ELSE liability.amount_minor END AS amount_minor,"+
+   "claim.quoted_gross_minor AS gross_minor,"+
+   "decision.accepted_patient_paid_minor AS due_minor "+
+   "FROM foundation_liability liability "+
+   "JOIN cg17_partner_service_claim claim "+
+   "ON claim.root_realm_id=liability.root_realm_id "+
+   "AND claim.id=liability.partner_claim_ref "+
+   "AND claim.center_ref=liability.center_ref "+
+   "JOIN cg17_partner_invoice_decision decision "+
+   "ON decision.root_realm_id=liability.root_realm_id "+
+   "AND decision.id=liability.partner_decision_ref "+
+   "AND decision.claim_ref=claim.id AND decision.outcome='APPROVED' "+
+   "WHERE liability.root_realm_id=$1 AND liability.center_ref=$2 "+
+   "AND liability.source_kind='CG17_PARTNER_SERVICE' "+
    "AND liability.service_local_date >=$3::date "+
    "AND liability.service_local_date <($3::date+interval '1 month')) "+
    "SELECT (SELECT coalesce(sum(gross_minor),0) FROM services)::text "+
@@ -194,7 +214,21 @@ export class MonthlyProviderSettlementService{
    "AND collect.id=adjustment.collection_ref "+
    "JOIN services s ON s.charge_ref=collect.charge_ref "+
    "WHERE adjustment.root_realm_id=$1 AND collect.center_ref=$2)::text "+
-   "AS center_refund_minor",
+   "AS center_refund_minor,"+
+   "(SELECT coalesce(sum(att.collected_minor),0) "+
+   "FROM foundation_liability l "+
+   "JOIN cg17_partner_invoice_decision decision "+
+   "ON decision.root_realm_id=l.root_realm_id "+
+   "AND decision.id=l.partner_decision_ref "+
+   "AND decision.outcome='APPROVED' "+
+   "JOIN cg17_partner_invoice_attestation att "+
+   "ON att.root_realm_id=l.root_realm_id "+
+   "AND att.claim_ref=decision.claim_ref "+
+   "WHERE l.root_realm_id=$1 AND l.center_ref=$2 "+
+   "AND l.source_kind='CG17_PARTNER_SERVICE' "+
+   "AND l.service_local_date >=$3::date "+
+   "AND l.service_local_date <($3::date+interval '1 month'))::text "+
+   "AS partner_patient_attested_minor",
    [root,center,period]);
   const v=result.rows[0];
   if(!v)throw new ConflictException({code:"CG17_SETTLEMENT_BREAKDOWN_UNAVAILABLE"});
@@ -207,6 +241,7 @@ export class MonthlyProviderSettlementService{
    patientPayableMinor:v.patient_due_minor,
    patientCollectedVerifiedMinor:(verified-refunds).toString(),
    patientRefundedMinor:refunds.toString(),
+   partnerPatientCollectedAttestedMinor:v.partner_patient_attested_minor,
    foundationApprovedLiabilityMinor:v.foundation_liability_minor,
    collectionsScope:"VERIFIED_TO_DATE_FOR_COMPLETED_SERVICES" as const
   };

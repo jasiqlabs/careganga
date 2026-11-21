@@ -43,6 +43,9 @@ export default async function HealthNetworkPage(){
         <h1>Healthcare reviews</h1>
         <p>Select an authorized review task below.</p>
        </div>}
+      {actions.has("health.providers.view")&&
+       <p><Link href="/admin/health-network/partner-applications">
+        Review public partner applications</Link></p>}
       {actions.has("approvals.review")&&
        (actions.has("health.providers.verify")||actions.has("health.doctors.verify"))&&
        <p><Link href="/admin/health-network/reviews">Review healthcare registrations</Link></p>}

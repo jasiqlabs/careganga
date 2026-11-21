@@ -69,6 +69,10 @@ const fromInput=(raw:unknown)=>{
    !["PERCENT","FIXED"].includes(String(d.mode)))
   throw new BadRequestException({code:"ASSISTANCE_POLICY_INVALID"});
  const doctorRef=d.doctorRef===null||d.doctorRef===undefined?null:uuid(d.doctorRef);
+ // Pharmacy, nursing and theatre rules attach to the verified center and
+ // its independently approved service capability, not a random clinician.
+ if(d.serviceKind!=="CONSULTATION"&&doctorRef!==null)
+  throw new BadRequestException({code:"ASSISTANCE_POLICY_INVALID"});
  const from=time(d.validFrom),until=time(d.validUntil);
  if(until<=from)throw new BadRequestException({code:"ASSISTANCE_POLICY_DATES_INVALID"});
  const mode=d.mode as Mode;
@@ -142,7 +146,8 @@ export class HealthcareAssistancePolicyService{
    const actor=await this.actor(c,bearer,"healthcare.assistance.policies.view");
    return {centers:await this.verified.centers(c,actor.realmId),
     serviceKinds:serviceKinds.map(kind=>({
-     kind,canActivate:kind==="CONSULTATION"}))};
+     kind,requiresIndependentReview:kind!=="CONSULTATION",
+     availableForServiceClaims:kind==="CONSULTATION"}))};
   });
  }
  async doctors(bearer:string,rawCenter:string){
@@ -193,6 +198,55 @@ export class HealthcareAssistancePolicyService{
      "CG15 patient eligibility, service and consent must be verified before any award."};
   });
  }
+ /** Read-only gross/service estimate for genuine current CG14 center policy.
+  * Never an accepted invoice, patient award, collected cash, or payable. A
+  * partner's quoted gross is unverified until independently proven later.
+  */
+ async previewService(bearer:string,rawCenter:string,rawKind:string,
+   grossRaw:string){
+  const center=uuid(rawCenter);
+  if(!["LAB","PHARMACY","NURSING","OT"].includes(rawKind)||
+    typeof grossRaw!=="string"||!/^[1-9][0-9]{0,10}$/.test(grossRaw)||
+    BigInt(grossRaw)>10000000000n)
+   throw new BadRequestException({code:"ASSISTANCE_POLICY_AMOUNT_INVALID"});
+  const kind=rawKind as Kind;
+  return this.tx(async c=>{
+   const actor=await this.actor(c,bearer,"healthcare.assistance.policies.view");
+   const original=await this.verified.eligibleService(c,actor.realmId,center,kind);
+   const q=await c.query<Revision>(
+    "SELECT * FROM healthcare_policy_revision "+
+    "WHERE root_realm_id=$1 AND center_ref=$2 AND service_kind=$3 "+
+    "AND doctor_ref IS NULL AND approval_state='ACTIVE' "+
+    "AND valid_from<=now() AND valid_until>now() "+
+    "ORDER BY valid_from DESC,id DESC LIMIT 2 FOR SHARE",
+    [actor.realmId,center,kind]);
+   if(q.rows.length>1)
+    throw new ConflictException({code:"ASSISTANCE_POLICY_OVERLAP_OR_REPLAY"});
+   const policy=q.rows[0],gross=BigInt(grossRaw);
+   const common={
+    centerName:original.name,serviceKind:kind,grossMinor:grossRaw,
+    currency:"INR" as const,estimateOnly:true,
+    eligiblePatientVerified:false,invoiceVerified:false,
+    serviceCompletionVerified:false,foundationLiabilityPosted:false
+   };
+   if(!policy)return {...common,state:"NO_APPROVED_SERVICE_POLICY" as const,
+    estimatedSupportMinor:"0",estimatedPatientDueMinor:gross.toString(),
+    caution:"No currently approved Foundation support is available for this service."};
+   const cap=BigInt(policy.cap_minor);
+   const provisional=policy.mode==="PERCENT"&&policy.percent_basis_points!==null?
+    (gross*BigInt(policy.percent_basis_points)+5000n)/10000n:
+    BigInt(policy.fixed_minor??"0");
+   const amount=provisional<cap?provisional:cap;
+   const support=amount<gross?amount:gross;
+   return {...common,state:"POLICY_ESTIMATE_ONLY" as const,
+    policyRevisionRef:policy.id,policyRevision:policy.revision_no,
+    estimatedSupportMinor:support.toString(),
+    estimatedPatientDueMinor:(gross-support).toString(),
+    caution:"Estimate only. No patient discount or Foundation settlement is "+
+     "confirmed until patient eligibility, genuine invoice, performed service "+
+     "and independent evidence are verified."};
+  });
+ }
  async list(bearer:string,rawCenter:string){
   const center=uuid(rawCenter);
   return this.tx(async c=>{
@@ -215,16 +269,18 @@ export class HealthcareAssistancePolicyService{
  async submit(bearer:string,raw:unknown){
   const v=fromInput(raw);
   const full=v.mode==="PERCENT"&&v.bps===10000;
-  // Optional US005/006 future clinical ERP owners may have configured
-  // internal policies, but not any eligible source to make them public.
+  // Consultation normal rates retain the existing active path. All other
+  // categories, including pharmacy/nursing/OT even below 100%, must receive
+  // genuine protected CG03 review and separate Foundation owner finalization.
   const active=v.serviceKind==="CONSULTATION"&&!full;
+  const protectedReview=!active;
   const state=active?"ACTIVE":"PENDING_APPROVAL";
   const hash=digest(["CG17_POLICY_V1",v.centerRef,v.doctorRef,
    v.serviceKind,v.policyRef,v.expected,v.from.toISOString(),
    v.until.toISOString(),v.mode,v.bps,v.fixed,v.cap,v.eligibility]);
   return this.tx(async c=>{
    const actor=await this.actor(c,bearer,"healthcare.assistance.policies.manage");
-   await this.verified.center(c,actor.realmId,v.centerRef);
+   await this.verified.eligibleService(c,actor.realmId,v.centerRef,v.serviceKind);
    if(v.doctorRef)await this.verified.doctor(c,actor.realmId,v.centerRef,v.doctorRef);
    const unique=v.centerRef+":"+v.serviceKind+":"+(v.doctorRef??"CENTER");
    // One source scope lock and one request lock, no global Foundation lock.
@@ -274,7 +330,7 @@ export class HealthcareAssistancePolicyService{
      v.from,v.until,v.mode,v.bps,v.fixed,v.cap,v.eligibility,state,
      active,actor.accountId,v.requestKey,hash,hash]);
    let caseRef:string|null=null;
-   if(full){
+   if(protectedReview){
     const review=await this.approval.create(c,actor,{
      kind:"CG17_POLICY_EXCEPTION",policyRevisionRef:row.rows[0].id,
      revisionNo:version,digest:hash,requestKey:v.requestKey,
@@ -283,8 +339,8 @@ export class HealthcareAssistancePolicyService{
    }
    return {...view(row.rows[0]),caseRef,replayed:false,
     warning:active?undefined:"This request is not effective or publicly available. "+
-     (full?"An original protected CG03 full-coverage approval is required.":
-      "This service's original source and eligibility integration is not ready.")};
+     "Independent CG03 review and separate Foundation finalization are required. "+
+     "A protected policy never proves patient eligibility, completed service or a payable claim."};
   });
  }
  /** Owner finalization. A legitimate independent current CG03 decision
@@ -320,7 +376,7 @@ export class HealthcareAssistancePolicyService{
      review.cg17_policy_version,review.cg17_policy_digest]);
    const proposed=current.rows[0];
    if(!proposed)throw new ConflictException({code:"ASSISTANCE_APPROVAL_CHANGED"});
-   await this.verified.center(c,actor.realmId,proposed.center_ref);
+   await this.verified.eligibleService(c,actor.realmId,proposed.center_ref,proposed.service_kind);
    if(proposed.doctor_ref)
     await this.verified.doctor(c,actor.realmId,proposed.center_ref,proposed.doctor_ref);
    await c.query("SELECT pg_advisory_xact_lock(hashtextextended($1,0))",
@@ -348,7 +404,8 @@ export class HealthcareAssistancePolicyService{
    if(currentCaseStatus!=="PENDING_OWNER"||
      original.approval_state!=="PENDING_APPROVAL"||
      original.mode!=="PERCENT"||original.percent_basis_points!==10000||
-     original.service_kind!=="CONSULTATION"||
+     !(original.service_kind!=="CONSULTATION"||
+       (original.mode==="PERCENT"&&original.percent_basis_points===10000))||
      review.proposer_id!==original.actor_ref||
      new Date(original.valid_until)<=new Date())
     throw new ConflictException({code:"ASSISTANCE_APPROVAL_NOT_READY"});

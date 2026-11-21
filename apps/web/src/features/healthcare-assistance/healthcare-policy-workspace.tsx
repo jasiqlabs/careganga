@@ -11,6 +11,10 @@ type Policy={policyRef:string;revisionRef:string;centerRef:string;
  percentBasisPoints:number|null;fixedMinor:string|null;capMinor:string;
  status:string;current:boolean;eligibility:string;createdAt:string;
  reviewCaseRef:string|null;reviewStatus:string|null};
+type ServiceEstimate={state:"NO_APPROVED_SERVICE_POLICY"|"POLICY_ESTIMATE_ONLY";
+ grossMinor:string;estimatedSupportMinor:string;estimatedPatientDueMinor:string;
+ centerName:string;serviceKind:Kind;estimateOnly:true;
+ caution:string;eligiblePatientVerified:false;invoiceVerified:false};
 type Payload={requestKey:string;policyRef?:string;expectedRevision:number;
  centerRef:string;doctorRef:string|null;serviceKind:Kind;validFrom:string;
  validUntil:string;mode:"PERCENT"|"FIXED";percentBasisPoints?:number;
@@ -26,14 +30,22 @@ async function api<T>(parts:string,method:"GET"|"POST"="GET",body?:object){
   method,credentials:"same-origin",cache:"no-store",
   ...(body?{headers:{"Content-Type":"application/json"},body:JSON.stringify(body)}:{})
  });
- if(!response.ok)throw Object.assign(new Error(
+ if(!response.ok){
+  const body:unknown=await response.json().catch(()=>null);
+  const safe=body&&typeof body==="object"&&!Array.isArray(body)?
+   body as Record<string,unknown>:null;
+  const text=safe&&typeof safe.message==="string"&&
+   safe.message.length>=16&&safe.message.length<=220&&
+   !/[<>\r\n]/.test(safe.message)?safe.message:null;
+  throw Object.assign(new Error(text??(
   response.status===401?"Staff session expired. Sign in again.":
   response.status===403?"You are not authorized to change healthcare assistance.":
   response.status===404?"Verified center, doctor or policy is unavailable.":
   response.status===409?"Policy dates or revision conflict. Refresh the original record.":
   response.status===400?"Check the valid dates, support amount and approved center.":
-  "The policy outcome is uncertain. Check the original record; never submit a new request."),
+  "The policy outcome is uncertain. Check the original record; never submit a new request.")),
   {status:response.status});
+ }
  return response.json() as Promise<T>;
 }
 function rupees(v:string){
@@ -67,6 +79,8 @@ export function HealthcarePolicyWorkspace({canView,canManage,canReview}:Props){
  const [doctors,setDoctors]=useState<Doctor[]>([]),[doctor,setDoctor]=useState("");
  const [policies,setPolicies]=useState<Policy[]>([]);
  const [estimate,setEstimate]=useState<Estimate|null>(null);
+ const [quotedGross,setQuotedGross]=useState(""),
+  [serviceEstimate,setServiceEstimate]=useState<ServiceEstimate|null>(null);
  const [loading,setLoading]=useState(true),[busy,setBusy]=useState(false);
  const [message,setMessage]=useState(""),[error,setError]=useState("");
  const [uncertain,setUncertain]=useState(false);
@@ -78,6 +92,7 @@ export function HealthcarePolicyWorkspace({canView,canManage,canReview}:Props){
  const [revision,setRevision]=useState<Policy|null>(null);
  const last=useRef<{parts:string;body:Payload;label:string}|null>(null);
  useEffect(()=>setEstimate(null),[center,doctor]);
+ useEffect(()=>setServiceEstimate(null),[center,service,quotedGross]);
  const request=useRef(0);
  const refresh=useCallback(async(c:string)=>{
   const id=++request.current;
@@ -116,6 +131,20 @@ export function HealthcarePolicyWorkspace({canView,canManage,canReview}:Props){
    setEstimate(value);
   }catch(e){setError(e instanceof Error?e.message:
    "Current fee and assistance source cannot be verified.");}
+  finally{setBusy(false);}
+ }
+ async function previewPartnerService(){
+  if(!center||service==="CONSULTATION"||busy||uncertain)return;
+  setBusy(true);setError("");setServiceEstimate(null);
+  try{
+   const grossMinor=rupees(quotedGross);
+   const result=await api<ServiceEstimate>(
+    "centers/"+center+"/services/"+service+"/estimate?grossMinor="+grossMinor);
+   if(result.estimateOnly!==true||result.serviceKind!==service)
+    throw Error("The original partner estimate could not be verified.");
+   setServiceEstimate(result);
+  }catch(e){setError(e instanceof Error?e.message:
+   "The verified partner policy estimate is unavailable.");}
   finally{setBusy(false);}
  }
  function edit(p:Policy){
@@ -215,17 +244,18 @@ export function HealthcarePolicyWorkspace({canView,canManage,canReview}:Props){
    <div className="form-grid">
     <label className="field">Service type
      <select value={service} disabled={busy||!!revision}
-      onChange={e=>setService(e.target.value as Kind)}>
+      onChange={e=>{const kind=e.target.value as Kind;
+       setService(kind);if(kind!=="CONSULTATION")setDoctor("");}}>
       {kinds.map(v=><option key={v} value={v}>{v.replaceAll("_"," ")}</option>)}
      </select>
     </label>
-    <label className="field">Verified doctor (optional center-wide rule)
+    {service==="CONSULTATION"&&<label className="field">Verified doctor (optional center-wide rule)
      <select value={doctor} disabled={busy||!!revision}
       onChange={e=>setDoctor(e.target.value)}>
       <option value="">All eligible doctors at this center</option>
       {doctors.map(v=><option key={v.doctorRef} value={v.doctorRef}>{v.name}</option>)}
      </select>
-    </label>
+    </label>}
     {!!doctor&&<div className="cg-diagnostics-card">
      <h3>Current verified fee estimate</h3>
      <p>Read-only illustration from the actual CG-14 fee and current approved
@@ -243,6 +273,28 @@ export function HealthcarePolicyWorkspace({canView,canManage,canReview}:Props){
        "No currently approved consultation fee is available."}
      </p>}
     </div>}
+    {service!=="CONSULTATION"&&<section className="cg-diagnostics-card">
+     <h3>Estimated partner service contribution</h3>
+     <p>Enter the partner's quoted gross total for an illustrative calculation.
+      No retail invoice, patient consent, performed care, patient payment
+      or Foundation liability has been verified by this estimate.</p>
+     <label className="field">Partner-quoted gross amount (₹)
+      <input inputMode="decimal" value={quotedGross} disabled={busy}
+       onChange={e=>setQuotedGross(e.target.value)} placeholder="1000.00"/>
+     </label>
+     <button type="button" disabled={busy||uncertain||!quotedGross}
+      onClick={()=>void previewPartnerService()}>
+      Calculate provisional Foundation share</button>
+     {serviceEstimate&&<p role="status">
+      {serviceEstimate.state==="POLICY_ESTIMATE_ONLY"?
+       "Quoted gross "+money(serviceEstimate.grossMinor)+
+       " · estimated Foundation contribution "+money(serviceEstimate.estimatedSupportMinor)+
+       " · estimated patient payable "+money(serviceEstimate.estimatedPatientDueMinor):
+       "No current approved contribution; patient-quoted total "+
+        money(serviceEstimate.grossMinor)}.
+      {" "}{serviceEstimate.caution}
+     </p>}
+    </section>}
     <label className="field">Assistance type
      <select value={mode} disabled={busy} onChange={e=>
       setMode(e.target.value as "PERCENT"|"FIXED")}>
@@ -271,8 +323,9 @@ export function HealthcarePolicyWorkspace({canView,canManage,canReview}:Props){
     </label>
    </div>
    <p>Eligibility: patient identity and consent must be verified by the
-    original CG-15 source when a real appointment is charged. A 100% rule
-    requires a separate genuine CG-03 protected approval; it will remain pending.
+    original CG-15 source when a real appointment is charged. All non-consultation policies and 100% consultation
+    support require separate genuine CG-03 protected approval and owner finalization.
+    No medicine, nursing or OT amount is payable without real completed service proof.
     Unavailable laboratory, pharmacy, nursing and OT integrations remain
     pending, not a published offer.</p>
    <div className="toolbar">
@@ -302,7 +355,7 @@ export function HealthcarePolicyWorkspace({canView,canManage,canReview}:Props){
       {" "+new Date(p.validUntil).toLocaleDateString("en-IN")}</td>
      <td>{p.status==="ACTIVE"&&p.current?"Effective":
       p.status==="ACTIVE"?"Approved, outside active dates":
-      p.status==="PENDING_APPROVAL"?"Not effective — approval/source pending":
+      p.status==="PENDING_APPROVAL"?"Not effective — independent approval pending":
       p.status.toLowerCase().replaceAll("_"," ")}</td>
      <td>{canManage&&p.status==="ACTIVE"&&<>
       <button type="button" disabled={busy||uncertain} onClick={()=>edit(p)}>

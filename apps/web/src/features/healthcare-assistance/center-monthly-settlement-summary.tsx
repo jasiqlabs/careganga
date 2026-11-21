@@ -1,5 +1,6 @@
 "use client";
 import {useCallback,useEffect,useRef,useState} from "react";
+import {PendingPartnerServiceClaims} from "./pending-partner-service-claims";
 
 type Summary={
  month:string;state:string;
@@ -8,6 +9,7 @@ type Summary={
  outstandingMinor:string;paidVerified:boolean;
  centerGrossServicesMinor?:string;patientPayableMinor?:string;
  patientCollectedVerifiedMinor?:string;patientRefundedMinor?:string;
+ partnerPatientCollectedAttestedMinor?:string;
  foundationApprovedLiabilityMinor?:string;
  originalApprovedFoundationMinor?:string;
  effectiveState?:string;adjustedFoundationMinor?:string;
@@ -99,12 +101,14 @@ export function CenterMonthlySettlementSummary({centerRef}:Props){
    {data.effectiveState&&data.effectiveState!==data.state&&
     <p>Original recorded claim state: {data.state.replaceAll("_"," ")}.</p>}
    <dl>
-    <dt>Eligible completed consultation value (gross)</dt>
+    <dt>Eligible completed healthcare-service value (gross)</dt>
     <dd>{money(data.centerGrossServicesMinor)}</dd>
-    <dt>Patient due for these eligible consultations</dt>
+    <dt>Patient due for these eligible services</dt>
     <dd>{money(data.patientPayableMinor)}</dd>
     <dt>Verified center collections (net of recorded refunds)</dt>
     <dd>{money(data.patientCollectedVerifiedMinor)}</dd>
+    <dt>Partner-attested patient collections for approved pharmacy/nursing/OT services</dt>
+    <dd>{money(data.partnerPatientCollectedAttestedMinor)}</dd>
     <dt>Verified center refunds/corrections to date</dt>
     <dd>{money(data.patientRefundedMinor)}</dd>
     <dt>Foundation liability from completed eligible services</dt>
@@ -136,5 +140,6 @@ export function CenterMonthlySettlementSummary({centerRef}:Props){
     "A monthly claim has been prepared but is awaiting independent Foundation approval.":
     "The Foundation has not yet prepared a monthly payout claim for this period."}</p>
   </div>}
+  <PendingPartnerServiceClaims centerRef={centerRef} mode="partner"/>
  </section>;
 }

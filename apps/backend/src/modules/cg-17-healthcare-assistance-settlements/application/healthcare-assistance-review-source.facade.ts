@@ -26,14 +26,16 @@ export class HealthcareAssistanceReviewSourceFacade{
     submission.digest]);
   const v=row.rows[0];
   if(!v||v.center_ref!==submission.centerRef||v.actor_ref===null||
-   v.service_kind!=="CONSULTATION"||v.mode!=="PERCENT"||
-   v.percent_basis_points!==10000||v.approval_state!=="PENDING_APPROVAL"||
+   !(v.service_kind!=="CONSULTATION"||
+     (v.mode==="PERCENT"&&v.percent_basis_points===10000))||
+   v.approval_state!=="PENDING_APPROVAL"||
    v.valid_until<=new Date())
    throw new ConflictException({code:"ASSISTANCE_POLICY_SOURCE_CHANGED"});
   // The CG-14 owner, not CG-17, validates the current original center,
   // doctor affiliation, independent CG03 decision and scanned CG19 proof.
   try{
-   const current=await this.verified.center(c,actor.realmId,v.center_ref);
+   const current=await this.verified.eligibleService(c,actor.realmId,v.center_ref,
+    v.service_kind as "CONSULTATION"|"LAB"|"PHARMACY"|"NURSING"|"OT");
    if(v.doctor_ref)
     await this.verified.doctor(c,actor.realmId,v.center_ref,v.doctor_ref);
    return {revision:v,centerName:current.name};

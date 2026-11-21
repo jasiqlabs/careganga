@@ -3,6 +3,7 @@ import {ActivityIndicator,Alert,Pressable,StyleSheet,Text,TextInput,View}
  from "react-native";
 import {careGangaTheme as t} from "../../../../../packages/design-tokens/src/index";
 import {identityRequest} from "../identity-access/http-client";
+import {NativePartnerPublicOffers} from "./native-partner-public-offers";
 type Entry={caseRef:string;reference:string;centerRef:string;centerName:string;
  status:string;readyToPublish:boolean;isCurrentPublished:boolean;
  publicationGeneration:number|null;approvedRevisionRef:string|null};
@@ -99,6 +100,7 @@ export function NativeCenterContentPublisher({token,onExpired}:Props){
        onPress:()=>void change(item,"withdraw")}
      ]),busy||uncertain||password.length<8)}
   </View>)}
+  <NativePartnerPublicOffers token={token} mode="foundation" onExpired={onExpired}/>
  </View>;
 }
 const styles=StyleSheet.create({

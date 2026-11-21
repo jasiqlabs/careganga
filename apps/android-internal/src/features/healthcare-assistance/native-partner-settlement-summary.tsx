@@ -3,11 +3,13 @@ import {ActivityIndicator,Pressable,SafeAreaView,ScrollView,StyleSheet,Text,View
  from "react-native";
 import {careGangaTheme as t} from "../../../../../packages/design-tokens/src/index";
 import {identityRequest} from "../identity-access/http-client";
+import {NativePendingPartnerServiceClaims} from "./native-pending-partner-service-claims";
 type Center={centerRef:string;centerName:string};
 type Summary={month:string;state:string;eligibleAccruedMinor?:string;
  approvedFoundationMinor:string;actualPaidMinor:string;outstandingMinor:string;
  centerGrossServicesMinor?:string;patientPayableMinor?:string;
  patientCollectedVerifiedMinor?:string;patientRefundedMinor?:string;
+ partnerPatientCollectedAttestedMinor?:string;
  foundationApprovedLiabilityMinor?:string;
  originalApprovedFoundationMinor?:string;
  effectiveState?:string;adjustedFoundationMinor?:string;
@@ -127,9 +129,11 @@ export function NativePartnerSettlementSummary({token,onExit,onExpired}:Props){
       <Text style={styles.note}>Original recorded claim: {
        summary.state.replaceAll("_"," ")}</Text>}
      {([
-      ["Eligible completed consultation value",summary.centerGrossServicesMinor],
-      ["Patient due for eligible consultations",summary.patientPayableMinor],
-      ["Verified center collections (net)",summary.patientCollectedVerifiedMinor],
+      ["Eligible completed healthcare-service value",summary.centerGrossServicesMinor],
+      ["Patient due for eligible healthcare services",summary.patientPayableMinor],
+      ["Verified center consultation collections (net)",summary.patientCollectedVerifiedMinor],
+      ["Partner-attested patient collection for approved pharmacy/nursing/OT",
+       summary.partnerPatientCollectedAttestedMinor],
       ["Verified center refunds/corrections",summary.patientRefundedMinor],
       ["Foundation liability",summary.foundationApprovedLiabilityMinor],
       [approved?"Approved monthly Foundation claim":
@@ -167,6 +171,8 @@ export function NativePartnerSettlementSummary({token,onExit,onExpired}:Props){
      });
     },busy)}
    </View>}
+   {!!center&&<NativePendingPartnerServiceClaims token={token}
+    centerRef={center} mode="partner" onExpired={onExpired}/>}
   </ScrollView>
  </SafeAreaView>;
 }

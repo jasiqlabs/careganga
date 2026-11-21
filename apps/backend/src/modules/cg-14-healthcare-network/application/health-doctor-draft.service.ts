@@ -209,15 +209,17 @@ export class HealthDoctorDraftService{
         message:"Pending doctor draft updated. No approval or public listing was created."};
     });
   }
-  async list(bearer:string,offset=0){
+  async list(bearer:string,offset=0,search=""){
     const actor=await this.actor(bearer,"health.doctors.view");
-    if(!Number.isInteger(offset)||offset<0||offset>10000)
-      throw new BadRequestException({code:"HEALTH_DOCTOR_FIELD_INVALID",field:"offset"});
+    if(!Number.isInteger(offset)||offset<0||offset>10000||
+      typeof search!=="string"||search.length>80||/[\u0000-\u001f\u007f]/.test(search))
+      throw new BadRequestException({code:"HEALTH_DOCTOR_FIELD_INVALID",field:"search"});
     const r=await this.db.query<{id:string;full_name:string;status:string;
       version:number;specialties:string[]}>(
       "SELECT id,full_name,status,version,specialties FROM health_doctor "+
-      "WHERE root_realm_id=$1 ORDER BY normalized_name,id LIMIT 51 OFFSET $2",
-      [actor.realmId,offset]);
+      "WHERE root_realm_id=$1 AND ($3::text='' OR position($3 in normalized_name)>0) "+
+      "ORDER BY normalized_name,id LIMIT 51 OFFSET $2",
+      [actor.realmId,offset,search.trim().toLowerCase()]);
     return {doctors:r.rows.slice(0,50).map(x=>({
       doctorRef:x.id,name:x.full_name,status:x.status,version:x.version,
       specialties:x.specialties

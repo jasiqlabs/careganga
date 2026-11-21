@@ -18,6 +18,9 @@ type Policy={policyRef:string;revisionRef:string;centerRef:string;
  status:string;current:boolean;reviewCaseRef:string|null;reviewStatus:string|null};
 type Props={token:string;canView:boolean;canManage:boolean;canReview:boolean;onExit:()=>void;onExpired:()=>void};
 type Attempt={parts:string;body:Record<string,unknown>;success:string};
+type ServiceEstimate={state:"NO_APPROVED_SERVICE_POLICY"|"POLICY_ESTIMATE_ONLY";
+ grossMinor:string;estimatedSupportMinor:string;estimatedPatientDueMinor:string;
+ serviceKind:Kind;centerName:string;estimateOnly:true;caution:string};
 type Estimate={state:string;grossMinor?:string;estimatedSupportMinor?:string;
  estimatedPatientDueMinor?:string;actualFeeVersion?:number;
  eligiblePatientVerified:false;caution?:string};
@@ -61,14 +64,29 @@ async function api<T>(token:string,parts:string,
    method,cache:"no-store",headers:{Authorization:"Bearer "+token,
     ...(body?{"Content-Type":"application/json"}:{})},
    body:body?JSON.stringify(body):undefined});
- if(!result.ok)throw Object.assign(new Error(
-  result.status===401?"Session expired. Sign in again.":
-  result.status===403?"Your role cannot manage healthcare policies.":
-  result.status===404?"Current center, doctor or policy is unavailable.":
-  result.status===409?"Original policy changed. Refresh the revision before editing.":
-  result.status===400?"Check current approved center, dates and support cap.":
-  "Policy result is uncertain. Retry the exact original request."),
-  {status:result.status});
+ if(!result.ok){
+  const body:unknown=await result.json().catch(()=>null);
+  const safe=body&&typeof body==="object"&&!Array.isArray(body)?
+   body as Record<string,unknown>:null;
+  const codes=new Set(["CG14_CENTER_SERVICE_NOT_VERIFIED",
+   "ASSISTANCE_POLICY_INVALID","ASSISTANCE_POLICY_DATES_INVALID",
+   "ASSISTANCE_POLICY_CAP_INVALID","ASSISTANCE_POLICY_PERCENT_INVALID",
+   "ASSISTANCE_POLICY_SOURCE_CHANGED","ASSISTANCE_POLICY_REVISION_CHANGED",
+   "ASSISTANCE_POLICY_OVERLAP_OR_REPLAY","ASSISTANCE_APPROVAL_NOT_READY",
+   "ASSISTANCE_REVIEW_CHANGED","ASSISTANCE_INDEPENDENT_REVIEW_REQUIRED"]);
+  const message=safe&&typeof safe.code==="string"&&codes.has(safe.code)&&
+   typeof safe.message==="string"&&safe.message.length>=16&&
+   safe.message.length<=220&&!/[<>\r\n]/.test(safe.message)?
+   safe.message:null;
+  throw Object.assign(new Error(message??
+   (result.status===401?"Session expired. Sign in again.":
+   result.status===403?"Your role cannot manage healthcare policies.":
+   result.status===404?"Current center, doctor or policy is unavailable.":
+   result.status===409?"Original policy changed. Refresh the revision before editing.":
+   result.status===400?"Check current approved center, dates and support cap.":
+   "Policy result is uncertain. Retry the exact original request.")),
+   {status:result.status});
+ }
  return result.json() as Promise<T>;
 }
 export function NativeHealthcarePolicyScreen({token,canView,canManage,canReview,
@@ -77,6 +95,8 @@ export function NativeHealthcarePolicyScreen({token,canView,canManage,canReview,
  const [doctors,setDoctors]=useState<Doctor[]>([]),[doctor,setDoctor]=useState("");
  const [policies,setPolicies]=useState<Policy[]>([]);
  const [estimate,setEstimate]=useState<Estimate|null>(null);
+ const [quotedGross,setQuotedGross]=useState(""),
+  [serviceEstimate,setServiceEstimate]=useState<ServiceEstimate|null>(null);
  const [loading,setLoading]=useState(true),[busy,setBusy]=useState(false);
  const [message,setMessage]=useState(""),[uncertain,setUncertain]=useState(false);
  const [revision,setRevision]=useState<Policy|null>(null);
@@ -87,6 +107,7 @@ export function NativeHealthcarePolicyScreen({token,canView,canManage,canReview,
  const [from,setFrom]=useState(""),[until,setUntil]=useState("");
  const last=useRef<Attempt|null>(null),seq=useRef(0);
  useEffect(()=>{setEstimate(null)},[center,doctor]);
+ useEffect(()=>{setServiceEstimate(null)},[center,service,quotedGross]);
  const error=useCallback((e:unknown)=>{
   if(e&&typeof e==="object"&&"status" in e&&e.status===401)onExpired();
   setMessage(e instanceof Error?e.message:"Original healthcare support data unavailable.");
@@ -133,6 +154,19 @@ export function NativeHealthcarePolicyScreen({token,canView,canManage,canReview,
    <TextInput accessibilityLabel={label} value={value} onChangeText={change}
     editable={!busy&&!uncertain} style={s.input} placeholderTextColor={t.mutedText}
     autoCapitalize="none"/></View>;
+ async function previewPartnerService(){
+  if(!center||service==="CONSULTATION"||busy||uncertain)return;
+  setBusy(true);setMessage("");setServiceEstimate(null);
+  try{
+   const grossMinor=paise(quotedGross);
+   const result=await api<ServiceEstimate>(token,
+    "centers/"+center+"/services/"+service+"/estimate?grossMinor="+grossMinor);
+   if(result.estimateOnly!==true||result.serviceKind!==service)
+    throw Error("The original partner estimate could not be verified.");
+   setServiceEstimate(result);
+  }catch(e){error(e);}
+  finally{setBusy(false);}
+ }
  function reset(){
   setRevision(null);setService("CONSULTATION");setMode("PERCENT");
   setPercent("50");setFixed("");setCap("500");setFrom("");setUntil("");
@@ -226,12 +260,13 @@ export function NativeHealthcarePolicyScreen({token,canView,canManage,canReview,
    {canManage&&canView&&!!center&&!uncertain&&<View style={s.panel}>
     <Text style={s.heading}>{revision?"Revise approved support":"Configure support"}</Text>
     <Text style={s.note}>Service type</Text>
-    {KINDS.map(k=><View key={k}>{button(k,()=>setService(k),
+    {KINDS.map(k=><View key={k}>{button(k,()=>{
+       setService(k);if(k!=="CONSULTATION")setDoctor("");},
      busy||!!revision,service===k)}</View>)}
-    <Text style={s.note}>Doctor-specific policy (optional)</Text>
-    {button("Center-wide verified eligibility",()=>setDoctor(""),
+    {service==="CONSULTATION"&&<Text style={s.note}>Doctor-specific policy (optional)</Text>}
+    {service==="CONSULTATION"&&button("Center-wide verified eligibility",()=>setDoctor(""),
      busy||!!revision,doctor==="")}
-    {doctors.map(d=><View key={d.doctorRef}>
+    {service==="CONSULTATION"&&doctors.map(d=><View key={d.doctorRef}>
      {button(d.name,()=>setDoctor(d.doctorRef),
       busy||!!revision,doctor===d.doctorRef)}</View>)}
     {!!doctor&&<View style={s.panel}>
@@ -252,6 +287,28 @@ export function NativeHealthcarePolicyScreen({token,canView,canManage,canReview,
        "No approved current consultation fee is available."}
      </Text>}
     </View>}
+    {service!=="CONSULTATION"&&<View style={s.panel}>
+     <Text style={s.heading}>Estimated partner service contribution</Text>
+     <Text style={s.note}>Partner-quoted amount only. The original invoice,
+      patient consent, completed service and bank collection have not been
+      verified. This does not approve any payment or Foundation payable.</Text>
+     <Text style={s.fieldLabel}>Partner-quoted gross amount (₹)</Text>
+     <TextInput accessibilityLabel="Partner-quoted gross amount in rupees"
+      value={quotedGross} onChangeText={setQuotedGross} editable={!busy}
+      keyboardType="decimal-pad" maxLength={14} style={s.input}
+      placeholder="1000.00" placeholderTextColor={t.mutedText}/>
+     {button("Calculate provisional Foundation share",
+      ()=>void previewPartnerService(),busy||uncertain||!quotedGross)}
+     {serviceEstimate&&<Text accessibilityLiveRegion="polite" style={s.note}>
+      {serviceEstimate.state==="POLICY_ESTIMATE_ONLY"?
+       "Quoted gross "+money(serviceEstimate.grossMinor)+
+       " · estimated Foundation share "+money(serviceEstimate.estimatedSupportMinor)+
+       " · estimated patient payable "+money(serviceEstimate.estimatedPatientDueMinor):
+       "No active approved contribution. Patient-quoted total "+
+        money(serviceEstimate.grossMinor)}.
+      {" "}{serviceEstimate.caution}
+     </Text>}
+    </View>}
     <Text style={s.note}>Assistance type</Text>
     {button("Percentage",()=>setMode("PERCENT"),busy,mode==="PERCENT")}
     {button("Fixed rupee support",()=>setMode("FIXED"),busy,mode==="FIXED")}
@@ -262,8 +319,9 @@ export function NativeHealthcarePolicyScreen({token,canView,canManage,canReview,
     {input("Valid from (local)",from,setFrom)}
     {input("Valid until (local)",until,setUntil)}
     <Text style={s.note}>Patient-care consent/identity are checked by CG15
-     when a service is accepted. 100% requests stay pending until a genuine
-     independent CG03 approval. No Lab/Pharmacy/Nursing/OT mock discount
+     when a service is accepted. All pharmacy, nursing, OT and 100% consultation policies need a
+     genuine independent CG03 review and Foundation finalization.
+     No unverified service discount
      becomes active from this screen.</Text>
     {button(busy?"Checking original…":"Save policy revision",submit,busy)}
     {revision&&button("Cancel revision",reset,busy)}

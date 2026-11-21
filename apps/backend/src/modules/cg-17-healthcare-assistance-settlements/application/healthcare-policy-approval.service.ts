@@ -122,7 +122,8 @@ export class HealthcarePolicyApprovalService{
    "NULL,NULL,$4,$5,$6,$7,'CG17_POLICY_EXCEPTION',$8,$9,$10 "+
    "FROM cg03_process p WHERE p.id=$11 RETURNING *",
    [actor.realmId,actor.accountId,
-    (proof.centerName+" · 100% eligible consultation support").slice(0,160),
+    (proof.centerName+" · protected "+proof.revision.service_kind+
+     " Foundation contribution").slice(0,160),
     submission.revisionNo,submission.digest,requestDigest,
     submission.requestKey,submission.policyRevisionRef,
     submission.revisionNo,submission.digest,process]);
@@ -168,10 +169,10 @@ export class HealthcarePolicyApprovalService{
    const v=q.rows[0];
    if(!v)throw new NotFoundException({code:"ASSISTANCE_REVIEW_UNAVAILABLE"});
    const policy=await c.query<{center_ref:string;valid_from:Date;
-    valid_until:Date;cap_minor:string;percent_basis_points:number;
-    mode:string;approval_state:string}>(
+    valid_until:Date;cap_minor:string;percent_basis_points:number|null;
+    fixed_minor:string|null;service_kind:string;mode:string;approval_state:string}>(
     "SELECT center_ref,valid_from,valid_until,cap_minor::text,"+
-    "percent_basis_points,mode,approval_state FROM healthcare_policy_revision "+
+    "percent_basis_points,fixed_minor::text,service_kind,mode,approval_state FROM healthcare_policy_revision "+
     "WHERE root_realm_id=$1 AND id=$2 AND revision_no=$3 "+
     "AND source_digest=$4",[actor.realmId,v.cg17_policy_revision_id,
      v.cg17_policy_version,v.cg17_policy_digest]);
@@ -188,7 +189,8 @@ export class HealthcarePolicyApprovalService{
      policyRevisionRef:v.cg17_policy_revision_id,
      validFrom:original.valid_from,validUntil:original.valid_until,
      capMinor:original.cap_minor,percentBasisPoints:original.percent_basis_points,
-     service:"CONSULTATION",mode:original.mode,
+     fixedMinor:original.fixed_minor,
+     service:original.service_kind,mode:original.mode,
      state:original.approval_state},independentReviewerRequired:true};
   }catch(e){if(open)try{await c.query("ROLLBACK")}catch{};throw e;}
   finally{c.release();}

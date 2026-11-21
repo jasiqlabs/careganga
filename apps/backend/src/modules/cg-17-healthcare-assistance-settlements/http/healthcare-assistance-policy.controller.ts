@@ -1,4 +1,4 @@
-import {Body,Controller,Get,Headers,Param,Post} from "@nestjs/common";
+import {Body,Controller,Get,Headers,Param,Post,Query} from "@nestjs/common";
 import {HealthcareAssistancePolicyService} from "../application/healthcare-assistance-policy.service";
 
 /** CG17 original policies. No patient-charge, payment capture, or CMS
@@ -17,6 +17,12 @@ export class HealthcareAssistancePolicyController{
  estimate(@Headers("authorization")token:string,
   @Param("centerRef")center:string,@Param("doctorRef")doctor:string){
   return this.policies.preview(token,center,doctor);
+ }
+ @Get("centers/:centerRef/services/:kind/estimate")
+ serviceEstimate(@Headers("authorization")token:string,
+  @Param("centerRef")center:string,@Param("kind")kind:string,
+  @Query("grossMinor")grossMinor:string){
+  return this.policies.previewService(token,center,kind,grossMinor);
  }
  @Get("centers/:centerRef")
  list(@Headers("authorization")token:string,@Param("centerRef")center:string){

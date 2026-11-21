@@ -20,6 +20,30 @@ export class HealthVerifiedCenterDoctorFacade{
   return q.rows[0];
  }
 
+ /** CG14-owned canonical provider service capability; CG17 must not
+  * turn a valid center into an approved pharmacy/nursing/OT without the
+  * current verified original center's actual capability.
+  */
+ async eligibleService(c:PoolClient,root:string,center:string,
+  kind:"CONSULTATION"|"LAB"|"PHARMACY"|"NURSING"|"OT"){
+  const original=await this.center(c,root,center);
+  // Do not tighten the already approved CG15/CG17 consultation source
+  // contract retroactively: it verifies the actual associated doctor/fee.
+  if(kind==="CONSULTATION")return original;
+  const capability=kind==="LAB"?"DIAGNOSTICS":
+   kind==="OT"?"SURGERY":kind;
+  const ok=await c.query(
+   "SELECT 1 FROM health_center_capability cap "+
+   "JOIN health_center center ON center.root_realm_id=cap.root_realm_id "+
+   "AND center.id=cap.center_id "+
+   "WHERE cap.root_realm_id=$1 AND cap.center_id=$2 "+
+   "AND cap.capability_code=$3 AND center.status='VERIFIED' "+
+   "AND center.access_state='ENABLED' FOR SHARE OF cap,center",
+   [root,center,capability]);
+  if(!ok.rowCount)
+   throw new ConflictException({code:"CG14_CENTER_SERVICE_NOT_VERIFIED"});
+  return original;
+ }
  async doctor(c:PoolClient,root:string,center:string,doctor:string){
   const q=await c.query<{name:string}>(
    "SELECT d.full_name AS name FROM health_doctor_center membership "+
