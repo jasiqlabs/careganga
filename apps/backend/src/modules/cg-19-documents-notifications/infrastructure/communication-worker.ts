@@ -44,10 +44,12 @@ export class CommunicationWorker implements OnModuleInit,OnModuleDestroy{
       });
       await sub.query("LISTEN cg19_decision_committed");
       await sub.query("LISTEN cg19_appointment_committed");
+      await sub.query("LISTEN cg19_lab_release_committed");
       this.subscription=sub;
       sub.on("notification",(event:Notification)=>{
         if((event.channel==="cg19_decision_committed"||
-            event.channel==="cg19_appointment_committed")&&
+            event.channel==="cg19_appointment_committed"||
+            event.channel==="cg19_lab_release_committed")&&
           event.payload&&UUID.test(event.payload))
           void this.wake(event.payload);
       });
@@ -70,7 +72,8 @@ export class CommunicationWorker implements OnModuleInit,OnModuleDestroy{
       for(let i=0;i<40&&!this.stopped;i++){
         const decisions=await this.source.captureCommittedDecisions(realm);
         const appointments=await this.source.captureCommittedAppointments(realm);
-        if(!decisions.more&&!appointments.more)break;
+        const reports=await this.source.captureCommittedLabReleases(realm);
+        if(!decisions.more&&!appointments.more&&!reports.more)break;
       }
       await this.periodic();
     }catch{/* Durable replay cursor and due rows retain recovery state. */}
@@ -94,6 +97,22 @@ export class CommunicationWorker implements OnModuleInit,OnModuleDestroy{
       }
     }
   }
+  /** Due-only fallback across Foundation roots for original CG16 releases.
+   * Does not poll patient or provider accounts; outbox indexes bound work.
+   */
+  private async reconcilePendingLabReleases(){
+    const due=await this.db.query<{realm_id:string}>(
+     "SELECT realm_id FROM cg19_lab_release_outbox "+
+     "WHERE state='PENDING' "+
+     "ORDER BY recorded_at,realm_id,release_ref LIMIT 64");
+    const roots=[...new Set(due.rows.map(row=>row.realm_id))].slice(0,8);
+    for(const root of roots){
+      for(let batch=0;batch<4&&!this.stopped;batch++){
+        const result=await this.source.captureCommittedLabReleases(root);
+        if(!result.more)break;
+      }
+    }
+  }
   private async periodic(){
     if(this.busy||this.stopped)return;
     this.busy=true;
@@ -107,6 +126,7 @@ export class CommunicationWorker implements OnModuleInit,OnModuleDestroy{
         }
       }
       await this.reconcilePendingAppointments();
+      await this.reconcilePendingLabReleases();
       await this.delivery.tick();
     }
     catch{/* Fail closed: no fabricated delivered state or hidden queue success. */}
@@ -119,6 +139,7 @@ export class CommunicationWorker implements OnModuleInit,OnModuleDestroy{
     if(sub){
       try{await sub.query("UNLISTEN cg19_decision_committed");}catch{}
       try{await sub.query("UNLISTEN cg19_appointment_committed");}catch{}
+      try{await sub.query("UNLISTEN cg19_lab_release_committed");}catch{}
       sub.release();
     }
   }
