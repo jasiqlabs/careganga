@@ -271,8 +271,9 @@ export function HealthcarePolicyWorkspace({canView,canManage,canReview}:Props){
     </label>
    </div>
    <p>Eligibility: patient identity and consent must be verified by the
-    original CG-15 source when a real appointment is charged. A 100% rule
-    requires a separate genuine CG-03 protected approval; it will remain pending.
+    original CG-15 source when a real appointment is charged. All non-consultation policies and 100% consultation
+    support require separate genuine CG-03 protected approval and owner finalization.
+    No medicine, nursing or OT amount is payable without real completed service proof.
     Unavailable laboratory, pharmacy, nursing and OT integrations remain
     pending, not a published offer.</p>
    <div className="toolbar">
@@ -302,7 +303,7 @@ export function HealthcarePolicyWorkspace({canView,canManage,canReview}:Props){
       {" "+new Date(p.validUntil).toLocaleDateString("en-IN")}</td>
      <td>{p.status==="ACTIVE"&&p.current?"Effective":
       p.status==="ACTIVE"?"Approved, outside active dates":
-      p.status==="PENDING_APPROVAL"?"Not effective — approval/source pending":
+      p.status==="PENDING_APPROVAL"?"Not effective — independent approval pending":
       p.status.toLowerCase().replaceAll("_"," ")}</td>
      <td>{canManage&&p.status==="ACTIVE"&&<>
       <button type="button" disabled={busy||uncertain} onClick={()=>edit(p)}>
