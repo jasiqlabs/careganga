@@ -9,7 +9,8 @@ import {NativeFinanceAction,NativeFinanceOptions}
 import {careGangaTheme as t} from "../../../../../packages/design-tokens/src/index";
 type Format="PDF"|"XLSX"|"CSV";
 type Request={kind:string;view:string;yearRef?:string;branchRef?:string;
- centerRef?:string;fromDay?:string;untilDay?:string;status?:string;offset:number};
+ centerRef?:string;fromDay?:string;untilDay?:string;status?:string;
+ groupBy?:"CATEGORY"|"POSTING_KIND"|"ACCOUNT_NAME";sortBy?:"NAME"|"DEBIT"|"CREDIT";sortDirection?:"ASC"|"DESC";offset:number};
 type Run={ref:string;state:string;format:Format;canDownload:boolean;
  createdAt?:string;rows?:number|null};
 const MIME:Record<Format,string>={
