@@ -6,6 +6,7 @@ import {File,Paths} from "expo-file-system";
 import * as Crypto from "expo-crypto";
 import {careGangaTheme as t} from "../../../../../packages/design-tokens/src/index";
 import {identityRequest} from "../identity-access/http-client";
+import {NativeCenterContentReview} from "../health-network/native-center-content-review";
 
 type Kind="HEALTH_PROVIDER_VERIFICATION"|"HEALTH_CENTER_VERIFICATION"|"HEALTH_DOCTOR_VERIFICATION";
 type Review={caseRef:string;reference:string;title:string;kind:Kind;status:string;revision:number};
@@ -215,7 +216,8 @@ export function HealthcareNativeReview({token,canDoctors,canProviders,
           </Pressable>
         </View>}
         {!detail&&<>
-          <View style={styles.card}>
+          {canProviders&&<NativeCenterContentReview token={token} onExpired={onExpired}/>}
+          <View style={styles.card}
             <Text style={styles.bold}>Find cases</Text>
             <TextInput style={styles.input} value={query} maxLength={80}
               onChangeText={setQuery} placeholder="Case number or name"
