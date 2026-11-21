@@ -227,7 +227,8 @@ export function MisReportsWorkspace(){
        <option value="DAY">Today</option>
        <option value="WEEK">This week (Monday onward)</option>
        <option value="MONTH">This month</option>
-       <option value="YEAR">This calendar year</option>
+       {kind!=="PLATFORM_AUDIT_ACTIVITY"&&
+        <option value="YEAR">This calendar year</option>}
       </select></label>
       <label>Start date <input type="date" value={from}
        onChange={e=>{setPeriod("CUSTOM");setFrom(e.target.value);setResult(null);}}/></label>
