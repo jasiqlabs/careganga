@@ -87,6 +87,8 @@ export function parseSafeReport(raw:unknown):SafeReportRequest{
   Boolean(fromDay)!==Boolean(untilDay)||
   fromDay!==""&&(!day(fromDay)||!day(untilDay)||fromDay>untilDay||
    Date.parse(untilDay+"T00:00:00Z")-Date.parse(fromDay+"T00:00:00Z")>366*86400000)||
+  fromDay!==""&&kind==="PLATFORM_AUDIT_ACTIVITY"&&
+   Date.parse(untilDay+"T00:00:00Z")-Date.parse(fromDay+"T00:00:00Z")>89*86400000||
   fromDay!==""&&kind!=="FINANCE_POSTED_LEDGER"&&
    kind!=="FINANCE_POSTED_GROUPED"&&kind!=="APPOINTMENT_STATUS"&&
    kind!=="PLATFORM_AUDIT_ACTIVITY")
