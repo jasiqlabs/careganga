@@ -133,12 +133,7 @@ export class HealthcareProviderPayoutProofFacade{
    "AND ($3::uuid IS NULL OR bank.id=$3::uuid) "+
    "AND (SELECT count(*) FROM journal_line exact "+
    "WHERE exact.root_realm_id=j.root_realm_id AND exact.journal_id=j.id)=2 "+
-   "AND NOT EXISTS(SELECT 1 FROM provider_settlement_payment outgoing "+
-   "WHERE outgoing.root_realm_id=bank.root_realm_id "+
-   "AND outgoing.bank_reconciliation_ref=bank.id) "+
-   "AND NOT EXISTS(SELECT 1 FROM cg17_provider_claim_correction used "+
-   "WHERE used.root_realm_id=bank.root_realm_id "+
-   "AND used.recovery_bank_ref=bank.id) "+
+
    "ORDER BY bank.verified_at DESC,bank.id DESC LIMIT 51",
    [actor.realmId,payableRef,bankMatchRef??null]);
   return rows.rows;
