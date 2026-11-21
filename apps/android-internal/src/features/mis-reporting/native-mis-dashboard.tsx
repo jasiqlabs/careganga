@@ -8,6 +8,8 @@ type Source={sourceKey:string;sourceLabel:string;state:string;metrics:Metric[];
  explanation?:string};
 type Overview={state:string;readAt:string;sources:Source[];
  periodLabel?:string;scopeLabel?:string;message?:string};
+type Option={ref:string;name:string};
+type Choices={state:string;years:Option[];branches:Option[];allBranches:boolean};
 const currency=(v:string)=>{
  try{const n=BigInt(v),a=n<0n?-n:n;
   return (n<0n?"−":"")+"₹"+(a/100n).toLocaleString("en-IN")+"."+
@@ -20,10 +22,29 @@ export function NativeMisDashboard({token,onExpired,onOpenFinance}:{
  const [overview,setOverview]=useState<Overview|null>(null);
  const [busy,setBusy]=useState(true);
  const [problem,setProblem]=useState("");
+ const [ready,setReady]=useState(false),[allBranches,setAllBranches]=useState(false);
+ const [years,setYears]=useState<Option[]>([]),[branches,setBranches]=useState<Option[]>([]);
+ const [year,setYear]=useState(""),[branch,setBranch]=useState("");
+ useEffect(()=>{let live=true;void(async()=>{
+  try{
+   const response=await identityRequest("/api/v1/mis/options",{
+    headers:{Authorization:"Bearer "+token}});
+   if(response.status===401){onExpired();return;}
+   if(!response.ok)throw Error("OPTIONS");
+   const opts=await response.json() as Choices;
+   if(!Array.isArray(opts.years)||!Array.isArray(opts.branches))throw Error("OPTIONS");
+   if(live){setYears(opts.years);setBranches(opts.branches);
+    setAllBranches(opts.allBranches===true);
+    setBranch(opts.allBranches===true?"":opts.branches[0]?.ref??"");setReady(true);}
+  }catch{if(live){setProblem("Reporting filters are unavailable. Please retry.");setReady(false);}}
+ })();return()=>{live=false;};},[token,onExpired]);
  const reload=useCallback(async()=>{
   setBusy(true);setProblem("");setOverview(null);
   try{
-   const response=await identityRequest("/api/v1/mis/dashboard",{
+   const query=new URLSearchParams();
+   if(year)query.set("yearRef",year);
+   if(branch)query.set("branchRef",branch);
+   const response=await identityRequest("/api/v1/mis/dashboard?"+query.toString(),{
     headers:{Authorization:"Bearer "+token}});
    if(response.status===401){onExpired();return;}
    if(!response.ok)throw Error(response.status===403?
@@ -35,8 +56,8 @@ export function NativeMisDashboard({token,onExpired,onOpenFinance}:{
   }catch(e){setProblem(e instanceof Error&&e.message==="Your role cannot view these reports."?
    e.message:"Unable to load current reporting data. Refresh to retry.");}
   finally{setBusy(false);}
- },[token,onExpired]);
- useEffect(()=>{void reload();return()=>setOverview(null);},[reload]);
+ },[token,onExpired,year,branch]);
+ useEffect(()=>{if(ready)void reload();},[ready,reload]);
  return <View style={styles.container}>
   <View style={styles.header}>
    <View style={{flex:1}}>
@@ -48,7 +69,16 @@ export function NativeMisDashboard({token,onExpired,onOpenFinance}:{
     <Text style={styles.link}>{busy?"Loading…":"Refresh"}</Text>
    </Pressable>
   </View>
-  {busy&&<Text accessibilityRole="text" style={styles.helper}>Checking current reports…</Text>}
+  {ready&&<View style={{gap:6}}>
+   <NativeFinanceOptions label="Financial year" value={year}
+    options={[{ref:"",label:"All permitted years"},...years.map(y=>({ref:y.ref,label:y.name}))]}
+    onChange={setYear}/>
+   {!!branches.length&&<NativeFinanceOptions label="Branch" value={branch}
+    options={[...(allBranches?[{ref:"",label:"All permitted branches"}]:[]),
+      ...branches.map(b=>({ref:b.ref,label:b.name}))]}
+    onChange={setBranch}/>}
+  </View>}
+  {busy&&ready&&<Text accessibilityRole="text" style={styles.helper}>Checking current reports…</Text>}
   {!!problem&&<Text accessibilityRole="alert" style={styles.error}>{problem}</Text>}
   {overview&&<>
    <Text style={styles.helper}>{overview.periodLabel} · {overview.scopeLabel}</Text>
