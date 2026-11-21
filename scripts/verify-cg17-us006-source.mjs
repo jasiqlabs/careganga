@@ -257,5 +257,18 @@ must("liability",/claim\.state AS settlement_state/,"Original CG17 liability mus
 must("liability",/providerSettled:liability\.settlement_state==="SETTLED"/,"Do not always report provider unpaid");
 must("webLiability",/status\.providerSettlementState==="PARTIALLY_SETTLED"/,"Web must show actual partial claim");
 must("nativeLiability",/status\.providerSettlementState==="PARTIALLY_SETTLED"/,"Internal Android must show actual partial claim");
+
+const escapeChar=String.fromCharCode(92);
+const correctDatePattern="/^"+escapeChar+"d{4}-"+escapeChar+"d{2}-"+
+ escapeChar+"d{2}$/";
+const doubleEscapedDatePattern=correctDatePattern.replaceAll(
+ escapeChar,escapeChar+escapeChar);
+for(const file of [files.cg09,files.webJournalBff]){
+ const source=read(file);
+ assert.ok(source.includes(correctDatePattern),
+  file+": CG09/Web date parser must accept actual ISO dates");
+ assert.ok(!source.includes(doubleEscapedDatePattern),
+  file+": rejection of legitimate ISO correction dates is prohibited");
+}
 console.log("CG17 US006 month and verified-payout source parse/contract preflight PASS. "+
  "CG09 bank/PG races, reversal, Web/Android device and independent QA NOT_RUN.");
