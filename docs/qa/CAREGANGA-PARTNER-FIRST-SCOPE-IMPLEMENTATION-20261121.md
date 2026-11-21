@@ -52,3 +52,7 @@ Public Android now validates the same minimum required name/location and optiona
 ### Applicant status UX source closure
 
 Original CG14 public status endpoint now returns safe statusLabel + applicant next-step message; status codes remain API-only. Public Web and Public Android show the same source text; RETURNED explains Foundation follow-up, while ORIGINAL_VERIFIED never promises a discount. No internal review note, payment, PII or approval is leaked through anonymous status. Backend e81e479; Web 701fb4f; Android d82d771; original source guard 024446f. This is source-only and still needs actual role/browser/device verification.
+
+### Integration ancestry readback — concurrent main change (21 November 2026)
+
+Latest connected-GitHub ancestry comparison: main now contains the entire feature/careganga-cg16-cg17-healthcare-dev-20261120 tree and is one merge-history commit ahead of that parent (compare reports **zero changed files**). This partner-first branch is 51 commits ahead of its parent and one merge-only commit behind main, with no source difference caused by that additional main commit. Do **not** force-push, rewrite main history or equate the main integration commit with any verified runtime QA. Keep this partner-first work separate and merge only following original CG17 complete finance source, qualified reviews and developer-executed release gates.
