@@ -361,6 +361,20 @@ export class MisReportScheduleWorker implements OnModuleInit,OnModuleDestroy{
     "AND run.run_origin='SCHEDULED' AND run.state='RUNNING' "+
     "AND run.updated_at<now()-interval '10 minutes'"
    );
+   // A worker may crash after claiming its FINAL allowed in-app attempt.
+   // Reconcile only a bounded stale batch into truthful UNAVAILABLE; never
+   // leave an exhausted SENT_PENDING row or invent a provider confirmation.
+   await this.db.query(
+    "UPDATE cg20_report_delivery_attempt attempt SET "+
+    "state='UNAVAILABLE',next_retry_utc=NULL,updated_at=now() "+
+    "FROM (SELECT root_realm_id,id FROM cg20_report_delivery_attempt "+
+    "WHERE channel='IN_APP' AND state='SENT_PENDING' AND attempts>=5 "+
+    "AND next_retry_utc<=now() "+
+    "ORDER BY next_retry_utc,root_realm_id,id LIMIT 4) stale "+
+    "WHERE attempt.root_realm_id=stale.root_realm_id "+
+    "AND attempt.id=stale.id AND attempt.state='SENT_PENDING' "+
+    "AND attempt.attempts>=5"
+   );
    for(let i=0;i<4&&!this.stopped;i++){
     const row=await this.claimDelivery();if(!row)break;
     await this.sendDelivery(row);
