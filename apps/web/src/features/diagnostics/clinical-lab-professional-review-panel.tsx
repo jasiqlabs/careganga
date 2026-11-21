@@ -117,7 +117,7 @@ export function ClinicalLabProfessionalReviewPanel({centerRef,orderRef}:Props){
   <h3>Qualified independent clinical review</h3>
   <p>Only an assigned, currently credential-verified clinician can assess the
    original scanner-verified private PDF. The processing operator cannot
-   review their own result. An approval here is NOT a signed professional
+   review their own result. Approval alone does not release the report to the patient
    release, patient download or delivery notification.</p>
   {loading&&<p role="status">Checking current clinical credentials…</p>}
   {!!error&&<p className="notice error" role="alert">{error}</p>}
