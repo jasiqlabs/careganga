@@ -162,6 +162,33 @@ export class MisSavedReportService{
     const existing=await this.getOwned(tx,actor.realmId,actor.accountId,old.saved_ref);
     return {...this.summary(existing),replayed:true};
    }
+   if(createdFrom){
+    // A grant revoked while preview was in flight must not result in a new
+    // shared-owner copy. Hold the original row and individual grant in this
+    // transaction, then ensure the saved definition is still the version
+    // actually reauthorized by the recipient's source owner.
+    const original=await tx.query<Saved>(
+     "SELECT * FROM cg20_saved_report WHERE root_realm_id=$1 "+
+     "AND id=$2 AND state='ACTIVE' FOR SHARE",
+     [actor.realmId,createdFrom]);
+    const source=original.rows[0];
+    if(!source)
+     throw new NotFoundException({code:"MIS_SAVED_NOT_FOUND"});
+    if(source.owner_account_ref!==actor.accountId){
+     const grant=await tx.query(
+      "SELECT 1 FROM cg20_saved_report_grant "+
+      "WHERE root_realm_id=$1 AND saved_ref=$2 "+
+      "AND owner_account_ref=$3 AND recipient_account_ref=$4 "+
+      "AND state='ACTIVE' FOR SHARE",
+      [actor.realmId,createdFrom,source.owner_account_ref,actor.accountId]);
+     if(!grant.rows[0])
+      throw new NotFoundException({code:"MIS_SAVED_NOT_FOUND"});
+    }
+    const current=await this.definition(tx,source);
+    if(hash(current)!==hash(request))
+     throw new ConflictException({code:"MIS_SAVED_CHANGED",
+      message:"This shared report has changed. Reopen the current definition."});
+   }
    const id=randomUUID();
    await tx.query(
     "INSERT INTO cg20_report_definition(root_realm_id,id,revision,source_key,"+
