@@ -350,16 +350,25 @@ export function ClinicalLabOrderWorkspace({canCreate,canView,canManageSamples,ca
     <ClinicalLabProfessionalReviewPanel key={center+":"+selected.order.orderRef}
      centerRef={center} orderRef={selected.order.orderRef}/>}
    {selected.report?.state==="RESULT_READY"?
-    <p className="notice" role="status">Report PDF is ready for
-     independent clinician review. The patient sees it only after release.</p>:
-    canRecordResults&&selected.order.status==="PROCESSING"&&
-     selected.samples.length>0&&selected.samples.every(s=>s.status==="PROCESSING")?
     <>
-     <ClinicalLabResultEntry key={"entry:"+center+":"+selected.order.orderRef}
-      centerRef={center} orderRef={selected.order.orderRef}
-      onVerified={async()=>{await show(selected.order.orderRef);}}/>
-
-    </>:null}
+     <p className="notice" role="status">Report PDF is ready for
+      clinician review. Patient access requires authorized release.</p>
+     {canRecordResults&&<details>
+      <summary>Correct previously released lab report</summary>
+      <ClinicalLabResultEntry key={"correction:"+center+":"+selected.order.orderRef}
+       centerRef={center} orderRef={selected.order.orderRef}
+       onVerified={async()=>{await show(selected.order.orderRef);}}/>
+     </details>}
+    </>:
+    canRecordResults&&(
+     selected.order.status==="RESULT_READY"&&
+     selected.report?.state==="DRAFT"||
+     selected.order.status==="PROCESSING"&&
+     selected.samples.length>0&&
+     selected.samples.every(s=>s.status==="PROCESSING"))?
+    <ClinicalLabResultEntry key={"entry:"+center+":"+selected.order.orderRef}
+     centerRef={center} orderRef={selected.order.orderRef}
+     onVerified={async()=>{await show(selected.order.orderRef);}}/>:null}
   </section>}
  </section>;
 }
