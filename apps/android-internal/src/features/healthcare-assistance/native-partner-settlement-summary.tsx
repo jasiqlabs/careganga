@@ -7,7 +7,8 @@ type Center={centerRef:string;centerName:string};
 type Summary={month:string;state:string;eligibleAccruedMinor?:string;
  approvedFoundationMinor:string;actualPaidMinor:string;outstandingMinor:string;
  centerGrossServicesMinor?:string;patientPayableMinor?:string;
- patientCollectedVerifiedMinor?:string;foundationApprovedLiabilityMinor?:string;
+ patientCollectedVerifiedMinor?:string;patientRefundedMinor?:string;
+ foundationApprovedLiabilityMinor?:string;
  patientCollectionNotFoundationIncome:true;paidVerified:boolean};
 type Props={token:string;onExit:()=>void;onExpired:()=>void};
 const ID=/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i;
@@ -120,7 +121,8 @@ export function NativePartnerSettlementSummary({token,onExit,onExpired}:Props){
      {([
       ["Eligible completed consultation value",summary.centerGrossServicesMinor],
       ["Patient due for eligible consultations",summary.patientPayableMinor],
-      ["Verified center collections",summary.patientCollectedVerifiedMinor],
+      ["Verified center collections (net)",summary.patientCollectedVerifiedMinor],
+      ["Verified center refunds/corrections",summary.patientRefundedMinor],
       ["Foundation liability",summary.foundationApprovedLiabilityMinor],
       [approved?"Approved monthly Foundation claim":
         summary.state==="PROPOSED"?"Proposed claim (not approved)":
