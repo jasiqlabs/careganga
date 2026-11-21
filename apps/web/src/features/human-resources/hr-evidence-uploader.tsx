@@ -8,6 +8,7 @@ type Props={applicationRef:string;revision:number;canManage:boolean;
  onValidated?:()=>void};
 const types=[
  {value:"HR_IDENTITY_PROOF",label:"Identity proof"},
+ {value:"HR_PAN_PROOF",label:"PAN proof (optional)"},
  {value:"HR_QUALIFICATION",label:"Qualification evidence"},
  {value:"HR_PORTRAIT",label:"Employee photograph"}
 ] as const;
