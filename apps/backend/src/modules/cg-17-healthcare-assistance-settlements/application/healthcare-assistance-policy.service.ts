@@ -142,7 +142,8 @@ export class HealthcareAssistancePolicyService{
    const actor=await this.actor(c,bearer,"healthcare.assistance.policies.view");
    return {centers:await this.verified.centers(c,actor.realmId),
     serviceKinds:serviceKinds.map(kind=>({
-     kind,canActivate:kind==="CONSULTATION"}))};
+     kind,requiresIndependentReview:kind!=="CONSULTATION",
+     availableForServiceClaims:kind==="CONSULTATION"}))};
   });
  }
  async doctors(bearer:string,rawCenter:string){
@@ -215,9 +216,11 @@ export class HealthcareAssistancePolicyService{
  async submit(bearer:string,raw:unknown){
   const v=fromInput(raw);
   const full=v.mode==="PERCENT"&&v.bps===10000;
-  // Optional US005/006 future clinical ERP owners may have configured
-  // internal policies, but not any eligible source to make them public.
+  // Consultation normal rates retain the existing active path. All other
+  // categories, including pharmacy/nursing/OT even below 100%, must receive
+  // genuine protected CG03 review and separate Foundation owner finalization.
   const active=v.serviceKind==="CONSULTATION"&&!full;
+  const protectedReview=!active;
   const state=active?"ACTIVE":"PENDING_APPROVAL";
   const hash=digest(["CG17_POLICY_V1",v.centerRef,v.doctorRef,
    v.serviceKind,v.policyRef,v.expected,v.from.toISOString(),
@@ -274,7 +277,7 @@ export class HealthcareAssistancePolicyService{
      v.from,v.until,v.mode,v.bps,v.fixed,v.cap,v.eligibility,state,
      active,actor.accountId,v.requestKey,hash,hash]);
    let caseRef:string|null=null;
-   if(full){
+   if(protectedReview){
     const review=await this.approval.create(c,actor,{
      kind:"CG17_POLICY_EXCEPTION",policyRevisionRef:row.rows[0].id,
      revisionNo:version,digest:hash,requestKey:v.requestKey,
@@ -283,8 +286,8 @@ export class HealthcareAssistancePolicyService{
    }
    return {...view(row.rows[0]),caseRef,replayed:false,
     warning:active?undefined:"This request is not effective or publicly available. "+
-     (full?"An original protected CG03 full-coverage approval is required.":
-      "This service's original source and eligibility integration is not ready.")};
+     "Independent CG03 review and separate Foundation finalization are required. "+
+     "A protected policy never proves patient eligibility, completed service or a payable claim."};
   });
  }
  /** Owner finalization. A legitimate independent current CG03 decision
@@ -348,7 +351,8 @@ export class HealthcareAssistancePolicyService{
    if(currentCaseStatus!=="PENDING_OWNER"||
      original.approval_state!=="PENDING_APPROVAL"||
      original.mode!=="PERCENT"||original.percent_basis_points!==10000||
-     original.service_kind!=="CONSULTATION"||
+     !(original.service_kind!=="CONSULTATION"||
+       (original.mode==="PERCENT"&&original.percent_basis_points===10000))||
      review.proposer_id!==original.actor_ref||
      new Date(original.valid_until)<=new Date())
     throw new ConflictException({code:"ASSISTANCE_APPROVAL_NOT_READY"});
