@@ -84,6 +84,13 @@ export function NativeLabReportRelease({token,centerRef,orderRef,onExpired}:Prop
       {text:"Cancel",style:"cancel"},
       {text:"Release",onPress:()=>void release()}
      ]))}
+  {status?.patientDownloadAvailable&&<Text style={styles.note}>
+   Patient notice: {status.notificationDelivered?
+    "Provider-confirmed delivered":
+    status.notificationStates?.length?
+    status.notificationStates.map(n=>n.channel+" "+n.state.replaceAll("_"," ")).join(", "):
+    "Not sent or verified yet"}. An email/SMS is delivered only after provider proof.
+  </Text>}
   {uncertain&&<Text accessibilityRole="alert" style={styles.note}>
    Outcome uncertain. Check the original release status before retrying.</Text>}
   {button("Refresh release status",()=>void refresh().catch(error))}
