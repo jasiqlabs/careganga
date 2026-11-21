@@ -4,10 +4,11 @@ import {
 import {SessionService} from "../../cg-01-identity-access/application/session.service";
 import {FinanceReportsService} from "../../cg-09-finance-accounting/application/finance-reports.service";
 import {PatientAdminOverviewService} from "../../cg-15-patients-appointments/application/patient-admin-overview.service";
+import {PlatformAuditService} from "../../cg-21-platform-configuration-audit/application/platform-audit.service";
 
 export const REPORT_KINDS=[
  "FINANCE_POSTED_LEDGER","FINANCE_POSTED_SUMMARY",
- "FINANCE_POSTED_TREND","APPOINTMENT_STATUS"
+ "FINANCE_POSTED_TREND","APPOINTMENT_STATUS","PLATFORM_AUDIT_ACTIVITY"
 ] as const;
 export type ReportKind=typeof REPORT_KINDS[number];
 export type ReportView="TABLE"|"SUMMARY"|"CHART";
@@ -45,7 +46,8 @@ export function parseSafeReport(raw:unknown):SafeReportRequest{
   FINANCE_POSTED_LEDGER:["TABLE"],
   FINANCE_POSTED_SUMMARY:["SUMMARY"],
   FINANCE_POSTED_TREND:["CHART"],
-  APPOINTMENT_STATUS:["SUMMARY","CHART"]
+  APPOINTMENT_STATUS:["SUMMARY","CHART"],
+  PLATFORM_AUDIT_ACTIVITY:["TABLE"]
  };
  if(!legalViews[kind as ReportKind].includes(view))
   throw new BadRequestException({code:"MIS_REPORT_VIEW_INVALID",
@@ -66,7 +68,8 @@ export function parseSafeReport(raw:unknown):SafeReportRequest{
   Boolean(fromDay)!==Boolean(untilDay)||
   fromDay!==""&&(!day(fromDay)||!day(untilDay)||fromDay>untilDay||
    Date.parse(untilDay+"T00:00:00Z")-Date.parse(fromDay+"T00:00:00Z")>366*86400000)||
-  fromDay!==""&&kind!=="FINANCE_POSTED_LEDGER"&&kind!=="APPOINTMENT_STATUS")
+  fromDay!==""&&kind!=="FINANCE_POSTED_LEDGER"&&kind!=="APPOINTMENT_STATUS"&&
+   kind!=="PLATFORM_AUDIT_ACTIVITY")
   throw new BadRequestException({code:"MIS_REPORT_FILTER_INVALID",
    message:"Choose an allowed center, year, status and date range for this report."});
  const offset=o.offset===undefined?0:o.offset;
@@ -90,7 +93,7 @@ export function suppressAppointmentCells(rows:{
 }
 type ReportRow=Record<string,string>;
 type ReportPreview={
- state:"READY"|"EMPTY"|"SUPPRESSED";kind:ReportKind;view:ReportView;
+ state:"READY"|"EMPTY"|"SUPPRESSED"|"PARTIAL";kind:ReportKind;view:ReportView;
  label:string;columns:{key:string;label:string;unit?:"INR_MINOR"|"COUNT"|"TEXT"}[];
  rows:ReportRow[];nextOffset:number|null;
  sourceAsOf?:string;sourceCutoffKind:string;sourceReadAt:string;
@@ -104,7 +107,8 @@ type ReportPreview={
 export class MisReportSourceService{
  constructor(private readonly sessions:SessionService,
   private readonly finance:FinanceReportsService,
-  private readonly patients:PatientAdminOverviewService){}
+  private readonly patients:PatientAdminOverviewService,
+  private readonly audit:PlatformAuditService){}
  async catalog(token:string){
   await this.sessions.requireAction(token,"mis.reports.view");
   const [finance,appointments]=await Promise.all([
@@ -147,9 +151,12 @@ export class MisReportSourceService{
    try{await this.sessions.requireAction(token,action);return true;}
    catch(error){if(error instanceof UnauthorizedException)throw error;return false;}
   };
-  const [manage,exportAllowed,schedule]=await Promise.all([
+  const [manage,exportAllowed,schedule,auditAccess]=await Promise.all([
    permission("mis.reports.manage"),permission("mis.reports.export"),
-   permission("mis.reports.schedule")]);
+   permission("mis.reports.schedule"),permission("platform.audit.view")]);
+  if(auditAccess)templates.push({kind:"PLATFORM_AUDIT_ACTIVITY",
+   label:"Protected audit activity",views:["TABLE"],
+   description:"Current original platform and access audit events; limited to 50 rows."});
   return {templates,finance,appointments,capabilities:{
    manage,export:exportAllowed,schedule},sourceReadAt:new Date().toISOString()};
  }
@@ -211,6 +218,38 @@ export class MisReportSourceService{
     rows:x.months,nextOffset:null,sourceReadAt,
     sourceCutoffKind:"OWNER_READ_COMPLETED_NOT_SNAPSHOT",
     explanation:x.explanation,scopeLabel:"Current permitted finance source scope"};
+  }
+  if(q.kind==="PLATFORM_AUDIT_ACTIVITY"){
+   // All audit events originate in CG-21/CG-01; the audit facade owns
+   // its action, root, sensitive-field, cursor and date authorization.
+   // Do not store event IDs or private audit events as CG-20 business rows.
+   const today=new Date();
+   const from=q.fromDay?new Date(q.fromDay+"T00:00:00.000Z"):
+    new Date(today.getTime()-30*86400000);
+   const to=q.untilDay?new Date(q.untilDay+"T23:59:59.999Z"):today;
+   const page=await this.audit.list(token,{
+    from:from.toISOString(),to:to.toISOString(),limit:"50"
+   });
+   const rows=page.events.map(e=>({
+    occurredAt:e.occurredAt,source:e.source,action:e.actionLabel,
+    performedBy:e.actorDisplay,target:e.targetDisplay,outcome:e.outcome
+   }));
+   const partial=page.coverage!=="COMPLETE"||page.nextCursor!==null;
+   return {kind:q.kind,view:q.view,label:"Protected platform audit activity",
+    state:partial?"PARTIAL":rows.length?"READY":"EMPTY",
+    columns:[
+     {key:"occurredAt",label:"Date and time",unit:"TEXT"},
+     {key:"source",label:"Audit origin",unit:"TEXT"},
+     {key:"action",label:"Activity",unit:"TEXT"},
+     {key:"performedBy",label:"Operator",unit:"TEXT"},
+     {key:"target",label:"Affected area",unit:"TEXT"},
+     {key:"outcome",label:"Result",unit:"TEXT"}
+    ],rows,nextOffset:null,sourceReadAt,
+    sourceCutoffKind:"ORIGINAL_AUDIT_READ_COMPLETED_NOT_SNAPSHOT",
+    explanation:partial?
+     "A source was unavailable or there are more than 50 results. Narrow the date range or open the protected audit ledger; a partial report cannot be exported.":
+     "Only actual CG-21/CG-01 audit projections authorized for this account.",
+    scopeLabel:"Current permitted Foundation audit scope"};
   }
   const x=await this.patients.readMisTotals(token,{
    centerRef:q.centerRef,fromDay:q.fromDay,untilDay:q.untilDay,status:q.status});
