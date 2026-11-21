@@ -41,7 +41,7 @@ export class MisReportNoticeService{
     "AND artifact.state='READY' AND artifact.revoked_at IS NULL "+
     "AND artifact.object_version IS NOT NULL AND artifact.content_sha256 IS NOT NULL "+
     "AND artifact.content_length IS NOT NULL "+
-    "FOR SHARE OF r,schedule,artifact,recipient LIMIT 1",
+    "LIMIT 1 FOR SHARE OF r,schedule,artifact,recipient",
     [root,runRef,account]);
    if(!actual.rows[0])
     throw new NotFoundException({
