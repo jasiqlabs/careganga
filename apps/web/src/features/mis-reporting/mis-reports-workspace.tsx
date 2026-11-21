@@ -135,7 +135,7 @@ export function MisReportsWorkspace(){
     {catalog.templates.map(t=><button type="button" key={t.kind}
      aria-pressed={kind===t.kind} onClick={()=>{
       setKind(t.kind);setView(t.views[0]);setResult(null);setProblem("");setNotice("");
-      setYear("");setBranch("");setCenter("");setFrom("");setUntil("");setStatus("");
+      setYear("");setBranch(catalog.finance.allBranches?"":catalog.finance.branches[0]?.ref??"");setCenter("");setFrom("");setUntil("");setStatus("");
      }} style={{textAlign:"left",border:"1px solid var(--cg-border)",borderRadius:10,
       padding:14,minHeight:84,background:kind===t.kind?"var(--cg-canvas)":"var(--cg-surface)"}}>
      <strong style={{display:"block",color:"var(--cg-text)"}}>{t.label}</strong>
