@@ -172,7 +172,7 @@ BEGIN
    USING ERRCODE='P1718';
  END IF;
  RETURN NEW;
-END $;
+END $$;
 CREATE TRIGGER cg17_verified_payout_immutable BEFORE INSERT OR UPDATE OR DELETE
  ON provider_settlement_payment FOR EACH ROW
  EXECUTE FUNCTION cg17_verified_payout_guard();
