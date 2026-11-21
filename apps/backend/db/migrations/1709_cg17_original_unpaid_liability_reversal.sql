@@ -63,17 +63,17 @@ BEGIN
   RAISE EXCEPTION 'Original liability already claimed, changed or unavailable'
    USING ERRCODE='P1719';
  END IF;
- SELECT j.posting_kind,j.source_owner,j.source_ref,j.created_by,
+ SELECT j.id AS id,j.posting_kind,j.source_owner,j.source_ref,j.created_by,
         j.immutable_payload_digest,j.status,j.reversal_of_id
  INTO original FROM journal j
  WHERE j.id=NEW.original_journal_ref AND j.root_realm_id=NEW.root_realm_id
  FOR SHARE;
- SELECT j.posting_kind,j.source_owner,j.source_ref,j.created_by,
+ SELECT j.id AS id,j.posting_kind,j.source_owner,j.source_ref,j.created_by,
         j.immutable_payload_digest,j.status,j.reversal_of_id
  INTO changed FROM journal j
  WHERE j.id=NEW.reversal_journal_ref AND j.root_realm_id=NEW.root_realm_id
  FOR SHARE;
- IF NOT FOUND OR original.posting_kind<>'GENERAL' OR original.source_owner<>'CG-09'
+ IF original.id IS NULL OR changed.id IS NULL OR original.posting_kind<>'GENERAL' OR original.source_owner<>'CG-09'
    OR original.status<>'POSTED' OR original.reversal_of_id IS NOT NULL
    OR original.source_ref<>NEW.original_effect_ref
    OR original.immutable_payload_digest<>economic.source_digest
