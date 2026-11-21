@@ -68,6 +68,7 @@ export interface ModuleActionHandlers {
   openMyLabPricing: () => void;
   openPatientBooking: () => void;
   openDoctorLeaveReviews: () => void;
+  openOwnCenterPortal: () => void;
   openHealthProviderManagement: () => void;
   openHealthReviews: () => void;
   openDocuments: () => void;
@@ -416,6 +417,19 @@ export function getAuthorizedModules(
     });
   }
 
+  if (roleActions.includes("health.centers.draft.edit")) {
+    list.push({
+      key: "healthOwnCenterPortal",
+      title: "My Healthcare Center",
+      shortLabel: "My Center",
+      description: "Edit your own assigned center draft and submit a genuine verified licence.",
+      category: "HEALTHCARE ASSISTANCE",
+      iconName: "building",
+      iconBg: "#E0F2FE",
+      iconColor: "#0284C7",
+      onOpen: handlers.openOwnCenterPortal
+    });
+  }
   if (roleActions.includes("health.providers.view")) {
     list.push({
       key: "healthProviderManagement",
