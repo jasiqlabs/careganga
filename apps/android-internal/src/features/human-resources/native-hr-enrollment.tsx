@@ -1,4 +1,6 @@
-import React,{useCallback,useEffect,useState} from "react";
+import React,{useCallback,useEffect,useRef,useState} from "react";
+import {NativeHrEvidence,type HrFile} from "./native-hr-evidence";
+import {NativeHrReviews} from "./native-hr-reviews";
 import * as Crypto from "expo-crypto";
 import {ActivityIndicator,Pressable,ScrollView,StyleSheet,Text,TextInput,View} from "react-native";
 import {identityRequest} from "../identity-access/http-client";
@@ -25,8 +27,9 @@ async function api(token:string,path:string,method="GET",body?:object){
  ),{status:response.status});
  return response.json() as Promise<unknown>;
 }
-export function NativeHrEnrollment({token,canView,canManage,onExit,onExpired}:{
- token:string;canView:boolean;canManage:boolean;onExit:()=>void;onExpired:()=>void
+export function NativeHrEnrollment({token,canView,canManage,canReview,canViewEmployees,onExit,onExpired}:{
+ token:string;canView:boolean;canManage:boolean;canReview:boolean;canViewEmployees:boolean;
+ onExit:()=>void;onExpired:()=>void
 }){
  const [apps,setApps]=useState<Application[]>([]);
  const [branches,setBranches]=useState<Option[]>([]);
@@ -40,6 +43,15 @@ export function NativeHrEnrollment({token,canView,canManage,onExit,onExpired}:{
  const [self,setSelf]=useState<{status:string;name?:string;designation?:string;
    branch?:string;employeeReference?:string;message?:string}|null>(null);
  const [next,setNext]=useState<number|null>(null);
+ const [focus,setFocus]=useState<Application|null>(null);
+ const [verifiedFiles,setVerifiedFiles]=useState<HrFile[]>([]);
+ const [review,setReview]=useState<{status:string;caseRef:string|null;reference:string|null}|null>(null);
+ const [pendingLink,setPendingLink]=useState<{pending:boolean;applicationRef?:string;
+  name?:string;designation?:string}|null>(null);
+ const [staff,setStaff]=useState<Array<{reference:string;name:string;designation:string;
+  branch:string;status:string}>>([]);
+ const [staffError,setStaffError]=useState("");
+ const enrollKeys=useRef(new Map<string,string>());
  const failure=useCallback((e:unknown)=>{
   if(e&&typeof e==="object"&&"status" in e&&e.status===401)onExpired();
   setError(e instanceof Error?e.message:"Unable to confirm employee records.");
@@ -120,6 +132,104 @@ export function NativeHrEnrollment({token,canView,canManage,onExit,onExpired}:{
   }catch(e){failure(e);}
   finally{setSaving(false);}
  };
+ const openSource=async(app:Application)=>{
+  setFocus(app);setReview(null);setVerifiedFiles([]);
+  setError("");setStatus("");
+  try{
+   const value=await api(token,"applications/"+app.applicationRef+"/review");
+   if(!value||typeof value!=="object"||!("status" in value)||
+     typeof value.status!=="string")
+    throw Error("Original enrollment review cannot be confirmed.");
+   setReview(value as {status:string;caseRef:string|null;reference:string|null});
+  }catch(e){failure(e);}
+ };
+ const submit=async(app:Application)=>{
+  if(!canManage||saving)return;
+  if(verifiedFiles.filter(f=>f.cleanVerified&&f.sourceVersion===app.revision&&
+    f.classification==="HR_IDENTITY_PROOF").length!==1){
+   setError("Exactly one current scanner-verified identity proof is required.");
+   return;
+  }
+  const requestKey=enrollKeys.current.get(app.applicationRef)??Crypto.randomUUID();
+  enrollKeys.current.set(app.applicationRef,requestKey);
+  setSaving(true);setError("");setStatus("");
+  try{
+   // Re-attest original CG19 file state at submit time, not a remembered UI flag.
+   const scan=await identityRequest("/api/documents/hr/applications/"+
+    encodeURIComponent(app.applicationRef),{
+    headers:{Authorization:"Bearer "+token},cache:"no-store"});
+   if(scan.status===401){onExpired();return;}
+   if(!scan.ok)throw Error("Original secure documents cannot be verified.");
+   const files:unknown=await scan.json();
+   if(!files||typeof files!=="object"||!("files" in files)||
+     !Array.isArray(files.files))throw Error("Original secure evidence list unavailable.");
+   const proof=(files.files as HrFile[]).filter(x=>
+    x.cleanVerified&&x.sourceVersion===app.revision);
+   if(proof.filter(x=>x.classification==="HR_IDENTITY_PROOF").length!==1)
+    throw Error("One current scanner-verified identity proof is required.");
+   const result=await api(token,"applications/"+app.applicationRef+"/submit","POST",{
+    requestKey,expectedRevision:app.revision,
+    files:proof.map(x=>({fileRef:x.fileRef,fileVersion:x.fileVersion,
+      classification:x.classification}))});
+   if(!result||typeof result!=="object"||!("reference" in result))
+    throw Error("Original submission was not confirmed.");
+   enrollKeys.current.delete(app.applicationRef);
+   setStatus("Original enrollment sent for independent approval. Not active.");
+   setFocus(null);setReview(null);await load(0);
+  }catch(e){failure(e);}
+  finally{setSaving(false);}
+ };
+ const finalize=async(app:Application)=>{
+  if(!canManage||saving)return;
+  setSaving(true);setError("");setStatus("");
+  try{
+   const state=await api(token,"applications/"+app.applicationRef+"/review");
+   if(!state||typeof state!=="object"||!("status" in state)||
+     state.status!=="PENDING_OWNER"||!("caseRef" in state)||
+     typeof state.caseRef!=="string")
+    throw Error("Original independent employee approval is not confirmed.");
+   const value=await api(token,"applications/"+app.applicationRef+"/finalize","POST",{
+    caseRef:state.caseRef});
+   if(!value||typeof value!=="object"||!("reference" in value))
+    throw Error("Original employee activation cannot be confirmed.");
+   setFocus(null);setReview(null);await load(0);
+   setStatus("Approved employment confirmed. CG-01 login access remains separate.");
+  }catch(e){failure(e);}
+  finally{setSaving(false);}
+ };
+ const loadPending=async()=>{
+  try{
+   const value=await api(token,"my-pending-link");
+   if(value&&typeof value==="object"&&"pending" in value)
+    setPendingLink(value as typeof pendingLink);
+   else setPendingLink(null);
+  }catch(e){setPendingLink(null);failure(e);}
+ };
+ const acceptLink=async()=>{
+  if(!pendingLink?.pending||!pendingLink.applicationRef||saving)return;
+  setSaving(true);setError("");
+  try{
+   const value=await api(token,"my-link/accept","POST",{
+    applicationRef:pendingLink.applicationRef});
+   if(!value||typeof value!=="object"||!("status" in value)||
+     value.status!=="ACTIVE")throw Error("Employee account acceptance not confirmed.");
+   setPendingLink(null);
+   await load(0);
+   setStatus("Your existing staff account is now linked to your approved employment.");
+  }catch(e){failure(e);}finally{setSaving(false);}
+ };
+ const loadStaff=async()=>{
+  if(!canViewEmployees)return;
+  setStaffError("");
+  try{
+   const data=await api(token,"employees?offset=0");
+   if(!data||typeof data!=="object"||!("items" in data)||
+    !Array.isArray(data.items))throw Error("Original employee directory cannot be verified.");
+   setStaff(data.items as typeof staff);
+  }catch(e){setStaff([]);
+   setStaffError(e instanceof Error?e.message:"Employee directory unavailable.");}
+ };
+
  const field=(label:string,value:string,onChange:(v:string)=>void,placeholder:string)=>(
   <View style={styles.field}>
    <Text style={styles.label}>{label}</Text>
@@ -190,6 +300,20 @@ export function NativeHrEnrollment({token,canView,canManage,onExit,onExpired}:{
     {selected&&<Pressable accessibilityRole="button" onPress={reset} style={styles.outline}>
       <Text style={styles.outlineText}>Cancel edit</Text></Pressable>}
    </View>}
+   {pendingLink?.pending&&<View style={styles.card}>
+    <Text style={styles.h2}>Accept approved employment</Text>
+    <Text style={styles.muted}>{pendingLink.name} · {pendingLink.designation}
+      {" — "}You must confirm this existing staff login belongs to you.
+      No new role or privilege will be granted.</Text>
+    <Pressable accessibilityRole="button" onPress={()=>void acceptLink()}
+      disabled={saving} style={styles.primary}>
+      <Text style={styles.primaryText}>Accept my employee account link</Text>
+    </Pressable>
+   </View>}
+   <Pressable accessibilityRole="button" onPress={()=>void loadPending()}
+     style={styles.outline}><Text style={styles.outlineText}>
+      Check my pending account acceptance</Text></Pressable>
+   {canReview&&<NativeHrReviews token={token} onExpired={onExpired}/>}
    {canView&&<View style={styles.card}>
     <View style={styles.heading}><Text style={styles.h2}>Employee applications</Text>
      <Pressable accessibilityRole="button" onPress={()=>void load(0)} style={styles.outline}>
@@ -200,6 +324,11 @@ export function NativeHrEnrollment({token,canView,canManage,onExit,onExpired}:{
       <Text style={styles.label}>{item.name}</Text>
       <Text style={styles.muted}>{item.reference} · {item.designation}</Text>
       <Text style={styles.muted}>Status: {title(item.status)}</Text>
+      {canManage&&<Pressable accessibilityRole="button"
+        onPress={()=>void openSource(item)} style={styles.outline}>
+        <Text style={styles.outlineText}>{["DRAFT","RETURNED"].includes(item.status)?
+          "Manage private evidence":"Original review status"}</Text>
+       </Pressable>}
       {canManage&&["DRAFT","RETURNED"].includes(item.status)&&
        <Pressable accessibilityRole="button" onPress={()=>edit(item)} style={styles.outline}>
         <Text style={styles.outlineText}>Edit draft</Text></Pressable>}
@@ -207,6 +336,40 @@ export function NativeHrEnrollment({token,canView,canManage,onExit,onExpired}:{
     {next!==null&&<Pressable accessibilityRole="button" style={styles.outline}
      onPress={()=>void load(next)}>
      <Text style={styles.outlineText}>Load more</Text></Pressable>}
+   </View>}
+   {focus&&canManage&&<View style={styles.card}>
+    <Text style={styles.h2}>Original enrollment — {focus.name}</Text>
+    {review&&<Text style={styles.muted}>
+      {review.reference??"Not submitted"} · {title(review.status)}</Text>}
+    {["DRAFT","RETURNED"].includes(focus.status)&&<>
+      <NativeHrEvidence token={token} applicationRef={focus.applicationRef}
+        revision={focus.revision} onExpired={onExpired} onFiles={setVerifiedFiles}/>
+      <Pressable accessibilityRole="button" disabled={saving}
+        onPress={()=>void submit(focus)} style={styles.primary}>
+        <Text style={styles.primaryText}>Submit scanner-verified enrollment</Text>
+      </Pressable>
+    </>}
+    {focus.status==="FINAL_APPROVED_PENDING_ACTIVATION"&&
+     <Pressable accessibilityRole="button" disabled={saving}
+       style={styles.primary} onPress={()=>void finalize(focus)}>
+       <Text style={styles.primaryText}>Activate independently approved employee</Text>
+     </Pressable>}
+    <Pressable accessibilityRole="button" style={styles.outline}
+      onPress={()=>{setFocus(null);setReview(null);}}>
+      <Text style={styles.outlineText}>Close enrollment</Text>
+    </Pressable>
+   </View>}
+   {canViewEmployees&&<View style={styles.card}>
+    <Text style={styles.h2}>Approved employee directory</Text>
+    <Pressable accessibilityRole="button" style={styles.outline}
+      onPress={()=>void loadStaff()}>
+      <Text style={styles.outlineText}>Refresh scoped staff directory</Text>
+    </Pressable>
+    {!!staffError&&<Text accessibilityRole="alert" style={styles.error}>{staffError}</Text>}
+    {staff.map(item=><View key={item.reference} style={styles.item}>
+      <Text style={styles.label}>{item.name} — {item.designation}</Text>
+      <Text style={styles.muted}>{item.reference} · {item.branch} · {title(item.status)}</Text>
+    </View>)}
    </View>}
   </ScrollView>;
 }
