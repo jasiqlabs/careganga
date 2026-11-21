@@ -1,5 +1,5 @@
 import {useCallback,useEffect,useState} from "react";
-import {Pressable,StyleSheet,Text,View} from "react-native";
+import {AppState,Pressable,StyleSheet,Text,View} from "react-native";
 import {identityRequest} from "../identity-access/http-client";
 import {NativeFinanceOptions} from "../finance-accounting/finance-native-source-kit";
 
@@ -58,6 +58,13 @@ export function NativeMisDashboard({token,onExpired,onOpenFinance}:{
   finally{setBusy(false);}
  },[token,onExpired,year,branch]);
  useEffect(()=>{if(ready)void reload();},[ready,reload]);
+ // The current owner grant may change while the mobile app is backgrounded.
+ useEffect(()=>{if(!ready)return;
+  const sub=AppState.addEventListener("change",state=>{
+   if(state==="active")void reload();
+  });
+  return()=>sub.remove();
+ },[ready,reload]);
  return <View style={styles.container}>
   <View style={styles.header}>
    <View style={{flex:1}}>
