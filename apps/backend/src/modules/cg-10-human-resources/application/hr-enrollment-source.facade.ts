@@ -83,4 +83,18 @@ export class HrEnrollmentSourceFacade{
     revisionNo,digest,proposerRef:source.submitted_by,
     source:snap,files:source.private_file_versions};
  }
+
+ /** CG03 calls this CG10-owned effect inside the SAME original decision tx.
+  * Never accepts a client-provided approved status or reviewer shortcut.
+  */
+ async applyCaseDecision(tx:PoolClient,realm:string,applicationRef:string,
+  caseRef:string,outcome:"RETURNED"|"REJECTED"|"FINAL_APPROVED_PENDING_ACTIVATION"){
+  const q=await tx.query(
+   "UPDATE hr_employee_application SET state=$4,updated_at=now() "+
+   "WHERE id=$1 AND root_realm_id=$2 AND cg03_case_ref=$3 "+
+   "AND state IN('SUBMITTED','IN_REVIEW') RETURNING id",
+   [applicationRef,realm,caseRef,outcome]);
+  if(!q.rowCount)throw new ConflictException("The original employee application changed");
+ }
+
 }
