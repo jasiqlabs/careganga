@@ -165,6 +165,7 @@ export class FoundationLiabilityCorrectionService{
   const key=id(x.requestKey),year=id(x.financialYearRef);
   const postingDate=day(x.postingDate);
   const reason=x.reason.trim().replace(/\s+/g," ");
+  const currentPassword=x.currentPassword as string;
   const actor=await this.sessions.requireAction(token,
    "healthcare.assistance.liabilities.manage");
   await this.sessions.limitFoundationRootProof(actor);
@@ -194,7 +195,7 @@ export class FoundationLiabilityCorrectionService{
     throw new ConflictException({code:"CG17_CORRECTION_SOURCE_ALREADY_REVERSED"});
    // The existing CG01 password owner validates this *current* password.
    // Missing/invalid proof never writes an offset journal or audit row.
-   await this.sessions.requireFreshFoundationRootProof(c,a,x.currentPassword);
+   await this.sessions.requireFreshFoundationRootProof(c,a,currentPassword);
    const effect=await c.query<{id:string}>(
     "INSERT INTO cg17_financial_effect(root_realm_id,liability_ref,"+
     "effect_kind,source_kind,source_ref,source_revision,idempotency_key,"+
