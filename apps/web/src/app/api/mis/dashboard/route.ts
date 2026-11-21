@@ -28,10 +28,12 @@ export async function GET(request:NextRequest){
   const response=await fetch(target,{cache:"no-store",signal:AbortSignal.timeout(12000),
    headers:{Authorization:"Bearer "+token}});
   if(!response.ok){
-   const status=[400,401,403,429].includes(response.status)?response.status:503;
+   const status=[400,401,403,404,429].includes(response.status)?response.status:503;
    return NextResponse.json({message:status===401?"Your session expired. Sign in again.":
     status===403?"Your role cannot access Foundation reporting.":
-    status===400?"Check the permitted report filters.":"Reporting data could not be verified."},
+    status===400?"Check the permitted report filters.":
+    status===404?"The selected center is unavailable for this report.":
+    "Reporting data could not be verified."},
     {status,headers:{"Cache-Control":"private, no-store"}});
   }
   return NextResponse.json(await response.json(),{headers:{"Cache-Control":"private, no-store"}});
