@@ -1,8 +1,10 @@
 "use client";
 import {useCallback,useEffect,useState} from "react";
+import {StaffPartnerClaimVerification} from "./staff-partner-claim-verification";
 type Claim={claimCode:string;serviceKind:string;invoiceNumber:string;
  serviceDate:string;quotedGrossMinor:string;estimatedFoundationMinor:string;
- estimatedPatientPayableMinor:string;state:"PENDING_VERIFICATION"};
+ estimatedPatientPayableMinor:string;
+ state:"PENDING_VERIFICATION"|"PARTNER_ATTESTED"};
 type List={claims:Claim[];pendingCount:number;approvedFoundationMinor:"0";
  reimbursableFoundationMinor:"0";paidFoundationMinor:"0";
  foundationPaymentVerified:false;guidance:string};
@@ -14,7 +16,7 @@ const money=(minor:string)=>"₹"+(Number(BigInt(minor))/100).toLocaleString("en
  */
 export function PendingPartnerServiceClaims({centerRef,mode}:Props){
  const [data,setData]=useState<List|null>(null),[error,setError]=useState("");
- const [busy,setBusy]=useState(false);
+ const [busy,setBusy]=useState(false),[selected,setSelected]=useState("");
  const load=useCallback(async()=>{
   if(!centerRef){setData(null);return;}
   const response=await fetch(
@@ -33,7 +35,7 @@ export function PendingPartnerServiceClaims({centerRef,mode}:Props){
   return value as List;
  },[centerRef,mode]);
  useEffect(()=>{
-  let alive=true;setError("");setData(null);
+  let alive=true;setError("");setData(null);setSelected("");
   void load().then(v=>{if(alive)setData(v??null);})
    .catch(e=>{if(alive)setError(e instanceof Error?e.message:
     "Pending partner claims are unavailable.");});
@@ -62,15 +64,21 @@ export function PendingPartnerServiceClaims({centerRef,mode}:Props){
     <div className="table-responsive"><table className="role-table">
      <thead><tr><th>Claim code</th><th>Service</th><th>Partner invoice</th>
       <th>Service date</th><th>Unverified quote</th>
-      <th>Provisional Foundation share</th><th>Review status</th></tr></thead>
+      <th>Provisional Foundation share</th><th>Review status</th><th>Actions</th></tr></thead>
      <tbody>{data.claims.map(c=><tr key={c.claimCode}>
       <td>{c.claimCode}</td><td>{c.serviceKind}</td>
       <td>{c.invoiceNumber}</td><td>{c.serviceDate}</td>
       <td>{money(c.quotedGrossMinor)}</td>
       <td>{money(c.estimatedFoundationMinor)}</td>
-      <td>Awaiting independent verification</td>
+      <td>{c.state==="PARTNER_ATTESTED"?
+       "Partner attested; Foundation approval pending":"Awaiting partner verification"}</td>
+      <td><button type="button" disabled={busy} onClick={()=>setSelected(c.claimCode)}>
+       {mode==="partner"?"View or attest":"Inspect or review"} claim</button></td>
      </tr>)}</tbody>
     </table></div>}
+   {!!selected&&<StaffPartnerClaimVerification key={mode+":"+centerRef+":"+selected}
+    mode={mode} centerRef={centerRef} claimCode={selected}
+    onChanged={async()=>{await refresh();}}/>}
    <p>{data.guidance}</p>
   </>}
  </section>;
