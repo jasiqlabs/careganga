@@ -317,5 +317,13 @@ must(generated,/proof\.status!=="VALIDATED"\|\|!proof\.cleanVerified/,
  "Saved upload intent alone cannot claim clean ready PDF on replay");
 must(generated,/proof\.resultRef!==original\.result\.id\|\|!proof\.originalFileRef/,
  "Generated retry must retain the exact same verified original result/file");
+must(generated,/verified\.mime!=="application\/pdf"/,
+ "Generated CG19 report uses the same PDF MIME proof as staff uploads");
+must(generated,/typeof verified\.scanProofRef!=="string"/,
+ "CG19 generated report must retain a valid original scanner proof");
+must(generated,/Date\.now\(\)-scanTime>=900000/,
+ "Generated CG19 scan verification freshness matches original upload checks");
+must(generated,/AND result_revision_ref=\$4 AND status=\x27INITIATED\x27/,
+ "Unknown generated PDF recovery updates only its exact original result");
 console.log("CG16 US002 source/parse preflight authored for clinical review and simple release. "+
  "PostgreSQL, browser, Android, independent clinical and security QA NOT_RUN.");
