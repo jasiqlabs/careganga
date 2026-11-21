@@ -646,5 +646,11 @@ export const SAFE_MESSAGE_CATALOG:Readonly<Record<string,string>>=Object.freeze(
       CG17_PARTNER_CLAIM_CENTER_UNAVAILABLE:"This partner service is no longer verified or available. Choose a currently approved partner.",
       CG17_PARTNER_CLAIM_LIST_LIMIT:"Too many claims were found. Contact the Foundation for help with older claim records.",
       CG17_PARTNER_CLAIM_SOURCE_FROZEN:"This original submitted claim cannot be edited. Ask the Foundation for a reviewed correction.",
+      CG17_PARTNER_REVIEW_INVALID:"Check the original partner claim, received amount, evidence and independent review details.",
+      CG17_PARTNER_REVIEW_UNAVAILABLE:"This original claim is not available for your current authorized review.",
+      CG17_PARTNER_REVIEW_SOURCE_CHANGED:"The original service, provider, patient consent or verified evidence changed. Refresh before deciding.",
+      CG17_PARTNER_REVIEW_ALREADY_DECIDED:"This original invoice has already been attested or independently reviewed. Check its current state.",
+      CG17_PARTNER_REVIEW_PROOF_UNAVAILABLE:"The original scanned invoice or service/payment proof is missing, revoked or not verified.",
+      CG17_PARTNER_CLAIM_PAYMENT_PROOF_REQUIRED:"Upload and verify your actual partner payment receipt before claiming an electronic transfer.",
 });
 export const editableErrorKeys=()=>Object.keys(SAFE_MESSAGE_CATALOG).sort();
