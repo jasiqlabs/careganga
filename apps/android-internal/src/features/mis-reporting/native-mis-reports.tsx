@@ -191,7 +191,9 @@ export function NativeMisReports({token,onExpired}:{token:string;onExpired:()=>v
      options={[{ref:"CUSTOM",label:"Custom date range"},
       {ref:"DAY",label:"Today"},
       {ref:"WEEK",label:"This week (Monday onward)"},
-      {ref:"MONTH",label:"This month"},{ref:"YEAR",label:"This calendar year"}]}
+      {ref:"MONTH",label:"This month"},
+      ...(kind==="PLATFORM_AUDIT_ACTIVITY"?[]:
+       [{ref:"YEAR",label:"This calendar year"}])]}
      onChange={value=>setPreset(value as Period)}/>
     <NativeFinanceField label="Start date (YYYY-MM-DD)" value={from}
      onChange={value=>{setFrom(value);setPeriod("CUSTOM");setPreview(null);}}/>
