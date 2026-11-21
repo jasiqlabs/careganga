@@ -7,6 +7,9 @@ const reply=(status:number,message:string)=>NextResponse.json({message},{
   status,headers:{"Cache-Control":"no-store"}
 });
 const errors=new Set([
+  "PARTNER_FIELD_INVALID","PARTNER_CONSENT_REQUIRED","PARTNER_RECEIPT_INVALID",
+  "PARTNER_REQUEST_CONFLICT","PARTNER_VERSION_INVALID","PARTNER_VERSION_CHANGED",
+  "PARTNER_REVIEW_CLOSED","PARTNER_SOURCE_MISMATCH","PARTNER_APPLICATION_UNAVAILABLE",
   "HEALTH_FIELD_INVALID","HEALTH_VERSION_INVALID","HEALTH_GEOGRAPHY_INVALID",
   "HEALTH_HOURS_OVERLAP","HEALTH_DUPLICATE","HEALTH_REQUEST_CONFLICT",
   "HEALTH_VERSION_CHANGED","HEALTH_REPRESENTATIVE_NOT_ELIGIBLE",
@@ -35,6 +38,12 @@ const errors=new Set([
   "HEALTH_CLINICIAN_NOT_VERIFIED","HEALTH_CLINICIAN_ACCOUNT_UNAVAILABLE"
 ]);
 function allowed(parts:string[],method:string){
+  if(parts[0]==="partner-applications"){
+    if(parts.length===1)return method==="GET";
+    if(parts.length===3&&UUID.test(parts[1])&&
+      ["review","link-original"].includes(parts[2]))return method==="POST";
+    return false;
+  }
   if(parts[0]==="clinician-accounts"){
     if(parts.length===2&&parts[1]==="account-options")
       return method==="GET";
