@@ -393,16 +393,28 @@ export class ClinicalLabGeneratedResultService{
   }catch{
    await this.pool.query(
     "UPDATE cg19_lab_result_intent SET status='UNKNOWN',updated_at=now() "+
-    "WHERE id=$1 AND status='INITIATED'",[original.intent.id]).catch(()=>undefined);
+    "WHERE id=$1 AND order_ref=$2 AND center_ref=$3 "+
+    "AND result_revision_ref=$4 AND status='INITIATED'",
+    [original.intent.id,order,center,original.result.id]).catch(()=>undefined);
    return {state:"UNKNOWN",resultRef:original.result.id,
     generated:false,patientReleased:false,
     message:"Secure report generation could not be verified. Retry the same result."};
   }
+  // Match CG16's original staff-upload scanner proof contract: filename,
+  // MIME, checksum, byte length, object version and recent verified scan.
+  const scanTime=Date.parse(verified.verifiedAt);
   if(verified.state!=="CLEAN_VERIFIED"||
    verified.sha256!==original.intent.sha256||
+   verified.mime!=="application/pdf"||
    verified.sizeBytes!==original.pdf.length||
-   !verified.objectVersion||!verified.scanProofRef)
-   return {state:"UNKNOWN",generated:false,patientReleased:false};
+   typeof verified.objectVersion!=="string"||
+   verified.objectVersion.length<1||verified.objectVersion.length>160||
+   typeof verified.scanProofRef!=="string"||
+   verified.scanProofRef.length<8||verified.scanProofRef.length>160||
+   !Number.isFinite(scanTime)||scanTime>Date.now()+60000||
+   Date.now()-scanTime>=900000)
+   return {state:"UNKNOWN",resultRef:original.result.id,
+    generated:false,patientReleased:false};
   return this.tx(async c=>{
    const actor=await this.admission.requireCurrent(c,token,center,"lab.results.record");
    const orderRow=await c.query<{status:string}>(
