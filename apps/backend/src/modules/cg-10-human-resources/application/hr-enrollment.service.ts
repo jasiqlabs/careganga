@@ -226,7 +226,8 @@ export class HrEnrollmentService{
     const updated=await tx.query<Row>(
      "UPDATE hr_employee_application SET legal_name=$3,designation=$4,employment_type=$5,"+
      "proposed_branch_ref=$6,department_ref=$7,hire_date=$8,applicant_account_ref=$9,"+
-     "updated_by=$10,updated_at=now(),state='DRAFT',revision_no=revision_no+1 "+
+     "updated_by=$10,updated_at=now(),state='DRAFT',revision_no=revision_no+1, "+
+     "cg03_case_ref=NULL,submitted_digest=NULL "+
      "WHERE id=$1 AND root_realm_id=$2 RETURNING *",
      [ref,a.realmId,x.name,x.designation,x.employmentType,x.branchRef,
       x.departmentRef,x.hireDate,x.accountRef,a.accountId]);
@@ -301,6 +302,26 @@ export class HrEnrollmentService{
   return {status:row.status,employeeReference:row.employee_code,name:row.legal_name,
     designation:row.designation,branch:row.branch_name,
     employmentType:row.employment_type,effectiveFrom:iso(row.valid_from)};
+ }
+
+ /** Original reviewer status is read from CG03, not a copied client flag. */
+ async reviewStatus(token:string,applicationInput:string){
+  const a=await this.actor(token,"hr.applications.view"),
+   ref=uuid(applicationInput,"employee application");
+  const tx=await this.db.connect();
+  try{
+   await tx.query("BEGIN");
+   const app=await this.source.draft(tx,a,ref,false);
+   const q=await tx.query<{cg03_case_ref:string|null}>(
+    "SELECT cg03_case_ref FROM hr_employee_application "+
+    "WHERE id=$1 AND root_realm_id=$2 FOR SHARE",
+    [ref,a.realmId]);
+   const original=await this.approvals.currentForSource(tx,a.realmId,
+     app.id,q.rows[0]?.cg03_case_ref??null);
+   await tx.query("COMMIT");
+   return original;
+  }catch(e){await tx.query("ROLLBACK");throw e;}
+  finally{tx.release();}
  }
 
  /** CG-10 uses an original immutable CG19-file snapshot, never client "verified". */
