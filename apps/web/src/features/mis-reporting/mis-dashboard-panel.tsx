@@ -4,7 +4,7 @@ import Link from "next/link";
 import {MisFinanceTrend,MisAppointmentDistribution,type MonthlyTrend} from "./mis-source-charts";
 
 type Metric={key:string;label:string;unit:string;value:string};
-type Source={sourceKey:string;sourceLabel:string;state:string;readAt?:string;
+type Source={sourceKey:string;sourceLabel:string;state:string;readAt?:string;sourceAsOf?:string;cutoffKind?:string;
  metrics:Metric[];drilldown?:string;explanation?:string;trend?:MonthlyTrend};
 type Dashboard={state:string;readAt:string;periodLabel?:string;scopeLabel?:string;
  sources:Source[];message?:string};
@@ -177,11 +177,12 @@ export function MisDashboardPanel(){
      {source.state==="AVAILABLE"&&source.drilldown==="/admin/health-network/patients"&&
       <Link href={source.drilldown}>Open patient management</Link>}
     </div>
+    {!!source.sourceAsOf&&<p style={{fontSize:".75rem",color:"var(--cg-muted)"}}>Source snapshot: {new Date(source.sourceAsOf).toLocaleString("en-IN")}. Other owners may have different cutoffs.</p>}
     {source.state==="AVAILABLE"?<>
       <div className="kpi-grid">{source.metrics.map(m=><div className="kpi" key={m.key}>
        <span style={{color:"var(--cg-muted)",fontSize:".82rem"}}>{m.label}</span>
        <strong>{m.unit==="INR_MINOR"?money(m.value):m.value}</strong>
-       <small style={{color:"var(--cg-muted)",fontSize:".75rem"}}>Source-read at {source.readAt?new Date(source.readAt).toLocaleString("en-IN"):"current request"}</small>
+       <small style={{color:"var(--cg-muted)",fontSize:".75rem"}}>Source {source.sourceAsOf?"snapshot": "retrieved"} at {source.sourceAsOf||source.readAt?new Date(source.sourceAsOf??source.readAt!).toLocaleString("en-IN"):"this request"}</small>
       </div>)}</div>
       <p style={{fontSize:".78rem",color:"var(--cg-muted)"}}>{source.explanation}</p>
       {source.trend&&<MisFinanceTrend trend={source.trend}/>}
