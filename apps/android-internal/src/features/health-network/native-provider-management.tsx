@@ -456,7 +456,10 @@ export function NativeProviderManagement({token,onExpired,onExit,canManage,
          centerProofs[center.centerRef]??""),busy||uncertain||
          !centerProofs[center.centerRef])}
      </>}
-     {center.status==="VERIFIED"&&<>{canActivate&&<>
+     {center.status==="VERIFIED"&&<>{canVerify&&!canActivate&&!canPublish&&
+      input("Current Foundation password for protected center state",
+       currentPassword,setCurrentPassword,1024)}
+      {canActivate&&<>
       {input("Current Foundation password",currentPassword,setCurrentPassword,1024)}
       {button(center.accessState==="ENABLED"?"Disable center access":
        "Enable verified center access",()=>void statusChange("centers",
