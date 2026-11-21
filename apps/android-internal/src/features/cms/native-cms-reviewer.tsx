@@ -23,6 +23,10 @@ type Props={token:string;onExpired:()=>void;onDone:()=>Promise<void>};
 const ID=/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const tag=(x:string)=>x.replaceAll("_"," ").toLowerCase()
  .replace(/\b\w/g,a=>a.toUpperCase());
+// Keep internal entity identifiers out of original CMS review copy.
+const safeDetails=(v:unknown)=>JSON.stringify(v,(k,x)=>
+ /^(?:id|.*_id|.*Ref|.*_ref)$/i.test(k)?undefined:x)?.slice(0,760)??
+ "Not specified";
 async function api<T>(token:string,path:string,body?:object):Promise<T>{
  let response:Response;
  try{
@@ -232,7 +236,7 @@ export function NativeCmsReviewer({token,onExpired,onDone}:Props){
      !/^(?:id|.*_id|.*Ref|.*_ref)$/i.test(k)).slice(0,30)
      .map(([k,value])=><Text key={k} style={styles.note}>
       {tag(k)}: {typeof value==="string"?value.slice(0,480):
-       JSON.stringify(value)?.slice(0,760)??"Not specified"}
+       safeDetails(value)}
      </Text>)}
    </View>)}
    {!detail.source.assets.length&&
