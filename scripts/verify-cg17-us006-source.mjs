@@ -249,6 +249,10 @@ must("webJournal",/FoundationJournalCorrectionPanel/,
  "Correction must be reachable from existing Web accounting flow");
 must("nativeJournal",/NativeFoundationJournalCorrection/,
  "Correction must be reachable in the original native staff accounting flow");
+must("monthly",/THEN 0 ELSE liability\.amount_minor END AS amount_minor/,
+ "Source-backed correction zeroes only Foundation amount, not gross original patient receipts");
+must("monthly",/JOIN services s ON s\.charge_ref=collect\.charge_ref/,
+ "Historical verified center collections must remain visible after Foundation reversal");
 must("monthly",/cg17_liability_correction corrected/,
  "Corrected liabilities cannot inflate active provider economics");
 must("correctionSql",/cg17_liability_correction_immutable/,
