@@ -26,7 +26,7 @@ async function proxy(req:NextRequest,parts:string[],method:string){
  const backend=process.env.BACKEND_URL;
  if(!backend)return NextResponse.json({message:"Protected documents are unavailable."},{status:503});
  let body:string|undefined;
- if(method==="POST"&&parts.length===1){
+ if(method==="POST"&&(parts.length===1||parts[0]==="files")){
   try{
    const data:unknown=await req.json();
    if(!data||typeof data!=="object"||Array.isArray(data))
