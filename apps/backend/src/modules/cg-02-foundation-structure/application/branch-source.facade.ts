@@ -134,6 +134,47 @@ export class BranchSourceFacade{
      throw new ForbiddenException("Choose a narrower authorized branch list");
    return {all:false,branchRefs:branches.rows.map(x=>x.id)};
  }
+ /** Current CG-02 branch scope for trusted CG-20 scheduled finance jobs.
+  * CG-01 checks the stored account's live roles without a bearer; CG-02 alone
+  * checks branch assignments. No session cloning, stale grants or new branch
+  * ownership model. Internal background service path only.
+  */
+ async requireScheduledFinanceReportBranch(root:string,account:string,
+  requested:string|null):Promise<void>{
+   await this.sessions.requireScheduledMisAction(root,account,"finance.reports.view");
+   const protectedRole=await this.db.query<{allowed:boolean}>(
+    "SELECT EXISTS(SELECT 1 FROM account_role ar "+
+    "JOIN role r ON r.id=ar.role_id AND r.active=true AND r.is_protected=true "+
+    "WHERE ar.realm_id=$1 AND ar.account_id=$2 AND ar.revoked_at IS NULL) AS allowed",
+    [root,account]);
+   let all=protectedRole.rows[0]?.allowed===true;
+   if(!all){
+    try{
+     await this.sessions.requireScheduledMisAction(
+      root,account,"foundation.branches.admin");
+     all=true;
+    }catch(e){if(!(e instanceof ForbiddenException))throw e;}
+   }
+   if(all){
+    if(requested){
+     const original=await this.db.query(
+      "SELECT 1 FROM branch WHERE id=$1 AND root_realm_id=$2",
+      [ensureId(requested),root]);
+     if(!original.rowCount)
+      throw new ForbiddenException("The report branch is no longer available");
+    }
+    return;
+   }
+   if(!requested)
+    throw new ForbiddenException("Select a currently assigned branch");
+   const branch=await this.db.query(
+    "SELECT 1 FROM branch WHERE id=$1 AND root_realm_id=$2 "+
+    "AND manager_account_ref=$3 AND status='ACTIVE' LIMIT 1",
+    [ensureId(requested),root,account]);
+   if(!branch.rowCount)
+    throw new ForbiddenException("The assigned report branch has changed");
+ }
+
  async requireFinanceReportBranch(bearer:string,requested:string|null|undefined):Promise<void>{
    const allowed=await this.financeReportScope(bearer);
    if(!allowed.all&&(!requested||!allowed.branchRefs.includes(requested)))
