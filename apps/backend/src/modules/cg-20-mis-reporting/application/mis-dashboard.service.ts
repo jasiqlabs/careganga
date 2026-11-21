@@ -1,19 +1,24 @@
 import {BadRequestException, ForbiddenException, Injectable} from "@nestjs/common";
 import {SessionService} from "../../cg-01-identity-access/application/session.service";
 import {FinanceReportsService} from "../../cg-09-finance-accounting/application/finance-reports.service";
+import {DiagnosticsCatalogService} from "../../cg-16-healthcare-diagnostics/application/diagnostics-catalog.service";
 
 const UUID=/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 type Filters={yearRef?:string;branchRef?:string};
+type Metric={key:string;label:string;unit:"INR_MINOR"|"COUNT";value:string};
+type Source={sourceKey:string;state:"AVAILABLE"|"FAILED";sourceLabel:string;
+ readAt?:string;metrics:Metric[];drilldown?:string;explanation?:string};
 
 /**
- * CG-20 US-001: read-only reporting composition. Each source authenticates
- * independently in its ORIGINAL owner (CG-09), including branch and field
- * restrictions. No copied journal/healthcare rows or speculative source joins.
+ * CG-20 US-001: request-driven read-only MIS. Every original owner checks
+ * its own session, root, action and source-specific scope BEFORE aggregation.
+ * No source table joins, hidden copies, patient details or fake totals.
  */
 @Injectable()
-export class MisDashboardService {
+export class MisDashboardService{
  constructor(private readonly sessions:SessionService,
-  private readonly finance:FinanceReportsService){}
+  private readonly finance:FinanceReportsService,
+  private readonly diagnostics:DiagnosticsCatalogService){}
 
  async options(bearer:string){
   await this.sessions.requireAction(bearer,"mis.dashboard.view");
@@ -25,13 +30,15 @@ export class MisDashboardService {
     allBranches:source.allBranches};
   }catch(error){
    if(error instanceof ForbiddenException)return {
-    state:"NO_AUTHORIZED_SOURCES",years:[],branches:[],allBranches:false};
+    state:"NO_FINANCE_ACCESS",years:[],branches:[],allBranches:false};
    return {state:"FAILED",years:[],branches:[],allBranches:false};
   }
  }
+
  async dashboard(bearer:string,raw:Record<string,unknown>){
   await this.sessions.requireAction(bearer,"mis.dashboard.view");
-  if(Object.keys(raw).some(k=>!["yearRef","branchRef"].includes(k))||
+  if(!raw||typeof raw!=="object"||Array.isArray(raw)||
+    Object.keys(raw).some(k=>!["yearRef","branchRef"].includes(k))||
     Object.values(raw).some(v=>typeof v!=="string"||v.length>80||
       (v!==""&&!UUID.test(v))))
    throw new BadRequestException({code:"MIS_DASHBOARD_FILTER_INVALID",
@@ -40,35 +47,59 @@ export class MisDashboardService {
    yearRef:typeof raw.yearRef==="string"&&raw.yearRef?raw.yearRef:undefined,
    branchRef:typeof raw.branchRef==="string"&&raw.branchRef?raw.branchRef:undefined
   };
-  // Retrieved-at is NOT an invented multi-owner financial transaction watermark.
-  // No source data is cached or persisted by the MIS module.
-  try{
-   const source=await this.finance.summary(bearer,filters.yearRef,filters.branchRef);
-   const readAt=new Date().toISOString();
-   return {state:"AVAILABLE",readAt,scopeLabel:filters.branchRef?
-    "Permitted selected branch":"Permitted Foundation finance scope",
-    periodLabel:filters.yearRef?"Selected financial year":"All permitted posted financial years",
-    sources:[{sourceKey:"CG09_POSTED_FINANCE",state:"AVAILABLE",
-     readAt,sourceLabel:"Foundation Finance · Posted journal only",
-     metrics:[
-      {key:"income",label:"Posted income",unit:"INR_MINOR",value:source.incomeMinor},
-      {key:"expense",label:"Posted expenses",unit:"INR_MINOR",value:source.expenseMinor},
-      {key:"surplus",label:"Posted surplus",unit:"INR_MINOR",value:source.surplusMinor},
-      {key:"cashBank",label:"Posted cash and bank",unit:"INR_MINOR",value:source.cashBankMinor}
-     ],
-     drilldown:"/admin/finance/reports",
-     explanation:source.explanation}]};
-  }catch(error){
-   // No user who lacks the original finance grant may infer its amounts.
-   if(error instanceof ForbiddenException)return {
-    state:"NO_AUTHORIZED_SOURCES",readAt:new Date().toISOString(),
-    sources:[],message:"No reporting sources are available for your current permissions."};
-   if(error instanceof BadRequestException)throw error;
-   // Fail closed with a truthful source status; never substitute zeros.
-   return {state:"PARTIAL",readAt:new Date().toISOString(),
-    sources:[{sourceKey:"CG09_POSTED_FINANCE",state:"FAILED",
-     sourceLabel:"Foundation Finance",metrics:[]}],
-    message:"The financial source could not be verified. Refresh to try again."};
-  }
+  const readAt=new Date().toISOString();
+  let failures=0;
+  const financeSource:Promise<Source|null>=this.finance
+   .summary(bearer,filters.yearRef,filters.branchRef)
+   .then(source=>({sourceKey:"CG09_POSTED_FINANCE",state:"AVAILABLE" as const,
+    sourceLabel:"Foundation Finance · Posted journals",readAt:new Date().toISOString(),
+    metrics:[
+     {key:"income",label:"Posted income",unit:"INR_MINOR" as const,value:source.incomeMinor},
+     {key:"expense",label:"Posted expenses",unit:"INR_MINOR" as const,value:source.expenseMinor},
+     {key:"surplus",label:"Posted surplus",unit:"INR_MINOR" as const,value:source.surplusMinor},
+     {key:"cashBank",label:"Posted cash and bank",unit:"INR_MINOR" as const,value:source.cashBankMinor}
+    ],drilldown:"/admin/finance/reports",explanation:source.explanation}))
+   .catch((error:unknown)=>{
+    // Never downgrade an explicit foreign-branch access attempt to a 200 OK.
+    if(error instanceof ForbiddenException){
+     if(filters.branchRef)throw error;
+     return null;
+    }
+    if(error instanceof BadRequestException)throw error;
+    failures++;
+    return {sourceKey:"CG09_POSTED_FINANCE",state:"FAILED" as const,
+     sourceLabel:"Foundation Finance",metrics:[]};
+   });
+
+  // CG-16's original authenticated Foundation-wide catalogue projection.
+  // It has no branch/year dimension; never mislabel it as the selected period.
+  // Published offers are ACTUAL verified offers, not all draft tariffs.
+  const diagnosticSource:Promise<Source|null>=(filters.yearRef||filters.branchRef)?
+   Promise.resolve(null):this.diagnostics.summary(bearer)
+   .then(x=>({sourceKey:"CG16_FOUNDATION_DIAGNOSTICS",state:"AVAILABLE" as const,
+    sourceLabel:"Foundation Diagnostics · Current catalogues",
+    readAt:new Date().toISOString(),
+    metrics:[
+     {key:"tests",label:"Catalogue tests",unit:"COUNT" as const,value:String(x.totalTests)},
+     {key:"activeTests",label:"Active approved tests",unit:"COUNT" as const,value:String(x.activeTests)},
+     {key:"packages",label:"Active packages",unit:"COUNT" as const,value:String(x.packages)},
+     {key:"publishedOffers",label:"Published verified offers",unit:"COUNT" as const,value:String(x.publishedOffers)}
+    ],explanation:"Current Foundation-wide catalogue, independent of financial-year and branch filters."}))
+   .catch((error:unknown)=>{
+    if(error instanceof ForbiddenException)return null;
+    failures++;
+    return {sourceKey:"CG16_FOUNDATION_DIAGNOSTICS",state:"FAILED" as const,
+     sourceLabel:"Foundation Diagnostics",metrics:[]};
+   });
+  const results=await Promise.all([financeSource,diagnosticSource]);
+  const sources:Source[]=results.filter((x):x is Source=>x!==null);
+  const available=sources.filter(s=>s.state==="AVAILABLE").length;
+  return {state:available?(failures?"PARTIAL":"AVAILABLE"):
+   failures?"FAILED":"NO_AUTHORIZED_SOURCES",readAt,
+   scopeLabel:filters.branchRef?"Permitted selected branch":"Current original-owner scope",
+   periodLabel:filters.yearRef?"Selected financial year":"All permitted posted financial years",
+   sources,
+   ...(failures?{message:"Some original sources could not be verified. Retry when available."}:
+    sources.length===0?{message:"No reporting source is available for your current permissions."}:{})};
  }
 }
