@@ -30,7 +30,8 @@ export default async function FoundationHealthcareSettlementsPage(){
    throw Error("Original staff permission source unavailable");
   const actions=new Set<string>(permitted.actions.flatMap((x:unknown)=>
    x&&typeof x==="object"&&"key" in x&&typeof x.key==="string"?[x.key]:[]));
-  if(!actions.has("healthcare.assistance.settlements.view"))
+  if(!actions.has("healthcare.assistance.settlements.view")||
+   !actions.has("health.providers.finance.view"))
    return <AccessDeniedView reason="Your current Foundation role cannot view provider settlements."
     accountHref="/admin"/>;
   return <HealthcareAdminShell active="healthSettlements" actions={actions}
