@@ -7,12 +7,13 @@ import {identityRequest} from "../identity-access/http-client";
 
 type Application={applicationRef:string;reference:string;name:string;designation:string;
  employmentType:string;branchRef:string;departmentRef:string|null;
+ managerRef:string|null;accountRef:string|null;
  hireDate:string;revision:number;status:string};
-type Option={label:string;branchRef?:string;departmentRef?:string};
+type Option={label:string;branchRef?:string;departmentRef?:string;managerRef?:string;accountRef?:string};
 type Draft={name:string;designation:string;employmentType:string;
- branchRef:string;departmentRef:string;hireDate:string};
+ branchRef:string;departmentRef:string;managerRef:string;accountRef:string;hireDate:string};
 const blank=():Draft=>({name:"",designation:"",employmentType:"FULL_TIME",
- branchRef:"",departmentRef:"",hireDate:""});
+ branchRef:"",departmentRef:"",managerRef:"",accountRef:"",hireDate:""});
 const types=["FULL_TIME","PART_TIME","CONTRACT","VOLUNTEER_STAFF"] as const;
 const title=(s:string)=>s.replaceAll("_"," ").toLowerCase().replace(/\b\w/g,c=>c.toUpperCase());
 async function api(token:string,path:string,method="GET",body?:object){
@@ -27,13 +28,15 @@ async function api(token:string,path:string,method="GET",body?:object){
  ),{status:response.status});
  return response.json() as Promise<unknown>;
 }
-export function NativeHrEnrollment({token,canView,canManage,canReview,canViewEmployees,onExit,onExpired}:{
- token:string;canView:boolean;canManage:boolean;canReview:boolean;canViewEmployees:boolean;
+export function NativeHrEnrollment({token,canView,canManage,canReview,canViewEmployees,canSelectAccounts,onExit,onExpired}:{
+ token:string;canView:boolean;canManage:boolean;canReview:boolean;canViewEmployees:boolean;canSelectAccounts:boolean;
  onExit:()=>void;onExpired:()=>void
 }){
  const [apps,setApps]=useState<Application[]>([]);
  const [branches,setBranches]=useState<Option[]>([]);
  const [departments,setDepartments]=useState<Option[]>([]);
+ const [managers,setManagers]=useState<Option[]>([]);
+ const [accounts,setAccounts]=useState<Option[]>([]);
  const [selected,setSelected]=useState<Application|null>(null);
  const [draft,setDraft]=useState<Draft>(blank);
  const [key,setKey]=useState<string|null>(null);
@@ -87,25 +90,40 @@ export function NativeHrEnrollment({token,canView,canManage,canReview,canViewEmp
  useEffect(()=>{void load(0);},[load]);
  useEffect(()=>{
   let active=true;
-  setDepartments([]);
+  setDepartments([]);setManagers([]);
   if(!draft.branchRef||!canView)return;
-  void api(token,"departments?branch="+encodeURIComponent(draft.branchRef))
-   .then(res=>{
-    if(active&&res&&typeof res==="object"&&"items" in res&&Array.isArray(res.items))
-     setDepartments(res.items as Option[]);
-   }).catch(e=>{if(active)failure(e);});
+  void Promise.all([
+   api(token,"departments?branch="+encodeURIComponent(draft.branchRef)),
+   api(token,"managers?branch="+encodeURIComponent(draft.branchRef))
+  ]).then(([d,m])=>{
+   if(!active)return;
+   if(d&&typeof d==="object"&&"items" in d&&Array.isArray(d.items))
+    setDepartments(d.items as Option[]);
+   if(m&&typeof m==="object"&&"items" in m&&Array.isArray(m.items))
+    setManagers(m.items as Option[]);
+  }).catch(e=>{if(active)failure(e);});
   return()=>{active=false;};
  },[token,canView,draft.branchRef,failure]);
+ useEffect(()=>{
+  if(!canManage||!canSelectAccounts)return;
+  let live=true;
+  void api(token,"account-options?search=").then(value=>{
+   if(live&&value&&typeof value==="object"&&"items" in value&&Array.isArray(value.items))
+    setAccounts(value.items as Option[]);
+  }).catch(e=>{if(live){setAccounts([]);failure(e);}});
+  return()=>{live=false;};
+ },[token,canManage,canSelectAccounts,failure]);
  const change=(field:keyof Draft,value:string)=>{
   setDraft(old=>({...old,[field]:value,
-   ...(field==="branchRef"?{departmentRef:""}:{})}));
+   ...(field==="branchRef"?{departmentRef:"",managerRef:""}:{})}));
   setKey(null);setStatus("");setError("");
  };
  const edit=(item:Application)=>{
   if(!canManage||!["DRAFT","RETURNED"].includes(item.status))return;
   setSelected(item);
   setDraft({name:item.name,designation:item.designation,employmentType:item.employmentType,
-   branchRef:item.branchRef,departmentRef:item.departmentRef??"",hireDate:item.hireDate});
+   branchRef:item.branchRef,departmentRef:item.departmentRef??"",
+   managerRef:item.managerRef??"",accountRef:item.accountRef??"",hireDate:item.hireDate});
   setKey(null);setStatus("");setError("");
  };
  const reset=()=>{
@@ -122,7 +140,8 @@ export function NativeHrEnrollment({token,canView,canManage,canReview,canViewEmp
   setKey(requestKey);setSaving(true);setError("");setStatus("");
   const body={requestKey,name:draft.name,designation:draft.designation,
    employmentType:draft.employmentType,branchRef:draft.branchRef,
-   departmentRef:draft.departmentRef||null,hireDate:draft.hireDate,accountRef:null,
+   departmentRef:draft.departmentRef||null,managerRef:draft.managerRef||null,
+   hireDate:draft.hireDate,accountRef:draft.accountRef||null,
    ...(selected?{expectedRevision:selected.revision}:{})};
   try{
    await api(token,selected?"applications/"+selected.applicationRef:"applications",
@@ -292,6 +311,32 @@ export function NativeHrEnrollment({token,canView,canManage,canReview,canViewEmp
        <Text style={draft.departmentRef===opt.departmentRef?styles.selectedText:styles.chipText}>
         {opt.label}</Text>
        </Pressable>)}</View></>}
+    {!!draft.branchRef&&<><Text style={styles.label}>Reporting manager (optional)</Text>
+      <View style={styles.choices}>
+       <Pressable accessibilityRole="button" style={[styles.chip,!draft.managerRef&&styles.selected]}
+        onPress={()=>change("managerRef","")}>
+        <Text style={!draft.managerRef?styles.selectedText:styles.chipText}>Not assigned</Text>
+       </Pressable>
+       {managers.map(x=><Pressable key={x.managerRef} accessibilityRole="button"
+        accessibilityState={{selected:draft.managerRef===x.managerRef}}
+        onPress={()=>change("managerRef",x.managerRef??"")}
+        style={[styles.chip,draft.managerRef===x.managerRef&&styles.selected]}>
+        <Text style={draft.managerRef===x.managerRef?styles.selectedText:styles.chipText}>
+         {x.label}</Text></Pressable>)}
+      </View></>}
+    {canSelectAccounts&&<><Text style={styles.label}>Existing staff login (optional)</Text>
+      <View style={styles.choices}>
+       <Pressable accessibilityRole="button" style={[styles.chip,!draft.accountRef&&styles.selected]}
+        onPress={()=>change("accountRef","")}>
+        <Text style={!draft.accountRef?styles.selectedText:styles.chipText}>Employment only</Text>
+       </Pressable>
+       {accounts.map(x=><Pressable key={x.accountRef} accessibilityRole="button"
+        accessibilityState={{selected:draft.accountRef===x.accountRef}}
+        onPress={()=>change("accountRef",x.accountRef??"")}
+        style={[styles.chip,draft.accountRef===x.accountRef&&styles.selected]}>
+        <Text style={draft.accountRef===x.accountRef?styles.selectedText:styles.chipText}>
+         {x.label}</Text></Pressable>)}
+      </View></>}
     {field("Joining date",draft.hireDate,v=>change("hireDate",v),"YYYY-MM-DD")}
     <Pressable accessibilityRole="button" disabled={saving}
      style={[styles.primary,saving&&{opacity:.5}]} onPress={()=>void save()}>
