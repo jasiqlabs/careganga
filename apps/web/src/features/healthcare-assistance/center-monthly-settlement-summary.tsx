@@ -1,5 +1,5 @@
 "use client";
-import {useCallback,useEffect,useState} from "react";
+import {useCallback,useEffect,useRef,useState} from "react";
 
 type Summary={
  month:string;state:string;
@@ -31,6 +31,7 @@ export function CenterMonthlySettlementSummary({centerRef}:Props){
  const [data,setData]=useState<Summary|null>(null);
  const [loading,setLoading]=useState(true);
  const [error,setError]=useState("");
+ const requestVersion=useRef(0);
  const load=useCallback(async()=>{
   if(!MONTH.test(month))throw Error("Select a valid settlement month.");
   const response=await fetch(
@@ -47,14 +48,21 @@ export function CenterMonthlySettlementSummary({centerRef}:Props){
    !("patientCollectionNotFoundationIncome" in body)||
    body.patientCollectionNotFoundationIncome!==true)
    throw Error("Original settlement statement could not be verified.");
-  setData(body as Summary);
+  return body as Summary;
  },[centerRef,month]);
  useEffect(()=>{
-  let active=true;setLoading(true);setError("");setData(null);
-  void load().catch(e=>{if(active)setError(e instanceof Error?e.message:
-   "Your center's settlement status could not be verified.");})
-   .finally(()=>{if(active)setLoading(false)});
-  return()=>{active=false};
+  const version=++requestVersion.current;
+  setLoading(true);setError("");setData(null);
+  void load().then(result=>{
+   if(version===requestVersion.current)setData(result);
+  }).catch(e=>{
+   if(version===requestVersion.current)
+    setError(e instanceof Error?e.message:
+     "Your center's settlement status could not be verified.");
+  }).finally(()=>{
+   if(version===requestVersion.current)setLoading(false);
+  });
+  return()=>{if(version===requestVersion.current)requestVersion.current++};
  },[load]);
  const approved=data&&["APPROVED","PARTIALLY_SETTLED","SETTLED"].includes(data.state);
  return <section className="cg-health-route-intro" aria-label="My Foundation settlement">
@@ -67,9 +75,18 @@ export function CenterMonthlySettlementSummary({centerRef}:Props){
     min="2020-01" max={monthNow()} value={month}
     onChange={e=>setMonth(e.target.value)}/>
    <button type="button" disabled={loading}
-    onClick={()=>{setLoading(true);setError("");void load().catch(e=>
-     setError(e instanceof Error?e.message:"Unable to refresh."))
-      .finally(()=>setLoading(false))}}>Refresh statement</button>
+    onClick={()=>{
+     const version=++requestVersion.current;
+     setLoading(true);setData(null);setError("");
+     void load().then(result=>{
+      if(version===requestVersion.current)setData(result);
+     }).catch(e=>{
+      if(version===requestVersion.current)
+       setError(e instanceof Error?e.message:"Unable to refresh.");
+     }).finally(()=>{
+      if(version===requestVersion.current)setLoading(false);
+     });
+    }}>Refresh statement</button>
   </div>
   {loading&&<p role="status">Checking original completed services…</p>}
   {!!error&&<p role="alert">{error}</p>}
