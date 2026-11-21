@@ -16,6 +16,7 @@ const files={
  monthlySql:"apps/backend/db/migrations/1707_cg17_monthly_provider_settlement.sql",
  payoutSql:"apps/backend/db/migrations/1708_cg17_verified_provider_payout_allocation.sql",
  correctionSql:"apps/backend/db/migrations/1709_cg17_original_unpaid_liability_reversal.sql",
+ claimedSql:"apps/backend/db/migrations/1710_cg17_claimed_liability_correction_recovery.sql",
  liability:cg17+"application/completed-consultation-liability.service.ts",
  webLiability:"apps/web/src/features/healthcare-assistance/completed-consultation-liability-workspace.tsx",
  nativeLiability:"apps/android-internal/src/features/healthcare-assistance/native-completed-consultation-liabilities.tsx",
@@ -24,6 +25,8 @@ const files={
  correctionApi:cg17+"http/foundation-journal-reconciliation.controller.ts",
  webCorrection:"apps/web/src/features/healthcare-assistance/foundation-journal-correction-panel.tsx",
  nativeCorrection:"apps/android-internal/src/features/healthcare-assistance/native-foundation-journal-correction.tsx",
+ webPartner:"apps/web/src/features/healthcare-assistance/center-monthly-settlement-summary.tsx",
+ nativePartner:"apps/android-internal/src/features/healthcare-assistance/native-partner-settlement-summary.tsx",
  webJournal:"apps/web/src/features/healthcare-assistance/foundation-journal-posting-panel.tsx",
  nativeJournal:"apps/android-internal/src/features/healthcare-assistance/native-foundation-journal-panel.tsx",
  webJournalBff:"apps/web/src/app/api/healthcare-assistance/foundation-journals/[...parts]/route.ts",
@@ -224,8 +227,8 @@ must("correction",/requireFreshFoundationRootProof\(c,a,currentPassword\)/,
  "Fresh CG01 current password is mandatory on actual protected correction");
 must("correction",/this\.protectedOwner\.verifyReviewer\(c,a,"approvals\.review",true\)/,
  "Only independently authorized Foundation protected reviewer may correct");
-must("correction",/this\.claimed\(c,a\.realmId,liability\)/,
- "Correction must check existing immutable provider claim");
+must("correction",/this\.claim\(c,a\.realmId,center,liability,true\)/,
+ "Correction locks actual original claim before liability and bank payout races");
 must("correction",/this\.cg09\.reverseAccrual\(c,a,/,
  "Only original CG09 posting owner can reverse accrual");
 must("cg09",/code:"CG17_CORRECTION_YEAR_NOT_OPEN"/,
@@ -256,9 +259,72 @@ assert.equal((correctionMigration.match(/\$cg17\$/g)??[]).length,4,
 assert.equal((correctionMigration.match(/\$cg09\$/g)??[]).length,2,
  "CG09 original reverse-proof guard must use matching dollar delimiters");
 must("liability",/claim\.state AS settlement_state/,"Original CG17 liability must source real claim status");
-must("liability",/providerSettled:liability\.settlement_state==="SETTLED"/,"Do not always report provider unpaid");
+must("liability",/providerSettled:effectiveState==="SETTLED"/,
+ "Actual bank and correction adjusted provider status must be reported");
 must("webLiability",/status\.providerSettlementState==="PARTIALLY_SETTLED"/,"Web must show actual partial claim");
 must("nativeLiability",/status\.providerSettlementState==="PARTIALLY_SETTLED"/,"Internal Android must show actual partial claim");
+
+// Claimed/approved/part-paid/paid corrections keep the ORIGINAL claim
+// and require independently verified incoming bank money if overpaid.
+must("claimedSql",/CREATE TABLE cg17_provider_claim_correction\(/,
+ "Separate append-only same-owner claimed correction must be real");
+must("claimedSql",/claim\.paid_minor-old_recovered-/,
+ "SQL must calculate exact real overpaid bank amount");
+must("claimedSql",/bank\.statement_amount_minor=needed/,
+ "Correcting paid claims requires independently verified incoming CG09 money");
+must("claimedSql",/bank\.status='VERIFIED' AND bank\.variance_minor=0/,
+ "Bank recovery cannot rely on an unverified statement or screenshot");
+must("claimedSql",/CREATE TRIGGER cg17_effective_payout_immutable/,
+ "Direct-SQL payout must enforce effective corrected payable cap");
+must("claimedSql",/CREATE OR REPLACE FUNCTION cg09_require_manual_reversal_proof/,
+ "No reversal journal can bypass original protected CG09 proof");
+must("correction",/this\.recovery\.verifyRecovery\(/,
+ "CG17 obtains bank receipts only from original CG09 validated facade");
+must("correction",/this\.sessions\.requireFreshFoundationRootProof/,
+ "Actual correction demands fresh current password");
+must("correction",/this\.claimedPrior\(/,
+ "Same request after posted correction uses frozen recovery for idempotency");
+must("correction",/this\.claimBalances\(/,
+ "Claim remaining balance accounts for all prior corrections and bank returns");
+must("cg09",/payableAccountForAccrual/,
+ "CG09 verifies actual accrual payable account for provider bank recovery");
+must("bank",/async verifyRecovery\(/,
+ "Incoming bank receipt is independently verified by real CG09 owner");
+must("payout",/const outstanding=BigInt\(\(await this\.view/,
+ "Existing verified payout selector uses effective outstanding");
+must("payout",/const amount=BigInt\(proof\.amountMinor\),/,
+ "Provider payout still requires original amount and proof");
+must("monthly",/originalApprovedFoundationMinor:total\.toString\(\)/,
+ "Historical claim remains distinct from effective payable");
+must("monthly",/verifiedProviderRecoveryMinor:recovered\.toString\(\)/,
+ "Original bank payout and recovered bank money are distinct");
+must("webCorrection",/bankRecoveries\.map/,
+ "Web reviewer chooses existing verified exact recovery");
+must("nativeCorrection",/data\.bankRecoveries\.map/,
+ "Internal Android has same actual incoming recovery choice");
+must("webCorrection",/payerMatched:needsRecovery\?payerMatched:false/,
+ "Web requires explicit verified provider payer match");
+must("nativeCorrection",/payerMatched:needsRecovery\?payerMatched:false/,
+ "Internal Android requires same verified provider payer match");
+must("webJournalBff",/\[5,7\]\.includes/,
+ "Protected Web BFF allows only exact original or claimed correction DTO");
+must("liability",/cg17_provider_claim_correction claimed_correction/,
+ "Original liability history read includes claimed protected corrections");
+must("web",/verifiedProviderRecoveryMinor/,
+ "Foundation Web displays original paid versus recovered amounts");
+must("native",/verifiedProviderRecoveryMinor/,
+ "Foundation Internal Android displays matching original bank recovery");
+must("webPartner",/verifiedProviderRecoveryMinor/,
+ "Provider Web sees actual returned money and corrected claim");
+must("nativePartner",/verifiedProviderRecoveryMinor/,
+ "Provider Internal Android sees same corrected claim and recovered amount");
+const claimedMigration=read(files.claimedSql);
+assert.doesNotMatch(claimedMigration,/END \$;/,
+ "Claimed original CG17 correction SQL must not have invalid function terminator");
+assert.equal((claimedMigration.match(/\$cg17\$/g)??[]).length,6,
+ "All three CG17 claimed correction/anti-overpay trigger delimiters balance");
+assert.equal((claimedMigration.match(/\$cg09\$/g)??[]).length,2,
+ "Original CG09 protected journal reversal proof delimiter balances");
 
 const escapeChar=String.fromCharCode(92);
 const correctDatePattern="/^"+escapeChar+"d{4}-"+escapeChar+"d{2}-"+
