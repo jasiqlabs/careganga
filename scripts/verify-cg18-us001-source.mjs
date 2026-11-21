@@ -392,7 +392,7 @@ checks.push(["Confirmed CG18 edit cannot leave stale Web drawer or native create
  files.adminExtended.includes("setSelected(null);setEditorOpen(false);setClosePrompt(false)")&&
  internalCms.includes("setSelected(null);setDraft(null);setNewPage(null)")&&
  internalCms.includes('if(pending||uncertain){')&&
- internalCms.includes('"same-key retry on this screen."')]);
+ internalCms.includes("same-key retry on this screen.")]);
 checks.push(["Native CG18 media slots are original tappable choices, not technical index input",
  internalMedia.includes("positions.map((position,i)=>")&&
  internalMedia.includes('"Placement "+(i+1)')&&
