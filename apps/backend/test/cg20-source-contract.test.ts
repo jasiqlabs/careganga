@@ -76,6 +76,19 @@ describe("CG-20 — guarded server report request contracts",()=>{
    ...v,branchRef:"33333333-3333-4333-8333-333333333333"
   }),BadRequestException);
  });
+ test("CG15 groups are available only through privacy-safe summary/table/chart",()=>{
+  const table=parseSafeReport({
+   kind:"APPOINTMENT_STATUS_GROUPED",view:"TABLE",
+   centerRef:"22222222-2222-4222-8222-222222222222"
+  });
+  assert.equal(table.kind,"APPOINTMENT_STATUS_GROUPED");
+  assert.equal(parseSafeReport({
+   kind:"APPOINTMENT_STATUS_GROUPED",view:"CHART"
+  }).view,"CHART");
+  assert.throws(()=>parseSafeReport({
+   kind:"APPOINTMENT_STATUS_GROUPED",view:"PIVOT"
+  }),BadRequestException);
+ });
  test("CG15 suppression covers total and disclosive status remainder",()=>{
   assert.equal(suppressAppointmentCells({
    bookings:"4",completed:"4",waiting:"0",cancelled:"0"
@@ -89,6 +102,9 @@ describe("CG-20 — guarded server report request contracts",()=>{
   assert.equal(suppressAppointmentCells({
    bookings:"0",completed:"0",waiting:"0",cancelled:"0"
   }),false);
+  assert.equal(suppressAppointmentCells({
+   bookings:"5",completed:"6",waiting:"0",cancelled:"0"
+  }),true);
  });
  test("unknown owner, arbitrary extra column or unsafe page denied before DB",()=>{
   for(const request of [
