@@ -3,7 +3,8 @@ import {useCallback,useEffect,useRef,useState} from "react";
 import {VerifiedProviderPayoutPanel} from "./verified-provider-payout-panel";
 type Center={centerRef:string;name:string};
 type Summary={month:string;state:string;settlementRef?:string;revision?:number;
- postedLiabilities?:number;approvedFoundationMinor:string;actualPaidMinor:string;
+ postedLiabilities?:number;eligibleAccruedMinor?:string;proposedClaimMinor?:string;
+ approvedFoundationMinor:string;actualPaidMinor:string;
  centerGrossServicesMinor?:string;patientPayableMinor?:string;
  patientCollectedVerifiedMinor?:string;patientRefundedMinor?:string;
  foundationApprovedLiabilityMinor?:string;
@@ -174,7 +175,9 @@ export function MonthlyProviderSettlementWorkspace({canPropose,canReview,canPay}
     <dt>{data.state==="NOT_PREPARED"?"Eligible posted liabilities":
      data.state==="PROPOSED"?"Prepared claim awaiting independent approval":
      "Approved monthly Foundation claim"}</dt>
-    <dd>{money(data.approvedFoundationMinor)}</dd>
+    <dd>{money(data.state==="NOT_PREPARED"?data.eligibleAccruedMinor??"0":
+     data.state==="PROPOSED"?data.proposedClaimMinor??"0":
+     data.approvedFoundationMinor)}</dd>
     <dt>Verified actual provider payout</dt>
     <dd>{money(data.actualPaidMinor)}</dd>
     <dt>Outstanding approved claim</dt>
