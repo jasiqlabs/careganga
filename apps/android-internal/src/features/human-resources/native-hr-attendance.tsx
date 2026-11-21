@@ -3,8 +3,8 @@ import {ActivityIndicator,Pressable,StyleSheet,Text,TextInput,View} from "react-
 import * as Crypto from "expo-crypto";
 import {identityRequest} from "../identity-access/http-client";
 
-type Day={date:string;status:string;checkInAt:string};
-type Mine={status:string;shift?:{label:string;timeZone:string;start:string;end:string}|null;days:Day[]};
+type Day={date:string;status:string;checkInAt:string;checkOutAt:string|null;workedMinutes:number|null};
+type Mine={status:string;canCheckOut?:boolean;shift?:{label:string;timeZone:string;start:string;end:string}|null;days:Day[]};
 type Branch={branchRef:string;label:string};
 type Person={reference:string;name:string;designation:string};
 type Rule={policyRef:string;label:string;timeZone:string;start:string;end:string;effectiveFrom:string};
@@ -42,7 +42,7 @@ export function NativeHrAttendance({token,canConfigure,onExpired}:{
  const [month,setMonth]=useState(today().slice(0,7));
  const [matrix,setMatrix]=useState<Matrix|null>(null),[matrixOffset,setMatrixOffset]=useState(0);
  const [matrixBusy,setMatrixBusy]=useState(false);
- const checkKey=useRef<string|null>(null),policyKey=useRef<string|null>(null),
+ const checkKey=useRef<string|null>(null),checkoutKey=useRef<string|null>(null),policyKey=useRef<string|null>(null),
   assignmentKey=useRef<string|null>(null);
  const failure=useCallback((e:unknown)=>{
   if(e&&typeof e==="object"&&"status" in e&&e.status===401)onExpired();
@@ -101,6 +101,18 @@ export function NativeHrAttendance({token,canConfigure,onExpired}:{
   }catch(e){failure(e);}
   finally{setBusy(false);}
  };
+ const checkOut=async()=>{
+  if(busy)return;setBusy(true);setError("");setMessage("");
+  const key=checkoutKey.current??Crypto.randomUUID();checkoutKey.current=key;
+  try{
+   const result=await api(token,"me/attendance/check-out","POST",{requestKey:key});
+   if(!result||typeof result!=="object"||!("recorded" in result)||
+    result.recorded!==true)throw Error("Check-out was not confirmed");
+   checkoutKey.current=null;setMessage("Check-out confirmed using verified server time.");
+   await refresh();
+  }catch(e){failure(e);}
+  finally{setBusy(false);}
+ };
  const change=(key:keyof typeof rule,value:string|number[])=>{
   setRule(x=>({...x,[key]:value}));policyKey.current=null;
  };
@@ -149,12 +161,19 @@ export function NativeHrAttendance({token,canConfigure,onExpired}:{
     <Pressable accessibilityRole="button" accessibilityState={{disabled:busy}} disabled={busy}
      onPress={()=>void checkIn()} style={styles.primary}>
      <Text style={styles.primaryText}>{busy?"Checking…":"Check in using server time"}</Text></Pressable>
+    {mine.canCheckOut&&<Pressable accessibilityRole="button" disabled={busy}
+     onPress={()=>void checkOut()} style={styles.primary}>
+     <Text style={styles.primaryText}>Check out using server time</Text></Pressable>}
    </>}
    <Pressable accessibilityRole="button" onPress={()=>void refresh()} style={styles.outline}>
     <Text style={styles.outlineText}>Refresh attendance</Text></Pressable>
    {mine?.days?.map(d=><View key={d.date} style={styles.listItem}>
     <Text style={styles.label}>{d.date} · {d.status}</Text>
     <Text style={styles.muted}>Check-in: {new Date(d.checkInAt).toLocaleString()}</Text>
+    <Text style={styles.muted}>Check-out: {d.checkOutAt?
+     new Date(d.checkOutAt).toLocaleString():"Pending"}</Text>
+    {d.workedMinutes!==null&&<Text style={styles.muted}>
+     Worked: {Math.floor(d.workedMinutes/60)}h {d.workedMinutes%60}m</Text>}
    </View>)}
   </View>
   {canConfigure&&<View style={styles.card}>

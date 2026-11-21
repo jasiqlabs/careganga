@@ -1,7 +1,7 @@
 "use client";
 import {useCallback,useEffect,useRef,useState} from "react";
-type Day={date:string;status:string;checkInAt:string};
-type Self={status:string;shift?:{label:string;timeZone:string;start:string;end:string;weeklyOffDays:number[]}|null;days:Day[]};
+type Day={date:string;status:string;checkInAt:string;checkOutAt:string|null;workedMinutes:number|null};
+type Self={status:string;canCheckOut?:boolean;shift?:{label:string;timeZone:string;start:string;end:string;weeklyOffDays:number[]}|null;days:Day[]};
 type Branch={branchRef:string;label:string};
 type Employee={reference:string;name:string;designation:string};
 type Rule={policyRef:string;label:string;timeZone:string;start:string;end:string;effectiveFrom:string};
@@ -30,7 +30,7 @@ export function HrAttendance({canConfigure=false}:{canConfigure?:boolean}){
  const [assignFrom,setAssignFrom]=useState(today());
  const [month,setMonth]=useState(today().slice(0,7)),[matrix,setMatrix]=useState<Matrix|null>(null);
  const [matrixOffset,setMatrixOffset]=useState(0),[matrixBusy,setMatrixBusy]=useState(false);
- const checkKey=useRef<string|null>(null),policyKey=useRef<string|null>(null),assignKey=useRef<string|null>(null);
+ const checkKey=useRef<string|null>(null),checkoutKey=useRef<string|null>(null),policyKey=useRef<string|null>(null),assignKey=useRef<string|null>(null);
  const refresh=useCallback(async()=>{
   setLoading(true);
   try{
@@ -81,6 +81,18 @@ export function HrAttendance({canConfigure=false}:{canConfigure?:boolean}){
   }catch(e){setError(e instanceof Error?e.message:"Check-in result uncertain. Refresh before retrying.");}
   finally{setBusy(false);}
  };
+ const checkOut=async()=>{if(busy)return;setBusy(true);setError("");setNotice("");
+  const key=checkoutKey.current??crypto.randomUUID();checkoutKey.current=key;
+  try{
+   const r=await api("me/attendance/check-out",{method:"POST",
+    body:JSON.stringify({requestKey:key})});
+   if(!r||typeof r!=="object"||!("recorded" in r)||r.recorded!==true)
+    throw Error("Check-out could not be confirmed");
+   checkoutKey.current=null;setNotice("Check-out confirmed from server time.");
+   await refresh();
+  }catch(e){setError(e instanceof Error?e.message:"Check-out result uncertain. Refresh before retrying.");}
+  finally{setBusy(false);}
+ };
  const savePolicy=async()=>{if(busy||!branch)return;setBusy(true);setError("");setNotice("");
   const key=policyKey.current??crypto.randomUUID();policyKey.current=key;
   try{await api("shift-policies",{method:"POST",body:JSON.stringify({
@@ -119,14 +131,21 @@ export function HrAttendance({canConfigure=false}:{canConfigure?:boolean}){
      {" "}({mine.shift.timeZone})</p>
     <button type="button" style={btn} disabled={busy} onClick={()=>void checkIn()}>
      {busy?"Checking…":"Check in using server time"}</button>
+    {mine.canCheckOut&&<button type="button" disabled={busy}
+     style={{...btn,marginLeft:10}} onClick={()=>void checkOut()}>
+     Check out using server time</button>}
    </>}
    <button type="button" onClick={()=>void refresh()} disabled={busy}
     style={{...btn,background:"#E2E8F0",color:"#0F172A",marginLeft:10}}>Refresh</button>
    {!!mine?.days.length&&<div style={{overflowX:"auto",marginTop:12}}>
     <table style={{width:"100%",borderCollapse:"collapse"}}>
-     <thead><tr><th scope="col">Shift date</th><th scope="col">Result</th><th scope="col">Verified check-in (UTC)</th></tr></thead>
+     <thead><tr><th scope="col">Shift date</th><th scope="col">Result</th>
+      <th scope="col">Check-in</th><th scope="col">Check-out</th><th scope="col">Worked time</th></tr></thead>
      <tbody>{mine.days.map(d=><tr key={d.date}><td>{d.date}</td><td>{d.status}</td>
-      <td>{new Date(d.checkInAt).toLocaleString()}</td></tr>)}</tbody>
+      <td>{new Date(d.checkInAt).toLocaleString()}</td>
+      <td>{d.checkOutAt?new Date(d.checkOutAt).toLocaleString():"Pending"}</td>
+      <td>{d.workedMinutes===null?"—":Math.floor(d.workedMinutes/60)+"h "+d.workedMinutes%60+"m"}</td>
+     </tr>)}</tbody>
     </table></div>}
   </div>
   {canConfigure&&<div style={{background:"#fff",border:"1px solid #E2E8F0",borderRadius:15,padding:18,display:"grid",gap:14}}>
