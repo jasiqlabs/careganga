@@ -1,5 +1,7 @@
 import {type ReactNode,useCallback,useEffect,useRef,useState} from "react";
-import {ActivityIndicator,Alert,Pressable,ScrollView,Share,StyleSheet,Text,TextInput,View} from "react-native";
+import {ActivityIndicator,Alert,Pressable,ScrollView,StyleSheet,Text,TextInput,View} from "react-native";
+import {File,Paths} from "expo-file-system";
+import * as Sharing from "expo-sharing";
 import {SafeAreaView} from "react-native-safe-area-context";
 import * as Crypto from "expo-crypto";
 import type {
@@ -252,7 +254,16 @@ export function NativePlatformConfiguration({token,roleActions,onExit,onExpired}
         (appliedFrom?"&from="+encodeURIComponent(appliedFrom):"")+
         (appliedTo?"&to="+encodeURIComponent(appliedTo):""));
       if(x.coverage!=="COMPLETE"){setError("Audit coverage is incomplete; export is unavailable.");return;}
-      await Share.share({message:x.csv,title:"CareGanga Foundation audit"});
+      if(!await Sharing.isAvailableAsync()){
+        setError("CSV file sharing is not available on this device. No file was sent.");
+        return;
+      }
+      // Actual CSV file with the same source bytes exported by Foundation Web.
+      const file=new File(Paths.cache,"careganga-foundation-audit-"+Crypto.randomUUID()+".csv");
+      await file.write(x.csv);
+      await Sharing.shareAsync(file.uri,{
+        mimeType:"text/csv",dialogTitle:"Share protected Foundation audit CSV"
+      });
       if(x.truncated)setNotice("This export is limited to the current approved first 100 records.");
     }catch(e){fail(e);}finally{setBusy(false);}
   }
