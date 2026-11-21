@@ -23,6 +23,10 @@ export class HrEnrollmentController{
  }
  @Get("summary")
  summary(@Headers("authorization")token:string){return this.hr.employeeSummary(token);}
+ @Get("employees/:employeeCode")
+ employee(@Headers("authorization")token:string,@Param("employeeCode")code:string){
+  return this.hr.employeeDetail(token,code);
+ }
  @Get("employees")
  employees(@Headers("authorization")token:string,@Query("offset")offset?:string,
    @Query("branch")branch?:string,@Query("status")status?:string,
