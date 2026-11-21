@@ -1,5 +1,5 @@
-import {useCallback,useEffect,useState} from "react";
-import {ActivityIndicator,Pressable,ScrollView,Share,StyleSheet,Text,TextInput,View} from "react-native";
+import {type ReactNode,useCallback,useEffect,useState} from "react";
+import {ActivityIndicator,Alert,Pressable,ScrollView,Share,StyleSheet,Text,TextInput,View} from "react-native";
 import {SafeAreaView} from "react-native-safe-area-context";
 import * as Crypto from "expo-crypto";
 import type {
@@ -12,7 +12,9 @@ import {identityRequest} from "../identity-access/http-client";
 
 type Tab="settings"|"audit"|"recovery";
 type SafeMessage={key:string;defaultMessage:string;effectiveMessage:string;revision:number;customized:boolean};
-type Pending={kind:"SETTING_SAVE"|"INTEGRATION_REFERENCE"|"RECOVERY_REQUEST"|"RECOVERY_AUTHORIZE";key:string};
+type Pending=
+ |{kind:"SETTING_SAVE"|"INTEGRATION_REFERENCE"|"RECOVERY_REQUEST"|"RECOVERY_AUTHORIZE";key:string}
+ |{kind:"SAFE_COPY";key:string;messageKey:string;message:string;originalRevision:number};
 type Props={token:string;roleActions:string[];onExit:()=>void;onExpired:()=>void};
 const label=(v:string)=>v.replace(/[_-]/g," ").replace(/\b\w/g,c=>c.toUpperCase());
 async function api<T>(token:string,path:string,method:"GET"|"POST"|"PATCH"="GET",body?:object):Promise<T>{
@@ -55,6 +57,8 @@ export function NativePlatformConfiguration({token,roleActions,onExit,onExpired}
   const [copyText,setCopyText]=useState("");
   const [password,setPassword]=useState("");
   const [auditSource,setAuditSource]=useState<"ALL"|"CG-01"|"CG-21">("ALL");
+  const [auditFrom,setAuditFrom]=useState("");
+  const [auditTo,setAuditTo]=useState("");
   const [audit,setAudit]=useState<CG21AuditPage|null>(null);
   const [auditRows,setAuditRows]=useState<CG21AuditEvent[]>([]);
   const [auditDetail,setAuditDetail]=useState<CG21AuditDetail|null>(null);
@@ -66,8 +70,8 @@ export function NativePlatformConfiguration({token,roleActions,onExit,onExpired}
     if(e&&typeof e==="object"&&"status" in e&&e.status===401)onExpired();
     setError(e instanceof Error?e.message:"The original source is unavailable.");
   },[onExpired]);
-  const refresh=useCallback(async()=>{
-    setLoading(true);setError("");setNotice("");setAuditDetail(null);
+  const refresh=useCallback(async():Promise<boolean>=>{
+    setLoading(true);setError("");setAuditDetail(null);
     try{
       if(tab==="settings"){
         if(can("platform.settings.view")){
@@ -84,7 +88,9 @@ export function NativePlatformConfiguration({token,roleActions,onExit,onExpired}
           setIntegrations(c.connections??[]);
         }
       }else if(tab==="audit"&&hasAudit){
-        const a=await api<CG21AuditPage>(token,"/audit?source="+encodeURIComponent(auditSource));
+        const range=(auditFrom?"&from="+encodeURIComponent(auditFrom):"")+
+          (auditTo?"&to="+encodeURIComponent(auditTo):"");
+        const a=await api<CG21AuditPage>(token,"/audit?source="+encodeURIComponent(auditSource)+range);
         setAudit(a);setAuditRows(a.events);setAuditDetail(null);
       }else if(tab==="recovery"&&hasRecovery){
         const [a,o]=await Promise.all([
@@ -94,19 +100,24 @@ export function NativePlatformConfiguration({token,roleActions,onExit,onExpired}
         setAvailability(a);setOperations(o.operations??[]);
         setSelectedOperation(v=>o.operations?.find(x=>x.operationRef===v?.operationRef)??null);
       }
-    }catch(e){fail(e);}
+      return true;
+    }catch(e){fail(e);return false;}
     finally{setLoading(false);}
-  },[token,tab,auditSource,roleActions.join("|"),fail,hasAudit,hasRecovery]);
+  },[token,tab,auditSource,auditFrom,auditTo,roleActions.join("|"),fail,hasAudit,hasRecovery]);
   useEffect(()=>{void refresh();},[refresh]);
   async function run(kind:Pending["kind"]|null,requestKey:string|undefined,action:()=>Promise<unknown>,ok:string){
     if(busy||pending)return;
     setBusy(true);setError("");setNotice("");
     try{const result=await action();
-      if(result&&typeof result==="object"&&"status" in result&&result.status==="NOT_AVAILABLE")
-        setNotice("Verified secured backup is not available. No restore was requested.");
-      else setNotice(ok);
+      const message=result&&typeof result==="object"&&"status" in result&&result.status==="NOT_AVAILABLE"?
+        "Verified secured backup is not available. No restore was requested.":
+        result&&typeof result==="object"&&"verified" in result?
+          (result.verified===true?"This integration was independently verified.":
+            "Integration readiness is not verified. No provider sending permission is claimed."):
+          ok;
       setPassword("");setReference("");setBackup("");
-      await refresh();
+      const reloaded=await refresh();
+      setNotice(reloaded?message:"Response received, but the latest original record could not be rechecked.");
     }catch(e){
       if(kind&&requestKey&&(!e||typeof e!=="object"||!("status" in e)||Number(e.status)>=500)){
         setPending({kind,key:requestKey});
@@ -117,6 +128,18 @@ export function NativePlatformConfiguration({token,roleActions,onExit,onExpired}
   async function checkOutcome(){
     if(!pending||busy)return;
     const p=pending;
+    if(p.kind==="SAFE_COPY"){
+      setBusy(true);setError("");
+      try{
+        const read=await api<{messages:SafeMessage[]}>(token,"/error-messages");
+        const row=read.messages.find(x=>x.key===p.messageKey);
+        if(row&&row.revision>p.originalRevision&&row.effectiveMessage===p.message){
+          setPending(null);setSelectedCopy(null);
+          const reloaded=await refresh();
+          setNotice(reloaded?"The original safe message update is confirmed.":"The update is confirmed, but source reload failed.");
+        }else setError("An exact committed message is not verified. Contact Foundation operations before retrying.");
+      }catch(e){fail(e);}finally{setBusy(false);}return;
+    }
     const path=p.kind==="RECOVERY_REQUEST"?"/recovery/changes/"+encodeURIComponent(p.key):
       p.kind==="RECOVERY_AUTHORIZE"?"/recovery/authorization/changes/"+encodeURIComponent(p.key):
       "/changes/"+p.kind+"/"+encodeURIComponent(p.key);
@@ -124,7 +147,7 @@ export function NativePlatformConfiguration({token,roleActions,onExit,onExpired}
     try{
       const r=await api<{status:string}>(token,path);
       if(r.status==="CONFIRMED"){setPending(null);setNotice("The original command is confirmed.");await refresh();}
-      else setError("The command has not been confirmed. Refresh before deciding whether to retry.");
+      else setError("No committed result is visible. Contact Foundation operations before retrying; do not submit a second command.");
     }catch(e){fail(e);}
     finally{setBusy(false);}
   }
@@ -138,10 +161,10 @@ export function NativePlatformConfiguration({token,roleActions,onExit,onExpired}
       <TextInput style={styles.input} value={value} onChangeText={change}
         secureTextEntry={secure} placeholder={placeholder} placeholderTextColor={t.mutedText}
         autoCapitalize="none" accessibilityLabel={title}/></View>;
-  const card=(content:React.ReactNode)=><View style={styles.card}>{content}</View>;
+  const card=(content:ReactNode)=><View style={styles.card}>{content}</View>;
   const passwordField=field("Current account password",password,setPassword,true);
   async function savePageSize(){
-    if(!setting||!can("platform.settings.manage")||!/^([1-9]\d?)|100$/.test(size))return;
+    if(!setting||!can("platform.settings.manage")||!/^(?:[1-9]\d?|100)$/.test(size))return;
     const n=Number(size);if(!Number.isInteger(n)||n<10||n>100||n===setting.value){setError("Choose a different page size from 10 to 100.");return;}
     if(password.length<8){setError("Enter your current password.");return;}
     const key=Crypto.randomUUID();
@@ -165,11 +188,26 @@ export function NativePlatformConfiguration({token,roleActions,onExit,onExpired}
       copyText.trim().length<16||copyText.trim().length>220){
       setError("Check the approved message and current password.");return;
     }
-    await run(null,undefined,()=>api(token,"/error-messages","PATCH",{
-      key:selectedCopy.key,message:copyText.trim(),expectedRevision:selectedCopy.revision,
-      requestKey:Crypto.randomUUID(),currentPassword:password
-    }),"Message wording saved. Server validation rules are unchanged.");
-    setSelectedCopy(null);
+    const original=selectedCopy,submitted=copyText.trim(),key=Crypto.randomUUID();
+    if(busy||pending)return;
+    setBusy(true);setError("");setNotice("");
+    try{
+      const saved=await api<{status:string;revision:number}>(token,"/error-messages","PATCH",{
+        key:original.key,message:submitted,expectedRevision:original.revision,
+        requestKey:key,currentPassword:password
+      });
+      if(!["SAVED","REPLAY_CONFIRMED"].includes(saved.status)||!Number.isInteger(saved.revision))
+        throw Object.assign(new Error("Message update outcome cannot be confirmed."),{status:503});
+      setPassword("");setSelectedCopy(null);
+      const reloaded=await refresh();
+      setNotice(reloaded?"Safe message wording updated; server validation is unchanged.":
+        "The update response was recorded, but the latest source could not be rechecked.");
+    }catch(e){
+      if(!e||typeof e!=="object"||!("status" in e)||Number(e.status)>=500){
+        setPending({kind:"SAFE_COPY",key,messageKey:original.key,message:submitted,originalRevision:original.revision});
+        setError("The previous wording update is unconfirmed. Check the original message before contacting operations.");
+      }else fail(e);
+    }finally{setBusy(false);}
   }
   async function auditMore(){
     if(!audit?.nextCursor||busy)return;setBusy(true);setError("");
@@ -184,7 +222,9 @@ export function NativePlatformConfiguration({token,roleActions,onExit,onExpired}
   }
   async function exportAudit(){
     if(!can("platform.audit.export")||busy)return;setBusy(true);setError("");
-    try{const x=await api<CG21AuditCsv>(token,"/audit/export?source="+encodeURIComponent(auditSource));
+    try{const x=await api<CG21AuditCsv>(token,"/audit/export?source="+encodeURIComponent(auditSource)+
+        (auditFrom?"&from="+encodeURIComponent(auditFrom):"")+
+        (auditTo?"&to="+encodeURIComponent(auditTo):""));
       if(x.coverage!=="COMPLETE"){setError("Audit coverage is incomplete; export is unavailable.");return;}
       await Share.share({message:x.csv,title:"CareGanga Foundation audit"});
       if(x.truncated)setNotice("This export is limited to the current approved first 100 records.");
@@ -282,8 +322,11 @@ export function NativePlatformConfiguration({token,roleActions,onExit,onExpired}
       {tab==="audit"&&hasAudit&&<>
         {card(<>
           <Text style={styles.section}>Foundation audit records</Text>
+          {field("From (optional ISO-8601 UTC)",auditFrom,setAuditFrom,false,"2026-11-01T00:00:00Z")}
+          {field("To (optional ISO-8601 UTC)",auditTo,setAuditTo,false,"2026-11-21T23:59:59Z")}
           <View style={styles.tabs}>{allowedSource.map(x=>button(x==="ALL"?"All":x==="CG-01"?"Identity":"Platform",
             ()=>{setAuditSource(x);setAudit(null);setAuditRows([]);},busy||x===auditSource))}</View>
+          {button("Apply audit dates",()=>void refresh(),busy||loading)}
           <Text style={styles.muted}>Coverage: {audit?.coverage??"Unavailable"} · Entries are restricted by the source owner.</Text>
           {audit?.coverage==="PARTIAL"&&<Text style={styles.error}>One owner feed is unavailable. Do not assume a complete audit.</Text>}
           {auditRows.map(x=><Pressable key={x.eventRef} style={styles.item}
