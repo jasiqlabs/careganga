@@ -8,6 +8,7 @@ import {NativeMisFinanceTrend,NativeMisAppointmentDistribution,type MonthlyTrend
 
 type Metric={key:string;label:string;unit:string;value:string};
 type Source={sourceKey:string;sourceLabel:string;state:string;metrics:Metric[];
+ sourceAsOf?:string;cutoffKind?:string;
  readAt?:string;explanation?:string;trend?:MonthlyTrend};
 type Overview={state:string;readAt:string;sources:Source[];
  periodLabel?:string;scopeLabel?:string;message?:string};
@@ -202,6 +203,7 @@ export function NativeMisDashboard({token,onExpired,onOpenFinance,onOpenPatientA
    {!!overview.message&&<Text style={styles.helper}>{overview.message}</Text>}
    {overview.sources.map(source=><View key={source.sourceKey} style={styles.source}>
     <Text accessibilityRole="header" style={styles.title}>{source.sourceLabel}</Text>
+    {!!source.sourceAsOf&&<Text style={styles.helper}>Source snapshot: {new Date(source.sourceAsOf).toLocaleString("en-IN")}. Other sources may differ.</Text>}
     {source.state==="AVAILABLE"?<>
      <View style={styles.metrics}>
       {source.metrics.map(m=><View key={m.key} style={styles.card}>
