@@ -8,6 +8,12 @@ export class HrEnrollmentApprovalController{
   @Query("offset")offset?:string,@Query("status")status?:string){
   return this.review.inbox(token,offset,status);
  }
+ @Get("process")
+ process(@Headers("authorization")token:string){return this.review.processStatus(token);}
+ @Post("process")
+ configure(@Headers("authorization")token:string,@Body()body:unknown){
+  return this.review.initializeProcess(token,body);
+ }
  @Get(":caseRef")
  detail(@Headers("authorization")token:string,@Param("caseRef")ref:string){
   return this.review.detail(token,ref);
