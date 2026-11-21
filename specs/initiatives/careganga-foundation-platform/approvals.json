@@ -2292,8 +2292,8 @@
       "approval_mode": "OWNER_DELEGATED_DESIGN_CONTENT",
       "delegation_source": "initiative.json:approval_policy",
       "artifact": "modules/cg-14-healthcare-network/tasks.md",
-      "sha256": "c0fb23a0dff183fb628ad55d73e9f73f6e0d160b511b9139d2eee02538f90539",
-      "current_artifact_sha256": "c0fb23a0dff183fb628ad55d73e9f73f6e0d160b511b9139d2eee02538f90539",
+      "sha256": "fbe96e912e80a9ccc52bea45977988ec782e3b3d5a4e1c65540b698ca2958697",
+      "current_artifact_sha256": "fbe96e912e80a9ccc52bea45977988ec782e3b3d5a4e1c65540b698ca2958697",
       "approved_by": "JASIQ AI Design Review Agent (owner-delegated)",
       "approved_at": "2026-11-21",
       "evidence": "https://github.com/jasiqlabs/careganga/blob/feature/careganga-greenfield-prd-20261114/specs/initiatives/careganga-foundation-platform/modules/cg-14-healthcare-network/tasks.md",
@@ -2336,8 +2336,8 @@
       "qa_cases": 94,
       "stories": 5,
       "previous_approved_sha256": "51874228f387bd753b8085711f9a6421a266e73fb19353e95961b90ca7093645",
-      "current_task_definitions_sha256": "cff91c9acfa50c630f4e2e84ea84ac470b6dacdde7fda5437f783846a7c7432a",
-      "task_definitions_sha256": "cff91c9acfa50c630f4e2e84ea84ac470b6dacdde7fda5437f783846a7c7432a",
+      "current_task_definitions_sha256": "cb64c0b3148f1f30d30e365b004668f6c897e1b36499f2e24f5e2afa9ac192ae",
+      "task_definitions_sha256": "cb64c0b3148f1f30d30e365b004668f6c897e1b36499f2e24f5e2afa9ac192ae",
       "current_QA_count": 94,
       "user_stories": 5,
       "previous_quality_review": {
@@ -2392,6 +2392,22 @@
         "qualified_independent_review": "NOT_RUN",
         "formal_harness_resolver": "NOT_RUN",
         "source_complete": "NOT_APPROVED"
+      },
+      "source_progress_previous_sha256": "c0fb23a0dff183fb628ad55d73e9f73f6e0d160b511b9139d2eee02538f90539",
+      "previous_task_definitions_sha256": "cff91c9acfa50c630f4e2e84ea84ac470b6dacdde7fda5437f783846a7c7432a",
+      "latest_design_content_review": {
+        "date": "2026-11-21",
+        "method": "OWNER_DELEGATED_EXPERT_SOURCE_DOCUMENT_REVIEW_NOT_INDEPENDENT",
+        "result": "DELEGATED_APPROVED_DESIGN_ONLY",
+        "artifact_sha256": "fbe96e912e80a9ccc52bea45977988ec782e3b3d5a4e1c65540b698ca2958697",
+        "approved_task_definitions_sha256": "cb64c0b3148f1f30d30e365b004668f6c897e1b36499f2e24f5e2afa9ac192ae",
+        "verified_distinct_qa_ids": 94,
+        "stories": 5,
+        "scope": "Existing approved CG14 register with original 5 user stories and 94 distinct QA IDs; same owner, no independent or runtime QA. Partner intake, original center capability and CG17 source consumer progress stays in execution tracker, not claimed as complete.",
+        "local_harness_resolver": "NOT_RUN",
+        "postgresql_and_runtime_qa": "NOT_RUN",
+        "specialist_security_clinical_finance_review": "NOT_RUN",
+        "source_release_state": "NOT_COMPLETE"
       }
     },
     "planning/cg-10-human-resources": {
@@ -6047,8 +6063,8 @@
       "approval_mode": "OWNER_DELEGATED_DESIGN_CONTENT",
       "delegation_source": "Owner explicitly authorized CG01 reapproval followed by CG17 review on 15 Nov 2026; design delegation for aligned reviewed module",
       "artifact": "modules/cg-17-healthcare-assistance-settlements/dld.md",
-      "sha256": "627213f5e619cb41d89736dd2ff1360f47286057b94e073f062356c6774dab98",
-      "current_artifact_sha256": "627213f5e619cb41d89736dd2ff1360f47286057b94e073f062356c6774dab98",
+      "sha256": "651b45c7c0806996ac808ae1c8d0ae975b412a89673e9ad42cefc9eaf4fb5e4c",
+      "current_artifact_sha256": "651b45c7c0806996ac808ae1c8d0ae975b412a89673e9ad42cefc9eaf4fb5e4c",
       "approved_by": "JASIQ AI Design Review Agent (owner-delegated)",
       "approved_at": "2026-11-21",
       "evidence": "https://github.com/jasiqlabs/careganga/blob/feature/careganga-greenfield-prd-20261114/specs/initiatives/careganga-foundation-platform/modules/cg-17-healthcare-assistance-settlements/dld.md",
@@ -6088,14 +6104,15 @@
       "review_evidence": "OWNER_21NOV_VERIFIED_PARTNER_MANDATORY_BENEFIT_MONTHLY_PAYOUT_OPTIONAL_ERP_DEFERRED_DESIGN_ONLY",
       "last_design_content_review": {
         "date": "2026-11-21",
-        "method": "OWNER_DELEGATED_MVP_PARTNER_DISCOUNT_SCOPE_REVIEW_NOT_INDEPENDENT",
-        "scope": "Mandatory CG14 partner intake/verification + CG17 audited pharmacy/nursing/OT ERP-OFF service discount and monthly CG09 settlement; CG22/23/24 ERP deferred; same-role Web/Android and original QA IDs retained",
-        "file_sha256": "627213f5e619cb41d89736dd2ff1360f47286057b94e073f062356c6774dab98",
-        "actual_web_android_qa": "NOT_RUN",
+        "method": "OWNER_DELEGATED_SCOPE_ALIGNED_SOURCE_DOCUMENT_REVIEW_NOT_INDEPENDENT",
+        "scope": "CG17 original 7 stories/68 QA retained; appended approved ERP-off policy/quote implementation trace, true CG03 protected decision, no fake consultation or finance completion. CG19/CG15 patient and settlement source remain open.",
+        "file_sha256": "651b45c7c0806996ac808ae1c8d0ae975b412a89673e9ad42cefc9eaf4fb5e4c",
+        "source_complete": "NOT_APPROVED",
         "qualified_independent_review": "NOT_RUN",
-        "formal_harness_resolver": "NOT_RUN",
-        "source_complete": "NOT_APPROVED"
-      }
+        "actual_web_android_qa": "NOT_RUN",
+        "formal_harness_resolver": "NOT_RUN"
+      },
+      "source_progress_previous_sha256": "627213f5e619cb41d89736dd2ff1360f47286057b94e073f062356c6774dab98"
     },
     "tasks/cg-17-healthcare-assistance-settlements": {
       "status": "DELEGATED_APPROVED",
