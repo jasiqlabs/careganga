@@ -5,6 +5,7 @@ import {FoundationAdminNav} from "../../../../shared/foundation-admin-nav";
 import {UnavailablePage} from "../../../../shared/unavailable-page";
 import {HrEnrollmentWorkspace} from "../../../../features/human-resources/hr-enrollment-workspace";
 import {HrMyProfile} from "../../../../features/human-resources/hr-my-profile";
+import {HrEnrollmentReviews} from "../../../../features/human-resources/hr-enrollment-reviews";
 export const dynamic="force-dynamic";
 
 /** Original CareGanga private HR home — no public employee master. */
@@ -53,7 +54,10 @@ export default async function FoundationHrPage(){
     </header>
     <HrMyProfile/>
     {actions.includes("hr.applications.view")&&
-     <HrEnrollmentWorkspace canManage={actions.includes("hr.applications.manage")}/> }
+     <HrEnrollmentWorkspace canManage={actions.includes("hr.applications.manage")}
+       canViewEmployees={actions.includes("hr.employees.view")}/> }
+    {actions.includes("hr.employees.review")&&actions.includes("approvals.review")&&
+      <HrEnrollmentReviews/>}
    </main>
   </div>;
  }catch(error){
