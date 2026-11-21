@@ -33,6 +33,9 @@ const cases=[
  ["apps/web/src/features/appointments/foundation-patient-duplicate-reviews.tsx",
   ["Review original identity evidence","evidence?.reviewRef",
    "independently reviewed","current-password"]],
+ ["apps/android-internal/src/features/appointments/native-foundation-duplicate-reviews.tsx",
+  ["possibleDuplicateConfirmed:true","reviewRef","samePersonEvidenceReviewed",
+   "currentPassword:password","proposedByCurrentAccount"]],
  ["apps/web/src/app/api/appointments/admin/patients/duplicate-reviews/[reviewRef]/evidence/route.ts",
   ['get("cg_staff_session")','"Cache-Control":"private, no-store"']]]},
  {id:"US-003-QA15",checks:[
@@ -63,6 +66,15 @@ const cases=[
  ["apps/android-public/src/features/appointments/native-appointment-documents.tsx",
   ["verifiedSlipRead(","/restricted-file?grant=",
    "AppState.addEventListener","cached.current?.delete()"]],
+ ["apps/android-internal/src/features/appointments/native-foundation-patient-admin.tsx",
+  ["print-authorization","Print.printAsync","/history","cancel-override",
+   "NativeFoundationDuplicateReviews","fromDraft","untilDraft",
+   "health.patients.admin.view"]],
+ ["apps/android-internal/src/features/identity-access/staff-authentication-screen.tsx",
+  ["NativeFoundationPatientAdmin","health.patients.admin.view",
+   'canOverride={roleActions.includes("health.appointments.override")}']],
+ ["apps/android-internal/src/features/dashboard/dashboard-modules.ts",
+  ['roleActions.includes("health.patients.admin.view")','openPatientAdmin']],
  ["apps/web/src/app/api/appointments/slips/[...parts]/route.ts",
   ["Referrer-Policy","X-Content-Type-Options","private, no-store"]]]}
 ];
