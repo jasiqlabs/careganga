@@ -1,5 +1,6 @@
 "use client";
 import {useCallback,useEffect,useRef,useState} from "react";
+import {MisSavedReports} from "./mis-saved-reports";
 type Kind="FINANCE_POSTED_LEDGER"|"FINANCE_POSTED_SUMMARY"|
  "FINANCE_POSTED_TREND"|"APPOINTMENT_STATUS";
 type View="TABLE"|"SUMMARY"|"CHART";
@@ -8,7 +9,8 @@ type Template={kind:Kind;label:string;views:View[];description:string};
 type Catalog={
  templates:Template[];
  finance:{ready:boolean;years:Option[];branches:Option[];allBranches:boolean};
- appointments:{ready:boolean;centers:Option[];complete:boolean}
+ appointments:{ready:boolean;centers:Option[];complete:boolean};
+ capabilities:{manage:boolean;export:boolean;schedule:boolean}
 };
 export type ReportRequest={kind:Kind;view:View;yearRef?:string;branchRef?:string;
  centerRef?:string;fromDay?:string;untilDay?:string;status?:string;offset:number};
@@ -211,5 +213,13 @@ export function MisReportsWorkspace(){
    {result.state==="SUPPRESSED"&&<p role="status">
     The result contains too few people to display safely.</p>}
   </div>}
+  {catalog&&<MisSavedReports canManage={catalog.capabilities?.manage===true}
+   currentRequest={input(0)}
+   onRestore={q=>{
+    setKind(q.kind);setYear(q.yearRef??"");setBranch(q.branchRef??"");
+    setCenter(q.centerRef??"");setFrom(q.fromDay??"");
+    setUntil(q.untilDay??"");setStatus(q.status??"");
+    setResult(null);setProblem("");setNotice("");
+   }}/>}
  </section>;
 }
