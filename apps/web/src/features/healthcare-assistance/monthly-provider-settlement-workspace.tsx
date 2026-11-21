@@ -8,6 +8,8 @@ type Summary={month:string;state:string;settlementRef?:string;revision?:number;
  centerGrossServicesMinor?:string;patientPayableMinor?:string;
  patientCollectedVerifiedMinor?:string;patientRefundedMinor?:string;
  foundationApprovedLiabilityMinor?:string;
+ originalApprovedFoundationMinor?:string;adjustedFoundationMinor?:string;
+ grossFoundationPaidMinor?:string;verifiedProviderRecoveryMinor?:string;
  collectionsScope?:"VERIFIED_TO_DATE_FOR_COMPLETED_SERVICES";
  outstandingMinor:string;currency?:string;independentlyApproved?:boolean;
  paidVerified:boolean;patientCollectionNotFoundationIncome:true};
@@ -178,6 +180,16 @@ export function MonthlyProviderSettlementWorkspace({canPropose,canReview,canPay}
     <dd>{money(data.state==="NOT_PREPARED"?data.eligibleAccruedMinor??"0":
      data.state==="PROPOSED"?data.proposedClaimMinor??"0":
      data.approvedFoundationMinor)}</dd>
+    {data.adjustedFoundationMinor&&BigInt(data.adjustedFoundationMinor)>0n&&<>
+     <dt>Historical original approved claim</dt>
+     <dd>{money(data.originalApprovedFoundationMinor??"0")}</dd>
+     <dt>Verified Foundation liability corrections</dt>
+     <dd>{money(data.adjustedFoundationMinor)}</dd>
+     <dt>Original gross bank payout</dt>
+     <dd>{money(data.grossFoundationPaidMinor??"0")}</dd>
+     <dt>Actual verified returned bank money</dt>
+     <dd>{money(data.verifiedProviderRecoveryMinor??"0")}</dd>
+    </>}
     <dt>Verified actual provider payout</dt>
     <dd>{money(data.actualPaidMinor)}</dd>
     <dt>Outstanding approved claim</dt>
