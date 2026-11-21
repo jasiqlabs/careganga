@@ -198,7 +198,9 @@ export function PatientPrivateFilesPanel({consentGranted}:{consentGranted:boolea
    <p>{new Date(row.createdAt).toLocaleString("en-IN")} ·
     {row.revoked?" Revoked":" Privately verified"} ·
     {" "+(row.sizeBytes/1024).toFixed(0)} KB</p>
-   {!row.revoked&&<PatientClinicalFileShares fileRef={row.fileRef}
+   {!row.revoked&&row.classification!=="PATIENT_PARTNER_INVOICE"&&
+    row.classification!=="PATIENT_PARTNER_SERVICE_PROOF"&&
+    <PatientClinicalFileShares fileRef={row.fileRef}
     consentGranted={consentGranted}/>}
    {!row.revoked&&<div className="toolbar">
     <button type="button" disabled={busy} onClick={()=>void openFile(row)}>
