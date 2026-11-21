@@ -24,29 +24,29 @@ export function MisSharedDefinitions({selected,canShare,canManage,onChanged}:{
  const [search,setSearch]=useState("");
  const [problem,setProblem]=useState(""),[notice,setNotice]=useState("");
  const [busy,setBusy]=useState(false);
- const current=useRef(0);
+ const sharedSeq=useRef(0),grantsSeq=useRef(0);
  const pending=useRef<{payload:string;key:string}|null>(null);
  const refresh=useCallback(async()=>{
-  const i=++current.current;
+  const i=++sharedSeq.current;
   try{
    const page=await call<{items:Shared[]}>("shared-with-me");
-   if(i===current.current)setShared(page.items??[]);
-  }catch(e){if(i===current.current){
+   if(i===sharedSeq.current)setShared(page.items??[]);
+  }catch(e){if(i===sharedSeq.current){
    setShared([]);setProblem(e instanceof Error?e.message:"Shared definitions unavailable.");
   }}
  },[]);
  const grantList=useCallback(async()=>{
   if(!selected||!canShare){setGrants([]);return;}
-  const i=++current.current;
+  const i=++grantsSeq.current;
   try{
    const r=await call<{people:Choice[]}>(
     encodeURIComponent(selected.ref)+"/grants");
-   if(i===current.current)setGrants(r.people??[]);
-  }catch(e){if(i===current.current){
+   if(i===grantsSeq.current)setGrants(r.people??[]);
+  }catch(e){if(i===grantsSeq.current){
    setGrants([]);setProblem(e instanceof Error?e.message:"Grant list unavailable.");
   }}
  },[selected?.ref,canShare]);
- useEffect(()=>{void refresh();return()=>{current.current++};},[refresh]);
+ useEffect(()=>{void refresh();return()=>{sharedSeq.current++};},[refresh]);
  useEffect(()=>{void grantList();},[grantList]);
  useEffect(()=>{
   const hide=()=>{
@@ -54,7 +54,7 @@ export function MisSharedDefinitions({selected,canShare,canManage,onChanged}:{
     setProblem("");setPeople([]);setGrants([]);
     pending.current=null;void refresh();void grantList();
    }else{
-    current.current++;setShared([]);setPeople([]);setGrants([]);
+    sharedSeq.current++;grantsSeq.current++;setShared([]);setPeople([]);setGrants([]);
    }
   };
   document.addEventListener("visibilitychange",hide);
