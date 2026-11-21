@@ -226,14 +226,14 @@ export class ClinicalLabGeneratedResultService{
    "mime,size_bytes,sha256,object_key,reserved_until) "+
    "VALUES($1,$2,$3,$4,$5,$6,$7,$8,'application/pdf',$9,$10,$11,"+
    "now()+interval '1 day') RETURNING id,result_revision_ref,object_key,"+
-   "status,sha256,size_bytes::text,request_digest,patient_ref,request_key,"+
+   "status,sha256,size_bytes::text AS size_bytes,request_digest,patient_ref,request_key,"+
    "order_ref,center_ref",
    [actor.realmId,order,center,source.patient_ref,result.id,
     actor.accountId,key,requestDigest,pdf.length,sha,
     "careganga/private/cg19/"+actor.realmId+"/lab-generated/"+randomUUID()]);
   await c.query(
    "INSERT INTO cg19_lab_result_event(root_realm_id,intent_ref,"+
-   "actor_ref,action) VALUES($1,$2,$3,'UPLOAD_INTENT')",
+   "actor_ref,action) VALUES($1,$2,$3,'GENERATED_INTENT')",
    [actor.realmId,intent.rows[0].id,actor.accountId]);
   return {result,intent:intent.rows[0],pdf,sourceDigest:requestDigest};
  }
@@ -319,7 +319,7 @@ export class ClinicalLabGeneratedResultService{
      next.rows[0].revision-1,next.rows[0].revision]);
    await c.query(
     "INSERT INTO cg19_lab_result_event(root_realm_id,intent_ref,"+
-    "file_ref,actor_ref,action) VALUES($1,$2,$3,$4,'SCAN_VERIFIED')",
+    "file_ref,actor_ref,action) VALUES($1,$2,$3,$4,'GENERATED_VERIFIED')",
     [actor.realmId,original.intent.id,file.rows[0].id,actor.accountId]);
    return {state:"RESULT_READY",resultRef:original.result.id,
     generated:true,patientReleased:false,replayed:false};
