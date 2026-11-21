@@ -58,7 +58,7 @@ export function NativeHrEvidence({token,applicationRef,revision,onExpired,onFile
   setIntent("");setPicked(null);setUncertain(false);
   original.current=null;setItems([]);
   void refresh();
- },[applicationRef,revision,generation]); // current-source change resets pending file, not privileges
+ },[applicationRef,revision,generation,token,refresh]); // reset on source, session or permission change
  const choose=async()=>{
   if(busy)return;
   try{
