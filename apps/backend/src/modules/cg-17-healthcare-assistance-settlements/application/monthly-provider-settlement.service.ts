@@ -230,10 +230,16 @@ export class MonthlyProviderSettlementService{
    const claim=await this.claim(c,a.realmId,center,period,false);
    if(claim){
     const view=this.view(claim);
+    const approved=claim.state!=="PROPOSED";
+    // Proposal is NOT an approved or outstanding payable. Keep that
+    // amount visible only in a separately named proposed/awaiting field.
     return {month:view.month,state:view.state,
-     approvedFoundationMinor:view.approvedFoundationMinor,
-     actualPaidMinor:view.actualPaidMinor,
-     outstandingMinor:view.outstandingMinor,paidVerified:view.paidVerified,
+     proposedClaimMinor:approved?"0":view.approvedFoundationMinor,
+     eligibleAccruedMinor:approved?"0":view.approvedFoundationMinor,
+     approvedFoundationMinor:approved?view.approvedFoundationMinor:"0",
+     actualPaidMinor:approved?view.actualPaidMinor:"0",
+     outstandingMinor:approved?view.outstandingMinor:"0",
+     paidVerified:approved&&view.paidVerified,
      ...breakdown,patientCollectionNotFoundationIncome:true};
    }
    const rows=await this.candidate(c,a.realmId,center,period,false);
