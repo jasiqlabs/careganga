@@ -124,6 +124,19 @@ must(native+"features/healthcare-assistance/native-partner-settlement-summary.ts
 must(native+"features/healthcare-assistance/native-partner-settlement-summary.tsx",
  /"Proposed claim \(not approved\)"/,
  "Partner Android visibly distinguishes a proposed claim from approved payout");
+must(web+"features/healthcare-assistance/center-monthly-settlement-summary.tsx",
+ /requestVersion=useRef\(0\)/,
+ "Web partner statement must invalidate stale month/network responses");
+must(web+"features/healthcare-assistance/center-monthly-settlement-summary.tsx",
+ /return\(\)=>\{requestVersion\.current\+\+\}/,
+ "Web partner screen cleanup cannot publish an out-of-date statement");
+must(native+"features/healthcare-assistance/native-partner-settlement-summary.tsx",
+ /requestVersion=useRef\(0\)/,
+ "Android partner statement must reject stale center or month results");
+must(native+"features/healthcare-assistance/native-partner-settlement-summary.tsx",
+ /return\(\)=>\{requestVersion\.current\+\+\}/,
+ "Android partner screen cleanup must invalidate pending requests");
+
 
 must(native+"features/dashboard/dashboard-modules.ts",
  /roleActions\.includes\("health\.centers\.draft\.edit"\)/,
