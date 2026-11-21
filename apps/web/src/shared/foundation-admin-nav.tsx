@@ -32,6 +32,7 @@ export type FoundationAdminNavProps = {
     | "financeBudgets"
     | "financeBudgetReviews"
     | "financeReports"
+    | "mis"
     | "cms"
     | "healthNetwork"
     | "healthCenter"
@@ -180,6 +181,7 @@ function getNavIcon(key: string) {
         </svg>
       );
     case "finance":
+    case "mis":
     case "financeReports":
       return (
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
@@ -669,6 +671,9 @@ export function FoundationAdminNav({
     : canViewClaims;
   const invoiceAccess = currentActions ? currentActions.has("finance.invoices.view") : canViewInvoices;
   const reportAccess = currentActions ? currentActions.has("finance.reports.view") : canViewFinanceReports;
+  const misAccess = currentActions ?
+    (currentActions.has("mis.dashboard.view") || currentActions.has("mis.reports.view")) :
+    Boolean(initialActions?.some(x => x==="mis.dashboard.view" || x==="mis.reports.view"));
   const cmsAccess = allowed("cms.content.view", canViewCms);
   const healthNetworkAccess = allowed("health.providers.view", canViewHealthNetwork);
   // Reviewer-only and publisher-only staff must have a visible, authorized
@@ -748,6 +753,7 @@ export function FoundationAdminNav({
     ...(invoiceAccess ? [{ key: "financeInvoices" as const, label: "Invoices & Receipts", href: "/admin/finance/invoices" }] : []),
     ...(budgetAccess ? [{ key: "financeBudgets" as const, label: "Budgets", href: "/admin/finance/budgets" }] : []),
     ...(reportAccess ? [{ key: "financeReports" as const, label: "Ledger & Reports", href: "/admin/finance/reports" }] : []),
+    ...(misAccess ? [{ key: "mis" as const, label: "Reports & MIS", href: "/admin/mis" }] : []),
     ...(budgetReviewAccess ? [{ key: "financeBudgetReviews" as const, label: "Budget Reviews", href: "/admin/finance/budget-reviews" }] : []),
     ...(invoiceReviewAccess ? [{ key: "financeInvoiceReviews" as const, label: "Invoice Reviews", href: "/admin/finance/invoice-reviews" }] : []),
     ...(claimsReviewerAccess ? [{ key: "financeClaimReviews" as const, label: "Claim Reviews", href: "/admin/finance/claim-reviews" }] : []),
@@ -795,6 +801,7 @@ export function FoundationAdminNav({
     healthPatientAdmin: "Patient & Booking Management",
     finance: "Finance & Accounting",
     financeReports: "Ledger & Reports",
+    mis: "Reports & MIS",
     financeBudgets: "Budgets",
     financeBudgetReviews: "Budget Reviews",
     financeInvoices: "Invoices & Receipts",
@@ -963,7 +970,8 @@ export function FoundationAdminNav({
                 "financeInvoiceReviews",
                 "financeBudgets",
                 "financeBudgetReviews",
-                "financeReports"
+                "financeReports",
+                "mis"
               ]
             },
             {
