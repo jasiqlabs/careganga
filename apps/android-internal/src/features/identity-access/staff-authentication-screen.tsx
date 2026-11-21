@@ -722,6 +722,7 @@ export function StaffAuthenticationScreen() {
           canViewPrivate={roleActions.includes("hr.employees.private.view")}
           canManagePrivate={roleActions.includes("hr.employees.private.manage")}
           canViewEmployees={roleActions.includes("hr.employees.view")}
+          canConfigureReviews={roleActions.includes("approvals.process.manage")}
           canReview={roleActions.includes("approvals.review")&&
             roleActions.includes("hr.employees.review")}
           onExit={() => setHrOpen(false)} onExpired={expireSession}/>
