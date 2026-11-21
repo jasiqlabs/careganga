@@ -277,10 +277,10 @@ export class MisReportSourceService{
      {key:"creditMinor",label:"Posted credit",unit:"INR_MINOR" as const}
     ]:groupedColumns;
     const rows=pivot?[
-     Object.fromEntries([["metric","Posted debit"],...x.groups.slice(0,12)
-      .map((row,index)=>["group"+index,row.debitMinor])]),
-     Object.fromEntries([["metric","Posted credit"],...x.groups.slice(0,12)
-      .map((row,index)=>["group"+index,row.creditMinor])])
+     Object.fromEntries([["metric","Posted debit"] as const,...x.groups.slice(0,12)
+      .map((row,index)=>["group"+index,row.debitMinor] as const)]),
+     Object.fromEntries([["metric","Posted credit"] as const,...x.groups.slice(0,12)
+      .map((row,index)=>["group"+index,row.creditMinor] as const)])
     ]:q.view==="SUMMARY"&&x.groups.length?[{
      debitMinor:debit.toString(),creditMinor:credit.toString()
     }]:x.groups;
