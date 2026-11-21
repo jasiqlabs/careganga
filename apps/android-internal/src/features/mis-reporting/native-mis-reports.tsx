@@ -1,6 +1,7 @@
 import {useCallback,useEffect,useRef,useState} from "react";
 import {AppState,Pressable,StyleSheet,Text,View} from "react-native";
 import {identityRequest} from "../identity-access/http-client";
+import {nativeMisProblem} from "./native-mis-problem";
 import {NativeFinanceAction,NativeFinanceField,NativeFinanceOptions}
  from "../finance-accounting/finance-native-source-kit";
 import {careGangaTheme as t} from "../../../../../packages/design-tokens/src/index";
@@ -38,10 +39,7 @@ async function fetchSource<T>(token:string,path:string,body?:object):Promise<T>{
   method:body?"POST":"GET",cache:"no-store",
   headers:{Authorization:"Bearer "+token,...(body?{"Content-Type":"application/json"}:{})},
   ...(body?{body:JSON.stringify(body)}:{})});
- if(!r.ok)throw Object.assign(Error(r.status===401?"Sign in again to read reports.":
-  r.status===403?"You cannot view these reports in this role or location.":
-  r.status===400?"Select permitted filters and report fields.":
-  "The report could not be verified. Check and retry."),{status:r.status});
+ if(!r.ok)throw await nativeMisProblem(r,"The report could not be verified. Check the source filters and try again.");
  return r.json() as Promise<T>;
 }
 /** Internal Android native C44/C46/C47 standard reporting. One real CG20
