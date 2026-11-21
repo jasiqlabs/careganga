@@ -10,7 +10,7 @@ import {PrivateObjectStorage} from "../infrastructure/private-object-storage";
 
 const ID=/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const SHA=/^[a-f0-9]{64}$/;
-const CLASS=["HR_IDENTITY_PROOF","HR_QUALIFICATION","HR_PORTRAIT"] as const;
+const CLASS=["HR_IDENTITY_PROOF","HR_PAN_PROOF","HR_QUALIFICATION","HR_PORTRAIT"] as const;
 const MIME=["application/pdf","image/jpeg","image/png","image/webp"] as const;
 type Kind=typeof CLASS[number];
 type Input={applicationRef:string;sourceVersion:number;classification:Kind;
