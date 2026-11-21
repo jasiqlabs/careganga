@@ -4,7 +4,7 @@ import {File,Paths} from "expo-file-system";
 import {fetch as expoFetch} from "expo/fetch";
 import {careGangaTheme as t} from "../../../../../packages/design-tokens/src/index";
 type Report={releaseRef:string;orderLabel:string;reportVersion:number;
- releasedAt:string};
+ releasedAt:string;superseded?:boolean};
 type Props={token:string;onExpired:()=>void};
 const ID=/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i;
 const root=process.env.EXPO_PUBLIC_API_URL;
@@ -80,6 +80,7 @@ export function NativeMyLabReports({token,onExpired}:Props){
    <Text style={styles.note}>No laboratory reports have been released yet.</Text>}
   {reports.map(x=><View key={x.releaseRef} style={styles.entry}>
    <Text style={styles.note}>{x.orderLabel} · Version {x.reportVersion}</Text>
+   {x.superseded&&<Text style={styles.note}>Earlier report version — a corrected report is available.</Text>}
    <Text style={styles.note}>Released {
     new Date(x.releasedAt).toLocaleDateString("en-IN")}</Text>
    <Pressable accessibilityRole="button" disabled={busy}
