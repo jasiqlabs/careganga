@@ -11,14 +11,15 @@ type Kind="FINANCE_POSTED_LEDGER"|"FINANCE_POSTED_SUMMARY"|
  "APPOINTMENT_STATUS"|"APPOINTMENT_STATUS_GROUPED"|"APPOINTMENT_DOCTOR_SUMMARY"|"PLATFORM_AUDIT_ACTIVITY"|"DIAGNOSTICS_CATALOG_SUMMARY";
 type View="TABLE"|"SUMMARY"|"CHART"|"PIVOT";
 type Option={ref:string;name:string};
+type AreaOption=Option&{level:string};
 type Template={kind:Kind;label:string;views:View[];description:string};
 type Catalog={
  templates:Template[];
- finance:{ready:boolean;state?:"AVAILABLE"|"ACCESS_RESTRICTED"|"SOURCE_UNAVAILABLE";years:Option[];branches:Option[];allBranches:boolean};
+ finance:{ready:boolean;state?:"AVAILABLE"|"ACCESS_RESTRICTED"|"SOURCE_UNAVAILABLE";years:Option[];branches:Option[];areas?:AreaOption[];allBranches:boolean};
  appointments:{ready:boolean;state?:"AVAILABLE"|"ACCESS_RESTRICTED"|"SOURCE_UNAVAILABLE";centers:Option[];complete:boolean};
  capabilities:{manage:boolean;export:boolean;schedule:boolean}
 };
-export type ReportRequest={kind:Kind;view:View;yearRef?:string;branchRef?:string;
+export type ReportRequest={kind:Kind;view:View;yearRef?:string;branchRef?:string;areaRef?:string;
  centerRef?:string;fromDay?:string;untilDay?:string;status?:string;
  groupBy?:"CATEGORY"|"POSTING_KIND"|"ACCOUNT_NAME";
  sortBy?:"NAME"|"DEBIT"|"CREDIT";sortDirection?:"ASC"|"DESC";offset:number};
@@ -75,6 +76,7 @@ export function MisReportsWorkspace(){
  const [kind,setKind]=useState<Kind|null>(null);
  const [view,setView]=useState<View>("TABLE");
  const [year,setYear]=useState(""),[branch,setBranch]=useState("");
+ const [area,setArea]=useState("");
  const [center,setCenter]=useState(""),[from,setFrom]=useState("");
  const [until,setUntil]=useState(""),[status,setStatus]=useState("");
  const [period,setPeriod]=useState<Period>("CUSTOM");
@@ -92,6 +94,7 @@ export function MisReportsWorkspace(){
    if(!Array.isArray(c.templates))throw Error("Current report catalog could not be verified.");
    if(i===seq.current){setCatalog(c);
     setBranch(c.finance.allBranches?"":c.finance.branches[0]?.ref??"");
+    setArea("");
     setKind(c.templates[0]?.kind??null);
     setView(c.templates[0]?.views[0]??"TABLE");}
   }catch(e){if(i===seq.current){setCatalog(null);setKind(null);
@@ -103,7 +106,7 @@ export function MisReportsWorkspace(){
   const recheck=()=>{
    seq.current++;setCatalog(null);setResult(null);setKind(null);
    setPeriod("CUSTOM");
-   setYear("");setBranch("");setCenter("");setFrom("");setUntil("");
+   setYear("");setBranch("");setArea("");setCenter("");setFrom("");setUntil("");
    setStatus("");void load();
   };
   const onVisible=()=>{if(document.visibilityState==="visible")recheck();
@@ -117,6 +120,7 @@ export function MisReportsWorkspace(){
  kind==="APPOINTMENT_DOCTOR_SUMMARY";
  const ledger=kind==="FINANCE_POSTED_LEDGER";
  const grouped=kind==="FINANCE_POSTED_GROUPED";
+ const geography=ledger||grouped;
  const dated=ledger||grouped||health||kind==="PLATFORM_AUDIT_ACTIVITY";
  function setPreset(next:Period){
   setPeriod(next);setResult(null);
@@ -127,7 +131,8 @@ export function MisReportsWorkspace(){
   if(!kind||!selected)return null;
   return {kind,view:selected.views.includes(view)?view:selected.views[0],
    ...(finance?{
-    ...(year?{yearRef:year}:{}),...(branch?{branchRef:branch}:{})}:{
+    ...(year?{yearRef:year}:{}),...(branch?{branchRef:branch}:{}),
+    ...(geography&&area?{areaRef:area}:{})}:{
     ...(center?{centerRef:center}:{}),
     ...(status?{status}:{}),
    }),
@@ -171,7 +176,7 @@ export function MisReportsWorkspace(){
     {catalog.templates.map(t=><button type="button" key={t.kind}
      aria-pressed={kind===t.kind} onClick={()=>{
       setKind(t.kind);setView(t.views[0]);setResult(null);setProblem("");setNotice("");
-      setYear("");setBranch(catalog.finance.allBranches?"":catalog.finance.branches[0]?.ref??"");setCenter("");setFrom("");setUntil("");setStatus("");
+      setYear("");setBranch(catalog.finance.allBranches?"":catalog.finance.branches[0]?.ref??"");setArea("");setCenter("");setFrom("");setUntil("");setStatus("");
      }} style={{textAlign:"left",border:"1px solid var(--cg-border)",borderRadius:10,
       padding:14,minHeight:84,background:kind===t.kind?"var(--cg-canvas)":"var(--cg-surface)"}}>
      <strong style={{display:"block",color:"var(--cg-text)"}}>{t.label}</strong>
@@ -192,7 +197,16 @@ export function MisReportsWorkspace(){
        <option value="">All permitted years</option>
        {catalog.finance.years.map(o=><option key={o.ref} value={o.ref}>{o.name}</option>)}
       </select></label>
-      {!!catalog.finance.branches.length&&<label>Branch <select value={branch}
+      {geography&&!!catalog.finance.areas?.length&&<label>District or block
+       <select value={area} onChange={e=>{
+        const next=e.target.value;setArea(next);setResult(null);
+        setBranch(next?"":catalog.finance.allBranches?"":catalog.finance.branches[0]?.ref??"");
+       }}>
+        <option value="">No geographic restriction</option>
+        {catalog.finance.areas.map(x=><option key={x.ref} value={x.ref}>
+         {x.level==="DISTRICT"?"District":"Block"} · {x.name}</option>)}
+       </select></label>}
+      {!area&&!!catalog.finance.branches.length&&<label>Branch <select value={branch}
        onChange={e=>setBranch(e.target.value)}>
        {catalog.finance.allBranches&&<option value="">All permitted branches</option>}
        {catalog.finance.branches.map(o=><option key={o.ref} value={o.ref}>{o.name}</option>)}
@@ -308,6 +322,7 @@ export function MisReportsWorkspace(){
    currentRequest={input(0)}
    onRestore={q=>{
     setKind(q.kind);setView(q.view);setYear(q.yearRef??"");setBranch(q.branchRef??"");
+    setArea(q.areaRef??"");
     setGroupBy(q.groupBy??"CATEGORY");setSortBy(q.sortBy??"NAME");
     setSortDirection(q.sortDirection??"ASC");
     setCenter(q.centerRef??"");setFrom(q.fromDay??"");
