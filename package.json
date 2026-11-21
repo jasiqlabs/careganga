@@ -56,7 +56,8 @@
     "typecheck:android-internal": "tsc --noEmit -p apps/android-internal/tsconfig.json",
     "typecheck:android-public": "tsc --noEmit -p apps/android-public/tsconfig.json",
     "verify:local-build": "npm run build:backend && npm run build:web && npm run typecheck:android-internal && npm run typecheck:android-public",
-    "verify:all-source": "node scripts/run-local-source-checks.mjs"
+    "verify:all-source": "node scripts/run-local-source-checks.mjs",
+    "verify:cg14-partner-first-source": "node scripts/verify-cg14-partner-first-source.mjs"
   },
   "devDependencies": {
     "typescript": "7.0.2",
