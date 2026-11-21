@@ -196,6 +196,7 @@ export class SessionService implements IdentityAuthorization {
    Promise<{realmId:string;accountId:string;accessVersion:string}>{
     if(!["mis.reports.view","mis.reports.export","mis.reports.schedule",
       "finance.reports.view","foundation.branches.admin",
+      "communications.notifications.view",
       "platform.audit.view"].includes(action)||
       !implementedCapability(action))
       throw new ForbiddenException("This scheduled reporting action is unavailable");
