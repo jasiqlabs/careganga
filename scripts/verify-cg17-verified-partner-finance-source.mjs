@@ -11,9 +11,9 @@ const file=p=>readFileSync(resolve(root,p),"utf8");
 const s={
  intake:file("apps/backend/src/modules/cg-17-healthcare-assistance-settlements/application/partner-service-claim.service.ts"),
  base:file("apps/backend/db/migrations/1713_cg17_erp_off_partner_service_claim_intake.sql"),
- scan:file("apps/backend/db/migrations/1713b_cg19_partner_payment_proof_classification.sql"),
- proof:file("apps/backend/db/migrations/1713c_cg17_partner_claim_patient_payment_evidence.sql"),
- audit:file("apps/backend/db/migrations/1713d_cg19_protected_partner_invoice_read_audit.sql"),
+ scan:file("apps/backend/db/migrations/1713_cg19_a_partner_payment_proof_classification.sql"),
+ proof:file("apps/backend/db/migrations/1713_cg19_b_cg17_partner_claim_patient_payment_evidence.sql"),
+ audit:file("apps/backend/db/migrations/1713_cg19_c_protected_partner_invoice_read_audit.sql"),
  attest:file("apps/backend/db/migrations/1714_cg17_partner_service_independent_verification.sql"),
  liability:file("apps/backend/db/migrations/1715_cg17_partner_liability_existing_finance_extension.sql"),
  verification:file("apps/backend/src/modules/cg-17-healthcare-assistance-settlements/application/partner-invoice-verification.service.ts"),
