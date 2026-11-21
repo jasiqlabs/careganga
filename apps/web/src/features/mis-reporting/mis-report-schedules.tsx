@@ -1,5 +1,6 @@
 "use client";
 import {useCallback,useEffect,useRef,useState} from "react";
+import {safeClientProblem} from "./mis-safe-error";
 type Saved={ref:string;name:string;state:string};
 type Schedule={ref:string;state:string;cadence:string;timezone:string;localTime:string;
  nextDueAt:string;revision:number;canActivate:boolean};
@@ -8,12 +9,7 @@ const get=async<T,>(path:string,body?:object)=>{
   method:body?"POST":"GET",cache:"no-store",credentials:"same-origin",
   headers:body?{"Content-Type":"application/json"}:undefined,
   ...(body?{body:JSON.stringify(body)}:{})});
- if(!response.ok)throw new Error(response.status===401?
-  "Sign in again for private reporting.":
-  response.status===403?"You no longer have permission for this schedule.":
-  response.status===409?"This schedule cannot be activated yet or has changed.":
-  response.status===400?"Check your saved report, time and recurrence settings.":
-  "The schedule outcome could not be confirmed. Refresh before retrying.");
+ if(!response.ok)throw new Error(await safeClientProblem(response,"This schedule change could not be confirmed. Refresh its status first."));
  return response.json() as Promise<T>;
 };
 /** C49 schedule management: source-safe metadata only. The backend refuses
