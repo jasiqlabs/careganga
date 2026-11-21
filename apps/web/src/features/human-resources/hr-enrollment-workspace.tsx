@@ -103,9 +103,9 @@ export function HrEnrollmentWorkspace({canManage}:{canManage:boolean}){
     throw Error("The save confirmation is not available.");
    const ref="reference" in result&&typeof result.reference==="string"?
     result.reference:selected?.reference??"";
+   reset();await load(offset);
    setStatus({message:(selected?"Draft updated":"Draft created")+
     (ref?" — "+ref:"")+". This is not an approved employee.",error:false});
-   reset();await load(offset);
   }catch(e){
    // Do NOT rotate the original key automatically after an unknown write.
    // Same payload+key is safe to retry after list reconciliation.
