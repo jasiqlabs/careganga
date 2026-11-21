@@ -18,6 +18,9 @@ type Policy={policyRef:string;revisionRef:string;centerRef:string;
  status:string;current:boolean;reviewCaseRef:string|null;reviewStatus:string|null};
 type Props={token:string;canView:boolean;canManage:boolean;canReview:boolean;onExit:()=>void;onExpired:()=>void};
 type Attempt={parts:string;body:Record<string,unknown>;success:string};
+type ServiceEstimate={state:"NO_APPROVED_SERVICE_POLICY"|"POLICY_ESTIMATE_ONLY";
+ grossMinor:string;estimatedSupportMinor:string;estimatedPatientDueMinor:string;
+ serviceKind:Kind;centerName:string;estimateOnly:true;caution:string};
 type Estimate={state:string;grossMinor?:string;estimatedSupportMinor?:string;
  estimatedPatientDueMinor?:string;actualFeeVersion?:number;
  eligiblePatientVerified:false;caution?:string};
@@ -92,6 +95,8 @@ export function NativeHealthcarePolicyScreen({token,canView,canManage,canReview,
  const [doctors,setDoctors]=useState<Doctor[]>([]),[doctor,setDoctor]=useState("");
  const [policies,setPolicies]=useState<Policy[]>([]);
  const [estimate,setEstimate]=useState<Estimate|null>(null);
+ const [quotedGross,setQuotedGross]=useState(""),
+  [serviceEstimate,setServiceEstimate]=useState<ServiceEstimate|null>(null);
  const [loading,setLoading]=useState(true),[busy,setBusy]=useState(false);
  const [message,setMessage]=useState(""),[uncertain,setUncertain]=useState(false);
  const [revision,setRevision]=useState<Policy|null>(null);
@@ -102,6 +107,7 @@ export function NativeHealthcarePolicyScreen({token,canView,canManage,canReview,
  const [from,setFrom]=useState(""),[until,setUntil]=useState("");
  const last=useRef<Attempt|null>(null),seq=useRef(0);
  useEffect(()=>{setEstimate(null)},[center,doctor]);
+ useEffect(()=>{setServiceEstimate(null)},[center,service,quotedGross]);
  const error=useCallback((e:unknown)=>{
   if(e&&typeof e==="object"&&"status" in e&&e.status===401)onExpired();
   setMessage(e instanceof Error?e.message:"Original healthcare support data unavailable.");
@@ -148,6 +154,19 @@ export function NativeHealthcarePolicyScreen({token,canView,canManage,canReview,
    <TextInput accessibilityLabel={label} value={value} onChangeText={change}
     editable={!busy&&!uncertain} style={s.input} placeholderTextColor={t.mutedText}
     autoCapitalize="none"/></View>;
+ async function previewPartnerService(){
+  if(!center||service==="CONSULTATION"||busy||uncertain)return;
+  setBusy(true);setMessage("");setServiceEstimate(null);
+  try{
+   const grossMinor=paise(quotedGross);
+   const result=await api<ServiceEstimate>(token,
+    "centers/"+center+"/services/"+service+"/estimate?grossMinor="+grossMinor);
+   if(result.estimateOnly!==true||result.serviceKind!==service)
+    throw Error("The original partner estimate could not be verified.");
+   setServiceEstimate(result);
+  }catch(e){error(e);}
+  finally{setBusy(false);}
+ }
  function reset(){
   setRevision(null);setService("CONSULTATION");setMode("PERCENT");
   setPercent("50");setFixed("");setCap("500");setFrom("");setUntil("");
@@ -266,6 +285,28 @@ export function NativeHealthcarePolicyScreen({token,canView,canManage,canReview,
        estimate.state==="NO_EFFECTIVE_POLICY"?
        "Approved consultation fee exists but no current support policy.":
        "No approved current consultation fee is available."}
+     </Text>}
+    </View>}
+    {service!=="CONSULTATION"&&<View style={s.panel}>
+     <Text style={s.heading}>Estimated partner service contribution</Text>
+     <Text style={s.note}>Partner-quoted amount only. The original invoice,
+      patient consent, completed service and bank collection have not been
+      verified. This does not approve any payment or Foundation payable.</Text>
+     <Text style={s.fieldLabel}>Partner-quoted gross amount (₹)</Text>
+     <TextInput accessibilityLabel="Partner-quoted gross amount in rupees"
+      value={quotedGross} onChangeText={setQuotedGross} editable={!busy}
+      keyboardType="decimal-pad" maxLength={14} style={s.input}
+      placeholder="1000.00" placeholderTextColor={t.mutedText}/>
+     {button("Calculate provisional Foundation share",
+      ()=>void previewPartnerService(),busy||uncertain||!quotedGross)}
+     {serviceEstimate&&<Text accessibilityLiveRegion="polite" style={s.note}>
+      {serviceEstimate.state==="POLICY_ESTIMATE_ONLY"?
+       "Quoted gross "+money(serviceEstimate.grossMinor)+
+       " · estimated Foundation share "+money(serviceEstimate.estimatedSupportMinor)+
+       " · estimated patient payable "+money(serviceEstimate.estimatedPatientDueMinor):
+       "No active approved contribution. Patient-quoted total "+
+        money(serviceEstimate.grossMinor)}.
+      {" "}{serviceEstimate.caution}
      </Text>}
     </View>}
     <Text style={s.note}>Assistance type</Text>
