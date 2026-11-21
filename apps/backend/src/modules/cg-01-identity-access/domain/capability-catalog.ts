@@ -74,6 +74,7 @@ const capabilities:readonly Capability[]=Object.freeze([
   {key:"finance.budgets.manage",businessLabel:"Draft budgets and manage genuine allocation commitments",group:"Finance & accounting",assignable:true,sensitive:true},
   {key:"finance.budgets.review",businessLabel:"Protected approval of original Foundation budgets",group:"Finance & accounting",assignable:false,sensitive:true},
   {key:"finance.reports.view",businessLabel:"View scoped posted General Ledger, cash/bank and trial balance",group:"Finance & accounting",assignable:true,sensitive:true},
+  {key:"mis.dashboard.view",businessLabel:"View permitted Foundation dashboards and reporting",group:"Reports & MIS",assignable:true,sensitive:true},
   {key:"finance.reconciliation.manage",businessLabel:"Record actual original bank statement matches",group:"Finance & accounting",assignable:true,sensitive:true},
   {key:"finance.reconciliation.review",businessLabel:"Independently verify protected bank reconciliations",group:"Finance & accounting",assignable:false,sensitive:true},
   {key:"cms.content.view",businessLabel:"View website content and publication status",group:"Website & content",assignable:true,sensitive:false},
