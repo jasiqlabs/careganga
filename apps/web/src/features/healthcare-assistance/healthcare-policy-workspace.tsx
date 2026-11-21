@@ -223,17 +223,18 @@ export function HealthcarePolicyWorkspace({canView,canManage,canReview}:Props){
    <div className="form-grid">
     <label className="field">Service type
      <select value={service} disabled={busy||!!revision}
-      onChange={e=>setService(e.target.value as Kind)}>
+      onChange={e=>{const kind=e.target.value as Kind;
+       setService(kind);if(kind!=="CONSULTATION")setDoctor("");}}>
       {kinds.map(v=><option key={v} value={v}>{v.replaceAll("_"," ")}</option>)}
      </select>
     </label>
-    <label className="field">Verified doctor (optional center-wide rule)
+    {service==="CONSULTATION"&&<label className="field">Verified doctor (optional center-wide rule)
      <select value={doctor} disabled={busy||!!revision}
       onChange={e=>setDoctor(e.target.value)}>
       <option value="">All eligible doctors at this center</option>
       {doctors.map(v=><option key={v.doctorRef} value={v.doctorRef}>{v.name}</option>)}
      </select>
-    </label>
+    </label>}
     {!!doctor&&<div className="cg-diagnostics-card">
      <h3>Current verified fee estimate</h3>
      <p>Read-only illustration from the actual CG-14 fee and current approved
