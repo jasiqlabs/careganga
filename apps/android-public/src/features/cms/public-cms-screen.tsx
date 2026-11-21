@@ -130,8 +130,9 @@ function CmsButton({title,onPress,secondary=false}:{
 /** Public Android receives the same original immutable public DTO as Next.js.
  * Revalidate on foreground; neither old cache nor a guessed CG04 Join is shown.
  */
-export function PublicCmsContent({onContact,onLoginVisibility}: {
- onContact:()=>void;onLoginVisibility:(visible:boolean)=>void}){
+export function PublicCmsContent({onContact,onPartnerApplication,onLoginVisibility}: {
+ onContact:()=>void;onPartnerApplication:()=>void;
+ onLoginVisibility:(visible:boolean)=>void}){
  const [slug,setSlug]=useState("home");
  const [mediaScope,setMediaScope]=useState<"PHOTO"|"VIDEO"|"PUBLICATION">("PHOTO");
  const [ngoScope,setNgoScope]=useState<"80g"|"pan-details"|
@@ -275,6 +276,7 @@ export function PublicCmsContent({onContact,onLoginVisibility}: {
    {publishedPaths.some(p=>p.startsWith("/blog/"))&&
     <CmsButton title="News" secondary={slug!=="articles"}
      onPress={()=>setSlug("articles")}/>}
+   <CmsButton title="Partnerships" secondary onPress={onPartnerApplication}/>
    <CmsButton title="Contact" onPress={()=>navigate("/contact")}
     secondary={slug!=="contact"}/>
    {legalPages.some(([name])=>publishedPaths.includes("/policies/"+name))&&
