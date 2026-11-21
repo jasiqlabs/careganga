@@ -10,11 +10,13 @@ const codes=new Set(["CG17_PARTNER_REVIEW_INVALID","CG17_PARTNER_REVIEW_UNAVAILA
 const reject=(status:number,message:string)=>NextResponse.json({message},{
  status,headers:{"Cache-Control":"private, no-store"}});
 function valid(parts:string[],method:"GET"|"POST"){
- if(parts.length!==5&&parts.length!==6)return false;
+ if(![5,6,7].includes(parts.length))return false;
  if(!["partner","foundation"].includes(parts[0])||parts[1]!=="centers"||
    !UUID.test(parts[2])||parts[3]!=="claims"||!CODE.test(parts[4]))
   return false;
- if(method==="GET")return parts.length===5;
+ if(method==="GET")return parts.length===5||
+  (parts.length===7&&parts[0]==="foundation"&&
+   parts[5]==="evidence"&&["invoice","completion","payment"].includes(parts[6]));
  return parts.length===6&&(parts[0]==="partner"&&parts[5]==="attest"||
   parts[0]==="foundation"&&parts[5]==="decide");
 }
@@ -65,6 +67,19 @@ async function relay(req:NextRequest,method:"GET"|"POST",ctx:Context){
     status===429?"Too many verification attempts. Please try again later.":
     status===400?"Check the original collected amount and evidence.":
     "Original verification outcome is uncertain. Check the claim status."));
+  }
+  if(parts.length===7&&parts[5]==="evidence"){
+   const mime=response.headers.get("Content-Type")?.split(";")[0]??"";
+   if(!["application/pdf","image/jpeg","image/png","image/webp"].includes(mime))
+    return reject(503,"Verified document format is unavailable.");
+   const source=await response.arrayBuffer();
+   if(source.byteLength<1||source.byteLength>10485760)
+    return reject(503,"Verified document size could not be confirmed.");
+   return new NextResponse(source,{status:200,headers:{
+    "Cache-Control":"private, no-store","Content-Type":mime,
+    "X-Content-Type-Options":"nosniff",
+    "Content-Disposition":'attachment; filename="CareGanga-private-partner-evidence"'
+   }});
   }
   const responseBody:unknown=await response.json();
   if(!responseBody||typeof responseBody!=="object"||Array.isArray(responseBody))
