@@ -369,6 +369,8 @@ export function NativeCmsEditorial({token,canManage,canPublish,canReview,onExit,
     {newPage.sections.map((sec,i)=><View key={sec.kind+"-"+i} style={styles.panel}>
      <Text style={styles.heading}>{title(sec.kind)}</Text>
      <EditField name="Source content" value={sec.fields} locked={locked}
+      sectionKind={sec.kind}
+      impactGroup={typeof sec.fields.group==="string"?sec.fields.group:""}
       onChange={v=>setNewPage(old=>old?{...old,
        sections:old.sections.map((x,j)=>i===j?{...x,
         fields:v as Record<string,unknown>}:x)}:null)}/>
