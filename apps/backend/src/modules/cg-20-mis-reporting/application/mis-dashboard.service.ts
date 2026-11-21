@@ -60,10 +60,10 @@ export class MisDashboardService{
     Object.entries(raw).some(([k,v])=>typeof v!=="string"||v.length>80||
      (v!==""&&(["yearRef","branchRef","centerRef"].includes(k)?
        !UUID.test(v):k==="fromDay"||k==="untilDay"?
-       !/^\\d{4}-\\d{2}-\\d{2}$/.test(v):!["COMPLETED","CONFIRMED",
+       !/^\d{4}-\d{2}-\d{2}$/.test(v):!["COMPLETED","CONFIRMED",
        "ARRIVED","WAITING","IN_CONSULTATION","NO_SHOW","CANCELLED"].includes(v)))))
    throw new BadRequestException({code:"MIS_DASHBOARD_FILTER_INVALID",
-    message:"Choose a valid financial year or permitted branch."});
+    message:"Choose a permitted source, center, year, date and status filter."});
   const filters:Filters={
    yearRef:typeof raw.yearRef==="string"&&raw.yearRef?raw.yearRef:undefined,
    branchRef:typeof raw.branchRef==="string"&&raw.branchRef?raw.branchRef:undefined
