@@ -1,4 +1,4 @@
-import {BadRequestException, ForbiddenException, Injectable, UnauthorizedException} from "@nestjs/common";
+import {BadRequestException, ForbiddenException, Injectable, NotFoundException, UnauthorizedException} from "@nestjs/common";
 import {SessionService} from "../../cg-01-identity-access/application/session.service";
 import {FinanceReportsService} from "../../cg-09-finance-accounting/application/finance-reports.service";
 import {DiagnosticsCatalogService} from "../../cg-16-healthcare-diagnostics/application/diagnostics-catalog.service";
@@ -183,6 +183,7 @@ export class MisDashboardService{
     if(error instanceof UnauthorizedException||error instanceof BadRequestException)
      throw error;
     if(error instanceof ForbiddenException)return null;
+    if(error instanceof NotFoundException&&healthFilter.centerRef)throw error;
     failures++;
     return {sourceKey:"CG15_APPOINTMENT_STATES",state:"FAILED" as const,
      sourceLabel:"Foundation Appointments",metrics:[]};
