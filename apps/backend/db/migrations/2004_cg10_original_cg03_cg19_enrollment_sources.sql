@@ -163,6 +163,30 @@ CREATE INDEX ix_cg19_hr_pending_upload
 CREATE INDEX ix_cg19_hr_clean_file
  ON cg19_stored_file(realm_id,hr_application_id,hr_source_version,created_at DESC,id)
  WHERE owner_kind='CG10_DRAFT' AND revoked_at IS NULL;
+
+CREATE TABLE cg19_hr_evidence_event(
+ id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+ realm_id uuid NOT NULL,
+ application_id uuid NOT NULL,
+ actor_ref uuid NOT NULL,
+ intent_ref uuid,
+ file_ref uuid,
+ action text NOT NULL CHECK(action IN(
+  'UPLOAD_INITIATED','UPLOAD_VERIFIED','UPLOAD_REJECTED','UPLOAD_UNKNOWN','FILE_REVOKED')),
+ created_at timestamptz NOT NULL DEFAULT now(),
+ FOREIGN KEY(application_id,realm_id)
+  REFERENCES hr_employee_application(id,root_realm_id) ON DELETE RESTRICT,
+ FOREIGN KEY(actor_ref,realm_id) REFERENCES account(id,realm_id) ON DELETE RESTRICT,
+ FOREIGN KEY(intent_ref,realm_id) REFERENCES cg19_upload_intent(id,realm_id) ON DELETE RESTRICT,
+ FOREIGN KEY(file_ref,realm_id) REFERENCES cg19_stored_file(id,realm_id) ON DELETE RESTRICT,
+ CHECK(num_nonnulls(intent_ref,file_ref)=1)
+);
+CREATE INDEX ix_cg19_hr_event
+ ON cg19_hr_evidence_event(realm_id,application_id,created_at DESC,id);
+CREATE TRIGGER cg19_hr_evidence_event_immutable
+ BEFORE UPDATE OR DELETE ON cg19_hr_evidence_event FOR EACH ROW
+ EXECUTE FUNCTION cg19_document_event_immutable();
+
 -- Every HR proof must be tied to an original scanned file, not an upload URL.
 CREATE TABLE hr_application_proof (
  root_realm_id uuid NOT NULL,
