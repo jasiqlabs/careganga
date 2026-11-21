@@ -41,6 +41,7 @@ CREATE INDEX ix_cg17_payout_by_claim ON provider_settlement_payment
 
 CREATE FUNCTION cg17_verified_payout_guard() RETURNS trigger LANGUAGE plpgsql AS $$
 DECLARE rec record; count_lines integer; bank_count integer; liability_count integer;
+ source_line_count integer; matched_line_count integer;
 BEGIN
  IF TG_OP<>'INSERT' THEN
   RAISE EXCEPTION 'Verified original CG09 provider payout is immutable';
@@ -120,8 +121,58 @@ BEGIN
     AND pay.status='ACTIVE' AND g.category='LIABILITY') THEN
   RAISE EXCEPTION 'CG09 payout needs exact Foundation liability and bank lines';
  END IF;
+ -- Every claim line must have been credited into THIS payable account
+ -- by its exact immutable original CG09 accrual. A valid Foundation bank
+ -- withdrawal for some other payable account is not this provider's claim.
+ -- Keep this at the DB owner boundary so API bypass/replay cannot evade it.
+ SELECT count(*) INTO source_line_count
+ FROM provider_settlement_line line
+ WHERE line.root_realm_id=NEW.root_realm_id
+  AND line.settlement_ref=NEW.settlement_ref
+  AND line.center_ref=NEW.center_ref;
+ SELECT count(*) INTO matched_line_count
+ FROM provider_settlement_line line
+ JOIN foundation_liability obligation
+  ON obligation.root_realm_id=line.root_realm_id
+  AND obligation.id=line.liability_ref AND obligation.center_ref=line.center_ref
+ JOIN cg17_financial_effect effect
+  ON effect.root_realm_id=obligation.root_realm_id
+  AND effect.id=line.original_effect_ref
+  AND effect.liability_ref=obligation.id
+  AND effect.effect_kind='LIABILITY_ACCRUAL'
+  AND effect.posting_state='POSTED'
+  AND effect.amount_minor=line.amount_minor
+  AND effect.source_digest=obligation.source_digest
+ JOIN journal accrual
+  ON accrual.id=effect.original_cg09_ref
+  AND accrual.root_realm_id=effect.root_realm_id
+  AND accrual.source_owner='CG-09'
+  AND accrual.posting_kind='GENERAL'
+  AND accrual.status='POSTED'
+  AND accrual.reversal_of_id IS NULL
+  AND accrual.source_ref=effect.id
+  AND accrual.immutable_source_event_key=effect.idempotency_key
+  AND accrual.immutable_payload_digest=effect.source_digest
+  AND accrual.posting_date=obligation.service_local_date
+ JOIN journal_line credit
+  ON credit.root_realm_id=accrual.root_realm_id
+  AND credit.journal_id=accrual.id
+  AND credit.account_id=NEW.liability_account_ref
+  AND credit.branch_id IS NULL
+  AND credit.debit_minor=0
+  AND credit.credit_minor=line.amount_minor
+ WHERE line.root_realm_id=NEW.root_realm_id
+  AND line.settlement_ref=NEW.settlement_ref
+  AND line.center_ref=NEW.center_ref
+  AND (SELECT count(*) FROM journal_line exact
+       WHERE exact.root_realm_id=accrual.root_realm_id
+        AND exact.journal_id=accrual.id)=2;
+ IF source_line_count<1 OR matched_line_count<>source_line_count THEN
+  RAISE EXCEPTION 'Provider payout payable account differs from original accrued claim'
+   USING ERRCODE='P1718';
+ END IF;
  RETURN NEW;
-END $$;
+END $;
 CREATE TRIGGER cg17_verified_payout_immutable BEFORE INSERT OR UPDATE OR DELETE
  ON provider_settlement_payment FOR EACH ROW
  EXECUTE FUNCTION cg17_verified_payout_guard();
