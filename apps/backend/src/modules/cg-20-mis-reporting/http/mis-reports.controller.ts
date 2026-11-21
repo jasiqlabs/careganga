@@ -1,4 +1,4 @@
-import {Body,Controller,Get,Header,Headers,Param,Patch,Post,StreamableFile} from "@nestjs/common";
+import {Body,Controller,Get,Header,Headers,Param,Patch,Post,Query,StreamableFile} from "@nestjs/common";
 import {MisReportSourceService} from "../application/mis-report-source.service";
 import {MisSavedReportService} from "../application/mis-saved-report.service";
 import {MisReportRunService} from "../application/mis-report-run.service";
@@ -30,6 +30,22 @@ export class MisReportsController{
  @Header("Cache-Control","private, no-store")
  savedCreate(@Headers("authorization")token:string,@Body()body:unknown){
   return this.saved.create(token,body);
+ }
+ @Get("saved/share-recipients")
+ @Header("Cache-Control","private, no-store")
+ shareRecipients(@Headers("authorization")token:string,@Query("q")search:string){
+  return this.saved.recipients(token,search);
+ }
+ @Get("saved/shared-with-me")
+ @Header("Cache-Control","private, no-store")
+ sharedWithMe(@Headers("authorization")token:string){
+  return this.saved.sharedWithMe(token);
+ }
+ @Post("saved/:reportRef/share")
+ @Header("Cache-Control","private, no-store")
+ shareDefinition(@Headers("authorization")token:string,@Param("reportRef")ref:string,
+  @Body()body:unknown){
+  return this.saved.grant(token,ref,body);
  }
  @Get("saved/:reportRef")
  @Header("Cache-Control","private, no-store")
