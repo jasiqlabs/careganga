@@ -61,14 +61,29 @@ async function api<T>(token:string,parts:string,
    method,cache:"no-store",headers:{Authorization:"Bearer "+token,
     ...(body?{"Content-Type":"application/json"}:{})},
    body:body?JSON.stringify(body):undefined});
- if(!result.ok)throw Object.assign(new Error(
-  result.status===401?"Session expired. Sign in again.":
-  result.status===403?"Your role cannot manage healthcare policies.":
-  result.status===404?"Current center, doctor or policy is unavailable.":
-  result.status===409?"Original policy changed. Refresh the revision before editing.":
-  result.status===400?"Check current approved center, dates and support cap.":
-  "Policy result is uncertain. Retry the exact original request."),
-  {status:result.status});
+ if(!result.ok){
+  const body:unknown=await result.json().catch(()=>null);
+  const safe=body&&typeof body==="object"&&!Array.isArray(body)?
+   body as Record<string,unknown>:null;
+  const codes=new Set(["CG14_CENTER_SERVICE_NOT_VERIFIED",
+   "ASSISTANCE_POLICY_INVALID","ASSISTANCE_POLICY_DATES_INVALID",
+   "ASSISTANCE_POLICY_CAP_INVALID","ASSISTANCE_POLICY_PERCENT_INVALID",
+   "ASSISTANCE_POLICY_SOURCE_CHANGED","ASSISTANCE_POLICY_REVISION_CHANGED",
+   "ASSISTANCE_POLICY_OVERLAP_OR_REPLAY","ASSISTANCE_APPROVAL_NOT_READY",
+   "ASSISTANCE_REVIEW_CHANGED","ASSISTANCE_INDEPENDENT_REVIEW_REQUIRED"]);
+  const message=safe&&typeof safe.code==="string"&&codes.has(safe.code)&&
+   typeof safe.message==="string"&&safe.message.length>=16&&
+   safe.message.length<=220&&!/[<>\r\n]/.test(safe.message)?
+   safe.message:null;
+  throw Object.assign(new Error(message??
+   (result.status===401?"Session expired. Sign in again.":
+   result.status===403?"Your role cannot manage healthcare policies.":
+   result.status===404?"Current center, doctor or policy is unavailable.":
+   result.status===409?"Original policy changed. Refresh the revision before editing.":
+   result.status===400?"Check current approved center, dates and support cap.":
+   "Policy result is uncertain. Retry the exact original request.")),
+   {status:result.status});
+ }
  return result.json() as Promise<T>;
 }
 export function NativeHealthcarePolicyScreen({token,canView,canManage,canReview,
