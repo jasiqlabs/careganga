@@ -69,6 +69,7 @@ export interface ModuleActionHandlers {
   openPatientBooking: () => void;
   openDoctorLeaveReviews: () => void;
   openOwnCenterPortal: () => void;
+  openWebsiteCms: () => void;
   openHealthDoctorManagement: () => void;
   openHealthProviderManagement: () => void;
   openHealthReviews: () => void;
@@ -468,6 +469,21 @@ export function getAuthorizedModules(
       iconBg: "#F3E8FF",
       iconColor: "#7C3AED",
       onOpen: handlers.openHealthReviews
+    });
+  }
+
+  // Original CG18 staff editorial administration, distinct from Public Android reader.
+  if (roleActions.includes("cms.content.view")) {
+    list.push({
+      key: "foundationWebsiteCms",
+      title: "Website Content Management",
+      shortLabel: "Website",
+      description: "Original Foundation CMS drafts, source revisions and publication review.",
+      category: "PLATFORM & COMMUNICATIONS",
+      iconName: "documents",
+      iconBg: "#E0F2FE",
+      iconColor: "#0284C7",
+      onOpen: handlers.openWebsiteCms
     });
   }
 
