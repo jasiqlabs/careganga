@@ -184,6 +184,35 @@ export class MisReportSourceService{
   return {templates,finance,appointments,capabilities:{
    manage,export:exportAllowed,schedule},sourceReadAt:new Date().toISOString()};
  }
+ /** Dedicated current-principal scheduled projection. Never passes a synthetic
+  * bearer through the interactive CG09/CG15 facades. Only CG09 posted summary
+  * is eligible for automatic execution until each other original source has
+  * a separate delegated current-scope reader.
+  */
+ async previewScheduledFinance(root:string,account:string,raw:unknown):
+  Promise<ReportPreview>{
+  const q=parseSafeReport(raw);
+  if(q.kind!=="FINANCE_POSTED_SUMMARY"||q.view!=="SUMMARY"||
+     q.offset!==0)
+   throw new ForbiddenException({code:"MIS_SCHEDULE_SOURCE_UNSUPPORTED",
+    message:"Automatic delivery is currently available only for posted finance summaries."});
+  const x=await this.finance.scheduledSummary(root,account,q.yearRef,q.branchRef);
+  const readAt=new Date().toISOString();
+  return {kind:q.kind,view:q.view,label:"Posted finance summary",
+   state:x.sourceRecordState==="NO_ROWS"?"EMPTY":"READY",
+   columns:[
+    {key:"incomeMinor",label:"Posted income",unit:"INR_MINOR"},
+    {key:"expenseMinor",label:"Posted expenses",unit:"INR_MINOR"},
+    {key:"surplusMinor",label:"Posted surplus",unit:"INR_MINOR"},
+    {key:"cashBankMinor",label:"Posted cash and bank",unit:"INR_MINOR"}
+   ],rows:x.sourceRecordState==="NO_ROWS"?[]:[{
+    incomeMinor:x.incomeMinor,expenseMinor:x.expenseMinor,
+    surplusMinor:x.surplusMinor,cashBankMinor:x.cashBankMinor
+   }],nextOffset:null,sourceReadAt:readAt,
+   sourceAsOf:x.sourceAsOf,sourceCutoffKind:x.sourceCutoffKind,
+   explanation:x.explanation,
+   scopeLabel:"Current authorized posted finance scope"};
+ }
  async preview(token:string,raw:unknown):Promise<ReportPreview>{
   await this.sessions.requireAction(token,"mis.reports.view");
   const q=parseSafeReport(raw);
