@@ -91,7 +91,9 @@ export function MisDashboardPanel(){
        <small style={{color:"var(--cg-muted)",fontSize:".75rem"}}>Source-read at {source.readAt?new Date(source.readAt).toLocaleString("en-IN"):"current request"}</small>
       </div>)}</div>
       <p style={{fontSize:".78rem",color:"var(--cg-muted)"}}>{source.explanation}</p>
-     </>:<p role="status">Source currently unavailable. No estimates or sample totals are displayed.</p>}
+     </>:<p role="status">{source.state==="EMPTY"?
+      "No posted financial entries for the selected permitted scope.":
+      "Source currently unavailable. No estimates or sample totals are displayed."}</p>}
    </div>)}
    {data.sources.length===0&&<p role="status">No reporting source is permitted for your current role.</p>}
   </>}
