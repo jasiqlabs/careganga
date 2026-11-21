@@ -203,6 +203,7 @@ const patientView=read(web+"my-lab-reports.tsx");
 const nativePatientReports=read("apps/android-public/src/features/patients/native-my-lab-reports.tsx");
 const valuesSql=read("apps/backend/db/migrations/1613_cg16_entered_results_for_generated_report.sql");
 const generated=read(d+"application/clinical-lab-generated-result.service.ts");
+const storageReservation=read("apps/backend/src/modules/cg-19-documents-notifications/infrastructure/verified-private-storage.ts");
 const pdf=read("apps/backend/src/modules/cg-19-documents-notifications/application/laboratory-report-renderer.ts");
 const staffEntry=read(web+"clinical-lab-result-entry.tsx");
 const nativeEntry=read(native+"native-lab-result-entry.tsx");
@@ -311,6 +312,12 @@ must(releaseUiWeb,/notificationStates/,
  "Web clinician can see actual queued or delivered source");
 must(releaseUiNative,/notificationStates/,
  "Native clinician can see same actual delivery state");
+must(generated,/\/lab-generated\//,
+ "Generated lab PDF must use the original server-only private object key namespace");
+must(storageReservation,/invoices\|receipts\|lab-generated/,
+ "Client upload reservation must deny server-generated lab PDFs");
+must(report,/reservePrivateUpload/,
+ "Existing staff upload route continues to use original CG19 private reservations");
 must(generated,/this\.evidence\.status\(token,center,order,original\.intent\.id\)/,
  "Generated report retry must reuse the original CG16 verified file/consent status");
 must(generated,/proof\.status!=="VALIDATED"\|\|!proof\.cleanVerified/,
