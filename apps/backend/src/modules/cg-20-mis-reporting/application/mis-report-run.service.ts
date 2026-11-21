@@ -94,6 +94,9 @@ export class MisReportRunService{
   // Current original CG-09/CG-15 row, field, branch, center and purpose grants,
   // including sensitive small population suppression.
   const preview=await this.sources.preview(token,row.safe_request);
+  if(preview.state==="PARTIAL")
+   throw new BadRequestException({code:"MIS_RUN_PARTIAL",
+    message:"This report is incomplete. Narrow its filters before exporting."});
   if(preview.state==="SUPPRESSED")
    throw new ForbiddenException({code:"MIS_RUN_SUPPRESSED",
     message:"This report cannot be shared for a small private group."});
@@ -164,6 +167,9 @@ export class MisReportRunService{
   try{
    // Revalidate scope after durable acceptance, before generating bytes.
    const fresh=await this.validateSource(token,claimed.rows[0]);
+   if(fresh.state==="PARTIAL")
+    throw new BadRequestException({code:"MIS_RUN_PARTIAL",
+     message:"A report source was unavailable or results were truncated. Narrow the filters."});
    if(fresh.nextOffset!==null)
     throw new BadRequestException({code:"MIS_RUN_LIMIT",field:"rows",
      message:"The source grew beyond 50 entries. Narrow your report filters."});
