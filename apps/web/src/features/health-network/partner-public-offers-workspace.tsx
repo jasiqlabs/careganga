@@ -113,7 +113,7 @@ export function PartnerPublicOffersWorkspace({mode,centerRef}:Props){
    "Approve partner medicine, nursing and procedure listings"}</h3>
   <p>Basic indicative service names and prices only. No inventory, prescribing,
    stock, theatre management, booking, actual invoice or automatic discount.</p>
-  {mode==="foundation"||!centerRef?<label>Verified center
+  {!centerRef?<label>Verified center
    <select disabled={busy||uncertain} value={center}
     onChange={e=>{setCenter(e.target.value);original.current=null;}}>
     <option value="">Choose a verified center</option>
@@ -127,8 +127,8 @@ export function PartnerPublicOffersWorkspace({mode,centerRef}:Props){
    onClick={()=>void refresh()}>Refresh original offers</button>}
   {mode==="partner"&&!!center&&!uncertain&&<div className="form-grid">
    <label>Category
-    <select value={kind} disabled={busy} onChange={e=>changed(setKind,
-     e.target.value as typeof kind)}>
+    <select value={kind} disabled={busy} onChange={e=>{if(!busy&&!uncertain){setKind(e.target.value as typeof kind);
+     original.current=null;setNotice("");setError("");}}}>
      {kindOptions.map(k=><option key={k} value={k}>{k==="OT"?"Procedure / OT":k}</option>)}
     </select></label>
    <label>Medicine or service name
