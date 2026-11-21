@@ -88,8 +88,19 @@ export class PartnerServiceClaimService{
    await c.query("COMMIT");begun=false;return result;
   }catch(e){
    if(begun)try{await c.query("ROLLBACK");}catch{}
-   if(e&&typeof e==="object"&&"code" in e&&e.code==="23505")
+   const errorCode=e&&typeof e==="object"&&"code" in e?e.code:null;
+   if(errorCode==="23505")
     throw new ConflictException({code:"CG17_PARTNER_CLAIM_DUPLICATE_INVOICE"});
+   if(errorCode==="P1726"||errorCode==="P1727")
+    throw new ConflictException({code:"CG17_PARTNER_CLAIM_CENTER_UNAVAILABLE"});
+   if(errorCode==="P1728")
+    throw new NotFoundException({code:"CG17_PARTNER_CLAIM_PATIENT_UNAVAILABLE"});
+   if(errorCode==="P1729")
+    throw new BadRequestException({code:"CG17_PARTNER_CLAIM_PROOF_REQUIRED"});
+   if(errorCode==="P1730"||errorCode==="P1731")
+    throw new ConflictException({code:"CG17_PARTNER_CLAIM_POLICY_UNAVAILABLE"});
+   if(errorCode==="P1725")
+    throw new ConflictException({code:"CG17_PARTNER_CLAIM_SOURCE_FROZEN"});
    throw e;
   }finally{c.release()}
  }
