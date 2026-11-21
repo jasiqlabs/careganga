@@ -1,5 +1,6 @@
 "use client";
 import {useCallback,useEffect,useState} from "react";
+import {FoundationJournalCorrectionPanel} from "./foundation-journal-correction-panel";
 const ID=/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i;
 type Year={yearRef:string;name:string};
 type Account={accountRef:string;name:string;kind:"EXPENSE"|"LIABILITY"};
@@ -138,6 +139,8 @@ export function FoundationJournalPostingPanel({centerRef,liabilityRef,onPosted}:
    {uncertain&&<p role="alert">The original posting result may be committed.
     Check its exact source before retrying. No second journal request is created.</p>}
   </>}
+  {value?.foundationJournalPosted&&<FoundationJournalCorrectionPanel
+   centerRef={centerRef} liabilityRef={liabilityRef} onCorrected={onPosted}/>}
   <button type="button" disabled={busy||loading} onClick={()=>void check()}>
    Check current original CG09 posting</button>
  </section>;
