@@ -37,6 +37,12 @@ export function PartnerApplicationInbox({canManage}:{canManage:boolean}){
   setLoading(true);setError("");
   try{
    const r=await call<Page>("partner-applications?status="+status+"&offset="+position);
+   if(!r||!Array.isArray(r.applications)||
+      !r.applications.every(a=>a&&typeof a.applicationRef==="string"&&
+        typeof a.name==="string"&&typeof a.status==="string"&&
+        Number.isInteger(a.revision))||
+      !(r.nextOffset===null||Number.isInteger(r.nextOffset)))
+     throw Error("The partner application list could not be verified. Refresh the page.");
    setList(prev=>position===0?r.applications:[...prev,...r.applications]);
    setOffset(r.nextOffset);
    if(position===0){setSelected(null);setLink("");setOptions([]);}
@@ -50,11 +56,13 @@ export function PartnerApplicationInbox({canManage}:{canManage:boolean}){
   try{
    if(app.type==="DOCTOR"){
     const r=await call<{doctors:{doctorRef:string;name:string;status:string}[]}>("doctors?q="+encodeURIComponent(app.name));
+    if(!r||!Array.isArray(r.doctors))throw Error("Matching doctors are unavailable.");
     setOptions(r.doctors.filter(v=>v.name.toLowerCase()===app.name.toLowerCase())
       .map(v=>({id:v.doctorRef,label:v.name+" · "+stateName(v.status)})));
    }else{
     const r=await call<{providers:{providerRef:string;name:string;code:string;
       type:string;status:string}[]}>("providers?offset=0&q="+encodeURIComponent(app.name));
+    if(!r||!Array.isArray(r.providers))throw Error("Matching providers are unavailable.");
     setOptions(r.providers.filter(v=>v.name.toLowerCase()===app.name.toLowerCase()&&
      (app.type==="SURGERY_CENTER"?["HOSPITAL","CLINIC"].includes(v.type):
       v.type===app.type))
