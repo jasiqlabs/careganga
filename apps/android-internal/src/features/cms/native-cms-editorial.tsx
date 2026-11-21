@@ -5,6 +5,7 @@ import {SafeAreaView} from "react-native-safe-area-context";
 import * as Crypto from "expo-crypto";
 import {careGangaTheme as t} from "../../../../../packages/design-tokens/src/index";
 import {identityRequest} from "../identity-access/http-client";
+import {NativeCmsMediaUploader} from "./native-cms-media-uploader";
 type Page={pageRef:string;kind:string;slug:string;title:string;
  version:string;draftStatus:string;publicStatus:string|null};
 type Section={kind:string;order:number;fields:Record<string,unknown>};
@@ -358,8 +359,13 @@ export function NativeCmsEditorial({token,canManage,canPublish,onExit,
        onChange={v=>replaceSection(i,v as Record<string,unknown>)}
        locked={locked}/>
     </View>)}
-    <Text style={styles.note}>Protected media: {draft.assets.length} original
-     validated placements. Existing verified media remains unchanged on save.</Text>
+    <Text style={styles.note}>Original scanner-verified placements: {draft.assets.length}</Text>
+    {canManage&&selected.status==="DRAFT"&&
+     <NativeCmsMediaUploader token={token} kind={selected.kind}
+      pageRef={selected.pageRef} revisionRef={selected.revisionRef}
+      assets={draft.assets} onExpired={onExpired} disabled={locked}
+      onChange={assets=>change("assets",assets)}/>}
+
     {canManage&&button(selected.status==="DRAFT"?
      "Save original unpublished draft":"Create next unpublished revision",()=>{
      if(!draft||!selected)return;
