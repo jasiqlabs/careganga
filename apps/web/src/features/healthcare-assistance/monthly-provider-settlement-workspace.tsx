@@ -8,7 +8,8 @@ type Summary={month:string;state:string;settlementRef?:string;revision?:number;
  centerGrossServicesMinor?:string;patientPayableMinor?:string;
  patientCollectedVerifiedMinor?:string;patientRefundedMinor?:string;
  foundationApprovedLiabilityMinor?:string;
- originalApprovedFoundationMinor?:string;adjustedFoundationMinor?:string;
+ originalApprovedFoundationMinor?:string;
+ effectiveState?:string;originalClaimState?:string;adjustedFoundationMinor?:string;
  grossFoundationPaidMinor?:string;verifiedProviderRecoveryMinor?:string;
  collectionsScope?:"VERIFIED_TO_DATE_FOR_COMPLETED_SERVICES";
  outstandingMinor:string;currency?:string;independentlyApproved?:boolean;
@@ -174,6 +175,9 @@ export function MonthlyProviderSettlementWorkspace({canPropose,canReview,canPay}
     </section>}
    <dl>
     <dt>Original monthly claim</dt><dd>{data.state.replaceAll("_"," ")}</dd>
+    {data.effectiveState&&data.effectiveState!==data.state&&<>
+     <dt>Current verified payable status</dt>
+     <dd>{data.effectiveState.replaceAll("_"," ")}</dd></>}
     <dt>{data.state==="NOT_PREPARED"?"Eligible posted liabilities":
      data.state==="PROPOSED"?"Prepared claim awaiting independent approval":
      "Approved monthly Foundation claim"}</dt>
