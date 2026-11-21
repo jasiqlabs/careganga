@@ -52,7 +52,7 @@ export class HrEnrollmentSourceFacade{
   return app;
  }
  async frozen(tx:PoolClient,realm:string,revisionRef:string,revisionNo:number,
-  digest:string):Promise<HrFrozenSource>{
+  digest:string,requireCurrent=true):Promise<HrFrozenSource>{
   if(!ID.test(revisionRef)||!Number.isSafeInteger(revisionNo)||revisionNo<1||
    !/^[a-f0-9]{64}$/.test(digest))throw new BadRequestException("Invalid original employee revision");
   const q=await tx.query<{application_id:string;root_realm_id:string;
@@ -69,9 +69,9 @@ export class HrEnrollmentSourceFacade{
    "AND rev.source_digest=$4 FOR SHARE OF rev,app",
    [realm,revisionRef,revisionNo,digest]);
   const source=q.rows[0];
-  if(!source||source.app_revision_no!==revisionNo||
+  if(!source||(requireCurrent&&(source.app_revision_no!==revisionNo||
     !["SUBMISSION_UNCONFIRMED","SUBMITTED","IN_REVIEW","FINAL_APPROVED_PENDING_ACTIVATION",
-      "PENDING_ACCESS","ACTIVE"].includes(source.app_state)||
+      "PENDING_ACCESS","ACTIVE"].includes(source.app_state)))||
     !Array.isArray(source.private_file_versions)||
     sourceHash(source.source_snapshot)!==digest)
    throw new ConflictException("The employee submission changed or cannot be verified");
