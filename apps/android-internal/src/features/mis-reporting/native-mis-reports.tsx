@@ -6,6 +6,7 @@ import {NativeFinanceAction,NativeFinanceField,NativeFinanceOptions}
 import {careGangaTheme as t} from "../../../../../packages/design-tokens/src/index";
 import {NativeMisSaved} from "./native-mis-saved";
 import {NativeMisExports} from "./native-mis-exports";
+import {NativeMisSchedules} from "./native-mis-schedules";
 type Kind="FINANCE_POSTED_LEDGER"|"FINANCE_POSTED_SUMMARY"|
  "FINANCE_POSTED_TREND"|"APPOINTMENT_STATUS";
 type Template={kind:Kind;label:string;views:("TABLE"|"SUMMARY"|"CHART")[];description:string};
@@ -162,6 +163,8 @@ export function NativeMisReports({token,onExpired}:{token:string;onExpired:()=>v
   </View>}
   {catalog?.capabilities?.export===true&&
    <NativeMisExports token={token} onExpired={onExpired} current={request(0)}/>}
+  {catalog?.capabilities?.schedule===true&&
+   <NativeMisSchedules token={token} onExpired={onExpired}/>}
   {catalog&&<NativeMisSaved token={token} onExpired={onExpired}
    canManage={catalog.capabilities?.manage===true}
    current={request(0)}
