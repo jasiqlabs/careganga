@@ -394,8 +394,7 @@ checks.push(["Confirmed CG18 edit cannot leave stale Web drawer or native create
  internalCms.includes('if(pending||uncertain){')&&
  internalCms.includes("same-key retry on this screen.")]);
 checks.push(["Original main CMS Web cannot abandon uncertain CG03 or page mutation key",
- files.admin.includes("The previous original action may have committed")||
-  files.admin.includes("Resolve the previous original CMS request using its existing")&&
+ files.admin.includes("Resolve the previous original CMS request using its existing")&&
  files.admin.includes("if(busy||pending||!review||reviewPassword.length<8)")&&
  files.admin.includes("setSelected(null);setDraft(blank")&&
  !files.admin.includes('setDraft(blank("HOME"));setPending(null);setPreview(false)')]);
