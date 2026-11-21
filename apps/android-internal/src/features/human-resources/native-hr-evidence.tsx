@@ -58,7 +58,7 @@ export function NativeHrEvidence({token,applicationRef,revision,onExpired,onFile
   setIntent("");setPicked(null);setUncertain(false);
   original.current=null;setItems([]);
   void refresh();
- },[applicationRef,revision,generation,token,refresh]); // reset on source, session or permission change
+ },[applicationRef,revision,generation,token]); // bounded refresh only when selected source, session or explicit status changes
  const choose=async()=>{
   if(busy)return;
   try{
