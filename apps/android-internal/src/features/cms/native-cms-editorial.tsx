@@ -223,6 +223,14 @@ export function NativeCmsEditorial({token,canManage,canPublish,canReview,onExit,
    typeof e.status==="number"&&e.status<500))setUncertain(true);
   setError(e instanceof Error?e.message:"The original CMS outcome is uncertain.");
  },[onExpired]);
+ // A failed GET is not an uncertain mutation. Keep any earlier original
+ // idempotency key while the user explicitly resolves that mutation.
+ const readFailure=useCallback((e:unknown)=>{
+  if(e&&typeof e==="object"&&"status" in e&&e.status===401)
+   onExpired();
+  setError(e instanceof Error?e.message:
+   "Current Foundation CMS page details could not be refreshed.");
+ },[onExpired]);
  const list=useCallback(async()=>{
   const response=await api<{pages:Page[]}>(token,"pages");
   if(!response||!Array.isArray(response.pages)||response.pages.length>100)
@@ -240,10 +248,10 @@ export function NativeCmsEditorial({token,canManage,canPublish,canReview,onExit,
  },[token]);
  useEffect(()=>{
   const rev=++turn.current;setLoading(true);
-  void list().catch(e=>{if(turn.current===rev)fail(e)})
+  void list().catch(e=>{if(turn.current===rev)readFailure(e)})
    .finally(()=>{if(turn.current===rev)setLoading(false)});
   return()=>{turn.current++};
- },[list,fail]);
+ },[list,readFailure]);
  const content=(v:Detail)=>({
   kind:v.kind,slug:v.slug,title:v.title,seoTitle:v.seoTitle,
   seoDescription:v.seoDescription,canonicalPath:v.canonicalPath,
@@ -262,10 +270,20 @@ export function NativeCmsEditorial({token,canManage,canPublish,canReview,onExit,
     token,cmd.path,cmd.method,{requestKey:cmd.key,...cmd.payload});
    if(!outcome.confirmed)
     throw Error("The original Foundation CMS did not confirm this action.");
+   // The server has definitively committed THIS command; a later list or
+   // detail GET cannot make the write outcome unknown or revive its key.
    setUncertain(false);setPending(null);
-   await list();
-   await open(outcome.pageRef??selected?.pageRef??"");
    setNotice("Confirmed original editorial state: "+(outcome.status??"Saved"));
+   try{
+    await list();
+    await open(outcome.pageRef??selected?.pageRef??"");
+   }catch(refreshError){
+    setSelected(null);setDraft(null);
+    if(refreshError&&typeof refreshError==="object"&&
+      "status" in refreshError&&refreshError.status===401)onExpired();
+    setError("This original CMS action is CONFIRMED, but its latest page "+
+     "could not be refreshed. Refresh the page list before editing again.");
+   }
   }catch(e){
    if(e&&typeof e==="object"&&"status" in e&&
     typeof e.status==="number"&&e.status<500)
@@ -320,8 +338,10 @@ export function NativeCmsEditorial({token,canManage,canPublish,canReview,onExit,
    {uncertain&&<Text style={styles.error}>The last save or publication may
     have committed. Check the original page before trying another request.</Text>}
    {button("Refresh original CMS pages",()=>{
-    setLoading(true);setUncertain(false);setPending(null);
-    void list().catch(fail).finally(()=>setLoading(false));
+    setLoading(true);setError("");
+    // A list GET is not proof that an earlier uncertain write was ours.
+    // Preserve the original request key until a same-key reply confirms it.
+    void list().catch(readFailure).finally(()=>setLoading(false));
    },busy)}
    {pending&&button("Retry same original request",()=>{
     setUncertain(false);void execute(pending);
@@ -334,7 +354,7 @@ export function NativeCmsEditorial({token,canManage,canPublish,canReview,onExit,
      " · Public "+title(p.publicStatus??"Not published"),()=>{
       if(busy)return;
       setError("");void open(p.pageRef).catch(fail);
-     },busy)}
+     },busy||uncertain)}
    </View>)}
    {canManage&&!newPage&&button("Create a new original Foundation page",()=>{
     setSelected(null);setDraft(null);setError("");
