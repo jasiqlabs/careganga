@@ -21,17 +21,31 @@ type Entry={lineRef:string;value:string;unit:string;observation:string};
 type SourceLine={id:string;test_name_snapshot:string};
 type Order={patient_ref:string;display_order_ref:string;first_name:string;
  last_name:string;virtual_display_id:string;center_name:string};
-type Result={id:string;created_at:Date;source_key:string;result_state:string};
+type Result={id:string;created_at:Date;source_key:string;result_state:string;version_no:number;corrects_revision_ref:string|null};
 type Intent={id:string;order_ref:string;center_ref:string;result_revision_ref:string;object_key:string;
  status:string;sha256:string;size_bytes:string;request_digest:string;
  patient_ref:string;request_key:string};
-type Generated={result:Result;intent:Intent;pdf:Buffer;sourceDigest:string};
+type Generated={result:Result;intent:Intent;pdf:Buffer;sourceDigest:string;correction:boolean};
+type Correction={previousReleaseRef:string;reason:string};
 function parse(raw:unknown){
  if(!raw||typeof raw!=="object"||Array.isArray(raw)||
-  Object.keys(raw).length!==2||!("requestKey" in raw)||
+  Object.keys(raw).length<2||Object.keys(raw).length>3||
+  Object.keys(raw).some(k=>!["requestKey","results","correction"].includes(k))||
+  !("requestKey" in raw)||
   !("results" in raw))
   throw new BadRequestException({code:"LAB_RESULT_VALUES_REQUIRED"});
- const a=raw as {requestKey:unknown;results:unknown};
+ const a=raw as {requestKey:unknown;results:unknown;correction?:unknown};
+ let correction:Correction|null=null;
+ if(a.correction!==undefined){
+  const v=a.correction;
+  if(!v||typeof v!=="object"||Array.isArray(v)||
+   Object.keys(v).length!==2||!("previousReleaseRef" in v)||
+   !("reason" in v)||typeof v.reason!=="string"||
+   v.reason.trim().length<8||v.reason.length>500||
+   /[\u0000-\u001f\u007f]/.test(v.reason))
+   throw new BadRequestException({code:"LAB_CORRECTION_REASON_REQUIRED"});
+  correction={previousReleaseRef:uuid(v.previousReleaseRef),reason:v.reason.trim()};
+ }
  const requestKey=uuid(a.requestKey);
  if(!Array.isArray(a.results)||a.results.length<1||a.results.length>50)
   throw new BadRequestException({code:"LAB_RESULT_VALUES_REQUIRED"});
@@ -52,7 +66,7 @@ function parse(raw:unknown){
  }).sort((x,y)=>x.lineRef.localeCompare(y.lineRef));
  if(new Set(rows.map(x=>x.lineRef)).size!==rows.length)
   throw new ConflictException({code:"LAB_RESULT_DUPLICATE_TEST_LINE"});
- return {requestKey,rows};
+ return {requestKey,rows,correction};
 }
 @Injectable()
 /** CG16 original staff result entry -> CG19-generated private PDF.
@@ -139,10 +153,10 @@ export class ClinicalLabGeneratedResultService{
   });
  }
  private async prepare(c:PoolClient,token:string,center:string,
-  order:string,key:string,values:Entry[]):Promise<Generated>{
+  order:string,key:string,values:Entry[],correction:Correction|null):Promise<Generated>{
   const actor=await this.admission.requireCurrent(c,token,center,"lab.results.record");
-  const requestDigest=hash(["CG16_GENERATED_LAB_RESULT_V1",actor.realmId,
-   center,order,values]);
+  const requestDigest=hash(["CG16_GENERATED_LAB_RESULT_V2",actor.realmId,
+   center,order,values,correction]);
   const prior=await c.query<Intent&{created_at:Date}>(
    "SELECT intent.*,result.created_at FROM cg19_lab_result_intent intent "+
    "JOIN lab_result_revision result ON result.root_realm_id=intent.root_realm_id "+
@@ -171,7 +185,7 @@ export class ClinicalLabGeneratedResultService{
   let result:Result;
   if(existing){
    const q=await c.query<Result>(
-    "SELECT id,created_at,source_key,result_state FROM lab_result_revision "+
+    "SELECT id,created_at,source_key,result_state,version_no,corrects_revision_ref FROM lab_result_revision "+
     "WHERE root_realm_id=$1 AND id=$2 AND order_ref=$3",
     [actor.realmId,existing.result_revision_ref,order]);
    if(!q.rows[0]||q.rows[0].source_key!==key)
@@ -191,7 +205,7 @@ export class ClinicalLabGeneratedResultService{
    const stored=await c.query<Result>(
     "INSERT INTO lab_result_revision(root_realm_id,order_ref,version_no,"+
     "operator_account_ref,source_key) VALUES($1,$2,1,$3,$4) "+
-    "RETURNING id,created_at,source_key,result_state",
+    "RETURNING id,created_at,source_key,result_state,version_no,corrects_revision_ref",
     [actor.realmId,order,actor.accountId,key]);
    result=stored.rows[0];
    for(const v of values){
@@ -218,7 +232,8 @@ export class ClinicalLabGeneratedResultService{
   if(existing){
    if(existing.sha256!==sha||Number(existing.size_bytes)!==pdf.length)
     throw new ConflictException({code:"LAB_RESULT_GENERATED_PDF_CHANGED"});
-   return {result,intent:existing,pdf,sourceDigest:requestDigest};
+   return {result,intent:existing,pdf,sourceDigest:requestDigest,
+    correction:result.corrects_revision_ref!==null};
   }
   const intent=await c.query<Intent>(
    "INSERT INTO cg19_lab_result_intent(root_realm_id,order_ref,center_ref,"+
@@ -235,13 +250,14 @@ export class ClinicalLabGeneratedResultService{
    "INSERT INTO cg19_lab_result_event(root_realm_id,intent_ref,"+
    "actor_ref,action) VALUES($1,$2,$3,'GENERATED_INTENT')",
    [actor.realmId,intent.rows[0].id,actor.accountId]);
-  return {result,intent:intent.rows[0],pdf,sourceDigest:requestDigest};
+  return {result,intent:intent.rows[0],pdf,sourceDigest:requestDigest,
+   correction:result.corrects_revision_ref!==null};
  }
  async generate(token:string,centerRaw:string,orderRaw:string,body:unknown){
   const center=uuid(centerRaw),order=uuid(orderRaw);
   const input=parse(body);
   const original=await this.tx(c=>this.prepare(
-   c,token,center,order,input.requestKey,input.rows));
+   c,token,center,order,input.requestKey,input.rows,input.correction));
   if(original.intent.status==="VALIDATED")
    return {state:"RESULT_READY",resultRef:original.result.id,
     generated:true,patientReleased:false,replayed:true};
