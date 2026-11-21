@@ -1,7 +1,9 @@
 "use client";
 import {useCallback,useEffect,useRef,useState} from "react";
 type Status={resultRef:string;reportDigest:string;releaseState:string;
- patientDownloadAvailable:boolean};
+ patientDownloadAvailable:boolean;
+ notificationStates?:{channel:string;state:string}[];
+ notificationDelivered?:boolean};
 type Props={centerRef:string;orderRef:string};
 const base="/api/lab-clinical/";
 async function api<T>(path:string,body?:object):Promise<T>{
