@@ -8,7 +8,7 @@ import {MisFinanceTrend,MisAppointmentDistribution,MisAppointmentGroupBars} from
 import {MisGroupedFinanceChart} from "./mis-grouped-finance-chart";
 type Kind="FINANCE_POSTED_LEDGER"|"FINANCE_POSTED_SUMMARY"|
  "FINANCE_POSTED_TREND"|"FINANCE_POSTED_GROUPED"|
- "APPOINTMENT_STATUS"|"APPOINTMENT_STATUS_GROUPED"|"PLATFORM_AUDIT_ACTIVITY"|"DIAGNOSTICS_CATALOG_SUMMARY";
+ "APPOINTMENT_STATUS"|"APPOINTMENT_STATUS_GROUPED"|"APPOINTMENT_DOCTOR_SUMMARY"|"PLATFORM_AUDIT_ACTIVITY"|"DIAGNOSTICS_CATALOG_SUMMARY";
 type View="TABLE"|"SUMMARY"|"CHART"|"PIVOT";
 type Option={ref:string;name:string};
 type Template={kind:Kind;label:string;views:View[];description:string};
@@ -113,7 +113,8 @@ export function MisReportsWorkspace(){
  },[load]);
  const selected=catalog?.templates.find(t=>t.kind===kind);
  const finance=kind?.startsWith("FINANCE_");
- const health=kind==="APPOINTMENT_STATUS"||kind==="APPOINTMENT_STATUS_GROUPED";
+ const health=kind==="APPOINTMENT_STATUS"||kind==="APPOINTMENT_STATUS_GROUPED"||
+ kind==="APPOINTMENT_DOCTOR_SUMMARY";
  const ledger=kind==="FINANCE_POSTED_LEDGER";
  const grouped=kind==="FINANCE_POSTED_GROUPED";
  const dated=ledger||grouped||health||kind==="PLATFORM_AUDIT_ACTIVITY";
@@ -259,6 +260,11 @@ export function MisReportsWorkspace(){
        expenseMinor:r.expenseMinor??"0"}))}}/>}
     {result.view==="CHART"&&result.kind==="FINANCE_POSTED_GROUPED"&&
      <MisGroupedFinanceChart rows={result.rows.map(x=>({groupLabel:x.groupLabel??"",debitMinor:x.debitMinor??"0",creditMinor:x.creditMinor??"0"}))}/>}
+    {result.view==="CHART"&&result.kind==="APPOINTMENT_DOCTOR_SUMMARY"&&
+     <MisAppointmentGroupBars rows={result.rows.map(r=>({
+      statusLabel:(r.doctorName??"Doctor")+" · "+(r.centerName??"Center"),
+      count:r.bookings??"0"
+     }))}/>}
     {result.view==="CHART"&&result.kind==="APPOINTMENT_STATUS_GROUPED"&&
      <MisAppointmentGroupBars rows={result.rows.map(r=>({
       statusLabel:r.statusLabel??"",count:r.count??"0"
