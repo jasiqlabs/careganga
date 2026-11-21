@@ -1,6 +1,6 @@
 "use client";
 import {useCallback,useEffect,useRef,useState} from "react";
-type Kind="PHARMACY"|"NURSING"|"OT"|"DIAGNOSTICS";
+type Kind="PHARMACY"|"NURSING"|"OT"|"LAB";
 type Choice={centerRef:string;centerName:string;kind:Kind};
 type FileItem={fileRef:string;classification:string;revoked:boolean;createdAt:string};
 type Page={files:FileItem[];next:string|null};
@@ -127,7 +127,7 @@ export function PatientPartnerClaims({consentGranted}:{consentGranted:boolean}){
      setSelected(e.target.value);resetReplay();}}>
      <option value="">Choose a currently approved partner</option>
      {choices.map(o=><option key={o.centerRef+"|"+o.kind}
-      value={o.centerRef+"|"+o.kind}>{o.centerName} — {o.kind==="OT"?"Procedure / OT":o.kind==="PHARMACY"?"Pharmacy":o.kind==="DIAGNOSTICS"?"Lab / diagnostics":"Nursing"}</option>)}
+      value={o.centerRef+"|"+o.kind}>{o.centerName} — {o.kind==="OT"?"Procedure / OT":o.kind==="PHARMACY"?"Pharmacy":o.kind==="LAB"?"Lab / diagnostics":"Nursing"}</option>)}
     </select>
    </label>
    <label>Partner invoice number
