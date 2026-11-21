@@ -8,6 +8,7 @@ import {careGangaTheme as theme} from "../../../../../packages/design-tokens/src
 import {DoctorSchedulePreview} from "./doctor-schedule-preview";
 import {PublicLabOfferDirectory,hasCurrentLabOffers} from "./public-lab-offer-directory";
 import {NativeApprovedConsultationBenefits} from "./native-approved-consultation-benefits";
+import {NativePublicPartnerOffers} from "./native-public-partner-offers";
 
 const base=process.env.EXPO_PUBLIC_API_URL;
 type Mode="centers"|"doctors";
@@ -368,6 +369,9 @@ export function PublicHealthcareDirectory({onExit,reschedule}:{onExit:()=>void;
       <Text style={styles.label}>{f.question}</Text><Text>{f.answer}</Text>
      </View>)}
     </>}
+    {selection?.kind==="center"&&
+     <NativePublicPartnerOffers key={"partner-offers:"+selection.slug}
+      centerSlug={selection.slug}/>}
     <Text style={styles.cardTitle}>Declared services</Text>
     {centerDetails.declaredServices.map(s=><Text key={s}>• {nice(s)}</Text>)}
     <Text style={styles.cardTitle}>Working hours</Text>
