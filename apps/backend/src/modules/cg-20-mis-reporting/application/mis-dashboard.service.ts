@@ -2,6 +2,7 @@ import {BadRequestException, ForbiddenException, Injectable} from "@nestjs/commo
 import {SessionService} from "../../cg-01-identity-access/application/session.service";
 import {FinanceReportsService} from "../../cg-09-finance-accounting/application/finance-reports.service";
 import {DiagnosticsCatalogService} from "../../cg-16-healthcare-diagnostics/application/diagnostics-catalog.service";
+import {PatientAdminOverviewService} from "../../cg-15-patients-appointments/application/patient-admin-overview.service";
 
 const UUID=/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 type Filters={yearRef?:string;branchRef?:string};
@@ -18,7 +19,8 @@ type Source={sourceKey:string;state:"AVAILABLE"|"FAILED";sourceLabel:string;
 export class MisDashboardService{
  constructor(private readonly sessions:SessionService,
   private readonly finance:FinanceReportsService,
-  private readonly diagnostics:DiagnosticsCatalogService){}
+  private readonly diagnostics:DiagnosticsCatalogService,
+  private readonly patients:PatientAdminOverviewService){}
 
  async options(bearer:string){
   await this.sessions.requireAction(bearer,"mis.dashboard.view");
@@ -91,7 +93,26 @@ export class MisDashboardService{
     return {sourceKey:"CG16_FOUNDATION_DIAGNOSTICS",state:"FAILED" as const,
      sourceLabel:"Foundation Diagnostics",metrics:[]};
    });
-  const results=await Promise.all([financeSource,diagnosticSource]);
+  // Foundation-only CG-15 counts from a narrow original-owner read facade.
+  // Neither row-level patient names nor center/branch extrapolations are allowed.
+  const patientSource:Promise<Source|null>=(filters.yearRef||filters.branchRef)?
+   Promise.resolve(null):this.patients.readMisTotals(bearer)
+   .then(x=>({sourceKey:"CG15_APPOINTMENT_STATES",state:"AVAILABLE" as const,
+    sourceLabel:"Foundation Appointments · Current state totals",
+    readAt:new Date().toISOString(),
+    metrics:[
+     {key:"bookings",label:"Total appointments",unit:"COUNT" as const,value:x.bookings},
+     {key:"completed",label:"Completed appointments",unit:"COUNT" as const,value:x.completed},
+     {key:"waiting",label:"In progress or waiting",unit:"COUNT" as const,value:x.waiting},
+     {key:"cancelled",label:"Cancelled appointments",unit:"COUNT" as const,value:x.cancelled}
+    ],explanation:"Foundation-wide status counts only; no patient files or individual care data."}))
+   .catch((error:unknown)=>{
+    if(error instanceof ForbiddenException)return null;
+    failures++;
+    return {sourceKey:"CG15_APPOINTMENT_STATES",state:"FAILED" as const,
+     sourceLabel:"Foundation Appointments",metrics:[]};
+   });
+  const results=await Promise.all([financeSource,diagnosticSource,patientSource]);
   const sources:Source[]=results.filter((x):x is Source=>x!==null);
   const available=sources.filter(s=>s.state==="AVAILABLE").length;
   return {state:available?(failures?"PARTIAL":"AVAILABLE"):
