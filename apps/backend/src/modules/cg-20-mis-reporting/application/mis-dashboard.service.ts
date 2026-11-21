@@ -7,8 +7,12 @@ import {PatientAdminOverviewService} from "../../cg-15-patients-appointments/app
 const UUID=/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 type Filters={yearRef?:string;branchRef?:string};
 type Metric={key:string;label:string;unit:"INR_MINOR"|"COUNT";value:string};
+type FinanceTrend={type:"MONTHLY_FINANCE";windowLabel:string;
+ state:"AVAILABLE"|"EMPTY"|"FAILED";
+ points:{month:string;incomeMinor:string;expenseMinor:string}[]};
 type Source={sourceKey:string;state:"AVAILABLE"|"EMPTY"|"FAILED";sourceLabel:string;
- readAt?:string;metrics:Metric[];drilldown?:string;explanation?:string};
+ readAt?:string;metrics:Metric[];drilldown?:string;explanation?:string;
+ trend?:FinanceTrend};
 
 /**
  * CG-20 US-001: request-driven read-only MIS. Every original owner checks
@@ -54,19 +58,38 @@ export class MisDashboardService{
   let failures=0;
   const financeSource:Promise<Source|null>=this.finance
    .summary(bearer,filters.yearRef,filters.branchRef)
-   .then(source=>({sourceKey:"CG09_POSTED_FINANCE",
-    state:source.sourceRecordState==="NO_ROWS"?"EMPTY" as const:"AVAILABLE" as const,
-    sourceLabel:"Foundation Finance · Posted journals",readAt:new Date().toISOString(),
-    metrics:source.sourceRecordState==="NO_ROWS"?[]:[
-     {key:"income",label:"Posted income",unit:"INR_MINOR" as const,value:source.incomeMinor},
-     {key:"expense",label:"Posted expenses",unit:"INR_MINOR" as const,value:source.expenseMinor},
-     {key:"surplus",label:"Posted surplus",unit:"INR_MINOR" as const,value:source.surplusMinor},
-     {key:"cashBank",label:"Posted cash and bank",unit:"INR_MINOR" as const,value:source.cashBankMinor}
-    ],drilldown:"/admin/finance/reports",explanation:source.explanation}))
+   .then(async source=>{
+    let trend:FinanceTrend={type:"MONTHLY_FINANCE",
+     windowLabel:"Last six calendar months",state:"EMPTY",points:[]};
+    if(source.sourceRecordState!=="NO_ROWS"){
+     try{
+      const projection=await this.finance.monthlyMisTrend(
+       bearer,filters.yearRef,filters.branchRef);
+      trend={type:"MONTHLY_FINANCE",windowLabel:projection.windowLabel,
+       state:projection.months.length?"AVAILABLE":"EMPTY",points:projection.months};
+     }catch(error){
+      if(error instanceof UnauthorizedException||error instanceof ForbiddenException||
+         error instanceof BadRequestException)throw error;
+      failures++;
+      trend={type:"MONTHLY_FINANCE",windowLabel:"Last six calendar months",
+       state:"FAILED",points:[]};
+     }
+    }
+    return {sourceKey:"CG09_POSTED_FINANCE",
+     state:source.sourceRecordState==="NO_ROWS"?"EMPTY" as const:"AVAILABLE" as const,
+     sourceLabel:"Foundation Finance · Posted journals",
+     readAt:new Date().toISOString(),
+     metrics:source.sourceRecordState==="NO_ROWS"?[]:[
+      {key:"income",label:"Posted income",unit:"INR_MINOR" as const,value:source.incomeMinor},
+      {key:"expense",label:"Posted expenses",unit:"INR_MINOR" as const,value:source.expenseMinor},
+      {key:"surplus",label:"Posted surplus",unit:"INR_MINOR" as const,value:source.surplusMinor},
+      {key:"cashBank",label:"Posted cash and bank",unit:"INR_MINOR" as const,value:source.cashBankMinor}
+     ],trend,drilldown:"/admin/finance/reports",explanation:source.explanation};
+   })
    .catch((error:unknown)=>{
-    // Never downgrade an explicit foreign-branch access attempt to a 200 OK.
     if(error instanceof UnauthorizedException)throw error;
     if(error instanceof ForbiddenException){
+     // Never convert a rejected requested branch into an apparently valid total.
      if(filters.branchRef)throw error;
      return null;
     }
