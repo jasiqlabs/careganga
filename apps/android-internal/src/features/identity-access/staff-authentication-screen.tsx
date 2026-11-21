@@ -29,6 +29,7 @@ const ProposalScreen = lazy(() => import("../registration-approvals/proposal-scr
 const NativeOwnCenterPortal = lazy(() => import("../health-network/native-own-center-portal").then(m => ({ default: m.NativeOwnCenterPortal })));
 const NativeCmsEditorial = lazy(() => import("../cms/native-cms-editorial").then(m => ({ default: m.NativeCmsEditorial })));
 const NativeDoctorManagement = lazy(() => import("../health-network/native-doctor-management").then(m => ({ default: m.NativeDoctorManagement })));
+const NativeCenterContentPublisher = lazy(() => import("../health-network/native-center-content-publisher").then(m => ({ default: m.NativeCenterContentPublisher })));
 const NativeProviderManagement = lazy(() => import("../health-network/native-provider-management").then(m => ({ default: m.NativeProviderManagement })));
 const HealthcareNativeReview = lazy(() => import("../registration-approvals/healthcare-native-review").then(m => ({ default: m.HealthcareNativeReview })));
 const DoctorLeaveNativeReview = lazy(() => import("../registration-approvals/doctor-leave-native-review").then(m => ({ default: m.DoctorLeaveNativeReview })));
@@ -145,6 +146,7 @@ export function StaffAuthenticationScreen() {
   const [ownCenterOpen, setOwnCenterOpen] = useState(false);
   const [websiteCmsOpen, setWebsiteCmsOpen] = useState(false);
   const [healthDoctorOpen, setHealthDoctorOpen] = useState(false);
+  const [centerPublisherOpen, setCenterPublisherOpen] = useState(false);
   const [healthProviderOpen, setHealthProviderOpen] = useState(false);
   const [healthReviewsOpen, setHealthReviewsOpen] = useState(false);
   const [doctorLeaveReviewsOpen, setDoctorLeaveReviewsOpen] = useState(false);
@@ -183,6 +185,7 @@ export function StaffAuthenticationScreen() {
   const closeOwnCenter = useCallback(() => setOwnCenterOpen(false), []);
   const closeWebsiteCms = useCallback(() => setWebsiteCmsOpen(false), []);
   const closeHealthDoctor = useCallback(() => setHealthDoctorOpen(false), []);
+  const closeCenterPublisher = useCallback(() => setCenterPublisherOpen(false), []);
   const closeHealthProvider = useCallback(() => setHealthProviderOpen(false), []);
   const closeHealthReviews = useCallback(() => setHealthReviewsOpen(false), []);
   const closeDoctorLeaveReviews = useCallback(() => setDoctorLeaveReviewsOpen(false), []);
@@ -215,7 +218,7 @@ export function StaffAuthenticationScreen() {
   const expireSession = useCallback(() => {
     hideToast();
     setMessage("");
-    setActor(null); setToken(null); setRoleActions([]); setAccountOpen(false); setRolesOpen(false); setAccountsOpen(false); setPolicyOpen(false); setApprovalsOpen(false); setOwnCenterOpen(false); setWebsiteCmsOpen(false); setHealthDoctorOpen(false); setHealthProviderOpen(false); setHealthReviewsOpen(false); setDoctorLeaveReviewsOpen(false); setPatientAdminOpen(false); setPatientQueueOpen(false); setLabOrdersOpen(false); setLabEquipmentOpen(false); setHealthcarePoliciesOpen(false); setCenterMerchantOpen(false); setFoundationLiabilitiesOpen(false); setMonthlyProviderSettlementsOpen(false); setPartnerSettlementsOpen(false); setLabTestMasterOpen(false); setMyLabPricingOpen(false); setPatientBookingOpen(false); setDocumentsOpen(false); setCommunicationsOpen(false); setNotificationsOpen(false); setSupportOpen(false); setNoticeAdminOpen(false); setBranchesOpen(false); setFinanceOpen(false); setVoucherOnlyOpen(false); setFinanceReviewOpen(false); setFinanceClaimsOpen(false); setFinanceClaimReviewsOpen(false); setInvoiceOpen(false); setInvoiceReviewOpen(false);
+    setActor(null); setToken(null); setRoleActions([]); setAccountOpen(false); setRolesOpen(false); setAccountsOpen(false); setPolicyOpen(false); setApprovalsOpen(false); setOwnCenterOpen(false); setWebsiteCmsOpen(false); setHealthDoctorOpen(false); setCenterPublisherOpen(false); setHealthProviderOpen(false); setHealthReviewsOpen(false); setDoctorLeaveReviewsOpen(false); setPatientAdminOpen(false); setPatientQueueOpen(false); setLabOrdersOpen(false); setLabEquipmentOpen(false); setHealthcarePoliciesOpen(false); setCenterMerchantOpen(false); setFoundationLiabilitiesOpen(false); setMonthlyProviderSettlementsOpen(false); setPartnerSettlementsOpen(false); setLabTestMasterOpen(false); setMyLabPricingOpen(false); setPatientBookingOpen(false); setDocumentsOpen(false); setCommunicationsOpen(false); setNotificationsOpen(false); setSupportOpen(false); setNoticeAdminOpen(false); setBranchesOpen(false); setFinanceOpen(false); setVoucherOnlyOpen(false); setFinanceReviewOpen(false); setFinanceClaimsOpen(false); setFinanceClaimReviewsOpen(false); setInvoiceOpen(false); setInvoiceReviewOpen(false);
     setBudgetOpen(false); setBudgetReviewOpen(false); setReportsOpen(false);
     void SecureStore.deleteItemAsync(STORE_KEY).catch(() => undefined);
   }, [hideToast]);
@@ -231,6 +234,7 @@ export function StaffAuthenticationScreen() {
       ownCenterOpen ||
       websiteCmsOpen ||
       healthDoctorOpen ||
+      centerPublisherOpen ||
       healthProviderOpen ||
       healthReviewsOpen ||
       doctorLeaveReviewsOpen ||
@@ -271,7 +275,7 @@ export function StaffAuthenticationScreen() {
       setRolesOpen(false);
       setPolicyOpen(false);
       setApprovalsOpen(false);
-      setOwnCenterOpen(false); setWebsiteCmsOpen(false); setHealthDoctorOpen(false); setHealthProviderOpen(false); setHealthReviewsOpen(false);
+      setOwnCenterOpen(false); setWebsiteCmsOpen(false); setHealthDoctorOpen(false); setCenterPublisherOpen(false); setHealthProviderOpen(false); setHealthReviewsOpen(false);
       setDoctorLeaveReviewsOpen(false);
       setPatientAdminOpen(false); setPatientQueueOpen(false); setLabOrdersOpen(false); setLabEquipmentOpen(false); setHealthcarePoliciesOpen(false); setCenterMerchantOpen(false); setFoundationLiabilitiesOpen(false); setMonthlyProviderSettlementsOpen(false); setLabTestMasterOpen(false); setMyLabPricingOpen(false);
       setPatientBookingOpen(false);
@@ -306,6 +310,7 @@ export function StaffAuthenticationScreen() {
     ownCenterOpen,
     websiteCmsOpen,
     healthDoctorOpen,
+    centerPublisherOpen,
     healthProviderOpen,
     healthReviewsOpen,
     doctorLeaveReviewsOpen,
@@ -575,7 +580,7 @@ export function StaffAuthenticationScreen() {
       setMessage("");
       // Backend revocation is authoritative. The UI must not continue showing an
       // authenticated actor if on-device deletion fails afterward.
-      setActor(null); setToken(null); setRoleActions([]); setRolesOpen(false); setAccountsOpen(false); setPolicyOpen(false); setApprovalsOpen(false); setOwnCenterOpen(false); setWebsiteCmsOpen(false); setHealthDoctorOpen(false); setHealthProviderOpen(false); setHealthReviewsOpen(false); setDoctorLeaveReviewsOpen(false); setPatientAdminOpen(false); setPatientQueueOpen(false); setLabOrdersOpen(false); setLabEquipmentOpen(false); setHealthcarePoliciesOpen(false); setCenterMerchantOpen(false); setFoundationLiabilitiesOpen(false); setMonthlyProviderSettlementsOpen(false); setLabTestMasterOpen(false); setMyLabPricingOpen(false); setPatientBookingOpen(false); setDocumentsOpen(false); setCommunicationsOpen(false); setNotificationsOpen(false); setSupportOpen(false); setNoticeAdminOpen(false); setBranchesOpen(false); setFinanceOpen(false); setVoucherOnlyOpen(false);
+      setActor(null); setToken(null); setRoleActions([]); setRolesOpen(false); setAccountsOpen(false); setPolicyOpen(false); setApprovalsOpen(false); setOwnCenterOpen(false); setWebsiteCmsOpen(false); setHealthDoctorOpen(false); setCenterPublisherOpen(false); setHealthProviderOpen(false); setHealthReviewsOpen(false); setDoctorLeaveReviewsOpen(false); setPatientAdminOpen(false); setPatientQueueOpen(false); setLabOrdersOpen(false); setLabEquipmentOpen(false); setHealthcarePoliciesOpen(false); setCenterMerchantOpen(false); setFoundationLiabilitiesOpen(false); setMonthlyProviderSettlementsOpen(false); setLabTestMasterOpen(false); setMyLabPricingOpen(false); setPatientBookingOpen(false); setDocumentsOpen(false); setCommunicationsOpen(false); setNotificationsOpen(false); setSupportOpen(false); setNoticeAdminOpen(false); setBranchesOpen(false); setFinanceOpen(false); setVoucherOnlyOpen(false);
       setFinanceReviewOpen(false); setFinanceClaimsOpen(false); setFinanceClaimReviewsOpen(false); setInvoiceOpen(false); setInvoiceReviewOpen(false); setBudgetOpen(false); setBudgetReviewOpen(false); setReportsOpen(false);
       try {
         await SecureStore.deleteItemAsync(STORE_KEY);
@@ -595,7 +600,7 @@ export function StaffAuthenticationScreen() {
         setRolesOpen(false);
         setPolicyOpen(false);
         setApprovalsOpen(false);
-        setOwnCenterOpen(false); setWebsiteCmsOpen(false); setHealthDoctorOpen(false); setHealthProviderOpen(false); setHealthReviewsOpen(false);
+        setOwnCenterOpen(false); setWebsiteCmsOpen(false); setHealthDoctorOpen(false); setCenterPublisherOpen(false); setHealthProviderOpen(false); setHealthReviewsOpen(false);
         setDoctorLeaveReviewsOpen(false);
         setPatientAdminOpen(false); setPatientQueueOpen(false); setClinicianActivityOpen(false); setLabOrdersOpen(false); setLabEquipmentOpen(false); setHealthcarePoliciesOpen(false); setCenterMerchantOpen(false); setFoundationLiabilitiesOpen(false); setMonthlyProviderSettlementsOpen(false); setLabTestMasterOpen(false); setMyLabPricingOpen(false);
         setPatientBookingOpen(false);
@@ -646,6 +651,7 @@ export function StaffAuthenticationScreen() {
       openOwnCenterPortal: () => openOnly(setOwnCenterOpen),
       openWebsiteCms: () => openOnly(setWebsiteCmsOpen),
       openHealthDoctorManagement: () => openOnly(setHealthDoctorOpen),
+      openCenterContentPublisher: () => openOnly(setCenterPublisherOpen),
       openHealthProviderManagement: () => openOnly(setHealthProviderOpen),
       openHealthReviews: () => openOnly(setHealthReviewsOpen),
       openDocuments: () => openOnly(setDocumentsOpen),
@@ -952,6 +958,15 @@ export function StaffAuthenticationScreen() {
           onExit={closeHealthDoctor} onExpired={expireSession}/>
       </Suspense>
     </ScreenErrorBoundary>, "healthDoctorManagement", closeHealthDoctor);
+  if (centerPublisherOpen && token && actor &&
+      roleActions.includes("health.centers.publish"))
+    return renderInShell(<ScreenErrorBoundary onExit={closeCenterPublisher}>
+      <Suspense fallback={<ActivityIndicator style={{ marginTop: 40 }} />}>
+        <ScrollView contentContainerStyle={{padding: 16, paddingBottom: 96}}>
+          <NativeCenterContentPublisher token={token} onExpired={expireSession}/>
+        </ScrollView>
+      </Suspense>
+    </ScreenErrorBoundary>, "centerContentPublisher", closeCenterPublisher);
   if (healthProviderOpen && token && actor &&
       roleActions.includes("health.providers.view"))
     return renderInShell(<ScreenErrorBoundary onExit={closeHealthProvider}>
