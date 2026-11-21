@@ -5,6 +5,7 @@ import {NativeFinanceAction,NativeFinanceField,NativeFinanceOptions}
  from "../finance-accounting/finance-native-source-kit";
 import {careGangaTheme as t} from "../../../../../packages/design-tokens/src/index";
 import {NativeMisSaved} from "./native-mis-saved";
+import {NativeMisExports} from "./native-mis-exports";
 type Kind="FINANCE_POSTED_LEDGER"|"FINANCE_POSTED_SUMMARY"|
  "FINANCE_POSTED_TREND"|"APPOINTMENT_STATUS";
 type Template={kind:Kind;label:string;views:("TABLE"|"SUMMARY"|"CHART")[];description:string};
@@ -159,6 +160,8 @@ export function NativeMisReports({token,onExpired}:{token:string;onExpired:()=>v
    </>:<Text style={s.hint}>{preview.state==="SUPPRESSED"?
     "Private results are hidden for this small group.":"No matching original records."}</Text>}
   </View>}
+  {catalog?.capabilities?.export===true&&
+   <NativeMisExports token={token} onExpired={onExpired} current={request(0)}/>}
   {catalog&&<NativeMisSaved token={token} onExpired={onExpired}
    canManage={catalog.capabilities?.manage===true}
    current={request(0)}
