@@ -211,4 +211,4 @@ export function CompletedConsultationLiabilityWorkspace({canManage,canPost}:Prop
   </section>}
   {!!center&&<PendingPartnerServiceClaims centerRef={center} mode="foundation"/>}
  </section>;
-
+}

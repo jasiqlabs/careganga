@@ -232,7 +232,7 @@ export function NativePatientPrivateFiles({token,consentGranted,onExpired}:{
      row.classification!=="PATIENT_PARTNER_SERVICE_PROOF"&&
      row.classification!=="PATIENT_PARTNER_PAYMENT_PROOF"&&
      <NativePatientClinicalFileShares token={token} fileRef={row.fileRef}
-     consentGranted={consentGranted} onExpired={onExpired}/>
+     consentGranted={consentGranted} onExpired={onExpired}/>}
     {button("View my private file",()=>void readFile(row))}
     {button("Revoke this document",()=>void revoke(row))}
    </>}

@@ -22,7 +22,7 @@ const rupees=(minor:string)=>(Number(BigInt(minor))/100).toFixed(2);
 const paise=(v:string)=>{
  const m=/^(0|[1-9][0-9]{0,7})(?:\.([0-9]{1,2}))?$/.exec(v.trim());
  if(!m)throw Error("Enter the actual amount collected in rupees.");
- return (BigInt(m[1])*100n+BigInt((m[2]??"").padEnd(2,"0")).toString();
+ return (BigInt(m[1])*100n+BigInt((m[2]??"").padEnd(2,"0"))).toString();
 };
 async function call<T>(token:string,url:string,body?:object):Promise<T>{
  const r=await identityRequest(url,{method:body?"POST":"GET",cache:"no-store",

@@ -4,7 +4,9 @@
  */
 import {readFileSync} from "node:fs";
 import {resolve} from "node:path";
-import ts from "typescript";
+import * as parser from "@babel/parser";
+import traverseModule from "@babel/traverse";
+const traverse=traverseModule.default||traverseModule;
 const root=resolve(import.meta.dirname,"..");
 const file=path=>readFileSync(resolve(root,path),"utf8");
 const ownerPaths=[
@@ -91,31 +93,37 @@ const approved=new Set([...originalCatalog.matchAll(/^\s+([A-Z][A-Z_0-9]{4,}):"/
 const problems=[];
 let checked=0,recognized=0;
 for(const path of ownerPaths){
- const source=ts.createSourceFile(path,file(path),ts.ScriptTarget.Latest,true,ts.ScriptKind.TS);
- if(source.parseDiagnostics.length){
-  problems.push(path+": parse error");continue;
- }
- const visit=node=>{
-  if(ts.isNewExpression(node)&&node.arguments?.length){
-   const target=node.expression.getText(source);
-   if(/(?:Exception)$/.test(target)){
-    const arg=node.arguments[0];
-    if(ts.isObjectLiteralExpression(arg)){
-     for(const prop of arg.properties){
-      if(!ts.isPropertyAssignment(prop)||prop.name.getText(source)!=="code")continue;
-      if(ts.isStringLiteral(prop.initializer)||ts.isNoSubstitutionTemplateLiteral(prop.initializer)){
-       const code=prop.initializer.text;
-       checked++;
-       if(!approved.has(code))problems.push(path+": no safe copy for "+code);
-       else recognized++;
+ try {
+  const ast=parser.parse(file(path),{
+   sourceType:"module",
+   plugins:["typescript","decorators-legacy"]
+  });
+  traverse(ast,{
+   NewExpression(p){
+    const callee=p.node.callee;
+    const name=callee.name||(callee.property&&callee.property.name);
+    if(name&&/(?:Exception)$/.test(name)&&p.node.arguments.length){
+     const arg=p.node.arguments[0];
+     if(arg.type==="ObjectExpression"){
+      for(const prop of arg.properties){
+       if(prop.type==="ObjectProperty"&&(prop.key.name==="code"||prop.key.value==="code")){
+        if(prop.value.type==="StringLiteral"||prop.value.type==="TemplateLiteral"){
+         const code=prop.value.type==="StringLiteral"?prop.value.value:prop.value.quasis[0]?.value?.raw;
+         if(code){
+          checked++;
+          if(!approved.has(code))problems.push(path+": no safe copy for "+code);
+          else recognized++;
+         }
+        }
+       }
       }
      }
     }
    }
-  }
-  ts.forEachChild(node,visit);
- };
- visit(source);
+  });
+ }catch(err){
+  problems.push(path+": parse error: "+err.message);
+ }
 }
 if(!originalFilter.includes("Object.hasOwn(safeCodes,rawCode)"))
  problems.push("Original safe HTTP filter no longer enforces its catalog allowlist");

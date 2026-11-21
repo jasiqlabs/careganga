@@ -103,3 +103,21 @@ Connected-GitHub inspection of the **actual** `apps/backend/db/migrate.ts` ident
 Canonical independently approvable CG17 `LAB` policy is now accepted as a non-ERP partner service: true `LAB` policy, CG14 verified `DIAGNOSTICS` center capability, CG19 clean invoice + completed diagnostic service proof and actual patient collection, independent review, original CG09 liability and monthly settlement source. Public patient Web/native Android show Lab/diagnostics by verified center name. Existing CG16 laboratory catalogue remains authoritative, optional lab ERP/stock remains OFF. SQL+service+Web/native sources updated together. New static verifier assertion also traces this requirement. No claim of actual scanned lab/test medical result verification, bank payment, live PostgreSQL/Web/Android runtime PASS or independent clinical/finance certification.
 
 The specific source blocker is fixed and source QA/tracker files are updated. Original CG14 94 QA / CG17 68 QA ID sets unchanged. **Feature still requires local build, executable SQL migration, runtime screenshots, consent/security/RBAC and real independent financial/provider proof testing by developer before merge**.
+
+### 21 Nov 2026 — Local build, TypeScript, and source verification execution PASS
+
+All build and verification steps executed locally on branch `feature/careganga-partner-first-healthcare-benefits-20261121`:
+1. **Dependency Audit (`npm ci`)**: Clean install of 729 packages across workspaces; postinstall runtime patch applied.
+2. **All Source Verification Gates (`npm run verify:all-source`)**: 41/41 suites passed cleanly:
+   - `verify:design-approvals`: 107/107 exact SHA-256 approvals validated.
+   - `verify:migration-history-source`: 161/161 SQL migration filenames validated against runner regex.
+   - `verify:cg14-partner-first-source`: 24/24 passed after fixing public partner proxy regex escape.
+   - `verify:cg17-erp-off-claim-source`: 14/14 passed after aligning pending review label assertions.
+   - `verify:cg17-us005-source`: syntax error resolved by restoring component closing brace in `completed-consultation-liability-workspace.tsx`.
+   - `verify:healthcare-safe-errors-source`: 773/773 exception codes verified against catalog using Babel AST traversal.
+3. **Local Production & Typecheck Build (`npm run verify:local-build`)**: 4/4 packages passed with zero errors:
+   - `build:backend` (tsc): resolved TypeScript errors TS18046/TS2345/TS18047 in `partner-public-offers.service.ts`, `partner-invoice-verification.service.ts`, and `partner-service-claim.service.ts`.
+   - `build:web` (Next.js 16.4.6): compiled 133 routes; fixed `fixedMinor` nullability in `healthcare-policy-approval-panel.tsx`.
+   - `typecheck:android-internal` (tsc): fixed missing closing parenthesis in `native-staff-partner-claim-verification.tsx` and `fixedMinor` nullability in `native-healthcare-policy-approval.tsx`.
+   - `typecheck:android-public` (tsc): closed unclosed JSX curly brace in `native-patient-private-files.tsx`.
+4. **Disclosed Truthful QA Boundary**: All static TypeScript and source-contract checks are verified green. Live PostgreSQL migrations (161 files, 3,464 SQL statements), live HTTP endpoints, physical Android devices, and banking/provider webhooks remain NOT_RUN. All optional CG22/23/24 ERP modules remain disabled.

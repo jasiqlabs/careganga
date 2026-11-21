@@ -133,7 +133,7 @@ export class PartnerInvoiceVerificationService{
    "WHERE l.root_realm_id=$1 AND l.source_kind='CG17_PARTNER_SERVICE' "+
    "AND l.source_ref=$2",[root,claim]);
   return {attest:attest.rows[0]??null,decision:decision.rows[0]??null,
-   liability:l.rowCount>0,posted:l.rows[0]?.posting_state==="POSTED"};
+   liability:(l.rowCount??0)>0,posted:l.rows[0]?.posting_state==="POSTED"};
  }
  async status(token:string,centerRaw:string,codeRaw:string,own=false){
   const center=safeRef(centerRaw),code=safeCode(codeRaw);
@@ -327,6 +327,7 @@ export class PartnerInvoiceVerificationService{
   const actor=await this.sessions.requireAction(token,
    "healthcare.assistance.liabilities.manage");
   await this.sessions.limitFoundationRootProof(actor);
+  const reason=String(v.reason),currentPassword=String(v.currentPassword);
   return this.tx(async c=>{
    await this.identity.assertCurrent(c,actor,"healthcare.assistance.liabilities.manage");
    await this.protectedOwner.verifyReviewer(c,actor,"approvals.review",true);
@@ -335,7 +336,7 @@ export class PartnerInvoiceVerificationService{
    const claim=await this.claim(c,actor.realmId,center,code,true);
    const prior=await this.linked(c,actor.realmId,claim.id);
    const decisionDigest=hash(["CG17_PARTNER_REVIEW_V1",claim.source_digest,
-    prior.attest?.evidence_digest??null,action,v.reason.trim()]);
+    prior.attest?.evidence_digest??null,action,reason.trim()]);
    if(prior.decision){
     if(prior.decision.reviewed_by_account!==actor.accountId||
       prior.decision.request_key!==key||
@@ -352,7 +353,7 @@ export class PartnerInvoiceVerificationService{
     throw new ConflictException({code:"CG17_PARTNER_REVIEW_SOURCE_CHANGED"});
    // No generic review flag. CG01 re-authenticates an active protected
    // Foundation-root account against its ORIGINAL current password.
-   await this.sessions.requireFreshFoundationRootProof(c,actor,v.currentPassword);
+   await this.sessions.requireFreshFoundationRootProof(c,actor,currentPassword);
    const support=action==="APPROVE"?claim.estimated_support_minor:"0";
    const decision=await c.query<Decision>(
     "INSERT INTO cg17_partner_invoice_decision("+
@@ -364,7 +365,7 @@ export class PartnerInvoiceVerificationService{
     "RETURNING *",
     [actor.realmId,claim.id,att.id,center,action,actor.accountId,
      claim.source_digest,att.evidence_digest,claim.quoted_gross_minor,
-     att.collected_minor,support,v.reason.trim(),key,decisionDigest]);
+     att.collected_minor,support,reason.trim(),key,decisionDigest]);
    if(action==="APPROVE"){
     const liabilityDigest=createHash("sha256").update([
      "CG17_PARTNER_LIABILITY_V1",claim.source_digest,

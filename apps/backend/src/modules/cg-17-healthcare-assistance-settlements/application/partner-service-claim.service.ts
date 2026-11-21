@@ -60,7 +60,7 @@ const form=(raw:unknown)=>{
    typeof v.grossMinor!=="string"||!MONEY.test(v.grossMinor)||
    BigInt(v.grossMinor)>10000000000n)
   throw new BadRequestException({code:"CG17_PARTNER_CLAIM_INVALID"});
- return {key,center,kind,invoice,serviceDate:v.serviceDate,
+ return {key,center,kind:kind as Kind,invoice,serviceDate:v.serviceDate,
   invoiceFile,proof,paymentFile,gross:v.grossMinor};
 };
 const present=(row:Claim)=>({

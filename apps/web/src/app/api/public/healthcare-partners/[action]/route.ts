@@ -43,7 +43,7 @@ export async function POST(req:NextRequest,ctx:Ctx){
      raw as Record<string,unknown>:null;
    if(status<500&&rec&&typeof rec.code==="string"&&
       publicSafeCodes.has(rec.code)&&typeof rec.message==="string"&&
-      rec.message.length>=16&&rec.message.length<=220&&!/[<>\\r\\n]/.test(rec.message)){
+      rec.message.length>=16&&rec.message.length<=220&&!/[<>\r\n]/.test(rec.message)){
     const field=typeof rec.field==="string"&&publicFields.has(rec.field)?
       rec.field:null;
     return NextResponse.json({message:rec.message,code:rec.code,

@@ -170,6 +170,7 @@ export class PartnerPublicOffersService{
    throw new BadRequestException({code:"CG14_OFFER_INVALID"});
   const a=await this.sessions.requireAction(token,"health.centers.publish");
   await this.sessions.limitFoundationRootProof(a);
+  const reason=String(v.reason),currentPassword=String(v.currentPassword);
   return this.tx(async c=>{
    await this.reviewer.verifyReviewer(c,a,"approvals.review",true);
    await this.identity.assertCurrent(c,a,"health.centers.publish");
@@ -185,19 +186,19 @@ export class PartnerPublicOffersService{
    const state=action==="APPROVE"?"APPROVED":
     action==="REJECT"?"REJECTED":"WITHDRAWN";
    if(row.status===state&&row.reviewed_by_account===a.accountId&&
-    row.review_request_key===key&&row.review_reason===v.reason.trim())
+    row.review_request_key===key&&row.review_reason===reason.trim())
     return {...present(row),replayed:true};
    if((row.status!=="PENDING_REVIEW"&&action!=="WITHDRAW")||
       (action==="WITHDRAW"&&row.status!=="APPROVED")||
       row.created_by_account===a.accountId)
     throw new ConflictException({code:"CG14_OFFER_INDEPENDENT_REVIEW_REQUIRED"});
-   await this.sessions.requireFreshFoundationRootProof(c,a,v.currentPassword);
+   await this.sessions.requireFreshFoundationRootProof(c,a,currentPassword);
    const result=await c.query<Offer>(
     "UPDATE health_partner_public_offer SET status=$4,"+
     "reviewed_by_account=$5,review_request_key=$6,review_reason=$7,"+
     "reviewed_at=now() WHERE root_realm_id=$1 AND center_ref=$2 "+
     "AND public_code=$3 AND status=$8 RETURNING *",
-    [a.realmId,center,item,state,a.accountId,key,v.reason.trim(),row.status]);
+    [a.realmId,center,item,state,a.accountId,key,reason.trim(),row.status]);
    if(!result.rows[0])throw new ConflictException({code:"CG14_OFFER_REVIEW_CHANGED"});
    return {...present(result.rows[0]),replayed:false};
   });

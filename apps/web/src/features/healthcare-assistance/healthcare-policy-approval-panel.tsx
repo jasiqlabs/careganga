@@ -141,7 +141,7 @@ export function HealthcarePolicyApprovalPanel({canReview,canManage,
      {" "}{selected.source.mode==="PERCENT"&&
        selected.source.percentBasisPoints!==null?
        (selected.source.percentBasisPoints/100).toFixed(2)+"%":
-       cash(selected.source.fixedMinor)}.
+       cash(selected.source.fixedMinor??"0")}.
      Cap: {cash(selected.source.capMinor)}.
      Period: {new Date(selected.source.validFrom).toLocaleString("en-IN")} –
      {" "+new Date(selected.source.validUntil).toLocaleString("en-IN")}.</p>

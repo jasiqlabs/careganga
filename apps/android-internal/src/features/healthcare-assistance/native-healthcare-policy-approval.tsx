@@ -158,7 +158,7 @@ export function NativeHealthcarePolicyApproval({token,canManage,canReview,
     <Text style={s.body}>{detail.source.service} support:
       {" "}{detail.source.mode==="PERCENT"&&detail.source.percentBasisPoints!==null?
        (detail.source.percentBasisPoints/100).toFixed(2)+"%":
-       cash(detail.source.fixedMinor)}
+       cash(detail.source.fixedMinor??"0")}
      {" · Cap "+cash(detail.source.capMinor)}. Valid
      {" "+new Date(detail.source.validFrom).toLocaleDateString("en-IN")} to
      {" "+new Date(detail.source.validUntil).toLocaleDateString("en-IN")}.</Text>

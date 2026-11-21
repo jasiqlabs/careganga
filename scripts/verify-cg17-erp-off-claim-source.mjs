@@ -101,8 +101,8 @@ const checks=[
  ["Pending Web/Android projections never claim approved Foundation paid money",
   s.claim.includes('approvedFoundationMinor:"0"')&&
   s.claim.includes("foundationPaymentVerified:false")&&
-  s.staffWeb.includes("Awaiting independent verification")&&
-  s.staffNative.includes("Pending independent review")&&
+  (s.staffWeb.includes("awaiting independent review")||s.staffWeb.includes("Awaiting independent verification"))&&
+  (s.staffNative.includes("independent Foundation review pending")||s.staffNative.includes("Pending independent review"))&&
   !s.staffWeb.includes("Mark claim PAID")],
  ["All authored partner-claim exceptions have central reviewed text",
   ["CG17_PARTNER_CLAIM_INVALID","CG17_PARTNER_CLAIM_PROOF_REQUIRED",
