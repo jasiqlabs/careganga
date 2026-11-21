@@ -184,6 +184,56 @@ export class SessionService implements IdentityAuthorization {
       ))
       .map(row=>row.capability_key as string))];
   }
+  /**
+   * Current-role-only principal for unattended, CG-20-owned scheduled MIS.
+   * This is NOT an auth_session, impersonated bearer, login or new identity
+   * scope. Only the stored owner/recipient on a durable scheduled report may
+   * be supplied by the caller. Original source owners must re-check their
+   * branch/purpose/center scopes before generation and sending.
+   * Never expose this method through an HTTP controller.
+   */
+  async requireScheduledMisAction(rootInput:string,accountInput:string,action:string):
+   Promise<{realmId:string;accountId:string;accessVersion:string}>{
+    if(!["mis.reports.view","mis.reports.export","mis.reports.schedule",
+      "finance.reports.view","foundation.branches.admin",
+      "platform.audit.view"].includes(action)||
+      !implementedCapability(action))
+      throw new ForbiddenException("This scheduled reporting action is unavailable");
+    const result=await this.db.query<{
+      access_version:string;is_protected:boolean;
+      capability_key:string|null;approved_sensitive:boolean
+    }>(`
+      SELECT a.access_version::text AS access_version,
+        r.is_protected,gr.capability_key,
+        EXISTS(SELECT 1 FROM cg01_approved_sensitive_assignment approved
+          WHERE approved.realm_id=a.realm_id
+            AND approved.target_account_id=a.id
+            AND approved.target_role_id=r.id
+            AND approved.approved_role_revision=r.revision
+            AND approved.resulting_access_version<=a.access_version
+        ) AS approved_sensitive
+      FROM access_realm foundation
+      JOIN account a ON a.realm_id=foundation.id AND a.status='ACTIVE'
+      JOIN account_role ar ON ar.account_id=a.id AND ar.realm_id=a.realm_id
+        AND ar.revoked_at IS NULL
+      JOIN role r ON r.id=ar.role_id AND r.active=true
+      LEFT JOIN role_grant gr ON gr.role_id=r.id
+      WHERE foundation.id=$1 AND foundation.realm_key='FOUNDATION_ROOT'
+        AND a.id=$2
+      LIMIT 250
+    `,[rootInput,accountInput]);
+    if(!result.rows.length||result.rows.length>=250)
+      throw new ForbiddenException("Scheduled report account is unavailable");
+    const allowed=result.rows.some(row=>row.is_protected||
+      row.capability_key===action&&(
+        implementedCapability(action)?.assignable===true||
+        action==="roles.manage"&&row.approved_sensitive));
+    if(!allowed)throw new ForbiddenException(
+     "The current account no longer permits this scheduled report");
+    return {realmId:rootInput,accountId:accountInput,
+      accessVersion:result.rows[0].access_version};
+  }
+
   async effectiveAccess(bearer:string):Promise<{displayName:string;roleName:string;actions:readonly {key:string;businessLabel:string;group:string}[]}> {
     const actor=await this.verifySession(bearer);
     const granted=await this.allowedActionsFor(actor);
