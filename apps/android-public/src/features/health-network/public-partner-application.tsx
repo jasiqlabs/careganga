@@ -86,8 +86,9 @@ export function PublicPartnerApplication({onExit,onContact}:{
     <Text style={styles.label}>{title}</Text>
     <TextInput accessibilityLabel={title} style={styles.input}
       value={fields[key] as string} editable={!busy&&!sent&&!result}
-      keyboardType={opts?.phone?"phone-pad":"default"}
-      autoCapitalize={opts?.phone?"none":"sentences"}
+      keyboardType={key==="contactEmail"?"email-address":opts?.phone?"phone-pad":"default"}
+      autoCapitalize={key==="contactEmail"||opts?.phone?"none":"sentences"}
+      autoCorrect={key==="contactEmail"?false:undefined}
       maxLength={key==="addressLine"?300:key==="applicantName"||key==="contactEmail"?180:120}
       onChangeText={v=>change(key,v)}/>
    </View>;
@@ -102,10 +103,12 @@ export function PublicPartnerApplication({onExit,onContact}:{
  }
  function startSubmit(){
   if(busy||sent||result)return;
-  if(!fields.applicantName.trim()||!fields.contactName.trim()||
+  if(fields.applicantName.trim().length<2||fields.contactName.trim().length<2||
     !/^[+]?[0-9]{10,15}$/.test(fields.contactPhone.trim())||
-    !fields.addressLine.trim()||!fields.districtName.trim()||
-    !fields.stateName.trim()||!/^[1-9][0-9]{5}$/.test(fields.pinCode)||
+    (fields.contactEmail.trim()!==""&&
+     !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(fields.contactEmail.trim()))||
+    fields.addressLine.trim().length<5||fields.districtName.trim().length<2||
+    fields.stateName.trim().length<2||!/^[1-9][0-9]{5}$/.test(fields.pinCode)||
     fields.partnerType==="DOCTOR"&&!fields.registrationNumber.trim()||
     !fields.consentAccepted){
     setError("Enter the required partner, contact, address, registration and consent details.");
@@ -140,11 +143,13 @@ export function PublicPartnerApplication({onExit,onContact}:{
      onPress={onContact}><Text>Enquire about CSR partnership</Text></Pressable>
    </View>:<>
     <View style={styles.row}>
-     <Pressable accessibilityRole="button" style={styles.secondary}
-      disabled={busy||!!sent} onPress={()=>{setMode("apply");setError("");}}>
+     <Pressable accessibilityRole="button" accessibilityState={{selected:mode==="apply"}}
+      style={styles.secondary} disabled={busy||!!sent}
+      onPress={()=>{setMode("apply");setError("");}}>
       <Text>Apply</Text></Pressable>
-     <Pressable accessibilityRole="button" style={styles.secondary}
-      disabled={busy||!!sent} onPress={()=>{setMode("status");setError("");}}>
+     <Pressable accessibilityRole="button" accessibilityState={{selected:mode==="status"}}
+      style={styles.secondary} disabled={busy||!!sent}
+      onPress={()=>{setMode("status");setError("");}}>
       <Text>Check status</Text></Pressable>
     </View>
     {mode==="apply"&&result?<View style={styles.card}>
