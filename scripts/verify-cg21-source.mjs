@@ -50,6 +50,16 @@ for(const owner of ["platform-settings.controller.ts","platform-audit.controller
  "recovery.controller.ts","safe-error-messages.controller.ts"])
  assert.ok(read(ownerBase+owner).includes("@Controller("),
   "Original protected owner controller missing "+owner);
+// Private Foundation audit CSV must not remain as an unbounded app cache
+// after sharing or when a share/export error interrupts the native flow.
+assert.match(native,/let temporary:File\|null=null/,
+ "Native CG21 audit export should explicitly own one temporary file");
+assert.match(native,/temporary\.create\(\)/,
+ "Actual CG21 protected audit bytes are written to an initialized private file");
+assert.match(native,/finally\{\s*try\{temporary\?\.delete\(\)\}catch\{\}/,
+ "Always delete the original protected audit CSV in success/error cleanup");
+assert.doesNotMatch(native,/await Sharing\.shareAsync\(file\.uri/,
+ "Native CG21 must never leave prior unmanaged audit CSV copies");
 const tasks=read("specs/initiatives/careganga-foundation-platform/modules/cg-21-platform-configuration-audit/tasks.md");
 const ids=new Set(tasks.match(/US-00[12]-QA\d\d/g)||[]);
 assert.equal(ids.size,16,"Preserve CG21's original two user stories and sixteen QA scenarios");
