@@ -459,7 +459,8 @@ export function NativeHrEnrollment({token,canView,canManage,canReview,canViewEmp
    </View>}
    {focus&&canManage&&<View style={styles.card}>
     <Text style={styles.h2}>Original enrollment — {focus.name}</Text>
-    {canViewPrivate&&<NativeHrPrivate token={token} applicationRef={focus.applicationRef}
+    {canViewPrivate&&<NativeHrPrivate key={focus.applicationRef+"-"+token}
+      token={token} applicationRef={focus.applicationRef}
       canManage={canManagePrivate&&["DRAFT","RETURNED"].includes(focus.status)}
       onExpired={onExpired}/>}
     {review&&<Text style={styles.muted}>
