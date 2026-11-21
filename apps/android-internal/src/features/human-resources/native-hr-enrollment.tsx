@@ -2,6 +2,7 @@ import React,{useCallback,useEffect,useRef,useState} from "react";
 import {NativeHrEvidence,type HrFile} from "./native-hr-evidence";
 import {NativeHrReviews} from "./native-hr-reviews";
 import {NativeHrPrivate} from "./native-hr-private";
+import {NativeHrBioConsent} from "./native-hr-bio-consent";
 import * as Crypto from "expo-crypto";
 import {ActivityIndicator,Pressable,ScrollView,StyleSheet,Text,TextInput,View} from "react-native";
 import {identityRequest} from "../identity-access/http-client";
@@ -335,6 +336,7 @@ export function NativeHrEnrollment({token,canView,canManage,canReview,canViewEmp
       </View>:
       <Text style={styles.muted}>Profile unavailable until your session is verified.</Text>}
    </View>
+   <NativeHrBioConsent token={token} onExpired={onExpired}/>
    {canManage&&<View style={styles.card}>
     <Text style={styles.h2}>{selected?"Correct application draft":"Create employee draft"}</Text>
     <Text style={styles.muted}>Saving never activates an employee or grants system access.
