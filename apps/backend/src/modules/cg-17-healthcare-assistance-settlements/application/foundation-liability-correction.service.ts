@@ -12,6 +12,8 @@ import {HealthCenterSupportScopeFacade}
  from "../../cg-14-healthcare-network/application/health-center-support-scope.facade";
 import {HealthcareFoundationPostingFacade}
  from "../../cg-09-finance-accounting/application/healthcare-foundation-posting.facade";
+import {HealthcareProviderPayoutProofFacade}
+ from "../../cg-09-finance-accounting/application/healthcare-provider-payout-proof.facade";
 
 const ID=/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i;
 const id=(raw:unknown)=>{
@@ -33,6 +35,9 @@ type Original={liability_ref:string;center_ref:string;source_ref:string;
  original_journal_ref:string|null;original_poster:string|null};
 type Existing={id:string;reviewed_by_account:string;request_digest:string;
  reversal_journal_ref:string;reason:string;created_at:Date};
+type Claim={id:string;approved_total_minor:string;paid_minor:string;proposed_by:string;state:string};
+type ClaimedPrior={reviewed_by_account:string;request_digest:string;
+ reversal_journal_ref:string;reason:string;recovery_minor:string};
 type Summary={liabilityRef:string;sourcePosted:boolean;canCorrect:boolean;
  claimAlreadyCreated:boolean;originalReversed:boolean;corrected:boolean;
  correctionReason:string|null;reversalJournalRef:string|null};
@@ -48,7 +53,8 @@ export class FoundationLiabilityCorrectionService{
   private readonly identity:FoundationStructureIdentityFacade,
   private readonly protectedOwner:ProtectedAccessOwnerService,
   private readonly centers:HealthCenterSupportScopeFacade,
-  private readonly cg09:HealthcareFoundationPostingFacade){}
+  private readonly cg09:HealthcareFoundationPostingFacade,
+  private readonly recovery:HealthcareProviderPayoutProofFacade){}
  private async tx<T>(run:(c:PoolClient)=>Promise<T>):Promise<T>{
   const c=await this.db.connect();let started=false;
   try{
@@ -60,7 +66,7 @@ export class FoundationLiabilityCorrectionService{
   }catch(e){
    if(started)try{await c.query("ROLLBACK")}catch{}
    if(e&&typeof e==="object"&&"code" in e&&
-      ["23505","P1719","P0929"].includes(String(e.code)))
+      ["23505","P1719","P1720","P0929"].includes(String(e.code)))
     throw new ConflictException({code:"CG17_CORRECTION_SOURCE_CONFLICT"});
    throw e;
   }finally{c.release();}
@@ -107,6 +113,46 @@ export class FoundationLiabilityCorrectionService{
    "WHERE root_realm_id=$1 AND liability_ref=$2",
    [root,liability]);
   return q.rows[0]??null;
+ }
+
+ /** Lock the original claim FIRST, matching the existing payout writer,
+  * so a concurrent bank payout cannot race correction acceptance.
+  */
+ private async claim(c:PoolClient,root:string,center:string,liability:string,
+  lock:boolean):Promise<Claim|null>{
+  const q=await c.query<Claim>(
+   "SELECT s.id,s.approved_total_minor::text,s.paid_minor::text,"+
+   "s.proposed_by,s.state FROM provider_settlement_line line "+
+   "JOIN provider_settlement s ON s.root_realm_id=line.root_realm_id "+
+   "AND s.id=line.settlement_ref AND s.center_ref=line.center_ref "+
+   "WHERE line.root_realm_id=$1 AND line.center_ref=$2 "+
+   "AND line.liability_ref=$3 "+(lock?"FOR UPDATE OF s":"FOR SHARE OF s"),
+   [root,center,liability]);
+  return q.rows[0]??null;
+ }
+ private async claimedPrior(c:PoolClient,root:string,liability:string){
+  const q=await c.query<ClaimedPrior>(
+   "SELECT reviewed_by_account,request_digest,reversal_journal_ref,reason,"+
+   "recovery_minor::text FROM cg17_provider_claim_correction "+
+   "WHERE root_realm_id=$1 AND liability_ref=$2",[root,liability]);
+  return q.rows[0]??null;
+ }
+ private async claimBalances(c:PoolClient,root:string,claim:Claim,
+  correctionMinor:string){
+  const q=await c.query<{adjusted:string;recovered:string}>(
+   "SELECT coalesce(sum(amount_minor),0)::text AS adjusted,"+
+   "coalesce(sum(recovery_minor),0)::text AS recovered "+
+   "FROM cg17_provider_claim_correction "+
+   "WHERE root_realm_id=$1 AND settlement_ref=$2",
+   [root,claim.id]);
+  const adjusted=BigInt(q.rows[0].adjusted),recovered=BigInt(q.rows[0].recovered);
+  const total=BigInt(claim.approved_total_minor),paid=BigInt(claim.paid_minor);
+  const effective=total-adjusted-BigInt(correctionMinor);
+  if(effective<0n||recovered>paid)
+   throw new ConflictException({code:"CG17_CORRECTION_CLAIM_BALANCE_INVALID"});
+  const need=paid-recovered>effective?paid-recovered-effective:0n;
+  return {need:need.toString(),effective:effective.toString(),
+   historicalPaid:paid.toString(),priorAdjusted:adjusted.toString()};
  }
  private async claimed(c:PoolClient,root:string,liability:string){
   const q=await c.query(
