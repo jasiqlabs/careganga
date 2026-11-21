@@ -224,14 +224,24 @@ export class MisReportRunService{
   }catch(error){
    const isDenied=error instanceof ForbiddenException||
     error instanceof NotFoundException;
+   const response=error instanceof ConflictException?error.getResponse():null;
+   const uncertain=!!response&&typeof response==="object"&&
+    "code" in response&&response.code==="MIS_ARTIFACT_CHANGED";
+   // A previously written immutable original CG19 object with a different
+   // checksum is UNKNOWN, not a proven failed/missing file. Never create a
+   // duplicate object, leak content or return READY on an unverified replay.
+   const state=isDenied?"REVOKED":uncertain?"UNKNOWN":"FAILED";
    await this.db.query(
     "UPDATE cg20_report_run SET state=$3,error_class=$4,updated_at=now() "+
     "WHERE root_realm_id=$1 AND id=$2 AND state='RUNNING'",
-    [actor.realmId,row.id,isDenied?"REVOKED":"FAILED",
-     isDenied?"SOURCE_REVOKED":"SOURCE_OR_STORAGE_FAILED"]).catch(()=>undefined);
+    [actor.realmId,row.id,state,
+     isDenied?"SOURCE_REVOKED":uncertain?
+      "ORIGINAL_ARTIFACT_UNCONFIRMED":"SOURCE_OR_STORAGE_FAILED"]).catch(()=>undefined);
    if(isDenied)throw error;
-   return {ref:row.id,state:"FAILED",format:input.format,canDownload:false,
-    message:"Unable to confirm the protected report file. Review its status before retrying."};
+   return {ref:row.id,state,format:input.format,canDownload:false,
+    message:uncertain?
+     "The original protected file could not be reconciled. Its status remains unconfirmed; create a new report for current source data.":
+     "Unable to confirm the protected report file. Review its status before retrying."};
   }
  }
  async list(token:string){
