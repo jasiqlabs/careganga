@@ -203,6 +203,34 @@ export class MonthlyProviderSettlementService{
     ...breakdown};
   });
  }
+ /** Center Portal read projection of the SAME original Foundation claim.
+  * CG14 owns center scope; CG17 owns only the source-backed finance numbers.
+  * No claims, approvals, bank details, or Foundation-wide center discovery.
+  */
+ async ownCenterStatement(token:string,centerRaw:string,monthRaw:string){
+  const center=id(centerRaw),period=month(monthRaw);
+  return this.tx(async c=>{
+   const a=await this.sessions.requireAction(token,
+    "healthcare.assistance.settlements.view");
+   await this.centers.assertCurrent(c,a,center,
+    "healthcare.assistance.settlements.view");
+   const breakdown=await this.breakdown(c,a.realmId,center,period);
+   const claim=await this.claim(c,a.realmId,center,period,false);
+   if(claim){
+    const view=this.view(claim);
+    return {month:view.month,state:view.state,
+     approvedFoundationMinor:view.approvedFoundationMinor,
+     actualPaidMinor:view.actualPaidMinor,
+     outstandingMinor:view.outstandingMinor,paidVerified:view.paidVerified,
+     ...breakdown,patientCollectionNotFoundationIncome:true};
+   }
+   const rows=await this.candidate(c,a.realmId,center,period,false);
+   return {month:period.slice(0,7),state:"NOT_PREPARED",
+    eligibleAccruedMinor:rows.reduce((sum,x)=>sum+minor(x.amount_minor),0n).toString(),
+    approvedFoundationMinor:"0",actualPaidMinor:"0",outstandingMinor:"0",
+    paidVerified:false,patientCollectionNotFoundationIncome:true,...breakdown};
+  });
+ }
  async propose(token:string,centerRaw:string,monthRaw:string,raw:unknown){
   const center=id(centerRaw),period=month(monthRaw);
   if(!raw||typeof raw!=="object"||Array.isArray(raw)||
