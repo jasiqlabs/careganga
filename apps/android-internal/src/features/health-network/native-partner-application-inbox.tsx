@@ -62,7 +62,7 @@ export function NativePartnerApplicationInbox({token,canManage,onExit,onExpired}
   try{
    if(app.type==="DOCTOR"){
     const r=await api<{doctors:{doctorRef:string;name:string;status:string}[]}>(
-     token,"doctors");
+     token,"doctors?q="+encodeURIComponent(app.name));
     setOptions(r.doctors.filter(d=>d.name.toLowerCase()===app.name.toLowerCase())
      .map(d=>({id:d.doctorRef,label:d.name+" · "+nice(d.status)})));
    }else{
