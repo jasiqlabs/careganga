@@ -105,7 +105,18 @@ contains(native+"features/mis-reporting/native-mis-dashboard.tsx",[
 // US-003: metadata, immutable revisions, private CAS and both screens.
 contains(mis+"application/mis-saved-report.service.ts",[
  "cg20_saved_report","cg20_report_definition","cg20_saved_request",
- "requestKey","expectedVersion","REVISE","COPY","RETIRE"
+ "requestKey","expectedVersion","REVISE","COPY","RETIRE",
+ "cg20_saved_report_grant","async grant(","async ownedGrants(",
+ "async sharedWithMe(","FOR SHARE"
+]);
+contains(backend+"modules/cg-01-identity-access/application/session.service.ts",[
+ "eligibleMisShareRecipients","mis.reports.share"
+]);
+contains(web+"features/mis-reporting/mis-shared-definitions.tsx",[
+ "shared-with-me","share-recipients","/grants","/share","/copy"
+]);
+contains(native+"features/mis-reporting/native-mis-shared-definitions.tsx",[
+ "shared-with-me","share-recipients","/grants","/share","/copy"
 ]);
 contains(web+"features/mis-reporting/mis-saved-reports.tsx",[
  "Save new private report","Retire selected report","mis-safe-error"
@@ -170,7 +181,7 @@ const sql=contains("apps/backend/db/migrations/2001_cg20_saved_reports_runs_and_
  "CREATE TABLE cg20_report_definition",
  "CREATE TABLE cg20_saved_report","CREATE TABLE cg20_saved_request",
  "CREATE TABLE cg20_report_run","CREATE TABLE cg20_report_schedule",
- "CREATE TABLE cg20_report_delivery_attempt",
+ "CREATE TABLE cg20_report_delivery_attempt","CREATE TABLE cg20_saved_report_grant",
  "saved_revision integer NOT NULL","DIAGNOSTICS_CATALOG_SUMMARY",
  "retry_count smallint NOT NULL DEFAULT 0"
 ]);
@@ -317,7 +328,9 @@ for(const route of [
  "schedules/route.ts","schedules/[scheduleRef]/pause/route.ts",
  "schedules/[scheduleRef]/resume/route.ts",
  "schedules/[scheduleRef]/edit/route.ts",
- "schedules/[scheduleRef]/history/route.ts"
+ "schedules/[scheduleRef]/history/route.ts",
+ "saved/shared-with-me/route.ts","saved/share-recipients/route.ts",
+ "saved/[reportRef]/share/route.ts","saved/[reportRef]/grants/route.ts"
 ]){
  file(web+"app/api/mis/reports/"+route);
 }
