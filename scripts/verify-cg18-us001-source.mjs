@@ -339,6 +339,11 @@ checks.push(["Existing CG18 native CMS TSX parses",
 checks.push(["Non-home CMS payload must omit forbidden navigation key",
  internalCms.includes('...(v.kind==="HOME"&&v.navigation?{navigation:v.navigation}:{})')&&
  files.backend.includes('kind!=="HOME"&&v.navigation!==undefined')]);
+checks.push(["Original Web CMS article, policy and other supported page kinds can be created on Internal Android",
+ internalCms.includes("const initialKind=(kind:NewKind):NewPage=>")&&
+ internalCms.includes('perform("create","POST","pages"')&&
+ internalCms.includes('canonicalFor(p.kind,p.slug)')&&
+ internalCms.includes("newKinds.map")]);
 checks.push(["Internal Android CMS editor is real, not a public WebView",
  internalCms.includes('"/api/cms/"')&&
  internalCms.includes("pages/")&&internalCms.includes("/draft")&&
