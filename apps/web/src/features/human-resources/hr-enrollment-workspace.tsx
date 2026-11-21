@@ -37,8 +37,8 @@ function isChoices(x:unknown):x is {items:Choice[]} {
  return Boolean(x)&&typeof x==="object"&&"items" in x&&
   Array.isArray((x as {items:unknown}).items);
 }
-export function HrEnrollmentWorkspace({canManage,canViewEmployees,canSelectAccounts,canViewPrivate,canManagePrivate}:{
-  canManage:boolean;canViewEmployees:boolean;canSelectAccounts:boolean;
+export function HrEnrollmentWorkspace({canViewApps,canManage,canViewEmployees,canSelectAccounts,canViewPrivate,canManagePrivate}:{
+  canViewApps:boolean;canManage:boolean;canViewEmployees:boolean;canSelectAccounts:boolean;
   canViewPrivate:boolean;canManagePrivate:boolean}){
  const [apps,setApps]=useState<Application[]>([]);
  const [branches,setBranches]=useState<Choice[]>([]);
@@ -61,6 +61,7 @@ export function HrEnrollmentWorkspace({canManage,canViewEmployees,canSelectAccou
  const [staffError,setStaffError]=useState("");
  const enrollmentKeys=useRef(new Map<string,string>());
  const load=useCallback(async(page=0)=>{
+  if(!canViewApps){setLoading(false);setApps([]);return;}
   setLoading(true);
   try{
    const [records,opts]=await Promise.all([
@@ -74,27 +75,27 @@ export function HrEnrollmentWorkspace({canManage,canViewEmployees,canSelectAccou
    setApps([]);setHasMore(false);setBranches([]);
    setStatus({message:e instanceof Error?e.message:"Employee data cannot be loaded",error:true});
   }finally{setLoading(false);}
- },[]);
- useEffect(()=>{void load(0);},[load]);
+ },[canViewApps]);
+ useEffect(()=>{if(canViewApps)void load(0);},[load,canViewApps]);
  useEffect(()=>{
   let active=true;
   setDepartments([]);setManagers([]);
-  if(!form.branchRef)return;
+  if(!canViewApps||!form.branchRef)return;
   void Promise.all([request("departments?branch="+encodeURIComponent(form.branchRef)),
     request("managers?branch="+encodeURIComponent(form.branchRef))])
    .then(([d,m])=>{if(active){if(isChoices(d))setDepartments(d.items);
      if(isChoices(m))setManagers(m.items);}})
    .catch(()=>{if(active)setStatus({message:"Department options are unavailable.",error:true});});
   return()=>{active=false;};
- },[form.branchRef]);
+ },[form.branchRef,canViewApps]);
  useEffect(()=>{
-  if(!canSelectAccounts||!canManage)return;
+  if(!canViewApps||!canSelectAccounts||!canManage)return;
   let live=true;
   void request("account-options?search=").then(v=>{
    if(live&&isChoices(v))setAccounts(v.items);
   }).catch(()=>{if(live)setAccounts([]);});
   return()=>{live=false;};
- },[canSelectAccounts,canManage]);
+ },[canViewApps,canSelectAccounts,canManage]);
  const review=useCallback(async(app:Application)=>{
   setFileApplication(app);setCaseStatus(null);setStatus(null);
   try{
@@ -234,7 +235,7 @@ export function HrEnrollmentWorkspace({canManage,canViewEmployees,canSelectAccou
    color:status.error?"#991B1B":"#166534",padding:".85rem 1rem",margin:0}}>
    {status.message}{status.error&&attempt?" If your connection failed, refresh the draft list before retrying.":""}
   </p>}
-  {canManage&&<form onSubmit={e=>void save(e)} style={{border:"1px solid #E2E8F0",
+  {canViewApps&&canManage&&<form onSubmit={e=>void save(e)} style={{border:"1px solid #E2E8F0",
    borderRadius:16,padding:"1.1rem",display:"grid",gap:15,background:"#fff"}}>
    <header><h2 style={{margin:0,fontSize:"1.15rem"}}>{selected?"Edit draft":"New employee draft"}</h2>
     <p style={{color:"#64748B",margin:"5px 0 0"}}>Personal and employment basics. Private identity and bank documents are not collected here.</p></header>
@@ -286,7 +287,7 @@ export function HrEnrollmentWorkspace({canManage,canViewEmployees,canSelectAccou
      style={{...buttonStyle,background:"#E2E8F0",color:"#0F172A"}}>Cancel edit</button>}
    </div>
   </form>}
-  <section aria-label="Employee draft list" style={{background:"#fff",
+  {canViewApps&&<section aria-label="Employee draft list" style={{background:"#fff",
    border:"1px solid #E2E8F0",borderRadius:16,padding:"1rem"}}>
    <header style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:8}}>
     <h2 style={{margin:0,fontSize:"1.15rem"}}>Current applications</h2>
@@ -319,8 +320,8 @@ export function HrEnrollmentWorkspace({canManage,canViewEmployees,canSelectAccou
     {hasMore&&<button type="button" style={{...buttonStyle,background:"#E2E8F0",color:"#0F172A"}}
       onClick={()=>void load(offset+25)}>Next</button>}
    </div>
-  </section>
-  {fileApplication&&canManage&&<section style={{border:"1px solid #CBD5E1",
+  </section>}
+  {canViewApps&&fileApplication&&canManage&&<section style={{border:"1px solid #CBD5E1",
    padding:16,borderRadius:14,background:"#fff",display:"grid",gap:14}}>
    <header style={{display:"flex",justifyContent:"space-between",gap:8}}>
     <h2 style={{margin:0,fontSize:"1.1rem"}}>Original enrollment — {fileApplication.name}</h2>
