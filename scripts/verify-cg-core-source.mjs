@@ -29,7 +29,8 @@ for(const [module,stories] of Object.entries(expected)){
   check(`${module}: ${name} exists`,present(prefix+"/"+name));
  if(!present(prefix+"/tasks.md"))continue;
  const content=read(prefix+"/tasks.md");
- const actual=new Set(content.match(/\bUS-\d{3}-QA\d{2}\b/g)??[]);
+ const clean=content.replace(/origin=CG-\d+\/US-\d{3}-QA\d{2}/g,"");
+ const actual=new Set(clean.match(/\bUS-\d{3}-QA\d{2}\b/g)??[]);
  const required=new Set();
  for(let i=0;i<stories.length;i++){
   for(let n=1;n<=stories[i];n++)
