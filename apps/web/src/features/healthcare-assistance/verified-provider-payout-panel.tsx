@@ -89,7 +89,7 @@ export function VerifiedProviderPayoutPanel({centerRef,month,onApplied}:Props){
   try{
    const result=await api<{state:string;actualPaidMinor:string}>(
     tail+"confirm-payout",{
-     requestKey:attempt.current.key,bankMatchRef, payeeMatched:true
+     requestKey:attempt.current.key,bankMatchRef:bankRef, payeeMatched:true
     });
    if(!["PARTIALLY_SETTLED","SETTLED"].includes(result.state))
     throw Error("Verified original payout state cannot be confirmed.");

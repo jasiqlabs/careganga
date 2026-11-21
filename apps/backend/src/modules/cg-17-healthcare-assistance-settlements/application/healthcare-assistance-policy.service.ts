@@ -334,7 +334,7 @@ export class HealthcareAssistancePolicyService{
      original.revision_no!==review.cg17_policy_version)
     throw new ConflictException({code:"ASSISTANCE_APPROVAL_CHANGED"});
    await this.sessions.requireFreshFoundationRootProof(
-    c,actor,data.currentPassword);
+    c,actor,String(data.currentPassword));
    // Recover a lost response from the actual committed CG03 status, not
    // an unlocked case snapshot read before another owner's transaction.
    const latestCase=await c.query<{status:string}>(

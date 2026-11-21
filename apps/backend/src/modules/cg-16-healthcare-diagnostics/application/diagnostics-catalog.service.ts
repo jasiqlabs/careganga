@@ -683,7 +683,7 @@ export class DiagnosticsCatalogService{
    // immutable CG03 source-pinned case is approved with fresh password.
    const caseDecision=await this.priceReviews.decide(tx,actor,{
     priceRef,priceVersion:expected,expectedCaseRevision,requestKey,
-    currentPassword:x.currentPassword,action:"APPROVE"
+    currentPassword:String(x.currentPassword),action:"APPROVE"
    });
    const prior=await tx.query<{id:string;effective_from:Date;effective_to:Date|null}>(
     "SELECT id,effective_from,effective_to FROM lab_center_price_version "+
@@ -749,7 +749,7 @@ export class DiagnosticsCatalogService{
     throw new ConflictException({code:"LAB_CATALOG_VERSION_CHANGED"});
    const review=await this.priceReviews.decide(tx,actor,{
     priceRef,priceVersion:expected,expectedCaseRevision,requestKey,
-    currentPassword:x.currentPassword,action:"REJECT"
+    currentPassword:String(x.currentPassword),action:"REJECT"
    });
    await tx.query("UPDATE lab_center_price_version SET status='REJECTED' "+
     "WHERE root_realm_id=$1 AND id=$2 AND status='PROPOSED'",

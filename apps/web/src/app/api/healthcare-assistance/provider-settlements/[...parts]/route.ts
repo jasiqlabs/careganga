@@ -9,7 +9,7 @@ const fail=(code:number,message:string)=>NextResponse.json({message},{
  "X-Content-Type-Options":"nosniff"}});
 function permitted(p:string[],method:"GET"|"POST"){
  if(method==="GET"&&p.length===4&&p[0]==="my-centers"&&
-  ID.test(p[1])&&p[2]==="months"&&MONTH.test(p[3])
+  ID.test(p[1])&&p[2]==="months"&&MONTH.test(p[3]))
   return true;
  if(method==="GET"&&p.length===2&&p[0]==="centers"&&p[1]==="eligible")
   return true;

@@ -152,7 +152,7 @@ export function NativeCenterCollectionWorkspace({token,centerRef,chargeRef,
    const address=new URL("/api/v1/healthcare-assistance/center-receipts/"+
     "staff/centers/"+centerRef+"/collections/"+item.collectionRef+"/pdf",baseUrl);
    const res=await expoFetch(address.toString(),{
-    method:"GET",cache:"no-store",headers:{Authorization:"Bearer "+token},
+    method:"GET",headers:{Authorization:"Bearer "+token},
     signal:AbortSignal.timeout(20000)});
    if(!res.ok){
     if(res.status===401)onExpired();

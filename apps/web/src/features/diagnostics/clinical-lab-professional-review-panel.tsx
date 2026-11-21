@@ -129,7 +129,7 @@ export function ClinicalLabProfessionalReviewPanel({centerRef,orderRef}:Props){
     <input type="checkbox" checked={attested} disabled={busy||uncertain}
      onChange={e=>setAttested(e.target.checked)}/>
     I have inspected the original PDF, including patient, specimens and test details.
-   </label>
+   </label>}
    <label className="field">Clinical assessment and decision rationale
     <textarea value={note} maxLength={1000} disabled={busy||uncertain}
      onChange={e=>setNote(e.target.value)}

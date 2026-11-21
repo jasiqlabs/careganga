@@ -18,7 +18,7 @@ export class HealthcareAssistanceReviewSourceFacade{
    doctor_ref:string|null;
    approval_state:string;service_kind:string;mode:string;
    percent_basis_points:number;source_digest:string;revision_no:number;
-   valid_from:Date;valid_until:Date;cap_minor:string
+   valid_from:Date;valid_until:Date;cap_minor:string;request_key:string
   }>(
    "SELECT * FROM healthcare_policy_revision WHERE root_realm_id=$1 "+
    "AND id=$2 AND revision_no=$3 AND source_digest=$4 FOR SHARE",

@@ -23,7 +23,8 @@ function allowed(parts:string[],method:string){
   parts.length===3&&parts[0]==="my-centers"&&ID.test(parts[1])&&
    ["check-in","verify-slip","no-show"].includes(parts[2])&&method==="POST"||
   parts.length===5&&parts[0]==="my-centers"&&ID.test(parts[1])&&
-   parts[2]==="bookings"&&ID.test(parts[3])&&["history","clinical-history"].includes(parts[4])&&method==="GET"||
+   parts[2]==="bookings"&&ID.test(parts[3])&&
+   (parts[4]==="history"&&method==="GET"||parts[4]==="clinical-history"&&method==="GET")||
   parts.length===5&&parts[0]==="my-centers"&&ID.test(parts[1])&&
    parts[2]==="visits"&&ID.test(parts[3])&&parts[4]==="transition"&&method==="POST";
 }

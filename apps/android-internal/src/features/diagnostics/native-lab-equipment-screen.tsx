@@ -172,7 +172,7 @@ export function NativeLabEquipmentScreen({token,canManage,canUpload,
   setBusy(true);setMessage("");cleanup();
   try{
    const result=await expoFetch(path("centers/"+center+"/items/"+equipment+
-    "/evidence/files/"+document),{method:"GET",cache:"no-store",
+    "/evidence/files/"+document),{method:"GET",
     headers:{Authorization:"Bearer "+token},signal:AbortSignal.timeout(20000)});
    if(!result.ok){
     if(result.status===401)onExpired();

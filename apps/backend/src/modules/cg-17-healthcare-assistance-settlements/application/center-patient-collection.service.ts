@@ -273,13 +273,14 @@ export class CenterPatientCollectionService{
    "reason","kind","cashReturned"]);
   const requestKey=id(x.requestKey),refundMinor=value(x.refundMinor);
   const receipt=x.refundReceiptNumber,kind=x.kind;
+  const reason=typeof x.reason==="string"?x.reason.trim():"";
   if(!RECEIPT.test(String(receipt))||!["CASH_REFUND","CASH_CORRECTION"].includes(String(kind))||
-   x.cashReturned!==true||typeof x.reason!=="string"||
-   x.reason.trim().length<8||x.reason.length>400||
-   /[\u0000-\u001f\u007f]/.test(x.reason))
+   x.cashReturned!==true||
+   reason.length<8||reason.length>400||
+   /[\u0000-\u001f\u007f]/.test(reason))
    throw new BadRequestException({code:"CENTER_COLLECTION_REFUND_PROOF_REQUIRED"});
   const hash=SHA(["CG17_CENTER_REFUND_V1",center,collection,kind,
-   refundMinor,receipt,x.reason.trim(),true]);
+   refundMinor,receipt,reason,true]);
   return this.tx(async c=>{
    const actor=await this.actor(c,token,center,"healthcare.assistance.collections.refund");
    const original=await c.query<Collection>(
@@ -313,7 +314,7 @@ export class CenterPatientCollectionService{
     "verified_by_account,request_key,request_digest) "+
     "VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10) RETURNING id",
     [actor.realmId,collection,item.charge_ref,kind,refundMinor,receipt,
-     x.reason.trim(),actor.accountId,requestKey,hash]);
+     reason,actor.accountId,requestKey,hash]);
    return {replayed:false,adjustmentRef:row.rows[0].id,
     statement:await this.statement(c,actor.realmId,source),
     notice:"Original cash refund/correction recorded separately. "+

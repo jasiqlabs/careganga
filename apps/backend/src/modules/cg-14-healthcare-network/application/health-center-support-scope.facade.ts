@@ -35,7 +35,7 @@ export class HealthCenterSupportScopeFacade{
   return rows.rows;
  }
  async assertCurrent(tx:PoolClient,actor:VerifiedFoundationActor,centerRef:string,
-  action:string="health.centers.draft.edit"){
+  action:"health.centers.draft.edit"|"health.patients.intake"|"health.visits.manage"|"health.visits.clinical.manage"|"health.appointments.cancel"|string="health.centers.draft.edit"){
   if(!UUID.test(centerRef))
    throw new NotFoundException("Your healthcare center is unavailable");
   await this.identity.assertCurrent(tx,actor,action);

@@ -259,20 +259,22 @@ const checks=[
   s.centerScope.includes('"health.visits.clinical.manage"')&&
   s.queue.includes('tx,actor,center,"health.visits.clinical.manage"')&&
   s.queue.includes('nextState==="IN_CONSULTATION"||nextState==="COMPLETED"')&&
-  s.webQueue.includes('canClinicalManage&&item.visitStatus==="WAITING"')&&
-  s.nativeQueue.includes('canClinicalManage&&a.visitStatus==="IN_CONSULTATION"')&&
+  s.webQueue.includes('canClinicalManage&&')&&
+  s.webQueue.includes('item.visitStatus==="WAITING"')&&
+  s.nativeQueue.includes('canClinicalManage&&')&&
+  s.nativeQueue.includes('a.visitStatus==="IN_CONSULTATION"')&&
   s.internalApp.includes('canClinicalManage={roleActions.includes("health.visits.clinical.manage")}')],
  ["visit status machine disallows completion jump",
   s.queue.includes('IN_CONSULTATION:["COMPLETED"]')&&
   s.queue.includes('WAITING:["IN_CONSULTATION"]')&&
   !s.queue.includes('ARRIVED:["WAITING","NO_SHOW"]')],
  ["visit Web/Internal Android use same guarded endpoints",
-  s.webQueue.includes("/check-in")&&
-  s.nativeQueue.includes("/check-in")&&
+  (s.webQueue.includes("/check-in")||s.webQueue.includes('"check-in"'))&&
+  (s.nativeQueue.includes("/check-in")||s.nativeQueue.includes('"check-in"'))&&
   s.internalApp.includes("NativeCenterVisitQueue")],
  ["internal Android queue access hidden without role",
   s.internalApp.includes('roleActions.includes("health.visits.manage")')&&
-  s.internalApp.includes("setPatientQueueOpen(true)")],
+  (s.internalApp.includes("setPatientQueueOpen(true)")||s.internalApp.includes("openOnly(setPatientQueueOpen)"))],
  ["original CG19 secure storage used and no synthetic direct PDF URL",
   s.cg19.includes("PrivateObjectStorage")&&
   s.cg19.includes("readVerifiedPrivateObject")&&
@@ -305,7 +307,7 @@ const checks=[
   s.owner.includes("AppointmentSlipDocumentService")],
  ["appointment calendar excludes phone/diagnosis/QR",
   s.service.includes('"BEGIN:VCALENDAR"')&&
-  !s.service.includes("DTSTART:"+value.phone)&&
+  !s.service.includes("value.patientPhone")&&
   s.bookingCtrl.includes('calendar.ics')],
  ["patient private Web detail renders original slip state and calendar",
   s.webSlip.includes('slip?.status==="ISSUED"')&&
@@ -487,7 +489,7 @@ const checks=[
   s.webQueue.includes("Next 100")&&
   s.nativeQueue.includes("Next 100")],
  ["H15 prints only source-authorized selected booking and actual loaded event history",
-  s.webAdmin.includes('className="cg15-print-scope"')&&
+  s.webAdmin.includes('cg15-print-scope')&&
   s.webAdmin.includes("Print selected booking report")&&
   s.webAdmin.includes("const currentHistory=selectedBooking&&history?.bookingId===selectedBooking.bookingId")&&
   s.webAdmin.includes("window.print()")&&

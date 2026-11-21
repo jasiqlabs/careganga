@@ -744,7 +744,7 @@ export function RecoveryPanel() {
               </div>
             ) : operations.length === 0 ? (
               /* Empty History State Matching Wireframe */
-              <div className="cg-br-empty-state">
+              <div className="cg-br-empty-state cg-module-empty">
                 <div className="cg-br-empty-icon-wrap">
                   <FileTextIcon size={28} />
                 </div>

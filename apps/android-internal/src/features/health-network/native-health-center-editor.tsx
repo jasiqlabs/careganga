@@ -107,7 +107,7 @@ export function NativeHealthCenterEditor({token,value,onChange,disabled=false,
    x=>set("longitude",x.trim()===""?null:Number(x)),15)}
   {pick("Declared services",capabilities.map(x=>({value:x,label:label(x)})),
    "",x=>set("capabilities",value.capabilities.includes(x)?
-    value.capabilities.filter(k=>k!==x):[...value.capabilities,x])}
+    value.capabilities.filter(k=>k!==x):[...value.capabilities,x]))}
   <Text style={styles.note}>Selected services: {
    value.capabilities.map(label).join(", ")||"None"}</Text>
   {value.capabilities.includes("DIAGNOSTICS")&&field(

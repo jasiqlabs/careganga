@@ -791,6 +791,7 @@ export function FoundationAdminNav({
     healthSchedules: "Doctor Schedule & Availability",
     healthPatientIntake: "Patient Registration",
     healthVisitQueue: "Consultation Queue",
+    healthClinicianActivity: "My Consultations",
     healthPatientAdmin: "Patient & Booking Management",
     finance: "Finance & Accounting",
     financeReports: "Ledger & Reports",

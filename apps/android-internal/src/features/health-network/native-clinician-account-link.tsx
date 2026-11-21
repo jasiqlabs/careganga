@@ -149,7 +149,7 @@ export function NativeClinicianAccountAcceptance({token,
  },[token]);
  if(!proposal)return null;
  async function accept(){
-  if(busy||unknown)return;
+  if(busy||unknown||!proposal)return;
   setBusy(true);setError("");
   try{
    const response=await source<{status:string}>(token,"me/"+
