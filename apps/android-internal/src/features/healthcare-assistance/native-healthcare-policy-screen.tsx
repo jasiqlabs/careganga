@@ -6,7 +6,6 @@ import * as Crypto from "expo-crypto";
 import {careGangaTheme as t} from "../../../../../packages/design-tokens/src/index";
 import {identityRequest} from "../identity-access/http-client";
 import {NativeHealthcarePolicyApproval} from "./native-healthcare-policy-approval";
-import {NativePendingPartnerServiceClaims} from "./native-pending-partner-service-claims";
 
 type Center={centerRef:string;name:string};
 type Doctor={doctorRef:string;name:string};
@@ -351,8 +350,6 @@ export function NativeHealthcarePolicyScreen({token,canView,canManage,canReview,
      </>}
     </View>)}
    </View>}
-   {canView&&!!center&&<NativePendingPartnerServiceClaims token={token}
-    centerRef={center} mode="foundation" onExpired={onExpired}/>}
    <NativeHealthcarePolicyApproval token={token} canReview={canReview}
     canManage={canManage} policies={policies} onExpired={onExpired}
     onChanged={async()=>{if(center)await refresh(center);}}/>
