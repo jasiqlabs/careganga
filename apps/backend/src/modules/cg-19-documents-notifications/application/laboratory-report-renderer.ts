@@ -35,6 +35,7 @@ export async function renderLaboratoryReport(source:LaboratoryReportSource):
   pdf.setProducer("CareGanga CG-19 Private Documents");
   pdf.setSubject("CG16-GENERATED-RESULT:"+source.sourceDigest);
   pdf.setCreationDate(new Date(source.recordedAt));
+  pdf.setModificationDate(new Date(source.recordedAt));
   let page=pdf.addPage([595,842]),y=0;
   const header=()=>{
    page.drawRectangle({x:0,y:815,width:595,height:27,color:blue});
