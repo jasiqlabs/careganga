@@ -2,6 +2,7 @@
 import assert from "node:assert/strict";
 import {readFileSync} from "node:fs";
 import {resolve} from "node:path";
+import ts from "typescript";
 const read=path=>readFileSync(resolve(process.cwd(),path),"utf8");
 const internalCms=read("apps/android-internal/src/features/cms/native-cms-editorial.tsx");
 const internalMenu=read("apps/android-internal/src/features/dashboard/dashboard-modules.ts");
@@ -330,6 +331,14 @@ const checks=[
 ];
 // Same original editorial business source; public mobile CMS viewer does not
 // satisfy the protected Foundation staff Web-to-Internal-Android requirement.
+const nativeCmsSyntax=ts.createSourceFile(
+ "apps/android-internal/src/features/cms/native-cms-editorial.tsx",
+ internalCms,ts.ScriptTarget.Latest,true,ts.ScriptKind.TSX);
+checks.push(["Existing CG18 native CMS TSX parses",
+ nativeCmsSyntax.parseDiagnostics.length===0]);
+checks.push(["Non-home CMS payload must omit forbidden navigation key",
+ internalCms.includes('...(v.kind==="HOME"&&v.navigation?{navigation:v.navigation}:{})')&&
+ files.backend.includes('kind!=="HOME"&&v.navigation!==undefined')]);
 checks.push(["Internal Android CMS editor is real, not a public WebView",
  internalCms.includes('"/api/cms/"')&&
  internalCms.includes("pages/")&&internalCms.includes("/draft")&&
