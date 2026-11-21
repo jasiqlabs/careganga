@@ -138,29 +138,29 @@ export class HealthPartnerApplicationsService{
   const source=digest(payload);
   const token=receipt(root,data.requestKey,source);
   const reference=ref();
-  const created=await this.db.query<{reference_code:string;request_digest:string}>(
+  const created=await this.db.query<{reference_code:string;request_digest:string;status:string}>(
    "INSERT INTO health_partner_application(root_realm_id,reference_code,"+
    "receipt_digest,request_key,request_digest,partner_type,applicant_name,"+
    "contact_name,contact_phone,contact_email,registration_number,address_line,"+
    "district_name,state_name,pin_code) "+
    "VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15) "+
    "ON CONFLICT(root_realm_id,request_key) DO NOTHING "+
-   "RETURNING reference_code,request_digest",
+   "RETURNING reference_code,request_digest,status",
    [root,reference,hashReceipt(token),data.requestKey,source,data.partnerType,
     data.applicantName,data.contactName,data.contactPhone,data.contactEmail,
     data.registrationNumber,data.addressLine,data.districtName,
     data.stateName,data.pinCode]);
   let row=created.rows[0];
   if(!row){
-   const previous=await this.db.query<{reference_code:string;request_digest:string}>(
-    "SELECT reference_code,request_digest FROM health_partner_application "+
+   const previous=await this.db.query<{reference_code:string;request_digest:string;status:string}>(
+    "SELECT reference_code,request_digest,status FROM health_partner_application "+
     "WHERE root_realm_id=$1 AND request_key=$2",
     [root,data.requestKey]);
    row=previous.rows[0];
    if(!row||row.request_digest!==source)
     throw new ConflictException({code:"PARTNER_REQUEST_CONFLICT"});
   }
-  return {reference:row.reference_code,receipt:token,status:"PENDING",
+  return {reference:row.reference_code,receipt:token,status:simpleStatus(row.status),
    message:"Application received. Foundation verification is still required."};
  }
  async status(body:unknown){
