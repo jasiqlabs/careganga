@@ -40,11 +40,12 @@ export function NativeMisSharedDefinitions({token,onExpired,selected,
  },[onExpired]);
  const loadShared=useCallback(async()=>{
   const i=++sharedSeq.current;
+  if(!canManage){setShared([]);return;}
   try{
    const result=await api<{items:Shared[]}>(token,"shared-with-me");
    if(i===sharedSeq.current)setShared(result.items??[]);
   }catch(e){if(i===sharedSeq.current){setShared([]);fail(e);}}
- },[token,fail]);
+ },[token,fail,canManage]);
  const loadGrants=useCallback(async()=>{
   const i=++grantsSeq.current;
   if(!selected||!canShare){setGrants([]);return;}
