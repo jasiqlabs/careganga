@@ -29,6 +29,19 @@ const local=(d:Date,timeZone:string)=>{const parts=new Intl.DateTimeFormat("en-G
   minute:Number(get("hour"))*60+Number(get("minute"))};};
 const previous=(s:string)=>new Date(Date.parse(s+"T00:00:00Z")-86400000)
  .toISOString().slice(0,10);
+/** A check-in uses the database instant and the original shift time zone, not a client clock. */
+export function shiftCheckInAt(instant:Date,timezone:string,startText:string,
+ endText:string,graceMinutes:number){
+ const clock=local(instant,timezone),start=isoTime(startText),end=isoTime(endText);
+ const overnight=end<start;
+ if(overnight ? (clock.minute>=end&&clock.minute<start)
+              : (clock.minute<start||clock.minute>=end))
+  throw new ConflictException("Check-in is outside your assigned shift window");
+ const afterStart=overnight&&clock.minute<end?
+  (1440-start+clock.minute):clock.minute-start;
+ return {businessDate:overnight&&clock.minute<end?previous(clock.day):clock.day,
+  late:afterStart>graceMinutes};
+}
 type Rule={id:string;name:string;time_zone:string;work_start_local:string;
  work_end_local:string;grace_minutes:number;break_minutes:number;
  weekly_off_days:number[];effective_from:Date|string;branch_ref:string};
@@ -91,6 +104,9 @@ export class HrAttendanceService{
    v.weeklyOffDays.some(n=>!Number.isInteger(n)||n<0||n>6)||
    new Set(v.weeklyOffDays).size!==v.weeklyOffDays.length)
    throw new BadRequestException("Choose valid weekly days off");
+  const duration=(isoTime(end)-isoTime(start)+1440)%1440;
+  if(breakMinutes>=duration)
+   throw new BadRequestException("Break must be shorter than the actual shift");
   const weekly=[...v.weeklyOffDays].sort();
   const hash=digest([actor.accountId,branch,name,timeZone,start,end,grace,breakMinutes,weekly,effectiveFrom]);
   const tx=await this.db.connect();
@@ -165,11 +181,12 @@ export class HrAttendanceService{
    return {assigned:true,replayed:false};
   }catch(e){await tx.query("ROLLBACK");throw e;}finally{tx.release();}
  }
- private async self(tx:PoolClient,actor:VerifiedFoundationActor){
+ private async self(tx:PoolClient,actor:VerifiedFoundationActor,forWrite=false){
   await this.identity.assertPatientSessionCurrent(tx,actor);
   const q=await tx.query<{id:string;status:string}>(`SELECT id,status FROM hr_employee
    WHERE root_realm_id=$1 AND account_ref=$2
-   AND status IN('ACTIVE','PROBATION') FOR UPDATE`,[actor.realmId,actor.accountId]);
+   AND status IN('ACTIVE','PROBATION') `+(forWrite?"FOR UPDATE":"FOR SHARE"),
+   [actor.realmId,actor.accountId]);
   return q.rows[0]??null;
  }
  private async shift(tx:PoolClient,actor:VerifiedFoundationActor,employeeId:string){
@@ -179,13 +196,23 @@ export class HrAttendanceService{
    FROM hr_employee e
    JOIN hr_employment_assignment a ON a.employee_id=e.id
     AND a.root_realm_id=e.root_realm_id
-    AND a.valid_from<=CURRENT_DATE AND (a.valid_to IS NULL OR a.valid_to>CURRENT_DATE)
    JOIN branch b ON b.id=a.branch_ref AND b.root_realm_id=a.root_realm_id AND b.status='ACTIVE'
    JOIN hr_employee_shift s ON s.employee_id=e.id AND s.root_realm_id=e.root_realm_id
-    AND s.valid_from<=CURRENT_DATE AND (s.valid_to IS NULL OR s.valid_to>CURRENT_DATE)
    JOIN hr_shift_policy p ON p.id=s.policy_id AND p.root_realm_id=e.root_realm_id
-    AND p.branch_ref=a.branch_ref AND p.effective_from<=CURRENT_DATE
-   WHERE e.root_realm_id=$1 AND e.id=$2 FOR SHARE OF a,b,s,p`,
+    AND p.branch_ref=a.branch_ref
+   CROSS JOIN LATERAL (
+    SELECT CASE WHEN p.work_end_local<p.work_start_local AND
+      (now() AT TIME ZONE p.time_zone)::time<p.work_end_local
+      THEN (now() AT TIME ZONE p.time_zone)::date-1
+      ELSE (now() AT TIME ZONE p.time_zone)::date END AS local_shift_date
+   ) clock
+   WHERE e.root_realm_id=$1 AND e.id=$2
+    AND a.valid_from<=clock.local_shift_date
+    AND (a.valid_to IS NULL OR a.valid_to>clock.local_shift_date)
+    AND s.valid_from<=clock.local_shift_date
+    AND (s.valid_to IS NULL OR s.valid_to>clock.local_shift_date)
+    AND p.effective_from<=clock.local_shift_date
+   FOR SHARE OF a,b,s,p`,
    [actor.realmId,employeeId]);
   return q.rows[0]??null;
  }
@@ -216,7 +243,7 @@ export class HrAttendanceService{
   const tx=await this.db.connect();
   try{
    await tx.query("BEGIN");
-   const employee=await this.self(tx,actor);
+   const employee=await this.self(tx,actor,true);
    if(!employee)throw new ForbiddenException("Your approved active employment is unavailable");
    const previousEvent=await tx.query<{request_digest:string;local_date:Date|string;status:string}>(`
     SELECT ev.request_digest,d.local_date,d.status FROM hr_attendance_event ev
@@ -233,9 +260,9 @@ export class HrAttendanceService{
    const rule=await this.shift(tx,actor,employee.id);
    if(!rule)throw new ConflictException("Ask HR to assign your current branch shift before checking in");
    const now=(await tx.query<{now:Date}>("SELECT CURRENT_TIMESTAMP AS now")).rows[0].now;
-   const clock=local(now,rule.time_zone);
-   const start=isoTime(rule.work_start_local),end=isoTime(rule.work_end_local);
-   const businessDate=end<start&&clock.minute<end?previous(clock.day):clock.day;
+   const clock=shiftCheckInAt(now,rule.time_zone,rule.work_start_local,
+    rule.work_end_local,Number(rule.grace_minutes));
+   const businessDate=clock.businessDate;
    if(sqlDate(rule.effective_from)>businessDate)
     throw new ConflictException("Your shift is not yet effective for this attendance day");
    if(rule.weekly_off_days.includes(new Date(businessDate+"T00:00:00Z").getUTCDay()))
@@ -244,9 +271,7 @@ export class HrAttendanceService{
     AND employee_id=$2 AND local_date=$3 FOR UPDATE`,
     [actor.realmId,employee.id,businessDate]);
    if(prior.rowCount)throw new ConflictException("Check-in is already recorded for this shift day");
-   const late=clock.minute>start+Number(rule.grace_minutes) &&
-    !(end<start&&clock.minute<end);
-   const status=late?"LATE":"PRESENT";
+   const status=clock.late?"LATE":"PRESENT";
    const day=await tx.query<{id:string}>(`INSERT INTO hr_attendance_day(
     root_realm_id,employee_id,assignment_id,shift_id,policy_id,local_date,
     status,checked_in_at) VALUES($1,$2,$3,$4,$5,$6,$7,$8) RETURNING id`,
