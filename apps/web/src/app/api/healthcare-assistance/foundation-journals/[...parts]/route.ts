@@ -6,7 +6,8 @@ const ID=/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i;
 function allow(parts:string[],method:"GET"|"POST"){
  if(parts.length!==5||parts[0]!=="centers"||!ID.test(parts[1])||
    parts[2]!=="liabilities"||!ID.test(parts[3]))return false;
- return method==="GET"?parts[4]==="options":parts[4]==="post";
+ return method==="GET"?["options","correction-options"].includes(parts[4]):
+  ["post","reverse"].includes(parts[4]);
 }
 const fail=(status:number,message:string)=>NextResponse.json({message},{
  status,headers:{"Cache-Control":"private, no-store",
@@ -23,13 +24,29 @@ async function forward(req:NextRequest,parts:string[],method:"GET"|"POST"){
  if(method==="POST"){
   try{
    const raw:unknown=await req.json();
-   if(!raw||typeof raw!=="object"||Array.isArray(raw)||
-    Object.keys(raw).length!==4||
-    !["requestKey","financialYearRef","expenseAccountRef","liabilityAccountRef"]
-      .every(k=>k in raw)||
-    !Object.values(raw).every(x=>typeof x==="string"&&ID.test(x)))
-    return fail(400,"Select real Foundation accounts and year.");
-   body=JSON.stringify(raw);
+   if(!raw||typeof raw!=="object"||Array.isArray(raw))
+    return fail(400,"Invalid protected Foundation journal request.");
+   const v=raw as Record<string,unknown>;
+   if(parts[4]==="post"){
+    if(Object.keys(v).length!==4||
+     !["requestKey","financialYearRef","expenseAccountRef","liabilityAccountRef"]
+      .every(k=>k in v)||
+     !Object.values(v).every(x=>typeof x==="string"&&ID.test(x)))
+     return fail(400,"Select real Foundation accounts and year.");
+   }else{
+    if(Object.keys(v).length!==5||
+     !["requestKey","financialYearRef","postingDate","reason","currentPassword"]
+      .every(k=>k in v)||
+     typeof v.requestKey!=="string"||!ID.test(v.requestKey)||
+     typeof v.financialYearRef!=="string"||!ID.test(v.financialYearRef)||
+     typeof v.postingDate!=="string"||!/^\\d{4}-\\d{2}-\\d{2}$/.test(v.postingDate)||
+     typeof v.reason!=="string"||v.reason.trim().length<12||
+     v.reason.trim().length>300||
+     typeof v.currentPassword!=="string"||v.currentPassword.length<8||
+     v.currentPassword.length>1024)
+     return fail(400,"Review the date, reason and password confirmation.");
+   }
+   body=JSON.stringify(v);
   }catch{return fail(400,"Invalid original posting details.");}
  }
  try{
@@ -42,10 +59,10 @@ async function forward(req:NextRequest,parts:string[],method:"GET"|"POST"){
    const status=[400,401,403,404,409,429].includes(response.status)?
     response.status:503;
    return fail(status,status===401?"Your session expired. Sign in again.":
-    status===403?"Your current role cannot post Foundation journals.":
+    status===403?"Your current role cannot perform this protected accounting action.":
     status===404?"The original Foundation obligation is unavailable.":
-    status===409?"Original accounts, year or posting changed. Check the journal.":
-    status===400?"Select a valid original Foundation expense and payable account.":
+    status===409?"The original financial source changed or requires a separate reconciliation. Check its current status.":
+    status===400?"Check the original accounting details and correction proof.":
     "Posting outcome uncertain. Recheck the original journal before retrying.");
   }
   const data:unknown=await response.json().catch(()=>null);
