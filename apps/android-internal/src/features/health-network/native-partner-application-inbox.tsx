@@ -1,5 +1,5 @@
 import {useEffect,useState} from "react";
-import {ActivityIndicator,Alert,Pressable,ScrollView,StyleSheet,Text,TextInput,View} from "react-native";
+import {ActivityIndicator,Alert,BackHandler,Pressable,ScrollView,StyleSheet,Text,TextInput,View} from "react-native";
 import {SafeAreaView} from "react-native-safe-area-context";
 import {careGangaTheme as t} from "../../../../../packages/design-tokens/src/index";
 import {identityRequest} from "../identity-access/http-client";
@@ -33,6 +33,14 @@ export function NativePartnerApplicationInbox({token,canManage,onExit,onExpired}
  const [options,setOptions]=useState<Option[]>([]);
  const [busy,setBusy]=useState(false),[error,setError]=useState("");
  const [notice,setNotice]=useState("");
+ useEffect(()=>{
+  const subscription=BackHandler.addEventListener("hardwareBackPress",()=>{
+   if(selected)setSelected(null);
+   else onExit();
+   return true;
+  });
+  return ()=>subscription.remove();
+ },[selected,onExit]);
  function failure(e:unknown){
   if(e&&typeof e==="object"&&"status" in e&&e.status===401)onExpired();
   setError(e instanceof Error?e.message:"Original application could not be verified.");
