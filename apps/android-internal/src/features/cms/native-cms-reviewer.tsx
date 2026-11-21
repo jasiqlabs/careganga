@@ -154,11 +154,16 @@ export function NativeCmsReviewer({token,onExpired,onDone}:Props){
    setMessage(kind==="APPROVE"?
     "Original approved by CG03. Publisher must still publish.":
     "Original review decision confirmed. Author may update draft.");
-   await load(0,false);await onDone();
+   await load(0,false);
+   try{await onDone()}catch{
+    setMessage("Original CG03 reviewer decision is CONFIRMED. "+
+     "The page list refresh is unavailable; refresh it separately.");
+   }
   }catch(e){
    if(e&&typeof e==="object"&&"status" in e&&
      typeof e.status==="number"&&e.status<500){
-     setPending(null);
+     setPending(null);setUncertain(false);setDetail(null);
+     void load(0,false);
    }else setUncertain(true);
    fail(e);
   }finally{setBusy(false)}
