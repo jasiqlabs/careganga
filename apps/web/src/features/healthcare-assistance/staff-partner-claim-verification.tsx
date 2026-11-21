@@ -151,7 +151,7 @@ export function StaffPartnerClaimVerification({centerRef,claimCode,mode,onChange
   {!!notice&&<p role="status">{notice}</p>}
   {mode==="partner"&&detail.canAttest&&detail.state==="PENDING_VERIFICATION"&&
    <div className="form-grid">
-    <p>Confirm only a genuinely supplied invoice, completed service and actual patient
+    <p>Confirm only a genuine invoice, completed laboratory/nursing/procedure service and actual patient
      payment that the partner received directly. No Foundation money is collected here.</p>
     <label>Actually collected from patient (₹)
      <input inputMode="decimal" value={collected} disabled={busy||uncertain}
