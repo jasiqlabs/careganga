@@ -3,6 +3,7 @@ import {ActivityIndicator,Pressable,SafeAreaView,ScrollView,StyleSheet,Text,View
  from "react-native";
 import {careGangaTheme as t} from "../../../../../packages/design-tokens/src/index";
 import {identityRequest} from "../identity-access/http-client";
+import {NativePendingPartnerServiceClaims} from "./native-pending-partner-service-claims";
 type Center={centerRef:string;centerName:string};
 type Summary={month:string;state:string;eligibleAccruedMinor?:string;
  approvedFoundationMinor:string;actualPaidMinor:string;outstandingMinor:string;
@@ -167,6 +168,8 @@ export function NativePartnerSettlementSummary({token,onExit,onExpired}:Props){
      });
     },busy)}
    </View>}
+   {!!center&&<NativePendingPartnerServiceClaims token={token}
+    centerRef={center} mode="partner" onExpired={onExpired}/>}
   </ScrollView>
  </SafeAreaView>;
 }
