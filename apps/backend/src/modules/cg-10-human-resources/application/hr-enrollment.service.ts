@@ -753,7 +753,9 @@ export class HrEnrollmentService{
    "ON source.id=e.application_id AND source.root_realm_id=e.root_realm_id "+
    "JOIN LATERAL (SELECT a.* FROM hr_employment_assignment a "+
    "WHERE a.employee_id=e.id AND a.root_realm_id=e.root_realm_id "+
-   "ORDER BY a.valid_from DESC,a.id DESC LIMIT 1) asg ON true "+
+   "ORDER BY CASE WHEN a.valid_from<=CURRENT_DATE AND "+
+   "(a.valid_to IS NULL OR a.valid_to>CURRENT_DATE) "+
+   "THEN 0 ELSE 1 END,a.valid_from DESC,a.id DESC LIMIT 1) asg ON true "+
    "JOIN branch b ON b.id=asg.branch_ref AND b.root_realm_id=asg.root_realm_id "+
    "LEFT JOIN department dep ON dep.id=asg.department_ref "+
    "AND dep.root_realm_id=asg.root_realm_id "+
@@ -792,7 +794,9 @@ export class HrEnrollmentService{
    "SELECT e.status,COUNT(*)::text AS quantity FROM hr_employee e "+
    "JOIN LATERAL (SELECT a.branch_ref FROM hr_employment_assignment a "+
    "WHERE a.employee_id=e.id AND a.root_realm_id=e.root_realm_id "+
-   "ORDER BY a.valid_from DESC,a.id DESC LIMIT 1) assignment ON true "+
+   "ORDER BY CASE WHEN a.valid_from<=CURRENT_DATE AND "+
+   "(a.valid_to IS NULL OR a.valid_to>CURRENT_DATE) "+
+   "THEN 0 ELSE 1 END,a.valid_from DESC,a.id DESC LIMIT 1) assignment ON true "+
    "JOIN branch b ON b.id=assignment.branch_ref AND b.root_realm_id=e.root_realm_id "+
    "WHERE e.root_realm_id=$1 AND (b.manager_account_ref=$2 OR EXISTS("+
    "SELECT 1 FROM account_role ar JOIN role role_now ON role_now.id=ar.role_id "+
@@ -835,10 +839,11 @@ export class HrEnrollmentService{
    "manager_app.legal_name AS manager_name FROM hr_employee e "+
    "JOIN hr_employee_application a ON a.id=e.application_id "+
    "AND a.root_realm_id=e.root_realm_id "+
-   "JOIN hr_employment_assignment asg ON asg.employee_id=e.id "+
-   "AND asg.root_realm_id=e.root_realm_id "+
-   "AND asg.valid_from<=CURRENT_DATE AND "+
-   "(asg.valid_to IS NULL OR asg.valid_to>CURRENT_DATE) "+
+   "JOIN LATERAL (SELECT original.* FROM hr_employment_assignment original "+
+   "WHERE original.employee_id=e.id AND original.root_realm_id=e.root_realm_id "+
+   "ORDER BY CASE WHEN original.valid_from<=CURRENT_DATE AND "+
+   "(original.valid_to IS NULL OR original.valid_to>CURRENT_DATE) "+
+   "THEN 0 ELSE 1 END, original.valid_from DESC,original.id DESC LIMIT 1) asg ON true "+
    "JOIN branch b ON b.id=asg.branch_ref AND b.root_realm_id=asg.root_realm_id "+
    "LEFT JOIN department d ON d.id=asg.department_ref AND d.root_realm_id=e.root_realm_id "+
    "LEFT JOIN hr_employee manager ON manager.id=asg.manager_employee_ref "+
