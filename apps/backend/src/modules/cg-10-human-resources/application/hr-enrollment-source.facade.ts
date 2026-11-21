@@ -11,7 +11,16 @@ export type HrApplicationSnapshot={id:string;root_realm_id:string;revision_no:nu
 export type HrFrozenSource={applicationRef:string;revisionRef:string;
  revisionNo:number;digest:string;proposerRef:string;source:HrApplicationSnapshot;
  files:readonly {fileRef:string;fileVersion:number;classification:string}[]};
-export const sourceHash=(v:unknown)=>createHash("sha256").update(JSON.stringify(v)).digest("hex");
+/** Canonical hashing survives PostgreSQL jsonb key reordering and JS object insertion order. */
+const canonical=(v:unknown):unknown=>{
+ if(Array.isArray(v))return v.map(canonical);
+ if(v&&typeof v==="object"&&!(v instanceof Date))
+  return Object.fromEntries(Object.entries(v).sort(([a],[b])=>a.localeCompare(b))
+   .map(([k,x])=>[k,canonical(x)]));
+ return v;
+};
+export const sourceHash=(v:unknown)=>
+ createHash("sha256").update(JSON.stringify(canonical(v))).digest("hex");
 const uuid=(v:unknown)=>{if(typeof v!=="string"||!ID.test(v))
  throw new BadRequestException("Choose an existing employee application");return v;};
 @Injectable()
