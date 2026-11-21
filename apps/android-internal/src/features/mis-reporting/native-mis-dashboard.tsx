@@ -1,4 +1,4 @@
-import {useCallback,useEffect,useState} from "react";
+import {useCallback,useEffect,useRef,useState} from "react";
 import {AppState,Pressable,StyleSheet,Text,View} from "react-native";
 import {identityRequest} from "../identity-access/http-client";
 import {NativeFinanceOptions} from "../finance-accounting/finance-native-source-kit";
@@ -22,6 +22,7 @@ export function NativeMisDashboard({token,onExpired,onOpenFinance}:{
  const [overview,setOverview]=useState<Overview|null>(null);
  const [busy,setBusy]=useState(true);
  const [problem,setProblem]=useState("");
+ const seq=useRef(0);
  const [ready,setReady]=useState(false),[allBranches,setAllBranches]=useState(false);
  const [years,setYears]=useState<Option[]>([]),[branches,setBranches]=useState<Option[]>([]);
  const [year,setYear]=useState(""),[branch,setBranch]=useState("");
@@ -29,6 +30,7 @@ export function NativeMisDashboard({token,onExpired,onOpenFinance}:{
   try{
    const response=await identityRequest("/api/v1/mis/options",{
     headers:{Authorization:"Bearer "+token}});
+   if(requestId!==seq.current)return;
    if(response.status===401){onExpired();return;}
    if(!response.ok)throw Error("OPTIONS");
    const opts=await response.json() as Choices;
@@ -39,6 +41,7 @@ export function NativeMisDashboard({token,onExpired,onOpenFinance}:{
   }catch{if(live){setProblem("Reporting filters are unavailable. Please retry.");setReady(false);}}
  })();return()=>{live=false;};},[token,onExpired]);
  const reload=useCallback(async()=>{
+  const requestId=++seq.current;
   setBusy(true);setProblem("");setOverview(null);
   try{
    const query=new URLSearchParams();
@@ -52,12 +55,13 @@ export function NativeMisDashboard({token,onExpired,onOpenFinance}:{
    const data=await response.json() as Overview;
    if(!data||!Array.isArray(data.sources)||typeof data.state!=="string")
     throw Error("Reporting data could not be verified.");
-   setOverview(data);
-  }catch(e){setProblem(e instanceof Error&&e.message==="Your role cannot view these reports."?
+   if(requestId===seq.current)setOverview(data);
+  }catch(e){if(requestId===seq.current)setProblem(e instanceof Error&&e.message==="Your role cannot view these reports."?
    e.message:"Unable to load current reporting data. Refresh to retry.");}
-  finally{setBusy(false);}
+  finally{if(requestId===seq.current)setBusy(false);}
  },[token,onExpired,year,branch]);
  useEffect(()=>{if(ready)void reload();},[ready,reload]);
+ useEffect(()=>()=>{seq.current+=1;},[]);
  // The current owner grant may change while the mobile app is backgrounded.
  useEffect(()=>{if(!ready)return;
   const sub=AppState.addEventListener("change",state=>{
