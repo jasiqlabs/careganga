@@ -1,4 +1,5 @@
-import {Pressable,ScrollView,StyleSheet,Text,View} from "react-native";
+import {useCallback,useEffect,useState} from "react";
+import {Alert,BackHandler,Pressable,ScrollView,StyleSheet,Text,View} from "react-native";
 import {careGangaTheme as t} from "../../../../../packages/design-tokens/src/index";
 import {NativeMisDashboard} from "./native-mis-dashboard";
 import {NativeMisReports} from "./native-mis-reports";
@@ -12,13 +13,27 @@ export function NativeMisWorkspaceScreen({token,onExpired,onExit,
  token:string;onExpired:()=>void;onExit:()=>void;
  canDashboard:boolean;canReports:boolean;
  onOpenFinance?:()=>void;onOpenPatientAdmin?:()=>void
-}){
+}){ 
+ const [hasDraft,setHasDraft]=useState(false);
+ const confirmExit=useCallback(()=>{
+  if(!hasDraft){onExit();return;}
+  Alert.alert("Leave report editing?",
+   "The report name you entered has not been saved.",
+   [{text:"Keep editing",style:"cancel"},
+    {text:"Discard name and go back",style:"destructive",onPress:onExit}]);
+ },[hasDraft,onExit]);
+ useEffect(()=>{
+  const handler=BackHandler.addEventListener("hardwareBackPress",()=>{
+   confirmExit();return true;
+  });
+  return()=>handler.remove();
+ },[confirmExit]);
  return <ScrollView keyboardShouldPersistTaps="handled"
   contentContainerStyle={styles.content}
   accessibilityLabel="Foundation Reports and Management Information System">
   <View style={styles.header}>
    <Pressable accessibilityRole="button" accessibilityLabel="Back to dashboard"
-    onPress={onExit} style={styles.back}>
+    onPress={confirmExit} style={styles.back}>
     <Text style={styles.backText}>‹ Back</Text>
    </Pressable>
    <View style={{flex:1}}>
@@ -28,7 +43,8 @@ export function NativeMisWorkspaceScreen({token,onExpired,onExit,
   </View>
   {canDashboard&&<NativeMisDashboard token={token} onExpired={onExpired}
    onOpenFinance={onOpenFinance} onOpenPatientAdmin={onOpenPatientAdmin}/>}
-  {canReports&&<NativeMisReports token={token} onExpired={onExpired}/>}
+  {canReports&&<NativeMisReports token={token} onExpired={onExpired}
+   onDraftChange={setHasDraft}/>}
   {!canDashboard&&!canReports&&<Text accessibilityRole="alert"
    style={styles.error}>Your current role cannot access Foundation reporting.</Text>}
  </ScrollView>;
