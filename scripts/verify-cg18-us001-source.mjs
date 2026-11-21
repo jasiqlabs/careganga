@@ -404,6 +404,26 @@ checks.push(["Native independent reviewer preserves same outcome request key aft
  internalReviewer.includes("setPending(op)")&&
  internalReviewer.includes("Retry exact original request")&&
  internalReviewer.includes("requestKey:op.key")]);
+// The original CG18 extended parser REQUIRES typed first list items
+// (categories/gallery) and bounded structures; empty native arrays must be
+// editable with exact existing fields rather than invalid blank-string rows.
+checks.push(["Native empty CMS arrays can add original typed gallery/category/FAQ/impact objects",
+ internalCms.includes('initialListItem=(name:string,section?:string,group?:string)')&&
+ internalCms.includes('name==="categories"&&section==="HEALTHCARE_CATEGORIES"')&&
+ internalCms.includes('name==="items"&&section==="GALLERY_GRID"')&&
+ internalCms.includes('name==="faqs"')&&
+ internalCms.includes('name==="items"&&section==="IMPACT_GROUP"')&&
+ internalCms.includes('button("Add "+title(name)+" item"')]);
+checks.push(["Native editor preserves real-person consent and original CG18 list limits",
+ internalCms.includes('group==="STORIES")v.consentConfirmed=false')&&
+ internalCms.includes('name==="faqs"?8')&&
+ internalCms.includes('name==="socialLinks"||name==="inquiries"?3')&&
+ internalCms.includes('section==="GALLERY_GRID"?12:16')&&
+ internalCms.includes('sectionKind={section.kind}')]);
+checks.push(["Existing CG18 typed parser proves native first-item schema",
+ files.extended.includes('kind==="HEALTHCARE_CATEGORIES"')&&
+ files.extended.includes('kind==="GALLERY_GRID"')&&
+ files.extended.includes('kind==="CONTACT_INFO"')]);
 let errors=0;
 for(const [label,ok] of checks){
  console.log((ok?"SOURCE-PRESENT":"SOURCE-FAIL")+": "+label);
