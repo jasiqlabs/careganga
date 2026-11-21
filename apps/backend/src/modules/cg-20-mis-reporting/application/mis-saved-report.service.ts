@@ -139,7 +139,7 @@ export class MisSavedReportService{
   return {request:item.request,version:item.version,revision:item.revision,
    name:item.name,ref:item.ref};
  }
- async create(token:string,raw:unknown){
+ async create(token:string,raw:unknown,createdFrom?:string){
   const actor=await this.current(token,true);
   if(!raw||typeof raw!=="object"||Array.isArray(raw))
    throw new BadRequestException({code:"MIS_SAVED_INVALID"});
@@ -148,7 +148,8 @@ export class MisSavedReportService{
    throw new BadRequestException({code:"MIS_SAVED_INVALID"});
   const title=name(b.name),key=ref(b.requestKey),request=parseSafeReport(b.request);
   await this.sources.preview(token,request);
-  const digest=hash({action:"CREATE",title,request});
+  const action=createdFrom?"COPY":"CREATE";
+  const digest=hash({action,title,request,createdFrom:createdFrom??null});
   return this.tx(async tx=>{
    await tx.query("SELECT pg_advisory_xact_lock(hashtextextended($1,0))",
     [actor.realmId+":mis-saved:"+actor.accountId+":"+key]);
@@ -169,7 +170,7 @@ export class MisSavedReportService{
     "definition_ref,current_revision) VALUES($1,$2,$3,$4,1) RETURNING *",
     [actor.realmId,actor.accountId,title,id]);
    await this.record(tx,actor.realmId,actor.accountId,key,digest,
-    "CREATE",created.rows[0].id,1);
+    action,created.rows[0].id,1);
    return {...this.summary(created.rows[0]),replayed:false};
   });
  }
@@ -221,7 +222,7 @@ export class MisSavedReportService{
   const title=name(b.name),key=ref(b.requestKey);
   const record=await this.authorizedRequest(token,id);
   // Source-specific rights checked on reauthorization, copy stays PRIVATE.
-  return this.create(token,{name:title,request:record.request,requestKey:key});
+  return this.create(token,{name:title,request:record.request,requestKey:key},id);
  }
  async retire(token:string,idInput:string,raw:unknown){
   const actor=await this.current(token,true),id=ref(idInput);
