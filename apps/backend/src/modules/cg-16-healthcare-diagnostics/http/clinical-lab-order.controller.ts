@@ -4,6 +4,8 @@ import {ClinicalLabOptionsService} from "../application/clinical-lab-options.ser
 import {ClinicalLabCustodyService} from "../application/clinical-lab-custody.service";
 import {ClinicalLabResultEvidenceService}
  from "../application/clinical-lab-result-evidence.service";
+import {ClinicalLabGeneratedResultService}
+ from "../application/clinical-lab-generated-result.service";
 import {ClinicalLabProfessionalReviewService} from "../application/clinical-lab-professional-review.service";
 import {ClinicalLabPatientReleaseService} from "../application/clinical-lab-patient-release.service";
 
@@ -16,6 +18,7 @@ export class ClinicalLabOrderController{
   private readonly options:ClinicalLabOptionsService,
   private readonly custody:ClinicalLabCustodyService,
   private readonly reports:ClinicalLabResultEvidenceService,
+  private readonly generated:ClinicalLabGeneratedResultService,
   private readonly professional:ClinicalLabProfessionalReviewService,
   private readonly patientRelease:ClinicalLabPatientReleaseService){}
  @Get("centers/eligible")
@@ -46,6 +49,19 @@ export class ClinicalLabOrderController{
   @Param("sampleRef")sample:string,@Param("action")action:string,
   @Body()body:unknown){
   return this.custody.change(token,center,order,sample,action,body);
+ }
+ @Get("centers/:centerRef/orders/:orderRef/results/entry")
+ @Header("Cache-Control","private, no-store")
+ resultEntry(@Headers("authorization")token:string,
+  @Param("centerRef")center:string,@Param("orderRef")order:string){
+  return this.generated.eligible(token,center,order);
+ }
+ @Post("centers/:centerRef/orders/:orderRef/results/generate")
+ @Header("Cache-Control","private, no-store")
+ generateReport(@Headers("authorization")token:string,
+  @Param("centerRef")center:string,@Param("orderRef")order:string,
+  @Body()body:unknown){
+  return this.generated.generate(token,center,order,body);
  }
  @Get("centers/:centerRef/orders/:orderRef/reports/current")
  reportCurrent(@Headers("authorization")token:string,
