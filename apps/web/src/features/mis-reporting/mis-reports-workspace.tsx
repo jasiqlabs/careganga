@@ -66,7 +66,9 @@ export function MisReportsWorkspace(){
   try{
    const c=await request<Catalog>("templates");
    if(!Array.isArray(c.templates))throw Error("Current report catalog could not be verified.");
-   if(i===seq.current){setCatalog(c);setKind(old=>c.templates.some(x=>x.kind===old)?
+   if(i===seq.current){setCatalog(c);
+    setBranch(c.finance.allBranches?"":c.finance.branches[0]?.ref??"");
+    setKind(old=>c.templates.some(x=>x.kind===old)?
     old:c.templates[0]?.kind??null);}
   }catch(e){if(i===seq.current){setCatalog(null);setKind(null);
    setProblem(e instanceof Error?e.message:"Report source unavailable.");}}
