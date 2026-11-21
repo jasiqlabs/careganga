@@ -12,6 +12,12 @@ function allowed(parts:string[],method:string){
   return method==="GET"||method==="PATCH";
  if(parts.length===3&&parts[0]==="applications"&&UUID.test(parts[1])&&
   ["submit","finalize"].includes(parts[2]))return method==="POST";
+ if(parts.length===3&&parts[0]==="applications"&&UUID.test(parts[1])&&
+  parts[2]==="review")return method==="GET";
+ if(parts.length===1&&parts[0]==="reviews")return method==="GET";
+ if(parts.length===2&&parts[0]==="reviews"&&UUID.test(parts[1]))return method==="GET";
+ if(parts.length===3&&parts[0]==="reviews"&&UUID.test(parts[1])&&
+  parts[2]==="decide")return method==="POST";
  return false;
 }
 async function proxy(req:NextRequest,parts:string[],method:string){
