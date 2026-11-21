@@ -145,8 +145,22 @@ export class HrEnrollmentService{
   return this.availableBranches(a);
  }
  private async availableBranches(a:VerifiedFoundationActor){
-  const q=await this.db.query<{id:string;name:string}>(
-   "SELECT b.id,b.name FROM branch b WHERE b.root_realm_id=$1 AND b.status='ACTIVE' "+
+  const q=await this.db.query<{id:string;name:string;pin_code:string|null;
+    state:string|null;district:string|null;subdivision:string|null;block:string|null}>(
+   "SELECT b.id,b.name,b.pin_code,geo.state,geo.district,geo.subdivision,geo.block "+
+   "FROM branch b LEFT JOIN LATERAL ("+
+   "WITH RECURSIVE path(level,display_name,parent_area_id,root_realm_id,depth) AS ("+
+   "SELECT g.level,g.display_name,g.parent_area_id,g.root_realm_id,0 "+
+   "FROM geography_area g WHERE g.id=b.geography_area_id AND g.root_realm_id=b.root_realm_id "+
+   "UNION ALL SELECT parent.level,parent.display_name,parent.parent_area_id,parent.root_realm_id,p.depth+1 "+
+   "FROM path p JOIN geography_area parent ON parent.id=p.parent_area_id "+
+   "AND parent.root_realm_id=p.root_realm_id WHERE p.depth<6) "+
+   "SELECT MAX(display_name) FILTER(WHERE level='STATE') AS state,"+
+   "MAX(display_name) FILTER(WHERE level='DISTRICT') AS district,"+
+   "MAX(display_name) FILTER(WHERE level='SUBDIVISION') AS subdivision,"+
+   "MAX(display_name) FILTER(WHERE level='BLOCK') AS block FROM path"+
+   ") geo ON true "+
+   "WHERE b.root_realm_id=$1 AND b.status='ACTIVE' "+
    "AND (b.manager_account_ref=$2 OR EXISTS("+
    "SELECT 1 FROM account_role ar JOIN role r ON r.id=ar.role_id "+
    "AND r.realm_id=ar.realm_id AND r.active "+
@@ -155,7 +169,9 @@ export class HrEnrollmentService{
    "AND (r.is_protected OR g.capability_key IS NOT NULL))) "+
    "ORDER BY b.name,b.id LIMIT 101",[a.realmId,a.accountId]);
   if(q.rows.length>100)throw new ConflictException("Contact your administrator to narrow branch access");
-  return {items:q.rows.map(b=>({branchRef:b.id,label:b.name}))};
+  return {items:q.rows.map(b=>({branchRef:b.id,label:b.name,
+    geography:[b.state,b.district,b.subdivision,b.block,b.pin_code].filter(Boolean).join(", "),
+    state:b.state,district:b.district,block:b.block,pinCode:b.pin_code}))};
  }
  async departmentOptions(token:string,branchInput:string){
   const a=await this.actor(token,"hr.applications.view");
