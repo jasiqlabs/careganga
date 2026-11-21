@@ -1,6 +1,5 @@
 "use client";
 import {useCallback,useEffect,useRef,useState,type FormEvent} from "react";
-import {ClinicalLabResultUpload} from "./clinical-lab-result-upload";
 import {ClinicalLabResultEntry} from "./clinical-lab-result-entry";
 import {ClinicalLabProfessionalReviewPanel} from "./clinical-lab-professional-review-panel";
 import {ClinicalLabReleasePanel} from "./clinical-lab-release-panel";
@@ -359,13 +358,7 @@ export function ClinicalLabOrderWorkspace({canCreate,canView,canManageSamples,ca
      <ClinicalLabResultEntry key={"entry:"+center+":"+selected.order.orderRef}
       centerRef={center} orderRef={selected.order.orderRef}
       onVerified={async()=>{await show(selected.order.orderRef);}}/>
-     {selected.report?.state==="DRAFT"&&<details>
-      <summary>Continue an earlier uploaded PDF (if applicable)</summary>
-      <ClinicalLabResultUpload key={"prior:"+center+":"+selected.order.orderRef}
-       centerRef={center} orderRef={selected.order.orderRef}
-       hasDraft={true}
-       onVerified={async()=>{await show(selected.order.orderRef);}}/>
-     </details>}
+
     </>:null}
   </section>}
  </section>;
