@@ -31,7 +31,7 @@ type Saved={
  id:string;root_realm_id:string;owner_account_ref:string;
  display_name:string;definition_ref:string;current_revision:number;
  version:number;visibility:"PRIVATE";state:"ACTIVE"|"RETIRED";
- created_at:Date;updated_at:Date
+ source_key?:string;created_at:Date;updated_at:Date
 };
 type Definition={safe_request:SafeReportRequest;source_key:string;
  view_kind:string;revision:number};
@@ -106,7 +106,8 @@ export class MisSavedReportService{
  private summary(row:Saved){
   return {ref:row.id,name:row.display_name,version:row.version,
    revision:row.current_revision,state:row.state,
-   visibility:row.visibility,updatedAt:row.updated_at};
+   visibility:row.visibility,updatedAt:row.updated_at,
+   sourceKey:row.source_key??null};
  }
  /** No N+1 source reads on owner-scoped list. Open/preview/export reauthorize
   * the original finance/healthcare facade before revealing report data.
@@ -114,8 +115,11 @@ export class MisSavedReportService{
  async list(token:string){
   const actor=await this.current(token);
   const r=await this.db.query<Saved>(
-   "SELECT * FROM cg20_saved_report WHERE root_realm_id=$1 "+
-   "AND owner_account_ref=$2 ORDER BY updated_at DESC,id DESC LIMIT 51",
+   "SELECT s.*,d.source_key FROM cg20_saved_report s "+
+   "JOIN cg20_report_definition d ON d.root_realm_id=s.root_realm_id "+
+   "AND d.id=s.definition_ref AND d.revision=s.current_revision "+
+   "WHERE s.root_realm_id=$1 AND s.owner_account_ref=$2 "+
+   "ORDER BY s.updated_at DESC,s.id DESC LIMIT 51",
    [actor.realmId,actor.accountId]);
   return {items:r.rows.slice(0,50).map(x=>this.summary(x)),
    hasMore:r.rows.length>50};
