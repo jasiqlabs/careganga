@@ -147,6 +147,54 @@ export class HrEnrollmentService{
    return {items:q.rows.map(d=>({departmentRef:d.id,label:d.name}))};
   }finally{tx.release();}
  }
+ async managerOptions(token:string,branchInput:string){
+  const actor=await this.actor(token,"hr.applications.view");
+  const branch=uuid(branchInput,"branch");
+  const tx=await this.db.connect();
+  try{
+   await this.branch(tx,actor,branch);
+   const q=await tx.query<{id:string;legal_name:string;designation:string}>(
+    "SELECT e.id,app.legal_name,asg.designation "+
+    "FROM hr_employee e JOIN hr_employee_application app "+
+    "ON app.id=e.application_id AND app.root_realm_id=e.root_realm_id "+
+    "JOIN hr_employment_assignment asg ON asg.employee_id=e.id "+
+    "AND asg.root_realm_id=e.root_realm_id "+
+    "WHERE e.root_realm_id=$1 AND e.status IN('ACTIVE','PROBATION') "+
+    "AND asg.branch_ref=$2 AND asg.valid_from<=CURRENT_DATE "+
+    "AND (asg.valid_to IS NULL OR asg.valid_to>CURRENT_DATE) "+
+    "ORDER BY app.legal_name,e.id LIMIT 101",
+    [actor.realmId,branch]);
+   if(q.rows.length>100)throw new ConflictException(
+    "Choose a more specific manager list");
+   return {items:q.rows.map(x=>({
+    managerRef:x.id,label:x.legal_name+" — "+x.designation}))};
+  }finally{tx.release();}
+ }
+ /** CG01 owns active account selection and its role grants. Existing accounts
+  * are merely *proposed* at HR drafting, never assigned extra HR privileges.
+  */
+ async accountOptions(token:string,searchInput:string){
+  const actor=await this.actor(token,"hr.applications.view");
+  await this.sessions.requireAction(token,"accounts.select");
+  const search=searchInput.trim();
+  if(search.length>80||/[\u0000-\u001f\u007f]/.test(search))
+   throw new BadRequestException("Check the staff account search");
+  const tx=await this.db.connect();
+  try{
+   await this.identity.assertCurrent(tx,actor,"accounts.select");
+   const options=await this.identity.eligibleOfficeholderOptions(tx,actor,search);
+   const ids=options.map(x=>x.value);
+   if(!ids.length)return {items:[]};
+   const used=await tx.query<{account_ref:string}>(
+    "SELECT account_ref FROM hr_employee WHERE root_realm_id=$1 "+
+    "AND account_ref=ANY($2::uuid[]) AND account_ref IS NOT NULL",
+    [actor.realmId,ids]);
+   const linked=new Set(used.rows.map(x=>x.account_ref));
+   return {items:options.filter(x=>!linked.has(x.value)).map(x=>({
+    accountRef:x.value,label:x.label}))};
+  }finally{tx.release();}
+ }
+
  async create(token:string,input:unknown){
   const a=await this.actor(token,"hr.applications.manage"),x=parseHrDraft(input);
   const digest=hash(["CREATE",a.accountId,x]),tx=await this.db.connect();
