@@ -1,4 +1,4 @@
-import {BadRequestException, ForbiddenException, Injectable} from "@nestjs/common";
+import {BadRequestException, ForbiddenException, Injectable, UnauthorizedException} from "@nestjs/common";
 import {SessionService} from "../../cg-01-identity-access/application/session.service";
 import {FinanceReportsService} from "../../cg-09-finance-accounting/application/finance-reports.service";
 import {DiagnosticsCatalogService} from "../../cg-16-healthcare-diagnostics/application/diagnostics-catalog.service";
@@ -31,6 +31,7 @@ export class MisDashboardService{
     branches:source.branches.map(b=>({ref:b.branchRef,name:b.name})),
     allBranches:source.allBranches};
   }catch(error){
+   if(error instanceof UnauthorizedException)throw error;
    if(error instanceof ForbiddenException)return {
     state:"NO_FINANCE_ACCESS",years:[],branches:[],allBranches:false};
    return {state:"FAILED",years:[],branches:[],allBranches:false};
@@ -64,6 +65,7 @@ export class MisDashboardService{
     ],drilldown:"/admin/finance/reports",explanation:source.explanation}))
    .catch((error:unknown)=>{
     // Never downgrade an explicit foreign-branch access attempt to a 200 OK.
+    if(error instanceof UnauthorizedException)throw error;
     if(error instanceof ForbiddenException){
      if(filters.branchRef)throw error;
      return null;
@@ -89,6 +91,7 @@ export class MisDashboardService{
      {key:"publishedOffers",label:"Published verified offers",unit:"COUNT" as const,value:String(x.publishedOffers)}
     ],explanation:"Current Foundation-wide catalogue, independent of financial-year and branch filters."}))
    .catch((error:unknown)=>{
+    if(error instanceof UnauthorizedException)throw error;
     if(error instanceof ForbiddenException)return null;
     failures++;
     return {sourceKey:"CG16_FOUNDATION_DIAGNOSTICS",state:"FAILED" as const,
@@ -108,6 +111,7 @@ export class MisDashboardService{
      {key:"cancelled",label:"Cancelled appointments",unit:"COUNT" as const,value:x.cancelled}
     ],explanation:"Foundation-wide status counts only; no patient files or individual care data."}))
    .catch((error:unknown)=>{
+    if(error instanceof UnauthorizedException)throw error;
     if(error instanceof ForbiddenException)return null;
     failures++;
     return {sourceKey:"CG15_APPOINTMENT_STATES",state:"FAILED" as const,
