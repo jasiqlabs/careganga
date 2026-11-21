@@ -100,14 +100,16 @@ export class HrEnrollmentService{
    if(!department.rowCount)throw new BadRequestException("Select an available department");
   }
   if(x.managerRef){
-   const manager=await tx.query(
-    "SELECT 1 FROM hr_employee e JOIN hr_employment_assignment a "+
+   const manager=await tx.query<{account_ref:string|null}>(
+    "SELECT e.account_ref FROM hr_employee e JOIN hr_employment_assignment a "+
     "ON a.employee_id=e.id AND a.root_realm_id=e.root_realm_id "+
     "WHERE e.id=$1 AND e.root_realm_id=$2 AND e.status IN('ACTIVE','PROBATION') "+
     "AND a.branch_ref=$3 AND a.valid_from<=CURRENT_DATE "+
     "AND (a.valid_to IS NULL OR a.valid_to>CURRENT_DATE) FOR SHARE OF e,a",
     [x.managerRef,a.realmId,x.branchRef]);
    if(!manager.rowCount)throw new BadRequestException("Choose an active manager at this branch");
+   if(x.accountRef&&manager.rows[0].account_ref===x.accountRef)
+    throw new BadRequestException("The applicant cannot report to their own staff account");
   }
   if(x.accountRef){
    // Selecting even a *candidate* identity requires original CG01 authority.
