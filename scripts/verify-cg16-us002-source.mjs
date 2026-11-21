@@ -18,6 +18,10 @@ const files=[
  d+"application/clinical-lab-result-evidence.service.ts",
  d+"application/clinical-lab-generated-result.service.ts",
  "apps/backend/db/migrations/1614_cg16_released_report_correction_source.sql",
+ "apps/backend/db/migrations/1615_cg19_private_lab_report_release_notice.sql",
+ "apps/backend/src/modules/cg-19-documents-notifications/application/notification.service.ts",
+ "apps/backend/src/modules/cg-19-documents-notifications/application/delivery.service.ts",
+ "apps/backend/src/modules/cg-19-documents-notifications/infrastructure/communication-worker.ts",
  "apps/backend/src/modules/cg-19-documents-notifications/application/laboratory-report-renderer.ts",
  d+"application/clinical-lab-professional-review.service.ts",
  d+"application/clinical-lab-patient-release.service.ts",
@@ -186,6 +190,13 @@ must(source,/ClinicalLabReleasePanel/,
 must(mobile,/NativeLabReportRelease/,
  "Internal Android release must be reachable on original lab screen");
 const correctionSql=read("apps/backend/db/migrations/1614_cg16_released_report_correction_source.sql");
+const notificationSql=read("apps/backend/db/migrations/1615_cg19_private_lab_report_release_notice.sql");
+const notificationSource=read("apps/backend/src/modules/cg-19-documents-notifications/application/notification.service.ts");
+const deliverySource=read("apps/backend/src/modules/cg-19-documents-notifications/application/delivery.service.ts");
+const notificationWorker=read("apps/backend/src/modules/cg-19-documents-notifications/infrastructure/communication-worker.ts");
+const releaseUiWeb=read(web+"clinical-lab-release-panel.tsx");
+const releaseUiNative=read(native+"native-lab-report-release.tsx");
+
 const patientView=read(web+"my-lab-reports.tsx");
 const nativePatientReports=read("apps/android-public/src/features/patients/native-my-lab-reports.tsx");
 const valuesSql=read("apps/backend/db/migrations/1613_cg16_entered_results_for_generated_report.sql");
@@ -254,5 +265,37 @@ must(nativePatientReports,/superseded/,
  "Public Android identifies previously released historical version");
 must(release,/result\.version_no=\(SELECT max\(latest\.version_no\)/,
  "Only latest independently reviewed result can be released");
+must(notificationSql,/CREATE TABLE cg19_lab_release_outbox\(/,
+ "CG19 source capture begins only on real immutable clinician release");
+must(notificationSql,/AFTER INSERT ON cg16_lab_report_release/,
+ "Only truly released report creates the notification source event");
+must(notificationSql,/cg16_lab_report_release_id=source_key/,
+ "CG19 notification source and original release identity identical");
+must(notificationSource,/captureCommittedLabReleases/,
+ "Reuse actual CG19 source capture, not a separate email sender");
+must(notificationSource,/link\.revoked_at IS NULL/,
+ "Report notices require live CG15 patient owner");
+must(notificationSource,/consent\.purpose='PATIENT_CARE'/,
+ "Report notification checks latest actual patient consent");
+must(notificationSource,/CG16_LAB_RELEASE/,
+ "Neutral report templates do not include medical values or links");
+must(notificationWorker,/reconcilePendingLabReleases/,
+ "Same bounded CG19 worker must recover source events after outage");
+must(notificationWorker,/cg19_lab_release_committed/,
+ "Original source wake-up must be connected");
+must(deliverySource,/row\.source_kind==="CG16_LAB_RELEASE"/,
+ "Current CG15 patient/revoked CG19 file checks before external provider send");
+must(deliverySource,/file\.revoked_at IS NULL/,
+ "Stopped private report may not trigger external notice");
+must(notificationSource,/n\.source_kind<>'CG16_LAB_RELEASE'/,
+ "Patient inbox/read also require current owner/consent/file authorization");
+must(release,/notificationStates/,
+ "Released PDF state is separate from a delivery provider callback");
+must(release,/n\.channel!=="IN_APP"&&n\.state==="DELIVERED"/,
+ "Internal notice is not mislabelled externally delivered");
+must(releaseUiWeb,/notificationStates/,
+ "Web clinician can see actual queued or delivered source");
+must(releaseUiNative,/notificationStates/,
+ "Native clinician can see same actual delivery state");
 console.log("CG16 US002 source/parse preflight authored for clinical review and simple release. "+
  "PostgreSQL, browser, Android, independent clinical and security QA NOT_RUN.");
