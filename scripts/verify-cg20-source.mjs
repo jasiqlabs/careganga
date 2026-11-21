@@ -318,6 +318,49 @@ for(let index=0;index<byStory.length;index++){
   assert.ok(tasks.includes("**"+story+"-"+id+" —"),story+" missing original "+id+" case");
  }
 }
+// Source-closure tracking must not silently lose a deferred original QA ID.
+// This is a local structural check only: never upgrades source evidence to PASS.
+const transferOwners={
+ "CG-04":"cg-04-membership-volunteers",
+ "CG-05":"cg-05-projects-field-operations",
+ "CG-06":"cg-06-beneficiaries-assistance",
+ "CG-07":"cg-07-campaigns-donations",
+ "CG-08":"cg-08-csr-funding",
+ "CG-11":"cg-11-payroll-compensation",
+ "CG-17":"cg-17-healthcare-assistance-settlements",
+ "CG-19":"cg-19-documents-notifications"
+};
+let transferred=0,verified=0,runtimeOnly=0;
+for(let index=0;index<byStory.length;index++){
+ const story="US-00"+(index+1);
+ const row=progress.split("\n").find(line=>line.startsWith("- "+story+" |"));
+ assert.ok(row.includes("status=SOURCE_COMPLETE"),
+  story+": V1 source closure status was reopened");
+ for(let caseNumber=1;caseNumber<=byStory[index];caseNumber++){
+  const id="QA"+String(caseNumber).padStart(2,"0");
+  const q=row.match(new RegExp("(?:^|[; |])"+id+"=([A-Z_]+)(?:\\(([^)]*)\\))?"));
+  assert.ok(q,story+" missing source disposition for "+id);
+  const result=q[1],detail=q[2]??"";
+  if(result==="SOURCE_VERIFIED"){verified++;continue;}
+  if(result==="NOT_VERIFIABLE"){runtimeOnly++;continue;}
+  assert.equal(result,"TRANSFERRED_TO_OWNER",
+   story+" "+id+" must be source-verified, runtime-only or explicitly transferred");
+  const target=detail.match(/^(CG-\d{2})\/(US-\d{3})/);
+  assert.ok(target,story+" "+id+" transferred without explicit owner/story");
+  const owner=transferOwners[target[1]];
+  assert.ok(owner,story+" "+id+" transferred outside a known module owner");
+  const other=file("specs/initiatives/careganga-foundation-platform/modules/"+
+   owner+"/tasks.md");
+  assert.ok(other.includes("origin=CG-20/"+story+"-"+id+"; owner="+
+   target[1]+"/"+target[2]+";"),
+   story+" "+id+" has no matching destination owner tracker acceptance");
+  transferred++;
+ }
+}
+assert.deepEqual({verified,transferred,runtimeOnly},
+ {verified:62,transferred:15,runtimeOnly:4},
+ "CG20 original 81-case V1 closure/travelled ownership count changed");
+
 // Explicit BFF → original protected owner route parity; all 5 functional
 // groups have a real private endpoint, not just a UI tab.
 for(const route of [
