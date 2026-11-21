@@ -93,9 +93,14 @@ export class VerifiedProviderPayoutService{
    "AND j.root_realm_id=e.root_realm_id AND j.status='POSTED' "+
    "AND j.source_owner='CG-09' AND j.posting_kind='GENERAL' "+
    "AND j.reversal_of_id IS NULL AND j.source_ref=e.id "+
-   "AND NOT EXISTS (SELECT 1 FROM journal offset_j "+
+   "AND (NOT EXISTS (SELECT 1 FROM journal offset_j "+
    "WHERE offset_j.root_realm_id=j.root_realm_id "+
    "AND offset_j.reversal_of_id=j.id AND offset_j.status='POSTED') "+
+   "OR EXISTS (SELECT 1 FROM cg17_provider_claim_correction corrected "+
+   "WHERE corrected.root_realm_id=line.root_realm_id "+
+   "AND corrected.settlement_ref=line.settlement_ref "+
+   "AND corrected.liability_ref=line.liability_ref "+
+   "AND corrected.original_journal_ref=j.id)) "+
    "AND j.immutable_source_event_key=e.idempotency_key "+
    "AND j.immutable_payload_digest=e.source_digest "+
    "AND j.posting_date=l.service_local_date "+
@@ -115,14 +120,31 @@ export class VerifiedProviderPayoutService{
     code:"CG17_PROVIDER_PAYOUT_ORIGINAL_PAYABLE_ACCOUNT_UNAVAILABLE"});
   return matched.rows[0].account_ref;
  }
- private view(x:Claim){
-  const total=BigInt(x.approved_total_minor),paid=BigInt(x.paid_minor);
-  if(total<1n||paid<0n||paid>total)
+ private async view(c:PoolClient,root:string,x:Claim){
+  const q=await c.query<{adjusted:string;recovered:string}>(
+   "SELECT coalesce(sum(amount_minor),0)::text AS adjusted,"+
+   "coalesce(sum(recovery_minor),0)::text AS recovered "+
+   "FROM cg17_provider_claim_correction "+
+   "WHERE root_realm_id=$1 AND settlement_ref=$2",[root,x.id]);
+  const original=BigInt(x.approved_total_minor),grossPaid=BigInt(x.paid_minor);
+  const adjusted=BigInt(q.rows[0].adjusted),recovered=BigInt(q.rows[0].recovered);
+  const effective=original-adjusted,netPaid=grossPaid-recovered;
+  if(original<1n||grossPaid<0n||grossPaid>original||
+     adjusted<0n||effective<0n||recovered<0n||recovered>grossPaid||
+     netPaid>effective)
    throw new ConflictException({code:"CG17_PROVIDER_PAYOUT_AMOUNT_INVALID"});
   return {settlementRef:x.id,state:x.state,
-   approvedFoundationMinor:total.toString(),actualPaidMinor:paid.toString(),
-   outstandingMinor:(total-paid).toString(),currency:"INR" as const,
-   paidVerified:x.state==="SETTLED",patientCollectionNotFoundationIncome:true};
+   effectiveState:effective===0n&&netPaid===0n?"ADJUSTED_NO_PAYMENT":
+    effective===netPaid?"SETTLED":netPaid>0n?"PARTIALLY_SETTLED":"APPROVED",
+   approvedFoundationMinor:effective.toString(),
+   originalApprovedFoundationMinor:original.toString(),
+   adjustedFoundationMinor:adjusted.toString(),
+   grossFoundationPaidMinor:grossPaid.toString(),
+   verifiedProviderRecoveryMinor:recovered.toString(),
+   actualPaidMinor:netPaid.toString(),
+   outstandingMinor:(effective-netPaid).toString(),currency:"INR" as const,
+   paidVerified:effective>0n&&effective===netPaid,
+   patientCollectionNotFoundationIncome:true};
  }
  async options(token:string,centerRaw:string,monthRaw:string){
   const center=ref(centerRaw),period=month(monthRaw);
@@ -154,18 +176,18 @@ export class VerifiedProviderPayoutService{
     verifiedAt:x.verified_at.toISOString()
    }));
    if(claim.state==="SETTLED")
-    return {...this.view(claim),bankDisbursements:[],
+    return {...await this.view(c,a.realmId,claim),bankDisbursements:[],
      protectedDestinationLabel:bank.maskedLabel,payoutHistory,complete:true};
    const payable=await this.payableAccount(c,claim);
    const evidence=await this.cg09.options(c,a,payable);
-   const outstanding=BigInt(claim.approved_total_minor)-BigInt(claim.paid_minor);
+   const outstanding=BigInt((await this.view(c,a.realmId,claim)).outstandingMinor);
    const refs=evidence.bankDisbursements.map(x=>x.bankMatchRef);
    const used=refs.length?await c.query<{bank_reconciliation_ref:string}>(
     "SELECT bank_reconciliation_ref FROM provider_settlement_payment "+
     "WHERE root_realm_id=$1 AND bank_reconciliation_ref=ANY($2::uuid[])",
     [a.realmId,refs]):null;
    const set=new Set((used?.rows??[]).map(x=>x.bank_reconciliation_ref));
-   return {...this.view(claim),
+   return {...await this.view(c,a.realmId,claim),
     protectedDestinationLabel:bank.maskedLabel,payoutHistory,
     bankDisbursements:evidence.bankDisbursements.filter(x=>!set.has(x.bankMatchRef)&&
      BigInt(x.amountMinor)>0n&&BigInt(x.amountMinor)<=outstanding),
@@ -201,7 +223,7 @@ export class VerifiedProviderPayoutService{
    if(previous.rows[0]){
     if(previous.rows[0].bank_reconciliation_ref!==bankMatch)
      throw new ConflictException({code:"CG17_PROVIDER_PAYOUT_REPLAY_CONFLICT"});
-    return {...this.view(claim),replayed:true};
+    return {...await this.view(c,a.realmId,claim),replayed:true};
    }
    if(claim.state==="SETTLED")
     throw new ConflictException({code:"CG17_PROVIDER_PAYOUT_ALREADY_SETTLED"});
@@ -210,7 +232,7 @@ export class VerifiedProviderPayoutService{
    if(proof.liabilityAccountRef!==payable)
     throw new ConflictException({code:"CG17_PROVIDER_PAYOUT_PAYABLE_ACCOUNT_MISMATCH"});
    const amount=BigInt(proof.amountMinor),
-    remaining=BigInt(claim.approved_total_minor)-BigInt(claim.paid_minor);
+    remaining=BigInt((await this.view(c,a.realmId,claim)).outstandingMinor);
    if(amount<=0n||amount>remaining)
     throw new ConflictException({code:"CG17_PROVIDER_PAYOUT_EXCEEDS_APPROVED_BALANCE"});
    const digest=sha(["CG17_VERIFIED_PROVIDER_PAYOUT_V1",a.realmId,
@@ -242,7 +264,7 @@ export class VerifiedProviderPayoutService{
      claim.revision,claim.paid_minor]);
    if(!updated.rows[0])
     throw new ConflictException({code:"CG17_PROVIDER_PAYOUT_CONCURRENT_CHANGE"});
-   return {...this.view(updated.rows[0]),replayed:false};
+   return {...await this.view(c,a.realmId,updated.rows[0]),replayed:false};
   });
  }
 }
