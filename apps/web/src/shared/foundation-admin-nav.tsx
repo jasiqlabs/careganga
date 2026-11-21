@@ -634,8 +634,9 @@ export function FoundationAdminNav({
       )
     : canViewFoundation;
   const branchAccess = allowed("foundation.branches.view", canViewBranches);
-  const hrAccess = currentActions ? currentActions.has("hr.applications.view") :
-    Boolean(initialActions?.includes("hr.applications.view"));
+  const hrAccess = currentActions ?
+    (currentActions.has("hr.applications.view")||currentActions.has("hr.employees.view")) :
+    Boolean(initialActions?.some(a=>a==="hr.applications.view"||a==="hr.employees.view"));
   const accountsAccess = currentActions
     ? currentActions.has("accounts.view") ||
       (currentActions.has("accounts.create") && currentActions.has("roles.assign"))
