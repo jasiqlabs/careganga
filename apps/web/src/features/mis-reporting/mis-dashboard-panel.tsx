@@ -88,7 +88,7 @@ export function MisDashboardPanel(){
       <div className="kpi-grid">{source.metrics.map(m=><div className="kpi" key={m.key}>
        <span style={{color:"var(--cg-muted)",fontSize:".82rem"}}>{m.label}</span>
        <strong>{m.unit==="INR_MINOR"?money(m.value):m.value}</strong>
-       <small style={{color:"var(--cg-muted)",fontSize:".75rem"}}>Current posted source · {data.periodLabel}</small>
+       <small style={{color:"var(--cg-muted)",fontSize:".75rem"}}>Source-read at {source.readAt?new Date(source.readAt).toLocaleString("en-IN"):"current request"}</small>
       </div>)}</div>
       <p style={{fontSize:".78rem",color:"var(--cg-muted)"}}>{source.explanation}</p>
      </>:<p role="status">Source currently unavailable. No estimates or sample totals are displayed.</p>}
