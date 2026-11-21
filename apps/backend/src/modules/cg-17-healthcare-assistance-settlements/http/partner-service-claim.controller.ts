@@ -7,6 +7,11 @@ import {PartnerServiceClaimService} from "../application/partner-service-claim.s
 @Controller("api/v1/healthcare-assistance/partner-claims")
 export class PartnerServiceClaimController{
  constructor(private readonly claims:PartnerServiceClaimService){}
+ @Get("eligible-services")
+ @Header("Cache-Control","private, no-store")
+ options(@Headers("authorization")bearer:string){
+  return this.claims.options(bearer);
+ }
  @Get("mine")
  @Header("Cache-Control","private, no-store")
  mine(@Headers("authorization")bearer:string){
