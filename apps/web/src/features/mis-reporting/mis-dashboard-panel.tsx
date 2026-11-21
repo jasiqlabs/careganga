@@ -9,7 +9,9 @@ type Source={sourceKey:string;sourceLabel:string;state:string;readAt?:string;
 type Dashboard={state:string;readAt:string;periodLabel?:string;scopeLabel?:string;
  sources:Source[];message?:string};
 type Choice={ref:string;name:string};
-type Options={state:string;years:Choice[];branches:Choice[];allBranches:boolean};
+type Options={state:string;years:Choice[];branches:Choice[];allBranches:boolean;
+ healthAvailable:boolean;centers:Choice[];centersComplete:boolean};
+type Mode="OVERVIEW"|"FINANCE"|"HEALTH";
 const money=(minor:string)=>{
  try{const n=BigInt(minor),abs=n<0n?-n:n;
   return (n<0n?"−":"")+"₹"+(abs/100n).toLocaleString("en-IN")+
@@ -25,6 +27,12 @@ export function MisDashboardPanel(){
  const [years,setYears]=useState<Choice[]>([]),[branches,setBranches]=useState<Choice[]>([]);
  const [year,setYear]=useState(""),[branch,setBranch]=useState("");
  const [allBranches,setAllBranches]=useState(false);
+ const [centers,setCenters]=useState<Choice[]>([]);
+ const [healthAvailable,setHealthAvailable]=useState(false);
+ const [centersComplete,setCentersComplete]=useState(true);
+ const [mode,setMode]=useState<Mode>("OVERVIEW");
+ const [center,setCenter]=useState(""),[fromDay,setFromDay]=useState("");
+ const [untilDay,setUntilDay]=useState(""),[status,setStatus]=useState("");
  useEffect(()=>{let live=true;void(async()=>{
   try{
    const response=await fetch("/api/mis/options",{cache:"no-store"});
@@ -34,16 +42,30 @@ export function MisDashboardPanel(){
     throw Error("Current report filters unavailable.");
    if(live){setYears(options.years);setBranches(options.branches);
     setAllBranches(options.allBranches===true);
-    setBranch(options.allBranches===true?"":options.branches[0]?.ref??"");setReady(true);}
-  }catch{if(live){setProblem("Report filters are temporarily unavailable.");setReady(false);}}
+    setBranch(options.allBranches===true?"":options.branches[0]?.ref??"");
+    setHealthAvailable(options.healthAvailable===true);
+    setCenters(Array.isArray(options.centers)?options.centers:[]);
+    setCentersComplete(options.centersComplete!==false);setReady(true);}
+  }catch{if(live){setProblem("Some report filters are unavailable. The current overview may still be accessible.");
+    setReady(true);}}
  })();return()=>{live=false;};},[]);
  const load=useCallback(async()=>{
   const requestId=++seq.current;
   setBusy(true);setProblem("");setData(null);
   try{
    const query=new URLSearchParams();
-   if(year)query.set("yearRef",year);
-   if(branch)query.set("branchRef",branch);
+   if(mode==="FINANCE"){
+    if(year)query.set("yearRef",year);
+    if(branch)query.set("branchRef",branch);
+   }
+   if(mode==="HEALTH"){
+    if(Boolean(fromDay)!==Boolean(untilDay))
+     throw Error("Choose both the start and end dates for appointment reports.");
+    if(center)query.set("centerRef",center);
+    if(fromDay)query.set("fromDay",fromDay);
+    if(untilDay)query.set("untilDay",untilDay);
+    if(status)query.set("status",status);
+   }
    const response=await fetch("/api/mis/dashboard?"+query.toString(),
     {cache:"no-store",credentials:"same-origin"});
    if(!response.ok)throw new Error(response.status===403?
@@ -55,7 +77,7 @@ export function MisDashboardPanel(){
    if(requestId===seq.current)setData(v);
   }catch(e){if(requestId===seq.current)setProblem(e instanceof Error?e.message:"Dashboard unavailable.");}
   finally{if(requestId===seq.current)setBusy(false);}
- },[year,branch]);
+ },[mode,year,branch,center,fromDay,untilDay,status]);
  useEffect(()=>{if(ready)void load();},[ready,load]);
  useEffect(()=>()=>{seq.current+=1;},[]);
  // A returned or refocused dashboard must not retain protected stale figures.
@@ -73,15 +95,53 @@ export function MisDashboardPanel(){
    <button type="button" onClick={()=>void load()} disabled={busy}
     aria-label="Refresh reporting data">{busy?"Checking…":"Refresh"}</button>
   </div>
-  {ready&&<div style={{display:"flex",flexWrap:"wrap",gap:12,margin:"1rem 0"}}>
-   <label>Financial year <select value={year} onChange={e=>setYear(e.target.value)}>
-    <option value="">All permitted years</option>
-    {years.map(y=><option key={y.ref} value={y.ref}>{y.name}</option>)}
-   </select></label>
-   {!!branches.length&&<label>Branch <select value={branch} onChange={e=>setBranch(e.target.value)}>
-    {allBranches&&<option value="">All permitted branches</option>}
-    {branches.map(b=><option key={b.ref} value={b.ref}>{b.name}</option>)}
-   </select></label>}
+  {ready&&<div style={{display:"grid",gap:12,margin:"1rem 0"}}>
+   <div role="group" aria-label="Dashboard data category" style={{display:"flex",
+    flexWrap:"wrap",gap:8}}>
+    {(["OVERVIEW",...(years.length||branches.length||allBranches?["FINANCE"]:[]),
+      ...(healthAvailable?["HEALTH"]:[])] as Mode[]).map(v=><button key={v}
+     type="button" aria-pressed={mode===v} onClick={()=>setMode(v)}
+     style={{padding:".45rem .9rem",borderRadius:8,border:"1px solid var(--cg-border)",
+      background:mode===v?"var(--cg-accent)":"var(--cg-surface)",
+      color:mode===v?"var(--cg-accent-text)":"var(--cg-text)"}}>
+     {v==="OVERVIEW"?"Overview":v==="FINANCE"?"Finance":"Appointments"}</button>)}
+   </div>
+   {mode==="FINANCE"&&<div style={{display:"flex",flexWrap:"wrap",gap:12}}>
+    <label>Financial year <select value={year} onChange={e=>setYear(e.target.value)}>
+     <option value="">All permitted years</option>
+     {years.map(y=><option key={y.ref} value={y.ref}>{y.name}</option>)}
+    </select></label>
+    {!!branches.length&&<label>Branch <select value={branch}
+     onChange={e=>setBranch(e.target.value)}>
+     {allBranches&&<option value="">All permitted branches</option>}
+     {branches.map(b=><option key={b.ref} value={b.ref}>{b.name}</option>)}
+    </select></label>}
+   </div>}
+   {mode==="HEALTH"&&healthAvailable&&<div style={{display:"grid",gap:10}}>
+    {!!centers.length&&<label>Healthcare center <select value={center}
+     onChange={e=>setCenter(e.target.value)}>
+     <option value="">All permitted centers</option>
+     {centers.map(c=><option key={c.ref} value={c.ref}>{c.name}</option>)}
+    </select></label>}
+    {!centersComplete&&<p role="status">Only some eligible centers are available in
+     this selector. Use the original patient management search for other centers.</p>}
+    <div style={{display:"flex",flexWrap:"wrap",gap:10}}>
+     <label>From date <input type="date" value={fromDay}
+      onChange={e=>setFromDay(e.target.value)}/></label>
+     <label>To date <input type="date" value={untilDay}
+      onChange={e=>setUntilDay(e.target.value)}/></label>
+     <label>Appointment status <select value={status}
+      onChange={e=>setStatus(e.target.value)}>
+      <option value="">All statuses</option>
+      {([["CONFIRMED","Confirmed"],["ARRIVED","Arrived"],["WAITING","Waiting"],
+       ["IN_CONSULTATION","In consultation"],["COMPLETED","Completed"],
+       ["NO_SHOW","No show"],["CANCELLED","Cancelled"]] as [string,string][])
+       .map(([value,label])=><option key={value} value={value}>{label}</option>)}
+     </select></label>
+    </div>
+    <p style={{color:"var(--cg-muted)",fontSize:".8rem"}}>
+     Healthcare filters apply only to appointment statistics, not Foundation finance.</p>
+   </div>}
   </div>}
   {busy&&ready&&<p role="status">Loading permitted business reports…</p>}
   {!!problem&&<p role="alert">{problem}</p>}
