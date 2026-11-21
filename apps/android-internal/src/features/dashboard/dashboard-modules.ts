@@ -69,6 +69,7 @@ export interface ModuleActionHandlers {
   openPatientBooking: () => void;
   openDoctorLeaveReviews: () => void;
   openOwnCenterPortal: () => void;
+  openHealthDoctorManagement: () => void;
   openHealthProviderManagement: () => void;
   openHealthReviews: () => void;
   openDocuments: () => void;
@@ -428,6 +429,19 @@ export function getAuthorizedModules(
       iconBg: "#E0F2FE",
       iconColor: "#0284C7",
       onOpen: handlers.openOwnCenterPortal
+    });
+  }
+  if (roleActions.includes("health.doctors.view")) {
+    list.push({
+      key: "healthDoctorManagement",
+      title: "Doctors & Professional Registrations",
+      shortLabel: "Doctors",
+      description: "Original doctor drafts, private licences and independent verification.",
+      category: "HEALTHCARE ASSISTANCE",
+      iconName: "users",
+      iconBg: "#E0F2FE",
+      iconColor: "#0284C7",
+      onOpen: handlers.openHealthDoctorManagement
     });
   }
   if (roleActions.includes("health.providers.view")) {
