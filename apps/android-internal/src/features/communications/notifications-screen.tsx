@@ -125,8 +125,11 @@ export function NotificationsScreen({token,onExit,onExpired}:Props){
           "Check your existing SMS instead of requesting another.");
       }else if(result.status==="CODE_REQUESTED_UNCONFIRMED_DELIVERY"){
         setNotice("Verification SMS requested. Actual delivery is not confirmed.");
+      }else if(result.status==="PROVIDER_UNKNOWN"){
+        setNotice("The original SMS provider response was uncertain. "+
+          "Check the recorded code before requesting another.");
       }else{
-        setNotice("Mobile provider outcome is uncertain. Check before requesting again.");
+        setNotice("The original mobile verification request was not confirmed.");
       }
     }catch(e){
       setNotice(explain(e));
