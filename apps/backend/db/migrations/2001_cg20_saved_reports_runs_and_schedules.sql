@@ -71,7 +71,8 @@ CREATE TABLE cg20_report_run(
  request_key uuid NOT NULL,
  payload_digest char(64) NOT NULL CHECK(payload_digest ~ '^[a-f0-9]{64}$'),
  source_key text NOT NULL CHECK(source_key IN('FINANCE_POSTED_LEDGER',
-  'FINANCE_POSTED_SUMMARY','FINANCE_POSTED_TREND','APPOINTMENT_STATUS')),
+  'FINANCE_POSTED_SUMMARY','FINANCE_POSTED_TREND',
+  'FINANCE_POSTED_GROUPED','APPOINTMENT_STATUS','PLATFORM_AUDIT_ACTIVITY')),
  safe_request jsonb NOT NULL CHECK(jsonb_typeof(safe_request)='object'
   AND octet_length(safe_request::text)<=4096),
  saved_ref uuid,
