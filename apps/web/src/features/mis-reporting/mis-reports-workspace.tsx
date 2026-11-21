@@ -87,6 +87,7 @@ export function MisReportsWorkspace(){
  const [problem,setProblem]=useState(""),[loading,setLoading]=useState(true);
  const [busy,setBusy]=useState(false),[notice,setNotice]=useState("");
  const seq=useRef(0);
+ const previewSeq=useRef(0);
  const load=useCallback(async()=>{
   const i=++seq.current;setLoading(true);setProblem("");setResult(null);
   try{
@@ -101,16 +102,18 @@ export function MisReportsWorkspace(){
    setProblem(e instanceof Error?e.message:"Report source unavailable.");}}
   finally{if(i===seq.current)setLoading(false);}
  },[]);
- useEffect(()=>{void load();return()=>{seq.current++};},[load]);
+ useEffect(()=>{void load();return()=>{seq.current++;previewSeq.current++};},[load]);
+ useEffect(()=>{previewSeq.current++;setResult(null);setNotice("");},
+  [kind,view,year,branch,area,center,from,until,status,groupBy,sortBy,sortDirection]);
  useEffect(()=>{
   const recheck=()=>{
-   seq.current++;setCatalog(null);setResult(null);setKind(null);
+   seq.current++;previewSeq.current++;setCatalog(null);setResult(null);setKind(null);
    setPeriod("CUSTOM");
    setYear("");setBranch("");setArea("");setCenter("");setFrom("");setUntil("");
    setStatus("");void load();
   };
   const onVisible=()=>{if(document.visibilityState==="visible")recheck();
-   else{seq.current++;setCatalog(null);setResult(null);}};
+   else{seq.current++;previewSeq.current++;setCatalog(null);setResult(null);}};
   document.addEventListener("visibilitychange",onVisible);
   return()=>document.removeEventListener("visibilitychange",onVisible);
  },[load]);
@@ -142,17 +145,20 @@ export function MisReportsWorkspace(){
  }
  async function preview(offset=0){
   const q=input(offset);if(!q||busy)return;
+  const version=++previewSeq.current;
   setBusy(true);setProblem("");setNotice("");setResult(null);
   try{
    const v=await request<ReportPreview>("preview",q);
    if(!v||!Array.isArray(v.columns)||!Array.isArray(v.rows))
     throw Error("The original report response could not be verified.");
+   if(version!==previewSeq.current)return;
    setResult(v);
    setNotice(v.state==="PARTIAL"?"This audit source is partial or has more events. Narrow your dates before exporting.":
     v.state==="EMPTY"?"No matching posted business records.":
     v.state==="SUPPRESSED"?"This result cannot be shown without exposing a small private group.":
     "Report loaded from authorized original records.");
-  }catch(e){setProblem(e instanceof Error?e.message:"Could not verify the report.");}
+  }catch(e){if(version===previewSeq.current)
+   setProblem(e instanceof Error?e.message:"Could not verify the report.");}
   finally{setBusy(false);}
  }
  return <section aria-labelledby="mis-standard-reports"
