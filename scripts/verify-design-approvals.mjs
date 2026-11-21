@@ -83,6 +83,15 @@ for (const key of requiredApprovalKeys) {
   if (!Object.prototype.hasOwnProperty.call(ledger.records, key))
     failures.push(key + ": missing canonical design approval record");
 }
+// Guard the owner-approved latest bidirectional Web/native design contract in every
+// canonical module artifact. This is a presence/source check, never runtime QA.
+const requiredCrossChannelHeader="### 21 November 2026 — Owner-approved Web ↔ Android same-capability contract";
+for(const path of paths.filter(p=>p.includes("/modules/"))){
+  const contents=readFileSync(join(root,path),"utf8");
+  if(!contents.includes(requiredCrossChannelHeader))
+    failures.push("Missing mandatory Web/Internal/Public Android parity gate in "+path);
+}
+
 const legacy=/accounts\.invite\b|\/api\/access\/invitations\b|\binviteOnly\b|\brootMfaRequired\b|\brequiresFreshAuthenticator\b|magic.?link|passwordless|otp[- ]?only login|login[- ]?otp\b|(?:login|sign.?in).{0,60}\bTOTP\b|\bTOTP\b.{0,60}(?:login|sign.?in)/i;
 for(const relative of paths){
   const path=join(root,relative);
