@@ -33,6 +33,10 @@ export class MisReportNoticeService{
     "JOIN cg20_report_schedule schedule ON schedule.root_realm_id=r.root_realm_id "+
     "AND schedule.id=r.schedule_ref AND schedule.owner_account_ref=r.requester_ref "+
     "AND schedule.recipient_account_ref=r.requester_ref "+
+    "AND schedule.saved_revision=r.definition_revision "+
+    "JOIN cg20_saved_report saved ON saved.root_realm_id=r.root_realm_id "+
+    "AND saved.id=r.saved_ref AND saved.owner_account_ref=r.requester_ref "+
+    "AND saved.state='ACTIVE' AND saved.current_revision=r.definition_revision "+
     "JOIN cg19_mis_report_artifact artifact ON artifact.root_realm_id=r.root_realm_id "+
     "AND artifact.report_run_ref=r.id AND artifact.id=r.artifact_ref "+
     "JOIN account recipient ON recipient.realm_id=r.root_realm_id "+
@@ -43,7 +47,7 @@ export class MisReportNoticeService{
     "AND artifact.state='READY' AND artifact.revoked_at IS NULL "+
     "AND artifact.object_version IS NOT NULL AND artifact.content_sha256 IS NOT NULL "+
     "AND artifact.content_length IS NOT NULL "+
-    "LIMIT 1 FOR SHARE OF r,schedule,artifact,recipient",
+    "LIMIT 1 FOR SHARE OF r,schedule,saved,artifact,recipient",
     [root,runRef,account]);
    if(!actual.rows[0])
     throw new NotFoundException({
