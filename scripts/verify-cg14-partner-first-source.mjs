@@ -13,6 +13,11 @@ const paths={
  throttle:"apps/backend/src/modules/cg-14-healthcare-network/application/health-public-request-throttle.service.ts",
  publicProxy:"apps/web/src/app/api/public/healthcare-partners/[action]/route.ts",
  staffProxy:"apps/web/src/app/api/health-network/[...parts]/route.ts",
+ safeCopy:"apps/backend/src/core/http/safe-error-copy.ts",
+ safeFilter:"apps/backend/src/core/http/safe-errors.filter.ts",
+ doctorList:"apps/backend/src/modules/cg-14-healthcare-network/application/health-doctor-draft.service.ts",
+ doctorHttp:"apps/backend/src/modules/cg-14-healthcare-network/http/health-doctor-draft.controller.ts",
+
  publicForm:"apps/web/src/features/health-network/healthcare-partner-application.tsx",
  publicLanding:"apps/web/src/app/collaboration/page.tsx",
  publicApply:"apps/web/src/app/collaboration/healthcare-partner/page.tsx",
@@ -100,6 +105,29 @@ const checks=[
  ["Web and internal Android link lookup uses original name filter",
   s.staffInbox.includes('"providers?offset=0&q="+encodeURIComponent(app.name)')&&
   s.nativeStaff.includes('"providers?offset=0&q="+encodeURIComponent(app.name)')],
+ ["Main safe-error infrastructure contains all actual partner error codes",
+  ["PARTNER_FIELD_INVALID","PARTNER_CONSENT_REQUIRED","PARTNER_RECEIPT_INVALID",
+   "PARTNER_RECEIPT_UNAVAILABLE","PARTNER_REQUEST_CONFLICT",
+   "PARTNER_VERSION_INVALID","PARTNER_VERSION_CHANGED","PARTNER_REVIEW_CLOSED",
+   "PARTNER_SOURCE_MISMATCH","PARTNER_APPLICATION_UNAVAILABLE"]
+   .every(code=>new RegExp("\\b"+code+":").test(s.safeCopy))&&
+  s.safeFilter.includes("Object.hasOwn(safeCodes,rawCode)")&&
+  s.safeFilter.includes('"partnerType"')&&s.safeFilter.includes('"applicantName"')],
+ ["Staff and public Android only render reviewed safe error copy",
+  s.nativeStaff.includes('safe.has(rec.code)')&&
+  s.nativePublic.includes('safe.has(info.code)')&&
+  !s.nativeStaff.includes('setError(e.code)')&&
+  !s.nativePublic.includes('setError(e.code)')],
+ ["Actual bounded clinician name lookup on original authenticated CG14",
+  s.doctorList.includes('position($3 in normalized_name)>0')&&
+  s.doctorHttp.includes('@Query("q")search?:string')&&
+  s.staffInbox.includes('"doctors?q="+encodeURIComponent(app.name)')&&
+  s.nativeStaff.includes('"doctors?q="+encodeURIComponent(app.name)')],
+ ["Business display names rather than original internal record identifiers",
+  s.staffInbox.includes('label:v.name')&&
+  s.nativeStaff.includes('label:d.name')&&
+  !s.staffInbox.includes('>{selected.applicationRef}<')&&
+  !s.nativeStaff.includes('>{selected.applicationRef}<')],
  ["Original source list and staff review across Web/Internal Android",
   s.staffProxy.includes('parts[0]==="partner-applications"')&&
   s.staffPage.includes("PartnerApplicationInbox")&&
