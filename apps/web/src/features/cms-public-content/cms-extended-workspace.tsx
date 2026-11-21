@@ -133,6 +133,11 @@ export function CmsExtendedWorkspace({canManage,canPublish,canViewNoticeSources}
  },[]);
  useEffect(()=>{void refresh().catch(e=>setError(e.message));},[refresh]);
  const open=async(p:Item)=>{
+  if(pending){
+   setError("Your last original CMS action may have committed. "+
+    "Retry the same request before opening another page.");
+   return;
+  }
   setBusy(true);setError("");setNotice("");
   try{
    const detail=await api<Detail>("pages/"+p.pageRef);
@@ -151,6 +156,10 @@ export function CmsExtendedWorkspace({canManage,canPublish,canViewNoticeSources}
   finally{setBusy(false);}
  };
  const begin=(k:Kind)=>{
+  if(pending){
+   setError("Resolve the original uncertain CMS request before a new page.");
+   return;
+  }
   setKind(k);setSelected(null);setDraft(initial(k));setPreview(false);
   setPreviewMediaScope("PHOTO");
   setEditorOpen(true);setClosePrompt(false);
@@ -199,23 +208,36 @@ export function CmsExtendedWorkspace({canManage,canPublish,canViewNoticeSources}
     c.path,{method:c.method,headers:{"Content-Type":"application/json"},
      body:JSON.stringify(c.body)});
    if(!outcome.confirmed)throw Error("Server did not confirm this change.");
+   // A positively acknowledged original write is never made uncertain by
+   // an unrelated list/detail GET failing after the actual commit.
    setPending(null);setNotice("Confirmed: "+str(outcome.status).replaceAll("_"," "));
-   await refresh();
-   const ref=outcome.pageRef??selected?.pageRef;
-   if(ref){
-    const detail=await api<Detail>("pages/"+ref);
-    setSelected(detail);
-    setDraft({kind:detail.kind,slug:detail.slug,title:detail.title,
-     seoTitle:detail.seoTitle,seoDescription:detail.seoDescription,
-     sections:detail.sections,assets:detail.assets});
+   try{
+    await refresh();
+    const ref=outcome.pageRef??selected?.pageRef;
+    if(ref){
+     const detail=await api<Detail>("pages/"+ref);
+     setSelected(detail);
+     setDraft({kind:detail.kind,slug:detail.slug,title:detail.title,
+      seoTitle:detail.seoTitle,seoDescription:detail.seoDescription,
+      sections:detail.sections,assets:detail.assets});
+    }
+   }catch{
+    setSelected(null);
+    setError("Your original CMS action was CONFIRMED, but its latest page "+
+     "could not be refreshed. Refresh the list before editing again.");
    }
   }catch(e){
    if(e instanceof Rejected)setPending(null);
    setError(e instanceof Error?e.message:"Check the original action before retrying.");
   }finally{setBusy(false);}
  }
- const act=(path:string,method:"POST"|"PUT",body:Record<string,unknown>)=>
+ const act=(path:string,method:"POST"|"PUT",body:Record<string,unknown>)=>{
+  if(busy||pending){
+   setError("Resolve the previous original request before another change.");
+   return;
+  }
   void command({path,method,body:{requestKey:crypto.randomUUID(),...body}});
+ };
  async function upload(file:File){
   if(!selected||selected.status!=="DRAFT"||busy)return;
   if(!rights||uploadAlt.trim().length<3){setError("Confirm publication rights and image description.");return;}
