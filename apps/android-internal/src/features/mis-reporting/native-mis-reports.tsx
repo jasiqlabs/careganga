@@ -59,7 +59,8 @@ async function fetchSource<T>(token:string,path:string,body?:object):Promise<T>{
 /** Internal Android native C44/C46/C47 standard reporting. One real CG20
  * source contract; no public report entry or embedded WebView.
  */
-export function NativeMisReports({token,onExpired}:{token:string;onExpired:()=>void}){
+export function NativeMisReports({token,onExpired,onDraftChange}:{token:string;onExpired:()=>void;
+ onDraftChange?:(hasUnsavedDraft:boolean)=>void}){
  const [catalog,setCatalog]=useState<Catalog|null>(null);
  const [kind,setKind]=useState<Kind|null>(null);
  const [view,setView]=useState<"TABLE"|"SUMMARY"|"CHART"|"PIVOT">("TABLE");
@@ -271,6 +272,7 @@ export function NativeMisReports({token,onExpired}:{token:string;onExpired:()=>v
   {catalog&&<NativeMisSaved token={token} onExpired={onExpired}
    canManage={catalog.capabilities?.manage===true}
    canShare={catalog.capabilities?.share===true}
+   onDraftChange={onDraftChange}
    current={request(0)}
    onRestore={value=>{
     setKind(value.kind as Kind);setView(value.view as typeof view);
