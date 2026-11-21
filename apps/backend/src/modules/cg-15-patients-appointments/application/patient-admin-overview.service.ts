@@ -103,7 +103,7 @@ export class PatientAdminOverviewService{
     message:"Choose a permitted center, valid date range and appointment status."});
   const tx=await this.db.connect();let open=false;
   try{
-   await tx.query("BEGIN ISOLATION LEVEL REPEATABLE READ READ ONLY");open=true;
+   await tx.query("BEGIN ISOLATION LEVEL REPEATABLE READ, READ ONLY");open=true;
    await tx.query("SET LOCAL statement_timeout='8s'");
    if(center)await this.centers.assertFoundationCenter(
     tx,actor,center,"health.patients.admin.view",true);
