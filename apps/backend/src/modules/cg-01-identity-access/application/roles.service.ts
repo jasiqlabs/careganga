@@ -150,6 +150,22 @@ export class RolesService {
     return {options:rows.rows.map(r=>({value:r.id,label:r.name,context:"Foundation"}))};
   }
 
+  /** CG10 may freeze only an original active, non-protected role proposal;
+   * HR never applies or manufactures a CG01 role grant.
+   */
+  async requireHrSelectableRole(tx:PoolClient,actor:VerifiedFoundationActor,ref:string){
+    if(typeof ref!=="string"||!UUID.test(ref))
+      throw new BadRequestException("Choose an eligible Foundation role");
+    const rows=await tx.query(
+      "SELECT r.id FROM role r WHERE r.id=$1 AND r.realm_id=$2 AND "+
+      "r.active AND NOT r.is_protected AND NOT EXISTS("+
+      "SELECT 1 FROM role_grant g WHERE g.role_id=r.id "+
+      "AND g.capability_key IN('roles.manage','identity.security-policy.manage')) "+
+      "FOR SHARE OF r",[ref,actor.realmId]);
+    if(!rows.rowCount)throw new ForbiddenException(
+      "The selected staff role is not eligible");
+  }
+
   private async authorizeWrite(client:PoolClient,actor:VerifiedFoundationActor):Promise<boolean>{
     // Lock actual session/account/assignment/role so security changes cannot race through a write.
     const q=await client.query<{is_protected:boolean;approved_sensitive:boolean}>(`
