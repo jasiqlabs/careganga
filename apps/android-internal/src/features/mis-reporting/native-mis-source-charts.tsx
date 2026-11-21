@@ -43,11 +43,11 @@ export function NativeMisFinanceTrend({trend}:{trend:MonthlyTrend}){
    <Text style={s.month}>{monthLabel(point.month)}</Text>
    <Text accessibilityLabel={"Posted income "+money(point.incomeMinor)} style={s.note}>
     Posted income: {money(point.incomeMinor)}</Text>
-   <View style={s.track}><View style={[s.bar,{width:percent(asBig(point.incomeMinor),maximum)+"%",
+   <View style={s.track}><View style={[s.bar,{width:`${percent(asBig(point.incomeMinor),maximum)}%` as const,
     backgroundColor:t.primary}]}/></View>
    <Text accessibilityLabel={"Posted expenses "+money(point.expenseMinor)} style={s.note}>
     Posted expenses: {money(point.expenseMinor)}</Text>
-   <View style={s.track}><View style={[s.bar,{width:percent(asBig(point.expenseMinor),maximum)+"%",
+   <View style={s.track}><View style={[s.bar,{width:`${percent(asBig(point.expenseMinor),maximum)}%` as const,
     backgroundColor:"#64748B"}]}/></View>
   </View>)}
  </View>;
@@ -71,7 +71,7 @@ export function NativeMisAppointmentDistribution({metrics}:{metrics:Metric[]}){
   <Text accessibilityRole="header" style={s.heading}>Appointment status distribution</Text>
   <View style={s.track}>
    {groups.map(g=><View key={g.label} style={{
-    height:"100%",width:percent(g.count,total)+"%",backgroundColor:g.color}}/>)}
+    height:"100%",width:`${percent(g.count,total)}%` as const,backgroundColor:g.color}}/>)}
   </View>
   {groups.map(g=><View key={g.label} style={s.countRow}>
    <Text style={s.note}>{g.label}</Text>
