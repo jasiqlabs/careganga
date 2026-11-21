@@ -12,8 +12,8 @@ type Option={ref:string;name:string};
 type Template={kind:Kind;label:string;views:View[];description:string};
 type Catalog={
  templates:Template[];
- finance:{ready:boolean;years:Option[];branches:Option[];allBranches:boolean};
- appointments:{ready:boolean;centers:Option[];complete:boolean};
+ finance:{ready:boolean;state?:"AVAILABLE"|"ACCESS_RESTRICTED"|"SOURCE_UNAVAILABLE";years:Option[];branches:Option[];allBranches:boolean};
+ appointments:{ready:boolean;state?:"AVAILABLE"|"ACCESS_RESTRICTED"|"SOURCE_UNAVAILABLE";centers:Option[];complete:boolean};
  capabilities:{manage:boolean;export:boolean;schedule:boolean}
 };
 export type ReportRequest={kind:Kind;view:View;yearRef?:string;branchRef?:string;
@@ -127,6 +127,10 @@ export function MisReportsWorkspace(){
    Saved reports and protected exports appear only when enabled for your role.</p>
   {loading&&<p role="status">Checking available report sources…</p>}
   {!!problem&&<p role="alert">{problem}</p>}
+  {catalog?.finance.state==="SOURCE_UNAVAILABLE"&&
+   <p role="status">Finance reporting is temporarily unavailable. Other permitted sources remain accessible.</p>}
+  {catalog?.appointments.state==="SOURCE_UNAVAILABLE"&&
+   <p role="status">Appointment reporting is temporarily unavailable. Other permitted sources remain accessible.</p>}
   {!loading&&catalog?.templates.length===0&&
    <p role="status">No original report source is available for your current permissions.</p>}
   {!!catalog?.templates.length&&<>
