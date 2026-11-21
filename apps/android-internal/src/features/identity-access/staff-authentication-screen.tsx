@@ -717,6 +717,7 @@ export function StaffAuthenticationScreen() {
       <Suspense fallback={<ActivityIndicator style={{marginTop:40}}/>}>
         <NativeHrEnrollment token={token} canView={roleActions.includes("hr.applications.view")}
           canManage={roleActions.includes("hr.applications.manage")}
+          canSelectAccounts={roleActions.includes("accounts.select")}
           canViewEmployees={roleActions.includes("hr.employees.view")}
           canReview={roleActions.includes("approvals.review")&&
             roleActions.includes("hr.employees.review")}
