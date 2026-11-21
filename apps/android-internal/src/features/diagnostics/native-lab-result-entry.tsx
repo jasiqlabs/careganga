@@ -5,7 +5,10 @@ import * as Crypto from "expo-crypto";
 import {careGangaTheme as t} from "../../../../../packages/design-tokens/src/index";
 import {identityRequest} from "../identity-access/http-client";
 type Value={lineRef:string;value:string;unit:string;observation:string};
-type Source={canEnter:boolean;reportReady:boolean;resume:{
+type Source={canEnter:boolean;canCorrect?:boolean;
+ previousReleaseRef?:string|null;
+ resumeCorrection?:{previousReleaseRef:string;reason:string}|null;
+ reportReady:boolean;resume:{
  requestKey:string;results:Value[]}|null;tests:{lineRef:string;name:string}[]};
 type Status={state:"RESULT_READY"|"UNKNOWN";generated:boolean};
 type Props={token:string;centerRef:string;orderRef:string;
@@ -35,6 +38,7 @@ export function NativeLabResultEntry({token,centerRef,orderRef,
  const [values,setValues]=useState<Value[]>([]);
  const [loading,setLoading]=useState(true),[busy,setBusy]=useState(false);
  const [uncertain,setUncertain]=useState(false),[message,setMessage]=useState("");
+ const [correctionReason,setCorrectionReason]=useState("");
  const key=useRef<string|null>(null);
  const warn=useCallback((e:unknown)=>{
   if(e&&typeof e==="object"&&"status" in e&&e.status===401)onExpired();
@@ -47,6 +51,7 @@ export function NativeLabResultEntry({token,centerRef,orderRef,
    if(!Array.isArray(x.tests)||!x.tests.length||x.tests.length>50)
     throw Error("Original ordered test list cannot be verified.");
    setSource(x);key.current=x.resume?.requestKey??null;
+   setCorrectionReason(x.resumeCorrection?.reason??"");
    const prior=new Map((x.resume?.results??[]).map(v=>[v.lineRef,v]));
    setValues(x.tests.map(item=>prior.get(item.lineRef)??{
     lineRef:item.lineRef,value:"",unit:"",observation:""
@@ -55,20 +60,30 @@ export function NativeLabResultEntry({token,centerRef,orderRef,
    .finally(()=>{if(live)setLoading(false)});
   return()=>{live=false};
  },[token,centerRef,orderRef,warn]);
+ const isCorrection=Boolean(source?.canCorrect||source?.resumeCorrection);
  const edit=(line:string,field:"value"|"unit"|"observation",v:string)=>{
   if(uncertain||busy)return;key.current=null;
   setValues(old=>old.map(x=>x.lineRef===line?{...x,[field]:v}:x));
  };
  const submit=async()=>{
-  if(busy||!source?.canEnter||values.some(x=>!x.value.trim()))return;
+  if(busy||!source?.canEnter||values.some(x=>!x.value.trim())||
+   (isCorrection&&correctionReason.trim().length<8))return;
   key.current??=Crypto.randomUUID();
   setBusy(true);setMessage("");
   try{
+   const previous=source.resumeCorrection?.previousReleaseRef??
+    source.previousReleaseRef;
+   if(isCorrection&&!previous)
+    throw Error("A verified previously released report is required.");
    const result=await request<Status>(token,path(centerRef,orderRef,"generate"),
-    {requestKey:key.current,results:values});
+    {requestKey:key.current,results:values,
+     ...(isCorrection?{correction:{previousReleaseRef:previous,
+      reason:correctionReason.trim()}}:{})});
    if(result.state==="RESULT_READY"&&result.generated){
     key.current=null;setUncertain(false);
-    setMessage("PDF automatically generated. Clinician review is next.");
+    setMessage(isCorrection?
+     "New corrected PDF version ready. Prior release preserved; clinician must review again.":
+     "PDF automatically generated. Clinician review is next.");
     await onVerified();
    }else{
     setUncertain(true);
@@ -89,7 +104,8 @@ export function NativeLabResultEntry({token,centerRef,orderRef,
    <Text style={styles.buttonText}>{title}</Text>
   </Pressable>;
  return <View style={styles.panel}>
-  <Text style={styles.title}>Enter actual test results</Text>
+  <Text style={styles.title}>{isCorrection?
+   "Correct released lab report":"Enter actual test results"}</Text>
   <Text style={styles.note}>CareGanga generates the PDF automatically.
    Enter only the recorded results, units and optional observations.</Text>
   {loading&&<ActivityIndicator accessibilityLabel="Checking original tests"/>}
@@ -116,14 +132,24 @@ export function NativeLabResultEntry({token,centerRef,orderRef,
      onChangeText={v=>edit(x.lineRef,"observation",v)}/>
    </View>;
   })}
+  {source?.canEnter&&isCorrection&&<View style={styles.line}>
+   <Text style={styles.label}>Reason for correction (required)</Text>
+   <TextInput accessibilityLabel="Reason for lab report correction"
+    multiline value={correctionReason} maxLength={500}
+    editable={!busy&&!uncertain} style={styles.input}
+    onChangeText={v=>{key.current=null;setCorrectionReason(v);}}/>
+   <Text style={styles.note}>The previous released PDF remains unchanged.
+    A clinician must approve and release the new version.</Text>
+  </View>}
   {source?.canEnter&&button(uncertain?"Retry same PDF generation":
-   "Generate report PDF",()=>
+   isCorrection?"Generate corrected PDF":"Generate report PDF",()=>
     Alert.alert("Generate private lab PDF?",
      "Use the entered test values to create the report PDF. "+
      "A clinician must approve and release it before the patient can access it.",[
       {text:"Cancel",style:"cancel"},
       {text:"Generate",onPress:()=>void submit()}]),
-    busy||loading||values.some(x=>!x.value.trim()))}
+    busy||loading||values.some(x=>!x.value.trim())||
+    (isCorrection&&correctionReason.trim().length<8))}
   {uncertain&&<Text accessibilityRole="alert" style={styles.note}>
    Keep the same results and retry this original request, not a new report.</Text>}
  </View>;
