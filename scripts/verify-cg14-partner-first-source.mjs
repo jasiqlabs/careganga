@@ -113,6 +113,11 @@ const checks=[
    .every(code=>new RegExp("\\b"+code+":").test(s.safeCopy))&&
   s.safeFilter.includes("Object.hasOwn(safeCodes,rawCode)")&&
   s.safeFilter.includes('"partnerType"')&&s.safeFilter.includes('"applicantName"')],
+ ["Public Web proxy forwards only originally catalog-approved safe messages",
+  s.publicProxy.includes('publicSafeCodes.has(rec.code)')&&
+  s.publicProxy.includes('publicFields.has(rec.field)')&&
+  s.publicProxy.includes('!/[<>\\r\\n]/.test(rec.message)')&&
+  !s.publicProxy.includes('return NextResponse.json(raw') ],
  ["Staff and public Android only render reviewed safe error copy",
   s.nativeStaff.includes('safe.has(rec.code)')&&
   s.nativePublic.includes('safe.has(info.code)')&&
