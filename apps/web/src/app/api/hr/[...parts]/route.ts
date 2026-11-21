@@ -18,6 +18,8 @@ function allowed(parts:string[],method:string){
  if(parts.length===3&&parts[0]==="applications"&&UUID.test(parts[1])&&
   parts[2]==="review")return method==="GET";
  if(parts.length===1&&parts[0]==="reviews")return method==="GET";
+ if(parts.length===2&&parts[0]==="reviews"&&parts[1]==="process")
+  return method==="GET"||method==="POST";
  if(parts.length===2&&parts[0]==="reviews"&&UUID.test(parts[1]))return method==="GET";
  if(parts.length===3&&parts[0]==="reviews"&&UUID.test(parts[1])&&
   parts[2]==="decide")return method==="POST";
