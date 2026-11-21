@@ -144,7 +144,25 @@ export class PartnerInvoiceVerificationService{
    else await this.centers.assertFoundationCenter(c,actor,center,action,false);
    const claim=await this.claim(c,actor.realmId,center,code);
    const state=await this.linked(c,actor.realmId,claim.id);
-   return show(claim,state.attest,state.decision,state.liability,state.posted);
+   let canAttest=false,canDecide=false;
+   if(own){
+    try{
+     await this.sessions.requireAction(token,"healthcare.assistance.charges.accept");
+     await this.centers.assertCurrent(c,actor,center,
+      "healthcare.assistance.charges.accept");
+     canAttest=!state.attest&&!state.decision;
+    }catch{/* View-only partner accounts cannot attest. */}
+   }else{
+    try{
+     await this.sessions.requireAction(token,"healthcare.assistance.liabilities.manage");
+     await this.protectedOwner.verifyReviewer(c,actor,"approvals.review",true);
+     canDecide=!!state.attest&&!state.decision&&
+      state.attest.attested_by_account!==actor.accountId&&
+      claim.requested_by_account!==actor.accountId;
+    }catch{/* Review permission and protected account are mandatory. */}
+   }
+   return {...show(claim,state.attest,state.decision,state.liability,state.posted),
+    canAttest,canDecide};
   });
  }
  /** Secure original CG19 file by claim code, not patient/file UUID.
