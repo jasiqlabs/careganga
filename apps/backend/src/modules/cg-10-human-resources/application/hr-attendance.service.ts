@@ -228,7 +228,7 @@ export class HrAttendanceService{
  async matrix(token:string,branchInput:string,monthInput:string,offsetInput:unknown){
   const actor=await this.sessions.requireAction(token,"hr.attendance.view");
   const branch=id(branchInput,"branch");
-  if(typeof monthInput!=="string"||!/^20\\d{2}-(0[1-9]|1[0-2])$/.test(monthInput))
+  if(typeof monthInput!=="string"||!/^20\d{2}-(0[1-9]|1[0-2])$/.test(monthInput))
    throw new BadRequestException("Choose a valid attendance month");
   const offset=Number(offsetInput??0);
   if(!Number.isSafeInteger(offset)||offset<0||offset>10000)

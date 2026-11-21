@@ -5,6 +5,8 @@ type Self={status:string;shift?:{label:string;timeZone:string;start:string;end:s
 type Branch={branchRef:string;label:string};
 type Employee={reference:string;name:string;designation:string};
 type Rule={policyRef:string;label:string;timeZone:string;start:string;end:string;effectiveFrom:string};
+type Matrix={month:string;items:Array<{employeeName:string;designation:string;
+ days:Array<{date:string;status:string}>}>;hasMore:boolean;offset:number};
 const inputStyle={padding:10,border:"1px solid #CBD5E1",borderRadius:9,width:"100%",minWidth:0} as const;
 const btn={padding:"10px 13px",border:0,borderRadius:9,color:"#fff",background:"#087F8C",fontWeight:700,cursor:"pointer"} as const;
 async function api(path:string,init?:RequestInit){
@@ -26,6 +28,8 @@ export function HrAttendance({canConfigure=false}:{canConfigure?:boolean}){
  const [policy,setPolicy]=useState({name:"",timeZone:"",start:"09:00",end:"17:00",
   graceMinutes:"0",breakMinutes:"0",effectiveFrom:today(),weeklyOffDays:[] as number[]});
  const [assignFrom,setAssignFrom]=useState(today());
+ const [month,setMonth]=useState(today().slice(0,7)),[matrix,setMatrix]=useState<Matrix|null>(null);
+ const [matrixOffset,setMatrixOffset]=useState(0),[matrixBusy,setMatrixBusy]=useState(false);
  const checkKey=useRef<string|null>(null),policyKey=useRef<string|null>(null),assignKey=useRef<string|null>(null);
  const refresh=useCallback(async()=>{
   setLoading(true);
@@ -56,6 +60,17 @@ export function HrAttendance({canConfigure=false}:{canConfigure?:boolean}){
    setError(x instanceof Error?x.message:"Shift options unavailable");}});
   return()=>{live=false;};
  },[canConfigure,branch,staffOffset]);
+ useEffect(()=>{if(!canConfigure||!branch){setMatrix(null);return;}
+  let live=true;setMatrixBusy(true);
+  void api("attendance/matrix?branch="+encodeURIComponent(branch)+
+   "&month="+encodeURIComponent(month)+"&offset="+matrixOffset)
+   .then(x=>{if(live&&x&&typeof x==="object"&&"items" in x&&Array.isArray(x.items))
+    setMatrix(x as Matrix);})
+   .catch(e=>{if(live){setMatrix(null);setError(e instanceof Error?e.message:
+    "Branch attendance cannot be confirmed");}})
+   .finally(()=>{if(live)setMatrixBusy(false);});
+  return()=>{live=false;};
+ },[canConfigure,branch,month,matrixOffset]);
  const checkIn=async()=>{if(busy)return;setBusy(true);setError("");setNotice("");
   const key=checkKey.current??crypto.randomUUID();checkKey.current=key;
   try{const r=await api("me/attendance/check-in",{method:"POST",body:JSON.stringify({requestKey:key})});
@@ -167,6 +182,26 @@ export function HrAttendance({canConfigure=false}:{canConfigure?:boolean}){
      onChange={e=>{setAssignFrom(e.target.value);assignKey.current=null;}}/></label>
     <button type="button" style={btn} disabled={busy||!selectedEmployee||!selectedPolicy}
      onClick={()=>void assign()}>Assign shift</button>
+    <div style={{borderTop:"1px solid #E2E8F0",paddingTop:12,display:"grid",gap:9}}>
+     <h3 style={{margin:0}}>Branch attendance</h3>
+     <p style={{margin:0,color:"#64748B"}}>Only recorded check-ins are shown. A missing record is not proof of absence or approved leave.</p>
+     <label>Month<input style={inputStyle} type="month" value={month}
+      onChange={e=>{setMonth(e.target.value);setMatrixOffset(0);}}/></label>
+     {matrixBusy&&<p>Loading attendance records…</p>}
+     {matrix&&<div style={{overflowX:"auto"}}>
+      <table style={{width:"100%",borderCollapse:"collapse"}}>
+       <thead><tr><th scope="col">Employee</th><th scope="col">Verified day records</th></tr></thead>
+       <tbody>{matrix.items.map((x,i)=><tr key={x.employeeName+"-"+i}>
+        <td>{x.employeeName} — {x.designation}</td>
+        <td>{x.days.length?x.days.map(d=>d.date+": "+d.status).join("; "):
+          "No check-in recorded for this month"}</td>
+       </tr>)}</tbody>
+      </table></div>}
+     {matrixOffset>0&&<button type="button"
+      onClick={()=>setMatrixOffset(v=>Math.max(0,v-25))}>Previous page</button>}
+     {matrix?.hasMore&&<button type="button"
+      onClick={()=>setMatrixOffset(v=>v+25)}>Next page</button>}
+    </div>
    </>}
   </div>}
  </section>;

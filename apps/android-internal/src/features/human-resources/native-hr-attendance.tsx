@@ -8,6 +8,8 @@ type Mine={status:string;shift?:{label:string;timeZone:string;start:string;end:s
 type Branch={branchRef:string;label:string};
 type Person={reference:string;name:string;designation:string};
 type Rule={policyRef:string;label:string;timeZone:string;start:string;end:string;effectiveFrom:string};
+type Matrix={items:Array<{employeeName:string;designation:string;
+ days:Array<{date:string;status:string}>}>;hasMore:boolean};
 const today=()=>new Date().toISOString().slice(0,10); // admin policy date input only
 async function api(token:string,path:string,method="GET",body?:object):Promise<unknown>{
  const res=await identityRequest("/api/hr/"+path,{method,cache:"no-store",
@@ -37,6 +39,9 @@ export function NativeHrAttendance({token,canConfigure,onExpired}:{
  const [rule,setRule]=useState({name:"",timeZone:"",start:"09:00",end:"17:00",
   graceMinutes:"0",breakMinutes:"0",effectiveFrom:today(),weeklyOffDays:[] as number[]});
  const [validFrom,setValidFrom]=useState(today());
+ const [month,setMonth]=useState(today().slice(0,7));
+ const [matrix,setMatrix]=useState<Matrix|null>(null),[matrixOffset,setMatrixOffset]=useState(0);
+ const [matrixBusy,setMatrixBusy]=useState(false);
  const checkKey=useRef<string|null>(null),policyKey=useRef<string|null>(null),
   assignmentKey=useRef<string|null>(null);
  const failure=useCallback((e:unknown)=>{
@@ -74,6 +79,16 @@ export function NativeHrAttendance({token,canConfigure,onExpired}:{
    }).catch(e=>{if(live){setStaff([]);setPolicies([]);failure(e);}});
   return()=>{live=false;};
  },[token,canConfigure,branch,staffOffset,failure]);
+ useEffect(()=>{if(!canConfigure||!branch){setMatrix(null);return;}
+  let live=true;setMatrixBusy(true);
+  void api(token,"attendance/matrix?branch="+encodeURIComponent(branch)+
+   "&month="+encodeURIComponent(month)+"&offset="+matrixOffset)
+   .then(v=>{if(live&&v&&typeof v==="object"&&"items" in v&&Array.isArray(v.items))
+    setMatrix(v as Matrix);})
+   .catch(e=>{if(live){setMatrix(null);failure(e);}})
+   .finally(()=>{if(live)setMatrixBusy(false);});
+  return()=>{live=false;};
+ },[token,canConfigure,branch,month,matrixOffset,failure]);
  const checkIn=async()=>{
   if(busy)return;setBusy(true);setError("");setMessage("");
   const key=checkKey.current??Crypto.randomUUID();checkKey.current=key;
@@ -201,6 +216,25 @@ export function NativeHrAttendance({token,canConfigure,onExpired}:{
     <Pressable accessibilityRole="button" disabled={busy||!employee||!policyId}
      style={styles.primary} onPress={()=>void assign()}>
      <Text style={styles.primaryText}>Assign employee shift</Text></Pressable>
+    <View style={styles.listItem}>
+     <Text style={styles.title}>Branch attendance</Text>
+     <Text style={styles.muted}>Only actual check-ins are shown. Unrecorded is not absent or approved leave.</Text>
+     {field("Month YYYY-MM",month,v=>{setMonth(v);setMatrixOffset(0);},"YYYY-MM")}
+     {matrixBusy&&<ActivityIndicator accessibilityLabel="Loading staff attendance"/>}
+     {matrix?.items.map((x,i)=><View style={styles.listItem}
+      key={x.employeeName+"-"+String(i)}>
+      <Text style={styles.label}>{x.employeeName} · {x.designation}</Text>
+      {x.days.length?x.days.map(d=><Text style={styles.muted}
+       key={d.date}>{d.date}: {d.status}</Text>):
+       <Text style={styles.muted}>No recorded check-in this month.</Text>}
+     </View>)}
+     {matrixOffset>0&&<Pressable accessibilityRole="button" style={styles.outline}
+      onPress={()=>setMatrixOffset(v=>Math.max(0,v-25))}>
+      <Text style={styles.outlineText}>Previous staff page</Text></Pressable>}
+     {matrix?.hasMore&&<Pressable accessibilityRole="button" style={styles.outline}
+      onPress={()=>setMatrixOffset(v=>v+25)}>
+      <Text style={styles.outlineText}>Next staff page</Text></Pressable>}
+    </View>
    </>}
   </View>}
  </View>;
