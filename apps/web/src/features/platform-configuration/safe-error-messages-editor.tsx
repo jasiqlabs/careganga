@@ -25,6 +25,10 @@ import {
   FileTextIcon,
   HelpCircleIcon
 } from "./general-settings-icons";
+import {
+  GeneralSettingsFeedbackModal,
+  type FeedbackModalState
+} from "./general-settings-feedback-modal";
 
 export type ErrorCopy = {
   key: string;
@@ -139,6 +143,7 @@ export function SafeErrorMessagesEditor({ canEdit }: { canEdit: boolean }) {
   const [showPassword, setShowPassword] = useState(false);
   const [copied, setCopied] = useState(false);
   const [notice, setNotice] = useState<Notice | null>(null);
+  const [feedback, setFeedback] = useState<FeedbackModalState | null>(null);
   const [unknown, setUnknown] = useState<{ key: string; wording: string; revision: number } | null>(null);
 
   // Search & Filter state
@@ -148,6 +153,7 @@ export function SafeErrorMessagesEditor({ canEdit }: { canEdit: boolean }) {
   const [openAccordions, setOpenAccordions] = useState<Record<string, boolean>>({ auth: true });
 
   const searchInputRef = useRef<HTMLInputElement>(null);
+  const drawerRef = useRef<HTMLElement>(null);
   const prefersReducedMotion = useReducedMotion();
 
   async function reload() {
@@ -182,20 +188,54 @@ export function SafeErrorMessagesEditor({ canEdit }: { canEdit: boolean }) {
     void reload();
   }, []);
 
-  // Global keyboard shortcuts (Ctrl+K to focus search, Escape to close drawer)
+  // Focus management and keyboard trap for Edit Drawer
+  useEffect(() => {
+    if (!active) return;
+    const previous = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    const timer = setTimeout(() => {
+      drawerRef.current?.querySelector<HTMLElement>("textarea, input:not([type=hidden]), button")?.focus();
+    }, 50);
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        if (!busy && !unknown) {
+          cancelEditor();
+        }
+        return;
+      }
+      if (event.key !== "Tab") return;
+      const controls = Array.from(drawerRef.current?.querySelectorAll<HTMLElement>(
+        'button:not([disabled]),input:not([disabled]),textarea:not([disabled]),select:not([disabled]),[tabindex]:not([tabindex="-1"])'
+      ) ?? []).filter(el => el.getClientRects().length > 0);
+      if (!controls.length) return;
+      if (event.shiftKey && document.activeElement === controls[0]) {
+        event.preventDefault();
+        controls[controls.length - 1].focus();
+      } else if (!event.shiftKey && document.activeElement === controls[controls.length - 1]) {
+        event.preventDefault();
+        controls[0].focus();
+      }
+    };
+    document.addEventListener("keydown", onKey);
+    return () => {
+      clearTimeout(timer);
+      document.removeEventListener("keydown", onKey);
+      if (previous && document.contains(previous)) {
+        previous.focus();
+      }
+    };
+  }, [active, busy, unknown]);
+
+  // Global keyboard shortcuts (Ctrl+K to focus search)
   useEffect(() => {
     function handleKeyDown(e: KeyboardEvent) {
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "k") {
         e.preventDefault();
         searchInputRef.current?.focus();
       }
-      if (e.key === "Escape" && active && !busy) {
-        cancelEditor();
-      }
     }
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [active, busy]);
+  }, []);
 
   function begin(message: ErrorCopy) {
     if (!canEdit || busy || unknown) return;
@@ -224,7 +264,11 @@ export function SafeErrorMessagesEditor({ canEdit }: { canEdit: boolean }) {
     }
   }
 
-  function toggleAccordion(catId: string) {
+  function toggleAccordion(catId: string, e?: React.MouseEvent) {
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
     setOpenAccordions(prev => ({
       ...prev,
       [catId]: !prev[catId]
@@ -248,24 +292,44 @@ export function SafeErrorMessagesEditor({ canEdit }: { canEdit: boolean }) {
       /[<>\r\n\x00-\x1f]/.test(value) ||
       !/[.!?]$/.test(value)
     ) {
-      setNotice({
-        kind: "error",
-        message:
-          "Write a clear sentence of 16–220 characters that tells the person what to do next. Use plain text and ending punctuation."
+      setFeedback({
+        type: "error",
+        badge: "ERROR",
+        title: "Validation Failed",
+        message: "Write a clear sentence of 16–220 characters that tells the person what to do next. Use plain text and ending punctuation.",
+        nextStep: "Review the input requirements below the replacement wording box.",
+        primaryActionLabel: "Review Input",
+        focusTargetOnClose: "cg-replacement-wording",
+        onPrimaryAction: () => setFeedback(null),
+        onClose: () => setFeedback(null)
       });
       return;
     }
     if (value === active.effectiveMessage) {
-      setNotice({
-        kind: "error",
-        message: "This wording is already in use. Change the message before saving."
+      setFeedback({
+        type: "warning",
+        badge: "ACTION REQUIRED",
+        title: "No Changes Detected",
+        message: "This wording is already in use. Change the message before saving.",
+        nextStep: "Edit the replacement text to specify customized wording.",
+        primaryActionLabel: "Review Input",
+        focusTargetOnClose: "cg-replacement-wording",
+        onPrimaryAction: () => setFeedback(null),
+        onClose: () => setFeedback(null)
       });
       return;
     }
     if (password.length < 8) {
-      setNotice({
-        kind: "error",
-        message: "Enter your current sign-in password to authorize this change."
+      setFeedback({
+        type: "error",
+        badge: "ERROR",
+        title: "Password Required",
+        message: "Enter your current sign-in password (at least 8 characters) to authorize this change.",
+        nextStep: "Enter your sign-in password in the security confirmation field.",
+        primaryActionLabel: "Try Again",
+        focusTargetOnClose: "cg-error-current-password",
+        onPrimaryAction: () => setFeedback(null),
+        onClose: () => setFeedback(null)
       });
       return;
     }
@@ -284,6 +348,40 @@ export function SafeErrorMessagesEditor({ canEdit }: { canEdit: boolean }) {
       });
       if (!res.ok) {
         if (res.status >= 500) throw Error("UNCONFIRMED");
+        if (res.status === 401 || res.status === 403) {
+          // Explicit password verification / authentication failure
+          setFeedback({
+            type: "error",
+            badge: "ERROR",
+            title: "Authentication Failed",
+            message: "The password you entered is incorrect. Please try again.",
+            nextStep: "Verify your sign-in password and enter it carefully before retrying.",
+            primaryActionLabel: "Try Again",
+            focusTargetOnClose: "cg-error-current-password",
+            onPrimaryAction: () => setFeedback(null),
+            onClose: () => setFeedback(null)
+          });
+          return;
+        }
+        if (res.status === 409) {
+          setFeedback({
+            type: "error",
+            badge: "ACTION REQUIRED",
+            title: "Wording Conflict",
+            message: "This wording changed while you edited it. Refresh the list before trying again.",
+            nextStep: "Refresh the message list to inspect the latest changes.",
+            primaryActionLabel: "Refresh List",
+            onPrimaryAction: () => {
+              setFeedback(null);
+              cancelEditor();
+              void reload();
+            },
+            secondaryActionLabel: "Close",
+            onSecondaryAction: () => setFeedback(null),
+            onClose: () => setFeedback(null)
+          });
+          return;
+        }
         const safe: unknown = await res.json().catch(() => null);
         const exact =
           safe &&
@@ -294,15 +392,16 @@ export function SafeErrorMessagesEditor({ canEdit }: { canEdit: boolean }) {
           safe.message.length <= 220
             ? safe.message
             : null;
-        setNotice({
-          kind: "error",
-          message:
-            exact ??
-            (res.status === 409
-              ? "This wording changed while you edited it. Refresh the list before trying again."
-              : res.status === 401 || res.status === 403
-                ? "Your session or permission cannot authorize this change. Sign in and ask the Foundation Administrator."
-                : "Review the replacement sentence and current password, then try again.")
+        setFeedback({
+          type: "error",
+          badge: "ERROR",
+          title: "Validation Failed",
+          message: exact ?? "Review the replacement sentence and current password, then try again.",
+          nextStep: "Ensure the wording meets length and punctuation rules and current password is valid.",
+          primaryActionLabel: "Review Input",
+          focusTargetOnClose: "cg-replacement-wording",
+          onPrimaryAction: () => setFeedback(null),
+          onClose: () => setFeedback(null)
         });
         return;
       }
@@ -323,17 +422,34 @@ export function SafeErrorMessagesEditor({ canEdit }: { canEdit: boolean }) {
       setActive(null);
       setPassword("");
       setShowPassword(false);
-      setNotice({
-        kind: "success",
+      setFeedback({
+        type: "success",
+        badge: "SUCCESS",
+        title: "Changes Saved Successfully",
         message:
-          "The updated wording was saved. New matching errors will use it after a short cache refresh (up to one minute)."
+          "The updated wording was saved. New matching errors will use it after a short cache refresh (up to one minute).",
+        nextStep: "Platform error responses referencing this message ID will now display the customized guidance.",
+        primaryActionLabel: "Done",
+        onPrimaryAction: () => setFeedback(null),
+        onClose: () => setFeedback(null)
       });
     } catch {
       setUnknown({ key: active.key, wording: value, revision: active.revision });
-      setNotice({
-        kind: "uncertain",
+      setFeedback({
+        type: "verification-required",
+        badge: "VERIFICATION REQUIRED",
+        title: "Verification Required",
         message:
-          "The save result could not be confirmed. Check the current published wording before making another change."
+          "The save result could not be confirmed. Check the current published wording before making another change.",
+        nextStep: "Use the Check action to confirm whether the server committed the change.",
+        primaryActionLabel: "Check Original Change",
+        onPrimaryAction: () => {
+          setFeedback(null);
+          void check();
+        },
+        secondaryActionLabel: "Close",
+        onSecondaryAction: () => setFeedback(null),
+        onClose: () => setFeedback(null)
       });
     } finally {
       setBusy(false);
@@ -342,21 +458,52 @@ export function SafeErrorMessagesEditor({ canEdit }: { canEdit: boolean }) {
 
   async function check() {
     if (!unknown || busy) return;
-    const latest = await reload();
-    if (!latest) return;
-    const found = latest.find(item => item.key === unknown.key);
-    if (found && found.effectiveMessage === unknown.wording && found.revision > unknown.revision) {
-      setUnknown(null);
-      setActive(null);
-      setPassword("");
-      setShowPassword(false);
-      setNotice({ kind: "success", message: "The original message update was confirmed." });
-    } else {
-      setNotice({
-        kind: "uncertain",
-        message:
-          "The original change is not confirmed. Do not resubmit blindly; contact your Foundation Administrator if this persists."
-      });
+    setBusy(true);
+    try {
+      const latest = await reload();
+      if (!latest) {
+        setFeedback({
+          type: "error",
+          badge: "ERROR",
+          title: "Verification Check Failed",
+          message: "Could not reload error messages to verify previous change. Check network connection and retry.",
+          primaryActionLabel: "Dismiss",
+          onPrimaryAction: () => setFeedback(null),
+          onClose: () => setFeedback(null)
+        });
+        return;
+      }
+      const found = latest.find(item => item.key === unknown.key);
+      if (found && found.effectiveMessage === unknown.wording && found.revision > unknown.revision) {
+        setUnknown(null);
+        setActive(null);
+        setPassword("");
+        setShowPassword(false);
+        setFeedback({
+          type: "success",
+          badge: "SUCCESS",
+          title: "Changes Saved Successfully",
+          message: "The original message update was confirmed.",
+          nextStep: "The message is now active with the latest revision.",
+          primaryActionLabel: "Done",
+          onPrimaryAction: () => setFeedback(null),
+          onClose: () => setFeedback(null)
+        });
+      } else {
+        setFeedback({
+          type: "verification-required",
+          badge: "VERIFICATION REQUIRED",
+          title: "Verification Incomplete",
+          message:
+            "The original change is not confirmed. Do not resubmit blindly; contact your Foundation Administrator if this persists.",
+          nextStep: "Do not resubmit the same change blindly while outcome is pending.",
+          primaryActionLabel: "Understood",
+          onPrimaryAction: () => setFeedback(null),
+          onClose: () => setFeedback(null)
+        });
+      }
+    } finally {
+      setBusy(false);
     }
   }
 
@@ -594,7 +741,7 @@ export function SafeErrorMessagesEditor({ canEdit }: { canEdit: boolean }) {
                   <button
                     type="button"
                     className="cg-gs-accordion-header"
-                    onClick={() => toggleAccordion(cat.id)}
+                    onClick={e => toggleAccordion(cat.id, e)}
                     aria-expanded={isOpen}
                   >
                     <div className="cg-gs-accordion-left">
@@ -611,7 +758,8 @@ export function SafeErrorMessagesEditor({ canEdit }: { canEdit: boolean }) {
 
                   {isOpen && (
                     <div className="cg-gs-accordion-body">
-                      <div className="cg-gs-table-wrap">
+                      {/* Desktop / Tablet Table */}
+                      <div className="cg-gs-table-wrap cg-gs-msg-table-wrap">
                         <table className="cg-gs-msg-table">
                           <thead>
                             <tr>
@@ -658,6 +806,40 @@ export function SafeErrorMessagesEditor({ canEdit }: { canEdit: boolean }) {
                           </tbody>
                         </table>
                       </div>
+
+                      {/* Mobile Structured Message Cards */}
+                      <div className="cg-gs-msg-cards-list" aria-label={`${cat.name} messages mobile view`}>
+                        {catItems.map(item => (
+                          <div key={item.key} className="cg-gs-msg-card">
+                            <div className="cg-gs-msg-card-top">
+                              <span
+                                className={`cg-gs-msg-custom-badge ${
+                                  item.customized ? "is-customized" : "is-default"
+                                }`}
+                              >
+                                {item.customized ? "Customized" : "Default"}
+                              </span>
+                              {canEdit ? (
+                                <button
+                                  type="button"
+                                  className="cg-gs-btn-edit-sm"
+                                  disabled={busy || Boolean(unknown)}
+                                  onClick={() => begin(item)}
+                                >
+                                  <PencilIcon size={13} />
+                                  <span>Edit</span>
+                                </button>
+                              ) : (
+                                <span className="cg-gs-view-only-text">View only</span>
+                              )}
+                            </div>
+                            <div className="cg-gs-msg-card-body">
+                              <div className="cg-gs-msg-text">{item.effectiveMessage}</div>
+                              <code className="cg-gs-msg-card-key">{item.key}</code>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
                     </div>
                   )}
                 </div>
@@ -682,6 +864,7 @@ export function SafeErrorMessagesEditor({ canEdit }: { canEdit: boolean }) {
             }}
           >
             <motion.section
+              ref={drawerRef}
               className="cg-gs-drawer"
               role="dialog"
               aria-modal="true"
@@ -723,16 +906,6 @@ export function SafeErrorMessagesEditor({ canEdit }: { canEdit: boolean }) {
 
               <form className="cg-gs-drawer-form" onSubmit={save} noValidate>
                 <div className="cg-gs-drawer-content">
-                  {notice && (
-                    <div
-                      className={`cg-gs-notice-banner ${notice.kind}`}
-                      role={notice.kind === "success" ? "status" : "alert"}
-                    >
-                      <AlertTriangleIcon size={16} />
-                      <div>{notice.message}</div>
-                    </div>
-                  )}
-
                   {unknown && (
                     <div className="cg-gs-notice-banner warning">
                       <AlertTriangleIcon size={16} />
@@ -765,7 +938,9 @@ export function SafeErrorMessagesEditor({ canEdit }: { canEdit: boolean }) {
                       <span className="cg-gs-badge-subtle">System Key</span>
                     </div>
                     <div className="cg-gs-id-badge-wrap">
-                      <code>{active.key}</code>
+                      <div className="cg-gs-code-box">
+                        <code>{active.key}</code>
+                      </div>
                       <button
                         type="button"
                         className={`cg-gs-copy-btn ${copied ? "is-copied" : ""}`}
@@ -773,7 +948,7 @@ export function SafeErrorMessagesEditor({ canEdit }: { canEdit: boolean }) {
                         aria-label="Copy Message ID"
                         title="Copy ID to clipboard"
                       >
-                        {copied ? <CheckIcon size={13} /> : <CopyIcon size={13} />}
+                        {copied ? <CheckIcon size={14} /> : <CopyIcon size={14} />}
                         <span>{copied ? "Copied!" : "Copy ID"}</span>
                       </button>
                     </div>
@@ -787,7 +962,9 @@ export function SafeErrorMessagesEditor({ canEdit }: { canEdit: boolean }) {
                       <label className="cg-gs-label">Original message (read-only)</label>
                       <span className="cg-gs-badge-subtle">Default Wording</span>
                     </div>
-                    <div className="cg-gs-readonly-box">{active.defaultMessage}</div>
+                    <div className="cg-gs-readonly-box">
+                      <p>{active.defaultMessage}</p>
+                    </div>
                     <p className="cg-gs-helper-text">
                       Original baseline guidance presented before any custom configuration.
                     </p>
@@ -831,36 +1008,41 @@ export function SafeErrorMessagesEditor({ canEdit }: { canEdit: boolean }) {
                     </p>
                   </div>
 
-                  <div className="cg-gs-form-group">
-                    <label htmlFor="cg-error-current-password" className="cg-gs-label">
-                      Current password *
-                    </label>
-                    <div className="cg-gs-input-wrap">
-                      <input
-                        id="cg-error-current-password"
-                        type={showPassword ? "text" : "password"}
-                        required
-                        minLength={8}
-                        maxLength={1024}
-                        autoComplete="current-password"
-                        value={password}
-                        placeholder="Enter your current password"
-                        className="cg-gs-input cg-gs-input-with-toggle"
-                        onChange={e => setPassword(e.target.value)}
-                      />
-                      <button
-                        type="button"
-                        className="cg-gs-btn-toggle-password"
-                        onClick={() => setShowPassword(!showPassword)}
-                        aria-label={showPassword ? "Hide password" : "Show password"}
-                        title={showPassword ? "Hide password" : "Show password"}
-                      >
-                        {showPassword ? <EyeOffIcon size={16} /> : <EyeIcon size={16} />}
-                      </button>
+                  <div className="cg-gs-password-confirm-box">
+                    <div className="cg-gs-form-group">
+                      <div className="cg-gs-form-label-row">
+                        <label htmlFor="cg-error-current-password" className="cg-gs-label">
+                          Current password *
+                        </label>
+                        <span className="cg-gs-badge-subtle">Security Confirmation</span>
+                      </div>
+                      <div className="cg-gs-input-wrap">
+                        <input
+                          id="cg-error-current-password"
+                          type={showPassword ? "text" : "password"}
+                          required
+                          minLength={8}
+                          maxLength={1024}
+                          autoComplete="current-password"
+                          value={password}
+                          placeholder="Enter your current password"
+                          className="cg-gs-input cg-gs-input-with-toggle"
+                          onChange={e => setPassword(e.target.value)}
+                        />
+                        <button
+                          type="button"
+                          className="cg-gs-btn-toggle-password"
+                          onClick={() => setShowPassword(!showPassword)}
+                          aria-label={showPassword ? "Hide password" : "Show password"}
+                          title={showPassword ? "Hide password" : "Show password"}
+                        >
+                          {showPassword ? <EyeOffIcon size={16} /> : <EyeIcon size={16} />}
+                        </button>
+                      </div>
+                      <p className="cg-gs-helper-text">
+                        Enter your sign-in password to confirm and authorize this wording change. Never stored or logged.
+                      </p>
                     </div>
-                    <p className="cg-gs-helper-text">
-                      Enter your sign-in password to confirm and authorize this wording change.
-                    </p>
                   </div>
                 </div>
 
@@ -901,6 +1083,12 @@ export function SafeErrorMessagesEditor({ canEdit }: { canEdit: boolean }) {
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* Reusable Centered Feedback Modal */}
+      <GeneralSettingsFeedbackModal
+        feedback={feedback}
+        onDismiss={() => setFeedback(null)}
+      />
     </section>
   );
 }
