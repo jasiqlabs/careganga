@@ -112,8 +112,8 @@ export function NativeHrEnrollment({token,canView,canManage,onExit,onExpired}:{
   try{
    await api(token,selected?"applications/"+selected.applicationRef:"applications",
     selected?"PATCH":"POST",body);
-   setStatus("Draft saved. Employment remains unapproved.");
    reset();await load(0);
+   setStatus("Draft saved. Employment remains unapproved.");
   }catch(e){failure(e);}
   finally{setSaving(false);}
  };
@@ -212,9 +212,9 @@ const styles=StyleSheet.create({
  content:{padding:17,paddingBottom:140,gap:15},
  heading:{flexDirection:"row",justifyContent:"space-between",alignItems:"center",gap:8},
  title:{fontSize:22,fontWeight:"800",color:"#0F172A"},
- h2:{fontSize:17,fontWeight:"750",color:"#0F172A",marginBottom:7},
+ h2:{fontSize:17,fontWeight:"700",color:"#0F172A",marginBottom:7},
  muted:{color:"#64748B",lineHeight:20,fontSize:13,marginBottom:8},
- label:{fontWeight:"650",fontSize:13,color:"#334155",marginBottom:6},
+ label:{fontWeight:"600",fontSize:13,color:"#334155",marginBottom:6},
  card:{backgroundColor:"#fff",padding:16,borderRadius:16,borderWidth:1,borderColor:"#E2E8F0",gap:7},
  field:{gap:3,marginVertical:5},
  input:{borderColor:"#CBD5E1",borderWidth:1,borderRadius:9,padding:12,
@@ -225,10 +225,10 @@ const styles=StyleSheet.create({
  selected:{backgroundColor:"#0369A1",borderColor:"#0369A1"},
  chipText:{fontSize:13,color:"#334155"},selectedText:{fontSize:13,color:"#fff",fontWeight:"700"},
  primary:{padding:13,backgroundColor:"#087F8C",borderRadius:10,alignItems:"center",marginTop:8},
- primaryText:{color:"#fff",fontSize:14,fontWeight:"750"},
+ primaryText:{color:"#fff",fontSize:14,fontWeight:"700"},
  outline:{paddingVertical:9,paddingHorizontal:12,backgroundColor:"#F1F5F9",
   borderRadius:9,alignSelf:"flex-start",marginTop:5},
- outlineText:{color:"#0F172A",fontWeight:"650",fontSize:13},
+ outlineText:{color:"#0F172A",fontWeight:"600",fontSize:13},
  item:{paddingVertical:12,borderTopWidth:1,borderColor:"#E2E8F0"},
  error:{backgroundColor:"#FEF2F2",padding:12,borderRadius:10,color:"#991B1B"},
  success:{backgroundColor:"#ECFDF5",padding:12,borderRadius:10,color:"#166534"}
