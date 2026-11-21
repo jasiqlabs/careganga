@@ -56,6 +56,13 @@ const tests=[
   s.base.includes("'^CG-[A-F0-9]{14}$'")&&
   s.base.includes("center_ref uuid NOT NULL")&&
   s.base.includes("UNIQUE(root_realm_id,public_code)")],
+ ["Approved LAB patient benefits reuse canonical LAB policy and actual CG14 DIAGNOSTICS center",
+  s.base.includes("'LAB'")&&
+  s.base.includes("WHEN 'LAB' THEN 'DIAGNOSTICS'")&&
+  s.attest.includes("WHEN 'LAB' THEN 'DIAGNOSTICS'")&&
+  s.intake.includes('"PHARMACY"|"NURSING"|"OT"|"LAB"')&&
+  s.patientWeb.includes('o.kind==="LAB"?"Lab / diagnostics"')&&
+  s.patientNative.includes('c.kind==="LAB"?"Lab / diagnostics"')],
  ["Original clean patient-owned payment proof has its own classification and SQL guard",
   s.scan.includes("PATIENT_PARTNER_PAYMENT_PROOF")&&
   s.proof.includes("cg17_claim_patient_payment_scan_guard")&&
