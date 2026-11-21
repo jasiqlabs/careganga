@@ -1,4 +1,4 @@
-import {Body,Controller,Get,Header,Headers,Post} from "@nestjs/common";
+import {Body,Controller,Get,Header,Headers,Param,Post} from "@nestjs/common";
 import {PartnerServiceClaimService} from "../application/partner-service-claim.service";
 
 /** Patient-facing CG17 ERP-OFF evidence: only the current verified patient's
@@ -11,6 +11,18 @@ export class PartnerServiceClaimController{
  @Header("Cache-Control","private, no-store")
  options(@Headers("authorization")bearer:string){
   return this.claims.options(bearer);
+ }
+ @Get("foundation/centers/:centerRef")
+ @Header("Cache-Control","private, no-store")
+ foundation(@Headers("authorization")bearer:string,
+  @Param("centerRef")center:string){
+  return this.claims.foundationCenter(bearer,center);
+ }
+ @Get("partner/centers/:centerRef")
+ @Header("Cache-Control","private, no-store")
+ partner(@Headers("authorization")bearer:string,
+  @Param("centerRef")center:string){
+  return this.claims.ownCenter(bearer,center);
  }
  @Get("mine")
  @Header("Cache-Control","private, no-store")
