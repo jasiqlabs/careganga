@@ -234,6 +234,12 @@ export function NativeDoctorManagement({token,onExit,onExpired,canManage,
       token={token} doctorRef={selected.doctorRef} version={selected.version}
       classification="HEALTH_DOCTOR_LICENSE"
       onVerified={ref=>setProof(ref)} onExpired={onExpired}/>
+     {selected.doctor.portraitRightsStatus==="CONSENT_PENDING"&&
+      <NativeDoctorEvidenceUploader key={selectedRef+"-portrait-"+selected.version}
+       token={token} doctorRef={selected.doctorRef} version={selected.version}
+       classification="HEALTH_DOCTOR_PORTRAIT"
+       onVerified={()=>{}} onExpired={onExpired}/>}
+
      {button("Submit scanned licence for independent review",()=>Alert.alert(
       "Submit doctor verification case?",
       "Only verified private evidence is accepted. Publication is separate.",[
