@@ -5,6 +5,7 @@ import {resolve} from "node:path";
 import ts from "typescript";
 const read=path=>readFileSync(resolve(process.cwd(),path),"utf8");
 const internalCms=read("apps/android-internal/src/features/cms/native-cms-editorial.tsx");
+const internalMedia=read("apps/android-internal/src/features/cms/native-cms-media-uploader.tsx");
 const internalMenu=read("apps/android-internal/src/features/dashboard/dashboard-modules.ts");
 const internalShell=read("apps/android-internal/src/features/identity-access/staff-authentication-screen.tsx");
 const files={
@@ -339,6 +340,18 @@ checks.push(["Existing CG18 native CMS TSX parses",
 checks.push(["Non-home CMS payload must omit forbidden navigation key",
  internalCms.includes('...(v.kind==="HOME"&&v.navigation?{navigation:v.navigation}:{})')&&
  files.backend.includes('kind!=="HOME"&&v.navigation!==undefined')]);
+const nativeCmsMediaSyntax=ts.createSourceFile(
+ "apps/android-internal/src/features/cms/native-cms-media-uploader.tsx",
+ internalMedia,ts.ScriptTarget.Latest,true,ts.ScriptKind.TSX);
+checks.push(["Original CG18 native CMS CG19 media syntax parses",
+ nativeCmsMediaSyntax.parseDiagnostics.length===0]);
+checks.push(["Original CG19 private scanner media is attached only to unpublished CMS drafts",
+ internalMedia.includes('"/api/cms/media/"')&&
+ internalMedia.includes('"/confirm"')&&
+ internalMedia.includes("cleanVerified")&&
+ internalMedia.includes("rightsConfirmed:true")&&
+ internalCms.includes('<NativeCmsMediaUploader token={token}')&&
+ internalCms.includes('selected.status==="DRAFT"')]);
 checks.push(["Original Web CMS article, policy and other supported page kinds can be created on Internal Android",
  internalCms.includes("const initialKind=(kind:NewKind):NewPage=>")&&
  internalCms.includes('perform("create","POST","pages"')&&
