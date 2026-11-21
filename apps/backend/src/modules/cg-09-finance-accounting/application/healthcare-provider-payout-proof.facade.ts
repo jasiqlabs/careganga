@@ -91,7 +91,7 @@ export class HealthcareProviderPayoutProofFacade{
   * proves a provider reimbursed a payout; CG17 requires human payer match.
   */
  private async recoveries(c:PoolClient,actor:VerifiedFoundationActor,
-  payableRef:string,bankMatchRef?:string){
+  payableRef:string,bankMatchRef?:string,neededMinor?:string){
   await this.identity.assertCurrent(c,actor,"finance.reconciliation.manage");
   if(!ID.test(payableRef)||(bankMatchRef&&!ID.test(bankMatchRef)))
    throw new ConflictException({code:"CG09_PROVIDER_RECOVERY_INVALID"});
@@ -131,18 +131,19 @@ export class HealthcareProviderPayoutProofFacade{
    "AND bank.variance_minor=0 AND bank.statement_amount_minor>0 "+
    "AND bank.posted_amount_minor=bank.statement_amount_minor "+
    "AND ($3::uuid IS NULL OR bank.id=$3::uuid) "+
+   "AND ($4::bigint IS NULL OR bank.statement_amount_minor=$4::bigint) "+
    "AND (SELECT count(*) FROM journal_line exact "+
    "WHERE exact.root_realm_id=j.root_realm_id AND exact.journal_id=j.id)=2 "+
 
    "ORDER BY bank.verified_at DESC,bank.id DESC LIMIT 51",
-   [actor.realmId,payableRef,bankMatchRef??null]);
+   [actor.realmId,payableRef,bankMatchRef??null,neededMinor??null]);
   return rows.rows;
  }
  async recoveryOptions(c:PoolClient,actor:VerifiedFoundationActor,
   payableRef:string,neededMinor:string){
   if(!/^[1-9][0-9]{0,10}$/.test(neededMinor))
    throw new ConflictException({code:"CG09_PROVIDER_RECOVERY_INVALID"});
-  const rows=await this.recoveries(c,actor,payableRef);
+  const rows=await this.recoveries(c,actor,payableRef,undefined,neededMinor);
   return {bankRecoveries:rows.filter(x=>x.amount_minor===neededMinor)
    .slice(0,50).map(x=>({bankMatchRef:x.reconciliation_ref,
     bankItemLabel:x.bank_item_ref,amountMinor:x.amount_minor})),
@@ -152,7 +153,7 @@ export class HealthcareProviderPayoutProofFacade{
   bankMatchRef:string,payableRef:string,neededMinor:string){
   if(!/^[1-9][0-9]{0,10}$/.test(neededMinor))
    throw new ConflictException({code:"CG09_PROVIDER_RECOVERY_INVALID"});
-  const rows=await this.recoveries(c,actor,payableRef,bankMatchRef);
+  const rows=await this.recoveries(c,actor,payableRef,bankMatchRef,neededMinor);
   const x=rows[0];
   if(rows.length!==1||!x||x.amount_minor!==neededMinor)
    throw new ConflictException({code:"CG09_PROVIDER_RECOVERY_NOT_VERIFIED"});
