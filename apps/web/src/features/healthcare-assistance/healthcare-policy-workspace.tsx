@@ -26,14 +26,22 @@ async function api<T>(parts:string,method:"GET"|"POST"="GET",body?:object){
   method,credentials:"same-origin",cache:"no-store",
   ...(body?{headers:{"Content-Type":"application/json"},body:JSON.stringify(body)}:{})
  });
- if(!response.ok)throw Object.assign(new Error(
+ if(!response.ok){
+  const body:unknown=await response.json().catch(()=>null);
+  const safe=body&&typeof body==="object"&&!Array.isArray(body)?
+   body as Record<string,unknown>:null;
+  const text=safe&&typeof safe.message==="string"&&
+   safe.message.length>=16&&safe.message.length<=220&&
+   !/[<>\r\n]/.test(safe.message)?safe.message:null;
+  throw Object.assign(new Error(text??(
   response.status===401?"Staff session expired. Sign in again.":
   response.status===403?"You are not authorized to change healthcare assistance.":
   response.status===404?"Verified center, doctor or policy is unavailable.":
   response.status===409?"Policy dates or revision conflict. Refresh the original record.":
   response.status===400?"Check the valid dates, support amount and approved center.":
-  "The policy outcome is uncertain. Check the original record; never submit a new request."),
+  "The policy outcome is uncertain. Check the original record; never submit a new request.")),
   {status:response.status});
+ }
  return response.json() as Promise<T>;
 }
 function rupees(v:string){
