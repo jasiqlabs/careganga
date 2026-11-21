@@ -110,12 +110,31 @@ export class ClinicalLabGeneratedResultService{
     orderRow.rows[0].status))
     throw new NotFoundException({code:"LAB_RESULT_ORDER_NOT_READY"});
    const original=await this.lines(c,a.realmId,order);
-   const latest=await c.query<{result_state:string}>(
-    "SELECT result_state FROM lab_result_revision "+
-    "WHERE root_realm_id=$1 AND order_ref=$2 ORDER BY version_no DESC LIMIT 1",
+   const latest=await c.query<{
+    id:string;result_state:string;source_key:string;operator_account_ref:string}>(
+    "SELECT id,result_state,source_key,operator_account_ref "+
+    "FROM lab_result_revision WHERE root_realm_id=$1 AND order_ref=$2 "+
+    "ORDER BY version_no DESC LIMIT 1",
     [a.realmId,order]);
-   return {canEnter:orderRow.rows[0].status==="PROCESSING"&&!latest.rows.length,
-    reportReady:orderRow.rows[0].status==="RESULT_READY",
+   const row=latest.rows[0];
+   let resume:null|{requestKey:string;results:Entry[]}=null;
+   if(row&&row.result_state==="DRAFT"&&
+    row.operator_account_ref===a.accountId){
+    const entered=await c.query<{
+     order_line_ref:string;value_text:string;unit_text:string;
+     observation_text:string}>(
+     "SELECT order_line_ref,value_text,unit_text,observation_text "+
+     "FROM lab_result_value WHERE root_realm_id=$1 "+
+     "AND result_revision_ref=$2",[a.realmId,row.id]);
+    if(entered.rows.length===original.length)
+     resume={requestKey:row.source_key,results:entered.rows.map(x=>({
+      lineRef:x.order_line_ref,value:x.value_text,
+      unit:x.unit_text,observation:x.observation_text
+     }))};
+   }
+   return {canEnter:orderRow.rows[0].status==="PROCESSING"&&
+    (!row||resume!==null),
+    reportReady:orderRow.rows[0].status==="RESULT_READY",resume,
     tests:original.map(x=>({lineRef:x.id,name:x.test_name_snapshot}))};
   });
  }
