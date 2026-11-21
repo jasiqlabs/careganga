@@ -1,5 +1,6 @@
 "use client";
 import {useCallback,useEffect,useRef,useState} from "react";
+import {safeClientProblem} from "./mis-safe-error";
 import {MisSavedReports} from "./mis-saved-reports";
 import {MisReportExports} from "./mis-report-exports";
 import {MisReportSchedules} from "./mis-report-schedules";
@@ -47,10 +48,7 @@ async function request<T>(path:string,body?:object):Promise<T>{
   credentials:"same-origin",method:body?"POST":"GET",
   headers:body?{"Content-Type":"application/json"}:undefined,
   body:body?JSON.stringify(body):undefined});
- if(!r.ok)throw Error(r.status===401?"Sign in again to see private reports.":
-  r.status===403?"Your current role or location cannot view this report.":
-  r.status===400?"Choose valid report filters and a supported format.":
-  "The original report could not be checked. Refresh and try again.");
+ if(!r.ok)throw new Error(await safeClientProblem(r,"The report could not be verified. Check its current scope and try again."));
  return await r.json() as T;
 }
 /** Original C44/C46/C47 report cards. Only genuinely registered owner
