@@ -59,7 +59,7 @@ export function NativePartnerApplicationInbox({token,canManage,onExit,onExpired}
      .map(d=>({id:d.doctorRef,label:d.name+" · "+nice(d.status)})));
    }else{
     const r=await api<{providers:{providerRef:string;name:string;code:string;
-     type:string;status:string}[]}>(token,"providers?offset=0");
+     type:string;status:string}[]}>(token,"providers?offset=0&q="+encodeURIComponent(app.name));
     setOptions(r.providers.filter(p=>p.name.toLowerCase()===app.name.toLowerCase()&&
      (app.type==="SURGERY_CENTER"?["HOSPITAL","CLINIC"].includes(p.type):
       p.type===app.type))
