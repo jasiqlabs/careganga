@@ -62,7 +62,7 @@ export function CenterMonthlySettlementSummary({centerRef}:Props){
   }).finally(()=>{
    if(version===requestVersion.current)setLoading(false);
   });
-  return()=>{if(version===requestVersion.current)requestVersion.current++};
+  return()=>{requestVersion.current++};
  },[load]);
  const approved=data&&["APPROVED","PARTIALLY_SETTLED","SETTLED"].includes(data.state);
  return <section className="cg-health-route-intro" aria-label="My Foundation settlement">
