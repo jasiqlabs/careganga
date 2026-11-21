@@ -148,3 +148,12 @@ Batch02 021339–021359 Notice Board now has source-backed responsive Web and Pu
 ### Original 80G child navigation — Public Android parity
 
 The original NGO sidebar desktop layout remains on Web; Public Android provides equivalent source-gated in-page buttons for 80G Registration, PAN Details, Registration Certificate, and Annual Reports, reusing the real current approved documents and an annual-year filter with parent Back. This is layout adaptation for phone, not fabricated statutory source. Original Batch01 `020634`–`021040` responsive screenshots, actual scroll-state, VoiceOver/TalkBack and document accessibility tests are still NOT_RUN.
+
+
+### 21 November 2026 — Owner-approved Web ↔ Android same-capability contract
+
+**Owner:** cg-18-cms-public-content. **Source:** MERGED_MAIN_OWNER_SOURCE_FEATURE_NATIVE_EDITOR_ADDED_ACTION_AUDIT_OPEN. Owner-delegated design-content acceptance only; actual full code/SQL/Web/Android/clinical/finance/privacy/independent/runtime QA not completed. No new original user story or QA ID and no unapproved future-owner dependency. AGENTS.md current Web↔Android same-user parity gate supersedes former blanket Web-only assumptions.
+
+**Same-role channel mapping:** Protected Foundation Admin/assigned center Web **↔ Internal Android** for approved page creation/edit/revision, media upload, editorial review/publish/revoke, public copy and current menu structure. Public Web/consented patient Web **↔ Public Android** only for every currently published original client page/notice/media/article and relevant safe public links. Enforce real existing CG01 permissions, CG14 center/doctor scope, CG15 patient consent, CG16 clinical release, CG17 verified-money evidence, CG09 single ledger, CG19 private document lifecycle as relevant. Do not turn sensitive internal clinical/finance workflows into public actions or fake a missing user story.
+
+**CareGanga channel visual acceptance:** Compare original U/C/H screens and original public screenshot paths with responsive Web and real Internal/Public Android pages. Same accurate names, fields, option sets, protected list/detail/search/filter, create/review/approve/publish/upload/download, verification and sensitive status wording, conflict/unknown results, error/denied/empty/loading/refresh/Back and role/center changes. Native layouts adapt to touch and safe areas; no invented media, rates or report claims. Rendered Web/Android/device/pixel/motion evidence `NOT_RUN`.

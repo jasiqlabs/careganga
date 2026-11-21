@@ -59,3 +59,11 @@ Present accepted service fee, eligible Foundation support and patient amount as 
 ## Visual QA
 
 In [tasks.md](tasks.md) every user story must trace source token/component reuse and valid screen-to-real-API state. Compare actual original PNG/video with rendered Web/Android in separately authorized QA before claiming exact palette, animation or look-and-feel PASS. Current `VISUAL_NOT_RUN`, `REFERENCE_ASSETS_NOT_VERIFIED`.
+
+### 21 November 2026 — Owner-approved Web ↔ Android same-capability contract
+
+**Owner:** cg-17-healthcare-assistance-settlements. **Source:** FEATURE_ONLY_SOURCE_PRESENT_FINANCIAL_REVERSAL_SOURCE_GAP. Owner-delegated design-content acceptance only; actual full code/SQL/Web/Android/clinical/finance/privacy/independent/runtime QA not completed. No new original user story or QA ID and no unapproved future-owner dependency. AGENTS.md current Web↔Android same-user parity gate supersedes former blanket Web-only assumptions.
+
+**Same-role channel mapping:** Protected Foundation Admin/assigned center Web **↔ Internal Android** for eligibility policy, center prices and merchant, patient charge, liabilities, verified receipts/refunds, genuine CG09 journal, monthly claims/independent verified payouts, partner own statement. Public Web/consented patient Web **↔ Public Android** only for only authorized patient-facing discount/fee and payment-status details, no internal bank/claim control. Enforce real existing CG01 permissions, CG14 center/doctor scope, CG15 patient consent, CG16 clinical release, CG17 verified-money evidence, CG09 single ledger, CG19 private document lifecycle as relevant. Do not turn sensitive internal clinical/finance workflows into public actions or fake a missing user story.
+
+**CareGanga channel visual acceptance:** Compare original U/C/H screens and original public screenshot paths with responsive Web and real Internal/Public Android pages. Same accurate names, fields, option sets, protected list/detail/search/filter, create/review/approve/publish/upload/download, verification and sensitive status wording, conflict/unknown results, error/denied/empty/loading/refresh/Back and role/center changes. Native layouts adapt to touch and safe areas; no invented media, rates or report claims. Rendered Web/Android/device/pixel/motion evidence `NOT_RUN`.
