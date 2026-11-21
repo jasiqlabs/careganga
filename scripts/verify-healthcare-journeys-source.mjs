@@ -32,6 +32,7 @@ const files=[
  web+"shared/foundation-admin-nav.tsx",
  web+"shared/healthcare-admin-shell.tsx",
  native+"features/appointments/native-my-clinician-activity.tsx",
+ native+"features/healthcare-assistance/native-partner-settlement-summary.tsx",
  native+"features/dashboard/dashboard-modules.ts",
  native+"features/identity-access/staff-authentication-screen.tsx",
  cg17+"application/consultation-patient-charge.service.ts",
@@ -84,6 +85,12 @@ must(native+"features/appointments/native-my-clinician-activity.tsx",
  /containsPatientDetails/,
  "Native doctor activity does not expose other patient identities");
 must(cg17+"application/monthly-provider-settlement.service.ts",
+ /ownCenters\(token:string\)/,
+ "Native center dashboard uses original CG14 assigned center labels");
+must(cg17+"http/monthly-provider-settlement.controller.ts",
+ /my-centers\/eligible/,
+ "Native center list protected at own-center endpoint");
+must(cg17+"application/monthly-provider-settlement.service.ts",
  /ownCenterStatement/,
  "CG17 same original provider claim projection");
 must(cg17+"application/monthly-provider-settlement.service.ts",
@@ -104,6 +111,15 @@ must(web+"features/health-network/center-draft-portal.tsx",
 must(web+"app/(admin)/center/page.tsx",
  /canViewSettlements=\{allowed\.has\("healthcare\.assistance\.settlements\.view"\)\}/,
  "Effective settlement view permission reaches center UI");
+must(native+"features/healthcare-assistance/native-partner-settlement-summary.tsx",
+ /patientCollectionNotFoundationIncome/,
+ "Internal Android partner view must not present patient cash as Foundation income");
+must(native+"features/dashboard/dashboard-modules.ts",
+ /roleActions\.includes\("health\.centers\.draft\.edit"\)/,
+ "Native partner statement menu requires actual assigned representative capability");
+must(native+"features/identity-access/staff-authentication-screen.tsx",
+ /<NativePartnerSettlementSummary/,
+ "Native partner statement actually reachable from original shell");
 must(cg17+"application/consultation-patient-charge.service.ts",
  /foundationSupportMinor/,
  "Original patient quote remains policy-derived, no blanket 50%");
