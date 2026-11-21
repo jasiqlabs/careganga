@@ -527,6 +527,7 @@ export const SAFE_MESSAGE_CATALOG:Readonly<Record<string,string>>=Object.freeze(
       HEALTH_CLINICIAN_NOT_VERIFIED:"The selected clinician account link is not verified or linked to an authorized account. Check the approved original record.",
       LAB_PROFESSIONAL_NOT_VERIFIED:"The selected laboratory professional is not verified or linked to an authorized account. Check the approved original record.",
       CG14_CENTER_LIST_LIMIT:"Too many matching records. Narrow the search and review a smaller selection.",
+      CG14_CENTER_SERVICE_NOT_VERIFIED:"This verified healthcare center has not enabled the selected service. Choose a center with the required approved service capability.",
       CG14_CENTER_NOT_VERIFIED:"The healthcare provider or center needs current verification or consent before this action can continue.",
       CG14_DOCTOR_LIST_LIMIT:"Too many matching records. Narrow the search and review a smaller selection.",
       CG14_DOCTOR_NOT_VERIFIED:"The healthcare provider or center needs current verification or consent before this action can continue.",
