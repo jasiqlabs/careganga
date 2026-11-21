@@ -258,10 +258,90 @@ export class MisReportScheduleService{
     message:"The schedule changed. Refresh before editing."});
   return summary(prior.rows[0]);
  }
- async resume(token:string,refInput:string){
-  await this.actor(token);parseId(refInput);
-  throw new ConflictException({code:"MIS_SCHEDULE_DELIVERY_NOT_READY",
-   message:"Automatic report delivery is not available until current permission checks are configured."});
+ async resume(token:string,refInput:string,raw:unknown){
+  const actor=await this.actor(token),ref=parseId(refInput);
+  if(!raw||typeof raw!=="object"||Array.isArray(raw)||
+    Object.keys(raw).some(key=>key!=="expectedRevision"))
+   throw new BadRequestException({code:"MIS_SCHEDULE_INVALID"});
+  const expected=(raw as Record<string,unknown>).expectedRevision;
+  if(typeof expected!=="number"||!Number.isInteger(expected)||
+     expected<1||expected>1000000)
+   throw new BadRequestException({code:"MIS_SCHEDULE_INVALID",field:"expectedRevision",
+    message:"Refresh your schedule before changing it."});
+  const current=await this.db.query<Schedule>(
+   "SELECT * FROM cg20_report_schedule WHERE root_realm_id=$1 "+
+   "AND id=$2 AND owner_account_ref=$3 LIMIT 1",
+   [actor.realmId,ref,actor.accountId]);
+  const row=current.rows[0];
+  if(!row||row.state==="DISABLED")
+   throw new NotFoundException({code:"MIS_SCHEDULE_NOT_FOUND"});
+  if(row.revision!==expected)
+   throw new ConflictException({code:"MIS_SCHEDULE_CHANGED"});
+  if(row.state==="ACTIVE")return summary(row);
+  const saved=await this.eligible(token,row.saved_ref);
+  if(saved.revision!==row.saved_revision)
+   throw new ConflictException({code:"MIS_SCHEDULE_CHANGED",
+    message:"This saved report has changed. Review and edit the schedule before activating it."});
+  const next=row.next_due_utc.getTime()>Date.now()+60000?
+    row.next_due_utc:nextScheduleOccurrence(row,new Date(Date.now()+60000));
+  const changed=await this.db.query<Schedule>(
+   "UPDATE cg20_report_schedule SET state='ACTIVE',next_due_utc=$5,"+
+   "revision=revision+1,updated_at=now() "+
+   "WHERE root_realm_id=$1 AND id=$2 AND owner_account_ref=$3 "+
+   "AND revision=$4 AND state='PAUSED' RETURNING *",
+   [actor.realmId,ref,actor.accountId,expected,next]);
+  if(!changed.rows[0])
+   throw new ConflictException({code:"MIS_SCHEDULE_CHANGED",
+    message:"The schedule changed. Refresh before resuming."});
+  return {...summary(changed.rows[0]),
+   message:"Your scheduled finance report is active for private in-app notices."};
+ }
+ async edit(token:string,refInput:string,raw:unknown){
+  const actor=await this.actor(token),ref=parseId(refInput);
+  if(!raw||typeof raw!=="object"||Array.isArray(raw)||
+   Object.keys(raw).some(key=>!["expectedRevision","cadence",
+     "timezone","localTime","firstDate"].includes(key)))
+   throw new BadRequestException({code:"MIS_SCHEDULE_INVALID"});
+  const details=raw as Record<string,unknown>,expected=details.expectedRevision;
+  if(typeof expected!=="number"||!Number.isInteger(expected)||
+   expected<1||expected>1000000)
+   throw new BadRequestException({code:"MIS_SCHEDULE_INVALID",field:"expectedRevision"});
+  const current=await this.db.query<Schedule>(
+   "SELECT * FROM cg20_report_schedule WHERE root_realm_id=$1 "+
+   "AND id=$2 AND owner_account_ref=$3 LIMIT 1",
+   [actor.realmId,ref,actor.accountId]);
+  const row=current.rows[0];
+  if(!row||row.state==="DISABLED")
+   throw new NotFoundException({code:"MIS_SCHEDULE_NOT_FOUND"});
+  if(row.revision!==expected)
+   throw new ConflictException({code:"MIS_SCHEDULE_CHANGED"});
+  const options=parse({...details,savedRef:row.saved_ref,requestKey:row.request_key});
+  const saved=await this.eligible(token,row.saved_ref);
+  const next=zonedLocalDate(options.firstDate,options.localTime,options.timezone);
+  if(next.getTime()<Date.now()+60000||next.getTime()>Date.now()+732*86400000)
+   throw new BadRequestException({code:"MIS_SCHEDULE_DATE_INVALID",field:"firstDate",
+    message:"Choose a future local date within the next two years."});
+  const base=new Date(options.firstDate+"T00:00:00Z");
+  const weekday=options.cadence==="WEEKLY"?base.getUTCDay():null;
+  const day=options.cadence==="MONTHLY"||options.cadence==="YEARLY"?
+   base.getUTCDate():null;
+  if(day!==null&&day>28)
+   throw new BadRequestException({code:"MIS_SCHEDULE_DAY_INVALID",field:"firstDate"});
+  const annual=options.cadence==="YEARLY"?base.getUTCMonth()+1:null;
+  const changed=await this.db.query<Schedule>(
+   "UPDATE cg20_report_schedule SET cadence=$5,timezone=$6,"+
+   "local_time=$7,weekday=$8,monthday=$9,annual_month=$10,"+
+   "next_due_utc=$11,saved_revision=$12,state='ACTIVE',"+
+   "revision=revision+1,updated_at=now() "+
+   "WHERE root_realm_id=$1 AND id=$2 AND owner_account_ref=$3 "+
+   "AND revision=$4 AND state IN('ACTIVE','PAUSED') RETURNING *",
+   [actor.realmId,ref,actor.accountId,expected,options.cadence,
+    options.timezone,options.localTime,weekday,day,annual,next,saved.revision]);
+  if(!changed.rows[0])
+   throw new ConflictException({code:"MIS_SCHEDULE_CHANGED",
+    message:"The schedule changed. Refresh before editing."});
+  return {...summary(changed.rows[0]),
+   message:"Your schedule settings were saved and activated."};
  }
  async history(token:string,refInput:string){
   const actor=await this.actor(token),ref=parseId(refInput);
@@ -270,12 +350,19 @@ export class MisReportScheduleService{
    "AND id=$2 AND owner_account_ref=$3 LIMIT 1",
    [actor.realmId,ref,actor.accountId]);
   if(!own.rowCount)throw new NotFoundException({code:"MIS_SCHEDULE_NOT_FOUND"});
-  const runs=await this.db.query<{state:string;created_at:Date;occurrence_due_utc:Date}>(
-   "SELECT state,created_at,occurrence_due_utc FROM cg20_report_run "+
-   "WHERE root_realm_id=$1 AND schedule_ref=$2 "+
-   "ORDER BY created_at DESC,id DESC LIMIT 30",
-   [actor.realmId,ref]);
+  const runs=await this.db.query<{state:string;created_at:Date;
+   occurrence_due_utc:Date;delivery_state:string|null}>(
+   "SELECT run.state,run.created_at,run.occurrence_due_utc,"+
+   "attempt.state AS delivery_state FROM cg20_report_run run "+
+   "LEFT JOIN cg20_report_delivery_attempt attempt "+
+   "ON attempt.root_realm_id=run.root_realm_id AND attempt.run_ref=run.id "+
+   "AND attempt.channel='IN_APP' AND attempt.recipient_account_ref=$3 "+
+   "WHERE run.root_realm_id=$1 AND run.schedule_ref=$2 "+
+   "AND run.requester_ref=$3 "+
+   "ORDER BY run.created_at DESC,run.id DESC LIMIT 30",
+   [actor.realmId,ref,actor.accountId]);
   return {runs:runs.rows.map(r=>({state:r.state,createdAt:r.created_at,
-   dueAt:r.occurrence_due_utc})),message:"Only original confirmed report runs appear in history."};
+   dueAt:r.occurrence_due_utc,deliveryState:r.delivery_state??"NOT_SENT"})),
+   message:"Only genuine report and original CG-19 notice states are shown; READY is not proof of delivery."};
  }
 }
