@@ -194,7 +194,7 @@ export class SessionService implements IdentityAuthorization {
    */
   async requireScheduledMisAction(rootInput:string,accountInput:string,action:string):
    Promise<{realmId:string;accountId:string;accessVersion:string}>{
-    if(!["mis.reports.view","mis.reports.export","mis.reports.schedule",
+    if(!["mis.reports.view","mis.reports.manage","mis.reports.export","mis.reports.schedule",
       "finance.reports.view","foundation.branches.admin",
       "communications.notifications.view",
       "platform.audit.view"].includes(action)||
