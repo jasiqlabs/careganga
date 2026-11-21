@@ -15,6 +15,9 @@ export class HrEmployeeEvidenceController{
  confirm(@Headers("authorization")token:string,@Param("uploadRef")ref:string){
   return this.files.confirm(token,ref);
  }
+ @Post("files/:fileRef/revoke")
+ revoke(@Headers("authorization")token:string,@Param("fileRef")ref:string,
+  @Body()body:unknown){return this.files.revoke(token,ref,body);}
  @Get("applications/:applicationRef")
  list(@Headers("authorization")token:string,@Param("applicationRef")ref:string){
   return this.files.list(token,ref);
