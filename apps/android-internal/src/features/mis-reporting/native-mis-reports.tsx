@@ -121,7 +121,7 @@ export function NativeMisReports({token,onExpired}:{token:string;onExpired:()=>v
     onChange={v=>{setKind(v as Kind);
      setView(catalog.templates.find(t=>t.kind===v)?.views[0]??"TABLE");
      setPreview(null);
-     setYear("");setBranch("");setCenter("");setFrom("");setUntil("");setStatus("");}}/>
+     setYear("");setBranch(catalog.finance.allBranches?"":catalog.finance.branches[0]?.ref??"");setCenter("");setFrom("");setUntil("");setStatus("");}}/>
    {!!chosen&&<Text style={s.hint}>{chosen.description}. Output: {chosen.views.join(" or ")}</Text>}
    {!!chosen&&chosen.views.length>1&&<NativeFinanceOptions label="Report view"
     value={view} options={chosen.views.map(v=>({ref:v,label:v==="CHART"?"Chart":
