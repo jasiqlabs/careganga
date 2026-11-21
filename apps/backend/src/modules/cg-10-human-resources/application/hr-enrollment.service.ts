@@ -601,6 +601,15 @@ export class HrEnrollmentService{
    }
    if(!["SUBMITTED","IN_REVIEW","FINAL_APPROVED_PENDING_ACTIVATION"].includes(app.state))
     throw new ConflictException("This applicant is not awaiting an approved activation");
+   // A future joining date is a genuine approved-but-not-yet-effective state.
+   // Do not make an employee ACTIVE before the current effective assignment.
+   const effective=await tx.query(
+    "SELECT 1 FROM hr_employee_application WHERE id=$1 AND root_realm_id=$2 "+
+    "AND hire_date<=CURRENT_DATE FOR SHARE",
+    [app.id,actor.realmId]);
+   if(!effective.rowCount)throw new ConflictException(
+    "Enrollment is approved but the joining date has not arrived. "+
+    "Complete activation on the effective joining date.");
    const rev=await tx.query<{id:string}>(
     "SELECT id FROM hr_application_revision WHERE application_id=$1 "+
     "AND root_realm_id=$2 AND revision_no=$3 AND source_digest=$4 "+
