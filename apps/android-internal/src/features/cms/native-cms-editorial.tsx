@@ -6,6 +6,7 @@ import * as Crypto from "expo-crypto";
 import {careGangaTheme as t} from "../../../../../packages/design-tokens/src/index";
 import {identityRequest} from "../identity-access/http-client";
 import {NativeCmsMediaUploader} from "./native-cms-media-uploader";
+import {NativeCmsReviewer} from "./native-cms-reviewer";
 type Page={pageRef:string;kind:string;slug:string;title:string;
  version:string;draftStatus:string;publicStatus:string|null};
 type Section={kind:string;order:number;fields:Record<string,unknown>};
@@ -88,6 +89,7 @@ const canonicalFor=(kind:NewKind,slug:string)=>kind==="HOME"?"/":
  "/ngo-information":kind==="ARTICLE"?"/blog/"+slug:
  kind==="POLICY"?"/policies/"+slug:"/"+slug;
 type Props={token:string;canManage:boolean;canPublish:boolean;
+ canReview:boolean;
  onExit:()=>void;onExpired:()=>void};
 type Command={kind:string;key:string;path:string;
  method:"PUT"|"POST";payload:Record<string,unknown>};
@@ -163,7 +165,7 @@ function EditField({name,value,onChange,locked,depth=0}:FieldProps){
  }
  return <Text style={styles.note}>{title(name)}: No value recorded</Text>;
 }
-export function NativeCmsEditorial({token,canManage,canPublish,onExit,
+export function NativeCmsEditorial({token,canManage,canPublish,canReview,onExit,
  onExpired}:Props){
  const [pages,setPages]=useState<Page[]>([]);
  const [selected,setSelected]=useState<Detail|null>(null);
@@ -275,6 +277,7 @@ export function NativeCmsEditorial({token,canManage,canPublish,onExit,
    {!!error&&<Text accessibilityRole="alert" style={styles.error}>{error}</Text>}
    {!!notice&&<Text accessibilityRole="alert" style={styles.note}>{notice}</Text>}
    {loading&&<ActivityIndicator accessibilityLabel="Loading original CMS pages"/>}
+   {canReview&&<NativeCmsReviewer token={token} onExpired={onExpired} onDone={list}/>}
    {uncertain&&<Text style={styles.error}>The last save or publication may
     have committed. Check the original page before trying another request.</Text>}
    {button("Refresh original CMS pages",()=>{
