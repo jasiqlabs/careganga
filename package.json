@@ -58,7 +58,8 @@
     "verify:local-build": "npm run build:backend && npm run build:web && npm run typecheck:android-internal && npm run typecheck:android-public",
     "verify:all-source": "node scripts/run-local-source-checks.mjs",
     "verify:cg14-partner-first-source": "node scripts/verify-cg14-partner-first-source.mjs",
-    "postinstall": "node scripts/patch-typescript-runtime.mjs"
+    "postinstall": "node scripts/patch-typescript-runtime.mjs",
+    "verify:healthcare-safe-errors-source": "node scripts/verify-healthcare-safe-error-coverage.mjs"
   },
   "devDependencies": {
     "typescript": "7.0.2",
