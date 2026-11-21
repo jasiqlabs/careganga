@@ -111,11 +111,22 @@ export class ClinicalLabPatientReleaseService{
    const found=await c.query<Release>(
     "SELECT * FROM cg16_lab_report_release WHERE root_realm_id=$1 "+
     "AND result_revision_ref=$2",[a.realmId,approved.result_ref]);
+   const notices=found.rows[0]?await c.query<{channel:string;state:string}>(
+    "SELECT channel,state FROM cg19_notification "+
+    "WHERE realm_id=$1 AND source_kind='CG16_LAB_RELEASE' "+
+    "AND cg16_lab_report_release_id=$2 AND "+
+    "channel IN('IN_APP','EMAIL','SMS') LIMIT 3",
+    [a.realmId,found.rows[0].id]):null;
+   const notificationStates=(notices?.rows??[]).map(n=>({
+    channel:n.channel,state:n.state
+   }));
    return {resultRef:approved.result_ref,resultVersion:approved.result_version,
     reportDigest:approved.report_digest,
     releaseState:found.rows[0]?"RELEASED":"AWAITING_RELEASE",
     patientDownloadAvailable:!!found.rows[0],
-    notificationDelivered:false};
+    notificationStates,
+    notificationDelivered:notificationStates.some(n=>
+     n.channel!=="IN_APP"&&n.state==="DELIVERED")};
   });
  }
  async release(token:string,centerRaw:string,orderRaw:string,raw:unknown){
