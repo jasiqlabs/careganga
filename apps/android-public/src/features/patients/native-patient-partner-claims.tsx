@@ -9,7 +9,8 @@ type PrivateFile={fileRef:string;classification:string;revoked:boolean;createdAt
 type Page={files:PrivateFile[];next:string|null};
 type Claim={claimCode:string;serviceKind:Kind;invoiceNumber:string;
  serviceDate:string;quotedGrossMinor:string;estimatedFoundationMinor:string;
- estimatedPatientPayableMinor:string;state:"PENDING_VERIFICATION";
+ estimatedPatientPayableMinor:string;
+ state:"PENDING_VERIFICATION"|"PARTNER_ATTESTED"|"APPROVED_AWAITING_FINANCE"|"REJECTED";
  guidance:string};
 const base=process.env.EXPO_PUBLIC_API_URL;
 const approvedCodes=new Set([
@@ -72,6 +73,7 @@ export function NativePatientPartnerClaims({token,consentGranted,onExpired}:{
  const [selected,setSelected]=useState(""),[search,setSearch]=useState("");
  const [invoice,setInvoice]=useState(""),[date,setDate]=useState(""),[gross,setGross]=useState("");
  const [invoiceFile,setInvoiceFile]=useState(""),[proofFile,setProofFile]=useState("");
+ const [paymentFile,setPaymentFile]=useState("");
  const [busy,setBusy]=useState(false),[error,setError]=useState("");
  const [notice,setNotice]=useState(""),[uncertain,setUncertain]=useState(false);
  const request=useRef<{digest:string;key:string}|null>(null);
@@ -99,6 +101,7 @@ export function NativePatientPartnerClaims({token,consentGranted,onExpired}:{
  const choice=choices.find(c=>c.centerRef+"|"+c.kind===selected);
  const invoices=files.filter(f=>f.classification==="PATIENT_PARTNER_INVOICE"&&!f.revoked);
  const proofs=files.filter(f=>f.classification==="PATIENT_PARTNER_SERVICE_PROOF"&&!f.revoked);
+ const payments=files.filter(f=>f.classification==="PATIENT_PARTNER_PAYMENT_PROOF"&&!f.revoked);
  function changed(fn:(v:string)=>void,value:string){
   if(uncertain||busy)return;
   fn(value);request.current=null;setError("");setNotice("");
@@ -126,7 +129,8 @@ export function NativePatientPartnerClaims({token,consentGranted,onExpired}:{
     throw Error("Choose verified scanned evidence that the service was performed.");
    const body={centerRef:choice.centerRef,serviceKind:choice.kind,
     invoiceNumber:invoice.trim(),serviceDate:date,grossMinor:paise(gross),
-    invoiceFileRef:invoiceFile,...(choice.kind==="PHARMACY"?{}:{completionFileRef:proofFile})};
+    invoiceFileRef:invoiceFile,...(choice.kind==="PHARMACY"?{}:{completionFileRef:proofFile}),
+    ...(paymentFile?{paymentFileRef:paymentFile}:{})};
    const digest=JSON.stringify(body);
    if(request.current?.digest!==digest)
     request.current={digest,key:Crypto.randomUUID()};
@@ -189,6 +193,11 @@ export function NativePatientPartnerClaims({token,consentGranted,onExpired}:{
      new Date(f.createdAt).toLocaleDateString("en-IN"),()=>
      changed(setProofFile,f.fileRef),uncertain,proofFile===f.fileRef))}
    </>}
+   <Text style={styles.label}>Optional scanned payment receipt (required for electronic evidence)</Text>
+   {payments.map((f,i)=>button("Payment receipt "+(i+1)+" · "+
+    new Date(f.createdAt).toLocaleDateString("en-IN"),()=>
+    changed(setPaymentFile,f.fileRef),uncertain,paymentFile===f.fileRef))}
+   {!!paymentFile&&button("Clear payment receipt choice",()=>changed(setPaymentFile,""),uncertain)}
    {!!next&&button("Find older verified documents",()=>void more(),uncertain)}
    {button("Submit original evidence for Foundation verification",()=>void send(),
     uncertain||!choice||!invoiceFile||!invoice.trim()||!date||!gross||
@@ -207,7 +216,11 @@ export function NativePatientPartnerClaims({token,consentGranted,onExpired}:{
    <Text style={styles.note}>Estimated Foundation share:
     {" "+currency(c.estimatedFoundationMinor)}; provisional patient amount:
     {" "+currency(c.estimatedPatientPayableMinor)}</Text>
-   <Text style={styles.note}>Pending independent verification. {c.guidance}</Text>
+   <Text style={styles.note}>{c.state==="APPROVED_AWAITING_FINANCE"?
+    "Foundation approved; actual bank reimbursement is separate":
+    c.state==="REJECTED"?"Not approved":c.state==="PARTNER_ATTESTED"?
+    "Partner attested — Foundation review pending":"Awaiting verification"}.
+    {" "+c.guidance}</Text>
   </View>)}
  </View>;
 }
