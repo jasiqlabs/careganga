@@ -414,6 +414,14 @@ checks.push(["Native CG19 media intent is bound to original page revision and pl
  internalMedia.includes("original.current.order!==selectedChoice.order")&&
  internalMedia.includes("if(original.current||key.current||intent||busy||uncertain)")&&
  internalMedia.includes("Check the previous original CG19 upload before choosing another file.")]);
+checks.push(["Uncertain native CG19 upload cannot be lost through CMS page switch",
+ internalCms.includes("const [mediaActive,setMediaActive]=useState(false)")&&
+ internalCms.includes("if(mediaActive)")&&
+ internalCms.includes("onAttemptChange={setMediaActive}")&&
+ internalMedia.includes("onAttemptChange(true);")&&
+ internalMedia.includes("onAttemptChange(false);")&&
+ internalMedia.includes('action("Retry same original upload request",()=>void upload(true)')&&
+ internalMedia.includes("original.current.pageRef!==pageRef")]);
 checks.push(["Native CG18 media slots are original tappable choices, not technical index input",
  internalMedia.includes("positions.map((position,i)=>")&&
  internalMedia.includes('"Placement "+(i+1)')&&
