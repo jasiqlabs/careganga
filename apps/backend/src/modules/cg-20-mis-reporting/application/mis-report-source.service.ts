@@ -17,7 +17,7 @@ export type ReportKind=typeof REPORT_KINDS[number];
 export type ReportView="TABLE"|"SUMMARY"|"CHART"|"PIVOT";
 export type SafeReportRequest={
  kind:ReportKind;view:ReportView;yearRef?:string;branchRef?:string;
- centerRef?:string;fromDay?:string;untilDay?:string;status?:string;
+ centerRef?:string;areaRef?:string;fromDay?:string;untilDay?:string;status?:string;
  groupBy?:"CATEGORY"|"POSTING_KIND"|"ACCOUNT_NAME";
  sortBy?:"NAME"|"DEBIT"|"CREDIT";sortDirection?:"ASC"|"DESC";
  offset:number
@@ -33,7 +33,7 @@ const day=(v:string)=>{
  return !Number.isNaN(d.getTime())&&d.toISOString().slice(0,10)===v;
 };
 const allowedFields=new Set(["kind","view","yearRef","branchRef",
- "centerRef","fromDay","untilDay","status","groupBy","sortBy","sortDirection","offset"]);
+ "centerRef","areaRef","fromDay","untilDay","status","groupBy","sortBy","sortDirection","offset"]);
 const text=(v:unknown)=>typeof v==="string"?v.trim():"";
 export const FINANCE_KINDS:readonly ReportKind[]=[
  "FINANCE_POSTED_LEDGER","FINANCE_POSTED_SUMMARY","FINANCE_POSTED_TREND",
@@ -62,7 +62,7 @@ export function parseSafeReport(raw:unknown):SafeReportRequest{
  if(!legalViews[kind as ReportKind].includes(view))
   throw new BadRequestException({code:"MIS_REPORT_VIEW_INVALID",
    message:"The selected report does not support that view."});
- const fields=["yearRef","branchRef","centerRef","fromDay","untilDay","status",
+ const fields=["yearRef","branchRef","centerRef","areaRef","fromDay","untilDay","status",
   "groupBy","sortBy","sortDirection"] as const;
  for(const f of fields){
   if(o[f]!==undefined&&(typeof o[f]!=="string"||o[f].length>80))
@@ -71,10 +71,11 @@ export function parseSafeReport(raw:unknown):SafeReportRequest{
  const groupBy=text(o.groupBy),sortBy=text(o.sortBy),
   sortDirection=text(o.sortDirection),
   yearRef=text(o.yearRef),branchRef=text(o.branchRef),
-  centerRef=text(o.centerRef),fromDay=text(o.fromDay),
+  centerRef=text(o.centerRef),areaRef=text(o.areaRef),fromDay=text(o.fromDay),
   untilDay=text(o.untilDay),status=text(o.status);
  const isFinance=FINANCE_KINDS.includes(kind as ReportKind);
- if([yearRef,branchRef,centerRef].some(v=>v!==""&&!UUID.test(v))||
+ if([yearRef,branchRef,centerRef,areaRef].some(v=>v!==""&&!UUID.test(v))||
+  areaRef!==""&&!["FINANCE_POSTED_LEDGER","FINANCE_POSTED_GROUPED"].includes(kind)||
   isFinance&&(centerRef!==""||status!=="")||
   (kind==="PLATFORM_AUDIT_ACTIVITY"||kind==="DIAGNOSTICS_CATALOG_SUMMARY")&&
    (centerRef!==""||status!=="")||
@@ -106,7 +107,8 @@ export function parseSafeReport(raw:unknown):SafeReportRequest{
    message:"This page is unavailable. Select an earlier page."});
  return {kind:kind as ReportKind,view:view as ReportView,
   ...(yearRef?{yearRef}:{}),...(branchRef?{branchRef}:{}),
-  ...(centerRef?{centerRef}:{}),...(fromDay?{fromDay,untilDay}:{}),
+  ...(centerRef?{centerRef}:{}),...(areaRef?{areaRef}:{}),
+  ...(fromDay?{fromDay,untilDay}:{}),
   ...(status?{status}:{}),
   ...(kind==="FINANCE_POSTED_GROUPED"?{
    groupBy:(groupBy||"CATEGORY") as "CATEGORY"|"POSTING_KIND"|"ACCOUNT_NAME",
@@ -151,7 +153,8 @@ export class MisReportSourceService{
     ready:true,state:"AVAILABLE" as const,
     years:x.years.map(y=>({ref:y.ref,name:y.name})),
     branches:x.branches.map(b=>({ref:b.branchRef,name:b.name})),
-    allBranches:x.allBranches
+    allBranches:x.allBranches,
+    areas:x.areas.map(area=>({ref:area.ref,name:area.name,level:area.level}))
    })).catch((e:unknown)=>{
     if(e instanceof UnauthorizedException)throw e;
     return {ready:false,state:e instanceof ForbiddenException?
@@ -247,7 +250,7 @@ export class MisReportSourceService{
   if(finance){
    if(q.kind==="FINANCE_POSTED_LEDGER"){
     const result=await this.finance.ledger(token,{
-     yearRef:q.yearRef,branchRef:q.branchRef,
+     yearRef:q.yearRef,branchRef:q.branchRef,areaRef:q.areaRef,
      from:q.fromDay,to:q.untilDay,offset:String(q.offset)
     });
     const rows=result.lines.map(item=>({
@@ -274,7 +277,7 @@ export class MisReportSourceService{
    }
    if(q.kind==="FINANCE_POSTED_GROUPED"){
     const x=await this.finance.groupedMis(token,{
-     yearRef:q.yearRef,branchRef:q.branchRef,
+     yearRef:q.yearRef,branchRef:q.branchRef,areaRef:q.areaRef,
      fromDay:q.fromDay,untilDay:q.untilDay,
      groupBy:q.groupBy??"CATEGORY",
      sortBy:q.sortBy??"NAME",sortDirection:q.sortDirection??"ASC"
