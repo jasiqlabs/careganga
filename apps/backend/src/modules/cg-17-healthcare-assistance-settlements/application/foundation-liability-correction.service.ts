@@ -199,7 +199,17 @@ export class FoundationLiabilityCorrectionService{
      const payable=await this.cg09.payableAccountForAccrual(
       c,actor,v.original_journal_ref,v.amount_minor);
      const bank=await this.recovery.recoveryOptions(c,actor,payable,needed);
-     bankRecoveries=bank.bankRecoveries;
+     const refs=bank.bankRecoveries.map(x=>x.bankMatchRef);
+     const used=refs.length?await c.query<{bank_match_ref:string}>(
+      "SELECT bank_reconciliation_ref AS bank_match_ref "+
+      "FROM provider_settlement_payment WHERE root_realm_id=$1 "+
+      "AND bank_reconciliation_ref=ANY($2::uuid[]) "+
+      "UNION ALL SELECT recovery_bank_ref AS bank_match_ref "+
+      "FROM cg17_provider_claim_correction WHERE root_realm_id=$1 "+
+      "AND recovery_bank_ref=ANY($2::uuid[])",
+      [actor.realmId,refs]):null;
+     const claimed=new Set((used?.rows??[]).map(x=>x.bank_match_ref));
+     bankRecoveries=bank.bankRecoveries.filter(x=>!claimed.has(x.bankMatchRef));
     }
    }
    const result:Summary={liabilityRef:liability,
@@ -306,6 +316,14 @@ export class FoundationLiabilityCorrectionService{
    let recoveryProof:{
     bankMatchRef:string;journalRef:string;amountMinor:string}|null=null;
    if(claim&&BigInt(needed)>0n){
+    const consumed=await c.query(
+     "SELECT 1 FROM provider_settlement_payment "+
+     "WHERE root_realm_id=$1 AND bank_reconciliation_ref=$2 "+
+     "UNION ALL SELECT 1 FROM cg17_provider_claim_correction "+
+     "WHERE root_realm_id=$1 AND recovery_bank_ref=$2 LIMIT 1",
+     [a.realmId,bankMatch]);
+    if(consumed.rowCount)throw new ConflictException({
+     code:"CG17_PROVIDER_RECOVERY_ALREADY_USED"});
     const payable=await this.cg09.payableAccountForAccrual(
      c,a,originalJournal,v.amount_minor);
     recoveryProof=await this.recovery.verifyRecovery(
