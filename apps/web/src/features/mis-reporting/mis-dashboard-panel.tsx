@@ -1,5 +1,5 @@
 "use client";
-import {useCallback,useEffect,useState} from "react";
+import {useCallback,useEffect,useRef,useState} from "react";
 import Link from "next/link";
 
 type Metric={key:string;label:string;unit:string;value:string};
@@ -19,6 +19,7 @@ export function MisDashboardPanel(){
  const [data,setData]=useState<Dashboard|null>(null);
  const [busy,setBusy]=useState(true);
  const [problem,setProblem]=useState("");
+ const seq=useRef(0);
  const [ready,setReady]=useState(false);
  const [years,setYears]=useState<Choice[]>([]),[branches,setBranches]=useState<Choice[]>([]);
  const [year,setYear]=useState(""),[branch,setBranch]=useState("");
@@ -36,6 +37,7 @@ export function MisDashboardPanel(){
   }catch{if(live){setProblem("Report filters are temporarily unavailable.");setReady(false);}}
  })();return()=>{live=false;};},[]);
  const load=useCallback(async()=>{
+  const requestId=++seq.current;
   setBusy(true);setProblem("");setData(null);
   try{
    const query=new URLSearchParams();
@@ -49,11 +51,12 @@ export function MisDashboardPanel(){
    const v=await response.json() as Dashboard;
    if(!v||!Array.isArray(v.sources)||typeof v.state!=="string")
     throw new Error("Reporting data could not be verified.");
-   setData(v);
-  }catch(e){setProblem(e instanceof Error?e.message:"Dashboard unavailable.");}
-  finally{setBusy(false);}
+   if(requestId===seq.current)setData(v);
+  }catch(e){if(requestId===seq.current)setProblem(e instanceof Error?e.message:"Dashboard unavailable.");}
+  finally{if(requestId===seq.current)setBusy(false);}
  },[year,branch]);
  useEffect(()=>{if(ready)void load();},[ready,load]);
+ useEffect(()=>()=>{seq.current+=1;},[]);
  // A returned or refocused dashboard must not retain protected stale figures.
  useEffect(()=>{if(!ready)return;
   const recheck=()=>{if(document.visibilityState==="visible")void load();};
