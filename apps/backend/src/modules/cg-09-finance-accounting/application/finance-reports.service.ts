@@ -189,7 +189,7 @@ export class FinanceReportsService{
   // Snapshot time is per CG-09; it is NOT a cross-owner/global watermark.
   const tx=await this.db.connect();let open=false;
   try{
-   await tx.query("BEGIN ISOLATION LEVEL REPEATABLE READ READ ONLY");open=true;
+   await tx.query("BEGIN ISOLATION LEVEL REPEATABLE READ, READ ONLY");open=true;
    await tx.query("SET LOCAL statement_timeout='8s'");
    const cutoff=await tx.query<{asOf:Date}>(
     'SELECT transaction_timestamp() AS "asOf"');
