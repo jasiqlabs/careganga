@@ -224,6 +224,26 @@ export class MisSavedReportService{
   await this.current(token,true);
   return this.sessions.eligibleMisShareRecipients(token,search);
  }
+ async ownedGrants(token:string,idInput:string){
+  const actor=await this.current(token,true),id=ref(idInput);
+  await this.sessions.requireAction(token,"mis.reports.share");
+  const report=await this.db.query(
+   "SELECT 1 FROM cg20_saved_report WHERE root_realm_id=$1 "+
+   "AND owner_account_ref=$2 AND id=$3 AND state='ACTIVE' LIMIT 1",
+   [actor.realmId,actor.accountId,id]);
+  if(!report.rows[0])
+   throw new NotFoundException({code:"MIS_SAVED_NOT_FOUND"});
+  const grants=await this.db.query<{ref:string;name:string}>(
+   "SELECT recipient.id AS ref,recipient.display_name AS name "+
+   "FROM cg20_saved_report_grant grant "+
+   "JOIN account recipient ON recipient.realm_id=grant.root_realm_id "+
+   "AND recipient.id=grant.recipient_account_ref "+
+   "WHERE grant.root_realm_id=$1 AND grant.saved_ref=$2 "+
+   "AND grant.owner_account_ref=$3 AND grant.state='ACTIVE' "+
+   "ORDER BY recipient.display_name,recipient.id LIMIT 51",
+   [actor.realmId,id,actor.accountId]);
+  return {people:grants.rows.slice(0,50),hasMore:grants.rows.length>50};
+ }
  async sharedWithMe(token:string){
   const actor=await this.current(token,true);
   const rows=await this.db.query<{ref:string;name:string;sourceKey:string}>(
