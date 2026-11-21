@@ -51,7 +51,7 @@ export function PendingPartnerServiceClaims({centerRef,mode}:Props){
  return <section className="cg-diagnostics-card"
   aria-label="Scanned partner service claims awaiting verification">
   <h3>Partner invoices awaiting verification</h3>
-  <p>Patient-submitted pharmacy, nursing and procedure evidence is shown
+  <p>Patient-submitted pharmacy, laboratory, nursing and procedure evidence is shown
    separately from the original approved Foundation payable and bank statement.
    A scanned invoice is not proof of payment or completed care.</p>
   {!!error&&<p role="alert" className="notice error">{error}</p>}
