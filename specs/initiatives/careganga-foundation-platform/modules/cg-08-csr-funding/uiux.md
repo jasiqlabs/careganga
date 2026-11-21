@@ -56,3 +56,11 @@ Preserve CSR partner directory, proposal/commitment detail, approved amount and 
 ## Visual QA
 
 In [tasks.md](tasks.md) every user story must trace source token/component reuse and valid screen-to-real-API state. Compare actual original PNG/video with rendered Web/Android in separately authorized QA before claiming exact palette, animation or look-and-feel PASS. Current `VISUAL_NOT_RUN`, `REFERENCE_ASSETS_NOT_VERIFIED`.
+
+### 21 November 2026 — Owner-approved Web ↔ Android same-capability contract
+
+**Owner:** cg-08-csr-funding. **Current source:** FUTURE_OWNER_NOT_IMPLEMENTED. **Review scope:** original accepted stories/QA, merged owner source where present, current channel policy; delegated design-content review, not formal independent review or runtime/client approval. Preserve original module boundaries; no new story or feature added.
+
+**Required Web ↔ native audience mapping:** Authorized Admin/partner/center Web **↔ Internal Android** for authorized CSR partner management, proposal, contribution, disbursement, deliverable and reporting workflows; public Web **↔ Public Android** only for only independently approved public CSR/editorial information, never private donor or funding ledgers when its own original story actually authorizes that view. A Web-only spec or no native app assertion alone does not approve an exception. Staff records cannot be made public to satisfy parity. Reuse real CG-01 identity/scope, original backend/database, CG-01 visual system and approved client Admin/public reference, not duplicate client-specific ledgers or a WebView.
+
+**Screen-by-screen UX acceptance:** Same user-readable labels, filtered list/detail, supported edit/approval/submit/proof/print/export, role-hidden actions, monetary status/versions, errors, loading/empty/unknown/retry and Back/refresh; native touch layout is adapted, not a desktop screenshot clone. Real desktop/narrow Web and Android device visual comparisons are `NOT_RUN`.
