@@ -394,9 +394,48 @@ export class ClinicalLabGeneratedResultService{
    if(intent.rows[0].status==="VALIDATED"&&orderRow.rows[0]?.status==="RESULT_READY")
     return {state:"RESULT_READY",resultRef:original.result.id,
      generated:true,patientReleased:false,replayed:true};
-   if(!orderRow.rows[0]||orderRow.rows[0].status!=="PROCESSING")
-    throw new ConflictException({code:"LAB_RESULT_ORDER_NO_LONGER_PROCESSING"});
-   await this.evidence.requireProcessingOriginal(c,actor,center,order);
+   if(original.correction){
+    if(!orderRow.rows[0]||orderRow.rows[0].status!=="RESULT_READY")
+     throw new ConflictException({code:"LAB_CORRECTION_ORIGINAL_NO_LONGER_READY"});
+    const valid=await c.query(
+     "SELECT 1 FROM cg16_lab_result_correction correction "+
+     "JOIN cg16_lab_report_release prior ON "+
+     "prior.root_realm_id=correction.root_realm_id "+
+     "AND prior.id=correction.prior_release_ref "+
+     "AND prior.order_ref=correction.order_ref "+
+     "AND prior.result_revision_ref=correction.prior_result_ref "+
+     "JOIN lab_result_revision next ON "+
+     "next.root_realm_id=correction.root_realm_id "+
+     "AND next.id=correction.result_revision_ref "+
+     "AND next.order_ref=correction.order_ref "+
+     "JOIN lab_order o ON o.root_realm_id=correction.root_realm_id "+
+     "AND o.id=correction.order_ref AND o.center_ref=$3 "+
+     "WHERE correction.root_realm_id=$1 AND correction.order_ref=$2 "+
+     "AND correction.result_revision_ref=$4 "+
+     "AND correction.created_by_account=$5 "+
+     "AND next.result_state='DRAFT' "+
+     "AND next.corrects_revision_ref=prior.result_revision_ref "+
+     "AND next.version_no=(SELECT max(latest.version_no) "+
+     "FROM lab_result_revision latest "+
+     "WHERE latest.root_realm_id=next.root_realm_id "+
+     "AND latest.order_ref=next.order_ref) "+
+     "AND EXISTS(SELECT 1 FROM cg15_patient_consent consent "+
+     "WHERE consent.root_realm_id=o.root_realm_id "+
+     "AND consent.patient_id=o.patient_ref "+
+     "AND consent.purpose='PATIENT_CARE' AND consent.granted "+
+     "AND consent.revision_no=(SELECT max(last.revision_no) "+
+     "FROM cg15_patient_consent last WHERE "+
+     "last.root_realm_id=consent.root_realm_id "+
+     "AND last.patient_id=consent.patient_id "+
+     "AND last.purpose='PATIENT_CARE'))",
+     [actor.realmId,order,center,original.result.id,actor.accountId]);
+    if(!valid.rowCount)
+     throw new ConflictException({code:"LAB_CORRECTION_SOURCE_CHANGED"});
+   }else{
+    if(!orderRow.rows[0]||orderRow.rows[0].status!=="PROCESSING")
+     throw new ConflictException({code:"LAB_RESULT_ORDER_NO_LONGER_PROCESSING"});
+    await this.evidence.requireProcessingOriginal(c,actor,center,order);
+   }
    await c.query(
     "UPDATE cg19_lab_result_intent SET status='VALIDATED',"+
     "updated_at=now() WHERE root_realm_id=$1 AND id=$2 "+
@@ -417,17 +456,23 @@ export class ClinicalLabGeneratedResultService{
     "original_cg19_file_ref=$4,report_digest=$5 "+
     "WHERE root_realm_id=$1 AND order_ref=$2 AND id=$3 AND result_state='DRAFT'",
     [actor.realmId,order,original.result.id,file.rows[0].id,original.intent.sha256]);
-   const next=await c.query<{revision:number}>(
-    "UPDATE lab_order SET status='RESULT_READY',revision=revision+1,"+
-    "updated_at=now() WHERE root_realm_id=$1 AND id=$2 AND center_ref=$3 "+
-    "AND status='PROCESSING' RETURNING revision",[actor.realmId,order,center]);
-   if(!next.rows[0])throw new ConflictException({code:"LAB_RESULT_STATE_CHANGED"});
-   await c.query(
-    "INSERT INTO lab_order_event(root_realm_id,order_ref,source_key,"+
-    "actor_ref,event_type,prior_revision,new_revision) "+
-    "VALUES($1,$2,$3,$4,'RESULT_FILE_READY',$5,$6)",
-    [actor.realmId,order,input.requestKey,actor.accountId,
-     next.rows[0].revision-1,next.rows[0].revision]);
+   if(!original.correction){
+    const next=await c.query<{revision:number}>(
+     "UPDATE lab_order SET status='RESULT_READY',revision=revision+1,"+
+     "updated_at=now() WHERE root_realm_id=$1 AND id=$2 AND center_ref=$3 "+
+     "AND status='PROCESSING' RETURNING revision",[actor.realmId,order,center]);
+    if(!next.rows[0])
+     throw new ConflictException({code:"LAB_RESULT_STATE_CHANGED"});
+    await c.query(
+     "INSERT INTO lab_order_event(root_realm_id,order_ref,source_key,"+
+     "actor_ref,event_type,prior_revision,new_revision) "+
+     "VALUES($1,$2,$3,$4,'RESULT_FILE_READY',$5,$6)",
+     [actor.realmId,order,input.requestKey,actor.accountId,
+      next.rows[0].revision-1,next.rows[0].revision]);
+   }
+   // Correction of a released report keeps the original order RESULT_READY
+   // and prior CG19 file untouched; a new revision still requires independent
+   // review and explicit patient release.
    await c.query(
     "INSERT INTO cg19_lab_result_event(root_realm_id,intent_ref,"+
     "file_ref,actor_ref,action) VALUES($1,$2,$3,$4,'GENERATED_VERIFIED')",
