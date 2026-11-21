@@ -21,6 +21,16 @@ function permitted(parts:string[],method:"GET"|"POST"){
  return method==="POST"&&parts.length===2&&
   ID.test(parts[0])&&parts[1]==="withdraw";
 }
+const allowedErrors=new Set([
+ "CG14_CENTER_SERVICE_NOT_VERIFIED","ASSISTANCE_POLICY_INVALID",
+ "ASSISTANCE_POLICY_DATES_INVALID","ASSISTANCE_POLICY_PERCENT_INVALID",
+ "ASSISTANCE_POLICY_CAP_INVALID","ASSISTANCE_POLICY_SOURCE_CHANGED",
+ "ASSISTANCE_POLICY_CLINICAL_SOURCE_CHANGED","ASSISTANCE_POLICY_OVERLAP_OR_REPLAY",
+ "ASSISTANCE_POLICY_REVISION_CHANGED","ASSISTANCE_POLICY_REQUEST_CONFLICT",
+ "ASSISTANCE_APPROVAL_NOT_READY","ASSISTANCE_APPROVAL_CHANGED",
+ "ASSISTANCE_REVIEW_CHANGED","ASSISTANCE_REVIEW_SOURCE_CHANGED",
+ "ASSISTANCE_INDEPENDENT_REVIEW_REQUIRED"
+]);
 function fail(status:number,message:string){
  return NextResponse.json({message},{status,
   headers:{"Cache-Control":"no-store","X-Content-Type-Options":"nosniff"}});
@@ -58,6 +68,15 @@ async function relay(req:NextRequest,parts:string[],method:"GET"|"POST"){
   if(!response.ok){
    const status=[400,401,403,404,409,429].includes(response.status)?
     response.status:503;
+   const body:unknown=await response.json().catch(()=>null);
+   const safe=body&&typeof body==="object"&&!Array.isArray(body)?
+    body as Record<string,unknown>:null;
+   if(status<500&&safe&&typeof safe.code==="string"&&
+     allowedErrors.has(safe.code)&&typeof safe.message==="string"&&
+     safe.message.length>=16&&safe.message.length<=220&&
+     !/[<>\r\n]/.test(safe.message))
+    return NextResponse.json({message:safe.message},{
+     status,headers:{"Cache-Control":"no-store"}});
    return fail(status,status===401?"Your staff session expired. Sign in again.":
     status===403?"Your current role cannot perform this healthcare policy action.":
     status===404?"The currently verified center or doctor is unavailable.":
