@@ -232,7 +232,9 @@ export class CenterPatientCollectionService{
     throw new ConflictException({code:"CENTER_COLLECTION_GATEWAY_PENDING_RECONCILIATION"});
    const totals=await this.totals(c,a.realmId,ref);
    const due=BigInt(original.due_minor);
-   if(totals.collected+BigInt(amountMinor)>due)
+   // Pending external references reserve the remaining due until verified or resolved.
+   // Never accept 2 x pending attempts whose eventual captures exceed the charge.
+   if(totals.collected+totals.pending+BigInt(amountMinor)>due)
     throw new ConflictException({code:"CENTER_COLLECTION_OVERPAYMENT"});
    if(!cash){
     const pending=await c.query<{count:string}>(
