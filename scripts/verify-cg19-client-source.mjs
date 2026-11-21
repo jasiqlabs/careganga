@@ -154,6 +154,17 @@ assert.match(letterNative,/if\(!canIssue\|\|busy\|\|uncertain\|\|/,
  "Uncertain original letter outcome blocks unsafe new writes");
 assert.match(letterNative,/onPreview\(item\.documentRef\)/,
  "Native private PDF must reuse actual original authorized byte preview");
+assert.match(nativeEvidence,/async function revokeMedia\(item:Media\)/,
+ "CG19 original private evidence must support authorized native revocation");
+assert.match(nativeEvidence,/expectedRevision:item\.revision/,
+ "Native revoke needs exact original file revision, not blind delete");
+assert.match(nativeEvidence,/setRevokeUncertain\(item\.fileRef\)/,
+ "Unknown native file-revocation outcome must not claim success or retry blindly");
+assert.match(nativeEvidence,/Review and revoke private file/,
+ "Original Web file revoke must be available to same native authorized staff");
+assert.match(read(dir+"http/private-evidence.controller.ts"),
+ /@Post\("files\/:fileRef\/revoke"\)/,
+ "Reuse the real CG19 private-file revoke controller; no duplicate endpoint");
 assert.match(nativeEvidence,/<NativePrivateLetterPanel/,
  "Existing staff evidence screen mounts original private letter actions");
 assert.match(nativeEvidence,/onPreview=\{async ref=>\{await previewVerified\(ref,"letter"\)\}\}/,
