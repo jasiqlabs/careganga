@@ -15,7 +15,15 @@ const cg09="apps/backend/src/modules/cg-09-finance-accounting/";
 const files={
  monthlySql:"apps/backend/db/migrations/1707_cg17_monthly_provider_settlement.sql",
  payoutSql:"apps/backend/db/migrations/1708_cg17_verified_provider_payout_allocation.sql",
+ correctionSql:"apps/backend/db/migrations/1709_cg17_original_unpaid_liability_reversal.sql",
  payout:cg17+"application/verified-provider-payout.service.ts",
+ correction:cg17+"application/foundation-liability-correction.service.ts",
+ correctionApi:cg17+"http/foundation-journal-reconciliation.controller.ts",
+ webCorrection:"apps/web/src/features/healthcare-assistance/foundation-journal-correction-panel.tsx",
+ nativeCorrection:"apps/android-internal/src/features/healthcare-assistance/native-foundation-journal-correction.tsx",
+ webJournal:"apps/web/src/features/healthcare-assistance/foundation-journal-posting-panel.tsx",
+ nativeJournal:"apps/android-internal/src/features/healthcare-assistance/native-foundation-journal-panel.tsx",
+ webJournalBff:"apps/web/src/app/api/healthcare-assistance/foundation-journals/[...parts]/route.ts",
  bank:cg09+"application/healthcare-provider-payout-proof.facade.ts",
  cg09Module:cg09+"finance-source.module.ts",
  webPayout:"apps/web/src/features/healthcare-assistance/verified-provider-payout-panel.tsx",
@@ -201,5 +209,46 @@ must("staff",/canPay=\{roleActions\.includes\("healthcare\.assistance\.settlemen
 must("monthly",/offset_j\.reversal_of_id=j\.id/,"A reversed CG09 accrual cannot enter a month claim");
 must("payout",/offset_j\.reversal_of_id=j\.id/,"A reversed CG09 accrual cannot be paid");
 must("accrual",/offset_j\.reversal_of_id=j\.id/,"A reversed CG09 accrual cannot replay as outstanding");
+// Original CG17 US006 correction is one audited CG09 journal, never a
+// second ledger, fictitious bank return or write to an immutable old entry.
+must("correctionSql",/CREATE TABLE cg17_liability_correction\(/,
+ "Source-backed original correction evidence must be real PostgreSQL");
+must("correctionSql",/CREATE OR REPLACE FUNCTION cg09_require_manual_reversal_proof\(/,
+ "CG09 deferred journal reversal must require original immutable proof");
+must("correctionSql",/EXISTS\(SELECT 1 FROM provider_settlement_line/,
+ "Original claimed/paid liability cannot be silently reversed");
+must("correction",/requireFreshFoundationRootProof\(c,a,x\.currentPassword\)/,
+ "Fresh CG01 current password is mandatory on actual protected correction");
+must("correction",/this\.protectedOwner\.verifyReviewer\(c,a,"approvals\.review",true\)/,
+ "Only independently authorized Foundation protected reviewer may correct");
+must("correction",/this\.claimed\(c,a\.realmId,liability\)/,
+ "Correction must check existing immutable provider claim");
+must("correction",/this\.cg09\.reverseAccrual\(c,a,/,
+ "Only original CG09 posting owner can reverse accrual");
+must("cg09",/async reverseAccrual\(/,
+ "CG09 existing posting facade must own exact balanced opposite journal");
+must("correctionApi",/correction-options/,
+ "Original CG17 controller exposes protected original status");
+must("correctionApi",/liabilityRef\/reverse/,
+ "Original CG17 controller exposes protected reversal");
+must("webJournalBff",/\["post","reverse"\]/,
+ "Staff Web BFF allows only protected explicit correction commands");
+must("webCorrection",/currentPassword:password/,
+ "Web reviewer must confirm fresh password");
+must("nativeCorrection",/currentPassword:password/,
+ "Internal Android must have the same protected correction action");
+must("webJournal",/FoundationJournalCorrectionPanel/,
+ "Correction must be reachable from existing Web accounting flow");
+must("nativeJournal",/NativeFoundationJournalCorrection/,
+ "Correction must be reachable in the original native staff accounting flow");
+must("monthly",/cg17_liability_correction corrected/,
+ "Corrected liabilities cannot inflate active provider economics");
+must("correctionSql",/cg17_liability_correction_immutable/,
+ "Correction proof and reviewer history must be append-only");
+const correctionMigration=read(files.correctionSql);
+assert.equal((correctionMigration.match(/\$cg17\$/g)??[]).length,2,
+ "Single CG17 protected evidence trigger requires balanced dollar delimiters");
+assert.equal((correctionMigration.match(/\$cg09\$/g)??[]).length,2,
+ "CG09 original reverse-proof guard must use matching dollar delimiters");
 console.log("CG17 US006 month and verified-payout source parse/contract preflight PASS. "+
  "CG09 bank/PG races, reversal, Web/Android device and independent QA NOT_RUN.");
