@@ -13,8 +13,8 @@ import {HrEnrollmentController} from "./http/hr-enrollment.controller";
  */
 @Module({
  imports:[IdentityAccessModule,HrSourceModule,RegistrationApprovalsModule,HrEvidenceSourceModule],
- providers:[HrEnrollmentService],
- controllers:[HrEnrollmentController],
+ providers:[HrEnrollmentService,HrPrivateDetailService],
+ controllers:[HrEnrollmentController,HrPrivateDetailController],
  exports:[HrEnrollmentService]
 })
 export class HrEnrollmentModule{}
