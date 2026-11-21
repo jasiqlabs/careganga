@@ -110,6 +110,9 @@ export class HrEnrollmentService{
    if(!manager.rowCount)throw new BadRequestException("Choose an active manager at this branch");
   }
   if(x.accountRef){
+   // Selecting even a *candidate* identity requires original CG01 authority.
+   // HR draft permission alone is never permission to enumerate/link logins.
+   await this.identity.assertCurrent(tx,a,"accounts.select");
    const account=await tx.query(
     "SELECT 1 FROM account WHERE id=$1 AND realm_id=$2 AND status='ACTIVE' FOR SHARE",
     [x.accountRef,a.realmId]);
