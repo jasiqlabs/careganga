@@ -64,8 +64,8 @@ export abstract class VerifiedPrivateStorage extends PrivateObjectStorage{
 
   async reservePrivateUpload(request:UploadInput):Promise<PrivateUploadReservation>{
     const expiry=Date.parse(request.expiresAt);
-    // Only the server-side PDF issuer may write these create-only keys.
-    if(!validKey(request.objectKey)||/\/(?:invoices|receipts)\//.test(request.objectKey)||
+    // Only the backend may create issued invoice, receipt and generated lab PDF keys.
+    if(!validKey(request.objectKey)||/\/(?:invoices|receipts|lab-generated)\//.test(request.objectKey)||
       !supported(request.objectKey,request.mime)||
       !Number.isSafeInteger(request.sizeBytes)||request.sizeBytes<1||
       request.sizeBytes>maxFor(request.objectKey,request.mime)||!SHA.test(request.sha256)||
