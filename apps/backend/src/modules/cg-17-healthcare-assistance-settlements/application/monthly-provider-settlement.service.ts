@@ -118,17 +118,35 @@ export class MonthlyProviderSettlementService{
    [root,center,period]);
   return q.rows[0]??null;
  }
- private view(c:Claim){
-  const total=minor(c.approved_total_minor),paid=BigInt(c.paid_minor);
-  if(paid<0n||paid>total)
+ private async view(db:PoolClient,root:string,c:Claim){
+  const q=await db.query<{adjusted:string;recovered:string;count:string}>(
+   "SELECT coalesce(sum(amount_minor),0)::text AS adjusted,"+
+   "coalesce(sum(recovery_minor),0)::text AS recovered,"+
+   "count(*)::text AS count FROM cg17_provider_claim_correction "+
+   "WHERE root_realm_id=$1 AND settlement_ref=$2",[root,c.id]);
+  const adjusted=BigInt(q.rows[0].adjusted),
+   recovered=BigInt(q.rows[0].recovered);
+  const total=minor(c.approved_total_minor),grossPaid=BigInt(c.paid_minor);
+  const effective=total-adjusted,netPaid=grossPaid-recovered;
+  if(grossPaid<0n||grossPaid>total||adjusted<0n||adjusted>total||
+     recovered<0n||recovered>grossPaid||netPaid>effective)
    throw new ConflictException({code:"CG17_SETTLEMENT_INVALID_LEDGER"});
+  const adjustedWithoutTransfer=effective===0n&&netPaid===0n;
   return {settlementRef:c.id,centerRef:c.center_ref,
    month:c.period_start.slice(0,7),revision:c.revision,
-   approvedFoundationMinor:c.approved_total_minor,actualPaidMinor:c.paid_minor,
-   outstandingMinor:(total-paid).toString(),currency:"INR" as const,
-   state:c.state,
+   approvedFoundationMinor:effective.toString(),
+   originalApprovedFoundationMinor:total.toString(),
+   adjustedFoundationMinor:adjusted.toString(),
+   grossFoundationPaidMinor:grossPaid.toString(),
+   verifiedProviderRecoveryMinor:recovered.toString(),
+   actualPaidMinor:netPaid.toString(),
+   outstandingMinor:(effective-netPaid).toString(),currency:"INR" as const,
+   state:c.state,originalClaimState:c.state,
+   effectiveState:c.state==="PROPOSED"?"PROPOSED":
+    adjustedWithoutTransfer?"ADJUSTED_NO_PAYMENT":
+    effective===netPaid?"SETTLED":netPaid>0n?"PARTIALLY_SETTLED":"APPROVED",
    independentlyApproved:c.state!=="PROPOSED",
-   paidVerified:c.state==="SETTLED",
+   paidVerified:c.state!=="PROPOSED"&&netPaid>0n&&effective===netPaid,
    patientCollectionNotFoundationIncome:true,
    reviewedAt:c.reviewed_at?.toISOString()??null};
  }
@@ -151,6 +169,9 @@ export class MonthlyProviderSettlementService{
    "AND liability.service_local_date >=$3::date "+
    "AND liability.service_local_date <($3::date+interval '1 month') "+
    "AND NOT EXISTS (SELECT 1 FROM cg17_liability_correction corrected "+
+   "WHERE corrected.root_realm_id=liability.root_realm_id "+
+   "AND corrected.liability_ref=liability.id) "+
+   "AND NOT EXISTS (SELECT 1 FROM cg17_provider_claim_correction corrected "+
    "WHERE corrected.root_realm_id=liability.root_realm_id "+
    "AND corrected.liability_ref=liability.id)) "+
    "SELECT (SELECT coalesce(sum(gross_minor),0) FROM services)::text "+
@@ -202,7 +223,7 @@ export class MonthlyProviderSettlementService{
    const breakdown=await this.breakdown(c,a.realmId,center,period);
    const saved=await this.claim(c,a.realmId,center,period,false);
    if(saved){
-    const view=this.view(saved);
+    const view=await this.view(c,a.realmId,saved);
     if(saved.state==="PROPOSED")return {...view,
      eligibleAccruedMinor:view.approvedFoundationMinor,
      proposedClaimMinor:view.approvedFoundationMinor,
@@ -246,7 +267,7 @@ export class MonthlyProviderSettlementService{
    const breakdown=await this.breakdown(c,a.realmId,center,period);
    const claim=await this.claim(c,a.realmId,center,period,false);
    if(claim){
-    const view=this.view(claim);
+    const view=await this.view(c,a.realmId,claim);
     const approved=claim.state!=="PROPOSED";
     // Proposal is NOT an approved or outstanding payable. Keep that
     // amount visible only in a separately named proposed/awaiting field.
@@ -286,7 +307,7 @@ export class MonthlyProviderSettlementService{
      [a.realmId,existing.id]);
     if(q.rows[0]?.proposed_request_key!==key)
      throw new ConflictException({code:"CG17_SETTLEMENT_ALREADY_PREPARED"});
-    return {...this.view(existing),replayed:true};
+    return {...await this.view(c,a.realmId,existing),replayed:true};
    }
    const candidates=await this.candidate(c,a.realmId,center,period,true);
    if(!candidates.length)
@@ -321,7 +342,7 @@ export class MonthlyProviderSettlementService{
      [a.realmId,claim.id,center,row.liability_ref,row.amount_minor,
       row.effect_ref]);
    }
-   return {...this.view(claim),replayed:false};
+   return {...await this.view(c,a.realmId,claim),replayed:false};
   });
  }
  async review(token:string,centerRaw:string,monthRaw:string,raw:unknown){
@@ -347,7 +368,7 @@ export class MonthlyProviderSettlementService{
      [a.realmId,saved.id]);
     if(saved.reviewed_by===a.accountId&&
      existing.rows[0]?.reviewed_request_key===key)
-     return {...this.view(saved),replayed:true};
+     return {...await this.view(c,a.realmId,saved),replayed:true};
     throw new ConflictException({code:"CG17_SETTLEMENT_ALREADY_REVIEWED"});
    }
    if(saved.revision!==revision||saved.proposed_by===a.accountId)
@@ -405,7 +426,7 @@ export class MonthlyProviderSettlementService{
     [a.realmId,center,saved.id,a.accountId,key,revision]);
    if(!changed.rows[0])
     throw new ConflictException({code:"CG17_SETTLEMENT_REVIEW_RACE"});
-   return {...this.view(changed.rows[0]),replayed:false};
+   return {...await this.view(c,a.realmId,changed.rows[0]),replayed:false};
   });
  }
 }
