@@ -278,7 +278,9 @@ export function NativeCmsEditorial({token,canManage,canPublish,canReview,onExit,
     await list();
     await open(outcome.pageRef??selected?.pageRef??"");
    }catch(refreshError){
-    setSelected(null);setDraft(null);
+    // A confirmed CREATE must not leave its old creation form available to
+    // accidentally resubmit the same page under a new request key.
+    setSelected(null);setDraft(null);setNewPage(null);
     if(refreshError&&typeof refreshError==="object"&&
       "status" in refreshError&&refreshError.status===401)onExpired();
     setError("This original CMS action is CONFIRMED, but its latest page "+
