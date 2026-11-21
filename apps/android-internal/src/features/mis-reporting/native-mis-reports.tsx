@@ -11,8 +11,9 @@ import {NativeMisSchedules} from "./native-mis-schedules";
 import {NativeMisFinanceTrend,NativeMisAppointmentDistribution}
  from "./native-mis-source-charts";
 type Kind="FINANCE_POSTED_LEDGER"|"FINANCE_POSTED_SUMMARY"|
- "FINANCE_POSTED_TREND"|"APPOINTMENT_STATUS"|"PLATFORM_AUDIT_ACTIVITY";
-type Template={kind:Kind;label:string;views:("TABLE"|"SUMMARY"|"CHART")[];description:string};
+ "FINANCE_POSTED_TREND"|"FINANCE_POSTED_GROUPED"|
+ "APPOINTMENT_STATUS"|"PLATFORM_AUDIT_ACTIVITY";
+type Template={kind:Kind;label:string;views:("TABLE"|"SUMMARY"|"CHART"|"PIVOT")[];description:string};
 type Option={ref:string;name:string};
 type Catalog={templates:Template[];finance:{ready:boolean;state?:"AVAILABLE"|"ACCESS_RESTRICTED"|"SOURCE_UNAVAILABLE";years:Option[];branches:Option[];
  allBranches:boolean};appointments:{ready:boolean;state?:"AVAILABLE"|"ACCESS_RESTRICTED"|"SOURCE_UNAVAILABLE";centers:Option[];complete:boolean};
@@ -48,10 +49,13 @@ async function fetchSource<T>(token:string,path:string,body?:object):Promise<T>{
 export function NativeMisReports({token,onExpired}:{token:string;onExpired:()=>void}){
  const [catalog,setCatalog]=useState<Catalog|null>(null);
  const [kind,setKind]=useState<Kind|null>(null);
- const [view,setView]=useState<"TABLE"|"SUMMARY"|"CHART">("TABLE");
+ const [view,setView]=useState<"TABLE"|"SUMMARY"|"CHART"|"PIVOT">("TABLE");
  const [year,setYear]=useState(""),[branch,setBranch]=useState("");
  const [center,setCenter]=useState(""),[from,setFrom]=useState(""),[until,setUntil]=useState("");
  const [status,setStatus]=useState("");
+ const [groupBy,setGroupBy]=useState("CATEGORY");
+ const [sortBy,setSortBy]=useState("NAME");
+ const [sortDirection,setSortDirection]=useState("ASC");
  const [preview,setPreview]=useState<Preview|null>(null);
  const [busy,setBusy]=useState(false),[problem,setProblem]=useState("");
  const seq=useRef(0);
@@ -85,13 +89,15 @@ export function NativeMisReports({token,onExpired}:{token:string;onExpired:()=>v
  const chosen=catalog?.templates.find(x=>x.kind===kind);
  const finance=kind?.startsWith("FINANCE_");
  const health=kind==="APPOINTMENT_STATUS";
+ const grouped=kind==="FINANCE_POSTED_GROUPED";
  function request(offset=0){
   if(!kind||!chosen)return null;
   return {kind,view:chosen.views.includes(view)?view:chosen.views[0],
    ...(finance?{...(year?{yearRef:year}:{}),...(branch?{branchRef:branch}:{})}:{
     ...(center?{centerRef:center}:{}),...(status?{status}:{})}),
-   ...((kind==="FINANCE_POSTED_LEDGER"||!finance)&&from?
-    {fromDay:from,untilDay:until}:{}),offset};
+   ...((kind==="FINANCE_POSTED_LEDGER"||grouped||!finance)&&from?
+    {fromDay:from,untilDay:until}:{}),
+   ...(grouped?{groupBy,sortBy,sortDirection}:{}),offset};
  }
  async function run(offset=0){
   if(!kind||!chosen||busy)return;
@@ -126,11 +132,12 @@ export function NativeMisReports({token,onExpired}:{token:string;onExpired:()=>v
     onChange={v=>{setKind(v as Kind);
      setView(catalog.templates.find(t=>t.kind===v)?.views[0]??"TABLE");
      setPreview(null);
-     setYear("");setBranch(catalog.finance.allBranches?"":catalog.finance.branches[0]?.ref??"");setCenter("");setFrom("");setUntil("");setStatus("");}}/>
+     setYear("");setBranch(catalog.finance.allBranches?"":catalog.finance.branches[0]?.ref??"");setCenter("");setFrom("");setUntil("");setStatus("");
+     setGroupBy("CATEGORY");setSortBy("NAME");setSortDirection("ASC");}}/>
    {!!chosen&&<Text style={s.hint}>{chosen.description}. Output: {chosen.views.join(" or ")}</Text>}
    {!!chosen&&chosen.views.length>1&&<NativeFinanceOptions label="Report view"
     value={view} options={chosen.views.map(v=>({ref:v,label:v==="CHART"?"Chart":
-     v==="SUMMARY"?"Summary":"Table"}))} onChange={v=>{setView(v as typeof view);
+     v==="SUMMARY"?"Summary":v==="PIVOT"?"Pivot":"Table"}))} onChange={v=>{setView(v as typeof view);
       setPreview(null);}}/>}
    {finance&&<>
     <NativeFinanceOptions label="Financial year" value={year}
@@ -148,7 +155,19 @@ export function NativeMisReports({token,onExpired}:{token:string;onExpired:()=>v
     <NativeFinanceOptions label="Appointment status" value={status}
      options={states} onChange={setStatus}/>
    </>}
-   {(kind==="FINANCE_POSTED_LEDGER"||!finance)&&<>
+   {grouped&&<>
+    <NativeFinanceOptions label="Group by" value={groupBy}
+     options={[{ref:"CATEGORY",label:"Account category"},
+       {ref:"POSTING_KIND",label:"Posted entry type"},
+       {ref:"ACCOUNT_NAME",label:"Account name"}]} onChange={setGroupBy}/>
+    <NativeFinanceOptions label="Sort groups by" value={sortBy}
+     options={[{ref:"NAME",label:"Group name"},{ref:"DEBIT",label:"Debit"},
+       {ref:"CREDIT",label:"Credit"}]} onChange={setSortBy}/>
+    <NativeFinanceOptions label="Sort direction" value={sortDirection}
+     options={[{ref:"ASC",label:"Ascending"},{ref:"DESC",label:"Descending"}]}
+     onChange={setSortDirection}/>
+   </>}
+   {(kind==="FINANCE_POSTED_LEDGER"||grouped||!finance)&&<>
     <NativeFinanceField label="Start date (YYYY-MM-DD)" value={from} onChange={setFrom}/>
     <NativeFinanceField label="End date (YYYY-MM-DD)" value={until} onChange={setUntil}/>
    </>}
@@ -194,6 +213,8 @@ export function NativeMisReports({token,onExpired}:{token:string;onExpired:()=>v
    current={request(0)}
    onRestore={value=>{
     setKind(value.kind as Kind);setView(value.view as typeof view);
+    setGroupBy(value.groupBy??"CATEGORY");setSortBy(value.sortBy??"NAME");
+    setSortDirection(value.sortDirection??"ASC");
     setYear(value.yearRef??"");
     setBranch(value.branchRef??"");setCenter(value.centerRef??"");
     setFrom(value.fromDay??"");setUntil(value.untilDay??"");
