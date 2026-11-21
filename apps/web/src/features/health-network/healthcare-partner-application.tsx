@@ -40,7 +40,7 @@ export function HealthcarePartnerApplication(){
  const [sent,setSent]=useState<Sent|null>(null);
  const [result,setResult]=useState<Receipt|null>(null);
  const [tracking,setTracking]=useState("");
- const [checked,setChecked]=useState<{reference:string;status:string}|null>(null);
+ const [checked,setChecked]=useState<Receipt|null>(null);
  const [busy,setBusy]=useState(false),[error,setError]=useState("");
  const update=<K extends keyof Fields,>(key:K,value:Fields[K])=>{
   if(!sent&&!result)setFields(prev=>({...prev,[key]:value}));
@@ -69,7 +69,7 @@ export function HealthcarePartnerApplication(){
   setError("");setChecked(null);setBusy(true);
   try{
    const data=await call("status",{receipt:tracking.trim()});
-   setChecked({reference:data.reference,status:data.status});
+   setChecked(data);
   }catch(e){setError(e instanceof Error?e.message:"Unable to verify the application.");}
   finally{setBusy(false);}
  }
@@ -151,8 +151,8 @@ export function HealthcarePartnerApplication(){
      disabled={busy} onChange={e=>setTracking(e.target.value)}/></label>
    <button type="submit" disabled={busy}>{busy?"Checking…":"Check status"}</button>
    {checked&&<p role="status">Application <strong>{checked.reference}</strong>:
-    <strong> {checked.status.replaceAll("_"," ")}</strong>.
-    Foundation verification is required before approval.</p>}
+    <strong> {checked.statusLabel??"Under Foundation review"}</strong>.
+    {" "}{checked.message??"The Foundation will contact you with the next step."}</p>}
   </form>}
   {error&&<p role="alert" style={{color:"#933",fontWeight:600}}>{error}</p>}
   <p style={{fontSize:13}}>The Foundation may request additional license and
