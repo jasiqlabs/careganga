@@ -177,7 +177,7 @@ export function NativeClinicalLabScreen({token,canView,canCreate,canManageSample
    {button("Back to Foundation home",onExit,busy||uncertain||custodyUncertain)}
    <Text accessibilityRole="header" style={s.title}>Lab Orders & Samples</Text>
    <Text style={s.note}>Clinical orders belong to your currently authorized laboratory.
-    Patient records remain private. Report upload is not clinical approval or release.</Text>
+    Patient records remain private. A generated report still needs independent clinician approval and release.</Text>
    {!!message&&<Text accessibilityRole="alert" style={s.message}>{message}</Text>}
    {loading&&<ActivityIndicator accessibilityLabel="Checking assigned laboratory"/>}
    {!loading&&centers.length===0&&<Text style={s.note}>
