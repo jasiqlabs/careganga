@@ -11,6 +11,12 @@ import {VerifiedProviderPayoutService}
 export class MonthlyProviderSettlementController{
  constructor(private readonly service:MonthlyProviderSettlementService,
   private readonly payout:VerifiedProviderPayoutService){}
+ @Get("my-centers/:centerRef/months/:month")
+ @Header("Cache-Control","private, no-store")
+ ownCenterMonth(@Headers("authorization")token:string,
+  @Param("centerRef")center:string,@Param("month")month:string){
+  return this.service.ownCenterStatement(token,center,month);
+ }
  @Get("centers/eligible")
  @Header("Cache-Control","private, no-store")
  eligible(@Headers("authorization")token:string){
