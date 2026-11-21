@@ -388,6 +388,11 @@ checks.push(["Web and native CG18 original gallery uploads cannot bypass authore
  files.adminExtended.includes('const allowed=allowedForCurrentPlacement()')&&
  internalMedia.includes('if(type==="PHOTO")add("GALLERY",i,images)')&&
  files.backend.includes('item?.mediaType==="VIDEO"?mime==="video/mp4"')]);
+checks.push(["Confirmed CG18 edit cannot leave stale Web drawer or native create form active",
+ files.adminExtended.includes("setSelected(null);setEditorOpen(false);setClosePrompt(false)")&&
+ internalCms.includes("setSelected(null);setDraft(null);setNewPage(null)")&&
+ internalCms.includes('if(pending||uncertain){')&&
+ internalCms.includes('"same-key retry on this screen."')]);
 checks.push(["Native CG18 media slots are original tappable choices, not technical index input",
  internalMedia.includes("positions.map((position,i)=>")&&
  internalMedia.includes('"Placement "+(i+1)')&&
