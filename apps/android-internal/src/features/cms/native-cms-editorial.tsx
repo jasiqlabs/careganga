@@ -408,6 +408,7 @@ export function NativeCmsEditorial({token,canManage,canPublish,canReview,onExit,
     <Text style={styles.note}>Original scanner-verified placements: {draft.assets.length}</Text>
     {canManage&&selected.status==="DRAFT"&&
      <NativeCmsMediaUploader token={token} kind={selected.kind}
+      sections={draft.sections}
       pageRef={selected.pageRef} revisionRef={selected.revisionRef}
       assets={draft.assets} onExpired={onExpired} disabled={locked}
       onChange={assets=>change("assets",assets)}/>}
