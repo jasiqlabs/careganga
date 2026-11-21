@@ -718,6 +718,7 @@ export function StaffAuthenticationScreen() {
         <NativeHrEnrollment token={token} canView={roleActions.includes("hr.applications.view")}
           canManage={roleActions.includes("hr.applications.manage")}
           canSelectAccounts={roleActions.includes("accounts.select")}
+          canSelectRoles={roleActions.includes("roles.select")}
           canViewPrivate={roleActions.includes("hr.employees.private.view")}
           canManagePrivate={roleActions.includes("hr.employees.private.manage")}
           canViewEmployees={roleActions.includes("hr.employees.view")}
