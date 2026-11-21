@@ -3,6 +3,7 @@ import {useCallback,useEffect,useRef,useState} from "react";
 import {MisSavedReports} from "./mis-saved-reports";
 import {MisReportExports} from "./mis-report-exports";
 import {MisReportSchedules} from "./mis-report-schedules";
+import {MisFinanceTrend,MisAppointmentDistribution} from "./mis-source-charts";
 type Kind="FINANCE_POSTED_LEDGER"|"FINANCE_POSTED_SUMMARY"|
  "FINANCE_POSTED_TREND"|"APPOINTMENT_STATUS";
 type View="TABLE"|"SUMMARY"|"CHART";
@@ -58,6 +59,7 @@ async function request<T>(path:string,body?:object):Promise<T>{
 export function MisReportsWorkspace(){
  const [catalog,setCatalog]=useState<Catalog|null>(null);
  const [kind,setKind]=useState<Kind|null>(null);
+ const [view,setView]=useState<View>("TABLE");
  const [year,setYear]=useState(""),[branch,setBranch]=useState("");
  const [center,setCenter]=useState(""),[from,setFrom]=useState("");
  const [until,setUntil]=useState(""),[status,setStatus]=useState("");
@@ -95,7 +97,7 @@ export function MisReportsWorkspace(){
  const ledger=kind==="FINANCE_POSTED_LEDGER";
  function input(offset=0):ReportRequest|null{
   if(!kind||!selected)return null;
-  return {kind,view:selected.views[0],
+  return {kind,view:selected.views.includes(view)?view:selected.views[0],
    ...(finance?{
     ...(year?{yearRef:year}:{}),...(branch?{branchRef:branch}:{})}:{
     ...(center?{centerRef:center}:{}),
@@ -134,7 +136,7 @@ export function MisReportsWorkspace(){
     style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(14rem,1fr))",gap:10}}>
     {catalog.templates.map(t=><button type="button" key={t.kind}
      aria-pressed={kind===t.kind} onClick={()=>{
-      setKind(t.kind);setResult(null);setProblem("");setNotice("");
+      setKind(t.kind);setView(t.views[0]);setResult(null);setProblem("");setNotice("");
       setYear("");setBranch("");setCenter("");setFrom("");setUntil("");setStatus("");
      }} style={{textAlign:"left",border:"1px solid var(--cg-border)",borderRadius:10,
       padding:14,minHeight:84,background:kind===t.kind?"var(--cg-canvas)":"var(--cg-surface)"}}>
@@ -145,6 +147,11 @@ export function MisReportsWorkspace(){
    {selected&&<div style={{marginTop:16,display:"grid",gap:12}}>
     <p role="status">Available output: {selected.views.map(v=>v.toLowerCase()).join(" or ")}.
      Unsupported pivots and confidential fields are not included.</p>
+    {selected.views.length>1&&<label>Report view <select value={view}
+     onChange={e=>{setView(e.target.value as View);setResult(null);}}>
+     {selected.views.map(v=><option key={v} value={v}>
+      {v==="SUMMARY"?"Summary":v==="CHART"?"Chart":"Table"}</option>)}
+    </select></label>}
     <div style={{display:"flex",flexWrap:"wrap",gap:12}}>
      {finance&&<>
       <label>Financial year <select value={year} onChange={e=>setYear(e.target.value)}>
@@ -188,6 +195,15 @@ export function MisReportsWorkspace(){
    </p>
    <p style={{fontSize:".8rem",color:"var(--cg-muted)"}}>{result.explanation}</p>
    {result.state==="READY"&&<>
+    {result.view==="CHART"&&result.kind==="FINANCE_POSTED_TREND"&&
+     <MisFinanceTrend trend={{type:"MONTHLY_FINANCE",
+      windowLabel:"Last six calendar months",state:"AVAILABLE",
+      points:result.rows.map(r=>({month:r.month??"",incomeMinor:r.incomeMinor??"0",
+       expenseMinor:r.expenseMinor??"0"}))}}/>}
+    {result.view==="CHART"&&result.kind==="APPOINTMENT_STATUS"&&
+     <MisAppointmentDistribution metrics={result.columns.map(c=>({
+      key:c.key,label:c.label,unit:c.unit??"COUNT",
+      value:result.rows[0]?.[c.key]??"0"}))}/>}
     {result.view==="CHART"&&<div style={{display:"grid",gap:9,margin:"1rem 0"}}>
      {result.rows.map((row,i)=><div key={i} style={{background:"var(--cg-surface)",
       border:"1px solid var(--cg-border)",padding:10,borderRadius:9}}>
@@ -221,7 +237,7 @@ export function MisReportsWorkspace(){
   {catalog&&<MisSavedReports canManage={catalog.capabilities?.manage===true}
    currentRequest={input(0)}
    onRestore={q=>{
-    setKind(q.kind);setYear(q.yearRef??"");setBranch(q.branchRef??"");
+    setKind(q.kind);setView(q.view);setYear(q.yearRef??"");setBranch(q.branchRef??"");
     setCenter(q.centerRef??"");setFrom(q.fromDay??"");
     setUntil(q.untilDay??"");setStatus(q.status??"");
     setResult(null);setProblem("");setNotice("");
