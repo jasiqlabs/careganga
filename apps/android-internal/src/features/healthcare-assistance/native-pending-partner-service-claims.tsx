@@ -2,9 +2,10 @@ import {useCallback,useEffect,useState} from "react";
 import {Pressable,StyleSheet,Text,View} from "react-native";
 import {careGangaTheme as t} from "../../../../../packages/design-tokens/src/index";
 import {identityRequest} from "../identity-access/http-client";
+import {NativeStaffPartnerClaimVerification} from "./native-staff-partner-claim-verification";
 type Claim={claimCode:string;serviceKind:string;invoiceNumber:string;
  serviceDate:string;quotedGrossMinor:string;estimatedFoundationMinor:string;
- state:"PENDING_VERIFICATION"};
+ state:"PENDING_VERIFICATION"|"PARTNER_ATTESTED"};
 type List={claims:Claim[];pendingCount:number;foundationPaymentVerified:false;
  approvedFoundationMinor:"0";guidance:string};
 const money=(minor:string)=>"₹"+(Number(BigInt(minor))/100).toLocaleString("en-IN",{
@@ -13,7 +14,7 @@ export function NativePendingPartnerServiceClaims({token,centerRef,mode,onExpire
  token:string;centerRef:string;mode:"foundation"|"partner";onExpired:()=>void
 }){
  const [data,setData]=useState<List|null>(null),[error,setError]=useState("");
- const [busy,setBusy]=useState(false);
+ const [busy,setBusy]=useState(false),[selected,setSelected]=useState("");
  const load=useCallback(async()=>{
   const res=await identityRequest(
    "/api/v1/healthcare-assistance/partner-claims/"+mode+"/centers/"+
@@ -32,7 +33,7 @@ export function NativePendingPartnerServiceClaims({token,centerRef,mode,onExpire
   return payload as List;
  },[token,centerRef,mode,onExpired]);
  useEffect(()=>{
-  let live=true;setData(null);setError("");
+  let live=true;setData(null);setError("");setSelected("");
   if(!centerRef)return;
   void load().then(v=>{if(live)setData(v);})
    .catch(e=>{if(live)setError(e instanceof Error?e.message:"Pending claims unavailable.");});
@@ -60,8 +61,19 @@ export function NativePendingPartnerServiceClaims({token,centerRef,mode,onExpire
     <Text style={styles.note}>{c.serviceKind} · {c.invoiceNumber} · {c.serviceDate}</Text>
     <Text style={styles.note}>Unverified bill {money(c.quotedGrossMinor)};
      estimated Foundation contribution {money(c.estimatedFoundationMinor)}</Text>
-    <Text style={styles.note}>Pending independent review — not payable.</Text>
+    <Text style={styles.note}>{c.state==="PARTNER_ATTESTED"?
+     "Partner attested — independent Foundation review pending":
+     "Patient evidence submitted — partner verification pending"}</Text>
+    <Pressable accessibilityRole="button" accessibilityState={{disabled:busy}}
+     onPress={()=>setSelected(c.claimCode)} disabled={busy} style={styles.button}>
+     <Text style={styles.buttonText}>{mode==="partner"?
+      "View or attest original claim":"Inspect or review original claim"}</Text>
+    </Pressable>
    </View>)}
+   {!!selected&&<NativeStaffPartnerClaimVerification key={mode+":"+centerRef+":"+selected}
+    token={token} centerRef={centerRef} claimCode={selected} mode={mode}
+    onExpired={onExpired} onChanged={async()=>{
+     const latest=await load();setData(latest);}}/>}
    <Text style={styles.note}>{data.guidance}</Text>
   </>}
  </View>;
