@@ -190,6 +190,7 @@ export class FoundationLiabilityCorrectionService{
      (!claim||claim.proposed_by!==actor.accountId);
    const finance=canCorrect?await this.cg09.options(c,actor,date.rows[0].date):
     {financialYears:[],accounts:[],complete:true};
+   let recoveryComplete=true;
    let needed="0",bankRecoveries:{
     bankMatchRef:string;bankItemLabel:string;amountMinor:string}[]=[];
    if(canCorrect&&claim&&v.original_journal_ref){
@@ -210,6 +211,7 @@ export class FoundationLiabilityCorrectionService{
       [actor.realmId,refs]):null;
      const claimed=new Set((used?.rows??[]).map(x=>x.bank_match_ref));
      bankRecoveries=bank.bankRecoveries.filter(x=>!claimed.has(x.bankMatchRef));
+     recoveryComplete=bank.complete;
     }
    }
    const result:Summary={liabilityRef:liability,
@@ -220,7 +222,8 @@ export class FoundationLiabilityCorrectionService{
     reversalJournalRef:existing?.reversal_journal_ref??
      claimCorrection?.reversal_journal_ref??null};
    return {...result,postingDate:date.rows[0].date,
-    financialYears:finance.financialYears,complete:finance.complete,
+    financialYears:finance.financialYears,
+    complete:finance.complete&&recoveryComplete,
     claimState:claim?.state??"NOT_CLAIMED",
     requiredVerifiedRecoveryMinor:needed,bankRecoveries,
     recoveredFromProviderMinor:claimCorrection?.recovery_minor??"0"};
