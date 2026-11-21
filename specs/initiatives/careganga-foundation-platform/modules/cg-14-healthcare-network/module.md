@@ -12,7 +12,7 @@ dld_reason: Greenfield business model, authorization, transactional state and cr
 database_impact: CRITICAL
 database_reason: Professional registration/verification, same-root Center A/B authorization, confidential bank/file references, one doctor identity across real centers, immutable nonoverlapping fees, exact CG-03 decision/CG-19 file, current approved public visibility and revocation require real FK/uniqueness/locking and safe migrations/backup/restore. Qualified independent CRITICAL DB review NOT_RUN.
 mobile_store_impact: ANDROID
-mobile_store_reason: CG-14 US-004 requires actual native Public Android center/doctor directory. US-005 extends genuine source-backed center detail when delivered. US-001–003 require responsive Admin and Center Portal Web, not a third Android app; existing Internal Android CG-03/19 case/evidence owner flows may consume CG-14 data when real. Native compatibility/build/store/device QA NOT_RUN.
+mobile_store_reason: All approved CG14 operational Web journeys for Foundation/assigned provider or doctor actors must have corresponding Internal Android functionality using the same verified CG01/CG14 scope, including partner onboarding and own-center management; public clinic/doctor discoverability must match Public Android. No third mobile app or WebView required.
 mobile_android_app_category: GENERAL
 mobile_android_policy_api: 36
 mobile_platform_baseline: For applicable Android, use approved Expo SDK 58/React Native 0.88/React 19.3/target API 36; verify exact compatible native dependency matrix and current Play requirements before Implementation.
@@ -121,3 +121,12 @@ Migration source now extends through `1419_cg14_center_erp_grant_original_cg03_c
 ### 19 Nov 2026 — Correct client healthcare UI reference provenance
 
 There were **additional client-given healthcare screenshots**, not only the 167 original Admin ZIP. Historical project review recovered the separate UI-06 through UI-24 healthcare screenshot family (~20 images), now explicitly mapped in `docs/research/CAREGANGA-HEALTHCARE-SEPARATE-UI-SCREENSHOT-REFERENCE-MAP.md`. Dedicated screen owner refs for CG-14: **UI-07 doctor registration**, **UI-09 approved center consultation fee** (contribution CG-17), **UI-23 CG-03 approvals/change requests**; original Admin screenshots remain the common navigation/style shell reference. Raw healthcare image bytes are not retrievable in the current repo/Library, so this is **reference mapping completed, screenshot pixel/motion comparison NOT_VERIFIED**. Independent scoped source review remains finished but actual UI fidelity and module completion are NOT finished.
+
+
+### 21 November 2026 — Owner-approved Web ↔ Android same-capability contract
+
+**Owner:** cg-14-healthcare-network. **Branch status:** MERGED_MAIN_OWNER_SOURCE_NATIVE_PARITY_AUDIT_OPEN. Delegated scope/UX/DLD/QA design clarification only; merged source where available is not proof of mobile action completeness or runtime acceptance. Reuse approved original BR/PRD/HLD, existing QA IDs, dependencies, CG-01 authenticated roles, CG-14 center affiliation and CG-19 private proof; no new business master, feature or clinical privilege.
+
+**Equivalent channels:** Foundation Admin / assigned center operator / clinician Web **↔ authorized Internal Android** for foundation provider/doctor/center registration, verification, doctor-center association/fees, individual clinician link, partner content and representative-owned center operations. Approved public/consented Web **↔ Public Android** for approved clinic/doctor directory, original center details and genuine enquiry; every private center, patient, finance and staff action requires actual backend grant/scope and privacy proof. A historically Web-only Center Portal or selected Admin form is **not** automatically excluded: provide an Internal Android route for the same enrolled actor or obtain a specific approved exception. Do not use a WebView or invent a new partner app.
+
+**Current source gate:** Review original Web/Admin/Center feature list and current native CG01 dashboard; for all approved actions, deliver/check matching native input, list/detail, status and controlled capability before marking source complete.
