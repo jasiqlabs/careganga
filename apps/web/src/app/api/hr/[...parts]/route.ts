@@ -7,6 +7,8 @@ function allowed(parts:string[],method:string){
   "managers","account-options","role-options","employee-branches","employee-departments","summary"].includes(parts[0]))
   return parts[0]==="applications"?["GET","POST"].includes(method):method==="GET";
  if(parts.length===1&&parts[0]==="my-bio-consent")return method==="GET"||method==="POST";
+ if(parts.length===2&&parts[0]==="employees"&&
+  /^CG-HR-EMP-[0-9]{6,}$/.test(parts[1]))return method==="GET";
  if(parts.length===2&&parts[0]==="my-link"&&parts[1]==="accept")
   return method==="POST";
  if(parts.length===1&&parts[0]==="departments")return method==="GET";
