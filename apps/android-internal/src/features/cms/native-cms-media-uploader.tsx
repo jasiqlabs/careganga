@@ -144,6 +144,7 @@ export function NativeCmsMediaUploader({token,pageRef,revisionRef,kind,sections,
   onChange([...assets.filter(x=>x.role!==role||x.order!==index),placement]);
   setIntent("");setPicked(null);setRights(false);setAlt("");
   setUncertain(false);key.current="";original.current=null;
+  onAttemptChange(false);
   setNotice("Scanned CG19 original attached to unsaved CMS revision. Save before submitting.");
  };
  async function pick(){
@@ -176,7 +177,7 @@ export function NativeCmsMediaUploader({token,pageRef,revisionRef,kind,sections,
     attach(result.fileRef,result.validatedVersion);
    }else if(["REJECTED","EXPIRED","EXPIRED_OR_REJECTED"].includes(result.status)){
     key.current="";original.current=null;setIntent("");setPicked(null);
-    setUncertain(false);
+    setUncertain(false);onAttemptChange(false);
     setNotice("The original upload was confirmed rejected or expired. "+
      "You may choose a new private file.");
    }else{
@@ -208,6 +209,8 @@ export function NativeCmsMediaUploader({token,pageRef,revisionRef,kind,sections,
    original.current={pageRef,revisionRef,role,order:selectedChoice.order,
     sha256,sizeBytes:picked.size,mime:picked.mime};
    if(!key.current)key.current=Crypto.randomUUID();
+   // Lock parent navigation synchronously before the first network write.
+   onAttemptChange(true);
    const started=await cms<Intent>(token,"initiate","POST",{
     pageRef,revisionRef,requestKey:key.current,
     mime:picked.mime,sizeBytes:picked.size,sha256,rightsConfirmed:true});
