@@ -75,7 +75,7 @@ async function relay(req:NextRequest,method:"GET"|"POST",ctx:Context){
    const source=await response.arrayBuffer();
    if(source.byteLength<1||source.byteLength>10485760)
     return reject(503,"Verified document size could not be confirmed.");
-   return new NextResponse(source,{status:200,headers:{
+   return new NextResponse(new Uint8Array(source),{status:200,headers:{
     "Cache-Control":"private, no-store","Content-Type":mime,
     "X-Content-Type-Options":"nosniff",
     "Content-Disposition":'attachment; filename="CareGanga-private-partner-evidence"'
