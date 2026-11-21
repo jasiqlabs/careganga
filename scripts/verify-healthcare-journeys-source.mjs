@@ -118,6 +118,13 @@ must(web+"app/(admin)/center/page.tsx",
 must(native+"features/healthcare-assistance/native-partner-settlement-summary.tsx",
  /patientCollectionNotFoundationIncome/,
  "Internal Android partner view must not present patient cash as Foundation income");
+must(native+"features/healthcare-assistance/native-partner-settlement-summary.tsx",
+ /approved\?summary\.approvedFoundationMinor:summary\.eligibleAccruedMinor/,
+ "Unapproved monthly claim is not zeroed out by the approved-only amount");
+must(native+"features/healthcare-assistance/native-partner-settlement-summary.tsx",
+ /"Proposed claim \(not approved\)"/,
+ "Partner Android visibly distinguishes a proposed claim from approved payout");
+
 must(native+"features/dashboard/dashboard-modules.ts",
  /roleActions\.includes\("health\.centers\.draft\.edit"\)/,
  "Native partner statement menu requires actual assigned representative capability");
