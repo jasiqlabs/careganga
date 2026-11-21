@@ -6,6 +6,11 @@ function allowed(parts:string[],method:string){
  if(parts.length===1&&["me","branch-options","applications","employees","my-pending-link",
   "managers","account-options","role-options","employee-branches","employee-departments","summary"].includes(parts[0]))
   return parts[0]==="applications"?["GET","POST"].includes(method):method==="GET";
+ if(parts.length===1&&parts[0]==="shift-policies")return method==="GET"||method==="POST";
+ if(parts.length===1&&parts[0]==="shift-assignments")return method==="POST";
+ if(parts.length===2&&parts[0]==="me"&&parts[1]==="attendance")return method==="GET";
+ if(parts.length===3&&parts[0]==="me"&&parts[1]==="attendance"&&parts[2]==="check-in")
+  return method==="POST";
  if(parts.length===1&&parts[0]==="my-bio-consent")return method==="GET"||method==="POST";
  if(parts.length===2&&parts[0]==="employees"&&
   /^CG-HR-EMP-[0-9]{6,}$/.test(parts[1]))return method==="GET";

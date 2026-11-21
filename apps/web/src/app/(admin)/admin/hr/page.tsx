@@ -4,6 +4,7 @@ import Link from "next/link";
 import {FoundationAdminNav} from "../../../../shared/foundation-admin-nav";
 import {UnavailablePage} from "../../../../shared/unavailable-page";
 import {HrEnrollmentWorkspace} from "../../../../features/human-resources/hr-enrollment-workspace";
+import {HrAttendance} from "../../../../features/human-resources/hr-attendance";
 import {HrMyProfile} from "../../../../features/human-resources/hr-my-profile";
 import {HrEnrollmentReviews} from "../../../../features/human-resources/hr-enrollment-reviews";
 export const dynamic="force-dynamic";
@@ -53,6 +54,8 @@ export default async function FoundationHrPage(){
      </p>
     </header>
     <HrMyProfile/>
+    <HrAttendance canConfigure={actions.includes("hr.shifts.manage")&&
+      actions.includes("hr.attendance.view")&&actions.includes("hr.employees.view")}/>
     {(actions.includes("hr.applications.view")||actions.includes("hr.employees.view"))&&
      <HrEnrollmentWorkspace canViewApps={actions.includes("hr.applications.view")} canManage={actions.includes("hr.applications.manage")}
        canViewEmployees={actions.includes("hr.employees.view")}
