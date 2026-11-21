@@ -2,7 +2,7 @@ import {HealthcarePublicChrome} from "../../../../shared/healthcare-public-chrom
 import type {Metadata} from "next";
 import Link from "next/link";
 import {notFound} from "next/navigation";
-import {directory,type PublicDoctor} from "../../../../features/health-network/public-directory-source";
+import {directory,publicPartnerOffers,type PublicDoctor} from "../../../../features/health-network/public-directory-source";
 import {publicLabOffers,rupees} from "../../../../features/diagnostics/public-lab-offers";
 import {currentConsultationBenefits,formatRupees}
  from "../../../../features/healthcare-assistance/public-consultation-benefits";
@@ -55,10 +55,11 @@ export default async function VerifiedCenterPage({params}:Params){
  const c=await current(slug);
  if(!c)notFound();
  const serviceNames=c.declaredServices.map(format);
- const [doctors,labs,benefits]=await Promise.all([
+ const [doctors,labs,benefits,partnerOffers]=await Promise.all([
   directory<PublicDoctor>("doctors",new URLSearchParams({center:slug})),
   publicLabOffers(new URLSearchParams({center:slug})),
-  currentConsultationBenefits({centerSlug:slug})
+  currentConsultationBenefits({centerSlug:slug}),
+  publicPartnerOffers(slug)
  ]);
  return <HealthcarePublicChrome><main className="cg-public-shell">
    <header className="cg-public-header">
@@ -156,6 +157,20 @@ export default async function VerifiedCenterPage({params}:Params){
      {c.publicPhone&&<p>Ask this center about a test:
       {" "}<a href={"tel:"+c.publicPhone}>Call the currently published center contact</a>.
       Contacting the lab does not create an order or confirm a booking.</p>}
+    </section>}
+   {partnerOffers.state==="READY"&&partnerOffers.items.length>0&&
+    <section className="cg-public-section" aria-label="Approved partner medicine and service information">
+     <h2>Listed partner medicines, nursing services and procedures</h2>
+     <p>Foundation-reviewed indicative information only. The actual bill, performed
+      care and any CareGanga contribution require separate verification.</p>
+     <ul>{partnerOffers.items.map((item,i)=><li key={item.serviceKind+":"+item.name+":"+i}>
+      <strong>{item.name}</strong> · {format(item.serviceKind)}
+      {item.indicativePriceMinor!==null?
+       " · Indicative price ₹"+(Number(item.indicativePriceMinor)/100).toLocaleString("en-IN",
+        {minimumFractionDigits:2,maximumFractionDigits:2}):" · Price on enquiry"}
+      {item.description?" — "+item.description:""}
+     </li>)}</ul>
+     <p>{partnerOffers.caution}</p>
     </section>}
    {serviceNames.length>0&&<section className="cg-public-section">
      <h2>Services declared by the center</h2>
