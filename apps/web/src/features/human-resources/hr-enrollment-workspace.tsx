@@ -61,6 +61,7 @@ export function HrEnrollmentWorkspace({canViewApps,canManage,canViewEmployees,ca
  const [staff,setStaff]=useState<Array<{reference:string;name:string;designation:string;
   branch:string;status:string}>>([]);
  const [staffError,setStaffError]=useState("");
+ const [headcounts,setHeadcounts]=useState<{total:number;statuses:Record<string,number>}|null>(null);
  const [empBranches,setEmpBranches]=useState<Choice[]>([]);
  const [empDepartments,setEmpDepartments]=useState<Choice[]>([]);
  const [empFilter,setEmpFilter]=useState({q:"",status:"ALL",branch:"",department:""});
@@ -179,6 +180,18 @@ export function HrEnrollmentWorkspace({canViewApps,canManage,canViewEmployees,ca
   }catch(e){setStatus({error:true,message:e instanceof Error?e.message:
    "Employee activation result is uncertain. Check the original employee directory."});}
   finally{setBusy(false);}
+ };
+ const loadHeadcounts=async()=>{
+  if(!canViewEmployees)return;
+  try{
+   const value=await request("summary");
+   if(!value||typeof value!=="object"||!("statuses" in value)||
+    !("total" in value)||typeof value.total!=="number")
+    throw Error("Approved staff summary unavailable.");
+   setHeadcounts(value as {total:number;statuses:Record<string,number>});
+  }catch(e){setHeadcounts(null);
+    setStaffError(e instanceof Error?e.message:
+      "Approved employee headcounts cannot be confirmed.");}
  };
  const loadEmployees=async(page=0)=>{
   if(!canViewEmployees)return;
@@ -398,9 +411,20 @@ export function HrEnrollmentWorkspace({canViewApps,canManage,canViewEmployees,ca
     borderRadius:14,background:"#fff"}}>
     <div style={{display:"flex",justifyContent:"space-between",gap:10}}>
       <h2 style={{margin:0,fontSize:"1.1rem"}}>Approved employee directory</h2>
+      <button type="button" onClick={()=>void loadHeadcounts()}
+        style={{...buttonStyle,background:"#E2E8F0",color:"#0F172A"}}>
+        Refresh actual headcount</button>
       <button type="button" onClick={()=>void loadEmployees()}
        style={{...buttonStyle,background:"#E2E8F0",color:"#0F172A"}}>Refresh directory</button>
     </div>
+    {headcounts&&<div role="status" style={{display:"flex",gap:10,flexWrap:"wrap",
+     color:"#334155",fontSize:13}}>
+     {Object.entries(headcounts.statuses).map(([key,count])=>
+      <span key={key} style={{padding:9,borderRadius:9,background:"#F1F5F9"}}>
+       <strong>{count}</strong> {key.replaceAll("_"," ").toLowerCase()}
+      </span>)}
+     <strong style={{padding:9}}>Total {headcounts.total}</strong>
+    </div>}
     <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(175px,1fr))",
       gap:10,margin:"12px 0"}}>
       <label style={fieldStyle}>Search employees
