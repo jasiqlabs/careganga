@@ -9,7 +9,8 @@ CREATE TABLE cg20_report_definition(
  source_key text NOT NULL
   CHECK(source_key IN('FINANCE_POSTED_LEDGER','FINANCE_POSTED_SUMMARY',
    'FINANCE_POSTED_TREND','FINANCE_POSTED_GROUPED',
-   'APPOINTMENT_STATUS','PLATFORM_AUDIT_ACTIVITY')),
+   'APPOINTMENT_STATUS','PLATFORM_AUDIT_ACTIVITY',
+   'DIAGNOSTICS_CATALOG_SUMMARY')),
  view_kind text NOT NULL CHECK(view_kind IN('TABLE','SUMMARY','CHART','PIVOT')),
  safe_request jsonb NOT NULL CHECK(jsonb_typeof(safe_request)='object'
   AND octet_length(safe_request::text)<=4096),
