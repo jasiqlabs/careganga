@@ -222,7 +222,10 @@ export function CmsExtendedWorkspace({canManage,canPublish,canViewNoticeSources}
       sections:detail.sections,assets:detail.assets});
     }
    }catch{
-    setSelected(null);
+    // Do not leave an old CREATE/EDIT drawer active after a confirmed write.
+    // Without the current revision the same text could be submitted again
+    // under a different request key, despite the original action succeeding.
+    setSelected(null);setEditorOpen(false);setClosePrompt(false);
     setError("Your original CMS action was CONFIRMED, but its latest page "+
      "could not be refreshed. Refresh the list before editing again.");
    }
