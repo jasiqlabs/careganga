@@ -5,6 +5,7 @@ import * as Crypto from "expo-crypto";
 import {careGangaTheme as t} from "../../../../../packages/design-tokens/src/index";
 import {identityRequest} from "../identity-access/http-client";
 import {NativeLabResultUpload} from "./native-lab-result-upload";
+import {NativeLabResultEntry} from "./native-lab-result-entry";
 import {NativeLabProfessionalReview} from "./native-lab-professional-review";
 import {NativeLabReportRelease} from "./native-lab-report-release";
 
@@ -264,14 +265,13 @@ export function NativeClinicalLabScreen({token,canView,canCreate,canManageSample
       token={token} centerRef={center} orderRef={selected.order.orderRef}
       onExpired={onExpired}/>} 
     {selected.report?.state==="RESULT_READY"?
-     <Text style={s.message}>Original PDF uploaded and scanner-verified.
-      An independent review is tracked separately. Signed release and patient delivery are not implemented.</Text>:
+     <Text style={s.note}>Report PDF is ready for independent clinician
+      review. Patient access requires authorized release.</Text>:
      canRecordResults&&ready?
-      <NativeLabResultUpload key={center+":"+selected.order.orderRef}
-       token={token} centerRef={center} orderRef={selected.order.orderRef}
-       hasDraft={selected.report?.state==="DRAFT"}
-       onVerified={async()=>{await detail(selected.order.orderRef)}}
-       onExpired={onExpired}/>:null
+     <NativeLabResultEntry key={"entry:"+center+":"+selected.order.orderRef}
+      token={token} centerRef={center} orderRef={selected.order.orderRef}
+      onVerified={async()=>{await detail(selected.order.orderRef)}}
+      onExpired={onExpired}/>:null}
    </View>}
   </ScrollView>
  </SafeAreaView>;
