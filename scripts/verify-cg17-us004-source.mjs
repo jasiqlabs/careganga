@@ -61,6 +61,8 @@ must(collection,/cash\?"VERIFIED_CASH":"PENDING_EXTERNAL"/,
 must(collection,/foundationIncomeRecorded:false,foundationLiabilityCreated:false/,
  "Center money must not mutate Foundation financial state");
 must(collection,/pg_advisory_xact_lock/,"Same-charge writer transaction lock");
+must(collection,/totals\.collected\+totals\.pending\+BigInt\(amountMinor\)>due/,
+ "Pending external receipts must reserve due to avoid eventual overcollection");
 must(collection,/center_collection_adjustment/,"Refunds remain separate events");
 must(collection,/outstandingAgeDays/,"Real accepted-charge aging required");
 must(collection,/cg19_center_patient_receipt_document/,
