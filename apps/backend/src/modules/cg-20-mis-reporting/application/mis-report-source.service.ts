@@ -253,17 +253,44 @@ export class MisReportSourceService{
      groupBy:q.groupBy??"CATEGORY",
      sortBy:q.sortBy??"NAME",sortDirection:q.sortDirection??"ASC"
     });
+    // All representations derive from the SAME scoped CG09 read snapshot.
+    // No client sums of a paginated 50-row journal and no arbitrary SQL fields.
+    const amount=(value:string)=>BigInt(value);
+    const debit=x.groups.reduce((n,row)=>n+amount(row.debitMinor),0n);
+    const credit=x.groups.reduce((n,row)=>n+amount(row.creditMinor),0n);
+    const groupedColumns=[
+     {key:"groupLabel",label:q.groupBy==="ACCOUNT_NAME"?"Account":
+       q.groupBy==="POSTING_KIND"?"Entry kind":"Category",unit:"TEXT" as const},
+     {key:"debitMinor",label:"Posted debit",unit:"INR_MINOR" as const},
+     {key:"creditMinor",label:"Posted credit",unit:"INR_MINOR" as const}
+    ];
+    const wide=x.groups.length>12;
+    const pivot=q.view==="PIVOT";
+    const columns=pivot?[
+     {key:"metric",label:"Posted journal amount",unit:"TEXT" as const},
+     ...x.groups.slice(0,12).map((row,index)=>({
+      key:"group"+index,label:row.groupLabel.slice(0,80),
+      unit:"INR_MINOR" as const
+     }))
+    ]:q.view==="SUMMARY"?[
+     {key:"debitMinor",label:"Posted debit",unit:"INR_MINOR" as const},
+     {key:"creditMinor",label:"Posted credit",unit:"INR_MINOR" as const}
+    ]:groupedColumns;
+    const rows=pivot?[
+     Object.fromEntries([["metric","Posted debit"],...x.groups.slice(0,12)
+      .map((row,index)=>["group"+index,row.debitMinor])]),
+     Object.fromEntries([["metric","Posted credit"],...x.groups.slice(0,12)
+      .map((row,index)=>["group"+index,row.creditMinor])])
+    ]:q.view==="SUMMARY"&&x.groups.length?[{
+     debitMinor:debit.toString(),creditMinor:credit.toString()
+    }]:x.groups;
+    const partial=x.partial||(pivot&&wide);
     return {kind:q.kind,view:q.view,label:"Grouped posted finance",
-     state:x.partial?"PARTIAL":x.groups.length?"READY":"EMPTY",
-     columns:[
-      {key:"groupLabel",label:q.groupBy==="ACCOUNT_NAME"?"Account":
-        q.groupBy==="POSTING_KIND"?"Entry kind":"Category",unit:"TEXT"},
-      {key:"debitMinor",label:"Posted debit",unit:"INR_MINOR"},
-      {key:"creditMinor",label:"Posted credit",unit:"INR_MINOR"}
-     ],rows:x.groups,nextOffset:null,sourceReadAt,
+     state:partial?"PARTIAL":x.groups.length?"READY":"EMPTY",
+     columns,rows,nextOffset:null,sourceReadAt,
      sourceAsOf:x.sourceAsOf,sourceCutoffKind:x.sourceCutoffKind,
-     explanation:x.partial?
-      "More than 50 original groups match. Narrow the selected period, financial year or branch before exporting; this is not a complete aggregate.":
+     explanation:partial?
+      "The selected grouping is too wide or incomplete. Narrow the period or choose an account category; partial results cannot be exported.":
       x.explanation,
      scopeLabel:"Current permitted posted finance scope"};
    }
