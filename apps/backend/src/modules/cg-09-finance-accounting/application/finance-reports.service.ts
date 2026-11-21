@@ -212,6 +212,7 @@ export class FinanceReportsService{
   return {incomeMinor:income.toString(),expenseMinor:expense.toString(),
    surplusMinor:(income-expense).toString(),
    fundsMinor:funds.toString(),cashBankMinor:cash.rows[0]?.balance??"0",
+   sourceRecordState:result.rows.length===0?"NO_ROWS":"HAS_ROWS",
    explanation:"Recognized income/expense from posted GL only. Cash/bank is not the same as approved claims or invoices."};
  }
  /** Invoice receivables are a projection of original POSTED/ISSUED accruals
