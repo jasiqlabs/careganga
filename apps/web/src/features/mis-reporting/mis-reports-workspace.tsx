@@ -29,6 +29,18 @@ export type ReportPreview={
  sourceAsOf?:string;sourceReadAt:string;sourceCutoffKind:string;
  explanation:string;scopeLabel:string
 };
+type Period="CUSTOM"|"DAY"|"WEEK"|"MONTH"|"YEAR";
+const reportLocalDate=(date:Date)=>String(date.getFullYear())+"-"+
+ String(date.getMonth()+1).padStart(2,"0")+"-"+
+ String(date.getDate()).padStart(2,"0");
+function localReportPeriod(period:Exclude<Period,"CUSTOM">){
+ const today=new Date();
+ const start=new Date(today.getFullYear(),today.getMonth(),today.getDate());
+ if(period==="WEEK")start.setDate(start.getDate()-((start.getDay()+6)%7));
+ else if(period==="MONTH")start.setDate(1);
+ else if(period==="YEAR"){start.setMonth(0);start.setDate(1);}
+ return {from:reportLocalDate(start),until:reportLocalDate(today)};
+}
 const statuses:{key:string;label:string}[]=[
  {key:"",label:"All statuses"},
  {key:"CONFIRMED",label:"Confirmed"},{key:"ARRIVED",label:"Arrived"},
@@ -65,6 +77,7 @@ export function MisReportsWorkspace(){
  const [year,setYear]=useState(""),[branch,setBranch]=useState("");
  const [center,setCenter]=useState(""),[from,setFrom]=useState("");
  const [until,setUntil]=useState(""),[status,setStatus]=useState("");
+ const [period,setPeriod]=useState<Period>("CUSTOM");
  const [groupBy,setGroupBy]=useState<"CATEGORY"|"POSTING_KIND"|"ACCOUNT_NAME">("CATEGORY");
  const [sortBy,setSortBy]=useState<"NAME"|"DEBIT"|"CREDIT">("NAME");
  const [sortDirection,setSortDirection]=useState<"ASC"|"DESC">("ASC");
@@ -89,6 +102,7 @@ export function MisReportsWorkspace(){
  useEffect(()=>{
   const recheck=()=>{
    seq.current++;setCatalog(null);setResult(null);setKind(null);
+   setPeriod("CUSTOM");
    setYear("");setBranch("");setCenter("");setFrom("");setUntil("");
    setStatus("");void load();
   };
@@ -102,6 +116,12 @@ export function MisReportsWorkspace(){
  const health=kind==="APPOINTMENT_STATUS";
  const ledger=kind==="FINANCE_POSTED_LEDGER";
  const grouped=kind==="FINANCE_POSTED_GROUPED";
+ const dated=ledger||grouped||health||kind==="PLATFORM_AUDIT_ACTIVITY";
+ function setPreset(next:Period){
+  setPeriod(next);setResult(null);
+  if(next==="CUSTOM"){setFrom("");setUntil("");return;}
+  const dates=localReportPeriod(next);setFrom(dates.from);setUntil(dates.until);
+ }
  function input(offset=0):ReportRequest|null{
   if(!kind||!selected)return null;
   return {kind,view:selected.views.includes(view)?view:selected.views[0],
@@ -200,9 +220,19 @@ export function MisReportsWorkspace(){
        <option value="ASC">Ascending</option><option value="DESC">Descending</option>
       </select></label>
      </>}
-     {(ledger||grouped||health||kind==="PLATFORM_AUDIT_ACTIVITY")&&<>
-      <label>Start date <input type="date" value={from} onChange={e=>setFrom(e.target.value)}/></label>
-      <label>End date <input type="date" value={until} onChange={e=>setUntil(e.target.value)}/></label>
+     {dated&&<>
+      <label>Reporting period <select value={period}
+       onChange={e=>setPreset(e.target.value as Period)}>
+       <option value="CUSTOM">Custom date range</option>
+       <option value="DAY">Today</option>
+       <option value="WEEK">This week (Monday onward)</option>
+       <option value="MONTH">This month</option>
+       <option value="YEAR">This calendar year</option>
+      </select></label>
+      <label>Start date <input type="date" value={from}
+       onChange={e=>{setPeriod("CUSTOM");setFrom(e.target.value);setResult(null);}}/></label>
+      <label>End date <input type="date" value={until}
+       onChange={e=>{setPeriod("CUSTOM");setUntil(e.target.value);setResult(null);}}/></label>
      </>}
     </div>
     <div style={{display:"flex",gap:10,flexWrap:"wrap",alignItems:"center"}}>
