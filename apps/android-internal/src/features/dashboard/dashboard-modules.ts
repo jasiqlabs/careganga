@@ -54,6 +54,7 @@ export interface ModuleActionHandlers {
   openRoles: () => void;
   openPolicy: () => void;
   openApprovals: () => void;
+  openPatientAdmin: () => void;
   openPatientQueue: () => void;
   openClinicianActivity: () => void;
   openLabOrders: () => void;
@@ -229,6 +230,20 @@ export function getAuthorizedModules(
       iconBg: "#E0F2FE",
       iconColor: "#0284C7",
       onOpen: handlers.openClinicianActivity
+    });
+  }
+  // CG15 Foundation-wide patient administration, NOT center queue or public patient.
+  if (roleActions.includes("health.patients.admin.view")) {
+    list.push({
+      key: "healthPatientAdmin",
+      title: "Foundation Patient Management",
+      shortLabel: "Patients",
+      description: "Authorized patient records, consultation filters, original audit and printing.",
+      category: "HEALTHCARE ASSISTANCE",
+      iconName: "users",
+      iconBg: "#E0F2FE",
+      iconColor: "#0284C7",
+      onOpen: handlers.openPatientAdmin
     });
   }
   if (roleActions.includes("health.visits.manage")) {
