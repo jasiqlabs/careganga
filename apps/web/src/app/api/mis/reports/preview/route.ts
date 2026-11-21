@@ -1,5 +1,6 @@
 import {cookies} from "next/headers";
 import {NextRequest,NextResponse} from "next/server";
+import {safeMisBffError} from "../safe-mis-bff-error";
 export const dynamic="force-dynamic";
 export async function POST(request:NextRequest){
  const session=(await cookies()).get("cg_staff_session")?.value;
@@ -17,13 +18,15 @@ export async function POST(request:NextRequest){
    method:"POST",cache:"no-store",signal:AbortSignal.timeout(13000),
    headers:{Authorization:"Bearer "+session,"Content-Type":"application/json"},
    body:JSON.stringify(body)});
-  if(!res.ok)return NextResponse.json({message:
-    res.status===403?"Your role or location cannot access this source.":
+  if(!res.ok){
+   const fallback=res.status===403?"Your role or location cannot access this source.":
     res.status===400?"Review the selected report filters and view.":
     res.status===404?"This report source is not available.":
-    "This report could not be verified. Please retry."},{
-   status:[400,401,403,404,409,413,429].includes(res.status)?res.status:503,
-   headers:{"Cache-Control":"private, no-store"}});
+    "This report could not be verified. Please retry.";
+   return NextResponse.json({message:await safeMisBffError(res,fallback)},{
+    status:[400,401,403,404,409,413,429].includes(res.status)?res.status:503,
+    headers:{"Cache-Control":"private, no-store"}});
+  }
   return NextResponse.json(await res.json(),{headers:{"Cache-Control":"private, no-store"}});
  }catch{return NextResponse.json({message:"Could not confirm the report. Please retry."},{
   status:503,headers:{"Cache-Control":"private, no-store"}});}
