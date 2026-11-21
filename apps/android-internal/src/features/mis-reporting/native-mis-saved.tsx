@@ -7,7 +7,8 @@ import {identityRequest} from "../identity-access/http-client";
 import {nativeMisProblem} from "./native-mis-problem";
 import {careGangaTheme as t} from "../../../../../packages/design-tokens/src/index";
 type Request={kind:string;view:string;yearRef?:string;branchRef?:string;
- centerRef?:string;fromDay?:string;untilDay?:string;status?:string;offset:number};
+ centerRef?:string;fromDay?:string;untilDay?:string;status?:string;
+ groupBy?:"CATEGORY"|"POSTING_KIND"|"ACCOUNT_NAME";sortBy?:"NAME"|"DEBIT"|"CREDIT";sortDirection?:"ASC"|"DESC";offset:number};
 type Row={ref:string;name:string;state:"ACTIVE"|"RETIRED";version:number;revision:number};
 type Detail=Row&{request:Request};
 async function api<T>(token:string,path:string,method:"GET"|"POST"|"PATCH"="GET",
