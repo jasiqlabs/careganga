@@ -9,6 +9,8 @@ type Summary={month:string;state:string;eligibleAccruedMinor?:string;
  centerGrossServicesMinor?:string;patientPayableMinor?:string;
  patientCollectedVerifiedMinor?:string;patientRefundedMinor?:string;
  foundationApprovedLiabilityMinor?:string;
+ originalApprovedFoundationMinor?:string;adjustedFoundationMinor?:string;
+ grossFoundationPaidMinor?:string;verifiedProviderRecoveryMinor?:string;
  patientCollectionNotFoundationIncome:true;paidVerified:boolean};
 type Props={token:string;onExit:()=>void;onExpired:()=>void};
 const ID=/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i;
@@ -129,6 +131,13 @@ export function NativePartnerSettlementSummary({token,onExit,onExpired}:Props){
         summary.state==="PROPOSED"?"Proposed claim (not approved)":
          "Posted accrual before monthly claim",
        approved?summary.approvedFoundationMinor:summary.eligibleAccruedMinor],
+      ...(approved&&summary.adjustedFoundationMinor&&
+       BigInt(summary.adjustedFoundationMinor)>0n?[
+       ["Original Foundation claim before correction",summary.originalApprovedFoundationMinor],
+       ["Verified original claim adjustments",summary.adjustedFoundationMinor],
+       ["Original gross Foundation payout",summary.grossFoundationPaidMinor],
+       ["Verified actual provider bank recovery",summary.verifiedProviderRecoveryMinor]
+      ] as const:[]),
       ["Verified Foundation payout",summary.actualPaidMinor],
       ["Foundation payout outstanding",summary.outstandingMinor]
      ] as const).map(([label,value])=><View key={label} style={styles.amount}>
