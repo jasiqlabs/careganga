@@ -54,6 +54,7 @@ const show=(c:Claim,a:Attest|null,d:Decision|null,liability:boolean,posted:boole
  serviceDate:c.service_local_date,quotedGrossMinor:c.quoted_gross_minor,
  estimatedFoundationMinor:c.estimated_support_minor,
  estimatedPatientPayableMinor:c.estimated_patient_due_minor,
+ paymentEvidenceSubmitted:!!c.payment_file_ref,
  partnerAttestedPatientMinor:a?.collected_minor??"0",
  state:d?.outcome==="APPROVED"?"APPROVED_AWAITING_FINANCE":
   d?.outcome==="REJECTED"?"REJECTED":
