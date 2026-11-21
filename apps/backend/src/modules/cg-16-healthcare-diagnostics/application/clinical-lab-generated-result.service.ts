@@ -22,7 +22,7 @@ type SourceLine={id:string;test_name_snapshot:string};
 type Order={patient_ref:string;display_order_ref:string;first_name:string;
  last_name:string;virtual_display_id:string;center_name:string};
 type Result={id:string;created_at:Date;source_key:string;result_state:string};
-type Intent={id:string;result_revision_ref:string;object_key:string;
+type Intent={id:string;order_ref:string;center_ref:string;result_revision_ref:string;object_key:string;
  status:string;sha256:string;size_bytes:string;request_digest:string;
  patient_ref:string;request_key:string};
 type Generated={result:Result;intent:Intent;pdf:Buffer;sourceDigest:string};
@@ -207,7 +207,8 @@ export class ClinicalLabGeneratedResultService{
    "mime,size_bytes,sha256,object_key,reserved_until) "+
    "VALUES($1,$2,$3,$4,$5,$6,$7,$8,'application/pdf',$9,$10,$11,"+
    "now()+interval '1 day') RETURNING id,result_revision_ref,object_key,"+
-   "status,sha256,size_bytes::text,request_digest,patient_ref,request_key",
+   "status,sha256,size_bytes::text,request_digest,patient_ref,request_key,"+
+   "order_ref,center_ref",
    [actor.realmId,order,center,source.patient_ref,result.id,
     actor.accountId,key,requestDigest,pdf.length,sha,
     "careganga/private/cg19/"+actor.realmId+"/lab-generated/"+randomUUID()]);
