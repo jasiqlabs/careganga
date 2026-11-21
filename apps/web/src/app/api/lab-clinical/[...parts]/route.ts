@@ -67,7 +67,9 @@ async function request(req:NextRequest,parts:string[],method:"GET"|"POST"){
    if(!value||typeof value!=="object"||Array.isArray(value))
     return error(400,"Check the laboratory order form.");
    body=JSON.stringify(value);
-   if(body.length>12000)return error(400,"The laboratory order is too large.");
+   const generated=parts.length===6&&parts[4]==="results"&&parts[5]==="generate";
+   if(body.length>(generated?40000:12000))
+    return error(400,"The laboratory result form is too large.");
   }catch{return error(400,"Check the laboratory order form.");}
  }
  try{
