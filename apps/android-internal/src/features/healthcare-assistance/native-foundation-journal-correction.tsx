@@ -8,7 +8,9 @@ const ID=/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 type Year={yearRef:string;name:string};
 type Options={sourcePosted:boolean;canCorrect:boolean;claimAlreadyCreated:boolean;
  originalReversed:boolean;corrected:boolean;postingDate:string;
- financialYears:Year[];complete:boolean};
+ financialYears:Year[];complete:boolean;
+ claimState?:string;requiredVerifiedRecoveryMinor:string;
+ bankRecoveries:{bankMatchRef:string;bankItemLabel:string;amountMinor:string}[]};
 type Result={status:string;corrected:boolean;replayed?:boolean};
 type Props={token:string;centerRef:string;liabilityRef:string;
  onCorrected:()=>Promise<void>;onExpired:()=>void};
@@ -35,11 +37,15 @@ function valid(v:unknown):v is Options{
   typeof a.claimAlreadyCreated==="boolean"&&
   typeof a.corrected==="boolean"&&
   typeof a.postingDate==="string"&&
+  typeof a.requiredVerifiedRecoveryMinor==="string"&&
+  /^(0|[1-9][0-9]*)$/.test(a.requiredVerifiedRecoveryMinor)&&
+  Array.isArray(a.bankRecoveries)&&
   Array.isArray(a.financialYears)&&a.financialYears.length<=20&&
   typeof a.complete==="boolean";
 }
 /** Same authorized CG17/CG09 source as Foundation Web, not a WebView.
- * Unclaimed accrual only. A paid claim is NOT a reversible bank transaction.
+ * Claimed and paid sources require actual independently verified CG09
+ * incoming bank recovery when the original provider is overpaid.
  */
 export function NativeFoundationJournalCorrection({token,centerRef,liabilityRef,
  onCorrected,onExpired}:Props){
@@ -48,6 +54,7 @@ export function NativeFoundationJournalCorrection({token,centerRef,liabilityRef,
  const [visible,setVisible]=useState(true);
  const [year,setYear]=useState(""),[postingDate,setPostingDate]=useState("");
  const [reason,setReason]=useState(""),[password,setPassword]=useState("");
+ const [bankMatch,setBankMatch]=useState(""),[payerMatched,setPayerMatched]=useState(false);
  const [requestKey,setRequestKey]=useState(()=>Crypto.randomUUID());
  const [loading,setLoading]=useState(true),[busy,setBusy]=useState(false);
  const [uncertain,setUncertain]=useState(false),[message,setMessage]=useState("");
@@ -68,6 +75,7 @@ export function NativeFoundationJournalCorrection({token,centerRef,liabilityRef,
   let active=true;setLoading(true);setData(null);
   setVisible(true);setYear("");setReason("");setPassword("");
   setUncertain(false);setMessage("");setRequestKey(Crypto.randomUUID());
+  setBankMatch("");setPayerMatched(false);
   void load().then(v=>{if(active){setData(v);setPostingDate(v.postingDate)}})
    .catch(e=>{if(active)onError(e)})
    .finally(()=>{if(active)setLoading(false)});
@@ -84,20 +92,25 @@ export function NativeFoundationJournalCorrection({token,centerRef,liabilityRef,
    }else setMessage("No actual correction yet. Recheck before retrying the same key.");
   }catch(e){onError(e)}finally{setBusy(false)}
  }
+ const needsRecovery=!!data&&BigInt(data.requiredVerifiedRecoveryMinor)>0n;
  async function submit(){
   if(busy||uncertain||!data?.canCorrect||!data.complete||
    !ID.test(requestKey)||!ID.test(year)||reason.trim().length<12||
    reason.trim().length>300||password.length<8||
-   !/^\d{4}-\d{2}-\d{2}$/.test(postingDate))return;
+   !/^\d{4}-\d{2}-\d{2}$/.test(postingDate)||
+   (needsRecovery&&(!ID.test(bankMatch)||!payerMatched)))return;
   setBusy(true);setMessage("");
   try{
-   const v=await api(token,base+"reverse",{
-    requestKey,financialYearRef:year,postingDate,
-    reason:reason.trim(),currentPassword:password}) as Result;
+   const payload={requestKey,financialYearRef:year,postingDate,
+    reason:reason.trim(),currentPassword:password};
+   const v=await api(token,base+"reverse",data.claimAlreadyCreated?
+    {...payload,bankMatchRef:needsRecovery?bankMatch:null,
+     payerMatched:needsRecovery?payerMatched:false}:payload) as Result;
    if(v.status!=="REVERSED"||!v.corrected)
     throw Error("Original CG09 correction was not confirmed.");
    setData(await load());setPassword("");setUncertain(false);
-   setMessage("Verified offset journal posted; no bank movement was created.");
+   setMessage("Verified CG09 offset recorded. Original claim and payout "+
+    "history are preserved; no transfer or patient refund was initiated.");
    await onCorrected();
   }catch(e){
    const status=e&&typeof e==="object"&&"status" in e&&
@@ -113,18 +126,41 @@ export function NativeFoundationJournalCorrection({token,centerRef,liabilityRef,
  if(!ID.test(centerRef)||!ID.test(liabilityRef)||!visible)return null;
  return <View style={styles.panel}>
   <Text accessibilityRole="header" style={styles.title}>Correct an original CG09 entry</Text>
-  <Text style={styles.note}>Only an independent Foundation reviewer can offset
-   an unclaimed liability. Original entries remain immutable; no bank refund is
-   inferred or initiated.</Text>
+  <Text style={styles.note}>A protected reviewer can correct an original
+   liability without changing its original bank payout or journal. An
+   overpaid provider needs already-verified actual incoming CG09 bank funds.</Text>
   {loading&&<ActivityIndicator accessibilityLabel="Checking correction permission"/>}
   {!!message&&<Text accessibilityRole="alert" style={styles.note}>{message}</Text>}
   {data?.corrected&&<Text style={styles.note}>A verified independent correction
    already exists. Do not submit another journal.</Text>}
-  {data?.claimAlreadyCreated&&!data.corrected&&
-   <Text accessibilityRole="alert" style={styles.note}>This liability is
-    already in a provider claim. Manual verified accounts reconciliation is
-    required; this screen cannot reverse a paid or proposed claim.</Text>}
+  {data?.claimAlreadyCreated&&!data.corrected&&!data.canCorrect&&
+   <Text accessibilityRole="alert" style={styles.note}>The original
+    source, independent review, or real bank evidence is unavailable.
+    Check CG09 accounts before retrying.</Text>}
   {data?.canCorrect&&<>
+   {data.claimAlreadyCreated&&<Text style={styles.note}>
+    Original provider claim: {data.claimState?.replaceAll("_"," ")??"Recorded"}.
+    Historical claim and paid amount remain immutable.</Text>}
+   {needsRecovery&&<>
+    <Text accessibilityRole="alert" style={styles.note}>Bank recovery required:
+     ₹{(Number(data.requiredVerifiedRecoveryMinor)/100).toFixed(2)}.
+     Only an independently verified incoming CG09 bank receipt can be used.
+    </Text>
+    <Text style={styles.label}>Actual verified provider recovery</Text>
+    {data.bankRecoveries.map(bank=><View key={bank.bankMatchRef}>
+     {button((bankMatch===bank.bankMatchRef?"Selected: ":"")+
+      bank.bankItemLabel+" ₹"+(Number(bank.amountMinor)/100).toFixed(2),
+      ()=>{setBankMatch(bank.bankMatchRef);setPayerMatched(false);},
+      busy||uncertain)}</View>)}
+    {data.bankRecoveries.length===0&&
+     <Text accessibilityRole="alert" style={styles.note}>
+      No matching incoming verified bank recovery. Independently reconcile
+      the real receipt in CG09 first. No refund is invented here.</Text>}
+    {button(payerMatched?"Payer match confirmed":"Confirm verified provider payer",
+     ()=>setPayerMatched(v=>!v),busy||uncertain||!ID.test(bankMatch))}
+    <Text style={styles.note}>Only confirm after matching the provider
+     to the original verified bank statement and real supporting evidence.</Text>
+   </>}
    <Text style={styles.label}>Original CG09 correction financial year</Text>
    {data.financialYears.map(y=><View key={y.yearRef}>
     {button((year===y.yearRef?"Selected: ":"")+y.name,
@@ -146,11 +182,13 @@ export function NativeFoundationJournalCorrection({token,centerRef,liabilityRef,
     editable={!busy&&!uncertain}/>
    {button("Post independent CG09 correction",()=>Alert.alert(
     "Confirm original liability correction",
-    "An offsetting CG09 journal will be created. No provider payment or patient refund occurs.",[
+    "An opposite CG09 journal will be posted. Original bank payout "+
+    "and claim history remain. Required recovery must already be verified.",[
      {text:"Cancel",style:"cancel"},
      {text:"Confirm",onPress:()=>void submit()}
     ]),busy||uncertain||!data.complete||!ID.test(year)||
-      reason.trim().length<12||password.length<8)}
+      reason.trim().length<12||password.length<8||
+      (needsRecovery&&(!ID.test(bankMatch)||!payerMatched)))}
    {uncertain&&<Text accessibilityRole="alert" style={styles.note}>
     Result uncertain. Check the original status before another attempt.</Text>}
   </>}
