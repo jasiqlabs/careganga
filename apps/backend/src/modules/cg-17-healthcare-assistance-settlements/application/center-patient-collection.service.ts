@@ -232,9 +232,11 @@ export class CenterPatientCollectionService{
     throw new ConflictException({code:"CENTER_COLLECTION_GATEWAY_PENDING_RECONCILIATION"});
    const totals=await this.totals(c,a.realmId,ref);
    const due=BigInt(original.due_minor);
-   // Pending external references reserve the remaining due until verified or resolved.
-   // Never accept 2 x pending attempts whose eventual captures exceed the charge.
-   if(totals.collected+totals.pending+BigInt(amountMinor)>due)
+   // Manual UPI/CARD/BANK references are immutable UNVERIFIED notes, not
+   // successful payments or holds. They have no verification/void lifecycle.
+   // Only actual verified collections reduce the due. Real gateway captures
+   // enforce their own verified remaining balance before recording money.
+   if(totals.collected+BigInt(amountMinor)>due)
     throw new ConflictException({code:"CENTER_COLLECTION_OVERPAYMENT"});
    if(!cash){
     const pending=await c.query<{count:string}>(
@@ -261,8 +263,8 @@ export class CenterPatientCollectionService{
     statement:await this.statement(c,a.realmId,original),
     notice:cash?"Cash attestation recorded. Private receipt issuance "+
       "must be verified separately; Foundation was not paid.":
-      "Electronic reference recorded pending independent provider proof. "+
-      "No paid status or payment receipt was issued."};
+      "Electronic reference saved as unverified evidence, not a payment or hold. "+
+      "Confirm the actual center collection separately; no receipt was issued."};
   });
  }
  async refund(token:string,centerRaw:string,collectionRaw:string,raw:unknown){
