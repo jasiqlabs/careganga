@@ -1995,10 +1995,10 @@
       "approval_mode": "OWNER_DELEGATED_DESIGN_CONTENT",
       "delegation_source": "initiative.json:approval_policy",
       "artifact": "modules/cg-14-healthcare-network/module.md",
-      "sha256": "fe346ad89bd12fd02d40830e842063ed1e6d44615fb3f687e3d1143c3c288167",
-      "current_artifact_sha256": "fe346ad89bd12fd02d40830e842063ed1e6d44615fb3f687e3d1143c3c288167",
-      "approved_by": "JASIQ AI Design Review Agent",
-      "approved_at": "2026-11-16",
+      "sha256": "e431736004c01c016884ead264c7190ad7abeb01b9fae43f45b622ff846351cd",
+      "current_artifact_sha256": "e431736004c01c016884ead264c7190ad7abeb01b9fae43f45b622ff846351cd",
+      "approved_by": "JASIQ AI Design Review Agent (owner-delegated)",
+      "approved_at": "2026-11-21",
       "evidence": "https://github.com/jasiqlabs/careganga/blob/feature/careganga-greenfield-prd-20261114/specs/initiatives/careganga-foundation-platform/modules/cg-14-healthcare-network/module.md",
       "quality_review": {
         "status": "SOURCE_REVIEW_COMPLETED",
@@ -2063,17 +2063,27 @@
         "open_actionable_source_design_gaps": 0
       },
       "reviewed_by": "JASIQ AI Design Review Agent",
-      "review_evidence": "CURRENT_SOURCE_SHA256_RECOMPUTED_GITHUB_CANONICAL_AUTH_CONTRACT"
+      "review_evidence": "OWNER_DIRECTED_24_MODULE_WEB_INTERNAL_PUBLIC_ANDROID_SAME_ROLE_PARITY_DESIGN_REVIEW_NOT_RUNTIME",
+      "last_design_content_review": {
+        "date": "2026-11-21",
+        "method": "OWNER_DELEGATED_DESIGN_CONTENT_REVIEW_NOT_INDEPENDENT",
+        "scope": "Original module story and QA definitions with both applicable Web/Android audiences; no source build or release",
+        "file_sha256": "e431736004c01c016884ead264c7190ad7abeb01b9fae43f45b622ff846351cd",
+        "actual_web_android_qa": "NOT_RUN",
+        "qualified_independent_review": "NOT_RUN",
+        "formal_harness_resolver": "NOT_RUN",
+        "source_complete": "NOT_APPROVED"
+      }
     },
     "dld/cg-14-healthcare-network": {
       "status": "DELEGATED_APPROVED",
       "approval_mode": "OWNER_DELEGATED_DESIGN_CONTENT",
       "delegation_source": "initiative.json:approval_policy",
       "artifact": "modules/cg-14-healthcare-network/dld.md",
-      "sha256": "0e879304723d04280051bbccdfb67c4397fe9b2fe231ddc6dad9a4c32dec1f0f",
-      "current_artifact_sha256": "0e879304723d04280051bbccdfb67c4397fe9b2fe231ddc6dad9a4c32dec1f0f",
-      "approved_by": "JASIQ AI Design Review Agent",
-      "approved_at": "2026-11-16",
+      "sha256": "9f6e7d4d38e54a405bbc04cbbd74bb8797113edca589063fe12cfa5c4bb10802",
+      "current_artifact_sha256": "9f6e7d4d38e54a405bbc04cbbd74bb8797113edca589063fe12cfa5c4bb10802",
+      "approved_by": "JASIQ AI Design Review Agent (owner-delegated)",
+      "approved_at": "2026-11-21",
       "evidence": "https://github.com/jasiqlabs/careganga/blob/feature/careganga-greenfield-prd-20261114/specs/initiatives/careganga-foundation-platform/modules/cg-14-healthcare-network/dld.md",
       "quality_review": {
         "status": "SOURCE_REVIEW_COMPLETED",
@@ -2137,17 +2147,27 @@
         "open_actionable_source_design_gaps": 0
       },
       "reviewed_by": "JASIQ AI Design Review Agent",
-      "review_evidence": "CURRENT_SOURCE_SHA256_RECOMPUTED_GITHUB_CANONICAL_AUTH_CONTRACT"
+      "review_evidence": "OWNER_DIRECTED_24_MODULE_WEB_INTERNAL_PUBLIC_ANDROID_SAME_ROLE_PARITY_DESIGN_REVIEW_NOT_RUNTIME",
+      "last_design_content_review": {
+        "date": "2026-11-21",
+        "method": "OWNER_DELEGATED_DESIGN_CONTENT_REVIEW_NOT_INDEPENDENT",
+        "scope": "Original module story and QA definitions with both applicable Web/Android audiences; no source build or release",
+        "file_sha256": "9f6e7d4d38e54a405bbc04cbbd74bb8797113edca589063fe12cfa5c4bb10802",
+        "actual_web_android_qa": "NOT_RUN",
+        "qualified_independent_review": "NOT_RUN",
+        "formal_harness_resolver": "NOT_RUN",
+        "source_complete": "NOT_APPROVED"
+      }
     },
     "uiux/cg-14-healthcare-network": {
       "status": "DELEGATED_APPROVED",
       "approval_mode": "OWNER_DELEGATED_DESIGN_CONTENT",
       "delegation_source": "initiative.json:approval_policy",
       "artifact": "modules/cg-14-healthcare-network/uiux.md",
-      "sha256": "8e0090aae8546c965b17ad0095ddf444741fab9d47193e91db0f51cb029a718c",
-      "current_artifact_sha256": "8e0090aae8546c965b17ad0095ddf444741fab9d47193e91db0f51cb029a718c",
-      "approved_by": "JASIQ AI Design Review Agent",
-      "approved_at": "2026-11-16",
+      "sha256": "eef53973b889cf6a317346a92700ea6090236e54cff04362597cf792fc678c80",
+      "current_artifact_sha256": "eef53973b889cf6a317346a92700ea6090236e54cff04362597cf792fc678c80",
+      "approved_by": "JASIQ AI Design Review Agent (owner-delegated)",
+      "approved_at": "2026-11-21",
       "evidence": "https://github.com/jasiqlabs/careganga/blob/feature/careganga-greenfield-prd-20261114/specs/initiatives/careganga-foundation-platform/modules/cg-14-healthcare-network/uiux.md",
       "quality_review": {
         "status": "SOURCE_REVIEW_COMPLETED",
@@ -2211,17 +2231,27 @@
         "open_actionable_source_design_gaps": 0
       },
       "reviewed_by": "JASIQ AI Design Review Agent",
-      "review_evidence": "CURRENT_SOURCE_SHA256_RECOMPUTED_GITHUB_CANONICAL_AUTH_CONTRACT"
+      "review_evidence": "OWNER_DIRECTED_24_MODULE_WEB_INTERNAL_PUBLIC_ANDROID_SAME_ROLE_PARITY_DESIGN_REVIEW_NOT_RUNTIME",
+      "last_design_content_review": {
+        "date": "2026-11-21",
+        "method": "OWNER_DELEGATED_DESIGN_CONTENT_REVIEW_NOT_INDEPENDENT",
+        "scope": "Original module story and QA definitions with both applicable Web/Android audiences; no source build or release",
+        "file_sha256": "eef53973b889cf6a317346a92700ea6090236e54cff04362597cf792fc678c80",
+        "actual_web_android_qa": "NOT_RUN",
+        "qualified_independent_review": "NOT_RUN",
+        "formal_harness_resolver": "NOT_RUN",
+        "source_complete": "NOT_APPROVED"
+      }
     },
     "tasks/cg-14-healthcare-network": {
       "status": "DELEGATED_APPROVED",
       "approval_mode": "OWNER_DELEGATED_DESIGN_CONTENT",
       "delegation_source": "initiative.json:approval_policy",
       "artifact": "modules/cg-14-healthcare-network/tasks.md",
-      "sha256": "8f7c2271195c868c2bf3e98f304c1dc838f960e91fb8afca52c2aae4e66ccf60",
-      "current_artifact_sha256": "8f7c2271195c868c2bf3e98f304c1dc838f960e91fb8afca52c2aae4e66ccf60",
-      "approved_by": "JASIQ AI Design Review Agent",
-      "approved_at": "2026-11-16",
+      "sha256": "93179592958ab5de475be65ec386b48ffaa2914fb3e5206b945f20e7912157c9",
+      "current_artifact_sha256": "93179592958ab5de475be65ec386b48ffaa2914fb3e5206b945f20e7912157c9",
+      "approved_by": "JASIQ AI Design Review Agent (owner-delegated)",
+      "approved_at": "2026-11-21",
       "evidence": "https://github.com/jasiqlabs/careganga/blob/feature/careganga-greenfield-prd-20261114/specs/initiatives/careganga-foundation-platform/modules/cg-14-healthcare-network/tasks.md",
       "quality_review": {
         "status": "SOURCE_REVIEW_COMPLETED",
@@ -2286,7 +2316,7 @@
         "open_actionable_source_design_gaps": 0
       },
       "reviewed_by": "JASIQ AI Design Review Agent",
-      "review_evidence": "20261118_OWNER_AUTHORIZED_CG14_US001_SOURCE_TRACE_94_ORIGINAL_QA_UNCHANGED_REVIEW",
+      "review_evidence": "OWNER_DIRECTED_24_MODULE_WEB_INTERNAL_PUBLIC_ANDROID_SAME_ROLE_PARITY_DESIGN_REVIEW_NOT_RUNTIME",
       "execution_progress": {
         "status": "US001_DRAFT_SOURCE_ONLY_IN_PROGRESS",
         "reviewed_on": "2026-11-18",
@@ -2308,6 +2338,16 @@
         "formal_source_complete": "NOT_APPROVED",
         "harness_resolver": "NOT_RUN",
         "production_release": "BLOCKED"
+      },
+      "last_design_content_review": {
+        "date": "2026-11-21",
+        "method": "OWNER_DELEGATED_DESIGN_CONTENT_REVIEW_NOT_INDEPENDENT",
+        "scope": "Original module story and QA definitions with both applicable Web/Android audiences; no source build or release",
+        "file_sha256": "93179592958ab5de475be65ec386b48ffaa2914fb3e5206b945f20e7912157c9",
+        "actual_web_android_qa": "NOT_RUN",
+        "qualified_independent_review": "NOT_RUN",
+        "formal_harness_resolver": "NOT_RUN",
+        "source_complete": "NOT_APPROVED"
       }
     },
     "planning/cg-10-human-resources": {
@@ -4663,10 +4703,10 @@
       "status": "DELEGATED_APPROVED",
       "approval_mode": "OWNER_DELEGATED_DESIGN_CONTENT",
       "delegation_source": "initiative.json:approval_policy; owner explicitly authorized continue to next canonical CG13 expert planning review and delegate approval on 15 November 2026, stop before CG15",
-      "sha256": "2a7392cc03fa8b7330a250113ffdcd367e4f136d66f2743276cfaaf572875e6c",
-      "current_artifact_sha256": "2a7392cc03fa8b7330a250113ffdcd367e4f136d66f2743276cfaaf572875e6c",
-      "approved_by": "JASIQ AI Design Review Agent",
-      "approved_at": "2026-11-15T14:32:49.190Z",
+      "sha256": "4e56eb89498d579624fdffe2dbe59515a7360f4d4fdf7d7b285b7e74021515f7",
+      "current_artifact_sha256": "4e56eb89498d579624fdffe2dbe59515a7360f4d4fdf7d7b285b7e74021515f7",
+      "approved_by": "JASIQ AI Design Review Agent (owner-delegated)",
+      "approved_at": "2026-11-21",
       "evidence": "https://github.com/jasiqlabs/careganga/blob/feature/careganga-greenfield-prd-20261114/specs/initiatives/careganga-foundation-platform/modules/cg-13-referrals-rewards/module.md",
       "quality_review": {
         "status": "CURRENT_CG13_SOURCE_DESIGN_REVIEW_COMPLETED",
@@ -4724,17 +4764,28 @@
       "task_definitions_sha256": "b84b644613fe984ca975aded7a67c41c3b3027e92783de75367b7313fc7f8a40",
       "current_task_definitions_sha256": "b84b644613fe984ca975aded7a67c41c3b3027e92783de75367b7313fc7f8a40",
       "qa_cases": 60,
-      "stories": 3
+      "stories": 3,
+      "review_evidence": "OWNER_DIRECTED_24_MODULE_WEB_INTERNAL_PUBLIC_ANDROID_SAME_ROLE_PARITY_DESIGN_REVIEW_NOT_RUNTIME",
+      "last_design_content_review": {
+        "date": "2026-11-21",
+        "method": "OWNER_DELEGATED_DESIGN_CONTENT_REVIEW_NOT_INDEPENDENT",
+        "scope": "Original module story and QA definitions with both applicable Web/Android audiences; no source build or release",
+        "file_sha256": "4e56eb89498d579624fdffe2dbe59515a7360f4d4fdf7d7b285b7e74021515f7",
+        "actual_web_android_qa": "NOT_RUN",
+        "qualified_independent_review": "NOT_RUN",
+        "formal_harness_resolver": "NOT_RUN",
+        "source_complete": "NOT_APPROVED"
+      }
     },
     "dld/cg-13-referrals-rewards": {
       "artifact": "modules/cg-13-referrals-rewards/dld.md",
       "status": "DELEGATED_APPROVED",
       "approval_mode": "OWNER_DELEGATED_DESIGN_CONTENT",
       "delegation_source": "initiative.json:approval_policy; owner explicitly authorized continue to next canonical CG13 expert planning review and delegate approval on 15 November 2026, stop before CG15",
-      "sha256": "89e3c46350514039b8b1eebb7457f2b453e4618e60ac9349fcfa47d6ee5f6dd3",
-      "current_artifact_sha256": "89e3c46350514039b8b1eebb7457f2b453e4618e60ac9349fcfa47d6ee5f6dd3",
-      "approved_by": "JASIQ AI Design Review Agent",
-      "approved_at": "2026-11-15T14:32:49.190Z",
+      "sha256": "4012d6dd385d02bd8b3c7f0e475aa484d77c5212679fa7e384fb301e49c2eb99",
+      "current_artifact_sha256": "4012d6dd385d02bd8b3c7f0e475aa484d77c5212679fa7e384fb301e49c2eb99",
+      "approved_by": "JASIQ AI Design Review Agent (owner-delegated)",
+      "approved_at": "2026-11-21",
       "evidence": "https://github.com/jasiqlabs/careganga/blob/feature/careganga-greenfield-prd-20261114/specs/initiatives/careganga-foundation-platform/modules/cg-13-referrals-rewards/dld.md",
       "quality_review": {
         "status": "CURRENT_CG13_SOURCE_DESIGN_REVIEW_COMPLETED",
@@ -4788,17 +4839,28 @@
       },
       "formal_stage_gate": "BLOCKED_LOCAL_AUTHENTICATED_HARNESS_RESOLVER_INDEPENDENT_CRITICAL_DATABASE_STOCK_SQL_CODE_WEB_NATIVE_RUNTIME_NOT_RUN",
       "development_authority": "DESIGN_ONLY_IMPLEMENTATION_NOT_READY",
-      "database_impact": "CRITICAL"
+      "database_impact": "CRITICAL",
+      "review_evidence": "OWNER_DIRECTED_24_MODULE_WEB_INTERNAL_PUBLIC_ANDROID_SAME_ROLE_PARITY_DESIGN_REVIEW_NOT_RUNTIME",
+      "last_design_content_review": {
+        "date": "2026-11-21",
+        "method": "OWNER_DELEGATED_DESIGN_CONTENT_REVIEW_NOT_INDEPENDENT",
+        "scope": "Original module story and QA definitions with both applicable Web/Android audiences; no source build or release",
+        "file_sha256": "4012d6dd385d02bd8b3c7f0e475aa484d77c5212679fa7e384fb301e49c2eb99",
+        "actual_web_android_qa": "NOT_RUN",
+        "qualified_independent_review": "NOT_RUN",
+        "formal_harness_resolver": "NOT_RUN",
+        "source_complete": "NOT_APPROVED"
+      }
     },
     "uiux/cg-13-referrals-rewards": {
       "artifact": "modules/cg-13-referrals-rewards/uiux.md",
       "status": "DELEGATED_APPROVED",
       "approval_mode": "OWNER_DELEGATED_DESIGN_CONTENT",
       "delegation_source": "initiative.json:approval_policy; owner explicitly authorized continue to next canonical CG13 expert planning review and delegate approval on 15 November 2026, stop before CG15",
-      "sha256": "76cb81cfd72b6e385ed6929b06a82dc08ed130ea308bea5b934816b930b9a278",
-      "current_artifact_sha256": "76cb81cfd72b6e385ed6929b06a82dc08ed130ea308bea5b934816b930b9a278",
-      "approved_by": "JASIQ AI Design Review Agent",
-      "approved_at": "2026-11-15T14:32:49.190Z",
+      "sha256": "3eaf9f0c653bfc19b353ad554e7152823587304b58f050cc53acb3444fff140b",
+      "current_artifact_sha256": "3eaf9f0c653bfc19b353ad554e7152823587304b58f050cc53acb3444fff140b",
+      "approved_by": "JASIQ AI Design Review Agent (owner-delegated)",
+      "approved_at": "2026-11-21",
       "evidence": "https://github.com/jasiqlabs/careganga/blob/feature/careganga-greenfield-prd-20261114/specs/initiatives/careganga-foundation-platform/modules/cg-13-referrals-rewards/uiux.md",
       "quality_review": {
         "status": "CURRENT_CG13_SOURCE_DESIGN_REVIEW_COMPLETED",
@@ -4852,17 +4914,28 @@
       },
       "formal_stage_gate": "BLOCKED_LOCAL_AUTHENTICATED_HARNESS_RESOLVER_INDEPENDENT_CRITICAL_DATABASE_STOCK_SQL_CODE_WEB_NATIVE_RUNTIME_NOT_RUN",
       "development_authority": "DESIGN_ONLY_IMPLEMENTATION_NOT_READY",
-      "database_impact": "CRITICAL"
+      "database_impact": "CRITICAL",
+      "review_evidence": "OWNER_DIRECTED_24_MODULE_WEB_INTERNAL_PUBLIC_ANDROID_SAME_ROLE_PARITY_DESIGN_REVIEW_NOT_RUNTIME",
+      "last_design_content_review": {
+        "date": "2026-11-21",
+        "method": "OWNER_DELEGATED_DESIGN_CONTENT_REVIEW_NOT_INDEPENDENT",
+        "scope": "Original module story and QA definitions with both applicable Web/Android audiences; no source build or release",
+        "file_sha256": "3eaf9f0c653bfc19b353ad554e7152823587304b58f050cc53acb3444fff140b",
+        "actual_web_android_qa": "NOT_RUN",
+        "qualified_independent_review": "NOT_RUN",
+        "formal_harness_resolver": "NOT_RUN",
+        "source_complete": "NOT_APPROVED"
+      }
     },
     "tasks/cg-13-referrals-rewards": {
       "artifact": "modules/cg-13-referrals-rewards/tasks.md",
       "status": "DELEGATED_APPROVED",
       "approval_mode": "OWNER_DELEGATED_DESIGN_CONTENT",
       "delegation_source": "initiative.json:approval_policy; owner explicitly authorized continue to next canonical CG13 expert planning review and delegate approval on 15 November 2026, stop before CG15",
-      "sha256": "36a3a35c7e4edbcca73b71c3f2f2da4e9a5c4399ad99c206ac776ba642504a62",
-      "current_artifact_sha256": "36a3a35c7e4edbcca73b71c3f2f2da4e9a5c4399ad99c206ac776ba642504a62",
-      "approved_by": "JASIQ AI Design Review Agent",
-      "approved_at": "2026-11-15T14:32:49.190Z",
+      "sha256": "0a293c81b9ebe670fcf58f498e84349db55233c8c59100fa564b1e74e0dbb949",
+      "current_artifact_sha256": "0a293c81b9ebe670fcf58f498e84349db55233c8c59100fa564b1e74e0dbb949",
+      "approved_by": "JASIQ AI Design Review Agent (owner-delegated)",
+      "approved_at": "2026-11-21",
       "evidence": "https://github.com/jasiqlabs/careganga/blob/feature/careganga-greenfield-prd-20261114/specs/initiatives/careganga-foundation-platform/modules/cg-13-referrals-rewards/tasks.md",
       "quality_review": {
         "status": "CURRENT_CG13_SOURCE_DESIGN_REVIEW_COMPLETED",
@@ -4920,17 +4993,28 @@
       "task_definitions_sha256": "b84b644613fe984ca975aded7a67c41c3b3027e92783de75367b7313fc7f8a40",
       "current_task_definitions_sha256": "b84b644613fe984ca975aded7a67c41c3b3027e92783de75367b7313fc7f8a40",
       "qa_cases": 60,
-      "stories": 3
+      "stories": 3,
+      "review_evidence": "OWNER_DIRECTED_24_MODULE_WEB_INTERNAL_PUBLIC_ANDROID_SAME_ROLE_PARITY_DESIGN_REVIEW_NOT_RUNTIME",
+      "last_design_content_review": {
+        "date": "2026-11-21",
+        "method": "OWNER_DELEGATED_DESIGN_CONTENT_REVIEW_NOT_INDEPENDENT",
+        "scope": "Original module story and QA definitions with both applicable Web/Android audiences; no source build or release",
+        "file_sha256": "0a293c81b9ebe670fcf58f498e84349db55233c8c59100fa564b1e74e0dbb949",
+        "actual_web_android_qa": "NOT_RUN",
+        "qualified_independent_review": "NOT_RUN",
+        "formal_harness_resolver": "NOT_RUN",
+        "source_complete": "NOT_APPROVED"
+      }
     },
     "planning/cg-15-patients-appointments": {
       "artifact": "modules/cg-15-patients-appointments/module.md",
       "status": "DELEGATED_APPROVED",
       "approval_mode": "OWNER_DELEGATED_DESIGN_CONTENT",
       "delegation_source": "Owner explicitly approved CG15 Patients Schedules and Booking expert planning review, exact prior module checks, SHA-bound delegate design approval, and stop before CG16 on 15 November 2026",
-      "sha256": "8e7e84fc417588f45e73a0d36d5b94f9d9ca920768410e9557e7cbfce99bc6fa",
-      "current_artifact_sha256": "8e7e84fc417588f45e73a0d36d5b94f9d9ca920768410e9557e7cbfce99bc6fa",
-      "approved_by": "JASIQ AI Design Review Agent",
-      "approved_at": "2026-11-16",
+      "sha256": "8b16f452d134ce6808e6242b5e977404e87a582a8a49b8daab945ce2ef23222b",
+      "current_artifact_sha256": "8b16f452d134ce6808e6242b5e977404e87a582a8a49b8daab945ce2ef23222b",
+      "approved_by": "JASIQ AI Design Review Agent (owner-delegated)",
+      "approved_at": "2026-11-21",
       "evidence": "https://github.com/jasiqlabs/careganga/blob/feature/careganga-greenfield-prd-20261114/specs/initiatives/careganga-foundation-platform/modules/cg-15-patients-appointments/module.md",
       "quality_review": {
         "status": "SOURCE_REVIEW_COMPLETED",
@@ -4993,17 +5077,27 @@
         "review_kind": "FULL_CG15_8_STORY_128_QA_DESIGN_SOURCE"
       },
       "previous_artifact_sha256": "de045775a4dbb8c7385904d42e6ddc78f522786b6545838b836ebff0e31a0046",
-      "review_evidence": "CURRENT_SOURCE_HASH_AND_TARGETED_AUTH_CROSS_MODULE_CONSISTENCY_REVIEW"
+      "review_evidence": "OWNER_DIRECTED_24_MODULE_WEB_INTERNAL_PUBLIC_ANDROID_SAME_ROLE_PARITY_DESIGN_REVIEW_NOT_RUNTIME",
+      "last_design_content_review": {
+        "date": "2026-11-21",
+        "method": "OWNER_DELEGATED_DESIGN_CONTENT_REVIEW_NOT_INDEPENDENT",
+        "scope": "Original module story and QA definitions with both applicable Web/Android audiences; no source build or release",
+        "file_sha256": "8b16f452d134ce6808e6242b5e977404e87a582a8a49b8daab945ce2ef23222b",
+        "actual_web_android_qa": "NOT_RUN",
+        "qualified_independent_review": "NOT_RUN",
+        "formal_harness_resolver": "NOT_RUN",
+        "source_complete": "NOT_APPROVED"
+      }
     },
     "dld/cg-15-patients-appointments": {
       "artifact": "modules/cg-15-patients-appointments/dld.md",
       "status": "DELEGATED_APPROVED",
       "approval_mode": "OWNER_DELEGATED_DESIGN_CONTENT",
       "delegation_source": "Owner explicitly approved CG15 Patients Schedules and Booking expert planning review, exact prior module checks, SHA-bound delegate design approval, and stop before CG16 on 15 November 2026",
-      "sha256": "8b6ed28ddd82954b3c46f246b76a9c218eac0915198cb9497395bce119688e80",
-      "current_artifact_sha256": "8b6ed28ddd82954b3c46f246b76a9c218eac0915198cb9497395bce119688e80",
-      "approved_by": "JASIQ AI Design Review Agent",
-      "approved_at": "2026-11-16",
+      "sha256": "6ab0c351a5626c29306f736e07f67fc8e7b046609b163c5fdf6ac73fef59e9f5",
+      "current_artifact_sha256": "6ab0c351a5626c29306f736e07f67fc8e7b046609b163c5fdf6ac73fef59e9f5",
+      "approved_by": "JASIQ AI Design Review Agent (owner-delegated)",
+      "approved_at": "2026-11-21",
       "evidence": "https://github.com/jasiqlabs/careganga/blob/feature/careganga-greenfield-prd-20261114/specs/initiatives/careganga-foundation-platform/modules/cg-15-patients-appointments/dld.md",
       "quality_review": {
         "status": "SOURCE_REVIEW_COMPLETED",
@@ -5062,17 +5156,27 @@
         "review_kind": "FULL_CG15_8_STORY_128_QA_DESIGN_SOURCE"
       },
       "previous_artifact_sha256": "a1b4306d63b697141f7eae856da6e1dff341d3da13e1b3161fc0edd0413d88f4",
-      "review_evidence": "CURRENT_SOURCE_HASH_AND_TARGETED_AUTH_CROSS_MODULE_CONSISTENCY_REVIEW"
+      "review_evidence": "OWNER_DIRECTED_24_MODULE_WEB_INTERNAL_PUBLIC_ANDROID_SAME_ROLE_PARITY_DESIGN_REVIEW_NOT_RUNTIME",
+      "last_design_content_review": {
+        "date": "2026-11-21",
+        "method": "OWNER_DELEGATED_DESIGN_CONTENT_REVIEW_NOT_INDEPENDENT",
+        "scope": "Original module story and QA definitions with both applicable Web/Android audiences; no source build or release",
+        "file_sha256": "6ab0c351a5626c29306f736e07f67fc8e7b046609b163c5fdf6ac73fef59e9f5",
+        "actual_web_android_qa": "NOT_RUN",
+        "qualified_independent_review": "NOT_RUN",
+        "formal_harness_resolver": "NOT_RUN",
+        "source_complete": "NOT_APPROVED"
+      }
     },
     "uiux/cg-15-patients-appointments": {
       "artifact": "modules/cg-15-patients-appointments/uiux.md",
       "status": "DELEGATED_APPROVED",
       "approval_mode": "OWNER_DELEGATED_DESIGN_CONTENT",
       "delegation_source": "Owner explicitly approved CG15 Patients Schedules and Booking expert planning review, exact prior module checks, SHA-bound delegate design approval, and stop before CG16 on 15 November 2026",
-      "sha256": "15497a301e954b89d2781ee52dbb344b08babb5b84deaa90cd98cb5ce44dfd6a",
-      "current_artifact_sha256": "15497a301e954b89d2781ee52dbb344b08babb5b84deaa90cd98cb5ce44dfd6a",
-      "approved_by": "JASIQ AI Design Review Agent",
-      "approved_at": "2026-11-16",
+      "sha256": "6b7658b5b05b81a23eb4ae799cae0839c1f4b1476f58b1525de16f5d568d3cce",
+      "current_artifact_sha256": "6b7658b5b05b81a23eb4ae799cae0839c1f4b1476f58b1525de16f5d568d3cce",
+      "approved_by": "JASIQ AI Design Review Agent (owner-delegated)",
+      "approved_at": "2026-11-21",
       "evidence": "https://github.com/jasiqlabs/careganga/blob/feature/careganga-greenfield-prd-20261114/specs/initiatives/careganga-foundation-platform/modules/cg-15-patients-appointments/uiux.md",
       "quality_review": {
         "status": "SOURCE_REVIEW_COMPLETED",
@@ -5137,17 +5241,27 @@
         "review_kind": "FULL_CG15_8_STORY_128_QA_DESIGN_SOURCE"
       },
       "reviewed_by": "JASIQ AI Design Review Agent",
-      "review_evidence": "CURRENT_SOURCE_SHA256_RECOMPUTED_GITHUB_CANONICAL_AUTH_CONTRACT"
+      "review_evidence": "OWNER_DIRECTED_24_MODULE_WEB_INTERNAL_PUBLIC_ANDROID_SAME_ROLE_PARITY_DESIGN_REVIEW_NOT_RUNTIME",
+      "last_design_content_review": {
+        "date": "2026-11-21",
+        "method": "OWNER_DELEGATED_DESIGN_CONTENT_REVIEW_NOT_INDEPENDENT",
+        "scope": "Original module story and QA definitions with both applicable Web/Android audiences; no source build or release",
+        "file_sha256": "6b7658b5b05b81a23eb4ae799cae0839c1f4b1476f58b1525de16f5d568d3cce",
+        "actual_web_android_qa": "NOT_RUN",
+        "qualified_independent_review": "NOT_RUN",
+        "formal_harness_resolver": "NOT_RUN",
+        "source_complete": "NOT_APPROVED"
+      }
     },
     "tasks/cg-15-patients-appointments": {
       "artifact": "modules/cg-15-patients-appointments/tasks.md",
       "status": "DELEGATED_APPROVED",
       "approval_mode": "OWNER_DELEGATED_DESIGN_CONTENT",
       "delegation_source": "Owner explicitly approved CG15 Patients Schedules and Booking expert planning review, exact prior module checks, SHA-bound delegate design approval, and stop before CG16 on 15 November 2026",
-      "sha256": "462b8bb7656fd5a06c0f23bf931becc3a20589591d79d760c5c0a6f48d0e18f2",
-      "current_artifact_sha256": "462b8bb7656fd5a06c0f23bf931becc3a20589591d79d760c5c0a6f48d0e18f2",
-      "approved_by": "JASIQ AI Design Review Agent",
-      "approved_at": "2026-11-16",
+      "sha256": "b7ee48dc135ccc8385c02e2468f736afbb5c0137d852e8869d8f8ad5d395544a",
+      "current_artifact_sha256": "b7ee48dc135ccc8385c02e2468f736afbb5c0137d852e8869d8f8ad5d395544a",
+      "approved_by": "JASIQ AI Design Review Agent (owner-delegated)",
+      "approved_at": "2026-11-21",
       "evidence": "https://github.com/jasiqlabs/careganga/blob/feature/careganga-greenfield-prd-20261114/specs/initiatives/careganga-foundation-platform/modules/cg-15-patients-appointments/tasks.md",
       "quality_review": {
         "status": "SOURCE_REVIEW_COMPLETED",
@@ -5210,7 +5324,17 @@
         "review_kind": "FULL_CG15_8_STORY_128_QA_DESIGN_SOURCE"
       },
       "previous_artifact_sha256": "0cdd446f74b21082c9c0398256c982163aacd7756b1d094de1984342daca019a",
-      "review_evidence": "CURRENT_SOURCE_HASH_AND_TARGETED_AUTH_CROSS_MODULE_CONSISTENCY_REVIEW"
+      "review_evidence": "OWNER_DIRECTED_24_MODULE_WEB_INTERNAL_PUBLIC_ANDROID_SAME_ROLE_PARITY_DESIGN_REVIEW_NOT_RUNTIME",
+      "last_design_content_review": {
+        "date": "2026-11-21",
+        "method": "OWNER_DELEGATED_DESIGN_CONTENT_REVIEW_NOT_INDEPENDENT",
+        "scope": "Original module story and QA definitions with both applicable Web/Android audiences; no source build or release",
+        "file_sha256": "b7ee48dc135ccc8385c02e2468f736afbb5c0137d852e8869d8f8ad5d395544a",
+        "actual_web_android_qa": "NOT_RUN",
+        "qualified_independent_review": "NOT_RUN",
+        "formal_harness_resolver": "NOT_RUN",
+        "source_complete": "NOT_APPROVED"
+      }
     },
     "planning/cg-16-healthcare-diagnostics": {
       "artifact": "modules/cg-16-healthcare-diagnostics/module.md",
