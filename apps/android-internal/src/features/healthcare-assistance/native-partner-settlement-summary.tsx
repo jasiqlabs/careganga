@@ -61,7 +61,7 @@ export function NativePartnerSettlementSummary({token,onExit,onExpired}:Props){
   return()=>{live=false};
  },[request]);
  const refresh=useCallback(async()=>{
-  if(!ID.test(center))return;
+  if(!ID.test(center))throw Error("Choose your assigned healthcare center.");
   const data=await request("my-centers/"+center+"/months/"+month);
   if(!data||typeof data!=="object"||!("month" in data)||
    data.month!==month||!("patientCollectionNotFoundationIncome" in data)||
