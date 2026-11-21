@@ -16,6 +16,67 @@ type Detail={pageRef:string;kind:string;slug:string;version:number;
  title:string;seoTitle:string;seoDescription:string;canonicalPath:string;
  sections:Section[];assets:Asset[];navigation:Navigation|null;
  publicationStatus:string;scheduledAt:string|null};
+// Same existing CMS editorial page types, slugs and initial section shapes as
+// the original Web CmsExtendedWorkspace. These are draft defaults, not a
+// second publication or independent CMS module.
+type NewKind="IMPACT"|"COMPLIANCE"|"GALLERY"|"ARTICLE"|"CONTACT"|"HEALTHCARE"|"POLICY";
+type NewPage={kind:NewKind;slug:string;title:string;seoTitle:string;
+ seoDescription:string;sections:Section[];assets:Asset[]};
+const newKinds:NewKind[]=["IMPACT","COMPLIANCE","GALLERY","ARTICLE",
+ "CONTACT","HEALTHCARE","POLICY"];
+const legalPages=[["terms-and-conditions","Terms & Conditions"],
+ ["privacy-policy","Privacy Policy"],["cookie-policy","Cookie Policy"],
+ ["disclaimer","Disclaimer"],["refund-and-cancellation","Refund & Cancellation"],
+ ["grievance-redressal","Grievance Redressal"],
+ ["copyright-and-intellectual-property","Copyright & Intellectual Property"]];
+const impactGroups=["HERO","PILLARS","STATS","GROWTH","GEOGRAPHY",
+ "BREAKDOWN","FOCUS","STORIES","UPDATES","CTA"];
+const day=()=>new Date().toISOString().slice(0,10);
+const initialKind=(kind:NewKind):NewPage=>{
+ const sections:Section[]=kind==="IMPACT"?
+  impactGroups.map((group,order)=>({kind:"IMPACT_GROUP",order,fields:{
+   group,heading:"",intro:"",source:"",asOfDate:day(),items:[]}})):
+ kind==="COMPLIANCE"?[{kind:"COMPLIANCE_FACTS",order:0,fields:{
+   heading:"",summary:"",badgeText:"",subtitle:"",importantNote:"",
+   issuer:"",pan:"",registrationNumber:"",approvalNumber:"",
+   validFrom:"",validUntil:"",verifiedAsOf:day(),source:"",
+   verification:"NOT_VERIFIED",
+   disclaimer:"Check current official records before claiming a tax benefit.",
+   documents:[]}}]:
+ kind==="GALLERY"?[{kind:"GALLERY_GRID",order:0,fields:{
+   heading:"",description:"",videosHeading:"Stories in Motion",
+   videosDescription:"",publicationsHeading:"Publications & Reports",
+   publicationsDescription:"",photosEmptyText:"",videosEmptyText:"",
+   publicationsEmptyText:"",items:[]}}]:
+ kind==="ARTICLE"?[{kind:"ARTICLE_BODY",order:0,fields:{
+   heading:"",category:"",excerpt:"",body:"",authorLabel:"",
+   source:"",asOfDate:day(),tags:[]}}]:
+ kind==="CONTACT"?[
+  {kind:"CONTACT_INFO",order:0,fields:{
+   heroTitle:"Get In Touch",heroIntro:"",officeHours:"",mapUrl:"",
+   inquiries:[{title:"General Inquiries",description:""},
+    {title:"Volunteer With Us",description:""},
+    {title:"CSR Partnerships",description:""}],faqs:[],socialLinks:[]}},
+  {kind:"RICH_TEXT",order:1,fields:{
+   heading:"Contact the Foundation",
+   body:"Send a private message to CareGanga Foundation for general information.",
+   eyebrow:"",variant:"STANDARD",highlights:[]}}]:
+ kind==="POLICY"?[{kind:"RICH_TEXT",order:0,fields:{
+   heading:legalPages[0][1],body:"",eyebrow:"",variant:"STANDARD",highlights:[]}}]:
+ [{kind:"HERO",order:0,fields:{
+   heading:"Healthcare Assistance",subtitle:"",description:"",eyebrow:"",
+   tags:[],visible:true,headingFont:"SERIF",headingWeight:"BOLD",
+   headingSize:"LARGE",headingColor:"#FFE34A",subtitleColor:"#8CF442"}},
+  {kind:"HEALTHCARE_CATEGORIES",order:10,fields:{
+   heading:"",intro:"",categories:[]}}];
+ const slug=kind==="IMPACT"?"our-impact":kind==="COMPLIANCE"?"80g":
+  kind==="POLICY"?legalPages[0][0]:kind.toLowerCase();
+ return {kind,slug,title:kind==="POLICY"?legalPages[0][1]:"",
+  seoTitle:"",seoDescription:"",sections,assets:[]};
+};
+const canonicalFor=(kind:NewKind,slug:string)=>kind==="COMPLIANCE"?
+ "/ngo-information":kind==="ARTICLE"?"/blog/"+slug:
+ kind==="POLICY"?"/policies/"+slug:"/"+slug;
 type Props={token:string;canManage:boolean;canPublish:boolean;
  onExit:()=>void;onExpired:()=>void};
 type Command={kind:string;key:string;path:string;
@@ -96,6 +157,7 @@ export function NativeCmsEditorial({token,canManage,canPublish,onExit,
  onExpired}:Props){
  const [pages,setPages]=useState<Page[]>([]);
  const [selected,setSelected]=useState<Detail|null>(null);
+ const [newPage,setNewPage]=useState<NewPage|null>(null);
  const [draft,setDraft]=useState<Detail|null>(null);
  const [busy,setBusy]=useState(false),[loading,setLoading]=useState(true);
  const [uncertain,setUncertain]=useState(false);
@@ -121,6 +183,7 @@ export function NativeCmsEditorial({token,canManage,canPublish,onExit,
   if(!page||!Array.isArray(page.sections)||!Array.isArray(page.assets)||
    !page.pageRef||!Number.isSafeInteger(page.version))
    throw Error("The original CMS revision is incomplete.");
+  setNewPage(null);
   setSelected(page);setDraft(JSON.parse(JSON.stringify(page)) as Detail);
   setUncertain(false);setPending(null);setSchedule("");
  },[token]);
@@ -165,6 +228,26 @@ export function NativeCmsEditorial({token,canManage,canPublish,onExit,
   const action:Command={kind,key:Crypto.randomUUID(),method,path,payload};
   void execute(action);
  };
+ const newContent=(p:NewPage)=>({
+  kind:p.kind,slug:p.slug,title:p.title,
+  seoTitle:p.seoTitle.trim()||p.title,
+  seoDescription:p.seoDescription,canonicalPath:canonicalFor(p.kind,p.slug),
+  sections:p.sections,assets:p.assets
+ });
+ const create=()=>{
+  if(!canManage||!newPage||busy||uncertain)return;
+  if(newPage.title.trim().length<3||
+   !/^[a-z0-9][a-z0-9-]{0,69}$/.test(newPage.slug)){
+   setError("Enter a page title and a valid original page slug.");return;
+  }
+  Alert.alert("Create unpublished Foundation CMS draft?",
+   "Only the original CG18 page will be created. Independent approval is required to publish.",[
+    {text:"Cancel",style:"cancel"},
+    {text:"Create draft",onPress:()=>perform("create","POST","pages",
+     {content:newContent(newPage)})}
+   ]);
+ };
+ const changeNew=(patch:Partial<NewPage>)=>setNewPage(old=>old?{...old,...patch}:null);
  const change=<K extends keyof Detail,>(k:K,v:Detail[K])=>
   setDraft(current=>current?{...current,[k]:v}:null);
  const replaceSection=(i:number,fields:Record<string,unknown>)=>
@@ -200,6 +283,45 @@ export function NativeCmsEditorial({token,canManage,canPublish,onExit,
       setError("");void open(p.pageRef).catch(fail);
      },busy)}
    </View>)}
+   {canManage&&!newPage&&button("Create a new original Foundation page",()=>{
+    setSelected(null);setDraft(null);setError("");
+    setNewPage(initialKind("ARTICLE"));
+   },busy||uncertain)}
+   {canManage&&newPage&&<View style={styles.panel}>
+    <Text style={styles.heading}>Create an unpublished original CMS draft</Text>
+    <Text style={styles.note}>Uses the original Web CMS page kinds and strict
+     server template validation. A new draft is never automatically public.</Text>
+    <Text style={styles.heading}>Existing page type</Text>
+    <View style={styles.row}>{newKinds.map(k=>
+     <View key={k}>{button((newPage.kind===k?"✓ ":"")+title(k),()=>{
+      setNewPage(initialKind(k));setError("");},busy||uncertain)}</View>)}</View>
+    {newPage.kind==="POLICY"&&<View style={styles.panel}>
+     <Text style={styles.heading}>Existing legal-page type</Text>
+     {legalPages.map(([slug,heading])=>button(
+      (newPage.slug===slug?"✓ ":"")+heading,()=>changeNew({
+       slug,title:heading,sections:newPage.sections.map(x=>({
+        ...x,fields:{...x.fields,heading}}))}),busy||uncertain))}
+    </View>}
+    <EditField name="Public page slug" value={newPage.slug} locked={locked}
+     onChange={v=>changeNew({slug:String(v).trim().toLowerCase()})}/>
+    <EditField name="Page title" value={newPage.title} locked={locked}
+     onChange={v=>changeNew({title:String(v)})}/>
+    <EditField name="Search title" value={newPage.seoTitle} locked={locked}
+     onChange={v=>changeNew({seoTitle:String(v)})}/>
+    <EditField name="Search description" value={newPage.seoDescription}
+     locked={locked} onChange={v=>changeNew({seoDescription:String(v)})}/>
+    {newPage.sections.map((sec,i)=><View key={sec.kind+"-"+i} style={styles.panel}>
+     <Text style={styles.heading}>{title(sec.kind)}</Text>
+     <EditField name="Source content" value={sec.fields} locked={locked}
+      onChange={v=>setNewPage(old=>old?{...old,
+       sections:old.sections.map((x,j)=>i===j?{...x,
+        fields:v as Record<string,unknown>}:x)}:null)}/>
+    </View>)}
+    {button("Create original unpublished page draft",create,
+     locked||newPage.title.trim().length<3)}
+    {button("Cancel page creation",()=>{
+     setNewPage(null);setError("");},busy)}
+   </View>}
    {draft&&selected&&<View style={styles.panel}>
     <Text style={styles.heading}>{draft.title}</Text>
     <Text style={styles.note}>Original page: {title(draft.kind)} ·
@@ -292,6 +414,7 @@ const styles=StyleSheet.create({
  panel:{borderWidth:1,borderColor:t.border,backgroundColor:t.surface,
   borderRadius:12,padding:11,gap:8},
  nested:{gap:8,padding:8,borderWidth:1,borderColor:t.border,borderRadius:9},
+ row:{flexDirection:"row",flexWrap:"wrap",gap:6},
  field:{gap:4},
  input:{borderWidth:1,borderColor:t.border,borderRadius:9,
   backgroundColor:t.surface,padding:10,color:t.text,minHeight:44},
