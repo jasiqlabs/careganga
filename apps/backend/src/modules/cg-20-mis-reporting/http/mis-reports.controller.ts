@@ -1,6 +1,7 @@
-import {Body,Controller,Get,Header,Headers,Param,Patch,Post} from "@nestjs/common";
+import {Body,Controller,Get,Header,Headers,Param,Patch,Post,StreamableFile} from "@nestjs/common";
 import {MisReportSourceService} from "../application/mis-report-source.service";
 import {MisSavedReportService} from "../application/mis-saved-report.service";
+import {MisReportRunService} from "../application/mis-report-run.service";
 
 /** Private report catalog and live source preview. No arbitrary SQL or
  * persisted rows, and no anonymous/public route.
@@ -8,7 +9,8 @@ import {MisSavedReportService} from "../application/mis-saved-report.service";
 @Controller("api/v1/mis/reports")
 export class MisReportsController{
  constructor(private readonly source:MisReportSourceService,
-  private readonly saved:MisSavedReportService){}
+  private readonly saved:MisSavedReportService,
+  private readonly runs:MisReportRunService){}
  @Get("templates")
  @Header("Cache-Control","private, no-store")
  templates(@Headers("authorization")token:string){
@@ -44,4 +46,27 @@ export class MisReportsController{
  @Header("Cache-Control","private, no-store")
  savedRetire(@Headers("authorization")token:string,@Param("reportRef")ref:string,
   @Body()body:unknown){return this.saved.retire(token,ref,body);}
+ @Post("runs")
+ @Header("Cache-Control","private, no-store")
+ createRun(@Headers("authorization")token:string,@Body()body:unknown){
+  return this.runs.create(token,body);
+ }
+ @Get("runs")
+ @Header("Cache-Control","private, no-store")
+ listRuns(@Headers("authorization")token:string){return this.runs.list(token);}
+ @Get("runs/:runRef")
+ @Header("Cache-Control","private, no-store")
+ runStatus(@Headers("authorization")token:string,@Param("runRef")ref:string){
+  return this.runs.status(token,ref);
+ }
+ @Get("runs/:runRef/download")
+ @Header("Cache-Control","private, no-store")
+ @Header("X-Content-Type-Options","nosniff")
+ async download(@Headers("authorization")token:string,
+  @Param("runRef")ref:string){
+  const file=await this.runs.download(token,ref);
+  return new StreamableFile(file.bytes,{type:file.mime,
+   disposition:'attachment; filename="'+file.filename+'"'});
+ }
+
 }
