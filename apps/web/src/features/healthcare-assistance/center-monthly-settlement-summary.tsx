@@ -21,10 +21,11 @@ const monthNow=()=>{
  return String(date.getFullYear())+"-"+String(date.getMonth()+1).padStart(2,"0");
 };
 const money=(value:string|undefined)=>{
- const amt=typeof value==="string"&&/^[0-9]{1,12}$/.test(value)?
-  BigInt(value):0n;
- return "₹"+(amt/100n).toLocaleString("en-IN")+"."+
-  (amt%100n).toString().padStart(2,"0");
+ if(typeof value!=="string"||!/^-?[0-9]{1,14}$/.test(value))
+  return "Not yet confirmed";
+ const amt=BigInt(value),abs=amt<0n?-amt:amt;
+ return (amt<0n?"−":"")+"₹"+(abs/100n).toLocaleString("en-IN")+"."+
+  (abs%100n).toString().padStart(2,"0");
 };
 const MONTH=/^20[2-9]\d-(0[1-9]|1[0-2])$/;
 type Props={centerRef:string};
