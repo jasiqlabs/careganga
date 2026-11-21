@@ -47,7 +47,8 @@ contains(mis+"http/mis-dashboard.controller.ts",[
 const source=contains(mis+"application/mis-report-source.service.ts",[
  "parseSafeReport","suppressAppointmentCells","FINANCE_POSTED_LEDGER",
  "FINANCE_POSTED_SUMMARY","FINANCE_POSTED_TREND","FINANCE_POSTED_GROUPED",
- "APPOINTMENT_STATUS","PLATFORM_AUDIT_ACTIVITY","DIAGNOSTICS_CATALOG_SUMMARY",
+ "APPOINTMENT_STATUS","APPOINTMENT_STATUS_GROUPED",
+ "PLATFORM_AUDIT_ACTIVITY","DIAGNOSTICS_CATALOG_SUMMARY",
  "previewScheduledFinance","Date.parse(fromDay","Date.parse(untilDay",
  '"mis.reports.view"',"this.finance","this.patients"
 ]);
