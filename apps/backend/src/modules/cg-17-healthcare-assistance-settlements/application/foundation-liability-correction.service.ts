@@ -176,23 +176,43 @@ export class FoundationLiabilityCorrectionService{
    await this.centers.assertFoundationCenter(c,actor,center,
     "healthcare.assistance.liabilities.manage",false);
    const v=await this.original(c,actor.realmId,center,liability,false);
-   const [existing,claimed,offset,date]=await Promise.all([
+   const [existing,claim,claimCorrection,offset,date]=await Promise.all([
     this.prior(c,actor.realmId,liability),
-    this.claimed(c,actor.realmId,liability),
+    this.claim(c,actor.realmId,center,liability,false),
+    this.claimedPrior(c,actor.realmId,liability),
     this.reversed(c,actor.realmId,v.original_journal_ref),
     c.query<{date:string}>("SELECT current_date::text AS date")
    ]);
    const canCorrect=!!v.original_journal_ref&&v.posting_state==="POSTED"&&
-     !!v.original_poster&&!existing&&!claimed&&!offset;
+     !!v.original_poster&&v.original_poster!==actor.accountId&&
+     !existing&&!claimCorrection&&!offset&&
+     (!claim||claim.proposed_by!==actor.accountId);
    const finance=canCorrect?await this.cg09.options(c,actor,date.rows[0].date):
     {financialYears:[],accounts:[],complete:true};
+   let needed="0",bankRecoveries:{
+    bankMatchRef:string;bankItemLabel:string;amountMinor:string}[]=[];
+   if(canCorrect&&claim&&v.original_journal_ref){
+    const balance=await this.claimBalances(c,actor.realmId,claim,v.amount_minor);
+    needed=balance.need;
+    if(BigInt(needed)>0n){
+     const payable=await this.cg09.payableAccountForAccrual(
+      c,actor,v.original_journal_ref,v.amount_minor);
+     const bank=await this.recovery.recoveryOptions(c,actor,payable,needed);
+     bankRecoveries=bank.bankRecoveries;
+    }
+   }
    const result:Summary={liabilityRef:liability,
     sourcePosted:v.posting_state==="POSTED"&&!!v.original_journal_ref,
-    canCorrect,claimAlreadyCreated:claimed,originalReversed:offset,
-    corrected:!!existing,correctionReason:existing?.reason??null,
-    reversalJournalRef:existing?.reversal_journal_ref??null};
+    canCorrect,claimAlreadyCreated:!!claim,originalReversed:offset,
+    corrected:!!existing||!!claimCorrection,
+    correctionReason:existing?.reason??claimCorrection?.reason??null,
+    reversalJournalRef:existing?.reversal_journal_ref??
+     claimCorrection?.reversal_journal_ref??null};
    return {...result,postingDate:date.rows[0].date,
-    financialYears:finance.financialYears,complete:finance.complete};
+    financialYears:finance.financialYears,complete:finance.complete,
+    claimState:claim?.state??"NOT_CLAIMED",
+    requiredVerifiedRecoveryMinor:needed,bankRecoveries,
+    recoveredFromProviderMinor:claimCorrection?.recovery_minor??"0"};
   });
  }
  async reverse(token:string,centerRaw:string,liabilityRaw:string,raw:unknown){
