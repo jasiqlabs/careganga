@@ -195,12 +195,23 @@ export class MonthlyProviderSettlementService{
     "healthcare.assistance.settlements.view",false);
    const breakdown=await this.breakdown(c,a.realmId,center,period);
    const saved=await this.claim(c,a.realmId,center,period,false);
-   if(saved)return {...this.view(saved),...breakdown};
+   if(saved){
+    const view=this.view(saved);
+    if(saved.state==="PROPOSED")return {...view,
+     eligibleAccruedMinor:view.approvedFoundationMinor,
+     proposedClaimMinor:view.approvedFoundationMinor,
+     approvedFoundationMinor:"0",outstandingMinor:"0",
+     ...breakdown};
+    return {...view,eligibleAccruedMinor:"0",proposedClaimMinor:"0",
+     ...breakdown};
+   }
    // An unapproved view is a truthful aggregate only; it never creates a due.
    const rows=await this.candidate(c,a.realmId,center,period,false);
    return {month:period.slice(0,7),state:"NOT_PREPARED",
-    postedLiabilities:rows.length,approvedFoundationMinor:rows.reduce(
+    postedLiabilities:rows.length,
+    eligibleAccruedMinor:rows.reduce(
      (sum,x)=>sum+minor(x.amount_minor),0n).toString(),
+    proposedClaimMinor:"0",approvedFoundationMinor:"0",
     actualPaidMinor:"0",outstandingMinor:"0",
     paidVerified:false,patientCollectionNotFoundationIncome:true,
     ...breakdown};
