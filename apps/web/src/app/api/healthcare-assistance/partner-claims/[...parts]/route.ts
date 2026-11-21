@@ -36,7 +36,7 @@ export async function GET(req:NextRequest,ctx:Ctx){
   if(!object||!Array.isArray(object.claims)||
     !object.claims.every(v=>v&&typeof v==="object"&&
       typeof v.claimCode==="string"&&
-      typeof v.state==="string"&&v.state==="PENDING_VERIFICATION"))
+      typeof v.state==="string"&&["PENDING_VERIFICATION","PARTNER_ATTESTED"].includes(v.state)))
    return result(503,"Current partner claims could not be verified.");
   return NextResponse.json(body,{headers:{"Cache-Control":"private, no-store"}});
  }catch{return result(503,"The current claim list could not be confirmed. Retry.");}
