@@ -203,7 +203,9 @@ export function NativeMisDashboard({token,onExpired,onOpenFinance}:{
        <Text style={styles.link}>Open detailed finance reports</Text>
       </Pressable>}
     </>:<Text style={styles.helper}>{source.state==="EMPTY"?
-      "No original records for this permitted scope.":
+      "No records found for this permitted reporting scope.":
+      source.state==="SUPPRESSED"?
+      "This group is too small to show its private appointment counts.":
       "Original source unavailable; no estimated figures."}</Text>}
    </View>)}
    {overview.sources.length===0&&
