@@ -189,7 +189,7 @@ export function CompletedConsultationLiabilityWorkspace({canManage,canPost}:Prop
     <button type="button" className="primary" disabled={busy}
      onClick={()=>void recognize()}>Recognize approved completed-service obligation</button>}
    {canPost&&status?.state==="APPROVED_LIABILITY"&&
-    !status.foundationJournalPosted&&status.liabilityRef&&
+    status.liabilityRef&&
     ID.test(status.liabilityRef)&&
     <FoundationJournalPostingPanel key={status.liabilityRef}
      centerRef={center} liabilityRef={status.liabilityRef}
