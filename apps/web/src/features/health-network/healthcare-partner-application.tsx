@@ -42,8 +42,8 @@ export function HealthcarePartnerApplication(){
  const [tracking,setTracking]=useState("");
  const [checked,setChecked]=useState<{reference:string;status:string}|null>(null);
  const [busy,setBusy]=useState(false),[error,setError]=useState("");
- const update=<K extends keyof Fields>(key:K,value:Fields[K])=>{
-  if(!sent)setFields(prev=>({...prev,[key]:value}));
+ const update=<K extends keyof Fields,>(key:K,value:Fields[K])=>{
+  if(!sent&&!result)setFields(prev=>({...prev,[key]:value}));
  };
  async function send(payload:Sent){
   if(busy)return;
