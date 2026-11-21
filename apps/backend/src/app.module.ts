@@ -13,6 +13,7 @@ import { PatientsAppointmentsModule } from "./modules/cg-15-patients-appointment
 import { DiagnosticsModule } from "./modules/cg-16-healthcare-diagnostics/diagnostics.module";
 import { HealthcareAssistanceModule } from "./modules/cg-17-healthcare-assistance-settlements/healthcare-assistance.module";
 import { MisReportingModule } from "./modules/cg-20-mis-reporting/mis-reporting.module";
+import { HrEnrollmentModule } from "./modules/cg-10-human-resources/hr-enrollment.module";
 
-@Module({ imports: [DatabaseModule, IdentityAccessModule, PlatformConfigurationModule, RegistrationApprovalsModule, DocumentsNotificationsModule, FoundationStructureModule, FinanceAccountingModule, CmsPublicContentModule, HealthNetworkModule, PatientsAppointmentsModule, DiagnosticsModule, HealthcareAssistanceModule, MisReportingModule], controllers: [HealthController] })
+@Module({ imports: [DatabaseModule, IdentityAccessModule, PlatformConfigurationModule, RegistrationApprovalsModule, DocumentsNotificationsModule, FoundationStructureModule, FinanceAccountingModule, CmsPublicContentModule, HealthNetworkModule, PatientsAppointmentsModule, DiagnosticsModule, HealthcareAssistanceModule, MisReportingModule, HrEnrollmentModule], controllers: [HealthController] })
 export class AppModule {}
