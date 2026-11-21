@@ -353,7 +353,7 @@ export function NativeCmsEditorial({token,canManage,canPublish,canReview,onExit,
     {button(p.title+" · "+title(p.kind)+" · Draft "+title(p.draftStatus)+
      " · Public "+title(p.publicStatus??"Not published"),()=>{
       if(busy)return;
-      setError("");void open(p.pageRef).catch(fail);
+      setError("");void open(p.pageRef).catch(readFailure);
      },busy||uncertain)}
    </View>)}
    {canManage&&!newPage&&button("Create a new original Foundation page",()=>{
