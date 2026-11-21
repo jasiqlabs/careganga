@@ -120,3 +120,26 @@ export function MisAppointmentDistribution({metrics}:{metrics:Metric[]}){
   </div>
  </section>;
 }
+
+/** Owner CG15 groups are already small-cell-suppressed on the server.
+ * This renders exactly those grouped counts, with no per-patient queries.
+ */
+export function MisAppointmentGroupBars({rows}:{rows:{statusLabel:string;count:string}[]}){
+ const safe=rows.map(item=>({label:item.statusLabel,value:safeBig(item.count)}));
+ const maximum=safe.reduce((n,item)=>item.value>n?item.value:n,0n);
+ return <section role="group" aria-label="Authorized appointment status groups"
+  style={{display:"grid",gap:10,marginBlock:14}}>
+  {safe.map((group,i)=><div key={i} style={{padding:10,
+   border:"1px solid var(--cg-border)",borderRadius:8}}>
+   <div style={{display:"flex",justifyContent:"space-between",gap:10}}>
+    <strong>{group.label}</strong>
+    <span>{group.value.toString()} appointments</span>
+   </div>
+   <div aria-hidden="true" style={{height:9,borderRadius:6,
+    background:"var(--cg-border)",marginTop:6,overflow:"hidden"}}>
+    <div style={{height:"100%",
+     width:width(group.value,maximum)+"%",background:"var(--cg-accent)"}}/>
+   </div>
+  </div>)}
+ </section>;
+}
