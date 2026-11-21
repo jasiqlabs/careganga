@@ -36,7 +36,7 @@ const amountMinor=(v:unknown)=>{
   throw new BadRequestException({code:"FINANCE_RECONCILIATION_INVALID",field:"amount"});
  return minor.toString();
 };
-type Options={yearRef?:string;branchRef?:string;accountRef?:string;from?:string;to?:string;offset?:string};
+type Options={yearRef?:string;branchRef?:string;accountRef?:string;from?:string;to?:string;offset?:string;areaRef?:string};
 @Injectable()
 export class FinanceReportsService{
  constructor(@Inject(DATABASE) private readonly db:Pool,
@@ -49,8 +49,9 @@ export class FinanceReportsService{
   return this.sessions.requireAction(bearer,
    write?"finance.reconciliation.manage":"finance.reports.view");
  }
- private filters(raw:Options){
-  if(Object.keys(raw).some(k=>!["yearRef","branchRef","accountRef","from","to","offset"].includes(k)))
+ private filters(raw:Options,allowArea=false){
+  if(Object.keys(raw).some(k=>!["yearRef","branchRef","accountRef","from","to","offset"].includes(k)&&
+    !(allowArea&&k==="areaRef")))
    throw new BadRequestException({code:"FINANCE_REPORT_FILTER_INVALID"});
   const fy=raw.yearRef?uuid(raw.yearRef,"yearRef"):null,
    branch=raw.branchRef?uuid(raw.branchRef,"branchRef"):null,
@@ -58,16 +59,19 @@ export class FinanceReportsService{
    from=validDate(raw.from),to=validDate(raw.to);
   if(from&&to&&from>to)
    throw new BadRequestException({code:"FINANCE_REPORT_FILTER_INVALID",field:"date"});
-  return {fy,branch,account,from,to,offset:position(raw.offset)};
+  return {fy,branch,account,from,to,offset:position(raw.offset),
+   areaRef:allowArea&&raw.areaRef?uuid(raw.areaRef,"areaRef"):null};
  }
  private async verifyFilterScope(bearer:string,realm:string,v:{
-  fy:string|null;branch:string|null;account:string|null}){
+  fy:string|null;branch:string|null;account:string|null},areaRef?:string|null){
   const tests:{ref:string|null;field:string;table:string}[]=[
    {ref:v.fy,field:"yearRef",table:"financial_year"},
    {ref:v.branch,field:"branchRef",table:"branch"},
    {ref:v.account,field:"accountRef",table:"finance_account"}
   ];
-  await this.branches.requireFinanceReportBranch(bearer,v.branch);
+  const areaBranches=areaRef?
+   await this.branches.financeAreaBranchRefs(bearer,areaRef,v.branch):null;
+  if(!areaRef)await this.branches.requireFinanceReportBranch(bearer,v.branch);
   for(const t of tests){
    if(!t.ref)continue;
    // Whitelisted table names only: no request values interpolated into SQL.
@@ -77,11 +81,12 @@ export class FinanceReportsService{
    if(!result.rowCount)
     throw new BadRequestException({code:"FINANCE_REPORT_FILTER_INVALID",field:t.field});
   }
+  return areaBranches;
  }
  async options(bearer:string){
   const actor=await this.actor(bearer);
   const scope=await this.branches.financeReportScope(bearer);
-  const [years,accounts,branches]=await Promise.all([
+  const [years,accounts,branches,areas]=await Promise.all([
    this.db.query<{ref:string;name:string;startOn:string;endOn:string}>(
     "SELECT id AS ref,name,start_on::text AS \"startOn\",end_on::text AS \"endOn\" "+
     "FROM financial_year WHERE root_realm_id=$1 ORDER BY start_on DESC LIMIT 30",
@@ -91,13 +96,16 @@ export class FinanceReportsService{
     "WHERE root_realm_id=$1 AND ($2::boolean OR "+
     "(branch_id IS NULL OR branch_id=ANY($3::uuid[]))) "+
     "ORDER BY name,id LIMIT 200",[actor.realmId,scope.all,scope.branchRefs]),
-    this.branches.financeBranches(bearer,"finance.reports.view")
+    this.branches.financeBranches(bearer,"finance.reports.view"),
+    this.branches.financeReportGeographies(bearer)
   ]);
-  return {years:years.rows,accounts:accounts.rows,branches,allBranches:scope.all};
+  return {years:years.rows,accounts:accounts.rows,branches,areas,
+   allBranches:scope.all};
  }
  async ledger(bearer:string,raw:Options){
-  const actor=await this.actor(bearer),v=this.filters(raw);
-  await this.verifyFilterScope(bearer,actor.realmId,v);
+  const actor=await this.actor(bearer),v=this.filters(raw,true);
+  const allowedAreaBranches=await this.verifyFilterScope(
+   bearer,actor.realmId,v,v.areaRef);
   const rows=await this.db.query<{accountName:string;accountCode:string;category:string;
    postingDate:string;description:string;postingKind:string;debitMinor:string;
    creditMinor:string;normalSide:string;journalRef:string;lineRef:string}>(
@@ -114,8 +122,9 @@ export class FinanceReportsService{
    "AND ($4::uuid IS NULL OR l.account_id=$4) "+
    "AND ($5::date IS NULL OR j.posting_date>=$5) "+
    "AND ($6::date IS NULL OR j.posting_date<=$6) "+
+   "AND ($8::uuid[] IS NULL OR l.branch_id=ANY($8::uuid[])) "+
    "ORDER BY j.posting_date DESC,j.id DESC,l.id DESC LIMIT 51 OFFSET $7",
-   [actor.realmId,v.fy,v.branch,v.account,v.from,v.to,v.offset]);
+   [actor.realmId,v.fy,v.branch,v.account,v.from,v.to,v.offset,allowedAreaBranches]);
   return {lines:rows.rows.slice(0,50),
    nextOffset:rows.rows.length>50?v.offset+50:null,
    explanation:"All amounts are from immutable, posted journal lines. No inferred future sources."};
@@ -289,6 +298,7 @@ export class FinanceReportsService{
   */
  async groupedMis(bearer:string,raw:{
   yearRef?:string;branchRef?:string;fromDay?:string;untilDay?:string;
+  areaRef?:string;
   groupBy:"CATEGORY"|"POSTING_KIND"|"ACCOUNT_NAME";
   sortBy?:"NAME"|"DEBIT"|"CREDIT";sortDirection?:"ASC"|"DESC"
  }){
@@ -296,7 +306,9 @@ export class FinanceReportsService{
    yearRef:raw.yearRef,branchRef:raw.branchRef,
    from:raw.fromDay,to:raw.untilDay
   });
-  await this.verifyFilterScope(bearer,actor.realmId,v);
+  const selectedArea=raw.areaRef?uuid(raw.areaRef,"areaRef"):null;
+  const areaBranches=await this.verifyFilterScope(
+   bearer,actor.realmId,v,selectedArea);
   const group=({
    CATEGORY:"g.category",POSTING_KIND:"j.posting_kind",
    ACCOUNT_NAME:"a.name"
@@ -331,9 +343,10 @@ export class FinanceReportsService{
     "AND ($3::uuid IS NULL OR l.branch_id=$3) "+
     "AND ($4::date IS NULL OR j.posting_date>=$4) "+
     "AND ($5::date IS NULL OR j.posting_date<=$5) "+
+    "AND ($6::uuid[] IS NULL OR l.branch_id=ANY($6::uuid[])) "+
     "GROUP BY "+group+" "+
     "ORDER BY "+order+" "+direction+', "groupLabel" ASC LIMIT 51',
-    [actor.realmId,v.fy,v.branch,v.from,v.to]);
+    [actor.realmId,v.fy,v.branch,v.from,v.to,areaBranches]);
    await c.query("COMMIT");active=false;
    return {groups:rows.rows.slice(0,50),partial:rows.rows.length>50,
     sourceAsOf:cutoff.rows[0].asOf.toISOString(),
