@@ -97,6 +97,9 @@ export class MisReportRunService{
   if(preview.state==="PARTIAL")
    throw new BadRequestException({code:"MIS_RUN_PARTIAL",
     message:"This report is incomplete. Narrow its filters before exporting."});
+  if(preview.state==="PARTIAL")
+   throw new BadRequestException({code:"MIS_RUN_PARTIAL",
+    message:"Narrow the report filters before exporting an incomplete source."});
   if(preview.state==="SUPPRESSED")
    throw new ForbiddenException({code:"MIS_RUN_SUPPRESSED",
     message:"This report cannot be shared for a small private group."});
@@ -197,7 +200,17 @@ export class MisReportRunService{
      canDownload:false,message:"File status is unconfirmed. Refresh before retrying."};
    }
    // A role/scope revoked during object storage must prevent READY response.
-   await this.validateSource(token,claimed.rows[0]);
+   const post=await this.validateSource(token,claimed.rows[0]);
+   // Re-read the original source after CG19 finishes the protected file.
+   // If authorization, consent or source data changed, old bytes must not
+   // become downloadable even though the storage write was confirmed.
+   const postDigest=digest({kind:post.kind,view:post.view,
+    columns:post.columns,rows:post.rows,scopeLabel:post.scopeLabel});
+   const previousDigest=digest({kind:fresh.kind,view:fresh.view,
+    columns:fresh.columns,rows:fresh.rows,scopeLabel:fresh.scopeLabel});
+   if(postDigest!==previousDigest)
+    throw new ConflictException({code:"MIS_RUN_CHANGED",
+     message:"The source changed during export. Create a fresh report."});
    const done=await this.db.query<Row>(
     "UPDATE cg20_report_run SET state='READY',artifact_ref=$3,"+
     "source_as_of=$4,result_row_count=$5,updated_at=now() "+
