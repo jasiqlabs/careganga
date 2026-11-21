@@ -34,7 +34,7 @@ const s={
 const count=(v,x)=>v.split(x).length-1;
 const migrationFiles=readdirSync(resolve(root,"apps/backend/db/migrations"))
  .filter(name=>name.endsWith(".sql")).sort();
-const migrationRunnerFilter=/^\\d+_cg\\d+_[a-z0-9_-]+\\.sql$/;
+const migrationRunnerFilter=/^\d+_cg\d+_[a-z0-9_-]+\.sql$/;
 const selectedMigrations=migrationFiles.filter(name=>migrationRunnerFilter.test(name));
 const requiredMigrations=[
  "1713_cg17_erp_off_partner_service_claim_intake.sql",
@@ -47,7 +47,7 @@ const requiredMigrations=[
 const tests=[
  ["All ERP-OFF original finance migrations match the ACTUAL local migration runner's selector",
   requiredMigrations.every(name=>selectedMigrations.includes(name)) &&
-  !migrationFiles.some(name=>/^\\d+[a-z]+_cg\\d+_/.test(name))],
+  !migrationFiles.some(name=>/^\d+[a-z]+_cg\d+_/.test(name))],
  ["Original patient source and scanned payment classification migrate BEFORE guarded review and liability",
   requiredMigrations.every((name,i)=>i===0||
    selectedMigrations.indexOf(requiredMigrations[i-1])<selectedMigrations.indexOf(name))],
