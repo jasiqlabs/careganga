@@ -1,11 +1,12 @@
 "use client";
 import {useCallback,useEffect,useRef,useState} from "react";
 import {safeClientProblem} from "./mis-safe-error";
+import {MisSharedDefinitions} from "./mis-shared-definitions";
 import type {ReportRequest} from "./mis-reports-workspace";
 type Row={ref:string;name:string;version:number;revision:number;
  state:"ACTIVE"|"RETIRED";visibility:"PRIVATE";updatedAt:string};
 type Detail=Row&{request:ReportRequest};
-type Props={canManage:boolean;currentRequest:ReportRequest|null;
+type Props={canManage:boolean;canShare:boolean;currentRequest:ReportRequest|null;
  onRestore:(value:ReportRequest)=>void};
 async function api<T>(path:string,method:"GET"|"POST"|"PATCH"="GET",body?:object){
  const r=await fetch("/api/mis/reports/saved"+path,{
@@ -15,7 +16,7 @@ async function api<T>(path:string,method:"GET"|"POST"|"PATCH"="GET",body?:object
  if(!r.ok)throw new Error(await safeClientProblem(r,"This saved-report operation is unconfirmed. Refresh its current status."));
  return r.json() as Promise<T>;
 }
-export function MisSavedReports({canManage,currentRequest,onRestore}:Props){
+export function MisSavedReports({canManage,canShare,currentRequest,onRestore}:Props){
  const [items,setItems]=useState<Row[]>([]);
  const [selected,setSelected]=useState<Detail|null>(null);
  const [name,setName]=useState("");
@@ -139,5 +140,7 @@ export function MisSavedReports({canManage,currentRequest,onRestore}:Props){
     </>}
    </div>
   </div>}
+  <MisSharedDefinitions selected={selected?{ref:selected.ref,name:selected.name,version:selected.version}:null}
+   canShare={canShare} canManage={canManage} onChanged={()=>void load()}/>
  </section>;
 }
