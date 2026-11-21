@@ -43,6 +43,7 @@ export default async function CenterHome(){
        canUploadLabQuality={allowed.has("lab.quality.record")}
        canProposeMerchant={allowed.has("healthcare.assistance.merchant.manage")}
        canVerifyMerchant={allowed.has("healthcare.assistance.merchant.verify")}
+       canViewSettlements={allowed.has("healthcare.assistance.settlements.view")}
        labERPEnabled={process.env.CAREGANGA_ERP_LAB_ENABLED==="true"}/>
     </HealthcareAdminShell>;
   }catch(e){
