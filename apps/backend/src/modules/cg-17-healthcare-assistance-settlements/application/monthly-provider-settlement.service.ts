@@ -67,6 +67,9 @@ export class MonthlyProviderSettlementService{
   "healthcare.assistance.settlements.review"){
   const a=await this.sessions.requireAction(token,action);
   await this.identity.assertCurrent(c,a,action);
+  // The Foundation-wide ledger must never be available to a partner
+  // representative merely granted own-center settlement.view.
+  await this.identity.assertCurrent(c,a,"health.providers.finance.view");
   if(action==="healthcare.assistance.settlements.review")
    await this.identity.assertCurrent(c,a,"approvals.review");
   return a;
