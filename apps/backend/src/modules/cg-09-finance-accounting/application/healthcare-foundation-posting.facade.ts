@@ -10,6 +10,13 @@ export type HealthcareAccrualSource=Readonly<{
  effectRef:string;effectKey:string;immutableDigest:string;
  amountMinor:string;postingDate:string
 }>;
+
+export type HealthcareAccrualCorrection=Readonly<{
+ originalJournalRef:string;originalEffectRef:string;
+ originalDigest:string;amountMinor:string;
+ requestKey:string;correctionDigest:string;
+ financialYearRef:string;postingDate:string;reason:string;
+}>;
 /** Narrow original CG09 posting authority. No new ledger, account or
  * CG17 dependency. Foundation expense-to-payable accrual has NO bank
  * or cash line, and is independent of patient-paid center receipts.
@@ -79,4 +86,62 @@ export class HealthcareFoundationPostingFacade{
    ]
   });
  }
+
+ /** The sole existing CG09 journal engine creates the opposite entry.
+  * Caller owns verified CG17 source, protected reviewer and idempotency.
+  * Neither the original source nor the posted journal is edited.
+  */
+ async reverseAccrual(c:PoolClient,actor:VerifiedFoundationActor,
+  original:HealthcareAccrualCorrection){
+  if(![original.originalJournalRef,original.originalEffectRef,
+    original.requestKey,original.financialYearRef].every(safe)||
+    !amount(original.amountMinor)||
+    !/^[a-f0-9]{64}$/.test(original.originalDigest)||
+    !/^[a-f0-9]{64}$/.test(original.correctionDigest)||
+    !/^\\d{4}-\\d{2}-\\d{2}$/.test(original.postingDate)||
+    original.reason.length<12||original.reason.length>300)
+   throw new BadRequestException({code:"CG17_ACCRUAL_REVERSAL_INVALID"});
+  const originalJournal=await c.query<{source_ref:string;created_by:string;
+    immutable_payload_digest:string}>(
+   "SELECT source_ref,created_by,immutable_payload_digest FROM journal "+
+   "WHERE id=$1 AND root_realm_id=$2 AND source_owner='CG-09' "+
+   "AND posting_kind='GENERAL' AND status='POSTED' AND reversal_of_id IS NULL "+
+   "FOR SHARE",[original.originalJournalRef,actor.realmId]);
+  const j=originalJournal.rows[0];
+  if(!j||j.source_ref!==original.originalEffectRef||
+    j.immutable_payload_digest!==original.originalDigest||
+    j.created_by===actor.accountId)
+   throw new ConflictException({code:"CG17_ACCRUAL_REVERSAL_SOURCE_CHANGED"});
+  const prior=await c.query<{account_id:string;branch_id:string|null;
+    debit_minor:string;credit_minor:string}>(
+   "SELECT account_id,branch_id,debit_minor::text,credit_minor::text "+
+   "FROM journal_line WHERE root_realm_id=$1 AND journal_id=$2 "+
+   "ORDER BY id FOR SHARE",
+   [actor.realmId,original.originalJournalRef]);
+  if(prior.rows.length!==2||
+    prior.rows.some(x=>x.branch_id!==null)||
+    prior.rows.reduce((x,row)=>x+BigInt(row.debit_minor),0n)!==BigInt(original.amountMinor)||
+    prior.rows.reduce((x,row)=>x+BigInt(row.credit_minor),0n)!==BigInt(original.amountMinor))
+   throw new ConflictException({code:"CG17_ACCRUAL_REVERSAL_LINES_CHANGED"});
+  const offset=await c.query(
+   "SELECT 1 FROM journal WHERE root_realm_id=$1 AND reversal_of_id=$2 "+
+   "LIMIT 1",[actor.realmId,original.originalJournalRef]);
+  if(offset.rowCount)throw new ConflictException({
+   code:"CG17_ACCRUAL_ALREADY_REVERSED"});
+  return this.posting.postBalanced(c,actor,{
+   financialYearRef:original.financialYearRef,
+   postingDate:original.postingDate,
+   sourceRef:original.originalJournalRef,
+   eventKey:original.requestKey,
+   immutableDigest:original.correctionDigest,
+   kind:"REVERSAL",
+   reversalOfRef:original.originalJournalRef,
+   description:"Healthcare liability correction: "+original.reason,
+   lines:prior.rows.map(x=>({
+    accountRef:x.account_id,branchRef:x.branch_id,
+    debitMinor:x.credit_minor,creditMinor:x.debit_minor
+   }))
+  });
+ }
+
 }
