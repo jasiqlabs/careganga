@@ -8,6 +8,11 @@ type Statement={
  actualPaidMinor:string;outstandingMinor:string;
  eligibleAccruedMinor?:string;centerGrossServicesMinor?:string;
  patientPayableMinor?:string;foundationApprovedLiabilityMinor?:string;
+ patientCollectedVerifiedMinor?:string;patientRefundedMinor?:string;
+ partnerPatientCollectedAttestedMinor?:string;proposedClaimMinor?:string;
+ adjustedFoundationMinor?:string;originalApprovedFoundationMinor?:string;
+ grossFoundationPaidMinor?:string;verifiedProviderRecoveryMinor?:string;
+ effectiveState?:string;
  patientCollectionNotFoundationIncome:true
 };
 const ID=/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -72,15 +77,29 @@ export function NativeOwnCenterMis({token,centerRef,onExpired}:{
  const items:readonly {label:string;amount:string|undefined}[]=statement?[
   {label:"Eligible completed services",amount:statement.centerGrossServicesMinor},
   {label:"Patient payment due to the center",amount:statement.patientPayableMinor},
+  {label:"Verified center collection after refunds",amount:statement.patientCollectedVerifiedMinor},
+  {label:"Verified center refunds",amount:statement.patientRefundedMinor},
+  {label:"Patient collections confirmed by service partners",
+   amount:statement.partnerPatientCollectedAttestedMinor},
   {label:"Foundation contribution for completed services",
    amount:statement.foundationApprovedLiabilityMinor},
   ...(approved?[
    {label:"Monthly approved Foundation claim",amount:statement.approvedFoundationMinor},
+   ...(statement.adjustedFoundationMinor&&
+     BigInt(statement.adjustedFoundationMinor)>0n?[
+    {label:"Foundation claim before corrections",amount:statement.originalApprovedFoundationMinor},
+    {label:"Confirmed corrections",amount:statement.adjustedFoundationMinor},
+    {label:"Original gross payout",amount:statement.grossFoundationPaidMinor},
+    {label:"Verified money returned to Foundation",
+     amount:statement.verifiedProviderRecoveryMinor}
+   ]:[]),
    {label:"Verified Foundation payout",amount:statement.actualPaidMinor},
    {label:"Remaining Foundation payout",amount:statement.outstandingMinor}
   ]:[{label:statement.state==="PROPOSED"?
     "Proposed claim awaiting approval":"Accrued contribution awaiting monthly claim",
-    amount:statement.eligibleAccruedMinor}])
+    amount:statement.state==="PROPOSED"?
+     statement.proposedClaimMinor??statement.eligibleAccruedMinor:
+     statement.eligibleAccruedMinor}])
  ]:[];
  return <View style={styles.container}>
   <Text accessibilityRole="header" style={styles.title}>My Foundation contribution</Text>
@@ -97,7 +116,8 @@ export function NativeOwnCenterMis({token,centerRef,onExpired}:{
   {statement&&<>
    <Text style={styles.sub}>Claim status: {statement.state==="NOT_PREPARED"?
     "Not yet prepared":statement.state==="PROPOSED"?
-    "Awaiting approval":statement.state.replaceAll("_"," ").toLowerCase()}</Text>
+    "Awaiting approval":
+     (statement.effectiveState??statement.state).replaceAll("_"," ").toLowerCase()}</Text>
    {items.map(x=><View key={x.label} style={styles.row}>
     <Text style={styles.sub}>{x.label}</Text>
     <Text style={styles.amount}>{formatMoney(x.amount)}</Text>
