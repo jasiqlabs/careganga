@@ -6,6 +6,7 @@ import * as Crypto from "expo-crypto";
 import {careGangaTheme as t} from "../../../../../packages/design-tokens/src/index";
 import {identityRequest} from "../identity-access/http-client";
 import {NativeDoctorEvidenceUploader} from "./native-doctor-evidence-uploader";
+import {NativeDoctorCenterFees} from "./native-doctor-center-fees";
 type Form={fullName:string;registrationJurisdiction:string;registrationNumber:string;
  qualifications:string[];specialties:string[];experienceYears:number;
  publicBio:string;portraitRightsStatus:"NONE"|"CONSENT_PENDING";
@@ -239,6 +240,9 @@ export function NativeDoctorManagement({token,onExit,onExpired,canManage,
        {text:"Submit",onPress:()=>void submit()}
       ]),busy||uncertain||!proof)}
     </>}
+    {selected.status==="VERIFIED"&&<NativeDoctorCenterFees token={token}
+     doctorRef={selected.doctorRef} canManage={canManage} canVerify={canVerify}
+     onExpired={onExpired}/>}
     {selected.status==="VERIFIED"&&canVerify&&<>
      {field("Current Foundation password",password,setPassword,1024,true)}
      {button("Suspend verified professional",()=>Alert.alert(
