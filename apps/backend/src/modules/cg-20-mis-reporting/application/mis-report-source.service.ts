@@ -216,6 +216,27 @@ export class MisReportSourceService{
      explanation:result.explanation,
      scopeLabel:"Current permitted finance source scope"};
    }
+   if(q.kind==="FINANCE_POSTED_GROUPED"){
+    const x=await this.finance.groupedMis(token,{
+     yearRef:q.yearRef,branchRef:q.branchRef,
+     fromDay:q.fromDay,untilDay:q.untilDay,
+     groupBy:q.groupBy??"CATEGORY",
+     sortBy:q.sortBy??"NAME",sortDirection:q.sortDirection??"ASC"
+    });
+    return {kind:q.kind,view:q.view,label:"Grouped posted finance",
+     state:x.partial?"PARTIAL":x.groups.length?"READY":"EMPTY",
+     columns:[
+      {key:"groupLabel",label:q.groupBy==="ACCOUNT_NAME"?"Account":
+        q.groupBy==="POSTING_KIND"?"Entry kind":"Category",unit:"TEXT"},
+      {key:"debitMinor",label:"Posted debit",unit:"INR_MINOR"},
+      {key:"creditMinor",label:"Posted credit",unit:"INR_MINOR"}
+     ],rows:x.groups,nextOffset:null,sourceReadAt,
+     sourceAsOf:x.sourceAsOf,sourceCutoffKind:x.sourceCutoffKind,
+     explanation:x.partial?
+      "More than 50 original groups match. Narrow the selected period, financial year or branch before exporting; this is not a complete aggregate.":
+      x.explanation,
+     scopeLabel:"Current permitted posted finance scope"};
+   }
    if(q.kind==="FINANCE_POSTED_SUMMARY"){
     const x=await this.finance.summary(token,q.yearRef,q.branchRef);
     return {kind:q.kind,view:q.view,label:"Posted finance summary",
