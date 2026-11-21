@@ -249,6 +249,48 @@ for(const [name,path,expected] of parity){
  }
  checks.push(["CG14 channel: "+name,expected.every(x=>source.includes(x))]);
 }
+// Original CG14 center-content reviewer parity: same CG03 case as Web,
+// not a duplicate approval controller or a fake verified publication.
+const contentReviewPath="apps/android-internal/src/features/health-network/native-center-content-review.tsx";
+const nativeHealthReviewPath="apps/android-internal/src/features/registration-approvals/healthcare-native-review.tsx";
+const cg03ContentReview=read(
+ "apps/backend/src/modules/cg-03-registration-approvals/application/health-center-content-approval.service.ts");
+const nativeContentReview=read(contentReviewPath);
+const nativeHealthReview=read(nativeHealthReviewPath);
+const contentController=read(
+ "apps/backend/src/modules/cg-03-registration-approvals/http/health-center-content-approval.controller.ts");
+const contentMedia=read(
+ "apps/backend/src/modules/cg-19-documents-notifications/http/health-center-content-media.controller.ts");
+for(const [path,code] of [[contentReviewPath,nativeContentReview],
+ [nativeHealthReviewPath,nativeHealthReview]]){
+ const parsed=ts.createSourceFile(path,code,ts.ScriptTarget.Latest,true,ts.ScriptKind.TSX);
+ checks.push(["CG14 native center-content reviewer TSX parses: "+path,
+  parsed.parseDiagnostics.length===0]);
+}
+checks.push(["CG14 native reviewer reuses real CG03 center-content queue and decision",
+ nativeContentReview.includes('"/api/health/content-reviews/"+path')&&
+ nativeContentReview.includes('token,"list"')&&
+ nativeContentReview.includes('encodeURIComponent(op.caseRef)+"/decide"')&&
+ contentController.includes('api/health/content-reviews')]);
+checks.push(["CG14 native reviewer shares same independently privileged original root",
+ cg03ContentReview.includes('verifyReviewer(tx,actor,"approvals.review",true)')&&
+ cg03ContentReview.includes('assertCurrent(tx,actor,"health.providers.verify")')&&
+ nativeHealthReview.includes('canProviders&&<NativeCenterContentReview token={token}')]);
+checks.push(["CG14 native reviewed private photo uses original protected CG19 reader",
+ nativeContentReview.includes('"/api/documents/health-center-content/reviews/"')&&
+ nativeContentReview.includes('Authorization:"Bearer "+token')&&
+ nativeContentReview.includes("file?.delete()")&&
+ contentMedia.includes('reviews/:caseRef/photos/:fileRef')]);
+checks.push(["CG14 original review disposition is not a fake publication",
+ nativeContentReview.includes("No publication performed.")&&
+ nativeContentReview.includes("requestKey:op.requestKey")&&
+ nativeContentReview.includes("expectedRevision:op.revision")&&
+ nativeContentReview.includes("currentPassword:password")]);
+checks.push(["CG14 native uncertain independent review reuses SAME request key",
+ nativeContentReview.includes("Retry exact original reviewer request")&&
+ nativeContentReview.includes("decide(pending)")&&
+ nativeContentReview.includes("setPassword(\"\")")]);
+
 let failures=0;
 for(const [label,ok] of checks){
   process.stdout.write((ok?"SOURCE_PRESENT":"SOURCE_GAP")+" — "+label+"\n");
