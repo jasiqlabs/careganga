@@ -19,6 +19,12 @@ function allowed(parts:string[],method:string){
     UUID.test(parts[5])&&["collect","receive","start-processing","reject","recollect"].includes(parts[6]))
   return method==="POST";
  if(parts.length===6&&parts[0]==="centers"&&UUID.test(parts[1])&&
+   parts[2]==="orders"&&UUID.test(parts[3])&&parts[4]==="results"&&
+   parts[5]==="entry")return method==="GET";
+ if(parts.length===6&&parts[0]==="centers"&&UUID.test(parts[1])&&
+   parts[2]==="orders"&&UUID.test(parts[3])&&parts[4]==="results"&&
+   parts[5]==="generate")return method==="POST";
+ if(parts.length===6&&parts[0]==="centers"&&UUID.test(parts[1])&&
    parts[2]==="orders"&&UUID.test(parts[3])&&parts[4]==="reports"&&
    parts[5]==="current")return method==="GET";
  if(parts.length===6&&parts[0]==="centers"&&UUID.test(parts[1])&&
