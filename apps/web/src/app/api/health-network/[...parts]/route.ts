@@ -36,9 +36,33 @@ const errors=new Set([
   "HEALTH_CLINICIAN_INVALID","HEALTH_CLINICIAN_LINK_CONFLICT",
   "HEALTH_CLINICIAN_LINK_REVOKED","HEALTH_CLINICIAN_FRESH_LOGIN_REQUIRED",
   "HEALTH_CLINICIAN_INDEPENDENT_REVIEW","HEALTH_CLINICIAN_LINK_UNAVAILABLE",
-  "HEALTH_CLINICIAN_NOT_VERIFIED","HEALTH_CLINICIAN_ACCOUNT_UNAVAILABLE"
+  "HEALTH_CLINICIAN_NOT_VERIFIED","HEALTH_CLINICIAN_ACCOUNT_UNAVAILABLE",
+  "CG14_OFFER_INVALID","CG14_OFFER_DUPLICATE","CG14_OFFER_LIST_LIMIT",
+  "CG14_OFFER_UNAVAILABLE","CG14_OFFER_REQUEST_CONFLICT",
+  "CG14_OFFER_SERVICE_NOT_VERIFIED","CG14_OFFER_INDEPENDENT_REVIEW_REQUIRED",
+  "CG14_OFFER_REVIEW_CHANGED"
 ]);
 function allowed(parts:string[],method:string){
+  if(parts[0]==="partner-offers"){
+    if(parts.length===3&&parts[1]==="my-centers"&&parts[2]==="eligible")
+      return method==="GET";
+    if(parts.length===3&&parts[1]==="my-centers"&&UUID.test(parts[2]))
+      return method==="GET"||method==="POST";
+    if(parts.length===3&&parts[1]==="foundation"&&parts[2]==="centers")
+      return method==="GET";
+    if(parts.length===4&&parts[1]==="foundation"&&
+      parts[2]==="centers"&&UUID.test(parts[3]))
+      return method==="GET";
+    if(parts.length===6&&parts[1]==="foundation"&&
+      parts[2]==="centers"&&UUID.test(parts[3])&&
+      parts[4]==="offers"&&/^HPS-[A-F0-9]{12}$/.test(parts[5]))
+      return false;
+    if(parts.length===7&&parts[1]==="foundation"&&parts[2]==="centers"&&
+      UUID.test(parts[3])&&parts[4]==="offers"&&
+      /^HPS-[A-F0-9]{12}$/.test(parts[5])&&parts[6]==="decision")
+      return method==="POST";
+    return false;
+  }
   if(parts[0]==="partner-applications"){
     if(parts.length===1)return method==="GET";
     if(parts.length===3&&UUID.test(parts[1])&&
