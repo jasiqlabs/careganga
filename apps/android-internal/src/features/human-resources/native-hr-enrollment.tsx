@@ -59,6 +59,10 @@ export function NativeHrEnrollment({token,canView,canManage,canReview,canViewEmp
  const [staff,setStaff]=useState<Array<{reference:string;name:string;designation:string;
   branch:string;status:string}>>([]);
  const [staffError,setStaffError]=useState("");
+ const [employeeDetail,setEmployeeDetail]=useState<{reference:string;name:string;
+  designation:string;employmentType:string;branch:string;department:string|null;
+  manager:string|null;status:string;effectiveFrom:string;effectiveTo:string|null}|null>(null);
+ const [detailBusy,setDetailBusy]=useState(false);
  const [headcounts,setHeadcounts]=useState<{total:number;statuses:Record<string,number>}|null>(null);
  const [empBranches,setEmpBranches]=useState<Option[]>([]);
  const [empDepartments,setEmpDepartments]=useState<Option[]>([]);
@@ -259,6 +263,18 @@ export function NativeHrEnrollment({token,canView,canManage,canReview,canViewEmp
    await load(0);
    setStatus("Your existing staff account is now linked to your approved employment.");
   }catch(e){failure(e);}finally{setSaving(false);}
+ };
+ const viewEmployee=async(reference:string)=>{
+  if(detailBusy)return;
+  setDetailBusy(true);setStaffError("");setEmployeeDetail(null);
+  try{
+   const value=await api(token,"employees/"+encodeURIComponent(reference));
+   if(!value||typeof value!=="object"||!("reference" in value)||
+     !("name" in value)||typeof value.name!=="string")
+    throw Error("Original employee details cannot be verified.");
+   setEmployeeDetail(value as NonNullable<typeof employeeDetail>);
+  }catch(e){failure(e);}
+  finally{setDetailBusy(false);}
  };
  const loadHeadcounts=async()=>{
   if(!canViewEmployees)return;
@@ -537,7 +553,26 @@ export function NativeHrEnrollment({token,canView,canManage,canReview,canViewEmp
     {staff.map(item=><View key={item.reference} style={styles.item}>
       <Text style={styles.label}>{item.name} — {item.designation}</Text>
       <Text style={styles.muted}>{item.reference} · {item.branch} · {title(item.status)}</Text>
+      <Pressable accessibilityRole="button" style={styles.outline}
+        disabled={detailBusy} onPress={()=>void viewEmployee(item.reference)}>
+        <Text style={styles.outlineText}>View employment</Text>
+      </Pressable>
     </View>)}
+    {employeeDetail&&<View style={styles.card}>
+      <Text style={styles.h2}>{employeeDetail.name}</Text>
+      <Text style={styles.muted}>{employeeDetail.reference} · {title(employeeDetail.status)}</Text>
+      <Text style={styles.label}>Designation: {employeeDetail.designation}</Text>
+      <Text style={styles.label}>Branch: {employeeDetail.branch}</Text>
+      <Text style={styles.label}>Department: {employeeDetail.department??"Not assigned"}</Text>
+      <Text style={styles.label}>Manager: {employeeDetail.manager??"Not assigned"}</Text>
+      <Text style={styles.label}>Employment type: {title(employeeDetail.employmentType)}</Text>
+      <Text style={styles.label}>Effective: {employeeDetail.effectiveFrom}</Text>
+      <Text style={styles.muted}>Current assignments and changes require separate
+        authorized personnel review. Private bank and identity data are not shown.</Text>
+      <Pressable accessibilityRole="button" onPress={()=>setEmployeeDetail(null)}
+        style={styles.outline}><Text style={styles.outlineText}>Close employee</Text>
+      </Pressable>
+    </View>}
     <View style={styles.choices}>
      {empOffset>0&&<Pressable accessibilityRole="button"
        onPress={()=>void loadStaff(Math.max(0,empOffset-25))} style={styles.outline}>
