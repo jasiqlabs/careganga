@@ -2,6 +2,7 @@
 import {useCallback,useEffect,useRef,useState} from "react";
 import {MisSavedReports} from "./mis-saved-reports";
 import {MisReportExports} from "./mis-report-exports";
+import {MisReportSchedules} from "./mis-report-schedules";
 type Kind="FINANCE_POSTED_LEDGER"|"FINANCE_POSTED_SUMMARY"|
  "FINANCE_POSTED_TREND"|"APPOINTMENT_STATUS";
 type View="TABLE"|"SUMMARY"|"CHART";
@@ -216,6 +217,7 @@ export function MisReportsWorkspace(){
   </div>}
   {catalog?.capabilities?.export===true&&
    <MisReportExports allowed request={input(0)}/>}
+  {catalog?.capabilities?.schedule===true&&<MisReportSchedules/>}
   {catalog&&<MisSavedReports canManage={catalog.capabilities?.manage===true}
    currentRequest={input(0)}
    onRestore={q=>{
