@@ -10,11 +10,12 @@ import {NativeHealthEvidenceUploader} from "./native-health-evidence-uploader";
 import {NativeDoctorCenterFees} from "./native-doctor-center-fees";
 import {NativeCenterContentEditor} from "./native-center-content-editor";
 import {NativePartnerPublicOffers} from "./native-partner-public-offers";
+import {NativeOwnCenterMis} from "../mis-reporting/native-own-center-mis";
 type Row={centerRef:string;name:string;providerName:string;version:number;status:string};
 type Detail={centerRef:string;providerRef:string;version:number;center:CenterDraft;
  status:string;providerStatus:string;accessState:string;
  publicationState:string;publicSlug:string|null};
-type Props={token:string;onExit:()=>void;onExpired:()=>void};
+type Props={token:string;onExit:()=>void;onExpired:()=>void;canViewSettlements?:boolean};
 async function request<T>(token:string,path:string,
  method:"GET"|"PATCH"|"POST"="GET",body?:object):Promise<T>{
  const res=await identityRequest("/api/v1/health-network/my-centers"+path,{
@@ -29,7 +30,7 @@ async function request<T>(token:string,path:string,
  ),{status:res.status});
  return res.json() as Promise<T>;
 }
-export function NativeOwnCenterPortal({token,onExit,onExpired}:Props){
+export function NativeOwnCenterPortal({token,onExit,onExpired,canViewSettlements=false}:Props){
  const [centers,setCenters]=useState<Row[]>([]);
  const [active,setActive]=useState<Detail|null>(null);
  const [draft,setDraft]=useState<CenterDraft|null>(null);
@@ -117,6 +118,9 @@ export function NativeOwnCenterPortal({token,onExit,onExpired}:Props){
      busy)}
    </View>)}
    {active&&draft&&<View style={styles.panel}>
+    {canViewSettlements&&active.status==="VERIFIED"&&active.accessState==="ENABLED"&&
+      <NativeOwnCenterMis key={active.centerRef} token={token}
+       centerRef={active.centerRef} onExpired={onExpired}/>}
     <Text style={styles.heading}>{draft.displayName}</Text>
     <Text style={styles.note}>Provider: {active.providerStatus} ·
      Center: {active.status} · Access: {active.accessState} ·
