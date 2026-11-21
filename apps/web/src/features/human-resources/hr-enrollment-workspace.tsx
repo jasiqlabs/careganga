@@ -4,14 +4,15 @@ import {HrEvidenceUploader} from "./hr-evidence-uploader";
 import {HrPrivateDetails} from "./hr-private-details";
 
 type Choice={label:string;branchRef?:string;departmentRef?:string;managerRef?:string;accountRef?:string};
+type RoleChoice={value:string;label:string;context:string};
 type Application={applicationRef:string;reference:string;name:string;designation:string;
  employmentType:string;branchRef:string;departmentRef:string|null;
- managerRef:string|null;accountRef:string|null;
+ managerRef:string|null;roleRef:string|null;accountRef:string|null;
  hireDate:string;revision:number;status:string};
 type Draft={name:string;designation:string;employmentType:string;
- branchRef:string;departmentRef:string;managerRef:string;accountRef:string;hireDate:string};
+ branchRef:string;departmentRef:string;managerRef:string;roleRef:string;accountRef:string;hireDate:string};
 const blank=():Draft=>({name:"",designation:"",employmentType:"FULL_TIME",
- branchRef:"",departmentRef:"",managerRef:"",accountRef:"",hireDate:""});
+ branchRef:"",departmentRef:"",managerRef:"",roleRef:"",accountRef:"",hireDate:""});
 type Result={message:string;error:boolean};
 const fieldStyle={display:"grid",gap:".35rem",fontWeight:600,fontSize:".91rem"} as const;
 const inputStyle={padding:".78rem",border:"1px solid #CBD5E1",borderRadius:"10px",
@@ -37,14 +38,15 @@ function isChoices(x:unknown):x is {items:Choice[]} {
  return Boolean(x)&&typeof x==="object"&&"items" in x&&
   Array.isArray((x as {items:unknown}).items);
 }
-export function HrEnrollmentWorkspace({canViewApps,canManage,canViewEmployees,canSelectAccounts,canViewPrivate,canManagePrivate}:{
+export function HrEnrollmentWorkspace({canViewApps,canManage,canViewEmployees,canSelectAccounts,canSelectRoles,canViewPrivate,canManagePrivate}:{
   canViewApps:boolean;canManage:boolean;canViewEmployees:boolean;canSelectAccounts:boolean;
-  canViewPrivate:boolean;canManagePrivate:boolean}){
+  canSelectRoles:boolean;canViewPrivate:boolean;canManagePrivate:boolean}){
  const [apps,setApps]=useState<Application[]>([]);
  const [branches,setBranches]=useState<Choice[]>([]);
  const [departments,setDepartments]=useState<Choice[]>([]);
  const [managers,setManagers]=useState<Choice[]>([]);
  const [accounts,setAccounts]=useState<Choice[]>([]);
+ const [roles,setRoles]=useState<RoleChoice[]>([]);
  const [form,setForm]=useState<Draft>(blank);
  const [selected,setSelected]=useState<Application|null>(null);
  const [status,setStatus]=useState<Result|null>(null);
@@ -101,6 +103,15 @@ export function HrEnrollmentWorkspace({canViewApps,canManage,canViewEmployees,ca
   }).catch(()=>{if(live)setAccounts([]);});
   return()=>{live=false;};
  },[canViewApps,canSelectAccounts,canManage]);
+ useEffect(()=>{
+  if(!canViewApps||!canManage||!canSelectRoles)return;
+  let alive=true;
+  void request("role-options?search=").then(v=>{
+   if(alive&&v&&typeof v==="object"&&"options" in v&&Array.isArray(v.options))
+    setRoles(v.options as RoleChoice[]);
+  }).catch(()=>{if(alive)setRoles([]);});
+  return()=>{alive=false;};
+ },[canViewApps,canManage,canSelectRoles]);
  const review=useCallback(async(app:Application)=>{
   setFileApplication(app);setCaseStatus(null);setStatus(null);
   try{
@@ -216,7 +227,7 @@ export function HrEnrollmentWorkspace({canViewApps,canManage,canViewEmployees,ca
   setForm({name:app.name,designation:app.designation,
    employmentType:app.employmentType,branchRef:app.branchRef,
    departmentRef:app.departmentRef??"",managerRef:app.managerRef??"",
-   accountRef:app.accountRef??"",hireDate:app.hireDate});
+   accountRef:app.accountRef??"",roleRef:app.roleRef??"",hireDate:app.hireDate});
   setAttempt(null);setRequestKey(crypto.randomUUID());setStatus(null);
  };
  const reset=()=>{setSelected(null);setForm(blank());setRequestKey(crypto.randomUUID());setAttempt(null);};
@@ -230,7 +241,7 @@ export function HrEnrollmentWorkspace({canViewApps,canManage,canViewEmployees,ca
   const payload={requestKey:key,name:form.name,designation:form.designation,
    employmentType:form.employmentType,branchRef:form.branchRef,
    departmentRef:form.departmentRef||null,managerRef:form.managerRef||null,
-   hireDate:form.hireDate,accountRef:form.accountRef||null,
+   hireDate:form.hireDate,accountRef:form.accountRef||null,roleRef:form.roleRef||null,
    ...(selected?{expectedRevision:selected.revision}:{})};
   setAttempt(key);
   try{
@@ -302,6 +313,12 @@ export function HrEnrollmentWorkspace({canViewApps,canManage,canViewEmployees,ca
       onChange={e=>change("accountRef",e.target.value)}>
       <option value="">No login linked — employment only</option>
       {accounts.map(x=><option value={x.accountRef} key={x.accountRef}>{x.label}</option>)}
+     </select></label>}
+    {canSelectRoles&&<label style={fieldStyle}>Proposed staff role (no login grant)
+     <select style={inputStyle} value={form.roleRef}
+      onChange={e=>change("roleRef",e.target.value)}>
+      <option value="">No system role proposed</option>
+      {roles.map(x=><option key={x.value} value={x.value}>{x.label}</option>)}
      </select></label>}
     <label style={fieldStyle}>Joining date
      <input type="date" style={inputStyle} required value={form.hireDate}
