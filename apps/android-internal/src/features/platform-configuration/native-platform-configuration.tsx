@@ -1,4 +1,4 @@
-import {type ReactNode,useCallback,useEffect,useState} from "react";
+import {type ReactNode,useCallback,useEffect,useRef,useState} from "react";
 import {ActivityIndicator,Alert,Pressable,ScrollView,Share,StyleSheet,Text,TextInput,View} from "react-native";
 import {SafeAreaView} from "react-native-safe-area-context";
 import * as Crypto from "expo-crypto";
@@ -45,6 +45,7 @@ export function NativePlatformConfiguration({token,roleActions,onExit,onExpired}
   const hasRecovery=can("platform.recovery.view");
   const [tab,setTab]=useState<Tab>(hasSettings?"settings":hasAudit?"audit":"recovery");
   const [loading,setLoading]=useState(false),[busy,setBusy]=useState(false);
+  const refreshVersion=useRef(0); // Prevent a slower previous tab/filter result replacing current data.
   const [error,setError]=useState(""),[notice,setNotice]=useState("");
   const [pending,setPending]=useState<Pending|null>(null);
   const [setting,setSetting]=useState<CG21SettingView|null>(null);
@@ -74,6 +75,7 @@ export function NativePlatformConfiguration({token,roleActions,onExit,onExpired}
     setError(e instanceof Error?e.message:"The original source is unavailable.");
   },[onExpired]);
   const refresh=useCallback(async():Promise<boolean>=>{
+    const requestVersion=++refreshVersion.current;
     setLoading(true);setError("");setAuditDetail(null);
     try{
       if(tab==="settings"){
@@ -84,28 +86,32 @@ export function NativePlatformConfiguration({token,roleActions,onExit,onExpired}
             api<{messages:SafeMessage[]}>(token,"/error-messages")
           ]);
           if(s.key!=="audit.default_page_size"||!Number.isInteger(s.value))throw Error("Current platform setting cannot be verified.");
+          if(requestVersion!==refreshVersion.current)return false;
           setSetting(s);setSize(String(s.value));setHistory(h.events??[]);setCopy(m.messages??[]);
         }
         if(can("platform.integrations.view")){
           const c=await api<{connections:CG21IntegrationView[]}>(token,"/integrations");
+          if(requestVersion!==refreshVersion.current)return false;
           setIntegrations(c.connections??[]);
         }
       }else if(tab==="audit"&&hasAudit){
         const range=(appliedFrom?"&from="+encodeURIComponent(appliedFrom):"")+
           (appliedTo?"&to="+encodeURIComponent(appliedTo):"");
         const a=await api<CG21AuditPage>(token,"/audit?source="+encodeURIComponent(auditSource)+range);
+        if(requestVersion!==refreshVersion.current)return false;
         setAudit(a);setAuditRows(a.events);setAuditDetail(null);
       }else if(tab==="recovery"&&hasRecovery){
         const [a,o]=await Promise.all([
           api<CG21RecoveryAvailability>(token,"/recovery/availability"),
           api<{operations:CG21RecoveryOperation[]}>(token,"/recovery/operations")
         ]);
+        if(requestVersion!==refreshVersion.current)return false;
         setAvailability(a);setOperations(o.operations??[]);
         setSelectedOperation(v=>o.operations?.find(x=>x.operationRef===v?.operationRef)??null);
       }
       return true;
-    }catch(e){fail(e);return false;}
-    finally{setLoading(false);}
+    }catch(e){if(requestVersion===refreshVersion.current)fail(e);return false;}
+    finally{if(requestVersion===refreshVersion.current)setLoading(false);}
   },[token,tab,auditSource,appliedFrom,appliedTo,roleActions.join("|"),fail,hasAudit,hasRecovery]);
   useEffect(()=>{void refresh();},[refresh]);
   async function run(kind:MutatingCommand|null,requestKey:string|undefined,action:()=>Promise<unknown>,ok:string){
@@ -148,7 +154,7 @@ export function NativePlatformConfiguration({token,roleActions,onExit,onExpired}
         if(row&&row.revision>p.originalRevision&&row.effectiveMessage===p.message){
           setPending(null);setSelectedCopy(null);
           const reloaded=await refresh();
-          setNotice(reloaded?"The original safe message update is confirmed.":"The update is confirmed, but source reload failed.");
+          setNotice(reloaded?"The new safe wording is visible. The exact request outcome remains unverified.":"The new wording appears present, but the original request outcome is still unverified.");
         }else setError("An exact committed message is not verified. Contact Foundation operations before retrying.");
       }catch(e){fail(e);}finally{setBusy(false);}return;
     }
@@ -226,13 +232,18 @@ export function NativePlatformConfiguration({token,roleActions,onExit,onExpired}
   }
   async function auditMore(){
     if(!audit?.nextCursor||busy)return;setBusy(true);setError("");
+    const version=refreshVersion.current;
     try{const a=await api<CG21AuditPage>(token,"/audit?cursor="+encodeURIComponent(audit.nextCursor));
+      if(version!==refreshVersion.current)return;
       setAudit(a);setAuditRows(rows=>[...rows,...a.events]);
     }catch(e){fail(e);}finally{setBusy(false);}
   }
   async function openAudit(ref:string){
+    if(busy)return;
+    const version=refreshVersion.current;
     setBusy(true);setError("");
-    try{setAuditDetail(await api<CG21AuditDetail>(token,"/audit/detail/"+encodeURIComponent(ref)));}
+    try{const detail=await api<CG21AuditDetail>(token,"/audit/detail/"+encodeURIComponent(ref));
+      if(version===refreshVersion.current)setAuditDetail(detail);}
     catch(e){fail(e);}finally{setBusy(false);}
   }
   async function exportAudit(){
