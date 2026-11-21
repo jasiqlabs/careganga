@@ -19,6 +19,8 @@ type Detail={provider:{providerRef:string;code:string;name:string;type:string;
  status:string;version:number;accessState:string;publicationState:string;
  publicSlug:string|null}[]};
 type CenterDetail={centerRef:string;version:number;center:CenterDraft};
+type Representative={affiliationRef:string;name:string;status:string;version:number};
+type AccountOption={value:string;label:string};
 type Props={token:string;onExpired:()=>void;onExit:()=>void;
  canManage:boolean;canVerify:boolean;canActivate:boolean;canPublish:boolean};
 const types=["HOSPITAL","CLINIC","DIAGNOSTIC_LAB","PHARMACY","NURSING","OTHER"];
@@ -55,6 +57,12 @@ export function NativeProviderManagement({token,onExpired,onExit,canManage,
  const [centerProofs,setCenterProofs]=useState<Record<string,string>>({});
  const [currentPassword,setCurrentPassword]=useState("");
  const [publicSlug,setPublicSlug]=useState("");
+ const [representatives,setRepresentatives]=useState<Representative[]>([]);
+ const [staffChoices,setStaffChoices]=useState<AccountOption[]>([]);
+ const [representativeCenter,setRepresentativeCenter]=useState("");
+ const [representativeSearch,setRepresentativeSearch]=useState("");
+ const [repAccount,setRepAccount]=useState("");
+
  const [loading,setLoading]=useState(true),[busy,setBusy]=useState(false);
  const [error,setError]=useState(""),[notice,setNotice]=useState("");
  const [uncertain,setUncertain]=useState(false);
@@ -245,6 +253,39 @@ export function NativeProviderManagement({token,onExpired,onExit,canManage,
    await load();setNotice("Original protected center/provider state updated.");
   });
  }
+ async function showRepresentatives(centerRef:string){
+  setBusy(true);setError("");setRepresentativeCenter(centerRef);
+  try{
+   const [list,staff]=await Promise.all([
+    api<{representatives:Representative[]}>(token,
+     "centers/"+encodeURIComponent(centerRef)+"/representatives"),
+    api<{options:AccountOption[]}>(token,
+     "representatives/options?search="+encodeURIComponent(representativeSearch))
+   ]);
+   if(!Array.isArray(list.representatives)||!Array.isArray(staff.options))
+    throw Error("Original center representative scope cannot be verified.");
+   setRepresentatives(list.representatives);setStaffChoices(staff.options);
+  }catch(e){failure(e)}finally{setBusy(false)}
+ }
+ async function assignRepresentative(){
+  if(busy||uncertain||!canManage||!repAccount||!representativeCenter)return;
+  await write("affiliate:"+representativeCenter,
+   "centers/"+encodeURIComponent(representativeCenter)+"/representatives","POST",
+   requestKey=>({requestKey,accountRef:repAccount}),async()=>{
+    setRepAccount("");await showRepresentatives(representativeCenter);
+    setNotice("Original center staff assignment recorded.");
+   });
+ }
+ async function revokeRepresentative(ref:string,version:number){
+  if(busy||uncertain||!canManage||!representativeCenter)return;
+  const url="centers/"+encodeURIComponent(representativeCenter)+
+    "/representatives/"+encodeURIComponent(ref)+"/revoke";
+  await write("revoke:"+ref,url,"POST",
+   requestKey=>({requestKey,expectedVersion:version}),async()=>{
+    await showRepresentatives(representativeCenter);
+    setNotice("Original center edit access revoked.");
+   });
+ }
  const selectedProvider=selected?.provider;
  return <SafeAreaView style={styles.page}>
   <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={styles.content}>
@@ -332,6 +373,28 @@ export function NativeProviderManagement({token,onExpired,onExit,canManage,
      <Text style={styles.note}>Center: {center.code} · {label(center.status)}</Text>
      <Text style={styles.note}>Access: {label(center.accessState)} ·
       Publication: {label(center.publicationState)}</Text>
+     {canManage&&button("Manage currently assigned center representatives",
+      ()=>void showRepresentatives(center.centerRef),busy||uncertain)}
+     {representativeCenter===center.centerRef&&canManage&&<View style={styles.panel}>
+      <Text style={styles.heading}>Center representatives</Text>
+      {representatives.map(person=><View key={person.affiliationRef}>
+       <Text style={styles.note}>{person.name} · {label(person.status)}</Text>
+       {person.status!=="REVOKED"&&button("Revoke center edit access",()=>
+        Alert.alert("Revoke this center assignment?","Staff access will change immediately.",[
+         {text:"Keep",style:"cancel"},
+         {text:"Revoke",onPress:()=>void revokeRepresentative(
+          person.affiliationRef,person.version)}
+        ]),busy||uncertain)}
+      </View>)}
+      {input("Search eligible Foundation staff",representativeSearch,
+       setRepresentativeSearch,60)}
+      {button("Search staff accounts",()=>void showRepresentatives(center.centerRef),
+       busy||uncertain)}
+      {staffChoices.map(person=>button((repAccount===person.value?"✓ ":"")+person.label,
+       ()=>setRepAccount(person.value),busy||uncertain))}
+      {button("Assign selected staff to this center",
+       ()=>void assignRepresentative(),busy||uncertain||!repAccount)}
+     </View>}
      {canManage&&center.status==="PENDING"&&button("Edit pending center",
       ()=>void editCenter(center.centerRef),busy||uncertain)}
      {canManage&&center.status==="PENDING"&&<>
