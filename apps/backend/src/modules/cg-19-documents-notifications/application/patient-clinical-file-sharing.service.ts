@@ -310,6 +310,8 @@ export class PatientClinicalFileSharingService{
     "AND live_owner.account_id=g.granted_by_account "+
     "AND live_owner.revoked_at IS NULL) "+
     "AND f.revoked_at IS NULL AND f.scan_status='CLEAN_VERIFIED' "+
+    "AND f.classification IN('PATIENT_PHOTO','PATIENT_UPLOADED_PRESCRIPTION',"+
+    "'PATIENT_MEDICAL_REPORT') "+
     "ORDER BY f.created_at DESC,f.id DESC LIMIT 25",
     [actor.realmId,booking,source.patient_id,source.doctor_id,source.center_id,source.revision]);
    return {bookingRef:booking,files:docs.rows.map(x=>({
@@ -341,6 +343,8 @@ export class PatientClinicalFileSharingService{
     "AND live_owner.account_id=g.granted_by_account "+
     "AND live_owner.revoked_at IS NULL) "+
     "AND f.revoked_at IS NULL AND f.scan_status='CLEAN_VERIFIED' "+
+    "AND f.classification IN('PATIENT_PHOTO','PATIENT_UPLOADED_PRESCRIPTION',"+
+    "'PATIENT_MEDICAL_REPORT') "+
     "FOR SHARE OF f,g",
     [actor.realmId,source.patient_id,booking,file,source.doctor_id,source.center_id,source.revision]);
    if(!rows.rows[0])
