@@ -59,6 +59,11 @@ export function HrEnrollmentWorkspace({canViewApps,canManage,canViewEmployees,ca
  const [staff,setStaff]=useState<Array<{reference:string;name:string;designation:string;
   branch:string;status:string}>>([]);
  const [staffError,setStaffError]=useState("");
+ const [empBranches,setEmpBranches]=useState<Choice[]>([]);
+ const [empDepartments,setEmpDepartments]=useState<Choice[]>([]);
+ const [empFilter,setEmpFilter]=useState({q:"",status:"ALL",branch:"",department:""});
+ const [empOffset,setEmpOffset]=useState(0);
+ const [empMore,setEmpMore]=useState(false);
  const enrollmentKeys=useRef(new Map<string,string>());
  const load=useCallback(async(page=0)=>{
   if(!canViewApps){setLoading(false);setApps([]);return;}
@@ -164,19 +169,41 @@ export function HrEnrollmentWorkspace({canViewApps,canManage,canViewEmployees,ca
    "Employee activation result is uncertain. Check the original employee directory."});}
   finally{setBusy(false);}
  };
- const loadEmployees=async()=>{
+ const loadEmployees=async(page=0)=>{
   if(!canViewEmployees)return;
   setStaffError("");
   try{
-   const res=await request("employees?offset=0");
+   const opts=new URLSearchParams({offset:String(page),status:empFilter.status,
+     q:empFilter.q.trim()});
+   if(empFilter.branch)opts.set("branch",empFilter.branch);
+   if(empFilter.department)opts.set("department",empFilter.department);
+   const res=await request("employees?"+opts.toString());
    if(!res||typeof res!=="object"||!("items" in res)||!Array.isArray(res.items))
     throw Error("The approved employee directory is unavailable");
    setStaff(res.items as typeof staff);
+   setEmpMore("hasMore" in res&&res.hasMore===true);setEmpOffset(page);
   }catch(e){
-   setStaff([]);setStaffError(e instanceof Error?e.message:
+   setStaff([]);setEmpMore(false);setStaffError(e instanceof Error?e.message:
     "Employee directory cannot be verified.");
   }
  };
+
+ useEffect(()=>{
+  if(!canViewEmployees)return;
+  let active=true;
+  void request("employee-branches").then(v=>{
+   if(active&&isChoices(v))setEmpBranches(v.items);
+  }).catch(()=>{if(active)setEmpBranches([]);});
+  return()=>{active=false;};
+ },[canViewEmployees]);
+ useEffect(()=>{
+  if(!canViewEmployees||!empFilter.branch){setEmpDepartments([]);return;}
+  let active=true;
+  void request("employee-departments?branch="+encodeURIComponent(empFilter.branch))
+   .then(v=>{if(active&&isChoices(v))setEmpDepartments(v.items);})
+   .catch(()=>{if(active)setEmpDepartments([]);});
+  return()=>{active=false;};
+ },[canViewEmployees,empFilter.branch]);
 
  const change=(field:keyof Draft,value:string)=>{
   setForm(v=>({...v,[field]:value,
@@ -353,6 +380,34 @@ export function HrEnrollmentWorkspace({canViewApps,canManage,canViewEmployees,ca
       <button type="button" onClick={()=>void loadEmployees()}
        style={{...buttonStyle,background:"#E2E8F0",color:"#0F172A"}}>Refresh directory</button>
     </div>
+    <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(175px,1fr))",
+      gap:10,margin:"12px 0"}}>
+      <label style={fieldStyle}>Search employees
+       <input style={inputStyle} value={empFilter.q} maxLength={80}
+        placeholder="Name or designation"
+        onChange={e=>setEmpFilter(x=>({...x,q:e.target.value}))}/></label>
+      <label style={fieldStyle}>Status
+       <select style={inputStyle} value={empFilter.status}
+        onChange={e=>setEmpFilter(x=>({...x,status:e.target.value}))}>
+        {["ALL","ACTIVE","PROBATION","ON_HOLD","PENDING_ACCESS","EXITED"].map(v=>
+         <option value={v} key={v}>{v.replaceAll("_"," ")}</option>)}
+       </select></label>
+      <label style={fieldStyle}>Branch
+       <select style={inputStyle} value={empFilter.branch}
+        onChange={e=>setEmpFilter(x=>({...x,branch:e.target.value,department:""}))}>
+        <option value="">My permitted branches</option>
+        {empBranches.map(v=><option key={v.branchRef} value={v.branchRef}>{v.label}</option>)}
+       </select></label>
+      {empFilter.branch&&<label style={fieldStyle}>Department
+       <select style={inputStyle} value={empFilter.department}
+        onChange={e=>setEmpFilter(x=>({...x,department:e.target.value}))}>
+        <option value="">All departments</option>
+        {empDepartments.map(v=><option key={v.departmentRef} value={v.departmentRef}>
+         {v.label}</option>)}
+       </select></label>}
+    </div>
+    <button type="button" onClick={()=>void loadEmployees(0)}
+      style={{...buttonStyle,background:"#0369A1"}}>Apply directory filters</button>
     {staffError&&<p role="alert" style={{color:"#991B1B"}}>{staffError}</p>}
     <ul style={{paddingLeft:18}}>
      {staff.map(row=><li key={row.reference} style={{padding:6}}>
@@ -362,6 +417,12 @@ export function HrEnrollmentWorkspace({canViewApps,canManage,canViewEmployees,ca
        </small>
       </li>)}
     </ul>
+    <div style={{display:"flex",gap:8}}>
+     {empOffset>0&&<button type="button" onClick={()=>void loadEmployees(Math.max(0,empOffset-25))}
+       style={{...buttonStyle,background:"#E2E8F0",color:"#0F172A"}}>Previous employees</button>}
+     {empMore&&<button type="button" onClick={()=>void loadEmployees(empOffset+25)}
+       style={{...buttonStyle,background:"#E2E8F0",color:"#0F172A"}}>Next employees</button>}
+    </div>
   </section>}
  </div>;
 }
