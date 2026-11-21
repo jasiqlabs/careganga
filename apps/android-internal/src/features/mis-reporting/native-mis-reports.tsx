@@ -19,7 +19,7 @@ type Option={ref:string;name:string};
 type AreaOption=Option&{level:string};
 type Catalog={templates:Template[];finance:{ready:boolean;state?:"AVAILABLE"|"ACCESS_RESTRICTED"|"SOURCE_UNAVAILABLE";years:Option[];branches:Option[];
  allBranches:boolean;areas?:AreaOption[]};appointments:{ready:boolean;state?:"AVAILABLE"|"ACCESS_RESTRICTED"|"SOURCE_UNAVAILABLE";centers:Option[];complete:boolean};
- capabilities:{manage:boolean;export:boolean;schedule:boolean}};
+ capabilities:{manage:boolean;export:boolean;schedule:boolean;share?:boolean}};
 type Preview={state:string;kind:Kind;view:"TABLE"|"SUMMARY"|"CHART"|"PIVOT";label:string;
  rows:Record<string,string>[];columns:{key:string;label:string;unit?:string}[];
  nextOffset:number|null;sourceAsOf?:string;sourceReadAt:string;
@@ -270,6 +270,7 @@ export function NativeMisReports({token,onExpired}:{token:string;onExpired:()=>v
    <NativeMisSchedules token={token} onExpired={onExpired}/>}
   {catalog&&<NativeMisSaved token={token} onExpired={onExpired}
    canManage={catalog.capabilities?.manage===true}
+   canShare={catalog.capabilities?.share===true}
    current={request(0)}
    onRestore={value=>{
     setKind(value.kind as Kind);setView(value.view as typeof view);
