@@ -10,6 +10,8 @@ function allowed(parts:string[],method:string){
   return method==="POST";
  if(parts.length===2&&parts[0]==="applications"&&ID.test(parts[1]))
   return method==="GET";
+ if(parts.length===3&&parts[0]==="files"&&ID.test(parts[1])&&
+   parts[2]==="revoke")return method==="POST";
  return false;
 }
 async function proxy(req:NextRequest,parts:string[],method:string){
