@@ -99,7 +99,9 @@ export function NativeMisDashboard({token,onExpired,onOpenFinance}:{
       <Pressable accessibilityRole="button" style={styles.refresh} onPress={onOpenFinance}>
        <Text style={styles.link}>Open detailed finance reports</Text>
       </Pressable>}
-    </>:<Text style={styles.helper}>Original source unavailable; no estimated values.</Text>}
+    </>:<Text style={styles.helper}>{source.state==="EMPTY"?
+      "No posted financial entries for this permitted scope.":
+      "Original source unavailable; no estimated values."}</Text>}
    </View>)}
    {overview.sources.length===0&&
     <Text style={styles.helper}>No reporting sources are permitted for this role.</Text>}
