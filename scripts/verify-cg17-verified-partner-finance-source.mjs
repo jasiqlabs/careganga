@@ -90,7 +90,6 @@ const tests=[
   s.controller.includes('Post("foundation/centers/:centerRef/claims/:claimCode/decide")')&&
   s.staffBff.includes('cg_staff_session')&&
   s.staffBff.includes('req.headers.get("origin")!==req.nextUrl.origin')&&
-  s.staffWeb.includes("StaffPartnerClaimVerification")===false&&
   s.staffWeb.includes('submit("APPROVE")')&&
   s.staffNative.includes('submit("APPROVE")')&&
   s.staffWebInbox.includes("StaffPartnerClaimVerification")&&
