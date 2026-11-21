@@ -53,8 +53,8 @@ export default async function FoundationHrPage(){
      </p>
     </header>
     <HrMyProfile/>
-    {actions.includes("hr.applications.view")&&
-     <HrEnrollmentWorkspace canManage={actions.includes("hr.applications.manage")}
+    {(actions.includes("hr.applications.view")||actions.includes("hr.employees.view"))&&
+     <HrEnrollmentWorkspace canViewApps={actions.includes("hr.applications.view")} canManage={actions.includes("hr.applications.manage")}
        canViewEmployees={actions.includes("hr.employees.view")}
        canSelectAccounts={actions.includes("accounts.select")}
        canViewPrivate={actions.includes("hr.employees.private.view")}
