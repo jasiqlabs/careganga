@@ -77,9 +77,9 @@ export function CenterMonthlySettlementSummary({centerRef}:Props){
    <p role="status">Foundation settlement: <strong>{data.state==="NOT_PREPARED"?
     "Monthly claim not yet prepared":data.state.replaceAll("_"," ")}</strong></p>
    <dl>
-    <dt>Completed consultation value (gross)</dt>
+    <dt>Eligible completed consultation value (gross)</dt>
     <dd>{money(data.centerGrossServicesMinor)}</dd>
-    <dt>Patient amount payable for these consultations</dt>
+    <dt>Patient due for these eligible consultations</dt>
     <dd>{money(data.patientPayableMinor)}</dd>
     <dt>Verified center collections (net of recorded refunds)</dt>
     <dd>{money(data.patientCollectedVerifiedMinor)}</dd>
