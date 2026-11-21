@@ -103,7 +103,10 @@ export class HrEnrollmentService{
   if(x.departmentRef){
    const department=await tx.query(
     "SELECT 1 FROM department WHERE id=$1 AND root_realm_id=$2 AND active "+
-    "AND (branch_id=$3 OR branch_id IS NULL) FOR SHARE",
+    "AND (branch_id=$3 OR (branch_id IS NULL AND EXISTS("+ 
+    "SELECT 1 FROM branch_department_link link WHERE "+ 
+    "link.foundation_department_id=department.id AND link.root_realm_id=$2 "+ 
+    "AND link.branch_id=$3 AND link.ended_at IS NULL)) FOR SHARE",
     [x.departmentRef,a.realmId,x.branchRef]);
    if(!department.rowCount)throw new BadRequestException("Select an available department");
   }
@@ -161,7 +164,12 @@ export class HrEnrollmentService{
    await this.branch(tx,a,ref);
    const q=await tx.query<{id:string;name:string}>(
     "SELECT id,name FROM department WHERE root_realm_id=$1 AND active "+
-    "AND (branch_id=$2 OR branch_id IS NULL) ORDER BY name,id LIMIT 101",
+    "AND (branch_id=$2 OR (branch_id IS NULL AND EXISTS("+ 
+    "SELECT 1 FROM branch_department_link link WHERE "+ 
+    "link.foundation_department_id=department.id AND "+ 
+    "link.root_realm_id=department.root_realm_id AND "+ 
+    "link.branch_id=$2 AND link.ended_at IS NULL)) "+ 
+    "ORDER BY name,id LIMIT 101",
     [a.realmId,ref]);
    if(q.rows.length>100)throw new ConflictException("Ask your administrator to narrow departments");
    return {items:q.rows.map(d=>({departmentRef:d.id,label:d.name}))};
@@ -222,7 +230,12 @@ export class HrEnrollmentService{
    await this.branch(tx,actor,branch);
    const rows=await tx.query<{id:string;name:string}>(
     "SELECT id,name FROM department WHERE root_realm_id=$1 AND active "+
-    "AND (branch_id=$2 OR branch_id IS NULL) ORDER BY name,id LIMIT 101",
+    "AND (branch_id=$2 OR (branch_id IS NULL AND EXISTS("+ 
+    "SELECT 1 FROM branch_department_link link WHERE "+ 
+    "link.foundation_department_id=department.id AND "+ 
+    "link.root_realm_id=department.root_realm_id AND "+ 
+    "link.branch_id=$2 AND link.ended_at IS NULL)) "+ 
+    "ORDER BY name,id LIMIT 101",
     [actor.realmId,branch]);
    if(rows.rows.length>100)
     throw new ConflictException("Choose a smaller department scope");
