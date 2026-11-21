@@ -13,7 +13,7 @@ import {nextScheduleOccurrence} from "../application/mis-report-schedule.service
 
 type Schedule={
  root_realm_id:string;id:string;owner_account_ref:string;
- recipient_account_ref:string;saved_ref:string;cadence:string;
+ recipient_account_ref:string;saved_ref:string;saved_revision:number;cadence:string;
  timezone:string;local_time:string;weekday:number|null;monthday:number|null;
  annual_month:number|null;next_due_utc:Date;revision:number;
  state:string
@@ -83,6 +83,7 @@ export class MisReportScheduleWorker implements OnModuleInit,OnModuleDestroy{
    if(!item||item.state!=="ACTIVE"||
       item.source_key!=="FINANCE_POSTED_SUMMARY"||
       item.view_kind!=="SUMMARY"||
+      item.current_revision!==schedule.saved_revision||
       schedule.owner_account_ref!==schedule.recipient_account_ref){
     await tx.query(
      "UPDATE cg20_report_schedule SET state='PAUSED',revision=revision+1,"+
@@ -161,7 +162,7 @@ export class MisReportScheduleWorker implements OnModuleInit,OnModuleDestroy{
    "JOIN cg20_report_schedule sch ON sch.root_realm_id=r.root_realm_id "+
    "AND sch.id=r.schedule_ref AND sch.owner_account_ref=r.requester_ref "+
    "AND sch.recipient_account_ref=r.requester_ref AND sch.state='ACTIVE' "+
-   "AND sch.channel='IN_APP' "+
+   "AND sch.channel='IN_APP' AND sch.saved_revision=r.definition_revision "+
    "JOIN cg20_saved_report saved ON saved.root_realm_id=r.root_realm_id "+
    "AND saved.id=r.saved_ref AND saved.owner_account_ref=r.requester_ref "+
    "AND saved.state='ACTIVE' AND saved.current_revision=r.definition_revision "+
@@ -221,8 +222,16 @@ export class MisReportScheduleWorker implements OnModuleInit,OnModuleDestroy{
     await this.finish(row,"REVOKED",{errorClass:"CURRENT_SCOPE_CHANGED"});
     return;
    }
-   await this.sources.previewScheduledFinance(
+   const post=await this.sources.previewScheduledFinance(
     row.root_realm_id,row.requester_ref,row.safe_request);
+   const digestRows=(value:typeof report)=>createHash("sha256")
+    .update(JSON.stringify({kind:value.kind,view:value.view,
+     columns:value.columns,rows:value.rows,scopeLabel:value.scopeLabel}))
+    .digest("hex");
+   if(digestRows(post)!==digestRows(report)){
+    await this.finish(row,"REVOKED",{errorClass:"SOURCE_CHANGED_DURING_EXPORT"});
+    return;
+   }
    const tx=await this.db.connect();let open=false;
    try{
     await tx.query("BEGIN");open=true;
@@ -236,6 +245,7 @@ export class MisReportScheduleWorker implements OnModuleInit,OnModuleDestroy{
      "AND saved.id=sch.saved_ref AND saved.owner_account_ref=sch.owner_account_ref "+
      "WHERE sch.root_realm_id=r.root_realm_id AND sch.id=r.schedule_ref "+
      "AND sch.state='ACTIVE' AND sch.recipient_account_ref=r.requester_ref "+
+     "AND sch.saved_revision=r.definition_revision "+
      "AND saved.state='ACTIVE' AND saved.current_revision=r.definition_revision) "+
      "RETURNING r.id",
      [row.root_realm_id,row.id,artifact.artifactRef,
