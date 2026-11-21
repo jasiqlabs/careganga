@@ -14,6 +14,7 @@ export const SAFE_MESSAGE_CATALOG:Readonly<Record<string,string>>=Object.freeze(
       MIS_RUN_NOT_FOUND:"This private report is no longer available to you. Refresh report history.",
       MIS_RUN_STALE:"The saved report has changed or was retired. Open the latest version and run it again.",
       MIS_RUN_SUPPRESSED:"This private group is too small to export safely. Choose broader permitted filters.",
+      MIS_RUN_PARTIAL:"This protected report is incomplete. Narrow the dates, branch or grouping before exporting.",
       MIS_RUN_LIMIT:"This report has too many entries. Select a narrower period or fewer permitted records.",
       MIS_RUN_KEY_REUSED:"This request was already used for different report settings. Refresh the original run status.",
       MIS_RUN_CHANGED:"This report changed while preparing the file. Check its latest status before retrying.",
