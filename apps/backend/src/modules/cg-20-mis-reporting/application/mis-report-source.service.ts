@@ -10,7 +10,7 @@ import {DiagnosticsCatalogService} from "../../cg-16-healthcare-diagnostics/appl
 export const REPORT_KINDS=[
  "FINANCE_POSTED_LEDGER","FINANCE_POSTED_SUMMARY",
  "FINANCE_POSTED_TREND","FINANCE_POSTED_GROUPED",
- "APPOINTMENT_STATUS","APPOINTMENT_STATUS_GROUPED",
+ "APPOINTMENT_STATUS","APPOINTMENT_STATUS_GROUPED","APPOINTMENT_DOCTOR_SUMMARY",
  "PLATFORM_AUDIT_ACTIVITY","DIAGNOSTICS_CATALOG_SUMMARY"
 ] as const;
 export type ReportKind=typeof REPORT_KINDS[number];
@@ -55,6 +55,7 @@ export function parseSafeReport(raw:unknown):SafeReportRequest{
   FINANCE_POSTED_TREND:["CHART"],
   APPOINTMENT_STATUS:["SUMMARY","CHART"],
   APPOINTMENT_STATUS_GROUPED:["TABLE","CHART"],
+  APPOINTMENT_DOCTOR_SUMMARY:["TABLE","CHART"],
   PLATFORM_AUDIT_ACTIVITY:["TABLE"],
   DIAGNOSTICS_CATALOG_SUMMARY:["SUMMARY"]
  };
@@ -93,7 +94,7 @@ export function parseSafeReport(raw:unknown):SafeReportRequest{
    Date.parse(untilDay+"T00:00:00Z")-Date.parse(fromDay+"T00:00:00Z")>89*86400000||
   fromDay!==""&&kind!=="FINANCE_POSTED_LEDGER"&&
    kind!=="FINANCE_POSTED_GROUPED"&&kind!=="APPOINTMENT_STATUS"&&
-   kind!=="APPOINTMENT_STATUS_GROUPED"&&
+   kind!=="APPOINTMENT_STATUS_GROUPED"&&kind!=="APPOINTMENT_DOCTOR_SUMMARY"&&
    kind!=="PLATFORM_AUDIT_ACTIVITY")
   throw new BadRequestException({code:"MIS_REPORT_FILTER_INVALID",
    message:"Choose an allowed center, year, status and date range for this report."});
@@ -186,7 +187,10 @@ export class MisReportSourceService{
      description:"Protected aggregate status counts without patient details"},
     {kind:"APPOINTMENT_STATUS_GROUPED",label:"Grouped appointment status",
      views:["TABLE","CHART"],
-     description:"Actual status groups from one privacy-protected CG-15 source read"}
+     description:"Actual status groups from one privacy-protected CG-15 source read"},
+    {kind:"APPOINTMENT_DOCTOR_SUMMARY",label:"Doctor and center appointments",
+     views:["TABLE","CHART"],
+     description:"Only current source-scoped, privacy-protected consultation counts by doctor and center"}
    ]:[])
   ];
   const permission=async(action:string)=>{
@@ -393,6 +397,20 @@ export class MisReportSourceService{
      "A source was unavailable or there are more than 50 results. Narrow the date range or open the protected audit ledger; a partial report cannot be exported.":
      "Only actual CG-21/CG-01 audit projections authorized for this account.",
     scopeLabel:"Current permitted Foundation audit scope"};
+  }
+  if(q.kind==="APPOINTMENT_DOCTOR_SUMMARY"){
+   const x=await this.patients.readMisDoctorGroups(token,{
+    centerRef:q.centerRef,fromDay:q.fromDay,untilDay:q.untilDay,status:q.status});
+   return {kind:q.kind,view:q.view,label:"Doctor and center appointment totals",
+    state:x.state,
+    columns:[
+     {key:"doctorName",label:"Doctor",unit:"TEXT"},
+     {key:"centerName",label:"Verified center",unit:"TEXT"},
+     {key:"bookings",label:"Recorded appointments",unit:"COUNT"}
+    ],rows:x.groups,nextOffset:null,sourceReadAt,
+    sourceAsOf:x.sourceAsOf,sourceCutoffKind:x.sourceCutoffKind,
+    explanation:x.explanation,scopeLabel:q.centerRef?
+     "Current authorized center":"Current authorized Foundation care centers"};
   }
   const x=await this.patients.readMisTotals(token,{
    centerRef:q.centerRef,fromDay:q.fromDay,untilDay:q.untilDay,status:q.status});
