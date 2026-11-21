@@ -159,6 +159,8 @@ export function MisDashboardPanel(){
      <h3 style={{fontSize:"1rem",color:"var(--cg-text)"}}>{source.sourceLabel}</h3>
      {source.state==="AVAILABLE"&&source.drilldown==="/admin/finance/reports"&&
       <Link href={source.drilldown}>Open detailed finance reports</Link>}
+     {source.state==="AVAILABLE"&&source.drilldown==="/admin/health-network/patients"&&
+      <Link href={source.drilldown}>Open patient management</Link>}
     </div>
     {source.state==="AVAILABLE"?<>
       <div className="kpi-grid">{source.metrics.map(m=><div className="kpi" key={m.key}>
