@@ -6,7 +6,8 @@ CREATE TABLE cg17_partner_service_claim(
  root_realm_id uuid NOT NULL REFERENCES access_realm(id) ON DELETE RESTRICT,
  id uuid NOT NULL DEFAULT gen_random_uuid(),
  public_code text NOT NULL DEFAULT ('CG-'||upper(encode(gen_random_bytes(7),'hex')))
-  CHECK(public_code ~ '^CG-[A-F0-9]{14}
+  CHECK(public_code ~ '^CG-[A-F0-9]{14}$'),
+ center_ref uuid NOT NULL,
  patient_ref uuid NOT NULL,
  service_kind text NOT NULL CHECK(service_kind IN('PHARMACY','NURSING','OT')),
  invoice_number text NOT NULL CHECK(
