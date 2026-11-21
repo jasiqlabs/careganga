@@ -318,6 +318,21 @@ must("webPartner",/verifiedProviderRecoveryMinor/,
  "Provider Web sees actual returned money and corrected claim");
 must("nativePartner",/verifiedProviderRecoveryMinor/,
  "Provider Internal Android sees same corrected claim and recovered amount");
+// CG09 is an older original owner and MUST NOT import/read CG17 tables.
+// The forward reference and reused bank-item filtering belong only in CG17.
+assert.doesNotMatch(read(files.bank),
+ /cg17_provider_claim_correction|provider_settlement_payment/,
+ "CG09 payout/recovery proof may never depend on future CG17 sources");
+must("correction",/const claimed=new Set/,
+ "CG17 filters used original bank matches in its own source");
+must("correction",/code:"CG17_PROVIDER_RECOVERY_ALREADY_USED"/,
+ "CG17 rejects reusing a CG09 bank receipt for multiple corrections");
+must("bank",/async recoveryOptions\(/,
+ "CG09 exposes only actual independently verified bank recovery options");
+must("bank",/bank\.statement_amount_minor=\$4::bigint/,
+ "Bank recovery options filter by the exact actual recovered amount before paging");
+must("claimedSql",/payable_group\.category='LIABILITY'/,
+ "Database recertifies the original payable account for verified bank recovery");
 const claimedMigration=read(files.claimedSql);
 assert.doesNotMatch(claimedMigration,/END \$;/,
  "Claimed original CG17 correction SQL must not have invalid function terminator");
