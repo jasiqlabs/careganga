@@ -110,7 +110,7 @@ export function MisReportsWorkspace(){
     ...(center?{centerRef:center}:{}),
     ...(status?{status}:{}),
    }),
-   ...((ledger||grouped||!finance)&&from?{fromDay:from,untilDay:until}:{}),
+   ...((ledger||grouped||health||kind==="PLATFORM_AUDIT_ACTIVITY")&&from?{fromDay:from,untilDay:until}:{}),
    ...(grouped?{groupBy,sortBy,sortDirection}:{}),
    offset};
  }
