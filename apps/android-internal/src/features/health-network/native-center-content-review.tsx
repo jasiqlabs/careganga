@@ -62,7 +62,7 @@ export function NativeCenterContentReview({token,onExpired}:Props){
  const load=useCallback(async()=>{
   const i=++generation.current;setLoading(true);
   try{
-   const data=await read<{cases:Case[]}>(token,"list");
+   const data=await read<{cases:Case[]}>(token,"");
    if(!Array.isArray(data.cases)||data.cases.length>100||
       data.cases.some(x=>!ID.test(x.caseRef)||!Number.isInteger(x.revision)))
     throw Error("Original independent center-content queue unavailable.");
