@@ -104,6 +104,46 @@ export class ClinicalLabGeneratedResultService{
    code:"LAB_RESULT_ORIGINAL_PATIENT_UNAVAILABLE"});
   return q.rows[0];
  }
+ /** A correction never changes the already released original PDF.
+  * It must follow the LATEST released result, current patient consent,
+  * current center and existing CG16 clinical recording permission.
+  */
+ private async priorReleased(c:PoolClient,root:string,center:string,
+  order:string,releaseRef:string){
+  const original=await c.query<{patient_ref:string;status:string}>(
+   "SELECT patient_ref,status FROM lab_order WHERE root_realm_id=$1 "+
+   "AND center_ref=$2 AND id=$3 FOR UPDATE",[root,center,order]);
+  if(original.rows[0]?.status!=="RESULT_READY")
+   throw new ConflictException({code:"LAB_CORRECTION_ORIGINAL_NOT_READY"});
+  const prior=await c.query<{id:string;version_no:number}>(
+   "SELECT previous.id,previous.version_no "+
+   "FROM cg16_lab_report_release released "+
+   "JOIN lab_result_revision previous ON "+
+   "previous.root_realm_id=released.root_realm_id "+
+   "AND previous.id=released.result_revision_ref "+
+   "AND previous.order_ref=released.order_ref "+
+   "WHERE released.root_realm_id=$1 AND released.order_ref=$2 "+
+   "AND released.center_ref=$3 AND released.id=$4 "+
+   "AND previous.result_state='RESULT_READY' "+
+   "AND previous.version_no=(SELECT max(latest.version_no) "+
+   "FROM lab_result_revision latest WHERE "+
+   "latest.root_realm_id=previous.root_realm_id "+
+   "AND latest.order_ref=previous.order_ref) "+
+   "FOR SHARE OF released,previous",
+   [root,order,center,releaseRef]);
+  if(!prior.rows[0])
+   throw new ConflictException({code:"LAB_CORRECTION_LATEST_RELEASE_REQUIRED"});
+  const consent=await c.query(
+   "SELECT 1 FROM cg15_patient_consent x WHERE x.root_realm_id=$1 "+
+   "AND x.patient_id=$2 AND x.purpose='PATIENT_CARE' AND x.granted "+
+   "AND x.revision_no=(SELECT max(last.revision_no) "+
+   "FROM cg15_patient_consent last WHERE last.root_realm_id=x.root_realm_id "+
+   "AND last.patient_id=x.patient_id AND last.purpose='PATIENT_CARE')",
+   [root,original.rows[0].patient_ref]);
+  if(!consent.rowCount)
+   throw new ConflictException({code:"LAB_CORRECTION_CURRENT_PATIENT_CONSENT_REQUIRED"});
+  return prior.rows[0];
+ }
  private async lines(c:PoolClient,root:string,order:string){
   const r=await c.query<SourceLine>(
    "SELECT id,test_name_snapshot FROM lab_order_line "+
@@ -168,13 +208,19 @@ export class ClinicalLabGeneratedResultService{
    prior.rows[0].order_ref!==order||prior.rows[0].center_ref!==center))
    throw new ConflictException({code:"LAB_RESULT_RETRY_MISMATCH"});
   const existing=prior.rows[0];
+  let priorRevision:{id:string;version_no:number}|null=null;
   if(!existing){
-   await this.evidence.requireProcessingOriginal(c,actor,center,order);
-   const already=await c.query(
-    "SELECT 1 FROM lab_result_revision WHERE root_realm_id=$1 "+
-    "AND order_ref=$2 LIMIT 1",[actor.realmId,order]);
-   if(already.rowCount)throw new ConflictException({
-    code:"LAB_RESULT_ALREADY_RECORDED"});
+   if(correction){
+    priorRevision=await this.priorReleased(c,actor.realmId,center,order,
+     correction.previousReleaseRef);
+   }else{
+    await this.evidence.requireProcessingOriginal(c,actor,center,order);
+    const already=await c.query(
+     "SELECT 1 FROM lab_result_revision WHERE root_realm_id=$1 "+
+     "AND order_ref=$2 LIMIT 1",[actor.realmId,order]);
+    if(already.rowCount)throw new ConflictException({
+     code:"LAB_RESULT_ALREADY_RECORDED"});
+   }
   }
   const source=await this.original(c,actor.realmId,center,order);
   const lines=await this.lines(c,actor.realmId,order);
@@ -201,13 +247,37 @@ export class ClinicalLabGeneratedResultService{
     return !v||v.value!==x.value_text||v.unit!==x.unit_text||
      v.observation!==x.observation_text;
    }))throw new ConflictException({code:"LAB_RESULT_RETRY_MISMATCH"});
+   if(Boolean(result.corrects_revision_ref)!==Boolean(correction))
+    throw new ConflictException({code:"LAB_CORRECTION_RETRY_SCOPE_CHANGED"});
+   if(correction){
+    const cRow=await c.query<{
+     prior_release_ref:string;reason:string;prior_result_ref:string}>(
+     "SELECT prior_release_ref,reason,prior_result_ref "+
+     "FROM cg16_lab_result_correction WHERE root_realm_id=$1 "+
+     "AND result_revision_ref=$2",[actor.realmId,result.id]);
+    if(!cRow.rows[0]||
+     cRow.rows[0].prior_release_ref!==correction.previousReleaseRef||
+     cRow.rows[0].reason!==correction.reason||
+     cRow.rows[0].prior_result_ref!==result.corrects_revision_ref)
+     throw new ConflictException({code:"LAB_CORRECTION_RETRY_SCOPE_CHANGED"});
+   }
   }else{
    const stored=await c.query<Result>(
     "INSERT INTO lab_result_revision(root_realm_id,order_ref,version_no,"+
-    "operator_account_ref,source_key) VALUES($1,$2,1,$3,$4) "+
+    "operator_account_ref,source_key,corrects_revision_ref) "+
+    "VALUES($1,$2,$3,$4,$5,$6) "+
     "RETURNING id,created_at,source_key,result_state,version_no,corrects_revision_ref",
-    [actor.realmId,order,actor.accountId,key]);
+    [actor.realmId,order,(priorRevision?.version_no??0)+1,
+     actor.accountId,key,priorRevision?.id??null]);
    result=stored.rows[0];
+   if(correction&&priorRevision){
+    await c.query(
+     "INSERT INTO cg16_lab_result_correction(root_realm_id,order_ref,"+
+     "prior_release_ref,prior_result_ref,result_revision_ref,reason,"+
+     "created_by_account,request_key) VALUES($1,$2,$3,$4,$5,$6,$7,$8)",
+     [actor.realmId,order,correction.previousReleaseRef,priorRevision.id,
+      result.id,correction.reason,actor.accountId,key]);
+   }
    for(const v of values){
     await c.query(
      "INSERT INTO lab_result_value(root_realm_id,order_ref,"+
