@@ -48,3 +48,7 @@ CG22 **US001** light approved medicine/price catalogue and CG24 **US001** CG14-s
 ### Additional public/internal Android UI source corrections (same day)
 
 Public Android now validates the same minimum required name/location and optional email as the original CG14 backend, supplies an email keyboard without auto-capitalization, and declares selected state on Apply/Check Status (e86a294). Internal Android now closes selected review details on hardware Back and then returns to existing Healthcare Providers (bd481d0). The existing original partner-first source verifier has matching source checks (4c30e3f). All updates are committed, but real TS/Expo and phone keyboard/hardware Back/accessibility QA remain NOT_RUN. CG17 monthly reimbursement source remains blocked; no fabricated eligibility or disbursement.
+
+### Applicant status UX source closure
+
+Original CG14 public status endpoint now returns safe statusLabel + applicant next-step message; status codes remain API-only. Public Web and Public Android show the same source text; RETURNED explains Foundation follow-up, while ORIGINAL_VERIFIED never promises a discount. No internal review note, payment, PII or approval is leaked through anonymous status. Backend e81e479; Web 701fb4f; Android d82d771; original source guard 024446f. This is source-only and still needs actual role/browser/device verification.
