@@ -70,6 +70,28 @@ export function CenterMonthlySettlementSummary({centerRef}:Props){
   });
   return()=>{requestVersion.current++};
  },[load]);
+ // Browser visibility is not an authorization grant. Old CG17 monetary
+ // data must be discarded while hidden and rechecked after returning.
+ useEffect(()=>{
+  const recheck=()=>{
+   const version=++requestVersion.current;
+   setData(null);
+   if(document.visibilityState!=="visible"){
+    setLoading(false);return;
+   }
+   setLoading(true);setError("");
+   void load().then(result=>{
+    if(version===requestVersion.current)setData(result);
+   }).catch(error=>{
+    if(version===requestVersion.current)setError(error instanceof Error?
+     error.message:"Current center settlement access could not be verified.");
+   }).finally(()=>{
+    if(version===requestVersion.current)setLoading(false);
+   });
+  };
+  document.addEventListener("visibilitychange",recheck);
+  return()=>document.removeEventListener("visibilitychange",recheck);
+ },[load]);
  const approved=data&&["APPROVED","PARTIALLY_SETTLED","SETTLED"].includes(data.state);
  return <section className="cg-health-route-intro" aria-label="My Foundation settlement">
   <h3>My Foundation contribution and settlement</h3>
