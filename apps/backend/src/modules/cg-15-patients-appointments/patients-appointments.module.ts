@@ -12,6 +12,8 @@ import {PatientProfileController} from "./http/patient-profile.controller";
 import {CenterPatientIntakeService} from "./application/center-patient-intake.service";
 import {CenterPatientIntakeController} from "./http/center-patient-intake.controller";
 import {ConsultationBookingService} from "./application/consultation-booking.service";
+import {ConsultationChargeSourceFacade} from "./application/consultation-charge-source.facade";
+import {ConsultationCompletionSourceFacade} from "./application/consultation-completion-source.facade";
 import {ConsultationBookingController} from "./http/consultation-booking.controller";
 import {ConsultationQueueService} from "./application/consultation-queue.service";
 import {ConsultationQueueController} from "./http/consultation-queue.controller";
@@ -20,8 +22,8 @@ import {PatientAdminOverviewController} from "./http/patient-admin-overview.cont
 
 @Module({
  imports:[IdentityAccessModule,HealthNetworkModule,RegistrationApprovalsModule],
- providers:[DoctorScheduleService,DoctorAvailabilityService,PatientProfileService,PatientPrivateDetailsService,CenterPatientIntakeService,ConsultationBookingService,ConsultationQueueService,PatientAdminOverviewService],
+ providers:[DoctorScheduleService,DoctorAvailabilityService,PatientProfileService,PatientPrivateDetailsService,CenterPatientIntakeService,ConsultationBookingService,ConsultationChargeSourceFacade,ConsultationCompletionSourceFacade,ConsultationQueueService,PatientAdminOverviewService],
  controllers:[DoctorScheduleController,DoctorAvailabilityController,PatientProfileController,CenterPatientIntakeController,ConsultationBookingController,ConsultationQueueController,PatientAdminOverviewController],
- exports:[DoctorScheduleService]
+ exports:[DoctorScheduleService,ConsultationChargeSourceFacade,ConsultationCompletionSourceFacade,PatientAdminOverviewService]
 })
 export class PatientsAppointmentsModule{}

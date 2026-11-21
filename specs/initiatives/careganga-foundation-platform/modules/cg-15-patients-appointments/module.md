@@ -11,7 +11,7 @@ dld_reason: Exactly one verified patient identity+consent, CG-14 doctor-center v
 database_impact: CRITICAL
 database_reason: Last-slot & doctor-wide overlapping in-person appointments, CG-14 same-root center association, concurrent hold/expiry/cancel/reschedule, QR privacy, patient duplicate/merge, source-pinned fees, per-center clinical access and external uncertain payments require independent PostgreSQL lock/exclusion/migration/restore review.
 mobile_store_impact: ANDROID
-mobile_store_reason: Genuine native Public Android patient verification, provider availability, booking, slips, own history, cancellation; native Internal Android ONLY currently granted doctor-leave review/assigned appointment action, not a copy of Admin or Center Portal. No extra healthcare Android app.
+mobile_store_reason: The same approved CG15 Foundation/center staff operations in Admin and Center Web must be accessible to their authorized Internal Android actors, while genuine patient/consented public Web actions require equivalent Public Android own-patient screens; no third app or private staff data on public Android.
 mobile_android_app_category: PUBLIC_AND_INTERNAL_EXISTING
 mobile_android_policy_api: 36
 mobile_platform_baseline: Approved CG-01 baseline Expo SDK 58 / React Native 0.88 / React 19.3, Expo compileSdkVersion 37, targetSdkVersion 36; Google Play new apps and updates API 36 from 2026-08-31. Actual compatibility/lockfile/native build must be verified again before release, no framework upgrade without review.
@@ -69,3 +69,12 @@ background_work_impact: CONDITIONAL_DUE_ONLY; database-held booking expiry and a
 **US-002–008:** No implemented source claims at this checkpoint (112 original QA still planned). US002 public availability and CG14 actual appointment CTA, US003 patient/consent, US004 global held booking, US005 slip, US006 cancel/reschedule, US007 queue, US008 history are separate stories; never fake a public slot/booking to satisfy another story. No patient EMR, pharmacy/lab ERP, financial settlement, CG17 contribution or extra mobile app introduced.
 
 **JASIQ DEV qualification:** source implementation → source defect review/fix/re-review → original case trace done provisionally for US001; **actual PostgreSQL migration/backup/restore, Nest/Next/Expo build, signed-in Center A/B and CG03 role interaction, qualified independent human DB/security, p95/concurrency, H07 original visual/pixel and native device QA NOT_RUN**. Keep `CG15_MODULE=IN_PROGRESS`, `DRAFT_UNAPPROVED`, `SOURCE_COMPLETE=NO`, `MAIN_MERGE=NO`, no CI/GitHub Actions. Original screenshot image bytes not currently accessible for exact pixel parity.
+
+
+### 21 November 2026 — Owner-approved Web ↔ Android same-capability contract
+
+**Owner:** cg-15-patients-appointments. **Branch status:** MERGED_MAIN_OWNER_SOURCE_NATIVE_PARITY_AUDIT_OPEN. Delegated scope/UX/DLD/QA design clarification only; merged source where available is not proof of mobile action completeness or runtime acceptance. Reuse approved original BR/PRD/HLD, existing QA IDs, dependencies, CG-01 authenticated roles, CG-14 center affiliation and CG-19 private proof; no new business master, feature or clinical privilege.
+
+**Equivalent channels:** Foundation Admin / assigned center operator / clinician Web **↔ authorized Internal Android** for protected Foundation patient intake, duplicate review, clinical calendar/doctor leave, center queue/consultation state and existing accepted patient administration. Approved public/consented Web **↔ Public Android** for identity/consent-verified own patient booking, schedule, status, own records/slips and permitted cancellation; every private center, patient, finance and staff action requires actual backend grant/scope and privacy proof. A historically Web-only Center Portal or selected Admin form is **not** automatically excluded: provide an Internal Android route for the same enrolled actor or obtain a specific approved exception. Do not use a WebView or invent a new partner app.
+
+**Current source gate:** Review original Web/Admin/Center feature list and current native CG01 dashboard; for all approved actions, deliver/check matching native input, list/detail, status and controlled capability before marking source complete.

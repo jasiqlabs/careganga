@@ -51,13 +51,13 @@ const checks=[
  ["real scanner and verified immutable object required before visibility",
   s.service.includes("this.objects.reservePrivateUpload(")&&
   s.service.includes("this.objects.verifyPrivateObject(")&&
-  s.service.includes("verified.state===\\"CLEAN_VERIFIED\\"")&&
+  s.service.includes('verified.state==="CLEAN_VERIFIED"')&&
   s.service.includes("verified.sha256===row.sha256")&&
   s.service.includes("verified.scanProofRef")&&
   s.service.includes("readVerifiedPrivateObject(")],
  ["never return public protected GET URL, check object again after storage read",
   s.service.includes("const now=await this.currentFile(actor,ref)")&&
-  s.service.includes("createHash(\\"sha256\\").update(bytes)")&&
+  s.service.includes('createHash("sha256").update(bytes)')&&
   s.service.includes("return {bytes,mime:before.mime}")],
  ["original idempotency and immutable revoke CAS",
   s.service.includes("ON CONFLICT(realm_id,requested_by,request_key) DO NOTHING")&&
@@ -73,7 +73,7 @@ const checks=[
   s.web.includes("Patient-supplied prescription")],
  ["Web verified patient UI is the original private file history owner",
   s.webProfile.includes("<PatientPrivateFilesPanel")&&
-  s.web.includes('readFile(')&&
+  (s.web.includes('readFile(')||s.web.includes('openFile('))&&
   s.web.includes('function revoke(')&&
   s.web.includes('async function upload(')],
  ["Public Android Web parity: actual picker, bytes SHA, signed PUT and protected read",

@@ -35,7 +35,16 @@ export default async function CenterHome(){
     return <HealthcareAdminShell active="healthCenter"
       actor={{displayName:person.displayName,roleName:person.roleName}}
       actions={allowed}>
-      <CenterDraftPortal/>
+      <CenterDraftPortal
+       canViewLabPricing={allowed.has("diagnostics.pricing.view")}
+       canManageLabPricing={allowed.has("diagnostics.pricing.manage")}
+       canViewLabEquipment={allowed.has("lab.equipment.view")}
+       canManageLabEquipment={allowed.has("lab.equipment.manage")}
+       canUploadLabQuality={allowed.has("lab.quality.record")}
+       canProposeMerchant={allowed.has("healthcare.assistance.merchant.manage")}
+       canVerifyMerchant={allowed.has("healthcare.assistance.merchant.verify")}
+       canViewSettlements={allowed.has("healthcare.assistance.settlements.view")}
+       labERPEnabled={process.env.CAREGANGA_ERP_LAB_ENABLED==="true"}/>
     </HealthcareAdminShell>;
   }catch(e){
     if(e&&typeof e==="object"&&"digest" in e&&

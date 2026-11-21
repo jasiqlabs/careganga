@@ -58,3 +58,12 @@ Offer real protected and eligible custom role list, create/edit/copy/retire, gro
 | Security-policy editor and protected confirmations | Authorized protected actor only | Authorized protected actor only | Not shown |
 
 Maintain WCAG-oriented labels/contrast, responsive density, keyboard behavior, correct permission-hidden actions, non-disclosing neutral auth messages, no technical IDs or mock user data and the original screenshot matching process. **Source code presence does not establish pixel-motion/device PASS**.
+
+
+### 21 November 2026 — Owner-approved Web ↔ Android same-capability contract
+
+**Owner:** cg-01-identity-access. **Status:** MERGED_MAIN_OWNER_SOURCE_PARITY_AUDIT_OPEN. **Authority:** owner's existing BR/PRD/HLD and approved story IDs; root AGENTS.md current mandatory cross-channel rule. No new story, QA ID, role, table, endpoint or future dependency. The same authorized actor must be able to complete the same approved task on both applicable channels; maintain a single backend, record owner and permission/scope contract. This is owner-delegated **design-content approval only**, not a code, runtime, security, device or client acceptance.
+
+**Channel mapping:** Foundation Admin/authorized operator Web **↔ Internal Android**: Foundation Admin accounts, roles, policy, login/session and operator access. Approved public/consented Web **↔ Public Android**, only when actually within this module's original audience: public sign-in, account recovery and identity-safe entry flows. Public Android must never receive a staff/clinical/finance action to fake parity; neither WebView nor an absent screen is equivalent native coverage. A genuinely channel-only item requires explicit owner-approved QA reason, not an inherited “no native screen” assumption.
+
+**Visual/interaction acceptance:** Screen-by-screen compare original Admin screenshot IDs and authorized client public screenshot paths with Web and actual rendered Internal/Public Android: same labels, status language, action placement/flow, search/filter/list/detail/edit/submit/review/print/download/upload wherever approved, validated choices, success/denied/empty/loading/conflict/unknown outcomes, permission-hidden menus, Back/refresh, keyboard/safe-area and accessibility. Desktop grid/sidebar may adapt to native touch navigation, but branding, hierarchy, purpose and business actions must remain the same. Render/device/pixel/motion checks stay `NOT_RUN` until executed.

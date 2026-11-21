@@ -71,3 +71,12 @@ All applicable PRD N-01/N-04/N-05/N-09/N-11/N-12/N-13 and CG-NFR-600 controls ap
 CG-03 holds actual source-linked cases and separate verification/decision states for future membership, volunteer, employee, designation and promotion events, but does not own their records. Distinguish Documents Received, Verified, Sent Back/Rejected, Final Approved, source effect and actual issued PDF; client CG-MEM/VOL/EMP/DES/PROM templates may only correspond to the authoritative event. **Donation has NO donation approval stage**; don't insert CG-03 approval into confirmed donor receipt.
 
 **Implementation gate:** Re-review changed module specification hashes; target genuine source owner, CG-19 issued PDF/delivery recipient and exact current role scope. Real integration / provider tests NOT_RUN.
+
+
+### 21 November 2026 — Owner-approved Web ↔ Android same-capability contract
+
+**Owner:** cg-03-registration-approvals. **Status:** MERGED_MAIN_OWNER_SOURCE_PARITY_AUDIT_OPEN. **Authority:** owner's existing BR/PRD/HLD and approved story IDs; root AGENTS.md current mandatory cross-channel rule. No new story, QA ID, role, table, endpoint or future dependency. The same authorized actor must be able to complete the same approved task on both applicable channels; maintain a single backend, record owner and permission/scope contract. This is owner-delegated **design-content approval only**, not a code, runtime, security, device or client acceptance.
+
+**Channel mapping:** Foundation Admin/authorized operator Web **↔ Internal Android**: registered source application, permitted reviewer queue, decision, return, reason and case history. Approved public/consented Web **↔ Public Android**, only when actually within this module's original audience: only a separately approved applicant-facing submission/status journey; no private approval queue. Public Android must never receive a staff/clinical/finance action to fake parity; neither WebView nor an absent screen is equivalent native coverage. A genuinely channel-only item requires explicit owner-approved QA reason, not an inherited “no native screen” assumption.
+
+**Delivery boundary:** Implement both applicable channel routes/screens/actions within the same story on the same authorized branch. Extend the existing CG-01 visual identity, current shared API contracts and the owning module only. Previously merged code is a predecessor source, never blanket parity certification.

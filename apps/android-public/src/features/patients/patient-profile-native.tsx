@@ -10,6 +10,8 @@ import {NativeConsultationHistory} from "../appointments/native-consultation-his
 import {NativePatientPrivateDetails} from "./native-patient-private-details";
 import {NativePatientDatePicker} from "./native-patient-date-picker";
 import {NativePatientPrivateFiles} from "./native-patient-private-files";
+import {NativePatientPartnerClaims} from "./native-patient-partner-claims";
+import {NativeMyLabReports} from "./native-my-lab-reports";
 import {careGangaTheme as theme} from "../../../../../packages/design-tokens/src/index";
 
 const KEY="cg_public_patient_only_session";
@@ -450,9 +452,14 @@ export function PatientProfileNative({onExit}:{onExit:()=>void}){
      {profile?.profileStatus==="VERIFIED"&&token&&
       <NativePatientPrivateDetails token={token}
        consentGranted={profile.consentGranted} onExpired={clear}/>}
+     {profile?.profileStatus==="VERIFIED"&&token&&profile.consentGranted&&
+      <NativeMyLabReports token={token} onExpired={clear}/>}
      {profile&&<NativeConsultationHistory/>}
      {profile?.profileStatus==="VERIFIED"&&token&&
       <NativePatientPrivateFiles token={token}
+       consentGranted={profile.consentGranted} onExpired={clear}/>}
+     {profile?.profileStatus==="VERIFIED"&&token&&
+      <NativePatientPartnerClaims token={token}
        consentGranted={profile.consentGranted} onExpired={clear}/>}
      {profile&&<View style={styles.field}>
       <Text style={styles.subtitle}>Manage patient-care consent</Text>

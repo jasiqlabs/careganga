@@ -86,4 +86,17 @@ export class S3PrivateStorage extends VerifiedPrivateStorage{
       throw new ServiceUnavailableException("PDF S3 object version is unverified");
     return {objectVersion:"s3:"+versionId};
   }
+  protected async saveNewGeneratedReport(key:string,bytes:Buffer,mime:string){
+    await this.requireVersioning();
+    const response=await this.client.send(new PutObjectCommand({
+      Bucket:this.bucket,Key:key,Body:bytes,ContentLength:bytes.length,
+      ContentType:mime,ChecksumSHA256:Buffer.from(digest(bytes),"hex").toString("base64"),
+      IfNoneMatch:"*"
+    }));
+    const version=response.VersionId;
+    if(!version||version==="null"||version.length>150)
+      throw new ServiceUnavailableException("Generated private report object is not versioned");
+    return {objectVersion:"s3:"+version};
+  }
+
 }

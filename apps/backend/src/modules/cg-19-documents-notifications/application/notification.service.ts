@@ -4,6 +4,8 @@ import {
 import type {Pool,PoolClient} from "pg";
 import {DATABASE} from "../../../core/infrastructure/database.module";
 import {SessionService} from "../../cg-01-identity-access/application/session.service";
+import {BranchSourceFacade}
+ from "../../cg-02-foundation-structure/application/branch-source.facade";
 import {CommunicationRecipientSource} from "../../cg-01-identity-access/application/communication-recipient-source.service";
 import {CommittedDecisionSource} from "../../cg-03-registration-approvals/application/committed-decision-source.service";
 
@@ -28,6 +30,7 @@ export class NotificationService{
   constructor(
     @Inject(DATABASE)private readonly db:Pool,
     private readonly sessions:SessionService,
+    private readonly branches:BranchSourceFacade,
     private readonly people:CommunicationRecipientSource,
     private readonly decisions:CommittedDecisionSource
   ){}
@@ -248,15 +251,153 @@ export class NotificationService{
     }catch(e){if(open)try{await client.query("ROLLBACK");}catch{};throw e;}
     finally{client.release();}
   }
+  /** CG16 emits only an immutable released-report ID. Capture generic
+   * patient notice using the SAME CG19 verified consent/templates/delivery.
+   * No report values, patient name, download URL, diagnosis, or diagnosis
+   * interpretation ever leaves CG19 by notification.
+   */
+  private async labReleaseTemplate(c:PoolClient,root:string,channel:Channel):
+   Promise<Template>{
+   const text:Record<Channel,{subject:string;body:string}>={
+    IN_APP:{subject:"Your laboratory report is ready",
+     body:"A CareGanga laboratory report is available. Sign in to your patient account to view your private report."},
+    EMAIL:{subject:"CareGanga laboratory report update",
+     body:"A laboratory report has been released to your CareGanga patient account. Sign in securely to view it."},
+    SMS:{subject:"CareGanga report update",
+     body:"CareGanga: A private laboratory report is available. Sign in to your patient account to view it."}
+   };
+   const info=text[channel];
+   await c.query(
+    "INSERT INTO cg19_message_template(realm_id,kind,channel,version,"+
+    "subject,body,status,origin,approved_by) "+
+    "VALUES($1,'CG16_LAB_RELEASE',$2,1,$3,$4,'APPROVED','SYSTEM',NULL) "+
+    "ON CONFLICT(realm_id,kind,channel,version) DO NOTHING",
+    [root,channel,info.subject,info.body]);
+   const r=await c.query<Template>(
+    "SELECT id,version,subject,body FROM cg19_message_template "+
+    "WHERE realm_id=$1 AND kind='CG16_LAB_RELEASE' AND channel=$2 "+
+    "AND status='APPROVED' ORDER BY version DESC LIMIT 1",
+    [root,channel]);
+   if(!r.rows[0])throw new ConflictException("Report notification template is unavailable");
+   return r.rows[0];
+  }
+  async captureCommittedLabReleases(root:string):
+   Promise<{processed:number;more:boolean}>{
+   const c=await this.db.connect();let open=false;
+   try{
+    await c.query("BEGIN");open=true;
+    const confirmed=await c.query(
+     "SELECT 1 FROM access_realm WHERE id=$1 "+
+     "AND realm_key='FOUNDATION_ROOT'",[root]);
+    if(!confirmed.rowCount)
+     throw new ForbiddenException("Lab report notification root unavailable");
+    const q=await c.query<{release_ref:string;patient_ref:string;
+     original_cg19_file_ref:string}>(
+     "SELECT o.release_ref,release.patient_ref,"+
+     "release.original_cg19_file_ref FROM cg19_lab_release_outbox o "+
+     "JOIN cg16_lab_report_release release ON "+
+     "release.root_realm_id=o.realm_id AND release.id=o.release_ref "+
+     "WHERE o.realm_id=$1 AND o.state='PENDING' "+
+     "ORDER BY o.recorded_at,o.release_ref LIMIT 25 "+
+     "FOR UPDATE OF o SKIP LOCKED",[root]);
+    const templates=new Map<Channel,Template>();
+    for(const item of q.rows){
+     const candidate=await c.query<{account_id:string}>(
+      "SELECT link.account_id FROM cg15_patient_account_link link "+
+      "JOIN account account ON account.realm_id=link.root_realm_id "+
+      "AND account.id=link.account_id AND account.status='ACTIVE' "+
+      "JOIN cg15_patient patient ON patient.root_realm_id=link.root_realm_id "+
+      "AND patient.id=link.patient_id AND patient.profile_status='VERIFIED' "+
+      "JOIN cg16_lab_report_release release ON "+
+      "release.root_realm_id=patient.root_realm_id "+
+      "AND release.patient_ref=patient.id "+
+      "JOIN cg19_lab_result_file file ON "+
+      "file.root_realm_id=release.root_realm_id "+
+      "AND file.id=release.original_cg19_file_ref "+
+      "WHERE link.root_realm_id=$1 AND link.patient_id=$2 "+
+      "AND release.id=$3 AND link.revoked_at IS NULL "+
+      "AND file.revoked_at IS NULL AND file.scan_status='CLEAN_VERIFIED' "+
+      "AND EXISTS(SELECT 1 FROM cg15_patient_identity_event proof "+
+      "WHERE proof.root_realm_id=patient.root_realm_id "+
+      "AND proof.patient_id=patient.id) "+
+      "AND (SELECT consent.granted FROM cg15_patient_consent consent "+
+      "WHERE consent.root_realm_id=patient.root_realm_id "+
+      "AND consent.patient_id=patient.id AND consent.purpose='PATIENT_CARE' "+
+      "ORDER BY consent.revision_no DESC LIMIT 1)=true LIMIT 1",
+      [root,item.patient_ref,item.release_ref]);
+     const account=candidate.rows[0]?.account_id;
+     const person=account?await this.people.get(c,root,account):null;
+     if(person?.active&&account){
+      const channels:Channel[]=["IN_APP"];
+      if(person.emailVerified&&
+       await this.hasConsent(c,root,account,"EMAIL","TRANSACTIONAL"))
+       channels.push("EMAIL");
+      if(person.mobileVerified&&
+       await this.hasConsent(c,root,account,"SMS","TRANSACTIONAL"))
+       channels.push("SMS");
+      for(const channel of channels){
+       let template=templates.get(channel);
+       if(!template){
+        template=await this.labReleaseTemplate(c,root,channel);
+        templates.set(channel,template);
+       }
+       const saved=await c.query<{id:string}>(
+        "INSERT INTO cg19_notification(realm_id,source_kind,source_key,"+
+        "cg16_lab_report_release_id,recipient_id,template_id,"+
+        "template_version,channel,subject_snapshot,body_snapshot,"+
+        "purpose,state,due_at,expires_at) "+
+        "VALUES($1,'CG16_LAB_RELEASE',$2,$2,$3,$4,$5,$6,$7,$8,"+
+        "'TRANSACTIONAL',$9,"+
+        "CASE WHEN $6='IN_APP' THEN NULL ELSE now() END,"+
+        "now()+interval '7 days') "+
+        "ON CONFLICT DO NOTHING RETURNING id",
+        [root,item.release_ref,account,template.id,
+         template.version,channel,template.subject,template.body,
+         channel==="IN_APP"?"IN_APP":"QUEUED"]);
+       if(saved.rows[0])
+        await c.query(
+         "INSERT INTO cg19_communication_event("+
+         "realm_id,notification_id,kind) VALUES($1,$2,'SOURCE_CAPTURED')",
+         [root,saved.rows[0].id]);
+      }
+     }
+     await c.query(
+      "UPDATE cg19_lab_release_outbox SET state='CAPTURED',captured_at=now() "+
+      "WHERE realm_id=$1 AND release_ref=$2 AND state='PENDING'",
+      [root,item.release_ref]);
+    }
+    await c.query("COMMIT");open=false;
+    return {processed:q.rows.length,more:q.rows.length===25};
+   }catch(e){if(open)try{await c.query("ROLLBACK")}catch{}throw e;
+   }finally{c.release();}
+  }
   async recover(bearer:string){
     const actor=await this.sessions.requireAction(bearer,"communications.delivery.process");
     const decisions=await this.captureCommittedDecisions(actor.realmId);
     const appointments=await this.captureCommittedAppointments(actor.realmId);
-    // Preserve original CG03 recovery fields for existing clients.
-    return {...decisions,appointments};
+    const laboratoryReleases=await this.captureCommittedLabReleases(actor.realmId);
+    // Preserve original CG03 and appointment fields for existing clients.
+    return {...decisions,appointments,laboratoryReleases};
+  }
+  /** CG-19 owns inbox visibility. A neutral CG20 private notification may
+   * appear only while the original CG01 actions and CG02 branch permission
+   * are both currently valid. Other CG19 notification families are unchanged.
+   */
+  private async currentMisNoticeScope(bearer:string){
+    try{
+      await this.sessions.requireAction(bearer,"mis.reports.view");
+      await this.sessions.requireAction(bearer,"mis.reports.export");
+      const scope=await this.branches.financeReportScope(bearer);
+      return {allowed:true,all:scope.all,branches:scope.branchRefs};
+    }catch(error){
+      if(error instanceof ForbiddenException)
+       return {allowed:false,all:false,branches:[] as string[]};
+      throw error;
+    }
   }
   async inbox(bearer:string,limitInput:unknown=20){
     const actor=await this.sessions.requireAction(bearer,"communications.notifications.view");
+    const scope=await this.currentMisNoticeScope(bearer);
     const limit=Number(limitInput);
     if(!Number.isInteger(limit)||limit<1||limit>30)
       throw new BadRequestException("Choose a smaller notice page");
@@ -302,8 +443,61 @@ export class NotificationService{
                 AND consent.purpose='PATIENT_CARE'
               ORDER BY consent.revision_no DESC LIMIT 1)=true
         ))
+        AND (n.source_kind<>'CG16_LAB_RELEASE' OR EXISTS(
+          SELECT 1 FROM cg16_lab_report_release released
+          JOIN cg19_lab_result_file file
+            ON file.root_realm_id=released.root_realm_id
+           AND file.id=released.original_cg19_file_ref
+           AND file.scan_status='CLEAN_VERIFIED'
+           AND file.revoked_at IS NULL
+          JOIN cg15_patient patient
+            ON patient.root_realm_id=released.root_realm_id
+           AND patient.id=released.patient_ref
+           AND patient.profile_status='VERIFIED'
+          JOIN cg15_patient_account_link owner_link
+            ON owner_link.root_realm_id=patient.root_realm_id
+           AND owner_link.patient_id=patient.id
+           AND owner_link.account_id=n.recipient_id
+           AND owner_link.revoked_at IS NULL
+          WHERE released.root_realm_id=n.realm_id
+            AND released.id=n.cg16_lab_report_release_id
+            AND EXISTS(SELECT 1 FROM cg15_patient_identity_event proof
+              WHERE proof.root_realm_id=patient.root_realm_id
+                AND proof.patient_id=patient.id)
+            AND (SELECT consent.granted
+              FROM cg15_patient_consent consent
+              WHERE consent.root_realm_id=patient.root_realm_id
+                AND consent.patient_id=patient.id
+                AND consent.purpose='PATIENT_CARE'
+              ORDER BY consent.revision_no DESC LIMIT 1)=true
+        ))
+        AND (n.source_kind<>'CG20_MIS_REPORT' OR
+          ($4::boolean AND EXISTS(
+            SELECT 1 FROM cg20_report_run report
+            JOIN cg19_mis_report_artifact artifact
+              ON artifact.root_realm_id=report.root_realm_id
+             AND artifact.report_run_ref=report.id
+             AND artifact.id=report.artifact_ref
+            JOIN cg20_saved_report saved
+              ON saved.root_realm_id=report.root_realm_id
+             AND saved.id=report.saved_ref
+             AND saved.owner_account_ref=report.requester_ref
+            WHERE report.root_realm_id=n.realm_id
+              AND report.id=n.cg20_mis_run_ref
+              AND report.requester_ref=n.recipient_id
+              AND report.run_origin='SCHEDULED'
+              AND report.source_key='FINANCE_POSTED_SUMMARY'
+              AND report.state='READY' AND report.expires_at>now()
+              AND saved.state='ACTIVE'
+              AND saved.current_revision=report.definition_revision
+              AND artifact.state='READY' AND artifact.revoked_at IS NULL
+              AND artifact.object_version IS NOT NULL
+              AND ($5::boolean OR
+                report.safe_request->>'branchRef'=ANY($6::text[]))
+          )))
       ORDER BY n.created_at DESC,n.id DESC LIMIT $3
-    `,[actor.realmId,actor.accountId,limit]);
+    `,[actor.realmId,actor.accountId,limit,
+      scope.allowed,scope.all,scope.branches]);
     return {items:rows.rows.map(row=>({
       notificationRef:row.id,title:row.subject_snapshot,
       body:row.body_snapshot,channel:row.channel,status:row.state,
@@ -313,6 +507,7 @@ export class NotificationService{
   async read(bearer:string,rawRef:unknown){
     const actor=await this.sessions.requireAction(bearer,"communications.notifications.view");
     const ref=needUuid(rawRef);
+    const scope=await this.currentMisNoticeScope(bearer);
     const client=await this.db.connect();let open=false;
     try{
       await client.query("BEGIN");open=true;
@@ -351,8 +546,61 @@ export class NotificationService{
                 AND consent.purpose='PATIENT_CARE'
               ORDER BY consent.revision_no DESC LIMIT 1)=true
         ))
+        AND (n.source_kind<>'CG16_LAB_RELEASE' OR EXISTS(
+          SELECT 1 FROM cg16_lab_report_release released
+          JOIN cg19_lab_result_file file
+            ON file.root_realm_id=released.root_realm_id
+           AND file.id=released.original_cg19_file_ref
+           AND file.scan_status='CLEAN_VERIFIED'
+           AND file.revoked_at IS NULL
+          JOIN cg15_patient patient
+            ON patient.root_realm_id=released.root_realm_id
+           AND patient.id=released.patient_ref
+           AND patient.profile_status='VERIFIED'
+          JOIN cg15_patient_account_link owner_link
+            ON owner_link.root_realm_id=patient.root_realm_id
+           AND owner_link.patient_id=patient.id
+           AND owner_link.account_id=n.recipient_id
+           AND owner_link.revoked_at IS NULL
+          WHERE released.root_realm_id=n.realm_id
+            AND released.id=n.cg16_lab_report_release_id
+            AND EXISTS(SELECT 1 FROM cg15_patient_identity_event proof
+              WHERE proof.root_realm_id=patient.root_realm_id
+                AND proof.patient_id=patient.id)
+            AND (SELECT consent.granted
+              FROM cg15_patient_consent consent
+              WHERE consent.root_realm_id=patient.root_realm_id
+                AND consent.patient_id=patient.id
+                AND consent.purpose='PATIENT_CARE'
+              ORDER BY consent.revision_no DESC LIMIT 1)=true
+        ))
+        AND (n.source_kind<>'CG20_MIS_REPORT' OR
+          ($4::boolean AND EXISTS(
+            SELECT 1 FROM cg20_report_run report
+            JOIN cg19_mis_report_artifact artifact
+              ON artifact.root_realm_id=report.root_realm_id
+             AND artifact.report_run_ref=report.id
+             AND artifact.id=report.artifact_ref
+            JOIN cg20_saved_report saved
+              ON saved.root_realm_id=report.root_realm_id
+             AND saved.id=report.saved_ref
+             AND saved.owner_account_ref=report.requester_ref
+            WHERE report.root_realm_id=n.realm_id
+              AND report.id=n.cg20_mis_run_ref
+              AND report.requester_ref=n.recipient_id
+              AND report.run_origin='SCHEDULED'
+              AND report.source_key='FINANCE_POSTED_SUMMARY'
+              AND report.state='READY' AND report.expires_at>now()
+              AND saved.state='ACTIVE'
+              AND saved.current_revision=report.definition_revision
+              AND artifact.state='READY' AND artifact.revoked_at IS NULL
+              AND artifact.object_version IS NOT NULL
+              AND ($5::boolean OR
+                report.safe_request->>'branchRef'=ANY($6::text[]))
+          )))
         FOR SHARE OF n,a
-      `,[ref,actor.realmId,actor.accountId]);
+      `,[ref,actor.realmId,actor.accountId,
+       scope.allowed,scope.all,scope.branches]);
       if(!exists.rowCount)throw new ForbiddenException("Notification unavailable");
       const applied=await client.query(`
         INSERT INTO cg19_notification_read(realm_id,recipient_id,notification_id)

@@ -61,6 +61,27 @@ check('Create-only operator can open permitted account screen',
 check('Initial Super Admin provisioning is explicitly offline',
   bootstrap.includes('--confirm-one-time-root')&&!session.includes('@Post("bootstrap")'));
 
+const mobileProof=get('apps/backend/src/modules/cg-01-identity-access/http/mobile-verification.controller.ts');
+const nativeOwnNotice=get('apps/android-internal/src/features/communications/notifications-screen.tsx');
+const webOwnNotice=get('apps/web/src/features/communications/communications-workspace.tsx');
+check('Own-account registered phone proof reuses CG01 backend on Web/Internal Android',
+  mobileProof.includes('@Controller("api/identity/mobile")')&&
+  mobileProof.includes('@Get("status")')&&
+  mobileProof.includes('@Post("verify/start")')&&
+  mobileProof.includes('@Post("verify/confirm")')&&
+  webOwnNotice.includes('verify/start')&&
+  webOwnNotice.includes('verify/confirm')&&
+  nativeOwnNotice.includes('/api/identity/mobile/')&&
+  nativeOwnNotice.includes('verify/start')&&
+  nativeOwnNotice.includes('verify/confirm')&&
+  nativeOwnNotice.includes('maskedContact')&&
+  nativeOwnNotice.includes('result.status==="VERIFIED"')&&
+  nativeOwnNotice.includes('if(!proof.verified)throw Error("OFFLINE")'));
+check('CG01 proof is own account only and provider result is not fabricated',
+  !nativeOwnNotice.includes('recipientPhone')&&
+  !nativeOwnNotice.includes('phoneNumber:')&&
+  nativeOwnNotice.includes('providerConfigured')&&
+  nativeOwnNotice.includes('CODE_REQUESTED_UNCONFIRMED_DELIVERY'));
 const sql23=get('apps/backend/db/migrations/0023_cg19_notifications_notices.sql');
 const sql24=get('apps/backend/db/migrations/0024_cg19_foundation_support.sql');
 check('CG-19 notices declare the called SQL trigger function',
@@ -80,7 +101,8 @@ for(const [owner,expected] of Object.entries({
   '02-foundation-structure':25
 })){
   const task=get('specs/initiatives/careganga-foundation-platform/modules/cg-'+owner+'/tasks.md');
-  const ids=new Set([...task.matchAll(/\bUS-\d{3}-QA\d{2}\b/g)].map(x=>x[0]));
+  const ownTask=task.replace(/origin=CG-\d+\/US-\d{3}-QA\d{2}/g,"");
+  const ids=new Set([...ownTask.matchAll(/\bUS-\d{3}-QA\d{2}\b/g)].map(x=>x[0]));
   total+=ids.size;
   check('Canonical '+owner+' QA definitions: '+expected,ids.size===expected);
 }

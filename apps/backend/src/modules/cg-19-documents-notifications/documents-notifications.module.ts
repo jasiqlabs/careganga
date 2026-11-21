@@ -17,6 +17,8 @@ import {FinanceSourceModule} from "../cg-09-finance-accounting/finance-source.mo
 import {FinanceBankStatementEvidenceService} from "./application/finance-bank-statement-evidence.service";
 import {FinanceBankStatementEvidenceController} from "./http/finance-bank-statement-evidence.controller";
 import {FinanceReceiptDocumentService} from "./application/finance-receipt-document.service";
+import {MisProtectedArtifactService} from "./application/mis-protected-artifact.service";
+import {MisReportNoticeService} from "./application/mis-report-notice.service";
 import {FinanceReceiptDocumentController} from "./http/finance-receipt-document.controller";
 import {FinanceInvoiceDocumentService} from "./application/finance-invoice-document.service";
 import {FinanceInvoiceDocumentController} from "./http/finance-invoice-document.controller";
@@ -70,9 +72,10 @@ import {CommunicationsController,CommunicationProviderWebhookController} from
     CommunicationsController,CommunicationProviderWebhookController,SupportController],
   providers:[PatientPrivateFilesService,PatientClinicalFileSharingService,HealthClinicianIdentityService,HealthPublicRequestThrottleService,AppointmentSlipDocumentService,HealthDraftEvidenceService,HealthDoctorPrivateEvidenceService,PrivateEvidenceService,CmsDraftMediaService,CmsPublicNoticeSource,PrivateLetterService,BranchPrivateEvidenceService,BranchWorkflowService,ActiveBranchEvidenceService,FinanceVoucherEvidenceService,FinanceClaimEvidenceService,FinanceInvoiceDocumentService,FinanceReceiptDocumentService,FinanceBankStatementEvidenceService,
     NotificationService,NoticeService,DeliveryService,ClientEmailTemplateService,
+    MisProtectedArtifactService,MisReportNoticeService,
     CommunicationProviders,CommunicationWorker,SupportService,HealthCenterSupportScopeFacade,
     HealthCenterContentMediaService,CenterSupportAttachmentService,
     {provide:PrivateObjectStorage,useFactory:makePrivateStorageProvider}],
-  exports:[CenterSupportAttachmentService,HealthCenterContentMediaService,HealthDraftEvidenceService,HealthDoctorPrivateEvidenceService,PrivateEvidenceService,CmsDraftMediaService,CmsPublicNoticeSource,PrivateLetterService,SupportService,BranchPrivateEvidenceService,ActiveBranchEvidenceService,FinanceVoucherEvidenceService,FinanceClaimEvidenceService,FinanceInvoiceDocumentService,FinanceReceiptDocumentService,FinanceBankStatementEvidenceService]
+  exports:[CenterSupportAttachmentService,HealthCenterContentMediaService,HealthDraftEvidenceService,HealthDoctorPrivateEvidenceService,PrivateEvidenceService,CmsDraftMediaService,CmsPublicNoticeSource,PrivateLetterService,SupportService,BranchPrivateEvidenceService,ActiveBranchEvidenceService,FinanceVoucherEvidenceService,FinanceClaimEvidenceService,FinanceInvoiceDocumentService,FinanceReceiptDocumentService,FinanceBankStatementEvidenceService,MisProtectedArtifactService,MisReportNoticeService]
 })
 export class DocumentsNotificationsModule{}

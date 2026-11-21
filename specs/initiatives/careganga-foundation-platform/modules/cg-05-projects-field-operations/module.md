@@ -80,3 +80,12 @@ mobile_dependency_audit: OFFICIAL_SOURCE_DESIGN_REFERENCE_ONLY; actual app sourc
 
 ## 18 November 2026 — original website receiving acceptance
 **Original route/journey:** /upcoming-projects; Our Work category routes; Events. **Reference:** Batch02 021139–021224 and original 07 Our Work menu. **Owner:** current CG-05 approved projects/events, planned status/location/date/photos, CG-07 real Support Project destination. Use this [47-screen public owner and QA map](../../../../../docs/research/CAREGANGA-ORIGINAL-PUBLIC-SCREENSHOT-QA-TRACE-20261118.md), preserving the existing US-001/003/005 boundaries and all real financial/document permissions; screenshots are not authorized seeds.
+
+
+### 21 November 2026 — Owner-approved Web ↔ Android same-capability contract
+
+**Owner:** cg-05-projects-field-operations. **Current source:** FUTURE_OWNER_NOT_IMPLEMENTED (existing source owner module absent from current backend tree). **Approval:** owner-delegated latest design clarification only; no implementation, runtime, independent or client sign-off. Reuse existing BR/PRD/HLD, canonical stories and original QA IDs; never add speculative features or depend on an undeveloped future owner.
+
+**Required equivalent authorized audiences:** Foundation Admin / assigned operator Web **↔ Internal Android** for authorized project, task, volunteer assignment, field activity/event and evidence workflows; approved public/consented Web **↔ Public Android** only for approved publicly published project/event discoverability without staff data. Use exactly one owner service/API, CG-01 grant and current scope, and the CG-01 authentic design system; a native WebView or merely linking to Web does not satisfy equivalence. Neither new protected public view nor an unconditional Web-only exemption is approved. Explicit product-owner reason is required for any true platform exclusion.
+
+**Delivery requirement:** Each originally approved journey must be implemented at the same story checkpoint on all applicable channels (Web + Android) before declaring source complete. Source unavailable or an upstream not implemented is `FUTURE_OWNER`/`SOURCE_GAP`, not an empty menu or placeholder.

@@ -14,6 +14,9 @@ import {
 } from "./dashboard-modules";
 import { AuthenticatedAppShell } from "./authenticated-app-shell";
 import { OperationsOverview } from "./operations-overview";
+import {NativeMisDashboard} from "../mis-reporting/native-mis-dashboard";
+
+import {NativeClinicianAccountAcceptance} from "../health-network/native-clinician-account-link";
 import { AuthorizedModuleCard } from "./authorized-module-card";
 import { IconGrid, IconMenu } from "./dashboard-icons";
 
@@ -23,6 +26,7 @@ export interface InternalDashboardScreenProps {
   roleActions: string[];
   handlers: ModuleActionHandlers;
   onSignOut: () => void;
+  onExpired?: () => void;
   message?: string;
 }
 
@@ -31,6 +35,8 @@ export function InternalDashboardScreen({
   roleActions,
   handlers,
   onSignOut,
+  onExpired = onSignOut,
+  token,
   message
 }: InternalDashboardScreenProps) {
   const scrollRef = useRef<React.ComponentRef<typeof ScrollView>>(null);
@@ -94,11 +100,22 @@ export function InternalDashboardScreen({
           </View>
         )}
 
+        {/* Existing CG14 personal doctor-account acceptance, only visible when pending. */}
+        <NativeClinicianAccountAcceptance token={token} onExpired={onExpired}/>
+
         {/* Operations Overview with 3 KPI Cards */}
         <OperationsOverview
           roleName={actor.roleName}
           scope={actor.scope}
         />
+
+        {/* Private MIS on the staff dashboard only; no private Public Android mirror. */}
+        {roleActions.includes("mis.dashboard.view")&&
+          <NativeMisDashboard token={token} onExpired={onExpired}
+            onOpenFinance={roleActions.includes("finance.reports.view")?handlers.openReports:undefined}
+            onOpenPatientAdmin={roleActions.includes("health.patients.admin.view")&&
+             roleActions.includes("foundation.branches.admin")?
+             handlers.openPatientAdmin:undefined}/>}
 
         {/* Authorized Modules Section (Featured Quick Access matching Web Dashboard) */}
         <View style={styles.modulesSection}>

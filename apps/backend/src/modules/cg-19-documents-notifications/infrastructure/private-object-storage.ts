@@ -37,6 +37,16 @@ export abstract class PrivateObjectStorage{
    * a lost write/SQL response. Verify actual private bytes and malware state.
    * Never permit a client-uploaded evidence key to use this operation.
    */
+  abstract writeVerifiedGeneratedReport(request:{
+    objectKey:string;bytes:Buffer;sha256:string;
+    mime:"application/pdf"|"text/csv"|
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+  }):Promise<{objectVersion:string;sha256:string}>;
+  abstract reconcileGeneratedReport(request:{
+    objectKey:string;mime:"application/pdf"|"text/csv"|
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
+    maxBytes:number
+  }):Promise<{objectVersion:string;sha256:string;sizeBytes:number}>;
   abstract reconcileIssuedPrivateDocument(request:{
     objectKey:string;maxBytes:number
   }):Promise<{objectVersion:string;sha256:string;sizeBytes:number}>;
@@ -60,6 +70,18 @@ export class UnconfiguredPrivateObjectStorage extends PrivateObjectStorage{
   async writeVerifiedPrivateDocument(_request:{
     objectKey:string;bytes:Buffer;sha256:string
   }):Promise<{objectVersion:string;sha256:string}>{return this.unavailable();}
+  async writeVerifiedGeneratedReport(_request:{
+    objectKey:string;bytes:Buffer;sha256:string;
+    mime:"application/pdf"|"text/csv"|
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+  }):Promise<{objectVersion:string;sha256:string}>{return this.unavailable();}
+  async reconcileGeneratedReport(_request:{
+    objectKey:string;mime:"application/pdf"|"text/csv"|
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
+    maxBytes:number
+  }):Promise<{objectVersion:string;sha256:string;sizeBytes:number}>{
+    return this.unavailable();
+  }
   async reconcileIssuedPrivateDocument(_request:{
     objectKey:string;maxBytes:number
   }):Promise<{objectVersion:string;sha256:string;sizeBytes:number}>{return this.unavailable();}

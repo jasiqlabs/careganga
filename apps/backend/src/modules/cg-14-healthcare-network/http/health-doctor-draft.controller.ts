@@ -11,10 +11,13 @@ export class HealthDoctorDraftController{
     private readonly reviews:HealthDoctorReviewWorkflowService,
     private readonly fees:HealthDoctorFeesService){}
   @Get()
-  list(@Headers("authorization")bearer:string,@Query("offset")offset?:string){
+  list(@Headers("authorization")bearer:string,@Query("offset")offset?:string,
+    @Query("q")search?:string){
     if(offset!==undefined&&!/^(0|[1-9][0-9]{0,4})$/.test(offset))
       throw new BadRequestException({code:"HEALTH_DOCTOR_FIELD_INVALID",field:"offset"});
-    return this.doctors.list(bearer,Number(offset??0));
+    if(search!==undefined&&(search.length>80||/[\u0000-\u001f\u007f]/.test(search)))
+      throw new BadRequestException({code:"HEALTH_DOCTOR_FIELD_INVALID",field:"search"});
+    return this.doctors.list(bearer,Number(offset??0),search??"");
   }
   @Post()
   create(@Headers("authorization")bearer:string,@Body()body:unknown){

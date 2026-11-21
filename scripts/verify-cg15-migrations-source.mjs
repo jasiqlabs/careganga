@@ -102,9 +102,9 @@ function inspect(sql,minimumStatements=3){
   if(!clean)continue;
   if(!/^(CREATE|ALTER|DO|INSERT|UPDATE|DELETE|DROP|COMMENT|GRANT|REVOKE|WITH|SELECT|SET)\b/i.test(clean))
    errors.push("Unknown SQL statement near line "+part.line+": "+clean.slice(0,55));
-  const create=clean.match(/^CREATE\s+(?:OR REPLACE\s+)?(?:UNIQUE\s+)?(?:TABLE|INDEX|FUNCTION|TRIGGER)\s+([A-Za-z_][A-Za-z_0-9]*)/i);
+  const create=clean.match(/^CREATE\s+(?:OR REPLACE\s+)?(?:UNIQUE\s+)?(TABLE|INDEX|FUNCTION|TRIGGER)\s+([A-Za-z_][A-Za-z_0-9]*)/i);
   const constraint=clean.match(/^ALTER\s+TABLE\s+([A-Za-z_][A-Za-z_0-9]*)\s+ADD\s+CONSTRAINT\s+([A-Za-z_][A-Za-z_0-9]*)/i);
-  const key=create?"CREATE:"+create[1].toLowerCase():
+  const key=create?"CREATE:"+create[1].toUpperCase()+":"+create[2].toLowerCase():
    constraint?"CONSTRAINT:"+constraint[1].toLowerCase()+":"+constraint[2].toLowerCase():null;
   if(key){
    named++;

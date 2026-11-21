@@ -1,10 +1,12 @@
 import Link from "next/link";
+import type {ReactNode} from "react";
+import {UnavailablePage} from "../../shared/unavailable-page";
 import type {Metadata} from "next";
 import {notFound} from "next/navigation";
 import {CmsPublicPage} from "./cms-public-page";
 import {CmsNgoSidebar} from "./cms-ngo-pages";
 import {publishedCmsPage,publishedCmsNavigation} from "./cms-public-source";
-import {UnavailablePage} from "../../shared/unavailable-page";
+import {publicLabOffers,rupees} from "../diagnostics/public-lab-offers";
 
 /** One SSR source for each approved Foundation editorial route.
  * The Home publication supplies only shared original CMS footer content.
@@ -16,9 +18,10 @@ export async function editorialMetadata(slug:string):Promise<Metadata>{
   alternates:{canonical:r.page.canonicalPath},
   robots:{index:true,follow:true}};
 }
-export async function CmsEditorialRoute({slug}:{slug:string}){
- const [page,navigation,home]=await Promise.all([
-  publishedCmsPage(slug),publishedCmsNavigation(),publishedCmsPage("home")]);
+export async function CmsEditorialRoute({slug,extra}:{slug:string;extra?:ReactNode}){
+ const [page,navigation,home,labOffers]=await Promise.all([
+  publishedCmsPage(slug),publishedCmsNavigation(),publishedCmsPage("home"),
+  slug==="healthcare"?publicLabOffers(new URLSearchParams()):Promise.resolve(null)]);
  if(page.state==="NOT_PUBLISHED")notFound();
  if(page.state!=="PUBLISHED")return <UnavailablePage title="Foundation content temporarily unavailable" description="We could not verify the currently approved public information." linkHref="/" linkLabel="Return to the homepage" />;
  return <CmsPublicPage page={page.page} navigation={navigation}
@@ -36,6 +39,23 @@ export async function CmsEditorialRoute({slug}:{slug:string}){
    <p>Bookings depend on a current available slot and final confirmation.
     This is not an approval for financial assistance.</p>
   </section>}
+  {extra??null}
+  {slug==="healthcare"&&labOffers?.state==="READY"&&labOffers.items.length>0&&
+   <section className="cg-site-content" aria-label="Currently approved partner laboratory tests">
+    <h2>Current approved laboratory tests and prices</h2>
+    <p>These are verified partner laboratory commercial prices, not an appointment,
+     Foundation assistance, a received payment or a medical report. Contact the
+     original verified laboratory to confirm services.</p>
+    <ul>
+     {labOffers.items.slice(0,3).map(offer=><li key={offer.offerRef}>
+      <strong>{offer.name}</strong> — {offer.centerName}: {rupees(offer.patientPriceMinor)}
+      {" "}<Link href={"/health-network/lab-tests?center="+
+       encodeURIComponent(offer.centerSlug)}>View current lab test options</Link>
+     </li>)}
+    </ul>
+    <Link className="cg-site-action" href="/health-network/lab-tests">
+     Browse all currently approved tests and prices</Link>
+   </section>}
  </CmsPublicPage>;
 }
 
@@ -71,7 +91,9 @@ export async function CmsOriginalMediaRoute({mediaType}:{mediaType:OriginalMedia
   publishedCmsPage("gallery"),publishedCmsNavigation(),publishedCmsPage("home")]);
  if(r.state==="NOT_PUBLISHED")notFound();
  if(r.state!=="PUBLISHED"||r.page.kind!=="GALLERY")
-  return <UnavailablePage title="Foundation media temporarily unavailable" description="Approved media information could not be verified." linkHref="/" linkLabel="Return to the homepage" />;
+  return <main className="page main"><h1>Foundation media temporarily unavailable</h1>
+   <p>Approved media information could not be verified.</p>
+   <Link href="/">Return to the homepage</Link></main>;
  return <CmsPublicPage page={{...r.page,canonicalPath:originalMediaPath(mediaType)}}
   mediaScope={mediaType} navigation={navigation}
   siteFooter={home.state==="PUBLISHED"?
@@ -94,7 +116,9 @@ export async function CmsOriginalNgoInformationRoute(){
   publishedCmsPage("80g"),publishedCmsNavigation(),publishedCmsPage("home")]);
  if(r.state==="NOT_PUBLISHED")notFound();
  if(r.state!=="PUBLISHED"||r.page.kind!=="COMPLIANCE")
-  return <UnavailablePage title="Foundation registration information unavailable" description="We cannot verify the current approved official information." linkHref="/" linkLabel="Return to the homepage" />;
+  return <main className="page main"><h1>Foundation registration information unavailable</h1>
+   <p>We cannot verify the current approved official information.</p>
+   <Link href="/">Return to the homepage</Link></main>;
  return <CmsPublicPage page={{...r.page,canonicalPath:"/ngo-information"}}
   sidebar={<CmsNgoSidebar page={r.page}/>} navigation={navigation}
   siteFooter={home.state==="PUBLISHED"?

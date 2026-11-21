@@ -76,4 +76,16 @@ export class FirebasePrivateStorage extends VerifiedPrivateStorage{
       throw new ServiceUnavailableException("Firebase PDF generation not verified");
     return {objectVersion:"gcs:"+generation};
   }
+  protected async saveNewGeneratedReport(key:string,bytes:Buffer,mime:string){
+    const file=this.bucket().file(key);
+    await file.save(bytes,{resumable:false,validation:"crc32c",
+      preconditionOpts:{ifGenerationMatch:0},
+      metadata:{contentType:mime,cacheControl:"private, no-store"}});
+    const [metadata]=await file.getMetadata();
+    const generation=String(metadata.generation??"");
+    if(!/^[0-9]{1,30}$/.test(generation))
+      throw new ServiceUnavailableException("Generated private report object is unverified");
+    return {objectVersion:"gcs:"+generation};
+  }
+
 }

@@ -118,3 +118,14 @@ Dependencies: US-002
 Existing CG-11 QA must trace employee-only private slip, calculation-approved/paid separation, actual provider confirmation, duplicate/out-of-order provider events, failure and no unauthorized manager/other-employee read. Support resent payslip requires registered destination & ticket verification. Web/Android own-pay state and email subject/attachments follow real source. Runtime/provider QA NOT_RUN.
 
 **Progress status:** CLIENT_SOURCE_MAPPED; nonimplemented owner integrations SOURCE_PENDING; no new executed test or PASS. Reconcile in next Implement → independent review → fix → re-review → existing story QA source trace, then actual Web/Android/PostgreSQL/provider/rendered tests.
+
+
+### 21 November 2026 — Owner-approved Web ↔ Android same-capability contract
+
+**Owner:** cg-11-payroll-compensation. **Status:** FUTURE_OWNER_NOT_IMPLEMENTED; this is the delegated design approval to mirror existing authorized Web workflows in native Android, not an implementation, QA PASS, new story/role or client sign-off. Use current original BR/PRD/HLD, per-story QA and root AGENTS.md. Preserve all existing privacy, role, independent review and upstream-only dependencies.
+
+**Applicable audience parity:** Foundation Admin/assigned staff Web **↔ Internal Android** for payroll definition/run, reviewer approval, employee own payslip, salary/payment confirmation and approved reports. Public Web **↔ Public Android** only if the original owner permits no public payroll/employee bank details; only role-scoped Internal Android. Do not expose payroll, employee personal data, stock or unapproved business records publicly. Any exception to same-actor Web/Android coverage requires explicit owner approval and QA reason; a blanket “desktop only” statement, a WebView or a sample screen is not an exception. Use the original single owning API, current CG-01 scopes and CG-01/authentic CareGanga design identity.
+
+**No fake source closure:** Original story/QA definitions are unchanged. Until actual owner code exists, applicable `WEB_SOURCE=NOT_IMPLEMENTED`, `INTERNAL_ANDROID_SOURCE=NOT_IMPLEMENTED`, public channels `NOT_IMPLEMENTED` only when in approved scope (otherwise N/A with reason); runtime backend/Web/Android/device/PG/provider/security tests `NOT_RUN`. On implementation, compare each Web/native action and fix in owning source before source-complete or main merge.
+
+- pending-integration: origin=CG-20/US-002-QA08; owner=CG-11/US-003; trigger=CG10 employee and CG11 payroll owner data delivered; verify=Source-granted employee payroll report with salary/bank field denial unless CG10/11 source entitlement, Web/Internal Android parity; state=PENDING_OWNER_IMPLEMENTATION; web_android_parity=REQUIRED_FOR_AUTHORIZED_STAFF; runtime=NOT_RUN; approved_original_CG20_QA_TEXT=UNCHANGED

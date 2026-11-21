@@ -53,10 +53,27 @@ export interface ModuleActionHandlers {
   openAccounts: () => void;
   openRoles: () => void;
   openPolicy: () => void;
+  openPlatformConfiguration: () => void;
   openApprovals: () => void;
+  openPatientAdmin: () => void;
   openPatientQueue: () => void;
+  openClinicianActivity: () => void;
+  openLabOrders: () => void;
+  openLabEquipment: () => void;
+  openHealthcarePolicies: () => void;
+  openCenterMerchant: () => void;
+  openFoundationLiabilities: () => void;
+  openMonthlyProviderSettlements: () => void;
+  openPartnerSettlements: () => void;
+  openLabTestMaster: () => void;
+  openMyLabPricing: () => void;
   openPatientBooking: () => void;
   openDoctorLeaveReviews: () => void;
+  openOwnCenterPortal: () => void;
+  openWebsiteCms: () => void;
+  openHealthDoctorManagement: () => void;
+  openCenterContentPublisher: () => void;
+  openHealthProviderManagement: () => void;
   openHealthReviews: () => void;
   openDocuments: () => void;
   openNotifications: () => void;
@@ -72,6 +89,7 @@ export interface ModuleActionHandlers {
   openBudget: () => void;
   openBudgetReview: () => void;
   openReports: () => void;
+  openMis: () => void;
   openFinance: () => void;
   openBranches: () => void;
   openChangePassword: () => void;
@@ -208,6 +226,33 @@ export function getAuthorizedModules(
   }
 
   // ----------------------------------------------------
+  if (roleActions.includes("health.visits.clinical.manage")) {
+    list.push({
+      key: "healthClinicianActivity",
+      title: "My Consultations",
+      shortLabel: "My Visits",
+      description: "View only your own verified doctor and center's consultation activity.",
+      category: "HEALTHCARE ASSISTANCE",
+      iconName: "receipt",
+      iconBg: "#E0F2FE",
+      iconColor: "#0284C7",
+      onOpen: handlers.openClinicianActivity
+    });
+  }
+  // CG15 Foundation-wide patient administration, NOT center queue or public patient.
+  if (roleActions.includes("health.patients.admin.view")) {
+    list.push({
+      key: "healthPatientAdmin",
+      title: "Foundation Patient Management",
+      shortLabel: "Patients",
+      description: "Authorized patient records, consultation filters, original audit and printing.",
+      category: "HEALTHCARE ASSISTANCE",
+      iconName: "users",
+      iconBg: "#E0F2FE",
+      iconColor: "#0284C7",
+      onOpen: handlers.openPatientAdmin
+    });
+  }
   if (roleActions.includes("health.visits.manage")) {
     list.push({
       key: "healthVisitQueue",
@@ -219,6 +264,133 @@ export function getAuthorizedModules(
       iconBg: "#E0F2FE",
       iconColor: "#0284C7",
       onOpen: handlers.openPatientQueue
+    });
+  }
+
+  // Exact same actor/CG01 capabilities as Foundation Web H09 and own-center pricing.
+  if (roleActions.includes("diagnostics.catalog.view")) {
+    list.push({
+      key: "healthLabTestMaster",
+      title: "Lab Test Master & Pricing",
+      shortLabel: "Test Master",
+      description: "Manage permitted tests, packages and approved commercial lab prices.",
+      category: "HEALTHCARE ASSISTANCE",
+      iconName: "file-text",
+      iconBg: "#E0F2FE",
+      iconColor: "#0284C7",
+      onOpen: handlers.openLabTestMaster
+    });
+  }
+  if (roleActions.includes("diagnostics.pricing.view")) {
+    list.push({
+      key: "healthMyLabPricing",
+      title: "My Lab Pricing",
+      shortLabel: "Lab Pricing",
+      description: "View or propose commercial pricing at currently assigned laboratories.",
+      category: "HEALTHCARE ASSISTANCE",
+      iconName: "receipt",
+      iconBg: "#F1F5F9",
+      iconColor: "#475569",
+      onOpen: handlers.openMyLabPricing
+    });
+  }
+  // CG16 US005 is conditional LAB_ERP + current CG14 center access, but
+  // independent of CG15 patient orders and clinical-readiness.
+  if (roleActions.includes("healthcare.assistance.policies.view") ||
+      roleActions.includes("healthcare.assistance.policies.review") &&
+      roleActions.includes("approvals.review")) {
+    list.push({
+      key: "healthAssistancePolicies",
+      title: "Foundation Contribution Policies",
+      shortLabel: "Support Policies",
+      description: "Actual approved healthcare assistance rules by center and doctor.",
+      category: "HEALTHCARE ASSISTANCE",
+      iconName: "receipt",
+      iconBg: "#E0F2FE",
+      iconColor: "#0284C7",
+      onOpen: handlers.openHealthcarePolicies
+    });
+  }
+  // CG17 US003: the existing original center-owned merchant verification.
+  if (roleActions.includes("healthcare.assistance.merchant.manage") ||
+      roleActions.includes("healthcare.assistance.merchant.verify")) {
+    list.push({
+      key: "healthCenterMerchant",
+      title: "Center Online Payment Setup",
+      shortLabel: "Center Payments",
+      description: "Verify the assigned healthcare center's own payment account.",
+      category: "HEALTHCARE ASSISTANCE",
+      iconName: "receipt",
+      iconBg: "#E0F2FE",
+      iconColor: "#0284C7",
+      onOpen: handlers.openCenterMerchant
+    });
+  }
+  if (roleActions.includes("healthcare.assistance.liabilities.view")) {
+    list.push({
+      key: "healthcareFoundationLiabilities",
+      title: "Foundation Healthcare Obligations",
+      shortLabel: "Foundation Dues",
+      description: "Approved Foundation support for genuinely completed consultations.",
+      category: "HEALTHCARE ASSISTANCE",
+      iconName: "receipt",
+      iconBg: "#E0F2FE",
+      iconColor: "#0284C7",
+      onOpen: handlers.openFoundationLiabilities
+    });
+  }
+  if (roleActions.includes("healthcare.assistance.settlements.view") &&
+      roleActions.includes("health.centers.draft.edit")) {
+    list.push({
+      key: "healthcarePartnerSettlements",
+      title: "My Center Foundation Settlement",
+      shortLabel: "My Settlement",
+      description: "My center's real Foundation contribution, verified payouts and outstanding balance.",
+      category: "HEALTHCARE ASSISTANCE",
+      iconName: "receipt",
+      iconBg: "#E0F2FE",
+      iconColor: "#0284C7",
+      onOpen: handlers.openPartnerSettlements
+    });
+  }
+  if (roleActions.includes("healthcare.assistance.settlements.view") &&
+      roleActions.includes("health.providers.finance.view")) {
+    list.push({
+      key: "healthcareProviderSettlements",
+      title: "Healthcare Provider Settlements",
+      shortLabel: "Provider Settlements",
+      description: "Real CG09 posted monthly Foundation obligations and independent claim review.",
+      category: "HEALTHCARE ASSISTANCE",
+      iconName: "receipt",
+      iconBg: "#E0F2FE",
+      iconColor: "#0284C7",
+      onOpen: handlers.openMonthlyProviderSettlements
+    });
+  }
+  if (roleActions.includes("lab.equipment.view")) {
+    list.push({
+      key: "healthLabEquipment",
+      title: "Lab Equipment & Quality",
+      shortLabel: "Lab Equipment",
+      description: "Current assigned instruments and verified private maintenance evidence.",
+      category: "HEALTHCARE ASSISTANCE",
+      iconName: "file-text",
+      iconBg: "#E0F2FE",
+      iconColor: "#0284C7",
+      onOpen: handlers.openLabEquipment
+    });
+  }
+  if (roleActions.includes("lab.orders.view") || roleActions.includes("lab.orders.create")) {
+    list.push({
+      key: "healthLabOrders",
+      title: "Lab Orders & Samples",
+      shortLabel: "Lab Orders",
+      description: "Assigned clinical laboratory orders, specimens and private report evidence.",
+      category: "HEALTHCARE ASSISTANCE",
+      iconName: "file-text",
+      iconBg: "#E0F2FE",
+      iconColor: "#0284C7",
+      onOpen: handlers.openLabOrders
     });
   }
 
@@ -250,6 +422,61 @@ export function getAuthorizedModules(
     });
   }
 
+  if (roleActions.includes("health.centers.draft.edit")) {
+    list.push({
+      key: "healthOwnCenterPortal",
+      title: "My Healthcare Center",
+      shortLabel: "My Center",
+      description: "Edit your own assigned center draft and submit a genuine verified licence.",
+      category: "HEALTHCARE ASSISTANCE",
+      iconName: "building",
+      iconBg: "#E0F2FE",
+      iconColor: "#0284C7",
+      onOpen: handlers.openOwnCenterPortal
+    });
+  }
+  if (roleActions.includes("health.doctors.view")) {
+    list.push({
+      key: "healthDoctorManagement",
+      title: "Doctors & Professional Registrations",
+      shortLabel: "Doctors",
+      description: "Original doctor drafts, private licences and independent verification.",
+      category: "HEALTHCARE ASSISTANCE",
+      iconName: "users",
+      iconBg: "#E0F2FE",
+      iconColor: "#0284C7",
+      onOpen: handlers.openHealthDoctorManagement
+    });
+  }
+  // CG14 publication-only Foundation staff must not need provider-master access.
+  // Reuse the same existing approved content queue; do not duplicate data.
+  if (roleActions.includes("health.centers.publish") &&
+      !roleActions.includes("health.providers.view")) {
+    list.push({
+      key: "centerContentPublisher",
+      title: "Approved Center Content",
+      shortLabel: "Publish Centers",
+      description: "Publish or withdraw independently reviewed center presentations.",
+      category: "HEALTHCARE ASSISTANCE",
+      iconName: "building",
+      iconBg: "#E0F2FE",
+      iconColor: "#0284C7",
+      onOpen: handlers.openCenterContentPublisher
+    });
+  }
+  if (roleActions.includes("health.providers.view")) {
+    list.push({
+      key: "healthProviderManagement",
+      title: "Healthcare Providers & Centers",
+      shortLabel: "Providers",
+      description: "Original provider and center drafts, geography, licence evidence, and review.",
+      category: "HEALTHCARE ASSISTANCE",
+      iconName: "building",
+      iconBg: "#E0F2FE",
+      iconColor: "#0284C7",
+      onOpen: handlers.openHealthProviderManagement
+    });
+  }
   if (roleActions.includes("approvals.review") && (roleActions.includes("health.doctors.verify") || roleActions.includes("health.providers.verify"))) {
     list.push({
       key: "healthReviews",
@@ -261,6 +488,21 @@ export function getAuthorizedModules(
       iconBg: "#F3E8FF",
       iconColor: "#7C3AED",
       onOpen: handlers.openHealthReviews
+    });
+  }
+
+  // Original CG18 staff editorial administration, distinct from Public Android reader.
+  if (roleActions.includes("cms.content.view")) {
+    list.push({
+      key: "foundationWebsiteCms",
+      title: "Website Content Management",
+      shortLabel: "Website",
+      description: "Original Foundation CMS drafts, source revisions and publication review.",
+      category: "PLATFORM & COMMUNICATIONS",
+      iconName: "documents",
+      iconBg: "#E0F2FE",
+      iconColor: "#0284C7",
+      onOpen: handlers.openWebsiteCms
     });
   }
 
@@ -429,6 +671,23 @@ export function getAuthorizedModules(
     });
   }
 
+  // CG-20 — Foundation MIS. The native report workspace mirrors the dedicated
+  // Web /admin/mis screen, independent of the original CG-09 finance ledger.
+  if (roleActions.includes("mis.dashboard.view") ||
+      roleActions.includes("mis.reports.view")) {
+    list.push({
+      key: "mis",
+      title: "Reports & MIS",
+      shortLabel: "MIS",
+      description: "Verified Foundation dashboards, standard and saved reports, private exports.",
+      category: "FINANCE & ACCOUNTING",
+      iconName: "bar-chart",
+      iconBg: "#E0F2FE",
+      iconColor: "#0369A1",
+      onOpen: handlers.openMis
+    });
+  }
+
   // ----------------------------------------------------
   // SECTION 5: PLATFORM & COMMUNICATIONS
   // ----------------------------------------------------
@@ -490,6 +749,12 @@ export function getAuthorizedModules(
     });
   }
 
+  if (["platform.settings.view","platform.integrations.view","platform.audit.view","platform.recovery.view"].some(a=>roleActions.includes(a))) {
+    list.push({key:"platformConfiguration",title:"Platform & Configuration",shortLabel:"Platform",
+      description:"Foundation settings, audit and protected recovery by current permission.",
+      category:"PLATFORM & COMMUNICATIONS",iconName:"sliders",iconBg:"#EEF4FF",iconColor:"#1E53DC",
+      onOpen:handlers.openPlatformConfiguration});
+  }
   return list;
 }
 
@@ -502,7 +767,13 @@ const BOTTOM_NAV_PRIORITY_KEYS = [
   "account",
   "accounts",
   "approvals",
+  "healthClinicianActivity",
+  "healthcarePartnerSettlements",
   "healthVisitQueue",
+  "healthLabTestMaster",
+  "healthMyLabPricing",
+  "healthLabOrders",
+  "healthLabEquipment",
   "healthPatientBooking",
   "finance",
   "branches",

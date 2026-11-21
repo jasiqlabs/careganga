@@ -203,6 +203,43 @@ export class HealthClinicianIdentityService{
    return {status:"REVOKED",changed:true};
   });
  }
+ /** CG14-owned current clinician→center assignment labels. CG15 can read
+  * these only after current CG01 clinical action; no shadow doctor master.
+  */
+ async currentClinicalAssignments(tx:PoolClient,actor:VerifiedFoundationActor){
+  const q=await tx.query<{
+   doctor_ref:string;doctor_name:string;center_ref:string;
+   center_name:string;time_zone:string}>(
+   "SELECT DISTINCT d.id AS doctor_ref,d.full_name AS doctor_name,"+
+   "c.id AS center_ref,c.display_name AS center_name,c.time_zone "+
+   "FROM health_doctor_account_link l "+
+   "JOIN health_doctor d ON d.root_realm_id=l.root_realm_id "+
+   "AND d.id=l.doctor_id AND d.status='VERIFIED' "+
+   "JOIN health_doctor_center dc ON dc.root_realm_id=d.root_realm_id "+
+   "AND dc.doctor_id=d.id AND dc.affiliation_state='APPROVED' "+
+   "AND dc.approved_from<=now() "+
+   "AND (dc.approved_to IS NULL OR dc.approved_to>now()) "+
+   "JOIN health_center c ON c.root_realm_id=dc.root_realm_id "+
+   "AND c.id=dc.center_id AND c.status='VERIFIED' "+
+   "AND c.access_state='ENABLED' "+
+   "JOIN health_provider p ON p.root_realm_id=c.root_realm_id "+
+   "AND p.id=c.provider_id AND p.status='VERIFIED' "+
+   "JOIN health_center_account_affiliation f ON "+
+   "f.root_realm_id=c.root_realm_id AND f.center_id=c.id "+
+   "AND f.account_ref=l.account_id AND f.status='ACTIVE' "+
+   "JOIN account a ON a.id=l.account_id AND a.realm_id=l.root_realm_id "+
+   "AND a.status='ACTIVE' "+
+   "WHERE l.root_realm_id=$1 AND l.account_id=$2 "+
+   "AND l.status='ACTIVE' AND l.accepted_at IS NOT NULL "+
+   "ORDER BY d.full_name,c.display_name,d.id,c.id LIMIT 51",
+   [actor.realmId,actor.accountId]);
+  if(q.rows.length>50)
+   throw new ConflictException({code:"CLINICIAN_ASSIGNMENT_LIST_LIMIT"});
+  return q.rows.map(x=>({
+   doctorRef:x.doctor_ref,doctorName:x.doctor_name,
+   centerRef:x.center_ref,centerName:x.center_name,timeZone:x.time_zone
+  }));
+ }
  async assertCurrentAppointmentClinician(
   tx:PoolClient,actor:VerifiedFoundationActor,center:string,doctor:string){
   // CG15 independently checks current center action and appointment; this

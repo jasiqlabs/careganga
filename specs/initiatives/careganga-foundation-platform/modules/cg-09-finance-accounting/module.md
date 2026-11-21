@@ -110,3 +110,12 @@ Original client routes: **/ngo-information/financial-reports; official approved 
 Remain source of confirmed posted money, receipts/evidence and reversals, not a second donation or member ID master. CG-MEM-002/010, CG-DON-001–003, CG-REF-001–005 and CG-SAL-002 require real owner+provider confirmed payment/refund/disbursement events, and CG-19 output must not replace CG09's unrelated original general finance invoice. No unverified 80G claims or sample receipt numbers.
 
 **Implementation gate:** Re-review changed module specification hashes; target genuine source owner, CG-19 issued PDF/delivery recipient and exact current role scope. Real integration / provider tests NOT_RUN.
+
+
+### 21 November 2026 — Owner-approved Web ↔ Android same-capability contract
+
+**Owner:** cg-09-finance-accounting. **Current source:** MERGED_MAIN_OWNER_SOURCE_ACTION_PARITY_AUDIT_OPEN. **Review scope:** original accepted stories/QA, merged owner source where present, current channel policy; delegated design-content review, not formal independent review or runtime/client approval. Preserve original module boundaries; no new story or feature added.
+
+**Required Web ↔ native audience mapping:** Authorized Admin/partner/center Web **↔ Internal Android** for original protected finance ledger, voucher, bank matching, reporting, corrections, review and exports; public Web **↔ Public Android** only for only previously approved source-issued donor/recipient proof through its own authorized public owner when its own original story actually authorizes that view. A Web-only spec or no native app assertion alone does not approve an exception. Staff records cannot be made public to satisfy parity. Reuse real CG-01 identity/scope, original backend/database, CG-01 visual system and approved client Admin/public reference, not duplicate client-specific ledgers or a WebView.
+
+**Completion gate:** both applicable channels implement the same original business actions within each authorized story; source existence/merge does not certify action parity, future modules remain unimplemented until their stage is authorized.

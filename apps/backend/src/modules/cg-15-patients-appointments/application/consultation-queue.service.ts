@@ -62,6 +62,61 @@ export class ConsultationQueueService{
  private async scope(tx:PoolClient,actor:VerifiedFoundationActor,center:string){
   await this.centers.assertCurrent(tx,actor,center,"health.visits.manage");
  }
+ /** Doctor's own current CG14 identity/affiliations, never all doctors
+  * or all center patients. This is read-only CG15 activity, not a payment.
+  */
+ async ownClinicianAssignments(bearer:string){
+  const actor=await this.identity.requireAction(bearer,
+   "health.visits.clinical.manage");
+  const tx=await this.db.connect();let open=false;
+  try{
+   await tx.query("BEGIN READ ONLY");open=true;
+   const assignments=await this.clinicians.currentClinicalAssignments(tx,actor);
+   await tx.query("COMMIT");open=false;
+   return {assignments};
+  }catch(e){if(open)try{await tx.query("ROLLBACK")}catch{}throw e;
+  }finally{tx.release()}
+ }
+ async ownClinicianSummary(bearer:string,centerRaw:string,doctorRaw:string,
+  dayRaw:string){
+  const actor=await this.identity.requireAction(bearer,
+   "health.visits.clinical.manage");
+  const center=param(centerRaw),doctor=param(doctorRaw);
+  if(typeof dayRaw!=="string"||!DAY.test(dayRaw)||
+   !Number.isFinite(Date.parse(dayRaw+"T00:00:00Z"))||
+   new Date(dayRaw+"T00:00:00Z").toISOString().slice(0,10)!==dayRaw)
+   throw new BadRequestException({code:"CG15_QUEUE_INVALID"});
+  const tx=await this.db.connect();let open=false;
+  try{
+   await tx.query("BEGIN");open=true;
+   await this.centers.assertCurrent(tx,actor,center,
+    "health.visits.clinical.manage");
+   await this.clinicians.assertCurrentAppointmentClinician(
+    tx,actor,center,doctor);
+   const q=await tx.query<{booked:number;waiting:number;in_consultation:number;
+    completed:number;cancelled:number;no_show:number}>(
+    "SELECT COUNT(*) FILTER (WHERE a.booking_state='CONFIRMED')::int AS booked,"+
+    "COUNT(*) FILTER (WHERE q.state='WAITING')::int AS waiting,"+
+    "COUNT(*) FILTER (WHERE q.state='IN_CONSULTATION')::int AS in_consultation,"+
+    "COUNT(*) FILTER (WHERE q.state='COMPLETED')::int AS completed,"+
+    "COUNT(*) FILTER (WHERE a.booking_state='CANCELLED')::int AS cancelled,"+
+    "COUNT(*) FILTER (WHERE a.booking_state='NO_SHOW')::int AS no_show "+
+    "FROM cg15_consultation_appointment a "+
+    "LEFT JOIN cg15_visit_queue q ON q.root_realm_id=a.root_realm_id "+
+    "AND q.appointment_id=a.id AND q.center_id=a.center_id "+
+    "WHERE a.root_realm_id=$1 AND a.center_id=$2 AND a.doctor_id=$3 "+
+    "AND (a.start_at AT TIME ZONE a.time_zone)::date=$4::date",
+    [actor.realmId,center,doctor,dayRaw]);
+   await tx.query("COMMIT");open=false;
+   const x=q.rows[0];
+   return {centerRef:center,doctorRef:doctor,day:dayRaw,
+    confirmed:x?.booked??0,waiting:x?.waiting??0,
+    inConsultation:x?.in_consultation??0,completed:x?.completed??0,
+    cancelled:x?.cancelled??0,noShow:x?.no_show??0,
+    containsPatientDetails:false,paymentNotIncluded:true};
+  }catch(e){if(open)try{await tx.query("ROLLBACK")}catch{}throw e;
+  }finally{tx.release();}
+ }
  async options(bearer:string){
   const actor=await this.identity.requireAction(bearer,"health.visits.manage");
   const r=await this.db.query<{center_ref:string;center_name:string;time_zone:string}>(

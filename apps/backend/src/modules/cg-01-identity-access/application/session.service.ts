@@ -1,4 +1,4 @@
-import { ForbiddenException, HttpException, HttpStatus, Inject, Injectable, UnauthorizedException } from "@nestjs/common";
+import { BadRequestException, ForbiddenException, HttpException, HttpStatus, Inject, Injectable, UnauthorizedException } from "@nestjs/common";
 import { createHash, createHmac, randomBytes } from "node:crypto";
 import { maybePruneAuthThrottle } from "../infrastructure/throttle-maintenance";
 import type { Pool,PoolClient } from "pg";
@@ -184,7 +184,97 @@ export class SessionService implements IdentityAuthorization {
       ))
       .map(row=>row.capability_key as string))];
   }
-  async effectiveAccess(bearer:string):Promise<{displayName:string;roleName:string;actions:readonly {key:string;businessLabel:string;group:string}[]}> {
+  /**
+   * Current-role-only principal for unattended, CG-20-owned scheduled MIS.
+   * This is NOT an auth_session, impersonated bearer, login or new identity
+   * scope. Only the stored owner/recipient on a durable scheduled report may
+   * be supplied by the caller. Original source owners must re-check their
+   * branch/purpose/center scopes before generation and sending.
+   * Never expose this method through an HTTP controller.
+   */
+  async requireScheduledMisAction(rootInput:string,accountInput:string,action:string):
+   Promise<{realmId:string;accountId:string;accessVersion:string}>{
+    if(!["mis.reports.view","mis.reports.manage","mis.reports.export","mis.reports.schedule",
+      "finance.reports.view","foundation.branches.admin",
+      "communications.notifications.view",
+      "platform.audit.view"].includes(action)||
+      !implementedCapability(action))
+      throw new ForbiddenException("This scheduled reporting action is unavailable");
+    const result=await this.db.query<{
+      access_version:string;is_protected:boolean;
+      capability_key:string|null;approved_sensitive:boolean
+    }>(`
+      SELECT a.access_version::text AS access_version,
+        r.is_protected,gr.capability_key,
+        EXISTS(SELECT 1 FROM cg01_approved_sensitive_assignment approved
+          WHERE approved.realm_id=a.realm_id
+            AND approved.target_account_id=a.id
+            AND approved.target_role_id=r.id
+            AND approved.approved_role_revision=r.revision
+            AND approved.resulting_access_version<=a.access_version
+        ) AS approved_sensitive
+      FROM access_realm foundation
+      JOIN account a ON a.realm_id=foundation.id AND a.status='ACTIVE'
+      JOIN account_role ar ON ar.account_id=a.id AND ar.realm_id=a.realm_id
+        AND ar.revoked_at IS NULL
+      JOIN role r ON r.id=ar.role_id AND r.active=true
+      LEFT JOIN role_grant gr ON gr.role_id=r.id
+      WHERE foundation.id=$1 AND foundation.realm_key='FOUNDATION_ROOT'
+        AND a.id=$2
+      LIMIT 250
+    `,[rootInput,accountInput]);
+    if(!result.rows.length||result.rows.length>=250)
+      throw new ForbiddenException("Scheduled report account is unavailable");
+    const allowed=result.rows.some(row=>row.is_protected||
+      row.capability_key===action&&(
+        implementedCapability(action)?.assignable===true||
+        action==="roles.manage"&&row.approved_sensitive));
+    if(!allowed)throw new ForbiddenException(
+     "The current account no longer permits this scheduled report");
+    return {realmId:rootInput,accountId:accountInput,
+      accessVersion:result.rows[0].access_version};
+  }
+
+    /** Private CG-20 definition sharing may search eligible staff ONLY.
+   * Source grants still have to be checked when a recipient opens or copies
+   * the definition. Search never returns email, phone or technical IDs to UI.
+   */
+  async eligibleMisShareRecipients(bearer:string,search:unknown){
+    const actor=await this.requireAction(bearer,"mis.reports.share");
+    await this.requireAction(bearer,"mis.reports.manage");
+    if(typeof search!=="string"||search.trim().length<2||
+       search.trim().length>60)
+      throw new BadRequestException("Enter at least two letters to find a colleague");
+    const q=await this.db.query<{ref:string;name:string}>(`
+      SELECT a.id AS ref,a.display_name AS name FROM account a
+      WHERE a.realm_id=$1 AND a.id<>$2 AND a.status='ACTIVE'
+        AND position(lower($3) in lower(a.display_name))>0
+        AND EXISTS(
+         SELECT 1 FROM account_role ar
+         JOIN role r ON r.id=ar.role_id AND r.active=true
+         WHERE ar.realm_id=a.realm_id AND ar.account_id=a.id
+           AND ar.revoked_at IS NULL
+           AND (r.is_protected OR EXISTS(
+            SELECT 1 FROM role_grant g
+            WHERE g.role_id=r.id AND g.capability_key='mis.reports.view'
+           ))
+        )
+        AND EXISTS(
+         SELECT 1 FROM account_role ar
+         JOIN role r ON r.id=ar.role_id AND r.active=true
+         WHERE ar.realm_id=a.realm_id AND ar.account_id=a.id
+           AND ar.revoked_at IS NULL
+           AND (r.is_protected OR EXISTS(
+            SELECT 1 FROM role_grant g
+            WHERE g.role_id=r.id AND g.capability_key='mis.reports.manage'
+           ))
+        )
+      ORDER BY a.display_name,a.id LIMIT 16`,
+      [actor.realmId,actor.accountId,search.trim()]);
+    return {people:q.rows.slice(0,15),hasMore:q.rows.length>15};
+  }
+
+async effectiveAccess(bearer:string):Promise<{displayName:string;roleName:string;actions:readonly {key:string;businessLabel:string;group:string}[]}> {
     const actor=await this.verifySession(bearer);
     const granted=await this.allowedActionsFor(actor);
     return {
@@ -254,6 +344,55 @@ export class SessionService implements IdentityAuthorization {
     `,[digest,rules.failedAttemptWindowSeconds]);
     if(count.rows[0].attempt_count>rules.maxFailedAttempts)
       throw new HttpException("Password confirmation retry limit",HttpStatus.TOO_MANY_REQUESTS);
+  }
+
+  /** Clinical professional sign-off requires a fresh password from the
+   * ORIGINAL CG01 account, regardless of whether the clinician's role is
+   * a protected Foundation administration role. The caller additionally
+   * verifies exact clinical action, center and CG14 licensed identity.
+   * Do not reuse broad root-only approval privileges for clinicians.
+   */
+  async limitClinicalProfessionalProof(actor:VerifiedFoundationActor):Promise<void>{
+    const rules=await this.loginRules();
+    const digest=this.throttleKey("clinical-professional-proof",actor.accountId);
+    const row=await this.db.query<{attempt_count:number}>(`
+      INSERT INTO auth_login_attempt(key_digest,window_started_at,attempt_count)
+      VALUES($1,now(),1)
+      ON CONFLICT(key_digest) DO UPDATE SET
+        attempt_count=CASE WHEN auth_login_attempt.window_started_at<
+          now()-make_interval(secs=>$2) THEN 1 ELSE auth_login_attempt.attempt_count+1 END,
+        window_started_at=CASE WHEN auth_login_attempt.window_started_at<
+          now()-make_interval(secs=>$2) THEN now() ELSE auth_login_attempt.window_started_at END
+      RETURNING attempt_count`,[digest,rules.failedAttemptWindowSeconds]);
+    if(row.rows[0].attempt_count>rules.maxFailedAttempts)
+      throw new HttpException("Professional password retry limit",HttpStatus.TOO_MANY_REQUESTS);
+  }
+  async requireClinicalProfessionalProof(client:PoolClient,
+    actor:VerifiedFoundationActor,password:string):Promise<void>{
+    if(typeof password!=="string"||password.length<8||
+      Buffer.byteLength(password,"utf8")>1024)
+      throw new ForbiddenException("Confirm your current account password");
+    const q=await client.query<{password_hash:string}>(`
+      SELECT credentials.password_hash FROM auth_session session
+      JOIN account member ON member.id=session.account_id
+        AND member.realm_id=$3 AND member.status='ACTIVE'
+        AND member.access_version=session.account_access_version
+      JOIN identity_credential credentials ON credentials.account_id=member.id
+      LEFT JOIN auth_security_policy policy ON policy.access_realm_id=member.realm_id
+      WHERE session.id=$1 AND session.account_id=$2
+        AND session.revoked_at IS NULL
+        AND session.password_authenticated_at IS NOT NULL
+        AND session.expires_at>now()
+        AND session.issued_at>now()-make_interval(secs=>COALESCE(
+          policy.max_session_age_seconds,28800))
+        AND session.last_seen_at>now()-make_interval(secs=>COALESCE(
+          policy.idle_timeout_seconds,1800))
+      FOR UPDATE OF session,member,credentials`,
+      [actor.activeSessionId,actor.accountId,actor.realmId]);
+    if(!q.rows[0]||!await verifyPassword(password,q.rows[0].password_hash))
+      throw new ForbiddenException("Current clinical account password is incorrect");
+    await client.query("DELETE FROM auth_login_attempt WHERE key_digest=$1",
+      [this.throttleKey("clinical-professional-proof",actor.accountId)]);
   }
 
   /** Signed-in password change for every role; old sessions are invalid immediately. */

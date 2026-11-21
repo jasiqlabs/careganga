@@ -19,12 +19,21 @@ export function HealthcareAdminShell({
  const has=(key:string)=>actions.has(key);
  const names:Partial<Record<FoundationAdminNavProps["active"],string>>={
   healthNetwork:"Healthcare providers",healthDoctors:"Doctor registrations",
+  healthDiagnostics:"Lab Test Master & Pricing",
+  healthLabPricing:"My Lab Pricing",
+  healthLabOrders:"Lab Orders & Samples",
+  healthLabEquipment:"Lab Equipment & Quality",
+  healthAssistancePolicies:"Foundation Contribution Policies",
+  healthLiabilities:"Foundation Healthcare Obligations",
+  healthSettlements:"Healthcare Provider Settlements",
   healthSchedules:"Doctor schedules",healthPatientIntake:"Patient registration",
-  healthVisitQueue:"Consultation queue",healthPatientAdmin:"Patients and bookings"
+  healthVisitQueue:"Consultation queue",healthClinicianActivity:"My consultations",
+  healthPatientAdmin:"Patients and bookings"
  };
  const currentPage=pageLabel??names[active]??"Healthcare";
  return <div className="shell">
   <FoundationAdminNav active={active} initialActions={Array.from(actions)}
+   labERPEnabled={process.env.CAREGANGA_ERP_LAB_ENABLED==="true"}
    displayName={actor.displayName} roleName={actor.roleName}
    canViewRoles={has("roles.view")}
    canViewAccounts={has("accounts.view")||

@@ -90,3 +90,34 @@ export async function publicDoctor(ref:string){
    experienceYears:number;bio:string;centers:PublicDoctor[];notice:string};
  }catch{return null;}
 }
+
+/** Original CG14 center-published medicine/nursing/OT service information.
+ * Plain visible listings only; never an inventory or approved patient benefit.
+ */
+export type PublicPartnerOffer={
+ serviceKind:"PHARMACY"|"NURSING"|"OT";name:string;description:string;
+ indicativePriceMinor:string|null;currency:"INR"};
+export async function publicPartnerOffers(centerSlug:string):
+ Promise<{state:"READY"|"UNAVAILABLE";items:PublicPartnerOffer[];caution:string}>{
+ if(!/^[a-z0-9][a-z0-9-]{2,79}$/.test(centerSlug))
+  return {state:"UNAVAILABLE",items:[],caution:""};
+ try{
+  const value=await read("partner-offers/"+encodeURIComponent(centerSlug));
+  if(!value||typeof value!=="object"||Array.isArray(value)||
+    !("items" in value)||!Array.isArray(value.items)||value.items.length>50)
+   throw Error("UNAVAILABLE");
+  const items=value.items.filter((x:unknown):x is PublicPartnerOffer=>
+   !!x&&typeof x==="object"&&!Array.isArray(x)&&
+   "serviceKind" in x&&["PHARMACY","NURSING","OT"].includes(String(x.serviceKind))&&
+   "name" in x&&typeof x.name==="string"&&
+   "description" in x&&typeof x.description==="string"&&
+   "indicativePriceMinor" in x&&
+   (x.indicativePriceMinor===null||typeof x.indicativePriceMinor==="string"&&
+    /^[1-9][0-9]{0,10}$/.test(x.indicativePriceMinor)));
+  if(items.length!==value.items.length)throw Error("UNAVAILABLE");
+  return {state:"READY",items,
+   caution:"Indicative partner listings only. Actual invoice, service and "+
+    "CareGanga eligibility must be independently verified."};
+ }catch{return {state:"UNAVAILABLE",items:[],caution:""};}
+}
+

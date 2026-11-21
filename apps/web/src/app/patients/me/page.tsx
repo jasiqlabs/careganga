@@ -2,6 +2,7 @@ import {HealthcarePublicChrome} from "../../../shared/healthcare-public-chrome";
 import type {Metadata} from "next";
 import Link from "next/link";
 import {PatientProfilePanel} from "../../../features/patients/patient-profile-panel";
+import {MyLabReports} from "../../../features/diagnostics/my-lab-reports";
 export const dynamic="force-dynamic";
 export const metadata:Metadata={
  title:"My Patient Profile | CareGanga",
@@ -16,5 +17,6 @@ export default function MyPatient(){
    </nav>
   </header>
   <PatientProfilePanel/>
+  <MyLabReports/>
  </main></HealthcarePublicChrome>;
 }

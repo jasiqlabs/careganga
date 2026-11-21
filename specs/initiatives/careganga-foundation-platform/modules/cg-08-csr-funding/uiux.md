@@ -56,3 +56,15 @@ Preserve CSR partner directory, proposal/commitment detail, approved amount and 
 ## Visual QA
 
 In [tasks.md](tasks.md) every user story must trace source token/component reuse and valid screen-to-real-API state. Compare actual original PNG/video with rendered Web/Android in separately authorized QA before claiming exact palette, animation or look-and-feel PASS. Current `VISUAL_NOT_RUN`, `REFERENCE_ASSETS_NOT_VERIFIED`.
+
+### 21 November 2026 — Owner-approved Web ↔ Android same-capability contract
+
+**Owner:** cg-08-csr-funding. **Current source:** FUTURE_OWNER_NOT_IMPLEMENTED. **Review scope:** original accepted stories/QA, merged owner source where present, current channel policy; delegated design-content review, not formal independent review or runtime/client approval. Preserve original module boundaries; no new story or feature added.
+
+**Required Web ↔ native audience mapping:** Authorized Admin/partner/center Web **↔ Internal Android** for authorized CSR partner management, proposal, contribution, disbursement, deliverable and reporting workflows; public Web **↔ Public Android** only for only independently approved public CSR/editorial information, never private donor or funding ledgers when its own original story actually authorizes that view. A Web-only spec or no native app assertion alone does not approve an exception. Staff records cannot be made public to satisfy parity. Reuse real CG-01 identity/scope, original backend/database, CG-01 visual system and approved client Admin/public reference, not duplicate client-specific ledgers or a WebView.
+
+**Screen-by-screen UX acceptance:** Same user-readable labels, filtered list/detail, supported edit/approval/submit/proof/print/export, role-hidden actions, monetary status/versions, errors, loading/empty/unknown/retry and Back/refresh; native touch layout is adapted, not a desktop screenshot clone. Real desktop/narrow Web and Android device visual comparisons are `NOT_RUN`.
+
+## 21 Nov 2026 — One original Partnerships landing, purposeful route into the correct application
+
+Keep original dark-hero **/collaboration** CG18-managed page with Partner With Us, Meet Our Partners and Let's Collaborate. The main CTA displays a small choice: **Healthcare service partner** (CG14 current verified hospital/doctor/lab/pharmacy/nursing/OT intake once implemented) or **Corporate/CSR partner** (CG08 verified corporate application once implemented). An unimplemented CG08 destination must be a plainly labelled enquiry/disabled state; original CG19 contact cannot be shown as completed CSR application. Keep corporate identity/approval/list/verified logo publication inside CG08; public healthcare partner search, discount and monthly claim status are CG14/CG17 and not duplicated in CSR screens. Membership/volunteer remain their separate Join Now menu. Equivalent choice/destination on Public Web/Public Android and permitted CSR Admin Web/Internal Android actions once built; screenshot/real-device QA NOT_RUN.

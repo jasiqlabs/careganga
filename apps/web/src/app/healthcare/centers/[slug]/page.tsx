@@ -2,7 +2,10 @@ import {HealthcarePublicChrome} from "../../../../shared/healthcare-public-chrom
 import type {Metadata} from "next";
 import Link from "next/link";
 import {notFound} from "next/navigation";
-import {directory,type PublicDoctor} from "../../../../features/health-network/public-directory-source";
+import {directory,publicPartnerOffers,type PublicDoctor} from "../../../../features/health-network/public-directory-source";
+import {publicLabOffers,rupees} from "../../../../features/diagnostics/public-lab-offers";
+import {currentConsultationBenefits,formatRupees}
+ from "../../../../features/healthcare-assistance/public-consultation-benefits";
 export const dynamic="force-dynamic";
 type Params={params:Promise<{slug:string}>};
 type Center={
@@ -52,7 +55,12 @@ export default async function VerifiedCenterPage({params}:Params){
  const c=await current(slug);
  if(!c)notFound();
  const serviceNames=c.declaredServices.map(format);
- const doctors=await directory<PublicDoctor>("doctors",new URLSearchParams({center:slug}));
+ const [doctors,labs,benefits,partnerOffers]=await Promise.all([
+  directory<PublicDoctor>("doctors",new URLSearchParams({center:slug})),
+  publicLabOffers(new URLSearchParams({center:slug})),
+  currentConsultationBenefits({centerSlug:slug}),
+  publicPartnerOffers(slug)
+ ]);
  return <HealthcarePublicChrome><main className="cg-public-shell">
    <header className="cg-public-header">
      <nav aria-label="Healthcare navigation">
@@ -114,6 +122,56 @@ export default async function VerifiedCenterPage({params}:Params){
        {d.fee?" · Current in-person consultation ₹"+(d.fee.amountMinor/100).toLocaleString("en-IN"):" · Fee not currently approved"}
      </li>)}</ul>
    </section>}
+   {benefits.state==="READY"&&benefits.items.length>0&&
+    <section className="cg-public-section"
+     aria-label="Currently approved Foundation consultation assistance at this center">
+     <h2>Approved consultation support at this center</h2>
+     <p>These are conditional, currently active policies; not a patient
+      discount guarantee. Your eligibility, verified consultation fee,
+      consent and accepted contribution are checked when you book.</p>
+     <ul>{benefits.items.slice(0,5).map((item,i)=>
+      <li key={item.centerSlug+":"+(item.doctorRef??"center")+":"+i}>
+       {item.doctorName?item.doctorName+" · ":""}
+       {item.mode==="PERCENT"&&item.percentBasisPoints!==null?
+        (item.percentBasisPoints/100).toFixed(2)+"% possible Foundation share":
+        "Possible fixed Foundation share "+formatRupees(item.fixedSupportMinor??"0")}
+       {" (maximum "+formatRupees(item.maximumSupportMinor)+")"}
+       {item.feeMinor!==null?
+        " · current verified consultation fee "+formatRupees(item.feeMinor):""}
+      </li>)}</ul>
+     <p>Current approved benefits do not imply a collected payment,
+      an appointment, or support for lab, pharmacy, nursing or procedures.</p>
+    </section>}
+   {labs.state==="READY"&&labs.items.length>0&&
+    <section className="cg-public-section" aria-label="Approved laboratory tests at this center">
+     <h2>Approved laboratory tests at this center</h2>
+     <p>Only current partner-approved commercial test prices are shown;
+      no online lab booking, Foundation benefit or payment is available.</p>
+     <ul>{labs.items.slice(0,5).map(item=><li key={item.offerRef}>
+      <strong>{item.name}</strong> · Current patient price {rupees(item.patientPriceMinor)}
+      {Number(item.patientPriceMinor)<Number(item.basePriceMinor)?
+       " (partner commercial saving included)":""}
+     </li>)}</ul>
+     <p><Link href={"/health-network/lab-tests?center="+encodeURIComponent(slug)}>
+      View all currently approved tests & prices at this lab</Link></p>
+     {c.publicPhone&&<p>Ask this center about a test:
+      {" "}<a href={"tel:"+c.publicPhone}>Call the currently published center contact</a>.
+      Contacting the lab does not create an order or confirm a booking.</p>}
+    </section>}
+   {partnerOffers.state==="READY"&&partnerOffers.items.length>0&&
+    <section className="cg-public-section" aria-label="Approved partner medicine and service information">
+     <h2>Listed partner medicines, nursing services and procedures</h2>
+     <p>Foundation-reviewed indicative information only. The actual bill, performed
+      care and any CareGanga contribution require separate verification.</p>
+     <ul>{partnerOffers.items.map((item,i)=><li key={item.serviceKind+":"+item.name+":"+i}>
+      <strong>{item.name}</strong> · {format(item.serviceKind)}
+      {item.indicativePriceMinor!==null?
+       " · Indicative price ₹"+(Number(item.indicativePriceMinor)/100).toLocaleString("en-IN",
+        {minimumFractionDigits:2,maximumFractionDigits:2}):" · Price on enquiry"}
+      {item.description?" — "+item.description:""}
+     </li>)}</ul>
+     <p>{partnerOffers.caution}</p>
+    </section>}
    {serviceNames.length>0&&<section className="cg-public-section">
      <h2>Services declared by the center</h2>
      <p>Service information does not confirm individual appointment availability.</p>

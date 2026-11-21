@@ -90,3 +90,12 @@ Target routes are **implementation design**, not already-running claims. All com
 ## 6. Mandatory source QA and regression gates
 
 Each story must have explicit DLD/API/PostgreSQL constraints, CG-01/02/03/19/09 owner adapter in introducing story only, B19 relevant tab Web and applicable native Internal Android, trusted status/permission isolation, true DB committed effect and source manual QA ID in [tasks.md](tasks.md). Check real row movement and balance or request/hold state on lost response, concurrent last-unit race, wrong branch, receipt without finance, CG-03 review missing, partial 6+4 issue, double return, transfer pair, low-stock report and future CG-06/13 source reference seam. Actual source implementation, original image/video pixels, database locks and backup/restore/mobile p95 are **NOT_RUN** even if the current design is delegated approved.
+
+
+### 21 November 2026 — Owner-approved Web ↔ Android same-capability contract
+
+**Owner:** cg-12-inventory-suppliers. **Status:** FUTURE_OWNER_NOT_IMPLEMENTED; this is the delegated design approval to mirror existing authorized Web workflows in native Android, not an implementation, QA PASS, new story/role or client sign-off. Use current original BR/PRD/HLD, per-story QA and root AGENTS.md. Preserve all existing privacy, role, independent review and upstream-only dependencies.
+
+**Applicable audience parity:** Foundation Admin/assigned staff Web **↔ Internal Android** for authorized supplier, procurement, receipt, warehouse stock, transfer/issue/request and inventory reports. Public Web **↔ Public Android** only if the original owner permits no private stock/supplier ledgers in Public Android. Do not expose payroll, employee personal data, stock or unapproved business records publicly. Any exception to same-actor Web/Android coverage requires explicit owner approval and QA reason; a blanket “desktop only” statement, a WebView or a sample screen is not an exception. Use the original single owning API, current CG-01 scopes and CG-01/authentic CareGanga design identity.
+
+**Technical QA:** Trace every approved field/action Web↔native to one typed backend owner, real PostgreSQL unique/access/scope, consent/employee/approval controls and revision/idempotency; no second native data model or local-only RBAC check. Provider, sensitive payment and private CG19 document evidence must never be fabricated when another approved predecessor is not delivered.

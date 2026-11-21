@@ -387,3 +387,12 @@ The current code-based review and fix evidence is [the six-owner formal source r
 Extend real CG09 financial integration QA: one original payment event → one posting, no donor/member duplicated financial balance; distinct provider accepted/success/unknown, refund approved/processed, salary approved/disbursed. No 80G until policy verified. Mark future owner-dependent template integration NOT_RUN.
 
 **Execution:** CLIENT_SOURCE_MAPPED; any missing source implementation is SOURCE_GAP/DEPENDENT_OWNER; actual runtime, migration, rendered PDF and delivery-provider QA NOT_RUN. Reuse existing story QA traces, not a second tracker.
+
+
+### 21 November 2026 — Owner-approved Web ↔ Android same-capability contract
+
+**Owner:** cg-09-finance-accounting. **Current source:** MERGED_MAIN_OWNER_SOURCE_ACTION_PARITY_AUDIT_OPEN. **Review scope:** original accepted stories/QA, merged owner source where present, current channel policy; delegated design-content review, not formal independent review or runtime/client approval. Preserve original module boundaries; no new story or feature added.
+
+**Required Web ↔ native audience mapping:** Authorized Admin/partner/center Web **↔ Internal Android** for original protected finance ledger, voucher, bank matching, reporting, corrections, review and exports; public Web **↔ Public Android** only for only previously approved source-issued donor/recipient proof through its own authorized public owner when its own original story actually authorizes that view. A Web-only spec or no native app assertion alone does not approve an exception. Staff records cannot be made public to satisfy parity. Reuse real CG-01 identity/scope, original backend/database, CG-01 visual system and approved client Admin/public reference, not duplicate client-specific ledgers or a WebView.
+
+**Original QA parity disposition:** Existing main owner source is present on Web/Android, but full story-by-story action comparison is OPEN, not SOURCE_COMPLETE; fix any confirmed gap in original CG09 source. Every original QA ID must record `WEB_SOURCE`, `INTERNAL_ANDROID_SOURCE`, `PUBLIC_WEB_SOURCE`, `PUBLIC_ANDROID_SOURCE` and actor-specific `NOT_APPLICABLE` only with rationale. Preserve clinical/financial security, actual bank/provider/Web/Expo/PostgreSQL, independent review and screenshot QA as `NOT_RUN` absent real evidence; no main merge.

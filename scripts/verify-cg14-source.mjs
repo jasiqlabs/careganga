@@ -5,6 +5,7 @@
  */
 import {readFileSync} from "node:fs";
 import {resolve} from "node:path";
+import ts from "typescript";
 const root=resolve(import.meta.dirname,"..");
 const read=p=>readFileSync(resolve(root,p),"utf8");
 const s={
@@ -150,6 +151,147 @@ const checks=[
    return actual.size===94&&[...wanted].every(x=>actual.has(x));
  })()]
 ];
+// Previously-missing existing-owner Native Android registration and assigned-center paths.
+const parity=[
+ ["native Foundation provider and center editor",
+  "apps/android-internal/src/features/health-network/native-provider-management.tsx",
+  ["NativeHealthCenterEditor","NativeHealthEvidenceUploader",
+   "providers?","/representatives","publication",
+   "health","expectedVersion"]],
+ ["native assigned-center-only editor",
+  "apps/android-internal/src/features/health-network/native-own-center-portal.tsx",
+  ["/api/v1/health-network/my-centers","NativeHealthCenterEditor",
+   "proofFileRef:proof","expectedVersion:active.version"]],
+ ["native health geography and hours original source",
+  "apps/android-internal/src/features/health-network/native-health-center-editor.tsx",
+  ["/api/v1/health-network/geography","openLocal","closeLocal",
+   "diagnosticLicenseValidThrough"]],
+ ["native provider and center original CG19 evidence",
+  "apps/android-internal/src/features/health-network/native-health-evidence-uploader.tsx",
+  ["/api/documents/health-draft","SHA-256","UploadType.BINARY_CONTENT",
+   "/confirm","cleanVerified"]],
+ ["native assigned-center approved content draft and review",
+  "apps/android-internal/src/features/health-network/native-center-content-editor.tsx",
+  ["my-centers/","content/submit","NativeCenterPhotoUploader",
+   "expectedVersion:snapshot.version","reviewCaseRef"]],
+ ["native source-based private photo rights and revocation",
+  "apps/android-internal/src/features/health-network/native-center-photo-uploader.tsx",
+  ["HEALTH_CENTER_PHOTO","/api/documents/health-center-content",
+   "/attest","/revoke-rights","/revoke","UploadType.BINARY_CONTENT"]],
+ ["native independent Foundation center content publishing",
+  "apps/android-internal/src/features/health-network/native-center-content-publisher.tsx",
+  ["content/publishing","/content/withdraw","/apply",
+   "currentPassword:password","approvedRevisionRef:item.approvedRevisionRef"]],
+ ["native original scanned CG14 bank destination",
+  "apps/android-internal/src/features/health-network/native-provider-management.tsx",
+  ["HEALTH_BANK_PROOF","finance-reference","fileRef:bankProof",
+   "maskedLabel:maskedBank.trim()","canManageFinance"]],
+ ["original clinician login independent reviewer and personal self acceptance",
+  "apps/android-internal/src/features/health-network/native-clinician-account-link.tsx",
+  ["clinician-accounts/","account-options?search=",
+   "/propose","/revoke","me/pending","/accept",
+   'response.status!=="ACTIVE"']],
+ ["CG14 verified doctor native reviewer has isolated login association",
+  "apps/android-internal/src/features/health-network/native-doctor-management.tsx",
+  ["NativeClinicianAccountLinkReviewer","canVerify","doctorRef={selected.doctorRef}"]],
+ ["CG01 native signed-in staff dashboard shows own acceptance only if proposal exists",
+  "apps/android-internal/src/features/dashboard/internal-dashboard-screen.tsx",
+  ["NativeClinicianAccountAcceptance","token={token}","onExpired={onExpired}"]],
+ ["native original clinician-center association and fee source",
+  "apps/android-internal/src/features/health-network/native-doctor-center-fees.tsx",
+  ["my-centers/","doctors/eligible-centers",
+   "expectedAssociationVersion:item.version","effectiveFromUtc:start.toISOString()",
+   "amountMinor:amount","expectedVersion:fee.version",
+   "requestKey:key.current[op]"]],
+ ["native current Foundation doctor page shows original fee history",
+  "apps/android-internal/src/features/health-network/native-doctor-management.tsx",
+  ["NativeDoctorCenterFees","doctorRef={selected.doctorRef}"]],
+ ["native assigned center page shows original fee history",
+  "apps/android-internal/src/features/health-network/native-own-center-portal.tsx",
+  ["NativeDoctorCenterFees","centerRef={active.centerRef}"]],
+ ["native professional draft and private licence",
+  "apps/android-internal/src/features/health-network/native-doctor-management.tsx",
+  ["/api/v1/health-network/doctors","NativeDoctorEvidenceUploader","HEALTH_DOCTOR_PORTRAIT",
+   "expectedVersion:selected.version","currentPassword:password"]],
+ ["native CG19 doctor scanner and source claim",
+  "apps/android-internal/src/features/health-network/native-doctor-evidence-uploader.tsx",
+  ["/api/documents/doctor-evidence","SHA-256",
+   "cleanVerified","classification"]],
+ ["current role-bound original CG14 native navigation",
+  "apps/android-internal/src/features/dashboard/dashboard-modules.ts",
+  ['roleActions.includes("health.providers.view")',
+   'roleActions.includes("health.doctors.view")',
+   'roleActions.includes("health.centers.draft.edit")',
+   "openHealthProviderManagement","openHealthDoctorManagement","openOwnCenterPortal"]],
+ ["original CG14 publisher-only native menu preserves role separation",
+  "apps/android-internal/src/features/dashboard/dashboard-modules.ts",
+  ['roleActions.includes("health.centers.publish")',
+   '!roleActions.includes("health.providers.view")',
+   "openCenterContentPublisher"]],
+ ["original CG14 publisher-only shell and source-backed queue",
+  "apps/android-internal/src/features/identity-access/staff-authentication-screen.tsx",
+  ['roleActions.includes("health.centers.publish")',
+   "NativeCenterContentPublisher","centerPublisherOpen"]],
+ ["current role-bound CG14 shell/render and return",
+  "apps/android-internal/src/features/identity-access/staff-authentication-screen.tsx",
+  ["NativeProviderManagement","NativeDoctorManagement","NativeOwnCenterPortal",
+   'roleActions.includes("health.providers.manage")',
+   'roleActions.includes("health.doctors.verify")',
+   'roleActions.includes("health.centers.activate")']]
+];
+for(const [name,path,expected] of parity){
+ const source=read(path);
+ // The original static parity assertions must reject malformed native TSX
+ // instead of reporting a misleading PASS based on text fragments alone.
+ if(path.endsWith(".tsx")){
+  const parsed=ts.createSourceFile(path,source,ts.ScriptTarget.Latest,true,ts.ScriptKind.TSX);
+  checks.push(["CG14 TSX syntax: "+name,parsed.parseDiagnostics.length===0]);
+ }
+ checks.push(["CG14 channel: "+name,expected.every(x=>source.includes(x))]);
+}
+// Original CG14 center-content reviewer parity: same CG03 case as Web,
+// not a duplicate approval controller or a fake verified publication.
+const contentReviewPath="apps/android-internal/src/features/health-network/native-center-content-review.tsx";
+const nativeHealthReviewPath="apps/android-internal/src/features/registration-approvals/healthcare-native-review.tsx";
+const cg03ContentReview=read(
+ "apps/backend/src/modules/cg-03-registration-approvals/application/health-center-content-approval.service.ts");
+const nativeContentReview=read(contentReviewPath);
+const nativeHealthReview=read(nativeHealthReviewPath);
+const contentController=read(
+ "apps/backend/src/modules/cg-03-registration-approvals/http/health-center-content-approval.controller.ts");
+const contentMedia=read(
+ "apps/backend/src/modules/cg-19-documents-notifications/http/health-center-content-media.controller.ts");
+for(const [path,code] of [[contentReviewPath,nativeContentReview],
+ [nativeHealthReviewPath,nativeHealthReview]]){
+ const parsed=ts.createSourceFile(path,code,ts.ScriptTarget.Latest,true,ts.ScriptKind.TSX);
+ checks.push(["CG14 native center-content reviewer TSX parses: "+path,
+  parsed.parseDiagnostics.length===0]);
+}
+checks.push(["CG14 native reviewer reuses real CG03 center-content queue and decision",
+ nativeContentReview.includes('"/api/health/content-reviews/"+path')&&
+ nativeContentReview.includes('token,""')&&
+ contentController.includes('@Get()')&&
+ nativeContentReview.includes('encodeURIComponent(op.caseRef)+"/decide"')&&
+ contentController.includes('api/health/content-reviews')]);
+checks.push(["CG14 native reviewer shares same independently privileged original root",
+ cg03ContentReview.includes('verifyReviewer(tx,actor,"approvals.review",true)')&&
+ cg03ContentReview.includes('assertCurrent(tx,actor,"health.providers.verify")')&&
+ nativeHealthReview.includes('canProviders&&<NativeCenterContentReview token={token}')]);
+checks.push(["CG14 native reviewed private photo uses original protected CG19 reader",
+ nativeContentReview.includes('"/api/documents/health-center-content/reviews/"')&&
+ nativeContentReview.includes('Authorization:"Bearer "+token')&&
+ nativeContentReview.includes("file?.delete()")&&
+ contentMedia.includes('reviews/:caseRef/photos/:fileRef')]);
+checks.push(["CG14 original review disposition is not a fake publication",
+ nativeContentReview.includes("No publication performed.")&&
+ nativeContentReview.includes("requestKey:op.requestKey")&&
+ nativeContentReview.includes("expectedRevision:op.revision")&&
+ nativeContentReview.includes("currentPassword:password")]);
+checks.push(["CG14 native uncertain independent review reuses SAME request key",
+ nativeContentReview.includes("Retry exact original reviewer request")&&
+ nativeContentReview.includes("decide(pending)")&&
+ nativeContentReview.includes("setPassword(\"\")")]);
+
 let failures=0;
 for(const [label,ok] of checks){
   process.stdout.write((ok?"SOURCE_PRESENT":"SOURCE_GAP")+" — "+label+"\n");
