@@ -1,0 +1,237 @@
+import {
+ BadRequestException,ConflictException,ForbiddenException,Inject,Injectable,
+ NotFoundException
+} from "@nestjs/common";
+import {createHash,randomUUID} from "node:crypto";
+import type {Pool,PoolClient} from "pg";
+import {DATABASE} from "../../../core/infrastructure/database.module";
+import {SessionService} from "../../cg-01-identity-access/application/session.service";
+import {MisProtectedArtifactService}
+ from "../../cg-19-documents-notifications/application/mis-protected-artifact.service";
+import type {ReportFormat}
+ from "../../cg-19-documents-notifications/application/mis-report-renderer";
+import {MisReportSourceService,parseSafeReport,type SafeReportRequest}
+ from "./mis-report-source.service";
+import {MisSavedReportService} from "./mis-saved-report.service";
+
+const UUID=/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const id=(v:unknown)=>{if(typeof v!=="string"||!UUID.test(v))
+ throw new BadRequestException({code:"MIS_RUN_INVALID",
+  message:"Choose a valid report request."});return v;};
+const digest=(v:unknown)=>createHash("sha256")
+ .update(JSON.stringify(v)).digest("hex");
+type Row={
+ id:string;root_realm_id:string;requester_ref:string;
+ request_key:string;payload_digest:string;source_key:string;
+ safe_request:SafeReportRequest;state:string;artifact_ref:string|null;
+ format:ReportFormat|null;saved_ref:string|null;definition_revision:number|null;
+ source_as_of:Date|null;result_row_count:number|null;
+ created_at:Date;updated_at:Date;expires_at:Date;
+};
+type NewRun={
+ requestKey:string;format:ReportFormat;
+ savedRef?:string;request?:SafeReportRequest
+};
+const parse=(raw:unknown):NewRun=>{
+ if(!raw||typeof raw!=="object"||Array.isArray(raw))
+  throw new BadRequestException({code:"MIS_RUN_INVALID"});
+ const x=raw as Record<string,unknown>;
+ if(Object.keys(x).some(k=>!["requestKey","format","savedRef","request"].includes(k)))
+  throw new BadRequestException({code:"MIS_RUN_INVALID"});
+ const requestKey=id(x.requestKey);
+ if(x.format!=="PDF"&&x.format!=="XLSX"&&x.format!=="CSV")
+  throw new BadRequestException({code:"MIS_RUN_FORMAT_INVALID",
+   message:"Choose PDF, Excel or CSV."});
+ if(Boolean(x.savedRef)===Boolean(x.request))
+  throw new BadRequestException({code:"MIS_RUN_INVALID",
+   message:"Choose a saved report or the current report configuration."});
+ return {requestKey,format:x.format,
+  ...(x.savedRef?{savedRef:id(x.savedRef)}:
+   {request:parseSafeReport(x.request)})};
+};
+@Injectable()
+export class MisReportRunService{
+ constructor(@Inject(DATABASE)private readonly db:Pool,
+  private readonly sessions:SessionService,
+  private readonly sources:MisReportSourceService,
+  private readonly saved:MisSavedReportService,
+  private readonly files:MisProtectedArtifactService){}
+ private async actor(token:string){
+  await this.sessions.requireAction(token,"mis.reports.view");
+  return this.sessions.requireAction(token,"mis.reports.export");
+ }
+ private summary(row:Row){
+  return {ref:row.id,state:row.state,format:row.format,
+   sourceKey:row.source_key,createdAt:row.created_at,expiresAt:row.expires_at,
+   sourceAsOf:row.source_as_of,rows:row.result_row_count,
+   canDownload:row.state==="READY"&&Boolean(row.artifact_ref)};
+ }
+ private async current(token:string,ref:string,recipient=false){
+  const actor=await this.actor(token);
+  const q=await this.db.query<Row>(
+   "SELECT r.* FROM cg20_report_run r "+
+   "WHERE r.root_realm_id=$1 AND r.id=$2 "+
+   "AND (r.requester_ref=$3 OR ($4::boolean AND EXISTS("+
+   "SELECT 1 FROM cg20_report_delivery_attempt d "+
+   "WHERE d.root_realm_id=r.root_realm_id AND d.run_ref=r.id "+
+   "AND d.recipient_account_ref=$3 AND d.state IN('QUEUED','SENT_PENDING','CONFIRMED')"+
+   "))) LIMIT 1",[actor.realmId,id(ref),actor.accountId,recipient]);
+  const row=q.rows[0];
+  if(!row)throw new NotFoundException({code:"MIS_RUN_NOT_FOUND",
+   message:"This report is not available."});
+  return {row,actor};
+ }
+ private async validateSource(token:string,row:Row){
+  if(row.saved_ref){
+   const q=await this.db.query<{state:string;current_revision:number}>(
+    "SELECT state,current_revision FROM cg20_saved_report WHERE root_realm_id=$1 "+
+    "AND id=$2 AND current_revision=$3",
+    [row.root_realm_id,row.saved_ref,row.definition_revision]);
+   if(q.rows[0]?.state!=="ACTIVE")
+    throw new NotFoundException({code:"MIS_RUN_STALE",
+     message:"Saved report changed or was retired. Create a fresh report."});
+  }
+  // Current original CG-09/CG-15 row, field, branch, center and purpose grants,
+  // including sensitive small population suppression.
+  const preview=await this.sources.preview(token,row.safe_request);
+  if(preview.state==="SUPPRESSED")
+   throw new ForbiddenException({code:"MIS_RUN_SUPPRESSED",
+    message:"This report cannot be shared for a small private group."});
+  return preview;
+ }
+ /** One idempotent on-demand run. No report rows are persisted in CG20.
+  * The file is not marked READY until CG19 verifies its actual scanned bytes.
+  */
+ async create(token:string,raw:unknown){
+  const actor=await this.actor(token),input=parse(raw);
+  let request:SafeReportRequest,savedRef:string|null=null,revision:number|null=null;
+  if(input.savedRef){
+   const item=await this.saved.authorizedRequest(token,input.savedRef);
+   request=parseSafeReport(item.request);savedRef=item.ref;revision=item.revision;
+  }else request=parseSafeReport(input.request);
+  const preview=await this.sources.preview(token,request);
+  if(preview.state==="SUPPRESSED")
+   throw new ForbiddenException({code:"MIS_RUN_SUPPRESSED",
+    message:"This report cannot be exported for a small private group."});
+  if(preview.nextOffset!==null)
+   throw new BadRequestException({code:"MIS_RUN_LIMIT",
+    message:"This report has more than 50 entries. Apply a narrower filter first."});
+  const identity=digest({request,format:input.format,savedRef,revision});
+  const tx=await this.db.connect();let active=false,row:Row,isNew=false;
+  try{
+   await tx.query("BEGIN");active=true;
+   await tx.query("SET LOCAL statement_timeout='10s'");
+   await tx.query("SET LOCAL lock_timeout='3s'");
+   await tx.query("SELECT pg_advisory_xact_lock(hashtextextended($1,0))",
+    [actor.realmId+":cg20-run:"+actor.accountId+":"+input.requestKey]);
+   const existing=await tx.query<Row>(
+    "SELECT * FROM cg20_report_run WHERE root_realm_id=$1 "+
+    "AND requester_ref=$2 AND request_key=$3 FOR UPDATE",
+    [actor.realmId,actor.accountId,input.requestKey]);
+   if(existing.rows[0]){
+    row=existing.rows[0];
+    if(row.payload_digest!==identity)
+     throw new ConflictException({code:"MIS_RUN_KEY_REUSED",
+      message:"This report request was already used with different filters."});
+   }else{
+    const inserted=await tx.query<Row>(
+     "INSERT INTO cg20_report_run(root_realm_id,requester_ref,request_key,"+
+     "payload_digest,source_key,safe_request,saved_ref,definition_revision,"+
+     "format,run_origin,state) "+
+     "VALUES($1,$2,$3,$4,$5,$6::jsonb,$7,$8,$9,'ON_DEMAND','QUEUED') RETURNING *",
+     [actor.realmId,actor.accountId,input.requestKey,identity,request.kind,
+      JSON.stringify(request),savedRef,revision,input.format]);
+    row=inserted.rows[0];isNew=true;
+   }
+   await tx.query("COMMIT");active=false;
+  }catch(e){if(active)await tx.query("ROLLBACK").catch(()=>undefined);throw e;}
+  finally{tx.release();}
+  if(!isNew)return {...this.summary(row),replayed:true};
+  const claimed=await this.db.query<Row>(
+   "UPDATE cg20_report_run SET state='RUNNING',updated_at=now() "+
+   "WHERE root_realm_id=$1 AND id=$2 AND requester_ref=$3 AND state='QUEUED' "+
+   "RETURNING *",[actor.realmId,row.id,actor.accountId]);
+  if(!claimed.rows[0])return {...this.summary(row),replayed:false};
+  try{
+   // Revalidate scope after durable acceptance, before generating bytes.
+   const fresh=await this.validateSource(token,claimed.rows[0]);
+   if(fresh.nextOffset!==null)
+    throw new BadRequestException({code:"MIS_RUN_LIMIT",
+     message:"The source grew beyond 50 entries. Narrow your report filters."});
+   if(fresh.state==="EMPTY"){
+    const empty=await this.db.query<Row>(
+     "UPDATE cg20_report_run SET state='EMPTY',result_row_count=0,"+
+     "source_as_of=$3,updated_at=now() WHERE root_realm_id=$1 AND id=$2 "+
+     "AND state='RUNNING' RETURNING *",
+     [actor.realmId,row.id,fresh.sourceAsOf??null]);
+    return {...this.summary(empty.rows[0]),replayed:false};
+   }
+   const sourceDigest=digest({kind:fresh.kind,view:fresh.view,
+    columns:fresh.columns,rows:fresh.rows,scopeLabel:fresh.scopeLabel,
+    sourceAsOf:fresh.sourceAsOf??fresh.sourceReadAt});
+   const artifact=await this.files.issueFromReport(token,row.id,input.format,{
+    label:fresh.label,scopeLabel:fresh.scopeLabel,
+    sourceReadAt:fresh.sourceReadAt,sourceAsOf:fresh.sourceAsOf,
+    sourceDigest,columns:fresh.columns,rows:fresh.rows});
+   if(!artifact.confirmed){
+    await this.db.query(
+     "UPDATE cg20_report_run SET state='UNKNOWN',updated_at=now() "+
+     "WHERE root_realm_id=$1 AND id=$2 AND state='RUNNING'",
+     [actor.realmId,row.id]);
+    return {ref:row.id,state:"UNKNOWN",format:input.format,
+     canDownload:false,message:"File status is unconfirmed. Refresh before retrying."};
+   }
+   // A role/scope revoked during object storage must prevent READY response.
+   await this.validateSource(token,claimed.rows[0]);
+   const done=await this.db.query<Row>(
+    "UPDATE cg20_report_run SET state='READY',artifact_ref=$3,"+
+    "source_as_of=$4,result_row_count=$5,updated_at=now() "+
+    "WHERE root_realm_id=$1 AND id=$2 AND state='RUNNING' RETURNING *",
+    [actor.realmId,row.id,artifact.artifactRef,fresh.sourceAsOf??null,
+     fresh.rows.length]);
+   if(!done.rows[0])throw new ConflictException({code:"MIS_RUN_CHANGED"});
+   return {...this.summary(done.rows[0]),replayed:false};
+  }catch(error){
+   const isDenied=error instanceof ForbiddenException||
+    error instanceof NotFoundException;
+   await this.db.query(
+    "UPDATE cg20_report_run SET state=$3,error_class=$4,updated_at=now() "+
+    "WHERE root_realm_id=$1 AND id=$2 AND state='RUNNING'",
+    [actor.realmId,row.id,isDenied?"REVOKED":"FAILED",
+     isDenied?"SOURCE_REVOKED":"SOURCE_OR_STORAGE_FAILED"]).catch(()=>undefined);
+   if(isDenied)throw error;
+   return {ref:row.id,state:"FAILED",format:input.format,canDownload:false,
+    message:"Unable to confirm the protected report file. Review its status before retrying."};
+  }
+ }
+ async list(token:string){
+  const actor=await this.actor(token);
+  const runs=await this.db.query<Row>(
+   "SELECT * FROM cg20_report_run WHERE root_realm_id=$1 AND requester_ref=$2 "+
+   "ORDER BY created_at DESC,id DESC LIMIT 30",
+   [actor.realmId,actor.accountId]);
+  return {runs:runs.rows.map(r=>this.summary(r))};
+ }
+ async status(token:string,runRef:string){
+  const {row}=await this.current(token,runRef,true);
+  if(row.expires_at.getTime()<=Date.now())
+   return {...this.summary(row),state:"EXPIRED",canDownload:false};
+  // A status lookup is metadata only; never return saved filters or rows.
+  return this.summary(row);
+ }
+ async download(token:string,runRef:string){
+  const {row}=await this.current(token,runRef,true);
+  if(row.state!=="READY"||!row.artifact_ref||
+    row.expires_at.getTime()<=Date.now()||!row.format)
+   throw new NotFoundException({code:"MIS_RUN_FILE_UNAVAILABLE",
+    message:"This protected report is no longer available."});
+  await this.validateSource(token,row);
+  const original=await this.files.read(token,row.id);
+  // Check original owner read rights again immediately before bytes exit API.
+  await this.validateSource(token,row);
+  const mime=original.mime;
+  return {bytes:original.bytes,mime,
+   filename:"CareGanga-Report."+
+    (row.format==="PDF"?"pdf":row.format==="XLSX"?"xlsx":"csv")};
+ }
+}
