@@ -28,6 +28,7 @@ const id=(v:unknown,label:string)=>{
  return v;
 };
 const hash=(v:unknown)=>createHash("sha256").update(JSON.stringify(v)).digest("hex");
+const hashBytes=(v:Buffer)=>createHash("sha256").update(v).digest("hex");
 function parse(input:unknown):Input{
  if(!input||typeof input!=="object"||Array.isArray(input))
   throw new BadRequestException("Check the private HR upload details");
@@ -255,4 +256,50 @@ export class HrEmployeeEvidenceService{
   }catch(e){await tx.query("ROLLBACK");throw e;}
   finally{tx.release();}
  }
+
+ /** Internal original CG03 reviewer adapter. No client can select a raw file:
+  * CG03 first verifies live reviewer, exact immutable case and revision.
+  */
+ async protectedReviewRead(actor:VerifiedFoundationActor,applicationRef:string,
+  version:number,fileRef:string,classification:Kind){
+  if(!Number.isSafeInteger(version)||version<1||!CLASS.includes(classification))
+   throw new BadRequestException("Choose an original protected employee file");
+  const check=async(audit:boolean)=>{
+   const tx=await this.db.connect();
+   try{
+    await tx.query("BEGIN");
+    await this.identity.assertCurrent(tx,actor,"approvals.review");
+    await this.identity.assertCurrent(tx,actor,"hr.employees.review");
+    const file=await tx.query<File>(
+     "SELECT f.* FROM cg19_stored_file f "+
+     "JOIN cg19_upload_intent i ON i.id=f.upload_intent_id AND i.realm_id=f.realm_id "+
+     "WHERE f.realm_id=$1 AND f.hr_application_id=$2 "+
+     "AND f.hr_source_version=$3 AND f.id=$4 "+
+     "AND f.owner_kind='CG10_DRAFT' AND i.classification=$5 "+
+     "AND f.revoked_at IS NULL AND f.scan_status='CLEAN_VERIFIED' "+
+     "AND i.status='VALIDATED' FOR SHARE OF f,i",
+     [actor.realmId,id(applicationRef,"application"),version,id(fileRef,"file"),
+      classification]);
+    const row=file.rows[0];
+    if(!row)throw new NotFoundException("Original private employee proof unavailable");
+    if(audit)await this.event(tx,actor,applicationRef,"PRIVATE_REVIEW_READ",null,fileRef);
+    await tx.query("COMMIT");
+    return row;
+   }catch(e){await tx.query("ROLLBACK");throw e;}
+   finally{tx.release();}
+  };
+  const row=await check(false);
+  const bytes=await this.objects.readVerifiedPrivateObject({
+   objectKey:row.object_key,objectVersion:row.object_version,
+   maxBytes:Math.min(10485760,Number(row.verified_size_bytes))});
+  if(!Buffer.isBuffer(bytes)||bytes.length!==Number(row.verified_size_bytes)||
+    hashBytes(bytes)!==row.verified_sha256)
+   throw new ServiceUnavailableException("Original private employee proof changed");
+  const after=await check(true);
+  if(after.id!==row.id||after.revision!==row.revision||
+    after.object_version!==row.object_version)
+   throw new ConflictException("Private employee proof was revoked or changed");
+  return {data:bytes,mime:row.original_mime};
+ }
+
 }
