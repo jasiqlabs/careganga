@@ -5,11 +5,12 @@ import {SessionService} from "../../cg-01-identity-access/application/session.se
 import {FinanceReportsService} from "../../cg-09-finance-accounting/application/finance-reports.service";
 import {PatientAdminOverviewService} from "../../cg-15-patients-appointments/application/patient-admin-overview.service";
 import {PlatformAuditService} from "../../cg-21-platform-configuration-audit/application/platform-audit.service";
+import {DiagnosticsCatalogService} from "../../cg-16-healthcare-diagnostics/application/diagnostics-catalog.service";
 
 export const REPORT_KINDS=[
  "FINANCE_POSTED_LEDGER","FINANCE_POSTED_SUMMARY",
  "FINANCE_POSTED_TREND","FINANCE_POSTED_GROUPED",
- "APPOINTMENT_STATUS","PLATFORM_AUDIT_ACTIVITY"
+ "APPOINTMENT_STATUS","PLATFORM_AUDIT_ACTIVITY","DIAGNOSTICS_CATALOG_SUMMARY"
 ] as const;
 export type ReportKind=typeof REPORT_KINDS[number];
 export type ReportView="TABLE"|"SUMMARY"|"CHART"|"PIVOT";
@@ -52,7 +53,8 @@ export function parseSafeReport(raw:unknown):SafeReportRequest{
   FINANCE_POSTED_SUMMARY:["SUMMARY"],
   FINANCE_POSTED_TREND:["CHART"],
   APPOINTMENT_STATUS:["SUMMARY","CHART"],
-  PLATFORM_AUDIT_ACTIVITY:["TABLE"]
+  PLATFORM_AUDIT_ACTIVITY:["TABLE"],
+  DIAGNOSTICS_CATALOG_SUMMARY:["SUMMARY"]
  };
  if(!legalViews[kind as ReportKind].includes(view))
   throw new BadRequestException({code:"MIS_REPORT_VIEW_INVALID",
@@ -71,7 +73,9 @@ export function parseSafeReport(raw:unknown):SafeReportRequest{
  const isFinance=FINANCE_KINDS.includes(kind as ReportKind);
  if([yearRef,branchRef,centerRef].some(v=>v!==""&&!UUID.test(v))||
   isFinance&&(centerRef!==""||status!=="")||
-  kind==="PLATFORM_AUDIT_ACTIVITY"&&(centerRef!==""||status!=="")||
+  (kind==="PLATFORM_AUDIT_ACTIVITY"||kind==="DIAGNOSTICS_CATALOG_SUMMARY")&&
+   (centerRef!==""||status!=="")||
+  kind==="DIAGNOSTICS_CATALOG_SUMMARY"&&fromDay!==""||
   kind!=="FINANCE_POSTED_GROUPED"&&(groupBy!==""||sortBy!==""||sortDirection!=="")||
   kind==="FINANCE_POSTED_GROUPED"&&(
    groupBy!==""&&!["CATEGORY","POSTING_KIND","ACCOUNT_NAME"].includes(groupBy)||
@@ -129,7 +133,8 @@ export class MisReportSourceService{
  constructor(private readonly sessions:SessionService,
   private readonly finance:FinanceReportsService,
   private readonly patients:PatientAdminOverviewService,
-  private readonly audit:PlatformAuditService){}
+  private readonly audit:PlatformAuditService,
+  private readonly diagnostics:DiagnosticsCatalogService){}
  async catalog(token:string){
   await this.sessions.requireAction(token,"mis.reports.view");
   const [finance,appointments]=await Promise.all([
@@ -175,9 +180,13 @@ export class MisReportSourceService{
    try{await this.sessions.requireAction(token,action);return true;}
    catch(error){if(error instanceof UnauthorizedException)throw error;return false;}
   };
-  const [manage,exportAllowed,schedule,auditAccess]=await Promise.all([
+  const [manage,exportAllowed,schedule,auditAccess,diagnosticsAccess]=await Promise.all([
    permission("mis.reports.manage"),permission("mis.reports.export"),
-   permission("mis.reports.schedule"),permission("platform.audit.view")]);
+   permission("mis.reports.schedule"),permission("platform.audit.view"),
+   permission("diagnostics.catalog.view")]);
+  if(diagnosticsAccess)templates.push({
+   kind:"DIAGNOSTICS_CATALOG_SUMMARY",label:"Diagnostics services summary",
+   views:["SUMMARY"],description:"Current approved service catalog counts from CG-16."});
   if(auditAccess)templates.push({kind:"PLATFORM_AUDIT_ACTIVITY",
    label:"Protected audit activity",views:["TABLE"],
    description:"Current original platform and access audit events; limited to 50 rows."});
@@ -319,6 +328,26 @@ export class MisReportSourceService{
     rows:x.months,nextOffset:null,sourceReadAt,
     sourceCutoffKind:"OWNER_READ_COMPLETED_NOT_SNAPSHOT",
     explanation:x.explanation,scopeLabel:"Current permitted finance source scope"};
+  }
+  if(q.kind==="DIAGNOSTICS_CATALOG_SUMMARY"){
+   const x=await this.diagnostics.summary(token);
+   const keys=[
+    {key:"totalTests",label:"Catalog tests",unit:"COUNT" as const},
+    {key:"activeTests",label:"Active tests",unit:"COUNT" as const},
+    {key:"categories",label:"Active categories",unit:"COUNT" as const},
+    {key:"packages",label:"Active packages",unit:"COUNT" as const},
+    {key:"publishedOffers",label:"Currently published verified offers",unit:"COUNT" as const}
+   ];
+   const rows=[Object.fromEntries(keys.map(item=>[
+    item.key,String(x[item.key as keyof typeof x]??0)] as const))];
+   const empty=x.totalTests===0&&x.categories===0&&x.packages===0&&
+    x.publishedOffers===0;
+   return {kind:q.kind,view:q.view,label:"Diagnostics catalog summary",
+    state:empty?"EMPTY":"READY",columns:keys,
+    rows:empty?[]:rows,nextOffset:null,sourceReadAt,
+    sourceCutoffKind:"CG16_CURRENT_CATALOG_READ_COMPLETED_NOT_SNAPSHOT",
+    explanation:"Original CG-16 verified active tests and published offers only. No patient tests, findings, prices or private results.",
+    scopeLabel:"Current authorized diagnostics catalog scope"};
   }
   if(q.kind==="PLATFORM_AUDIT_ACTIVITY"){
    // All audit events originate in CG-21/CG-01; the audit facade owns
