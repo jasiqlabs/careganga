@@ -11,6 +11,8 @@ function allowed(parts:string[],method:string){
  if(parts.length===1&&parts[0]==="departments")return method==="GET";
  if(parts.length===2&&parts[0]==="applications"&&UUID.test(parts[1]))
   return method==="GET"||method==="PATCH";
+ if(parts.length===2&&parts[0]==="private"&&UUID.test(parts[1]))
+  return method==="GET"||method==="PATCH";
  if(parts.length===3&&parts[0]==="applications"&&UUID.test(parts[1])&&
   ["submit","finalize"].includes(parts[2]))return method==="POST";
  if(parts.length===3&&parts[0]==="applications"&&UUID.test(parts[1])&&
