@@ -117,7 +117,7 @@ contains(mis+"application/mis-report-run.service.ts",[
 ]);
 contains(cg19+"application/mis-protected-artifact.service.ts",[
  "cg19_mis_report_artifact","writeVerifiedGeneratedReport",
- "readVerifiedPrivateObject","issueFromReport","current"
+ "readVerifiedPrivateObject","issueFromReport","mis.reports.export"
 ]);
 contains(cg19+"application/mis-report-renderer.ts",[
  "pdfReport","xlsxReport","csvReport","excelText","CareGanga"
@@ -130,7 +130,7 @@ contains(web+"features/mis-reporting/mis-report-exports.tsx",[
  "My protected report exports","Download authorized"
 ]);
 contains(native+"features/mis-reporting/native-mis-exports.tsx",[
- "expo-file-system","file.preview","file?.delete","private report"
+ "expo-file-system","file.preview","file?.delete","Protected file"
 ]);
 // US-005: safe metadata only; NOT a claim of automatic delivery.
 const schedules=contains(mis+"application/mis-report-schedule.service.ts",[
