@@ -15,6 +15,20 @@ export class MisDashboardService {
  constructor(private readonly sessions:SessionService,
   private readonly finance:FinanceReportsService){}
 
+ async options(bearer:string){
+  await this.sessions.requireAction(bearer,"mis.dashboard.view");
+  try{
+   const source=await this.finance.options(bearer);
+   return {state:"AVAILABLE",sourceKey:"CG09_POSTED_FINANCE",
+    years:source.years.map(y=>({ref:y.ref,name:y.name})),
+    branches:source.branches.map(b=>({ref:b.branchRef,name:b.name})),
+    allBranches:source.allBranches};
+  }catch(error){
+   if(error instanceof ForbiddenException)return {
+    state:"NO_AUTHORIZED_SOURCES",years:[],branches:[],allBranches:false};
+   return {state:"FAILED",years:[],branches:[],allBranches:false};
+  }
+ }
  async dashboard(bearer:string,raw:Record<string,unknown>){
   await this.sessions.requireAction(bearer,"mis.dashboard.view");
   if(Object.keys(raw).some(k=>!["yearRef","branchRef"].includes(k))||
