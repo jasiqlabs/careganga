@@ -9,6 +9,7 @@ import fontkit from "@pdf-lib/fontkit";
  */
 export type LaboratoryReportSource=Readonly<{
  sourceDigest:string;orderNumber:string;centerName:string;
+ versionNo:number;corrected:boolean;
  patientName:string;patientDisplayId:string;recordedAt:string;
  results:ReadonlyArray<Readonly<{
   testName:string;value:string;unit:string;observation:string
@@ -68,6 +69,9 @@ export async function renderLaboratoryReport(source:LaboratoryReportSource):
   line("Patient",source.patientName,11);
   line("Patient ID",source.patientDisplayId,10);
   line("Lab order",source.orderNumber,10);
+  line("Report version",String(source.versionNo),10);
+  if(source.corrected)
+   line("Report status","Corrected version; earlier release preserved",10);
   line("Result recorded (UTC)",source.recordedAt,10);
   y-=11;next(50);
   page.drawText("Recorded test results",{x:43,y,font,size:12,color:blue});y-=27;
