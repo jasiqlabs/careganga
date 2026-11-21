@@ -82,7 +82,7 @@ export function NativePartnerSettlementSummary({token,onExit,onExpired}:Props){
   }).finally(()=>{
    if(version===requestVersion.current)setBusy(false);
   });
-  return()=>{if(version===requestVersion.current)requestVersion.current++};
+  return()=>{requestVersion.current++};
  },[refresh]);
  const button=(label:string,fn:()=>void,disabled=false)=>
   <Pressable accessibilityRole="button" disabled={disabled}
