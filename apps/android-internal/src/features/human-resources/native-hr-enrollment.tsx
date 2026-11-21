@@ -56,6 +56,11 @@ export function NativeHrEnrollment({token,canView,canManage,canReview,canViewEmp
  const [staff,setStaff]=useState<Array<{reference:string;name:string;designation:string;
   branch:string;status:string}>>([]);
  const [staffError,setStaffError]=useState("");
+ const [empBranches,setEmpBranches]=useState<Option[]>([]);
+ const [empDepartments,setEmpDepartments]=useState<Option[]>([]);
+ const [empFilter,setEmpFilter]=useState({q:"",status:"ALL",branch:"",department:""});
+ const [empOffset,setEmpOffset]=useState(0);
+ const [empMore,setEmpMore]=useState(false);
  const enrollKeys=useRef(new Map<string,string>());
  const failure=useCallback((e:unknown)=>{
   if(e&&typeof e==="object"&&"status" in e&&e.status===401)onExpired();
@@ -239,18 +244,42 @@ export function NativeHrEnrollment({token,canView,canManage,canReview,canViewEmp
    setStatus("Your existing staff account is now linked to your approved employment.");
   }catch(e){failure(e);}finally{setSaving(false);}
  };
- const loadStaff=async()=>{
+ const loadStaff=async(page=0)=>{
   if(!canViewEmployees)return;
   setStaffError("");
   try{
-   const data=await api(token,"employees?offset=0");
+   const opts=new URLSearchParams({offset:String(page),status:empFilter.status,
+     q:empFilter.q.trim()});
+   if(empFilter.branch)opts.set("branch",empFilter.branch);
+   if(empFilter.department)opts.set("department",empFilter.department);
+   const data=await api(token,"employees?"+opts.toString());
    if(!data||typeof data!=="object"||!("items" in data)||
     !Array.isArray(data.items))throw Error("Original employee directory cannot be verified.");
    setStaff(data.items as typeof staff);
-  }catch(e){setStaff([]);
+   setEmpMore("hasMore" in data&&data.hasMore===true);setEmpOffset(page);
+  }catch(e){setStaff([]);setEmpMore(false);
    setStaffError(e instanceof Error?e.message:"Employee directory unavailable.");}
  };
 
+ useEffect(()=>{
+  if(!canViewEmployees)return;
+  let active=true;
+  void api(token,"employee-branches").then(x=>{
+   if(active&&x&&typeof x==="object"&&"items" in x&&Array.isArray(x.items))
+    setEmpBranches(x.items as Option[]);
+  }).catch(e=>{if(active){setEmpBranches([]);failure(e);}});
+  return()=>{active=false;};
+ },[token,canViewEmployees,failure]);
+ useEffect(()=>{
+  if(!canViewEmployees||!empFilter.branch){setEmpDepartments([]);return;}
+  let active=true;
+  void api(token,"employee-departments?branch="+encodeURIComponent(empFilter.branch))
+   .then(x=>{
+    if(active&&x&&typeof x==="object"&&"items" in x&&Array.isArray(x.items))
+     setEmpDepartments(x.items as Option[]);
+   }).catch(e=>{if(active){setEmpDepartments([]);failure(e);}});
+  return()=>{active=false;};
+ },[token,canViewEmployees,empFilter.branch,failure]);
  const field=(label:string,value:string,onChange:(v:string)=>void,placeholder:string)=>(
   <View style={styles.field}>
    <Text style={styles.label}>{label}</Text>
@@ -411,15 +440,61 @@ export function NativeHrEnrollment({token,canView,canManage,canReview,canViewEmp
    </View>}
    {canViewEmployees&&<View style={styles.card}>
     <Text style={styles.h2}>Approved employee directory</Text>
-    <Pressable accessibilityRole="button" style={styles.outline}
-      onPress={()=>void loadStaff()}>
-      <Text style={styles.outlineText}>Refresh scoped staff directory</Text>
+    {field("Search employees",empFilter.q,
+      v=>setEmpFilter(x=>({...x,q:v.slice(0,80)})),"Name or designation")}
+    <Text style={styles.label}>Employee status</Text>
+    <View style={styles.choices}>
+     {["ALL","ACTIVE","PROBATION","ON_HOLD","PENDING_ACCESS","EXITED"].map(v=>
+      <Pressable key={v} accessibilityRole="button"
+       accessibilityState={{selected:empFilter.status===v}}
+       style={[styles.chip,empFilter.status===v&&styles.selected]}
+       onPress={()=>setEmpFilter(x=>({...x,status:v}))}>
+       <Text style={empFilter.status===v?styles.selectedText:styles.chipText}>
+        {title(v)}</Text></Pressable>)}
+    </View>
+    <Text style={styles.label}>Original Foundation branch</Text>
+    <View style={styles.choices}>
+      <Pressable accessibilityRole="button"
+       style={[styles.chip,!empFilter.branch&&styles.selected]}
+       onPress={()=>setEmpFilter(x=>({...x,branch:"",department:""}))}>
+       <Text style={!empFilter.branch?styles.selectedText:styles.chipText}>
+        All permitted</Text></Pressable>
+      {empBranches.map(v=><Pressable key={v.branchRef} accessibilityRole="button"
+       style={[styles.chip,empFilter.branch===v.branchRef&&styles.selected]}
+       onPress={()=>setEmpFilter(x=>({...x,branch:v.branchRef??"",department:""}))}>
+       <Text style={empFilter.branch===v.branchRef?styles.selectedText:styles.chipText}>
+        {v.label}</Text></Pressable>)}
+    </View>
+    {!!empFilter.branch&&<><Text style={styles.label}>Department</Text>
+     <View style={styles.choices}><Pressable accessibilityRole="button"
+      style={[styles.chip,!empFilter.department&&styles.selected]}
+      onPress={()=>setEmpFilter(x=>({...x,department:""}))}>
+      <Text style={!empFilter.department?styles.selectedText:styles.chipText}>
+       All departments</Text></Pressable>
+      {empDepartments.map(v=><Pressable key={v.departmentRef}
+       accessibilityRole="button" onPress={()=>setEmpFilter(x=>({...x,department:v.departmentRef??""}))}
+       style={[styles.chip,empFilter.department===v.departmentRef&&styles.selected]}>
+       <Text style={empFilter.department===v.departmentRef?styles.selectedText:styles.chipText}>
+        {v.label}</Text></Pressable>)}</View></>}
+    <Pressable accessibilityRole="button" style={styles.primary}
+      onPress={()=>void loadStaff(0)}>
+      <Text style={styles.primaryText}>Apply employee filters</Text>
     </Pressable>
     {!!staffError&&<Text accessibilityRole="alert" style={styles.error}>{staffError}</Text>}
     {staff.map(item=><View key={item.reference} style={styles.item}>
       <Text style={styles.label}>{item.name} — {item.designation}</Text>
       <Text style={styles.muted}>{item.reference} · {item.branch} · {title(item.status)}</Text>
     </View>)}
+    <View style={styles.choices}>
+     {empOffset>0&&<Pressable accessibilityRole="button"
+       onPress={()=>void loadStaff(Math.max(0,empOffset-25))} style={styles.outline}>
+       <Text style={styles.outlineText}>Previous employees</Text>
+      </Pressable>}
+     {empMore&&<Pressable accessibilityRole="button"
+       onPress={()=>void loadStaff(empOffset+25)} style={styles.outline}>
+       <Text style={styles.outlineText}>Next employees</Text>
+      </Pressable>}
+    </View>
    </View>}
   </ScrollView>;
 }
