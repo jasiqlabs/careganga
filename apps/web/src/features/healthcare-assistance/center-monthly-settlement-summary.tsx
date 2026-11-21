@@ -9,6 +9,8 @@ type Summary={
  centerGrossServicesMinor?:string;patientPayableMinor?:string;
  patientCollectedVerifiedMinor?:string;patientRefundedMinor?:string;
  foundationApprovedLiabilityMinor?:string;
+ originalApprovedFoundationMinor?:string;adjustedFoundationMinor?:string;
+ grossFoundationPaidMinor?:string;verifiedProviderRecoveryMinor?:string;
  patientCollectionNotFoundationIncome:true
 };
 const monthNow=()=>{
@@ -106,6 +108,16 @@ export function CenterMonthlySettlementSummary({centerRef}:Props){
     <dd>{money(data.foundationApprovedLiabilityMinor)}</dd>
     {approved?<><dt>Approved monthly Foundation claim</dt>
      <dd>{money(data.approvedFoundationMinor)}</dd>
+     {data.adjustedFoundationMinor&&BigInt(data.adjustedFoundationMinor)>0n&&<>
+      <dt>Original Foundation claim before correction</dt>
+      <dd>{money(data.originalApprovedFoundationMinor)}</dd>
+      <dt>Verified original claim adjustments</dt>
+      <dd>{money(data.adjustedFoundationMinor)}</dd>
+      <dt>Original gross bank payout</dt>
+      <dd>{money(data.grossFoundationPaidMinor)}</dd>
+      <dt>Verified provider money returned to Foundation</dt>
+      <dd>{money(data.verifiedProviderRecoveryMinor)}</dd>
+     </>}
      <dt>Verified Foundation payout to partner</dt>
      <dd>{money(data.actualPaidMinor)}</dd>
      <dt>Foundation payout outstanding</dt>
