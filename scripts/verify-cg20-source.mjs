@@ -5,7 +5,7 @@
  * UI, original screenshots, security, performance or device QA has PASSED.
  */
 import assert from "node:assert/strict";
-import {readFileSync,existsSync} from "node:fs";
+import {readFileSync,existsSync,readdirSync} from "node:fs";
 import {resolve,dirname} from "node:path";
 const root=process.cwd();
 const file=(p)=>{
@@ -271,5 +271,34 @@ for(let index=0;index<byStory.length;index++){
   assert.ok(tasks.includes("**"+story+"-"+id+" —"),story+" missing original "+id+" case");
  }
 }
+// Explicit BFF → original protected owner route parity; all 5 functional
+// groups have a real private endpoint, not just a UI tab.
+for(const route of [
+ "templates/route.ts","preview/route.ts","saved/route.ts",
+ "saved/[reportRef]/route.ts","saved/[reportRef]/copy/route.ts",
+ "saved/[reportRef]/retire/route.ts","runs/route.ts",
+ "runs/[runRef]/route.ts","runs/[runRef]/download/route.ts",
+ "schedules/route.ts","schedules/[scheduleRef]/pause/route.ts",
+ "schedules/[scheduleRef]/resume/route.ts",
+ "schedules/[scheduleRef]/history/route.ts"
+]){
+ file(web+"app/api/mis/reports/"+route);
+}
+// Scan the actual public native source tree rather than a single index file.
+// Foundation-private report screens never have an equivalent public screen.
+function assertNoPublicMisDirectory(relative){
+ const absolute=resolve(root,relative);
+ if(!existsSync(absolute))return;
+ for(const dirent of readdirSync(absolute,{withFileTypes:true})){
+  const child=relative+"/"+dirent.name;
+  if(dirent.isDirectory()){assertNoPublicMisDirectory(child);continue;}
+  if(!dirent.isFile()||!/\.tsx?$/.test(dirent.name))continue;
+  const content=file(child);
+  assert.ok(!/(?:\/api\/v1\/mis\/|features\/mis-reporting\/|NativeMisReports\b|NativeMisWorkspaceScreen\b|MisReportsWorkspace\b)/.test(content),
+   "Foundation-private MIS must not be imported into Public Android: "+child);
+ }
+}
+assertNoPublicMisDirectory("apps/android-public/app");
+assertNoPublicMisDirectory("apps/android-public/src");
 console.log("CG-20 structural contracts reviewed. "+stage+
  " — TypeScript, SQL, original screenshots, DB and Android device QA NOT_RUN.");
