@@ -79,7 +79,9 @@ export class PatientClinicalFileSharingService{
    "object_version,revision,revoked_at,created_at "+
    "FROM cg19_patient_private_file WHERE realm_id=$1 AND patient_id=$2 "+
    "AND id=$3 AND ($4::boolean=false OR revoked_at IS NULL) "+
-   "AND scan_status='CLEAN_VERIFIED' FOR SHARE",
+   "AND scan_status='CLEAN_VERIFIED' "+
+   "AND classification IN('PATIENT_PHOTO','PATIENT_UPLOADED_PRESCRIPTION',"+
+   "'PATIENT_MEDICAL_REPORT') FOR SHARE",
    [actor.realmId,patient,file,activeOnly]);
   if(!result.rows[0])
    throw new NotFoundException({code:"CG19_PATIENT_FILE_UNAVAILABLE"});
