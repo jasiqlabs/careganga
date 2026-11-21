@@ -5,6 +5,7 @@ import {SafeAreaView} from "react-native-safe-area-context";
 import {careGangaTheme as t} from "../../../../../packages/design-tokens/src/index";
 import {identityRequest} from "../identity-access/http-client";
 import {NativeFoundationJournalPanel} from "./native-foundation-journal-panel";
+import {NativePendingPartnerServiceClaims} from "./native-pending-partner-service-claims";
 const ID=/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i;
 type Center={centerRef:string;name:string};
 type Appointment={appointmentRef:string;bookingLabel:string;centerName:string;
@@ -215,6 +216,8 @@ export function NativeCompletedConsultationLiabilities({token,canManage,canPost,
      Outcome uncertain. Check this original appointment before retrying;
      do not create a second obligation.</Text>}
    </View>}
+   {!!center&&<NativePendingPartnerServiceClaims token={token}
+    centerRef={center} mode="foundation" onExpired={onExpired}/>}
   </ScrollView>
  </SafeAreaView>;
 }
