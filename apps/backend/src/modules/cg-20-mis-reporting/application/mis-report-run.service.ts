@@ -40,7 +40,7 @@ const parse=(raw:unknown):NewRun=>{
   throw new BadRequestException({code:"MIS_RUN_INVALID"});
  const requestKey=id(x.requestKey);
  if(x.format!=="PDF"&&x.format!=="XLSX"&&x.format!=="CSV")
-  throw new BadRequestException({code:"MIS_RUN_FORMAT_INVALID",
+  throw new BadRequestException({code:"MIS_RUN_FORMAT_INVALID",field:"format",
    message:"Choose PDF, Excel or CSV."});
  if(Boolean(x.savedRef)===Boolean(x.request))
   throw new BadRequestException({code:"MIS_RUN_INVALID",
@@ -114,7 +114,7 @@ export class MisReportRunService{
    throw new ForbiddenException({code:"MIS_RUN_SUPPRESSED",
     message:"This report cannot be exported for a small private group."});
   if(preview.nextOffset!==null)
-   throw new BadRequestException({code:"MIS_RUN_LIMIT",
+   throw new BadRequestException({code:"MIS_RUN_LIMIT",field:"rows",
     message:"This report has more than 50 entries. Apply a narrower filter first."});
   const identity=digest({request,format:input.format,savedRef,revision});
   const tx=await this.db.connect();let active=false,row:Row,isNew=false;
@@ -156,7 +156,7 @@ export class MisReportRunService{
    // Revalidate scope after durable acceptance, before generating bytes.
    const fresh=await this.validateSource(token,claimed.rows[0]);
    if(fresh.nextOffset!==null)
-    throw new BadRequestException({code:"MIS_RUN_LIMIT",
+    throw new BadRequestException({code:"MIS_RUN_LIMIT",field:"rows",
      message:"The source grew beyond 50 entries. Narrow your report filters."});
    if(fresh.state==="EMPTY"){
     const empty=await this.db.query<Row>(
