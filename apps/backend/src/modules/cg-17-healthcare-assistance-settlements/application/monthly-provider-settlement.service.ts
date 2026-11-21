@@ -363,7 +363,7 @@ export class MonthlyProviderSettlementService{
   ] as const;
   const rows=items.flatMap(([key,label])=>{
    const n=available[key];
-   return typeof n==="string"&&/^-?\\d{1,14}$/.test(n)?
+   return typeof n==="string"&&/^-?\d{1,14}$/.test(n)?
     [{item:label,value:n}]:[];
   });
   const report={
