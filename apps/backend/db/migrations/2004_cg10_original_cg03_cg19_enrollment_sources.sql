@@ -13,6 +13,14 @@ ALTER TABLE cg03_case
  ADD CONSTRAINT fk_cg03_hr_original_application
   FOREIGN KEY(realm_id,hr_application_id)
   REFERENCES hr_employee_application(root_realm_id,id) ON DELETE RESTRICT;
+-- A real CG03 case cannot point to an HR revision from another application,
+-- source version or digest even if a privileged direct SQL caller is compromised.
+ALTER TABLE hr_application_revision ADD CONSTRAINT uq_hr_original_frozen_case_source
+ UNIQUE(root_realm_id,application_id,id,revision_no,source_digest);
+ALTER TABLE cg03_case ADD CONSTRAINT fk_cg03_hr_exact_frozen_submission
+ FOREIGN KEY(realm_id,hr_application_id,hr_revision_id,hr_revision_no,hr_source_digest)
+ REFERENCES hr_application_revision(root_realm_id,application_id,id,revision_no,source_digest)
+ ON DELETE RESTRICT;
 CREATE UNIQUE INDEX ux_cg03_hr_original_revision
  ON cg03_case(realm_id,hr_revision_id)
  WHERE case_kind='EMPLOYEE_ENROLLMENT';
@@ -203,6 +211,9 @@ CREATE TABLE hr_application_proof (
   REFERENCES cg19_stored_file(id,realm_id,hr_application_id,hr_source_version)
   ON DELETE RESTRICT
 );
+CREATE TRIGGER cg10_hr_original_proof_immutable
+ BEFORE UPDATE OR DELETE ON hr_application_proof FOR EACH ROW
+ EXECUTE FUNCTION cg03_immutable();
 CREATE UNIQUE INDEX ux_hr_application_proof_identity
  ON hr_application_proof(root_realm_id,application_id,revision_no,classification)
  WHERE classification='HR_IDENTITY_PROOF';
