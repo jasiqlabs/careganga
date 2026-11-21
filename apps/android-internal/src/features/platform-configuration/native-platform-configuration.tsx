@@ -250,6 +250,7 @@ export function NativePlatformConfiguration({token,roleActions,onExit,onExpired}
   }
   async function exportAudit(){
     if(!can("platform.audit.export")||busy)return;setBusy(true);setError("");
+    let temporary:File|null=null;
     try{const x=await api<CG21AuditCsv>(token,"/audit/export?source="+encodeURIComponent(auditSource)+
         (appliedFrom?"&from="+encodeURIComponent(appliedFrom):"")+
         (appliedTo?"&to="+encodeURIComponent(appliedTo):""));
@@ -258,14 +259,19 @@ export function NativePlatformConfiguration({token,roleActions,onExit,onExpired}
         setError("CSV file sharing is not available on this device. No file was sent.");
         return;
       }
-      // Actual CSV file with the same source bytes exported by Foundation Web.
-      const file=new File(Paths.cache,"careganga-foundation-audit-"+Crypto.randomUUID()+".csv");
-      await file.write(x.csv);
-      await Sharing.shareAsync(file.uri,{
+      // Same protected CG21 original audit bytes as Web, held in a
+      // temporary app file only while the platform shares them.
+      temporary=new File(Paths.cache,"careganga-foundation-audit-"+Crypto.randomUUID()+".csv");
+      temporary.create();
+      await temporary.write(x.csv);
+      await Sharing.shareAsync(temporary.uri,{
         mimeType:"text/csv",dialogTitle:"Share protected Foundation audit CSV"
       });
       if(x.truncated)setNotice("This export is limited to the current approved first 100 records.");
-    }catch(e){fail(e);}finally{setBusy(false);}
+    }catch(e){fail(e);}finally{
+      try{temporary?.delete()}catch{}
+      setBusy(false);
+    }
   }
   async function requestRecovery(){
     if(!can("platform.recovery.request")||availability?.status!=="AVAILABLE"||!backup.startsWith("backupref:")||password.length<8){
