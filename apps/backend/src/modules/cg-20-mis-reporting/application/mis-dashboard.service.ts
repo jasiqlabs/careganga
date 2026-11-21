@@ -28,35 +28,63 @@ export class MisDashboardService{
 
  async options(bearer:string){
   await this.sessions.requireAction(bearer,"mis.dashboard.view");
-  try{
-   const source=await this.finance.options(bearer);
-   return {state:"AVAILABLE",sourceKey:"CG09_POSTED_FINANCE",
-    years:source.years.map(y=>({ref:y.ref,name:y.name})),
-    branches:source.branches.map(b=>({ref:b.branchRef,name:b.name})),
-    allBranches:source.allBranches};
-  }catch(error){
-   if(error instanceof UnauthorizedException)throw error;
-   if(error instanceof ForbiddenException)return {
-    state:"NO_FINANCE_ACCESS",years:[],branches:[],allBranches:false};
-   return {state:"FAILED",years:[],branches:[],allBranches:false};
-  }
+  // Each source independently checks its original capability and resource
+  // scope. A finance denial is never permission to hide eligible healthcare.
+  const [finance,health]=await Promise.all([
+   this.finance.options(bearer).then(x=>({
+    state:"AVAILABLE",years:x.years.map(y=>({ref:y.ref,name:y.name})),
+    branches:x.branches.map(b=>({ref:b.branchRef,name:b.name})),
+    allBranches:x.allBranches
+   })).catch((error:unknown)=>{
+    if(error instanceof UnauthorizedException)throw error;
+    return {state:error instanceof ForbiddenException?"NO_FINANCE_ACCESS":"FAILED",
+     years:[],branches:[],allBranches:false};
+   }),
+   this.patients.readMisOptions(bearer).then(x=>({
+    healthAvailable:true,
+    centers:x.centers.map(y=>({ref:y.centerRef,name:y.name})),
+    centersComplete:x.complete
+   })).catch((error:unknown)=>{
+    if(error instanceof UnauthorizedException)throw error;
+    return {healthAvailable:false,centers:[],centersComplete:false};
+   })
+  ]);
+  return {...finance,...health,sourceKey:"CG09_POSTED_FINANCE"};
  }
 
  async dashboard(bearer:string,raw:Record<string,unknown>){
   await this.sessions.requireAction(bearer,"mis.dashboard.view");
   if(!raw||typeof raw!=="object"||Array.isArray(raw)||
-    Object.keys(raw).some(k=>!["yearRef","branchRef"].includes(k))||
-    Object.values(raw).some(v=>typeof v!=="string"||v.length>80||
-      (v!==""&&!UUID.test(v))))
+    Object.keys(raw).some(k=>!["yearRef","branchRef","centerRef",
+      "fromDay","untilDay","status"].includes(k))||
+    Object.entries(raw).some(([k,v])=>typeof v!=="string"||v.length>80||
+     (v!==""&&(["yearRef","branchRef","centerRef"].includes(k)?
+       !UUID.test(v):k==="fromDay"||k==="untilDay"?
+       !/^\\d{4}-\\d{2}-\\d{2}$/.test(v):!["COMPLETED","CONFIRMED",
+       "ARRIVED","WAITING","IN_CONSULTATION","NO_SHOW","CANCELLED"].includes(v)))))
    throw new BadRequestException({code:"MIS_DASHBOARD_FILTER_INVALID",
     message:"Choose a valid financial year or permitted branch."});
   const filters:Filters={
    yearRef:typeof raw.yearRef==="string"&&raw.yearRef?raw.yearRef:undefined,
    branchRef:typeof raw.branchRef==="string"&&raw.branchRef?raw.branchRef:undefined
   };
+  const healthFilter={
+   centerRef:typeof raw.centerRef==="string"&&raw.centerRef?raw.centerRef:undefined,
+   fromDay:typeof raw.fromDay==="string"&&raw.fromDay?raw.fromDay:undefined,
+   untilDay:typeof raw.untilDay==="string"&&raw.untilDay?raw.untilDay:undefined,
+   status:typeof raw.status==="string"&&raw.status?raw.status:undefined
+  };
+  const hasHealthFilter=Object.values(healthFilter).some(Boolean);
+  const hasFinanceFilter=Boolean(filters.yearRef||filters.branchRef);
+  if(hasHealthFilter&&hasFinanceFilter)
+   throw new BadRequestException({code:"MIS_FILTER_FAMILIES_CONFLICT",
+    message:"Choose finance filters or healthcare filters, not both."});
+  if(Boolean(healthFilter.fromDay)!==Boolean(healthFilter.untilDay))
+   throw new BadRequestException({code:"MIS_HEALTH_DATE_RANGE_INVALID",
+    message:"Select both start and end dates."});
   const readAt=new Date().toISOString();
   let failures=0;
-  const financeSource:Promise<Source|null>=this.finance
+  const financeSource:Promise<Source|null>=hasHealthFilter?Promise.resolve(null):this.finance
    .summary(bearer,filters.yearRef,filters.branchRef)
    .then(async source=>{
     let trend:FinanceTrend={type:"MONTHLY_FINANCE",
@@ -102,7 +130,7 @@ export class MisDashboardService{
   // CG-16's original authenticated Foundation-wide catalogue projection.
   // It has no branch/year dimension; never mislabel it as the selected period.
   // Published offers are ACTUAL verified offers, not all draft tariffs.
-  const diagnosticSource:Promise<Source|null>=(filters.yearRef||filters.branchRef)?
+  const diagnosticSource:Promise<Source|null>=(hasFinanceFilter||hasHealthFilter)?
    Promise.resolve(null):this.diagnostics.summary(bearer)
    .then(x=>({sourceKey:"CG16_FOUNDATION_DIAGNOSTICS",state:"AVAILABLE" as const,
     sourceLabel:"Foundation Diagnostics · Current catalogues",
@@ -122,8 +150,8 @@ export class MisDashboardService{
    });
   // Foundation-only CG-15 counts from a narrow original-owner read facade.
   // Neither row-level patient names nor center/branch extrapolations are allowed.
-  const patientSource:Promise<Source|null>=(filters.yearRef||filters.branchRef)?
-   Promise.resolve(null):this.patients.readMisTotals(bearer)
+  const patientSource:Promise<Source|null>=hasFinanceFilter?
+   Promise.resolve(null):this.patients.readMisTotals(bearer,healthFilter)
    .then(x=>({sourceKey:"CG15_APPOINTMENT_STATES",state:"AVAILABLE" as const,
     sourceLabel:"Foundation Appointments · Current state totals",
     readAt:new Date().toISOString(),
@@ -147,8 +175,12 @@ export class MisDashboardService{
   return {state:available?(failures?"PARTIAL":"AVAILABLE"):
    empty?(failures?"PARTIAL":"NO_DATA"):
    failures?"FAILED":"NO_AUTHORIZED_SOURCES",readAt,
-   scopeLabel:filters.branchRef?"Permitted selected branch":"Current original-owner scope",
-   periodLabel:filters.yearRef?"Selected financial year":"All permitted posted financial years",
+   scopeLabel:healthFilter.centerRef?"Selected verified healthcare center":
+    filters.branchRef?"Permitted selected branch":"Current original-owner scope",
+   periodLabel:hasHealthFilter?(healthFilter.fromDay?
+    "Appointments "+healthFilter.fromDay+" to "+healthFilter.untilDay:
+    "Current appointment records"):
+    filters.yearRef?"Selected financial year":"All permitted posted financial years",
    sources,
    ...(failures?{message:"Some original sources could not be verified. Retry when available."}:
     sources.length===0?{message:"No reporting source is available for your current permissions."}:{})};
