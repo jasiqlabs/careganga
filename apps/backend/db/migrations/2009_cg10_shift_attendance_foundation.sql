@@ -37,6 +37,7 @@ CREATE TABLE hr_employee_shift(
  request_digest char(64) NOT NULL CHECK(request_digest ~ '^[a-f0-9]{64}$'),
  created_at timestamptz NOT NULL DEFAULT now(),
  UNIQUE(root_realm_id,id),
+ UNIQUE(id,root_realm_id,employee_id,policy_id),
  UNIQUE(root_realm_id,request_key),
  CHECK(valid_to IS NULL OR valid_to>valid_from),
  FOREIGN KEY(employee_id,root_realm_id) REFERENCES hr_employee(id,root_realm_id) ON DELETE RESTRICT,
@@ -45,6 +46,12 @@ CREATE TABLE hr_employee_shift(
 );
 CREATE UNIQUE INDEX ux_hr_employee_shift_current ON hr_employee_shift(root_realm_id,employee_id) WHERE valid_to IS NULL;
 CREATE INDEX ix_hr_employee_shift_history ON hr_employee_shift(root_realm_id,employee_id,valid_from DESC,id);
+
+-- Binding the pinned attendance assignment to the same original employee
+-- must be enforceable by PostgreSQL, not only by a service-layer SELECT.
+ALTER TABLE hr_employment_assignment
+ ADD CONSTRAINT uq_hr_attendance_assignment_employee
+ UNIQUE(id,root_realm_id,employee_id);
 
 CREATE TABLE hr_attendance_day(
  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -59,10 +66,13 @@ CREATE TABLE hr_attendance_day(
  version integer NOT NULL DEFAULT 1 CHECK(version>0),
  created_at timestamptz NOT NULL DEFAULT now(),
  UNIQUE(root_realm_id,id),
+ UNIQUE(id,root_realm_id,employee_id),
  UNIQUE(root_realm_id,employee_id,local_date),
  FOREIGN KEY(employee_id,root_realm_id) REFERENCES hr_employee(id,root_realm_id) ON DELETE RESTRICT,
- FOREIGN KEY(assignment_id,root_realm_id) REFERENCES hr_employment_assignment(id,root_realm_id) ON DELETE RESTRICT,
- FOREIGN KEY(shift_id,root_realm_id) REFERENCES hr_employee_shift(id,root_realm_id) ON DELETE RESTRICT,
+ FOREIGN KEY(assignment_id,root_realm_id,employee_id)
+  REFERENCES hr_employment_assignment(id,root_realm_id,employee_id) ON DELETE RESTRICT,
+ FOREIGN KEY(shift_id,root_realm_id,employee_id,policy_id)
+  REFERENCES hr_employee_shift(id,root_realm_id,employee_id,policy_id) ON DELETE RESTRICT,
  FOREIGN KEY(policy_id,root_realm_id) REFERENCES hr_shift_policy(id,root_realm_id) ON DELETE RESTRICT
 );
 CREATE INDEX ix_hr_attendance_employee_recent ON hr_attendance_day(root_realm_id,employee_id,local_date DESC);
@@ -79,7 +89,8 @@ CREATE TABLE hr_attendance_event(
  created_at timestamptz NOT NULL DEFAULT now(),
  UNIQUE(root_realm_id,actor_ref,request_key),
  FOREIGN KEY(employee_id,root_realm_id) REFERENCES hr_employee(id,root_realm_id) ON DELETE RESTRICT,
- FOREIGN KEY(attendance_day_id,root_realm_id) REFERENCES hr_attendance_day(id,root_realm_id) ON DELETE RESTRICT,
+ FOREIGN KEY(attendance_day_id,root_realm_id,employee_id)
+  REFERENCES hr_attendance_day(id,root_realm_id,employee_id) ON DELETE RESTRICT,
  FOREIGN KEY(actor_ref,root_realm_id) REFERENCES account(id,realm_id) ON DELETE RESTRICT
 );
 CREATE INDEX ix_hr_attendance_event_day ON hr_attendance_event(root_realm_id,attendance_day_id,created_at);

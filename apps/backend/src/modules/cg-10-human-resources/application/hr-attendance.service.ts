@@ -142,12 +142,21 @@ export class HrAttendanceService{
   try{
    await tx.query("BEGIN");
    await this.identity.assertCurrent(tx,actor,"hr.shifts.manage");
-   const existing=await tx.query<{id:string;request_digest:string}>(
-    "SELECT id,request_digest FROM hr_employee_shift WHERE root_realm_id=$1 AND request_key=$2",
+   const existing=await tx.query<{id:string;request_digest:string;employee_id:string}>(
+    "SELECT id,request_digest,employee_id FROM hr_employee_shift WHERE root_realm_id=$1 AND request_key=$2",
     [actor.realmId,requestKey]);
    if(existing.rows[0]){
     if(existing.rows[0].request_digest!==hash)
      throw new ConflictException("This shift assignment request was changed");
+    const allowed=await tx.query<{branch_ref:string}>(`SELECT a.branch_ref
+     FROM hr_employee e JOIN hr_employment_assignment a
+     ON a.employee_id=e.id AND a.root_realm_id=e.root_realm_id
+     WHERE e.id=$1 AND e.root_realm_id=$2
+     AND a.valid_from<=CURRENT_DATE AND (a.valid_to IS NULL OR a.valid_to>CURRENT_DATE)
+     FOR SHARE OF e,a`,[existing.rows[0].employee_id,actor.realmId]);
+    if(allowed.rows.length!==1)
+     throw new ForbiddenException("The employee's current branch cannot be verified");
+    await this.allowedBranch(tx,actor,allowed.rows[0].branch_ref);
     await tx.query("COMMIT");return {assigned:true,replayed:true};
    }
    const employee=await tx.query<{id:string;branch_ref:string;valid_from:Date|string}>(`
