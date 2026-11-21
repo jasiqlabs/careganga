@@ -17,7 +17,8 @@ export async function GET(request:NextRequest){
  for(const [key,value] of request.nextUrl.searchParams){
   const valid=(["yearRef","branchRef","centerRef"].includes(key)&&ID.test(value))||
    (["fromDay","untilDay"].includes(key)&&/^\d{4}-\d{2}-\d{2}$/.test(value))||
-   (key==="status"&&statuses.has(value));
+   (key==="status"&&statuses.has(value))||
+   (key==="view"&&["OVERVIEW","FINANCE","HEALTH"].includes(value));
   if(!valid)return NextResponse.json({
    message:"Choose an authorized report, center, date or status filter."},{
     status:400,headers:{"Cache-Control":"private, no-store"}});
