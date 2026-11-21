@@ -149,7 +149,10 @@ export class MonthlyProviderSettlementService{
    "AND charge.id=liability.charge_ref AND charge.center_ref=liability.center_ref "+
    "WHERE liability.root_realm_id=$1 AND liability.center_ref=$2 "+
    "AND liability.service_local_date >=$3::date "+
-   "AND liability.service_local_date <($3::date+interval '1 month')) "+
+   "AND liability.service_local_date <($3::date+interval '1 month') "+
+   "AND NOT EXISTS (SELECT 1 FROM cg17_liability_correction corrected "+
+   "WHERE corrected.root_realm_id=liability.root_realm_id "+
+   "AND corrected.liability_ref=liability.id)) "+
    "SELECT (SELECT coalesce(sum(gross_minor),0) FROM services)::text "+
    "AS gross_minor,(SELECT coalesce(sum(due_minor),0) FROM services)::text "+
    "AS patient_due_minor,"+
