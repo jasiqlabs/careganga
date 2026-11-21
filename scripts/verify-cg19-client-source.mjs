@@ -150,7 +150,7 @@ assert.match(letterNative,/canIssue:boolean;canRevoke:boolean/,
  "Per-action current CG01 permission needed on native letters");
 assert.match(letterNative,/requestKey:issueKey\.current/,
  "Lost-response native issue retries must use original idempotency key");
-assert.match(letterNative,/if\(busy\|\|uncertain\|\|/,
+assert.match(letterNative,/if\(!canIssue\|\|busy\|\|uncertain\|\|/,
  "Uncertain original letter outcome blocks unsafe new writes");
 assert.match(letterNative,/onPreview\(item\.documentRef\)/,
  "Native private PDF must reuse actual original authorized byte preview");
