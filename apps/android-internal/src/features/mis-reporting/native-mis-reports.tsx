@@ -14,8 +14,8 @@ type Kind="FINANCE_POSTED_LEDGER"|"FINANCE_POSTED_SUMMARY"|
  "FINANCE_POSTED_TREND"|"APPOINTMENT_STATUS";
 type Template={kind:Kind;label:string;views:("TABLE"|"SUMMARY"|"CHART")[];description:string};
 type Option={ref:string;name:string};
-type Catalog={templates:Template[];finance:{ready:boolean;years:Option[];branches:Option[];
- allBranches:boolean};appointments:{ready:boolean;centers:Option[];complete:boolean};
+type Catalog={templates:Template[];finance:{ready:boolean;state?:"AVAILABLE"|"ACCESS_RESTRICTED"|"SOURCE_UNAVAILABLE";years:Option[];branches:Option[];
+ allBranches:boolean};appointments:{ready:boolean;state?:"AVAILABLE"|"ACCESS_RESTRICTED"|"SOURCE_UNAVAILABLE";centers:Option[];complete:boolean};
  capabilities:{manage:boolean;export:boolean;schedule:boolean}};
 type Preview={state:string;kind:Kind;label:string;
  rows:Record<string,string>[];columns:{key:string;label:string;unit?:string}[];
@@ -113,6 +113,10 @@ export function NativeMisReports({token,onExpired}:{token:string;onExpired:()=>v
   <NativeFinanceAction label={busy?"Checking reports…":"Refresh available reports"}
    disabled={busy} secondary onPress={()=>void load()}/>
   {!!problem&&<Text accessibilityRole="alert" style={s.error}>{problem}</Text>}
+  {catalog?.finance.state==="SOURCE_UNAVAILABLE"&&<Text style={s.hint}>
+   Finance reporting is temporarily unavailable. Other permitted sources remain accessible.</Text>}
+  {catalog?.appointments.state==="SOURCE_UNAVAILABLE"&&<Text style={s.hint}>
+   Appointment reporting is temporarily unavailable. Other permitted sources remain accessible.</Text>}
   {catalog&&catalog.templates.length===0&&<Text style={s.hint}>
    No report packages are available for your current permissions.</Text>}
   {catalog&&catalog.templates.length>0&&<>
