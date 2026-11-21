@@ -8,8 +8,9 @@ CREATE TABLE cg20_report_definition(
  revision integer NOT NULL CHECK(revision BETWEEN 1 AND 1000000),
  source_key text NOT NULL
   CHECK(source_key IN('FINANCE_POSTED_LEDGER','FINANCE_POSTED_SUMMARY',
-   'FINANCE_POSTED_TREND','APPOINTMENT_STATUS')),
- view_kind text NOT NULL CHECK(view_kind IN('TABLE','SUMMARY','CHART')),
+   'FINANCE_POSTED_TREND','FINANCE_POSTED_GROUPED',
+   'APPOINTMENT_STATUS','PLATFORM_AUDIT_ACTIVITY')),
+ view_kind text NOT NULL CHECK(view_kind IN('TABLE','SUMMARY','CHART','PIVOT')),
  safe_request jsonb NOT NULL CHECK(jsonb_typeof(safe_request)='object'
   AND octet_length(safe_request::text)<=4096),
  request_digest char(64) NOT NULL CHECK(request_digest ~ '^[a-f0-9]{64}$'),
