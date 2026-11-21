@@ -1,5 +1,6 @@
 "use client";
 import {useCallback,useEffect,useRef,useState} from "react";
+import {safeClientProblem} from "./mis-safe-error";
 import type {ReportRequest} from "./mis-reports-workspace";
 type Format="PDF"|"XLSX"|"CSV";
 type Run={ref:string;state:string;format:Format;sourceKey?:string;
@@ -10,11 +11,7 @@ const api=async<T,>(path:string,body?:object):Promise<T>=>{
   method:body?"POST":"GET",credentials:"same-origin",cache:"no-store",
   headers:body?{"Content-Type":"application/json"}:undefined,
   ...(body?{body:JSON.stringify(body)}:{})});
- if(!res.ok)throw Error(res.status===401?"Sign in again for private exports.":
-  res.status===403?"Your role, branch or original source no longer permits exporting.":
-  res.status===409?"The original report has changed. Refresh the source first.":
-  res.status===400?"Use a narrower, authorized report before exporting.":
-  "The file outcome could not be confirmed. Refresh its status before retrying.");
+ if(!res.ok)throw new Error(await safeClientProblem(res,"This protected file status cannot be confirmed. Refresh before retrying."));
  return res.json() as Promise<T>;
 };
 /** CG19-confirmed protected files only; no locally fabricated PDF, XLSX or CSV
