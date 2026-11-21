@@ -138,7 +138,10 @@ export function HealthcarePolicyApprovalPanel({canReview,canManage,
    {selected&&<form onSubmit={event=>decide("APPROVE",event)}>
     <h3>Review {selected.reference}</h3>
     <p>{selected.title}. {selected.source.service} contribution:
-     {" "+(selected.source.percentBasisPoints/100).toFixed(2)}%.
+     {" "}{selected.source.mode==="PERCENT"&&
+       selected.source.percentBasisPoints!==null?
+       (selected.source.percentBasisPoints/100).toFixed(2)+"%":
+       cash(selected.source.fixedMinor)}.
      Cap: {cash(selected.source.capMinor)}.
      Period: {new Date(selected.source.validFrom).toLocaleString("en-IN")} –
      {" "+new Date(selected.source.validUntil).toLocaleString("en-IN")}.</p>
