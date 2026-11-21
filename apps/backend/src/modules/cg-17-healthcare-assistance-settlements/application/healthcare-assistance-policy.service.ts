@@ -69,6 +69,10 @@ const fromInput=(raw:unknown)=>{
    !["PERCENT","FIXED"].includes(String(d.mode)))
   throw new BadRequestException({code:"ASSISTANCE_POLICY_INVALID"});
  const doctorRef=d.doctorRef===null||d.doctorRef===undefined?null:uuid(d.doctorRef);
+ // Pharmacy, nursing and theatre rules attach to the verified center and
+ // its independently approved service capability, not a random clinician.
+ if(d.serviceKind!=="CONSULTATION"&&doctorRef!==null)
+  throw new BadRequestException({code:"ASSISTANCE_POLICY_INVALID"});
  const from=time(d.validFrom),until=time(d.validUntil);
  if(until<=from)throw new BadRequestException({code:"ASSISTANCE_POLICY_DATES_INVALID"});
  const mode=d.mode as Mode;
