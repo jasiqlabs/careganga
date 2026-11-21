@@ -913,7 +913,7 @@ export function StaffAuthenticationScreen() {
         <NativeProviderManagement token={token}
           canManage={roleActions.includes("health.providers.manage")}
           canVerify={roleActions.includes("health.providers.verify")}
-          canActivate={roleActions.includes("health.centers.access.manage")}
+          canActivate={roleActions.includes("health.centers.activate")}
           canPublish={roleActions.includes("health.centers.publish")}
           onExit={closeHealthProvider} onExpired={expireSession}/>
       </Suspense>
