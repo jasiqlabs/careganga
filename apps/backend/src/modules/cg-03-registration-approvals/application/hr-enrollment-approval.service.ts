@@ -242,6 +242,9 @@ export class HrEnrollmentApprovalService{
     "VALUES($1,$2,$3,$4,1,$5)",
     [actor.realmId,c.id,actor.accountId,
      decision.action==="APPROVE"?"FINAL_APPROVED":next,randomUUID()]);
+   await this.source.applyCaseDecision(tx,actor.realmId,c.hr_application_id,c.id,
+    decision.action==="APPROVE"?"FINAL_APPROVED_PENDING_ACTIVATION":
+      decision.action==="RETURN"?"RETURNED":"REJECTED");
    await tx.query("COMMIT");
    return {caseRef:c.id,reference:c.case_number,status:next,
     revision:c.revision+1,decisionRef:decision.action==="APPROVE"?
@@ -278,6 +281,22 @@ export class HrEnrollmentApprovalService{
   await this.exact(tx,realm,c);
   return c;
  }
+
+ /** The CG03 case owner serves current case status; CG10 supplies real branch
+  * authorization first. No fake HR-controlled approval state.
+  */
+ async currentForSource(tx:PoolClient,realm:string,appRef:string,caseRef:string|null){
+  if(!caseRef)return {status:"DRAFT",caseRef:null,reference:null,revision:0};
+  const c=await tx.query<{id:string;case_number:string;status:string;revision:number}>(
+   "SELECT id,case_number,status,revision FROM cg03_case "+
+   "WHERE id=$1 AND realm_id=$2 AND hr_application_id=$3 "+
+   "AND case_kind='EMPLOYEE_ENROLLMENT' FOR SHARE",[caseRef,realm,appRef]);
+  const row=c.rows[0];
+  if(!row)throw new ConflictException("The original enrollment review is unavailable");
+  return {status:row.status,caseRef:row.id,
+    reference:row.case_number,revision:row.revision};
+ }
+
  async finish(tx:PoolClient,actor:VerifiedFoundationActor,caseRef:string){
   const result=await tx.query(
    "UPDATE cg03_case SET status='OWNER_COMPLETED',revision=revision+1,"+
