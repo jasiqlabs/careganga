@@ -12,8 +12,9 @@ import {identityRequest} from "../identity-access/http-client";
 
 type Tab="settings"|"audit"|"recovery";
 type SafeMessage={key:string;defaultMessage:string;effectiveMessage:string;revision:number;customized:boolean};
+type MutatingCommand="SETTING_SAVE"|"INTEGRATION_REFERENCE"|"RECOVERY_REQUEST"|"RECOVERY_AUTHORIZE";
 type Pending=
- |{kind:"SETTING_SAVE"|"INTEGRATION_REFERENCE"|"RECOVERY_REQUEST"|"RECOVERY_AUTHORIZE";key:string}
+ |{kind:MutatingCommand;key:string}
  |{kind:"SAFE_COPY";key:string;messageKey:string;message:string;originalRevision:number};
 type Props={token:string;roleActions:string[];onExit:()=>void;onExpired:()=>void};
 const label=(v:string)=>v.replace(/[_-]/g," ").replace(/\b\w/g,c=>c.toUpperCase());
@@ -107,11 +108,11 @@ export function NativePlatformConfiguration({token,roleActions,onExit,onExpired}
     finally{setLoading(false);}
   },[token,tab,auditSource,appliedFrom,appliedTo,roleActions.join("|"),fail,hasAudit,hasRecovery]);
   useEffect(()=>{void refresh();},[refresh]);
-  async function run(kind:Pending["kind"]|null,requestKey:string|undefined,action:()=>Promise<unknown>,ok:string){
+  async function run(kind:MutatingCommand|null,requestKey:string|undefined,action:()=>Promise<unknown>,ok:string){
     if(busy||pending)return;
     setBusy(true);setError("");setNotice("");
     try{const result=await action();
-      if(kind&&kind!=="SAFE_COPY"){
+      if(kind){
         const status=result&&typeof result==="object"&&"status" in result?String(result.status):"";
         const accepted=kind==="SETTING_SAVE"?["SAVED","REPLAY_CONFIRMED"]:
           kind==="INTEGRATION_REFERENCE"?["CONFIGURED_NOT_VERIFIED","REPLAY_CONFIRMED"]:
