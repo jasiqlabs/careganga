@@ -652,5 +652,13 @@ export const SAFE_MESSAGE_CATALOG:Readonly<Record<string,string>>=Object.freeze(
       CG17_PARTNER_REVIEW_ALREADY_DECIDED:"This original invoice has already been attested or independently reviewed. Check its current state.",
       CG17_PARTNER_REVIEW_PROOF_UNAVAILABLE:"The original scanned invoice or service/payment proof is missing, revoked or not verified.",
       CG17_PARTNER_CLAIM_PAYMENT_PROOF_REQUIRED:"Upload and verify your actual partner payment receipt before claiming an electronic transfer.",
+      CG14_OFFER_INVALID:"Check the verified center, medicine or service name, indicative price, and review details.",
+      CG14_OFFER_DUPLICATE:"This medicine or service is already submitted for the selected center. Check the current listing.",
+      CG14_OFFER_LIST_LIMIT:"This center has more service records than this page can display. Contact the Foundation for assistance.",
+      CG14_OFFER_UNAVAILABLE:"This approved partner service cannot be found under your current center access.",
+      CG14_OFFER_REQUEST_CONFLICT:"Your original offer request details changed. Check the saved listing before retrying.",
+      CG14_OFFER_SERVICE_NOT_VERIFIED:"This center is not currently verified for the selected healthcare service.",
+      CG14_OFFER_INDEPENDENT_REVIEW_REQUIRED:"A different authorized Foundation reviewer must approve or reject this service listing.",
+      CG14_OFFER_REVIEW_CHANGED:"This listing was already independently reviewed or changed. Refresh before another action.",
 });
 export const editableErrorKeys=()=>Object.keys(SAFE_MESSAGE_CATALOG).sort();
