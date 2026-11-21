@@ -1,463 +1,1127 @@
-import {useCallback,useEffect,useState} from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
-  ActivityIndicator,BackHandler,KeyboardAvoidingView,Platform,Pressable,
-  ScrollView,StyleSheet,Text,TextInput,View
+  View,
+  Text,
+  StyleSheet,
+  Pressable,
+  ScrollView,
+  BackHandler,
+  KeyboardAvoidingView,
+  Platform
 } from "react-native";
-import {SafeAreaView} from "react-native-safe-area-context";
+import { SafeAreaView } from "react-native-safe-area-context";
 import * as Crypto from "expo-crypto";
 import type {
-  CG03CaseView,CG03CaseDetail,CG03Lookup,CG03Option,CG03ProcessView,CG03OwnerOutcome
+  CG03CaseView,
+  CG03CaseDetail,
+  CG03Lookup,
+  CG03Option,
+  CG03ProcessView,
+  CG03OwnerOutcome
 } from "@careganga/api-contracts";
-import {careGangaTheme as theme} from "../../../../../packages/design-tokens/src/index";
-import {identityRequest} from "../identity-access/http-client";
+import { identityRequest } from "../identity-access/http-client";
 
-type Props={token:string;canConfigure:boolean;canPropose:boolean;canReview:boolean;onExit:()=>void;onExpired:()=>void};
-async function api<T>(token:string,path:string,method:"GET"|"POST"="GET",body?:object):Promise<T>{
-  let res:Response;
-  try{
-    res=await identityRequest("/api/registration-approvals/"+path,{
-      method,headers:{Authorization:"Bearer "+token,...(body?{"Content-Type":"application/json"}:{})},
-      ...(body?{body:JSON.stringify(body)}:{})
-    });
-  }catch{throw Error(method==="POST"?"UNKNOWN":"UNAVAILABLE");}
-  if(res.status===401)throw Error("SESSION_EXPIRED");
-  if(res.status===403)throw Error("DENIED");
-  if(res.status===409)throw Error("CONFLICT");
-  if(res.status===400)throw Error("INVALID");
-  if(!res.ok)throw Error(method==="POST"?"UNKNOWN":"UNAVAILABLE");
-  try{return await res.json() as T;}
-  catch{throw Error(method==="POST"?"UNKNOWN":"UNAVAILABLE");}
+// Modular Registration & Approval components
+import {
+  friendlyStatus,
+  getStatusChipTheme,
+  type HomeTab,
+  type DecisionAction,
+  type ApprovalFilters,
+  type FeedbackModalState
+} from "./registration-approvals-types";
+import {
+  IconRefreshCw,
+  IconPlus,
+  IconFileText
+} from "./registration-approvals-icons";
+import {
+  ApprovalStatsSkeleton,
+  ApprovalListSkeleton
+} from "./registration-approvals-skeletons";
+import { ApprovalStatsCards } from "./approval-stats-cards";
+import { ApprovalSearchFilter } from "./approval-search-filter";
+import { ApprovalCardItem } from "./approval-card-item";
+import { ApprovalPagination } from "./approval-pagination";
+import { CreateApplicationView } from "./create-application-view";
+import { ApplicationDetailView } from "./application-detail-view";
+import { ReviewDecisionView } from "./review-decision-view";
+import { ReviewConfirmationModal } from "./review-confirmation-modal";
+import { FeedbackModals } from "./feedback-modals";
+import { VersionProcessView, VersionProcessForm } from "./version-process-view";
+import { RegistrationBottomSheet } from "./registration-bottom-sheet";
+import { SegmentedCategoryControl } from "./segmented-category-control";
+
+export interface ProposalScreenProps {
+  token: string;
+  canConfigure: boolean;
+  canPropose: boolean;
+  canReview: boolean;
+  onExit: () => void;
+  onExpired: () => void;
 }
-const friendly=(status:string)=>({
-  SUBMITTED:"Submitted",IN_REVIEW:"In review",RETURNED:"Returned",
-  REJECTED:"Rejected",FINAL_APPROVED:"Final decision",PENDING_OWNER:"Applying access",
-  OWNER_COMPLETED:"Access confirmed",OWNER_BLOCKED:"New approval required",
-  OWNER_FAILED_RETRYABLE:"Awaiting source verification"
-} as Record<string,string>)[status]??"Status unavailable";
 
-export function ProposalScreen({token,canConfigure,canPropose,canReview,onExit,onExpired}:Props){
-  const [cases,setCases]=useState<CG03CaseView[]>([]);
-  const [route,setRoute]=useState<CG03ProcessView|null>(null);
-  const [accounts,setAccounts]=useState<CG03Option[]>([]),[roles,setRoles]=useState<CG03Option[]>([]);
-  const [accountQuery,setAccountQuery]=useState(""),[roleQuery,setRoleQuery]=useState("");
-  const [account,setAccount]=useState(""),[role,setRole]=useState("");
-  const [form,setForm]=useState(false),[routeForm,setRouteForm]=useState(false);
-  const [firstReviewer,setFirstReviewer]=useState<"NONE"|"ACCESS_MANAGER">("NONE");
-  const [currentPassword,setCurrentPassword]=useState("");
-  const [previous,setPrevious]=useState<string|null>(null);
-  const [key,setKey]=useState("");
-  const [unknown,setUnknown]=useState(false);
-  const [busy,setBusy]=useState(false),[loading,setLoading]=useState(true);
-  const [message,setMessage]=useState("");
-  const [detail,setDetail]=useState<CG03CaseDetail|null>(null);
-  const [ownerOutcome,setOwnerOutcome]=useState<CG03OwnerOutcome|null>(null);
-  const [ownerBusy,setOwnerBusy]=useState(false);
-  const [decisionAction,setDecisionAction]=useState<"APPROVE"|"RETURN"|"REJECT"|"FORWARD"|null>(null);
-  const [decisionRemarks,setDecisionRemarks]=useState("");
-  const [decisionPassword,setDecisionPassword]=useState("");
-  const [decisionConfirmed,setDecisionConfirmed]=useState(false);
-  const [decisionUnknown,setDecisionUnknown]=useState(false);
-  const [decisionKey,setDecisionKey]=useState("");
-  const [pendingKind,setPendingKind]=useState<"CASE"|"PROCESS">("CASE");
+type ActiveBottomSheet = "NONE" | "OVERVIEW" | "DECISION" | "PROCESS_CONFIG";
 
-  const load=useCallback(async()=>{
+async function api<T>(
+  token: string,
+  path: string,
+  method: "GET" | "POST" = "GET",
+  body?: object
+): Promise<T> {
+  let res: Response;
+  try {
+    res = await identityRequest("/api/registration-approvals/" + path, {
+      method,
+      headers: {
+        Authorization: "Bearer " + token,
+        ...(body ? { "Content-Type": "application/json" } : {})
+      },
+      ...(body ? { body: JSON.stringify(body) } : {})
+    });
+  } catch {
+    throw Error(method === "POST" ? "UNKNOWN" : "UNAVAILABLE");
+  }
+  if (res.status === 401) throw Error("SESSION_EXPIRED");
+  if (res.status === 403) throw Error("DENIED");
+  if (res.status === 409) throw Error("CONFLICT");
+  if (res.status === 400) throw Error("INVALID");
+  if (!res.ok) throw Error(method === "POST" ? "UNKNOWN" : "UNAVAILABLE");
+  try {
+    return (await res.json()) as T;
+  } catch {
+    throw Error(method === "POST" ? "UNKNOWN" : "UNAVAILABLE");
+  }
+}
+
+export function ProposalScreen({
+  token,
+  canConfigure,
+  canPropose,
+  canReview,
+  onExit,
+  onExpired
+}: ProposalScreenProps) {
+  // Navigation & Category Tab
+  const [homeTab, setHomeTab] = useState<HomeTab>("APPLICATIONS");
+  const [isCreating, setIsCreating] = useState(false);
+
+  // Single Reusable Bottom Sheet State
+  const [activeSheet, setActiveSheet] = useState<ActiveBottomSheet>("NONE");
+
+  // Core Data
+  const [cases, setCases] = useState<CG03CaseView[]>([]);
+  const [route, setRoute] = useState<CG03ProcessView | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [busy, setBusy] = useState(false);
+
+  // Search & Filtering
+  const [filters, setFilters] = useState<ApprovalFilters>({
+    search: "",
+    status: "ALL",
+    role: "ALL"
+  });
+  const [currentPage, setCurrentPage] = useState(1);
+  const pageSize = 10;
+
+  // Create Application Form State
+  const [accounts, setAccounts] = useState<CG03Option[]>([]);
+  const [roles, setRoles] = useState<CG03Option[]>([]);
+  const [accountQuery, setAccountQuery] = useState("");
+  const [roleQuery, setRoleQuery] = useState("");
+  const [selectedAccount, setSelectedAccount] = useState("");
+  const [selectedRole, setSelectedRole] = useState("");
+  const [requestReason, setRequestReason] = useState("");
+  const [previousCaseRef, setPreviousCaseRef] = useState<string | null>(null);
+  const [caseRequestKey, setCaseRequestKey] = useState("");
+  const [pendingKind, setPendingKind] = useState<"CASE" | "PROCESS">("CASE");
+
+  // Application Detail State (Shown in Bottom Sheet)
+  const [detail, setDetail] = useState<CG03CaseDetail | null>(null);
+  const [ownerOutcome, setOwnerOutcome] = useState<CG03OwnerOutcome | null>(null);
+  const [ownerBusy, setOwnerBusy] = useState(false);
+
+  // Review Decision State (Shown in Bottom Sheet)
+  const [decisionAction, setDecisionAction] = useState<DecisionAction | null>(null);
+  const [decisionRemarks, setDecisionRemarks] = useState("");
+  const [decisionPassword, setDecisionPassword] = useState("");
+  const [decisionKey, setDecisionKey] = useState("");
+  const [confirmModalVisible, setConfirmModalVisible] = useState(false);
+
+  // Feedback Modals
+  const [feedbackModal, setFeedbackModal] = useState<FeedbackModalState>({
+    type: null,
+    title: "",
+    message: ""
+  });
+
+  // Process Version Form State (Shown in Bottom Sheet)
+  const [firstReviewer, setFirstReviewer] = useState<"NONE" | "ACCESS_MANAGER">("NONE");
+  const [currentProcessPassword, setCurrentProcessPassword] = useState("");
+
+  // -------------------------------------------------------------
+  // Data Loading
+  // -------------------------------------------------------------
+  const load = useCallback(async () => {
     setLoading(true);
-    try{
-      const [list,proc]=await Promise.all([
-        api<{cases:CG03CaseView[]}>(token,"cases?limit=30"),
-        api<CG03ProcessView>(token,"process")
+    try {
+      const [list, proc] = await Promise.all([
+        api<{ cases: CG03CaseView[] }>(token, "cases?limit=30"),
+        api<CG03ProcessView>(token, "process")
       ]);
-      if(!Array.isArray(list.cases)||!proc||!Number.isInteger(proc.version))
+      if (!Array.isArray(list.cases) || !proc || !Number.isInteger(proc.version)) {
         throw Error("UNAVAILABLE");
-      setCases(list.cases);setRoute(proc);
-    }catch(error){
-      setCases([]);setRoute(null);
-      if(error instanceof Error&&error.message==="SESSION_EXPIRED")onExpired();
-      else setMessage(error instanceof Error&&error.message==="DENIED"?
-        "Current access does not permit this approval list.":
-        "Could not verify Foundation applications. Refresh when connected.");
-    }finally{setLoading(false);}
-  },[token,onExpired]);
-  useEffect(()=>{void load();},[load]);
-  useEffect(()=>{
-    const sub=BackHandler.addEventListener("hardwareBackPress",()=>{
-      if(busy)return true;
-      if(unknown||decisionUnknown)return true;
-      if(detail){setDetail(null);return true;}
-      if(form){setForm(false);return true;}
-      if(routeForm){setRouteForm(false);return true;}
-      onExit();return true;
-    });
-    return()=>sub.remove();
-  },[busy,unknown,decisionUnknown,detail,form,routeForm,onExit]);
-  async function search(kind:"account"|"role",text:string){
-    if(text.length>70)return;
-    try{
-      const response=await api<{options:CG03Option[]}>(token,
-        "options/"+kind+"?search="+encodeURIComponent(text));
-      if(!Array.isArray(response.options)||response.options.length>30)throw Error();
-      if(kind==="account")setAccounts(response.options);else setRoles(response.options);
-    }catch{
-      if(kind==="account")setAccounts([]);else setRoles([]);
-      setMessage("Matching authorized records could not be retrieved.");
-    }
-  }
-  function begin(entry?:CG03CaseView){
-    if(busy||unknown||!canPropose)return;
-    setForm(true);setRouteForm(false);
-    setAccount("");setRole("");setAccountQuery(entry?.accountName??"");setRoleQuery("");
-    setPrevious(entry?.caseRef??null);setKey(Crypto.randomUUID());setPendingKind("CASE");
-    setMessage("");
-    void search("account","");void search("role","");
-  }
-  async function create(){
-    if(!account||!role||busy||unknown)return;
-    setBusy(true);setMessage("");
-    try{
-      const outcome=await api<CG03CaseView>(token,"cases","POST",{
-        targetAccountRef:account,targetRoleRef:role,requestKey:key,
-        ...(previous?{previousCaseRef:previous}:{})
-      });
-      if(typeof outcome.reference!=="string")throw Error("UNKNOWN");
-      setForm(false);setKey("");setPrevious(null);
-      setMessage(outcome.reference+" submitted for review; no access has changed.");
-      await load();
-    }catch(e){
-      if(e instanceof Error&&e.message==="SESSION_EXPIRED")onExpired();
-      else{
-        if(e instanceof Error&&e.message==="UNKNOWN")setUnknown(true);
-        setMessage(e instanceof Error&&e.message==="DENIED"?
-          "Your permission was removed. This request was not confirmed.":
-          e instanceof Error&&e.message==="CONFLICT"?
-          "This application changed. Verify its original status before trying again.":
-          "The submission could not be confirmed. Check the original request first.");
       }
-    }finally{setBusy(false);}
-  }
-  async function checkPrevious(){
-    if(!unknown||busy||!key)return;
-    setBusy(true);
-    try{
-      if(pendingKind==="CASE"){
-        const result=await api<CG03Lookup>(token,"cases/requests/"+key);
-        if(result.status==="CONFIRMED"&&result.case){
-          setUnknown(false);setForm(false);setKey("");setPrevious(null);
-          setMessage(result.case.reference+" is recorded; access was not granted.");
-          await load();
-        }else setMessage("No confirmed submission is visible. Ask Foundation support before retrying.");
-      }else{
-        const saved=await api<{status:string;version:number|null}>(token,
-          "process/changes/"+key);
-        if(saved.status==="CONFIRMED"&&Number.isInteger(saved.version)){
-          const current=await api<CG03ProcessView>(token,"process");
-          if(current.version<Number(saved.version))throw Error("UNAVAILABLE");
-          setRoute(current);setUnknown(false);setKey("");setRouteForm(false);
-          setMessage("Original reviewer process change confirmed.");
-        }else setMessage("No confirmed process change is visible. Ask Foundation support before retrying.");
-      }
-    }catch{setMessage("The earlier result is still unconfirmed. Contact Foundation support.");}
-    finally{setBusy(false);}
-  }
-  async function see(entry:CG03CaseView){
-    setBusy(true);setDetail(null);setOwnerOutcome(null);setDecisionAction(null);setDecisionPassword("");
-    setDecisionConfirmed(false);
-    try{
-      const result=await api<CG03CaseDetail>(token,"cases/"+entry.caseRef);
-      if(!Array.isArray(result.history)||!Array.isArray(result.allowedDecisions))throw Error();
-      setDetail(result);
-      if(["PENDING_OWNER","OWNER_COMPLETED","OWNER_BLOCKED"].includes(result.status)){
-        try{
-          const outcome=await api<CG03OwnerOutcome>(token,
-            "cases/"+result.caseRef+"/owner-status");
-          if(["PENDING_OWNER","OWNER_COMPLETED","OWNER_BLOCKED"].includes(outcome.status))
-            setOwnerOutcome(outcome);
-        }catch{setMessage("Source assignment could not be verified. No access grant is claimed.");}
-      }
-    }catch{setMessage("The application details could not be verified.");}
-    finally{setBusy(false);}
-  }
-  async function retryOwner(){
-    if(!detail||!canReview||!ownerOutcome?.canRetry||busy||ownerBusy)return;
-    setOwnerBusy(true);
-    try{
-      const result=await api<{status:string}>(token,
-        "cases/"+detail.caseRef+"/retry-owner","POST");
-      const original=detail;
-      setMessage(result.status==="OWNER_COMPLETED"?
-        "Original CG-01 role grant is confirmed. No second grant was made.":
-        result.status==="OWNER_BLOCKED"?
-        "Source changed; a new proposal must be reviewed.":
-        "Access remains unconfirmed. The same original source key was checked.");
-      await load();await see(original);
-    }catch{setMessage("Owner effect could not be verified. Do not repeat the approval.");}
-    finally{setOwnerBusy(false);}
-  }
-  function selectDecision(action:"APPROVE"|"RETURN"|"REJECT"|"FORWARD"){
-    if(!detail||!detail.allowedDecisions.includes(action)||decisionUnknown||busy)return;
-    setDecisionAction(action);setDecisionRemarks("");setDecisionPassword("");
-    setDecisionConfirmed(false);setDecisionKey(Crypto.randomUUID());setMessage("");
-  }
-  async function commitDecision(){
-    if(!detail||!decisionAction||busy||decisionUnknown)return;
-    if(detail.requiresCurrentPassword&&(decisionPassword.length<8||decisionPassword.length>1024)){
-      setMessage("Enter a current password for the final decision.");return;
-    }
-    if(!decisionConfirmed){setDecisionConfirmed(true);return;}
-    setBusy(true);setMessage("");
-    try{
-      const result=await api<{status:string;revision:number}>(token,
-        "cases/"+detail.caseRef+"/decisions","POST",{
-          action:decisionAction,remarks:decisionRemarks.trim(),currentPassword:decisionPassword,
-          expectedRevision:detail.revision,requestKey:decisionKey
+      setCases(list.cases);
+      setRoute(proc);
+    } catch (error) {
+      setCases([]);
+      setRoute(null);
+      if (error instanceof Error && error.message === "SESSION_EXPIRED") {
+        onExpired();
+      } else {
+        setFeedbackModal({
+          type: "ERROR",
+          title: "Connection Error",
+          message:
+            error instanceof Error && error.message === "DENIED"
+              ? "Current access does not permit this approval list."
+              : "Could not verify Foundation applications. Refresh when connected."
         });
-      if(!Number.isInteger(result.revision))throw Error("UNKNOWN");
-      const item=detail;setDecisionAction(null);setDecisionConfirmed(false);
-      setDecisionKey("");setDecisionPassword("");
-      setMessage("Review decision recorded. Account access is confirmed separately.");
-      await load();await see(item);
-    }catch(error){
-      if(error instanceof Error&&error.message==="UNKNOWN")setDecisionUnknown(true);
-      if(error instanceof Error&&error.message==="SESSION_EXPIRED")onExpired();
-      else setMessage(error instanceof Error&&error.message==="CONFLICT"?
-        "This case changed. Refresh before recording a decision.":
-        "Decision result could not be verified. Check its original request.");
-    }finally{setBusy(false);}
-  }
-  async function lookupDecision(){
-    if(!detail||!decisionUnknown||!decisionKey||busy)return;
+      }
+    } finally {
+      setLoading(false);
+    }
+  }, [token, onExpired]);
+
+  useEffect(() => {
+    void load();
+  }, [load]);
+
+  // -------------------------------------------------------------
+  // Hardware Back Handler
+  // -------------------------------------------------------------
+  useEffect(() => {
+    const sub = BackHandler.addEventListener("hardwareBackPress", () => {
+      if (busy) return true;
+      if (feedbackModal.type) {
+        setFeedbackModal({ type: null, title: "", message: "" });
+        return true;
+      }
+      if (confirmModalVisible) {
+        setConfirmModalVisible(false);
+        return true;
+      }
+      // If decision sheet is open, back goes to overview sheet
+      if (activeSheet === "DECISION") {
+        setActiveSheet("OVERVIEW");
+        return true;
+      }
+      // If any bottom sheet is open, close it
+      if (activeSheet !== "NONE") {
+        setActiveSheet("NONE");
+        return true;
+      }
+      // If create form is open, close it back to home
+      if (isCreating) {
+        setIsCreating(false);
+        return true;
+      }
+      onExit();
+      return true;
+    });
+    return () => sub.remove();
+  }, [busy, feedbackModal, confirmModalVisible, activeSheet, isCreating, onExit]);
+
+  // -------------------------------------------------------------
+  // Search Accounts / Roles
+  // -------------------------------------------------------------
+  const searchOptions = useCallback(
+    async (kind: "account" | "role", text: string) => {
+      if (text.length > 70) return;
+      try {
+        const response = await api<{ options: CG03Option[] }>(
+          token,
+          "options/" + kind + "?search=" + encodeURIComponent(text)
+        );
+        if (!Array.isArray(response.options) || response.options.length > 30) throw Error();
+        if (kind === "account") setAccounts(response.options);
+        else setRoles(response.options);
+      } catch {
+        if (kind === "account") setAccounts([]);
+        else setRoles([]);
+        setFeedbackModal({
+          type: "ERROR",
+          title: "Search Error",
+          message: "Matching authorized records could not be retrieved."
+        });
+      }
+    },
+    [token]
+  );
+
+  // -------------------------------------------------------------
+  // Create / Correction Flow
+  // -------------------------------------------------------------
+  const startCreate = (entry?: CG03CaseView) => {
+    if (busy || !canPropose) return;
+    setIsCreating(true);
+    setSelectedAccount("");
+    setSelectedRole("");
+    setAccountQuery(entry?.accountName ?? "");
+    setRoleQuery("");
+    setRequestReason("");
+    setPreviousCaseRef(entry?.caseRef ?? null);
+    setCaseRequestKey(Crypto.randomUUID());
+    setPendingKind("CASE");
+    void searchOptions("account", "");
+    void searchOptions("role", "");
+  };
+
+  const handleCreateSubmit = async () => {
+    if (!selectedAccount || !selectedRole || busy) return;
     setBusy(true);
-    try{
-      const result=await api<{status:string;revision:number|null}>(token,
-        "cases/"+detail.caseRef+"/decisions/requests/"+decisionKey);
-      if(result.status==="CONFIRMED"&&Number.isInteger(result.revision)){
-        const item=detail;setDecisionUnknown(false);setDecisionKey("");
-        setDecisionAction(null);setDecisionConfirmed(false);
-        setMessage("Original review decision confirmed. No duplicate action was sent.");
-        await load();await see(item);
-      }else setMessage("No confirmed decision is visible. Ask Foundation support before retrying.");
-    }catch{setMessage("Previous decision status could not be verified.");}
-    finally{setBusy(false);}
-  }
-  async function version(){
-    if(!canConfigure||!routeForm||busy||unknown)return;
-    if((currentPassword.length<8||currentPassword.length>1024)){setMessage("Enter a current password.");return;}
-    setBusy(true);setPendingKind("PROCESS");
-    try{
-      const result=await api<{version:number}>(token,"process/versions","POST",{
-        firstReviewerCapability:firstReviewer==="NONE"?null:"roles.assign",
-        requestKey:key,currentPassword
+    try {
+      const outcome = await api<CG03CaseView>(token, "cases", "POST", {
+        targetAccountRef: selectedAccount,
+        targetRoleRef: selectedRole,
+        requestKey: caseRequestKey,
+        ...(previousCaseRef ? { previousCaseRef: previousCaseRef } : {})
       });
-      if(!Number.isInteger(result.version))throw Error("UNKNOWN");
-      setKey("");setRouteForm(false);setCurrentPassword("");
-      setMessage("New review process saved. Older applications keep their process.");
+      if (typeof outcome.reference !== "string") throw Error("UNKNOWN");
+      setIsCreating(false);
+      setCaseRequestKey("");
+      setPreviousCaseRef(null);
+      setFeedbackModal({
+        type: "SUCCESS",
+        title: "Proposal Submitted",
+        message: `${outcome.reference} has been submitted for Super Admin review. No access has changed yet.`,
+        caseRef: outcome.reference
+      });
       await load();
-    }catch(error){
-      if(error instanceof Error&&error.message==="UNKNOWN")setUnknown(true);
-      if(error instanceof Error&&error.message==="SESSION_EXPIRED")onExpired();
-      else setMessage("The reviewer-process result is uncertain. Check the previous version.");
-    }finally{setBusy(false);}
-  }
-  return <SafeAreaView style={styles.page} edges={["left","right"]}>
-    <KeyboardAvoidingView style={styles.page} behavior={Platform.OS==="ios"?"padding":undefined}>
-    <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
-      <View style={styles.row}>
-        <Pressable accessibilityRole="button" style={styles.button}
-          onPress={onExit} disabled={busy||unknown}><Text>My account</Text></Pressable>
-        <Text accessibilityRole="header" style={styles.title}>Registration & Approval</Text>
-      </View>
-      <Text style={styles.muted}>Foundation protected role requests</Text>
-      {!!message&&<Text accessibilityRole="alert" style={styles.notice}>{message}</Text>}
-      {unknown&&<View style={styles.card}>
-        <Text style={styles.title}>Previous submission uncertain</Text>
-        <Text>Do not resend this request until verified.</Text>
-        <Pressable accessibilityRole="button" style={styles.button} disabled={busy}
-          onPress={()=>void checkPrevious()}><Text>Check previous request</Text></Pressable>
-      </View>}
-      {loading?<ActivityIndicator accessibilityLabel="Verifying approvals"/>:
-        <View style={styles.card}>
-          <Text>Approval process: {route?.active?"Version "+route.version:
-            "Starts with first eligible application"}</Text>
-          <Text>{route?.firstReviewer?route.firstReviewer+" then ":""}
-            Different Foundation Super Admin (current password confirmation)</Text>
-          {canConfigure&&<Pressable accessibilityRole="button"
-            disabled={busy||unknown} style={styles.button}
-            onPress={()=>{setRouteForm(true);setForm(false);setKey(Crypto.randomUUID());
-              setFirstReviewer(route?.firstReviewer?"ACCESS_MANAGER":"NONE");setCurrentPassword("");}}>
-            <Text>Version approval process</Text></Pressable>}
-        </View>}
-      {!form&&!routeForm&&!detail&&<View style={styles.card}>
-        {canPropose&&<Pressable accessibilityRole="button" disabled={busy||unknown} style={styles.primary}
-          onPress={()=>begin()}><Text style={styles.primaryText}>Request protected role access</Text></Pressable>}
-        <Text style={styles.heading}>Visible applications</Text>
-        {!cases.length&&!loading?<Text>No protected applications were found.</Text>:cases.map(item=>
-          <View style={styles.item} key={item.caseRef}>
-            <Text style={styles.heading}>{item.reference}</Text>
-            <Text>{item.accountName} → {item.roleName}</Text>
-            <Text style={styles.muted}>{friendly(item.status)}</Text>
-            <View style={styles.row}>
-              <Pressable style={styles.button} accessibilityRole="button"
-                onPress={()=>void see(item)}><Text>View timeline</Text></Pressable>
-              {canPropose&&item.status==="RETURNED"&&<Pressable accessibilityRole="button"
-                disabled={busy||unknown} style={styles.button}
-                onPress={()=>begin(item)}><Text>Submit correction</Text></Pressable>}
+    } catch (e) {
+      if (e instanceof Error && e.message === "SESSION_EXPIRED") {
+        onExpired();
+      } else if (e instanceof Error && e.message === "UNKNOWN") {
+        setFeedbackModal({
+          type: "UNCERTAIN",
+          title: "Submission Uncertain",
+          message:
+            "The submission could not be confirmed. Check the previous request status before retrying."
+        });
+      } else {
+        setFeedbackModal({
+          type: "ERROR",
+          title: "Submission Failed",
+          message:
+            e instanceof Error && e.message === "DENIED"
+              ? "Your permission was removed. This request was not confirmed."
+              : e instanceof Error && e.message === "CONFLICT"
+              ? "This application changed. Verify its original status before trying again."
+              : "The submission could not be confirmed. Check the original request first."
+        });
+      }
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const checkPreviousRequest = async () => {
+    if (busy || !caseRequestKey) return;
+    setBusy(true);
+    try {
+      if (pendingKind === "CASE") {
+        const result = await api<CG03Lookup>(token, "cases/requests/" + caseRequestKey);
+        if (result.status === "CONFIRMED" && result.case) {
+          setIsCreating(false);
+          setCaseRequestKey("");
+          setPreviousCaseRef(null);
+          setFeedbackModal({
+            type: "SUCCESS",
+            title: "Request Confirmed",
+            message: `${result.case.reference} is recorded; access was not granted.`,
+            caseRef: result.case.reference
+          });
+          await load();
+        } else {
+          setFeedbackModal({
+            type: "ERROR",
+            title: "No Confirmed Submission",
+            message: "No confirmed submission is visible. Ask Foundation support before retrying."
+          });
+        }
+      } else {
+        const saved = await api<{ status: string; version: number | null }>(
+          token,
+          "process/changes/" + caseRequestKey
+        );
+        if (saved.status === "CONFIRMED" && Number.isInteger(saved.version)) {
+          const current = await api<CG03ProcessView>(token, "process");
+          if (current.version < Number(saved.version)) throw Error("UNAVAILABLE");
+          setRoute(current);
+          setCaseRequestKey("");
+          setActiveSheet("NONE");
+          setFeedbackModal({
+            type: "SUCCESS",
+            title: "Process Updated",
+            message: "Original reviewer process change confirmed."
+          });
+        } else {
+          setFeedbackModal({
+            type: "ERROR",
+            title: "Process Change Unconfirmed",
+            message: "No confirmed process change is visible. Ask Foundation support before retrying."
+          });
+        }
+      }
+    } catch {
+      setFeedbackModal({
+        type: "ERROR",
+        title: "Verification Failed",
+        message: "The earlier result is still unconfirmed. Contact Foundation support."
+      });
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  // -------------------------------------------------------------
+  // Application Overview in Bottom Sheet
+  // -------------------------------------------------------------
+  const handleOpenDetailInSheet = async (entry: CG03CaseView) => {
+    setBusy(true);
+    setDetail(null);
+    setOwnerOutcome(null);
+    setDecisionAction(null);
+    setDecisionRemarks("");
+    setDecisionPassword("");
+    setActiveSheet("OVERVIEW");
+
+    try {
+      const result = await api<CG03CaseDetail>(token, "cases/" + entry.caseRef);
+      if (!Array.isArray(result.history) || !Array.isArray(result.allowedDecisions)) {
+        throw Error();
+      }
+      setDetail(result);
+      if (
+        ["PENDING_OWNER", "OWNER_COMPLETED", "OWNER_BLOCKED", "OWNER_FAILED_RETRYABLE"].includes(
+          result.status
+        )
+      ) {
+        try {
+          const outcome = await api<CG03OwnerOutcome>(
+            token,
+            "cases/" + result.caseRef + "/owner-status"
+          );
+          if (
+            ["PENDING_OWNER", "OWNER_COMPLETED", "OWNER_BLOCKED", "OWNER_FAILED_RETRYABLE"].includes(
+              outcome.status
+            )
+          ) {
+            setOwnerOutcome(outcome);
+          }
+        } catch {
+          // Keep detail view intact
+        }
+      }
+    } catch {
+      setActiveSheet("NONE");
+      setFeedbackModal({
+        type: "ERROR",
+        title: "Details Unavailable",
+        message: "The application details could not be verified."
+      });
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const handleRetryOwner = async () => {
+    if (!detail || !canReview || !ownerOutcome?.canRetry || busy || ownerBusy) return;
+    setOwnerBusy(true);
+    try {
+      const result = await api<{ status: string }>(
+        token,
+        "cases/" + detail.caseRef + "/retry-owner",
+        "POST"
+      );
+      const currentDetail = detail;
+      setFeedbackModal({
+        type: "SUCCESS",
+        title: "Owner Effect Rechecked",
+        message:
+          result.status === "OWNER_COMPLETED"
+            ? "Original CG-01 role grant is confirmed. No second grant was made."
+            : result.status === "OWNER_BLOCKED"
+            ? "Source changed; a new proposal must be reviewed."
+            : "Access remains unconfirmed. The same original source key was checked."
+      });
+      await load();
+      await handleOpenDetailInSheet(currentDetail);
+    } catch {
+      setFeedbackModal({
+        type: "ERROR",
+        title: "Retry Verification Failed",
+        message: "Owner effect could not be verified. Do not repeat the approval."
+      });
+    } finally {
+      setOwnerBusy(false);
+    }
+  };
+
+  // -------------------------------------------------------------
+  // Review Decision in Bottom Sheet
+  // -------------------------------------------------------------
+  const handleOpenDecisionSheet = () => {
+    if (!detail || !canReview || detail.allowedDecisions.length === 0) return;
+    setDecisionAction(null);
+    setDecisionRemarks("");
+    setDecisionPassword("");
+    setDecisionKey(Crypto.randomUUID());
+    setActiveSheet("DECISION");
+  };
+
+  const handleProceedToConfirm = () => {
+    if (!detail || !decisionAction) return;
+    setConfirmModalVisible(true);
+  };
+
+  const handleCommitDecision = async () => {
+    if (!detail || !decisionAction || busy) return;
+    setBusy(true);
+    setConfirmModalVisible(false);
+
+    try {
+      const result = await api<{ status: string; revision: number }>(
+        token,
+        "cases/" + detail.caseRef + "/decisions",
+        "POST",
+        {
+          action: decisionAction,
+          remarks: decisionRemarks.trim(),
+          currentPassword: decisionPassword,
+          expectedRevision: detail.revision,
+          requestKey: decisionKey
+        }
+      );
+      if (!Number.isInteger(result.revision)) throw Error("UNKNOWN");
+      const currentDetail = detail;
+      setDecisionAction(null);
+      setDecisionKey("");
+      setDecisionPassword("");
+      setActiveSheet("NONE");
+
+      setFeedbackModal({
+        type: "SUCCESS",
+        title: "Decision Submitted Successfully!",
+        message: `Application ${currentDetail.reference} decision (${decisionAction}) has been recorded. Account access is confirmed separately.`,
+        caseRef: currentDetail.reference
+      });
+      await load();
+    } catch (error) {
+      if (error instanceof Error && error.message === "SESSION_EXPIRED") {
+        onExpired();
+      } else if (error instanceof Error && error.message === "UNKNOWN") {
+        setFeedbackModal({
+          type: "UNCERTAIN",
+          title: "Decision Status Uncertain",
+          message:
+            "A previous decision may have been saved. Do not repeat it until verified."
+        });
+      } else {
+        setFeedbackModal({
+          type: "ERROR",
+          title: "Unable to Submit Decision",
+          message:
+            error instanceof Error && error.message === "CONFLICT"
+              ? "This case changed. Refresh before recording a decision."
+              : error instanceof Error && error.message === "DENIED"
+              ? "You are not authorized to take this action. Please contact the Foundation Super Admin."
+              : "Decision result could not be verified. Check its original request."
+        });
+      }
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const handleLookupDecision = async () => {
+    if (!detail || !decisionKey || busy) return;
+    setBusy(true);
+    try {
+      const result = await api<{ status: string; revision: number | null }>(
+        token,
+        "cases/" + detail.caseRef + "/decisions/requests/" + decisionKey
+      );
+      if (result.status === "CONFIRMED" && Number.isInteger(result.revision)) {
+        const item = detail;
+        setDecisionKey("");
+        setDecisionAction(null);
+        setActiveSheet("NONE");
+        setFeedbackModal({
+          type: "SUCCESS",
+          title: "Decision Confirmed",
+          message: "Original review decision confirmed. No duplicate action was sent."
+        });
+        await load();
+        await handleOpenDetailInSheet(item);
+      } else {
+        setFeedbackModal({
+          type: "ERROR",
+          title: "Unconfirmed Decision",
+          message: "No confirmed decision is visible. Ask Foundation support before retrying."
+        });
+      }
+    } catch {
+      setFeedbackModal({
+        type: "ERROR",
+        title: "Lookup Failed",
+        message: "Previous decision status could not be verified."
+      });
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  // -------------------------------------------------------------
+  // Version Process Configuration in Bottom Sheet
+  // -------------------------------------------------------------
+  const handleOpenProcessConfigSheet = () => {
+    if (!canConfigure || busy) return;
+    setCaseRequestKey(Crypto.randomUUID());
+    setFirstReviewer(route?.firstReviewer ? "ACCESS_MANAGER" : "NONE");
+    setCurrentProcessPassword("");
+    setPendingKind("PROCESS");
+    setActiveSheet("PROCESS_CONFIG");
+  };
+
+  const handleSaveProcessVersion = async () => {
+    if (!canConfigure || busy) return;
+    if (currentProcessPassword.length < 8) {
+      setFeedbackModal({
+        type: "ERROR",
+        title: "Invalid Password",
+        message: "Please enter your current account password (at least 8 characters)."
+      });
+      return;
+    }
+    setBusy(true);
+    setPendingKind("PROCESS");
+    try {
+      const result = await api<{ version: number }>(token, "process/versions", "POST", {
+        firstReviewerCapability: firstReviewer === "NONE" ? null : "roles.assign",
+        requestKey: caseRequestKey,
+        currentPassword: currentProcessPassword
+      });
+      if (!Number.isInteger(result.version)) throw Error("UNKNOWN");
+      setCaseRequestKey("");
+      setCurrentProcessPassword("");
+      setActiveSheet("NONE");
+      setFeedbackModal({
+        type: "SUCCESS",
+        title: "Process Version Saved",
+        message: `New review process version ${result.version} saved. Older applications keep their process.`
+      });
+      await load();
+    } catch (error) {
+      if (error instanceof Error && error.message === "SESSION_EXPIRED") {
+        onExpired();
+      } else if (error instanceof Error && error.message === "UNKNOWN") {
+        setFeedbackModal({
+          type: "UNCERTAIN",
+          title: "Process Result Uncertain",
+          message: "The reviewer-process result is uncertain. Check the previous version."
+        });
+      } else {
+        setFeedbackModal({
+          type: "ERROR",
+          title: "Failed to Update Process",
+          message: "Could not save the new process version. Check your password and try again."
+        });
+      }
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  // -------------------------------------------------------------
+  // Filtered & Paginated Applications List
+  // -------------------------------------------------------------
+  const availableRoles = useMemo(() => {
+    const set = new Set<string>();
+    cases.forEach(c => {
+      if (c.roleName) set.add(c.roleName);
+    });
+    return Array.from(set);
+  }, [cases]);
+
+  const filteredCases = useMemo(() => {
+    return cases.filter(item => {
+      if (filters.search.trim()) {
+        const q = filters.search.toLowerCase().trim();
+        const refMatch = item.reference.toLowerCase().includes(q);
+        const nameMatch = item.accountName.toLowerCase().includes(q);
+        const roleMatch = item.roleName.toLowerCase().includes(q);
+        if (!refMatch && !nameMatch && !roleMatch) return false;
+      }
+      if (filters.status !== "ALL") {
+        if (filters.status === "SUBMITTED" && item.status !== "SUBMITTED") return false;
+        if (filters.status === "IN_REVIEW" && item.status !== "IN_REVIEW") return false;
+        if (filters.status === "RETURNED" && item.status !== "RETURNED") return false;
+        if (
+          filters.status === "FINAL_APPROVED" &&
+          item.status !== "FINAL_APPROVED" &&
+          item.status !== "OWNER_COMPLETED" &&
+          item.status !== "PENDING_OWNER"
+        )
+          return false;
+        if (
+          filters.status === "REJECTED" &&
+          item.status !== "REJECTED" &&
+          item.status !== "OWNER_BLOCKED"
+        )
+          return false;
+      }
+      if (filters.role !== "ALL" && item.roleName !== filters.role) {
+        return false;
+      }
+      return true;
+    });
+  }, [cases, filters]);
+
+  const paginatedCases = useMemo(() => {
+    const start = (currentPage - 1) * pageSize;
+    return filteredCases.slice(start, start + pageSize);
+  }, [filteredCases, currentPage, pageSize]);
+
+  const handleFiltersChange = (newFilters: ApprovalFilters) => {
+    setFilters(newFilters);
+    setCurrentPage(1);
+  };
+
+  // Status chip for overview bottom sheet header
+  const detailChipTheme = detail ? getStatusChipTheme(detail.status) : null;
+
+  return (
+    <SafeAreaView style={styles.pageRoot} edges={["left", "right"]}>
+      <KeyboardAvoidingView
+        style={styles.pageRoot}
+        behavior={Platform.OS === "ios" ? "padding" : undefined}
+      >
+        {/* CREATE PROPOSAL VIEW */}
+        {isCreating ? (
+          <CreateApplicationView
+            isCorrection={Boolean(previousCaseRef)}
+            accounts={accounts}
+            roles={roles}
+            accountQuery={accountQuery}
+            roleQuery={roleQuery}
+            selectedAccount={selectedAccount}
+            selectedRole={selectedRole}
+            requestReason={requestReason}
+            busy={busy}
+            onSearchAccount={text => {
+              setAccountQuery(text);
+              void searchOptions("account", text);
+            }}
+            onSearchRole={text => {
+              setRoleQuery(text);
+              void searchOptions("role", text);
+            }}
+            onSelectAccount={val => setSelectedAccount(val)}
+            onSelectRole={val => setSelectedRole(val)}
+            onChangeReason={text => setRequestReason(text)}
+            onSubmit={() => void handleCreateSubmit()}
+            onCancel={() => setIsCreating(false)}
+          />
+        ) : (
+          /* MAIN HOME VIEW */
+          <ScrollView
+            contentContainerStyle={styles.homeContent}
+            keyboardShouldPersistTaps="handled"
+          >
+            {/* Top Header Section */}
+            <View style={styles.topSection}>
+              <View style={styles.titleRow}>
+                <View style={styles.titleTextGroup}>
+                  <Text accessibilityRole="header" style={styles.pageTitle}>
+                    Registration & Approval
+                  </Text>
+                  <Text style={styles.pageSubtitle}>
+                    Protected Foundation access
+                  </Text>
+                </View>
+
+                {/* Refresh Action Button */}
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel="Refresh applications"
+                  disabled={loading || busy}
+                  onPress={() => void load()}
+                  style={({ pressed }) => [
+                    styles.iconActionBtn,
+                    pressed && styles.btnPressed
+                  ]}
+                >
+                  <IconRefreshCw size={18} color="#1E53DC" />
+                </Pressable>
+              </View>
+
+              {/* Segmented Category Pill Control (Applications vs Version Process) */}
+              <SegmentedCategoryControl
+                activeTab={homeTab}
+                applicationsCount={cases.length}
+                processVersion={route?.version}
+                onTabChange={tab => setHomeTab(tab)}
+              />
             </View>
-          </View>)}
-      </View>}
-      {form&&!unknown&&<View style={styles.card}>
-        <Text accessibilityRole="header" style={styles.title}>
-          {previous?"Correct returned proposal":"Propose protected role change"}</Text>
-        <Text>No account access changes until a different Super Admin approves.</Text>
-        <Text style={styles.heading}>Find Foundation account</Text>
-        <TextInput accessibilityLabel="Search staff name" style={styles.input}
-          value={accountQuery} onChangeText={text=>{setAccountQuery(text);
-            setAccount("");void search("account",text);}}/>
-        {accounts.map(option=><Pressable key={option.value} accessibilityRole="radio"
-          accessibilityState={{selected:option.value===account}}
-          style={[styles.option,option.value===account&&styles.chosen]}
-          onPress={()=>setAccount(option.value)}>
-          <Text>{option.label}{option.value===account?" — selected":""}</Text>
-        </Pressable>)}
-        <Text style={styles.heading}>Find protected custom role</Text>
-        <TextInput accessibilityLabel="Search custom role" style={styles.input}
-          value={roleQuery} onChangeText={text=>{setRoleQuery(text);
-            setRole("");void search("role",text);}}/>
-        {roles.map(option=><Pressable key={option.value} accessibilityRole="radio"
-          accessibilityState={{selected:option.value===role}}
-          style={[styles.option,option.value===role&&styles.chosen]}
-          onPress={()=>setRole(option.value)}>
-          <Text>{option.label}{option.value===role?" — selected":""}</Text>
-        </Pressable>)}
-        <Text style={styles.muted}>Source account and role versions are frozen securely
-          upon submission. Old returned applications remain unchanged.</Text>
-        <View style={styles.row}>
-          <Pressable accessibilityRole="button" disabled={busy} style={styles.button}
-            onPress={()=>setForm(false)}><Text>Cancel</Text></Pressable>
-          <Pressable accessibilityRole="button" disabled={busy||!account||!role}
-            style={styles.primary} onPress={()=>void create()}>
-            <Text style={styles.primaryText}>Submit for approval</Text></Pressable>
-        </View>
-      </View>}
-      {routeForm&&!unknown&&canConfigure&&<View style={styles.card}>
-        <Text accessibilityRole="header" style={styles.title}>New process version</Text>
-        <Pressable accessibilityRole="radio" accessibilityState={{selected:firstReviewer==="NONE"}}
-          style={styles.option} onPress={()=>setFirstReviewer("NONE")}>
-          <Text>Different Super Admin only</Text></Pressable>
-        <Pressable accessibilityRole="radio"
-          accessibilityState={{selected:firstReviewer==="ACCESS_MANAGER"}}
-          style={styles.option} onPress={()=>setFirstReviewer("ACCESS_MANAGER")}>
-          <Text>Access manager, then Super Admin</Text></Pressable>
-        <Text style={styles.heading}>Current password</Text>
-        <TextInput accessibilityLabel="Current password" style={styles.input}
-          secureTextEntry autoComplete="current-password" maxLength={1024} value={currentPassword}
-          onChangeText={x=>setCurrentPassword(x)}/>
-        <View style={styles.row}><Pressable accessibilityRole="button" style={styles.button}
-          onPress={()=>setRouteForm(false)}><Text>Cancel</Text></Pressable>
-          <Pressable accessibilityRole="button" style={styles.primary}
-            disabled={busy||currentPassword.length<8} onPress={()=>void version()}>
-            <Text style={styles.primaryText}>Create new process version</Text></Pressable></View>
-      </View>}
-      {detail&&<View style={styles.card}>
-        <Text accessibilityRole="header" style={styles.title}>{detail.reference}</Text>
-        <Text>{detail.accountName} → {detail.roleName}</Text>
-        <Text>{friendly(detail.status)}</Text>
-        <Text>Proposal version {detail.proposalRevision};
-          process version {detail.processVersion}</Text>
-        <Text>Original account access revision {detail.sourceAccountAccessRevision};
-          role revision {detail.sourceRoleRevision}</Text>
-        {["PENDING_OWNER","OWNER_COMPLETED","OWNER_BLOCKED"].includes(detail.status)&&
-          <View style={styles.card}>
-            <Text style={styles.heading}>Verified CG-01 account effect</Text>
-            <Text>{ownerOutcome?.status==="OWNER_COMPLETED"?
-              "One approved role assignment is confirmed in the original account ledger.":
-              ownerOutcome?.status==="OWNER_BLOCKED"?
-              "The original source changed. This decision cannot grant access.":
-              "Account access is still being verified. Approval alone grants nothing."}</Text>
-            {canReview&&ownerOutcome?.canRetry&&<Pressable accessibilityRole="button"
-              style={styles.button} disabled={busy||ownerBusy}
-              onPress={()=>void retryOwner()}>
-              <Text>{ownerBusy?"Checking…":"Recheck original owner effect"}</Text>
-            </Pressable>}
-          </View>}
-        {decisionUnknown&&<View style={styles.card}>
-          <Text accessibilityRole="alert">A previous decision may have been saved.
-            Do not repeat it until verified.</Text>
-          <Pressable accessibilityRole="button" style={styles.button}
-            disabled={busy} onPress={()=>void lookupDecision()}>
-            <Text>Check previous decision</Text></Pressable>
-        </View>}
-        {!decisionUnknown&&detail.allowedDecisions.length>0&&<View style={styles.card}>
-          <Text style={styles.heading}>Permitted reviewer actions</Text>
-          <View style={styles.row}>
-            {detail.allowedDecisions.map(action=><Pressable accessibilityRole="button"
-              accessibilityState={{selected:decisionAction===action}}
-              style={[styles.button,decisionAction===action&&styles.chosen]}
-              key={action} disabled={busy} onPress={()=>selectDecision(action)}>
-              <Text>{action==="APPROVE"?"Approve":action==="RETURN"?"Send back":
-                action==="REJECT"?"Reject":"Forward"}</Text>
-            </Pressable>)}
-          </View>
-          {decisionAction&&<>
-            <Text style={styles.heading}>Reviewer remarks</Text>
-            <TextInput accessibilityLabel="Reviewer remarks" style={styles.input}
-              multiline maxLength={500} value={decisionRemarks}
-              onChangeText={value=>{setDecisionRemarks(value);setDecisionConfirmed(false);}}/>
-            {detail.requiresCurrentPassword&&<>
-              <Text style={styles.heading}>Current password</Text>
-              <TextInput accessibilityLabel="Current reviewer password"
-                secureTextEntry autoComplete="current-password" maxLength={1024} style={styles.input}
-                value={decisionPassword} onChangeText={v=>{
-                  setDecisionPassword(v);setDecisionConfirmed(false);}}/>
-            </>}
-            {decisionConfirmed&&<Text>
-              Confirm {decisionAction.toLowerCase()} for {detail.reference}.
-              The decision becomes permanent.</Text>}
-            <View style={styles.row}>
-              <Pressable accessibilityRole="button" style={styles.button}
-                disabled={busy} onPress={()=>setDecisionAction(null)}>
-                <Text>Cancel</Text></Pressable>
-              <Pressable accessibilityRole="button" style={styles.primary}
-                disabled={busy} onPress={()=>void commitDecision()}>
-                <Text style={styles.primaryText}>{decisionConfirmed?
-                  "Confirm decision":"Review decision"}</Text></Pressable>
-            </View>
-          </>}
-        </View>}
-        <Text style={styles.heading}>Approval timeline</Text>
-        {detail.history.map((item,i)=><View key={i} style={styles.item}>
-          <Text>{item.action} · {item.by}</Text>
-          <Text style={styles.muted}>{new Date(item.at).toLocaleString()}</Text>
-          {!!item.remarks&&<Text>{item.remarks}</Text>}
-        </View>)}
-        <Pressable accessibilityRole="button" style={styles.button}
-          onPress={()=>setDetail(null)}><Text>Back to applications</Text></Pressable>
-      </View>}
-      {!form&&!routeForm&&!detail&&<Pressable accessibilityRole="button"
-        style={styles.button} disabled={loading||busy||unknown}
-        onPress={()=>void load()}><Text>Refresh applications</Text></Pressable>}
-    </ScrollView></KeyboardAvoidingView>
-  </SafeAreaView>;
+
+            {/* TAB 1: APPLICATIONS */}
+            {homeTab === "APPLICATIONS" && (
+              <>
+                {/* 5 Summary Cards */}
+                {loading ? (
+                  <ApprovalStatsSkeleton />
+                ) : (
+                  <ApprovalStatsCards
+                    cases={cases}
+                    activeFilter={filters.status}
+                    onSelectFilter={statusKey => {
+                      setFilters(prev => ({ ...prev, status: statusKey }));
+                      setCurrentPage(1);
+                    }}
+                  />
+                )}
+
+                {/* Search & Filters */}
+                <ApprovalSearchFilter
+                  filters={filters}
+                  onFiltersChange={handleFiltersChange}
+                  availableRoles={availableRoles}
+                />
+
+                {/* Applications List */}
+                {loading ? (
+                  <ApprovalListSkeleton />
+                ) : filteredCases.length === 0 ? (
+                  <View style={styles.emptyListCard}>
+                    <IconFileText size={32} color="#94A3B8" />
+                    <Text style={styles.emptyListTitle}>No Applications Found</Text>
+                    <Text style={styles.emptyListSubtitle}>
+                      {filters.search || filters.status !== "ALL" || filters.role !== "ALL"
+                        ? "Try clearing filters to see all protected applications."
+                        : "No protected Foundation role requests have been created yet."}
+                    </Text>
+                    {canPropose && (
+                      <Pressable
+                        accessibilityRole="button"
+                        onPress={() => startCreate()}
+                        style={styles.emptyActionBtn}
+                      >
+                        <IconPlus size={16} color="#FFFFFF" />
+                        <Text style={styles.emptyActionBtnText}>
+                          Request Protected Role Access
+                        </Text>
+                      </Pressable>
+                    )}
+                  </View>
+                ) : (
+                  <View style={styles.listWrap}>
+                    {paginatedCases.map(item => (
+                      <ApprovalCardItem
+                        key={item.caseRef}
+                        item={item}
+                        canPropose={canPropose}
+                        onPress={entry => void handleOpenDetailInSheet(entry)}
+                        onCorrection={entry => startCreate(entry)}
+                      />
+                    ))}
+
+                    {/* Pagination */}
+                    <ApprovalPagination
+                      currentPage={currentPage}
+                      totalRecords={filteredCases.length}
+                      pageSize={pageSize}
+                      onPageChange={page => setCurrentPage(page)}
+                    />
+                  </View>
+                )}
+              </>
+            )}
+
+            {/* TAB 2: VERSION PROCESS */}
+            {homeTab === "PROCESS" && (
+              <VersionProcessView
+                route={route}
+                cases={cases}
+                loading={loading}
+                canConfigure={canConfigure}
+                busy={busy}
+                onOpenRouteForm={handleOpenProcessConfigSheet}
+                onRefresh={() => void load()}
+              />
+            )}
+          </ScrollView>
+        )}
+
+        {/* Floating Action Button (FAB) for Create Application */}
+        {!isCreating && homeTab === "APPLICATIONS" && canPropose && (
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Request protected role access"
+            onPress={() => startCreate()}
+            style={({ pressed }) => [styles.fab, pressed && styles.fabPressed]}
+          >
+            <IconPlus size={24} color="#FFFFFF" />
+          </Pressable>
+        )}
+
+        {/* -------------------------------------------------------------
+            SINGLE REUSABLE ANIMATED BOTTOM SHEET SYSTEM
+            ------------------------------------------------------------- */}
+
+        {/* 1. APPLICATION OVERVIEW BOTTOM SHEET */}
+        <RegistrationBottomSheet
+          visible={activeSheet === "OVERVIEW"}
+          onClose={() => setActiveSheet("NONE")}
+          title={detail?.reference ?? "Application Overview"}
+          subtitle="Protected role request details"
+          headerRight={
+            detail && detailChipTheme ? (
+              <View
+                style={[
+                  styles.sheetHeaderChip,
+                  {
+                    backgroundColor: detailChipTheme.bg,
+                    borderColor: detailChipTheme.border
+                  }
+                ]}
+              >
+                <View
+                  style={[
+                    styles.sheetHeaderDot,
+                    { backgroundColor: detailChipTheme.dot }
+                  ]}
+                />
+                <Text
+                  style={[
+                    styles.sheetHeaderChipText,
+                    { color: detailChipTheme.text }
+                  ]}
+                >
+                  {friendlyStatus(detail.status)}
+                </Text>
+              </View>
+            ) : null
+          }
+        >
+          {detail ? (
+            <ApplicationDetailView
+              detail={detail}
+              ownerOutcome={ownerOutcome}
+              ownerBusy={ownerBusy}
+              canReview={canReview}
+              onBack={() => setActiveSheet("NONE")}
+              onOpenDecision={handleOpenDecisionSheet}
+              onRetryOwner={() => void handleRetryOwner()}
+            />
+          ) : null}
+        </RegistrationBottomSheet>
+
+        {/* 2. REVIEW DECISION BOTTOM SHEET */}
+        <RegistrationBottomSheet
+          visible={activeSheet === "DECISION"}
+          onClose={() => setActiveSheet("OVERVIEW")}
+          title="Review Decision"
+          subtitle={detail?.reference}
+        >
+          {detail ? (
+            <ReviewDecisionView
+              detail={detail}
+              decisionAction={decisionAction}
+              decisionRemarks={decisionRemarks}
+              decisionPassword={decisionPassword}
+              busy={busy}
+              onSelectAction={action => setDecisionAction(action)}
+              onChangeRemarks={text => setDecisionRemarks(text)}
+              onChangePassword={text => setDecisionPassword(text)}
+              onProceedToConfirm={handleProceedToConfirm}
+              onBack={() => setActiveSheet("OVERVIEW")}
+            />
+          ) : null}
+        </RegistrationBottomSheet>
+
+        {/* 3. VERSION PROCESS CONFIGURATION BOTTOM SHEET */}
+        <RegistrationBottomSheet
+          visible={activeSheet === "PROCESS_CONFIG"}
+          onClose={() => setActiveSheet("NONE")}
+          title="New Process Version"
+          subtitle="Update reviewer workflow chain"
+        >
+          <VersionProcessForm
+            firstReviewer={firstReviewer}
+            currentPassword={currentProcessPassword}
+            busy={busy}
+            onSelectFirstReviewer={val => setFirstReviewer(val)}
+            onChangePassword={pw => setCurrentProcessPassword(pw)}
+            onSubmitVersion={() => void handleSaveProcessVersion()}
+            onCancel={() => setActiveSheet("NONE")}
+          />
+        </RegistrationBottomSheet>
+
+        {/* REVIEW CONFIRMATION MODAL POPUP */}
+        <ReviewConfirmationModal
+          visible={confirmModalVisible}
+          detail={detail}
+          action={decisionAction}
+          remarks={decisionRemarks}
+          busy={busy}
+          onConfirm={() => void handleCommitDecision()}
+          onCancel={() => setConfirmModalVisible(false)}
+        />
+
+        {/* REUSABLE FEEDBACK MODALS (SUCCESS, ERROR, UNCERTAIN) */}
+        <FeedbackModals
+          modalState={feedbackModal}
+          busy={busy}
+          onDismiss={() =>
+            setFeedbackModal({ type: null, title: "", message: "" })
+          }
+          onRetry={() => {
+            setFeedbackModal({ type: null, title: "", message: "" });
+            void load();
+          }}
+          onCheckPrevious={() => void checkPreviousRequest()}
+        />
+      </KeyboardAvoidingView>
+    </SafeAreaView>
+  );
 }
-const styles=StyleSheet.create({
-  page:{flex:1,backgroundColor:theme.adminCanvas},
-  content:{padding:18,gap:14,maxWidth:750,width:"100%",alignSelf:"center",paddingBottom:96},
-  title:{fontSize:21,fontWeight:"700",color:theme.text,flexShrink:1},
-  heading:{fontSize:15,fontWeight:"700",color:theme.text},
-  muted:{color:theme.mutedText,fontSize:13},
-  row:{flexDirection:"row",flexWrap:"wrap",alignItems:"center",gap:9},
-  card:{borderRadius:14,borderWidth:1,borderColor:theme.border,backgroundColor:theme.surface,
-    padding:15,gap:12,
-    shadowColor:theme.sidebar,shadowOpacity:0.045,
-    shadowOffset:{width:0,height:2},shadowRadius:8,elevation:1},
-  item:{paddingVertical:12,borderBottomWidth:1,borderBottomColor:theme.border,gap:5},
-  input:{borderWidth:1,borderColor:theme.border,padding:12,borderRadius:10,
-    fontSize:16,color:theme.text,minHeight:48},
-  option:{borderWidth:1,borderColor:theme.border,borderRadius:8,padding:12,
-    minHeight:48,justifyContent:"center",backgroundColor:theme.surface},
-  chosen:{borderColor:theme.primary,backgroundColor:"#EEF4FF"},
-  button:{borderWidth:1,borderColor:theme.border,paddingHorizontal:14,paddingVertical:12,
-    borderRadius:12,minHeight:48,justifyContent:"center"},
-  primary:{backgroundColor:theme.primary,paddingHorizontal:15,paddingVertical:12,
-    borderRadius:12,minHeight:48,justifyContent:"center"},
-  primaryText:{color:theme.primaryText,fontWeight:"700"},
-  notice:{color:theme.error,backgroundColor:theme.surface,padding:10,borderRadius:7}
+
+const styles = StyleSheet.create({
+  pageRoot: {
+    flex: 1,
+    backgroundColor: "#F8FAFC"
+  },
+  homeContent: {
+    padding: 16,
+    gap: 14,
+    maxWidth: 750,
+    width: "100%",
+    alignSelf: "center",
+    paddingBottom: 96
+  },
+  topSection: {
+    gap: 12
+  },
+  titleRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between"
+  },
+  titleTextGroup: {
+    flex: 1
+  },
+  pageTitle: {
+    fontSize: 20,
+    fontWeight: "700",
+    color: "#0F172A",
+    letterSpacing: -0.3
+  },
+  pageSubtitle: {
+    fontSize: 13,
+    color: "#64748B",
+    marginTop: 2
+  },
+  iconActionBtn: {
+    width: 38,
+    height: 38,
+    borderRadius: 10,
+    backgroundColor: "#EFF6FF",
+    borderWidth: 1,
+    borderColor: "#DBEAFE",
+    alignItems: "center",
+    justifyContent: "center"
+  },
+  listWrap: {
+    gap: 10
+  },
+  emptyListCard: {
+    backgroundColor: "#FFFFFF",
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: "#E2E8F0",
+    padding: 32,
+    alignItems: "center",
+    gap: 10,
+    marginTop: 8
+  },
+  emptyListTitle: {
+    fontSize: 16,
+    fontWeight: "700",
+    color: "#0F172A"
+  },
+  emptyListSubtitle: {
+    fontSize: 13,
+    color: "#64748B",
+    textAlign: "center",
+    lineHeight: 18,
+    maxWidth: 280
+  },
+  emptyActionBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    backgroundColor: "#16A34A",
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    borderRadius: 10,
+    marginTop: 6
+  },
+  emptyActionBtnText: {
+    fontSize: 13,
+    fontWeight: "700",
+    color: "#FFFFFF"
+  },
+  fab: {
+    position: "absolute",
+    bottom: 24,
+    right: 20,
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: "#16A34A",
+    alignItems: "center",
+    justifyContent: "center",
+    shadowColor: "#059669",
+    shadowOpacity: 0.35,
+    shadowOffset: { width: 0, height: 4 },
+    shadowRadius: 8,
+    elevation: 6
+  },
+  fabPressed: {
+    transform: [{ scale: 0.94 }],
+    opacity: 0.9
+  },
+  sheetHeaderChip: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 5,
+    paddingVertical: 3,
+    paddingHorizontal: 8,
+    borderRadius: 999,
+    borderWidth: 1
+  },
+  sheetHeaderDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3
+  },
+  sheetHeaderChipText: {
+    fontSize: 11,
+    fontWeight: "600"
+  },
+  btnPressed: {
+    opacity: 0.75
+  }
 });
