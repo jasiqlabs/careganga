@@ -3,7 +3,7 @@ import {ActivityIndicator,Platform,Pressable,ScrollView,StyleSheet,
  Text,TextInput,View} from "react-native";
 import {SafeAreaView} from "react-native-safe-area-context";
 import * as Crypto from "expo-crypto";
-import {careGangaTheme as theme} from "../../../../packages/design-tokens/src/index";
+import {careGangaTheme as theme} from "../../../../../packages/design-tokens/src/index";
 
 type Kind="HOSPITAL"|"CLINIC"|"DIAGNOSTIC_LAB"|"DOCTOR"|"PHARMACY"|"NURSING"|"SURGERY_CENTER";
 type Fields={partnerType:Kind;applicantName:string;contactName:string;
