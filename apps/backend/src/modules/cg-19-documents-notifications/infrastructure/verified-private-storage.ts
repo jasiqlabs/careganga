@@ -61,6 +61,21 @@ export abstract class VerifiedPrivateStorage extends PrivateObjectStorage{
     Promise<ObjectBytes>;
   protected abstract saveNewPdf(objectKey:string,bytes:Buffer):
     Promise<{objectVersion:string}>;
+  protected abstract saveNewGeneratedReport(objectKey:string,bytes:Buffer,
+    mime:string):Promise<{objectVersion:string}>;
+  private isGeneratedKey(key:string){
+    return /^careganga\\/private\\/cg19\\/[0-9a-f-]{36}\\/mis\\/[0-9a-f-]{36}$/.test(key);
+  }
+  private generatedSignature(bytes:Buffer,mime:string){
+    if(mime==="application/pdf")return byteSignatureMatches(bytes,mime);
+    if(mime==="text/csv")return bytes.length>=10&&bytes.length<=5242880&&
+      !bytes.includes(0)&&!bytes.toString("utf8").includes("\uFFFD");
+    if(mime==="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+      return bytes.length>=100&&bytes.subarray(0,4).equals(Buffer.from([0x50,0x4b,0x03,0x04]))&&
+       bytes.subarray(Math.max(0,bytes.length-300)).includes(
+        Buffer.from([0x50,0x4b,0x05,0x06]));
+    return false;
+  }
 
   async reservePrivateUpload(request:UploadInput):Promise<PrivateUploadReservation>{
     const expiry=Date.parse(request.expiresAt);
@@ -159,4 +174,59 @@ export abstract class VerifiedPrivateStorage extends PrivateObjectStorage{
       throw new ServiceUnavailableException("The generated PDF was not verified");
     return {objectVersion,sha256:request.sha256};
   }
+  /** CG20 server-generated reports only; never client-uploadable objects.
+   * Verify actual MIME, signature, scan result, version, checksum and bytes.
+   * Lost provider acknowledgment returns UNKNOWN unless original key reconciles.
+   */
+  async writeVerifiedGeneratedReport(request:{
+    objectKey:string;bytes:Buffer;sha256:string;
+    mime:"application/pdf"|"text/csv"|
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+  }):Promise<{objectVersion:string;sha256:string}>{
+    if(!this.isGeneratedKey(request.objectKey)||!Buffer.isBuffer(request.bytes)||
+      request.bytes.length<10||request.bytes.length>5242880||
+      !SHA.test(request.sha256)||digest(request.bytes)!==request.sha256||
+      !this.generatedSignature(request.bytes,request.mime))
+      throw new BadRequestException("Invalid protected generated report");
+    await this.scanner.scan(request.bytes);
+    let version:string;
+    try{
+      const saved=request.mime==="application/pdf"?
+        await this.saveNewPdf(request.objectKey,request.bytes):
+        await this.saveNewGeneratedReport(request.objectKey,request.bytes,request.mime);
+      version=saved.objectVersion;
+    }catch{
+      const actual=await this.loadLatest(request.objectKey,request.bytes.length).catch(()=>null);
+      if(!actual||actual.mime!==request.mime||
+        actual.bytes.length!==request.bytes.length||
+        digest(actual.bytes)!==request.sha256||
+        !this.generatedSignature(actual.bytes,request.mime))
+        throw new ServiceUnavailableException("Protected generated report outcome is unconfirmed");
+      version=actual.objectVersion;
+    }
+    const actual=await this.loadVersion(request.objectKey,version,request.bytes.length);
+    if(actual.mime!==request.mime||actual.bytes.length!==request.bytes.length||
+       digest(actual.bytes)!==request.sha256||
+       !this.generatedSignature(actual.bytes,request.mime))
+      throw new ServiceUnavailableException("Protected report version could not be verified");
+    return {objectVersion:version,sha256:request.sha256};
+  }
+  async reconcileGeneratedReport(request:{
+    objectKey:string;mime:"application/pdf"|"text/csv"|
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
+    maxBytes:number
+  }):Promise<{objectVersion:string;sha256:string;sizeBytes:number}>{
+    if(!this.isGeneratedKey(request.objectKey)||
+      !Number.isSafeInteger(request.maxBytes)||request.maxBytes<10||
+      request.maxBytes>5242880)
+      throw new BadRequestException("Invalid protected report recovery");
+    const actual=await this.loadLatest(request.objectKey,request.maxBytes);
+    if(actual.mime!==request.mime||actual.objectVersion.length>160||
+       !this.generatedSignature(actual.bytes,request.mime))
+      throw new ServiceUnavailableException("Protected original report is unavailable");
+    await this.scanner.scan(actual.bytes);
+    return {objectVersion:actual.objectVersion,
+      sha256:digest(actual.bytes),sizeBytes:actual.bytes.length};
+  }
+
 }
