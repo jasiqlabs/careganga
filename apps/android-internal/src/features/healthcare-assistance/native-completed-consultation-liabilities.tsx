@@ -10,7 +10,8 @@ type Center={centerRef:string;name:string};
 type Appointment={appointmentRef:string;bookingLabel:string;centerName:string;
  doctorName:string;completedAt:string;approvedSupportMinor:string;state:string};
 type Status={state:string;liabilityRef?:string;amountMinor?:string;postingState?:string;
- foundationJournalPosted:boolean;providerSettled:boolean};
+ foundationJournalPosted:boolean;providerSettled:boolean;
+ correctedByOriginalReversal?:boolean;effectiveFoundationPayableMinor?:string};
 type Options={appointments:Appointment[];complete:boolean};
 type Props={token:string;canManage:boolean;canPost:boolean;onExit:()=>void;onExpired:()=>void};
 const money=(v:string)=>"₹"+(Number(v)/100).toFixed(2);
@@ -185,8 +186,11 @@ export function NativeCompletedConsultationLiabilities({token,canManage,canPost,
     <Text style={styles.amount}>Approved Foundation share: {
      money(selected.approvedSupportMinor)}</Text>
     {status&&<Text style={styles.note}>Liability: {status.state.replaceAll("_"," ")}.
-     CG09 posting: {status.foundationJournalPosted?"Posted":"Not confirmed"}.
-     Provider settlement: {status.providerSettled?"Settled":"Not settled"}.</Text>}
+     CG09 posting: {status.correctedByOriginalReversal?"Corrected by offset journal":
+      status.foundationJournalPosted?"Posted":"Not confirmed"}.
+     Provider settlement: {status.providerSettled?"Settled":"Not settled"}.
+     {status.correctedByOriginalReversal?
+      " Effective Foundation payable: "+money(status.effectiveFoundationPayableMinor??"0")+".":""}</Text>}
     {canManage&&status?.state==="NOT_RECOGNIZED"&&
      selected.state==="READY_TO_RECOGNIZE"&&!uncertain&&
      btn("Recognize approved Foundation liability",()=>
