@@ -47,6 +47,17 @@ for(const file of Object.values(files)){
  }
  assert.doesNotMatch(s,/^(<{7}|={7}|>{7})/m,file+": merge conflict");
 }
+// Guard the actual PostgreSQL PL/pgSQL dollar delimiters, not just keywords.
+// A previous plain JS String.replace("$$") silently wrote one literal dollar.
+const payoutMigration=read(files.payoutSql);
+assert.doesNotMatch(payoutMigration,/END \\$;/,
+ "Every CG17 PL/pgSQL function must close using the original $$ delimiter");
+assert.equal((payoutMigration.match(/\\$\\$/g)??[]).length,4,
+ "CG17 SQL must have exactly two matching function dollar-quote pairs");
+assert.match(payoutMigration,/CREATE FUNCTION cg17_verified_payout_guard\\(\\)[\\s\\S]*?END \\$\\$;/,
+ "Verified payout guard must be a complete PL/pgSQL function");
+assert.match(payoutMigration,/CREATE OR REPLACE FUNCTION cg17_settlement_claim_guard\\(\\)[\\s\\S]*?END \\$\\$;/,
+ "Settlement claim guard must be a complete PL/pgSQL function");
 const must=(file,pattern,reason)=>assert.match(read(files[file]),pattern,reason);
 must("accrualSql",/uq_cg17_patient_charge_realm_id_center/,
  "Postgres accrual foreign keys require exact parent unique constraint");
