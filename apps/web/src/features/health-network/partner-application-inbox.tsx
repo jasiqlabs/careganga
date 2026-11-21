@@ -54,7 +54,7 @@ export function PartnerApplicationInbox({canManage}:{canManage:boolean}){
       .map(v=>({id:v.doctorRef,label:v.name+" · "+stateName(v.status)})));
    }else{
     const r=await call<{providers:{providerRef:string;name:string;code:string;
-      type:string;status:string}[]}>("providers?offset=0");
+      type:string;status:string}[]}>("providers?offset=0&q="+encodeURIComponent(app.name));
     setOptions(r.providers.filter(v=>v.name.toLowerCase()===app.name.toLowerCase()&&
      (app.type==="SURGERY_CENTER"?["HOSPITAL","CLINIC"].includes(v.type):
       v.type===app.type))
