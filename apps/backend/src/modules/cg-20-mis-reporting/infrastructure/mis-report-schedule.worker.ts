@@ -1,4 +1,5 @@
-import {Inject,Injectable,OnModuleInit,OnModuleDestroy} from "@nestjs/common";
+import {Inject,Injectable,OnModuleInit,OnModuleDestroy,Logger,
+ ForbiddenException,NotFoundException,UnauthorizedException} from "@nestjs/common";
 import {createHash,randomUUID} from "node:crypto";
 import type {Pool,PoolClient} from "pg";
 import {DATABASE} from "../../../core/infrastructure/database.module";
@@ -37,6 +38,7 @@ type Delivery={
  */
 @Injectable()
 export class MisReportScheduleWorker implements OnModuleInit,OnModuleDestroy{
+ private readonly logger=new Logger(MisReportScheduleWorker.name);
  private timer:ReturnType<typeof setInterval>|null=null;
  private stopped=false;
  private executing=false;
@@ -264,8 +266,8 @@ export class MisReportScheduleWorker implements OnModuleInit,OnModuleDestroy{
    }catch(e){if(open)await tx.query("ROLLBACK").catch(()=>undefined);
     throw e;}finally{tx.release();}
   }catch(e){
-   const banned=e instanceof Error&&(/forbidden|permission|unavailable|revoked|scope/i.test(
-    String((e as {name?:string}).name??""))) ;
+   const banned=e instanceof ForbiddenException||
+    e instanceof NotFoundException||e instanceof UnauthorizedException;
    await this.finish(row,banned?"REVOKED":"FAILED",{
     errorClass:banned?"CURRENT_SCOPE_CHANGED":"SOURCE_OR_STORAGE_FAILED"
    }).catch(()=>undefined);
@@ -313,7 +315,8 @@ export class MisReportScheduleWorker implements OnModuleInit,OnModuleDestroy{
    // CG19 records confirmed in-app notice and original delivery row in one
    // SQL transaction. No external provider is marked delivered here.
   }catch(e){
-   const forbidden=e instanceof Error&&/forbidden|unauthor|revoked/i.test(e.name);
+   const forbidden=e instanceof ForbiddenException||
+    e instanceof NotFoundException||e instanceof UnauthorizedException;
    const exhausted=row.attempts>=5;
    await this.db.query(
     "UPDATE cg20_report_delivery_attempt SET state=$3,"+
@@ -340,21 +343,26 @@ export class MisReportScheduleWorker implements OnModuleInit,OnModuleDestroy{
    }
    // Interrupted RUNNING storage writes may be UNKNOWN, never falsely READY.
    await this.db.query(
-    "UPDATE cg20_report_run SET state='UNKNOWN',"+
+    "UPDATE cg20_report_run run SET state='UNKNOWN',"+
     "error_class='WORKER_INTERRUPTED',updated_at=now() "+
+    "FROM (SELECT root_realm_id,id FROM cg20_report_run "+
     "WHERE run_origin='SCHEDULED' AND state='RUNNING' "+
     "AND updated_at<now()-interval '10 minutes' "+
-    "AND id IN(SELECT id FROM cg20_report_run "+
-    "WHERE run_origin='SCHEDULED' AND state='RUNNING' "+
-    "AND updated_at<now()-interval '10 minutes' "+
-    "ORDER BY updated_at,id LIMIT 4)"
+    "ORDER BY updated_at,root_realm_id,id LIMIT 4) stale "+
+    "WHERE run.root_realm_id=stale.root_realm_id AND run.id=stale.id "+
+    "AND run.run_origin='SCHEDULED' AND run.state='RUNNING' "+
+    "AND run.updated_at<now()-interval '10 minutes'"
    );
    for(let i=0;i<4&&!this.stopped;i++){
     const row=await this.claimDelivery();if(!row)break;
     await this.sendDelivery(row);
    }
-  }catch{/* A missing original provider/DB must not create false success.
-           Errors remain available to original ops logs/health checks. */}
-  finally{this.executing=false;}
+  }catch(error){
+   // Never log account, Foundation, patient, report IDs, raw SQL, file URLs,
+   // source amounts or provider payloads. Preserve the error category only.
+   this.logger.warn("CG20 scheduled reporting iteration unavailable ("+
+    (error instanceof Error?error.name:"UnknownError")+
+    "); no successful delivery has been recorded.");
+  }finally{this.executing=false;}
  }
 }
