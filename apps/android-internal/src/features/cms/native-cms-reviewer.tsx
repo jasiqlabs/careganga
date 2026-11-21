@@ -137,7 +137,7 @@ export function NativeCmsReviewer({token,onExpired,onDone}:Props){
   if(busy||!detail||(!replay&&uncertain)||password.length<8&& !replay)return;
   const op=replay??{ref:detail.caseRef,key:Crypto.randomUUID(),
    version:detail.revision,kind,remarks:reason.trim(),password};
-  if(kind==="APPROVE"&&detail.source.assets.some(asset=>!asset.current)){
+  if(!replay&&kind==="APPROVE"&&detail.source.assets.some(asset=>!asset.current)){
    setMessage("One or more private assets are no longer verified. Return to editor.");
    return;
   }
