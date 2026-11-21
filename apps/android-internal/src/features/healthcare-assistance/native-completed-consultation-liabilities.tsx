@@ -196,7 +196,7 @@ export function NativeCompletedConsultationLiabilities({token,canManage,canPost,
         {text:"Cancel",style:"cancel"},
         {text:"Recognize",onPress:()=>void save()}]),busy)}
     {canPost&&status?.state==="APPROVED_LIABILITY"&&
-     status.foundationJournalPosted!==true&&status.liabilityRef&&
+     status.liabilityRef&&
      ID.test(status.liabilityRef)&&
      <NativeFoundationJournalPanel key={status.liabilityRef}
       token={token} centerRef={center} liabilityRef={status.liabilityRef}
