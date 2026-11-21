@@ -131,7 +131,7 @@ BEGIN
   'AND proposal_revision=hr_source_version'),
  ('cg19_upload_intent','cg19_intent_source_classification',
   'owner_kind = ''CG10_DRAFT'' AND '||
-  'classification IN(''HR_IDENTITY_PROOF'',''HR_QUALIFICATION'',''HR_PORTRAIT'')')
+  'classification IN(''HR_IDENTITY_PROOF'',''HR_PAN_PROOF'',''HR_QUALIFICATION'',''HR_PORTRAIT'')')
  ) v(table_name,constraint_name,add_predicate)
  LOOP
   SELECT substring(pg_get_constraintdef(c.oid) FROM 7) INTO original_sql
@@ -195,7 +195,7 @@ CREATE TABLE hr_application_proof (
  file_ref uuid NOT NULL,
  file_version integer NOT NULL CHECK(file_version>0),
  classification text NOT NULL
-  CHECK(classification IN('HR_IDENTITY_PROOF','HR_QUALIFICATION','HR_PORTRAIT')),
+  CHECK(classification IN('HR_IDENTITY_PROOF','HR_PAN_PROOF','HR_QUALIFICATION','HR_PORTRAIT')),
  PRIMARY KEY(root_realm_id,application_id,revision_no,file_ref),
  FOREIGN KEY(application_id,root_realm_id)
   REFERENCES hr_employee_application(id,root_realm_id) ON DELETE RESTRICT,
