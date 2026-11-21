@@ -54,9 +54,9 @@ export function NativeMisReports({token,onExpired}:{token:string;onExpired:()=>v
  const [year,setYear]=useState(""),[branch,setBranch]=useState("");
  const [center,setCenter]=useState(""),[from,setFrom]=useState(""),[until,setUntil]=useState("");
  const [status,setStatus]=useState("");
- const [groupBy,setGroupBy]=useState("CATEGORY");
- const [sortBy,setSortBy]=useState("NAME");
- const [sortDirection,setSortDirection]=useState("ASC");
+ const [groupBy,setGroupBy]=useState<"CATEGORY"|"POSTING_KIND"|"ACCOUNT_NAME">("CATEGORY");
+ const [sortBy,setSortBy]=useState<"NAME"|"DEBIT"|"CREDIT">("NAME");
+ const [sortDirection,setSortDirection]=useState<"ASC"|"DESC">("ASC");
  const [preview,setPreview]=useState<Preview|null>(null);
  const [busy,setBusy]=useState(false),[problem,setProblem]=useState("");
  const seq=useRef(0);
@@ -160,13 +160,13 @@ export function NativeMisReports({token,onExpired}:{token:string;onExpired:()=>v
     <NativeFinanceOptions label="Group by" value={groupBy}
      options={[{ref:"CATEGORY",label:"Account category"},
        {ref:"POSTING_KIND",label:"Posted entry type"},
-       {ref:"ACCOUNT_NAME",label:"Account name"}]} onChange={setGroupBy}/>
+       {ref:"ACCOUNT_NAME",label:"Account name"}]} onChange={v=>setGroupBy(v as typeof groupBy)}/>
     <NativeFinanceOptions label="Sort groups by" value={sortBy}
      options={[{ref:"NAME",label:"Group name"},{ref:"DEBIT",label:"Debit"},
-       {ref:"CREDIT",label:"Credit"}]} onChange={setSortBy}/>
+       {ref:"CREDIT",label:"Credit"}]} onChange={v=>setSortBy(v as typeof sortBy)}/>
     <NativeFinanceOptions label="Sort direction" value={sortDirection}
      options={[{ref:"ASC",label:"Ascending"},{ref:"DESC",label:"Descending"}]}
-     onChange={setSortDirection}/>
+     onChange={v=>setSortDirection(v as typeof sortDirection)}/>
    </>}
    {(kind==="FINANCE_POSTED_LEDGER"||grouped||!finance)&&<>
     <NativeFinanceField label="Start date (YYYY-MM-DD)" value={from} onChange={setFrom}/>
