@@ -961,6 +961,8 @@ export function StaffAuthenticationScreen() {
           canVerify={roleActions.includes("health.providers.verify")}
           canActivate={roleActions.includes("health.centers.activate")}
           canPublish={roleActions.includes("health.centers.publish")}
+          canViewFinance={roleActions.includes("health.providers.finance.view")}
+          canManageFinance={roleActions.includes("health.providers.finance.manage")}
           onExit={closeHealthProvider} onExpired={expireSession}/>
       </Suspense>
     </ScreenErrorBoundary>, "healthProviderManagement", closeHealthProvider);
