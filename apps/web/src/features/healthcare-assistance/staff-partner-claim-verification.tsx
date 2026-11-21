@@ -119,7 +119,7 @@ export function StaffPartnerClaimVerification({centerRef,claimCode,mode,onChange
    });
    if(result.claimCode!==claimCode||typeof result.state!=="string")
     throw Error("The original review outcome cannot be verified.");
-   setDetail(result);setPassword("");attempt.current=null;
+   await load();setPassword("");attempt.current=null;
    setUncertain(false);await onChanged();
    setNotice(action==="ATTEST"?
     "Original partner service/collection attestation recorded; independent Foundation review remains required.":
