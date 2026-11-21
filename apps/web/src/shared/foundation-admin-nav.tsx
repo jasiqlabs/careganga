@@ -729,7 +729,7 @@ export function FoundationAdminNav({
     ...(rolesAccess ? [{ key: "roles" as const, label: "Roles & permissions", href: "/admin/roles" }] : []),
     ...(foundationAccess ? [{ key: "foundation" as const, label: "Foundation Structure", href: "/admin/foundation" }] : []),
     ...(branchAccess ? [{ key: "branches" as const, label: "Branches & registration", href: "/admin/foundation/branches" }] : []),
-    ...(hrAccess ? [{key:"hr" as const,label:"Human Resources",href:"/admin/hr"}] : []),
+    {key:"hr" as const,label:hrAccess?"Human Resources":"My employment",href:"/admin/hr"},
     ...(cmsAccess ? [{ key: "cms" as const, label: "Website CMS", href: "/admin/website" }] : []),
     ...(healthNetworkAccess || healthReviewerAccess || healthPublisherAccess
       ? [{ key: "healthNetwork" as const,
