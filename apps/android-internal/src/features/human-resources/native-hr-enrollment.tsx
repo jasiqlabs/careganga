@@ -10,7 +10,7 @@ type Application={applicationRef:string;reference:string;name:string;designation
  employmentType:string;branchRef:string;departmentRef:string|null;
  managerRef:string|null;roleRef:string|null;accountRef:string|null;
  hireDate:string;revision:number;status:string};
-type Option={label:string;branchRef?:string;departmentRef?:string;managerRef?:string;accountRef?:string};
+type Option={label:string;branchRef?:string;departmentRef?:string;managerRef?:string;accountRef?:string;geography?:string};
 type RoleOption={value:string;label:string};
 type Draft={name:string;designation:string;employmentType:string;
  branchRef:string;departmentRef:string;managerRef:string;roleRef:string;accountRef:string;hireDate:string};
@@ -344,6 +344,9 @@ export function NativeHrEnrollment({token,canView,canManage,canReview,canViewEmp
        onPress={()=>change("branchRef",opt.branchRef??"")}>
        <Text style={draft.branchRef===opt.branchRef?styles.selectedText:styles.chipText}>
         {opt.label}</Text></Pressable>)}</View>}
+    {!!draft.branchRef&&<Text style={styles.muted}>Verified Foundation branch location:
+     {" "}{branches.find(x=>x.branchRef===draft.branchRef)?.geography||
+     "Location unavailable from current branch source"}</Text>}
     {!!draft.branchRef&&<><Text style={styles.label}>Department (optional)</Text>
      <View style={styles.choices}><Pressable accessibilityRole="button"
        style={[styles.chip,!draft.departmentRef&&styles.selected]}
