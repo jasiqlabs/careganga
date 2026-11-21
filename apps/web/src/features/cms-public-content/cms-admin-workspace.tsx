@@ -225,7 +225,7 @@ export function CmsAdminWorkspace({canManage,canPublish,canReview}:{
  useEffect(()=>{void refresh();},[refresh]);
  async function open(ref:string){
   if(busy)return;
-  if(pending){
+  if(pending||mediaAttempt.current){
    setError("An earlier CMS request may have committed. Retry the original "+
     "key before switching pages.");
    return;
@@ -347,7 +347,7 @@ export function CmsAdminWorkspace({canManage,canPublish,canReview}:{
   finally{setBusy(false);}
  }
  const command=(label:string,path:string,method:"POST"|"PUT",body:Record<string,unknown>)=>{
-  if(busy||pending){
+  if(busy||pending||mediaAttempt.current){
    setError("Resolve the previous original CMS request using its existing "+
     "retry key before creating another action.");
    return;
@@ -358,7 +358,7 @@ export function CmsAdminWorkspace({canManage,canPublish,canReview}:{
   // The only allowed busy caller is our own already-confirmed reviewer
   // decision, whose list refresh is a READ, not a second CG03 mutation.
   if(busy&&!afterConfirmedDecision)return;
-  if(pending&&!afterConfirmedDecision){
+  if((pending||mediaAttempt.current)&&!afterConfirmedDecision){
    setError("Resolve the original uncertain CMS request before switching to reviews.");
    return;
   }
@@ -496,10 +496,10 @@ export function CmsAdminWorkspace({canManage,canPublish,canReview}:{
    <button type="button" onClick={()=>void refresh()} disabled={busy}>Refresh</button>
    {canReview&&<button type="button" onClick={()=>void showInbox()} disabled={busy}>
     Review approvals</button>}
-   {canManage&&<button className="primary" type="button" disabled={busy||!!pending}
+   {canManage&&<button className="primary" type="button" disabled={busy||!!pending||!!mediaAttempt.current}
     onClick={()=>{setSelected(null);setReviewing(false);
     setDraft(blank("HOME"));setPreview(false);}}>New page</button>}
-   {canManage&&!selected&&!reviewing&&<button type="button" disabled={busy}
+   {canManage&&!selected&&!reviewing&&<button type="button" disabled={busy||!!mediaAttempt.current}
     onClick={()=>{setDraft({...blank("HOME"),...clientScreenshotHome});setPreview(false);}}>
     Start with reference content</button>}
   </div></header>
