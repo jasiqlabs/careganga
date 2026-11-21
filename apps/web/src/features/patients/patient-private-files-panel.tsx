@@ -2,7 +2,7 @@
 import {useCallback,useEffect,useRef,useState} from "react";
 import {PatientClinicalFileShares} from "./patient-clinical-file-shares";
 
-type Class="PATIENT_PHOTO"|"PATIENT_UPLOADED_PRESCRIPTION"|"PATIENT_MEDICAL_REPORT";
+type Class="PATIENT_PHOTO"|"PATIENT_UPLOADED_PRESCRIPTION"|"PATIENT_MEDICAL_REPORT"|"PATIENT_PARTNER_INVOICE"|"PATIENT_PARTNER_SERVICE_PROOF";
 type PatientFile={fileRef:string;classification:Class;mime:string;
  sizeBytes:number;version:number;revoked:boolean;createdAt:string};
 type RecordPage={files:PatientFile[];next:string|null};
@@ -155,7 +155,7 @@ export function PatientPrivateFilesPanel({consentGranted}:{consentGranted:boolea
  }
  return <section className="form-section" aria-label="My privately scanned patient documents">
   <h2>My private health documents</h2>
-  <p>Upload your own scanned photo, existing prescription copy or medical report.
+  <p>Upload your own photo, existing prescription, medical report, partner invoice or completed-service evidence.
    These documents do not become a CareGanga-issued prescription or diagnosis.
    Files remain private until the original storage provider independently
    confirms a clean malware scan.</p>
@@ -168,6 +168,8 @@ export function PatientPrivateFilesPanel({consentGranted}:{consentGranted:boolea
      <option value="PATIENT_MEDICAL_REPORT">My scanned medical report</option>
      <option value="PATIENT_UPLOADED_PRESCRIPTION">My existing prescription copy</option>
      <option value="PATIENT_PHOTO">My private patient photo</option>
+     <option value="PATIENT_PARTNER_INVOICE">My partner invoice (not payment verification)</option>
+     <option value="PATIENT_PARTNER_SERVICE_PROOF">My completed-service evidence (not clinical approval)</option>
     </select>
    </label>
    <label>Private document (PDF/JPG/PNG/WebP, max 10 MB)
@@ -190,6 +192,8 @@ export function PatientPrivateFilesPanel({consentGranted}:{consentGranted:boolea
   {rows.map(row=><div className="notice" key={row.fileRef}>
    <strong>{row.classification==="PATIENT_PHOTO"?"Patient photo":
     row.classification==="PATIENT_MEDICAL_REPORT"?"Scanned medical report":
+    row.classification==="PATIENT_PARTNER_INVOICE"?"Partner invoice (unverified claim)":
+    row.classification==="PATIENT_PARTNER_SERVICE_PROOF"?"Completed-service document (unverified)":
     "Patient-supplied prescription copy"}</strong>
    <p>{new Date(row.createdAt).toLocaleString("en-IN")} ·
     {row.revoked?" Revoked":" Privately verified"} ·
