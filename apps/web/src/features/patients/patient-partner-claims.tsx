@@ -1,6 +1,6 @@
 "use client";
 import {useCallback,useEffect,useRef,useState} from "react";
-type Kind="PHARMACY"|"NURSING"|"OT";
+type Kind="PHARMACY"|"NURSING"|"OT"|"DIAGNOSTICS";
 type Choice={centerRef:string;centerName:string;kind:Kind};
 type FileItem={fileRef:string;classification:string;revoked:boolean;createdAt:string};
 type Page={files:FileItem[];next:string|null};
@@ -113,10 +113,10 @@ export function PatientPartnerClaims({consentGranted}:{consentGranted:boolean}){
   }finally{setBusy(false);}
  }
  return <section aria-label="My partner-service claims" className="cg-diagnostics-card">
-  <h2>My pharmacy, nursing and procedure benefit claims</h2>
+  <h2>My pharmacy, laboratory, nursing and procedure benefit claims</h2>
   <p>Use this only after receiving a real invoice from a verified CareGanga partner.
    Upload the invoice under <strong>My private health documents</strong> first.
-   For nursing or procedures also upload evidence that the service was actually performed.
+   For laboratory tests, nursing or procedures also upload evidence that the service was actually performed.
    Submitted files and amounts require independent Foundation verification.
    This form does not record or confirm payment.</p>
   {!!error&&<p role="alert" className="notice error">{error}</p>}
@@ -127,7 +127,7 @@ export function PatientPartnerClaims({consentGranted}:{consentGranted:boolean}){
      setSelected(e.target.value);resetReplay();}}>
      <option value="">Choose a currently approved partner</option>
      {choices.map(o=><option key={o.centerRef+"|"+o.kind}
-      value={o.centerRef+"|"+o.kind}>{o.centerName} — {o.kind==="OT"?"Procedure / OT":o.kind==="PHARMACY"?"Pharmacy":"Nursing"}</option>)}
+      value={o.centerRef+"|"+o.kind}>{o.centerName} — {o.kind==="OT"?"Procedure / OT":o.kind==="PHARMACY"?"Pharmacy":o.kind==="DIAGNOSTICS"?"Lab / diagnostics":"Nursing"}</option>)}
     </select>
    </label>
    <label>Partner invoice number
