@@ -290,7 +290,7 @@ must("cg09",/payableAccountForAccrual/,
  "CG09 verifies actual accrual payable account for provider bank recovery");
 must("bank",/async verifyRecovery\(/,
  "Incoming bank receipt is independently verified by real CG09 owner");
-must("payout",/const outstanding=BigInt\(\(await this\.view/,
+must("payout",/const outstanding=BigInt\(effective\.outstandingMinor\)/,
  "Existing verified payout selector uses effective outstanding");
 must("payout",/const amount=BigInt\(proof\.amountMinor\),/,
  "Provider payout still requires original amount and proof");
