@@ -16,8 +16,9 @@ type Kind="FINANCE_POSTED_LEDGER"|"FINANCE_POSTED_SUMMARY"|
  "APPOINTMENT_STATUS"|"APPOINTMENT_STATUS_GROUPED"|"APPOINTMENT_DOCTOR_SUMMARY"|"PLATFORM_AUDIT_ACTIVITY"|"DIAGNOSTICS_CATALOG_SUMMARY";
 type Template={kind:Kind;label:string;views:("TABLE"|"SUMMARY"|"CHART"|"PIVOT")[];description:string};
 type Option={ref:string;name:string};
+type AreaOption=Option&{level:string};
 type Catalog={templates:Template[];finance:{ready:boolean;state?:"AVAILABLE"|"ACCESS_RESTRICTED"|"SOURCE_UNAVAILABLE";years:Option[];branches:Option[];
- allBranches:boolean};appointments:{ready:boolean;state?:"AVAILABLE"|"ACCESS_RESTRICTED"|"SOURCE_UNAVAILABLE";centers:Option[];complete:boolean};
+ allBranches:boolean;areas?:AreaOption[]};appointments:{ready:boolean;state?:"AVAILABLE"|"ACCESS_RESTRICTED"|"SOURCE_UNAVAILABLE";centers:Option[];complete:boolean};
  capabilities:{manage:boolean;export:boolean;schedule:boolean}};
 type Preview={state:string;kind:Kind;view:"TABLE"|"SUMMARY"|"CHART"|"PIVOT";label:string;
  rows:Record<string,string>[];columns:{key:string;label:string;unit?:string}[];
@@ -63,6 +64,7 @@ export function NativeMisReports({token,onExpired}:{token:string;onExpired:()=>v
  const [kind,setKind]=useState<Kind|null>(null);
  const [view,setView]=useState<"TABLE"|"SUMMARY"|"CHART"|"PIVOT">("TABLE");
  const [year,setYear]=useState(""),[branch,setBranch]=useState("");
+ const [area,setArea]=useState("");
  const [center,setCenter]=useState(""),[from,setFrom]=useState(""),[until,setUntil]=useState("");
  const [status,setStatus]=useState("");
  const [period,setPeriod]=useState<Period>("CUSTOM");
@@ -79,6 +81,7 @@ export function NativeMisReports({token,onExpired}:{token:string;onExpired:()=>v
    if(!Array.isArray(result.templates))throw Error("Report source options could not be verified.");
    if(rev===seq.current){setCatalog(result);
     setBranch(result.finance.allBranches?"":result.finance.branches[0]?.ref??"");
+    setArea("");
     setKind(result.templates[0]?.kind??null);
     setView(result.templates[0]?.views[0]??"TABLE");}
   }catch(e){
@@ -92,7 +95,7 @@ export function NativeMisReports({token,onExpired}:{token:string;onExpired:()=>v
   const sub=AppState.addEventListener("change",status=>{
    seq.current++;setPreview(null);
    if(status==="active"){
-    setCatalog(null);setKind(null);setYear("");setBranch("");
+    setCatalog(null);setKind(null);setYear("");setBranch("");setArea("");
     setCenter("");setFrom("");setUntil("");setStatus("");setPeriod("CUSTOM");
     void load();
    }
@@ -104,6 +107,7 @@ export function NativeMisReports({token,onExpired}:{token:string;onExpired:()=>v
  const health=kind==="APPOINTMENT_STATUS"||kind==="APPOINTMENT_STATUS_GROUPED"||
  kind==="APPOINTMENT_DOCTOR_SUMMARY";
  const grouped=kind==="FINANCE_POSTED_GROUPED";
+ const geography=kind==="FINANCE_POSTED_LEDGER"||grouped;
  const dated=kind==="FINANCE_POSTED_LEDGER"||grouped||health||kind==="PLATFORM_AUDIT_ACTIVITY";
  function setPreset(next:Period){
   setPeriod(next);setPreview(null);
@@ -113,7 +117,8 @@ export function NativeMisReports({token,onExpired}:{token:string;onExpired:()=>v
  function request(offset=0){
   if(!kind||!chosen)return null;
   return {kind,view:chosen.views.includes(view)?view:chosen.views[0],
-   ...(finance?{...(year?{yearRef:year}:{}),...(branch?{branchRef:branch}:{})}:{
+   ...(finance?{...(year?{yearRef:year}:{}),...(branch?{branchRef:branch}:{}),
+    ...(geography&&area?{areaRef:area}:{})}:{
     ...(center?{centerRef:center}:{}),...(status?{status}:{})}),
    ...((kind==="FINANCE_POSTED_LEDGER"||grouped||health||kind==="PLATFORM_AUDIT_ACTIVITY")&&from?
     {fromDay:from,untilDay:until}:{}),
@@ -152,7 +157,7 @@ export function NativeMisReports({token,onExpired}:{token:string;onExpired:()=>v
     onChange={v=>{setKind(v as Kind);
      setView(catalog.templates.find(t=>t.kind===v)?.views[0]??"TABLE");
      setPreview(null);
-     setYear("");setBranch(catalog.finance.allBranches?"":catalog.finance.branches[0]?.ref??"");setCenter("");setFrom("");setUntil("");setStatus("");
+     setYear("");setBranch(catalog.finance.allBranches?"":catalog.finance.branches[0]?.ref??"");setArea("");setCenter("");setFrom("");setUntil("");setStatus("");
      setGroupBy("CATEGORY");setSortBy("NAME");setSortDirection("ASC");}}/>
    {!!chosen&&<Text style={s.hint}>{chosen.description}. Output: {chosen.views.join(" or ")}</Text>}
    {!!chosen&&chosen.views.length>1&&<NativeFinanceOptions label="Report view"
@@ -163,7 +168,17 @@ export function NativeMisReports({token,onExpired}:{token:string;onExpired:()=>v
     <NativeFinanceOptions label="Financial year" value={year}
      options={[{ref:"",label:"All permitted years"},...catalog.finance.years.map(x=>({
       ref:x.ref,label:x.name}))]} onChange={setYear}/>
-    {!!catalog.finance.branches.length&&<NativeFinanceOptions label="Branch" value={branch}
+    {geography&&!!catalog.finance.areas?.length&&<NativeFinanceOptions
+     label="District or block" value={area}
+     options={[{ref:"",label:"No geographic restriction"},
+      ...catalog.finance.areas.map(x=>({ref:x.ref,
+       label:(x.level==="DISTRICT"?"District":"Block")+" · "+x.name}))]}
+     onChange={next=>{
+      setArea(next);setPreview(null);
+      setBranch(next?"":catalog.finance.allBranches?"":
+       catalog.finance.branches[0]?.ref??"");
+     }}/>}
+    {!area&&!!catalog.finance.branches.length&&<NativeFinanceOptions label="Branch" value={branch}
      options={[...(catalog.finance.allBranches?[{ref:"",label:"All permitted branches"}]:[]),
       ...catalog.finance.branches.map(x=>({ref:x.ref,label:x.name}))]} onChange={setBranch}/>}
    </>}
@@ -257,7 +272,7 @@ export function NativeMisReports({token,onExpired}:{token:string;onExpired:()=>v
     setGroupBy(value.groupBy??"CATEGORY");setSortBy(value.sortBy??"NAME");
     setSortDirection(value.sortDirection??"ASC");
     setYear(value.yearRef??"");
-    setBranch(value.branchRef??"");setCenter(value.centerRef??"");
+    setBranch(value.branchRef??"");setArea(value.areaRef??"");setCenter(value.centerRef??"");
     setFrom(value.fromDay??"");setUntil(value.untilDay??"");
     setStatus(value.status??"");setPreview(null);setProblem("");
    }}/>} 
