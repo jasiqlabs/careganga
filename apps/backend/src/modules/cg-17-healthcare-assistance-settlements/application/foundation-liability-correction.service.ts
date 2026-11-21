@@ -37,7 +37,8 @@ type Existing={id:string;reviewed_by_account:string;request_digest:string;
  reversal_journal_ref:string;reason:string;created_at:Date};
 type Claim={id:string;approved_total_minor:string;paid_minor:string;proposed_by:string;state:string};
 type ClaimedPrior={reviewed_by_account:string;request_digest:string;
- reversal_journal_ref:string;reason:string;recovery_minor:string};
+ reversal_journal_ref:string;reason:string;recovery_minor:string;
+ recovery_bank_ref:string|null};
 type Summary={liabilityRef:string;sourcePosted:boolean;canCorrect:boolean;
  claimAlreadyCreated:boolean;originalReversed:boolean;corrected:boolean;
  correctionReason:string|null;reversalJournalRef:string|null};
@@ -133,7 +134,7 @@ export class FoundationLiabilityCorrectionService{
  private async claimedPrior(c:PoolClient,root:string,liability:string){
   const q=await c.query<ClaimedPrior>(
    "SELECT reviewed_by_account,request_digest,reversal_journal_ref,reason,"+
-   "recovery_minor::text FROM cg17_provider_claim_correction "+
+   "recovery_minor::text,recovery_bank_ref FROM cg17_provider_claim_correction "+
    "WHERE root_realm_id=$1 AND liability_ref=$2",[root,liability]);
   return q.rows[0]??null;
  }
@@ -256,10 +257,32 @@ export class FoundationLiabilityCorrectionService{
     throw new ConflictException({code:"CG17_CORRECTION_INDEPENDENT_ORIGINAL_REQUIRED"});
    if(claim&&claim.proposed_by===a.accountId)
     throw new ConflictException({code:"CG17_CORRECTION_INDEPENDENT_CLAIM_REVIEWER"});
-   const balance=claim?await this.claimBalances(c,a.realmId,claim,v.amount_minor):null;
-   const needed=balance?.need??"0";
    const bankMatch=x.bankMatchRef;
    const payerMatched=x.payerMatched;
+   const existing=claim?
+    await this.claimedPrior(c,a.realmId,liability):
+    await this.prior(c,a.realmId,liability);
+   // Replay must read its frozen amount, not recalculate a NEW required
+   // recovery against the already-reduced payable.
+   if(existing){
+    const replayNeeded=claim?
+     (existing as ClaimedPrior).recovery_minor:"0";
+    const hash=claim?
+     digest(["CG17_CLAIMED_LIABILITY_REVERSAL_V1",a.realmId,
+      center,liability,claim.id,originalJournal,v.source_digest,v.amount_minor,
+      replayNeeded,bankMatch,year,postingDate,reason,a.accountId,key]):
+     digest(["CG17_ORIGINAL_LIABILITY_REVERSAL_V1",a.realmId,
+      center,liability,originalJournal,v.source_digest,v.amount_minor,
+      year,postingDate,reason,a.accountId,key]);
+    if(existing.reviewed_by_account!==a.accountId||
+      existing.request_digest!==hash||
+      (claim&&(existing as ClaimedPrior).recovery_bank_ref!==bankMatch))
+     throw new ConflictException({code:"CG17_CORRECTION_ALREADY_RECORDED"});
+    return {status:"REVERSED",replayed:true,
+     corrected:true,reversalJournalRef:existing.reversal_journal_ref};
+   }
+   const balance=claim?await this.claimBalances(c,a.realmId,claim,v.amount_minor):null;
+   const needed=balance?.need??"0";
    if(claim){
     if(BigInt(needed)>0n){
      if(typeof bankMatch!=="string"||!ID.test(bankMatch)||
@@ -275,16 +298,6 @@ export class FoundationLiabilityCorrectionService{
     digest(["CG17_ORIGINAL_LIABILITY_REVERSAL_V1",a.realmId,
      center,liability,originalJournal,v.source_digest,v.amount_minor,
      year,postingDate,reason,a.accountId,key]);
-   const existing=claim?
-    await this.claimedPrior(c,a.realmId,liability):
-    await this.prior(c,a.realmId,liability);
-   if(existing){
-    if(existing.reviewed_by_account!==a.accountId||
-      existing.request_digest!==hash)
-     throw new ConflictException({code:"CG17_CORRECTION_ALREADY_RECORDED"});
-    return {status:"REVERSED",replayed:true,
-     corrected:true,reversalJournalRef:existing.reversal_journal_ref};
-   }
    if(await this.reversed(c,a.realmId,originalJournal))
     throw new ConflictException({code:"CG17_CORRECTION_SOURCE_ALREADY_REVERSED"});
    // The existing CG01 password owner validates this *current* password.
