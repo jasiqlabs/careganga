@@ -905,6 +905,7 @@ export function StaffAuthenticationScreen() {
     return renderInShell(<ScreenErrorBoundary onExit={closePatientAdmin}>
       <Suspense fallback={<ActivityIndicator style={{ marginTop: 40 }} />}>
         <NativeFoundationPatientAdmin token={token}
+          canOverride={roleActions.includes("health.appointments.override")}
           onExit={closePatientAdmin} onExpired={expireSession}/>
       </Suspense>
     </ScreenErrorBoundary>, "healthPatientAdmin", closePatientAdmin);
