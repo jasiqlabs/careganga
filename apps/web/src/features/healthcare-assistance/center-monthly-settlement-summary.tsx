@@ -56,7 +56,7 @@ export function CenterMonthlySettlementSummary({centerRef}:Props){
    .finally(()=>{if(active)setLoading(false)});
   return()=>{active=false};
  },[load]);
- const approved=data&&data.state!=="NOT_PREPARED";
+ const approved=data&&["APPROVED","PARTIALLY_SETTLED","SETTLED"].includes(data.state);
  return <section className="cg-health-route-intro" aria-label="My Foundation settlement">
   <h3>My Foundation contribution and settlement</h3>
   <p>Only amounts for this approved healthcare center are shown.
@@ -96,7 +96,9 @@ export function CenterMonthlySettlementSummary({centerRef}:Props){
    </dl>
    <p>{approved?
     "Only independently reconciled bank payments count as paid.":
-    "The Foundation has not yet approved a monthly payout claim for this period."}</p>
+    data?.state==="PROPOSED"?
+    "A monthly claim has been prepared but is awaiting independent Foundation approval.":
+    "The Foundation has not yet prepared a monthly payout claim for this period."}</p>
   </div>}
  </section>;
 }
