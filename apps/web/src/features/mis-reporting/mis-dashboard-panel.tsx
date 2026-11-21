@@ -53,7 +53,7 @@ export function MisDashboardPanel(){
   const requestId=++seq.current;
   setBusy(true);setProblem("");setData(null);
   try{
-   const query=new URLSearchParams();
+   const query=new URLSearchParams();query.set("view",mode);
    if(mode==="FINANCE"){
     if(year)query.set("yearRef",year);
     if(branch)query.set("branchRef",branch);
