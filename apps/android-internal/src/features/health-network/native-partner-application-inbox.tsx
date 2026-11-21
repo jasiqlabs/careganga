@@ -100,7 +100,7 @@ export function NativePartnerApplicationInbox({token,canManage,onExit,onExpired}
     An application is not a license, verified provider or approved discount.</Text>
    {button("Back to healthcare providers",onExit,busy)}
    {!!error&&<Text accessibilityRole="alert" style={styles.error}>{error}</Text>}
-   {!!notice&&<Text accessibilityRole="status" style={styles.note}>{notice}</Text>}
+   {!!notice&&<Text accessibilityLiveRegion="polite" style={styles.note}>{notice}</Text>}
    <Text style={styles.label}>Status filter</Text>
    <View style={styles.row}>{["ALL","PENDING","IN_REVIEW","RETURNED","DECLINED","LINKED"]
      .map(v=>button((filter===v?"● ":"")+nice(v),()=>{
