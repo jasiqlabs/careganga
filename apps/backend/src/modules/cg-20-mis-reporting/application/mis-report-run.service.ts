@@ -96,10 +96,7 @@ export class MisReportRunService{
   const preview=await this.sources.preview(token,row.safe_request);
   if(preview.state==="PARTIAL")
    throw new BadRequestException({code:"MIS_RUN_PARTIAL",
-    message:"This report is incomplete. Narrow its filters before exporting."});
-  if(preview.state==="PARTIAL")
-   throw new BadRequestException({code:"MIS_RUN_PARTIAL",
-    message:"Narrow the report filters before exporting an incomplete source."});
+    message:"This source is incomplete. Narrow filters before exporting."});
   if(preview.state==="SUPPRESSED")
    throw new ForbiddenException({code:"MIS_RUN_SUPPRESSED",
     message:"This report cannot be shared for a small private group."});
@@ -116,6 +113,9 @@ export class MisReportRunService{
    request=parseSafeReport(item.request);savedRef=item.ref;revision=item.revision;
   }else request=parseSafeReport(input.request);
   const preview=await this.sources.preview(token,request);
+  if(preview.state==="PARTIAL")
+   throw new BadRequestException({code:"MIS_RUN_PARTIAL",
+    message:"Choose a narrower source or period before exporting a partial report."});
   if(preview.state==="SUPPRESSED")
    throw new ForbiddenException({code:"MIS_RUN_SUPPRESSED",
     message:"This report cannot be exported for a small private group."});
