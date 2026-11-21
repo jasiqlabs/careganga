@@ -11,6 +11,8 @@ export function HrMyProfile(){
   name?:string;designation?:string}|null>(null);
  const [linkBusy,setLinkBusy]=useState(false);
  const [notice,setNotice]=useState("");
+ const [bio,setBio]=useState<{linked:boolean;consented:boolean;revision:number}|null>(null);
+ const [bioBusy,setBioBusy]=useState(false);
  const refresh=useCallback(async()=>{
   setBusy(true);setProblem("");
   try{
@@ -63,7 +65,46 @@ export function HrMyProfile(){
     "Check your account status before retrying.");}
   finally{setLinkBusy(false);}
  };
- useEffect(()=>{void refresh();void checkPending();},[refresh,checkPending]);
+ const refreshBio=useCallback(async()=>{
+  try{
+   const response=await fetch("/api/hr/my-bio-consent",{
+    credentials:"same-origin",cache:"no-store"});
+   if(!response.ok)throw Error("Current public-use consent is unavailable.");
+   const value:unknown=await response.json();
+   if(!value||typeof value!=="object"||!("linked" in value)||
+    typeof value.linked!=="boolean"||!("consented" in value)||
+    typeof value.consented!=="boolean"||!("revision" in value)||
+    typeof value.revision!=="number")
+    throw Error("Current professional permission could not be verified.");
+   setBio(value as {linked:boolean;consented:boolean;revision:number});
+  }catch(e){setBio(null);setProblem(e instanceof Error?e.message:
+   "Professional consent cannot be verified.");}
+ },[]);
+ const changeBio=async(consent:boolean)=>{
+  if(!bio?.linked||bioBusy)return;
+  setBioBusy(true);setNotice("");setProblem("");
+  try{
+   const response=await fetch("/api/hr/my-bio-consent",{
+    method:"POST",credentials:"same-origin",cache:"no-store",
+    headers:{"Content-Type":"application/json"},
+    body:JSON.stringify({consent,expectedRevision:bio.revision})});
+   if(!response.ok)throw Error(response.status===409?
+    "Your professional consent changed. Refresh before retrying.":
+    "Professional permission could not be confirmed.");
+   const value:unknown=await response.json();
+   if(!value||typeof value!=="object"||!("revision" in value)||
+    typeof value.revision!=="number")
+    throw Error("Professional permission result is uncertain.");
+   await refreshBio();
+   setNotice(consent?
+    "Minimal professional-use consent recorded; separate editorial approval is still required.":
+    "Professional-use consent withdrawn. Public eligibility is revoked.");
+  }catch(e){setProblem(e instanceof Error?e.message:
+   "Permission status is uncertain. Check before retrying.");}
+  finally{setBioBusy(false);}
+ };
+ useEffect(()=>{void refresh();void checkPending();void refreshBio();},
+  [refresh,checkPending,refreshBio]);
  return <section aria-labelledby="cg-hr-my-profile" style={{padding:"1rem 1.2rem",
   border:"1px solid #E2E8F0",borderRadius:14,background:"#fff",marginBottom:18}}>
   <header style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:10}}>
@@ -83,6 +124,26 @@ export function HrMyProfile(){
     <div><dt>Status</dt><dd style={{margin:0}}>{self.status.replaceAll("_"," ")}</dd></div>
     <div><dt>Employment reference</dt><dd style={{margin:0}}>{self.employeeReference??"Unavailable"}</dd></div>
    </dl>:<p>Employment information is not available.</p>}
+  {bio?.linked&&<div style={{border:"1px solid #CBD5E1",
+   borderRadius:10,padding:13,marginTop:14,display:"grid",gap:8}}>
+   <strong>Optional professional profile consent</strong>
+   <p style={{margin:0,color:"#64748B",fontSize:13}}>
+    Only your professional name and current designation may be considered
+    for a future Foundation Team profile. A private ID scan or photograph is never
+    automatically a public image. Publishing still requires separate editorial approval.
+   </p>
+   <p role="status" style={{margin:0}}>
+    Current choice: {bio.consented?"Permission granted":"No public-use permission"}
+   </p>
+   <button type="button" disabled={bioBusy}
+    onClick={()=>void changeBio(!bio.consented)}
+    style={{padding:11,background:bio.consented?"#FEE2E2":"#087F8C",
+     color:bio.consented?"#991B1B":"#fff",border:0,
+     borderRadius:9,fontWeight:700,justifySelf:"start"}}>
+     {bioBusy?"Confirming choice…":bio.consented?
+      "Withdraw my professional profile permission":"Allow limited professional profile"}
+   </button>
+  </div>}
   {pending?.pending&&<div style={{marginTop:15,padding:12,
     border:"1px solid #BAE6FD",borderRadius:10}}>
     <strong>Approved employment awaits your account confirmation</strong>
