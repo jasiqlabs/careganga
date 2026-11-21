@@ -10,6 +10,7 @@ const s={
  cg19Migration:read("apps/backend/db/migrations/1712_cg19_patient_partner_invoice_proof.sql"),
  claimMigration:read("apps/backend/db/migrations/1713_cg17_erp_off_partner_service_claim_intake.sql"),
  cg19:read("apps/backend/src/modules/cg-19-documents-notifications/application/patient-private-files.service.ts"),
+ cg19Clinical:read("apps/backend/src/modules/cg-19-documents-notifications/application/patient-clinical-file-sharing.service.ts"),
  claim:read("apps/backend/src/modules/cg-17-healthcare-assistance-settlements/application/partner-service-claim.service.ts"),
  controller:read("apps/backend/src/modules/cg-17-healthcare-assistance-settlements/http/partner-service-claim.controller.ts"),
  mod:read("apps/backend/src/modules/cg-17-healthcare-assistance-settlements/healthcare-assistance.module.ts"),
@@ -80,6 +81,9 @@ const checks=[
   s.native.includes("PENDING_VERIFICATION")&&
   s.webProfile.includes("PatientPartnerClaims")&&
   s.nativeProfile.includes("NativePatientPartnerClaims")],
+ ["Original clinician sharing backend cannot expose partner invoice/service evidence",
+  s.cg19Clinical.includes("AND classification IN('PATIENT_PHOTO'")&&
+  !s.cg19Clinical.includes("AND classification IN('PATIENT_PARTNER_INVOICE'")],
  ["Original CG19 upload selections exist in Web and Public Android without clinical file-share shortcut",
   s.webUpload.includes('value="PATIENT_PARTNER_INVOICE"')&&
   s.nativeUpload.includes('"PATIENT_PARTNER_INVOICE"')&&
