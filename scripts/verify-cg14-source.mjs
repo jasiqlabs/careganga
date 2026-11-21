@@ -211,7 +211,7 @@ const parity=[
   ["NativeDoctorCenterFees","centerRef={active.centerRef}"]],
  ["native professional draft and private licence",
   "apps/android-internal/src/features/health-network/native-doctor-management.tsx",
-  ["/api/v1/health-network/doctors","NativeDoctorEvidenceUploader",
+  ["/api/v1/health-network/doctors","NativeDoctorEvidenceUploader","HEALTH_DOCTOR_PORTRAIT",
    "expectedVersion:selected.version","currentPassword:password"]],
  ["native CG19 doctor scanner and source claim",
   "apps/android-internal/src/features/health-network/native-doctor-evidence-uploader.tsx",
