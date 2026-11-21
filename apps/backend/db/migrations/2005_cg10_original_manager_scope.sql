@@ -7,8 +7,4 @@ ALTER TABLE hr_employee_application
 CREATE INDEX ix_cg10_application_manager
  ON hr_employee_application(root_realm_id,proposed_manager_employee_ref)
  WHERE proposed_manager_employee_ref IS NOT NULL;
--- Current assignment already references original manager via same-root FK,
--- but an assignment is not an account role and never gives login rights.
-ALTER TABLE hr_employment_assignment
- ADD CONSTRAINT ck_cg10_assignment_employee_manager_distinct
- CHECK(manager_employee_ref IS NULL OR manager_employee_ref<>employee_id);
+-- Existing 1001 assignment manager self-check remains authoritative.
