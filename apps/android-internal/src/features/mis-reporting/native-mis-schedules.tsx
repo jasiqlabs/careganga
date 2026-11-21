@@ -2,6 +2,7 @@ import {useCallback,useEffect,useRef,useState} from "react";
 import {AppState,StyleSheet,Text,View} from "react-native";
 import * as Crypto from "expo-crypto";
 import {identityRequest} from "../identity-access/http-client";
+import {nativeMisProblem} from "./native-mis-problem";
 import {NativeFinanceAction,NativeFinanceField,NativeFinanceOptions}
  from "../finance-accounting/finance-native-source-kit";
 import {careGangaTheme as t} from "../../../../../packages/design-tokens/src/index";
@@ -13,12 +14,7 @@ async function api<T>(token:string,path:string,body?:object):Promise<T>{
   method:body?"POST":"GET",cache:"no-store",
   headers:{Authorization:"Bearer "+token,...(body?{"Content-Type":"application/json"}:{})},
   ...(body?{body:JSON.stringify(body)}:{})});
- if(!r.ok)throw Object.assign(Error(r.status===401?
-  "Sign in again to manage private schedules.":
-  r.status===403?"Your current role cannot manage this private schedule.":
-  r.status===409?"Automatic delivery cannot be activated yet.":
-  "Schedule status cannot be confirmed. Refresh before retrying."),{
-   status:r.status});
+ if(!r.ok)throw await nativeMisProblem(r,"This schedule outcome is unconfirmed. Refresh its current status.");
  return r.json() as Promise<T>;
 }
 /** Paused-only native schedule management: no fake successful sending or
