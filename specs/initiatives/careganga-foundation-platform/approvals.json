@@ -992,15 +992,15 @@
       "database_impact": "CRITICAL",
       "last_design_content_review": {
         "date": "2026-11-21",
-        "method": "OWNER_DELEGATED_DESIGN_CONTENT_REVIEW_NOT_INDEPENDENT",
-        "scope": "Original module story and QA definitions with both applicable Web/Android audiences; no source build or release",
+        "method": "DELEGATED_DESIGN_CONTENT_SOURCE_REVIEW_NOT_INDEPENDENT",
+        "scope": "Existing approved module/stories/QA only; Public Web/Public Android and authorized staff Web/Internal Android parity; no new scope or runtime approval",
         "file_sha256": "915a23357881ad72270824bde23542c8c08e0af1a91b9ebb1921c9839d19b389",
-        "actual_web_android_qa": "NOT_RUN",
-        "qualified_independent_review": "NOT_RUN",
         "formal_harness_resolver": "NOT_RUN",
-        "source_complete": "NOT_APPROVED"
+        "actual_build_device_postgres_QA": "NOT_RUN",
+        "independent_review": "NOT_RUN",
+        "implementation_approval": "NOT_APPROVED"
       },
-      "review_evidence": "OWNER_DIRECTED_24_MODULE_WEB_INTERNAL_PUBLIC_ANDROID_SAME_ROLE_PARITY_DESIGN_REVIEW_NOT_RUNTIME"
+      "review_evidence": "OWNER_2026_11_21_SAME_ACTOR_WEB_ANDROID_DESIGN_PARITY_NOT_RUNTIME"
     },
     "uiux/cg-09-finance-accounting": {
       "status": "DELEGATED_APPROVED",
@@ -1118,15 +1118,15 @@
       ],
       "last_design_content_review": {
         "date": "2026-11-21",
-        "method": "OWNER_DELEGATED_DESIGN_CONTENT_REVIEW_NOT_INDEPENDENT",
-        "scope": "Original module story and QA definitions with both applicable Web/Android audiences; no source build or release",
+        "method": "DELEGATED_DESIGN_CONTENT_SOURCE_REVIEW_NOT_INDEPENDENT",
+        "scope": "Existing approved module/stories/QA only; Public Web/Public Android and authorized staff Web/Internal Android parity; no new scope or runtime approval",
         "file_sha256": "2c27790aa1984162406476a383cbca00023bf32e7771084c2b8a4b1546835f8a",
-        "actual_web_android_qa": "NOT_RUN",
-        "qualified_independent_review": "NOT_RUN",
         "formal_harness_resolver": "NOT_RUN",
-        "source_complete": "NOT_APPROVED"
+        "actual_build_device_postgres_QA": "NOT_RUN",
+        "independent_review": "NOT_RUN",
+        "implementation_approval": "NOT_APPROVED"
       },
-      "review_evidence": "OWNER_DIRECTED_24_MODULE_WEB_INTERNAL_PUBLIC_ANDROID_SAME_ROLE_PARITY_DESIGN_REVIEW_NOT_RUNTIME"
+      "review_evidence": "OWNER_2026_11_21_SAME_ACTOR_WEB_ANDROID_DESIGN_PARITY_NOT_RUNTIME"
     },
     "dld/cg-09-finance-accounting": {
       "status": "DELEGATED_APPROVED",
@@ -1244,15 +1244,15 @@
       ],
       "last_design_content_review": {
         "date": "2026-11-21",
-        "method": "OWNER_DELEGATED_DESIGN_CONTENT_REVIEW_NOT_INDEPENDENT",
-        "scope": "Original module story and QA definitions with both applicable Web/Android audiences; no source build or release",
+        "method": "DELEGATED_DESIGN_CONTENT_SOURCE_REVIEW_NOT_INDEPENDENT",
+        "scope": "Existing approved module/stories/QA only; Public Web/Public Android and authorized staff Web/Internal Android parity; no new scope or runtime approval",
         "file_sha256": "7a98ccf79aadc1b621ecb10176887f59b082d6e8e7008ba8f3963157c647b4ea",
-        "actual_web_android_qa": "NOT_RUN",
-        "qualified_independent_review": "NOT_RUN",
         "formal_harness_resolver": "NOT_RUN",
-        "source_complete": "NOT_APPROVED"
+        "actual_build_device_postgres_QA": "NOT_RUN",
+        "independent_review": "NOT_RUN",
+        "implementation_approval": "NOT_APPROVED"
       },
-      "review_evidence": "OWNER_DIRECTED_24_MODULE_WEB_INTERNAL_PUBLIC_ANDROID_SAME_ROLE_PARITY_DESIGN_REVIEW_NOT_RUNTIME"
+      "review_evidence": "OWNER_2026_11_21_SAME_ACTOR_WEB_ANDROID_DESIGN_PARITY_NOT_RUNTIME"
     },
     "tasks/cg-09-finance-accounting": {
       "status": "DELEGATED_APPROVED",
@@ -1372,15 +1372,15 @@
       ],
       "last_design_content_review": {
         "date": "2026-11-21",
-        "method": "OWNER_DELEGATED_DESIGN_CONTENT_REVIEW_NOT_INDEPENDENT",
-        "scope": "Original module story and QA definitions with both applicable Web/Android audiences; no source build or release",
+        "method": "DELEGATED_DESIGN_CONTENT_SOURCE_REVIEW_NOT_INDEPENDENT",
+        "scope": "Existing approved module/stories/QA only; Public Web/Public Android and authorized staff Web/Internal Android parity; no new scope or runtime approval",
         "file_sha256": "84217253fe06e386f3bdb9332461dce2f4845c938fee980a7321f8016f91780b",
-        "actual_web_android_qa": "NOT_RUN",
-        "qualified_independent_review": "NOT_RUN",
         "formal_harness_resolver": "NOT_RUN",
-        "source_complete": "NOT_APPROVED"
+        "actual_build_device_postgres_QA": "NOT_RUN",
+        "independent_review": "NOT_RUN",
+        "implementation_approval": "NOT_APPROVED"
       },
-      "review_evidence": "OWNER_DIRECTED_24_MODULE_WEB_INTERNAL_PUBLIC_ANDROID_SAME_ROLE_PARITY_DESIGN_REVIEW_NOT_RUNTIME"
+      "review_evidence": "OWNER_2026_11_21_SAME_ACTOR_WEB_ANDROID_DESIGN_PARITY_NOT_RUNTIME"
     },
     "planning/cg-18-cms-public-content": {
       "status": "DELEGATED_APPROVED",
@@ -3585,15 +3585,15 @@
       "development_authority": "NOT_READY",
       "last_design_content_review": {
         "date": "2026-11-21",
-        "method": "OWNER_DELEGATED_DESIGN_CONTENT_REVIEW_NOT_INDEPENDENT",
-        "scope": "Original module story and QA definitions with both applicable Web/Android audiences; no source build or release",
+        "method": "DELEGATED_DESIGN_CONTENT_SOURCE_REVIEW_NOT_INDEPENDENT",
+        "scope": "Existing approved module/stories/QA only; Public Web/Public Android and authorized staff Web/Internal Android parity; no new scope or runtime approval",
         "file_sha256": "d6c42b1970f3ce72e12eeb5f67c41d56c9dac471a309a925f211aebc9ff4502f",
-        "actual_web_android_qa": "NOT_RUN",
-        "qualified_independent_review": "NOT_RUN",
         "formal_harness_resolver": "NOT_RUN",
-        "source_complete": "NOT_APPROVED"
+        "actual_build_device_postgres_QA": "NOT_RUN",
+        "independent_review": "NOT_RUN",
+        "implementation_approval": "NOT_APPROVED"
       },
-      "review_evidence": "OWNER_DIRECTED_24_MODULE_WEB_INTERNAL_PUBLIC_ANDROID_SAME_ROLE_PARITY_DESIGN_REVIEW_NOT_RUNTIME"
+      "review_evidence": "OWNER_2026_11_21_SAME_ACTOR_WEB_ANDROID_DESIGN_PARITY_NOT_RUNTIME"
     },
     "dld/cg-07-campaigns-donations": {
       "artifact": "modules/cg-07-campaigns-donations/dld.md",
@@ -3655,15 +3655,15 @@
       "development_authority": "NOT_READY",
       "last_design_content_review": {
         "date": "2026-11-21",
-        "method": "OWNER_DELEGATED_DESIGN_CONTENT_REVIEW_NOT_INDEPENDENT",
-        "scope": "Original module story and QA definitions with both applicable Web/Android audiences; no source build or release",
+        "method": "DELEGATED_DESIGN_CONTENT_SOURCE_REVIEW_NOT_INDEPENDENT",
+        "scope": "Existing approved module/stories/QA only; Public Web/Public Android and authorized staff Web/Internal Android parity; no new scope or runtime approval",
         "file_sha256": "f55f7d68efb77c842db09e0e8aa384eba895dcc76073f8bc3c3470e7bc15267e",
-        "actual_web_android_qa": "NOT_RUN",
-        "qualified_independent_review": "NOT_RUN",
         "formal_harness_resolver": "NOT_RUN",
-        "source_complete": "NOT_APPROVED"
+        "actual_build_device_postgres_QA": "NOT_RUN",
+        "independent_review": "NOT_RUN",
+        "implementation_approval": "NOT_APPROVED"
       },
-      "review_evidence": "OWNER_DIRECTED_24_MODULE_WEB_INTERNAL_PUBLIC_ANDROID_SAME_ROLE_PARITY_DESIGN_REVIEW_NOT_RUNTIME"
+      "review_evidence": "OWNER_2026_11_21_SAME_ACTOR_WEB_ANDROID_DESIGN_PARITY_NOT_RUNTIME"
     },
     "uiux/cg-07-campaigns-donations": {
       "artifact": "modules/cg-07-campaigns-donations/uiux.md",
@@ -3725,15 +3725,15 @@
       "development_authority": "NOT_READY",
       "last_design_content_review": {
         "date": "2026-11-21",
-        "method": "OWNER_DELEGATED_DESIGN_CONTENT_REVIEW_NOT_INDEPENDENT",
-        "scope": "Original module story and QA definitions with both applicable Web/Android audiences; no source build or release",
+        "method": "DELEGATED_DESIGN_CONTENT_SOURCE_REVIEW_NOT_INDEPENDENT",
+        "scope": "Existing approved module/stories/QA only; Public Web/Public Android and authorized staff Web/Internal Android parity; no new scope or runtime approval",
         "file_sha256": "f6a4b73092b41526575ac26f43a4c2be0e8310ea557a9a95a822226a52ec15f3",
-        "actual_web_android_qa": "NOT_RUN",
-        "qualified_independent_review": "NOT_RUN",
         "formal_harness_resolver": "NOT_RUN",
-        "source_complete": "NOT_APPROVED"
+        "actual_build_device_postgres_QA": "NOT_RUN",
+        "independent_review": "NOT_RUN",
+        "implementation_approval": "NOT_APPROVED"
       },
-      "review_evidence": "OWNER_DIRECTED_24_MODULE_WEB_INTERNAL_PUBLIC_ANDROID_SAME_ROLE_PARITY_DESIGN_REVIEW_NOT_RUNTIME"
+      "review_evidence": "OWNER_2026_11_21_SAME_ACTOR_WEB_ANDROID_DESIGN_PARITY_NOT_RUNTIME"
     },
     "tasks/cg-07-campaigns-donations": {
       "artifact": "modules/cg-07-campaigns-donations/tasks.md",
@@ -3797,15 +3797,15 @@
       "stories": 3,
       "last_design_content_review": {
         "date": "2026-11-21",
-        "method": "OWNER_DELEGATED_DESIGN_CONTENT_REVIEW_NOT_INDEPENDENT",
-        "scope": "Original module story and QA definitions with both applicable Web/Android audiences; no source build or release",
+        "method": "DELEGATED_DESIGN_CONTENT_SOURCE_REVIEW_NOT_INDEPENDENT",
+        "scope": "Existing approved module/stories/QA only; Public Web/Public Android and authorized staff Web/Internal Android parity; no new scope or runtime approval",
         "file_sha256": "5ae03fcd987bc054d15135e9a295606f204314bffd8c08b9e2deb1972abdde44",
-        "actual_web_android_qa": "NOT_RUN",
-        "qualified_independent_review": "NOT_RUN",
         "formal_harness_resolver": "NOT_RUN",
-        "source_complete": "NOT_APPROVED"
+        "actual_build_device_postgres_QA": "NOT_RUN",
+        "independent_review": "NOT_RUN",
+        "implementation_approval": "NOT_APPROVED"
       },
-      "review_evidence": "OWNER_DIRECTED_24_MODULE_WEB_INTERNAL_PUBLIC_ANDROID_SAME_ROLE_PARITY_DESIGN_REVIEW_NOT_RUNTIME"
+      "review_evidence": "OWNER_2026_11_21_SAME_ACTOR_WEB_ANDROID_DESIGN_PARITY_NOT_RUNTIME"
     },
     "planning/cg-08-csr-funding": {
       "artifact": "modules/cg-08-csr-funding/module.md",
@@ -3860,15 +3860,15 @@
       "database_impact": "CRITICAL",
       "last_design_content_review": {
         "date": "2026-11-21",
-        "method": "OWNER_DELEGATED_DESIGN_CONTENT_REVIEW_NOT_INDEPENDENT",
-        "scope": "Original module story and QA definitions with both applicable Web/Android audiences; no source build or release",
+        "method": "DELEGATED_DESIGN_CONTENT_SOURCE_REVIEW_NOT_INDEPENDENT",
+        "scope": "Existing approved module/stories/QA only; Public Web/Public Android and authorized staff Web/Internal Android parity; no new scope or runtime approval",
         "file_sha256": "b97bc0b9636c115ef4958f8238231c23711b7654fdf9e9a68890f11bc732adf8",
-        "actual_web_android_qa": "NOT_RUN",
-        "qualified_independent_review": "NOT_RUN",
         "formal_harness_resolver": "NOT_RUN",
-        "source_complete": "NOT_APPROVED"
+        "actual_build_device_postgres_QA": "NOT_RUN",
+        "independent_review": "NOT_RUN",
+        "implementation_approval": "NOT_APPROVED"
       },
-      "review_evidence": "OWNER_DIRECTED_24_MODULE_WEB_INTERNAL_PUBLIC_ANDROID_SAME_ROLE_PARITY_DESIGN_REVIEW_NOT_RUNTIME"
+      "review_evidence": "OWNER_2026_11_21_SAME_ACTOR_WEB_ANDROID_DESIGN_PARITY_NOT_RUNTIME"
     },
     "dld/cg-08-csr-funding": {
       "artifact": "modules/cg-08-csr-funding/dld.md",
@@ -3923,15 +3923,15 @@
       "database_impact": "CRITICAL",
       "last_design_content_review": {
         "date": "2026-11-21",
-        "method": "OWNER_DELEGATED_DESIGN_CONTENT_REVIEW_NOT_INDEPENDENT",
-        "scope": "Original module story and QA definitions with both applicable Web/Android audiences; no source build or release",
+        "method": "DELEGATED_DESIGN_CONTENT_SOURCE_REVIEW_NOT_INDEPENDENT",
+        "scope": "Existing approved module/stories/QA only; Public Web/Public Android and authorized staff Web/Internal Android parity; no new scope or runtime approval",
         "file_sha256": "bf628c4679906f283980daaed1e110afa757c77597620014fb7eb181622757a9",
-        "actual_web_android_qa": "NOT_RUN",
-        "qualified_independent_review": "NOT_RUN",
         "formal_harness_resolver": "NOT_RUN",
-        "source_complete": "NOT_APPROVED"
+        "actual_build_device_postgres_QA": "NOT_RUN",
+        "independent_review": "NOT_RUN",
+        "implementation_approval": "NOT_APPROVED"
       },
-      "review_evidence": "OWNER_DIRECTED_24_MODULE_WEB_INTERNAL_PUBLIC_ANDROID_SAME_ROLE_PARITY_DESIGN_REVIEW_NOT_RUNTIME"
+      "review_evidence": "OWNER_2026_11_21_SAME_ACTOR_WEB_ANDROID_DESIGN_PARITY_NOT_RUNTIME"
     },
     "uiux/cg-08-csr-funding": {
       "artifact": "modules/cg-08-csr-funding/uiux.md",
@@ -3986,15 +3986,15 @@
       "database_impact": "CRITICAL",
       "last_design_content_review": {
         "date": "2026-11-21",
-        "method": "OWNER_DELEGATED_DESIGN_CONTENT_REVIEW_NOT_INDEPENDENT",
-        "scope": "Original module story and QA definitions with both applicable Web/Android audiences; no source build or release",
+        "method": "DELEGATED_DESIGN_CONTENT_SOURCE_REVIEW_NOT_INDEPENDENT",
+        "scope": "Existing approved module/stories/QA only; Public Web/Public Android and authorized staff Web/Internal Android parity; no new scope or runtime approval",
         "file_sha256": "c7127e4b6772e64c73db9d1c5f1b23e287d0f3b43018b1190b2a39951b5be924",
-        "actual_web_android_qa": "NOT_RUN",
-        "qualified_independent_review": "NOT_RUN",
         "formal_harness_resolver": "NOT_RUN",
-        "source_complete": "NOT_APPROVED"
+        "actual_build_device_postgres_QA": "NOT_RUN",
+        "independent_review": "NOT_RUN",
+        "implementation_approval": "NOT_APPROVED"
       },
-      "review_evidence": "OWNER_DIRECTED_24_MODULE_WEB_INTERNAL_PUBLIC_ANDROID_SAME_ROLE_PARITY_DESIGN_REVIEW_NOT_RUNTIME"
+      "review_evidence": "OWNER_2026_11_21_SAME_ACTOR_WEB_ANDROID_DESIGN_PARITY_NOT_RUNTIME"
     },
     "tasks/cg-08-csr-funding": {
       "artifact": "modules/cg-08-csr-funding/tasks.md",
@@ -4051,15 +4051,15 @@
       "database_impact": "CRITICAL",
       "last_design_content_review": {
         "date": "2026-11-21",
-        "method": "OWNER_DELEGATED_DESIGN_CONTENT_REVIEW_NOT_INDEPENDENT",
-        "scope": "Original module story and QA definitions with both applicable Web/Android audiences; no source build or release",
+        "method": "DELEGATED_DESIGN_CONTENT_SOURCE_REVIEW_NOT_INDEPENDENT",
+        "scope": "Existing approved module/stories/QA only; Public Web/Public Android and authorized staff Web/Internal Android parity; no new scope or runtime approval",
         "file_sha256": "a92007340327bb20c6525cd67ec9331dd3eec8a9fc70ce92a42ffa0c1f6e014f",
-        "actual_web_android_qa": "NOT_RUN",
-        "qualified_independent_review": "NOT_RUN",
         "formal_harness_resolver": "NOT_RUN",
-        "source_complete": "NOT_APPROVED"
+        "actual_build_device_postgres_QA": "NOT_RUN",
+        "independent_review": "NOT_RUN",
+        "implementation_approval": "NOT_APPROVED"
       },
-      "review_evidence": "OWNER_DIRECTED_24_MODULE_WEB_INTERNAL_PUBLIC_ANDROID_SAME_ROLE_PARITY_DESIGN_REVIEW_NOT_RUNTIME"
+      "review_evidence": "OWNER_2026_11_21_SAME_ACTOR_WEB_ANDROID_DESIGN_PARITY_NOT_RUNTIME"
     },
     "planning/cg-06-beneficiaries-assistance": {
       "status": "DELEGATED_APPROVED",
