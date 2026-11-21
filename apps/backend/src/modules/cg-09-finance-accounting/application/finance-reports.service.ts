@@ -185,35 +185,47 @@ export class FinanceReportsService{
    year=yearInput?uuid(yearInput,"yearRef"):null,
    branch=branchInput?uuid(branchInput,"branchRef"):null;
   await this.verifyFilterScope(bearer,actor.realmId,{fy:year,branch,account:null});
-  const result=await this.db.query<{category:string;amountDebit:string;amountCredit:string}>(
-   "SELECT g.category,COALESCE(SUM(l.debit_minor),0)::text AS \"amountDebit\","+
-   "COALESCE(SUM(l.credit_minor),0)::text AS \"amountCredit\" "+
-   "FROM journal j JOIN journal_line l ON l.journal_id=j.id AND l.root_realm_id=j.root_realm_id "+
-   "JOIN finance_account a ON a.id=l.account_id AND a.root_realm_id=l.root_realm_id "+
-   "JOIN account_group g ON g.id=a.group_id AND g.root_realm_id=a.root_realm_id "+
-   "WHERE j.root_realm_id=$1 AND j.status='POSTED' "+
-   "AND ($2::uuid IS NULL OR j.financial_year_id=$2) "+
-   "AND ($3::uuid IS NULL OR l.branch_id=$3) GROUP BY g.category",
-   [actor.realmId,year,branch]);
-  const k=Object.fromEntries(result.rows.map(x=>[x.category,x]));
-  const get=(cat:string,side:"amountDebit"|"amountCredit")=>BigInt(k[cat]?.[side]??"0");
-  const income=get("INCOME","amountCredit")-get("INCOME","amountDebit");
-  const expense=get("EXPENSE","amountDebit")-get("EXPENSE","amountCredit");
-  const funds=get("FUND","amountCredit")-get("FUND","amountDebit");
-  const cash=await this.db.query<{balance:string}>(
-   "SELECT COALESCE(SUM(CASE WHEN a.normal_side='DEBIT' "+
-   "THEN l.debit_minor-l.credit_minor ELSE l.credit_minor-l.debit_minor END),0)::text AS balance "+
-   "FROM journal_line l JOIN journal j ON j.id=l.journal_id AND j.root_realm_id=l.root_realm_id "+
-   "JOIN finance_account a ON a.id=l.account_id AND a.root_realm_id=l.root_realm_id "+
-   "WHERE j.root_realm_id=$1 AND j.status='POSTED' "+
-   "AND ($2::uuid IS NULL OR j.financial_year_id=$2) "+
-   "AND a.account_kind IN('CASH','BANK') "+
-   "AND ($3::uuid IS NULL OR l.branch_id=$3)",[actor.realmId,year,branch]);
-  return {incomeMinor:income.toString(),expenseMinor:expense.toString(),
-   surplusMinor:(income-expense).toString(),
-   fundsMinor:funds.toString(),cashBankMinor:cash.rows[0]?.balance??"0",
-   sourceRecordState:result.rows.length===0?"NO_ROWS":"HAS_ROWS",
-   explanation:"Recognized income/expense from posted GL only. Cash/bank is not the same as approved claims or invoices."};
+  // Keep both source totals in the same actual PostgreSQL read snapshot.
+  // Snapshot time is per CG-09; it is NOT a cross-owner/global watermark.
+  const tx=await this.db.connect();let open=false;
+  try{
+   await tx.query("BEGIN ISOLATION LEVEL REPEATABLE READ READ ONLY");open=true;
+   await tx.query("SET LOCAL statement_timeout='8s'");
+   const cutoff=await tx.query<{asOf:Date}>(
+    'SELECT transaction_timestamp() AS "asOf"');
+   const result=await tx.query<{category:string;amountDebit:string;amountCredit:string}>(
+    "SELECT g.category,COALESCE(SUM(l.debit_minor),0)::text AS \"amountDebit\","+
+    "COALESCE(SUM(l.credit_minor),0)::text AS \"amountCredit\" "+
+    "FROM journal j JOIN journal_line l ON l.journal_id=j.id AND l.root_realm_id=j.root_realm_id "+
+    "JOIN finance_account a ON a.id=l.account_id AND a.root_realm_id=l.root_realm_id "+
+    "JOIN account_group g ON g.id=a.group_id AND g.root_realm_id=a.root_realm_id "+
+    "WHERE j.root_realm_id=$1 AND j.status='POSTED' "+
+    "AND ($2::uuid IS NULL OR j.financial_year_id=$2) "+
+    "AND ($3::uuid IS NULL OR l.branch_id=$3) GROUP BY g.category",
+    [actor.realmId,year,branch]);
+   const k=Object.fromEntries(result.rows.map(x=>[x.category,x]));
+   const get=(cat:string,side:"amountDebit"|"amountCredit")=>BigInt(k[cat]?.[side]??"0");
+   const income=get("INCOME","amountCredit")-get("INCOME","amountDebit");
+   const expense=get("EXPENSE","amountDebit")-get("EXPENSE","amountCredit");
+   const funds=get("FUND","amountCredit")-get("FUND","amountDebit");
+   const cash=await tx.query<{balance:string}>(
+    "SELECT COALESCE(SUM(CASE WHEN a.normal_side='DEBIT' "+
+    "THEN l.debit_minor-l.credit_minor ELSE l.credit_minor-l.debit_minor END),0)::text AS balance "+
+    "FROM journal_line l JOIN journal j ON j.id=l.journal_id AND j.root_realm_id=l.root_realm_id "+
+    "JOIN finance_account a ON a.id=l.account_id AND a.root_realm_id=l.root_realm_id "+
+    "WHERE j.root_realm_id=$1 AND j.status='POSTED' "+
+    "AND ($2::uuid IS NULL OR j.financial_year_id=$2) "+
+    "AND a.account_kind IN('CASH','BANK') "+
+    "AND ($3::uuid IS NULL OR l.branch_id=$3)",[actor.realmId,year,branch]);
+   await tx.query("COMMIT");open=false;
+   return {incomeMinor:income.toString(),expenseMinor:expense.toString(),
+    surplusMinor:(income-expense).toString(),fundsMinor:funds.toString(),
+    cashBankMinor:cash.rows[0]?.balance??"0",
+    sourceRecordState:result.rows.length===0?"NO_ROWS":"HAS_ROWS",
+    sourceAsOf:cutoff.rows[0].asOf.toISOString(),sourceCutoffKind:"POSTGRES_READ_SNAPSHOT",
+    explanation:"Recognized income/expense from posted GL only. Cash/bank is not approved claims or invoices."};
+  }catch(e){if(open)await tx.query("ROLLBACK").catch(()=>undefined);throw e;}
+  finally{tx.release();}
  }
  /** CG-20 US-001 source-owned narrow trend, never a separate MIS ledger.
   * Month uses original posting_date, only POSTED journal lines and the same
