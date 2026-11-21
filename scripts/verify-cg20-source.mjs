@@ -47,7 +47,7 @@ contains(mis+"http/mis-dashboard.controller.ts",[
 const source=contains(mis+"application/mis-report-source.service.ts",[
  "parseSafeReport","suppressAppointmentCells","FINANCE_POSTED_LEDGER",
  "FINANCE_POSTED_SUMMARY","FINANCE_POSTED_TREND","FINANCE_POSTED_GROUPED",
- "APPOINTMENT_STATUS","APPOINTMENT_STATUS_GROUPED",
+ "APPOINTMENT_STATUS","APPOINTMENT_STATUS_GROUPED","APPOINTMENT_DOCTOR_SUMMARY",
  "PLATFORM_AUDIT_ACTIVITY","DIAGNOSTICS_CATALOG_SUMMARY",
  "previewScheduledFinance","Date.parse(fromDay","Date.parse(untilDay",
  '"mis.reports.view"',"this.finance","this.patients"
@@ -59,7 +59,7 @@ const originals=contains(
  "monthlyMisTrend","groupedMis","scheduledSummary"
 ]);
 contains(backend+"modules/cg-15-patients-appointments/application/patient-admin-overview.service.ts",[
- "async readMisTotals","async readMisOptions","assertFoundationCenter",
+ "async readMisTotals","async readMisDoctorGroups","async readMisOptions","assertFoundationCenter",
  '"foundation.branches.admin"',"sourceCutoffKind"
 ]);
 contains(backend+"modules/cg-17-healthcare-assistance-settlements/application/monthly-provider-settlement.service.ts",[
@@ -89,11 +89,11 @@ contains(native+"features/mis-reporting/native-mis-workspace-screen.tsx",[
  "NativeMisDashboard","NativeMisReports","onExit"
 ]);
 contains(web+"features/mis-reporting/mis-reports-workspace.tsx",[
- "MisSavedReports","MisReportExports","MisReportSchedules",
+ "MisSavedReports","MisReportExports","MisReportSchedules","MisAppointmentGroupBars",
  "/api/mis/reports/","FINANCE_POSTED_LEDGER"
 ]);
 contains(native+"features/mis-reporting/native-mis-reports.tsx",[
- "NativeMisSaved","NativeMisExports","NativeMisSchedules",
+ "NativeMisSaved","NativeMisExports","NativeMisSchedules","NativeMisAppointmentGroupBars",
  "/api/v1/mis/reports/","FINANCE_POSTED_LEDGER"
 ]);
 contains(web+"features/mis-reporting/mis-dashboard-panel.tsx",[
