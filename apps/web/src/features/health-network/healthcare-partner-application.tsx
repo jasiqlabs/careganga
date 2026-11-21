@@ -74,10 +74,11 @@ export function HealthcarePartnerApplication(){
   finally{setBusy(false);}
  }
  const txt=(key:Exclude<keyof Fields,"partnerType"|"consentAccepted">,
-  title:string,required=false,extra:{type?:string;maxLength?:number;placeholder?:string}={})=>
+  title:string,required=false,extra:{type?:string;maxLength?:number;minLength?:number;pattern?:string;placeholder?:string}={})=>
   <label style={{display:"grid",gap:5}} key={key}>{title}
    <input name={key} value={fields[key] as string}
-    type={extra.type??"text"} maxLength={extra.maxLength??120}
+    type={extra.type??"text"} minLength={extra.minLength}
+    pattern={extra.pattern} maxLength={extra.maxLength??120}
     placeholder={extra.placeholder} required={required}
     disabled={busy||!!sent||!!result}
     onChange={e=>update(key,e.target.value)} /></label>;
@@ -112,20 +113,20 @@ export function HealthcarePartnerApplication(){
      {kinds.map(k=><option key={k.code} value={k.code}>{k.label}</option>)}
     </select>
    </label>
-   {txt("applicantName",label(fields.partnerType),true,{maxLength:180})}
-   {txt("contactName","Contact person's full name",true)}
+   {txt("applicantName",label(fields.partnerType),true,{maxLength:180,minLength:2})}
+   {txt("contactName","Contact person's full name",true,{minLength:2})}
    <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(230px,1fr))",gap:12}}>
-    {txt("contactPhone","Contact phone number",true,{type:"tel",maxLength:16})}
+    {txt("contactPhone","Contact phone number",true,{type:"tel",maxLength:16,minLength:10,pattern:"[+]?[0-9]{10,15}"})}
     {txt("contactEmail","Contact email (optional)",false,{type:"email",maxLength:180})}
    </div>
    {txt("registrationNumber","Registration / license number"+
      (fields.partnerType==="DOCTOR"?"":" (if available)"),
      fields.partnerType==="DOCTOR",{maxLength:120})}
-   {txt("addressLine","Practice or facility address",true,{maxLength:300})}
+   {txt("addressLine","Practice or facility address",true,{maxLength:300,minLength:5})}
    <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(160px,1fr))",gap:12}}>
-    {txt("districtName","District",true,{maxLength:100})}
-    {txt("stateName","State",true,{maxLength:100})}
-    {txt("pinCode","Six-digit PIN",true,{maxLength:6})}
+    {txt("districtName","District",true,{maxLength:100,minLength:2})}
+    {txt("stateName","State",true,{maxLength:100,minLength:2})}
+    {txt("pinCode","Six-digit PIN",true,{maxLength:6,pattern:"[1-9][0-9]{5}"})}
    </div>
    <label style={{display:"flex",gap:10,alignItems:"start"}}>
     <input type="checkbox" checked={fields.consentAccepted} required
