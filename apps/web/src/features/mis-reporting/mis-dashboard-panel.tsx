@@ -1,10 +1,11 @@
 "use client";
 import {useCallback,useEffect,useRef,useState} from "react";
 import Link from "next/link";
+import {MisFinanceTrend,MisAppointmentDistribution,type MonthlyTrend} from "./mis-source-charts";
 
 type Metric={key:string;label:string;unit:string;value:string};
 type Source={sourceKey:string;sourceLabel:string;state:string;readAt?:string;
- metrics:Metric[];drilldown?:string;explanation?:string};
+ metrics:Metric[];drilldown?:string;explanation?:string;trend?:MonthlyTrend};
 type Dashboard={state:string;readAt:string;periodLabel?:string;scopeLabel?:string;
  sources:Source[];message?:string};
 type Choice={ref:string;name:string};
@@ -102,6 +103,9 @@ export function MisDashboardPanel(){
        <small style={{color:"var(--cg-muted)",fontSize:".75rem"}}>Source-read at {source.readAt?new Date(source.readAt).toLocaleString("en-IN"):"current request"}</small>
       </div>)}</div>
       <p style={{fontSize:".78rem",color:"var(--cg-muted)"}}>{source.explanation}</p>
+      {source.trend&&<MisFinanceTrend trend={source.trend}/>}
+      {source.sourceKey==="CG15_APPOINTMENT_STATES"&&
+       <MisAppointmentDistribution metrics={source.metrics}/>}
      </>:<p role="status">{source.state==="EMPTY"?
       "No posted financial entries for the selected permitted scope.":
       "Source currently unavailable. No estimates or sample totals are displayed."}</p>}
