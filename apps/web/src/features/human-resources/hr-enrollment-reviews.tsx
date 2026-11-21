@@ -16,7 +16,7 @@ async function api(path:string,init?:RequestInit){
   "The original Foundation employee review is unavailable.");
  return data;
 }
-export function HrEnrollmentReviews(){
+export function HrEnrollmentReviews({canConfigure=false}:{canConfigure?:boolean}){
  const [cases,setCases]=useState<Case[]>([]);
  const [detail,setDetail]=useState<Detail|null>(null);
  const [password,setPassword]=useState("");
@@ -26,6 +26,9 @@ export function HrEnrollmentReviews(){
  const [message,setMessage]=useState("");
  const [error,setError]=useState("");
  const [busy,setBusy]=useState(false);
+ const [configured,setConfigured]=useState<boolean|null>(null);
+ const [setupPassword,setSetupPassword]=useState("");
+ const [configuring,setConfiguring]=useState(false);
  const [loading,setLoading]=useState(true);
  const refresh=useCallback(async()=>{
   setLoading(true);setError("");
@@ -39,6 +42,32 @@ export function HrEnrollmentReviews(){
   }finally{setLoading(false);}
  },[]);
  useEffect(()=>{void refresh();},[refresh]);
+ const checkProcess=useCallback(async()=>{
+  try{
+   const value=await api("/process");
+   if(!value||typeof value!=="object"||!("configured" in value)||
+     typeof value.configured!=="boolean")
+    throw Error("Original approval process status unavailable.");
+   setConfigured(value.configured);
+  }catch(e){setConfigured(null);setError(e instanceof Error?e.message:
+    "The Foundation approval process cannot be verified.");}
+ },[]);
+ useEffect(()=>{void checkProcess();},[checkProcess]);
+ const configure=async()=>{
+  if(!canConfigure||!setupPassword||configuring)return;
+  setConfiguring(true);setError("");
+  try{
+   const result=await api("/process",{
+    method:"POST",body:JSON.stringify({currentPassword:setupPassword})});
+   if(!result||typeof result!=="object"||!("configured" in result)||
+     result.configured!==true)
+    throw Error("Employee approval process configuration is not confirmed.");
+   setSetupPassword("");setConfigured(true);
+   setMessage("Protected employee review process is configured.");
+  }catch(e){setError(e instanceof Error?e.message:
+    "Review configuration is unavailable.");}
+  finally{setConfiguring(false);}
+ };
  const open=async(ref:string)=>{
   setBusy(true);setError("");setMessage("");setPassword("");setNotes("");setKey(null);
   try{
@@ -87,6 +116,22 @@ export function HrEnrollmentReviews(){
   </header>
   {error&&<p role="alert" style={{color:"#991B1B",background:"#FEF2F2",padding:10}}>{error}</p>}
   {message&&<p role="status" style={{color:"#166534",background:"#ECFDF5",padding:10}}>{message}</p>}
+  {configured===false&&<div style={{padding:12,border:"1px solid #CBD5E1",
+    borderRadius:10,display:"grid",gap:10}}>
+    <p role="status" style={{margin:0}}>Employee reviews are not configured.
+     A protected Foundation process manager must authorize the original review process.</p>
+    {canConfigure&&<>
+     <label style={{display:"grid",gap:5}}>Current password to configure approvals
+      <input type="password" autoComplete="current-password"
+       value={setupPassword} onChange={e=>setSetupPassword(e.target.value)}
+       style={{padding:10,border:"1px solid #CBD5E1",borderRadius:9}}/>
+     </label>
+     <button type="button" onClick={()=>void configure()}
+      disabled={configuring||!setupPassword}
+      style={{padding:11,background:"#0369A1",color:"#fff",border:0,borderRadius:9}}>
+      {configuring?"Configuring original process…":"Configure original employee approval process"}</button>
+    </>}
+   </div>}
   {loading?<p role="status">Loading original employee review cases…</p>:
     cases.length===0?<p>No enrollment cases in this Foundation scope.</p>:
    <ul style={{listStyle:"none",padding:0,display:"grid",gap:9}}>
