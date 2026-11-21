@@ -111,7 +111,9 @@ export function MisReportSchedules(){
     border:"1px solid var(--cg-border)",borderRadius:10,padding:12}}>
     <strong>{item.cadence.charAt(0)+item.cadence.slice(1).toLowerCase()} schedule</strong>
     <p style={{fontSize:".82rem",margin:"4px 0"}}>
-     {item.state==="PAUSED"?"Paused · Not sending":item.state.replaceAll("_"," ")}
+     {item.state==="PAUSED"?"Paused · Not sending":
+      item.state==="ACTIVE"?"Scheduled · permissions checked at send":
+      item.state==="DISABLED"?"Disabled":"Status unavailable"}
      {" · "}{item.timezone}
      {" · "}Next planned: {new Date(item.nextDueAt).toLocaleString("en-IN")}</p>
     <button type="button" disabled={busy}
