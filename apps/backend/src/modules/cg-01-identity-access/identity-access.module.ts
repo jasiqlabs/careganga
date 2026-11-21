@@ -25,6 +25,6 @@ import { PublicPatientSignupService } from "./application/public-patient-signup.
 @Module({
   controllers:[SessionController,RecoveryController,RolesController,AuditController,AccountsController,SecurityPolicyController,MobileVerificationController,PublicPatientSignupController],
   providers:[HealthNetworkIdentityFacade,FoundationStructureIdentityFacade,SessionService,SessionGuard,RecoveryService,RecoveryDelivery,RolesService,AccountsService,AccessAuditReader,SecurityPolicyService,ProtectedAccessOwnerService,CommunicationRecipientSource,MobileVerificationService,PublicPatientSignupService],
-  exports:[HealthNetworkIdentityFacade,SessionService,AccessAuditReader,AccountsService,ProtectedAccessOwnerService,CommunicationRecipientSource,FoundationStructureIdentityFacade]
+  exports:[HealthNetworkIdentityFacade,SessionService,RolesService,AccessAuditReader,AccountsService,ProtectedAccessOwnerService,CommunicationRecipientSource,FoundationStructureIdentityFacade]
 })
 export class IdentityAccessModule {}
