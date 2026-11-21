@@ -21,7 +21,9 @@ type Claim={
  quoted_gross_minor:string;estimated_support_minor:string;
  estimated_patient_due_minor:string;payment_file_ref:string|null;
  state:string;submitted_at:Date;
- source_digest:string
+ source_digest:string;
+ attestation_ref?:string|null;decision_outcome?:"APPROVED"|"REJECTED"|null;
+ posting_state?:string|null;settlement_state?:string|null;
 };
 const sha=(x:unknown)=>createHash("sha256").update(JSON.stringify(x)).digest("hex");
 const ref=(v:unknown)=>{
@@ -67,14 +69,28 @@ const present=(row:Claim)=>({
  serviceDate:row.service_local_date,quotedGrossMinor:row.quoted_gross_minor,
  estimatedFoundationMinor:row.estimated_support_minor,
  estimatedPatientPayableMinor:row.estimated_patient_due_minor,
- state:"PENDING_VERIFICATION" as const,
- paymentEvidenceSubmitted:!!row.payment_file_ref,invoiceVerified:false,
- serviceCompletionVerified:false,patientPaymentVerified:false,
- foundationLiabilityPosted:false,foundationSettled:false,
+ state:row.decision_outcome==="APPROVED"?"APPROVED_AWAITING_FINANCE":
+  row.decision_outcome==="REJECTED"?"REJECTED":
+  row.attestation_ref?"PARTNER_ATTESTED":"PENDING_VERIFICATION",
+ paymentEvidenceSubmitted:!!row.payment_file_ref,
+ invoiceVerified:row.decision_outcome==="APPROVED",
+ serviceCompletionVerified:row.decision_outcome==="APPROVED",
+ patientPaymentVerified:row.decision_outcome==="APPROVED",
+ approvedFoundationMinor:row.decision_outcome==="APPROVED"?
+  row.estimated_support_minor:"0",
+ foundationLiabilityPosted:row.posting_state==="POSTED",
+ foundationSettled:row.settlement_state==="SETTLED",
+
  submittedAt:new Date(row.submitted_at).toISOString(),
- guidance:"Your scanned documents have been received for review. "+
-  "The invoice, actual service, patient payment and Foundation contribution "+
-  "have not been independently verified or approved."
+ guidance:row.decision_outcome==="APPROVED"?
+  "Partner proof and patient payment have been independently reviewed. "+
+  "Foundation reimbursement is confirmed only after original verified bank settlement.":
+  row.decision_outcome==="REJECTED"?
+  "Foundation review did not approve this invoice. Contact CareGanga for the reason.":
+  row.attestation_ref?
+  "The partner has attested service and collection; independent Foundation review is pending.":
+  "Scanned evidence is submitted, but invoice, completed service, payment and "+
+  "Foundation contribution have not been independently approved."
 });
 /** CG17 original source for ERP-OFF patient-submitted partner evidence.
  * Authenticated current patient and CG19 CLEAN_VERIFIED scanner metadata
@@ -174,12 +190,18 @@ export class PartnerServiceClaimService{
   */
  private async centerClaims(c:PoolClient,root:string,center:string){
   const result=await c.query<Claim>(
-   "SELECT public_code,center_ref,service_kind,invoice_number,"+
-   "service_local_date::text,quoted_gross_minor::text,"+
-   "estimated_support_minor::text,estimated_patient_due_minor::text,payment_file_ref,"+
-   "state,submitted_at,source_digest FROM cg17_partner_service_claim "+
-   "WHERE root_realm_id=$1 AND center_ref=$2 "+
-   "ORDER BY submitted_at DESC,id DESC LIMIT 51",
+   "SELECT claim.public_code,claim.center_ref,claim.service_kind,claim.invoice_number,"+
+   "claim.service_local_date::text,claim.quoted_gross_minor::text,"+
+   "claim.estimated_support_minor::text,claim.estimated_patient_due_minor::text,"+
+   "claim.payment_file_ref,claim.state,claim.submitted_at,claim.source_digest,"+
+   "att.id AS attestation_ref,decision.outcome AS decision_outcome "+
+   "FROM cg17_partner_service_claim claim "+
+   "LEFT JOIN cg17_partner_invoice_attestation att "+
+   "ON att.root_realm_id=claim.root_realm_id AND att.claim_ref=claim.id "+
+   "LEFT JOIN cg17_partner_invoice_decision decision "+
+   "ON decision.root_realm_id=claim.root_realm_id AND decision.claim_ref=claim.id "+
+   "WHERE claim.root_realm_id=$1 AND claim.center_ref=$2 "+
+   "AND decision.id IS NULL ORDER BY claim.submitted_at DESC,claim.id DESC LIMIT 51",
    [root,center]);
   if(result.rows.length>50)
    throw new ConflictException({code:"CG17_PARTNER_CLAIM_LIST_LIMIT"});
@@ -187,8 +209,9 @@ export class PartnerServiceClaimService{
    pendingCount:result.rows.length,approvedFoundationMinor:"0",
    reimbursableFoundationMinor:"0",paidFoundationMinor:"0",
    foundationPaymentVerified:false,complete:true,
-   guidance:"Scanned patient evidence is awaiting independent verification. "+
-    "No amount on this screen is approved or payable to the partner."};
+   guidance:"Pending documents and partner attestations need independent "+
+    "Foundation approval. Approved money is recorded in the original "+
+    "monthly settlement statement, not here."};
  }
  async foundationCenter(token:string,centerRaw:string){
   const center=ref(centerRaw);
@@ -218,8 +241,23 @@ export class PartnerServiceClaimService{
     "SELECT claim.public_code,claim.center_ref,claim.service_kind,"+
     "claim.invoice_number,claim.service_local_date::text,"+
     "claim.quoted_gross_minor::text,claim.estimated_support_minor::text,"+
-    "claim.estimated_patient_due_minor::text,claim.payment_file_ref,claim.state,claim.submitted_at,"+
-    "claim.source_digest FROM cg17_partner_service_claim claim "+
+    "claim.estimated_patient_due_minor::text,claim.payment_file_ref,"+
+    "claim.state,claim.submitted_at,claim.source_digest,"+
+    "att.id AS attestation_ref,decision.outcome AS decision_outcome,"+
+    "effect.posting_state,settlement.state AS settlement_state "+
+    "FROM cg17_partner_service_claim claim "+
+    "LEFT JOIN cg17_partner_invoice_attestation att "+
+    "ON att.root_realm_id=claim.root_realm_id AND att.claim_ref=claim.id "+
+    "LEFT JOIN cg17_partner_invoice_decision decision "+
+    "ON decision.root_realm_id=claim.root_realm_id AND decision.claim_ref=claim.id "+
+    "LEFT JOIN foundation_liability l ON l.root_realm_id=claim.root_realm_id "+
+    "AND l.source_kind='CG17_PARTNER_SERVICE' AND l.source_ref=claim.id "+
+    "LEFT JOIN cg17_financial_effect effect ON effect.root_realm_id=l.root_realm_id "+
+    "AND effect.liability_ref=l.id AND effect.effect_kind='LIABILITY_ACCRUAL' "+
+    "LEFT JOIN provider_settlement_line line ON line.root_realm_id=l.root_realm_id "+
+    "AND line.liability_ref=l.id "+
+    "LEFT JOIN provider_settlement settlement ON settlement.root_realm_id=line.root_realm_id "+
+    "AND settlement.id=line.settlement_ref "+
     "WHERE claim.root_realm_id=$1 AND claim.patient_ref=$2 "+
     "ORDER BY claim.submitted_at DESC,claim.id DESC LIMIT 51",
     [actor.realmId,patient]);
