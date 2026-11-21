@@ -150,6 +150,50 @@ const checks=[
    return actual.size===94&&[...wanted].every(x=>actual.has(x));
  })()]
 ];
+// Previously-missing existing-owner Native Android registration and assigned-center paths.
+const parity=[
+ ["native Foundation provider and center editor",
+  "apps/android-internal/src/features/health-network/native-provider-management.tsx",
+  ["NativeHealthCenterEditor","NativeHealthEvidenceUploader",
+   "providers?","/representatives","/publication",
+   "health","expectedVersion"]],
+ ["native assigned-center-only editor",
+  "apps/android-internal/src/features/health-network/native-own-center-portal.tsx",
+  ["/api/v1/health-network/my-centers","NativeHealthCenterEditor",
+   "proofFileRef:proof","expectedVersion:active.version"]],
+ ["native health geography and hours original source",
+  "apps/android-internal/src/features/health-network/native-health-center-editor.tsx",
+  ["/api/v1/health-network/geography","openLocal","closeLocal",
+   "diagnosticLicenseValidThrough"]],
+ ["native provider and center original CG19 evidence",
+  "apps/android-internal/src/features/health-network/native-health-evidence-uploader.tsx",
+  ["/api/documents/health-draft","SHA-256","UploadType.BINARY_CONTENT",
+   "/confirm","cleanVerified"]],
+ ["native professional draft and private licence",
+  "apps/android-internal/src/features/health-network/native-doctor-management.tsx",
+  ["/api/v1/health-network/doctors","NativeDoctorEvidenceUploader",
+   "expectedVersion:selected.version","currentPassword:password"]],
+ ["native CG19 doctor scanner and source claim",
+  "apps/android-internal/src/features/health-network/native-doctor-evidence-uploader.tsx",
+  ["/api/documents/doctor-evidence","SHA-256",
+   "cleanVerified","classification"]],
+ ["current role-bound original CG14 native navigation",
+  "apps/android-internal/src/features/dashboard/dashboard-modules.ts",
+  ['roleActions.includes("health.providers.view")',
+   'roleActions.includes("health.doctors.view")',
+   'roleActions.includes("health.centers.draft.edit")',
+   "openHealthProviderManagement","openHealthDoctorManagement","openOwnCenterPortal"]],
+ ["current role-bound CG14 shell/render and return",
+  "apps/android-internal/src/features/identity-access/staff-authentication-screen.tsx",
+  ["NativeProviderManagement","NativeDoctorManagement","NativeOwnCenterPortal",
+   'roleActions.includes("health.providers.manage")',
+   'roleActions.includes("health.doctors.verify")',
+   'roleActions.includes("health.centers.activate")']]
+];
+for(const [name,path,expected] of parity){
+ const source=read(path);
+ checks.push(["CG14 channel: "+name,expected.every(x=>source.includes(x))]);
+}
 let failures=0;
 for(const [label,ok] of checks){
   process.stdout.write((ok?"SOURCE_PRESENT":"SOURCE_GAP")+" — "+label+"\n");
