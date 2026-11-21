@@ -119,6 +119,9 @@ export function suppressAppointmentCells(rows:{
  const total=BigInt(rows.bookings);
  const parts=[BigInt(rows.completed),BigInt(rows.waiting),BigInt(rows.cancelled)];
  const remainder=total-parts.reduce((n,v)=>n+v,0n);
+ // Inconsistent owner counts are never treated as publishable/reportable
+ // grouped status cells. Fail closed before any patient-linked dimension.
+ if(total<0n||parts.some(v=>v<0n)||remainder<0n)return true;
  return total>0n&&(total<5n||[...parts,remainder].some(v=>v>0n&&v<5n));
 }
 type ReportRow=Record<string,string>;
