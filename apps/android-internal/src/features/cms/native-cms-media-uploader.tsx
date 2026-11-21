@@ -10,6 +10,7 @@ export type CmsPlacement={fileRef:string;version:number;role:string;
 type CmsSection={kind:string;order:number;fields:Record<string,unknown>};
 type Props={token:string;pageRef:string;revisionRef:string;kind:string;
  sections:CmsSection[];assets:CmsPlacement[];onChange:(items:CmsPlacement[])=>void;
+ onAttemptChange:(unresolved:boolean)=>void;
  onExpired:()=>void;disabled?:boolean};
 type Selected={uri:string;name:string;size:number;mime:string};
 type Intent={status:string;uploadRef:string;uploadUrl?:string;
@@ -72,7 +73,7 @@ async function cms<T>(token:string,path:string,method:"GET"|"POST"="GET",
  return response.json() as Promise<T>;
 }
 export function NativeCmsMediaUploader({token,pageRef,revisionRef,kind,sections,assets,
- onChange,onExpired,disabled=false}:Props){
+ onChange,onAttemptChange,onExpired,disabled=false}:Props){
  const [picked,setPicked]=useState<Selected|null>(null);
  const [role,setRole]=useState(kind==="ARTICLE"?"ARTICLE":
   kind==="GALLERY"?"GALLERY":kind==="CONTACT"?"CONTACT":
@@ -84,6 +85,10 @@ export function NativeCmsMediaUploader({token,pageRef,revisionRef,kind,sections,
  const key=useRef("");
  const original=useRef<{pageRef:string;revisionRef:string;role:string;
   order:number;sha256:string;sizeBytes:number;mime:string}|null>(null);
+ useEffect(()=>{
+  onAttemptChange(Boolean(original.current||key.current||intent));
+ },[onAttemptChange,intent,uncertain,busy]);
+ useEffect(()=>()=>onAttemptChange(false),[onAttemptChange]);
  useEffect(()=>{
   if(original.current||key.current||intent){
    setUncertain(true);
@@ -169,16 +174,21 @@ export function NativeCmsMediaUploader({token,pageRef,revisionRef,kind,sections,
    const result=await cms<Verified>(token,encodeURIComponent(intent));
    if(result.cleanVerified&&result.fileRef&&result.validatedVersion){
     attach(result.fileRef,result.validatedVersion);
+   }else if(["REJECTED","EXPIRED","EXPIRED_OR_REJECTED"].includes(result.status)){
+    key.current="";original.current=null;setIntent("");setPicked(null);
+    setUncertain(false);
+    setNotice("The original upload was confirmed rejected or expired. "+
+     "You may choose a new private file.");
    }else{
     setUncertain(false);
-    setNotice("Original upload not verified: "+result.status+
-     ". Do not submit or publish it.");
+    setNotice("Original upload not yet verified: "+result.status+
+     ". Retry only this same original if needed; do not publish it.");
    }
   }catch(e){setUncertain(true);fail(e)}
   finally{setBusy(false)}
  }
- async function upload(){
-  if(busy||uncertain||disabled||!picked||!rights||!selectedChoice||
+ async function upload(retryOriginal=false){
+  if(busy||(uncertain&&!retryOriginal)||disabled||!picked||!rights||!selectedChoice||
    !mime.includes(picked.mime)||alt.trim().length<3||
    !/^(0|[1-9]\d{0,2})$/.test(order))return;
   setBusy(true);setNotice("");
@@ -236,7 +246,9 @@ export function NativeCmsMediaUploader({token,pageRef,revisionRef,kind,sections,
     return;
    }
    attach(verified.fileRef,verified.validatedVersion);
-  }catch(e){setUncertain(true);fail(e)}
+  }catch(e){
+   setUncertain(Boolean(key.current||intent||original.current));fail(e);
+  }
   finally{setBusy(false)}
  }
  return <View style={styles.panel}>
@@ -283,6 +295,9 @@ export function NativeCmsMediaUploader({token,pageRef,revisionRef,kind,sections,
    busy||uncertain||!selectedChoice||!picked||!rights||
     !mime.includes(picked.mime)||alt.trim().length<3)}
   {!!intent&&action("Check the same original upload",()=>void status(),busy)}
+  {uncertain&&!intent&&!!key.current&&!!picked&&
+   action("Retry same original upload request",()=>void upload(true),
+    busy||!selectedChoice||!rights)}
   {!!uncertain&&<Text style={styles.warning}>
    Original upload outcome is uncertain. Check its original intent before retrying.</Text>}
   <Text style={styles.heading}>Media placements on this unpublished revision</Text>
