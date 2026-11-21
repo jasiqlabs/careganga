@@ -176,3 +176,4 @@ export function PatientPartnerClaims({consentGranted}:{consentGranted:boolean}){
     <p><strong>Awaiting independent verification.</strong> {c.guidance}</p>
    </div>)}
  </section>;
+}
