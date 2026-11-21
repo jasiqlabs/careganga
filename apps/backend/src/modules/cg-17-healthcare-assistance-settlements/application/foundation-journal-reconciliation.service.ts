@@ -120,7 +120,10 @@ export class FoundationJournalReconciliationService{
      "AND debit.debit_minor=$9::bigint AND debit.credit_minor=0 "+
      "AND debit.branch_id IS NULL AND credit.account_id=$10 "+
      "AND credit.credit_minor=$9::bigint AND credit.debit_minor=0 "+
-     "AND credit.branch_id IS NULL",
+     "AND credit.branch_id IS NULL AND j.reversal_of_id IS NULL "+
+     "AND (SELECT count(*) FROM journal_line exact "+
+     "WHERE exact.root_realm_id=j.root_realm_id "+
+     "AND exact.journal_id=j.id)=2",
      [s.original_cg09_ref,a.realmId,s.effect_id,s.effect_key,
       s.effect_digest,year,s.service_local_date,expense,s.amount_minor,payable]);
     if(!ok.rowCount)
