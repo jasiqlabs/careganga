@@ -37,6 +37,10 @@ export class HrEnrollmentController{
  managers(@Headers("authorization")token:string,@Query("branch")branch:string){
   return this.hr.managerOptions(token,branch);
  }
+ @Get("role-options")
+ roles(@Headers("authorization")token:string,@Query("search")search?:string){
+  return this.hr.roleOptions(token,search??"");
+ }
  @Get("account-options")
  accounts(@Headers("authorization")token:string,@Query("search")search?:string){
   return this.hr.accountOptions(token,search??"");
