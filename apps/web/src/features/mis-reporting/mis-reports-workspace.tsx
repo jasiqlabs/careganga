@@ -153,8 +153,8 @@ export function MisReportsWorkspace(){
     throw Error("The original report response could not be verified.");
    if(version!==previewSeq.current)return;
    setResult(v);
-   setNotice(v.state==="PARTIAL"?"This audit source is partial or has more events. Narrow your dates before exporting.":
-    v.state==="EMPTY"?"No matching posted business records.":
+   setNotice(v.state==="PARTIAL"?"Only part of the original source is available or the result is truncated. Narrow the authorized filters before exporting.":
+    v.state==="EMPTY"?"No original records match the permitted report filters.":
     v.state==="SUPPRESSED"?"This result cannot be shown without exposing a small private group.":
     "Report loaded from authorized original records.");
   }catch(e){if(version===previewSeq.current)
