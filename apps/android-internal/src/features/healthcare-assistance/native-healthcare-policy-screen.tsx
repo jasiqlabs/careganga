@@ -241,12 +241,13 @@ export function NativeHealthcarePolicyScreen({token,canView,canManage,canReview,
    {canManage&&canView&&!!center&&!uncertain&&<View style={s.panel}>
     <Text style={s.heading}>{revision?"Revise approved support":"Configure support"}</Text>
     <Text style={s.note}>Service type</Text>
-    {KINDS.map(k=><View key={k}>{button(k,()=>setService(k),
+    {KINDS.map(k=><View key={k}>{button(k,()=>{
+       setService(k);if(k!=="CONSULTATION")setDoctor("");},
      busy||!!revision,service===k)}</View>)}
-    <Text style={s.note}>Doctor-specific policy (optional)</Text>
-    {button("Center-wide verified eligibility",()=>setDoctor(""),
+    {service==="CONSULTATION"&&<Text style={s.note}>Doctor-specific policy (optional)</Text>}
+    {service==="CONSULTATION"&&button("Center-wide verified eligibility",()=>setDoctor(""),
      busy||!!revision,doctor==="")}
-    {doctors.map(d=><View key={d.doctorRef}>
+    {service==="CONSULTATION"&&doctors.map(d=><View key={d.doctorRef}>
      {button(d.name,()=>setDoctor(d.doctorRef),
       busy||!!revision,doctor===d.doctorRef)}</View>)}
     {!!doctor&&<View style={s.panel}>
