@@ -210,8 +210,9 @@ export function PublicPartnerApplication({onExit,onContact}:{
      <Pressable accessibilityRole="button" disabled={busy} style={styles.primary}
       onPress={()=>void status()}><Text style={styles.primaryText}>
        {busy?"Checking…":"Check status"}</Text></Pressable>
-     {checked&&<Text>Application {checked.reference}: {checked.status.replaceAll("_"," ")}.
-      Independent Foundation verification is required.</Text>}
+     {checked&&<Text accessibilityLiveRegion="polite">Application {checked.reference}:
+      {" "}{checked.statusLabel??"Under Foundation review"}.
+      {" "}{checked.message??"The Foundation will contact you with the next step."}</Text>}
     </View>}
     {!!error&&<Text accessibilityRole="alert" style={styles.error}>{error}</Text>}
     {busy&&<ActivityIndicator accessibilityLabel="Checking current application"/>}
