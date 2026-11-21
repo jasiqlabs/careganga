@@ -393,6 +393,28 @@ checks.push(["Confirmed CG18 edit cannot leave stale Web drawer or native create
  internalCms.includes("setSelected(null);setDraft(null);setNewPage(null)")&&
  internalCms.includes('if(pending||uncertain){')&&
  internalCms.includes("same-key retry on this screen.")]);
+checks.push(["Original main CMS Web cannot abandon uncertain CG03 or page mutation key",
+ files.admin.includes("The previous original action may have committed")||
+  files.admin.includes("Resolve the previous original CMS request using its existing")&&
+ files.admin.includes("if(busy||pending||!review||reviewPassword.length<8)")&&
+ files.admin.includes("setSelected(null);setDraft(blank")&&
+ !files.admin.includes('setDraft(blank("HOME"));setPending(null);setPreview(false)')]);
+checks.push(["Original main and extended Web CG19 media uploads reuse exact first intent",
+ files.admin.includes("const mediaAttempt=useRef")&&
+ files.admin.includes("requestKey:attempt.key")&&
+ files.admin.includes('media/"+encodeURIComponent(attempt.uploadRef)')&&
+ files.admin.includes("old.fingerprint!==fingerprint")&&
+ files.adminExtended.includes("const mediaAttempt=useRef")&&
+ files.adminExtended.includes("requestKey:attempt.key")&&
+ files.adminExtended.includes('media/"+encodeURIComponent(attempt.uploadRef)')&&
+ files.adminExtended.includes("old.fingerprint!==fingerprint")]);
+checks.push(["Native CG19 media intent is bound to original page revision and placement",
+ internalMedia.includes("original.current.pageRef!==pageRef")&&
+ internalMedia.includes("original.current.revisionRef!==revisionRef")&&
+ internalMedia.includes("original.current.role!==role")&&
+ internalMedia.includes("original.current.order!==selectedChoice.order")&&
+ internalMedia.includes("if(original.current||key.current||intent||busy||uncertain)")&&
+ internalMedia.includes("Check the previous original CG19 upload before choosing another file.")]);
 checks.push(["Native CG18 media slots are original tappable choices, not technical index input",
  internalMedia.includes("positions.map((position,i)=>")&&
  internalMedia.includes('"Placement "+(i+1)')&&
