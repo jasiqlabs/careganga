@@ -179,7 +179,7 @@ contains(native+"features/mis-reporting/native-mis-problem.ts",["nativeMisProble
 for(const p of [
  "apps/android-public/app/index.tsx",
  "apps/web/src/app/(public)/page.tsx"
-].filter(exists)) {
+].filter(p=>existsSync(resolve(root,p)))) {
  const x=file(p);
  assert.ok(!x.includes("/api/v1/mis/")&&!x.includes("MisReportsWorkspace"),
   "Do not expose private MIS to public users: "+p);
