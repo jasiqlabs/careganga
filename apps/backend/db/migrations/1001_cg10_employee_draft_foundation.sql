@@ -47,7 +47,9 @@ CREATE TABLE hr_employee_application (
     REFERENCES cg03_case(id,realm_id) ON DELETE RESTRICT,
   CHECK(role_proposal_key IS NULL OR role_proposal_key ~ '^[a-z][a-z0-9.-]{1,79}$'),
   CHECK((cg03_case_ref IS NULL AND submitted_digest IS NULL)
-    OR (cg03_case_ref IS NOT NULL AND submitted_digest IS NOT NULL))
+    OR (cg03_case_ref IS NOT NULL AND submitted_digest IS NOT NULL)
+    OR (state='SUBMISSION_UNCONFIRMED' AND cg03_case_ref IS NULL
+         AND submitted_digest IS NOT NULL))
 );
 CREATE INDEX ix_hr_application_branch_state
   ON hr_employee_application(root_realm_id,proposed_branch_ref,state,created_at DESC,id DESC);
