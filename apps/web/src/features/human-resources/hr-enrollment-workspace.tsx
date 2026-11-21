@@ -3,7 +3,7 @@ import {useCallback,useEffect,useRef,useState,type FormEvent} from "react";
 import {HrEvidenceUploader} from "./hr-evidence-uploader";
 import {HrPrivateDetails} from "./hr-private-details";
 
-type Choice={label:string;branchRef?:string;departmentRef?:string;managerRef?:string;accountRef?:string};
+type Choice={label:string;branchRef?:string;departmentRef?:string;managerRef?:string;accountRef?:string;geography?:string};
 type RoleChoice={value:string;label:string;context:string};
 type Application={applicationRef:string;reference:string;name:string;designation:string;
  employmentType:string;branchRef:string;departmentRef:string|null;
@@ -295,7 +295,11 @@ export function HrEnrollmentWorkspace({canViewApps,canManage,canViewEmployees,ca
       onChange={e=>change("branchRef",e.target.value)}>
       <option value="">Choose branch</option>
       {branches.map(v=><option key={v.branchRef} value={v.branchRef}>{v.label}</option>)}
-     </select></label>
+     </select>
+     {form.branchRef&&<span style={{fontSize:12,color:"#475569",fontWeight:400}}>
+      Verified location: {branches.find(b=>b.branchRef===form.branchRef)?.geography||
+       "Location unavailable from current Foundation branch"}
+     </span>}</label>
     <label style={fieldStyle}>Department (optional)
      <select style={inputStyle} value={form.departmentRef}
       onChange={e=>change("departmentRef",e.target.value)}>
