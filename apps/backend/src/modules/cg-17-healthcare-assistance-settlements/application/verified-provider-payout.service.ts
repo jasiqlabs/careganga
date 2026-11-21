@@ -71,6 +71,47 @@ export class VerifiedProviderPayoutService{
    throw new NotFoundException({code:"CG17_PROVIDER_PAYOUT_APPROVED_CLAIM_REQUIRED"});
   return x;
  }
+ /** A bank debit can settle only the payable account actually credited
+  * by every immutable CG17 claim accrual. A generic Foundation liability
+  * disbursement is not evidence for an unrelated healthcare claim.
+  */
+ private async payableAccount(c:PoolClient,claim:Claim){
+  const expected=await c.query<{total:string}>(
+   "SELECT count(*)::text AS total FROM provider_settlement_line "+
+   "WHERE root_realm_id=$1 AND settlement_ref=$2 AND center_ref=$3",
+   [claim.root_realm_id,claim.id,claim.center_ref]);
+  const matched=await c.query<{account_ref:string;lines:string}>(
+   "SELECT credit.account_id::text AS account_ref,count(*)::text AS lines "+
+   "FROM provider_settlement_line line "+
+   "JOIN foundation_liability l ON l.root_realm_id=line.root_realm_id "+
+   "AND l.id=line.liability_ref AND l.center_ref=line.center_ref "+
+   "JOIN cg17_financial_effect e ON e.root_realm_id=l.root_realm_id "+
+   "AND e.id=line.original_effect_ref AND e.liability_ref=l.id "+
+   "AND e.effect_kind='LIABILITY_ACCRUAL' AND e.posting_state='POSTED' "+
+   "AND e.amount_minor=line.amount_minor AND e.source_digest=l.source_digest "+
+   "JOIN journal j ON j.id=e.original_cg09_ref "+
+   "AND j.root_realm_id=e.root_realm_id AND j.status='POSTED' "+
+   "AND j.source_owner='CG-09' AND j.posting_kind='GENERAL' "+
+   "AND j.reversal_of_id IS NULL AND j.source_ref=e.id "+
+   "AND j.immutable_source_event_key=e.idempotency_key "+
+   "AND j.immutable_payload_digest=e.source_digest "+
+   "AND j.posting_date=l.service_local_date "+
+   "JOIN journal_line credit ON credit.root_realm_id=j.root_realm_id "+
+   "AND credit.journal_id=j.id AND credit.branch_id IS NULL "+
+   "AND credit.debit_minor=0 AND credit.credit_minor=line.amount_minor "+
+   "WHERE line.root_realm_id=$1 AND line.settlement_ref=$2 "+
+   "AND line.center_ref=$3 AND "+
+   "(SELECT count(*) FROM journal_line exact "+
+   "WHERE exact.root_realm_id=j.root_realm_id AND exact.journal_id=j.id)=2 "+
+   "GROUP BY credit.account_id LIMIT 3",
+   [claim.root_realm_id,claim.id,claim.center_ref]);
+  if(BigInt(expected.rows[0]?.total??"0")<1n||
+   matched.rows.length!==1||
+   matched.rows[0].lines!==expected.rows[0].total)
+   throw new ConflictException({
+    code:"CG17_PROVIDER_PAYOUT_ORIGINAL_PAYABLE_ACCOUNT_UNAVAILABLE"});
+  return matched.rows[0].account_ref;
+ }
  private view(x:Claim){
   const total=BigInt(x.approved_total_minor),paid=BigInt(x.paid_minor);
   if(total<1n||paid<0n||paid>total)
@@ -112,7 +153,8 @@ export class VerifiedProviderPayoutService{
    if(claim.state==="SETTLED")
     return {...this.view(claim),bankDisbursements:[],
      protectedDestinationLabel:bank.maskedLabel,payoutHistory,complete:true};
-   const evidence=await this.cg09.options(c,a);
+   const payable=await this.payableAccount(c,claim);
+   const evidence=await this.cg09.options(c,a,payable);
    const outstanding=BigInt(claim.approved_total_minor)-BigInt(claim.paid_minor);
    const refs=evidence.bankDisbursements.map(x=>x.bankMatchRef);
    const used=refs.length?await c.query<{bank_reconciliation_ref:string}>(
@@ -160,7 +202,10 @@ export class VerifiedProviderPayoutService{
    }
    if(claim.state==="SETTLED")
     throw new ConflictException({code:"CG17_PROVIDER_PAYOUT_ALREADY_SETTLED"});
+   const payable=await this.payableAccount(c,claim);
    const proof=await this.cg09.verify(c,a,bankMatch);
+   if(proof.liabilityAccountRef!==payable)
+    throw new ConflictException({code:"CG17_PROVIDER_PAYOUT_PAYABLE_ACCOUNT_MISMATCH"});
    const amount=BigInt(proof.amountMinor),
     remaining=BigInt(claim.approved_total_minor)-BigInt(claim.paid_minor);
    if(amount<=0n||amount>remaining)
