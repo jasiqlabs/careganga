@@ -91,13 +91,16 @@ export function NativeCmsMediaUploader({token,pageRef,revisionRef,kind,sections,
  const availableRoles=[...new Set(choices.map(c=>c.role))];
  const selectedChoice=choices.find(c=>c.role===role&&c.order===Number(order));
  const mime=selectedChoice?.mime??[];
+ const positions=choices.filter(c=>c.role===role);
  useEffect(()=>{
-  if(!choices.some(c=>c.role===role)){
-   setRole(choices[0]?.role??"");
-   setOrder(String(choices[0]?.order??0));
-   setPicked(null);setIntent("");setUncertain(false);key.current="";
+  if(!choices.some(c=>c.role===role&&c.order===Number(order))){
+   const first=choices.find(c=>c.role===role)??choices[0];
+   setRole(first?.role??"");
+   setOrder(String(first?.order??0));
+   setPicked(null);setIntent("");setUncertain(false);setRights(false);
+   key.current="";original.current=null;
   }
- },[sections,role]);
+ },[sections,role,order]);
  const action=(title:string,fn:()=>void,blocked=false)=>
   <Pressable accessibilityRole="button" disabled={disabled||blocked}
    accessibilityState={{disabled:disabled||blocked}}
@@ -216,25 +219,35 @@ export function NativeCmsMediaUploader({token,pageRef,revisionRef,kind,sections,
   <View style={styles.row}>{availableRoles.map(x=><View key={x}>
    {action((role===x?"✓ ":"")+label(x),()=>{
     setRole(x);setOrder(String(choices.find(c=>c.role===x)?.order??0));
-    setPicked(null);setIntent("");setUncertain(false);key.current="";
+    setPicked(null);setIntent("");setUncertain(false);setRights(false);
+    key.current="";original.current=null;
    },busy||uncertain)}
   </View>)}</View>
   {!choices.length&&<Text style={styles.note}>
    Add a supported original media section/item before attaching files.</Text>}
-  {!!choices.length&&<Text style={styles.note}>
-   Valid positions for {label(role)}: {choices.filter(c=>c.role===role)
-    .map(c=>c.order).join(", ")||"None"}.
-   Gallery media type follows the selected authored item.</Text>}
+  {positions.length>0&&<>
+   <Text style={styles.heading}>Choose page placement</Text>
+   <View style={styles.row}>{positions.map((position,i)=>
+    <View key={position.role+"-"+position.order}>
+     {action((selectedChoice?.order===position.order?"✓ ":"")+
+      "Placement "+(i+1),()=>{
+      if(order===String(position.order))return;
+      setOrder(String(position.order));setPicked(null);setIntent("");
+      setUncertain(false);setRights(false);original.current=null;
+      key.current="";
+     },busy||uncertain)}
+    </View>)}</View>
+   <Text style={styles.note}>Each placement accepts the original section's
+    permitted photo, video or document type.</Text>
+  </>}
   {action(picked?"Chosen: "+picked.name:"Choose original file",()=>void pick(),
    busy||uncertain||!selectedChoice)}
   <TextInput accessibilityLabel="Media accessibility description"
    style={styles.input} value={alt} onChangeText={setAlt}
    maxLength={180} editable={!disabled&&!busy}
    placeholder="Describe this original image or document"/>
-  <TextInput accessibilityLabel="Editorial placement order"
-   style={styles.input} value={order} onChangeText={setOrder}
-   maxLength={3} keyboardType="numeric" editable={!disabled&&!busy}
-   placeholder="Placement order"/>
+  <Text style={styles.note}>Position is selected from available original
+   content sections, not entered as a technical number.</Text>
   {action((rights?"✓ ":"")+"Foundation has original publication rights",
    ()=>setRights(x=>!x),busy)}
   {action("Upload, scan and attach to unsaved draft",()=>void upload(),
