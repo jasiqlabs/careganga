@@ -92,6 +92,7 @@ export interface ModuleActionHandlers {
   openMis: () => void;
   openFinance: () => void;
   openBranches: () => void;
+  openHr: () => void;
   openChangePassword: () => void;
 }
 
@@ -209,6 +210,21 @@ export function getAuthorizedModules(
   // ----------------------------------------------------
   // SECTION 3: ORGANIZATION MANAGEMENT
   // ----------------------------------------------------
+
+  // CG-10 — real employee drafts, not CG-01 login provisioning or CG-11 payroll.
+  if (roleActions.includes("hr.applications.view")) {
+    list.push({
+      key:"hr",
+      title:"Human Resources",
+      shortLabel:"HR",
+      description:"Register and review employee drafts in your assigned Foundation branches.",
+      category:"ORGANIZATION MANAGEMENT",
+      iconName:"users",
+      iconBg:"#DCFCE7",
+      iconColor:"#166534",
+      onOpen:handlers.openHr
+    });
+  }
 
   // 7. Branches & registration
   if (roleActions.includes("foundation.branches.view")) {
