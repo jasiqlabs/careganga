@@ -11,7 +11,7 @@ type Fields={partnerType:Kind;applicantName:string;contactName:string;
  addressLine:string;districtName:string;stateName:string;pinCode:string;
  consentAccepted:boolean};
 type Sent=Fields&{requestKey:string};
-type Result={reference:string;status:string;receipt?:string};
+type Result={reference:string;status:string;receipt?:string;statusLabel?:string;message?:string};
 const categories:{code:Kind;label:string}[]=[
  {code:"HOSPITAL",label:"Hospital"},{code:"CLINIC",label:"Clinic"},
  {code:"DIAGNOSTIC_LAB",label:"Diagnostic lab"},
