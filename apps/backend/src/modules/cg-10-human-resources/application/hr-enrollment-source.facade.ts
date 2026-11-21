@@ -7,7 +7,7 @@ const ID=/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i;
 export type HrApplicationSnapshot={id:string;root_realm_id:string;revision_no:number;
  legal_name:string;designation:string;employment_type:string;
  proposed_branch_ref:string;department_ref:string|null;applicant_account_ref:string|null;
- proposed_manager_employee_ref:string|null;
+ proposed_manager_employee_ref:string|null;proposed_role_ref:string|null;
  hire_date:Date|string;created_by:string;state:string};
 export type HrFrozenSource={applicationRef:string;revisionRef:string;
  revisionNo:number;digest:string;proposerRef:string;source:HrApplicationSnapshot;
@@ -35,7 +35,7 @@ export class HrEnrollmentSourceFacade{
   const q=await tx.query<HrApplicationSnapshot>(
    "SELECT id,root_realm_id,revision_no,legal_name,designation,employment_type,"+
    "proposed_branch_ref,department_ref,applicant_account_ref,"+
-   "proposed_manager_employee_ref,hire_date,created_by,state "+
+   "proposed_manager_employee_ref,proposed_role_ref,hire_date,created_by,state "+
    "FROM hr_employee_application WHERE id=$1 AND root_realm_id=$2 FOR SHARE",
    [uuid(ref),actor.realmId]);
   const app=q.rows[0];
