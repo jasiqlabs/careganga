@@ -1,8 +1,7 @@
 import {useCallback,useEffect,useRef,useState} from "react";
-import {Pressable,StyleSheet,Text,View} from "react-native";
+import {Pressable,StyleSheet,Text,TextInput,View} from "react-native";
 import {careGangaTheme as t} from "../../../../../packages/design-tokens/src/index";
 import {identityRequest} from "../identity-access/http-client";
-import {NativeFinanceOptions} from "../finance-accounting/finance-native-source-kit";
 
 type Statement={
  month:string;state:string;approvedFoundationMinor:string;
@@ -16,14 +15,7 @@ const initialMonth=()=>{
  const d=new Date();
  return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0");
 };
-const monthChoices=()=>{
- const current=new Date();
- return Array.from({length:12},(_,index)=>{
-  const date=new Date(current.getFullYear(),current.getMonth()-index,1);
-  const value=date.getFullYear()+"-"+String(date.getMonth()+1).padStart(2,"0");
-  return {ref:value,label:date.toLocaleDateString("en-IN",{month:"long",year:"numeric"})};
- });
-};
+const MONTH=/^20[2-9]\\d-(0[1-9]|1[0-2])$/;
 const formatMoney=(value:string|undefined)=>{
  if(typeof value!=="string"||!/^-?\d{1,14}$/.test(value))return "Not confirmed";
  try{const v=BigInt(value),abs=v<0n?-v:v;
@@ -53,8 +45,8 @@ export function NativeOwnCenterMis({token,centerRef,onExpired}:{
  const load=useCallback(async()=>{
   const generation=++seq.current;
   setStatement(null);setError("");setLoading(true);
-  if(!ID.test(centerRef)){
-   setLoading(false);setError("Select an assigned verified center.");return;
+  if(!ID.test(centerRef)||!MONTH.test(month)||month>initialMonth()){
+   setLoading(false);setError("Select a valid settlement month up to the current month.");return;
   }
   try{
    const response=await identityRequest(
@@ -94,8 +86,10 @@ export function NativeOwnCenterMis({token,centerRef,onExpired}:{
   <Text accessibilityRole="header" style={styles.title}>My Foundation contribution</Text>
   <Text style={styles.sub}>Only your currently assigned center. Patient collections
    are not Foundation income.</Text>
-  <NativeFinanceOptions label="Settlement month" value={month}
-   options={monthChoices()} onChange={setMonth}/>
+  <Text style={styles.sub}>Settlement month (YYYY-MM)</Text>
+  <TextInput accessibilityLabel="Settlement month, year dash month"
+   value={month} maxLength={7} onChangeText={setMonth}
+   autoCorrect={false} placeholder="2026-11" style={styles.monthInput}/>
   <Pressable accessibilityRole="button" disabled={loading} onPress={()=>void load()}
    style={styles.button}><Text style={styles.link}>
     {loading?"Checking statement…":"Refresh statement"}</Text></Pressable>
@@ -123,6 +117,8 @@ const styles=StyleSheet.create({
   padding:12,justifyContent:"center",alignItems:"center"},
  link:{fontSize:14,fontWeight:"700",color:t.primary},
  error:{color:"#B91C1C",fontSize:12},
+ monthInput:{borderWidth:1,borderColor:t.border,borderRadius:10,
+  paddingHorizontal:12,paddingVertical:10,minHeight:48,fontSize:15,color:t.text},
  row:{gap:5,paddingVertical:7,borderBottomWidth:1,borderBottomColor:t.border},
  amount:{fontWeight:"800",fontSize:17,color:t.text}
 });
