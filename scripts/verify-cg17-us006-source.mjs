@@ -96,6 +96,18 @@ must("monthly",/saved\.proposed_by===a\.accountId/,
  "Approver cannot be proposer");
 must("monthly",/actualPaidMinor:c\.paid_minor/,
  "No invented settled amount");
+must("monthly",/if\(saved\.state==="PROPOSED"\)return/,
+ "Foundation Admin must handle proposed claim separately from approved settlement");
+must("monthly",/proposedClaimMinor:view\.approvedFoundationMinor/,
+ "Proposal amount has its own source field");
+must("monthly",/approvedFoundationMinor:"0",outstandingMinor:"0"/,
+ "No unapproved claim may be presented as approved or money due");
+must("web",/data\.state==="PROPOSED"\?data\.proposedClaimMinor/,
+ "Web Admin must show the pending proposal, not an approved amount");
+must("native",/source\.state==="PROPOSED"\?source\.proposedClaimMinor/,
+ "Internal Android must show the same original proposed amount");
+must("native",/\["APPROVED","PARTIALLY_SETTLED","SETTLED"\]\.includes\(source\.state\)/,
+ "Internal Android must never show money due before an approved claim");
 must("monthly",/patientCollectionNotFoundationIncome:true/,
  "Center patient collections must stay outside Foundation books");
 must("monthly",/patientCollectedVerifiedMinor/,
