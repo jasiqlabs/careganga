@@ -30,7 +30,7 @@ contains(backend+"app.module.ts",["MisReportingModule"]);
 contains(mis+"mis-reporting.module.ts",[
  "FinanceAccountingModule","PatientsAppointmentsModule","DocumentsNotificationsModule",
  "MisDashboardService","MisReportSourceService","MisSavedReportService",
- "MisReportRunService","MisReportScheduleService"
+ "MisReportRunService","MisReportScheduleService","MisReportScheduleWorker"
 ]);
 const caps=contains(backend+"modules/cg-01-identity-access/domain/capability-catalog.ts",[
  "mis.dashboard.view","mis.reports.view","mis.reports.manage",
@@ -46,14 +46,15 @@ contains(mis+"http/mis-dashboard.controller.ts",[
 ]);
 const source=contains(mis+"application/mis-report-source.service.ts",[
  "parseSafeReport","suppressAppointmentCells","FINANCE_POSTED_LEDGER",
- "FINANCE_POSTED_SUMMARY","FINANCE_POSTED_TREND","APPOINTMENT_STATUS",
+ "FINANCE_POSTED_SUMMARY","FINANCE_POSTED_TREND","FINANCE_POSTED_GROUPED",
+ "APPOINTMENT_STATUS","PLATFORM_AUDIT_ACTIVITY","DIAGNOSTICS_CATALOG_SUMMARY",
  '"mis.reports.view"',"this.finance","this.patients"
 ]);
 assert.ok(!/SELECT\s+.*FROM/i.test(source),"Report templates may not run arbitrary SQL");
 const originals=contains(
  backend+"modules/cg-09-finance-accounting/application/finance-reports.service.ts",[
  "requireFinanceReportBranch","j.status='POSTED'","sourceCutoffKind",
- "monthlyMisTrend"
+ "monthlyMisTrend","groupedMis","scheduledSummary"
 ]);
 contains(backend+"modules/cg-15-patients-appointments/application/patient-admin-overview.service.ts",[
  "async readMisTotals","async readMisOptions","assertFoundationCenter",
@@ -114,7 +115,7 @@ contains(native+"features/mis-reporting/native-mis-saved.tsx",[
 contains(mis+"application/mis-report-run.service.ts",[
  "cg20_report_run","this.files.issueFromReport","this.files.read",
  "validateSource","MIS_RUN_LIMIT","UNKNOWN",
- "if(!isNew&&row.state!==\"QUEUED\")","state=\u0027RUNNING\u0027"
+ "row.state===\"UNKNOWN\"","15 minutes","postDigest"
 ]);
 contains(cg19+"application/mis-protected-artifact.service.ts",[
  "cg19_mis_report_artifact","writeVerifiedGeneratedReport",
@@ -133,17 +134,31 @@ contains(web+"features/mis-reporting/mis-report-exports.tsx",[
 contains(native+"features/mis-reporting/native-mis-exports.tsx",[
  "expo-file-system","file.preview","file?.delete","Protected file"
 ]);
-// US-005: safe metadata only; NOT a claim of automatic delivery.
+// US-005: real authorized CG09 posted finance summaries and verified
+// CG19 IN_APP notices only. Other sources/channels are NOT enabled.
 const schedules=contains(mis+"application/mis-report-schedule.service.ts",[
- "cg20_report_schedule","'PAUSED'","activationAvailable:false",
- "MIS_SCHEDULE_DELIVERY_NOT_READY","next_due_utc"
+ "cg20_report_schedule","activationAvailable:true","'ACTIVE'",
+ "saved_revision","annual_month","nextScheduleOccurrence",
+ "async edit(","async resume(","async pause(","next_due_utc"
 ]);
-assert.ok(!/new\s+(?:Interval|Cron|BackgroundWorker)/.test(schedules));
+contains(mis+"infrastructure/mis-report-schedule.worker.ts",[
+ "OnModuleInit","SKIP LOCKED","previewScheduledFinance",
+ "issueScheduledFinance","publishReady","saved_revision","CURRENT_SCOPE_CHANGED"
+]);
+contains(cg19+"application/mis-report-notice.service.ts",[
+ "publishReady","CG20_MIS_REPORT","cg20_report_delivery_attempt",
+ "requireScheduledFinanceReportBranch","CONFIRMED"
+]);
+contains(cg19+"application/notification.service.ts",[
+ "currentMisNoticeScope","n.source_kind<>'CG20_MIS_REPORT'","scope.branches"
+]);
 contains(web+"features/mis-reporting/mis-report-schedules.tsx",[
- "Automatic delivery is not enabled","Save schedule as paused"
+ "Create active in-app schedule","Resume with current permissions","Edit",
+ "deliveryState"
 ]);
 contains(native+"features/mis-reporting/native-mis-schedules.tsx",[
- "Automatic delivery is not enabled","Save as paused schedule"
+ "Create active in-app schedule","Resume with current permissions","Edit schedule",
+ "deliveryState"
 ]);
 // Actual PostgreSQL migration is a single bounded metadata definition.
 const sql=contains("apps/backend/db/migrations/2001_cg20_saved_reports_runs_and_schedules.sql",[
@@ -206,8 +221,8 @@ const pairedScreens=[
   ["PDF","XLSX","CSV","runs"]],
  [web+"features/mis-reporting/mis-report-schedules.tsx",
   native+"features/mis-reporting/native-mis-schedules.tsx",
-  ["Save schedule as paused","Pause this schedule","history"],
-  ["Save as paused schedule","Pause this schedule","history"]]
+  ["Create active in-app schedule","Resume with current permissions","deliveryState"],
+  ["Create active in-app schedule","Resume with current permissions","deliveryState"]]
 ];
 for(const [webPath,nativePath,webTerms,nativeTerms] of pairedScreens){
  contains(webPath,webTerms);
@@ -232,10 +247,12 @@ const imports=[
  mis+"application/mis-saved-report.service.ts",
  mis+"application/mis-report-run.service.ts",
  mis+"application/mis-report-schedule.service.ts",
+ mis+"infrastructure/mis-report-schedule.worker.ts",
  mis+"http/mis-dashboard.controller.ts",
  mis+"http/mis-reports.controller.ts",
  mis+"mis-reporting.module.ts",
  cg19+"application/mis-protected-artifact.service.ts",
+ cg19+"application/mis-report-notice.service.ts",
  ...pairedScreens.flatMap(pair=>pair.slice(0,2)),
  web+"app/(admin)/admin/mis/page.tsx",
  native+"features/mis-reporting/native-mis-workspace-screen.tsx",
@@ -281,6 +298,7 @@ for(const route of [
  "runs/[runRef]/route.ts","runs/[runRef]/download/route.ts",
  "schedules/route.ts","schedules/[scheduleRef]/pause/route.ts",
  "schedules/[scheduleRef]/resume/route.ts",
+ "schedules/[scheduleRef]/edit/route.ts",
  "schedules/[scheduleRef]/history/route.ts"
 ]){
  file(web+"app/api/mis/reports/"+route);
