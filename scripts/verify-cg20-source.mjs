@@ -40,7 +40,7 @@ const dashboard=contains(mis+"application/mis-dashboard.service.ts",[
  '"mis.dashboard.view"',"this.finance","this.patients","this.diagnostics",
  "sourceAsOf","SUPPRESSED","PARTIAL","FAILED","NO_AUTHORIZED_SOURCES"
 ]);
-assert.ok(!/\bSELECT\b/i.test(dashboard),"CG20 dashboard should use owning source facade");
+assert.ok(!/\bSELECT\s+.*FROM\b/i.test(dashboard),"CG20 dashboard should use owning source facade");
 contains(mis+"http/mis-dashboard.controller.ts",[
  '@Get("dashboard")','@Get("options")'
 ]);

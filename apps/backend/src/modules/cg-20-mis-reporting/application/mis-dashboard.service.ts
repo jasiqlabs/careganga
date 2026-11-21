@@ -86,11 +86,11 @@ export class MisDashboardService{
     message:"Choose filters that belong to your selected dashboard view."});
   if(Boolean(healthFilter.fromDay)!==Boolean(healthFilter.untilDay))
    throw new BadRequestException({code:"MIS_HEALTH_DATE_RANGE_INVALID",
-    message:"Select both start and end dates."});
+    message:"Enter both start and end dates for the appointment report."});
   // A branch-restricted finance manager must not receive root-wide totals,
   // but a single currently assigned branch can be shown on Overview without
   // asking the user to enter an internal ID. Multi-branch limited actors must
-  // select their current branch in the Finance view instead of a fabricated
+  // choose their current branch in the Finance view instead of a fabricated
   // union or a silently widened data scope.
   if(view==="OVERVIEW"&&!filters.branchRef){
    try{

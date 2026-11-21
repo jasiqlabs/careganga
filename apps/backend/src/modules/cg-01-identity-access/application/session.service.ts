@@ -1,4 +1,4 @@
-import { ForbiddenException, HttpException, HttpStatus, Inject, Injectable, UnauthorizedException } from "@nestjs/common";
+import { BadRequestException, ForbiddenException, HttpException, HttpStatus, Inject, Injectable, UnauthorizedException } from "@nestjs/common";
 import { createHash, createHmac, randomBytes } from "node:crypto";
 import { maybePruneAuthThrottle } from "../infrastructure/throttle-maintenance";
 import type { Pool,PoolClient } from "pg";
