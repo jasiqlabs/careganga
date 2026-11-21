@@ -220,9 +220,14 @@ export class FoundationLiabilityCorrectionService{
   if(!raw||typeof raw!=="object"||Array.isArray(raw))
    throw new BadRequestException({code:"CG17_CORRECTION_REQUEST_INVALID"});
   const x=raw as Record<string,unknown>;
-  if(Object.keys(x).length!==5||
+  if(![5,7].includes(Object.keys(x).length)||
+     Object.keys(x).some(k=>!["requestKey","financialYearRef",
+      "postingDate","reason","currentPassword","bankMatchRef",
+      "payerMatched"].includes(k))||
      !["requestKey","financialYearRef","postingDate","reason",
        "currentPassword"].every(k=>k in x)||
+     (Object.keys(x).length===7&&
+      (!("bankMatchRef" in x)||!("payerMatched" in x)))||
      typeof x.reason!=="string"||x.reason.trim().length<12||
      x.reason.trim().length>300||
      typeof x.currentPassword!=="string"||x.currentPassword.length<8||
@@ -239,15 +244,40 @@ export class FoundationLiabilityCorrectionService{
    const a=await this.actor(c,token);
    await this.centers.assertFoundationCenter(c,a,center,
     "healthcare.assistance.liabilities.manage",false);
+   // Lock the provider claim before the source liability, matching the
+   // original payout writer; both corrections and payouts serialize on it.
+   const claim=await this.claim(c,a.realmId,center,liability,true);
+   if(!!claim !== (Object.keys(x).length===7))
+    throw new BadRequestException({code:"CG17_CORRECTION_CLAIM_PROOF_REQUIRED"});
    const v=await this.original(c,a.realmId,center,liability,true);
    const originalJournal=v.original_journal_ref;
    if(!originalJournal||v.posting_state!=="POSTED"||
      !v.original_poster||v.original_poster===a.accountId)
     throw new ConflictException({code:"CG17_CORRECTION_INDEPENDENT_ORIGINAL_REQUIRED"});
-   const hash=digest(["CG17_ORIGINAL_LIABILITY_REVERSAL_V1",a.realmId,
-    center,liability,originalJournal,v.source_digest,v.amount_minor,
-    year,postingDate,reason,a.accountId,key]);
-   const existing=await this.prior(c,a.realmId,liability);
+   if(claim&&claim.proposed_by===a.accountId)
+    throw new ConflictException({code:"CG17_CORRECTION_INDEPENDENT_CLAIM_REVIEWER"});
+   const balance=claim?await this.claimBalances(c,a.realmId,claim,v.amount_minor):null;
+   const needed=balance?.need??"0";
+   const bankMatch=x.bankMatchRef;
+   const payerMatched=x.payerMatched;
+   if(claim){
+    if(BigInt(needed)>0n){
+     if(typeof bankMatch!=="string"||!ID.test(bankMatch)||
+        payerMatched!==true)
+      throw new ConflictException({code:"CG17_CORRECTION_VERIFIED_BANK_RECOVERY_REQUIRED"});
+    }else if(bankMatch!==null||payerMatched!==false)
+     throw new BadRequestException({code:"CG17_CORRECTION_NO_BANK_MOVEMENT_REQUIRED"});
+   }
+   const hash=claim?
+    digest(["CG17_CLAIMED_LIABILITY_REVERSAL_V1",a.realmId,
+     center,liability,claim.id,originalJournal,v.source_digest,v.amount_minor,
+     needed,bankMatch,year,postingDate,reason,a.accountId,key]):
+    digest(["CG17_ORIGINAL_LIABILITY_REVERSAL_V1",a.realmId,
+     center,liability,originalJournal,v.source_digest,v.amount_minor,
+     year,postingDate,reason,a.accountId,key]);
+   const existing=claim?
+    await this.claimedPrior(c,a.realmId,liability):
+    await this.prior(c,a.realmId,liability);
    if(existing){
     if(existing.reviewed_by_account!==a.accountId||
       existing.request_digest!==hash)
@@ -255,13 +285,19 @@ export class FoundationLiabilityCorrectionService{
     return {status:"REVERSED",replayed:true,
      corrected:true,reversalJournalRef:existing.reversal_journal_ref};
    }
-   if(await this.claimed(c,a.realmId,liability))
-    throw new ConflictException({code:"CG17_CORRECTION_CLAIM_REQUIRES_RECONCILIATION"});
    if(await this.reversed(c,a.realmId,originalJournal))
     throw new ConflictException({code:"CG17_CORRECTION_SOURCE_ALREADY_REVERSED"});
    // The existing CG01 password owner validates this *current* password.
    // Missing/invalid proof never writes an offset journal or audit row.
    await this.sessions.requireFreshFoundationRootProof(c,a,currentPassword);
+   let recoveryProof:{
+    bankMatchRef:string;journalRef:string;amountMinor:string}|null=null;
+   if(claim&&BigInt(needed)>0n){
+    const payable=await this.cg09.payableAccountForAccrual(
+     c,a,originalJournal,v.amount_minor);
+    recoveryProof=await this.recovery.verifyRecovery(
+     c,a,bankMatch as string,payable,needed);
+   }
    const effect=await c.query<{id:string}>(
     "INSERT INTO cg17_financial_effect(root_realm_id,liability_ref,"+
     "effect_kind,source_kind,source_ref,source_revision,idempotency_key,"+
@@ -280,17 +316,33 @@ export class FoundationLiabilityCorrectionService{
     [a.realmId,effect.rows[0].id,reversal]);
    if(posted.rowCount!==1)throw new ConflictException({
     code:"CG17_CORRECTION_EFFECT_CONCURRENT_CHANGE"});
-   await c.query(
-    "INSERT INTO cg17_liability_correction(root_realm_id,center_ref,"+
-    "liability_ref,original_effect_ref,reversal_effect_ref,"+
-    "original_journal_ref,reversal_journal_ref,reviewed_by_account,"+
-    "request_key,request_digest,reason,password_verified_at) "+
-    "VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,now())",
-    [a.realmId,center,liability,v.effect_ref,effect.rows[0].id,
-     originalJournal,reversal,a.accountId,key,hash,reason]);
+   if(claim){
+    await c.query(
+     "INSERT INTO cg17_provider_claim_correction("+
+     "root_realm_id,center_ref,settlement_ref,liability_ref,"+
+     "original_effect_ref,reversal_effect_ref,original_journal_ref,"+
+     "reversal_journal_ref,amount_minor,recovery_minor,recovery_bank_ref,"+
+     "recovery_journal_ref,recovery_payer_attested,reviewed_by_account,"+
+     "request_key,request_digest,reason,password_verified_at) "+
+     "VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,now())",
+     [a.realmId,center,claim.id,liability,v.effect_ref,effect.rows[0].id,
+      originalJournal,reversal,v.amount_minor,needed,
+      recoveryProof?.bankMatchRef??null,recoveryProof?.journalRef??null,
+      !!recoveryProof,a.accountId,key,hash,reason]);
+   }else{
+    await c.query(
+     "INSERT INTO cg17_liability_correction(root_realm_id,center_ref,"+
+     "liability_ref,original_effect_ref,reversal_effect_ref,"+
+     "original_journal_ref,reversal_journal_ref,reviewed_by_account,"+
+     "request_key,request_digest,reason,password_verified_at) "+
+     "VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,now())",
+     [a.realmId,center,liability,v.effect_ref,effect.rows[0].id,
+      originalJournal,reversal,a.accountId,key,hash,reason]);
+   }
    return {status:"REVERSED",replayed:false,corrected:true,
     reversalJournalRef:reversal,
-    notice:"The independent CG09 offset has been posted. No bank payment or patient refund was generated."};
+    verifiedRecoveredMinor:needed,
+    notice:"The source correction is recorded. Any required bank recovery was already independently verified in CG09; no bank transfer or patient refund was initiated."};
   });
  }
 }
