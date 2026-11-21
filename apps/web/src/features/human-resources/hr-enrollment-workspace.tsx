@@ -58,6 +58,7 @@ export function HrEnrollmentWorkspace({canManage}:{canManage:boolean}){
    setApps(records.items);setHasMore(records.hasMore);setBranches(opts.items);
    setOffset(page);setStatus(null);
   }catch(e){
+   setApps([]);setHasMore(false);setBranches([]);
    setStatus({message:e instanceof Error?e.message:"Employee data cannot be loaded",error:true});
   }finally{setLoading(false);}
  },[]);
