@@ -167,3 +167,22 @@ BEGIN
  END IF;
  RETURN NULL;
 END $cg09$;
+
+-- Defense in depth: an original liability can never be claimed after its
+-- independent CG09 offset, even through a direct SQL insertion.
+CREATE FUNCTION cg17_block_claim_after_correction()
+ RETURNS trigger LANGUAGE plpgsql AS $cg17$
+BEGIN
+ IF EXISTS(
+   SELECT 1 FROM cg17_liability_correction correction
+   WHERE correction.root_realm_id=NEW.root_realm_id
+     AND correction.liability_ref=NEW.liability_ref
+ ) THEN
+  RAISE EXCEPTION 'A reversed liability cannot be claimed again'
+   USING ERRCODE='P1719';
+ END IF;
+ RETURN NEW;
+END $cg17$;
+CREATE TRIGGER cg17_no_claim_for_reversed_liability
+ BEFORE INSERT ON provider_settlement_line
+ FOR EACH ROW EXECUTE FUNCTION cg17_block_claim_after_correction();
