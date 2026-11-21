@@ -1,5 +1,6 @@
 import {cookies} from "next/headers";
 import {NextRequest,NextResponse} from "next/server";
+import {safeMisBffError} from "./safe-mis-bff-error";
 const noStore={"Cache-Control":"private, no-store"};
 const ID=/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 export const validMisRef=(v:string)=>ID.test(v);
@@ -31,15 +32,17 @@ export async function privateMisProxy(request:NextRequest,path:string,
   const res=await fetch(url,{method,cache:"no-store",signal:AbortSignal.timeout(12500),
    headers:{Authorization:"Bearer "+token,...(body!==undefined?
     {"Content-Type":"application/json"}:{})},body});
-  if(!res.ok)return NextResponse.json({message:
-   res.status===401?"Sign in again to manage reports.":
+  if(!res.ok){
+   const fallback=res.status===401?"Sign in again to manage reports.":
    res.status===403?"Your role or source access no longer allows this action.":
    res.status===404?"This saved report is no longer available.":
    res.status===409?"This report has changed. Refresh it before editing.":
    res.status===400?"Choose a valid report name, source and filters.":
-   "The report outcome could not be confirmed. Refresh its current status."},{
-   status:[400,401,403,404,409,413,429].includes(res.status)?res.status:503,
-   headers:noStore});
+   "The report outcome could not be confirmed. Refresh its current status.";
+   return NextResponse.json({message:await safeMisBffError(res,fallback)},{
+    status:[400,401,403,404,409,413,429].includes(res.status)?res.status:503,
+    headers:noStore});
+  }
   return NextResponse.json(await res.json(),{headers:noStore});
  }catch{
   return NextResponse.json({message:"Could not confirm this report request. Refresh before retrying."},
