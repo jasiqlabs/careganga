@@ -393,6 +393,12 @@ checks.push(["Confirmed CG18 edit cannot leave stale Web drawer or native create
  internalCms.includes("setSelected(null);setDraft(null);setNewPage(null)")&&
  internalCms.includes('if(pending||uncertain){')&&
  internalCms.includes("same-key retry on this screen.")]);
+checks.push(["After a confirmed Web CG03 CMS review, busy-state inbox refresh is allowed but no uncertain new action",
+ files.admin.includes("async function showInbox(afterConfirmedDecision=false)")&&
+ files.admin.includes("if(busy&&!afterConfirmedDecision)return;")&&
+ files.admin.includes("if(pending&&!afterConfirmedDecision)")&&
+ files.admin.includes("await showInbox(true);await refresh();")&&
+ files.admin.includes("if(busy||pending||!review||reviewPassword.length<8)")]);
 checks.push(["Original main CMS Web cannot abandon uncertain CG03 or page mutation key",
  files.admin.includes("Resolve the previous original CMS request using its existing")&&
  files.admin.includes("if(busy||pending||!review||reviewPassword.length<8)")&&
