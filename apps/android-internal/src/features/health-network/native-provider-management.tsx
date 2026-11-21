@@ -8,6 +8,7 @@ import {identityRequest} from "../identity-access/http-client";
 import {NativeHealthCenterEditor,blankCenter,type CenterDraft}
  from "./native-health-center-editor";
 import {NativeHealthEvidenceUploader} from "./native-health-evidence-uploader";
+import {NativeCenterContentPublisher} from "./native-center-content-publisher";
 type Provider={providerCode:string;legalName:string;providerType:string;
  contactName:string;contactPhone:string;contactEmail:string;registrationRef:string};
 type Row={providerRef:string;code:string;name:string;type:string;status:string;
@@ -299,6 +300,8 @@ export function NativeProviderManagement({token,onExpired,onExit,canManage,
    {uncertain&&<Text style={styles.error}>The last request may have committed.
     Refresh the original provider before retrying.</Text>}
    {loading&&<ActivityIndicator accessibilityLabel="Loading Foundation providers"/>}
+   {canPublish&&editing==="none"&&
+    <NativeCenterContentPublisher token={token} onExpired={onExpired}/>}
    {editing==="none"&&<View style={styles.panel}>
     <Text style={styles.heading}>Search original providers</Text>
     {input("Search by provider name or code",search,setSearch,80)}
