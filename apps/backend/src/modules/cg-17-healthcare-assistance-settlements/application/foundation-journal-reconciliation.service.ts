@@ -69,8 +69,7 @@ export class FoundationJournalReconciliationService{
   return {liabilityRef:s.id,amountMinor:s.amount_minor,
    currency:"INR" as const,postingDate:s.service_local_date,
    postingState:s.posting_state,
-   foundationJournalPosted:s.posting_state==="POSTED"&&!!s.original_cg09_ref,
-   providerSettled:false};
+   foundationJournalPosted:s.posting_state==="POSTED"&&!!s.original_cg09_ref};
  }
  async options(token:string,centerRaw:string,liabilityRaw:string){
   const center=id(centerRaw),liability=id(liabilityRaw);
