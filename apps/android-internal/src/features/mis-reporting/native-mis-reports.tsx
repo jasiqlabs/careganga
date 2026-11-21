@@ -19,7 +19,7 @@ type Option={ref:string;name:string};
 type Catalog={templates:Template[];finance:{ready:boolean;state?:"AVAILABLE"|"ACCESS_RESTRICTED"|"SOURCE_UNAVAILABLE";years:Option[];branches:Option[];
  allBranches:boolean};appointments:{ready:boolean;state?:"AVAILABLE"|"ACCESS_RESTRICTED"|"SOURCE_UNAVAILABLE";centers:Option[];complete:boolean};
  capabilities:{manage:boolean;export:boolean;schedule:boolean}};
-type Preview={state:string;kind:Kind;label:string;
+type Preview={state:string;kind:Kind;view:"TABLE"|"SUMMARY"|"CHART"|"PIVOT";label:string;
  rows:Record<string,string>[];columns:{key:string;label:string;unit?:string}[];
  nextOffset:number|null;sourceAsOf?:string;sourceReadAt:string;
  explanation:string;scopeLabel:string};
@@ -187,9 +187,9 @@ export function NativeMisReports({token,onExpired}:{token:string;onExpired:()=>v
       state:"AVAILABLE",windowLabel:"Last six calendar months",
       points:preview.rows.map(r=>({month:r.month??"",
        incomeMinor:r.incomeMinor??"0",expenseMinor:r.expenseMinor??"0"}))}}/>}
-    {preview.kind==="FINANCE_POSTED_GROUPED"&&
+    {preview.view==="CHART"&&preview.kind==="FINANCE_POSTED_GROUPED"&&
      <NativeMisGroupedFinanceChart rows={preview.rows.map(x=>({groupLabel:x.groupLabel??"",debitMinor:x.debitMinor??"0",creditMinor:x.creditMinor??"0"}))}/>}
-    {preview.kind==="APPOINTMENT_STATUS"&&
+    {preview.view==="CHART"&&preview.kind==="APPOINTMENT_STATUS"&&
      <NativeMisAppointmentDistribution metrics={preview.columns.map(c=>({
       key:c.key,label:c.label,unit:c.unit??"COUNT",
       value:preview.rows[0]?.[c.key]??"0"}))}/>} 
