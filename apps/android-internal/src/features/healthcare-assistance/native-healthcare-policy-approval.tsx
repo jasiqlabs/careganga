@@ -8,7 +8,7 @@ type Case={caseRef:string;reference:string;title:string;
  status:string;revision:number};
 type Detail={caseRef:string;reference:string;title:string;status:string;
  revision:number;source:{validFrom:string;validUntil:string;
- capMinor:string;percentBasisPoints:number;state:string}};
+ capMinor:string;percentBasisPoints:number|null;fixedMinor:string|null;service:string;mode:string;state:string}};
 type Policy={revisionRef:string;reviewCaseRef:string|null;
  reviewStatus:string|null;status:string;serviceKind:string;
  capMinor:string;percentBasisPoints:number|null};
@@ -92,8 +92,8 @@ export function NativeHealthcarePolicyApproval({token,canManage,canReview,
    password.length<8||busy||uncertain)return;
   Alert.alert("Confirm independent CG03 review",
    action==="APPROVE"?
-    "Approve this original 100% policy for separate Foundation finalization?":
-    "Reject original 100% support? No patient award becomes effective.",[
+    "Approve this protected healthcare contribution for separate Foundation finalization?":
+    "Reject this protected contribution? No patient award becomes effective.",[
     {text:"Cancel",style:"cancel"},
     {text:action==="APPROVE"?"Approve":"Reject",onPress:()=>{
      if(!detail)return;
@@ -101,7 +101,7 @@ export function NativeHealthcarePolicyApproval({token,canManage,canReview,
       body:{requestKey:Crypto.randomUUID(),expectedRevision:detail.revision,
        action,remarks:remarks.trim(),currentPassword:password},
       label:action==="APPROVE"?"Independent decision recorded. Owner finalization remains required.":
-       "Policy exception rejected. No full support is effective."};
+       "Protected contribution rejected. No unapproved benefit is effective."};
      last.current=attempt;void send(attempt);
     }}
    ]);
@@ -109,7 +109,7 @@ export function NativeHealthcarePolicyApproval({token,canManage,canReview,
  function activate(policy:Policy){
   if(!canManage||!policy.reviewCaseRef||policy.reviewStatus!=="PENDING_OWNER"||
    password.length<8||busy||uncertain)return;
-  Alert.alert("Finalize protected full coverage?",
+  Alert.alert("Finalize protected healthcare contribution?",
    "This is a separate owner action after a different protected CG03 reviewer. "+
    "Earlier assistance remains until finalization succeeds.",[
     {text:"Cancel",style:"cancel"},
@@ -117,7 +117,7 @@ export function NativeHealthcarePolicyApproval({token,canManage,canReview,
      if(!policy.reviewCaseRef)return;
      const attempt={url:"/api/v1/healthcare-assistance/policies/cases/"+
       policy.reviewCaseRef+"/activate",body:{currentPassword:password},
-      label:"Genuine CG03-approved full policy finalized. "+
+      label:"Genuine independently reviewed contribution policy finalized. "+
        "Patient eligibility remains independently required."};
      last.current=attempt;void send(attempt);
     }}
@@ -127,9 +127,9 @@ export function NativeHealthcarePolicyApproval({token,canManage,canReview,
   p.reviewStatus==="PENDING_OWNER"&&p.reviewCaseRef);
  if(!canReview&&!canManage)return null;
  return <View style={s.panel}>
-  <Text style={s.heading}>Exceptional full-support approval</Text>
-  <Text style={s.body}>100% assistance is never activated by submitting a
-   policy. Genuine CG03 independent protected review and separate owner
+  <Text style={s.heading}>Protected healthcare contribution approval</Text>
+  <Text style={s.body}>Full consultation and pharmacy, nursing or OT support
+   are not activated by submission. Independent protected CG03 review and separate owner
    finalization are both required.</Text>
   {!!message&&<Text accessibilityRole="alert" style={s.notice}>{message}</Text>}
   <Text style={s.label}>Current account password for protected action</Text>
@@ -155,7 +155,10 @@ export function NativeHealthcarePolicyApproval({token,canManage,canReview,
    </View>)}
    {detail&&<View style={s.row}>
     <Text style={s.heading}>Review {detail.reference}</Text>
-    <Text style={s.body}>Support {(detail.source.percentBasisPoints/100).toFixed(2)}%
+    <Text style={s.body}>{detail.source.service} support:
+      {" "}{detail.source.mode==="PERCENT"&&detail.source.percentBasisPoints!==null?
+       (detail.source.percentBasisPoints/100).toFixed(2)+"%":
+       cash(detail.source.fixedMinor)}
      {" · Cap "+cash(detail.source.capMinor)}. Valid
      {" "+new Date(detail.source.validFrom).toLocaleDateString("en-IN")} to
      {" "+new Date(detail.source.validUntil).toLocaleDateString("en-IN")}.</Text>
@@ -167,7 +170,7 @@ export function NativeHealthcarePolicyApproval({token,canManage,canReview,
       editable={!busy&&!uncertain} onChangeText={setRemarks}/>
      {button("Approve for separate owner finalization",
       ()=>decide("APPROVE"),busy||uncertain||password.length<8)}
-     {button("Reject original full-support policy",
+     {button("Reject original contribution policy",
       ()=>decide("REJECT"),busy||uncertain||password.length<8)}
     </>}
    </View>}
