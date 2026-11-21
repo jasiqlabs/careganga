@@ -51,10 +51,12 @@ const files=[
 ];
 for(const p of files){
  const source=read(p);
- const parsed=ts.createSourceFile(p,source,ts.ScriptTarget.Latest,true,
-  p.endsWith(".tsx")?ts.ScriptKind.TSX:ts.ScriptKind.TS);
- assert.equal(parsed.parseDiagnostics.length,0,p+": "+
+ if(!p.endsWith(".sql")){
+  const parsed=ts.createSourceFile(p,source,ts.ScriptTarget.Latest,true,
+   p.endsWith(".tsx")?ts.ScriptKind.TSX:ts.ScriptKind.TS);
+  assert.equal(parsed.parseDiagnostics.length,0,p+": "+
   parsed.parseDiagnostics.map(x=>ts.flattenDiagnosticMessageText(x.messageText," ")).join("; "));
+ }
  assert.doesNotMatch(source,/^(<{7}|={7}|>{7})/m,p+": merge conflict");
 }
 const sql04=read("apps/backend/db/migrations/1604_cg16_clinical_order_and_custody_sources.sql");
