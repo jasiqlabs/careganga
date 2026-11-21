@@ -165,8 +165,9 @@ export class ClinicalLabGeneratedResultService{
     throw new NotFoundException({code:"LAB_RESULT_ORDER_NOT_READY"});
    const original=await this.lines(c,a.realmId,order);
    const latest=await c.query<{
-    id:string;result_state:string;source_key:string;operator_account_ref:string}>(
-    "SELECT id,result_state,source_key,operator_account_ref "+
+    id:string;result_state:string;source_key:string;operator_account_ref:string;
+    corrects_revision_ref:string|null}>(
+    "SELECT id,result_state,source_key,operator_account_ref,corrects_revision_ref "+
     "FROM lab_result_revision WHERE root_realm_id=$1 AND order_ref=$2 "+
     "ORDER BY version_no DESC LIMIT 1",
     [a.realmId,order]);
@@ -186,9 +187,32 @@ export class ClinicalLabGeneratedResultService{
       unit:x.unit_text,observation:x.observation_text
      }))};
    }
-   return {canEnter:orderRow.rows[0].status==="PROCESSING"&&
-    (!row||resume!==null),
-    reportReady:orderRow.rows[0].status==="RESULT_READY",resume,
+   let previousReleaseRef:string|null=null;
+   let resumeCorrection:Correction|null=null;
+   if(row?.result_state==="RESULT_READY"&&
+    orderRow.rows[0].status==="RESULT_READY"){
+    const prior=await c.query<{id:string}>(
+     "SELECT id FROM cg16_lab_report_release WHERE root_realm_id=$1 "+
+     "AND order_ref=$2 AND result_revision_ref=$3",
+     [a.realmId,order,row.id]);
+    previousReleaseRef=prior.rows[0]?.id??null;
+   }
+   if(row?.result_state==="DRAFT"&&resume&&row.corrects_revision_ref){
+    const q=await c.query<{prior_release_ref:string;reason:string}>(
+     "SELECT prior_release_ref,reason FROM cg16_lab_result_correction "+
+     "WHERE root_realm_id=$1 AND result_revision_ref=$2",
+     [a.realmId,row.id]);
+    if(q.rows[0])resumeCorrection={
+     previousReleaseRef:q.rows[0].prior_release_ref,
+     reason:q.rows[0].reason};
+   }
+   const canEnter=orderRow.rows[0].status==="PROCESSING"&&
+    (!row||resume!==null)||
+    orderRow.rows[0].status==="RESULT_READY"&&
+    (Boolean(previousReleaseRef)||Boolean(resumeCorrection));
+   return {canEnter,canCorrect:Boolean(previousReleaseRef),
+    previousReleaseRef,resumeCorrection,
+    reportReady:row?.result_state==="RESULT_READY",resume,
     tests:original.map(x=>({lineRef:x.id,name:x.test_name_snapshot}))};
   });
  }
@@ -288,6 +312,7 @@ export class ClinicalLabGeneratedResultService{
   }
   const report:LaboratoryReportSource={
    sourceDigest:requestDigest,orderNumber:source.display_order_ref,
+   versionNo:result.version_no,corrected:result.corrects_revision_ref!==null,
    centerName:source.center_name,
    patientName:source.first_name+" "+source.last_name,
    patientDisplayId:source.virtual_display_id,
