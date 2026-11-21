@@ -48,6 +48,16 @@ for(const file of Object.values(files)){
  assert.doesNotMatch(s,/^(<{7}|={7}|>{7})/m,file+": merge conflict");
 }
 const must=(file,pattern,reason)=>assert.match(read(files[file]),pattern,reason);
+must("accrualSql",/uq_cg17_patient_charge_realm_id_center/,
+ "Postgres accrual foreign keys require exact parent unique constraint");
+must("monthly",/this\.identity\.assertCurrent\(c,a,"health\.providers\.finance\.view"\)/,
+ "Foundation-wide settlement reads require independent finance right");
+must("monthly",/async ownCenterStatement\(/,
+ "Partner statement uses separate current CG14 own-center authorization");
+must("monthlyApi",/my-centers\/eligible/,
+ "Partner Android has own-assigned-center options, not Foundation list");
+must("webPage",/!actions\.has\("health\.providers\.finance\.view"\)/,
+ "Foundation Web route rejects own-center-only representative");
 must("accrualSql",/CREATE TABLE cg17_financial_effect/,"CG17 original accrual effect");
 must("cg09",/this\.posting\.postBalanced/,"CG09 owns original balanced journal");
 must("journal",/INSERT INTO journal\(/,"Original journal ownership");
