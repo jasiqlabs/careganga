@@ -2,7 +2,7 @@
 import {useCallback,useEffect,useRef,useState} from "react";
 import {safeClientProblem} from "./mis-safe-error";
 type Saved={ref:string;name:string;state:string};
-type Schedule={ref:string;state:string;cadence:string;timezone:string;localTime:string;
+type Schedule={ref:string;state:string;cadence:string;savedReportName:string;timezone:string;localTime:string;
  nextDueAt:string;revision:number;canActivate:boolean};
 const get=async<T,>(path:string,body?:object)=>{
  const response=await fetch("/api/mis/reports/"+path,{
@@ -67,6 +67,19 @@ export function MisReportSchedules(){
    "Schedule status unconfirmed. Refresh before retrying.");}
   finally{setBusy(false);}
  }
+ async function pause(item:Schedule){
+  if(busy||item.state!=="ACTIVE")return;
+  setBusy(true);setError("");setNotice("");
+  try{
+   await get("schedules/"+encodeURIComponent(item.ref)+"/pause",{
+    expectedRevision:item.revision
+   });
+   setNotice("This schedule has been paused. Automatic delivery remains disabled.");
+   await refresh();
+  }catch(e){setError(e instanceof Error?e.message:
+   "Schedule pause outcome unconfirmed. Refresh its status.");}
+  finally{setBusy(false);}
+ }
  async function viewHistory(id:string){
   setBusy(true);setError("");setHistory([]);
   try{
@@ -109,13 +122,15 @@ export function MisReportSchedules(){
   <div style={{display:"grid",gap:8,marginTop:12}}>
    {schedules.map(item=><div key={item.ref} style={{
     border:"1px solid var(--cg-border)",borderRadius:10,padding:12}}>
-    <strong>{item.cadence.charAt(0)+item.cadence.slice(1).toLowerCase()} schedule</strong>
+    <strong>{item.savedReportName} · {item.cadence.charAt(0)+item.cadence.slice(1).toLowerCase()}</strong>
     <p style={{fontSize:".82rem",margin:"4px 0"}}>
      {item.state==="PAUSED"?"Paused · Not sending":
-      item.state==="ACTIVE"?"Scheduled · permissions checked at send":
+      item.state==="ACTIVE"?"Needs review · delivery is not enabled":
       item.state==="DISABLED"?"Disabled":"Status unavailable"}
      {" · "}{item.timezone}
      {" · "}Next planned: {new Date(item.nextDueAt).toLocaleString("en-IN")}</p>
+    {item.state==="ACTIVE"&&<button type="button" disabled={busy}
+     onClick={()=>void pause(item)}>Pause this schedule</button>}
     <button type="button" disabled={busy}
      onClick={()=>void viewHistory(item.ref)}>View actual run history</button>
    </div>)}
