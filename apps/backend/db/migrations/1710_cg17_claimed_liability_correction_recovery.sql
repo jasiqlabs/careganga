@@ -188,6 +188,22 @@ BEGIN
   FROM finance_bank_reconciliation bank
   JOIN journal recovery ON recovery.root_realm_id=bank.root_realm_id
    AND recovery.id=bank.journal_id
+  JOIN finance_account incoming_bank
+   ON incoming_bank.root_realm_id=bank.root_realm_id
+   AND incoming_bank.id=bank.bank_account_id
+   AND incoming_bank.account_kind='BANK'
+   AND incoming_bank.scope_kind='FOUNDATION'
+   AND incoming_bank.status='ACTIVE'
+  JOIN finance_account original_payable
+   ON original_payable.root_realm_id=bank.root_realm_id
+   AND original_payable.id=payable_account
+   AND original_payable.account_kind='GENERAL'
+   AND original_payable.scope_kind='FOUNDATION'
+   AND original_payable.status='ACTIVE'
+  JOIN account_group payable_group
+   ON payable_group.root_realm_id=original_payable.root_realm_id
+   AND payable_group.id=original_payable.group_id
+   AND payable_group.category='LIABILITY'
   WHERE bank.root_realm_id=NEW.root_realm_id
     AND bank.id=NEW.recovery_bank_ref
     AND bank.journal_id=NEW.recovery_journal_ref
