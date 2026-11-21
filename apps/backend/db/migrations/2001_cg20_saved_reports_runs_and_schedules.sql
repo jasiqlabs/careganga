@@ -83,7 +83,7 @@ CREATE TABLE cg20_saved_request(
  actor_ref uuid NOT NULL,
  request_key uuid NOT NULL,
  payload_digest char(64) NOT NULL CHECK(payload_digest ~ '^[a-f0-9]{64}$'),
- action_kind text NOT NULL CHECK(action_kind IN('CREATE','REVISE','COPY','RETIRE')),
+ action_kind text NOT NULL CHECK(action_kind IN('CREATE','REVISE','COPY','RETIRE','SHARE','UNSHARE')),
  saved_ref uuid NOT NULL,
  saved_version integer NOT NULL CHECK(saved_version>0),
  created_at timestamptz NOT NULL DEFAULT now(),
