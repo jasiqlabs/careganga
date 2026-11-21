@@ -1,7 +1,7 @@
 /** Local source-only gate for the CG14 public partner-first intake (not runtime).
  * Run with npm run verify:cg14-partner-first-source; no CI/GitHub Actions. */
-import {readFileSync} from "node:fs";
-import {resolve} from "node:path";
+import {existsSync,readFileSync} from "node:fs";
+import {dirname,resolve} from "node:path";
 import ts from "typescript";
 const root=resolve(import.meta.dirname,"..");
 const file=p=>readFileSync(resolve(root,p),"utf8");
@@ -76,6 +76,15 @@ const checks=[
   s.nativePublic.includes('request("status"')&&
   s.nativePublicApp.includes("onPartnerApplication")&&
   s.nativeCms.includes('title="Partnerships"')],
+ ["Native design token dependency resolves from public Android partner form",
+  (()=>{const found=s.nativePublic.match(/from\s+["\x27](\.[^"\x27]*\/design-tokens\/src\/index)["\x27]/);
+   return !!found&&existsSync(resolve(root,dirname(paths.nativePublic),found[1]+".ts"));})()],
+ ["Public Android handles hardware Back without exiting application flow",
+  s.nativePublic.includes('BackHandler.addEventListener("hardwareBackPress"')&&
+  s.nativePublic.includes('if(started)setStarted(false)')],
+ ["Web and internal Android link lookup uses original name filter",
+  s.staffInbox.includes('"providers?offset=0&q="+encodeURIComponent(app.name)')&&
+  s.nativeStaff.includes('"providers?offset=0&q="+encodeURIComponent(app.name)')],
  ["Original source list and staff review across Web/Internal Android",
   s.staffProxy.includes('parts[0]==="partner-applications"')&&
   s.staffPage.includes("PartnerApplicationInbox")&&
