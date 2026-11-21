@@ -31,7 +31,7 @@ const tests=[
   s.schema.includes("PHARMACY','NURSING','OT")&&
   s.schema.includes("PENDING_REVIEW")&&
   s.schema.includes("indicative_price_minor")&&
-  !s.schema.includes("inventory")===false],
+  !s.schema.includes("CREATE TABLE inventory")],
  ["Published information is immutable and distinct protected Foundation review is required",
   s.schema.includes("cg14_public_offer_proof")&&
   s.schema.includes("reviewed_by_account<>created_by_account")&&
