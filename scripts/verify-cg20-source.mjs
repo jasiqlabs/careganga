@@ -21,6 +21,7 @@ const service=check(backend+"modules/cg-20-mis-reporting/application/mis-dashboa
  '"NO_AUTHORIZED_SOURCES"','"PARTIAL"','"FAILED"','"CG09_POSTED_FINANCE"',
  '"CG16_FOUNDATION_DIAGNOSTICS"','"CG15_APPOINTMENT_STATES"',
  "if(filters.branchRef)throw error"]);
+assert.match(service,/this\\.finance\\s*\\.summary\\(/);
 assert.ok(!/\bSELECT\b|\bFROM\s+journal\b/i.test(service),
  "CG20 must not directly query original owner tables");
 check(backend+"modules/cg-09-finance-accounting/application/finance-reports.service.ts",[
