@@ -353,6 +353,23 @@ checks.push(["Original CG19 private scanner media is attached only to unpublishe
  internalMedia.includes("rightsConfirmed:true")&&
  internalCms.includes('<NativeCmsMediaUploader token={token}')&&
  internalCms.includes('selected.status==="DRAFT"')]);
+// Original CG18 editor UX must not offer an invalid role, position, or
+// file kind that the existing backend refuses or silently excludes.
+checks.push(["Native CMS media choices follow existing authored sections and save contract",
+ internalCms.includes("sections={draft.sections}")&&
+ internalMedia.includes("placementChoices(sections)")&&
+ internalMedia.includes('section.kind==="RICH_TEXT"&&f.variant==="SPLIT"')&&
+ internalMedia.includes('section.kind==="FEATURE_CARDS"&&Array.isArray(f.cards)')&&
+ internalMedia.includes('section.kind==="COMPLIANCE_FACTS"&&Array.isArray(f.documents)')&&
+ internalMedia.includes('const selectedChoice=choices.find')&&
+ internalMedia.includes('!selectedChoice')&&
+ files.backend.includes('if(!placementFits(sections,a))')]);
+checks.push(["Native gallery photo/video/PDF picker follows authored mediaType",
+ internalMedia.includes('if(type==="PHOTO")add("GALLERY",i,images)')&&
+ internalMedia.includes('else if(type==="VIDEO")add("GALLERY",i,["video/mp4"])')&&
+ internalMedia.includes('else if(type==="PUBLICATION")add("GALLERY",i,["application/pdf"])')&&
+ internalMedia.includes('!mime.includes(picked.mime)')&&
+ files.backend.includes('item?.mediaType==="VIDEO"?mime==="video/mp4"')]);
 checks.push(["Original Web CMS article, policy and other supported page kinds can be created on Internal Android",
  internalCms.includes("const initialKind=(kind:NewKind):NewPage=>")&&
  internalCms.includes('perform("create","POST","pages"')&&
