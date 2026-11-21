@@ -22,6 +22,22 @@ CREATE INDEX ix_cg16_entered_result_by_revision ON lab_result_value
  (root_realm_id,result_revision_ref,order_line_ref);
 CREATE TRIGGER cg16_entered_result_immutable BEFORE UPDATE OR DELETE
  ON lab_result_value FOR EACH ROW EXECUTE FUNCTION cg16_clinical_source_frozen();
+-- The same CG19 scan/file evidence remains, but its audit event must
+-- accurately say GENERATED rather than pretending that a human uploaded it.
+ALTER TABLE cg19_lab_result_event
+ DROP CONSTRAINT cg19_lab_result_event_action_check;
+ALTER TABLE cg19_lab_result_event
+ ADD CONSTRAINT cg19_lab_result_event_action_check CHECK(action IN
+  ('UPLOAD_INTENT','SCAN_VERIFIED','SCAN_REJECTED','FILE_REVOKED',
+   'GENERATED_INTENT','GENERATED_VERIFIED'));
+ALTER TABLE cg19_lab_result_event
+ DROP CONSTRAINT cg19_lab_result_event_check;
+ALTER TABLE cg19_lab_result_event
+ ADD CONSTRAINT cg19_lab_result_event_check CHECK(
+  (action IN('UPLOAD_INTENT','SCAN_REJECTED','GENERATED_INTENT') AND file_ref IS NULL)
+  OR (action IN('SCAN_VERIFIED','FILE_REVOKED','GENERATED_VERIFIED')
+   AND file_ref IS NOT NULL)
+ );
 -- On generated reports, the original report revision/result digest, CG19
 -- scan-verification, clinical review and patient release guards are REUSED.
 -- Existing manually prepared PDFs are not silently converted or marked
