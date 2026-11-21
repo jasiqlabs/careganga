@@ -332,7 +332,16 @@ export function NativeCmsEditorial({token,canManage,canPublish,canReview,onExit,
    <Text accessibilityRole="header" style={styles.title}>Foundation Website Content</Text>
    <Text style={styles.note}>Original CG18 pages and revisions. Drafts are not
     public until independent approval and actual publication.</Text>
-   {button("Back to dashboard",onExit)}
+   {button("Back to dashboard",()=>{
+    if(pending||uncertain){
+     Alert.alert("Original CMS action not confirmed",
+      "The last request may have committed. Leaving now loses its "+
+      "same-key retry on this screen. Check or retry the original request first.",[
+       {text:"Keep checking",style:"cancel"},
+       {text:"Leave without confirmation",onPress:onExit}
+      ]);
+    }else onExit();
+   },busy||loading)}
    {!!error&&<Text accessibilityRole="alert" style={styles.error}>{error}</Text>}
    {!!notice&&<Text accessibilityRole="alert" style={styles.note}>{notice}</Text>}
    {loading&&<ActivityIndicator accessibilityLabel="Loading original CMS pages"/>}
