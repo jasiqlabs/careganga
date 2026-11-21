@@ -29,9 +29,9 @@ async function handle(req:NextRequest,method:"GET"|"POST",ctx:Context){
    if(!json||typeof json!=="object"||Array.isArray(json))
     throw Error("invalid");
    const keys=Object.keys(json);
-   if(keys.length<7||keys.length>8||
+   if(keys.length<7||keys.length>9||
      keys.some(k=>!["requestKey","centerRef","serviceKind","invoiceNumber",
-      "serviceDate","invoiceFileRef","completionFileRef","grossMinor"].includes(k)))
+      "serviceDate","invoiceFileRef","completionFileRef","paymentFileRef","grossMinor"].includes(k)))
     throw Error("invalid");
    body=JSON.stringify(json);
    if(body.length>2000)throw Error("invalid");
