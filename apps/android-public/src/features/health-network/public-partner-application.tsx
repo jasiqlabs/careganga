@@ -41,6 +41,15 @@ async function request(action:"apply"|"status",payload:unknown):Promise<Result>{
    headers:{"Content-Type":"application/json"},signal:controller.signal,
    body:JSON.stringify(payload)});
   if(!response.ok){
+   const body:unknown=await response.json().catch(()=>null);
+   const safe=new Set(["PARTNER_FIELD_INVALID","PARTNER_CONSENT_REQUIRED",
+    "PARTNER_RECEIPT_INVALID","PARTNER_RECEIPT_UNAVAILABLE",
+    "PARTNER_REQUEST_CONFLICT","HEALTH_PUBLIC_RATE_LIMIT"]);
+   const info=body&&typeof body==="object"?body as Record<string,unknown>:null;
+   if(info&&typeof info.code==="string"&&safe.has(info.code)&&
+      typeof info.message==="string"&&info.message.length<=220&&
+      !/[<>\r\n]/.test(info.message))
+     throw Error(info.message);
    if(response.status===429)throw Error("Too many attempts. Try later.");
    if(response.status===400)throw Error("Please check the form details.");
    if(response.status===404)throw Error("Private tracking code not found.");
