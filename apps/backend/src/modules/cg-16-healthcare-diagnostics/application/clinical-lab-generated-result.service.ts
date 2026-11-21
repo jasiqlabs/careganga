@@ -371,9 +371,17 @@ export class ClinicalLabGeneratedResultService{
   const input=parse(body);
   const original=await this.tx(c=>this.prepare(
    c,token,center,order,input.requestKey,input.rows,input.correction));
-  if(original.intent.status==="VALIDATED")
+  if(original.intent.status==="VALIDATED"){
+   // A saved intent alone is not proof that the scanned PDF remains valid
+   // or that the current patient still consents. Reuse CG16's existing
+   // original-file/consent verification instead of inventing a second gate.
+   const proof=await this.evidence.status(token,center,order,original.intent.id);
+   if(proof.status!=="VALIDATED"||!proof.cleanVerified||
+    proof.resultRef!==original.result.id||!proof.originalFileRef)
+    throw new ConflictException({code:"LAB_RESULT_REPORT_NOT_VERIFIED"});
    return {state:"RESULT_READY",resultRef:original.result.id,
     generated:true,patientReleased:false,replayed:true};
+  }
   let verified:Awaited<ReturnType<PrivateObjectStorage["verifyPrivateObject"]>>;
   try{
    await this.objects.writeVerifiedPrivateDocument({
