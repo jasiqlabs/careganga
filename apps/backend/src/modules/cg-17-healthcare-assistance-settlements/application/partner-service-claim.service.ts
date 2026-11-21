@@ -115,6 +115,39 @@ export class PartnerServiceClaimService{
   if(!p.rows[0])throw new NotFoundException({code:"CG17_PARTNER_CLAIM_PATIENT_UNAVAILABLE"});
   return p.rows[0].id;
  }
+ /** Patient choices are current verified business names, never typed IDs.
+  * A published offer is only a possible estimate until source verification.
+  */
+ async options(token:string){
+  const actor=await this.sessions.verifySession(token);
+  return this.tx(async c=>{
+   await this.owned(c,actor.realmId,actor.accountId);
+   const rows=await c.query<{
+    centerRef:string;centerName:string;kind:Kind}>(
+    "SELECT center.id AS \"centerRef\",center.display_name AS \"centerName\","+
+    "policy.service_kind AS kind FROM healthcare_policy_revision policy "+
+    "JOIN health_center center ON center.root_realm_id=policy.root_realm_id "+
+    "AND center.id=policy.center_ref AND center.status='VERIFIED' "+
+    "AND center.access_state='ENABLED' "+
+    "JOIN health_provider provider ON provider.root_realm_id=center.root_realm_id "+
+    "AND provider.id=center.provider_id AND provider.status='VERIFIED' "+
+    "JOIN health_center_capability cap ON cap.root_realm_id=center.root_realm_id "+
+    "AND cap.center_id=center.id AND cap.capability_code=CASE policy.service_kind "+
+    "WHEN 'OT' THEN 'SURGERY' ELSE policy.service_kind END "+
+    "WHERE policy.root_realm_id=$1 "+
+    "AND policy.service_kind IN('PHARMACY','NURSING','OT') "+
+    "AND policy.doctor_ref IS NULL AND policy.approval_state='ACTIVE' "+
+    "AND policy.activated_at IS NOT NULL AND policy.activated_at<=now() "+
+    "AND policy.valid_from<=now() AND policy.valid_until>now() "+
+    "ORDER BY center.display_name,policy.service_kind,center.id LIMIT 101",
+    [actor.realmId]);
+   if(rows.rows.length>100)
+    throw new ConflictException({code:"CG17_PARTNER_CLAIM_LIST_LIMIT"});
+   return {services:rows.rows,complete:true,
+    guidance:"Only currently verified partners are shown. A policy estimate "+
+     "does not approve your bill, completed care or Foundation reimbursement."};
+  });
+ }
  async mine(token:string){
   const actor=await this.sessions.verifySession(token);
   return this.tx(async c=>{
