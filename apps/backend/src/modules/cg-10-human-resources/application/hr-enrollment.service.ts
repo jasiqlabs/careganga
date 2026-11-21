@@ -723,6 +723,55 @@ export class HrEnrollmentService{
   return {pending:true,applicationRef:q.rows[0].id,
    name:q.rows[0].legal_name,designation:q.rows[0].designation};
  }
+ /** Detail is an authorized server projection, never an unsafe numeric ID
+  * lookup or a leak of the HR private application / CG19 bytes.
+  */
+ async employeeDetail(token:string,referenceInput:string){
+  const actor=await this.sessions.requireAction(token,"hr.employees.view");
+  if(!/^CG-HR-EMP-[0-9]{6,}$/.test(referenceInput))
+   throw new BadRequestException("Choose an employee from the current directory");
+  const q=await this.db.query<{employee_code:string;status:string;legal_name:string;
+   designation:string;employment_type:string;branch_name:string;department_name:string|null;
+   manager_name:string|null;valid_from:Date|string;valid_to:Date|string|null;
+   approved_at:Date|string}>(
+   "SELECT e.employee_code,e.status,source.legal_name,asg.designation,"+
+   "asg.employment_type,b.name AS branch_name,dep.name AS department_name,"+
+   "manager_source.legal_name AS manager_name,asg.valid_from,asg.valid_to,"+
+   "e.confirmed_at AS approved_at "+
+   "FROM hr_employee e JOIN hr_employee_application source "+
+   "ON source.id=e.application_id AND source.root_realm_id=e.root_realm_id "+
+   "JOIN LATERAL (SELECT a.* FROM hr_employment_assignment a "+
+   "WHERE a.employee_id=e.id AND a.root_realm_id=e.root_realm_id "+
+   "ORDER BY a.valid_from DESC,a.id DESC LIMIT 1) asg ON true "+
+   "JOIN branch b ON b.id=asg.branch_ref AND b.root_realm_id=asg.root_realm_id "+
+   "LEFT JOIN department dep ON dep.id=asg.department_ref "+
+   "AND dep.root_realm_id=asg.root_realm_id "+
+   "LEFT JOIN hr_employee manager ON manager.id=asg.manager_employee_ref "+
+   "AND manager.root_realm_id=e.root_realm_id "+
+   "LEFT JOIN hr_employee_application manager_source "+
+   "ON manager_source.id=manager.application_id "+
+   "AND manager_source.root_realm_id=e.root_realm_id "+
+   "WHERE e.root_realm_id=$1 AND e.employee_code=$3 "+
+   "AND (b.manager_account_ref=$2 OR EXISTS("+
+   "SELECT 1 FROM account_role ar JOIN role role_now ON role_now.id=ar.role_id "+
+   "AND role_now.realm_id=ar.realm_id AND role_now.active "+
+   "LEFT JOIN role_grant g ON g.role_id=role_now.id "+
+   "AND g.capability_key='foundation.branches.admin' "+
+   "WHERE ar.account_id=$2 AND ar.realm_id=$1 AND ar.revoked_at IS NULL "+
+   "AND (role_now.is_protected OR g.capability_key IS NOT NULL))) LIMIT 1",
+   [actor.realmId,actor.accountId,referenceInput]);
+  const person=q.rows[0];
+  if(!person)throw new NotFoundException("This employee is not in your permitted branches");
+  return {reference:person.employee_code,name:person.legal_name,
+   designation:person.designation,employmentType:person.employment_type,
+   branch:person.branch_name,department:person.department_name,
+   manager:person.manager_name,status:person.status,
+   effectiveFrom:iso(person.valid_from),
+   effectiveTo:person.valid_to?iso(person.valid_to):null,
+   approvedAt:typeof person.approved_at==="string"?
+    person.approved_at:person.approved_at.toISOString()};
+ }
+
  /** Real approved HR headcount only. No CG11 payroll facts or
   * public HR export. Current CG01+branch access is checked in the query.
   */
