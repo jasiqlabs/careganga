@@ -278,7 +278,7 @@ export class FinanceReportsService{
    ACCOUNT_NAME:"a.name"
   } as const)[raw.groupBy];
   const order=({
-   NAME:"group_label",DEBIT:"debit_amount",CREDIT:"credit_amount"
+   NAME:'"groupLabel"',DEBIT:"SUM(l.debit_minor)",CREDIT:"SUM(l.credit_minor)"
   } as const)[raw.sortBy??"NAME"];
   const direction=raw.sortDirection==="DESC"?"DESC":"ASC";
   if(!group||!order||raw.sortDirection&&
@@ -308,7 +308,7 @@ export class FinanceReportsService{
     "AND ($4::date IS NULL OR j.posting_date>=$4) "+
     "AND ($5::date IS NULL OR j.posting_date<=$5) "+
     "GROUP BY "+group+" "+
-    "ORDER BY "+order+" "+direction+",group_label ASC LIMIT 51",
+    "ORDER BY "+order+" "+direction+', "groupLabel" ASC LIMIT 51',
     [actor.realmId,v.fy,v.branch,v.from,v.to]);
    await c.query("COMMIT");active=false;
    return {groups:rows.rows.slice(0,50),partial:rows.rows.length>50,
