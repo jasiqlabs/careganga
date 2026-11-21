@@ -7,6 +7,15 @@ export class HrEnrollmentController{
  constructor(private readonly hr:HrEnrollmentService){}
  @Get("me")
  me(@Headers("authorization")token:string){return this.hr.myProfile(token);}
+ @Get("my-pending-link")
+ pendingLink(@Headers("authorization")token:string){return this.hr.myPendingLink(token);}
+ @Post("my-link/accept")
+ accept(@Headers("authorization")token:string,@Body()body:unknown){
+  return this.hr.acceptMyApprovedLink(token,body);
+ }
+ @Get("employees")
+ employees(@Headers("authorization")token:string,@Query("offset")offset?:string,
+   @Query("branch")branch?:string){return this.hr.employeeDirectory(token,offset,branch);}
  @Get("branch-options")
  branches(@Headers("authorization")token:string){return this.hr.branchOptions(token);}
  @Get("departments")
@@ -20,6 +29,12 @@ export class HrEnrollmentController{
  create(@Headers("authorization")token:string,@Body()body:unknown){
   return this.hr.create(token,body);
  }
+ @Post("applications/:applicationRef/submit")
+ submit(@Headers("authorization")token:string,@Param("applicationRef")ref:string,
+  @Body()body:unknown){return this.hr.submit(token,ref,body);}
+ @Post("applications/:applicationRef/finalize")
+ finalize(@Headers("authorization")token:string,@Param("applicationRef")ref:string,
+  @Body()body:unknown){return this.hr.finalize(token,ref,body);}
  @Get("applications/:applicationRef")
  detail(@Headers("authorization")token:string,@Param("applicationRef")ref:string){
   return this.hr.detail(token,ref);
