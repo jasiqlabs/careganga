@@ -1,4 +1,4 @@
-import {Body,Controller,Get,Header,Headers,Param,Post}
+import {Body,Controller,Get,Header,Headers,Param,Post,StreamableFile}
  from "@nestjs/common";
 import {MonthlyProviderSettlementService}
  from "../application/monthly-provider-settlement.service";
@@ -15,6 +15,15 @@ export class MonthlyProviderSettlementController{
  @Header("Cache-Control","private, no-store")
  ownEligible(@Headers("authorization")token:string){
   return this.service.ownCenters(token);
+ }
+ @Get("my-centers/:centerRef/months/:month/export.csv")
+ @Header("Cache-Control","private, no-store")
+ @Header("X-Content-Type-Options","nosniff")
+ async ownCenterExport(@Headers("authorization")token:string,
+  @Param("centerRef")center:string,@Param("month")month:string){
+  const result=await this.service.exportOwnCenterStatementCsv(token,center,month);
+  return new StreamableFile(result.bytes,{type:result.mime,
+   disposition:'attachment; filename="'+result.filename+'"'});
  }
  @Get("my-centers/:centerRef/months/:month")
  @Header("Cache-Control","private, no-store")
