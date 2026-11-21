@@ -423,6 +423,34 @@ export class NotificationService{
                 AND consent.purpose='PATIENT_CARE'
               ORDER BY consent.revision_no DESC LIMIT 1)=true
         ))
+        AND (n.source_kind<>'CG16_LAB_RELEASE' OR EXISTS(
+          SELECT 1 FROM cg16_lab_report_release released
+          JOIN cg19_lab_result_file file
+            ON file.root_realm_id=released.root_realm_id
+           AND file.id=released.original_cg19_file_ref
+           AND file.scan_status='CLEAN_VERIFIED'
+           AND file.revoked_at IS NULL
+          JOIN cg15_patient patient
+            ON patient.root_realm_id=released.root_realm_id
+           AND patient.id=released.patient_ref
+           AND patient.profile_status='VERIFIED'
+          JOIN cg15_patient_account_link owner_link
+            ON owner_link.root_realm_id=patient.root_realm_id
+           AND owner_link.patient_id=patient.id
+           AND owner_link.account_id=n.recipient_id
+           AND owner_link.revoked_at IS NULL
+          WHERE released.root_realm_id=n.realm_id
+            AND released.id=n.cg16_lab_report_release_id
+            AND EXISTS(SELECT 1 FROM cg15_patient_identity_event proof
+              WHERE proof.root_realm_id=patient.root_realm_id
+                AND proof.patient_id=patient.id)
+            AND (SELECT consent.granted
+              FROM cg15_patient_consent consent
+              WHERE consent.root_realm_id=patient.root_realm_id
+                AND consent.patient_id=patient.id
+                AND consent.purpose='PATIENT_CARE'
+              ORDER BY consent.revision_no DESC LIMIT 1)=true
+        ))
       ORDER BY n.created_at DESC,n.id DESC LIMIT $3
     `,[actor.realmId,actor.accountId,limit]);
     return {items:rows.rows.map(row=>({
@@ -467,6 +495,34 @@ export class NotificationService{
               WHERE proof.root_realm_id=patient.root_realm_id
                 AND proof.patient_id=patient.id)
             AND (SELECT consent.granted FROM cg15_patient_consent consent
+              WHERE consent.root_realm_id=patient.root_realm_id
+                AND consent.patient_id=patient.id
+                AND consent.purpose='PATIENT_CARE'
+              ORDER BY consent.revision_no DESC LIMIT 1)=true
+        ))
+        AND (n.source_kind<>'CG16_LAB_RELEASE' OR EXISTS(
+          SELECT 1 FROM cg16_lab_report_release released
+          JOIN cg19_lab_result_file file
+            ON file.root_realm_id=released.root_realm_id
+           AND file.id=released.original_cg19_file_ref
+           AND file.scan_status='CLEAN_VERIFIED'
+           AND file.revoked_at IS NULL
+          JOIN cg15_patient patient
+            ON patient.root_realm_id=released.root_realm_id
+           AND patient.id=released.patient_ref
+           AND patient.profile_status='VERIFIED'
+          JOIN cg15_patient_account_link owner_link
+            ON owner_link.root_realm_id=patient.root_realm_id
+           AND owner_link.patient_id=patient.id
+           AND owner_link.account_id=n.recipient_id
+           AND owner_link.revoked_at IS NULL
+          WHERE released.root_realm_id=n.realm_id
+            AND released.id=n.cg16_lab_report_release_id
+            AND EXISTS(SELECT 1 FROM cg15_patient_identity_event proof
+              WHERE proof.root_realm_id=patient.root_realm_id
+                AND proof.patient_id=patient.id)
+            AND (SELECT consent.granted
+              FROM cg15_patient_consent consent
               WHERE consent.root_realm_id=patient.root_realm_id
                 AND consent.patient_id=patient.id
                 AND consent.purpose='PATIENT_CARE'
