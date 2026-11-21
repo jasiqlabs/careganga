@@ -1,7 +1,7 @@
 import {useCallback,useEffect,useState} from "react";
 import {Pressable,StyleSheet,Text,View} from "react-native";
 import {identityRequest} from "../identity-access/http-client";
-import {careGangaTheme} from "../../../../../packages/design-tokens/src/index";
+import {NativeFinanceOptions} from "../finance-accounting/finance-native-source-kit";
 
 type Metric={key:string;label:string;unit:string;value:string};
 type Source={sourceKey:string;sourceLabel:string;state:string;metrics:Metric[];
