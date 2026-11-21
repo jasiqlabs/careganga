@@ -50,7 +50,12 @@
     "verify:cg19-client-source": "node scripts/verify-cg19-client-source.mjs",
     "verify:cg21-source": "node scripts/verify-cg21-source.mjs",
     "verify:migration-history-source": "node scripts/verify-migration-history-source.mjs",
-    "verify:local-source-preflight": "npm run verify:design-approvals && npm run verify:migration-history-source && npm run verify:core-source && npm run verify:cg14-source && npm run verify:cg15-final-source-gaps && npm run verify:cg16-us002-source && npm run verify:cg17-us006-source && npm run verify:healthcare-journeys-source"
+    "verify:local-source-preflight": "npm run verify:design-approvals && npm run verify:migration-history-source && npm run verify:core-source && npm run verify:cg14-source && npm run verify:cg15-final-source-gaps && npm run verify:cg16-us002-source && npm run verify:cg17-us006-source && npm run verify:healthcare-journeys-source",
+    "build:backend": "npm run build -w apps/backend",
+    "build:web": "npm run build -w apps/web",
+    "typecheck:android-internal": "tsc --noEmit -p apps/android-internal/tsconfig.json",
+    "typecheck:android-public": "tsc --noEmit -p apps/android-public/tsconfig.json",
+    "verify:local-build": "npm run build:backend && npm run build:web && npm run typecheck:android-internal && npm run typecheck:android-public"
   },
   "devDependencies": {
     "typescript": "7.0.2",
