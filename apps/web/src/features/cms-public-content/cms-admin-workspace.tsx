@@ -221,9 +221,14 @@ export function CmsAdminWorkspace({canManage,canPublish,canReview}:{
  useEffect(()=>{void refresh();},[refresh]);
  async function open(ref:string){
   if(busy)return;
+  if(pending){
+   setError("An earlier CMS request may have committed. Retry the original "+
+    "key before switching pages.");
+   return;
+  }
   setBusy(true);setError("");setNotice("");
   try{const x=await read<PageDetail>("pages/"+ref);setSelected(x);setDraft(fromPage(x));
-   setReviewing(false);setReview(null);setPreview(false);setPending(null);setPublishWhen("");}
+   setReviewing(false);setReview(null);setPreview(false);setPublishWhen("");}
   catch(e){setError(e instanceof Error?e.message:"Page detail unavailable.");}
   finally{setBusy(false);}
  }
@@ -327,7 +332,9 @@ export function CmsAdminWorkspace({canManage,canPublish,canReview}:{
      setSelected(x);setDraft(fromPage(x));
     }
    }catch{
-    setError("Your change was confirmed, but the latest page could not be loaded. Refresh to see it.");
+    setSelected(null);setDraft(blank("HOME"));
+     setError("This CMS action is CONFIRMED, but the latest page "+
+      "could not be loaded. Refresh before editing again.");
    }
   }catch(e){
    if(e instanceof CmsRequestRejected)setPending(null);
@@ -335,22 +342,34 @@ export function CmsAdminWorkspace({canManage,canPublish,canReview}:{
   }
   finally{setBusy(false);}
  }
- const command=(label:string,path:string,method:"POST"|"PUT",body:Record<string,unknown>)=>
+ const command=(label:string,path:string,method:"POST"|"PUT",body:Record<string,unknown>)=>{
+  if(busy||pending){
+   setError("Resolve the previous original CMS request using its existing "+
+    "retry key before creating another action.");
+   return;
+  }
   void send({label,path,method,body:{requestKey:crypto.randomUUID(),...body}});
+ };
  async function showInbox(){
+  if(busy)return;
+  if(pending){
+   setError("Resolve the original uncertain CMS request before switching to reviews.");
+   return;
+  }
   setBusy(true);setError("");setReviewing(true);setPreview(false);
   try{const x=await read<{cases:Review[]}>("reviews");setReviews(x.cases);setReview(null);}
   catch(e){setError(e instanceof Error?e.message:"Review inbox unavailable.");}
   finally{setBusy(false);}
  }
  async function openReview(ref:string){
+  if(busy||pending)return;
   setBusy(true);setError("");
   try{setReview(await read<ReviewDetail>("reviews/"+ref));setRemark("");setReviewPassword("");}
   catch(e){setError(e instanceof Error?e.message:"Reviewer source unavailable.");}
   finally{setBusy(false);}
  }
  async function decide(action:"APPROVE"|"RETURN"|"REJECT"){
-  if(!review||reviewPassword.length<8)return;
+  if(busy||pending||!review||reviewPassword.length<8)return;
   if(action==="APPROVE"&&review.source.assets.some(asset=>!asset.current)){
    setError("One or more images are no longer approved. Return this page to its editor.");
    return;
@@ -426,8 +445,9 @@ export function CmsAdminWorkspace({canManage,canPublish,canReview}:{
    <button type="button" onClick={()=>void refresh()} disabled={busy}>Refresh</button>
    {canReview&&<button type="button" onClick={()=>void showInbox()} disabled={busy}>
     Review approvals</button>}
-   {canManage&&<button className="primary" type="button" onClick={()=>{setSelected(null);setReviewing(false);
-    setDraft(blank("HOME"));setPending(null);setPreview(false);}}>New page</button>}
+   {canManage&&<button className="primary" type="button" disabled={busy||!!pending}
+    onClick={()=>{setSelected(null);setReviewing(false);
+    setDraft(blank("HOME"));setPreview(false);}}>New page</button>}
    {canManage&&!selected&&!reviewing&&<button type="button" disabled={busy}
     onClick={()=>{setDraft({...blank("HOME"),...clientScreenshotHome});setPreview(false);}}>
     Start with reference content</button>}
@@ -496,7 +516,8 @@ export function CmsAdminWorkspace({canManage,canPublish,canReview}:{
      </div>
     </>}
    </section>}
-   <button type="button" onClick={()=>setReviewing(false)}>Back to pages</button>
+   <button type="button" disabled={busy||!!pending}
+     onClick={()=>setReviewing(false)}>Back to pages</button>
   </section>:<>
    <section className="cg-cms-list" aria-label="Foundation website pages">
     {pages.map(v=><button type="button" key={v.pageRef} disabled={busy}
