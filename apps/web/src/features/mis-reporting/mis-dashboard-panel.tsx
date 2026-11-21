@@ -54,6 +54,14 @@ export function MisDashboardPanel(){
   finally{setBusy(false);}
  },[year,branch]);
  useEffect(()=>{if(ready)void load();},[ready,load]);
+ // A returned or refocused dashboard must not retain protected stale figures.
+ useEffect(()=>{if(!ready)return;
+  const recheck=()=>{if(document.visibilityState==="visible")void load();};
+  document.addEventListener("visibilitychange",recheck);
+  window.addEventListener("focus",recheck);
+  return()=>{document.removeEventListener("visibilitychange",recheck);
+   window.removeEventListener("focus",recheck);};
+ },[ready,load]);
  return <section aria-labelledby="mis-dashboard-heading" style={{marginBottom:"2rem"}}>
   <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:"1rem",flexWrap:"wrap"}}>
    <div><h2 id="mis-dashboard-heading" style={{fontSize:"1.1rem",color:"var(--cg-text)"}}>Foundation MIS — Verified Sources</h2>
