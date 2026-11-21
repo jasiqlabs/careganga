@@ -272,8 +272,12 @@ export class MisReportScheduleWorker implements OnModuleInit,OnModuleDestroy{
   }catch(e){
    const banned=e instanceof ForbiddenException||
     e instanceof NotFoundException||e instanceof UnauthorizedException;
-   await this.finish(row,banned?"REVOKED":"FAILED",{
-    errorClass:banned?"CURRENT_SCOPE_CHANGED":"SOURCE_OR_STORAGE_FAILED"
+   // A source outage or ambiguous original CG19 file outcome is neither
+   // a confirmed empty report nor proof of successful delivery. Reclaim the
+   // SAME run at most three times; exhaustion remains honest UNKNOWN.
+   await this.finish(row,banned?"REVOKED":"UNKNOWN",{
+    errorClass:banned?"CURRENT_SCOPE_CHANGED":
+     "SOURCE_OR_STORAGE_NOT_YET_CONFIRMED"
    }).catch(()=>undefined);
   }
  }
