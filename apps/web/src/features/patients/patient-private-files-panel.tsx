@@ -2,7 +2,7 @@
 import {useCallback,useEffect,useRef,useState} from "react";
 import {PatientClinicalFileShares} from "./patient-clinical-file-shares";
 
-type Class="PATIENT_PHOTO"|"PATIENT_UPLOADED_PRESCRIPTION"|"PATIENT_MEDICAL_REPORT"|"PATIENT_PARTNER_INVOICE"|"PATIENT_PARTNER_SERVICE_PROOF";
+type Class="PATIENT_PHOTO"|"PATIENT_UPLOADED_PRESCRIPTION"|"PATIENT_MEDICAL_REPORT"|"PATIENT_PARTNER_INVOICE"|"PATIENT_PARTNER_SERVICE_PROOF"|"PATIENT_PARTNER_PAYMENT_PROOF";
 type PatientFile={fileRef:string;classification:Class;mime:string;
  sizeBytes:number;version:number;revoked:boolean;createdAt:string};
 type RecordPage={files:PatientFile[];next:string|null};
@@ -170,6 +170,7 @@ export function PatientPrivateFilesPanel({consentGranted}:{consentGranted:boolea
      <option value="PATIENT_PHOTO">My private patient photo</option>
      <option value="PATIENT_PARTNER_INVOICE">My partner invoice (not payment verification)</option>
      <option value="PATIENT_PARTNER_SERVICE_PROOF">My completed-service evidence (not clinical approval)</option>
+     <option value="PATIENT_PARTNER_PAYMENT_PROOF">My partner payment receipt (requires independent verification)</option>
     </select>
    </label>
    <label>Private document (PDF/JPG/PNG/WebP, max 10 MB)
@@ -194,12 +195,14 @@ export function PatientPrivateFilesPanel({consentGranted}:{consentGranted:boolea
     row.classification==="PATIENT_MEDICAL_REPORT"?"Scanned medical report":
     row.classification==="PATIENT_PARTNER_INVOICE"?"Partner invoice (unverified claim)":
     row.classification==="PATIENT_PARTNER_SERVICE_PROOF"?"Completed-service document (unverified)":
+    row.classification==="PATIENT_PARTNER_PAYMENT_PROOF"?"Patient-submitted payment receipt (unverified)":
     "Patient-supplied prescription copy"}</strong>
    <p>{new Date(row.createdAt).toLocaleString("en-IN")} ·
     {row.revoked?" Revoked":" Privately verified"} ·
     {" "+(row.sizeBytes/1024).toFixed(0)} KB</p>
    {!row.revoked&&row.classification!=="PATIENT_PARTNER_INVOICE"&&
     row.classification!=="PATIENT_PARTNER_SERVICE_PROOF"&&
+    row.classification!=="PATIENT_PARTNER_PAYMENT_PROOF"&&
     <PatientClinicalFileShares fileRef={row.fileRef}
     consentGranted={consentGranted}/>}
    {!row.revoked&&<div className="toolbar">
