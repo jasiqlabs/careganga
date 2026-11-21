@@ -125,6 +125,9 @@ must(native+"features/healthcare-assistance/native-partner-settlement-summary.ts
  /Verified center refunds\/corrections/,
  "Android own-center view must show exactly the same verified refund breakdown");
 must(native+"features/healthcare-assistance/native-partner-settlement-summary.tsx",
+ /busy\|\|month<="2020-01"/,
+ "Native center statement must use same earliest supported month as Web");
+must(native+"features/healthcare-assistance/native-partner-settlement-summary.tsx",
  /approved\?summary\.approvedFoundationMinor:summary\.eligibleAccruedMinor/,
  "Unapproved monthly claim is not zeroed out by the approved-only amount");
 must(native+"features/healthcare-assistance/native-partner-settlement-summary.tsx",
