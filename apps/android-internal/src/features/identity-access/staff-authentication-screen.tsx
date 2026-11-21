@@ -1077,6 +1077,7 @@ export function StaffAuthenticationScreen() {
         <Suspense fallback={<ActivityIndicator style={{ marginTop: 40 }} />}>
           <PrivateCaseEvidenceScreen token={token}
             canViewLetters={roleActions.includes("documents.letters.issue")}
+            canRevokeLetters={roleActions.includes("documents.letters.revoke")}
             onExit={() => setDocumentsOpen(false)} onExpired={expireSession} />
         </Suspense>
       </ScreenErrorBoundary>, "documents", () => setDocumentsOpen(false))
