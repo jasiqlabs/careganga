@@ -18,11 +18,11 @@ const version=(v:unknown)=>{if(typeof v!=="number"||!Number.isSafeInteger(v)||
   message:"Reload this report before saving changes."});return v;};
 const name=(v:unknown)=>{
  if(typeof v!=="string"||/[\u0000-\u001f\u007f]/.test(v))
-  throw new BadRequestException({code:"MIS_SAVED_NAME_INVALID",
+  throw new BadRequestException({code:"MIS_SAVED_NAME_INVALID",field:"name",
    message:"Enter a report name using ordinary text."});
  const trimmed=v.replace(/\s+/g," ").trim();
  if(trimmed.length<3||trimmed.length>100)
-  throw new BadRequestException({code:"MIS_SAVED_NAME_INVALID",
+  throw new BadRequestException({code:"MIS_SAVED_NAME_INVALID",field:"name",
    message:"Enter a report name of 3 to 100 characters."});
  return trimmed;
 };
