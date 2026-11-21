@@ -160,20 +160,24 @@ export class MonthlyProviderSettlementService{
    gross_minor:string;patient_due_minor:string;
    foundation_liability_minor:string;verified_center_minor:string;
    center_refund_minor:string}>(
+   // Original charge/center-collected patient cash is historical,
+   // independent of whether Foundation later offsets its OWN liability.
+   // Only the effective Foundation contribution becomes zero.
    "WITH services AS (SELECT liability.charge_ref,"+
-   "liability.amount_minor,charge.gross_minor,charge.due_minor "+
+   "CASE WHEN EXISTS(SELECT 1 FROM cg17_liability_correction corrected "+
+   "WHERE corrected.root_realm_id=liability.root_realm_id "+
+   "AND corrected.liability_ref=liability.id) "+
+   "OR EXISTS(SELECT 1 FROM cg17_provider_claim_correction corrected "+
+   "WHERE corrected.root_realm_id=liability.root_realm_id "+
+   "AND corrected.liability_ref=liability.id) "+
+   "THEN 0 ELSE liability.amount_minor END AS amount_minor,"+
+   "charge.gross_minor,charge.due_minor "+
    "FROM foundation_liability liability "+
    "JOIN patient_charge charge ON charge.root_realm_id=liability.root_realm_id "+
    "AND charge.id=liability.charge_ref AND charge.center_ref=liability.center_ref "+
    "WHERE liability.root_realm_id=$1 AND liability.center_ref=$2 "+
    "AND liability.service_local_date >=$3::date "+
-   "AND liability.service_local_date <($3::date+interval '1 month') "+
-   "AND NOT EXISTS (SELECT 1 FROM cg17_liability_correction corrected "+
-   "WHERE corrected.root_realm_id=liability.root_realm_id "+
-   "AND corrected.liability_ref=liability.id) "+
-   "AND NOT EXISTS (SELECT 1 FROM cg17_provider_claim_correction corrected "+
-   "WHERE corrected.root_realm_id=liability.root_realm_id "+
-   "AND corrected.liability_ref=liability.id)) "+
+   "AND liability.service_local_date <($3::date+interval '1 month')) "+
    "SELECT (SELECT coalesce(sum(gross_minor),0) FROM services)::text "+
    "AS gross_minor,(SELECT coalesce(sum(due_minor),0) FROM services)::text "+
    "AS patient_due_minor,"+
