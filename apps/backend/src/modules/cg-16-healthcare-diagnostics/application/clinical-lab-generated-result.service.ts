@@ -25,7 +25,7 @@ type Result={id:string;created_at:Date;source_key:string;result_state:string;ver
 type Intent={id:string;order_ref:string;center_ref:string;result_revision_ref:string;object_key:string;
  status:string;sha256:string;size_bytes:string;request_digest:string;
  patient_ref:string;request_key:string};
-type Generated={result:Result;intent:Intent;pdf:Buffer;sourceDigest:string;correction:boolean};
+type Generated={result:Result;intent:Intent;pdf:Buffer;sourceDigest:string;correction:boolean;rootRealmRef:string};
 type Correction={previousReleaseRef:string;reason:string};
 function parse(raw:unknown){
  if(!raw||typeof raw!=="object"||Array.isArray(raw)||
@@ -346,7 +346,7 @@ export class ClinicalLabGeneratedResultService{
    if(existing.sha256!==sha||Number(existing.size_bytes)!==pdf.length)
     throw new ConflictException({code:"LAB_RESULT_GENERATED_PDF_CHANGED"});
    return {result,intent:existing,pdf,sourceDigest:requestDigest,
-    correction:result.corrects_revision_ref!==null};
+    correction:result.corrects_revision_ref!==null,rootRealmRef:actor.realmId};
   }
   const intent=await c.query<Intent>(
    "INSERT INTO cg19_lab_result_intent(root_realm_id,order_ref,center_ref,"+
@@ -364,7 +364,7 @@ export class ClinicalLabGeneratedResultService{
    "actor_ref,action) VALUES($1,$2,$3,'GENERATED_INTENT')",
    [actor.realmId,intent.rows[0].id,actor.accountId]);
   return {result,intent:intent.rows[0],pdf,sourceDigest:requestDigest,
-   correction:result.corrects_revision_ref!==null};
+   correction:result.corrects_revision_ref!==null,rootRealmRef:actor.realmId};
  }
  async generate(token:string,centerRaw:string,orderRaw:string,body:unknown){
   const center=uuid(centerRaw),order=uuid(orderRaw);
@@ -393,9 +393,9 @@ export class ClinicalLabGeneratedResultService{
   }catch{
    await this.pool.query(
     "UPDATE cg19_lab_result_intent SET status='UNKNOWN',updated_at=now() "+
-    "WHERE id=$1 AND order_ref=$2 AND center_ref=$3 "+
-    "AND result_revision_ref=$4 AND status='INITIATED'",
-    [original.intent.id,order,center,original.result.id]).catch(()=>undefined);
+    "WHERE root_realm_id=$1 AND id=$2 AND order_ref=$3 AND center_ref=$4 "+
+    "AND result_revision_ref=$5 AND status='INITIATED'",
+    [original.rootRealmRef,original.intent.id,order,center,original.result.id]).catch(()=>undefined);
    return {state:"UNKNOWN",resultRef:original.result.id,
     generated:false,patientReleased:false,
     message:"Secure report generation could not be verified. Retry the same result."};
