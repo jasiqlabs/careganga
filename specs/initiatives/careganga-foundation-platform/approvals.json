@@ -2292,8 +2292,8 @@
       "approval_mode": "OWNER_DELEGATED_DESIGN_CONTENT",
       "delegation_source": "initiative.json:approval_policy",
       "artifact": "modules/cg-14-healthcare-network/tasks.md",
-      "sha256": "fbe96e912e80a9ccc52bea45977988ec782e3b3d5a4e1c65540b698ca2958697",
-      "current_artifact_sha256": "fbe96e912e80a9ccc52bea45977988ec782e3b3d5a4e1c65540b698ca2958697",
+      "sha256": "853b6397329622b483330267fd252901748f53ff0dcf199105ff62ad6b4662e5",
+      "current_artifact_sha256": "853b6397329622b483330267fd252901748f53ff0dcf199105ff62ad6b4662e5",
       "approved_by": "JASIQ AI Design Review Agent (owner-delegated)",
       "approved_at": "2026-11-21",
       "evidence": "https://github.com/jasiqlabs/careganga/blob/feature/careganga-greenfield-prd-20261114/specs/initiatives/careganga-foundation-platform/modules/cg-14-healthcare-network/tasks.md",
@@ -2408,6 +2408,17 @@
         "postgresql_and_runtime_qa": "NOT_RUN",
         "specialist_security_clinical_finance_review": "NOT_RUN",
         "source_release_state": "NOT_COMPLETE"
+      },
+      "previous_sha256": "fbe96e912e80a9ccc52bea45977988ec782e3b3d5a4e1c65540b698ca2958697",
+      "latest_source_progress_review": {
+        "date": "2026-11-21",
+        "scope": "Original CG14 US001/002/004/005 execution notes: mandatory ERP-off medicine/nursing/OT offerings and CG17 LAB benefit verified center; 94 approved QA IDs and definition prefix unchanged",
+        "method": "OWNER_DELEGATED_SOURCE_PROGRESS_HASH_REPIN_NOT_INDEPENDENT",
+        "outcome": "DOCUMENT_PIN_RECONCILED_ONLY",
+        "actual_executed_source_gate": "NOT_RUN",
+        "postgresql_and_web_android_build": "NOT_RUN",
+        "independent_clinical_finance_qa": "NOT_RUN",
+        "release_approval": "NOT_GRANTED"
       }
     },
     "planning/cg-10-human-resources": {
