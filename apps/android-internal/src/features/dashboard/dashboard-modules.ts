@@ -55,6 +55,7 @@ export interface ModuleActionHandlers {
   openPolicy: () => void;
   openApprovals: () => void;
   openPatientQueue: () => void;
+  openClinicianActivity: () => void;
   openLabOrders: () => void;
   openLabEquipment: () => void;
   openHealthcarePolicies: () => void;
@@ -216,6 +217,19 @@ export function getAuthorizedModules(
   }
 
   // ----------------------------------------------------
+  if (roleActions.includes("health.visits.clinical.manage")) {
+    list.push({
+      key: "healthClinicianActivity",
+      title: "My Consultations",
+      shortLabel: "My Visits",
+      description: "View only your own verified doctor and center's consultation activity.",
+      category: "HEALTHCARE ASSISTANCE",
+      iconName: "receipt",
+      iconBg: "#E0F2FE",
+      iconColor: "#0284C7",
+      onOpen: handlers.openClinicianActivity
+    });
+  }
   if (roleActions.includes("health.visits.manage")) {
     list.push({
       key: "healthVisitQueue",
@@ -622,6 +636,7 @@ const BOTTOM_NAV_PRIORITY_KEYS = [
   "account",
   "accounts",
   "approvals",
+  "healthClinicianActivity",
   "healthVisitQueue",
   "healthLabTestMaster",
   "healthMyLabPricing",
