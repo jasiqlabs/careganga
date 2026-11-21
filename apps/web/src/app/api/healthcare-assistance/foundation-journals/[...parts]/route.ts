@@ -34,9 +34,17 @@ async function forward(req:NextRequest,parts:string[],method:"GET"|"POST"){
      !Object.values(v).every(x=>typeof x==="string"&&ID.test(x)))
      return fail(400,"Select real Foundation accounts and year.");
    }else{
-    if(Object.keys(v).length!==5||
+    if(![5,7].includes(Object.keys(v).length)||
+     Object.keys(v).some(k=>!["requestKey","financialYearRef",
+      "postingDate","reason","currentPassword","bankMatchRef",
+      "payerMatched"].includes(k))||
      !["requestKey","financialYearRef","postingDate","reason","currentPassword"]
       .every(k=>k in v)||
+     (Object.keys(v).length===7&&
+       (!("bankMatchRef" in v)||!("payerMatched" in v)||
+        !(v.bankMatchRef===null||
+         typeof v.bankMatchRef==="string"&&ID.test(v.bankMatchRef))||
+        typeof v.payerMatched!=="boolean"))||
      typeof v.requestKey!=="string"||!ID.test(v.requestKey)||
      typeof v.financialYearRef!=="string"||!ID.test(v.financialYearRef)||
      typeof v.postingDate!=="string"||!/^\d{4}-\d{2}-\d{2}$/.test(v.postingDate)||
