@@ -50,6 +50,7 @@ export function NativeMisDashboard({token,onExpired,onOpenFinance}:{
  const [centers,setCenters]=useState<Option[]>([]);
  const [centersComplete,setCentersComplete]=useState(true);
  const [healthAvailable,setHealthAvailable]=useState(false);
+ const [financeAvailable,setFinanceAvailable]=useState(false);
  const [mode,setMode]=useState<Mode>("OVERVIEW");
  const [year,setYear]=useState(""),[branch,setBranch]=useState("");
  const [draft,setDraft]=useState<HealthFilter>(EMPTY);
@@ -68,6 +69,7 @@ export function NativeMisDashboard({token,onExpired,onOpenFinance}:{
        !Array.isArray(opts.centers))throw Error("OPTIONS");
     if(!live)return;
     setYears(opts.years);setBranches(opts.branches);setCenters(opts.centers);
+    setFinanceAvailable(opts.state==="AVAILABLE");
     setAllBranches(opts.allBranches===true);
     setCentersComplete(opts.centersComplete!==false);
     setHealthAvailable(opts.healthAvailable===true);
@@ -134,7 +136,7 @@ export function NativeMisDashboard({token,onExpired,onOpenFinance}:{
  }
  const modes:{ref:Mode;label:string}[]=[
   {ref:"OVERVIEW",label:"Overview"},
-  ...((allBranches||years.length||branches.length)?
+  ...(financeAvailable?
    [{ref:"FINANCE" as const,label:"Finance"}]:[]),
   ...(healthAvailable?[{ref:"HEALTH" as const,label:"Appointments"}]:[])
  ];
