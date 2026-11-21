@@ -419,7 +419,8 @@ checks.push(["Native editor preserves real-person consent and original CG18 list
  internalCms.includes('name==="faqs"?8')&&
  internalCms.includes('name==="socialLinks"||name==="inquiries"?3')&&
  internalCms.includes('section==="GALLERY_GRID"?12:16')&&
- internalCms.includes('sectionKind={section.kind}')]);
+ internalCms.includes('sectionKind={section.kind}')&&
+ internalCms.includes('sectionKind={sec.kind}')]);
 checks.push(["Existing CG18 typed parser proves native first-item schema",
  files.extended.includes('kind==="HEALTHCARE_CATEGORIES"')&&
  files.extended.includes('kind==="GALLERY_GRID"')&&
