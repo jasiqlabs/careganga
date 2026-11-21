@@ -152,16 +152,18 @@ export class MisReportRunService{
    await tx.query("COMMIT");active=false;
   }catch(e){if(active)await tx.query("ROLLBACK").catch(()=>undefined);throw e;}
   finally{tx.release();}
-  // The previous HTTP response may have been lost after the original QUEUED
-  // row committed. A same-digest replay is allowed to atomically claim THAT
-  // original row, never create a second run or a second object key.
-  // RUNNING/UNKNOWN cannot be assumed recoverable without verifying the
-  // original object; expose their truthful recorded state instead.
-  if(!isNew&&row.state!=="QUEUED")
-   return {...this.summary(row),replayed:true};
+  // One immutable run ID and one CG19 artifact ID survive lost HTTP
+  // acknowledgements, interrupted storage writes and worker restarts.
+  // UNKNOWN is not READY: the original object is reconciled by CG19 before
+  // any download. A stale RUNNING run becomes reclaimable only after 15 min.
+  const recoverable=isNew||row.state==="QUEUED"||row.state==="UNKNOWN"||
+   row.state==="RUNNING"&&row.updated_at.getTime()<Date.now()-15*60000;
+  if(!recoverable)return {...this.summary(row),replayed:true};
   const claimed=await this.db.query<Row>(
    "UPDATE cg20_report_run SET state='RUNNING',updated_at=now() "+
-   "WHERE root_realm_id=$1 AND id=$2 AND requester_ref=$3 AND state='QUEUED' "+
+   "WHERE root_realm_id=$1 AND id=$2 AND requester_ref=$3 "+
+   "AND (state IN('QUEUED','UNKNOWN') OR "+
+   "(state='RUNNING' AND updated_at<now()-interval '15 minutes')) "+
    "RETURNING *",[actor.realmId,row.id,actor.accountId]);
   if(!claimed.rows[0]){
    const latest=await this.current(token,row.id);
@@ -244,7 +246,11 @@ export class MisReportRunService{
   const {row}=await this.current(token,runRef,true);
   if(row.expires_at.getTime()<=Date.now())
    return {...this.summary(row),state:"EXPIRED",canDownload:false};
-  // A status lookup is metadata only; never return saved filters or rows.
+  // Metadata never grants download rights. A stale RUNNING result is
+  // presented as unconfirmed until same-key reconciliation verifies CG19.
+  if(row.state==="RUNNING"&&row.updated_at.getTime()<Date.now()-15*60000)
+   return {...this.summary(row),state:"UNKNOWN",canDownload:false,
+    message:"File creation was interrupted. Retry the original report request to reconcile."};
   return this.summary(row);
  }
  async download(token:string,runRef:string){
