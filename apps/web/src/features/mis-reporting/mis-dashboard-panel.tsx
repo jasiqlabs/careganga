@@ -2,6 +2,7 @@
 import {useCallback,useEffect,useRef,useState} from "react";
 import Link from "next/link";
 import {MisFinanceTrend,MisAppointmentDistribution,type MonthlyTrend} from "./mis-source-charts";
+import {safeClientProblem} from "./mis-safe-error";
 
 type Metric={key:string;label:string;unit:string;value:string};
 type Source={sourceKey:string;sourceLabel:string;state:string;readAt?:string;sourceAsOf?:string;cutoffKind?:string;
@@ -39,7 +40,7 @@ export function MisDashboardPanel(){
  useEffect(()=>{let live=true;void(async()=>{
   try{
    const response=await fetch("/api/mis/options",{cache:"no-store"});
-   if(!response.ok)throw Error("Current report filters could not be verified.");
+   if(!response.ok)throw Error(await safeClientProblem(response,"Current report filters could not be verified."));
    const options=await response.json() as Options;
    if(!Array.isArray(options.years)||!Array.isArray(options.branches))
     throw Error("Current report filters unavailable.");
@@ -76,9 +77,7 @@ export function MisDashboardPanel(){
     setFinanceAvailable(false);setHealthAvailable(false);
     setYears([]);setBranches([]);setCenters([]);
    }
-   if(!response.ok)throw new Error(response.status===403?
-    "Your role cannot read this report.":response.status===401?
-    "Session expired. Sign in again.":"Dashboard sources could not be verified.");
+   if(!response.ok)throw new Error(await safeClientProblem(response,"Current reporting data could not be verified. Refresh to retry."));
    const v=await response.json() as Dashboard;
    if(!v||!Array.isArray(v.sources)||typeof v.state!=="string")
     throw new Error("Reporting data could not be verified.");
