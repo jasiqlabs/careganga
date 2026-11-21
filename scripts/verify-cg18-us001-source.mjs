@@ -428,6 +428,14 @@ checks.push(["Uncertain native CG19 upload cannot be lost through CMS page switc
  internalMedia.includes("onAttemptChange(false);")&&
  internalMedia.includes('action("Retry same original upload request",()=>void upload(true)')&&
  internalMedia.includes("original.current.pageRef!==pageRef")]);
+checks.push(["Unresolved CG19 private media keeps same-page Web editors recoverable",
+ files.admin.includes("if(pending||mediaAttempt.current)")&&
+ files.admin.includes("if(busy||pending||mediaAttempt.current)")&&
+ files.admin.includes("disabled={busy||!!pending||!!mediaAttempt.current}")&&
+ files.adminExtended.includes("if(pending||mediaAttempt.current)")&&
+ files.adminExtended.includes("if(busy||pending||mediaAttempt.current)")&&
+ files.adminExtended.includes("if(pending||dirty||mediaAttempt.current)")&&
+ files.adminExtended.includes("disabled={!!mediaAttempt.current}")]);
 checks.push(["Native CG18 media slots are original tappable choices, not technical index input",
  internalMedia.includes("positions.map((position,i)=>")&&
  internalMedia.includes('"Placement "+(i+1)')&&
