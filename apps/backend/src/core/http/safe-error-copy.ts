@@ -634,5 +634,7 @@ export const SAFE_MESSAGE_CATALOG:Readonly<Record<string,string>>=Object.freeze(
       LAB_RESULT_UPLOAD_EXPIRED:"The private laboratory evidence was not verified or is no longer current. Check the original protected file and scan status.",
       LAB_RESULT_UPLOAD_UNAVAILABLE:"The private laboratory evidence was not verified or is no longer current. Check the original protected file and scan status.",
       LAB_RESULT_VALUES_REQUIRED:"Review the laboratory test result fields and required verification, then try again.",
+      CMS_HEALTHCARE_UNSUPPORTED_RATE_CLAIM:"Published healthcare text cannot promise a rate or discount that is not backed by a current approved policy. Revise the wording.",
+      CMS_HEALTHCARE_FINANCIAL_SOURCE_NOT_VERIFIED:"This healthcare financial claim is not independently verified. Remove the claim or provide the current approved source before publishing.",
 });
 export const editableErrorKeys=()=>Object.keys(SAFE_MESSAGE_CATALOG).sort();
