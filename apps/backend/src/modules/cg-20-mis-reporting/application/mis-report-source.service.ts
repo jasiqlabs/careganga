@@ -109,19 +109,25 @@ export class MisReportSourceService{
   await this.sessions.requireAction(token,"mis.reports.view");
   const [finance,appointments]=await Promise.all([
    this.finance.options(token).then(x=>({
-    ready:true,years:x.years.map(y=>({ref:y.ref,name:y.name})),
+    ready:true,state:"AVAILABLE" as const,
+    years:x.years.map(y=>({ref:y.ref,name:y.name})),
     branches:x.branches.map(b=>({ref:b.branchRef,name:b.name})),
     allBranches:x.allBranches
    })).catch((e:unknown)=>{
     if(e instanceof UnauthorizedException)throw e;
-    return {ready:false,years:[],branches:[],allBranches:false};
+    return {ready:false,state:e instanceof ForbiddenException?
+      "ACCESS_RESTRICTED" as const:"SOURCE_UNAVAILABLE" as const,
+      years:[],branches:[],allBranches:false};
    }),
    this.patients.readMisOptions(token).then(x=>({
-    ready:true,centers:x.centers.map(c=>({ref:c.centerRef,name:c.name})),
+    ready:true,state:"AVAILABLE" as const,
+    centers:x.centers.map(c=>({ref:c.centerRef,name:c.name})),
     complete:x.complete
    })).catch((e:unknown)=>{
     if(e instanceof UnauthorizedException)throw e;
-    return {ready:false,centers:[],complete:false};
+    return {ready:false,state:e instanceof ForbiddenException?
+      "ACCESS_RESTRICTED" as const:"SOURCE_UNAVAILABLE" as const,
+      centers:[],complete:false};
    })
   ]);
   const templates=[
