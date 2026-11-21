@@ -3,6 +3,8 @@ import {ActivityIndicator,Alert,Pressable,ScrollView,StyleSheet,
  Text,TextInput,View} from "react-native";
 import {SafeAreaView} from "react-native-safe-area-context";
 import * as Print from "expo-print";
+import * as Crypto from "expo-crypto";
+import {NativeFoundationDuplicateReviews} from "./native-foundation-duplicate-reviews";
 import {careGangaTheme as t} from "../../../../../packages/design-tokens/src/index";
 import {identityRequest} from "../identity-access/http-client";
 
@@ -25,7 +27,7 @@ type Part={status:string|null;startAt:string|null;endAt:string|null;
 type Event={action:string;revision:number;when:string;by:string;
  before:Part;after:Part};
 type History={bookingId:string|null;items:Event[];next:number|null};
-type Props={token:string;onExit:()=>void;onExpired:()=>void};
+type Props={token:string;onExit:()=>void;onExpired:()=>void;canOverride:boolean};
 type Filter={status:string;centerRef:string;stateRef:string;
  districtRef:string;centerType:string;search:string;centerSearch:string;
  fromDay:string;untilDay:string;after:string};
@@ -67,10 +69,16 @@ const button=(caption:string,action:()=>void,disabled=false)=>
   style={[styles.button,disabled&&styles.disabled]}>
   <Text style={styles.buttonText}>{caption}</Text>
  </Pressable>;
-export function NativeFoundationPatientAdmin({token,onExit,onExpired}:Props){
+export function NativeFoundationPatientAdmin({token,onExit,onExpired,canOverride}:Props){
  const [filters,setFilters]=useState<Filter>(empty);
  const [searchDraft,setSearchDraft]=useState("");
  const [centerSearchDraft,setCenterSearchDraft]=useState("");
+ const [fromDraft,setFromDraft]=useState("");
+ const [untilDraft,setUntilDraft]=useState("");
+ const [overridePassword,setOverridePassword]=useState("");
+ const [overrideConfirmed,setOverrideConfirmed]=useState(false);
+ const [overrideUncertain,setOverrideUncertain]=useState(false);
+ const overrideKey=useRef("");
  const [result,setResult]=useState<Data|null>(null);
  const [selected,setSelected]=useState("");
  const [history,setHistory]=useState<History|null>(null);
@@ -97,7 +105,7 @@ export function NativeFoundationPatientAdmin({token,onExit,onExpired}:Props){
   const rev=++serial.current;setBusy(true);setError("");setHistory(null);
   void load(filters).then(data=>{
    if(serial.current!==rev)return;
-   setResult(data);
+   setResult(data);setOverrideUncertain(false);
    setSelected(prev=>data.items.some(x=>x.bookingRef===prev)?prev:
     data.items[0]?.bookingRef??"");
   }).catch(e=>{if(serial.current===rev){setResult(null);fail(e);}})
@@ -117,6 +125,8 @@ export function NativeFoundationPatientAdmin({token,onExit,onExpired}:Props){
   return()=>{historySerial.current++};
  },[token,current?.bookingRef,current?.bookingId,fail]);
  const change=(partial:Partial<Filter>)=>setFilters(f=>({...f,...partial,after:""}));
+ useEffect(()=>{setOverridePassword("");setOverrideConfirmed(false);
+  setOverrideUncertain(false);overrideKey.current="";},[selected]);
  async function moreHistory(){
   if(!current||!history?.next||historyBusy)return;
   const rev=++historySerial.current;setHistoryBusy(true);
@@ -127,6 +137,44 @@ export function NativeFoundationPatientAdmin({token,onExit,onExpired}:Props){
     setHistory({...history,items:[...history.items,...x.items],next:x.next});
   }catch(e){if(historySerial.current===rev)fail(e)}
   finally{if(historySerial.current===rev)setHistoryBusy(false);}
+ }
+ async function cancelWithFoundationProof(){
+  if(!canOverride||!current||current.bookingStatus!=="CONFIRMED"||
+   new Date(current.startAt).getTime()<=Date.now()||
+   !Number.isSafeInteger(current.bookingVersion)||current.bookingVersion<1||
+   !overrideConfirmed||overridePassword.length<8||overrideUncertain||busy)return;
+  const key=overrideKey.current||Crypto.randomUUID();overrideKey.current=key;
+  setBusy(true);setError("");setNotice("");
+  try{
+   const response=await identityRequest(
+    "/api/v1/appointments/consultations/admin/bookings/"+
+      encodeURIComponent(current.bookingRef)+"/cancel-override",{
+     method:"POST",cache:"no-store",
+     headers:{Authorization:"Bearer "+token,"Content-Type":"application/json"},
+     body:JSON.stringify({requestKey:key,expectedVersion:current.bookingVersion,
+      reason:"FOUNDATION_OVERRIDE",currentPassword:overridePassword})
+    });
+   const raw:unknown=await response.json().catch(()=>null);
+   if(!response.ok){
+    if([400,401,403,404,409,429].includes(response.status)){
+     overrideKey.current="";setOverrideUncertain(false);
+    }else setOverrideUncertain(true);
+    if(response.status===401)onExpired();
+    throw Error(raw&&typeof raw==="object"&&"message" in raw&&
+     typeof raw.message==="string"?raw.message:
+     "Original cancellation could not be verified. Refresh before retry.");
+   }
+   if(!raw||typeof raw!=="object"||!("bookingStatus" in raw)||
+     raw.bookingStatus!=="CANCELLED"){
+    setOverrideUncertain(true);
+    throw Error("Outcome uncertain. Refresh the original appointment first.");
+   }
+   overrideKey.current="";setOverrideUncertain(false);
+   setNotice("Protected cancellation committed. Original appointment audit updated.");
+   const refreshed=await load(filters);
+   setResult(refreshed);
+  }catch(e){fail(e)}
+  finally{setOverridePassword("");setOverrideConfirmed(false);setBusy(false)}
  }
  async function printHistory(){
   if(!current||!history||history.bookingId!==current.bookingId||
@@ -226,13 +274,23 @@ export function NativeFoundationPatientAdmin({token,onExit,onExpired}:Props){
      More centers exist. Narrow the center or location filters.</Text>}
     <Text style={styles.text}>Date from / through (YYYY-MM-DD)</Text>
     <TextInput accessibilityLabel="First consultation date" style={styles.input}
-     placeholder="YYYY-MM-DD" maxLength={10} value={filters.fromDay}
-     onChangeText={fromDay=>change({fromDay})}/>
+     placeholder="YYYY-MM-DD" maxLength={10} value={fromDraft}
+     onChangeText={setFromDraft}/>
     <TextInput accessibilityLabel="Last consultation date" style={styles.input}
-     placeholder="YYYY-MM-DD" maxLength={10} value={filters.untilDay}
-     onChangeText={untilDay=>change({untilDay})}/>
+     placeholder="YYYY-MM-DD" maxLength={10} value={untilDraft}
+     onChangeText={setUntilDraft}/>
+    {button("Apply date range",()=>{
+     const valid=(v:string)=>!v||(/^\\d{4}-\\d{2}-\\d{2}$/.test(v)&&
+      Number.isFinite(Date.parse(v+"T00:00:00Z"))&&
+      new Date(v+"T00:00:00Z").toISOString().slice(0,10)===v);
+     if(!valid(fromDraft)||!valid(untilDraft)||
+      !!(fromDraft&&untilDraft&&fromDraft>untilDraft)){
+      setError("Choose a valid date range (YYYY-MM-DD).");return;
+     }
+     setError("");change({fromDay:fromDraft,untilDay:untilDraft});
+    },busy)}
     {button("Reset all filters",()=>{setFilters(empty());setSearchDraft("");
-     setCenterSearchDraft("");})}
+     setCenterSearchDraft("");setFromDraft("");setUntilDraft("");})}
    </View>
    {busy&&<ActivityIndicator accessibilityLabel="Loading protected patient consultations"/>}
    <Text style={styles.heading}>Consultation records</Text>
@@ -268,6 +326,27 @@ export function NativeFoundationPatientAdmin({token,onExit,onExpired}:Props){
       {e.after?.status&&<Text style={styles.note}>Result: {title(e.after.status)}</Text>}
      </View>)}
     {history?.next&&button("More original audit events",()=>void moreHistory(),historyBusy)}
+    {canOverride&&current.bookingStatus==="CONFIRMED"&&
+     new Date(current.startAt).getTime()>Date.now()&&<View style={styles.history}>
+      <Text style={styles.heading}>Restricted Foundation cancellation</Text>
+      <Text style={styles.note}>Only an authorized Foundation administrator can
+       cancel a future confirmed appointment using current password proof.</Text>
+      {button((overrideConfirmed?"✓ ":"")+
+       "Confirm exceptional cancellation purpose",()=>setOverrideConfirmed(v=>!v),
+       busy||overrideUncertain)}
+      <TextInput accessibilityLabel="Current Foundation password for cancellation"
+       style={styles.input} secureTextEntry value={overridePassword}
+       onChangeText={setOverridePassword} editable={!busy&&!overrideUncertain}
+       placeholder="Current Foundation password"/>
+      {overrideUncertain&&<Text style={styles.error}>Outcome uncertain.
+       Refresh the original appointment before another request.</Text>}
+      {button("Cancel future appointment with protected proof",()=>Alert.alert(
+       "Cancel this confirmed appointment?","This creates an original audit event.",[
+        {text:"Keep appointment",style:"cancel"},
+        {text:"Confirm cancellation",style:"destructive",
+         onPress:()=>void cancelWithFoundationProof()}
+       ]),busy||overrideUncertain||!overrideConfirmed||overridePassword.length<8)}
+     </View>}
     {button("Print authorized complete booking history",()=>Alert.alert(
      "Print protected patient history?",
      "A printed or saved copy cannot be revoked. Print only for an authorized purpose.",[
@@ -275,6 +354,7 @@ export function NativeFoundationPatientAdmin({token,onExit,onExpired}:Props){
       {text:"Print",onPress:()=>void printHistory()}
      ]),busy||historyBusy||!history||!!history.next)}
    </View>}
+   <NativeFoundationDuplicateReviews token={token} onExpired={onExpired}/>
    {button("Refresh current records",()=>setFilters(f=>({...f})),busy)}
   </ScrollView>
  </SafeAreaView>;
