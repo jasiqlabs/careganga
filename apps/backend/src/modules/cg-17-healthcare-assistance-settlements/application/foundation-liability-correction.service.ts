@@ -155,13 +155,6 @@ export class FoundationLiabilityCorrectionService{
   return {need:need.toString(),effective:effective.toString(),
    historicalPaid:paid.toString(),priorAdjusted:adjusted.toString()};
  }
- private async claimed(c:PoolClient,root:string,liability:string){
-  const q=await c.query(
-   "SELECT 1 FROM provider_settlement_line "+
-   "WHERE root_realm_id=$1 AND liability_ref=$2 LIMIT 1",
-   [root,liability]);
-  return !!q.rowCount;
- }
  private async reversed(c:PoolClient,root:string,journal:string|null){
   if(!journal)return false;
   const q=await c.query(
