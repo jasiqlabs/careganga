@@ -24,6 +24,7 @@ export function MisDashboardPanel(){
  const [problem,setProblem]=useState("");
  const seq=useRef(0);
  const [ready,setReady]=useState(false);
+ const [optionsVersion,setOptionsVersion]=useState(0);
  const [financeAvailable,setFinanceAvailable]=useState(false);
  const [optionsError,setOptionsError]=useState("");
  const [years,setYears]=useState<Choice[]>([]),[branches,setBranches]=useState<Choice[]>([]);
@@ -51,7 +52,7 @@ export function MisDashboardPanel(){
     setCentersComplete(options.centersComplete!==false);setReady(true);}
   }catch{if(live){setOptionsError("Some report filters could not be checked. The overview may still work.");
     setReady(true);}}
- })();return()=>{live=false;};},[]);
+ })();return()=>{live=false;};},[optionsVersion]);
  const load=useCallback(async()=>{
   const requestId=++seq.current;
   setBusy(true);setProblem("");setData(null);
@@ -71,6 +72,10 @@ export function MisDashboardPanel(){
    }
    const response=await fetch("/api/mis/dashboard?"+query.toString(),
     {cache:"no-store",credentials:"same-origin"});
+   if(!response.ok&&(response.status===401||response.status===403)){
+    setFinanceAvailable(false);setHealthAvailable(false);
+    setYears([]);setBranches([]);setCenters([]);
+   }
    if(!response.ok)throw new Error(response.status===403?
     "Your role cannot read this report.":response.status===401?
     "Session expired. Sign in again.":"Dashboard sources could not be verified.");
@@ -83,14 +88,24 @@ export function MisDashboardPanel(){
  },[mode,year,branch,center,fromDay,untilDay,status]);
  useEffect(()=>{if(ready)void load();},[ready,load]);
  useEffect(()=>()=>{seq.current+=1;},[]);
- // A returned or refocused dashboard must not retain protected stale figures.
- useEffect(()=>{if(!ready)return;
-  const recheck=()=>{if(document.visibilityState==="visible")void load();};
-  document.addEventListener("visibilitychange",recheck);
-  window.addEventListener("focus",recheck);
-  return()=>{document.removeEventListener("visibilitychange",recheck);
-   window.removeEventListener("focus",recheck);};
- },[ready,load]);
+ // Permission or center assignment can change while the browser is away.
+ // Discard protected data + selectors first, then obtain fresh source grants.
+ useEffect(()=>{
+  const recheck=()=>{
+   seq.current+=1;setData(null);setReady(false);setOptionsError("");
+   setYears([]);setBranches([]);setCenters([]);
+   setFinanceAvailable(false);setHealthAvailable(false);
+   setMode("OVERVIEW");setYear("");setBranch("");setCenter("");
+   setFromDay("");setUntilDay("");setStatus("");
+   setOptionsVersion(x=>x+1);
+  };
+  const whenVisible=()=>{if(document.visibilityState==="visible")recheck();
+   else{seq.current+=1;setData(null);}};
+  document.addEventListener("visibilitychange",whenVisible);
+  window.addEventListener("focus",whenVisible);
+  return()=>{document.removeEventListener("visibilitychange",whenVisible);
+   window.removeEventListener("focus",whenVisible);};
+ },[]);
  return <section aria-labelledby="mis-dashboard-heading" style={{marginBottom:"2rem"}}>
   <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:"1rem",flexWrap:"wrap"}}>
    <div><h2 id="mis-dashboard-heading" style={{fontSize:"1.1rem",color:"var(--cg-text)"}}>Foundation MIS — Verified Sources</h2>
