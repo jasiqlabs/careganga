@@ -101,6 +101,12 @@ export class HealthcareFoundationPostingFacade{
     !/^\d{4}-\d{2}-\d{2}$/.test(original.postingDate)||
     original.reason.length<12||original.reason.length>300)
    throw new BadRequestException({code:"CG17_ACCRUAL_REVERSAL_INVALID"});
+  const openYear=await c.query(
+   "SELECT 1 FROM financial_year WHERE root_realm_id=$1 AND id=$2 "+
+   "AND status='OPEN' AND start_on<=$3::date AND end_on>=$3::date FOR SHARE",
+   [actor.realmId,original.financialYearRef,original.postingDate]);
+  if(!openYear.rowCount)
+   throw new ConflictException({code:"CG17_CORRECTION_YEAR_NOT_OPEN"});
   const originalJournal=await c.query<{source_ref:string;created_by:string;
     immutable_payload_digest:string}>(
    "SELECT source_ref,created_by,immutable_payload_digest FROM journal "+
