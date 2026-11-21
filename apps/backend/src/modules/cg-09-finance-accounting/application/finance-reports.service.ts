@@ -185,6 +185,12 @@ export class FinanceReportsService{
    year=yearInput?uuid(yearInput,"yearRef"):null,
    branch=branchInput?uuid(branchInput,"branchRef"):null;
   await this.verifyFilterScope(bearer,actor.realmId,{fy:year,branch,account:null});
+  return this.readPostedSummary(actor.realmId,year,branch);
+ }
+ /** Same original posted-metric formula for both interactive and current-role
+  * CG20 scheduled readers. Never a second CG20 finance SQL/projection.
+  */
+ private async readPostedSummary(realm:string,year:string|null,branch:string|null){
   // Keep both source totals in the same actual PostgreSQL read snapshot.
   // Snapshot time is per CG-09; it is NOT a cross-owner/global watermark.
   const tx=await this.db.connect();let open=false;
@@ -202,7 +208,7 @@ export class FinanceReportsService{
     "WHERE j.root_realm_id=$1 AND j.status='POSTED' "+
     "AND ($2::uuid IS NULL OR j.financial_year_id=$2) "+
     "AND ($3::uuid IS NULL OR l.branch_id=$3) GROUP BY g.category",
-    [actor.realmId,year,branch]);
+    [realm,year,branch]);
    const k=Object.fromEntries(result.rows.map(x=>[x.category,x]));
    const get=(cat:string,side:"amountDebit"|"amountCredit")=>BigInt(k[cat]?.[side]??"0");
    const income=get("INCOME","amountCredit")-get("INCOME","amountDebit");
@@ -216,7 +222,7 @@ export class FinanceReportsService{
     "WHERE j.root_realm_id=$1 AND j.status='POSTED' "+
     "AND ($2::uuid IS NULL OR j.financial_year_id=$2) "+
     "AND a.account_kind IN('CASH','BANK') "+
-    "AND ($3::uuid IS NULL OR l.branch_id=$3)",[actor.realmId,year,branch]);
+    "AND ($3::uuid IS NULL OR l.branch_id=$3)",[realm,year,branch]);
    await tx.query("COMMIT");open=false;
    return {incomeMinor:income.toString(),expenseMinor:expense.toString(),
     surplusMinor:(income-expense).toString(),fundsMinor:funds.toString(),
@@ -226,6 +232,24 @@ export class FinanceReportsService{
     explanation:"Recognized income/expense from posted GL only. Cash/bank is not approved claims or invoices."};
   }catch(e){if(open)await tx.query("ROLLBACK").catch(()=>undefined);throw e;}
   finally{tx.release();}
+ }
+ /** The due worker has no user bearer. Its stored CG01 account is checked
+  * live and CG02 enforces the same assigned-branch/Finance-Admin boundary.
+  * Only this narrow posted finance owner projection is supported unattended.
+  */
+ async scheduledSummary(root:string,account:string,yearInput?:string,branchInput?:string){
+  await this.sessions.requireScheduledMisAction(root,account,"finance.reports.view");
+  const year=yearInput?uuid(yearInput,"yearRef"):null;
+  const branch=branchInput?uuid(branchInput,"branchRef"):null;
+  await this.branches.requireScheduledFinanceReportBranch(root,account,branch);
+  if(year){
+   const exists=await this.db.query(
+    "SELECT 1 FROM financial_year WHERE id=$1 AND root_realm_id=$2",
+    [year,root]);
+   if(!exists.rowCount)
+    throw new ForbiddenException("The scheduled financial year is unavailable");
+  }
+  return this.readPostedSummary(root,year,branch);
  }
  /** CG-20 US-001 source-owned narrow trend, never a separate MIS ledger.
   * Month uses original posting_date, only POSTED journal lines and the same
