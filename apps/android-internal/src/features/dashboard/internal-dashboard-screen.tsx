@@ -15,7 +15,7 @@ import {
 import { AuthenticatedAppShell } from "./authenticated-app-shell";
 import { OperationsOverview } from "./operations-overview";
 import {NativeMisDashboard} from "../mis-reporting/native-mis-dashboard";
-import {NativeMisReports} from "../mis-reporting/native-mis-reports";
+
 import {NativeClinicianAccountAcceptance} from "../health-network/native-clinician-account-link";
 import { AuthorizedModuleCard } from "./authorized-module-card";
 import { IconGrid, IconMenu } from "./dashboard-icons";
@@ -116,10 +116,6 @@ export function InternalDashboardScreen({
             onOpenPatientAdmin={roleActions.includes("health.patients.admin.view")&&
              roleActions.includes("foundation.branches.admin")?
              handlers.openPatientAdmin:undefined}/>}
-
-        {/* Actual original-owner standard reports for eligible staff; Public Android excluded. */}
-        {roleActions.includes("mis.reports.view")&&
-          <NativeMisReports token={token} onExpired={onExpired}/>}
 
         {/* Authorized Modules Section (Featured Quick Access matching Web Dashboard) */}
         <View style={styles.modulesSection}>
