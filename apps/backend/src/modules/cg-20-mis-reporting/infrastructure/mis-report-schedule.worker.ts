@@ -288,8 +288,10 @@ export class MisReportScheduleWorker implements OnModuleInit,OnModuleDestroy{
     "attempts=attempts+1,next_retry_utc=now()+interval '2 minutes',"+
     "updated_at=now() WHERE root_realm_id=$1 AND id=$2",
     [row.root_realm_id,row.id]);
+   // The fifth attempt is final: subsequent failures must move to
+   // UNAVAILABLE, not remain SENT_PENDING or imply a delivered notice.
    await tx.query("COMMIT");open=false;
-   return row;
+   return {...row,attempts:row.attempts+1};
   }catch(e){if(open)await tx.query("ROLLBACK").catch(()=>undefined);
    throw e;}finally{tx.release();}
  }
@@ -312,12 +314,14 @@ export class MisReportScheduleWorker implements OnModuleInit,OnModuleDestroy{
    // SQL transaction. No external provider is marked delivered here.
   }catch(e){
    const forbidden=e instanceof Error&&/forbidden|unauthor|revoked/i.test(e.name);
+   const exhausted=row.attempts>=5;
    await this.db.query(
     "UPDATE cg20_report_delivery_attempt SET state=$3,"+
     "next_retry_utc=$4,updated_at=now() "+
     "WHERE root_realm_id=$1 AND id=$2 AND state='SENT_PENDING'",
-    [row.root_realm_id,row.id,forbidden?"SUPPRESSED":"FAILED",
-     forbidden?null:new Date(Date.now()+300000)]
+    [row.root_realm_id,row.id,forbidden?"SUPPRESSED":
+      exhausted?"UNAVAILABLE":"FAILED",
+     forbidden||exhausted?null:new Date(Date.now()+300000)]
    ).catch(()=>undefined);
   }
  }
