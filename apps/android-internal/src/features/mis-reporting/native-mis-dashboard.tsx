@@ -46,6 +46,7 @@ export function NativeMisDashboard({token,onExpired,onOpenFinance,onOpenPatientA
  const [busy,setBusy]=useState(true),[problem,setProblem]=useState("");
  const [optionsError,setOptionsError]=useState("");
  const seq=useRef(0),[ready,setReady]=useState(false);
+ const [optionsVersion,setOptionsVersion]=useState(0);
  const [allBranches,setAllBranches]=useState(false);
  const [years,setYears]=useState<Option[]>([]),[branches,setBranches]=useState<Option[]>([]);
  const [centers,setCenters]=useState<Option[]>([]);
@@ -80,7 +81,7 @@ export function NativeMisDashboard({token,onExpired,onOpenFinance,onOpenPatientA
    }finally{if(live)setReady(true);}
   })();
   return()=>{live=false;};
- },[token,onExpired]);
+ },[token,onExpired,optionsVersion]);
  const load=useCallback(async()=>{
   const requestId=++seq.current;
   setBusy(true);setProblem("");setOverview(null);
@@ -101,6 +102,10 @@ export function NativeMisDashboard({token,onExpired,onOpenFinance,onOpenPatientA
     headers:{Authorization:"Bearer "+token},cache:"no-store"});
    if(requestId!==seq.current)return;
    if(response.status===401){onExpired();return;}
+   if(!response.ok&&(response.status===401||response.status===403)){
+    setFinanceAvailable(false);setHealthAvailable(false);
+    setYears([]);setBranches([]);setCenters([]);
+   }
    if(!response.ok)throw Error(response.status===403?
     "Your role or location no longer permits these figures.":
     response.status===400?"Check the selected date, center or financial year.":
@@ -116,13 +121,21 @@ export function NativeMisDashboard({token,onExpired,onOpenFinance,onOpenPatientA
  },[token,onExpired,mode,year,branch,applied]);
  useEffect(()=>{if(ready)void load();},[ready,load]);
  useEffect(()=>()=>{seq.current+=1;},[]);
+ // No polling: current access is revalidated only when staff reopen the app.
+ // Clear old protected numbers/center labels before querying current grants.
  useEffect(()=>{
-  if(!ready)return;
   const sub=AppState.addEventListener("change",state=>{
-   if(state==="active")void load();
+   seq.current+=1;setOverview(null);
+   if(state!=="active")return;
+   setReady(false);setOptionsError("");
+   setFinanceAvailable(false);setHealthAvailable(false);
+   setYears([]);setBranches([]);setCenters([]);
+   setMode("OVERVIEW");setYear("");setBranch("");
+   setDraft(EMPTY);setApplied(EMPTY);
+   setOptionsVersion(x=>x+1);
   });
   return()=>sub.remove();
- },[ready,load]);
+ },[]);
  function applyHealth(){
   if(Boolean(draft.fromDay)!==Boolean(draft.untilDay)||
     (draft.fromDay&&(!validDay(draft.fromDay)||!validDay(draft.untilDay)))||
