@@ -2,14 +2,15 @@
 import {useCallback,useEffect,useRef,useState,type FormEvent} from "react";
 import {HrEvidenceUploader} from "./hr-evidence-uploader";
 
-type Choice={label:string;branchRef?:string;departmentRef?:string};
+type Choice={label:string;branchRef?:string;departmentRef?:string;managerRef?:string;accountRef?:string};
 type Application={applicationRef:string;reference:string;name:string;designation:string;
  employmentType:string;branchRef:string;departmentRef:string|null;
+ managerRef:string|null;accountRef:string|null;
  hireDate:string;revision:number;status:string};
 type Draft={name:string;designation:string;employmentType:string;
- branchRef:string;departmentRef:string;hireDate:string};
+ branchRef:string;departmentRef:string;managerRef:string;accountRef:string;hireDate:string};
 const blank=():Draft=>({name:"",designation:"",employmentType:"FULL_TIME",
- branchRef:"",departmentRef:"",hireDate:""});
+ branchRef:"",departmentRef:"",managerRef:"",accountRef:"",hireDate:""});
 type Result={message:string;error:boolean};
 const fieldStyle={display:"grid",gap:".35rem",fontWeight:600,fontSize:".91rem"} as const;
 const inputStyle={padding:".78rem",border:"1px solid #CBD5E1",borderRadius:"10px",
@@ -35,11 +36,13 @@ function isChoices(x:unknown):x is {items:Choice[]} {
  return Boolean(x)&&typeof x==="object"&&"items" in x&&
   Array.isArray((x as {items:unknown}).items);
 }
-export function HrEnrollmentWorkspace({canManage,canViewEmployees}:{
-  canManage:boolean;canViewEmployees:boolean}){
+export function HrEnrollmentWorkspace({canManage,canViewEmployees,canSelectAccounts}:{
+  canManage:boolean;canViewEmployees:boolean;canSelectAccounts:boolean}){
  const [apps,setApps]=useState<Application[]>([]);
  const [branches,setBranches]=useState<Choice[]>([]);
  const [departments,setDepartments]=useState<Choice[]>([]);
+ const [managers,setManagers]=useState<Choice[]>([]);
+ const [accounts,setAccounts]=useState<Choice[]>([]);
  const [form,setForm]=useState<Draft>(blank);
  const [selected,setSelected]=useState<Application|null>(null);
  const [status,setStatus]=useState<Result|null>(null);
@@ -73,13 +76,23 @@ export function HrEnrollmentWorkspace({canManage,canViewEmployees}:{
  useEffect(()=>{void load(0);},[load]);
  useEffect(()=>{
   let active=true;
-  setDepartments([]);
+  setDepartments([]);setManagers([]);
   if(!form.branchRef)return;
-  void request("departments?branch="+encodeURIComponent(form.branchRef))
-   .then(v=>{if(active&&isChoices(v))setDepartments(v.items);})
+  void Promise.all([request("departments?branch="+encodeURIComponent(form.branchRef)),
+    request("managers?branch="+encodeURIComponent(form.branchRef))])
+   .then(([d,m])=>{if(active){if(isChoices(d))setDepartments(d.items);
+     if(isChoices(m))setManagers(m.items);}})
    .catch(()=>{if(active)setStatus({message:"Department options are unavailable.",error:true});});
   return()=>{active=false;};
  },[form.branchRef]);
+ useEffect(()=>{
+  if(!canSelectAccounts||!canManage)return;
+  let live=true;
+  void request("account-options?search=").then(v=>{
+   if(live&&isChoices(v))setAccounts(v.items);
+  }).catch(()=>{if(live)setAccounts([]);});
+  return()=>{live=false;};
+ },[canSelectAccounts,canManage]);
  const review=useCallback(async(app:Application)=>{
   setFileApplication(app);setCaseStatus(null);setStatus(null);
   try{
@@ -163,7 +176,8 @@ export function HrEnrollmentWorkspace({canManage,canViewEmployees}:{
  };
 
  const change=(field:keyof Draft,value:string)=>{
-  setForm(v=>({...v,[field]:value,...(field==="branchRef"?{departmentRef:""}:{})}));
+  setForm(v=>({...v,[field]:value,
+   ...(field==="branchRef"?{departmentRef:"",managerRef:""}:{})}));
   setAttempt(null);setRequestKey(crypto.randomUUID());
  };
  const beginEdit=(app:Application)=>{
@@ -171,7 +185,8 @@ export function HrEnrollmentWorkspace({canManage,canViewEmployees}:{
   setSelected(app);
   setForm({name:app.name,designation:app.designation,
    employmentType:app.employmentType,branchRef:app.branchRef,
-   departmentRef:app.departmentRef??"",hireDate:app.hireDate});
+   departmentRef:app.departmentRef??"",managerRef:app.managerRef??"",
+   accountRef:app.accountRef??"",hireDate:app.hireDate});
   setAttempt(null);setRequestKey(crypto.randomUUID());setStatus(null);
  };
  const reset=()=>{setSelected(null);setForm(blank());setRequestKey(crypto.randomUUID());setAttempt(null);};
@@ -184,7 +199,8 @@ export function HrEnrollmentWorkspace({canManage,canViewEmployees}:{
   const key=requestKey;
   const payload={requestKey:key,name:form.name,designation:form.designation,
    employmentType:form.employmentType,branchRef:form.branchRef,
-   departmentRef:form.departmentRef||null,hireDate:form.hireDate,accountRef:null,
+   departmentRef:form.departmentRef||null,managerRef:form.managerRef||null,
+   hireDate:form.hireDate,accountRef:form.accountRef||null,
    ...(selected?{expectedRevision:selected.revision}:{})};
   setAttempt(key);
   try{
@@ -245,6 +261,18 @@ export function HrEnrollmentWorkspace({canManage,canViewEmployees}:{
       <option value="">Not assigned</option>
       {departments.map(v=><option key={v.departmentRef} value={v.departmentRef}>{v.label}</option>)}
      </select></label>
+    <label style={fieldStyle}>Reporting manager (optional)
+     <select style={inputStyle} value={form.managerRef}
+      onChange={e=>change("managerRef",e.target.value)}>
+      <option value="">No reporting manager assigned</option>
+      {managers.map(x=><option value={x.managerRef} key={x.managerRef}>{x.label}</option>)}
+     </select></label>
+    {canSelectAccounts&&<label style={fieldStyle}>Existing staff login (optional)
+     <select style={inputStyle} value={form.accountRef}
+      onChange={e=>change("accountRef",e.target.value)}>
+      <option value="">No login linked — employment only</option>
+      {accounts.map(x=><option value={x.accountRef} key={x.accountRef}>{x.label}</option>)}
+     </select></label>}
     <label style={fieldStyle}>Joining date
      <input type="date" style={inputStyle} required value={form.hireDate}
       onChange={e=>change("hireDate",e.target.value)}/></label>
