@@ -323,7 +323,9 @@ must(generated,/typeof verified\.scanProofRef!=="string"/,
  "CG19 generated report must retain a valid original scanner proof");
 must(generated,/Date\.now\(\)-scanTime>=900000/,
  "Generated CG19 scan verification freshness matches original upload checks");
-must(generated,/AND result_revision_ref=\$4 AND status=\x27INITIATED\x27/,
+must(generated,/WHERE root_realm_id=\$1 AND id=\$2 AND order_ref=\$3 AND center_ref=\$4/,
+ "Generated PDF uncertain-state recovery must be scoped to original Foundation realm/order");
+must(generated,/AND result_revision_ref=\$5 AND status=\x27INITIATED\x27/,
  "Unknown generated PDF recovery updates only its exact original result");
 console.log("CG16 US002 source/parse preflight authored for clinical review and simple release. "+
  "PostgreSQL, browser, Android, independent clinical and security QA NOT_RUN.");
