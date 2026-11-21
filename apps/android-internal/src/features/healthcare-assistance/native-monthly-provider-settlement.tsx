@@ -17,7 +17,8 @@ type Summary={month:string;state:string;settlementRef?:string;revision?:number;
  centerGrossServicesMinor?:string;patientPayableMinor?:string;
  patientCollectedVerifiedMinor?:string;patientRefundedMinor?:string;
  foundationApprovedLiabilityMinor?:string;
- originalApprovedFoundationMinor?:string;adjustedFoundationMinor?:string;
+ originalApprovedFoundationMinor?:string;
+ effectiveState?:string;originalClaimState?:string;adjustedFoundationMinor?:string;
  grossFoundationPaidMinor?:string;verifiedProviderRecoveryMinor?:string;
  collectionsScope?:"VERIFIED_TO_DATE_FOR_COMPLETED_SERVICES"};
 const ID=/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i;
@@ -166,7 +167,10 @@ export function NativeMonthlyProviderSettlement({token,canPropose,canReview,canP
     autoCapitalize="none" onChangeText={setMonth}/>
    {source&&<View style={styles.card}>
     <Text style={styles.heading}>Month {source.month}</Text>
-    <Text style={styles.note}>Claim: {source.state.replaceAll("_"," ")}</Text>
+    <Text style={styles.note}>Original claim: {source.state.replaceAll("_"," ")}</Text>
+    {source.effectiveState&&source.effectiveState!==source.state&&
+     <Text style={styles.note}>Current verified payable status: {
+      source.effectiveState.replaceAll("_"," ")}</Text>}
     <Text style={styles.amount}>{source.state==="NOT_PREPARED"?
      "Eligible posted Foundation liabilities":source.state==="PROPOSED"?
      "Prepared claim awaiting approval":"Approved monthly Foundation claim"}: {
