@@ -1,6 +1,14 @@
 -- CG17 US005: original approved Foundation obligation for a REAL
 -- completed CG15 consultation only, independent of the patient's center cash.
 -- Historical policy and charge are immutable; no new CG15, CG14 or CG09 master.
+-- The already-authoritative CG17 patient_charge table has a four-column
+-- root/id/center/patient unique key. PostgreSQL cannot use its subset
+-- as the target of the three-column actual award/liability foreign keys.
+-- Add only the required existing-owner target; no duplicate charge master.
+ALTER TABLE patient_charge
+ ADD CONSTRAINT uq_cg17_patient_charge_realm_id_center
+ UNIQUE(root_realm_id,id,center_ref);
+
 CREATE TABLE assistance_award(
  root_realm_id uuid NOT NULL REFERENCES access_realm(id) ON DELETE RESTRICT,
  id uuid NOT NULL DEFAULT gen_random_uuid(),
