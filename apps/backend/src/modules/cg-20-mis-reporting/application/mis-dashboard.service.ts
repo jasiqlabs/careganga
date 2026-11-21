@@ -87,6 +87,18 @@ export class MisDashboardService{
   if(Boolean(healthFilter.fromDay)!==Boolean(healthFilter.untilDay))
    throw new BadRequestException({code:"MIS_HEALTH_DATE_RANGE_INVALID",
     message:"Select both start and end dates."});
+  // A branch-restricted finance manager must not receive root-wide totals,
+  // but a single currently assigned branch can be shown on Overview without
+  // asking the user to enter an internal ID. Multi-branch limited actors must
+  // select their current branch in the Finance view instead of a fabricated
+  // union or a silently widened data scope.
+  if(view==="OVERVIEW"&&!filters.branchRef){
+   try{
+    const choices=await this.finance.options(bearer);
+    if(!choices.allBranches&&choices.branches.length===1)
+     filters.branchRef=choices.branches[0].branchRef;
+   }catch(error){if(error instanceof UnauthorizedException)throw error;}
+  }
   const readAt=new Date().toISOString();
   let failures=0;
   const financeSource:Promise<Source|null>=view==="HEALTH"?Promise.resolve(null):this.finance
@@ -138,10 +150,12 @@ export class MisDashboardService{
   // Published offers are ACTUAL verified offers, not all draft tariffs.
   const diagnosticSource:Promise<Source|null>=view!=="OVERVIEW"?
    Promise.resolve(null):this.diagnostics.summary(bearer)
-   .then(x=>({sourceKey:"CG16_FOUNDATION_DIAGNOSTICS",state:"AVAILABLE" as const,
+   .then(x=>({sourceKey:"CG16_FOUNDATION_DIAGNOSTICS",
+    state:(x.totalTests===0&&x.activeTests===0&&x.packages===0&&x.publishedOffers===0?
+     "EMPTY":"AVAILABLE") as "EMPTY"|"AVAILABLE",
     sourceLabel:"Foundation Diagnostics · Current catalogues",
     readAt:new Date().toISOString(),
-    metrics:[
+    metrics:x.totalTests===0&&x.activeTests===0&&x.packages===0&&x.publishedOffers===0?[]:[
      {key:"tests",label:"Catalogue tests",unit:"COUNT" as const,value:String(x.totalTests)},
      {key:"activeTests",label:"Active approved tests",unit:"COUNT" as const,value:String(x.activeTests)},
      {key:"packages",label:"Active packages",unit:"COUNT" as const,value:String(x.packages)},
