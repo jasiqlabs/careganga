@@ -48,7 +48,9 @@
     "verify:cg16-us003-source": "node scripts/verify-cg16-us003-source.mjs",
     "verify:cg16-us004-source": "node scripts/verify-cg16-us004-source.mjs",
     "verify:cg19-client-source": "node scripts/verify-cg19-client-source.mjs",
-    "verify:cg21-source": "node scripts/verify-cg21-source.mjs"
+    "verify:cg21-source": "node scripts/verify-cg21-source.mjs",
+    "verify:migration-history-source": "node scripts/verify-migration-history-source.mjs",
+    "verify:local-source-preflight": "npm run verify:design-approvals && npm run verify:migration-history-source && npm run verify:core-source && npm run verify:cg14-source && npm run verify:cg15-final-source-gaps && npm run verify:cg16-us002-source && npm run verify:cg17-us006-source && npm run verify:healthcare-journeys-source"
   },
   "devDependencies": {
     "typescript": "7.0.2",
