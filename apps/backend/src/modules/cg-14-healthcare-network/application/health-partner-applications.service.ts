@@ -187,8 +187,24 @@ export class HealthPartnerApplicationsService{
     original==="REJECTED"||original==="SUSPENDED"?
       "ORIGINAL_REVIEW_REQUIRED":"FOUNDATION_REVIEW":
     simpleStatus(current.status);
-  return {reference:current.reference_code,status,
-   message:"Verification status only. Current service publication and any Foundation-funded discount require separate approval."};
+  const copy:Record<string,{statusLabel:string;message:string}>={
+   PENDING:{statusLabel:"Application received",
+    message:"Your application is awaiting Foundation review. We will contact you."},
+   IN_REVIEW:{statusLabel:"Under Foundation review",
+    message:"The Foundation is reviewing your application and will contact you if evidence is needed."},
+   RETURNED:{statusLabel:"Additional details requested",
+    message:"The Foundation needs more information. Please respond when the team contacts you."},
+   DECLINED:{statusLabel:"Application declined",
+    message:"This application has been closed. Contact the Foundation for further information."},
+   FOUNDATION_REVIEW:{statusLabel:"Verification in progress",
+    message:"Your application is linked for independent professional or facility verification."},
+   ORIGINAL_REVIEW_REQUIRED:{statusLabel:"Verification requires review",
+    message:"The linked professional or facility needs further Foundation review."},
+   ORIGINAL_VERIFIED:{statusLabel:"Original partner record verified",
+    message:"The original provider or professional record is verified. Current service publication and Foundation discounts still require separate approval."}
+  };
+  const safe=copy[status]??copy.FOUNDATION_REVIEW;
+  return {reference:current.reference_code,status,...safe};
  }
  async list(bearer:string,status="ALL",offset=0){
   const actor=await this.sessions.requireAction(bearer,"health.providers.view");
