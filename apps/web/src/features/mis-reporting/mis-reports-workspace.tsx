@@ -5,6 +5,7 @@ import {MisSavedReports} from "./mis-saved-reports";
 import {MisReportExports} from "./mis-report-exports";
 import {MisReportSchedules} from "./mis-report-schedules";
 import {MisFinanceTrend,MisAppointmentDistribution} from "./mis-source-charts";
+import {MisGroupedFinanceChart} from "./mis-grouped-finance-chart";
 type Kind="FINANCE_POSTED_LEDGER"|"FINANCE_POSTED_SUMMARY"|
  "FINANCE_POSTED_TREND"|"FINANCE_POSTED_GROUPED"|
  "APPOINTMENT_STATUS"|"PLATFORM_AUDIT_ACTIVITY";
@@ -225,6 +226,8 @@ export function MisReportsWorkspace(){
       windowLabel:"Last six calendar months",state:"AVAILABLE",
       points:result.rows.map(r=>({month:r.month??"",incomeMinor:r.incomeMinor??"0",
        expenseMinor:r.expenseMinor??"0"}))}}/>}
+    {result.view==="CHART"&&result.kind==="FINANCE_POSTED_GROUPED"&&
+     <MisGroupedFinanceChart rows={result.rows.map(x=>({groupLabel:x.groupLabel??"",debitMinor:x.debitMinor??"0",creditMinor:x.creditMinor??"0"}))}/>}
     {result.view==="CHART"&&result.kind==="APPOINTMENT_STATUS"&&
      <MisAppointmentDistribution metrics={result.columns.map(c=>({
       key:c.key,label:c.label,unit:c.unit??"COUNT",
