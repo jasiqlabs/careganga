@@ -22,8 +22,8 @@ async function api<T>(token:string,path:string,method="GET",body?:object):Promis
  return response.json() as Promise<T>;
 }
 const label=(s:string)=>s.replaceAll("_"," ").toLowerCase().replace(/\b\w/g,v=>v.toUpperCase());
-export function NativeHrReviews({token,onExpired}:{
- token:string;onExpired:()=>void;
+export function NativeHrReviews({token,canConfigure=false,onExpired}:{
+ token:string;canConfigure?:boolean;onExpired:()=>void;
 }){
  const [cases,setCases]=useState<Case[]>([]);
  const [selected,setSelected]=useState<Detail|null>(null);
@@ -33,6 +33,9 @@ export function NativeHrReviews({token,onExpired}:{
  const [key,setKey]=useState<string|null>(null);
  const [error,setError]=useState(""),[notice,setNotice]=useState("");
  const [busy,setBusy]=useState(false),[loading,setLoading]=useState(true);
+ const [configured,setConfigured]=useState<boolean|null>(null);
+ const [setupPassword,setSetupPassword]=useState("");
+ const [configuring,setConfiguring]=useState(false);
  const failure=useCallback((e:unknown)=>{
   if(e&&typeof e==="object"&&"status" in e&&e.status===401)onExpired();
   setError(e instanceof Error?e.message:"Original reviewer access cannot be confirmed.");
@@ -48,6 +51,27 @@ export function NativeHrReviews({token,onExpired}:{
   finally{setLoading(false);}
  },[token,failure]);
  useEffect(()=>{void refresh();},[refresh]);
+ const checkProcess=useCallback(async()=>{
+  try{
+   const result=await api<{configured:boolean}>(token,"/process");
+   if(!result||typeof result.configured!=="boolean")
+    throw Error("Original employee approval process cannot be verified.");
+   setConfigured(result.configured);
+  }catch(e){setConfigured(null);failure(e);}
+ },[token,failure]);
+ useEffect(()=>{void checkProcess();},[checkProcess]);
+ const configure=async()=>{
+  if(!canConfigure||!setupPassword||configuring)return;
+  setConfiguring(true);setError("");
+  try{
+   const result=await api<{configured:boolean}>(token,"/process","POST",{
+    currentPassword:setupPassword});
+   if(!result?.configured)throw Error("Protected process setup cannot be verified.");
+   setSetupPassword("");setConfigured(true);
+   setNotice("Original Foundation employee reviewer process configured.");
+  }catch(e){failure(e);}
+  finally{setConfiguring(false);}
+ };
  const open=async(ref:string)=>{
   setBusy(true);setError("");setNotice("");setPassword("");setKey(null);
   try{
@@ -120,6 +144,22 @@ export function NativeHrReviews({token,onExpired}:{
    an original enrollment with scanner-verified identity proof. Password confirmation is required.</Text>
   {!!error&&<Text accessibilityRole="alert" style={styles.error}>{error}</Text>}
   {!!notice&&<Text style={styles.success}>{notice}</Text>}
+  {configured===false&&<View style={styles.detail}>
+   <Text style={styles.hint}>The original employee approval process requires
+    protected Foundation manager configuration before submissions.</Text>
+   {canConfigure&&<>
+    <Text style={styles.label}>Current password to configure employee reviews</Text>
+    <TextInput value={setupPassword} onChangeText={setSetupPassword}
+      secureTextEntry autoCapitalize="none" autoCorrect={false}
+      accessibilityLabel="Password for protected process setup"
+      style={styles.input} placeholder="Current password"/>
+    <Pressable accessibilityRole="button" disabled={configuring||!setupPassword}
+      style={styles.primary} onPress={()=>void configure()}>
+      <Text style={styles.primaryText}>
+       {configuring?"Configuring reviews…":"Configure original approval process"}</Text>
+    </Pressable>
+   </>}
+  </View>}
   {button(loading?"Loading…":"Refresh original inbox",()=>void refresh(),loading||busy)}
   {cases.length===0&&!loading&&<Text style={styles.hint}>No original review cases.</Text>}
   {cases.map(item=><View key={item.caseRef} style={styles.item}>
