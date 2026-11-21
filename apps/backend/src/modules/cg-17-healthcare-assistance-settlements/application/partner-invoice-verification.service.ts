@@ -38,7 +38,7 @@ const body=(v:unknown,keys:string[])=>{
 type Claim={
  id:string;public_code:string;root_realm_id:string;patient_ref:string;
  center_ref:string;source_digest:string;policy_revision_ref:string;
- service_local_date:string;service_kind:"PHARMACY"|"NURSING"|"OT"|"DIAGNOSTICS";
+ service_local_date:string;service_kind:"PHARMACY"|"NURSING"|"OT"|"LAB";
  invoice_file_ref:string;completion_file_ref:string|null;payment_file_ref:string|null;
  quoted_gross_minor:string;estimated_patient_due_minor:string;
  estimated_support_minor:string;requested_by_account:string;
