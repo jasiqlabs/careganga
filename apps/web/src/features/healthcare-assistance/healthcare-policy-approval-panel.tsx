@@ -4,7 +4,7 @@ type ReviewCase={caseRef:string;reference:string;title:string;
  status:string;revision:number};
 type Detail={caseRef:string;reference:string;title:string;status:string;
  revision:number;source:{policyRevisionRef:string;validFrom:string;
- validUntil:string;capMinor:string;percentBasisPoints:number;
+ validUntil:string;capMinor:string;percentBasisPoints:number|null;fixedMinor:string|null;
  service:string;mode:string;state:string}};
 type PendingPolicy={revisionRef:string;reviewCaseRef:string|null;
  reviewStatus:string|null;status:string;serviceKind:string;
@@ -77,19 +77,19 @@ export function HealthcarePolicyApprovalPanel({canReview,canManage,
   event.preventDefault();
   if(!canReview||!selected||busy||!password||unknown)return;
   if(!window.confirm(action==="APPROVE"?
-   "Approve this exact 100% policy for separate Foundation finalization?":
-   "Reject this original 100% policy? No patient award becomes effective."))return;
+   "Approve this protected healthcare contribution for separate Foundation finalization?":
+   "Reject this protected contribution policy? No patient award becomes effective."))return;
   const command={path:selected.caseRef+"/decision",body:{
    requestKey:crypto.randomUUID(),expectedRevision:selected.revision,
    action,remarks:remarks.trim(),currentPassword:password},
    success:action==="APPROVE"?
     "Independent CG03 review approved. Foundation finalization is still required.":
-    "Exceptional support rejected; no 100% benefit is effective."};
+    "Protected contribution rejected; no unapproved benefit becomes effective."};
   last.current=command;void submit(command);
  }
  function activate(ref:string){
   if(!canManage||busy||unknown||!password)return;
-  if(!window.confirm("Finalize this exact independently approved 100% policy? "+
+  if(!window.confirm("Finalize this exact independently approved healthcare contribution? "+
    "The prior active rule changes only after successful protected finalization."))return;
   const command={path:ref+"/activate",body:{currentPassword:password},
    success:"Protected owner finalized original CG03 decision. "+
@@ -99,10 +99,11 @@ export function HealthcarePolicyApprovalPanel({canReview,canManage,
  const ready=pendingPolicies.filter(p=>p.status==="PENDING_APPROVAL"&&
   p.reviewStatus==="PENDING_OWNER"&&p.reviewCaseRef!==null);
  if(!canReview&&!canManage)return null;
- return <section className="form-section" aria-label="Independent exceptional support approval">
-  <h2>Exceptional full-support approval</h2>
-  <p>100% support requires a genuine, current, independent protected
-   CG03 reviewer decision, followed by separate Foundation owner finalization.
+ return <section className="form-section" aria-label="Independent protected healthcare contribution approval">
+  <h2>Protected healthcare contribution approval</h2>
+  <p>Full consultation coverage and all pharmacy, nursing and OT benefit
+   policies require a genuine independent protected CG03 reviewer decision
+   followed by separate Foundation owner finalization.
    A scanner check, ordinary role or a pending request is never approval.</p>
   {!!error&&<p className="notice error" role="alert">{error}</p>}
   {!!message&&<p className="notice" role="status">{message}</p>}
@@ -125,7 +126,7 @@ export function HealthcarePolicyApprovalPanel({canReview,canManage,
    <button type="button" disabled={busy||unknown} onClick={()=>void load().catch(e=>
     setError(e instanceof Error?e.message:"Review inbox unavailable."))}>
     Refresh reviews</button>
-   {cases.length===0?<p>No original policy exceptions currently visible.</p>:
+   {cases.length===0?<p>No protected contribution reviews currently visible.</p>:
     <div className="table-wrap"><table className="role-table">
      <thead><tr><th>Original reference</th><th>Review state</th><th>Details</th></tr></thead>
      <tbody>{cases.map(c=><tr key={c.caseRef}>
@@ -136,7 +137,7 @@ export function HealthcarePolicyApprovalPanel({canReview,canManage,
     </table></div>}
    {selected&&<form onSubmit={event=>decide("APPROVE",event)}>
     <h3>Review {selected.reference}</h3>
-    <p>{selected.title}. Benefit:
+    <p>{selected.title}. {selected.source.service} contribution:
      {" "+(selected.source.percentBasisPoints/100).toFixed(2)}%.
      Cap: {cash(selected.source.capMinor)}.
      Period: {new Date(selected.source.validFrom).toLocaleString("en-IN")} –
