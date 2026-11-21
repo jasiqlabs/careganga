@@ -22,6 +22,7 @@ export type FoundationAdminNavProps = {
     | "support"
     | "foundation"
     | "branches"
+    | "hr"
     | "finance"
     | "financeVouchers"
     | "financeReviews"
@@ -633,6 +634,8 @@ export function FoundationAdminNav({
       )
     : canViewFoundation;
   const branchAccess = allowed("foundation.branches.view", canViewBranches);
+  const hrAccess = currentActions ? currentActions.has("hr.applications.view") :
+    Boolean(initialActions?.includes("hr.applications.view"));
   const accountsAccess = currentActions
     ? currentActions.has("accounts.view") ||
       (currentActions.has("accounts.create") && currentActions.has("roles.assign"))
@@ -726,6 +729,7 @@ export function FoundationAdminNav({
     ...(rolesAccess ? [{ key: "roles" as const, label: "Roles & permissions", href: "/admin/roles" }] : []),
     ...(foundationAccess ? [{ key: "foundation" as const, label: "Foundation Structure", href: "/admin/foundation" }] : []),
     ...(branchAccess ? [{ key: "branches" as const, label: "Branches & registration", href: "/admin/foundation/branches" }] : []),
+    ...(hrAccess ? [{key:"hr" as const,label:"Human Resources",href:"/admin/hr"}] : []),
     ...(cmsAccess ? [{ key: "cms" as const, label: "Website CMS", href: "/admin/website" }] : []),
     ...(healthNetworkAccess || healthReviewerAccess || healthPublisherAccess
       ? [{ key: "healthNetwork" as const,
