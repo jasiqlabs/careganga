@@ -169,14 +169,26 @@ export class HealthPartnerApplicationsService{
     typeof obj.receipt!=="string"||!RECEIPT.test(obj.receipt))
    throw new BadRequestException({code:"PARTNER_RECEIPT_INVALID"});
   const root=await this.foundationRoot();
-  const result=await this.db.query<{reference_code:string;status:string}>(
-   "SELECT reference_code,status FROM health_partner_application "+
-   "WHERE root_realm_id=$1 AND receipt_digest=$2",
+  const result=await this.db.query<{reference_code:string;status:string;
+   provider_status:string|null;doctor_status:string|null}>(
+   "SELECT app.reference_code,app.status,p.status AS provider_status,"+
+   "d.status AS doctor_status FROM health_partner_application app "+
+   "LEFT JOIN health_provider p ON p.root_realm_id=app.root_realm_id "+
+   "AND p.id=app.linked_provider_id "+
+   "LEFT JOIN health_doctor d ON d.root_realm_id=app.root_realm_id "+
+   "AND d.id=app.linked_doctor_id "+
+   "WHERE app.root_realm_id=$1 AND app.receipt_digest=$2",
    [root,hashReceipt(obj.receipt)]);
-  if(!result.rows[0])throw new NotFoundException({code:"PARTNER_RECEIPT_UNAVAILABLE"});
-  return {reference:result.rows[0].reference_code,
-   status:simpleStatus(result.rows[0].status),
-   message:"Foundation review status only. Registration is not automatic approval."};
+  const current=result.rows[0];
+  if(!current)throw new NotFoundException({code:"PARTNER_RECEIPT_UNAVAILABLE"});
+  const original=current.provider_status??current.doctor_status;
+  const status=current.status==="LINKED"?
+    original==="VERIFIED"?"ORIGINAL_VERIFIED":
+    original==="REJECTED"||original==="SUSPENDED"?
+      "ORIGINAL_REVIEW_REQUIRED":"FOUNDATION_REVIEW":
+    simpleStatus(current.status);
+  return {reference:current.reference_code,status,
+   message:"Verification status only. Current service publication and any Foundation-funded discount require separate approval."};
  }
  async list(bearer:string,status="ALL",offset=0){
   const actor=await this.sessions.requireAction(bearer,"health.providers.view");
