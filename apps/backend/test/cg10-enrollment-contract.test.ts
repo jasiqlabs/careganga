@@ -83,6 +83,36 @@ describe("CG-10 employee draft validation",()=>{
     [...sql].filter(x=>x===")").length,
     "unclosed SQL grouping must not block normal employee enrollment");
  });
+ test("both real HR department pickers share syntactically balanced linked-branch SQL",async()=>{
+  const actor={realmId:id,accountId:id};
+  const observed:string[]=[];
+  const tx={query:async(sql:string)=>{
+    observed.push(sql);
+    return {rowCount:1,rows:[{id,name:"Field Operations"}]};
+  },release:()=>{}};
+  const service=Object.create(HrEnrollmentService.prototype) as {
+    branch:(tx:unknown,actor:unknown,ref:string)=>Promise<unknown>;
+    actor:(token:string,capability:string)=>Promise<unknown>;
+    sessions:{requireAction:(token:string,capability:string)=>Promise<unknown>};
+    db:{connect:()=>Promise<unknown>};
+    departmentOptions:(token:string,ref:string)=>Promise<{items:Array<{departmentRef:string}>}>;
+    employeeDepartmentOptions:(token:string,ref:string)=>Promise<{items:Array<{departmentRef:string}>}>;
+  };
+  service.branch=async()=>({name:"Active Foundation Branch"});
+  service.actor=async()=>actor;
+  service.sessions={requireAction:async()=>actor};
+  service.db={connect:async()=>tx};
+  const form=await service.departmentOptions("internal-session",id);
+  const directory=await service.employeeDepartmentOptions("internal-session",id);
+  assert.equal(form.items[0]?.departmentRef,id);
+  assert.equal(directory.items[0]?.departmentRef,id);
+  assert.equal(observed.length,2);
+  for(const sql of observed){
+    assert.match(sql,/link\\.ended_at IS NULL\\)\\)\\) ORDER BY/);
+    assert.equal([...sql].filter(x=>x==="(").length,
+      [...sql].filter(x=>x===")").length);
+  }
+ });
  test("normalizes whitespace without silently adding login or privileges",()=>{
   const x=parseHrDraft({...base(),name:"  Amina   Rahman  ",designation:"  Field   Coordinator  "});
   assert.equal(x.name,"Amina Rahman");

@@ -184,7 +184,7 @@ export class HrEnrollmentService{
     "SELECT 1 FROM branch_department_link link WHERE "+ 
     "link.foundation_department_id=department.id AND "+ 
     "link.root_realm_id=department.root_realm_id AND "+ 
-    "link.branch_id=$2 AND link.ended_at IS NULL)) "+ 
+    "link.branch_id=$2 AND link.ended_at IS NULL))) "+ 
     "ORDER BY name,id LIMIT 101",
     [a.realmId,ref]);
    if(q.rows.length>100)throw new ConflictException("Ask your administrator to narrow departments");
@@ -250,7 +250,7 @@ export class HrEnrollmentService{
     "SELECT 1 FROM branch_department_link link WHERE "+ 
     "link.foundation_department_id=department.id AND "+ 
     "link.root_realm_id=department.root_realm_id AND "+ 
-    "link.branch_id=$2 AND link.ended_at IS NULL)) "+ 
+    "link.branch_id=$2 AND link.ended_at IS NULL))) "+ 
     "ORDER BY name,id LIMIT 101",
     [actor.realmId,branch]);
    if(rows.rows.length>100)
