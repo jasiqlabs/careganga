@@ -235,7 +235,46 @@ export class SessionService implements IdentityAuthorization {
       accessVersion:result.rows[0].access_version};
   }
 
-  async effectiveAccess(bearer:string):Promise<{displayName:string;roleName:string;actions:readonly {key:string;businessLabel:string;group:string}[]}> {
+    /** Private CG-20 definition sharing may search eligible staff ONLY.
+   * Source grants still have to be checked when a recipient opens or copies
+   * the definition. Search never returns email, phone or technical IDs to UI.
+   */
+  async eligibleMisShareRecipients(bearer:string,search:unknown){
+    const actor=await this.requireAction(bearer,"mis.reports.share");
+    await this.requireAction(bearer,"mis.reports.manage");
+    if(typeof search!=="string"||search.trim().length<2||
+       search.trim().length>60)
+      throw new BadRequestException("Enter at least two letters to find a colleague");
+    const q=await this.db.query<{ref:string;name:string}>(`
+      SELECT a.id AS ref,a.display_name AS name FROM account a
+      WHERE a.realm_id=$1 AND a.id<>$2 AND a.status='ACTIVE'
+        AND position(lower($3) in lower(a.display_name))>0
+        AND EXISTS(
+         SELECT 1 FROM account_role ar
+         JOIN role r ON r.id=ar.role_id AND r.active=true
+         WHERE ar.realm_id=a.realm_id AND ar.account_id=a.id
+           AND ar.revoked_at IS NULL
+           AND (r.is_protected OR EXISTS(
+            SELECT 1 FROM role_grant g
+            WHERE g.role_id=r.id AND g.capability_key='mis.reports.view'
+           ))
+        )
+        AND EXISTS(
+         SELECT 1 FROM account_role ar
+         JOIN role r ON r.id=ar.role_id AND r.active=true
+         WHERE ar.realm_id=a.realm_id AND ar.account_id=a.id
+           AND ar.revoked_at IS NULL
+           AND (r.is_protected OR EXISTS(
+            SELECT 1 FROM role_grant g
+            WHERE g.role_id=r.id AND g.capability_key='mis.reports.manage'
+           ))
+        )
+      ORDER BY a.display_name,a.id LIMIT 16`,
+      [actor.realmId,actor.accountId,search.trim()]);
+    return {people:q.rows.slice(0,15),hasMore:q.rows.length>15};
+  }
+
+async effectiveAccess(bearer:string):Promise<{displayName:string;roleName:string;actions:readonly {key:string;businessLabel:string;group:string}[]}> {
     const actor=await this.verifySession(bearer);
     const granted=await this.allowedActionsFor(actor);
     return {
