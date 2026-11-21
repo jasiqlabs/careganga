@@ -1,4 +1,4 @@
-import {Body,Controller,Get,Header,Headers,Param,Post} from "@nestjs/common";
+import {Body,Controller,Get,Header,Headers,Param,Post,StreamableFile} from "@nestjs/common";
 import {PartnerInvoiceVerificationService} from
  "../application/partner-invoice-verification.service";
 
@@ -25,6 +25,17 @@ export class PartnerInvoiceVerificationController{
  foundationStatus(@Headers("authorization")token:string,
   @Param("centerRef")center:string,@Param("claimCode")code:string){
   return this.original.status(token,center,code,false);
+ }
+ @Get("foundation/centers/:centerRef/claims/:claimCode/evidence/:kind")
+ @Header("Cache-Control","private, no-store")
+ @Header("X-Content-Type-Options","nosniff")
+ async evidence(@Headers("authorization")token:string,
+  @Param("centerRef")center:string,@Param("claimCode")code:string,
+  @Param("kind")kind:string){
+  const file=await this.original.evidence(token,center,code,kind);
+  return new StreamableFile(file.bytes,{
+   type:file.mime,disposition:'attachment; filename="CareGanga-reviewed-partner-evidence"'
+  });
  }
  @Post("foundation/centers/:centerRef/claims/:claimCode/decide")
  @Header("Cache-Control","private, no-store")
