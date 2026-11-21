@@ -269,7 +269,8 @@ for(const [path,code] of [[contentReviewPath,nativeContentReview],
 }
 checks.push(["CG14 native reviewer reuses real CG03 center-content queue and decision",
  nativeContentReview.includes('"/api/health/content-reviews/"+path')&&
- nativeContentReview.includes('token,"list"')&&
+ nativeContentReview.includes('token,""')&&
+ contentController.includes('@Get()')&&
  nativeContentReview.includes('encodeURIComponent(op.caseRef)+"/decide"')&&
  contentController.includes('api/health/content-reviews')]);
 checks.push(["CG14 native reviewer shares same independently privileged original root",
