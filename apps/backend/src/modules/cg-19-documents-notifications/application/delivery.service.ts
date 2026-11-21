@@ -223,6 +223,41 @@ export class DeliveryService{
          [row.realm_id,row.id,row.recipient_id]);
         if(!own.rowCount)permitted=false;
       }
+      // Lab notices only say 'check your private report'. Verify the
+      // original CG16 release, CG19 file and CURRENT patient ownership/consent
+      // immediately before any SendGrid/Twilio call.
+      if(row.source_kind==="CG16_LAB_RELEASE"){
+        const allowed=await client.query(
+         "SELECT 1 FROM cg19_notification n "+
+         "JOIN cg16_lab_report_release release ON "+
+         "release.root_realm_id=n.realm_id "+
+         "AND release.id=n.cg16_lab_report_release_id "+
+         "JOIN cg19_lab_result_file file ON "+
+         "file.root_realm_id=release.root_realm_id "+
+         "AND file.id=release.original_cg19_file_ref "+
+         "AND file.scan_status='CLEAN_VERIFIED' "+
+         "AND file.revoked_at IS NULL "+
+         "JOIN cg15_patient patient ON "+
+         "patient.root_realm_id=release.root_realm_id "+
+         "AND patient.id=release.patient_ref "+
+         "AND patient.profile_status='VERIFIED' "+
+         "JOIN cg15_patient_account_link link ON "+
+         "link.root_realm_id=patient.root_realm_id "+
+         "AND link.patient_id=patient.id "+
+         "AND link.account_id=n.recipient_id "+
+         "AND link.revoked_at IS NULL "+
+         "WHERE n.realm_id=$1 AND n.id=$2 AND n.recipient_id=$3 "+
+         "AND EXISTS(SELECT 1 FROM cg15_patient_identity_event proof "+
+         "WHERE proof.root_realm_id=patient.root_realm_id "+
+         "AND proof.patient_id=patient.id) "+
+         "AND (SELECT consent.granted FROM cg15_patient_consent consent "+
+         "WHERE consent.root_realm_id=patient.root_realm_id "+
+         "AND consent.patient_id=patient.id "+
+         "AND consent.purpose='PATIENT_CARE' "+
+         "ORDER BY consent.revision_no DESC LIMIT 1)=true",
+         [row.realm_id,row.id,row.recipient_id]);
+        if(!allowed.rowCount)permitted=false;
+      }
       if(row.notice_id){
         const notice=await client.query<{state:string;expires_at:Date}>(`
           SELECT state,expires_at FROM cg19_notice WHERE realm_id=$1 AND id=$2
