@@ -53,6 +53,6 @@ export default async function ProtectedPlatformPage(){
   }catch(error){
     if(error&&typeof error==="object"&&"digest" in error&&
       typeof error.digest==="string"&&error.digest.startsWith("NEXT_REDIRECT"))throw error;
-    return <UnavailablePage title="Audit Logs unavailable" />;
+    return <UnavailablePage title="Audit Logs temporarily unavailable" description="We could not connect to Foundation services. Please check your connection or try again shortly." linkHref="/admin" linkLabel="Return to dashboard" mode="service-unavailable" />;
   }
 }

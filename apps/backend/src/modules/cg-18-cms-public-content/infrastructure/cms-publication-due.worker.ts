@@ -1,4 +1,4 @@
-import {Inject,Injectable,OnModuleDestroy,OnModuleInit} from "@nestjs/common";
+import {Inject,Injectable,Logger,OnModuleDestroy,OnModuleInit} from "@nestjs/common";
 import {randomUUID} from "node:crypto";
 import type {Pool,PoolClient} from "pg";
 import {DATABASE} from "../../../core/infrastructure/database.module";
@@ -19,6 +19,7 @@ type Original={id:string;page_id:string;page_revision_id:string;
  */
 @Injectable()
 export class CmsPublicationDueWorker implements OnModuleInit,OnModuleDestroy{
+ private readonly logger=new Logger(CmsPublicationDueWorker.name);
  private timer:ReturnType<typeof setInterval>|null=null;
  private running=false;private stopped=false;
  constructor(@Inject(DATABASE)private readonly db:Pool,
@@ -27,8 +28,24 @@ export class CmsPublicationDueWorker implements OnModuleInit,OnModuleDestroy{
   private readonly notices:CmsPublicNoticeSource){}
  onModuleInit(){
   this.stopped=false;
-  void this.tick();
-  this.timer=setInterval(()=>{void this.tick();},60000);
+  void this.tick().catch(err=>{
+   const failureCode=err&&typeof err==="object"&&"code" in err&&typeof err.code==="string"?err.code:undefined;
+   this.logger.warn(JSON.stringify({
+    at:new Date().toISOString(),module:"cms",worker:"CmsPublicationDueWorker",
+    event:"initial_tick_rejection_caught",failureType:err instanceof Error?err.name:"UnexpectedWorkerError",
+    ...(failureCode?{code:failureCode}:{})
+   }));
+  });
+  this.timer=setInterval(()=>{
+   void this.tick().catch(err=>{
+    const failureCode=err&&typeof err==="object"&&"code" in err&&typeof err.code==="string"?err.code:undefined;
+    this.logger.warn(JSON.stringify({
+     at:new Date().toISOString(),module:"cms",worker:"CmsPublicationDueWorker",
+     event:"scheduled_tick_rejection_caught",failureType:err instanceof Error?err.name:"UnexpectedWorkerError",
+     ...(failureCode?{code:failureCode}:{})
+    }));
+   });
+  },60000);
   this.timer.unref?.();
  }
  async onModuleDestroy(){
@@ -146,39 +163,67 @@ export class CmsPublicationDueWorker implements OnModuleInit,OnModuleDestroy{
    "event_key,actor_ref,action,revision_ref) VALUES($1,$2,$3,$4,'PUBLISH',$5)",
    [item.foundation_root_id,item.page_id,randomUUID(),item.created_by,item.page_revision_id]);
  }
- async tick(){
-  if(this.stopped||this.running)return;
-  this.running=true;
-  try{
-   for(let i=0;i<10&&!this.stopped;i++){
-    const tx=await this.db.connect();
-    let due:Due|null=null,committed=false;
-    try{
+ async tick(): Promise<void> {
+  if (this.stopped || this.running) return;
+  this.running = true;
+  try {
+   for (let i = 0; i < 10 && !this.stopped; i++) {
+    let tx: PoolClient | null = null;
+    try {
+     tx = await this.db.connect();
+    } catch (connErr: unknown) {
+     const failureCode = connErr && typeof connErr === "object" && "code" in connErr && typeof connErr.code === "string"
+      ? connErr.code
+      : undefined;
+     this.logger.warn(JSON.stringify({
+      at: new Date().toISOString(),
+      module: "cms",
+      worker: "CmsPublicationDueWorker",
+      event: "db_connect_failed",
+      failureType: connErr instanceof Error ? connErr.name : "ConnectionError",
+      ...(failureCode ? { code: failureCode } : {})
+     }));
+     break;
+    }
+    let due: Due | null = null, committed = false;
+    try {
      await tx.query("BEGIN");
-     const rows=await tx.query<Due>(
+     const rows = await tx.query<Due>(
       "SELECT id,foundation_root_id,page_publication_ref "+
       "FROM cms_publication_due WHERE status='READY' AND "+
       "page_publication_ref IS NOT NULL AND due_at<=now() "+
       "AND (next_attempt_at IS NULL OR next_attempt_at<=now()) "+
       "ORDER BY due_at,id LIMIT 1");
-     due=rows.rows[0]??null;
-     if(due)await this.apply(tx,due);
-     await tx.query("COMMIT");committed=true;
-     if(!due)break;
-    }catch{
-     if(!committed){try{await tx.query("ROLLBACK");}catch{}}
-     if(due)try{
+     due = rows.rows[0] ?? null;
+     if (due) await this.apply(tx, due);
+     await tx.query("COMMIT"); committed = true;
+     if (!due) break;
+    } catch {
+     if (!committed) { try { await tx.query("ROLLBACK"); } catch {} }
+     if (due) try {
       await this.db.query(
        "UPDATE cms_publication_due SET attempt_count=attempt_count+1,"+
        "status=CASE WHEN attempt_count>=9 THEN 'FAILED' ELSE 'READY' END,"+
        "next_attempt_at=now()+interval '2 minutes',"+
        "last_safe_error='Scheduled publication retry after source or database failure' "+
        "WHERE id=$1 AND foundation_root_id=$2 AND status='READY'",
-       [due.id,due.foundation_root_id]);
-     }catch{}
+       [due.id, due.foundation_root_id]);
+     } catch {}
      break;
-    }finally{tx.release();}
+    } finally {
+     tx.release();
+    }
    }
-  }finally{this.running=false;}
+  } catch (unexpectedError: unknown) {
+   this.logger.error(JSON.stringify({
+    at: new Date().toISOString(),
+    module: "cms",
+    worker: "CmsPublicationDueWorker",
+    event: "worker_unexpected_failure",
+    failureType: unexpectedError instanceof Error ? unexpectedError.name : "UnexpectedWorkerError"
+   }));
+  } finally {
+   this.running = false;
+  }
  }
 }
