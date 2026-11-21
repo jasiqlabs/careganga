@@ -12,10 +12,10 @@ import {PrivateObjectStorage} from "../infrastructure/private-object-storage";
 const UUID=/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i;
 const SHA=/^[a-f0-9]{64}$/;
 const MAX=10485760;
-type Class="PATIENT_PHOTO"|"PATIENT_UPLOADED_PRESCRIPTION"|"PATIENT_MEDICAL_REPORT";
+type Class="PATIENT_PHOTO"|"PATIENT_UPLOADED_PRESCRIPTION"|"PATIENT_MEDICAL_REPORT"|"PATIENT_PARTNER_INVOICE"|"PATIENT_PARTNER_SERVICE_PROOF";
 type Mime="application/pdf"|"image/jpeg"|"image/png"|"image/webp";
 const CLASSES=new Set<Class>(["PATIENT_PHOTO","PATIENT_UPLOADED_PRESCRIPTION",
- "PATIENT_MEDICAL_REPORT"]);
+ "PATIENT_MEDICAL_REPORT","PATIENT_PARTNER_INVOICE","PATIENT_PARTNER_SERVICE_PROOF"]);
 const MIMES=new Set<Mime>(["application/pdf","image/jpeg","image/png","image/webp"]);
 type Intent={realm_id:string;id:string;patient_id:string;requested_by:string;
  request_key:string;request_digest:string;classification:Class;mime:Mime;
