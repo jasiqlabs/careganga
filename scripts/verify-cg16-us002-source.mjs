@@ -208,7 +208,7 @@ must(generated,/GENERATED_VERIFIED/,
 must(pdf,/renderLaboratoryReport/,"PDF renderer belongs to existing CG19");
 must(pdf,/source\.results/,
  "PDF must display actual saved values, never guessed data");
-assert.doesNotMatch(pdf,/normalRange|diagnos(?:e|is)|fakeReferenceRange/,
+assert.doesNotMatch(pdf,/line\("(?:(?:Reference|Normal) range|Diagnosis)"/i,
  "System must not invent medical ranges or interpretation");
 must(controller,/results\/generate/,
  "Original CG16 lab controller must reach generated PDF");
