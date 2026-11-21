@@ -25,6 +25,11 @@ export class PartnerOffersController{
   @Body()body:unknown){
   return this.offers.submit(token,center,body);
  }
+ @Get("foundation/centers")
+ @Header("Cache-Control","private, no-store")
+ foundationCenters(@Headers("authorization")token:string){
+  return this.offers.foundationCenters(token);
+ }
  @Get("foundation/centers/:centerRef")
  @Header("Cache-Control","private, no-store")
  foundation(@Headers("authorization")token:string,@Param("centerRef")center:string){
