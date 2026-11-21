@@ -72,8 +72,8 @@ export function MisReportsWorkspace(){
    if(!Array.isArray(c.templates))throw Error("Current report catalog could not be verified.");
    if(i===seq.current){setCatalog(c);
     setBranch(c.finance.allBranches?"":c.finance.branches[0]?.ref??"");
-    setKind(old=>c.templates.some(x=>x.kind===old)?
-    old:c.templates[0]?.kind??null);}
+    setKind(c.templates[0]?.kind??null);
+    setView(c.templates[0]?.views[0]??"TABLE");}
   }catch(e){if(i===seq.current){setCatalog(null);setKind(null);
    setProblem(e instanceof Error?e.message:"Report source unavailable.");}}
   finally{if(i===seq.current)setLoading(false);}
