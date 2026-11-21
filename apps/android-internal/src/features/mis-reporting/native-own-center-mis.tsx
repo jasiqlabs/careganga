@@ -15,7 +15,7 @@ const initialMonth=()=>{
  const d=new Date();
  return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0");
 };
-const MONTH=/^20[2-9]\\d-(0[1-9]|1[0-2])$/;
+const MONTH=/^20[2-9]\d-(0[1-9]|1[0-2])$/;
 const formatMoney=(value:string|undefined)=>{
  if(typeof value!=="string"||!/^-?\d{1,14}$/.test(value))return "Not confirmed";
  try{const v=BigInt(value),abs=v<0n?-v:v;
