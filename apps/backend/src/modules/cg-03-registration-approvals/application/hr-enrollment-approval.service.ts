@@ -48,9 +48,9 @@ export class HrEnrollmentApprovalService{
   private readonly protectedOwner:ProtectedAccessOwnerService,
   private readonly source:HrEnrollmentSourceFacade,
   private readonly files:HrEmployeeEvidenceService){}
- private async exact(tx:PoolClient,realm:string,c:Case){
+ private async exact(tx:PoolClient,realm:string,c:Case,requireCurrent=true){
   const frozen=await this.source.frozen(tx,realm,c.hr_revision_id,
-   c.hr_revision_no,c.hr_source_digest);
+   c.hr_revision_no,c.hr_source_digest,requireCurrent);
   if(frozen.applicationRef!==c.hr_application_id||
    frozen.proposerRef!==c.proposer_id)
    throw new ConflictException("The original employee submission does not match");
@@ -173,7 +173,8 @@ export class HrEnrollmentApprovalService{
     "AND case_kind='EMPLOYEE_ENROLLMENT' FOR SHARE",[ref,actor.realmId]);
    const c=q.rows[0];
    if(!c)throw new NotFoundException("Employee review is unavailable");
-   const frozen=await this.exact(tx,actor.realmId,c);
+   const frozen=await this.exact(tx,actor.realmId,c,
+     ["SUBMITTED","IN_REVIEW","PENDING_OWNER"].includes(c.status));
    await tx.query("COMMIT");
    return {caseRef:c.id,reference:c.case_number,revision:c.revision,
     name:c.account_name_snapshot,status:c.status,
@@ -207,7 +208,8 @@ export class HrEnrollmentApprovalService{
    c=q.rows[0];
    if(c.proposer_id===actor.accountId)
     throw new ForbiddenException("You cannot read your own enrollment review evidence");
-   const frozen=await this.exact(tx,actor.realmId,c);
+   const frozen=await this.exact(tx,actor.realmId,c,
+     ["SUBMITTED","IN_REVIEW","PENDING_OWNER"].includes(c.status));
    file=frozen.files.find(f=>f.classification===kindInput);
    if(!file)throw new NotFoundException("This original employee proof was not supplied");
    await tx.query("COMMIT");
