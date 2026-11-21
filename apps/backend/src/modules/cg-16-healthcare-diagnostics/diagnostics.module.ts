@@ -12,6 +12,7 @@ import {ClinicalLabOrderController} from "./http/clinical-lab-order.controller";
 import {ClinicalLabOptionsService} from "./application/clinical-lab-options.service";
 import {ClinicalLabCustodyService} from "./application/clinical-lab-custody.service";
 import {ClinicalLabResultEvidenceService} from "./application/clinical-lab-result-evidence.service";
+import {ClinicalLabGeneratedResultService} from "./application/clinical-lab-generated-result.service";
 import {ClinicalLabProfessionalReviewService} from "./application/clinical-lab-professional-review.service";
 import {ClinicalLabPatientReleaseService} from "./application/clinical-lab-patient-release.service";
 import {ClinicalLabPatientReportController} from "./http/clinical-lab-patient-report.controller";
@@ -22,7 +23,7 @@ import {ClinicalLabEquipmentController} from "./http/clinical-lab-equipment.cont
 
 @Module({
  imports:[IdentityAccessModule,HealthNetworkModule,LabResultStorageModule],
- providers:[DiagnosticsCatalogService,DiagnosticsPublicCatalogService,DiagnosticsPriceReviewSource,ClinicalLabAdmissionService,ClinicalLabOrderService,ClinicalLabOptionsService,ClinicalLabCustodyService,ClinicalLabResultEvidenceService,ClinicalLabProfessionalReviewService,ClinicalLabPatientReleaseService,
+ providers:[DiagnosticsCatalogService,DiagnosticsPublicCatalogService,DiagnosticsPriceReviewSource,ClinicalLabAdmissionService,ClinicalLabOrderService,ClinicalLabOptionsService,ClinicalLabCustodyService,ClinicalLabResultEvidenceService,ClinicalLabGeneratedResultService,ClinicalLabProfessionalReviewService,ClinicalLabPatientReleaseService,
   ClinicalLabEquipmentService,ClinicalLabQualityEvidenceService],
  controllers:[DiagnosticsCatalogController,DiagnosticsPublicCatalogController,
   ClinicalLabOrderController,ClinicalLabPatientReportController,ClinicalLabEquipmentController],
