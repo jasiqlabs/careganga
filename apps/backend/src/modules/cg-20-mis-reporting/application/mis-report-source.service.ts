@@ -10,7 +10,8 @@ import {DiagnosticsCatalogService} from "../../cg-16-healthcare-diagnostics/appl
 export const REPORT_KINDS=[
  "FINANCE_POSTED_LEDGER","FINANCE_POSTED_SUMMARY",
  "FINANCE_POSTED_TREND","FINANCE_POSTED_GROUPED",
- "APPOINTMENT_STATUS","PLATFORM_AUDIT_ACTIVITY","DIAGNOSTICS_CATALOG_SUMMARY"
+ "APPOINTMENT_STATUS","APPOINTMENT_STATUS_GROUPED",
+ "PLATFORM_AUDIT_ACTIVITY","DIAGNOSTICS_CATALOG_SUMMARY"
 ] as const;
 export type ReportKind=typeof REPORT_KINDS[number];
 export type ReportView="TABLE"|"SUMMARY"|"CHART"|"PIVOT";
@@ -53,6 +54,7 @@ export function parseSafeReport(raw:unknown):SafeReportRequest{
   FINANCE_POSTED_SUMMARY:["SUMMARY"],
   FINANCE_POSTED_TREND:["CHART"],
   APPOINTMENT_STATUS:["SUMMARY","CHART"],
+  APPOINTMENT_STATUS_GROUPED:["TABLE","CHART"],
   PLATFORM_AUDIT_ACTIVITY:["TABLE"],
   DIAGNOSTICS_CATALOG_SUMMARY:["SUMMARY"]
  };
@@ -91,6 +93,7 @@ export function parseSafeReport(raw:unknown):SafeReportRequest{
    Date.parse(untilDay+"T00:00:00Z")-Date.parse(fromDay+"T00:00:00Z")>89*86400000||
   fromDay!==""&&kind!=="FINANCE_POSTED_LEDGER"&&
    kind!=="FINANCE_POSTED_GROUPED"&&kind!=="APPOINTMENT_STATUS"&&
+   kind!=="APPOINTMENT_STATUS_GROUPED"&&
    kind!=="PLATFORM_AUDIT_ACTIVITY")
   throw new BadRequestException({code:"MIS_REPORT_FILTER_INVALID",
    message:"Choose an allowed center, year, status and date range for this report."});
@@ -174,9 +177,14 @@ export class MisReportSourceService{
     {kind:"FINANCE_POSTED_TREND",label:"Finance trend",
      views:["CHART"],description:"Actual posted income and expenses by month"}
    ]:[]),
-   ...(appointments.ready?[{kind:"APPOINTMENT_STATUS",
-    label:"Appointment status summary",views:["SUMMARY","CHART"],
-    description:"Protected aggregate status counts without patient details"}]:[])
+   ...(appointments.ready?[
+    {kind:"APPOINTMENT_STATUS",label:"Appointment status summary",
+     views:["SUMMARY","CHART"],
+     description:"Protected aggregate status counts without patient details"},
+    {kind:"APPOINTMENT_STATUS_GROUPED",label:"Grouped appointment status",
+     views:["TABLE","CHART"],
+     description:"Actual status groups from one privacy-protected CG-15 source read"}
+   ]:[])
   ];
   const permission=async(action:string)=>{
    try{await this.sessions.requireAction(token,action);return true;}
@@ -386,6 +394,30 @@ export class MisReportSourceService{
   const x=await this.patients.readMisTotals(token,{
    centerRef:q.centerRef,fromDay:q.fromDay,untilDay:q.untilDay,status:q.status});
   const suppressed=suppressAppointmentCells(x);
+  if(q.kind==="APPOINTMENT_STATUS_GROUPED"){
+   const completed=BigInt(x.completed),waiting=BigInt(x.waiting),
+    cancelled=BigInt(x.cancelled);
+   const other=BigInt(x.bookings)-completed-waiting-cancelled;
+   const groups=[
+    {statusLabel:"Completed",count:x.completed},
+    {statusLabel:"Waiting or in consultation",count:x.waiting},
+    {statusLabel:"Cancelled",count:x.cancelled},
+    {statusLabel:"Other recorded states",count:other.toString()}
+   ];
+   return {kind:q.kind,view:q.view,label:"Grouped appointment status",
+    state:suppressed?"SUPPRESSED":x.bookings==="0"?"EMPTY":"READY",
+    columns:[
+     {key:"statusLabel",label:"Appointment status group",unit:"TEXT"},
+     {key:"count",label:"Appointments",unit:"COUNT"}
+    ],rows:suppressed||x.bookings==="0"?[]:groups,
+    nextOffset:null,sourceReadAt,sourceAsOf:x.sourceAsOf,
+    sourceCutoffKind:x.sourceCutoffKind,
+    explanation:suppressed?
+     "These status groups are hidden because a small cell could reveal private appointment participation.":
+     "All four status groups come from the same scoped CG-15 read. No patient identities, documents or clinical notes.",
+    scopeLabel:q.centerRef?"Selected verified center":
+     "Current permitted Foundation appointment scope"};
+  }
   return {kind:q.kind,view:q.view,label:"Appointment status summary",
    state:suppressed?"SUPPRESSED":x.bookings==="0"?"EMPTY":"READY",
    columns:[{key:"bookings",label:"Total appointments",unit:"COUNT"},
