@@ -175,7 +175,7 @@ export class MisDashboardService{
      {key:"completed",label:"Completed appointments",unit:"COUNT" as const,value:x.completed},
      {key:"waiting",label:"In progress or waiting",unit:"COUNT" as const,value:x.waiting},
      {key:"cancelled",label:"Cancelled appointments",unit:"COUNT" as const,value:x.cancelled}
-    ],explanation:restricted?
+    ],drilldown:"/admin/health-network/patients",explanation:restricted?
       "Appointment statistics are hidden for this small group to protect privacy.":
       "Authorized appointment status totals; no patient files or individual care data."};
    })
