@@ -263,7 +263,7 @@ export function NativeMisReports({token,onExpired}:{token:string;onExpired:()=>v
     "Private results are hidden for this small group.":"No matching original records."}</Text>}
   </View>}
   {preview?.state==="PARTIAL"&&<Text style={s.hint}>
-   A protected audit source is unavailable or has more entries. Narrow your dates before export.</Text>}
+   This original source result is incomplete or has more entries. Narrow your permitted filters before export.</Text>}
   {catalog?.capabilities?.export===true&&
    <NativeMisExports token={token} onExpired={onExpired} current={request(0)}/>}
   {catalog?.capabilities?.schedule===true&&
