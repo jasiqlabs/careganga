@@ -8,6 +8,9 @@ const fail=(code:number,message:string)=>NextResponse.json({message},{
  status:code,headers:{"Cache-Control":"private, no-store",
  "X-Content-Type-Options":"nosniff"}});
 function permitted(p:string[],method:"GET"|"POST"){
+ if(method==="GET"&&p.length===5&&p[0]==="my-centers"&&
+  ID.test(p[1])&&p[2]==="months"&&MONTH.test(p[3])&&p[4]==="summary")
+  return true;
  if(method==="GET"&&p.length===2&&p[0]==="centers"&&p[1]==="eligible")
   return true;
  if(p.length>=4&&p[0]==="centers"&&ID.test(p[1])&&
