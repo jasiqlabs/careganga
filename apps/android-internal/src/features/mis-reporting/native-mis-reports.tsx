@@ -10,6 +10,7 @@ import {NativeMisExports} from "./native-mis-exports";
 import {NativeMisSchedules} from "./native-mis-schedules";
 import {NativeMisFinanceTrend,NativeMisAppointmentDistribution}
  from "./native-mis-source-charts";
+import {NativeMisGroupedFinanceChart} from "./native-mis-grouped-finance-chart";
 type Kind="FINANCE_POSTED_LEDGER"|"FINANCE_POSTED_SUMMARY"|
  "FINANCE_POSTED_TREND"|"FINANCE_POSTED_GROUPED"|
  "APPOINTMENT_STATUS"|"PLATFORM_AUDIT_ACTIVITY";
@@ -186,6 +187,8 @@ export function NativeMisReports({token,onExpired}:{token:string;onExpired:()=>v
       state:"AVAILABLE",windowLabel:"Last six calendar months",
       points:preview.rows.map(r=>({month:r.month??"",
        incomeMinor:r.incomeMinor??"0",expenseMinor:r.expenseMinor??"0"}))}}/>}
+    {preview.kind==="FINANCE_POSTED_GROUPED"&&
+     <NativeMisGroupedFinanceChart rows={preview.rows.map(x=>({groupLabel:x.groupLabel??"",debitMinor:x.debitMinor??"0",creditMinor:x.creditMinor??"0"}))}/>}
     {preview.kind==="APPOINTMENT_STATUS"&&
      <NativeMisAppointmentDistribution metrics={preview.columns.map(c=>({
       key:c.key,label:c.label,unit:c.unit??"COUNT",
