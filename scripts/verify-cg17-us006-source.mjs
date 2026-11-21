@@ -345,6 +345,46 @@ assert.equal((claimedMigration.match(/\$cg17\$/g)??[]).length,6,
 assert.equal((claimedMigration.match(/\$cg09\$/g)??[]).length,2,
  "Original CG09 protected journal reversal proof delimiter balances");
 
+// Deterministic economic fixtures, not a mock payment or DB assertion.
+// The SQL guard and CG17 service use the same exact corrected payable
+// arithmetic. Actual PostgreSQL locks, unique keys and CG09 money evidence
+// must still be tested in a disposable database with independent reviewers.
+const correctedClaim=(total,paid,previousAdjusted,previousRecovered,newCorrection)=>{
+ const netTotal=total-previousAdjusted-newCorrection;
+ if(netTotal<0n||paid<previousRecovered)throw Error("Invalid original financial source");
+ const needed=(paid-previousRecovered)>netTotal?
+  paid-previousRecovered-netTotal:0n;
+ const afterNetPaid=paid-previousRecovered-needed;
+ return {netTotal,needed,afterNetPaid,outstanding:netTotal-afterNetPaid};
+};
+for(const example of [
+ {name:"Proposed no bank",args:[100000n,0n,0n,0n,50000n],
+  net:50000n,recovery:0n,outstanding:50000n},
+ {name:"Approved before payout",args:[100000n,0n,0n,0n,50000n],
+  net:50000n,recovery:0n,outstanding:50000n},
+ {name:"Part paid no recovery",args:[100000n,20000n,0n,0n,50000n],
+  net:50000n,recovery:0n,outstanding:30000n},
+ {name:"Part paid with recovery",args:[100000n,80000n,0n,0n,50000n],
+  net:50000n,recovery:30000n,outstanding:0n},
+ {name:"Fully paid exact recovery",args:[100000n,100000n,0n,0n,50000n],
+  net:50000n,recovery:50000n,outstanding:0n},
+ {name:"Already adjusted, new correction",args:[100000n,80000n,20000n,0n,20000n],
+  net:60000n,recovery:20000n,outstanding:0n},
+ {name:"Already recovered, later correction",args:[100000n,90000n,30000n,20000n,20000n],
+  net:50000n,recovery:20000n,outstanding:0n}
+]){
+ const actual=correctedClaim(...example.args);
+ assert.equal(actual.netTotal,example.net,example.name+" net approved claim");
+ assert.equal(actual.needed,example.recovery,example.name+" real bank recovery required");
+ assert.equal(actual.outstanding,example.outstanding,
+  example.name+" economic payable outstanding after verified refund");
+ assert.ok(actual.needed>=0n&&actual.outstanding>=0n,
+  example.name+" cannot invent a negative payout");
+}
+assert.throws(()=>correctedClaim(100n,0n,50n,0n,60n),
+ /Invalid original financial source/,
+ "Cannot reverse more than the original approved claim");
+
 const escapeChar=String.fromCharCode(92);
 const correctDatePattern="/^"+escapeChar+"d{4}-"+escapeChar+"d{2}-"+
  escapeChar+"d{2}$/";
