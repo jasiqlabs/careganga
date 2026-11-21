@@ -64,7 +64,11 @@ export abstract class VerifiedPrivateStorage extends PrivateObjectStorage{
   protected abstract saveNewGeneratedReport(objectKey:string,bytes:Buffer,
     mime:string):Promise<{objectVersion:string}>;
   private isGeneratedKey(key:string){
-    return /^careganga\\/private\\/cg19\\/[0-9a-f-]{36}\\/mis\\/[0-9a-f-]{36}$/.test(key);
+    const segments=key.split("/");
+    return segments.length===6&&segments[0]==="careganga"&&
+      segments[1]==="private"&&segments[2]==="cg19"&&
+      /^[0-9a-f-]{36}$/.test(segments[3])&&segments[4]==="mis"&&
+      /^[0-9a-f-]{36}$/.test(segments[5]);
   }
   private generatedSignature(bytes:Buffer,mime:string){
     if(mime==="application/pdf")return byteSignatureMatches(bytes,mime);
