@@ -3,6 +3,7 @@ import {
  NotFoundException
 } from "@nestjs/common";
 import {createHash,randomUUID} from "node:crypto";
+import {PrivateObjectStorage} from "../../cg-19-documents-notifications/infrastructure/private-object-storage";
 import type {Pool,PoolClient} from "pg";
 import {DATABASE} from "../../../core/infrastructure/database.module";
 import {SessionService} from "../../cg-01-identity-access/application/session.service";
@@ -77,7 +78,8 @@ export class PartnerInvoiceVerificationService{
   private readonly sessions:SessionService,
   private readonly identity:FoundationStructureIdentityFacade,
   private readonly protectedOwner:ProtectedAccessOwnerService,
-  private readonly centers:HealthCenterSupportScopeFacade){}
+  private readonly centers:HealthCenterSupportScopeFacade,
+  private readonly files:PrivateObjectStorage){}
  private async tx<T>(fn:(c:PoolClient)=>Promise<T>):Promise<T>{
   const c=await this.db.connect();let begun=false;
   try{
@@ -144,6 +146,89 @@ export class PartnerInvoiceVerificationService{
    const state=await this.linked(c,actor.realmId,claim.id);
    return show(claim,state.attest,state.decision,state.liability,state.posted);
   });
+ }
+ /** Secure original CG19 file by claim code, not patient/file UUID.
+  * Reads only for currently protected independent Foundation reviewers.
+  * Recheck the permission, original scan and revocation after remote IO.
+  */
+ async evidence(token:string,centerRaw:string,codeRaw:string,kindRaw:string){
+  const center=safeRef(centerRaw),code=safeCode(codeRaw);
+  const kind=kindRaw;
+  if(kind!=="invoice"&&kind!=="completion"&&kind!=="payment")
+   throw new BadRequestException({code:"CG17_PARTNER_REVIEW_INVALID"});
+  const original=await this.tx(async c=>{
+   const a=await this.actor(c,token,"healthcare.assistance.liabilities.manage");
+   await this.protectedOwner.verifyReviewer(c,a,"approvals.review",true);
+   await this.centers.assertFoundationCenter(c,a,center,
+    "healthcare.assistance.liabilities.manage",false);
+   const claim=await this.claim(c,a.realmId,center,code);
+   const att=await c.query<{attested_by_account:string;attested_at:Date}>(
+    "SELECT attested_by_account,attested_at "+
+    "FROM cg17_partner_invoice_attestation WHERE root_realm_id=$1 "+
+    "AND claim_ref=$2 FOR SHARE",[a.realmId,claim.id]);
+   if(!att.rows[0]||att.rows[0].attested_by_account===a.accountId||
+    claim.requested_by_account===a.accountId)
+    throw new ForbiddenException({code:"CG17_PARTNER_REVIEW_UNAVAILABLE"});
+   const file=kind==="invoice"?claim.invoice_file_ref:
+    kind==="completion"?claim.completion_file_ref:claim.payment_file_ref;
+   const classification=kind==="invoice"?"PATIENT_PARTNER_INVOICE":
+    kind==="completion"?"PATIENT_PARTNER_SERVICE_PROOF":"PATIENT_PARTNER_PAYMENT_PROOF";
+   if(!file)throw new NotFoundException({code:"CG17_PARTNER_REVIEW_PROOF_UNAVAILABLE"});
+   const row=await c.query<{
+    id:string;intent_id:string;patient_id:string;classification:string;
+    mime:string;size_bytes:string;sha256:string;object_key:string;
+    object_version:string;revision:number
+   }>(
+    "SELECT f.id,f.intent_id,f.patient_id,f.classification,f.mime,"+
+    "f.size_bytes::text,f.sha256,f.object_key,f.object_version,f.revision "+
+    "FROM cg19_patient_private_file f "+
+    "JOIN cg19_patient_file_intent i ON i.realm_id=f.realm_id "+
+    "AND i.id=f.intent_id AND i.status='VALIDATED' "+
+    "WHERE f.realm_id=$1 AND f.patient_id=$2 AND f.id=$3 "+
+    "AND f.classification=$4 AND f.scan_status='CLEAN_VERIFIED' "+
+    "AND f.revoked_at IS NULL FOR SHARE OF f,i",
+    [a.realmId,claim.patient_ref,file,classification]);
+   if(!row.rows[0])
+    throw new NotFoundException({code:"CG17_PARTNER_REVIEW_PROOF_UNAVAILABLE"});
+   return {actor:a,claim,kind,file:row.rows[0]};
+  });
+  const expected=original.file;
+  const bytes=await this.files.readVerifiedPrivateObject({
+   objectKey:expected.object_key,objectVersion:expected.object_version,
+   maxBytes:Number(expected.size_bytes)});
+  if(!Buffer.isBuffer(bytes)||bytes.length!==Number(expected.size_bytes)||
+   createHash("sha256").update(bytes).digest("hex")!==expected.sha256)
+   throw new ConflictException({code:"CG17_PARTNER_REVIEW_PROOF_UNAVAILABLE"});
+  await this.tx(async c=>{
+   const a=await this.actor(c,token,"healthcare.assistance.liabilities.manage");
+   if(a.realmId!==original.actor.realmId||a.accountId!==original.actor.accountId)
+    throw new ForbiddenException({code:"CG17_PARTNER_REVIEW_UNAVAILABLE"});
+   await this.protectedOwner.verifyReviewer(c,a,"approvals.review",true);
+   await this.centers.assertFoundationCenter(c,a,center,
+    "healthcare.assistance.liabilities.manage",false);
+   const claim=await this.claim(c,a.realmId,center,code);
+   const currentFile=original.kind==="invoice"?claim.invoice_file_ref:
+    original.kind==="completion"?claim.completion_file_ref:claim.payment_file_ref;
+   if(claim.id!==original.claim.id||currentFile!==expected.id||
+      claim.source_digest!==original.claim.source_digest)
+    throw new ConflictException({code:"CG17_PARTNER_REVIEW_SOURCE_CHANGED"});
+   const row=await c.query<{revision:number;object_version:string}>(
+    "SELECT f.revision,f.object_version FROM cg19_patient_private_file f "+
+    "JOIN cg19_patient_file_intent i ON i.realm_id=f.realm_id "+
+    "AND i.id=f.intent_id AND i.status='VALIDATED' "+
+    "WHERE f.realm_id=$1 AND f.patient_id=$2 AND f.id=$3 "+
+    "AND f.revoked_at IS NULL AND f.scan_status='CLEAN_VERIFIED' FOR SHARE OF f,i",
+    [a.realmId,claim.patient_ref,expected.id]);
+   if(!row.rows[0]||row.rows[0].revision!==expected.revision||
+      row.rows[0].object_version!==expected.object_version)
+    throw new ConflictException({code:"CG17_PARTNER_REVIEW_PROOF_UNAVAILABLE"});
+   await c.query(
+    "INSERT INTO cg19_patient_file_event(realm_id,patient_id,intent_id,"+
+    "file_id,actor_account_id,action) "+
+    "VALUES($1,$2,$3,$4,$5,'PARTNER_CLAIM_REVIEW_READ')",
+    [a.realmId,claim.patient_ref,expected.intent_id,expected.id,a.accountId]);
+  });
+  return {bytes,mime:expected.mime};
  }
  async attest(token:string,centerRaw:string,codeRaw:string,raw:unknown){
   const center=safeRef(centerRaw),code=safeCode(codeRaw);
