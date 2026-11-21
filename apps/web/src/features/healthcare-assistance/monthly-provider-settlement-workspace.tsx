@@ -152,11 +152,11 @@ export function MonthlyProviderSettlementWorkspace({canPropose,canReview,canPay}
    {data.collectionsScope==="VERIFIED_TO_DATE_FOR_COMPLETED_SERVICES"&&
     data.centerGrossServicesMinor!==undefined&&<section
      aria-label="Original H17 service and contribution breakdown">
-     <h3>Actual completed services in this month</h3>
+     <h3>Completed eligible services in this month</h3>
      <dl>
-      <dt>Original center gross service value</dt>
+      <dt>Eligible center gross service value</dt>
       <dd>{money(data.centerGrossServicesMinor)}</dd>
-      <dt>Patient payable from original charges</dt>
+      <dt>Patient due from eligible original charges</dt>
       <dd>{money(data.patientPayableMinor??"0")}</dd>
       <dt>Center patient collections verified to date for these services</dt>
       <dd>{money(data.patientCollectedVerifiedMinor??"0")}</dd>
