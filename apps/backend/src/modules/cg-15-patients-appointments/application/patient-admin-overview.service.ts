@@ -103,10 +103,12 @@ export class PatientAdminOverviewService{
     message:"Choose a permitted center, valid date range and appointment status."});
   const tx=await this.db.connect();let open=false;
   try{
-   await tx.query("BEGIN");open=true;
+   await tx.query("BEGIN ISOLATION LEVEL REPEATABLE READ READ ONLY");open=true;
    await tx.query("SET LOCAL statement_timeout='8s'");
    if(center)await this.centers.assertFoundationCenter(
     tx,actor,center,"health.patients.admin.view",true);
+   const cutoff=await tx.query<{asOf:Date}>(
+    'SELECT transaction_timestamp() AS "asOf"');
    const q=await tx.query<{
     bookings:string;completed:string;waiting:string;cancelled:string
    }>(
@@ -122,7 +124,9 @@ export class PatientAdminOverviewService{
     "AND ($5::text='' OR a.booking_state=$5)",
     [actor.realmId,center||null,from||null,until||null,status]);
    await tx.query("COMMIT");open=false;
-   return q.rows[0]??{bookings:"0",completed:"0",waiting:"0",cancelled:"0"};
+   return {...(q.rows[0]??{bookings:"0",completed:"0",waiting:"0",cancelled:"0"}),
+    sourceAsOf:cutoff.rows[0].asOf.toISOString(),
+    sourceCutoffKind:"POSTGRES_READ_SNAPSHOT" as const};
   }catch(e){if(open)await tx.query("ROLLBACK").catch(()=>undefined);throw e;}
   finally{tx.release();}
  }
