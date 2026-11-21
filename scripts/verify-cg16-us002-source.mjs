@@ -17,6 +17,7 @@ const files=[
  d+"application/clinical-lab-order.service.ts",
  d+"application/clinical-lab-result-evidence.service.ts",
  d+"application/clinical-lab-generated-result.service.ts",
+ "apps/backend/db/migrations/1614_cg16_released_report_correction_source.sql",
  "apps/backend/src/modules/cg-19-documents-notifications/application/laboratory-report-renderer.ts",
  d+"application/clinical-lab-professional-review.service.ts",
  d+"application/clinical-lab-patient-release.service.ts",
@@ -184,6 +185,9 @@ must(source,/ClinicalLabReleasePanel/,
  "Clinician Web release must be reachable in original lab orders");
 must(mobile,/NativeLabReportRelease/,
  "Internal Android release must be reachable on original lab screen");
+const correctionSql=read("apps/backend/db/migrations/1614_cg16_released_report_correction_source.sql");
+const patientView=read(web+"my-lab-reports.tsx");
+const nativePatientReports=read("apps/android-public/src/features/patients/native-my-lab-reports.tsx");
 const valuesSql=read("apps/backend/db/migrations/1613_cg16_entered_results_for_generated_report.sql");
 const generated=read(d+"application/clinical-lab-generated-result.service.ts");
 const pdf=read("apps/backend/src/modules/cg-19-documents-notifications/application/laboratory-report-renderer.ts");
@@ -222,5 +226,33 @@ must(staffEntry,/Generate report PDF/,
  "Web staff can request one automatic PDF");
 must(nativeEntry,/Generate report PDF/,
  "Native staff can request the same automatic PDF");
+must(correctionSql,/CREATE TABLE cg16_lab_result_correction\(/,
+ "Original report correction is a new immutable linked result");
+must(correctionSql,/JOIN cg16_lab_report_release prior/,
+ "Correction cannot invent prior patient release");
+must(correctionSql,/next\.corrects_revision_ref=previous\.id/,
+ "Correction must name exactly previous released revision");
+must(correctionSql,/next\.version_no=previous\.version_no\+1/,
+ "Correction must strictly increase the real result version");
+must(generated,/this\.priorReleased\(/,
+ "New corrected report requires real existing released version");
+must(generated,/LAB_CORRECTION_LATEST_RELEASE_REQUIRED/,
+ "Stale/duplicate prior-release correction is rejected");
+must(generated,/cg16_lab_result_correction/,
+ "Reason and original release are persisted in source");
+must(generated,/if\(!original\.correction\)\{/,
+ "Correction cannot overwrite old lab-order status or event");
+must(pdf,/source\.corrected/,
+ "Corrected PDF must clearly label itself as a newer version");
+must(staffEntry,/Generate corrected PDF/,
+ "Web staff can correct earlier published value with a reason");
+must(nativeEntry,/Generate corrected PDF/,
+ "Internal Android can enter same correction");
+must(patientView,/superseded/,
+ "Patients see earlier released PDF as historical only after next release");
+must(nativePatientReports,/superseded/,
+ "Public Android identifies previously released historical version");
+must(release,/result\.version_no=\(SELECT max\(latest\.version_no\)/,
+ "Only latest independently reviewed result can be released");
 console.log("CG16 US002 source/parse preflight authored for clinical review and simple release. "+
  "PostgreSQL, browser, Android, independent clinical and security QA NOT_RUN.");
