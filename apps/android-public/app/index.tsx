@@ -7,6 +7,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import * as SecureStore from "expo-secure-store";
 import { careGangaTheme as theme } from "../../../packages/design-tokens/src/index";
 import { PublicCmsContent } from "../src/features/cms/public-cms-screen";
+import {PublicPartnerApplication} from "../src/features/health-network/public-partner-application";
 
 const RecipientNotifications = lazy(() => import("../../../packages/native-communications/src/recipient-notifications").then(m => ({ default: m.RecipientNotifications })));
 const FoundationContactScreen = lazy(() => import("../src/features/support/foundation-contact-screen").then(m => ({ default: m.FoundationContactScreen })));
@@ -121,6 +122,7 @@ export default function PublicHome(){
   const [contactOpen,setContactOpen]=useState(false);
   const [directoryOpen,setDirectoryOpen]=useState(false);
   const [patientOpen,setPatientOpen]=useState(false);
+  const [partnerOpen,setPartnerOpen]=useState(false);
   const [publicLoginVisible,setPublicLoginVisible]=useState(false);
   const revoke=useCallback(()=>{
     setToken(null);setPerson(null);setNoticeOpen(false);
@@ -274,6 +276,11 @@ export default function PublicHome(){
         <PublicHealthcareDirectory onExit={()=>setDirectoryOpen(false)}/>
       </Suspense>
     </PublicScreenErrorBoundary>;
+  if(partnerOpen)
+    return <PublicScreenErrorBoundary onExit={()=>setPartnerOpen(false)}>
+      <PublicPartnerApplication onExit={()=>setPartnerOpen(false)}
+       onContact={()=>{setPartnerOpen(false);setContactOpen(true);}}/>
+    </PublicScreenErrorBoundary>;
   if(patientOpen)
     return <PublicScreenErrorBoundary onExit={()=>setPatientOpen(false)}>
       <Suspense fallback={<ActivityIndicator style={{marginTop:40}}/>}>
@@ -298,6 +305,7 @@ export default function PublicHome(){
             <Text accessibilityRole="header" style={styles.title}>CareGanga Foundation</Text>
           </View>
           <PublicCmsContent onContact={()=>setContactOpen(true)}
+            onPartnerApplication={()=>setPartnerOpen(true)}
             onLoginVisibility={setPublicLoginVisible}/>
           <View style={[styles.card,styles.healthFeatureCard]}>
             <Text style={styles.heading}>Healthcare Network</Text>
