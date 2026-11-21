@@ -169,7 +169,7 @@ export function NativePrivateLetterPanel({token,caseRef,sourceRevision,
    const item=await api<Letter>(token,encodeURIComponent(ref)+"/reconcile",{});
    if(!item||typeof item.state!=="string")throw Error("Issue unconfirmed.");
    setMessage(status(item.state));await refresh();
-  }catch(e){failure(e,"ISSUE")}finally{setBusy(false)}
+  }catch(e){handleError(e)}finally{setBusy(false)}
  }
  async function revoke(){
   if(!canRevoke||busy||uncertain||!UUID.test(revokeRef)||
