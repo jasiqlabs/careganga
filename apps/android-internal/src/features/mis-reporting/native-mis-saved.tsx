@@ -21,12 +21,15 @@ async function api<T>(token:string,path:string,method:"GET"|"POST"|"PATCH"="GET"
  if(!r.ok)throw await nativeMisProblem(r,"The private report status could not be confirmed. Refresh before retrying.");
  return r.json() as Promise<T>;
 }
-export function NativeMisSaved({token,onExpired,canManage,canShare,current,onRestore}:{
+export function NativeMisSaved({token,onExpired,canManage,canShare,current,onRestore,onDraftChange}:{
  token:string;onExpired:()=>void;canManage:boolean;canShare:boolean;
- current:Request|null;onRestore:(request:Request)=>void}){
+ current:Request|null;onRestore:(request:Request)=>void;
+ onDraftChange?:(hasUnsavedDraft:boolean)=>void}){
  const [rows,setRows]=useState<Row[]>([]);
  const [selected,setSelected]=useState<Detail|null>(null);
  const [name,setName]=useState("");
+ useEffect(()=>{onDraftChange?.(name.trim().length>0);
+  return()=>onDraftChange?.(false);},[name,onDraftChange]);
  const [busy,setBusy]=useState(false);
  const [problem,setProblem]=useState(""),[notice,setNotice]=useState("");
  const [more,setMore]=useState(false);
