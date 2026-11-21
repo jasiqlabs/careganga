@@ -380,6 +380,14 @@ checks.push(["Web and Internal Android keep confirmed CMS writes confirmed when 
  files.adminExtended.includes('setPending(null);setNotice("Confirmed: "')&&
  files.adminExtended.includes("setSelected(null);")&&
  files.adminExtended.includes("if(busy||pending)")]);
+checks.push(["Web and native CG18 original gallery uploads cannot bypass authored mediaType",
+ files.adminExtended.includes('const allowedForCurrentPlacement=()=>')&&
+ files.adminExtended.includes('media==="PHOTO"?image:media==="VIDEO"?["video/mp4"]')&&
+ files.adminExtended.includes('media==="PUBLICATION"?["application/pdf"]:[]')&&
+ files.adminExtended.includes('allowedForCurrentPlacement().join(",")')&&
+ files.adminExtended.includes('const allowed=allowedForCurrentPlacement()')&&
+ internalMedia.includes('if(type==="PHOTO")add("GALLERY",i,images)')&&
+ files.backend.includes('item?.mediaType==="VIDEO"?mime==="video/mp4"')]);
 checks.push(["Native CG18 media slots are original tappable choices, not technical index input",
  internalMedia.includes("positions.map((position,i)=>")&&
  internalMedia.includes('"Placement "+(i+1)')&&
