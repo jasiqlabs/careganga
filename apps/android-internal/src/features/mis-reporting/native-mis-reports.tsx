@@ -11,7 +11,7 @@ import {NativeMisSchedules} from "./native-mis-schedules";
 import {NativeMisFinanceTrend,NativeMisAppointmentDistribution}
  from "./native-mis-source-charts";
 type Kind="FINANCE_POSTED_LEDGER"|"FINANCE_POSTED_SUMMARY"|
- "FINANCE_POSTED_TREND"|"APPOINTMENT_STATUS";
+ "FINANCE_POSTED_TREND"|"APPOINTMENT_STATUS"|"PLATFORM_AUDIT_ACTIVITY";
 type Template={kind:Kind;label:string;views:("TABLE"|"SUMMARY"|"CHART")[];description:string};
 type Option={ref:string;name:string};
 type Catalog={templates:Template[];finance:{ready:boolean;state?:"AVAILABLE"|"ACCESS_RESTRICTED"|"SOURCE_UNAVAILABLE";years:Option[];branches:Option[];
@@ -84,6 +84,7 @@ export function NativeMisReports({token,onExpired}:{token:string;onExpired:()=>v
  },[load]);
  const chosen=catalog?.templates.find(x=>x.kind===kind);
  const finance=kind?.startsWith("FINANCE_");
+ const health=kind==="APPOINTMENT_STATUS";
  function request(offset=0){
   if(!kind||!chosen)return null;
   return {kind,view:chosen.views.includes(view)?view:chosen.views[0],
@@ -139,7 +140,7 @@ export function NativeMisReports({token,onExpired}:{token:string;onExpired:()=>v
      options={[...(catalog.finance.allBranches?[{ref:"",label:"All permitted branches"}]:[]),
       ...catalog.finance.branches.map(x=>({ref:x.ref,label:x.name}))]} onChange={setBranch}/>}
    </>}
-   {!finance&&catalog.appointments.ready&&<>
+   {health&&catalog.appointments.ready&&<>
     {!!catalog.appointments.centers.length&&<NativeFinanceOptions label="Healthcare center"
      value={center} options={[{ref:"",label:"All permitted centers"},
       ...catalog.appointments.centers.map(x=>({ref:x.ref,label:x.name}))]}
@@ -160,7 +161,7 @@ export function NativeMisReports({token,onExpired}:{token:string;onExpired:()=>v
    <Text style={s.hint}>{preview.sourceAsOf?"Owner snapshot: ":"Source retrieved: "}
     {new Date(preview.sourceAsOf??preview.sourceReadAt).toLocaleString("en-IN")}</Text>
    <Text style={s.hint}>{preview.explanation}</Text>
-   {preview.state==="READY"?<>
+   {["READY","PARTIAL"].includes(preview.state)?<>
     {preview.kind==="FINANCE_POSTED_TREND"&&
      <NativeMisFinanceTrend trend={{type:"MONTHLY_FINANCE",
       state:"AVAILABLE",windowLabel:"Last six calendar months",
@@ -182,6 +183,8 @@ export function NativeMisReports({token,onExpired}:{token:string;onExpired:()=>v
    </>:<Text style={s.hint}>{preview.state==="SUPPRESSED"?
     "Private results are hidden for this small group.":"No matching original records."}</Text>}
   </View>}
+  {preview?.state==="PARTIAL"&&<Text style={s.hint}>
+   A protected audit source is unavailable or has more entries. Narrow your dates before export.</Text>}
   {catalog?.capabilities?.export===true&&
    <NativeMisExports token={token} onExpired={onExpired} current={request(0)}/>}
   {catalog?.capabilities?.schedule===true&&
