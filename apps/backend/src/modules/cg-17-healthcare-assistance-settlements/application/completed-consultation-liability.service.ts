@@ -169,16 +169,27 @@ export class CompletedConsultationLiabilityService{
   return p;
  }
  private async existing(c:PoolClient,root:string,center:string,booking:string){
-  const q=await c.query<Liability&{effect_state:string;original_cg09_ref:string|null;correction_ref:string|null;settlement_state:string|null}>(
+  const q=await c.query<Liability&{effect_state:string;original_cg09_ref:string|null;correction_ref:string|null;settlement_state:string|null;claim_original_minor:string|null;claim_paid_minor:string|null;claim_adjusted_minor:string;claim_recovered_minor:string}>(
    "SELECT l.id,l.center_ref,l.source_ref,l.charge_ref,l.award_ref,"+
    "l.completion_event_ref,l.amount_minor::text,l.service_completed_at,"+
    "l.source_digest,l.created_at,e.posting_state AS effect_state,"+
-   "e.original_cg09_ref,correction.id AS correction_ref,claim.state AS settlement_state "+
+   "e.original_cg09_ref,coalesce(correction.id,claimed_correction.id) AS correction_ref,"+
+   "claim.state AS settlement_state,claim.approved_total_minor::text AS claim_original_minor,"+
+   "claim.paid_minor::text AS claim_paid_minor,"+
+   "coalesce((SELECT sum(a.amount_minor) FROM cg17_provider_claim_correction a "+
+   "WHERE a.root_realm_id=claim.root_realm_id AND a.settlement_ref=claim.id),0)::text "+
+   "AS claim_adjusted_minor,"+
+   "coalesce((SELECT sum(a.recovery_minor) FROM cg17_provider_claim_correction a "+
+   "WHERE a.root_realm_id=claim.root_realm_id AND a.settlement_ref=claim.id),0)::text "+
+   "AS claim_recovered_minor "+
    "FROM foundation_liability l "+
    "JOIN cg17_financial_effect e ON e.root_realm_id=l.root_realm_id "+
    "AND e.liability_ref=l.id AND e.effect_kind='LIABILITY_ACCRUAL' "+
    "LEFT JOIN cg17_liability_correction correction ON correction.root_realm_id=l.root_realm_id "+
    "AND correction.liability_ref=l.id "+
+   "LEFT JOIN cg17_provider_claim_correction claimed_correction "+
+   "ON claimed_correction.root_realm_id=l.root_realm_id "+
+   "AND claimed_correction.liability_ref=l.id "+
    "LEFT JOIN provider_settlement_line claim_line ON claim_line.root_realm_id=l.root_realm_id "+
    "AND claim_line.liability_ref=l.id "+
    "LEFT JOIN provider_settlement claim ON claim.root_realm_id=claim_line.root_realm_id "+
@@ -188,7 +199,17 @@ export class CompletedConsultationLiabilityService{
    [root,center,booking]);
   return q.rows[0]??null;
  }
- private view(liability:Liability&{effect_state:string;original_cg09_ref:string|null;correction_ref?:string|null;settlement_state?:string|null}){
+ private view(liability:Liability&{effect_state:string;original_cg09_ref:string|null;correction_ref?:string|null;settlement_state?:string|null;claim_original_minor?:string|null;claim_paid_minor?:string|null;claim_adjusted_minor?:string;claim_recovered_minor?:string}){
+  const original=BigInt(liability.claim_original_minor??"0"),
+   paid=BigInt(liability.claim_paid_minor??"0"),
+   adjusted=BigInt(liability.claim_adjusted_minor??"0"),
+   recovered=BigInt(liability.claim_recovered_minor??"0");
+  const effective=original-adjusted,netPaid=paid-recovered;
+  const effectiveState=!liability.settlement_state?"NOT_CLAIMED":
+   liability.settlement_state==="PROPOSED"?"PROPOSED":
+   effective===0n&&netPaid===0n?"ADJUSTED_NO_PAYMENT":
+   effective>0n&&effective===netPaid?"SETTLED":
+   netPaid>0n?"PARTIALLY_SETTLED":"APPROVED";
   return {state:"APPROVED_LIABILITY" as const,
    centerRef:liability.center_ref,liabilityRef:liability.id,
    amountMinor:liability.amount_minor,currency:"INR" as const,
@@ -196,8 +217,11 @@ export class CompletedConsultationLiabilityService{
    postingState:liability.effect_state,
    foundationJournalPosted:liability.effect_state==="POSTED"&&
     liability.original_cg09_ref!==null,
-   providerSettled:liability.settlement_state==="SETTLED",
-   providerSettlementState:liability.settlement_state??"NOT_CLAIMED",
+   providerSettled:effectiveState==="SETTLED",
+   providerSettlementState:effectiveState,
+   originalProviderSettlementState:liability.settlement_state??"NOT_CLAIMED",
+   originalProviderPaidMinor:paid.toString(),
+   verifiedProviderRecoveryMinor:recovered.toString(),
    centerPatientCollectionNotUsed:true,
    correctedByOriginalReversal:!!liability.correction_ref,
    effectiveFoundationPayableMinor:liability.correction_ref?"0":liability.amount_minor};
