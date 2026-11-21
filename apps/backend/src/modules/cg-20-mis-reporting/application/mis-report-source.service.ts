@@ -200,9 +200,9 @@ export class MisReportSourceService{
    try{await this.sessions.requireAction(token,action);return true;}
    catch(error){if(error instanceof UnauthorizedException)throw error;return false;}
   };
-  const [manage,exportAllowed,schedule,auditAccess,diagnosticsAccess]=await Promise.all([
+  const [manage,exportAllowed,schedule,share,auditAccess,diagnosticsAccess]=await Promise.all([
    permission("mis.reports.manage"),permission("mis.reports.export"),
-   permission("mis.reports.schedule"),permission("platform.audit.view"),
+   permission("mis.reports.schedule"),permission("mis.reports.share"),permission("platform.audit.view"),
    permission("diagnostics.catalog.view")]);
   if(diagnosticsAccess)templates.push({
    kind:"DIAGNOSTICS_CATALOG_SUMMARY",label:"Diagnostics services summary",
@@ -211,7 +211,7 @@ export class MisReportSourceService{
    label:"Protected audit activity",views:["TABLE"],
    description:"Current original platform and access audit events; limited to 50 rows."});
   return {templates,finance,appointments,capabilities:{
-   manage,export:exportAllowed,schedule},sourceReadAt:new Date().toISOString()};
+   manage,export:exportAllowed,schedule,share},sourceReadAt:new Date().toISOString()};
  }
  /** Dedicated current-principal scheduled projection. Never passes a synthetic
   * bearer through the interactive CG09/CG15 facades. Only CG09 posted summary
