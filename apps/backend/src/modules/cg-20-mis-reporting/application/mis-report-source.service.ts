@@ -70,7 +70,7 @@ export function parseSafeReport(raw:unknown):SafeReportRequest{
   throw new BadRequestException({code:"MIS_REPORT_FILTER_INVALID",
    message:"Choose an allowed center, year, status and date range for this report."});
  const offset=o.offset===undefined?0:o.offset;
- if(!Number.isInteger(offset)||typeof offset!=="number"||
+ if(typeof offset!=="number"||!Number.isInteger(offset)||
   offset<0||offset>500||offset%50!==0||
   offset>0&&kind!=="FINANCE_POSTED_LEDGER")
   throw new BadRequestException({code:"MIS_REPORT_PAGE_INVALID",
