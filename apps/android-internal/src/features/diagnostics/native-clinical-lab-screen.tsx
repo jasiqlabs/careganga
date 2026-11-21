@@ -62,6 +62,7 @@ export function NativeClinicalLabScreen({token,canView,canCreate,canManageSample
  const [busy,setBusy]=useState(false),[loading,setLoading]=useState(true);
  const [uncertain,setUncertain]=useState(false),[custodyUncertain,setCustodyUncertain]=useState(false);
  const [message,setMessage]=useState("");
+ const [showCorrection,setShowCorrection]=useState(false);
  const submission=useRef<Submission|null>(null),custody=useRef<Custody|null>(null);
  const epoch=useRef(0);
  const handleError=useCallback((e:unknown)=>{
@@ -264,9 +265,22 @@ export function NativeClinicalLabScreen({token,canView,canCreate,canManageSample
       token={token} centerRef={center} orderRef={selected.order.orderRef}
       onExpired={onExpired}/>} 
     {selected.report?.state==="RESULT_READY"?
-     <Text style={s.note}>Report PDF is ready for independent clinician
-      review. Patient access requires authorized release.</Text>:
-     canRecordResults&&ready?
+     <View style={s.panel}>
+      <Text style={s.note}>The generated report requires clinician
+       approval and release before patient access.</Text>
+      {canRecordResults&&button(showCorrection?
+       "Close report correction":"Correct previously released report",
+       ()=>setShowCorrection(x=>!x))}
+      {canRecordResults&&showCorrection&&
+       <NativeLabResultEntry key={"correction:"+center+":"+selected.order.orderRef}
+        token={token} centerRef={center} orderRef={selected.order.orderRef}
+        onVerified={async()=>{setShowCorrection(false);
+         await detail(selected.order.orderRef);}}
+        onExpired={onExpired}/>}
+     </View>:
+     canRecordResults&&(
+      ready||selected.order.status==="RESULT_READY"&&
+       selected.report?.state==="DRAFT")?
      <NativeLabResultEntry key={"entry:"+center+":"+selected.order.orderRef}
       token={token} centerRef={center} orderRef={selected.order.orderRef}
       onVerified={async()=>{await detail(selected.order.orderRef)}}
