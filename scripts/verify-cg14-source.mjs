@@ -5,6 +5,7 @@
  */
 import {readFileSync} from "node:fs";
 import {resolve} from "node:path";
+import ts from "typescript";
 const root=resolve(import.meta.dirname,"..");
 const read=p=>readFileSync(resolve(root,p),"utf8");
 const s={
@@ -220,6 +221,12 @@ const parity=[
 ];
 for(const [name,path,expected] of parity){
  const source=read(path);
+ // The original static parity assertions must reject malformed native TSX
+ // instead of reporting a misleading PASS based on text fragments alone.
+ if(path.endsWith(".tsx")){
+  const parsed=ts.createSourceFile(path,source,ts.ScriptTarget.Latest,true,ts.ScriptKind.TSX);
+  checks.push(["CG14 TSX syntax: "+name,parsed.parseDiagnostics.length===0]);
+ }
  checks.push(["CG14 channel: "+name,expected.every(x=>source.includes(x))]);
 }
 let failures=0;
