@@ -198,6 +198,55 @@ export class HealthcareAssistancePolicyService{
      "CG15 patient eligibility, service and consent must be verified before any award."};
   });
  }
+ /** Read-only gross/service estimate for genuine current CG14 center policy.
+  * Never an accepted invoice, patient award, collected cash, or payable. A
+  * partner's quoted gross is unverified until independently proven later.
+  */
+ async previewService(bearer:string,rawCenter:string,rawKind:string,
+   grossRaw:string){
+  const center=uuid(rawCenter);
+  if(!["LAB","PHARMACY","NURSING","OT"].includes(rawKind)||
+    typeof grossRaw!=="string"||!/^[1-9][0-9]{0,10}$/.test(grossRaw)||
+    BigInt(grossRaw)>10000000000n)
+   throw new BadRequestException({code:"ASSISTANCE_POLICY_AMOUNT_INVALID"});
+  const kind=rawKind as Kind;
+  return this.tx(async c=>{
+   const actor=await this.actor(c,bearer,"healthcare.assistance.policies.view");
+   const original=await this.verified.eligibleService(c,actor.realmId,center,kind);
+   const q=await c.query<Revision>(
+    "SELECT * FROM healthcare_policy_revision "+
+    "WHERE root_realm_id=$1 AND center_ref=$2 AND service_kind=$3 "+
+    "AND doctor_ref IS NULL AND approval_state='ACTIVE' "+
+    "AND valid_from<=now() AND valid_until>now() "+
+    "ORDER BY valid_from DESC,id DESC LIMIT 2 FOR SHARE",
+    [actor.realmId,center,kind]);
+   if(q.rows.length>1)
+    throw new ConflictException({code:"ASSISTANCE_POLICY_OVERLAP_OR_REPLAY"});
+   const policy=q.rows[0],gross=BigInt(grossRaw);
+   const common={
+    centerName:original.name,serviceKind:kind,grossMinor:grossRaw,
+    currency:"INR" as const,estimateOnly:true,
+    eligiblePatientVerified:false,invoiceVerified:false,
+    serviceCompletionVerified:false,foundationLiabilityPosted:false
+   };
+   if(!policy)return {...common,state:"NO_APPROVED_SERVICE_POLICY" as const,
+    estimatedSupportMinor:"0",estimatedPatientDueMinor:gross.toString(),
+    caution:"No currently approved Foundation support is available for this service."};
+   const cap=BigInt(policy.cap_minor);
+   const provisional=policy.mode==="PERCENT"&&policy.percent_basis_points!==null?
+    (gross*BigInt(policy.percent_basis_points)+5000n)/10000n:
+    BigInt(policy.fixed_minor??"0");
+   const amount=provisional<cap?provisional:cap;
+   const support=amount<gross?amount:gross;
+   return {...common,state:"POLICY_ESTIMATE_ONLY" as const,
+    policyRevisionRef:policy.id,policyRevision:policy.revision_no,
+    estimatedSupportMinor:support.toString(),
+    estimatedPatientDueMinor:(gross-support).toString(),
+    caution:"Estimate only. No patient discount or Foundation settlement is "+
+     "confirmed until patient eligibility, genuine invoice, performed service "+
+     "and independent evidence are verified."};
+  });
+ }
  async list(bearer:string,rawCenter:string){
   const center=uuid(rawCenter);
   return this.tx(async c=>{
