@@ -135,6 +135,20 @@ export function NativeHrEvidence({token,applicationRef,revision,onExpired,onFile
   }catch(e){setUncertain(true);failure(e);}
   finally{setBusy(false);}
  };
+ const revoke=async(item:HrFile)=>{
+  if(busy||!item.cleanVerified||item.sourceVersion!==revision)return;
+  setBusy(true);setMessage("");
+  try{
+   const result=await request<{revoked:boolean;revision:number}>(token,
+    "/files/"+encodeURIComponent(item.fileRef)+"/revoke","POST",{
+     expectedRevision:item.fileVersion});
+   if(result.revoked!==true)
+    throw Error("Original file revocation was not confirmed.");
+   setGeneration(v=>v+1);
+   setMessage("Unused private evidence revoked. Original audit is retained.");
+  }catch(e){setUncertain(true);failure(e);}
+  finally{setBusy(false);}
+ };
  const chip=(label:string,fn:()=>void,active=false)=>(
   <Pressable accessibilityRole="button" accessibilityState={{selected:active}}
    onPress={fn} style={[styles.chip,active&&styles.active]}>
@@ -172,6 +186,11 @@ export function NativeHrEvidence({token,applicationRef,revision,onExpired,onFile
    <Text style={styles.label}>{title(f.classification)}</Text>
    <Text style={styles.hint}>{f.cleanVerified?"Scanner verified":
     title(f.status)}{f.sourceVersion!==revision?" (prior draft)":""}</Text>
+   {f.cleanVerified&&f.sourceVersion===revision&&
+    <Pressable accessibilityRole="button" style={styles.action} disabled={busy||uncertain}
+     onPress={()=>void revoke(f)}>
+     <Text style={styles.actionText}>Revoke unused proof</Text>
+    </Pressable>}
   </View>)}
  </View>;
 }
