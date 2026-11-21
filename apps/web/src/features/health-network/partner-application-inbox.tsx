@@ -49,7 +49,7 @@ export function PartnerApplicationInbox({canManage}:{canManage:boolean}){
   if(!canManage||app.status==="LINKED"||app.status==="DECLINED")return;
   try{
    if(app.type==="DOCTOR"){
-    const r=await call<{doctors:{doctorRef:string;name:string;status:string}[]}>("doctors");
+    const r=await call<{doctors:{doctorRef:string;name:string;status:string}[]}>("doctors?q="+encodeURIComponent(app.name));
     setOptions(r.doctors.filter(v=>v.name.toLowerCase()===app.name.toLowerCase())
       .map(v=>({id:v.doctorRef,label:v.name+" · "+stateName(v.status)})));
    }else{
@@ -61,7 +61,8 @@ export function PartnerApplicationInbox({canManage}:{canManage:boolean}){
       .map(v=>({id:v.providerRef,label:v.name+" · "+v.code+
         " · "+stateName(v.status)})));
    }
-  }catch{setOptions([]);} // The existing original record can still be created from the provider screen.
+  }catch(e){setOptions([]);setError(e instanceof Error?e.message:
+    "Matching healthcare records could not be loaded. Refresh and try again.");}
  }
  async function decision(status:"IN_REVIEW"|"RETURNED"|"DECLINED"){
   if(!selected||busy||!canManage||comment.trim().length<5)return;
