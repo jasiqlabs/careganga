@@ -15,7 +15,10 @@ export class HrEnrollmentController{
  }
  @Get("employees")
  employees(@Headers("authorization")token:string,@Query("offset")offset?:string,
-   @Query("branch")branch?:string){return this.hr.employeeDirectory(token,offset,branch);}
+   @Query("branch")branch?:string,@Query("status")status?:string,
+   @Query("q")q?:string,@Query("department")department?:string){
+   return this.hr.employeeDirectory(token,offset,branch,status,q,department);
+ }
  @Get("branch-options")
  branches(@Headers("authorization")token:string){return this.hr.branchOptions(token);}
  @Get("departments")
