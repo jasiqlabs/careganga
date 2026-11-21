@@ -137,3 +137,12 @@ Client email template copy is sometimes longer than the original generic 480-cha
 
 
 **Center attachment finalized-case DLD guard (20 Nov):** Shared `CenterSupportAttachmentService.own(tx,actor,center,caseRef,expected,editable)` is an existing scoped authorization boundary for CG-14 current center representatives. On `editable=true`, refuse both `RESOLVED` and `CLOSED`; this is used by new upload and pending upload confirmation (transactional recheck). Read/download/status and authorized revocation intentionally remain so recipients can access/revoke already-scanned evidence. UI mirrors backend but never substitutes for it. Source checked; storage race/DB execution NOT_RUN.
+
+
+### 21 November 2026 — Owner-approved Web ↔ Android same-capability contract
+
+**Owner:** cg-19-documents-notifications. **Source status:** MERGED_MAIN_OWNER_SOURCE_ACTION_PARITY_AUDIT_OPEN. Owner-delegated review/approval of these existing design requirements only, not permission to add stories or claim source-complete/runtime PASS. Current AGENTS.md Web↔Android rule applies to existing merged owners and future stories. Preserve original permission scopes, evidence/DB ownership and actual approved channels; no shadow files/audit/backup record or fake public disclosure.
+
+**Authorized channel contract:** Foundation Admin/assigned-operator Web **↔ Internal Android** for approved private documents/evidence, notice creation/review, delivery status, support ticket management and recipient-safe history. Approved public/consented Web **↔ Public Android** only for only own approved notices, safe file download/consent and actual support ticket receipt/status. A label saying “no owned native UI” is superseded unless separately approved by product owner as a concrete story-specific exception. Staff-only CGI financial, private file, immutable audit and backup operations never appear in Public Android. Use CG-01 authentic design, current backend API and original client Admin/public reference.
+
+**DLD implementation gate:** All corresponding Web and native actions call the single correct service/controller with server-enforced current grant/root/recipient/scope, CG19 rights and scanner status or CG21 sensitive current-password/recovery policy as applicable. Protect unknown write lookup/idempotency, version conflicts and no-leak records; no mobile-only data table, WebView substitute or synthetic success. Future-owner report runs use typed implemented owner sources only.

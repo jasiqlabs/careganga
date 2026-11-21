@@ -239,3 +239,12 @@ Trace all client 52 template IDs against source-owned committed events, version/
 
 
 **US-002-QA06/12 source UX guard:** The original notice workflow remains distinct from the 52 client disabled draft imports. A mismatch in stored client source SHA/digest produces a specific actionable conflict message, with no false delivery claim. QA check source-authored; Web/API runtime NOT_RUN.
+
+
+### 21 November 2026 — Owner-approved Web ↔ Android same-capability contract
+
+**Owner:** cg-19-documents-notifications. **Source status:** MERGED_MAIN_OWNER_SOURCE_ACTION_PARITY_AUDIT_OPEN. Owner-delegated review/approval of these existing design requirements only, not permission to add stories or claim source-complete/runtime PASS. Current AGENTS.md Web↔Android rule applies to existing merged owners and future stories. Preserve original permission scopes, evidence/DB ownership and actual approved channels; no shadow files/audit/backup record or fake public disclosure.
+
+**Authorized channel contract:** Foundation Admin/assigned-operator Web **↔ Internal Android** for approved private documents/evidence, notice creation/review, delivery status, support ticket management and recipient-safe history. Approved public/consented Web **↔ Public Android** only for only own approved notices, safe file download/consent and actual support ticket receipt/status. A label saying “no owned native UI” is superseded unless separately approved by product owner as a concrete story-specific exception. Staff-only CGI financial, private file, immutable audit and backup operations never appear in Public Android. Use CG-01 authentic design, current backend API and original client Admin/public reference.
+
+**Owner QA disposition:** Owner Web and some native document/notice/support source exists, but full scoped file/notice/recipient action parity needs original case-level audit; source presence is not release certification. Preserve original QA IDs, mark `WEB_SOURCE`/`INTERNAL_ANDROID_SOURCE`/`PUBLIC_WEB_SOURCE`/`PUBLIC_ANDROID_SOURCE` with exact current file:function and N/A reason, update only owning tasks, run and record true Next/Expo/Postgres/protected storage/independent security results later; current runtime/device `NOT_RUN`. No main merge.

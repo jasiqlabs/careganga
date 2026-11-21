@@ -23,7 +23,7 @@ dld_reason: CRITICAL versioned setting+immutable history, root-scope credential 
 database_impact: CRITICAL
 database_reason: CRITICAL Foundation-root configuration and protected provider secret references require real uniqueness, immutable version history and account-scope guards; recovery requests can lead to irreversible destructive restore, so explicit authorization/verified external proof, concurrency-safe migration and independently reviewed recovery design are mandatory. CG-01 retains original access audit; CG-21 owns only its settings/recovery audit and permissioned source-federated presentation.
 mobile_store_impact: NONE
-mobile_store_reason: No owned native Android UI for this module; other consumers use the same backend.
+mobile_store_reason: CG21 privileged settings, integration references/check, safe error-copy editing, immutable audit filters/detail/export and protected recovery request/authorization actions in Foundation Admin Web require equivalent guarded Internal Android screens for the same authorized actors. Public Android does not expose Foundation configuration or recovery. No WebView or duplicate owner.
 mobile_dependency_audit: NOT_APPLICABLE; CG-21 does not change native app SDKs, plugins or store configuration. Existing Public/Internal Android only consume unchanged verified CG-01 protected identity/session contracts. A future mobile change must separately meet latest official store and dependency gates.
 
 ## Business owner and isolation
@@ -80,3 +80,12 @@ Original visitor/admin routes: **all original public and Admin forms, including 
 CG-21 is the protected source for verified Foundation current Section 8/legal entity, PAN/CIN/TAN, 80G status, registered office(s), official phone/email/domain, logo versions, approved signer/seal and transactional sender configuration feeding CG19 PDF/email output. Client source has different office addresses and **Registered Trust** stamp vs Section 8 Company text: no sample should be treated as approved legal fact. Do not cut sample signature/logo/person out of personal artwork for public assets.
 
 **Implementation gate:** Re-review changed module specification hashes; target genuine source owner, CG-19 issued PDF/delivery recipient and exact current role scope. Real integration / provider tests NOT_RUN.
+
+
+### 21 November 2026 — Owner-approved Web ↔ Android same-capability contract
+
+**Owner:** cg-21-platform-configuration-audit. **Source status:** MERGED_MAIN_CONFIRMED_INTERNAL_ANDROID_SOURCE_GAP. Owner-delegated review/approval of these existing design requirements only, not permission to add stories or claim source-complete/runtime PASS. Current AGENTS.md Web↔Android rule applies to existing merged owners and future stories. Preserve original permission scopes, evidence/DB ownership and actual approved channels; no shadow files/audit/backup record or fake public disclosure.
+
+**Authorized channel contract:** Foundation Admin/assigned-operator Web **↔ Internal Android** for platform settings and integration readiness, safe error messages, source audit filters/detail/export and protected recovery availability/request/independent authorization. Approved public/consented Web **↔ Public Android** only for not applicable: Foundation-wide platform security/configuration/recovery must not be public. A label saying “no owned native UI” is superseded unless separately approved by product owner as a concrete story-specific exception. Staff-only CGI financial, private file, immutable audit and backup operations never appear in Public Android. Use CG-01 authentic design, current backend API and original client Admin/public reference.
+
+**Delivery gate:** No module owner may be called source-complete until applicable Web/native same-actor business actions are actually implemented, traceable through real API and reviewed. Planned CG20 stays not implemented, and CG21's protected native work is a confirmed source gap.

@@ -46,3 +46,11 @@ Other owner functionality is not present in the CG-21 screen or its QA: CG-01's 
 ## Visual QA
 
 In [tasks.md](tasks.md) every user story must trace source token/component reuse and valid screen-to-real-API state. Compare actual original PNG/video with rendered Web/Android in separately authorized QA before claiming exact palette, animation or look-and-feel PASS. Current `VISUAL_NOT_RUN`, `REFERENCE_ASSETS_NOT_VERIFIED`.
+
+### 21 November 2026 — Owner-approved Web ↔ Android same-capability contract
+
+**Owner:** cg-21-platform-configuration-audit. **Source status:** MERGED_MAIN_CONFIRMED_INTERNAL_ANDROID_SOURCE_GAP. Owner-delegated review/approval of these existing design requirements only, not permission to add stories or claim source-complete/runtime PASS. Current AGENTS.md Web↔Android rule applies to existing merged owners and future stories. Preserve original permission scopes, evidence/DB ownership and actual approved channels; no shadow files/audit/backup record or fake public disclosure.
+
+**Authorized channel contract:** Foundation Admin/assigned-operator Web **↔ Internal Android** for platform settings and integration readiness, safe error messages, source audit filters/detail/export and protected recovery availability/request/independent authorization. Approved public/consented Web **↔ Public Android** only for not applicable: Foundation-wide platform security/configuration/recovery must not be public. A label saying “no owned native UI” is superseded unless separately approved by product owner as a concrete story-specific exception. Staff-only CGI financial, private file, immutable audit and backup operations never appear in Public Android. Use CG-01 authentic design, current backend API and original client Admin/public reference.
+
+**UX parity cases:** For each supported actor compare menu/entry, current filters, list/detail, edit/create/review, safe file/CSV/PDF, confirmed/unknown error, protected status/audit history, recovery proof and role-hidden interactions between true Web render and real Android handset. Keep original tokens, spacing/hierarchy, accessible native navigation/Back and readable status; public and staff separate. Client original screenshot pixel/motion and live Android QA are `NOT_RUN`.
