@@ -17,7 +17,7 @@ type Catalog={
  templates:Template[];
  finance:{ready:boolean;state?:"AVAILABLE"|"ACCESS_RESTRICTED"|"SOURCE_UNAVAILABLE";years:Option[];branches:Option[];areas?:AreaOption[];allBranches:boolean};
  appointments:{ready:boolean;state?:"AVAILABLE"|"ACCESS_RESTRICTED"|"SOURCE_UNAVAILABLE";centers:Option[];complete:boolean};
- capabilities:{manage:boolean;export:boolean;schedule:boolean}
+ capabilities:{manage:boolean;export:boolean;schedule:boolean;share?:boolean}
 };
 export type ReportRequest={kind:Kind;view:View;yearRef?:string;branchRef?:string;areaRef?:string;
  centerRef?:string;fromDay?:string;untilDay?:string;status?:string;
@@ -325,6 +325,7 @@ export function MisReportsWorkspace(){
    <MisReportExports allowed request={input(0)}/>}
   {catalog?.capabilities?.schedule===true&&<MisReportSchedules/>}
   {catalog&&<MisSavedReports canManage={catalog.capabilities?.manage===true}
+    canShare={catalog.capabilities?.share===true}
    currentRequest={input(0)}
    onRestore={q=>{
     setKind(q.kind);setView(q.view);setYear(q.yearRef??"");setBranch(q.branchRef??"");
