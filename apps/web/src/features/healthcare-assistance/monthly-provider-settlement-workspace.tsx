@@ -171,13 +171,15 @@ export function MonthlyProviderSettlementWorkspace({canPropose,canReview,canPay}
     </section>}
    <dl>
     <dt>Original monthly claim</dt><dd>{data.state.replaceAll("_"," ")}</dd>
-    <dt>Approved or eligible source amount</dt>
+    <dt>{data.state==="NOT_PREPARED"?"Eligible posted liabilities":
+     data.state==="PROPOSED"?"Prepared claim awaiting independent approval":
+     "Approved monthly Foundation claim"}</dt>
     <dd>{money(data.approvedFoundationMinor)}</dd>
     <dt>Verified actual provider payout</dt>
     <dd>{money(data.actualPaidMinor)}</dd>
     <dt>Outstanding approved claim</dt>
-    <dd>{data.state==="NOT_PREPARED"?"Not yet approved":
-     money(data.outstandingMinor)}</dd>
+    <dd>{["APPROVED","PARTIALLY_SETTLED","SETTLED"].includes(data.state)?
+     money(data.outstandingMinor):"Not yet approved"}</dd>
    </dl>
    <p>Patient collection is excluded. Provider payment remains unverified
     unless a separate original CG09 bank reconciliation confirms it.</p>
