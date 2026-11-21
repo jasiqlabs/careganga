@@ -1,7 +1,7 @@
 import {describe,test} from "node:test";
 import assert from "node:assert/strict";
 import {BadRequestException} from "@nestjs/common";
-import {parseHrDraft} from "../src/modules/cg-10-human-resources/application/hr-enrollment.service";
+import {HrEnrollmentService,parseHrDraft} from "../src/modules/cg-10-human-resources/application/hr-enrollment.service";
 
 /** CG-10 US-001: executable, pure DTO contract tests.
  * Does not assert SQL migrations, CG03 approval, CG19 evidence or live Web/native QA.
@@ -60,6 +60,28 @@ describe("CG-10 employee draft validation",()=>{
   assert.throws(()=>parseHrDraft({...base(),expectedRevision:2}),BadRequestException);
   for(const expectedRevision of [0,-1,1.2,"1",undefined,null])
    assert.throws(()=>parseHrDraft({...base(),expectedRevision},true),BadRequestException);
+ });
+ test("department selection produces a balanced real linked-branch query",async()=>{
+  const calls:string[]=[];
+  // Source-only regression: exercise the production branch/dept validation path
+  // with a minimal transaction fake. PostgreSQL execution remains NOT_RUN.
+  const service=Object.create(HrEnrollmentService.prototype) as {
+   branch:(tx:unknown,actor:unknown,ref:string)=>Promise<unknown>;
+   validSource:(tx:unknown,actor:unknown,fields:unknown)=>Promise<void>;
+  };
+  service.branch=async()=>({name:"Active Foundation Branch"});
+  const fakeTx={query:async(sql:string)=>{
+   calls.push(sql);
+   return {rowCount:1,rows:[{id}]};
+  }};
+  await service.validSource(fakeTx,{realmId:id,accountId:id},
+    parseHrDraft({...base(),departmentRef:id}));
+  assert.equal(calls.length,1);
+  const sql=calls[0];
+  assert.match(sql,/link\\.ended_at IS NULL\\)\\)\\) FOR SHARE$/);
+  assert.equal([...sql].filter(x=>x==="(").length,
+    [...sql].filter(x=>x===")").length,
+    "unclosed SQL grouping must not block normal employee enrollment");
  });
  test("normalizes whitespace without silently adding login or privileges",()=>{
   const x=parseHrDraft({...base(),name:"  Amina   Rahman  ",designation:"  Field   Coordinator  "});

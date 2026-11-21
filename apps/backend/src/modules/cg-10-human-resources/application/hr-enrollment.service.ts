@@ -106,7 +106,7 @@ export class HrEnrollmentService{
     "AND (branch_id=$3 OR (branch_id IS NULL AND EXISTS("+ 
     "SELECT 1 FROM branch_department_link link WHERE "+ 
     "link.foundation_department_id=department.id AND link.root_realm_id=$2 "+ 
-    "AND link.branch_id=$3 AND link.ended_at IS NULL)) FOR SHARE",
+    "AND link.branch_id=$3 AND link.ended_at IS NULL))) FOR SHARE",
     [x.departmentRef,a.realmId,x.branchRef]);
    if(!department.rowCount)throw new BadRequestException("Select an available department");
   }
