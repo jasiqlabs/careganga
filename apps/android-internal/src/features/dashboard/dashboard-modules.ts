@@ -226,7 +226,7 @@ export function getAuthorizedModules(
   });
 
   // CG-10 — real employee drafts, not CG-01 login provisioning or CG-11 payroll.
-  if (roleActions.includes("hr.applications.view")) {
+  if (roleActions.includes("hr.applications.view")||roleActions.includes("hr.employees.view")) {
     list.push({
       key:"hr",
       title:"Human Resources",
