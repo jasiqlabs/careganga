@@ -3,7 +3,7 @@ import {Pressable,StyleSheet,Text,TextInput,View} from "react-native";
 import * as Crypto from "expo-crypto";
 import {careGangaTheme as t} from "../../../../../packages/design-tokens/src/index";
 
-type Kind="PHARMACY"|"NURSING"|"OT"|"DIAGNOSTICS";
+type Kind="PHARMACY"|"NURSING"|"OT"|"LAB";
 type Choice={centerRef:string;centerName:string;kind:Kind};
 type PrivateFile={fileRef:string;classification:string;revoked:boolean;createdAt:string};
 type Page={files:PrivateFile[];next:string|null};
@@ -163,7 +163,7 @@ export function NativePatientPartnerClaims({token,consentGranted,onExpired}:{
    {choices.filter(c=>c.centerName.toLowerCase().includes(search.toLowerCase()))
     .slice(0,20).map(c=>{
      const key=c.centerRef+"|"+c.kind;
-     return <View key={key}>{button(c.centerName+" · "+(c.kind==="OT"?"Procedure":c.kind==="DIAGNOSTICS"?"Lab / diagnostics":c.kind),
+     return <View key={key}>{button(c.centerName+" · "+(c.kind==="OT"?"Procedure":c.kind==="LAB"?"Lab / diagnostics":c.kind),
       ()=>changed(setSelected,key),uncertain,selected===key)}</View>;
     })}
    <Text style={styles.label}>Original invoice number</Text>
