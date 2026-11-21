@@ -709,6 +709,34 @@ export class HrEnrollmentService{
   return {pending:true,applicationRef:q.rows[0].id,
    name:q.rows[0].legal_name,designation:q.rows[0].designation};
  }
+ /** Real approved HR headcount only. No CG11 payroll facts or
+  * public HR export. Current CG01+branch access is checked in the query.
+  */
+ async employeeSummary(token:string){
+  const actor=await this.sessions.requireAction(token,"hr.employees.view");
+  const r=await this.db.query<{status:string;quantity:string}>(
+   "SELECT e.status,COUNT(*)::text AS quantity FROM hr_employee e "+
+   "JOIN LATERAL (SELECT a.branch_ref FROM hr_employment_assignment a "+
+   "WHERE a.employee_id=e.id AND a.root_realm_id=e.root_realm_id "+
+   "ORDER BY a.valid_from DESC,a.id DESC LIMIT 1) assignment ON true "+
+   "JOIN branch b ON b.id=assignment.branch_ref AND b.root_realm_id=e.root_realm_id "+
+   "WHERE e.root_realm_id=$1 AND (b.manager_account_ref=$2 OR EXISTS("+
+   "SELECT 1 FROM account_role ar JOIN role role_now ON role_now.id=ar.role_id "+
+   "AND role_now.realm_id=ar.realm_id AND role_now.active "+
+   "LEFT JOIN role_grant grant_row ON grant_row.role_id=role_now.id "+
+   "AND grant_row.capability_key='foundation.branches.admin' "+
+   "WHERE ar.account_id=$2 AND ar.realm_id=$1 AND ar.revoked_at IS NULL "+
+   "AND (role_now.is_protected OR grant_row.capability_key IS NOT NULL))) "+
+   "GROUP BY e.status",
+   [actor.realmId,actor.accountId]);
+  const statuses=["ACTIVE","PROBATION","PENDING_ACCESS","ON_HOLD","EXITED"] as const;
+  const counts=Object.fromEntries(statuses.map(k=>[k,0])) as Record<typeof statuses[number],number>;
+  for(const row of r.rows){
+   if(row.status in counts)counts[row.status as keyof typeof counts]=Number(row.quantity);
+  }
+  return {total:Object.values(counts).reduce((x,y)=>x+y,0),statuses:counts};
+ }
+
  async employeeDirectory(token:string,offsetInput:unknown,branchInput?:unknown,
   statusInput?:unknown,queryInput?:unknown,departmentInput?:unknown){
   const actor=await this.sessions.requireAction(token,"hr.employees.view");
