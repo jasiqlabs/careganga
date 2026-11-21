@@ -100,6 +100,8 @@ export function CenterMonthlySettlementSummary({centerRef}:Props){
     <dd>{money(data.patientPayableMinor)}</dd>
     <dt>Verified center collections (net of recorded refunds)</dt>
     <dd>{money(data.patientCollectedVerifiedMinor)}</dd>
+    <dt>Verified center refunds/corrections to date</dt>
+    <dd>{money(data.patientRefundedMinor)}</dd>
     <dt>Foundation liability from completed eligible services</dt>
     <dd>{money(data.foundationApprovedLiabilityMinor)}</dd>
     {approved?<><dt>Approved monthly Foundation claim</dt>
