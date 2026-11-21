@@ -56,6 +56,7 @@ export function NativeMisReports({token,onExpired}:{token:string;onExpired:()=>v
    const result=await fetchSource<Catalog>(token,"templates");
    if(!Array.isArray(result.templates))throw Error("Report source options could not be verified.");
    if(rev===seq.current){setCatalog(result);
+    setBranch(result.finance.allBranches?"":result.finance.branches[0]?.ref??"");
     setKind(result.templates[0]?.kind??null);}
   }catch(e){
    if(rev===seq.current){if(e&&typeof e==="object"&&"status" in e&&e.status===401)
