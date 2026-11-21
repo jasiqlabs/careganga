@@ -121,6 +121,9 @@ export class FoundationJournalReconciliationService{
      "AND debit.branch_id IS NULL AND credit.account_id=$10 "+
      "AND credit.credit_minor=$9::bigint AND credit.debit_minor=0 "+
      "AND credit.branch_id IS NULL AND j.reversal_of_id IS NULL "+
+     "AND NOT EXISTS (SELECT 1 FROM journal offset_j "+
+     "WHERE offset_j.root_realm_id=j.root_realm_id "+
+     "AND offset_j.reversal_of_id=j.id AND offset_j.status='POSTED') "+
      "AND (SELECT count(*) FROM journal_line exact "+
      "WHERE exact.root_realm_id=j.root_realm_id "+
      "AND exact.journal_id=j.id)=2",
