@@ -30,9 +30,9 @@ async function api(token:string,path:string,method="GET",body?:object){
  ),{status:response.status});
  return response.json() as Promise<unknown>;
 }
-export function NativeHrEnrollment({token,canView,canManage,canReview,canViewEmployees,canSelectAccounts,canSelectRoles,canViewPrivate,canManagePrivate,onExit,onExpired}:{
+export function NativeHrEnrollment({token,canView,canManage,canReview,canViewEmployees,canSelectAccounts,canSelectRoles,canViewPrivate,canManagePrivate,canConfigureReviews,onExit,onExpired}:{
  token:string;canView:boolean;canManage:boolean;canReview:boolean;canViewEmployees:boolean;canSelectAccounts:boolean;
- canSelectRoles:boolean;canViewPrivate:boolean;canManagePrivate:boolean;
+ canSelectRoles:boolean;canViewPrivate:boolean;canManagePrivate:boolean;canConfigureReviews:boolean;
  onExit:()=>void;onExpired:()=>void
 }){
  const [apps,setApps]=useState<Application[]>([]);
@@ -416,7 +416,7 @@ export function NativeHrEnrollment({token,canView,canManage,canReview,canViewEmp
    <Pressable accessibilityRole="button" onPress={()=>void loadPending()}
      style={styles.outline}><Text style={styles.outlineText}>
       Check my pending account acceptance</Text></Pressable>
-   {canReview&&<NativeHrReviews token={token} onExpired={onExpired}/>}
+   {canReview&&<NativeHrReviews token={token} canConfigure={canConfigureReviews} onExpired={onExpired}/>}
    {canView&&<View style={styles.card}>
     <View style={styles.heading}><Text style={styles.h2}>Employee applications</Text>
      <Pressable accessibilityRole="button" onPress={()=>void load(0)} style={styles.outline}>
