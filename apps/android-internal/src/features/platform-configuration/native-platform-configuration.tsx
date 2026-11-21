@@ -59,6 +59,8 @@ export function NativePlatformConfiguration({token,roleActions,onExit,onExpired}
   const [auditSource,setAuditSource]=useState<"ALL"|"CG-01"|"CG-21">("ALL");
   const [auditFrom,setAuditFrom]=useState("");
   const [auditTo,setAuditTo]=useState("");
+  const [appliedFrom,setAppliedFrom]=useState("");
+  const [appliedTo,setAppliedTo]=useState("");
   const [audit,setAudit]=useState<CG21AuditPage|null>(null);
   const [auditRows,setAuditRows]=useState<CG21AuditEvent[]>([]);
   const [auditDetail,setAuditDetail]=useState<CG21AuditDetail|null>(null);
@@ -88,8 +90,8 @@ export function NativePlatformConfiguration({token,roleActions,onExit,onExpired}
           setIntegrations(c.connections??[]);
         }
       }else if(tab==="audit"&&hasAudit){
-        const range=(auditFrom?"&from="+encodeURIComponent(auditFrom):"")+
-          (auditTo?"&to="+encodeURIComponent(auditTo):"");
+        const range=(appliedFrom?"&from="+encodeURIComponent(appliedFrom):"")+
+          (appliedTo?"&to="+encodeURIComponent(appliedTo):"");
         const a=await api<CG21AuditPage>(token,"/audit?source="+encodeURIComponent(auditSource)+range);
         setAudit(a);setAuditRows(a.events);setAuditDetail(null);
       }else if(tab==="recovery"&&hasRecovery){
@@ -103,12 +105,21 @@ export function NativePlatformConfiguration({token,roleActions,onExit,onExpired}
       return true;
     }catch(e){fail(e);return false;}
     finally{setLoading(false);}
-  },[token,tab,auditSource,auditFrom,auditTo,roleActions.join("|"),fail,hasAudit,hasRecovery]);
+  },[token,tab,auditSource,appliedFrom,appliedTo,roleActions.join("|"),fail,hasAudit,hasRecovery]);
   useEffect(()=>{void refresh();},[refresh]);
   async function run(kind:Pending["kind"]|null,requestKey:string|undefined,action:()=>Promise<unknown>,ok:string){
     if(busy||pending)return;
     setBusy(true);setError("");setNotice("");
     try{const result=await action();
+      if(kind&&kind!=="SAFE_COPY"){
+        const status=result&&typeof result==="object"&&"status" in result?String(result.status):"";
+        const accepted=kind==="SETTING_SAVE"?["SAVED","REPLAY_CONFIRMED"]:
+          kind==="INTEGRATION_REFERENCE"?["CONFIGURED_NOT_VERIFIED","REPLAY_CONFIRMED"]:
+          kind==="RECOVERY_REQUEST"?["NOT_AVAILABLE","REQUESTED","REPLAY_CONFIRMED"]:
+          ["PRIVILEGED_AUTHORIZED","REPLAY_CONFIRMED"];
+        if(!accepted.includes(status))throw Object.assign(
+          new Error("Original operation response is unconfirmed."),{status:503});
+      }
       const message=result&&typeof result==="object"&&"status" in result&&result.status==="NOT_AVAILABLE"?
         "Verified secured backup is not available. No restore was requested.":
         result&&typeof result==="object"&&"verified" in result?
@@ -163,6 +174,9 @@ export function NativePlatformConfiguration({token,roleActions,onExit,onExpired}
         autoCapitalize="none" accessibilityLabel={title}/></View>;
   const card=(content:ReactNode)=><View style={styles.card}>{content}</View>;
   const passwordField=field("Current account password",password,setPassword,true);
+  const changeTab=(next:Tab)=>{setPassword("");setReference("");setBackup("");setSelectedCopy(null);setTab(next);};
+  const confirm=(title:string,detail:string,perform:()=>void)=>
+    Alert.alert(title,detail,[{text:"Cancel",style:"cancel"},{text:"Confirm",onPress:perform}]);
   async function savePageSize(){
     if(!setting||!can("platform.settings.manage")||!/^(?:[1-9]\d?|100)$/.test(size))return;
     const n=Number(size);if(!Number.isInteger(n)||n<10||n>100||n===setting.value){setError("Choose a different page size from 10 to 100.");return;}
@@ -223,8 +237,8 @@ export function NativePlatformConfiguration({token,roleActions,onExit,onExpired}
   async function exportAudit(){
     if(!can("platform.audit.export")||busy)return;setBusy(true);setError("");
     try{const x=await api<CG21AuditCsv>(token,"/audit/export?source="+encodeURIComponent(auditSource)+
-        (auditFrom?"&from="+encodeURIComponent(auditFrom):"")+
-        (auditTo?"&to="+encodeURIComponent(auditTo):""));
+        (appliedFrom?"&from="+encodeURIComponent(appliedFrom):"")+
+        (appliedTo?"&to="+encodeURIComponent(appliedTo):""));
       if(x.coverage!=="COMPLETE"){setError("Audit coverage is incomplete; export is unavailable.");return;}
       await Share.share({message:x.csv,title:"CareGanga Foundation audit"});
       if(x.truncated)setNotice("This export is limited to the current approved first 100 records.");
@@ -258,9 +272,9 @@ export function NativePlatformConfiguration({token,roleActions,onExit,onExpired}
       </View>
       <Text style={styles.muted}>Foundation settings, source audit and protected recovery, with the same effective permissions as Web.</Text>
       <View style={styles.tabs}>
-        {hasSettings&&button("Settings",()=>setTab("settings"),tab==="settings"||busy)}
-        {hasAudit&&button("Audit",()=>setTab("audit"),tab==="audit"||busy)}
-        {hasRecovery&&button("Recovery",()=>setTab("recovery"),tab==="recovery"||busy)}
+        {hasSettings&&button("Settings",()=>changeTab("settings"),tab==="settings"||busy)}
+        {hasAudit&&button("Audit",()=>changeTab("audit"),tab==="audit"||busy)}
+        {hasRecovery&&button("Recovery",()=>changeTab("recovery"),tab==="recovery"||busy)}
       </View>
       {button("Refresh original records",()=>void refresh(),busy||loading)}
       {loading&&<ActivityIndicator accessibilityLabel="Loading original platform records" color={t.primary}/>}
@@ -299,9 +313,11 @@ export function NativePlatformConfiguration({token,roleActions,onExit,onExpired}
             <Text style={styles.muted}>Existing version: {integrRev}. Do not paste passwords or API secrets.</Text>
             {passwordField}
             {button("Save reference",()=>void saveIntegration(),busy||!!pending)}
-            {button("Check actual integration readiness",()=>void run(null,undefined,()=>api(token,
-              "/integrations/"+encodeURIComponent(provider)+"/"+encodeURIComponent(purpose)+"/check","POST"),
-              "Verification requested; refresh to inspect the actual result."),busy||!provider||!purpose)}
+            {button("Check actual integration readiness",()=>void run(null,undefined,()=>api<{
+                status:string;verified:boolean
+              }>(token,"/integrations/"+encodeURIComponent(provider)+"/"+
+                encodeURIComponent(purpose)+"/check","POST"),
+              "Integration check returned. Inspect the source status."),busy||!!pending||!provider||!purpose)}
           </>}
         </>)}
         {can("platform.settings.view")&&card(<>
@@ -326,7 +342,9 @@ export function NativePlatformConfiguration({token,roleActions,onExit,onExpired}
           {field("To (optional ISO-8601 UTC)",auditTo,setAuditTo,false,"2026-11-21T23:59:59Z")}
           <View style={styles.tabs}>{allowedSource.map(x=>button(x==="ALL"?"All":x==="CG-01"?"Identity":"Platform",
             ()=>{setAuditSource(x);setAudit(null);setAuditRows([]);},busy||x===auditSource))}</View>
-          {button("Apply audit dates",()=>void refresh(),busy||loading)}
+          {button("Apply audit dates",()=>{
+            setAppliedFrom(auditFrom.trim());setAppliedTo(auditTo.trim());
+          },busy||loading)}
           <Text style={styles.muted}>Coverage: {audit?.coverage??"Unavailable"} · Entries are restricted by the source owner.</Text>
           {audit?.coverage==="PARTIAL"&&<Text style={styles.error}>One owner feed is unavailable. Do not assume a complete audit.</Text>}
           {auditRows.map(x=><Pressable key={x.eventRef} style={styles.item}
@@ -350,7 +368,7 @@ export function NativePlatformConfiguration({token,roleActions,onExit,onExpired}
         <Text style={styles.muted}>{availability?.message??"Availability not verified."}</Text>
         <Text style={styles.muted}>A request or authorization does not execute a restore.</Text>
         {operations.map(o=><Pressable key={o.operationRef} style={styles.item}
-          onPress={()=>setSelectedOperation(o)}>
+          onPress={()=>{setSelectedOperation(o);setPassword("");}}>
           <Text style={styles.label}>{label(o.status)}</Text>
           <Text style={styles.muted}>Updated {o.updatedAt} · Version {o.version}</Text>
         </Pressable>)}
@@ -358,11 +376,15 @@ export function NativePlatformConfiguration({token,roleActions,onExit,onExpired}
         {can("platform.recovery.request")&&<>
           {field("Verified secured backup reference",backup,setBackup,true,"backupref:...")}
           {passwordField}
-          {button("Record recovery request",()=>void requestRecovery(),busy||!!pending||availability?.status!=="AVAILABLE")}
+          {button("Record recovery request",()=>confirm("Review recovery request",
+            "This records a privileged request only. No backup will be restored by this action.",
+            ()=>void requestRecovery()),busy||!!pending||availability?.status!=="AVAILABLE")}
         </>}
         {can("platform.recovery.authorize")&&selectedOperation?.status==="REQUESTED"&&<>
           {passwordField}
-          {button("Record separate authorization",()=>void authorizeRecovery(),busy||!!pending)}
+          {button("Record separate authorization",()=>confirm("Review independent authorization",
+            "This approves the recorded recovery operation only. It does not execute a restore.",
+            ()=>void authorizeRecovery()),busy||!!pending)}
         </>}
       </>)}
       {!hasSettings&&!hasAudit&&!hasRecovery&&<Text style={styles.error}>This platform module is not authorized for your role.</Text>}
