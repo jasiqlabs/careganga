@@ -8,7 +8,7 @@ import {MisFinanceTrend,MisAppointmentDistribution} from "./mis-source-charts";
 import {MisGroupedFinanceChart} from "./mis-grouped-finance-chart";
 type Kind="FINANCE_POSTED_LEDGER"|"FINANCE_POSTED_SUMMARY"|
  "FINANCE_POSTED_TREND"|"FINANCE_POSTED_GROUPED"|
- "APPOINTMENT_STATUS"|"PLATFORM_AUDIT_ACTIVITY";
+ "APPOINTMENT_STATUS"|"PLATFORM_AUDIT_ACTIVITY"|"DIAGNOSTICS_CATALOG_SUMMARY";
 type View="TABLE"|"SUMMARY"|"CHART"|"PIVOT";
 type Option={ref:string;name:string};
 type Template={kind:Kind;label:string;views:View[];description:string};
