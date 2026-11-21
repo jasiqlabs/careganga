@@ -87,7 +87,11 @@ export function MisReportExports({request,allowed}:{request:ReportRequest|null;
      Status: {run.state==="UNKNOWN"?"Not confirmed":
       run.state==="READY"?"Verified file ready":
       run.state==="EMPTY"?"No records":
-      run.state==="REVOKED"?"Access revoked":run.state.replaceAll("_"," ").toLowerCase()}
+      run.state==="REVOKED"?"Access revoked":
+      run.state==="FAILED"?"Generation failed":
+      run.state==="RUNNING"?"Preparing":
+      run.state==="QUEUED"?"Queued":
+      run.state==="EXPIRED"?"Expired":"Status unavailable"}
      {run.createdAt?" · "+new Date(run.createdAt).toLocaleString("en-IN"):""}</p>
     {run.canDownload&&run.state==="READY"&&
      <a href={"/api/mis/reports/runs/"+encodeURIComponent(run.ref)+"/download"}>
