@@ -33,7 +33,8 @@ type Release={id:string;order_ref:string;result_revision_ref:string;
  professional_review_ref:string;original_cg19_file_ref:string;
  report_digest:string;patient_ref:string;center_ref:string;
  clinician_account_ref:string;release_key:string;release_digest:string;
- released_at:Date;display_order_ref?:string;version_no?:number};
+ released_at:Date;display_order_ref?:string;version_no?:number;
+ superseded?:boolean};
 type OriginalDownload=Release&{
  object_key:string;object_version:string;size_bytes:string;
  file_sha:string;scan_status:string
@@ -210,7 +211,14 @@ export class ClinicalLabPatientReleaseService{
    const patient=await this.mine(c,actor);
    const rows=await c.query<Release>(
     "SELECT release.id,release.order_ref,release.result_revision_ref,"+
-    "release.released_at,original_order.display_order_ref,result.version_no "+
+    "release.released_at,original_order.display_order_ref,result.version_no,"+
+    "EXISTS(SELECT 1 FROM cg16_lab_report_release newer "+
+    "JOIN lab_result_revision later ON "+
+    "later.root_realm_id=newer.root_realm_id "+
+    "AND later.id=newer.result_revision_ref "+
+    "WHERE newer.root_realm_id=release.root_realm_id "+
+    "AND newer.order_ref=release.order_ref "+
+    "AND later.version_no>result.version_no) AS superseded "+
     "FROM cg16_lab_report_release release "+
     "JOIN lab_result_revision result ON result.root_realm_id=release.root_realm_id "+
     "AND result.id=release.result_revision_ref "+
@@ -225,7 +233,7 @@ export class ClinicalLabPatientReleaseService{
    return {reports:rows.rows.slice(0,50).map(x=>({
     releaseRef:x.id,orderLabel:x.display_order_ref,
     reportVersion:x.version_no,releasedAt:x.released_at.toISOString(),
-    approvedByClinician:true
+    superseded:x.superseded===true,approvedByClinician:true
    })),complete:rows.rows.length<=50};
   });
  }
