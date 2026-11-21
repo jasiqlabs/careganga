@@ -117,6 +117,7 @@ CREATE TABLE cg20_report_schedule(
  id uuid NOT NULL DEFAULT gen_random_uuid(),
  owner_account_ref uuid NOT NULL,
  saved_ref uuid NOT NULL,
+ saved_revision integer NOT NULL CHECK(saved_revision BETWEEN 1 AND 1000000),
  recipient_account_ref uuid NOT NULL,
  request_key uuid NOT NULL,
  payload_digest char(64) NOT NULL CHECK(payload_digest ~ '^[a-f0-9]{64}$'),
@@ -142,7 +143,9 @@ CREATE TABLE cg20_report_schedule(
  FOREIGN KEY(recipient_account_ref,root_realm_id)
   REFERENCES account(id,realm_id) ON DELETE RESTRICT,
  FOREIGN KEY(root_realm_id,saved_ref)
-  REFERENCES cg20_saved_report(root_realm_id,id) ON DELETE RESTRICT
+  REFERENCES cg20_saved_report(root_realm_id,id) ON DELETE RESTRICT,
+ FOREIGN KEY(root_realm_id,saved_ref,owner_account_ref)
+  REFERENCES cg20_saved_report(root_realm_id,id,owner_account_ref) ON DELETE RESTRICT
 );
 CREATE INDEX ix_cg20_due_only ON cg20_report_schedule(next_due_utc,id)
  WHERE state='ACTIVE';
