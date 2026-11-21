@@ -315,7 +315,9 @@ export class MisReportScheduleService{
    throw new NotFoundException({code:"MIS_SCHEDULE_NOT_FOUND"});
   if(row.revision!==expected)
    throw new ConflictException({code:"MIS_SCHEDULE_CHANGED"});
-  const options=parse({...details,savedRef:row.saved_ref,requestKey:row.request_key});
+  const options=parse({savedRef:row.saved_ref,requestKey:row.request_key,
+   cadence:details.cadence,timezone:details.timezone,
+   localTime:details.localTime,firstDate:details.firstDate});
   const saved=await this.eligible(token,row.saved_ref);
   const next=zonedLocalDate(options.firstDate,options.localTime,options.timezone);
   if(next.getTime()<Date.now()+60000||next.getTime()>Date.now()+732*86400000)
