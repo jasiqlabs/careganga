@@ -1,6 +1,7 @@
 "use client";
 import {useCallback,useEffect,useRef,useState,type FormEvent} from "react";
 import {ClinicalLabResultUpload} from "./clinical-lab-result-upload";
+import {ClinicalLabResultEntry} from "./clinical-lab-result-entry";
 import {ClinicalLabProfessionalReviewPanel} from "./clinical-lab-professional-review-panel";
 import {ClinicalLabReleasePanel} from "./clinical-lab-release-panel";
 type Center={centerRef:string;name:string};
@@ -349,19 +350,23 @@ export function ClinicalLabOrderWorkspace({canCreate,canView,canManageSamples,ca
    {canReview&&selected.report?.state==="RESULT_READY"&&
     <ClinicalLabProfessionalReviewPanel key={center+":"+selected.order.orderRef}
      centerRef={center} orderRef={selected.order.orderRef}/>}
-   {selected.report?.state==="RESULT_READY"?<p className="notice" role="status">
-    The original report PDF was uploaded and scanner-verified. Review the separate
-    professional decision. After approval, an authorized clinician can release the PDF to the patient.
-   </p>:canRecordResults&&selected.order.status==="PROCESSING"&&
+   {selected.report?.state==="RESULT_READY"?
+    <p className="notice" role="status">Report PDF is ready for
+     independent clinician review. The patient sees it only after release.</p>:
+    canRecordResults&&selected.order.status==="PROCESSING"&&
      selected.samples.length>0&&selected.samples.every(s=>s.status==="PROCESSING")?
-    <ClinicalLabResultUpload key={center+":"+selected.order.orderRef}
-     centerRef={center} orderRef={selected.order.orderRef}
-     hasDraft={selected.report?.state==="DRAFT"}
-     onVerified={async()=>{await show(selected.order.orderRef);}}/>:
-    canRecordResults&&selected.report?.state==="DRAFT"?<p>
-     The existing report is not yet scan-verified. A previously started upload
-     must be checked by its original operator before a new report can be created.
-    </p>:null}
+    <>
+     <ClinicalLabResultEntry key={"entry:"+center+":"+selected.order.orderRef}
+      centerRef={center} orderRef={selected.order.orderRef}
+      onVerified={async()=>{await show(selected.order.orderRef);}}/>
+     {selected.report?.state==="DRAFT"&&<details>
+      <summary>Continue an earlier uploaded PDF (if applicable)</summary>
+      <ClinicalLabResultUpload key={"prior:"+center+":"+selected.order.orderRef}
+       centerRef={center} orderRef={selected.order.orderRef}
+       hasDraft={true}
+       onVerified={async()=>{await show(selected.order.orderRef);}}/>
+     </details>}
+    </>:null}
   </section>}
  </section>;
 }
