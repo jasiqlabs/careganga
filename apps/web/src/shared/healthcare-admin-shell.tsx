@@ -27,7 +27,8 @@ export function HealthcareAdminShell({
   healthLiabilities:"Foundation Healthcare Obligations",
   healthSettlements:"Healthcare Provider Settlements",
   healthSchedules:"Doctor schedules",healthPatientIntake:"Patient registration",
-  healthVisitQueue:"Consultation queue",healthPatientAdmin:"Patients and bookings"
+  healthVisitQueue:"Consultation queue",healthClinicianActivity:"My consultations",
+  healthPatientAdmin:"Patients and bookings"
  };
  const currentPage=pageLabel??names[active]??"Healthcare";
  return <div className="shell">
