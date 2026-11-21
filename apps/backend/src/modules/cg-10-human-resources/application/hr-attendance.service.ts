@@ -17,7 +17,9 @@ const input=(v:unknown,names:string[])=>{if(!v||typeof v!=="object"||Array.isArr
  Object.keys(v).some(k=>!names.includes(k)))
  throw new BadRequestException("Check the shift or attendance form");return v as Record<string,unknown>;};
 const digest=(v:unknown)=>createHash("sha256").update(JSON.stringify(v)).digest("hex");
-const sqlDate=(x:Date|string)=>typeof x==="string"?x.slice(0,10):x.toISOString().slice(0,10);
+const sqlDate=(x:Date|string)=>typeof x==="string"?x.slice(0,10):
+ [x.getFullYear(),String(x.getMonth()+1).padStart(2,"0"),
+  String(x.getDate()).padStart(2,"0")].join("-");
 const hm=(v:unknown)=>{if(typeof v!=="string"||!/^([01]\d|2[0-3]):[0-5]\d$/.test(v))
  throw new BadRequestException("Enter a valid 24-hour shift time");return v;};
 const isoTime=(s:string)=>Number(s.slice(0,2))*60+Number(s.slice(3,5));
@@ -271,17 +273,23 @@ export class HrAttendanceService{
    const employee=await this.self(tx,actor);
    if(!employee){await tx.query("COMMIT");return {status:"NOT_LINKED",days:[]};}
    const rule=await this.shift(tx,actor,employee.id);
-   const rows=await tx.query<{local_date:Date|string;status:string;checked_in_at:Date|string}>(
-    `SELECT local_date,status,checked_in_at FROM hr_attendance_day
-    WHERE root_realm_id=$1 AND employee_id=$2
+   const rows=await tx.query<{local_date:Date|string;status:string;checked_in_at:Date|string;
+    checked_out_at:Date|string|null;worked_minutes:number|null}>(`
+    SELECT local_date,status,checked_in_at,checked_out_at,worked_minutes
+    FROM hr_attendance_day WHERE root_realm_id=$1 AND employee_id=$2
     ORDER BY local_date DESC LIMIT 35`,[actor.realmId,employee.id]);
    await tx.query("COMMIT");
    return {status:rule?"ASSIGNED":"NO_CURRENT_SHIFT",
     shift:rule?{label:rule.name,timeZone:rule.time_zone,
       start:rule.work_start_local.slice(0,5),end:rule.work_end_local.slice(0,5),
       weeklyOffDays:rule.weekly_off_days}:null,
+    canCheckOut:rows.rows.some(x=>!x.checked_out_at&&
+      Date.now()-new Date(x.checked_in_at).getTime()<=36*3600000 &&
+      Date.now()>=new Date(x.checked_in_at).getTime()),
     days:rows.rows.map(x=>({date:sqlDate(x.local_date),status:x.status,
-      checkInAt:new Date(x.checked_in_at).toISOString()}))};
+      checkInAt:new Date(x.checked_in_at).toISOString(),
+      checkOutAt:x.checked_out_at?new Date(x.checked_out_at).toISOString():null,
+      workedMinutes:x.worked_minutes}))};
   }catch(e){await tx.query("ROLLBACK");throw e;}finally{tx.release();}
  }
  async checkIn(token:string,body:unknown){
@@ -319,6 +327,11 @@ export class HrAttendanceService{
     AND employee_id=$2 AND local_date=$3 FOR UPDATE`,
     [actor.realmId,employee.id,businessDate]);
    if(prior.rowCount)throw new ConflictException("Check-in is already recorded for this shift day");
+   const open=await tx.query(`SELECT 1 FROM hr_attendance_day
+    WHERE root_realm_id=$1 AND employee_id=$2 AND checked_out_at IS NULL
+    AND checked_in_at>now()-interval '36 hours' FOR UPDATE`,
+    [actor.realmId,employee.id]);
+   if(open.rowCount)throw new ConflictException("Complete your previous check-out before a new check-in");
    const status=clock.late?"LATE":"PRESENT";
    const day=await tx.query<{id:string}>(`INSERT INTO hr_attendance_day(
     root_realm_id,employee_id,assignment_id,shift_id,policy_id,local_date,
@@ -333,4 +346,59 @@ export class HrAttendanceService{
    return {recorded:true,date:businessDate,status,replayed:false};
   }catch(e){await tx.query("ROLLBACK");throw e;}finally{tx.release();}
  }
+ async checkOut(token:string,body:unknown){
+  const actor=await this.sessions.verifySession(token);
+  const v=input(body,["requestKey"]),requestKey=id(v.requestKey,"check-out request");
+  const hash=digest(["CHECK_OUT",actor.accountId]);
+  const tx=await this.db.connect();
+  try{
+   await tx.query("BEGIN");
+   const employee=await this.self(tx,actor,true);
+   if(!employee)throw new ForbiddenException("Your current approved employment is unavailable");
+   const previous=await tx.query<{request_digest:string;local_date:Date|string;
+    status:string;worked_minutes:number|null}>(`SELECT ev.request_digest,
+    d.local_date,d.status,d.worked_minutes
+    FROM hr_attendance_event ev JOIN hr_attendance_day d
+    ON d.id=ev.attendance_day_id AND d.root_realm_id=ev.root_realm_id
+    WHERE ev.root_realm_id=$1 AND ev.actor_ref=$2 AND ev.request_key=$3
+    FOR SHARE OF ev,d`,[actor.realmId,actor.accountId,requestKey]);
+   if(previous.rows[0]){
+    if(previous.rows[0].request_digest!==hash)
+     throw new ConflictException("This check-out request is not an original checkout");
+    await tx.query("COMMIT");
+    return {recorded:true,replayed:true,date:sqlDate(previous.rows[0].local_date),
+      status:previous.rows[0].status,workedMinutes:previous.rows[0].worked_minutes};
+   }
+   const day=await tx.query<{id:string;local_date:Date|string;status:string;
+    checked_in_at:Date|string;break_minutes:number}>(`SELECT d.id,d.local_date,
+    d.status,d.checked_in_at,p.break_minutes
+    FROM hr_attendance_day d JOIN hr_shift_policy p ON p.id=d.policy_id
+    AND p.root_realm_id=d.root_realm_id
+    WHERE d.root_realm_id=$1 AND d.employee_id=$2 AND d.checked_out_at IS NULL
+    AND d.checked_in_at>now()-interval '36 hours'
+    ORDER BY d.checked_in_at DESC LIMIT 1 FOR UPDATE OF d`,
+    [actor.realmId,employee.id]);
+   if(!day.rows[0])throw new ConflictException(
+    "No recent open check-in is available. Contact HR for a reviewed correction.");
+   const now=(await tx.query<{now:Date}>("SELECT CURRENT_TIMESTAMP AS now")).rows[0].now;
+   const start=new Date(day.rows[0].checked_in_at).getTime(),end=now.getTime();
+   const elapsed=Math.floor((end-start)/60000);
+   if(!Number.isFinite(elapsed)||elapsed<0||elapsed>2160)
+    throw new ConflictException("Working time is not within the verified shift window");
+   const worked=Math.max(0,elapsed-Number(day.rows[0].break_minutes));
+   const updated=await tx.query(`UPDATE hr_attendance_day SET
+    checked_out_at=$3,worked_minutes=$4,version=version+1
+    WHERE id=$1 AND root_realm_id=$2 AND checked_out_at IS NULL RETURNING id`,
+    [day.rows[0].id,actor.realmId,now,worked]);
+   if(!updated.rowCount)throw new ConflictException("Check-out changed. Refresh attendance.");
+   await tx.query(`INSERT INTO hr_attendance_event(root_realm_id,employee_id,
+    attendance_day_id,actor_ref,request_key,request_digest,action)
+    VALUES($1,$2,$3,$4,$5,$6,'CHECK_OUT')`,
+    [actor.realmId,employee.id,day.rows[0].id,actor.accountId,requestKey,hash]);
+   await tx.query("COMMIT");
+   return {recorded:true,replayed:false,date:sqlDate(day.rows[0].local_date),
+    status:day.rows[0].status,workedMinutes:worked};
+  }catch(e){await tx.query("ROLLBACK");throw e;}finally{tx.release();}
+ }
+
 }

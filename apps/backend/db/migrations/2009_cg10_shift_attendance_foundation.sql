@@ -63,7 +63,12 @@ CREATE TABLE hr_attendance_day(
  local_date date NOT NULL,
  status text NOT NULL CHECK(status IN('PRESENT','LATE')),
  checked_in_at timestamptz NOT NULL,
+ checked_out_at timestamptz,
+ worked_minutes integer CHECK(worked_minutes BETWEEN 0 AND 2160),
  version integer NOT NULL DEFAULT 1 CHECK(version>0),
+ CHECK((checked_out_at IS NULL AND worked_minutes IS NULL) OR
+  (checked_out_at IS NOT NULL AND worked_minutes IS NOT NULL
+   AND checked_out_at>=checked_in_at)),
  created_at timestamptz NOT NULL DEFAULT now(),
  UNIQUE(root_realm_id,id),
  UNIQUE(id,root_realm_id,employee_id),
@@ -85,7 +90,7 @@ CREATE TABLE hr_attendance_event(
  actor_ref uuid NOT NULL,
  request_key uuid NOT NULL,
  request_digest char(64) NOT NULL CHECK(request_digest ~ '^[a-f0-9]{64}$'),
- action text NOT NULL CHECK(action='CHECK_IN'),
+ action text NOT NULL CHECK(action IN('CHECK_IN','CHECK_OUT')),
  created_at timestamptz NOT NULL DEFAULT now(),
  UNIQUE(root_realm_id,actor_ref,request_key),
  FOREIGN KEY(employee_id,root_realm_id) REFERENCES hr_employee(id,root_realm_id) ON DELETE RESTRICT,

@@ -23,6 +23,10 @@ export class HrAttendanceController{
  }
  @Get("me/attendance")
  mine(@Headers("authorization")token:string){return this.attendance.mine(token);}
+ @Post("me/attendance/check-out")
+ checkOut(@Headers("authorization")token:string,@Body()body:unknown){
+  return this.attendance.checkOut(token,body);
+ }
  @Post("me/attendance/check-in")
  checkIn(@Headers("authorization")token:string,@Body()body:unknown){
   return this.attendance.checkIn(token,body);
