@@ -2,10 +2,12 @@ import {useCallback,useEffect,useRef,useState} from "react";
 import {AppState,Pressable,StyleSheet,Text,View} from "react-native";
 import {identityRequest} from "../identity-access/http-client";
 import {NativeFinanceOptions} from "../finance-accounting/finance-native-source-kit";
+import {NativeMisFinanceTrend,NativeMisAppointmentDistribution,type MonthlyTrend}
+ from "./native-mis-source-charts";
 
 type Metric={key:string;label:string;unit:string;value:string};
 type Source={sourceKey:string;sourceLabel:string;state:string;metrics:Metric[];
- explanation?:string};
+ explanation?:string;trend?:MonthlyTrend};
 type Overview={state:string;readAt:string;sources:Source[];
  periodLabel?:string;scopeLabel?:string;message?:string};
 type Option={ref:string;name:string};
@@ -106,6 +108,9 @@ export function NativeMisDashboard({token,onExpired,onOpenFinance}:{
       </View>)}
      </View>
      {!!source.explanation&&<Text style={styles.helper}>{source.explanation}</Text>}
+     {source.trend&&<NativeMisFinanceTrend trend={source.trend}/>}
+     {source.sourceKey==="CG15_APPOINTMENT_STATES"&&
+      <NativeMisAppointmentDistribution metrics={source.metrics}/>}
      {!!onOpenFinance&&source.sourceKey==="CG09_POSTED_FINANCE"&&
       <Pressable accessibilityRole="button" style={styles.refresh} onPress={onOpenFinance}>
        <Text style={styles.link}>Open detailed finance reports</Text>
