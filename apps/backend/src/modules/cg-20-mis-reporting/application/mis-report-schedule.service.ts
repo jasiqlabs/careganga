@@ -46,7 +46,7 @@ function parse(raw:unknown):Input{
   throw new BadRequestException({code:"MIS_SCHEDULE_INVALID",
    message:"Choose a valid local date, time, timezone and recurrence."});
  try{new Intl.DateTimeFormat("en-GB",{timeZone:timezone}).format(new Date());}
- catch{throw new BadRequestException({code:"MIS_SCHEDULE_ZONE_INVALID",
+ catch{throw new BadRequestException({code:"MIS_SCHEDULE_ZONE_INVALID",field:"timezone",
   message:"Choose a recognized timezone."});}
  return {savedRef,requestKey,cadence:cadence as Input["cadence"],
   timezone,localTime,firstDate};
@@ -77,7 +77,7 @@ export function zonedLocalDate(date:string,time:string,zone:string){
  const final=parts(guess);
  if(final.year!==y||final.month!==m||final.day!==d||
   final.hour!==h||final.minute!==minute)
-  throw new BadRequestException({code:"MIS_SCHEDULE_DST_INVALID",
+  throw new BadRequestException({code:"MIS_SCHEDULE_DST_INVALID",field:"localTime",
    message:"That local time does not exist on this date. Choose another time."});
  return new Date(guess);
 }
@@ -121,14 +121,14 @@ export class MisReportScheduleService{
   const next=zonedLocalDate(input.firstDate,input.localTime,input.timezone);
   if(next.getTime()<Date.now()+60000||
     next.getTime()>Date.now()+366*2*86400000)
-   throw new BadRequestException({code:"MIS_SCHEDULE_DATE_INVALID",
+   throw new BadRequestException({code:"MIS_SCHEDULE_DATE_INVALID",field:"firstDate",
     message:"Choose a future date within the next two years."});
   const base=new Date(input.firstDate+"T00:00:00Z");
   const weekday=input.cadence==="WEEKLY"?base.getUTCDay():null;
   const monthday=input.cadence==="MONTHLY"||input.cadence==="YEARLY"?
    base.getUTCDate():null;
   if(monthday!==null&&monthday>28)
-   throw new BadRequestException({code:"MIS_SCHEDULE_DAY_INVALID",
+   throw new BadRequestException({code:"MIS_SCHEDULE_DAY_INVALID",field:"firstDate",
     message:"For monthly or annual delivery choose a day from 1 to 28."});
   const payload=digest(input);
   const tx=await this.db.connect();let started=false;
