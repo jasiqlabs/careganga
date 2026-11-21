@@ -10,7 +10,7 @@ CREATE TABLE cg17_partner_service_claim(
   CHECK(public_code ~ '^CG-[A-F0-9]{14}$'),
  center_ref uuid NOT NULL,
  patient_ref uuid NOT NULL,
- service_kind text NOT NULL CHECK(service_kind IN('PHARMACY','NURSING','OT','DIAGNOSTICS')),
+ service_kind text NOT NULL CHECK(service_kind IN('PHARMACY','NURSING','OT','LAB')),
  invoice_number text NOT NULL CHECK(
    char_length(invoice_number) BETWEEN 2 AND 60
    AND invoice_number ~ '^[A-Za-z0-9][A-Za-z0-9 /._-]*$'),
@@ -49,7 +49,7 @@ CREATE TABLE cg17_partner_service_claim(
  CHECK(quoted_gross_minor=estimated_support_minor+estimated_patient_due_minor),
  CHECK(estimated_support_minor<=quoted_gross_minor),
  CHECK((service_kind='PHARMACY' AND completion_file_ref IS NULL) OR
-       (service_kind IN('NURSING','OT','DIAGNOSTICS') AND completion_file_ref IS NOT NULL
+       (service_kind IN('NURSING','OT','LAB') AND completion_file_ref IS NOT NULL
         AND completion_file_ref<>invoice_file_ref))
 );
 CREATE INDEX ix_cg17_partner_claim_patient ON cg17_partner_service_claim
@@ -84,7 +84,7 @@ BEGIN
  IF NOT EXISTS(SELECT 1 FROM health_center_capability cap
   WHERE cap.root_realm_id=NEW.root_realm_id AND cap.center_id=NEW.center_ref
    AND cap.capability_code=CASE NEW.service_kind
-    WHEN 'OT' THEN 'SURGERY' ELSE NEW.service_kind END) THEN
+    WHEN 'OT' THEN 'SURGERY' WHEN 'LAB' THEN 'DIAGNOSTICS' ELSE NEW.service_kind END) THEN
   RAISE EXCEPTION 'Current verified center capability is required'
    USING ERRCODE='P1727';
  END IF;
