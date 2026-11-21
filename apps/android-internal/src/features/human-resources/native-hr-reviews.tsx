@@ -1,5 +1,6 @@
 import React,{useCallback,useEffect,useState} from "react";
 import * as Crypto from "expo-crypto";
+import {File,Paths} from "expo-file-system";
 import {Pressable,StyleSheet,Text,TextInput,View} from "react-native";
 import {identityRequest} from "../identity-access/http-client";
 type Case={caseRef:string;reference:string;name:string;status:string;revision:number;canReview:boolean};
@@ -74,6 +75,39 @@ export function NativeHrReviews({token,onExpired}:{
   }catch(e){setPassword("");failure(e);}
   finally{setBusy(false);}
  };
+ const preview=async(kind:string)=>{
+  if(!selected||busy)return;
+  setBusy(true);setError("");
+  let temporary:File|null=null;
+  try{
+   const res=await identityRequest("/api/hr/reviews/"+
+    encodeURIComponent(selected.caseRef)+"/proof/"+encodeURIComponent(kind),{
+    method:"GET",cache:"no-store",
+    headers:{Authorization:"Bearer "+token}});
+   if(res.status===401){onExpired();return;}
+   if(!res.ok)throw Error(res.status===403?
+    "Current Foundation reviewer cannot read this private document.":
+    "The original private proof is not accessible.");
+   const mime=res.headers.get("content-type")?.split(";")[0]??"";
+   if(!["application/pdf","image/jpeg","image/png","image/webp"].includes(mime))
+    throw Error("Private proof content was not verified.");
+   const expected=res.headers.get("content-length");
+   const n=expected===null?null:Number(expected);
+   if(n!==null&&(!Number.isSafeInteger(n)||n<1||n>10485760))
+    throw Error("Private proof size was not verified.");
+   const bytes=new Uint8Array(await res.arrayBuffer());
+   if(bytes.length<1||bytes.length>10485760||
+     (n!==null&&n!==bytes.length))
+    throw Error("Private proof content was not verified.");
+   const suffix=mime==="application/pdf"?".pdf":
+    mime==="image/jpeg"?".jpg":mime==="image/png"?".png":".webp";
+   temporary=new File(Paths.cache,"careganga-private-hr-"+Crypto.randomUUID()+suffix);
+   temporary.create();
+   await temporary.write(bytes);
+   await temporary.preview({title:"Original employee review proof"});
+  }catch(e){failure(e);}
+  finally{try{temporary?.delete();}catch{}setBusy(false);}
+ };
  const button=(name:string,fn:()=>void,disabled=false,primary=false)=>(
   <Pressable accessibilityRole="button" disabled={disabled} onPress={fn}
    style={[styles.button,primary&&styles.primary,disabled&&{opacity:.55}]}>
@@ -97,8 +131,12 @@ export function NativeHrReviews({token,onExpired}:{
    <Text style={styles.heading}>{selected.name} — {selected.designation}</Text>
    <Text style={styles.hint}>{selected.reference} · {label(selected.status)}</Text>
    <Text style={styles.label}>Scanner-verified source evidence</Text>
-   {selected.evidence.map((e,i)=><Text key={i} style={styles.hint}>
-    {label(e.classification)} · {e.verified?"Verified":"Not verified"}</Text>)}
+   {selected.evidence.map((e,i)=><View key={i} style={{gap:5}}>
+    <Text style={styles.hint}>
+     {label(e.classification)} · {e.verified?"Verified":"Not verified"}</Text>
+    {e.verified&&button("View original protected proof",
+      ()=>void preview(e.classification),busy)}
+   </View>)}
    {selected.canDecide&&<>
     <Text style={styles.label}>Your decision</Text>
     <View style={styles.choices}>
