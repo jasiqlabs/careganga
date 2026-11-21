@@ -3,6 +3,7 @@ import {ActivityIndicator,Alert,Pressable,StyleSheet,Text,TextInput,View}
  from "react-native";
 import {careGangaTheme as t} from "../../../../../packages/design-tokens/src/index";
 import {identityRequest} from "../identity-access/http-client";
+import {NativeFoundationJournalCorrection} from "./native-foundation-journal-correction";
 const ID=/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 type Year={yearRef:string;name:string};
 type Account={accountRef:string;name:string;kind:"EXPENSE"|"LIABILITY"};
@@ -148,6 +149,9 @@ export function NativeFoundationJournalPanel({token,centerRef,liabilityRef,
     Original result unknown; check the source before retrying.
     Never make a second journal using a different key.</Text>}
   </>}
+  {source?.foundationJournalPosted&&
+   <NativeFoundationJournalCorrection token={token} centerRef={centerRef}
+    liabilityRef={liabilityRef} onCorrected={onPosted} onExpired={onExpired}/>}
   {btn("Check original CG09 posting",()=>void check(),busy||loading)}
  </View>;
 }
