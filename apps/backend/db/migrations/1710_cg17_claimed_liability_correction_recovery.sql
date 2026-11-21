@@ -164,11 +164,15 @@ BEGIN
   AND a.branch_id IS NOT DISTINCT FROM b.branch_id
  WHERE a.account_id IS NULL OR b.account_id IS NULL OR a.n<>b.n
    OR a.debit<>b.credit OR a.credit<>b.debit;
- SELECT count(*),
-  max(account_id) FILTER (WHERE credit_minor=NEW.amount_minor AND debit_minor=0)
- INTO originals,payable_account
+ SELECT count(*) INTO originals
+ FROM journal_line WHERE root_realm_id=NEW.root_realm_id
+  AND journal_id=original.id;
+ SELECT account_id INTO payable_account
  FROM journal_line
- WHERE root_realm_id=NEW.root_realm_id AND journal_id=original.id;
+ WHERE root_realm_id=NEW.root_realm_id AND journal_id=original.id
+  AND credit_minor=NEW.amount_minor AND debit_minor=0
+  AND branch_id IS NULL
+ LIMIT 2;
  SELECT count(*) INTO reversed FROM journal_line
  WHERE root_realm_id=NEW.root_realm_id AND journal_id=changed.id;
  IF offset_mismatch<>0 OR originals<>2 OR reversed<>2 OR payable_account IS NULL THEN
