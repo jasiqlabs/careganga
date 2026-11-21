@@ -74,6 +74,13 @@ export function ClinicalLabReleasePanel({centerRef,orderRef}:Props){
    <p role="status">Released to the patient's private reports.</p>:
    status&&!uncertain&&<button type="button" disabled={busy}
     onClick={()=>void release()}>{busy?"Releasing…":"Release approved PDF"}</button>}
+  {status?.patientDownloadAvailable&&
+   <p role="status">Patient notification: {status.notificationDelivered?
+    "Provider-confirmed delivered":
+    status.notificationStates?.length?
+    status.notificationStates.map(n=>n.channel+" "+n.state.replaceAll("_"," ")).join(", "):
+    "Not yet created or verified"}. Only an actual provider callback
+    confirms external delivery.</p>}
   {uncertain&&<p role="alert">The release may have succeeded.
    Check the original state before another action.</p>}
   <button type="button" disabled={busy}
