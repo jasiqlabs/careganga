@@ -111,8 +111,8 @@ export function NativePartnerSettlementSummary({token,onExit,onExpired}:Props){
     {summary&&<>
      <Text style={styles.note}>Claim: {summary.state.replaceAll("_"," ")}</Text>
      {([
-      ["Completed consultation value",summary.centerGrossServicesMinor],
-      ["Patient amount payable",summary.patientPayableMinor],
+      ["Eligible completed consultation value",summary.centerGrossServicesMinor],
+      ["Patient due for eligible consultations",summary.patientPayableMinor],
       ["Verified center collections",summary.patientCollectedVerifiedMinor],
       ["Foundation liability",summary.foundationApprovedLiabilityMinor],
       [approved?"Approved monthly Foundation claim":"Proposed / accruing",
