@@ -51,6 +51,13 @@ export class ClinicalLabResultEvidenceService{
   }catch(e){if(active)try{await c.query("ROLLBACK");}catch{}throw e;}
   finally{c.release();}
  }
+ /** Shared exact original custody/consent guard for staff-entered
+  * generated reports; never duplicate the lab result state machine.
+  */
+ async requireProcessingOriginal(c:PoolClient,actor:VerifiedFoundationActor,
+  center:string,order:string){
+  return this.check(c,actor,center,order);
+ }
  private async check(c:PoolClient,actor:VerifiedFoundationActor,
   center:string,order:string){
   const found=await c.query<Order>(
