@@ -146,12 +146,21 @@ export class MisReportRunService{
    await tx.query("COMMIT");active=false;
   }catch(e){if(active)await tx.query("ROLLBACK").catch(()=>undefined);throw e;}
   finally{tx.release();}
-  if(!isNew)return {...this.summary(row),replayed:true};
+  // The previous HTTP response may have been lost after the original QUEUED
+  // row committed. A same-digest replay is allowed to atomically claim THAT
+  // original row, never create a second run or a second object key.
+  // RUNNING/UNKNOWN cannot be assumed recoverable without verifying the
+  // original object; expose their truthful recorded state instead.
+  if(!isNew&&row.state!=="QUEUED")
+   return {...this.summary(row),replayed:true};
   const claimed=await this.db.query<Row>(
    "UPDATE cg20_report_run SET state='RUNNING',updated_at=now() "+
    "WHERE root_realm_id=$1 AND id=$2 AND requester_ref=$3 AND state='QUEUED' "+
    "RETURNING *",[actor.realmId,row.id,actor.accountId]);
-  if(!claimed.rows[0])return {...this.summary(row),replayed:false};
+  if(!claimed.rows[0]){
+   const latest=await this.current(token,row.id);
+   return {...this.summary(latest.row),replayed:!isNew};
+  }
   try{
    // Revalidate scope after durable acceptance, before generating bytes.
    const fresh=await this.validateSource(token,claimed.rows[0]);
@@ -164,7 +173,7 @@ export class MisReportRunService{
      "source_as_of=$3,updated_at=now() WHERE root_realm_id=$1 AND id=$2 "+
      "AND state='RUNNING' RETURNING *",
      [actor.realmId,row.id,fresh.sourceAsOf??null]);
-    return {...this.summary(empty.rows[0]),replayed:false};
+    return {...this.summary(empty.rows[0]),replayed:!isNew};
    }
    const sourceDigest=digest({kind:fresh.kind,view:fresh.view,
     columns:fresh.columns,rows:fresh.rows,scopeLabel:fresh.scopeLabel,
@@ -190,7 +199,7 @@ export class MisReportRunService{
     [actor.realmId,row.id,artifact.artifactRef,fresh.sourceAsOf??null,
      fresh.rows.length]);
    if(!done.rows[0])throw new ConflictException({code:"MIS_RUN_CHANGED"});
-   return {...this.summary(done.rows[0]),replayed:false};
+   return {...this.summary(done.rows[0]),replayed:!isNew};
   }catch(error){
    const isDenied=error instanceof ForbiddenException||
     error instanceof NotFoundException;
