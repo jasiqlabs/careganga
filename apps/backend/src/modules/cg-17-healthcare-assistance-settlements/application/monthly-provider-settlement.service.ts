@@ -207,6 +207,15 @@ export class MonthlyProviderSettlementService{
   * CG14 owns center scope; CG17 owns only the source-backed finance numbers.
   * No claims, approvals, bank details, or Foundation-wide center discovery.
   */
+ async ownCenters(token:string){
+  return this.tx(async c=>{
+   const actor=await this.sessions.requireAction(token,
+    "healthcare.assistance.settlements.view");
+   const centers=await this.centers.assignedCenters(c,actor,
+    "healthcare.assistance.settlements.view");
+   return {centers};
+  });
+ }
  async ownCenterStatement(token:string,centerRaw:string,monthRaw:string){
   const center=id(centerRaw),period=month(monthRaw);
   return this.tx(async c=>{
