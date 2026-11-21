@@ -22,10 +22,10 @@ const s={
  nativeProfile:read("apps/android-public/src/features/patients/patient-profile-native.tsx"),
  nativeUpload:read("apps/android-public/src/features/patients/native-patient-private-files.tsx"),
  staffWeb:read("apps/web/src/features/healthcare-assistance/pending-partner-service-claims.tsx"),
- staffWebPolicy:read("apps/web/src/features/healthcare-assistance/healthcare-policy-workspace.tsx"),
+ staffWebLiability:read("apps/web/src/features/healthcare-assistance/completed-consultation-liability-workspace.tsx"),
  staffWebPartner:read("apps/web/src/features/healthcare-assistance/center-monthly-settlement-summary.tsx"),
  staffNative:read("apps/android-internal/src/features/healthcare-assistance/native-pending-partner-service-claims.tsx"),
- staffNativePolicy:read("apps/android-internal/src/features/healthcare-assistance/native-healthcare-policy-screen.tsx"),
+ staffNativeLiability:read("apps/android-internal/src/features/healthcare-assistance/native-completed-consultation-liabilities.tsx"),
  staffNativePartner:read("apps/android-internal/src/features/healthcare-assistance/native-partner-settlement-summary.tsx"),
  safe:read("apps/backend/src/core/http/safe-error-copy.ts"),
 };
@@ -90,9 +90,9 @@ const checks=[
   s.claim.includes('"healthcare.assistance.settlements.view"')&&
   s.claim.includes("this.centers.assertCurrent")&&
   s.staffBff.includes("cg_staff_session")&&
-  s.staffWebPolicy.includes("PendingPartnerServiceClaims")&&
+  s.staffWebLiability.includes("PendingPartnerServiceClaims")&&
   s.staffWebPartner.includes("PendingPartnerServiceClaims")&&
-  s.staffNativePolicy.includes("NativePendingPartnerServiceClaims")&&
+  s.staffNativeLiability.includes("NativePendingPartnerServiceClaims")&&
   s.staffNativePartner.includes("NativePendingPartnerServiceClaims")],
  ["Pending Web/Android projections never claim approved Foundation paid money",
   s.claim.includes('approvedFoundationMinor:"0"')&&
