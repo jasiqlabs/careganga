@@ -110,7 +110,12 @@ export function NativeMisExports({token,onExpired,current}:{token:string;
   {runs.map(row=><View key={row.ref} style={s.row}>
    <Text style={s.heading}>{row.format} report · {row.state==="READY"?
     "Verified":row.state==="EMPTY"?"No rows":
-    row.state==="UNKNOWN"?"Unconfirmed":row.state.replaceAll("_"," ").toLowerCase()}</Text>
+    row.state==="UNKNOWN"?"Outcome unconfirmed":
+    row.state==="REVOKED"?"No longer accessible":
+    row.state==="FAILED"?"Generation failed":
+    row.state==="RUNNING"?"Preparing":
+    row.state==="QUEUED"?"Queued":
+    row.state==="EXPIRED"?"Expired":"Status unavailable"}</Text>
    {!!row.createdAt&&<Text style={s.helper}>
     Requested {new Date(row.createdAt).toLocaleString("en-IN")}</Text>}
    {row.state==="READY"&&row.canDownload&&<NativeFinanceAction
