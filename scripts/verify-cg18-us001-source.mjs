@@ -6,6 +6,7 @@ import ts from "typescript";
 const read=path=>readFileSync(resolve(process.cwd(),path),"utf8");
 const internalCms=read("apps/android-internal/src/features/cms/native-cms-editorial.tsx");
 const internalMedia=read("apps/android-internal/src/features/cms/native-cms-media-uploader.tsx");
+const internalReviewer=read("apps/android-internal/src/features/cms/native-cms-reviewer.tsx");
 const internalMenu=read("apps/android-internal/src/features/dashboard/dashboard-modules.ts");
 const internalShell=read("apps/android-internal/src/features/identity-access/staff-authentication-screen.tsx");
 const files={
@@ -371,6 +372,38 @@ checks.push(["Internal Android CMS has current CG01 effective view gating",
  internalShell.includes('roleActions.includes("cms.content.view")')&&
  internalShell.includes('canManage={roleActions.includes("cms.content.manage")}')&&
  internalShell.includes('canPublish={roleActions.includes("cms.content.publish")}')]);
+// Original CG18/CG03 US001–004 review action parity for a currently
+// authorized Foundation actor, not a new CMS reviewer or duplicate approval.
+const nativeCmsReviewerSyntax=ts.createSourceFile(
+ "native-cms-reviewer.tsx",internalReviewer,
+ ts.ScriptTarget.Latest,true,ts.ScriptKind.TSX);
+checks.push(["Existing independent Android CMS reviewer TSX syntax parses",
+ nativeCmsReviewerSyntax.parseDiagnostics.length===0]);
+checks.push(["Original CG03 reviewer queue, item, and independent decision exist in native CMS",
+ internalReviewer.includes('token,"reviews?offset="+offset')&&
+ internalReviewer.includes('token,"reviews/"+encodeURIComponent(caseRef)')&&
+ internalReviewer.includes('"reviews/"+encodeURIComponent(op.ref)+"/decide')&&
+ files.cg03.includes('requireAction(bearer,"approvals.review"')]);
+checks.push(["Web and Internal Android independently use the same original approval case",
+ files.admin.includes('"reviews/"+review.caseRef+"/decide"')&&
+ internalReviewer.includes("requestKey:op.key,expectedRevision:op.version")&&
+ internalReviewer.includes("currentPassword:op.password")]);
+checks.push(["Reviewer cannot approve a revoked/unverified media source",
+ internalReviewer.includes('detail.source.assets.some(asset=>!asset.current)')&&
+ internalReviewer.includes("asset.current?")]);
+checks.push(["Original native reviewer privately previews scanned CG19 assets by current bearer token",
+ internalReviewer.includes('"/api/cms/media/preview/"')&&
+ internalReviewer.includes('Authorization:"Bearer "+token')&&
+ internalReviewer.includes("bytes.length>max")&&
+ internalReviewer.includes("temporary?.delete()")]);
+checks.push(["Native CG18 review is role gated and mounted inside real staff CMS editor",
+ internalCms.includes('canReview&&<NativeCmsReviewer token={token}')&&
+ internalShell.includes('canReview={roleActions.includes("approvals.review")}')&&
+ internalMenu.includes('roleActions.includes("cms.content.view")')]);
+checks.push(["Native independent reviewer preserves same outcome request key after uncertain network",
+ internalReviewer.includes("setPending(op)")&&
+ internalReviewer.includes("Retry exact original request")&&
+ internalReviewer.includes("requestKey:op.key")]);
 let errors=0;
 for(const [label,ok] of checks){
  console.log((ok?"SOURCE-PRESENT":"SOURCE-FAIL")+": "+label);
