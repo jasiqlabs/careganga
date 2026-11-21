@@ -200,6 +200,6 @@ must("staff",/canPay=\{roleActions\.includes\("healthcare\.assistance\.settlemen
 // old row alone; check for a linked actual posted offset journal.
 must("monthly",/offset_j\.reversal_of_id=j\.id/,"A reversed CG09 accrual cannot enter a month claim");
 must("payout",/offset_j\.reversal_of_id=j\.id/,"A reversed CG09 accrual cannot be paid");
-must("journal",/offset_j\.reversal_of_id=j\.id/,"A reversed CG09 accrual cannot replay as outstanding");
+must("accrual",/offset_j\.reversal_of_id=j\.id/,"A reversed CG09 accrual cannot replay as outstanding");
 console.log("CG17 US006 month and verified-payout source parse/contract preflight PASS. "+
  "CG09 bank/PG races, reversal, Web/Android device and independent QA NOT_RUN.");
