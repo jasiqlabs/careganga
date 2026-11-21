@@ -1,0 +1,397 @@
+import {useCallback,useEffect,useRef,useState} from "react";
+import {ActivityIndicator,Alert,Pressable,ScrollView,StyleSheet,Text,TextInput,View}
+ from "react-native";
+import * as Crypto from "expo-crypto";
+import {SafeAreaView} from "react-native-safe-area-context";
+import {careGangaTheme as t} from "../../../../../packages/design-tokens/src/index";
+import {identityRequest} from "../identity-access/http-client";
+import {NativeHealthCenterEditor,blankCenter,type CenterDraft}
+ from "./native-health-center-editor";
+import {NativeHealthEvidenceUploader} from "./native-health-evidence-uploader";
+type Provider={providerCode:string;legalName:string;providerType:string;
+ contactName:string;contactPhone:string;contactEmail:string;registrationRef:string};
+type Row={providerRef:string;code:string;name:string;type:string;status:string;
+ version:number;centerCount:number};
+type Detail={provider:{providerRef:string;code:string;name:string;type:string;
+ status:string;version:number;contactName:string;contactPhone:string;
+ contactEmail:string|null;registrationRef:string|null};
+ centers:{centerRef:string;code:string;name:string;type:string;
+ status:string;version:number;accessState:string;publicationState:string;
+ publicSlug:string|null}[]};
+type CenterDetail={centerRef:string;version:number;center:CenterDraft};
+type Props={token:string;onExpired:()=>void;onExit:()=>void;
+ canManage:boolean;canVerify:boolean;canActivate:boolean;canPublish:boolean};
+const types=["HOSPITAL","CLINIC","DIAGNOSTIC_LAB","PHARMACY","NURSING","OTHER"];
+const statuses=["ALL","PENDING","SUBMITTED","RETURNED","REJECTED","VERIFIED","SUSPENDED"];
+const blank=():Provider=>({providerCode:"",legalName:"",providerType:"CLINIC",
+ contactName:"",contactPhone:"",contactEmail:"",registrationRef:""});
+const label=(x:string)=>x.replaceAll("_"," ").toLowerCase()
+ .replace(/\b\w/g,c=>c.toUpperCase());
+async function api<T>(token:string,path:string,method:"GET"|"POST"|"PATCH"="GET",
+ body?:object):Promise<T>{
+ const r=await identityRequest("/api/v1/health-network/"+path,{
+  method,cache:"no-store",headers:{Authorization:"Bearer "+token,
+   ...(body?{"Content-Type":"application/json"}:{})},
+  ...(body?{body:JSON.stringify(body)}:{})});
+ if(!r.ok)throw Object.assign(new Error(
+  r.status===401?"Sign in again.":
+  r.status===403?"Your current Foundation permission or center access denies this action.":
+  r.status===409?"The original healthcare source changed. Refresh before retry.":
+  "Current provider source outcome could not be verified."),{status:r.status});
+ return r.json() as Promise<T>;
+}
+export function NativeProviderManagement({token,onExpired,onExit,canManage,
+ canVerify,canActivate,canPublish}:Props){
+ const [rows,setRows]=useState<Row[]>([]);
+ const [status,setStatus]=useState("ALL"),[search,setSearch]=useState("");
+ const [appliedSearch,setAppliedSearch]=useState("");
+ const [next,setNext]=useState<number|null>(null);
+ const [selected,setSelected]=useState<Detail|null>(null);
+ const [provider,setProvider]=useState<Provider>(blank);
+ const [centers,setCenters]=useState<CenterDraft[]>([blankCenter()]);
+ const [editing,setEditing]=useState<"none"|"create"|"provider"|"center">("none");
+ const [centerEdit,setCenterEdit]=useState<{ref:string|null;version:number;value:CenterDraft}|null>(null);
+ const [providerProof,setProviderProof]=useState("");
+ const [centerProofs,setCenterProofs]=useState<Record<string,string>>({});
+ const [currentPassword,setCurrentPassword]=useState("");
+ const [publicSlug,setPublicSlug]=useState("");
+ const [loading,setLoading]=useState(true),[busy,setBusy]=useState(false);
+ const [error,setError]=useState(""),[notice,setNotice]=useState("");
+ const [uncertain,setUncertain]=useState(false);
+ const command=useRef<{operation:string;key:string}|null>(null);
+ const serial=useRef(0);
+ const failure=useCallback((e:unknown)=>{
+  if(e&&typeof e==="object"&&"status" in e&&e.status===401)onExpired();
+  const code=e&&typeof e==="object"&&"status" in e&&
+   typeof e.status==="number"?e.status:503;
+  if(code>=500)setUncertain(true);
+  setError(e instanceof Error?e.message:"Original provider state unknown.");
+ },[onExpired]);
+ const load=useCallback(async(offset=0)=>{
+  const query=new URLSearchParams({offset:String(offset),status,q:appliedSearch});
+  const response=await api<{providers:Row[];nextOffset:number|null}>(
+   token,"providers?"+query.toString());
+  if(!response||!Array.isArray(response.providers))
+   throw Error("The original verified provider list is unavailable.");
+  if(offset===0)setRows(response.providers);
+  else setRows(old=>{
+   const seen=new Set(old.map(x=>x.providerRef));
+   return [...old,...response.providers.filter(x=>!seen.has(x.providerRef))];
+  });
+  setNext(Number.isInteger(response.nextOffset)?response.nextOffset:null);
+ },[token,status,appliedSearch]);
+ const detail=useCallback(async(ref:string)=>{
+  const response=await api<Detail>(token,"providers/"+encodeURIComponent(ref));
+  if(!response||!response.provider||!Array.isArray(response.centers))
+   throw Error("The provider record has changed.");
+  setSelected(response);
+  return response;
+ },[token]);
+ useEffect(()=>{
+  const turn=++serial.current;setLoading(true);setError("");setSelected(null);
+  void load().catch(e=>{if(turn===serial.current)failure(e)})
+   .finally(()=>{if(turn===serial.current)setLoading(false)});
+  return()=>{serial.current++};
+ },[load,failure]);
+ const button=(caption:string,fn:()=>void,disabled=false)=>
+  <Pressable accessibilityRole="button" accessibilityState={{disabled}}
+   disabled={disabled} onPress={fn} style={[styles.button,disabled&&styles.disabled]}>
+   <Text style={styles.text}>{caption}</Text>
+  </Pressable>;
+ const input=(caption:string,value:string,onChange:(v:string)=>void,max=180)=>
+  <View style={styles.field}>
+   <Text style={styles.note}>{caption}</Text>
+   <TextInput accessibilityLabel={caption} style={styles.input} value={value}
+    onChangeText={onChange} maxLength={max} editable={!busy&&!uncertain}/>
+  </View>;
+ const choice=(caption:string,items:string[],value:string,change:(v:string)=>void)=>
+  <View style={styles.field}><Text style={styles.note}>{caption}</Text>
+   <View style={styles.row}>{items.map(x=><View key={x}>
+    {button((x===value?"✓ ":"")+label(x),()=>change(x),busy||uncertain)}
+   </View>)}</View>
+  </View>;
+ const source=(s:Detail["provider"]):Provider=>({
+  providerCode:s.code,legalName:s.name,providerType:s.type,
+  contactName:s.contactName,contactPhone:s.contactPhone,
+  contactEmail:s.contactEmail??"",registrationRef:s.registrationRef??""
+ });
+ async function open(ref:string){
+  setBusy(true);setError("");setNotice("");setEditing("none");
+  setProviderProof("");setCenterProofs({});setCurrentPassword("");
+  try{await detail(ref);setUncertain(false);command.current=null;}
+  catch(e){failure(e)}
+  finally{setBusy(false)}
+ }
+ const key=(operation:string)=>{
+  if(command.current?.operation!==operation)
+   command.current={operation,key:Crypto.randomUUID()};
+  return command.current.key;
+ };
+ async function write<T>(operation:string,path:string,method:"POST"|"PATCH",
+  payload:(requestKey:string)=>object,after:(v:T)=>Promise<void>){
+  if(busy||uncertain)return;
+  setBusy(true);setError("");setNotice("");
+  try{
+   const result=await api<T>(token,path,method,payload(key(operation)));
+   command.current=null;setUncertain(false);
+   await after(result);
+  }catch(e){failure(e)}
+  finally{setBusy(false)}
+ }
+ function editor(){
+  return <View style={styles.panel}>
+   <Text style={styles.heading}>{editing==="create"?
+    "Initial pending center":"Pending center details"}</Text>
+   {centers.map((item,i)=><View key={i} style={styles.panel}>
+    <Text style={styles.note}>New center {i+1}</Text>
+    <NativeHealthCenterEditor token={token} value={item}
+     disabled={busy||uncertain} onChange={x=>setCenters(old=>
+      old.map((v,j)=>j===i?x:v))}/>
+    {centers.length>1&&button("Remove this pending center",()=>
+     setCenters(old=>old.filter((_,j)=>j!==i)),busy||uncertain)}
+   </View>)}
+   {centers.length<10&&button("Add another pending center",()=>
+    setCenters(old=>[...old,blankCenter()]),busy||uncertain)}
+  </View>;
+ }
+ const fields=()=><View style={styles.panel}>
+  {input("Provider code",provider.providerCode,x=>
+   setProvider(old=>({...old,providerCode:x.toUpperCase()})),24)}
+  {input("Legal organization name",provider.legalName,x=>
+   setProvider(old=>({...old,legalName:x})))}
+  {choice("Organization type",types,provider.providerType,x=>
+   setProvider(old=>({...old,providerType:x})))}
+  {input("Contact person",provider.contactName,x=>
+   setProvider(old=>({...old,contactName:x})),120)}
+  {input("Registered contact number",provider.contactPhone,x=>
+   setProvider(old=>({...old,contactPhone:x})),16)}
+  {input("Email (optional)",provider.contactEmail,x=>
+   setProvider(old=>({...old,contactEmail:x})))}
+  {input("Registration reference (optional)",provider.registrationRef,x=>
+   setProvider(old=>({...old,registrationRef:x})),120)}
+ </View>;
+ const providerBody=()=>({...provider,contactEmail:provider.contactEmail||null,
+  registrationRef:provider.registrationRef||null});
+ async function saveProvider(){
+  if(!canManage)return;
+  if(editing==="create"){
+   await write<{providerRef:string}>("create","providers","POST",
+    requestKey=>({requestKey,provider:providerBody(),centers}),
+    async saved=>{
+     if(!saved.providerRef)throw Error("The original provider was not confirmed.");
+     setEditing("none");setProvider(blank());setCenters([blankCenter()]);
+     await load();await detail(saved.providerRef);
+     setNotice("Pending provider and centers recorded. Independent verification is required.");
+    });
+  }else if(editing==="provider"&&selected){
+   const ref=selected.provider.providerRef;
+   await write("edit:"+ref,"providers/"+encodeURIComponent(ref),"PATCH",
+    requestKey=>({requestKey,expectedVersion:selected.provider.version,
+     provider:providerBody()}),async()=>{
+     setEditing("none");await detail(ref);await load();
+     setNotice("Pending provider draft updated.");
+    });
+  }
+ }
+ async function saveCenter(){
+  if(!canManage||!selected||!centerEdit)return;
+  const ref=selected.provider.providerRef;
+  const chosen=centerEdit;
+  const route=chosen.ref?"centers/"+encodeURIComponent(chosen.ref):
+   "providers/"+encodeURIComponent(ref)+"/centers";
+  await write("center:"+route,route,chosen.ref?"PATCH":"POST",
+   requestKey=>({requestKey,expectedVersion:chosen.ref?
+     chosen.version:selected.provider.version,center:chosen.value}),async()=>{
+    setCenterEdit(null);setEditing("none");await detail(ref);await load();
+    setNotice("Pending center saved. It has not been publicly published.");
+   });
+ }
+ async function editCenter(centerRef:string){
+  if(busy||uncertain)return;
+  setBusy(true);setError("");
+  try{
+   const result=await api<CenterDetail>(token,"centers/"+encodeURIComponent(centerRef));
+   if(!result.center)throw Error("Original pending center unavailable.");
+   setCenterEdit({ref:centerRef,version:result.version,value:result.center});
+   setEditing("center");command.current=null;
+  }catch(e){failure(e)}finally{setBusy(false)}
+ }
+ const review=(kind:"providers"|"centers",ref:string,version:number,proof:string)=>{
+  if(!canManage||!proof||busy||uncertain)return;
+  Alert.alert("Submit verified proof for review?",
+   "This requests independent original CG03 verification. It does not activate or publish.",[
+    {text:"Cancel",style:"cancel"},
+    {text:"Submit",onPress:()=>void write("submit:"+kind+ref,
+     kind+"/"+encodeURIComponent(ref)+"/submit","POST",
+     requestKey=>({requestKey,expectedVersion:version,proofFileRef:proof}),async()=>{
+      if(selected)await detail(selected.provider.providerRef);
+      await load();setNotice("Verified evidence submitted for independent review.");
+     })}
+   ]);
+ };
+ async function statusChange(kind:"providers"|"centers",ref:string,version:number,
+  operation:"access"|"publication"|"suspend"|"reopen",enabled=false){
+  if(busy||uncertain||currentPassword.length<8)return;
+  const route=kind+"/"+encodeURIComponent(ref)+"/"+operation;
+  let input=(requestKey:string):object=>({
+   requestKey,expectedVersion:version,currentPassword});
+  if(operation==="access")input=requestKey=>({
+   requestKey,expectedVersion:version,enabled,currentPassword});
+  if(operation==="publication")input=requestKey=>({
+   requestKey,expectedVersion:version,published:enabled,
+   slug:enabled?publicSlug:null,currentPassword});
+  await write("protected:"+route,route,"POST",input,async()=>{
+   setCurrentPassword("");if(selected)await detail(selected.provider.providerRef);
+   await load();setNotice("Original protected center/provider state updated.");
+  });
+ }
+ const selectedProvider=selected?.provider;
+ return <SafeAreaView style={styles.page}>
+  <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={styles.content}>
+   <Text accessibilityRole="header" style={styles.title}>
+    Verified healthcare providers & centers</Text>
+   <Text style={styles.note}>Foundation provider registration, genuine center
+    geography, private evidence and separate independent verification.</Text>
+   {button("Back to dashboard",onExit)}
+   {!!error&&<Text accessibilityRole="alert" style={styles.error}>{error}</Text>}
+   {!!notice&&<Text accessibilityRole="alert" style={styles.note}>{notice}</Text>}
+   {uncertain&&<Text style={styles.error}>The last request may have committed.
+    Refresh the original provider before retrying.</Text>}
+   {loading&&<ActivityIndicator accessibilityLabel="Loading Foundation providers"/>}
+   {editing==="none"&&<View style={styles.panel}>
+    <Text style={styles.heading}>Search original providers</Text>
+    {input("Search by provider name or code",search,setSearch,80)}
+    {button("Apply search",()=>setAppliedSearch(search.trim()),busy)}
+    {choice("Status",statuses,status,setStatus)}
+    {button("Refresh original providers",()=>{
+     setUncertain(false);command.current=null;setLoading(true);
+     void load().catch(failure).finally(()=>setLoading(false));},busy)}
+    {canManage&&button("Register a pending provider and center",()=>{
+     setSelected(null);setProvider(blank());setCenters([blankCenter()]);
+     setEditing("create");command.current=null;})}
+    {rows.map(row=><View key={row.providerRef}>
+     {button(row.name+" · "+row.code+" · "+label(row.status)+
+      " · "+row.centerCount+" centers",()=>void open(row.providerRef),busy)}
+    </View>)}
+    {next!==null&&button("More original providers",()=>{
+     setLoading(true);void load(next).catch(failure).finally(()=>setLoading(false));
+    },busy)}
+   </View>}
+   {editing==="create"&&canManage&&<>
+    <Text style={styles.heading}>New pending provider</Text>
+    {fields()}
+    {editor()}
+    {button("Save original pending provider and centers",()=>
+     Alert.alert("Save pending provider?", "Approval and activation remain separate.",[
+      {text:"Cancel",style:"cancel"},{text:"Save",onPress:()=>void saveProvider()}
+     ]),busy||uncertain)}
+    {button("Cancel registration",()=>{setEditing("none");command.current=null;})}
+   </>}
+   {selectedProvider&&editing!=="create"&&<View style={styles.panel}>
+    <Text style={styles.heading}>{selectedProvider.name}</Text>
+    <Text style={styles.note}>Code: {selectedProvider.code} · Type: {
+     label(selectedProvider.type)} · Status: {label(selectedProvider.status)}</Text>
+    <Text style={styles.note}>Contact: {selectedProvider.contactName} · {
+     selectedProvider.contactPhone}</Text>
+    {editing==="none"&&canManage&&selectedProvider.status==="PENDING"&&
+     button("Edit pending provider",()=>{
+      setProvider(source(selectedProvider));setEditing("provider");command.current=null;
+     },busy||uncertain)}
+    {editing==="provider"&&<>{fields()}
+     {button("Save pending provider",()=>void saveProvider(),busy||uncertain)}
+     {button("Cancel editing",()=>{setEditing("none");command.current=null;})}</>}
+    {selectedProvider.status==="PENDING"&&canManage&&<>
+     <NativeHealthEvidenceUploader token={token}
+      providerRef={selectedProvider.providerRef}
+      sourceVersion={selectedProvider.version}
+      classification="HEALTH_PROVIDER_REGISTRATION"
+      onVerified={ref=>setProviderProof(ref)} onExpired={onExpired}/>
+     {button("Submit provider proof for independent review",()=>
+      review("providers",selectedProvider.providerRef,
+       selectedProvider.version,providerProof),busy||uncertain||!providerProof)}
+    </>}
+    {canVerify&&["VERIFIED","SUSPENDED"].includes(selectedProvider.status)&&<>
+     {input("Current Foundation password for protected status",currentPassword,
+      setCurrentPassword,1024)}
+     {button(selectedProvider.status==="SUSPENDED"?
+      "Reopen original provider draft":"Suspend verified provider",()=>Alert.alert(
+       "Change provider verification status?","This changes current center availability.",[
+        {text:"Cancel",style:"cancel"},
+        {text:"Confirm",onPress:()=>void statusChange("providers",
+         selectedProvider.providerRef,selectedProvider.version,
+         selectedProvider.status==="SUSPENDED"?"reopen":"suspend")}
+       ]),busy||uncertain||currentPassword.length<8)}
+    </>}
+    <Text style={styles.heading}>Original healthcare centers</Text>
+    {canManage&&button("Add pending center",()=>{
+     setCenterEdit({ref:null,version:selectedProvider.version,value:blankCenter()});
+     setEditing("center");command.current=null;
+    },busy||uncertain)}
+    {selected.centers.map(center=><View key={center.centerRef} style={styles.panel}>
+     <Text style={styles.heading}>{center.name}</Text>
+     <Text style={styles.note}>Center: {center.code} · {label(center.status)}</Text>
+     <Text style={styles.note}>Access: {label(center.accessState)} ·
+      Publication: {label(center.publicationState)}</Text>
+     {canManage&&center.status==="PENDING"&&button("Edit pending center",
+      ()=>void editCenter(center.centerRef),busy||uncertain)}
+     {canManage&&center.status==="PENDING"&&<>
+      <NativeHealthEvidenceUploader token={token}
+       providerRef={selectedProvider.providerRef} centerRef={center.centerRef}
+       sourceVersion={center.version} classification="HEALTH_CENTER_LICENSE"
+       onVerified={ref=>setCenterProofs(old=>({...old,[center.centerRef]:ref}))}
+       onExpired={onExpired}/>
+      {selectedProvider.status==="VERIFIED"&&
+       button("Submit center licence for independent review",()=>
+        review("centers",center.centerRef,center.version,
+         centerProofs[center.centerRef]??""),busy||uncertain||
+         !centerProofs[center.centerRef])}
+     </>}
+     {center.status==="VERIFIED"&&<>{canActivate&&<>
+      {input("Current Foundation password",currentPassword,setCurrentPassword,1024)}
+      {button(center.accessState==="ENABLED"?"Disable center access":
+       "Enable verified center access",()=>void statusChange("centers",
+        center.centerRef,center.version,"access",center.accessState!=="ENABLED"),
+        busy||uncertain||currentPassword.length<8)}
+     </>}
+     {canPublish&&<>{input("Public center slug",publicSlug,setPublicSlug,100)}
+      {input("Current Foundation password for publication",
+       currentPassword,setCurrentPassword,1024)}
+      {button(center.publicationState==="PUBLISHED"?"Withdraw public listing":
+       "Publish verified center",()=>void statusChange("centers",
+        center.centerRef,center.version,"publication",
+        center.publicationState!=="PUBLISHED"),
+        busy||uncertain||currentPassword.length<8)}
+     </>}</>}
+     {canVerify&&["VERIFIED","SUSPENDED"].includes(center.status)&&
+      button(center.status==="SUSPENDED"?"Reopen pending center":
+       "Suspend current center",()=>void statusChange("centers",center.centerRef,
+        center.version,center.status==="SUSPENDED"?"reopen":"suspend"),
+        busy||uncertain||currentPassword.length<8)}
+    </View>)}
+    {editing==="center"&&centerEdit&&canManage&&<View style={styles.panel}>
+     <Text style={styles.heading}>{centerEdit.ref?"Edit center":"Add center"}</Text>
+     <NativeHealthCenterEditor token={token} value={centerEdit.value}
+      disabled={busy||uncertain} onChange={value=>setCenterEdit(o=>o?{...o,value}:null)}/>
+     {button("Save pending center",()=>void saveCenter(),busy||uncertain)}
+     {button("Cancel center editing",()=>{setEditing("none");setCenterEdit(null);})}
+    </View>}
+   </View>}
+  </ScrollView>
+ </SafeAreaView>;
+}
+const styles=StyleSheet.create({
+ page:{flex:1,backgroundColor:t.adminCanvas},
+ content:{padding:15,paddingBottom:90,gap:12},
+ title:{fontSize:20,fontWeight:"700",color:t.text},
+ heading:{fontSize:16,fontWeight:"700",color:t.text},
+ text:{fontSize:13,fontWeight:"600",color:t.text},
+ note:{fontSize:13,lineHeight:18,color:t.mutedText},
+ panel:{borderWidth:1,borderColor:t.border,borderRadius:12,
+  padding:12,gap:9,backgroundColor:t.surface},
+ field:{gap:5},row:{flexDirection:"row",flexWrap:"wrap",gap:6},
+ input:{borderColor:t.border,borderWidth:1,backgroundColor:t.surface,
+  color:t.text,borderRadius:9,padding:10,minHeight:45},
+ button:{borderColor:t.border,borderWidth:1,borderRadius:9,
+  padding:11,minHeight:46,justifyContent:"center"},
+ disabled:{opacity:.4},error:{color:"#A52626",fontSize:13,lineHeight:19}
+});
