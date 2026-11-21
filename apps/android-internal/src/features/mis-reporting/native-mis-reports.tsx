@@ -96,7 +96,7 @@ export function NativeMisReports({token,onExpired}:{token:string;onExpired:()=>v
   return {kind,view:chosen.views.includes(view)?view:chosen.views[0],
    ...(finance?{...(year?{yearRef:year}:{}),...(branch?{branchRef:branch}:{})}:{
     ...(center?{centerRef:center}:{}),...(status?{status}:{})}),
-   ...((kind==="FINANCE_POSTED_LEDGER"||grouped||!finance)&&from?
+   ...((kind==="FINANCE_POSTED_LEDGER"||grouped||health||kind==="PLATFORM_AUDIT_ACTIVITY")&&from?
     {fromDay:from,untilDay:until}:{}),
    ...(grouped?{groupBy,sortBy,sortDirection}:{}),offset};
  }
