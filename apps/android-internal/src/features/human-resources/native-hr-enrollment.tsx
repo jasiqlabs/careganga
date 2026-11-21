@@ -1,6 +1,7 @@
 import React,{useCallback,useEffect,useRef,useState} from "react";
 import {NativeHrEvidence,type HrFile} from "./native-hr-evidence";
 import {NativeHrReviews} from "./native-hr-reviews";
+import {NativeHrPrivate} from "./native-hr-private";
 import * as Crypto from "expo-crypto";
 import {ActivityIndicator,Pressable,ScrollView,StyleSheet,Text,TextInput,View} from "react-native";
 import {identityRequest} from "../identity-access/http-client";
@@ -28,8 +29,9 @@ async function api(token:string,path:string,method="GET",body?:object){
  ),{status:response.status});
  return response.json() as Promise<unknown>;
 }
-export function NativeHrEnrollment({token,canView,canManage,canReview,canViewEmployees,canSelectAccounts,onExit,onExpired}:{
+export function NativeHrEnrollment({token,canView,canManage,canReview,canViewEmployees,canSelectAccounts,canViewPrivate,canManagePrivate,onExit,onExpired}:{
  token:string;canView:boolean;canManage:boolean;canReview:boolean;canViewEmployees:boolean;canSelectAccounts:boolean;
+ canViewPrivate:boolean;canManagePrivate:boolean;
  onExit:()=>void;onExpired:()=>void
 }){
  const [apps,setApps]=useState<Application[]>([]);
@@ -384,6 +386,9 @@ export function NativeHrEnrollment({token,canView,canManage,canReview,canViewEmp
    </View>}
    {focus&&canManage&&<View style={styles.card}>
     <Text style={styles.h2}>Original enrollment — {focus.name}</Text>
+    {canViewPrivate&&<NativeHrPrivate token={token} applicationRef={focus.applicationRef}
+      canManage={canManagePrivate&&["DRAFT","RETURNED"].includes(focus.status)}
+      onExpired={onExpired}/>}
     {review&&<Text style={styles.muted}>
       {review.reference??"Not submitted"} · {title(review.status)}</Text>}
     {["DRAFT","RETURNED"].includes(focus.status)&&<>
