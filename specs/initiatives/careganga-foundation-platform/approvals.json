@@ -6336,10 +6336,10 @@
       "approval_mode": "OWNER_DELEGATED_DESIGN_CONTENT",
       "delegation_source": "Product owner explicitly authorized next canonical CG22 full expert review and SHA-bound delegated design approval on 15 Nov 2026, stopping before CG23",
       "artifact": "modules/cg-22-pharmacy-operations/module.md",
-      "sha256": "5dbb7761a90d594f1c85814a7042eec068ae0c35fd7b34005c679678f92850d2",
-      "current_artifact_sha256": "5dbb7761a90d594f1c85814a7042eec068ae0c35fd7b34005c679678f92850d2",
-      "approved_by": "JASIQ AI Design Review Agent",
-      "approved_at": "2026-11-15T16:25:38.758Z",
+      "sha256": "5a4ccfd42443f31d1d46f74500644a103dd435789911fd7794d1cbc5095964ea",
+      "current_artifact_sha256": "5a4ccfd42443f31d1d46f74500644a103dd435789911fd7794d1cbc5095964ea",
+      "approved_by": "JASIQ AI Design Review Agent (owner-delegated)",
+      "approved_at": "2026-11-21",
       "evidence": "https://github.com/jasiqlabs/careganga/blob/feature/careganga-greenfield-prd-20261114/specs/initiatives/careganga-foundation-platform/modules/cg-22-pharmacy-operations/module.md",
       "quality_review": {
         "status": "CURRENT_CG22_SOURCE_DESIGN_REVIEWED_H11_H12_DIRECT_IMAGE_PENDING",
@@ -6376,17 +6376,28 @@
       "story_count": 5,
       "qa_count": 90,
       "task_definitions_sha256": "80d821f2d6aa33fb2a0047e7ad732005aa88434846465611d88f47f73c049f2f",
-      "definition_hash_method": "UTF8 prefix of tasks.md before ## Execution progress"
+      "definition_hash_method": "UTF8 prefix of tasks.md before ## Execution progress",
+      "review_evidence": "OWNER_DIRECTED_24_MODULE_WEB_INTERNAL_PUBLIC_ANDROID_SAME_ROLE_PARITY_DESIGN_REVIEW_NOT_RUNTIME",
+      "last_design_content_review": {
+        "date": "2026-11-21",
+        "method": "OWNER_DELEGATED_DESIGN_CONTENT_REVIEW_NOT_INDEPENDENT",
+        "scope": "Future optional ERP design only, same-actor native parity and ERP OFF preserved; source and release NOT approved",
+        "file_sha256": "5a4ccfd42443f31d1d46f74500644a103dd435789911fd7794d1cbc5095964ea",
+        "actual_web_android_qa": "NOT_RUN",
+        "qualified_independent_review": "NOT_RUN",
+        "formal_harness_resolver": "NOT_RUN",
+        "source_complete": "NOT_APPROVED"
+      }
     },
     "uiux/cg-22-pharmacy-operations": {
       "status": "DELEGATED_APPROVED",
       "approval_mode": "OWNER_DELEGATED_DESIGN_CONTENT",
       "delegation_source": "Product owner explicitly authorized next canonical CG22 full expert review and SHA-bound delegated design approval on 15 Nov 2026, stopping before CG23",
       "artifact": "modules/cg-22-pharmacy-operations/uiux.md",
-      "sha256": "64aa282a556c3d795c1bb6f01caa665e474737441ca37089cda7d5708900c96f",
-      "current_artifact_sha256": "64aa282a556c3d795c1bb6f01caa665e474737441ca37089cda7d5708900c96f",
-      "approved_by": "JASIQ AI Design Review Agent",
-      "approved_at": "2026-11-15T16:25:38.758Z",
+      "sha256": "6296a0e40dcf74b2bac81821840bdb0f3a8c8dfee7fe73977518426f04400071",
+      "current_artifact_sha256": "6296a0e40dcf74b2bac81821840bdb0f3a8c8dfee7fe73977518426f04400071",
+      "approved_by": "JASIQ AI Design Review Agent (owner-delegated)",
+      "approved_at": "2026-11-21",
       "evidence": "https://github.com/jasiqlabs/careganga/blob/feature/careganga-greenfield-prd-20261114/specs/initiatives/careganga-foundation-platform/modules/cg-22-pharmacy-operations/uiux.md",
       "quality_review": {
         "status": "CURRENT_CG22_SOURCE_DESIGN_REVIEWED_H11_H12_DIRECT_IMAGE_PENDING",
@@ -6421,17 +6432,28 @@
       "formal_stage_gate": "BLOCKED_HARNESS_LOCAL_RESOLVER_INDEPENDENT_PHARMACY_DB_REGULATORY_H11_H12_VISUAL_AND_RUNTIME_QA_NOT_RUN",
       "development_authority": "DESIGN_ONLY_NOT_SOURCE_IMPL_OR_PRODUCTION_ACTIVATION",
       "story_count": 5,
-      "qa_count": 90
+      "qa_count": 90,
+      "review_evidence": "OWNER_DIRECTED_24_MODULE_WEB_INTERNAL_PUBLIC_ANDROID_SAME_ROLE_PARITY_DESIGN_REVIEW_NOT_RUNTIME",
+      "last_design_content_review": {
+        "date": "2026-11-21",
+        "method": "OWNER_DELEGATED_DESIGN_CONTENT_REVIEW_NOT_INDEPENDENT",
+        "scope": "Future optional ERP design only, same-actor native parity and ERP OFF preserved; source and release NOT approved",
+        "file_sha256": "6296a0e40dcf74b2bac81821840bdb0f3a8c8dfee7fe73977518426f04400071",
+        "actual_web_android_qa": "NOT_RUN",
+        "qualified_independent_review": "NOT_RUN",
+        "formal_harness_resolver": "NOT_RUN",
+        "source_complete": "NOT_APPROVED"
+      }
     },
     "dld/cg-22-pharmacy-operations": {
       "status": "DELEGATED_APPROVED",
       "approval_mode": "OWNER_DELEGATED_DESIGN_CONTENT",
       "delegation_source": "Product owner explicitly authorized next canonical CG22 full expert review and SHA-bound delegated design approval on 15 Nov 2026, stopping before CG23",
       "artifact": "modules/cg-22-pharmacy-operations/dld.md",
-      "sha256": "0064a268713f7a011bd77f6fa14b8c5705aa75a301566638a5ede88d024cb8c8",
-      "current_artifact_sha256": "0064a268713f7a011bd77f6fa14b8c5705aa75a301566638a5ede88d024cb8c8",
-      "approved_by": "JASIQ AI Design Review Agent",
-      "approved_at": "2026-11-15T16:25:38.758Z",
+      "sha256": "29fbe95f0c1b87e5b517961b2af2bd02eaa0825b9b5f3bb92d3481ffbd66ab8e",
+      "current_artifact_sha256": "29fbe95f0c1b87e5b517961b2af2bd02eaa0825b9b5f3bb92d3481ffbd66ab8e",
+      "approved_by": "JASIQ AI Design Review Agent (owner-delegated)",
+      "approved_at": "2026-11-21",
       "evidence": "https://github.com/jasiqlabs/careganga/blob/feature/careganga-greenfield-prd-20261114/specs/initiatives/careganga-foundation-platform/modules/cg-22-pharmacy-operations/dld.md",
       "quality_review": {
         "status": "CURRENT_CG22_SOURCE_DESIGN_REVIEWED_H11_H12_DIRECT_IMAGE_PENDING",
@@ -6466,17 +6488,28 @@
       "formal_stage_gate": "BLOCKED_HARNESS_LOCAL_RESOLVER_INDEPENDENT_PHARMACY_DB_REGULATORY_H11_H12_VISUAL_AND_RUNTIME_QA_NOT_RUN",
       "development_authority": "DESIGN_ONLY_NOT_SOURCE_IMPL_OR_PRODUCTION_ACTIVATION",
       "story_count": 5,
-      "qa_count": 90
+      "qa_count": 90,
+      "review_evidence": "OWNER_DIRECTED_24_MODULE_WEB_INTERNAL_PUBLIC_ANDROID_SAME_ROLE_PARITY_DESIGN_REVIEW_NOT_RUNTIME",
+      "last_design_content_review": {
+        "date": "2026-11-21",
+        "method": "OWNER_DELEGATED_DESIGN_CONTENT_REVIEW_NOT_INDEPENDENT",
+        "scope": "Future optional ERP design only, same-actor native parity and ERP OFF preserved; source and release NOT approved",
+        "file_sha256": "29fbe95f0c1b87e5b517961b2af2bd02eaa0825b9b5f3bb92d3481ffbd66ab8e",
+        "actual_web_android_qa": "NOT_RUN",
+        "qualified_independent_review": "NOT_RUN",
+        "formal_harness_resolver": "NOT_RUN",
+        "source_complete": "NOT_APPROVED"
+      }
     },
     "tasks/cg-22-pharmacy-operations": {
       "status": "DELEGATED_APPROVED",
       "approval_mode": "OWNER_DELEGATED_DESIGN_CONTENT",
       "delegation_source": "Product owner explicitly authorized next canonical CG22 full expert review and SHA-bound delegated design approval on 15 Nov 2026, stopping before CG23",
       "artifact": "modules/cg-22-pharmacy-operations/tasks.md",
-      "sha256": "eab981866377b4d4d15cb50acc90d513ee822a5a020535b5daea52e1bb9d162e",
-      "current_artifact_sha256": "eab981866377b4d4d15cb50acc90d513ee822a5a020535b5daea52e1bb9d162e",
-      "approved_by": "JASIQ AI Design Review Agent",
-      "approved_at": "2026-11-15T16:25:38.758Z",
+      "sha256": "eba1b5f27508015c5318816c46173c91a9b04ebb88b845b4dafc21c313457bdf",
+      "current_artifact_sha256": "eba1b5f27508015c5318816c46173c91a9b04ebb88b845b4dafc21c313457bdf",
+      "approved_by": "JASIQ AI Design Review Agent (owner-delegated)",
+      "approved_at": "2026-11-21",
       "evidence": "https://github.com/jasiqlabs/careganga/blob/feature/careganga-greenfield-prd-20261114/specs/initiatives/careganga-foundation-platform/modules/cg-22-pharmacy-operations/tasks.md",
       "quality_review": {
         "status": "CURRENT_CG22_SOURCE_DESIGN_REVIEWED_H11_H12_DIRECT_IMAGE_PENDING",
@@ -6513,17 +6546,28 @@
       "story_count": 5,
       "qa_count": 90,
       "task_definitions_sha256": "80d821f2d6aa33fb2a0047e7ad732005aa88434846465611d88f47f73c049f2f",
-      "definition_hash_method": "UTF8 prefix of tasks.md before ## Execution progress"
+      "definition_hash_method": "UTF8 prefix of tasks.md before ## Execution progress",
+      "review_evidence": "OWNER_DIRECTED_24_MODULE_WEB_INTERNAL_PUBLIC_ANDROID_SAME_ROLE_PARITY_DESIGN_REVIEW_NOT_RUNTIME",
+      "last_design_content_review": {
+        "date": "2026-11-21",
+        "method": "OWNER_DELEGATED_DESIGN_CONTENT_REVIEW_NOT_INDEPENDENT",
+        "scope": "Future optional ERP design only, same-actor native parity and ERP OFF preserved; source and release NOT approved",
+        "file_sha256": "eba1b5f27508015c5318816c46173c91a9b04ebb88b845b4dafc21c313457bdf",
+        "actual_web_android_qa": "NOT_RUN",
+        "qualified_independent_review": "NOT_RUN",
+        "formal_harness_resolver": "NOT_RUN",
+        "source_complete": "NOT_APPROVED"
+      }
     },
     "planning/cg-23-nursing-operations": {
       "status": "DELEGATED_APPROVED",
       "approval_mode": "OWNER_DELEGATED_DESIGN_CONTENT",
       "delegation_source": "Owner's prior explicit CG23 delegated approval plus 15 Nov 2026 final CG24/24-module current-SHA reconciliation request; source-only minor post-approval corrections re-reviewed",
       "artifact": "modules/cg-23-nursing-operations/module.md",
-      "sha256": "0bee9dc697f4e2df4416179a083ad6e56be421e0fe731c59872b9d881a015809",
-      "current_artifact_sha256": "0bee9dc697f4e2df4416179a083ad6e56be421e0fe731c59872b9d881a015809",
-      "approved_by": "JASIQ AI Design Review Agent",
-      "approved_at": "2026-11-15T17:16:05.625Z",
+      "sha256": "a93f244abd4c2d67185c372a4baa0f3a33c1d2d1e3f9147e1f33fccdf02a9e8b",
+      "current_artifact_sha256": "a93f244abd4c2d67185c372a4baa0f3a33c1d2d1e3f9147e1f33fccdf02a9e8b",
+      "approved_by": "JASIQ AI Design Review Agent (owner-delegated)",
+      "approved_at": "2026-11-21",
       "evidence": "https://github.com/jasiqlabs/careganga/blob/feature/careganga-greenfield-prd-20261114/specs/initiatives/careganga-foundation-platform/modules/cg-23-nursing-operations/module.md",
       "quality_review": {
         "status": "CURRENT_CG23_SOURCE_DESIGN_COMPLETED_H13_DIRECT_IMAGE_PENDING",
@@ -6575,17 +6619,28 @@
         "approved_at": "2026-11-15T16:44:29.306Z",
         "sha256": "ef1e4e7384803471f3d9c2536af4479cb44586f609456d01356ae2222f77383c"
       },
-      "reapproval_reason": "Post-approval narrow typo correction CGI-09/17→CG-09/17 in BR04 owner row; reviewed d74b46d4, no business or QA change"
+      "reapproval_reason": "Post-approval narrow typo correction CGI-09/17→CG-09/17 in BR04 owner row; reviewed d74b46d4, no business or QA change",
+      "review_evidence": "OWNER_DIRECTED_24_MODULE_WEB_INTERNAL_PUBLIC_ANDROID_SAME_ROLE_PARITY_DESIGN_REVIEW_NOT_RUNTIME",
+      "last_design_content_review": {
+        "date": "2026-11-21",
+        "method": "OWNER_DELEGATED_DESIGN_CONTENT_REVIEW_NOT_INDEPENDENT",
+        "scope": "Future optional ERP design only, same-actor native parity and ERP OFF preserved; source and release NOT approved",
+        "file_sha256": "a93f244abd4c2d67185c372a4baa0f3a33c1d2d1e3f9147e1f33fccdf02a9e8b",
+        "actual_web_android_qa": "NOT_RUN",
+        "qualified_independent_review": "NOT_RUN",
+        "formal_harness_resolver": "NOT_RUN",
+        "source_complete": "NOT_APPROVED"
+      }
     },
     "uiux/cg-23-nursing-operations": {
       "status": "DELEGATED_APPROVED",
       "approval_mode": "OWNER_DELEGATED_DESIGN_CONTENT",
       "delegation_source": "User explicitly approved CG23 canonical full expert BR/PRD/HLD/DLD/UIUX/Web/native/backend/DB/NFR/QA source review and delegated SHA-bound approvals on 15 Nov 2026, and instructed to stop before CG24.",
       "artifact": "modules/cg-23-nursing-operations/uiux.md",
-      "sha256": "455c169bc397f5990ff4190b2f15f4ea9d7b80778c2f5e2de59d9faabbcff507",
-      "current_artifact_sha256": "455c169bc397f5990ff4190b2f15f4ea9d7b80778c2f5e2de59d9faabbcff507",
-      "approved_by": "JASIQ AI Design Review Agent",
-      "approved_at": "2026-11-15T16:44:29.306Z",
+      "sha256": "49497f688d3a061da062072a1621b7e88455d80a9019a1a1f03913fe2d3b70f3",
+      "current_artifact_sha256": "49497f688d3a061da062072a1621b7e88455d80a9019a1a1f03913fe2d3b70f3",
+      "approved_by": "JASIQ AI Design Review Agent (owner-delegated)",
+      "approved_at": "2026-11-21",
       "evidence": "https://github.com/jasiqlabs/careganga/blob/feature/careganga-greenfield-prd-20261114/specs/initiatives/careganga-foundation-platform/modules/cg-23-nursing-operations/uiux.md",
       "quality_review": {
         "status": "CURRENT_CG23_SOURCE_DESIGN_COMPLETED_H13_DIRECT_IMAGE_PENDING",
@@ -6619,17 +6674,28 @@
       "formal_stage_gate": "BLOCKED_AUTHENTICATED_HARNESS_RESOLVER_INDEPENDENT_CRITICAL_CLINICAL_DATABASE_PRIVACY_H13_PIXEL_AND_ALL_RUNTIME_QA_NOT_RUN",
       "development_authority": "DELEGATED_SOURCE_DESIGN_ONLY_NO_CODE_COMPLETION_OR_PRODUCTION_OPERATION_AUTHORITY",
       "story_count": 5,
-      "qa_count": 90
+      "qa_count": 90,
+      "review_evidence": "OWNER_DIRECTED_24_MODULE_WEB_INTERNAL_PUBLIC_ANDROID_SAME_ROLE_PARITY_DESIGN_REVIEW_NOT_RUNTIME",
+      "last_design_content_review": {
+        "date": "2026-11-21",
+        "method": "OWNER_DELEGATED_DESIGN_CONTENT_REVIEW_NOT_INDEPENDENT",
+        "scope": "Future optional ERP design only, same-actor native parity and ERP OFF preserved; source and release NOT approved",
+        "file_sha256": "49497f688d3a061da062072a1621b7e88455d80a9019a1a1f03913fe2d3b70f3",
+        "actual_web_android_qa": "NOT_RUN",
+        "qualified_independent_review": "NOT_RUN",
+        "formal_harness_resolver": "NOT_RUN",
+        "source_complete": "NOT_APPROVED"
+      }
     },
     "dld/cg-23-nursing-operations": {
       "status": "DELEGATED_APPROVED",
       "approval_mode": "OWNER_DELEGATED_DESIGN_CONTENT",
       "delegation_source": "Owner's prior explicit CG23 delegated approval plus 15 Nov 2026 final CG24/24-module current-SHA reconciliation request; source-only minor post-approval corrections re-reviewed",
       "artifact": "modules/cg-23-nursing-operations/dld.md",
-      "sha256": "baca4c797edc6c1c950eac7ec51543ed5a5bcf15a296986c7f4be69c321ef757",
-      "current_artifact_sha256": "baca4c797edc6c1c950eac7ec51543ed5a5bcf15a296986c7f4be69c321ef757",
-      "approved_by": "JASIQ AI Design Review Agent",
-      "approved_at": "2026-11-15T17:16:05.625Z",
+      "sha256": "2d41758164843c1c749cc1c44ac1a65e8b2049125170717eda47bed18ac935f0",
+      "current_artifact_sha256": "2d41758164843c1c749cc1c44ac1a65e8b2049125170717eda47bed18ac935f0",
+      "approved_by": "JASIQ AI Design Review Agent (owner-delegated)",
+      "approved_at": "2026-11-21",
       "evidence": "https://github.com/jasiqlabs/careganga/blob/feature/careganga-greenfield-prd-20261114/specs/initiatives/careganga-foundation-platform/modules/cg-23-nursing-operations/dld.md",
       "quality_review": {
         "status": "CURRENT_CG23_SOURCE_DESIGN_COMPLETED_H13_DIRECT_IMAGE_PENDING",
@@ -6679,17 +6745,28 @@
         "approved_at": "2026-11-15T16:44:29.306Z",
         "sha256": "87bb207ae410a84f20a6760e18c5b5d665bbe994b396209cd0c8d3d0a7ef6431"
       },
-      "reapproval_reason": "Post-approval SQL definition reconciliation: visit_start_utc/end_utc exclusion and explicitly declared original_effect_kind source key; reviewed cf55f06d, same original US/QA/scope"
+      "reapproval_reason": "Post-approval SQL definition reconciliation: visit_start_utc/end_utc exclusion and explicitly declared original_effect_kind source key; reviewed cf55f06d, same original US/QA/scope",
+      "review_evidence": "OWNER_DIRECTED_24_MODULE_WEB_INTERNAL_PUBLIC_ANDROID_SAME_ROLE_PARITY_DESIGN_REVIEW_NOT_RUNTIME",
+      "last_design_content_review": {
+        "date": "2026-11-21",
+        "method": "OWNER_DELEGATED_DESIGN_CONTENT_REVIEW_NOT_INDEPENDENT",
+        "scope": "Future optional ERP design only, same-actor native parity and ERP OFF preserved; source and release NOT approved",
+        "file_sha256": "2d41758164843c1c749cc1c44ac1a65e8b2049125170717eda47bed18ac935f0",
+        "actual_web_android_qa": "NOT_RUN",
+        "qualified_independent_review": "NOT_RUN",
+        "formal_harness_resolver": "NOT_RUN",
+        "source_complete": "NOT_APPROVED"
+      }
     },
     "tasks/cg-23-nursing-operations": {
       "status": "DELEGATED_APPROVED",
       "approval_mode": "OWNER_DELEGATED_DESIGN_CONTENT",
       "delegation_source": "User explicitly approved CG23 canonical full expert BR/PRD/HLD/DLD/UIUX/Web/native/backend/DB/NFR/QA source review and delegated SHA-bound approvals on 15 Nov 2026, and instructed to stop before CG24.",
       "artifact": "modules/cg-23-nursing-operations/tasks.md",
-      "sha256": "9ffcda37ccb8d5bc7bd544d7aebddd3941aaeda4c4dfa7af74284d1e078f1bc5",
-      "current_artifact_sha256": "9ffcda37ccb8d5bc7bd544d7aebddd3941aaeda4c4dfa7af74284d1e078f1bc5",
-      "approved_by": "JASIQ AI Design Review Agent",
-      "approved_at": "2026-11-15T16:44:29.306Z",
+      "sha256": "8f38107b356247d4f18fef28c64219800134c13609a45b243557e568fe99510a",
+      "current_artifact_sha256": "8f38107b356247d4f18fef28c64219800134c13609a45b243557e568fe99510a",
+      "approved_by": "JASIQ AI Design Review Agent (owner-delegated)",
+      "approved_at": "2026-11-21",
       "evidence": "https://github.com/jasiqlabs/careganga/blob/feature/careganga-greenfield-prd-20261114/specs/initiatives/careganga-foundation-platform/modules/cg-23-nursing-operations/tasks.md",
       "quality_review": {
         "status": "CURRENT_CG23_SOURCE_DESIGN_COMPLETED_H13_DIRECT_IMAGE_PENDING",
@@ -6725,17 +6802,28 @@
       "story_count": 5,
       "qa_count": 90,
       "task_definitions_sha256": "541db5df4c6493cca2ae6c5e6329b628f0f6d536e57a2119ba5b67eaeb2f66ca",
-      "definition_hash_method": "UTF8 prefix of tasks.md before newline ## Execution progress"
+      "definition_hash_method": "UTF8 prefix of tasks.md before newline ## Execution progress",
+      "review_evidence": "OWNER_DIRECTED_24_MODULE_WEB_INTERNAL_PUBLIC_ANDROID_SAME_ROLE_PARITY_DESIGN_REVIEW_NOT_RUNTIME",
+      "last_design_content_review": {
+        "date": "2026-11-21",
+        "method": "OWNER_DELEGATED_DESIGN_CONTENT_REVIEW_NOT_INDEPENDENT",
+        "scope": "Future optional ERP design only, same-actor native parity and ERP OFF preserved; source and release NOT approved",
+        "file_sha256": "8f38107b356247d4f18fef28c64219800134c13609a45b243557e568fe99510a",
+        "actual_web_android_qa": "NOT_RUN",
+        "qualified_independent_review": "NOT_RUN",
+        "formal_harness_resolver": "NOT_RUN",
+        "source_complete": "NOT_APPROVED"
+      }
     },
     "planning/cg-24-ot-procedures": {
       "status": "DELEGATED_APPROVED",
       "approval_mode": "OWNER_DELEGATED_DESIGN_CONTENT",
       "delegation_source": "Product owner explicitly approved CG24 as final canonical module, required expert BR/PRD/HLD/DLD/UIUX/Web/Center/Public Android/Internal Android/backend/PostgreSQL/NFR/each-story QA review, scoped ownership corrections and final 24/24, on 15 Nov 2026; explicitly prohibited implementation/other unnecessary modules.",
       "artifact": "modules/cg-24-ot-procedures/module.md",
-      "sha256": "5ec5c2d02d1bfce71db432c9111d0b50681aab1bc0285eb43720af5a05cea8ac",
-      "current_artifact_sha256": "5ec5c2d02d1bfce71db432c9111d0b50681aab1bc0285eb43720af5a05cea8ac",
-      "approved_by": "JASIQ AI Design Review Agent",
-      "approved_at": "2026-11-15T17:11:26.954Z",
+      "sha256": "96206f427b1b822868804ad26f8b6802bf494914e85386a2662267ee0c9aacd0",
+      "current_artifact_sha256": "96206f427b1b822868804ad26f8b6802bf494914e85386a2662267ee0c9aacd0",
+      "approved_by": "JASIQ AI Design Review Agent (owner-delegated)",
+      "approved_at": "2026-11-21",
       "evidence": "https://github.com/jasiqlabs/careganga/blob/feature/careganga-greenfield-prd-20261114/specs/initiatives/careganga-foundation-platform/modules/cg-24-ot-procedures/module.md",
       "quality_review": {
         "status": "CURRENT_CG24_SOURCE_DESIGN_REVIEW_COMPLETED_H14_H15_DIRECT_IMAGES_PENDING",
@@ -6773,17 +6861,28 @@
       "story_count": 5,
       "qa_count": 90,
       "task_definitions_sha256": "afd0f7c64bf52891ef8d5c5093dee6fb6d42b6d2666ef6319b0e8eea6e754ccf",
-      "definition_hash_method": "UTF8 prefix of tasks.md before final newline ## Execution progress"
+      "definition_hash_method": "UTF8 prefix of tasks.md before final newline ## Execution progress",
+      "review_evidence": "OWNER_DIRECTED_24_MODULE_WEB_INTERNAL_PUBLIC_ANDROID_SAME_ROLE_PARITY_DESIGN_REVIEW_NOT_RUNTIME",
+      "last_design_content_review": {
+        "date": "2026-11-21",
+        "method": "OWNER_DELEGATED_DESIGN_CONTENT_REVIEW_NOT_INDEPENDENT",
+        "scope": "Future optional ERP design only, same-actor native parity and ERP OFF preserved; source and release NOT approved",
+        "file_sha256": "96206f427b1b822868804ad26f8b6802bf494914e85386a2662267ee0c9aacd0",
+        "actual_web_android_qa": "NOT_RUN",
+        "qualified_independent_review": "NOT_RUN",
+        "formal_harness_resolver": "NOT_RUN",
+        "source_complete": "NOT_APPROVED"
+      }
     },
     "uiux/cg-24-ot-procedures": {
       "status": "DELEGATED_APPROVED",
       "approval_mode": "OWNER_DELEGATED_DESIGN_CONTENT",
       "delegation_source": "Product owner explicitly approved CG24 as final canonical module, required expert BR/PRD/HLD/DLD/UIUX/Web/Center/Public Android/Internal Android/backend/PostgreSQL/NFR/each-story QA review, scoped ownership corrections and final 24/24, on 15 Nov 2026; explicitly prohibited implementation/other unnecessary modules.",
       "artifact": "modules/cg-24-ot-procedures/uiux.md",
-      "sha256": "b2e739c2b1f51d25a6b85ed284f5653a0998276fba991613ee8add544bce0245",
-      "current_artifact_sha256": "b2e739c2b1f51d25a6b85ed284f5653a0998276fba991613ee8add544bce0245",
-      "approved_by": "JASIQ AI Design Review Agent",
-      "approved_at": "2026-11-15T17:11:26.954Z",
+      "sha256": "ee649f87576c5794ca773064e4217c7a198ee7dbdafab122be3fe4196d9e3522",
+      "current_artifact_sha256": "ee649f87576c5794ca773064e4217c7a198ee7dbdafab122be3fe4196d9e3522",
+      "approved_by": "JASIQ AI Design Review Agent (owner-delegated)",
+      "approved_at": "2026-11-21",
       "evidence": "https://github.com/jasiqlabs/careganga/blob/feature/careganga-greenfield-prd-20261114/specs/initiatives/careganga-foundation-platform/modules/cg-24-ot-procedures/uiux.md",
       "quality_review": {
         "status": "CURRENT_CG24_SOURCE_DESIGN_REVIEW_COMPLETED_H14_H15_DIRECT_IMAGES_PENDING",
@@ -6819,17 +6918,28 @@
       "formal_stage_gate": "BLOCKED_AUTHENTICATED_LOCAL_HARNESS_RESOLVER_INDEPENDENT_CRITICAL_OT_CLINICAL_DB_PRIVACY_H14_H15_VISUAL_AND_ALL_SOURCE_RUNTIME_QA_NOT_RUN",
       "development_authority": "SHA_BOUND_OWNER_DELEGATED_DESIGN_CONTENT_ONLY_NOT_IMPLEMENTATION_OR_RUNTIME_RELEASE_APPROVAL",
       "story_count": 5,
-      "qa_count": 90
+      "qa_count": 90,
+      "review_evidence": "OWNER_DIRECTED_24_MODULE_WEB_INTERNAL_PUBLIC_ANDROID_SAME_ROLE_PARITY_DESIGN_REVIEW_NOT_RUNTIME",
+      "last_design_content_review": {
+        "date": "2026-11-21",
+        "method": "OWNER_DELEGATED_DESIGN_CONTENT_REVIEW_NOT_INDEPENDENT",
+        "scope": "Future optional ERP design only, same-actor native parity and ERP OFF preserved; source and release NOT approved",
+        "file_sha256": "ee649f87576c5794ca773064e4217c7a198ee7dbdafab122be3fe4196d9e3522",
+        "actual_web_android_qa": "NOT_RUN",
+        "qualified_independent_review": "NOT_RUN",
+        "formal_harness_resolver": "NOT_RUN",
+        "source_complete": "NOT_APPROVED"
+      }
     },
     "dld/cg-24-ot-procedures": {
       "status": "DELEGATED_APPROVED",
       "approval_mode": "OWNER_DELEGATED_DESIGN_CONTENT",
       "delegation_source": "Product owner explicitly approved CG24 as final canonical module, required expert BR/PRD/HLD/DLD/UIUX/Web/Center/Public Android/Internal Android/backend/PostgreSQL/NFR/each-story QA review, scoped ownership corrections and final 24/24, on 15 Nov 2026; explicitly prohibited implementation/other unnecessary modules.",
       "artifact": "modules/cg-24-ot-procedures/dld.md",
-      "sha256": "cdef2c28a71cde27159fb167577438954b5f5c910e76a23677f55bd1ade2a92d",
-      "current_artifact_sha256": "cdef2c28a71cde27159fb167577438954b5f5c910e76a23677f55bd1ade2a92d",
-      "approved_by": "JASIQ AI Design Review Agent",
-      "approved_at": "2026-11-15T17:11:26.954Z",
+      "sha256": "6bb12e201a9f5bb5097bb71b297e836e3704e76baafd350d4583be92f0e3ed21",
+      "current_artifact_sha256": "6bb12e201a9f5bb5097bb71b297e836e3704e76baafd350d4583be92f0e3ed21",
+      "approved_by": "JASIQ AI Design Review Agent (owner-delegated)",
+      "approved_at": "2026-11-21",
       "evidence": "https://github.com/jasiqlabs/careganga/blob/feature/careganga-greenfield-prd-20261114/specs/initiatives/careganga-foundation-platform/modules/cg-24-ot-procedures/dld.md",
       "quality_review": {
         "status": "CURRENT_CG24_SOURCE_DESIGN_REVIEW_COMPLETED_H14_H15_DIRECT_IMAGES_PENDING",
@@ -6865,17 +6975,28 @@
       "formal_stage_gate": "BLOCKED_AUTHENTICATED_LOCAL_HARNESS_RESOLVER_INDEPENDENT_CRITICAL_OT_CLINICAL_DB_PRIVACY_H14_H15_VISUAL_AND_ALL_SOURCE_RUNTIME_QA_NOT_RUN",
       "development_authority": "SHA_BOUND_OWNER_DELEGATED_DESIGN_CONTENT_ONLY_NOT_IMPLEMENTATION_OR_RUNTIME_RELEASE_APPROVAL",
       "story_count": 5,
-      "qa_count": 90
+      "qa_count": 90,
+      "review_evidence": "OWNER_DIRECTED_24_MODULE_WEB_INTERNAL_PUBLIC_ANDROID_SAME_ROLE_PARITY_DESIGN_REVIEW_NOT_RUNTIME",
+      "last_design_content_review": {
+        "date": "2026-11-21",
+        "method": "OWNER_DELEGATED_DESIGN_CONTENT_REVIEW_NOT_INDEPENDENT",
+        "scope": "Future optional ERP design only, same-actor native parity and ERP OFF preserved; source and release NOT approved",
+        "file_sha256": "6bb12e201a9f5bb5097bb71b297e836e3704e76baafd350d4583be92f0e3ed21",
+        "actual_web_android_qa": "NOT_RUN",
+        "qualified_independent_review": "NOT_RUN",
+        "formal_harness_resolver": "NOT_RUN",
+        "source_complete": "NOT_APPROVED"
+      }
     },
     "tasks/cg-24-ot-procedures": {
       "status": "DELEGATED_APPROVED",
       "approval_mode": "OWNER_DELEGATED_DESIGN_CONTENT",
       "delegation_source": "Product owner explicitly approved CG24 as final canonical module, required expert BR/PRD/HLD/DLD/UIUX/Web/Center/Public Android/Internal Android/backend/PostgreSQL/NFR/each-story QA review, scoped ownership corrections and final 24/24, on 15 Nov 2026; explicitly prohibited implementation/other unnecessary modules.",
       "artifact": "modules/cg-24-ot-procedures/tasks.md",
-      "sha256": "813950dfe42cc2cc6cd0101cdaa9f0a64ce555cb319e51a264d0b32117a87853",
-      "current_artifact_sha256": "813950dfe42cc2cc6cd0101cdaa9f0a64ce555cb319e51a264d0b32117a87853",
-      "approved_by": "JASIQ AI Design Review Agent",
-      "approved_at": "2026-11-15T17:11:26.954Z",
+      "sha256": "b3d3eefa399a6850f0f34a2e3e5435d85931a9961720df3b20012a52e26509d5",
+      "current_artifact_sha256": "b3d3eefa399a6850f0f34a2e3e5435d85931a9961720df3b20012a52e26509d5",
+      "approved_by": "JASIQ AI Design Review Agent (owner-delegated)",
+      "approved_at": "2026-11-21",
       "evidence": "https://github.com/jasiqlabs/careganga/blob/feature/careganga-greenfield-prd-20261114/specs/initiatives/careganga-foundation-platform/modules/cg-24-ot-procedures/tasks.md",
       "quality_review": {
         "status": "CURRENT_CG24_SOURCE_DESIGN_REVIEW_COMPLETED_H14_H15_DIRECT_IMAGES_PENDING",
@@ -6913,7 +7034,18 @@
       "story_count": 5,
       "qa_count": 90,
       "task_definitions_sha256": "afd0f7c64bf52891ef8d5c5093dee6fb6d42b6d2666ef6319b0e8eea6e754ccf",
-      "definition_hash_method": "UTF8 prefix of tasks.md before final newline ## Execution progress"
+      "definition_hash_method": "UTF8 prefix of tasks.md before final newline ## Execution progress",
+      "review_evidence": "OWNER_DIRECTED_24_MODULE_WEB_INTERNAL_PUBLIC_ANDROID_SAME_ROLE_PARITY_DESIGN_REVIEW_NOT_RUNTIME",
+      "last_design_content_review": {
+        "date": "2026-11-21",
+        "method": "OWNER_DELEGATED_DESIGN_CONTENT_REVIEW_NOT_INDEPENDENT",
+        "scope": "Future optional ERP design only, same-actor native parity and ERP OFF preserved; source and release NOT approved",
+        "file_sha256": "b3d3eefa399a6850f0f34a2e3e5435d85931a9961720df3b20012a52e26509d5",
+        "actual_web_android_qa": "NOT_RUN",
+        "qualified_independent_review": "NOT_RUN",
+        "formal_harness_resolver": "NOT_RUN",
+        "source_complete": "NOT_APPROVED"
+      }
     },
     "tasks/cg-19-documents-notifications": {
       "status": "DELEGATED_APPROVED",
