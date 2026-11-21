@@ -643,16 +643,28 @@ export class HrEnrollmentService{
   return {pending:true,applicationRef:q.rows[0].id,
    name:q.rows[0].legal_name,designation:q.rows[0].designation};
  }
- async employeeDirectory(token:string,offsetInput:unknown,branchInput?:unknown){
+ async employeeDirectory(token:string,offsetInput:unknown,branchInput?:unknown,
+  statusInput?:unknown,queryInput?:unknown,departmentInput?:unknown){
   const actor=await this.sessions.requireAction(token,"hr.employees.view");
   const offset=Number(offsetInput??0);
   if(!Number.isSafeInteger(offset)||offset<0||offset>10000)
    throw new BadRequestException("Check the staff directory page");
   const branch=branchInput===undefined?null:uuid(branchInput,"branch");
+  const department=departmentInput===undefined?null:uuid(departmentInput,"department");
+  const status=statusInput===undefined?"ALL":statusInput;
+  if(typeof status!=="string"||!["ALL","ACTIVE","PROBATION","ON_HOLD","PENDING_ACCESS","EXITED"].includes(status))
+   throw new BadRequestException("Choose an employee status filter");
+  if(queryInput!==undefined&&(typeof queryInput!=="string"||queryInput.length>80||
+    /[\u0000-\u001f\u007f]/.test(queryInput)))
+   throw new BadRequestException("Check the staff directory search");
+  const query=typeof queryInput==="string"?queryInput.trim().toLowerCase():"";
+  const pattern=query?"%"+query.replace(/[\\%_]/g,"\\$&")+"%":"";
   const q=await this.db.query<{employee_code:string;legal_name:string;
-    designation:string;status:string;branch_name:string;employment_type:string}>(
-   "SELECT e.employee_code,a.legal_name,asg.designation,e.status,b.name AS branch_name,"+
-   "asg.employment_type FROM hr_employee e "+
+    designation:string;status:string;branch_name:string;employment_type:string;
+    department_name:string|null;manager_name:string|null}>(
+   "SELECT e.employee_code,a.legal_name,asg.designation,e.status,"+
+   "b.name AS branch_name,asg.employment_type,d.name AS department_name,"+
+   "manager_app.legal_name AS manager_name FROM hr_employee e "+
    "JOIN hr_employee_application a ON a.id=e.application_id "+
    "AND a.root_realm_id=e.root_realm_id "+
    "JOIN hr_employment_assignment asg ON asg.employee_id=e.id "+
@@ -660,7 +672,16 @@ export class HrEnrollmentService{
    "AND asg.valid_from<=CURRENT_DATE AND "+
    "(asg.valid_to IS NULL OR asg.valid_to>CURRENT_DATE) "+
    "JOIN branch b ON b.id=asg.branch_ref AND b.root_realm_id=asg.root_realm_id "+
+   "LEFT JOIN department d ON d.id=asg.department_ref AND d.root_realm_id=e.root_realm_id "+
+   "LEFT JOIN hr_employee manager ON manager.id=asg.manager_employee_ref "+
+   "AND manager.root_realm_id=e.root_realm_id "+
+   "LEFT JOIN hr_employee_application manager_app ON manager_app.id=manager.application_id "+
+   "AND manager_app.root_realm_id=e.root_realm_id "+
    "WHERE e.root_realm_id=$1 AND ($3::uuid IS NULL OR b.id=$3) "+
+   "AND ($5::text='ALL' OR e.status=$5) "+
+   "AND ($6::text='' OR lower(a.legal_name) LIKE $6 ESCAPE '\\' OR "+
+   "lower(asg.designation) LIKE $6 ESCAPE '\\' OR lower(e.employee_code) LIKE $6 ESCAPE '\\') "+
+   "AND ($7::uuid IS NULL OR asg.department_ref=$7) "+
    "AND (b.manager_account_ref=$2 OR EXISTS("+
    "SELECT 1 FROM account_role ar JOIN role r ON r.id=ar.role_id "+
    "AND r.realm_id=ar.realm_id AND r.active "+
@@ -668,10 +689,11 @@ export class HrEnrollmentService{
    "WHERE ar.account_id=$2 AND ar.realm_id=$1 AND ar.revoked_at IS NULL "+
    "AND (r.is_protected OR g.capability_key IS NOT NULL))) "+
    "ORDER BY a.legal_name,e.id LIMIT 26 OFFSET $4",
-   [actor.realmId,actor.accountId,branch,offset]);
+   [actor.realmId,actor.accountId,branch,offset,status,pattern,department]);
   return {items:q.rows.slice(0,25).map(x=>({
    reference:x.employee_code,name:x.legal_name,
    designation:x.designation,branch:x.branch_name,
+   department:x.department_name,manager:x.manager_name,
    employmentType:x.employment_type,status:x.status
   })),hasMore:q.rows.length>25,offset};
  }
