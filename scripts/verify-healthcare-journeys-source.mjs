@@ -42,10 +42,12 @@ const files=[
 ];
 for(const p of files){
  const source=read(p);
- const parsed=ts.createSourceFile(p,source,ts.ScriptTarget.Latest,true,
-  p.endsWith(".tsx")?ts.ScriptKind.TSX:ts.ScriptKind.TS);
- assert.equal(parsed.parseDiagnostics.length,0,p+" TS syntax: "+
+ if(!p.endsWith(".sql")){
+  const parsed=ts.createSourceFile(p,source,ts.ScriptTarget.Latest,true,
+   p.endsWith(".tsx")?ts.ScriptKind.TSX:ts.ScriptKind.TS);
+  assert.equal(parsed.parseDiagnostics.length,0,p+" TS syntax: "+
   parsed.parseDiagnostics.map(x=>ts.flattenDiagnosticMessageText(x.messageText," ")).join("; "));
+ }
  assert.doesNotMatch(source,/^(<{7}|={7}|>{7})/m,p+" merge conflict");
 }
 must(cg14+"application/health-clinician-identity.service.ts",
