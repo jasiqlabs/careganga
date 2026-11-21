@@ -8,6 +8,7 @@ import {MisDashboardController} from "./http/mis-dashboard.controller";
 import {MisReportSourceService} from "./application/mis-report-source.service";
 import {MisSavedReportService} from "./application/mis-saved-report.service";
 import {MisReportRunService} from "./application/mis-report-run.service";
+import {MisReportScheduleService} from "./application/mis-report-schedule.service";
 import {DocumentsNotificationsModule} from "../cg-19-documents-notifications/documents-notifications.module";
 import {MisReportsController} from "./http/mis-reports.controller";
 
@@ -15,7 +16,7 @@ import {MisReportsController} from "./http/mis-reports.controller";
 @Module({
  imports:[IdentityAccessModule,FinanceAccountingModule,DiagnosticsModule,PatientsAppointmentsModule,
   DocumentsNotificationsModule],
- providers:[MisDashboardService,MisReportSourceService,MisSavedReportService,MisReportRunService],
+ providers:[MisDashboardService,MisReportSourceService,MisSavedReportService,MisReportRunService,MisReportScheduleService],
  controllers:[MisDashboardController,MisReportsController]
 })
 export class MisReportingModule{}
