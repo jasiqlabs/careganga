@@ -8,7 +8,8 @@ type Appointment={appointmentRef:string;bookingLabel:string;centerName:string;
 type Options={appointments:Appointment[];complete:boolean};
 type Status={state:string;liabilityRef?:string;amountMinor?:string;currency?:string;
  postingState?:string;foundationJournalPosted:boolean;providerSettled:boolean;
- originalServiceCompletedAt?:string};
+ originalServiceCompletedAt?:string;correctedByOriginalReversal?:boolean;
+ effectiveFoundationPayableMinor?:string};
 type Props={canManage:boolean;canPost:boolean};
 const ID=/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i;
 const money=(v:string)=>new Intl.NumberFormat("en-IN",{
@@ -182,8 +183,11 @@ export function CompletedConsultationLiabilityWorkspace({canManage,canPost}:Prop
     Approved contribution: <strong>{money(selected.approvedSupportMinor)}</strong>.</p>
    {status&&<p role="status">Foundation liability: {
     status.state.replaceAll("_"," ").toLowerCase()}.
-    CG09 journal: {status.foundationJournalPosted?"Posted":"Not confirmed posted"}.
-    Provider settlement: {status.providerSettled?"Verified":"Not completed"}.</p>}
+    CG09 journal: {status.correctedByOriginalReversal?"Offset by independently verified correction":
+     status.foundationJournalPosted?"Posted":"Not confirmed posted"}.
+    Provider settlement: {status.providerSettled?"Verified":"Not completed"}.
+    {status.correctedByOriginalReversal&&
+     <strong> Effective Foundation payable: {money(status.effectiveFoundationPayableMinor??"0")}.</strong>}</p>}
    {canManage&&status?.state==="NOT_RECOGNIZED"&&
     selected.state==="READY_TO_RECOGNIZE"&&!uncertain&&
     <button type="button" className="primary" disabled={busy}
