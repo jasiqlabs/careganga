@@ -61,8 +61,10 @@ must(collection,/cash\?"VERIFIED_CASH":"PENDING_EXTERNAL"/,
 must(collection,/foundationIncomeRecorded:false,foundationLiabilityCreated:false/,
  "Center money must not mutate Foundation financial state");
 must(collection,/pg_advisory_xact_lock/,"Same-charge writer transaction lock");
-must(collection,/totals\.collected\+totals\.pending\+BigInt\(amountMinor\)>due/,
- "Pending external receipts must reserve due to avoid eventual overcollection");
+must(collection,/totals\.collected\+BigInt\(amountMinor\)>due/,
+ "Only actual verified center money can reduce the accepted payable");
+must(collection,/Manual UPI\/CARD\/BANK references are immutable UNVERIFIED notes/,
+ "Unverified manual reference must not block real cash or invent a paid hold");
 must(collection,/center_collection_adjustment/,"Refunds remain separate events");
 must(collection,/outstandingAgeDays/,"Real accepted-charge aging required");
 must(collection,/cg19_center_patient_receipt_document/,
