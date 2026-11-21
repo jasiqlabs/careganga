@@ -83,3 +83,12 @@ Read [DLD](dld.md) for exact table/index/transaction/facade, [UI/UX](uiux.md) fo
 CG-04 owns genuine, unique member/volunteer numbers, membership tier/version, status, fee, term, consent, approved geographic role and final source events. The client's member certificate, welcome letter and volunteer two-sided ID designs require CG-19 generated approved three-document packs (Member ID Card + Welcome Letter + Membership Certificate; Volunteer ID Card + Welcome Letter + Volunteer Certificate). CG-MEM-007 / CG-VOL-005 send only after final approval and all three PDFs exist. Volunteer registration is free. Keep membership type versus ACTIVE status versus Lifetime duration distinct. Original sample ₹ fee and personal/contact details are **never** default rules. Public QR displays only policy-approved verification status, not optional phone/blood-group.
 
 **Status:** Owner integration and PDF/provider/runtime checks remain PENDING/NOT_RUN where absent; historical source-review evidence is unchanged.
+
+
+### 21 November 2026 — Owner-approved Web ↔ Android same-capability contract
+
+**Owner:** cg-04-membership-volunteers. **Current source:** FUTURE_OWNER_NOT_IMPLEMENTED (existing source owner module absent from current backend tree). **Approval:** owner-delegated latest design clarification only; no implementation, runtime, independent or client sign-off. Reuse existing BR/PRD/HLD, canonical stories and original QA IDs; never add speculative features or depend on an undeveloped future owner.
+
+**Required equivalent authorized audiences:** Foundation Admin / assigned operator Web **↔ Internal Android** for Foundation membership/volunteer intake, application review, onboarding, assignment and approvals; approved public/consented Web **↔ Public Android** only for eligible member/volunteer registration, enrollment status, own membership self-service. Use exactly one owner service/API, CG-01 grant and current scope, and the CG-01 authentic design system; a native WebView or merely linking to Web does not satisfy equivalence. Neither new protected public view nor an unconditional Web-only exemption is approved. Explicit product-owner reason is required for any true platform exclusion.
+
+**Delivery requirement:** Each originally approved journey must be implemented at the same story checkpoint on all applicable channels (Web + Android) before declaring source complete. Source unavailable or an upstream not implemented is `FUTURE_OWNER`/`SOURCE_GAP`, not an empty menu or placeholder.
