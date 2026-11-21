@@ -103,7 +103,7 @@ export class HrEnrollmentService{
    const manager=await tx.query(
     "SELECT 1 FROM hr_employee e JOIN hr_employment_assignment a "+
     "ON a.employee_id=e.id AND a.root_realm_id=e.root_realm_id "+
-    "WHERE e.id=$1 AND e.root_realm_id=$2 AND e.status IN(\u0027ACTIVE\u0027,\u0027PROBATION\u0027) "+
+    "WHERE e.id=$1 AND e.root_realm_id=$2 AND e.status IN('ACTIVE','PROBATION') "+
     "AND a.branch_ref=$3 AND a.valid_from<=CURRENT_DATE "+
     "AND (a.valid_to IS NULL OR a.valid_to>CURRENT_DATE) FOR SHARE OF e,a",
     [x.managerRef,a.realmId,x.branchRef]);
@@ -238,7 +238,7 @@ export class HrEnrollmentService{
      "UPDATE hr_employee_application SET legal_name=$3,designation=$4,employment_type=$5,"+
      "proposed_branch_ref=$6,department_ref=$7,hire_date=$8,applicant_account_ref=$9,"+
      "proposed_manager_employee_ref=$10,"+
-     "updated_by=$10,updated_at=now(),state='DRAFT',revision_no=revision_no+1, "+
+     "updated_by=$11,updated_at=now(),state='DRAFT',revision_no=revision_no+1, "+
      "cg03_case_ref=NULL,submitted_digest=NULL "+
      "WHERE id=$1 AND root_realm_id=$2 RETURNING *",
      [ref,a.realmId,x.name,x.designation,x.employmentType,x.branchRef,
@@ -397,6 +397,7 @@ export class HrEnrollmentService{
    await this.validSource(tx,actor,{name:app.legal_name,
     designation:app.designation,employmentType:app.employment_type,
     branchRef:app.proposed_branch_ref,departmentRef:app.department_ref,
+    managerRef:app.proposed_manager_employee_ref,
     accountRef:app.applicant_account_ref,hireDate:iso(app.hire_date)});
    for(const item of files)
     await this.files.prove(tx,actor.realmId,app.id,app.revision_no,
@@ -406,6 +407,7 @@ export class HrEnrollmentService{
     legal_name:app.legal_name,designation:app.designation,
     employment_type:app.employment_type,proposed_branch_ref:app.proposed_branch_ref,
     department_ref:app.department_ref,applicant_account_ref:app.applicant_account_ref,
+    proposed_manager_employee_ref:app.proposed_manager_employee_ref,
     hire_date:iso(app.hire_date),created_by:app.created_by,state:app.state
    };
    const sourceDigest=sourceHash(frozen);
@@ -499,10 +501,10 @@ export class HrEnrollmentService{
    const row=e.rows[0];
    await tx.query(
     "INSERT INTO hr_employment_assignment(root_realm_id,employee_id,branch_ref,"+
-    "department_ref,designation,employment_type,valid_from,origin_application_ref) "+
-    "VALUES($1,$2,$3,$4,$5,$6,$7,$8)",
+    "department_ref,manager_employee_ref,designation,employment_type,valid_from,origin_application_ref) "+
+    "VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9)",
     [actor.realmId,row.id,app.proposed_branch_ref,app.department_ref,
-     app.designation,app.employment_type,iso(app.hire_date),app.id]);
+     app.proposed_manager_employee_ref,app.designation,app.employment_type,iso(app.hire_date),app.id]);
    await this.approvals.finish(tx,actor,caseRef);
    await tx.query("UPDATE hr_employee_application SET state=$3,updated_at=now() "+
     "WHERE id=$1 AND root_realm_id=$2",
