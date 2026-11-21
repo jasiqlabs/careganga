@@ -32,6 +32,13 @@ const local=(d:Date,timeZone:string)=>{const parts=new Intl.DateTimeFormat("en-G
 const previous=(s:string)=>new Date(Date.parse(s+"T00:00:00Z")-86400000)
  .toISOString().slice(0,10);
 /** A check-in uses the database instant and the original shift time zone, not a client clock. */
+export function verifiedWorkedMinutes(checkInAt:Date,checkOutAt:Date,breakMinutes:number){
+ const elapsed=Math.floor((checkOutAt.getTime()-checkInAt.getTime())/60000);
+ if(!Number.isFinite(elapsed)||elapsed<0||elapsed>2160||
+  !Number.isInteger(breakMinutes)||breakMinutes<0||breakMinutes>720)
+  throw new ConflictException("Working time is not within the verified shift window");
+ return Math.max(0,elapsed-breakMinutes);
+}
 export function shiftCheckInAt(instant:Date,timezone:string,startText:string,
  endText:string,graceMinutes:number){
  const clock=local(instant,timezone),start=isoTime(startText),end=isoTime(endText);
@@ -381,11 +388,8 @@ export class HrAttendanceService{
    if(!day.rows[0])throw new ConflictException(
     "No recent open check-in is available. Contact HR for a reviewed correction.");
    const now=(await tx.query<{now:Date}>("SELECT CURRENT_TIMESTAMP AS now")).rows[0].now;
-   const start=new Date(day.rows[0].checked_in_at).getTime(),end=now.getTime();
-   const elapsed=Math.floor((end-start)/60000);
-   if(!Number.isFinite(elapsed)||elapsed<0||elapsed>2160)
-    throw new ConflictException("Working time is not within the verified shift window");
-   const worked=Math.max(0,elapsed-Number(day.rows[0].break_minutes));
+   const worked=verifiedWorkedMinutes(new Date(day.rows[0].checked_in_at),
+    now,Number(day.rows[0].break_minutes));
    const updated=await tx.query(`UPDATE hr_attendance_day SET
     checked_out_at=$3,worked_minutes=$4,version=version+1
     WHERE id=$1 AND root_realm_id=$2 AND checked_out_at IS NULL RETURNING id`,
