@@ -3,6 +3,7 @@ import {AppState,StyleSheet,Text,View} from "react-native";
 import * as Crypto from "expo-crypto";
 import {File,Paths} from "expo-file-system";
 import {identityRequest} from "../identity-access/http-client";
+import {nativeMisProblem} from "./native-mis-problem";
 import {NativeFinanceAction,NativeFinanceOptions}
  from "../finance-accounting/finance-native-source-kit";
 import {careGangaTheme as t} from "../../../../../packages/design-tokens/src/index";
@@ -20,11 +21,7 @@ async function request<T>(token:string,path:string,body?:object):Promise<T>{
   method:body?"POST":"GET",cache:"no-store",
   headers:{Authorization:"Bearer "+token,...(body?{"Content-Type":"application/json"}:{})},
   ...(body?{body:JSON.stringify(body)}:{})});
- if(!r.ok)throw Object.assign(Error(r.status===401?"Sign in again to view reports.":
-  r.status===403?"Your current access does not permit this report.":
-  r.status===400?"Choose fewer records or valid source filters.":
-  "Original file outcome unconfirmed. Refresh its history before retrying."),{
-   status:r.status});
+ if(!r.ok)throw await nativeMisProblem(r,"The protected report file status is unconfirmed. Refresh its history first.");
  return r.json() as Promise<T>;
 }
 /** Native secure report export with original CG19-only byte validation,
