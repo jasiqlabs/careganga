@@ -217,7 +217,7 @@ for(const [webPath,nativePath,webTerms,nativeTerms] of pairedScreens){
 contains(web+"features/healthcare-assistance/center-monthly-settlement-summary.tsx",
  ["centerRef"]);
 contains(native+"features/mis-reporting/native-own-center-mis.tsx",
- ["centerRef","ownCenterStatement"]);
+ ["centerRef","provider-settlements/my-centers/"]);
 contains(web+"features/health-network/center-draft-portal.tsx",
  ["CenterMonthlySettlementSummary"]);
 contains(native+"features/health-network/native-own-center-portal.tsx",
@@ -265,7 +265,6 @@ for(let index=0;index<byStory.length;index++){
  assert.ok(match,"Missing original "+story+" progress entry");
  for(let caseNumber=1;caseNumber<=byStory[index];caseNumber++){
   const id="QA"+String(caseNumber).padStart(2,"0");
-  const trace=new RegExp("\\b"+id+"=(SOURCE_VERIFIED|SOURCE_GAP|NOT_APPLICABLE\\(FUTURE_OWNER_ABSENT\\)|NOT_VERIFIABLE\\(RUNTIME_DATABASE_QA_NOT_RUN\\))\\b?");
   // Match by explicit token and expected next boundary, not a subsection
   // with a similar suffix; no invented PASS for future owners.
   assert.ok(match.includes(id+"="),story+" missing "+id+" progress status");
