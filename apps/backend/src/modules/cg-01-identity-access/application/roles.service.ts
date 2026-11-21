@@ -182,7 +182,7 @@ export class RolesService {
       "JOIN role r ON r.id=ar.role_id AND r.realm_id=ar.realm_id AND r.active "+
       "WHERE s.id=$4 AND a.id=$2 AND s.revoked_at IS NULL "+
       "AND s.expires_at>now() AND s.password_authenticated_at IS NOT NULL "+
-      "FOR SHARE OF s,a,ar,r LIMIT 1",
+      "LIMIT 1 FOR SHARE OF s,a,ar,r",
       [actor.realmId,actor.accountId,proposedRole,actor.activeSessionId]);
     return Boolean(rows.rowCount);
   }
