@@ -16,6 +16,8 @@ const files=[
  d+"application/clinical-lab-admission.service.ts",
  d+"application/clinical-lab-order.service.ts",
  d+"application/clinical-lab-result-evidence.service.ts",
+ d+"application/clinical-lab-generated-result.service.ts",
+ "apps/backend/src/modules/cg-19-documents-notifications/application/laboratory-report-renderer.ts",
  d+"application/clinical-lab-professional-review.service.ts",
  d+"application/clinical-lab-patient-release.service.ts",
  d+"http/clinical-lab-patient-report.controller.ts",
@@ -25,6 +27,7 @@ const files=[
  "apps/backend/src/modules/cg-01-identity-access/application/session.service.ts",
  web+"clinical-lab-order-workspace.tsx",
  web+"clinical-lab-result-upload.tsx",
+ web+"clinical-lab-result-entry.tsx",
  web+"clinical-lab-professional-review-panel.tsx",
  web+"clinical-lab-release-panel.tsx",
  web+"my-lab-reports.tsx",
@@ -33,6 +36,7 @@ const files=[
  "apps/web/src/app/api/lab-clinical/[...parts]/route.ts",
  native+"native-clinical-lab-screen.tsx",
  native+"native-lab-result-upload.tsx",
+ native+"native-lab-result-entry.tsx",
  native+"native-lab-professional-review.tsx",
  native+"native-lab-report-release.tsx",
  "apps/android-public/src/features/patients/native-my-lab-reports.tsx",
@@ -180,5 +184,43 @@ must(source,/ClinicalLabReleasePanel/,
  "Clinician Web release must be reachable in original lab orders");
 must(mobile,/NativeLabReportRelease/,
  "Internal Android release must be reachable on original lab screen");
+const valuesSql=read("apps/backend/db/migrations/1613_cg16_entered_results_for_generated_report.sql");
+const generated=read(d+"application/clinical-lab-generated-result.service.ts");
+const pdf=read("apps/backend/src/modules/cg-19-documents-notifications/application/laboratory-report-renderer.ts");
+const staffEntry=read(web+"clinical-lab-result-entry.tsx");
+const nativeEntry=read(native+"native-lab-result-entry.tsx");
+must(valuesSql,/CREATE TABLE lab_result_value \(/,
+ "Staff-entered results must be immutable CG16 source values");
+must(valuesSql,/FOREIGN KEY\(root_realm_id,order_ref,order_line_ref\)/,
+ "No result can belong to another lab order");
+must(valuesSql,/GENERATED_INTENT/,"CG19 must record actual generated report provenance");
+must(valuesSql,/GENERATED_VERIFIED/,"Generated file verification is auditable");
+must(generated,/this\.evidence\.requireProcessingOriginal/,
+ "Reuse existing real specimen readiness and patient consent");
+must(generated,/this\.objects\.writeVerifiedPrivateDocument/,
+ "Automatically generated PDF goes to original CG19 private storage");
+must(generated,/this\.objects\.verifyPrivateObject/,
+ "Original malware/checksum verification must remain");
+must(generated,/this\.lines\(c,actor\.realmId,order\)/,
+ "Original ordered test lines only");
+must(generated,/GENERATED_VERIFIED/,
+ "Report audit must not pretend a user uploaded a PDF");
+must(pdf,/renderLaboratoryReport/,"PDF renderer belongs to existing CG19");
+must(pdf,/source\.results/,
+ "PDF must display actual saved values, never guessed data");
+assert.doesNotMatch(pdf,/normalRange|diagnos(?:e|is)|fakeReferenceRange/,
+ "System must not invent medical ranges or interpretation");
+must(controller,/results\/generate/,
+ "Original CG16 lab controller must reach generated PDF");
+must(bff,/parts\[5\]==="generate"/,
+ "Web BFF must allow actual value-entry post");
+must(source,/ClinicalLabResultEntry/,
+ "Web H10 must use auto-generated report as primary");
+must(mobile,/NativeLabResultEntry/,
+ "Internal Android H10 must use same generated report flow");
+must(staffEntry,/Generate report PDF/,
+ "Web staff can request one automatic PDF");
+must(nativeEntry,/Generate report PDF/,
+ "Native staff can request the same automatic PDF");
 console.log("CG16 US002 source/parse preflight authored for clinical review and simple release. "+
  "PostgreSQL, browser, Android, independent clinical and security QA NOT_RUN.");
