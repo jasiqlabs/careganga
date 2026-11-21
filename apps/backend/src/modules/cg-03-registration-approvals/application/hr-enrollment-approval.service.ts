@@ -67,7 +67,7 @@ export class HrEnrollmentApprovalService{
   return frozen;
  }
  async processStatus(token:string){
-  const actor=await this.sessions.requireAction(token,"hr.applications.view");
+  const actor=await this.sessions.requireAction(token,"hr.employees.review");
   const r=await this.db.query(
    "SELECT 1 FROM cg03_hr_process_current c JOIN cg03_process p "+
    "ON p.id=c.process_id AND p.realm_id=c.realm_id "+
