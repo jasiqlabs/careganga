@@ -225,6 +225,45 @@ export class HrAttendanceService{
    [actor.realmId,employeeId]);
   return q.rows[0]??null;
  }
+ async matrix(token:string,branchInput:string,monthInput:string,offsetInput:unknown){
+  const actor=await this.sessions.requireAction(token,"hr.attendance.view");
+  const branch=id(branchInput,"branch");
+  if(typeof monthInput!=="string"||!/^20\\d{2}-(0[1-9]|1[0-2])$/.test(monthInput))
+   throw new BadRequestException("Choose a valid attendance month");
+  const offset=Number(offsetInput??0);
+  if(!Number.isSafeInteger(offset)||offset<0||offset>10000)
+   throw new BadRequestException("Choose a valid attendance page");
+  const tx=await this.db.connect();
+  try{
+   await tx.query("BEGIN");
+   await this.identity.assertCurrent(tx,actor,"hr.attendance.view");
+   await this.allowedBranch(tx,actor,branch);
+   const rows=await tx.query<{employee_code:string;legal_name:string;designation:string;
+    days:Array<{date:string;status:string}>}>(`SELECT e.employee_code,
+    app.legal_name,a.designation,
+    COALESCE(jsonb_agg(jsonb_build_object(
+      'date',to_char(d.local_date,'YYYY-MM-DD'),'status',d.status)
+      ORDER BY d.local_date) FILTER(WHERE d.id IS NOT NULL),'[]'::jsonb) AS days
+    FROM hr_employee e
+    JOIN hr_employee_application app ON app.id=e.application_id
+      AND app.root_realm_id=e.root_realm_id
+    JOIN hr_employment_assignment a ON a.employee_id=e.id
+      AND a.root_realm_id=e.root_realm_id
+      AND a.valid_from<=CURRENT_DATE AND (a.valid_to IS NULL OR a.valid_to>CURRENT_DATE)
+    LEFT JOIN hr_attendance_day d ON d.employee_id=e.id AND d.root_realm_id=e.root_realm_id
+      AND d.assignment_id=a.id
+      AND d.local_date>=$3::date AND d.local_date<($3::date+interval '1 month')
+    WHERE e.root_realm_id=$1 AND a.branch_ref=$2
+      AND e.status IN('ACTIVE','PROBATION','ON_HOLD','PENDING_ACCESS')
+    GROUP BY e.id,e.employee_code,app.legal_name,a.designation
+    ORDER BY app.legal_name,e.id LIMIT 26 OFFSET $4`,
+    [actor.realmId,branch,monthInput+"-01",offset]);
+   await tx.query("COMMIT");
+   return {month:monthInput,items:rows.rows.slice(0,25).map(x=>({
+    employeeName:x.legal_name,designation:x.designation,days:x.days})),
+    hasMore:rows.rows.length>25,offset};
+  }catch(e){await tx.query("ROLLBACK");throw e;}finally{tx.release();}
+ }
  async mine(token:string){
   const actor=await this.sessions.verifySession(token),tx=await this.db.connect();
   try{

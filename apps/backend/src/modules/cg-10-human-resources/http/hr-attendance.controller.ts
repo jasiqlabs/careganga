@@ -16,6 +16,11 @@ export class HrAttendanceController{
  assign(@Headers("authorization")token:string,@Body()body:unknown){
   return this.attendance.assign(token,body);
  }
+ @Get("attendance/matrix")
+ matrix(@Headers("authorization")token:string,@Query("branch")branch:string,
+  @Query("month")month:string,@Query("offset")offset?:string){
+  return this.attendance.matrix(token,branch,month,offset);
+ }
  @Get("me/attendance")
  mine(@Headers("authorization")token:string){return this.attendance.mine(token);}
  @Post("me/attendance/check-in")
