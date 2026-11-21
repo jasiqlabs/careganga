@@ -77,7 +77,7 @@ export function NativeLabProfessionalReview({token,centerRef,orderRef,onExpired}
   setCurrent(result);
   if(result.hasReview){
    setMessage("Independent review recorded ("+result.reviewDecision+
-    "). A signed patient report has NOT been issued, released or delivered.");
+    "). The patient report "+(result.patientRelease==="RELEASED"?"is released privately.":"awaits separate release."));
    original.current=null;setPassword("");setUncertain(false);
   }
  }
@@ -156,11 +156,11 @@ export function NativeLabProfessionalReview({token,centerRef,orderRef,onExpired}
   <Text style={s.heading}>Independent licensed clinical review</Text>
   <Text style={s.info}>Only your current professionally verified CG14 identity,
    same lab affiliation, patient consent and clinical permission qualify.
-   Reviewing is separate from signing, releasing and delivering a result.</Text>
+   Reviewing is separate from releasing a report to the patient.</Text>
   {loading&&<ActivityIndicator accessibilityLabel="Checking clinician authorization"/>}
   {!!message&&<Text accessibilityRole="alert" style={s.info}>{message}</Text>}
   {current?.hasReview?<Text style={s.info}>
-   Professional decision: {current.reviewDecision}. Patient release: not issued.
+   Professional decision: {current.reviewDecision}. Patient report: {current.patientRelease==="RELEASED"?"Released privately":"Awaiting release"}.
   </Text>:current&&<>
    {button("Open original private PDF for clinical inspection",()=>void read(),busy)}
    {fileRead&&<Pressable accessibilityRole="checkbox"
