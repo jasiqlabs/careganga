@@ -155,7 +155,7 @@ const parity=[
  ["native Foundation provider and center editor",
   "apps/android-internal/src/features/health-network/native-provider-management.tsx",
   ["NativeHealthCenterEditor","NativeHealthEvidenceUploader",
-   "providers?","/representatives","/publication",
+   "providers?","/representatives","publication",
    "health","expectedVersion"]],
  ["native assigned-center-only editor",
   "apps/android-internal/src/features/health-network/native-own-center-portal.tsx",
