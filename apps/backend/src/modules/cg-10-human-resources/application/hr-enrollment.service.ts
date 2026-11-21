@@ -420,12 +420,14 @@ export class HrEnrollmentService{
    "asg.employment_type,asg.valid_from FROM hr_employee e "+
    "JOIN hr_employee_application app ON app.id=e.application_id "+
    "AND app.root_realm_id=e.root_realm_id "+
-   "JOIN hr_employment_assignment asg ON asg.employee_id=e.id "+
-   "AND asg.root_realm_id=e.root_realm_id AND asg.valid_from<=CURRENT_DATE "+
-   "AND (asg.valid_to IS NULL OR asg.valid_to>CURRENT_DATE) "+
+   "JOIN LATERAL (SELECT original.* FROM hr_employment_assignment original "+
+   "WHERE original.employee_id=e.id AND original.root_realm_id=e.root_realm_id "+
+   "ORDER BY CASE WHEN original.valid_from<=CURRENT_DATE AND "+
+   "(original.valid_to IS NULL OR original.valid_to>CURRENT_DATE) "+
+   "THEN 0 ELSE 1 END,original.valid_from DESC,original.id DESC LIMIT 1) asg ON true "+
    "JOIN branch b ON b.id=asg.branch_ref AND b.root_realm_id=asg.root_realm_id "+
    "WHERE e.root_realm_id=$1 AND e.account_ref=$2 "+
-   "AND e.status IN('ACTIVE','PROBATION','ON_HOLD') "+
+   "AND e.status IN('ACTIVE','PROBATION','ON_HOLD','EXITED') "+
    "ORDER BY asg.valid_from DESC LIMIT 1",[a.realmId,a.accountId]);
   const row=q.rows[0];
   if(!row)return {status:"NOT_LINKED",message:"No approved employee profile is linked to your account."};
