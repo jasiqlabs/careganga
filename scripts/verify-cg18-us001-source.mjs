@@ -3,6 +3,9 @@ import assert from "node:assert/strict";
 import {readFileSync} from "node:fs";
 import {resolve} from "node:path";
 const read=path=>readFileSync(resolve(process.cwd(),path),"utf8");
+const internalCms=read("apps/android-internal/src/features/cms/native-cms-editorial.tsx");
+const internalMenu=read("apps/android-internal/src/features/dashboard/dashboard-modules.ts");
+const internalShell=read("apps/android-internal/src/features/identity-access/staff-authentication-screen.tsx");
 const files={
  backend:read("apps/backend/src/modules/cg-18-cms-public-content/application/cms-editorial.service.ts"),
  review:read("apps/backend/src/modules/cg-18-cms-public-content/application/cms-review-source.facade.ts"),
@@ -325,6 +328,22 @@ const checks=[
   files.web.includes('disabled className="cg-site-newsletter-button"')&&
   files.originalNav.includes("CG-19 owns any real opt-in receipt")]
 ];
+// Same original editorial business source; public mobile CMS viewer does not
+// satisfy the protected Foundation staff Web-to-Internal-Android requirement.
+checks.push(["Internal Android CMS editor is real, not a public WebView",
+ internalCms.includes('"/api/cms/"')&&
+ internalCms.includes("pages/")&&internalCms.includes("/draft")&&
+ internalCms.includes("/submit")&&internalCms.includes("/publish")&&
+ internalCms.includes("/withdraw")]);
+checks.push(["Internal CMS source preserves original media and review approvals",
+ internalCms.includes("assets:v.assets")&&
+ internalCms.includes("caseRef:selected.approvalCaseRef")&&
+ internalCms.includes("expectedVersion:selected.version")]);
+checks.push(["Internal Android CMS has current CG01 effective view gating",
+ internalMenu.includes('roleActions.includes("cms.content.view")')&&
+ internalShell.includes('roleActions.includes("cms.content.view")')&&
+ internalShell.includes('canManage={roleActions.includes("cms.content.manage")}')&&
+ internalShell.includes('canPublish={roleActions.includes("cms.content.publish")}')]);
 let errors=0;
 for(const [label,ok] of checks){
  console.log((ok?"SOURCE-PRESENT":"SOURCE-FAIL")+": "+label);
