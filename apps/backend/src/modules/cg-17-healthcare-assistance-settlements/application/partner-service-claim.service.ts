@@ -7,6 +7,8 @@ import {DATABASE} from "../../../core/infrastructure/database.module";
 import {SessionService} from "../../cg-01-identity-access/application/session.service";
 import {HealthVerifiedCenterDoctorFacade}
  from "../../cg-14-healthcare-network/application/health-verified-center-doctor.facade";
+import {HealthCenterSupportScopeFacade}
+ from "../../cg-14-healthcare-network/application/health-center-support-scope.facade";
 
 const UUID=/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i;
 const DATE=/^\d{4}-\d{2}-\d{2}$/;
@@ -77,7 +79,8 @@ const present=(row:Claim)=>({
 export class PartnerServiceClaimService{
  constructor(@Inject(DATABASE)private readonly db:Pool,
   private readonly sessions:SessionService,
-  private readonly verified:HealthVerifiedCenterDoctorFacade){}
+  private readonly verified:HealthVerifiedCenterDoctorFacade,
+  private readonly centers:HealthCenterSupportScopeFacade){}
  private async tx<T>(fn:(c:PoolClient)=>Promise<T>):Promise<T>{
   const c=await this.db.connect();let begun=false;
   try{
@@ -157,6 +160,48 @@ export class PartnerServiceClaimService{
    return {services:rows.rows,complete:true,
     guidance:"Only currently verified partners are shown. A policy estimate "+
      "does not approve your bill, completed care or Foundation reimbursement."};
+  });
+ }
+ /** Only currently authorized Foundation or own-center partner staff.
+  * No patient identity, bank destination, private file URL or technical IDs
+  * in the projection. Pending quotes are never aggregated as payable.
+  */
+ private async centerClaims(c:PoolClient,root:string,center:string){
+  const result=await c.query<Claim>(
+   "SELECT public_code,center_ref,service_kind,invoice_number,"+
+   "service_local_date::text,quoted_gross_minor::text,"+
+   "estimated_support_minor::text,estimated_patient_due_minor::text,"+
+   "state,submitted_at,source_digest FROM cg17_partner_service_claim "+
+   "WHERE root_realm_id=$1 AND center_ref=$2 "+
+   "ORDER BY submitted_at DESC,id DESC LIMIT 51",
+   [root,center]);
+  if(result.rows.length>50)
+   throw new ConflictException({code:"CG17_PARTNER_CLAIM_LIST_LIMIT"});
+  return {claims:result.rows.map(present),
+   pendingCount:result.rows.length,approvedFoundationMinor:"0",
+   reimbursableFoundationMinor:"0",paidFoundationMinor:"0",
+   foundationPaymentVerified:false,complete:true,
+   guidance:"Scanned patient evidence is awaiting independent verification. "+
+    "No amount on this screen is approved or payable to the partner."};
+ }
+ async foundationCenter(token:string,centerRaw:string){
+  const center=ref(centerRaw);
+  return this.tx(async c=>{
+   const actor=await this.sessions.requireAction(token,
+    "healthcare.assistance.liabilities.view");
+   await this.centers.assertFoundationCenter(c,actor,center,
+    "healthcare.assistance.liabilities.view",false);
+   return this.centerClaims(c,actor.realmId,center);
+  });
+ }
+ async ownCenter(token:string,centerRaw:string){
+  const center=ref(centerRaw);
+  return this.tx(async c=>{
+   const actor=await this.sessions.requireAction(token,
+    "healthcare.assistance.settlements.view");
+   await this.centers.assertCurrent(c,actor,center,
+    "healthcare.assistance.settlements.view");
+   return this.centerClaims(c,actor.realmId,center);
   });
  }
  async mine(token:string){
