@@ -26,6 +26,7 @@ const files=[
  web+"app/api/healthcare-assistance/provider-settlements/[...parts]/route.ts",
  web+"features/appointments/my-clinician-activity.tsx",
  web+"app/(admin)/admin/health-network/my-clinical-activity/page.tsx",
+ web+"app/(admin)/admin/health-network/settlements/page.tsx",
  web+"features/healthcare-assistance/center-monthly-settlement-summary.tsx",
  web+"features/health-network/center-draft-portal.tsx",
  web+"app/(admin)/center/page.tsx",
@@ -38,6 +39,7 @@ const files=[
  cg17+"application/consultation-patient-charge.service.ts",
  cg17+"application/center-patient-collection.service.ts",
  cg17+"application/verified-provider-payout.service.ts",
+ "apps/backend/db/migrations/1706_cg17_completed_consultation_liability.sql",
  "apps/backend/db/migrations/1441_cg14_professional_license_validity.sql"
 ];
 for(const p of files){
@@ -128,6 +130,18 @@ must(cg17+"application/consultation-patient-charge.service.ts",
 must(cg17+"application/verified-provider-payout.service.ts",
  /this\.cg09\.verify\(c,a,bankMatch\)/,
  "Original CG09 bank payment must be independently verified");
+must("apps/backend/db/migrations/1706_cg17_completed_consultation_liability.sql",
+ /uq_cg17_patient_charge_realm_id_center/,
+ "Original patient_charge root/id/center composite FK has a real unique target");
+must(cg17+"application/monthly-provider-settlement.service.ts",
+ /"health\.providers\.finance\.view"/,
+ "Foundation-wide finance access is independent of own-center viewing");
+must(cg17+"application/monthly-provider-settlement.service.ts",
+ /proposedClaimMinor:/,
+ "Pending proposed claim is not represented as paid or approved");
+must(web+"app/(admin)/admin/health-network/settlements/page.tsx",
+ /!actions\.has\("health\.providers\.finance\.view"\)/,
+ "Foundation settlements page rejects a center-representative-only session");
 must("apps/backend/db/migrations/1441_cg14_professional_license_validity.sql",
  /ADD COLUMN professional_license_valid_through/,
  "Current clinician report license schema exists before CG16 migration");
