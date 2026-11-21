@@ -6,6 +6,9 @@ const ID=/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 function permitted(parts:string[],method:"GET"|"POST"){
  if(method==="GET"&&parts[0]==="centers"){
   if(parts.length===2&&parts[1]==="eligible")return true;
+  if(parts.length===5&&ID.test(parts[1])&&parts[2]==="services"&&
+    ["LAB","PHARMACY","NURSING","OT"].includes(parts[3])&&
+    parts[4]==="estimate")return true;
   if(parts.length===2&&ID.test(parts[1]))return true;
   if(parts.length===3&&ID.test(parts[1])&&parts[2]==="doctors")return true;
   if(parts.length===5&&ID.test(parts[1])&&parts[2]==="doctors"&&
@@ -61,8 +64,16 @@ async function relay(req:NextRequest,parts:string[],method:"GET"|"POST"){
     "/api/v1/approvals/healthcare-assistance/cases/"+parts[1]+"/decision":
     "/api/v1/healthcare-assistance/policies/cases/"+parts[1]+"/activate":
    "/api/v1/healthcare-assistance/policies/"+parts.map(encodeURIComponent).join("/");
-  const response=await fetch(new URL(target,
-   endpoint),{method,body,cache:"no-store",signal:AbortSignal.timeout(15000),
+  const url=new URL(target,endpoint);
+  if(method==="GET"&&parts[2]==="services"){
+   const gross=req.nextUrl.searchParams.get("grossMinor");
+   if(!gross||!/^[1-9][0-9]{0,10}$/.test(gross)||
+      BigInt(gross)>10000000000n||[...req.nextUrl.searchParams.keys()]
+       .some(key=>key!=="grossMinor"))
+    return fail(400,"Enter a valid service amount in rupees and paise.");
+   url.searchParams.set("grossMinor",gross);
+  }
+  const response=await fetch(url,{method,body,cache:"no-store",signal:AbortSignal.timeout(15000),
     headers:{Authorization:"Bearer "+token,
      ...(body?{"Content-Type":"application/json"}:{})}});
   if(!response.ok){
