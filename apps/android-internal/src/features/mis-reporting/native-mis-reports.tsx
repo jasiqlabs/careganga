@@ -8,12 +8,12 @@ import {careGangaTheme as t} from "../../../../../packages/design-tokens/src/ind
 import {NativeMisSaved} from "./native-mis-saved";
 import {NativeMisExports} from "./native-mis-exports";
 import {NativeMisSchedules} from "./native-mis-schedules";
-import {NativeMisFinanceTrend,NativeMisAppointmentDistribution}
+import {NativeMisFinanceTrend,NativeMisAppointmentDistribution,NativeMisAppointmentGroupBars}
  from "./native-mis-source-charts";
 import {NativeMisGroupedFinanceChart} from "./native-mis-grouped-finance-chart";
 type Kind="FINANCE_POSTED_LEDGER"|"FINANCE_POSTED_SUMMARY"|
  "FINANCE_POSTED_TREND"|"FINANCE_POSTED_GROUPED"|
- "APPOINTMENT_STATUS"|"PLATFORM_AUDIT_ACTIVITY"|"DIAGNOSTICS_CATALOG_SUMMARY";
+ "APPOINTMENT_STATUS"|"APPOINTMENT_STATUS_GROUPED"|"PLATFORM_AUDIT_ACTIVITY"|"DIAGNOSTICS_CATALOG_SUMMARY";
 type Template={kind:Kind;label:string;views:("TABLE"|"SUMMARY"|"CHART"|"PIVOT")[];description:string};
 type Option={ref:string;name:string};
 type Catalog={templates:Template[];finance:{ready:boolean;state?:"AVAILABLE"|"ACCESS_RESTRICTED"|"SOURCE_UNAVAILABLE";years:Option[];branches:Option[];
@@ -101,7 +101,7 @@ export function NativeMisReports({token,onExpired}:{token:string;onExpired:()=>v
  },[load]);
  const chosen=catalog?.templates.find(x=>x.kind===kind);
  const finance=kind?.startsWith("FINANCE_");
- const health=kind==="APPOINTMENT_STATUS";
+ const health=kind==="APPOINTMENT_STATUS"||kind==="APPOINTMENT_STATUS_GROUPED";
  const grouped=kind==="FINANCE_POSTED_GROUPED";
  const dated=kind==="FINANCE_POSTED_LEDGER"||grouped||health||kind==="PLATFORM_AUDIT_ACTIVITY";
  function setPreset(next:Period){
@@ -217,6 +217,10 @@ export function NativeMisReports({token,onExpired}:{token:string;onExpired:()=>v
        incomeMinor:r.incomeMinor??"0",expenseMinor:r.expenseMinor??"0"}))}}/>}
     {preview.view==="CHART"&&preview.kind==="FINANCE_POSTED_GROUPED"&&
      <NativeMisGroupedFinanceChart rows={preview.rows.map(x=>({groupLabel:x.groupLabel??"",debitMinor:x.debitMinor??"0",creditMinor:x.creditMinor??"0"}))}/>}
+    {preview.view==="CHART"&&preview.kind==="APPOINTMENT_STATUS_GROUPED"&&
+     <NativeMisAppointmentGroupBars rows={preview.rows.map(r=>({
+      statusLabel:r.statusLabel??"",count:r.count??"0"
+     }))}/>}
     {preview.view==="CHART"&&preview.kind==="APPOINTMENT_STATUS"&&
      <NativeMisAppointmentDistribution metrics={preview.columns.map(c=>({
       key:c.key,label:c.label,unit:c.unit??"COUNT",
