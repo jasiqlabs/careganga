@@ -168,7 +168,7 @@ export function NativeMisReports({token,onExpired}:{token:string;onExpired:()=>v
      options={[{ref:"ASC",label:"Ascending"},{ref:"DESC",label:"Descending"}]}
      onChange={v=>setSortDirection(v as typeof sortDirection)}/>
    </>}
-   {(kind==="FINANCE_POSTED_LEDGER"||grouped||!finance)&&<>
+   {(kind==="FINANCE_POSTED_LEDGER"||grouped||health||kind==="PLATFORM_AUDIT_ACTIVITY")&&<>
     <NativeFinanceField label="Start date (YYYY-MM-DD)" value={from} onChange={setFrom}/>
     <NativeFinanceField label="End date (YYYY-MM-DD)" value={until} onChange={setUntil}/>
    </>}
