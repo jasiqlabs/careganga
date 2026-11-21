@@ -217,7 +217,7 @@ export function HealthcareNativeReview({token,canDoctors,canProviders,
         </View>}
         {!detail&&<>
           {canProviders&&<NativeCenterContentReview token={token} onExpired={onExpired}/>}
-          <View style={styles.card}
+          <View style={styles.card}>
             <Text style={styles.bold}>Find cases</Text>
             <TextInput style={styles.input} value={query} maxLength={80}
               onChangeText={setQuery} placeholder="Case number or name"
