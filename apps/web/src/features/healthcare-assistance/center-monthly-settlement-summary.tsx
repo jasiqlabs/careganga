@@ -1,5 +1,6 @@
 "use client";
 import {useCallback,useEffect,useRef,useState} from "react";
+import {PendingPartnerServiceClaims} from "./pending-partner-service-claims";
 
 type Summary={
  month:string;state:string;
@@ -136,5 +137,6 @@ export function CenterMonthlySettlementSummary({centerRef}:Props){
     "A monthly claim has been prepared but is awaiting independent Foundation approval.":
     "The Foundation has not yet prepared a monthly payout claim for this period."}</p>
   </div>}
+  <PendingPartnerServiceClaims centerRef={centerRef} mode="partner"/>
  </section>;
 }
