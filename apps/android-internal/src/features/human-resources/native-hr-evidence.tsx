@@ -4,7 +4,7 @@ import * as DocumentPicker from "expo-document-picker";
 import {File,UploadType} from "expo-file-system";
 import * as Crypto from "expo-crypto";
 import {identityRequest} from "../identity-access/http-client";
-type Kind="HR_IDENTITY_PROOF"|"HR_QUALIFICATION"|"HR_PORTRAIT";
+type Kind="HR_IDENTITY_PROOF"|"HR_PAN_PROOF"|"HR_QUALIFICATION"|"HR_PORTRAIT";
 type Picked={uri:string;name:string;size:number;mime:string};
 type Intent={uploadRef:string;status:string;uploadUrl?:string;
  uploadHeaders?:Record<string,string>};
@@ -161,7 +161,7 @@ export function NativeHrEvidence({token,applicationRef,revision,onExpired,onFile
    No file is public or approved until the CG-19 scanner and CG-03 reviewer confirm it.</Text>
   {!!message&&<Text accessibilityRole="alert" style={styles.hint}>{message}</Text>}
   <View style={styles.choices}>
-   {(["HR_IDENTITY_PROOF","HR_QUALIFICATION","HR_PORTRAIT"] as Kind[]).map(k=>
+   {(["HR_IDENTITY_PROOF","HR_PAN_PROOF","HR_QUALIFICATION","HR_PORTRAIT"] as Kind[]).map(k=>
     <View key={k}>{chip(title(k),()=>{
      setKind(k);setPicked(null);setIntent("");setUncertain(false);original.current=null;
     },kind===k)}</View>)}
