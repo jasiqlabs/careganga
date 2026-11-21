@@ -9,7 +9,8 @@ type Summary={month:string;state:string;eligibleAccruedMinor?:string;
  centerGrossServicesMinor?:string;patientPayableMinor?:string;
  patientCollectedVerifiedMinor?:string;patientRefundedMinor?:string;
  foundationApprovedLiabilityMinor?:string;
- originalApprovedFoundationMinor?:string;adjustedFoundationMinor?:string;
+ originalApprovedFoundationMinor?:string;
+ effectiveState?:string;adjustedFoundationMinor?:string;
  grossFoundationPaidMinor?:string;verifiedProviderRecoveryMinor?:string;
  patientCollectionNotFoundationIncome:true;paidVerified:boolean};
 type Props={token:string;onExit:()=>void;onExpired:()=>void};
@@ -120,7 +121,11 @@ export function NativePartnerSettlementSummary({token,onExit,onExpired}:Props){
     </View>
     {busy&&<ActivityIndicator accessibilityLabel="Loading settlement amounts"/>}
     {summary&&<>
-     <Text style={styles.note}>Claim: {summary.state.replaceAll("_"," ")}</Text>
+     <Text style={styles.note}>Current claim: {
+      (summary.effectiveState??summary.state).replaceAll("_"," ")}</Text>
+     {summary.effectiveState&&summary.effectiveState!==summary.state&&
+      <Text style={styles.note}>Original recorded claim: {
+       summary.state.replaceAll("_"," ")}</Text>}
      {([
       ["Eligible completed consultation value",summary.centerGrossServicesMinor],
       ["Patient due for eligible consultations",summary.patientPayableMinor],
