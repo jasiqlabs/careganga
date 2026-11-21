@@ -91,7 +91,9 @@ export function CenterMonthlySettlementSummary({centerRef}:Props){
      <dd>{money(data.actualPaidMinor)}</dd>
      <dt>Foundation payout outstanding</dt>
      <dd>{money(data.outstandingMinor)}</dd></>:
-     <><dt>Accrued and posted, awaiting claim preparation</dt>
+     <><dt>{data.state==="PROPOSED"?
+       "Proposed Foundation claim (not approved)":
+       "Posted Foundation accrual before monthly claim"}</dt>
        <dd>{money(data.eligibleAccruedMinor)}</dd></>}
    </dl>
    <p>{approved?
