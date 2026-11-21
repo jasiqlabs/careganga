@@ -9,6 +9,7 @@ import {NativeHealthCenterEditor,type CenterDraft} from "./native-health-center-
 import {NativeHealthEvidenceUploader} from "./native-health-evidence-uploader";
 import {NativeDoctorCenterFees} from "./native-doctor-center-fees";
 import {NativeCenterContentEditor} from "./native-center-content-editor";
+import {NativePartnerPublicOffers} from "./native-partner-public-offers";
 type Row={centerRef:string;name:string;providerName:string;version:number;status:string};
 type Detail={centerRef:string;providerRef:string;version:number;center:CenterDraft;
  status:string;providerStatus:string;accessState:string;
@@ -137,6 +138,9 @@ export function NativeOwnCenterPortal({token,onExit,onExpired}:Props){
         {text:"Submit",onPress:()=>void submit()}
        ]),busy||uncertain||!proof)}
     </>}
+    {active.status==="VERIFIED"&&active.accessState==="ENABLED"&&
+     <NativePartnerPublicOffers token={token} mode="partner"
+      centerRef={active.centerRef} onExpired={onExpired}/>}
     {active.status==="VERIFIED"&&active.accessState==="ENABLED"&&
       <NativeCenterContentEditor token={token} centerRef={active.centerRef}
        canManage onExpired={onExpired}/>}
