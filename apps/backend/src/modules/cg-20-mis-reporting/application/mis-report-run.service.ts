@@ -62,8 +62,8 @@ export class MisReportRunService{
  }
  private summary(row:Row){
   return {ref:row.id,state:row.state,format:row.format,
-   sourceKey:row.source_key,createdAt:row.created_at,expiresAt:row.expires_at,
-   sourceAsOf:row.source_as_of,rows:row.result_row_count,
+   createdAt:row.created_at,expiresAt:row.expires_at,
+   sourceAsOf:row.source_as_of,
    canDownload:row.state==="READY"&&Boolean(row.artifact_ref)};
  }
  private async current(token:string,ref:string,recipient=false){
