@@ -253,6 +253,18 @@ must(generated,/LAB_CORRECTION_LATEST_RELEASE_REQUIRED/,
  "Stale/duplicate prior-release correction is rejected");
 must(generated,/cg16_lab_result_correction/,
  "Reason and original release are persisted in source");
+must(generated,/CG16_GENERATED_LAB_RESULT_V1/,
+ "Original unreleased PDF retries must retain their existing V1 request digest");
+must(generated,/CG16_GENERATED_LAB_CORRECTION_V1/,
+ "Corrected PDF must have separate source digest and immutable request");
+must(generated,/correctionDraft/,
+ "Corrected report reuses original recorded values rather than inventing results");
+must(pdf,/if\(source\.corrected\)\{/,
+ "Only an actually corrected PDF gets a new version label; V1 bytes unchanged");
+must(staffEntry,/correctionDraft/,
+ "Web correction form uses original recorded values");
+must(nativeEntry,/correctionDraft/,
+ "Internal Android correction form uses original recorded values");
 must(generated,/if\(!original\.correction\)\{/,
  "Correction cannot overwrite old lab-order status or event");
 must(pdf,/source\.corrected/,
