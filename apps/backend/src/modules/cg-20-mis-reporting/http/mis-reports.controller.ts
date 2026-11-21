@@ -2,6 +2,7 @@ import {Body,Controller,Get,Header,Headers,Param,Patch,Post,StreamableFile} from
 import {MisReportSourceService} from "../application/mis-report-source.service";
 import {MisSavedReportService} from "../application/mis-saved-report.service";
 import {MisReportRunService} from "../application/mis-report-run.service";
+import {MisReportScheduleService} from "../application/mis-report-schedule.service";
 
 /** Private report catalog and live source preview. No arbitrary SQL or
  * persisted rows, and no anonymous/public route.
@@ -10,7 +11,8 @@ import {MisReportRunService} from "../application/mis-report-run.service";
 export class MisReportsController{
  constructor(private readonly source:MisReportSourceService,
   private readonly saved:MisSavedReportService,
-  private readonly runs:MisReportRunService){}
+  private readonly runs:MisReportRunService,
+  private readonly schedule:MisReportScheduleService){}
  @Get("templates")
  @Header("Cache-Control","private, no-store")
  templates(@Headers("authorization")token:string){
@@ -67,6 +69,31 @@ export class MisReportsController{
   const file=await this.runs.download(token,ref);
   return new StreamableFile(file.bytes,{type:file.mime,
    disposition:'attachment; filename="'+file.filename+'"'});
+ }
+
+ @Get("schedules")
+ @Header("Cache-Control","private, no-store")
+ scheduleList(@Headers("authorization")token:string){
+  return this.schedule.list(token);
+ }
+ @Post("schedules")
+ @Header("Cache-Control","private, no-store")
+ scheduleCreate(@Headers("authorization")token:string,@Body()body:unknown){
+  return this.schedule.create(token,body);
+ }
+ @Post("schedules/:scheduleRef/pause")
+ @Header("Cache-Control","private, no-store")
+ schedulePause(@Headers("authorization")token:string,@Param("scheduleRef")ref:string,
+  @Body()body:unknown){return this.schedule.pause(token,ref,body);}
+ @Post("schedules/:scheduleRef/resume")
+ @Header("Cache-Control","private, no-store")
+ scheduleResume(@Headers("authorization")token:string,@Param("scheduleRef")ref:string){
+  return this.schedule.resume(token,ref);
+ }
+ @Get("schedules/:scheduleRef/history")
+ @Header("Cache-Control","private, no-store")
+ scheduleHistory(@Headers("authorization")token:string,@Param("scheduleRef")ref:string){
+  return this.schedule.history(token,ref);
  }
 
 }
