@@ -7,6 +7,7 @@ type Summary={month:string;state:string;settlementRef?:string;revision?:number;
  approvedFoundationMinor:string;actualPaidMinor:string;
  centerGrossServicesMinor?:string;patientPayableMinor?:string;
  patientCollectedVerifiedMinor?:string;patientRefundedMinor?:string;
+ partnerPatientCollectedAttestedMinor?:string;
  foundationApprovedLiabilityMinor?:string;
  originalApprovedFoundationMinor?:string;
  effectiveState?:string;originalClaimState?:string;adjustedFoundationMinor?:string;
@@ -164,6 +165,8 @@ export function MonthlyProviderSettlementWorkspace({canPropose,canReview,canPay}
       <dd>{money(data.patientPayableMinor??"0")}</dd>
       <dt>Center patient collections verified to date for these services</dt>
       <dd>{money(data.patientCollectedVerifiedMinor??"0")}</dd>
+      <dt>Partner-attested patient collections for approved pharmacy/nursing/OT</dt>
+      <dd>{money(data.partnerPatientCollectedAttestedMinor??"0")}</dd>
       <dt>Center patient refunds/corrections to date</dt>
       <dd>{money(data.patientRefundedMinor??"0")}</dd>
       <dt>Original approved Foundation liability</dt>
