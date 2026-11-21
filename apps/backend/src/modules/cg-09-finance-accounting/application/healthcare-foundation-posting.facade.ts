@@ -98,7 +98,7 @@ export class HealthcareFoundationPostingFacade{
     !amount(original.amountMinor)||
     !/^[a-f0-9]{64}$/.test(original.originalDigest)||
     !/^[a-f0-9]{64}$/.test(original.correctionDigest)||
-    !/^\\d{4}-\\d{2}-\\d{2}$/.test(original.postingDate)||
+    !/^\d{4}-\d{2}-\d{2}$/.test(original.postingDate)||
     original.reason.length<12||original.reason.length>300)
    throw new BadRequestException({code:"CG17_ACCRUAL_REVERSAL_INVALID"});
   const originalJournal=await c.query<{source_ref:string;created_by:string;
