@@ -10,7 +10,7 @@ type Metric={key:string;label:string;unit:"INR_MINOR"|"COUNT";value:string};
 type FinanceTrend={type:"MONTHLY_FINANCE";windowLabel:string;
  state:"AVAILABLE"|"EMPTY"|"FAILED";
  points:{month:string;incomeMinor:string;expenseMinor:string}[]};
-type Source={sourceKey:string;state:"AVAILABLE"|"EMPTY"|"FAILED";sourceLabel:string;
+type Source={sourceKey:string;state:"AVAILABLE"|"EMPTY"|"SUPPRESSED"|"FAILED";sourceLabel:string;
  readAt?:string;metrics:Metric[];drilldown?:string;explanation?:string;
  trend?:FinanceTrend};
 
@@ -156,16 +156,29 @@ export class MisDashboardService{
   // Neither row-level patient names nor center/branch extrapolations are allowed.
   const patientSource:Promise<Source|null>=view==="FINANCE"?
    Promise.resolve(null):this.patients.readMisTotals(bearer,healthFilter)
-   .then(x=>({sourceKey:"CG15_APPOINTMENT_STATES",
-    state:x.bookings==="0"?"EMPTY" as const:"AVAILABLE" as const,
+   .then(x=>{
+    // Prevent small-cell or membership inference from status filters.
+    // A requested single-center/date/status slice with 1–4 people, or a
+    // nonzero 1–4 status breakdown, is not safe to publish as a dashboard.
+    const values=[x.completed,x.waiting,x.cancelled].map(BigInt);
+    const total=BigInt(x.bookings);
+    const other=total-values.reduce((a,v)=>a+v,0n);
+    const restricted=total>0n&&(total<5n||
+     [...values,other].some(n=>n>0n&&n<5n));
+    return {sourceKey:"CG15_APPOINTMENT_STATES",
+    state:restricted?"SUPPRESSED" as const:
+     x.bookings==="0"?"EMPTY" as const:"AVAILABLE" as const,
     sourceLabel:"Foundation Appointments · Current state totals",
     readAt:new Date().toISOString(),
-    metrics:x.bookings==="0"?[]:[
+    metrics:restricted||x.bookings==="0"?[]:[
      {key:"bookings",label:"Total appointments",unit:"COUNT" as const,value:x.bookings},
      {key:"completed",label:"Completed appointments",unit:"COUNT" as const,value:x.completed},
      {key:"waiting",label:"In progress or waiting",unit:"COUNT" as const,value:x.waiting},
      {key:"cancelled",label:"Cancelled appointments",unit:"COUNT" as const,value:x.cancelled}
-    ],explanation:"Foundation-wide status counts only; no patient files or individual care data."}))
+    ],explanation:restricted?
+      "Appointment statistics are hidden for this small group to protect privacy.":
+      "Authorized appointment status totals; no patient files or individual care data."};
+   })
    .catch((error:unknown)=>{
     if(error instanceof UnauthorizedException||error instanceof BadRequestException)
      throw error;
@@ -178,8 +191,10 @@ export class MisDashboardService{
   const sources:Source[]=results.filter((x):x is Source=>x!==null);
   const available=sources.filter(s=>s.state==="AVAILABLE").length;
   const empty=sources.filter(s=>s.state==="EMPTY").length;
+  const suppressed=sources.filter(s=>s.state==="SUPPRESSED").length;
   return {state:available?(failures?"PARTIAL":"AVAILABLE"):
    empty?(failures?"PARTIAL":"NO_DATA"):
+   suppressed?(failures?"PARTIAL":"SUPPRESSED"):
    failures?"FAILED":"NO_AUTHORIZED_SOURCES",readAt,
    scopeLabel:healthFilter.centerRef?"Selected verified healthcare center":
     filters.branchRef?"Permitted selected branch":"Current original-owner scope",
