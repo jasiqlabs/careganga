@@ -514,6 +514,7 @@ export const SAFE_MESSAGE_CATALOG:Readonly<Record<string,string>>=Object.freeze(
       CG17_PROVIDER_PAYOUT_PAYABLE_ACCOUNT_MISMATCH:"The provider payout could not be confirmed. Refresh the source record and ask an authorized reviewer if needed.",
       CG17_PROVIDER_PAYOUT_REPLAY_CONFLICT:"The provider payout changed during this action. Refresh the original record before retrying.",
       CG17_PROVIDER_RECOVERY_ALREADY_USED:"The verified bank destination, payout or recovery evidence is incomplete or changed. Ask Finance to confirm the original bank record before continuing.",
+      CG17_SETTLEMENT_SOURCE_CHANGED:"Your original center statement changed during export. Refresh the month and try again.",
       CG17_SETTLEMENT_ALREADY_EXISTS:"The original monthly Foundation settlement is already recorded or reviewed. Check its current status before retrying.",
       CG17_SETTLEMENT_ALREADY_PREPARED:"The original monthly Foundation settlement is already recorded or reviewed. Check its current status before retrying.",
       CG17_SETTLEMENT_ALREADY_REVIEWED:"The original monthly Foundation settlement is already recorded or reviewed. Check its current status before retrying.",
