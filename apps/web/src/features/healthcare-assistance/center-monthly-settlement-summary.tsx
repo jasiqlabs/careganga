@@ -9,7 +9,8 @@ type Summary={
  centerGrossServicesMinor?:string;patientPayableMinor?:string;
  patientCollectedVerifiedMinor?:string;patientRefundedMinor?:string;
  foundationApprovedLiabilityMinor?:string;
- originalApprovedFoundationMinor?:string;adjustedFoundationMinor?:string;
+ originalApprovedFoundationMinor?:string;
+ effectiveState?:string;adjustedFoundationMinor?:string;
  grossFoundationPaidMinor?:string;verifiedProviderRecoveryMinor?:string;
  patientCollectionNotFoundationIncome:true
 };
@@ -94,7 +95,9 @@ export function CenterMonthlySettlementSummary({centerRef}:Props){
   {!!error&&<p role="alert">{error}</p>}
   {data&&<div>
    <p role="status">Foundation settlement: <strong>{data.state==="NOT_PREPARED"?
-    "Monthly claim not yet prepared":data.state.replaceAll("_"," ")}</strong></p>
+    "Monthly claim not yet prepared":(data.effectiveState??data.state).replaceAll("_"," ")}</strong></p>
+   {data.effectiveState&&data.effectiveState!==data.state&&
+    <p>Original recorded claim state: {data.state.replaceAll("_"," ")}.</p>}
    <dl>
     <dt>Eligible completed consultation value (gross)</dt>
     <dd>{money(data.centerGrossServicesMinor)}</dd>
