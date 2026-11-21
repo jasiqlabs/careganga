@@ -39,8 +39,9 @@ const currency=(v:string)=>{
 /** US-001 original owner API, real native task-first dashboard. No private
  * data/identity in Public Android and no arbitrary report source queries.
  */
-export function NativeMisDashboard({token,onExpired,onOpenFinance}:{
- token:string;onExpired:()=>void;onOpenFinance?:()=>void}){
+export function NativeMisDashboard({token,onExpired,onOpenFinance,onOpenPatientAdmin}:{
+ token:string;onExpired:()=>void;onOpenFinance?:()=>void;
+ onOpenPatientAdmin?:()=>void}){
  const [overview,setOverview]=useState<Overview|null>(null);
  const [busy,setBusy]=useState(true),[problem,setProblem]=useState("");
  const [optionsError,setOptionsError]=useState("");
@@ -203,6 +204,11 @@ export function NativeMisDashboard({token,onExpired,onOpenFinance}:{
      {!!onOpenFinance&&source.sourceKey==="CG09_POSTED_FINANCE"&&
       <Pressable accessibilityRole="button" style={styles.refresh} onPress={onOpenFinance}>
        <Text style={styles.link}>Open detailed finance reports</Text>
+      </Pressable>}
+     {!!onOpenPatientAdmin&&source.sourceKey==="CG15_APPOINTMENT_STATES"&&
+      <Pressable accessibilityRole="button" style={styles.refresh}
+       onPress={onOpenPatientAdmin}>
+       <Text style={styles.link}>Open patient management</Text>
       </Pressable>}
     </>:<Text style={styles.helper}>{source.state==="EMPTY"?
       "No records found for this permitted reporting scope.":
