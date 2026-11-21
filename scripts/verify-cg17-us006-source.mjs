@@ -246,8 +246,8 @@ must("monthly",/cg17_liability_correction corrected/,
 must("correctionSql",/cg17_liability_correction_immutable/,
  "Correction proof and reviewer history must be append-only");
 const correctionMigration=read(files.correctionSql);
-assert.equal((correctionMigration.match(/\$cg17\$/g)??[]).length,2,
- "Single CG17 protected evidence trigger requires balanced dollar delimiters");
+assert.equal((correctionMigration.match(/\$cg17\$/g)??[]).length,4,
+ "Both CG17 protected evidence and claim-safety triggers require balanced dollar delimiters");
 assert.equal((correctionMigration.match(/\$cg09\$/g)??[]).length,2,
  "CG09 original reverse-proof guard must use matching dollar delimiters");
 console.log("CG17 US006 month and verified-payout source parse/contract preflight PASS. "+
