@@ -217,7 +217,7 @@ must("correctionSql",/CREATE OR REPLACE FUNCTION cg09_require_manual_reversal_pr
  "CG09 deferred journal reversal must require original immutable proof");
 must("correctionSql",/EXISTS\(SELECT 1 FROM provider_settlement_line/,
  "Original claimed/paid liability cannot be silently reversed");
-must("correction",/requireFreshFoundationRootProof\(c,a,x\.currentPassword\)/,
+must("correction",/requireFreshFoundationRootProof\(c,a,currentPassword\)/,
  "Fresh CG01 current password is mandatory on actual protected correction");
 must("correction",/this\.protectedOwner\.verifyReviewer\(c,a,"approvals\.review",true\)/,
  "Only independently authorized Foundation protected reviewer may correct");
