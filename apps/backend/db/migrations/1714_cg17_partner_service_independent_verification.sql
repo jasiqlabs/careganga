@@ -126,6 +126,10 @@ BEGIN
   RAISE EXCEPTION 'Original clinical/service invoice proof is unavailable'
    USING ERRCODE='P1735';
  END IF;
+ IF NEW.payment_file_ref IS DISTINCT FROM source.payment_file_ref THEN
+  RAISE EXCEPTION 'Original patient-submitted payment evidence changed'
+   USING ERRCODE='P1736';
+ END IF;
  IF NEW.payment_file_ref IS NOT NULL AND NOT EXISTS(
   SELECT 1 FROM cg19_patient_private_file f
   JOIN cg19_patient_file_intent i ON i.realm_id=f.realm_id AND i.id=f.intent_id
