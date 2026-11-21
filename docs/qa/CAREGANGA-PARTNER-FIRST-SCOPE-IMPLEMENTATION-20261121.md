@@ -56,3 +56,13 @@ Original CG14 public status endpoint now returns safe statusLabel + applicant ne
 ### Integration ancestry readback — concurrent main change (21 November 2026)
 
 Latest connected-GitHub ancestry comparison: main now contains the entire feature/careganga-cg16-cg17-healthcare-dev-20261120 tree and is one merge-history commit ahead of that parent (compare reports **zero changed files**). This partner-first branch is 51 commits ahead of its parent and one merge-only commit behind main, with no source difference caused by that additional main commit. Do **not** force-push, rewrite main history or equate the main integration commit with any verified runtime QA. Keep this partner-first work separate and merge only following original CG17 complete finance source, qualified reviews and developer-executed release gates.
+
+## 21 Nov 2026 — Main alignment and original safe-message integration status
+
+Main was merged INTO this feature branch via PR #15, commit 2441732d, with zero file conflicts; initial comparison was 53 ahead and zero behind. Main is unchanged and feature not merged to main. This supersedes the earlier historical note stating branch was one behind main.
+
+Original CG01 SafeErrorsFilter and SAFE_MESSAGE_CATALOG used; no second framework. Partner registration Web/admin/Public Android/Internal Android fields, retries and status now map original safe message codes and business names, not internal UUIDs. Public Web proxy forwards reviewed allowlisted errors only. Original doctor name search no longer relies on first 50 records.
+
+Manual connected-GitHub source audit inspected changed 76 CG09/CG14–19 backend files and found 296 previously unmapped literal exception codes, now represented in original server-safe catalog. Source-text readback found 633 distinct catalog codes, no duplicate code keys and no message length/markup violations in static inspection. Existing all-source runner now includes verify:healthcare-safe-errors-source; original CG14 partner-first checker expanded. Static reviewer readback only, scripts NOT_EXECUTED; not whole repository runtime proof.
+
+Remaining actual financial source gap: CG17 ERP-OFF verified pharmacy/nursing/OT services, approved discount, real consented patient payment, immutable proof-backed Foundation liability and monthly verified provider settlement. Original consultation-only SQL safeguards preserved. Not source-complete, not runtime-tested, and not authorized for main merge or client release. Developer build and real QA separate after all source is ready.
