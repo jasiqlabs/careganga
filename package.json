@@ -49,6 +49,7 @@
     "verify:cg16-us004-source": "node scripts/verify-cg16-us004-source.mjs",
     "verify:cg19-client-source": "node scripts/verify-cg19-client-source.mjs",
     "verify:cg21-source": "node scripts/verify-cg21-source.mjs",
+    "verify:cg20-source": "node scripts/verify-cg20-source.mjs",
     "verify:migration-history-source": "node scripts/verify-migration-history-source.mjs",
     "verify:local-source-preflight": "npm run verify:all-source",
     "build:backend": "npm run build -w apps/backend",
