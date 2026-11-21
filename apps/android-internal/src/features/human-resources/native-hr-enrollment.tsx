@@ -2,6 +2,7 @@ import React,{useCallback,useEffect,useRef,useState} from "react";
 import {NativeHrEvidence,type HrFile} from "./native-hr-evidence";
 import {NativeHrReviews} from "./native-hr-reviews";
 import {NativeHrPrivate} from "./native-hr-private";
+import {NativeHrAttendance} from "./native-hr-attendance";
 import {NativeHrBioConsent} from "./native-hr-bio-consent";
 import * as Crypto from "expo-crypto";
 import {ActivityIndicator,Pressable,ScrollView,StyleSheet,Text,TextInput,View} from "react-native";
@@ -31,9 +32,9 @@ async function api(token:string,path:string,method="GET",body?:object){
  ),{status:response.status});
  return response.json() as Promise<unknown>;
 }
-export function NativeHrEnrollment({token,canView,canManage,canReview,canViewEmployees,canSelectAccounts,canSelectRoles,canViewPrivate,canManagePrivate,canConfigureReviews,onExit,onExpired}:{
+export function NativeHrEnrollment({token,canView,canManage,canReview,canViewEmployees,canSelectAccounts,canSelectRoles,canViewPrivate,canManagePrivate,canConfigureReviews,canConfigureAttendance,onExit,onExpired}:{
  token:string;canView:boolean;canManage:boolean;canReview:boolean;canViewEmployees:boolean;canSelectAccounts:boolean;
- canSelectRoles:boolean;canViewPrivate:boolean;canManagePrivate:boolean;canConfigureReviews:boolean;
+ canSelectRoles:boolean;canViewPrivate:boolean;canManagePrivate:boolean;canConfigureReviews:boolean;canConfigureAttendance:boolean;
  onExit:()=>void;onExpired:()=>void
 }){
  const [apps,setApps]=useState<Application[]>([]);
@@ -353,6 +354,8 @@ export function NativeHrEnrollment({token,canView,canManage,canReview,canViewEmp
       <Text style={styles.muted}>Profile unavailable until your session is verified.</Text>}
    </View>
    <NativeHrBioConsent token={token} onExpired={onExpired}/>
+   <NativeHrAttendance token={token} onExpired={onExpired}
+     canConfigure={canConfigureAttendance}/>
    {canManage&&<View style={styles.card}>
     <Text style={styles.h2}>{selected?"Correct application draft":"Create employee draft"}</Text>
     <Text style={styles.muted}>Saving never activates an employee or grants system access.

@@ -1,0 +1,227 @@
+import React,{useCallback,useEffect,useRef,useState} from "react";
+import {ActivityIndicator,Pressable,StyleSheet,Text,TextInput,View} from "react-native";
+import * as Crypto from "expo-crypto";
+import {identityRequest} from "../identity-access/http-client";
+
+type Day={date:string;status:string;checkInAt:string};
+type Mine={status:string;shift?:{label:string;timeZone:string;start:string;end:string}|null;days:Day[]};
+type Branch={branchRef:string;label:string};
+type Person={reference:string;name:string;designation:string};
+type Rule={policyRef:string;label:string;timeZone:string;start:string;end:string;effectiveFrom:string};
+const today=()=>new Date().toISOString().slice(0,10); // admin policy date input only
+async function api(token:string,path:string,method="GET",body?:object):Promise<unknown>{
+ const res=await identityRequest("/api/hr/"+path,{method,cache:"no-store",
+  headers:{Authorization:"Bearer "+token,...(body?{"Content-Type":"application/json"}:{})},
+  ...(body?{body:JSON.stringify(body)}:{})});
+ const data:unknown=await res.json().catch(()=>null);
+ if(!res.ok){
+  const message=res.status===401?"Your login has expired. Sign in again.":
+   res.status===403?"Your current employment or branch does not permit this action.":
+   res.status===409?"This attendance or shift record changed. Refresh first.":
+   data&&typeof data==="object"&&"message" in data&&typeof data.message==="string"?
+   data.message:"Unable to confirm this staff attendance action.";
+  throw Object.assign(new Error(message),{status:res.status});
+ }
+ return data;
+}
+/** Internal Android parity for the original CG10 shift + self check-in API. */
+export function NativeHrAttendance({token,canConfigure,onExpired}:{
+ token:string;canConfigure:boolean;onExpired:()=>void
+}){
+ const [mine,setMine]=useState<Mine|null>(null),[busy,setBusy]=useState(false);
+ const [loading,setLoading]=useState(true),[error,setError]=useState(""),[message,setMessage]=useState("");
+ const [branches,setBranches]=useState<Branch[]>([]),[branch,setBranch]=useState("");
+ const [staff,setStaff]=useState<Person[]>([]),[staffOffset,setStaffOffset]=useState(0);
+ const [policies,setPolicies]=useState<Rule[]>([]),[employee,setEmployee]=useState("");
+ const [policyId,setPolicyId]=useState("");
+ const [rule,setRule]=useState({name:"",timeZone:"",start:"09:00",end:"17:00",
+  graceMinutes:"0",breakMinutes:"0",effectiveFrom:today(),weeklyOffDays:[] as number[]});
+ const [validFrom,setValidFrom]=useState(today());
+ const checkKey=useRef<string|null>(null),policyKey=useRef<string|null>(null),
+  assignmentKey=useRef<string|null>(null);
+ const failure=useCallback((e:unknown)=>{
+  if(e&&typeof e==="object"&&"status" in e&&e.status===401)onExpired();
+  setError(e instanceof Error?e.message:"Unable to confirm attendance");
+ },[onExpired]);
+ const refresh=useCallback(async()=>{
+  setLoading(true);
+  try{
+   const value=await api(token,"me/attendance");
+   if(!value||typeof value!=="object"||!("status" in value)||!("days" in value)||
+    !Array.isArray(value.days))throw Error("Employee attendance is unavailable");
+   setMine(value as Mine);setError("");
+  }catch(e){setMine(null);failure(e);}
+  finally{setLoading(false);}
+ },[token,failure]);
+ useEffect(()=>{void refresh();},[refresh]);
+ useEffect(()=>{if(!canConfigure)return;let live=true;
+  void api(token,"employee-branches").then(v=>{
+   if(live&&v&&typeof v==="object"&&"items" in v&&Array.isArray(v.items))
+    setBranches(v.items as Branch[]);
+  }).catch(e=>{if(live){setBranches([]);failure(e);}});
+  return()=>{live=false;};
+ },[token,canConfigure,failure]);
+ useEffect(()=>{if(!canConfigure||!branch){setStaff([]);setPolicies([]);return;}
+  let live=true;
+  void Promise.all([api(token,"employees?branch="+encodeURIComponent(branch)+
+   "&offset="+staffOffset),api(token,"shift-policies?branch="+encodeURIComponent(branch))])
+   .then(([persons,rules])=>{
+    if(!live)return;
+    setStaff(persons&&typeof persons==="object"&&"items" in persons&&Array.isArray(persons.items)?
+      persons.items as Person[]:[]);
+    setPolicies(rules&&typeof rules==="object"&&"items" in rules&&Array.isArray(rules.items)?
+      rules.items as Rule[]:[]);
+   }).catch(e=>{if(live){setStaff([]);setPolicies([]);failure(e);}});
+  return()=>{live=false;};
+ },[token,canConfigure,branch,staffOffset,failure]);
+ const checkIn=async()=>{
+  if(busy)return;setBusy(true);setError("");setMessage("");
+  const key=checkKey.current??Crypto.randomUUID();checkKey.current=key;
+  try{
+   const result=await api(token,"me/attendance/check-in","POST",{requestKey:key});
+   if(!result||typeof result!=="object"||!("recorded" in result)||
+    result.recorded!==true)throw Error("Check-in could not be confirmed");
+   checkKey.current=null;setMessage("Check-in recorded using the verified server clock.");
+   await refresh();
+  }catch(e){failure(e);}
+  finally{setBusy(false);}
+ };
+ const change=(key:keyof typeof rule,value:string|number[])=>{
+  setRule(x=>({...x,[key]:value}));policyKey.current=null;
+ };
+ const savePolicy=async()=>{
+  if(busy||!branch||!rule.name.trim()||!rule.timeZone.trim())return;
+  setBusy(true);setError("");setMessage("");
+  const key=policyKey.current??Crypto.randomUUID();policyKey.current=key;
+  try{
+   await api(token,"shift-policies","POST",{requestKey:key,branchRef:branch,
+    name:rule.name,timeZone:rule.timeZone,start:rule.start,end:rule.end,
+    graceMinutes:Number(rule.graceMinutes),breakMinutes:Number(rule.breakMinutes),
+    weeklyOffDays:rule.weeklyOffDays,effectiveFrom:rule.effectiveFrom});
+   policyKey.current=null;setMessage("Shift policy saved.");
+   const refreshed=await api(token,"shift-policies?branch="+encodeURIComponent(branch));
+   if(refreshed&&typeof refreshed==="object"&&"items" in refreshed&&
+    Array.isArray(refreshed.items))setPolicies(refreshed.items as Rule[]);
+  }catch(e){failure(e);}
+  finally{setBusy(false);}
+ };
+ const assign=async()=>{
+  if(busy||!employee||!policyId)return;setBusy(true);setError("");setMessage("");
+  const key=assignmentKey.current??Crypto.randomUUID();assignmentKey.current=key;
+  try{
+   await api(token,"shift-assignments","POST",{requestKey:key,
+    employeeReference:employee,policyRef:policyId,validFrom});
+   assignmentKey.current=null;setMessage("Employee shift assignment confirmed.");
+  }catch(e){failure(e);}
+  finally{setBusy(false);}
+ };
+ const field=(label:string,value:string,onChange:(v:string)=>void,placeholder:string)=>
+  <View style={styles.field}><Text style={styles.label}>{label}</Text>
+   <TextInput accessibilityLabel={label} style={styles.input} value={value}
+    onChangeText={onChange} placeholder={placeholder} placeholderTextColor="#94A3B8"
+    autoCapitalize="none"/></View>;
+ return <View style={styles.container}>
+  <View style={styles.card}>
+   <Text style={styles.title}>My attendance</Text>
+   {loading&&<ActivityIndicator accessibilityLabel="Loading my attendance"/>}
+   {!!error&&<Text accessibilityRole="alert" style={styles.error}>{error}</Text>}
+   {!!message&&<Text accessibilityRole="text" style={styles.success}>{message}</Text>}
+   {mine?.status==="NOT_LINKED"&&<Text style={styles.muted}>No approved employment is linked to your account.</Text>}
+   {mine?.status==="NO_CURRENT_SHIFT"&&<Text style={styles.muted}>HR has not assigned your current branch shift.</Text>}
+   {mine?.shift&&<>
+    <Text style={styles.label}>{mine.shift.label}</Text>
+    <Text style={styles.muted}>{mine.shift.start}–{mine.shift.end} · {mine.shift.timeZone}</Text>
+    <Pressable accessibilityRole="button" accessibilityState={{disabled:busy}} disabled={busy}
+     onPress={()=>void checkIn()} style={styles.primary}>
+     <Text style={styles.primaryText}>{busy?"Checking…":"Check in using server time"}</Text></Pressable>
+   </>}
+   <Pressable accessibilityRole="button" onPress={()=>void refresh()} style={styles.outline}>
+    <Text style={styles.outlineText}>Refresh attendance</Text></Pressable>
+   {mine?.days?.map(d=><View key={d.date} style={styles.listItem}>
+    <Text style={styles.label}>{d.date} · {d.status}</Text>
+    <Text style={styles.muted}>Check-in: {new Date(d.checkInAt).toLocaleString()}</Text>
+   </View>)}
+  </View>
+  {canConfigure&&<View style={styles.card}>
+   <Text style={styles.title}>Staff shifts</Text>
+   <Text style={styles.muted}>Create an actual branch shift and assign an approved employee.</Text>
+   <Text style={styles.label}>Foundation branch</Text>
+   <View style={styles.choices}>{branches.map(x=><Pressable key={x.branchRef}
+    accessibilityRole="button" accessibilityState={{selected:x.branchRef===branch}}
+    style={[styles.chip,branch===x.branchRef&&styles.active]} onPress={()=>{
+     setBranch(x.branchRef);setEmployee("");setPolicyId("");setStaffOffset(0);
+     policyKey.current=null;assignmentKey.current=null;}}>
+    <Text style={branch===x.branchRef?styles.activeText:styles.chipText}>{x.label}</Text>
+   </Pressable>)}</View>
+   {!!branch&&<>
+    {field("Shift name",rule.name,v=>change("name",v),"Shift name")}
+    {field("IANA timezone",rule.timeZone,v=>change("timeZone",v),"e.g. Asia/Kolkata")}
+    {field("24-hour start",rule.start,v=>change("start",v),"09:00")}
+    {field("24-hour end",rule.end,v=>change("end",v),"17:00")}
+    {field("Grace minutes",rule.graceMinutes,v=>change("graceMinutes",v),"0")}
+    {field("Break minutes",rule.breakMinutes,v=>change("breakMinutes",v),"0")}
+    {field("Effective date YYYY-MM-DD",rule.effectiveFrom,
+     v=>change("effectiveFrom",v),"YYYY-MM-DD")}
+    <Text style={styles.label}>Weekly days off (tap to select)</Text>
+    <View style={styles.choices}>{["Sun","Mon","Tue","Wed","Thu","Fri","Sat"].map((label,n)=>
+     <Pressable key={label} accessibilityRole="button"
+      accessibilityState={{selected:rule.weeklyOffDays.includes(n)}}
+      style={[styles.chip,rule.weeklyOffDays.includes(n)&&styles.active]}
+      onPress={()=>change("weeklyOffDays",rule.weeklyOffDays.includes(n)?
+       rule.weeklyOffDays.filter(d=>d!==n):[...rule.weeklyOffDays,n])}>
+      <Text style={rule.weeklyOffDays.includes(n)?styles.activeText:styles.chipText}>{label}</Text>
+     </Pressable>)}</View>
+    <Pressable accessibilityRole="button" disabled={busy||!rule.name.trim()||!rule.timeZone.trim()}
+     style={styles.primary} onPress={()=>void savePolicy()}>
+     <Text style={styles.primaryText}>Save shift policy</Text></Pressable>
+    <Text style={styles.label}>Approved employee</Text>
+    <View style={styles.choices}>{staff.map(x=><Pressable key={x.reference}
+     accessibilityRole="button" accessibilityState={{selected:employee===x.reference}}
+     style={[styles.chip,employee===x.reference&&styles.active]}
+     onPress={()=>{setEmployee(x.reference);assignmentKey.current=null;}}>
+     <Text style={employee===x.reference?styles.activeText:styles.chipText}>
+      {x.name} · {x.designation}</Text>
+    </Pressable>)}</View>
+    {staffOffset>0&&<Pressable accessibilityRole="button"
+     onPress={()=>setStaffOffset(v=>Math.max(0,v-25))} style={styles.outline}>
+     <Text style={styles.outlineText}>Previous employees</Text></Pressable>}
+    {staff.length===25&&<Pressable accessibilityRole="button"
+     onPress={()=>setStaffOffset(v=>v+25)} style={styles.outline}>
+     <Text style={styles.outlineText}>Next employees</Text></Pressable>}
+    <Text style={styles.label}>Shift policy</Text>
+    <View style={styles.choices}>{policies.map(p=><Pressable key={p.policyRef}
+     accessibilityRole="button" accessibilityState={{selected:policyId===p.policyRef}}
+     style={[styles.chip,policyId===p.policyRef&&styles.active]}
+     onPress={()=>{setPolicyId(p.policyRef);assignmentKey.current=null;}}>
+     <Text style={policyId===p.policyRef?styles.activeText:styles.chipText}>
+      {p.label} · {p.start}–{p.end} · {p.timeZone} (from {p.effectiveFrom})</Text>
+    </Pressable>)}</View>
+    {field("Assignment date YYYY-MM-DD",validFrom,v=>{setValidFrom(v);
+     assignmentKey.current=null;},"YYYY-MM-DD")}
+    <Pressable accessibilityRole="button" disabled={busy||!employee||!policyId}
+     style={styles.primary} onPress={()=>void assign()}>
+     <Text style={styles.primaryText}>Assign employee shift</Text></Pressable>
+   </>}
+  </View>}
+ </View>;
+}
+const styles=StyleSheet.create({
+ container:{gap:14,marginVertical:12},
+ card:{backgroundColor:"#fff",borderWidth:1,borderColor:"#E2E8F0",borderRadius:16,padding:15,gap:8},
+ title:{fontSize:17,fontWeight:"700",color:"#0F172A"},
+ label:{fontWeight:"600",fontSize:13,color:"#334155"},
+ muted:{fontSize:13,color:"#64748B",lineHeight:20},
+ primary:{backgroundColor:"#087F8C",padding:13,borderRadius:10,alignItems:"center",marginTop:5},
+ primaryText:{fontWeight:"700",color:"#fff"},
+ outline:{padding:10,backgroundColor:"#F1F5F9",borderRadius:9,alignSelf:"flex-start"},
+ outlineText:{fontWeight:"600",color:"#0F172A"},
+ error:{padding:10,color:"#991B1B",backgroundColor:"#FEF2F2",borderRadius:10},
+ success:{padding:10,color:"#166534",backgroundColor:"#ECFDF5",borderRadius:10},
+ listItem:{paddingVertical:8,borderTopWidth:1,borderColor:"#E2E8F0"},
+ field:{gap:4,marginTop:6},input:{minHeight:47,borderWidth:1,borderColor:"#CBD5E1",
+  borderRadius:9,padding:12,color:"#0F172A",backgroundColor:"#fff"},
+ choices:{flexDirection:"row",flexWrap:"wrap",gap:7},
+ chip:{padding:9,borderWidth:1,borderColor:"#CBD5E1",borderRadius:9},
+ active:{backgroundColor:"#0369A1",borderColor:"#0369A1"},
+ chipText:{color:"#334155",fontSize:13},activeText:{color:"#fff",fontSize:13,fontWeight:"700"}
+});
