@@ -1,5 +1,12 @@
 # CareGanga Foundation — AI Agent and Developer Entry Point (JASIQ Harness v2)
 
+## Start/finish trigger — root AGENTS.md invokes the reviewed central Harness
+
+**At the start of any coding-agent task**, this root `AGENTS.md` is the repository instruction entry point. Use the **existing reviewed Harness pin and `scripts/resolve-jasiq-harness.py`** below, then read the verified `jasiq-harness/AGENTS.md` and relevant `jasiq-*` skill; no copied Harness or automatic unreviewed branch switch. When the new shared Harness review-checkpoint version is formally reviewed/merged and this product pin is updated, its meaningful-completion instructions become active for this product.
+
+**Before declaring a new story source-complete, updating its final original `tasks.md` status, or handing off substantial newly implemented work:** initiate the pinned Harness's independent, impact-selected source review (architecture/code/security/NFR/source QA + affected DB/UIUX/native/Web parity/provider), fix identified current-owner defects immediately, obtain separate re-review of changed code and log the verified checkpoint in the existing tracker. If a genuine separate reviewer or its reviewed Harness version is not yet available, label the independent clearance pending, never fabricate it. Keep incremental commits lightweight. No fresh full-module scan of unchanged code; actual builds/device/provider/DB checks remain separate.
+
+
 ## 21 November 2026 owner rule — durable task updates, no repeated source redevelopment
 
 **Before any source update, propagation or QA-status claim:** read the latest selected owner `tasks.md` `## Execution progress` and current feature HEAD. Every changed implementation, permission, route, UI action, worker, QA decision, discovered/closed defect or cross-module dependency **must update that same owner story checkpoint** in the source change set or in the immediate tracker-only correction before further work. Record the exact reason, impacted files/surfaces, affected original QA IDs, evidence, destination owner (if any) and next finite closure action. If a tracker is older than related commits, repair `TRACKER_STALE`; do not redo a whole-module audit. Resume by inspecting only new source diffs and affected security/contract/QA cases; preserve earlier traced unchanged evidence. No extra tracker, new stage, CI/GH Actions or runtime PASS from source reading.
