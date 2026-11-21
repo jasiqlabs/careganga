@@ -4,7 +4,9 @@ import * as Crypto from "expo-crypto";
 import {careGangaTheme as t} from "../../../../../packages/design-tokens/src/index";
 import {identityRequest} from "../identity-access/http-client";
 type Status={resultRef:string;reportDigest:string;releaseState:string;
- patientDownloadAvailable:boolean};
+ patientDownloadAvailable:boolean;
+ notificationStates?:{channel:string;state:string}[];
+ notificationDelivered?:boolean};
 type Props={token:string;centerRef:string;orderRef:string;onExpired:()=>void};
 export function NativeLabReportRelease({token,centerRef,orderRef,onExpired}:Props){
  const [status,setStatus]=useState<Status|null>(null);
