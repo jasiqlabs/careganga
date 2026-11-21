@@ -1,5 +1,5 @@
 "use client";
-import {useCallback,useEffect,useState} from "react";
+import {useCallback,useEffect,useRef,useState} from "react";
 import {CmsPublicPage,type PublicCmsPage} from "./cms-public-page";
 import {clientScreenshotHome} from "./cms-client-screenshot-reference";
 type Kind="HOME"|"ABOUT";
@@ -213,6 +213,10 @@ export function CmsAdminWorkspace({canManage,canPublish,canReview}:{
  const [uploadAlt,setUploadAlt]=useState(""),[rights,setRights]=useState(false);
  const [busy,setBusy]=useState(false),[notice,setNotice]=useState(""),[error,setError]=useState("");
  const [pending,setPending]=useState<Command|null>(null);
+ // CG19 is the only media-intent owner. Retain the same intent identity
+ // after an uncertain network/storage response instead of creating a
+ // second key when the editor selects the same original file again.
+ const mediaAttempt=useRef<{fingerprint:string;key:string;uploadRef:string|null}|null>(null);
  const refresh=useCallback(async()=>{
   try{const x=await read<{pages:PageItem[]}>("pages");
    setPages(x.pages.filter(p=>p.kind==="HOME"||p.kind==="ABOUT"));}
@@ -394,7 +398,7 @@ export function CmsAdminWorkspace({canManage,canPublish,canReview}:{
   finally{setBusy(false);}
  }
  async function upload(file:File,placement?:{role:Asset["role"];order:number}){
-  if(!selected||selected.status!=="DRAFT"||busy)return;
+  if(!selected||selected.status!=="DRAFT"||busy||pending)return;
   if(!rights){setError("Confirm that the Foundation may publish this image.");return;}
   if(!uploadAlt.trim()||file.size<1||file.size>10485760||
    !["image/jpeg","image/png","image/webp"].includes(file.type)){
@@ -404,30 +408,74 @@ export function CmsAdminWorkspace({canManage,canPublish,canReview}:{
   try{
    const sha=Array.from(new Uint8Array(await crypto.subtle.digest("SHA-256",await file.arrayBuffer())))
     .map(x=>x.toString(16).padStart(2,"0")).join("");
+   const role=placement?.role??uploadRole,rawOrder=placement?.order??uploadOrder;
+   const order=role==="ABOUT"?20:role==="PROMO"?30:rawOrder;
+   const fingerprint=JSON.stringify([selected.pageRef,selected.revisionRef,
+    file.type,file.size,sha,role,order,uploadAlt.trim()]);
+   const old=mediaAttempt.current;
+   if(old&&old.fingerprint!==fingerprint)
+    throw Error("An earlier private upload is not resolved. Re-select the SAME "+
+     "original file, placement and description to verify it first.");
+   const attempt=old??{fingerprint,key:crypto.randomUUID(),uploadRef:null};
+   mediaAttempt.current=attempt;
+   const attach=(fileRef:string,version:number)=>{
+    const item:Asset={fileRef,version,role,altText:uploadAlt.trim(),order};
+    setDraft(current=>({...current,assets:[...current.assets.filter(x=>
+     x.role!==role||x.order!==order),item]}));
+    mediaAttempt.current=null;setUploadAlt("");setRights(false);
+    setNotice("Original CG19 scanned image is verified. Save the current draft "+
+     "before submitting it for independent review.");
+   };
+   if(attempt.uploadRef){
+    const prior=await read<{status:string;cleanVerified:boolean;
+     fileRef:string|null;validatedVersion:number|null}>(
+      "media/"+encodeURIComponent(attempt.uploadRef));
+    if(prior.cleanVerified&&prior.fileRef&&prior.validatedVersion){
+     attach(prior.fileRef,prior.validatedVersion);return;
+    }
+    if(["REJECTED","EXPIRED","EXPIRED_OR_REJECTED"].includes(prior.status)){
+     mediaAttempt.current=null;
+     throw Error("The original private upload is confirmed rejected or expired. "+
+      "Choose the file again and start a fresh verified upload.");
+    }
+   }
    const initiated=await read<{uploadRef:string;status:string;uploadUrl?:string;
     uploadHeaders?:Record<string,string>}>("media/initiate",{
     method:"POST",headers:{"Content-Type":"application/json"},
     body:JSON.stringify({pageRef:selected.pageRef,revisionRef:selected.revisionRef,
-     requestKey:crypto.randomUUID(),mime:file.type,sizeBytes:file.size,
+     requestKey:attempt.key,mime:file.type,sizeBytes:file.size,
      sha256:sha,rightsConfirmed:true})});
-   if(initiated.status!=="UPLOAD_READY"||!initiated.uploadUrl||!initiated.uploadHeaders)
-    throw Error("Secure upload is unavailable. No image has been attached.");
-   const put=await fetch(initiated.uploadUrl,{method:"PUT",headers:initiated.uploadHeaders,
-    body:file,cache:"no-store"});
-   if(!put.ok)throw Error("The image upload was not confirmed.");
-   const confirmed=await read<{cleanVerified:boolean;fileRef:string|null;validatedVersion:number|null}>(
-    "media/"+initiated.uploadRef+"/confirm",{method:"POST",headers:{"Content-Type":"application/json"},
-     body:"{}"});
+   if(!initiated.uploadRef)
+    throw Error("Original CG19 media intent could not be confirmed.");
+   attempt.uploadRef=initiated.uploadRef;
+   if(initiated.status==="VALIDATED"){
+    const prior=await read<{cleanVerified:boolean;fileRef:string|null;
+     validatedVersion:number|null}>("media/"+encodeURIComponent(initiated.uploadRef));
+    if(prior.cleanVerified&&prior.fileRef&&prior.validatedVersion){
+     attach(prior.fileRef,prior.validatedVersion);return;
+    }
+   }
+   if(initiated.status!=="UPLOAD_READY"||!initiated.uploadUrl||
+    !initiated.uploadHeaders)
+    throw Error("Original CG19 media upload is not yet ready. Choose the SAME "+
+     "file to check its existing intent; no image has been attached.");
+   const target=new URL(initiated.uploadUrl);
+   if(target.protocol!=="https:"||target.username||target.password||target.hash||
+    initiated.uploadHeaders["Content-Type"]!==file.type)
+    throw Error("The signed private upload permission is invalid.");
+   const put=await fetch(initiated.uploadUrl,{method:"PUT",
+    headers:initiated.uploadHeaders,body:file,cache:"no-store"});
+   if(!put.ok)throw Error("Original image transfer is unconfirmed. "+
+    "Choose the same file to check its prior CG19 intent.");
+   const confirmed=await read<{cleanVerified:boolean;fileRef:string|null;
+    validatedVersion:number|null}>(
+     "media/"+encodeURIComponent(initiated.uploadRef)+"/confirm",{
+     method:"POST",headers:{"Content-Type":"application/json"},body:"{}"});
    if(!confirmed.cleanVerified||!confirmed.fileRef||!confirmed.validatedVersion)
-    throw Error("The image is awaiting secure validation. Check before uploading again.");
-   const role=placement?.role??uploadRole,order=placement?.order??uploadOrder;
-   const next:Asset={fileRef:confirmed.fileRef,version:confirmed.validatedVersion,
-    role,altText:uploadAlt.trim(),order:role==="ABOUT"?20:
-      role==="PROMO"?30:order};
-   setDraft(v=>({...v,assets:[...v.assets.filter(x=>x.role!==next.role||x.order!==next.order),next]}));
-   setUploadAlt("");setRights(false);
-   setNotice("Image verified. Save the draft to attach it to the page.");
-  }catch(e){setError(e instanceof Error?e.message:"Image could not be verified.");}
+    throw Error("Original private image scan or storage verification is pending. "+
+     "Choose the same file and check its original intent before another upload.");
+   attach(confirmed.fileRef,confirmed.validatedVersion);
+  }catch(e){setError(e instanceof Error?e.message:"Original CG19 upload unconfirmed.");}
   finally{setBusy(false);}
  }
  const previewData=payload(draft);
