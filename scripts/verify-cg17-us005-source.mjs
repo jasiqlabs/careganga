@@ -72,7 +72,11 @@ must("service",/this\.policy\(c,a\.realmId,charge\)/,
 must("service",/pg_advisory_xact_lock/,"Per-appointment transaction lock required");
 must("service",/LIABILITY_ACCRUAL/,"Only original obligation effect created");
 must("service",/effect_state:"PENDING"/,"No invented posted journal success");
-must("service",/providerSettled:false/,"No invented provider settlement success");
+must("service",/providerSettled:false/,"Never claim a missing obligation was paid");
+must("service",/providerSettled:effectiveState==="SETTLED"/,
+ "Real original CG17 provider settlement must reflect net verified bank payments after correction");
+must("service",/cg17_provider_claim_correction claimed_correction/,
+ "Previously claimed correction status must use the original CG17 source");
 assert.doesNotMatch(read(paths.service),/FROM center_collection/,
  "US005 liability must not depend on patient cash/US004");
 must("capabilities",/healthcare\.assistance\.liabilities\.manage/,
