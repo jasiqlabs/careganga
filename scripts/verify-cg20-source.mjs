@@ -113,7 +113,8 @@ contains(native+"features/mis-reporting/native-mis-saved.tsx",[
 // US-004: owned, real bytes, original protected file and clients.
 contains(mis+"application/mis-report-run.service.ts",[
  "cg20_report_run","this.files.issueFromReport","this.files.read",
- "validateSource","MIS_RUN_LIMIT","UNKNOWN"
+ "validateSource","MIS_RUN_LIMIT","UNKNOWN",
+ "if(!isNew&&row.state!==\"QUEUED\")","state=\u0027RUNNING\u0027"
 ]);
 contains(cg19+"application/mis-protected-artifact.service.ts",[
  "cg19_mis_report_artifact","writeVerifiedGeneratedReport",
