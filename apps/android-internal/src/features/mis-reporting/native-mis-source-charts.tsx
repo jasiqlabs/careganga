@@ -94,3 +94,21 @@ const s=StyleSheet.create({
   gap:10,paddingVertical:4},
  number:{fontSize:13,color:t.text,fontWeight:"700"}
 });
+
+/** Native grouped CG15 appointments, already privacy-suppressed server-side. */
+export function NativeMisAppointmentGroupBars({rows}:{
+ rows:{statusLabel:string;count:string}[]
+}){
+ const groups=rows.map(row=>({label:row.statusLabel,value:asBig(row.count)}));
+ const maximum=groups.reduce((n,row)=>row.value>n?row.value:n,0n);
+ return <View style={s.panel} accessibilityLabel="Verified appointment status group chart">
+  <Text accessibilityRole="header" style={s.heading}>Appointment status groups</Text>
+  {groups.map((row,i)=><View key={i} style={s.group}>
+   <Text style={s.note}>{row.label}: {row.value.toString()} appointments</Text>
+   <View style={s.track} accessibilityElementsHidden>
+    <View style={[s.bar,{backgroundColor:t.primary,
+     width:`${percent(row.value,maximum)}%` as const}]}/>
+   </View>
+  </View>)}
+ </View>;
+}
