@@ -86,6 +86,7 @@ export function NativeOwnCenterMis({token,centerRef,onExpired}:{
   ...(approved?[
    {label:"Monthly approved Foundation claim",amount:statement.approvedFoundationMinor},
    ...(statement.adjustedFoundationMinor&&
+     /^[0-9]{1,14}$/.test(statement.adjustedFoundationMinor)&&
      BigInt(statement.adjustedFoundationMinor)>0n?[
     {label:"Foundation claim before corrections",amount:statement.originalApprovedFoundationMinor},
     {label:"Confirmed corrections",amount:statement.adjustedFoundationMinor},
