@@ -9,14 +9,15 @@ import {parseHrDraft} from "../src/modules/cg-10-human-resources/application/hr-
 const id="22222222-2222-4222-8222-222222222222";
 const base=()=>({requestKey:id,name:"Amina Rahman",designation:"Field Coordinator",
  employmentType:"FULL_TIME",branchRef:id,departmentRef:null,
- hireDate:"2026-11-21",accountRef:null});
+ hireDate:"2026-11-21",accountRef:null,managerRef:null,roleRef:null});
 describe("CG-10 employee draft validation",()=>{
  test("minimum trusted employee draft accepts no fake salary, role or approval flags",()=>{
   const value=parseHrDraft(base());
   assert.equal(value.name,"Amina Rahman");
   assert.equal(value.employmentType,"FULL_TIME");
   assert.equal(value.accountRef,null);
-  assert.ok(!("roleRef" in value));
+  assert.equal(value.roleRef,null);
+  assert.equal(value.managerRef,null);
   assert.ok(!("employeeStatus" in value));
  });
  test("all employee types are explicitly allowlisted",()=>{
@@ -26,10 +27,17 @@ describe("CG-10 employee draft validation",()=>{
    assert.throws(()=>parseHrDraft({...base(),employmentType:kind}),BadRequestException);
  });
  test("rejects fake approval, bank, admin or arbitrary fields",()=>{
-  for(const unexpected of ["status","roleRef","permissions","salary",
+  for(const unexpected of ["status","permissions","salary",
     "bankAccount","cg03Approved","employeeRef","actorRef","rootRealmId"]){
    assert.throws(()=>parseHrDraft({...base(),[unexpected]:"test"}),BadRequestException);
   }
+ });
+ test("real manager and CG01 role ID remain proposals, not permissions",()=>{
+  const value=parseHrDraft({...base(),managerRef:id,roleRef:id});
+  assert.equal(value.managerRef,id);
+  assert.equal(value.roleRef,id);
+  assert.ok(!("permissions" in value));
+  assert.ok(!("grantAccess" in value));
  });
  test("rejects invalid dates including overflow days and unsafe input",()=>{
   for(const hireDate of ["2026-02-30","2026-13-01","2026-00-01",
@@ -37,7 +45,7 @@ describe("CG-10 employee draft validation",()=>{
    assert.throws(()=>parseHrDraft({...base(),hireDate}),BadRequestException);
  });
  test("request, branch, department and existing account identifiers are validated",()=>{
-  for(const field of ["requestKey","branchRef","departmentRef","accountRef"])
+  for(const field of ["requestKey","branchRef","departmentRef","accountRef","managerRef","roleRef"])
    assert.throws(()=>parseHrDraft({...base(),[field]:"foreign"}),BadRequestException);
  });
  test("source name and designation reject blank, controls and huge payload",()=>{
