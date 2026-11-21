@@ -711,13 +711,11 @@ export function StaffAuthenticationScreen() {
   );
 
   if (hrOpen && token && actor) {
-    if (!roleActions.includes("hr.applications.view")) {
-      return <AccessDeniedScreen reason="Your role cannot view employee applications."
-        onMyAccount={() => setHrOpen(false)}/>;
-    }
+    // Same actor self profile is open to every signed-in Foundation employee.
+    // Application list/create remain behind per-action server HR permissions.
     return renderInShell(<ScreenErrorBoundary onExit={() => setHrOpen(false)}>
       <Suspense fallback={<ActivityIndicator style={{marginTop:40}}/>}>
-        <NativeHrEnrollment token={token} canView={true}
+        <NativeHrEnrollment token={token} canView={roleActions.includes("hr.applications.view")}
           canManage={roleActions.includes("hr.applications.manage")}
           onExit={() => setHrOpen(false)} onExpired={expireSession}/>
       </Suspense>
