@@ -1,5 +1,5 @@
 import {useCallback,useEffect,useRef,useState} from "react";
-import {Pressable,StyleSheet,Text,TextInput,View} from "react-native";
+import {AppState,Pressable,StyleSheet,Text,TextInput,View} from "react-native";
 import {careGangaTheme as t} from "../../../../../packages/design-tokens/src/index";
 import {identityRequest} from "../identity-access/http-client";
 
@@ -73,6 +73,17 @@ export function NativeOwnCenterMis({token,centerRef,onExpired}:{
   }finally{if(generation===seq.current)setLoading(false);}
  },[centerRef,month,token,onExpired]);
  useEffect(()=>{void load();return()=>{seq.current++};},[load]);
+ // A center assignment may be revoked while staff leave the application.
+ // Discard previously fetched financial numbers and validate current
+ // CG14/CG17 scope on resume, never retain a stale center statement.
+ useEffect(()=>{
+  const subscription=AppState.addEventListener("change",state=>{
+   seq.current++;
+   setStatement(null);
+   if(state==="active")void load();
+  });
+  return()=>subscription.remove();
+ },[load]);
  const approved=statement&&["APPROVED","PARTIALLY_SETTLED","SETTLED"].includes(statement.state);
  const items:readonly {label:string;amount:string|undefined}[]=statement?[
   {label:"Eligible completed services",amount:statement.centerGrossServicesMinor},
