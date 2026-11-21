@@ -36,9 +36,17 @@ export type FoundationAdminNavProps = {
     | "healthNetwork"
     | "healthCenter"
     | "healthDoctors"
+    | "healthDiagnostics"
+    | "healthLabPricing"
+    | "healthLabOrders"
+    | "healthLabEquipment"
+    | "healthAssistancePolicies"
+    | "healthLiabilities"
+    | "healthSettlements"
     | "healthSchedules"
     | "healthPatientIntake"
     | "healthVisitQueue"
+    | "healthClinicianActivity"
     | "healthPatientAdmin";
   displayName: string;
   roleName: string;
@@ -66,6 +74,7 @@ export type FoundationAdminNavProps = {
   canViewFinanceReports?: boolean;
   canViewCms?: boolean;
   canViewHealthNetwork?: boolean;
+  labERPEnabled?: boolean;
   canViewCenterPortal?: boolean;
   canViewDoctors?: boolean;
   canViewSchedules?: boolean;
@@ -100,6 +109,13 @@ function getNavIcon(key: string) {
     case "healthNetwork":
     case "healthCenter":
     case "healthDoctors":
+    case "healthDiagnostics":
+    case "healthLabPricing":
+    case "healthLabOrders":
+    case "healthLabEquipment":
+    case "healthAssistancePolicies":
+    case "healthLiabilities":
+    case "healthSettlements":
     case "healthSchedules":
     case "healthPatientIntake":
     case "healthVisitQueue":
@@ -321,6 +337,7 @@ export function FoundationAdminNav({
   canViewFinanceReports = false,
   canViewCms = false,
   canViewHealthNetwork = false,
+  labERPEnabled = false,
   canViewCenterPortal = false,
   canViewDoctors = false,
   canViewSchedules = false,
@@ -671,9 +688,19 @@ export function FoundationAdminNav({
     : "/admin/health-network/content-reviews";
   const healthCenterAccess = allowed("health.centers.draft.edit", canViewCenterPortal);
   const doctorAccess = allowed("health.doctors.view", canViewDoctors);
+  const diagnosticsAccess = allowed("diagnostics.catalog.view", false);
+  const labPricingAccess = allowed("diagnostics.pricing.view", false);
+  const labOrderAccess = allowed("lab.orders.view", false)||allowed("lab.orders.create", false);
+  const equipmentAccess = labERPEnabled && allowed("lab.equipment.view", false);
+  const liabilityAccess = allowed("healthcare.assistance.liabilities.view",false);
+  const settlementAccess = allowed("healthcare.assistance.settlements.view",false) &&
+    allowed("health.providers.finance.view",false);
+  const assistancePolicyAccess = allowed("healthcare.assistance.policies.view", false)||
+    (allowed("healthcare.assistance.policies.review", false)&&allowed("approvals.review", false));
   const scheduleAccess = allowed("health.schedules.view", canViewSchedules);
   const patientIntakeAccess = allowed("health.patients.intake", canViewPatientIntake);
   const visitQueueAccess = allowed("health.visits.manage", canViewVisitQueue);
+  const clinicianActivityAccess = allowed("health.visits.clinical.manage",false);
   const patientAdminAccess = allowed("health.patients.admin.view", canViewPatientAdmin);
   const budgetAccess = currentActions ? currentActions.has("finance.budgets.view") : canViewBudgets;
   const budgetReviewAccess = currentActions
@@ -703,9 +730,17 @@ export function FoundationAdminNav({
       : []),
     ...(healthCenterAccess ? [{ key: "healthCenter" as const, label: "My Healthcare Center", href: "/center" }] : []),
     ...(doctorAccess ? [{ key: "healthDoctors" as const, label: "Doctor Registrations", href: "/admin/health-network/doctors" }] : []),
+    ...(diagnosticsAccess ? [{ key: "healthDiagnostics" as const, label: "Lab Test Master & Pricing", href: "/admin/health-network/diagnostics" }] : []),
+    ...(labPricingAccess ? [{ key: "healthLabPricing" as const, label: "My Lab Pricing", href: "/admin/health-network/lab-pricing" }] : []),
+    ...(labOrderAccess ? [{ key: "healthLabOrders" as const, label: "Lab Orders & Samples", href: "/admin/health-network/lab-orders" }] : []),
+    ...(equipmentAccess ? [{ key: "healthLabEquipment" as const, label: "Lab Equipment & Quality", href: "/admin/health-network/equipment" }] : []),
+    ...(assistancePolicyAccess ? [{ key: "healthAssistancePolicies" as const, label: "Foundation Contribution Policies", href: "/admin/health-network/assistance-policies" }] : []),
+    ...(liabilityAccess ? [{ key: "healthLiabilities" as const, label: "Foundation Healthcare Obligations", href: "/admin/health-network/liabilities" }] : []),
+    ...(settlementAccess ? [{ key: "healthSettlements" as const, label: "Healthcare Provider Settlements", href: "/admin/health-network/settlements" }] : []),
     ...(scheduleAccess ? [{ key: "healthSchedules" as const, label: "Doctor Schedules", href: "/admin/health-network/schedules" }] : []),
     ...(patientIntakeAccess ? [{ key: "healthPatientIntake" as const, label: "Register Patient", href: "/admin/health-network/patient-intake" }] : []),
     ...(visitQueueAccess ? [{ key: "healthVisitQueue" as const, label: "Consultation Queue", href: "/admin/health-network/queue" }] : []),
+    ...(clinicianActivityAccess ? [{ key: "healthClinicianActivity" as const, label: "My Consultations", href: "/admin/health-network/my-clinical-activity" }] : []),
     ...(patientAdminAccess ? [{ key: "healthPatientAdmin" as const, label: "Patient & Booking Management", href: "/admin/health-network/patients" }] : []),
     ...(financeAccess ? [{ key: "finance" as const, label: "Accounts", href: "/admin/finance" }] : []),
     ...(voucherAccess ? [{ key: "financeVouchers" as const, label: "Voucher Drafts", href: "/admin/finance/vouchers" }] : []),
@@ -746,9 +781,17 @@ export function FoundationAdminNav({
     healthNetwork: "Healthcare Providers",
     healthCenter: "My Healthcare Center",
     healthDoctors: "Doctor Registrations",
+    healthDiagnostics: "Lab Test Master & Pricing",
+    healthLabPricing: "My Lab Pricing",
+    healthLabOrders: "Lab Orders & Samples",
+    healthLabEquipment: "Lab Equipment & Quality",
+    healthAssistancePolicies: "Foundation Contribution Policies",
+    healthLiabilities: "Foundation Healthcare Obligations",
+    healthSettlements: "Healthcare Provider Settlements",
     healthSchedules: "Doctor Schedule & Availability",
     healthPatientIntake: "Patient Registration",
     healthVisitQueue: "Consultation Queue",
+    healthClinicianActivity: "My Consultations",
     healthPatientAdmin: "Patient & Booking Management",
     finance: "Finance & Accounting",
     financeReports: "Ledger & Reports",
@@ -905,7 +948,7 @@ export function FoundationAdminNav({
             { name: "USER & ACCESS MANAGEMENT", keys: ["accounts", "roles", "approvals", "policy"] },
             { name: "ORGANIZATION MANAGEMENT", keys: ["branches", "foundation", "cms"] },
             { name: "HEALTHCARE", keys: [
-              "healthNetwork", "healthCenter", "healthDoctors", "healthSchedules", "healthPatientIntake",
+              "healthNetwork", "healthCenter", "healthDoctors", "healthDiagnostics", "healthLabPricing", "healthLabOrders", "healthLabEquipment", "healthAssistancePolicies", "healthLiabilities", "healthSettlements", "healthSchedules", "healthPatientIntake",
               "healthVisitQueue", "healthPatientAdmin"
             ] },
             {

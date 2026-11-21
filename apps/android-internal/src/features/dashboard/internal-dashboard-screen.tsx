@@ -14,6 +14,7 @@ import {
 } from "./dashboard-modules";
 import { AuthenticatedAppShell } from "./authenticated-app-shell";
 import { OperationsOverview } from "./operations-overview";
+import {NativeClinicianAccountAcceptance} from "../health-network/native-clinician-account-link";
 import { AuthorizedModuleCard } from "./authorized-module-card";
 import { IconGrid, IconMenu } from "./dashboard-icons";
 
@@ -23,6 +24,7 @@ export interface InternalDashboardScreenProps {
   roleActions: string[];
   handlers: ModuleActionHandlers;
   onSignOut: () => void;
+  onExpired?: () => void;
   message?: string;
 }
 
@@ -31,6 +33,8 @@ export function InternalDashboardScreen({
   roleActions,
   handlers,
   onSignOut,
+  onExpired = onSignOut,
+  token,
   message
 }: InternalDashboardScreenProps) {
   const scrollRef = useRef<React.ComponentRef<typeof ScrollView>>(null);
@@ -93,6 +97,9 @@ export function InternalDashboardScreen({
             <Text style={styles.messageText}>{message}</Text>
           </View>
         )}
+
+        {/* Existing CG14 personal doctor-account acceptance, only visible when pending. */}
+        <NativeClinicianAccountAcceptance token={token} onExpired={onExpired}/>
 
         {/* Operations Overview with 3 KPI Cards */}
         <OperationsOverview

@@ -102,3 +102,12 @@ All applicable PRD N-01/N-04/N-05/N-09/N-11/N-12/N-13 and CG-NFR-600 controls ap
 CG-07 supplies original donation, intent, provider-confirmed success and correction/refund events; CG-09 owns money posting; CG-19 owns the landscape official PDF and email. New 20-Nov JPG is an additional design reference to older 16-Nov donation PDFs, not a replacement CG-09 finance invoice. CG-DON-001 sends after confirmed success **with no separate donation approval**. Duplicate charges are CG-DON-002/003 cases, not duplicate receipts. CG-REF-001–005 track Requested, Under Review, Approved, Processing, Processed, Failed and Rejected; provider-confirmed Processed only. Real legal/80G and signatory facts require CG-21 validation.
 
 **Status:** Owner integration and PDF/provider/runtime checks remain PENDING/NOT_RUN where absent; historical source-review evidence is unchanged.
+
+
+### 21 November 2026 — Owner-approved Web ↔ Android same-capability contract
+
+**Owner:** cg-07-campaigns-donations. **Current source:** FUTURE_OWNER_NOT_IMPLEMENTED. **Review scope:** original accepted stories/QA, merged owner source where present, current channel policy; delegated design-content review, not formal independent review or runtime/client approval. Preserve original module boundaries; no new story or feature added.
+
+**Required Web ↔ native audience mapping:** Authorized Admin/partner/center Web **↔ Internal Android** for donation/campaign administration, verified money reconciliation, receipt review and authorized contribution histories; public Web **↔ Public Android** only for published campaign discovery, genuine donor payment/confirmation, own receipt/status/history when its own original story actually authorizes that view. A Web-only spec or no native app assertion alone does not approve an exception. Staff records cannot be made public to satisfy parity. Reuse real CG-01 identity/scope, original backend/database, CG-01 visual system and approved client Admin/public reference, not duplicate client-specific ledgers or a WebView.
+
+**Completion gate:** both applicable channels implement the same original business actions within each authorized story; source existence/merge does not certify action parity, future modules remain unimplemented until their stage is authorized.

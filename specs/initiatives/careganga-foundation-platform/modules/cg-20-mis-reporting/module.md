@@ -83,3 +83,12 @@ All applicable PRD N-01/N-04/N-05/N-09/N-11/N-12/N-13 and CG-NFR-600 controls ap
 
 ## 18 November 2026 — original website receiving acceptance
 Original visitor/admin routes: **/our-impact; /ngo-information/annual-reports; /ngo-information/financial-reports**. Screenshots: **Batch01 020524,020538,020554,021020,021040**. Owner: true dated CG-20 impact figures and real CG-09/05 source metrics, CG-19 verified versioned reports. See [47-screen original source contract](../../../../../docs/research/CAREGANGA-ORIGINAL-PUBLIC-SCREENSHOT-QA-TRACE-20261118.md). Existing US-001/002/004 retained; screenshot controls are not backend operation proof.
+
+
+### 21 November 2026 — Owner-approved Web ↔ Android same-capability contract
+
+**Owner:** cg-20-mis-reporting. **Source status:** FUTURE_OWNER_NOT_IMPLEMENTED. Owner-delegated review/approval of these existing design requirements only, not permission to add stories or claim source-complete/runtime PASS. Current AGENTS.md Web↔Android rule applies to existing merged owners and future stories. Preserve original permission scopes, evidence/DB ownership and actual approved channels; no shadow files/audit/backup record or fake public disclosure.
+
+**Authorized channel contract:** Foundation Admin/assigned-operator Web **↔ Internal Android** for Foundation approved KPI, report filters, chart/table, export scheduling, history and scoped drill-down. Approved public/consented Web **↔ Public Android** only for approved public impact/annual/financial reports only when genuine owner sources and publication exist. A label saying “no owned native UI” is superseded unless separately approved by product owner as a concrete story-specific exception. Staff-only CGI financial, private file, immutable audit and backup operations never appear in Public Android. Use CG-01 authentic design, current backend API and original client Admin/public reference.
+
+**Delivery gate:** No module owner may be called source-complete until applicable Web/native same-actor business actions are actually implemented, traceable through real API and reviewed. Planned CG20 stays not implemented, and CG21's protected native work is a confirmed source gap.

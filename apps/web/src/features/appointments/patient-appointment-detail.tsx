@@ -1,5 +1,6 @@
 "use client";
 import Link from "next/link";
+import {ConsultationContribution} from "../healthcare-assistance/consultation-contribution";
 import {useCallback,useEffect,useRef,useState} from "react";
 type Booking={bookingRef:string;bookingId:string;doctorName:string;centerName:string;
  centerAddress:string;startAt:string;endAt:string;timeZone:string;
@@ -102,6 +103,7 @@ export function PatientAppointmentDetail({bookingRef}:{bookingRef:string}){
    <p><strong>Consultation fee:</strong> {money(booking.consultationFeeMinor)}</p>
    <p><strong>Payment status:</strong> {booking.collectionStatus.replaceAll("_"," ")}
     · {booking.paymentMode.replaceAll("_"," ")}</p>
+   <ConsultationContribution bookingRef={bookingRef}/>
    <p>CareGanga has not verified a payment for this appointment.
     Please confirm payment directly with the healthcare center.</p>
    {["CONFIRMED","ARRIVED","WAITING","IN_CONSULTATION"].includes(booking.bookingStatus)&&

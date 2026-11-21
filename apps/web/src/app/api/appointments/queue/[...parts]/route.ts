@@ -10,14 +10,21 @@ function fail(status:number,message:string,code?:string){
   {status,headers:{"Cache-Control":"private, no-store"}});
 }
 function allowed(parts:string[],method:string){
- return parts.length===1&&parts[0]==="my-centers"&&method==="GET"||
+ return parts.length===2&&parts[0]==="my-clinician"&&
+  parts[1]==="assignments"&&method==="GET"||
+  parts.length===6&&parts[0]==="my-clinician"&&
+   parts[1]==="centers"&&ID.test(parts[2])&&
+   parts[3]==="doctors"&&ID.test(parts[4])&&
+   parts[5]==="summary"&&method==="GET"||
+  parts.length===1&&parts[0]==="my-centers"&&method==="GET"||
   parts.length===2&&parts[0]==="my-centers"&&ID.test(parts[1])&&method==="GET"||
   parts.length===3&&parts[0]==="my-centers"&&ID.test(parts[1])&&
    parts[2]==="summary"&&method==="GET"||
   parts.length===3&&parts[0]==="my-centers"&&ID.test(parts[1])&&
    ["check-in","verify-slip","no-show"].includes(parts[2])&&method==="POST"||
   parts.length===5&&parts[0]==="my-centers"&&ID.test(parts[1])&&
-   parts[2]==="bookings"&&ID.test(parts[3])&&["history","clinical-history"].includes(parts[4])&&method==="GET"||
+   parts[2]==="bookings"&&ID.test(parts[3])&&
+   (parts[4]==="history"&&method==="GET"||parts[4]==="clinical-history"&&method==="GET")||
   parts.length===5&&parts[0]==="my-centers"&&ID.test(parts[1])&&
    parts[2]==="visits"&&ID.test(parts[3])&&parts[4]==="transition"&&method==="POST";
 }
@@ -39,7 +46,10 @@ async function run(req:NextRequest,parts:string[],method:"GET"|"POST"){
   }catch{return fail(400,"Check the visit details and try again.");}
  }
  const params=new URLSearchParams();
- if(method==="GET"&&(parts.length===2||parts.length===3&&parts[2]==="summary")){
+ const doctorDaily=parts.length===6&&parts[0]==="my-clinician"&&
+  parts[5]==="summary";
+ if(method==="GET"&&(parts.length===2&&parts[0]==="my-centers"||
+  parts.length===3&&parts[2]==="summary"||doctorDaily)){
   const day=req.nextUrl.searchParams.get("date");
   if(!day||!/^\d{4}-\d\d-\d\d$/.test(day))
    return fail(400,"Select a valid consultation date.");

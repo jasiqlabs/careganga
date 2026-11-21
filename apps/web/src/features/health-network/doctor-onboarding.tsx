@@ -7,7 +7,8 @@ import {ClinicianAccountLinkReviewer} from "./clinician-account-link";
 type DoctorForm={fullName:string;registrationJurisdiction:string;
   registrationNumber:string;qualifications:string[];specialties:string[];
   experienceYears:number;publicBio:string;
-  portraitRightsStatus:"NONE"|"CONSENT_PENDING"};
+  portraitRightsStatus:"NONE"|"CONSENT_PENDING";
+  professionalLicenseValidThrough:string|null};
 type DoctorRow={doctorRef:string;name:string;status:string;version:number;
   specialties:string[]};
 type Detail={doctorRef:string;status:string;version:number;doctor:DoctorForm};
@@ -16,7 +17,7 @@ type Files={files:{fileRef:string;status:string;cleanVerified:boolean;currentVer
 const empty=():DoctorForm=>({
   fullName:"",registrationJurisdiction:"",registrationNumber:"",
   qualifications:[],specialties:[],experienceYears:0,publicBio:"",
-  portraitRightsStatus:"NONE"
+  portraitRightsStatus:"NONE",professionalLicenseValidThrough:null
 });
 const label=(s:string)=>s.replaceAll("_"," ").toLowerCase()
   .replace(/\b\w/g,c=>c.toUpperCase());
@@ -201,6 +202,14 @@ export function DoctorOnboarding({canManage,canVerify}:{canManage:boolean;canVer
           <input required minLength={3} maxLength={80}
             value={form.registrationNumber} disabled={busy}
             onChange={e=>setForm({...form,registrationNumber:e.target.value})}/>
+        </label>
+        <label className="field">Professional licence valid through (if stated on the original licence)
+          <input type="date" value={form.professionalLicenseValidThrough??""}
+           disabled={busy} onChange={e=>setForm({...form,
+            professionalLicenseValidThrough:e.target.value||null})}/>
+          <small>Independent Foundation review must verify this date against
+           the original protected licence. Missing or expired validity means
+           this professional cannot sign laboratory reports.</small>
         </label>
         <label className="field">Experience in years
           <input type="number" min={0} max={70} step={1} required

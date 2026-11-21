@@ -27,7 +27,7 @@ dld_reason: Greenfield business model, authorization, transactional state and cr
 database_impact: CRITICAL
 database_reason: New source-owned CSR partners, funding proposals/agreements, commitments and allocations state requires reliable relational constraints, concurrency and migration.
 mobile_store_impact: NONE
-mobile_store_reason: No owned native Android UI for this module; other consumers use the same backend.
+mobile_store_reason: Authorized CSR Foundation Admin/partner staff operations require equivalent Internal Android journeys for the same enrolled role as the protected Web; approved public CSR content belongs in Public Android. No private CSR ledgers in Public Android.
 mobile_android_app_category: GENERAL
 mobile_android_policy_api: 36
 mobile_platform_baseline: For applicable Android, use approved Expo SDK 58/React Native 0.88/React 19.3/target API 36; verify exact compatible native dependency matrix and current Play requirements before Implementation.
@@ -84,3 +84,16 @@ All applicable PRD N-01/N-04/N-05/N-09/N-11/N-12/N-13 and CG-NFR-600 controls ap
 
 ## 18 November 2026 — original website receiving acceptance
 Original client routes: **/collaboration; CSR Partner enquiries**. Original captures **Batch02 021242, 021258 and 021318**. One true owner: verified CG-08 CSR partners and public logo rights; no screenshot-based false partnership claim. This requirement is linked to [the 47 public-screen alignment matrix](../../../../../docs/research/CAREGANGA-ORIGINAL-PUBLIC-SCREENSHOT-QA-TRACE-20261118.md). Preserve existing US-001/002/003 and do not seed screenshot claims as facts.
+
+
+### 21 November 2026 — Owner-approved Web ↔ Android same-capability contract
+
+**Owner:** cg-08-csr-funding. **Current source:** FUTURE_OWNER_NOT_IMPLEMENTED. **Review scope:** original accepted stories/QA, merged owner source where present, current channel policy; delegated design-content review, not formal independent review or runtime/client approval. Preserve original module boundaries; no new story or feature added.
+
+**Required Web ↔ native audience mapping:** Authorized Admin/partner/center Web **↔ Internal Android** for authorized CSR partner management, proposal, contribution, disbursement, deliverable and reporting workflows; public Web **↔ Public Android** only for only independently approved public CSR/editorial information, never private donor or funding ledgers when its own original story actually authorizes that view. A Web-only spec or no native app assertion alone does not approve an exception. Staff records cannot be made public to satisfy parity. Reuse real CG-01 identity/scope, original backend/database, CG-01 visual system and approved client Admin/public reference, not duplicate client-specific ledgers or a WebView.
+
+**Completion gate:** both applicable channels implement the same original business actions within each authorized story; source existence/merge does not certify action parity, future modules remain unimplemented until their stage is authorized.
+
+## 21 Nov 2026 — Existing /collaboration shared public entry; original CSR owner only
+
+Preserve the original Partnerships **/collaboration** CMS hero, approved partners and **Partner With Us / Let's Collaborate** visual as CG18 editorial publication. A single public partner-choice entry on that page directs actual **healthcare providers/professionals** to CG14's verified onboarding (hospital, clinic, lab, doctor, pharmacy, nursing, surgery/OT) and **corporate/CSR collaboration** to CG08's genuine CSR application **only after CG08 implementation**. CG08 does not create or verify CG14 clinical providers, CG17 patient discounts or monthly Foundation-to-healthcare-partner subsidy payouts. Its CSR funding pledge/receipt and CG09 account sources remain independently audited. Until CG08 exists, CSR CTA may be clearly labeled *Enquire about CSR partnership* through real CG19 contact, never 'application approved' or 'partner verified'. Retain original /collaboration screenshot layout, logo publication rights and existing 3 CG08 stories, no new operational master.

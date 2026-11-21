@@ -3,6 +3,18 @@ import {ConsultationQueueService} from "../application/consultation-queue.servic
 @Controller("api/v1/appointments/queue")
 export class ConsultationQueueController{
  constructor(private readonly queue:ConsultationQueueService){}
+ @Get("my-clinician/assignments")
+ @Header("Cache-Control","private, no-store")
+ ownClinicalAssignments(@Headers("authorization")bearer:string){
+  return this.queue.ownClinicianAssignments(bearer);
+ }
+ @Get("my-clinician/centers/:centerRef/doctors/:doctorRef/summary")
+ @Header("Cache-Control","private, no-store")
+ ownClinicalSummary(@Headers("authorization")bearer:string,
+  @Param("centerRef")center:string,@Param("doctorRef")doctor:string,
+  @Query("date")day:string){
+  return this.queue.ownClinicianSummary(bearer,center,doctor,day);
+ }
  @Get("my-centers")
  @Header("Cache-Control","private, no-store")
  options(@Headers("authorization")bearer:string){return this.queue.options(bearer);}

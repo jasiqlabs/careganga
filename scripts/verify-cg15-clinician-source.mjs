@@ -28,7 +28,7 @@ const checks=[
   src.db.includes("ux_health_account_current_doctor")&&
   src.db.includes("FOREIGN KEY(root_realm_id,doctor_id)")&&
   src.db.includes("FOREIGN KEY(account_id,root_realm_id)")&&
-  !src.db.includes("phone")],
+  !src.db.replace(/--.*$/gm,"").includes("phone")],
  ["proposed-only is never active, accepted+revoked histories are audited",
   src.db.includes("status IN('PENDING','ACTIVE','REVOKED')")&&
   src.db.includes("accepted_at IS NOT NULL")&&

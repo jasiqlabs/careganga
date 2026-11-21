@@ -131,3 +131,16 @@ In the ORIGINAL US-001/002/003 story QA, verify **real tier cards/search/verify,
 Extend existing US-002 / US-003 acceptance within existing scenario counts: real tier and fee, real source-authorized final approval, 3 approved PDFs complete before email, no duplicate ID on replay, volunteer free, QR revocation and prior version supersession, expiry/N/A and lifetime reminder suppression, privacy of volunteer card fields, cross-root/branch denial. Side-by-side compare client certificate, welcome letter and front/back volunteer JPGs in Web/PDF and relevant Android; runtime NOT_RUN.
 
 **Next JASIQ-dev cycle:** implement in real owner source → independent review/fix/re-review → trace existing story QA to code → render and compare original client JPG / provider test / real Web+Android; all actual executions NOT_RUN.
+
+
+### 21 November 2026 — Owner-approved Web ↔ Android same-capability contract
+
+**Owner:** cg-04-membership-volunteers. **Current source:** FUTURE_OWNER_NOT_IMPLEMENTED (existing source owner module absent from current backend tree). **Approval:** owner-delegated latest design clarification only; no implementation, runtime, independent or client sign-off. Reuse existing BR/PRD/HLD, canonical stories and original QA IDs; never add speculative features or depend on an undeveloped future owner.
+
+**Required equivalent authorized audiences:** Foundation Admin / assigned operator Web **↔ Internal Android** for Foundation membership/volunteer intake, application review, onboarding, assignment and approvals; approved public/consented Web **↔ Public Android** only for eligible member/volunteer registration, enrollment status, own membership self-service. Use exactly one owner service/API, CG-01 grant and current scope, and the CG-01 authentic design system; a native WebView or merely linking to Web does not satisfy equivalence. Neither new protected public view nor an unconditional Web-only exemption is approved. Explicit product-owner reason is required for any true platform exclusion.
+
+**Original QA case parity disposition:** Planned design only; `WEB_SOURCE=NOT_IMPLEMENTED`, `INTERNAL_ANDROID_SOURCE=NOT_IMPLEMENTED` when this story's staff view applies, `PUBLIC_WEB_SOURCE/PUBLIC_ANDROID_SOURCE=NOT_IMPLEMENTED` only for approved public actions (else `NOT_APPLICABLE` reason), `BACKEND_DB_SOURCE=NOT_IMPLEMENTED`, `WEB_RUNTIME_QA=NOT_RUN`, `ANDROID_DEVICE_QA=NOT_RUN`. Preserve existing QA identifiers and status; update/fix within original story after actual code, not a new QA registry. No automatic permission to start this future business module or merge.
+
+### 21 Nov 2026 — Member/volunteer CTA regression against partner acquisition
+
+**Within original CG04 US001/002/003 QA IDs (no new IDs):** Public Web and Public Android Join Now exposes only actual approved Become a Member and Become a Volunteer owner routes after CG04 implemented; as of checked source, CG18 returns both unavailable and CG04 is FUTURE_NOT_IMPLEMENTED. Partner With Us on /collaboration must never submit into CG04 member/volunteer tables, activate a CG01 role, or return a volunteer card as healthcare partner proof. Separate CG14 healthcare professional/provider eligibility and CG08 CSR registration. Positive/negative source QA to execute when CG04 is approved; actual QA NOT_RUN.

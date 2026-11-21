@@ -1,5 +1,6 @@
 "use client";
 import Link from "next/link";
+import {ConsultationContribution} from "../healthcare-assistance/consultation-contribution";
 import {useRef,useState} from "react";
 
 type Hold={holdRef:string;expiresAt:string;status:string;
@@ -202,8 +203,8 @@ export function PatientBookingAction(p:Props){
   <p style={{margin:"0 0 8px"}}><strong>{p.doctorName}</strong> · {p.centerName}</p>
   <p style={{margin:"0 0 8px"}}>{new Date(p.startAt).toLocaleString("en-IN",{
    timeZone:p.timeZone,dateStyle:"medium",timeStyle:"short"})} ({p.timeZone})</p>
-  <p style={{margin:"0 0 8px"}}>Consultation: {currency(p.feeMinor)} ·
-   <strong> Pay at center</strong>. No online charge or Foundation benefit is claimed.</p>
+  <p style={{margin:"0 0 8px"}}>Approved consultation fee: {currency(p.feeMinor)} ·
+   <strong> Pay at center</strong>. An actual Foundation contribution quote is shown before confirmation. No payment is collected online.</p>
   {!!message&&<p role="status" aria-live="polite">{message}</p>}
    {!confirmed&&!uncertain&&!review&&<label style={{display:"grid",gap:4,marginBlock:8}}>
     Reason for consultation (optional, private)
@@ -214,8 +215,11 @@ export function PatientBookingAction(p:Props){
     <small>Your current patient-care consent is recorded with this encrypted
      reason. It is not printed on the appointment slip or sent in notifications.</small>
    </label>}
-  {confirmed?<p><strong>Booking confirmed: {confirmed.bookingId}</strong>.
-   <Link href="/patients/me"> View my patient profile</Link></p>:
+  {confirmed?<div>
+   <p><strong>Booking confirmed: {confirmed.bookingId}</strong>.
+    <Link href="/patients/me"> View my patient profile</Link></p>
+   <ConsultationContribution bookingRef={confirmed.bookingRef}/>
+  </div>:
    uncertain?<div>
     <p role="alert">The previous action may have succeeded. Do not make a second payment or new booking.</p>
     <button disabled={busy} type="button" onClick={()=>void checkOriginal()}>
@@ -228,8 +232,9 @@ export function PatientBookingAction(p:Props){
      <p>Healthcare center: <strong>{p.centerName}</strong></p>
      <p>Consultation time: {new Date(p.startAt).toLocaleString("en-IN",{
       timeZone:p.timeZone,dateStyle:"medium",timeStyle:"short"})}</p>
-     <p>Total consultation fee: <strong>{currency(hold.consultationFeeMinor)}</strong>.
-      The full amount is due at the center. No payment has been collected.</p>
+     <p>Approved consultation fee: <strong>{currency(hold.consultationFeeMinor)}</strong>.
+      Your applicable Foundation support and patient amount are verified separately below.</p>
+     <ConsultationContribution holdRef={hold.holdRef}/>
      <p>Optional private consultation reason: {reasonForVisit.trim()?
       "Included in the private booking":"Not provided"}.</p>
      <button type="button" className="primary" disabled={busy}

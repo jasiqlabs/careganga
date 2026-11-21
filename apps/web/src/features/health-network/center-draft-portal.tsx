@@ -3,6 +3,10 @@ import {useCallback,useEffect,useRef,useState} from "react";
 import {CenterEditor,type CenterDraft} from "./center-editor";
 import {HealthEvidenceUploader} from "./health-evidence-uploader";
 import {CenterDoctorFees} from "./center-doctor-fees";
+import {CenterLabPricingPanel} from "../diagnostics/center-lab-pricing-panel";
+import {LabEquipmentWorkspace} from "../diagnostics/lab-equipment-workspace";
+import {CenterMerchantBinding} from "../healthcare-assistance/center-merchant-binding";
+import {CenterMonthlySettlementSummary} from "../healthcare-assistance/center-monthly-settlement-summary";
 import {CenterSupportDesk} from "./center-support-desk";
 import {CenterContentEditor} from "./center-content-editor";
 import {CenterErpCapabilityPanel} from "./center-erp-capability-panel";
@@ -21,7 +25,16 @@ async function get<T>(path:string):Promise<T>{
     typeof result.message==="string"?result.message:"Pending center unavailable");
   return result as T;
 }
-export function CenterDraftPortal(){
+export function CenterDraftPortal({canViewLabPricing=false,canManageLabPricing=false,
+ canViewLabEquipment=false,canManageLabEquipment=false,canUploadLabQuality=false,
+ canProposeMerchant=false,canVerifyMerchant=false,canViewSettlements=false,
+ labERPEnabled=false}:{
+ canViewLabPricing?:boolean;canManageLabPricing?:boolean;
+ canViewLabEquipment?:boolean;canManageLabEquipment?:boolean;
+ canUploadLabQuality?:boolean;labERPEnabled?:boolean;
+ canProposeMerchant?:boolean;canVerifyMerchant?:boolean;
+ canViewSettlements?:boolean
+}){
   const [centers,setCenters]=useState<Row[]>([]);
   const [active,setActive]=useState<Detail|null>(null);
   const [draft,setDraft]=useState<CenterDraft|null>(null);
@@ -132,8 +145,16 @@ export function CenterDraftPortal(){
         <p><a href={"/healthcare/centers/"+encodeURIComponent(active.publicSlug)}>
           View approved public page</a></p>}
       <p>Only the Foundation may approve, activate or publish this center.</p>
+      {canViewSettlements&&active.status==="VERIFIED"&&active.accessState==="ENABLED"&&
+       <CenterMonthlySettlementSummary key={"settlement:"+active.centerRef}
+        centerRef={active.centerRef}/>}
       {active.status==="PENDING"&&<CenterEditor value={draft} identityLocked
         disabled={saving} onChange={setDraft}/>}
+      {active.status==="VERIFIED"&&active.accessState==="ENABLED"&&
+       (canProposeMerchant||canVerifyMerchant)&&
+       <CenterMerchantBinding key={"merchant:"+active.centerRef}
+        centerRef={active.centerRef} canPropose={canProposeMerchant}
+        canVerify={canVerifyMerchant}/>}
       {active.status==="VERIFIED"&&active.accessState==="ENABLED"&&
         <CenterDoctorFees key={active.centerRef} centerRef={active.centerRef}/>}
       {active.status==="VERIFIED"&&active.accessState==="ENABLED"&&
@@ -147,6 +168,16 @@ export function CenterDraftPortal(){
         <CenterContentEditor key={"content:"+active.centerRef} centerRef={active.centerRef}/>}
       {active.status==="VERIFIED"&&active.accessState==="ENABLED"&&
         <CenterSupportDesk key={"support:"+active.centerRef} centerRef={active.centerRef}/>}
+      {active.status==="VERIFIED"&&active.accessState==="ENABLED"&&
+       draft.capabilities.includes("DIAGNOSTICS")&&canViewLabPricing&&
+       <CenterLabPricingPanel key={"lab:"+active.centerRef}
+        centerRef={active.centerRef} canManage={canManageLabPricing}/>}
+      {labERPEnabled&&active.status==="VERIFIED"&&
+       active.accessState==="ENABLED"&&
+       draft.capabilities.includes("DIAGNOSTICS")&&canViewLabEquipment&&
+       <LabEquipmentWorkspace key={"equipment:"+active.centerRef}
+        fixedCenterRef={active.centerRef} canView
+        canManage={canManageLabEquipment} canUpload={canUploadLabQuality}/>}
       {active.status==="VERIFIED"&&active.accessState==="ENABLED"&&
         <CenterErpCapabilityPanel key={"erp:"+active.centerRef} centerRef={active.centerRef}/>}
 

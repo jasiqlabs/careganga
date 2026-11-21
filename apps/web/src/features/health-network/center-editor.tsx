@@ -5,6 +5,7 @@ export type CenterDraft={
   centerCode:string;displayName:string;centerType:string;addressLine:string;
   stateRef:string;districtRef:string;blockRef:string|null;pinCode:string;
   latitude:number|null;longitude:number|null;timeZone:string;publicPhone:string|null;
+  diagnosticLicenseValidThrough:string|null;
   hours:{weekday:number;openLocal:string;closeLocal:string;serviceType:string}[];
   capabilities:string[];
 };
@@ -27,7 +28,7 @@ export function blankCenter():CenterDraft{
   return {centerCode:"",displayName:"",centerType:"CLINIC",addressLine:"",
     stateRef:"",districtRef:"",blockRef:null,pinCode:"",
     latitude:null,longitude:null,timeZone:"Asia/Kolkata",publicPhone:null,
-    hours:[],capabilities:[]};
+    diagnosticLicenseValidThrough:null,hours:[],capabilities:[]};
 }
 async function fetchAreas(level:string,parentRef?:string):Promise<Option[]>{
   const params=new URLSearchParams({level,...(parentRef?{parentRef}:{})});
@@ -127,6 +128,15 @@ export function CenterEditor({value,onChange,disabled=false,identityLocked=false
         <input type="tel" value={value.publicPhone??""} disabled={disabled}
           maxLength={16} onChange={e=>set("publicPhone",e.target.value||null)}/>
       </label>
+      {value.capabilities.includes("DIAGNOSTICS")&&
+       <label className="field">Diagnostic licence valid through
+        <input type="date" value={value.diagnosticLicenseValidThrough??""}
+         disabled={disabled} onChange={e=>set("diagnosticLicenseValidThrough",
+          e.target.value||null)}/>
+        <small>Use the actual date on the diagnostic licence.
+         It must be supported by the uploaded licence and independently
+         verified before laboratory prices can be published.</small>
+       </label>}
       <label className="field">Latitude (optional)
         <input type="number" step="0.000001" min="-90" max="90" disabled={disabled}
           value={value.latitude??""}

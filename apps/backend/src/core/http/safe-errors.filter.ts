@@ -57,7 +57,7 @@ export class SafeErrorsFilter implements ExceptionFilter {
        "navigation","heading","body","source","asOfDate","verifiedAsOf","validUntil",
        "verification","documents","galleryMedia","categories","healthcareClaims","ctaPath",
        "ctaLabel","group","items","members","percentage","pan","mediaType","tags","publicReleaseConfirmed",
-       "heroSlides","sourceNoticeRef","provider","providerCode","legalName","providerType",
+       "heroSlides","sourceNoticeRef","testCode","testRef","packageCode","packageRef","categoryRef","sampleType","tests","itemRef","mappingRef","priceRef","effectiveFromUtc","effectiveToUtc","basePriceMinor","patientPriceMinor","discountReason","expectedMappingVersion","provider","providerCode","legalName","providerType",
        "contactName","contactPhone","contactEmail","registrationRef","center","centers",
        "centerRef","centerCode","displayName","centerType","addressLine","stateRef",
        "districtRef","blockRef","pinCode","latitude","longitude","coordinates","timeZone",

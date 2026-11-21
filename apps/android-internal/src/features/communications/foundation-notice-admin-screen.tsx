@@ -1,5 +1,5 @@
 import {useCallback,useEffect,useState} from "react";
-import {ActivityIndicator,BackHandler,Pressable,ScrollView,StyleSheet,
+import {ActivityIndicator,Alert,BackHandler,Pressable,ScrollView,StyleSheet,
   Text,TextInput,View} from "react-native";
 import {SafeAreaView} from "react-native-safe-area-context";
 import * as Crypto from "expo-crypto";
@@ -13,6 +13,9 @@ type Notice={noticeRef:string;title:string;body:string;state:string;
   expiresAt:string;scheduledAt:string|null;createdAt:string};
 type Review={ref:string;revision:number;action:"APPROVE"|"CANCEL"};
 type Provider={channel:string;state:string;configured:boolean};
+type ClientEmailReference={code:string;title:string;owner:string;trigger:string;
+ recipient:string;subject:string;body:string;attachmentRule:string;
+ placeholders:string[];state:string;deliveryEnabled:false};
 type Props={token:string;mayManage:boolean;mayApprove:boolean;mayProcess:boolean;
   mayViewDelivery:boolean;maySelectAccounts:boolean;maySelectRoles:boolean;
   onExit:()=>void;onExpired:()=>void};
@@ -57,6 +60,12 @@ export function FoundationNoticeAdminScreen({token,mayManage,mayApprove,mayProce
   const [reviewKey,setReviewKey]=useState(""),[reviewUnknown,setReviewUnknown]=useState(false);
   const [busy,setBusy]=useState(false),[loading,setLoading]=useState(false);
   const [notice,setNotice]=useState("");
+  const [emailOpen,setEmailOpen]=useState(false);
+  const [emailLoading,setEmailLoading]=useState(false);
+  const [emailReferences,setEmailReferences]=useState<ClientEmailReference[]>([]);
+  const [emailSearch,setEmailSearch]=useState("");
+  const [emailSelected,setEmailSelected]=useState("");
+  const [emailImportUnknown,setEmailImportUnknown]=useState(false);
   const load=useCallback(async()=>{
     setLoading(true);
     try{
@@ -90,13 +99,25 @@ export function FoundationNoticeAdminScreen({token,mayManage,mayApprove,mayProce
       }).catch(()=>{if(live)setNotice("Current audience options unavailable.")});
     return()=>{live=false};
   },[audienceKind,mayManage,maySelectAccounts,maySelectRoles,token]);
+  const leave=useCallback(()=>{
+    if(draftUnknown||reviewUnknown||emailImportUnknown){
+      Alert.alert("Original Foundation request not confirmed",
+        "The previous notice, approval or template import may have "+
+        "committed. Leaving loses the local request/reconciliation state.",[
+          {text:"Check original request",style:"cancel"},
+          {text:"Leave anyway",style:"destructive",onPress:onExit}
+        ]);
+      return;
+    }
+    onExit();
+  },[draftUnknown,reviewUnknown,emailImportUnknown,onExit]);
   useEffect(()=>{
     const sub=BackHandler.addEventListener("hardwareBackPress",()=>{
-      if(review){setReview(null);return true}
-      onExit();return true;
+      if(review&&!reviewUnknown){setReview(null);return true}
+      leave();return true;
     });
     return()=>sub.remove();
-  },[review,onExit]);
+  },[review,reviewUnknown,leave]);
   async function create(){
     if(!mayManage||busy||draftUnknown)return;
     if(!expiresAt||!Number.isFinite(Date.parse(expiresAt))||
@@ -184,6 +205,57 @@ export function FoundationNoticeAdminScreen({token,mayManage,mayApprove,mayProce
     }catch(e){setNotice(explain(e))}
     finally{setBusy(false)}
   }
+  async function loadClientEmailReferences(){
+    if(!mayManage||emailLoading||busy)return;
+    setEmailLoading(true);setNotice("");
+    try{
+      const result=await api<{templates:ClientEmailReference[];total:number;
+        deliveryEnabled:false}>(token,"client-email-templates");
+      if(result.total!==52||result.deliveryEnabled!==false||
+        !Array.isArray(result.templates)||result.templates.length!==52||
+        result.templates.some(t=>!t.code||!t.title||!t.subject||!t.body||
+          !Array.isArray(t.placeholders)||t.deliveryEnabled!==false))
+        throw Error("UNKNOWN");
+      setEmailReferences(result.templates);
+      // Import is a single original atomic, disabled-only transaction.
+      // A lost response can be reconciled from the real persisted statuses.
+      if(emailImportUnknown){
+        const all=result.templates.every(t=>t.state==="SOURCE_DRAFT");
+        setEmailImportUnknown(false);
+        setNotice(all?
+          "All 52 client email references are confirmed as disabled drafts. No mail was sent.":
+          "Some original email references remain unimported or changed. "+
+          "Review the source status before retrying the safe disabled-draft import.");
+      }
+    }catch(e){
+      setNotice(explain(e));
+      if(e instanceof Error&&e.message==="EXPIRED")onExpired();
+    }finally{setEmailLoading(false)}
+  }
+  async function importClientEmailDrafts(){
+    if(!mayManage||busy||emailLoading||emailImportUnknown)return;
+    setBusy(true);setNotice("");
+    try{
+      const result=await api<{imported:number;alreadyPresent:number;
+        total:number;deliveryEnabled:false}>(token,
+        "client-email-templates/import-drafts","POST");
+      if(result.total!==52||result.deliveryEnabled!==false||
+        !Number.isSafeInteger(result.imported)||
+        !Number.isSafeInteger(result.alreadyPresent)||
+        result.imported+result.alreadyPresent!==52)
+        throw Error("UNKNOWN");
+      setEmailImportUnknown(false);
+      setNotice(result.imported+" original client references saved as disabled drafts; "+
+        result.alreadyPresent+" already existed. No emails were sent.");
+      setEmailReferences([]);
+    }catch(e){
+      if(e instanceof Error&&e.message==="UNKNOWN")setEmailImportUnknown(true);
+      setNotice(e instanceof Error&&e.message==="CONFLICT"?
+        "Existing client email text differs from the approved source. "+
+        "Review the source version; no emails were sent.":explain(e));
+      if(e instanceof Error&&e.message==="EXPIRED")onExpired();
+    }finally{setBusy(false)}
+  }
   async function recovery(kind:"process-due"|"recover-decisions"){
     if(!mayProcess||busy)return;
     setBusy(true);setNotice("");
@@ -197,7 +269,7 @@ export function FoundationNoticeAdminScreen({token,mayManage,mayApprove,mayProce
   return <SafeAreaView style={s.page} edges={["left","right"]}>
     <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={s.content}>
       <View style={s.row}>
-        <Pressable style={s.button} accessibilityRole="button" onPress={onExit}>
+        <Pressable style={s.button} accessibilityRole="button" onPress={leave}>
           <Text>Back</Text></Pressable>
         <Text style={s.title} accessibilityRole="header">Foundation communications</Text>
       </View>
@@ -217,6 +289,63 @@ export function FoundationNoticeAdminScreen({token,mayManage,mayApprove,mayProce
           <Text>Recover committed decisions</Text></Pressable>
         <Pressable style={s.button} disabled={busy} onPress={()=>void recovery("process-due")}>
           <Text>Process bounded due jobs</Text></Pressable>
+      </View>}
+      {mayManage&&<View style={s.card}>
+        <Pressable style={s.button} accessibilityRole="button"
+          accessibilityState={{expanded:emailOpen}} disabled={busy}
+          onPress={()=>setEmailOpen(v=>!v)}>
+          <Text style={s.heading}>Client email references (52) {emailOpen?"−":"+"}</Text>
+        </Pressable>
+        {emailOpen&&<>
+          <Text style={s.muted}>Approved source words and attachment rules only.
+            Imports are disabled drafts. They cannot send an email or create
+            donation, membership, volunteer, HR or payroll records. Real sending
+            requires its owning module, verified recipients and approved documents.</Text>
+          <View style={s.rowWrap}>
+            <Pressable style={s.button} accessibilityRole="button"
+              disabled={busy||emailLoading||emailImportUnknown}
+              onPress={()=>void importClientEmailDrafts()}>
+              <Text>Import missing disabled drafts</Text>
+            </Pressable>
+            <Pressable style={s.button} accessibilityRole="button"
+              disabled={busy||emailLoading}
+              onPress={()=>void loadClientEmailReferences()}>
+              <Text>{emailImportUnknown?"Check uncertain import":"Refresh template references"}</Text>
+            </Pressable>
+          </View>
+          {emailLoading&&<ActivityIndicator
+            accessibilityLabel="Loading verified client email reference catalog"/>}
+          {emailImportUnknown&&<Text style={s.error}>
+            Import result not confirmed. Check the original references before retrying.
+          </Text>}
+          <TextInput style={s.input} value={emailSearch} onChangeText={setEmailSearch}
+            maxLength={80} accessibilityLabel="Search email references"
+            placeholder="Search name or owning module"/>
+          {emailReferences.filter(x=>
+            (x.title+" "+x.code+" "+x.owner).toLowerCase()
+              .includes(emailSearch.trim().toLowerCase())).map(x=>
+            <View key={x.code} style={s.item}>
+              <Pressable accessibilityRole="button" style={s.button}
+                accessibilityState={{expanded:emailSelected===x.code}}
+                onPress={()=>setEmailSelected(v=>v===x.code?"":x.code)}>
+                <Text style={s.label}>{x.title}</Text>
+                <Text style={s.muted}>{x.owner} · {x.state.replaceAll("_"," ")}</Text>
+              </Pressable>
+              {emailSelected===x.code&&<>
+                <Text style={s.muted}>Source trigger: {x.trigger}</Text>
+                <Text style={s.muted}>Recipient: {x.recipient||
+                  "Verified by the original owning module"}</Text>
+                <Text style={s.muted}>Required documents: {x.attachmentRule}</Text>
+                <Text style={s.muted}>Required fields: {x.placeholders.join(", ")||"None"}</Text>
+                <Text style={s.label}>Subject preview</Text>
+                <Text selectable>{x.subject}</Text>
+                <Text style={s.label}>Body preview (source placeholders only)</Text>
+                <Text selectable>{x.body}</Text>
+              </>}
+            </View>)}
+          {!emailLoading&&!emailReferences.length&&
+            <Text style={s.muted}>Refresh references to inspect the approved catalog.</Text>}
+        </>}
       </View>}
       {mayManage&&<View style={s.card}>
         <Text style={s.heading}>Draft new Foundation notice</Text>

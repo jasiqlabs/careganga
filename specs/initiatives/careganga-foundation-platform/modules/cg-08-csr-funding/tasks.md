@@ -119,3 +119,16 @@ Dependencies: US-002
 
 ## 18 November 2026 — original website receiving acceptance
 Receiving tests within original **US-001/002/003** QA: real partnered state, approved logos, original CSR hero/cards, withdrawal and enquiry. Reproduce original route **/collaboration; CSR Partner enquiries** using original screenshots **Batch02 021242, 021258 and 021318**. Perform authorized Admin source → permission and editable field errors → current review/publish → Web/native → correct revoke/denied/expired and true empty. The [47-screen owner map](../../../../../docs/research/CAREGANGA-ORIGINAL-PUBLIC-SCREENSHOT-QA-TRACE-20261118.md) is the QA index; do not add new US/QA IDs. **REFERENCE_ALIGNED; SOURCE INTEGRATION OPEN; RUNTIME/VISUAL QA NOT_RUN.**
+
+
+### 21 November 2026 — Owner-approved Web ↔ Android same-capability contract
+
+**Owner:** cg-08-csr-funding. **Current source:** FUTURE_OWNER_NOT_IMPLEMENTED. **Review scope:** original accepted stories/QA, merged owner source where present, current channel policy; delegated design-content review, not formal independent review or runtime/client approval. Preserve original module boundaries; no new story or feature added.
+
+**Required Web ↔ native audience mapping:** Authorized Admin/partner/center Web **↔ Internal Android** for authorized CSR partner management, proposal, contribution, disbursement, deliverable and reporting workflows; public Web **↔ Public Android** only for only independently approved public CSR/editorial information, never private donor or funding ledgers when its own original story actually authorizes that view. A Web-only spec or no native app assertion alone does not approve an exception. Staff records cannot be made public to satisfy parity. Reuse real CG-01 identity/scope, original backend/database, CG-01 visual system and approved client Admin/public reference, not duplicate client-specific ledgers or a WebView.
+
+**Original QA parity disposition:** Current owner feature code and both corresponding channels NOT_IMPLEMENTED; original QA design retained, source and runtime NOT_RUN. Every original QA ID must record `WEB_SOURCE`, `INTERNAL_ANDROID_SOURCE`, `PUBLIC_WEB_SOURCE`, `PUBLIC_ANDROID_SOURCE` and actor-specific `NOT_APPLICABLE` only with rationale. Preserve clinical/financial security, actual bank/provider/Web/Expo/PostgreSQL, independent review and screenshot QA as `NOT_RUN` absent real evidence; no main merge.
+
+### 21 Nov 2026 — Shared original public partner CTA vs genuine CSR ownership
+
+**Existing CG08 US001/002/003 original QA refinement, no new case IDs:** `/collaboration` must keep original CG18 approved editorial and Partner With Us; CSR-specific chosen path, CG08 application, review, agreement, verified partner/current logo publication and separate original CG09 pledge/cash are source-owned only when real CG08 implementation arrives. Selecting Healthcare partner must route to genuine CG14 application and never create CG08 CSR pledge or approval. Unbuilt CG08 currently may show honest CG19 enquiry but no verified partner submission, bank receipt, CG17 subsidy claim, or false accessible route. Web/Public Android same choice; review and private data denied for wrong root, source role or partner. Full ERP/PG/provider/device QA NOT_RUN; original QA IDs retained.

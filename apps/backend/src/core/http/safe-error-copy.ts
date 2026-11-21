@@ -198,6 +198,7 @@ export const SAFE_MESSAGE_CATALOG:Readonly<Record<string,string>>=Object.freeze(
       HEALTH_EVIDENCE_REPLAY_CONFLICT:"This file request was previously used for different information. Check the original upload.",
       HEALTH_EVIDENCE_SOURCE_CHANGED:"The provider or center changed since the file was selected. Refresh and verify the current proof.",
       HEALTH_EVIDENCE_NOT_VERIFIED:"Choose a current, securely scanned and verified private supporting document.",
+      HEALTH_DIAGNOSTIC_LICENSE_EXPIRED:"Enter the actual current diagnostic licence expiry date from the original evidence before submitting this lab for independent review.",
       HEALTH_REVIEW_INVALID:"Check the healthcare review details, decision and original file before submitting.",
       HEALTH_REVIEW_UNAVAILABLE:"The requested healthcare verification review is unavailable for your current role.",
       HEALTH_REVIEW_CONFLICT:"This healthcare review has changed or was decided elsewhere. Refresh the current case.",
@@ -312,7 +313,22 @@ export const SAFE_MESSAGE_CATALOG:Readonly<Record<string,string>>=Object.freeze(
       HEALTH_ERP_GRANT_SOURCE_CHANGED:"This optional capability source is no longer current or the center is unavailable.",
       HEALTH_PUBLIC_RATE_LIMIT:"Too many healthcare directory requests. Please try again shortly.",
       CENTER_SUPPORT_FILE_INVALID:"Choose a supported PDF or image under 10 MB and check the original case revision.",
-      CENTER_SUPPORT_FILE_CHANGED:"This support case or private file changed. Reload the original case or upload status before retrying."
+      CENTER_SUPPORT_FILE_CHANGED:"This support case or private file changed. Reload the original case or upload status before retrying.",
+      LAB_CENTER_INVALID:"Select a valid currently approved healthcare lab.",
+      LAB_CATALOG_INVALID:"Check the diagnostic test or pricing details and try again.",
+      LAB_CATALOG_FIELD_INVALID:"Check the highlighted diagnostic test or pricing field.",
+      LAB_CATALOG_CONFLICT:"That diagnostic record or effective price already exists. Refresh the list.",
+      LAB_CATALOG_REQUEST_CONFLICT:"This save was used for different details. Check the original record before retrying.",
+      LAB_CATALOG_UNAVAILABLE:"The original diagnostic record cannot be confirmed. Check it before retrying.",
+      LAB_CATALOG_CATEGORY_UNAVAILABLE:"Select an active diagnostic test category.",
+      LAB_CATALOG_VERSION_CHANGED:"This diagnostic record changed. Refresh before editing.",
+      LAB_CATALOG_CODE_IMMUTABLE:"An existing test code cannot be changed. Use its details to update the test.",
+      LAB_CATALOG_PACKAGE_INVALID:"Choose active tests from this Foundation, without duplicate entries.",
+      LAB_CATALOG_ITEM_UNAVAILABLE:"The selected diagnostic test or package is no longer active.",
+      LAB_CATALOG_PRICE_EXPIRED:"That proposed price period has expired. Create a new proposal.",
+      LAB_CATALOG_RATE_OVERLAP:"This proposed price overlaps a later approved rate. Choose a future start after the current offer.",
+      LAB_CATALOG_RATE_OUTSIDE_WINDOW:"The commercial price must fall within the test or package availability dates. Check its start and end times.",
+      LAB_CATALOG_TEST_EXPIRED:"Select currently available tests and make sure the package dates do not extend beyond any included test."
 
 });
 export const editableErrorKeys=()=>Object.keys(SAFE_MESSAGE_CATALOG).sort();

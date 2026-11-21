@@ -171,3 +171,12 @@ Dependencies: US-004 genuine fulfilled stock source and same-root indexed balanc
 - US-003: BLOCKED | PLANNING_DRAFT_ONLY; implementation NOT_STARTED, source/live/visual/DB/native QA NOT_RUN; formal development gate BLOCKED.
 - US-004: BLOCKED | PLANNING_DRAFT_ONLY; implementation NOT_STARTED, source/live/visual/DB/native QA NOT_RUN; formal development gate BLOCKED.
 - US-005: BLOCKED | PLANNING_DRAFT_ONLY; implementation NOT_STARTED, source/live/visual/DB/native QA NOT_RUN; formal development gate BLOCKED.
+
+
+### 21 November 2026 — Owner-approved Web ↔ Android same-capability contract
+
+**Owner:** cg-12-inventory-suppliers. **Status:** FUTURE_OWNER_NOT_IMPLEMENTED; this is the delegated design approval to mirror existing authorized Web workflows in native Android, not an implementation, QA PASS, new story/role or client sign-off. Use current original BR/PRD/HLD, per-story QA and root AGENTS.md. Preserve all existing privacy, role, independent review and upstream-only dependencies.
+
+**Applicable audience parity:** Foundation Admin/assigned staff Web **↔ Internal Android** for authorized supplier, procurement, receipt, warehouse stock, transfer/issue/request and inventory reports. Public Web **↔ Public Android** only if the original owner permits no private stock/supplier ledgers in Public Android. Do not expose payroll, employee personal data, stock or unapproved business records publicly. Any exception to same-actor Web/Android coverage requires explicit owner approval and QA reason; a blanket “desktop only” statement, a WebView or a sample screen is not an exception. Use the original single owning API, current CG-01 scopes and CG-01/authentic CareGanga design identity.
+
+**No fake source closure:** Original story/QA definitions are unchanged. Until actual owner code exists, applicable `WEB_SOURCE=NOT_IMPLEMENTED`, `INTERNAL_ANDROID_SOURCE=NOT_IMPLEMENTED`, public channels `NOT_IMPLEMENTED` only when in approved scope (otherwise N/A with reason); runtime backend/Web/Android/device/PG/provider/security tests `NOT_RUN`. On implementation, compare each Web/native action and fix in owning source before source-complete or main merge.

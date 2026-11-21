@@ -63,3 +63,12 @@ The canonical [tasks.md](tasks.md) owns **51 cases** across US-001 **18**, US-00
 Own real identities, role/branch grant authority, and account access event. Client CG-EMP-007 requires single-use expiring password setup link but current CG-01 approved baseline is Admin-created ACTIVE account with password. **Flag contract discrepancy**; do not change login or add plaintext password/email credentials without owner confirmation. For CG-EMP-008/009 and CG-PROM-002 emit only legitimate saved access/grant/status changes for CG-19, protect recipients and audit.
 
 **Implementation gate:** Re-review changed module specification hashes; target genuine source owner, CG-19 issued PDF/delivery recipient and exact current role scope. Real integration / provider tests NOT_RUN.
+
+
+### 21 November 2026 — Owner-approved Web ↔ Android same-capability contract
+
+**Owner:** cg-01-identity-access. **Status:** MERGED_MAIN_OWNER_SOURCE_PARITY_AUDIT_OPEN. **Authority:** owner's existing BR/PRD/HLD and approved story IDs; root AGENTS.md current mandatory cross-channel rule. No new story, QA ID, role, table, endpoint or future dependency. The same authorized actor must be able to complete the same approved task on both applicable channels; maintain a single backend, record owner and permission/scope contract. This is owner-delegated **design-content approval only**, not a code, runtime, security, device or client acceptance.
+
+**Channel mapping:** Foundation Admin/authorized operator Web **↔ Internal Android**: Foundation Admin accounts, roles, policy, login/session and operator access. Approved public/consented Web **↔ Public Android**, only when actually within this module's original audience: public sign-in, account recovery and identity-safe entry flows. Public Android must never receive a staff/clinical/finance action to fake parity; neither WebView nor an absent screen is equivalent native coverage. A genuinely channel-only item requires explicit owner-approved QA reason, not an inherited “no native screen” assumption.
+
+**Delivery boundary:** Implement both applicable channel routes/screens/actions within the same story on the same authorized branch. Extend the existing CG-01 visual identity, current shared API contracts and the owning module only. Previously merged code is a predecessor source, never blanket parity certification.

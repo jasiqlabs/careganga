@@ -2,7 +2,13 @@
 import assert from "node:assert/strict";
 import {readFileSync} from "node:fs";
 import {resolve} from "node:path";
+import ts from "typescript";
 const read=path=>readFileSync(resolve(process.cwd(),path),"utf8");
+const internalCms=read("apps/android-internal/src/features/cms/native-cms-editorial.tsx");
+const internalMedia=read("apps/android-internal/src/features/cms/native-cms-media-uploader.tsx");
+const internalReviewer=read("apps/android-internal/src/features/cms/native-cms-reviewer.tsx");
+const internalMenu=read("apps/android-internal/src/features/dashboard/dashboard-modules.ts");
+const internalShell=read("apps/android-internal/src/features/identity-access/staff-authentication-screen.tsx");
 const files={
  backend:read("apps/backend/src/modules/cg-18-cms-public-content/application/cms-editorial.service.ts"),
  review:read("apps/backend/src/modules/cg-18-cms-public-content/application/cms-review-source.facade.ts"),
@@ -325,6 +331,189 @@ const checks=[
   files.web.includes('disabled className="cg-site-newsletter-button"')&&
   files.originalNav.includes("CG-19 owns any real opt-in receipt")]
 ];
+// Same original editorial business source; public mobile CMS viewer does not
+// satisfy the protected Foundation staff Web-to-Internal-Android requirement.
+const nativeCmsSyntax=ts.createSourceFile(
+ "apps/android-internal/src/features/cms/native-cms-editorial.tsx",
+ internalCms,ts.ScriptTarget.Latest,true,ts.ScriptKind.TSX);
+checks.push(["Existing CG18 native CMS TSX parses",
+ nativeCmsSyntax.parseDiagnostics.length===0]);
+checks.push(["Non-home CMS payload must omit forbidden navigation key",
+ internalCms.includes('...(v.kind==="HOME"&&v.navigation?{navigation:v.navigation}:{})')&&
+ files.backend.includes('kind!=="HOME"&&v.navigation!==undefined')]);
+const nativeCmsMediaSyntax=ts.createSourceFile(
+ "apps/android-internal/src/features/cms/native-cms-media-uploader.tsx",
+ internalMedia,ts.ScriptTarget.Latest,true,ts.ScriptKind.TSX);
+checks.push(["Original CG18 native CMS CG19 media syntax parses",
+ nativeCmsMediaSyntax.parseDiagnostics.length===0]);
+checks.push(["Original CG19 private scanner media is attached only to unpublished CMS drafts",
+ internalMedia.includes('"/api/cms/media/"')&&
+ internalMedia.includes('"/confirm"')&&
+ internalMedia.includes("cleanVerified")&&
+ internalMedia.includes("rightsConfirmed:true")&&
+ internalCms.includes('<NativeCmsMediaUploader token={token}')&&
+ internalCms.includes('selected.status==="DRAFT"')]);
+// Original CG18 editor UX must not offer an invalid role, position, or
+// file kind that the existing backend refuses or silently excludes.
+checks.push(["Native CMS media choices follow existing authored sections and save contract",
+ internalCms.includes("sections={draft.sections}")&&
+ internalMedia.includes("placementChoices(sections)")&&
+ internalMedia.includes('section.kind==="RICH_TEXT"&&f.variant==="SPLIT"')&&
+ internalMedia.includes('section.kind==="FEATURE_CARDS"&&Array.isArray(f.cards)')&&
+ internalMedia.includes('section.kind==="COMPLIANCE_FACTS"&&Array.isArray(f.documents)')&&
+ internalMedia.includes('const selectedChoice=choices.find')&&
+ internalMedia.includes('!selectedChoice')&&
+ files.backend.includes('if(!placementFits(sections,a))')]);
+checks.push(["Native gallery photo/video/PDF picker follows authored mediaType",
+ internalMedia.includes('if(type==="PHOTO")add("GALLERY",i,images)')&&
+ internalMedia.includes('else if(type==="VIDEO")add("GALLERY",i,["video/mp4"])')&&
+ internalMedia.includes('else if(type==="PUBLICATION")add("GALLERY",i,["application/pdf"])')&&
+ internalMedia.includes('!mime.includes(picked.mime)')&&
+ files.backend.includes('item?.mediaType==="VIDEO"?mime==="video/mp4"')]);
+checks.push(["Web and Internal Android keep confirmed CMS writes confirmed when later read fails",
+ internalCms.includes("The server has definitively committed THIS command")&&
+ internalCms.includes("}catch(refreshError){")&&
+ internalCms.includes("setSelected(null);setDraft(null);")&&
+ internalCms.includes("A list GET is not proof that an earlier uncertain write was ours.")&&
+ internalCms.includes("void open(p.pageRef).catch(readFailure)")&&
+ files.adminExtended.includes("A positively acknowledged original write is never made uncertain")&&
+ files.adminExtended.includes('setPending(null);setNotice("Confirmed: "')&&
+ files.adminExtended.includes("setSelected(null);")&&
+ files.adminExtended.includes("if(busy||pending")]);
+checks.push(["Web and native CG18 original gallery uploads cannot bypass authored mediaType",
+ files.adminExtended.includes('const allowedForCurrentPlacement=()=>')&&
+ files.adminExtended.includes('media==="PHOTO"?image:media==="VIDEO"?["video/mp4"]')&&
+ files.adminExtended.includes('media==="PUBLICATION"?["application/pdf"]:[]')&&
+ files.adminExtended.includes('allowedForCurrentPlacement().join(",")')&&
+ files.adminExtended.includes('const allowed=allowedForCurrentPlacement()')&&
+ internalMedia.includes('if(type==="PHOTO")add("GALLERY",i,images)')&&
+ files.backend.includes('item?.mediaType==="VIDEO"?mime==="video/mp4"')]);
+checks.push(["Confirmed CG18 edit cannot leave stale Web drawer or native create form active",
+ files.adminExtended.includes("setSelected(null);setEditorOpen(false);setClosePrompt(false)")&&
+ internalCms.includes("setSelected(null);setDraft(null);setNewPage(null)")&&
+ internalCms.includes('if(pending||uncertain')&&
+ internalCms.includes("same-key retry on this screen.")]);
+checks.push(["After a confirmed Web CG03 CMS review, busy-state inbox refresh is allowed but no uncertain new action",
+ files.admin.includes("async function showInbox(afterConfirmedDecision=false)")&&
+ files.admin.includes("if(busy&&!afterConfirmedDecision)return;")&&
+ (files.admin.includes("if(pending&&!afterConfirmedDecision)")||files.admin.includes("if((pending||mediaAttempt.current)&&!afterConfirmedDecision)"))&&
+ files.admin.includes("await showInbox(true);await refresh();")&&
+ files.admin.includes("if(busy||pending||!review||reviewPassword.length<8)")]);
+checks.push(["Original main CMS Web cannot abandon uncertain CG03 or page mutation key",
+ files.admin.includes("Resolve the previous original CMS request using its existing")&&
+ files.admin.includes("if(busy||pending||!review||reviewPassword.length<8)")&&
+ files.admin.includes("setSelected(null);setDraft(blank")&&
+ !files.admin.includes('setDraft(blank("HOME"));setPending(null);setPreview(false)')]);
+checks.push(["Original main and extended Web CG19 media uploads reuse exact first intent",
+ files.admin.includes("const mediaAttempt=useRef")&&
+ files.admin.includes("requestKey:attempt.key")&&
+ files.admin.includes('media/"+encodeURIComponent(attempt.uploadRef)')&&
+ files.admin.includes("old.fingerprint!==fingerprint")&&
+ files.adminExtended.includes("const mediaAttempt=useRef")&&
+ files.adminExtended.includes("requestKey:attempt.key")&&
+ files.adminExtended.includes('media/"+encodeURIComponent(attempt.uploadRef)')&&
+ files.adminExtended.includes("old.fingerprint!==fingerprint")]);
+checks.push(["Native CG19 media intent is bound to original page revision and placement",
+ internalMedia.includes("original.current.pageRef!==pageRef")&&
+ internalMedia.includes("original.current.revisionRef!==revisionRef")&&
+ internalMedia.includes("original.current.role!==role")&&
+ internalMedia.includes("original.current.order!==selectedChoice.order")&&
+ internalMedia.includes("if(original.current||key.current||intent||busy||uncertain)")&&
+ internalMedia.includes("Check the previous original CG19 upload before choosing another file.")]);
+checks.push(["Uncertain native CG19 upload cannot be lost through CMS page switch",
+ internalCms.includes("const [mediaActive,setMediaActive]=useState(false)")&&
+ internalCms.includes("if(mediaActive)")&&
+ internalCms.includes("onAttemptChange={setMediaActive}")&&
+ internalMedia.includes("onAttemptChange(true);")&&
+ internalMedia.includes("onAttemptChange(false);")&&
+ internalMedia.includes('action("Retry same original upload request",()=>void upload(true)')&&
+ internalMedia.includes("original.current.pageRef!==pageRef")]);
+checks.push(["Unresolved CG19 private media keeps same-page Web editors recoverable",
+ files.admin.includes("if(pending||mediaAttempt.current)")&&
+ files.admin.includes("if(busy||pending||mediaAttempt.current)")&&
+ files.admin.includes("disabled={busy||!!pending||!!mediaAttempt.current}")&&
+ files.adminExtended.includes("if(pending||mediaAttempt.current)")&&
+ files.adminExtended.includes("if(busy||pending||mediaAttempt.current)")&&
+ files.adminExtended.includes("if(pending||dirty||mediaAttempt.current)")&&
+ files.adminExtended.includes("disabled={!!mediaAttempt.current}")]);
+checks.push(["Native CG18 media slots are original tappable choices, not technical index input",
+ internalMedia.includes("positions.map((position,i)=>")&&
+ internalMedia.includes('"Placement "+(i+1)')&&
+ internalMedia.includes('selectedChoice?.order===position.order')&&
+ internalMedia.includes('const first=choices.find(c=>c.role===role)??choices[0]')&&
+ !internalMedia.includes('accessibilityLabel="Editorial placement order"')]);
+checks.push(["Original Web CMS article, policy and other supported page kinds can be created on Internal Android",
+ internalCms.includes("const initialKind=(kind:NewKind):NewPage=>")&&
+ internalCms.includes('perform("create","POST","pages"')&&
+ internalCms.includes('canonicalFor(p.kind,p.slug)')&&
+ internalCms.includes("newKinds.map")]);
+checks.push(["Internal Android CMS editor is real, not a public WebView",
+ internalCms.includes('"/api/cms/"')&&
+ internalCms.includes("pages/")&&internalCms.includes("/draft")&&
+ internalCms.includes("/submit")&&internalCms.includes("/publish")&&
+ internalCms.includes("/withdraw")]);
+checks.push(["Internal CMS source preserves original media and review approvals",
+ internalCms.includes("assets:v.assets")&&
+ internalCms.includes("caseRef:selected.approvalCaseRef")&&
+ internalCms.includes("expectedVersion:selected.version")]);
+checks.push(["Internal Android CMS has current CG01 effective view gating",
+ internalMenu.includes('roleActions.includes("cms.content.view")')&&
+ internalShell.includes('roleActions.includes("cms.content.view")')&&
+ internalShell.includes('canManage={roleActions.includes("cms.content.manage")}')&&
+ internalShell.includes('canPublish={roleActions.includes("cms.content.publish")}')]);
+// Original CG18/CG03 US001–004 review action parity for a currently
+// authorized Foundation actor, not a new CMS reviewer or duplicate approval.
+const nativeCmsReviewerSyntax=ts.createSourceFile(
+ "native-cms-reviewer.tsx",internalReviewer,
+ ts.ScriptTarget.Latest,true,ts.ScriptKind.TSX);
+checks.push(["Existing independent Android CMS reviewer TSX syntax parses",
+ nativeCmsReviewerSyntax.parseDiagnostics.length===0]);
+checks.push(["Original CG03 reviewer queue, item, and independent decision exist in native CMS",
+ internalReviewer.includes('token,"reviews?offset="+offset')&&
+ internalReviewer.includes('token,"reviews/"+encodeURIComponent(caseRef)')&&
+ internalReviewer.includes('"reviews/"+encodeURIComponent(op.ref)+"/decide')&&
+ files.cg03.includes('requireAction(bearer,"approvals.review"')]);
+checks.push(["Web and Internal Android independently use the same original approval case",
+ files.admin.includes('"reviews/"+review.caseRef+"/decide"')&&
+ internalReviewer.includes("requestKey:op.key,expectedRevision:op.version")&&
+ internalReviewer.includes("currentPassword:op.password")]);
+checks.push(["Reviewer cannot approve a revoked/unverified media source",
+ internalReviewer.includes('detail.source.assets.some(asset=>!asset.current)')&&
+ internalReviewer.includes("asset.current?")]);
+checks.push(["Original native reviewer privately previews scanned CG19 assets by current bearer token",
+ internalReviewer.includes('"/api/cms/media/preview/"')&&
+ internalReviewer.includes('Authorization:"Bearer "+token')&&
+ internalReviewer.includes("bytes.length>max")&&
+ internalReviewer.includes("temporary?.delete()")]);
+checks.push(["Native CG18 review is role gated and mounted inside real staff CMS editor",
+ internalCms.includes('canReview&&<NativeCmsReviewer token={token}')&&
+ internalShell.includes('canReview={roleActions.includes("approvals.review")}')&&
+ internalMenu.includes('roleActions.includes("cms.content.view")')]);
+checks.push(["Native independent reviewer preserves same outcome request key after uncertain network",
+ internalReviewer.includes("setPending(op)")&&
+ internalReviewer.includes("Retry exact original request")&&
+ internalReviewer.includes("requestKey:op.key")]);
+// The original CG18 extended parser REQUIRES typed first list items
+// (categories/gallery) and bounded structures; empty native arrays must be
+// editable with exact existing fields rather than invalid blank-string rows.
+checks.push(["Native empty CMS arrays can add original typed gallery/category/FAQ/impact objects",
+ internalCms.includes('initialListItem=(name:string,section?:string,group?:string)')&&
+ internalCms.includes('name==="categories"&&section==="HEALTHCARE_CATEGORIES"')&&
+ internalCms.includes('name==="items"&&section==="GALLERY_GRID"')&&
+ internalCms.includes('name==="faqs"')&&
+ internalCms.includes('name==="items"&&section==="IMPACT_GROUP"')&&
+ internalCms.includes('button("Add "+title(name)+" item"')]);
+checks.push(["Native editor preserves real-person consent and original CG18 list limits",
+ internalCms.includes('group==="STORIES")v.consentConfirmed=false')&&
+ internalCms.includes('name==="faqs"?8')&&
+ internalCms.includes('name==="socialLinks"||name==="inquiries"?3')&&
+ internalCms.includes('section==="GALLERY_GRID"?12:16')&&
+ internalCms.includes('sectionKind={section.kind}')&&
+ internalCms.includes('sectionKind={sec.kind}')]);
+checks.push(["Existing CG18 typed parser proves native first-item schema",
+ files.extended.includes('kind==="HEALTHCARE_CATEGORIES"')&&
+ files.extended.includes('kind==="GALLERY_GRID"')&&
+ files.extended.includes('kind==="CONTACT_INFO"')]);
 let errors=0;
 for(const [label,ok] of checks){
  console.log((ok?"SOURCE-PRESENT":"SOURCE-FAIL")+": "+label);

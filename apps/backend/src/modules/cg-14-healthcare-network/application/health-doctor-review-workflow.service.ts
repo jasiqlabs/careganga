@@ -97,9 +97,11 @@ export class HealthDoctorReviewWorkflowService{
       const current=await tx.query<{version:number;status:string;full_name:string;
         registration_jurisdiction:string;registration_number:string;
         qualifications:string[];specialties:string[];experience_years:number;
-        public_bio:string;portrait_rights_status:string}>(
+        public_bio:string;portrait_rights_status:string;
+        professional_license_valid_through:string|null}>(
         "SELECT version,status,full_name,registration_jurisdiction,registration_number,"+
-        "qualifications,specialties,experience_years,public_bio,portrait_rights_status "+
+        "qualifications,specialties,experience_years,public_bio,portrait_rights_status,"+
+        "to_char(professional_license_valid_through,'YYYY-MM-DD') AS professional_license_valid_through "+
         "FROM health_doctor WHERE root_realm_id=$1 AND id=$2 FOR UPDATE",
         [actor.realmId,ref]);
       const d=current.rows[0];
@@ -113,7 +115,8 @@ export class HealthDoctorReviewWorkflowService{
         fullName:d.full_name,registrationJurisdiction:d.registration_jurisdiction,
         registrationNumber:d.registration_number,qualifications:d.qualifications,
         specialties:d.specialties,experienceYears:d.experience_years,
-        publicBio:d.public_bio,portraitRightsStatus:d.portrait_rights_status
+        publicBio:d.public_bio,portraitRightsStatus:d.portrait_rights_status,
+        professionalLicenseValidThrough:d.professional_license_valid_through
       };
       const digest=hash(snapshot);
       const frozen=await tx.query<{id:string}>(

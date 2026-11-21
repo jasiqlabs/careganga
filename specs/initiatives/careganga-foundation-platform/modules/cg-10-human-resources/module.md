@@ -104,3 +104,12 @@ All applicable PRD N-01/N-04/N-05/N-09/N-11/N-12/N-13 and CG-NFR-600 controls ap
 CG-10 owns employee/offer/appointment/joining, designation and promotion source events. New offer-letter JPG shows branded portrait layout with unique ref/date/verification QR, verified addressee/title/department/role, compensation and working terms, acceptance, approved signatory. Separate Document Received, Verified, Employment Approved, Offer Issued, Appointment Issued, Joining Confirmed, and CG-01 Access Provisioned; never send one document based on another status. Map CG-EMP-001–009, CG-DES-001–004, CG-PROM-001–003 through CG-19 only after committed source, approved version and permitted recipients. New role/jurisdiction/office must be audited and prior certificate/card superseded where applicable. Never copy sample salary, terms, signatory or office.
 
 **Status:** new client acceptance source mapped; dependent implementations, rendered document compare, provider tests and runtime verification **NOT_RUN**.
+
+
+### 21 November 2026 — Owner-approved Web ↔ Android same-capability contract
+
+**Owner:** cg-10-human-resources. **Status:** FUTURE_OWNER_NOT_IMPLEMENTED; this is the delegated design approval to mirror existing authorized Web workflows in native Android, not an implementation, QA PASS, new story/role or client sign-off. Use current original BR/PRD/HLD, per-story QA and root AGENTS.md. Preserve all existing privacy, role, independent review and upstream-only dependencies.
+
+**Applicable audience parity:** Foundation Admin/assigned staff Web **↔ Internal Android** for approved hiring/employee profile, verified attendance, leave, employee source documents and reviewer actions. Public Web **↔ Public Android** only if the original owner permits no private HR in Public Android; only distinctly approved public/team-directory read through CG18 and consent. Do not expose payroll, employee personal data, stock or unapproved business records publicly. Any exception to same-actor Web/Android coverage requires explicit owner approval and QA reason; a blanket “desktop only” statement, a WebView or a sample screen is not an exception. Use the original single owning API, current CG-01 scopes and CG-01/authentic CareGanga design identity.
+
+**Story exit:** deliver the same authorized actions from both channels in one original story checkpoint without developing a future-owned module prematurely; keep non-applicable public actions N/A with privacy rationale.

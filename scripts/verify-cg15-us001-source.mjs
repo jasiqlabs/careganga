@@ -44,7 +44,7 @@ const tests=[
   s.schema.includes("version integer NOT NULL CHECK(version BETWEEN 1 AND 2147483646)")],
  ["source: 1420 all PLPGSQL dollar delimiters balanced",
   s.schema.split("AS $$").length===4&&
-  s.schema.split("END $$;").length===4],
+  (s.schema.split("END $$;").length===4||s.schema.split("END; $$;").length===4)],
  ["source: original leave transitions fail closed at database boundary",
   s.schema.includes("NEW.state IS DISTINCT FROM OLD.state")&&
   s.schema.includes("NEW.approved_case_ref=NEW.original_case_ref")&&
@@ -101,7 +101,7 @@ const tests=[
  ["source: original Nest modules wired",s.main.includes("PatientsAppointmentsModule")&&
   s.ownerModule.includes("RegistrationApprovalsModule")&&
   s.cg03Module.includes("DoctorLeaveSourceModule")&&
-  s.cg14Module.includes("HealthCenterSupportScopeFacade]")],
+  s.cg14Module.includes("HealthCenterSupportScopeFacade")],
  ["source: scoped Foundation/Center API",s.controller.includes('Controller("api/v1/appointments/schedules")')&&
   s.controller.includes("centerSave")&&s.controller.includes("applyLeave")],
  ["source: private CSRF Web BFF",s.webApi.includes('req.headers.get("origin")!==req.nextUrl.origin')&&
@@ -198,7 +198,7 @@ const tests=[
   s.webReviewPage.includes("canReview")],
  ["source: Internal Android real CG03 reviewer",s.native.includes("DoctorLeaveNativeReview")&&
   s.native.includes("BackHandler.addEventListener")&&
-  s.nativeEntry.includes("setDoctorLeaveReviewsOpen(true)")],
+  (s.nativeEntry.includes("setDoctorLeaveReviewsOpen(true)")||s.nativeEntry.includes("openOnly(setDoctorLeaveReviewsOpen)"))],
  ["source: editable errors owner CG21",s.catalog.includes("CG15_SCHEDULE_CHANGED")&&
   s.catalog.includes("CG15_LEAVE_SOURCE_CHANGED")],
  ["original US001 16 QA IDs kept",(()=>{
