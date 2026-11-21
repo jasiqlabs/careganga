@@ -58,6 +58,7 @@ export class MisDashboardService{
     Object.keys(raw).some(k=>!["yearRef","branchRef","centerRef",
       "fromDay","untilDay","status","view"].includes(k))||
     Object.entries(raw).some(([k,v])=>typeof v!=="string"||v.length>80||
+     (k==="view"&&v==="")||
      (v!==""&&(k==="view"?!["OVERVIEW","FINANCE","HEALTH"].includes(v):
       ["yearRef","branchRef","centerRef"].includes(k)?
        !UUID.test(v):k==="fromDay"||k==="untilDay"?
@@ -155,17 +156,19 @@ export class MisDashboardService{
   // Neither row-level patient names nor center/branch extrapolations are allowed.
   const patientSource:Promise<Source|null>=view==="FINANCE"?
    Promise.resolve(null):this.patients.readMisTotals(bearer,healthFilter)
-   .then(x=>({sourceKey:"CG15_APPOINTMENT_STATES",state:"AVAILABLE" as const,
+   .then(x=>({sourceKey:"CG15_APPOINTMENT_STATES",
+    state:x.bookings==="0"?"EMPTY" as const:"AVAILABLE" as const,
     sourceLabel:"Foundation Appointments · Current state totals",
     readAt:new Date().toISOString(),
-    metrics:[
+    metrics:x.bookings==="0"?[]:[
      {key:"bookings",label:"Total appointments",unit:"COUNT" as const,value:x.bookings},
      {key:"completed",label:"Completed appointments",unit:"COUNT" as const,value:x.completed},
      {key:"waiting",label:"In progress or waiting",unit:"COUNT" as const,value:x.waiting},
      {key:"cancelled",label:"Cancelled appointments",unit:"COUNT" as const,value:x.cancelled}
     ],explanation:"Foundation-wide status counts only; no patient files or individual care data."}))
    .catch((error:unknown)=>{
-    if(error instanceof UnauthorizedException)throw error;
+    if(error instanceof UnauthorizedException||error instanceof BadRequestException)
+     throw error;
     if(error instanceof ForbiddenException)return null;
     failures++;
     return {sourceKey:"CG15_APPOINTMENT_STATES",state:"FAILED" as const,
@@ -180,7 +183,7 @@ export class MisDashboardService{
    failures?"FAILED":"NO_AUTHORIZED_SOURCES",readAt,
    scopeLabel:healthFilter.centerRef?"Selected verified healthcare center":
     filters.branchRef?"Permitted selected branch":"Current original-owner scope",
-   periodLabel:hasHealthFilter?(healthFilter.fromDay?
+   periodLabel:view==="HEALTH"?(healthFilter.fromDay?
     "Appointments "+healthFilter.fromDay+" to "+healthFilter.untilDay:
     "Current appointment records"):
     filters.yearRef?"Selected financial year":"All permitted posted financial years",
