@@ -172,7 +172,7 @@ CREATE TABLE cg19_hr_evidence_event(
  intent_ref uuid,
  file_ref uuid,
  action text NOT NULL CHECK(action IN(
-  'UPLOAD_INITIATED','UPLOAD_VERIFIED','UPLOAD_REJECTED','UPLOAD_UNKNOWN','FILE_REVOKED')),
+  'UPLOAD_INITIATED','UPLOAD_VERIFIED','UPLOAD_REJECTED','UPLOAD_UNKNOWN','FILE_REVOKED','PRIVATE_REVIEW_READ')),
  created_at timestamptz NOT NULL DEFAULT now(),
  FOREIGN KEY(application_id,realm_id)
   REFERENCES hr_employee_application(id,root_realm_id) ON DELETE RESTRICT,
