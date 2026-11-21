@@ -61,7 +61,7 @@ export default async function FoundationHrPage(){
        canViewPrivate={actions.includes("hr.employees.private.view")}
        canManagePrivate={actions.includes("hr.employees.private.manage")}/> }
     {actions.includes("hr.employees.review")&&actions.includes("approvals.review")&&
-      <HrEnrollmentReviews/>}
+      <HrEnrollmentReviews canConfigure={actions.includes("approvals.process.manage")}/>}
    </main>
   </div>;
  }catch(error){
