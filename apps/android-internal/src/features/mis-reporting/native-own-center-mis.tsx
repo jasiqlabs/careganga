@@ -2,6 +2,8 @@ import {useCallback,useEffect,useRef,useState} from "react";
 import {AppState,Pressable,StyleSheet,Text,TextInput,View} from "react-native";
 import {careGangaTheme as t} from "../../../../../packages/design-tokens/src/index";
 import {identityRequest} from "../identity-access/http-client";
+import * as Crypto from "expo-crypto";
+import {File,Paths} from "expo-file-system";
 
 type Statement={
  month:string;state:string;approvedFoundationMinor:string;
@@ -45,6 +47,8 @@ export function NativeOwnCenterMis({token,centerRef,onExpired}:{
  const [month,setMonth]=useState(initialMonth);
  const [statement,setStatement]=useState<Statement|null>(null);
  const [loading,setLoading]=useState(false);
+ const [exporting,setExporting]=useState(false);
+ const [exportNotice,setExportNotice]=useState("");
  const [error,setError]=useState("");
  const seq=useRef(0);
  const load=useCallback(async()=>{
@@ -84,6 +88,34 @@ export function NativeOwnCenterMis({token,centerRef,onExpired}:{
   });
   return()=>subscription.remove();
  },[load]);
+ async function exportCurrentStatement(){
+  if(loading||exporting||!statement||!ID.test(centerRef)||
+   !MONTH.test(month)||month>initialMonth())return;
+  setExportNotice("");setExporting(true);let file:File|null=null;
+  try{
+   const response=await identityRequest(
+    "/api/v1/healthcare-assistance/provider-settlements/my-centers/"+
+    encodeURIComponent(centerRef)+"/months/"+encodeURIComponent(month)+"/export.csv",{
+     headers:{Authorization:"Bearer "+token},cache:"no-store"});
+   if(response.status===401){onExpired();return;}
+   if(!response.ok||response.headers.get("content-type")?.split(";")[0]!=="text/csv")
+    throw Error("Current center assignment does not permit this export.");
+   const bytes=new Uint8Array(await response.arrayBuffer());
+   if(bytes.byteLength<30||bytes.byteLength>65536)
+    throw Error("This private center file failed verification.");
+   file=new File(Paths.cache,"CareGanga-Center-Settlement-"+month+"-"+
+    Crypto.randomUUID()+".csv");
+   file.create();await file.write(bytes);
+   await file.preview({title:"CareGanga current center statement"});
+   setExportNotice("Your current center statement was verified for private viewing.");
+  }catch(e){
+   setExportNotice(e instanceof Error?e.message:
+    "The current center statement could not be exported.");
+  }finally{
+   try{file?.delete();}catch{}
+   setExporting(false);
+  }
+ }
  const approved=statement&&["APPROVED","PARTIALLY_SETTLED","SETTLED"].includes(statement.state);
  const items:readonly {label:string;amount:string|undefined}[]=statement?[
   {label:"Eligible completed services",amount:statement.centerGrossServicesMinor},
@@ -124,6 +156,14 @@ export function NativeOwnCenterMis({token,centerRef,onExpired}:{
   <Pressable accessibilityRole="button" disabled={loading} onPress={()=>void load()}
    style={styles.button}><Text style={styles.link}>
     {loading?"Checking statement…":"Refresh statement"}</Text></Pressable>
+  {!!statement&&<Pressable accessibilityRole="button"
+   accessibilityLabel="Export authorized center settlement CSV"
+   disabled={loading||exporting} onPress={()=>void exportCurrentStatement()}
+   style={styles.button}>
+   <Text style={styles.link}>{exporting?
+    "Verifying current statement…":"Export my center statement (CSV)"}</Text>
+  </Pressable>}
+  {!!exportNotice&&<Text style={styles.sub}>{exportNotice}</Text>}
   {!!error&&<Text accessibilityRole="alert" style={styles.error}>{error}</Text>}
   {statement&&<>
    <Text style={styles.sub}>Claim status: {statement.state==="NOT_PREPARED"?
