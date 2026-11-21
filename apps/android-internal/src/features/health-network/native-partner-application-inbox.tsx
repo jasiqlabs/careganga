@@ -15,13 +15,28 @@ async function api<T>(token:string,path:string,method:"GET"|"POST"="GET",body?:o
   cache:"no-store",headers:{Authorization:"Bearer "+token,
    ...(body?{"Content-Type":"application/json"}:{})},
   ...(body?{body:JSON.stringify(body)}:{})});
- if(!response.ok)throw Object.assign(new Error(
-  response.status===401?"Your session expired. Sign in again.":
-  response.status===403?"You cannot review these healthcare applications.":
-  response.status===409?"The original application changed. Refresh before retrying.":
-  response.status===400?"Check the review details.":
-  "Result is uncertain. Refresh original application."),{status:response.status});
- return await response.json() as T;
+ if(!response.ok){
+  const body:unknown=await response.json().catch(()=>null);
+  const safe=new Set(["PARTNER_FIELD_INVALID","PARTNER_VERSION_INVALID",
+   "PARTNER_VERSION_CHANGED","PARTNER_REVIEW_CLOSED","PARTNER_SOURCE_MISMATCH",
+   "PARTNER_APPLICATION_UNAVAILABLE"]);
+  const rec=body&&typeof body==="object"?body as Record<string,unknown>:null;
+  const message=rec&&typeof rec.code==="string"&&safe.has(rec.code)&&
+   typeof rec.message==="string"&&rec.message.length<=220&&
+   !/[<>\r\n]/.test(rec.message)?rec.message:
+   response.status===401?"Your session expired. Sign in again.":
+   response.status===403?"You cannot review these healthcare applications.":
+   response.status===409?"This application changed. Refresh before retrying.":
+   response.status===404?"This application could not be found. Refresh the list.":
+   response.status===429?"Too many attempts. Try again later.":
+   response.status===400?"Check the application fields and review note.":
+   "The result could not be confirmed. Refresh the original application.";
+  throw Object.assign(new Error(message),{status:response.status});
+ }
+ const payload:unknown=await response.json();
+ if(!payload||typeof payload!=="object"||Array.isArray(payload))
+  throw Error("The application response is unavailable. Refresh the list.");
+ return payload as T;
 }
 const nice=(x:string)=>x.toLowerCase().replaceAll("_"," ").replace(/\b\w/g,c=>c.toUpperCase());
 export function NativePartnerApplicationInbox({token,canManage,onExit,onExpired}:{
