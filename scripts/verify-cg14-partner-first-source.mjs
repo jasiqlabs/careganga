@@ -89,6 +89,14 @@ const checks=[
  ["Staff Android hardware Back returns from review to original providers",
   s.nativeStaff.includes('BackHandler.addEventListener("hardwareBackPress"')&&
   s.nativeStaff.includes('if(selected)setSelected(null)')],
+ ["Public status explains returned/review/verified without auto discount on both clients",
+  s.service.includes('statusLabel:"Additional details requested"')&&
+  s.service.includes('statusLabel:"Original partner record verified"')&&
+  s.service.includes('Foundation discounts still require separate approval.')&&
+  s.publicForm.includes("checked.statusLabel")&&
+  s.publicForm.includes("checked.message")&&
+  s.nativePublic.includes("checked.statusLabel")&&
+  s.nativePublic.includes("checked.message")],
  ["Web and internal Android link lookup uses original name filter",
   s.staffInbox.includes('"providers?offset=0&q="+encodeURIComponent(app.name)')&&
   s.nativeStaff.includes('"providers?offset=0&q="+encodeURIComponent(app.name)')],
