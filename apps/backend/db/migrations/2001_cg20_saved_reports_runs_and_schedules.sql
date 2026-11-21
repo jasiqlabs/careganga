@@ -104,6 +104,8 @@ CREATE INDEX ix_cg20_runs_actor_recent ON cg20_report_run
 CREATE INDEX ix_cg20_runs_expiry ON cg20_report_run(expires_at,id)
  WHERE state IN('READY','EMPTY','FAILED','REVOKED');
 
+-- US-005 schedule metadata. ACTIVE only after a separately authorized worker
+-- exists. Current service deliberately creates PAUSED schedules.
 CREATE TABLE cg20_report_schedule(
  root_realm_id uuid NOT NULL REFERENCES access_realm(id) ON DELETE RESTRICT,
  id uuid NOT NULL DEFAULT gen_random_uuid(),
@@ -111,23 +113,29 @@ CREATE TABLE cg20_report_schedule(
  saved_ref uuid NOT NULL,
  recipient_account_ref uuid NOT NULL,
  request_key uuid NOT NULL,
- payload_digest char(64) NOT NULL CHECK(payload_digest ~ '^[a-f0-9]{64}
+ payload_digest char(64) NOT NULL CHECK(payload_digest ~ '^[a-f0-9]{64}$'),
  cadence text NOT NULL CHECK(cadence IN('DAILY','WEEKLY','MONTHLY','YEARLY')),
  timezone text NOT NULL CHECK(char_length(timezone) BETWEEN 3 AND 64),
  local_time time NOT NULL,
  weekday smallint CHECK(weekday IS NULL OR weekday BETWEEN 0 AND 6),
  monthday smallint CHECK(monthday IS NULL OR monthday BETWEEN 1 AND 28),
  next_due_utc timestamptz NOT NULL,
- state text NOT NULL DEFAULT 'ACTIVE' CHECK(state IN('ACTIVE','PAUSED','DISABLED')),
- channel text NOT NULL DEFAULT 'IN_APP' CHECK(channel IN('IN_APP','EMAIL','SMS')),
- revision integer NOT NULL DEFAULT 1 CHECK(revision BETWEEN 1 AND 1000000),
+ state text NOT NULL DEFAULT 'PAUSED'
+  CHECK(state IN('ACTIVE','PAUSED','DISABLED')),
+ channel text NOT NULL DEFAULT 'IN_APP'
+  CHECK(channel IN('IN_APP','EMAIL','SMS')),
+ revision integer NOT NULL DEFAULT 1
+  CHECK(revision BETWEEN 1 AND 1000000),
  created_at timestamptz NOT NULL DEFAULT now(),
  updated_at timestamptz NOT NULL DEFAULT now(),
  PRIMARY KEY(root_realm_id,id),
  UNIQUE(root_realm_id,owner_account_ref,request_key),
- FOREIGN KEY(owner_account_ref,root_realm_id) REFERENCES account(id,realm_id) ON DELETE RESTRICT,
- FOREIGN KEY(recipient_account_ref,root_realm_id) REFERENCES account(id,realm_id) ON DELETE RESTRICT,
- FOREIGN KEY(root_realm_id,saved_ref) REFERENCES cg20_saved_report(root_realm_id,id) ON DELETE RESTRICT
+ FOREIGN KEY(owner_account_ref,root_realm_id)
+  REFERENCES account(id,realm_id) ON DELETE RESTRICT,
+ FOREIGN KEY(recipient_account_ref,root_realm_id)
+  REFERENCES account(id,realm_id) ON DELETE RESTRICT,
+ FOREIGN KEY(root_realm_id,saved_ref)
+  REFERENCES cg20_saved_report(root_realm_id,id) ON DELETE RESTRICT
 );
 CREATE INDEX ix_cg20_due_only ON cg20_report_schedule(next_due_utc,id)
  WHERE state='ACTIVE';
@@ -147,62 +155,19 @@ CREATE TABLE cg20_report_delivery_attempt(
  recipient_account_ref uuid NOT NULL,
  channel text NOT NULL CHECK(channel IN('IN_APP','EMAIL','SMS')),
  state text NOT NULL DEFAULT 'QUEUED'
-  CHECK(state IN('QUEUED','SENT_PENDING','CONFIRMED','SUPPRESSED','FAILED','UNAVAILABLE')),
+  CHECK(state IN('QUEUED','SENT_PENDING','CONFIRMED','SUPPRESSED',
+   'FAILED','UNAVAILABLE')),
  original_cg19_notification_ref uuid,
  attempts smallint NOT NULL DEFAULT 0 CHECK(attempts BETWEEN 0 AND 8),
  next_retry_utc timestamptz,
  updated_at timestamptz NOT NULL DEFAULT now(),
  PRIMARY KEY(root_realm_id,id),
  UNIQUE(root_realm_id,run_ref,recipient_account_ref,channel),
- FOREIGN KEY(root_realm_id,run_ref) REFERENCES cg20_report_run(root_realm_id,id) ON DELETE RESTRICT,
- FOREIGN KEY(recipient_account_ref,root_realm_id) REFERENCES account(id,realm_id) ON DELETE RESTRICT
+ FOREIGN KEY(root_realm_id,run_ref)
+  REFERENCES cg20_report_run(root_realm_id,id) ON DELETE RESTRICT,
+ FOREIGN KEY(recipient_account_ref,root_realm_id)
+  REFERENCES account(id,realm_id) ON DELETE RESTRICT
 );
 CREATE INDEX ix_cg20_delivery_due ON cg20_report_delivery_attempt
- (next_retry_utc,id) WHERE state IN('QUEUED','SENT_PENDING','FAILED');
-),
- cadence text NOT NULL CHECK(cadence IN('DAILY','WEEKLY','MONTHLY','YEARLY')),
- timezone text NOT NULL CHECK(char_length(timezone) BETWEEN 3 AND 64),
- local_time time NOT NULL,
- weekday smallint CHECK(weekday IS NULL OR weekday BETWEEN 0 AND 6),
- monthday smallint CHECK(monthday IS NULL OR monthday BETWEEN 1 AND 28),
- next_due_utc timestamptz NOT NULL,
- state text NOT NULL DEFAULT 'ACTIVE' CHECK(state IN('ACTIVE','PAUSED','DISABLED')),
- channel text NOT NULL DEFAULT 'IN_APP' CHECK(channel IN('IN_APP','EMAIL','SMS')),
- revision integer NOT NULL DEFAULT 1 CHECK(revision BETWEEN 1 AND 1000000),
- created_at timestamptz NOT NULL DEFAULT now(),
- updated_at timestamptz NOT NULL DEFAULT now(),
- PRIMARY KEY(root_realm_id,id),
- FOREIGN KEY(owner_account_ref,root_realm_id) REFERENCES account(id,realm_id) ON DELETE RESTRICT,
- FOREIGN KEY(recipient_account_ref,root_realm_id) REFERENCES account(id,realm_id) ON DELETE RESTRICT,
- FOREIGN KEY(root_realm_id,saved_ref) REFERENCES cg20_saved_report(root_realm_id,id) ON DELETE RESTRICT
-);
-CREATE INDEX ix_cg20_due_only ON cg20_report_schedule(next_due_utc,id)
- WHERE state='ACTIVE';
-CREATE INDEX ix_cg20_schedule_owner ON cg20_report_schedule
- (root_realm_id,owner_account_ref,updated_at DESC,id DESC);
-ALTER TABLE cg20_report_run ADD CONSTRAINT fk_cg20_scheduled_run_same_root
- FOREIGN KEY(root_realm_id,schedule_ref)
- REFERENCES cg20_report_schedule(root_realm_id,id) ON DELETE RESTRICT;
-CREATE UNIQUE INDEX ux_cg20_one_run_per_occurrence ON cg20_report_run
- (root_realm_id,schedule_ref,occurrence_due_utc,definition_revision)
- WHERE run_origin='SCHEDULED';
-
-CREATE TABLE cg20_report_delivery_attempt(
- root_realm_id uuid NOT NULL REFERENCES access_realm(id) ON DELETE RESTRICT,
- id uuid NOT NULL DEFAULT gen_random_uuid(),
- run_ref uuid NOT NULL,
- recipient_account_ref uuid NOT NULL,
- channel text NOT NULL CHECK(channel IN('IN_APP','EMAIL','SMS')),
- state text NOT NULL DEFAULT 'QUEUED'
-  CHECK(state IN('QUEUED','SENT_PENDING','CONFIRMED','SUPPRESSED','FAILED','UNAVAILABLE')),
- original_cg19_notification_ref uuid,
- attempts smallint NOT NULL DEFAULT 0 CHECK(attempts BETWEEN 0 AND 8),
- next_retry_utc timestamptz,
- updated_at timestamptz NOT NULL DEFAULT now(),
- PRIMARY KEY(root_realm_id,id),
- UNIQUE(root_realm_id,run_ref,recipient_account_ref,channel),
- FOREIGN KEY(root_realm_id,run_ref) REFERENCES cg20_report_run(root_realm_id,id) ON DELETE RESTRICT,
- FOREIGN KEY(recipient_account_ref,root_realm_id) REFERENCES account(id,realm_id) ON DELETE RESTRICT
-);
-CREATE INDEX ix_cg20_delivery_due ON cg20_report_delivery_attempt
- (next_retry_utc,id) WHERE state IN('QUEUED','SENT_PENDING','FAILED');
+ (next_retry_utc,id)
+ WHERE state IN('QUEUED','SENT_PENDING','FAILED');
