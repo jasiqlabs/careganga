@@ -109,6 +109,9 @@ must(web+"app/api/healthcare-assistance/provider-settlements/[...parts]/route.ts
 must(web+"features/healthcare-assistance/center-monthly-settlement-summary.tsx",
  /patientCollectionNotFoundationIncome/,
  "Never represent the center's patient cash as Foundation income");
+must(web+"features/healthcare-assistance/center-monthly-settlement-summary.tsx",
+ /Verified center refunds\/corrections to date/,
+ "Web own-center view must reveal verified refunds separately from net collections");
 must(web+"features/health-network/center-draft-portal.tsx",
  /<CenterMonthlySettlementSummary/,
  "Partner statement actually reachable in real Center Portal");
@@ -118,6 +121,9 @@ must(web+"app/(admin)/center/page.tsx",
 must(native+"features/healthcare-assistance/native-partner-settlement-summary.tsx",
  /patientCollectionNotFoundationIncome/,
  "Internal Android partner view must not present patient cash as Foundation income");
+must(native+"features/healthcare-assistance/native-partner-settlement-summary.tsx",
+ /Verified center refunds\/corrections/,
+ "Android own-center view must show exactly the same verified refund breakdown");
 must(native+"features/healthcare-assistance/native-partner-settlement-summary.tsx",
  /approved\?summary\.approvedFoundationMinor:summary\.eligibleAccruedMinor/,
  "Unapproved monthly claim is not zeroed out by the approved-only amount");
