@@ -69,7 +69,11 @@ BEGIN
   AND provider.id=center.provider_id
  WHERE center.root_realm_id=NEW.root_realm_id AND center.id=NEW.center_ref
  FOR SHARE OF center,provider;
- IF NOT FOUND OR v_center.status<>'VERIFIED' OR
+ IF NOT FOUND THEN
+  RAISE EXCEPTION 'Current verified healthcare service is required'
+   USING ERRCODE='P1726';
+ END IF;
+ IF v_center.status<>'VERIFIED' OR
   v_center.access_state<>'ENABLED' OR v_center.provider_status<>'VERIFIED' OR
   NEW.service_local_date>(now() AT TIME ZONE v_center.time_zone)::date THEN
   RAISE EXCEPTION 'Current verified healthcare service is required'
@@ -128,7 +132,11 @@ BEGIN
   AND policy.activated_at<=now()
   AND policy.valid_from<=now() AND policy.valid_until>now()
  FOR SHARE;
- IF NOT FOUND OR NEW.service_local_date <
+ IF NOT FOUND THEN
+  RAISE EXCEPTION 'Original active service contribution is unavailable'
+   USING ERRCODE='P1730';
+ END IF;
+ IF NEW.service_local_date <
   (v_policy.valid_from AT TIME ZONE v_center.time_zone)::date OR
   NEW.service_local_date >
   (v_policy.valid_until AT TIME ZONE v_center.time_zone)::date THEN
