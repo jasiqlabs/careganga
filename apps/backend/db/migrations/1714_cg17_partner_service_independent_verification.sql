@@ -215,6 +215,32 @@ BEGIN
  END IF;
  IF NEW.outcome='APPROVED' AND (
   NOT EXISTS(
+   SELECT 1 FROM cg19_patient_file_event ev
+   WHERE ev.realm_id=claim.root_realm_id AND ev.patient_id=claim.patient_ref
+    AND ev.file_id=claim.invoice_file_ref
+    AND ev.actor_account_id=NEW.reviewed_by_account
+    AND ev.action='PARTNER_CLAIM_REVIEW_READ'
+    AND ev.created_at>=attest.attested_at)
+  OR (claim.service_kind IN('NURSING','OT') AND NOT EXISTS(
+   SELECT 1 FROM cg19_patient_file_event ev
+   WHERE ev.realm_id=claim.root_realm_id AND ev.patient_id=claim.patient_ref
+    AND ev.file_id=claim.completion_file_ref
+    AND ev.actor_account_id=NEW.reviewed_by_account
+    AND ev.action='PARTNER_CLAIM_REVIEW_READ'
+    AND ev.created_at>=attest.attested_at))
+  OR (attest.payment_method='ELECTRONIC_EVIDENCE' AND NOT EXISTS(
+   SELECT 1 FROM cg19_patient_file_event ev
+   WHERE ev.realm_id=claim.root_realm_id AND ev.patient_id=claim.patient_ref
+    AND ev.file_id=claim.payment_file_ref
+    AND ev.actor_account_id=NEW.reviewed_by_account
+    AND ev.action='PARTNER_CLAIM_REVIEW_READ'
+    AND ev.created_at>=attest.attested_at))
+ ) THEN
+  RAISE EXCEPTION 'Financial reviewer must inspect original protected documents'
+   USING ERRCODE='P1745';
+ END IF;
+ IF NEW.outcome='APPROVED' AND (
+  NOT EXISTS(
    SELECT 1 FROM cg19_patient_private_file f
    JOIN cg19_patient_file_intent i ON i.realm_id=f.realm_id AND i.id=f.intent_id
    WHERE f.realm_id=claim.root_realm_id AND f.id=claim.invoice_file_ref
