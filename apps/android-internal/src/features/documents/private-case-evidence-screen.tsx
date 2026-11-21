@@ -12,13 +12,13 @@ import type {
 } from "@careganga/api-contracts";
 import {careGangaTheme as theme} from "../../../../../packages/design-tokens/src/index";
 import {identityRequest} from "../identity-access/http-client";
+import {NativePrivateLetterPanel} from "./native-private-letter-panel";
 
-type Props={token:string;onExit:()=>void;onExpired:()=>void;canViewLetters?:boolean};
+type Props={token:string;onExit:()=>void;onExpired:()=>void;
+ canViewLetters?:boolean;canRevokeLetters?:boolean};
 const MIME=new Set(["application/pdf","image/jpeg","image/png","image/webp"]);
 type Selected={uri:string;name:string;size:number;mime:string};
 type Media={fileRef:string;revision:number;mime:string;sizeBytes:number;createdAt:string;revoked:boolean};
-type Letter={documentRef:string;issueRevision:number;templateVersion:number;
-  state:string;canDownload:boolean;issuedAt:string|null};
 async function api<T>(token:string,path:string,method:"GET"|"POST"="GET",body?:unknown){
   let response:Response;
   try{
@@ -55,12 +55,12 @@ const statusLabel=(code:string)=>({
   EXPIRED:"Upload permission expired"
 } as Record<string,string>)[code]??"Private file not confirmed";
 
-export function PrivateCaseEvidenceScreen({token,onExit,onExpired,canViewLetters=false}:Props){
+export function PrivateCaseEvidenceScreen({token,onExit,onExpired,
+ canViewLetters=false,canRevokeLetters=false}:Props){
   const [list,setList]=useState<CG03CaseView[]>([]);
   const [selected,setSelected]=useState<CG03CaseView|null>(null);
   const [picked,setPicked]=useState<Selected|null>(null);
   const [media,setMedia]=useState<Media[]>([]);
-  const [letters,setLetters]=useState<Letter[]>([]);
   const [mediaBusy,setMediaBusy]=useState(false);
   const mediaRequest=useRef(0);
   const [requestKey,setRequestKey]=useState("");
@@ -89,7 +89,7 @@ export function PrivateCaseEvidenceScreen({token,onExit,onExpired,canViewLetters
   useEffect(()=>{void fetchCases()},[fetchCases]);
   const loadMedia=useCallback(async()=>{
     const seq=++mediaRequest.current;
-    if(!selected){setMedia([]);setLetters([]);return;}
+    if(!selected){setMedia([]);return;}
     setMediaBusy(true);
     try{
       const files=await api<{files:Media[]}>(token,
@@ -98,23 +98,17 @@ export function PrivateCaseEvidenceScreen({token,onExit,onExpired,canViewLetters
         throw Error("OFFLINE");
       if(seq!==mediaRequest.current)return;
       setMedia(files.files);
-      if(canViewLetters){
-        const docs=await api<{letters:Letter[]}>(token,
-          "/api/documents/letters/case/"+encodeURIComponent(selected.caseRef));
-        if(!Array.isArray(docs.letters)||docs.letters.length>20)
-          throw Error("OFFLINE");
-        if(seq===mediaRequest.current)setLetters(docs.letters);
-      }
+
     }catch(e){
       if(seq===mediaRequest.current){
-        setMedia([]);setLetters([]);
+        setMedia([]);
         if(e instanceof Error&&e.message==="EXPIRED")onExpired();
         else setMessage(explain(e));
       }
     }finally{
       if(seq===mediaRequest.current)setMediaBusy(false);
     }
-  },[selected?.caseRef,token,canViewLetters,onExpired]);
+  },[selected?.caseRef,token,onExpired]);
   useEffect(()=>{void loadMedia();return()=>{++mediaRequest.current};},[loadMedia]);
   useEffect(()=>{
     const sub=BackHandler.addEventListener("hardwareBackPress",()=>{
@@ -325,21 +319,13 @@ export function PrivateCaseEvidenceScreen({token,onExit,onExpired,canViewLetters
             <Text>Refresh verified files</Text>
           </Pressable>
         </View>}
-        {selected&&canViewLetters&&<View style={styles.card}>
-          <Text style={styles.heading}>Protected access letters</Text>
-          {!letters.length?<Text>No issued private letters for this application.</Text>:
-            letters.map(item=><View key={item.documentRef} style={styles.option}>
-              <Text>Issue {item.issueRevision} · Template {item.templateVersion}</Text>
-              <Text style={styles.muted}>{item.state.replace(/_/g," ")}</Text>
-              {item.canDownload&&<Pressable accessibilityRole="button"
-                style={styles.button} disabled={busy}
-                onPress={()=>void previewVerified(item.documentRef,"letter")}>
-                <Text>Preview private approved letter</Text>
-              </Pressable>}
-            </View>)}
-          <Text style={styles.muted}>Template approval, issue and revoke require
-            privileged confirmation in the Foundation Web administration.</Text>
-        </View>}
+        {selected&&canViewLetters&&
+          <NativePrivateLetterPanel key={selected.caseRef+"-"+selected.proposalRevision}
+            token={token} caseRef={selected.caseRef}
+            sourceRevision={selected.proposalRevision}
+            canIssue={canViewLetters} canRevoke={canRevokeLetters}
+            onExpired={onExpired}
+            onPreview={async ref=>{await previewVerified(ref,"letter")}}/>}
       </ScrollView>
     </KeyboardAvoidingView>
   </SafeAreaView>;
