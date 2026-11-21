@@ -7,6 +7,7 @@ import type {Pool} from "pg";
 import {DATABASE} from "../../../core/infrastructure/database.module";
 import {SessionService} from "../../cg-01-identity-access/application/session.service";
 import {MisSavedReportService} from "./mis-saved-report.service";
+import {MisReportSourceService} from "./mis-report-source.service";
 const ID=/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i;
 const DATE=/^\d{4}-\d{2}-\d{2}$/;
 const HOUR=/^([01]\d|2[0-3]):([0-5]\d)$/;
@@ -22,6 +23,7 @@ type Input={savedRef:string;cadence:"DAILY"|"WEEKLY"|"MONTHLY"|"YEARLY";
  timezone:string;localTime:string;firstDate:string;requestKey:string};
 type Schedule={
  id:string;owner_account_ref:string;saved_ref:string;saved_report_name?:string;
+ saved_revision:number;annual_month:number|null;
  cadence:string;timezone:string;local_time:string;
  weekday:number|null;monthday:number|null;
  next_due_utc:Date;state:string;revision:number;
@@ -135,22 +137,34 @@ const summary=(row:Schedule)=>({
  savedReportName:row.saved_report_name??"Saved report",
  timezone:row.timezone,localTime:row.local_time,
  nextDueAt:row.next_due_utc,revision:row.revision,
- updatedAt:row.updated_at,canActivate:false
+ updatedAt:row.updated_at,canActivate:row.state==="PAUSED"
 });
-/** US-005 staged strict-security owner metadata: creation is intentionally
- * PAUSED. Existing source projections only accept current CG01 bearer tokens.
- * It would be unsafe to make a background worker re-run patient/finance data
- * by impersonating an account or retaining a user's session credential.
- * Activation/delivery are blocked, not falsely marked queued or sent.
+/** US-005 supports only the original CG09 scheduled posted-summary
+ * reader and verified CG19 IN_APP delivery. Cross-user or external-channel
+ * reports remain unavailable until their source/recipient grants are owned.
+ * The due worker never retains user credentials or creates a login session.
  */
 @Injectable()
 export class MisReportScheduleService{
  constructor(@Inject(DATABASE)private readonly db:Pool,
   private readonly sessions:SessionService,
-  private readonly saved:MisSavedReportService){}
+  private readonly saved:MisSavedReportService,
+  private readonly sources:MisReportSourceService){}
  private async actor(token:string){
   await this.sessions.requireAction(token,"mis.reports.view");
   return this.sessions.requireAction(token,"mis.reports.schedule");
+ }
+ private async eligible(token:string,savedRef:string){
+  await this.sessions.requireAction(token,"mis.reports.export");
+  await this.sessions.requireAction(token,"finance.reports.view");
+  await this.sessions.requireAction(token,"communications.notifications.view");
+  const saved=await this.saved.authorizedRequest(token,savedRef);
+  if(saved.request.kind!=="FINANCE_POSTED_SUMMARY"||
+     saved.request.view!=="SUMMARY"||saved.request.offset!==0)
+   throw new BadRequestException({code:"MIS_SCHEDULE_SOURCE_UNSUPPORTED",
+    message:"Scheduled delivery currently supports only your posted finance summary."});
+  await this.sources.preview(token,saved.request);
+  return saved;
  }
  async list(token:string){
   const actor=await this.actor(token);
@@ -162,14 +176,15 @@ export class MisReportScheduleService{
    [actor.realmId,actor.accountId]);
   return {schedules:q.rows.slice(0,50).map(summary),
    hasMore:q.rows.length>50,
-   activationAvailable:false,
-   message:"Automatic delivery is unavailable until current recipient/source checks are implemented."};
+   activationAvailable:true,
+   channel:"IN_APP",
+   message:"Schedules for your authorized posted-finance summary send a private in-app notice after the original report file is confirmed."};
  }
  async create(token:string,raw:unknown){
   const actor=await this.actor(token),input=parse(raw);
-  // For now only the authenticated report owner can be the named recipient;
-  // do not confer any of the owner's finance/health grants on a third party.
-  await this.saved.authorizedRequest(token,input.savedRef);
+  // Current account is the sole currently supported recipient. All other
+  // recipient/source combinations are denied instead of inheriting grants.
+  const saved=await this.eligible(token,input.savedRef);
   const next=zonedLocalDate(input.firstDate,input.localTime,input.timezone);
   if(next.getTime()<Date.now()+60000||
     next.getTime()>Date.now()+366*2*86400000)
@@ -182,6 +197,7 @@ export class MisReportScheduleService{
   if(monthday!==null&&monthday>28)
    throw new BadRequestException({code:"MIS_SCHEDULE_DAY_INVALID",field:"firstDate",
     message:"For monthly or annual delivery choose a day from 1 to 28."});
+  const annualMonth=input.cadence==="YEARLY"?base.getUTCMonth()+1:null;
   const payload=digest(input);
   const tx=await this.db.connect();let started=false;
   try{
@@ -199,20 +215,21 @@ export class MisReportScheduleService{
       message:"This request was already used with different schedule settings."});
     await tx.query("COMMIT");started=false;
     return {...summary(existing.rows[0]),replayed:true,
-     message:"Schedule remains paused until secure automatic source checks are available."};
+     message:"Your existing schedule is shown with its original confirmed state."};
    }
-   // Deliberately not ACTIVE: no authenticated background source reader is
-   // currently available and provider delivery must never be fabricated.
    const inserted=await tx.query<Schedule>(
     "INSERT INTO cg20_report_schedule(root_realm_id,owner_account_ref,"+
-    "saved_ref,recipient_account_ref,request_key,payload_digest,cadence,"+
-    "timezone,local_time,weekday,monthday,next_due_utc,state) "+
-    "VALUES($1,$2,$3,$2,$4,$5,$6,$7,$8,$9,$10,$11,'PAUSED') RETURNING *",
-    [actor.realmId,actor.accountId,input.savedRef,input.requestKey,payload,
-     input.cadence,input.timezone,input.localTime,weekday,monthday,next]);
+    "saved_ref,saved_revision,recipient_account_ref,request_key,payload_digest,"+
+    "cadence,timezone,local_time,weekday,monthday,annual_month,"+
+    "next_due_utc,state,channel) "+
+    "VALUES($1,$2,$3,$4,$2,$5,$6,$7,$8,$9,$10,$11,$12,$13,'ACTIVE','IN_APP') "+
+    "RETURNING *",
+    [actor.realmId,actor.accountId,input.savedRef,saved.revision,
+     input.requestKey,payload,input.cadence,input.timezone,input.localTime,
+     weekday,monthday,annualMonth,next]);
    await tx.query("COMMIT");started=false;
    return {...summary(inserted.rows[0]),replayed:false,
-    message:"Schedule saved privately but paused. Automatic delivery is not enabled."};
+    message:"Schedule activated for a private in-app notification after its verified report is ready."};
   }catch(e){if(started)await tx.query("ROLLBACK").catch(()=>undefined);
    throw e;}finally{tx.release();}
  }
