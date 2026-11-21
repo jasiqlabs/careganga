@@ -395,9 +395,15 @@ export class MonthlyProviderSettlementService{
     "AND j.source_ref=e.id AND j.immutable_source_event_key=e.idempotency_key "+
     "AND j.immutable_payload_digest=e.source_digest "+
     "AND j.posting_date=l.service_local_date "+
-    "AND j.reversal_of_id IS NULL AND NOT EXISTS ("+
-    "SELECT 1 FROM journal offset_j WHERE offset_j.root_realm_id=j.root_realm_id "+
+    "AND j.reversal_of_id IS NULL AND ("+
+    "NOT EXISTS (SELECT 1 FROM journal offset_j "+
+    "WHERE offset_j.root_realm_id=j.root_realm_id "+
     "AND offset_j.reversal_of_id=j.id AND offset_j.status='POSTED') "+
+    "OR EXISTS (SELECT 1 FROM cg17_provider_claim_correction corrected "+
+    "WHERE corrected.root_realm_id=line.root_realm_id "+
+    "AND corrected.settlement_ref=line.settlement_ref "+
+    "AND corrected.liability_ref=line.liability_ref "+
+    "AND corrected.original_journal_ref=j.id)) "+
     "WHERE line.root_realm_id=$1 AND line.settlement_ref=$2 "+
     "AND line.center_ref=$3 AND l.service_local_date >=$4::date "+
     "AND l.service_local_date <($4::date+interval '1 month') "+
