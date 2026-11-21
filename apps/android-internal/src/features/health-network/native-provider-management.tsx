@@ -9,6 +9,7 @@ import {NativeHealthCenterEditor,blankCenter,type CenterDraft}
  from "./native-health-center-editor";
 import {NativeHealthEvidenceUploader} from "./native-health-evidence-uploader";
 import {NativeCenterContentPublisher} from "./native-center-content-publisher";
+import {NativePartnerApplicationInbox} from "./native-partner-application-inbox";
 type Provider={providerCode:string;legalName:string;providerType:string;
  contactName:string;contactPhone:string;contactEmail:string;registrationRef:string};
 type Row={providerRef:string;code:string;name:string;type:string;status:string;
@@ -69,6 +70,7 @@ export function NativeProviderManagement({token,onExpired,onExit,canManage,
  const [representativeSearch,setRepresentativeSearch]=useState("");
  const [repAccount,setRepAccount]=useState("");
 
+ const [partnerApplicationsOpen,setPartnerApplicationsOpen]=useState(false);
  const [loading,setLoading]=useState(true),[busy,setBusy]=useState(false);
  const [error,setError]=useState(""),[notice,setNotice]=useState("");
  const [uncertain,setUncertain]=useState(false);
@@ -314,6 +316,9 @@ export function NativeProviderManagement({token,onExpired,onExit,canManage,
    });
  }
  const selectedProvider=selected?.provider;
+ if(partnerApplicationsOpen)return <NativePartnerApplicationInbox token={token}
+  canManage={canManage} onExpired={onExpired}
+  onExit={()=>setPartnerApplicationsOpen(false)}/>;
  return <SafeAreaView style={styles.page}>
   <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={styles.content}>
    <Text accessibilityRole="header" style={styles.title}>
@@ -321,6 +326,7 @@ export function NativeProviderManagement({token,onExpired,onExit,canManage,
    <Text style={styles.note}>Foundation provider registration, genuine center
     geography, private evidence and separate independent verification.</Text>
    {button("Back to dashboard",onExit)}
+   {button("Review public partner applications",()=>setPartnerApplicationsOpen(true),busy)}
    {!!error&&<Text accessibilityRole="alert" style={styles.error}>{error}</Text>}
    {!!notice&&<Text accessibilityRole="alert" style={styles.note}>{notice}</Text>}
    {uncertain&&<Text style={styles.error}>The last request may have committed.
