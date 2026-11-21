@@ -211,6 +211,20 @@ export function getAuthorizedModules(
   // SECTION 3: ORGANIZATION MANAGEMENT
   // ----------------------------------------------------
 
+  // CG-10 self identity: always accessible to a logged-in Foundation staff actor.
+  // Backend /api/hr/me never returns anybody else's HR file, bank or salary.
+  list.push({
+    key:"hrSelf",
+    title:"My employment",
+    shortLabel:"Employment",
+    description:"View my current approved Foundation designation and branch.",
+    category:"DASHBOARD",
+    iconName:"user",
+    iconBg:"#E0F2FE",
+    iconColor:"#0369A1",
+    onOpen:handlers.openHr
+  });
+
   // CG-10 — real employee drafts, not CG-01 login provisioning or CG-11 payroll.
   if (roleActions.includes("hr.applications.view")) {
     list.push({
