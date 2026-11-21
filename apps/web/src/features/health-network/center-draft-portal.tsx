@@ -9,6 +9,7 @@ import {CenterMerchantBinding} from "../healthcare-assistance/center-merchant-bi
 import {CenterMonthlySettlementSummary} from "../healthcare-assistance/center-monthly-settlement-summary";
 import {CenterSupportDesk} from "./center-support-desk";
 import {CenterContentEditor} from "./center-content-editor";
+import {PartnerPublicOffersWorkspace} from "./partner-public-offers-workspace";
 import {CenterErpCapabilityPanel} from "./center-erp-capability-panel";
 import {DoctorScheduleWorkspace} from "../appointments/doctor-schedule-workspace";
 import {CenterPatientIntakePanel} from "../patients/center-patient-intake-panel";
@@ -166,6 +167,9 @@ export function CenterDraftPortal({canViewLabPricing=false,canManageLabPricing=f
         <CenterAssistedConsultationBooking key={"booking:"+active.centerRef} centerRef={active.centerRef}/>}
       {active.status==="VERIFIED"&&active.accessState==="ENABLED"&&
         <CenterContentEditor key={"content:"+active.centerRef} centerRef={active.centerRef}/>}
+      {active.status==="VERIFIED"&&active.accessState==="ENABLED"&&
+       draft.capabilities.some(x=>["PHARMACY","NURSING","SURGERY"].includes(x))&&
+       <PartnerPublicOffersWorkspace mode="partner" centerRef={active.centerRef}/>}
       {active.status==="VERIFIED"&&active.accessState==="ENABLED"&&
         <CenterSupportDesk key={"support:"+active.centerRef} centerRef={active.centerRef}/>}
       {active.status==="VERIFIED"&&active.accessState==="ENABLED"&&
