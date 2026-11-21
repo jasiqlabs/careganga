@@ -4,6 +4,10 @@ import type {Pool,PoolClient} from "pg";
 import {DATABASE} from "../../../core/infrastructure/database.module";
 import {SessionService} from "../../cg-01-identity-access/application/session.service";
 import type {VerifiedFoundationActor} from "../../cg-01-identity-access/public-api";
+import {HrEnrollmentSourceFacade,sourceHash} from "./hr-enrollment-source.facade";
+import {HrEmployeeEvidenceService} from "../../cg-19-documents-notifications/application/hr-employee-evidence.service";
+import {HrEnrollmentApprovalService} from "../../cg-03-registration-approvals/application/hr-enrollment-approval.service";
+import {FoundationStructureIdentityFacade} from "../../cg-01-identity-access/application/foundation-structure-identity.facade";
 
 const ID=/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i;
 const TYPES=["FULL_TIME","PART_TIME","CONTRACT","VOLUNTEER_STAFF"] as const;
@@ -61,7 +65,12 @@ const view=(x:Row)=>({applicationRef:x.id,reference:x.application_no,name:x.lega
 
 @Injectable()
 export class HrEnrollmentService{
- constructor(@Inject(DATABASE)private readonly db:Pool,private readonly sessions:SessionService){}
+ constructor(@Inject(DATABASE)private readonly db:Pool,
+  private readonly sessions:SessionService,
+  private readonly source:HrEnrollmentSourceFacade,
+  private readonly files:HrEmployeeEvidenceService,
+  private readonly approvals:HrEnrollmentApprovalService,
+  private readonly identity:FoundationStructureIdentityFacade){}
  private actor(token:string,action:"hr.applications.view"|"hr.applications.manage"){
   return this.sessions.requireAction(token,action);
  }
@@ -293,4 +302,290 @@ export class HrEnrollmentService{
     designation:row.designation,branch:row.branch_name,
     employmentType:row.employment_type,effectiveFrom:iso(row.valid_from)};
  }
+
+ /** CG-10 uses an original immutable CG19-file snapshot, never client "verified". */
+ async submit(token:string,applicationInput:string,body:unknown){
+  const actor=await this.actor(token,"hr.applications.manage");
+  const applicationRef=uuid(applicationInput,"application");
+  if(!body||typeof body!=="object"||Array.isArray(body))
+   throw new BadRequestException("Check enrollment submission");
+  const input=body as Record<string,unknown>;
+  if(Object.keys(input).some(k=>!["requestKey","expectedRevision","files"].includes(k))||
+    typeof input.requestKey!=="string"||!ID.test(input.requestKey)||
+    !Number.isSafeInteger(input.expectedRevision)||Number(input.expectedRevision)<1||
+    !Array.isArray(input.files)||input.files.length<1||input.files.length>8)
+   throw new BadRequestException("Choose verified documents and the current draft");
+  const files=input.files.map((f:unknown)=>{
+   if(!f||typeof f!=="object"||Array.isArray(f))
+    throw new BadRequestException("Check the submitted HR evidence");
+   const row=f as Record<string,unknown>;
+   if(Object.keys(row).some(k=>!["fileRef","fileVersion","classification"].includes(k))||
+     typeof row.fileRef!=="string"||!ID.test(row.fileRef)||
+     !Number.isSafeInteger(row.fileVersion)||Number(row.fileVersion)<1||
+     !["HR_IDENTITY_PROOF","HR_QUALIFICATION","HR_PORTRAIT"].includes(String(row.classification)))
+    throw new BadRequestException("Choose an original clean employee file");
+   return {fileRef:row.fileRef as string,fileVersion:Number(row.fileVersion),
+    classification:row.classification as "HR_IDENTITY_PROOF"|"HR_QUALIFICATION"|"HR_PORTRAIT"};
+  });
+  if(new Set(files.map(f=>f.fileRef)).size!==files.length||
+    files.filter(f=>f.classification==="HR_IDENTITY_PROOF").length!==1)
+   throw new BadRequestException("One original identity proof is required");
+  files.sort((x,y)=>x.classification.localeCompare(y.classification)||
+   x.fileRef.localeCompare(y.fileRef));
+  const tx=await this.db.connect();
+  try{
+   await tx.query("BEGIN");
+   const q=await tx.query<Row&{created_by:string;cg03_case_ref:string|null;
+      submitted_digest:string|null}>(
+    "SELECT * FROM hr_employee_application WHERE id=$1 AND root_realm_id=$2 FOR UPDATE",
+    [applicationRef,actor.realmId]);
+   const app=q.rows[0];
+   if(!app)throw new NotFoundException("Employee application unavailable");
+   await this.source.draft(tx,actor,applicationRef);
+   if(app.cg03_case_ref){
+    const existing=await tx.query<{id:string;case_number:string;request_key:string;
+      hr_revision_no:number;status:string}>(
+     "SELECT id,case_number,request_key,hr_revision_no,status FROM cg03_case "+
+     "WHERE id=$1 AND realm_id=$2 AND case_kind='EMPLOYEE_ENROLLMENT' "+
+     "AND hr_application_id=$3 FOR SHARE",
+     [app.cg03_case_ref,actor.realmId,app.id]);
+    const previous=existing.rows[0];
+    if(previous&&previous.request_key===input.requestKey&&
+      previous.hr_revision_no===Number(input.expectedRevision)){
+     await tx.query("COMMIT");
+     return {caseRef:previous.id,reference:previous.case_number,
+      status:previous.status,replayed:true};
+    }
+    throw new ConflictException("An employee enrollment review already exists");
+   }
+   if(!["DRAFT","RETURNED"].includes(app.state)||
+     app.revision_no!==Number(input.expectedRevision))
+    throw new ConflictException("Refresh the latest employee draft before submission");
+   await this.validSource(tx,actor,{name:app.legal_name,
+    designation:app.designation,employmentType:app.employment_type,
+    branchRef:app.proposed_branch_ref,departmentRef:app.department_ref,
+    accountRef:app.applicant_account_ref,hireDate:iso(app.hire_date)});
+   for(const item of files)
+    await this.files.prove(tx,actor.realmId,app.id,app.revision_no,
+     item.fileRef,item.classification,item.fileVersion);
+   const frozen={
+    id:app.id,root_realm_id:actor.realmId,revision_no:Number(app.revision_no),
+    legal_name:app.legal_name,designation:app.designation,
+    employment_type:app.employment_type,proposed_branch_ref:app.proposed_branch_ref,
+    department_ref:app.department_ref,applicant_account_ref:app.applicant_account_ref,
+    hire_date:iso(app.hire_date),created_by:app.created_by,state:app.state
+   };
+   const sourceDigest=sourceHash(frozen);
+   const revision=await tx.query<{id:string}>(
+    "INSERT INTO hr_application_revision(root_realm_id,application_id,revision_no,"+
+    "source_digest,source_snapshot,private_file_versions,submitted_by) "+
+    "VALUES($1,$2,$3,$4,$5::jsonb,$6::jsonb,$7) RETURNING id",
+    [actor.realmId,app.id,app.revision_no,sourceDigest,JSON.stringify(frozen),
+     JSON.stringify(files),actor.accountId]);
+   for(const file of files)await tx.query(
+    "INSERT INTO hr_application_proof(root_realm_id,application_id,revision_no,"+
+    "file_ref,file_version,classification) VALUES($1,$2,$3,$4,$5,$6)",
+    [actor.realmId,app.id,app.revision_no,file.fileRef,
+     file.fileVersion,file.classification]);
+   await tx.query("UPDATE hr_employee_application SET state='SUBMISSION_UNCONFIRMED',"+
+    "submitted_digest=$3,updated_at=now() WHERE id=$1 AND root_realm_id=$2",
+    [app.id,actor.realmId,sourceDigest]);
+   const caseResult=await this.approvals.createCase(tx,actor,{
+    applicationRef:app.id,revisionRef:revision.rows[0].id,
+    revisionNo:app.revision_no,digest:sourceDigest,requestKey:input.requestKey as string});
+   await tx.query("UPDATE hr_application_revision SET cg03_case_ref=$3 "+
+    "WHERE root_realm_id=$1 AND id=$2",
+    [actor.realmId,revision.rows[0].id,caseResult.caseRef]);
+   await tx.query("UPDATE hr_employee_application SET state='SUBMITTED',"+
+    "cg03_case_ref=$3,updated_at=now() WHERE id=$1 AND root_realm_id=$2",
+    [app.id,actor.realmId,caseResult.caseRef]);
+   await tx.query(
+    "INSERT INTO hr_audit(root_realm_id,actor_ref,application_ref,event_key,action) "+
+    "VALUES($1,$2,$3,$4,'SUBMITTED')",
+    [actor.realmId,actor.accountId,app.id,randomUUID()]);
+   await tx.query("COMMIT");
+   return {caseRef:caseResult.caseRef,reference:caseResult.reference,
+    status:"SUBMITTED",replayed:false};
+  }catch(e){
+   await tx.query("ROLLBACK");
+   if(e&&typeof e==="object"&&"code" in e&&e.code==="23505")
+    throw new ConflictException("Enrollment changed. Refresh original application.");
+   throw e;
+  }finally{tx.release();}
+ }
+ /** Independently approved ORIGINAL CG03 decision and CG19 scan evidence are
+  * checked again inside the same transaction that activates an employee.
+  */
+ async finalize(token:string,applicationInput:string,body:unknown){
+  const actor=await this.actor(token,"hr.applications.manage");
+  const applicationRef=uuid(applicationInput,"application");
+  if(!body||typeof body!=="object"||Array.isArray(body)||
+   Object.keys(body as Record<string,unknown>).some(k=>k!=="caseRef")||
+   !("caseRef" in body))
+   throw new BadRequestException("Choose the original approved enrollment");
+  const caseRef=uuid((body as {caseRef:unknown}).caseRef,"approval case");
+  const tx=await this.db.connect();
+  try{
+   await tx.query("BEGIN");
+   await this.identity.assertCurrent(tx,actor,"hr.applications.manage");
+   const q=await tx.query<Row&{cg03_case_ref:string|null;submitted_digest:string|null}>(
+    "SELECT * FROM hr_employee_application WHERE id=$1 AND root_realm_id=$2 FOR UPDATE",
+    [applicationRef,actor.realmId]);
+   const app=q.rows[0];
+   if(!app)throw new NotFoundException("Original employee application unavailable");
+   if(app.cg03_case_ref!==caseRef||!app.submitted_digest)
+    throw new ConflictException("This enrollment does not match its original approval");
+   await this.source.draft(tx,actor,app.id);
+   const existing=await tx.query<{employee_code:string;status:string}>(
+    "SELECT e.employee_code,e.status FROM hr_employee e "+
+    "WHERE e.root_realm_id=$1 AND e.application_id=$2 FOR SHARE",
+    [actor.realmId,app.id]);
+   if(existing.rows[0]){
+    await tx.query("COMMIT");
+    return {reference:existing.rows[0].employee_code,
+     status:existing.rows[0].status,replayed:true};
+   }
+   if(!["SUBMITTED","IN_REVIEW","FINAL_APPROVED_PENDING_ACTIVATION"].includes(app.state))
+    throw new ConflictException("This applicant is not awaiting an approved activation");
+   const rev=await tx.query<{id:string}>(
+    "SELECT id FROM hr_application_revision WHERE application_id=$1 "+
+    "AND root_realm_id=$2 AND revision_no=$3 AND source_digest=$4 "+
+    "AND cg03_case_ref=$5 FOR SHARE",
+    [app.id,actor.realmId,app.revision_no,app.submitted_digest,caseRef]);
+   if(!rev.rows[0])throw new ConflictException("Employee evidence revision is unavailable");
+   await this.approvals.approved(tx,actor.realmId,app.id,rev.rows[0].id,
+    app.revision_no,app.submitted_digest,caseRef);
+   // CG01 is the only login/role owner. Existing identity links require an
+   // explicit separate account acceptance, not a guessed role grant.
+   const linkPending=app.applicant_account_ref!==null;
+   const status=linkPending?"PENDING_ACCESS":"ACTIVE";
+   const e=await tx.query<{id:string;employee_code:string}>(
+    "INSERT INTO hr_employee(root_realm_id,application_id,employee_code,status) "+
+    "VALUES($1,$2,'CG-HR-EMP-'||lpad(nextval('hr_employee_public_sequence')::text,6,'0'),"+
+    "$3) RETURNING id,employee_code",[actor.realmId,app.id,status]);
+   const row=e.rows[0];
+   await tx.query(
+    "INSERT INTO hr_employment_assignment(root_realm_id,employee_id,branch_ref,"+
+    "department_ref,designation,employment_type,valid_from,origin_application_ref) "+
+    "VALUES($1,$2,$3,$4,$5,$6,$7,$8)",
+    [actor.realmId,row.id,app.proposed_branch_ref,app.department_ref,
+     app.designation,app.employment_type,iso(app.hire_date),app.id]);
+   await this.approvals.finish(tx,actor,caseRef);
+   await tx.query("UPDATE hr_employee_application SET state=$3,updated_at=now() "+
+    "WHERE id=$1 AND root_realm_id=$2",
+    [app.id,actor.realmId,linkPending?"PENDING_ACCESS":"ACTIVE"]);
+   await tx.query(
+    "INSERT INTO hr_audit(root_realm_id,actor_ref,application_ref,employee_ref,"+
+    "event_key,action) VALUES($1,$2,$3,$4,$5,$6)",
+    [actor.realmId,actor.accountId,app.id,row.id,randomUUID(),
+     linkPending?"PENDING_ACCESS":"ACTIVATED"]);
+   await tx.query("COMMIT");
+   return {reference:row.employee_code,status,replayed:false};
+  }catch(e){
+   await tx.query("ROLLBACK");
+   if(e&&typeof e==="object"&&"code" in e&&e.code==="23505")
+    throw new ConflictException("The employee was already enrolled. Refresh the directory.");
+   throw e;
+  }finally{tx.release();}
+ }
+ /** Only the actual target CG01 account may accept an approved HR linkage.
+  * No account/password creation, new grant, role escalation or impersonation.
+  */
+ async acceptMyApprovedLink(token:string,body:unknown){
+  const actor=await this.sessions.verifySession(token);
+  if(!body||typeof body!=="object"||Array.isArray(body)||
+    Object.keys(body as Record<string,unknown>).some(k=>k!=="applicationRef")||
+    !("applicationRef" in body))
+   throw new BadRequestException("Choose your original HR enrollment");
+  const ref=uuid((body as {applicationRef:unknown}).applicationRef,"enrollment");
+  const tx=await this.db.connect();
+  try{
+   await tx.query("BEGIN");
+   await this.identity.assertPatientSessionCurrent(tx,actor);
+   const q=await tx.query<{id:string;root_realm_id:string;state:string;
+     applicant_account_ref:string|null;cg03_case_ref:string|null;submitted_digest:string|null}>(
+    "SELECT id,root_realm_id,state,applicant_account_ref,cg03_case_ref,"+
+    "submitted_digest FROM hr_employee_application "+
+    "WHERE id=$1 AND root_realm_id=$2 FOR UPDATE",[ref,actor.realmId]);
+   const app=q.rows[0];
+   if(!app||app.applicant_account_ref!==actor.accountId)
+    throw new NotFoundException("No approved employment is assigned to this account");
+   const e=await tx.query<{id:string;status:string;account_ref:string|null}>(
+    "SELECT id,status,account_ref FROM hr_employee "+
+    "WHERE root_realm_id=$1 AND application_id=$2 FOR UPDATE",
+    [actor.realmId,ref]);
+   const emp=e.rows[0];
+   if(!emp||!["PENDING_ACCESS","ACTIVE"].includes(emp.status))
+    throw new ConflictException("The employee is not ready for account acceptance");
+   if(emp.account_ref===actor.accountId){
+    await tx.query("COMMIT");
+    return {status:"ACTIVE",replayed:true};
+   }
+   if(emp.account_ref!==null)
+    throw new ConflictException("An employment account is already linked");
+   const linked=await tx.query(
+    "SELECT 1 FROM hr_employee WHERE root_realm_id=$1 AND account_ref=$2",
+    [actor.realmId,actor.accountId]);
+   if(linked.rowCount)throw new ConflictException("Your account is linked to another employee");
+   await tx.query("UPDATE hr_employee SET account_ref=$3,status='ACTIVE',"+
+    "status_version=status_version+1 WHERE id=$1 AND root_realm_id=$2",
+    [emp.id,actor.realmId,actor.accountId]);
+   await tx.query("UPDATE hr_employee_application SET state='ACTIVE',updated_at=now() "+
+    "WHERE id=$1 AND root_realm_id=$2",[ref,actor.realmId]);
+   await tx.query(
+    "INSERT INTO hr_audit(root_realm_id,actor_ref,application_ref,employee_ref,"+
+    "event_key,action) VALUES($1,$2,$3,$4,$5,'ACCESS_CONFIRMED')",
+    [actor.realmId,actor.accountId,ref,emp.id,randomUUID()]);
+   await tx.query("COMMIT");
+   return {status:"ACTIVE",replayed:false};
+  }catch(e){
+   await tx.query("ROLLBACK");throw e;
+  }finally{tx.release();}
+ }
+ async myPendingLink(token:string){
+  const actor=await this.sessions.verifySession(token);
+  const q=await this.db.query<{id:string;legal_name:string;designation:string}>(
+   "SELECT a.id,a.legal_name,a.designation FROM hr_employee_application a "+
+   "JOIN hr_employee e ON e.application_id=a.id AND e.root_realm_id=a.root_realm_id "+
+   "WHERE a.root_realm_id=$1 AND a.applicant_account_ref=$2 "+
+   "AND e.status='PENDING_ACCESS' AND e.account_ref IS NULL "+
+   "AND a.state='PENDING_ACCESS' ORDER BY a.updated_at DESC LIMIT 1",
+   [actor.realmId,actor.accountId]);
+  if(!q.rows[0])return {pending:false};
+  return {pending:true,applicationRef:q.rows[0].id,
+   name:q.rows[0].legal_name,designation:q.rows[0].designation};
+ }
+ async employeeDirectory(token:string,offsetInput:unknown,branchInput?:unknown){
+  const actor=await this.sessions.requireAction(token,"hr.employees.view");
+  const offset=Number(offsetInput??0);
+  if(!Number.isSafeInteger(offset)||offset<0||offset>10000)
+   throw new BadRequestException("Check the staff directory page");
+  const branch=branchInput===undefined?null:uuid(branchInput,"branch");
+  const q=await this.db.query<{employee_code:string;legal_name:string;
+    designation:string;status:string;branch_name:string;employment_type:string}>(
+   "SELECT e.employee_code,a.legal_name,asg.designation,e.status,b.name AS branch_name,"+
+   "asg.employment_type FROM hr_employee e "+
+   "JOIN hr_employee_application a ON a.id=e.application_id "+
+   "AND a.root_realm_id=e.root_realm_id "+
+   "JOIN hr_employment_assignment asg ON asg.employee_id=e.id "+
+   "AND asg.root_realm_id=e.root_realm_id "+
+   "AND asg.valid_from<=CURRENT_DATE AND "+
+   "(asg.valid_to IS NULL OR asg.valid_to>CURRENT_DATE) "+
+   "JOIN branch b ON b.id=asg.branch_ref AND b.root_realm_id=asg.root_realm_id "+
+   "WHERE e.root_realm_id=$1 AND ($3::uuid IS NULL OR b.id=$3) "+
+   "AND (b.manager_account_ref=$2 OR EXISTS("+
+   "SELECT 1 FROM account_role ar JOIN role r ON r.id=ar.role_id "+
+   "AND r.realm_id=ar.realm_id AND r.active "+
+   "LEFT JOIN role_grant g ON g.role_id=r.id AND g.capability_key='foundation.branches.admin' "+
+   "WHERE ar.account_id=$2 AND ar.realm_id=$1 AND ar.revoked_at IS NULL "+
+   "AND (r.is_protected OR g.capability_key IS NOT NULL))) "+
+   "ORDER BY a.legal_name,e.id LIMIT 26 OFFSET $4",
+   [actor.realmId,actor.accountId,branch,offset]);
+  return {items:q.rows.slice(0,25).map(x=>({
+   reference:x.employee_code,name:x.legal_name,
+   designation:x.designation,branch:x.branch_name,
+   employmentType:x.employment_type,status:x.status
+  })),hasMore:q.rows.length>25,offset};
+ }
+
 }
