@@ -262,8 +262,9 @@ export function NativeHealthcarePolicyScreen({token,canView,canManage,canReview,
     {input("Valid from (local)",from,setFrom)}
     {input("Valid until (local)",until,setUntil)}
     <Text style={s.note}>Patient-care consent/identity are checked by CG15
-     when a service is accepted. 100% requests stay pending until a genuine
-     independent CG03 approval. No Lab/Pharmacy/Nursing/OT mock discount
+     when a service is accepted. All pharmacy, nursing, OT and 100% consultation policies need a
+     genuine independent CG03 review and Foundation finalization.
+     No unverified service discount
      becomes active from this screen.</Text>
     {button(busy?"Checking original…":"Save policy revision",submit,busy)}
     {revision&&button("Cancel revision",reset,busy)}
