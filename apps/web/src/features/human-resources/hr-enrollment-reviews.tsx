@@ -109,7 +109,12 @@ export function HrEnrollmentReviews(){
     {" · "}{detail.employmentType.replaceAll("_"," ")}</p>
    <div><strong>Original verified evidence</strong>
     {detail.evidence.map((f,i)=><p key={i} style={{margin:"4px 0"}}>
-      {f.classification.replaceAll("_"," ")} — {f.verified?"Verified":"Unverified"}</p>)}
+      {f.classification.replaceAll("_"," ")} — {f.verified?"Verified":"Unverified"}
+      {f.verified&&<a style={{marginLeft:9,color:"#0369A1"}}
+       href={"/api/hr-review-proof/"+encodeURIComponent(detail.caseRef)+
+        "?kind="+encodeURIComponent(f.classification)}>
+       Download original private proof</a>}
+     </p>)}
    </div>
    {detail.canDecide&&<div style={{display:"grid",gap:11}}>
     <label style={{display:"grid",gap:4}}>Decision
