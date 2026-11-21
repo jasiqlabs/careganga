@@ -1,5 +1,5 @@
 import {useCallback,useEffect,useState} from "react";
-import {ActivityIndicator,BackHandler,Pressable,ScrollView,StyleSheet,
+import {ActivityIndicator,Alert,BackHandler,Pressable,ScrollView,StyleSheet,
   Text,TextInput,View} from "react-native";
 import {SafeAreaView} from "react-native-safe-area-context";
 import * as Crypto from "expo-crypto";
@@ -99,13 +99,25 @@ export function FoundationNoticeAdminScreen({token,mayManage,mayApprove,mayProce
       }).catch(()=>{if(live)setNotice("Current audience options unavailable.")});
     return()=>{live=false};
   },[audienceKind,mayManage,maySelectAccounts,maySelectRoles,token]);
+  const leave=useCallback(()=>{
+    if(draftUnknown||reviewUnknown||emailImportUnknown){
+      Alert.alert("Original Foundation request not confirmed",
+        "The previous notice, approval or template import may have "+
+        "committed. Leaving loses the local request/reconciliation state.",[
+          {text:"Check original request",style:"cancel"},
+          {text:"Leave anyway",style:"destructive",onPress:onExit}
+        ]);
+      return;
+    }
+    onExit();
+  },[draftUnknown,reviewUnknown,emailImportUnknown,onExit]);
   useEffect(()=>{
     const sub=BackHandler.addEventListener("hardwareBackPress",()=>{
-      if(review){setReview(null);return true}
-      onExit();return true;
+      if(review&&!reviewUnknown){setReview(null);return true}
+      leave();return true;
     });
     return()=>sub.remove();
-  },[review,onExit]);
+  },[review,reviewUnknown,leave]);
   async function create(){
     if(!mayManage||busy||draftUnknown)return;
     if(!expiresAt||!Number.isFinite(Date.parse(expiresAt))||
@@ -257,7 +269,7 @@ export function FoundationNoticeAdminScreen({token,mayManage,mayApprove,mayProce
   return <SafeAreaView style={s.page} edges={["left","right"]}>
     <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={s.content}>
       <View style={s.row}>
-        <Pressable style={s.button} accessibilityRole="button" onPress={onExit}>
+        <Pressable style={s.button} accessibilityRole="button" onPress={leave}>
           <Text>Back</Text></Pressable>
         <Text style={s.title} accessibilityRole="header">Foundation communications</Text>
       </View>
