@@ -87,7 +87,7 @@ const ownerPaths=[
 ];
 const originalCatalog=file("apps/backend/src/core/http/safe-error-copy.ts");
 const originalFilter=file("apps/backend/src/core/http/safe-errors.filter.ts");
-const approved=new Set([...originalCatalog.matchAll(/^\\s+([A-Z][A-Z_0-9]{4,}):"/gm)].map(match=>match[1]));
+const approved=new Set([...originalCatalog.matchAll(/^\s+([A-Z][A-Z_0-9]{4,}):"/gm)].map(match=>match[1]));
 const problems=[];
 let checked=0,recognized=0;
 for(const path of ownerPaths){
