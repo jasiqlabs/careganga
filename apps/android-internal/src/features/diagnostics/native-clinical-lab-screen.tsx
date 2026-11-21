@@ -4,7 +4,6 @@ import {SafeAreaView} from "react-native-safe-area-context";
 import * as Crypto from "expo-crypto";
 import {careGangaTheme as t} from "../../../../../packages/design-tokens/src/index";
 import {identityRequest} from "../identity-access/http-client";
-import {NativeLabResultUpload} from "./native-lab-result-upload";
 import {NativeLabResultEntry} from "./native-lab-result-entry";
 import {NativeLabProfessionalReview} from "./native-lab-professional-review";
 import {NativeLabReportRelease} from "./native-lab-report-release";
