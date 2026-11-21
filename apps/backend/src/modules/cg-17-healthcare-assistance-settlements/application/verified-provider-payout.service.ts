@@ -178,9 +178,12 @@ export class VerifiedProviderPayoutService{
    if(claim.state==="SETTLED")
     return {...await this.view(c,a.realmId,claim),bankDisbursements:[],
      protectedDestinationLabel:bank.maskedLabel,payoutHistory,complete:true};
+   const effective=await this.view(c,a.realmId,claim);
+   const outstanding=BigInt(effective.outstandingMinor);
+   if(outstanding===0n)return {...effective,bankDisbursements:[],
+    protectedDestinationLabel:bank.maskedLabel,payoutHistory,complete:true};
    const payable=await this.payableAccount(c,claim);
    const evidence=await this.cg09.options(c,a,payable);
-   const outstanding=BigInt((await this.view(c,a.realmId,claim)).outstandingMinor);
    const refs=evidence.bankDisbursements.map(x=>x.bankMatchRef);
    const used=refs.length?await c.query<{bank_reconciliation_ref:string}>(
     "SELECT bank_reconciliation_ref FROM provider_settlement_payment "+
