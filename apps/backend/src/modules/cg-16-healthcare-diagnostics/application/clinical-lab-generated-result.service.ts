@@ -197,6 +197,20 @@ export class ClinicalLabGeneratedResultService{
      [a.realmId,order,row.id]);
     previousReleaseRef=prior.rows[0]?.id??null;
    }
+   let correctionDraft:Entry[]|null=null;
+   if(previousReleaseRef&&row?.result_state==="RESULT_READY"){
+    const values=await c.query<{
+     order_line_ref:string;value_text:string;unit_text:string;
+     observation_text:string}>(
+     "SELECT order_line_ref,value_text,unit_text,observation_text "+
+     "FROM lab_result_value WHERE root_realm_id=$1 AND order_ref=$2 "+
+     "AND result_revision_ref=$3 ORDER BY order_line_ref LIMIT 51",
+     [a.realmId,order,row.id]);
+    if(values.rows.length===original.length)
+     correctionDraft=values.rows.map(v=>({
+      lineRef:v.order_line_ref,value:v.value_text,unit:v.unit_text,
+      observation:v.observation_text}));
+   }
    if(row?.result_state==="DRAFT"&&resume&&row.corrects_revision_ref){
     const q=await c.query<{prior_release_ref:string;reason:string}>(
      "SELECT prior_release_ref,reason FROM cg16_lab_result_correction "+
@@ -211,7 +225,7 @@ export class ClinicalLabGeneratedResultService{
     orderRow.rows[0].status==="RESULT_READY"&&
     (Boolean(previousReleaseRef)||Boolean(resumeCorrection));
    return {canEnter,canCorrect:Boolean(previousReleaseRef),
-    previousReleaseRef,resumeCorrection,
+    previousReleaseRef,resumeCorrection,correctionDraft,
     reportReady:row?.result_state==="RESULT_READY",resume,
     tests:original.map(x=>({lineRef:x.id,name:x.test_name_snapshot}))};
   });
