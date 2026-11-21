@@ -215,6 +215,38 @@ export class FinanceReportsService{
    sourceRecordState:result.rows.length===0?"NO_ROWS":"HAS_ROWS",
    explanation:"Recognized income/expense from posted GL only. Cash/bank is not the same as approved claims or invoices."};
  }
+ /** CG-20 US-001 source-owned narrow trend, never a separate MIS ledger.
+  * Month uses original posting_date, only POSTED journal lines and the same
+  * current CG-02 branch permission as all existing CG-09 finance reports.
+  * Absent months are not invented. No private journal row leaves CG-09.
+  */
+ async monthlyMisTrend(bearer:string,yearInput?:string,branchInput?:string){
+  const actor=await this.actor(bearer);
+  const year=yearInput?uuid(yearInput,"yearRef"):null;
+  const branch=branchInput?uuid(branchInput,"branchRef"):null;
+  await this.verifyFilterScope(bearer,actor.realmId,{fy:year,branch,account:null});
+  const rows=await this.db.query<{month:string;incomeMinor:string;expenseMinor:string}>(
+   "SELECT to_char(date_trunc('month',j.posting_date),'YYYY-MM') AS month,"+
+   "COALESCE(SUM(CASE WHEN g.category='INCOME' "+
+   "THEN l.credit_minor-l.debit_minor ELSE 0 END),0)::text AS \"incomeMinor\","+
+   "COALESCE(SUM(CASE WHEN g.category='EXPENSE' "+
+   "THEN l.debit_minor-l.credit_minor ELSE 0 END),0)::text AS \"expenseMinor\" "+
+   "FROM journal j "+
+   "JOIN journal_line l ON l.journal_id=j.id AND l.root_realm_id=j.root_realm_id "+
+   "JOIN finance_account a ON a.id=l.account_id AND a.root_realm_id=l.root_realm_id "+
+   "JOIN account_group g ON g.id=a.group_id AND g.root_realm_id=a.root_realm_id "+
+   "WHERE j.root_realm_id=$1 AND j.status='POSTED' "+
+   "AND ($2::uuid IS NULL OR j.financial_year_id=$2) "+
+   "AND ($3::uuid IS NULL OR l.branch_id=$3) "+
+   "AND j.posting_date >= (date_trunc('month',CURRENT_DATE) - interval '5 months')::date "+
+   "AND j.posting_date < (date_trunc('month',CURRENT_DATE) + interval '1 month')::date "+
+   "AND g.category IN ('INCOME','EXPENSE') "+
+   "GROUP BY date_trunc('month',j.posting_date) "+
+   "ORDER BY date_trunc('month',j.posting_date) LIMIT 6",
+   [actor.realmId,year,branch]);
+  return {months:rows.rows,windowLabel:"Last six calendar months",
+   explanation:"Net posted finance income and expenses by posting month. Missing months have no original qualifying journal lines."};
+ }
  /** Invoice receivables are a projection of original POSTED/ISSUED accruals
   * minus the source-linked verified CG-09 receipt. No sample supplier or
   * future donor/client master and no shadow balance table.
