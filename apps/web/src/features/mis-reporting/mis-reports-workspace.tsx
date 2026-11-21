@@ -200,7 +200,7 @@ export function MisReportsWorkspace(){
        <option value="ASC">Ascending</option><option value="DESC">Descending</option>
       </select></label>
      </>}
-     {(ledger||grouped||!finance)&&<>
+     {(ledger||grouped||health||kind==="PLATFORM_AUDIT_ACTIVITY")&&<>
       <label>Start date <input type="date" value={from} onChange={e=>setFrom(e.target.value)}/></label>
       <label>End date <input type="date" value={until} onChange={e=>setUntil(e.target.value)}/></label>
      </>}
