@@ -311,5 +311,11 @@ must(releaseUiWeb,/notificationStates/,
  "Web clinician can see actual queued or delivered source");
 must(releaseUiNative,/notificationStates/,
  "Native clinician can see same actual delivery state");
+must(generated,/this\.evidence\.status\(token,center,order,original\.intent\.id\)/,
+ "Generated report retry must reuse the original CG16 verified file/consent status");
+must(generated,/proof\.status!=="VALIDATED"\|\|!proof\.cleanVerified/,
+ "Saved upload intent alone cannot claim clean ready PDF on replay");
+must(generated,/proof\.resultRef!==original\.result\.id\|\|!proof\.originalFileRef/,
+ "Generated retry must retain the exact same verified original result/file");
 console.log("CG16 US002 source/parse preflight authored for clinical review and simple release. "+
  "PostgreSQL, browser, Android, independent clinical and security QA NOT_RUN.");
