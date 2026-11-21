@@ -149,9 +149,23 @@ export class HrEnrollmentService{
      "legal_name,designation,employment_type,proposed_branch_ref,department_ref,hire_date,"+
      "applicant_account_ref,created_by,updated_by) VALUES($1,$2,$3,"+
      "'CG-HR-APP-'||lpad(nextval('hr_application_public_sequence')::text,6,'0'),"+
-     "$4,$5,$6,$7,$8,$9,$10,$11,$11) RETURNING *",
+     "$4,$5,$6,$7,$8,$9,$10,$11,$11) "+
+     "ON CONFLICT (root_realm_id,request_key) DO NOTHING RETURNING *",
      [a.realmId,x.requestKey,digest,x.name,x.designation,x.employmentType,x.branchRef,
       x.departmentRef,x.hireDate,x.accountRef,a.accountId]);
+    // Racing identical requests can both initially see no row. The unique
+    // root+request key is authoritative; reconcile only the exact same digest.
+    if(!result.rows[0]){
+     const concurrent=await tx.query<Row>(
+      "SELECT * FROM hr_employee_application WHERE root_realm_id=$1 AND request_key=$2 FOR UPDATE",
+      [a.realmId,x.requestKey]);
+     const prior=concurrent.rows[0];
+     if(!prior||prior.request_digest!==digest)
+      throw new ConflictException("This request key belongs to another employee application");
+     await this.branch(tx,a,prior.proposed_branch_ref);
+     await tx.query("COMMIT");
+     return {...view(prior),replayed:true};
+    }
     const row=result.rows[0];
     await tx.query(
      "INSERT INTO hr_application_command(root_realm_id,actor_ref,request_key,request_digest,"+
@@ -163,7 +177,12 @@ export class HrEnrollmentService{
      [a.realmId,a.accountId,row.id,randomUUID()]);
     await tx.query("COMMIT");
     return {...view(row),replayed:false};
-   }catch(e){await tx.query("ROLLBACK");throw e;}
+   }catch(e){
+    await tx.query("ROLLBACK");
+    if(e&&typeof e==="object"&&"code" in e&&e.code==="23505")
+     throw new ConflictException("An employee draft already uses these details. Refresh first.");
+    throw e;
+   }
   }finally{tx.release();}
  }
  async update(token:string,applicationInput:string,input:unknown){
@@ -212,7 +231,12 @@ export class HrEnrollmentService{
      [a.realmId,a.accountId,ref,randomUUID()]);
     await tx.query("COMMIT");
     return {...view(updated.rows[0]),replayed:false};
-   }catch(e){await tx.query("ROLLBACK");throw e;}
+   }catch(e){
+    await tx.query("ROLLBACK");
+    if(e&&typeof e==="object"&&"code" in e&&e.code==="23505")
+     throw new ConflictException("An employee draft already uses these details. Refresh first.");
+    throw e;
+   }
   }finally{tx.release();}
  }
  async list(token:string,offsetInput:unknown,branchInput?:unknown){
