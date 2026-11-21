@@ -1,7 +1,10 @@
 "use client";
 import {useEffect,useRef,useState} from "react";
 type Entry={lineRef:string;value:string;unit:string;observation:string};
-type Data={canEnter:boolean;reportReady:boolean;resume:null|{
+type Data={canEnter:boolean;canCorrect?:boolean;
+ previousReleaseRef?:string|null;resumeCorrection?:{
+ previousReleaseRef:string;reason:string}|null;
+ reportReady:boolean;resume:null|{
  requestKey:string;results:Entry[]};tests:{lineRef:string;name:string}[]};
 type Response={state:"RESULT_READY"|"UNKNOWN";generated:boolean};
 type Props={centerRef:string;orderRef:string;onVerified:()=>Promise<void>};
@@ -27,6 +30,7 @@ export function ClinicalLabResultEntry({centerRef,orderRef,onVerified}:Props){
  const [loading,setLoading]=useState(true),[busy,setBusy]=useState(false);
  const [uncertain,setUncertain]=useState(false);
  const [message,setMessage]=useState("");
+ const [correctionReason,setCorrectionReason]=useState("");
  const key=useRef<string|null>(null);
  useEffect(()=>{
   let live=true;
@@ -35,6 +39,7 @@ export function ClinicalLabResultEntry({centerRef,orderRef,onVerified}:Props){
    if(!Array.isArray(v.tests)||v.tests.length<1||v.tests.length>50)
     throw Error("Original ordered tests are unavailable.");
    setSource(v);
+   setCorrectionReason(v.resumeCorrection?.reason??"");
    key.current=v.resume?.requestKey??null;
    const known=new Map((v.resume?.results??[]).map(x=>[x.lineRef,x]));
    setRows(v.tests.map(t=>known.get(t.lineRef)??{
@@ -45,6 +50,7 @@ export function ClinicalLabResultEntry({centerRef,orderRef,onVerified}:Props){
    .finally(()=>{if(live)setLoading(false)});
   return()=>{live=false;};
  },[centerRef,orderRef]);
+ const isCorrection=Boolean(source?.canCorrect||source?.resumeCorrection);
  const edit=(id:string,field:"value"|"unit"|"observation",value:string)=>{
   if(uncertain)return;
   key.current=null;
@@ -52,6 +58,7 @@ export function ClinicalLabResultEntry({centerRef,orderRef,onVerified}:Props){
  };
  async function submit(){
   if(!source?.canEnter||busy||rows.some(x=>!x.value.trim())||
+   (isCorrection&&correctionReason.trim().length<8)||
    !rows.length)return;
   if(!window.confirm("Generate one private laboratory PDF from the entered "+
    "test results? An authorized clinician must still review it before release."))
@@ -59,12 +66,20 @@ export function ClinicalLabResultEntry({centerRef,orderRef,onVerified}:Props){
   key.current??=crypto.randomUUID();
   setBusy(true);setMessage("");
   try{
+   const originalRelease=source.resumeCorrection?.previousReleaseRef??
+    source.previousReleaseRef;
+   if(isCorrection&&!originalRelease)
+    throw new Error("A prior released report is required for correction.");
    const result=await request<Response>(
     endpoint(centerRef,orderRef,"generate"),
-    {requestKey:key.current,results:rows});
+    {requestKey:key.current,results:rows,
+     ...(isCorrection?{correction:{previousReleaseRef:originalRelease,
+      reason:correctionReason.trim()}}:{})});
    if(result.state==="RESULT_READY"&&result.generated){
     setUncertain(false);key.current=null;
-    setMessage("PDF generated from recorded test results. Awaiting clinician review.");
+    setMessage(isCorrection?
+     "Corrected PDF version generated. The earlier report remains in history. Clinician review is required again.":
+     "PDF generated from recorded test results. Awaiting clinician review.");
     await onVerified();
    }else{
     setUncertain(true);
@@ -80,7 +95,7 @@ export function ClinicalLabResultEntry({centerRef,orderRef,onVerified}:Props){
   }finally{setBusy(false);}
  }
  return <section className="cg-diagnostics-card" aria-label="Enter laboratory test results">
-  <h3>Enter test results</h3>
+  <h3>{isCorrection?"Correct released lab report":"Enter test results"}</h3>
   <p>Enter the actual observations for each ordered test.
    CareGanga automatically generates the PDF. Do not enter guessed
    readings or clinical interpretations.</p>
@@ -108,10 +123,20 @@ export function ClinicalLabResultEntry({centerRef,orderRef,onVerified}:Props){
     </label>
    </fieldset>;
   })}
+  {source?.canEnter&&isCorrection&&<label className="field">
+   Reason for report correction (required)
+   <textarea value={correctionReason} maxLength={500}
+    disabled={busy||uncertain} onChange={e=>{
+     key.current=null;setCorrectionReason(e.target.value);
+    }}/>
+   <p>The earlier released PDF remains unchanged. The corrected PDF needs new clinical approval and release.</p>
+  </label>}
   {source?.canEnter&&<button type="button" className="primary"
-   disabled={busy||loading||rows.some(x=>!x.value.trim())}
+   disabled={busy||loading||rows.some(x=>!x.value.trim())||
+    (isCorrection&&correctionReason.trim().length<8)}
    onClick={()=>void submit()}>{busy?"Generating…":uncertain?
-    "Retry original PDF generation":"Generate report PDF"}</button>}
+    "Retry original PDF generation":isCorrection?
+    "Generate corrected PDF":"Generate report PDF"}</button>}
   {uncertain&&<p role="alert">
    Keep the same entered values and request. This will recover the
    original report rather than create a duplicate.</p>}
