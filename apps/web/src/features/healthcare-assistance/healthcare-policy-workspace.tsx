@@ -1,7 +1,6 @@
 "use client";
 import {useCallback,useEffect,useRef,useState,type FormEvent} from "react";
 import {HealthcarePolicyApprovalPanel} from "./healthcare-policy-approval-panel";
-import {PendingPartnerServiceClaims} from "./pending-partner-service-claims";
 
 type Center={centerRef:string;name:string};
 type Doctor={doctorRef:string;name:string};
@@ -367,7 +366,6 @@ export function HealthcarePolicyWorkspace({canView,canManage,canReview}:Props){
     </tr>)}</tbody>
    </table></div>}
   </section>}
-  {canView&&center&&<PendingPartnerServiceClaims centerRef={center} mode="foundation"/>}
   <HealthcarePolicyApprovalPanel canReview={canReview} canManage={canManage}
    pendingPolicies={policies} onChanged={async()=>{
     if(center)await refresh(center);
