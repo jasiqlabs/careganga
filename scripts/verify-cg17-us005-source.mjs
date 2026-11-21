@@ -41,6 +41,10 @@ for(const file of Object.values(paths)){
   "Unresolved merge conflict in "+file);
 }
 const must=(file,pattern,why)=>assert.match(read(paths[file]),pattern,why);
+must("sql",/ADD CONSTRAINT uq_cg17_patient_charge_realm_id_center/,
+ "Original patient-charge owner must provide exact FK target before accrual DDL");
+must("sql",/UNIQUE\(root_realm_id,id,center_ref\)/,
+ "PostgreSQL original charge parent key must match award FK columns");
 must("sql",/CREATE TABLE assistance_award\(/,"Award has its original CG17 owner");
 must("sql",/CREATE TABLE foundation_liability\(/,"Liability has original CG17 owner");
 must("sql",/CREATE TABLE cg17_financial_effect\(/,"Durable original pending posting effect");
