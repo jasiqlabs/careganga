@@ -34,7 +34,8 @@ export class HealthcareAssistanceReviewSourceFacade{
   // The CG-14 owner, not CG-17, validates the current original center,
   // doctor affiliation, independent CG03 decision and scanned CG19 proof.
   try{
-   const current=await this.verified.center(c,actor.realmId,v.center_ref);
+   const current=await this.verified.eligibleService(c,actor.realmId,v.center_ref,
+    v.service_kind as "CONSULTATION"|"LAB"|"PHARMACY"|"NURSING"|"OT");
    if(v.doctor_ref)
     await this.verified.doctor(c,actor.realmId,v.center_ref,v.doctor_ref);
    return {revision:v,centerName:current.name};
