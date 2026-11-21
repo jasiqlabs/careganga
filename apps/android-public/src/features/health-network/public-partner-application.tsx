@@ -95,10 +95,13 @@ export function PublicPartnerApplication({onExit,onContact}:{
     <Text style={styles.label}>{title}</Text>
     <TextInput accessibilityLabel={title} style={styles.input}
       value={fields[key] as string} editable={!busy&&!sent&&!result}
-      keyboardType={key==="contactEmail"?"email-address":opts?.phone?"phone-pad":"default"}
+      keyboardType={key==="contactEmail"?"email-address":opts?.phone?"phone-pad":
+        key==="pinCode"?"number-pad":"default"}
       autoCapitalize={key==="contactEmail"||opts?.phone?"none":"sentences"}
       autoCorrect={key==="contactEmail"?false:undefined}
-      maxLength={key==="addressLine"?300:key==="applicantName"||key==="contactEmail"?180:120}
+      maxLength={key==="addressLine"?300:key==="applicantName"||key==="contactEmail"?180:
+       key==="pinCode"?6:key==="contactPhone"?16:
+       key==="districtName"||key==="stateName"?100:120}
       onChangeText={v=>change(key,v)}/>
    </View>;
  async function submit(payload:Sent){
