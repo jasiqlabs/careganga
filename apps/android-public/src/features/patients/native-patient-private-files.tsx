@@ -225,7 +225,9 @@ export function NativePatientPrivateFiles({token,consentGranted,onExpired}:{
    <Text style={styles.note}>{row.revoked?"Revoked":"Verified"} ·
     {" "+new Date(row.createdAt).toLocaleDateString("en-IN")}</Text>
    {!row.revoked&&<>
-    <NativePatientClinicalFileShares token={token} fileRef={row.fileRef}
+    {row.classification!=="PATIENT_PARTNER_INVOICE"&&
+     row.classification!=="PATIENT_PARTNER_SERVICE_PROOF"&&
+     <NativePatientClinicalFileShares token={token} fileRef={row.fileRef}
      consentGranted={consentGranted} onExpired={onExpired}/>
     {button("View my private file",()=>void readFile(row))}
     {button("Revoke this document",()=>void revoke(row))}
