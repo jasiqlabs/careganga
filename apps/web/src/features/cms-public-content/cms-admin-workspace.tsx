@@ -416,7 +416,8 @@ export function CmsAdminWorkspace({canManage,canPublish,canReview}:{
    if(old&&old.fingerprint!==fingerprint)
     throw Error("An earlier private upload is not resolved. Re-select the SAME "+
      "original file, placement and description to verify it first.");
-   const attempt=old??{fingerprint,key:crypto.randomUUID(),uploadRef:null};
+   const attempt:{fingerprint:string;key:string;uploadRef:string|null}=
+    old??{fingerprint,key:crypto.randomUUID(),uploadRef:null};
    mediaAttempt.current=attempt;
    const attach=(fileRef:string,version:number)=>{
     const item:Asset={fileRef,version,role,altText:uploadAlt.trim(),order};
