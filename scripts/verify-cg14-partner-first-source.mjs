@@ -82,6 +82,13 @@ const checks=[
  ["Public Android handles hardware Back without exiting application flow",
   s.nativePublic.includes('BackHandler.addEventListener("hardwareBackPress"')&&
   s.nativePublic.includes('if(started)setStarted(false)')],
+ ["Public Android email keyboard and same original bounded input checks",
+  s.nativePublic.includes('keyboardType={key==="contactEmail"?"email-address"')&&
+  s.nativePublic.includes('fields.applicantName.trim().length<2')&&
+  s.nativePublic.includes('fields.contactEmail.trim()!==""')],
+ ["Staff Android hardware Back returns from review to original providers",
+  s.nativeStaff.includes('BackHandler.addEventListener("hardwareBackPress"')&&
+  s.nativeStaff.includes('if(selected)setSelected(null)')],
  ["Web and internal Android link lookup uses original name filter",
   s.staffInbox.includes('"providers?offset=0&q="+encodeURIComponent(app.name)')&&
   s.nativeStaff.includes('"providers?offset=0&q="+encodeURIComponent(app.name)')],
