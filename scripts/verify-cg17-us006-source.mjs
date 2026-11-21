@@ -144,6 +144,18 @@ must("payoutSql",/v_paid<>NEW\.paid_minor/,
  "Payout status must equal immutable verified allocation sum");
 must("payoutSql",/NEW\.verified_by_account=rec\.proposed_by/,
  "Payout confirmer may not self-certify proposed provider claim");
+must("payoutSql",/source_line_count<1 OR matched_line_count<>source_line_count/,
+ "Database rechecks every original claim liability's correct payable credit");
+must("payoutSql",/credit.account_id=NEW.liability_account_ref/,
+ "Original CG09 accrual account must match payout journal liability debit");
+must("payout",/this\.payableAccount\(c,claim\)/,
+ "Provider payout checks every original claim source, not only any bank item");
+must("payout",/proof\.liabilityAccountRef!==payable/,
+ "Provider payout rejects a valid bank item for a different accrued payable account");
+must("bank",/liabilityAccountRef\?:string/,
+ "CG09 bank options support same original payable-account restriction");
+must("bank",/pay.account_id=\$3::uuid/,
+ "Unrelated bank debits are not offered to the CG17 payout operator");
 must("payout",/this\.cg09\.verify\(c,a,bankMatch\)/,
  "Must use existing CG09 bank owner facade");
 must("bank",/finance_bank_reconciliation bank/,
