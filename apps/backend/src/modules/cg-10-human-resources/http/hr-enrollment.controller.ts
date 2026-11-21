@@ -13,6 +13,14 @@ export class HrEnrollmentController{
  accept(@Headers("authorization")token:string,@Body()body:unknown){
   return this.hr.acceptMyApprovedLink(token,body);
  }
+ @Get("employee-branches")
+ employeeBranches(@Headers("authorization")token:string){
+  return this.hr.employeeBranchOptions(token);
+ }
+ @Get("employee-departments")
+ employeeDepartments(@Headers("authorization")token:string,@Query("branch")branch:string){
+  return this.hr.employeeDepartmentOptions(token,branch);
+ }
  @Get("employees")
  employees(@Headers("authorization")token:string,@Query("offset")offset?:string,
    @Query("branch")branch?:string,@Query("status")status?:string,
