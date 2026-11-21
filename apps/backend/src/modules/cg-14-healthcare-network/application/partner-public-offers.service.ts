@@ -65,6 +65,22 @@ export class PartnerPublicOffersService{
    throw e;
   }finally{c.release()}
  }
+ async foundationCenters(token:string){
+  const a=await this.sessions.requireAction(token,"health.centers.publish");
+  return this.tx(async c=>{
+   await this.identity.assertCurrent(c,a,"health.centers.publish");
+   const found=await c.query<{centerRef:string;centerName:string}>(
+    "SELECT c.id AS \"centerRef\",c.display_name AS \"centerName\" "+
+    "FROM health_center c JOIN health_provider p "+
+    "ON p.root_realm_id=c.root_realm_id AND p.id=c.provider_id "+
+    "WHERE c.root_realm_id=$1 AND c.status='VERIFIED' "+
+    "AND c.access_state='ENABLED' AND p.status='VERIFIED' "+
+    "ORDER BY c.display_name,c.id LIMIT 51",[a.realmId]);
+   if(found.rows.length>50)
+    throw new ConflictException({code:"CG14_OFFER_LIST_LIMIT"});
+   return {centers:found.rows,complete:true};
+  });
+ }
  async assigned(token:string){
   const a=await this.sessions.requireAction(token,"health.centers.draft.edit");
   return this.tx(async c=>{
