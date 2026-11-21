@@ -302,4 +302,41 @@ export class HrEmployeeEvidenceService{
   return {data:bytes,mime:row.original_mime};
  }
 
+
+ /** Current editable pre-case file may be revoked; submitted evidence stays immutable. */
+ async revoke(token:string,fileInput:string,body:unknown){
+  const actor=await this.sessions.requireAction(token,"hr.applications.manage");
+  const ref=id(fileInput,"private evidence");
+  if(!body||typeof body!=="object"||Array.isArray(body)||
+   Object.keys(body as Record<string,unknown>).some(k=>k!=="expectedRevision")||
+   !("expectedRevision" in body)||
+   !Number.isSafeInteger((body as {expectedRevision:unknown}).expectedRevision)||
+   Number((body as {expectedRevision:number}).expectedRevision)<1)
+   throw new BadRequestException("Choose the current verified file revision");
+  const expected=Number((body as {expectedRevision:number}).expectedRevision);
+  const tx=await this.db.connect();
+  try{
+   await tx.query("BEGIN");
+   const rows=await tx.query<File>(
+    "SELECT id,revision,hr_application_id,hr_source_version,"+
+    "verified_sha256,verified_size_bytes,object_key,object_version,"+
+    "original_mime,scan_status,revoked_at FROM cg19_stored_file "+
+    "WHERE id=$1 AND realm_id=$2 AND owner_kind='CG10_DRAFT' FOR UPDATE",
+    [ref,actor.realmId]);
+   const file=rows.rows[0];
+   if(!file)throw new NotFoundException("Private employee file not found");
+   await this.app(tx,actor,file.hr_application_id,file.hr_source_version,true);
+   if(file.revision!==expected||file.revoked_at)
+    throw new ConflictException("This document changed. Refresh the original proof.");
+   await tx.query(
+    "UPDATE cg19_stored_file SET revoked_at=now(),revision=revision+1 "+
+    "WHERE id=$1 AND realm_id=$2 AND revision=$3",
+    [ref,actor.realmId,expected]);
+   await this.event(tx,actor,file.hr_application_id,"FILE_REVOKED",null,ref);
+   await tx.query("COMMIT");
+   return {revoked:true,revision:expected+1};
+  }catch(e){await tx.query("ROLLBACK");throw e;}
+  finally{tx.release();}
+ }
+
 }
