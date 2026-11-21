@@ -82,8 +82,15 @@ export function NativeCmsMediaUploader({token,pageRef,revisionRef,kind,sections,
  const [uncertain,setUncertain]=useState(false),[intent,setIntent]=useState("");
  const [notice,setNotice]=useState("");
  const key=useRef("");
- const original=useRef<{sha256:string;sizeBytes:number;mime:string}|null>(null);
+ const original=useRef<{pageRef:string;revisionRef:string;role:string;
+  order:number;sha256:string;sizeBytes:number;mime:string}|null>(null);
  useEffect(()=>{
+  if(original.current||key.current||intent){
+   setUncertain(true);
+   setNotice("An original CG19 upload is unresolved. Return to its "+
+    "own page and check that upload before continuing.");
+   return;
+  }
   setPicked(null);setIntent("");setUncertain(false);setRights(false);
   setAlt("");key.current="";original.current=null;
  },[pageRef,revisionRef]);
@@ -94,13 +101,18 @@ export function NativeCmsMediaUploader({token,pageRef,revisionRef,kind,sections,
  const positions=choices.filter(c=>c.role===role);
  useEffect(()=>{
   if(!choices.some(c=>c.role===role&&c.order===Number(order))){
+   if(original.current||key.current||intent||busy||uncertain){
+    setNotice("Original CG19 upload is unresolved. Check its original "+
+     "intent before changing the selected media section.");
+    return;
+   }
    const first=choices.find(c=>c.role===role)??choices[0];
    setRole(first?.role??"");
    setOrder(String(first?.order??0));
    setPicked(null);setIntent("");setUncertain(false);setRights(false);
    key.current="";original.current=null;
   }
- },[sections,role,order]);
+ },[sections,role,order,intent,uncertain,busy]);
  const action=(title:string,fn:()=>void,blocked=false)=>
   <Pressable accessibilityRole="button" disabled={disabled||blocked}
    accessibilityState={{disabled:disabled||blocked}}
@@ -112,8 +124,15 @@ export function NativeCmsMediaUploader({token,pageRef,revisionRef,kind,sections,
   setNotice(e instanceof Error?e.message:"Original media outcome is uncertain.");
  }
  const attach=(ref:string,version:number)=>{
-  if(!selectedChoice){
-   setNotice("The original media section changed. Refresh before attaching.");return;
+  if(!selectedChoice||!original.current||
+   original.current.pageRef!==pageRef||
+   original.current.revisionRef!==revisionRef||
+   original.current.role!==role||
+   original.current.order!==selectedChoice.order){
+   setUncertain(true);
+   setNotice("The verified original upload belongs to its starting page "+
+    "and placement. Return there to attach or reconcile it.");
+   return;
   }
   const index=selectedChoice.order;
   const placement={fileRef:ref,version,role,order:index,altText:alt.trim()};
@@ -124,6 +143,10 @@ export function NativeCmsMediaUploader({token,pageRef,revisionRef,kind,sections,
  };
  async function pick(){
   if(disabled||busy||uncertain||!selectedChoice)return;
+  if(original.current||key.current||intent){
+   setNotice("Check the previous original CG19 upload before choosing another file.");
+   return;
+  }
   try{
    const selected=await DocumentPicker.getDocumentAsync({
     type:mime,multiple:false,copyToCacheDirectory:true});
@@ -165,9 +188,15 @@ export function NativeCmsMediaUploader({token,pageRef,revisionRef,kind,sections,
     throw Error("Private source checksum cannot be confirmed.");
    if(original.current&&(original.current.sha256!==sha256||
      original.current.mime!==picked.mime||
-     original.current.sizeBytes!==picked.size))
-    throw Error("The selected original changed. Check previous upload first.");
-   original.current={sha256,sizeBytes:picked.size,mime:picked.mime};
+     original.current.sizeBytes!==picked.size||
+     original.current.pageRef!==pageRef||
+     original.current.revisionRef!==revisionRef||
+     original.current.role!==role||
+     original.current.order!==selectedChoice.order))
+    throw Error("The original upload is bound to another file, page "+
+     "or section. Check that existing intent first.");
+   original.current={pageRef,revisionRef,role,order:selectedChoice.order,
+    sha256,sizeBytes:picked.size,mime:picked.mime};
    if(!key.current)key.current=Crypto.randomUUID();
    const started=await cms<Intent>(token,"initiate","POST",{
     pageRef,revisionRef,requestKey:key.current,
@@ -221,7 +250,7 @@ export function NativeCmsMediaUploader({token,pageRef,revisionRef,kind,sections,
     setRole(x);setOrder(String(choices.find(c=>c.role===x)?.order??0));
     setPicked(null);setIntent("");setUncertain(false);setRights(false);
     key.current="";original.current=null;
-   },busy||uncertain)}
+   },busy||uncertain||!!original.current||!!key.current)}
   </View>)}</View>
   {!choices.length&&<Text style={styles.note}>
    Add a supported original media section/item before attaching files.</Text>}
@@ -235,7 +264,7 @@ export function NativeCmsMediaUploader({token,pageRef,revisionRef,kind,sections,
       setOrder(String(position.order));setPicked(null);setIntent("");
       setUncertain(false);setRights(false);original.current=null;
       key.current="";
-     },busy||uncertain)}
+     },busy||uncertain||!!original.current||!!key.current)}
     </View>)}</View>
    <Text style={styles.note}>Each placement accepts the original section's
     permitted photo, video or document type.</Text>
