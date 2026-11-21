@@ -90,9 +90,11 @@ export function NativeMisReports({token,onExpired}:{token:string;onExpired:()=>v
     setProblem(e instanceof Error?e.message:"Report catalog unavailable.");}
   }finally{if(rev===seq.current)setBusy(false);}
  },[token,onExpired]);
- useEffect(()=>{void load();return()=>{seq.current++};},[load]);
+ // Filter invalidation runs before initial catalog fetch on mount; otherwise
+ // it could invalidate the initial in-flight catalog response.
  useEffect(()=>{seq.current++;setPreview(null);},
   [kind,view,year,branch,area,center,from,until,status,groupBy,sortBy,sortDirection]);
+ useEffect(()=>{void load();return()=>{seq.current++};},[load]);
  useEffect(()=>{
   const sub=AppState.addEventListener("change",status=>{
    seq.current++;setPreview(null);
