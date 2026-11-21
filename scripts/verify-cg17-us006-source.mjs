@@ -16,6 +16,9 @@ const files={
  monthlySql:"apps/backend/db/migrations/1707_cg17_monthly_provider_settlement.sql",
  payoutSql:"apps/backend/db/migrations/1708_cg17_verified_provider_payout_allocation.sql",
  correctionSql:"apps/backend/db/migrations/1709_cg17_original_unpaid_liability_reversal.sql",
+ liability:cg17+"application/completed-consultation-liability.service.ts",
+ webLiability:"apps/web/src/features/healthcare-assistance/completed-consultation-liability-workspace.tsx",
+ nativeLiability:"apps/android-internal/src/features/healthcare-assistance/native-completed-consultation-liabilities.tsx",
  payout:cg17+"application/verified-provider-payout.service.ts",
  correction:cg17+"application/foundation-liability-correction.service.ts",
  correctionApi:cg17+"http/foundation-journal-reconciliation.controller.ts",
@@ -250,5 +253,9 @@ assert.equal((correctionMigration.match(/\$cg17\$/g)??[]).length,4,
  "Both CG17 protected evidence and claim-safety triggers require balanced dollar delimiters");
 assert.equal((correctionMigration.match(/\$cg09\$/g)??[]).length,2,
  "CG09 original reverse-proof guard must use matching dollar delimiters");
+must("liability",/claim\.state AS settlement_state/,"Original CG17 liability must source real claim status");
+must("liability",/providerSettled:liability\.settlement_state==="SETTLED"/,"Do not always report provider unpaid");
+must("webLiability",/status\.providerSettlementState==="PARTIALLY_SETTLED"/,"Web must show actual partial claim");
+must("nativeLiability",/status\.providerSettlementState==="PARTIALLY_SETTLED"/,"Internal Android must show actual partial claim");
 console.log("CG17 US006 month and verified-payout source parse/contract preflight PASS. "+
  "CG09 bank/PG races, reversal, Web/Android device and independent QA NOT_RUN.");
