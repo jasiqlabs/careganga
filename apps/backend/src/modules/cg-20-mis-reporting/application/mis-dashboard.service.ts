@@ -99,7 +99,6 @@ export class MisDashboardService{
      filters.branchRef=choices.branches[0].branchRef;
    }catch(error){if(error instanceof UnauthorizedException)throw error;}
   }
-  const readAt=new Date().toISOString();
   let failures=0;
   const financeSource:Promise<Source|null>=view==="HEALTH"?Promise.resolve(null):this.finance
    .summary(bearer,filters.yearRef,filters.branchRef)
@@ -213,7 +212,7 @@ export class MisDashboardService{
   return {state:available?(failures?"PARTIAL":"AVAILABLE"):
    empty?(failures?"PARTIAL":"NO_DATA"):
    suppressed?(failures?"PARTIAL":"SUPPRESSED"):
-   failures?"FAILED":"NO_AUTHORIZED_SOURCES",readAt,
+   failures?"FAILED":"NO_AUTHORIZED_SOURCES",readAt:new Date().toISOString(),
    scopeLabel:healthFilter.centerRef?"Selected verified healthcare center":
     filters.branchRef?"Permitted selected branch":"Current original-owner scope",
    periodLabel:view==="HEALTH"?(healthFilter.fromDay?
