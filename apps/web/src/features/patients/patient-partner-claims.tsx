@@ -6,7 +6,8 @@ type FileItem={fileRef:string;classification:string;revoked:boolean;createdAt:st
 type Page={files:FileItem[];next:string|null};
 type Claim={claimCode:string;serviceKind:Kind;invoiceNumber:string;
  serviceDate:string;quotedGrossMinor:string;estimatedFoundationMinor:string;
- estimatedPatientPayableMinor:string;state:"PENDING_VERIFICATION";
+ estimatedPatientPayableMinor:string;
+ state:"PENDING_VERIFICATION"|"PARTNER_ATTESTED"|"APPROVED_AWAITING_FINANCE"|"REJECTED";
  guidance:string;submittedAt:string};
 type Response={claims:Claim[];complete:boolean};
 const money=(v:string)=>"₹"+(Number(BigInt(v))/100).toLocaleString("en-IN",{
@@ -49,6 +50,7 @@ export function PatientPartnerClaims({consentGranted}:{consentGranted:boolean}){
  const [selected,setSelected]=useState(""),[invoice,setInvoice]=useState("");
  const [date,setDate]=useState(""),[gross,setGross]=useState("");
  const [invoiceFile,setInvoiceFile]=useState(""),[proofFile,setProofFile]=useState("");
+ const [paymentFile,setPaymentFile]=useState("");
  const [busy,setBusy]=useState(false),[error,setError]=useState("");
  const [notice,setNotice]=useState(""),[uncertain,setUncertain]=useState(false);
  const request=useRef<{digest:string;key:string}|null>(null);
@@ -69,6 +71,7 @@ export function PatientPartnerClaims({consentGranted}:{consentGranted:boolean}){
  const chosen=choices.find(c=>c.centerRef+"|"+c.kind===selected);
  const invoices=files.filter(f=>f.classification==="PATIENT_PARTNER_INVOICE"&&!f.revoked);
  const proofs=files.filter(f=>f.classification==="PATIENT_PARTNER_SERVICE_PROOF"&&!f.revoked);
+ const payments=files.filter(f=>f.classification==="PATIENT_PARTNER_PAYMENT_PROOF"&&!f.revoked);
  function resetReplay(){if(uncertain)return;request.current=null;setNotice("");setError("");}
  async function loadOlder(){
   if(!next||busy)return;
@@ -87,7 +90,8 @@ export function PatientPartnerClaims({consentGranted}:{consentGranted:boolean}){
     centerRef:chosen.centerRef,serviceKind:chosen.kind,
     invoiceNumber:invoice.trim(),serviceDate:date,grossMinor:paise(gross),
     invoiceFileRef:invoiceFile,
-    ...(chosen.kind==="PHARMACY"?{}:{completionFileRef:proofFile})
+    ...(chosen.kind==="PHARMACY"?{}:{completionFileRef:proofFile}),
+    ...(paymentFile?{paymentFileRef:paymentFile}:{})
    };
    if(chosen.kind!=="PHARMACY"&&!proofFile)
     throw Error("Upload and select a scanned completed-service document.");
@@ -153,6 +157,14 @@ export function PatientPartnerClaims({consentGranted}:{consentGranted:boolean}){
       Service document {i+1} — {new Date(f.createdAt).toLocaleDateString("en-IN")}</option>)}
     </select>
    </label>}
+   <label>Scanned payment receipt (optional; needed for electronic payment verification)
+    <select value={paymentFile} disabled={busy||uncertain} onChange={e=>{
+     setPaymentFile(e.target.value);resetReplay();}}>
+     <option value="">No payment receipt selected</option>
+     {payments.map((f,i)=><option key={f.fileRef} value={f.fileRef}>
+      Payment document {i+1} — {new Date(f.createdAt).toLocaleDateString("en-IN")}</option>)}
+    </select>
+   </label>
    {!!next&&<button type="button" disabled={busy} onClick={()=>void loadOlder()}>
     Find older verified documents</button>}
    <div className="toolbar">
@@ -173,7 +185,9 @@ export function PatientPartnerClaims({consentGranted}:{consentGranted:boolean}){
     <p>{c.serviceDate} · Quoted invoice {money(c.quotedGrossMinor)} ·
      provisional Foundation share {money(c.estimatedFoundationMinor)} ·
      provisional patient amount {money(c.estimatedPatientPayableMinor)}</p>
-    <p><strong>Awaiting independent verification.</strong> {c.guidance}</p>
+    <p><strong>{c.state==="APPROVED_AWAITING_FINANCE"?"Foundation approved — bank reimbursement tracked separately":
+     c.state==="REJECTED"?"Not approved":c.state==="PARTNER_ATTESTED"?
+     "Partner attested — Foundation review pending":"Awaiting partner and Foundation verification"}.</strong> {c.guidance}</p>
    </div>)}
  </section>;
 }
