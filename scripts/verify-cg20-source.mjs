@@ -48,6 +48,7 @@ const source=contains(mis+"application/mis-report-source.service.ts",[
  "parseSafeReport","suppressAppointmentCells","FINANCE_POSTED_LEDGER",
  "FINANCE_POSTED_SUMMARY","FINANCE_POSTED_TREND","FINANCE_POSTED_GROUPED",
  "APPOINTMENT_STATUS","PLATFORM_AUDIT_ACTIVITY","DIAGNOSTICS_CATALOG_SUMMARY",
+ "previewScheduledFinance","Date.parse(fromDay","Date.parse(untilDay",
  '"mis.reports.view"',"this.finance","this.patients"
 ]);
 assert.ok(!/SELECT\s+.*FROM/i.test(source),"Report templates may not run arbitrary SQL");
@@ -115,7 +116,8 @@ contains(native+"features/mis-reporting/native-mis-saved.tsx",[
 contains(mis+"application/mis-report-run.service.ts",[
  "cg20_report_run","this.files.issueFromReport","this.files.read",
  "validateSource","MIS_RUN_LIMIT","UNKNOWN",
- "row.state===\"UNKNOWN\"","15 minutes","postDigest"
+ "row.state===\"UNKNOWN\"","15 minutes","postDigest",
+ "MIS_RUN_PARTIAL","ORIGINAL_ARTIFACT_UNCONFIRMED"
 ]);
 contains(cg19+"application/mis-protected-artifact.service.ts",[
  "cg19_mis_report_artifact","writeVerifiedGeneratedReport",
@@ -143,7 +145,8 @@ const schedules=contains(mis+"application/mis-report-schedule.service.ts",[
 ]);
 contains(mis+"infrastructure/mis-report-schedule.worker.ts",[
  "OnModuleInit","SKIP LOCKED","previewScheduledFinance",
- "issueScheduledFinance","publishReady","saved_revision","CURRENT_SCOPE_CHANGED"
+ "issueScheduledFinance","publishReady","saved_revision","CURRENT_SCOPE_CHANGED",
+ "run.root_realm_id=stale.root_realm_id","state='SENT_PENDING'"
 ]);
 contains(cg19+"application/mis-report-notice.service.ts",[
  "publishReady","CG20_MIS_REPORT","cg20_report_delivery_attempt",
@@ -165,7 +168,8 @@ const sql=contains("apps/backend/db/migrations/2001_cg20_saved_reports_runs_and_
  "CREATE TABLE cg20_report_definition",
  "CREATE TABLE cg20_saved_report","CREATE TABLE cg20_saved_request",
  "CREATE TABLE cg20_report_run","CREATE TABLE cg20_report_schedule",
- "CREATE TABLE cg20_report_delivery_attempt"
+ "CREATE TABLE cg20_report_delivery_attempt",
+ "saved_revision integer NOT NULL","DIAGNOSTICS_CATALOG_SUMMARY"
 ]);
 for(const name of ["cg20_report_definition","cg20_saved_report","cg20_saved_request",
  "cg20_report_run","cg20_report_schedule","cg20_report_delivery_attempt"]){
@@ -228,6 +232,17 @@ for(const [webPath,nativePath,webTerms,nativeTerms] of pairedScreens){
  contains(webPath,webTerms);
  contains(nativePath,nativeTerms);
 }
+
+// C46 period shortcuts and source-valid server filters exist on both private
+// staff channels, not in the public Android or public website.
+contains(web+"features/mis-reporting/mis-reports-workspace.tsx",[
+ "This week (Monday onward)","This calendar year",
+ "PLATFORM_AUDIT_ACTIVITY","setPreset"
+]);
+contains(native+"features/mis-reporting/native-mis-reports.tsx",[
+ "This week (Monday onward)","This calendar year",
+ "PLATFORM_AUDIT_ACTIVITY","setPreset"
+]);
 // CG-20 account/center reporting cross-channel: same original CG17 source,
 // not a duplicate report-derived financial master.
 contains(web+"features/healthcare-assistance/center-monthly-settlement-summary.tsx",
