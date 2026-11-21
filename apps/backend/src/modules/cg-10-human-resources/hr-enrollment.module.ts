@@ -2,6 +2,8 @@ import {Module} from "@nestjs/common";
 import {IdentityAccessModule} from "../cg-01-identity-access/identity-access.module";
 import {HrEnrollmentService} from "./application/hr-enrollment.service";
 import {HrPrivateDetailService} from "./application/hr-private-detail.service";
+import {HrPublicBioConsentService} from "./application/hr-public-bio-consent.service";
+import {HrPublicBioConsentController} from "./http/hr-public-bio-consent.controller";
 import {HrPrivateDetailController} from "./http/hr-private-detail.controller";
 import {HrSourceModule} from "./hr-source.module";
 import {RegistrationApprovalsModule} from "../cg-03-registration-approvals/registration-approvals.module";
@@ -13,8 +15,8 @@ import {HrEnrollmentController} from "./http/hr-enrollment.controller";
  */
 @Module({
  imports:[IdentityAccessModule,HrSourceModule,RegistrationApprovalsModule,HrEvidenceSourceModule],
- providers:[HrEnrollmentService,HrPrivateDetailService],
- controllers:[HrEnrollmentController,HrPrivateDetailController],
- exports:[HrEnrollmentService]
+ providers:[HrEnrollmentService,HrPrivateDetailService,HrPublicBioConsentService],
+ controllers:[HrEnrollmentController,HrPrivateDetailController,HrPublicBioConsentController],
+ exports:[HrEnrollmentService,HrPublicBioConsentService]
 })
 export class HrEnrollmentModule{}
