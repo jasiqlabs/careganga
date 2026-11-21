@@ -62,6 +62,7 @@ const FinanceClaimNativeReviewer = lazy(() => import("../finance-accounting/fina
 const FinanceNativeInvoices = lazy(() => import("../finance-accounting/finance-native-invoices").then(m => ({ default: m.FinanceNativeInvoices })));
 const FinanceNativeBudgets = lazy(() => import("../finance-accounting/finance-native-budgets").then(m => ({ default: m.FinanceNativeBudgets })));
 const FinanceNativeReports = lazy(() => import("../finance-accounting/finance-native-reports").then(m => ({ default: m.FinanceNativeReports })));
+const NativeMisWorkspaceScreen = lazy(() => import("../mis-reporting/native-mis-workspace-screen").then(m => ({default:m.NativeMisWorkspaceScreen})));
 const FinanceNativeProtectedReview = lazy(() => import("../finance-accounting/finance-native-protected-review").then(m => ({ default: m.FinanceNativeProtectedReview })));
 
 class ScreenErrorBoundary extends Component<
@@ -177,6 +178,7 @@ export function StaffAuthenticationScreen() {
   const [budgetOpen, setBudgetOpen] = useState(false);
   const [budgetReviewOpen, setBudgetReviewOpen] = useState(false);
   const [reportsOpen, setReportsOpen] = useState(false);
+  const [misOpen, setMisOpen] = useState(false);
   const [communicationsOpen, setCommunicationsOpen] = useState(false);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const [supportOpen, setSupportOpen] = useState(false);
@@ -217,12 +219,13 @@ export function StaffAuthenticationScreen() {
   const closeBudgets = useCallback(() => setBudgetOpen(false), []);
   const closeBudgetReviews = useCallback(() => setBudgetReviewOpen(false), []);
   const closeReports = useCallback(() => setReportsOpen(false), []);
+  const closeMis = useCallback(() => setMisOpen(false), []);
   const { toast, showToast, hideToast } = useAuthToast();
   const expireSession = useCallback(() => {
     hideToast();
     setMessage("");
     setActor(null); setToken(null); setRoleActions([]); setAccountOpen(false); setRolesOpen(false); setAccountsOpen(false); setPolicyOpen(false); setApprovalsOpen(false); setOwnCenterOpen(false); setWebsiteCmsOpen(false); setPlatformConfigOpen(false); setHealthDoctorOpen(false); setCenterPublisherOpen(false); setHealthProviderOpen(false); setHealthReviewsOpen(false); setDoctorLeaveReviewsOpen(false); setPatientAdminOpen(false); setPatientQueueOpen(false); setLabOrdersOpen(false); setLabEquipmentOpen(false); setHealthcarePoliciesOpen(false); setCenterMerchantOpen(false); setFoundationLiabilitiesOpen(false); setMonthlyProviderSettlementsOpen(false); setPartnerSettlementsOpen(false); setLabTestMasterOpen(false); setMyLabPricingOpen(false); setPatientBookingOpen(false); setDocumentsOpen(false); setCommunicationsOpen(false); setNotificationsOpen(false); setSupportOpen(false); setNoticeAdminOpen(false); setBranchesOpen(false); setFinanceOpen(false); setVoucherOnlyOpen(false); setFinanceReviewOpen(false); setFinanceClaimsOpen(false); setFinanceClaimReviewsOpen(false); setInvoiceOpen(false); setInvoiceReviewOpen(false);
-    setBudgetOpen(false); setBudgetReviewOpen(false); setReportsOpen(false);
+    setBudgetOpen(false); setBudgetReviewOpen(false); setReportsOpen(false); setMisOpen(false);
     void SecureStore.deleteItemAsync(STORE_KEY).catch(() => undefined);
   }, [hideToast]);
 
@@ -267,6 +270,7 @@ export function StaffAuthenticationScreen() {
       budgetOpen ||
       budgetReviewOpen ||
       reportsOpen ||
+      misOpen ||
       financeOpen ||
       branchesOpen ||
       changePasswordOpen;
@@ -296,7 +300,7 @@ export function StaffAuthenticationScreen() {
       setInvoiceReviewOpen(false);
       setBudgetOpen(false);
       setBudgetReviewOpen(false);
-      setReportsOpen(false);
+      setReportsOpen(false); setMisOpen(false);
       setFinanceOpen(false);
       setBranchesOpen(false);
       setChangePasswordOpen(false);
@@ -344,6 +348,7 @@ export function StaffAuthenticationScreen() {
     budgetOpen,
     budgetReviewOpen,
     reportsOpen,
+    misOpen,
     financeOpen,
     branchesOpen,
     changePasswordOpen
@@ -586,7 +591,7 @@ export function StaffAuthenticationScreen() {
       // Backend revocation is authoritative. The UI must not continue showing an
       // authenticated actor if on-device deletion fails afterward.
       setActor(null); setToken(null); setRoleActions([]); setRolesOpen(false); setAccountsOpen(false); setPolicyOpen(false); setApprovalsOpen(false); setOwnCenterOpen(false); setWebsiteCmsOpen(false); setPlatformConfigOpen(false); setHealthDoctorOpen(false); setCenterPublisherOpen(false); setHealthProviderOpen(false); setHealthReviewsOpen(false); setDoctorLeaveReviewsOpen(false); setPatientAdminOpen(false); setPatientQueueOpen(false); setLabOrdersOpen(false); setLabEquipmentOpen(false); setHealthcarePoliciesOpen(false); setCenterMerchantOpen(false); setFoundationLiabilitiesOpen(false); setMonthlyProviderSettlementsOpen(false); setLabTestMasterOpen(false); setMyLabPricingOpen(false); setPatientBookingOpen(false); setDocumentsOpen(false); setCommunicationsOpen(false); setNotificationsOpen(false); setSupportOpen(false); setNoticeAdminOpen(false); setBranchesOpen(false); setFinanceOpen(false); setVoucherOnlyOpen(false);
-      setFinanceReviewOpen(false); setFinanceClaimsOpen(false); setFinanceClaimReviewsOpen(false); setInvoiceOpen(false); setInvoiceReviewOpen(false); setBudgetOpen(false); setBudgetReviewOpen(false); setReportsOpen(false);
+      setFinanceReviewOpen(false); setFinanceClaimsOpen(false); setFinanceClaimReviewsOpen(false); setInvoiceOpen(false); setInvoiceReviewOpen(false); setBudgetOpen(false); setBudgetReviewOpen(false); setReportsOpen(false); setMisOpen(false);
       try {
         await SecureStore.deleteItemAsync(STORE_KEY);
       } catch {
@@ -622,7 +627,7 @@ export function StaffAuthenticationScreen() {
         setInvoiceReviewOpen(false);
         setBudgetOpen(false);
         setBudgetReviewOpen(false);
-        setReportsOpen(false);
+        setReportsOpen(false); setMisOpen(false);
         setFinanceOpen(false);
         setBranchesOpen(false);
         setChangePasswordOpen(false);
@@ -674,6 +679,7 @@ export function StaffAuthenticationScreen() {
       openBudget: () => openOnly(setBudgetOpen),
       openBudgetReview: () => openOnly(setBudgetReviewOpen),
       openReports: () => openOnly(setReportsOpen),
+      openMis: () => openOnly(setMisOpen),
       openFinance: () => openOnly(setFinanceOpen),
       openBranches: () => openOnly(setBranchesOpen),
       openChangePassword: () => openOnly(setChangePasswordOpen)
@@ -941,6 +947,7 @@ export function StaffAuthenticationScreen() {
     return renderInShell(<ScreenErrorBoundary onExit={closeOwnCenter}>
       <Suspense fallback={<ActivityIndicator style={{ marginTop: 40 }} />}>
         <NativeOwnCenterPortal token={token}
+          canViewSettlements={roleActions.includes("healthcare.assistance.settlements.view")}
           onExit={closeOwnCenter} onExpired={expireSession}/>
       </Suspense>
     </ScreenErrorBoundary>, "healthOwnCenterPortal", closeOwnCenter);
@@ -1132,6 +1139,22 @@ export function StaffAuthenticationScreen() {
         </Suspense>
       </ScreenErrorBoundary>, "financeBudgets", closeBudgets)
     );
+  if (misOpen && token && actor &&
+      (roleActions.includes("mis.dashboard.view") || roleActions.includes("mis.reports.view")))
+    return renderInShell(
+      <ScreenErrorBoundary onExit={closeMis}>
+        <Suspense fallback={<ActivityIndicator style={{marginTop:40}}/>}>
+          <NativeMisWorkspaceScreen token={token} onExpired={expireSession}
+            onExit={closeMis}
+            canDashboard={roleActions.includes("mis.dashboard.view")}
+            canReports={roleActions.includes("mis.reports.view")}
+            onOpenFinance={roleActions.includes("finance.reports.view")?
+              handlers.openReports:undefined}
+            onOpenPatientAdmin={roleActions.includes("health.patients.admin.view")&&
+              roleActions.includes("foundation.branches.admin")?
+              handlers.openPatientAdmin:undefined}/>
+        </Suspense>
+      </ScreenErrorBoundary>,"mis",closeMis);
   if (reportsOpen && token && actor && roleActions.includes("finance.reports.view"))
     return (
       renderInShell(<ScreenErrorBoundary onExit={closeReports}>

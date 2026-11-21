@@ -134,10 +134,101 @@ export class BranchSourceFacade{
      throw new ForbiddenException("Choose a narrower authorized branch list");
    return {all:false,branchRefs:branches.rows.map(x=>x.id)};
  }
+ /** Current CG-02 branch scope for trusted CG-20 scheduled finance jobs.
+  * CG-01 checks the stored account's live roles without a bearer; CG-02 alone
+  * checks branch assignments. No session cloning, stale grants or new branch
+  * ownership model. Internal background service path only.
+  */
+ async requireScheduledFinanceReportBranch(root:string,account:string,
+  requested:string|null):Promise<void>{
+   await this.sessions.requireScheduledMisAction(root,account,"finance.reports.view");
+   const protectedRole=await this.db.query<{allowed:boolean}>(
+    "SELECT EXISTS(SELECT 1 FROM account_role ar "+
+    "JOIN role r ON r.id=ar.role_id AND r.active=true AND r.is_protected=true "+
+    "WHERE ar.realm_id=$1 AND ar.account_id=$2 AND ar.revoked_at IS NULL) AS allowed",
+    [root,account]);
+   let all=protectedRole.rows[0]?.allowed===true;
+   if(!all){
+    try{
+     await this.sessions.requireScheduledMisAction(
+      root,account,"foundation.branches.admin");
+     all=true;
+    }catch(e){if(!(e instanceof ForbiddenException))throw e;}
+   }
+   if(all){
+    if(requested){
+     const original=await this.db.query(
+      "SELECT 1 FROM branch WHERE id=$1 AND root_realm_id=$2 "+
+      "AND status='ACTIVE'",
+      [ensureId(requested),root]);
+     if(!original.rowCount)
+      throw new ForbiddenException("The report branch is no longer available");
+    }
+    return;
+   }
+   if(!requested)
+    throw new ForbiddenException("Select a currently assigned branch");
+   const branch=await this.db.query(
+    "SELECT 1 FROM branch WHERE id=$1 AND root_realm_id=$2 "+
+    "AND manager_account_ref=$3 AND status='ACTIVE' LIMIT 1",
+    [ensureId(requested),root,account]);
+   if(!branch.rowCount)
+    throw new ForbiddenException("The assigned report branch has changed");
+ }
+
  async requireFinanceReportBranch(bearer:string,requested:string|null|undefined):Promise<void>{
    const allowed=await this.financeReportScope(bearer);
    if(!allowed.all&&(!requested||!allowed.branchRefs.includes(requested)))
      throw new ForbiddenException("Select a branch assigned to your account");
+ }
+ /** CG20 C46 geography stays owned by original CG02. Only active district/
+  * block ancestors of CURRENT accessible active branches are exposed; this
+  * never widens finance.reports.view to an entire district. Bounded recursion
+  * and row limit avoid unbounded catalog/scans.
+  */
+ private async reportGeographyRows(bearer:string){
+  const actor=await this.sessions.requireAction(bearer,"finance.reports.view");
+  const scope=await this.financeReportScope(bearer);
+  const q=await this.db.query<{
+   branchRef:string;areaRef:string;name:string;level:string
+  }>(
+   "WITH RECURSIVE ancestors AS ("+
+   "SELECT b.id AS branch_ref,g.id,g.parent_area_id,g.level,"+
+   "g.display_name,g.status,1 AS depth FROM branch b "+
+   "JOIN geography_area g ON g.id=b.geography_area_id "+
+   "AND g.root_realm_id=b.root_realm_id "+
+   "WHERE b.root_realm_id=$1 AND b.status='ACTIVE' "+
+   "AND ($2::boolean OR b.id=ANY($3::uuid[])) AND g.status='ACTIVE' "+
+   "UNION ALL "+
+   "SELECT a.branch_ref,p.id,p.parent_area_id,p.level,"+
+   "p.display_name,p.status,a.depth+1 FROM ancestors a "+
+   "JOIN geography_area p ON p.id=a.parent_area_id "+
+   "AND p.root_realm_id=$1 AND p.status='ACTIVE' "+
+   "WHERE a.depth<8) "+
+   "SELECT branch_ref AS \"branchRef\",id AS \"areaRef\","+
+   "display_name AS name,level FROM ancestors "+
+   "WHERE level IN('DISTRICT','BLOCK') "+
+   "ORDER BY level,name,id,branch_ref LIMIT 501",
+   [actor.realmId,scope.all,scope.branchRefs]);
+  if(q.rows.length>500)
+   throw new ForbiddenException("Narrow the active reporting geography");
+  return q.rows;
+ }
+ async financeReportGeographies(bearer:string){
+  const rows=await this.reportGeographyRows(bearer);
+  const areas=new Map<string,{ref:string;name:string;level:string}>();
+  for(const row of rows)if(!areas.has(row.areaRef))
+   areas.set(row.areaRef,{ref:row.areaRef,name:row.name,level:row.level});
+  return [...areas.values()];
+ }
+ async financeAreaBranchRefs(bearer:string,areaInput:string,
+  branchInput?:string|null){
+  const area=ensureId(areaInput),rows=await this.reportGeographyRows(bearer);
+  const branches=[...new Set(rows.filter(row=>row.areaRef===area)
+   .map(row=>row.branchRef))];
+  if(!branches.length||branchInput&&!branches.includes(ensureId(branchInput)))
+   throw new ForbiddenException("This active district or block is outside your reporting scope");
+  return branchInput?[branchInput]:branches;
  }
  /** CG-09 finance uses only the actual active branch identity, not private branch files. */
  async financeBranches(bearer:string,capability:"finance.accounts.view"|"finance.vouchers.view"|"finance.vouchers.manage"|"finance.invoices.view"|"finance.invoices.manage"|"finance.budgets.view"|"finance.budgets.manage"|"finance.reports.view"="finance.accounts.view"):Promise<{branchRef:string;name:string;code:string;version:number}[]>{

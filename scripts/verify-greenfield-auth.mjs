@@ -101,7 +101,8 @@ for(const [owner,expected] of Object.entries({
   '02-foundation-structure':25
 })){
   const task=get('specs/initiatives/careganga-foundation-platform/modules/cg-'+owner+'/tasks.md');
-  const ids=new Set([...task.matchAll(/\bUS-\d{3}-QA\d{2}\b/g)].map(x=>x[0]));
+  const ownTask=task.replace(/origin=CG-\d+\/US-\d{3}-QA\d{2}/g,"");
+  const ids=new Set([...ownTask.matchAll(/\bUS-\d{3}-QA\d{2}\b/g)].map(x=>x[0]));
   total+=ids.size;
   check('Canonical '+owner+' QA definitions: '+expected,ids.size===expected);
 }

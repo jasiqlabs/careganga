@@ -11,6 +11,9 @@ function permitted(p:string[],method:"GET"|"POST"){
  if(method==="GET"&&p.length===4&&p[0]==="my-centers"&&
   ID.test(p[1])&&p[2]==="months"&&MONTH.test(p[3]))
   return true;
+ if(method==="GET"&&p.length===5&&p[0]==="my-centers"&&
+  ID.test(p[1])&&p[2]==="months"&&MONTH.test(p[3])&&
+  p[4]==="export.csv")return true;
  if(method==="GET"&&p.length===2&&p[0]==="centers"&&p[1]==="eligible")
   return true;
  if(p.length>=4&&p[0]==="centers"&&ID.test(p[1])&&
@@ -64,6 +67,20 @@ async function proxy(req:NextRequest,parts:string[],method:"GET"|"POST"){
     status===409?"Claim or bank proof changed. Recheck the original source.":
     status===400?"Select the correct month and original posted liabilities.":
     "Settlement claim outcome uncertain. Check before retrying.");
+  }
+  if(method==="GET"&&parts.length===5&&
+    parts[0]==="my-centers"&&parts[4]==="export.csv"){
+   if(response.headers.get("content-type")?.split(";")[0]!=="text/csv")
+    return fail(503,"The verified private settlement file is unavailable.");
+   const bytes=await response.arrayBuffer();
+   if(bytes.byteLength<30||bytes.byteLength>65536)
+    return fail(503,"The current statement file failed the size check.");
+   const label="CareGanga-Center-Settlement-"+parts[3]+".csv";
+   return new Response(bytes,{headers:{
+    "Content-Type":"text/csv; charset=utf-8",
+    "Content-Disposition":'attachment; filename="'+label+'"',
+    "Cache-Control":"private, no-store","X-Content-Type-Options":"nosniff"
+   }});
   }
   const value:unknown=await response.json().catch(()=>null);
   if(!value||typeof value!=="object"||Array.isArray(value))

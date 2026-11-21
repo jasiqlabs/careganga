@@ -21,10 +21,11 @@ const monthNow=()=>{
  return String(date.getFullYear())+"-"+String(date.getMonth()+1).padStart(2,"0");
 };
 const money=(value:string|undefined)=>{
- const amt=typeof value==="string"&&/^[0-9]{1,12}$/.test(value)?
-  BigInt(value):0n;
- return "₹"+(amt/100n).toLocaleString("en-IN")+"."+
-  (amt%100n).toString().padStart(2,"0");
+ if(typeof value!=="string"||!/^-?[0-9]{1,14}$/.test(value))
+  return "Not yet confirmed";
+ const amt=BigInt(value),abs=amt<0n?-amt:amt;
+ return (amt<0n?"−":"")+"₹"+(abs/100n).toLocaleString("en-IN")+"."+
+  (abs%100n).toString().padStart(2,"0");
 };
 const MONTH=/^20[2-9]\d-(0[1-9]|1[0-2])$/;
 type Props={centerRef:string};
@@ -35,6 +36,8 @@ export function CenterMonthlySettlementSummary({centerRef}:Props){
  const [month,setMonth]=useState(monthNow);
  const [data,setData]=useState<Summary|null>(null);
  const [loading,setLoading]=useState(true);
+ const [exporting,setExporting]=useState(false);
+ const [exportNotice,setExportNotice]=useState("");
  const [error,setError]=useState("");
  const requestVersion=useRef(0);
  const load=useCallback(async()=>{
@@ -69,6 +72,55 @@ export function CenterMonthlySettlementSummary({centerRef}:Props){
   });
   return()=>{requestVersion.current++};
  },[load]);
+ // Browser visibility is not an authorization grant. Old CG17 monetary
+ // data must be discarded while hidden and rechecked after returning.
+ useEffect(()=>{
+  const recheck=()=>{
+   const version=++requestVersion.current;
+   setData(null);
+   if(document.visibilityState!=="visible"){
+    setLoading(false);return;
+   }
+   setLoading(true);setError("");
+   void load().then(result=>{
+    if(version===requestVersion.current)setData(result);
+   }).catch(error=>{
+    if(version===requestVersion.current)setError(error instanceof Error?
+     error.message:"Current center settlement access could not be verified.");
+   }).finally(()=>{
+    if(version===requestVersion.current)setLoading(false);
+   });
+  };
+  document.addEventListener("visibilitychange",recheck);
+  return()=>document.removeEventListener("visibilitychange",recheck);
+ },[load]);
+ async function exportCurrentStatement(){
+  if(loading||exporting||!data||!MONTH.test(month))return;
+  setExporting(true);setExportNotice("");
+  try{
+   // The server rechecks the ORIGINAL CG14 current center and CG17 monthly
+   // statement on every download; a displayed Web summary never grants bytes.
+   const response=await fetch(
+    "/api/healthcare-assistance/provider-settlements/my-centers/"+
+    encodeURIComponent(centerRef)+"/months/"+encodeURIComponent(month)+
+    "/export.csv",{cache:"no-store",credentials:"same-origin"});
+   if(!response.ok||response.headers.get("content-type")?.split(";")[0]!=="text/csv")
+    throw Error("Your current center statement cannot be exported. Refresh your permissions.");
+   const bytes=await response.arrayBuffer();
+   if(bytes.byteLength<30||bytes.byteLength>65536)
+    throw Error("Your protected center statement file could not be verified.");
+   const blob=new Blob([bytes],{type:"text/csv;charset=utf-8"});
+   const url=URL.createObjectURL(blob);
+   try{
+    const link=document.createElement("a");
+    link.href=url;link.download="CareGanga-Center-Settlement-"+month+".csv";
+    document.body.append(link);link.click();link.remove();
+    setExportNotice("The current verified center statement is ready in your downloads.");
+   }finally{window.setTimeout(()=>URL.revokeObjectURL(url),1000);}
+  }catch(e){setExportNotice(e instanceof Error?e.message:
+   "This center statement could not be verified for export.");
+  }finally{setExporting(false);}
+ }
  const approved=data&&["APPROVED","PARTIALLY_SETTLED","SETTLED"].includes(data.state);
  return <section className="cg-health-route-intro" aria-label="My Foundation settlement">
   <h3>My Foundation contribution and settlement</h3>
@@ -93,6 +145,11 @@ export function CenterMonthlySettlementSummary({centerRef}:Props){
      });
     }}>Refresh statement</button>
   </div>
+  {!!data&&<button type="button" disabled={loading||exporting}
+   onClick={()=>void exportCurrentStatement()}>
+   {exporting?"Verifying current center statement…":"Export my center statement (CSV)"}
+  </button>}
+  {!!exportNotice&&<p role="status">{exportNotice}</p>}
   {loading&&<p role="status">Checking original completed services…</p>}
   {!!error&&<p role="alert">{error}</p>}
   {data&&<div>
@@ -115,7 +172,8 @@ export function CenterMonthlySettlementSummary({centerRef}:Props){
     <dd>{money(data.foundationApprovedLiabilityMinor)}</dd>
     {approved?<><dt>Approved monthly Foundation claim</dt>
      <dd>{money(data.approvedFoundationMinor)}</dd>
-     {data.adjustedFoundationMinor&&BigInt(data.adjustedFoundationMinor)>0n&&<>
+     {data.adjustedFoundationMinor&&/^[0-9]{1,14}$/.test(data.adjustedFoundationMinor)&&
+     BigInt(data.adjustedFoundationMinor)>0n&&<>
       <dt>Original Foundation claim before correction</dt>
       <dd>{money(data.originalApprovedFoundationMinor)}</dd>
       <dt>Verified original claim adjustments</dt>

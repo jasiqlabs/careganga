@@ -2,6 +2,7 @@ import {
  BadRequestException,ConflictException,Inject,Injectable,NotFoundException
 } from "@nestjs/common";
 import {createHash} from "node:crypto";
+import {csvReport} from "../../cg-19-documents-notifications/application/mis-report-renderer";
 import type {Pool,PoolClient} from "pg";
 import {DATABASE} from "../../../core/infrastructure/database.module";
 import {SessionService} from "../../cg-01-identity-access/application/session.service";
@@ -330,6 +331,59 @@ export class MonthlyProviderSettlementService{
     approvedFoundationMinor:"0",actualPaidMinor:"0",outstandingMinor:"0",
     paidVerified:false,patientCollectionNotFoundationIncome:true,...breakdown};
   });
+ }
+ /**
+  * CG-20 own-center export is an ephemeral private CG-17 CSV, not an
+  * independently stored CG-19 report_run. No Foundation-wide MIS action is
+  * granted to the center operator. CG-19 supplies its formula-safe renderer.
+  * An original CG14 center assignment is verified before and after rendering.
+  */
+ async exportOwnCenterStatementCsv(token:string,centerRaw:string,monthRaw:string){
+  const center=id(centerRaw),period=month(monthRaw);
+  const view=await this.ownCenterStatement(token,center,period.slice(0,7));
+  const state=view.state;
+  // Export only fields already returned by the original center-scoped
+  // statement. Patient/doctor identities, bank proofs and Foundation-wide
+  // balances never enter the renderer.
+  const available=view as unknown as Record<string,unknown>;
+  const items=[
+   ["eligibleAccruedMinor","Accrued eligible Foundation contribution"],
+   ["centerGrossServicesMinor","Eligible completed center service total"],
+   ["patientPayableMinor","Patient payment due to center"],
+   ["patientCollectedVerifiedMinor","Verified patient collections"],
+   ["patientRefundedMinor","Recorded center refunds"],
+   ["partnerPatientCollectedAttestedMinor","Partner-attested patient payments"],
+   ["foundationApprovedLiabilityMinor","Foundation completed-service liability"],
+   ["approvedFoundationMinor","Approved monthly Foundation claim"],
+   ["actualPaidMinor","Verified Foundation payout to center"],
+   ["outstandingMinor","Foundation payout outstanding"],
+   ["adjustedFoundationMinor","Confirmed Foundation claim correction"],
+   ["grossFoundationPaidMinor","Original gross Foundation payout"],
+   ["verifiedProviderRecoveryMinor","Verified provider recovery"]
+  ] as const;
+  const rows=items.flatMap(([key,label])=>{
+   const n=available[key];
+   return typeof n==="string"&&/^-?\d{1,14}$/.test(n)?
+    [{item:label,value:n}]:[];
+  });
+  const report={
+   label:"Own healthcare center settlement · "+period.slice(0,7),
+   scopeLabel:"Current assigned center only; "+state.replaceAll("_"," ")+
+    ". Patient collections are NOT Foundation income.",
+   sourceReadAt:new Date().toISOString(),
+   sourceDigest:sha({center,period,state,rows}),
+   columns:[{key:"item",label:"Confirmed statement category"},
+    {key:"value",label:"Original amount",unit:"INR_MINOR"}],
+   rows
+  };
+  const bytes=csvReport(report);
+  // Ownership can change during formatting. Deny the whole export if either
+  // current CG-17 values or CG-14 assignment have changed.
+  const latest=await this.ownCenterStatement(token,center,period.slice(0,7));
+  if(sha(latest)!==sha(view))
+   throw new ConflictException({code:"CG17_SETTLEMENT_SOURCE_CHANGED"});
+  return {bytes,filename:"CareGanga-Center-Settlement-"+period.slice(0,7)+".csv",
+   mime:"text/csv"};
  }
  async propose(token:string,centerRaw:string,monthRaw:string,raw:unknown){
   const center=id(centerRaw),period=month(monthRaw);

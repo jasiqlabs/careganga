@@ -4,6 +4,8 @@ import {
 import type {Pool,PoolClient} from "pg";
 import {DATABASE} from "../../../core/infrastructure/database.module";
 import {SessionService} from "../../cg-01-identity-access/application/session.service";
+import {BranchSourceFacade}
+ from "../../cg-02-foundation-structure/application/branch-source.facade";
 import {CommunicationRecipientSource} from "../../cg-01-identity-access/application/communication-recipient-source.service";
 import {CommittedDecisionSource} from "../../cg-03-registration-approvals/application/committed-decision-source.service";
 
@@ -28,6 +30,7 @@ export class NotificationService{
   constructor(
     @Inject(DATABASE)private readonly db:Pool,
     private readonly sessions:SessionService,
+    private readonly branches:BranchSourceFacade,
     private readonly people:CommunicationRecipientSource,
     private readonly decisions:CommittedDecisionSource
   ){}
@@ -376,8 +379,25 @@ export class NotificationService{
     // Preserve original CG03 and appointment fields for existing clients.
     return {...decisions,appointments,laboratoryReleases};
   }
+  /** CG-19 owns inbox visibility. A neutral CG20 private notification may
+   * appear only while the original CG01 actions and CG02 branch permission
+   * are both currently valid. Other CG19 notification families are unchanged.
+   */
+  private async currentMisNoticeScope(bearer:string){
+    try{
+      await this.sessions.requireAction(bearer,"mis.reports.view");
+      await this.sessions.requireAction(bearer,"mis.reports.export");
+      const scope=await this.branches.financeReportScope(bearer);
+      return {allowed:true,all:scope.all,branches:scope.branchRefs};
+    }catch(error){
+      if(error instanceof ForbiddenException)
+       return {allowed:false,all:false,branches:[] as string[]};
+      throw error;
+    }
+  }
   async inbox(bearer:string,limitInput:unknown=20){
     const actor=await this.sessions.requireAction(bearer,"communications.notifications.view");
+    const scope=await this.currentMisNoticeScope(bearer);
     const limit=Number(limitInput);
     if(!Number.isInteger(limit)||limit<1||limit>30)
       throw new BadRequestException("Choose a smaller notice page");
@@ -451,8 +471,33 @@ export class NotificationService{
                 AND consent.purpose='PATIENT_CARE'
               ORDER BY consent.revision_no DESC LIMIT 1)=true
         ))
+        AND (n.source_kind<>'CG20_MIS_REPORT' OR
+          ($4::boolean AND EXISTS(
+            SELECT 1 FROM cg20_report_run report
+            JOIN cg19_mis_report_artifact artifact
+              ON artifact.root_realm_id=report.root_realm_id
+             AND artifact.report_run_ref=report.id
+             AND artifact.id=report.artifact_ref
+            JOIN cg20_saved_report saved
+              ON saved.root_realm_id=report.root_realm_id
+             AND saved.id=report.saved_ref
+             AND saved.owner_account_ref=report.requester_ref
+            WHERE report.root_realm_id=n.realm_id
+              AND report.id=n.cg20_mis_run_ref
+              AND report.requester_ref=n.recipient_id
+              AND report.run_origin='SCHEDULED'
+              AND report.source_key='FINANCE_POSTED_SUMMARY'
+              AND report.state='READY' AND report.expires_at>now()
+              AND saved.state='ACTIVE'
+              AND saved.current_revision=report.definition_revision
+              AND artifact.state='READY' AND artifact.revoked_at IS NULL
+              AND artifact.object_version IS NOT NULL
+              AND ($5::boolean OR
+                report.safe_request->>'branchRef'=ANY($6::text[]))
+          )))
       ORDER BY n.created_at DESC,n.id DESC LIMIT $3
-    `,[actor.realmId,actor.accountId,limit]);
+    `,[actor.realmId,actor.accountId,limit,
+      scope.allowed,scope.all,scope.branches]);
     return {items:rows.rows.map(row=>({
       notificationRef:row.id,title:row.subject_snapshot,
       body:row.body_snapshot,channel:row.channel,status:row.state,
@@ -462,6 +507,7 @@ export class NotificationService{
   async read(bearer:string,rawRef:unknown){
     const actor=await this.sessions.requireAction(bearer,"communications.notifications.view");
     const ref=needUuid(rawRef);
+    const scope=await this.currentMisNoticeScope(bearer);
     const client=await this.db.connect();let open=false;
     try{
       await client.query("BEGIN");open=true;
@@ -528,8 +574,33 @@ export class NotificationService{
                 AND consent.purpose='PATIENT_CARE'
               ORDER BY consent.revision_no DESC LIMIT 1)=true
         ))
+        AND (n.source_kind<>'CG20_MIS_REPORT' OR
+          ($4::boolean AND EXISTS(
+            SELECT 1 FROM cg20_report_run report
+            JOIN cg19_mis_report_artifact artifact
+              ON artifact.root_realm_id=report.root_realm_id
+             AND artifact.report_run_ref=report.id
+             AND artifact.id=report.artifact_ref
+            JOIN cg20_saved_report saved
+              ON saved.root_realm_id=report.root_realm_id
+             AND saved.id=report.saved_ref
+             AND saved.owner_account_ref=report.requester_ref
+            WHERE report.root_realm_id=n.realm_id
+              AND report.id=n.cg20_mis_run_ref
+              AND report.requester_ref=n.recipient_id
+              AND report.run_origin='SCHEDULED'
+              AND report.source_key='FINANCE_POSTED_SUMMARY'
+              AND report.state='READY' AND report.expires_at>now()
+              AND saved.state='ACTIVE'
+              AND saved.current_revision=report.definition_revision
+              AND artifact.state='READY' AND artifact.revoked_at IS NULL
+              AND artifact.object_version IS NOT NULL
+              AND ($5::boolean OR
+                report.safe_request->>'branchRef'=ANY($6::text[]))
+          )))
         FOR SHARE OF n,a
-      `,[ref,actor.realmId,actor.accountId]);
+      `,[ref,actor.realmId,actor.accountId,
+       scope.allowed,scope.all,scope.branches]);
       if(!exists.rowCount)throw new ForbiddenException("Notification unavailable");
       const applied=await client.query(`
         INSERT INTO cg19_notification_read(realm_id,recipient_id,notification_id)

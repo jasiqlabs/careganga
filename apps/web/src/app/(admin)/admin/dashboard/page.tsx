@@ -4,6 +4,8 @@ import { redirect } from "next/navigation";
 import { FoundationAdminNav } from "../../../../shared/foundation-admin-nav";
 import { AuthWelcomeListener } from "../../../../shared/auth-notification";
 import { AccessVerificationView } from "../../../../shared/access-verification-view";
+import { MisDashboardPanel } from "../../../../features/mis-reporting/mis-dashboard-panel";
+
 
 export const dynamic = "force-dynamic";
 
@@ -157,6 +159,11 @@ export default async function AdminDashboardPage() {
             </div>
           </div>
         </section>
+
+        {/* CG-20 source-backed MIS is visible only when its own capability is granted. */}
+        {verifiedActions?.includes("mis.dashboard.view") && <MisDashboardPanel />}
+        {(verifiedActions?.includes("mis.dashboard.view") || verifiedActions?.includes("mis.reports.view")) &&
+         <p style={{marginBottom:"1.5rem"}}><Link href="/admin/mis">Open Reports &amp; MIS</Link></p>}
 
         {/* Quick Access to Authorized Modules */}
         <section aria-labelledby="foundation-quick-access-heading">

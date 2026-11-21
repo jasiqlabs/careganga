@@ -1,6 +1,8 @@
 import {BadRequestException,ConflictException,Inject,Injectable,NotFoundException} from "@nestjs/common";
 import {createHash,randomUUID} from "node:crypto";
 import type {Pool} from "pg";
+import {HealthCenterSupportScopeFacade}
+ from "../../cg-14-healthcare-network/application/health-center-support-scope.facade";
 import {DATABASE} from "../../../core/infrastructure/database.module";
 import {SessionService} from "../../cg-01-identity-access/application/session.service";
 const ID=/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -20,7 +22,8 @@ type BookingRow={id:string;booking_display_id:string;virtual_display_id:string;
 @Injectable()
 export class PatientAdminOverviewService{
  constructor(@Inject(DATABASE)private readonly db:Pool,
-  private readonly sessions:SessionService){}
+  private readonly sessions:SessionService,
+  private readonly centers:HealthCenterSupportScopeFacade){}
 
  /** A request to print H15 data must be a fresh, exact selected-source
   * authorization, not an unscoped report/export or public bearer URL.
@@ -61,6 +64,134 @@ export class PatientAdminOverviewService{
   finally{c.release();}
  }
 
+ /** Original CG-15 Foundation MIS filter catalogue. No patient row,
+  * medical detail, contact or center DB key is exposed as a metric.
+  * CG-14 alone authorizes currently eligible center choices.
+  */
+ async readMisOptions(bearer:string){
+  const actor=await this.sessions.requireAction(bearer,"health.patients.admin.view");
+  await this.sessions.requireAction(bearer,"foundation.branches.admin");
+  const tx=await this.db.connect();let open=false;
+  try{
+   await tx.query("BEGIN");open=true;
+   await tx.query("SET LOCAL statement_timeout='8s'");
+   const eligible=await this.centers.eligibleFoundationCenters(
+    tx,actor,"health.patients.admin.view");
+   await tx.query("COMMIT");open=false;
+   return eligible;
+  }catch(e){if(open)await tx.query("ROLLBACK").catch(()=>undefined);throw e;}
+  finally{tx.release();}
+ }
+
+ /** Current authenticated Foundation-only status aggregate. Center/date/status
+  * filters are applied inside original CG-15 SQL, after CG-14 and current
+  * identity verification. No patient row or clinically identifying group.
+  */
+ async readMisTotals(bearer:string,filters:{
+  centerRef?:string;fromDay?:string;untilDay?:string;status?:string}={}){
+  const actor=await this.sessions.requireAction(bearer,"health.patients.admin.view");
+  await this.sessions.requireAction(bearer,"foundation.branches.admin");
+  const center=filters.centerRef??"",from=filters.fromDay??"",
+   until=filters.untilDay??"",status=filters.status??"";
+  const fromMillis=from?Date.parse(from+"T00:00:00Z"):0,
+   untilMillis=until?Date.parse(until+"T00:00:00Z"):0;
+  if(center!==""&&!ID.test(center)||!validDay(from)||!validDay(until)||
+     Boolean(from)!==Boolean(until)||
+     from!==""&&(from>until||untilMillis-fromMillis>366*86400000)||
+     status!==""&&!STATE.has(status))
+   throw new BadRequestException({code:"CG15_MIS_FILTER_INVALID",
+    message:"Choose a permitted center, valid date range and appointment status."});
+  const tx=await this.db.connect();let open=false;
+  try{
+   await tx.query("BEGIN ISOLATION LEVEL REPEATABLE READ, READ ONLY");open=true;
+   await tx.query("SET LOCAL statement_timeout='8s'");
+   if(center)await this.centers.assertFoundationCenter(
+    tx,actor,center,"health.patients.admin.view",true);
+   const cutoff=await tx.query<{asOf:Date}>(
+    'SELECT transaction_timestamp() AS "asOf"');
+   const q=await tx.query<{
+    bookings:string;completed:string;waiting:string;cancelled:string
+   }>(
+    "SELECT count(*)::text AS bookings,"+
+    "count(*) FILTER (WHERE booking_state='COMPLETED')::text AS completed,"+
+    "count(*) FILTER (WHERE booking_state IN('CONFIRMED','ARRIVED','WAITING',"+
+    "'IN_CONSULTATION'))::text AS waiting,"+
+    "count(*) FILTER (WHERE booking_state='CANCELLED')::text AS cancelled "+
+    "FROM cg15_consultation_appointment a WHERE a.root_realm_id=$1 "+
+    "AND ($2::uuid IS NULL OR a.center_id=$2) "+
+    "AND ($3::date IS NULL OR (a.start_at AT TIME ZONE a.time_zone)::date >= $3) "+
+    "AND ($4::date IS NULL OR (a.start_at AT TIME ZONE a.time_zone)::date <= $4) "+
+    "AND ($5::text='' OR a.booking_state=$5)",
+    [actor.realmId,center||null,from||null,until||null,status]);
+   await tx.query("COMMIT");open=false;
+   return {...(q.rows[0]??{bookings:"0",completed:"0",waiting:"0",cancelled:"0"}),
+    sourceAsOf:cutoff.rows[0].asOf.toISOString(),
+    sourceCutoffKind:"POSTGRES_READ_SNAPSHOT" as const};
+  }catch(e){if(open)await tx.query("ROLLBACK").catch(()=>undefined);throw e;}
+  finally{tx.release();}
+ }
+ /** CG-20 hospital/doctor aggregate belongs to CG15, not a MIS-owned
+  * patient query. A Foundation patient admin with branch administration may
+  * see counts by original consultation doctor/center display label; no
+  * patient, clinical note, document, phone or financial amount is selected.
+  * If ANY cell has 1–4 patients, suppress the full group set to prevent
+  * a small-cell subtraction attack, including sorted/limited previews.
+  */
+ async readMisDoctorGroups(bearer:string,filters:{
+  centerRef?:string;fromDay?:string;untilDay?:string;status?:string}={}){
+  const actor=await this.sessions.requireAction(bearer,"health.patients.admin.view");
+  await this.sessions.requireAction(bearer,"foundation.branches.admin");
+  const center=filters.centerRef??"",from=filters.fromDay??"",
+   until=filters.untilDay??"",status=filters.status??"";
+  const fromMillis=from?Date.parse(from+"T00:00:00Z"):0,
+   untilMillis=until?Date.parse(until+"T00:00:00Z"):0;
+  if(center!==""&&!ID.test(center)||!validDay(from)||!validDay(until)||
+    Boolean(from)!==Boolean(until)||
+    from!==""&&(from>until||untilMillis-fromMillis>366*86400000)||
+    status!==""&&!STATE.has(status))
+   throw new BadRequestException({code:"CG15_MIS_FILTER_INVALID",
+    message:"Choose an authorized center, period and appointment status."});
+  const tx=await this.db.connect();let open=false;
+  try{
+   await tx.query("BEGIN ISOLATION LEVEL REPEATABLE READ, READ ONLY");open=true;
+   await tx.query("SET LOCAL statement_timeout='8s'");
+   if(center)await this.centers.assertFoundationCenter(
+    tx,actor,center,"health.patients.admin.view",true);
+   const cutoff=await tx.query<{asOf:Date}>(
+    'SELECT transaction_timestamp() AS "asOf"');
+   const result=await tx.query<{
+    doctorName:string;centerName:string;bookings:string
+   }>(
+    "SELECT a.doctor_name AS \"doctorName\",a.center_name AS \"centerName\","+
+    "count(*)::text AS bookings FROM cg15_consultation_appointment a "+
+    "WHERE a.root_realm_id=$1 "+
+    "AND ($2::uuid IS NULL OR a.center_id=$2) "+
+    "AND ($3::date IS NULL OR (a.start_at AT TIME ZONE a.time_zone)::date >= $3) "+
+    "AND ($4::date IS NULL OR (a.start_at AT TIME ZONE a.time_zone)::date <= $4) "+
+    "AND ($5::text='' OR a.booking_state=$5) "+
+    "GROUP BY a.doctor_id,a.doctor_name,a.center_id,a.center_name "+
+    "ORDER BY a.center_name,a.doctor_name,a.center_id,a.doctor_id LIMIT 51",
+    [actor.realmId,center||null,from||null,until||null,status]);
+   const groups=result.rows.slice(0,50);
+   const suppressed=result.rows.some(row=>{
+    try{const n=BigInt(row.bookings);return n>0n&&n<5n||n<0n}
+    catch{return true;}
+   });
+   const partial=result.rows.length>50;
+   await tx.query("COMMIT");open=false;
+   return {groups:suppressed?[]:groups,
+    state:suppressed?"SUPPRESSED" as const:partial?"PARTIAL" as const:
+     groups.length?"READY" as const:"EMPTY" as const,
+    sourceAsOf:cutoff.rows[0].asOf.toISOString(),
+    sourceCutoffKind:"POSTGRES_READ_SNAPSHOT" as const,
+    explanation:suppressed?
+     "Small doctor appointment groups are hidden; choose broader permitted criteria.":
+     partial?
+     "More than fifty doctor/center groups match. Narrow to a verified center or time range before exporting.":
+     "Current authorized doctor and center appointment counts, without clinical or patient information."};
+  }catch(e){if(open)await tx.query("ROLLBACK").catch(()=>undefined);throw e;}
+  finally{tx.release();}
+ }
  /** H15 restricted review queue, bounded and rooted; never a public patient
   * search or an authorization to read source clinical files.
   */

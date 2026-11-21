@@ -36,7 +36,7 @@ const amountMinor=(v:unknown)=>{
   throw new BadRequestException({code:"FINANCE_RECONCILIATION_INVALID",field:"amount"});
  return minor.toString();
 };
-type Options={yearRef?:string;branchRef?:string;accountRef?:string;from?:string;to?:string;offset?:string};
+type Options={yearRef?:string;branchRef?:string;accountRef?:string;from?:string;to?:string;offset?:string;areaRef?:string};
 @Injectable()
 export class FinanceReportsService{
  constructor(@Inject(DATABASE) private readonly db:Pool,
@@ -49,8 +49,9 @@ export class FinanceReportsService{
   return this.sessions.requireAction(bearer,
    write?"finance.reconciliation.manage":"finance.reports.view");
  }
- private filters(raw:Options){
-  if(Object.keys(raw).some(k=>!["yearRef","branchRef","accountRef","from","to","offset"].includes(k)))
+ private filters(raw:Options,allowArea=false){
+  if(Object.keys(raw).some(k=>!["yearRef","branchRef","accountRef","from","to","offset"].includes(k)&&
+    !(allowArea&&k==="areaRef")))
    throw new BadRequestException({code:"FINANCE_REPORT_FILTER_INVALID"});
   const fy=raw.yearRef?uuid(raw.yearRef,"yearRef"):null,
    branch=raw.branchRef?uuid(raw.branchRef,"branchRef"):null,
@@ -58,16 +59,19 @@ export class FinanceReportsService{
    from=validDate(raw.from),to=validDate(raw.to);
   if(from&&to&&from>to)
    throw new BadRequestException({code:"FINANCE_REPORT_FILTER_INVALID",field:"date"});
-  return {fy,branch,account,from,to,offset:position(raw.offset)};
+  return {fy,branch,account,from,to,offset:position(raw.offset),
+   areaRef:allowArea&&raw.areaRef?uuid(raw.areaRef,"areaRef"):null};
  }
  private async verifyFilterScope(bearer:string,realm:string,v:{
-  fy:string|null;branch:string|null;account:string|null}){
+  fy:string|null;branch:string|null;account:string|null},areaRef?:string|null){
   const tests:{ref:string|null;field:string;table:string}[]=[
    {ref:v.fy,field:"yearRef",table:"financial_year"},
    {ref:v.branch,field:"branchRef",table:"branch"},
    {ref:v.account,field:"accountRef",table:"finance_account"}
   ];
-  await this.branches.requireFinanceReportBranch(bearer,v.branch);
+  const areaBranches=areaRef?
+   await this.branches.financeAreaBranchRefs(bearer,areaRef,v.branch):null;
+  if(!areaRef)await this.branches.requireFinanceReportBranch(bearer,v.branch);
   for(const t of tests){
    if(!t.ref)continue;
    // Whitelisted table names only: no request values interpolated into SQL.
@@ -77,11 +81,12 @@ export class FinanceReportsService{
    if(!result.rowCount)
     throw new BadRequestException({code:"FINANCE_REPORT_FILTER_INVALID",field:t.field});
   }
+  return areaBranches;
  }
  async options(bearer:string){
   const actor=await this.actor(bearer);
   const scope=await this.branches.financeReportScope(bearer);
-  const [years,accounts,branches]=await Promise.all([
+  const [years,accounts,branches,areas]=await Promise.all([
    this.db.query<{ref:string;name:string;startOn:string;endOn:string}>(
     "SELECT id AS ref,name,start_on::text AS \"startOn\",end_on::text AS \"endOn\" "+
     "FROM financial_year WHERE root_realm_id=$1 ORDER BY start_on DESC LIMIT 30",
@@ -91,13 +96,16 @@ export class FinanceReportsService{
     "WHERE root_realm_id=$1 AND ($2::boolean OR "+
     "(branch_id IS NULL OR branch_id=ANY($3::uuid[]))) "+
     "ORDER BY name,id LIMIT 200",[actor.realmId,scope.all,scope.branchRefs]),
-    this.branches.financeBranches(bearer,"finance.reports.view")
+    this.branches.financeBranches(bearer,"finance.reports.view"),
+    this.branches.financeReportGeographies(bearer)
   ]);
-  return {years:years.rows,accounts:accounts.rows,branches,allBranches:scope.all};
+  return {years:years.rows,accounts:accounts.rows,branches,areas,
+   allBranches:scope.all};
  }
  async ledger(bearer:string,raw:Options){
-  const actor=await this.actor(bearer),v=this.filters(raw);
-  await this.verifyFilterScope(bearer,actor.realmId,v);
+  const actor=await this.actor(bearer),v=this.filters(raw,true);
+  const allowedAreaBranches=await this.verifyFilterScope(
+   bearer,actor.realmId,v,v.areaRef);
   const rows=await this.db.query<{accountName:string;accountCode:string;category:string;
    postingDate:string;description:string;postingKind:string;debitMinor:string;
    creditMinor:string;normalSide:string;journalRef:string;lineRef:string}>(
@@ -114,8 +122,9 @@ export class FinanceReportsService{
    "AND ($4::uuid IS NULL OR l.account_id=$4) "+
    "AND ($5::date IS NULL OR j.posting_date>=$5) "+
    "AND ($6::date IS NULL OR j.posting_date<=$6) "+
+   "AND ($8::uuid[] IS NULL OR l.branch_id=ANY($8::uuid[])) "+
    "ORDER BY j.posting_date DESC,j.id DESC,l.id DESC LIMIT 51 OFFSET $7",
-   [actor.realmId,v.fy,v.branch,v.account,v.from,v.to,v.offset]);
+   [actor.realmId,v.fy,v.branch,v.account,v.from,v.to,v.offset,allowedAreaBranches]);
   return {lines:rows.rows.slice(0,50),
    nextOffset:rows.rows.length>50?v.offset+50:null,
    explanation:"All amounts are from immutable, posted journal lines. No inferred future sources."};
@@ -185,34 +194,166 @@ export class FinanceReportsService{
    year=yearInput?uuid(yearInput,"yearRef"):null,
    branch=branchInput?uuid(branchInput,"branchRef"):null;
   await this.verifyFilterScope(bearer,actor.realmId,{fy:year,branch,account:null});
-  const result=await this.db.query<{category:string;amountDebit:string;amountCredit:string}>(
-   "SELECT g.category,COALESCE(SUM(l.debit_minor),0)::text AS \"amountDebit\","+
-   "COALESCE(SUM(l.credit_minor),0)::text AS \"amountCredit\" "+
-   "FROM journal j JOIN journal_line l ON l.journal_id=j.id AND l.root_realm_id=j.root_realm_id "+
+  return this.readPostedSummary(actor.realmId,year,branch);
+ }
+ /** Same original posted-metric formula for both interactive and current-role
+  * CG20 scheduled readers. Never a second CG20 finance SQL/projection.
+  */
+ private async readPostedSummary(realm:string,year:string|null,branch:string|null){
+  // Keep both source totals in the same actual PostgreSQL read snapshot.
+  // Snapshot time is per CG-09; it is NOT a cross-owner/global watermark.
+  const tx=await this.db.connect();let open=false;
+  try{
+   await tx.query("BEGIN ISOLATION LEVEL REPEATABLE READ, READ ONLY");open=true;
+   await tx.query("SET LOCAL statement_timeout='8s'");
+   const cutoff=await tx.query<{asOf:Date}>(
+    'SELECT transaction_timestamp() AS "asOf"');
+   const result=await tx.query<{category:string;amountDebit:string;amountCredit:string}>(
+    "SELECT g.category,COALESCE(SUM(l.debit_minor),0)::text AS \"amountDebit\","+
+    "COALESCE(SUM(l.credit_minor),0)::text AS \"amountCredit\" "+
+    "FROM journal j JOIN journal_line l ON l.journal_id=j.id AND l.root_realm_id=j.root_realm_id "+
+    "JOIN finance_account a ON a.id=l.account_id AND a.root_realm_id=l.root_realm_id "+
+    "JOIN account_group g ON g.id=a.group_id AND g.root_realm_id=a.root_realm_id "+
+    "WHERE j.root_realm_id=$1 AND j.status='POSTED' "+
+    "AND ($2::uuid IS NULL OR j.financial_year_id=$2) "+
+    "AND ($3::uuid IS NULL OR l.branch_id=$3) GROUP BY g.category",
+    [realm,year,branch]);
+   const k=Object.fromEntries(result.rows.map(x=>[x.category,x]));
+   const get=(cat:string,side:"amountDebit"|"amountCredit")=>BigInt(k[cat]?.[side]??"0");
+   const income=get("INCOME","amountCredit")-get("INCOME","amountDebit");
+   const expense=get("EXPENSE","amountDebit")-get("EXPENSE","amountCredit");
+   const funds=get("FUND","amountCredit")-get("FUND","amountDebit");
+   const cash=await tx.query<{balance:string}>(
+    "SELECT COALESCE(SUM(CASE WHEN a.normal_side='DEBIT' "+
+    "THEN l.debit_minor-l.credit_minor ELSE l.credit_minor-l.debit_minor END),0)::text AS balance "+
+    "FROM journal_line l JOIN journal j ON j.id=l.journal_id AND j.root_realm_id=l.root_realm_id "+
+    "JOIN finance_account a ON a.id=l.account_id AND a.root_realm_id=l.root_realm_id "+
+    "WHERE j.root_realm_id=$1 AND j.status='POSTED' "+
+    "AND ($2::uuid IS NULL OR j.financial_year_id=$2) "+
+    "AND a.account_kind IN('CASH','BANK') "+
+    "AND ($3::uuid IS NULL OR l.branch_id=$3)",[realm,year,branch]);
+   await tx.query("COMMIT");open=false;
+   return {incomeMinor:income.toString(),expenseMinor:expense.toString(),
+    surplusMinor:(income-expense).toString(),fundsMinor:funds.toString(),
+    cashBankMinor:cash.rows[0]?.balance??"0",
+    sourceRecordState:result.rows.length===0?"NO_ROWS":"HAS_ROWS",
+    sourceAsOf:cutoff.rows[0].asOf.toISOString(),sourceCutoffKind:"POSTGRES_READ_SNAPSHOT",
+    explanation:"Recognized income/expense from posted GL only. Cash/bank is not approved claims or invoices."};
+  }catch(e){if(open)await tx.query("ROLLBACK").catch(()=>undefined);throw e;}
+  finally{tx.release();}
+ }
+ /** The due worker has no user bearer. Its stored CG01 account is checked
+  * live and CG02 enforces the same assigned-branch/Finance-Admin boundary.
+  * Only this narrow posted finance owner projection is supported unattended.
+  */
+ async scheduledSummary(root:string,account:string,yearInput?:string,branchInput?:string){
+  await this.sessions.requireScheduledMisAction(root,account,"finance.reports.view");
+  const year=yearInput?uuid(yearInput,"yearRef"):null;
+  const branch=branchInput?uuid(branchInput,"branchRef"):null;
+  await this.branches.requireScheduledFinanceReportBranch(root,account,branch);
+  if(year){
+   const exists=await this.db.query(
+    "SELECT 1 FROM financial_year WHERE id=$1 AND root_realm_id=$2",
+    [year,root]);
+   if(!exists.rowCount)
+    throw new ForbiddenException("The scheduled financial year is unavailable");
+  }
+  return this.readPostedSummary(root,year,branch);
+ }
+ /** CG-20 US-001 source-owned narrow trend, never a separate MIS ledger.
+  * Month uses original posting_date, only POSTED journal lines and the same
+  * current CG-02 branch permission as all existing CG-09 finance reports.
+  * Absent months are not invented. No private journal row leaves CG-09.
+  */
+ async monthlyMisTrend(bearer:string,yearInput?:string,branchInput?:string){
+  const actor=await this.actor(bearer);
+  const year=yearInput?uuid(yearInput,"yearRef"):null;
+  const branch=branchInput?uuid(branchInput,"branchRef"):null;
+  await this.verifyFilterScope(bearer,actor.realmId,{fy:year,branch,account:null});
+  const rows=await this.db.query<{month:string;incomeMinor:string;expenseMinor:string}>(
+   "SELECT to_char(date_trunc('month',j.posting_date),'YYYY-MM') AS month,"+
+   "COALESCE(SUM(CASE WHEN g.category='INCOME' "+
+   "THEN l.credit_minor-l.debit_minor ELSE 0 END),0)::text AS \"incomeMinor\","+
+   "COALESCE(SUM(CASE WHEN g.category='EXPENSE' "+
+   "THEN l.debit_minor-l.credit_minor ELSE 0 END),0)::text AS \"expenseMinor\" "+
+   "FROM journal j "+
+   "JOIN journal_line l ON l.journal_id=j.id AND l.root_realm_id=j.root_realm_id "+
    "JOIN finance_account a ON a.id=l.account_id AND a.root_realm_id=l.root_realm_id "+
    "JOIN account_group g ON g.id=a.group_id AND g.root_realm_id=a.root_realm_id "+
    "WHERE j.root_realm_id=$1 AND j.status='POSTED' "+
    "AND ($2::uuid IS NULL OR j.financial_year_id=$2) "+
-   "AND ($3::uuid IS NULL OR l.branch_id=$3) GROUP BY g.category",
+   "AND ($3::uuid IS NULL OR l.branch_id=$3) "+
+   "AND j.posting_date >= (date_trunc('month',CURRENT_DATE) - interval '5 months')::date "+
+   "AND j.posting_date < (date_trunc('month',CURRENT_DATE) + interval '1 month')::date "+
+   "AND g.category IN ('INCOME','EXPENSE') "+
+   "GROUP BY date_trunc('month',j.posting_date) "+
+   "ORDER BY date_trunc('month',j.posting_date) LIMIT 6",
    [actor.realmId,year,branch]);
-  const k=Object.fromEntries(result.rows.map(x=>[x.category,x]));
-  const get=(cat:string,side:"amountDebit"|"amountCredit")=>BigInt(k[cat]?.[side]??"0");
-  const income=get("INCOME","amountCredit")-get("INCOME","amountDebit");
-  const expense=get("EXPENSE","amountDebit")-get("EXPENSE","amountCredit");
-  const funds=get("FUND","amountCredit")-get("FUND","amountDebit");
-  const cash=await this.db.query<{balance:string}>(
-   "SELECT COALESCE(SUM(CASE WHEN a.normal_side='DEBIT' "+
-   "THEN l.debit_minor-l.credit_minor ELSE l.credit_minor-l.debit_minor END),0)::text AS balance "+
-   "FROM journal_line l JOIN journal j ON j.id=l.journal_id AND j.root_realm_id=l.root_realm_id "+
-   "JOIN finance_account a ON a.id=l.account_id AND a.root_realm_id=l.root_realm_id "+
-   "WHERE j.root_realm_id=$1 AND j.status='POSTED' "+
-   "AND ($2::uuid IS NULL OR j.financial_year_id=$2) "+
-   "AND a.account_kind IN('CASH','BANK') "+
-   "AND ($3::uuid IS NULL OR l.branch_id=$3)",[actor.realmId,year,branch]);
-  return {incomeMinor:income.toString(),expenseMinor:expense.toString(),
-   surplusMinor:(income-expense).toString(),
-   fundsMinor:funds.toString(),cashBankMinor:cash.rows[0]?.balance??"0",
-   explanation:"Recognized income/expense from posted GL only. Cash/bank is not the same as approved claims or invoices."};
+  return {months:rows.rows,windowLabel:"Last six calendar months",
+   explanation:"Net posted finance income and expenses by posting month. Missing months have no original qualifying journal lines."};
+ }
+ /** Typed CG20 C49 grouping is computed ONLY by the original CG09
+  * posted-ledger owner. No CG20 SQL, arbitrary columns or client-side totals
+  * from a truncated 50-row ledger preview.
+  */
+ async groupedMis(bearer:string,raw:{
+  yearRef?:string;branchRef?:string;fromDay?:string;untilDay?:string;
+  areaRef?:string;
+  groupBy:"CATEGORY"|"POSTING_KIND"|"ACCOUNT_NAME";
+  sortBy?:"NAME"|"DEBIT"|"CREDIT";sortDirection?:"ASC"|"DESC"
+ }){
+  const actor=await this.actor(bearer),v=this.filters({
+   yearRef:raw.yearRef,branchRef:raw.branchRef,
+   from:raw.fromDay,to:raw.untilDay
+  });
+  const selectedArea=raw.areaRef?uuid(raw.areaRef,"areaRef"):null;
+  const areaBranches=await this.verifyFilterScope(
+   bearer,actor.realmId,v,selectedArea);
+  const group=({
+   CATEGORY:"g.category",POSTING_KIND:"j.posting_kind",
+   ACCOUNT_NAME:"a.name"
+  } as const)[raw.groupBy];
+  const order=({
+   NAME:'"groupLabel"',DEBIT:"SUM(l.debit_minor)",CREDIT:"SUM(l.credit_minor)"
+  } as const)[raw.sortBy??"NAME"];
+  const direction=raw.sortDirection==="DESC"?"DESC":"ASC";
+  if(!group||!order||raw.sortDirection&&
+     raw.sortDirection!=="ASC"&&raw.sortDirection!=="DESC")
+   throw new BadRequestException({code:"FINANCE_REPORT_FILTER_INVALID",
+    message:"Choose a permitted grouping and sort."});
+  const c=await this.db.connect();let active=false;
+  try{
+   await c.query("BEGIN ISOLATION LEVEL REPEATABLE READ, READ ONLY");active=true;
+   await c.query("SET LOCAL statement_timeout='8s'");
+   const cutoff=await c.query<{asOf:Date}>(
+    'SELECT transaction_timestamp() AS "asOf"');
+   // group/order expressions come ONLY from static server-side maps.
+   const rows=await c.query<{groupLabel:string;debitMinor:string;creditMinor:string}>(
+    "SELECT "+group+" AS \"groupLabel\","+
+    "COALESCE(SUM(l.debit_minor),0)::text AS \"debitMinor\","+
+    "COALESCE(SUM(l.credit_minor),0)::text AS \"creditMinor\" "+
+    "FROM journal j JOIN journal_line l ON l.journal_id=j.id "+
+    "AND l.root_realm_id=j.root_realm_id "+
+    "JOIN finance_account a ON a.id=l.account_id "+
+    "AND a.root_realm_id=l.root_realm_id "+
+    "JOIN account_group g ON g.id=a.group_id "+
+    "AND g.root_realm_id=a.root_realm_id "+
+    "WHERE j.root_realm_id=$1 AND j.status='POSTED' "+
+    "AND ($2::uuid IS NULL OR j.financial_year_id=$2) "+
+    "AND ($3::uuid IS NULL OR l.branch_id=$3) "+
+    "AND ($4::date IS NULL OR j.posting_date>=$4) "+
+    "AND ($5::date IS NULL OR j.posting_date<=$5) "+
+    "AND ($6::uuid[] IS NULL OR l.branch_id=ANY($6::uuid[])) "+
+    "GROUP BY "+group+" "+
+    "ORDER BY "+order+" "+direction+', "groupLabel" ASC LIMIT 51',
+    [actor.realmId,v.fy,v.branch,v.from,v.to,areaBranches]);
+   await c.query("COMMIT");active=false;
+   return {groups:rows.rows.slice(0,50),partial:rows.rows.length>50,
+    sourceAsOf:cutoff.rows[0].asOf.toISOString(),
+    sourceCutoffKind:"POSTGRES_READ_SNAPSHOT" as const,
+    explanation:"Net finance amounts are aggregated across only immutable posted journal lines by the original finance owner."};
+  }catch(e){if(active)await c.query("ROLLBACK").catch(()=>undefined);
+   throw e;}finally{c.release();}
  }
  /** Invoice receivables are a projection of original POSTED/ISSUED accruals
   * minus the source-linked verified CG-09 receipt. No sample supplier or
