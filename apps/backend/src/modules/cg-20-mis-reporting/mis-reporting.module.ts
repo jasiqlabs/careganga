@@ -10,12 +10,13 @@ import {MisSavedReportService} from "./application/mis-saved-report.service";
 import {MisReportRunService} from "./application/mis-report-run.service";
 import {MisReportScheduleService} from "./application/mis-report-schedule.service";
 import {DocumentsNotificationsModule} from "../cg-19-documents-notifications/documents-notifications.module";
+import {PlatformConfigurationModule} from "../cg-21-platform-configuration-audit/platform-configuration.module";
 import {MisReportsController} from "./http/mis-reports.controller";
 
 /** CG-20 is a read-only consumer of verified source-owned projections. */
 @Module({
  imports:[IdentityAccessModule,FinanceAccountingModule,DiagnosticsModule,PatientsAppointmentsModule,
-  DocumentsNotificationsModule],
+  DocumentsNotificationsModule,PlatformConfigurationModule],
  providers:[MisDashboardService,MisReportSourceService,MisSavedReportService,MisReportRunService,MisReportScheduleService],
  controllers:[MisDashboardController,MisReportsController]
 })
