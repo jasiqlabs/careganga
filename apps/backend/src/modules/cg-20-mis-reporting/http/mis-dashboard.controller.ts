@@ -5,6 +5,10 @@ import {MisDashboardService} from "../application/mis-dashboard.service";
 @Controller("api/v1/mis")
 export class MisDashboardController{
  constructor(private readonly dashboardService:MisDashboardService){}
+ @Get("options")
+ options(@Headers("authorization")authorization:string){
+  return this.dashboardService.options(authorization);
+ }
  @Get("dashboard")
  dashboard(@Headers("authorization")authorization:string,
   @Query()query:Record<string,unknown>){
