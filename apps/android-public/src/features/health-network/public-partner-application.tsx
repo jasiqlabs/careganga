@@ -1,5 +1,5 @@
-import React,{useState} from "react";
-import {ActivityIndicator,Platform,Pressable,ScrollView,StyleSheet,
+import React,{useEffect,useState} from "react";
+import {ActivityIndicator,BackHandler,Platform,Pressable,ScrollView,StyleSheet,
  Text,TextInput,View} from "react-native";
 import {SafeAreaView} from "react-native-safe-area-context";
 import * as Crypto from "expo-crypto";
@@ -69,6 +69,15 @@ export function PublicPartnerApplication({onExit,onContact}:{
  const [busy,setBusy]=useState(false),[error,setError]=useState("");
  const [mode,setMode]=useState<"apply"|"status">("apply");
  const [tracking,setTracking]=useState(""),[checked,setChecked]=useState<Result|null>(null);
+ // Keep Android hardware Back inside the same Partnerships flow as Web Back.
+ useEffect(()=>{
+  const subscription=BackHandler.addEventListener("hardwareBackPress",()=>{
+   if(started)setStarted(false);
+   else onExit();
+   return true;
+  });
+  return ()=>subscription.remove();
+ },[started,onExit]);
  const change=<K extends keyof Fields,>(key:K,value:Fields[K])=>{
   if(!sent&&!result)setFields(s=>({...s,[key]:value}));
  };
