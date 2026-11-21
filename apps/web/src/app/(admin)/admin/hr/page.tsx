@@ -4,6 +4,7 @@ import Link from "next/link";
 import {FoundationAdminNav} from "../../../../shared/foundation-admin-nav";
 import {UnavailablePage} from "../../../../shared/unavailable-page";
 import {HrEnrollmentWorkspace} from "../../../../features/human-resources/hr-enrollment-workspace";
+import {HrMyProfile} from "../../../../features/human-resources/hr-my-profile";
 export const dynamic="force-dynamic";
 
 /** Original CareGanga private HR home — no public employee master. */
@@ -31,10 +32,8 @@ export default async function FoundationHrPage(){
   const actions=access.actions.filter((v:unknown):v is {key:string}=>Boolean(v)&&
    typeof v==="object"&&v!==null&&"key" in v&&
    typeof (v as {key:unknown}).key==="string").map(v=>v.key);
-  if(!actions.includes("hr.applications.view"))
-   return <UnavailablePage title="Employee records restricted"
-    description="Your current role cannot read Foundation employee applications."
-    linkLabel="Return to my account"/>;
+  // Every authenticated staff user can read ONLY their own employment status.
+  // Protected HR application directory remains behind separate server RBAC.
   return <div className="shell">
    <FoundationAdminNav active="hr" initialActions={actions}
     displayName={actor.displayName} roleName={actor.roleName}
@@ -49,10 +48,12 @@ export default async function FoundationHrPage(){
     <header style={{marginBottom:18}}>
      <h1>Human Resources</h1>
      <p style={{color:"var(--cg-muted)"}}>
-      Register and manage actual Foundation employment applications.
+      Your current Foundation employment status and, if permitted, employee applications.
      </p>
     </header>
-    <HrEnrollmentWorkspace canManage={actions.includes("hr.applications.manage")}/>
+    <HrMyProfile/>
+    {actions.includes("hr.applications.view")&&
+     <HrEnrollmentWorkspace canManage={actions.includes("hr.applications.manage")}/> }
    </main>
   </div>;
  }catch(error){
