@@ -637,5 +637,14 @@ export const SAFE_MESSAGE_CATALOG:Readonly<Record<string,string>>=Object.freeze(
       LAB_RESULT_VALUES_REQUIRED:"Review the laboratory test result fields and required verification, then try again.",
       CMS_HEALTHCARE_UNSUPPORTED_RATE_CLAIM:"Published healthcare text cannot promise a rate or discount that is not backed by a current approved policy. Revise the wording.",
       CMS_HEALTHCARE_FINANCIAL_SOURCE_NOT_VERIFIED:"This healthcare financial claim is not independently verified. Remove the claim or provide the current approved source before publishing.",
+      CG17_PARTNER_CLAIM_INVALID:"Check the partner, service date, invoice number, and amount before submitting.",
+      CG17_PARTNER_CLAIM_PROOF_REQUIRED:"Upload your scanned partner invoice and, for nursing or procedures, completed-service evidence before submitting.",
+      CG17_PARTNER_CLAIM_PATIENT_UNAVAILABLE:"Your verified patient identity and current care consent are required. Check your patient profile.",
+      CG17_PARTNER_CLAIM_DUPLICATE_INVOICE:"This partner invoice was already submitted. Check your existing claim before submitting again.",
+      CG17_PARTNER_CLAIM_REQUEST_CONFLICT:"These details differ from your earlier submission. Check the original claim before retrying.",
+      CG17_PARTNER_CLAIM_POLICY_UNAVAILABLE:"The approved partner support policy changed or is unavailable. Refresh the eligible services.",
+      CG17_PARTNER_CLAIM_CENTER_UNAVAILABLE:"This partner service is no longer verified or available. Choose a currently approved partner.",
+      CG17_PARTNER_CLAIM_LIST_LIMIT:"Too many claims were found. Contact the Foundation for help with older claim records.",
+      CG17_PARTNER_CLAIM_SOURCE_FROZEN:"This original submitted claim cannot be edited. Ask the Foundation for a reviewed correction.",
 });
 export const editableErrorKeys=()=>Object.keys(SAFE_MESSAGE_CATALOG).sort();
