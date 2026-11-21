@@ -19,7 +19,7 @@ type Payout={
 export class HealthcareProviderPayoutProofFacade{
  constructor(private readonly identity:FoundationStructureIdentityFacade){}
  private async current(c:PoolClient,actor:VerifiedFoundationActor,
-  ref?:string){
+  ref?:string,liabilityAccountRef?:string){
   await this.identity.assertCurrent(c,actor,"finance.reconciliation.manage");
   const rows=await c.query<Payout>(
    "SELECT bank.id AS reconciliation_ref,bank.bank_item_ref,"+
@@ -55,12 +55,15 @@ export class HealthcareProviderPayoutProofFacade{
    "AND (SELECT count(*) FROM journal_line jline "+
    "WHERE jline.root_realm_id=j.root_realm_id AND jline.journal_id=j.id)=2 "+
    "AND ($2::uuid IS NULL OR bank.id=$2::uuid) "+
+   "AND ($3::uuid IS NULL OR pay.account_id=$3::uuid) "+
    "ORDER BY bank.verified_at DESC,bank.id DESC LIMIT 51",
-   [actor.realmId,ref??null]);
+   [actor.realmId,ref??null,liabilityAccountRef??null]);
   return rows.rows;
  }
- async options(c:PoolClient,actor:VerifiedFoundationActor){
-  const rows=await this.current(c,actor);
+ async options(c:PoolClient,actor:VerifiedFoundationActor,liabilityAccountRef?:string){
+  if(liabilityAccountRef&&!ID.test(liabilityAccountRef))
+   throw new ConflictException({code:"CG09_PROVIDER_PAYABLE_ACCOUNT_INVALID"});
+  const rows=await this.current(c,actor,undefined,liabilityAccountRef);
   return {bankDisbursements:rows.slice(0,50).map(x=>({
    bankMatchRef:x.reconciliation_ref,
    bankItemLabel:x.bank_item_ref,
