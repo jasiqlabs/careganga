@@ -7,6 +7,7 @@
 import assert from "node:assert/strict";
 import {readFileSync} from "node:fs";
 import {resolve} from "node:path";
+import ts from "typescript";
 const root=resolve(import.meta.dirname,"..");
 const read=p=>readFileSync(resolve(root,p),"utf8");
 const cases=[
@@ -81,6 +82,13 @@ let tested=0;
 for(const test of cases){
  for(const [path,needles] of test.checks){
   const text=read(path);
+  if(path==="apps/android-internal/src/features/appointments/native-foundation-patient-admin.tsx"||
+     path==="apps/android-internal/src/features/appointments/native-foundation-duplicate-reviews.tsx"){
+   const source=ts.createSourceFile(path,text,ts.ScriptTarget.Latest,true,ts.ScriptKind.TSX);
+   assert.equal(source.parseDiagnostics.length,0,
+    test.id+": newly added CG15 native TSX must parse: "+
+    source.parseDiagnostics.map(d=>ts.flattenDiagnosticMessageText(d.messageText," ")).join("; "));
+  }
   for(const needle of needles){
    assert.ok(text.includes(needle),test.id+": missing "+JSON.stringify(needle)+" in "+path);
    tested++;
