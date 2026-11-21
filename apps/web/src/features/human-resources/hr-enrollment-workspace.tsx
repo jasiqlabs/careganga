@@ -118,9 +118,10 @@ export function HrEnrollmentWorkspace({canManage,canViewEmployees}:{
     typeof result.reference!=="string")
     throw Error("Enrollment submission could not be confirmed.");
    enrollmentKeys.current.delete(app.applicationRef);
+   await load(0);
+   setFileApplication(null);setCaseStatus(null);
    setStatus({error:false,message:"Original enrollment submitted for independent "+
     "Foundation approval — "+result.reference+". Not yet an active employee."});
-   await load(0);await review(app);
   }catch(e){
    setStatus({error:true,message:e instanceof Error?e.message:
     "Submission result is uncertain. Refresh the original review before retrying."});
@@ -140,9 +141,9 @@ export function HrEnrollmentWorkspace({canManage,canViewEmployees}:{
    if(!result||typeof result!=="object"||!("reference" in result)||
     typeof result.reference!=="string")
     throw Error("Approved employee activation is not confirmed.");
+   await load(0);setFileApplication(null);setCaseStatus(null);
    setStatus({error:false,message:"Employment confirmed — "+result.reference+
     ". Account access is separate and never auto-granted."});
-   await load(0);setFileApplication(null);setCaseStatus(null);
   }catch(e){setStatus({error:true,message:e instanceof Error?e.message:
    "Employee activation result is uncertain. Check the original employee directory."});}
   finally{setBusy(false);}
@@ -207,7 +208,7 @@ export function HrEnrollmentWorkspace({canManage,canViewEmployees}:{
    <strong>Employee applications</strong>
    <p style={{margin:".35rem 0 0"}}>
     Saving a draft does not create a staff account, grant permissions or activate employment.
-    Protected submission and approval will be available after the HR review workflow is connected.
+    Submission requires original scanned evidence and an independent Foundation review. An approved application must still be finalized before employment becomes active.
    </p>
   </div>
   {status&&<p role={status.error?"alert":"status"} style={{borderRadius:10,
