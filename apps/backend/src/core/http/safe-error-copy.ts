@@ -330,5 +330,15 @@ export const SAFE_MESSAGE_CATALOG:Readonly<Record<string,string>>=Object.freeze(
       LAB_CATALOG_RATE_OUTSIDE_WINDOW:"The commercial price must fall within the test or package availability dates. Check its start and end times.",
       LAB_CATALOG_TEST_EXPIRED:"Select currently available tests and make sure the package dates do not extend beyond any included test."
 
+      PARTNER_FIELD_INVALID:"Check the required partner name, contact, location, registration and form details, then try again.",
+      PARTNER_CONSENT_REQUIRED:"Please read and accept the partner registration consent to continue.",
+      PARTNER_RECEIPT_INVALID:"Enter the private tracking code exactly as provided when you applied.",
+      PARTNER_RECEIPT_UNAVAILABLE:"This private tracking code could not be verified. Check and enter it again.",
+      PARTNER_REQUEST_CONFLICT:"These application details differ from your earlier submission. Review the original application before retrying.",
+      PARTNER_VERSION_INVALID:"This application version is unavailable. Refresh the application before continuing.",
+      PARTNER_VERSION_CHANGED:"This application was updated by another reviewer. Refresh before saving.",
+      PARTNER_REVIEW_CLOSED:"This partner application is already closed or linked. Refresh to view its current status.",
+      PARTNER_SOURCE_MISMATCH:"The selected healthcare provider or professional does not match the original application. Review the name, category and registration details.",
+      PARTNER_APPLICATION_UNAVAILABLE:"This partner application is unavailable for your current Foundation access. Refresh the application list.",
 });
 export const editableErrorKeys=()=>Object.keys(SAFE_MESSAGE_CATALOG).sort();
