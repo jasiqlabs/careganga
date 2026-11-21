@@ -6,8 +6,9 @@ import {MisReportExports} from "./mis-report-exports";
 import {MisReportSchedules} from "./mis-report-schedules";
 import {MisFinanceTrend,MisAppointmentDistribution} from "./mis-source-charts";
 type Kind="FINANCE_POSTED_LEDGER"|"FINANCE_POSTED_SUMMARY"|
- "FINANCE_POSTED_TREND"|"APPOINTMENT_STATUS"|"PLATFORM_AUDIT_ACTIVITY";
-type View="TABLE"|"SUMMARY"|"CHART";
+ "FINANCE_POSTED_TREND"|"FINANCE_POSTED_GROUPED"|
+ "APPOINTMENT_STATUS"|"PLATFORM_AUDIT_ACTIVITY";
+type View="TABLE"|"SUMMARY"|"CHART"|"PIVOT";
 type Option={ref:string;name:string};
 type Template={kind:Kind;label:string;views:View[];description:string};
 type Catalog={
@@ -17,7 +18,9 @@ type Catalog={
  capabilities:{manage:boolean;export:boolean;schedule:boolean}
 };
 export type ReportRequest={kind:Kind;view:View;yearRef?:string;branchRef?:string;
- centerRef?:string;fromDay?:string;untilDay?:string;status?:string;offset:number};
+ centerRef?:string;fromDay?:string;untilDay?:string;status?:string;
+ groupBy?:"CATEGORY"|"POSTING_KIND"|"ACCOUNT_NAME";
+ sortBy?:"NAME"|"DEBIT"|"CREDIT";sortDirection?:"ASC"|"DESC";offset:number};
 export type ReportPreview={
  state:"READY"|"EMPTY"|"SUPPRESSED"|"PARTIAL";kind:Kind;view:View;label:string;
  columns:{key:string;label:string;unit?:string}[];
@@ -61,6 +64,9 @@ export function MisReportsWorkspace(){
  const [year,setYear]=useState(""),[branch,setBranch]=useState("");
  const [center,setCenter]=useState(""),[from,setFrom]=useState("");
  const [until,setUntil]=useState(""),[status,setStatus]=useState("");
+ const [groupBy,setGroupBy]=useState<"CATEGORY"|"POSTING_KIND"|"ACCOUNT_NAME">("CATEGORY");
+ const [sortBy,setSortBy]=useState<"NAME"|"DEBIT"|"CREDIT">("NAME");
+ const [sortDirection,setSortDirection]=useState<"ASC"|"DESC">("ASC");
  const [result,setResult]=useState<ReportPreview|null>(null);
  const [problem,setProblem]=useState(""),[loading,setLoading]=useState(true);
  const [busy,setBusy]=useState(false),[notice,setNotice]=useState("");
@@ -94,6 +100,7 @@ export function MisReportsWorkspace(){
  const finance=kind?.startsWith("FINANCE_");
  const health=kind==="APPOINTMENT_STATUS";
  const ledger=kind==="FINANCE_POSTED_LEDGER";
+ const grouped=kind==="FINANCE_POSTED_GROUPED";
  function input(offset=0):ReportRequest|null{
   if(!kind||!selected)return null;
   return {kind,view:selected.views.includes(view)?view:selected.views[0],
@@ -102,7 +109,8 @@ export function MisReportsWorkspace(){
     ...(center?{centerRef:center}:{}),
     ...(status?{status}:{}),
    }),
-   ...((ledger||!finance)&&from?{fromDay:from,untilDay:until}:{},
+   ...((ledger||grouped||!finance)&&from?{fromDay:from,untilDay:until}:{}),
+   ...(grouped?{groupBy,sortBy,sortDirection}:{}),
    offset};
  }
  async function preview(offset=0){
@@ -154,7 +162,7 @@ export function MisReportsWorkspace(){
     {selected.views.length>1&&<label>Report view <select value={view}
      onChange={e=>{setView(e.target.value as View);setResult(null);}}>
      {selected.views.map(v=><option key={v} value={v}>
-      {v==="SUMMARY"?"Summary":v==="CHART"?"Chart":"Table"}</option>)}
+      {v==="SUMMARY"?"Summary":v==="CHART"?"Chart":v==="PIVOT"?"Pivot":"Table"}</option>)}
     </select></label>}
     <div style={{display:"flex",flexWrap:"wrap",gap:12}}>
      {finance&&<>
@@ -178,7 +186,20 @@ export function MisReportsWorkspace(){
        {statuses.map(x=><option key={x.key} value={x.key}>{x.label}</option>)}
       </select></label>
      </>}
-     {(ledger||!finance)&&<>
+     {grouped&&<>
+      <label>Group by <select value={groupBy} onChange={e=>setGroupBy(e.target.value as typeof groupBy)}>
+       <option value="CATEGORY">Account category</option>
+       <option value="POSTING_KIND">Posted entry type</option>
+       <option value="ACCOUNT_NAME">Account name</option>
+      </select></label>
+      <label>Sort by <select value={sortBy} onChange={e=>setSortBy(e.target.value as typeof sortBy)}>
+       <option value="NAME">Group name</option><option value="DEBIT">Posted debit</option><option value="CREDIT">Posted credit</option>
+      </select></label>
+      <label>Order <select value={sortDirection} onChange={e=>setSortDirection(e.target.value as typeof sortDirection)}>
+       <option value="ASC">Ascending</option><option value="DESC">Descending</option>
+      </select></label>
+     </>}
+     {(ledger||grouped||!finance)&&<>
       <label>Start date <input type="date" value={from} onChange={e=>setFrom(e.target.value)}/></label>
       <label>End date <input type="date" value={until} onChange={e=>setUntil(e.target.value)}/></label>
      </>}
@@ -243,6 +264,8 @@ export function MisReportsWorkspace(){
    currentRequest={input(0)}
    onRestore={q=>{
     setKind(q.kind);setView(q.view);setYear(q.yearRef??"");setBranch(q.branchRef??"");
+    setGroupBy(q.groupBy??"CATEGORY");setSortBy(q.sortBy??"NAME");
+    setSortDirection(q.sortDirection??"ASC");
     setCenter(q.centerRef??"");setFrom(q.fromDay??"");
     setUntil(q.untilDay??"");setStatus(q.status??"");
     setResult(null);setProblem("");setNotice("");
