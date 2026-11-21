@@ -85,6 +85,7 @@ CREATE TABLE cg20_report_run(
  occurrence_due_utc timestamptz,
  state text NOT NULL DEFAULT 'QUEUED'
   CHECK(state IN('QUEUED','RUNNING','READY','EMPTY','FAILED','EXPIRED','REVOKED','UNKNOWN')),
+ retry_count smallint NOT NULL DEFAULT 0 CHECK(retry_count BETWEEN 0 AND 3),
  artifact_ref uuid,
  format text CHECK(format IS NULL OR format IN('PDF','XLSX','CSV')),
  source_as_of timestamptz,
@@ -108,7 +109,7 @@ CREATE INDEX ix_cg20_runs_actor_recent ON cg20_report_run
 CREATE INDEX ix_cg20_runs_expiry ON cg20_report_run(expires_at,id)
  WHERE state IN('READY','EMPTY','FAILED','REVOKED');
 CREATE INDEX ix_cg20_scheduled_queued ON cg20_report_run(created_at,id)
- WHERE run_origin='SCHEDULED' AND state='QUEUED';
+ WHERE run_origin='SCHEDULED' AND state IN('QUEUED','UNKNOWN') AND retry_count<3;
 CREATE INDEX ix_cg20_scheduled_stale ON cg20_report_run(updated_at,id)
  WHERE run_origin='SCHEDULED' AND state='RUNNING';
 
