@@ -66,8 +66,11 @@ export function NativeHrEnrollment({token,canView,canManage,onExit,onExpired}:{
     setBranches(opts.items as Option[]);
     setNext("hasMore" in records&&records.hasMore===true?offset+25:null);
    }
-  }catch(e){failure(e);}
-  finally{setLoading(false);}
+  }catch(e){
+   // A network failure cannot be treated as a confirmed empty/last-known list.
+   setApps([]);setBranches([]);setSelf(null);setNext(null);
+   failure(e);
+  }finally{setLoading(false);}
  },[token,canView,failure]);
  useEffect(()=>{void load(0);},[load]);
  useEffect(()=>{
