@@ -216,6 +216,94 @@ export class MisSavedReportService{
    return {...this.summary(changed.rows[0]),replayed:false};
   });
  }
+
+ /** Only owner-approved, named same-realm colleagues may copy an allowlisted
+  * definition. This does NOT share data, a file, roles or original schedules.
+  */
+ async recipients(token:string,search:string){
+  await this.current(token,true);
+  return this.sessions.eligibleMisShareRecipients(token,search);
+ }
+ async sharedWithMe(token:string){
+  const actor=await this.current(token,true);
+  const rows=await this.db.query<{ref:string;name:string;sourceKey:string}>(
+   "SELECT s.id AS ref,s.display_name AS name,d.source_key AS \"sourceKey\" "+
+   "FROM cg20_saved_report_grant g JOIN cg20_saved_report s "+
+   "ON s.root_realm_id=g.root_realm_id AND s.id=g.saved_ref "+
+   "AND s.owner_account_ref=g.owner_account_ref "+
+   "JOIN cg20_report_definition d ON d.root_realm_id=s.root_realm_id "+
+   "AND d.id=s.definition_ref AND d.revision=s.current_revision "+
+   "WHERE g.root_realm_id=$1 AND g.recipient_account_ref=$2 "+
+   "AND g.state='ACTIVE' AND s.state='ACTIVE' "+
+   "ORDER BY g.updated_at DESC,s.id DESC LIMIT 51",
+   [actor.realmId,actor.accountId]);
+  return {items:rows.rows.slice(0,50),hasMore:rows.rows.length>50,
+   message:"Colleagues shared these private configurations. Your source permissions are checked again when copying."};
+ }
+ async grant(token:string,idInput:string,raw:unknown){
+  const actor=await this.current(token,true),id=ref(idInput);
+  await this.sessions.requireAction(token,"mis.reports.share");
+  if(!raw||typeof raw!=="object"||Array.isArray(raw))
+   throw new BadRequestException({code:"MIS_SAVED_INVALID"});
+  const body=raw as Record<string,unknown>;
+  if(Object.keys(body).some(k=>!["recipientRef","active",
+    "expectedVersion","requestKey"].includes(k)))
+   throw new BadRequestException({code:"MIS_SAVED_INVALID"});
+  const recipient=ref(body.recipientRef),expected=version(body.expectedVersion),
+   key=ref(body.requestKey);
+  if(recipient===actor.accountId||typeof body.active!=="boolean")
+   throw new BadRequestException({code:"MIS_SAVED_INVALID",
+    message:"Choose another eligible colleague and an explicit sharing choice."});
+  // Confirm the original saved source is still available to the owner.
+  const current=await this.get(token,id);
+  if(current.version!==expected)
+   throw new ConflictException({code:"MIS_SAVED_CHANGED"});
+  if(body.active){
+   await this.sessions.requireScheduledMisAction(
+    actor.realmId,recipient,"mis.reports.view");
+   await this.sessions.requireScheduledMisAction(
+    actor.realmId,recipient,"mis.reports.manage");
+  }
+  const action=body.active?"SHARE":"UNSHARE";
+  const digest=hash({action,id,recipient,expected});
+  return this.tx(async tx=>{
+   await tx.query("SELECT pg_advisory_xact_lock(hashtextextended($1,0))",
+    [actor.realmId+":mis-saved:"+actor.accountId+":"+key]);
+   const replay=await this.request(tx,actor.realmId,actor.accountId,key,digest);
+   const source=await this.getOwned(tx,actor.realmId,actor.accountId,id,true);
+   if(replay&&replay.saved_ref===id)
+    return {state:body.active?"GRANT_RECORDED":"REVOKE_RECORDED",
+     message:"The original sharing request is recorded. Refresh the current recipient status.",
+     replayed:true};
+   if(source.state!=="ACTIVE"||source.version!==expected)
+    throw new ConflictException({code:"MIS_SAVED_CHANGED",
+     message:"This saved report has changed. Reload before sharing."});
+   if(body.active){
+    await tx.query(
+     "INSERT INTO cg20_saved_report_grant(root_realm_id,saved_ref,"+
+     "owner_account_ref,recipient_account_ref,created_by) "+
+     "VALUES($1,$2,$3,$4,$3) "+
+     "ON CONFLICT(root_realm_id,saved_ref,recipient_account_ref) "+
+     "DO UPDATE SET state='ACTIVE',revoked_at=NULL,"+
+     "revision=cg20_saved_report_grant.revision+1,updated_at=now()",
+     [actor.realmId,id,actor.accountId,recipient]);
+   }else{
+    await tx.query(
+     "UPDATE cg20_saved_report_grant SET state='REVOKED',revoked_at=now(),"+
+     "revision=revision+1,updated_at=now() WHERE root_realm_id=$1 "+
+     "AND saved_ref=$2 AND owner_account_ref=$3 "+
+     "AND recipient_account_ref=$4 AND state='ACTIVE'",
+     [actor.realmId,id,actor.accountId,recipient]);
+   }
+   await this.record(tx,actor.realmId,actor.accountId,key,digest,
+    action,id,source.version);
+   return {state:body.active?"GRANT_RECORDED":"REVOKE_RECORDED",
+    message:body.active?
+     "Private definition copying was enabled for the selected colleague. Source records are not shared.":
+     "The private report-definition grant was revoked.",
+    replayed:false};
+  });
+ }
  async copy(token:string,idInput:string,raw:unknown){
   const actor=await this.current(token,true),id=ref(idInput);
   if(!raw||typeof raw!=="object"||Array.isArray(raw))
@@ -224,9 +312,25 @@ export class MisSavedReportService{
   if(Object.keys(b).some(k=>!["name","requestKey"].includes(k)))
    throw new BadRequestException({code:"MIS_SAVED_INVALID"});
   const title=name(b.name),key=ref(b.requestKey);
-  const record=await this.authorizedRequest(token,id);
-  // Source-specific rights checked on reauthorization, copy stays PRIVATE.
-  return this.create(token,{name:title,request:record.request,requestKey:key},id);
+  // An owner OR explicitly granted colleague may read the DEFINITION
+  // for private copy. No report rows/files/recipients are ever returned.
+  const request=await this.tx(async tx=>{
+   const q=await tx.query<Saved>(
+    "SELECT s.* FROM cg20_saved_report s "+
+    "WHERE s.root_realm_id=$1 AND s.id=$2 AND s.state='ACTIVE' "+
+    "AND (s.owner_account_ref=$3 OR EXISTS("+
+    "SELECT 1 FROM cg20_saved_report_grant grant "+
+    "WHERE grant.root_realm_id=s.root_realm_id "+
+    "AND grant.saved_ref=s.id AND grant.owner_account_ref=s.owner_account_ref "+
+    "AND grant.recipient_account_ref=$3 AND grant.state='ACTIVE')) "+
+    "LIMIT 1",[actor.realmId,id,actor.accountId]);
+   if(!q.rows[0])throw new NotFoundException({code:"MIS_SAVED_NOT_FOUND"});
+   return this.definition(tx,q.rows[0]);
+  });
+  await this.sources.preview(token,request);
+  // The recipient's own current source grant and current root are always
+  // rechecked. The new definition has a NEW ID and PRIVATE owner.
+  return this.create(token,{name:title,request,requestKey:key},id);
  }
  async retire(token:string,idInput:string,raw:unknown){
   const actor=await this.current(token,true),id=ref(idInput);
