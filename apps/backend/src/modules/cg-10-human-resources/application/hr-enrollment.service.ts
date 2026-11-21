@@ -12,11 +12,11 @@ import {FoundationStructureIdentityFacade} from "../../cg-01-identity-access/app
 const ID=/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i;
 const TYPES=["FULL_TIME","PART_TIME","CONTRACT","VOLUNTEER_STAFF"] as const;
 type Fields={name:string;designation:string;employmentType:string;branchRef:string;
- departmentRef:string|null;hireDate:string;accountRef:string|null};
+ departmentRef:string|null;managerRef:string|null;hireDate:string;accountRef:string|null};
 type Command=Fields&{requestKey:string;expectedRevision?:number};
 type Row={id:string;application_no:string;legal_name:string;designation:string;
  employment_type:string;proposed_branch_ref:string;department_ref:string|null;
- applicant_account_ref:string|null;hire_date:Date|string;state:string;revision_no:number;
+ applicant_account_ref:string|null;proposed_manager_employee_ref:string|null;hire_date:Date|string;state:string;revision_no:number;
  request_digest:string;created_at:Date};
 const hash=(value:unknown)=>createHash("sha256").update(JSON.stringify(value)).digest("hex");
 const uuid=(v:unknown,label:string):string=>{
@@ -35,7 +35,7 @@ export function parseHrDraft(value:unknown,update=false):Command{
   throw new BadRequestException("Check the employee application");
  const x=value as Record<string,unknown>;
  if(Object.keys(x).some(k=>!["requestKey","expectedRevision","name","designation",
-  "employmentType","branchRef","departmentRef","hireDate","accountRef"].includes(k)))
+  "employmentType","branchRef","departmentRef","managerRef","hireDate","accountRef"].includes(k)))
   throw new BadRequestException("The employee application contains unsupported fields");
  const employmentType=x.employmentType;
  if(typeof employmentType!=="string"||!TYPES.some(t=>t===employmentType))
@@ -53,6 +53,7 @@ export function parseHrDraft(value:unknown,update=false):Command{
   name:clean(x.name,160),designation:clean(x.designation,120),
   employmentType,branchRef:uuid(x.branchRef,"active branch"),
   departmentRef:optional(x.departmentRef,"department"),
+  managerRef:optional(x.managerRef,"reporting manager"),
   accountRef:optional(x.accountRef,"existing account"),hireDate:x.hireDate,
   ...(update?{expectedRevision:Number(x.expectedRevision)}:{})};
 }
@@ -60,7 +61,7 @@ const iso=(v:Date|string)=>typeof v==="string"?v.slice(0,10):v.toISOString().sli
 const view=(x:Row)=>({applicationRef:x.id,reference:x.application_no,name:x.legal_name,
  designation:x.designation,employmentType:x.employment_type,
  branchRef:x.proposed_branch_ref,departmentRef:x.department_ref,
- accountRef:x.applicant_account_ref,hireDate:iso(x.hire_date),
+ managerRef:x.proposed_manager_employee_ref,accountRef:x.applicant_account_ref,hireDate:iso(x.hire_date),
  status:x.state,revision:Number(x.revision_no)});
 
 @Injectable()
@@ -97,6 +98,16 @@ export class HrEnrollmentService{
     "AND (branch_id=$3 OR branch_id IS NULL) FOR SHARE",
     [x.departmentRef,a.realmId,x.branchRef]);
    if(!department.rowCount)throw new BadRequestException("Select an available department");
+  }
+  if(x.managerRef){
+   const manager=await tx.query(
+    "SELECT 1 FROM hr_employee e JOIN hr_employment_assignment a "+
+    "ON a.employee_id=e.id AND a.root_realm_id=e.root_realm_id "+
+    "WHERE e.id=$1 AND e.root_realm_id=$2 AND e.status IN(\u0027ACTIVE\u0027,\u0027PROBATION\u0027) "+
+    "AND a.branch_ref=$3 AND a.valid_from<=CURRENT_DATE "+
+    "AND (a.valid_to IS NULL OR a.valid_to>CURRENT_DATE) FOR SHARE OF e,a",
+    [x.managerRef,a.realmId,x.branchRef]);
+   if(!manager.rowCount)throw new BadRequestException("Choose an active manager at this branch");
   }
   if(x.accountRef){
    const account=await tx.query(
@@ -156,12 +167,12 @@ export class HrEnrollmentService{
     const result=await tx.query<Row>(
      "INSERT INTO hr_employee_application(root_realm_id,request_key,request_digest,application_no,"+
      "legal_name,designation,employment_type,proposed_branch_ref,department_ref,hire_date,"+
-     "applicant_account_ref,created_by,updated_by) VALUES($1,$2,$3,"+
+     "applicant_account_ref,proposed_manager_employee_ref,created_by,updated_by) VALUES($1,$2,$3,"+
      "'CG-HR-APP-'||lpad(nextval('hr_application_public_sequence')::text,6,'0'),"+
-     "$4,$5,$6,$7,$8,$9,$10,$11,$11) "+
+     "$4,$5,$6,$7,$8,$9,$10,$11,$12,$12) "+
      "ON CONFLICT (root_realm_id,request_key) DO NOTHING RETURNING *",
      [a.realmId,x.requestKey,digest,x.name,x.designation,x.employmentType,x.branchRef,
-      x.departmentRef,x.hireDate,x.accountRef,a.accountId]);
+      x.departmentRef,x.hireDate,x.accountRef,x.managerRef,a.accountId]);
     // Racing identical requests can both initially see no row. The unique
     // root+request key is authoritative; reconcile only the exact same digest.
     if(!result.rows[0]){
@@ -226,11 +237,12 @@ export class HrEnrollmentService{
     const updated=await tx.query<Row>(
      "UPDATE hr_employee_application SET legal_name=$3,designation=$4,employment_type=$5,"+
      "proposed_branch_ref=$6,department_ref=$7,hire_date=$8,applicant_account_ref=$9,"+
+     "proposed_manager_employee_ref=$10,"+
      "updated_by=$10,updated_at=now(),state='DRAFT',revision_no=revision_no+1, "+
      "cg03_case_ref=NULL,submitted_digest=NULL "+
      "WHERE id=$1 AND root_realm_id=$2 RETURNING *",
      [ref,a.realmId,x.name,x.designation,x.employmentType,x.branchRef,
-      x.departmentRef,x.hireDate,x.accountRef,a.accountId]);
+      x.departmentRef,x.hireDate,x.accountRef,x.managerRef,a.accountId]);
     await tx.query(
      "INSERT INTO hr_application_command(root_realm_id,actor_ref,request_key,request_digest,"+
      "application_ref,action,resulting_revision) VALUES($1,$2,$3,$4,$5,'UPDATE',$6)",
