@@ -53,6 +53,7 @@ export interface ModuleActionHandlers {
   openAccounts: () => void;
   openRoles: () => void;
   openPolicy: () => void;
+  openPlatformConfiguration: () => void;
   openApprovals: () => void;
   openPatientAdmin: () => void;
   openPatientQueue: () => void;
@@ -730,6 +731,12 @@ export function getAuthorizedModules(
     });
   }
 
+  if (["platform.settings.view","platform.integrations.view","platform.audit.view","platform.recovery.view"].some(a=>roleActions.includes(a))) {
+    list.push({key:"platformConfiguration",title:"Platform & Configuration",shortLabel:"Platform",
+      description:"Foundation settings, audit and protected recovery by current permission.",
+      category:"PLATFORM & COMMUNICATIONS",iconName:"sliders",iconBg:"#EEF4FF",iconColor:"#1E53DC",
+      onOpen:handlers.openPlatformConfiguration});
+  }
   return list;
 }
 

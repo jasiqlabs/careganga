@@ -27,6 +27,7 @@ const ChangePasswordScreen = lazy(() => import("./change-password-screen").then(
 const MyAccountScreen = lazy(() => import("./my-account-screen").then(m => ({ default: m.MyAccountScreen })));
 const ProposalScreen = lazy(() => import("../registration-approvals/proposal-screen").then(m => ({ default: m.ProposalScreen })));
 const NativeOwnCenterPortal = lazy(() => import("../health-network/native-own-center-portal").then(m => ({ default: m.NativeOwnCenterPortal })));
+const NativePlatformConfiguration = lazy(() => import("../platform-configuration/native-platform-configuration").then(m => ({ default: m.NativePlatformConfiguration })));
 const NativeCmsEditorial = lazy(() => import("../cms/native-cms-editorial").then(m => ({ default: m.NativeCmsEditorial })));
 const NativeDoctorManagement = lazy(() => import("../health-network/native-doctor-management").then(m => ({ default: m.NativeDoctorManagement })));
 const NativeCenterContentPublisher = lazy(() => import("../health-network/native-center-content-publisher").then(m => ({ default: m.NativeCenterContentPublisher })));
@@ -145,6 +146,7 @@ export function StaffAuthenticationScreen() {
   const [approvalsOpen, setApprovalsOpen] = useState(false);
   const [ownCenterOpen, setOwnCenterOpen] = useState(false);
   const [websiteCmsOpen, setWebsiteCmsOpen] = useState(false);
+  const [platformConfigOpen,setPlatformConfigOpen] = useState(false);
   const [healthDoctorOpen, setHealthDoctorOpen] = useState(false);
   const [centerPublisherOpen, setCenterPublisherOpen] = useState(false);
   const [healthProviderOpen, setHealthProviderOpen] = useState(false);
@@ -184,6 +186,7 @@ export function StaffAuthenticationScreen() {
   const closeRoles = useCallback(() => setRolesOpen(false), []);
   const closeOwnCenter = useCallback(() => setOwnCenterOpen(false), []);
   const closeWebsiteCms = useCallback(() => setWebsiteCmsOpen(false), []);
+  const closePlatformConfig = useCallback(() => setPlatformConfigOpen(false), []);
   const closeHealthDoctor = useCallback(() => setHealthDoctorOpen(false), []);
   const closeCenterPublisher = useCallback(() => setCenterPublisherOpen(false), []);
   const closeHealthProvider = useCallback(() => setHealthProviderOpen(false), []);
@@ -233,6 +236,7 @@ export function StaffAuthenticationScreen() {
       approvalsOpen ||
       ownCenterOpen ||
       websiteCmsOpen ||
+      platformConfigOpen ||
       healthDoctorOpen ||
       centerPublisherOpen ||
       healthProviderOpen ||
@@ -600,7 +604,7 @@ export function StaffAuthenticationScreen() {
         setRolesOpen(false);
         setPolicyOpen(false);
         setApprovalsOpen(false);
-        setOwnCenterOpen(false); setWebsiteCmsOpen(false); setHealthDoctorOpen(false); setCenterPublisherOpen(false); setHealthProviderOpen(false); setHealthReviewsOpen(false);
+        setOwnCenterOpen(false); setWebsiteCmsOpen(false); setPlatformConfigOpen(false); setHealthDoctorOpen(false); setCenterPublisherOpen(false); setHealthProviderOpen(false); setHealthReviewsOpen(false);
         setDoctorLeaveReviewsOpen(false);
         setPatientAdminOpen(false); setPatientQueueOpen(false); setClinicianActivityOpen(false); setLabOrdersOpen(false); setLabEquipmentOpen(false); setHealthcarePoliciesOpen(false); setCenterMerchantOpen(false); setFoundationLiabilitiesOpen(false); setMonthlyProviderSettlementsOpen(false); setLabTestMasterOpen(false); setMyLabPricingOpen(false);
         setPatientBookingOpen(false);
@@ -650,6 +654,7 @@ export function StaffAuthenticationScreen() {
       openDoctorLeaveReviews: () => openOnly(setDoctorLeaveReviewsOpen),
       openOwnCenterPortal: () => openOnly(setOwnCenterOpen),
       openWebsiteCms: () => openOnly(setWebsiteCmsOpen),
+      openPlatformConfiguration: () => openOnly(setPlatformConfigOpen),
       openHealthDoctorManagement: () => openOnly(setHealthDoctorOpen),
       openCenterContentPublisher: () => openOnly(setCenterPublisherOpen),
       openHealthProviderManagement: () => openOnly(setHealthProviderOpen),
@@ -938,6 +943,14 @@ export function StaffAuthenticationScreen() {
           onExit={closeOwnCenter} onExpired={expireSession}/>
       </Suspense>
     </ScreenErrorBoundary>, "healthOwnCenterPortal", closeOwnCenter);
+  if (platformConfigOpen && token && actor &&
+      ["platform.settings.view","platform.integrations.view","platform.audit.view","platform.recovery.view"].some(a=>roleActions.includes(a)))
+    return renderInShell(<ScreenErrorBoundary onExit={closePlatformConfig}>
+      <Suspense fallback={<ActivityIndicator style={{ marginTop:40 }}/>}>
+        <NativePlatformConfiguration token={token} roleActions={roleActions}
+          onExit={closePlatformConfig} onExpired={expireSession}/>
+      </Suspense>
+    </ScreenErrorBoundary>,"platformConfiguration",closePlatformConfig);
   if (websiteCmsOpen && token && actor &&
       roleActions.includes("cms.content.view"))
     return renderInShell(<ScreenErrorBoundary onExit={closeWebsiteCms}>
