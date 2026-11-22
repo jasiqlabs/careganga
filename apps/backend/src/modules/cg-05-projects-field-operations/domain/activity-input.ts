@@ -13,7 +13,11 @@ export function instant(v:unknown){
  if(Number(hh)>23||Number(mm)>59||Number(ss)>=60)throw invalid();
  return new Date(ms).toISOString();
 }
-export function activityInputError(field:string,code="CG05_ACTIVITY_FIELD_INVALID"){return new BadRequestException({code,field});}
+const activityLabels:Record<string,string>={projectRef:"project",branchRef:"branch",ownerRef:"assigned staff",title:"activity name",category:"category",activityType:"activity type",kind:"activity or event",venue:"location",scheduledStart:"start date and time",scheduledEnd:"end date and time",status:"status",reason:"reason",outcome:"outcome",description:"description",program:"program",stateRef:"state",districtRef:"district"};
+export function activityInputError(field:string,code="CG05_ACTIVITY_FIELD_INVALID"){
+ const messages:Record<string,string>={CG05_ACTIVITY_DATES_INVALID:"Check the schedule. End time must not precede start time or fall outside the permitted project dates.",CG05_ACTIVITY_GEOGRAPHY_INVALID:"Choose a state before choosing its district."};
+ return new BadRequestException({code,field,message:messages[code]??"Check the "+(activityLabels[field]??"activity details")+" and try again."});
+}
 function checked<T>(field:string,fn:()=>T,code="CG05_ACTIVITY_FIELD_INVALID"):T{try{return fn();}catch(e){if(e instanceof BadRequestException)throw activityInputError(field,code);throw e;}}
 function work(x:Record<string,unknown>){
  const state=checked("stateRef",()=>optionalRef(x.stateRef)),district=checked("districtRef",()=>optionalRef(x.districtRef)),start=checked("scheduledStart",()=>instant(x.scheduledStart),"CG05_ACTIVITY_DATES_INVALID"),end=checked("scheduledEnd",()=>instant(x.scheduledEnd),"CG05_ACTIVITY_DATES_INVALID");
