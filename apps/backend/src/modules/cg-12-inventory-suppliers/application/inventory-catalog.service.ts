@@ -26,7 +26,7 @@ export function parseInventorySupplier(value:unknown){
 export function parseInventoryLocation(value:unknown){
  const x=input(value,["requestKey","code","label","branchRef","receiptProofRequired"]);
  if(x.receiptProofRequired!==undefined&&typeof x.receiptProofRequired!=="boolean")throw new BadRequestException({code:"CG12_CATALOG_INVALID"});
- return {requestKey:uuid(x.requestKey),code:code(x.code),label:clean(x.label,2,160),branchRef:x.branchRef===null?null:uuid(x.branchRef),receiptProofRequired:x.receiptProofRequired===true};
+ return {requestKey:uuid(x.requestKey),code:code(x.code),label:clean(x.label,2,160),branchRef:x.branchRef===null?null:uuid(x.branchRef),receiptProofRequired:x.receiptProofRequired as boolean|undefined};
 }
 type Kind="ITEM"|"SUPPLIER"|"LOCATION";
 type PrivateSupplier={phone:string;email:string;address:string;taxRef:string};
@@ -104,7 +104,7 @@ export class InventoryCatalogService {
     q=await tx.query("UPDATE inventory_supplier SET legal_name=$3,display_name=$4,category=$5,status=$6,version=version+1,updated_at=now() WHERE root_realm_id=$1 AND id=$2 AND version=$7 AND supplier_code_norm=$8 RETURNING version",[a.realmId,ref,x.legalName,x.displayName,x.category,status,expected,x.code]);
    }else{
     const x=parsed as ReturnType<typeof parseInventoryLocation>;
-    q=await tx.query("UPDATE inventory_location SET label=$3,status=$4,receipt_proof_required=$8,version=version+1,updated_at=now() WHERE root_realm_id=$1 AND id=$2 AND version=$5 AND location_code_norm=$6 AND branch_ref IS NOT DISTINCT FROM $7::uuid RETURNING version",[a.realmId,ref,x.label,status,expected,x.code,x.branchRef,x.receiptProofRequired]);
+    q=await tx.query("UPDATE inventory_location SET label=$3,status=$4,receipt_proof_required=COALESCE($8::boolean,receipt_proof_required),version=version+1,updated_at=now() WHERE root_realm_id=$1 AND id=$2 AND version=$5 AND location_code_norm=$6 AND branch_ref IS NOT DISTINCT FROM $7::uuid RETURNING version",[a.realmId,ref,x.label,status,expected,x.code,x.branchRef,x.receiptProofRequired??null]);
    }
    if(!q.rows[0])throw stale();return this.audit(tx,a,kind,ref,parsed.requestKey,digest,q.rows[0].version);
   });
@@ -204,7 +204,7 @@ export class InventoryCatalogService {
     row=(await tx.query<{id:string;version:number}>("INSERT INTO inventory_supplier(root_realm_id,supplier_code_norm,legal_name,display_name,category) VALUES($1,$2,$3,$4,$5) RETURNING id,version",[a.realmId,x.code,x.legalName,x.displayName,x.category])).rows[0];
    }else{
     const x=parsed as ReturnType<typeof parseInventoryLocation>;
-    row=(await tx.query<{id:string;version:number}>("INSERT INTO inventory_location(root_realm_id,location_code_norm,label,branch_ref,scope_kind,receipt_proof_required) VALUES($1,$2,$3,$4,$5,$6) RETURNING id,version",[a.realmId,x.code,x.label,x.branchRef,x.branchRef?"BRANCH":"FOUNDATION",x.receiptProofRequired])).rows[0];
+    row=(await tx.query<{id:string;version:number}>("INSERT INTO inventory_location(root_realm_id,location_code_norm,label,branch_ref,scope_kind,receipt_proof_required) VALUES($1,$2,$3,$4,$5,$6) RETURNING id,version",[a.realmId,x.code,x.label,x.branchRef,x.branchRef?"BRANCH":"FOUNDATION",x.receiptProofRequired??false])).rows[0];
    }
    await tx.query("INSERT INTO inventory_audit(root_realm_id,actor_ref,source_kind,source_ref,event_key,payload_digest,result_version) VALUES($1,$2,$3,$4,$5,$6,$7)",[a.realmId,a.accountId,kind,row.id,parsed.requestKey,digest,row.version]);
    return {ref:row.id,version:row.version,replayed:false};
