@@ -7,18 +7,19 @@ import {financeNativeStyles as s,NativeFinanceAction as Action,NativeFinanceCard
  financeNativeRequest as request,financeNativeProblem as problem,
  formatFinanceMoney as money,minorToRupees} from "./finance-native-source-kit";
 type Year={yearRef:string;name:string;status:string;startOn:string;endOn:string};
+type ProjectChoice={value:string;label:string;branchRef:string|null};
 type Branch={branchRef:string;name:string;version:number};
 type Budget={budgetRef:string;budgetNumber:string;name:string;status:string;version:number;
  category:string;ceilingMinor:string;periodStart:string;periodEnd:string};
 type Detail={budgetRef:string;budgetNumber:string;name:string;status:string;version:number;
- category:string;ceilingMinor:string;financialYearRef:string;branchRef:string|null;
+ category:string;ceilingMinor:string;financialYearRef:string;branchRef:string|null;projectRef?:string|null;projectLabel?:string|null;
  start:string;end:string;allocatedMinor:string;committedOutstandingMinor:string;
  utilizedMinor:string;releasedMinor:string;availableMinor:string;overBudgetMinor:string;
  events:{kind:string;amountMinor:string;recordedAt:string}[]};
 type Expense={journalRef:string;voucherNumber:string;postedDate:string;amountMinor:string};
-type Form={budgetName:string;financialYearRef:string;branchRef:string;branchVersion:number|null;
+type Form={budgetName:string;financialYearRef:string;branchRef:string;branchVersion:number|null;projectRef:string;
  category:string;periodStart:string;periodEnd:string;fundingNote:string;ceiling:string};
-const clear=():Form=>({budgetName:"",financialYearRef:"",branchRef:"",branchVersion:null,
+const clear=():Form=>({budgetName:"",financialYearRef:"",branchRef:"",branchVersion:null,projectRef:"",
  category:"",periodStart:"",periodEnd:"",fundingNote:"Foundation budget authorization",ceiling:""});
 type Pending={key:string;path:string;method:"POST"|"PATCH";body:Record<string,unknown>};
 const key=()=>Crypto.randomUUID();
@@ -28,7 +29,7 @@ export function FinanceNativeBudgets({token,canManage,onExit,onExpired}:{
  const [overview,setOverview]=useState<{total:number;approved:number;submitted:number;
   totalCeilingMinor:string;committedOutstandingMinor:string;allocatedMinor:string;
   utilizedMinor:string;availableMinor:string;overBudgetMinor:string}|null>(null);
- const [year,setYear]=useState<Year[]>([]),[branches,setBranches]=useState<Branch[]>([]);
+ const [year,setYear]=useState<Year[]>([]),[branches,setBranches]=useState<Branch[]>([]),[projects,setProjects]=useState<ProjectChoice[]>([]);
  const [categories,setCategories]=useState<{code:string;name:string}[]>([]);
  const [selected,setSelected]=useState<Detail|null>(null);
  const [form,setForm]=useState<Form>(clear());
@@ -59,9 +60,9 @@ export function FinanceNativeBudgets({token,canManage,onExit,onExpired}:{
  useEffect(()=>{void loadOverview();},[loadOverview]);
  useEffect(()=>{let alive=true;void(async()=>{
   try{
-   const x=await request<{years:Year[];branches:Branch[];categories:{code:string;name:string}[]}>(token,
+   const x=await request<{years:Year[];branches:Branch[];categories:{code:string;name:string}[];projects?:ProjectChoice[]}>(token,
     "/api/finance-accounting/budgets/options");
-   if(alive){setYear(x.years);setBranches(x.branches);setCategories(x.categories);}
+   if(alive){setYear(x.years);setBranches(x.branches);setCategories(x.categories);setProjects(Array.isArray(x.projects)?x.projects:[]);}
   }catch(e){if(alive)fail(e);}})();return()=>{alive=false;};
  },[token,onExpired]);
  useEffect(()=>{const back=BackHandler.addEventListener("hardwareBackPress",()=>{
@@ -76,7 +77,7 @@ export function FinanceNativeBudgets({token,canManage,onExit,onExpired}:{
    if(["DRAFT","RETURNED"].includes(x.status)){
     const branch=branches.find(b=>b.branchRef===x.branchRef);
     setForm({budgetName:x.name,financialYearRef:x.financialYearRef,
-     branchRef:x.branchRef??"",branchVersion:branch?.version??null,
+     branchRef:x.branchRef??"",branchVersion:branch?.version??null,projectRef:x.projectRef??"",
      category:x.category,periodStart:x.start,periodEnd:x.end,
      fundingNote:"Foundation budget authorization",
      ceiling:minorToRupees(x.ceilingMinor)});
@@ -120,6 +121,7 @@ export function FinanceNativeBudgets({token,canManage,onExit,onExpired}:{
   }catch(e){fail(e);}finally{setBusy(false);}
  }
  function save(){
+  if(form.projectRef&&!projects.some(p=>p.value===form.projectRef&&(p.branchRef??"")===form.branchRef)){setError("Choose a currently available project or remove the optional association.");return;}
   const updating=selected&&["DRAFT","RETURNED"].includes(selected.status);
   submit("/api/finance-accounting/budgets/drafts"+
    (updating?"/"+selected.budgetRef:""),updating?"PATCH":"POST",{
@@ -194,7 +196,8 @@ export function FinanceNativeBudgets({token,canManage,onExit,onExpired}:{
       options={[{ref:"",label:"Foundation root"},...branches.map(x=>({ref:x.branchRef,label:x.name}))]}
       onChange={v=>{
        const b=branches.find(x=>x.branchRef===v);
-       setForm(f=>({...f,branchRef:b?.branchRef??"",branchVersion:b?.version??null}));}}/>
+       setForm(f=>({...f,branchRef:b?.branchRef??"",branchVersion:b?.version??null,projectRef:""}));}}/>
+     <Options label="Project (optional)" value={form.projectRef} options={[{ref:"",label:"No project — general budget"},...projects.filter(p=>(p.branchRef??"")===form.branchRef).map(p=>({ref:p.value,label:p.label}))]} onChange={v=>change("projectRef",v)}/>{!!form.projectRef&&!projects.some(p=>p.value===form.projectRef&&(p.branchRef??"")===form.branchRef)&&<Text accessibilityRole="alert">Previous project unavailable — choose another project or no project.</Text>}
      <Options label="Expense account group" value={form.category}
       options={categories.map(v=>({ref:v.code,label:v.name+" ("+v.code+")"}))}
       onChange={v=>change("category",v)}/>
