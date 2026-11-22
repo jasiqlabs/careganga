@@ -199,6 +199,9 @@ async function handler(request:NextRequest,parts:string[],method:string){
    const source=request.nextUrl.searchParams.get("source")??"GENERAL";
    if(source!=="GENERAL"&&source!=="HR_ALLOWANCE")return NextResponse.json({message:"Choose a valid claim source."},{status:400});
    target.searchParams.set("source",source);
+   if(source==="HR_ALLOWANCE"){const status=request.nextUrl.searchParams.get("status")??"ALL",q=request.nextUrl.searchParams.get("q")??"";
+    if(!["ALL","DRAFT","SUBMITTED","APPROVED","PAYABLE","PAYMENT_REQUESTED","PAYMENT_VERIFIED_UNPOSTED","PAID_VERIFIED","RETURNED","REJECTED"].includes(status)||q.length>80)return NextResponse.json({message:"Choose an allowance status or shorter search."},{status:400});
+    target.searchParams.set("status",status);target.searchParams.set("q",q);}
   }
  }
  if(method==="GET"&&parts[0]==="vouchers"&&parts[1]==="drafts"&&parts.length===2){
