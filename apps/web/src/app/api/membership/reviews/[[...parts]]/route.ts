@@ -28,7 +28,7 @@ async function proxy(req:NextRequest,ctx:Ctx,method:"GET"|"POST"){
  }
  try{
   const url=new URL(target,base);
-  if(parts.length===0&&method==="GET")for(const k of ["status","offset"])if(req.nextUrl.searchParams.has(k))url.searchParams.set(k,req.nextUrl.searchParams.get(k)!);
+  if(parts.length===0&&method==="GET")for(const k of ["status","offset","q","category","payment","submittedFrom","submittedTo"])if(req.nextUrl.searchParams.has(k))url.searchParams.set(k,req.nextUrl.searchParams.get(k)!);
   const r=await fetch(url,{method,cache:"no-store",signal:AbortSignal.timeout(13000),
    headers:{Authorization:"Bearer "+token,...(body?{"Content-Type":"application/json"}:{})},body});
   if(!r.ok){
