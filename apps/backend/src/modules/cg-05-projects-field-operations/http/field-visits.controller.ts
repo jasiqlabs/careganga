@@ -8,6 +8,7 @@ export class FieldVisitsController{
  @Get("options") @Header("Cache-Control","private, no-store") options(@Headers("authorization")t:string,@Query()q:Record<string,unknown>){return this.visits.options(t,q);}
  @Get("geography") @Header("Cache-Control","private, no-store") geography(@Headers("authorization")t:string,@Query("stateRef")s?:string){return this.visits.geography(t,s);}
  @Post() @Header("Cache-Control","private, no-store") create(@Headers("authorization")t:string,@Body()body:unknown){return this.visits.create(t,body);}
+ @Get("commands/:key") @Header("Cache-Control","private, no-store") command(@Headers("authorization")t:string,@Param("key")k:string){return this.visits.commandStatus(t,k);}
  @Get(":ref") @Header("Cache-Control","private, no-store") detail(@Headers("authorization")t:string,@Param("ref")r:string){return this.visits.detail(t,r);}
  @Patch(":ref") @Header("Cache-Control","private, no-store") edit(@Headers("authorization")t:string,@Param("ref")r:string,@Body()body:unknown){return this.visits.edit(t,r,body);}
  @Post(":ref/check-in") @Header("Cache-Control","private, no-store") checkIn(@Headers("authorization")t:string,@Param("ref")r:string,@Body()body:unknown){return this.visits.capture(t,r,body,"CHECK_IN");}
