@@ -402,13 +402,22 @@ export class HrEnrollmentService{
   const a=await this.actor(token,"hr.applications.view"),ref=uuid(applicationInput,"application");
   const tx=await this.db.connect();
   try{
+   await tx.query("BEGIN");await this.identity.assertCurrent(tx,a,"hr.applications.view");
    const q=await tx.query<Row>(
     "SELECT * FROM hr_employee_application WHERE id=$1 AND root_realm_id=$2",
     [ref,a.realmId]);
    if(!q.rows[0])throw new NotFoundException("Employee application not found");
-   await this.branch(tx,a,q.rows[0].proposed_branch_ref);
-   return view(q.rows[0]);
-  }finally{tx.release();}
+   const application=q.rows[0],branch=await this.branch(tx,a,application.proposed_branch_ref);
+   const labels=await tx.query<{department:string|null;manager:string|null}>(`
+    SELECT d.name AS department,ma.legal_name AS manager
+    FROM hr_employee_application app
+    LEFT JOIN department d ON d.id=app.department_ref AND d.root_realm_id=app.root_realm_id
+    LEFT JOIN hr_employee m ON m.id=app.proposed_manager_employee_ref AND m.root_realm_id=app.root_realm_id
+    LEFT JOIN hr_employee_application ma ON ma.id=m.application_id AND ma.root_realm_id=m.root_realm_id
+    WHERE app.id=$1 AND app.root_realm_id=$2`,[ref,a.realmId]);
+   await tx.query("COMMIT");
+   return {...view(application),summary:{branch:branch.name,department:labels.rows[0]?.department??null,manager:labels.rows[0]?.manager??null}};
+  }catch(error){await tx.query("ROLLBACK");throw error;}finally{tx.release();}
  }
  async myProfile(token:string){
   const a=await this.sessions.verifySession(token);
