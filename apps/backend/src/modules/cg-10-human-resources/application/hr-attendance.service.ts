@@ -190,6 +190,8 @@ export class HrAttendanceService{
    await tx.query("BEGIN");
    await this.identity.assertCurrent(tx,actor,"hr.shifts.manage");
    await this.allowedBranch(tx,actor,branch);
+   if(!(await tx.query("SELECT 1 FROM pg_timezone_names WHERE name=$1",[timeZone])).rowCount)
+    throw new BadRequestException("Choose a time zone supported by the attendance database");
    const q=await tx.query<{id:string;request_digest:string}>(`INSERT INTO hr_shift_policy(
     root_realm_id,branch_ref,name,time_zone,work_start_local,work_end_local,
     grace_minutes,break_minutes,weekly_off_days,effective_from,created_by,
@@ -345,30 +347,33 @@ export class HrAttendanceService{
  AND e.status IN('ACTIVE','PROBATION','ON_HOLD','PENDING_ACCESS') AND m.account_ref=$2 AND m.status IN('ACTIVE','PROBATION'))) FOR SHARE OF b`,[actor.realmId,actor.accountId,branch]);
    if(!scope.rows[0])throw new ForbiddenException("This branch is not available for your attendance view");
    const rows=await tx.query<{employee_code:string;legal_name:string;designation:string;
-    days:Array<{date:string;status:string;version:number;timeZone:string;checkInLocal:string|null;checkOutLocal:string|null}>}>(`SELECT e.employee_code,
-    app.legal_name,a.designation,
-    COALESCE(jsonb_agg(jsonb_build_object(
-      'date',to_char(d.local_date,'YYYY-MM-DD'),'status',d.status,'leaveDays',COALESCE(d.leave_half_days,0)/2.0,
-      'version',d.version,'timeZone',dp.time_zone,
-      'checkInLocal',to_char(d.checked_in_at AT TIME ZONE dp.time_zone,'YYYY-MM-DD"T"HH24:MI'),
-      'checkOutLocal',to_char(d.checked_out_at AT TIME ZONE dp.time_zone,'YYYY-MM-DD"T"HH24:MI'))
-      ORDER BY d.local_date) FILTER(WHERE d.id IS NOT NULL),'[]'::jsonb) AS days
+    days:Array<{date:string;status:string;version:number;timeZone:string;checkInLocal:string|null;checkOutLocal:string|null}>}>(`WITH staff AS (
+    SELECT e.id,e.root_realm_id,e.employee_code,app.legal_name,a.designation
     FROM hr_employee e
     JOIN hr_employee_application app ON app.id=e.application_id
       AND app.root_realm_id=e.root_realm_id
     JOIN hr_employment_assignment a ON a.employee_id=e.id
       AND a.root_realm_id=e.root_realm_id
       AND a.valid_from<=CURRENT_DATE AND (a.valid_to IS NULL OR a.valid_to>CURRENT_DATE)
-    LEFT JOIN hr_attendance_day d ON d.employee_id=e.id AND d.root_realm_id=e.root_realm_id
+    WHERE e.root_realm_id=$1 AND a.branch_ref=$2
+      AND ($5::boolean OR EXISTS(SELECT 1 FROM hr_employee m WHERE m.id=a.manager_employee_ref AND m.root_realm_id=a.root_realm_id AND m.account_ref=$6 AND m.status IN('ACTIVE','PROBATION')))
+      AND e.status IN('ACTIVE','PROBATION','ON_HOLD','PENDING_ACCESS')
+    ORDER BY app.legal_name,e.id LIMIT 26 OFFSET $4
+    ) SELECT staff.employee_code,staff.legal_name,staff.designation,
+    COALESCE(jsonb_agg(jsonb_build_object(
+      'date',to_char(d.local_date,'YYYY-MM-DD'),'status',d.status,'leaveDays',COALESCE(d.leave_half_days,0)/2.0,
+      'version',d.version,'timeZone',dp.time_zone,
+      'checkInLocal',to_char(d.checked_in_at AT TIME ZONE dp.time_zone,'YYYY-MM-DD"T"HH24:MI'),
+      'checkOutLocal',to_char(d.checked_out_at AT TIME ZONE dp.time_zone,'YYYY-MM-DD"T"HH24:MI'))
+      ORDER BY d.local_date) FILTER(WHERE d.id IS NOT NULL),'[]'::jsonb) AS days
+    FROM staff
+    LEFT JOIN hr_attendance_day d ON d.employee_id=staff.id AND d.root_realm_id=staff.root_realm_id
       AND d.local_date>=$3::date AND d.local_date<($3::date+interval '1 month')
       AND EXISTS(SELECT 1 FROM hr_employment_assignment da WHERE da.id=d.assignment_id
         AND da.root_realm_id=d.root_realm_id AND da.branch_ref=$2)
     LEFT JOIN hr_shift_policy dp ON dp.id=d.policy_id AND dp.root_realm_id=d.root_realm_id
-    WHERE e.root_realm_id=$1 AND a.branch_ref=$2
-      AND ($5::boolean OR EXISTS(SELECT 1 FROM hr_employee m WHERE m.id=a.manager_employee_ref AND m.root_realm_id=a.root_realm_id AND m.account_ref=$6 AND m.status IN('ACTIVE','PROBATION')))
-      AND e.status IN('ACTIVE','PROBATION','ON_HOLD','PENDING_ACCESS')
-    GROUP BY e.id,e.employee_code,app.legal_name,a.designation
-    ORDER BY app.legal_name,e.id LIMIT 26 OFFSET $4`,
+    GROUP BY staff.id,staff.employee_code,staff.legal_name,staff.designation
+    ORDER BY staff.legal_name,staff.id`,
     [actor.realmId,branch,monthInput+"-01",offset,scope.rows[0].broad,actor.accountId]);
    await tx.query("COMMIT");
    return {month:monthInput,items:rows.rows.slice(0,25).map(x=>({

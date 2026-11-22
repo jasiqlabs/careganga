@@ -184,8 +184,7 @@ export class HrLeaveSourceFacade{
    JOIN hr_employment_assignment a ON a.id=r.assignment_id AND a.root_realm_id=r.root_realm_id
    JOIN hr_employee e ON e.id=r.employee_id AND e.root_realm_id=r.root_realm_id
    JOIN hr_employee_application app ON app.id=e.application_id AND app.root_realm_id=e.root_realm_id
-   WHERE r.root_realm_id=$1 AND r.employee_id=$2 AND r.submitted_by=$3 AND c.proposer_id=$3 AND c.case_number=$4
-   FOR SHARE OF r,c`,[actor.realmId,employee.id,actor.accountId,reference]);
+   WHERE r.root_realm_id=$1 AND r.employee_id=$2 AND r.submitted_by=$3 AND c.proposer_id=$3 AND c.case_number=$4`,[actor.realmId,employee.id,actor.accountId,reference]);
   const row=q.rows[0];if(!row)throw new NotFoundException("This leave request is unavailable");
   const reason=this.reason(row,actor.realmId);
   await tx.query("INSERT INTO hr_audit(root_realm_id,actor_ref,employee_ref,event_key,action) VALUES($1,$2,$3,$4,$5)",

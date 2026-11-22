@@ -112,6 +112,15 @@ BEGIN
     (OLD.hr_leave_request_id,OLD.hr_leave_source_digest) THEN
   RAISE EXCEPTION 'Original leave case source cannot be changed';
  END IF;
+ IF OLD.case_kind='LEAVE_REQUEST' THEN
+  IF OLD.status='CANCELLED' AND NEW.status<>OLD.status THEN
+   RAISE EXCEPTION 'Cancelled leave case is terminal';
+  END IF;
+  IF NEW.status='CANCELLED' AND OLD.status<>'CANCELLED' AND
+     (OLD.status NOT IN('SUBMITTED','IN_REVIEW') OR NEW.revision<>OLD.revision+1) THEN
+   RAISE EXCEPTION 'Only the original pending leave case can be cancelled';
+  END IF;
+ END IF;
  RETURN NEW;
 END $fn$;
 CREATE TRIGGER cg03_hr_leave_frozen BEFORE UPDATE ON cg03_case FOR EACH ROW EXECUTE FUNCTION cg03_hr_leave_frozen();
