@@ -166,7 +166,7 @@ Verification: On actual implementation source-trace US-005-QA01–QA20 B19 Web /
 Dependencies: US-004 genuine fulfilled stock source and same-root indexed balances. No CG-06 beneficiary, CG-13 reward catalog or CG-20 MIS.
 
 ## Execution progress
-- US-001: BLOCKED | PLANNING_DRAFT_ONLY; implementation NOT_STARTED, source/live/visual/DB/native QA NOT_RUN; formal development gate BLOCKED.
+- US-001: IN_PROGRESS | OWNER_AUTHORIZED_DRAFT_SOURCE_ONLY (22-Nov-2026); branch from main fa26bd8; actual CG01/02 prerequisite verified in main, user authorized development. Formal authenticated resolver and independent CRITICAL database review not run; do not claim formal source completion. Original B19 PNG directly reopened from SHA-256-verified private archive (PNG sha256 a71f8bb91ccf5ab5cc56e9d26c747fbe213dc939af52c1a305cd719fd982351c): six exact tabs, six upper KPI cards, two-column content/overview, category/recent movement cards, quick actions, low stock panel and footer warehouse summary. Build working US001 tabs/actions only; no sample/future data, no fabricated valuation or request totals. Source/live/visual/DB/native QA NOT_RUN; no binary client screenshot committed.
 - US-002: BLOCKED | PLANNING_DRAFT_ONLY; implementation NOT_STARTED, source/live/visual/DB/native QA NOT_RUN; formal development gate BLOCKED.
 - US-003: BLOCKED | PLANNING_DRAFT_ONLY; implementation NOT_STARTED, source/live/visual/DB/native QA NOT_RUN; formal development gate BLOCKED.
 - US-004: BLOCKED | PLANNING_DRAFT_ONLY; implementation NOT_STARTED, source/live/visual/DB/native QA NOT_RUN; formal development gate BLOCKED.
