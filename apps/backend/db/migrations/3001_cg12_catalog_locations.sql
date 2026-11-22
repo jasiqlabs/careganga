@@ -56,8 +56,10 @@ CREATE TABLE inventory_audit (
  UNIQUE(root_realm_id,event_key),
  FOREIGN KEY(actor_ref,root_realm_id) REFERENCES account(id,realm_id) ON DELETE RESTRICT
 );
+CREATE FUNCTION cg12_inventory_audit_immutable() RETURNS trigger LANGUAGE plpgsql AS $
+BEGIN RAISE EXCEPTION 'Inventory audit is immutable'; END; $;
 CREATE TRIGGER inventory_audit_immutable BEFORE UPDATE OR DELETE ON inventory_audit
- FOR EACH ROW EXECUTE FUNCTION cg03_immutable();
+ FOR EACH ROW EXECUTE FUNCTION cg12_inventory_audit_immutable();
 CREATE INDEX ix_inventory_item_list ON inventory_item(root_realm_id,status,name,id);
 CREATE INDEX ix_inventory_supplier_list ON inventory_supplier(root_realm_id,status,display_name,id);
 CREATE INDEX ix_inventory_location_scope ON inventory_location(root_realm_id,branch_ref,status,label,id);
