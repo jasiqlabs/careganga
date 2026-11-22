@@ -774,6 +774,7 @@ export function StaffAuthenticationScreen() {
           <NativeVolunteerStaff key={token} token={token} canReview={canReview} canRoster={canRoster}
             canExport={canRoster&&roleActions.includes("volunteers.export")}
             canConfigure={canReview&&roleActions.includes("approvals.process.manage")}
+            canIssueCards={canRoster&&roleActions.includes("volunteers.documents.issue")}
             onExpired={expireSession}/>
         </Suspense>
       </ScreenErrorBoundary>,"volunteers",()=>setVolunteersOpen(false));
