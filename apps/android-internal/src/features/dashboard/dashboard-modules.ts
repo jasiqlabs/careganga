@@ -100,6 +100,7 @@ export interface ModuleActionHandlers {
   openOperationsSummary: () => void;
   openInventory: () => void;
   openMembership: () => void;
+  openVolunteers: () => void;
   openChangePassword: () => void;
 }
 
@@ -225,6 +226,7 @@ export function getAuthorizedModules(
   if(roleActions.includes("projects.view"))list.push({key:"projects",title:"Projects",shortLabel:"Projects",description:"View and manage current permitted Foundation projects.",category:"ORGANIZATION MANAGEMENT",iconName:"building",iconBg:"#E0F2FE",iconColor:"#0369A1",onOpen:handlers.openProjects});
   if(roleActions.includes("inventory.catalog.view"))list.push({key:"inventory",title:"Requests & Inventory",shortLabel:"Inventory",description:"View permitted inventory catalog and warehouses.",category:"ORGANIZATION MANAGEMENT",iconName:"building",iconBg:"#E0F2FE",iconColor:"#0369A1",onOpen:handlers.openInventory});
   if(roleActions.includes("membership.members.view")||roleActions.includes("membership.documents.issue")||(roleActions.includes("approvals.review")&&roleActions.includes("membership.applications.review")&&roleActions.includes("documents.files.view")))list.push({key:"membership",title:"Membership Program",shortLabel:"Members",description:"Authorized member directory and protected application reviews.",category:"ORGANIZATION MANAGEMENT",iconName:"users",iconBg:"#E0F2FE",iconColor:"#0369A1",onOpen:handlers.openMembership});
+  if(roleActions.includes("volunteers.view")||(roleActions.includes("approvals.review")&&roleActions.includes("volunteers.applications.review")&&roleActions.includes("documents.files.view")))list.push({key:"volunteers",title:"Volunteers",shortLabel:"Volunteers",description:"Approved volunteer directory and independently protected application reviews.",category:"ORGANIZATION MANAGEMENT",iconName:"users",iconBg:"#DCFCE7",iconColor:"#166534",onOpen:handlers.openVolunteers});
   // CG-10 self identity: always accessible to a logged-in Foundation staff actor.
   // Backend /api/hr/me never returns anybody else's HR file, bank or salary.
   list.push({
