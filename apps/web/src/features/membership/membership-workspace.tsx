@@ -38,7 +38,7 @@ export function MembershipWorkspace(){
   void send({ref:selected?.ref,body:{...draft,requestKey:crypto.randomUUID(),...(selected?{expectedVersion:selected.version}:{})}});
  }
  async function exportPlans(){if(running.current)return;running.current=true;setBusy(true);setError("");try{const r=await api<{csv:string;rows:number}>(base+"/export?"+new URLSearchParams(filters));const url=URL.createObjectURL(new Blob([r.csv],{type:"text/csv;charset=utf-8"}));const a=document.createElement("a");a.href=url;a.download="CareGanga-membership-plans.csv";a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);setNotice("Membership plan export ready.");}catch(e){setError(e instanceof Error?e.message:"Export unavailable.");}finally{running.current=false;setBusy(false);}}
- const preview:CG04PublicTier={...draft,planCode:"",feeMinor:minor(draft.price)};
+ const preview:CG04PublicTier={...draft,planCode:"",offerRevision:0,feeMinor:minor(draft.price)};
  return <div className="cg04-admin">
  {error&&<p role="alert" className="cg04-error">{error}</p>}{notice&&<p role="status" className="cg04-success">{notice}</p>}
  {pending&&<div className="cg04-warning" role="status"><p>Save result is not confirmed. Retry the exact original request before making another change.</p><button className="cg04-primary" disabled={busy} onClick={()=>void send(pending)}>Check / retry save</button></div>}
