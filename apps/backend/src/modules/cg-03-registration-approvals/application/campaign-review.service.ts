@@ -20,7 +20,13 @@ type Source={root_realm_id:string;id:string;campaign_id:string;source_revision:n
 const UUID=/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const changed=()=>new ConflictException({code:"CG07_CAMPAIGN_REVIEW_CHANGED",message:"Campaign or independent approval has changed. Refresh the current review."});
 const missing=()=>new NotFoundException("Campaign approval is not available.");
-const hash=(x:unknown)=>createHash("sha256").update(JSON.stringify(x)).digest("hex");
+function stable(x:unknown):string{
+ if(x===null||typeof x!=="object")return JSON.stringify(x)??"null";
+ if(Array.isArray(x))return "["+x.map(stable).join(",")+"]";
+ const v=x as Record<string,unknown>;
+ return "{"+Object.keys(v).sort().map(k=>JSON.stringify(k)+":"+stable(v[k])).join(",")+"}";
+}
+const hash=(x:unknown)=>createHash("sha256").update(stable(x)).digest("hex");
 function only(raw:unknown,keys:readonly string[]):Record<string,unknown>{
  if(!raw||typeof raw!=="object"||Array.isArray(raw))throw new BadRequestException("Check this campaign review request.");
  const x=raw as Record<string,unknown>;
@@ -69,9 +75,9 @@ export class CampaignReviewService{
  }
  private async configured(tx:PoolClient,root:string){
   return (await tx.query<{id:string;version:number}>(`
-   SELECT p.id,p.version FROM cg03_campaign_process_current current
-   JOIN cg03_process p ON p.id=current.process_id AND p.realm_id=current.realm_id
-   WHERE current.realm_id=$1 AND p.process_kind='CAMPAIGN_LAUNCH' FOR SHARE OF p`,[root])).rows[0];
+   SELECT p.id,p.version FROM cg03_campaign_process_current cur
+   JOIN cg03_process p ON p.id=cur.process_id AND p.realm_id=cur.realm_id
+   WHERE cur.realm_id=$1 AND p.process_kind='CAMPAIGN_LAUNCH' FOR SHARE OF p`,[root])).rows[0];
  }
  private async event(tx:PoolClient,actor:Actor,c:CaseRow,action:string,remarks=""){
   await tx.query(`INSERT INTO cg03_case_event(realm_id,case_id,actor_id,action,step_ordinal,correlation_ref,safe_remarks)
