@@ -239,3 +239,16 @@ export type CG05VisitReview={allowedDecisions?:("APPROVE"|"FORWARD"|"RETURN"|"RE
 
 export type CG05OperationsSummary={asOf:string;scope:"MINE"|"PERMITTED";sections:{source:string;metrics:{label:string;value:number|string}[]}[];restricted:string[];finance:CG05ProjectFinance|null;recent:{source:string;title:string;status:string;action:string;at:string}[]};
 export type CG05OperationsExport={csv:string;rows:number;restricted:string[]};
+
+/** CG04 US001: public plan code is an opaque selection key; never render it as a label. */
+export type CG04TierStatus="DRAFT"|"ACTIVE"|"INACTIVE";
+export type CG04TierCategory="ANNUAL"|"LIFETIME"|"HONORARY"|"STUDENT"|"OTHER";
+export type CG04TierDuration="DAY"|"MONTH"|"YEAR"|"LIFETIME";
+export type CG04TierIcon="CARD"|"STAR"|"HEART"|"CROWN"|"GRADUATION"|"SHIELD"|"USERS";
+export type CG04TierColor="BLUE"|"GREEN"|"AMBER"|"PURPLE"|"TEAL"|"ROSE"|"SLATE";
+export type CG04PublicTier={planCode:string;name:string;category:CG04TierCategory;feeMinor:string;currency:"INR";durationUnit:CG04TierDuration;durationCount:number;description:string;benefits:string[];icon:CG04TierIcon;color:CG04TierColor;displayOrder:number};
+export type CG04Tier=CG04PublicTier&{ref:string;version:number;status:CG04TierStatus;effectiveFrom:string};
+export type CG04TierWrite=Omit<CG04PublicTier,"planCode"|"feeMinor">&{price:string;status:CG04TierStatus;requestKey:string;expectedVersion?:number};
+export type CG04PublicTierPage={items:CG04PublicTier[];nextCursor:string|null};
+export type CG04TierPage={items:CG04Tier[];nextCursor:string|null;counts:{total:number;active:number;draft:number;inactive:number}};
+export type CG04TierResult={record:CG04Tier;replayed:boolean};
