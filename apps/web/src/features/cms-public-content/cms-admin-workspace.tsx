@@ -4,6 +4,7 @@ import {CmsPublicPage,type PublicCmsPage} from "./cms-public-page";
 import {clientScreenshotHome} from "./cms-client-screenshot-reference";
 type Kind="HOME"|"ABOUT";
 type ProjectSource={sourceRef:string;title:string;category:string;summary:string;area:string;launch:string|null;status:string};
+type CampaignSource={sourceRef:string;title:string;category:string;summary:string;area:string;status?:string};
 type Team={name:string;designation:string;bio:string;consentConfirmed:boolean};
 type Asset={fileRef:string;version:number;role:"HERO"|"MOBILE_HERO"|"TEAM"|"ABOUT"|"PROMO"|"FEATURE";altText:string;order:number};
 type NavDesired={loginDesired:boolean;memberJoinDesired:boolean;volunteerJoinDesired:boolean};
@@ -32,7 +33,7 @@ type Draft={kind:Kind;title:string;seoTitle:string;seoDescription:string;
  volunteerTitle:string;volunteerBody:string;volunteerBenefits:string;
  memberTitle:string;memberBody:string;memberBenefits:string;
  footerMission:string;footerAddress:string;footerPhone:string;footerWhatsappNumber:string;footerEmail:string;
- footerNewsletterText:string;teamHeading:string;team:Team[];assets:Asset[];projectSources:string[];projectHeading:string;
+ footerNewsletterText:string;teamHeading:string;team:Team[];assets:Asset[];projectSources:string[];projectHeading:string;campaignSources:string[];campaignHeading:string;
  loginDesired:boolean;memberJoinDesired:boolean;volunteerJoinDesired:boolean};
 const blankSlide=():Slide=>({heading:"",subtitle:"",description:"",eyebrow:"",tags:"",visible:true,
  headingFont:"SERIF",headingWeight:"BOLD",headingSize:"LARGE",
@@ -45,7 +46,7 @@ const blank=(kind:Kind):Draft=>({kind,title:"",seoTitle:"",seoDescription:"",
  volunteerTitle:"",volunteerBody:"",volunteerBenefits:"",
  memberTitle:"",memberBody:"",memberBenefits:"",
  footerMission:"",footerAddress:"",footerPhone:"",footerWhatsappNumber:"",footerEmail:"",footerNewsletterText:"",
- teamHeading:"Our team",team:[],assets:[],projectSources:[],projectHeading:"Our Projects",loginDesired:true,
+ teamHeading:"Our team",team:[],assets:[],projectSources:[],projectHeading:"Our Projects",campaignSources:[],campaignHeading:"Campaigns",loginDesired:true,
  memberJoinDesired:false,volunteerJoinDesired:false});
 function val(v:unknown):string{return typeof v==="string"?v:"";}
 function words(v:unknown){return Array.isArray(v)?v.filter(x=>typeof x==="string").join("\n"):"";}
@@ -89,7 +90,7 @@ function fromPage(p:PageDetail):Draft{
    .map(v=>{const person=v as Record<string,unknown>;return {
     name:val(person.name),designation:val(person.designation),bio:val(person.bio),
     consentConfirmed:person.consentConfirmed===true};}):[],
-  assets:p.assets,projectSources:Array.isArray(section(p,"PROJECT_TEASER").sourceRefs)?(section(p,"PROJECT_TEASER").sourceRefs as unknown[]).filter((x):x is string=>typeof x==="string"):[],projectHeading:val(section(p,"PROJECT_TEASER").heading)||"Our Projects",loginDesired:p.navigation?.loginDesired??true,
+  assets:p.assets,projectSources:Array.isArray(section(p,"PROJECT_TEASER").sourceRefs)?(section(p,"PROJECT_TEASER").sourceRefs as unknown[]).filter((x):x is string=>typeof x==="string"):[],projectHeading:val(section(p,"PROJECT_TEASER").heading)||"Our Projects",campaignSources:Array.isArray(section(p,"CAMPAIGN_TEASER").sourceRefs)?(section(p,"CAMPAIGN_TEASER").sourceRefs as unknown[]).filter((x):x is string=>typeof x==="string"):[],campaignHeading:val(section(p,"CAMPAIGN_TEASER").heading)||"Campaigns",loginDesired:p.navigation?.loginDesired??true,
   memberJoinDesired:p.navigation?.memberJoinDesired??false,
   volunteerJoinDesired:p.navigation?.volunteerJoinDesired??false};
 }
@@ -129,6 +130,7 @@ function payload(d:Draft){
    memberTitle:d.memberTitle,memberBody:d.memberBody,
    memberBenefits:lines(d.memberBenefits)}});
  if(d.projectSources.length)sections.push({kind:"PROJECT_TEASER",order:60,fields:{heading:d.projectHeading,sourceRefs:d.projectSources}});
+ if(d.campaignSources.length)sections.push({kind:"CAMPAIGN_TEASER",order:61,fields:{heading:d.campaignHeading,sourceRefs:d.campaignSources}});
  if(d.team.length)sections.push({kind:"TEAM",order:70,
   fields:{heading:d.teamHeading||"Our team",members:d.team}});
  if(d.kind==="HOME"&&(d.footerMission||d.footerAddress||d.footerEmail||d.footerPhone||d.footerWhatsappNumber))
@@ -198,8 +200,10 @@ async function read<T>(path:string,init?:RequestInit):Promise<T>{
 export function CmsAdminWorkspace({canManage,canPublish,canReview}:{
  canManage:boolean;canPublish:boolean;canReview:boolean}){
  const [pages,setPages]=useState<PageItem[]>([]),[projectChoices,setProjectChoices]=useState<ProjectSource[]>([]),[projectError,setProjectError]=useState("");
+ const [campaignChoices,setCampaignChoices]=useState<CampaignSource[]>([]),[campaignError,setCampaignError]=useState("");
  const refreshProjects=()=>{setProjectError("");void read<{sources:ProjectSource[]}>("project-sources").then(v=>setProjectChoices(v.sources)).catch(()=>setProjectError("Current approved project sources unavailable."));};
- useEffect(()=>{if(canManage)refreshProjects();},[canManage]);
+ const refreshCampaigns=()=>{setCampaignError("");void read<{sources:CampaignSource[]}>("campaign-sources").then(v=>setCampaignChoices(v.sources)).catch(()=>setCampaignError("Approved campaigns are unavailable. Refresh after CG-03 review."));};
+ useEffect(()=>{if(canManage){refreshProjects();refreshCampaigns();}},[canManage]);
  const [selected,setSelected]=useState<PageDetail|null>(null);
  const [draft,setDraft]=useState<Draft>(blank("HOME"));
  const [preview,setPreview]=useState(false),[reviewing,setReviewing]=useState(false);
@@ -620,6 +624,23 @@ export function CmsAdminWorkspace({canManage,canPublish,canReview}:{
       {projectError&&<p role="alert">{projectError}</p>}{!projectChoices.length&&!projectError&&<p>No current eligible projects.</p>}
       {projectChoices.map(p=><label className="cg-cms-consent" key={p.sourceRef}><input type="checkbox" disabled={!canManage||busy||!!pending||(!draft.projectSources.includes(p.sourceRef)&&draft.projectSources.length>=12)} checked={draft.projectSources.includes(p.sourceRef)} onChange={e=>edit("projectSources",e.target.checked?[...draft.projectSources,p.sourceRef]:draft.projectSources.filter(x=>x!==p.sourceRef))}/>{p.title} · {p.category} · {p.area}</label>)}
       {draft.projectSources.filter(x=>!projectChoices.some(p=>p.sourceRef===x)).map(x=><button key={x} type="button" disabled={!canManage||busy||!!pending} onClick={()=>edit("projectSources",draft.projectSources.filter(y=>y!==x))}>Remove unavailable project selection</button>)}
+     </fieldset>
+     <fieldset><legend>Independent campaign publication (CG-07)</legend>
+      <p>Only actual CG-03-approved campaigns can be selected. Saving the page does not make them public: a different reviewer must approve this CG-18 editorial revision, then a publisher must make it effective.</p>
+      <label>Heading<input maxLength={160} value={draft.campaignHeading} disabled={!canManage||busy||!!pending}
+       onChange={e=>edit("campaignHeading",e.target.value)}/></label>
+      <button type="button" disabled={!canManage||busy||!!pending} onClick={refreshCampaigns}>Refresh currently approved campaigns</button>
+      {campaignError&&<p role="alert">{campaignError}</p>}
+      {!campaignChoices.length&&!campaignError&&<p>No independently approved campaign is eligible yet.</p>}
+      {campaignChoices.map(c=><label className="cg-cms-consent" key={c.sourceRef}>
+       <input type="checkbox" disabled={!canManage||busy||!!pending||(!draft.campaignSources.includes(c.sourceRef)&&draft.campaignSources.length>=12)}
+        checked={draft.campaignSources.includes(c.sourceRef)}
+        onChange={e=>edit("campaignSources",e.target.checked?[...draft.campaignSources,c.sourceRef]:draft.campaignSources.filter(x=>x!==c.sourceRef))}/>
+       {c.title} · {c.category} · {c.area||"Foundation-wide"}
+      </label>)}
+      {draft.campaignSources.filter(x=>!campaignChoices.some(c=>c.sourceRef===x)).map(x=>
+       <button type="button" key={x} disabled={!canManage||busy||!!pending}
+        onClick={()=>edit("campaignSources",draft.campaignSources.filter(v=>v!==x))}>Remove unavailable campaign selection</button>)}
      </fieldset>
      <div className="cg-cms-editor-grid">
       <fieldset><legend>Hero banners — original C22–C24</legend>
