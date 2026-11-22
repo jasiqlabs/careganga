@@ -7,7 +7,7 @@ const reply=(body:unknown,status=200)=>NextResponse.json(body,{status,headers:{"
 async function proxy(req:NextRequest,ctx:Context,method:"GET"|"POST"|"PATCH"){
  const parts=(await ctx.params).parts??[];
  const valid=parts.length===0&&(method==="GET"||method==="POST")||
-   parts.length===1&&UUID.test(parts[0])&&method==="GET"||
+   parts.length===1&&(UUID.test(parts[0])||parts[0]==="options")&&method==="GET"||
    parts.length===2&&UUID.test(parts[0])&&parts[1]==="draft"&&method==="PATCH";
  if(!valid)return reply({message:"Campaign action unavailable."},404);
  if(method!=="GET"&&req.headers.get("origin")!==req.nextUrl.origin)
@@ -24,7 +24,7 @@ async function proxy(req:NextRequest,ctx:Context,method:"GET"|"POST"|"PATCH"){
  }
  try{
   const url=new URL("/api/v1/campaigns"+(parts.length?"/"+parts.join("/"):""),process.env.BACKEND_URL);
-  if(method==="GET"&&parts.length===0)for(const key of ["q","offset"])
+  if(method==="GET"&&(parts.length===0||parts[0]==="options"))for(const key of (parts[0]==="options"?["q","stateRef"]:["q","offset"]))
    if(req.nextUrl.searchParams.has(key))url.searchParams.set(key,req.nextUrl.searchParams.get(key)!);
   const r=await fetch(url,{method,body,cache:"no-store",signal:AbortSignal.timeout(12000),
    headers:{Authorization:"Bearer "+token,...(body?{"Content-Type":"application/json"}:{})}});
