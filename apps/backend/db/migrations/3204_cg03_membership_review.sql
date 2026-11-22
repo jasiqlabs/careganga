@@ -145,3 +145,59 @@ BEGIN
  END IF;
  RETURN NULL;
 END; $$;
+
+CREATE FUNCTION cg04_membership_snapshot_insert_guard() RETURNS trigger LANGUAGE plpgsql AS $$
+BEGIN
+ IF NOT EXISTS(SELECT 1 FROM membership_application a WHERE a.root_realm_id=NEW.root_realm_id AND a.id=NEW.application_id
+   AND a.applicant_account_ref=NEW.submitted_by AND a.status='SUBMITTED' AND a.version=NEW.application_version AND a.submitted_digest=NEW.source_digest
+   AND to_jsonb(a)-'status'-'version'-'updated_at'-'submitted_at'-'submitted_digest'=NEW.source_snapshot->'record')
+ OR jsonb_typeof(NEW.source_snapshot->'files') IS DISTINCT FROM 'array'
+ THEN RAISE EXCEPTION 'Frozen membership snapshot must match original submitted applicant'; END IF;
+ RETURN NEW;
+END; $$;
+CREATE TRIGGER cg04_membership_snapshot_insert BEFORE INSERT ON membership_review_snapshot FOR EACH ROW EXECUTE FUNCTION cg04_membership_snapshot_insert_guard();
+CREATE FUNCTION cg04_membership_review_file_insert_guard() RETURNS trigger LANGUAGE plpgsql AS $$
+BEGIN
+ IF NOT EXISTS(SELECT 1 FROM membership_review_snapshot s JOIN cg19_membership_private_file d ON d.realm_id=s.root_realm_id AND d.application_id=s.application_id
+   WHERE s.root_realm_id=NEW.root_realm_id AND s.id=NEW.snapshot_id AND s.application_id=NEW.application_id
+   AND d.id=NEW.file_id AND d.application_version=NEW.source_version AND d.revision=NEW.file_version AND d.classification=NEW.classification AND d.sha256=NEW.sha256
+   AND d.scan_status='CLEAN_VERIFIED' AND d.revoked_at IS NULL AND d.application_version<s.application_version)
+ THEN RAISE EXCEPTION 'Review proof must match original private verified file'; END IF; RETURN NEW;
+END; $$;
+CREATE TRIGGER cg04_membership_review_file_insert BEFORE INSERT ON membership_review_file FOR EACH ROW EXECUTE FUNCTION cg04_membership_review_file_insert_guard();
+
+CREATE FUNCTION cg03_membership_previous_guard() RETURNS trigger LANGUAGE plpgsql AS $$
+DECLARE latest record;
+BEGIN
+ IF NEW.case_kind<>'MEMBER_APPLICATION' THEN RETURN NEW; END IF;
+ SELECT id,status,membership_application_version INTO latest FROM cg03_case
+ WHERE realm_id=NEW.realm_id AND case_kind='MEMBER_APPLICATION' AND membership_application_id=NEW.membership_application_id
+ ORDER BY membership_application_version DESC LIMIT 1;
+ IF FOUND THEN
+  IF NEW.previous_case_id IS DISTINCT FROM latest.id OR latest.status<>'RETURNED' OR latest.membership_application_version>=NEW.membership_application_version
+  THEN RAISE EXCEPTION 'Membership correction requires the original returned case'; END IF;
+ ELSIF NEW.previous_case_id IS NOT NULL THEN RAISE EXCEPTION 'Invalid membership case predecessor'; END IF;
+ RETURN NEW;
+END; $$;
+CREATE TRIGGER cg03_membership_previous_insert BEFORE INSERT ON cg03_case FOR EACH ROW EXECUTE FUNCTION cg03_membership_previous_guard();
+
+CREATE FUNCTION cg03_membership_decision_guard() RETURNS trigger LANGUAGE plpgsql AS $$
+DECLARE c record;
+BEGIN
+ SELECT * INTO c FROM cg03_case WHERE realm_id=NEW.realm_id AND id=NEW.case_id;
+ IF NOT FOUND OR c.case_kind<>'MEMBER_APPLICATION' THEN RETURN NEW; END IF;
+ IF NEW.actor_id=c.proposer_id OR NEW.step_ordinal<>1 OR c.current_step<>1 OR NEW.fresh_password_verified_at IS NULL
+   OR NEW.accepted_case_revision<>c.revision OR NEW.expected_case_revision+1<>NEW.accepted_case_revision
+   OR NOT EXISTS(SELECT 1 FROM cg03_process p JOIN cg03_process_step s ON s.process_id=p.id
+    WHERE p.realm_id=c.realm_id AND p.id=c.process_id AND p.process_kind='MEMBER_APPLICATION'
+    AND s.ordinal=1 AND s.capability_key='approvals.review' AND s.protected_root_required)
+   OR NOT EXISTS(SELECT 1 FROM account a JOIN account_role ar ON ar.account_id=a.id AND ar.realm_id=a.realm_id AND ar.revoked_at IS NULL
+    JOIN role r ON r.id=ar.role_id AND r.realm_id=ar.realm_id AND r.is_protected AND r.active
+    WHERE a.id=NEW.actor_id AND a.realm_id=NEW.realm_id AND a.status='ACTIVE')
+   OR NOT EXISTS(SELECT 1 FROM membership_application a WHERE a.root_realm_id=c.realm_id AND a.id=c.membership_application_id
+    AND a.status='SUBMITTED' AND a.version=c.membership_application_version AND a.submitted_digest=c.membership_review_digest)
+   OR NOT ((NEW.action='APPROVE' AND c.status='PENDING_OWNER') OR (NEW.action='RETURN' AND c.status='RETURNED') OR (NEW.action='REJECT' AND c.status='REJECTED'))
+  THEN RAISE EXCEPTION 'Invalid protected membership review decision'; END IF;
+ RETURN NEW;
+END; $$;
+CREATE TRIGGER cg03_membership_decision_insert BEFORE INSERT ON cg03_case_decision FOR EACH ROW EXECUTE FUNCTION cg03_membership_decision_guard();
