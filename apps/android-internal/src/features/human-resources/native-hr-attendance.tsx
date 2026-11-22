@@ -2,15 +2,14 @@ import React,{useCallback,useEffect,useRef,useState} from "react";
 import {ActivityIndicator,Pressable,StyleSheet,Text,TextInput,View} from "react-native";
 import * as Crypto from "expo-crypto";
 import {identityRequest} from "../identity-access/http-client";
-import {NativeHrMyLeave,NativeHrLeaveReviews} from "./native-hr-leave";
+import {NativeHrMyLeave,NativeHrLeaveReviews,NativeHrAttendanceCorrections,type CorrectionDay,type CorrectionPerson} from "./native-hr-leave";
 
-type Day={date:string;status:string;checkInAt:string|null;checkOutAt:string|null;workedMinutes:number|null;leaveDays:number};
+type Day=CorrectionDay&{checkInAt:string|null;checkOutAt:string|null;workedMinutes:number|null};
 type Mine={status:string;canCheckOut?:boolean;shift?:{label:string;timeZone:string;start:string;end:string}|null;days:Day[]};
 type Branch={branchRef:string;label:string};
 type Person={reference:string;name:string;designation:string};
 type Rule={policyRef:string;label:string;timeZone:string;start:string;end:string;effectiveFrom:string};
-type Matrix={items:Array<{employeeName:string;designation:string;
- days:Array<{date:string;status:string;leaveDays:number}>}>;hasMore:boolean};
+type Matrix={items:Array<CorrectionPerson&{designation:string}>;hasMore:boolean};
 const today=()=>new Date().toISOString().slice(0,10); // admin policy date input only
 async function api(token:string,path:string,method="GET",body?:object):Promise<unknown>{
  const res=await identityRequest("/api/hr/"+path,{method,cache:"no-store",
@@ -94,8 +93,8 @@ function NativeHrLeavePolicies({token,onExpired}:{token:string;onExpired:()=>voi
  </View>;
 }
 /** Internal Android parity for the original CG10 shift + self check-in API. */
-export function NativeHrAttendance({token,canConfigure,canManageLeave=false,canReviewLeave=false,onExpired}:{
- token:string;canConfigure:boolean;canManageLeave?:boolean;canReviewLeave?:boolean;onExpired:()=>void
+export function NativeHrAttendance({token,canConfigure,canManageLeave=false,canReviewLeave=false,canCorrect=false,canReviewCorrection=false,canViewStaff=false,onExpired}:{
+ token:string;canConfigure:boolean;canManageLeave?:boolean;canReviewLeave?:boolean;canCorrect?:boolean;canReviewCorrection?:boolean;canViewStaff?:boolean;onExpired:()=>void
 }){
  const [mine,setMine]=useState<Mine|null>(null),[busy,setBusy]=useState(false);
  const [loading,setLoading]=useState(true),[error,setError]=useState(""),[message,setMessage]=useState("");
@@ -109,6 +108,7 @@ export function NativeHrAttendance({token,canConfigure,canManageLeave=false,canR
  const [month,setMonth]=useState(today().slice(0,7));
  const [matrix,setMatrix]=useState<Matrix|null>(null),[matrixOffset,setMatrixOffset]=useState(0);
  const [matrixBusy,setMatrixBusy]=useState(false);
+ const [matrixRefresh,setMatrixRefresh]=useState(0);
  const checkKey=useRef<string|null>(null),checkoutKey=useRef<string|null>(null),policyKey=useRef<string|null>(null),
   assignmentKey=useRef<string|null>(null);
  const failure=useCallback((e:unknown)=>{
@@ -126,13 +126,13 @@ export function NativeHrAttendance({token,canConfigure,canManageLeave=false,canR
   finally{setLoading(false);}
  },[token,failure]);
  useEffect(()=>{void refresh();},[refresh]);
- useEffect(()=>{if(!canConfigure)return;let live=true;
+ useEffect(()=>{if(!canConfigure&&!canViewStaff)return;let live=true;
   void api(token,"employee-branches").then(v=>{
    if(live&&v&&typeof v==="object"&&"items" in v&&Array.isArray(v.items))
     setBranches(v.items as Branch[]);
   }).catch(e=>{if(live){setBranches([]);failure(e);}});
   return()=>{live=false;};
- },[token,canConfigure,failure]);
+ },[token,canConfigure,canViewStaff,failure]);
  useEffect(()=>{if(!canConfigure||!branch){setStaff([]);setPolicies([]);return;}
   let live=true;
   void Promise.all([api(token,"employees?branch="+encodeURIComponent(branch)+
@@ -146,8 +146,8 @@ export function NativeHrAttendance({token,canConfigure,canManageLeave=false,canR
    }).catch(e=>{if(live){setStaff([]);setPolicies([]);failure(e);}});
   return()=>{live=false;};
  },[token,canConfigure,branch,staffOffset,failure]);
- useEffect(()=>{if(!canConfigure||!branch){setMatrix(null);return;}
-  let live=true;setMatrixBusy(true);
+ useEffect(()=>{if((!canConfigure&&!canViewStaff)||!branch){setMatrix(null);return;}
+  let live=true;setMatrix(null);setMatrixBusy(true);
   void api(token,"attendance/matrix?branch="+encodeURIComponent(branch)+
    "&month="+encodeURIComponent(month)+"&offset="+matrixOffset)
    .then(v=>{if(live&&v&&typeof v==="object"&&"items" in v&&Array.isArray(v.items))
@@ -155,7 +155,7 @@ export function NativeHrAttendance({token,canConfigure,canManageLeave=false,canR
    .catch(e=>{if(live){setMatrix(null);failure(e);}})
    .finally(()=>{if(live)setMatrixBusy(false);});
   return()=>{live=false;};
- },[token,canConfigure,branch,month,matrixOffset,failure]);
+ },[token,canConfigure,branch,month,matrixOffset,matrixRefresh,canViewStaff,failure]);
  const checkIn=async()=>{
   if(busy)return;setBusy(true);setError("");setMessage("");
   const key=checkKey.current??Crypto.randomUUID();checkKey.current=key;
@@ -243,7 +243,7 @@ export function NativeHrAttendance({token,canConfigure,canManageLeave=false,canR
      Worked: {Math.floor(d.workedMinutes/60)}h {d.workedMinutes%60}m</Text>}
    </View>)}
   </View>
-  {canConfigure&&<View style={styles.card}>
+  {(canConfigure||canViewStaff)&&<View style={styles.card}>
    <Text style={styles.title}>Staff shifts</Text>
    <Text style={styles.muted}>Create an actual branch shift and assign an approved employee.</Text>
    <Text style={styles.label}>Foundation branch</Text>
@@ -255,7 +255,7 @@ export function NativeHrAttendance({token,canConfigure,canManageLeave=false,canR
     <Text style={branch===x.branchRef?styles.activeText:styles.chipText}>{x.label}</Text>
    </Pressable>)}</View>
    {!!branch&&<>
-    {field("Shift name",rule.name,v=>change("name",v),"Shift name")}
+    {canConfigure&&<>{field("Shift name",rule.name,v=>change("name",v),"Shift name")}
     {field("IANA timezone",rule.timeZone,v=>change("timeZone",v),"e.g. Asia/Kolkata")}
     {field("24-hour start",rule.start,v=>change("start",v),"09:00")}
     {field("24-hour end",rule.end,v=>change("end",v),"17:00")}
@@ -301,7 +301,7 @@ export function NativeHrAttendance({token,canConfigure,canManageLeave=false,canR
      assignmentKey.current=null;},"YYYY-MM-DD")}
     <Pressable accessibilityRole="button" disabled={busy||!employee||!policyId}
      style={styles.primary} onPress={()=>void assign()}>
-     <Text style={styles.primaryText}>Assign employee shift</Text></Pressable>
+     <Text style={styles.primaryText}>Assign employee shift</Text></Pressable></>}
     <View style={styles.listItem}>
      <Text style={styles.title}>Branch attendance</Text>
      <Text style={styles.muted}>Recorded attendance and approved leave are shown. Unrecorded is not absent.</Text>
@@ -326,6 +326,8 @@ export function NativeHrAttendance({token,canConfigure,canManageLeave=false,canR
   <NativeHrMyLeave token={token} onExpired={onExpired} onChanged={()=>void refresh()}/>
   {canManageLeave&&<NativeHrLeavePolicies token={token} onExpired={onExpired}/>}
   {canReviewLeave&&<NativeHrLeaveReviews token={token} onExpired={onExpired} onChanged={()=>void refresh()}/>}
+  <NativeHrAttendanceCorrections token={token} onExpired={onExpired} days={mine?.days??[]} staff={canCorrect?(matrix?.items??[]):[]} onChanged={()=>{void refresh();setMatrixRefresh(v=>v+1);}}/>
+  {canReviewCorrection&&<NativeHrLeaveReviews token={token} onExpired={onExpired} kind="correction" onChanged={()=>{void refresh();setMatrixRefresh(v=>v+1);}}/>}
  </View>;
 }
 const styles=StyleSheet.create({

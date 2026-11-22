@@ -1,13 +1,12 @@
 "use client";
 import {useCallback,useEffect,useRef,useState} from "react";
-import {HrMyLeave,HrLeaveReviews} from "./hr-leave";
-type Day={date:string;status:string;checkInAt:string|null;checkOutAt:string|null;workedMinutes:number|null;leaveDays:number};
+import {HrMyLeave,HrLeaveReviews,HrAttendanceCorrections,type CorrectionDay,type CorrectionPerson} from "./hr-leave";
+type Day=CorrectionDay&{checkInAt:string|null;checkOutAt:string|null;workedMinutes:number|null};
 type Self={status:string;canCheckOut?:boolean;shift?:{label:string;timeZone:string;start:string;end:string;weeklyOffDays:number[]}|null;days:Day[]};
 type Branch={branchRef:string;label:string};
 type Employee={reference:string;name:string;designation:string};
 type Rule={policyRef:string;label:string;timeZone:string;start:string;end:string;effectiveFrom:string};
-type Matrix={month:string;items:Array<{employeeName:string;designation:string;
- days:Array<{date:string;status:string;leaveDays:number}>}>;hasMore:boolean;offset:number};
+type Matrix={month:string;items:Array<CorrectionPerson&{designation:string}>;hasMore:boolean;offset:number};
 const inputStyle={padding:10,border:"1px solid #CBD5E1",borderRadius:9,width:"100%",minWidth:0} as const;
 const btn={padding:"10px 13px",border:0,borderRadius:9,color:"#fff",background:"#087F8C",fontWeight:700,cursor:"pointer"} as const;
 async function api(path:string,init?:RequestInit){
@@ -77,7 +76,7 @@ function HrLeavePolicies(){
   {more&&<p>Showing the latest 100 policy versions.</p>}
  </div>;
 }
-export function HrAttendance({canConfigure=false,canManageLeave=false,canReviewLeave=false}:{canConfigure?:boolean;canManageLeave?:boolean;canReviewLeave?:boolean}){
+export function HrAttendance({canConfigure=false,canManageLeave=false,canReviewLeave=false,canCorrect=false,canReviewCorrection=false,canViewStaff=false}:{canConfigure?:boolean;canManageLeave?:boolean;canReviewLeave?:boolean;canCorrect?:boolean;canReviewCorrection?:boolean;canViewStaff?:boolean}){
  const [mine,setMine]=useState<Self|null>(null),[loading,setLoading]=useState(true);
  const [busy,setBusy]=useState(false),[error,setError]=useState(""),[notice,setNotice]=useState("");
  const [branches,setBranches]=useState<Branch[]>([]),[branch,setBranch]=useState("");
@@ -89,6 +88,7 @@ export function HrAttendance({canConfigure=false,canManageLeave=false,canReviewL
  const [assignFrom,setAssignFrom]=useState(today());
  const [month,setMonth]=useState(today().slice(0,7)),[matrix,setMatrix]=useState<Matrix|null>(null);
  const [matrixOffset,setMatrixOffset]=useState(0),[matrixBusy,setMatrixBusy]=useState(false);
+ const [matrixRefresh,setMatrixRefresh]=useState(0);
  const checkKey=useRef<string|null>(null),checkoutKey=useRef<string|null>(null),policyKey=useRef<string|null>(null),assignKey=useRef<string|null>(null);
  const refresh=useCallback(async()=>{
   setLoading(true);
@@ -101,13 +101,13 @@ export function HrAttendance({canConfigure=false,canManageLeave=false,canReviewL
   finally{setLoading(false);}
  },[]);
  useEffect(()=>{void refresh();},[refresh]);
- useEffect(()=>{if(!canConfigure)return;let live=true;
+ useEffect(()=>{if(!canConfigure&&!canViewStaff)return;let live=true;
   void api("employee-branches").then(v=>{
    if(live&&v&&typeof v==="object"&&"items" in v&&Array.isArray(v.items))
     setBranches(v.items as Branch[]);
   }).catch(()=>{if(live)setBranches([]);});
   return()=>{live=false;};
- },[canConfigure]);
+ },[canConfigure,canViewStaff]);
  useEffect(()=>{if(!canConfigure||!branch){setEmployees([]);setPolicies([]);return;}
   let live=true;
   void Promise.all([api("employees?branch="+encodeURIComponent(branch)+"&offset="+staffOffset),
@@ -119,8 +119,8 @@ export function HrAttendance({canConfigure=false,canManageLeave=false,canReviewL
    setError(x instanceof Error?x.message:"Shift options unavailable");}});
   return()=>{live=false;};
  },[canConfigure,branch,staffOffset]);
- useEffect(()=>{if(!canConfigure||!branch){setMatrix(null);return;}
-  let live=true;setMatrixBusy(true);
+ useEffect(()=>{if((!canConfigure&&!canViewStaff)||!branch){setMatrix(null);return;}
+  let live=true;setMatrix(null);setMatrixBusy(true);
   void api("attendance/matrix?branch="+encodeURIComponent(branch)+
    "&month="+encodeURIComponent(month)+"&offset="+matrixOffset)
    .then(x=>{if(live&&x&&typeof x==="object"&&"items" in x&&Array.isArray(x.items))
@@ -129,7 +129,7 @@ export function HrAttendance({canConfigure=false,canManageLeave=false,canReviewL
     "Branch attendance cannot be confirmed");}})
    .finally(()=>{if(live)setMatrixBusy(false);});
   return()=>{live=false;};
- },[canConfigure,branch,month,matrixOffset]);
+ },[canConfigure,branch,month,matrixOffset,matrixRefresh,canViewStaff]);
  const checkIn=async()=>{if(busy)return;setBusy(true);setError("");setNotice("");
   const key=checkKey.current??crypto.randomUUID();checkKey.current=key;
   try{const r=await api("me/attendance/check-in",{method:"POST",body:JSON.stringify({requestKey:key})});
@@ -207,7 +207,7 @@ export function HrAttendance({canConfigure=false,canManageLeave=false,canReviewL
      </tr>)}</tbody>
     </table></div>}
   </div>
-  {canConfigure&&<div style={{background:"#fff",border:"1px solid #E2E8F0",borderRadius:15,padding:18,display:"grid",gap:14}}>
+  {(canConfigure||canViewStaff)&&<div style={{background:"#fff",border:"1px solid #E2E8F0",borderRadius:15,padding:18,display:"grid",gap:14}}>
    <h2 style={{margin:0}}>Staff shifts</h2>
    <p style={{color:"#64748B",margin:0}}>Configure a real shift and assign it to an approved employee at the same Foundation branch.</p>
    <label>Active Foundation branch<select style={inputStyle} value={branch}
@@ -216,7 +216,7 @@ export function HrAttendance({canConfigure=false,canManageLeave=false,canReviewL
      {branches.map(x=><option key={x.branchRef} value={x.branchRef}>{x.label}</option>)}
     </select></label>
    {branch&&<>
-    <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(190px,1fr))",gap:10}}>
+    {canConfigure&&<><div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(190px,1fr))",gap:10}}>
      <label>Shift name<input style={inputStyle} maxLength={100} value={policy.name}
       onChange={e=>change("name",e.target.value)}/></label>
      <label>IANA timezone<input style={inputStyle} value={policy.timeZone}
@@ -259,7 +259,7 @@ export function HrAttendance({canConfigure=false,canManageLeave=false,canReviewL
     <label>Assignment starts<input style={inputStyle} type="date" value={assignFrom}
      onChange={e=>{setAssignFrom(e.target.value);assignKey.current=null;}}/></label>
     <button type="button" style={btn} disabled={busy||!selectedEmployee||!selectedPolicy}
-     onClick={()=>void assign()}>Assign shift</button>
+     onClick={()=>void assign()}>Assign shift</button></>}
     <div style={{borderTop:"1px solid #E2E8F0",paddingTop:12,display:"grid",gap:9}}>
      <h3 style={{margin:0}}>Branch attendance</h3>
      <p style={{margin:0,color:"#64748B"}}>Recorded attendance and approved leave are shown. A missing record is not proof of absence.</p>
@@ -285,5 +285,7 @@ export function HrAttendance({canConfigure=false,canManageLeave=false,canReviewL
   <HrMyLeave onChanged={()=>void refresh()}/>
   {canManageLeave&&<HrLeavePolicies/>}
   {canReviewLeave&&<HrLeaveReviews onChanged={()=>void refresh()}/>}
+  <HrAttendanceCorrections days={mine?.days??[]} staff={canCorrect?(matrix?.items??[]):[]} onChanged={()=>{void refresh();setMatrixRefresh(v=>v+1);}}/>
+  {canReviewCorrection&&<HrLeaveReviews kind="correction" onChanged={()=>{void refresh();setMatrixRefresh(v=>v+1);}}/>}
  </section>;
 }
