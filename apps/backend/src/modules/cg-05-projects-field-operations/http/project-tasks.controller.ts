@@ -7,6 +7,7 @@ export class ProjectTasksController {
  @Get("project-tasks") list(@Headers("authorization")t:string,@Query()q:Record<string,unknown>){return this.tasks.list(t,q);}
  @Get("project-tasks/options") options(@Headers("authorization")t:string,@Query()q:Record<string,unknown>){return this.tasks.options(t,q);}
  @Get("project-tasks/export") export(@Headers("authorization")t:string,@Query()q:Record<string,unknown>){return this.tasks.list(t,q,false,true);}
+ @Get("field/me/tasks/export") exportAssigned(@Headers("authorization")t:string,@Query()q:Record<string,unknown>){return this.tasks.list(t,q,true,true);}
  @Get("field/me/tasks") assigned(@Headers("authorization")t:string,@Query()q:Record<string,unknown>){return this.tasks.list(t,q,true);}
  @Get("projects/:ref/tasks") byProject(@Headers("authorization")t:string,@Param("ref")r:string,@Query()q:Record<string,unknown>){return this.tasks.list(t,q,false,false,r);}
  @Post("projects/:ref/tasks") create(@Headers("authorization")t:string,@Param("ref")r:string,@Body()v:unknown){return this.tasks.create(t,r,v);}
