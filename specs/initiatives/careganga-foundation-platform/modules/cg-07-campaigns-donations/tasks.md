@@ -399,3 +399,6 @@ Added 3309_cg19_donation_receipt_document.sql: once-only root-scoped CG19 receip
 
 ### 22-Nov US003 checkpoint B — typed CG07→CG19 donation receipt source
 DonationReceiptSourceFacade provides original scoped CG09 POSTED source, immutable digest/date/amount and decrypts donor name only in protected issuer via existing purpose-derived AES-GCM; CG19 retains receipt PDF/file authority. No new donor master, no false 80G. QA01/02/09/10/11/17/19 source partial, independent/runtime NOT_RUN.
+
+### 22-Nov US003 checkpoint C — genuine CG19 private donation PDF issue and donor-only download
+CG19 DonationReceiptDocumentService/Controller added and registered. Only current protected finance + document issuer with typed CG07 posted source can issue; once-only issue key, status UNKNOWN rather than fake issued on CG19 storage failure, private PDF bytes hash/object version proof, lost response reconciliation and immutable receipt number. No unverified 80G: PDF explicitly says NOT a tax certificate unless independently approved legal evidence exists (none assumed). Public donor receives own PDF only via expiring proof in POST body, source/hash/revocation rechecked after storage read; no anonymous receipt catalog or token in URL. US003 QA01/02/04/07/09/10/11/14/17/18/19 source partial; real PDF/DB/provider/dev QA NOT_RUN.
