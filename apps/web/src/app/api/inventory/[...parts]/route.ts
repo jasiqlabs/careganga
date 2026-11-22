@@ -12,7 +12,7 @@ async function proxy(req:NextRequest,ctx:Context,method:"GET"|"POST"|"PATCH"){
  const base=process.env.BACKEND_URL;if(!base)return reply({message:"Inventory is unavailable."},503);
  try{
   const url=new URL("/api/v1/inventory/"+parts.join("/"),base);
-  for(const k of ["location","q","offset"])if(req.nextUrl.searchParams.has(k))url.searchParams.set(k,req.nextUrl.searchParams.get(k)!);
+  for(const k of ["location","q","offset","status"])if(req.nextUrl.searchParams.has(k))url.searchParams.set(k,req.nextUrl.searchParams.get(k)!);
   let body:string|undefined;if(method!=="GET"){body=await req.text();if(body.length>8192)return reply({message:"Check the inventory fields."},400);}
   const response=await fetch(url,{method,headers:{Authorization:"Bearer "+token,"Content-Type":"application/json"},body,cache:"no-store",signal:AbortSignal.timeout(12000)});
   const value:unknown=await response.json().catch(()=>null);
