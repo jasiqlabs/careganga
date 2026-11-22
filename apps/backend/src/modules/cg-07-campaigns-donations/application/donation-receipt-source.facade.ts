@@ -6,21 +6,31 @@ import type {VerifiedFoundationActor} from "../../cg-01-identity-access/public-a
 type D={id:string;donation_number:string;amount_minor:string;currency:string;
  donor_private_ciphertext:string;branch_ref:string|null;source_digest:string;
  posting_date:string;donation_kind:string};
-function donorName(privateData:string):string{
+export type PrivateDonor=Readonly<{name:string;mobile:string;email:string;pan:string;address:string;geography:string}>;
+export function readPrivateDonor(ciphertext:string):PrivateDonor{
  const key=Buffer.from(process.env.IDENTITY_ENCRYPTION_KEY??"","base64");
- if(key.length!==32)throw new ServiceUnavailableException("Donation privacy service unavailable.");
- const [nonce,tag,payload]=privateData.split(".");
- if(!nonce||!tag||!payload)throw new ConflictException("Original donor source is invalid.");
- const secret=createHmac("sha256",key).update("careganga-cg07-donor-private-v1").digest();
+ if(key.length!==32)throw new ServiceUnavailableException("Donation private identity key unavailable.");
+ const [nonce,tag,payload]=ciphertext.split(".");
+ if(!nonce||!tag||!payload)throw new ConflictException("Original donor source unavailable.");
+ const derived=createHmac("sha256",key).update("careganga-cg07-donor-private-v1").digest();
  try{
-  const c=createDecipheriv("aes-256-gcm",secret,Buffer.from(nonce,"base64url"));
-  c.setAuthTag(Buffer.from(tag,"base64url"));
-  const data:unknown=JSON.parse(Buffer.concat([c.update(Buffer.from(payload,"base64url")),c.final()]).toString("utf8"));
-  if(!data||typeof data!=="object"||!("name" in data)||typeof data.name!=="string"||
-   data.name.length>120)throw Error();
-  return data.name.trim();
- }catch{throw new ConflictException("Original donation identity source changed.");}
+  const decipher=createDecipheriv("aes-256-gcm",derived,Buffer.from(nonce,"base64url"));
+  decipher.setAuthTag(Buffer.from(tag,"base64url"));
+  const body:unknown=JSON.parse(Buffer.concat([decipher.update(Buffer.from(payload,"base64url")),
+   decipher.final()]).toString("utf8"));
+  if(!body||typeof body!=="object"||Array.isArray(body))throw Error();
+  const fields=body as Record<string,unknown>;
+  const read=(name:string,max:number)=>{
+   const v=fields[name]??"";
+   if(typeof v!=="string"||v.length>max)throw Error();
+   return v;
+  };
+  return {name:read("name",120),mobile:read("mobile",20),
+   email:read("email",254),pan:read("pan",10),
+   address:read("address",300),geography:read("geography",100)};
+ }catch{throw new ConflictException("Original donor identity verification unavailable.");}
 }
+const donorName=(ciphertext:string)=>readPrivateDonor(ciphertext).name;
 /** Original donation and CG09 ledger truth; CG19 owns the receipt bytes. */
 @Injectable()
 export class DonationReceiptSourceFacade{
