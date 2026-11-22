@@ -156,7 +156,7 @@ export function NativeMemberDocuments({token,memberRef,memberNumber,onExpired}:{
 const styles=StyleSheet.create({
  card:{backgroundColor:theme.surface,borderWidth:1,borderColor:theme.border,borderRadius:12,padding:14,gap:10},
  heading:{fontSize:16,fontWeight:"800",color:theme.text},
- label:{fontSize:13,fontWeight:"650",color:theme.text},
+ label:{fontSize:13,fontWeight:"600",color:theme.text},
  muted:{fontSize:13,color:theme.mutedText,lineHeight:20},
  error:{fontSize:13,color:theme.error},
  item:{paddingVertical:10,gap:8,borderTopWidth:1,borderColor:theme.border},
