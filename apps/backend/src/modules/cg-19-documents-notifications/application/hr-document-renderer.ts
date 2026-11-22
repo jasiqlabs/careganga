@@ -4,14 +4,27 @@ import fontkit from "@pdf-lib/fontkit";
 import {createHash,createHmac} from "node:crypto";
 import {ServiceUnavailableException} from "@nestjs/common";
 import {opaqueAppointmentQr} from "./cg19-appointment-qr";
-export type HrLetterBlock={kind:"heading"|"bullet"|"paragraph";text:string};
-/** Conservative line-based formatting. No HTML, scripts, URLs, or executable input. */
+export type HrLetterKind="heading"|"bullet"|"paragraph"|"numbered"|"center"|"underline";
+export type HrLetterBlock={kind:HrLetterKind;text:string};
+/** No HTML or executable formatting. The exact serialized body is approved and hashed. */
+const marker:Record<HrLetterKind,string>={heading:"# ",bullet:"- ",paragraph:"",numbered:"[numbered] ",center:"[center] ",underline:"[underline] "};
 export function hrLetterBlocks(body:string):HrLetterBlock[]{
  return body.split(/\r?\n/).map(line=>{
-  if(line.startsWith("# ")&&line.slice(2).trim())return {kind:"heading",text:line.slice(2).trim()};
-  if(line.startsWith("- ")&&line.slice(2).trim())return {kind:"bullet",text:line.slice(2).trim()};
+  for(const kind of ["heading","bullet","numbered","center","underline"] as const){
+   const prefix=marker[kind];
+   if(line.startsWith(prefix)&&(line.slice(prefix.length).trim()||kind!=="heading"&&kind!=="bullet"))return {kind,text:line.slice(prefix.length).trim()};
+  }
   return {kind:"paragraph",text:line};
  });
+}
+export const hrCardFields=["designation","branch","issueDate"] as const;
+export type HrCardField=typeof hrCardFields[number];
+const cardMarker="[card-fields] ";
+export function hrCardVisibleFields(body:string):HrCardField[]{
+ const config=body.split(/\r?\n/).find(line=>line.startsWith(cardMarker));
+ if(!config)return [...hrCardFields];
+ const selected=new Set(config.slice(cardMarker.length).split(",").map(x=>x.trim()));
+ return hrCardFields.filter(k=>selected.has(k));
 }
 
 export const hrTemplateHash=(kind:string,title:string,body:string,assets?:{signatoryName:string;signatureSha256:string;sealSha256:string})=>createHash("sha256").update(JSON.stringify(assets?["CG19_HR_TEMPLATE_V2",kind,title,body,assets.signatoryName,assets.signatureSha256,assets.sealSha256]:["CG19_HR_TEMPLATE_V1",kind,title,body])).digest("hex");
@@ -76,8 +89,10 @@ export async function renderHrDocument(input:{snapshot:Record<string,unknown>;ti
   const photo=await loadImage(input.portrait);
   drawAsset(front,photo,x1+42,y0+142,69,69);
   fit(front,fact("recipient"),x1+9,129,W-18,12,navy);
-  fit(front,fact("designation"),x1+9,115,W-18,8,green);
+  const visible=hrCardVisibleFields(input.body);
+  if(visible.includes("designation"))fit(front,fact("designation"),x1+9,115,W-18,8,green);
   for(const [label,k,y] of [["Employee","subjectReference",95],["Branch","branch",77],["Issue date","issueDate",59],["Valid until","expiryDate",41]] as const){
+   if((k==="branch"||k==="issueDate")&&!visible.includes(k))continue;
    fit(front,label,x1+9,y+7,W-18,6.5,grey);fit(front,fact(k),x1+9,y-1,W-18,8.5,navy);
   }
   fit(front,input.preview?"DRAFT - NOT VALID":"Version "+input.issueRevision,x1+9,7,W-18,7,white);
@@ -99,22 +114,26 @@ export async function renderHrDocument(input:{snapshot:Record<string,unknown>;ti
   fit(back,"Authorized signatory",x2+9,20,W-18,6.5,grey);
   fit(back,input.preview?"DRAFT - NOT VALID":"CareGanga Foundation",x2+9,7,W-18,7,white);
  }else{
-  const newLetterPage=()=>{const p=pdf.addPage([595,842]);p.drawRectangle({x:0,y:815,width:595,height:27,color:blue});p.drawText("CareGanga Foundation",{x:45,y:771,size:20,font,color:blue});return p;};
+  const newLetterPage=()=>{const p=pdf.addPage([595,842]);p.drawRectangle({x:0,y:816,width:595,height:26,color:rgb(.055,.16,.31)});p.drawRectangle({x:0,y:810,width:595,height:6,color:rgb(.08,.43,.32)});p.drawText("CareGanga Foundation",{x:45,y:774,size:20,font,color:blue});p.drawLine({start:{x:45,y:755},end:{x:550,y:755},thickness:1.5,color:rgb(.08,.43,.32)});return p;};
   let page=newLetterPage();
   let y=735;y=print(page,input.title,45,y,16,505);y-=8;
   for(const [label,key] of [["Recipient","recipient"],["Designation","designation"],["Branch","branch"],["Department","department"],["Joining date","hireDate"],["Issue date","issueDate"],...(v.kind==="RELIEVING"?[["Last working date","lastWorkingDate"]]:[])]){
    y=print(page,label+": "+fact(key),45,y,11,505);
   }
   y-=12;
+  let listNumber=0;
   for(const block of hrLetterBlocks(input.body)){
-   const size=block.kind==="heading"?14:11,x=block.kind==="bullet"?61:45,width=550-x;
+   if(block.kind==="numbered")listNumber++;else listNumber=0;
+   const size=block.kind==="heading"?14:11,x=block.kind==="bullet"||block.kind==="numbered"?65:45,width=550-x;
    const lines=wrap(block.text,font,size,width);
    if(block.kind==="heading")y-=5;
    for(let index=0;index<lines.length;index++){
     if(y<65){page=newLetterPage();y=735;}
     const line=lines[index];
     if(block.kind==="bullet"&&index===0)page.drawCircle({x:49,y:y+4,size:2,color:grey});
-    if(line)page.drawText(line,{x,y,size,font,color:block.kind==="heading"?blue:grey});
+    if(block.kind==="numbered"&&index===0)page.drawText(String(listNumber)+".",{x:45,y,size,font,color:grey});
+    const drawX=block.kind==="center"?45+(505-font.widthOfTextAtSize(line,size))/2:x;
+    if(line){page.drawText(line,{x:drawX,y,size,font,color:block.kind==="heading"?blue:grey});if(block.kind==="underline")page.drawLine({start:{x:drawX,y:y-2},end:{x:drawX+font.widthOfTextAtSize(line,size),y:y-2},thickness:.6,color:grey});}
     y-=size+5;
    }
   }
