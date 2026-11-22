@@ -1,3 +1,4 @@
+import {careGangaTheme as hrTheme} from "../../../../../packages/design-tokens/src/index";
 import React,{useCallback,useEffect,useRef,useState} from "react";
 import {Pressable,StyleSheet,Text,TextInput,View} from "react-native";
 import * as Crypto from "expo-crypto";
@@ -115,4 +116,4 @@ export function NativeHrEmploymentChanges({token,mode,onExpired,canSelectRoles=f
   {locked&&<View><Text accessibilityRole="alert">Outcome not confirmed. Retry the original command.</Text>{pending.current?.decision&&<Field label="Current password" value={password} secure onChange={setPassword} disabled={busy}/>}<Button title="Retry original request" disabled={busy||(pending.current?.decision===true&&!password)} onPress={()=>void run()}/></View>}
  </View>;
 }
-const styles=StyleSheet.create({card:{padding:14,borderRadius:14,borderWidth:1,borderColor:"#E2E8F0",backgroundColor:"#fff",gap:10},title:{fontSize:17,fontWeight:"700",color:"#0F172A"},label:{fontWeight:"600",color:"#334155"},button:{backgroundColor:"#F1F5F9",borderRadius:9,minHeight:44,alignItems:"center",justifyContent:"center",padding:8},muted:{fontSize:13,color:"#64748B"},item:{borderTopWidth:1,borderColor:"#E2E8F0",paddingTop:10,gap:8},input:{borderWidth:1,borderColor:"#CBD5E1",borderRadius:9,padding:10,minHeight:44,color:"#0F172A"}});
+const styles=StyleSheet.create({card:{padding:14,borderRadius:14,borderWidth:1,borderColor:hrTheme.border,backgroundColor:hrTheme.surface,gap:10},title:{fontSize:17,fontWeight:"700",color:hrTheme.text},label:{fontWeight:"600",color:hrTheme.text},button:{backgroundColor:"#F1F5F9",borderRadius:9,minHeight:44,alignItems:"center",justifyContent:"center",padding:8},muted:{fontSize:13,color:hrTheme.mutedText},item:{borderTopWidth:1,borderColor:hrTheme.border,paddingTop:10,gap:8},input:{borderWidth:1,borderColor:hrTheme.border,borderRadius:9,padding:10,minHeight:44,color:hrTheme.text}});

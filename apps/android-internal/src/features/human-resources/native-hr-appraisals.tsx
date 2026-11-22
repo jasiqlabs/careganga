@@ -32,8 +32,8 @@ export function NativeHrMyAppraisals({token,onExpired}:{token:string;onExpired:(
   </View>)}
  </View>;
 }
-const styles=StyleSheet.create({card:{padding:14,borderRadius:14,borderWidth:1,borderColor:"#E2E8F0",backgroundColor:"#fff",gap:10},title:{fontSize:17,fontWeight:"700",color:"#0F172A"},
- label:{fontSize:14,fontWeight:"600",color:"#334155"},button:{backgroundColor:"#F1F5F9",borderRadius:9,minHeight:44,alignItems:"center",justifyContent:"center"},muted:{fontSize:13,color:"#64748B"},item:{borderTopWidth:1,borderColor:"#E2E8F0",paddingTop:10,gap:5},error:{color:"#991B1B"}});
+const styles=StyleSheet.create({card:{padding:14,borderRadius:14,borderWidth:1,borderColor:theme.border,backgroundColor:theme.surface,gap:10},title:{fontSize:17,fontWeight:"700",color:theme.text},
+ label:{fontSize:14,fontWeight:"600",color:theme.text},button:{backgroundColor:"#F1F5F9",borderRadius:9,minHeight:44,alignItems:"center",justifyContent:"center"},muted:{fontSize:13,color:theme.mutedText},item:{borderTopWidth:1,borderColor:theme.border,paddingTop:10,gap:5},error:{color:"#991B1B"}});
 
 type StaffItem=Item&{employeeReference:string;employeeName:string;revision:number};
 type Form={employeeReference:string;periodStart:string;periodEnd:string;goal:number;competency:number;attendance:number;strengths:string;improvement:string};

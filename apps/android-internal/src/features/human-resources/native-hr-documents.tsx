@@ -1,3 +1,4 @@
+import {careGangaTheme as hrTheme} from "../../../../../packages/design-tokens/src/index";
 import React,{useCallback,useEffect,useRef,useState} from "react";
 import {View,Text,TextInput,Pressable,StyleSheet,ActivityIndicator} from "react-native";
 import {File,Paths,UploadType} from "expo-file-system";
@@ -24,7 +25,7 @@ function Button({name,onPress,disabled=false}:{name:string;onPress:()=>void;disa
 function Field({label,value,onChange,secure=false,multi=false,disabled=false}:{label:string;value:string;onChange:(v:string)=>void;secure?:boolean;multi?:boolean;disabled?:boolean}){return <View><Text style={styles.label}>{label}</Text><TextInput accessibilityLabel={label} editable={!disabled} secureTextEntry={secure} multiline={multi} style={styles.input} value={value} onChangeText={onChange} maxLength={1200}/></View>;}
 function Select({label,value,options,onChange,disabled=false}:{label:string;value:string;options:{value:string;label:string}[];onChange:(v:string)=>void;disabled?:boolean}){return <View style={{gap:4}}><Text style={styles.label}>{label}</Text>{options.map(x=><Pressable key={x.value} accessibilityRole="radio" accessibilityState={{checked:x.value===value,disabled}} disabled={disabled} style={[styles.button,value===x.value&&{backgroundColor:"#D1FAE5"}]} onPress={()=>onChange(x.value)}><Text>{x.label}</Text></Pressable>)}</View>;}
 function LetterBodyPreview({value}:{value:string}){
- return <View>{hrLetterBlocks(value).map((b,i)=><Text key={i} style={b.kind==="heading"?{fontWeight:"700",fontSize:16,color:"#1E53DC",marginVertical:5}:b.kind==="bullet"?{paddingLeft:14,marginVertical:2}:{marginVertical:2}}>{b.kind==="bullet"?"• "+b.text:b.text||" "}</Text>)}</View>;
+ return <View>{hrLetterBlocks(value).map((b,i)=><Text key={i} style={b.kind==="heading"?{fontWeight:"700",fontSize:16,color:hrTheme.primary,marginVertical:5}:b.kind==="bullet"?{paddingLeft:14,marginVertical:2}:{marginVertical:2}}>{b.kind==="bullet"?"• "+b.text:b.text||" "}</Text>)}</View>;
 }
 function NativeReceiptUpload({token,id,disabled,onVerified,onExpired,assetType,onClear,staff=false}:{token:string;id?:string;disabled:boolean;onVerified:(fileRef?:string)=>void;onExpired:()=>void;assetType?:"SIGNATURE"|"SEAL";onClear?:()=>void;staff?:boolean}){
  const [picked,setPicked]=useState<{uri:string;mime:string;size:number;name:string}|null>(null),[busy,setBusy]=useState(false),[message,setMessage]=useState("");
@@ -149,4 +150,4 @@ export function NativeHrDocuments({token,onExpired,mode,canIssue=false,canApprov
  {locked&&<View><Text accessibilityRole="alert">Original outcome uncertain. Retry the same command.</Text>{pending.current?.proof&&<Field label="Current password" value={password} onChange={setPassword} secure disabled={busy}/>}<Button name="Retry original command" disabled={busy||!!pending.current?.proof&&password.length<8} onPress={()=>void run()}/></View>}
  </View>;
 }
-const styles=StyleSheet.create({card:{padding:14,borderRadius:14,borderWidth:1,borderColor:"#E2E8F0",backgroundColor:"#fff",gap:10},title:{fontSize:17,fontWeight:"700",color:"#0F172A"},label:{fontWeight:"600",color:"#334155"},item:{borderTopWidth:1,borderColor:"#E2E8F0",paddingTop:10,gap:8},input:{borderWidth:1,borderColor:"#CBD5E1",borderRadius:9,padding:10,minHeight:44},button:{backgroundColor:"#F1F5F9",borderRadius:9,minHeight:44,alignItems:"center",justifyContent:"center",padding:8}});
+const styles=StyleSheet.create({card:{padding:14,borderRadius:14,borderWidth:1,borderColor:hrTheme.border,backgroundColor:hrTheme.surface,gap:10},title:{fontSize:17,fontWeight:"700",color:hrTheme.text},label:{fontWeight:"600",color:hrTheme.text},item:{borderTopWidth:1,borderColor:hrTheme.border,paddingTop:10,gap:8},input:{borderWidth:1,borderColor:hrTheme.border,borderRadius:9,padding:10,minHeight:44},button:{backgroundColor:"#F1F5F9",borderRadius:9,minHeight:44,alignItems:"center",justifyContent:"center",padding:8}});

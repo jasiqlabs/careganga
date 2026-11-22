@@ -1,3 +1,4 @@
+import {careGangaTheme as hrTheme} from "../../../../../packages/design-tokens/src/index";
 import React,{useCallback,useEffect,useState} from "react";
 import * as Crypto from "expo-crypto";
 import {File,Paths} from "expo-file-system";
@@ -206,23 +207,23 @@ export function NativeHrReviews({token,canConfigure=false,onExpired}:{
  </View>;
 }
 const styles=StyleSheet.create({
- card:{padding:14,borderRadius:14,borderWidth:1,borderColor:"#E2E8F0",
-  backgroundColor:"#fff",gap:9},
- heading:{fontSize:16,fontWeight:"700",color:"#0F172A"},
- label:{fontWeight:"600",fontSize:13,color:"#334155"},
- hint:{fontSize:13,lineHeight:19,color:"#64748B"},
- item:{paddingVertical:9,borderTopWidth:1,borderColor:"#E2E8F0",gap:7},
- detail:{borderWidth:1,borderColor:"#CBD5E1",borderRadius:10,padding:12,gap:9},
+ card:{padding:14,borderRadius:14,borderWidth:1,borderColor:hrTheme.border,
+  backgroundColor:hrTheme.surface,gap:9},
+ heading:{fontSize:16,fontWeight:"700",color:hrTheme.text},
+ label:{fontWeight:"600",fontSize:13,color:hrTheme.text},
+ hint:{fontSize:13,lineHeight:19,color:hrTheme.mutedText},
+ item:{paddingVertical:9,borderTopWidth:1,borderColor:hrTheme.border,gap:7},
+ detail:{borderWidth:1,borderColor:hrTheme.border,borderRadius:10,padding:12,gap:9},
  button:{padding:10,backgroundColor:"#F1F5F9",borderRadius:9,alignSelf:"flex-start"},
- buttonText:{fontSize:13,color:"#0F172A",fontWeight:"600"},
- primary:{backgroundColor:"#087F8C"},primaryText:{color:"#fff"},
- input:{minHeight:46,borderColor:"#CBD5E1",borderWidth:1,borderRadius:9,
-  padding:10,color:"#0F172A",fontSize:14},
+ buttonText:{fontSize:13,color:hrTheme.text,fontWeight:"600"},
+ primary:{backgroundColor:hrTheme.primary},primaryText:{color:hrTheme.surface},
+ input:{minHeight:46,borderColor:hrTheme.border,borderWidth:1,borderRadius:9,
+  padding:10,color:hrTheme.text,fontSize:14},
  choices:{flexDirection:"row",flexWrap:"wrap",gap:7},
  chip:{paddingVertical:9,paddingHorizontal:12,borderRadius:9,
-  borderWidth:1,borderColor:"#CBD5E1"},
- chipActive:{backgroundColor:"#0369A1",borderColor:"#0369A1"},
- chipText:{color:"#334155"},chipActiveText:{color:"#fff",fontWeight:"700"},
+  borderWidth:1,borderColor:hrTheme.border},
+ chipActive:{backgroundColor:hrTheme.primary,borderColor:hrTheme.primary},
+ chipText:{color:hrTheme.text},chipActiveText:{color:hrTheme.surface,fontWeight:"700"},
  error:{color:"#991B1B",backgroundColor:"#FEF2F2",padding:9},
  success:{color:"#166534",backgroundColor:"#ECFDF5",padding:9}
 });

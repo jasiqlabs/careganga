@@ -1,3 +1,4 @@
+import {careGangaTheme as hrTheme} from "../../../../../packages/design-tokens/src/index";
 import {useCallback,useEffect,useRef,useState} from "react";
 import {Pressable,StyleSheet,Text,View} from "react-native";
 import * as DocumentPicker from "expo-document-picker";
@@ -199,19 +200,19 @@ export function NativeHrEvidence({token,applicationRef,revision,onExpired,onFile
  </View>;
 }
 const styles=StyleSheet.create({
- card:{padding:14,borderRadius:14,backgroundColor:"#fff",
-  borderColor:"#CBD5E1",borderWidth:1,gap:9},
- heading:{fontSize:17,color:"#0F172A",fontWeight:"700"},
- hint:{fontSize:13,color:"#64748B",lineHeight:19},
- label:{fontSize:14,color:"#334155",fontWeight:"600"},
+ card:{padding:14,borderRadius:14,backgroundColor:hrTheme.surface,
+  borderColor:hrTheme.border,borderWidth:1,gap:9},
+ heading:{fontSize:17,color:hrTheme.text,fontWeight:"700"},
+ hint:{fontSize:13,color:hrTheme.mutedText,lineHeight:19},
+ label:{fontSize:14,color:hrTheme.text,fontWeight:"600"},
  choices:{flexDirection:"row",flexWrap:"wrap",gap:7},
  chip:{paddingHorizontal:10,paddingVertical:8,borderRadius:9,
-  borderColor:"#CBD5E1",borderWidth:1,backgroundColor:"#fff"},
- active:{backgroundColor:"#0369A1",borderColor:"#0369A1"},
- chipText:{fontSize:12,color:"#334155"},activeText:{color:"#fff",fontWeight:"700"},
+  borderColor:hrTheme.border,borderWidth:1,backgroundColor:hrTheme.surface},
+ active:{backgroundColor:hrTheme.primary,borderColor:hrTheme.primary},
+ chipText:{fontSize:12,color:hrTheme.text},activeText:{color:hrTheme.surface,fontWeight:"700"},
  action:{padding:10,borderRadius:9,backgroundColor:"#F1F5F9",alignSelf:"flex-start"},
- actionText:{color:"#0F172A",fontWeight:"600",fontSize:13},
- primary:{padding:12,borderRadius:9,backgroundColor:"#087F8C",alignSelf:"flex-start"},
- primaryText:{color:"#fff",fontWeight:"700"},
- item:{borderTopWidth:1,borderColor:"#E2E8F0",paddingTop:8}
+ actionText:{color:hrTheme.text,fontWeight:"600",fontSize:13},
+ primary:{padding:12,borderRadius:9,backgroundColor:hrTheme.primary,alignSelf:"flex-start"},
+ primaryText:{color:hrTheme.surface,fontWeight:"700"},
+ item:{borderTopWidth:1,borderColor:hrTheme.border,paddingTop:8}
 });

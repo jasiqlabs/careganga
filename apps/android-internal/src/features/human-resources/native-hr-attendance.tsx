@@ -1,3 +1,4 @@
+import {careGangaTheme as hrTheme} from "../../../../../packages/design-tokens/src/index";
 import React,{useCallback,useEffect,useRef,useState} from "react";
 import {ActivityIndicator,Pressable,StyleSheet,Text,TextInput,View} from "react-native";
 import * as Crypto from "expo-crypto";
@@ -102,7 +103,7 @@ const monthDates=(m:string)=>{
 };
 const dayCode=(d:CorrectionDay|undefined)=>!d?"—":({PRESENT:"P",LATE:"L",ABSENT:"A",WEEKLY_OFF:"WO",LEAVE:"LV",HALF_DAY_LEAVE:"½"} as Record<string,string>)[d.status]??d.status;
 const dayLabel=(d:CorrectionDay|undefined)=>!d?"Unrecorded":d.status.replaceAll("_"," ").toLowerCase()+(d.leaveDays>0&&d.status!=="LEAVE"&&d.status!=="HALF_DAY_LEAVE"?" · "+d.leaveDays+" day approved leave":"");
-const badgeColor=(d:CorrectionDay|undefined)=>!d?"#64748B":d.status==="PRESENT"?"#166534":d.status==="ABSENT"?"#991B1B":d.status==="LATE"?"#92400E":"#075985";
+const badgeColor=(d:CorrectionDay|undefined)=>!d?hrTheme.mutedText:d.status==="PRESENT"?"#166534":d.status==="ABSENT"?"#991B1B":d.status==="LATE"?"#92400E":"#075985";
 export function NativeHrAttendance({token,canConfigure,canManageLeave=false,canReviewLeave=false,canCorrect=false,canReviewCorrection=false,canViewStaff=false,onExpired}:{
  token:string;canConfigure:boolean;canManageLeave?:boolean;canReviewLeave?:boolean;canCorrect?:boolean;canReviewCorrection?:boolean;canViewStaff?:boolean;onExpired:()=>void
 }){
@@ -251,7 +252,7 @@ export function NativeHrAttendance({token,canConfigure,canManageLeave=false,canR
    {mine?.month===selfMonth&&mine.status!=="NOT_LINKED"&&<View accessibilityLabel="Monthly attendance calendar" style={{flexDirection:"row",flexWrap:"wrap"}}>
     {["Su","Mo","Tu","We","Th","Fr","Sa"].map(x=><View key={x} style={{width:"14.285%",padding:4,alignItems:"center"}}><Text style={styles.muted}>{x}</Text></View>)}
     {Array.from({length:new Date(selfMonth+"-01T00:00:00Z").getUTCDay()},(_,i)=><View key={"pad-"+i} style={{width:"14.285%",minHeight:48}}/>)}
-    {monthDates(selfMonth).map(date=>{const d=mine.days.find(x=>x.date===date);return <View key={date} accessible accessibilityLabel={date+" "+dayLabel(d)} style={{width:"14.285%",padding:4,alignItems:"center",minHeight:48,borderWidth:0.5,borderColor:"#E2E8F0"}}><Text style={{fontWeight:"600",color:"#334155"}}>{Number(date.slice(-2))}</Text><Text style={{fontSize:12,color:badgeColor(d)}}>{dayCode(d)}{d?.leaveDays===0.5&&d.status!=="HALF_DAY_LEAVE"?"½":""}</Text></View>})}
+    {monthDates(selfMonth).map(date=>{const d=mine.days.find(x=>x.date===date);return <View key={date} accessible accessibilityLabel={date+" "+dayLabel(d)} style={{width:"14.285%",padding:4,alignItems:"center",minHeight:48,borderWidth:0.5,borderColor:hrTheme.border}}><Text style={{fontWeight:"600",color:hrTheme.text}}>{Number(date.slice(-2))}</Text><Text style={{fontSize:12,color:badgeColor(d)}}>{dayCode(d)}{d?.leaveDays===0.5&&d.status!=="HALF_DAY_LEAVE"?"½":""}</Text></View>})}
    </View>}
    <Text style={styles.muted}>P Present · L Late · A Absent · WO Weekly off · LV Leave · ½ Half-day · — Unrecorded</Text>
    {mine?.month===selfMonth&&mine.days.map(d=><View key={d.date} style={styles.listItem}>
@@ -330,7 +331,7 @@ export function NativeHrAttendance({token,canConfigure,canManageLeave=false,canR
      {matrix?.items.map(x=><View style={styles.listItem} key={x.employeeReference}>
       <Text style={styles.label}>{x.employeeName} · {x.designation}</Text>
       <View style={{flexDirection:"row",flexWrap:"wrap"}}>
-       {monthDates(matrix.month).map(date=>{const d=x.days.find(v=>v.date===date);return <View key={date} accessible accessibilityLabel={x.employeeName+" "+date+" "+dayLabel(d)} style={{width:"14.285%",padding:4,alignItems:"center",minHeight:44,borderWidth:0.5,borderColor:"#E2E8F0"}}><Text style={{fontSize:12,fontWeight:"600",color:"#334155"}}>{Number(date.slice(-2))}</Text><Text style={{fontSize:12,color:badgeColor(d)}}>{dayCode(d)}{d?.leaveDays===0.5&&d.status!=="HALF_DAY_LEAVE"?"½":""}</Text></View>})}
+       {monthDates(matrix.month).map(date=>{const d=x.days.find(v=>v.date===date);return <View key={date} accessible accessibilityLabel={x.employeeName+" "+date+" "+dayLabel(d)} style={{width:"14.285%",padding:4,alignItems:"center",minHeight:44,borderWidth:0.5,borderColor:hrTheme.border}}><Text style={{fontSize:12,fontWeight:"600",color:hrTheme.text}}>{Number(date.slice(-2))}</Text><Text style={{fontSize:12,color:badgeColor(d)}}>{dayCode(d)}{d?.leaveDays===0.5&&d.status!=="HALF_DAY_LEAVE"?"½":""}</Text></View>})}
       </View>
      </View>)}
      {matrixOffset>0&&<Pressable accessibilityRole="button" style={styles.outline}
@@ -351,21 +352,21 @@ export function NativeHrAttendance({token,canConfigure,canManageLeave=false,canR
 }
 const styles=StyleSheet.create({
  container:{gap:14,marginVertical:12},
- card:{backgroundColor:"#fff",borderWidth:1,borderColor:"#E2E8F0",borderRadius:16,padding:15,gap:8},
- title:{fontSize:17,fontWeight:"700",color:"#0F172A"},
- label:{fontWeight:"600",fontSize:13,color:"#334155"},
- muted:{fontSize:13,color:"#64748B",lineHeight:20},
- primary:{backgroundColor:"#087F8C",padding:13,borderRadius:10,alignItems:"center",marginTop:5},
- primaryText:{fontWeight:"700",color:"#fff"},
+ card:{backgroundColor:hrTheme.surface,borderWidth:1,borderColor:hrTheme.border,borderRadius:16,padding:15,gap:8},
+ title:{fontSize:17,fontWeight:"700",color:hrTheme.text},
+ label:{fontWeight:"600",fontSize:13,color:hrTheme.text},
+ muted:{fontSize:13,color:hrTheme.mutedText,lineHeight:20},
+ primary:{backgroundColor:hrTheme.primary,padding:13,borderRadius:10,alignItems:"center",marginTop:5},
+ primaryText:{fontWeight:"700",color:hrTheme.surface},
  outline:{padding:10,backgroundColor:"#F1F5F9",borderRadius:9,alignSelf:"flex-start"},
- outlineText:{fontWeight:"600",color:"#0F172A"},
+ outlineText:{fontWeight:"600",color:hrTheme.text},
  error:{padding:10,color:"#991B1B",backgroundColor:"#FEF2F2",borderRadius:10},
  success:{padding:10,color:"#166534",backgroundColor:"#ECFDF5",borderRadius:10},
- listItem:{paddingVertical:8,borderTopWidth:1,borderColor:"#E2E8F0"},
- field:{gap:4,marginTop:6},input:{minHeight:47,borderWidth:1,borderColor:"#CBD5E1",
-  borderRadius:9,padding:12,color:"#0F172A",backgroundColor:"#fff"},
+ listItem:{paddingVertical:8,borderTopWidth:1,borderColor:hrTheme.border},
+ field:{gap:4,marginTop:6},input:{minHeight:47,borderWidth:1,borderColor:hrTheme.border,
+  borderRadius:9,padding:12,color:hrTheme.text,backgroundColor:hrTheme.surface},
  choices:{flexDirection:"row",flexWrap:"wrap",gap:7},
- chip:{padding:9,borderWidth:1,borderColor:"#CBD5E1",borderRadius:9},
- active:{backgroundColor:"#0369A1",borderColor:"#0369A1"},
- chipText:{color:"#334155",fontSize:13},activeText:{color:"#fff",fontSize:13,fontWeight:"700"}
+ chip:{padding:9,borderWidth:1,borderColor:hrTheme.border,borderRadius:9},
+ active:{backgroundColor:hrTheme.primary,borderColor:hrTheme.primary},
+ chipText:{color:hrTheme.text,fontSize:13},activeText:{color:hrTheme.surface,fontSize:13,fontWeight:"700"}
 });

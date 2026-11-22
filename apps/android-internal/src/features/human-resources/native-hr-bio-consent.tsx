@@ -1,3 +1,4 @@
+import {careGangaTheme as hrTheme} from "../../../../../packages/design-tokens/src/index";
 import React,{useCallback,useEffect,useState} from "react";
 import {Pressable,StyleSheet,Text,View} from "react-native";
 import {identityRequest} from "../identity-access/http-client";
@@ -75,12 +76,12 @@ export function NativeHrBioConsent({token,onExpired}:{
  </View>;
 }
 const styles=StyleSheet.create({
- card:{padding:14,gap:10,borderWidth:1,borderColor:"#CBD5E1",borderRadius:12,backgroundColor:"#fff"},
- heading:{fontSize:16,fontWeight:"700",color:"#0F172A"},
- muted:{fontSize:13,color:"#64748B",lineHeight:19},
+ card:{padding:14,gap:10,borderWidth:1,borderColor:hrTheme.border,borderRadius:12,backgroundColor:hrTheme.surface},
+ heading:{fontSize:16,fontWeight:"700",color:hrTheme.text},
+ muted:{fontSize:13,color:hrTheme.mutedText,lineHeight:19},
  problem:{color:"#991B1B"},notice:{color:"#166534"},
- button:{padding:11,borderRadius:9,backgroundColor:"#087F8C",alignSelf:"flex-start"},
- buttonText:{color:"#fff",fontWeight:"700"},
+ button:{padding:11,borderRadius:9,backgroundColor:hrTheme.primary,alignSelf:"flex-start"},
+ buttonText:{color:hrTheme.surface,fontWeight:"700"},
  secondary:{padding:9,borderRadius:9,backgroundColor:"#F1F5F9",alignSelf:"flex-start"},
- secondaryText:{fontWeight:"600",color:"#0F172A"}
+ secondaryText:{fontWeight:"600",color:hrTheme.text}
 });

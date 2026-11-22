@@ -1,3 +1,4 @@
+import {careGangaTheme as hrTheme} from "../../../../../packages/design-tokens/src/index";
 import React,{useState} from "react";
 import {Pressable,StyleSheet,Text,TextInput,View} from "react-native";
 import {identityRequest} from "../identity-access/http-client";
@@ -97,17 +98,17 @@ export function NativeHrPrivate({token,applicationRef,canManage,onExpired}:{
  </View>;
 }
 const styles=StyleSheet.create({
- card:{padding:14,borderRadius:12,backgroundColor:"#fff",
-  borderWidth:1,borderColor:"#CBD5E1",gap:9},
- heading:{fontSize:16,fontWeight:"700",color:"#0F172A"},
- label:{fontSize:13,color:"#334155",fontWeight:"600",marginBottom:4},
- muted:{color:"#64748B",fontSize:13,lineHeight:19},
- input:{backgroundColor:"#fff",padding:12,minHeight:45,color:"#0F172A",
-  borderWidth:1,borderColor:"#CBD5E1",borderRadius:9},
+ card:{padding:14,borderRadius:12,backgroundColor:hrTheme.surface,
+  borderWidth:1,borderColor:hrTheme.border,gap:9},
+ heading:{fontSize:16,fontWeight:"700",color:hrTheme.text},
+ label:{fontSize:13,color:hrTheme.text,fontWeight:"600",marginBottom:4},
+ muted:{color:hrTheme.mutedText,fontSize:13,lineHeight:19},
+ input:{backgroundColor:hrTheme.surface,padding:12,minHeight:45,color:hrTheme.text,
+  borderWidth:1,borderColor:hrTheme.border,borderRadius:9},
  button:{alignSelf:"flex-start",padding:11,borderRadius:9,backgroundColor:"#F1F5F9"},
- buttonText:{color:"#0F172A",fontWeight:"600",fontSize:13},
- primary:{alignSelf:"flex-start",padding:12,borderRadius:9,backgroundColor:"#087F8C"},
- primaryText:{color:"#fff",fontWeight:"700"},
+ buttonText:{color:hrTheme.text,fontWeight:"600",fontSize:13},
+ primary:{alignSelf:"flex-start",padding:12,borderRadius:9,backgroundColor:hrTheme.primary},
+ primaryText:{color:hrTheme.surface,fontWeight:"700"},
  error:{color:"#991B1B",padding:9,backgroundColor:"#FEF2F2"},
  success:{color:"#166534",padding:9,backgroundColor:"#ECFDF5"}
 });

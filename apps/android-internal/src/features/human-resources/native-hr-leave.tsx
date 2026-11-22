@@ -1,3 +1,4 @@
+import {careGangaTheme as hrTheme} from "../../../../../packages/design-tokens/src/index";
 import React,{useCallback,useEffect,useRef,useState} from "react";
 import {ActivityIndicator,Pressable,StyleSheet,Text,TextInput,View} from "react-native";
 import * as Crypto from "expo-crypto";
@@ -183,13 +184,13 @@ export function NativeHrLeaveReviews({token,onExpired,onChanged,kind="leave"}:{t
  </View>;
 }
 const styles=StyleSheet.create({
- card:{borderWidth:1,borderColor:"#E2E8F0",borderRadius:14,padding:14,backgroundColor:"#fff",gap:10},
- title:{fontSize:17,fontWeight:"700",color:"#0F172A"},label:{fontSize:14,fontWeight:"600",color:"#334155"},
- muted:{fontSize:13,color:"#64748B",lineHeight:20},error:{color:"#991B1B",backgroundColor:"#FEE2E2",padding:10,borderRadius:8},
- success:{color:"#166534",backgroundColor:"#DCFCE7",padding:10,borderRadius:8},input:{borderWidth:1,borderColor:"#CBD5E1",borderRadius:9,padding:11,minHeight:46,color:"#0F172A"},
+ card:{borderWidth:1,borderColor:hrTheme.border,borderRadius:14,padding:14,backgroundColor:hrTheme.surface,gap:10},
+ title:{fontSize:17,fontWeight:"700",color:hrTheme.text},label:{fontSize:14,fontWeight:"600",color:hrTheme.text},
+ muted:{fontSize:13,color:hrTheme.mutedText,lineHeight:20},error:{color:"#991B1B",backgroundColor:"#FEE2E2",padding:10,borderRadius:8},
+ success:{color:"#166534",backgroundColor:"#DCFCE7",padding:10,borderRadius:8},input:{borderWidth:1,borderColor:hrTheme.border,borderRadius:9,padding:11,minHeight:46,color:hrTheme.text},
  button:{padding:11,borderRadius:9,backgroundColor:"#F1F5F9",alignItems:"center",minHeight:44,justifyContent:"center"},
- buttonText:{fontSize:14,color:"#0F172A",fontWeight:"600"},active:{backgroundColor:"#087F8C"},activeText:{color:"#fff",fontWeight:"700"},
- disabled:{opacity:0.5},item:{borderTopWidth:1,borderColor:"#E2E8F0",paddingTop:10,gap:6},choices:{flexDirection:"row",flexWrap:"wrap",gap:6}
+ buttonText:{fontSize:14,color:hrTheme.text,fontWeight:"600"},active:{backgroundColor:hrTheme.primary},activeText:{color:hrTheme.surface,fontWeight:"700"},
+ disabled:{opacity:0.5},item:{borderTopWidth:1,borderColor:hrTheme.border,paddingTop:10,gap:6},choices:{flexDirection:"row",flexWrap:"wrap",gap:6}
 });
 
 export type CorrectionDay={date:string;status:string;version:number;timeZone:string;checkInLocal:string|null;checkOutLocal:string|null;leaveDays:number};
