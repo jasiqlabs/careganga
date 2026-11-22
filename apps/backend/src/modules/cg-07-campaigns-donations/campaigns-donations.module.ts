@@ -5,5 +5,5 @@ import {ProjectsSourceModule} from "../cg-05-projects-field-operations/projects-
 import {CampaignDraftsService} from "./application/campaign-drafts.service";
 import {CampaignDraftsController} from "./http/campaign-drafts.controller";
 @Module({imports:[IdentityAccessModule,FoundationStructureModule,ProjectsSourceModule],
- providers:[CampaignDraftsService],controllers:[CampaignDraftsController]})
+ providers:[CampaignDraftsService],controllers:[CampaignDraftsController],exports:[CampaignDraftsService]})
 export class CampaignsDonationsModule{}
