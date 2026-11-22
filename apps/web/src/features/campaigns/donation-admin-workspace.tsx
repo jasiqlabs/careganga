@@ -33,10 +33,12 @@ const panel={border:"1px solid var(--cg-border)",borderRadius:12,
  padding:18,background:"var(--cg-surface)",display:"grid",gap:12} as const;
 const button={padding:"10px 14px",background:"#0a9f69",color:"white",
  border:0,borderRadius:8,minHeight:44,cursor:"pointer"} as const;
-export function DonationAdminWorkspace({canView,canRecord,canReview,canIssue}:{
- canView:boolean;canRecord:boolean;canReview:boolean;canIssue:boolean}){
+export function DonationAdminWorkspace({canView,canRecord,canReview,canIssue,canExport}:{
+ canView:boolean;canRecord:boolean;canReview:boolean;canIssue:boolean;canExport:boolean}){
  const [data,setData]=useState<Report|null>(null),[queue,setQueue]=useState<QueueItem[]>([]);
  const [filter,setFilter]=useState("ALL"),[search,setSearch]=useState(""),[offset,setOffset]=useState(0);
+ const [method,setMethod]=useState("ALL"),[minAmount,setMinAmount]=useState(""),[maxAmount,setMaxAmount]=useState(""),
+  [dateFrom,setDateFrom]=useState(""),[dateTo,setDateTo]=useState(""),[campaign,setCampaign]=useState("");
  const [proof,setProof]=useState(""),[options,setOptions]=useState<Options|null>(null);
  const [cash,setCash]=useState(""),[income,setIncome]=useState(""),[year,setYear]=useState("");
  const [voucher,setVoucher]=useState(""),[postingDate,setPostingDate]=useState("");
@@ -49,15 +51,35 @@ export function DonationAdminWorkspace({canView,canRecord,canReview,canIssue}:{
   const id=++seq.current;
   try{
    const [report,work]=await Promise.all([
-    canView?api<Report>("?"+new URLSearchParams({status:filter,q:search,offset:String(offset)})):Promise.resolve(null),
+    canView?api<Report>("?"+new URLSearchParams({status:filter,q:search,offset:String(offset),
+     method,minAmount,maxAmount,dateFrom,dateTo,campaign:campaign||"ALL"})):Promise.resolve(null),
     canRecord?api<{items:QueueItem[]}>("/manual/queue"):Promise.resolve(null)]);
    if(id!==seq.current||!mounted.current)return;
    if(report)setData(report);
    if(work)setQueue(work.items);
    setError("");
   }catch(e){if(id===seq.current&&mounted.current){setError(e instanceof Error?e.message:"Donations unavailable.");setData(null);setQueue([]);}}
- },[canView,canRecord,filter,search,offset]);
+ },[canView,canRecord,filter,search,offset,method,minAmount,maxAmount,dateFrom,dateTo,campaign]);
  useEffect(()=>{mounted.current=true;void refresh();return()=>{mounted.current=false;seq.current++;};},[refresh]);
+ const exportReport=async()=>{
+  if(busy||!canExport)return;
+  setBusy(true);setError("");setNotice("");
+  try{
+   const params=new URLSearchParams({status:filter,q:search,method,minAmount,maxAmount,
+    dateFrom,dateTo,campaign:campaign||"ALL"});
+   const r=await fetch("/api/donations/export?"+params,{cache:"no-store",signal:AbortSignal.timeout(19000)});
+   if(!r.ok)throw new Error("Current protected donation export is unavailable.");
+   const blob=await r.blob();
+   if(blob.size<20||blob.size>2000000)throw new Error("Donation export could not be verified.");
+   const url=URL.createObjectURL(blob);
+   try{
+    const a=document.createElement("a");
+    a.href=url;a.download="CareGanga-Donations.csv";document.body.appendChild(a);a.click();a.remove();
+   }finally{setTimeout(()=>URL.revokeObjectURL(url),1000);}
+   setNotice("Scoped report exported without donor PAN, contacts or technical identifiers.");
+  }catch(e){setError(e instanceof Error?e.message:"Donation export unavailable.");}
+  finally{setBusy(false);}
+ };
  const findOptions=async()=>{
   if(busy||!canRecord||!proof.trim())return;
   setBusy(true);setError("");setNotice("");setOptions(null);pending.current=null;
@@ -122,13 +144,37 @@ export function DonationAdminWorkspace({canView,canRecord,canReview,canIssue}:{
     as const).map(([name,value])=><div className={styles.statCard} key={name}>
      <div><div className={styles.statNumber}>{value??"—"}</div>
      <div className={styles.statLabel}>{name}</div></div></div>)}
-  </div><div style={panel}><h2>Donation records</h2>
-   <div className={styles.filterGrid}><label style={label}>Search campaign or donation number
-    <input style={input} value={search} onChange={e=>{setOffset(0);setSearch(e.target.value);}} maxLength={80}/></label>
+  </div><div style={panel}>
+    <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",gap:12}}>
+     <h2>Donation records</h2>
+     {canExport&&<button type="button" style={button} disabled={busy} onClick={()=>void exportReport()}>
+      Export protected CSV</button>}
+    </div>
+   <div className={styles.filterGrid}>
+    <label style={label}>Search donation or campaign
+     <input style={input} value={search} onChange={e=>{setOffset(0);setSearch(e.target.value);}} maxLength={80}/></label>
     <label style={label}>Payment state
      <select style={input} value={filter} onChange={e=>{setOffset(0);setFilter(e.target.value);}}>
-      {["ALL","REQUESTED","PAYMENT_PENDING","RECONCILIATION_PENDING","RECEIVED_POSTED","FAILED","EXPIRED"].map(x=>
-       <option key={x} value={x}>{x==="ALL"?"All":x.replaceAll("_"," ").toLowerCase()}</option>)}</select></label></div>
+      {["ALL","REQUESTED","PAYMENT_PENDING","RECONCILIATION_PENDING","RECEIVED_POSTED","REFUNDED","FAILED","EXPIRED"].map(x=>
+       <option key={x} value={x}>{x==="ALL"?"All":x.replaceAll("_"," ").toLowerCase()}</option>)}</select></label>
+    <label style={label}>Method
+     <select style={input} value={method} onChange={e=>{setOffset(0);setMethod(e.target.value);}}>
+      {["ALL","CASH","BANK","CHEQUE","NEFT","ONLINE"].map(x=>
+       <option key={x} value={x}>{x==="ALL"?"All methods":x.toLowerCase()}</option>)}</select></label>
+    <label style={label}>Minimum amount (₹)
+     <input style={input} inputMode="decimal" value={minAmount} maxLength={16}
+      onChange={e=>{setOffset(0);setMinAmount(e.target.value);}}/></label>
+    <label style={label}>Maximum amount (₹)
+     <input style={input} inputMode="decimal" value={maxAmount} maxLength={16}
+      onChange={e=>{setOffset(0);setMaxAmount(e.target.value);}}/></label>
+    <label style={label}>From
+     <input type="date" style={input} value={dateFrom} onChange={e=>{setOffset(0);setDateFrom(e.target.value);}}/></label>
+    <label style={label}>To
+     <input type="date" style={input} value={dateTo} onChange={e=>{setOffset(0);setDateTo(e.target.value);}}/></label>
+    <label style={label}>Campaign reference (optional)
+     <input style={input} value={campaign} maxLength={16} placeholder="All campaigns"
+      onChange={e=>{setOffset(0);setCampaign(e.target.value);}}/></label>
+   </div>
    {data?.items.length===0?<p>No matching donation records.</p>:
     <div style={{overflowX:"auto"}}><table style={{width:"100%",borderCollapse:"collapse",fontSize:13}}>
      <thead><tr>{["Donation","Campaign","Amount","Method","Status","Date"].map(t=>
