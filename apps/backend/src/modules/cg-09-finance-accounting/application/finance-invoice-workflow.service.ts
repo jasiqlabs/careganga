@@ -6,6 +6,7 @@ import {DATABASE} from "../../../core/infrastructure/database.module";
 import {SessionService} from "../../cg-01-identity-access/application/session.service";
 import {FoundationStructureIdentityFacade} from "../../cg-01-identity-access/application/foundation-structure-identity.facade";
 import {BranchSourceFacade} from "../../cg-02-foundation-structure/application/branch-source.facade";
+import {inventoryFinanceReceipt} from "../../cg-12-inventory-suppliers/application/inventory-finance-receipt-source";
 import {FinanceInvoiceApprovalService} from "../../cg-03-registration-approvals/application/finance-invoice-approval.service";
 import {FinanceJournalPostingService} from "./finance-journal-posting.service";
 import {FinanceInvoiceDocumentService} from "../../cg-19-documents-notifications/application/finance-invoice-document.service";
@@ -114,6 +115,11 @@ export class FinanceInvoiceWorkflowService{
   const branch=typeof i.branchRef==="string"&&i.branchRef?i.branchRef:null;
   if(branch)await this.branches.requireFinanceBranchVersion(tx,actor,branch,
    Number(i.branchVersion),"finance.invoices.manage");
+  if(i.inventoryReceiptRef){
+   const source=await inventoryFinanceReceipt(tx,actor.realmId,branch,i.inventoryReceiptRef);
+   if(i.inventorySupplierRef!==source.supplierRef||i.inventoryReceiptNumber!==source.receiptNumber)
+    throw new ConflictException({code:"FINANCE_INVOICE_SOURCE_INVALID",field:"inventoryReceiptRef"});
+  }
   const refs=[p.receivableAccountRef,p.incomeAccountRef,
    ...(p.taxAccountRef?[p.taxAccountRef]:[])];
   if(new Set(refs).size!==refs.length)
