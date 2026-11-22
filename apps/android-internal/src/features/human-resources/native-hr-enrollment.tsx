@@ -17,7 +17,7 @@ type Application={applicationRef:string;reference:string;name:string;designation
  employmentType:string;branchRef:string;departmentRef:string|null;
  managerRef:string|null;roleRef:string|null;accountRef:string|null;
  hireDate:string;revision:number;status:string};
-type Option={label:string;branchRef?:string;departmentRef?:string;managerRef?:string;accountRef?:string;geography?:string};
+type Option={label:string;branchRef?:string;departmentRef?:string;managerRef?:string;accountRef?:string;geography?:string;state?:string|null;district?:string|null};
 type RoleOption={value:string;label:string};
 type Draft={name:string;designation:string;employmentType:string;
  branchRef:string;departmentRef:string;managerRef:string;roleRef:string;accountRef:string;hireDate:string};
@@ -91,7 +91,7 @@ export function NativeHrEnrollment({token,canView,canManage,canReview,canViewEmp
  const [headcounts,setHeadcounts]=useState<{total:number;statuses:Record<string,number>;newJoinersThisMonth:number;departments:{label:string;count:number}[];joiners:{month:string;count:number}[];attendance:{onApprovedLeaveToday:number;employeesWithPendingLeave:number}|null}|null>(null);
  const [empBranches,setEmpBranches]=useState<Option[]>([]);
  const [empDepartments,setEmpDepartments]=useState<Option[]>([]);
- const [empFilter,setEmpFilter]=useState({q:"",status:"ALL",branch:"",department:""});
+ const [empFilter,setEmpFilter]=useState({q:"",status:"ALL",branch:"",department:"",state:"",district:"",role:""});
  const [empOffset,setEmpOffset]=useState(0);
  const [empMore,setEmpMore]=useState(false);
  const enrollKeys=useRef(new Map<string,string>());
@@ -330,6 +330,7 @@ export function NativeHrEnrollment({token,canView,canManage,canReview,canViewEmp
      q:empFilter.q.trim()});
    if(empFilter.branch)opts.set("branch",empFilter.branch);
    if(empFilter.department)opts.set("department",empFilter.department);
+   if(empFilter.state)opts.set("state",empFilter.state);if(empFilter.district)opts.set("district",empFilter.district);if(canSelectRoles&&empFilter.role.trim())opts.set("role",empFilter.role.trim());
    const data=await api(token,"employees?"+opts.toString());
    if(!data||typeof data!=="object"||!("items" in data)||
     !Array.isArray(data.items))throw Error("Original employee directory cannot be verified.");
@@ -606,6 +607,9 @@ export function NativeHrEnrollment({token,canView,canManage,canReview,canViewEmp
        <Text style={empFilter.status===v?styles.selectedText:styles.chipText}>
         {title(v)}</Text></Pressable>)}
     </View>
+    <Text style={styles.label}>State</Text><View style={styles.choices}>{["",...Array.from(new Set(empBranches.flatMap(v=>v.state?[v.state]:[]))).sort()].map(v=><Pressable key={v||"all"} accessibilityRole="button" accessibilityState={{selected:empFilter.state===v}} style={[styles.chip,empFilter.state===v&&styles.selected]} onPress={()=>setEmpFilter(x=>({...x,state:v,district:"",branch:"",department:""}))}><Text style={empFilter.state===v?styles.selectedText:styles.chipText}>{v||"All permitted states"}</Text></Pressable>)}</View>
+    <Text style={styles.label}>District</Text><View style={styles.choices}>{["",...Array.from(new Set(empBranches.filter(v=>!empFilter.state||v.state===empFilter.state).flatMap(v=>v.district?[v.district]:[]))).sort()].map(v=><Pressable key={v||"all"} accessibilityRole="button" accessibilityState={{selected:empFilter.district===v}} style={[styles.chip,empFilter.district===v&&styles.selected]} onPress={()=>setEmpFilter(x=>({...x,district:v,branch:"",department:""}))}><Text style={empFilter.district===v?styles.selectedText:styles.chipText}>{v||"All permitted districts"}</Text></Pressable>)}</View>
+    {canSelectRoles&&field("Current assigned role",empFilter.role,v=>setEmpFilter(x=>({...x,role:v.slice(0,100)})),"Role name")}
     <Text style={styles.label}>Original Foundation branch</Text>
     <View style={styles.choices}>
       <Pressable accessibilityRole="button"
@@ -613,7 +617,7 @@ export function NativeHrEnrollment({token,canView,canManage,canReview,canViewEmp
        onPress={()=>setEmpFilter(x=>({...x,branch:"",department:""}))}>
        <Text style={!empFilter.branch?styles.selectedText:styles.chipText}>
         All permitted</Text></Pressable>
-      {empBranches.map(v=><Pressable key={v.branchRef} accessibilityRole="button"
+      {empBranches.filter(v=>(!empFilter.state||v.state===empFilter.state)&&(!empFilter.district||v.district===empFilter.district)).map(v=><Pressable key={v.branchRef} accessibilityRole="button"
        style={[styles.chip,empFilter.branch===v.branchRef&&styles.selected]}
        onPress={()=>setEmpFilter(x=>({...x,branch:v.branchRef??"",department:""}))}>
        <Text style={empFilter.branch===v.branchRef?styles.selectedText:styles.chipText}>
