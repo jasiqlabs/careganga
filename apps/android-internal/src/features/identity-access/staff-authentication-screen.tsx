@@ -63,6 +63,7 @@ const FinanceNativeInvoices = lazy(() => import("../finance-accounting/finance-n
 const FinanceNativeBudgets = lazy(() => import("../finance-accounting/finance-native-budgets").then(m => ({ default: m.FinanceNativeBudgets })));
 const FinanceNativeReports = lazy(() => import("../finance-accounting/finance-native-reports").then(m => ({ default: m.FinanceNativeReports })));
 const NativeMisWorkspaceScreen = lazy(() => import("../mis-reporting/native-mis-workspace-screen").then(m => ({default:m.NativeMisWorkspaceScreen})));
+const NativeFieldVisitsWorkspace = lazy(() => import("../projects/native-field-visits-workspace").then(m=>({default:m.NativeFieldVisitsWorkspace})));
 const NativeActivitiesWorkspace = lazy(() => import("../projects/native-activities-workspace").then(m=>({default:m.NativeActivitiesWorkspace})));
 const NativeTasksWorkspace = lazy(() => import("../projects/native-tasks-workspace").then(m=>({default:m.NativeTasksWorkspace})));
 const NativeProjectsWorkspace = lazy(() => import("../projects/native-projects-workspace").then(m=>({default:m.NativeProjectsWorkspace})));
@@ -185,6 +186,7 @@ export function StaffAuthenticationScreen() {
   const [reportsOpen, setReportsOpen] = useState(false);
   const [misOpen, setMisOpen] = useState(false);
   const [hrOpen, setHrOpen] = useState(false);
+  const [fieldVisitsOpen,setFieldVisitsOpen]=useState(false);
   const [activitiesOpen,setActivitiesOpen]=useState(false);
   const [tasksOpen,setTasksOpen]=useState(false);
   const [projectsOpen,setProjectsOpen]=useState(false);
@@ -235,7 +237,7 @@ export function StaffAuthenticationScreen() {
     hideToast();
     setMessage("");
     setActor(null); setToken(null); setRoleActions([]); setAccountOpen(false); setRolesOpen(false); setAccountsOpen(false); setPolicyOpen(false); setApprovalsOpen(false); setOwnCenterOpen(false); setWebsiteCmsOpen(false); setPlatformConfigOpen(false); setHealthDoctorOpen(false); setCenterPublisherOpen(false); setHealthProviderOpen(false); setHealthReviewsOpen(false); setDoctorLeaveReviewsOpen(false); setPatientAdminOpen(false); setPatientQueueOpen(false); setLabOrdersOpen(false); setLabEquipmentOpen(false); setHealthcarePoliciesOpen(false); setCenterMerchantOpen(false); setFoundationLiabilitiesOpen(false); setMonthlyProviderSettlementsOpen(false); setPartnerSettlementsOpen(false); setLabTestMasterOpen(false); setMyLabPricingOpen(false); setPatientBookingOpen(false); setDocumentsOpen(false); setCommunicationsOpen(false); setNotificationsOpen(false); setSupportOpen(false); setNoticeAdminOpen(false); setBranchesOpen(false); setFinanceOpen(false); setVoucherOnlyOpen(false); setFinanceReviewOpen(false); setFinanceClaimsOpen(false); setFinanceClaimReviewsOpen(false); setInvoiceOpen(false); setInvoiceReviewOpen(false);
-    setBudgetOpen(false); setBudgetReviewOpen(false); setReportsOpen(false); setMisOpen(false); setHrOpen(false); setInventoryOpen(false); setProjectsOpen(false); setTasksOpen(false); setActivitiesOpen(false);
+    setBudgetOpen(false); setBudgetReviewOpen(false); setReportsOpen(false); setMisOpen(false); setHrOpen(false); setInventoryOpen(false); setProjectsOpen(false); setTasksOpen(false); setActivitiesOpen(false); setFieldVisitsOpen(false);
     void SecureStore.deleteItemAsync(STORE_KEY).catch(() => undefined);
   }, [hideToast]);
 
@@ -281,7 +283,7 @@ export function StaffAuthenticationScreen() {
       budgetReviewOpen ||
       reportsOpen ||
       misOpen ||
-      activitiesOpen || tasksOpen || projectsOpen ||
+      fieldVisitsOpen || activitiesOpen || tasksOpen || projectsOpen ||
       inventoryOpen ||
       hrOpen ||
       financeOpen ||
@@ -313,7 +315,7 @@ export function StaffAuthenticationScreen() {
       setInvoiceReviewOpen(false);
       setBudgetOpen(false);
       setBudgetReviewOpen(false);
-      setReportsOpen(false); setMisOpen(false); setHrOpen(false); setInventoryOpen(false); setProjectsOpen(false); setTasksOpen(false); setActivitiesOpen(false);
+      setReportsOpen(false); setMisOpen(false); setHrOpen(false); setInventoryOpen(false); setProjectsOpen(false); setTasksOpen(false); setActivitiesOpen(false); setFieldVisitsOpen(false);
       setFinanceOpen(false);
       setBranchesOpen(false);
       setChangePasswordOpen(false);
@@ -362,7 +364,7 @@ export function StaffAuthenticationScreen() {
     budgetReviewOpen,
     reportsOpen,
     misOpen,
-    activitiesOpen, tasksOpen, projectsOpen,
+    fieldVisitsOpen, activitiesOpen, tasksOpen, projectsOpen,
     inventoryOpen,
     hrOpen,
     financeOpen,
@@ -607,7 +609,7 @@ export function StaffAuthenticationScreen() {
       // Backend revocation is authoritative. The UI must not continue showing an
       // authenticated actor if on-device deletion fails afterward.
       setActor(null); setToken(null); setRoleActions([]); setRolesOpen(false); setAccountsOpen(false); setPolicyOpen(false); setApprovalsOpen(false); setOwnCenterOpen(false); setWebsiteCmsOpen(false); setPlatformConfigOpen(false); setHealthDoctorOpen(false); setCenterPublisherOpen(false); setHealthProviderOpen(false); setHealthReviewsOpen(false); setDoctorLeaveReviewsOpen(false); setPatientAdminOpen(false); setPatientQueueOpen(false); setLabOrdersOpen(false); setLabEquipmentOpen(false); setHealthcarePoliciesOpen(false); setCenterMerchantOpen(false); setFoundationLiabilitiesOpen(false); setMonthlyProviderSettlementsOpen(false); setLabTestMasterOpen(false); setMyLabPricingOpen(false); setPatientBookingOpen(false); setDocumentsOpen(false); setCommunicationsOpen(false); setNotificationsOpen(false); setSupportOpen(false); setNoticeAdminOpen(false); setBranchesOpen(false); setFinanceOpen(false); setVoucherOnlyOpen(false);
-      setFinanceReviewOpen(false); setFinanceClaimsOpen(false); setFinanceClaimReviewsOpen(false); setInvoiceOpen(false); setInvoiceReviewOpen(false); setBudgetOpen(false); setBudgetReviewOpen(false); setReportsOpen(false); setMisOpen(false); setHrOpen(false); setInventoryOpen(false); setProjectsOpen(false); setTasksOpen(false); setActivitiesOpen(false);
+      setFinanceReviewOpen(false); setFinanceClaimsOpen(false); setFinanceClaimReviewsOpen(false); setInvoiceOpen(false); setInvoiceReviewOpen(false); setBudgetOpen(false); setBudgetReviewOpen(false); setReportsOpen(false); setMisOpen(false); setHrOpen(false); setInventoryOpen(false); setProjectsOpen(false); setTasksOpen(false); setActivitiesOpen(false); setFieldVisitsOpen(false);
       try {
         await SecureStore.deleteItemAsync(STORE_KEY);
       } catch {
@@ -643,7 +645,7 @@ export function StaffAuthenticationScreen() {
         setInvoiceReviewOpen(false);
         setBudgetOpen(false);
         setBudgetReviewOpen(false);
-        setReportsOpen(false); setMisOpen(false); setHrOpen(false); setInventoryOpen(false); setProjectsOpen(false); setTasksOpen(false); setActivitiesOpen(false);
+        setReportsOpen(false); setMisOpen(false); setHrOpen(false); setInventoryOpen(false); setProjectsOpen(false); setTasksOpen(false); setActivitiesOpen(false); setFieldVisitsOpen(false);
         setFinanceOpen(false);
         setBranchesOpen(false);
         setChangePasswordOpen(false);
@@ -699,6 +701,7 @@ export function StaffAuthenticationScreen() {
       openHr: () => openOnly(setHrOpen),
       openProjects: () => openOnly(setProjectsOpen),
       openActivities: () => openOnly(setActivitiesOpen),
+      openFieldVisits: () => openOnly(setFieldVisitsOpen),
       openTasks: () => openOnly(setTasksOpen),
       openInventory: () => openOnly(setInventoryOpen),
       openFinance: () => openOnly(setFinanceOpen),
@@ -726,6 +729,10 @@ export function StaffAuthenticationScreen() {
     </AuthenticatedAppShell>
   );
 
+  if(fieldVisitsOpen&&token&&actor){
+    if(!roleActions.includes("projects.visits.view"))return <AccessDeniedScreen reason="You cannot view field visits." onMyAccount={()=>setFieldVisitsOpen(false)}/>;
+    return renderInShell(<ScreenErrorBoundary onExit={()=>setFieldVisitsOpen(false)}><Suspense fallback={<ActivityIndicator style={{marginTop:40}}/>}><NativeFieldVisitsWorkspace key={token} token={token} canManage={roleActions.includes("projects.visits.manage")} canExport={roleActions.includes("projects.visits.export")} canReadEvidence={roleActions.includes("documents.files.view")} canUploadEvidence={roleActions.includes("documents.files.view")&&roleActions.includes("documents.files.manage")} onExpired={expireSession}/></Suspense></ScreenErrorBoundary>,"fieldVisits",()=>setFieldVisitsOpen(false));
+  }
   if(activitiesOpen&&token&&actor){
     if(!roleActions.includes("projects.activities.view"))return <AccessDeniedScreen reason="You cannot view activities." onMyAccount={()=>setActivitiesOpen(false)}/>;
     return renderInShell(<ScreenErrorBoundary onExit={()=>setActivitiesOpen(false)}><Suspense fallback={<ActivityIndicator style={{marginTop:40}}/>}><NativeActivitiesWorkspace key={token} token={token} canManage={roleActions.includes("projects.activities.manage")} canExport={roleActions.includes("projects.activities.export")} canReadEvidence={roleActions.includes("documents.files.view")} canUploadEvidence={roleActions.includes("documents.files.view")&&roleActions.includes("documents.files.manage")} onExpired={expireSession}/></Suspense></ScreenErrorBoundary>,"activities",()=>setActivitiesOpen(false));
