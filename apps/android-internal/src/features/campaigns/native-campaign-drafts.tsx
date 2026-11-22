@@ -165,14 +165,23 @@ export function NativeCampaignDrafts({token,canManage,onExpired}:{
     {field("Tags (comma-separated)",form.basic.tags.join(", "),v=>change("basic","tags",v.split(",").map(x=>x.trim()).filter(Boolean)))}
    </>}
    {step===1&&<>
+    {pick("Foundation branch",form.project.branchRef,choices?.branches??[],v=>change("project","branchRef",v),
+      choices?.canFoundation?"Foundation-wide":"Select active branch")}
+    {pick("State",form.project.stateRef,choices?.states??[],v=>setForm(d=>({...d,
+      project:{...d.project,stateRef:v,districtRef:null}})),"No state")}
+    {pick("District",form.project.districtRef,choices?.districts??[],v=>change("project","districtRef",v),"No district")}
     {field("Campaign category",form.project.category,v=>change("project","category",v))}
     {field("Location description",form.project.location,v=>change("project","location",v))}
     {field("Planned target group",form.project.targetGroup,v=>change("project","targetGroup",v))}
     {field("Planned beneficiaries (estimate, not achieved)",form.project.plannedBeneficiaries===null?"":String(form.project.plannedBeneficiaries),
      v=>change("project","plannedBeneficiaries",v===""?null:/^\d+$/.test(v)?Number(v):-1))}
-    <Text style={s.muted}>Project, event, branch and area linking requires verified owner options and is unavailable in this initial general campaign draft.</Text>
+    <Text style={s.muted}>Project and event links require verified CG-05 source and remain unavailable in this initial draft.</Text>
    </>}
-   {step===2&&<Text>Current signed-in Foundation coordinator. Further staff or volunteer assignments require verified active source.</Text>}
+   {step===2&&<View style={s.block}>
+    {pick("Campaign coordinator",form.team.coordinatorRef,choices?.coordinators??[],v=>change("team","coordinatorRef",v),
+      "Use signed-in operator")}
+    <Text style={s.muted}>Optional verified volunteer association requires the actual current CG-04 source and does not grant a staff role.</Text>
+   </View>}
    {step===3&&<>
     {field("Fundraising goal in INR",form.budget.goal,v=>change("budget","goal",v))}
     {field("Expected cost in INR",form.budget.expectedCost,v=>change("budget","expectedCost",v))}
