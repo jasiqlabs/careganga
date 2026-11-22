@@ -125,3 +125,69 @@ BEGIN
  RETURN NULL;
 END; $$;
 CREATE CONSTRAINT TRIGGER cg04_member_completed_at_commit AFTER INSERT ON member DEFERRABLE INITIALLY DEFERRED FOR EACH ROW EXECUTE FUNCTION cg04_member_completion_required();
+
+CREATE OR REPLACE FUNCTION cg04_application_draft_guard() RETURNS trigger LANGUAGE plpgsql AS $$
+BEGIN
+ IF TG_OP='DELETE' THEN RAISE EXCEPTION 'Membership application history must be retained'; END IF;
+ IF TG_OP='INSERT' THEN
+  IF NEW.status<>'DRAFT' OR NEW.version<>1 OR NEW.submitted_digest IS NOT NULL THEN RAISE EXCEPTION 'Invalid membership application start'; END IF;
+ ELSE
+  IF NEW.version<>OLD.version+1 OR (NEW.id,NEW.root_realm_id,NEW.application_ref,NEW.applicant_account_ref,NEW.created_at)
+   IS DISTINCT FROM (OLD.id,OLD.root_realm_id,OLD.application_ref,OLD.applicant_account_ref,OLD.created_at)
+   OR NOT ((OLD.status IN('DRAFT','RETURNED') AND NEW.status IN('DRAFT','CANCELLED','SUBMITTED')) OR (OLD.status='SUBMITTED' AND NEW.status IN('RETURNED','REJECTED','APPROVED')))
+   THEN RAISE EXCEPTION 'Invalid membership application revision'; END IF;
+  IF NEW.status IN('SUBMITTED','RETURNED','REJECTED','CANCELLED','APPROVED')
+   AND (to_jsonb(NEW)-'status'-'version'-'updated_at'-'submitted_at'-'submitted_digest') IS DISTINCT FROM (to_jsonb(OLD)-'status'-'version'-'updated_at'-'submitted_at'-'submitted_digest')
+   THEN RAISE EXCEPTION 'A review transition cannot change the accepted applicant source'; END IF;
+  IF OLD.status='SUBMITTED' AND (NEW.submitted_digest,NEW.submitted_at) IS DISTINCT FROM (OLD.submitted_digest,OLD.submitted_at)
+   THEN RAISE EXCEPTION 'Original submitted snapshot is immutable'; END IF;
+ END IF;
+ IF NOT EXISTS(SELECT 1 FROM access_realm r WHERE r.id=NEW.root_realm_id AND r.realm_key='FOUNDATION_ROOT') THEN RAISE EXCEPTION 'Invalid Foundation membership scope'; END IF;
+ IF NEW.status IN('DRAFT','SUBMITTED') THEN
+  IF NOT EXISTS(SELECT 1 FROM account a WHERE a.id=NEW.applicant_account_ref AND a.realm_id=NEW.root_realm_id
+    AND a.status='ACTIVE' AND a.contact_phone_verified_at IS NOT NULL AND a.contact_phone=NEW.contact_mobile
+    AND a.display_name=NEW.display_name AND a.normalized_email IS NOT DISTINCT FROM NEW.contact_email FOR SHARE)
+   THEN RAISE EXCEPTION 'A verified original applicant contact is required'; END IF;
+  IF NOT EXISTS(SELECT 1 FROM membership_tier_version v JOIN membership_tier t ON t.root_realm_id=v.root_realm_id AND t.id=v.tier_id
+   WHERE v.root_realm_id=NEW.root_realm_id AND v.id=NEW.tier_version_id AND t.version=v.version_no AND t.status='ACTIVE'
+    AND v.status='ACTIVE' AND v.published_at<=now() FOR SHARE OF t) AND NOT EXISTS(SELECT 1 FROM finance_membership_collection fee WHERE fee.root_realm_id=NEW.root_realm_id AND fee.application_id=NEW.id AND fee.amount_minor=NEW.accepted_fee_minor AND fee.branch_id IS NOT DISTINCT FROM NEW.branch_ref) THEN RAISE EXCEPTION 'Select a current published membership plan'; END IF;
+  IF NEW.branch_ref IS NOT NULL AND NOT EXISTS(SELECT 1 FROM branch b WHERE b.root_realm_id=NEW.root_realm_id AND b.id=NEW.branch_ref AND b.status='ACTIVE' FOR SHARE) THEN RAISE EXCEPTION 'Select an active branch'; END IF;
+  IF NOT EXISTS(SELECT 1 FROM geography_area s JOIN geography_area d ON d.root_realm_id=s.root_realm_id AND d.parent_area_id=s.id WHERE s.root_realm_id=NEW.root_realm_id AND s.id=NEW.state_ref AND s.level='STATE' AND s.status='ACTIVE' AND d.id=NEW.district_ref AND d.level='DISTRICT' AND d.status='ACTIVE' FOR SHARE OF s,d) THEN RAISE EXCEPTION 'Select current state and district'; END IF;
+ END IF;
+ RETURN NEW;
+END; $$;
+
+CREATE OR REPLACE FUNCTION cg04_application_command_required() RETURNS trigger LANGUAGE plpgsql AS $$
+BEGIN
+ IF NEW.status='APPROVED' THEN
+  IF NOT EXISTS(SELECT 1 FROM membership_application_effect e JOIN cg03_case c ON c.realm_id=e.root_realm_id AND c.id=e.case_id WHERE e.root_realm_id=NEW.root_realm_id AND e.application_id=NEW.id AND e.pinned_review_revision=NEW.version-1 AND e.source_digest=NEW.submitted_digest AND c.status='OWNER_COMPLETED')
+  THEN RAISE EXCEPTION 'Membership activation requires original owner effect'; END IF;
+ ELSIF NEW.status IN('RETURNED','REJECTED') THEN
+  IF NOT EXISTS(SELECT 1 FROM cg03_case c JOIN cg03_case_decision d ON d.realm_id=c.realm_id AND d.case_id=c.id
+   WHERE c.realm_id=NEW.root_realm_id AND c.case_kind='MEMBER_APPLICATION' AND c.membership_application_id=NEW.id
+   AND c.membership_application_version=NEW.version-1 AND c.membership_review_digest=NEW.submitted_digest AND d.actor_id<>NEW.applicant_account_ref
+   AND d.fresh_password_verified_at IS NOT NULL AND d.accepted_case_revision=c.revision
+   AND ((NEW.status='RETURNED' AND c.status='RETURNED' AND d.action='RETURN') OR (NEW.status='REJECTED' AND c.status='REJECTED' AND d.action='REJECT')))
+   THEN RAISE EXCEPTION 'Application state requires original protected CG03 decision'; END IF;
+ ELSE
+  IF NOT EXISTS(SELECT 1 FROM membership_application_command c WHERE c.root_realm_id=NEW.root_realm_id AND c.application_id=NEW.id AND c.result_version=NEW.version AND c.actor_ref=NEW.applicant_account_ref) THEN RAISE EXCEPTION 'Original applicant command required'; END IF;
+  IF NEW.status='SUBMITTED' AND NOT EXISTS(SELECT 1 FROM membership_review_snapshot s JOIN cg03_case c ON c.realm_id=s.root_realm_id AND c.membership_review_ref=s.id JOIN membership_application_command cmd ON cmd.root_realm_id=s.root_realm_id AND cmd.request_key=s.request_key
+    JOIN membership_review_file f ON f.root_realm_id=s.root_realm_id AND f.snapshot_id=s.id
+    JOIN cg19_membership_private_file doc ON doc.realm_id=f.root_realm_id AND doc.id=f.file_id
+    WHERE s.root_realm_id=NEW.root_realm_id AND s.application_id=NEW.id AND s.application_version=NEW.version AND s.source_digest=NEW.submitted_digest AND s.submitted_by=NEW.applicant_account_ref
+    AND cmd.application_id=NEW.id AND cmd.result_version=NEW.version AND cmd.action='SUBMIT' AND c.case_kind='MEMBER_APPLICATION'
+    AND f.application_id=NEW.id AND f.classification='MEMBER_IDENTITY_PROOF' AND doc.classification=f.classification AND doc.sha256=f.sha256 AND doc.revision=f.file_version AND doc.revoked_at IS NULL)
+    THEN RAISE EXCEPTION 'Submission requires original protected evidence and review case'; END IF;
+ END IF;
+ RETURN NULL;
+END; $$;
+
+
+CREATE FUNCTION cg04_initial_branch_history_guard() RETURNS trigger LANGUAGE plpgsql AS $$
+BEGIN
+ IF TG_OP<>'INSERT' THEN RAISE EXCEPTION 'Original membership affiliation history is retained'; END IF;
+ IF NEW.effective_to IS NOT NULL OR NOT EXISTS(SELECT 1 FROM member m WHERE m.root_realm_id=NEW.root_realm_id AND m.id=NEW.member_id AND m.branch_ref IS NOT DISTINCT FROM NEW.branch_ref)
+ THEN RAISE EXCEPTION 'Initial member branch history must match its source'; END IF;
+ RETURN NEW;
+END; $$;
+CREATE TRIGGER cg04_member_initial_branch_write BEFORE INSERT OR UPDATE OR DELETE ON member_branch_history FOR EACH ROW EXECUTE FUNCTION cg04_initial_branch_history_guard();
