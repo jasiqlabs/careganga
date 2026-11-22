@@ -22,7 +22,7 @@ export class ProjectPublicEligibilityService{
   if(!["PLANNED","ACTIVE"].includes(p.status))throw stale();
   const s=(await tx.query<Snapshot>("SELECT *,planned_launch::text AS planned_launch FROM project_public_eligibility WHERE root_realm_id=$1 AND id=$2 AND project_id=$3 AND project_version=$4 AND source_digest=$5 AND revoked_at IS NULL FOR SHARE",[a.realmId,c.project_public_ref,p.id,p.version,c.project_public_digest])).rows[0];
   if(!s)throw stale();
-  if(s.cover_file_ref&&!(await tx.query("SELECT 1 FROM cg19_stored_file WHERE id=$1 AND realm_id=$2 AND project_id=$3 AND proposal_revision=$4 AND revision=$5 AND owner_kind='CG05_PROJECT' AND scan_status='CLEAN_VERIFIED' AND revoked_at IS NULL FOR SHARE",[s.cover_file_ref,a.realmId,p.id,p.version,s.cover_file_version])).rowCount)throw stale();
+  if(s.cover_file_ref){await this.identity.assertCurrent(tx,a,"documents.files.view");if(!(await tx.query("SELECT 1 FROM cg19_stored_file f JOIN cg19_upload_intent i ON i.id=f.upload_intent_id AND i.realm_id=f.realm_id WHERE f.id=$1 AND f.realm_id=$2 AND f.project_id=$3 AND f.proposal_revision=$4 AND f.revision=$5 AND f.owner_kind='CG05_PROJECT' AND f.scan_status='CLEAN_VERIFIED' AND f.revoked_at IS NULL AND i.status='VALIDATED' FOR SHARE OF f,i",[s.cover_file_ref,a.realmId,p.id,p.version,s.cover_file_version])).rowCount)throw stale();}
   return s;
  }
  async submit(token:string,projectRef:string,raw:unknown){
@@ -71,7 +71,7 @@ export class ProjectPublicEligibilityService{
    if(!current.revoked_at&&["PLANNED","ACTIVE"].includes(p.status)){
     try{await this.projects.guardCover(tx,a,p.id,p.version,true);canWithdraw=true;}catch(e){if(!(e instanceof ForbiddenException))throw e;}
     if(c.proposer_id!==a.accountId&&["SUBMITTED","IN_REVIEW"].includes(c.status)){
-     try{await this.owner.verifyReviewer(tx,a,"approvals.review",true);canReview=true;}catch(e){if(!(e instanceof ForbiddenException))throw e;}
+     try{await this.owner.verifyReviewer(tx,a,"approvals.review",true);if(current.cover_file_ref)await this.identity.assertCurrent(tx,a,"documents.files.view");canReview=true;}catch(e){if(!(e instanceof ForbiddenException))throw e;}
     }
    }
    const effective=current.revoked_at||!["PLANNED","ACTIVE"].includes(p.status)?"WITHDRAWN":c.status==="OWNER_COMPLETED"?"ELIGIBLE_NOT_PUBLISHED":c.status;
