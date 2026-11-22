@@ -20,7 +20,7 @@ export function HrWorkspaceNavigation({sections,canViewDashboard=false,canAddEmp
  </div>;
 }
 
-type Summary={total:number;statuses:Record<string,number>;newJoinersThisMonth:number;attendance:{onApprovedLeaveToday:number;employeesWithPendingLeave:number}|null};
+type Summary={total:number;statuses:Record<string,number>;newJoinersThisMonth:number;departments:{label:string;count:number}[];joiners:{month:string;count:number}[];attendance:{onApprovedLeaveToday:number;employeesWithPendingLeave:number}|null};
 const metrics=(v:Summary|null)=>[
  {label:"Total employees",value:v?.total},{label:"Active employees",value:v?.statuses.ACTIVE},
  {label:"On probation",value:v?.statuses.PROBATION},{label:"Pending access",value:v?.statuses.PENDING_ACCESS},
@@ -33,12 +33,12 @@ function HrDashboard({choose,sections,canAddEmployee}:{choose:(id:string)=>void;
  const load=useCallback(async()=>{const read=++seq.current;setSummary(null);setBusy(true);setError("");
   try{const r=await fetch("/api/hr/summary",{cache:"no-store",credentials:"same-origin"});
    if(!r.ok)throw Error(r.status===401?"Sign in again.":"HR dashboard unavailable. Refresh to retry.");
-   const v=await r.json() as Summary;if(!Number.isFinite(v.total)||!v.statuses||!Number.isFinite(v.newJoinersThisMonth))throw Error("Original summary unavailable.");
+   const v=await r.json() as Summary;if(!Number.isFinite(v.total)||!v.statuses||!Number.isFinite(v.newJoinersThisMonth)||!Array.isArray(v.departments)||!Array.isArray(v.joiners))throw Error("Original summary unavailable.");
    if(read===seq.current)setSummary(v);
   }catch(e){if(read===seq.current)setError(e instanceof Error?e.message:"HR summary unavailable.");}finally{if(read===seq.current)setBusy(false);}
  },[]);
  useEffect(()=>{void load();return()=>{seq.current++;};},[load]);
- const quick=[{id:"employees",label:canAddEmployee?"Add employee / employee directory":"Employee directory"},{id:"attendance",label:"Attendance sheet / leave requests"},{id:"documents",label:"Document management"},{id:"performance",label:"Performance management"},{id:"profile",label:"My employment / apply for allowance"}].filter(x=>sections.some(s=>s.id===x.id));
+ const quick=[{id:"employees",label:canAddEmployee?"Add employee / employee directory":"Employee directory"},{id:"attendance",label:"Attendance & leave"},{id:"documents",label:"Letters & ID cards"},{id:"performance",label:"Performance"},{id:"profile",label:"My employment & allowances"}].filter(x=>sections.some(s=>s.id===x.id));
  const statusColors:Record<string,string>={ACTIVE:theme.primary,PROBATION:roleColor("green"),PENDING_ACCESS:roleColor("amber"),ON_HOLD:roleColor("violet"),EXITED:theme.error};
  const statusRows=summary?Object.entries(summary.statuses):[];
  const statusTotal=statusRows.reduce((sum,[,count])=>sum+count,0);
@@ -62,6 +62,12 @@ function HrDashboard({choose,sections,canAddEmployee}:{choose:(id:string)=>void;
      </div>
      <div style={{display:"grid",gap:10,flex:"1 1 130px"}}>{statusRows.map(([key,count])=><div key={key} style={{display:"flex",alignItems:"center",justifyContent:"space-between",gap:8}}><span style={{display:"flex",gap:8,alignItems:"center"}}><span aria-hidden="true" style={{width:10,height:10,borderRadius:"50%",background:statusColors[key]??theme.mutedText}}/>{key.replaceAll("_"," ").toLowerCase()}</span><strong>{count}</strong></div>)}</div>
     </div>
+   </article>}
+   {summary&&<article style={panel}><h3 style={{marginTop:0}}>Current employees by department</h3>
+    {summary.departments.length===0?<p style={{color:theme.mutedText}}>No current employees in permitted branches.</p>:<div style={{display:"grid",gap:10}}>{summary.departments.map((x,i)=><div key={i}><div style={{display:"flex",gap:8,justifyContent:"space-between"}}><span>{x.label}</span><strong>{x.count}</strong></div><div aria-hidden="true" style={{height:8,borderRadius:8,background:theme.selectedSurface,overflow:"hidden"}}><div style={{height:"100%",background:theme.primary,width:(100*x.count/Math.max(1,summary.departments.reduce((sum,v)=>sum+v.count,0)))+"%"}}/></div></div>)}</div>}
+   </article>}
+   {summary&&<article style={panel}><h3 style={{marginTop:0}}>Joining trend</h3><p style={{fontSize:"var(--cg-text-sm)",color:theme.mutedText}}>Joining month of employees currently in your permitted branches · last six months</p>
+    {summary.joiners.length===0?<p style={{color:theme.mutedText}}>No employee data available.</p>:<div style={{display:"grid",gridTemplateColumns:"repeat(6,minmax(0,1fr))",gap:6,alignItems:"end"}}>{summary.joiners.map(x=><div key={x.month} style={{display:"grid",gap:5,textAlign:"center"}}><strong>{x.count}</strong><div aria-hidden="true" style={{height:76,display:"flex",alignItems:"end",justifyContent:"center",background:theme.selectedSurface,borderRadius:6}}><div style={{width:"100%",height:(100*x.count/Math.max(1,...summary.joiners.map(v=>v.count)))+"%",background:theme.primary,borderRadius:4}}/></div><small>{x.month.slice(5)}/{x.month.slice(2,4)}</small></div>)}</div>}
    </article>}
    <article style={panel}><h3 style={{marginTop:0}}>Quick actions</h3><div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(min(100%,130px),1fr))",gap:10}}>{quick.map(x=><button key={x.id} type="button" onClick={()=>choose(x.id)} style={{minHeight:60,borderRadius:8,border:"1px solid "+theme.border,background:theme.selectedSurface,color:theme.primary,padding:"10px 14px",fontWeight:600}}>{x.label}</button>)}</div></article>
   </div>
