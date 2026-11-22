@@ -5,6 +5,8 @@ import {CmsEditorialService} from "../application/cms-editorial.service";
 @Controller("api/cms")
 export class CmsEditorialController{
  constructor(private readonly cms:CmsEditorialService){}
+ @Get("project-sources") @Header("Cache-Control","private, no-store")
+ projectSources(@Headers("authorization")auth:string){return this.cms.projectSources(auth);}
  @Get("pages")
  @Header("Cache-Control","private, no-store")
  pages(@Headers("authorization")auth:string){return this.cms.list(auth);}
