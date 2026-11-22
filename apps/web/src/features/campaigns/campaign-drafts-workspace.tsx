@@ -5,10 +5,10 @@ type Row={ref:string;code:string;title:string;category:string;status:string;vers
  branch:string|null;goalMinor:string|null;updatedAt:string;steps?:Record<string,unknown>};
 type Page={items:Row[];offset:number;hasMore:boolean};
 type Choice={value:string;label:string};
-type Choices={canFoundation:boolean;branches:Choice[];states:Choice[];districts:Choice[];coordinators:Choice[]};
+type Choices={canFoundation:boolean;branches:Choice[];states:Choice[];districts:Choice[];coordinators:Choice[];projects:Choice[];events:(Choice&{projectRef:string|null})[]};
 type Draft={
  basic:{title:string;type:"GENERAL";summary:string;description:string;tags:string[]};
- project:{category:string;branchRef:string|null;projectRef:null;eventRef:null;stateRef:string|null;districtRef:string|null;location:string;
+ project:{category:string;branchRef:string|null;projectRef:string|null;eventRef:string|null;stateRef:string|null;districtRef:string|null;location:string;
   targetGroup:string;plannedBeneficiaries:number|null};
  team:{coordinatorRef:string|null;volunteerRef:null};
  budget:{goal:string;expectedCost:string;startAt:string;endAt:string};
@@ -36,6 +36,7 @@ function fromRow(row:Row):Draft{
   basic:{...blank().basic,title:basic?.title??row.title,summary:basic?.summary??"",
    description:basic?.description??"",tags:Array.isArray(basic?.tags)?basic.tags:[]},
   project:{...blank().project,category:project?.category??"GENERAL",branchRef:project?.branchRef??null,
+   projectRef:project?.projectRef??null,eventRef:project?.eventRef??null,
    stateRef:project?.stateRef??null,districtRef:project?.districtRef??null,location:project?.location??"",
    targetGroup:project?.targetGroup??"",plannedBeneficiaries:project?.plannedBeneficiaries??null},
   team:{...blank().team,coordinatorRef:team?.coordinatorRef??null},
@@ -76,11 +77,11 @@ export function CampaignDraftsWorkspace({canManage}:{canManage:boolean}){
  useEffect(()=>{
   if(!editing){setChoices(null);return;}
   const id=++choiceSeq.current;
-  void api<Choices>("options?"+new URLSearchParams({stateRef:draft.project.stateRef??""}))
+  void api<Choices>("options?"+new URLSearchParams({stateRef:draft.project.stateRef??"",branchRef:draft.project.branchRef??""}))
    .then(data=>{if(id===choiceSeq.current)setChoices(data);})
    .catch(()=>{if(id===choiceSeq.current){setChoices(null);setFailure("Current branch, area or coordinator choices could not be verified.");}});
   return()=>{choiceSeq.current++;};
- },[editing,draft.project.stateRef]);
+ },[editing,draft.project.stateRef,draft.project.branchRef]);
  const reset=()=>{if(busy||pending.current)return;editingSerial.current++;setSelected(null);setDraft(blank());setStep(0);setEditing(false);setFailure("");setNotice("");};
  const open=async(row:Row)=>{if(busy||pending.current)return;const id=++editingSerial.current;setLoading(true);setFailure("");
   try{const result=await api<Row>(row.ref);if(id===editingSerial.current){setSelected(result);setDraft(fromRow(result));setEditing(true);setStep(0);setNotice("");}}
@@ -165,11 +166,17 @@ export function CampaignDraftsWorkspace({canManage}:{canManage:boolean}){
     </>}
     {step===1&&<>
      {select("Foundation branch",draft.project.branchRef,choices?.branches??[],
-       v=>update("project","branchRef",v),choices?.canFoundation?"Foundation-wide campaign":"Select your assigned branch")}
+       v=>setDraft(d=>({...d,project:{...d.project,branchRef:v,projectRef:null,eventRef:null}})),
+       choices?.canFoundation?"Foundation-wide campaign":"Select your assigned branch")}
      {select("State",draft.project.stateRef,choices?.states??[],v=>
        setDraft(d=>({...d,project:{...d.project,stateRef:v,districtRef:null}})),"No state selected")}
      {select("District",draft.project.districtRef,choices?.districts??[],
        v=>update("project","districtRef",v),"No district selected")}
+     {select("Current active project (optional)",draft.project.projectRef,choices?.projects??[],
+       v=>setDraft(d=>({...d,project:{...d.project,projectRef:v,eventRef:null}})),"General campaign — no project")}
+     {select("Current scheduled or ongoing event (optional)",draft.project.eventRef,
+       (choices?.events??[]).filter(e=>e.projectRef===draft.project.projectRef),
+       v=>update("project","eventRef",v),"No linked event")}
      {input("Campaign category",draft.project.category,v=>update("project","category",v))}
      {input("Location description",draft.project.location,v=>update("project","location",v))}
      {input("Target group (planned, not verified)",draft.project.targetGroup,v=>update("project","targetGroup",v))}
