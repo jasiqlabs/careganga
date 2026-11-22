@@ -1,5 +1,5 @@
 import React,{useCallback,useEffect,useRef,useState} from "react";
-import {ActivityIndicator,Pressable,StyleSheet,Text,TextInput,View} from "react-native";
+import {ActivityIndicator,Modal,Pressable,ScrollView,StyleSheet,Text,TextInput,View} from "react-native";
 import * as Crypto from "expo-crypto";
 import {careGangaTheme as theme} from "../../../../../packages/design-tokens/src/index";
 import {identityRequest} from "../identity-access/http-client";
@@ -9,7 +9,7 @@ const five=(value:number)=>Number((value/20).toFixed(2)).toString();
 const overall=(value:{goal:number;competency:number;attendance:number})=>five((value.goal+value.competency+value.attendance)/3);
 const scoreSummary=(value:{total:number;draft:number;submitted:number;released:number;averageScore:number|null;outstanding:number})=>[
  {label:"Total reviews",value:String(value.total)},{label:"Submitted (including released)",value:String(value.submitted+value.released)},
- {label:"Average score",value:value.averageScore===null?"—":value.averageScore.toFixed(2)+" / 5"},{label:"Perfect score (5/5)",value:String(value.outstanding)}
+ {label:"Average score",value:typeof value.averageScore==="number"&&Number.isFinite(value.averageScore)?value.averageScore.toFixed(2)+" / 5":"—"},{label:"Perfect score (5/5)",value:Number.isSafeInteger(value.outstanding)?String(value.outstanding):"—"}
 ];
 const statusOptions=[{value:"ALL",label:"All status"},{value:"DRAFT",label:"Draft"},{value:"SUBMITTED",label:"Submitted"},{value:"RELEASED",label:"Released"}] as const;
 type Item={reference:string;periodStart:string;periodEnd:string;goal:number;competency:number;attendance:number;status:string};
@@ -99,13 +99,21 @@ export function NativeHrAppraisalWorkspace({token,onExpired}:{token:string;onExp
    pending.current=cmd;
   }
   running.current=true;setBusy(true);setError("");setNotice("");
-  try{const result=await api<StaffItem>(cmd.path,cmd.body);
+  try{const result=await api<StaffItem&{replayed?:boolean}>(cmd.path,cmd.body);
    if(!result.reference||!Number.isInteger(result.revision)||!["DRAFT","SUBMITTED","RELEASED"].includes(result.status))throw Error("Appraisal result is uncertain.");
-   pending.current=null;setLocked(false);const notes={strengths:form.strengths.trim(),improvement:form.improvement.trim()};setSelected({...result,...notes});setForm({employeeReference:result.employeeReference,periodStart:result.periodStart,periodEnd:result.periodEnd,goal:result.goal,competency:result.competency,attendance:result.attendance,...notes});setEditor(true);await refresh();setNotice(label(result.status)+" · "+result.reference);
+   pending.current=null;setLocked(false);let current:Detail={...result,strengths:form.strengths.trim(),improvement:form.improvement.trim()};
+   if(result.replayed!==false){
+    try{const fresh=await api<Detail>("appraisals/"+encodeURIComponent(result.reference));
+     if(fresh.reference!==result.reference||typeof fresh.strengths!=="string"||typeof fresh.improvement!=="string")throw Error("Detail unavailable");
+     current=fresh;
+    }catch{setSelected(null);setForm(empty());setEditor(false);await refresh();setNotice("Appraisal result confirmed. Open the saved review to verify its latest details.");return;}
+   }
+   setSelected(current);setForm({employeeReference:current.employeeReference,periodStart:current.periodStart,periodEnd:current.periodEnd,goal:current.goal,competency:current.competency,attendance:current.attendance,strengths:current.strengths,improvement:current.improvement});setEditor(true);await refresh();setNotice(label(current.status)+" · "+current.reference);
   }catch(e){setError(e instanceof Error?e.message:"Result unknown.");if(!locked&&e&&typeof e==="object"&&"status" in e&&typeof e.status==="number"&&e.status>=400&&e.status<500){pending.current=null;setLocked(false);}else setLocked(true);}
   finally{running.current=false;setBusy(false);}
  };
  const blocked=busy||locked,editable=editor&&(!selected||selected.status==="DRAFT");
+ const closeEditor=()=>{if(running.current||locked)return;setEditor(false);setSelected(null);setForm(empty());setError("");setNotice("");};
  const changed=!!selected&&(scores.some(([key])=>form[key]!==selected[key])||form.strengths!==selected.strengths||form.improvement!==selected.improvement);
  const set=<K extends keyof Form,>(k:K,v:Form[K])=>{if(!blocked)setForm(old=>({...old,[k]:v}));};
  const btn=(name:string,onPress:()=>void,disabled=false,primary=false)=><Pressable accessibilityRole="button" accessibilityState={{disabled}} disabled={disabled} onPress={onPress} style={[styles.button,{paddingHorizontal:12,backgroundColor:primary?theme.primary:theme.selectedSurface},disabled&&{opacity:.5}]}><Text style={[styles.label,{color:primary?theme.primaryText:theme.text}]}>{name}</Text></Pressable>;
@@ -121,21 +129,37 @@ export function NativeHrAppraisalWorkspace({token,onExpired}:{token:string;onExp
   {items.map(x=><View key={x.reference} style={styles.item}><Text style={styles.label}>{x.employeeName} · {label(x.status)}</Text><Text>{x.periodStart} – {x.periodEnd}</Text><Text style={styles.muted}>Goal {five(x.goal)}/5 · Competency {five(x.competency)}/5 · Attendance {five(x.attendance)}/5</Text><Text style={styles.label}>Overall {overall(x)}/5{x.goal===100&&x.competency===100&&x.attendance===100?" · Outstanding":""}</Text>{btn("View appraisal",()=>void open(x),blocked)}</View>)}
   {offset>0&&btn("Previous appraisals",()=>setOffset(v=>Math.max(0,v-25)),blocked||loading)}
   {more&&btn("Next appraisals",()=>setOffset(v=>v+25),blocked||loading)}
-  {editor&&<View style={styles.item}><Text style={styles.title}>{selected?selected.employeeName+" · "+label(selected.status):"New appraisal"}</Text>
+  <Modal visible={editor} animationType="slide" onRequestClose={closeEditor}>
+   <View style={{flex:1,backgroundColor:theme.surface}}><ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={{padding:16,gap:14}}>
+   <View style={{flexDirection:"row",alignItems:"center",justifyContent:"space-between",gap:8}}><Text style={[styles.title,{flex:1}]}>{selected?selected.employeeName+" · "+label(selected.status):"New appraisal"}</Text>{btn("Close",closeEditor,blocked)}</View>
+   {!!error&&<Text accessibilityRole="alert" style={styles.error}>{error}</Text>}{!!notice&&<Text accessibilityRole="alert" style={styles.label}>{notice}</Text>}
+   <View style={styles.card}>
    {!selected&&<><Text style={styles.label}>Find employee</Text><TextInput accessibilityLabel="Find employee" value={search} editable={!blocked} onChangeText={v=>setSearch(v.slice(0,80))} style={{minHeight:44,borderWidth:1,borderColor:theme.border,borderRadius:8,padding:10}}/>{btn("Search permitted employees",()=>void options(search),blocked)}
    {!!optionsError&&<Text accessibilityRole="alert" style={styles.error}>{optionsError}</Text>}
    {!people.length&&!optionsError&&<Text style={styles.muted}>Search for an eligible employee.</Text>}
    {people.map(x=><Pressable key={x.employeeReference} accessibilityRole="button" accessibilityState={{selected:form.employeeReference===x.employeeReference,disabled:blocked}} disabled={blocked} onPress={()=>set("employeeReference",x.employeeReference)} style={[styles.button,{padding:8,backgroundColor:form.employeeReference===x.employeeReference?theme.selectedSurface:theme.surface,borderWidth:1,borderColor:theme.border}]}><Text>{x.employeeName}</Text></Pressable>)}
    {field("Period start (YYYY-MM-DD)",form.periodStart,v=>set("periodStart",v),10)}{field("Period end (YYYY-MM-DD)",form.periodEnd,v=>set("periodEnd",v),10)}</>}
    {selected&&<Text>{form.periodStart} – {form.periodEnd}</Text>}
-   {scores.map(([k,name])=><View key={k} style={{gap:4}}><Text style={styles.label}>{name}: {five(form[k])}/5</Text><View accessible accessibilityLabel={name+" "+five(form[k])+" out of five"} style={{height:8,backgroundColor:theme.selectedSurface,borderRadius:8,overflow:"hidden"}}><View style={{height:8,backgroundColor:theme.primary,width:(form[k]+"%") as `${number}%`}}/></View><View style={{flexDirection:"row",gap:8,alignItems:"center"}}>{btn("−",()=>set(k,Math.max(0,form[k]-1)),blocked||!editable||form[k]===0)}<TextInput accessibilityLabel={name+" score from 0 to 100 (100 equals 5)"} keyboardType="number-pad" editable={!blocked&&editable} value={String(form[k])} onChangeText={v=>{if(/^\d{0,3}$/.test(v)&&Number(v)<=100)set(k,Number(v));}} style={{flex:1,minHeight:44,borderWidth:1,borderColor:theme.border,borderRadius:8,padding:10}}/>{btn("+",()=>set(k,Math.min(100,form[k]+1)),blocked||!editable||form[k]===100)}</View></View>)}
+   {scores.map(([k,name])=><View key={k} style={{gap:8}}>
+    <Text style={styles.label}>{name}: {five(form[k])}/5</Text>
+    <View accessible accessibilityRole="adjustable" accessibilityLabel={name}
+     accessibilityValue={{min:0,max:100,now:form[k],text:five(form[k])+" out of five"}}
+     accessibilityState={{disabled:blocked||!editable}}
+     accessibilityActions={[{name:"increment",label:"Increase score"},{name:"decrement",label:"Decrease score"}]}
+     onAccessibilityAction={e=>{if(blocked||!editable)return;const a=e.nativeEvent.actionName;if(a==="increment"||a==="decrement")set(k,Math.max(0,Math.min(100,form[k]+(a==="increment"?1:-1))));}}
+     style={{height:8,backgroundColor:theme.selectedSurface,borderRadius:8,overflow:"hidden"}}>
+     <View style={{height:8,backgroundColor:theme.primary,width:(form[k]+"%") as `${number}%`}}/>
+    </View>
+    <View style={{flexDirection:"row",flexWrap:"wrap",gap:6}}>{[0,1,2,3,4,5].map(v=><Pressable key={v} accessibilityRole="button" accessibilityLabel={name+" "+v+" out of five"} accessibilityState={{selected:form[k]===v*20,disabled:blocked||!editable}} disabled={blocked||!editable} onPress={()=>set(k,v*20)} style={[styles.button,{minWidth:44,paddingHorizontal:10,backgroundColor:form[k]===v*20?theme.primary:theme.selectedSurface}]}><Text style={[styles.label,{color:form[k]===v*20?theme.primaryText:theme.text}]}>{v}</Text></Pressable>)}</View>
+    <View style={{flexDirection:"row",gap:8}}>{btn("− 0.05",()=>set(k,Math.max(0,form[k]-1)),blocked||!editable||form[k]===0)}{btn("+ 0.05",()=>set(k,Math.min(100,form[k]+1)),blocked||!editable||form[k]===100)}</View>
+   </View>)}
    {field("Strengths (private reviewer notes)",form.strengths,v=>set("strengths",v),1000,true)}{field("Areas to improve (private reviewer notes)",form.improvement,v=>set("improvement",v),1000,true)}
-   <View style={[styles.card,{backgroundColor:theme.selectedSurface}]}><Text style={styles.label}>Overall score: {overall(form)} / 5</Text><Text style={styles.muted}>Average of all three components. The numeric inputs use 0–100 (100 equals 5). Only the confirmed perfect-score rating is labeled.</Text></View>
+   <View style={[styles.card,{backgroundColor:theme.selectedSurface}]}><Text style={styles.label}>Overall score: {overall(form)} / 5</Text><Text style={styles.muted}>Average of all three components. Choose a score or adjust by 0.05. Only the confirmed perfect-score rating is labeled.</Text></View>
    {locked?<><Text accessibilityRole="alert" style={styles.error}>The original result is unknown. Retry the same command before editing.</Text>{btn("Retry original command",()=>void execute("save"),busy,true)}</>:<>
    {editable&&btn("Save draft",()=>void execute("save"),busy,true)}
    {selected?.status==="DRAFT"&&btn("Submit saved appraisal",()=>void execute("submit"),busy||changed,true)}
    {selected?.status==="SUBMITTED"&&btn("Release scores to employee",()=>void execute("release"),busy,true)}
-   {changed&&<Text style={styles.muted}>Save changes before submitting.</Text>}{btn("Close appraisal",()=>{setEditor(false);setSelected(null);setForm(empty());},busy)}</>}
-  </View>}
+   {changed&&<Text style={styles.muted}>Save changes before submitting.</Text>}{btn("Close appraisal",closeEditor,busy)}</>}
+  </View></ScrollView></View></Modal>
  </View>;
 }
