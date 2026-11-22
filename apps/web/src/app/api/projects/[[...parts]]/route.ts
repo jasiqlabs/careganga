@@ -6,6 +6,7 @@ async function proxy(req:NextRequest,ctx:Context,method:"GET"|"POST"|"PATCH"){
  const p=(await ctx.params).parts??[],ref=(s:string)=>/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i.test(s);
  const valid=p.length===0&&["GET","POST"].includes(method)||p.length===1&&(method==="GET"&&(["me","options","geography","export"].includes(p[0])||ref(p[0]))||method==="PATCH"&&ref(p[0]))||p.length===2&&ref(p[0])&&["change-status","branch-change"].includes(p[1])&&method==="POST";
  const reply=(body:unknown,status=200)=>NextResponse.json(body,{status,headers:{"Cache-Control":"private, no-store"}});
+ if(method!=="GET"&&req.headers.get("origin")!==req.nextUrl.origin)return reply({message:"Request origin not allowed."},403);
  if(!valid)return reply({message:"Project action unavailable."},404);
  const token=(await cookies()).get("cg_staff_session")?.value;if(!token)return reply({message:"Sign in again."},401);
  const base=process.env.BACKEND_URL;if(!base)return reply({message:"Projects unavailable."},503);
