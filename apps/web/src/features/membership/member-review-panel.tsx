@@ -21,7 +21,7 @@ const detailTabs=[
  {key:"MEMBERSHIP",label:"Membership Details"},
  {key:"DOCUMENTS",label:"Documents"},
  {key:"PAYMENT",label:"Payment & Donation"},
- {key:"GENERATED",label:"Generated Documents",pending:true},
+ {key:"GENERATED",label:"Generated Documents"},
  {key:"WORKFLOW",label:"Approval Workflow"},
  {key:"COMMUNICATION",label:"Communication",pending:true},
  {key:"ACTIVITY",label:"Activity Log"}
@@ -156,6 +156,12 @@ export function MemberReviewPanel({canConfigure=false}:{canConfigure?:boolean}){
    <div className="cg04-buttons">{detail.files.map(file=><div key={file.fileRef} className="cg04-panel"><p>{readable(file.classification)} · {file.verified?"Verified":"No longer current"}</p>
     {file.verified&&<a href={base+"/"+detail.caseRef+"/files/"+file.fileRef+"/download"}>Download protected proof</a>}
    </div>)}</div>}
+ </>}
+ {detailTab==="GENERATED"&&<><h3>Original issued membership documents</h3>
+ {detail.documentPack?<><p>Current issue: <strong>{readable(detail.documentPack.status)}</strong> · revision {detail.documentPack.issueRevision}{detail.documentPack.issuedAt?" · "+new Date(detail.documentPack.issuedAt).toLocaleString("en-IN",{timeZone:"Asia/Kolkata"}):""}</p>
+  {detail.documentPack.files.length>0?<div className="cg04-review-details">{detail.documentPack.files.map(doc=><div key={doc.kind}><strong>{doc.kind==="CARD"?"Member card (front/back)":doc.kind==="CERTIFICATE"?"Membership certificate":"Welcome letter"}</strong><p>{readable(doc.status)}</p></div>)}</div>:<p>No verified document files have been recorded for this issue.</p>}
+  <p className="cg04-muted">This panel displays original CG-19 state only. Issuance and authenticated downloads are restricted to the separate authorized document tools and member account.</p>
+ </>:<p>No original membership document pack has been issued for this application.</p>}
  </>}
  {detailTab==="PAYMENT"&&<><h3>Membership fee verification</h3>
   <div className="cg04-review-details">
