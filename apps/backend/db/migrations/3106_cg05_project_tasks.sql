@@ -1,14 +1,18 @@
 -- CG05 US002: task master belongs to the actual project; assignee is an
 -- original CG01 account or an original CG10 employee linked to that account.
+CREATE SEQUENCE cg05_task_public_sequence;
 CREATE TABLE project_task (
  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
  root_realm_id uuid NOT NULL,
  project_id uuid NOT NULL,
+ task_code text NOT NULL DEFAULT ('TSK-'||lpad(nextval('cg05_task_public_sequence')::text,8,'0')) UNIQUE,
  title text NOT NULL CHECK(char_length(btrim(title)) BETWEEN 2 AND 160),
  task_type text NOT NULL CHECK(char_length(btrim(task_type)) BETWEEN 1 AND 80),
  description text NOT NULL DEFAULT '' CHECK(char_length(description)<=2000),
  priority text NOT NULL CHECK(priority IN('LOW','NORMAL','HIGH','URGENT')),
+ planned_start date,
  due_at date,
+ CHECK(planned_start IS NULL OR due_at IS NULL OR planned_start<=due_at),
  status text NOT NULL CHECK(status IN('DRAFT','ASSIGNED','IN_PROGRESS','COMPLETED','CANCELLED')),
  assignee_kind text NOT NULL CHECK(assignee_kind IN('ACCOUNT','EMPLOYEE','UNASSIGNED')),
  assignee_account_ref uuid,
