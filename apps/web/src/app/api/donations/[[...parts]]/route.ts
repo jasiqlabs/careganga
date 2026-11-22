@@ -7,12 +7,17 @@ const respond=(body:unknown,status=200)=>NextResponse.json(body,{status,
  headers:{"Cache-Control":"private, no-store","X-Content-Type-Options":"nosniff"}});
 async function proxy(req:NextRequest,ctx:Context,method:"GET"|"POST"){
  const parts=(await ctx.params).parts??[];
+ const route=parts.join("/");
  const path=parts.length===0&&method==="GET"?"/api/v1/donations":
-  parts.join("/")==="manual/queue"&&method==="GET"?"/api/v1/donations/manual/queue":
-  ["manual/options","manual/prepare"].includes(parts.join("/"))&&method==="POST"?
-    "/api/v1/donations/"+parts.join("/"):
+  ["manual/queue","refunds/queue"].includes(route)&&method==="GET"?"/api/v1/donations/"+route:
+  ["manual/options","manual/prepare","online/options","online/post","refunds/request"].includes(route)&&method==="POST"?
+    "/api/v1/donations/"+route:
   parts.length===3&&parts[0]==="manual"&&UUID.test(parts[1])&&parts[2]==="confirm"&&method==="POST"?
-    "/api/v1/donations/manual/"+parts[1]+"/confirm":null;
+    "/api/v1/donations/manual/"+parts[1]+"/confirm":
+  parts.length===3&&parts[0]==="refunds"&&UUID.test(parts[1])&&parts[2]==="options"&&method==="GET"?
+    "/api/v1/donations/refunds/"+parts[1]+"/options":
+  parts.length===3&&parts[0]==="refunds"&&UUID.test(parts[1])&&parts[2]==="confirm-cash"&&method==="POST"?
+    "/api/v1/donations/refunds/"+parts[1]+"/confirm-cash":null;
  if(!path)return respond({message:"Donation action unavailable."},404);
  if(method==="POST"&&req.headers.get("origin")!==req.nextUrl.origin)
   return respond({message:"Use the current Foundation staff panel to verify a donation."},403);

@@ -423,3 +423,6 @@ Native donor status now carries verified CG09 gross/partial/full/refund and curr
 
 ### 22-Nov US003 backend Admin A18 protected report net and options
 DonationAdminService A16/A18 currently authorized branch-scoped rows include internal action reference (never render technical UUID), receipt status, verified refund amount only from original CG09 posted correction; summary exposes gross/refunded/net and verified refund count. Refund options read current authorized source and real open CG09 years by name for protected A18 workflow. No fabricated bank payout or second ledger. QA05/12/15/17/18 source candidate, runtime not run.
+
+### 22-Nov US002/003 authorized staff BFF routes for final A17/A18 UI
+Protected Next BFF now allowlists original CG07 online/provider-finance + manual cash + refund request/queue/options/independent cash confirmation, with same-origin CSRF and session. Separate CG19 original receipt BFF allows only exact UUID staff-status and authorized issue, preserving request key on uncertain outcome. No webhook proxy, no private donor proof in URL. UI wiring next; actual Web runtime NOT_RUN.
