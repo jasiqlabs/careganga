@@ -3,8 +3,8 @@ import {useEffect,useRef,useState,type FormEvent} from "react";
 import type {CG04RosterPage,CG04RosterExport} from "@careganga/api-contracts";
 const categories={ALL:"All tiers",ANNUAL:"Annual",LIFETIME:"Lifetime",HONORARY:"Honorary",STUDENT:"Student",OTHER:"Other"};
 const statuses={ALL:"All statuses",ACTIVE:"Active",EXPIRED:"Expired",SUSPENDED:"Suspended",CANCELLED:"Cancelled"};
-type Filter={q:string;status:string;category:string;branch:string};
-const initial=():Filter=>({q:"",status:"ALL",category:"ALL",branch:""});
+type Filter={q:string;status:string;category:string;feeClass:string;joinedFrom:string;joinedTo:string;branch:string};
+const initial=():Filter=>({q:"",status:"ALL",category:"ALL",feeClass:"ALL",joinedFrom:"",joinedTo:"",branch:""});
 async function request<T>(url:string):Promise<T>{
  const r=await fetch(url,{cache:"no-store",signal:AbortSignal.timeout(12000)});
  const data=await r.json().catch(()=>null);
@@ -21,7 +21,7 @@ export function MemberRoster({canExport=false}:{canExport?:boolean}){
   void request<CG04RosterPage>("/api/membership/members?"+params).then(p=>{if(n===seq.current)setPage(p);}).catch(e=>{if(n===seq.current){setError(e.message);if(e.status===401)window.location.assign("/admin/login");}}).finally(()=>{if(n===seq.current)setLoading(false);});
   return()=>{seq.current++;};
  },[filter,cursor,epoch]);
- const apply=(e?:FormEvent)=>{e?.preventDefault();setHistory([]);setCursor("");setFilter({...draft,q:draft.q.trim()});};
+ const apply=(e?:FormEvent)=>{e?.preventDefault();if(draft.joinedFrom&&draft.joinedTo&&draft.joinedFrom>draft.joinedTo){setError("Start date must be on or before the end date.");return;}setError("");setHistory([]);setCursor("");setFilter({...draft,q:draft.q.trim()});};
  const reset=()=>{setDraft(initial());setFilter(initial());setHistory([]);setCursor("");};
  async function exportCsv(){
   if(busy)return;setBusy(true);setError("");setNotice("");
@@ -42,6 +42,9 @@ export function MemberRoster({canExport=false}:{canExport?:boolean}){
  <label>Search member number, name or contact<input maxLength={100} placeholder="Search authorized members" value={draft.q} onChange={e=>setDraft(x=>({...x,q:e.target.value}))}/></label>
  <label>Status<select value={draft.status} onChange={e=>setDraft(x=>({...x,status:e.target.value}))}>{Object.entries(statuses).map(([v,l])=><option key={v} value={v}>{l}</option>)}</select></label>
  <label>Membership type<select value={draft.category} onChange={e=>setDraft(x=>({...x,category:e.target.value}))}>{Object.entries(categories).map(([v,l])=><option key={v} value={v}>{l}</option>)}</select></label>
+ <label>Fee category<select value={draft.feeClass} onChange={e=>setDraft(x=>({...x,feeClass:e.target.value}))}><option value="ALL">All members</option><option value="GENERAL">General (no joining fee)</option><option value="PAID">Paid membership</option></select></label>
+ <label>Joined from<input type="date" value={draft.joinedFrom} onChange={e=>setDraft(x=>({...x,joinedFrom:e.target.value}))}/></label>
+ <label>Joined through<input type="date" min={draft.joinedFrom||undefined} value={draft.joinedTo} onChange={e=>setDraft(x=>({...x,joinedTo:e.target.value}))}/></label>
  <label>Foundation branch<select value={draft.branch} onChange={e=>setDraft(x=>({...x,branch:e.target.value}))}><option value="">All permitted branches</option>{page?.branchOptions.map(b=><option key={b.value} value={b.value}>{b.label}</option>)}</select></label>
  <button type="submit" disabled={busy||loading}>Search</button><button type="button" disabled={busy||loading} onClick={reset}>Reset</button>
  </form>
