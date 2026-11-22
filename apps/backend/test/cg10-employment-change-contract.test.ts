@@ -1,0 +1,17 @@
+import {test} from "node:test";
+import assert from "node:assert/strict";
+import {parseEmploymentChangeDraft,parseEmploymentChangeAction,parseExitClearance,changeCaseKind} from "../src/modules/cg-10-human-resources/application/hr-employment-change-source.facade";
+const key="12345678-1234-1234-1234-123456789012";
+const own={requestKey:key,kind:"RESIGNATION",effectiveDate:"2026-12-01",lastWorkingDate:"2026-11-30",reason:"Personal circumstances"};
+const transfer={requestKey:key,employeeReference:"CG-HR-EMP-000123",kind:"TRANSFER",effectiveDate:"2026-12-01",branchRef:key,departmentRef:key,managerRef:key,designation:"Coordinator",roleRef:key,proposedSalaryMinor:2500000,reason:"Branch requirements"};
+test("own resignation accepts only own identity and dates",()=>{const p=parseEmploymentChangeDraft(own);assert.equal(p.employeeReference,null);assert.equal(p.kind,"RESIGNATION");assert.equal(p.lastWorkingDate,"2026-11-30");});
+test("own transfer is forbidden",()=>assert.throws(()=>parseEmploymentChangeDraft({...transfer,employeeReference:undefined})));
+test("exit rejects destination role and salary fields",()=>{for(const x of [{roleRef:key},{branchRef:key},{proposedSalaryMinor:1},{designation:"Manager"}])assert.throws(()=>parseEmploymentChangeDraft({...own,...x}));});
+test("last working date must precede exit",()=>assert.throws(()=>parseEmploymentChangeDraft({...own,lastWorkingDate:own.effectiveDate})));
+test("invalid calendar date rejected",()=>assert.throws(()=>parseEmploymentChangeDraft({...own,effectiveDate:"2026-02-30"})));
+test("transfer freezes actual target references and salary proposal",()=>{const p=parseEmploymentChangeDraft(transfer);assert.equal(p.branchRef,key);assert.equal(p.proposedSalaryMinor,2500000);assert.equal(p.lastWorkingDate,null);});
+test("transfer requires destination and designation",()=>{assert.throws(()=>parseEmploymentChangeDraft({...transfer,branchRef:null}));assert.throws(()=>parseEmploymentChangeDraft({...transfer,designation:""}));});
+test("server-owned status and invalid salary rejected",()=>{assert.throws(()=>parseEmploymentChangeDraft({...transfer,status:"APPLIED"}));assert.throws(()=>parseEmploymentChangeDraft({...transfer,proposedSalaryMinor:0.5}));});
+test("edits and submit require current integer revision and original key",()=>{assert.throws(()=>parseEmploymentChangeDraft(own,true));assert.equal(parseEmploymentChangeDraft({...own,expectedRevision:2},true).expectedRevision,2);assert.equal(parseEmploymentChangeAction({requestKey:key,expectedRevision:2}).expectedRevision,2);assert.throws(()=>parseEmploymentChangeAction({requestKey:key,expectedRevision:0}));});
+test("clearance only actual HR assets or handover with evidence",()=>{assert.equal(parseExitClearance({kind:"HANDOVER",requestKey:key,evidenceNote:"Equipment returned"}).kind,"HANDOVER");assert.throws(()=>parseExitClearance({kind:"FINANCE",requestKey:key,evidenceNote:"Payment made"}));assert.throws(()=>parseExitClearance({kind:"HR",requestKey:key,evidenceNote:""}));});
+test("original case kinds preserve transfer vs exit owner",()=>{assert.equal(changeCaseKind("PROMOTION"),"HR_TRANSFER_PROMOTION");assert.equal(changeCaseKind("EXIT"),"HR_EXIT_REVIEW");});

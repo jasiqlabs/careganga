@@ -286,3 +286,17 @@ BEGIN
 END; $fn$;
 CREATE CONSTRAINT TRIGGER cg03_hr_employment_owner_required AFTER INSERT OR UPDATE ON cg03_case
  DEFERRABLE INITIALLY DEFERRED FOR EACH ROW EXECUTE FUNCTION cg03_hr_employment_owner_required();
+
+-- Serialize any new attendance day with approval and the due change. Existing
+-- historical days and ordinary check-out updates are never rewritten.
+CREATE FUNCTION cg10_attendance_pending_employment_guard() RETURNS trigger LANGUAGE plpgsql AS $fn$
+BEGIN
+ PERFORM id FROM hr_employee WHERE id=NEW.employee_id AND root_realm_id=NEW.root_realm_id FOR UPDATE;
+ IF EXISTS(SELECT 1 FROM hr_employment_change h WHERE h.root_realm_id=NEW.root_realm_id
+  AND h.employee_id=NEW.employee_id AND h.prior_assignment_id=NEW.assignment_id
+  AND h.status='APPROVED_PENDING_EFFECT' AND h.effective_date<=NEW.local_date)
+ THEN RAISE EXCEPTION 'Approved employment change must be applied before recording this date'; END IF;
+ RETURN NEW;
+END; $fn$;
+CREATE TRIGGER cg10_attendance_pending_employment_guard BEFORE INSERT OR UPDATE OF assignment_id,local_date
+ ON hr_attendance_day FOR EACH ROW EXECUTE FUNCTION cg10_attendance_pending_employment_guard();

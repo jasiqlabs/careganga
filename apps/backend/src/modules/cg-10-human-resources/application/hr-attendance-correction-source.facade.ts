@@ -1,3 +1,4 @@
+import {assertAttendanceBeforeChange} from "./hr-employment-attendance-guard";
 import {BadRequestException,ConflictException,ForbiddenException,Injectable,ServiceUnavailableException} from "@nestjs/common";
 import {createCipheriv,createDecipheriv,createHash,randomBytes,randomUUID} from "node:crypto";
 import type {PoolClient} from "pg";
@@ -156,6 +157,7 @@ export class HrAttendanceCorrectionSourceFacade{
     FOR SHARE OF a,s,p`,[actor.realmId,employee.id,employee.branch_ref,date]);
   if(q.rows.length!==1)throw new ConflictException("Choose a finished date with an effective shift in the employee's current branch");
   const d=q.rows[0],off=d.weekly_off_days.includes(new Date(date+"T00:00:00Z").getUTCDay());
+  await assertAttendanceBeforeChange(tx,actor.realmId,employee.id,d.assignment_id,date);
   if((x.result==="WEEKLY_OFF")!==off)throw new BadRequestException("The selected result does not match the effective weekly-off policy");
   const inserted=await tx.query<{id:string}>(`INSERT INTO hr_attendance_day(root_realm_id,employee_id,assignment_id,shift_id,policy_id,local_date,status)
    VALUES($1,$2,$3,$4,$5,$6,$7) ON CONFLICT(root_realm_id,employee_id,local_date) DO NOTHING RETURNING id`,

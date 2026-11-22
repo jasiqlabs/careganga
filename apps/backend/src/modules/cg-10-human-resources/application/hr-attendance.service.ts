@@ -1,3 +1,4 @@
+import {assertAttendanceBeforeChange} from "./hr-employment-attendance-guard";
 import {BadRequestException,ConflictException,ForbiddenException,Inject,Injectable,NotFoundException} from "@nestjs/common";
 import {createHash,randomUUID} from "node:crypto";
 import type {Pool,PoolClient} from "pg";
@@ -444,6 +445,7 @@ export class HrAttendanceService{
    const clock=shiftCheckInAt(now,rule.time_zone,rule.work_start_local,
     rule.work_end_local,Number(rule.grace_minutes));
    const businessDate=clock.businessDate;
+   await assertAttendanceBeforeChange(tx,actor.realmId,employee.id,rule.assignment_id,businessDate);
    if(sqlDate(rule.effective_from)>businessDate)
     throw new ConflictException("Your shift is not yet effective for this attendance day");
    if(rule.weekly_off_days.includes(new Date(businessDate+"T00:00:00Z").getUTCDay()))

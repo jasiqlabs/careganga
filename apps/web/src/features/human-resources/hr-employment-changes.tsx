@@ -112,7 +112,7 @@ export function HrEmploymentChanges({mode,canSelectRoles=false}:{mode:Mode;canSe
   </div>}
   {editing&&<fieldset disabled={busy||locked} style={{...card,minWidth:0}}><legend>{selected?"Edit draft":mode==="own"?"Resignation request":"Employment change request"}</legend>
    {mode==="manage"&&<><label>Find employee<input style={field} value={search} onChange={e=>setSearch(e.target.value)} maxLength={80}/></label><button onClick={()=>void loadPeople(search)}>Search employees</button>
-   <Options name="Employee" value={form.employeeReference} options={people.map(e=>({value:e.employeeReference,label:e.name}))} onChange={chooseEmployee}/>{employee&&<PositionCard name="Current position" value={employee.current}/>}
+   <Options name="Employee" value={form.employeeReference} options={selected?[{value:form.employeeReference,label:selected.employeeName??"Selected employee"}]:people.map(e=>({value:e.employeeReference,label:e.name}))} onChange={v=>{if(!selected)chooseEmployee(v);}}/>{employee&&<PositionCard name="Current position" value={employee.current}/>}
    {!selected&&<Options name="Change type" value={form.kind} options={kinds.map(k=>({value:k,label:label(k)}))} onChange={v=>{if(kinds.includes(v as Kind))update("kind",v as Kind);}}/>}</>}
    <label>Effective date<input type="date" style={field} value={form.effectiveDate} onChange={e=>update("effectiveDate",e.target.value)}/></label>
    {exit(form.kind)?<label>Last working date<input type="date" style={field} value={form.lastWorkingDate} onChange={e=>update("lastWorkingDate",e.target.value)}/></label>:<>

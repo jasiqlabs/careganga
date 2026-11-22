@@ -1,3 +1,4 @@
+import {assertAttendanceBeforeChange} from "./hr-employment-attendance-guard";
 import {BadRequestException,ConflictException,ForbiddenException,Injectable,NotFoundException,ServiceUnavailableException} from "@nestjs/common";
 import {createCipheriv,createDecipheriv,createHash,randomBytes,randomUUID} from "node:crypto";
 import type {PoolClient} from "pg";
@@ -279,6 +280,7 @@ export class HrLeaveSourceFacade{
   const start=dateText(row.start_date),end=dateText(row.end_date);
   const c=await this.context(tx,realm,row.employee_id,row.policy_id,start,end);
   const days=countedLeaveDates(start,end,c.weekly_off_days,c.count_weekly_off);
+  if(days.length)await assertAttendanceBeforeChange(tx,realm,row.employee_id,c.assignment_id,days[days.length-1]);
   if(c.assignment_id!==row.assignment_id||c.shift_id!==row.shift_id||c.shift_policy_id!==row.shift_policy_id||
    !days.length||(row.half_day&&!c.allow_half_days)||(row.half_day?1:days.length*2)!==row.half_days)
    throw new ConflictException({code:"CG10_LEAVE_POLICY_CHANGED"});
