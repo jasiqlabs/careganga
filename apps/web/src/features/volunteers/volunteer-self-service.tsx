@@ -1,5 +1,5 @@
 "use client";
-import {useCallback,useEffect,useRef,useState,type FormEvent} from "react";
+import {useCallback,useEffect,useRef,useState} from "react";
 import type {CG04VolunteerApplication,CG04VolunteerOptions,CG04VolunteerProfile} from "@careganga/api-contracts";
 import {CommunityAuth} from "../membership/community-auth";
 import {VolunteerEvidencePanel} from "./volunteer-evidence-panel";
@@ -66,10 +66,10 @@ export function VolunteerSelfService(){
  },[selected?.ref,selected?.version]);
  useEffect(()=>{
   if(!signed||!verified)return;
-  let active=true;const controller=new AbortController();
+  let active=true;
   const params=new URLSearchParams({stateRef:form.stateRef,branchRef:form.branchRef});
   void api<CG04VolunteerOptions>(base+"/applications/options?"+params).then(x=>{if(active&&document.visibilityState==="visible")setOptions(x);}).catch(()=>{if(active)setOptions(null);});
-  return()=>{active=false;controller.abort();};
+  return()=>{active=false;};
  },[signed,verified,form.stateRef,form.branchRef]);
  const action=async(work:()=>Promise<void>)=>{
   if(busy)return;setBusy(true);setError("");setNote("");
