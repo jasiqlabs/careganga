@@ -19,14 +19,15 @@ const from=(a:CG04VolunteerApplication):Draft=>({firstName:a.firstName,lastName:
 const readable=(v:string)=>v.replaceAll("_"," ").toLowerCase().replace(/\b[a-z]/g,c=>c.toUpperCase());
 const steps=["Personal","Contact & location","Interests & availability","Review & submit"] as const;
 export function NativeVolunteerSelf({onExit}:{onExit:()=>void}){
+ const [tab,setTab]=useState<"APPLICATION"|"VERIFY">("APPLICATION"),[verifyCode,setVerifyCode]=useState(""),[verifyStatus,setVerifyStatus]=useState<"IDLE"|"CHECKING"|"ACTIVE"|"NOT_VALID"|"UNAVAILABLE">("IDLE");
  const [token,setToken]=useState<string|null>(null),[verified,setVerified]=useState(false),[loading,setLoading]=useState(true),[busy,setBusy]=useState(false);
  const [message,setMessage]=useState(""),[apps,setApps]=useState<CG04VolunteerApplication[]>([]),[selected,setSelected]=useState<CG04VolunteerApplication|null>(null);
  const [profile,setProfile]=useState<CG04VolunteerProfile|null>(null),[options,setOptions]=useState<CG04VolunteerOptions|null>(null);
  const [draft,setDraft]=useState<Draft>(empty),[step,setStep]=useState(0);
- const seq=useRef(0),foreground=useRef(true),pending=useRef<Pending|null>(null);
+ const seq=useRef(0),verifySeq=useRef(0),foreground=useRef(true),pending=useRef<Pending|null>(null);
  const change=(key:keyof Draft,value:string|boolean)=>setDraft(v=>({...v,[key]:value}));
  const clear=useCallback(()=>{
-  seq.current++;setToken(null);setVerified(false);setApps([]);setSelected(null);setProfile(null);setOptions(null);setDraft(empty());setStep(0);pending.current=null;
+  seq.current++;verifySeq.current++;setVerifyCode("");setVerifyStatus("IDLE");setToken(null);setVerified(false);setApps([]);setSelected(null);setProfile(null);setOptions(null);setDraft(empty());setStep(0);pending.current=null;
   void SecureStore.deleteItemAsync(KEY).catch(()=>undefined);
  },[]);
  const refresh=useCallback(async(session:string)=>{
@@ -50,7 +51,7 @@ export function NativeVolunteerSelf({onExit}:{onExit:()=>void}){
  useEffect(()=>{let alive=true;void SecureStore.getItemAsync(KEY).then(v=>{if(alive&&v)void refresh(v);else if(alive)setLoading(false);}).catch(()=>{if(alive)setLoading(false);});return()=>{alive=false;seq.current++;};},[refresh]);
  useEffect(()=>{const sub=AppState.addEventListener("change",state=>{
   foreground.current=state==="active";
-  if(state!=="active"){seq.current++;setApps([]);setSelected(null);setProfile(null);setOptions(null);setDraft(empty());setMessage("");setLoading(true);}
+  if(state!=="active"){seq.current++;verifySeq.current++;setVerifyCode("");setVerifyStatus("IDLE");setApps([]);setSelected(null);setProfile(null);setOptions(null);setDraft(empty());setMessage("");setLoading(true);}
   else if(token)void refresh(token);
   else void SecureStore.getItemAsync(KEY).then(k=>{if(k)void refresh(k);else setLoading(false);});
  });return()=>sub.remove();},[token,refresh]);
@@ -115,12 +116,33 @@ export function NativeVolunteerSelf({onExit}:{onExit:()=>void}){
   }else await refresh(token);
   setMessage(kind==="SAVE"?"Draft saved. Verify your original identity document next.":kind==="SUBMIT"?"Original volunteer application sent for independent review.":"Approved volunteer identity confirmed, without a staff role.");
  });
+ const verify=async()=>{
+  if(verifyStatus==="CHECKING")return;
+  const code=verifyCode.trim().toUpperCase(),id=++verifySeq.current;
+  if(!/^CGV-[A-F0-9]{24}$/.test(code)){setVerifyStatus("NOT_VALID");return;}
+  setVerifyStatus("CHECKING");
+  try{
+   const status=await memberInvoke<{valid:boolean;status:"ACTIVE"|"NOT_VALID"}>("/api/v1/public/volunteers/verify/"+encodeURIComponent(code));
+   if(id===verifySeq.current&&foreground.current)setVerifyStatus(status.valid&&status.status==="ACTIVE"?"ACTIVE":"NOT_VALID");
+  }catch{if(id===verifySeq.current&&foreground.current)setVerifyStatus("UNAVAILABLE");}
+ };
  const choose=(app:CG04VolunteerApplication|null)=>{pending.current=null;setSelected(app);setDraft(app?from(app):empty());setStep(0);};
  const editable=!selected||["DRAFT","RETURNED"].includes(selected.status);
  return <SafeAreaView style={s.page}><ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={s.content}>
   {button("Back to CareGanga Foundation",onExit)}
   <View style={s.hero}><Text style={s.heroOverline}>VOLUNTEER WITH US</Text><Text accessibilityRole="header" style={s.heroTitle}>Make a difference with CareGanga</Text>
    <Text style={s.heroText}>Four original application steps. Actual verified documents and a distinct Foundation approval are required.</Text></View>
+  <View style={s.row}>{button("Application Form",()=>setTab("APPLICATION"),false,tab==="APPLICATION")}
+   {button("Verify Volunteer",()=>setTab("VERIFY"),false,tab==="VERIFY")}</View>
+  {tab==="VERIFY"?<View style={s.card}>
+    <Text style={s.title}>Verify Volunteer</Text><Text style={s.muted}>Enter the opaque code on a genuinely issued CareGanga volunteer card. Only current eligibility is returned.</Text>
+    <TextInput accessibilityLabel="Official volunteer verification code" style={s.input} value={verifyCode} placeholder="CGV-…" autoCapitalize="characters" autoCorrect={false} maxLength={28}
+     onChangeText={value=>{verifySeq.current++;setVerifyCode(value.toUpperCase());setVerifyStatus("IDLE");}} onSubmitEditing={()=>void verify()}/>
+    {button(verifyStatus==="CHECKING"?"Checking original status…":"Verify current volunteer",()=>void verify(),verifyStatus==="CHECKING")}
+    {verifyStatus==="ACTIVE"&&<Text accessibilityRole="text">The official volunteer card currently verifies an active approved volunteer.</Text>}
+    {verifyStatus==="NOT_VALID"&&<Text accessibilityRole="text">This code does not verify a current active official volunteer card.</Text>}
+    {verifyStatus==="UNAVAILABLE"&&<Text accessibilityRole="alert">Official volunteer verification is unavailable. Retry before relying on it.</Text>}
+  </View>:<>
   {loading&&<ActivityIndicator accessibilityLabel="Checking your volunteer account"/>}
   {!loading&&!token&&<NativeCommunityAuth onSignedIn={async k=>{await SecureStore.setItemAsync(KEY,k);await refresh(k);}}/>}
   {token&&!verified&&<View style={s.card}><Text>Verify your mobile contact in your CareGanga account before you can start the volunteer application.</Text>
@@ -169,6 +191,7 @@ export function NativeVolunteerSelf({onExit}:{onExit:()=>void}){
   {selected&&selected.reviewStatus==="PENDING_OWNER"&&selected.status==="SUBMITTED"&&<View style={s.card}>
    <Text>Independent Foundation approval received. Confirm the original volunteer identity.</Text>
    {button("Activate approved volunteer",()=>void work("ACTIVATE"))}</View>}
+  </>}
   </>}
  </ScrollView></SafeAreaView>;
 }
