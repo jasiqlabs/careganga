@@ -126,3 +126,60 @@ export class ProjectActivitiesService{
    return {...row,history,canManage,canProgress};
   },true);
  }
+
+ async geography(token:string,stateInput:unknown){const state=optionalRef(stateInput);return this.projects.run(token,"projects.activities.view",async(tx,a)=>this.branches.projectGeographyOptions(tx,a,state),true);}
+ async options(token:string,query:Record<string,unknown>){
+  const project=optionalRef(query.projectRef),state=optionalRef(query.stateRef),selected=query.branchRef!==undefined,q=clean(query.q??"",0,80).toLowerCase();
+  return this.projects.run(token,"projects.activities.manage",async(tx,a)=>{
+   await this.identity.assertCurrent(tx,a,"projects.activities.view");
+   const s=await this.branches.projectBranchScope(tx,a),p=await this.parent(tx,a,project),branch=p?p.branch_ref:optionalRef(query.branchRef);
+   const projects=(await tx.query("SELECT id AS value,code_norm||' · '||title AS label,branch_ref AS \"branchRef\" FROM project WHERE root_realm_id=$1 AND status NOT IN('COMPLETED','CANCELLED') AND ((branch_ref IS NULL AND $2::boolean) OR branch_ref=ANY($3::uuid[])) ORDER BY title,id LIMIT 100",[a.realmId,s.all,s.branches.map(b=>b.value)])).rows;
+   let owners:{value:string;label:string}[]=[];
+   if(p||selected){
+    const scoped=await this.branches.projectBranch(tx,a,branch);
+    owners=(await tx.query<{value:string;label:string}>(`SELECT aa.id AS value,aa.display_name AS label FROM account aa
+     WHERE aa.realm_id=$1 AND ${eligible("aa")} AND ($2='' OR strpos(lower(aa.display_name),$2)>0)
+     AND ((NOT EXISTS(SELECT 1 FROM hr_employee h0 WHERE h0.root_realm_id=aa.realm_id AND h0.account_ref=aa.id)
+     AND ($3::uuid IS NULL OR aa.id=$4::uuid OR aa.id=$5::uuid OR ${grant("aa","foundation.branches.admin")}))
+     OR EXISTS(SELECT 1 FROM ${taskEmployeeFrom} WHERE e.root_realm_id=aa.realm_id AND e.account_ref=aa.id AND ($3::uuid IS NULL OR h.branch_ref=$3) AND ${currentTaskEmployee}))
+     ORDER BY aa.display_name,aa.id LIMIT 100`,[a.realmId,q,branch,scoped.managerRef,p?.owner_account_ref??null])).rows;
+   }
+   return {projects,branches:s.branches.map(({value,label})=>({value,label})),canManageFoundation:s.all,selectedBranch:branch,owners,states:await this.branches.projectGeographyOptions(tx,a,null),districts:state?await this.branches.projectGeographyOptions(tx,a,state):[]};
+  },true);
+ }
+ async list(token:string,query:Record<string,unknown>,mine=false,exporting=false){
+  const q=clean(query.q??"",0,100).toLowerCase(),project=optionalRef(query.projectRef),kind=choice(query.kind??"ALL",["ALL",...activityKinds]),type=clean(query.activityType??"",0,80),category=clean(query.category??"",0,80),
+   status=choice(query.status??"ALL",["ALL",...activityStatuses]),tab=choice(query.tab??"ALL",["ALL","COMPLETED","ONGOING","UPCOMING","CANCELLED","MY"] as const),state=optionalRef(query.stateRef),district=optionalRef(query.districtRef),branch=optionalRef(query.branchRef),owner=clean(query.owner??"",0,100).toLowerCase(),location=clean(query.location??"",0,100).toLowerCase(),from=date(query.from),to=date(query.to),offset=Number(query.offset??0);
+  if(!Number.isSafeInteger(offset)||offset<0||offset>10000||from&&to&&from>to||district&&!state)throw invalid();
+  return this.projects.run(token,exporting?"projects.activities.export":"projects.activities.view",async(tx,a)=>{
+   if(exporting)await this.identity.assertCurrent(tx,a,"projects.activities.view");
+   if(state||district)await this.branches.projectGeography(tx,a,state,district);
+   const s=await this.branches.projectBranchScope(tx,a);
+   const scope=`x.root_realm_id=$1 AND ((${effectiveBranch}) IS NULL OR b.status='ACTIVE') AND
+    ((NOT $5::boolean AND (((${effectiveBranch}) IS NULL AND $2::boolean) OR (${effectiveBranch})=ANY($3::uuid[]))) OR (x.owner_account_ref=$4 AND ${ownerCurrent}))`;
+   const vals=[a.realmId,s.all,s.branches.map(v=>v.value),a.accountId,mine,project,q,kind,type,category,status,state,district,branch,owner,location,from,to];
+   const filters=` AND ($6::uuid IS NULL OR x.project_id=$6) AND ($7='' OR strpos(lower(x.title),$7)>0 OR strpos(lower(x.description),$7)>0 OR strpos(lower(x.activity_code),$7)>0 OR strpos(lower(x.program_label),$7)>0)
+    AND ($8='ALL' OR x.kind=$8) AND ($9='' OR lower(x.activity_type)=lower($9)) AND ($10='' OR lower(x.category)=lower($10)) AND ($11='ALL' OR x.status=$11)
+    AND ($12::uuid IS NULL OR x.state_ref=$12) AND ($13::uuid IS NULL OR x.district_ref=$13) AND ($14::uuid IS NULL OR (${effectiveBranch})=$14)
+    AND ($15='' OR strpos(lower(a.display_name),$15)>0) AND ($16='' OR strpos(lower(x.venue_label),$16)>0)
+    AND ($17::date IS NULL OR (x.scheduled_start AT TIME ZONE 'Asia/Kolkata')::date>=$17) AND ($18::date IS NULL OR (x.scheduled_start AT TIME ZONE 'Asia/Kolkata')::date<=$18)`;
+   const where=" WHERE "+scope+filters,upcoming="x.status='SCHEDULED' AND x.scheduled_start>=now()";
+   const tabFilter=tab==="UPCOMING"?" AND "+upcoming:tab==="MY"?" AND x.owner_account_ref=$4 AND "+ownerCurrent:["COMPLETED","ONGOING","CANCELLED"].includes(tab)?" AND x.status='"+tab+"'":"";
+   const page=await tx.query("SELECT "+select+joins+where+tabFilter+" ORDER BY x.scheduled_start ASC,x.id LIMIT $19 OFFSET $20",[...vals,exporting?501:26,offset]);
+   const items=page.rows.slice(0,exporting?500:25);
+   if(exporting){const columns=["code","title","kind","project","program","category","activityType","venue","branch","state","district","scheduledStart","scheduledEnd","owner","status"];return {csv:[columns,...items.map(row=>columns.map(k=>row[k]))].map(row=>row.map(csv).join(",")).join("\r\n"),rows:items.length,hasMore:page.rows.length>500};}
+   const counts=(await tx.query(`SELECT count(*)::int AS total,count(*) FILTER(WHERE x.status='COMPLETED')::int AS completed,count(*) FILTER(WHERE x.status='ONGOING')::int AS ongoing,count(*) FILTER(WHERE ${upcoming})::int AS upcoming,count(*) FILTER(WHERE x.status='CANCELLED')::int AS cancelled,count(*) FILTER(WHERE x.owner_account_ref=$4 AND ${ownerCurrent})::int AS mine`+joins+where,vals)).rows[0];
+   const categories=(await tx.query("SELECT x.category AS label,count(*)::int AS count"+joins+where+" GROUP BY x.category ORDER BY count DESC,label LIMIT 8",vals)).rows;
+   const statuses=(await tx.query("SELECT x.status AS label,count(*)::int AS count"+joins+where+" GROUP BY x.status ORDER BY x.status",vals)).rows;
+   const recent=(await tx.query("SELECT x.id AS ref,x.activity_code AS code,x.title,e.action,e.resulting_status AS status,e.occurred_at AS at,actor.display_name AS actor"+joins+" JOIN project_activity_event e ON e.root_realm_id=x.root_realm_id AND e.activity_id=x.id JOIN account actor ON actor.realm_id=e.root_realm_id AND actor.id=e.actor_ref"+where+" ORDER BY e.occurred_at DESC,e.id DESC LIMIT 8",vals)).rows;
+   const choices=(await tx.query(`WITH allowed AS(SELECT p.id AS project_id,p.title AS project,x.category,x.activity_type,x.venue_label,a.display_name AS owner,(${effectiveBranch}) AS branch_id,b.name AS branch`+joins+" WHERE "+scope+`)
+    SELECT (SELECT COALESCE(jsonb_agg(v),'[]'::jsonb) FROM (SELECT DISTINCT project_id AS value,project AS label FROM allowed WHERE project_id IS NOT NULL ORDER BY project,project_id LIMIT 100) v) AS projects,
+    (SELECT COALESCE(jsonb_agg(v),'[]'::jsonb) FROM (SELECT DISTINCT branch_id AS value,branch AS label FROM allowed WHERE branch_id IS NOT NULL ORDER BY branch,branch_id LIMIT 100) v) AS branches,
+    (SELECT COALESCE(jsonb_agg(v.category),'[]'::jsonb) FROM (SELECT DISTINCT category FROM allowed ORDER BY category LIMIT 100) v) AS categories,
+    (SELECT COALESCE(jsonb_agg(v.activity_type),'[]'::jsonb) FROM (SELECT DISTINCT activity_type FROM allowed ORDER BY activity_type LIMIT 100) v) AS types,
+    (SELECT COALESCE(jsonb_agg(v.owner),'[]'::jsonb) FROM (SELECT DISTINCT owner FROM allowed ORDER BY owner LIMIT 100) v) AS owners,
+    (SELECT COALESCE(jsonb_agg(v.venue_label),'[]'::jsonb) FROM (SELECT DISTINCT venue_label FROM allowed ORDER BY venue_label LIMIT 100) v) AS locations`,vals.slice(0,5))).rows[0];
+   return {items,counts,categories,statuses,recent,filterOptions:choices,offset,hasMore:page.rows.length>25};
+  },true);
+ }
+}
