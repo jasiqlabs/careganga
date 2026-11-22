@@ -164,15 +164,23 @@ export function CampaignDraftsWorkspace({canManage}:{canManage:boolean}){
      {input("Tags (comma-separated)",draft.basic.tags.join(", "),v=>update("basic","tags",v.split(",").map(x=>x.trim()).filter(Boolean)))}
     </>}
     {step===1&&<>
+     {select("Foundation branch",draft.project.branchRef,choices?.branches??[],
+       v=>update("project","branchRef",v),choices?.canFoundation?"Foundation-wide campaign":"Select your assigned branch")}
+     {select("State",draft.project.stateRef,choices?.states??[],v=>
+       setDraft(d=>({...d,project:{...d.project,stateRef:v,districtRef:null}})),"No state selected")}
+     {select("District",draft.project.districtRef,choices?.districts??[],
+       v=>update("project","districtRef",v),"No district selected")}
      {input("Campaign category",draft.project.category,v=>update("project","category",v))}
      {input("Location description",draft.project.location,v=>update("project","location",v))}
      {input("Target group (planned, not verified)",draft.project.targetGroup,v=>update("project","targetGroup",v))}
      <label style={field}>Planned beneficiaries (estimate only)
       <input style={entry} type="number" min="0" max="10000000" step="1" value={draft.project.plannedBeneficiaries??""}
-       disabled={busy||!!pending.current} onChange={e=>update("project","plannedBeneficiaries",e.target.value===""?null:Number(e.target.value))}/></label>
-     <p>Project, event, branch and geography selectors remain unavailable until their actual source adapters are verified. A general campaign can still be saved.</p>
+       disabled={busy||!canManage||!!pending.current} onChange={e=>update("project","plannedBeneficiaries",e.target.value===""?null:Number(e.target.value))}/></label>
+     <p>Project and event links require verified CG-05 source and are not yet available in this initial draft slice.</p>
     </>}
-    {step===2&&<><p>Coordinator: current authenticated Foundation operator. Additional staff and approved volunteers require current verified assignment source and cannot be entered as technical IDs.</p></>}
+    {step===2&&<>{select("Campaign coordinator",draft.team.coordinatorRef,choices?.coordinators??[],
+      v=>update("team","coordinatorRef",v),"Use current signed-in Foundation operator")}
+     <p>Optional CG-04 volunteer association needs a currently approved volunteer and never creates a staff grant.</p></>}
     {step===3&&<>
      {input("Fundraising goal (INR, planned)",draft.budget.goal,v=>update("budget","goal",v))}
      {input("Expected cost (INR, planned)",draft.budget.expectedCost,v=>update("budget","expectedCost",v))}
