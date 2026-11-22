@@ -145,3 +145,22 @@ BEGIN
 END; $fn$;
 CREATE CONSTRAINT TRIGGER cg10_correction_link_required AFTER INSERT OR UPDATE ON hr_attendance_change
  DEFERRABLE INITIALLY DEFERRED FOR EACH ROW EXECUTE FUNCTION cg10_correction_link_required();
+
+-- Approval and actual source effect must commit together, including the exact
+-- proposed punch and the source attendance version increment.
+CREATE FUNCTION cg10_correction_effect_required() RETURNS trigger LANGUAGE plpgsql AS $fn$
+BEGIN
+ IF NEW.status='APPROVED' AND NOT EXISTS(
+  SELECT 1 FROM hr_attendance_day d JOIN cg03_case c ON c.id=NEW.case_ref AND c.realm_id=NEW.root_realm_id
+  WHERE d.root_realm_id=NEW.root_realm_id AND d.id=NEW.attendance_day_id AND d.employee_id=NEW.employee_id
+   AND d.version=NEW.expected_version+1 AND c.status='OWNER_COMPLETED'
+   AND d.status=NEW.proposed_snapshot->>'status'
+   AND d.checked_in_at IS NOT DISTINCT FROM (NEW.proposed_snapshot->>'checkInAt')::timestamptz
+   AND d.checked_out_at IS NOT DISTINCT FROM (NEW.proposed_snapshot->>'checkOutAt')::timestamptz
+   AND d.worked_minutes IS NOT DISTINCT FROM (NEW.proposed_snapshot->>'workedMinutes')::integer
+   AND COALESCE(d.leave_half_days,0)/2.0=(NEW.proposed_snapshot->>'leaveDays')::numeric
+ ) THEN RAISE EXCEPTION 'Original approved correction effect was not applied'; END IF;
+ RETURN NULL;
+END; $fn$;
+CREATE CONSTRAINT TRIGGER cg10_correction_effect_required AFTER UPDATE ON hr_attendance_change
+ DEFERRABLE INITIALLY DEFERRED FOR EACH ROW EXECUTE FUNCTION cg10_correction_effect_required();

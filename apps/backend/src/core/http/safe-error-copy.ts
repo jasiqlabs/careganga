@@ -1,6 +1,10 @@
 /** Server-controlled allow-list: authorized overrides can change safe wording only,
  * never rules, status, field binding, redaction, or authentication behavior. */
 export const SAFE_MESSAGE_CATALOG:Readonly<Record<string,string>>=Object.freeze({
+      CG10_CORRECTION_INVALID:"Choose an actual attendance day and enter valid local punch times or the correct attendance status and reason.",
+      CG10_CORRECTION_STALE:"The original attendance record or review changed. Refresh the employee attendance and submit its current version.",
+      CG10_CORRECTION_LEAVE:"Approved leave cannot be removed by an attendance correction. Contact HR for the original leave process.",
+      CG10_CORRECTION_DECISION_INVALID:"Choose Approve, Return or Reject and confirm your current Foundation password.",
       CG10_LEAVE_INVALID:"Check the leave type, dates, half-day setting and private reason.",
       CG10_LEAVE_POLICY_CHANGED:"The current branch, assigned shift or leave policy cannot support these dates. Refresh the policy or ask HR for help.",
       CG10_LEAVE_OVERLAP:"Approved leave already overlaps these dates. Choose a different period.",

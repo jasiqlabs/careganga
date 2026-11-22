@@ -315,10 +315,13 @@ export class HrAttendanceService{
    await this.identity.assertCurrent(tx,actor,"hr.attendance.view");
    await this.allowedBranch(tx,actor,branch);
    const rows=await tx.query<{employee_code:string;legal_name:string;designation:string;
-    days:Array<{date:string;status:string}>}>(`SELECT e.employee_code,
+    days:Array<{date:string;status:string;version:number;timeZone:string;checkInLocal:string|null;checkOutLocal:string|null}>}>(`SELECT e.employee_code,
     app.legal_name,a.designation,
     COALESCE(jsonb_agg(jsonb_build_object(
-      'date',to_char(d.local_date,'YYYY-MM-DD'),'status',d.status,'leaveDays',COALESCE(d.leave_half_days,0)/2.0)
+      'date',to_char(d.local_date,'YYYY-MM-DD'),'status',d.status,'leaveDays',COALESCE(d.leave_half_days,0)/2.0,
+      'version',d.version,'timeZone',dp.time_zone,
+      'checkInLocal',to_char(d.checked_in_at AT TIME ZONE dp.time_zone,'YYYY-MM-DD"T"HH24:MI'),
+      'checkOutLocal',to_char(d.checked_out_at AT TIME ZONE dp.time_zone,'YYYY-MM-DD"T"HH24:MI'))
       ORDER BY d.local_date) FILTER(WHERE d.id IS NOT NULL),'[]'::jsonb) AS days
     FROM hr_employee e
     JOIN hr_employee_application app ON app.id=e.application_id
@@ -327,8 +330,10 @@ export class HrAttendanceService{
       AND a.root_realm_id=e.root_realm_id
       AND a.valid_from<=CURRENT_DATE AND (a.valid_to IS NULL OR a.valid_to>CURRENT_DATE)
     LEFT JOIN hr_attendance_day d ON d.employee_id=e.id AND d.root_realm_id=e.root_realm_id
-      AND d.assignment_id=a.id
       AND d.local_date>=$3::date AND d.local_date<($3::date+interval '1 month')
+      AND EXISTS(SELECT 1 FROM hr_employment_assignment da WHERE da.id=d.assignment_id
+        AND da.root_realm_id=d.root_realm_id AND da.branch_ref=$2)
+    LEFT JOIN hr_shift_policy dp ON dp.id=d.policy_id AND dp.root_realm_id=d.root_realm_id
     WHERE e.root_realm_id=$1 AND a.branch_ref=$2
       AND e.status IN('ACTIVE','PROBATION','ON_HOLD','PENDING_ACCESS')
     GROUP BY e.id,e.employee_code,app.legal_name,a.designation
@@ -336,7 +341,7 @@ export class HrAttendanceService{
     [actor.realmId,branch,monthInput+"-01",offset]);
    await tx.query("COMMIT");
    return {month:monthInput,items:rows.rows.slice(0,25).map(x=>({
-    employeeName:x.legal_name,designation:x.designation,days:x.days})),
+    employeeReference:x.employee_code,employeeName:x.legal_name,designation:x.designation,days:x.days})),
     hasMore:rows.rows.length>25,offset};
   }catch(e){await tx.query("ROLLBACK");throw e;}finally{tx.release();}
  }
@@ -348,10 +353,14 @@ export class HrAttendanceService{
    if(!employee){await tx.query("COMMIT");return {status:"NOT_LINKED",days:[]};}
    const rule=await this.shift(tx,actor,employee.id);
    const rows=await tx.query<{local_date:Date|string;status:string;checked_in_at:Date|string|null;
-    checked_out_at:Date|string|null;worked_minutes:number|null;leave_half_days:number|null}>(`
-    SELECT local_date,status,checked_in_at,checked_out_at,worked_minutes,leave_half_days
-    FROM hr_attendance_day WHERE root_realm_id=$1 AND employee_id=$2
-    ORDER BY local_date DESC LIMIT 35`,[actor.realmId,employee.id]);
+    checked_out_at:Date|string|null;worked_minutes:number|null;leave_half_days:number|null;version:number;
+    time_zone:string;check_in_local:string|null;check_out_local:string|null}>(`
+    SELECT d.local_date,d.status,d.checked_in_at,d.checked_out_at,d.worked_minutes,d.leave_half_days,d.version,p.time_zone,
+     to_char(d.checked_in_at AT TIME ZONE p.time_zone,'YYYY-MM-DD"T"HH24:MI') AS check_in_local,
+     to_char(d.checked_out_at AT TIME ZONE p.time_zone,'YYYY-MM-DD"T"HH24:MI') AS check_out_local
+    FROM hr_attendance_day d JOIN hr_shift_policy p ON p.id=d.policy_id AND p.root_realm_id=d.root_realm_id
+    WHERE d.root_realm_id=$1 AND d.employee_id=$2
+    ORDER BY d.local_date DESC LIMIT 35`,[actor.realmId,employee.id]);
    await tx.query("COMMIT");
    return {status:rule?"ASSIGNED":"NO_CURRENT_SHIFT",
     shift:rule?{label:rule.name,timeZone:rule.time_zone,
@@ -362,7 +371,8 @@ export class HrAttendanceService{
       Date.now()>=new Date(x.checked_in_at).getTime()),
     days:rows.rows.map(x=>({date:sqlDate(x.local_date),status:x.status,
       checkInAt:x.checked_in_at?new Date(x.checked_in_at).toISOString():null,
-      leaveDays:(x.leave_half_days??0)/2,
+      leaveDays:(x.leave_half_days??0)/2,version:x.version,timeZone:x.time_zone,
+      checkInLocal:x.check_in_local,checkOutLocal:x.check_out_local,
       checkOutAt:x.checked_out_at?new Date(x.checked_out_at).toISOString():null,
       workedMinutes:x.worked_minutes}))};
   }catch(e){await tx.query("ROLLBACK");throw e;}finally{tx.release();}
