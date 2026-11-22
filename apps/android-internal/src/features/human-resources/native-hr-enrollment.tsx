@@ -16,7 +16,7 @@ import {identityRequest} from "../identity-access/http-client";
 type Application={applicationRef:string;reference:string;name:string;designation:string;
  employmentType:string;branchRef:string;departmentRef:string|null;
  managerRef:string|null;roleRef:string|null;accountRef:string|null;
- hireDate:string;revision:number;status:string};
+ hireDate:string;revision:number;status:string;summary?:{branch:string;department:string|null;manager:string|null}};
 type Option={label:string;branchRef?:string;departmentRef?:string;managerRef?:string;accountRef?:string;geography?:string;state?:string|null;district?:string|null};
 type RoleOption={value:string;label:string};
 type Draft={name:string;designation:string;employmentType:string;
@@ -70,6 +70,7 @@ export function NativeHrEnrollment({token,canView,canManage,canReview,canViewEmp
    branch?:string;employeeReference?:string;message?:string}|null>(null);
  const [next,setNext]=useState<number|null>(null);
  const [focus,setFocus]=useState<Application|null>(null);
+ const enrollmentRead=useRef(0);const [enrollmentLoading,setEnrollmentLoading]=useState(false);
  const [verifiedFiles,setVerifiedFiles]=useState<HrFile[]>([]);
  const [review,setReview]=useState<{status:string;caseRef:string|null;reference:string|null}|null>(null);
  const [pendingLink,setPendingLink]=useState<{pending:boolean;applicationRef?:string;
@@ -213,15 +214,19 @@ export function NativeHrEnrollment({token,canView,canManage,canReview,canViewEmp
   finally{setSaving(false);}
  };
  const openSource=async(app:Application)=>{
-  jumpEvidence.current=true;setFocus(app);setReview(null);setVerifiedFiles([]);
+  const read=++enrollmentRead.current;setEnrollmentLoading(true);jumpEvidence.current=true;setFocus({...app,summary:undefined});setReview(null);setVerifiedFiles([]);
   setError("");setStatus("");
   try{
-   const value=await api(token,"applications/"+app.applicationRef+"/review");
+   const [detail,value]=await Promise.all([api(token,"applications/"+app.applicationRef),api(token,"applications/"+app.applicationRef+"/review")]);
+   if(read!==enrollmentRead.current)return;
+   if(!detail||typeof detail!=="object"||!("applicationRef" in detail)||detail.applicationRef!==app.applicationRef||!("summary" in detail)||!detail.summary)throw Error("Enrollment summary cannot be confirmed.");
+   setFocus(detail as Application);
    if(!value||typeof value!=="object"||!("status" in value)||
      typeof value.status!=="string")
     throw Error("Original enrollment review cannot be confirmed.");
    setReview(value as {status:string;caseRef:string|null;reference:string|null});
-  }catch(e){failure(e);}
+  }catch(e){if(read===enrollmentRead.current)failure(e);}
+  finally{if(read===enrollmentRead.current)setEnrollmentLoading(false);}
  };
  const submit=async(app:Application)=>{
   if(!canManage||saving)return;
@@ -454,6 +459,8 @@ export function NativeHrEnrollment({token,canView,canManage,canReview,canViewEmp
    {seen("employees")&&<View style={display("employees")}>
    {focus&&canManage&&<View style={styles.card} onLayout={()=>{if(jumpEvidence.current){jumpEvidence.current=false;scroll.current?.scrollTo({y:0,animated:false});}}}>
     <Text style={styles.h2}>Original enrollment — {focus.name}</Text>
+    {enrollmentLoading&&<ActivityIndicator accessibilityLabel="Confirming registration details"/>}
+    {focus.summary&&<View style={styles.card}><Text style={styles.h2}>Registration summary</Text>{[["Application",focus.reference],["Employee",focus.name],["Designation",focus.designation],["Employment type",title(focus.employmentType)],["Foundation branch",focus.summary.branch],["Department",focus.summary.department??"Not assigned"],["Reporting manager",focus.summary.manager??"Not assigned"],["Joining date",focus.hireDate],["Application status",title(focus.status)]].map(([label,value])=><View key={label}><Text style={styles.muted}>{label}</Text><Text style={styles.label}>{value}</Text></View>)}</View>}
     {canViewPrivate&&<NativeHrPrivate key={focus.applicationRef+"-"+token}
       token={token} applicationRef={focus.applicationRef}
       canManage={canManagePrivate&&["DRAFT","RETURNED"].includes(focus.status)}
@@ -463,18 +470,18 @@ export function NativeHrEnrollment({token,canView,canManage,canReview,canViewEmp
     {["DRAFT","RETURNED"].includes(focus.status)&&<>
       <NativeHrEvidence token={token} applicationRef={focus.applicationRef}
         revision={focus.revision} onExpired={onExpired} onFiles={setVerifiedFiles}/>
-      <Pressable accessibilityRole="button" disabled={saving}
+      <Pressable accessibilityRole="button" disabled={saving||enrollmentLoading||!focus.summary||!review}
         onPress={()=>void submit(focus)} style={styles.primary}>
         <Text style={styles.primaryText}>Submit scanner-verified enrollment</Text>
       </Pressable>
     </>}
     {focus.status==="FINAL_APPROVED_PENDING_ACTIVATION"&&
-     <Pressable accessibilityRole="button" disabled={saving}
+     <Pressable accessibilityRole="button" disabled={saving||enrollmentLoading||!focus.summary||!review}
        style={styles.primary} onPress={()=>void finalize(focus)}>
        <Text style={styles.primaryText}>Activate independently approved employee</Text>
      </Pressable>}
     <Pressable accessibilityRole="button" style={styles.outline}
-      onPress={()=>{setFocus(null);setReview(null);}}>
+      disabled={saving} onPress={()=>{enrollmentRead.current++;setEnrollmentLoading(false);setFocus(null);setReview(null);}}>
       <Text style={styles.outlineText}>Close enrollment</Text>
     </Pressable>
    </View>}
