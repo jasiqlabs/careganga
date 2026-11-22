@@ -24,7 +24,7 @@ export function VolunteerStaffWorkspace({canReview,canRoster,canExport,canConfig
  const [status,setStatus]=useState("ALL"),[availability,setAvailability]=useState("ALL"),[q,setQ]=useState(""),[applied,setApplied]=useState(""),[offset,setOffset]=useState(0);
  const [busy,setBusy]=useState(false),[loading,setLoading]=useState(true),[error,setError]=useState(""),[notice,setNotice]=useState("");
  const [action,setAction]=useState<Decision>("APPROVE"),[remarks,setRemarks]=useState(""),[password,setPassword]=useState(""),[configPassword,setConfigPassword]=useState("");
- const pending=useRef<Pending|null>(null),seq=useRef(0),epoch=useRef(0);
+ const pending=useRef<Pending|null>(null),seq=useRef(0);
  const refresh=useCallback(async()=>{
   const id=++seq.current;setLoading(true);
   const params=new URLSearchParams({status,q:applied,offset:String(offset),availability});
@@ -53,7 +53,7 @@ export function VolunteerStaffWorkspace({canReview,canRoster,canExport,canConfig
  },[refresh]);
  const choose=async(ref:string)=>{
   if(busy)return;setSelected(ref);setDetail(null);setError("");
-  try{const v=await api<CG04VolunteerReviewCase>(reviewBase+"/"+ref);if(document.visibilityState==="visible"&&selected!==ref)setDetail(v);}
+  try{const v=await api<CG04VolunteerReviewCase>(reviewBase+"/"+ref);if(document.visibilityState==="visible")setDetail(v);}
   catch(e){setError(e instanceof Error?e.message:"Volunteer review evidence unavailable.");}
  };
  const run=async(work:()=>Promise<void>)=>{
