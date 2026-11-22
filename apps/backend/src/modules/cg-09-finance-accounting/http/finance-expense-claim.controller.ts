@@ -40,8 +40,8 @@ export class FinanceExpenseClaimController{
   return this.claims.create(bearer,body);
  }
  @Get("mine")
- mine(@Headers("authorization")bearer:string,@Query("offset")offset?:string,@Query("source")source?:string){
-  return this.claims.mine(bearer,offset,source);
+ mine(@Headers("authorization")bearer:string,@Query("offset")offset?:string,@Query("source")source?:string,@Query("status")status?:string,@Query("q")q?:string){
+  return this.claims.mine(bearer,offset,source,status,q);
  }
  @Get("draft-commands/:requestKey")
  command(@Headers("authorization")bearer:string,@Param("requestKey")key:string){
