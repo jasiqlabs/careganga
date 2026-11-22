@@ -2,6 +2,7 @@ import React,{useCallback,useEffect,useRef,useState} from "react";
 import {NativeHrEvidence,type HrFile} from "./native-hr-evidence";
 import {NativeHrReviews} from "./native-hr-reviews";
 import {NativeHrPrivate} from "./native-hr-private";
+import {NativeHrMyAppraisals} from "./native-hr-appraisals";
 import {NativeHrAttendance} from "./native-hr-attendance";
 import {NativeHrBioConsent} from "./native-hr-bio-consent";
 import * as Crypto from "expo-crypto";
@@ -354,6 +355,7 @@ export function NativeHrEnrollment({token,canView,canManage,canReview,canViewEmp
       <Text style={styles.muted}>Profile unavailable until your session is verified.</Text>}
    </View>
    <NativeHrBioConsent token={token} onExpired={onExpired}/>
+   <NativeHrMyAppraisals token={token} onExpired={onExpired}/>
    <NativeHrAttendance token={token} onExpired={onExpired}
      canConfigure={canConfigureAttendance} canManageLeave={canManageLeave} canReviewLeave={canReviewLeave} canCorrect={canCorrect} canReviewCorrection={canReviewCorrection} canViewStaff={canViewStaff}/>
    {canManage&&<View style={styles.card}>
