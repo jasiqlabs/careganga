@@ -14,6 +14,7 @@ const FoundationContactScreen = lazy(() => import("../src/features/support/found
 const PublicHealthcareDirectory = lazy(() => import("../src/features/health-network/public-healthcare-directory").then(m => ({ default: m.PublicHealthcareDirectory })));
 const PatientProfileNative = lazy(() => import("../src/features/patients/patient-profile-native").then(m => ({ default: m.PatientProfileNative })));
 const NativeMemberSelf = lazy(() => import("../src/features/membership/native-member-self").then(m => ({ default: m.NativeMemberSelf })));
+const NativeVolunteerSelf = lazy(() => import("../src/features/volunteers/native-volunteer-self").then(m => ({ default: m.NativeVolunteerSelf })));
 
 class PublicScreenErrorBoundary extends Component<
   { onExit: () => void; children: React.ReactNode },
@@ -125,6 +126,7 @@ export default function PublicHome(){
   const [patientOpen,setPatientOpen]=useState(false);
   const [membershipPlan,setMembershipPlan]=useState<string|null>(null);
   const [partnerOpen,setPartnerOpen]=useState(false);
+  const [volunteerOpen,setVolunteerOpen]=useState(false);
   const [publicLoginVisible,setPublicLoginVisible]=useState(false);
   const revoke=useCallback(()=>{
     setToken(null);setPerson(null);setNoticeOpen(false);
@@ -289,6 +291,12 @@ export default function PublicHome(){
         <NativeMemberSelf initialPlan={membershipPlan} onExit={()=>setMembershipPlan(null)}/>
       </Suspense>
     </PublicScreenErrorBoundary>;
+  if(volunteerOpen)
+    return <PublicScreenErrorBoundary onExit={()=>setVolunteerOpen(false)}>
+      <Suspense fallback={<ActivityIndicator style={{marginTop:40}}/>}>
+        <NativeVolunteerSelf onExit={()=>setVolunteerOpen(false)}/>
+      </Suspense>
+    </PublicScreenErrorBoundary>;
   if(patientOpen)
     return <PublicScreenErrorBoundary onExit={()=>setPatientOpen(false)}>
       <Suspense fallback={<ActivityIndicator style={{marginTop:40}}/>}>
@@ -316,6 +324,14 @@ export default function PublicHome(){
             onPartnerApplication={()=>setPartnerOpen(true)}
             onMembershipApply={setMembershipPlan}
             onLoginVisibility={setPublicLoginVisible}/>
+          <View style={[styles.card,styles.healthFeatureCard]}>
+            <Text style={styles.heading}>Become a CareGanga Volunteer</Text>
+            <Text>Four-step enrollment using your verified CareGanga account, protected identity proof and the Foundation's independent review.</Text>
+            <Pressable accessibilityRole="button" style={styles.primary}
+              onPress={()=>setVolunteerOpen(true)}>
+              <Text style={styles.primaryText}>Apply to become a volunteer</Text>
+            </Pressable>
+          </View>
           <View style={[styles.card,styles.healthFeatureCard]}>
             <Text style={styles.heading}>Healthcare Network</Text>
             <Text>Search current verified CareGanga healthcare centers and doctors.</Text>
