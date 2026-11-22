@@ -4,17 +4,19 @@ import {Pressable,StyleSheet,Text,TextInput,View} from "react-native";
 import {identityRequest} from "../identity-access/http-client";
 type Fields={contactPhone:string|null;postalAddress:string|null;
  emergencyName:string|null;emergencyPhone:string|null;
- pan:string|null;bankAccount:string|null;bankIfsc:string|null;fatherName:string|null;motherName:string|null;dateOfBirth:string|null;gender:string|null;bloodGroup:string|null;contactEmail:string|null;pinCode:string|null;bankName:string|null;accountHolder:string|null;bankBranch:string|null;accountType:string|null;upiId:string|null};
+ pan:string|null;bankAccount:string|null;bankIfsc:string|null;fatherName:string|null;motherName:string|null;dateOfBirth:string|null;gender:string|null;bloodGroup:string|null;contactEmail:string|null;pinCode:string|null;bankName:string|null;accountHolder:string|null;bankBranch:string|null;accountType:string|null;upiId:string|null;addressState:string|null;addressDistrict:string|null;addressBlock:string|null;workLocation:string|null;compensationProposal:string|null};
 const empty=():Fields=>({contactPhone:null,postalAddress:null,emergencyName:null,
- emergencyPhone:null,pan:null,bankAccount:null,bankIfsc:null,fatherName:null,motherName:null,dateOfBirth:null,gender:null,bloodGroup:null,contactEmail:null,pinCode:null,bankName:null,accountHolder:null,bankBranch:null,accountType:null,upiId:null});
+ emergencyPhone:null,pan:null,bankAccount:null,bankIfsc:null,fatherName:null,motherName:null,dateOfBirth:null,gender:null,bloodGroup:null,contactEmail:null,pinCode:null,bankName:null,accountHolder:null,bankBranch:null,accountType:null,upiId:null,addressState:null,addressDistrict:null,addressBlock:null,workLocation:null,compensationProposal:null});
 const groups=[
  {title:"Personal and contact information",fields:[
   ["fatherName","Father's name (optional)"],["motherName","Mother's name (optional)"],
   ["dateOfBirth","Date of birth"],["gender","Gender (optional)"],
   ["bloodGroup","Blood group (optional)"],["pan","PAN (if required)"],
-  ["contactPhone","Contact phone"],["contactEmail","Email address"],["postalAddress","Postal address"],["pinCode","PIN code"],
+  ["contactPhone","Contact phone"],["contactEmail","Email address"],["postalAddress","Postal address"],["addressState","Residential state"],["addressDistrict","Residential district"],["addressBlock","Residential block / subdivision"],["pinCode","PIN code"],
   ["emergencyName","Emergency contact name"],["emergencyPhone","Emergency contact phone"]
  ]},
+ {title:"Employment location",fields:[["workLocation","Work location / office (optional)"]]},
+ {title:"Restricted compensation proposal",fields:[["compensationProposal","Proposed salary (INR) — request only, not payroll"]]},
  {title:"Bank details",fields:[
   ["bankName","Bank name"],["accountHolder","Account holder name"],["bankAccount","Bank account number"],["bankIfsc","IFSC"],
   ["bankBranch","Bank branch"],["accountType","Account type"],["upiId","UPI ID (optional)"]
@@ -42,6 +44,7 @@ export function NativeHrPrivate({token,applicationRef,canManage,onExpired}:{
  const [opened,setOpened]=useState(false);
  const [data,setData]=useState<Fields>(empty);
  const [revision,setRevision]=useState(0);
+ const [canProposeCompensation,setCanProposeCompensation]=useState(false);
  const [savedAccount,setSavedAccount]=useState("");
  const [confirmAccount,setConfirmAccount]=useState("");
  const confirmNeeded=canManage&&Boolean(data.bankAccount)&&data.bankAccount!==savedAccount;
@@ -61,17 +64,18 @@ export function NativeHrPrivate({token,applicationRef,canManage,onExpired}:{
     !("revision" in value)||typeof value.revision!=="number"||
     !value.details||typeof value.details!=="object")
     throw Error("The original private data cannot be verified.");
-   setData(value.details as Fields);setSavedAccount((value.details as Fields).bankAccount??"");setConfirmAccount("");setRevision(value.revision);setOpened(true);
+   setData(value.details as Fields);setSavedAccount((value.details as Fields).bankAccount??"");setConfirmAccount("");setRevision(value.revision);setCanProposeCompensation("canProposeCompensation" in value&&value.canProposeCompensation===true);setOpened(true);
   }catch(e){setOpened(false);setData(empty());fail(e);}
   finally{setBusy(false);}
  };
  const save=async()=>{
   if(busy||!canManage||!opened)return;
   if(confirmNeeded&&data.bankAccount!==confirmAccount.trim()){setError("Confirm the new bank account number before saving.");return;}
+  const {compensationProposal,...personal}=data;const saveDetails=canProposeCompensation?{...personal,compensationProposal}:personal;
   setBusy(true);setError("");setMessage("");
   try{
    const value=await api(token,applicationRef,"PATCH",{
-    expectedRevision:revision,details:data});
+    expectedRevision:revision,details:saveDetails});
    if(!value||typeof value!=="object"||!("saved" in value)||
     value.saved!==true||!("revision" in value)||
     typeof value.revision!=="number")
@@ -94,7 +98,7 @@ export function NativeHrPrivate({token,applicationRef,canManage,onExpired}:{
     disabled={busy} style={styles.button}>
     <Text style={styles.buttonText}>Open audited private details</Text></Pressable>:
    <View style={{gap:10}}>
-    {groups.map(group=><View key={group.title} style={{gap:12,borderTopWidth:1,borderTopColor:hrTheme.border,paddingTop:12}}>
+    {groups.filter(g=>g.title!=="Restricted compensation proposal"||canProposeCompensation).map(group=><View key={group.title} style={{gap:12,borderTopWidth:1,borderTopColor:hrTheme.border,paddingTop:12}}>
      <Text style={[styles.heading,{color:hrTheme.primary}]}>{group.title}</Text>
      {group.fields.map(([field,label])=><View key={field}>
       <Text style={styles.label}>{label}</Text>
@@ -102,8 +106,8 @@ export function NativeHrPrivate({token,applicationRef,canManage,onExpired}:{
        <TextInput accessibilityLabel={label} editable={canManage&&!busy} value={data[field]??""} autoCorrect={false} autoComplete="off"
         placeholder={field==="dateOfBirth"?"YYYY-MM-DD":"Optional"} placeholderTextColor="#94A3B8" autoCapitalize="none" style={styles.input}
         onChangeText={v=>{if(field==="bankAccount")setConfirmAccount("");setData(old=>({...old,[field]:v}));}}
-        maxLength={field==="postalAddress"?700:field==="contactEmail"?254:field==="upiId"?128:field==="contactPhone"||field==="emergencyPhone"?20:field==="bankAccount"?22:field==="bankIfsc"?11:field==="pan"||field==="dateOfBirth"?10:field==="pinCode"?6:field==="gender"?32:120}
-        keyboardType={field==="contactEmail"?"email-address":field==="contactPhone"||field==="emergencyPhone"?"phone-pad":field==="pinCode"||field==="bankAccount"?"number-pad":"default"} multiline={field==="postalAddress"}/>}
+        maxLength={field==="postalAddress"?700:field==="contactEmail"?254:field==="upiId"?128:field==="contactPhone"||field==="emergencyPhone"?20:field==="bankAccount"?22:field==="bankIfsc"?11:field==="pan"||field==="dateOfBirth"?10:field==="pinCode"?6:field==="gender"?32:field==="workLocation"?160:field==="compensationProposal"?13:field==="addressState"||field==="addressDistrict"||field==="addressBlock"?100:120}
+        keyboardType={field==="compensationProposal"?"decimal-pad":field==="contactEmail"?"email-address":field==="contactPhone"||field==="emergencyPhone"?"phone-pad":field==="pinCode"||field==="bankAccount"?"number-pad":"default"} multiline={field==="postalAddress"}/>}
       {field==="bankAccount"&&confirmNeeded&&<View style={{marginTop:10}}><Text style={styles.label}>Confirm bank account number</Text><TextInput accessibilityLabel="Confirm bank account number" editable={!busy} value={confirmAccount} onChangeText={setConfirmAccount} keyboardType="number-pad" maxLength={22} autoComplete="off" style={styles.input}/></View>}
      </View>)}
     </View>)}
