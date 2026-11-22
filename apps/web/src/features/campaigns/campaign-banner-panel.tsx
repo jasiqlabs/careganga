@@ -111,7 +111,8 @@ export function CampaignSupportingDocumentsPanel({campaignRef,version,canUpload,
   [consent,setConsent]=useState(false),[busy,setBusy]=useState(false),
   [error,setError]=useState(""),[message,setMessage]=useState(""),
   [epoch,setEpoch]=useState(0),[intent,setIntent]=useState("");
- const command=useRef<Command|null>(null),running=useRef(false),latest=useRef(refs);
+ const command=useRef<Command|null>(null),running=useRef(false),latest=useRef(refs),mounted=useRef(true);
+ useEffect(()=>{mounted.current=true;return()=>{mounted.current=false;};},[]);
  latest.current=refs;
  useEffect(()=>{let active=true;setFiles(null);
   void api<{files:MediaFile[];campaignVersion:number}>("campaigns/"+campaignRef).then(v=>{
@@ -122,6 +123,7 @@ export function CampaignSupportingDocumentsPanel({campaignRef,version,canUpload,
  },[campaignRef,version,epoch]);
  const accepted=(v:Upload)=>{
   if(!v.cleanVerified||!v.fileRef||!v.fileVersion)throw Error("CG19 has not verified the supporting document.");
+  if(!mounted.current)return; // Old campaign wizard was closed while CG19 verified bytes.
   const current=latest.current;
   if(!current.includes(v.fileRef)){if(current.length>=6)throw Error("Maximum six supporting files.");onChange([...current,v.fileRef]);}
   setMessage("Document scanner-verified. Save your campaign draft to attach this private evidence.");
