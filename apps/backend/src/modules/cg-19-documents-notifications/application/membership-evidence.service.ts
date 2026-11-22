@@ -24,7 +24,7 @@ export class MembershipEvidenceService{
  private async own(tx:PoolClient,a:Actor,app:string,version:number|null,write=false){
   const r=(await tx.query<{version:number;status:string}>("SELECT version,status FROM membership_application WHERE root_realm_id=$1 AND id=$2 AND applicant_account_ref=$3 FOR SHARE",[a.realmId,app,a.accountId])).rows[0];
   if(!r)throw missing();
-  if(write&&(!["DRAFT","RETURNED"].includes(r.status)||version!==null&&r.version!==version)||r.status==="CANCELLED")throw changed();
+  if(r.status==="CANCELLED"||write&&(!["DRAFT","RETURNED"].includes(r.status)||version!==null&&r.version!==version))throw changed();
   return r;
  }
  private async intent(tx:PoolClient,a:Actor,ref:string,write=false){
@@ -123,7 +123,7 @@ export class MembershipEvidenceService{
  async frozenProof(tx:PoolClient,realm:string,app:string,version:number){
   const pending=await tx.query("SELECT 1 FROM cg19_membership_file_intent WHERE realm_id=$1 AND application_id=$2 AND application_version=$3 AND status IN('INITIATED','UNKNOWN') AND reserved_until>now() LIMIT 1",[realm,app,version]);
   if(pending.rowCount)throw new ConflictException("Finish verifying your uploaded documents before submitting.");
-  const files=(await tx.query<{fileRef:string;fileVersion:number;classification:string;sha256:string}>("SELECT f.id AS \"fileRef\",f.revision AS \"fileVersion\",f.classification,f.sha256 FROM cg19_membership_private_file f JOIN cg19_membership_file_intent i ON i.realm_id=f.realm_id AND i.id=f.intent_id WHERE f.realm_id=$1 AND f.application_id=$2 AND f.application_version<=$3 AND f.revoked_at IS NULL AND f.scan_status='CLEAN_VERIFIED' AND i.status='VALIDATED' ORDER BY f.classification FOR SHARE OF f,i",[realm,app,version])).rows;
+  const files=(await tx.query<{fileRef:string;fileVersion:number;sourceVersion:number;classification:string;sha256:string}>("SELECT f.id AS \"fileRef\",f.revision AS \"fileVersion\",f.application_version AS \"sourceVersion\",f.classification,f.sha256 FROM cg19_membership_private_file f JOIN cg19_membership_file_intent i ON i.realm_id=f.realm_id AND i.id=f.intent_id WHERE f.realm_id=$1 AND f.application_id=$2 AND f.application_version<=$3 AND f.revoked_at IS NULL AND f.scan_status='CLEAN_VERIFIED' AND i.status='VALIDATED' ORDER BY f.classification FOR SHARE OF f,i",[realm,app,version])).rows;
   if(!files.some(f=>f.classification==="MEMBER_IDENTITY_PROOF"))throw new ConflictException("Upload and verify your identity document before submitting.");
   return files;
  }
