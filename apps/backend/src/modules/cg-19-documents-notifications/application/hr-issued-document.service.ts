@@ -28,7 +28,7 @@ function text(v:unknown,min:number,max:number){
   throw new BadRequestException("Check the approved template text");
  return v.trim();
 }
-const view=(d:Doc)=>({documentRef:d.id,status:d.state,issueRevision:d.issue_revision,issuedAt:d.issued_at?.toISOString()??null,canDownload:d.state==="ISSUED",canRetry:["PENDING","UNKNOWN","VERIFYING"].includes(d.state)&&d.attempt_count<5});
+const view=(d:Doc)=>({documentRef:d.id,status:d.state,issueRevision:d.issue_revision,issuedAt:d.issued_at?.toISOString()??null,canDownload:d.state==="ISSUED",canRetry:["PENDING","UNKNOWN","VERIFYING"].includes(d.state)});
 @Injectable()
 export class HrIssuedDocumentService{
  constructor(@Inject(DATABASE)private readonly db:Pool,private readonly sessions:SessionService,
@@ -170,10 +170,11 @@ export class HrIssuedDocumentService{
   const password=x.currentPassword,a=await this.sessions.requireAction(token,"hr.documents.manage");await this.sessions.requireAction(token,"documents.letters.issue");await this.sessions.limitFoundationRootProof(a);
   const doc=await this.run(async tx=>{
    await this.root(tx,a);await this.identity.assertCurrent(tx,a,"documents.letters.issue");await this.sessions.requireFreshFoundationRootProof(tx,a,password);
-   const row=await this.find(tx,a,reference),c=await this.approvals.approvedSource(tx,a,row);
+   const row=await this.find(tx,a,reference);
    const digest=hash(JSON.stringify(["CG19_HR_ISSUE",row.id,row.source_digest,row.template_id,row.template_version]));
    const existing=(await tx.query<Doc>("SELECT * FROM cg19_generated_document WHERE realm_id=$1 AND issued_by=$2 AND issue_key=$3 FOR UPDATE",[a.realmId,a.accountId,key])).rows[0];
-   if(existing){if(existing.request_digest!==digest||existing.case_id!==c.id)throw new ConflictException("Original issue request differs");return existing;}
+   if(existing){if(existing.request_digest!==digest||existing.case_id!==row.case_ref)throw new ConflictException("Original issue request differs");return existing;}
+   const c=await this.approvals.approvedSource(tx,a,row);
    if((await tx.query("SELECT 1 FROM cg19_generated_document WHERE realm_id=$1 AND case_id=$2 AND state IN('PENDING','UNKNOWN','VERIFYING','ISSUED')",[a.realmId,c.id])).rowCount)throw new ConflictException("An original document already exists. Review or retry it.");
    if(row.kind==="EMPLOYEE_ID"&&(await tx.query("SELECT 1 FROM cg19_generated_document WHERE realm_id=$1 AND hr_card_employee_ref=$2 AND state IN('PENDING','UNKNOWN','VERIFYING','ISSUED')",[a.realmId,row.employee_id])).rowCount)throw new ConflictException("Revoke or resolve the previous employee card before issuing a replacement");
    const version=(await tx.query<{rev:number}>("SELECT COALESCE(MAX(issue_revision),0)+1 AS rev FROM cg19_generated_document WHERE realm_id=$1 AND case_id=$2",[a.realmId,c.id])).rows[0].rev;
@@ -201,11 +202,12 @@ export class HrIssuedDocumentService{
    await this.identity.assertCurrent(tx,a,"documents.letters.issue");const {d,row}=await this.docAccess(tx,a,id);
    if(["ISSUED","REVOKED","FAILED"].includes(d.state))return {d,claimed:false,reference:row.reference};
    await this.approvals.approvedSource(tx,a,row);
-   const q=await tx.query<Doc>(`UPDATE cg19_generated_document SET state='VERIFYING',claim_token=$3,claim_expires_at=now()+interval '2 minutes',attempt_count=attempt_count+1
-    WHERE realm_id=$1 AND id=$2 AND state IN('PENDING','UNKNOWN','VERIFYING') AND attempt_count<5 AND (claim_expires_at IS NULL OR claim_expires_at<now()) RETURNING *`,[a.realmId,d.id,claim]);
+   const q=await tx.query<Doc>(`UPDATE cg19_generated_document SET state='VERIFYING',claim_token=$3,claim_expires_at=now()+interval '2 minutes',attempt_count=LEAST(5,attempt_count+1)
+    WHERE realm_id=$1 AND id=$2 AND state IN('PENDING','UNKNOWN','VERIFYING') AND (claim_expires_at IS NULL OR claim_expires_at<now()) RETURNING *`,[a.realmId,d.id,claim]);
    return {d:q.rows[0]??d,claimed:!!q.rowCount,reference:row.reference};
   });
   const d=found.d;if(!found.claimed)return view(d);
+  // Explicit authorized retry after provider recovery uses the original create-only key, with a saturated attempt counter and no background polling.
   try{
    const template=(await this.db.query<Template>("SELECT * FROM cg19_document_template WHERE realm_id=$1 AND id=$2 AND version=$3",[a.realmId,d.template_id,d.template_version])).rows[0];
    if(!template||template.status!=="APPROVED"||!template.hr_signatory_name||!template.hr_signature_file_ref||!template.hr_seal_file_ref)throw Error("Original template unavailable");
@@ -276,7 +278,7 @@ export class HrIssuedDocumentService{
   });
   let portrait:{bytes:Buffer;mime:string}|undefined;
   if(proof.portrait){const f=proof.portrait,bytes=await this.objects.readVerifiedPrivateObject({objectKey:f.object_key,objectVersion:f.object_version,maxBytes:Number(f.size_bytes)});
-   if(hash(bytes)!==f.sha256||f.sha256!==proof.row.source_snapshot.portraitSha256)throw new ConflictException("Original approved portrait changed");portrait={bytes,mime:f.mime};}
+   if(bytes.length!==Number(f.size_bytes)||hash(bytes)!==f.sha256||f.sha256!==proof.row.source_snapshot.portraitSha256)throw new ConflictException("Original approved portrait changed");portrait={bytes,mime:f.mime};}
   const bytes=await renderHrDocument({snapshot:proof.row.source_snapshot,title:proof.t.title,body:proof.t.body,reference:proof.row.reference,sourceDigest:proof.row.source_digest,documentRef:proof.row.id,issueRevision:proof.row.revision,createdAt:new Date(),qr:null,portrait,signatoryName:proof.t.hr_signatory_name!,preview:true});
   if(bytes.length>10*1024*1024)throw new ServiceUnavailableException("Draft preview exceeds the safe file limit");
   const current=await this.sessions.requireAction(token,"hr.documents.manage");

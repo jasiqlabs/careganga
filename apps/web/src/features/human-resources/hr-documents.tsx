@@ -29,14 +29,20 @@ function ReceiptUpload({id,onVerified,disabled,assetType,onClear}:{id?:string;on
    const bytes=await file.arrayBuffer(),digest=Array.from(new Uint8Array(await crypto.subtle.digest("SHA-256",bytes)),x=>x.toString(16).padStart(2,"0")).join("");
    const cmd:{key:string;hash:string;upload?:string}=original.current?.hash===digest?original.current:{key:crypto.randomUUID(),hash:digest};original.current=cmd;
    const path=assetType?"document-templates/assets":"me/documents/"+id+"/receipt-uploads";
-   if(cmd.upload){const status=await api<{cleanVerified:boolean;fileRef?:string}>(path+"/"+cmd.upload);if(status.cleanVerified&&(!assetType||status.fileRef)){onVerified(status.fileRef);setMessage("Secure file scan verified.");return;}}
+   if(cmd.upload){const status=await api<{cleanVerified:boolean;fileRef?:string}>(path+"/"+cmd.upload);if(status.cleanVerified&&(!assetType||status.fileRef)){onVerified(status.fileRef);setMessage("Secure file scan verified.");return;}
+    const oldState=(status as {status?:string}).status;
+    if(oldState==="REJECTED"||oldState==="EXPIRED"){original.current=null;setMessage("The previous secure file request ended. Choose the file again.");return;}
+    const recovered=await api<{cleanVerified:boolean;fileRef?:string;status?:string}>(path+"/"+cmd.upload+"/confirm",{});
+    if(recovered.cleanVerified&&(!assetType||recovered.fileRef)){onVerified(recovered.fileRef);setMessage("Secure file scan verified.");return;}
+    if(recovered.status==="EXPIRED_OR_REJECTED"||recovered.status==="REJECTED"){original.current=null;setMessage("The previous secure file request ended. Choose the file again.");return;}
+   }
    const grant=await api<{uploadRef:string;status:string;cleanVerified:boolean;fileRef?:string;uploadUrl?:string;uploadHeaders?:Record<string,string>}>(path,{requestKey:cmd.key,mime:file.type,sizeBytes:file.size,sha256:digest,...(assetType?{assetType}:{})});
    cmd.upload=grant.uploadRef;if(grant.cleanVerified&&(!assetType||grant.fileRef)){onVerified(grant.fileRef);setMessage("Secure file scan verified.");return;}
    if(grant.status!=="UPLOAD_READY"||!grant.uploadUrl||!grant.uploadHeaders||!grant.uploadUrl.startsWith("https://"))throw Error("Secure upload unavailable. No copy was accepted.");
    const sent=await fetch(grant.uploadUrl,{method:"PUT",body:bytes,headers:grant.uploadHeaders,credentials:"omit",cache:"no-store"});
    const checked=await api<{cleanVerified:boolean;fileRef?:string}>(path+"/"+cmd.upload+"/confirm",{});if(!checked.cleanVerified)throw Error(!sent.ok?"Transfer unconfirmed. Retry the same file.":"The original scan has not verified the received copy.");
    if(assetType&&!checked.fileRef)throw Error("Original asset reference was not confirmed.");onVerified(checked.fileRef);setMessage("Secure file scan verified.");
-  }catch(e){setMessage(e instanceof Error?e.message:"Receipt outcome unconfirmed.");}finally{setBusy(false);}
+  }catch(e){setMessage(e&&typeof e==="object"&&"status" in e&&e.status===401?"Sign in again.":e&&typeof e==="object"&&"status" in e&&e.status===403?"Your current document permission does not allow this file.":"Secure file outcome unconfirmed. Retry the same selected file or refresh.");}finally{setBusy(false);}
  };
  return <div style={panel}><label>{assetType?title(assetType)+" image":"Upload signed received copy"}<input type="file" accept={assetType?"image/jpeg,image/png":"application/pdf,image/jpeg,image/png"} disabled={busy||disabled} onChange={e=>{setFile(e.target.files?.[0]??null);original.current=null;onClear?.();setMessage("");}}/></label>
  <button disabled={!file||busy||disabled} onClick={()=>void upload()}>{busy?"Checking private file…":assetType?"Upload and verify "+title(assetType):"Upload and verify received copy"}</button>{message&&<p role="alert">{message}</p>}</div>;
@@ -53,7 +59,7 @@ export function HrDocuments({mode,canIssue=false,canApproveTemplate=false,canRev
  const pending=useRef<Command|null>(null),running=useRef(false),generation=useRef(0),personRead=useRef(0);
  const request=useCallback(<T,>(p:string,v?:object)=>api<T>(p,v),[]);
  const fail=useCallback((e:unknown)=>{setMessage(e instanceof Error?e.message:"Original outcome unconfirmed");},[]);
- const refresh=useCallback(async()=>{const g=++generation.current;setRows([]);setLoading(true);
+ const refresh=useCallback(async()=>{const g=++generation.current;setRows([]);setSelected(null);setMore(false);setLoading(true);
   try{const v=await request<{items:Row[];hasMore:boolean}>(route+"?offset="+offset);if(!Array.isArray(v.items))throw Error("Document history unavailable");if(g===generation.current){setRows(v.items);setMore(v.hasMore===true);}}
   catch(e){if(g===generation.current)fail(e);}finally{if(g===generation.current)setLoading(false);}
  },[route,offset,request,fail]);

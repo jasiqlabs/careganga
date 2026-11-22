@@ -27,14 +27,20 @@ function NativeReceiptUpload({token,id,disabled,onVerified,onExpired,assetType,o
  const original=useRef<{key:string;hash:string;upload?:string}|null>(null);
  useEffect(()=>()=>{if(picked)try{new File(picked.uri).delete();}catch{}},[picked]);
  const choose=async()=>{if(busy||disabled)return;try{const result=await DocumentPicker.getDocumentAsync({type:assetType?["image/jpeg","image/png"]:["application/pdf","image/jpeg","image/png"],multiple:false,copyToCacheDirectory:true});
-  if(result.canceled)return;const f=result.assets[0];if(!f.mimeType||!(assetType?["image/jpeg","image/png"]:["application/pdf","image/jpeg","image/png"]).includes(f.mimeType)||!f.size||f.size>(assetType?2097152:10485760)){setMessage(assetType?"Choose a JPEG or PNG under 2 MB.":"Choose a PDF, JPEG or PNG under 10 MB.");return;}
+  if(result.canceled)return;const f=result.assets[0];if(!f.mimeType||!(assetType?["image/jpeg","image/png"]:["application/pdf","image/jpeg","image/png"]).includes(f.mimeType)||!f.size||f.size>(assetType?2097152:10485760)){try{new File(f.uri).delete();}catch{}setMessage(assetType?"Choose a JPEG or PNG under 2 MB.":"Choose a PDF, JPEG or PNG under 10 MB.");return;}
   setPicked({uri:f.uri,mime:f.mimeType,size:f.size,name:f.name});original.current=null;onClear?.();setMessage("");
  }catch{setMessage("Private file picker unavailable.");}};
  const upload=async()=>{if(!picked||busy||disabled)return;setBusy(true);setMessage("");
   try{const file=new File(picked.uri),digest=await file.digest("SHA-256");if(!/^[a-f0-9]{64}$/.test(digest))throw Error("Original file checksum unavailable.");
    const cmd:{key:string;hash:string;upload?:string}=original.current?.hash===digest?original.current:{key:Crypto.randomUUID(),hash:digest};original.current=cmd;
    const path=assetType?"document-templates/assets":"me/documents/"+id+"/receipt-uploads";
-   if(cmd.upload){const status=await api<{cleanVerified:boolean;fileRef?:string}>(token,path+"/"+cmd.upload);if(status.cleanVerified&&(!assetType||status.fileRef)){onVerified(status.fileRef);setMessage("Secure file scan verified.");return;}}
+   if(cmd.upload){const status=await api<{cleanVerified:boolean;fileRef?:string}>(token,path+"/"+cmd.upload);if(status.cleanVerified&&(!assetType||status.fileRef)){onVerified(status.fileRef);setMessage("Secure file scan verified.");return;}
+    const oldState=(status as {status?:string}).status;
+    if(oldState==="REJECTED"||oldState==="EXPIRED"){original.current=null;setMessage("The previous secure file request ended. Choose the file again.");return;}
+    const recovered=await api<{cleanVerified:boolean;fileRef?:string;status?:string}>(token,path+"/"+cmd.upload+"/confirm",{});
+    if(recovered.cleanVerified&&(!assetType||recovered.fileRef)){onVerified(recovered.fileRef);setMessage("Secure file scan verified.");return;}
+    if(recovered.status==="EXPIRED_OR_REJECTED"||recovered.status==="REJECTED"){original.current=null;setMessage("The previous secure file request ended. Choose the file again.");return;}
+   }
    const grant=await api<{uploadRef:string;status:string;cleanVerified:boolean;fileRef?:string;uploadUrl?:string;uploadHeaders?:Record<string,string>}>(token,path,{requestKey:cmd.key,mime:picked.mime,sizeBytes:picked.size,sha256:digest,...(assetType?{assetType}:{})});
    cmd.upload=grant.uploadRef;if(grant.cleanVerified&&(!assetType||grant.fileRef)){onVerified(grant.fileRef);setMessage("Secure file scan verified.");return;}
    if(grant.status!=="UPLOAD_READY"||!grant.uploadUrl||!grant.uploadHeaders||!grant.uploadUrl.startsWith("https://"))throw Error("Secure upload unavailable. No copy was accepted.");
@@ -42,7 +48,7 @@ function NativeReceiptUpload({token,id,disabled,onVerified,onExpired,assetType,o
    let result;try{result=await task.uploadAsync();}finally{task.release();}
    const checked=await api<{cleanVerified:boolean;fileRef?:string}>(token,path+"/"+cmd.upload+"/confirm",{});if(!checked.cleanVerified)throw Error(result.status<200||result.status>=300?"Transfer unconfirmed. Retry the same file.":"The original scan has not verified the received copy.");
    if(assetType&&!checked.fileRef)throw Error("Original asset reference was not confirmed.");onVerified(checked.fileRef);setMessage("Secure file scan verified.");
-  }catch(e){if(e&&typeof e==="object"&&"status" in e&&e.status===401)onExpired();setMessage(e instanceof Error?e.message:"Receipt outcome unconfirmed.");}finally{setBusy(false);}
+  }catch(e){if(e&&typeof e==="object"&&"status" in e&&e.status===401)onExpired();setMessage(e&&typeof e==="object"&&"status" in e&&e.status===401?"Sign in again.":e&&typeof e==="object"&&"status" in e&&e.status===403?"Your current document permission does not allow this file.":"Secure file outcome unconfirmed. Retry the same selected file or refresh.");}finally{setBusy(false);}
  };
  return <View style={styles.item}><Button name={picked?"Chosen: "+picked.name:assetType?"Choose "+title(assetType)+" image":"Choose signed received copy"} disabled={busy||disabled} onPress={()=>void choose()}/>
  <Button name={busy?"Checking private file…":assetType?"Upload and verify "+title(assetType):"Upload and verify received copy"} disabled={!picked||busy||disabled} onPress={()=>void upload()}/>{!!message&&<Text accessibilityRole="alert">{message}</Text>}</View>;
@@ -59,7 +65,7 @@ export function NativeHrDocuments({token,onExpired,mode,canIssue=false,canApprov
  const pending=useRef<Command|null>(null),running=useRef(false),generation=useRef(0),personRead=useRef(0);
  const request=useCallback(<T,>(p:string,v?:object)=>api<T>(token,p,v),[token]);
  const fail=useCallback((e:unknown)=>{if(e&&typeof e==="object"&&"status" in e&&e.status===401)onExpired();setMessage(e instanceof Error?e.message:"Original outcome unconfirmed");},[onExpired]);
- const refresh=useCallback(async()=>{const g=++generation.current;setRows([]);setLoading(true);
+ const refresh=useCallback(async()=>{const g=++generation.current;setRows([]);setSelected(null);setMore(false);setLoading(true);
   try{const v=await request<{items:Row[];hasMore:boolean}>(route+"?offset="+offset);if(!Array.isArray(v.items))throw Error("Document history unavailable");if(g===generation.current){setRows(v.items);setMore(v.hasMore===true);}}
   catch(e){if(g===generation.current)fail(e);}finally{if(g===generation.current)setLoading(false);}
  },[route,offset,request,fail]);
