@@ -422,9 +422,10 @@ export function NativeCmsEditorial({token,canManage,canPublish,canReview,onExit,
      <EditField name="Approved original navigation choices" value={newPage.navigation}
       locked={locked} onChange={v=>changeNew({navigation:v as Navigation})}/>}
     {(newPage.kind==="HOME"||newPage.kind==="ABOUT")&&<ProjectSelection sections={newPage.sections} choices={projectChoices} error={projectError} locked={locked} refresh={refreshProjects} onChange={sections=>changeNew({sections})}/>}
+    {newPage.kind==="ARTICLE"&&<EventSelection sections={newPage.sections} choices={eventChoices} error={eventError} locked={locked} refresh={refreshEvents} onSelect={v=>changeNew({slug:v.slug.slice(0,70),title:v.title,seoTitle:(v.title+" | CareGanga Foundation").slice(0,180),seoDescription:v.summary.slice(0,300),assets:[],sections:eventFields(v)})}/>}
     {newPage.sections.filter(sec=>sec.kind!=="PROJECT_TEASER").map((sec,i)=><View key={sec.kind+"-"+i} style={styles.panel}>
      <Text style={styles.heading}>{title(sec.kind)}</Text>
-     <EditField name="Source content" value={sec.fields} locked={locked}
+     {typeof sec.fields.sourceEventRef==="string"?<><Text>{String(sec.fields.heading)} · {String(sec.fields.category)}</Text><Text>{String(sec.fields.body)}</Text></>:<EditField name="Source content" value={sec.fields} locked={locked}
       sectionKind={sec.kind}
       impactGroup={typeof sec.fields.group==="string"?sec.fields.group:""}
       onChange={v=>setNewPage(old=>old?{...old,
@@ -432,7 +433,7 @@ export function NativeCmsEditorial({token,canManage,canPublish,canReview,onExit,
         fields:v as Record<string,unknown>}:x)}:null)}/>}
     </View>)}
     {button("Create original unpublished page draft",create,
-     locked||newPage.title.trim().length<3)}
+     locked||newPage.title.trim().length<(newPage.sections.some(s=>typeof s.fields.sourceEventRef==="string")?2:3))}
     {button("Cancel page creation",()=>{
      setNewPage(null);setError("");},busy)}
    </View>}
@@ -453,14 +454,15 @@ export function NativeCmsEditorial({token,canManage,canPublish,canReview,onExit,
       locked={locked} onChange={v=>change("navigation",v as Navigation)}/>
     </View>}
     {(draft.kind==="HOME"||draft.kind==="ABOUT")&&<ProjectSelection sections={draft.sections} choices={projectChoices} error={projectError} locked={locked} refresh={refreshProjects} onChange={sections=>change("sections",sections)}/>}
+    {draft.kind==="ARTICLE"&&<EventSelection sections={draft.sections} choices={eventChoices} error={eventError} locked={locked} refresh={refreshEvents} onSelect={v=>setDraft(x=>x?{...x,title:v.title,seoTitle:(v.title+" | CareGanga Foundation").slice(0,180),seoDescription:v.summary.slice(0,300),assets:[],sections:eventFields(v)}:null)}/>}
     {draft.sections.map((section,i)=>section.kind==="PROJECT_TEASER"?null:<View key={section.kind+"-"+section.order}
      style={styles.panel}>
       <Text style={styles.heading}>{title(section.kind)} · Section {i+1}</Text>
-      <EditField name="Original section fields" value={section.fields}
+      {typeof section.fields.sourceEventRef==="string"?<><Text>{String(section.fields.heading)} · {String(section.fields.category)}</Text><Text>{String(section.fields.body)}</Text></>:<EditField name="Original section fields" value={section.fields}
        sectionKind={section.kind}
        impactGroup={typeof section.fields.group==="string"?section.fields.group:""}
        onChange={v=>replaceSection(i,v as Record<string,unknown>)}
-       locked={locked}/>
+       locked={locked}/>}
     </View>)}
     <Text style={styles.note}>Original scanner-verified placements: {draft.assets.length}</Text>
     {canManage&&selected.status==="DRAFT"&&!draft.sections.some(s=>typeof s.fields.sourceEventRef==="string")&&
