@@ -82,6 +82,8 @@ export function NativeVolunteerCardIssuer({token,volunteerRef,onExpired}:{token:
   <Text style={s.heading}>Official CG-19 volunteer card</Text>
   <Text style={s.caption}>Issued only for a current independently approved volunteer with real signed Foundation branding. Never a staff role.</Text>
   {loading?<Text>Checking original official issue…</Text>:card?<Text>Current issue: {label(card.status)} · Revision {card.revision}</Text>:<Text>Original volunteer card not issued.</Text>}
+  {card?.status==="ISSUED"&&!card.canDownload&&<Text accessibilityRole="alert">This previously issued card is not currently eligible for download. Review the volunteer and approved Foundation branding, then revoke the old card before reissuing.</Text>}
+  {card&&["PENDING","UNKNOWN"].includes(card.status)&&!card.canRetry&&<Text accessibilityRole="alert">Issuance cannot be retried until current volunteer eligibility and approved branding are restored.</Text>}
   {!!message&&<Text accessibilityRole="alert">{message}</Text>}
   {(!card||card.status==="REVOKED"||card.canDownload)&&<TextInput accessibilityLabel="Current Foundation password for official card action"
    placeholder="Current Foundation password" secureTextEntry value={password} onChangeText={setPassword} style={s.input}/>}
