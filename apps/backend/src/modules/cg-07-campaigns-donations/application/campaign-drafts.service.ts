@@ -6,6 +6,7 @@ import {SessionService} from "../../cg-01-identity-access/application/session.se
 import {FoundationStructureIdentityFacade} from "../../cg-01-identity-access/application/foundation-structure-identity.facade";
 import {BranchSourceFacade} from "../../cg-02-foundation-structure/application/branch-source.facade";
 import {CampaignLinkSourceFacade} from "../../cg-05-projects-field-operations/application/campaign-link-source.facade";
+import {requireCurrentVolunteer} from "../../cg-04-membership-volunteers/application/current-volunteer-source";
 import type {VerifiedFoundationActor as Actor} from "../../cg-01-identity-access/public-api";
 import {campaignRef,parseCampaignDraft,type CampaignDraft} from "../domain/campaign-draft-input";
 
@@ -13,7 +14,7 @@ type CampaignRow={id:string;root_realm_id:string;branch_ref:string|null;created_
 const hash=(v:unknown)=>createHash("sha256").update(JSON.stringify(v)).digest("hex");
 const invalid=(message:string)=>new ConflictException({code:"CG07_CAMPAIGN_STALE",message});
 const projection=`c.id AS ref,c.code_norm AS code,c.title,c.category,c.source_status AS status,
- c.branch_ref AS "branchRef",b.name AS branch,c.project_source_ref AS "projectRef",c.event_source_ref AS "eventRef",
+ c.branch_ref AS "branchRef",b.name AS branch,c.project_source_ref AS "projectRef",c.event_source_ref AS "eventRef",c.volunteer_source_ref AS "volunteerRef",
  c.version,c.current_revision AS revision,c.created_at AS "createdAt",c.updated_at AS "updatedAt",
  c.goal_minor::text AS "goalMinor",c.start_at::text AS "startAt",c.end_at::text AS "endAt",
  jsonb_build_object('basic',r.step1_basic,'project',r.step2_project_and_geo,'team',r.step3_team,
@@ -44,8 +45,12 @@ export class CampaignDraftsService{
  }
  private async eligibleDraft(tx:PoolClient,a:Actor,v:CampaignDraft){
   const p=v.project;
-  if(v.team.volunteerRef||v.media.fileRef)
-   throw new ForbiddenException("Volunteer and media links require a current verified source. A text-only campaign is supported.");
+  if(v.media.fileRef)
+   throw new ForbiddenException("Media attachments require an independently validated original document. Text-only campaigns are supported.");
+  if(v.team.volunteerRef){
+   await this.identity.assertCurrent(tx,a,"volunteers.view");
+   await requireCurrentVolunteer(tx,a.realmId,v.team.volunteerRef,p.branchRef);
+  }
   await this.projectEvents.requireCurrent(tx,a,p.branchRef,p.projectRef,p.eventRef);
   const branch=await this.branches.projectBranch(tx,a,p.branchRef);
   await this.branches.projectGeography(tx,a,p.stateRef,p.districtRef);
@@ -92,6 +97,19 @@ export class CampaignDraftsService{
    [a.realmId,c.id])).rows[0].code_norm;
   return {ref:c.id,version:prior.resulting_version,code,status:c.source_status,replayed:true};
  }
+ private async eligibleVolunteerOptions(tx:PoolClient,a:Actor,branch:string|null,q:string){
+  try{await this.identity.assertCurrent(tx,a,"volunteers.view");}
+  catch(e){if(e instanceof ForbiddenException)return [] as {value:string;label:string}[];throw e;}
+  const result=await tx.query<{value:string;label:string}>(`SELECT v.id AS value,
+   v.display_name||' · '||v.volunteer_no AS label
+   FROM volunteer v JOIN account aa ON aa.realm_id=v.root_realm_id AND aa.id=v.account_ref
+   WHERE v.root_realm_id=$1
+    AND cg04_current_volunteer(v.root_realm_id,v.id,aa.id,$2::uuid)
+    AND ($3='' OR strpos(lower(v.display_name),lower($3))>0
+      OR strpos(lower(v.volunteer_no),lower($3))>0)
+   ORDER BY v.display_name,v.id LIMIT 80`,[a.realmId,branch,q]);
+  return result.rows;
+ }
  async options(token:string,query:Record<string,unknown>){
   if(Object.keys(query).some(k=>!["stateRef","branchRef","q"].includes(k)))throw invalid("Check the campaign choices.");
   const state=query.stateRef===undefined||query.stateRef===""?null:campaignRef(query.stateRef);
@@ -116,6 +134,7 @@ export class CampaignDraftsService{
     states:await this.branches.projectGeographyOptions(tx,a,null),
     districts:state?await this.branches.projectGeographyOptions(tx,a,state):[],
     coordinators,
+    volunteers:(scope.all||branch?await this.eligibleVolunteerOptions(tx,a,branch,search):[]),
     ...(scope.all||branch?await this.projectEvents.options(tx,a,branch,search):
       {projects:[],events:[]})};
   },true);
@@ -127,11 +146,11 @@ export class CampaignDraftsService{
    const prior=await this.replay(tx,a,value.key,digest,"CREATE_DRAFT");if(prior)return prior;
    await this.eligibleDraft(tx,a,value);
    const c=(await tx.query<CampaignRow>(`INSERT INTO campaign(root_realm_id,title,category,branch_ref,
-    goal_minor,start_at,end_at,created_by,project_source_ref,event_source_ref)
-    VALUES($1,$2,$3,$4,$5::bigint,$6::date,$7::date,$8,$9,$10)
+    goal_minor,start_at,end_at,created_by,project_source_ref,event_source_ref,volunteer_source_ref)
+    VALUES($1,$2,$3,$4,$5::bigint,$6::date,$7::date,$8,$9,$10,$11)
     RETURNING id,root_realm_id,branch_ref,created_by,source_status,version,current_revision`,
     [a.realmId,value.basic.title,value.project.category,value.project.branchRef,value.budget.goalMinor,
-     value.budget.startAt,value.budget.endAt,a.accountId,value.project.projectRef,value.project.eventRef])).rows[0];
+     value.budget.startAt,value.budget.endAt,a.accountId,value.project.projectRef,value.project.eventRef,value.team.volunteerRef])).rows[0];
    return this.record(tx,a,c,value,digest,"CREATE_DRAFT");
   });
  }
@@ -146,12 +165,12 @@ export class CampaignDraftsService{
    await this.eligibleDraft(tx,a,value);
    const next=(await tx.query<CampaignRow>(`UPDATE campaign SET title=$3,category=$4,branch_ref=$5,
     goal_minor=$6::bigint,start_at=$7::date,end_at=$8::date,
-    project_source_ref=$10,event_source_ref=$11,source_status='DRAFT',
+    project_source_ref=$10,event_source_ref=$11,volunteer_source_ref=$12,source_status='DRAFT',
     current_revision=current_revision+1,version=version+1,updated_at=now()
     WHERE root_realm_id=$1 AND id=$2 AND version=$9 AND source_status IN('DRAFT','RETURNED')
     RETURNING id,root_realm_id,branch_ref,created_by,source_status,version,current_revision`,
     [a.realmId,key,value.basic.title,value.project.category,value.project.branchRef,value.budget.goalMinor,
-     value.budget.startAt,value.budget.endAt,value.expected,value.project.projectRef,value.project.eventRef])).rows[0];
+     value.budget.startAt,value.budget.endAt,value.expected,value.project.projectRef,value.project.eventRef,value.team.volunteerRef])).rows[0];
    if(!next)throw invalid("This campaign was updated elsewhere. Refresh its current draft.");
    return this.record(tx,a,next,value,digest,"SAVE_DRAFT",existing.source_status==="RETURNED"?"RETURNED":"DRAFT");
   });
@@ -172,10 +191,10 @@ export class CampaignDraftsService{
   if(c.source_status!=="DRAFT"||c.version!==expectedVersion)
    throw invalid("Campaign draft changed. Refresh and submit its current revision.");
   const r=(await tx.query<{immutable_digest:string;title:string;category:string;branch_ref:string|null;
-   project_source_ref:string|null;event_source_ref:string|null;goal_minor:string|null;start_at:string|null;end_at:string|null;
+   project_source_ref:string|null;event_source_ref:string|null;volunteer_source_ref:string|null;goal_minor:string|null;start_at:string|null;end_at:string|null;
    basic:Record<string,unknown>;project:Record<string,unknown>;team:Record<string,unknown>;
    budget:Record<string,unknown>;media:Record<string,unknown>;review:Record<string,unknown>}>(
-   `SELECT r.immutable_digest,c.title,c.category,c.branch_ref,c.project_source_ref,c.event_source_ref,
+   `SELECT r.immutable_digest,c.title,c.category,c.branch_ref,c.project_source_ref,c.event_source_ref,c.volunteer_source_ref,
       c.goal_minor::text,c.start_at::text,c.end_at::text,r.step1_basic AS basic,
       r.step2_project_and_geo AS project,r.step3_team AS team,r.step4_budget_targets AS budget,
       r.step5_media_refs AS media,r.step6_summary AS review
@@ -187,8 +206,11 @@ export class CampaignDraftsService{
   if(!r||r.goal_minor===null||BigInt(r.goal_minor)<1n||!r.start_at||!r.end_at||
     r.end_at<today||!r.basic?.summary)
    throw invalid("Complete the campaign title, description, fundraising target and valid campaign period before review.");
-  if(r.media?.fileRef||r.team?.volunteerRef)
-   throw invalid("Unverified campaign media or volunteer association must be removed before verification.");
+  if(r.media?.fileRef)throw invalid("Remove unverified campaign media before requesting approval.");
+  if(r.volunteer_source_ref){
+   await this.identity.assertCurrent(tx,a,"volunteers.view");
+   await requireCurrentVolunteer(tx,a.realmId,r.volunteer_source_ref,c.branch_ref);
+  }
   await this.projectEvents.requireCurrent(tx,a,c.branch_ref,r.project_source_ref,r.event_source_ref);
   if(r.team?.coordinatorRef&&typeof r.team.coordinatorRef==="string"&&r.team.coordinatorRef!==a.accountId){
    const manager=await this.branches.projectBranch(tx,a,c.branch_ref);
@@ -208,7 +230,7 @@ export class CampaignDraftsService{
    [a.realmId,c.id,c.current_revision,r.immutable_digest,requestKey,nextVersion,a.accountId]);
   return {campaignId:c.id,version:nextVersion,revision:c.current_revision,digest:r.immutable_digest,title:r.title,
    sourceSnapshot:{title:r.title,category:r.category,branchRef:r.branch_ref,projectRef:r.project_source_ref,
-    eventRef:r.event_source_ref,goalMinor:r.goal_minor,startAt:r.start_at,endAt:r.end_at,
+    eventRef:r.event_source_ref,volunteerRef:r.volunteer_source_ref,goalMinor:r.goal_minor,startAt:r.start_at,endAt:r.end_at,
     steps:{basic:r.basic,project:r.project,team:r.team,budget:r.budget,media:r.media,review:r.review}}};
  }
  /** Only CG03's independently authenticated final decision may invoke this
@@ -216,9 +238,9 @@ export class CampaignDraftsService{
  async acceptReviewEffect(tx:PoolClient,root:string,campaignId:string,revision:number,digest:string,
   decision:"APPROVE"|"RETURN"|"REJECT",actorId:string,requestKey:string){
   const row=(await tx.query<{version:number;current_revision:number;status:string;project_source_ref:string|null;
-    event_source_ref:string|null;branch_ref:string|null;end_at:string|null;digest:string}>(
+    event_source_ref:string|null;volunteer_source_ref:string|null;branch_ref:string|null;end_at:string|null;digest:string}>(
    `SELECT c.version,c.current_revision,c.source_status AS status,c.project_source_ref,
-      c.event_source_ref,c.branch_ref,c.end_at::text,r.immutable_digest AS digest FROM campaign c
+      c.event_source_ref,c.volunteer_source_ref,c.branch_ref,c.end_at::text,r.immutable_digest AS digest FROM campaign c
     JOIN campaign_revision r ON r.root_realm_id=c.root_realm_id
      AND r.campaign_id=c.id AND r.revision_no=c.current_revision
     WHERE c.root_realm_id=$1 AND c.id=$2 FOR UPDATE OF c`,
@@ -233,6 +255,13 @@ export class CampaignDraftsService{
     const valid=await tx.query(`SELECT 1 FROM branch WHERE root_realm_id=$1 AND id=$2
      AND status='ACTIVE' FOR SHARE`,[root,row.branch_ref]);
     if(!valid.rowCount)throw invalid("Campaign branch is no longer active. Return it for correction.");
+   }
+   if(row.volunteer_source_ref){
+    const active=await tx.query(`SELECT 1 FROM volunteer v
+     WHERE v.root_realm_id=$1 AND v.id=$2
+       AND cg04_current_volunteer(v.root_realm_id,v.id,v.account_ref,$3::uuid)
+      FOR SHARE OF v`,[root,row.volunteer_source_ref,row.branch_ref]);
+    if(!active.rowCount)throw invalid("Campaign volunteer is no longer currently eligible. Return the campaign for correction.");
    }
    if(row.project_source_ref){
     const valid=await tx.query(`SELECT 1 FROM project
