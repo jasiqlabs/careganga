@@ -33,8 +33,8 @@ const live=`(t.assignee_account_ref IS NOT NULL AND t.assigned_at<=now()
 const joins=` FROM project_task t JOIN project p ON p.id=t.project_id AND p.root_realm_id=t.root_realm_id
  LEFT JOIN branch b ON b.id=p.branch_ref AND b.root_realm_id=p.root_realm_id
  LEFT JOIN account a ON a.id=t.assignee_account_ref AND a.realm_id=t.root_realm_id`;
-const overdue="t.due_at<CURRENT_DATE AND t.status IN('ASSIGNED','IN_PROGRESS')";
-const upcoming="t.due_at>=CURRENT_DATE AND t.status IN('ASSIGNED','IN_PROGRESS')";
+const overdue="t.due_at<(now() AT TIME ZONE 'Asia/Kolkata')::date AND t.status IN('ASSIGNED','IN_PROGRESS')";
+const upcoming="t.due_at>=(now() AT TIME ZONE 'Asia/Kolkata')::date AND t.status IN('ASSIGNED','IN_PROGRESS')";
 const projection=`t.id AS ref,t.task_code AS code,t.project_id AS "projectRef",p.title AS project,p.code_norm AS "projectCode",t.title,t.task_type AS "taskType",
  t.description,t.priority,t.planned_start::text AS "startDate",t.due_at::text AS "dueDate",t.status,t.assignee_kind AS "assigneeKind",
  a.display_name AS assignee,p.location_label AS location,b.name AS branch,t.version,t.updated_at AS "updatedAt",
@@ -195,13 +195,17 @@ export class ProjectTasksService {
   },true);
  }
  async list(token:string,query:Record<string,unknown>,mine=false,exporting=false,parentRef?:string){
+  return this.projects.run(token,exporting?"projects.tasks.export":"projects.tasks.view",(tx,a)=>this.listInTx(tx,a,query,mine,exporting,parentRef),true);
+ }
+ async listInTx(tx:PoolClient,a:Actor,query:Record<string,unknown>,mine=false,exporting=false,parentRef?:string){
+  await this.identity.assertCurrent(tx,a,exporting?"projects.tasks.export":"projects.tasks.view");
+  if(exporting)await this.identity.assertCurrent(tx,a,"projects.tasks.view");
   const projectId=parentRef?ref(parentRef):optionalRef(query.projectRef),q=clean(query.q??"",0,100).toLowerCase(),type=clean(query.taskType??"",0,80),assignee=clean(query.assignee??"",0,100).toLowerCase(),location=clean(query.location??"",0,100).toLowerCase();
   const tab=choice(query.tab??"ALL",["ALL","MY","COMPLETED","IN_PROGRESS","OVERDUE","UPCOMING","CANCELLED"] as const);
   const status=choice(query.status??"ALL",["ALL",...taskStatuses]),priority=choice(query.priority??"ALL",["ALL",...priorities]);
   const from=date(query.from),to=date(query.to),startFrom=date(query.startFrom),startTo=date(query.startTo),offset=Number(query.offset??0);
   if(!Number.isSafeInteger(offset)||offset<0||offset>10000||from&&to&&from>to||startFrom&&startTo&&startFrom>startTo)throw invalid();
-  return this.projects.run(token,exporting?"projects.tasks.export":"projects.tasks.view",async(tx,a)=>{
-   if(exporting)await this.identity.assertCurrent(tx,a,"projects.tasks.view");
+
    const s=await this.branches.projectBranchScope(tx,a);
    const scope=`t.root_realm_id=$1 AND (p.branch_ref IS NULL OR b.status='ACTIVE') AND
    ((NOT $5::boolean AND ((p.branch_ref IS NULL AND ($2::boolean OR p.owner_account_ref=$4)) OR p.branch_ref=ANY($3::uuid[]))) OR (t.assignee_account_ref=$4 AND ${live}))`;
@@ -213,7 +217,7 @@ export class ProjectTasksService {
    const rowManage=mayManage?"((p.branch_ref IS NULL AND $2::boolean) OR p.branch_ref=ANY($3::uuid[])) AND p.status NOT IN(\'COMPLETED\',\'CANCELLED\') AND t.status NOT IN(\'COMPLETED\',\'CANCELLED\')":"false";
    const page=await tx.query("SELECT "+projection+",("+rowManage+") AS \"canManage\""+joins+where+tabFilter+" ORDER BY t.due_at ASC NULLS LAST,t.updated_at DESC,t.id LIMIT $17 OFFSET $18",[...values,exporting?501:26,offset]);
    const items=page.rows.slice(0,exporting?500:25);
-   if(exporting){const columns=["code","projectCode","project","title","taskType","priority","startDate","dueDate","status","assignee","branch","location","overdue"];return {csv:[columns,...items.map(row=>columns.map(c=>row[c]))].map(row=>row.map(csvCell).join(",")).join("\r\n"),rows:items.length,hasMore:page.rows.length>500};}
+   if(exporting){await this.projects.auditExport(tx,a,"TASKS",mine,items.length,{query,parentRef});const columns=["code","projectCode","project","title","taskType","priority","startDate","dueDate","status","assignee","branch","location","overdue"];return {csv:[columns,...items.map(row=>columns.map(c=>row[c]))].map(row=>row.map(csvCell).join(",")).join("\r\n"),rows:items.length,hasMore:page.rows.length>500};}
    const counts=(await tx.query(`SELECT count(*)::integer AS total,count(*) FILTER(WHERE t.assignee_account_ref=$4 AND ${live})::integer AS mine,count(*) FILTER(WHERE t.status='COMPLETED')::integer AS completed,
     count(*) FILTER(WHERE t.status='IN_PROGRESS')::integer AS inProgress,count(*) FILTER(WHERE ${overdue})::integer AS overdue,
     count(*) FILTER(WHERE ${upcoming})::integer AS upcoming,count(*) FILTER(WHERE t.status='CANCELLED')::integer AS cancelled`+joins+where,values)).rows[0];
@@ -228,6 +232,5 @@ export class ProjectTasksService {
     (SELECT COALESCE(jsonb_agg(x.assignee),'[]'::jsonb) FROM (SELECT DISTINCT assignee FROM permitted WHERE assignee IS NOT NULL ORDER BY assignee LIMIT 100) x) AS assignees,
     (SELECT COALESCE(jsonb_agg(x.location),'[]'::jsonb) FROM (SELECT DISTINCT location FROM permitted WHERE location<>'' ORDER BY location LIMIT 100) x) AS locations`,filterScope)).rows[0];
    return {items,counts,statusCounts,priorityCounts,overdueItems,recent,filterOptions:choices,offset,hasMore:page.rows.length>25};
-  },true);
  }
 }
