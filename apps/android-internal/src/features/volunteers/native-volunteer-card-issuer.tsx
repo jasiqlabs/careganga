@@ -37,35 +37,43 @@ export function NativeVolunteerCardIssuer({token,volunteerRef,onExpired}:{token:
   });
   return()=>{sub.remove();clear();};
  },[refresh]);
- const act=async(task:()=>Promise<void>)=>{
-  if(busy)return;setBusy(true);setMessage("");
-  try{await task();}catch(e){setMessage(e instanceof Error?e.message:"Official volunteer card state is uncertain. Check current status.");}
+ const act=async(task:(current:()=>boolean)=>Promise<void>)=>{
+  if(busy)return;
+  const at=seq.current,current=()=>at===seq.current&&AppState.currentState==="active";
+  setBusy(true);setMessage("");
+  try{await task(current);}catch(e){if(current())setMessage(e instanceof Error?e.message:"Official volunteer card state is uncertain. Check current status.");}
   finally{setPassword("");setBusy(false);}
  };
- const issue=()=>void act(async()=>{
+ const issue=()=>void act(async current=>{
   if(password.length<8)throw Error("Enter current Foundation password before issuing.");
   if(!pending.current||pending.current.volunteerRef!==volunteerRef)pending.current={volunteerRef,requestKey:Crypto.randomUUID()};
   const x=await req<CG19VolunteerCardStatus>(token,"/volunteers/"+volunteerRef+"/issue",{requestKey:pending.current.requestKey,currentPassword:password});
+  if(!current())return;
   pending.current=null;setCard(x);setMessage(x.status==="ISSUED"?"Actual approved volunteer card issued.":"Issuance is pending verification. Check current status.");
  });
- const reconcile=()=>void act(async()=>{if(!card?.canRetry)throw Error("This official card is not retryable.");
-  const x=await req<CG19VolunteerCardStatus>(token,"/cards/"+card.cardRef+"/reconcile",{});setCard(x);
+ const reconcile=()=>void act(async current=>{if(!card?.canRetry)throw Error("This official card is not retryable.");
+  const x=await req<CG19VolunteerCardStatus>(token,"/cards/"+card.cardRef+"/reconcile",{});
+  if(!current())return;
+  setCard(x);
   setMessage(x.status==="ISSUED"?"Approved volunteer card verified and issued.":"Official card state is still pending.");
  });
- const revoke=()=>void act(async()=>{if(!card||password.length<8)throw Error("Enter current password for revocation.");
+ const revoke=()=>void act(async current=>{if(!card||password.length<8)throw Error("Enter current password for revocation.");
   const x=await req<CG19VolunteerCardStatus>(token,"/cards/"+card.cardRef+"/revoke",{currentPassword:password});
+  if(!current())return;
   setCard(x);setMessage("Issued volunteer card revoked in CG-19.");
  });
- const download=()=>void act(async()=>{
+ const download=()=>void act(async current=>{
   if(!card||!card.canDownload)throw Error("No original issued card exists.");
   const r=await identityRequest(endpoint+"/cards/"+card.cardRef+"/download",{headers:{Authorization:"Bearer "+token}});
   if(!r.ok||(r.headers.get("content-type")??"").split(";")[0].trim()!=="application/pdf")throw Error("Original card is unavailable.");
   const buffer=await r.arrayBuffer();
   if(!buffer.byteLength||buffer.byteLength>10485760)throw Error("Private PDF source is invalid.");
+  if(!current())return;
   const f=new File(Paths.cache,"careganga-official-volunteer-"+Crypto.randomUUID()+".pdf");
   try{
    await f.write(new Uint8Array(buffer));files.current.push(f);
    if(!(await Sharing.isAvailableAsync()))throw Error("Official document sharing is unavailable on this device.");
+   if(!current())return;
    await Sharing.shareAsync(f.uri,{mimeType:"application/pdf",dialogTitle:"Issued Foundation volunteer card"});
   }finally{try{f.delete();}catch{}files.current=files.current.filter(x=>x.uri!==f.uri);}
  });
