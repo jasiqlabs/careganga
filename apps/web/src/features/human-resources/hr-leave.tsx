@@ -2,6 +2,7 @@
 import {useCallback,useEffect,useRef,useState} from "react";
 type Policy={policyRef:string;leaveType:string;annualDays:number;usedDays:number;availableDays:number;allowHalfDays:boolean;countWeeklyOff:boolean;effectiveFrom:string;effectiveTo:string|null};
 type Request={reference:string;leaveType:string;startDate:string;endDate:string;days:number;status:string;caseStatus:string};
+type LeaveOverview={total:number;pending:number;approved:number;returned:number;rejected:number;cancelled:number;types:{label:string;count:number}[];upcoming:{name:string;leaveType:string;startDate:string;endDate:string;days:number}[]};
 type Mine={linked:boolean;year:string;policies:Policy[];requests:Request[]};
 type Review=Request&{caseRef:string;employeeName:string;revision:number;canReview:boolean;reason?:string;balance?:{annualDays:number;approvedDays:number;availableDays:number};date?:string;originalStatus?:string;proposedStatus?:string;original?:{status:string;checkInAt?:string|null;checkOutAt?:string|null};proposed?:{status:string;checkInAt?:string|null;checkOutAt?:string|null}};
 const blank=()=>({policyRef:"",startDate:"",endDate:"",halfDay:false,reason:""});
@@ -124,19 +125,20 @@ const snapshot=(v:Review["original"])=>v?v.status+" · In: "+(v.checkInAt??"—"
 export function HrLeaveReviews({onChanged,kind="leave"}:{onChanged:()=>void;kind?:"leave"|"correction"}){
  const route=kind==="leave"?"leave-reviews":"attendance-correction-reviews";
  const [items,setItems]=useState<Review[]>([]),[selected,setSelected]=useState<Review|null>(null);
+ const [overview,setOverview]=useState<LeaveOverview|null>(null);const reviewSequence=useRef(0);
  const [status,setStatus]=useState("SUBMITTED"),[offset,setOffset]=useState(0),[more,setMore]=useState(false);
  const [loading,setLoading]=useState(true),[busy,setBusy]=useState(false),[error,setError]=useState(""),[notice,setNotice]=useState("");
  const [password,setPassword]=useState(""),[action,setAction]=useState("APPROVE"),[locked,setLocked]=useState(false);
  const [filter,setFilter]=useState({from:"",to:"",type:"",employee:""}),[applied,setApplied]=useState({from:"",to:"",type:"",employee:""});
  const key=useRef<string|null>(null);
  const refresh=useCallback(async()=>{
-  setLoading(true);setError("");
-  try{const v=await api<{items:Review[];hasMore:boolean}>(route+"?status="+status+"&offset="+offset+(kind==="leave"?Object.entries(applied).map(([k,v])=>"&"+k+"="+encodeURIComponent(v)).join(""):""));
+  const read=++reviewSequence.current;setLoading(true);setError("");setOverview(null);setItems([]);setMore(false);
+  try{const v=await api<{items:Review[];hasMore:boolean;overview?:LeaveOverview}>(route+"?status="+status+"&offset="+offset+(kind==="leave"?Object.entries(applied).map(([k,v])=>"&"+k+"="+encodeURIComponent(v)).join(""):""));
    if(!Array.isArray(v.items))throw Error("Review list unavailable");
-   setItems(v.items);setMore(v.hasMore===true);
-  }catch(e){setItems([]);setMore(false);setSelected(null);setError(failure(e));}finally{setLoading(false);}
+   if(read===reviewSequence.current){setItems(v.items);setMore(v.hasMore===true);setOverview(kind==="leave"?v.overview??null:null);}
+  }catch(e){if(read===reviewSequence.current){setItems([]);setMore(false);setSelected(null);setOverview(null);setError(failure(e));}}finally{if(read===reviewSequence.current)setLoading(false);}
  },[status,offset,route,kind,applied]);
- useEffect(()=>{void refresh();},[refresh]);
+ useEffect(()=>{void refresh();return()=>{reviewSequence.current++;};},[refresh]);
  const open=async(x:Review)=>{
   if(busy||locked)return;setBusy(true);setError("");setSelected(null);setPassword("");setAction("APPROVE");key.current=null;
   try{const v=await api<Review>(route+"/"+encodeURIComponent(x.caseRef));
@@ -158,17 +160,18 @@ export function HrLeaveReviews({onChanged,kind="leave"}:{onChanged:()=>void;kind
  };
  return <section style={card} aria-label="Employee leave reviews">
   <h2 style={{margin:0}}>{kind==="leave"?"Leave requests":"Attendance correction requests"}</h2>
-  <label>Review status<select style={field} disabled={busy||locked} value={status}
-   onChange={e=>{setStatus(e.target.value);setOffset(0);setSelected(null);setPassword("");}}>
-   <option value="SUBMITTED">Pending</option><option value="OWNER_COMPLETED">Approved</option>
-   <option value="RETURNED">Returned</option><option value="REJECTED">Rejected</option>{kind==="leave"&&<option value="CANCELLED">Cancelled</option>}<option value="ALL">All</option>
-  </select></label>
-  {kind==="leave"&&<fieldset disabled={busy||locked} style={{border:0,padding:0,display:"grid",gap:8}}>
+  {kind==="leave"&&overview&&<div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(min(100%,125px),1fr))",gap:8}}>{[{label:"Total requests",count:overview.total},{label:"Pending review",count:overview.pending},{label:"Approved",count:overview.approved},{label:"Returned",count:overview.returned},{label:"Rejected",count:overview.rejected},{label:"Cancelled",count:overview.cancelled}].map(x=><article key={x.label} style={{...card,padding:12}}><span style={{color:"var(--cg-muted)"}}>{x.label}</span><strong style={{fontSize:"1.35rem"}}>{x.count}</strong></article>)}</div>}
+  <div role="group" aria-label="Review status" style={{display:"flex",flexWrap:"wrap",gap:8}}>{[{key:"ALL",label:"All"},{key:"SUBMITTED",label:"Pending"},{key:"IN_REVIEW",label:"In review"},{key:"OWNER_COMPLETED",label:"Approved"},{key:"RETURNED",label:"Returned"},{key:"REJECTED",label:"Rejected"},...(kind==="leave"?[{key:"CANCELLED",label:"Cancelled"}]:[])].filter(x=>kind==="leave"||x.key!=="IN_REVIEW").map(x=><button key={x.key} type="button" disabled={busy||locked} aria-pressed={status===x.key} style={{...field,width:"auto",background:status===x.key?"var(--cg-accent)":"#fff",color:status===x.key?"#fff":"inherit"}} onClick={()=>{setStatus(x.key);setOffset(0);setSelected(null);setPassword("");}}>{x.label}</button>)}</div>
+  {kind==="leave"&&<fieldset disabled={busy||locked} style={{border:0,padding:0,display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(min(100%,145px),1fr))",gap:8,alignItems:"end"}}>
    {(["from","to","type","employee"] as const).map(k=><label key={k}>{k==="from"?"From date":k==="to"?"To date":k==="type"?"Leave type":"Employee name"}<input style={field} type={k==="from"||k==="to"?"date":"text"} maxLength={80} value={filter[k]} onChange={e=>setFilter(x=>({...x,[k]:e.target.value}))}/></label>)}
    <button type="button" onClick={()=>{setSelected(null);setOffset(0);setApplied({...filter});}}>Apply filters</button></fieldset>}
   <button type="button" disabled={busy||loading||locked} onClick={()=>void refresh()}>Refresh reviews</button>
   {error&&<p role="alert">{error}</p>}{notice&&<p role="status">{notice}</p>}
   {loading&&<p>Loading leave reviews…</p>}{!loading&&!error&&!items.length&&<p>No matching requests.</p>}
+  {kind==="leave"&&overview&&<div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(min(100%,230px),1fr))",gap:10}}>
+   <article style={card}><strong>Requests by leave type</strong>{overview.types.length===0?<span>No matching requests.</span>:overview.types.map(x=><div key={x.label}><div style={{display:"flex",justifyContent:"space-between",gap:8}}><span>{x.label}</span><strong>{x.count}</strong></div><div aria-hidden="true" style={{height:7,background:"#EEF2F7",borderRadius:8,overflow:"hidden"}}><div style={{height:"100%",background:"var(--cg-accent)",width:(100*x.count/Math.max(1,overview.total))+"%"}}/></div></div>)}</article>
+   <article style={card}><strong>Upcoming approved leaves</strong>{overview.upcoming.length===0?<span>No matching upcoming leave.</span>:overview.upcoming.map((x,i)=><div key={i} style={{borderTop:"1px solid var(--cg-border)",paddingTop:6}}><strong>{x.name}</strong><div>{x.leaveType} · {x.startDate} – {x.endDate} · {x.days} days</div></div>)}</article>
+  </div>}
   {items.map(x=><div key={x.caseRef} style={{borderTop:"1px solid var(--cg-border)",paddingTop:8,display:"grid",gap:4}}>
    <strong>{x.employeeName} · {kind==="leave"?x.leaveType:"Attendance correction"}</strong><span>{kind==="leave"?x.startDate+" – "+x.endDate+" · "+x.days+" days":x.date+" · "+x.originalStatus+" → "+x.proposedStatus} · {label(x.status)}</span>
    <button type="button" disabled={busy||locked} onClick={()=>void open(x)}>View request</button>
