@@ -11,7 +11,7 @@ type MaskedDonor={donationNumber:string;name:string;mobileMasked:string;emailMas
 type DonationItem={donationNumber:string;donationRef:string;refundMinor:string;receiptStatus:string;
  amountMinor:string;status:string;method:string|null;
  campaignTitle:string|null;voucher:string|null;createdAt:string};
-type Report={items:DonationItem[];offset:number;hasMore:boolean;
+type Report={items:DonationItem[];offset:number;hasMore:boolean;nextCursor:string|null;
  summary:{total:number;received:number;pending:number;failed:number;receivedMinor:string;
  netReceivedMinor:string;verifiedRefundMinor:string;verifiedRefundCount:number};
  monthlyTrend:{month:string;grossMinor:string;refundMinor:string;netMinor:string}[];message:string};
@@ -40,6 +40,7 @@ export function DonationAdminWorkspace({canView,canRecord,canReview,canIssue,can
  const [data,setData]=useState<Report|null>(null),[queue,setQueue]=useState<QueueItem[]>([]);
  const [donor,setDonor]=useState<MaskedDonor|null>(null);
  const [filter,setFilter]=useState("ALL"),[search,setSearch]=useState(""),[offset,setOffset]=useState(0);
+ const [cursor,setCursor]=useState(""),[cursorTrail,setCursorTrail]=useState<string[]>([]);
  const [method,setMethod]=useState("ALL"),[minAmount,setMinAmount]=useState(""),[maxAmount,setMaxAmount]=useState(""),
   [dateFrom,setDateFrom]=useState(""),[dateTo,setDateTo]=useState(""),[campaign,setCampaign]=useState("");
  const [proof,setProof]=useState(""),[options,setOptions]=useState<Options|null>(null);
@@ -54,7 +55,7 @@ export function DonationAdminWorkspace({canView,canRecord,canReview,canIssue,can
   const id=++seq.current;
   try{
    const [report,work]=await Promise.all([
-    canView?api<Report>("?"+new URLSearchParams({status:filter,q:search,offset:String(offset),
+    canView?api<Report>("?"+new URLSearchParams({status:filter,q:search,offset:String(offset),cursor,
      method,minAmount,maxAmount,dateFrom,dateTo,campaign:campaign||"ALL"})):Promise.resolve(null),
     canRecord?api<{items:QueueItem[]}>("/manual/queue"):Promise.resolve(null)]);
    if(id!==seq.current||!mounted.current)return;
@@ -62,8 +63,9 @@ export function DonationAdminWorkspace({canView,canRecord,canReview,canIssue,can
    if(work)setQueue(work.items);
    setError("");
   }catch(e){if(id===seq.current&&mounted.current){setError(e instanceof Error?e.message:"Donations unavailable.");setData(null);setQueue([]);}}
- },[canView,canRecord,filter,search,offset,method,minAmount,maxAmount,dateFrom,dateTo,campaign]);
+ },[canView,canRecord,filter,search,offset,cursor,method,minAmount,maxAmount,dateFrom,dateTo,campaign]);
  useEffect(()=>{mounted.current=true;void refresh();return()=>{mounted.current=false;seq.current++;};},[refresh]);
+ const resetPage=()=>{setOffset(0);setCursor("");setCursorTrail([]);};
  const exportReport=async()=>{
   if(busy||!canExport)return;
   setBusy(true);setError("");setNotice("");
@@ -177,28 +179,28 @@ export function DonationAdminWorkspace({canView,canRecord,canReview,canIssue,can
     </div>
    <div className={styles.filterGrid}>
     <label style={label}>Search donation or campaign
-     <input style={input} value={search} onChange={e=>{setOffset(0);setSearch(e.target.value);}} maxLength={80}/></label>
+     <input style={input} value={search} onChange={e=>{resetPage();setSearch(e.target.value);}} maxLength={80}/></label>
     <label style={label}>Payment state
-     <select style={input} value={filter} onChange={e=>{setOffset(0);setFilter(e.target.value);}}>
+     <select style={input} value={filter} onChange={e=>{resetPage();setFilter(e.target.value);}}>
       {["ALL","REQUESTED","PAYMENT_PENDING","RECONCILIATION_PENDING","RECEIVED_POSTED","REFUNDED","FAILED","EXPIRED"].map(x=>
        <option key={x} value={x}>{x==="ALL"?"All":x.replaceAll("_"," ").toLowerCase()}</option>)}</select></label>
     <label style={label}>Method
-     <select style={input} value={method} onChange={e=>{setOffset(0);setMethod(e.target.value);}}>
+     <select style={input} value={method} onChange={e=>{resetPage();setMethod(e.target.value);}}>
       {["ALL","CASH","BANK","CHEQUE","NEFT","ONLINE"].map(x=>
        <option key={x} value={x}>{x==="ALL"?"All methods":x.toLowerCase()}</option>)}</select></label>
     <label style={label}>Minimum amount (₹)
      <input style={input} inputMode="decimal" value={minAmount} maxLength={16}
-      onChange={e=>{setOffset(0);setMinAmount(e.target.value);}}/></label>
+      onChange={e=>{resetPage();setMinAmount(e.target.value);}}/></label>
     <label style={label}>Maximum amount (₹)
      <input style={input} inputMode="decimal" value={maxAmount} maxLength={16}
-      onChange={e=>{setOffset(0);setMaxAmount(e.target.value);}}/></label>
+      onChange={e=>{resetPage();setMaxAmount(e.target.value);}}/></label>
     <label style={label}>From
-     <input type="date" style={input} value={dateFrom} onChange={e=>{setOffset(0);setDateFrom(e.target.value);}}/></label>
+     <input type="date" style={input} value={dateFrom} onChange={e=>{resetPage();setDateFrom(e.target.value);}}/></label>
     <label style={label}>To
-     <input type="date" style={input} value={dateTo} onChange={e=>{setOffset(0);setDateTo(e.target.value);}}/></label>
+     <input type="date" style={input} value={dateTo} onChange={e=>{resetPage();setDateTo(e.target.value);}}/></label>
     <label style={label}>Campaign reference (optional)
      <input style={input} value={campaign} maxLength={16} placeholder="All campaigns"
-      onChange={e=>{setOffset(0);setCampaign(e.target.value);}}/></label>
+      onChange={e=>{resetPage();setCampaign(e.target.value);}}/></label>
    </div>
    {data?.items.length===0?<p>No matching donation records.</p>:
     <div style={{overflowX:"auto"}}><table style={{width:"100%",borderCollapse:"collapse",fontSize:13}}>
@@ -222,8 +224,10 @@ export function DonationAdminWorkspace({canView,canRecord,canReview,canIssue,can
      <button type="button" onClick={()=>setDonor(null)}>Close donor details</button>
     </aside>}
    <div style={{display:"flex",gap:10}}>
-    <button type="button" disabled={offset===0||busy} onClick={()=>setOffset(x=>Math.max(0,x-25))}>Previous</button>
-    <button type="button" disabled={!data?.hasMore||busy} onClick={()=>setOffset(x=>x+25)}>Next</button>
+    <button type="button" disabled={cursorTrail.length===0||busy}
+     onClick={()=>{setCursor(cursorTrail[cursorTrail.length-1]??"");setCursorTrail(x=>x.slice(0,-1));}}>Previous</button>
+    <button type="button" disabled={!data?.nextCursor||busy}
+     onClick={()=>{if(data?.nextCursor){setCursorTrail(x=>[...x,cursor]);setCursor(data.nextCursor);}}}>Next</button>
    </div></div></>}
   {canRecord&&<div style={panel}><h2>Record physical cash</h2>
    <p>Use the donor's private status proof. An independent Foundation reviewer must confirm the cash voucher before accounting records it as received.</p>
