@@ -86,6 +86,13 @@ export class InventoryReceiptEvidenceService{
   });
   return this.status(token,row.id);
  }
+ async list(token:string,receiptRef:string){
+  return this.run(token,false,async(tx,a)=>{
+   await this.source.guard(tx,a,receiptRef,"READ");
+   const q=await tx.query("SELECT f.id AS \"fileRef\",f.revision AS \"fileVersion\",f.original_mime AS mime,f.verified_size_bytes::text AS size,f.created_at AS \"createdAt\" FROM cg19_stored_file f JOIN cg19_upload_intent i ON i.id=f.upload_intent_id AND i.realm_id=f.realm_id WHERE f.realm_id=$1 AND f.inventory_receipt_id=$2 AND f.owner_kind='CG12_RECEIPT' AND f.scan_status='CLEAN_VERIFIED' AND f.revoked_at IS NULL AND i.owner_kind='CG12_RECEIPT' AND i.requested_by=$3 AND i.status='VALIDATED' ORDER BY f.created_at DESC,f.id LIMIT 16",[a.realmId,inventoryRef(receiptRef),a.accountId]);
+   return {files:q.rows};
+  });
+ }
  /** Called only within the confirmed stock transaction, exact draft/owner/file revision. */
  async guardVerified(tx:PoolClient,a:VerifiedFoundationActor,receiptRef:string,proofRef:string,proofVersion:number){
   await this.identity.assertCurrent(tx,a,"documents.files.view");
