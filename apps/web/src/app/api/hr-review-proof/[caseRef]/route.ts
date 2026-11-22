@@ -5,7 +5,7 @@ const ID=/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i;
 type Ctx={params:Promise<{caseRef:string}>};
 export async function GET(request:NextRequest,{params}:Ctx){
  const {caseRef}=await params,kind=request.nextUrl.searchParams.get("kind");
- if(!ID.test(caseRef)||!["HR_IDENTITY_PROOF","HR_PAN_PROOF","HR_QUALIFICATION","HR_PORTRAIT"].includes(kind??""))
+ if(!ID.test(caseRef)||!["HR_IDENTITY_PROOF","HR_PAN_PROOF","HR_QUALIFICATION","HR_PORTRAIT","HR_EXPERIENCE","HR_POLICE_VERIFICATION","HR_RESUME","HR_APPOINTMENT_DOCUMENT"].includes(kind??""))
   return NextResponse.json({message:"Choose an original employee proof."},{status:400});
  const token=(await cookies()).get("cg_staff_session")?.value;
  if(!token)return NextResponse.json({message:"Please sign in again."},{status:401});
