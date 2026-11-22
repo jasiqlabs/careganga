@@ -1,7 +1,7 @@
 import {choice,clean,date,fields,invalid,optionalRef,priorities,ref,version} from "./project-input";
 export const taskStatuses=["DRAFT","ASSIGNED","IN_PROGRESS","COMPLETED","CANCELLED"] as const;
 export type TaskStatus=typeof taskStatuses[number];
-export const taskAssigneeKinds=["UNASSIGNED","ACCOUNT","EMPLOYEE"] as const;
+export const taskAssigneeKinds=["UNASSIGNED","ACCOUNT","EMPLOYEE","VOLUNTEER"] as const;
 export type TaskAssigneeKind=typeof taskAssigneeKinds[number];
 const workKeys=["title","taskType","description","priority","startDate","dueDate"] as const;
 const assigneeKeys=["assigneeKind","assigneeRef"] as const;
