@@ -184,7 +184,7 @@ test("US001-QA06/14/18: direct A12-A15 client image review maps to responsive We
  assert.match(style,/@media\(max-width:820px\)/);
  assert.match(style,/@media\(max-width:540px\)/);
  assert.match(api,/count\(\*\) FILTER \(WHERE source_status='DRAFT'\)/);
- assert.match(api,/count\(\*\) FILTER \(WHERE source_status='PUBLISHED'\)/);
+ assert.match(api,/count\(\*\) FILTER \(WHERE source_status='APPROVED'\)/);
  assert.match(api,/\$5='ALL' OR c.source_status=\$5/);
  assert.match(proxy,/\["q","offset","status"\]/);
  assert.doesNotMatch(web,/Raised so far:\s*₹0/);
@@ -262,4 +262,79 @@ test("US001-QA02/04/06/13/18: original CG19 private scanned upload and real Web/
  assert.match(uploader,/kind:"DOCUMENT",rightsConfirmed:true/);
  assert.match(mobileUpload,/rightsConfirmed:true/);
  assert.doesNotMatch(owner,/INSERT INTO donation|UPDATE campaign SET source_status='PUBLISHED'/);
+});
+
+test("US001-QA01/05/07/10/12/16/17/20: CG18 effective original publication is separate from CG03 operational approval",()=>{
+ const source=root("apps/backend/src/modules/cg-07-campaigns-donations/application/campaign-public-source.ts");
+ const cms=root("apps/backend/src/modules/cg-18-cms-public-content/application/cms-editorial.service.ts");
+ const controller=root("apps/backend/src/modules/cg-18-cms-public-content/http/cms-editorial.controller.ts");
+ const media=root("apps/backend/src/modules/cg-19-documents-notifications/application/campaign-public-media.service.ts");
+ const mediaRoute=root("apps/backend/src/modules/cg-19-documents-notifications/http/campaign-public-media.controller.ts");
+ const nav=root("apps/web/src/features/cms-public-content/cms-site-header.tsx");
+ const web=root("apps/web/src/features/campaigns/campaign-public-source.ts");
+ const cards=root("apps/web/src/features/campaigns/campaign-public-cards.tsx");
+ const native=root("apps/android-public/src/features/cms/native-public-campaigns.tsx");
+ const nativeCms=root("apps/android-public/src/features/cms/public-cms-screen.tsx");
+ const sitemap=root("apps/web/src/app/sitemap.ts");
+ for(const phrase of ["source_status='APPROVED'","CAMPAIGN_LAUNCH","OWNER_COMPLETED",
+  "CMS_PUBLICATION","cms_page_effective","cms_publication","CAMPAIGN_TEASER",
+  "cg03_case_decision","CLEAN_VERIFIED","revoked_at IS NULL","campaign_media_rights_confirmed",
+  "cg04_current_volunteer","project_activity","cg19_stored_file","publicCampaignSources"])
+  assert.ok(source.includes(phrase),"Missing independently current campaign public source "+phrase);
+ assert.match(source,/publication.state='EFFECTIVE'/);
+ assert.match(source,/publication.expires_at IS NULL OR publication.expires_at>now\(\)/);
+ assert.match(source,/c.source_status='APPROVED'/);
+ assert.match(source,/c.end_at IS NULL OR c.end_at>=/);
+ assert.match(source,/NOT EXISTS\(SELECT 1 FROM jsonb_array_elements_text/);
+ assert.match(cms,/validateCampaignTeaser\(tx,actor.realmId,sec.fields\)/);
+ assert.match(cms,/CAMPAIGN_TEASER/);
+ assert.match(cms,/publicCampaignSources\(this.db/);
+ assert.match(controller,/@Get\("campaigns"\)/);
+ assert.match(controller,/@Get\("campaigns\/:slug"\)/);
+ assert.match(media,/readVerifiedPrivateObject/);
+ assert.match(media,/publicCampaignMedia\(this.db,ref\)/);
+ assert.match(media,/createHash\("sha256"\)/);
+ assert.match(mediaRoute,/Cache-Control","no-store, no-cache, must-revalidate"/);
+ assert.match(web,/cache:"no-store"/);
+ assert.match(cards,/Read about this campaign/);
+ assert.doesNotMatch(cards,/Donate Now|Pay Now|Verified received/);
+ assert.match(native,/Back to campaigns/);
+ assert.match(native,/AppState.addEventListener/);
+ assert.match(nativeCms,/NativePublicCampaigns/);
+ assert.match(nav,/isPublished\("\/campaigns"\)/);
+ assert.match(sitemap,/publishedCampaigns\(\)/);
+ assert.match(sitemap,/campaigns.state==="PUBLISHED"/);
+});
+test("US001-QA03/05/07/12/19: original CG07 cancel, pause, complete, resume are scoped, CAS and event-guarded",()=>{
+ const sql=root("apps/backend/db/migrations/3305_cg07_campaign_original_lifecycle.sql");
+ const service=root("apps/backend/src/modules/cg-07-campaigns-donations/application/campaign-drafts.service.ts");
+ const api=root("apps/backend/src/modules/cg-07-campaigns-donations/http/campaign-drafts.controller.ts");
+ const bff=root("apps/web/src/app/api/campaigns/[[...parts]]/route.ts");
+ const web=root("apps/web/src/features/campaigns/campaign-drafts-workspace.tsx");
+ const native=root("apps/android-internal/src/features/campaigns/native-campaign-drafts.tsx");
+ for(const word of ["CREATE OR REPLACE FUNCTION cg07_campaign_status_proof_guard",
+  "CANCEL_DRAFT","PAUSE","RESUME","CLOSE","WITHDRAW",
+  "campaign_status_event","OWNER_COMPLETED","campaign_source_digest","fresh_password_verified_at"])
+  assert.ok(sql.includes(word),"Missing original DB lifecycle guard "+word);
+ assert.match(sql,/NEW.current_revision<>OLD.current_revision/);
+ assert.match(sql,/NEW.version<>OLD.version\+1/);
+ assert.match(service,/async lifecycle\(token:string,ref:string,raw:unknown\)/);
+ assert.match(service,/current\(tx,a,campaignId,true\)/);
+ assert.match(service,/pg_advisory_xact_lock/);
+ assert.match(service,/UPDATE campaign SET source_status=\$3,version=version\+1/);
+ assert.match(service,/requireCurrentVolunteer/);
+ assert.match(service,/projectEvents.requireCurrent/);
+ assert.match(api,/@Post\(":ref\/lifecycle"\)/);
+ assert.match(bff,/parts\[1\]==="lifecycle"/);
+ assert.match(bff,/req.headers.get\("origin"\)!==req.nextUrl.origin/);
+ for(const client of [web,native]){
+  assert.match(client,/lifecyclePending/);
+  assert.match(client,/expectedVersion:.*version/);
+  assert.match(client,/WITHDRAW/);
+  assert.match(client,/RESUME/);
+  assert.match(client,/PAUSE/);
+  assert.match(client,/CLOSE/);
+  assert.match(client,/Retry/);
+ }
+ assert.doesNotMatch(service,/INSERT INTO donation|INSERT INTO finance_journal/);
 });
