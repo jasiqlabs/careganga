@@ -92,7 +92,7 @@ CREATE TABLE cg19_member_brand_event (
  FOREIGN KEY(root_realm_id,brand_version) REFERENCES cg19_member_brand_config(root_realm_id,version),
  CHECK(num_nonnulls(asset_id,brand_version)=1)
 );
-CREATE FUNCTION cg19_member_immutable_event() RETURNS trigger LANGUAGE plpgsql AS $
+CREATE FUNCTION cg19_member_immutable_event() RETURNS trigger LANGUAGE plpgsql AS $$
 BEGIN RAISE EXCEPTION 'Issued member document history is immutable'; END; $$;
 CREATE TRIGGER cg19_member_pack_event_immutable BEFORE UPDATE OR DELETE ON cg19_member_pack_event
  FOR EACH ROW EXECUTE FUNCTION cg19_member_immutable_event();
