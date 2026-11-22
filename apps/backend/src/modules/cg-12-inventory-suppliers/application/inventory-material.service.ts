@@ -79,15 +79,15 @@ export class InventoryMaterialService{
   });
  }
  async list(token:string,locationInput:unknown,query:Record<string,unknown>,review=false){
-  const location=inventoryRef(locationInput),offset=Number(query.offset??0),status=String(query.status??"ALL"),priority=String(query.priority??"ALL"),q=inventoryText(query.q??"",0,80).toLowerCase(),from=query.from?inventoryDate(query.from):null,to=query.to?inventoryDate(query.to):null;
-  if(!Number.isSafeInteger(offset)||offset<0||offset>10000||!["ALL","DRAFT","SUBMITTED","RETURNED","REJECTED","APPROVED_UNRESERVED","HELD","PARTIAL","FULFILLED","CANCELLED"].includes(status)||!["ALL","LOW","NORMAL","HIGH","URGENT"].includes(priority)||(from&&to&&from>to))throw receiptInvalid();
+  const location=inventoryRef(locationInput),offset=Number(query.offset??0),status=String(query.status??"ALL"),priority=String(query.priority??"ALL"),requestType=String(query.requestType??"ALL"),category=inventoryText(query.category??"",0,80),q=inventoryText(query.q??"",0,80).toLowerCase(),from=query.from?inventoryDate(query.from):null,to=query.to?inventoryDate(query.to):null;
+  if(!["ALL","MATERIAL"].includes(requestType)||!Number.isSafeInteger(offset)||offset<0||offset>10000||!["ALL","DRAFT","SUBMITTED","RETURNED","REJECTED","APPROVED_UNRESERVED","HELD","PARTIAL","FULFILLED","CANCELLED"].includes(status)||!["ALL","LOW","NORMAL","HIGH","URGENT"].includes(priority)||(from&&to&&from>to))throw receiptInvalid();
   return this.catalog.run(token,review?"inventory.requests.review":"inventory.requests.view",async(tx,a)=>{
    await this.catalog.store(tx,a,location,false);
-   const params=[a.realmId,location,review,a.accountId,status,priority,q,from,to,offset];
-   const rows=await tx.query<MaterialRow>("SELECT r.*,r.due_date::text FROM material_request r WHERE root_realm_id=$1 AND location_id=$2 AND ($3::boolean OR requester_id=$4) AND ($5='ALL' OR status=$5) AND ($6='ALL' OR priority=$6) AND ($7='' OR strpos(lower(request_no),$7)>0 OR EXISTS(SELECT 1 FROM material_request_line l JOIN inventory_item i ON i.root_realm_id=l.root_realm_id AND i.id=l.item_id WHERE l.root_realm_id=r.root_realm_id AND l.request_id=r.id AND strpos(lower(i.name),$7)>0)) AND ($8::date IS NULL OR created_at::date>=$8) AND ($9::date IS NULL OR created_at::date<=$9) ORDER BY created_at DESC,id DESC LIMIT 26 OFFSET $10",params);
+   const params=[a.realmId,location,review,a.accountId,status,priority,q,from,to,offset,category];
+   const rows=await tx.query<MaterialRow>("SELECT r.*,r.due_date::text FROM material_request r WHERE root_realm_id=$1 AND location_id=$2 AND ($3::boolean OR requester_id=$4) AND ($5='ALL' OR status=$5) AND ($6='ALL' OR priority=$6) AND ($7='' OR strpos(lower(request_no),$7)>0 OR EXISTS(SELECT 1 FROM material_request_line l JOIN inventory_item i ON i.root_realm_id=l.root_realm_id AND i.id=l.item_id WHERE l.root_realm_id=r.root_realm_id AND l.request_id=r.id AND strpos(lower(i.name),$7)>0)) AND ($8::date IS NULL OR created_at::date>=$8) AND ($9::date IS NULL OR created_at::date<=$9) AND ($11='' OR EXISTS(SELECT 1 FROM material_request_line ml JOIN inventory_item mi ON mi.root_realm_id=ml.root_realm_id AND mi.id=ml.item_id WHERE ml.root_realm_id=r.root_realm_id AND ml.request_id=r.id AND mi.category=$11)) ORDER BY created_at DESC,id DESC LIMIT 26 OFFSET $10",params);
    const counts=(await tx.query("SELECT count(*)::integer AS total,count(*) FILTER(WHERE status='SUBMITTED')::integer AS pending,count(*) FILTER(WHERE status IN('APPROVED_UNRESERVED','HELD','PARTIAL','FULFILLED'))::integer AS approved,count(*) FILTER(WHERE status='REJECTED')::integer AS rejected FROM material_request WHERE root_realm_id=$1 AND location_id=$2 AND ($3::boolean OR requester_id=$4)",params.slice(0,4))).rows[0];
    const items=[];for(const row of rows.rows.slice(0,25))items.push(await this.source.view(tx,a,row));
    return {items,counts,offset,hasMore:rows.rows.length>25};
-  });
+  },true);
  }
 }
