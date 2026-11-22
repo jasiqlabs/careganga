@@ -5,6 +5,7 @@ import {DATABASE} from "../../../core/infrastructure/database.module";
 import {SessionService} from "../../cg-01-identity-access/application/session.service";
 import {FoundationStructureIdentityFacade} from "../../cg-01-identity-access/application/foundation-structure-identity.facade";
 import {BranchSourceFacade} from "../../cg-02-foundation-structure/application/branch-source.facade";
+import {CampaignLinkSourceFacade} from "../../cg-05-projects-field-operations/application/campaign-link-source.facade";
 import type {VerifiedFoundationActor as Actor} from "../../cg-01-identity-access/public-api";
 import {campaignRef,parseCampaignDraft,type CampaignDraft} from "../domain/campaign-draft-input";
 
@@ -12,7 +13,7 @@ type CampaignRow={id:string;root_realm_id:string;branch_ref:string|null;created_
 const hash=(v:unknown)=>createHash("sha256").update(JSON.stringify(v)).digest("hex");
 const invalid=(message:string)=>new ConflictException({code:"CG07_CAMPAIGN_STALE",message});
 const projection=`c.id AS ref,c.code_norm AS code,c.title,c.category,c.source_status AS status,
- c.branch_ref AS "branchRef",b.name AS branch,c.project_source_ref AS "projectRef",
+ c.branch_ref AS "branchRef",b.name AS branch,c.project_source_ref AS "projectRef",c.event_source_ref AS "eventRef",
  c.version,c.current_revision AS revision,c.created_at AS "createdAt",c.updated_at AS "updatedAt",
  c.goal_minor::text AS "goalMinor",c.start_at::text AS "startAt",c.end_at::text AS "endAt",
  jsonb_build_object('basic',r.step1_basic,'project',r.step2_project_and_geo,'team',r.step3_team,
@@ -23,7 +24,8 @@ const joins=` FROM campaign c JOIN campaign_revision r ON r.root_realm_id=c.root
 @Injectable()
 export class CampaignDraftsService{
  constructor(@Inject(DATABASE)private readonly db:Pool,private readonly sessions:SessionService,
-  private readonly identity:FoundationStructureIdentityFacade,private readonly branches:BranchSourceFacade){}
+  private readonly identity:FoundationStructureIdentityFacade,private readonly branches:BranchSourceFacade,
+  private readonly projectEvents:CampaignLinkSourceFacade){}
  private async run<T>(token:string,capability:string,fn:(tx:PoolClient,a:Actor)=>Promise<T>,read=false){
   const actor=await this.sessions.requireAction(token,capability),tx=await this.db.connect();
   try{
@@ -41,11 +43,10 @@ export class CampaignDraftsService{
   await this.branches.projectBranch(tx,a,branch);
  }
  private async eligibleDraft(tx:PoolClient,a:Actor,v:CampaignDraft){
-  // CG07 US001 first draft slice: optional future-owner links are NOT treated
-  // as verified merely because they were supplied as UUIDs in a form.
   const p=v.project;
-  if(p.projectRef||p.eventRef||v.team.volunteerRef||v.media.fileRef)
-   throw new ForbiddenException("Project, event, volunteer or media linking requires the current verified source. Save the general campaign without those links.");
+  if(v.team.volunteerRef||v.media.fileRef)
+   throw new ForbiddenException("Volunteer and media links require a current verified source. A text-only campaign is supported.");
+  await this.projectEvents.requireCurrent(tx,a,p.branchRef,p.projectRef,p.eventRef);
   const branch=await this.branches.projectBranch(tx,a,p.branchRef);
   await this.branches.projectGeography(tx,a,p.stateRef,p.districtRef);
   if(v.team.coordinatorRef&&v.team.coordinatorRef!==a.accountId){
@@ -92,8 +93,9 @@ export class CampaignDraftsService{
   return {ref:c.id,version:prior.resulting_version,code,status:c.source_status,replayed:true};
  }
  async options(token:string,query:Record<string,unknown>){
-  if(Object.keys(query).some(k=>!["stateRef","q"].includes(k)))throw invalid("Check the campaign choices.");
+  if(Object.keys(query).some(k=>!["stateRef","branchRef","q"].includes(k)))throw invalid("Check the campaign choices.");
   const state=query.stateRef===undefined||query.stateRef===""?null:campaignRef(query.stateRef);
+  const branch=query.branchRef===undefined||query.branchRef===""?null:campaignRef(query.branchRef);
   const search=query.q??"";
   if(typeof search!=="string"||search.length>80)throw invalid("Use a shorter campaign staff search.");
   return this.run(token,"campaigns.view",async(tx,a)=>{
@@ -101,7 +103,9 @@ export class CampaignDraftsService{
    return {canFoundation:scope.all,branches:scope.branches.map(({value,label})=>({value,label})),
     states:await this.branches.projectGeographyOptions(tx,a,null),
     districts:state?await this.branches.projectGeographyOptions(tx,a,state):[],
-    coordinators:await this.identity.eligibleOfficeholderOptions(tx,a,search)};
+    coordinators:await this.identity.eligibleOfficeholderOptions(tx,a,search),
+    ...(scope.all||branch?await this.projectEvents.options(tx,a,branch,search):
+      {projects:[],events:[]})};
   },true);
  }
  async create(token:string,raw:unknown){
@@ -111,10 +115,11 @@ export class CampaignDraftsService{
    const prior=await this.replay(tx,a,value.key,digest,"CREATE_DRAFT");if(prior)return prior;
    await this.eligibleDraft(tx,a,value);
    const c=(await tx.query<CampaignRow>(`INSERT INTO campaign(root_realm_id,title,category,branch_ref,
-    goal_minor,start_at,end_at,created_by) VALUES($1,$2,$3,$4,$5::bigint,$6::date,$7::date,$8)
+    goal_minor,start_at,end_at,created_by,project_source_ref,event_source_ref)
+    VALUES($1,$2,$3,$4,$5::bigint,$6::date,$7::date,$8,$9,$10)
     RETURNING id,root_realm_id,branch_ref,created_by,source_status,version,current_revision`,
     [a.realmId,value.basic.title,value.project.category,value.project.branchRef,value.budget.goalMinor,
-     value.budget.startAt,value.budget.endAt,a.accountId])).rows[0];
+     value.budget.startAt,value.budget.endAt,a.accountId,value.project.projectRef,value.project.eventRef])).rows[0];
    return this.record(tx,a,c,value,digest,"CREATE_DRAFT");
   });
  }
@@ -129,11 +134,12 @@ export class CampaignDraftsService{
    await this.eligibleDraft(tx,a,value);
    const next=(await tx.query<CampaignRow>(`UPDATE campaign SET title=$3,category=$4,branch_ref=$5,
     goal_minor=$6::bigint,start_at=$7::date,end_at=$8::date,
+    project_source_ref=$10,event_source_ref=$11,
     current_revision=current_revision+1,version=version+1,updated_at=now()
     WHERE root_realm_id=$1 AND id=$2 AND version=$9 AND source_status='DRAFT'
     RETURNING id,root_realm_id,branch_ref,created_by,source_status,version,current_revision`,
     [a.realmId,key,value.basic.title,value.project.category,value.project.branchRef,value.budget.goalMinor,
-     value.budget.startAt,value.budget.endAt,value.expected])).rows[0];
+     value.budget.startAt,value.budget.endAt,value.expected,value.project.projectRef,value.project.eventRef])).rows[0];
    if(!next)throw invalid("This campaign was updated elsewhere. Refresh its current draft.");
    return this.record(tx,a,next,value,digest,"SAVE_DRAFT");
   });
