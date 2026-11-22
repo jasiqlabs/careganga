@@ -417,3 +417,6 @@ CG07 public donor-proof POST status now returns only own original money, origina
 
 ### 22-Nov US003 original donor Web PDF self-service
 Public Next donation POST-body proof source now allows only `/receipt/download` binary from original CG19 (BFF no-store, same-origin, MIME/size checked, never webhook/secret URL), and PublicDonationForm shows own verified net/partial/full refund/CG19 receipt status plus a protected original PDF download only after ISSUED. No 80G claim, anonymous donor roster or source ID exposed. QA01/04/06/09/11/16/18 source candidate; actual browser/PDF/runtime NOT_RUN.
+
+### 22-Nov US003 Public Android private PDF and refund status parity
+Native donor status now carries verified CG09 gross/partial/full/refund and current CG19 receipt status. Only ISSUED enables explicit protected PDF POST with private proof; actual bytes validated application/pdf and size then written using Expo SDK58 File.write to private cache, shared with expo-sharing, and cache removed. No token in URLs, no fake receipt when pending, no duplicate payment when refunded. QA01/06/11/16/18 source candidate; Android device/Play/visual/runtime NOT_RUN. Expo SDK58 reference: https://docs.expo.dev/versions/v58.0.0/sdk/filesystem/ .
