@@ -29,6 +29,7 @@ export type FoundationAdminNavProps = {
     | "tasks"
     | "inventory"
     | "membership"
+    | "volunteers"
     | "finance"
     | "financeVouchers"
     | "financeReviews"
@@ -178,6 +179,8 @@ function getNavIcon(key: string) {
       return <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true"><rect x="5" y="4" width="14" height="17" rx="2"/><path d="M9 4V2h6v2M8 12l3 3 5-6"/></svg>;
     case "projects":
       return <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true"><path d="M3 6h18v15H3zM8 6V3h8v3M3 11h18"/></svg>;
+    case "volunteers":
+      return <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true"><circle cx="8" cy="7" r="3"/><circle cx="17" cy="8" r="2.5"/><path d="M2 21v-3c0-6 12-6 12 0v3M15 15c4 0 7 2 7 6"/></svg>;
     case "membership":
       return <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="3"/><path d="M3 10h18M7 15h5"/></svg>;
     case "inventory":
@@ -752,6 +755,7 @@ export function FoundationAdminNav({
     ...(allowed("projects.activities.view",false)?[{key:"activities" as const,label:"Activities & Events",href:"/admin/activities"}]:[]),
     ...(allowed("projects.tasks.view",false)?[{key:"tasks" as const,label:"Tasks & Assignments",href:"/admin/tasks"}]:[]),
     ...((allowed("membership.tier.manage",false)||allowed("membership.members.view",false)||allowed("membership.applications.review",false))?[{key:"membership" as const,label:"Membership",href:"/admin/membership"}]:[]),
+    ...((allowed("volunteers.view",false)||allowed("volunteers.applications.review",false))?[{key:"volunteers" as const,label:"Volunteers",href:"/admin/volunteers"}]:[]),
     ...(allowed("inventory.catalog.view",false)?[{key:"inventory" as const,label:"Requests & Inventory",href:"/admin/inventory"}]:[]),
     {key:"hr" as const,label:hrAccess?"Human Resources":"My employment",href:"/admin/hr"},
     ...(cmsAccess ? [{ key: "cms" as const, label: "Website CMS", href: "/admin/website" }] : []),
@@ -844,6 +848,7 @@ export function FoundationAdminNav({
     tasks: "Tasks & Assignments",
     inventory: "Requests & Inventory",
     membership: "Membership",
+    volunteers: "Volunteers",
     hr: "Human Resources"
   };
 
@@ -989,7 +994,7 @@ export function FoundationAdminNav({
             { name: "DASHBOARD", keys: ["dashboard", "account"] },
             { name: "USER & ACCESS MANAGEMENT", keys: ["accounts", "roles", "approvals", "policy"] },
             { name: "ORGANIZATION MANAGEMENT", keys: ["branches", "foundation", "hr", "cms"] },
-            { name: "MEMBERSHIP", keys: ["membership"] },
+            { name: "MEMBERSHIP & VOLUNTEERS", keys: ["membership", "volunteers"] },
             { name: "PROJECT & FIELD OPERATIONS", keys: ["projects", "fieldVisits", "tasks", "activities", "inventory"] },
             { name: "HEALTHCARE", keys: [
               "healthNetwork", "healthCenter", "healthDoctors", "healthDiagnostics", "healthLabPricing", "healthLabOrders", "healthLabEquipment", "healthAssistancePolicies", "healthLiabilities", "healthSettlements", "healthSchedules", "healthPatientIntake",
