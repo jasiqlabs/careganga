@@ -7,6 +7,7 @@ import {DonationAdminService} from "./application/donation-admin.service";
 import {DonationAdminController} from "./http/donation-admin.controller";
 import {DonationManualService} from "./application/donation-manual.service";
 import {DonationManualController} from "./http/donation-manual.controller";
+import {DonationReceiptSourceFacade} from "./application/donation-receipt-source.facade";
 import {CampaignDraftsService} from "./application/campaign-drafts.service";
 import {DonationIntentsService} from "./application/donation-intents.service";
 import {DonationOnlineFinanceService} from "./application/donation-online-finance.service";
@@ -16,5 +17,5 @@ import {DonationOnlineController} from "./http/donation-online.controller";
 import {PublicDonationIntentsController} from "./http/public-donation-intents.controller";
 import {CampaignDraftsController} from "./http/campaign-drafts.controller";
 @Module({imports:[IdentityAccessModule,FoundationStructureModule,ProjectsSourceModule,FinanceSourceModule],
- providers:[CampaignDraftsService,DonationIntentsService,DonationManualService,DonationAdminService,DonationOnlineService,DonationOnlineFinanceService],controllers:[CampaignDraftsController,PublicDonationIntentsController,DonationManualController,DonationAdminController,DonationOnlineController,DonationOnlineFinanceController],exports:[CampaignDraftsService]})
+ providers:[DonationReceiptSourceFacade,CampaignDraftsService,DonationIntentsService,DonationManualService,DonationAdminService,DonationOnlineService,DonationOnlineFinanceService],controllers:[CampaignDraftsController,PublicDonationIntentsController,DonationManualController,DonationAdminController,DonationOnlineController,DonationOnlineFinanceController],exports:[CampaignDraftsService,DonationReceiptSourceFacade]})
 export class CampaignsDonationsModule{}

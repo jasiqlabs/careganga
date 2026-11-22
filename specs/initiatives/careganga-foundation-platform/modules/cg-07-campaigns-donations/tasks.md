@@ -396,3 +396,6 @@ Public Android same backed general+campaign donation form with consent, source-k
 
 ### 22-Nov US003 checkpoint A — original CG19 source-bound neutral receipt persistence
 Added 3309_cg19_donation_receipt_document.sql: once-only root-scoped CG19 receipt number/source digest, private immutable issued file metadata, issued-after-current-CG09-post deferred SQL guard, no arbitrary paid conversion and no fake legal 80G. CG19 document service/rendering and donor history still being developed, original US003 QA01/04/07/09/10/14/19 source partial, runtime/migration/independent review NOT_RUN.
+
+### 22-Nov US003 checkpoint B — typed CG07→CG19 donation receipt source
+DonationReceiptSourceFacade provides original scoped CG09 POSTED source, immutable digest/date/amount and decrypts donor name only in protected issuer via existing purpose-derived AES-GCM; CG19 retains receipt PDF/file authority. No new donor master, no false 80G. QA01/02/09/10/11/17/19 source partial, independent/runtime NOT_RUN.
