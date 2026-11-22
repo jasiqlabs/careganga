@@ -6,7 +6,7 @@ import {SessionService} from "../../cg-01-identity-access/application/session.se
 import {FoundationStructureIdentityFacade} from "../../cg-01-identity-access/application/foundation-structure-identity.facade";
 import type {VerifiedFoundationActor} from "../../cg-01-identity-access/public-api";
 import {BranchSourceFacade} from "../../cg-02-foundation-structure/application/branch-source.facade";
-import {budget,canTransition,choice,clean,date,fields,invalid,optionalRef,parseBranch,parseCreate,parseEdit,parseStatus,priorities,ref,stale,statuses,type ProjectStatus} from "../domain/project-input";
+import {canTransition,choice,clean,date,invalid,optionalRef,parseBranch,parseCreate,parseEdit,parseStatus,priorities,ref,stale,statuses,type ProjectStatus} from "../domain/project-input";
 
 type ProjectRow={id:string;root_realm_id:string;branch_ref:string|null;owner_account_ref:string;status:ProjectStatus;version:number};
 type Scope={all:boolean;branches:{value:string;label:string;managerRef:string}[]};
@@ -39,9 +39,11 @@ export class ProjectsService{
   }
   return r;
  }
+ async geography(token:string,stateInput:unknown){const state=optionalRef(stateInput);return this.run(token,"projects.view",async(tx,a)=>this.branches.projectGeographyOptions(tx,a,state),true);}
  async options(token:string,query:Record<string,unknown>){
   const branch=optionalRef(query.branchRef),state=optionalRef(query.stateRef),q=clean(query.q??"",0,80),selected=query.branchRef!==undefined;
   return this.run(token,"projects.manage",async(tx,a)=>{
+   await this.identity.assertCurrent(tx,a,"projects.view");
    const s=await this.branches.projectBranchScope(tx,a);
    const self=await this.identity.eligibleOfficeholder(tx,a,a.accountId);
    let owners:{value:string;label:string}[]=[{value:self.accountRef,label:self.displayName}];
@@ -65,6 +67,7 @@ export class ProjectsService{
  async create(token:string,raw:unknown){
   const v=parseCreate(raw),hash=digest(v);
   return this.run(token,"projects.manage",async(tx,a)=>{
+   await this.identity.assertCurrent(tx,a,"projects.view");
    const old=await this.replay(tx,a,v.key,hash,"CREATE");if(old)return old;
    await this.owner(tx,a,v.branch,v.owner);
    await this.branches.projectGeography(tx,a,v.state,v.district);
@@ -76,6 +79,7 @@ export class ProjectsService{
  async edit(token:string,id:string,raw:unknown){
   const target=ref(id),v=parseEdit(raw),hash=digest([target,v]);
   return this.run(token,"projects.manage",async(tx,a)=>{
+   await this.identity.assertCurrent(tx,a,"projects.view");
    const old=await this.replay(tx,a,v.key,hash,"EDIT",target);if(old)return old;
    const r=await this.row(tx,a,target,true);if(r.version!==v.expected||["COMPLETED","CANCELLED"].includes(r.status))throw stale();
    await this.owner(tx,a,r.branch_ref,v.owner);await this.branches.projectGeography(tx,a,v.state,v.district);
@@ -86,6 +90,7 @@ export class ProjectsService{
  async status(token:string,id:string,raw:unknown){
   const target=ref(id),v=parseStatus(raw),hash=digest([target,v]);
   return this.run(token,"projects.manage",async(tx,a)=>{
+   await this.identity.assertCurrent(tx,a,"projects.view");
    const old=await this.replay(tx,a,v.key,hash,"STATUS",target);if(old)return old;
    const r=await this.row(tx,a,target,true);if(r.version!==v.expected||!canTransition(r.status,v.status))throw stale();
    const next=(await tx.query<ProjectRow>("UPDATE project SET status=$3,completed_at=CASE WHEN $3='COMPLETED' THEN clock_timestamp() ELSE NULL END,version=version+1,updated_at=clock_timestamp() WHERE root_realm_id=$1 AND id=$2 AND version=$4 RETURNING *",[a.realmId,target,v.status,v.expected])).rows[0];
@@ -95,6 +100,7 @@ export class ProjectsService{
  async branchChange(token:string,id:string,raw:unknown){
   const target=ref(id),v=parseBranch(raw),hash=digest([target,v]);
   return this.run(token,"projects.manage",async(tx,a)=>{
+   await this.identity.assertCurrent(tx,a,"projects.view");
    const old=await this.replay(tx,a,v.key,hash,"BRANCH_MOVE",target);if(old)return old;
    const r=await this.row(tx,a,target,true);if(r.version!==v.expected||r.branch_ref===v.branch||["COMPLETED","CANCELLED"].includes(r.status))throw stale();
    await this.owner(tx,a,v.branch,v.owner);
@@ -110,8 +116,10 @@ export class ProjectsService{
   const q=clean(query.q??"",0,100).toLowerCase(),category=clean(query.category??"",0,80),funding=clean(query.fundingSource??"",0,160),status=choice(query.status??"ALL",["ALL",...statuses]),priority=choice(query.priority??"ALL",["ALL",...priorities]),state=optionalRef(query.stateRef),district=optionalRef(query.districtRef),from=date(query.from),to=date(query.to),offset=Number(query.offset??0);
   if(!Number.isSafeInteger(offset)||offset<0||offset>10000||from&&to&&from>to||district&&!state)throw invalid();
   return this.run(token,exporting?"projects.export":"projects.view",async(tx,a)=>{
+   if(exporting)await this.identity.assertCurrent(tx,a,"projects.view");
    const s=await this.branches.projectBranchScope(tx,a);
    const scope=this.whereScope+(mine?" AND p.owner_account_ref=$4":"");
+   if(state||district)await this.branches.projectGeography(tx,a,state,district);
    const values=[...this.scopeParams(a,s),q,category,status,priority,funding,state,district,from,to];
    const filters=" AND ($5='' OR strpos(lower(p.code_norm),$5)>0 OR strpos(lower(p.title),$5)>0 OR strpos(lower(a.display_name),$5)>0 OR strpos(lower(p.location_label),$5)>0) AND ($6='' OR lower(p.category)=lower($6)) AND ($7='ALL' OR p.status=$7) AND ($8='ALL' OR p.priority=$8) AND ($9='' OR strpos(lower(p.funding_source),lower($9))>0) AND ($10::uuid IS NULL OR p.state_ref=$10) AND ($11::uuid IS NULL OR p.district_ref=$11) AND ($12::date IS NULL OR p.planned_start>=$12) AND ($13::date IS NULL OR p.planned_end<=$13)";
    const page=await tx.query("SELECT "+projection+joins+" WHERE "+scope+filters+" ORDER BY p.updated_at DESC,p.id DESC LIMIT $14 OFFSET $15",[...values,exporting?501:26,offset]);
@@ -130,7 +138,8 @@ export class ProjectsService{
    const item=(await tx.query("SELECT "+projection+joins+" WHERE p.root_realm_id=$1 AND p.id=$2",[a.realmId,target])).rows[0];
    const history=(await tx.query("SELECT e.action,e.prior_status AS \"priorStatus\",e.resulting_status AS status,e.reason,e.occurred_at AS at,a.display_name AS actor FROM project_event e JOIN account a ON a.id=e.actor_ref AND a.realm_id=e.root_realm_id WHERE e.root_realm_id=$1 AND e.project_id=$2 ORDER BY e.result_version DESC LIMIT 50",[a.realmId,target])).rows;
    const branchHistory=(await tx.query("SELECT COALESCE(b.name,'Foundation') AS branch,h.valid_from AS \"validFrom\",h.valid_to AS \"validTo\" FROM project_branch_history h LEFT JOIN branch b ON b.id=h.branch_ref AND b.root_realm_id=h.root_realm_id WHERE h.root_realm_id=$1 AND h.project_id=$2 ORDER BY h.valid_from DESC LIMIT 50",[a.realmId,target])).rows;
-   return {...item,history,branchHistory,financeStatus:"NOT_LINKED",publicStatus:"PRIVATE"};
+   let canManage=false;try{await this.identity.assertCurrent(tx,a,"projects.manage");await this.branches.projectBranch(tx,a,item.branchRef);canManage=true;}catch(e){if(!(e instanceof ForbiddenException))throw e;}
+   return {...item,history,branchHistory,canManage,financeStatus:"NOT_LINKED",publicStatus:"PRIVATE"};
   },true);
  }
 }
