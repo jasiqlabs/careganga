@@ -18,12 +18,12 @@ type Command={key:string;hash:string;mime:string;size:number;intent?:string};
  * Uploading is never an approval, donor payment or public publication. */
 export function NativeCampaignMediaPanel({campaignRef,version,token,onExpired,canUpload,kind,attached,onChange}:{
  campaignRef:string;version:number;token:string;onExpired:()=>void;canUpload:boolean;
- kind:"BANNER"|"DOCUMENT";attached:string[];onChange:(next:string[])=>void;
+ kind:"COVER"|"BANNER"|"DOCUMENT";attached:string[];onChange:(next:string[])=>void;
 }){
- const allow=kind==="BANNER"?images:[...images,"application/pdf"];
- const limit=kind==="BANNER"?2097152:10485760;
- const label=kind==="BANNER"?"Campaign Banner":"Supporting Documents";
- const classification=kind==="BANNER"?"CAMPAIGN_BANNER":"CAMPAIGN_DOCUMENT";
+ const allow=kind==="DOCUMENT"?[...images,"application/pdf"]:images;
+ const limit=kind==="COVER"?2097152:kind==="BANNER"?5242880:10485760;
+ const label=kind==="COVER"?"Campaign Cover Image":kind==="BANNER"?"Campaign Hero Banner":"Supporting Documents";
+ const classification=kind==="COVER"?"CAMPAIGN_COVER":kind==="BANNER"?"CAMPAIGN_BANNER":"CAMPAIGN_DOCUMENT";
  const [files,setFiles]=useState<FileRow[]|null>(null),[picked,setPicked]=useState<Picked|null>(null),
   [consent,setConsent]=useState(false),[busy,setBusy]=useState(false),
   [error,setError]=useState(""),[notice,setNotice]=useState(""),[epoch,setEpoch]=useState(0),
@@ -51,7 +51,7 @@ export function NativeCampaignMediaPanel({campaignRef,version,token,onExpired,ca
   return()=>{live=false;};
  },[token,campaignRef,version,kind,epoch]);
  useEffect(()=>{let live=true;let cached:File|null=null;setPreview("");
-  if(kind!=="BANNER"||!attached.length)return;
+  if(kind==="DOCUMENT"||!attached.length)return;
   const file=files?.find(f=>f.fileRef===attached[0]);
   if(!file||!images.includes(file.mime))return;
   void (async()=>{try{
@@ -75,7 +75,7 @@ export function NativeCampaignMediaPanel({campaignRef,version,token,onExpired,ca
    const a=v.assets[0];
    if(!a?.size||a.size>limit||!a.mimeType||!allow.includes(a.mimeType)){
     if(a?.uri)try{new File(a.uri).delete();}catch{}
-    setError("Choose an allowed "+(kind==="BANNER"?"image up to 2 MB.":"file up to 10 MB."));return;
+    setError("Choose an allowed "+(kind==="COVER"?"image up to 2 MB.":kind==="BANNER"?"hero banner up to 5 MB.":"file up to 10 MB."));return;
    }
    clearPicked();cachedPicked.current=a.uri;
    setPicked({uri:a.uri,name:a.name,mime:a.mimeType,size:a.size});setConsent(false);
@@ -85,7 +85,7 @@ export function NativeCampaignMediaPanel({campaignRef,version,token,onExpired,ca
  const accepted=(v:Upload)=>{
   if(!v.cleanVerified||!v.fileRef||!v.fileVersion)throw Error("Original CG19 scanner has not verified this file.");
   const prior=attachedRef.current;
-  if(kind==="BANNER")onChange([v.fileRef]);
+  if(kind!=="DOCUMENT")onChange([v.fileRef]);
   else if(!prior.includes(v.fileRef)){if(prior.length>=6)throw Error("Maximum six documents.");onChange([...prior,v.fileRef]);}
   setNotice("File scanner-verified. Save the six-step draft to attach it privately.");
   clearPicked();setPicked(null);setConsent(false);setIntent("");command.current=null;setEpoch(n=>n+1);
@@ -127,7 +127,7 @@ export function NativeCampaignMediaPanel({campaignRef,version,token,onExpired,ca
   <Text style={styles.buttonText}>{text}</Text></Pressable>;
  return <View style={styles.card}>
   <Text style={styles.title}>{label} (optional)</Text>
-  <Text style={styles.muted}>{kind==="BANNER"?"JPG/PNG/WebP, 2 MB maximum.":"Up to six verified image/PDF documents, 10 MB each."} Original files stay private; public publication requires separate approval.</Text>
+  <Text style={styles.muted}>{kind==="COVER"?"JPG/PNG/WebP, 2 MB maximum.":kind==="BANNER"?"JPG/PNG/WebP hero banner, 5 MB maximum.":"Up to six verified image/PDF documents, 10 MB each."} Original files stay private; public publication requires separate approval.</Text>
   {files===null?<ActivityIndicator accessibilityLabel="Checking scanner-verified campaign files"/>:
    attached.length===0?<Text style={styles.muted}>No verified file attached.</Text>:
    attached.map((ref,i)=>{const file=files.find(f=>f.fileRef===ref);return <View key={ref} style={styles.row}>
@@ -135,7 +135,7 @@ export function NativeCampaignMediaPanel({campaignRef,version,token,onExpired,ca
     {canUpload&&button("Remove",()=>onChange(attached.filter(x=>x!==ref)))}
    </View>;})}
   {!!preview&&<Image source={{uri:preview}} style={{width:"100%",height:200,borderRadius:8}} resizeMode="contain" accessibilityLabel="Private scanner-verified campaign banner"/>}
-  {canUpload&&(kind==="BANNER"||attached.length<6)&&<>
+  {canUpload&&(kind!=="DOCUMENT"||attached.length<6)&&<>
    {button(picked?"Chosen: "+picked.name:"Choose file",()=>void pick())}
    <Pressable accessibilityRole="checkbox" accessibilityState={{checked:consent,disabled:busy}}
     style={styles.button} disabled={busy} onPress={()=>setConsent(v=>!v)}>
