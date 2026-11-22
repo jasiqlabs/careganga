@@ -53,9 +53,9 @@ export function parseEmploymentChangeAction(body:unknown){
  return {requestKey:leaveId(x.requestKey),expectedRevision:Number(x.expectedRevision)};
 }
 export function parseExitClearance(body:unknown){
- const x=input(body,["kind","evidenceNote"]);
+ const x=input(body,["requestKey","kind","evidenceNote"]);
  if(typeof x.kind!=="string"||!["HR","ASSETS","HANDOVER"].includes(x.kind))throw new BadRequestException({code:"CG10_CHANGE_INVALID"});
- return {kind:x.kind,evidenceNote:safeText(x.evidenceNote,1000)};
+ return {requestKey:leaveId(x.requestKey),kind:x.kind,evidenceNote:safeText(x.evidenceNote,1000)};
 }
 type Plan=ReturnType<typeof parseEmploymentChangeDraft>;
 type Target={id:string;employee_code:string;employee_name:string;account_ref:string|null;status:string;status_version:number;
@@ -332,6 +332,88 @@ export class HrEmploymentChangeSourceFacade{
   if(!q.rowCount)throw new ConflictException({code:"CG10_CHANGE_STALE"});
   await this.audit(tx,actor.realmId,actor.accountId,row.employee_id,"EMPLOYMENT_CHANGE_WITHDRAWN");
  }
+ /** Only current permitted HR may record genuine nonfinancial clearance. */
+ async recordClearance(tx:PoolClient,actor:VerifiedFoundationActor,ref:string,body:unknown){
+  const x=parseExitClearance(body);await this.identity.assertCurrent(tx,actor,"hr.changes.manage");
+  if(!REF.test(ref))throw new BadRequestException({code:"CG10_CHANGE_INVALID"});
+  const read=(await tx.query<ChangeRow>(originalSql+" WHERE h.root_realm_id=$1 AND h.reference=$2",[actor.realmId,ref])).rows[0];
+  if(!read)throw new NotFoundException("The original exit request is unavailable");
+  const target=await this.target(tx,actor,read.employee_code,true);
+  const row=await this.original(tx,actor.realmId,read.id,true);
+  if(!exitKind(row.kind)||row.employee_id!==target.id||row.status!=="APPROVED_PENDING_EFFECT"||target.account_ref===actor.accountId)
+   throw new ConflictException({code:"CG10_CLEARANCE_UNAVAILABLE"});
+  const digest=hash([row.id,x.kind,x.evidenceNote]);
+  const previous=(await tx.query<{request_digest:string;verified_by:string;request_key:string;clearance_kind:string}>(`SELECT request_digest,verified_by,request_key,clearance_kind
+   FROM hr_exit_clearance WHERE root_realm_id=$1 AND change_id=$2 AND clearance_kind=$3 FOR SHARE`,[actor.realmId,row.id,x.kind])).rows[0];
+  if(previous){
+   if(previous.verified_by===actor.accountId&&previous.request_digest===digest&&previous.request_key===x.requestKey)
+    return {recorded:true,kind:x.kind,replayed:true};
+   throw new ConflictException({code:"CG10_CLEARANCE_UNAVAILABLE"});
+  }
+  const encrypted=seal(actor.realmId,row.id+"|clearance|"+x.kind,{evidenceNote:x.evidenceNote});
+  const q=await tx.query(`INSERT INTO hr_exit_clearance(root_realm_id,change_id,clearance_kind,verified_by,request_key,request_digest,
+   evidence_note_ciphertext,evidence_note_nonce,evidence_note_tag) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9) ON CONFLICT DO NOTHING RETURNING change_id`,
+   [actor.realmId,row.id,x.kind,actor.accountId,x.requestKey,digest,encrypted.ciphertext,encrypted.nonce,encrypted.tag]);
+  if(!q.rowCount)throw new ConflictException({code:"CG10_CLEARANCE_UNAVAILABLE"});
+  await this.audit(tx,actor.realmId,actor.accountId,row.employee_id,"EXIT_CLEARANCE_RECORDED");
+  return {recorded:true,kind:x.kind,replayed:false};
+ }
+ async clearanceSummary(tx:PoolClient,realm:string,row:ChangeRow){
+  if(!exitKind(row.kind))return null;
+  const q=await tx.query<{clearance_kind:string;verified_at:Date}>(`SELECT clearance_kind,verified_at FROM hr_exit_clearance
+   WHERE root_realm_id=$1 AND change_id=$2 ORDER BY clearance_kind`,[realm,row.id]);
+  return {items:["HR","ASSETS","HANDOVER"].map(kind=>({kind,status:q.rows.some(x=>x.clearance_kind===kind)?"CONFIRMED":"PENDING"})),
+   financeStatus:"NOT_VERIFIED",salaryAndDuesStatus:"NOT_AVAILABLE"};
+ }
+ /** Due-only worker and protected manual apply use the same original CG03 transaction.
+  * HR changes and CG01 account/session effects either all commit or all roll back. */
+ async applyDue(tx:PoolClient,realm:string,row:ChangeRow,reviewer:string){
+  if(row.status==="APPLIED")return {applied:true,replayed:true};
+  if(row.status!=="APPROVED_PENDING_EFFECT")throw new ConflictException({code:"CG10_CHANGE_STALE"});
+  const target=await this.validateExact(tx,realm,row,true);
+  if(row.effective_date>target.today)throw new ConflictException({code:"CG10_CHANGE_NOT_DUE"});
+  if(exitKind(row.kind)){
+   const clear=await this.clearanceSummary(tx,realm,row);
+   if(!clear||clear.items.some(x=>x.status!=="CONFIRMED"))
+    throw new ConflictException({code:"CG10_CLEARANCE_UNAVAILABLE"});
+  }
+  // Never rewrite an already verified/approved attendance day into another branch.
+  // A new effective date must be reviewed if recorded future attendance conflicts.
+  const incompatible=await tx.query(`SELECT 1 FROM hr_attendance_day d WHERE d.root_realm_id=$1 AND d.employee_id=$2
+   AND d.assignment_id=$3 AND d.local_date >= $4::date LIMIT 1 FOR SHARE`,[realm,row.employee_id,row.prior_assignment_id,row.effective_date]);
+  if(incompatible.rowCount)throw new ConflictException({code:"CG10_CHANGE_ATTENDANCE_CONFLICT"});
+  await this.access.apply(tx,realm,row.id);
+  const prior=await tx.query(`UPDATE hr_employment_assignment SET valid_to=$4,assignment_version=assignment_version+1
+   WHERE root_realm_id=$1 AND id=$2 AND employee_id=$3 AND valid_to IS NULL AND assignment_version=$5 RETURNING id`,
+   [realm,target.assignment_id,target.id,row.effective_date,row.prior_assignment_version]);
+  if(!prior.rowCount)throw new ConflictException({code:"CG10_CHANGE_STALE"});
+  let nextAssignment:string|null=null;
+  const exit=exitKind(row.kind);
+  if(!exit){
+   const newRow=await tx.query<{id:string}>(`INSERT INTO hr_employment_assignment(root_realm_id,employee_id,branch_ref,department_ref,
+    manager_employee_ref,designation,employment_type,valid_from,origin_application_ref)
+    VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9) RETURNING id`,
+    [realm,target.id,row.proposed_branch_ref,row.proposed_department_ref,row.proposed_manager_ref,row.proposed_designation,
+     target.employment_type,row.effective_date,target.origin_application_ref]);
+   nextAssignment=newRow.rows[0].id;
+  }
+  const emp=await tx.query(`UPDATE hr_employee SET status=CASE WHEN $3::boolean THEN 'EXITED' ELSE status END,status_version=status_version+1
+   WHERE root_realm_id=$1 AND id=$2 AND status_version=$4 AND status IN('ACTIVE','PROBATION') RETURNING id`,
+   [realm,target.id,exit,row.prior_employee_version]);
+  if(!emp.rowCount)throw new ConflictException({code:"CG10_CHANGE_STALE"});
+  // A new assignment or exit changes the original approved public professional identity.
+  // Consent is revoked immediately; CG18 still owns editorial publication.
+  const consent=await tx.query<{account_ref:string;consent_version:number}>(`UPDATE hr_public_bio_consent SET consent_status='REVOKED',
+   consent_version=consent_version+1,revoked_at=now(),updated_at=now()
+   WHERE root_realm_id=$1 AND employee_id=$2 AND consent_status='GRANTED' RETURNING account_ref,consent_version`,[realm,target.id]);
+  for(const c of consent.rows)await tx.query(`INSERT INTO hr_public_bio_consent_event(root_realm_id,employee_id,account_ref,action,consent_version)
+   VALUES($1,$2,$3,'REVOKED',$4)`,[realm,target.id,c.account_ref,c.consent_version]);
+  const completed=await tx.query(`UPDATE hr_employment_change SET status='APPLIED',new_assignment_ref=$3,applied_at=now(),updated_at=now()
+   WHERE root_realm_id=$1 AND id=$2 AND status='APPROVED_PENDING_EFFECT' RETURNING id`,[realm,row.id,nextAssignment]);
+  if(!completed.rowCount)throw new ConflictException({code:"CG10_CHANGE_STALE"});
+  await this.audit(tx,realm,reviewer,target.id,"EMPLOYMENT_CHANGE_APPLIED");
+  return {applied:true,replayed:false};
+ }
  async myHistory(tx:PoolClient,actor:VerifiedFoundationActor){
   await this.identity.assertPatientSessionCurrent(tx,actor);
   const q=await tx.query<ChangeRow>(originalSql+" WHERE h.root_realm_id=$1 AND e.account_ref=$2 AND e.status IN('ACTIVE','PROBATION') ORDER BY h.created_at DESC,h.id DESC LIMIT 50",
@@ -349,10 +431,36 @@ export class HrEmploymentChangeSourceFacade{
  }
  async staffHistory(tx:PoolClient,actor:VerifiedFoundationActor,offset:number){
   await this.identity.assertCurrent(tx,actor,"hr.changes.manage");
-  const sql=`WITH permitted AS (${currentSql} AND ${actorScope}) `;
+  const sql=`WITH permitted AS (
+   SELECT e.id FROM hr_employee e JOIN LATERAL(
+    SELECT a.* FROM hr_employment_assignment a WHERE a.root_realm_id=e.root_realm_id AND a.employee_id=e.id
+    ORDER BY CASE WHEN a.valid_from<=CURRENT_DATE AND a.valid_to IS NULL THEN 0 ELSE 1 END,a.valid_from DESC,a.id DESC LIMIT 1
+   ) a ON true JOIN branch b ON b.id=a.branch_ref AND b.root_realm_id=a.root_realm_id
+   WHERE e.root_realm_id=$1 AND ${actorScope}
+  ) `;
   const q=await tx.query<ChangeRow>(sql+originalSql+" WHERE h.root_realm_id=$1 AND EXISTS(SELECT 1 FROM permitted p WHERE p.id=h.employee_id) AND (h.status<>'DRAFT' OR h.created_by=$2) ORDER BY h.created_at DESC,h.id DESC LIMIT 26 OFFSET $3",
    [actor.realmId,actor.accountId,offset]);
   return {items:q.rows.slice(0,25).map(row=>({...this.summary(row),canEdit:row.created_by===actor.accountId&&row.status==="DRAFT",canWithdraw:row.created_by===actor.accountId&&row.status==="SUBMITTED"})),hasMore:q.rows.length>25,offset};
+ }
+ async staffDetail(tx:PoolClient,actor:VerifiedFoundationActor,ref:string){
+  await this.identity.assertCurrent(tx,actor,"hr.changes.manage");
+  if(!REF.test(ref))throw new BadRequestException({code:"CG10_CHANGE_INVALID"});
+  const sql=`WITH permitted AS (
+   SELECT e.id FROM hr_employee e JOIN LATERAL(
+    SELECT a.* FROM hr_employment_assignment a WHERE a.root_realm_id=e.root_realm_id AND a.employee_id=e.id
+    ORDER BY CASE WHEN a.valid_from<=CURRENT_DATE AND a.valid_to IS NULL THEN 0 ELSE 1 END,a.valid_from DESC,a.id DESC LIMIT 1
+   ) a ON true JOIN branch b ON b.id=a.branch_ref AND b.root_realm_id=a.root_realm_id
+   WHERE e.root_realm_id=$1 AND ${actorScope}
+  ) `;
+  const row=(await tx.query<ChangeRow>(sql+originalSql+" WHERE h.root_realm_id=$1 AND h.reference=$3 AND EXISTS(SELECT 1 FROM permitted p WHERE p.id=h.employee_id) AND (h.status<>'DRAFT' OR h.created_by=$2)",
+   [actor.realmId,actor.accountId,ref])).rows[0];
+  if(!row)throw new NotFoundException("The original employment request is unavailable");
+  const detail=row.created_by===actor.accountId?await this.privateDetail(tx,actor.realmId,row,actor.accountId):this.summary(row);
+  return {...detail,employeeReference:row.employee_code,canEdit:row.created_by===actor.accountId&&row.status==="DRAFT",
+   canWithdraw:row.created_by===actor.accountId&&row.status==="SUBMITTED",clearance:await this.clearanceSummary(tx,actor.realmId,row),
+   canRecordClearance:exitKind(row.kind)&&row.status==="APPROVED_PENDING_EFFECT"&&row.employee_account_ref!==actor.accountId,
+   ...(row.created_by===actor.accountId&&row.status==="DRAFT"?{form:{kind:row.kind,effectiveDate:row.effective_date,lastWorkingDate:row.last_working_date,
+    branchRef:row.proposed_branch_ref,departmentRef:row.proposed_department_ref,managerRef:row.proposed_manager_ref,designation:row.proposed_designation,roleRef:row.proposed_role_ref}}:{})};
  }
  async employeeOptions(tx:PoolClient,actor:VerifiedFoundationActor,search:string){
   await this.identity.assertCurrent(tx,actor,"hr.changes.manage");

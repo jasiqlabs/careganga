@@ -242,7 +242,23 @@ CREATE TRIGGER cg10_assignment_no_overlap BEFORE INSERT OR UPDATE OF valid_from,
 CREATE TABLE hr_exit_clearance(
  root_realm_id uuid NOT NULL,change_id uuid NOT NULL,
  clearance_kind text NOT NULL CHECK(clearance_kind IN('HR','ASSETS','HANDOVER')),
- verified_by uuid NOT NULL, evidence_note_ciphertext text NOT NULL, evidence_note_nonce text NOT NULL,evidence_note_tag text NOT NULL,
+ verified_by uuid NOT NULL, request_key uuid NOT NULL, request_digest char(64) NOT NULL CHECK(request_digest ~ '^[0-9a-f]{64}
+ verified_at timestamptz NOT NULL DEFAULT now(),
+ PRIMARY KEY(root_realm_id,change_id,clearance_kind),UNIQUE(root_realm_id,verified_by,request_key),
+ FOREIGN KEY(root_realm_id,change_id) REFERENCES hr_employment_change(root_realm_id,id) ON DELETE RESTRICT,
+ FOREIGN KEY(verified_by,root_realm_id) REFERENCES account(id,realm_id) ON DELETE RESTRICT
+);
+CREATE TRIGGER cg10_exit_clearance_immutable BEFORE UPDATE OR DELETE ON hr_exit_clearance FOR EACH ROW EXECUTE FUNCTION cg03_immutable();
+
+ALTER TABLE hr_audit DROP CONSTRAINT hr_audit_action_check;
+ALTER TABLE hr_audit ADD CONSTRAINT hr_audit_action_check CHECK(action IN(
+ 'DRAFT_CREATED','DRAFT_UPDATED','SUBMITTED','RETURNED','REJECTED','ACTIVATED','PENDING_ACCESS','ACCESS_CONFIRMED',
+ 'LEAVE_PRIVATE_READ','ATTENDANCE_CORRECTION_PRIVATE_READ','APPRAISAL_DRAFT_CREATED','APPRAISAL_DRAFT_UPDATED',
+ 'APPRAISAL_SUBMITTED','APPRAISAL_RELEASED','APPRAISAL_PRIVATE_READ','EMPLOYMENT_CHANGE_PRIVATE_READ',
+ 'EMPLOYMENT_CHANGE_DRAFT','EMPLOYMENT_CHANGE_EDITED','EMPLOYMENT_CHANGE_SUBMITTED','EMPLOYMENT_CHANGE_APPROVED',
+ 'EMPLOYMENT_CHANGE_RETURNED','EMPLOYMENT_CHANGE_REJECTED','EMPLOYMENT_CHANGE_WITHDRAWN','EMPLOYMENT_CHANGE_APPLIED','EXIT_CLEARANCE_RECORDED'));
+),
+ evidence_note_ciphertext text NOT NULL, evidence_note_nonce text NOT NULL,evidence_note_tag text NOT NULL,
  verified_at timestamptz NOT NULL DEFAULT now(),
  PRIMARY KEY(root_realm_id,change_id,clearance_kind),
  FOREIGN KEY(root_realm_id,change_id) REFERENCES hr_employment_change(root_realm_id,id) ON DELETE RESTRICT,
@@ -257,3 +273,23 @@ ALTER TABLE hr_audit ADD CONSTRAINT hr_audit_action_check CHECK(action IN(
  'APPRAISAL_SUBMITTED','APPRAISAL_RELEASED','APPRAISAL_PRIVATE_READ','EMPLOYMENT_CHANGE_PRIVATE_READ',
  'EMPLOYMENT_CHANGE_DRAFT','EMPLOYMENT_CHANGE_EDITED','EMPLOYMENT_CHANGE_SUBMITTED','EMPLOYMENT_CHANGE_APPROVED',
  'EMPLOYMENT_CHANGE_RETURNED','EMPLOYMENT_CHANGE_REJECTED','EMPLOYMENT_CHANGE_WITHDRAWN','EMPLOYMENT_CHANGE_APPLIED','EXIT_CLEARANCE_RECORDED'));
+
+-- An original case is never allowed to commit without its matching owner source/status.
+CREATE FUNCTION cg03_hr_employment_owner_required() RETURNS trigger LANGUAGE plpgsql AS $fn$
+BEGIN
+ IF NEW.case_kind IN('HR_TRANSFER_PROMOTION','HR_EXIT_REVIEW') AND NOT EXISTS(
+  SELECT 1 FROM cg03_case c JOIN hr_employment_change h
+   ON h.id=c.hr_employment_change_id AND h.root_realm_id=c.realm_id AND h.source_digest=c.hr_employment_change_digest
+   AND h.revision=c.proposal_revision AND h.case_ref=c.id AND h.created_by=c.proposer_id
+   WHERE c.id=NEW.id AND c.realm_id=NEW.realm_id AND (
+    (c.status IN('SUBMITTED','IN_REVIEW') AND h.status='SUBMITTED')
+    OR (c.status='PENDING_OWNER' AND h.status='APPROVED_PENDING_EFFECT')
+    OR (c.status='OWNER_COMPLETED' AND h.status='APPLIED')
+    OR (c.status='RETURNED' AND h.status='RETURNED')
+    OR (c.status='REJECTED' AND h.status='REJECTED')
+    OR (c.status='CANCELLED' AND h.status='WITHDRAWN'))
+ ) THEN RAISE EXCEPTION 'Original employment source and case outcome required'; END IF;
+ RETURN NULL;
+END; $fn$;
+CREATE CONSTRAINT TRIGGER cg03_hr_employment_owner_required AFTER INSERT OR UPDATE ON cg03_case
+ DEFERRABLE INITIALLY DEFERRED FOR EACH ROW EXECUTE FUNCTION cg03_hr_employment_owner_required();
