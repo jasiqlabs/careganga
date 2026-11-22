@@ -28,6 +28,7 @@ export type FoundationAdminNavProps = {
     | "activities"
     | "tasks"
     | "inventory"
+    | "membership"
     | "finance"
     | "financeVouchers"
     | "financeReviews"
@@ -748,6 +749,7 @@ export function FoundationAdminNav({
     ...(allowed("projects.visits.view",false)?[{key:"fieldVisits" as const,label:"Field Visits",href:"/admin/field-visits"}]:[]),
     ...(allowed("projects.activities.view",false)?[{key:"activities" as const,label:"Activities & Events",href:"/admin/activities"}]:[]),
     ...(allowed("projects.tasks.view",false)?[{key:"tasks" as const,label:"Tasks & Assignments",href:"/admin/tasks"}]:[]),
+    ...(allowed("membership.tier.manage",false)?[{key:"membership" as const,label:"Membership",href:"/admin/membership"}]:[]),
     ...(allowed("inventory.catalog.view",false)?[{key:"inventory" as const,label:"Requests & Inventory",href:"/admin/inventory"}]:[]),
     {key:"hr" as const,label:hrAccess?"Human Resources":"My employment",href:"/admin/hr"},
     ...(cmsAccess ? [{ key: "cms" as const, label: "Website CMS", href: "/admin/website" }] : []),
@@ -839,6 +841,7 @@ export function FoundationAdminNav({
     activities: "Activities & Events",
     tasks: "Tasks & Assignments",
     inventory: "Requests & Inventory",
+    membership: "Membership",
     hr: "Human Resources"
   };
 
@@ -984,6 +987,7 @@ export function FoundationAdminNav({
             { name: "DASHBOARD", keys: ["dashboard", "account"] },
             { name: "USER & ACCESS MANAGEMENT", keys: ["accounts", "roles", "approvals", "policy"] },
             { name: "ORGANIZATION MANAGEMENT", keys: ["branches", "foundation", "hr", "cms"] },
+            { name: "MEMBERSHIP", keys: ["membership"] },
             { name: "PROJECT & FIELD OPERATIONS", keys: ["projects", "fieldVisits", "tasks", "activities", "inventory"] },
             { name: "HEALTHCARE", keys: [
               "healthNetwork", "healthCenter", "healthDoctors", "healthDiagnostics", "healthLabPricing", "healthLabOrders", "healthLabEquipment", "healthAssistancePolicies", "healthLiabilities", "healthSettlements", "healthSchedules", "healthPatientIntake",
