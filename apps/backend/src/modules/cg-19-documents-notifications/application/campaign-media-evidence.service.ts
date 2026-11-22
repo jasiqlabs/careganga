@@ -20,6 +20,7 @@ function parse(v:unknown){
   !["COVER","BANNER","DOCUMENT"].includes(String(x.kind))||
   x.rightsConfirmed!==true||typeof x.mime!=="string"||!MIME.includes(x.mime)||
   (x.kind!=="DOCUMENT"&&x.mime==="application/pdf")||
+  (x.kind==="COVER"&&x.mime==="image/webp")||
   !Number.isSafeInteger(x.campaignVersion)||Number(x.campaignVersion)<1||
   !Number.isSafeInteger(x.sizeBytes)||Number(x.sizeBytes)<1||Number(x.sizeBytes)>(x.kind==="COVER"?2097152:x.kind==="BANNER"?5242880:10485760)||
   typeof x.sha256!=="string"||!/^[a-f0-9]{64}$/.test(x.sha256))throw invalid();
