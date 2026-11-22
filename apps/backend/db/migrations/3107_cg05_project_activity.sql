@@ -95,8 +95,8 @@ BEGIN
    WHERE root_realm_id=NEW.root_realm_id AND id=NEW.project_id FOR SHARE;
   IF NOT FOUND OR p.branch_ref IS DISTINCT FROM NEW.branch_ref
    OR (NEW.status NOT IN('CANCELLED') AND p.status IN('COMPLETED','CANCELLED'))
-   OR (p.planned_start IS NOT NULL AND (NEW.scheduled_start AT TIME ZONE 'Asia/Kolkata')::date<p.planned_start)
-   OR (p.planned_end IS NOT NULL AND (NEW.scheduled_end AT TIME ZONE 'Asia/Kolkata')::date>p.planned_end) THEN
+   OR (NEW.status<>'CANCELLED' AND p.planned_start IS NOT NULL AND (NEW.scheduled_start AT TIME ZONE 'Asia/Kolkata')::date<p.planned_start)
+   OR (NEW.status<>'CANCELLED' AND p.planned_end IS NOT NULL AND (NEW.scheduled_end AT TIME ZONE 'Asia/Kolkata')::date>p.planned_end) THEN
     RAISE EXCEPTION 'Activity must use the current project scope and schedule';
   END IF;
  END IF;
