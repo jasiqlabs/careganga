@@ -5,6 +5,7 @@ import {DATABASE} from "../../../core/infrastructure/database.module";
 import {SessionService} from "../../cg-01-identity-access/application/session.service";
 import {FoundationStructureIdentityFacade} from "../../cg-01-identity-access/application/foundation-structure-identity.facade";
 import type {VerifiedFoundationActor} from "../../cg-01-identity-access/public-api";
+import {projectBudgetProjection} from "../../cg-09-finance-accounting/application/finance-project-budget-projection";
 import {BranchSourceFacade} from "../../cg-02-foundation-structure/application/branch-source.facade";
 import {canTransition,choice,clean,date,invalid,optionalRef,parseBranch,parseCreate,parseEdit,parseStatus,priorities,ref,stale,statuses,type ProjectStatus} from "../domain/project-input";
 
@@ -21,6 +22,15 @@ export class ProjectsService{
   const a=await this.sessions.requireAction(token,action),tx=await this.db.connect();
   try{await tx.query(read?"BEGIN ISOLATION LEVEL REPEATABLE READ":"BEGIN");await this.identity.assertCurrent(tx,a,action);const v=await work(tx,a);await tx.query("COMMIT");return v;}
   catch(e){await tx.query("ROLLBACK");if(e&&typeof e==="object"&&"code" in e&&e.code==="23505")throw new ConflictException({code:"CG05_DUPLICATE"});if(e&&typeof e==="object"&&"code" in e&&e.code==="40001")throw stale();throw e;}finally{tx.release();}
+ }
+ private async budgetOverview(tx:PoolClient,a:VerifiedFoundationActor,s:Scope,mine:boolean,target:string|null){
+  await tx.query("SAVEPOINT cg05_budget_read");
+  try{
+   await this.identity.assertCurrent(tx,a,"finance.budgets.view");
+   const result=await projectBudgetProjection(tx,a,{all:s.all,branchRefs:s.branches.map(b=>b.value)},mine,target);
+   await tx.query("RELEASE SAVEPOINT cg05_budget_read");
+   return {status:result.linked?"LINKED":"NOT_LINKED",...result};
+  }catch(e){await tx.query("ROLLBACK TO SAVEPOINT cg05_budget_read");await tx.query("RELEASE SAVEPOINT cg05_budget_read");return {status:e instanceof ForbiddenException?"RESTRICTED":"UNAVAILABLE",linked:null,approved:null,ceilingMinor:null,allocatedMinor:null,utilizedMinor:null};}
  }
  private scopeParams(a:VerifiedFoundationActor,s:Scope){return [a.realmId,s.all,s.branches.map(b=>b.value),a.accountId];}
  private async owner(tx:PoolClient,a:VerifiedFoundationActor,branch:string|null,owner:string){
@@ -138,7 +148,8 @@ export class ProjectsService{
    const counts=(await tx.query("SELECT count(*)::integer AS total,count(*) FILTER(WHERE p.status='ACTIVE')::integer AS active,count(*) FILTER(WHERE p.status='ON_HOLD')::integer AS hold,count(*) FILTER(WHERE p.status='COMPLETED')::integer AS completed,count(*) FILTER(WHERE p.status='CANCELLED')::integer AS cancelled,count(*) FILTER(WHERE p.status IN('DRAFT','PLANNED'))::integer AS planned,COALESCE(sum(p.planned_budget_minor),0)::text AS \"plannedBudgetMinor\""+joins+" WHERE "+scope,this.scopeParams(a,s))).rows[0];
    const categories=(await tx.query("SELECT p.category AS label,count(*)::integer AS count"+joins+" WHERE "+scope+" GROUP BY p.category ORDER BY count DESC,label LIMIT 8",this.scopeParams(a,s))).rows;
    const recent=(await tx.query("SELECT p.title,e.action,e.resulting_status AS status,e.occurred_at AS at"+joins+" JOIN project_event e ON e.root_realm_id=p.root_realm_id AND e.project_id=p.id WHERE "+scope+" ORDER BY e.occurred_at DESC,e.id DESC LIMIT 5",this.scopeParams(a,s))).rows;
-   return {items,counts,categories,recent,offset,hasMore:page.rows.length>25};
+   const finance=await this.budgetOverview(tx,a,s,mine,null);
+   return {items,counts,categories,recent,finance,offset,hasMore:page.rows.length>25};
   },true);
  }
  async detail(token:string,id:string){
@@ -149,7 +160,8 @@ export class ProjectsService{
    const history=(await tx.query("SELECT e.action,e.prior_status AS \"priorStatus\",e.resulting_status AS status,e.reason,e.occurred_at AS at,a.display_name AS actor FROM project_event e JOIN account a ON a.id=e.actor_ref AND a.realm_id=e.root_realm_id WHERE e.root_realm_id=$1 AND e.project_id=$2 ORDER BY e.result_version DESC LIMIT 50",[a.realmId,target])).rows;
    const branchHistory=(await tx.query("SELECT COALESCE(b.name,'Foundation') AS branch,h.valid_from AS \"validFrom\",h.valid_to AS \"validTo\" FROM project_branch_history h LEFT JOIN branch b ON b.id=h.branch_ref AND b.root_realm_id=h.root_realm_id WHERE h.root_realm_id=$1 AND h.project_id=$2 ORDER BY h.valid_from DESC LIMIT 50",[a.realmId,target])).rows;
    let canManage=false;try{await this.identity.assertCurrent(tx,a,"projects.manage");await this.branches.projectBranch(tx,a,item.branchRef);canManage=true;}catch(e){if(!(e instanceof ForbiddenException))throw e;}
-   return {...item,history,branchHistory,canManage,financeStatus:"NOT_LINKED",publicStatus:"PRIVATE"};
+   const finance=await this.budgetOverview(tx,a,await this.branches.projectBranchScope(tx,a),false,target);
+   return {...item,history,branchHistory,canManage,finance,financeStatus:finance.status,publicStatus:"PRIVATE"};
   },true);
  }
 }
