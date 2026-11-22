@@ -71,19 +71,19 @@ export function MemberReviewPanel({canConfigure=false}:{canConfigure?:boolean}){
  {policy&&!policy.configured&&<section className="cg04-panel"><h2>Membership review not configured</h2><p>Applications remain saved but cannot enter review until the protected Foundation approval workflow is configured.</p>
  {canConfigure&&<form onSubmit={e=>void configure(e)}><label>Confirm your current Foundation password<input type="password" required minLength={8} value={configPassword} onChange={e=>setConfigPassword(e.target.value)}/></label><button className="cg04-primary" disabled={busy}>Configure original CG-03 approval</button></form>}
  {!canConfigure&&<p>Ask an authorized Foundation administrator to configure the review process.</p>}</section>}
- <section className="cg04-panel"><div className="cg04-buttons"><label>Application status<select value={status} onChange={e=>{setStatus(e.target.value);setOffset(0);setSelected(null);}}>{statuses.map(s=><option key={s} value={s}>{s==="ALL"?"All application statuses":s.replaceAll("_"," ")}</option>)}</select></label><button type="button" disabled={busy||loading} onClick={refresh}>Refresh</button></div>
+ <section className="cg04-panel"><div className="cg04-buttons"><label>Application status<select value={status} onChange={e=>{setStatus(e.target.value);setOffset(0);setSelected(null);setDetail(null);setPassword("");}}>{statuses.map(s=><option key={s} value={s}>{s==="ALL"?"All application statuses":s.replaceAll("_"," ")}</option>)}</select></label><button type="button" disabled={busy||loading} onClick={refresh}>Refresh</button></div>
  {loading?<p role="status">Checking current protected registration cases…</p>:page?<><div className="cg04-roster-scroll" role="region" aria-label="Membership review applications" tabIndex={0}><table><thead><tr><th>Application</th><th>Applicant</th><th>Status</th><th>Submitted</th><th>Actions</th></tr></thead><tbody>
- {page.items.map(c=><tr key={c.caseRef}><td>{c.reference}</td><td>{c.name}</td><td>{c.status.replaceAll("_"," ")}</td><td>{new Date(c.submittedAt).toLocaleDateString("en-IN")}</td><td><button type="button" onClick={()=>{setSelected(c.caseRef);setDetailTab("OVERVIEW");}} aria-pressed={selected===c.caseRef}>View application</button></td></tr>)}
+ {page.items.map(c=><tr key={c.caseRef}><td>{c.reference}</td><td>{c.name}</td><td>{c.status.replaceAll("_"," ")}</td><td>{new Date(c.submittedAt).toLocaleDateString("en-IN")}</td><td><button type="button" onClick={()=>{setDetail(null);setSelected(c.caseRef);setDetailTab("OVERVIEW");setPassword("");setRemarks("");setAction("APPROVE");}} aria-pressed={selected===c.caseRef}>View application</button></td></tr>)}
  {!page.items.length&&<tr><td colSpan={5}>No membership cases match this permitted status.</td></tr>}</tbody></table></div>
  <div className="cg04-buttons"><button type="button" disabled={busy||offset===0} onClick={()=>{setOffset(Math.max(0,offset-25));setSelected(null);}}>Previous</button><button type="button" disabled={busy||!page.hasMore} onClick={()=>{setOffset(x=>x+25);setSelected(null);}}>Next</button></div></>:<p>No review data available.</p>}
  </section>
- {selected&&detail&&<section className="cg04-panel cg04-review-detail" aria-label="Protected membership application details">
+ {selected&&detail&&detail.caseRef===selected&&<section className="cg04-panel cg04-review-detail" aria-label="Protected membership application details">
  <header><h2>Review {detail.reference}</h2><p>Status: <strong>{readable(detail.status)}</strong> · {detail.source.applicationNumber}</p></header>
  <nav className="cg04-review-tabs" role="tablist" aria-label="Applicant details">
   {detailTabs.map(t=><button key={t.key} type="button" role="tab"
    aria-selected={detailTab===t.key} disabled={"pending" in t&&t.pending}
    title={"pending" in t&&t.pending?"Awaiting original approved source integration":undefined}
-   onClick={()=>setDetailTab(t.key)}>{t.label}{"pending" in t&&t.pending?" (pending)":""}</button>)}
+   onClick={()=>{setDetailTab(t.key);setPassword("");}}>{t.label}{"pending" in t&&t.pending?" (pending)":""}</button>)}
  </nav>
  <div role="tabpanel" className="cg04-review-tab-panel">
  {detailTab==="OVERVIEW"&&<div className="cg04-review-details">
