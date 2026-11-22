@@ -28,6 +28,6 @@ export function parseTaskProgress(raw:unknown){
  const x=fields(raw,["requestKey","expectedVersion","status","reason"]);return {key:ref(x.requestKey),expected:version(x.expectedVersion),status:choice(x.status,["IN_PROGRESS","COMPLETED","CANCELLED"] as const),reason:clean(x.reason??"",x.status==="CANCELLED"?3:0,500)};
 }
 export function taskTransition(from:TaskStatus,to:TaskStatus){
- const graph:Record<TaskStatus,readonly TaskStatus[]>={DRAFT:["CANCELLED"],ASSIGNED:["IN_PROGRESS","CANCELLED"],IN_PROGRESS:["COMPLETED","CANCELLED"],COMPLETED:[],CANCELLED:[]};
+ const graph:Record<TaskStatus,readonly TaskStatus[]>={DRAFT:[],ASSIGNED:["IN_PROGRESS","CANCELLED"],IN_PROGRESS:["COMPLETED","CANCELLED"],COMPLETED:[],CANCELLED:[]};
  return graph[from].includes(to);
 }
