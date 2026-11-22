@@ -173,7 +173,7 @@ export class ProjectActivitiesService{
  async list(token:string,query:Record<string,unknown>,mine=false,exporting=false){
   return this.projects.run(token,exporting?"projects.activities.export":"projects.activities.view",(tx,a)=>this.listInTx(tx,a,query,mine,exporting),true);
  }
- async listInTx(tx:PoolClient,a:Actor,query:Record<string,unknown>,mine=false,exporting=false){
+ async listInTx(tx:PoolClient,a:Actor,query:Record<string,unknown>,mine=false,exporting=false,summaryOnly=false){
   await this.identity.assertCurrent(tx,a,exporting?"projects.activities.export":"projects.activities.view");
   if(exporting)await this.identity.assertCurrent(tx,a,"projects.activities.view");
   const q=clean(query.q??"",0,100).toLowerCase(),project=optionalRef(query.projectRef),kind=choice(query.kind??"ALL",["ALL",...activityKinds]),type=clean(query.activityType??"",0,80),category=clean(query.category??"",0,80),
@@ -192,14 +192,14 @@ export class ProjectActivitiesService{
     AND ($17::date IS NULL OR x.scheduled_start>=($17::date::timestamp AT TIME ZONE 'Asia/Kolkata')) AND ($18::date IS NULL OR x.scheduled_start<(($18::date+1)::timestamp AT TIME ZONE 'Asia/Kolkata'))`;
    const where=" WHERE "+scope+filters,upcoming="x.status='SCHEDULED' AND x.scheduled_start>=now()";
    const tabFilter=tab==="UPCOMING"?" AND "+upcoming:tab==="MY"?" AND x.owner_account_ref=$4 AND "+ownerCurrent:["COMPLETED","ONGOING","CANCELLED"].includes(tab)?" AND x.status='"+tab+"'":"";
-   const page=await tx.query("SELECT "+select+joins+where+tabFilter+" ORDER BY x.scheduled_start ASC,x.id LIMIT $19 OFFSET $20",[...vals,exporting?501:26,offset]);
+   const page=summaryOnly&&!exporting?{rows:[]}:await tx.query("SELECT "+select+joins+where+tabFilter+" ORDER BY x.scheduled_start ASC,x.id LIMIT $19 OFFSET $20",[...vals,exporting?501:26,offset]);
    const items=page.rows.slice(0,exporting?500:25);
    if(exporting){await this.projects.auditExport(tx,a,"ACTIVITIES",mine,items.length,query);const columns=["code","title","kind","project","program","category","activityType","venue","branch","state","district","scheduledStart","scheduledEnd","owner","status"];return {csv:[columns,...items.map(row=>columns.map(k=>row[k]))].map(row=>row.map(csv).join(",")).join("\r\n"),rows:items.length,hasMore:page.rows.length>500};}
    const counts=(await tx.query(`SELECT count(*)::int AS total,count(*) FILTER(WHERE x.status='COMPLETED')::int AS completed,count(*) FILTER(WHERE x.status='ONGOING')::int AS ongoing,count(*) FILTER(WHERE ${upcoming})::int AS upcoming,count(*) FILTER(WHERE x.status='CANCELLED')::int AS cancelled,count(*) FILTER(WHERE x.owner_account_ref=$4 AND ${ownerCurrent})::int AS mine`+joins+where,vals)).rows[0];
-   const categories=(await tx.query("SELECT x.category AS label,count(*)::int AS count"+joins+where+" GROUP BY x.category ORDER BY count DESC,label LIMIT 8",vals)).rows;
-   const statuses=(await tx.query("SELECT x.status AS label,count(*)::int AS count"+joins+where+" GROUP BY x.status ORDER BY x.status",vals)).rows;
+   const categories=summaryOnly?[]:(await tx.query("SELECT x.category AS label,count(*)::int AS count"+joins+where+" GROUP BY x.category ORDER BY count DESC,label LIMIT 8",vals)).rows;
+   const statuses=summaryOnly?[]:(await tx.query("SELECT x.status AS label,count(*)::int AS count"+joins+where+" GROUP BY x.status ORDER BY x.status",vals)).rows;
    const recent=(await tx.query("SELECT x.id AS ref,x.activity_code AS code,x.title,e.action,e.resulting_status AS status,e.occurred_at AS at,actor.display_name AS actor"+joins+" JOIN project_activity_event e ON e.root_realm_id=x.root_realm_id AND e.activity_id=x.id JOIN account actor ON actor.realm_id=e.root_realm_id AND actor.id=e.actor_ref"+where+" ORDER BY e.occurred_at DESC,e.id DESC LIMIT 8",vals)).rows;
-   const choices=(await tx.query(`WITH allowed AS(SELECT p.id AS project_id,p.title AS project,x.category,x.activity_type,x.venue_label,a.display_name AS owner,(${effectiveBranch}) AS branch_id,b.name AS branch`+joins+" WHERE "+scope+`)
+   const choices=summaryOnly?{projects:[],branches:[],categories:[],types:[],owners:[],locations:[]}:(await tx.query(`WITH allowed AS(SELECT p.id AS project_id,p.title AS project,x.category,x.activity_type,x.venue_label,a.display_name AS owner,(${effectiveBranch}) AS branch_id,b.name AS branch`+joins+" WHERE "+scope+`)
     SELECT (SELECT COALESCE(jsonb_agg(v),'[]'::jsonb) FROM (SELECT DISTINCT project_id AS value,project AS label FROM allowed WHERE project_id IS NOT NULL ORDER BY project,project_id LIMIT 100) v) AS projects,
     (SELECT COALESCE(jsonb_agg(v),'[]'::jsonb) FROM (SELECT DISTINCT branch_id AS value,branch AS label FROM allowed WHERE branch_id IS NOT NULL ORDER BY branch,branch_id LIMIT 100) v) AS branches,
     (SELECT COALESCE(jsonb_agg(v.category),'[]'::jsonb) FROM (SELECT DISTINCT category FROM allowed ORDER BY category LIMIT 100) v) AS categories,
