@@ -455,10 +455,11 @@ export function NativeHrEnrollment({token,canView,canManage,canReview,canViewEmp
    </View>}
    {canManage&&canView&&<View style={styles.card}>
     {uncertain&&<Text accessibilityRole="alert" style={styles.error}>The original save is uncertain. Retry it before changing the application.</Text>}
-    <Text style={styles.h2}>{selected?"Correct application draft":"Create employee draft"}</Text>
-    <Text style={styles.muted}>Saving never activates an employee or grants system access.
-     A separate Foundation approval is required.</Text>
+    <Text style={styles.h2}>{selected?"Edit employee registration":"Employee Registration"}</Text>
+    <Text style={styles.muted}>Registration → Protected details and documents → Independent approval → Activation. Actual review stages follow the configured approval process.</Text>
+    <Text style={[styles.h2,{color:theme.primary}]}>Personal information</Text>
     {field("Employee name",draft.name,v=>change("name",v),"Employee name")}
+    <Text style={[styles.h2,{color:theme.primary,borderTopWidth:1,borderColor:theme.border,paddingTop:12}]}>Employment details</Text>
     {field("Designation",draft.designation,v=>change("designation",v),"Role or designation")}
     <Text style={styles.label}>Employment type</Text>
     <View style={styles.choices}>{types.map(v=><Pressable key={v}
@@ -503,6 +504,8 @@ export function NativeHrEnrollment({token,canView,canManage,canReview,canViewEmp
         <Text style={draft.managerRef===x.managerRef?styles.selectedText:styles.chipText}>
          {x.label}</Text></Pressable>)}
       </View></>}
+    {field("Joining date",draft.hireDate,v=>change("hireDate",v),"YYYY-MM-DD")}
+    {(canSelectAccounts||canSelectRoles)&&<Text style={[styles.h2,{color:theme.primary,borderTopWidth:1,borderColor:theme.border,paddingTop:12}]}>Account and role proposal</Text>}
     {canSelectAccounts&&<><Text style={styles.label}>Existing staff login (optional)</Text>
       <View style={styles.choices}>
        <Pressable accessibilityRole="button" style={[styles.chip,!draft.accountRef&&styles.selected]}
@@ -529,7 +532,6 @@ export function NativeHrEnrollment({token,canView,canManage,canReview,canViewEmp
         <Text style={draft.roleRef===r.value?styles.selectedText:styles.chipText}>
          {r.label}</Text></Pressable>)}
       </View></>}
-    {field("Joining date",draft.hireDate,v=>change("hireDate",v),"YYYY-MM-DD")}
     <Pressable accessibilityRole="button" disabled={saving}
      style={[styles.primary,saving&&{opacity:.5}]} onPress={()=>void save()}>
      <Text style={styles.primaryText}>{saving?"Saving…":uncertain?"Retry original save":selected?"Update & continue":"Save & continue"}</Text>

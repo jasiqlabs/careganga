@@ -318,12 +318,14 @@ export function HrEnrollmentWorkspace({canViewApps,canManage,canViewEmployees,ca
   </p>}
   {canViewApps&&canManage&&<form onSubmit={e=>void save(e)} style={{border:"1px solid var(--cg-border)",
    borderRadius:16,padding:"1.1rem",display:"grid",gap:15,background:"#fff"}}>
-   <header><h2 style={{margin:0,fontSize:"1.15rem"}}>{selected?"Edit draft":"New employee draft"}</h2>
-    <p style={{color:"var(--cg-muted)",margin:"5px 0 0"}}>Personal and employment basics. Private identity and bank documents are not collected here.</p></header>
-   <fieldset disabled={busy||uncertain} style={{border:0,padding:0,margin:0,minWidth:0,display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(215px,1fr))",gap:13}}>
+   <header><h2 style={{margin:0,fontSize:"1.15rem"}}>{selected?"Edit employee registration":"Employee Registration"}</h2>
+    <p style={{color:"var(--cg-muted)",margin:"5px 0 0"}}>Registration → Protected details and documents → Independent approval → Activation. Actual review stages are governed by the configured approval process.</p></header>
+   <fieldset disabled={busy||uncertain} style={{border:0,padding:0,margin:0,minWidth:0,display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(min(100%,215px),1fr))",gap:13}}>
+    <h3 style={{gridColumn:"1 / -1",margin:0,color:"var(--cg-accent)"}}>Personal information</h3>
     <label style={fieldStyle}>Employee name
      <input style={inputStyle} value={form.name} maxLength={160} required
       autoComplete="name" onChange={e=>change("name",e.target.value)}/></label>
+    <h3 style={{gridColumn:"1 / -1",margin:"8px 0 0",borderTop:"1px solid var(--cg-border)",paddingTop:12,color:"var(--cg-accent)"}}>Employment details</h3>
     <label style={fieldStyle}>Designation
      <input style={inputStyle} value={form.designation} maxLength={120} required
       onChange={e=>change("designation",e.target.value)}/></label>
@@ -355,6 +357,10 @@ export function HrEnrollmentWorkspace({canViewApps,canManage,canViewEmployees,ca
       <option value="">No reporting manager assigned</option>
       {managers.map(x=><option value={x.managerRef} key={x.managerRef}>{x.label}</option>)}
      </select></label>
+    <label style={fieldStyle}>Joining date
+     <input type="date" style={inputStyle} required value={form.hireDate}
+      onChange={e=>change("hireDate",e.target.value)}/></label>
+    {(canSelectAccounts||canSelectRoles)&&<h3 style={{gridColumn:"1 / -1",margin:"8px 0 0",borderTop:"1px solid var(--cg-border)",paddingTop:12,color:"var(--cg-accent)"}}>Account and role proposal</h3>}
     {canSelectAccounts&&<label style={fieldStyle}>Existing staff login (optional)
      <select style={inputStyle} value={form.accountRef}
       onChange={e=>change("accountRef",e.target.value)}>
@@ -367,9 +373,6 @@ export function HrEnrollmentWorkspace({canViewApps,canManage,canViewEmployees,ca
       <option value="">No system role proposed</option>
       {roles.map(x=><option key={x.value} value={x.value}>{x.label}</option>)}
      </select></label>}
-    <label style={fieldStyle}>Joining date
-     <input type="date" style={inputStyle} required value={form.hireDate}
-      onChange={e=>change("hireDate",e.target.value)}/></label>
    </fieldset>
    <div style={{display:"flex",gap:10,flexWrap:"wrap"}}>
     <button type="submit" style={buttonStyle} disabled={busy}>
