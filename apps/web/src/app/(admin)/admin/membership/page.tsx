@@ -4,6 +4,7 @@ import {FoundationAdminNav} from "../../../../shared/foundation-admin-nav";
 import {UnavailablePage} from "../../../../shared/unavailable-page";
 import {MembershipWorkspace} from "../../../../features/membership/membership-workspace";
 import {MemberRoster} from "../../../../features/membership/member-roster";
+import {MemberDocumentManager} from "../../../../features/membership/member-document-manager";
 export const dynamic="force-dynamic";
 export default async function MembershipPage(){
  const token=(await cookies()).get("cg_staff_session")?.value;if(!token)redirect("/admin/login");
@@ -19,6 +20,6 @@ export default async function MembershipPage(){
   const canTiers=actions.includes("membership.tier.manage"),canMembers=actions.includes("membership.members.view"),canExport=actions.includes("membership.members.export"),canIssueDocs=actions.includes("membership.documents.issue");
   const canReview=["membership.applications.review","approvals.review","documents.files.view"].every(k=>actions.includes(k));
   if(!canTiers&&!canMembers&&!canReview&&!canIssueDocs)return <UnavailablePage title="Membership access unavailable" description="Your current role cannot access membership plans or members." linkLabel="Return to dashboard"/>;
-  return <div className="shell"><FoundationAdminNav active="membership" initialActions={actions} displayName={actor.displayName} roleName={actor.roleName} canViewRoles={actions.includes("roles.view")} canViewAccounts={actions.includes("accounts.view")} canViewBranches={actions.includes("foundation.branches.view")} canViewFoundation={actions.includes("foundation.profile.view")}/><main className="workspace">{canTiers?<MembershipWorkspace canViewMembers={canMembers} canExportMembers={canMembers&&canExport} canReviewMembers={canReview} canIssueDocs={canIssueDocs}/>:<div className="cg04-admin">{canReview&&<p><a href="/admin/membership/reviews">Review protected membership applications</a></p>}{canMembers&&<MemberRoster canExport={canExport} canIssueDocs={canIssueDocs}/>}</div>}</main></div>;
+  return <div className="shell"><FoundationAdminNav active="membership" initialActions={actions} displayName={actor.displayName} roleName={actor.roleName} canViewRoles={actions.includes("roles.view")} canViewAccounts={actions.includes("accounts.view")} canViewBranches={actions.includes("foundation.branches.view")} canViewFoundation={actions.includes("foundation.profile.view")}/><main className="workspace">{canTiers?<MembershipWorkspace canViewMembers={canMembers} canExportMembers={canMembers&&canExport} canReviewMembers={canReview} canIssueDocs={canIssueDocs}/>:<div className="cg04-admin">{canReview&&<p><a href="/admin/membership/reviews">Review protected membership applications</a></p>}{canMembers&&<MemberRoster canExport={canExport} canIssueDocs={canIssueDocs}/>}</div>}{canIssueDocs&&!canMembers&&<MemberDocumentManager/>}</main></div>;
  }catch(e){if(e&&typeof e==="object"&&"digest" in e&&typeof e.digest==="string"&&e.digest.startsWith("NEXT_REDIRECT"))throw e;return <UnavailablePage title="Membership unavailable" description="We cannot confirm your membership access." linkLabel="Return to dashboard"/>;}
 }
