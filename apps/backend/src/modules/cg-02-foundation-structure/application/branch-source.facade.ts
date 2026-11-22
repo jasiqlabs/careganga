@@ -455,4 +455,35 @@ export class BranchSourceFacade{
      branchName:first.branchName,caseRef:row.approval_case_ref,
      reviewSummary,fileVersions:row.verified_file_versions};
  }
+
+ // CG-05 introduces these read-only current-scope projections into the CG-02 owner.
+ async projectBranchScope(tx:PoolClient,a:VerifiedFoundationActor):Promise<{all:boolean;branches:{value:string;label:string;managerRef:string}[]}>{
+  let all=false;
+  try{await this.identity.assertCurrent(tx,a,"foundation.branches.admin");all=true;}
+  catch(e){if(!(e instanceof ForbiddenException))throw e;}
+  const rows=await tx.query<{id:string;name:string;manager_account_ref:string}>(
+   "SELECT id,name,manager_account_ref FROM branch WHERE root_realm_id=$1 AND status='ACTIVE' AND ($2::boolean OR manager_account_ref=$3) ORDER BY name,id LIMIT 201 FOR SHARE",
+   [a.realmId,all,a.accountId]);
+  if(rows.rows.length>200)throw new ForbiddenException("Choose a narrower branch scope");
+  return {all,branches:rows.rows.map(v=>({value:v.id,label:v.name,managerRef:v.manager_account_ref}))};
+ }
+ async projectBranch(tx:PoolClient,a:VerifiedFoundationActor,ref:string|null):Promise<{managerRef:string|null}>{
+  let all=false;
+  try{await this.identity.assertCurrent(tx,a,"foundation.branches.admin");all=true;}
+  catch(e){if(!(e instanceof ForbiddenException))throw e;}
+  if(ref===null){if(!all)throw new ForbiddenException("Foundation-wide project management is not permitted");return {managerRef:null};}
+  const q=await tx.query<{manager_account_ref:string}>("SELECT manager_account_ref FROM branch WHERE id=$1 AND root_realm_id=$2 AND status='ACTIVE' AND ($3::boolean OR manager_account_ref=$4) FOR SHARE",[ensureId(ref),a.realmId,all,a.accountId]);
+  if(!q.rowCount)throw new ForbiddenException("Choose a permitted active branch");
+  return {managerRef:q.rows[0].manager_account_ref};
+ }
+ async projectGeography(tx:PoolClient,a:VerifiedFoundationActor,state:string|null,district:string|null){
+  if(district&&!state)throw new BadRequestException("Choose a state first");
+  if(state&&!(await tx.query("SELECT 1 FROM geography_area WHERE id=$1 AND root_realm_id=$2 AND status='ACTIVE' AND level='STATE' FOR SHARE",[ensureId(state),a.realmId])).rowCount)throw new BadRequestException("Choose a current state");
+  if(district&&!(await tx.query("SELECT 1 FROM geography_area WHERE id=$1 AND parent_area_id=$2 AND root_realm_id=$3 AND status='ACTIVE' AND level='DISTRICT' FOR SHARE",[ensureId(district),state,a.realmId])).rowCount)throw new BadRequestException("Choose a district in the selected state");
+ }
+ async projectGeographyOptions(tx:PoolClient,a:VerifiedFoundationActor,state:string|null){
+  if(state)await this.projectGeography(tx,a,state,null);
+  const q=await tx.query<{id:string;display_name:string}>("SELECT id,display_name FROM geography_area WHERE root_realm_id=$1 AND status='ACTIVE' AND (($2::uuid IS NULL AND level='STATE') OR (level='DISTRICT' AND parent_area_id=$2)) ORDER BY display_name,id LIMIT 200",[a.realmId,state]);
+  return q.rows.map(v=>({value:v.id,label:v.display_name}));
+ }
 }
