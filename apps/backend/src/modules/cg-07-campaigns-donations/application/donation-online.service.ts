@@ -136,6 +136,12 @@ export class DonationOnlineService{
    if(!d)throw new NotFoundException("Donation proof expired or unavailable.");
    const merchant=await this.merchant(tx,d.root_realm_id);
    const reqDigest=hash(["RAZORPAY_LINK",d.id,key,d.amount_minor,merchant.key]);
+   const otherMethod=await tx.query(
+    "SELECT 1 FROM donation_payment_attempt WHERE root_realm_id=$1 AND donation_id=$2 "+
+    "AND method<>'ONLINE' AND status NOT IN('FAILED','EXPIRED') LIMIT 1",
+    [d.root_realm_id,d.id]);
+   if(otherMethod.rowCount)throw new ConflictException(
+    "A physical payment is already pending. Do not generate a second payment link.");
    const attempts=(await tx.query<Attempt>(
     "SELECT * FROM donation_payment_attempt WHERE root_realm_id=$1 AND donation_id=$2 "+
     "AND method='ONLINE' ORDER BY created_at DESC,id DESC FOR UPDATE",

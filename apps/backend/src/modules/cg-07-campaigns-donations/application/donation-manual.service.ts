@@ -44,6 +44,14 @@ export class DonationManualService{
   if(branch===null)await this.branches.requireFinanceRootScope(tx,a,"finance.journals.post");
   else await this.branches.requireFinanceActiveBranch(tx,a,branch,"finance.journals.post");
  }
+ private async ensureNoOnlineCollection(tx:PoolClient,a:Actor,donation:string){
+  const other=await tx.query(
+   "SELECT 1 FROM donation_payment_attempt WHERE root_realm_id=$1 AND donation_id=$2 "+
+   "AND method='ONLINE' AND status NOT IN('FAILED','EXPIRED') LIMIT 1",
+   [a.realmId,donation]);
+  if(other.rowCount)throw new ConflictException(
+   "This donation has a live or uncertain online payment. Reconcile it before receiving cash.");
+ }
  private async donation(tx:PoolClient,a:Actor,ref:string){
   const q=await tx.query<Donation>("SELECT id,source_status,amount_minor::text,branch_ref,donation_number "+
    "FROM donation WHERE root_realm_id=$1 AND id=$2 FOR UPDATE",[a.realmId,donationUuid(ref)]);
@@ -66,6 +74,7 @@ export class DonationManualService{
    if(!d)throw new NotFoundException("This donor status proof is unavailable.");
    await this.scope(tx,a,d.branch_ref);
    if(d.source_status!=="REQUESTED")throw conflict();
+   await this.ensureNoOnlineCollection(tx,a,d.id);
    return {donationNumber:d.donation_number,amountMinor:d.amount_minor,
     ...await this.finance.options(tx,a,d.branch_ref)};
   });
@@ -97,6 +106,7 @@ export class DonationManualService{
     return {voucher:prev.voucher_reference,status:prev.status,evidenceRef:prev.id,replayed:true};
    }
    if(d.source_status!=="REQUESTED")throw conflict();
+   await this.ensureNoOnlineCollection(tx,a,d.id);
    await this.finance.checkCash(tx,a,{cashAccountRef:cash,incomeAccountRef:income,
     yearRef:year,postingDate:day,branchRef:d.branch_ref});
    const attempt=(await tx.query<{id:string}>(
