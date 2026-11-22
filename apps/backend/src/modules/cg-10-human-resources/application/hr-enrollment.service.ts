@@ -873,13 +873,16 @@ export class HrEnrollmentService{
  }
 
  async employeeDirectory(token:string,offsetInput:unknown,branchInput?:unknown,
-  statusInput?:unknown,queryInput?:unknown,departmentInput?:unknown){
+  statusInput?:unknown,queryInput?:unknown,departmentInput?:unknown,stateInput?:unknown,districtInput?:unknown,roleInput?:unknown){
   const actor=await this.sessions.requireAction(token,"hr.employees.view");
   const offset=Number(offsetInput??0);
   if(!Number.isSafeInteger(offset)||offset<0||offset>10000)
    throw new BadRequestException("Check the staff directory page");
   const branch=branchInput===undefined?null:uuid(branchInput,"branch");
   const department=departmentInput===undefined?null:uuid(departmentInput,"department");
+  const filterName=(v:unknown)=>{if(v===undefined||v==="")return "";if(typeof v!=="string"||v.length>100||/[\u0000-\u001f\u007f]/.test(v))throw new BadRequestException("Check the directory filter");return v.trim().toLowerCase();};
+  const state=filterName(stateInput),district=filterName(districtInput),role=filterName(roleInput);
+  if(role)await this.sessions.requireAction(token,"roles.select");
   const status=statusInput===undefined?"ALL":statusInput;
   if(typeof status!=="string"||!["ALL","ACTIVE","PROBATION","ON_HOLD","PENDING_ACCESS","EXITED"].includes(status))
    throw new BadRequestException("Choose an employee status filter");
@@ -888,7 +891,8 @@ export class HrEnrollmentService{
    throw new BadRequestException("Check the staff directory search");
   const query=typeof queryInput==="string"?queryInput.trim().toLowerCase():"";
   const pattern=query?"%"+query.replace(/[\\%_]/g,"\\$&")+"%":"";
-  const q=await this.db.query<{employee_code:string;legal_name:string;
+  const tx=await this.db.connect();try{await tx.query("BEGIN");await this.identity.assertCurrent(tx,actor,"hr.employees.view");if(role)await this.identity.assertCurrent(tx,actor,"roles.select");
+  const q=await tx.query<{employee_code:string;legal_name:string;
     designation:string;status:string;branch_name:string;employment_type:string;
     department_name:string|null;manager_name:string|null;hire_date:string}>(
    "SELECT e.employee_code,a.legal_name,asg.designation,e.status,to_char(a.hire_date,'YYYY-MM-DD') AS hire_date,"+
@@ -912,6 +916,11 @@ export class HrEnrollmentService{
    "AND ($6::text='' OR lower(a.legal_name) LIKE $6 ESCAPE '\\' OR "+
    "lower(asg.designation) LIKE $6 ESCAPE '\\' OR lower(e.employee_code) LIKE $6 ESCAPE '\\') "+
    "AND ($7::uuid IS NULL OR asg.department_ref=$7) "+
+   "AND (($8='' AND $9='') OR EXISTS(WITH RECURSIVE path(level,display_name,parent_area_id,root_realm_id,depth) AS ("+
+   "SELECT g.level,g.display_name,g.parent_area_id,g.root_realm_id,0 FROM geography_area g WHERE g.id=b.geography_area_id AND g.root_realm_id=b.root_realm_id "+
+   "UNION ALL SELECT g.level,g.display_name,g.parent_area_id,g.root_realm_id,p.depth+1 FROM path p JOIN geography_area g ON g.id=p.parent_area_id AND g.root_realm_id=p.root_realm_id WHERE p.depth<6) "+
+   "SELECT 1 FROM path HAVING ($8='' OR bool_or(level='STATE' AND lower(display_name)=$8)) AND ($9='' OR bool_or(level='DISTRICT' AND lower(display_name)=$9)))) "+
+   "AND ($10='' OR EXISTS(SELECT 1 FROM account_role assigned JOIN role rr ON rr.id=assigned.role_id AND rr.realm_id=assigned.realm_id AND rr.active WHERE assigned.realm_id=e.root_realm_id AND assigned.account_id=e.account_ref AND assigned.revoked_at IS NULL AND strpos(lower(rr.name),$10)>0)) "+
    "AND (b.manager_account_ref=$2 OR EXISTS("+
    "SELECT 1 FROM account_role ar JOIN role r ON r.id=ar.role_id "+
    "AND r.realm_id=ar.realm_id AND r.active "+
@@ -919,13 +928,15 @@ export class HrEnrollmentService{
    "WHERE ar.account_id=$2 AND ar.realm_id=$1 AND ar.revoked_at IS NULL "+
    "AND (r.is_protected OR g.capability_key IS NOT NULL))) "+
    "ORDER BY a.legal_name,e.id LIMIT 26 OFFSET $4",
-   [actor.realmId,actor.accountId,branch,offset,status,pattern,department]);
+   [actor.realmId,actor.accountId,branch,offset,status,pattern,department,state,district,role]);
+  await tx.query("COMMIT");
   return {items:q.rows.slice(0,25).map(x=>({
    reference:x.employee_code,name:x.legal_name,
    designation:x.designation,branch:x.branch_name,
    department:x.department_name,manager:x.manager_name,
    employmentType:x.employment_type,status:x.status,hireDate:x.hire_date
   })),hasMore:q.rows.length>25,offset};
+  }catch(e){await tx.query("ROLLBACK");throw e;}finally{tx.release();}
  }
 
 }
