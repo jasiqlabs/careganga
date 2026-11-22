@@ -262,6 +262,7 @@ export class VolunteerCardService{
  }
  async verify(code:string){
   if(!/^CGV-[A-F0-9]{24}$/.test(code))return {valid:false,status:"NOT_VALID"};
+  key(); // An unavailable QR signing key is a service outage, not an invalid volunteer.
   const digest=hash(code);
   try{
    const valid=await this.run(async tx=>{
@@ -271,6 +272,9 @@ export class VolunteerCardService{
     return !!card.object_version&&!!card.content_sha256;
    });
    return valid?{valid:true,status:"ACTIVE"}:{valid:false,status:"NOT_VALID"};
-  }catch{return {valid:false,status:"NOT_VALID"};}
+  }catch(e){
+   if(e instanceof ConflictException||e instanceof NotFoundException)return {valid:false,status:"NOT_VALID"};
+   throw new ServiceUnavailableException("Current official volunteer verification is temporarily unavailable.");
+  }
  }
 }
