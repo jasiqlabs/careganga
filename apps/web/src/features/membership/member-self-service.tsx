@@ -1,6 +1,6 @@
 "use client";
 import {useCallback,useEffect,useRef,useState} from "react";
-import type {CG04Application,CG04Member,CG04MemberHistory,CG04MembershipFee,CG04PublicTier,CG04PublicTierPage} from "@careganga/api-contracts";
+import type {CG04Application,CG04Member,CG04MemberHistory,CG19OwnMemberPacks,CG04MembershipFee,CG04PublicTier,CG04PublicTierPage} from "@careganga/api-contracts";
 import {CommunityAuth} from "./community-auth";
 import {MemberApplicationForm} from "./member-application-form";
 import {MemberEvidencePanel} from "./member-evidence-panel";
@@ -14,18 +14,18 @@ async function api<T>(path:string,method:"GET"|"POST"="GET",body?:Record<string,
 }
 export function MemberSelfService(){
  const [signed,setSigned]=useState(false),[verified,setVerified]=useState(false),[loading,setLoading]=useState(true),[busy,setBusy]=useState(false),[error,setError]=useState(""),[notice,setNotice]=useState("");
- const [apps,setApps]=useState<CG04Application[]>([]),[chosen,setChosen]=useState<CG04Application|null>(null),[member,setMember]=useState<CG04Member|null>(null),[history,setHistory]=useState<CG04MemberHistory|null>(null),[fee,setFee]=useState<CG04MembershipFee|null>(null),[plans,setPlans]=useState<CG04PublicTier[]>([]),[code,setCode]=useState("");
+ const [apps,setApps]=useState<CG04Application[]>([]),[chosen,setChosen]=useState<CG04Application|null>(null),[member,setMember]=useState<CG04Member|null>(null),[history,setHistory]=useState<CG04MemberHistory|null>(null),[issued,setIssued]=useState<CG19OwnMemberPacks|null>(null),[fee,setFee]=useState<CG04MembershipFee|null>(null),[plans,setPlans]=useState<CG04PublicTier[]>([]),[code,setCode]=useState("");
  const pending=useRef<Pending|null>(null),sequence=useRef(0);
  const refresh=useCallback(async()=>{
   const n=++sequence.current;
   let phone:{verified:boolean};
-  try{phone=await api<{verified:boolean}>("/mobile/status");}catch(e){if(n===sequence.current){setSigned(false);setVerified(false);setApps([]);setChosen(null);setMember(null);setHistory(null);setFee(null);}throw e;}
+  try{phone=await api<{verified:boolean}>("/mobile/status");}catch(e){if(n===sequence.current){setSigned(false);setVerified(false);setApps([]);setChosen(null);setMember(null);setHistory(null);setIssued(null);setFee(null);}throw e;}
   if(n!==sequence.current)return;
   setSigned(true);setVerified(phone.verified);
-  if(!phone.verified){setApps([]);setChosen(null);setMember(null);setHistory(null);return;}
-  const [list,self,terms]=await Promise.all([api<{items:CG04Application[]}>("/applications"),api<{member:CG04Member|null}>("/me"),api<CG04MemberHistory>("/me/history")]);
+  if(!phone.verified){setApps([]);setChosen(null);setMember(null);setHistory(null);setIssued(null);return;}
+  const [list,self,terms,documents]=await Promise.all([api<{items:CG04Application[]}>("/applications"),api<{member:CG04Member|null}>("/me"),api<CG04MemberHistory>("/me/history"),api<CG19OwnMemberPacks>("/documents/me").catch(()=>null)]);
   if(n!==sequence.current)return;
-  setApps(list.items);setMember(self.member);setHistory(terms);
+  setApps(list.items);setMember(self.member);setHistory(terms);setIssued(documents);
   setChosen(old=>list.items.find(x=>x.ref===old?.ref)??list.items.find(x=>["DRAFT","RETURNED","SUBMITTED"].includes(x.status))??list.items[0]??null);
  },[]);
  useEffect(()=>{
@@ -39,7 +39,7 @@ export function MemberSelfService(){
  },[refresh]);
  useEffect(()=>{
   const onVisibility=()=>{
-   if(document.visibilityState!=="visible"){sequence.current++;setApps([]);setChosen(null);setMember(null);setHistory(null);setFee(null);setVerified(false);setLoading(true);setCode("");}
+   if(document.visibilityState!=="visible"){sequence.current++;setApps([]);setChosen(null);setMember(null);setHistory(null);setIssued(null);setFee(null);setVerified(false);setLoading(true);setCode("");}
    else void refresh().catch(()=>setError("Private membership status could not be confirmed. Retry.")).finally(()=>setLoading(false));
   };
   document.addEventListener("visibilitychange",onVisibility);
@@ -49,7 +49,7 @@ export function MemberSelfService(){
  const act=async(job:()=>Promise<void>)=>{if(busy)return;setBusy(true);setError("");setNotice("");try{await job();}catch(e){setError(e instanceof Error?e.message:"Outcome uncertain. Refresh before retrying.");}finally{setBusy(false);}};
  const send=(cmd:Pending)=>void act(async()=>{pending.current=cmd;await api(cmd.path,"POST",cmd.body);pending.current=null;await refresh();setNotice("The original action has been confirmed. Review the updated status.");});
  const action=(kind:"submit"|"cancel"|"activate")=>{if(!chosen||busy||pending.current)return;send({path:"/applications/"+chosen.ref+"/"+kind,body:{requestKey:crypto.randomUUID(),...(kind==="activate"?{}:{expectedVersion:chosen.version})}});};
- const logout=()=>void act(async()=>{await api("/logout","POST",{});pending.current=null;setSigned(false);setVerified(false);setChosen(null);setApps([]);setMember(null);setHistory(null);setFee(null);});
+ const logout=()=>void act(async()=>{await api("/logout","POST",{});pending.current=null;setSigned(false);setVerified(false);setChosen(null);setApps([]);setMember(null);setHistory(null);setIssued(null);setFee(null);});
  const verify=()=>void act(async()=>{await api("/mobile/start","POST",{});setNotice("Verification code requested. Delivery is not guaranteed.");});
  const confirm=()=>void act(async()=>{const r=await api<{status:string}>("/mobile/confirm","POST",{code});if(r.status!=="VERIFIED")throw new Error("Mobile verification was not confirmed.");setCode("");await refresh();});
  return <section className="cg04-public cg04-self-service"><header className="cg04-public-title"><h1>Membership Application</h1><p>Apply, renew or check the original Foundation review and payment status.</p></header>
@@ -72,6 +72,18 @@ export function MemberSelfService(){
   {history.branchesHasMore&&<p className="cg04-muted">Older branch affiliations are available from the Foundation.</p>}
  </details>}
  </section>
+ {member&&<section className="cg04-panel" aria-label="Issued official membership documents"><h2>Official membership documents</h2>
+  <p className="cg04-muted">Only original verified, currently eligible PDF documents can be downloaded. Review approval or pending payment is not an issued document.</p>
+  {!issued?<p>Official document status cannot be confirmed. Refresh membership before trying again.</p>:
+   issued.items.length===0?<p>No signed membership documents have been issued yet.</p>:
+   issued.items.map(pack=><div key={pack.packRef} className="cg04-panel">
+    <p><strong>{pack.status==="ISSUED"?"Official PDF pack issued":pack.status==="REVOKED"?"Revoked document pack":pack.status==="UNKNOWN"?"Document issue outcome uncertain":"Document generation pending"}</strong> · Revision {pack.issueRevision}</p>
+    {pack.canDownload&&<div className="cg04-buttons">
+     {(["CARD","CERTIFICATE","WELCOME"] as const).map(kind=><a key={kind} href={"/api/community/documents/packs/"+pack.packRef+"/"+kind+"/download"}>{kind==="CARD"?"Front/back membership card":kind==="CERTIFICATE"?"Membership certificate":"Welcome letter"} PDF</a>)}
+    </div>}
+   </div>)}
+  {issued?.hasMore&&<p className="cg04-muted">Older document revisions can be requested from the Foundation.</p>}
+ </section>}
  <section className="cg04-panel"><h2>Applications and renewal</h2><div className="cg04-buttons">
  {apps.map(a=><button type="button" key={a.ref} aria-pressed={chosen?.ref===a.ref} onClick={()=>setChosen(a)}>{a.applicationNumber} · {a.status}</button>)}
  <button type="button" disabled={busy||apps.some(a=>["DRAFT","RETURNED","SUBMITTED"].includes(a.status))} onClick={()=>setChosen(null)}>New application / renewal</button>
