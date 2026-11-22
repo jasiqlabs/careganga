@@ -183,8 +183,9 @@ export class CampaignDraftsService{
      AND r.campaign_id=c.id AND r.revision_no=c.current_revision
     WHERE c.root_realm_id=$1 AND c.id=$2 FOR SHARE OF r`,
    [a.realmId,c.id])).rows[0];
+  const today=(await tx.query<{today:string}>(`SELECT (now() AT TIME ZONE 'Asia/Kolkata')::date::text AS today`)).rows[0].today;
   if(!r||r.goal_minor===null||BigInt(r.goal_minor)<1n||!r.start_at||!r.end_at||
-    r.end_at<(new Intl.DateTimeFormat("en-CA",{timeZone:"Asia/Kolkata",year:"numeric",month:"2-digit",day:"2-digit"}).format(new Date()))||!r.basic?.summary)
+    r.end_at<today||!r.basic?.summary)
    throw invalid("Complete the campaign title, description, fundraising target and valid campaign period before review.");
   if(r.media?.fileRef||r.team?.volunteerRef)
    throw invalid("Unverified campaign media or volunteer association must be removed before verification.");
@@ -215,9 +216,9 @@ export class CampaignDraftsService{
  async acceptReviewEffect(tx:PoolClient,root:string,campaignId:string,revision:number,digest:string,
   decision:"APPROVE"|"RETURN"|"REJECT",actorId:string,requestKey:string){
   const row=(await tx.query<{version:number;current_revision:number;status:string;project_source_ref:string|null;
-    event_source_ref:string|null;branch_ref:string|null;digest:string}>(
+    event_source_ref:string|null;branch_ref:string|null;end_at:string|null;digest:string}>(
    `SELECT c.version,c.current_revision,c.source_status AS status,c.project_source_ref,
-      c.event_source_ref,c.branch_ref,r.immutable_digest AS digest FROM campaign c
+      c.event_source_ref,c.branch_ref,c.end_at::text,r.immutable_digest AS digest FROM campaign c
     JOIN campaign_revision r ON r.root_realm_id=c.root_realm_id
      AND r.campaign_id=c.id AND r.revision_no=c.current_revision
     WHERE c.root_realm_id=$1 AND c.id=$2 FOR UPDATE OF c`,
@@ -225,6 +226,14 @@ export class CampaignDraftsService{
   if(!row||row.status!=="SUBMITTED"||row.current_revision!==revision||row.digest!==digest)
    throw invalid("The submitted campaign revision changed. Do not approve old details.");
   if(decision==="APPROVE"){
+   const today=(await tx.query<{today:string}>(`SELECT (now() AT TIME ZONE 'Asia/Kolkata')::date::text AS today`)).rows[0].today;
+   if(!row.end_at||row.end_at<today)
+    throw invalid("Campaign period has expired. Return it for correction before approval.");
+   if(row.branch_ref){
+    const valid=await tx.query(`SELECT 1 FROM branch WHERE root_realm_id=$1 AND id=$2
+     AND status='ACTIVE' FOR SHARE`,[root,row.branch_ref]);
+    if(!valid.rowCount)throw invalid("Campaign branch is no longer active. Return it for correction.");
+   }
    if(row.project_source_ref){
     const valid=await tx.query(`SELECT 1 FROM project
      WHERE root_realm_id=$1 AND id=$2 AND status='ACTIVE'
