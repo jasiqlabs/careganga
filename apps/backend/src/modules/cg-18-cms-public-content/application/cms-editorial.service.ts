@@ -10,6 +10,7 @@ import {CmsDraftMediaService} from "../../cg-19-documents-notifications/applicat
 import {CmsPublicNoticeSource} from "../../cg-19-documents-notifications/application/cms-public-notice-source.service";
 import type {VerifiedFoundationActor} from "../../cg-01-identity-access/public-api";
 import {extendedKinds,parseDraftExtendedSection,parseExtendedSection,validateExtendedPage,healthcareEditorialClaimsSafe} from "./cms-extended-sections";
+import {eligibleProjectSources,projectTeaserRefs,validateProjectTeaser,projectTeaserRevisionEligible,publicProjectTeaser} from "../../cg-05-projects-field-operations/application/project-public-source";
 import {complianceEligible} from "./cms-compliance-eligibility";
 const UUID=/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i;
 const HASH=/^[a-f0-9]{64}$/;
@@ -160,7 +161,7 @@ function parseContent(raw:unknown):Content{
     "memberTitle","memberBody","memberBenefits"]:
    sec.kind==="SITE_FOOTER"?["mission","address","email","phone","whatsappNumber","newsletterText"]:
    sec.kind==="RICH_TEXT"?["heading","body","eyebrow","variant","highlights"]:
-   ["heading"]);
+   sec.kind==="PROJECT_TEASER"?["heading","sourceRefs"]:["heading"]);
   const out:Record<string,unknown>={};
   const array=(raw:unknown,field:string,limit:number,max:number)=>{
    if(!Array.isArray(raw)||raw.length>limit)
@@ -262,7 +263,7 @@ function parseContent(raw:unknown):Content{
     throw new BadRequestException({code:"CMS_INPUT_INVALID",field:"whatsappNumber"});
    if(out.email&&!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(out.email)))
     throw new BadRequestException({code:"CMS_INPUT_INVALID",field:"email"});
-  }else out.heading=text(fields.heading??"","heading",160);
+  }else if(sec.kind==="PROJECT_TEASER"){out.heading=text(fields.heading??"Projects","heading",160,2);out.sourceRefs=projectTeaserRefs(fields.sourceRefs??[]);}else out.heading=text(fields.heading??"","heading",160);
   if(JSON.stringify(out).length>8192)
    throw new BadRequestException({code:"CMS_INPUT_INVALID",field:"sections"});
   return {kind:sec.kind as Section["kind"],order:Number(sec.order),fields:out};
@@ -341,6 +342,10 @@ export class CmsEditorialService{
   const v=result.rows[0];if(!v)throw new ConflictException({code:"CMS_SOURCE_CHANGED"});
   return v;
  }
+ async projectSources(bearer:string){
+  const a=await this.sessions.requireAction(bearer,"cms.content.manage");
+  return this.withTx(async tx=>{await this.identity.assertCurrent(tx,a,"cms.content.manage");return {sources:await eligibleProjectSources(tx,a.realmId)};});
+ }
  async list(bearer:string){
   const a=await this.sessions.requireAction(bearer,"cms.content.view");
   const result=await this.db.query<{pageRef:string;kind:string;slug:string;title:string;
@@ -412,6 +417,7 @@ export class CmsEditorialService{
   for(const sec of value.sections){
    if(sec.kind==="ARTICLE_BODY")
     await this.notices.validateDraft(tx,actor.realmId,sec.fields);
+   if(sec.kind==="PROJECT_TEASER")await validateProjectTeaser(tx,actor.realmId,sec.fields);
    await tx.query("INSERT INTO cms_section_revision(foundation_root_id,page_revision_id,"+
     "section_kind,order_no,structured_fields) VALUES($1,$2,$3,$4,$5::jsonb)",
     [actor.realmId,rev,sec.kind,sec.order,JSON.stringify(sec.fields)]);
@@ -635,6 +641,7 @@ export class CmsEditorialService{
    }
    if(!(await complianceEligible(tx,actor.realmId,rev.id)))
     throw new ConflictException({code:"CMS_COMPLIANCE_EVIDENCE_EXPIRED"});
+   if(!(await projectTeaserRevisionEligible(tx,actor.realmId,rev.id)))throw new ConflictException({code:"CMS_PROJECT_SOURCE_UNAVAILABLE"});
    if(!(await this.notices.revisionEligible(tx,actor.realmId,rev.id)))
     throw new ConflictException({code:"CMS_ORIGINAL_NOTICE_UNAVAILABLE"});
    for(const asset of assets.rows)
@@ -707,6 +714,7 @@ export class CmsEditorialService{
     throw new ConflictException({code:"CMS_REVIEW_UNAVAILABLE"});
    if(!(await complianceEligible(tx,actor.realmId,rev.id)))
     throw new ConflictException({code:"CMS_COMPLIANCE_EVIDENCE_EXPIRED"});
+   if(!(await projectTeaserRevisionEligible(tx,actor.realmId,rev.id)))throw new ConflictException({code:"CMS_PROJECT_SOURCE_UNAVAILABLE"});
    if(!(await this.notices.revisionEligible(tx,actor.realmId,rev.id)))
     throw new ConflictException({code:"CMS_ORIGINAL_NOTICE_UNAVAILABLE"});
    const final=await this.approvals.approved(tx,actor,{
@@ -1055,6 +1063,8 @@ export class CmsEditorialService{
  const visibleAssets=assets.rows.filter(asset=>placementFits(authoredSections,
   {role:asset.role,order:asset.sort_order})&&
   (asset.role!=="GALLERY"||authoredGallery[asset.sort_order]?.visible!==false));
+ const projectCards=new Map<number,Record<string,unknown>>();
+ for(const section of sections.rows)if(section.section_kind==="PROJECT_TEASER")projectCards.set(section.order_no,await publicProjectTeaser(this.db,x.foundation_root_id,section.structured_fields));
  const hiddenHeroOrders=new Set(sections.rows.filter(sec=>
    sec.section_kind==="HERO"&&sec.structured_fields?.visible===false)
    .map(sec=>sec.order_no));
@@ -1064,7 +1074,7 @@ export class CmsEditorialService{
    lastPublishedAt:x.changed_at.toISOString(),
    sections:sections.rows.filter(v=>v.section_kind!=="HERO"||
      !hiddenHeroOrders.has(v.order_no)).map(v=>({kind:v.section_kind,order:v.order_no,
-    fields:v.section_kind==="ARTICLE_BODY"?
+    fields:v.section_kind==="PROJECT_TEASER"?(projectCards.get(v.order_no)??{heading:"Projects",cards:[]}):v.section_kind==="ARTICLE_BODY"?
       Object.fromEntries(Object.entries(v.structured_fields).filter(([k])=>
        !["sourceNoticeRef","publicReleaseConfirmed"].includes(k))):
      v.section_kind==="TEAM"?{heading:v.structured_fields.heading,members:[]}:
