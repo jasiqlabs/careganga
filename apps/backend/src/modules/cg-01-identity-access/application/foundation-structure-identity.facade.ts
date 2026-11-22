@@ -59,6 +59,45 @@ export class FoundationStructureIdentityFacade {
     if(!found.rowCount)throw new ForbiddenException("Select an eligible current Foundation account");
     return {accountRef:found.rows[0].id,displayName:found.rows[0].display_name};
   }
+  /** Current verified community applicant, without a patient record or staff
+   * grant. Only the actual signed-in account may consume this private proof. */
+  async verifiedCommunityApplicant(client:PoolClient,actor:VerifiedFoundationActor){
+    await this.assertPatientSessionCurrent(client,actor);
+    const q=await client.query<{display_name:string;contact_phone:string;normalized_email:string|null}>(`
+     SELECT a.display_name,a.contact_phone,a.normalized_email FROM account a
+     WHERE a.id=$1 AND a.realm_id=$2 AND a.status='ACTIVE'
+       AND a.contact_phone_verified_at IS NOT NULL
+       AND a.contact_phone ~ '^\\+91[6-9][0-9]{9} for permitted CG-02 lists/history.
+   * Inactive accounts retain their actual historical names; this never grants access.
+   */
+  async accountLabels(client:PoolClient,actor:VerifiedFoundationActor,ids:readonly string[]):Promise<Record<string,string>>{
+    const distinct=[...new Set(ids)];
+    if(distinct.length>100)throw new ForbiddenException("Too many account labels requested");
+    if(distinct.length===0)return {};
+    const rows=await client.query<{id:string;display_name:string}>(`
+      SELECT id,display_name FROM account WHERE realm_id=$1 AND id=ANY($2::uuid[])`,
+      [actor.realmId,distinct]);
+    return Object.fromEntries(rows.rows.map(row=>[row.id,row.display_name]));
+  }
+  async eligibleOfficeholderOptions(client:PoolClient,actor:VerifiedFoundationActor,search:string):Promise<{value:string;label:string}[]>{
+    const rows=await client.query<{id:string;display_name:string}>(`
+      SELECT DISTINCT a.id,a.display_name FROM account a
+      JOIN account_role ar ON ar.account_id=a.id AND ar.realm_id=a.realm_id AND ar.revoked_at IS NULL
+      JOIN role r ON r.id=ar.role_id AND r.active
+      WHERE a.realm_id=$1 AND a.status='ACTIVE' AND
+        ($2='' OR lower(a.display_name) LIKE $2 ESCAPE '\\')
+      ORDER BY a.display_name,a.id LIMIT 30`,
+      [actor.realmId,search?"%"+search.toLowerCase().replace(/[\\%_]/g,"\\$&")+"%":""]);
+    return rows.rows.map(x=>({value:x.id,label:x.display_name}));
+  }
+}
+
+       AND EXISTS(SELECT 1 FROM account_role ar JOIN role r ON r.id=ar.role_id AND r.realm_id=ar.realm_id AND r.active
+        WHERE ar.account_id=a.id AND ar.realm_id=a.realm_id AND ar.revoked_at IS NULL)
+     FOR SHARE OF a`,[actor.accountId,actor.realmId]);
+    if(!q.rows[0])throw new ForbiddenException("Verify your mobile contact and sign in before starting an application.");
+    const v=q.rows[0];return {name:v.display_name,mobile:v.contact_phone,email:v.normalized_email};
+  }
   /** Read-only, root-scoped display projection for permitted CG-02 lists/history.
    * Inactive accounts retain their actual historical names; this never grants access.
    */
