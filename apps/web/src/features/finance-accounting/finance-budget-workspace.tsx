@@ -81,7 +81,7 @@ export function FinanceBudgetWorkspace({canManage}:{canManage:boolean}){
    try{
     const r=await fetch("/api/finance/budgets/options",{cache:"no-store"});
     if(!r.ok)throw Error(await failure(r));
-    const d=await r.json() as {years?:Year[];branches?:Branch[];categories?:{code:string;name:string}[]};
+    const d=await r.json() as {years?:Year[];branches?:Branch[];categories?:{code:string;name:string}[];projects?:ProjectChoice[]};
     if(!Array.isArray(d.years)||!Array.isArray(d.branches)||!Array.isArray(d.categories))throw Error("Invalid budget options");
     if(mounted){setYears(d.years);setBranches(d.branches);setCategories(d.categories);setProjects(Array.isArray(d.projects)?d.projects:[]);}
    }catch(e){if(mounted)setError(e instanceof Error?e.message:"Budget scope unavailable.");}
