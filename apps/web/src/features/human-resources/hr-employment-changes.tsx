@@ -12,8 +12,8 @@ const kinds:Kind[]=["TRANSFER","PROMOTION","DEPUTATION","RESIGNATION","EXIT"];
 const exit=(k:Kind)=>k==="EXIT"||k==="RESIGNATION";
 const label=(v:string)=>labels[v]??v.toLowerCase().replaceAll("_"," ");
 const blank=(mode:Mode):Form=>({employeeReference:"",kind:mode==="own"?"RESIGNATION":"TRANSFER",effectiveDate:"",lastWorkingDate:"",branchRef:"",departmentRef:"",managerRef:"",designation:"",roleRef:"",salary:"",reason:""});
-const card={border:"1px solid #E2E8F0",borderRadius:14,background:"#fff",padding:16,display:"grid",gap:12} as const;
-const field={width:"100%",border:"1px solid #CBD5E1",borderRadius:8,padding:9,boxSizing:"border-box"} as const;
+const card={border:"1px solid var(--cg-border)",borderRadius:14,background:"#fff",padding:16,display:"grid",gap:12} as const;
+const field={width:"100%",border:"1px solid var(--cg-border)",borderRadius:8,padding:9,boxSizing:"border-box"} as const;
 const known=(e:unknown)=>!!e&&typeof e==="object"&&"status" in e&&typeof e.status==="number"&&e.status>=400&&e.status<500;
 const message=(e:unknown)=>e instanceof Error?e.message:"The outcome is uncertain. Retry the same request.";
 async function api<T>(path:string,body?:object):Promise<T>{
@@ -24,7 +24,7 @@ function Options({name,value,options,onChange,empty="Select"}:{name:string;value
  return <label>{name}<select style={field} value={value} onChange={e=>onChange(e.target.value)}><option value="">{empty}</option>{options.map(o=><option key={o.value} value={o.value}>{o.label}</option>)}</select></label>;
 }
 function PositionCard({name,value}:{name:string;value:Position}){
- return <div style={{border:"1px solid #E2E8F0",borderRadius:9,padding:12}}><strong>{name}</strong><p>{value.designation} · {value.branch}</p>{value.department&&<p>Department: {value.department}</p>}{value.manager&&<p>Manager: {value.manager}</p>}{value.role&&<p>Role: {value.role}</p>}</div>;
+ return <div style={{border:"1px solid var(--cg-border)",borderRadius:9,padding:12}}><strong>{name}</strong><p>{value.designation} · {value.branch}</p>{value.department&&<p>Department: {value.department}</p>}{value.manager&&<p>Manager: {value.manager}</p>}{value.role&&<p>Role: {value.role}</p>}</div>;
 }
 export function HrEmploymentChanges({mode,canSelectRoles=false}:{mode:Mode;canSelectRoles?:boolean}){
  const route=mode==="own"?"me/changes":mode==="review"?"employment-change-reviews":"employment-changes";
@@ -91,7 +91,7 @@ export function HrEmploymentChanges({mode,canSelectRoles=false}:{mode:Mode;canSe
   {mode==="own"&&linked===false&&<p>No current employment is linked to this account.</p>}
   {error&&<p role="alert" style={{color:"#991B1B"}}>{error}</p>}{notice&&<p role="status">{notice}</p>}
   {!items.length&&<p>No employment changes in this view.</p>}
-  {items.map(x=><div key={x.reference} style={{borderTop:"1px solid #E2E8F0",paddingTop:10,display:"flex",justifyContent:"space-between",alignItems:"center",gap:8,flexWrap:"wrap"}}><div><strong>{x.employeeName??label(x.kind)} · {x.reference}</strong><p style={{margin:"4px 0"}}>{label(x.kind)} · {x.effectiveDate} · {label(x.status)}</p></div><button disabled={busy||locked} onClick={()=>void open(x)}>View</button></div>)}
+  {items.map(x=><div key={x.reference} style={{borderTop:"1px solid var(--cg-border)",paddingTop:10,display:"flex",justifyContent:"space-between",alignItems:"center",gap:8,flexWrap:"wrap"}}><div><strong>{x.employeeName??label(x.kind)} · {x.reference}</strong><p style={{margin:"4px 0"}}>{label(x.kind)} · {x.effectiveDate} · {label(x.status)}</p></div><button disabled={busy||locked} onClick={()=>void open(x)}>View</button></div>)}
   {mode!=="own"&&<div style={{display:"flex",gap:8}}>{offset>0&&<button disabled={busy||locked} onClick={()=>setOffset(v=>Math.max(0,v-25))}>Previous</button>}{more&&<button disabled={busy||locked} onClick={()=>setOffset(v=>v+25)}>Next</button>}</div>}
   {selected&&<div style={card}>
    <strong>{selected.reference} · {label(selected.status)}</strong>

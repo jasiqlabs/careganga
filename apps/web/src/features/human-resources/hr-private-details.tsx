@@ -67,9 +67,9 @@ export function HrPrivateDetails({applicationRef,canView,canManage}:{
   finally{setBusy(false);}
  };
  return <section aria-label="Separate protected employee personal details"
-  style={{display:"grid",gap:10,padding:13,border:"1px solid #CBD5E1",borderRadius:10}}>
+  style={{display:"grid",gap:10,padding:13,border:"1px solid var(--cg-border)",borderRadius:10}}>
   <strong>Restricted personal and bank information</strong>
-  <p style={{margin:0,color:"#64748B",fontSize:13}}>
+  <p style={{margin:0,color:"var(--cg-muted)",fontSize:13}}>
    Government identity scans remain in original CG-19 private evidence.
    Bank and contact data are encrypted separately and are not used to grant permissions.
   </p>
@@ -77,23 +77,23 @@ export function HrPrivateDetails({applicationRef,canView,canManage}:{
   {message&&<p role="status" style={{color:"#166534",margin:0}}>{message}</p>}
   {!open&&canView&&<button type="button" onClick={()=>void load()} disabled={busy}
    style={{padding:10,alignSelf:"start",borderRadius:9,background:"#F1F5F9",
-    border:"1px solid #CBD5E1"}}>Open audited private details</button>}
+    border:"1px solid var(--cg-border)"}}>Open audited private details</button>}
   {open&&<>
    {fields.map(([key,title])=><label key={key} style={{display:"grid",gap:5}}>
      <span style={{fontWeight:600}}>{title}</span>
      <input autoComplete="off" value={data[key]??""} disabled={!canManage}
       type="text" maxLength={key==="postalAddress"?700:key==="emergencyName"?120:22}
       onChange={e=>setData(old=>({...old,[key]:e.target.value}))}
-      style={{padding:10,borderRadius:9,border:"1px solid #CBD5E1",
+      style={{padding:10,borderRadius:9,border:"1px solid var(--cg-border)",
        background:canManage?"#fff":"#F8FAFC"}}/>
     </label>)}
    <div style={{display:"flex",gap:10}}>
     {canManage&&<button type="button" onClick={()=>void save()} disabled={busy}
-     style={{padding:11,border:0,background:"#087F8C",
+     style={{padding:11,border:0,background:"var(--cg-accent)",
       color:"#fff",borderRadius:9,fontWeight:700}}>
      {busy?"Saving private details…":"Save encrypted private details"}</button>}
     <button type="button" onClick={()=>{setOpen(false);setData(empty());}}
-     style={{padding:11,border:"1px solid #CBD5E1",borderRadius:9,
+     style={{padding:11,border:"1px solid var(--cg-border)",borderRadius:9,
       background:"#F8FAFC"}}>Close and clear</button>
    </div>
   </>}

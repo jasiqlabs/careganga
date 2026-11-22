@@ -107,16 +107,16 @@ export function HrMyProfile({canViewAllowances=false,canRequestAllowances=false,
  useEffect(()=>{void refresh();void checkPending();void refreshBio();},
   [refresh,checkPending,refreshBio]);
  return <><section aria-labelledby="cg-hr-my-profile" style={{padding:"1rem 1.2rem",
-  border:"1px solid #E2E8F0",borderRadius:14,background:"#fff",marginBottom:18}}>
+  border:"1px solid var(--cg-border)",borderRadius:14,background:"#fff",marginBottom:18}}>
   <header style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:10}}>
    <h2 id="cg-hr-my-profile" style={{fontSize:"1.15rem",margin:0}}>My employment</h2>
    <button type="button" onClick={()=>void refresh()} disabled={busy}
-    style={{padding:".55rem .8rem",border:"1px solid #CBD5E1",
+    style={{padding:".55rem .8rem",border:"1px solid var(--cg-border)",
       background:"#F8FAFC",borderRadius:9,cursor:"pointer"}}>Refresh</button>
   </header>
   {busy?<p role="status">Verifying current employment…</p>:
    problem?<p role="alert" style={{color:"#991B1B"}}>{problem}</p>:
-   self?.status==="NOT_LINKED"?<p style={{color:"#64748B"}}>
+   self?.status==="NOT_LINKED"?<p style={{color:"var(--cg-muted)"}}>
     No approved employee profile is linked to your account.</p>:
    self?<dl style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(180px,1fr))",gap:13}}>
     <div><dt>Employee</dt><dd style={{margin:0,fontWeight:700}}>{self.name??"Unavailable"}</dd></div>
@@ -125,10 +125,10 @@ export function HrMyProfile({canViewAllowances=false,canRequestAllowances=false,
     <div><dt>Status</dt><dd style={{margin:0}}>{self.status.replaceAll("_"," ")}</dd></div>
     <div><dt>Employment reference</dt><dd style={{margin:0}}>{self.employeeReference??"Unavailable"}</dd></div>
    </dl>:<p>Employment information is not available.</p>}
-  {bio?.linked&&<div style={{border:"1px solid #CBD5E1",
+  {bio?.linked&&<div style={{border:"1px solid var(--cg-border)",
    borderRadius:10,padding:13,marginTop:14,display:"grid",gap:8}}>
    <strong>Optional professional profile consent</strong>
-   <p style={{margin:0,color:"#64748B",fontSize:13}}>
+   <p style={{margin:0,color:"var(--cg-muted)",fontSize:13}}>
     Only your professional name and current designation may be considered
     for a future Foundation Team profile. A private ID scan or photograph is never
     automatically a public image. Publishing still requires separate editorial approval.
@@ -138,7 +138,7 @@ export function HrMyProfile({canViewAllowances=false,canRequestAllowances=false,
    </p>
    <button type="button" disabled={bioBusy}
     onClick={()=>void changeBio(!bio.consented)}
-    style={{padding:11,background:bio.consented?"#FEE2E2":"#087F8C",
+    style={{padding:11,background:bio.consented?"#FEE2E2":"var(--cg-accent)",
      color:bio.consented?"#991B1B":"#fff",border:0,
      borderRadius:9,fontWeight:700,justifySelf:"start"}}>
      {bioBusy?"Confirming choice…":bio.consented?
@@ -151,13 +151,13 @@ export function HrMyProfile({canViewAllowances=false,canRequestAllowances=false,
     <p style={{margin:"6px 0"}}>{pending.name} · {pending.designation}.
      Confirm only if this employment belongs to you. This does not create any role or login.</p>
     <button type="button" disabled={linkBusy} onClick={()=>void accept()}
-     style={{background:"#087F8C",color:"#fff",border:0,borderRadius:9,
+     style={{background:"var(--cg-accent)",color:"#fff",border:0,borderRadius:9,
       padding:"10px 13px",fontWeight:700,cursor:"pointer"}}>
       {linkBusy?"Confirming…":"Accept my approved employment link"}</button>
    </div>}
    {notice&&<p role="status" style={{color:"#166534"}}>{notice}</p>}
    <button type="button" onClick={()=>void checkPending()} style={{marginTop:10,
-    padding:"8px 11px",border:"1px solid #CBD5E1",borderRadius:9,background:"#F8FAFC"}}>
+    padding:"8px 11px",border:"1px solid var(--cg-border)",borderRadius:9,background:"#F8FAFC"}}>
     Check pending employment acceptance</button>
  </section>
  {canViewAllowances&&self&&["ACTIVE","PROBATION"].includes(self.status)&&<FinanceExpenseClaimWorkspace allowanceMode canView canCreate={canRequestAllowances} canUploadBill={canUploadAllowanceBill}/>}

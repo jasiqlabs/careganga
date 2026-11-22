@@ -9,9 +9,9 @@ const label=(status:string)=>(({SUBMITTED:"Pending review",IN_REVIEW:"In review"
 const failure=(e:unknown)=>e instanceof Error?e.message:"Could not confirm the result. Refresh before retrying.";
 const known=(e:unknown)=>e&&typeof e==="object"&&"status" in e&&typeof e.status==="number"&&e.status>=400&&e.status<500;
 
-const field={width:"100%",border:"1px solid #CBD5E1",borderRadius:9,padding:10,boxSizing:"border-box"} as const;
-const button={border:0,borderRadius:9,padding:"10px 14px",background:"var(--cg-primary,#087F8C)",color:"#fff",fontWeight:700} as const;
-const card={border:"1px solid #E2E8F0",borderRadius:14,padding:16,display:"grid",gap:10,background:"#fff"} as const;
+const field={width:"100%",border:"1px solid var(--cg-border)",borderRadius:9,padding:10,boxSizing:"border-box"} as const;
+const button={border:0,borderRadius:9,padding:"10px 14px",background:"var(--cg-primary,var(--cg-accent))",color:"#fff",fontWeight:700} as const;
+const card={border:"1px solid var(--cg-border)",borderRadius:14,padding:16,display:"grid",gap:10,background:"#fff"} as const;
 async function api<T>(path:string,body?:object):Promise<T>{
  const res=await fetch("/api/hr/"+path,{credentials:"same-origin",cache:"no-store",
   ...(body?{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)}:{})});
@@ -88,7 +88,7 @@ export function HrMyLeave({onChanged}:{onChanged:()=>void}){
   {data?.linked&&<>
    {data.policies.length===0?<p>No effective leave policy is configured for this year.</p>:<>
     <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(160px,1fr))",gap:8}}>
-     {data.policies.map(x=><div key={x.policyRef} style={{border:"1px solid #E2E8F0",padding:10,borderRadius:9}}>
+     {data.policies.map(x=><div key={x.policyRef} style={{border:"1px solid var(--cg-border)",padding:10,borderRadius:9}}>
       <strong>{x.leaveType}</strong><p style={{margin:0}}>{x.availableDays} available · {x.usedDays} approved</p>
       <small>{x.effectiveFrom}{x.effectiveTo?" to before "+x.effectiveTo:" onward"}</small>
      </div>)}
@@ -110,7 +110,7 @@ export function HrMyLeave({onChanged}:{onChanged:()=>void}){
    </>}
    <h3 style={{margin:0}}>Leave history</h3>
    {!data.requests.length&&<p>No leave requests in this year.</p>}
-   {data.requests.map(x=><div key={x.reference} style={{borderTop:"1px solid #E2E8F0",paddingTop:8}}>
+   {data.requests.map(x=><div key={x.reference} style={{borderTop:"1px solid var(--cg-border)",paddingTop:8}}>
     <strong>{x.leaveType} · {label(x.status)}</strong><p style={{margin:0}}>{x.startDate} – {x.endDate} · {x.days} days</p>
     <small>{x.reference}</small>
     <button type="button" disabled={busy||privateBusy||locked||!!cancelRef||loading} onClick={()=>void openPrivate(x.reference)}>{privateDetail?.reference===x.reference?"Hide my reason":"View my submitted reason"}</button>
@@ -169,7 +169,7 @@ export function HrLeaveReviews({onChanged,kind="leave"}:{onChanged:()=>void;kind
   <button type="button" disabled={busy||loading||locked} onClick={()=>void refresh()}>Refresh reviews</button>
   {error&&<p role="alert">{error}</p>}{notice&&<p role="status">{notice}</p>}
   {loading&&<p>Loading leave reviews…</p>}{!loading&&!error&&!items.length&&<p>No matching requests.</p>}
-  {items.map(x=><div key={x.caseRef} style={{borderTop:"1px solid #E2E8F0",paddingTop:8,display:"grid",gap:4}}>
+  {items.map(x=><div key={x.caseRef} style={{borderTop:"1px solid var(--cg-border)",paddingTop:8,display:"grid",gap:4}}>
    <strong>{x.employeeName} · {kind==="leave"?x.leaveType:"Attendance correction"}</strong><span>{kind==="leave"?x.startDate+" – "+x.endDate+" · "+x.days+" days":x.date+" · "+x.originalStatus+" → "+x.proposedStatus} · {label(x.status)}</span>
    <button type="button" disabled={busy||locked} onClick={()=>void open(x)}>View request</button>
   </div>)}

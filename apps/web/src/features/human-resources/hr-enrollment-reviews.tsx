@@ -102,21 +102,21 @@ export function HrEnrollmentReviews({canConfigure=false}:{canConfigure?:boolean}
   }finally{setBusy(false);}
  };
  return <section aria-label="Protected Foundation HR review"
-  style={{background:"#fff",borderRadius:14,border:"1px solid #E2E8F0",
+  style={{background:"#fff",borderRadius:14,border:"1px solid var(--cg-border)",
    padding:"1rem",display:"grid",gap:12,marginBlock:20}}>
   <header style={{display:"flex",justifyContent:"space-between",gap:12}}>
    <div><h2 style={{margin:0,fontSize:"1.12rem"}}>Independent employee enrollment reviews</h2>
-    <p style={{fontSize:13,color:"#64748B",margin:"5px 0 0"}}>
+    <p style={{fontSize:13,color:"var(--cg-muted)",margin:"5px 0 0"}}>
      The original case and scanner-validated files must be current.
      The proposer cannot approve their own enrollment.
     </p></div>
    <button type="button" disabled={busy||loading} onClick={()=>void refresh()}
-    style={{padding:"8px 12px",alignSelf:"start",borderRadius:9,border:"1px solid #CBD5E1",
+    style={{padding:"8px 12px",alignSelf:"start",borderRadius:9,border:"1px solid var(--cg-border)",
      background:"#F8FAFC",cursor:"pointer"}}>Refresh</button>
   </header>
   {error&&<p role="alert" style={{color:"#991B1B",background:"#FEF2F2",padding:10}}>{error}</p>}
   {message&&<p role="status" style={{color:"#166534",background:"#ECFDF5",padding:10}}>{message}</p>}
-  {configured===false&&<div style={{padding:12,border:"1px solid #CBD5E1",
+  {configured===false&&<div style={{padding:12,border:"1px solid var(--cg-border)",
     borderRadius:10,display:"grid",gap:10}}>
     <p role="status" style={{margin:0}}>Employee reviews are not configured.
      A protected Foundation process manager must authorize the original review process.</p>
@@ -124,11 +124,11 @@ export function HrEnrollmentReviews({canConfigure=false}:{canConfigure?:boolean}
      <label style={{display:"grid",gap:5}}>Current password to configure approvals
       <input type="password" autoComplete="current-password"
        value={setupPassword} onChange={e=>setSetupPassword(e.target.value)}
-       style={{padding:10,border:"1px solid #CBD5E1",borderRadius:9}}/>
+       style={{padding:10,border:"1px solid var(--cg-border)",borderRadius:9}}/>
      </label>
      <button type="button" onClick={()=>void configure()}
       disabled={configuring||!setupPassword}
-      style={{padding:11,background:"#0369A1",color:"#fff",border:0,borderRadius:9}}>
+      style={{padding:11,background:"var(--cg-accent)",color:"#fff",border:0,borderRadius:9}}>
       {configuring?"Configuring original process…":"Configure original employee approval process"}</button>
     </>}
    </div>}
@@ -136,26 +136,26 @@ export function HrEnrollmentReviews({canConfigure=false}:{canConfigure?:boolean}
     cases.length===0?<p>No enrollment cases in this Foundation scope.</p>:
    <ul style={{listStyle:"none",padding:0,display:"grid",gap:9}}>
     {cases.map(c=><li key={c.caseRef} style={{padding:12,borderRadius:10,
-      border:"1px solid #E2E8F0"}}>
+      border:"1px solid var(--cg-border)"}}>
      <strong>{c.name}</strong>
-     <small style={{display:"block",color:"#64748B"}}>
+     <small style={{display:"block",color:"var(--cg-muted)"}}>
       {c.reference} · {c.status.replaceAll("_"," ")}
      </small>
      <button type="button" onClick={()=>void open(c.caseRef)} disabled={busy}
       style={{marginTop:8,padding:"8px 10px",border:0,borderRadius:9,
-        background:"#0369A1",color:"#fff",cursor:"pointer"}}>
+        background:"var(--cg-accent)",color:"#fff",cursor:"pointer"}}>
       View original review</button>
     </li>)}
    </ul>}
   {detail&&<div style={{padding:14,display:"grid",gap:12,
-    border:"1px solid #CBD5E1",borderRadius:12}}>
+    border:"1px solid var(--cg-border)",borderRadius:12}}>
    <h3 style={{margin:0}}>{detail.name} — {detail.designation}</h3>
-   <p style={{margin:0,color:"#475569"}}>{detail.reference} · {detail.status.replaceAll("_"," ")}
+   <p style={{margin:0,color:"var(--cg-muted)"}}>{detail.reference} · {detail.status.replaceAll("_"," ")}
     {" · "}{detail.employmentType.replaceAll("_"," ")}</p>
    <div><strong>Original verified evidence</strong>
     {detail.evidence.map((f,i)=><p key={i} style={{margin:"4px 0"}}>
       {f.classification.replaceAll("_"," ")} — {f.verified?"Verified":"Unverified"}
-      {f.verified&&<a style={{marginLeft:9,color:"#0369A1"}}
+      {f.verified&&<a style={{marginLeft:9,color:"var(--cg-accent)"}}
        href={"/api/hr-review-proof/"+encodeURIComponent(detail.caseRef)+
         "?kind="+encodeURIComponent(f.classification)}>
        Download original private proof</a>}
@@ -164,25 +164,25 @@ export function HrEnrollmentReviews({canConfigure=false}:{canConfigure?:boolean}
    {detail.canDecide&&<div style={{display:"grid",gap:11}}>
     <label style={{display:"grid",gap:4}}>Decision
      <select value={outcome} onChange={e=>{setOutcome(e.target.value as Action);setKey(null);}}
-      style={{padding:11,border:"1px solid #CBD5E1",borderRadius:9}}>
+      style={{padding:11,border:"1px solid var(--cg-border)",borderRadius:9}}>
       <option value="APPROVE">Approve</option>
       <option value="RETURN">Return for correction</option>
       <option value="REJECT">Reject</option>
      </select></label>
     <label style={{display:"grid",gap:4}}>Review remarks (optional)
      <textarea value={notes} maxLength={500} onChange={e=>{setNotes(e.target.value);setKey(null);}}
-      style={{padding:11,border:"1px solid #CBD5E1",borderRadius:9}}/></label>
+      style={{padding:11,border:"1px solid var(--cg-border)",borderRadius:9}}/></label>
     <label style={{display:"grid",gap:4}}>Confirm with your current password
      <input type="password" required autoComplete="current-password"
       value={password} onChange={e=>{setPassword(e.target.value);setKey(null);}}
-      style={{padding:11,border:"1px solid #CBD5E1",borderRadius:9}}/></label>
+      style={{padding:11,border:"1px solid var(--cg-border)",borderRadius:9}}/></label>
     <button type="button" onClick={()=>void decide()} disabled={busy||!password}
-     style={{padding:12,borderRadius:10,border:0,background:"#087F8C",
+     style={{padding:12,borderRadius:10,border:0,background:"var(--cg-accent)",
       color:"#fff",fontWeight:700,cursor:"pointer"}}>
       {busy?"Confirming original decision…":"Confirm independent review"}</button>
    </div>}
    <button type="button" onClick={()=>{setDetail(null);setPassword("");setKey(null);}}
-    style={{padding:10,borderRadius:10,border:"1px solid #CBD5E1",
+    style={{padding:10,borderRadius:10,border:"1px solid var(--cg-border)",
      background:"#F8FAFC",cursor:"pointer"}}>Close review</button>
   </div>}
  </section>;

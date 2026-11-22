@@ -7,8 +7,8 @@ type Branch={branchRef:string;label:string;manageShifts:boolean};
 type Employee={reference:string;name:string;designation:string};
 type Rule={policyRef:string;label:string;timeZone:string;start:string;end:string;effectiveFrom:string};
 type Matrix={month:string;items:Array<CorrectionPerson&{designation:string}>;hasMore:boolean;offset:number};
-const inputStyle={padding:10,border:"1px solid #CBD5E1",borderRadius:9,width:"100%",minWidth:0} as const;
-const btn={padding:"10px 13px",border:0,borderRadius:9,color:"#fff",background:"#087F8C",fontWeight:700,cursor:"pointer"} as const;
+const inputStyle={padding:10,border:"1px solid var(--cg-border)",borderRadius:9,width:"100%",minWidth:0} as const;
+const btn={padding:"10px 13px",border:0,borderRadius:9,color:"#fff",background:"var(--cg-accent)",fontWeight:700,cursor:"pointer"} as const;
 async function api(path:string,init?:RequestInit){
  const result=await fetch("/api/hr/"+path,{...init,cache:"no-store",credentials:"same-origin",
   headers:{"Content-Type":"application/json",...init?.headers}});
@@ -51,9 +51,9 @@ function HrLeavePolicies(){
   }catch(e){setError(e instanceof Error?e.message:"Save result uncertain. Refresh before retrying.");}
   finally{setBusy(false);}
  };
- return <div style={{background:"#fff",border:"1px solid #E2E8F0",borderRadius:15,padding:18,display:"grid",gap:12}}>
+ return <div style={{background:"#fff",border:"1px solid var(--cg-border)",borderRadius:15,padding:18,display:"grid",gap:12}}>
   <h2 style={{margin:0}}>Leave policies</h2>
-  <p style={{margin:0,color:"#64748B"}}>Set Foundation-wide annual entitlement. A newer effective date creates a new version of the same leave type.</p>
+  <p style={{margin:0,color:"var(--cg-muted)"}}>Set Foundation-wide annual entitlement. A newer effective date creates a new version of the same leave type.</p>
   {error&&<p role="alert">{error}</p>}{notice&&<p role="status">{notice}</p>}
   <fieldset disabled={busy} style={{border:0,padding:0,display:"grid",gap:10}}>
    <label>Leave type<input style={inputStyle} maxLength={80} value={form.leaveType}
@@ -69,7 +69,7 @@ function HrLeavePolicies(){
   </fieldset>
   <button type="button" disabled={busy||loading} onClick={()=>void refresh()}>Refresh policies</button>
   {loading?<p>Loading leave policies…</p>:!error&&!items.length?<p>No leave policy configured.</p>:null}
-  {items.map(x=><div key={x.policyRef} style={{borderTop:"1px solid #E2E8F0",paddingTop:8}}>
+  {items.map(x=><div key={x.policyRef} style={{borderTop:"1px solid var(--cg-border)",paddingTop:8}}>
    <strong>{x.leaveType}</strong> · {x.annualHalfDays/2} days annually · Version {x.version}
    <p style={{margin:0}}>From {x.effectiveFrom}{x.effectiveTo?" until "+x.effectiveTo+" (exclusive)":""} · {x.allowHalfDays?"Half-days allowed":"Full days only"} · {x.countWeeklyOff?"Weekly off counted":"Weekly off excluded"}</p>
   </div>)}
@@ -85,7 +85,7 @@ const monthDates=(m:string)=>{
 };
 const dayCode=(d:CorrectionDay|undefined)=>!d?"—":({PRESENT:"P",LATE:"L",ABSENT:"A",WEEKLY_OFF:"WO",LEAVE:"LV",HALF_DAY_LEAVE:"½"} as Record<string,string>)[d.status]??d.status;
 const dayLabel=(d:CorrectionDay|undefined)=>!d?"Unrecorded":d.status.replaceAll("_"," ").toLowerCase()+(d.leaveDays>0&&d.status!=="LEAVE"&&d.status!=="HALF_DAY_LEAVE"?" · "+d.leaveDays+" day approved leave":"");
-const badgeColor=(d:CorrectionDay|undefined)=>!d?"#64748B":d.status==="PRESENT"?"#166534":d.status==="ABSENT"?"#991B1B":d.status==="LATE"?"#92400E":"#075985";
+const badgeColor=(d:CorrectionDay|undefined)=>!d?"var(--cg-muted)":d.status==="PRESENT"?"#166534":d.status==="ABSENT"?"#991B1B":d.status==="LATE"?"#92400E":"#075985";
 export function HrAttendance({canConfigure=false,canManageLeave=false,canReviewLeave=false,canCorrect=false,canReviewCorrection=false,canViewStaff=false}:{canConfigure?:boolean;canManageLeave?:boolean;canReviewLeave?:boolean;canCorrect?:boolean;canReviewCorrection?:boolean;canViewStaff?:boolean}){
  const [mine,setMine]=useState<Self|null>(null),[loading,setLoading]=useState(true);
  const [busy,setBusy]=useState(false),[error,setError]=useState(""),[notice,setNotice]=useState("");
@@ -191,7 +191,7 @@ export function HrAttendance({canConfigure=false,canManageLeave=false,canReviewL
  };
  return <section aria-label="My attendance and branch shifts"
   style={{display:"grid",gap:14,marginTop:18}}>
-  <div style={{background:"#fff",border:"1px solid #E2E8F0",borderRadius:15,padding:18}}>
+  <div style={{background:"#fff",border:"1px solid var(--cg-border)",borderRadius:15,padding:18}}>
    <h2 style={{margin:"0 0 8px"}}>My attendance</h2>
    {loading&&<p>Checking your current approved shift…</p>}
    {error&&<p role="alert" style={{color:"#991B1B"}}>{error}</p>}
@@ -208,14 +208,14 @@ export function HrAttendance({canConfigure=false,canManageLeave=false,canReviewL
      style={{...btn,marginLeft:10}} onClick={()=>void checkOut()}>
      Check out using server time</button>}
    <button type="button" onClick={()=>void refresh()} disabled={busy}
-    style={{...btn,background:"#E2E8F0",color:"#0F172A",marginLeft:10}}>Refresh</button>
+    style={{...btn,background:"var(--cg-border)",color:"var(--cg-text)",marginLeft:10}}>Refresh</button>
    <label style={{display:"block",marginTop:12}}>My attendance month<input style={inputStyle} type="month" value={selfMonth} min="2000-01" max="2099-12" disabled={busy} onChange={e=>{selfRead.current++;setMine(null);setSelfMonth(e.target.value);}}/></label>
    {mine?.month===selfMonth&&mine.status!=="NOT_LINKED"&&<div aria-label="Monthly attendance calendar" style={{display:"grid",gridTemplateColumns:"repeat(7,minmax(0,1fr))",gap:4,marginTop:12}}>
-    {["Sun","Mon","Tue","Wed","Thu","Fri","Sat"].map(x=><small key={x} style={{textAlign:"center",color:"#64748B"}}>{x}</small>)}
+    {["Sun","Mon","Tue","Wed","Thu","Fri","Sat"].map(x=><small key={x} style={{textAlign:"center",color:"var(--cg-muted)"}}>{x}</small>)}
     {Array.from({length:new Date(selfMonth+"-01T00:00:00Z").getUTCDay()},(_,i)=><span key={"pad-"+i} aria-hidden="true"/>)}
-    {monthDates(selfMonth).map(date=>{const d=mine.days.find(x=>x.date===date);return <div key={date} title={date+" · "+dayLabel(d)} aria-label={date+" "+dayLabel(d)} style={{border:"1px solid #E2E8F0",borderRadius:8,minHeight:46,padding:5,textAlign:"center",display:"grid",color:badgeColor(d)}}><strong>{Number(date.slice(-2))}</strong><small>{dayCode(d)}{d?.leaveDays===0.5&&d.status!=="HALF_DAY_LEAVE"?"½":""}</small></div>})}
+    {monthDates(selfMonth).map(date=>{const d=mine.days.find(x=>x.date===date);return <div key={date} title={date+" · "+dayLabel(d)} aria-label={date+" "+dayLabel(d)} style={{border:"1px solid var(--cg-border)",borderRadius:8,minHeight:46,padding:5,textAlign:"center",display:"grid",color:badgeColor(d)}}><strong>{Number(date.slice(-2))}</strong><small>{dayCode(d)}{d?.leaveDays===0.5&&d.status!=="HALF_DAY_LEAVE"?"½":""}</small></div>})}
    </div>}
-   <p style={{fontSize:12,color:"#64748B"}}>P Present · L Late · A Absent · WO Weekly off · LV Leave · ½ Half-day leave · — Unrecorded (not absent)</p>
+   <p style={{fontSize:12,color:"var(--cg-muted)"}}>P Present · L Late · A Absent · WO Weekly off · LV Leave · ½ Half-day leave · — Unrecorded (not absent)</p>
    {mine?.month===selfMonth&&!!mine.days.length&&<div style={{overflowX:"auto",marginTop:12}}>
     <table style={{width:"100%",borderCollapse:"collapse"}}>
      <thead><tr><th scope="col">Shift date</th><th scope="col">Result</th>
@@ -227,9 +227,9 @@ export function HrAttendance({canConfigure=false,canManageLeave=false,canReviewL
      </tr>)}</tbody>
     </table></div>}
   </div>
-  {(canConfigure||canViewStaff)&&<div style={{background:"#fff",border:"1px solid #E2E8F0",borderRadius:15,padding:18,display:"grid",gap:14}}>
+  {(canConfigure||canViewStaff)&&<div style={{background:"#fff",border:"1px solid var(--cg-border)",borderRadius:15,padding:18,display:"grid",gap:14}}>
    <h2 style={{margin:0}}>Staff shifts</h2>
-   <p style={{color:"#64748B",margin:0}}>Configure a real shift and assign it to an approved employee at the same Foundation branch.</p>
+   <p style={{color:"var(--cg-muted)",margin:0}}>Configure a real shift and assign it to an approved employee at the same Foundation branch.</p>
    <label>Active Foundation branch<select style={inputStyle} value={branch}
      onChange={e=>{setBranch(e.target.value);setSelectedEmployee("");setSelectedPolicy("");setStaffOffset(0);}}>
      <option value="">Choose branch</option>
@@ -252,7 +252,7 @@ export function HrAttendance({canConfigure=false,canManageLeave=false,canReviewL
      <label>Effective date<input style={inputStyle} type="date" value={policy.effectiveFrom}
       onChange={e=>change("effectiveFrom",e.target.value)}/></label>
     </div>
-    <fieldset style={{border:"1px solid #E2E8F0",borderRadius:10}}>
+    <fieldset style={{border:"1px solid var(--cg-border)",borderRadius:10}}>
      <legend>Weekly days off (optional)</legend>
      {["Sun","Mon","Tue","Wed","Thu","Fri","Sat"].map((label,n)=><label key={label}
       style={{display:"inline-flex",gap:5,marginRight:14}}>
@@ -280,9 +280,9 @@ export function HrAttendance({canConfigure=false,canManageLeave=false,canReviewL
      onChange={e=>{setAssignFrom(e.target.value);assignKey.current=null;}}/></label>
     <button type="button" style={btn} disabled={busy||!selectedEmployee||!selectedPolicy}
      onClick={()=>void assign()}>Assign shift</button></>}
-    <div style={{borderTop:"1px solid #E2E8F0",paddingTop:12,display:"grid",gap:9}}>
+    <div style={{borderTop:"1px solid var(--cg-border)",paddingTop:12,display:"grid",gap:9}}>
      <h3 style={{margin:0}}>Branch attendance</h3>
-     <p style={{margin:0,color:"#64748B"}}>Recorded attendance and approved leave are shown. A missing record is not proof of absence.</p>
+     <p style={{margin:0,color:"var(--cg-muted)"}}>Recorded attendance and approved leave are shown. A missing record is not proof of absence.</p>
      <label>Month<input style={inputStyle} type="month" value={month}
       onChange={e=>{setMonth(e.target.value);setMatrixOffset(0);}}/></label>
      {matrixBusy&&<p>Loading attendance records…</p>}
@@ -291,7 +291,7 @@ export function HrAttendance({canConfigure=false,canManageLeave=false,canReviewL
        <thead><tr><th scope="col" style={{minWidth:180,textAlign:"left"}}>Employee</th>{monthDates(matrix.month).map(date=><th scope="col" key={date} title={date} style={{minWidth:40,padding:6}}>{Number(date.slice(-2))}</th>)}</tr></thead>
        <tbody>{matrix.items.map(x=><tr key={x.employeeReference}>
         <th scope="row" style={{textAlign:"left",fontWeight:500,padding:8}}>{x.employeeName} — {x.designation}</th>
-        {monthDates(matrix.month).map(date=>{const d=x.days.find(v=>v.date===date);return <td key={date} title={date+" · "+dayLabel(d)} aria-label={date+" "+dayLabel(d)} style={{textAlign:"center",padding:7,border:"1px solid #E2E8F0",color:badgeColor(d)}}>{dayCode(d)}{d?.leaveDays===0.5&&d.status!=="HALF_DAY_LEAVE"?"½":""}</td>})}
+        {monthDates(matrix.month).map(date=>{const d=x.days.find(v=>v.date===date);return <td key={date} title={date+" · "+dayLabel(d)} aria-label={date+" "+dayLabel(d)} style={{textAlign:"center",padding:7,border:"1px solid var(--cg-border)",color:badgeColor(d)}}>{dayCode(d)}{d?.leaveDays===0.5&&d.status!=="HALF_DAY_LEAVE"?"½":""}</td>})}
        </tr>)}</tbody>
       </table></div>}
      {matrixOffset>0&&<button type="button"

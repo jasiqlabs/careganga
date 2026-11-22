@@ -12,15 +12,15 @@ const title=(s:string)=>({EMPLOYEE_ID:"Employee ID card",SENT_TO_PROVIDER:"Accep
 const known=(e:unknown)=>!!e&&typeof e==="object"&&"status" in e&&typeof e.status==="number"&&e.status>=400&&e.status<500;
 type Command={path:string;body:Record<string,unknown>;proof:boolean};
 
-const panel={border:"1px solid #E2E8F0",borderRadius:14,padding:16,background:"#fff",display:"grid",gap:10} as const;
-const field={width:"100%",border:"1px solid #CBD5E1",borderRadius:8,padding:10,boxSizing:"border-box"} as const;
+const panel={border:"1px solid var(--cg-border)",borderRadius:14,padding:16,background:"#fff",display:"grid",gap:10} as const;
+const field={width:"100%",border:"1px solid var(--cg-border)",borderRadius:8,padding:10,boxSizing:"border-box"} as const;
 async function api<T>(path:string,body?:object):Promise<T>{
  const r=await fetch("/api/hr/"+path,{cache:"no-store",credentials:"same-origin",...(body?{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)}:{})});
  const v=await r.json().catch(()=>null);if(!r.ok)throw Object.assign(new Error(typeof v?.message==="string"?v.message:"Document unavailable"),{status:r.status});if(!v||typeof v!=="object")throw Error("Original result unconfirmed");return v as T;
 }
 function Select({label,value,options,onChange,disabled=false}:{label:string;value:string;options:{value:string;label:string}[];onChange:(v:string)=>void;disabled?:boolean}){return <label>{label}<select style={field} value={value} disabled={disabled} onChange={e=>onChange(e.target.value)}>{options.map(x=><option key={x.value} value={x.value}>{x.label}</option>)}</select></label>;}
 function LetterBodyPreview({value}:{value:string}){
- return <div style={{whiteSpace:"pre-wrap",overflowWrap:"anywhere"}}>{hrLetterBlocks(value).map((b,i)=>b.kind==="heading"?<h4 key={i} style={{margin:"8px 0",color:"#1E53DC"}}>{b.text}</h4>:b.kind==="bullet"?<p key={i} style={{margin:"4px 0",paddingLeft:16}}>• {b.text}</p>:<p key={i} style={{margin:"4px 0",minHeight:b.text?undefined:12}}>{b.text}</p>)}</div>;
+ return <div style={{whiteSpace:"pre-wrap",overflowWrap:"anywhere"}}>{hrLetterBlocks(value).map((b,i)=>b.kind==="heading"?<h4 key={i} style={{margin:"8px 0",color:"var(--cg-accent)"}}>{b.text}</h4>:b.kind==="bullet"?<p key={i} style={{margin:"4px 0",paddingLeft:16}}>• {b.text}</p>:<p key={i} style={{margin:"4px 0",minHeight:b.text?undefined:12}}>{b.text}</p>)}</div>;
 }
 function ReceiptUpload({id,onVerified,disabled,assetType,onClear,staff=false}:{id?:string;onVerified:(fileRef?:string)=>void;disabled:boolean;assetType?:"SIGNATURE"|"SEAL";onClear?:()=>void;staff?:boolean}){
  const [file,setFile]=useState<File|null>(null),[busy,setBusy]=useState(false),[message,setMessage]=useState("");
@@ -123,7 +123,7 @@ export function HrDocuments({mode,canIssue=false,canApproveTemplate=false,canRev
   <label>Search current document page<input style={field} maxLength={80} value={historySearch} disabled={blocked} onChange={e=>setHistorySearch(e.target.value)}/></label>
   <Select label="Filter current page" value={filter} options={["ALL","DRAFT","SUBMITTED","APPROVED","PENDING","ISSUED","REVOKED","UNKNOWN","RETURNED","REJECTED","ACKNOWLEDGED","RECEIVED_COPY_VERIFIED"].map(s=>({value:s,label:title(s)}))} onChange={setFilter} disabled={blocked}/>
   {loading?<p>Loading documents…</p>:!visible.length&&<p>No documents in this view.</p>}
-  {visible.map(x=><article key={x.reference} style={{borderTop:"1px solid #E2E8F0",paddingTop:10}}><strong>{title(x.kind)} · {x.snapshot?.recipient??x.recipient}</strong><p>{x.reference} · {title(x.document?.status??x.status)}</p><button disabled={blocked} onClick={()=>void open(x)}>View details</button></article>)}
+  {visible.map(x=><article key={x.reference} style={{borderTop:"1px solid var(--cg-border)",paddingTop:10}}><strong>{title(x.kind)} · {x.snapshot?.recipient??x.recipient}</strong><p>{x.reference} · {title(x.document?.status??x.status)}</p><button disabled={blocked} onClick={()=>void open(x)}>View details</button></article>)}
   {offset>0&&<button disabled={blocked} onClick={()=>{setSelected(null);setOffset(v=>Math.max(0,v-25));}}>Previous</button>}{more&&<button disabled={blocked} onClick={()=>{setSelected(null);setOffset(v=>v+25);}}>Next</button>}
   {selected&&<article style={panel} ref={node=>{if(node&&selected.status==="DRAFT"&&selected.canSubmit)node.scrollIntoView({block:"nearest",behavior:"auto"});}}><h3>{title(selected.kind)} · {selected.reference}</h3><p>{title(selected.status)}</p>
    {selected.snapshot&&<><p>{selected.snapshot.recipient} · {selected.snapshot.designation} · {selected.snapshot.branch}</p><p>Joining: {selected.snapshot.hireDate} · Issue: {selected.snapshot.issueDate}</p>{selected.snapshot.expiryDate&&<p>Expiry: {selected.snapshot.expiryDate}</p>}{selected.snapshot.lastWorkingDate&&<p>Last working date: {selected.snapshot.lastWorkingDate}</p>}</>}

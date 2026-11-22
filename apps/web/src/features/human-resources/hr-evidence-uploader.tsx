@@ -131,9 +131,9 @@ export function HrEvidenceUploader({applicationRef,revision,canManage,
  };
  return <section aria-label="Original private employee evidence"
   style={{padding:"1rem",borderRadius:12,background:"#F8FAFC",
-   display:"grid",gap:12,border:"1px solid #E2E8F0"}}>
+   display:"grid",gap:12,border:"1px solid var(--cg-border)"}}>
   <header><h3 style={{margin:0,fontSize:"1rem"}}>Private employee documents</h3>
-   <p style={{margin:"4px 0 0",color:"#64748B",fontSize:13}}>
+   <p style={{margin:"4px 0 0",color:"var(--cg-muted)",fontSize:13}}>
     Identity evidence is required for genuine Foundation review.
     Files remain private and are not accepted until storage and malware checks pass.
    </p>
@@ -148,29 +148,29 @@ export function HrEvidenceUploader({applicationRef,revision,canManage,
       {file.sourceVersion!==revision?" (prior draft version)":""}
       {canManage&&file.cleanVerified&&file.sourceVersion===revision&&
        <button type="button" onClick={()=>void revoke(file)} disabled={busy}
-        style={{marginLeft:10,border:"1px solid #CBD5E1",background:"#fff",
+        style={{marginLeft:10,border:"1px solid var(--cg-border)",background:"#fff",
          color:"#991B1B",borderRadius:8,padding:"5px 9px",cursor:"pointer"}}>
         Revoke unused proof</button>}
      </li>)}</ul>:<p style={{margin:0}}>No verified files for this application.</p>}
   {canManage&&<div style={{display:"grid",gap:10}}>
     <label style={{display:"grid",gap:5,fontWeight:600}}>Evidence category
      <select value={kind} disabled={busy} onChange={e=>{setKind(e.target.value);setSelected(null);activeUpload.current=null;}}
-      style={{padding:12,borderRadius:9,border:"1px solid #CBD5E1"}}>
+      style={{padding:12,borderRadius:9,border:"1px solid var(--cg-border)"}}>
       {types.map(x=><option value={x.value} key={x.value}>{x.label}</option>)}
      </select></label>
     <label style={{display:"grid",gap:5,fontWeight:600}}>Choose protected file
      <input key={kind} type="file" disabled={busy} accept={kind==="HR_PORTRAIT"?"image/jpeg,image/png":"application/pdf,image/jpeg,image/png,image/webp"}
       onChange={e=>{setSelected(e.target.files?.[0]??null);activeUpload.current=null;}}
-      style={{padding:10,border:"1px solid #CBD5E1",borderRadius:9}}/>
+      style={{padding:10,border:"1px solid var(--cg-border)",borderRadius:9}}/>
     </label>
     <button type="button" disabled={!selected||busy}
      onClick={()=>void upload()}
-     style={{padding:12,border:0,borderRadius:10,background:"#087F8C",
+     style={{padding:12,border:0,borderRadius:10,background:"var(--cg-accent)",
       fontWeight:700,color:"#fff",cursor:"pointer"}}>
      {busy?"Checking private evidence…":"Upload and verify evidence"}</button>
   </div>}
   <button type="button" onClick={()=>void refresh()} disabled={loading}
-   style={{background:"#fff",border:"1px solid #CBD5E1",
+   style={{background:"#fff",border:"1px solid var(--cg-border)",
     borderRadius:9,padding:10,cursor:"pointer"}}>Refresh document status</button>
  </section>;
 }

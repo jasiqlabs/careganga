@@ -15,10 +15,10 @@ const blank=():Draft=>({name:"",designation:"",employmentType:"FULL_TIME",
  branchRef:"",departmentRef:"",managerRef:"",roleRef:"",accountRef:"",hireDate:""});
 type Result={message:string;error:boolean};
 const fieldStyle={display:"grid",gap:".35rem",fontWeight:600,fontSize:".91rem"} as const;
-const inputStyle={padding:".78rem",border:"1px solid #CBD5E1",borderRadius:"10px",
+const inputStyle={padding:".78rem",border:"1px solid var(--cg-border)",borderRadius:"10px",
  fontSize:"1rem",background:"#fff",width:"100%",minWidth:0} as const;
 const buttonStyle={border:0,borderRadius:"10px",padding:".85rem 1.15rem",
- background:"#087F8C",color:"#fff",fontWeight:700,cursor:"pointer"} as const;
+ background:"var(--cg-accent)",color:"#fff",fontWeight:700,cursor:"pointer"} as const;
 async function request(path:string,init?:RequestInit):Promise<unknown>{
  const response=await fetch("/api/hr/"+path,{...init,cache:"no-store",credentials:"same-origin",
   headers:{"Content-Type":"application/json",...init?.headers}});
@@ -304,7 +304,7 @@ export function HrEnrollmentWorkspace({canViewApps,canManage,canViewEmployees,ca
   }finally{setBusy(false);}
  };
  return <div style={{display:"grid",gap:"1.3rem"}}>
-  <div style={{padding:"1rem 1.2rem",background:"#F1F5F9",borderRadius:12,color:"#334155"}}>
+  <div style={{padding:"1rem 1.2rem",background:"#F1F5F9",borderRadius:12,color:"var(--cg-text)"}}>
    <strong>Employee applications</strong>
    <p style={{margin:".35rem 0 0"}}>
     Saving a draft does not create a staff account, grant permissions or activate employment.
@@ -316,10 +316,10 @@ export function HrEnrollmentWorkspace({canViewApps,canManage,canViewEmployees,ca
    color:status.error?"#991B1B":"#166534",padding:".85rem 1rem",margin:0}}>
    {status.message}{status.error&&attempt?" Retry the original save before changing details if its result is uncertain.":""}
   </p>}
-  {canViewApps&&canManage&&<form onSubmit={e=>void save(e)} style={{border:"1px solid #E2E8F0",
+  {canViewApps&&canManage&&<form onSubmit={e=>void save(e)} style={{border:"1px solid var(--cg-border)",
    borderRadius:16,padding:"1.1rem",display:"grid",gap:15,background:"#fff"}}>
    <header><h2 style={{margin:0,fontSize:"1.15rem"}}>{selected?"Edit draft":"New employee draft"}</h2>
-    <p style={{color:"#64748B",margin:"5px 0 0"}}>Personal and employment basics. Private identity and bank documents are not collected here.</p></header>
+    <p style={{color:"var(--cg-muted)",margin:"5px 0 0"}}>Personal and employment basics. Private identity and bank documents are not collected here.</p></header>
    <fieldset disabled={busy||uncertain} style={{border:0,padding:0,margin:0,minWidth:0,display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(215px,1fr))",gap:13}}>
     <label style={fieldStyle}>Employee name
      <input style={inputStyle} value={form.name} maxLength={160} required
@@ -339,7 +339,7 @@ export function HrEnrollmentWorkspace({canViewApps,canManage,canViewEmployees,ca
       <option value="">Choose branch</option>
       {branches.map(v=><option key={v.branchRef} value={v.branchRef}>{v.label}</option>)}
      </select>
-     {form.branchRef&&<span style={{fontSize:12,color:"#475569",fontWeight:400}}>
+     {form.branchRef&&<span style={{fontSize:12,color:"var(--cg-muted)",fontWeight:400}}>
       Verified location: {branches.find(b=>b.branchRef===form.branchRef)?.geography||
        "Location unavailable from current Foundation branch"}
      </span>}</label>
@@ -375,29 +375,29 @@ export function HrEnrollmentWorkspace({canViewApps,canManage,canViewEmployees,ca
     <button type="submit" style={buttonStyle} disabled={busy}>
      {busy?"Saving draft…":uncertain?"Retry original save":selected?"Save corrected draft":"Save & continue"}</button>
     {selected&&<button type="button" disabled={busy||uncertain} onClick={reset}
-     style={{...buttonStyle,background:"#E2E8F0",color:"#0F172A"}}>Cancel edit</button>}
+     style={{...buttonStyle,background:"var(--cg-border)",color:"var(--cg-text)"}}>Cancel edit</button>}
    </div>
   </form>}
   {canViewApps&&<section aria-label="Employee draft list" style={{background:"#fff",
-   border:"1px solid #E2E8F0",borderRadius:16,padding:"1rem"}}>
+   border:"1px solid var(--cg-border)",borderRadius:16,padding:"1rem"}}>
    <header style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:8}}>
     <h2 style={{margin:0,fontSize:"1.15rem"}}>Current applications</h2>
     <button type="button" onClick={()=>void load(offset)} disabled={loading}
-     style={{...buttonStyle,background:"#E2E8F0",color:"#0F172A"}}>Refresh</button>
+     style={{...buttonStyle,background:"var(--cg-border)",color:"var(--cg-text)"}}>Refresh</button>
    </header>
    {loading?<p role="status">Checking current HR records…</p>:
     apps.length===0?<p>No applications found in your permitted branches.</p>:
     <ul style={{padding:0,listStyle:"none",display:"grid",gap:9}}>
      {apps.map(app=><li key={app.applicationRef}
-      style={{border:"1px solid #E2E8F0",padding:13,borderRadius:10}}>
+      style={{border:"1px solid var(--cg-border)",padding:13,borderRadius:10}}>
       <div style={{display:"flex",justifyContent:"space-between",gap:10,flexWrap:"wrap"}}>
        <span><strong>{app.name}</strong> · {app.designation}
-        <small style={{display:"block",color:"#64748B"}}>{app.reference}</small></span>
-       <span style={{fontWeight:600,color:"#475569"}}>{app.status.replaceAll("_"," ")}</span>
+        <small style={{display:"block",color:"var(--cg-muted)"}}>{app.reference}</small></span>
+       <span style={{fontWeight:600,color:"var(--cg-muted)"}}>{app.status.replaceAll("_"," ")}</span>
       </div>
       {canManage&&<button type="button" onClick={()=>void review(app)}
        style={{marginTop:8,marginRight:8,...buttonStyle,padding:".45rem .7rem",
-        background:"#EFF6FF",color:"#1D4ED8"}}>
+        background:"#EEF4FF",color:"var(--cg-accent)"}}>
         {["DRAFT","RETURNED"].includes(app.status)?"Manage private evidence":"Review status"}
        </button>}
       {canManage&&["DRAFT","RETURNED"].includes(app.status)&&
@@ -406,18 +406,18 @@ export function HrEnrollmentWorkspace({canViewApps,canManage,canViewEmployees,ca
      </li>)}
     </ul>}
    <div style={{display:"flex",gap:8}}>
-    {offset>0&&<button type="button" style={{...buttonStyle,background:"#E2E8F0",color:"#0F172A"}}
+    {offset>0&&<button type="button" style={{...buttonStyle,background:"var(--cg-border)",color:"var(--cg-text)"}}
       onClick={()=>void load(Math.max(0,offset-25))}>Previous</button>}
-    {hasMore&&<button type="button" style={{...buttonStyle,background:"#E2E8F0",color:"#0F172A"}}
+    {hasMore&&<button type="button" style={{...buttonStyle,background:"var(--cg-border)",color:"var(--cg-text)"}}
       onClick={()=>void load(offset+25)}>Next</button>}
    </div>
   </section>}
-  {canViewApps&&fileApplication&&canManage&&<section ref={evidencePanel} style={{border:"1px solid #CBD5E1",
+  {canViewApps&&fileApplication&&canManage&&<section ref={evidencePanel} style={{border:"1px solid var(--cg-border)",
    padding:16,borderRadius:14,background:"#fff",display:"grid",gap:14}}>
    <header style={{display:"flex",justifyContent:"space-between",gap:8}}>
     <h2 style={{margin:0,fontSize:"1.1rem"}}>Original enrollment — {fileApplication.name}</h2>
     <button type="button" onClick={()=>{setFileApplication(null);setCaseStatus(null);}}
-     style={{...buttonStyle,background:"#E2E8F0",color:"#0F172A"}}>Close</button>
+     style={{...buttonStyle,background:"var(--cg-border)",color:"var(--cg-text)"}}>Close</button>
    </header>
    {canViewPrivate&&<HrPrivateDetails key={fileApplication.applicationRef}
      applicationRef={fileApplication.applicationRef} canView={canViewPrivate}
@@ -433,22 +433,22 @@ export function HrEnrollmentWorkspace({canViewApps,canManage,canViewEmployees,ca
    {fileApplication.status==="FINAL_APPROVED_PENDING_ACTIVATION"&&
     <button type="button" onClick={()=>void finalize(fileApplication)} disabled={busy}
       style={buttonStyle}>Complete approved enrollment</button>}
-   <p style={{color:"#64748B",fontSize:13,margin:0}}>
+   <p style={{color:"var(--cg-muted)",fontSize:13,margin:0}}>
     Only an original CG-03 independent decision and current CG-19 clean scan can activate employment.
    </p>
   </section>}
-  {canViewEmployees&&<section style={{padding:16,border:"1px solid #E2E8F0",
+  {canViewEmployees&&<section style={{padding:16,border:"1px solid var(--cg-border)",
     borderRadius:14,background:"#fff"}}>
     <div style={{display:"flex",justifyContent:"space-between",gap:10}}>
       <h2 style={{margin:0,fontSize:"1.1rem"}}>Approved employee directory</h2>
       <button type="button" onClick={()=>void loadHeadcounts()}
-        style={{...buttonStyle,background:"#E2E8F0",color:"#0F172A"}}>
+        style={{...buttonStyle,background:"var(--cg-border)",color:"var(--cg-text)"}}>
         Refresh actual headcount</button>
       <button type="button" onClick={()=>void loadEmployees()}
-       style={{...buttonStyle,background:"#E2E8F0",color:"#0F172A"}}>Refresh directory</button>
+       style={{...buttonStyle,background:"var(--cg-border)",color:"var(--cg-text)"}}>Refresh directory</button>
     </div>
     {headcounts&&<div role="status" style={{display:"flex",gap:10,flexWrap:"wrap",
-     color:"#334155",fontSize:13}}>
+     color:"var(--cg-text)",fontSize:13}}>
      {Object.entries(headcounts.statuses).map(([key,count])=>
       <span key={key} style={{padding:9,borderRadius:9,background:"#F1F5F9"}}>
        <strong>{count}</strong> {key.replaceAll("_"," ").toLowerCase()}
@@ -485,27 +485,27 @@ export function HrEnrollmentWorkspace({canViewApps,canManage,canViewEmployees,ca
        </select></label>}
     </div>
     <button type="button" onClick={()=>void loadEmployees(0)}
-      style={{...buttonStyle,background:"#0369A1"}}>Apply directory filters</button>
+      style={{...buttonStyle,background:"var(--cg-accent)"}}>Apply directory filters</button>
     {staffError&&<p role="alert" style={{color:"#991B1B"}}>{staffError}</p>}
     <ul style={{paddingLeft:18}}>
      {staff.map(row=><li key={row.reference} style={{padding:6}}>
        <strong>{row.name}</strong> — {row.designation} · {row.branch}
-       <small style={{display:"block",color:"#64748B"}}>
+       <small style={{display:"block",color:"var(--cg-muted)"}}>
         {row.reference} · {row.status.replaceAll("_"," ")}
        </small>
        <button type="button" onClick={()=>void viewEmployee(row.reference)}
          disabled={detailBusy}
-         style={{...buttonStyle,background:"#E2E8F0",color:"#0F172A",
+         style={{...buttonStyle,background:"var(--cg-border)",color:"var(--cg-text)",
            padding:".4rem .7rem",marginTop:7}}>View employment</button>
       </li>)}
     </ul>
     {employeeDetail&&<section aria-label="Current approved employee detail"
-      style={{border:"1px solid #CBD5E1",borderRadius:12,padding:14,
+      style={{border:"1px solid var(--cg-border)",borderRadius:12,padding:14,
        display:"grid",gap:9,marginTop:12}}>
       <div style={{display:"flex",justifyContent:"space-between",gap:10}}>
        <h3 style={{margin:0}}>{employeeDetail.name}</h3>
        <button type="button" onClick={()=>setEmployeeDetail(null)}
-        style={{...buttonStyle,background:"#E2E8F0",color:"#0F172A"}}>
+        style={{...buttonStyle,background:"var(--cg-border)",color:"var(--cg-text)"}}>
         Close</button>
       </div>
       <p style={{margin:0}}>{employeeDetail.reference} · {employeeDetail.status.replaceAll("_"," ")}</p>
@@ -517,19 +517,19 @@ export function HrEnrollmentWorkspace({canViewApps,canManage,canViewEmployees,ca
          ["Employment type",employeeDetail.employmentType.replaceAll("_"," ")],
          ["Effective from",employeeDetail.effectiveFrom],
          ["Effective to",employeeDetail.effectiveTo??"Current"]] as const).map(([label,value])=>
-         <div key={label}><dt style={{color:"#64748B",fontSize:12}}>{label}</dt>
+         <div key={label}><dt style={{color:"var(--cg-muted)",fontSize:12}}>{label}</dt>
           <dd style={{margin:0}}>{value}</dd></div>)}
       </dl>
-      <p style={{margin:0,color:"#64748B",fontSize:13}}>
+      <p style={{margin:0,color:"var(--cg-muted)",fontSize:13}}>
        Employment edits require an authorized personnel change review.
        Sensitive personal and bank data are never included in this directory.
       </p>
      </section>}
     <div style={{display:"flex",gap:8}}>
      {empOffset>0&&<button type="button" onClick={()=>void loadEmployees(Math.max(0,empOffset-25))}
-       style={{...buttonStyle,background:"#E2E8F0",color:"#0F172A"}}>Previous employees</button>}
+       style={{...buttonStyle,background:"var(--cg-border)",color:"var(--cg-text)"}}>Previous employees</button>}
      {empMore&&<button type="button" onClick={()=>void loadEmployees(empOffset+25)}
-       style={{...buttonStyle,background:"#E2E8F0",color:"#0F172A"}}>Next employees</button>}
+       style={{...buttonStyle,background:"var(--cg-border)",color:"var(--cg-text)"}}>Next employees</button>}
     </div>
   </section>}
  </div>;

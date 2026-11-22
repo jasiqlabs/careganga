@@ -9,8 +9,8 @@ type Summary={total:number;draft:number;submitted:number;released:number};
 const blank=():Form=>({employeeReference:"",periodStart:"",periodEnd:"",goal:0,competency:0,attendance:0,strengths:"",improvement:""});
 const captions=[["goal","Goal & delivery"],["competency","Competency"],["attendance","Attendance & conduct"]] as const;
 const statusLabel=(v:string)=>({DRAFT:"Draft",SUBMITTED:"Submitted",RELEASED:"Released"} as Record<string,string>)[v]??"Unavailable";
-const field={width:"100%",border:"1px solid #CBD5E1",borderRadius:9,padding:10,boxSizing:"border-box"} as const;
-const card={border:"1px solid #E2E8F0",borderRadius:14,padding:16,background:"#fff",display:"grid",gap:10} as const;
+const field={width:"100%",border:"1px solid var(--cg-border)",borderRadius:9,padding:10,boxSizing:"border-box"} as const;
+const card={border:"1px solid var(--cg-border)",borderRadius:14,padding:16,background:"#fff",display:"grid",gap:10} as const;
 async function api<T>(path:string,body?:object):Promise<T>{
  const response=await fetch("/api/hr/"+path,{credentials:"same-origin",cache:"no-store",
   ...(body?{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)}:{})});
@@ -37,7 +37,7 @@ export function HrMyAppraisals(){
   {loading&&<p>Loading released appraisals…</p>}{error&&<p role="alert">{error}</p>}
   {linked===false&&<p>No current approved employment is linked to your account.</p>}
   {linked===true&&!items.length&&<p>No appraisal has been released to you.</p>}
-  {items.map(x=><article key={x.reference} style={{borderTop:"1px solid #E2E8F0",paddingTop:10}}>
+  {items.map(x=><article key={x.reference} style={{borderTop:"1px solid var(--cg-border)",paddingTop:10}}>
    <strong>{x.periodStart} – {x.periodEnd}</strong>
    <p>{captions.map(([k,label])=>label+": "+x[k]+"/100").join(" · ")}</p><small>{statusLabel(x.status)}</small>
   </article>)}
