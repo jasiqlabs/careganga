@@ -10,7 +10,7 @@ export function instant(v:unknown){
  const ms=Date.parse(v);if(!Number.isFinite(ms))throw invalid();
  const day=v.slice(0,10);if(new Date(day+"T00:00:00Z").toISOString().slice(0,10)!==day)throw invalid();
  const [hh,mm,ss="0"]=v.slice(11).split(/[:Z+-]/);
- if(Number(hh)>23||Number(mm)>59||Number(ss)>59)throw invalid();
+ if(Number(hh)>23||Number(mm)>59||Number(ss)>=60)throw invalid();
  return new Date(ms).toISOString();
 }
 export function activityInputError(field:string,code="CG05_ACTIVITY_FIELD_INVALID"){return new BadRequestException({code,field});}
