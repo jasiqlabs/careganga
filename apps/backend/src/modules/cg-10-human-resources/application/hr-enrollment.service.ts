@@ -475,10 +475,10 @@ export class HrEnrollmentService{
    if(Object.keys(row).some(k=>!["fileRef","fileVersion","classification"].includes(k))||
      typeof row.fileRef!=="string"||!ID.test(row.fileRef)||
      !Number.isSafeInteger(row.fileVersion)||Number(row.fileVersion)<1||
-     !["HR_IDENTITY_PROOF","HR_PAN_PROOF","HR_QUALIFICATION","HR_PORTRAIT"].includes(String(row.classification)))
+     !["HR_IDENTITY_PROOF","HR_PAN_PROOF","HR_QUALIFICATION","HR_PORTRAIT","HR_EXPERIENCE","HR_POLICE_VERIFICATION","HR_RESUME","HR_APPOINTMENT_DOCUMENT"].includes(String(row.classification)))
     throw new BadRequestException("Choose an original clean employee file");
    return {fileRef:row.fileRef as string,fileVersion:Number(row.fileVersion),
-    classification:row.classification as "HR_IDENTITY_PROOF"|"HR_PAN_PROOF"|"HR_QUALIFICATION"|"HR_PORTRAIT"};
+    classification:row.classification as "HR_IDENTITY_PROOF"|"HR_PAN_PROOF"|"HR_QUALIFICATION"|"HR_PORTRAIT"|"HR_EXPERIENCE"|"HR_POLICE_VERIFICATION"|"HR_RESUME"|"HR_APPOINTMENT_DOCUMENT"};
   });
   if(new Set(files.map(f=>f.fileRef)).size!==files.length||
     files.filter(f=>f.classification==="HR_IDENTITY_PROOF").length!==1)
