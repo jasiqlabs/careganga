@@ -23,6 +23,8 @@ function destination(parts:string[],method:string):string|null{
   return "/api/v1/membership/applications/"+parts[1]+"/fee";
  if(route==="me"&&method==="GET")return "/api/v1/membership/me";
  if(route==="me/history"&&method==="GET")return "/api/v1/membership/me/history";
+ if(route==="documents/me"&&method==="GET")return "/api/v1/membership/documents/me";
+ if(parts.length===5&&parts[0]==="documents"&&parts[1]==="packs"&&UUID.test(parts[2])&&["CARD","CERTIFICATE","WELCOME"].includes(parts[3])&&parts[4]==="download"&&method==="GET")return "/api/v1/membership/documents/packs/"+parts[2]+"/"+parts[3]+"/download";
  if(route==="documents/intents"&&method==="POST")return "/api/documents/membership/intents";
  if(parts.length===3&&parts[0]==="documents"&&parts[1]==="intents"&&UUID.test(parts[2])&&method==="GET")return "/api/documents/membership/intents/"+parts[2];
  if(parts.length===4&&parts[0]==="documents"&&parts[1]==="intents"&&UUID.test(parts[2])&&parts[3]==="confirm"&&method==="POST")return "/api/documents/membership/intents/"+parts[2]+"/confirm";
@@ -77,7 +79,7 @@ async function proxy(request:NextRequest,ctx:Ctx,method:"GET"|"POST"|"PATCH"){
    const out=reply({signedIn:true});
    out.cookies.set("cg_community_session",s.sessionToken,{httpOnly:true,secure:process.env.NODE_ENV==="production",sameSite:"strict",path:"/",expires:new Date(s.expiresAt)});return out;
   }
-  if(route.startsWith("documents/files/")&&route.endsWith("/download")){
+  if((route.startsWith("documents/files/")||route.startsWith("documents/packs/"))&&route.endsWith("/download")){
    const type=r.headers.get("Content-Type")??"application/octet-stream";
    if(!["application/pdf","image/jpeg","image/png","image/webp"].includes(type.split(";")[0].trim()))return reply({message:"Protected document unavailable."},503);
    const bytes=await r.arrayBuffer();
