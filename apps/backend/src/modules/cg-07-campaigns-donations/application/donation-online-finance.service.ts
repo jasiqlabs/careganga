@@ -56,7 +56,7 @@ export class DonationOnlineFinanceService{
    "AND p.donation_id=d.id AND p.provider=a.provider "+
    "AND p.merchant_reference=a.merchant_reference "+
    "WHERE d.root_realm_id=$1 AND d.id=$2 AND a.method='ONLINE' "+
-   "AND a.provider='razorpay' AND a.status IN('VERIFIED_EXTERNAL','RECEIVED_POSTED') "+
+   "AND a.provider='razorpay' AND a.status IN('VERIFIED_EXTERNAL','RECONCILIATION_PENDING','RECEIVED_POSTED') "+
    "AND p.outcome='SUCCESS' AND p.amount_minor=d.amount_minor AND p.currency='INR' "+
    "AND EXISTS(SELECT 1 FROM integration_connection c "+
     "WHERE c.foundation_realm_id=d.root_realm_id AND c.scope_kind='FOUNDATION' "+
@@ -70,13 +70,40 @@ export class DonationOnlineFinanceService{
    throw new ConflictException("Foundation provider merchant configuration changed.");
   return q.rows[0];
  }
+ /** Visible, bounded reconciliation queue. An externally paid link is not
+  * received finance until an original signed SUCCESS event and CG09 posting. */
+ async reconciliationQueue(token:string){
+  return this.run(token,async(tx,a)=>{
+   const scope=await this.branches.financeReportScope(token,"finance.journals.post");
+   const rows=await tx.query<{donationNumber:string;amountMinor:string;providerStatus:string;
+      signedVerified:boolean;createdAt:Date}>(`
+    SELECT d.donation_number AS "donationNumber",d.amount_minor::text AS "amountMinor",
+     a.status AS "providerStatus",d.created_at AS "createdAt",
+     EXISTS(SELECT 1 FROM donation_payment_event p
+      WHERE p.root_realm_id=a.root_realm_id AND p.attempt_id=a.id
+       AND p.donation_id=d.id AND p.outcome='SUCCESS'
+       AND p.amount_minor=d.amount_minor AND p.currency='INR') AS "signedVerified"
+    FROM donation d JOIN donation_payment_attempt a
+     ON a.root_realm_id=d.root_realm_id AND a.donation_id=d.id
+    WHERE d.root_realm_id=$1 AND ($2::boolean OR d.branch_ref=ANY($3::uuid[]))
+     AND a.method='ONLINE' AND a.provider='razorpay'
+     AND d.source_status IN('VERIFIED_EXTERNAL','RECONCILIATION_PENDING')
+     AND a.status IN('VERIFIED_EXTERNAL','RECONCILIATION_PENDING')
+     AND NOT EXISTS(SELECT 1 FROM donation_finance_effect e
+       WHERE e.root_realm_id=d.root_realm_id AND e.donation_id=d.id AND e.status='POSTED')
+    ORDER BY d.created_at DESC,d.id DESC LIMIT 101`,
+    [a.realmId,scope.all,scope.branchRefs]);
+   return {items:rows.rows.slice(0,100),hasMore:rows.rows.length>100,
+    message:"A provider readback is not a receipt. Signed event and original CG09 posting remain mandatory."};
+  });
+ }
  async options(token:string,raw:unknown){
   const x=body(raw,["donationNumber"]);
   if(typeof x.donationNumber!=="string"||!NUMBER.test(x.donationNumber))
    throw new BadRequestException("Enter a valid Foundation donation number.");
   return this.run(token,async(tx,a)=>{
    const d=await this.current(tx,a,String(x.donationNumber));
-   if(d.source_status!=="VERIFIED_EXTERNAL")throw bad();
+   if(!["VERIFIED_EXTERNAL","RECONCILIATION_PENDING"].includes(d.source_status))throw bad();
    await this.verified(tx,a,d.id);
    return {donationNumber:d.donation_number,amountMinor:d.amount_minor,
     ...await this.finance.providerOptions(tx,a,d.branch_ref)};
@@ -109,7 +136,7 @@ export class DonationOnlineFinanceService{
      prior.status!=="POSTED")throw bad();
     return {status:"RECEIVED_POSTED",donationNumber:d.donation_number,replayed:true};
    }
-   if(d.source_status!=="VERIFIED_EXTERNAL")throw bad();
+   if(!["VERIFIED_EXTERNAL","RECONCILIATION_PENDING"].includes(d.source_status))throw bad();
    const proof=await this.verified(tx,a,d.id);
    await this.sessions.requireFreshFoundationRootProof(tx,a,String(x.currentPassword));
    const journal=await this.finance.postProvider(tx,a,{
@@ -123,7 +150,7 @@ export class DonationOnlineFinanceService{
    await tx.query("UPDATE donation_payment_attempt SET status='RECEIVED_POSTED' "+
     "WHERE root_realm_id=$1 AND id=$2",[a.realmId,proof.id]);
    await tx.query("UPDATE donation SET source_status='RECEIVED_POSTED',version=version+1,updated_at=now() "+
-    "WHERE root_realm_id=$1 AND id=$2 AND source_status='VERIFIED_EXTERNAL'",[a.realmId,d.id]);
+    "WHERE root_realm_id=$1 AND id=$2 ",[a.realmId,d.id]);
    return {status:"RECEIVED_POSTED",donationNumber:d.donation_number,replayed:false};
   });
  }
