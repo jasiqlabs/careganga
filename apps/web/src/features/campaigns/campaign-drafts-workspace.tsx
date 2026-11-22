@@ -5,7 +5,7 @@ import {CampaignBannerPanel,CampaignSupportingDocumentsPanel} from "./campaign-b
 const steps=["Basic Details","Project & Category","Team & Assignment","Budget & Targets","Documents & Media","Review & Submit"];
 type Row={ref:string;code:string;title:string;category:string;status:string;version:number;revision:number;
  branch:string|null;goalMinor:string|null;updatedAt:string;steps?:Record<string,unknown>};
-type Summary={total:number;active:number;draft:number;completed:number;cancelled:number;goalMinor:string};
+type Summary={total:number;active:number;publicCount:number;draft:number;completed:number;cancelled:number;goalMinor:string};
 type Page={items:Row[];offset:number;hasMore:boolean;summary:Summary};
 type Choice={value:string;label:string};
 type CampaignFilters={stateRef:string;districtRef:string;leaderRef:string;branchRef:string;featured:"ALL"|"YES"|"NO";createdFrom:string;createdTo:string};
@@ -301,7 +301,8 @@ export function CampaignDraftsWorkspace({canManage}:{canManage:boolean}){
     </section>
     <aside className={styles.sideRail} aria-label="Campaign overview sidebar">
      <section className={styles.sideCard}><h3>Campaign Overview</h3>
-      <p>Approved campaigns: {summary?.active??"—"}</p>
+      <p>CG03-approved campaigns: {summary?.active??"—"}</p>
+      <p>Currently published campaigns: {summary?.publicCount??"—"}</p>
       <p>Awaiting verification: {summary?"View status filters":"Not available"}</p>
       <p>Approved means original CG03 operational approval, not public CG18 publication. Public visibility is checked separately.</p></section>
      <section className={styles.sideCard}><h3>Funding Overview (₹)</h3>
