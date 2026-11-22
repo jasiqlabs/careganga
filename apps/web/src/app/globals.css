@@ -15468,3 +15468,16 @@ button:disabled {
 .cg04-review-stat strong{color:var(--cg-text);font-size:var(--cg-heading-md);font-weight:800;overflow-wrap:anywhere}
 @media(max-width:900px){.cg04-review-overview{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:480px){.cg04-review-overview{grid-template-columns:minmax(0,1fr)}}
+
+/* CG04 B41/B42 source-backed preview only, never resembles an issued proof. */
+.cg04-card-preview{margin:18px 0;border:1px solid var(--cg-border);background:var(--cg-canvas);padding:16px;border-radius:13px}
+.cg04-card-preview-head{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}
+.cg04-card-preview-head h3{margin:0;color:var(--cg-text)}
+.cg04-card-preview-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;margin-top:12px}
+.cg04-card-face{border-radius:14px;background:var(--cg-sidebar);color:var(--cg-sidebar-text);padding:22px;min-height:220px;display:grid;gap:7px;align-content:start;overflow-wrap:anywhere}
+.cg04-card-face small{letter-spacing:.12em;font-weight:750;font-size:var(--cg-text-xs);color:var(--cg-sidebar-muted)}
+.cg04-card-face strong{font-size:var(--cg-heading-md);font-weight:800;line-height:1.3}
+.cg04-card-face p{margin:0;line-height:1.45;font-size:var(--cg-text-sm)}
+.cg04-card-face-back{background:var(--cg-surface);color:var(--cg-text);border:2px solid var(--cg-accent)}
+.cg04-card-face-back small{color:var(--cg-muted)}
+@media(max-width:720px){.cg04-card-preview-grid{grid-template-columns:minmax(0,1fr)}.cg04-card-face{padding:16px}}
