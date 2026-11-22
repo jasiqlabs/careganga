@@ -101,9 +101,17 @@ export class CampaignDraftsService{
   return this.run(token,"campaigns.view",async(tx,a)=>{
    const scope=await this.branches.projectBranchScope(tx,a);
    const managers=branch?await this.branches.projectBranch(tx,a,branch):null;
-   const staff=await this.identity.eligibleOfficeholderOptions(tx,a,search);
-   const coordinators=branch?
-    staff.filter(x=>x.value===a.accountId||x.value===managers?.managerRef):staff;
+   let coordinators:{value:string;label:string}[];
+   if(branch){
+    const keys=[a.accountId,...(managers?.managerRef&&managers.managerRef!==a.accountId?[managers.managerRef]:[])];
+    const labels=await Promise.all(keys.map(key=>this.identity.eligibleOfficeholder(tx,a,key)));
+    coordinators=labels.map(x=>({value:x.accountRef,label:x.displayName})).filter(x=>!search||
+     x.label.toLowerCase().includes(search.toLowerCase()));
+   }else if(scope.all){
+    coordinators=await this.identity.eligibleOfficeholderOptions(tx,a,search);
+   }else{
+    coordinators=[];
+   }
    return {canFoundation:scope.all,branches:scope.branches.map(({value,label})=>({value,label})),
     states:await this.branches.projectGeographyOptions(tx,a,null),
     districts:state?await this.branches.projectGeographyOptions(tx,a,state):[],
