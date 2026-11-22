@@ -13,9 +13,9 @@ async function api(path:string,init?:RequestInit){
   ...init,cache:"no-store",credentials:"same-origin",
   headers:{"Content-Type":"application/json",...init?.headers}});
  const data:unknown=await response.json().catch(()=>null);
- if(!response.ok)throw Error(data&&typeof data==="object"&&"message" in data&&
+ if(!response.ok)throw Object.assign(Error(data&&typeof data==="object"&&"message" in data&&
   typeof data.message==="string"?data.message:
-  "The original Foundation employee review is unavailable.");
+  "The original Foundation employee review is unavailable."),{status:response.status});
  return data;
 }
 export function HrEnrollmentReviews({canConfigure=false}:{canConfigure?:boolean}){
@@ -101,7 +101,7 @@ export function HrEnrollmentReviews({canConfigure=false}:{canConfigure?:boolean}
   }catch(e){
    setError(e instanceof Error?e.message:
     "The decision result is uncertain. Refresh the original review before retrying.");
-   setPassword("");setUncertain(true);
+   setPassword("");if(!uncertain&&e&&typeof e==="object"&&"status" in e&&[400,401,403,404,409,422].includes(Number(e.status))){setKey(null);setUncertain(false);}else setUncertain(true);
   }finally{running.current=false;setBusy(false);}
  };
  return <section aria-label="Protected Foundation HR review"
