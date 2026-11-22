@@ -85,7 +85,57 @@ CREATE TRIGGER cg09_membership_refund_request_insert BEFORE INSERT ON finance_me
 CREATE TABLE finance_membership_refund_posting(
  root_realm_id uuid NOT NULL,application_id uuid NOT NULL,
  journal_id uuid NOT NULL,request_key uuid NOT NULL,request_digest char(64) NOT NULL CHECK(request_digest~'^[a-f0-9]{64}$'),
- approved_by uuid NOT NULL,password_verified_at timestamptz NOT NULL,posted_at timestamptz NOT NULL DEFAULT now(),
+ approved_by uuid NOT NULL,transfer_reference text NOT NULL CHECK(transfer_reference ~ '^[A-Za-z0-9._/: -]{4,100} timestamptz NOT NULL,posted_at timestamptz NOT NULL DEFAULT now(),
+ PRIMARY KEY(root_realm_id,application_id),UNIQUE(root_realm_id,journal_id),UNIQUE(root_realm_id,request_key),UNIQUE(root_realm_id,transfer_reference),
+ FOREIGN KEY(root_realm_id,application_id) REFERENCES finance_membership_refund_request(root_realm_id,application_id),
+ FOREIGN KEY(journal_id,root_realm_id) REFERENCES journal(id,root_realm_id),
+ FOREIGN KEY(approved_by,root_realm_id) REFERENCES account(id,realm_id)
+);
+CREATE TRIGGER cg09_member_refund_posting_immutable BEFORE UPDATE OR DELETE ON finance_membership_refund_posting FOR EACH ROW EXECUTE FUNCTION cg09_immutable_record();
+CREATE FUNCTION cg09_member_refund_posting_guard() RETURNS trigger LANGUAGE plpgsql AS $$
+BEGIN
+ IF NOT EXISTS(SELECT 1 FROM finance_membership_refund_request r
+ JOIN finance_membership_collection m ON m.root_realm_id=r.root_realm_id AND m.application_id=r.application_id
+ JOIN finance_membership_verified_collection v ON v.root_realm_id=r.root_realm_id AND v.application_id=r.application_id AND v.reconciliation_id=r.original_reconciliation_id
+ JOIN journal j ON j.root_realm_id=r.root_realm_id AND j.id=NEW.journal_id
+ JOIN journal_line bank ON bank.root_realm_id=j.root_realm_id AND bank.journal_id=j.id AND bank.account_id=m.bank_account_id
+ JOIN journal_line income ON income.root_realm_id=j.root_realm_id AND income.journal_id=j.id AND income.account_id=m.income_account_id
+ WHERE r.root_realm_id=NEW.root_realm_id AND r.application_id=NEW.application_id AND r.requested_by<>NEW.approved_by AND m.recorded_by<>NEW.approved_by
+ AND j.source_owner='CG-09' AND j.source_ref=r.application_id AND j.status='POSTED' AND j.posting_kind='REFUND' AND j.created_by=NEW.approved_by AND j.immutable_source_event_key=NEW.request_key
+ AND bank.credit_minor=r.amount_minor AND bank.debit_minor=0 AND income.debit_minor=r.amount_minor AND income.credit_minor=0
+ AND bank.branch_id IS NOT DISTINCT FROM m.branch_id AND income.branch_id IS NOT DISTINCT FROM m.branch_id
+ AND (SELECT count(*) FROM journal_line l WHERE l.root_realm_id=j.root_realm_id AND l.journal_id=j.id)=2
+ AND EXISTS(SELECT 1 FROM account a JOIN account_role ar ON ar.account_id=a.id AND ar.realm_id=a.realm_id AND ar.revoked_at IS NULL JOIN role role ON role.id=ar.role_id AND role.realm_id=a.realm_id AND role.active AND role.is_protected WHERE a.id=NEW.approved_by AND a.realm_id=NEW.root_realm_id AND a.status='ACTIVE'))
+ THEN RAISE EXCEPTION 'Refund requires distinct protected approval and exact original verified fee'; END IF;
+ RETURN NEW;
+END; $$;
+CREATE TRIGGER cg09_member_refund_posting_insert BEFORE INSERT ON finance_membership_refund_posting FOR EACH ROW EXECUTE FUNCTION cg09_member_refund_posting_guard();
+
+CREATE VIEW finance_membership_verified_refund AS
+ SELECT q.root_realm_id,q.application_id,q.journal_id,r.id AS reconciliation_id,rr.amount_minor,r.statement_date
+ FROM finance_membership_refund_posting q
+ JOIN finance_membership_refund_request rr ON rr.root_realm_id=q.root_realm_id AND rr.application_id=q.application_id
+ JOIN finance_membership_collection m ON m.root_realm_id=q.root_realm_id AND m.application_id=q.application_id
+ JOIN finance_bank_reconciliation r ON r.root_realm_id=q.root_realm_id AND r.journal_id=q.journal_id AND r.bank_account_id=m.bank_account_id
+ WHERE r.status='VERIFIED' AND r.variance_minor=0 AND r.statement_amount_minor=-rr.amount_minor AND r.posted_amount_minor=-rr.amount_minor
+ AND EXISTS(SELECT 1 FROM finance_reconciliation_decision d
+ JOIN cg19_stored_file f ON f.id=d.statement_file_id AND f.realm_id=d.root_realm_id AND f.reconciliation_id=d.reconciliation_id AND f.revision=d.statement_file_version
+ JOIN cg19_upload_intent i ON i.id=f.upload_intent_id AND i.realm_id=f.realm_id AND i.reconciliation_id=d.reconciliation_id
+ WHERE d.root_realm_id=r.root_realm_id AND d.reconciliation_id=r.id AND d.action='VERIFY'
+ AND f.owner_kind='CG09_BANK_STATEMENT' AND i.owner_kind='CG09_BANK_STATEMENT' AND i.status='VALIDATED' AND f.scan_status='CLEAN_VERIFIED' AND f.revoked_at IS NULL);
+-- Do not reprice a posted original membership collection during correction;
+-- returned applications may correct non-financial fields with original offer.
+CREATE FUNCTION cg09_membership_fee_pin_guard() RETURNS trigger LANGUAGE plpgsql AS $$
+BEGIN
+ IF EXISTS(SELECT 1 FROM finance_membership_collection m WHERE m.root_realm_id=OLD.root_realm_id AND m.application_id=OLD.id)
+ AND (NEW.tier_version_id,NEW.accepted_fee_minor,NEW.currency,NEW.branch_ref) IS DISTINCT FROM (OLD.tier_version_id,OLD.accepted_fee_minor,OLD.currency,OLD.branch_ref)
+ THEN RAISE EXCEPTION 'The recorded membership fee and funding scope cannot be repriced'; END IF;
+ IF NEW.status='CANCELLED' AND EXISTS(SELECT 1 FROM finance_membership_collection m WHERE m.root_realm_id=OLD.root_realm_id AND m.application_id=OLD.id)
+ THEN RAISE EXCEPTION 'A recorded fee must follow the original rejection and refund flow'; END IF;
+ RETURN NEW;
+END; $$;
+CREATE TRIGGER cg09_membership_fee_pin BEFORE UPDATE ON membership_application FOR EACH ROW EXECUTE FUNCTION cg09_membership_fee_pin_guard();
+),password_verified_at timestamptz NOT NULL,posted_at timestamptz NOT NULL DEFAULT now(),
  PRIMARY KEY(root_realm_id,application_id),UNIQUE(root_realm_id,journal_id),UNIQUE(root_realm_id,request_key),
  FOREIGN KEY(root_realm_id,application_id) REFERENCES finance_membership_refund_request(root_realm_id,application_id),
  FOREIGN KEY(journal_id,root_realm_id) REFERENCES journal(id,root_realm_id),
