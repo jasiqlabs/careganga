@@ -119,3 +119,6 @@ CREATE TRIGGER stock_event_immutable BEFORE UPDATE OR DELETE ON stock_event
 CREATE TRIGGER stock_movement_immutable BEFORE UPDATE OR DELETE ON stock_movement
  FOR EACH ROW EXECUTE FUNCTION cg12_inventory_audit_immutable();
 CREATE INDEX ix_inventory_receipt_draft_actor ON inventory_receipt_draft(root_realm_id,created_by,status,created_at DESC,id);
+
+ALTER TABLE inventory_audit DROP CONSTRAINT inventory_audit_source_kind_check;
+ALTER TABLE inventory_audit ADD CONSTRAINT inventory_audit_source_kind_check CHECK(source_kind IN('ITEM','SUPPLIER','LOCATION','THRESHOLD','SUPPLIER_PRIVATE','SUPPLIER_PRIVATE_READ','RECEIPT','RECEIPT_REVERSAL'));
