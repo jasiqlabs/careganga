@@ -225,3 +225,29 @@ test("US002-QA18 A16 scoped filters, bounded CSV and masked donor details",()=>{
  assert.match(bff,/route==="export"/);
  assert.match(bff,/donor-detail/);
 });
+
+test("US002-QA12: optional donor preferences are encrypted private input, not proof or recurring billing",()=>{
+ const data={...raw(),donor:{...raw().donor,geography:"Pune",remarks:"For education",
+  recurringIntent:true,paymentReferenceNote:"BANK REF 123456"}};
+ const result=parseDonationIntent(data);
+ assert.equal(result.donor.geography,"Pune");
+ assert.equal(result.donor.recurringIntent,true);
+ assert.equal(result.donor.paymentReferenceNote,"BANK REF 123456");
+ for(const wrong of [
+  {...data,donor:{...data.donor,geography:"<script>"}},
+  {...data,donor:{...data.donor,recurringIntent:"true"}},
+  {...data,donor:{...data.donor,remarks:"r".repeat(301)}},
+  {...data,donor:{...data.donor,paymentReferenceNote:"Not paid\nOK"}},
+  {...data,donor:{...data.donor,pan:"ABCDE1234Z!".slice(0,11)}}
+ ])assert.throws(()=>parseDonationIntent(wrong));
+ const service=source("application/donation-intents.service.ts");
+ assert.match(service,/privateDonor\(v\.donor\)/);
+ assert.doesNotMatch(service,/recurringIntent.*postBalanced/);
+ const web=root("apps/web/src/features/campaigns/public-donation-form.tsx");
+ const native=root("apps/android-public/src/features/cms/native-public-donation.tsx");
+ for(const client of [web,native]){
+  assert.match(client,/geography,remarks,recurringIntent,paymentReferenceNote/);
+  assert.match(client,/no automatic|does not enable automatic/i);
+ }
+ assert.match(web,/\[receiptStatus,setReceiptStatus\]/);
+});
