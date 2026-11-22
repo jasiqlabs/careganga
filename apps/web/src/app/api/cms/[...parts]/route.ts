@@ -5,7 +5,7 @@ type Ctx={params:Promise<{parts:string[]}>};
 type Method="GET"|"POST"|"PUT";
 const UUID=/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i;
 function permitted(parts:string[],method:Method){
- if(parts.length===1&&parts[0]==="notice-sources")return method==="GET";
+ if(parts.length===1&&["notice-sources","project-sources"].includes(parts[0]))return method==="GET";
  if(parts[0]==="pages"){
   if(parts.length===1)return method==="GET"||method==="POST";
   if(parts.length===2&&UUID.test(parts[1]))return method==="GET";
