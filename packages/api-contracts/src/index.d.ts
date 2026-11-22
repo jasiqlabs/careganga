@@ -211,3 +211,5 @@ export type CG05ProjectDetail=CG05Project&{canManage:boolean;finance:CG05Project
 export type CG05ProjectList={items:CG05Project[];finance:CG05ProjectFinance;counts:{total:number;active:number;hold:number;completed:number;cancelled:number;planned:number;plannedBudgetMinor:string};categories:{label:string;count:number}[];recent:{title:string;action:string;status:string;at:string}[];offset:number;hasMore:boolean};
 export type CG05ProjectOptions={canManageFoundation:boolean;branches:CG05Option[];owners:CG05Option[];states:CG05Option[];districts:CG05Option[]};
 export type CG05ProjectDraft={code:string;title:string;category:string;summary:string;description:string;priority:string;ownerRef:string;branchRef:string;stateRef:string;districtRef:string;location:string;fundingSource:string;plannedStart:string;plannedEnd:string;plannedBudget:string;status:string};
+
+export type CG05PublicEligibility={status:string;caseRef:string|null;caseNumber?:string;revision?:number;canReview:boolean;canWithdraw:boolean;source:{title:string;category:string;summary:string;area:string;launch:string|null;status:string}|null};
