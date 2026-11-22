@@ -4,6 +4,8 @@ import * as Crypto from "expo-crypto";
 import {File,Paths} from "expo-file-system";
 import * as Sharing from "expo-sharing";
 import {careGangaTheme as t} from "../../../../../packages/design-tokens/src/index";
+type HistoryRow={donationNumber:string;proofIndex:number;status:string;netReceivedMinor:string;
+ receiptStatus:string;receiptNumber:string|null};
 const base=process.env.EXPO_PUBLIC_API_URL;
 async function request<T>(path:string,value:object):Promise<T>{
  if(!base||!/^https?:\/\//.test(base)||(process.env.NODE_ENV==="production"&&!base.startsWith("https://")))
@@ -26,6 +28,8 @@ export function NativePublicDonation({campaignSlug=null}:{campaignSlug?:string|n
   [paymentUrl,setPaymentUrl]=useState(""),[error,setError]=useState(""),[busy,setBusy]=useState(false);
  const [received,setReceived]=useState(false),[receiptStatus,setReceiptStatus]=useState("NOT_ISSUED"),
   [refundedMinor,setRefundedMinor]=useState("0");
+ const [extraProofs,setExtraProofs]=useState(""),[history,setHistory]=useState<HistoryRow[]>([]),
+  [historyTokens,setHistoryTokens]=useState<string[]>([]);
  const key=useRef<string|null>(null),paymentKey=useRef<string|null>(null);
  useEffect(()=>{let active=true;(async()=>{try{
   if(!base||!/^https?:\/\//.test(base)||(process.env.NODE_ENV==="production"&&!base.startsWith("https://")))return;
@@ -59,11 +63,19 @@ export function NativePublicDonation({campaignSlug=null}:{campaignSlug?:string|n
   setStatus(v.status);setReceived(v.received);setReceiptStatus(v.receiptStatus);
   setRefundedMinor(v.refundedMinor);
  });
- const download=()=>call(async()=>{
-  if(!token||receiptStatus!=="ISSUED"||!base)throw Error("Receipt not yet issued.");
+ const loadHistory=()=>call(async()=>{
+  if(!token)return;
+  const proofs=[token,...extraProofs.split(/\s+/)].filter(Boolean);
+  if(proofs.length>20||new Set(proofs).size!==proofs.length)
+   throw Error("Provide up to 20 distinct private donation proofs.");
+  const result=await request<{items:HistoryRow[]}>("/history",{statusTokens:proofs});
+  setHistoryTokens(proofs);setHistory(result.items);
+ });
+ const download=(proofToken=token)=>call(async()=>{
+  if(!proofToken||!base)throw Error("Private receipt proof unavailable.");
   const r=await fetch(new URL("/api/public/donations/receipt/download",base),{
    method:"POST",headers:{"Content-Type":"application/json"},
-   body:JSON.stringify({statusToken:token}),cache:"no-store",signal:AbortSignal.timeout(20000)});
+   body:JSON.stringify({statusToken:proofToken}),cache:"no-store",signal:AbortSignal.timeout(20000)});
   if(!r.ok||r.headers.get("content-type")?.split(";")[0]!=="application/pdf")
    throw Error("Original private receipt is unavailable.");
   const bytes=new Uint8Array(await r.arrayBuffer());
