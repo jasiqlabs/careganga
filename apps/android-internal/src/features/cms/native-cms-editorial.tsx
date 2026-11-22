@@ -10,6 +10,7 @@ import {NativeCmsReviewer} from "./native-cms-reviewer";
 type Page={pageRef:string;kind:string;slug:string;title:string;
  version:string;draftStatus:string;publicStatus:string|null};
 type Section={kind:string;order:number;fields:Record<string,unknown>};
+type ProjectSource={sourceRef:string;title:string;category:string;area:string};
 type Asset={fileRef:string;version:number;role:string;altText:string;order:number};
 type Navigation={loginDesired:boolean;memberJoinDesired:boolean;
  volunteerJoinDesired:boolean};
@@ -204,9 +205,20 @@ function EditField({name,value,onChange,locked,depth=0,
  }
  return <Text style={styles.note}>{title(name)}: No value recorded</Text>;
 }
+function ProjectSelection({sections,choices,error,locked,refresh,onChange}:{sections:Section[];choices:ProjectSource[];error:string;locked:boolean;refresh:()=>void;onChange:(s:Section[])=>void}){
+ const current=sections.find(s=>s.kind==="PROJECT_TEASER"),refs=Array.isArray(current?.fields.sourceRefs)?current.fields.sourceRefs as string[]:[];
+ const set=(next:string[])=>onChange([...sections.filter(s=>s.kind!=="PROJECT_TEASER"),...(next.length?[{kind:"PROJECT_TEASER",order:60,fields:{heading:typeof current?.fields.heading==="string"?current.fields.heading:"Our Projects",sourceRefs:next}}]:[])]);
+ return <View style={styles.panel}><Text accessibilityRole="header" style={styles.heading}>Approved operational projects</Text><Text style={styles.note}>Select the reviewed CG-05 source. Only a separate CMS publication can show it publicly.</Text>
+ <Pressable accessibilityRole="button" disabled={locked} onPress={refresh}><Text style={styles.heading}>Refresh approved projects</Text></Pressable>
+ {!!error&&<Text accessibilityRole="alert">{error}</Text>}{!choices.length&&!error&&<Text>No current eligible projects.</Text>}
+ {choices.map(p=><Pressable key={p.sourceRef} accessibilityRole="checkbox" accessibilityState={{checked:refs.includes(p.sourceRef),disabled:locked||(!refs.includes(p.sourceRef)&&refs.length>=12)}} disabled={locked||(!refs.includes(p.sourceRef)&&refs.length>=12)} onPress={()=>set(refs.includes(p.sourceRef)?refs.filter(x=>x!==p.sourceRef):[...refs,p.sourceRef])}><Text style={styles.note}>{refs.includes(p.sourceRef)?"✓ ":"○ "}{p.title} · {p.category} · {p.area}</Text></Pressable>)}
+ {refs.filter(x=>!choices.some(p=>p.sourceRef===x)).map(x=><Pressable key={x} accessibilityRole="button" disabled={locked} onPress={()=>set(refs.filter(y=>y!==x))}><Text>Remove unavailable project selection</Text></Pressable>)}</View>;
+}
 export function NativeCmsEditorial({token,canManage,canPublish,canReview,onExit,
  onExpired}:Props){
- const [pages,setPages]=useState<Page[]>([]);
+ const [pages,setPages]=useState<Page[]>([]),[projectChoices,setProjectChoices]=useState<ProjectSource[]>([]),[projectError,setProjectError]=useState("");
+ const refreshProjects=()=>{setProjectError("");void api<{sources:ProjectSource[]}>(token,"project-sources").then(v=>setProjectChoices(v.sources)).catch(e=>{setProjectError("Current approved project sources unavailable.");if(e?.status===401)onExpired();});};
+ useEffect(()=>{if(canManage)refreshProjects();},[token,canManage]);
  const [selected,setSelected]=useState<Detail|null>(null);
  const [newPage,setNewPage]=useState<NewPage|null>(null);
  const [draft,setDraft]=useState<Detail|null>(null);
@@ -401,7 +413,8 @@ export function NativeCmsEditorial({token,canManage,canPublish,canReview,onExit,
     {newPage.kind==="HOME"&&newPage.navigation&&
      <EditField name="Approved original navigation choices" value={newPage.navigation}
       locked={locked} onChange={v=>changeNew({navigation:v as Navigation})}/>}
-    {newPage.sections.map((sec,i)=><View key={sec.kind+"-"+i} style={styles.panel}>
+    {(newPage.kind==="HOME"||newPage.kind==="ABOUT")&&<ProjectSelection sections={newPage.sections} choices={projectChoices} error={projectError} locked={locked} refresh={refreshProjects} onChange={sections=>changeNew({sections})}/>}
+    {newPage.sections.filter(sec=>sec.kind!=="PROJECT_TEASER").map((sec,i)=><View key={sec.kind+"-"+i} style={styles.panel}>
      <Text style={styles.heading}>{title(sec.kind)}</Text>
      <EditField name="Source content" value={sec.fields} locked={locked}
       sectionKind={sec.kind}
@@ -431,7 +444,8 @@ export function NativeCmsEditorial({token,canManage,canPublish,canReview,onExit,
      <EditField name="Navigation" value={draft.navigation}
       locked={locked} onChange={v=>change("navigation",v as Navigation)}/>
     </View>}
-    {draft.sections.map((section,i)=><View key={section.kind+"-"+section.order}
+    {(draft.kind==="HOME"||draft.kind==="ABOUT")&&<ProjectSelection sections={draft.sections} choices={projectChoices} error={projectError} locked={locked} refresh={refreshProjects} onChange={sections=>change("sections",sections)}/>}
+    {draft.sections.map((section,i)=>section.kind==="PROJECT_TEASER"?null:<View key={section.kind+"-"+section.order}
      style={styles.panel}>
       <Text style={styles.heading}>{title(section.kind)} · Section {i+1}</Text>
       <EditField name="Original section fields" value={section.fields}
