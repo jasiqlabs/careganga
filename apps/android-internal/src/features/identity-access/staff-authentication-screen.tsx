@@ -69,6 +69,7 @@ const NativeActivitiesWorkspace = lazy(() => import("../projects/native-activiti
 const NativeTasksWorkspace = lazy(() => import("../projects/native-tasks-workspace").then(m=>({default:m.NativeTasksWorkspace})));
 const NativeProjectsWorkspace = lazy(() => import("../projects/native-projects-workspace").then(m=>({default:m.NativeProjectsWorkspace})));
 const NativeCampaignDrafts = lazy(() => import("../campaigns/native-campaign-drafts").then(m=>({default:m.NativeCampaignDrafts})));
+const NativeCampaignReviews = lazy(() => import("../campaigns/native-campaign-reviews").then(m=>({default:m.NativeCampaignReviews})));
 const NativeInventoryCatalog = lazy(() => import("../inventory/native-inventory-catalog").then(m=>({default:m.NativeInventoryCatalog})));
 const NativeMembershipDesk = lazy(() => import("../membership/native-membership-desk").then(m=>({default:m.NativeMembershipDesk})));
 const NativeVolunteerStaff = lazy(() => import("../volunteers/native-volunteer-staff").then(m=>({default:m.NativeVolunteerStaff})));
@@ -196,6 +197,7 @@ export function StaffAuthenticationScreen() {
   const [tasksOpen,setTasksOpen]=useState(false);
   const [projectsOpen,setProjectsOpen]=useState(false);
   const [campaignsOpen,setCampaignsOpen]=useState(false);
+  const [campaignsTab,setCampaignsTab]=useState<"DRAFTS"|"REVIEWS">("DRAFTS");
   const [inventoryOpen,setInventoryOpen]=useState(false);
   const [membershipOpen,setMembershipOpen]=useState(false);
   const [volunteersOpen,setVolunteersOpen]=useState(false);
@@ -760,10 +762,24 @@ export function StaffAuthenticationScreen() {
     return renderInShell(<ScreenErrorBoundary onExit={()=>setTasksOpen(false)}><Suspense fallback={<ActivityIndicator style={{marginTop:40}}/>}><NativeTasksWorkspace key={token} token={token} canManage={roleActions.includes("projects.tasks.manage")} canExport={roleActions.includes("projects.tasks.export")} onExpired={expireSession}/></Suspense></ScreenErrorBoundary>,"tasks",()=>setTasksOpen(false));
   }
   if(campaignsOpen&&token&&actor){
-    if(!roleActions.includes("campaigns.view"))return <AccessDeniedScreen reason="Your current role cannot view Foundation campaigns." onMyAccount={()=>setCampaignsOpen(false)}/>;
-    return renderInShell(<ScreenErrorBoundary onExit={()=>setCampaignsOpen(false)}><Suspense fallback={<ActivityIndicator style={{marginTop:40}}/>}>
-      <NativeCampaignDrafts key={token} token={token} canManage={roleActions.includes("campaigns.manage")} onExpired={expireSession}/>
-    </Suspense></ScreenErrorBoundary>,"campaigns",()=>setCampaignsOpen(false));
+    const canDrafts=roleActions.includes("campaigns.view");
+    const canReviews=roleActions.includes("campaigns.review")&&roleActions.includes("approvals.review");
+    if(!canDrafts&&!canReviews)return <AccessDeniedScreen reason="Your current role cannot access Foundation campaigns." onMyAccount={()=>setCampaignsOpen(false)}/>;
+    return renderInShell(<ScreenErrorBoundary onExit={()=>setCampaignsOpen(false)}>
+     <View style={{flex:1}}>
+      {canDrafts&&canReviews&&<View style={{flexDirection:"row",gap:10,padding:9}}>
+        <Pressable accessibilityRole="button" onPress={()=>setCampaignsTab("DRAFTS")} style={{padding:12,borderWidth:1,borderRadius:9,borderColor:"#B9C7E8"}}>
+         <Text>Campaign drafts</Text></Pressable>
+        <Pressable accessibilityRole="button" onPress={()=>setCampaignsTab("REVIEWS")} style={{padding:12,borderWidth:1,borderRadius:9,borderColor:"#B9C7E8"}}>
+         <Text>Independent reviews</Text></Pressable>
+      </View>}
+      <Suspense fallback={<ActivityIndicator style={{marginTop:40}}/>}>
+       {canDrafts&&(!canReviews||campaignsTab==="DRAFTS")?
+        <NativeCampaignDrafts key={token} token={token} canManage={roleActions.includes("campaigns.manage")} onExpired={expireSession}/>:
+        <NativeCampaignReviews key={token} token={token} canConfigure={roleActions.includes("approvals.process.manage")} onExpired={expireSession}/>}
+      </Suspense>
+     </View>
+    </ScreenErrorBoundary>,"campaigns",()=>setCampaignsOpen(false));
   }
   if(projectsOpen&&token&&actor){
     if(!roleActions.includes("projects.view"))return <AccessDeniedScreen reason="You cannot view projects." onMyAccount={()=>setProjectsOpen(false)}/>;
