@@ -82,6 +82,17 @@ END $cg12$;
 ALTER TABLE cg03_case ADD CONSTRAINT cg03_material_disjoint CHECK(
  (case_kind='MATERIAL_REQUEST_REVIEW' AND num_nonnulls(material_request_id,material_revision_id,material_revision_no,material_digest)=4 AND material_revision_no=proposal_revision AND material_digest=proposal_digest)
  OR (case_kind<>'MATERIAL_REQUEST_REVIEW' AND num_nonnulls(material_request_id,material_revision_id,material_revision_no,material_digest)=0));
+-- Cancellation is a new, source-specific action only for a pending material request.
+ALTER TABLE cg03_case DROP CONSTRAINT cg03_case_status_check;
+ALTER TABLE cg03_case ADD CONSTRAINT cg03_case_status_check CHECK(status IN('SUBMITTED','IN_REVIEW','RETURNED','REJECTED','FINAL_APPROVED','PENDING_OWNER','OWNER_COMPLETED','OWNER_BLOCKED','OWNER_FAILED_RETRYABLE') OR (status='CANCELLED' AND case_kind='MATERIAL_REQUEST_REVIEW'));
+ALTER TABLE cg03_case_event DROP CONSTRAINT cg03_case_event_action_check;
+ALTER TABLE cg03_case_event ADD CONSTRAINT cg03_case_event_action_check CHECK(action IN('SUBMITTED','CORRECTED','APPROVED','FORWARDED','RETURNED','REJECTED','FINAL_APPROVED','PENDING_OWNER','OWNER_COMPLETED','OWNER_BLOCKED','OWNER_FAILED_RETRYABLE','CANCELLED'));
+CREATE FUNCTION cg12_material_case_frozen() RETURNS trigger LANGUAGE plpgsql AS $cg12$
+BEGIN
+ IF NEW.material_request_id IS DISTINCT FROM OLD.material_request_id OR NEW.material_revision_id IS DISTINCT FROM OLD.material_revision_id OR NEW.material_revision_no IS DISTINCT FROM OLD.material_revision_no OR NEW.material_digest IS DISTINCT FROM OLD.material_digest THEN RAISE EXCEPTION 'Frozen material source cannot be edited'; END IF;
+ RETURN NEW;
+END; $cg12$;
+CREATE TRIGGER cg12_material_case_immutable BEFORE UPDATE ON cg03_case FOR EACH ROW EXECUTE FUNCTION cg12_material_case_frozen();
 CREATE TABLE cg03_material_process_current(
  realm_id uuid PRIMARY KEY REFERENCES access_realm(id),process_id uuid NOT NULL,
  FOREIGN KEY(process_id,realm_id) REFERENCES cg03_process(id,realm_id)
