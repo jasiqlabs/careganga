@@ -799,7 +799,7 @@ export class HrEnrollmentService{
     if(!(e instanceof ForbiddenException))throw e;
     attendanceVisible=false;
    }
-   const r=await tx.query<{status:string;quantity:string;new_joiners:string;on_leave:string;pending_leave:string;departments:{label:string;count:number}[];joiners:{month:string;count:number}[];daily:{label:string;count:number}[];anniversaries:{name:string;date:string;years:number}[]}>(
+   const r=await tx.query<{status:string;quantity:string;new_joiners:string;on_leave:string;pending_leave:string;departments:{label:string;count:number}[];joiners:{month:string;count:number}[];daily:{label:string;count:number}[];monthly:{recordedWorkingDays:number;presentDays:number;absentDays:number;leaveDays:number;recordedAttendanceRate:number|null}|null;anniversaries:{name:string;date:string;years:number}[]}>(
     `WITH scoped AS (
      SELECT e.id,e.root_realm_id,e.status,app.hire_date,app.legal_name,assignment.id AS assignment_id,assignment.branch_ref,COALESCE(dep.name,'Unassigned') AS department_name,
       (b.status='ACTIVE' AND assignment.valid_from<=CURRENT_DATE AND
@@ -832,6 +832,19 @@ export class HrEnrollmentService{
       ORDER BY d.local_date DESC,d.id DESC LIMIT 1
      ) day_record ON true
      WHERE $3::boolean GROUP BY COALESCE(day_record.status,'NOT_RECORDED')
+    ), month_attendance AS (
+     SELECT d.status,d.leave_half_days
+     FROM current_staff staff JOIN hr_attendance_day d ON d.root_realm_id=staff.root_realm_id
+       AND d.employee_id=staff.id AND d.assignment_id=staff.assignment_id
+     JOIN hr_shift_policy sp ON sp.id=d.policy_id AND sp.root_realm_id=d.root_realm_id AND sp.branch_ref=staff.branch_ref
+     WHERE $3::boolean AND d.local_date>=date_trunc('month',CURRENT_TIMESTAMP AT TIME ZONE sp.time_zone)::date
+       AND d.local_date<=(CURRENT_TIMESTAMP AT TIME ZONE sp.time_zone)::date AND d.status<>'WEEKLY_OFF'
+    ), month_attendance_counts AS (
+     SELECT COUNT(*)::integer AS working,
+      COALESCE(SUM(CASE WHEN status IN('PRESENT','LATE') THEN 1.0-COALESCE(leave_half_days,0)/2.0 ELSE 0 END),0) AS present,
+      COUNT(*) FILTER(WHERE status='ABSENT')::integer AS absent,
+      COALESCE(SUM(COALESCE(leave_half_days,0)/2.0),0) AS leave
+     FROM month_attendance
     ), upcoming_anniversaries AS (
      SELECT staff.legal_name AS name,to_char(d.day,'YYYY-MM-DD') AS date,
       EXTRACT(YEAR FROM d.day)::integer-EXTRACT(YEAR FROM staff.hire_date)::integer AS years
@@ -875,6 +888,8 @@ export class HrEnrollmentService{
      (SELECT COALESCE(jsonb_agg(jsonb_build_object('label',label,'count',quantity) ORDER BY rank),'[]'::jsonb) FROM dept_display) AS departments,
      (SELECT COALESCE(jsonb_agg(jsonb_build_object('month',month,'count',quantity) ORDER BY month),'[]'::jsonb) FROM month_display) AS joiners,
      (SELECT COALESCE(jsonb_agg(jsonb_build_object('label',label,'count',quantity) ORDER BY label),'[]'::jsonb) FROM daily_attendance) AS daily,
+     (SELECT jsonb_build_object('recordedWorkingDays',working,'presentDays',present,'absentDays',absent,'leaveDays',leave,
+      'recordedAttendanceRate',CASE WHEN working>0 THEN ROUND(100*present/working,1) ELSE NULL END) FROM month_attendance_counts WHERE $3::boolean) AS monthly,
      (SELECT COALESCE(jsonb_agg(jsonb_build_object('name',name,'date',date,'years',years) ORDER BY date,name),'[]'::jsonb) FROM upcoming_anniversaries) AS anniversaries
     FROM stats`,
     [actor.realmId,actor.accountId,attendanceVisible]);
@@ -888,7 +903,7 @@ export class HrEnrollmentService{
    }
    await tx.query("COMMIT");
    return {total:Object.values(counts).reduce((x,y)=>x+y,0),statuses:counts,newJoinersThisMonth,
-    attendance:attendanceVisible?{onApprovedLeaveToday,employeesWithPendingLeave,daily:r.rows[0]?.daily??[]}:null,
+    attendance:attendanceVisible?{onApprovedLeaveToday,employeesWithPendingLeave,daily:r.rows[0]?.daily??[],monthly:r.rows[0]?.monthly??null}:null,
     departments:r.rows[0]?.departments??[],joiners:r.rows[0]?.joiners??[],anniversaries:r.rows[0]?.anniversaries??[]};
   }catch(e){await tx.query("ROLLBACK");throw e;}finally{tx.release();}
  }
