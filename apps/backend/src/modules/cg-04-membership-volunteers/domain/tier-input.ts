@@ -20,7 +20,7 @@ export function parseTier(raw:unknown,editing:boolean){
  const durationUnit=pick(x.durationUnit,units,"validity"),durationCount=int(x.durationCount,1,3650,"validity period"),category=pick(x.category,categories,"category");
  if((durationUnit==="LIFETIME"&&durationCount!==1)||(category==="LIFETIME"&&durationUnit!=="LIFETIME"))return invalid("validity","Choose lifetime validity for a lifetime plan.");
  if(!Array.isArray(x.benefits)||x.benefits.length>20)return invalid("benefits","Add no more than 20 benefits.");
- const benefits=x.benefits.map(v=>plain(v,1,200,"benefit"));
- if(new Set(benefits.map(v=>v.toLowerCase())).size!==benefits.length)return invalid("benefits","Remove repeated benefits.");
+ const benefits=x.benefits.map(v=>{const b=object(v,["title","description"]);return {title:plain(b.title,1,200,"benefit title"),description:plain(b.description??"",0,500,"benefit description")};});
+ if(new Set(benefits.map(v=>v.title.toLowerCase())).size!==benefits.length)return invalid("benefits","Remove repeated benefits.");
  return {key:uuid(x.requestKey),expected:editing?int(x.expectedVersion,1,2147483646,"revision"):null,name,category,status:pick(x.status,statuses,"status"),feeMinor:fee(x.price),currency:"INR" as const,durationUnit,durationCount,description:plain(x.description??"",0,2000,"description"),benefits,icon:pick(x.icon,icons,"icon"),color:pick(x.color,colors,"color"),displayOrder:int(x.displayOrder,0,9999,"display order")};
 }
