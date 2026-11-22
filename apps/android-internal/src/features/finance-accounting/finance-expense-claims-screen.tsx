@@ -134,6 +134,26 @@ export function FinanceExpenseClaimsScreen({token,canCreate,canView,canUploadBil
   ["category","Category","e.g. Travel"],["expenseDate","Expense date","YYYY-MM-DD"],
   ["amount","Amount (₹)","e.g. 125.50"],["purpose","Purpose","Describe the expense"],...(allowanceMode?[["breakdown","Description / breakdown","What was the expense for?"] as [keyof Draft,string,string]]:[])
  ];
+ const closeDrawer=()=>{if(!busy&&!uncertain)setDrawer(false);};
+ const claimForm=<View style={s.card}>
+    <Text style={s.heading}>{correction?"Correct "+correction.number:allowanceMode?"Request Allowance":"New claim draft"}</Text>
+    {fields.map(([field,label,placeholder])=><View key={field}>
+     <Text style={s.label}>{label} *</Text>
+     <TextInput accessibilityLabel={label} editable={!busy&&!uncertain} value={form[field]??""}
+      onChangeText={v=>change(field,v)} placeholder={placeholder} placeholderTextColor={theme.mutedText}
+      keyboardType={field==="amount"?"decimal-pad":"default"}
+      multiline={field==="purpose"||field==="breakdown"} maxLength={field==="breakdown"?300:field==="purpose"?(allowanceMode?180:500):field==="category"?80:field==="expenseDate"?10:18}
+      style={[s.input,(field==="purpose"||field==="breakdown")&&s.area]}/>
+     {fieldError?.field===field&&<Text style={s.alert} accessibilityRole="alert">{fieldError.message}</Text>}
+    </View>)}
+    {!!message&&<Text accessibilityRole="alert" style={s.alert}>{message}</Text>}
+    {uncertain&&<Text accessibilityRole="alert" style={s.alert}>The original result is unknown. Retry this exact request before editing or starting another claim.</Text>}
+    <Text style={s.muted}>A securely verified bill and protected review must be completed separately before approval or payout.</Text>
+    <Pressable accessibilityRole="button" disabled={busy} style={[s.action,busy&&s.disabled]}
+     onPress={()=>void save()}>
+     <Text style={s.actionText}>{busy?"Checking draft…":uncertain?"Retry original request":correction?"Save corrected draft":"Save claim draft"}</Text>
+    </Pressable>
+   </View>;
  const visible=claims;
  return <SafeAreaView style={s.safe} edges={["left","right"]}>
   <View style={s.header}>
@@ -145,25 +165,9 @@ export function FinanceExpenseClaimsScreen({token,canCreate,canView,canUploadBil
   <ScrollView contentContainerStyle={s.content} keyboardShouldPersistTaps="handled">
    <Text style={s.muted}>Submit a draft as an existing Foundation account. Drafts are not approved expenses or payments.</Text>
    {allowanceMode&&overview&&<View style={{flexDirection:"row",flexWrap:"wrap",gap:8}}>{[{label:"Total requested",amount:overview.requestedMinor},{label:"Pending review",amount:overview.pendingMinor},{label:"Payment received (verified)",amount:overview.paidMinor},{label:"Rejected",amount:overview.rejectedMinor}].map(x=><View key={x.label} style={[s.card,{flexBasis:"46%",flexGrow:1,minWidth:130,padding:12}]}><Text style={s.muted}>{x.label}</Text><Text style={s.heading}>{inr(x.amount)}</Text></View>)}</View>}
-   {allowanceMode&&allowCreate&&<Pressable accessibilityRole="button" style={s.action} disabled={busy||uncertain} onPress={()=>setDrawer(v=>!v)}><Text style={s.actionText}>{drawer?"Close request form":"Request Allowance"}</Text></Pressable>}
-   {allowCreate&&(!allowanceMode||drawer)&&<View style={s.card}>
-    <Text style={s.heading}>{correction?"Correct "+correction.number:allowanceMode?"Request Allowance":"New claim draft"}</Text>
-    {fields.map(([field,label,placeholder])=><View key={field}>
-     <Text style={s.label}>{label} *</Text>
-     <TextInput accessibilityLabel={label} editable={!busy&&!uncertain} value={form[field]??""}
-      onChangeText={v=>change(field,v)} placeholder={placeholder} placeholderTextColor={theme.mutedText}
-      keyboardType={field==="amount"?"decimal-pad":"default"}
-      multiline={field==="purpose"||field==="breakdown"} maxLength={field==="breakdown"?300:field==="purpose"?(allowanceMode?180:500):field==="category"?80:field==="expenseDate"?10:18}
-      style={[s.input,(field==="purpose"||field==="breakdown")&&s.area]}/>
-     {fieldError?.field===field&&<Text style={s.alert} accessibilityRole="alert">{fieldError.message}</Text>}
-    </View>)}
-    {uncertain&&<Text accessibilityRole="alert" style={s.alert}>The original result is unknown. Retry this exact request before editing or starting another claim.</Text>}
-    <Text style={s.muted}>A securely verified bill and protected review must be completed separately before approval or payout.</Text>
-    <Pressable accessibilityRole="button" disabled={busy} style={[s.action,busy&&s.disabled]}
-     onPress={()=>void save()}>
-     <Text style={s.actionText}>{busy?"Checking draft…":uncertain?"Retry original request":correction?"Save corrected draft":"Save claim draft"}</Text>
-    </Pressable>
-   </View>}
+   {allowanceMode&&allowCreate&&<Pressable accessibilityRole="button" style={s.action} disabled={busy||uncertain} onPress={()=>setDrawer(true)}><Text style={s.actionText}>{drawer?"Close request form":"Request Allowance"}</Text></Pressable>}
+   {allowCreate&&!allowanceMode&&claimForm}
+   <Modal visible={allowCreate&&allowanceMode&&drawer} animationType="slide" onRequestClose={closeDrawer}><SafeAreaView style={s.safe}><View style={s.header}><Pressable accessibilityRole="button" disabled={busy||uncertain} onPress={closeDrawer} style={s.back}><Text style={s.backText}>‹ Close</Text></Pressable><Text style={s.title}>Allowance request</Text></View><ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={s.content}>{claimForm}</ScrollView></SafeAreaView></Modal>
    {!!message&&<Text style={s.muted} accessibilityRole="alert">{message}</Text>}
    {canView&&<View style={s.card}>
     <View style={s.row}><Text style={s.heading}>{allowanceMode?"My allowance requests":"My claims"}</Text>
