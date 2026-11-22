@@ -209,7 +209,7 @@ export function NativeCampaignDrafts({token,canManage,onExpired}:{
   {rows.map(c=><View key={c.ref} style={s.card}><Text style={s.heading}>{c.title}</Text>
    <Text>{c.code} · {c.status.replaceAll("_"," ")} · {c.category}</Text>
    {button(canManage?"Open draft":"View details",()=>void open(c),!!pending.current||!!lifecyclePending.current)}
-   {canManage&&(c.status==="APPROVED"||c.status==="PAUSED"||c.status==="DRAFT"||c.status==="RETURNED")&&
+   {canManage&&!editing&&(c.status==="APPROVED"||c.status==="PAUSED"||c.status==="DRAFT"||c.status==="RETURNED")&&
     <View style={s.row}>{(c.status==="APPROVED"?["PAUSE","CLOSE","WITHDRAW"]:
       c.status==="PAUSED"?["RESUME","CLOSE","WITHDRAW"]:["WITHDRAW"]).map(action=>
      <View key={action}>{button((lifecyclePending.current?.ref===c.ref&&lifecyclePending.current.action===action?"Retry ":"")+
