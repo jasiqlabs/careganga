@@ -82,7 +82,8 @@ export class InventoryMaterialApprovalService{
    }
    const next=action==="APPROVE"?"PENDING_OWNER":state;
    await tx.query("UPDATE cg03_case SET status=$3,revision=revision+1,updated_at=now() WHERE realm_id=$1 AND id=$2",[a.realmId,ref,next]);
-   await tx.query("INSERT INTO cg03_case_decision(realm_id,case_id,actor_id,action,step_ordinal,expected_case_revision,accepted_case_revision,request_key,request_digest,safe_remarks,fresh_password_verified_at) VALUES($1,$2,$3,$4,1,$5,$6,$7,$8,$9,now())",[a.realmId,ref,a.accountId,action,expected,expected+1,key,h,remarks]);
+   const decision=(await tx.query<{id:string}>("INSERT INTO cg03_case_decision(realm_id,case_id,actor_id,action,step_ordinal,expected_case_revision,accepted_case_revision,request_key,request_digest,safe_remarks,fresh_password_verified_at) VALUES($1,$2,$3,$4,1,$5,$6,$7,$8,$9,now()) RETURNING id",[a.realmId,ref,a.accountId,action,expected,expected+1,key,h,remarks])).rows[0];
+   if(action==="APPROVE")await tx.query("INSERT INTO material_request_line_decision(root_realm_id,case_id,decision_id,request_id,line_id,item_id,approved_qty) SELECT root_realm_id,$3,$4,request_id,id,item_id,approved_qty FROM material_request_line WHERE root_realm_id=$1 AND request_id=$2",[a.realmId,r.id,ref,decision.id]);
    await this.event(tx,a,ref,action==="APPROVE"?"FINAL_APPROVED":next);
    if(action==="APPROVE"){await tx.query("UPDATE cg03_case SET status='OWNER_COMPLETED',revision=revision+1,updated_at=now() WHERE realm_id=$1 AND id=$2",[a.realmId,ref]);await this.event(tx,a,ref,"OWNER_COMPLETED");}
    await tx.query("UPDATE material_request SET status=$3,version=version+1,updated_at=now() WHERE root_realm_id=$1 AND id=$2",[a.realmId,r.id,state]);
