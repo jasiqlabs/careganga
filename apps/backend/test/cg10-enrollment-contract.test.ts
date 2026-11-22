@@ -213,3 +213,16 @@ describe("CG10 final original directory and protected registration source contra
   await assert.rejects(restricted.employeeDirectory("test",0,undefined,"ALL","",undefined,"Maharashtra","Pune","Coordinator"),ForbiddenException);
  });
 });
+
+ test("original registration summary locks and scopes application before resolving safe labels",async()=>{
+  const sql:string[]=[];let found=true,denied=false;
+  const row={id,application_no:"CG-HR-APP-000001",legal_name:"Sample Employee",designation:"Coordinator",employment_type:"FULL_TIME",proposed_branch_ref:id,department_ref:id,applicant_account_ref:null,proposed_manager_employee_ref:id,proposed_role_ref:null,hire_date:"2026-11-01",state:"DRAFT",revision_no:1};
+  const tx={query:async(q:string)=>{sql.push(q);return {rows:q.includes("SELECT * FROM hr_employee_application")?(found?[row]:[]):q.includes("SELECT d.name")?[{department:"Operations",manager:"Sample Manager"}]:[]};},release:()=>{}};
+  const service=Object.create(HrEnrollmentService.prototype) as HrEnrollmentService;
+  Object.assign(service,{sessions:{requireAction:async()=>({realmId:id,accountId:id})},identity:{assertCurrent:async()=>{if(denied)throw new ForbiddenException();}},branch:async()=>({name:"Foundation office"}),db:{connect:async()=>tx}});
+  const result=await service.detail("test",id);
+  assert.deepEqual(result.summary,{branch:"Foundation office",department:"Operations",manager:"Sample Manager"});
+  assert.ok(sql.some(q=>q.includes("root_realm_id=$2 FOR SHARE")));assert.ok(sql.some(q=>q.includes("ma.root_realm_id=m.root_realm_id")));
+  assert.equal(sql.at(-1),"COMMIT");found=false;await assert.rejects(service.detail("test",id));assert.equal(sql.at(-1),"ROLLBACK");
+  denied=true;await assert.rejects(service.detail("test",id),ForbiddenException);assert.equal(sql.at(-1),"ROLLBACK");
+ });
