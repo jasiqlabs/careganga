@@ -6,7 +6,7 @@ type Upload={uploadRef:string;status:string;uploadUrl?:string;uploadHeaders?:Rec
  cleanVerified?:boolean;fileRef?:string|null;fileVersion?:number|null};
 type Command={key:string;hash:string;mime:string;size:number;intent?:string};
 const allowed=["image/jpeg","image/png","image/webp"];
-const MAX_BANNER=2*1024*1024;
+const MB=1024*1024;
 const base="/api/campaign-media/";
 async function api<T>(route:string,body?:Record<string,unknown>):Promise<T>{
  const r=await fetch(base+route,{cache:"no-store",...(body?{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)}:{})});
@@ -15,9 +15,12 @@ async function api<T>(route:string,body?:Record<string,unknown>):Promise<T>{
  return v as T;
 }
 /** CG19 scanner verification is NOT CG18 public publication consent. */
-export function CampaignBannerPanel({campaignRef,version,canUpload,currentFileRef,onVerified}:{
+export function CampaignBannerPanel({campaignRef,version,canUpload,currentFileRef,onVerified,kind="BANNER"}:{
  campaignRef:string;version:number;canUpload:boolean;currentFileRef:string|null;onVerified:(ref:string)=>void;
+ kind?:"COVER"|"BANNER";
 }){
+ const display=kind==="COVER"?"Cover Image":"Hero Banner";
+ const limit=(kind==="COVER"?2:5)*MB;
  const [files,setFiles]=useState<MediaFile[]|null>(null),[chosen,setChosen]=useState<File|null>(null),
   [consent,setConsent]=useState(false),[busy,setBusy]=useState(false),
   [error,setError]=useState(""),[message,setMessage]=useState(""),
@@ -26,10 +29,10 @@ export function CampaignBannerPanel({campaignRef,version,canUpload,currentFileRe
  useEffect(()=>{live.current=true;return()=>{live.current=false;};},[]);
  useEffect(()=>{let active=true;setFiles(null);
   void api<{files:MediaFile[];campaignVersion:number}>("campaigns/"+campaignRef)
-   .then(r=>{if(!active)return;if(r.campaignVersion!==version){setError("Campaign changed. Refresh before uploading.");return;}setFiles(r.files);})
+   .then(r=>{if(!active)return;if(r.campaignVersion!==version){setError("Campaign changed. Refresh before uploading.");return;}setFiles(r.files.filter(f=>f.classification===(kind==="COVER"?"CAMPAIGN_COVER":"CAMPAIGN_BANNER")));})
    .catch(e=>{if(active)setError(e instanceof Error?e.message:"Cannot verify campaign media.");});
   return()=>{active=false;};
- },[campaignRef,version,epoch]);
+ },[campaignRef,version,epoch,kind]);
  const accepted=(v:Upload)=>{
   if(!v.cleanVerified||!v.fileRef||!v.fileVersion)throw Error("CG19 has not verified the banner. It cannot be saved.");
   if(live.current){onVerified(v.fileRef);setMessage("Banner scanner-verified. Save the campaign draft to attach it; public publication is separate.");setChosen(null);setConsent(false);setIntent("");setEpoch(n=>n+1);}
@@ -44,8 +47,8 @@ export function CampaignBannerPanel({campaignRef,version,canUpload,currentFileRe
  const upload=async()=>{if(!chosen||!consent||!canUpload||running.current)return;
   running.current=true;setBusy(true);setError("");setMessage("");
   try{
-   if(!allowed.includes(chosen.type)||chosen.size<1||chosen.size>MAX_BANNER)
-    throw Error("Choose JPG, PNG or WebP up to 2 MB, as shown in the client campaign form.");
+   if(!allowed.includes(chosen.type)||chosen.size<1||chosen.size>limit)
+    throw Error("Choose JPG, PNG or WebP up to "+(kind==="COVER"?2:5)+" MB.");
    const bytes=await chosen.arrayBuffer();
    const hash=Array.from(new Uint8Array(await crypto.subtle.digest("SHA-256",bytes)),
     v=>v.toString(16).padStart(2,"0")).join("");
@@ -54,7 +57,7 @@ export function CampaignBannerPanel({campaignRef,version,canUpload,currentFileRe
     {key:crypto.randomUUID(),hash,mime:chosen.type,size:chosen.size};
    command.current=cmd;
    const v=await api<Upload>("intents",{campaignRef,campaignVersion:version,requestKey:cmd.key,
-    mime:cmd.mime,sizeBytes:cmd.size,sha256:cmd.hash,kind:"BANNER",rightsConfirmed:true});
+    mime:cmd.mime,sizeBytes:cmd.size,sha256:cmd.hash,kind,rightsConfirmed:true});
    cmd.intent=v.uploadRef;setIntent(v.uploadRef);
    if(v.cleanVerified){accepted(v);return;}
    if(v.status==="EXPIRED_OR_REJECTED"){command.current=null;setIntent("");throw Error("Original upload expired or failed. Choose a banner again.");}
@@ -70,11 +73,11 @@ export function CampaignBannerPanel({campaignRef,version,canUpload,currentFileRe
   finally{running.current=false;setBusy(false);}
  };
  const selected=files?.find(f=>f.fileRef===currentFileRef);
- return <section aria-label="Optional campaign banner" style={{padding:14,border:"1px dashed var(--cg-border)",borderRadius:12,display:"grid",gap:9}}>
-  <h3 style={{margin:0}}>Cover Image (optional)</h3>
-  <p style={{margin:0,fontSize:12}}>JPG, PNG or WebP · maximum 2 MB. Uploaded privately and scanned by CG19. Only independently approved campaign content can become public.</p>
+ return <section aria-label={"Optional campaign "+display} style={{padding:14,border:"1px dashed var(--cg-border)",borderRadius:12,display:"grid",gap:9}}>
+  <h3 style={{margin:0}}>{display} (optional)</h3>
+  <p style={{margin:0,fontSize:12}}>JPG, PNG or WebP · maximum {kind==="COVER"?2:5} MB. Uploaded privately and scanned by CG19. Only independently approved campaign content can become public.</p>
   {currentFileRef&&selected?<div><p role="status">Verified original banner selected. Save your latest draft to attach it.</p>
-    <img src={base+"files/"+selected.fileRef} alt="Private campaign banner preview" style={{maxWidth:"100%",maxHeight:220,objectFit:"contain",borderRadius:9}}/>
+    <img src={base+"files/"+selected.fileRef} alt={"Private campaign "+display+" preview"} style={{maxWidth:"100%",maxHeight:220,objectFit:"contain",borderRadius:9}}/>
     {canUpload&&<button type="button" disabled={busy} onClick={()=>onVerified("")}>Remove banner</button>}
    </div>:currentFileRef?<p role="alert">The selected banner is not in the current verified file list. Refresh before saving.</p>
     :<p>No banner attached. Text-only campaigns are valid.</p>}
