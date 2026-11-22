@@ -362,11 +362,18 @@ export class HrEmploymentChangeSourceFacade{
   await this.audit(tx,actor.realmId,actor.accountId,row.employee_id,"EXIT_CLEARANCE_RECORDED");
   return {recorded:true,kind:x.kind,replayed:false};
  }
+ async changeTimeline(tx:PoolClient,realm:string,row:ChangeRow){
+  const q=await tx.query<{action:string;step_ordinal:number;occurred_at:Date}>(`
+    SELECT ev.action,ev.step_ordinal,ev.occurred_at FROM cg03_case_event ev
+    JOIN cg03_case c ON c.id=ev.case_id AND c.realm_id=ev.realm_id
+    WHERE c.realm_id=$1 AND c.case_number=$2 ORDER BY ev.occurred_at DESC,ev.id DESC LIMIT 50`,[realm,row.case_number]);
+  return q.rows.map(e=>({action:e.action,step:e.step_ordinal,occurredAt:e.occurred_at}));
+ }
  async clearanceSummary(tx:PoolClient,realm:string,row:ChangeRow){
   if(!exitKind(row.kind))return null;
   const q=await tx.query<{clearance_kind:string;verified_at:Date}>(`SELECT clearance_kind,verified_at FROM hr_exit_clearance
    WHERE root_realm_id=$1 AND change_id=$2 ORDER BY clearance_kind`,[realm,row.id]);
-  return {items:["HR","ASSETS","HANDOVER"].map(kind=>({kind,status:q.rows.some(x=>x.clearance_kind===kind)?"CONFIRMED":"PENDING"})),
+  return {items:["HR","ASSETS","HANDOVER"].map(kind=>{const actual=q.rows.find(x=>x.clearance_kind===kind);return {kind,status:actual?"CONFIRMED":"PENDING",verifiedAt:actual?.verified_at??null};}),
    financeStatus:"NOT_VERIFIED",salaryAndDuesStatus:"NOT_AVAILABLE"};
  }
  /** Due-only worker and protected manual apply use the same original CG03 transaction.
@@ -428,7 +435,7 @@ export class HrEmploymentChangeSourceFacade{
   return {reference:row.reference,kind:row.kind,effectiveDate:row.effective_date,lastWorkingDate:row.last_working_date,status:row.status,
    revision:row.revision,caseReference:row.case_number,caseStatus:row.case_status,reason,current:{branch:row.prior_branch_name,designation:row.prior_designation},
    proposed:exitKind(row.kind)?null:{branch:row.proposed_branch_name,designation:row.proposed_designation},
-   clearance:await this.clearanceSummary(tx,actor.realmId,row),canEdit:own&&row.status==="DRAFT",canWithdraw:own&&row.status==="SUBMITTED"};
+   timeline:await this.changeTimeline(tx,actor.realmId,row),clearance:await this.clearanceSummary(tx,actor.realmId,row),canEdit:own&&row.status==="DRAFT",canWithdraw:own&&row.status==="SUBMITTED"};
  }
  async myHistory(tx:PoolClient,actor:VerifiedFoundationActor){
   await this.identity.assertPatientSessionCurrent(tx,actor);
@@ -474,7 +481,7 @@ export class HrEmploymentChangeSourceFacade{
   if(!row)throw new NotFoundException("The original employment request is unavailable");
   const detail=row.created_by===actor.accountId?await this.privateDetail(tx,actor.realmId,row,actor.accountId):this.summary(row);
   return {...detail,employeeReference:row.employee_code,canEdit:row.created_by===actor.accountId&&row.status==="DRAFT",
-   canWithdraw:row.created_by===actor.accountId&&row.status==="SUBMITTED",clearance:await this.clearanceSummary(tx,actor.realmId,row),
+   canWithdraw:row.created_by===actor.accountId&&row.status==="SUBMITTED",timeline:await this.changeTimeline(tx,actor.realmId,row),clearance:await this.clearanceSummary(tx,actor.realmId,row),
    canRecordClearance:exitKind(row.kind)&&row.status==="APPROVED_PENDING_EFFECT"&&row.employee_account_ref!==actor.accountId,
    ...(row.created_by===actor.accountId&&row.status==="DRAFT"?{form:{kind:row.kind,effectiveDate:row.effective_date,lastWorkingDate:row.last_working_date,
     branchRef:row.proposed_branch_ref,departmentRef:row.proposed_department_ref,managerRef:row.proposed_manager_ref,designation:row.proposed_designation,roleRef:row.proposed_role_ref}}:{})};
