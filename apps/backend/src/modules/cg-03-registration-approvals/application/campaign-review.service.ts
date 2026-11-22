@@ -100,10 +100,15 @@ export class CampaignReviewService{
     category:string;branchRef:string|null;projectRef:string|null;eventRef:string|null;
     goalMinor:string|null;startAt:string|null;endAt:string|null;
     basic:unknown;project:unknown;team:unknown;budget:unknown;media:unknown;review:unknown}>(
-   `SELECT r.immutable_digest AS digest,c.current_revision,c.source_status AS status,c.title,
-     c.category,c.branch_ref AS "branchRef",c.project_source_ref AS "projectRef",
-     c.event_source_ref AS "eventRef",c.goal_minor::text AS "goalMinor",
-     c.start_at::text AS "startAt",c.end_at::text AS "endAt",
+   `SELECT r.immutable_digest AS digest,c.current_revision,c.source_status AS status,
+     r.step1_basic->>'title' AS title,
+     r.step2_project_and_geo->>'category' AS category,
+     r.step2_project_and_geo->>'branchRef' AS "branchRef",
+     r.step2_project_and_geo->>'projectRef' AS "projectRef",
+     r.step2_project_and_geo->>'eventRef' AS "eventRef",
+     r.step4_budget_targets->>'goalMinor' AS "goalMinor",
+     r.step4_budget_targets->>'startAt' AS "startAt",
+     r.step4_budget_targets->>'endAt' AS "endAt",
      r.step1_basic AS basic,r.step2_project_and_geo AS project,r.step3_team AS team,
      r.step4_budget_targets AS budget,r.step5_media_refs AS media,r.step6_summary AS review
     FROM campaign_revision r JOIN campaign c ON c.root_realm_id=r.root_realm_id AND c.id=r.campaign_id
@@ -115,8 +120,22 @@ export class CampaignReviewService{
     startAt:original.startAt,endAt:original.endAt,
     steps:{basic:original.basic,project:original.project,team:original.team,budget:original.budget,
       media:original.media,review:original.review}})!==hash(s.source_snapshot))throw changed();
-  if(current&&(original.current_revision!==s.source_revision||original.status!=="SUBMITTED"))
-   throw changed();
+  if(current){
+   if(original.current_revision!==s.source_revision||original.status!=="SUBMITTED")
+    throw changed();
+   const latest=(await tx.query<{title:string;category:string;branchRef:string|null;
+     projectRef:string|null;eventRef:string|null;goalMinor:string|null;startAt:string|null;endAt:string|null}>(`
+    SELECT title,category,branch_ref AS "branchRef",project_source_ref AS "projectRef",
+      event_source_ref AS "eventRef",goal_minor::text AS "goalMinor",
+      start_at::text AS "startAt",end_at::text AS "endAt"
+     FROM campaign WHERE root_realm_id=$1 AND id=$2 FOR SHARE`,
+     [actor.realmId,c.campaign_id])).rows[0];
+   if(!latest||hash(latest)!==hash({title:s.source_snapshot.title,category:s.source_snapshot.category,
+    branchRef:s.source_snapshot.branchRef,projectRef:s.source_snapshot.projectRef,
+    eventRef:s.source_snapshot.eventRef,goalMinor:s.source_snapshot.goalMinor,
+    startAt:s.source_snapshot.startAt,endAt:s.source_snapshot.endAt}))
+    throw changed();
+  }
   return s;
  }
  async policy(token:string){
