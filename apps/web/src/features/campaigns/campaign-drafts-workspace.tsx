@@ -1,9 +1,11 @@
 "use client";
 import {useCallback,useEffect,useRef,useState,type FormEvent} from "react";
+import styles from "./campaigns-reference-ui.module.css";
 const steps=["Basic Details","Project & Category","Team & Assignment","Budget & Targets","Documents & Media","Review & Submit"];
 type Row={ref:string;code:string;title:string;category:string;status:string;version:number;revision:number;
  branch:string|null;goalMinor:string|null;updatedAt:string;steps?:Record<string,unknown>};
-type Page={items:Row[];offset:number;hasMore:boolean};
+type Summary={total:number;active:number;draft:number;completed:number;cancelled:number;goalMinor:string};
+type Page={items:Row[];offset:number;hasMore:boolean;summary:Summary};
 type Choice={value:string;label:string};
 type Choices={canFoundation:boolean;branches:Choice[];states:Choice[];districts:Choice[];coordinators:Choice[];volunteers:Choice[];projects:Choice[];events:(Choice&{projectRef:string|null})[]};
 type Draft={
@@ -62,7 +64,8 @@ export function CampaignDraftsWorkspace({canManage}:{canManage:boolean}){
   [draft,setDraft]=useState<Draft>(blank),[step,setStep]=useState(0),[editing,setEditing]=useState(false),
   [busy,setBusy]=useState(false),[loading,setLoading]=useState(true),[notice,setNotice]=useState(""),
   [failure,setFailure]=useState(""),[choices,setChoices]=useState<Choices|null>(null),
-  [savedDraft,setSavedDraft]=useState<Draft>(blank);
+  [savedDraft,setSavedDraft]=useState<Draft>(blank),
+  [summary,setSummary]=useState<Summary|null>(null),[statusFilter,setStatusFilter]=useState("ALL");
  const choiceSeq=useRef(0);
  const pending=useRef<{key:string;body:Record<string,unknown>;method:"POST"|"PATCH";path:string}|null>(null);
  const submitPending=useRef<{key:string;ref:string;version:number}|null>(null);
@@ -70,11 +73,11 @@ export function CampaignDraftsWorkspace({canManage}:{canManage:boolean}){
  const refresh=useCallback(async()=>{
   const id=++serial.current;setLoading(true);
   try{
-   const data=await api<Page>("?"+new URLSearchParams({offset:String(offset),q:applied}));
-   if(id===serial.current){setRows(data.items);setHasMore(data.hasMore);setFailure("");}
-  }catch(e){if(id===serial.current){setRows([]);setFailure(e instanceof Error?e.message:"Campaign records unavailable.");}}
+   const data=await api<Page>("?"+new URLSearchParams({offset:String(offset),q:applied,status:statusFilter}));
+   if(id===serial.current){setRows(data.items);setHasMore(data.hasMore);setSummary(data.summary);setFailure("");}
+  }catch(e){if(id===serial.current){setRows([]);setSummary(null);setFailure(e instanceof Error?e.message:"Campaign records unavailable.");}}
   finally{if(id===serial.current)setLoading(false);}
- },[offset,applied]);
+ },[offset,applied,statusFilter]);
  useEffect(()=>{void refresh();return()=>{serial.current++;editingSerial.current++;};},[refresh]);
  useEffect(()=>{
   if(!editing){setChoices(null);return;}
