@@ -4,6 +4,7 @@ import {redirect} from "next/navigation";
 import {FoundationAdminNav} from "../../../../../shared/foundation-admin-nav";
 import {FinanceBudgetReviewWorkspace} from "../../../../../features/finance-accounting/finance-budget-review-workspace";
 import {UnavailablePage} from "../../../../../shared/unavailable-page";
+import {AccessDeniedView} from "../../../../../shared/access-denied-view";
 export const dynamic="force-dynamic";
 
 /** Dedicated U41 expense intake for existing CG-01 Foundation users.
@@ -33,7 +34,7 @@ export default async function FinanceBudgetReviewsPage(){
   const canCreate=actions.includes("approvals.review")&&actions.includes("finance.budgets.review");
   const canView=canCreate;
   const canManage=canCreate;
-  if(!canCreate&&!canView&&!canManage)return <UnavailablePage title="Budgets access restricted" description="Your role cannot create or view Foundation budgets. Ask an Administrator for access." linkLabel="Return to my account" />;
+  if(!canCreate&&!canView&&!canManage)return <AccessDeniedView reason="Your role cannot create or view Foundation budgets. Ask an Administrator for access." />;
   return <div className="shell">
    <FoundationAdminNav initialActions={Array.from(actions)} active="financeBudgetReviews" displayName={actor.displayName}
     roleName={actor.roleName} canViewRoles={actions.includes("roles.view")}

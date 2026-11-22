@@ -5,15 +5,16 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { motion, useReducedMotion } from "framer-motion";
 
-export type AccessVerificationMode = "unverified-access" | "unconfirmed-session";
+export type AccessVerificationMode = "unverified-access" | "unconfirmed-session" | "service-unavailable";
 
 export interface AccessVerificationViewProps {
   mode?: AccessVerificationMode;
   title?: string;
   description?: string;
   ctaLabel?: string;
-  ctaHref?: string;
+  ctaHref?: string | null;
   onCtaClick?: () => void | Promise<void>;
+  children?: React.ReactNode;
 }
 
 export function AccessVerificationView({
@@ -22,7 +23,8 @@ export function AccessVerificationView({
   description,
   ctaLabel,
   ctaHref,
-  onCtaClick
+  onCtaClick,
+  children
 }: AccessVerificationViewProps) {
   const router = useRouter();
   const shouldReduceMotion = useReducedMotion();
@@ -31,28 +33,45 @@ export function AccessVerificationView({
 
   // Defaults per wireframe specification
   const isAccessUnverified = mode === "unverified-access";
+  const isServiceUnavailable = mode === "service-unavailable";
 
   const resolvedTitle =
     title ??
-    (isAccessUnverified
-      ? "Access cannot be verified"
-      : "Cannot confirm your access");
+    (isServiceUnavailable
+      ? "Service temporarily unavailable"
+      : isAccessUnverified
+        ? "Access cannot be verified"
+        : "Cannot confirm your access");
 
   const resolvedDescription =
     description ??
-    (isAccessUnverified
-      ? "Staff information is hidden until your current permissions are confirmed."
-      : "Protected information is unavailable until your session can be verified.");
+    (isServiceUnavailable
+      ? "We are experiencing a temporary connection issue. Please check your connection or try again shortly."
+      : isAccessUnverified
+        ? "Staff information is hidden until your current permissions are confirmed."
+        : "Protected information is unavailable until your session can be verified.");
 
   const resolvedCtaLabel =
-    ctaLabel ?? (isAccessUnverified ? "Return to my account" : "Sign in");
+    ctaLabel ??
+    (isServiceUnavailable
+      ? (onCtaClick ? "Try again" : "Return to my account")
+      : isAccessUnverified
+        ? "Return to my account"
+        : "Sign in");
 
   const resolvedCtaHref =
-    ctaHref ?? (isAccessUnverified ? "/admin" : "/admin/login");
+    ctaHref === null
+      ? null
+      : (ctaHref ?? (isServiceUnavailable ? "/admin" : isAccessUnverified ? "/admin" : "/admin/login"));
 
-  const loadingLabel = isAccessUnverified ? "Returning…" : "Redirecting…";
+  const loadingLabel = isServiceUnavailable
+    ? (onCtaClick ? "Retrying…" : "Loading…")
+    : isAccessUnverified
+      ? "Returning…"
+      : "Redirecting…";
 
   const isBusy = isPending || isHandling;
+  const hasCta = Boolean(onCtaClick || resolvedCtaHref);
 
   const handleClick = (e: React.MouseEvent<HTMLAnchorElement | HTMLButtonElement>) => {
     if (isBusy) {
@@ -280,6 +299,87 @@ export function AccessVerificationView({
                   </filter>
                 </defs>
               </svg>
+            ) : isServiceUnavailable ? (
+              /* State 3: Cloud / Service Offline with Amber Alert Badge on Light Blue Arch */
+              <svg
+                className="cg-access-verify-illustration-svg"
+                viewBox="0 0 180 150"
+                fill="none"
+                xmlns="http://www.w3.org/2000/svg"
+              >
+                {/* Top-Left Ray Accent Ticks */}
+                <line x1="28" y1="46" x2="35" y2="39" stroke="#38BDF8" strokeWidth="2.8" strokeLinecap="round" />
+                <line x1="22" y1="57" x2="31" y2="57" stroke="#38BDF8" strokeWidth="2.8" strokeLinecap="round" />
+                <line x1="26" y1="68" x2="34" y2="71" stroke="#38BDF8" strokeWidth="2.8" strokeLinecap="round" />
+
+                {/* Base Semi-Circle Arch */}
+                <path
+                  d="M 22 132 A 68 68 0 0 1 158 132 Z"
+                  fill="#E0F2FE"
+                />
+
+                {/* 3D Glassy Cloud Body */}
+                <g filter="url(#cg-cloud-shadow)">
+                  <path
+                    d="M 64 92 C 54 92, 46 84, 46 74 C 46 64.5, 53 56.5, 62 56 C 66 43, 78 34, 92 34 C 108 34, 121 45, 124 60 C 132 61, 138 68, 138 76 C 138 85, 131 92, 122 92 Z"
+                    fill="url(#cg-cloud-gradient)"
+                  />
+                  {/* Subtle Top Inner Highlight */}
+                  <path
+                    d="M 66 88 C 58 88, 52 82, 52 74 C 52 66, 58 60, 65 59 C 69 48, 80 40, 92 40 C 105 40, 116 49, 119 62 C 126 63, 131 69, 131 76 C 131 83, 126 88, 119 88 Z"
+                    fill="url(#cg-shield-highlight)"
+                    opacity="0.25"
+                  />
+                </g>
+
+                {/* Signal Arcs on Cloud */}
+                <path
+                  d="M 74 72 C 84 64, 100 64, 110 72"
+                  fill="none"
+                  stroke="#FFFFFF"
+                  strokeWidth="3.2"
+                  strokeLinecap="round"
+                  opacity="0.9"
+                />
+                <path
+                  d="M 82 80 C 87 76, 97 76, 102 80"
+                  fill="none"
+                  stroke="#FFFFFF"
+                  strokeWidth="3.2"
+                  strokeLinecap="round"
+                  opacity="0.9"
+                />
+                <circle cx="92" cy="87" r="2.4" fill="#FFFFFF" />
+
+                {/* Amber Alert / Offline Badge at Bottom Right */}
+                <g filter="url(#cg-amber-badge-shadow)">
+                  <circle cx="126" cy="108" r="16.5" fill="url(#cg-amber-badge-gradient)" />
+                  <rect x="124.4" y="99" width="3.2" height="10" rx="1.6" fill="#FFFFFF" />
+                  <circle cx="126" cy="113.8" r="1.8" fill="#FFFFFF" />
+                </g>
+
+                <defs>
+                  <linearGradient id="cg-cloud-gradient" x1="20%" y1="0%" x2="80%" y2="100%">
+                    <stop offset="0%" stopColor="#60A5FA" />
+                    <stop offset="45%" stopColor="#3B82F6" />
+                    <stop offset="100%" stopColor="#1D4ED8" />
+                  </linearGradient>
+
+                  <linearGradient id="cg-amber-badge-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                    <stop offset="0%" stopColor="#FBBF24" />
+                    <stop offset="50%" stopColor="#F59E0B" />
+                    <stop offset="100%" stopColor="#D97706" />
+                  </linearGradient>
+
+                  <filter id="cg-cloud-shadow" x="26" y="20" width="132" height="100" filterUnits="userSpaceOnUse">
+                    <feDropShadow dx="0" dy="8" stdDeviation="8" floodColor="#1D4ED8" floodOpacity="0.25" />
+                  </filter>
+
+                  <filter id="cg-amber-badge-shadow" x="104" y="86" width="44" height="44" filterUnits="userSpaceOnUse">
+                    <feDropShadow dx="0" dy="4" stdDeviation="4.5" floodColor="#D97706" floodOpacity="0.38" />
+                  </filter>
+                </defs>
+              </svg>
             ) : (
               /* State 2: ID Card with Lanyard Clip, Avatar, and Blue Lock Badge on Light Blue Arch */
               <svg
@@ -380,63 +480,124 @@ export function AccessVerificationView({
           {/* Supporting Text */}
           <p className="cg-access-verify-desc">{resolvedDescription}</p>
 
-          {/* Interactive CTA Button with Clear Loading & Micro-interaction States */}
-          <div className="cg-access-verify-cta-wrap">
-            <Link
-              href={resolvedCtaHref}
-              onClick={handleClick}
-              className={`cg-access-verify-btn ${isBusy ? "cg-access-verify-btn-busy" : ""}`}
-              aria-label={resolvedCtaLabel}
-              aria-busy={isBusy}
-            >
-              {isBusy ? (
-                <>
-                  <span className="cg-access-verify-spinner" aria-hidden="true" />
-                  <span>{loadingLabel}</span>
-                </>
-              ) : isAccessUnverified ? (
-                <>
-                  {/* Left Arrow Icon */}
-                  <svg
-                    className="cg-access-verify-btn-icon"
-                    width="18"
-                    height="18"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2.5"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    aria-hidden="true"
-                  >
-                    <line x1="19" y1="12" x2="5" y2="12" />
-                    <polyline points="12 19 5 12 12 5" />
-                  </svg>
-                  <span>{resolvedCtaLabel}</span>
-                </>
+          {/* Interactive CTA Button or Link */}
+          {hasCta ? (
+            <div className="cg-access-verify-cta-wrap">
+              {resolvedCtaHref ? (
+                <Link
+                  href={resolvedCtaHref}
+                  onClick={handleClick}
+                  className={`cg-access-verify-btn ${isBusy ? "cg-access-verify-btn-busy" : ""}`}
+                  aria-label={resolvedCtaLabel}
+                  aria-busy={isBusy}
+                >
+                  {isBusy ? (
+                    <>
+                      <span className="cg-access-verify-spinner" aria-hidden="true" />
+                      <span>{loadingLabel}</span>
+                    </>
+                  ) : isServiceUnavailable ? (
+                    <>
+                      <svg
+                        className="cg-access-verify-btn-icon"
+                        width="18"
+                        height="18"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2.4"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        aria-hidden="true"
+                      >
+                        <polyline points="23 4 23 10 17 10" />
+                        <polyline points="1 20 1 14 7 14" />
+                        <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15" />
+                      </svg>
+                      <span>{resolvedCtaLabel}</span>
+                    </>
+                  ) : isAccessUnverified ? (
+                    <>
+                      {/* Left Arrow Icon */}
+                      <svg
+                        className="cg-access-verify-btn-icon"
+                        width="18"
+                        height="18"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2.5"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        aria-hidden="true"
+                      >
+                        <line x1="19" y1="12" x2="5" y2="12" />
+                        <polyline points="12 19 5 12 12 5" />
+                      </svg>
+                      <span>{resolvedCtaLabel}</span>
+                    </>
+                  ) : (
+                    <>
+                      {/* User Sign-In Icon */}
+                      <svg
+                        className="cg-access-verify-btn-icon"
+                        width="18"
+                        height="18"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2.2"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        aria-hidden="true"
+                      >
+                        <path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2" />
+                        <circle cx="12" cy="7" r="4" />
+                      </svg>
+                      <span>{resolvedCtaLabel}</span>
+                    </>
+                  )}
+                </Link>
               ) : (
-                <>
-                  {/* User Sign-In Icon */}
-                  <svg
-                    className="cg-access-verify-btn-icon"
-                    width="18"
-                    height="18"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2.2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    aria-hidden="true"
-                  >
-                    <path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2" />
-                    <circle cx="12" cy="7" r="4" />
-                  </svg>
-                  <span>{resolvedCtaLabel}</span>
-                </>
+                <button
+                  type="button"
+                  onClick={handleClick}
+                  className={`cg-access-verify-btn ${isBusy ? "cg-access-verify-btn-busy" : ""}`}
+                  aria-label={resolvedCtaLabel}
+                  aria-busy={isBusy}
+                >
+                  {isBusy ? (
+                    <>
+                      <span className="cg-access-verify-spinner" aria-hidden="true" />
+                      <span>{loadingLabel}</span>
+                    </>
+                  ) : (
+                    <>
+                      <svg
+                        className="cg-access-verify-btn-icon"
+                        width="18"
+                        height="18"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2.4"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        aria-hidden="true"
+                      >
+                        <polyline points="23 4 23 10 17 10" />
+                        <polyline points="1 20 1 14 7 14" />
+                        <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15" />
+                      </svg>
+                      <span>{resolvedCtaLabel}</span>
+                    </>
+                  )}
+                </button>
               )}
-            </Link>
-          </div>
+            </div>
+          ) : null}
+
+          {children ? <div className="cg-access-verify-children" style={{ marginTop: "1rem", width: "100%" }}>{children}</div> : null}
         </motion.div>
       </main>
     </div>

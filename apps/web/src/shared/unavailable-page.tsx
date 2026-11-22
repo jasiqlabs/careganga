@@ -1,5 +1,8 @@
 import React from "react";
-import Link from "next/link";
+import {
+  AccessVerificationView,
+  type AccessVerificationMode,
+} from "./access-verification-view";
 
 export interface UnavailablePageProps {
   /** Page-specific heading title (e.g., "Audit Logs unavailable") */
@@ -10,6 +13,8 @@ export interface UnavailablePageProps {
   linkHref?: string | null;
   /** Label for the return/account action link (defaults to "My account") */
   linkLabel?: string;
+  /** Explicit verification mode override */
+  mode?: AccessVerificationMode;
   /** Optional additional elements to render within the main container */
   children?: React.ReactNode;
 }
@@ -17,21 +22,37 @@ export interface UnavailablePageProps {
 /**
  * Standard reusable error / unavailable / protected-session verification failure page.
  * Renders consistent layout, typography, description, link styling, and accessibility landmarks
- * matching the canonical CareGanga reference design.
+ * matching the canonical CareGanga reference design by delegating to AccessVerificationView.
  */
 export function UnavailablePage({
   title = "Unavailable",
-  description = "We could not verify your current protected session.",
+  description = "Protected information is temporarily unavailable. Please try again shortly.",
   linkHref = "/admin",
   linkLabel = "My account",
+  mode,
   children,
 }: UnavailablePageProps) {
+  // Infer mode if not explicitly provided:
+  // - If linkHref points to public routes ("/" or "/ngo-information"), use "service-unavailable".
+  // - If description explicitly states session verification failure, use "unverified-access".
+  // - Otherwise, default to "service-unavailable" so infrastructure failures do not blame user sessions.
+  const resolvedMode: AccessVerificationMode =
+    mode ??
+    (linkHref === "/" || linkHref?.startsWith("/ngo-information")
+      ? "service-unavailable"
+      : description.toLowerCase().includes("session")
+        ? "unverified-access"
+        : "service-unavailable");
+
   return (
-    <main className="page main">
-      <h1>{title}</h1>
-      <p>{description}</p>
-      {linkHref ? <Link href={linkHref}>{linkLabel}</Link> : null}
+    <AccessVerificationView
+      mode={resolvedMode}
+      title={title}
+      description={description}
+      ctaHref={linkHref}
+      ctaLabel={linkLabel}
+    >
       {children}
-    </main>
+    </AccessVerificationView>
   );
 }

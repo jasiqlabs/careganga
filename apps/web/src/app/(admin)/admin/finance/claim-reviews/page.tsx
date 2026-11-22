@@ -4,6 +4,7 @@ import {redirect} from "next/navigation";
 import {FoundationAdminNav} from "../../../../../shared/foundation-admin-nav";
 import {FinanceClaimReviewWorkspace} from "../../../../../features/finance-accounting/finance-claim-review-workspace";
 import {UnavailablePage} from "../../../../../shared/unavailable-page";
+import {AccessDeniedView} from "../../../../../shared/access-denied-view";
 export const dynamic="force-dynamic";
 
 export default async function FinanceClaimReviewsPage(){
@@ -32,7 +33,7 @@ export default async function FinanceClaimReviewsPage(){
    .map(v=>v.key);
   const ready=["approvals.review","finance.claims.review","documents.files.view"]
    .every(k=>actions.includes(k));
-  if(!ready)return <UnavailablePage title="Claim review restricted" description="Only a separate protected Foundation reviewer may open reimbursement cases." linkLabel="Return to my account" />;
+  if(!ready)return <AccessDeniedView reason="Only a separate protected Foundation reviewer may open reimbursement cases." />;
   return <div className="shell">
    <FoundationAdminNav initialActions={Array.from(actions)} active="financeClaimReviews" displayName={actor.displayName}
     roleName={actor.roleName} canViewRoles={actions.includes("roles.view")}

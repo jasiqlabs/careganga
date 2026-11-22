@@ -4,6 +4,7 @@ import {redirect} from "next/navigation";
 import {FoundationAdminNav} from "../../../../../shared/foundation-admin-nav";
 import {FinanceVoucherReviewerWorkspace} from "../../../../../features/finance-accounting/finance-voucher-reviewer-workspace";
 import {UnavailablePage} from "../../../../../shared/unavailable-page";
+import {AccessDeniedView} from "../../../../../shared/access-denied-view";
 export const dynamic="force-dynamic";
 export default async function VoucherApprovalsPage(){
  const token=(await cookies()).get("cg_staff_session")?.value;
@@ -28,7 +29,7 @@ export default async function VoucherApprovalsPage(){
     .map(v=>v.key);
   if(!rights.includes("approvals.review")||!rights.includes("finance.vouchers.view")||
      !rights.includes("documents.files.view"))
-   return <UnavailablePage title="Finance review restricted" description="Your current role cannot review Finance vouchers." linkLabel="Return to my account" />;
+   return <AccessDeniedView reason="Your current role cannot review Finance vouchers." />;
   return <div className="shell">
    <FoundationAdminNav initialActions={Array.from(rights)} active="financeReviews" displayName={actor.displayName}
     roleName={actor.roleName}

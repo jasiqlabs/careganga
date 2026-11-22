@@ -4,6 +4,7 @@ import {redirect} from "next/navigation";
 import {FoundationAdminNav} from "../../../../../shared/foundation-admin-nav";
 import {FinanceInvoiceWorkspace} from "../../../../../features/finance-accounting/finance-invoice-workspace";
 import {UnavailablePage} from "../../../../../shared/unavailable-page";
+import {AccessDeniedView} from "../../../../../shared/access-denied-view";
 export const dynamic="force-dynamic";
 
 /** Dedicated U41 expense intake for existing CG-01 Foundation users.
@@ -33,7 +34,7 @@ export default async function FinanceInvoicesPage(){
   const canCreate=actions.includes("finance.invoices.manage");
   const canView=actions.includes("finance.invoices.view");
   const canManage=canCreate;
-  if(!canView)return <UnavailablePage title="Invoices access restricted" description="Your role cannot create or view Foundation invoices. Ask an Administrator for access." linkLabel="Return to my account" />;
+  if(!canView)return <AccessDeniedView reason="Your role cannot create or view Foundation invoices. Ask an Administrator for access." />;
   return <div className="shell">
    <FoundationAdminNav initialActions={Array.from(actions)} active="financeInvoices" displayName={actor.displayName}
     roleName={actor.roleName} canViewRoles={actions.includes("roles.view")}

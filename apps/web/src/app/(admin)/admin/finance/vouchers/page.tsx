@@ -4,6 +4,7 @@ import {redirect} from "next/navigation";
 import {FoundationAdminNav} from "../../../../../shared/foundation-admin-nav";
 import {FinanceVoucherDraftWorkspace} from "../../../../../features/finance-accounting/finance-voucher-draft-workspace";
 import {UnavailablePage} from "../../../../../shared/unavailable-page";
+import {AccessDeniedView} from "../../../../../shared/access-denied-view";
 export const dynamic="force-dynamic";
 
 export default async function VoucherDraftsPage(){
@@ -29,7 +30,7 @@ export default async function VoucherDraftsPage(){
     Boolean(x)&&typeof x==="object"&&x!==null&&"key" in x&&
     typeof (x as {key:unknown}).key==="string").map(x=>x.key);
   if(!actions.includes("finance.vouchers.view"))
-   return <UnavailablePage title="Voucher access restricted" description="Your current role cannot view Finance voucher drafts. Ask an Administrator for voucher access if needed." linkLabel="Return to my account" />;
+   return <AccessDeniedView reason="Your current role cannot view Finance voucher drafts. Ask an Administrator for voucher access if needed." />;
   const options=await fetch(new URL("/api/finance-accounting/vouchers/options",backend),{
    headers,cache:"no-store",signal:AbortSignal.timeout(9000)});
   if(!options.ok)throw Error("Voucher options unavailable");

@@ -4,6 +4,7 @@ import {redirect} from "next/navigation";
 import {FoundationAdminNav} from "../../../../../shared/foundation-admin-nav";
 import {FinanceBudgetWorkspace} from "../../../../../features/finance-accounting/finance-budget-workspace";
 import {UnavailablePage} from "../../../../../shared/unavailable-page";
+import {AccessDeniedView} from "../../../../../shared/access-denied-view";
 export const dynamic="force-dynamic";
 
 /** Original B01/B02 Foundation and real CG02 branch budget wizard. */
@@ -32,7 +33,7 @@ export default async function FinanceBudgetsPage(){
   const canCreate=actions.includes("finance.budgets.manage");
   const canView=actions.includes("finance.budgets.view");
   const canManage=canCreate;
-  if(!canView)return <UnavailablePage title="Budgets access restricted" description="Your role cannot create or view Foundation budgets. Ask an Administrator for access." linkLabel="Return to my account" />;
+  if(!canView)return <AccessDeniedView reason="Your role cannot create or view Foundation budgets. Ask an Administrator for access." />;
   return <div className="shell">
    <FoundationAdminNav initialActions={Array.from(actions)} active="financeBudgets" displayName={actor.displayName}
     roleName={actor.roleName} canViewRoles={actions.includes("roles.view")}

@@ -4,6 +4,7 @@ import {redirect} from "next/navigation";
 import {FoundationAdminNav} from "../../../../shared/foundation-admin-nav";
 import {FinanceAccountsWorkspace} from "../../../../features/finance-accounting/finance-accounts-workspace";
 import {UnavailablePage} from "../../../../shared/unavailable-page";
+import {AccessDeniedView} from "../../../../shared/access-denied-view";
 export const dynamic="force-dynamic";
 
 export default async function FinancePage(){
@@ -28,7 +29,7 @@ export default async function FinancePage(){
     Boolean(a)&&typeof a==="object"&&a!==null&&"key" in a&&
     typeof (a as {key:unknown}).key==="string").map(a=>a.key);
   if(!actions.includes("finance.accounts.view"))
-   return <UnavailablePage title="Finance access restricted" description="Your role does not allow you to view financial accounts. Ask an Administrator if you need access." linkLabel="Return to my account" />;
+   return <AccessDeniedView reason="Your role does not allow you to view financial accounts. Ask an Administrator if you need access." />;
   return <div className="shell">
    <FoundationAdminNav initialActions={Array.from(actions)} active="finance" displayName={actor.displayName}
     roleName={actor.roleName} canViewRoles={actions.includes("roles.view")}
