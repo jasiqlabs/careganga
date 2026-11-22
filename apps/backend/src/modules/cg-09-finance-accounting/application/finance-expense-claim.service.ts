@@ -1,6 +1,7 @@
 import {BadRequestException,ConflictException,Inject,Injectable} from "@nestjs/common";
 import {createHash} from "node:crypto";
 import {currentHrAllowanceOrigin,assertOwnClaimOrigin} from "../../cg-10-human-resources/application/hr-allowance-origin";
+import {requireCurrentVolunteer} from "../../cg-04-membership-volunteers/application/current-volunteer-source";
 import type {Pool} from "pg";
 import {FinanceClaimApprovalService} from "../../cg-03-registration-approvals/application/finance-claim-approval.service";
 import {FinanceClaimEvidenceService} from "../../cg-19-documents-notifications/application/finance-claim-evidence.service";
@@ -51,18 +52,35 @@ export function allowancePurpose(purpose:unknown,breakdown:unknown):string{
  const detail=breakdown.trim().replace(/\s+/g," ");
  return detail?title+" | Breakdown: "+detail:title;
 }
-type Normal={key:string;purpose:string;category:string;expenseDate:string;amountMinor:string;sourceKind:"GENERAL"|"HR_ALLOWANCE"};
+type Normal={key:string;purpose:string;category:string;expenseDate:string;amountMinor:string;sourceKind:"GENERAL"|"HR_ALLOWANCE";
+ volunteerRef:string|null;volunteerProjectRef:string|null;volunteerMethod:"BANK_TRANSFER"|"UPI"|"CASH"|"OTHER"|null;volunteerUtr:string|null};
 export function parseFinanceClaimDraft(input:unknown):Normal{
- if(!input||typeof input!=="object"||Array.isArray(input))
-  return invalid("FINANCE_CLAIM_FORM_INVALID");
+ if(!input||typeof input!=="object"||Array.isArray(input))return invalid("FINANCE_CLAIM_FORM_INVALID");
  const v=input as Record<string,unknown>;
- if(Object.keys(v).some(k=>!["requestKey","purpose","category","expenseDate","amount","sourceKind","breakdown"].includes(k)))
+ if(Object.keys(v).some(k=>!["requestKey","purpose","category","expenseDate","amount","sourceKind","breakdown",
+  "volunteerRef","volunteerProjectRef","paymentMethod","utr"].includes(k)))
   return invalid("FINANCE_CLAIM_FORM_INVALID");
  if(v.sourceKind!==undefined&&v.sourceKind!=="GENERAL"&&v.sourceKind!=="HR_ALLOWANCE")return invalid("FINANCE_CLAIM_FORM_INVALID");
  if(v.sourceKind!=="HR_ALLOWANCE"&&v.breakdown!==undefined)return invalid("FINANCE_CLAIM_FORM_INVALID");
- return {sourceKind:v.sourceKind==="HR_ALLOWANCE"?"HR_ALLOWANCE":"GENERAL",key:keyOf(v.requestKey),purpose:v.sourceKind==="HR_ALLOWANCE"?allowancePurpose(v.purpose,v.breakdown):label(v.purpose,"purpose",3,500),
-  category:label(v.category,"category",2,80),
-  expenseDate:dateOnly(v.expenseDate),amountMinor:amount(v.amount)};
+ const volunteerRef=v.volunteerRef===null||v.volunteerRef===undefined||v.volunteerRef===""?null:keyOf(v.volunteerRef);
+ const volunteerProjectRef=v.volunteerProjectRef===null||v.volunteerProjectRef===undefined||v.volunteerProjectRef===""?
+  null:keyOf(v.volunteerProjectRef);
+ const methodOptions=["BANK_TRANSFER","UPI","CASH","OTHER"] as const;
+ const method=v.paymentMethod;
+ const volunteerMethod=methodOptions.find(m=>m===method)??null;
+ const rawUtr=v.utr;
+ const volunteerUtr=rawUtr===null||rawUtr===undefined||rawUtr===""?null:
+   typeof rawUtr==="string"&&/^[A-Za-z0-9._/: -]{4,100}$/.test(rawUtr.trim())?rawUtr.trim():
+    invalid("FINANCE_CLAIM_FORM_INVALID","utr");
+ if(volunteerRef){
+  if(v.sourceKind==="HR_ALLOWANCE"||!volunteerMethod||method!==volunteerMethod)
+   return invalid("FINANCE_CLAIM_FORM_INVALID","paymentMethod");
+ }else if(volunteerProjectRef||volunteerMethod||volunteerUtr||method!==undefined||rawUtr!==undefined)
+  return invalid("FINANCE_CLAIM_FORM_INVALID");
+ return {sourceKind:v.sourceKind==="HR_ALLOWANCE"?"HR_ALLOWANCE":"GENERAL",key:keyOf(v.requestKey),
+  purpose:v.sourceKind==="HR_ALLOWANCE"?allowancePurpose(v.purpose,v.breakdown):label(v.purpose,"purpose",3,500),
+  category:label(v.category,"category",2,80),expenseDate:dateOnly(v.expenseDate),amountMinor:amount(v.amount),
+  volunteerRef,volunteerProjectRef,volunteerMethod,volunteerUtr};
 }
 type Claim={id:string;status:string;version:number;create_digest:string};
 @Injectable()
@@ -82,17 +100,33 @@ export class FinanceExpenseClaimService{
    await client.query("BEGIN");
    await this.identity.assertCurrent(client,actor,"finance.claims.create");
    const origin=v.sourceKind==="HR_ALLOWANCE"?await currentHrAllowanceOrigin(client,actor):null;
+   let volunteer:{id:string;branch_ref:string|null}|null=null;
+   if(v.volunteerRef){
+    const candidate=(await client.query<{branch_ref:string|null}>(
+     "SELECT branch_ref FROM volunteer WHERE root_realm_id=$1 AND id=$2 FOR SHARE",
+     [actor.realmId,v.volunteerRef])).rows[0];
+    if(!candidate)throw new ConflictException({code:"FINANCE_CLAIM_SOURCE_INVALID"});
+    volunteer=await requireCurrentVolunteer(client,actor.realmId,v.volunteerRef,candidate.branch_ref);
+    if(v.volunteerProjectRef){
+     const permitted=(await client.query("SELECT 1 FROM project WHERE root_realm_id=$1 AND id=$2 AND branch_ref IS NOT DISTINCT FROM $3::uuid AND status NOT IN('COMPLETED','CANCELLED') FOR SHARE",
+       [actor.realmId,v.volunteerProjectRef,volunteer.branch_ref])).rowCount;
+     if(!permitted)throw new ConflictException({code:"FINANCE_CLAIM_SOURCE_INVALID"});
+    }
+   }
    const digest=createHash("sha256").update(JSON.stringify(origin?
     ["CG09_HR_ALLOWANCE_V1",v.purpose,v.category,v.expenseDate,v.amountMinor,origin.hr_employee_id,origin.hr_assignment_id,origin.hr_branch_id]:
+    volunteer?["CG09_VOLUNTEER_CLAIM_V1",v.purpose,v.category,v.expenseDate,v.amountMinor,volunteer.id,
+     volunteer.branch_ref,v.volunteerProjectRef,v.volunteerMethod,v.volunteerUtr]:
     ["CG09_CLAIM_DRAFT_V1",v.purpose,v.category,v.expenseDate,v.amountMinor])).digest("hex");
    const created=await client.query<Claim>(
     "INSERT INTO expense_claim(root_realm_id,requested_by,category_label,purpose,"+
-    " expense_date,amount_minor,create_request_key,create_digest,current_digest,source_kind,hr_employee_id,hr_assignment_id,hr_branch_id) "+
-    " VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13) "+
+    " expense_date,amount_minor,create_request_key,create_digest,current_digest,source_kind,hr_employee_id,hr_assignment_id,hr_branch_id,volunteer_ref,volunteer_branch_ref,volunteer_project_ref,volunteer_requested_method,volunteer_entered_utr) "+
+    " VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18) "+
     " ON CONFLICT(root_realm_id,requested_by,create_request_key) DO NOTHING "+
     " RETURNING id,status,version,create_digest",
     [actor.realmId,actor.accountId,v.category,v.purpose,v.expenseDate,
-     v.amountMinor,v.key,digest,digest,v.sourceKind,origin?.hr_employee_id??null,origin?.hr_assignment_id??null,origin?.hr_branch_id??null]);
+     v.amountMinor,v.key,digest,digest,v.sourceKind,origin?.hr_employee_id??null,origin?.hr_assignment_id??null,origin?.hr_branch_id??null,
+     volunteer?.id??null,volunteer?.branch_ref??null,v.volunteerProjectRef,v.volunteerMethod,v.volunteerUtr]);
    let row=created.rows[0],replayed=false;
    if(!row){
     const found=await client.query<Claim>(
