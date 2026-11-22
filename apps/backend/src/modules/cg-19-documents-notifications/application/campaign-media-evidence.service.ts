@@ -21,7 +21,7 @@ function parse(v:unknown){
   x.rightsConfirmed!==true||typeof x.mime!=="string"||!MIME.includes(x.mime)||
   (x.kind==="BANNER"&&x.mime==="application/pdf")||
   !Number.isSafeInteger(x.campaignVersion)||Number(x.campaignVersion)<1||
-  !Number.isSafeInteger(x.sizeBytes)||Number(x.sizeBytes)<1||Number(x.sizeBytes)>10485760||
+  !Number.isSafeInteger(x.sizeBytes)||Number(x.sizeBytes)<1||Number(x.sizeBytes)>(x.kind==="BANNER"?2097152:10485760)||
   typeof x.sha256!=="string"||!/^[a-f0-9]{64}$/.test(x.sha256))throw invalid();
  return {campaignRef:campaignRefValue(x.campaignRef),campaignVersion:Number(x.campaignVersion),
   requestKey:campaignRefValue(x.requestKey),mime:x.mime,sizeBytes:Number(x.sizeBytes),
@@ -110,7 +110,7 @@ export class CampaignMediaEvidenceService{
   const f=(await tx.query<{id:string;campaign_id:string;proposal_revision:number;revision:number;original_mime:string;verified_sha256:string;verified_size_bytes:string;object_key:string;object_version:string}>("SELECT f.id,f.campaign_id,f.proposal_revision,f.revision,f.original_mime,f.verified_sha256,f.verified_size_bytes::text,f.object_key,f.object_version FROM cg19_stored_file f JOIN cg19_upload_intent i ON i.id=f.upload_intent_id AND i.realm_id=f.realm_id WHERE f.id=$1 AND f.realm_id=$2 AND f.owner_kind='CG07_CAMPAIGN' AND f.scan_status='CLEAN_VERIFIED' AND f.revoked_at IS NULL AND i.owner_kind='CG07_CAMPAIGN' AND i.campaign_id=f.campaign_id AND i.campaign_media_rights_confirmed AND i.status='VALIDATED'",[campaignRefValue(fileRef),a.realmId])).rows[0];
   if(!f)throw new NotFoundException("Campaign media unavailable");
   await this.source.guardMedia(tx,a,f.campaign_id,null,false);
-  const current=(await tx.query("SELECT 1 FROM cg19_stored_file f JOIN cg19_upload_intent i ON i.id=f.upload_intent_id AND i.realm_id=f.realm_id WHERE f.id=$1 AND f.realm_id=$2 AND f.revision=$3 AND f.revoked_at IS NULL AND i.status='VALIDATED' FOR SHARE OF f,i",[f.id,a.realmId,f.revision])).rowCount;
+  const current=(await tx.query("SELECT 1 FROM cg19_stored_file f JOIN cg19_upload_intent i ON i.id=f.upload_intent_id AND i.realm_id=f.realm_id WHERE f.id=$1 AND f.realm_id=$2 AND f.revision=$3 AND f.revoked_at IS NULL AND i.owner_kind='CG07_CAMPAIGN' AND i.campaign_id=f.campaign_id AND i.campaign_media_rights_confirmed AND i.status='VALIDATED' FOR SHARE OF f,i",[f.id,a.realmId,f.revision])).rowCount;
   if(!current)throw changed();
   return f;
  }
