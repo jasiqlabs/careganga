@@ -276,3 +276,13 @@ export type CG04MembershipActivationResult={member:CG04Member;replayed:boolean};
 export type CG04RosterRow={ref:string;memberNumber:string;name:string;email:string|null;mobile:string;plan:string;category:CG04TierCategory;joinedOn:string;expiresOn:string|null;status:"ACTIVE"|"EXPIRED"|"SUSPENDED"|"CANCELLED";city:string;district:string;branch:string|null};
 export type CG04RosterPage={items:CG04RosterRow[];nextCursor:string|null;hasMore:boolean;branchOptions:{value:string;label:string}[];overview:{total:number;active:number;expired:number;cancelled:number;suspended:number;byCategory:Record<string,number>}};
 export type CG04RosterExport={csv:string;rows:number};
+
+/** Protected CG03 membership review. Caller must currently hold all reviewer rights. */
+export type CG04ReviewPolicy={configured:boolean;version:number;replayed?:boolean};
+export type CG04ReviewItem={caseRef:string;reference:string;name:string;status:string;revision:number;submittedAt:string;canDecide:boolean};
+export type CG04ReviewPage={items:CG04ReviewItem[];hasMore:boolean;offset:number};
+export type CG04ReviewCase={caseRef:string;reference:string;status:string;revision:number;canDecide:boolean;
+ source:{applicationNumber:string;name:string;mobile:string;email:string|null;address:string;city:string;pinCode:string;feeMinor:string;currency:"INR"};
+ files:{fileRef:string;fileVersion:number;classification:string;verified:boolean}[];
+ timeline:{action:string;occurredAt:string;reviewer:string}[]};
+export type CG04ReviewDecisionResult={reference:string;status:string;revision:number;replayed:boolean};
