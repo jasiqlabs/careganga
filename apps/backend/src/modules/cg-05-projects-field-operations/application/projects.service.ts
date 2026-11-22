@@ -91,7 +91,9 @@ export class ProjectsService{
    const old=await this.replay(tx,a,v.key,hash,"CREATE");if(old)return old;
    await this.owner(tx,a,v.branch,v.owner);
    await this.branches.projectGeography(tx,a,v.state,v.district);
-   const r=(await tx.query<ProjectRow>("INSERT INTO project(root_realm_id,code_norm,title,category,summary,description,status,priority,owner_account_ref,scope_kind,branch_ref,state_ref,district_ref,location_label,funding_source,planned_start,planned_end,planned_budget_minor,created_by) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19) RETURNING *",[a.realmId,v.code,v.title,v.category,v.summary,v.description,v.status,v.priority,v.owner,v.branch?"BRANCH":"FOUNDATION",v.branch,v.state,v.district,v.location,v.funding,v.start,v.end,v.budget,a.accountId])).rows[0];
+   let code=v.code;
+   if(!code){for(let attempt=0;attempt<100;attempt++){const candidate=(await tx.query<{code:string}>(`SELECT 'PRJ-'||to_char(now() AT TIME ZONE 'Asia/Kolkata','YYYY')||'-'||lpad(n::text,greatest(6,length(n::text)),'0') AS code FROM (SELECT nextval('cg05_project_code_sequence') AS n) s`)).rows[0].code;if(!(await tx.query("SELECT 1 FROM project WHERE root_realm_id=$1 AND code_norm=$2",[a.realmId,candidate])).rowCount){code=candidate;break;}}if(!code)throw new ConflictException({code:"CG05_CODE_UNAVAILABLE",message:"Could not assign a project reference. Please retry."});}
+   const r=(await tx.query<ProjectRow>("INSERT INTO project(root_realm_id,code_norm,title,category,summary,description,status,priority,owner_account_ref,scope_kind,branch_ref,state_ref,district_ref,location_label,funding_source,planned_start,planned_end,planned_budget_minor,created_by) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19) RETURNING *",[a.realmId,code,v.title,v.category,v.summary,v.description,v.status,v.priority,v.owner,v.branch?"BRANCH":"FOUNDATION",v.branch,v.state,v.district,v.location,v.funding,v.start,v.end,v.budget,a.accountId])).rows[0];
    await tx.query("INSERT INTO project_branch_history(root_realm_id,project_id,branch_ref,valid_from,change_key,changed_by) VALUES($1,$2,$3,clock_timestamp(),$4,$5)",[a.realmId,r.id,v.branch,v.key,a.accountId]);
    return this.audit(tx,a,r,v.key,hash,"CREATE",null);
   });
@@ -139,22 +141,23 @@ export class ProjectsService{
  async listInTx(tx:PoolClient,a:VerifiedFoundationActor,query:Record<string,unknown>,mine=false,exporting=false){
   await this.identity.assertCurrent(tx,a,exporting?"projects.export":"projects.view");
   if(exporting)await this.identity.assertCurrent(tx,a,"projects.view");
-  const q=clean(query.q??"",0,100).toLowerCase(),category=clean(query.category??"",0,80),funding=clean(query.fundingSource??"",0,160),status=choice(query.status??"ALL",["ALL",...statuses]),priority=choice(query.priority??"ALL",["ALL",...priorities]),state=optionalRef(query.stateRef),district=optionalRef(query.districtRef),from=date(query.from),to=date(query.to),offset=Number(query.offset??0);
+  const q=clean(query.q??"",0,100).toLowerCase(),category=clean(query.category??"",0,80),funding=clean(query.fundingSource??"",0,160),director=optionalRef(query.ownerRef),status=choice(query.status??"ALL",["ALL",...statuses]),priority=choice(query.priority??"ALL",["ALL",...priorities]),state=optionalRef(query.stateRef),district=optionalRef(query.districtRef),from=date(query.from),to=date(query.to),offset=Number(query.offset??0);
   if(!Number.isSafeInteger(offset)||offset<0||offset>10000||from&&to&&from>to||district&&!state)throw invalid();
 
    const s=await this.branches.projectBranchScope(tx,a);
    const scope=this.whereScope+(mine?" AND p.owner_account_ref=$4":"");
    if(state||district)await this.branches.projectGeography(tx,a,state,district);
-   const values=[...this.scopeParams(a,s),q,category,status,priority,funding,state,district,from,to];
-   const filters=" AND ($5='' OR strpos(lower(p.code_norm),$5)>0 OR strpos(lower(p.title),$5)>0 OR strpos(lower(a.display_name),$5)>0 OR strpos(lower(p.location_label),$5)>0) AND ($6='' OR lower(p.category)=lower($6)) AND ($7='ALL' OR p.status=$7) AND ($8='ALL' OR p.priority=$8) AND ($9='' OR strpos(lower(p.funding_source),lower($9))>0) AND ($10::uuid IS NULL OR p.state_ref=$10) AND ($11::uuid IS NULL OR p.district_ref=$11) AND ($12::date IS NULL OR p.planned_start>=$12) AND ($13::date IS NULL OR p.planned_end<=$13)";
-   const page=await tx.query("SELECT "+projection+joins+" WHERE "+scope+filters+" ORDER BY p.updated_at DESC,p.id DESC LIMIT $14 OFFSET $15",[...values,exporting?501:26,offset]);
+   const values=[...this.scopeParams(a,s),q,category,status,priority,funding,state,district,from,to,director];
+   const filters=" AND ($5='' OR strpos(lower(p.code_norm),$5)>0 OR strpos(lower(p.title),$5)>0 OR strpos(lower(a.display_name),$5)>0 OR strpos(lower(p.location_label),$5)>0) AND ($6='' OR lower(p.category)=lower($6)) AND ($7='ALL' OR p.status=$7) AND ($8='ALL' OR p.priority=$8) AND ($9='' OR strpos(lower(p.funding_source),lower($9))>0) AND ($10::uuid IS NULL OR p.state_ref=$10) AND ($11::uuid IS NULL OR p.district_ref=$11) AND ($12::date IS NULL OR p.planned_start>=$12) AND ($13::date IS NULL OR p.planned_end<=$13) AND ($14::uuid IS NULL OR p.owner_account_ref=$14)";
+   const page=await tx.query("SELECT "+projection+joins+" WHERE "+scope+filters+" ORDER BY p.updated_at DESC,p.id DESC LIMIT $15 OFFSET $16",[...values,exporting?501:26,offset]);
    const items=page.rows.slice(0,exporting?500:25);
    if(exporting){await this.auditExport(tx,a,"PROJECTS",mine,items.length,query);const columns=["code","title","category","status","priority","owner","branch","state","district","location","fundingSource","plannedStart","plannedEnd","plannedBudgetMinor"];return {csv:[columns,...items.map(row=>columns.map(c=>row[c]))].map(row=>row.map(csvCell).join(",")).join("\r\n"),rows:items.length,hasMore:page.rows.length>500};}
    const counts=(await tx.query("SELECT count(*)::integer AS total,count(*) FILTER(WHERE p.status='ACTIVE')::integer AS active,count(*) FILTER(WHERE p.status='ON_HOLD')::integer AS hold,count(*) FILTER(WHERE p.status='COMPLETED')::integer AS completed,count(*) FILTER(WHERE p.status='CANCELLED')::integer AS cancelled,count(*) FILTER(WHERE p.status IN('DRAFT','PLANNED'))::integer AS planned,COALESCE(sum(p.planned_budget_minor),0)::text AS \"plannedBudgetMinor\""+joins+" WHERE "+scope+filters,values)).rows[0];
    const categories=(await tx.query("SELECT p.category AS label,count(*)::integer AS count"+joins+" WHERE "+scope+filters+" GROUP BY p.category ORDER BY count DESC,label LIMIT 8",values)).rows;
    const recent=(await tx.query("SELECT p.title,e.action,e.resulting_status AS status,e.occurred_at AS at"+joins+" JOIN project_event e ON e.root_realm_id=p.root_realm_id AND e.project_id=p.id WHERE "+scope+filters+" ORDER BY e.occurred_at DESC,e.id DESC LIMIT 5",values)).rows;
+   const owners=(await tx.query("SELECT DISTINCT a.id AS value,a.display_name AS label"+joins+" WHERE "+scope+" ORDER BY a.display_name,a.id LIMIT 200",this.scopeParams(a,s))).rows;
    const finance=await this.budgetOverview(tx,a,s,mine,null);
-   return {items,counts,categories,recent,finance,offset,hasMore:page.rows.length>25};
+   return {items,counts,categories,recent,finance,filterOptions:{owners},offset,hasMore:page.rows.length>25};
  }
  async detail(token:string,id:string){
   const target=ref(id);
