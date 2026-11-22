@@ -22,6 +22,7 @@ function destination(parts:string[],method:string):string|null{
  if(parts.length===3&&parts[0]==="applications"&&UUID.test(parts[1])&&parts[2]==="fee"&&method==="GET")
   return "/api/v1/membership/applications/"+parts[1]+"/fee";
  if(route==="me"&&method==="GET")return "/api/v1/membership/me";
+ if(route==="me/history"&&method==="GET")return "/api/v1/membership/me/history";
  if(route==="documents/intents"&&method==="POST")return "/api/documents/membership/intents";
  if(parts.length===3&&parts[0]==="documents"&&parts[1]==="intents"&&UUID.test(parts[2])&&method==="GET")return "/api/documents/membership/intents/"+parts[2];
  if(parts.length===4&&parts[0]==="documents"&&parts[1]==="intents"&&UUID.test(parts[2])&&parts[3]==="confirm"&&method==="POST")return "/api/documents/membership/intents/"+parts[2]+"/confirm";
