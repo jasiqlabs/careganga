@@ -45,8 +45,9 @@ export class CampaignDraftsService{
  }
  private async eligibleDraft(tx:PoolClient,a:Actor,v:CampaignDraft,existing?:CampaignRow){
   const p=v.project;
-  if(v.media.fileRef||v.media.supportingFileRefs.length){
+  if(v.media.coverRef||v.media.fileRef||v.media.supportingFileRefs.length){
    if(!existing)throw invalid("Save the campaign draft before uploading private files.");
+   if(v.media.coverRef)await this.requireMediaProof(tx,a,existing.id,existing.current_revision,v.media.coverRef,"COVER");
    if(v.media.fileRef)await this.requireMediaProof(tx,a,existing.id,existing.current_revision,v.media.fileRef,"BANNER");
    for(const fileRef of v.media.supportingFileRefs)
     await this.requireMediaProof(tx,a,existing.id,existing.current_revision,fileRef,"DOCUMENT");
@@ -101,7 +102,7 @@ export class CampaignDraftsService{
  }
  /** Only a genuinely CLEAN_VERIFIED original CG19 file owned by this same
   * campaign can be frozen into the next immutable campaign revision. */
- private async requireMediaProof(tx:PoolClient,a:Actor,campaignId:string,revision:number,fileRef:string,kind:"BANNER"|"DOCUMENT"){
+ private async requireMediaProof(tx:PoolClient,a:Actor,campaignId:string,revision:number,fileRef:string,kind:"COVER"|"BANNER"|"DOCUMENT"){
   const valid=await tx.query(`SELECT 1 FROM cg19_stored_file f
    JOIN cg19_upload_intent i ON i.id=f.upload_intent_id AND i.realm_id=f.realm_id
    WHERE f.realm_id=$1 AND f.campaign_id=$2 AND f.id=$3
@@ -110,7 +111,7 @@ export class CampaignDraftsService{
     AND f.scan_status='CLEAN_VERIFIED' AND f.revoked_at IS NULL
     AND i.owner_kind='CG07_CAMPAIGN' AND i.campaign_id=$2
     AND i.status='VALIDATED' AND i.campaign_media_rights_confirmed
-    AND i.classification=CASE $5 WHEN 'BANNER' THEN 'CAMPAIGN_BANNER' ELSE 'CAMPAIGN_DOCUMENT' END
+    AND i.classification=CASE $5 WHEN 'COVER' THEN 'CAMPAIGN_COVER' WHEN 'BANNER' THEN 'CAMPAIGN_BANNER' ELSE 'CAMPAIGN_DOCUMENT' END
    FOR SHARE OF f,i`,[a.realmId,campaignId,fileRef,revision,kind]);
   if(!valid.rowCount)throw invalid("Campaign image is not currently verified and consented. Upload a valid private banner or remove it.");
  }
@@ -236,6 +237,10 @@ export class CampaignDraftsService{
   if(!r||r.goal_minor===null||BigInt(r.goal_minor)<1n||!r.start_at||!r.end_at||
     r.end_at<today||!r.basic?.summary)
    throw invalid("Complete the campaign title, description, fundraising target and valid campaign period before review.");
+  if(r.media?.coverRef){
+   if(typeof r.media.coverRef!=="string")throw invalid("Campaign cover proof is invalid.");
+   await this.requireMediaProof(tx,a,c.id,c.current_revision,r.media.coverRef,"COVER");
+  }
   if(r.media?.fileRef){
    if(typeof r.media.fileRef!=="string")throw invalid("Campaign banner proof is invalid.");
    await this.requireMediaProof(tx,a,c.id,c.current_revision,r.media.fileRef,"BANNER");
