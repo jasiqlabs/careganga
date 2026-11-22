@@ -8,7 +8,9 @@ export type HrApplicationSnapshot={id:string;root_realm_id:string;revision_no:nu
  legal_name:string;designation:string;employment_type:string;
  proposed_branch_ref:string;department_ref:string|null;applicant_account_ref:string|null;
  proposed_manager_employee_ref:string|null;proposed_role_ref:string|null;
- hire_date:Date|string;created_by:string;state:string};
+ hire_date:Date|string;created_by:string;state:string;
+ // Optional solely for historical revisions created before the version pin was introduced.
+ private_record_version?:number;private_payload_digest?:string|null};
 export type HrFrozenSource={applicationRef:string;revisionRef:string;
  revisionNo:number;digest:string;proposerRef:string;source:HrApplicationSnapshot;
  files:readonly {fileRef:string;fileVersion:number;classification:string}[]};
@@ -53,6 +55,18 @@ export class HrEnrollmentSourceFacade{
    throw new ForbiddenException("The employee branch is no longer assigned to your account");
   return app;
  }
+ /** No personal plaintext is returned. The application row must already be locked
+  * by the submitting/current-revision caller; private edits lock application first. */
+ async privatePin(tx:PoolClient,realm:string,applicationRef:string){
+  const q=await tx.query<{record_version:number;payload_digest:string}>(
+   "SELECT record_version,payload_digest FROM hr_application_private "+
+   "WHERE root_realm_id=$1 AND application_id=$2 FOR SHARE",[realm,applicationRef]);
+  const row=q.rows[0];
+  if(row&&(!Number.isSafeInteger(row.record_version)||row.record_version<1||
+    !/^[a-f0-9]{64}$/.test(row.payload_digest)))
+   throw new ConflictException("The protected employee revision cannot be verified");
+  return {private_record_version:row?.record_version??0,private_payload_digest:row?.payload_digest??null};
+ }
  async frozen(tx:PoolClient,realm:string,revisionRef:string,revisionNo:number,
   digest:string,requireCurrent=true):Promise<HrFrozenSource>{
   if(!ID.test(revisionRef)||!Number.isSafeInteger(revisionNo)||revisionNo<1||
@@ -81,6 +95,12 @@ export class HrEnrollmentSourceFacade{
   if(!snap||typeof snap!=="object"||snap.id!==source.application_id||
      snap.root_realm_id!==realm||snap.revision_no!==revisionNo)
     throw new ConflictException("The original employee source no longer matches");
+  if(requireCurrent&&("private_record_version" in snap||"private_payload_digest" in snap)){
+   const pin=await this.privatePin(tx,realm,source.application_id);
+   if(snap.private_record_version!==pin.private_record_version||
+      snap.private_payload_digest!==pin.private_payload_digest)
+    throw new ConflictException("The protected employee revision cannot be verified");
+  }
   return {applicationRef:source.application_id,revisionRef,
     revisionNo,digest,proposerRef:source.submitted_by,
     source:snap,files:source.private_file_versions};
