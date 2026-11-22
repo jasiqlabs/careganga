@@ -41,7 +41,13 @@ export function NativeProjectsWorkspace({token,onExpired,canManage,canExport,can
  useEffect(()=>{let live=true;setDistricts([]);if(f.stateRef)void api<Option[]>("/geography?"+new URLSearchParams({stateRef:f.stateRef})).then(v=>{if(live)setDistricts(v);}).catch(e=>{if(live)setError(e.message);});return()=>{live=false;};},[token,f.stateRef]);
  useEffect(()=>{if(!mode||mode==="status")return;let live=true;setOptions(null);setOptsBusy(true);void api<Options>("/options?"+new URLSearchParams({branchRef:draft.branchRef,stateRef:draft.stateRef,q:ownerSearch})).then(v=>{if(live)setOptions(v);}).catch(e=>{if(live)setFormError(e.message);}).finally(()=>{if(live)setOptsBusy(false);});return()=>{live=false;};},[token,mode,draft.branchRef,draft.stateRef,ownerSearch]);
  useEffect(()=>{setLastSynced(null);setDetail(null);},[token]);
- useEffect(()=>{const sub=AppState.addEventListener("change",s=>{if(s==="active"&&!running.current&&!command.current){setData(null);setDetail(null);setEpoch(v=>v+1);}});return()=>sub.remove();},[token]);
+ useEffect(()=>{const sub=AppState.addEventListener("change",s=>{
+  if(s!=="active"||running.current||command.current)return;
+  setData(null);setEpoch(v=>v+1);
+  // Returning from the system image picker must not destroy the active draft.
+  if(mode||!detail)return;
+  const n=++detailSeq.current;void api<Detail>("/"+detail.ref).then(v=>{if(n===detailSeq.current)setDetail(v);}).catch(e=>{if(n===detailSeq.current){setDetail(null);setPendingCover(null);discardCover();setError(e instanceof Error?e.message:"Current project access could not be confirmed.");}});
+ });return()=>sub.remove();},[token,mode,detail?.ref,detail?.version]);
  const filter=(k:keyof typeof f,v:string)=>setF(x=>({...x,[k]:v,...(k==="stateRef"?{districtRef:""}:{})}));
  const change=(k:keyof Draft,v:string)=>setDraft(x=>({...x,[k]:v,...(k==="stateRef"?{districtRef:""}:k==="branchRef"?{ownerRef:""}:{})}));
  const closeDetail=()=>{setPendingCover(null);discardCover();detailSeq.current++;setDetail(null);setDetailBusy(false);};
