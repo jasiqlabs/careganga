@@ -286,21 +286,21 @@ export class MemberPackService{
  async verify(rawToken:string){
   if(!/^CGV-[A-F0-9]{24}$/.test(rawToken))return {valid:false,status:"NOT_VALID"};
   const digest=hash(rawToken);
-  const q=await this.db.query<{realm:string;id:string;source_digest:string}>([
-   'SELECT p.root_realm_id AS realm,p.id,p.source_digest FROM cg19_member_pack p',
-   'JOIN member m ON m.root_realm_id=p.root_realm_id AND m.id=p.member_id',
-   'JOIN membership_term t ON t.root_realm_id=p.root_realm_id AND t.id=p.term_id AND t.member_id=m.id',
-   'JOIN cg19_member_brand_config b ON b.root_realm_id=p.root_realm_id AND b.version=p.brand_version',
-   "WHERE p.qr_token_digest=$1 AND p.state='ISSUED' AND m.status='ACTIVE' AND b.status='APPROVED'",
-   "AND t.starts_on<=(now() AT TIME ZONE 'Asia/Kolkata')::date",
-   "AND (t.expires_on IS NULL OR t.expires_on>(now() AT TIME ZONE 'Asia/Kolkata')::date)",
-   "AND NOT EXISTS(SELECT 1 FROM membership_term newer WHERE newer.root_realm_id=t.root_realm_id AND newer.member_id=t.member_id AND newer.starts_on>t.starts_on AND newer.starts_on<=(now() AT TIME ZONE 'Asia/Kolkata')::date)",
-   "AND (SELECT count(*) FROM cg19_member_pack_document d WHERE d.root_realm_id=p.root_realm_id AND d.pack_id=p.id AND d.state='ISSUED')=3",
-   'LIMIT 1'
-  ].join(" "),[digest]);
-  const p=q.rows[0];
-  if(!p)return {valid:false,status:"NOT_VALID"};
-  try{if(makeToken(p.realm,p.id,p.source_digest)!==rawToken)return {valid:false,status:"NOT_VALID"};}catch{return {valid:false,status:"NOT_VALID"};}
-  return {valid:true,status:"ACTIVE"};
+  try{
+   const value=await this.transaction(async tx=>{
+    const p=(await tx.query<Pack>(
+     "SELECT * FROM cg19_member_pack WHERE qr_token_digest=$1 AND state='ISSUED' LIMIT 1",
+     [digest])).rows[0];
+    if(!p||makeToken(p.root_realm_id,p.id,p.source_digest)!==rawToken)return false;
+    // Current source checks include the genuine current term, protected approval,
+    // original verified fee and absence of a verified refund, plus active branding.
+    await this.checkCurrent(tx,p);
+    const docs=(await tx.query<{count:string}>(
+     "SELECT count(*)::text AS count FROM cg19_member_pack_document WHERE root_realm_id=$1 AND pack_id=$2 AND state='ISSUED'",
+     [p.root_realm_id,p.id])).rows[0];
+    return Number(docs?.count)===3;
+   });
+   return value?{valid:true,status:"ACTIVE"}:{valid:false,status:"NOT_VALID"};
+  }catch{return {valid:false,status:"NOT_VALID"};}
  }
 }
