@@ -69,13 +69,13 @@ export class MembershipRosterService{
   const rs=await tx.query<Row>("SELECT "+cols+joins+where+extra+order,exporting?args:[...args,f.at,f.id]);
   const rows=rs.rows.slice(0,exporting?501:25),last=rows.at(-1);
   const nextCursor=!exporting&&rs.rows.length>25&&last?Buffer.from(JSON.stringify({at:last.createdAt,id:last.ref})).toString("base64url"):null;
-  return {rows,nextCursor,hasMore:rs.rows.length>25&&!exporting};
+  return {rows,nextCursor,hasMore:rs.rows.length>25&&!exporting,branchOptions:scope.branches.map(({value,label})=>({value,label}))};
  }
  async list(token:string,raw:unknown){
   const filter=read(raw);
   return this.run(token,"membership.members.view",async(tx,a)=>{
    const page=await this.rows(tx,a,filter,false);
-   return {items:page.rows.map(({createdAt,...r})=>r),nextCursor:page.nextCursor,hasMore:page.hasMore};
+   return {items:page.rows.map(({createdAt,...r})=>r),nextCursor:page.nextCursor,hasMore:page.hasMore,branchOptions:page.branchOptions};
   },true);
  }
  async export(token:string,raw:unknown){
