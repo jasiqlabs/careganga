@@ -106,6 +106,56 @@ export class HrPrivateDetailService{
   try{await this.identity.assertCurrent(tx,actor,"hr.changes.manage");return true;}
   catch(e){if(e instanceof ForbiddenException)return false;throw e;}
  }
+ /** B20 restricted upcoming birthdays: no stored plaintext dates, no public projection.
+  * An explicit dashboard read processes only one bounded page and audits every
+  * inspected private record. Birthday year/other PII never crosses the API. */
+ async birthdays(token:string,offsetInput?:string){
+  const actor=await this.sessions.requireAction(token,"hr.employees.private.view");
+  await this.sessions.requireAction(token,"hr.employees.view");
+  await this.sessions.requireAction(token,"hr.applications.view");
+  const offset=Number(offsetInput??0);
+  if(!Number.isSafeInteger(offset)||offset<0||offset>10000)throw new BadRequestException("Choose a valid birthdays page");
+  const tx=await this.db.connect();
+  try{
+   await tx.query("BEGIN");
+   for(const action of ["hr.employees.private.view","hr.employees.view","hr.applications.view"] as const)await this.identity.assertCurrent(tx,actor,action);
+   const q=await tx.query<Row&{application_id:string;legal_name:string;today:string}>(`
+    WITH rights AS (SELECT EXISTS(
+     SELECT 1 FROM account_role ar JOIN role r ON r.id=ar.role_id AND r.realm_id=ar.realm_id AND r.active
+     LEFT JOIN role_grant g ON g.role_id=r.id AND g.capability_key='foundation.branches.admin'
+     WHERE ar.realm_id=$1 AND ar.account_id=$2 AND ar.revoked_at IS NULL AND (r.is_protected OR g.capability_key IS NOT NULL)) AS full_access)
+    SELECT p.payload_ciphertext,p.payload_nonce,p.payload_tag,p.payload_digest,p.record_version,
+      app.id AS application_id,app.legal_name,to_char(CURRENT_DATE,'YYYY-MM-DD') AS today
+    FROM hr_employee e JOIN hr_employee_application app ON app.id=e.application_id AND app.root_realm_id=e.root_realm_id
+    JOIN hr_application_private p ON p.application_id=app.id AND p.root_realm_id=app.root_realm_id
+    JOIN hr_employment_assignment a ON a.employee_id=e.id AND a.root_realm_id=e.root_realm_id AND a.valid_from<=CURRENT_DATE AND (a.valid_to IS NULL OR a.valid_to>CURRENT_DATE)
+    JOIN branch current_branch ON current_branch.id=a.branch_ref AND current_branch.root_realm_id=a.root_realm_id AND current_branch.status='ACTIVE'
+    JOIN branch origin_branch ON origin_branch.id=app.proposed_branch_ref AND origin_branch.root_realm_id=app.root_realm_id AND origin_branch.status='ACTIVE'
+    CROSS JOIN rights
+    WHERE e.root_realm_id=$1 AND e.status IN('ACTIVE','PROBATION')
+      AND (rights.full_access OR current_branch.manager_account_ref=$2)
+      AND (rights.full_access OR origin_branch.manager_account_ref=$2)
+    ORDER BY e.id LIMIT 251 OFFSET $3 FOR SHARE OF app,p`,[actor.realmId,actor.accountId,offset]);
+   const page=q.rows.slice(0,250);
+   const items:{name:string;date:string}[]=[];
+   for(const row of page){
+    const birth=decrypt(row,actor.realmId,row.application_id).dateOfBirth;
+    if(!birth)continue;
+    const start=new Date(row.today+"T00:00:00Z");
+    for(let day=0;day<30;day++){
+     const next=new Date(start.getTime()+day*86400000).toISOString().slice(0,10);
+     if(next.slice(5)===birth.slice(5)){items.push({name:row.legal_name,date:next});break;}
+    }
+   }
+   if(page.length)await tx.query(`
+    INSERT INTO hr_private_access_audit(root_realm_id,application_id,actor_ref,event_type,record_version)
+    SELECT $1,p.application_id,$2,'PRIVATE_READ',p.record_version
+    FROM unnest($3::uuid[],$4::integer[]) AS p(application_id,record_version)`,
+    [actor.realmId,actor.accountId,page.map(x=>x.application_id),page.map(x=>x.record_version)]);
+   await tx.query("COMMIT");
+   return {items:items.sort((x,y)=>x.date.localeCompare(y.date)||x.name.localeCompare(y.name)),offset,hasMore:q.rows.length>250};
+  }catch(e){await tx.query("ROLLBACK");throw e;}finally{tx.release();}
+ }
  async read(token:string,applicationInput:string){
   const actor=await this.sessions.requireAction(token,"hr.employees.private.view");
   const ref=id(applicationInput),tx=await this.db.connect();
