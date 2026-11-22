@@ -31,7 +31,7 @@ export default async function VolunteersPage(){
     canExport={canRoster&&actions.includes("volunteers.export")}
     canConfigure={canReview&&actions.includes("approvals.process.manage")}
     canIssueCards={canRoster&&actions.includes("volunteers.documents.issue")}
-    canReimburse={canRoster&&["finance.claims.create","finance.claims.view","documents.files.view"].every(k=>actions.includes(k))}/></main>
+    canReimburse={canRoster&&["finance.claims.create","finance.claims.view","documents.files.view","documents.files.manage"].every(k=>actions.includes(k))}/></main>
   </div>;
  }catch(e){
   if(e&&typeof e==="object"&&"digest" in e&&typeof e.digest==="string"&&e.digest.startsWith("NEXT_REDIRECT"))throw e;
