@@ -84,6 +84,23 @@ export class HrDocumentSourceFacade{
    ORDER BY app.legal_name,e.id LIMIT 51`,[actor.realmId,actor.accountId,search,kind]);
   return {items:q.rows.slice(0,50),hasMore:q.rows.length>50};
  }
+ /** Only the immutable portrait selected in the actually approved enrollment revision.
+  * No public-media fallback or editable draft file may enter an employee card. */
+ async cardPortrait(tx:PoolClient,realm:string,employee:string){
+  const q=await tx.query<{sha256:string;mime:string;object_key:string;object_version:string;size_bytes:string}>(`
+   SELECT f.verified_sha256 AS sha256,f.original_mime AS mime,f.object_key,f.object_version,f.verified_size_bytes::text AS size_bytes
+   FROM hr_employee e JOIN hr_employee_application a ON a.root_realm_id=e.root_realm_id AND a.id=e.application_id
+   JOIN hr_application_revision v ON v.root_realm_id=a.root_realm_id AND v.application_id=a.id AND v.revision_no=a.revision_no AND v.source_digest=a.submitted_digest AND v.cg03_case_ref=a.cg03_case_ref
+   JOIN hr_application_proof p ON p.root_realm_id=v.root_realm_id AND p.application_id=v.application_id AND p.revision_no=v.revision_no AND p.classification='HR_PORTRAIT'
+   JOIN cg19_stored_file f ON f.realm_id=p.root_realm_id AND f.id=p.file_ref AND f.revision=p.file_version
+     AND f.hr_application_id=p.application_id AND f.hr_source_version=p.revision_no
+   JOIN cg19_upload_intent i ON i.realm_id=f.realm_id AND i.id=f.upload_intent_id AND i.classification='HR_PORTRAIT'
+   WHERE e.root_realm_id=$1 AND e.id=$2 AND f.owner_kind='CG10_DRAFT' AND f.scan_status='CLEAN_VERIFIED' AND f.revoked_at IS NULL
+     AND i.status='VALIDATED' AND f.original_mime IN('image/jpeg','image/png') AND f.verified_size_bytes BETWEEN 1 AND 10485760
+   FOR SHARE OF e,a,v,p,f,i`,[realm,employee]);
+  if(q.rows.length!==1)throw new ConflictException("A single approved JPEG or PNG employee portrait is required for the ID card");
+  return q.rows[0];
+ }
  async template(tx:PoolClient,realm:string,x:Input){
   const q=await tx.query<Template>("SELECT id,version,title,body,content_sha256 FROM cg19_document_template WHERE realm_id=$1 AND id=$2 AND version=$3 AND template_kind=$4 AND status='APPROVED' FOR SHARE",[realm,x.templateId,x.templateVersion,"HR_"+x.kind]);
   if(!q.rows[0])throw new ConflictException("The original approved template is unavailable");
@@ -95,9 +112,10 @@ export class HrDocumentSourceFacade{
   if(x.issueDate>s.today||x.expiryDate&&x.expiryDate<=s.today)throw new BadRequestException("Choose a current issue date and future card expiry");
   const previous=(await tx.query<HrDocumentRow>("SELECT * FROM hr_document_request WHERE root_realm_id=$1 AND created_by=$2 AND request_key=$3",[actor.realmId,actor.accountId,x.requestKey])).rows[0];
   if(previous){if(previous.request_digest!==requestDigest)throw new ConflictException("The original request key belongs to different document details");return this.summary(previous);}
+  const portrait=x.kind==="EMPLOYEE_ID"?await this.cardPortrait(tx,actor.realmId,s.employee_id!):null;
   const snapshot={kind:x.kind,subjectReference:x.subjectReference,recipient:s.recipient,designation:s.designation,branch:s.branch,department:s.department,
    hireDate:s.hire_date,lastWorkingDate:s.last_working_date,issueDate:x.issueDate,expiryDate:x.expiryDate,templateVersion:t.version,templateHash:t.content_sha256,
-   salaryStatus:"NOT_APPLICABLE",sourceVersion:s.employee_version??s.application_revision_no,assignmentVersion:s.assignment_version};
+   salaryStatus:"NOT_APPLICABLE",sourceVersion:s.employee_version??s.application_revision_no,assignmentVersion:s.assignment_version,...(portrait?{portraitSha256:portrait.sha256}:{})};
   const sourceDigest=sha([s.employee_id,s.application_id,s.application_revision_id,s.assignment_id,s.exit_change_id,t.id,snapshot]);
   const q=await tx.query<HrDocumentRow>(`INSERT INTO hr_document_request(root_realm_id,kind,employee_id,application_id,application_revision_id,application_revision_no,application_source_digest,
    assignment_id,assignment_version,employee_version,exit_change_id,source_branch_ref,template_id,template_version,issue_date,expiry_date,source_snapshot,source_digest,request_key,request_digest,created_by)
@@ -142,11 +160,12 @@ export class HrDocumentSourceFacade{
   const s=await this.subject(tx,actor,row.kind,snapshot.subjectReference);
   if(typeof snapshot.expiryDate==="string"&&snapshot.expiryDate<=s.today)throw new ConflictException("Employee card expiry has passed; create a new request");
   const t=await this.template(tx,actor.realmId,{kind:row.kind,templateId:row.template_id,templateVersion:row.template_version,subjectReference:snapshot.subjectReference,issueDate:String(snapshot.issueDate),expiryDate:typeof snapshot.expiryDate==="string"?snapshot.expiryDate:null,requestKey:row.id});
+  const portrait=row.kind==="EMPLOYEE_ID"?await this.cardPortrait(tx,actor.realmId,s.employee_id!):null;
   if(s.employee_id!==row.employee_id||s.application_id!==row.application_id||s.branch_ref!==row.source_branch_ref||
    sha([s.employee_id,s.application_id,s.application_revision_id,s.assignment_id,s.exit_change_id,t.id,{
     kind:row.kind,subjectReference:snapshot.subjectReference,recipient:s.recipient,designation:s.designation,branch:s.branch,department:s.department,
     hireDate:s.hire_date,lastWorkingDate:s.last_working_date,issueDate:snapshot.issueDate,expiryDate:snapshot.expiryDate,templateVersion:t.version,templateHash:t.content_sha256,
-    salaryStatus:"NOT_APPLICABLE",sourceVersion:s.employee_version??s.application_revision_no,assignmentVersion:s.assignment_version}])!==row.source_digest)
+    salaryStatus:"NOT_APPLICABLE",sourceVersion:s.employee_version??s.application_revision_no,assignmentVersion:s.assignment_version,...(portrait?{portraitSha256:portrait.sha256}:{})}])!==row.source_digest)
    throw new ConflictException("The original employee, assignment or approved template changed");
   return s;
  }

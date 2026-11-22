@@ -146,7 +146,20 @@ export class HrIssuedDocumentService{
     }catch{/* The original object key is create-only. Never allocate another key. */}
    }
    if(!stored){
-    const bytes=await renderHrDocument({snapshot:d.source_snapshot,title:template.title,body:template.body,reference:String(d.source_snapshot.subjectReference),sourceDigest:d.source_sha256,documentRef:d.id,issueRevision:d.issue_revision,createdAt:d.created_at,qr});
+    let portrait:{bytes:Buffer;mime:string}|undefined;
+    if(qr){
+     const proof=await this.run(async tx=>{
+      const {row}=await this.docAccess(tx,a,d.id);
+      await this.approvals.approvedSource(tx,a,row);
+      const f=await this.source.cardPortrait(tx,a.realmId,row.employee_id!);
+      if(f.sha256!==d.source_snapshot.portraitSha256)throw Error("Original portrait proof changed");
+      return f;
+     });
+     const bytes=await this.objects.readVerifiedPrivateObject({objectKey:proof.object_key,objectVersion:proof.object_version,maxBytes:Number(proof.size_bytes)});
+     if(bytes.length!==Number(proof.size_bytes)||hash(bytes)!==proof.sha256)throw Error("Original portrait bytes unavailable");
+     portrait={bytes,mime:proof.mime};
+    }
+    const bytes=await renderHrDocument({snapshot:d.source_snapshot,title:template.title,body:template.body,reference:String(d.source_snapshot.subjectReference),sourceDigest:d.source_sha256,documentRef:d.id,issueRevision:d.issue_revision,createdAt:d.created_at,qr,portrait});
     const checksum=hash(bytes);stored=await this.objects.writeVerifiedPrivateDocument({objectKey:d.object_key,bytes,sha256:checksum});
     if(stored.sha256!==checksum)throw Error("Original bytes not verified");
    }

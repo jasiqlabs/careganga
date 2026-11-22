@@ -22,7 +22,7 @@ function wrap(value:string,font:PDFFont,size:number,width:number){
  }
  return lines;
 }
-export async function renderHrDocument(input:{snapshot:Record<string,unknown>;title:string;body:string;reference:string;sourceDigest:string;documentRef:string;issueRevision:number;createdAt:Date;qr:string|null}){
+export async function renderHrDocument(input:{snapshot:Record<string,unknown>;title:string;body:string;reference:string;sourceDigest:string;documentRef:string;issueRevision:number;createdAt:Date;qr:string|null;portrait?:{bytes:Buffer;mime:string}}){
  const path=process.env.CG19_PDF_FONT_PATH;
  if(!path||!path.startsWith("/")||path.includes(".."))throw new ServiceUnavailableException("The letter font is unavailable");
  const bytes=await readFile(path);
@@ -42,15 +42,20 @@ export async function renderHrDocument(input:{snapshot:Record<string,unknown>;ti
   return y;
  };
  if(v.kind==="EMPLOYEE_ID"){
-  if(!input.qr)throw new ServiceUnavailableException("Card verification unavailable");
+  if(!input.qr||!input.portrait)throw new ServiceUnavailableException("Card verification or approved portrait unavailable");
   const front=pdf.addPage([242.65,153.07]),back=pdf.addPage([242.65,153.07]);
   for(const page of [front,back])page.drawRectangle({x:0,y:131,width:243,height:22,color:blue});
   front.drawText("CareGanga Foundation",{x:9,y:138,size:10,font,color:rgb(1,1,1)});
-  let y=112;y=print(front,fact("recipient"),10,y,11,221);
-  y=print(front,fact("designation")+" · "+fact("branch"),10,y,8,221);
-  y=print(front,"Employee: "+fact("subjectReference"),10,y,8,221);
-  y=print(front,"Expires: "+fact("expiryDate"),10,y,8,221);
-  print(front,"Version "+input.issueRevision,10,y,8,221);
+  const image=input.portrait.mime==="image/jpeg"?await pdf.embedJpg(input.portrait.bytes):
+   input.portrait.mime==="image/png"?await pdf.embedPng(input.portrait.bytes):null;
+  if(!image)throw new ServiceUnavailableException("Approved portrait format unavailable");
+  const photo=image.scaleToFit(58,78);
+  front.drawImage(image,{x:10+(58-photo.width)/2,y:38+(78-photo.height)/2,width:photo.width,height:photo.height});
+  let y=112;y=print(front,fact("recipient"),76,y,10,155);
+  y=print(front,fact("designation")+" · "+fact("branch"),76,y,8,155);
+  y=print(front,"Employee: "+fact("subjectReference"),76,y,8,155);
+  y=print(front,"Expires: "+fact("expiryDate"),76,y,8,155);
+  print(front,"Version "+input.issueRevision,76,y,8,155);
   back.drawText("Employee ID verification",{x:9,y:138,size:10,font,color:rgb(1,1,1)});
   const matrix=opaqueAppointmentQr(input.qr),unit=2.1,origin=9+4*unit,top=119-4*unit;
   for(let row=0;row<matrix.length;row++)for(let col=0;col<matrix.length;col++)if(matrix[row][col])
