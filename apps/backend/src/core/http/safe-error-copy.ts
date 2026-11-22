@@ -1,6 +1,11 @@
 /** Server-controlled allow-list: authorized overrides can change safe wording only,
  * never rules, status, field binding, redaction, or authentication behavior. */
 export const SAFE_MESSAGE_CATALOG:Readonly<Record<string,string>>=Object.freeze({
+      CG12_CATALOG_INVALID:"Check the item, supplier or store fields and try again.",
+      CG12_UNIT_INVALID:"Choose pieces, kilograms or liters with a valid quantity precision.",
+      CG12_QUANTITY_INVALID:"Enter a nonnegative threshold matching the selected unit precision.",
+      CG12_DUPLICATE_CODE:"That code is already in use. Refresh the catalog or choose another code.",
+      CG12_COMMAND_CHANGED:"This request was already used for different information. Refresh before making a new change.",
       CG10_PRIVATE_INVALID:"Check the optional personal information, date of birth, email, PIN, blood group, PAN, bank account, IFSC or UPI details. Leave fields not needed blank.",
       CG10_ENROLLMENT_EVIDENCE_CHANGED:"Choose the original submitted employee documents before retrying.",
       CG10_ENROLLMENT_PRIVATE_CHANGED:"The protected employee revision cannot be verified. Refresh the original application or ask HR to review it.",
