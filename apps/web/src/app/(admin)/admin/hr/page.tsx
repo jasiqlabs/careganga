@@ -57,7 +57,7 @@ export default async function FoundationHrPage(){
       Your current Foundation employment status and, if permitted, employee applications.
      </p>
     </header>
-    <HrWorkspaceNavigation canViewLeave={actions.includes("hr.leave.view")} canViewDashboard={actions.includes("hr.employees.view")} canAddEmployee={actions.includes("hr.applications.view")&&actions.includes("hr.applications.manage")} sections={[
+    <HrWorkspaceNavigation canViewBirthdays={actions.includes("hr.employees.private.view")&&actions.includes("hr.applications.view")} canViewLeave={actions.includes("hr.leave.view")} canViewDashboard={actions.includes("hr.employees.view")} canAddEmployee={actions.includes("hr.applications.view")&&actions.includes("hr.applications.manage")} sections={[
      {id:"profile",label:"My employment & allowances",content:<>    <HrMyProfile canViewAllowances={actions.includes("finance.claims.view")} canRequestAllowances={actions.includes("finance.claims.create")} canUploadAllowanceBill={actions.includes("documents.files.manage")&&actions.includes("documents.files.view")}/>
 </>},
      ...((actions.includes("hr.applications.view")||actions.includes("hr.employees.view")||(actions.includes("hr.employees.review")&&actions.includes("approvals.review")))?[{id:"employees",label:"Employees & enrollment",content:<>    {(actions.includes("hr.applications.view")||actions.includes("hr.employees.view"))&&
