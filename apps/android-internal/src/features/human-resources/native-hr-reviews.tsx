@@ -1,13 +1,15 @@
 import {careGangaTheme as hrTheme} from "../../../../../packages/design-tokens/src/index";
-import React,{useCallback,useEffect,useState} from "react";
+import React,{useCallback,useEffect,useRef,useState} from "react";
 import * as Crypto from "expo-crypto";
 import {File,Paths} from "expo-file-system";
-import {Pressable,StyleSheet,Text,TextInput,View} from "react-native";
+import {Modal,Pressable,ScrollView,StyleSheet,Text,TextInput,View} from "react-native";
 import {identityRequest} from "../identity-access/http-client";
 type Case={caseRef:string;reference:string;name:string;status:string;revision:number;canReview:boolean};
 type Detail={caseRef:string;reference:string;name:string;status:string;
- designation:string;employmentType:string;revision:number;canDecide:boolean;
+ designation:string;employmentType:string;revision:number;canDecide:boolean;canReadProof:boolean;
  evidence:{classification:string;verified:boolean}[]};
+const originalStatuses=[{key:"ALL",title:"All"},{key:"SUBMITTED",title:"Submitted"},{key:"IN_REVIEW",title:"In review"},{key:"PENDING_OWNER",title:"Approved — activation pending"},{key:"OWNER_COMPLETED",title:"Activated"},{key:"RETURNED",title:"Returned"},{key:"REJECTED",title:"Rejected"}];
+const stageLabel=(status:string)=>originalStatuses.find(x=>x.key===status)?.title??"Status unavailable";
 type Decision="APPROVE"|"RETURN"|"REJECT";
 async function api<T>(token:string,path:string,method="GET",body?:object):Promise<T>{
  const response=await identityRequest("/api/hr/reviews"+path,{
@@ -28,6 +30,8 @@ export function NativeHrReviews({token,canConfigure=false,onExpired}:{
  token:string;canConfigure?:boolean;onExpired:()=>void;
 }){
  const [cases,setCases]=useState<Case[]>([]);
+ const [filter,setFilter]=useState("ALL"),[offset,setOffset]=useState(0),[more,setMore]=useState(false);
+ const [uncertain,setUncertain]=useState(false);const read=useRef(0),running=useRef(false);
  const [selected,setSelected]=useState<Detail|null>(null);
  const [action,setAction]=useState<Decision>("APPROVE");
  const [password,setPassword]=useState("");
@@ -43,16 +47,16 @@ export function NativeHrReviews({token,canConfigure=false,onExpired}:{
   setError(e instanceof Error?e.message:"Original reviewer access cannot be confirmed.");
  },[onExpired]);
  const refresh=useCallback(async()=>{
-  setLoading(true);setError("");
+  const seq=++read.current;setLoading(true);setError("");setCases([]);setMore(false);
   try{
-   const response=await api<{items:Case[]}>(token,"?offset=0");
+   const response=await api<{items:Case[];hasMore:boolean}>(token,"?offset="+offset+"&status="+encodeURIComponent(filter));
    if(!response||!Array.isArray(response.items))
     throw Error("The Foundation employee review inbox cannot be verified.");
-   setCases(response.items);
-  }catch(e){setCases([]);failure(e);}
-  finally{setLoading(false);}
- },[token,failure]);
- useEffect(()=>{void refresh();},[refresh]);
+   if(seq===read.current){setCases(response.items);setMore(response.hasMore===true);}
+  }catch(e){if(seq===read.current)failure(e);}
+  finally{if(seq===read.current)setLoading(false);}
+ },[token,failure,offset,filter]);
+ useEffect(()=>{void refresh();return()=>{read.current++;};},[refresh]);
  const checkProcess=useCallback(async()=>{
   try{
    const result=await api<{configured:boolean}>(token,"/process");
@@ -75,17 +79,17 @@ export function NativeHrReviews({token,canConfigure=false,onExpired}:{
   finally{setConfiguring(false);}
  };
  const open=async(ref:string)=>{
-  setBusy(true);setError("");setNotice("");setPassword("");setKey(null);
+  if(running.current||uncertain)return;running.current=true;setBusy(true);setSelected(null);setError("");setNotice("");setPassword("");setRemarks("");setAction("APPROVE");setKey(null);
   try{
    const result=await api<Detail>(token,"/"+encodeURIComponent(ref));
    if(!result?.caseRef||!result.status)
     throw Error("Original employee review details are unavailable.");
    setSelected(result);
   }catch(e){setSelected(null);failure(e);}
-  finally{setBusy(false);}
+  finally{running.current=false;setBusy(false);}
  };
  const decide=async()=>{
-  if(!selected?.canDecide||!password||busy)return;
+  if(!selected?.canDecide||!password||busy||running.current)return;running.current=true;
   const id=key??Crypto.randomUUID();setKey(id);setBusy(true);setError("");setNotice("");
   try{
    const result=await api<{status:string}>(token,
@@ -96,13 +100,13 @@ export function NativeHrReviews({token,canConfigure=false,onExpired}:{
    setNotice(action==="APPROVE"?
     "Independent approval recorded. HR must separately complete activation.":
     action==="RETURN"?"Returned for HR correction.":"Enrollment rejected.");
-   setSelected(null);setPassword("");setRemarks("");setKey(null);
+   setSelected(null);setPassword("");setRemarks("");setKey(null);setUncertain(false);
    await refresh();
-  }catch(e){setPassword("");failure(e);}
-  finally{setBusy(false);}
+  }catch(e){setPassword("");setUncertain(true);failure(e);}
+  finally{running.current=false;setBusy(false);}
  };
  const preview=async(kind:string)=>{
-  if(!selected||busy)return;
+  if(!selected?.canReadProof||busy||uncertain)return;
   setBusy(true);setError("");
   let temporary:File|null=null;
   try{
@@ -163,20 +167,22 @@ export function NativeHrReviews({token,canConfigure=false,onExpired}:{
    </>}
   </View>}
   {button(loading?"Loading…":"Refresh original inbox",()=>void refresh(),loading||busy)}
+  <View style={styles.choices}>{originalStatuses.map(x=><Pressable key={x.key} disabled={busy||uncertain} accessibilityRole="button" accessibilityState={{selected:filter===x.key,disabled:busy||uncertain}} style={[styles.chip,filter===x.key&&styles.chipActive]} onPress={()=>{setFilter(x.key);setOffset(0);}}><Text style={filter===x.key?styles.chipActiveText:styles.chipText}>{x.title}</Text></Pressable>)}</View>
   {cases.length===0&&!loading&&<Text style={styles.hint}>No original review cases.</Text>}
   {cases.map(item=><View key={item.caseRef} style={styles.item}>
    <Text style={styles.label}>{item.name}</Text>
-   <Text style={styles.hint}>{item.reference} · {label(item.status)}</Text>
-   {button("View original review",()=>void open(item.caseRef),busy)}
+   <Text style={styles.hint}>{item.reference} · {stageLabel(item.status)}</Text>
+   {button("View original review",()=>void open(item.caseRef),busy||uncertain)}
   </View>)}
-  {selected&&<View style={styles.detail}>
+  <View style={styles.choices}>{offset>0&&button("Previous",()=>setOffset(v=>Math.max(0,v-25)),busy||uncertain||loading)}{more&&button("Next",()=>setOffset(v=>v+25),busy||uncertain||loading)}</View>
+  <Modal visible={!!selected} animationType="slide" onRequestClose={()=>{if(!busy&&!uncertain){setSelected(null);setPassword("");setKey(null);}}}><View style={{flex:1,backgroundColor:hrTheme.surface}}><ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={{padding:16,gap:10}}>{!!error&&<Text accessibilityRole="alert" style={styles.error}>{error}</Text>}{selected&&<View style={styles.detail}>
    <Text style={styles.heading}>{selected.name} — {selected.designation}</Text>
-   <Text style={styles.hint}>{selected.reference} · {label(selected.status)}</Text>
+   <Text style={styles.hint}>{selected.reference} · {stageLabel(selected.status)}</Text>
    <Text style={styles.label}>Scanner-verified source evidence</Text>
    {selected.evidence.map((e,i)=><View key={i} style={{gap:5}}>
     <Text style={styles.hint}>
      {label(e.classification)} · {e.verified?"Verified":"Not verified"}</Text>
-    {e.verified&&button("View original protected proof",
+    {e.verified&&selected.canReadProof&&button("View original protected proof",
       ()=>void preview(e.classification),busy)}
    </View>)}
    {selected.canDecide&&<>
@@ -184,27 +190,28 @@ export function NativeHrReviews({token,canConfigure=false,onExpired}:{
     <View style={styles.choices}>
      {(["APPROVE","RETURN","REJECT"] as Decision[]).map(a=>
       <Pressable key={a} accessibilityRole="button"
-       accessibilityState={{selected:action===a}}
+       disabled={busy||uncertain} accessibilityState={{selected:action===a,disabled:busy||uncertain}}
        style={[styles.chip,action===a&&styles.chipActive]}
        onPress={()=>{setAction(a);setKey(null);setPassword("");}}>
        <Text style={action===a?styles.chipActiveText:styles.chipText}>{label(a)}</Text>
       </Pressable>)}
     </View>
     <Text style={styles.label}>Remarks (optional)</Text>
-    <TextInput value={remarks} onChangeText={v=>{setRemarks(v);setKey(null);}}
+    <TextInput value={remarks} editable={!busy&&!uncertain} onChangeText={v=>{setRemarks(v);setKey(null);}}
      accessibilityLabel="Reviewer remarks" maxLength={500}
      style={[styles.input,{minHeight:80}]} multiline
      placeholder="Reason for decision"/>
     <Text style={styles.label}>Current Foundation password</Text>
-    <TextInput value={password} onChangeText={v=>{setPassword(v);setKey(null);}}
+    <TextInput value={password} editable={!busy} onChangeText={setPassword}
      accessibilityLabel="Current password to confirm independent review"
      secureTextEntry autoCapitalize="none" autoCorrect={false}
      placeholder="Enter password" style={styles.input}/>
+    {uncertain&&<Text accessibilityRole="alert" style={styles.error}>The previous result is unconfirmed. Re-enter your password and retry the same decision.</Text>}
     {button(busy?"Verifying decision…":"Confirm independent decision",()=>void decide(),
      busy||!password,true)}
    </>}
-   {button("Close review",()=>{setSelected(null);setPassword("");setKey(null);},busy)}
-  </View>}
+   {button("Close review",()=>{setSelected(null);setPassword("");setKey(null);},busy||uncertain)}
+  </View>}</ScrollView></View></Modal>
  </View>;
 }
 const styles=StyleSheet.create({
