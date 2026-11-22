@@ -22,10 +22,12 @@ export function NativeVolunteerCard({token,onExpired}:{token:string;onExpired:()
  useEffect(()=>{void refresh();return()=>{seq.current++;};},[refresh]);
  useEffect(()=>{
   const removeFiles=()=>{for(const f of files.current)try{f.delete();}catch{}files.current=[];};
-  const sub=AppState.addEventListener("change",state=>{if(state!=="active"){seq.current++;setCards(null);removeFiles();}else void refresh();});
+  const sub=AppState.addEventListener("change",state=>{if(state!=="active"){seq.current++;setCards(null);setError("");removeFiles();}else void refresh();});
   return()=>{sub.remove();removeFiles();};
  },[refresh]);
- const download=(ref:string)=>{if(busy)return;setBusy(true);setError("");
+ const download=(ref:string)=>{if(busy)return;
+  const at=seq.current,current=()=>at===seq.current&&AppState.currentState==="active";
+  setBusy(true);setError("");
   void (async()=>{
    let local:File|null=null;
    try{
@@ -34,11 +36,13 @@ export function NativeVolunteerCard({token,onExpired}:{token:string;onExpired:()
     if(!r.ok){if(r.status===401)onExpired();throw Error("Official volunteer card is not currently available.");}
     if((r.headers.get("content-type")??"").split(";")[0].trim()!=="application/pdf")throw Error("Unexpected protected document content.");
     const bytes=await r.bytes();if(bytes.length<1||bytes.length>10485760)throw Error("Original issued PDF is unavailable.");
+    if(!current())return;
     local=new File(Paths.cache,"careganga-volunteer-"+Crypto.randomUUID()+".pdf");
     await local.write(bytes);files.current.push(local);
     if(!(await Sharing.isAvailableAsync()))throw Error("Private document viewing is unavailable.");
+    if(!current())return;
     await Sharing.shareAsync(local.uri,{mimeType:"application/pdf",dialogTitle:"My official CareGanga volunteer card"});
-   }catch(e){setError(e instanceof Error?e.message:"The official card download was not confirmed.");}
+   }catch(e){if(current())setError(e instanceof Error?e.message:"The official card download was not confirmed.");}
    finally{if(local){try{local.delete();}catch{}files.current=files.current.filter(f=>f.uri!==local!.uri);}setBusy(false);}
   })();
  };
