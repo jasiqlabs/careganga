@@ -92,7 +92,7 @@ export class InventoryCatalogService {
   const parsed=kind==="ITEM"?parseInventoryItem(body):kind==="SUPPLIER"?parseInventorySupplier(body):parseInventoryLocation(body);
   const digest=createHash("sha256").update(JSON.stringify({kind,ref,expected,status,parsed})).digest("hex");
   return this.run(token,"inventory.catalog.manage",async(tx,a)=>{
-   if(kind==="LOCATION")await this.store(tx,a,ref,false,true);else await this.requireScope(tx,a,null);
+   const location=kind==="LOCATION"?await this.store(tx,a,ref,false,true):null;if(!location)await this.requireScope(tx,a,null);
    const replay=await this.command(tx,a,kind,parsed.requestKey,digest);if(replay)return replay;
    let q;
    if(kind==="ITEM"){
@@ -104,6 +104,7 @@ export class InventoryCatalogService {
     q=await tx.query("UPDATE inventory_supplier SET legal_name=$3,display_name=$4,category=$5,status=$6,version=version+1,updated_at=now() WHERE root_realm_id=$1 AND id=$2 AND version=$7 AND supplier_code_norm=$8 RETURNING version",[a.realmId,ref,x.legalName,x.displayName,x.category,status,expected,x.code]);
    }else{
     const x=parsed as ReturnType<typeof parseInventoryLocation>;
+    if(location&&!await this.rootAdmin(tx,a)&&((x.receiptProofRequired!==undefined&&x.receiptProofRequired!==location.receipt_proof_required)||(x.deliveryProofRequired!==undefined&&x.deliveryProofRequired!==location.delivery_proof_required)||(x.adjustmentReviewRequired!==undefined&&x.adjustmentReviewRequired!==location.adjustment_review_required)))throw new ForbiddenException("Only Foundation administration may change warehouse evidence and review policies");
     q=await tx.query("UPDATE inventory_location SET label=$3,status=$4,receipt_proof_required=COALESCE($8::boolean,receipt_proof_required),delivery_proof_required=COALESCE($9::boolean,delivery_proof_required),adjustment_review_required=COALESCE($10::boolean,adjustment_review_required),version=version+1,updated_at=now() WHERE root_realm_id=$1 AND id=$2 AND version=$5 AND location_code_norm=$6 AND branch_ref IS NOT DISTINCT FROM $7::uuid RETURNING version",[a.realmId,ref,x.label,status,expected,x.code,x.branchRef,x.receiptProofRequired??null,x.deliveryProofRequired??null,x.adjustmentReviewRequired??null]);
    }
    if(!q.rows[0])throw stale();return this.audit(tx,a,kind,ref,parsed.requestKey,digest,q.rows[0].version);
@@ -204,6 +205,7 @@ export class InventoryCatalogService {
     row=(await tx.query<{id:string;version:number}>("INSERT INTO inventory_supplier(root_realm_id,supplier_code_norm,legal_name,display_name,category) VALUES($1,$2,$3,$4,$5) RETURNING id,version",[a.realmId,x.code,x.legalName,x.displayName,x.category])).rows[0];
    }else{
     const x=parsed as ReturnType<typeof parseInventoryLocation>;
+    if(!await this.rootAdmin(tx,a)&&(x.receiptProofRequired===true||x.deliveryProofRequired===true||x.adjustmentReviewRequired===false))throw new ForbiddenException("Only Foundation administration may change warehouse evidence and review policies");
     row=(await tx.query<{id:string;version:number}>("INSERT INTO inventory_location(root_realm_id,location_code_norm,label,branch_ref,scope_kind,receipt_proof_required,delivery_proof_required,adjustment_review_required) VALUES($1,$2,$3,$4,$5,$6,$7,$8) RETURNING id,version",[a.realmId,x.code,x.label,x.branchRef,x.branchRef?"BRANCH":"FOUNDATION",x.receiptProofRequired??false,x.deliveryProofRequired??false,x.adjustmentReviewRequired??true])).rows[0];
    }
    await tx.query("INSERT INTO inventory_audit(root_realm_id,actor_ref,source_kind,source_ref,event_key,payload_digest,result_version) VALUES($1,$2,$3,$4,$5,$6,$7)",[a.realmId,a.accountId,kind,row.id,parsed.requestKey,digest,row.version]);
