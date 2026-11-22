@@ -3,6 +3,7 @@ import {useCallback,useEffect,useRef,useState} from "react";
 import type {CG04VolunteerApplication,CG04VolunteerOptions,CG04VolunteerProfile} from "@careganga/api-contracts";
 import {CommunityAuth} from "../membership/community-auth";
 import {VolunteerEvidencePanel} from "./volunteer-evidence-panel";
+import {PublicVolunteerVerification} from "./public-volunteer-verification";
 
 type Form={
  firstName:string;lastName:string;dateOfBirth:string;gender:string;bloodGroup:string;
@@ -30,6 +31,7 @@ function toForm(a:CG04VolunteerApplication):Form{
   skills:a.skills.join(", "),experience:a.experience,referral:a.referral,consent:true};
 }
 export function VolunteerSelfService(){
+ const [tab,setTab]=useState<"APPLICATION"|"VERIFY">("APPLICATION");
  const [signed,setSigned]=useState<boolean|null>(null),[verified,setVerified]=useState(false),[loading,setLoading]=useState(true);
  const [apps,setApps]=useState<CG04VolunteerApplication[]>([]),[selected,setSelected]=useState<CG04VolunteerApplication|null>(null);
  const [profile,setProfile]=useState<CG04VolunteerProfile|null>(null),[options,setOptions]=useState<CG04VolunteerOptions|null>(null);
@@ -120,7 +122,11 @@ export function VolunteerSelfService(){
  return <section className="cg04-public cg04-volunteer" aria-label="Original Foundation volunteer enrolment">
   <div className="cg04-volunteer-hero"><small>VOLUNTEER WITH US</small><h1>Make a difference with CareGanga</h1>
    <p>Join the Foundation's approved volunteer opportunities. Your application and evidence remain private until independently reviewed.</p></div>
-  <div className="cg04-public-tabs"><strong>Application Form</strong><span>Verify Volunteer — official approved status only</span></div>
+  <div className="cg04-public-tabs" role="tablist" aria-label="Volunteer application and original issued-card verification">
+   <button type="button" role="tab" aria-selected={tab==="APPLICATION"} onClick={()=>setTab("APPLICATION")}>Application Form</button>
+   <button type="button" role="tab" aria-selected={tab==="VERIFY"} onClick={()=>setTab("VERIFY")}>Verify Volunteer</button>
+  </div>
+  {tab==="VERIFY"?<PublicVolunteerVerification/>:<div role="tabpanel" aria-label="Volunteer application">
   {error&&<p role="alert" className="cg04-error">{error}</p>}{note&&<p role="status">{note}</p>}
   {loading&&<p role="status">Confirming your original volunteer account…</p>}
   {!loading&&signed===false&&<CommunityAuth onSignedIn={async()=>{await refresh();}}/>}
@@ -174,5 +180,6 @@ export function VolunteerSelfService(){
     {selected.reviewStatus==="PENDING_OWNER"&&<button type="button" disabled={busy} className="cg04-primary" onClick={activate}>Confirm approved volunteer registration</button>}
    </div>}
   </>}
+ </div>}
  </section>;
 }
