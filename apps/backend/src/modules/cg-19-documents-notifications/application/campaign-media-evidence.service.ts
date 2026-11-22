@@ -102,7 +102,7 @@ export class CampaignMediaEvidenceService{
  async list(token:string,campaignRef:string){
   return this.run(token,false,async(tx,a)=>{
    const source=await this.source.guardMedia(tx,a,campaignRef,null,false);
-   const q=await tx.query("SELECT f.id AS \"fileRef\",f.revision AS \"fileVersion\",f.original_mime AS mime,f.verified_size_bytes::text AS size,f.created_at AS \"createdAt\" FROM cg19_stored_file f JOIN cg19_upload_intent i ON i.id=f.upload_intent_id AND i.realm_id=f.realm_id WHERE f.realm_id=$1 AND f.campaign_id=$2 AND f.proposal_revision<=$3 AND f.owner_kind='CG07_CAMPAIGN' AND f.scan_status='CLEAN_VERIFIED' AND f.revoked_at IS NULL AND i.owner_kind='CG07_CAMPAIGN' AND i.campaign_id=f.campaign_id AND i.campaign_media_rights_confirmed AND i.status='VALIDATED' ORDER BY f.created_at DESC,f.id DESC LIMIT 16",[a.realmId,source.id,source.version]);
+   const q=await tx.query("SELECT f.id AS \"fileRef\",f.revision AS \"fileVersion\",f.original_mime AS mime,i.classification AS classification,f.verified_size_bytes::text AS size,f.created_at AS \"createdAt\" FROM cg19_stored_file f JOIN cg19_upload_intent i ON i.id=f.upload_intent_id AND i.realm_id=f.realm_id WHERE f.realm_id=$1 AND f.campaign_id=$2 AND f.proposal_revision<=$3 AND f.owner_kind='CG07_CAMPAIGN' AND f.scan_status='CLEAN_VERIFIED' AND f.revoked_at IS NULL AND i.owner_kind='CG07_CAMPAIGN' AND i.campaign_id=f.campaign_id AND i.campaign_media_rights_confirmed AND i.status='VALIDATED' ORDER BY f.created_at DESC,f.id DESC LIMIT 16",[a.realmId,source.id,source.version]);
    return {files:q.rows,campaignVersion:source.sourceVersion,campaignRevision:source.version};
   });
  }
