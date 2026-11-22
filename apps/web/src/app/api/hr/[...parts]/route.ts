@@ -13,9 +13,9 @@ function allowed(parts:string[],method:string){
  if(parts.length===3&&parts[0]==="document-requests"&&doc.test(parts[1])&&["submit","issue"].includes(parts[2]))return method==="POST";
  if(parts.length===2&&parts[0]==="document-reviews"&&UUID.test(parts[1]))return method==="GET";
  if(parts.length===3&&parts[0]==="document-reviews"&&UUID.test(parts[1])&&parts[2]==="decide")return method==="POST";
- if(parts.length===3&&parts[0]==="issued-documents"&&UUID.test(parts[1])&&["reconcile","revoke","dispatch","file"].includes(parts[2]))return parts[2]==="file"?method==="GET":method==="POST";
+ if(parts.length===3&&parts[0]==="issued-documents"&&UUID.test(parts[1])&&["reconcile","revoke","dispatch","file","receipt-file"].includes(parts[2]))return ["file","receipt-file"].includes(parts[2])?method==="GET":method==="POST";
  if(parts.length===2&&parts[0]==="me"&&parts[1]==="documents")return method==="GET";
- if(parts.length===4&&parts[0]==="me"&&parts[1]==="documents"&&UUID.test(parts[2])&&["file","acknowledge","receipt-uploads"].includes(parts[3]))return parts[3]==="file"?method==="GET":method==="POST";
+ if(parts.length===4&&parts[0]==="me"&&parts[1]==="documents"&&UUID.test(parts[2])&&["file","acknowledge","receipt-uploads","receipt-file"].includes(parts[3]))return ["file","receipt-file"].includes(parts[3])?method==="GET":method==="POST";
  if(parts[0]==="me"&&parts[1]==="documents"&&UUID.test(parts[2]??"")&&parts[3]==="receipt-uploads"&&UUID.test(parts[4]??""))return parts.length===5?method==="GET":parts.length===6&&parts[5]==="confirm"&&method==="POST";
  const change=/^CG-HR-CHG-[0-9]{6,}$/;
  if(parts.length===1&&parts[0]==="employment-changes")return method==="GET"||method==="POST";
@@ -115,6 +115,12 @@ async function proxy(req:NextRequest,parts:string[],method:string){
     :status===429?"Too many requests. Try again later."
     :"The result is uncertain. Refresh before resubmitting."},
     {status,headers:{"Cache-Control":"no-store"}});
+  }
+  if(parts[parts.length-1]==="receipt-file"){
+   const mime=res.headers.get("content-type")?.split(";")[0];if(!mime||!["application/pdf","image/jpeg","image/png"].includes(mime))throw Error("Original copy unavailable");
+   const length=Number(res.headers.get("content-length")??0);if(length>10485760)throw Error("Original copy outside limits");
+   const bytes=await res.arrayBuffer();if(bytes.byteLength<1||bytes.byteLength>10485760)throw Error("Original copy outside limits");
+   return new NextResponse(bytes,{headers:{"Content-Type":mime,"Content-Disposition":'attachment; filename="CareGanga-received-copy.'+(mime==="application/pdf"?"pdf":mime==="image/png"?"png":"jpg")+'"',"Cache-Control":"private, no-store","X-Content-Type-Options":"nosniff","X-Robots-Tag":"noindex, nofollow"}});
   }
   if(parts[parts.length-1]==="file"&&(parts[0]==="issued-documents"||(parts[0]==="me"&&parts[1]==="documents"))){
    if(!res.headers.get("content-type")?.startsWith("application/pdf"))throw Error("Original PDF unavailable");

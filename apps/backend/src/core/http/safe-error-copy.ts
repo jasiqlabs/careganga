@@ -1,7 +1,7 @@
 /** Server-controlled allow-list: authorized overrides can change safe wording only,
  * never rules, status, field binding, redaction, or authentication behavior. */
 export const SAFE_MESSAGE_CATALOG:Readonly<Record<string,string>>=Object.freeze({
-      CG10_RECEIPT_FORMAT:"Choose a signed received copy as a PDF, JPEG or PNG under 10 MB.",
+      CG10_RECEIPT_FORMAT:"Choose your received copy as a PDF, JPEG or PNG under 10 MB.",
       CG10_RECEIPT_UNAVAILABLE:"The original issued document or secure receipt upload is no longer available. Refresh your documents.",
       CG10_RECEIPT_REQUEST_CHANGED:"The selected file differs from the original upload. Check its status before choosing another file.",
       CG10_PORTRAIT_FORMAT:"Choose a JPEG or PNG employee photograph under 10 MB.",

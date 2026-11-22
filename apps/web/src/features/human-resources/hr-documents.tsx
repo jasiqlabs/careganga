@@ -4,10 +4,10 @@ type Mode="own"|"manage"|"review";
 type Template={templateId:string;kind:string;version:number;title:string;body:string};
 type Subject={reference:string;label:string;designation:string;branch:string};
 type Snapshot={recipient:string;designation:string;branch:string;department?:string|null;hireDate:string;issueDate:string;expiryDate?:string|null;lastWorkingDate?:string|null;templateVersion:number};
-type DocumentStatus={documentRef:string;status:string;issueRevision:number;canDownload:boolean;canRetry:boolean;receiptStatus:string;dispatch:{channel:string;status:string}[]};
+type DocumentStatus={documentRef:string;status:string;issueRevision:number;canDownload:boolean;canRetry:boolean;receiptStatus:string;canDownloadReceipt?:boolean;dispatch:{channel:string;status:string}[]};
 type Row={reference:string;caseRef?:string;kind:string;status:string;revision:number;recipient?:string;snapshot?:Snapshot;document?:DocumentStatus|null;canSubmit?:boolean;canReview?:boolean};
 const kinds=["APPOINTMENT","OFFER","JOINING","EXPERIENCE","RELIEVING","MEMO","EMPLOYEE_ID"];
-const title=(s:string)=>({EMPLOYEE_ID:"Employee ID card",SENT_TO_PROVIDER:"Accepted by provider, delivery pending",IN_APP:"Available in app",UNKNOWN_PROVIDER:"Provider outcome uncertain"} as Record<string,string>)[s]??s.toLowerCase().replaceAll("_"," ").replace(/\b\w/g,c=>c.toUpperCase());
+const title=(s:string)=>({EMPLOYEE_ID:"Employee ID card",SENT_TO_PROVIDER:"Accepted by provider, delivery pending",IN_APP:"Available in app",RECEIVED_COPY_VERIFIED:"Received copy scan-verified",UNKNOWN_PROVIDER:"Provider outcome uncertain"} as Record<string,string>)[s]??s.toLowerCase().replaceAll("_"," ").replace(/\b\w/g,c=>c.toUpperCase());
 const known=(e:unknown)=>!!e&&typeof e==="object"&&"status" in e&&typeof e.status==="number"&&e.status>=400&&e.status<500;
 type Command={path:string;body:Record<string,unknown>;proof:boolean};
 
@@ -27,7 +27,7 @@ function ReceiptUpload({id,onVerified,disabled}:{id:string;onVerified:()=>void;d
   setBusy(true);setMessage("");
   try{
    const bytes=await file.arrayBuffer(),digest=Array.from(new Uint8Array(await crypto.subtle.digest("SHA-256",bytes)),x=>x.toString(16).padStart(2,"0")).join("");
-   const cmd=original.current?.hash===digest?original.current:{key:crypto.randomUUID(),hash:digest};original.current=cmd;
+   const cmd:{key:string;hash:string;upload?:string}=original.current?.hash===digest?original.current:{key:crypto.randomUUID(),hash:digest};original.current=cmd;
    const path="me/documents/"+id+"/receipt-uploads";
    if(cmd.upload){const status=await api<{cleanVerified:boolean}>(path+"/"+cmd.upload);if(status.cleanVerified){onVerified();return;}}
    const grant=await api<{uploadRef:string;status:string;cleanVerified:boolean;uploadUrl?:string;uploadHeaders?:Record<string,string>}>(path,{requestKey:cmd.key,mime:file.type,sizeBytes:file.size,sha256:digest});
@@ -110,8 +110,9 @@ export function HrDocuments({mode,canIssue=false,canApproveTemplate=false,canRev
    {mode==="review"&&selected.canReview&&<><label>Current password<input style={field} type="password" value={password} onChange={e=>setPassword(e.target.value)}/></label>{["APPROVE","RETURN","REJECT"].map(action=><button key={action} disabled={blocked||password.length<8} onClick={()=>act("document-reviews/"+selected.caseRef+"/decide",true,{requestKey:key(),expectedRevision:selected.revision,action})}>{title(action)}</button>)}</>}
    {selected.document&&<><p>File: {title(selected.document.status)} · Version {selected.document.issueRevision}</p><p>Receipt: {title(selected.document.receiptStatus)}</p>{selected.document.dispatch.map(x=><p key={x.channel}>{title(x.channel)}: {title(x.status)}</p>)}
     {selected.document.canDownload&&!blocked&&<a href={"/api/hr/"+(mode==="own"?"me/documents/":"issued-documents/")+selected.document.documentRef+"/file"}>Download verified PDF</a>}
+    {selected.document.canDownloadReceipt&&!blocked&&<a href={"/api/hr/"+(mode==="own"?"me/documents/":"issued-documents/")+selected.document.documentRef+"/receipt-file"}>Download scan-verified received copy</a>}
     {mode==="own"&&selected.document.canDownload&&selected.document.receiptStatus==="AWAITING_ACKNOWLEDGEMENT"&&<button disabled={blocked} onClick={()=>act("me/documents/"+selected.document!.documentRef+"/acknowledge")}>Acknowledge receipt</button>}
-    {mode==="own"&&selected.document.canDownload&&selected.document.receiptStatus!=="RECEIVED_COPY_VERIFIED"&&<ReceiptUpload key={selected.document.documentRef} id={selected.document.documentRef} disabled={blocked} onVerified={()=>{setSelected(null);setMessage("Signed received copy verified.");void refresh();}}/>}
+    {mode==="own"&&selected.document.canDownload&&selected.document.receiptStatus!=="RECEIVED_COPY_VERIFIED"&&<ReceiptUpload key={selected.document.documentRef} id={selected.document.documentRef} disabled={blocked} onVerified={()=>{setSelected(null);setMessage("Received copy accepted after secure file and malware verification.");void refresh();}}/>}
     {mode==="manage"&&canIssue&&selected.document.canRetry&&<button disabled={blocked} onClick={()=>act("issued-documents/"+selected.document!.documentRef+"/reconcile")}>Check original issuance</button>}
     {mode==="manage"&&canIssue&&selected.document.canDownload&&["IN_APP","EMAIL","SMS"].map(channel=><button key={channel} disabled={blocked||selected.document!.dispatch.some(x=>x.channel===channel)} onClick={()=>act("issued-documents/"+selected.document!.documentRef+"/dispatch",false,{channel})}>Dispatch {title(channel)}</button>)}
     {mode==="manage"&&canRevoke&&selected.document.canDownload&&<><label>Current password<input style={field} type="password" value={password} onChange={e=>setPassword(e.target.value)}/></label><button disabled={blocked||password.length<8} onClick={()=>act("issued-documents/"+selected.document!.documentRef+"/revoke",true)}>Revoke</button></>}</>}

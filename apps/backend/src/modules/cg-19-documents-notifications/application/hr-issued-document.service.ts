@@ -84,11 +84,11 @@ export class HrIssuedDocumentService{
     WHERE realm_id=$1 AND document_id=ANY($2::uuid[]) AND event_key='ACKNOWLEDGED' GROUP BY document_id`,[a.realmId,ids])).rows:[];
    const copies=ids.length?(await tx.query<{document_ref:string}>(`SELECT DISTINCT i.hr_receipt_document_ref AS document_ref FROM cg19_upload_intent i
     JOIN cg19_stored_file f ON f.realm_id=i.realm_id AND f.upload_intent_id=i.id AND f.revoked_at IS NULL AND f.scan_status='CLEAN_VERIFIED'
-    WHERE i.realm_id=$1 AND i.hr_receipt_document_ref=ANY($2::uuid[]) AND i.classification='HR_RECEIVED_COPY' AND i.status='VALIDATED'`,[a.realmId,ids])).rows:[];
+    WHERE i.realm_id=$1 AND i.hr_receipt_document_ref=ANY($2::uuid[]) AND i.classification='HR_RECEIVED_COPY' AND i.status='VALIDATED' AND ($3::uuid IS NULL OR i.requested_by=$3)`,[a.realmId,ids,own?a.accountId:null])).rows:[];
    const dispatch=ids.length?(await tx.query<{hr_document_ref:string;channel:string;state:string}>(`SELECT hr_document_ref,channel,state FROM cg19_notification
     WHERE realm_id=$1 AND hr_document_ref=ANY($2::uuid[]) AND source_kind='CG10_DOCUMENT_READY' ORDER BY channel`,[a.realmId,ids])).rows:[];
    return {items:rows.slice(0,25).map(r=>{const d=docs.find(d=>d.case_id===r.case_ref);return {...this.source.summary(r),
-    document:d?{...view(d),receiptStatus:copies.some(x=>x.document_ref===d.id)?"RECEIVED_COPY_VERIFIED":receipts.some(x=>x.document_id===d.id)?"ACKNOWLEDGED":"AWAITING_ACKNOWLEDGEMENT",
+    document:d?{...view(d),receiptStatus:copies.some(x=>x.document_ref===d.id)?"RECEIVED_COPY_VERIFIED":receipts.some(x=>x.document_id===d.id)?"ACKNOWLEDGED":"AWAITING_ACKNOWLEDGEMENT",canDownloadReceipt:d.state==="ISSUED"&&copies.some(x=>x.document_ref===d.id),
       dispatch:dispatch.filter(x=>x.hr_document_ref===d.id).map(x=>({channel:x.channel,status:x.state}))}:null,
     canSubmit:!own&&r.status==="DRAFT"&&r.created_by===a.accountId};}),hasMore:rows.length>25,offset};
   });
@@ -322,6 +322,28 @@ export class HrIssuedDocumentService{
    await tx.query("INSERT INTO cg19_document_event(realm_id,case_id,actor_id,intent_id,event_key) VALUES($1,$2,$3,$4,$5)",[a.realmId,i.case_id,a.accountId,i.id,clean?"UPLOAD_VERIFIED":"UPLOAD_REJECTED"]);
   });
   return this.receiptStatus(token,id,upload);
+ }
+ private async receivedCopy(tx:PoolClient,a:VerifiedFoundationActor,id:string,own:boolean){
+  const d=own?await this.receiptAccess(tx,a,id):(await this.docAccess(tx,a,id)).d;
+  if(d.state!=="ISSUED")throw new NotFoundException({code:"CG10_RECEIPT_UNAVAILABLE"});
+  const q=await tx.query<{id:string;mime:string;size:string;sha256:string;key:string;version:string}>(`SELECT f.id,f.original_mime AS mime,f.verified_size_bytes::text AS size,f.verified_sha256 AS sha256,f.object_key AS key,f.object_version AS version
+   FROM cg19_upload_intent i JOIN cg19_stored_file f ON f.realm_id=i.realm_id AND f.upload_intent_id=i.id
+   WHERE i.realm_id=$1 AND i.hr_receipt_document_ref=$2 AND i.classification='HR_RECEIVED_COPY' AND i.status='VALIDATED'
+   AND f.revoked_at IS NULL AND f.scan_status='CLEAN_VERIFIED' AND ($3::uuid IS NULL OR i.requested_by=$3)
+   ORDER BY f.created_at DESC,f.id DESC LIMIT 1 FOR SHARE OF i,f`,[a.realmId,d.id,own?a.accountId:null]);
+  if(!q.rows[0])throw new NotFoundException({code:"CG10_RECEIPT_UNAVAILABLE"});
+  return q.rows[0];
+ }
+ async downloadReceipt(token:string,id:string,own:boolean){
+  const a=own?await this.sessions.verifySession(token):await this.sessions.requireAction(token,"hr.documents.manage");
+  const f=await this.run(tx=>this.receivedCopy(tx,a,id,own));
+  if(!["application/pdf","image/jpeg","image/png"].includes(f.mime))throw new NotFoundException({code:"CG10_RECEIPT_UNAVAILABLE"});
+  const bytes=await this.objects.readVerifiedPrivateObject({objectKey:f.key,objectVersion:f.version,maxBytes:Number(f.size)});
+  if(bytes.length!==Number(f.size)||hash(bytes)!==f.sha256)throw new ServiceUnavailableException({code:"CG10_RECEIPT_UNAVAILABLE"});
+  const current=own?await this.sessions.verifySession(token):await this.sessions.requireAction(token,"hr.documents.manage");
+  const latest=await this.run(tx=>this.receivedCopy(tx,current,id,own));
+  if(latest.id!==f.id||latest.sha256!==f.sha256||latest.version!==f.version)throw new ConflictException({code:"CG10_RECEIPT_UNAVAILABLE"});
+  return {bytes,mime:f.mime};
  }
  async verifyPublic(raw:unknown){
   if(typeof raw!=="string"||!/^CGV-[A-F0-9]{24}$/.test(raw))return {status:"INACTIVE"};

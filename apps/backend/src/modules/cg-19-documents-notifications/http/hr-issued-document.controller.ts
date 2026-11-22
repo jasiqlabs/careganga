@@ -19,6 +19,12 @@ export class HrIssuedDocumentController{
  @Get("issued-documents/:id/file")
  @Header("X-Content-Type-Options","nosniff")
  async download(@Headers("authorization")t:string,@Param("id")id:string){return new StreamableFile(await this.documents.download(t,id),{type:"application/pdf",disposition:'attachment; filename="CareGanga-employee-document.pdf"'});}
+ @Get("issued-documents/:id/receipt-file")
+ @Header("X-Content-Type-Options","nosniff")
+ async receivedCopy(@Headers("authorization")t:string,@Param("id")id:string){const f=await this.documents.downloadReceipt(t,id,false);return new StreamableFile(f.bytes,{type:f.mime,disposition:'attachment; filename="CareGanga-received-copy.'+(f.mime==="application/pdf"?"pdf":f.mime==="image/png"?"png":"jpg")+'"' });}
+ @Get("me/documents/:id/receipt-file")
+ @Header("X-Content-Type-Options","nosniff")
+ async ownReceivedCopy(@Headers("authorization")t:string,@Param("id")id:string){const f=await this.documents.downloadReceipt(t,id,true);return new StreamableFile(f.bytes,{type:f.mime,disposition:'attachment; filename="CareGanga-received-copy.'+(f.mime==="application/pdf"?"pdf":f.mime==="image/png"?"png":"jpg")+'"' });}
  @Get("me/documents") mine(@Headers("authorization")t:string,@Query("offset")offset?:string){return this.documents.list(t,true,offset);}
  @Get("me/documents/:id/file")
  @Header("X-Content-Type-Options","nosniff")

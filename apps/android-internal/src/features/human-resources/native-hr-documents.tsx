@@ -8,10 +8,10 @@ type Mode="own"|"manage"|"review";
 type Template={templateId:string;kind:string;version:number;title:string;body:string};
 type Subject={reference:string;label:string;designation:string;branch:string};
 type Snapshot={recipient:string;designation:string;branch:string;department?:string|null;hireDate:string;issueDate:string;expiryDate?:string|null;lastWorkingDate?:string|null;templateVersion:number};
-type DocumentStatus={documentRef:string;status:string;issueRevision:number;canDownload:boolean;canRetry:boolean;receiptStatus:string;dispatch:{channel:string;status:string}[]};
+type DocumentStatus={documentRef:string;status:string;issueRevision:number;canDownload:boolean;canRetry:boolean;receiptStatus:string;canDownloadReceipt?:boolean;dispatch:{channel:string;status:string}[]};
 type Row={reference:string;caseRef?:string;kind:string;status:string;revision:number;recipient?:string;snapshot?:Snapshot;document?:DocumentStatus|null;canSubmit?:boolean;canReview?:boolean};
 const kinds=["APPOINTMENT","OFFER","JOINING","EXPERIENCE","RELIEVING","MEMO","EMPLOYEE_ID"];
-const title=(s:string)=>({EMPLOYEE_ID:"Employee ID card",SENT_TO_PROVIDER:"Accepted by provider, delivery pending",IN_APP:"Available in app",UNKNOWN_PROVIDER:"Provider outcome uncertain"} as Record<string,string>)[s]??s.toLowerCase().replaceAll("_"," ").replace(/\b\w/g,c=>c.toUpperCase());
+const title=(s:string)=>({EMPLOYEE_ID:"Employee ID card",SENT_TO_PROVIDER:"Accepted by provider, delivery pending",IN_APP:"Available in app",RECEIVED_COPY_VERIFIED:"Received copy scan-verified",UNKNOWN_PROVIDER:"Provider outcome uncertain"} as Record<string,string>)[s]??s.toLowerCase().replaceAll("_"," ").replace(/\b\w/g,c=>c.toUpperCase());
 const known=(e:unknown)=>!!e&&typeof e==="object"&&"status" in e&&typeof e.status==="number"&&e.status>=400&&e.status<500;
 type Command={path:string;body:Record<string,unknown>;proof:boolean};
 
@@ -25,13 +25,14 @@ function Select({label,value,options,onChange,disabled=false}:{label:string;valu
 function NativeReceiptUpload({token,id,disabled,onVerified,onExpired}:{token:string;id:string;disabled:boolean;onVerified:()=>void;onExpired:()=>void}){
  const [picked,setPicked]=useState<{uri:string;mime:string;size:number;name:string}|null>(null),[busy,setBusy]=useState(false),[message,setMessage]=useState("");
  const original=useRef<{key:string;hash:string;upload?:string}|null>(null);
+ useEffect(()=>()=>{if(picked)try{new File(picked.uri).delete();}catch{}},[picked]);
  const choose=async()=>{if(busy||disabled)return;try{const result=await DocumentPicker.getDocumentAsync({type:["application/pdf","image/jpeg","image/png"],multiple:false,copyToCacheDirectory:true});
   if(result.canceled)return;const f=result.assets[0];if(!f.mimeType||!["application/pdf","image/jpeg","image/png"].includes(f.mimeType)||!f.size||f.size>10485760){setMessage("Choose a PDF, JPEG or PNG under 10 MB.");return;}
   setPicked({uri:f.uri,mime:f.mimeType,size:f.size,name:f.name});original.current=null;setMessage("");
  }catch{setMessage("Private file picker unavailable.");}};
  const upload=async()=>{if(!picked||busy||disabled)return;setBusy(true);setMessage("");
   try{const file=new File(picked.uri),digest=await file.digest("SHA-256");if(!/^[a-f0-9]{64}$/.test(digest))throw Error("Original file checksum unavailable.");
-   const cmd=original.current?.hash===digest?original.current:{key:Crypto.randomUUID(),hash:digest};original.current=cmd;
+   const cmd:{key:string;hash:string;upload?:string}=original.current?.hash===digest?original.current:{key:Crypto.randomUUID(),hash:digest};original.current=cmd;
    const path="me/documents/"+id+"/receipt-uploads";
    if(cmd.upload){const status=await api<{cleanVerified:boolean}>(token,path+"/"+cmd.upload);if(status.cleanVerified){onVerified();return;}}
    const grant=await api<{uploadRef:string;status:string;cleanVerified:boolean;uploadUrl?:string;uploadHeaders?:Record<string,string>}>(token,path,{requestKey:cmd.key,mime:picked.mime,sizeBytes:picked.size,sha256:digest});
@@ -90,11 +91,11 @@ export function NativeHrDocuments({token,onExpired,mode,canIssue=false,canApprov
  const act=(path:string,proof=false,body:Record<string,unknown>={})=>void run(path,body,proof);
  const key=()=>Crypto.randomUUID();
  
- const preview=async(id:string)=>{if(running.current||locked)return;running.current=true;setBusy(true);let file:File|undefined;
-  try{const r=await identityRequest("/api/hr/"+(mode==="own"?"me/documents/":"issued-documents/")+id+"/file",{method:"GET",cache:"no-store",headers:{Authorization:"Bearer "+token}});
-   if(!r.ok)throw Object.assign(new Error("Private document unavailable"),{status:r.status});if(!r.headers.get("content-type")?.startsWith("application/pdf"))throw Error("Invalid original PDF");
-   const len=r.headers.get("content-length");if(len&&Number(len)>10485760)throw Error("PDF exceeds limit");const bytes=new Uint8Array(await r.arrayBuffer());if(bytes.length<100||bytes.length>10485760)throw Error("PDF exceeds limit");
-   file=new File(Paths.cache,"careganga-employee-"+Crypto.randomUUID()+".pdf");file.create();await file.write(bytes);await file.preview({title:"Private employee document"});
+ const preview=async(id:string,receipt=false)=>{if(running.current||locked)return;running.current=true;setBusy(true);let file:File|undefined;
+  try{const r=await identityRequest("/api/hr/"+(mode==="own"?"me/documents/":"issued-documents/")+id+(receipt?"/receipt-file":"/file"),{method:"GET",cache:"no-store",headers:{Authorization:"Bearer "+token}});
+   if(!r.ok)throw Object.assign(new Error("Private document unavailable"),{status:r.status});const mime=r.headers.get("content-type")?.split(";")[0];if(!mime||!(receipt?["application/pdf","image/jpeg","image/png"]:["application/pdf"]).includes(mime))throw Error("Invalid original private file");
+   const len=r.headers.get("content-length");if(len&&Number(len)>10485760)throw Error("PDF exceeds limit");const bytes=new Uint8Array(await r.arrayBuffer());if(bytes.length<1||bytes.length>10485760)throw Error("Private file exceeds limit");
+   file=new File(Paths.cache,"careganga-employee-"+Crypto.randomUUID()+"."+(mime==="application/pdf"?"pdf":mime==="image/png"?"png":"jpg"));file.create();await file.write(bytes);await file.preview({title:receipt?"Private received copy":"Private employee document"});
   }catch(e){fail(e);}finally{try{file?.delete();}catch{}running.current=false;setBusy(false);}
  };
  return <View style={styles.card}><Text style={styles.title}>{mode==="own"?"My documents & ID":mode==="manage"?"Employee letters, memos & ID cards":"Employee document approvals"}</Text>
@@ -119,8 +120,9 @@ export function NativeHrDocuments({token,onExpired,mode,canIssue=false,canApprov
  {mode==="review"&&selected.canReview&&<><Field label="Current password" value={password} onChange={setPassword} secure disabled={blocked}/>{["APPROVE","RETURN","REJECT"].map(action=><Button key={action} name={title(action)} disabled={blocked||password.length<8} onPress={()=>act("document-reviews/"+selected.caseRef+"/decide",true,{requestKey:key(),expectedRevision:selected.revision,action})}/>)}</>}
  {selected.document&&<><Text>File: {title(selected.document.status)} · Version {selected.document.issueRevision}</Text><Text>Receipt: {title(selected.document.receiptStatus)}</Text>{selected.document.dispatch.map(x=><Text key={x.channel}>{title(x.channel)}: {title(x.status)}</Text>)}
  {selected.document.canDownload&&<Button name="View verified PDF" disabled={blocked} onPress={()=>void preview(selected.document!.documentRef)}/>}
+ {selected.document.canDownloadReceipt&&<Button name="View scan-verified received copy" disabled={blocked} onPress={()=>void preview(selected.document!.documentRef,true)}/>}
  {mode==="own"&&selected.document.canDownload&&selected.document.receiptStatus==="AWAITING_ACKNOWLEDGEMENT"&&<Button name="Acknowledge receipt" disabled={blocked} onPress={()=>act("me/documents/"+selected.document!.documentRef+"/acknowledge")}/>}
- {mode==="own"&&selected.document.canDownload&&selected.document.receiptStatus!=="RECEIVED_COPY_VERIFIED"&&<NativeReceiptUpload key={selected.document.documentRef} token={token} id={selected.document.documentRef} disabled={blocked} onExpired={onExpired} onVerified={()=>{setSelected(null);setMessage("Signed received copy verified.");void refresh();}}/>}
+ {mode==="own"&&selected.document.canDownload&&selected.document.receiptStatus!=="RECEIVED_COPY_VERIFIED"&&<NativeReceiptUpload key={selected.document.documentRef} token={token} id={selected.document.documentRef} disabled={blocked} onExpired={onExpired} onVerified={()=>{setSelected(null);setMessage("Received copy accepted after secure file and malware verification.");void refresh();}}/>}
  {mode==="manage"&&canIssue&&selected.document.canRetry&&<Button name="Check original issuance" disabled={blocked} onPress={()=>act("issued-documents/"+selected.document!.documentRef+"/reconcile")}/>}
  {mode==="manage"&&canIssue&&selected.document.canDownload&&["IN_APP","EMAIL","SMS"].map(channel=><Button key={channel} name={"Dispatch "+title(channel)} disabled={blocked||selected.document!.dispatch.some(x=>x.channel===channel)} onPress={()=>act("issued-documents/"+selected.document!.documentRef+"/dispatch",false,{channel})}/>)}
  {mode==="manage"&&canRevoke&&selected.document.canDownload&&<><Field label="Current password" value={password} onChange={setPassword} secure disabled={blocked}/><Button name="Revoke" disabled={blocked||password.length<8} onPress={()=>act("issued-documents/"+selected.document!.documentRef+"/revoke",true)}/></>}</>}
