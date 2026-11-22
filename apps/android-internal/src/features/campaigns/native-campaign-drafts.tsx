@@ -2,6 +2,7 @@ import {useEffect,useRef,useState} from "react";
 import {AppState,ActivityIndicator,Pressable,ScrollView,StyleSheet,Text,TextInput,View} from "react-native";
 import * as Crypto from "expo-crypto";
 import {identityRequest} from "../identity-access/http-client";
+import {NativeCampaignMediaPanel} from "./native-campaign-media-panel";
 import {careGangaTheme as t} from "../../../../../packages/design-tokens/src/index";
 
 const steps=["Basic Details","Project & Category","Team & Assignment","Budget & Targets","Documents & Media","Review & Submit"];
@@ -10,7 +11,7 @@ type Draft={
  project:{category:string;branchRef:string|null;projectRef:string|null;eventRef:string|null;stateRef:string|null;districtRef:string|null;location:string;targetGroup:string;plannedBeneficiaries:number|null};
  team:{coordinatorRef:string|null;volunteerRef:string|null};
  budget:{goal:string;expectedCost:string;startAt:string;endAt:string};
- media:{fileRef:null;alt:string};review:Record<string,never>;
+ media:{fileRef:string|null;supportingFileRefs:string[];alt:string};review:Record<string,never>;
 };
 type Row={ref:string;code:string;title:string;status:string;category:string;version:number;revision:number;steps?:Record<string,unknown>};
 type Page={items:Row[];offset:number;hasMore:boolean};
@@ -19,7 +20,7 @@ type Choice={value:string;label:string};
 type Choices={canFoundation:boolean;branches:Choice[];states:Choice[];districts:Choice[];coordinators:Choice[];volunteers:Choice[];projects:Choice[];events:(Choice&{projectRef:string|null})[]};
 const blank=():Draft=>({basic:{title:"",type:"GENERAL",summary:"",description:"",tags:[]},
  project:{category:"GENERAL",branchRef:null,projectRef:null,eventRef:null,stateRef:null,districtRef:null,location:"",targetGroup:"",plannedBeneficiaries:null},
- team:{coordinatorRef:null,volunteerRef:null},budget:{goal:"",expectedCost:"",startAt:"",endAt:""},media:{fileRef:null,alt:""},review:{}});
+ team:{coordinatorRef:null,volunteerRef:null},budget:{goal:"",expectedCost:"",startAt:"",endAt:""},media:{fileRef:null,supportingFileRefs:[],alt:""},review:{}});
 const rupees=(v:unknown)=>{try{if(typeof v!=="string"||!/^[0-9]+$/.test(v))return "";
  const n=BigInt(v);return (n/100n).toString()+"."+(n%100n).toString().padStart(2,"0");}catch{return "";}};
 function fromRow(row:Row):Draft{
@@ -27,6 +28,7 @@ function fromRow(row:Row):Draft{
  const p=row.steps?.project as Partial<Draft["project"]>|undefined;
  const t=row.steps?.team as Partial<Draft["team"]>|undefined;
  const g=row.steps?.budget as {goalMinor?:string;expectedCostMinor?:string;startAt?:string|null;endAt?:string|null}|undefined;
+ const media=row.steps?.media as Partial<Draft["media"]>|undefined;
  return {...blank(),basic:{...blank().basic,title:b?.title??row.title,summary:b?.summary??"",
   description:b?.description??"",tags:Array.isArray(b?.tags)?b.tags:[]},
   project:{...blank().project,category:p?.category??row.category,branchRef:p?.branchRef??null,
@@ -35,7 +37,8 @@ function fromRow(row:Row):Draft{
    plannedBeneficiaries:p?.plannedBeneficiaries??null},
   team:{...blank().team,coordinatorRef:t?.coordinatorRef??null,volunteerRef:t?.volunteerRef??null},
   budget:{goal:rupees(g?.goalMinor),expectedCost:rupees(g?.expectedCostMinor),
-   startAt:g?.startAt??"",endAt:g?.endAt??""}};
+   startAt:g?.startAt??"",endAt:g?.endAt??""},
+  media:{fileRef:media?.fileRef??null,supportingFileRefs:Array.isArray(media?.supportingFileRefs)?media.supportingFileRefs:[],alt:media?.alt??""}};
 }
 export function NativeCampaignDrafts({token,canManage,onExpired}:{
  token:string;canManage:boolean;onExpired:()=>void
@@ -224,7 +227,21 @@ export function NativeCampaignDrafts({token,canManage,onExpired}:{
     {field("End date (YYYY-MM-DD)",form.budget.endAt,v=>change("budget","endAt",v))}
     <Text style={s.muted}>Planned targets are not approved CG-09 budgets or collected donations.</Text>
    </>}
-   {step===4&&<Text>A text-only campaign draft is permitted. CG-19 private verified media upload remains unavailable until genuine owner integration.</Text>}
+   {step===4&&<View style={s.block}>
+    <Text style={s.muted}>Original CG19 scanner-verified private banner and supporting documents. A scanned file is not a public campaign or donation.</Text>
+    {selected?<><NativeCampaignMediaPanel key={selected.ref+"-banner"} campaignRef={selected.ref}
+      version={selected.version} token={token} onExpired={onExpired}
+      canUpload={editable&&!busy&&!pending.current&&!submitPending.current}
+      kind="BANNER" attached={form.media.fileRef?[form.media.fileRef]:[]}
+      onChange={refs=>change("media","fileRef",refs[0]??null)}/>
+     <NativeCampaignMediaPanel key={selected.ref+"-docs"} campaignRef={selected.ref}
+      version={selected.version} token={token} onExpired={onExpired}
+      canUpload={editable&&!busy&&!pending.current&&!submitPending.current}
+      kind="DOCUMENT" attached={form.media.supportingFileRefs}
+      onChange={refs=>change("media","supportingFileRefs",refs)}/>
+    </>:<Text style={s.muted}>Save this campaign as a private draft before uploading files. Media is optional.</Text>}
+    {field("Image description (optional)",form.media.alt,v=>change("media","alt",v))}
+   </View>}
    {step===5&&<View style={s.block}>
     <Text style={s.heading}>Review private draft</Text>
     <Text>Title: {form.basic.title||"Not entered"}</Text><Text>Category: {form.project.category}</Text>
