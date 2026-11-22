@@ -155,3 +155,23 @@ test("US001-QA15 original optional volunteer assignment is a current CG04 origin
  assert.match(native,/Current approved volunteer/);
  assert.doesNotMatch(src,/INSERT INTO account_role|UPDATE role_grant/);
 });
+
+test("US001-QA06/14/18: direct A12-A15 client image review maps to responsive Web structure and correct source totals",()=>{
+ const original=root("docs/research/CAREGANGA-CG07-ORIGINAL-A12-A15-DIRECT-VISUAL-AUDIT-20261122.md");
+ const web=root("apps/web/src/features/campaigns/campaign-drafts-workspace.tsx");
+ const style=root("apps/web/src/features/campaigns/campaigns-reference-ui.module.css");
+ const api=root("apps/backend/src/modules/cg-07-campaigns-donations/application/campaign-drafts.service.ts");
+ const proxy=root("apps/web/src/app/api/campaigns/[[...parts]]/route.ts");
+ for(const key of ["A12","A13","A14","A15","direct visual","NOT_RUN"])assert.match(original,new RegExp(key,"i"));
+ for(const key of ["styles.statGrid","styles.overviewColumns","styles.filterPanel",
+  "styles.stepsStrip","styles.wizardGrid","styles.wizardAside","styles.previewThumb",
+  "styles.miniStep","Campaign Preview","Steps Overview","Save as Draft",
+  "Submit for Verification","Not yet verified by finance"])assert.ok(web.includes(key),key);
+ assert.match(style,/@media\(max-width:820px\)/);
+ assert.match(style,/@media\(max-width:540px\)/);
+ assert.match(api,/count\(\*\) FILTER \(WHERE source_status='DRAFT'\)/);
+ assert.match(api,/count\(\*\) FILTER \(WHERE source_status='PUBLISHED'\)/);
+ assert.match(api,/\$5='ALL' OR c.source_status=\$5/);
+ assert.match(proxy,/\["q","offset","status"\]/);
+ assert.doesNotMatch(web,/Raised so far:\s*₹0/);
+});
