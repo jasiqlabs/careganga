@@ -71,8 +71,8 @@ export class InventoryCatalogService {
   await tx.query("INSERT INTO inventory_audit(root_realm_id,actor_ref,source_kind,source_ref,event_key,payload_digest,result_version) VALUES($1,$2,$3,$4,$5,$6,$7)",[a.realmId,a.accountId,kind,ref,key,digest,v]);
   return {ref,version:v,replayed:false};
  }
- private async store(tx:PoolClient,a:VerifiedFoundationActor,ref:string,active=true){
-  const row=(await tx.query<{branch_ref:string|null;status:string;version:number}>("SELECT branch_ref,status,version FROM inventory_location WHERE root_realm_id=$1 AND id=$2 FOR SHARE",[a.realmId,ref])).rows[0];
+ private async store(tx:PoolClient,a:VerifiedFoundationActor,ref:string,active=true,write=false){
+  const row=(await tx.query<{branch_ref:string|null;status:string;version:number}>("SELECT branch_ref,status,version FROM inventory_location WHERE root_realm_id=$1 AND id=$2 "+(write?"FOR UPDATE":"FOR SHARE"),[a.realmId,ref])).rows[0];
   if(!row||(active&&row.status!=="ACTIVE"))throw new NotFoundException("Store unavailable");
   await this.requireScope(tx,a,row.branch_ref);return row;
  }
@@ -91,7 +91,7 @@ export class InventoryCatalogService {
   const parsed=kind==="ITEM"?parseInventoryItem(body):kind==="SUPPLIER"?parseInventorySupplier(body):parseInventoryLocation(body);
   const digest=createHash("sha256").update(JSON.stringify({kind,ref,expected,status,parsed})).digest("hex");
   return this.run(token,"inventory.catalog.manage",async(tx,a)=>{
-   if(kind==="LOCATION")await this.store(tx,a,ref,false);else await this.requireScope(tx,a,null);
+   if(kind==="LOCATION")await this.store(tx,a,ref,false,true);else await this.requireScope(tx,a,null);
    const replay=await this.command(tx,a,kind,parsed.requestKey,digest);if(replay)return replay;
    let q;
    if(kind==="ITEM"){
@@ -158,8 +158,9 @@ export class InventoryCatalogService {
    return {canManageFoundation:full,branches:branches.rows.map(x=>({ref:x.id,label:x.name})),stores:stores.rows.map(x=>({ref:x.id,label:x.label,code:x.location_code_norm,scope:x.scope_kind})),locations:locationRows.rows.map(x=>({ref:x.id,label:x.label,code:x.location_code_norm,scope:x.scope_kind,status:x.status})),summary:totals?.rows[0]??null,categories:categories?.rows??[]};
   });
  }
- async list(token:string,kind:Kind,locationInput:unknown,searchInput:unknown,offsetInput:unknown){
-  const offset=Number(offsetInput??0),search=clean(searchInput??"",0,80).toLowerCase();
+ async list(token:string,kind:Kind,locationInput:unknown,searchInput:unknown,offsetInput:unknown,statusInput?:unknown){
+  const offset=Number(offsetInput??0),search=clean(searchInput??"",0,80).toLowerCase(),status=statusInput??"ALL";
+  if(typeof status!=="string"||!(kind==="ITEM"?["ALL","ACTIVE","INACTIVE"]:["ALL","ACTIVE","BLOCKED"]).includes(status))throw new BadRequestException({code:"CG12_CATALOG_INVALID"});
   if(!Number.isInteger(offset)||offset<0||offset>10000)throw new BadRequestException("Choose a valid catalog page");
   return this.run(token,"inventory.catalog.view",async(tx,a)=>{
    const full=await this.rootAdmin(tx,a);
@@ -170,10 +171,10 @@ export class InventoryCatalogService {
    }else if(!full)throw new ForbiddenException("Choose a permitted store");
    // Foundation-wide catalog master; non-root users must select a current permitted real store.
    if(kind==="ITEM"){
-    const q=await tx.query("SELECT i.id AS ref,i.sku_norm AS sku,i.name,i.category,i.description,i.unit_code AS unit,i.qty_scale AS scale,i.low_stock_threshold::text AS threshold,i.status,i.version,COALESCE(p.threshold,i.low_stock_threshold)::text AS \"storeThreshold\",COALESCE(p.version,0) AS \"thresholdVersion\" FROM inventory_item i LEFT JOIN inventory_item_location_policy p ON p.root_realm_id=i.root_realm_id AND p.item_id=i.id AND p.location_id=$4::uuid WHERE i.root_realm_id=$1 AND ($2='' OR strpos(lower(i.name),$2)>0 OR strpos(lower(i.sku_norm),$2)>0 OR strpos(lower(i.category),$2)>0) ORDER BY i.name,i.id LIMIT 26 OFFSET $3",[a.realmId,search,offset,locationInput||null]);
+    const q=await tx.query("SELECT i.id AS ref,i.sku_norm AS sku,i.name,i.category,i.description,i.unit_code AS unit,i.qty_scale AS scale,i.low_stock_threshold::text AS threshold,i.status,i.version,COALESCE(p.threshold,i.low_stock_threshold)::text AS \"storeThreshold\",COALESCE(p.version,0) AS \"thresholdVersion\" FROM inventory_item i LEFT JOIN inventory_item_location_policy p ON p.root_realm_id=i.root_realm_id AND p.item_id=i.id AND p.location_id=$4::uuid WHERE i.root_realm_id=$1 AND ($2='' OR strpos(lower(i.name),$2)>0 OR strpos(lower(i.sku_norm),$2)>0 OR strpos(lower(i.category),$2)>0) AND ($5='ALL' OR i.status=$5) ORDER BY i.name,i.id LIMIT 26 OFFSET $3",[a.realmId,search,offset,locationInput||null,status]);
     return {items:q.rows.slice(0,25),hasMore:q.rows.length>25,offset};
    }
-   const q=await tx.query("SELECT id AS ref,supplier_code_norm AS code,display_name AS name,category,status,version FROM inventory_supplier WHERE root_realm_id=$1 AND ($2='' OR strpos(lower(display_name),$2)>0 OR strpos(lower(supplier_code_norm),$2)>0) ORDER BY display_name,id LIMIT 26 OFFSET $3",[a.realmId,search,offset]);
+   const q=await tx.query("SELECT id AS ref,supplier_code_norm AS code,display_name AS name,category,status,version FROM inventory_supplier WHERE root_realm_id=$1 AND ($2='' OR strpos(lower(display_name),$2)>0 OR strpos(lower(supplier_code_norm),$2)>0 OR strpos(lower(category),$2)>0) AND ($4='ALL' OR status=$4) ORDER BY display_name,id LIMIT 26 OFFSET $3",[a.realmId,search,offset,status]);
    return {items:q.rows.slice(0,25),hasMore:q.rows.length>25,offset};
   });
  }
