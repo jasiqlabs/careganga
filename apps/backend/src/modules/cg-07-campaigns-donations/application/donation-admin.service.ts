@@ -90,7 +90,7 @@ export class DonationAdminService{
   const f=filters(input);
   const scope=await this.branches.financeReportScope(bearer,"finance.reports.view");
   const args=[actor.realmId,scope.all,scope.branchRefs,f.status,f.q,f.offset,f.method,
-   f.minMinor,f.maxMinor,f.from,f.to,f.campaign];
+   f.minMinor,f.maxMinor,f.from,f.to,f.campaign,f.cursorTime,f.cursorId];
   const rows=await this.db.query<{
    donationNumber:string;amountMinor:string;currency:string;status:string;
    method:string|null;campaignTitle:string|null;voucher:string|null;createdAt:Date;
@@ -108,7 +108,7 @@ export class DonationAdminService{
     "FROM donation d LEFT JOIN campaign c ON c.root_realm_id=d.root_realm_id AND c.id=d.campaign_id "+
     "LEFT JOIN donation_manual_evidence e ON e.root_realm_id=d.root_realm_id AND e.donation_id=d.id "+
     "LEFT JOIN LATERAL (SELECT a.method FROM donation_payment_attempt a WHERE a.root_realm_id=d.root_realm_id AND a.donation_id=d.id ORDER BY a.created_at DESC,a.id DESC LIMIT 1) m ON true "+
-    where+" ORDER BY d.created_at DESC,d.id DESC LIMIT 26 OFFSET $6",args);
+    where+" AND ($13::timestamptz IS NULL OR (d.created_at,d.id)<($13::timestamptz,$14::uuid)) ORDER BY d.created_at DESC,d.id DESC LIMIT 26 OFFSET $6",args);
   const summary=await this.db.query<{total:number;received:number;pending:number;failed:number;
    receivedMinor:string}>(
     "SELECT count(*)::int AS total,count(*) FILTER(WHERE source_status='RECEIVED_POSTED')::int AS received,"+
@@ -152,7 +152,10 @@ export class DonationAdminService{
     [actor.realmId,scope.all,scope.branchRefs]);
    const refunded=BigInt(verifiedRefunds.rows[0]?.minor??"0");
    const gross=BigInt(summary.rows[0]?.receivedMinor??"0");
-   return {items:rows.rows.slice(0,25),hasMore:rows.rows.length>25,offset:f.offset,
+   const last=rows.rows.slice(0,25).at(-1);
+   const nextCursor=rows.rows.length>25&&last?
+    Buffer.from(JSON.stringify({t:last.createdAt.toISOString(),id:last.donationRef})).toString("base64url"):null;
+   return {items:rows.rows.slice(0,25),hasMore:rows.rows.length>25,offset:f.offset,nextCursor,
    summary:{...summary.rows[0],verifiedRefundMinor:refunded.toString(),
      verifiedRefundCount:verifiedRefunds.rows[0]?.total??0,
      netReceivedMinor:(gross-refunded).toString()},monthlyTrend:trends.rows,message:"Only original CG09-confirmed posted receipts count as received. Pending requests are excluded."};
