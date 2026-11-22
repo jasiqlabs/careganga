@@ -7,6 +7,7 @@ import {FoundationStructureIdentityFacade} from "../../cg-01-identity-access/app
 import type {VerifiedFoundationActor as Actor} from "../../cg-01-identity-access/public-api";
 import {BranchSourceFacade} from "../../cg-02-foundation-structure/application/branch-source.facade";
 import {object,plain,uuid} from "../domain/tier-input";
+import {rosterCsvCell} from "../domain/roster-csv-cell";
 type Filter={q:string;status:string;category:string;branch:string|null;at:string|null;id:string|null};
 type Row={ref:string;memberNumber:string;name:string;email:string|null;mobile:string;plan:string;category:string;joinedOn:string;expiresOn:string|null;status:string;city:string;district:string;branch:string|null;createdAt:string};
 const categories=["ALL","ANNUAL","LIFETIME","HONORARY","STUDENT","OTHER"];
@@ -24,10 +25,6 @@ function read(raw:unknown):Filter{
   }catch{throw new BadRequestException("Reset the membership roster filters.");}
  }
  return {q:plain(x.q??"",0,100,"member search").toLowerCase(),status,category,branch:x.branch?uuid(x.branch):null,at,id};
-}
-function csvCell(value:string|null|undefined){
- const v=String(value??"").replace(/[\r\n\t]/g," "),safe=/^[=+\-@]/.test(v)?"'"+v:v;
- return '"'+safe.replace(/"/g,'""')+'"';
 }
 const cols=[
  'm.id AS ref,m.member_no AS "memberNumber",m.display_name AS name',
@@ -86,8 +83,8 @@ export class MembershipRosterService{
    const page=await this.rows(tx,a,filter,true);
    if(page.rows.length>500)throw new BadRequestException("More than 500 members. Narrow filters before export.");
    const header=["Member number","Name","Email","Mobile","Plan","Category","Joined","Expires","Status","City","District","Branch"];
-   const rows=page.rows.map(x=>[x.memberNumber,x.name,x.email,x.mobile,x.plan,x.category,x.joinedOn,x.expiresOn,x.status,x.city,x.district,x.branch].map(csvCell).join(","));
-   const csv=[header.map(csvCell).join(","),...rows].join("\r\n");
+   const rows=page.rows.map(x=>[x.memberNumber,x.name,x.email,x.mobile,x.plan,x.category,x.joinedOn,x.expiresOn,x.status,x.city,x.district,x.branch].map(rosterCsvCell).join(","));
+   const csv=[header.map(rosterCsvCell).join(","),...rows].join("\r\n");
    const scopeDigest=createHash("sha256").update(JSON.stringify([a.realmId,a.accountId,filter.q,filter.status,filter.category,filter.branch])).digest("hex");
    await tx.query("INSERT INTO membership_member_export_audit(root_realm_id,actor_ref,exported_rows,scope_digest) VALUES($1,$2,$3,$4)",[a.realmId,a.accountId,page.rows.length,scopeDigest]);
    return {csv,rows:page.rows.length};
