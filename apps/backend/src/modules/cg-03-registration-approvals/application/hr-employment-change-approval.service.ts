@@ -76,9 +76,9 @@ export class HrEmploymentChangeApprovalService{
   if(!c)throw new NotFoundException("Employment review unavailable");
   const row=await this.source.original(tx,realm,c.hr_employment_change_id,write);this.exact(c,row);return {c,row};
  }
- async inbox(token:string,offsetInput:unknown,statusInput:unknown){
+ async inbox(token:string,offsetInput:unknown,statusInput:unknown,family:unknown="ALL"){
   const actor=await this.reviewer(token),offset=Number(offsetInput??0),status=String(statusInput??"ALL");
-  if(!Number.isSafeInteger(offset)||offset<0||offset>10000||!["ALL","SUBMITTED","IN_REVIEW","PENDING_OWNER","OWNER_COMPLETED","RETURNED","REJECTED","CANCELLED"].includes(status))throw new BadRequestException({code:"CG10_CHANGE_INVALID"});
+  if(!Number.isSafeInteger(offset)||offset<0||offset>10000||!["ALL","SUBMITTED","IN_REVIEW","PENDING_OWNER","OWNER_COMPLETED","RETURNED","REJECTED","CANCELLED"].includes(status)||typeof family!=="string"||!["ALL","TRANSFER","EXIT"].includes(family))throw new BadRequestException({code:"CG10_CHANGE_INVALID"});
   return this.run(async tx=>{
    await this.currentReviewer(tx,actor);
    const q=await tx.query<Case&{kind:string;reference:string;effective_date:string;change_status:string;employee_account_ref:string|null}>(`
@@ -86,8 +86,8 @@ export class HrEmploymentChangeApprovalService{
     FROM cg03_case c JOIN hr_employment_change h ON h.root_realm_id=c.realm_id AND h.id=c.hr_employment_change_id
     AND h.source_digest=c.hr_employment_change_digest AND h.revision=c.proposal_revision AND h.case_ref=c.id
     JOIN hr_employee e ON e.root_realm_id=h.root_realm_id AND e.id=h.employee_id
-    WHERE c.realm_id=$1 AND c.case_kind IN('HR_TRANSFER_PROMOTION','HR_EXIT_REVIEW') AND ($2='ALL' OR c.status=$2)
-    ORDER BY c.submitted_at DESC,c.id DESC LIMIT 26 OFFSET $3`,[actor.realmId,status,offset]);
+    WHERE c.realm_id=$1 AND c.case_kind IN('HR_TRANSFER_PROMOTION','HR_EXIT_REVIEW') AND ($2='ALL' OR c.status=$2) AND ($4='ALL' OR ($4='EXIT' AND c.case_kind='HR_EXIT_REVIEW') OR ($4='TRANSFER' AND c.case_kind='HR_TRANSFER_PROMOTION'))
+    ORDER BY c.submitted_at DESC,c.id DESC LIMIT 26 OFFSET $3`,[actor.realmId,status,offset,family]);
    return {items:q.rows.slice(0,25).map(c=>({caseRef:c.id,caseReference:c.case_number,reference:c.reference,employeeName:c.account_name_snapshot,kind:c.kind,effectiveDate:c.effective_date,status:c.change_status,caseStatus:c.status,revision:c.revision,
     canReview:c.proposer_id!==actor.accountId&&c.employee_account_ref!==actor.accountId&&["SUBMITTED","IN_REVIEW"].includes(c.status)})),offset,hasMore:q.rows.length>25};
   });
