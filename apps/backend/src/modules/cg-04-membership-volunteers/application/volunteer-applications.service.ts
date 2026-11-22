@@ -16,12 +16,20 @@ const projection=`v.id AS ref,v.application_ref AS "applicationNumber",v.status,
  v.state_ref AS "stateRef",s.display_name AS state,v.district_ref AS "districtRef",d.display_name AS district,
  v.branch_ref AS "branchRef",b.name AS branch,v.department_ref AS "departmentRef",dept.name AS department,
  v.skills,v.availability,v.experience,v.referral_input AS referral,v.consent_version AS "consentVersion",
- v.submitted_at AS "submittedAt",v.updated_at AS "updatedAt"`;
+ v.submitted_at AS "submittedAt",v.updated_at AS "updatedAt",
+ review.case_number AS "reviewReference",review.status AS "reviewStatus",review.remarks AS "reviewRemarks"`;
 const joins=` FROM volunteer_application v
  JOIN geography_area s ON s.id=v.state_ref AND s.root_realm_id=v.root_realm_id
  JOIN geography_area d ON d.id=v.district_ref AND d.root_realm_id=v.root_realm_id
  JOIN department dept ON dept.id=v.department_ref AND dept.root_realm_id=v.root_realm_id
- LEFT JOIN branch b ON b.id=v.branch_ref AND b.root_realm_id=v.root_realm_id`;
+ LEFT JOIN branch b ON b.id=v.branch_ref AND b.root_realm_id=v.root_realm_id
+ LEFT JOIN LATERAL(
+  SELECT c.case_number,c.status,(SELECT decision.safe_remarks FROM cg03_case_decision decision
+   WHERE decision.realm_id=c.realm_id AND decision.case_id=c.id
+   ORDER BY decision.accepted_case_revision DESC LIMIT 1) AS remarks
+  FROM cg03_case c WHERE c.realm_id=v.root_realm_id AND c.case_kind='VOLUNTEER_APPLICATION'
+   AND c.volunteer_application_id=v.id ORDER BY c.volunteer_application_version DESC LIMIT 1
+ ) review ON true`;
 @Injectable()
 export class VolunteerApplicationsService{
  constructor(@Inject(DATABASE)private readonly db:Pool,private readonly sessions:SessionService,
