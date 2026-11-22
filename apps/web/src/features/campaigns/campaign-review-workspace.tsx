@@ -12,7 +12,7 @@ const entry={minHeight:42,padding:"10px 12px",borderRadius:8,border:"1px solid v
 const panel={padding:16,border:"1px solid var(--cg-border)",borderRadius:12,background:"var(--cg-surface,#fff)"} as const;
 const row={display:"flex",flexWrap:"wrap" as const,alignItems:"center" as const,gap:9};
 async function request<T>(path:string,method:"GET"|"POST"="GET",body?:Record<string,unknown>):Promise<T>{
- const r=await fetch("/api/campaign-reviews"+(path?"/"+path:""),{method,cache:"no-store",
+ const r=await fetch("/api/campaign-reviews"+(path.startsWith("?")?path:path?"/"+path:""),{method,cache:"no-store",
   headers:body?{"Content-Type":"application/json"}:undefined,body:body?JSON.stringify(body):undefined,
   signal:AbortSignal.timeout(16000)});
  const v:unknown=await r.json().catch(()=>null);
