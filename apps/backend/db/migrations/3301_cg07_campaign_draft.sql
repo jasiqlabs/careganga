@@ -25,9 +25,9 @@ CREATE TABLE campaign(
  UNIQUE(root_realm_id,code_norm),
  FOREIGN KEY(branch_ref,root_realm_id) REFERENCES branch(id,root_realm_id) ON DELETE RESTRICT,
  FOREIGN KEY(root_realm_id,project_source_ref) REFERENCES project(root_realm_id,id) ON DELETE RESTRICT,
+ FOREIGN KEY(root_realm_id,event_source_ref) REFERENCES project_activity(root_realm_id,id) ON DELETE RESTRICT,
  FOREIGN KEY(created_by,root_realm_id) REFERENCES account(id,realm_id) ON DELETE RESTRICT,
- CHECK(end_at IS NULL OR start_at IS NULL OR end_at>=start_at),
- CHECK(event_source_ref IS NULL OR project_source_ref IS NOT NULL)
+ CHECK(end_at IS NULL OR start_at IS NULL OR end_at>=start_at)
 );
 CREATE INDEX ix_cg07_campaign_scope ON campaign(root_realm_id,branch_ref,source_status,updated_at DESC,id);
 CREATE INDEX ix_cg07_campaign_owner ON campaign(root_realm_id,created_by,updated_at DESC,id);
