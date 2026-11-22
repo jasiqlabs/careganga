@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import {readFileSync} from "node:fs";
 import {join} from "node:path";
 import {parseVolunteerCancel,parseVolunteerDraft,volunteerAvailabilities} from "../src/modules/cg-04-membership-volunteers/domain/volunteer-application-input";
+import {opaqueAppointmentQr} from "../src/modules/cg-19-documents-notifications/application/cg19-appointment-qr";
 /** SOURCE-CONTRACT ONLY. These tests do not constitute executed SQL/Web/Android CG04 QA. */
 const key="11111111-1111-4111-8111-111111111111",state="22222222-2222-4222-8222-222222222222",
  district="33333333-3333-4333-8333-333333333333",branch="44444444-4444-4444-8444-444444444444",department="55555555-5555-4555-8555-555555555555";
@@ -130,4 +131,15 @@ test("US003-QA14/19 staff Android protected shares are source-guarded after asyn
  }
  assert.match(native,/if\(!active\.current\|\|seq\.current!==at\)return;/);
  assert.match(native,/try\{await work\(\);\}catch\(e\)\{\s*if\(at===seq\.current&&active\.current\)/);
+});
+
+test("US003-QA17 real CG19 QR encoder accepts only the original opaque code and produces a full 29-by-29 matrix",()=>{
+ const code="CGV-0123456789ABCDEF01234567";
+ const matrix=opaqueAppointmentQr(code);
+ assert.equal(matrix.length,29);
+ for(const row of matrix){assert.equal(row.length,29);for(const bit of row)assert.equal(typeof bit,"boolean");}
+ assert.equal(matrix[3][3],true);
+ assert.equal(matrix[25][25],true);
+ assert.throws(()=>opaqueAppointmentQr("CGV-EXAMPLE"));
+ assert.throws(()=>opaqueAppointmentQr("CGV-0123456789ABCDEF01234567?name=private"));
 });
