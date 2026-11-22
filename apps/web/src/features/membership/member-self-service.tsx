@@ -37,7 +37,15 @@ export function MemberSelfService(){
   }if(live)setPlans(all);})().catch(()=>{if(live)setError("Current membership plans are unavailable. Refresh before choosing a plan.");});
   return()=>{live=false;sequence.current++;};
  },[refresh]);
- useEffect(()=>{if(!chosen){setFee(null);return;}let active=true;void api<CG04MembershipFee>("/applications/"+chosen.ref+"/fee").then(x=>{if(active)setFee(x);}).catch(()=>{if(active)setFee(null);});return()=>{active=false;};},[chosen?.ref,chosen?.version]);
+ useEffect(()=>{
+  const onVisibility=()=>{
+   if(document.visibilityState!=="visible"){sequence.current++;setApps([]);setChosen(null);setMember(null);setFee(null);setVerified(false);setLoading(true);setCode("");}
+   else void refresh().catch(()=>setError("Private membership status could not be confirmed. Retry.")).finally(()=>setLoading(false));
+  };
+  document.addEventListener("visibilitychange",onVisibility);
+  return()=>document.removeEventListener("visibilitychange",onVisibility);
+ },[refresh]);
+ useEffect(()=>{if(!chosen){setFee(null);return;}let active=true;void api<CG04MembershipFee>("/applications/"+chosen.ref+"/fee").then(x=>{if(active&&document.visibilityState==="visible")setFee(x);}).catch(()=>{if(active&&document.visibilityState==="visible")setFee(null);});return()=>{active=false;};},[chosen?.ref,chosen?.version]);
  const act=async(job:()=>Promise<void>)=>{if(busy)return;setBusy(true);setError("");setNotice("");try{await job();}catch(e){setError(e instanceof Error?e.message:"Outcome uncertain. Refresh before retrying.");}finally{setBusy(false);}};
  const send=(cmd:Pending)=>void act(async()=>{pending.current=cmd;await api(cmd.path,"POST",cmd.body);pending.current=null;await refresh();setNotice("The original action has been confirmed. Review the updated status.");});
  const action=(kind:"submit"|"cancel"|"activate")=>{if(!chosen||busy||pending.current)return;send({path:"/applications/"+chosen.ref+"/"+kind,body:{requestKey:crypto.randomUUID(),...(kind==="activate"?{}:{expectedVersion:chosen.version})}});};
