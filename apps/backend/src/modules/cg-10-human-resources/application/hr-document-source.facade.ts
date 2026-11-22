@@ -59,6 +59,31 @@ export class HrDocumentSourceFacade{
   if(q.rows.length!==1)throw new ForbiddenException("The original eligible subject is unavailable for your current branch");
   return q.rows[0];
  }
+ async subjects(tx:PoolClient,actor:VerifiedFoundationActor,kindInput:unknown,searchInput:unknown){
+  await this.identity.assertCurrent(tx,actor,"hr.documents.manage");
+  if(typeof kindInput!=="string"||!KINDS.some(k=>k===kindInput)||typeof searchInput!=="string"||searchInput.length>80)throw new BadRequestException("Choose a supported document kind and employee search");
+  const kind=kindInput as HrDocumentKind,search=searchInput.trim().toLowerCase();
+  const q=kind==="OFFER"?await tx.query<{reference:string;label:string;designation:string;branch:string}>(`
+   SELECT a.application_no AS reference,a.legal_name AS label,a.designation,b.name AS branch
+   FROM hr_employee_application a JOIN hr_application_revision v ON v.root_realm_id=a.root_realm_id AND v.application_id=a.id AND v.revision_no=a.revision_no AND v.source_digest=a.submitted_digest
+   JOIN cg03_case c ON c.realm_id=a.root_realm_id AND c.id=a.cg03_case_ref AND c.hr_application_id=a.id AND c.hr_revision_id=v.id
+   JOIN branch b ON b.id=a.proposed_branch_ref AND b.root_realm_id=a.root_realm_id AND b.status='ACTIVE'
+   WHERE a.root_realm_id=$1 AND a.state IN('SUBMITTED','IN_REVIEW') AND c.status IN('SUBMITTED','IN_REVIEW')
+   AND NOT EXISTS(SELECT 1 FROM hr_employee e WHERE e.root_realm_id=a.root_realm_id AND e.application_id=a.id) AND ${scope}
+   AND ($3='' OR strpos(lower(a.legal_name),$3)>0 OR strpos(lower(a.application_no),$3)>0)
+   ORDER BY a.legal_name,a.id LIMIT 51`,[actor.realmId,actor.accountId,search]):
+   await tx.query<{reference:string;label:string;designation:string;branch:string}>(`
+   SELECT e.employee_code AS reference,app.legal_name AS label,a.designation,b.name AS branch
+   FROM hr_employee e JOIN hr_employee_application app ON app.id=e.application_id AND app.root_realm_id=e.root_realm_id
+   JOIN hr_employment_assignment a ON a.employee_id=e.id AND a.root_realm_id=e.root_realm_id
+   JOIN branch b ON b.id=a.branch_ref AND b.root_realm_id=e.root_realm_id
+   WHERE e.root_realm_id=$1 AND ${scope}
+    AND (($4='RELIEVING' AND e.status='EXITED' AND EXISTS(SELECT 1 FROM hr_employment_change h WHERE h.root_realm_id=e.root_realm_id AND h.employee_id=e.id AND h.prior_assignment_id=a.id AND h.kind IN('RESIGNATION','EXIT') AND h.status='APPLIED' AND h.decision_ref IS NOT NULL AND h.effective_date=a.valid_to))
+    OR ($4<>'RELIEVING' AND e.status IN('ACTIVE','PROBATION') AND a.valid_from<=CURRENT_DATE AND a.valid_to IS NULL AND b.status='ACTIVE'))
+    AND ($3='' OR strpos(lower(app.legal_name),$3)>0 OR strpos(lower(e.employee_code),$3)>0)
+   ORDER BY app.legal_name,e.id LIMIT 51`,[actor.realmId,actor.accountId,search,kind]);
+  return {items:q.rows.slice(0,50),hasMore:q.rows.length>50};
+ }
  async template(tx:PoolClient,realm:string,x:Input){
   const q=await tx.query<Template>("SELECT id,version,title,body,content_sha256 FROM cg19_document_template WHERE realm_id=$1 AND id=$2 AND version=$3 AND template_kind=$4 AND status='APPROVED' FOR SHARE",[realm,x.templateId,x.templateVersion,"HR_"+x.kind]);
   if(!q.rows[0])throw new ConflictException("The original approved template is unavailable");

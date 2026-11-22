@@ -51,6 +51,10 @@ export class HrDocumentApprovalService{
   if(row.case_ref!==c.id||row.source_digest!==c.hr_document_source_digest||row.revision!==c.proposal_revision||row.created_by!==c.proposer_id)this.stale();
   return {c,row};
  }
+ async subjects(token:string,kind:string,search=""){
+  const actor=await this.sessions.requireAction(token,"hr.documents.manage");
+  return this.run(tx=>this.source.subjects(tx,actor,kind,search));
+ }
  async create(token:string,body:unknown){
   const a=await this.sessions.requireAction(token,"hr.documents.manage");
   return this.run(async tx=>{await this.root(tx,a.realmId);return this.source.create(tx,a,body);});

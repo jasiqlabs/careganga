@@ -6,6 +6,16 @@ function allowed(parts:string[],method:string){
  if(parts.length===1&&["me","branch-options","applications","employees","my-pending-link",
   "managers","account-options","role-options","employee-branches","employee-departments","summary"].includes(parts[0]))
   return parts[0]==="applications"?["GET","POST"].includes(method):method==="GET";
+ const doc=/^CG-HR-DOC-[0-9]{6,}$/;
+ if(parts.length===1&&["document-subjects","document-templates","document-reviews"].includes(parts[0]))return method==="GET";
+ if(parts.length===1&&parts[0]==="document-requests")return method==="GET"||method==="POST";
+ if(parts.length===2&&parts[0]==="document-templates"&&parts[1]==="approve")return method==="POST";
+ if(parts.length===3&&parts[0]==="document-requests"&&doc.test(parts[1])&&["submit","issue"].includes(parts[2]))return method==="POST";
+ if(parts.length===2&&parts[0]==="document-reviews"&&UUID.test(parts[1]))return method==="GET";
+ if(parts.length===3&&parts[0]==="document-reviews"&&UUID.test(parts[1])&&parts[2]==="decide")return method==="POST";
+ if(parts.length===3&&parts[0]==="issued-documents"&&UUID.test(parts[1])&&["reconcile","revoke","file"].includes(parts[2]))return parts[2]==="file"?method==="GET":method==="POST";
+ if(parts.length===2&&parts[0]==="me"&&parts[1]==="documents")return method==="GET";
+ if(parts.length===4&&parts[0]==="me"&&parts[1]==="documents"&&UUID.test(parts[2])&&parts[3]==="file")return method==="GET";
  const change=/^CG-HR-CHG-[0-9]{6,}$/;
  if(parts.length===1&&parts[0]==="employment-changes")return method==="GET"||method==="POST";
  if(parts.length===2&&parts[0]==="employment-changes"&&change.test(parts[1]))return method==="GET";
@@ -103,6 +113,12 @@ async function proxy(req:NextRequest,parts:string[],method:string){
     :status===429?"Too many requests. Try again later."
     :"The result is uncertain. Refresh before resubmitting."},
     {status,headers:{"Cache-Control":"no-store"}});
+  }
+  if(parts[parts.length-1]==="file"&&(parts[0]==="issued-documents"||(parts[0]==="me"&&parts[1]==="documents"))){
+   if(!res.headers.get("content-type")?.startsWith("application/pdf"))throw Error("Original PDF unavailable");
+   const bytes=await res.arrayBuffer();
+   if(bytes.byteLength<100||bytes.byteLength>10*1024*1024)throw Error("Original PDF outside limits");
+   return new NextResponse(bytes,{headers:{"Content-Type":"application/pdf","Content-Disposition":'attachment; filename="CareGanga-employee-document.pdf"',"Cache-Control":"private, no-store","X-Content-Type-Options":"nosniff","X-Robots-Tag":"noindex, nofollow"}});
   }
   const data:unknown=await res.json();
   return NextResponse.json(data,{headers:{"Cache-Control":"no-store"}});
