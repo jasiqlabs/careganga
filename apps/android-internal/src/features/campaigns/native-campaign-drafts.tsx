@@ -84,7 +84,7 @@ export function NativeCampaignDrafts({token,canManage,onExpired}:{
    active.current=state==="active";
    if(!active.current){
     seq.current++;choiceSeq.current++;setRows([]);setSelected(null);setForm(blank());setSavedForm(blank());setEditing(false);setChoices(null);
-    setError("");setNotice("");pending.current=null;
+    setError("");setNotice("");pending.current=null;submitPending.current=null;
    }else void refresh();
   });
   return()=>subscription.remove();
