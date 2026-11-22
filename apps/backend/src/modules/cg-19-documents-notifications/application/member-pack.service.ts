@@ -139,6 +139,18 @@ export class MemberPackService{
   const a=await this.issuer(token);
   return this.transaction(async tx=>{await this.authorizedIssuer(tx,a);const p=await this.pack(tx,a.realmId,ref);return outward(p);});
  }
+ async memberStatus(token:string,ref:string){
+  const a=await this.issuer(token),id=uuid(ref);
+  return this.transaction(async tx=>{
+   await this.authorizedIssuer(tx,a);
+   if(!(await tx.query("SELECT 1 FROM member WHERE root_realm_id=$1 AND id=$2",[a.realmId,id])).rowCount)
+    throw new NotFoundException("Member unavailable.");
+   const p=(await tx.query<Pack>(
+    "SELECT * FROM cg19_member_pack WHERE root_realm_id=$1 AND member_id=$2 ORDER BY created_at DESC,id DESC LIMIT 1",
+    [a.realmId,id])).rows[0];
+   return {pack:p?outward(p):null};
+  });
+ }
  async mine(token:string){
   const a=await this.sessions.verifySession(token);
   return this.transaction(async tx=>{
