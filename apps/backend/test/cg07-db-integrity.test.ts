@@ -3,12 +3,12 @@ import assert from "node:assert/strict";
 import {Client} from "pg";
 
 /**
- * CG07 G07-01 actual PostgreSQL migration smoke check.
+ * CG07 G07-01/02 actual PostgreSQL migration smoke check (3301–3305).
  * Run ONLY on a disposable migrated test database with DATABASE_URL set.
  * This does not insert sample donations, fake approvals or alter live data.
  * It is not a substitute for the original 20-case scenario/transaction QA.
  */
-test("CG07 3301–3303 installed: real guarded campaign lifecycle, FK and protected CG03 cases",{
+test("CG07 3301–3305 installed: guarded lifecycle, CG19 media and protected CG03 cases",{
  timeout:15_000
 },async()=>{
  const url=process.env.DATABASE_URL;
@@ -73,6 +73,27 @@ test("CG07 3301–3303 installed: real guarded campaign lifecycle, FK and protec
     ((tgrelid='campaign_revision'::regclass AND tgname='cg07_campaign_revision_immutable') OR
      (tgrelid='campaign_status_event'::regclass AND tgname='cg07_campaign_event_immutable'))`);
   assert.equal(immutable.rowCount,2,"Campaign revisions and events must be immutable");
+  const media=await client.query<{tgname:string;tgenabled:string}>(`
+    SELECT tgname,tgenabled FROM pg_trigger
+    WHERE tgrelid IN('cg19_upload_intent'::regclass,'cg19_stored_file'::regclass,'campaign'::regclass)
+      AND tgname IN('cg19_campaign_intent_identity','cg19_campaign_file_identity','cg07_campaign_media_proof_after')
+      AND NOT tgisinternal`);
+  assert.deepEqual(new Set(media.rows.map(x=>x.tgname)),
+    new Set(['cg19_campaign_intent_identity','cg19_campaign_file_identity','cg07_campaign_media_proof_after']));
+  assert.ok(media.rows.every(x=>['O','A'].includes(x.tgenabled)),"CG19 media guard must be enabled");
+  const lifecycle=await client.query<{definition:string}>(`
+    SELECT pg_get_constraintdef(oid) AS definition FROM pg_constraint
+    WHERE conrelid='campaign_status_event'::regclass
+      AND conname='cg07_campaign_event_operation_check'`);
+  assert.equal(lifecycle.rowCount,1,"3305 original protected campaign lifecycle migration required");
+  for(const action of ['PAUSE','RESUME','CLOSE','WITHDRAW','CANCEL_DRAFT'])
+    assert.ok(lifecycle.rows[0].definition.includes(action),"missing 3305 operation "+action);
+  const columns=await client.query<{table_name:string}>(`
+    SELECT table_name FROM information_schema.columns
+    WHERE table_schema=current_schema() AND table_name IN('cg19_upload_intent','cg19_stored_file')
+      AND column_name='campaign_id'`);
+  assert.deepEqual(new Set(columns.rows.map(x=>x.table_name)),
+    new Set(['cg19_upload_intent','cg19_stored_file']));
   await client.query("COMMIT");
  }catch(error){
   try{await client.query("ROLLBACK");}catch{/* retain exact test failure */}

@@ -121,7 +121,7 @@ BEGIN
   WHERE f.realm_id=NEW.root_realm_id AND f.campaign_id=NEW.id
     AND f.id=cover::uuid AND f.proposal_revision<=NEW.current_revision
     AND f.owner_kind='CG07_CAMPAIGN'
-    AND f.original_mime IN('image/jpeg','image/png','image/webp')
+    AND f.original_mime IN('image/jpeg','image/png')
     AND f.scan_status='CLEAN_VERIFIED' AND f.revoked_at IS NULL
     AND i.owner_kind='CG07_CAMPAIGN' AND i.campaign_media_rights_confirmed
     AND i.status='VALIDATED' AND i.classification='CAMPAIGN_COVER'

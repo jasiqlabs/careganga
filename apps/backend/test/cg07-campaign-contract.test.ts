@@ -381,3 +381,19 @@ test("US001-QA05/06/16/18: A12 approved and public counts and recent activities 
  assert.match(schema,/CREATE INDEX ix_cg07_campaign_feed/);
  assert.doesNotMatch(ui,/Verified campaign activity feed is not yet connected/);
 });
+
+test("US001-QA03 original request retry returns its immutable event outcome",()=>{
+ const source=root("apps/backend/src/modules/cg-07-campaigns-donations/application/campaign-drafts.service.ts");
+ assert.match(source,/SELECT campaign_id,digest,operation,resulting_version,resulting_status FROM campaign_status_event/);
+ assert.match(source,/status:prior\.resulting_status,replayed:true/);
+ assert.doesNotMatch(source,/status:c\.source_status,replayed:true/);
+});
+test("US001-QA04/13 exact A13 cover versus A15 banner server and DB media proof",()=>{
+ const source=root("apps/backend/src/modules/cg-07-campaigns-donations/application/campaign-drafts.service.ts");
+ const sql=root("apps/backend/db/migrations/3304_cg19_campaign_verified_media.sql");
+ assert.match(source,/WHEN 'COVER' THEN f\.original_mime IN\('image\/jpeg','image\/png'\)/);
+ assert.match(source,/WHEN 'BANNER' THEN f\.original_mime IN\('image\/jpeg','image\/png','image\/webp'\)/);
+ const cover=sql.split("IF cover IS NOT NULL")[1].split("IF banner IS NOT NULL")[0];
+ assert.match(cover,/f\.original_mime IN\('image\/jpeg','image\/png'\)/);
+ assert.doesNotMatch(cover,/f\.original_mime IN\('image\/jpeg','image\/png','image\/webp'\)/);
+});

@@ -108,7 +108,9 @@ export class CampaignDraftsService{
    JOIN cg19_upload_intent i ON i.id=f.upload_intent_id AND i.realm_id=f.realm_id
    WHERE f.realm_id=$1 AND f.campaign_id=$2 AND f.id=$3
     AND f.proposal_revision<=$4 AND f.owner_kind='CG07_CAMPAIGN'
-    AND ($5='DOCUMENT' OR f.original_mime IN('image/jpeg','image/png','image/webp'))
+    AND (CASE $5 WHEN 'COVER' THEN f.original_mime IN('image/jpeg','image/png')
+      WHEN 'BANNER' THEN f.original_mime IN('image/jpeg','image/png','image/webp')
+      ELSE f.original_mime IN('image/jpeg','image/png','image/webp','application/pdf') END)
     AND f.scan_status='CLEAN_VERIFIED' AND f.revoked_at IS NULL
     AND i.owner_kind='CG07_CAMPAIGN' AND i.campaign_id=$2
     AND i.status='VALIDATED' AND i.campaign_media_rights_confirmed
@@ -118,8 +120,8 @@ export class CampaignDraftsService{
  }
  private async replay(tx:PoolClient,a:Actor,key:string,digest:string,kind:string,target?:string){
   await tx.query("SELECT pg_advisory_xact_lock(hashtextextended($1,0))",["CG07:CAMPAIGN:"+a.realmId+":"+a.accountId+":"+key]);
-  const prior=(await tx.query<{campaign_id:string;digest:string;operation:string;resulting_version:number}>(
-   "SELECT campaign_id,digest,operation,resulting_version FROM campaign_status_event WHERE root_realm_id=$1 AND actor_ref=$2 AND request_key=$3",
+  const prior=(await tx.query<{campaign_id:string;digest:string;operation:string;resulting_version:number;resulting_status:string}>(
+   "SELECT campaign_id,digest,operation,resulting_version,resulting_status FROM campaign_status_event WHERE root_realm_id=$1 AND actor_ref=$2 AND request_key=$3",
    [a.realmId,a.accountId,key])).rows[0];
   if(!prior)return null;
   if(prior.digest!==digest||prior.operation!==kind||target&&target!==prior.campaign_id)
@@ -127,7 +129,7 @@ export class CampaignDraftsService{
   const c=await this.current(tx,a,prior.campaign_id);
   const code=(await tx.query<{code_norm:string}>("SELECT code_norm FROM campaign WHERE root_realm_id=$1 AND id=$2",
    [a.realmId,c.id])).rows[0].code_norm;
-  return {ref:c.id,version:prior.resulting_version,code,status:c.source_status,replayed:true};
+  return {ref:c.id,version:prior.resulting_version,code,status:prior.resulting_status,replayed:true};
  }
  private async eligibleVolunteerOptions(tx:PoolClient,a:Actor,branch:string|null,q:string){
   try{await this.identity.assertCurrent(tx,a,"volunteers.view");}
