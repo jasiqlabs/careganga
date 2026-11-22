@@ -4,11 +4,13 @@ const steps=["Basic Details","Project & Category","Team & Assignment","Budget & 
 type Row={ref:string;code:string;title:string;category:string;status:string;version:number;revision:number;
  branch:string|null;goalMinor:string|null;updatedAt:string;steps?:Record<string,unknown>};
 type Page={items:Row[];offset:number;hasMore:boolean};
+type Choice={value:string;label:string};
+type Choices={canFoundation:boolean;branches:Choice[];states:Choice[];districts:Choice[];coordinators:Choice[]};
 type Draft={
  basic:{title:string;type:"GENERAL";summary:string;description:string;tags:string[]};
- project:{category:string;branchRef:null;projectRef:null;eventRef:null;stateRef:null;districtRef:null;location:string;
+ project:{category:string;branchRef:string|null;projectRef:null;eventRef:null;stateRef:string|null;districtRef:string|null;location:string;
   targetGroup:string;plannedBeneficiaries:number|null};
- team:{coordinatorRef:null;volunteerRef:null};
+ team:{coordinatorRef:string|null;volunteerRef:null};
  budget:{goal:string;expectedCost:string;startAt:string;endAt:string};
  media:{fileRef:null;alt:string};review:Record<string,never>;
 };
@@ -28,12 +30,15 @@ const minorToRupees=(value:unknown)=>{
 function fromRow(row:Row):Draft{
  const p=row.steps??{},basic=p.basic as Partial<Draft["basic"]>|undefined,
   project=p.project as Partial<Draft["project"]>|undefined,
+  team=p.team as Partial<Draft["team"]>|undefined,
   budget=p.budget as {goalMinor?:string|null;expectedCostMinor?:string|null;startAt?:string|null;endAt?:string|null}|undefined;
  return {...blank(),
   basic:{...blank().basic,title:basic?.title??row.title,summary:basic?.summary??"",
    description:basic?.description??"",tags:Array.isArray(basic?.tags)?basic.tags:[]},
-  project:{...blank().project,category:project?.category??"GENERAL",location:project?.location??"",
+  project:{...blank().project,category:project?.category??"GENERAL",branchRef:project?.branchRef??null,
+   stateRef:project?.stateRef??null,districtRef:project?.districtRef??null,location:project?.location??"",
    targetGroup:project?.targetGroup??"",plannedBeneficiaries:project?.plannedBeneficiaries??null},
+  team:{...blank().team,coordinatorRef:team?.coordinatorRef??null},
   budget:{goal:minorToRupees(budget?.goalMinor),expectedCost:minorToRupees(budget?.expectedCostMinor),
    startAt:budget?.startAt??"",endAt:budget?.endAt??""}};
 }
@@ -55,7 +60,8 @@ export function CampaignDraftsWorkspace({canManage}:{canManage:boolean}){
   [q,setQ]=useState(""),[applied,setApplied]=useState(""),[selected,setSelected]=useState<Row|null>(null),
   [draft,setDraft]=useState<Draft>(blank),[step,setStep]=useState(0),[editing,setEditing]=useState(false),
   [busy,setBusy]=useState(false),[loading,setLoading]=useState(true),[notice,setNotice]=useState(""),
-  [failure,setFailure]=useState("");
+  [failure,setFailure]=useState(""),[choices,setChoices]=useState<Choices|null>(null);
+ const choiceSeq=useRef(0);
  const pending=useRef<{key:string;body:Record<string,unknown>;method:"POST"|"PATCH";path:string}|null>(null);
  const serial=useRef(0),editingSerial=useRef(0);
  const refresh=useCallback(async()=>{
@@ -67,6 +73,14 @@ export function CampaignDraftsWorkspace({canManage}:{canManage:boolean}){
   finally{if(id===serial.current)setLoading(false);}
  },[offset,applied]);
  useEffect(()=>{void refresh();return()=>{serial.current++;editingSerial.current++;};},[refresh]);
+ useEffect(()=>{
+  if(!editing){setChoices(null);return;}
+  const id=++choiceSeq.current;
+  void api<Choices>("options?"+new URLSearchParams({stateRef:draft.project.stateRef??""}))
+   .then(data=>{if(id===choiceSeq.current)setChoices(data);})
+   .catch(()=>{if(id===choiceSeq.current){setChoices(null);setFailure("Current branch, area or coordinator choices could not be verified.");}});
+  return()=>{choiceSeq.current++;};
+ },[editing,draft.project.stateRef]);
  const reset=()=>{if(busy||pending.current)return;editingSerial.current++;setSelected(null);setDraft(blank());setStep(0);setEditing(false);setFailure("");setNotice("");};
  const open=async(row:Row)=>{if(busy||pending.current)return;const id=++editingSerial.current;setLoading(true);setFailure("");
   try{const result=await api<Row>(row.ref);if(id===editingSerial.current){setSelected(result);setDraft(fromRow(result));setEditing(true);setStep(0);setNotice("");}}
@@ -97,10 +111,15 @@ export function CampaignDraftsWorkspace({canManage}:{canManage:boolean}){
    setFailure(e instanceof Error?e.message:"Campaign result uncertain. Check the saved draft.");
   }finally{setBusy(false);}
  };
+ const select=(label:string,value:string|null,items:Choice[],change:(v:string|null)=>void,empty:string)=>
+  <label style={field}>{label}<select style={entry} disabled={busy||!canManage||!!pending.current||!choices}
+   value={value??""} onChange={e=>change(e.target.value||null)}>
+    <option value="">{empty}</option>{items.map(c=><option key={c.value} value={c.value}>{c.label}</option>)}
+  </select></label>;
  const input=(label:string,value:string,onChange:(v:string)=>void,multiline=false)=>
   <label style={field}>{label}{multiline?
    <textarea style={{...entry,minHeight:100}} value={value} onChange={e=>onChange(e.target.value)} disabled={busy||!canManage||!!pending.current}/>:
-   <input style={entry} value={value} onChange={e=>onChange(e.target.value)} disabled={busy||!!pending.current}/>}</label>;
+   <input style={entry} value={value} onChange={e=>onChange(e.target.value)} disabled={busy||!canManage||!!pending.current}/>}</label>;
  return <section aria-label="Foundation campaigns" style={{display:"grid",gap:18}}>
   <header><h1>Campaigns</h1><p>Original Foundation campaign drafts and six-step planning. Contributions, approvals and publication are separate verified workflows.</p></header>
   <section style={panel}><div style={actions}>
