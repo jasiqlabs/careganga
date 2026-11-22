@@ -18,11 +18,11 @@ CREATE TABLE hr_document_request(
  created_by uuid NOT NULL, status text NOT NULL DEFAULT 'DRAFT' CHECK(status IN('DRAFT','SUBMITTED','APPROVED','RETURNED','REJECTED')),
  case_ref uuid,decision_ref uuid,created_at timestamptz NOT NULL DEFAULT now(),decided_at timestamptz,
  CHECK((kind='OFFER' AND employee_id IS NULL AND assignment_id IS NULL AND assignment_version IS NULL AND employee_version IS NULL
-  AND application_id IS NOT NULL AND application_revision_id IS NOT NULL AND application_revision_no>0 AND application_source_digest IS NOT NULL)
- OR (kind<>'OFFER' AND employee_id IS NOT NULL AND assignment_id IS NOT NULL AND assignment_version>0 AND employee_version>0
+  AND application_id IS NOT NULL AND application_revision_id IS NOT NULL AND application_revision_no IS NOT NULL AND application_revision_no>0 AND application_source_digest IS NOT NULL)
+ OR (kind<>'OFFER' AND employee_id IS NOT NULL AND assignment_id IS NOT NULL AND assignment_version IS NOT NULL AND assignment_version>0 AND employee_version IS NOT NULL AND employee_version>0
   AND application_id IS NULL AND application_revision_id IS NULL AND application_revision_no IS NULL AND application_source_digest IS NULL)),
  CHECK((kind='RELIEVING')=(exit_change_id IS NOT NULL)),
- CHECK((kind='EMPLOYEE_ID' AND expiry_date>issue_date) OR (kind<>'EMPLOYEE_ID' AND expiry_date IS NULL)),
+ CHECK((kind='EMPLOYEE_ID' AND expiry_date IS NOT NULL AND expiry_date>issue_date) OR (kind<>'EMPLOYEE_ID' AND expiry_date IS NULL)),
  CHECK((status='DRAFT' AND case_ref IS NULL AND decision_ref IS NULL AND decided_at IS NULL)
  OR (status='SUBMITTED' AND case_ref IS NOT NULL AND decision_ref IS NULL AND decided_at IS NULL)
  OR (status IN('APPROVED','RETURNED','REJECTED') AND case_ref IS NOT NULL AND decision_ref IS NOT NULL AND decided_at IS NOT NULL)),
@@ -133,3 +133,18 @@ BEGIN
  RETURN NEW;
 END; $fn$;
 CREATE TRIGGER cg19_hr_document_exact_guard BEFORE INSERT ON cg19_generated_document FOR EACH ROW EXECUTE FUNCTION cg19_hr_document_exact_guard();
+
+CREATE FUNCTION cg03_hr_document_link_required() RETURNS trigger LANGUAGE plpgsql AS $fn$
+BEGIN
+ IF NEW.case_kind='HR_DOCUMENT_REVIEW' AND NOT EXISTS(
+  SELECT 1 FROM cg03_case c JOIN hr_document_request h ON h.root_realm_id=c.realm_id AND h.id=c.hr_document_request_id
+   AND h.case_ref=c.id AND h.source_digest=c.hr_document_source_digest AND h.revision=c.proposal_revision AND h.created_by=c.proposer_id
+  WHERE c.id=NEW.id AND c.realm_id=NEW.realm_id AND (
+   (c.status IN('SUBMITTED','IN_REVIEW') AND h.status='SUBMITTED')
+   OR (c.status='FINAL_APPROVED' AND h.status='APPROVED')
+   OR (c.status='RETURNED' AND h.status='RETURNED') OR (c.status='REJECTED' AND h.status='REJECTED')))
+ THEN RAISE EXCEPTION 'Original document request and case outcome required'; END IF;
+ RETURN NULL;
+END; $fn$;
+CREATE CONSTRAINT TRIGGER cg03_hr_document_link_required AFTER INSERT OR UPDATE ON cg03_case
+ DEFERRABLE INITIALLY DEFERRED FOR EACH ROW EXECUTE FUNCTION cg03_hr_document_link_required();

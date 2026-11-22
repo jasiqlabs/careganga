@@ -124,3 +124,5 @@ Extend current CG-03 QA at owner handoff: document verification must never send 
 - CG-10 attendance correction consuming CG-03 review: Web and Internal Android route, original case history, password-confirmed decision and retry original request wired in source; execution and independent review pending. No new CG-03 user story.
 
 - CG-10 US-002 reviewer detail now records private reason access in original hr_audit for leave and attendance correction, with no reason/password in the audit event; 2015 migration and protected detail source authored, runtime and independent review NOT_RUN.
+
+- owner-integration CG10/US-004: genuine HR_DOCUMENT_REVIEW through HrDocumentApprovalService, immutable exact source digest, recipient/proposer exclusion, real protected distinct decision; CG19 consumes approvedSource; no access-role finalization; source only, issuer/client and runtime pending.
