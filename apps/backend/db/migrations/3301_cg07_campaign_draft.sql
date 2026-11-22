@@ -10,6 +10,7 @@ CREATE TABLE campaign(
  branch_ref uuid,
  project_source_ref uuid,
  event_source_ref uuid,
+ volunteer_source_ref uuid,
  goal_minor bigint CHECK(goal_minor IS NULL OR goal_minor BETWEEN 1 AND 99999999999999),
  currency text NOT NULL DEFAULT 'INR' CHECK(currency='INR'),
  start_at date,
@@ -26,6 +27,7 @@ CREATE TABLE campaign(
  FOREIGN KEY(branch_ref,root_realm_id) REFERENCES branch(id,root_realm_id) ON DELETE RESTRICT,
  FOREIGN KEY(root_realm_id,project_source_ref) REFERENCES project(root_realm_id,id) ON DELETE RESTRICT,
  FOREIGN KEY(root_realm_id,event_source_ref) REFERENCES project_activity(root_realm_id,id) ON DELETE RESTRICT,
+ FOREIGN KEY(root_realm_id,volunteer_source_ref) REFERENCES volunteer(root_realm_id,id) ON DELETE RESTRICT,
  FOREIGN KEY(created_by,root_realm_id) REFERENCES account(id,realm_id) ON DELETE RESTRICT,
  CHECK(end_at IS NULL OR start_at IS NULL OR end_at>=start_at)
 );
