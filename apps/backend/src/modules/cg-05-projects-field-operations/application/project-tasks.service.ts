@@ -219,7 +219,13 @@ export class ProjectTasksService {
    const priorityCounts=(await tx.query("SELECT t.priority AS label,count(*)::int AS count"+joins+where+" GROUP BY t.priority ORDER BY t.priority",values)).rows;
    const overdueItems=(await tx.query("SELECT "+projection+joins+where+" AND "+overdue+" ORDER BY t.due_at,t.id LIMIT 5",values)).rows;
    const recent=(await tx.query("SELECT t.id AS ref,t.task_code AS code,t.title,e.event_kind AS action,e.new_status AS status,e.occurred_at AS at,actor.display_name AS actor,e.redacted_reason AS reason"+joins+" JOIN project_task_event e ON e.root_realm_id=t.root_realm_id AND e.task_id=t.id JOIN account actor ON actor.realm_id=e.root_realm_id AND actor.id=e.actor_ref"+where+" ORDER BY e.occurred_at DESC,e.id DESC LIMIT 8",values)).rows;
-   return {items,counts,statusCounts,priorityCounts,overdueItems,recent,offset,hasMore:page.rows.length>25};
+   const filterScope=[a.realmId,s.all,s.branches.map(b=>b.value),a.accountId,mine];
+   const choices=(await tx.query(`WITH permitted AS (SELECT p.id AS project_id,p.title AS project,t.task_type,a.display_name AS assignee,p.location_label AS location`+joins+" WHERE "+scope+`)
+    SELECT (SELECT COALESCE(jsonb_agg(x),'[]'::jsonb) FROM (SELECT DISTINCT project_id AS value,project AS label FROM permitted ORDER BY project,project_id LIMIT 100) x) AS projects,
+    (SELECT COALESCE(jsonb_agg(x.task_type),'[]'::jsonb) FROM (SELECT DISTINCT task_type FROM permitted ORDER BY task_type LIMIT 100) x) AS types,
+    (SELECT COALESCE(jsonb_agg(x.assignee),'[]'::jsonb) FROM (SELECT DISTINCT assignee FROM permitted WHERE assignee IS NOT NULL ORDER BY assignee LIMIT 100) x) AS assignees,
+    (SELECT COALESCE(jsonb_agg(x.location),'[]'::jsonb) FROM (SELECT DISTINCT location FROM permitted WHERE location<>'' ORDER BY location LIMIT 100) x) AS locations`,filterScope)).rows[0];
+   return {items,counts,statusCounts,priorityCounts,overdueItems,recent,filterOptions:choices,offset,hasMore:page.rows.length>25};
   },true);
  }
 }
