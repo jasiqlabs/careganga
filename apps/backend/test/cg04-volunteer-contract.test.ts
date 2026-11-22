@@ -139,7 +139,7 @@ test("US003-QA17 real CG19 QR encoder accepts only the original opaque code and 
  assert.equal(matrix.length,29);
  for(const row of matrix){assert.equal(row.length,29);for(const bit of row)assert.equal(typeof bit,"boolean");}
  assert.equal(matrix[3][3],true);
- assert.equal(matrix[25][25],true);
+ assert.equal(matrix[22][22],true);
  assert.throws(()=>opaqueAppointmentQr("CGV-EXAMPLE"));
  assert.throws(()=>opaqueAppointmentQr("CGV-0123456789ABCDEF01234567?name=private"));
 });
