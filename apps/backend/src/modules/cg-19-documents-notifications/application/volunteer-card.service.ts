@@ -200,6 +200,8 @@ export class VolunteerCardService{
      verified=recovered;
     }
    }
+   if(!verified)throw conflict();
+   const verifiedDocument=verified;
    return this.run(async tx=>{
     await this.authorized(tx,a);
     const current=await this.actual(tx,a.realmId,p.id,true);
@@ -207,7 +209,7 @@ export class VolunteerCardService{
     await this.check(tx,current);
     const done=(await tx.query<Card>(`UPDATE cg19_volunteer_card SET state='ISSUED',issued_at=now(),object_version=$3,content_sha256=$4,
      claim_token=NULL,claim_expires_at=NULL WHERE root_realm_id=$1 AND id=$2 AND state='VERIFYING' RETURNING *`,
-     [a.realmId,p.id,verified.objectVersion,verified.sha256])).rows[0];
+     [a.realmId,p.id,verifiedDocument.objectVersion,verifiedDocument.sha256])).rows[0];
     await tx.query("INSERT INTO cg19_volunteer_card_event(root_realm_id,card_id,actor_ref,action) VALUES($1,$2,$3,'ISSUED')",[a.realmId,p.id,a.accountId]);
     return outward(done);
    });
