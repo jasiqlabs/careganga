@@ -71,8 +71,8 @@ export class InventoryMaterialService{
     if(!c)throw sourceChanged();await this.source.exact(tx,a,r,c.material_revision_id,c.material_revision_no,c.material_digest);
     await this.source.reserve(tx,a,r,x.key,false);status="HELD";
    }else{
-    if(!["DRAFT","RETURNED","SUBMITTED","APPROVED_UNRESERVED","HELD"].includes(r.status))throw sourceChanged();
-    await this.approval.cancel(tx,a,r);if(r.status==="HELD")await this.source.release(tx,a,r,x.key);status="CANCELLED";
+    if(!["DRAFT","RETURNED","SUBMITTED","APPROVED_UNRESERVED","HELD","PARTIAL"].includes(r.status))throw sourceChanged();
+    await this.approval.cancel(tx,a,r);if(r.status==="HELD"||r.status==="PARTIAL")await this.source.release(tx,a,r,x.key);status="CANCELLED";
    }
    r=(await tx.query<MaterialRow>("UPDATE material_request SET status=$3,version=version+1,updated_at=now() WHERE root_realm_id=$1 AND id=$2 RETURNING *,due_date::text",[a.realmId,ref,status])).rows[0];
    return this.record(tx,a,r,x.key,h);
