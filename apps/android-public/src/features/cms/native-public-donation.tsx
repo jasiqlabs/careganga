@@ -17,7 +17,8 @@ async function request<T>(path:string,value:object):Promise<T>{
 /** True Public Android self-service, never a synthetic receipt or paid claim. */
 export function NativePublicDonation({campaignSlug=null}:{campaignSlug?:string|null}){
  const [enabled,setEnabled]=useState(false),[amount,setAmount]=useState(""),
-  [name,setName]=useState(""),[consent,setConsent]=useState(false);
+  [name,setName]=useState(""),[mobile,setMobile]=useState(""),[email,setEmail]=useState(""),
+  [pan,setPan]=useState(""),[address,setAddress]=useState(""),[consent,setConsent]=useState(false);
  const [token,setToken]=useState(""),[status,setStatus]=useState(""),
   [paymentUrl,setPaymentUrl]=useState(""),[error,setError]=useState(""),[busy,setBusy]=useState(false);
  const [received,setReceived]=useState(false),[receiptStatus,setReceiptStatus]=useState("NOT_ISSUED"),
@@ -37,7 +38,7 @@ export function NativePublicDonation({campaignSlug=null}:{campaignSlug?:string|n
   if(!key.current)key.current=Crypto.randomUUID();
   const v=await request<{status:string;statusToken:string}>("",{
    requestKey:key.current,campaignSlug,amount,consent:true,
-   donor:{name,mobile:"",email:"",pan:"",address:""}});
+   donor:{name,mobile,email,pan,address}});
   setToken(v.statusToken);setStatus(v.status);setReceived(v.status==="RECEIVED_POSTED");
  });
  const pay=()=>call(async()=>{
@@ -87,6 +88,23 @@ export function NativePublicDonation({campaignSlug=null}:{campaignSlug?:string|n
    <Text>Name (optional)</Text><TextInput accessibilityLabel="Donor name"
     style={{minHeight:46,borderWidth:1,borderColor:t.border,padding:11}}
     editable={!key.current} value={name} onChangeText={setName}/>
+   <Text>Mobile (optional)</Text><TextInput accessibilityLabel="Donor mobile"
+    keyboardType="phone-pad" maxLength={20}
+    style={{minHeight:46,borderWidth:1,borderColor:t.border,padding:11}}
+    editable={!key.current} value={mobile} onChangeText={setMobile}/>
+   <Text>Email (optional)</Text><TextInput accessibilityLabel="Donor email"
+    keyboardType="email-address" autoCapitalize="none" maxLength={254}
+    style={{minHeight:46,borderWidth:1,borderColor:t.border,padding:11}}
+    editable={!key.current} value={email} onChangeText={setEmail}/>
+   <Text>Address (optional)</Text><TextInput accessibilityLabel="Donor address"
+    maxLength={300} multiline
+    style={{minHeight:65,borderWidth:1,borderColor:t.border,padding:11}}
+    editable={!key.current} value={address} onChangeText={setAddress}/>
+   <Text>PAN (optional, private record only)</Text>
+   <TextInput accessibilityLabel="Donor PAN" maxLength={10}
+    autoCapitalize="characters" style={{minHeight:46,borderWidth:1,borderColor:t.border,padding:11}}
+    editable={!key.current} value={pan} onChangeText={v=>setPan(v.toUpperCase())}/>
+   <Text>Supplying PAN does not automatically make this a tax-deductible 80G donation.</Text>
    <Pressable accessibilityRole="checkbox" accessibilityState={{checked:consent}}
     onPress={()=>{if(!key.current)setConsent(x=>!x);}}>
     <Text>{consent?"☑":"☐"} I consent to the Foundation processing the supplied donation information.</Text></Pressable>
