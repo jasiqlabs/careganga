@@ -5,6 +5,7 @@ import * as Crypto from "expo-crypto";
 import * as Sharing from "expo-sharing";
 import type {CG04RosterPage,CG04RosterExport} from "@careganga/api-contracts";
 import {identityRequest} from "../identity-access/http-client";
+import {NativeMemberDocuments} from "./native-member-documents";
 import {careGangaTheme as theme} from "../../../../../packages/design-tokens/src/index";
 
 type Filter={q:string;status:string;category:string;feeClass:string;joinedFrom:string;joinedTo:string;branch:string};
@@ -13,7 +14,7 @@ const statuses=[["ALL","All"],["ACTIVE","Active"],["EXPIRED","Expired"],["SUSPEN
 const categories=[["ALL","All tiers"],["ANNUAL","Annual"],["LIFETIME","Lifetime"],["HONORARY","Honorary"],["STUDENT","Student"],["OTHER","Other"]];
 const feeClasses=[["ALL","All members"],["GENERAL","General · no fee"],["PAID","Paid"]];
 const human=(v:string)=>v.replaceAll("_"," ").toLowerCase().replace(/\b[a-z]/g,c=>c.toUpperCase());
-export function NativeMemberRoster({token,canExport,onExpired}:{token:string;canExport:boolean;onExpired:()=>void}){
+export function NativeMemberRoster({token,canExport,canIssueDocs,onExpired}:{token:string;canExport:boolean;canIssueDocs:boolean;onExpired:()=>void}){
  const [draft,setDraft]=useState<Filter>(empty),[filter,setFilter]=useState<Filter>(empty),[cursor,setCursor]=useState(""),[history,setHistory]=useState<string[]>([]);
  const [page,setPage]=useState<CG04RosterPage|null>(null),[selectedRef,setSelectedRef]=useState<string|null>(null),[loading,setLoading]=useState(true),[busy,setBusy]=useState(false),[error,setError]=useState(""),[notice,setNotice]=useState(""),[epoch,setEpoch]=useState(0);
  const seq=useRef(0),exporting=useRef(false),foreground=useRef(true);
@@ -70,6 +71,7 @@ export function NativeMemberRoster({token,canExport,onExpired}:{token:string;can
   <Text style={styles.heading}>Membership Program</Text>
   <Text style={styles.muted}>Approved member directory. Only current permitted Foundation records are shown.</Text>
   <View style={styles.buttons}>{chip("Refresh",()=>setEpoch(x=>x+1),false,busy)}{canExport&&chip(busy?"Preparing…":"Export roster",()=>void shareCsv(),false,disabled||!page)}</View>
+  {canIssueDocs&&<NativeMemberDocuments token={token} memberRef={page?.items.find(m=>m.ref===selectedRef)?.ref} memberNumber={page?.items.find(m=>m.ref===selectedRef)?.memberNumber} onExpired={onExpired}/>}
   {!!error&&<Text accessibilityRole="alert" style={styles.error}>{error}</Text>}
   {!!notice&&<Text accessibilityRole="text" style={styles.muted}>{notice}</Text>}
   <View style={styles.buttons} accessibilityLabel="Membership quick filters">{presets.map(item=><React.Fragment key={item.key}>{chip(item.label,()=>preset(item.key),selectedPreset===item.key,busy||loading)}</React.Fragment>)}</View>
@@ -109,7 +111,7 @@ export function NativeMemberRoster({token,canExport,onExpired}:{token:string;can
     <Text>Joined: {m.joinedOn} · Valid until: {m.expiresOn??"Lifetime"}</Text>
     <Text>Location: {m.city}, {m.district} · {m.branch??"Foundation"}</Text>
     <Text>Contact: {m.mobile}{m.email?" · "+m.email:""}</Text>
-    {chip(selectedRef===m.ref?"Hide card preview":"Preview card",()=>setSelectedRef(current=>current===m.ref?null:m.ref),selectedRef===m.ref,disabled)}
+    {chip(selectedRef===m.ref?"Hide member details":canIssueDocs?"Card preview / official documents":"Preview card",()=>setSelectedRef(current=>current===m.ref?null:m.ref),selectedRef===m.ref,disabled)}
     {selectedRef===m.ref&&<View style={styles.preview} accessibilityLabel="Non-issued member card preview">
      <Text style={styles.title}>Member card preview — not issued</Text>
      <Text style={styles.muted}>Actual signed card, certificate and QR are only available after verified CG19 issuance. This preview is not proof of membership.</Text>
