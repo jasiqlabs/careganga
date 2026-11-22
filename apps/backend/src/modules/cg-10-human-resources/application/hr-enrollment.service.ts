@@ -794,18 +794,19 @@ export class HrEnrollmentService{
     if(!(e instanceof ForbiddenException))throw e;
     attendanceVisible=false;
    }
-   const r=await tx.query<{status:string;quantity:string;new_joiners:string;on_leave:string;pending_leave:string}>(
+   const r=await tx.query<{status:string;quantity:string;new_joiners:string;on_leave:string;pending_leave:string;departments:{label:string;count:number}[];joiners:{month:string;count:number}[]}>(
     `WITH scoped AS (
-     SELECT e.id,e.root_realm_id,e.status,app.hire_date,assignment.branch_ref,
+     SELECT e.id,e.root_realm_id,e.status,app.hire_date,assignment.branch_ref,COALESCE(dep.name,'Unassigned') AS department_name,
       (b.status='ACTIVE' AND assignment.valid_from<=CURRENT_DATE AND
        (assignment.valid_to IS NULL OR assignment.valid_to>CURRENT_DATE)) AS current_assignment
      FROM hr_employee e
      JOIN hr_employee_application app ON app.id=e.application_id AND app.root_realm_id=e.root_realm_id
-     JOIN LATERAL (SELECT a.branch_ref,a.valid_from,a.valid_to FROM hr_employment_assignment a
+     JOIN LATERAL (SELECT a.branch_ref,a.department_ref,a.valid_from,a.valid_to FROM hr_employment_assignment a
       WHERE a.employee_id=e.id AND a.root_realm_id=e.root_realm_id
       ORDER BY CASE WHEN a.valid_from<=CURRENT_DATE AND (a.valid_to IS NULL OR a.valid_to>CURRENT_DATE)
        THEN 0 ELSE 1 END,a.valid_from DESC,a.id DESC LIMIT 1) assignment ON true
      JOIN branch b ON b.id=assignment.branch_ref AND b.root_realm_id=e.root_realm_id
+     LEFT JOIN department dep ON dep.id=assignment.department_ref AND dep.root_realm_id=e.root_realm_id
      WHERE e.root_realm_id=$1 AND (b.manager_account_ref=$2 OR EXISTS(
       SELECT 1 FROM account_role ar JOIN role role_now ON role_now.id=ar.role_id
       AND role_now.realm_id=ar.realm_id AND role_now.active
@@ -813,7 +814,24 @@ export class HrEnrollmentService{
       AND grant_row.capability_key='foundation.branches.admin'
       WHERE ar.account_id=$2 AND ar.realm_id=$1 AND ar.revoked_at IS NULL
       AND (role_now.is_protected OR grant_row.capability_key IS NOT NULL)))
-    )
+    ), current_staff AS (
+     SELECT * FROM scoped WHERE current_assignment AND status IN('ACTIVE','PROBATION')
+    ), dept_counts AS (
+     SELECT department_name,COUNT(*)::integer AS quantity FROM current_staff GROUP BY department_name
+    ), ranked_departments AS (
+     SELECT *,ROW_NUMBER() OVER(ORDER BY quantity DESC,department_name) AS rank FROM dept_counts
+    ), dept_display AS (
+     SELECT department_name AS label,quantity,rank FROM ranked_departments WHERE rank<=10
+     UNION ALL SELECT 'Other departments',SUM(quantity)::integer,11 FROM ranked_departments WHERE rank>10 HAVING COUNT(*)>0
+    ), month_counts AS (
+     SELECT date_trunc('month',hire_date::timestamp)::date AS month,COUNT(*)::integer AS quantity
+      FROM current_staff WHERE hire_date<=CURRENT_DATE AND hire_date>=date_trunc('month',CURRENT_DATE::timestamp)::date-INTERVAL '5 months'
+      GROUP BY 1
+    ), month_display AS (
+     SELECT to_char(m.month,'YYYY-MM') AS month,COALESCE(c.quantity,0) AS quantity
+     FROM generate_series(date_trunc('month',CURRENT_DATE::timestamp)-INTERVAL '5 months',date_trunc('month',CURRENT_DATE::timestamp),INTERVAL '1 month') AS m(month)
+     LEFT JOIN month_counts c ON c.month=m.month::date
+    ), stats AS (
     SELECT e.status,COUNT(*)::text AS quantity,
      COUNT(*) FILTER(WHERE e.current_assignment AND e.status IN('ACTIVE','PROBATION')
       AND e.hire_date>=date_trunc('month',CURRENT_DATE::timestamp)::date AND e.hire_date<=CURRENT_DATE)::text AS new_joiners,
@@ -828,7 +846,11 @@ export class HrEnrollmentService{
        ON a.id=lr.assignment_id AND a.root_realm_id=lr.root_realm_id AND a.employee_id=lr.employee_id
        WHERE lr.root_realm_id=e.root_realm_id AND lr.employee_id=e.id AND a.branch_ref=e.branch_ref
         AND lr.status='SUBMITTED'))::text AS pending_leave
-    FROM scoped e GROUP BY e.status`,
+    FROM scoped e GROUP BY e.status
+    ) SELECT stats.*,
+     (SELECT COALESCE(jsonb_agg(jsonb_build_object('label',label,'count',quantity) ORDER BY rank),'[]'::jsonb) FROM dept_display) AS departments,
+     (SELECT COALESCE(jsonb_agg(jsonb_build_object('month',month,'count',quantity) ORDER BY month),'[]'::jsonb) FROM month_display) AS joiners
+    FROM stats`,
     [actor.realmId,actor.accountId,attendanceVisible]);
    const statuses=["ACTIVE","PROBATION","PENDING_ACCESS","ON_HOLD","EXITED"] as const;
    const counts=Object.fromEntries(statuses.map(k=>[k,0])) as Record<typeof statuses[number],number>;
@@ -840,7 +862,8 @@ export class HrEnrollmentService{
    }
    await tx.query("COMMIT");
    return {total:Object.values(counts).reduce((x,y)=>x+y,0),statuses:counts,newJoinersThisMonth,
-    attendance:attendanceVisible?{onApprovedLeaveToday,employeesWithPendingLeave}:null};
+    attendance:attendanceVisible?{onApprovedLeaveToday,employeesWithPendingLeave}:null,
+    departments:r.rows[0]?.departments??[],joiners:r.rows[0]?.joiners??[]};
   }catch(e){await tx.query("ROLLBACK");throw e;}finally{tx.release();}
  }
 
