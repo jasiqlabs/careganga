@@ -116,6 +116,8 @@ export class VolunteerApplicationsService{
   const d=parseVolunteerDraft(raw,ref!==null),action=ref?"EDIT":"CREATE",digest=hash([ref,d]);
   return this.run(token,async(tx,a,contact)=>{
    await this.lock(tx,a);
+   await tx.query("SELECT pg_advisory_xact_lock(hashtextextended($1,0))",
+    ["CG04:VOLUNTEER_PHONE:"+a.realmId+":"+contact.mobile]);
    const old=await this.replay(tx,a,d.key,digest,action,ref);if(old)return old;
    if(ref){
     const current=await this.self(tx,a,ref,true);
