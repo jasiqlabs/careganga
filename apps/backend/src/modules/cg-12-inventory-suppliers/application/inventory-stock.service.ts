@@ -121,12 +121,12 @@ export class InventoryStockService{
  }
  async events(token:string,locationInput:unknown,searchInput:unknown,offsetInput:unknown,kindInput:unknown,fromInput?:unknown,toInput?:unknown){
   const loc=inventoryRef(locationInput),search=inventoryText(searchInput??"",0,80).toLowerCase(),offset=Number(offsetInput??0),kind=kindInput??"ALL",from=fromInput?inventoryDate(fromInput):null,to=toInput?inventoryDate(toInput):null;
-  if(!Number.isSafeInteger(offset)||offset<0||offset>10000||typeof kind!=="string"||!["ALL","RECEIPT","RECEIPT_REVERSAL"].includes(kind)||(from&&to&&from>to))throw receiptInvalid();
+  if(!Number.isSafeInteger(offset)||offset<0||offset>10000||typeof kind!=="string"||!["ALL","RECEIPT","RECEIPT_REVERSAL","ISSUE","RETURN","TRANSFER","ADJUSTMENT"].includes(kind)||(from&&to&&from>to))throw receiptInvalid();
   return this.catalog.run(token,"inventory.stock.view",async(tx,a)=>{
    await this.catalog.store(tx,a,loc,false);
    const q=await tx.query<{actorRef:string;[k:string]:unknown}>(`
     SELECT e.id AS ref,e.event_no AS reference,e.event_kind AS kind,e.effective_date::text AS date,e.occurred_at AS "recordedAt",
-     e.actor_ref AS "actorRef",m.source_line_no AS line,m.signed_qty::text AS quantity,m.unit_code AS unit,i.name AS item,i.sku_norm AS sku,l.label AS location,
+     e.actor_ref AS "actorRef",m.id AS "movementRef",m.item_id AS "itemRef",m.source_line_no AS line,m.signed_qty::text AS quantity,m.unit_code AS unit,i.name AS item,i.sku_norm AS sku,l.label AS location,
      s.display_name AS supplier,CASE WHEN e.event_kind='RECEIPT' AND EXISTS(SELECT 1 FROM stock_event rev WHERE rev.root_realm_id=e.root_realm_id AND rev.reversal_of_ref=e.id AND rev.event_kind='RECEIPT_REVERSAL') THEN 'REVERSED' ELSE 'CONFIRMED' END AS status
     FROM stock_movement m JOIN stock_event e ON e.id=m.stock_event_id AND e.root_realm_id=m.root_realm_id
     JOIN inventory_item i ON i.id=m.item_id AND i.root_realm_id=m.root_realm_id JOIN inventory_location l ON l.id=m.location_id AND l.root_realm_id=m.root_realm_id
