@@ -153,6 +153,9 @@ export class DonationIntentsService{
  }
  /** Accountless donor history: each 256-bit body-only status proof authorizes
   * exactly one transaction. Never infer ownership from a typed email/PAN. */
+ async throttlePrivateDocumentRead(req:object){
+  await this.limit(req,"status");
+ }
  async ownHistory(req:object,raw:unknown){
   await this.limit(req,"status");
   if(!raw||typeof raw!=="object"||Array.isArray(raw)||
