@@ -7,6 +7,7 @@ import type {CG04VolunteerReviewCase,CG04VolunteerReviewPage,CG04VolunteerReview
 import {identityRequest} from "../identity-access/http-client";
 import {NativeVolunteerCardIssuer} from "./native-volunteer-card-issuer";
 import {NativeVolunteerReimbursement} from "./native-volunteer-reimbursement";
+import {NativeVolunteerStaffIntake} from "./native-volunteer-staff-intake";
 import {careGangaTheme as t} from "../../../../../packages/design-tokens/src/index";
 type Decision="APPROVE"|"RETURN"|"REJECT";
 type Pending={ref:string;body:{requestKey:string;expectedRevision:number;action:Decision;remarks:string};digest:string};
@@ -20,8 +21,8 @@ async function request<T>(token:string,path:string,body?:Record<string,unknown>)
   r.status===401?"Sign in again.":r.status===403?"Your current volunteer permission is unavailable.":"Cannot verify this current volunteer record."),{status:r.status});
  return v as T;
 }
-export function NativeVolunteerStaff({token,canReview,canRoster,canExport,canConfigure,canIssueCards,canReimburse,onExpired}:{
- token:string;canReview:boolean;canRoster:boolean;canExport:boolean;canConfigure:boolean;canIssueCards:boolean;canReimburse:boolean;onExpired:()=>void
+export function NativeVolunteerStaff({token,canReview,canRoster,canExport,canConfigure,canIssueCards,canReimburse,canImport,onExpired}:{
+ token:string;canReview:boolean;canRoster:boolean;canExport:boolean;canConfigure:boolean;canIssueCards:boolean;canReimburse:boolean;canImport:boolean;onExpired:()=>void
 }){
  const [tab,setTab]=useState<"REVIEW"|"ROSTER">(canReview?"REVIEW":"ROSTER");
  const [policy,setPolicy]=useState<CG04VolunteerReviewPolicy|null>(null),[reviews,setReviews]=useState<CG04VolunteerReviewPage|null>(null);
@@ -203,6 +204,7 @@ export function NativeVolunteerStaff({token,canReview,canRoster,canExport,canCon
     {choice("Record independent decision",decide,false,password.length<8)}
    </View>}
   </View>}
+  {tab==="ROSTER"&&canRoster&&canImport&&<NativeVolunteerStaffIntake token={token} onExpired={onExpired}/>}
   {tab==="ROSTER"&&canRoster&&roster&&<View style={s.card}>
    <Text style={s.h2}>Approved volunteers: {roster.overview.total}</Text><Text>Active: {roster.overview.active} · Inactive: {roster.overview.inactive} · Suspended: {roster.overview.suspended}</Text>
    {canExport&&choice("Export permitted roster",()=>fileAction("/api/v1/volunteers/roster/export?"+new URLSearchParams({q:applied,status,availability}).toString(),undefined,true))}
