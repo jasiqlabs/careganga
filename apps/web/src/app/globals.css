@@ -15491,3 +15491,21 @@ button:disabled {
 .cg04-document-desk .cg04-buttons :is(button,a){min-height:44px;display:inline-flex;align-items:center}
 .cg04-document-desk a{text-decoration:underline;color:var(--cg-accent);overflow-wrap:anywhere}
 @media(max-width:700px){.cg04-document-grid{grid-template-columns:minmax(0,1fr)}}
+
+/* CG04 original volunteer U15 four-step public layout — same CG01 visual vocabulary. */
+.cg04-volunteer{max-width:1140px;margin:0 auto;padding:16px 20px 40px;min-width:0}
+.cg04-volunteer-hero{padding:clamp(22px,4vw,54px);border-radius:16px;background:linear-gradient(127deg,#102e41,#174931);color:#fff;margin-bottom:18px}
+.cg04-volunteer-hero small{font-size:var(--cg-text-xs);font-weight:750;letter-spacing:.15em;color:#bbebd0}
+.cg04-volunteer-hero h1{font-size:clamp(1.6rem,4vw,3rem);line-height:1.2;max-width:730px;margin:16px 0 9px;color:#fff}
+.cg04-volunteer-hero p{max-width:720px;line-height:1.6;margin:0;color:#f0faf4}
+.cg04-volunteer-steps{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin:12px 0 18px}
+.cg04-volunteer-steps button{min-height:48px;padding:9px;border:1px solid var(--cg-border);border-radius:9px;background:var(--cg-surface);font:inherit;font-size:var(--cg-text-sm);color:var(--cg-text);overflow-wrap:anywhere}
+.cg04-volunteer-steps button[aria-current="step"]{background:var(--cg-accent-soft);border-color:var(--cg-accent);font-weight:750}
+.cg04-volunteer .cg04-document-grid label{display:grid;gap:6px;min-width:0;color:var(--cg-text);font-size:var(--cg-text-sm);font-weight:650}
+.cg04-volunteer :is(input,select,textarea){min-height:44px;max-width:100%;width:100%;box-sizing:border-box;padding:9px 11px;border:1px solid var(--cg-border);border-radius:9px;font:inherit;background:var(--cg-surface);color:var(--cg-text)}
+.cg04-volunteer input[type="checkbox"]{width:22px;height:22px;min-height:22px;vertical-align:middle;margin-right:8px}
+.cg04-volunteer .cg04-document-grid textarea{min-height:110px;resize:vertical}
+.cg04-volunteer-span{grid-column:1/-1}
+.cg04-volunteer button{min-height:44px}
+@media(max-width:700px){.cg04-volunteer{padding:10px 12px 28px}.cg04-volunteer-steps{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:420px){.cg04-volunteer-steps{grid-template-columns:minmax(0,1fr)}}
