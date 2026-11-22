@@ -1,0 +1,96 @@
+import {BadRequestException,ForbiddenException,Inject,Injectable} from "@nestjs/common";
+import {createHash} from "node:crypto";
+import type {Pool,PoolClient} from "pg";
+import {DATABASE} from "../../../core/infrastructure/database.module";
+import {SessionService} from "../../cg-01-identity-access/application/session.service";
+import {FoundationStructureIdentityFacade} from "../../cg-01-identity-access/application/foundation-structure-identity.facade";
+import type {VerifiedFoundationActor as Actor} from "../../cg-01-identity-access/public-api";
+import {BranchSourceFacade} from "../../cg-02-foundation-structure/application/branch-source.facade";
+import {object,plain,uuid} from "../domain/tier-input";
+type Filter={q:string;status:string;category:string;branch:string|null;at:string|null;id:string|null};
+type Row={ref:string;memberNumber:string;name:string;email:string|null;mobile:string;plan:string;category:string;joinedOn:string;expiresOn:string|null;status:string;city:string;district:string;branch:string|null;createdAt:string};
+const categories=["ALL","ANNUAL","LIFETIME","HONORARY","STUDENT","OTHER"];
+const statuses=["ALL","ACTIVE","EXPIRED","SUSPENDED","CANCELLED"];
+function read(raw:unknown):Filter{
+ const x=object(raw,["q","status","category","branch","cursor"]),status=x.status??"ALL",category=x.category??"ALL";
+ if(typeof status!=="string"||!statuses.includes(status))throw new BadRequestException("Choose a valid membership status.");
+ if(typeof category!=="string"||!categories.includes(category))throw new BadRequestException("Choose a valid membership category.");
+ let at:string|null=null,id:string|null=null;
+ if(x.cursor!==undefined&&x.cursor!==""){
+  if(typeof x.cursor!=="string"||x.cursor.length>256)throw new BadRequestException("Reset the membership roster filters.");
+  try{const d=JSON.parse(Buffer.from(x.cursor,"base64url").toString()) as {at?:string;id?:string};
+   if(typeof d.at!=="string"||!Number.isFinite(Date.parse(d.at))||typeof d.id!=="string")throw Error();
+   at=d.at;id=uuid(d.id);
+  }catch{throw new BadRequestException("Reset the membership roster filters.");}
+ }
+ return {q:plain(x.q??"",0,100,"member search").toLowerCase(),status,category,branch:x.branch?uuid(x.branch):null,at,id};
+}
+function csvCell(value:string|null|undefined){
+ const v=String(value??"").replace(/[\r\n\t]/g," "),safe=/^[=+\-@]/.test(v)?"'"+v:v;
+ return '"'+safe.replace(/"/g,'""')+'"';
+}
+const cols=[
+ 'm.id AS ref,m.member_no AS "memberNumber",m.display_name AS name',
+ 'a.contact_email AS email,a.contact_mobile AS mobile,v.name AS plan,v.category',
+ 'm.created_at::date::text AS "joinedOn",t.expires_on::text AS "expiresOn"',
+ "CASE WHEN m.status<>'ACTIVE' THEN m.status WHEN t.expires_on<=(now() AT TIME ZONE 'Asia/Kolkata')::date THEN 'EXPIRED' ELSE 'ACTIVE' END AS status",
+ 'a.city,g.display_name AS district,b.name AS branch,m.created_at AS "createdAt"'
+].join(",");
+const joins=[
+ ' FROM member m JOIN membership_application a ON a.root_realm_id=m.root_realm_id AND a.id=m.original_application_id',
+ ' JOIN geography_area g ON g.root_realm_id=a.root_realm_id AND g.id=a.district_ref',
+ " JOIN LATERAL (SELECT x.* FROM membership_term x WHERE x.root_realm_id=m.root_realm_id AND x.member_id=m.id AND x.starts_on<=(now() AT TIME ZONE 'Asia/Kolkata')::date ORDER BY x.starts_on DESC,x.id DESC LIMIT 1) t ON true",
+ ' JOIN membership_tier_version v ON v.root_realm_id=t.root_realm_id AND v.id=t.tier_version_id',
+ ' LEFT JOIN branch b ON b.root_realm_id=m.root_realm_id AND b.id=m.branch_ref'
+].join("");
+const where=[
+ ' WHERE m.root_realm_id=$1 AND ($3::boolean OR m.branch_ref=ANY($2::uuid[]))',
+ ' AND ($7::uuid IS NULL OR m.branch_ref=$7)',
+ " AND ($4='ALL' OR (CASE WHEN m.status<>'ACTIVE' THEN m.status WHEN t.expires_on<=(now() AT TIME ZONE 'Asia/Kolkata')::date THEN 'EXPIRED' ELSE 'ACTIVE' END)=$4)",
+ " AND ($5='ALL' OR v.category=$5)",
+ " AND ($6='' OR strpos(lower(m.member_no),$6)>0 OR strpos(lower(m.display_name),$6)>0 OR strpos(lower(a.contact_mobile),$6)>0 OR strpos(lower(coalesce(a.contact_email,'')),$6)>0)"
+].join("");
+@Injectable()
+export class MembershipRosterService{
+ constructor(@Inject(DATABASE)private readonly db:Pool,private readonly sessions:SessionService,
+  private readonly identity:FoundationStructureIdentityFacade,private readonly branches:BranchSourceFacade){}
+ private async run<T>(token:string,permission:string,fn:(tx:PoolClient,a:Actor)=>Promise<T>,readonly:boolean){
+  const a=await this.sessions.requireAction(token,permission),tx=await this.db.connect();
+  try{await tx.query(readonly?"BEGIN ISOLATION LEVEL REPEATABLE READ":"BEGIN");
+   await this.identity.assertCurrent(tx,a,permission);const v=await fn(tx,a);await tx.query("COMMIT");return v;
+  }catch(e){try{await tx.query("ROLLBACK");}catch{}throw e;}finally{tx.release();}
+ }
+ private async rows(tx:PoolClient,a:Actor,f:Filter,exporting:boolean){
+  const scope=await this.branches.projectBranchScope(tx,a),allowed=scope.branches.map(v=>v.value);
+  if(f.branch&&!scope.all&&!allowed.includes(f.branch))throw new ForbiddenException("That branch is outside your membership scope.");
+  const args=[a.realmId,allowed,scope.all,f.status,f.category,f.q,f.branch];
+  const order=" ORDER BY m.created_at DESC,m.id DESC LIMIT "+(exporting?"501":"26");
+  const extra=exporting?"":" AND ($8::timestamptz IS NULL OR (m.created_at,m.id)<($8::timestamptz,$9::uuid))";
+  const rs=await tx.query<Row>("SELECT "+cols+joins+where+extra+order,exporting?args:[...args,f.at,f.id]);
+  const rows=rs.rows.slice(0,exporting?501:25),last=rows.at(-1);
+  const nextCursor=!exporting&&rs.rows.length>25&&last?Buffer.from(JSON.stringify({at:last.createdAt,id:last.ref})).toString("base64url"):null;
+  return {rows,nextCursor,hasMore:rs.rows.length>25&&!exporting};
+ }
+ async list(token:string,raw:unknown){
+  const filter=read(raw);
+  return this.run(token,"membership.members.view",async(tx,a)=>{
+   const page=await this.rows(tx,a,filter,false);
+   return {items:page.rows.map(({createdAt,...r})=>r),nextCursor:page.nextCursor,hasMore:page.hasMore};
+  },true);
+ }
+ async export(token:string,raw:unknown){
+  const filter=read(raw);if(filter.at)throw new BadRequestException("Export the filtered roster without a page cursor.");
+  await this.sessions.requireAction(token,"membership.members.view");
+  return this.run(token,"membership.members.export",async(tx,a)=>{
+   await this.identity.assertCurrent(tx,a,"membership.members.view");
+   const page=await this.rows(tx,a,filter,true);
+   if(page.rows.length>500)throw new BadRequestException("More than 500 members. Narrow filters before export.");
+   const header=["Member number","Name","Email","Mobile","Plan","Category","Joined","Expires","Status","City","District","Branch"];
+   const rows=page.rows.map(x=>[x.memberNumber,x.name,x.email,x.mobile,x.plan,x.category,x.joinedOn,x.expiresOn,x.status,x.city,x.district,x.branch].map(csvCell).join(","));
+   const csv=[header.map(csvCell).join(","),...rows].join("\r\n");
+   const scopeDigest=createHash("sha256").update(JSON.stringify([a.realmId,a.accountId,filter.q,filter.status,filter.category,filter.branch])).digest("hex");
+   await tx.query("INSERT INTO membership_member_export_audit(root_realm_id,actor_ref,exported_rows,scope_digest) VALUES($1,$2,$3,$4)",[a.realmId,a.accountId,page.rows.length,scopeDigest]);
+   return {csv,rows:page.rows.length};
+  },false);
+ }
+}
