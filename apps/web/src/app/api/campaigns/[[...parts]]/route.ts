@@ -8,7 +8,7 @@ async function proxy(req:NextRequest,ctx:Context,method:"GET"|"POST"|"PATCH"){
  const parts=(await ctx.params).parts??[];
  const valid=parts.length===0&&(method==="GET"||method==="POST")||
    parts.length===1&&(UUID.test(parts[0])||parts[0]==="options")&&method==="GET"||
-   parts.length===2&&UUID.test(parts[0])&&(parts[1]==="draft"&&method==="PATCH"||parts[1]==="submit"&&method==="POST"||parts[1]==="review-history"&&method==="GET");
+   parts.length===2&&UUID.test(parts[0])&&(parts[1]==="draft"&&method==="PATCH"||(parts[1]==="submit"||parts[1]==="lifecycle")&&method==="POST"||parts[1]==="review-history"&&method==="GET");
  if(!valid)return reply({message:"Campaign action unavailable."},404);
  if(method!=="GET"&&req.headers.get("origin")!==req.nextUrl.origin)
   return reply({message:"This campaign request must originate from the Foundation staff panel."},403);
