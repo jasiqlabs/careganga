@@ -27,20 +27,21 @@ export function VolunteerStaffIntake(){
  const load=async()=>{const n=++seq.current;const r=await api<{items:typeof drafts}>(base+"/drafts");
   if(n===seq.current&&document.visibilityState==="visible")setDrafts(r.items);};
  const content=()=>mode==="CSV"?{csv}:{rows:[person]};
- const showPreview=async()=>{if(busy)return;setBusy(true);setNotice("");setPreview(null);pending.current=null;
-  try{const p=await api<Preview>(base+"/preview",content());setPreview(p);setNotice("Preview only; nobody has been registered or approved.");}
-  catch(e){setNotice(e instanceof Error?e.message:"Check the CSV or volunteer details.");}finally{setBusy(false);}
+ const showPreview=async()=>{if(busy)return;const at=seq.current;setBusy(true);setNotice("");setPreview(null);pending.current=null;
+  try{const p=await api<Preview>(base+"/preview",content());if(at!==seq.current||document.visibilityState!=="visible")return;setPreview(p);setNotice("Preview only; nobody has been registered or approved.");}
+  catch(e){if(at===seq.current&&document.visibilityState==="visible")setNotice(e instanceof Error?e.message:"Check the CSV or volunteer details.");}finally{setBusy(false);}
  };
- const commit=async()=>{if(busy||!preview)return;
+ const commit=async()=>{if(busy||!preview)return;const at=seq.current;
   if(!pending.current)pending.current={requestKey:crypto.randomUUID(),body:content()};
   setBusy(true);setNotice("");
   try{
    const r=await api<Imported>(base,{...pending.current.body,requestKey:pending.current.requestKey});
    if(!r.confirmed)throw Error("The original import is not confirmed.");
+   if(at!==seq.current||document.visibilityState!=="visible")return;
    pending.current=null;setPreview(null);setCsv("");setPerson(empty());
    setNotice(r.importedCount+" unverified draft candidates saved; "+r.skippedCount+" existing contacts skipped. Ask each candidate to register independently with consent.");
    await load();
-  }catch(e){setNotice(e instanceof Error?e.message:"Import outcome unknown. Retry the same request before starting another.");}
+  }catch(e){if(at===seq.current&&document.visibilityState==="visible")setNotice(e instanceof Error?e.message:"Import outcome unknown. Retry the same request before starting another.");}
   finally{setBusy(false);}
  };
  return <section className="cg04-panel" aria-label="Original U14 unverified volunteer staff intake">
@@ -59,7 +60,9 @@ export function VolunteerStaffIntake(){
    <input type="file" accept=".csv,text/csv" aria-label="Select unverified volunteer candidates CSV" disabled={busy||!!pending.current}
     onChange={e=>{const f=e.target.files?.[0];setPreview(null);
      if(!f)return;if(f.size>100000){setNotice("Select a CSV under 100 KB.");return;}
-     void f.text().then(text=>setCsv(text)).catch(()=>setNotice("Cannot read the selected CSV."));}}/>
+     const at=seq.current;
+     void f.text().then(text=>{if(at===seq.current&&document.visibilityState==="visible")setCsv(text);})
+      .catch(()=>{if(at===seq.current&&document.visibilityState==="visible")setNotice("Cannot read the selected CSV.");});}}/>
    <p>{csv?"CSV loaded for validation. No contact was imported yet.":"No CSV selected."}</p>
   </div>}
   {!preview&&<button type="button" className="cg04-primary" disabled={busy||(!csv&&mode==="CSV")} onClick={()=>void showPreview()}>Validate and preview</button>}
