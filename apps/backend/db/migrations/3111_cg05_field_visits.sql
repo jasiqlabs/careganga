@@ -129,9 +129,14 @@ BEGIN
      OR NEW.version<>OLD.version+1 OR OLD.status IN('COMPLETED','REJECTED','CANCELLED') THEN
     RAISE EXCEPTION 'Invalid visit revision';
   END IF;
-  IF OLD.started_at IS NOT NULL AND (NEW.started_at,NEW.actor_account_ref,NEW.actor_employee_ref,NEW.actor_branch_ref,NEW.task_id,NEW.branch_ref)
-     IS DISTINCT FROM (OLD.started_at,OLD.actor_account_ref,OLD.actor_employee_ref,OLD.actor_branch_ref,OLD.task_id,OLD.branch_ref) THEN
+  IF OLD.started_at IS NOT NULL AND
+     (NEW.started_at,NEW.actor_account_ref,NEW.actor_employee_ref,NEW.actor_branch_ref,NEW.task_id,NEW.branch_ref,NEW.state_ref,NEW.district_ref,NEW.visit_kind,NEW.location_label_private,NEW.planned_at,NEW.purpose)
+     IS DISTINCT FROM
+     (OLD.started_at,OLD.actor_account_ref,OLD.actor_employee_ref,OLD.actor_branch_ref,OLD.task_id,OLD.branch_ref,OLD.state_ref,OLD.district_ref,OLD.visit_kind,OLD.location_label_private,OLD.planned_at,OLD.purpose) THEN
     RAISE EXCEPTION 'Accepted check-in and visit assignment are immutable';
+  END IF;
+  IF OLD.status='PENDING_APPROVAL' AND NEW.report_text IS DISTINCT FROM OLD.report_text THEN
+   RAISE EXCEPTION 'Submitted report is frozen until returned for correction';
   END IF;
   IF OLD.completed_at IS NOT NULL AND NEW.completed_at IS DISTINCT FROM OLD.completed_at THEN
     RAISE EXCEPTION 'Accepted checkout is immutable';
