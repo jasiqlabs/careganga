@@ -72,6 +72,7 @@ export function CampaignDraftsWorkspace({canManage}:{canManage:boolean}){
  const choiceSeq=useRef(0);
  const pending=useRef<{key:string;body:Record<string,unknown>;method:"POST"|"PATCH";path:string}|null>(null);
  const submitPending=useRef<{key:string;ref:string;version:number}|null>(null);
+ const lifecyclePending=useRef<{key:string;ref:string;version:number;action:"PAUSE"|"RESUME"|"CLOSE"|"WITHDRAW"}|null>(null);
  const serial=useRef(0),editingSerial=useRef(0);
  const refresh=useCallback(async()=>{
   const id=++serial.current;setLoading(true);
@@ -90,8 +91,8 @@ export function CampaignDraftsWorkspace({canManage}:{canManage:boolean}){
    .catch(()=>{if(id===choiceSeq.current){setChoices(null);setFailure("Current branch, area or coordinator choices could not be verified.");}});
   return()=>{choiceSeq.current++;};
  },[editing,draft.project.stateRef,draft.project.branchRef]);
- const reset=()=>{if(busy||pending.current||submitPending.current)return;editingSerial.current++;setSelected(null);setDraft(blank());setSavedDraft(blank());setStep(0);setEditing(false);setFailure("");setNotice("");};
- const open=async(row:Row)=>{if(busy||pending.current||submitPending.current)return;const id=++editingSerial.current;setLoading(true);setFailure("");
+ const reset=()=>{if(busy||pending.current||submitPending.current||lifecyclePending.current)return;editingSerial.current++;setSelected(null);setDraft(blank());setSavedDraft(blank());setStep(0);setEditing(false);setFailure("");setNotice("");};
+ const open=async(row:Row)=>{if(busy||pending.current||submitPending.current||lifecyclePending.current)return;const id=++editingSerial.current;setLoading(true);setFailure("");
   try{const result=await api<Row>(row.ref);if(id===editingSerial.current){setSelected(result);setDraft(fromRow(result));setSavedDraft(fromRow(result));setEditing(true);setStep(0);setNotice("");}}
   catch(e){if(id===editingSerial.current)setFailure(e instanceof Error?e.message:"Campaign detail unavailable.");}
   finally{if(id===editingSerial.current)setLoading(false);}
@@ -140,6 +141,32 @@ export function CampaignDraftsWorkspace({canManage}:{canManage:boolean}){
    const status=e&&typeof e==="object"&&"status" in e?Number(e.status):0;
    if(status>0&&status<500&&![408,429].includes(status))submitPending.current=null;
    setFailure(e instanceof Error?e.message:"Submission outcome unknown. Retry using the same original request.");
+  }finally{setBusy(false);}
+ };
+ const lifecycle=async(row:Row,action:"PAUSE"|"RESUME"|"CLOSE"|"WITHDRAW")=>{
+  if(!canManage||busy||pending.current||submitPending.current)return;
+  const prior=lifecyclePending.current;
+  if(prior&&(prior.ref!==row.ref||prior.version!==row.version||prior.action!==action)){
+   setFailure("The previous campaign status change has an uncertain result. Retry its original action before changing another campaign.");return;
+  }
+  const allowed=row.status==="APPROVED"?["PAUSE","CLOSE","WITHDRAW"]:
+   row.status==="PAUSED"?["RESUME","CLOSE","WITHDRAW"]:
+   ["DRAFT","RETURNED"].includes(row.status)?["WITHDRAW"]:[];
+  if(!allowed.includes(action))return;
+  if(!lifecyclePending.current)lifecyclePending.current={key:crypto.randomUUID(),ref:row.ref,version:row.version,action};
+  const request=lifecyclePending.current;
+  setBusy(true);setFailure("");setNotice("");
+  try{
+   const result=await api<{status:string;version:number;replayed:boolean}>(request.ref+"/lifecycle","POST",
+    {requestKey:request.key,expectedVersion:request.version,action:request.action});
+   lifecyclePending.current=null;
+   setNotice("Campaign "+row.code+" is now "+result.status.replaceAll("_"," ").toLowerCase()+
+    ". Public visibility is independently checked on every request.");
+   setEditing(false);setSelected(null);setDraft(blank());setSavedDraft(blank());void refresh();
+  }catch(e){
+   const code=e&&typeof e==="object"&&"status" in e?Number(e.status):0;
+   if(code>0&&code<500&&![408,429].includes(code))lifecyclePending.current=null;
+   setFailure(e instanceof Error?e.message:"Campaign status cannot be confirmed. Retry the same original action.");
   }finally{setBusy(false);}
  };
  const hasUnsavedChanges=JSON.stringify(draft)!==JSON.stringify(savedDraft);
@@ -209,8 +236,19 @@ export function CampaignDraftsWorkspace({canManage}:{canManage:boolean}){
        <div style={{...actions,justifyContent:"space-between"}}>
         <div><strong>{row.title}</strong>
          <p style={{margin:"4px 0",color:"var(--cg-muted)"}}>{row.code} · {row.status.replaceAll("_"," ")} · {row.category}</p></div>
-        <button type="button" disabled={busy||!!pending.current||!!submitPending.current}
-         onClick={()=>void open(row)}>{canManage?"Open campaign":"View details"}</button>
+        <div style={actions}>
+         <button type="button" disabled={busy||!!pending.current||!!submitPending.current||!!lifecyclePending.current}
+          onClick={()=>void open(row)}>{canManage?"Open campaign":"View details"}</button>
+         {canManage&&(row.status==="APPROVED"||row.status==="PAUSED"||row.status==="DRAFT"||row.status==="RETURNED")&&
+          <>{(row.status==="APPROVED"?["PAUSE","CLOSE","WITHDRAW"]:
+            row.status==="PAUSED"?["RESUME","CLOSE","WITHDRAW"]:["WITHDRAW"]).map(action=>
+           <button key={action} type="button" disabled={busy||!!pending.current||!!submitPending.current||
+             !!lifecyclePending.current&&(lifecyclePending.current.ref!==row.ref||lifecyclePending.current.action!==action)}
+            onClick={()=>void lifecycle(row,action as "PAUSE"|"RESUME"|"CLOSE"|"WITHDRAW")}>
+            {lifecyclePending.current?.ref===row.ref&&lifecyclePending.current.action===action?"Retry ":""}
+            {action==="WITHDRAW"?"Cancel / withdraw":action==="PAUSE"?"Pause":action==="RESUME"?"Resume":"Complete"}
+           </button>)}</>}
+        </div>
        </div>
       </article>)}
      </div>
@@ -287,7 +325,7 @@ export function CampaignDraftsWorkspace({canManage}:{canManage:boolean}){
      <label style={field}>Planned beneficiaries (estimate only)
       <input style={entry} type="number" min="0" max="10000000" step="1" value={draft.project.plannedBeneficiaries??""}
        disabled={busy||!editable||!!pending.current||!!submitPending.current} onChange={e=>update("project","plannedBeneficiaries",e.target.value===""?null:Number(e.target.value))}/></label>
-     <p>Project and event links require verified CG-05 source and are not yet available in this initial draft slice.</p>
+     <p>Project and event choices come from current CG-05 records. A general campaign works without either association.</p>
     </>}
     {step===2&&<>{select("Campaign coordinator",draft.team.coordinatorRef,choices?.coordinators??[],
       v=>update("team","coordinatorRef",v),"Use current signed-in Foundation operator")}
@@ -381,6 +419,7 @@ export function CampaignDraftsWorkspace({canManage}:{canManage:boolean}){
     </aside>
    </div>
   </>}
+  {lifecyclePending.current&&<p role="alert">A campaign status result is uncertain. Retry its original action before changing another campaign.</p>}
   {!editing&&failure&&<p role="alert">{failure}</p>}
   {!editing&&notice&&<p role="status">{notice}</p>}
  </section>;
