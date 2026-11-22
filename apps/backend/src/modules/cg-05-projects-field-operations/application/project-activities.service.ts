@@ -135,7 +135,7 @@ export class ProjectActivitiesService{
    const s=await this.branches.projectBranchScope(tx,a),p=await this.parent(tx,a,project),branch=p?p.branch_ref:optionalRef(query.branchRef);
    const projects=(await tx.query("SELECT id AS value,code_norm||' · '||title AS label,branch_ref AS \"branchRef\" FROM project WHERE root_realm_id=$1 AND status NOT IN('COMPLETED','CANCELLED') AND ((branch_ref IS NULL AND $2::boolean) OR branch_ref=ANY($3::uuid[])) ORDER BY title,id LIMIT 100",[a.realmId,s.all,s.branches.map(b=>b.value)])).rows;
    let owners:{value:string;label:string}[]=[];
-   if(p||selected){
+   if(p||selected&&(branch!==null||s.all)){
     const scoped=await this.branches.projectBranch(tx,a,branch);
     owners=(await tx.query<{value:string;label:string}>(`SELECT aa.id AS value,aa.display_name AS label FROM account aa
      WHERE aa.realm_id=$1 AND ${eligible("aa")} AND ($2='' OR strpos(lower(aa.display_name),$2)>0)
