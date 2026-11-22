@@ -187,6 +187,8 @@ test("US003-QA06/13 original U14 single candidate and quoted CSV validation neve
  const csv=parseVolunteerStaffIntake({csv:'First Name,Last Name,Mobile,City\r\nAmina,Rahman,+919876543210,"Pune, Maharashtra"\r\n'});
  assert.equal(csv.length,1);
  assert.equal(csv[0].city,"Pune, Maharashtra");
+ const excel=parseVolunteerStaffIntake({csv:"\uFEFFFirst Name,Last Name,Mobile,City\nAmina,Rahman,9876543210,Pune"});
+ assert.equal(excel[0].mobile,"+919876543210");
  for(const row of [...rows,...csv])for(const privateKey of ["consent","status","approval","role","isEmployee","proofVerified"])
   assert.equal(privateKey in row,false);
 });
@@ -249,6 +251,9 @@ test("US003-QA06/13 U14 batch replay and verified self linkage never create an a
  assert.match(roster,/async previewImport\(/);
  assert.match(roster,/async importDrafts\(/);
  assert.match(roster,/pg_advisory_xact_lock/);
+ assert.match(roster,/CG04:VOLUNTEER_PHONE:/);
+ assert.match(roster,/UNION SELECT contact_mobile FROM volunteer_application/);
+ assert.match(self,/CG04:VOLUNTEER_PHONE:/);
  assert.match(self,/UPDATE volunteer_staff_intake_draft SET linked_application_id=\$3,linked_at=now\(\)/);
  assert.match(read("apps/web/src/features/volunteers/volunteer-staff-intake.tsx"),/draft-only intake/);
  assert.match(read("apps/android-internal/src/features/volunteers/native-volunteer-staff-intake.tsx"),/Confirm draft-only intake/);
