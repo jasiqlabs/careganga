@@ -125,6 +125,46 @@ export class HrAttendanceCorrectionSourceFacade{
   return {...current,status:classified.late?"LATE":"PRESENT",checkInAt:time.check_in.toISOString(),
    checkOutAt:time.check_out.toISOString(),workedMinutes:minutes,version:current.version+1};
  }
+ /** Authorized initial entry for a finished shift with no existing day. Corrections use CG03. */
+ async recordNonworking(tx:PoolClient,actor:VerifiedFoundationActor,body:unknown){
+  if(!body||typeof body!=="object"||Array.isArray(body)||Object.keys(body).some(k=>!["requestKey","employeeReference","date","result"].includes(k)))
+   throw new BadRequestException({code:"CG10_CORRECTION_INVALID"});
+  const x=body as Record<string,unknown>,requestKey=leaveId(x.requestKey),date=leaveDate(x.date);
+  if(typeof x.employeeReference!=="string"||!EMP.test(x.employeeReference)||(x.result!=="ABSENT"&&x.result!=="WEEKLY_OFF"))
+   throw new BadRequestException({code:"CG10_CORRECTION_INVALID"});
+  const employee=await this.employee(tx,actor,x.employeeReference,true);
+  if(!employee||employee.account_ref===actor.accountId)throw new ForbiddenException("A different authorized HR actor must record this employee's attendance");
+  const requestDigest=hash(["INITIAL_NONWORKING_DAY",actor.accountId,employee.id,date,x.result]);
+  const old=await tx.query<{request_digest:string;employee_id:string;status:string;branch_ref:string}>(`
+   SELECT ev.request_digest,ev.employee_id,d.status,a.branch_ref FROM hr_attendance_event ev
+   JOIN hr_attendance_day d ON d.id=ev.attendance_day_id AND d.root_realm_id=ev.root_realm_id
+   JOIN hr_employment_assignment a ON a.id=d.assignment_id AND a.root_realm_id=d.root_realm_id
+   WHERE ev.root_realm_id=$1 AND ev.actor_ref=$2 AND ev.request_key=$3 FOR SHARE OF ev,d,a`,[actor.realmId,actor.accountId,requestKey]);
+  if(old.rows[0]){
+   if(old.rows[0].request_digest!==requestDigest||old.rows[0].employee_id!==employee.id||old.rows[0].branch_ref!==employee.branch_ref)
+    throw new ConflictException({code:"CG10_CORRECTION_STALE"});
+   return {recorded:true,date,status:old.rows[0].status,replayed:true};
+  }
+  const q=await tx.query<{assignment_id:string;shift_id:string;policy_id:string;weekly_off_days:number[]}>(`
+   SELECT a.id AS assignment_id,s.id AS shift_id,p.id AS policy_id,p.weekly_off_days
+   FROM hr_employment_assignment a JOIN hr_employee_shift s ON s.employee_id=a.employee_id AND s.root_realm_id=a.root_realm_id
+   JOIN hr_shift_policy p ON p.id=s.policy_id AND p.root_realm_id=s.root_realm_id AND p.branch_ref=a.branch_ref
+   WHERE a.root_realm_id=$1 AND a.employee_id=$2 AND a.branch_ref=$3
+    AND a.valid_from<=$4::date AND (a.valid_to IS NULL OR a.valid_to>$4::date)
+    AND s.valid_from<=$4::date AND (s.valid_to IS NULL OR s.valid_to>$4::date) AND p.effective_from<=$4::date
+    AND ((($4::date+p.work_end_local)+CASE WHEN p.work_end_local<p.work_start_local THEN interval '1 day' ELSE interval '0' END) AT TIME ZONE p.time_zone)<now()
+    FOR SHARE OF a,s,p`,[actor.realmId,employee.id,employee.branch_ref,date]);
+  if(q.rows.length!==1)throw new ConflictException("Choose a finished date with an effective shift in the employee's current branch");
+  const d=q.rows[0],off=d.weekly_off_days.includes(new Date(date+"T00:00:00Z").getUTCDay());
+  if((x.result==="WEEKLY_OFF")!==off)throw new BadRequestException("The selected result does not match the effective weekly-off policy");
+  const inserted=await tx.query<{id:string}>(`INSERT INTO hr_attendance_day(root_realm_id,employee_id,assignment_id,shift_id,policy_id,local_date,status)
+   VALUES($1,$2,$3,$4,$5,$6,$7) ON CONFLICT(root_realm_id,employee_id,local_date) DO NOTHING RETURNING id`,
+   [actor.realmId,employee.id,d.assignment_id,d.shift_id,d.policy_id,date,x.result]);
+  if(!inserted.rows[0])throw new ConflictException({code:"CG10_CORRECTION_STALE"});
+  await tx.query(`INSERT INTO hr_attendance_event(root_realm_id,employee_id,attendance_day_id,actor_ref,request_key,request_digest,action)
+   VALUES($1,$2,$3,$4,$5,$6,'INITIAL_NONWORKING_DAY')`,[actor.realmId,employee.id,inserted.rows[0].id,actor.accountId,requestKey,requestDigest]);
+  return {recorded:true,date,status:x.result,replayed:false};
+ }
  async prepare(tx:PoolClient,actor:VerifiedFoundationActor,body:unknown){
   const x=parseAttendanceCorrection(body),employee=await this.employee(tx,actor,x.employeeReference,true);
   if(!employee)throw new ForbiddenException("The current employee or branch is not available");

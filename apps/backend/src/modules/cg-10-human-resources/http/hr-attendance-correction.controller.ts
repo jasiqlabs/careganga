@@ -8,6 +8,8 @@ export class HrAttendanceCorrectionController{
  history(@Headers("authorization")token:string,@Query("employeeReference")employeeReference?:string){
   return this.source.history(token,employeeReference);
  }
+ @Post("attendance/record")
+ record(@Headers("authorization")token:string,@Body()body:unknown){return this.source.recordNonworking(token,body);}
  @Post("attendance-corrections")
  submit(@Headers("authorization")token:string,@Body()body:unknown){return this.source.submit(token,body);}
  @Get("attendance-correction-reviews")

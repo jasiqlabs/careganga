@@ -17,6 +17,10 @@ export class HrAttendanceCorrectionService{
   const actor=employeeReference!==undefined?await this.sessions.requireAction(token,"hr.attendance.correct"):await this.sessions.verifySession(token);
   return this.run(tx=>this.source.history(tx,actor,employeeReference));
  }
+ async recordNonworking(token:string,body:unknown){
+  const actor=await this.sessions.requireAction(token,"hr.attendance.correct");
+  return this.run(tx=>this.source.recordNonworking(tx,actor,body));
+ }
  async submit(token:string,body:unknown){
   const form=parseAttendanceCorrection(body);
   const actor=form.employeeReference?await this.sessions.requireAction(token,"hr.attendance.correct"):await this.sessions.verifySession(token);

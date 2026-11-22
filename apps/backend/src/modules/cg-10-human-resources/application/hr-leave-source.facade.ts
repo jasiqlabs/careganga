@@ -219,9 +219,11 @@ export class HrLeaveSourceFacade{
    FROM unnest($6::date[]) AS dates(d)
    ON CONFLICT(root_realm_id,employee_id,local_date) DO UPDATE SET
     leave_request_id=EXCLUDED.leave_request_id,leave_half_days=EXCLUDED.leave_half_days,
+    status=CASE WHEN hr_attendance_day.status IN('ABSENT','WEEKLY_OFF') THEN EXCLUDED.status ELSE hr_attendance_day.status END,
     version=hr_attendance_day.version+1
-   WHERE EXCLUDED.leave_half_days=1 AND hr_attendance_day.leave_request_id IS NULL
-    AND hr_attendance_day.status IN('PRESENT','LATE')
+   WHERE hr_attendance_day.leave_request_id IS NULL
+    AND ((EXCLUDED.leave_half_days=1 AND hr_attendance_day.status IN('PRESENT','LATE'))
+      OR (hr_attendance_day.status IN('ABSENT','WEEKLY_OFF') AND hr_attendance_day.checked_in_at IS NULL AND hr_attendance_day.checked_out_at IS NULL))
     AND hr_attendance_day.assignment_id=EXCLUDED.assignment_id AND hr_attendance_day.shift_id=EXCLUDED.shift_id
     AND hr_attendance_day.policy_id=EXCLUDED.policy_id RETURNING id`,
    [realm,row.employee_id,row.assignment_id,row.shift_id,row.shift_policy_id,days,units,row.id]);

@@ -10,6 +10,7 @@ function allowed(parts:string[],method:string){
  if(parts.length===1&&["shift-policies","leave-policies"].includes(parts[0]))return method==="GET"||method==="POST";
  if(parts.length===1&&parts[0]==="shift-assignments")return method==="POST";
  if(parts.length===2&&parts[0]==="me"&&parts[1]==="leave")return method==="GET"||method==="POST";
+ if(parts.length===2&&parts[0]==="attendance"&&parts[1]==="record")return method==="POST";
  if(parts.length===1&&parts[0]==="attendance-corrections")return method==="GET"||method==="POST";
  if(parts.length===1&&parts[0]==="attendance-correction-reviews")return method==="GET";
  if(parts.length===2&&parts[0]==="attendance-correction-reviews"&&UUID.test(parts[1]))return method==="GET";
@@ -70,7 +71,7 @@ async function proxy(req:NextRequest,parts:string[],method:string){
    headers:{Authorization:"Bearer "+token,...(body?{"Content-Type":"application/json"}:{})}});
   if(!res.ok){
    const status=[400,401,403,404,409,429].includes(res.status)?res.status:503;
-   const leavePath=parts[0]==="attendance-corrections"||parts[0]==="attendance-correction-reviews"||parts[0]==="leave-reviews"||(parts[0]==="me"&&parts[1]==="leave");
+   const leavePath=(parts[0]==="attendance"&&parts[1]==="record")||parts[0]==="attendance-corrections"||parts[0]==="attendance-correction-reviews"||parts[0]==="leave-reviews"||(parts[0]==="me"&&parts[1]==="leave");
    if(leavePath&&status>=400&&status<500){
     const rejected:unknown=await res.json().catch(()=>null);
     if(rejected&&typeof rejected==="object"&&"code" in rejected&&"message" in rejected&&
