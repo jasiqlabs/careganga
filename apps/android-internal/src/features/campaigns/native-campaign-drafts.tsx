@@ -7,7 +7,7 @@ import {careGangaTheme as t} from "../../../../../packages/design-tokens/src/ind
 const steps=["Basic Details","Project & Category","Team & Assignment","Budget & Targets","Documents & Media","Review & Submit"];
 type Draft={
  basic:{title:string;type:"GENERAL";summary:string;description:string;tags:string[]};
- project:{category:string;branchRef:string|null;projectRef:null;eventRef:null;stateRef:string|null;districtRef:string|null;location:string;targetGroup:string;plannedBeneficiaries:number|null};
+ project:{category:string;branchRef:string|null;projectRef:string|null;eventRef:string|null;stateRef:string|null;districtRef:string|null;location:string;targetGroup:string;plannedBeneficiaries:number|null};
  team:{coordinatorRef:string|null;volunteerRef:null};
  budget:{goal:string;expectedCost:string;startAt:string;endAt:string};
  media:{fileRef:null;alt:string};review:Record<string,never>;
@@ -16,7 +16,7 @@ type Row={ref:string;code:string;title:string;status:string;category:string;vers
 type Page={items:Row[];offset:number;hasMore:boolean};
 type Saved={ref:string;version:number;code:string;replayed:boolean;status:string};
 type Choice={value:string;label:string};
-type Choices={canFoundation:boolean;branches:Choice[];states:Choice[];districts:Choice[];coordinators:Choice[]};
+type Choices={canFoundation:boolean;branches:Choice[];states:Choice[];districts:Choice[];coordinators:Choice[];projects:Choice[];events:(Choice&{projectRef:string|null})[]};
 const blank=():Draft=>({basic:{title:"",type:"GENERAL",summary:"",description:"",tags:[]},
  project:{category:"GENERAL",branchRef:null,projectRef:null,eventRef:null,stateRef:null,districtRef:null,location:"",targetGroup:"",plannedBeneficiaries:null},
  team:{coordinatorRef:null,volunteerRef:null},budget:{goal:"",expectedCost:"",startAt:"",endAt:""},media:{fileRef:null,alt:""},review:{}});
@@ -30,6 +30,7 @@ function fromRow(row:Row):Draft{
  return {...blank(),basic:{...blank().basic,title:b?.title??row.title,summary:b?.summary??"",
   description:b?.description??"",tags:Array.isArray(b?.tags)?b.tags:[]},
   project:{...blank().project,category:p?.category??row.category,branchRef:p?.branchRef??null,
+   projectRef:p?.projectRef??null,eventRef:p?.eventRef??null,
    stateRef:p?.stateRef??null,districtRef:p?.districtRef??null,location:p?.location??"",targetGroup:p?.targetGroup??"",
    plannedBeneficiaries:p?.plannedBeneficiaries??null},
   team:{...blank().team,coordinatorRef:t?.coordinatorRef??null},
@@ -71,11 +72,11 @@ export function NativeCampaignDrafts({token,canManage,onExpired}:{
  useEffect(()=>{
   if(!editing||!active.current){setChoices(null);return;}
   const id=++choiceSeq.current;
-  void api<Choices>("options?"+new URLSearchParams({stateRef:form.project.stateRef??""}).toString())
+  void api<Choices>("options?"+new URLSearchParams({stateRef:form.project.stateRef??"",branchRef:form.project.branchRef??""}).toString())
    .then(value=>{if(id===choiceSeq.current&&active.current)setChoices(value);})
    .catch(()=>{if(id===choiceSeq.current&&active.current){setChoices(null);setError("Current campaign branch and area choices are unavailable.");}});
   return()=>{choiceSeq.current++;};
- },[editing,form.project.stateRef,token]);
+ },[editing,form.project.stateRef,form.project.branchRef,token]);
  useEffect(()=>{
   const subscription=AppState.addEventListener("change",state=>{
    active.current=state==="active";
@@ -165,11 +166,16 @@ export function NativeCampaignDrafts({token,canManage,onExpired}:{
     {field("Tags (comma-separated)",form.basic.tags.join(", "),v=>change("basic","tags",v.split(",").map(x=>x.trim()).filter(Boolean)))}
    </>}
    {step===1&&<>
-    {pick("Foundation branch",form.project.branchRef,choices?.branches??[],v=>change("project","branchRef",v),
+    {pick("Foundation branch",form.project.branchRef,choices?.branches??[],v=>setForm(d=>({...d,project:{...d.project,branchRef:v,projectRef:null,eventRef:null}})),
       choices?.canFoundation?"Foundation-wide":"Select active branch")}
     {pick("State",form.project.stateRef,choices?.states??[],v=>setForm(d=>({...d,
       project:{...d.project,stateRef:v,districtRef:null}})),"No state")}
     {pick("District",form.project.districtRef,choices?.districts??[],v=>change("project","districtRef",v),"No district")}
+    {pick("Current active project",form.project.projectRef,choices?.projects??[],
+      v=>setForm(d=>({...d,project:{...d.project,projectRef:v,eventRef:null}})),"General campaign")}
+    {pick("Scheduled or ongoing event",form.project.eventRef,
+      (choices?.events??[]).filter(x=>x.projectRef===form.project.projectRef),
+      v=>change("project","eventRef",v),"No event")}
     {field("Campaign category",form.project.category,v=>change("project","category",v))}
     {field("Location description",form.project.location,v=>change("project","location",v))}
     {field("Planned target group",form.project.targetGroup,v=>change("project","targetGroup",v))}
