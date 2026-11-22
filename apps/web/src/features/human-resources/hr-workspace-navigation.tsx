@@ -3,7 +3,7 @@ import {useCallback,useEffect,useRef,useState,type ReactNode} from "react";
 import {careGangaTheme as theme, roleColor} from "../../../../../packages/design-tokens/src/index";
 type Section={id:string;label:string;content:ReactNode};
 /** Mount on first visit and preserve in-progress forms and uncertain command keys. */
-export function HrWorkspaceNavigation({sections,canViewDashboard=false,canAddEmployee=false,canViewLeave=false}:{sections:Section[];canViewDashboard?:boolean;canAddEmployee?:boolean;canViewLeave?:boolean}){
+export function HrWorkspaceNavigation({sections,canViewDashboard=false,canAddEmployee=false,canViewLeave=false,canViewBirthdays=false}:{sections:Section[];canViewDashboard?:boolean;canAddEmployee?:boolean;canViewLeave?:boolean;canViewBirthdays?:boolean}){
  const first=canViewDashboard?"overview":sections[0]?.id??"profile";
  const [current,setCurrent]=useState(first);
  const [visited,setVisited]=useState<string[]>([first]);
@@ -15,12 +15,12 @@ export function HrWorkspaceNavigation({sections,canViewDashboard=false,canAddEmp
    {links.map(s=><button key={s.id} type="button" aria-current={active===s.id?"page":undefined} onClick={()=>choose(s.id)}
     style={{border:"1px solid "+(active===s.id?theme.primary:theme.border),background:active===s.id?theme.primary:theme.surface,color:active===s.id?theme.primaryText:theme.text,borderRadius:9,minHeight:44,padding:"8px 13px",fontWeight:600}}>{s.label}</button>)}
   </nav>
-  {canViewDashboard&&active==="overview"&&<HrDashboard choose={choose} sections={sections} canAddEmployee={canAddEmployee} canViewLeave={canViewLeave}/>}
+  {canViewDashboard&&active==="overview"&&<HrDashboard choose={choose} sections={sections} canAddEmployee={canAddEmployee} canViewLeave={canViewLeave} canViewBirthdays={canViewBirthdays}/>}
   {sections.filter(s=>visited.includes(s.id)||active===s.id).map(s=><section key={s.id} id={"hr-section-"+s.id} aria-label={s.label} hidden={active!==s.id} style={active===s.id?{display:"grid",gap:18,minWidth:0}:{display:"none"}}>{s.content}</section>)}
  </div>;
 }
 
-type Summary={total:number;statuses:Record<string,number>;newJoinersThisMonth:number;departments:{label:string;count:number}[];joiners:{month:string;count:number}[];attendance:{onApprovedLeaveToday:number;employeesWithPendingLeave:number;daily?:{label:string;count:number}[]}|null};
+type Summary={total:number;statuses:Record<string,number>;newJoinersThisMonth:number;departments:{label:string;count:number}[];joiners:{month:string;count:number}[];anniversaries?:{name:string;date:string;years:number}[];attendance:{onApprovedLeaveToday:number;employeesWithPendingLeave:number;daily?:{label:string;count:number}[]}|null};
 const metrics=(v:Summary|null)=>[
  {label:"Total employees",value:v?.total},{label:"Active employees",value:v?.statuses.ACTIVE},
  {label:"On probation",value:v?.statuses.PROBATION},{label:"Pending access",value:v?.statuses.PENDING_ACCESS},
@@ -28,9 +28,12 @@ const metrics=(v:Summary|null)=>[
  ...(v?.attendance?[{label:"On approved leave today",value:v.attendance.onApprovedLeaveToday},{label:"Employees with pending leave",value:v.attendance.employeesWithPendingLeave}]:[])
 ];
 type RecentLeave={reference:string;employeeName:string;leaveType:string;startDate:string;endDate:string;days:number;status:string;caseStatus:string};
-function HrDashboard({choose,sections,canAddEmployee,canViewLeave}:{choose:(id:string)=>void;sections:Section[];canAddEmployee:boolean;canViewLeave:boolean}){
+function HrDashboard({choose,sections,canAddEmployee,canViewLeave,canViewBirthdays}:{choose:(id:string)=>void;sections:Section[];canAddEmployee:boolean;canViewLeave:boolean;canViewBirthdays:boolean}){
  const [summary,setSummary]=useState<Summary|null>(null),[error,setError]=useState(""),[busy,setBusy]=useState(true);
- const seq=useRef(0);
+ const seq=useRef(0),birthdaySeq=useRef(0);
+ const [birthdays,setBirthdays]=useState<{name:string;date:string}[]|null>(null),[birthdayError,setBirthdayError]=useState(""),[birthdayBusy,setBirthdayBusy]=useState(false),[birthdayOffset,setBirthdayOffset]=useState(0),[birthdayMore,setBirthdayMore]=useState(false);
+ const loadBirthdays=async(offset=0)=>{if(!canViewBirthdays)return;const read=++birthdaySeq.current;setBirthdayBusy(true);setBirthdays(null);setBirthdayError("");setBirthdayMore(false);try{const r=await fetch("/api/hr/private/birthdays?offset="+offset,{cache:"no-store",credentials:"same-origin"});if(!r.ok)throw Error("Protected birthday overview unavailable.");const v=await r.json();if(!Array.isArray(v.items))throw Error("Protected birthday overview unavailable.");if(read===birthdaySeq.current){setBirthdays(v.items);setBirthdayOffset(offset);setBirthdayMore(v.hasMore===true);}}catch(e){if(read===birthdaySeq.current)setBirthdayError(e instanceof Error?e.message:"Birthday overview unavailable.");}finally{if(read===birthdaySeq.current)setBirthdayBusy(false);}};
+ useEffect(()=>{return()=>{birthdaySeq.current++;};},[]);
  const [recent,setRecent]=useState<RecentLeave[]|null>(null),[leaveError,setLeaveError]=useState("");
  const leaveSeq=useRef(0);const loadLeave=useCallback(async()=>{const read=++leaveSeq.current;setRecent(null);setLeaveError("");if(!canViewLeave)return;try{const r=await fetch("/api/hr/leave-reviews?status=ALL&offset=0",{cache:"no-store",credentials:"same-origin"});if(!r.ok)throw Error("Recent leave requests unavailable.");const v=await r.json();if(!Array.isArray(v.items))throw Error("Recent leave requests unavailable.");if(read===leaveSeq.current)setRecent(v.items.slice(0,5) as RecentLeave[]);}catch(e){if(read===leaveSeq.current)setLeaveError(e instanceof Error?e.message:"Recent leave requests unavailable.");}},[canViewLeave]);
  useEffect(()=>{void loadLeave();return()=>{leaveSeq.current++;};},[loadLeave]);
@@ -75,6 +78,8 @@ function HrDashboard({choose,sections,canAddEmployee,canViewLeave}:{choose:(id:s
    </article>}
    {summary?.attendance&&<article style={panel}><h3>Today’s attendance</h3><p style={{color:theme.mutedText,fontSize:13}}>Current employees · each shift’s local date. No record is not an absence.</p>{summary.attendance.daily?.length?<div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(125px,1fr))",gap:8}}>{summary.attendance.daily.map(x=><div key={x.label} style={{padding:10,border:"1px solid "+theme.border,borderRadius:8}}><small>{x.label==="NOT_RECORDED"?"Not recorded":x.label.replaceAll("_"," ").toLowerCase()}</small><strong style={{display:"block",fontSize:20}}>{x.count}</strong></div>)}</div>:<p>No attendance records available for your current scope.</p>}<button onClick={()=>choose("attendance")}>Open attendance sheet</button></article>}
    {canViewLeave&&<article style={{...panel,gridColumn:"1 / -1"}}><h3>Recent leave requests</h3>{leaveError?<p role="alert">{leaveError}</p>:recent===null?<p role="status">Loading…</p>:recent.length===0?<p>No leave requests in your permitted scope.</p>:<div style={{overflowX:"auto"}}><table style={{width:"100%",textAlign:"left",borderCollapse:"collapse",fontSize:13}}><thead><tr>{["Request","Employee","Leave type","From","To","Days","Status"].map(x=><th key={x} style={{padding:8}}>{x}</th>)}</tr></thead><tbody>{recent.map(x=><tr key={x.reference} style={{borderTop:"1px solid "+theme.border}}>{[x.reference,x.employeeName,x.leaveType,x.startDate,x.endDate,x.days,x.status.replaceAll("_"," ")].map((value,i)=><td key={i} style={{padding:8}}>{value}</td>)}</tr>)}</tbody></table></div>}<button type="button" onClick={()=>choose("attendance")}>View leave management</button></article>}
+   {summary&&<article style={panel}><h3>Work anniversaries</h3><p style={{color:theme.mutedText}}>Next 30 days · up to 20 upcoming</p>{summary.anniversaries?.length?summary.anniversaries.map((x,i)=><div key={i} style={{display:"flex",justifyContent:"space-between",gap:8,padding:"6px 0"}}><strong>{x.name}</strong><span>{x.date} · {x.years} year(s)</span></div>):<p>No upcoming work anniversaries.</p>}</article>}
+   {canViewBirthdays&&<article style={panel}><h3>Upcoming birthdays</h3><p style={{color:theme.mutedText}}>Next 30 days · protected private read, no birth year. Show results in pages of up to 250 permitted records.</p><button disabled={birthdayBusy} onClick={()=>void loadBirthdays(0)}>{birthdayBusy?"Loading…":"Show protected birthday overview"}</button>{birthdayError&&<p role="alert">{birthdayError}</p>}{birthdays!==null&&<>{birthdays.length?birthdays.map((x,i)=><div key={i}>{x.name} · {x.date.slice(5)}</div>):<p>No birthdays on this page.</p>}{birthdayOffset>0&&<button disabled={birthdayBusy} onClick={()=>void loadBirthdays(Math.max(0,birthdayOffset-250))}>Previous</button>}{birthdayMore&&<button disabled={birthdayBusy} onClick={()=>void loadBirthdays(birthdayOffset+250)}>Next</button>}</>}</article>}
    <article style={panel}><h3 style={{marginTop:0}}>Quick actions</h3><div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(min(100%,130px),1fr))",gap:10}}>{quick.map(x=><button key={x.id} type="button" onClick={()=>choose(x.id)} style={{minHeight:60,borderRadius:8,border:"1px solid "+theme.border,background:theme.selectedSurface,color:theme.primary,padding:"10px 14px",fontWeight:600}}>{x.label}</button>)}</div></article>
   </div>
  </section>;
