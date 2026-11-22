@@ -271,6 +271,10 @@ export type CG04MembershipPaymentStatus="NOT_DUE"|"PENDING"|"AWAITING_BANK_VERIF
 export type CG04MembershipFee={feeMinor:string;currency:"INR";paymentStatus:CG04MembershipPaymentStatus;verifiedMinor:string;refundRequired:boolean};
 export type CG04Member={memberNumber:string;name:string;branch:string|null;plan:string;category:CG04TierCategory;feeMinor:string;currency:"INR";startsOn:string;expiresOn:string|null;status:"ACTIVE"|"EXPIRED"|"SUSPENDED"|"CANCELLED"};
 export type CG04MemberProfile={member:CG04Member|null};
+export type CG19MemberPackStatus={packRef:string;status:"PENDING"|"VERIFYING"|"UNKNOWN"|"ISSUED"|"REVOKED";issueRevision:number;issuedAt:string|null;canDownload:boolean;canRetry:boolean};
+export type CG19OwnMemberPacks={items:CG19MemberPackStatus[];hasMore:boolean};
+export type CG19MemberBrandStatus={configured:boolean;version:number;displayName?:string;signatoryName?:string};
+
 export type CG04MemberHistory={terms:{plan:string;category:CG04TierCategory;feeMinor:string;currency:"INR";startsOn:string;expiresOn:string|null;applicationNumber:string;recordedAt:string}[];
  branches:{branch:string|null;effectiveFrom:string;effectiveTo:string|null;reason:string}[];
  termsHasMore:boolean;branchesHasMore:boolean};
