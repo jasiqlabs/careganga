@@ -332,3 +332,28 @@ test("US003-QA16: separate pending refund from verified net and native foregroun
  assert.match(native,/state==="active"&&token/);
  assert.doesNotMatch(native,/setInterval\(/);
 });
+
+test("US003-QA05/15: verified CG09 monthly report, net export, scoped keyset and protected donor details",()=>{
+ const admin=source("application/donation-admin.service.ts");
+ const web=root("apps/web/src/features/campaigns/donation-admin-workspace.tsx");
+ const proxy=root("apps/web/src/app/api/donations/[[...parts]]/route.ts");
+ assert.match(admin,/async exportCsv/);
+ assert.match(admin,/documents\.files\.view/);
+ assert.match(admin,/financeReportScope/);
+ assert.match(admin,/monthlyTrend:trends\.rows/);
+ assert.match(admin,/j\.posting_date>=date_trunc/);
+ assert.match(admin,/r\.status='FINANCE_REVERSED'/);
+ assert.match(admin,/verifiedRefundMinor/);
+ assert.match(admin,/netReceivedMinor/);
+ assert.match(admin,/refund_minor/);
+ assert.match(admin,/Verified net INR/);
+ assert.match(admin,/cursorTime/);
+ assert.match(admin,/cursorId/);
+ assert.match(admin,/d\.created_at,d\.id/);
+ assert.match(admin,/nextCursor/);
+ assert.match(admin,/panMasked/);
+ assert.match(web,/Verified monthly donation trend/);
+ assert.match(web,/setCursorTrail/);
+ assert.match(web,/data\.nextCursor/);
+ assert.match(proxy,/campaign","cursor"/);
+});
