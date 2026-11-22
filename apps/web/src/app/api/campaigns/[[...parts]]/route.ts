@@ -24,7 +24,7 @@ async function proxy(req:NextRequest,ctx:Context,method:"GET"|"POST"|"PATCH"){
  }
  try{
   const url=new URL("/api/v1/campaigns"+(parts.length?"/"+parts.join("/"):""),process.env.BACKEND_URL);
-  if(method==="GET"&&(parts.length===0||parts[0]==="options"))for(const key of (parts[0]==="options"?["q","stateRef"]:["q","offset"]))
+  if(method==="GET"&&(parts.length===0||parts[0]==="options"))for(const key of (parts[0]==="options"?["q","stateRef","branchRef"]:["q","offset"]))
    if(req.nextUrl.searchParams.has(key))url.searchParams.set(key,req.nextUrl.searchParams.get(key)!);
   const r=await fetch(url,{method,body,cache:"no-store",signal:AbortSignal.timeout(12000),
    headers:{Authorization:"Bearer "+token,...(body?{"Content-Type":"application/json"}:{})}});
