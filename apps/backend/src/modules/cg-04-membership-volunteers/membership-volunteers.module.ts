@@ -2,6 +2,8 @@ import {FinanceSourceModule} from "../cg-09-finance-accounting/finance-source.mo
 import {MembershipActivationService} from "./application/membership-activation.service";
 import {MembershipActivationController} from "./http/membership-activation.controller";
 import {VolunteerApplicationsService} from "./application/volunteer-applications.service";
+import {VolunteerRosterService} from "./application/volunteer-roster.service";
+import {VolunteerRosterController} from "./http/volunteer-roster.controller";
 import {VolunteerActivationService} from "./application/volunteer-activation.service";
 import {VolunteerActivationController} from "./http/volunteer-activation.controller";
 import {VolunteerApplicationsController} from "./http/volunteer-applications.controller";
@@ -16,5 +18,5 @@ import {MembershipRosterService} from "./application/membership-roster.service";
 import {MembershipRosterController} from "./http/membership-roster.controller";
 import {MembershipTiersService} from "./application/membership-tiers.service";
 import {MembershipTiersController,PublicMembershipTiersController} from "./http/membership-tiers.controller";
-@Module({imports:[DatabaseModule,IdentityAccessModule,FoundationStructureModule,RegistrationApprovalsModule,FinanceSourceModule],providers:[MembershipRosterService,MembershipTiersService,MembershipApplicationsService,MembershipActivationService,VolunteerApplicationsService,VolunteerActivationService],controllers:[MembershipRosterController,MembershipTiersController,PublicMembershipTiersController,MembershipApplicationsController,MembershipActivationController,VolunteerApplicationsController,VolunteerActivationController],exports:[MembershipTiersService]})
+@Module({imports:[DatabaseModule,IdentityAccessModule,FoundationStructureModule,RegistrationApprovalsModule,FinanceSourceModule],providers:[MembershipRosterService,MembershipTiersService,MembershipApplicationsService,MembershipActivationService,VolunteerApplicationsService,VolunteerActivationService,VolunteerRosterService],controllers:[MembershipRosterController,MembershipTiersController,PublicMembershipTiersController,MembershipApplicationsController,MembershipActivationController,VolunteerApplicationsController,VolunteerActivationController,VolunteerRosterController],exports:[MembershipTiersService]})
 export class MembershipVolunteersModule{}
