@@ -15,7 +15,7 @@ const feeClasses=[["ALL","All members"],["GENERAL","General · no fee"],["PAID",
 const human=(v:string)=>v.replaceAll("_"," ").toLowerCase().replace(/\b[a-z]/g,c=>c.toUpperCase());
 export function NativeMemberRoster({token,canExport,onExpired}:{token:string;canExport:boolean;onExpired:()=>void}){
  const [draft,setDraft]=useState<Filter>(empty),[filter,setFilter]=useState<Filter>(empty),[cursor,setCursor]=useState(""),[history,setHistory]=useState<string[]>([]);
- const [page,setPage]=useState<CG04RosterPage|null>(null),[loading,setLoading]=useState(true),[busy,setBusy]=useState(false),[error,setError]=useState(""),[notice,setNotice]=useState(""),[epoch,setEpoch]=useState(0);
+ const [page,setPage]=useState<CG04RosterPage|null>(null),[selectedRef,setSelectedRef]=useState<string|null>(null),[loading,setLoading]=useState(true),[busy,setBusy]=useState(false),[error,setError]=useState(""),[notice,setNotice]=useState(""),[epoch,setEpoch]=useState(0);
  const seq=useRef(0),exporting=useRef(false),foreground=useRef(true);
  async function request<T>(url:string):Promise<T>{
   const response=await identityRequest(url,{headers:{Authorization:"Bearer "+token},cache:"no-store"});
@@ -25,7 +25,7 @@ export function NativeMemberRoster({token,canExport,onExpired}:{token:string;can
  }
  useEffect(()=>{const sub=AppState.addEventListener("change",s=>{
   foreground.current=s==="active";
-  if(s!=="active"){seq.current++;setPage(null);setLoading(true);}
+  if(s!=="active"){seq.current++;setPage(null);setSelectedRef(null);setLoading(true);}
   else setEpoch(x=>x+1);
  });return()=>sub.remove();},[]);
  useEffect(()=>{
@@ -109,7 +109,14 @@ export function NativeMemberRoster({token,canExport,onExpired}:{token:string;can
     <Text>Joined: {m.joinedOn} · Valid until: {m.expiresOn??"Lifetime"}</Text>
     <Text>Location: {m.city}, {m.district} · {m.branch??"Foundation"}</Text>
     <Text>Contact: {m.mobile}{m.email?" · "+m.email:""}</Text>
-   </View>)}
+    {chip(selectedRef===m.ref?"Hide card preview":"Preview card",()=>setSelectedRef(current=>current===m.ref?null:m.ref),selectedRef===m.ref,disabled)}
+    {selectedRef===m.ref&&<View style={styles.preview} accessibilityLabel="Non-issued member card preview">
+     <Text style={styles.title}>Member card preview — not issued</Text>
+     <Text style={styles.muted}>Actual signed card, certificate and QR are only available after verified CG19 issuance. This preview is not proof of membership.</Text>
+     <View style={styles.cardFace}><Text style={styles.faceTag}>CAREGANGA FOUNDATION · MEMBER</Text><Text style={styles.faceName}>{m.name}</Text><Text style={styles.faceText}>Membership number: {m.memberNumber}</Text><Text style={styles.faceText}>Plan: {m.plan} · {human(m.category)}</Text><Text style={styles.faceText}>Status: {human(m.status)}</Text><Text style={styles.faceText}>Valid until: {m.expiresOn??"Lifetime"}</Text></View>
+     <View style={styles.cardFace}><Text style={styles.faceTag}>MEMBERSHIP INFORMATION</Text><Text style={styles.faceText}>Branch: {m.branch??"Foundation"}</Text><Text style={styles.faceText}>Joined: {m.joinedOn}</Text><Text style={styles.faceText}>No verification QR issued</Text></View>
+    </View>}
+   </View>)}}
    <View style={styles.buttons}>{chip("Previous page",()=>{setCursor(history.at(-1)??"");setHistory(x=>x.slice(0,-1));},false,disabled||!history.length)}
     {chip("Next page",()=>{setHistory(x=>[...x,cursor]);setCursor(page.nextCursor??"");},false,disabled||!page.nextCursor)}</View>
   </>}
@@ -130,5 +137,10 @@ const styles=StyleSheet.create({
  chipSelected:{backgroundColor:theme.primary,borderColor:theme.primary},
  chipText:{color:theme.primary,fontWeight:"600",fontSize:13},
  chipTextSelected:{color:theme.primaryText},
+ preview:{gap:10,paddingTop:6},
+ cardFace:{backgroundColor:theme.primary,borderRadius:12,padding:15,gap:8},
+ faceTag:{fontSize:11,fontWeight:"700",color:theme.primaryText},
+ faceName:{fontSize:20,fontWeight:"800",color:theme.primaryText},
+ faceText:{color:theme.primaryText,fontSize:13},
  disabled:{opacity:0.45}
 });
