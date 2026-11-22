@@ -8,14 +8,25 @@ import type {VerifiedFoundationActor as Actor} from "../../cg-01-identity-access
 import {BranchSourceFacade} from "../../cg-02-foundation-structure/application/branch-source.facade";
 import {object,plain,uuid} from "../domain/tier-input";
 import {rosterCsvCell} from "../domain/roster-csv-cell";
-type Filter={q:string;status:string;category:string;branch:string|null;at:string|null;id:string|null};
+type Filter={q:string;status:string;category:string;feeClass:string;joinedFrom:string|null;joinedTo:string|null;branch:string|null;at:string|null;id:string|null};
 type Row={ref:string;memberNumber:string;name:string;email:string|null;mobile:string;plan:string;category:string;joinedOn:string;expiresOn:string|null;status:string;city:string;district:string;branch:string|null;createdAt:string};
 const categories=["ALL","ANNUAL","LIFETIME","HONORARY","STUDENT","OTHER"];
 const statuses=["ALL","ACTIVE","EXPIRED","SUSPENDED","CANCELLED"];
+const feeClasses=["ALL","GENERAL","PAID"];
+function joinDate(value:unknown,label:string):string|null{
+ if(value===undefined||value===null||value==="")return null;
+ if(typeof value!=="string"||!/^[0-9]{4}-[0-9]{2}-[0-9]{2}$/.test(value))throw new BadRequestException("Choose a valid "+label+" date.");
+ const d=new Date(value+"T00:00:00.000Z");
+ if(!Number.isFinite(d.getTime())||d.toISOString().slice(0,10)!==value)throw new BadRequestException("Choose a valid "+label+" date.");
+ return value;
+}
 function read(raw:unknown):Filter{
- const x=object(raw,["q","status","category","branch","cursor"]),status=x.status??"ALL",category=x.category??"ALL";
+ const x=object(raw,["q","status","category","feeClass","joinedFrom","joinedTo","branch","cursor"]),status=x.status??"ALL",category=x.category??"ALL",feeClass=x.feeClass??"ALL";
  if(typeof status!=="string"||!statuses.includes(status))throw new BadRequestException("Choose a valid membership status.");
  if(typeof category!=="string"||!categories.includes(category))throw new BadRequestException("Choose a valid membership category.");
+ if(typeof feeClass!=="string"||!feeClasses.includes(feeClass))throw new BadRequestException("Choose a valid general or paid membership filter.");
+ const joinedFrom=joinDate(x.joinedFrom,"start"),joinedTo=joinDate(x.joinedTo,"end");
+ if(joinedFrom&&joinedTo&&joinedFrom>joinedTo)throw new BadRequestException("The start date cannot be after the end date.");
  let at:string|null=null,id:string|null=null;
  if(x.cursor!==undefined&&x.cursor!==""){
   if(typeof x.cursor!=="string"||x.cursor.length>256)throw new BadRequestException("Reset the membership roster filters.");
@@ -24,7 +35,7 @@ function read(raw:unknown):Filter{
    at=d.at;id=uuid(d.id);
   }catch{throw new BadRequestException("Reset the membership roster filters.");}
  }
- return {q:plain(x.q??"",0,100,"member search").toLowerCase(),status,category,branch:x.branch?uuid(x.branch):null,at,id};
+ return {q:plain(x.q??"",0,100,"member search").toLowerCase(),status,category,feeClass,joinedFrom,joinedTo,branch:x.branch?uuid(x.branch):null,at,id};
 }
 const cols=[
  'm.id AS ref,m.member_no AS "memberNumber",m.display_name AS name',
@@ -45,7 +56,10 @@ const where=[
  ' AND ($7::uuid IS NULL OR m.branch_ref=$7)',
  " AND ($4='ALL' OR (CASE WHEN m.status<>'ACTIVE' THEN m.status WHEN t.expires_on<=(now() AT TIME ZONE 'Asia/Kolkata')::date THEN 'EXPIRED' ELSE 'ACTIVE' END)=$4)",
  " AND ($5='ALL' OR v.category=$5)",
- " AND ($6='' OR strpos(lower(m.member_no),$6)>0 OR strpos(lower(m.display_name),$6)>0 OR strpos(lower(a.contact_mobile),$6)>0 OR strpos(lower(coalesce(a.contact_email,'')),$6)>0)"
+ " AND ($6='' OR strpos(lower(m.member_no),$6)>0 OR strpos(lower(m.display_name),$6)>0 OR strpos(lower(a.contact_mobile),$6)>0 OR strpos(lower(coalesce(a.contact_email,'')),$6)>0)",
+ " AND ($8='ALL' OR ($8='GENERAL' AND t.fee_minor=0) OR ($8='PAID' AND t.fee_minor>0))",
+ " AND ($9::date IS NULL OR m.created_at>=($9::date::timestamp AT TIME ZONE 'Asia/Kolkata'))",
+ " AND ($10::date IS NULL OR m.created_at<=(($10::date+1)::timestamp AT TIME ZONE 'Asia/Kolkata')-interval '1 microsecond')"
 ].join("");
 @Injectable()
 export class MembershipRosterService{
@@ -60,9 +74,9 @@ export class MembershipRosterService{
  private async rows(tx:PoolClient,a:Actor,f:Filter,exporting:boolean){
   const scope=await this.branches.projectBranchScope(tx,a),allowed=scope.branches.map(v=>v.value);
   if(f.branch&&!scope.all&&!allowed.includes(f.branch))throw new ForbiddenException("That branch is outside your membership scope.");
-  const args=[a.realmId,allowed,scope.all,f.status,f.category,f.q,f.branch];
+  const args=[a.realmId,allowed,scope.all,f.status,f.category,f.q,f.branch,f.feeClass,f.joinedFrom,f.joinedTo];
   const order=" ORDER BY m.created_at DESC,m.id DESC LIMIT "+(exporting?"501":"26");
-  const extra=exporting?"":" AND ($8::timestamptz IS NULL OR (m.created_at,m.id)<($8::timestamptz,$9::uuid))";
+  const extra=exporting?"":" AND ($11::timestamptz IS NULL OR (m.created_at,m.id)<($11::timestamptz,$12::uuid))";
   const rs=await tx.query<Row>("SELECT "+cols+joins+where+extra+order,exporting?args:[...args,f.at,f.id]);
   const rows=rs.rows.slice(0,exporting?501:25),last=rows.at(-1);
   const nextCursor=!exporting&&rs.rows.length>25&&last?Buffer.from(JSON.stringify({at:last.createdAt,id:last.ref})).toString("base64url"):null;
@@ -107,7 +121,7 @@ export class MembershipRosterService{
    const header=["Member number","Name","Email","Mobile","Plan","Category","Joined","Expires","Status","City","District","Branch"];
    const rows=page.rows.map(x=>[x.memberNumber,x.name,x.email,x.mobile,x.plan,x.category,x.joinedOn,x.expiresOn,x.status,x.city,x.district,x.branch].map(rosterCsvCell).join(","));
    const csv=[header.map(rosterCsvCell).join(","),...rows].join("\r\n");
-   const scopeDigest=createHash("sha256").update(JSON.stringify([a.realmId,a.accountId,filter.q,filter.status,filter.category,filter.branch])).digest("hex");
+   const scopeDigest=createHash("sha256").update(JSON.stringify([a.realmId,a.accountId,filter.q,filter.status,filter.category,filter.feeClass,filter.joinedFrom,filter.joinedTo,filter.branch])).digest("hex");
    await tx.query("INSERT INTO membership_member_export_audit(root_realm_id,actor_ref,exported_rows,scope_digest) VALUES($1,$2,$3,$4)",[a.realmId,a.accountId,page.rows.length,scopeDigest]);
    return {csv,rows:page.rows.length};
   },false);
