@@ -1,4 +1,4 @@
-import {ForbiddenException,Injectable,NotFoundException} from "@nestjs/common";
+import {BadRequestException,ForbiddenException,Injectable,NotFoundException} from "@nestjs/common";
 import {createHash} from "node:crypto";
 import type {PoolClient} from "pg";
 import type {VerifiedFoundationActor} from "../../cg-01-identity-access/public-api";
@@ -7,7 +7,7 @@ import {BranchSourceFacade} from "../../cg-02-foundation-structure/application/b
 import {currentTaskEmployee,taskEmployeeFrom} from "../../cg-10-human-resources/application/hr-project-task-source";
 import {ProjectsService} from "./projects.service";
 import {choice,clean,date,invalid,optionalRef,ref,stale} from "../domain/project-input";
-import {activityKinds,activityStatuses,activityTransition,parseActivityCreate,parseActivityEdit,parseActivityStatus,type ActivityStatus} from "../domain/activity-input";
+import {activityInputError,activityKinds,activityStatuses,activityTransition,parseActivityCreate,parseActivityEdit,parseActivityStatus,type ActivityStatus} from "../domain/activity-input";
 type Actor=VerifiedFoundationActor;
 type ActivityRow={id:string;project_id:string|null;branch_ref:string|null;owner_account_ref:string;kind:"ACTIVITY"|"EVENT";status:ActivityStatus;version:number;scheduled_start:Date;scheduled_end:Date};
 type Project={id:string;branch_ref:string|null;owner_account_ref:string;status:string;planned_start:string|null;planned_end:string|null};
@@ -51,12 +51,12 @@ export class ProjectActivitiesService{
   }
  }
  private async validate(tx:PoolClient,a:Actor,v:Work){
-  const p=await this.parent(tx,a,v.project);
-  if(p&&(p.branch_ref!==v.branch||closed(p.status)))throw stale();
-  await this.branches.projectBranch(tx,a,v.branch);
-  await this.branches.projectGeography(tx,a,v.state,v.district);
-  if(p&&!(await tx.query("SELECT 1 WHERE ($1::date IS NULL OR ($3::timestamptz AT TIME ZONE 'Asia/Kolkata')::date >= $1) AND ($2::date IS NULL OR ($4::timestamptz AT TIME ZONE 'Asia/Kolkata')::date <= $2)",[p.planned_start,p.planned_end,v.start,v.end])).rowCount)throw invalid();
-  await this.validOwner(tx,a,v.owner,v.branch,p);
+  const p=await this.parent(tx,a,v.project).catch(e=>{if(e instanceof NotFoundException)throw activityInputError("projectRef","CG05_ACTIVITY_PROJECT_INVALID");throw e;});
+  if(p&&(p.branch_ref!==v.branch||closed(p.status)))throw activityInputError("projectRef","CG05_ACTIVITY_PROJECT_INVALID");
+  try{await this.branches.projectBranch(tx,a,v.branch);}catch(e){if(e instanceof ForbiddenException||e instanceof BadRequestException||e instanceof NotFoundException)throw activityInputError("branchRef","CG05_ACTIVITY_BRANCH_INVALID");throw e;}
+  try{await this.branches.projectGeography(tx,a,v.state,v.district);}catch(e){if(e instanceof ForbiddenException||e instanceof BadRequestException||e instanceof NotFoundException)throw activityInputError("districtRef","CG05_ACTIVITY_GEOGRAPHY_INVALID");throw e;}
+  if(p&&!(await tx.query("SELECT 1 WHERE ($1::date IS NULL OR ($3::timestamptz AT TIME ZONE 'Asia/Kolkata')::date >= $1) AND ($2::date IS NULL OR ($4::timestamptz AT TIME ZONE 'Asia/Kolkata')::date <= $2)",[p.planned_start,p.planned_end,v.start,v.end])).rowCount)throw activityInputError("scheduledEnd","CG05_ACTIVITY_PROJECT_DATES");
+  try{await this.validOwner(tx,a,v.owner,v.branch,p);}catch(e){if(e instanceof ForbiddenException||e instanceof BadRequestException||e instanceof NotFoundException)throw activityInputError("ownerRef","CG05_ACTIVITY_OWNER_INVALID");throw e;}
  }
  private async get(tx:PoolClient,a:Actor,key:string,write=false){
   const x=(await tx.query<ActivityRow>("SELECT * FROM project_activity WHERE root_realm_id=$1 AND id=$2 "+(write?"FOR UPDATE":"FOR SHARE"),[a.realmId,ref(key)])).rows[0];
