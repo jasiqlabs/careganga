@@ -7,10 +7,11 @@ import type {CG04RosterPage,CG04RosterExport} from "@careganga/api-contracts";
 import {identityRequest} from "../identity-access/http-client";
 import {careGangaTheme as theme} from "../../../../../packages/design-tokens/src/index";
 
-type Filter={q:string;status:string;category:string;branch:string};
-const empty=():Filter=>({q:"",status:"ALL",category:"ALL",branch:""});
+type Filter={q:string;status:string;category:string;feeClass:string;joinedFrom:string;joinedTo:string;branch:string};
+const empty=():Filter=>({q:"",status:"ALL",category:"ALL",feeClass:"ALL",joinedFrom:"",joinedTo:"",branch:""});
 const statuses=[["ALL","All"],["ACTIVE","Active"],["EXPIRED","Expired"],["SUSPENDED","Suspended"],["CANCELLED","Cancelled"]];
 const categories=[["ALL","All tiers"],["ANNUAL","Annual"],["LIFETIME","Lifetime"],["HONORARY","Honorary"],["STUDENT","Student"],["OTHER","Other"]];
+const feeClasses=[["ALL","All members"],["GENERAL","General · no fee"],["PAID","Paid"]];
 export function NativeMemberRoster({token,canExport,onExpired}:{token:string;canExport:boolean;onExpired:()=>void}){
  const [draft,setDraft]=useState<Filter>(empty),[filter,setFilter]=useState<Filter>(empty),[cursor,setCursor]=useState(""),[history,setHistory]=useState<string[]>([]);
  const [page,setPage]=useState<CG04RosterPage|null>(null),[loading,setLoading]=useState(true),[busy,setBusy]=useState(false),[error,setError]=useState(""),[notice,setNotice]=useState(""),[epoch,setEpoch]=useState(0);
@@ -35,7 +36,7 @@ export function NativeMemberRoster({token,canExport,onExpired}:{token:string;can
   .finally(()=>{if(n===seq.current&&foreground.current)setLoading(false);});
   return()=>{seq.current++;};
  },[token,filter,cursor,epoch]);
- const apply=()=>{setHistory([]);setCursor("");setFilter({...draft,q:draft.q.trim()});};
+ const apply=()=>{if(draft.joinedFrom&&draft.joinedTo&&draft.joinedFrom>draft.joinedTo){setError("Start date must be on or before end date.");return;}setError("");setHistory([]);setCursor("");setFilter({...draft,q:draft.q.trim()});};
  const reset=()=>{setDraft(empty());setFilter(empty());setCursor("");setHistory([]);};
  const chip=(label:string,onPress:()=>void,selected=false,disabled=false)=>(
   <Pressable accessibilityRole="button" accessibilityState={{selected,disabled}} disabled={disabled} onPress={onPress} style={[styles.chip,selected&&styles.chipSelected,disabled&&styles.disabled]}><Text style={[styles.chipText,selected&&styles.chipTextSelected]}>{label}</Text></Pressable>
@@ -69,6 +70,12 @@ export function NativeMemberRoster({token,canExport,onExpired}:{token:string;can
    <View style={styles.buttons}>{statuses.map(([v,l])=><React.Fragment key={v}>{chip(l,()=>setDraft(x=>({...x,status:v})),draft.status===v,disabled)}</React.Fragment>)}</View>
    <Text style={styles.label}>Membership type</Text>
    <View style={styles.buttons}>{categories.map(([v,l])=><React.Fragment key={v}>{chip(l,()=>setDraft(x=>({...x,category:v})),draft.category===v,disabled)}</React.Fragment>)}</View>
+   <Text style={styles.label}>Fee category</Text>
+   <View style={styles.buttons}>{feeClasses.map(([v,l])=><React.Fragment key={v}>{chip(l,()=>setDraft(x=>({...x,feeClass:v})),draft.feeClass===v,disabled)}</React.Fragment>)}</View>
+   <Text style={styles.label}>Joined from (YYYY-MM-DD)</Text>
+   <TextInput accessibilityLabel="Joined from date, year month day" value={draft.joinedFrom} placeholder="YYYY-MM-DD" maxLength={10} autoCapitalize="none" style={styles.input} editable={!disabled} onChangeText={v=>setDraft(x=>({...x,joinedFrom:v}))}/>
+   <Text style={styles.label}>Joined through (YYYY-MM-DD)</Text>
+   <TextInput accessibilityLabel="Joined through date, year month day" value={draft.joinedTo} placeholder="YYYY-MM-DD" maxLength={10} autoCapitalize="none" style={styles.input} editable={!disabled} onChangeText={v=>setDraft(x=>({...x,joinedTo:v}))}/>
    <Text style={styles.label}>Foundation branch</Text>
    <View style={styles.buttons}>{chip("All permitted",()=>setDraft(x=>({...x,branch:""})),!draft.branch,disabled)}
     {page?.branchOptions.map(b=><React.Fragment key={b.value}>{chip(b.label,()=>setDraft(x=>({...x,branch:b.value})),draft.branch===b.value,disabled)}</React.Fragment>)}</View>
