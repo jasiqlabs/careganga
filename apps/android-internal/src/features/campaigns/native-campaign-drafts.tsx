@@ -193,7 +193,7 @@ export function NativeCampaignDrafts({token,canManage,onExpired}:{
     {field("Tags (comma-separated)",form.basic.tags.join(", "),v=>change("basic","tags",v.split(",").map(x=>x.trim()).filter(Boolean)))}
    </>}
    {step===1&&<>
-    {pick("Foundation branch",form.project.branchRef,choices?.branches??[],v=>setForm(d=>({...d,project:{...d.project,branchRef:v,projectRef:null,eventRef:null}})),
+    {pick("Foundation branch",form.project.branchRef,choices?.branches??[],v=>setForm(d=>({...d,project:{...d.project,branchRef:v,projectRef:null,eventRef:null},team:{...d.team,volunteerRef:null}})),
       choices?.canFoundation?"Foundation-wide":"Select active branch")}
     {pick("State",form.project.stateRef,choices?.states??[],v=>setForm(d=>({...d,
       project:{...d.project,stateRef:v,districtRef:null}})),"No state")}
