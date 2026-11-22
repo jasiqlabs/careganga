@@ -1,6 +1,9 @@
 /** Server-controlled allow-list: authorized overrides can change safe wording only,
  * never rules, status, field binding, redaction, or authentication behavior. */
 export const SAFE_MESSAGE_CATALOG:Readonly<Record<string,string>>=Object.freeze({
+      CG10_PRIVATE_INVALID:"Check the optional personal information, date of birth, email, PIN, blood group, PAN, bank account, IFSC or UPI details. Leave fields not needed blank.",
+      CG10_ENROLLMENT_EVIDENCE_CHANGED:"Choose the original submitted employee documents before retrying.",
+      CG10_ENROLLMENT_PRIVATE_CHANGED:"The protected employee revision cannot be verified. Refresh the original application or ask HR to review it.",
       CG10_TEMPLATE_ASSETS_REQUIRED:"Upload and approve the actual signature and seal for this document template version first.",
       CG10_TEMPLATE_ASSET_FORMAT:"Choose the authorized signature or seal image as a JPEG or PNG under 2 MB.",
       CG10_RECEIPT_FORMAT:"Choose your received copy as a PDF, JPEG or PNG under 10 MB.",
