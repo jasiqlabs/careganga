@@ -55,6 +55,7 @@ CREATE TABLE field_visit_event (
  prior_status text CHECK(prior_status IN('DRAFT','PLANNED','IN_PROGRESS','PENDING_PROOF','PENDING_APPROVAL','RETURNED','REJECTED','COMPLETED','CANCELLED')),
  resulting_status text NOT NULL CHECK(resulting_status IN('DRAFT','PLANNED','IN_PROGRESS','PENDING_PROOF','PENDING_APPROVAL','RETURNED','REJECTED','COMPLETED','CANCELLED')),
  result_version integer NOT NULL CHECK(result_version>0),
+ reason_private text NOT NULL DEFAULT '' CHECK(char_length(reason_private)<=500),
  occurred_at timestamptz NOT NULL DEFAULT now(),
  UNIQUE(root_realm_id,event_key),
  UNIQUE(root_realm_id,visit_id,result_version),
