@@ -14,14 +14,16 @@ async function request<T>(url:string):Promise<T>{
 }
 export function MemberRoster({canExport=false}:{canExport?:boolean}){
  const [draft,setDraft]=useState<Filter>(initial),[filter,setFilter]=useState<Filter>(initial),[cursor,setCursor]=useState(""),[history,setHistory]=useState<string[]>([]);
- const [page,setPage]=useState<CG04RosterPage|null>(null),[busy,setBusy]=useState(false),[loading,setLoading]=useState(true),[error,setError]=useState(""),[notice,setNotice]=useState(""),[epoch,setEpoch]=useState(0);
+ const [page,setPage]=useState<CG04RosterPage|null>(null),[selectedRef,setSelectedRef]=useState<string|null>(null),[busy,setBusy]=useState(false),[loading,setLoading]=useState(true),[error,setError]=useState(""),[notice,setNotice]=useState(""),[epoch,setEpoch]=useState(0);
  const seq=useRef(0);
  useEffect(()=>{
   const n=++seq.current;setPage(null);setLoading(true);setError("");
   const params=new URLSearchParams({...filter,cursor});
-  void request<CG04RosterPage>("/api/membership/members?"+params).then(p=>{if(n===seq.current)setPage(p);}).catch(e=>{if(n===seq.current){setError(e.message);if(e.status===401)window.location.assign("/admin/login");}}).finally(()=>{if(n===seq.current)setLoading(false);});
+  void request<CG04RosterPage>("/api/membership/members?"+params).then(p=>{if(n===seq.current&&document.visibilityState==="visible")setPage(p);}).catch(e=>{if(n===seq.current){setError(e.message);if(e.status===401)window.location.assign("/admin/login");}}).finally(()=>{if(n===seq.current)setLoading(false);});
   return()=>{seq.current++;};
  },[filter,cursor,epoch]);
+ useEffect(()=>{const changed=()=>{if(document.visibilityState!=="visible"){seq.current++;setPage(null);setSelectedRef(null);setLoading(true);}else setEpoch(x=>x+1);};document.addEventListener("visibilitychange",changed);return()=>document.removeEventListener("visibilitychange",changed);},[]);
+ const chosen=page?.items.find(m=>m.ref===selectedRef)??null;
  const apply=(e?:FormEvent)=>{e?.preventDefault();if(draft.joinedFrom&&draft.joinedTo&&draft.joinedFrom>draft.joinedTo){setError("Start date must be on or before the end date.");return;}setError("");setHistory([]);setCursor("");setFilter({...draft,q:draft.q.trim()});};
  const reset=()=>{setDraft(initial());setFilter(initial());setHistory([]);setCursor("");};
  const presets=[{key:"ALL",label:"All"},{key:"GENERAL",label:"General"},{key:"PAID",label:"Paid"},{key:"EXPIRED",label:"Expired"},{key:"CANCELLED",label:"Cancelled"}] as const;
@@ -66,9 +68,17 @@ export function MemberRoster({canExport=false}:{canExport?:boolean}){
  <p className="cg04-muted">Membership categories: {Object.entries(page.overview.byCategory).map(([category,count])=>human(category)+": "+count).join(" · ")||"No approved member records in your permitted scope."}</p>
  <p className="cg04-muted">Showing {page.items.length} authorized member records on this page.</p>
  <div className="cg04-roster-scroll" role="region" aria-label="Approved member records" tabIndex={0}>
- <table><thead><tr><th>Member</th><th>Name</th><th>Email</th><th>Mobile</th><th>Tier</th><th>Joined</th><th>Expires</th><th>Status</th><th>City / District</th><th>Branch</th></tr></thead>
- <tbody>{page.items.map(m=><tr key={m.ref}><td>{m.memberNumber}</td><td>{m.name}</td><td>{m.email??"Not provided"}</td><td>{m.mobile}</td><td>{m.plan}</td><td>{m.joinedOn}</td><td>{m.expiresOn??"Lifetime"}</td><td><span className={"cg04-roster-state cg04-state-"+m.status.toLowerCase()}>{human(m.status)}</span></td><td>{m.city} / {m.district}</td><td>{m.branch??"Foundation"}</td></tr>)}
- {!page.items.length&&<tr><td colSpan={10}>No approved members match your permitted filters.</td></tr>}</tbody></table></div>
+ <table><thead><tr><th>Member</th><th>Name</th><th>Email</th><th>Mobile</th><th>Tier</th><th>Joined</th><th>Expires</th><th>Status</th><th>City / District</th><th>Branch</th><th>Card preview</th></tr></thead>
+ <tbody>{page.items.map(m=><tr key={m.ref}><td>{m.memberNumber}</td><td>{m.name}</td><td>{m.email??"Not provided"}</td><td>{m.mobile}</td><td>{m.plan}</td><td>{m.joinedOn}</td><td>{m.expiresOn??"Lifetime"}</td><td><span className={"cg04-roster-state cg04-state-"+m.status.toLowerCase()}>{human(m.status)}</span></td><td>{m.city} / {m.district}</td><td>{m.branch??"Foundation"}</td><td><button type="button" aria-pressed={selectedRef===m.ref} disabled={busy} onClick={()=>setSelectedRef(v=>v===m.ref?null:m.ref)}>Preview card</button></td></tr>)}
+ {!page.items.length&&<tr><td colSpan={11}>No approved members match your permitted filters.</td></tr>}</tbody></table></div>
+ {chosen&&<section className="cg04-card-preview" aria-label="Non-issued permitted membership card preview">
+  <div className="cg04-card-preview-head"><h3>Member card preview</h3><button type="button" onClick={()=>setSelectedRef(null)}>Close preview</button></div>
+  <p className="cg04-muted">Preview only — no issued document, signing or verification QR exists yet. Actual CG-19 documents require the approved original signatory and source verification.</p>
+  <div className="cg04-card-preview-grid">
+   <div className="cg04-card-face"><small>CAREGANGA FOUNDATION · MEMBER</small><strong>{chosen.name}</strong><p>Membership number: {chosen.memberNumber}</p><p>Plan: {chosen.plan} · {human(chosen.category)}</p><p>Current record: {human(chosen.status)}</p><p>Valid until: {chosen.expiresOn??"Lifetime"}</p></div>
+   <div className="cg04-card-face cg04-card-face-back"><small>FOUNDATION MEMBERSHIP</small><strong>Eligibility information</strong><p>Branch: {chosen.branch??"Foundation"}</p><p>Joined: {chosen.joinedOn}</p><p>Current status: {human(chosen.status)}</p><p>No verification QR has been issued. This preview is not proof of active membership.</p></div>
+  </div>
+ </section>}
  <div className="cg04-buttons"><button disabled={!history.length||busy} type="button" onClick={()=>{setCursor(history.at(-1)??"");setHistory(x=>x.slice(0,-1));}}>Previous page</button>
  <button disabled={!page.nextCursor||busy} type="button" onClick={()=>{setHistory(x=>[...x,cursor]);setCursor(page.nextCursor??"");}}>Next page</button></div>
  </>}
