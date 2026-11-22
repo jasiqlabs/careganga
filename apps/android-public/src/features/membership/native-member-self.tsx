@@ -3,8 +3,11 @@ import {ActivityIndicator,AppState,BackHandler,Pressable,ScrollView,StyleSheet,T
 import {SafeAreaView} from "react-native-safe-area-context";
 import * as SecureStore from "expo-secure-store";
 import * as Crypto from "expo-crypto";
-import type {CG04Application,CG04Member,CG04MemberHistory,CG04MembershipFee,CG04PublicTier,CG04PublicTierPage} from "@careganga/api-contracts";
-import {memberInvoke} from "./member-native-api";
+import {File,Paths} from "expo-file-system";
+import * as Sharing from "expo-sharing";
+import {fetch as expoFetch} from "expo/fetch";
+import type {CG04Application,CG04Member,CG04MemberHistory,CG19OwnMemberPacks,CG04MembershipFee,CG04PublicTier,CG04PublicTierPage} from "@careganga/api-contracts";
+import {memberInvoke,memberEndpoint} from "./member-native-api";
 import {NativeCommunityAuth} from "./native-community-auth";
 import {NativeMemberApplication} from "./native-member-application";
 import {NativeMemberProof} from "./native-member-proof";
@@ -13,19 +16,19 @@ const rupees=(minor:string)=>{if(!/^[0-9]{1,15}$/.test(minor))return "Fee unavai
 type Pending={path:string;body:Record<string,unknown>};
 export function NativeMemberSelf({onExit,initialPlan}:{onExit:()=>void;initialPlan?:string|null}){
  const [token,setToken]=useState<string|null>(null),[verified,setVerified]=useState(false),[loading,setLoading]=useState(true),[busy,setBusy]=useState(false);
- const [message,setMessage]=useState(""),[apps,setApps]=useState<CG04Application[]>([]),[selected,setSelected]=useState<CG04Application|null>(null),[member,setMember]=useState<CG04Member|null>(null),[history,setHistory]=useState<CG04MemberHistory|null>(null),[showHistory,setShowHistory]=useState(false),[fee,setFee]=useState<CG04MembershipFee|null>(null),[plans,setPlans]=useState<CG04PublicTier[]>([]),[otp,setOtp]=useState("");
+ const [message,setMessage]=useState(""),[apps,setApps]=useState<CG04Application[]>([]),[selected,setSelected]=useState<CG04Application|null>(null),[member,setMember]=useState<CG04Member|null>(null),[history,setHistory]=useState<CG04MemberHistory|null>(null),[issued,setIssued]=useState<CG19OwnMemberPacks|null>(null),[showHistory,setShowHistory]=useState(false),[fee,setFee]=useState<CG04MembershipFee|null>(null),[plans,setPlans]=useState<CG04PublicTier[]>([]),[otp,setOtp]=useState("");
  const pending=useRef<Pending|null>(null),sequence=useRef(0),foreground=useRef(true);
- const clear=useCallback(()=>{sequence.current++;setToken(null);setVerified(false);setApps([]);setSelected(null);setMember(null);setHistory(null);setShowHistory(false);setFee(null);pending.current=null;void SecureStore.deleteItemAsync(KEY).catch(()=>undefined);},[]);
+ const clear=useCallback(()=>{sequence.current++;setToken(null);setVerified(false);setApps([]);setSelected(null);setMember(null);setHistory(null);setIssued(null);setShowHistory(false);setFee(null);pending.current=null;void SecureStore.deleteItemAsync(KEY).catch(()=>undefined);},[]);
  const refresh=useCallback(async(key:string)=>{
   const n=++sequence.current;
   try{
    const phone=await memberInvoke<{verified:boolean}>("/api/identity/mobile/status","GET",undefined,key);
    if(n!==sequence.current||!foreground.current)return;
    setToken(key);setVerified(phone.verified);
-   if(!phone.verified){setApps([]);setSelected(null);setMember(null);setHistory(null);return;}
-   const [list,self,terms]=await Promise.all([memberInvoke<{items:CG04Application[]}>("/api/v1/membership/applications","GET",undefined,key),memberInvoke<{member:CG04Member|null}>("/api/v1/membership/me","GET",undefined,key),memberInvoke<CG04MemberHistory>("/api/v1/membership/me/history","GET",undefined,key)]);
+   if(!phone.verified){setApps([]);setSelected(null);setMember(null);setHistory(null);setIssued(null);return;}
+   const [list,self,terms,documents]=await Promise.all([memberInvoke<{items:CG04Application[]}>("/api/v1/membership/applications","GET",undefined,key),memberInvoke<{member:CG04Member|null}>("/api/v1/membership/me","GET",undefined,key),memberInvoke<CG04MemberHistory>("/api/v1/membership/me/history","GET",undefined,key),memberInvoke<CG19OwnMemberPacks>("/api/v1/membership/documents/me","GET",undefined,key).catch(()=>null)]);
    if(n!==sequence.current||!foreground.current)return;
-   setApps(list.items);setMember(self.member);setHistory(terms);
+   setApps(list.items);setMember(self.member);setHistory(terms);setIssued(documents);
    setSelected(old=>list.items.find(x=>x.ref===old?.ref)??list.items.find(x=>["DRAFT","RETURNED","SUBMITTED"].includes(x.status))??list.items[0]??null);
   }catch(e){if(e&&typeof e==="object"&&"status" in e&&e.status===401){clear();throw Error("Your membership session expired. Sign in again.");}throw e;}
  },[clear]);
@@ -37,7 +40,7 @@ export function NativeMemberSelf({onExit,initialPlan}:{onExit:()=>void;initialPl
  useEffect(()=>{const sub=BackHandler.addEventListener("hardwareBackPress",()=>{onExit();return true;});return()=>sub.remove();},[onExit]);
  useEffect(()=>{const sub=AppState.addEventListener("change",state=>{
   foreground.current=state==="active";
-  if(state!=="active"){sequence.current++;setApps([]);setSelected(null);setMember(null);setHistory(null);setFee(null);setVerified(false);setOtp("");return;}
+  if(state!=="active"){sequence.current++;setApps([]);setSelected(null);setMember(null);setHistory(null);setIssued(null);setFee(null);setVerified(false);setOtp("");return;}
   if(token)void refresh(token).catch(()=>setMessage("Private membership status unavailable. Retry when connected."));
  });return()=>sub.remove();},[token,refresh]);
  useEffect(()=>{if(!selected||!token||!verified){setFee(null);return;}let active=true;
@@ -57,6 +60,23 @@ export function NativeMemberSelf({onExit,initialPlan}:{onExit:()=>void;initialPl
  const act=async(job:()=>Promise<void>)=>{if(busy)return;setBusy(true);setMessage("");try{await job();}catch(e){setMessage(e instanceof Error?e.message:"The outcome is uncertain. Refresh before retrying.");}finally{setBusy(false);}};
  const button=(label:string,fn:()=>void,disabled=false)=> <Pressable accessibilityRole="button" disabled={busy||disabled} onPress={fn} style={[s.button,(busy||disabled)&&{opacity:.45}]}><Text style={s.buttonText}>{label}</Text></Pressable>;
  const command=(c:Pending)=>void act(async()=>{if(!token)throw Error("Sign in again.");pending.current=c;await memberInvoke(c.path,"POST",c.body,token);pending.current=null;await refresh(token);setMessage("Original membership action confirmed.");});
+ const openOfficialPdf=(ref:string,kind:"CARD"|"CERTIFICATE"|"WELCOME")=>void act(async()=>{
+  if(!token)throw Error("Sign in again to open official membership documents.");
+  let file:File|null=null;
+  try{
+   const url=memberEndpoint("/api/v1/membership/documents/packs/"+ref+"/"+kind+"/download");
+   const result=await expoFetch(url,{headers:{Authorization:"Bearer "+token},cache:"no-store"});
+   if(!result.ok)throw Error("This official membership document is no longer available. Refresh your membership status.");
+   if((result.headers.get("content-type")??"").split(";")[0].trim()!=="application/pdf")throw Error("Official document format could not be confirmed.");
+   const bytes=new Uint8Array(await result.arrayBuffer());
+   if(!bytes.length||bytes.length>10485760)throw Error("Private membership document could not be verified.");
+   if(!await Sharing.isAvailableAsync())throw Error("Protected PDF sharing is unavailable on this device.");
+   file=new File(Paths.cache,"careganga-official-member-"+Crypto.randomUUID()+".pdf");
+   file.create();file.write(bytes);
+   await Sharing.shareAsync(file.uri,{mimeType:"application/pdf",dialogTitle:"Open private CareGanga membership document"});
+   setMessage("Private official PDF opened. Share only with trusted recipients.");
+  }finally{try{file?.delete();}catch{}}
+ });
  const action=(kind:"submit"|"cancel"|"activate")=>{if(!token||!selected||pending.current||busy)return;
   command({path:"/api/v1/membership/applications/"+selected.ref+"/"+kind,body:{requestKey:Crypto.randomUUID(),...(kind==="activate"?{}:{expectedVersion:selected.version})}});};
  const logout=()=>void act(async()=>{if(token)try{await memberInvoke("/api/identity/logout","POST",{},token);}catch{}clear();setMessage("Membership session removed from this device; remote logout may be unconfirmed.");});
@@ -92,6 +112,22 @@ export function NativeMemberSelf({onExit,initialPlan}:{onExit:()=>void;initialPl
   {history.branchesHasMore&&<Text>Older affiliations are available from the Foundation.</Text>}
  </View>}
  </View>
+ {member&&<View style={s.card} accessibilityLabel="Your official membership documents">
+  <Text style={s.heading}>Official membership documents</Text>
+  <Text>Only issued, currently eligible documents may be opened. Pending approval does not issue a card.</Text>
+  {!issued?<Text>Official document status cannot be confirmed. Refresh your account.</Text>:
+   !issued.items.length?<Text>No signed documents have been issued yet.</Text>:
+   issued.items.map(pack=><View key={pack.packRef} style={s.historyItem}>
+    <Text style={s.heading}>{pack.status==="ISSUED"?"Official PDF pack issued":pack.status==="REVOKED"?"Revoked document pack":pack.status==="UNKNOWN"?"Issue outcome uncertain":"Documents pending verification"}</Text>
+    <Text>Issue revision {pack.issueRevision}</Text>
+    {pack.canDownload&&<View style={s.history}>
+     {button("Open front/back membership card PDF",()=>openOfficialPdf(pack.packRef,"CARD"))}
+     {button("Open membership certificate PDF",()=>openOfficialPdf(pack.packRef,"CERTIFICATE"))}
+     {button("Open welcome letter PDF",()=>openOfficialPdf(pack.packRef,"WELCOME"))}
+    </View>}
+   </View>)}
+  {issued?.hasMore&&<Text>Request older document revisions from the Foundation.</Text>}
+ </View>}
  <View style={s.card}><Text style={s.heading}>My applications</Text>{apps.map(a=>button(a.applicationNumber+" · "+a.status,()=>setSelected(a)))}{button("New membership / renewal",()=>setSelected(null),apps.some(a=>["DRAFT","RETURNED","SUBMITTED"].includes(a.status)))}</View>
  {(!selected||["DRAFT","RETURNED"].includes(selected.status))&&<NativeMemberApplication token={token} application={selected} initialPlan={initialPlan} plans={plans} onSaved={()=>refresh(token)}/>}
  {selected&&<View style={s.card}><Text style={s.heading}>{selected.applicationNumber}</Text><Text>Status: {selected.status} · {selected.plan}</Text><Text>Accepted fee: {rupees(selected.feeMinor)}</Text>
