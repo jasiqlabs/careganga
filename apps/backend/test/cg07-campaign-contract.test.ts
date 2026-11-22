@@ -134,3 +134,24 @@ test("US001-QA05/06/14/20: reviewer/author Web-native parity is role-scoped, and
  assert.match(app,/CampaignsDonationsModule/);
  assert.doesNotMatch(webPage,/Publish Campaign|Donation Received/);
 });
+
+
+test("US001-QA15 original optional volunteer assignment is a current CG04 origin, not an assigned staff role",()=>{
+ const src=root("apps/backend/src/modules/cg-07-campaigns-donations/application/campaign-drafts.service.ts");
+ const cg04=root("apps/backend/src/modules/cg-04-membership-volunteers/application/current-volunteer-source.ts");
+ const sql=root("apps/backend/db/migrations/3301_cg07_campaign_draft.sql");
+ const guard=root("apps/backend/db/migrations/3303_cg07_campaign_status_proof.sql");
+ const cg03=root("apps/backend/src/modules/cg-03-registration-approvals/application/campaign-review.service.ts");
+ const web=root("apps/web/src/features/campaigns/campaign-drafts-workspace.tsx");
+ const native=root("apps/android-internal/src/features/campaigns/native-campaign-drafts.tsx");
+ assert.match(src,/requireCurrentVolunteer\(tx,a.realmId,v.team.volunteerRef,p.branchRef\)/);
+ assert.match(src,/requireCurrentVolunteer\(tx,a.realmId,r.volunteer_source_ref,c.branch_ref\)/);
+ assert.match(src,/cg04_current_volunteer\(/);
+ assert.match(cg04,/cg04_current_volunteer/);
+ assert.match(sql,/FOREIGN KEY\(root_realm_id,volunteer_source_ref\) REFERENCES volunteer\(root_realm_id,id\)/);
+ assert.match(guard,/NEW.volunteer_source_ref/);
+ assert.match(cg03,/volunteerRef:s.source_snapshot.volunteerRef/);
+ assert.match(web,/Current approved volunteer/);
+ assert.match(native,/Current approved volunteer/);
+ assert.doesNotMatch(src,/INSERT INTO account_role|UPDATE role_grant/);
+});
