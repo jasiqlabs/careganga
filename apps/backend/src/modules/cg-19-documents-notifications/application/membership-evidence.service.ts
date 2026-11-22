@@ -118,6 +118,27 @@ export class MembershipEvidenceService{
   const after=await this.run(token,(tx,a)=>this.file(tx,a,ref));
   if(after.revision!==before.revision||after.object_version!==before.object_version)throw missing();return {bytes,mime:before.mime};
  }
+ /** Only the current protected distinct reviewer can read the original
+  * proof for a current CG03 case. Never issue a direct signed GET URL. */
+ private async reviewFile(token:string,caseRef:string,fileRef:string){
+  const actor=await this.sessions.requireAction(token,"membership.applications.review");
+  const tx=await this.db.connect();
+  try{
+   await tx.query("BEGIN");
+   await this.identity.assertCurrent(tx,actor,"membership.applications.review");
+   await this.identity.assertCurrent(tx,actor,"approvals.review");
+   await this.identity.assertCurrent(tx,actor,"documents.files.view");
+   const f=(await tx.query<File>("SELECT d.* FROM cg03_case c JOIN membership_review_file f ON f.root_realm_id=c.realm_id AND f.snapshot_id=c.membership_review_ref AND f.application_id=c.membership_application_id JOIN cg19_membership_private_file d ON d.realm_id=f.root_realm_id AND d.id=f.file_id AND d.application_id=f.application_id JOIN membership_application a ON a.root_realm_id=c.realm_id AND a.id=c.membership_application_id WHERE c.realm_id=$1 AND c.id=$2 AND c.case_kind='MEMBER_APPLICATION' AND c.proposer_id<>$3 AND c.status IN('SUBMITTED','PENDING_OWNER') AND a.status='SUBMITTED' AND a.version=c.membership_application_version AND a.submitted_digest=c.membership_review_digest AND f.file_id=$4 AND d.revoked_at IS NULL AND d.scan_status='CLEAN_VERIFIED' AND d.revision=f.file_version AND d.sha256=f.sha256 FOR SHARE OF c,d,a",[actor.realmId,uuid(caseRef),actor.accountId,uuid(fileRef)])).rows[0];
+   if(!f)throw missing();await tx.query("COMMIT");return f;
+  }catch(e){try{await tx.query("ROLLBACK");}catch{}throw e;}finally{tx.release();}
+ }
+ async reviewDownload(token:string,caseRef:string,fileRef:string){
+  const before=await this.reviewFile(token,caseRef,fileRef);
+  const bytes=await this.objects.readVerifiedPrivateObject({objectKey:before.object_key,objectVersion:before.object_version,maxBytes:Number(before.size_bytes)});
+  if(!Buffer.isBuffer(bytes)||bytes.length!==Number(before.size_bytes)||createHash("sha256").update(bytes).digest("hex")!==before.sha256)throw unavailable();
+  const after=await this.reviewFile(token,caseRef,fileRef);
+  if(after.revision!==before.revision||after.object_version!==before.object_version)throw missing();return {bytes,mime:before.mime};
+ }
  /** Private original review source: exact verified proof, no client assertions
   * of scan status. Caller locks application and performs original scope check. */
  async frozenProof(tx:PoolClient,realm:string,app:string,version:number){
