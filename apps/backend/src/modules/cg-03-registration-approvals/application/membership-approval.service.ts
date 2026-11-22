@@ -114,7 +114,24 @@ export class MembershipApprovalService{
     "ORDER BY c.submitted_at DESC,c.id DESC LIMIT 26 OFFSET $9"
    ].join(" ");
    const rows=(await tx.query(sql,[a.realmId,a.accountId,status,term,category,payment,from,to,offset])).rows;
-   return {items:rows.slice(0,25),hasMore:rows.length>25,offset};
+   const stats=(await tx.query<{
+    total:number;pending:number;approved:number;rejected:number;today:number;average_hours:string|null;
+   }>([
+    'SELECT count(*)::integer AS total,',
+    "count(*) FILTER(WHERE c.status IN('SUBMITTED','PENDING_OWNER'))::integer AS pending,",
+    "count(*) FILTER(WHERE c.status='OWNER_COMPLETED')::integer AS approved,",
+    "count(*) FILTER(WHERE c.status='REJECTED')::integer AS rejected,",
+    "count(*) FILTER(WHERE (c.submitted_at AT TIME ZONE 'Asia/Kolkata')::date=(now() AT TIME ZONE 'Asia/Kolkata')::date)::integer AS today,",
+    "round(avg(CASE WHEN decision.decided_at>=c.submitted_at THEN extract(epoch FROM (decision.decided_at-c.submitted_at))/3600 ELSE NULL END)::numeric,1)::text AS average_hours",
+    'FROM cg03_case c',
+    'LEFT JOIN LATERAL (SELECT min(e.occurred_at) AS decided_at FROM cg03_case_event e',
+    "WHERE e.realm_id=c.realm_id AND e.case_id=c.id AND e.action IN('FINAL_APPROVED','RETURNED','REJECTED')) decision ON true",
+    "WHERE c.realm_id=$1 AND c.case_kind='MEMBER_APPLICATION'"
+   ].join(" "),[a.realmId])).rows[0];
+   return {items:rows.slice(0,25),hasMore:rows.length>25,offset,
+    overview:{total:stats.total,pending:stats.pending,approved:stats.approved,rejected:stats.rejected,today:stats.today,
+     averageDecisionHours:stats.average_hours===null?null:Number(stats.average_hours)}};
+
   });
  }
  async detail(token:string,ref:string){const a=await this.reviewer(token),id=uuid(ref);return this.run(a,async tx=>{await this.authority(tx,a);const c=await this.case(tx,a,id);const frozen=await this.exact(tx,a,c,["SUBMITTED","PENDING_OWNER"].includes(c.status));const timeline=(await tx.query("SELECT e.action,e.occurred_at AS \"occurredAt\",a.display_name AS reviewer FROM cg03_case_event e JOIN account a ON a.id=e.actor_id AND a.realm_id=e.realm_id WHERE e.realm_id=$1 AND e.case_id=$2 ORDER BY e.occurred_at DESC,e.id DESC LIMIT 50",[a.realmId,c.id])).rows;
