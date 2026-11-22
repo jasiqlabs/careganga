@@ -26,6 +26,7 @@ function candidate(raw:unknown):StaffCandidate{
 /** Parse a strict four-column, quoted RFC4180-style CSV without creating any account or consent. */
 function parseCsv(csv:string):StaffCandidate[]{
  if(csv.length>100000||!csv.trim())return invalid("Choose a CSV file under 100 KB with volunteer rows.");
+ if(csv.charCodeAt(0)===0xfeff)csv=csv.slice(1); // Excel UTF-8 BOM; content is still fully validated.
  const records:string[][]=[];let row:string[]=[],cell="",quoted=false,closed=false;
  for(let i=0;i<csv.length;i++){
   const ch=csv[i];
