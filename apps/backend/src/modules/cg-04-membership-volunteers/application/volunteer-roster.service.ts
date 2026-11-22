@@ -1,4 +1,4 @@
-import {BadRequestException,ForbiddenException,Inject,Injectable} from "@nestjs/common";
+import {BadRequestException,ConflictException,ForbiddenException,Inject,Injectable} from "@nestjs/common";
 import {createHash} from "node:crypto";
 import type {Pool,PoolClient} from "pg";
 import {DATABASE} from "../../../core/infrastructure/database.module";
@@ -9,6 +9,7 @@ import type {VerifiedFoundationActor as Actor} from "../../cg-01-identity-access
 import {object,pick,plain,uuid} from "../domain/tier-input";
 import {requireCurrentVolunteer} from "./current-volunteer-source";
 import {rosterCsvCell} from "../domain/roster-csv-cell";
+import {parseVolunteerStaffIntake} from "../domain/volunteer-staff-intake-input";
 const states=["ALL","ACTIVE","INACTIVE","SUSPENDED"] as const;
 const windows=["ALL","FULL_TIME","PART_TIME","WEEKENDS","FLEXIBLE"] as const;
 type Filter={q:string;status:string;availability:string;branch:string|null;department:string|null};
@@ -78,6 +79,66 @@ export class VolunteerRosterService{
      total:Number(overview?.total??0),active:Number(overview?.active??0),
      inactive:Number(overview?.inactive??0),suspended:Number(overview?.suspended??0)}
    };
+  });
+ }
+ /** Original U14 staff intake is never a verified application or volunteer master. */
+ private async intakeAuthority(tx:PoolClient,a:Actor){
+  await this.identity.assertCurrent(tx,a,"volunteers.view");
+  if(!(await tx.query("SELECT 1 FROM access_realm WHERE id=$1 AND realm_key='FOUNDATION_ROOT'",[a.realmId])).rowCount)
+   throw new ForbiddenException("Only current Foundation authority may intake volunteer drafts.");
+ }
+ async previewImport(token:string,raw:unknown){
+  const rows=parseVolunteerStaffIntake(raw);
+  return this.run(token,"volunteers.applications.review",async(tx,a)=>{
+   await this.intakeAuthority(tx,a);
+   const existing=(await tx.query<{contact_mobile:string}>(`SELECT contact_mobile
+    FROM volunteer_staff_intake_draft WHERE root_realm_id=$1 AND contact_mobile=ANY($2::text[])`,
+    [a.realmId,rows.map(r=>r.mobile)])).rows;
+   const known=new Set(existing.map(r=>r.contact_mobile));
+   return {rows:rows.map(r=>({...r,alreadyImported:known.has(r.mobile)})),
+    rowCount:rows.length,newCount:rows.length-existing.length,alreadyImported:existing.length,
+    message:"Preview only. Candidates are unverified and cannot receive approval, a role or a card."};
+  });
+ }
+ async importDrafts(token:string,raw:unknown){
+  const rows=parseVolunteerStaffIntake(raw);
+  if(!raw||typeof raw!=="object"||Array.isArray(raw))throw new BadRequestException("Check original import request.");
+  const requestKey=uuid((raw as Record<string,unknown>).requestKey);
+  const digest=createHash("sha256").update(JSON.stringify(["CG04_STAFF_DRAFT_V1",rows])).digest("hex");
+  return this.run(token,"volunteers.applications.review",async(tx,a)=>{
+   await this.intakeAuthority(tx,a);
+   await tx.query("SELECT pg_advisory_xact_lock(hashtextextended($1,0))",["CG04:STAFF_INTAKE:"+a.realmId]);
+   const prior=(await tx.query<{payload_digest:string;row_count:number;imported_count:number}>(
+    "SELECT payload_digest,row_count,imported_count FROM volunteer_staff_import_batch WHERE root_realm_id=$1 AND actor_ref=$2 AND request_key=$3",
+    [a.realmId,a.accountId,requestKey])).rows[0];
+   if(prior){
+    if(prior.payload_digest!==digest)throw new ConflictException("The original import request was used for different candidates. Refresh first.");
+    return {confirmed:true,replayed:true,rowCount:prior.row_count,importedCount:prior.imported_count,skippedCount:prior.row_count-prior.imported_count};
+   }
+   const existing=(await tx.query<{contact_mobile:string}>(`SELECT contact_mobile FROM volunteer_staff_intake_draft
+    WHERE root_realm_id=$1 AND contact_mobile=ANY($2::text[])`,[a.realmId,rows.map(r=>r.mobile)])).rows;
+   const known=new Set(existing.map(x=>x.contact_mobile));
+   const fresh=rows.filter(r=>!known.has(r.mobile));
+   const batch=(await tx.query<{id:string}>(`INSERT INTO volunteer_staff_import_batch
+    (root_realm_id,actor_ref,request_key,payload_digest,row_count,imported_count)
+    VALUES($1,$2,$3,$4,$5,$6) RETURNING id`,
+    [a.realmId,a.accountId,requestKey,digest,rows.length,fresh.length])).rows[0];
+   for(const candidate of fresh)await tx.query(`INSERT INTO volunteer_staff_intake_draft
+    (root_realm_id,batch_id,first_name,last_name,contact_mobile,city)
+    VALUES($1,$2,$3,$4,$5,$6)`,[a.realmId,batch.id,candidate.firstName,candidate.lastName,candidate.mobile,candidate.city]);
+   return {confirmed:true,replayed:false,rowCount:rows.length,importedCount:fresh.length,skippedCount:rows.length-fresh.length};
+  },false);
+ }
+ async intakeDrafts(token:string){
+  return this.run(token,"volunteers.applications.review",async(tx,a)=>{
+   await this.intakeAuthority(tx,a);
+   const rows=(await tx.query<{ref:string;firstName:string;lastName:string;mobile:string;city:string;createdAt:Date}>(`
+    SELECT id AS ref,first_name AS "firstName",last_name AS "lastName",
+     contact_mobile AS mobile,city,created_at AS "createdAt"
+    FROM volunteer_staff_intake_draft
+    WHERE root_realm_id=$1 AND linked_application_id IS NULL AND expires_at>now()
+    ORDER BY created_at DESC,id DESC LIMIT 100`,[a.realmId])).rows;
+   return {items:rows,status:"UNVERIFIED_DRAFT",hasMore:rows.length===100};
   });
  }
  async reimbursementOptions(token:string,ref:string){
