@@ -198,6 +198,34 @@ export class HrLeaveSourceFacade{
    effectiveTo:x.effective_to?dateText(x.effective_to):null})),
    requests:q.rows.map(x=>({reference:x.case_number,caseStatus:x.case_status,...this.summary({...x,employee_name:employee.name})}))};
  }
+ /** Apply the original immutable CG03 decision. The approval path already
+  * holds the employee lock and validated the pinned dates and remaining units. */
+ async applyDecision(tx:PoolClient,realm:string,row:LeaveRequestRow,decisionRef:string,
+   action:"APPROVE"|"RETURN"|"REJECT",days:string[]){
+  if(action==="APPROVE"&&(!days.length||(row.half_day?1:days.length*2)!==row.half_days))
+   throw new ConflictException("The original leave day count changed");
+  const next=action==="APPROVE"?"APPROVED":action==="RETURN"?"RETURNED":"REJECTED";
+  const changed=await tx.query(`UPDATE hr_leave_request SET status=$3,decision_ref=$4,decided_at=now()
+    WHERE root_realm_id=$1 AND id=$2 AND status='SUBMITTED' RETURNING id`,[realm,row.id,next,decisionRef]);
+  if(!changed.rowCount)throw new ConflictException("This leave decision was already applied");
+  if(action!=="APPROVE")return;
+  const units=row.half_day?1:2;
+  // Never replace a real full-day punch; a half-day can coexist with the
+  // original recorded in/out time. All chosen dates succeed or none do.
+  const effected=await tx.query(`INSERT INTO hr_attendance_day(root_realm_id,employee_id,assignment_id,shift_id,policy_id,
+    local_date,status,checked_in_at,leave_request_id,leave_half_days)
+   SELECT $1,$2,$3,$4,$5,d,CASE WHEN $7::integer=1 THEN 'HALF_DAY_LEAVE' ELSE 'LEAVE' END,NULL,$8,$7
+   FROM unnest($6::date[]) AS dates(d)
+   ON CONFLICT(root_realm_id,employee_id,local_date) DO UPDATE SET
+    leave_request_id=EXCLUDED.leave_request_id,leave_half_days=EXCLUDED.leave_half_days,
+    version=hr_attendance_day.version+1
+   WHERE EXCLUDED.leave_half_days=1 AND hr_attendance_day.leave_request_id IS NULL
+    AND hr_attendance_day.status IN('PRESENT','LATE')
+    AND hr_attendance_day.assignment_id=EXCLUDED.assignment_id AND hr_attendance_day.shift_id=EXCLUDED.shift_id
+    AND hr_attendance_day.policy_id=EXCLUDED.policy_id RETURNING id`,
+   [realm,row.employee_id,row.assignment_id,row.shift_id,row.shift_policy_id,days,units,row.id]);
+  if(effected.rowCount!==days.length)throw new ConflictException("A recorded attendance day conflicts with this leave. Review attendance before approving.");
+ }
  /** Called by CG03 with original case and employee lock before any decision is written. */
  async validateApproval(tx:PoolClient,realm:string,row:LeaveRequestRow){
   const employee=await tx.query(`SELECT e.id FROM hr_employee e JOIN account a

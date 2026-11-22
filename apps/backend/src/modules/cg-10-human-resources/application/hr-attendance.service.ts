@@ -318,7 +318,7 @@ export class HrAttendanceService{
     days:Array<{date:string;status:string}>}>(`SELECT e.employee_code,
     app.legal_name,a.designation,
     COALESCE(jsonb_agg(jsonb_build_object(
-      'date',to_char(d.local_date,'YYYY-MM-DD'),'status',d.status)
+      'date',to_char(d.local_date,'YYYY-MM-DD'),'status',d.status,'leaveDays',COALESCE(d.leave_half_days,0)/2.0)
       ORDER BY d.local_date) FILTER(WHERE d.id IS NOT NULL),'[]'::jsonb) AS days
     FROM hr_employee e
     JOIN hr_employee_application app ON app.id=e.application_id
@@ -347,9 +347,9 @@ export class HrAttendanceService{
    const employee=await this.self(tx,actor);
    if(!employee){await tx.query("COMMIT");return {status:"NOT_LINKED",days:[]};}
    const rule=await this.shift(tx,actor,employee.id);
-   const rows=await tx.query<{local_date:Date|string;status:string;checked_in_at:Date|string;
-    checked_out_at:Date|string|null;worked_minutes:number|null}>(`
-    SELECT local_date,status,checked_in_at,checked_out_at,worked_minutes
+   const rows=await tx.query<{local_date:Date|string;status:string;checked_in_at:Date|string|null;
+    checked_out_at:Date|string|null;worked_minutes:number|null;leave_half_days:number|null}>(`
+    SELECT local_date,status,checked_in_at,checked_out_at,worked_minutes,leave_half_days
     FROM hr_attendance_day WHERE root_realm_id=$1 AND employee_id=$2
     ORDER BY local_date DESC LIMIT 35`,[actor.realmId,employee.id]);
    await tx.query("COMMIT");
@@ -357,11 +357,12 @@ export class HrAttendanceService{
     shift:rule?{label:rule.name,timeZone:rule.time_zone,
       start:rule.work_start_local.slice(0,5),end:rule.work_end_local.slice(0,5),
       weeklyOffDays:rule.weekly_off_days}:null,
-    canCheckOut:rows.rows.some(x=>!x.checked_out_at&&
+    canCheckOut:rows.rows.some(x=>x.checked_in_at!==null&&!x.checked_out_at&&
       Date.now()-new Date(x.checked_in_at).getTime()<=36*3600000 &&
       Date.now()>=new Date(x.checked_in_at).getTime()),
     days:rows.rows.map(x=>({date:sqlDate(x.local_date),status:x.status,
-      checkInAt:new Date(x.checked_in_at).toISOString(),
+      checkInAt:x.checked_in_at?new Date(x.checked_in_at).toISOString():null,
+      leaveDays:(x.leave_half_days??0)/2,
       checkOutAt:x.checked_out_at?new Date(x.checked_out_at).toISOString():null,
       workedMinutes:x.worked_minutes}))};
   }catch(e){await tx.query("ROLLBACK");throw e;}finally{tx.release();}
@@ -397,17 +398,20 @@ export class HrAttendanceService{
     throw new ConflictException("Your shift is not yet effective for this attendance day");
    if(rule.weekly_off_days.includes(new Date(businessDate+"T00:00:00Z").getUTCDay()))
     throw new ConflictException("Today is a scheduled weekly day off");
-   const prior=await tx.query(`SELECT 1 FROM hr_attendance_day WHERE root_realm_id=$1
-    AND employee_id=$2 AND local_date=$3 FOR UPDATE`,
-    [actor.realmId,employee.id,businessDate]);
-   if(prior.rowCount)throw new ConflictException("Check-in is already recorded for this shift day");
+   const prior=await tx.query<{id:string;status:string;assignment_id:string;shift_id:string;policy_id:string}>(`
+    SELECT id,status,assignment_id,shift_id,policy_id FROM hr_attendance_day WHERE root_realm_id=$1
+    AND employee_id=$2 AND local_date=$3 FOR UPDATE`,[actor.realmId,employee.id,businessDate]);
+   const existing=prior.rows[0];
+   if(existing&&(existing.status!=="HALF_DAY_LEAVE"||existing.assignment_id!==rule.assignment_id||
+     existing.shift_id!==rule.shift_id||existing.policy_id!==rule.id))
+    throw new ConflictException(existing.status==="LEAVE"?"Approved leave is recorded for this date":"Check-in is already recorded or the shift changed");
    const open=await tx.query(`SELECT 1 FROM hr_attendance_day
     WHERE root_realm_id=$1 AND employee_id=$2 AND checked_out_at IS NULL
     AND checked_in_at>now()-interval '36 hours' FOR UPDATE`,
     [actor.realmId,employee.id]);
    if(open.rowCount)throw new ConflictException("Complete your previous check-out before a new check-in");
    const status=clock.late?"LATE":"PRESENT";
-   const day=await tx.query<{id:string}>(`INSERT INTO hr_attendance_day(
+   const day=existing?await tx.query<{id:string}>(`UPDATE hr_attendance_day SET status=$3,checked_in_at=$4,version=version+1 WHERE root_realm_id=$1 AND id=$2 AND status='HALF_DAY_LEAVE' RETURNING id`,[actor.realmId,existing.id,status,now]):await tx.query<{id:string}>(`INSERT INTO hr_attendance_day(
     root_realm_id,employee_id,assignment_id,shift_id,policy_id,local_date,
     status,checked_in_at) VALUES($1,$2,$3,$4,$5,$6,$7,$8) RETURNING id`,
     [actor.realmId,employee.id,rule.assignment_id,rule.shift_id,rule.id,
