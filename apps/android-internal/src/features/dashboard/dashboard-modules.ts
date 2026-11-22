@@ -93,6 +93,7 @@ export interface ModuleActionHandlers {
   openFinance: () => void;
   openBranches: () => void;
   openHr: () => void;
+  openProjects: () => void;
   openInventory: () => void;
   openChangePassword: () => void;
 }
@@ -212,6 +213,7 @@ export function getAuthorizedModules(
   // SECTION 3: ORGANIZATION MANAGEMENT
   // ----------------------------------------------------
 
+  if(roleActions.includes("projects.view"))list.push({key:"projects",title:"Projects",shortLabel:"Projects",description:"View and manage current permitted Foundation projects.",category:"ORGANIZATION MANAGEMENT",iconName:"building",iconBg:"#E0F2FE",iconColor:"#0369A1",onOpen:handlers.openProjects});
   if(roleActions.includes("inventory.catalog.view"))list.push({key:"inventory",title:"Requests & Inventory",shortLabel:"Inventory",description:"View permitted inventory catalog and warehouses.",category:"ORGANIZATION MANAGEMENT",iconName:"building",iconBg:"#E0F2FE",iconColor:"#0369A1",onOpen:handlers.openInventory});
   // CG-10 self identity: always accessible to a logged-in Foundation staff actor.
   // Backend /api/hr/me never returns anybody else's HR file, bank or salary.
