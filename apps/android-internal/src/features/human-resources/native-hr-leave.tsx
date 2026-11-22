@@ -156,3 +156,64 @@ const styles=StyleSheet.create({
  buttonText:{fontSize:14,color:"#0F172A",fontWeight:"600"},active:{backgroundColor:"#087F8C"},activeText:{color:"#fff",fontWeight:"700"},
  disabled:{opacity:0.5},item:{borderTopWidth:1,borderColor:"#E2E8F0",paddingTop:10,gap:6},choices:{flexDirection:"row",flexWrap:"wrap",gap:6}
 });
+
+export type CorrectionDay={date:string;status:string;version:number;timeZone:string;checkInLocal:string|null;checkOutLocal:string|null;leaveDays:number};
+export type CorrectionPerson={employeeReference:string;employeeName:string;days:CorrectionDay[]};
+type CorrectionHistory={reference:string;status:string;caseStatus:string;original:Review["original"];proposed:Review["proposed"]};
+const correctionBlank=()=>({date:"",expectedVersion:0,timeZone:"",result:"WORKED",checkInLocal:"",checkOutLocal:"",reason:""});
+const fromDay=(d:CorrectionDay)=>({date:d.date,expectedVersion:d.version,timeZone:d.timeZone,result:d.status==="ABSENT"?"ABSENT":d.status==="WEEKLY_OFF"?"WEEKLY_OFF":"WORKED",checkInLocal:d.checkInLocal??"",checkOutLocal:d.checkOutLocal??"",reason:""});
+
+export function NativeHrAttendanceCorrections({token,onExpired,days,staff,onChanged}:{token:string;onExpired:()=>void;days:CorrectionDay[];staff:CorrectionPerson[];onChanged:()=>void}){
+ const [target,setTarget]=useState(""),[form,setForm]=useState(correctionBlank),[history,setHistory]=useState<CorrectionHistory[]>([]);
+ const [busy,setBusy]=useState(false),[loading,setLoading]=useState(false),[locked,setLocked]=useState(false),[error,setError]=useState(""),[notice,setNotice]=useState("");
+ const [linked,setLinked]=useState(false);
+ const key=useRef<string|null>(null);
+ const fail=useFailure(onExpired,setError);
+ const person=staff.find(x=>x.employeeReference===target),authorized=!target||!!person;
+ const available=(target?person?.days??[]:days).filter(d=>d.version>0&&d.leaveDays<1);
+ const refresh=useCallback(async()=>{
+  setLoading(true);setError("");setHistory([]);setLinked(false);
+  try{const v=await api<{linked:boolean;items:CorrectionHistory[]}>(token,"attendance-corrections"+(target?"?employeeReference="+encodeURIComponent(target):""));
+   if(!Array.isArray(v.items)||typeof v.linked!=="boolean")throw Error("Correction history unavailable");
+   setHistory(v.items);setLinked(v.linked);
+  }catch(e){fail(e);}finally{setLoading(false);}
+ },[target,token,fail]);
+ useEffect(()=>{if(authorized)void refresh();else{setHistory([]);setLinked(false);}},[refresh,authorized]);
+ const selectTarget=(v:string)=>{setTarget(v);setForm(correctionBlank());key.current=null;setHistory([]);setLinked(false);setNotice("");};
+ const change=<K extends keyof typeof form,>(k:K,v:(typeof form)[K])=>setForm(x=>({...x,[k]:v}));
+ const valid=!!form.date&&form.expectedVersion>0&&form.reason.trim().length>=2&&(form.result!=="WORKED"||!!form.checkInLocal&&!!form.checkOutLocal);
+ const submit=async()=>{
+  if(busy||!authorized||(!locked&&!linked)||!valid)return;
+  setBusy(true);setError("");setNotice("");
+  const requestKey=key.current??Crypto.randomUUID();key.current=requestKey;
+  try{const v=await api<{submitted:boolean;reference:string;caseStatus:string}>(token,"attendance-corrections",{
+   requestKey,...(target?{employeeReference:target}:{}),date:form.date,expectedVersion:form.expectedVersion,
+   result:form.result,checkInLocal:form.result==="WORKED"?form.checkInLocal:null,checkOutLocal:form.result==="WORKED"?form.checkOutLocal:null,reason:form.reason});
+   if(v.submitted!==true||typeof v.reference!=="string")throw Error("Correction submission uncertain");
+   key.current=null;setLocked(false);setForm(correctionBlank());setNotice(v.reference+" · "+label(v.caseStatus));await refresh();onChanged();
+  }catch(e){fail(e);if(known(e)){key.current=null;setLocked(false);}else setLocked(true);}
+  finally{setBusy(false);}
+ };
+
+ return <View style={styles.card}><Text style={styles.title}>Attendance corrections</Text>
+  <Button title="My attendance" selected={!target} disabled={busy||locked} onPress={()=>selectTarget("")}/>
+  {staff.map(x=><Button key={x.employeeReference} title={x.employeeName} selected={target===x.employeeReference} disabled={busy||locked} onPress={()=>selectTarget(x.employeeReference)}/>)}
+  {!authorized&&<Text style={styles.muted}>Selected employee is no longer in the current attendance view.</Text>}
+  {!!error&&<Text accessibilityRole="alert" style={styles.error}>{error}</Text>}{!!notice&&<Text style={styles.success}>{notice}</Text>}
+  {loading&&<ActivityIndicator accessibilityLabel="Loading correction history"/>}
+  {authorized&&(linked||locked)&&<>
+   <Text style={styles.label}>Choose recorded day</Text>
+   {available.map(d=><Button key={d.date} title={d.date+" · "+d.status} selected={form.date===d.date} disabled={busy||locked||loading} onPress={()=>setForm(fromDay(d))}/>)}
+   {!!form.date&&<><Text style={styles.muted}>Shift timezone: {form.timeZone}</Text>
+    <View style={styles.choices}>{["WORKED","ABSENT","WEEKLY_OFF"].map(x=><Button key={x} title={x==="WORKED"?"Worked":x==="ABSENT"?"Absent":"Weekly off"} selected={form.result===x} disabled={busy||locked} onPress={()=>change("result",x)}/>)}</View>
+    {form.result==="WORKED"&&<><Field title="Local check-in YYYY-MM-DDTHH:mm" value={form.checkInLocal} maxLength={16} disabled={busy||locked} onChange={v=>change("checkInLocal",v)}/>
+    <Field title="Local check-out YYYY-MM-DDTHH:mm" value={form.checkOutLocal} maxLength={16} disabled={busy||locked} onChange={v=>change("checkOutLocal",v)}/></>}
+    <Field title="Private reason" value={form.reason} disabled={busy||locked} multiline onChange={v=>change("reason",v)}/>
+   </>}{locked&&<Text style={styles.muted}>Outcome uncertain. Retry the original request without changing its details.</Text>}
+   <Button title={locked?"Retry original correction":"Submit correction for review"} disabled={busy||loading||!valid} onPress={()=>void submit()}/>
+  </>}
+  <Button title="Refresh correction history" disabled={busy||locked||loading||!authorized} onPress={()=>void refresh()}/>
+  <Text style={styles.label}>Correction history</Text>
+  {authorized&&history.map(x=><View key={x.reference} style={styles.item}><Text style={styles.label}>{x.reference} · {label(x.status)}</Text><Text>{snapshot(x.original)} → {snapshot(x.proposed)}</Text></View>)}
+ </View>;
+}

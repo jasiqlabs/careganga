@@ -156,3 +156,69 @@ export function HrLeaveReviews({onChanged,kind="leave"}:{onChanged:()=>void;kind
   </div>}
  </section>;
 }
+
+export type CorrectionDay={date:string;status:string;version:number;timeZone:string;checkInLocal:string|null;checkOutLocal:string|null;leaveDays:number};
+export type CorrectionPerson={employeeReference:string;employeeName:string;days:CorrectionDay[]};
+type CorrectionHistory={reference:string;status:string;caseStatus:string;original:Review["original"];proposed:Review["proposed"]};
+const correctionBlank=()=>({date:"",expectedVersion:0,timeZone:"",result:"WORKED",checkInLocal:"",checkOutLocal:"",reason:""});
+const fromDay=(d:CorrectionDay)=>({date:d.date,expectedVersion:d.version,timeZone:d.timeZone,result:d.status==="ABSENT"?"ABSENT":d.status==="WEEKLY_OFF"?"WEEKLY_OFF":"WORKED",checkInLocal:d.checkInLocal??"",checkOutLocal:d.checkOutLocal??"",reason:""});
+
+export function HrAttendanceCorrections({days,staff,onChanged}:{days:CorrectionDay[];staff:CorrectionPerson[];onChanged:()=>void}){
+ const [target,setTarget]=useState(""),[form,setForm]=useState(correctionBlank),[history,setHistory]=useState<CorrectionHistory[]>([]);
+ const [busy,setBusy]=useState(false),[loading,setLoading]=useState(false),[locked,setLocked]=useState(false),[error,setError]=useState(""),[notice,setNotice]=useState("");
+ const [linked,setLinked]=useState(false);
+ const key=useRef<string|null>(null);
+ 
+ const person=staff.find(x=>x.employeeReference===target),authorized=!target||!!person;
+ const available=(target?person?.days??[]:days).filter(d=>d.version>0&&d.leaveDays<1);
+ const refresh=useCallback(async()=>{
+  setLoading(true);setError("");setHistory([]);setLinked(false);
+  try{const v=await api<{linked:boolean;items:CorrectionHistory[]}>("attendance-corrections"+(target?"?employeeReference="+encodeURIComponent(target):""));
+   if(!Array.isArray(v.items)||typeof v.linked!=="boolean")throw Error("Correction history unavailable");
+   setHistory(v.items);setLinked(v.linked);
+  }catch(e){setError(failure(e));}finally{setLoading(false);}
+ },[target]);
+ useEffect(()=>{if(authorized)void refresh();else{setHistory([]);setLinked(false);}},[refresh,authorized]);
+ const selectTarget=(v:string)=>{setTarget(v);setForm(correctionBlank());key.current=null;setHistory([]);setLinked(false);setNotice("");};
+ const change=<K extends keyof typeof form,>(k:K,v:(typeof form)[K])=>setForm(x=>({...x,[k]:v}));
+ const valid=!!form.date&&form.expectedVersion>0&&form.reason.trim().length>=2&&(form.result!=="WORKED"||!!form.checkInLocal&&!!form.checkOutLocal);
+ const submit=async()=>{
+  if(busy||!authorized||(!locked&&!linked)||!valid)return;
+  setBusy(true);setError("");setNotice("");
+  const requestKey=key.current??crypto.randomUUID();key.current=requestKey;
+  try{const v=await api<{submitted:boolean;reference:string;caseStatus:string}>("attendance-corrections",{
+   requestKey,...(target?{employeeReference:target}:{}),date:form.date,expectedVersion:form.expectedVersion,
+   result:form.result,checkInLocal:form.result==="WORKED"?form.checkInLocal:null,checkOutLocal:form.result==="WORKED"?form.checkOutLocal:null,reason:form.reason});
+   if(v.submitted!==true||typeof v.reference!=="string")throw Error("Correction submission uncertain");
+   key.current=null;setLocked(false);setForm(correctionBlank());setNotice(v.reference+" · "+label(v.caseStatus));await refresh();onChanged();
+  }catch(e){setError(failure(e));if(known(e)){key.current=null;setLocked(false);}else setLocked(true);}
+  finally{setBusy(false);}
+ };
+
+ return <section style={card} aria-label="Attendance corrections">
+  <h2 style={{margin:0}}>Attendance corrections</h2>
+  <label>Employee<select style={field} value={target} disabled={busy||locked} onChange={e=>selectTarget(e.target.value)}>
+   <option value="">My attendance</option>{staff.map(x=><option value={x.employeeReference} key={x.employeeReference}>{x.employeeName}</option>)}
+  </select></label>
+  {!authorized&&<p>Selected employee is no longer in the current attendance view. Select a permitted employee.</p>}
+  {error&&<p role="alert">{error}</p>}{notice&&<p role="status">{notice}</p>}
+  {loading&&<p>Loading correction history…</p>}
+  {authorized&&(linked||locked)&&<><fieldset disabled={busy||locked||loading} style={{border:0,padding:0,display:"grid",gap:8}}>
+   <label>Recorded day<select style={field} value={form.date} onChange={e=>{const d=available.find(x=>x.date===e.target.value);setForm(d?fromDay(d):correctionBlank());}}>
+    <option value="">Choose recorded day</option>{available.map(d=><option key={d.date} value={d.date}>{d.date} · {d.status}</option>)}
+   </select></label>
+   {form.date&&<><p>Shift timezone: {form.timeZone}</p>
+    <label>Proposed result<select style={field} value={form.result} onChange={e=>change("result",e.target.value)}>
+     <option value="WORKED">Worked</option><option value="ABSENT">Absent</option><option value="WEEKLY_OFF">Weekly off</option>
+    </select></label>
+    {form.result==="WORKED"&&<><label>Local check-in<input style={field} type="datetime-local" value={form.checkInLocal} onChange={e=>change("checkInLocal",e.target.value)}/></label>
+     <label>Local check-out<input style={field} type="datetime-local" value={form.checkOutLocal} onChange={e=>change("checkOutLocal",e.target.value)}/></label></>}
+    <label>Private reason<textarea style={field} value={form.reason} maxLength={500} onChange={e=>change("reason",e.target.value)}/></label>
+   </>}
+  </fieldset>{locked&&<p>Outcome uncertain. Retry the original request without changing its details.</p>}
+  <button style={button} disabled={busy||loading||!valid} onClick={()=>void submit()}>{locked?"Retry original correction":"Submit correction for review"}</button></>}
+  <button disabled={busy||locked||loading||!authorized} onClick={()=>void refresh()}>Refresh correction history</button>
+  <h3 style={{margin:0}}>Correction history</h3>
+  {authorized&&history.map(x=><div key={x.reference}><strong>{x.reference} · {label(x.status)}</strong><p>{snapshot(x.original)} → {snapshot(x.proposed)}</p></div>)}
+ </section>;
+}
