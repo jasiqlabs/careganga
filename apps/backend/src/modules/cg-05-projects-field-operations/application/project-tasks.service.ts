@@ -194,7 +194,7 @@ export class ProjectTasksService {
    return {projects:projects.slice(0,100),hasMoreProjects:projects.length>100,assignees:[...operators,...employees]};
   },true);
  }
- async list(token:string,query:Record<string,unknown>,mine=false,exporting=false,parentRef?:string){
+ async list(token:string,query:Record<string,unknown>,mine=false,exporting=false,parentRef?:string,exportMine=false){
   const projectId=parentRef?ref(parentRef):optionalRef(query.projectRef),q=clean(query.q??"",0,100).toLowerCase(),type=clean(query.taskType??"",0,80),assignee=clean(query.assignee??"",0,100).toLowerCase(),location=clean(query.location??"",0,100).toLowerCase();
   const tab=choice(query.tab??"ALL",["ALL","MY","COMPLETED","IN_PROGRESS","OVERDUE","UPCOMING","CANCELLED"] as const);
   const status=choice(query.status??"ALL",["ALL",...taskStatuses]),priority=choice(query.priority??"ALL",["ALL",...priorities]);
@@ -205,7 +205,7 @@ export class ProjectTasksService {
    const s=await this.branches.projectBranchScope(tx,a);
    const scope=`t.root_realm_id=$1 AND (p.branch_ref IS NULL OR b.status='ACTIVE') AND
    ((NOT $5::boolean AND ((p.branch_ref IS NULL AND ($2::boolean OR p.owner_account_ref=$4)) OR p.branch_ref=ANY($3::uuid[]))) OR (t.assignee_account_ref=$4 AND ${live}))`;
-   const values=[a.realmId,s.all,s.branches.map(b=>b.value),a.accountId,mine,projectId,q,type,priority,status,assignee,location,from,to,startFrom,startTo];
+   const values=[a.realmId,s.all,s.branches.map(b=>b.value),a.accountId,mine||exportMine,projectId,q,type,priority,status,assignee,location,from,to,startFrom,startTo];
    const filter=" AND ($6::uuid IS NULL OR t.project_id=$6) AND ($7='' OR strpos(lower(t.title),$7)>0 OR strpos(lower(t.description),$7)>0 OR strpos(lower(t.task_code),$7)>0 OR strpos(lower(p.title),$7)>0 OR strpos(lower(p.code_norm),$7)>0) AND ($8='' OR lower(t.task_type)=lower($8)) AND ($9='ALL' OR t.priority=$9) AND ($10='ALL' OR t.status=$10) AND ($11='' OR strpos(lower(COALESCE(a.display_name,'')),$11)>0) AND ($12='' OR strpos(lower(p.location_label),$12)>0) AND ($13::date IS NULL OR t.due_at>=$13) AND ($14::date IS NULL OR t.due_at<=$14) AND ($15::date IS NULL OR t.planned_start>=$15) AND ($16::date IS NULL OR t.planned_start<=$16)";
    const tabFilter=tab==="MY"?" AND t.assignee_account_ref=$4 AND "+live:tab==="OVERDUE"?" AND "+overdue:tab==="UPCOMING"?" AND "+upcoming:["COMPLETED","IN_PROGRESS","CANCELLED"].includes(tab)?" AND t.status='"+tab+"'":"";
    const where=" WHERE "+scope+filter;
