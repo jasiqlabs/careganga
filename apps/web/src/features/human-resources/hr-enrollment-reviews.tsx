@@ -1,10 +1,12 @@
 "use client";
-import {useCallback,useEffect,useState} from "react";
+import {useCallback,useEffect,useRef,useState} from "react";
 type Case={caseRef:string;reference:string;name:string;status:string;
  revision:number;canReview:boolean};
 type Detail={caseRef:string;reference:string;revision:number;name:string;
- status:string;designation:string;employmentType:string;canDecide:boolean;
+ status:string;designation:string;employmentType:string;canDecide:boolean;canReadProof:boolean;
  evidence:Array<{classification:string;verified:boolean}>};
+const originalStatuses=[{key:"ALL",title:"All"},{key:"SUBMITTED",title:"Submitted"},{key:"IN_REVIEW",title:"In review"},{key:"PENDING_OWNER",title:"Approved — activation pending"},{key:"OWNER_COMPLETED",title:"Activated"},{key:"RETURNED",title:"Returned"},{key:"REJECTED",title:"Rejected"}];
+const stageLabel=(status:string)=>originalStatuses.find(x=>x.key===status)?.title??"Status unavailable";
 type Action="APPROVE"|"RETURN"|"REJECT";
 async function api(path:string,init?:RequestInit){
  const response=await fetch("/api/hr/reviews"+path,{
@@ -18,6 +20,8 @@ async function api(path:string,init?:RequestInit){
 }
 export function HrEnrollmentReviews({canConfigure=false}:{canConfigure?:boolean}){
  const [cases,setCases]=useState<Case[]>([]);
+ const [filter,setFilter]=useState("ALL"),[offset,setOffset]=useState(0),[more,setMore]=useState(false);
+ const [uncertain,setUncertain]=useState(false);const read=useRef(0),running=useRef(false);
  const [detail,setDetail]=useState<Detail|null>(null);
  const [password,setPassword]=useState("");
  const [notes,setNotes]=useState("");
@@ -31,17 +35,16 @@ export function HrEnrollmentReviews({canConfigure=false}:{canConfigure?:boolean}
  const [configuring,setConfiguring]=useState(false);
  const [loading,setLoading]=useState(true);
  const refresh=useCallback(async()=>{
-  setLoading(true);setError("");
+  const seq=++read.current;setLoading(true);setError("");setCases([]);setMore(false);
   try{
-   const value=await api("?offset=0");
+   const value=await api("?offset="+offset+"&status="+encodeURIComponent(filter));
    if(!value||typeof value!=="object"||!("items" in value)||!Array.isArray(value.items))
     throw Error("Original Foundation review inbox is unavailable.");
-   setCases(value.items as Case[]);
-  }catch(e){setCases([]);setError(e instanceof Error?e.message:
-    "The original employee review inbox is unavailable.");
-  }finally{setLoading(false);}
- },[]);
- useEffect(()=>{void refresh();},[refresh]);
+   if(seq===read.current){setCases(value.items as Case[]);setMore("hasMore" in value&&value.hasMore===true);}
+  }catch(e){if(seq===read.current)setError(e instanceof Error?e.message:"The original employee review inbox is unavailable.");}
+  finally{if(seq===read.current)setLoading(false);}
+ },[offset,filter]);
+ useEffect(()=>{void refresh();return()=>{read.current++;};},[refresh]);
  const checkProcess=useCallback(async()=>{
   try{
    const value=await api("/process");
@@ -69,7 +72,7 @@ export function HrEnrollmentReviews({canConfigure=false}:{canConfigure?:boolean}
   finally{setConfiguring(false);}
  };
  const open=async(ref:string)=>{
-  setBusy(true);setError("");setMessage("");setPassword("");setNotes("");setKey(null);
+  if(running.current||uncertain)return;running.current=true;setBusy(true);setDetail(null);setError("");setMessage("");setPassword("");setNotes("");setKey(null);setOutcome("APPROVE");
   try{
    const value=await api("/"+ref);
    if(!value||typeof value!=="object"||!("caseRef" in value)||
@@ -77,10 +80,10 @@ export function HrEnrollmentReviews({canConfigure=false}:{canConfigure?:boolean}
    setDetail(value as Detail);
   }catch(e){setDetail(null);setError(e instanceof Error?e.message:
     "The original employee review is not available.");
-  }finally{setBusy(false);}
+  }finally{running.current=false;setBusy(false);}
  };
  const decide=async()=>{
-  if(!detail||busy||!detail.canDecide||!password)return;
+  if(!detail||running.current||busy||!detail.canDecide||!password)return;running.current=true;
   const original=detail;
   const requestKey=key??crypto.randomUUID();
   setKey(requestKey);setBusy(true);setError("");setMessage("");
@@ -90,7 +93,7 @@ export function HrEnrollmentReviews({canConfigure=false}:{canConfigure?:boolean}
      action:outcome,remarks:notes,currentPassword:password})});
    if(!res||typeof res!=="object"||!("status" in res))
     throw Error("The independent decision result cannot be confirmed.");
-   setPassword("");setNotes("");setKey(null);
+   setPassword("");setNotes("");setKey(null);setUncertain(false);
    setMessage(outcome==="APPROVE"?"Original review approved. HR must still confirm employment activation.":
     outcome==="RETURN"?"Application returned to HR for correction.":
      "Original employee application rejected.");
@@ -98,8 +101,8 @@ export function HrEnrollmentReviews({canConfigure=false}:{canConfigure?:boolean}
   }catch(e){
    setError(e instanceof Error?e.message:
     "The decision result is uncertain. Refresh the original review before retrying.");
-   setPassword("");
-  }finally{setBusy(false);}
+   setPassword("");setUncertain(true);
+  }finally{running.current=false;setBusy(false);}
  };
  return <section aria-label="Protected Foundation HR review"
   style={{background:"#fff",borderRadius:14,border:"1px solid var(--cg-border)",
@@ -132,6 +135,7 @@ export function HrEnrollmentReviews({canConfigure=false}:{canConfigure?:boolean}
       {configuring?"Configuring original process…":"Configure original employee approval process"}</button>
     </>}
    </div>}
+  <div role="group" aria-label="Original review status" style={{display:"flex",gap:6,flexWrap:"wrap"}}>{originalStatuses.map(x=><button key={x.key} type="button" disabled={busy||uncertain} aria-pressed={filter===x.key} onClick={()=>{setFilter(x.key);setOffset(0);setDetail(null);}}>{x.title}</button>)}</div><div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(min(100%,300px),1fr))",gap:12,alignItems:"start"}}><section aria-label="Review queue">
   {loading?<p role="status">Loading original employee review cases…</p>:
     cases.length===0?<p>No enrollment cases in this Foundation scope.</p>:
    <ul style={{listStyle:"none",padding:0,display:"grid",gap:9}}>
@@ -139,23 +143,24 @@ export function HrEnrollmentReviews({canConfigure=false}:{canConfigure?:boolean}
       border:"1px solid var(--cg-border)"}}>
      <strong>{c.name}</strong>
      <small style={{display:"block",color:"var(--cg-muted)"}}>
-      {c.reference} · {c.status.replaceAll("_"," ")}
+      {c.reference} · {stageLabel(c.status)}
      </small>
-     <button type="button" onClick={()=>void open(c.caseRef)} disabled={busy}
+     <button type="button" onClick={()=>void open(c.caseRef)} disabled={busy||uncertain}
       style={{marginTop:8,padding:"8px 10px",border:0,borderRadius:9,
         background:"var(--cg-accent)",color:"#fff",cursor:"pointer"}}>
       View original review</button>
     </li>)}
    </ul>}
+  <div style={{display:"flex",gap:8}}>{offset>0&&<button disabled={busy||loading||uncertain} onClick={()=>setOffset(v=>Math.max(0,v-25))}>Previous</button>}{more&&<button disabled={busy||loading||uncertain} onClick={()=>setOffset(v=>v+25)}>Next</button>}</div></section><section aria-label="Application summary">{!detail&&<p>Select a review to see the original application and evidence.</p>}
   {detail&&<div style={{padding:14,display:"grid",gap:12,
     border:"1px solid var(--cg-border)",borderRadius:12}}>
    <h3 style={{margin:0}}>{detail.name} — {detail.designation}</h3>
-   <p style={{margin:0,color:"var(--cg-muted)"}}>{detail.reference} · {detail.status.replaceAll("_"," ")}
+   <p style={{margin:0,color:"var(--cg-muted)"}}>{detail.reference} · {stageLabel(detail.status)}
     {" · "}{detail.employmentType.replaceAll("_"," ")}</p>
    <div><strong>Original verified evidence</strong>
     {detail.evidence.map((f,i)=><p key={i} style={{margin:"4px 0"}}>
       {f.classification.replaceAll("_"," ")} — {f.verified?"Verified":"Unverified"}
-      {f.verified&&<a style={{marginLeft:9,color:"var(--cg-accent)"}}
+      {f.verified&&detail.canReadProof&&<a style={{marginLeft:9,color:"var(--cg-accent)"}}
        href={"/api/hr-review-proof/"+encodeURIComponent(detail.caseRef)+
         "?kind="+encodeURIComponent(f.classification)}>
        Download original private proof</a>}
@@ -163,27 +168,28 @@ export function HrEnrollmentReviews({canConfigure=false}:{canConfigure?:boolean}
    </div>
    {detail.canDecide&&<div style={{display:"grid",gap:11}}>
     <label style={{display:"grid",gap:4}}>Decision
-     <select value={outcome} onChange={e=>{setOutcome(e.target.value as Action);setKey(null);}}
+     <select value={outcome} disabled={busy||uncertain} onChange={e=>{setOutcome(e.target.value as Action);setKey(null);}}
       style={{padding:11,border:"1px solid var(--cg-border)",borderRadius:9}}>
       <option value="APPROVE">Approve</option>
       <option value="RETURN">Return for correction</option>
       <option value="REJECT">Reject</option>
      </select></label>
     <label style={{display:"grid",gap:4}}>Review remarks (optional)
-     <textarea value={notes} maxLength={500} onChange={e=>{setNotes(e.target.value);setKey(null);}}
+     <textarea value={notes} disabled={busy||uncertain} maxLength={500} onChange={e=>{setNotes(e.target.value);setKey(null);}}
       style={{padding:11,border:"1px solid var(--cg-border)",borderRadius:9}}/></label>
     <label style={{display:"grid",gap:4}}>Confirm with your current password
      <input type="password" required autoComplete="current-password"
-      value={password} onChange={e=>{setPassword(e.target.value);setKey(null);}}
+      value={password} disabled={busy} onChange={e=>setPassword(e.target.value)}
       style={{padding:11,border:"1px solid var(--cg-border)",borderRadius:9}}/></label>
+    {uncertain&&<p role="alert">The previous result is unconfirmed. Re-enter your password and retry the same decision.</p>}
     <button type="button" onClick={()=>void decide()} disabled={busy||!password}
      style={{padding:12,borderRadius:10,border:0,background:"var(--cg-accent)",
       color:"#fff",fontWeight:700,cursor:"pointer"}}>
       {busy?"Confirming original decision…":"Confirm independent review"}</button>
    </div>}
-   <button type="button" onClick={()=>{setDetail(null);setPassword("");setKey(null);}}
+   <button type="button" disabled={busy||uncertain} onClick={()=>{setDetail(null);setPassword("");setKey(null);}}
     style={{padding:10,borderRadius:10,border:"1px solid var(--cg-border)",
      background:"#F8FAFC",cursor:"pointer"}}>Close review</button>
-  </div>}
+  </div>}</section></div>
  </section>;
 }
