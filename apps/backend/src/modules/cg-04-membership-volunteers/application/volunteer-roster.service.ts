@@ -87,16 +87,20 @@ export class VolunteerRosterService{
   if(!(await tx.query("SELECT 1 FROM access_realm WHERE id=$1 AND realm_key='FOUNDATION_ROOT'",[a.realmId])).rowCount)
    throw new ForbiddenException("Only current Foundation authority may intake volunteer drafts.");
  }
+ private async knownIntakeContacts(tx:PoolClient,realm:string,contacts:string[]){
+  const found=await tx.query<{contact_mobile:string}>(`SELECT contact_mobile FROM volunteer_staff_intake_draft
+    WHERE root_realm_id=$1 AND contact_mobile=ANY($2::text[])
+    UNION SELECT contact_mobile FROM volunteer_application
+    WHERE root_realm_id=$1 AND contact_mobile=ANY($2::text[])`,[realm,contacts]);
+  return new Set(found.rows.map(r=>r.contact_mobile));
+ }
  async previewImport(token:string,raw:unknown){
   const rows=parseVolunteerStaffIntake(raw);
   return this.run(token,"volunteers.applications.review",async(tx,a)=>{
    await this.intakeAuthority(tx,a);
-   const existing=(await tx.query<{contact_mobile:string}>(`SELECT contact_mobile
-    FROM volunteer_staff_intake_draft WHERE root_realm_id=$1 AND contact_mobile=ANY($2::text[])`,
-    [a.realmId,rows.map(r=>r.mobile)])).rows;
-   const known=new Set(existing.map(r=>r.contact_mobile));
+   const known=await this.knownIntakeContacts(tx,a.realmId,rows.map(r=>r.mobile));
    return {rows:rows.map(r=>({...r,alreadyImported:known.has(r.mobile)})),
-    rowCount:rows.length,newCount:rows.length-existing.length,alreadyImported:existing.length,
+    rowCount:rows.length,newCount:rows.length-known.size,alreadyImported:known.size,
     message:"Preview only. Candidates are unverified and cannot receive approval, a role or a card."};
   });
  }
@@ -115,9 +119,11 @@ export class VolunteerRosterService{
     if(prior.payload_digest!==digest)throw new ConflictException("The original import request was used for different candidates. Refresh first.");
     return {confirmed:true,replayed:true,rowCount:prior.row_count,importedCount:prior.imported_count,skippedCount:prior.row_count-prior.imported_count};
    }
-   const existing=(await tx.query<{contact_mobile:string}>(`SELECT contact_mobile FROM volunteer_staff_intake_draft
-    WHERE root_realm_id=$1 AND contact_mobile=ANY($2::text[])`,[a.realmId,rows.map(r=>r.mobile)])).rows;
-   const known=new Set(existing.map(x=>x.contact_mobile));
+   // A previously consented application is never replaced by an unverified staff draft.
+   // Reclaim expired unlinked intake contacts only; immutable batch history is retained.
+   await tx.query(`DELETE FROM volunteer_staff_intake_draft WHERE root_realm_id=$1
+    AND linked_application_id IS NULL AND expires_at<=now()`,[a.realmId]);
+   const known=await this.knownIntakeContacts(tx,a.realmId,rows.map(r=>r.mobile));
    const fresh=rows.filter(r=>!known.has(r.mobile));
    const batch=(await tx.query<{id:string}>(`INSERT INTO volunteer_staff_import_batch
     (root_realm_id,actor_ref,request_key,payload_digest,row_count,imported_count)
