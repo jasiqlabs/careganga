@@ -194,7 +194,7 @@ export class ProjectTasksService {
    return {projects:projects.slice(0,100),hasMoreProjects:projects.length>100,assignees:[...operators,...employees]};
   },true);
  }
- async list(token:string,query:Record<string,unknown>,mine=false,exporting=false,parentRef?:string){
+ async list(token:string,query:Record<string,unknown>,mine=false,exporting=false,parentRef?:string,summaryOnly=false){
   return this.projects.run(token,exporting?"projects.tasks.export":"projects.tasks.view",(tx,a)=>this.listInTx(tx,a,query,mine,exporting,parentRef),true);
  }
  async listInTx(tx:PoolClient,a:Actor,query:Record<string,unknown>,mine=false,exporting=false,parentRef?:string){
@@ -213,20 +213,20 @@ export class ProjectTasksService {
    const filter=" AND ($6::uuid IS NULL OR t.project_id=$6) AND ($7='' OR strpos(lower(t.title),$7)>0 OR strpos(lower(t.description),$7)>0 OR strpos(lower(t.task_code),$7)>0 OR strpos(lower(p.title),$7)>0 OR strpos(lower(p.code_norm),$7)>0) AND ($8='' OR lower(t.task_type)=lower($8)) AND ($9='ALL' OR t.priority=$9) AND ($10='ALL' OR t.status=$10) AND ($11='' OR strpos(lower(COALESCE(a.display_name,'')),$11)>0) AND ($12='' OR strpos(lower(p.location_label),$12)>0) AND ($13::date IS NULL OR t.due_at>=$13) AND ($14::date IS NULL OR t.due_at<=$14) AND ($15::date IS NULL OR t.planned_start>=$15) AND ($16::date IS NULL OR t.planned_start<=$16)";
    const tabFilter=tab==="MY"?" AND t.assignee_account_ref=$4 AND "+live:tab==="OVERDUE"?" AND "+overdue:tab==="UPCOMING"?" AND "+upcoming:["COMPLETED","IN_PROGRESS","CANCELLED"].includes(tab)?" AND t.status='"+tab+"'":"";
    const where=" WHERE "+scope+filter;
-   const mayManage=!exporting&&await this.has(tx,a,"projects.tasks.manage");
+   const mayManage=!summaryOnly&&!exporting&&await this.has(tx,a,"projects.tasks.manage");
    const rowManage=mayManage?"((p.branch_ref IS NULL AND $2::boolean) OR p.branch_ref=ANY($3::uuid[])) AND p.status NOT IN(\'COMPLETED\',\'CANCELLED\') AND t.status NOT IN(\'COMPLETED\',\'CANCELLED\')":"false";
-   const page=await tx.query("SELECT "+projection+",("+rowManage+") AS \"canManage\""+joins+where+tabFilter+" ORDER BY t.due_at ASC NULLS LAST,t.updated_at DESC,t.id LIMIT $17 OFFSET $18",[...values,exporting?501:26,offset]);
+   const page=summaryOnly&&!exporting?{rows:[]}:await tx.query("SELECT "+projection+",("+rowManage+") AS \"canManage\""+joins+where+tabFilter+" ORDER BY t.due_at ASC NULLS LAST,t.updated_at DESC,t.id LIMIT $17 OFFSET $18",[...values,exporting?501:26,offset]);
    const items=page.rows.slice(0,exporting?500:25);
    if(exporting){await this.projects.auditExport(tx,a,"TASKS",mine,items.length,{query,parentRef});const columns=["code","projectCode","project","title","taskType","priority","startDate","dueDate","status","assignee","branch","location","overdue"];return {csv:[columns,...items.map(row=>columns.map(c=>row[c]))].map(row=>row.map(csvCell).join(",")).join("\r\n"),rows:items.length,hasMore:page.rows.length>500};}
    const counts=(await tx.query(`SELECT count(*)::integer AS total,count(*) FILTER(WHERE t.assignee_account_ref=$4 AND ${live})::integer AS mine,count(*) FILTER(WHERE t.status='COMPLETED')::integer AS completed,
     count(*) FILTER(WHERE t.status='IN_PROGRESS')::integer AS "inProgress",count(*) FILTER(WHERE ${overdue})::integer AS overdue,
     count(*) FILTER(WHERE ${upcoming})::integer AS upcoming,count(*) FILTER(WHERE t.status='CANCELLED')::integer AS cancelled`+joins+where,values)).rows[0];
-   const statusCounts=(await tx.query("SELECT t.status AS label,count(*)::int AS count"+joins+where+" GROUP BY t.status ORDER BY t.status",values)).rows;
-   const priorityCounts=(await tx.query("SELECT t.priority AS label,count(*)::int AS count"+joins+where+" GROUP BY t.priority ORDER BY t.priority",values)).rows;
-   const overdueItems=(await tx.query("SELECT "+projection+joins+where+" AND "+overdue+" ORDER BY t.due_at,t.id LIMIT 5",values)).rows;
+   const statusCounts=summaryOnly?[]:(await tx.query("SELECT t.status AS label,count(*)::int AS count"+joins+where+" GROUP BY t.status ORDER BY t.status",values)).rows;
+   const priorityCounts=summaryOnly?[]:(await tx.query("SELECT t.priority AS label,count(*)::int AS count"+joins+where+" GROUP BY t.priority ORDER BY t.priority",values)).rows;
+   const overdueItems=summaryOnly?[]:(await tx.query("SELECT "+projection+joins+where+" AND "+overdue+" ORDER BY t.due_at,t.id LIMIT 5",values)).rows;
    const recent=(await tx.query("SELECT t.id AS ref,t.task_code AS code,t.title,e.event_kind AS action,e.new_status AS status,e.occurred_at AS at,actor.display_name AS actor,e.redacted_reason AS reason"+joins+" JOIN project_task_event e ON e.root_realm_id=t.root_realm_id AND e.task_id=t.id JOIN account actor ON actor.realm_id=e.root_realm_id AND actor.id=e.actor_ref"+where+" ORDER BY e.occurred_at DESC,e.id DESC LIMIT 8",values)).rows;
    const filterScope=[a.realmId,s.all,s.branches.map(b=>b.value),a.accountId,mine];
-   const choices=(await tx.query(`WITH permitted AS (SELECT p.id AS project_id,p.title AS project,t.task_type,a.display_name AS assignee,p.location_label AS location`+joins+" WHERE "+scope+`)
+   const choices=summaryOnly?{projects:[],types:[],assignees:[],locations:[]}:(await tx.query(`WITH permitted AS (SELECT p.id AS project_id,p.title AS project,t.task_type,a.display_name AS assignee,p.location_label AS location`+joins+" WHERE "+scope+`)
     SELECT (SELECT COALESCE(jsonb_agg(x),'[]'::jsonb) FROM (SELECT DISTINCT project_id AS value,project AS label FROM permitted ORDER BY project,project_id LIMIT 100) x) AS projects,
     (SELECT COALESCE(jsonb_agg(x.task_type),'[]'::jsonb) FROM (SELECT DISTINCT task_type FROM permitted ORDER BY task_type LIMIT 100) x) AS types,
     (SELECT COALESCE(jsonb_agg(x.assignee),'[]'::jsonb) FROM (SELECT DISTINCT assignee FROM permitted WHERE assignee IS NOT NULL ORDER BY assignee LIMIT 100) x) AS assignees,
