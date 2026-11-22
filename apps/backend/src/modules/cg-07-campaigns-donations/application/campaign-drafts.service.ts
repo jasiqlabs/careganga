@@ -55,7 +55,7 @@ export class CampaignDraftsService{
    await this.identity.eligibleOfficeholder(tx,a,v.team.coordinatorRef);
   }
  }
- private async record(tx:PoolClient,a:Actor,c:CampaignRow,v:CampaignDraft,digest:string,kind:"CREATE_DRAFT"|"SAVE_DRAFT"){
+ private async record(tx:PoolClient,a:Actor,c:CampaignRow,v:CampaignDraft,digest:string,kind:"CREATE_DRAFT"|"SAVE_DRAFT",prior:"DRAFT"|"RETURNED"="DRAFT"){
   await tx.query(`INSERT INTO campaign_revision(root_realm_id,campaign_id,revision_no,immutable_digest,
    step1_basic,step2_project_and_geo,step3_team,step4_budget_targets,step5_media_refs,step6_summary,created_by)
    VALUES($1,$2,$3,$4,$5::jsonb,$6::jsonb,$7::jsonb,$8::jsonb,$9::jsonb,$10::jsonb,$11)`,
@@ -64,7 +64,7 @@ export class CampaignDraftsService{
   await tx.query(`INSERT INTO campaign_status_event(root_realm_id,campaign_id,source_revision,digest,request_key,
    operation,prior_status,resulting_status,resulting_version,actor_ref)
    VALUES($1,$2,$3,$4,$5,$6,$7,'DRAFT',$8,$9)`,
-   [a.realmId,c.id,c.current_revision,digest,v.key,kind,kind==="CREATE_DRAFT"?null:"DRAFT",c.version,a.accountId]);
+   [a.realmId,c.id,c.current_revision,digest,v.key,kind,kind==="CREATE_DRAFT"?null:prior,c.version,a.accountId]);
   return {ref:c.id,version:c.version,code:(await tx.query<{code_norm:string}>(
    "SELECT code_norm FROM campaign WHERE root_realm_id=$1 AND id=$2",[a.realmId,c.id])).rows[0].code_norm,
    status:"DRAFT" as const,replayed:false};
@@ -153,7 +153,7 @@ export class CampaignDraftsService{
     [a.realmId,key,value.basic.title,value.project.category,value.project.branchRef,value.budget.goalMinor,
      value.budget.startAt,value.budget.endAt,value.expected,value.project.projectRef,value.project.eventRef])).rows[0];
    if(!next)throw invalid("This campaign was updated elsewhere. Refresh its current draft.");
-   return this.record(tx,a,next,value,digest,"SAVE_DRAFT");
+   return this.record(tx,a,next,value,digest,"SAVE_DRAFT",existing.source_status==="RETURNED"?"RETURNED":"DRAFT");
   });
  }
  /** Original CG07 mutable source authority consumed by the protected CG03 review owner,
@@ -177,7 +177,7 @@ export class CampaignDraftsService{
     WHERE c.root_realm_id=$1 AND c.id=$2 FOR SHARE OF r`,
    [a.realmId,c.id])).rows[0];
   if(!r||r.goal_minor===null||BigInt(r.goal_minor)<1n||!r.start_at||!r.end_at||
-    r.end_at<(new Date().toISOString().slice(0,10))||!r.basic?.summary)
+    r.end_at<(new Intl.DateTimeFormat("en-CA",{timeZone:"Asia/Kolkata",year:"numeric",month:"2-digit",day:"2-digit"}).format(new Date()))||!r.basic?.summary)
    throw invalid("Complete the campaign title, description, fundraising target and valid campaign period before review.");
   if(r.media?.fileRef||r.team?.volunteerRef)
    throw invalid("Unverified campaign media or volunteer association must be removed before verification.");
