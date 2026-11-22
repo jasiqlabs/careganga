@@ -2,7 +2,7 @@ import {cookies} from "next/headers";
 import {NextRequest,NextResponse} from "next/server";
 export const dynamic="force-dynamic";
 type Ctx={params:Promise<{parts:string[]}>};
-const UUID=/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i;
+const UUID=/^[a-f0-9]{8}-(?:[a-f0-9]{4}-){3}[a-f0-9]{12}$/i;
 const reply=(body:unknown,status=200)=>NextResponse.json(body,{status,headers:{"Cache-Control":"private, no-store","X-Content-Type-Options":"nosniff"}});
 function destination(parts:string[],method:string):string|null{
  const route=parts.join("/");
