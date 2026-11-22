@@ -214,6 +214,8 @@ export class HrEnrollmentApprovalService{
    if(!c)throw new NotFoundException("Employee review is unavailable");
    const frozen=await this.exact(tx,actor.realmId,c,
      ["SUBMITTED","IN_REVIEW","PENDING_OWNER"].includes(c.status));
+   const events=await tx.query<{action:string;step_ordinal:number;occurred_at:Date}>(
+    "SELECT action,step_ordinal,occurred_at FROM cg03_case_event WHERE realm_id=$1 AND case_id=$2 ORDER BY occurred_at DESC,id DESC LIMIT 50",[actor.realmId,c.id]);
    await tx.query("COMMIT");
    return {caseRef:c.id,reference:c.case_number,revision:c.revision,
     name:c.account_name_snapshot,status:c.status,
@@ -221,6 +223,7 @@ export class HrEnrollmentApprovalService{
     branchRef:frozen.source.proposed_branch_ref,
     proposedJoiningDate:frozen.source.hire_date,
     evidence:frozen.files.map(f=>({classification:f.classification,verified:true})),
+    timeline:events.rows.map(e=>({action:e.action,step:e.step_ordinal,occurredAt:e.occurred_at})),
     canReadProof:c.proposer_id!==actor.accountId,
     canDecide:c.proposer_id!==actor.accountId&&
       ["SUBMITTED","IN_REVIEW"].includes(c.status)};
