@@ -16,6 +16,7 @@
     "test:cg05-project": "tsx --test test/cg05-project-contract.test.ts",
     "test:cg04-volunteers": "tsx --test test/cg04-volunteer-contract.test.ts",
     "test:cg07-campaign": "tsx --test test/cg07-campaign-contract.test.ts",
+    "test:cg07-db-integrity": "node --env-file=.env ../../node_modules/tsx/dist/cli.mjs --test test/cg07-db-integrity.test.ts",
     "test:cg12-catalog": "tsx --test test/cg12-catalog-contract.test.ts",
     "test:cg12-all": "tsx --test test/cg12-catalog-contract.test.ts test/cg12-stock-contract.test.ts",
     "test:cg10-all": "tsx --test test/cg10-enrollment-contract.test.ts test/cg10-attendance-contract.test.ts test/cg10-appraisal-contract.test.ts test/cg10-employment-change-contract.test.ts test/cg10-document-allowance-contract.test.ts test/cg19-migration-compatibility.test.ts",
