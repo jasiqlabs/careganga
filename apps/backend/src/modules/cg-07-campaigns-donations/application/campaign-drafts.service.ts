@@ -417,6 +417,7 @@ export class CampaignDraftsService{
   const stateRef=query.stateRef===undefined||query.stateRef===""?null:campaignRef(query.stateRef);
   const districtRef=query.districtRef===undefined||query.districtRef===""?null:campaignRef(query.districtRef);
   const leaderRef=query.leaderRef===undefined||query.leaderRef===""?null:campaignRef(query.leaderRef);
+  const branchRef=query.branchRef===undefined||query.branchRef===""?null:campaignRef(query.branchRef);
   const featured=query.featured??"ALL";
   const start=query.createdFrom??"",end=query.createdTo??"";
   const validDay=(d:unknown):d is string=>typeof d==="string"&&
@@ -426,21 +427,22 @@ export class CampaignDraftsService{
    !Number.isSafeInteger(offset)||offset<0||offset>5000||q.length>80||
    !["ALL","YES","NO"].includes(String(featured))||!validDay(start)||!validDay(end)||
    (start!==""&&end!==""&&start>end)||
-   Object.keys(query).some(k=>!["offset","q","status","stateRef","districtRef","leaderRef","featured","createdFrom","createdTo"].includes(k)))
+   Object.keys(query).some(k=>!["offset","q","status","stateRef","districtRef","leaderRef","branchRef","featured","createdFrom","createdTo"].includes(k)))
    throw invalid("Check the campaign search and date filters.");
   return this.run(token,"campaigns.view",async(tx,a)=>{
    const scope=await this.branches.projectBranchScope(tx,a);
    const args=[a.realmId,scope.all,scope.branches.map(b=>b.value),q,status,
-    stateRef,districtRef,leaderRef,featured,start,end,offset] as const;
+    stateRef,districtRef,leaderRef,featured,start,end,branchRef,offset] as const;
    const rows=(await tx.query(`SELECT ${projection}${joins}
     WHERE c.root_realm_id=$1 AND ($2::boolean OR c.branch_ref=ANY($3::uuid[]))
      AND ($4='' OR strpos(lower(c.title),$4)>0 OR strpos(lower(c.code_norm),$4)>0)
      AND ($5='ALL' OR c.source_status=$5)
      AND ($6::text IS NULL OR r.step2_project_and_geo->>'stateRef'=$6::text)
      AND ($7::text IS NULL OR r.step2_project_and_geo->>'districtRef'=$7::text)
-     AND ($8::text IS NULL OR r.step3_team->>'coordinatorRef'=$8::text)
+     AND ($8::text IS NULL OR COALESCE(r.step3_team->>'coordinatorRef',c.created_by::text)=$8::text)
      AND ($10='' OR (c.created_at AT TIME ZONE 'Asia/Kolkata')::date>=$10::date)
      AND ($11='' OR (c.created_at AT TIME ZONE 'Asia/Kolkata')::date<=$11::date)
+     AND ($12::uuid IS NULL OR c.branch_ref=$12::uuid)
      AND ($9='ALL' OR
        (EXISTS(SELECT 1 FROM cms_page p JOIN cms_page_effective pe
           ON pe.foundation_root_id=p.foundation_root_id AND pe.page_id=p.id
@@ -452,7 +454,7 @@ export class CampaignDraftsService{
           AND pub.effective_at<=now() AND (pub.expires_at IS NULL OR pub.expires_at>now())
           AND sec.section_kind='CAMPAIGN_TEASER'
           AND (sec.structured_fields->'sourceRefs') ? c.id::text))=($9='YES'))
-    ORDER BY c.updated_at DESC,c.id DESC LIMIT 26 OFFSET $12`,[...args])).rows;
+    ORDER BY c.updated_at DESC,c.id DESC LIMIT 26 OFFSET $13`,[...args])).rows;
    const summary=(await tx.query<{total:number;active:number;draft:number;completed:number;cancelled:number;goalMinor:string}>(`
     SELECT count(*)::integer AS total,
       count(*) FILTER (WHERE source_status='APPROVED')::integer AS active,
