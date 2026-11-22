@@ -78,7 +78,7 @@ describe("CG-10 employee draft validation",()=>{
     parseHrDraft({...base(),departmentRef:id}));
   assert.equal(calls.length,1);
   const sql=calls[0];
-  assert.match(sql,/link\\.ended_at IS NULL\\)\\)\\) FOR SHARE$/);
+  assert.match(sql,/link\.ended_at IS NULL\)\)\) FOR SHARE$/);
   assert.equal([...sql].filter(x=>x==="(").length,
     [...sql].filter(x=>x===")").length,
     "unclosed SQL grouping must not block normal employee enrollment");
@@ -108,7 +108,7 @@ describe("CG-10 employee draft validation",()=>{
   assert.equal(directory.items[0]?.departmentRef,id);
   assert.equal(observed.length,2);
   for(const sql of observed){
-    assert.match(sql,/link\\.ended_at IS NULL\\)\\)\\) ORDER BY/);
+    assert.match(sql,/link\.ended_at IS NULL\)\)\) ORDER BY/);
     assert.equal([...sql].filter(x=>x==="(").length,
       [...sql].filter(x=>x===")").length);
   }
