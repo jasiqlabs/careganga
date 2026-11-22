@@ -17,9 +17,10 @@ export function ProjectCoverPanel({projectRef,version,canUpload}:{projectRef:str
  const upload=async()=>{if(!canUpload||!file||running.current)return;running.current=true;setBusy(true);setError("");setMessage("");try{
   if(!mime.includes(file.type)||file.size<1||file.size>10485760)throw Error("Choose a JPEG, PNG or WebP image up to 10 MB.");
   const bytes=await file.arrayBuffer(),hash=Array.from(new Uint8Array(await crypto.subtle.digest("SHA-256",bytes)),x=>x.toString(16).padStart(2,"0")).join("");
-  const prior=command.current,cmd=prior?.hash===hash?prior:{key:crypto.randomUUID(),hash,mime:file.type,size:file.size};command.current=cmd;
+  const prior=command.current,cmd:Command=prior?.hash===hash&&prior.mime===file.type&&prior.size===file.size?prior:{key:crypto.randomUUID(),hash,mime:file.type,size:file.size};command.current=cmd;
   const v=await api<Upload>("intents",{projectRef,projectVersion:version,requestKey:cmd.key,mime:cmd.mime,sizeBytes:cmd.size,sha256:cmd.hash});cmd.intent=v.uploadRef;setIntent(v.uploadRef);
   if(v.cleanVerified){accept(v);return;}
+  if(v.status==="EXPIRED_OR_REJECTED"){command.current=null;setIntent("");throw Error("Original upload expired or was rejected. Choose the image again.");}
   if(v.status!=="UPLOAD_READY"||!v.uploadUrl||!v.uploadHeaders)throw Error("Secure storage is not ready. No cover was accepted.");
   const url=new URL(v.uploadUrl);if(url.protocol!=="https:"||url.username||url.password||url.hash||v.uploadHeaders["Content-Type"]!==cmd.mime)throw Error("Invalid secure upload permission.");
   const sent=await fetch(v.uploadUrl,{method:"PUT",headers:v.uploadHeaders,body:bytes,credentials:"omit",cache:"no-store",signal:AbortSignal.timeout(45000)});
