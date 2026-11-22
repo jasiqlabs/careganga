@@ -61,9 +61,11 @@ export function CampaignDraftsWorkspace({canManage}:{canManage:boolean}){
   [q,setQ]=useState(""),[applied,setApplied]=useState(""),[selected,setSelected]=useState<Row|null>(null),
   [draft,setDraft]=useState<Draft>(blank),[step,setStep]=useState(0),[editing,setEditing]=useState(false),
   [busy,setBusy]=useState(false),[loading,setLoading]=useState(true),[notice,setNotice]=useState(""),
-  [failure,setFailure]=useState(""),[choices,setChoices]=useState<Choices|null>(null);
+  [failure,setFailure]=useState(""),[choices,setChoices]=useState<Choices|null>(null),
+  [savedDraft,setSavedDraft]=useState<Draft>(blank);
  const choiceSeq=useRef(0);
  const pending=useRef<{key:string;body:Record<string,unknown>;method:"POST"|"PATCH";path:string}|null>(null);
+ const submitPending=useRef<{key:string;ref:string;version:number}|null>(null);
  const serial=useRef(0),editingSerial=useRef(0);
  const refresh=useCallback(async()=>{
   const id=++serial.current;setLoading(true);
@@ -82,17 +84,17 @@ export function CampaignDraftsWorkspace({canManage}:{canManage:boolean}){
    .catch(()=>{if(id===choiceSeq.current){setChoices(null);setFailure("Current branch, area or coordinator choices could not be verified.");}});
   return()=>{choiceSeq.current++;};
  },[editing,draft.project.stateRef,draft.project.branchRef]);
- const reset=()=>{if(busy||pending.current)return;editingSerial.current++;setSelected(null);setDraft(blank());setStep(0);setEditing(false);setFailure("");setNotice("");};
- const open=async(row:Row)=>{if(busy||pending.current)return;const id=++editingSerial.current;setLoading(true);setFailure("");
-  try{const result=await api<Row>(row.ref);if(id===editingSerial.current){setSelected(result);setDraft(fromRow(result));setEditing(true);setStep(0);setNotice("");}}
+ const reset=()=>{if(busy||pending.current||submitPending.current)return;editingSerial.current++;setSelected(null);setDraft(blank());setSavedDraft(blank());setStep(0);setEditing(false);setFailure("");setNotice("");};
+ const open=async(row:Row)=>{if(busy||pending.current||submitPending.current)return;const id=++editingSerial.current;setLoading(true);setFailure("");
+  try{const result=await api<Row>(row.ref);if(id===editingSerial.current){setSelected(result);setDraft(fromRow(result));setSavedDraft(fromRow(result));setEditing(true);setStep(0);setNotice("");}}
   catch(e){if(id===editingSerial.current)setFailure(e instanceof Error?e.message:"Campaign detail unavailable.");}
   finally{if(id===editingSerial.current)setLoading(false);}
  };
  const update=<K extends keyof Draft>(kind:K,key:string,value:unknown)=>{
-  if(pending.current)return;
+  if(pending.current||submitPending.current)return;
   setDraft(d=>({...d,[kind]:{...d[kind],[key]:value}}));
  };
- const save=async(e?:FormEvent)=>{e?.preventDefault();if(!canManage||busy)return;setBusy(true);setFailure("");setNotice("");
+ const save=async(e?:FormEvent)=>{e?.preventDefault();if(!canManage||busy||submitPending.current)return;setBusy(true);setFailure("");setNotice("");
   if(!pending.current){
    const key=crypto.randomUUID();
    pending.current={key,method:selected?"PATCH":"POST",path:selected?selected.ref+"/draft":"",
@@ -104,7 +106,7 @@ export function CampaignDraftsWorkspace({canManage}:{canManage:boolean}){
    pending.current=null;
    setNotice("Campaign "+result.code+" saved as a private draft. Approval and public publication have not occurred.");
    const current=await api<Row>(result.ref);
-   setSelected(current);setDraft(fromRow(current));setEditing(true);
+   setSelected(current);setDraft(fromRow(current));setSavedDraft(fromRow(current));setEditing(true);
    void refresh();
   }catch(e){
    const status=e&&typeof e==="object"&&"status" in e?Number(e.status):0;
@@ -112,6 +114,28 @@ export function CampaignDraftsWorkspace({canManage}:{canManage:boolean}){
    setFailure(e instanceof Error?e.message:"Campaign result uncertain. Check the saved draft.");
   }finally{setBusy(false);}
  };
+ const submitForReview=async()=>{
+  if(!canManage||busy||pending.current||!selected||selected.status!=="DRAFT")return;
+  if(JSON.stringify(draft)!==JSON.stringify(savedDraft)){
+   setFailure("Save your latest six-step campaign changes before submitting for independent verification.");
+   return;
+  }
+  setBusy(true);setFailure("");setNotice("");
+  if(!submitPending.current)submitPending.current={key:crypto.randomUUID(),ref:selected.ref,version:selected.version};
+  const command=submitPending.current;
+  try{
+   const result=await api<{reference:string;status:string;replayed:boolean}>(
+    command.ref+"/submit","POST",{requestKey:command.key,expectedVersion:command.version});
+   submitPending.current=null;
+   setNotice("Campaign submitted as "+result.reference+" for independent Foundation verification. It is not yet public or eligible for donations.");
+   setEditing(false);setSelected(null);setSavedDraft(blank());setDraft(blank());void refresh();
+  }catch(e){
+   const status=e&&typeof e==="object"&&"status" in e?Number(e.status):0;
+   if(status>0&&status<500&&![408,429].includes(status))submitPending.current=null;
+   setFailure(e instanceof Error?e.message:"Submission outcome unknown. Retry using the same original request.");
+  }finally{setBusy(false);}
+ };
+ const hasUnsavedChanges=JSON.stringify(draft)!==JSON.stringify(savedDraft);
  const select=(label:string,value:string|null,items:Choice[],change:(v:string|null)=>void,empty:string)=>
   <label style={field}>{label}<select style={entry} disabled={busy||!canManage||!!pending.current||!choices}
    value={value??""} onChange={e=>change(e.target.value||null)}>
@@ -204,11 +228,17 @@ export function CampaignDraftsWorkspace({canManage}:{canManage:boolean}){
      <p><strong>Category:</strong> {draft.project.category} · <strong>Location:</strong> {draft.project.location||"Not selected"}</p>
      <p><strong>Goal:</strong> {draft.budget.goal||"Not entered"} INR · <strong>Expected cost:</strong> {draft.budget.expectedCost||"Not entered"} INR</p>
      <p><strong>Dates:</strong> {draft.budget.startAt||"Not entered"} – {draft.budget.endAt||"Not entered"}</p>
-     <p>Submit for Verification will be enabled only when genuine independent CG-03 campaign review and separate CG-18 publication sources are connected. Saving a draft is not approval.</p>
-     <button type="button" disabled aria-disabled="true">Submit for Verification (not yet available)</button>
+     <p>Submit creates an original CG-03 independent approval case. Even after approval, separate CG-18 editorial publication and donation eligibility are required.</p>
+     {canManage&&<button type="button" disabled={busy||!!pending.current||!selected||
+      selected.status!=="DRAFT"||hasUnsavedChanges}
+       onClick={()=>void submitForReview()}>
+       {submitPending.current?"Retry original verification request":"Submit for Verification"}
+      </button>}
+     {hasUnsavedChanges&&selected&&<p>Save changes as a draft first to pin the exact revision.</p>}
     </>}
     {failure&&<p role="alert">{failure}</p>}{notice&&<p role="status">{notice}</p>}
     {pending.current&&<p role="alert">Original save outcome unknown. Retry the same request; do not change campaign fields until confirmed.</p>}
+    {submitPending.current&&<p role="alert">Review submission outcome may be uncertain; retry with its original request key before changing the draft.</p>}
     <div style={actions}>
      <button type="button" disabled={busy||step===0||!!pending.current} onClick={()=>setStep(v=>Math.max(0,v-1))}>Previous</button>
      <button type="button" disabled={busy||step===5||!!pending.current} onClick={()=>setStep(v=>Math.min(5,v+1))}>Next</button>
