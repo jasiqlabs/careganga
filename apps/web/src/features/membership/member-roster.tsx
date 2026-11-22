@@ -1,6 +1,7 @@
 "use client";
 import {useEffect,useRef,useState,type FormEvent} from "react";
 import type {CG04RosterPage,CG04RosterExport} from "@careganga/api-contracts";
+import {MemberDocumentManager} from "./member-document-manager";
 const categories={ALL:"All tiers",ANNUAL:"Annual",LIFETIME:"Lifetime",HONORARY:"Honorary",STUDENT:"Student",OTHER:"Other"};
 const statuses={ALL:"All statuses",ACTIVE:"Active",EXPIRED:"Expired",SUSPENDED:"Suspended",CANCELLED:"Cancelled"};
 const human=(v:string)=>v.replaceAll("_"," ").toLowerCase().replace(/\b[a-z]/g,c=>c.toUpperCase());
@@ -12,7 +13,7 @@ async function request<T>(url:string):Promise<T>{
  if(!r.ok||data===null)throw Object.assign(new Error(typeof data?.message==="string"?data.message:"Membership roster could not be confirmed."),{status:r.status});
  return data as T;
 }
-export function MemberRoster({canExport=false}:{canExport?:boolean}){
+export function MemberRoster({canExport=false,canIssueDocs=false}:{canExport?:boolean;canIssueDocs?:boolean}){
  const [draft,setDraft]=useState<Filter>(initial),[filter,setFilter]=useState<Filter>(initial),[cursor,setCursor]=useState(""),[history,setHistory]=useState<string[]>([]);
  const [page,setPage]=useState<CG04RosterPage|null>(null),[selectedRef,setSelectedRef]=useState<string|null>(null),[busy,setBusy]=useState(false),[loading,setLoading]=useState(true),[error,setError]=useState(""),[notice,setNotice]=useState(""),[epoch,setEpoch]=useState(0);
  const seq=useRef(0);
@@ -48,6 +49,7 @@ export function MemberRoster({canExport=false}:{canExport?:boolean}){
  return <section className="cg04-panel cg04-roster" aria-label="Patron roster directory">
  <div className="cg04-roster-head"><div><h2>Patron Roster Directory</h2><p className="cg04-muted">Approved members only. The current role and permitted Foundation locations determine which records appear.</p></div>
  {canExport&&<button type="button" disabled={busy||loading} onClick={()=>void exportCsv()}>Export Members</button>}</div>
+ {canIssueDocs&&<MemberDocumentManager memberRef={chosen?.ref} memberNumber={chosen?.memberNumber}/>}
  <nav className="cg04-roster-tabs" aria-label="Membership quick filters">{presets.map(x=><button key={x.key} type="button" disabled={busy||loading} aria-pressed={currentPreset===x.key} onClick={()=>preset(x.key)} title={x.key==="GENERAL"?"Members with no joining fee":x.key==="PAID"?"Members with an accepted joining fee":undefined}>{x.label}</button>)}</nav>
  {!!error&&<p className="cg04-error" role="alert">{error} <button type="button" onClick={()=>setEpoch(x=>x+1)}>Try again</button></p>}
  {!!notice&&<p role="status">{notice}</p>}
