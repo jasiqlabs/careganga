@@ -1,12 +1,13 @@
 "use client";
 import {useCallback,useEffect,useRef,useState} from "react";
-type Day={date:string;status:string;checkInAt:string;checkOutAt:string|null;workedMinutes:number|null};
+import {HrMyLeave,HrLeaveReviews} from "./hr-leave";
+type Day={date:string;status:string;checkInAt:string|null;checkOutAt:string|null;workedMinutes:number|null;leaveDays:number};
 type Self={status:string;canCheckOut?:boolean;shift?:{label:string;timeZone:string;start:string;end:string;weeklyOffDays:number[]}|null;days:Day[]};
 type Branch={branchRef:string;label:string};
 type Employee={reference:string;name:string;designation:string};
 type Rule={policyRef:string;label:string;timeZone:string;start:string;end:string;effectiveFrom:string};
 type Matrix={month:string;items:Array<{employeeName:string;designation:string;
- days:Array<{date:string;status:string}>}>;hasMore:boolean;offset:number};
+ days:Array<{date:string;status:string;leaveDays:number}>}>;hasMore:boolean;offset:number};
 const inputStyle={padding:10,border:"1px solid #CBD5E1",borderRadius:9,width:"100%",minWidth:0} as const;
 const btn={padding:"10px 13px",border:0,borderRadius:9,color:"#fff",background:"#087F8C",fontWeight:700,cursor:"pointer"} as const;
 async function api(path:string,init?:RequestInit){
@@ -76,7 +77,7 @@ function HrLeavePolicies(){
   {more&&<p>Showing the latest 100 policy versions.</p>}
  </div>;
 }
-export function HrAttendance({canConfigure=false,canManageLeave=false}:{canConfigure?:boolean;canManageLeave?:boolean}){
+export function HrAttendance({canConfigure=false,canManageLeave=false,canReviewLeave=false}:{canConfigure?:boolean;canManageLeave?:boolean;canReviewLeave?:boolean}){
  const [mine,setMine]=useState<Self|null>(null),[loading,setLoading]=useState(true);
  const [busy,setBusy]=useState(false),[error,setError]=useState(""),[notice,setNotice]=useState("");
  const [branches,setBranches]=useState<Branch[]>([]),[branch,setBranch]=useState("");
@@ -199,8 +200,8 @@ export function HrAttendance({canConfigure=false,canManageLeave=false}:{canConfi
     <table style={{width:"100%",borderCollapse:"collapse"}}>
      <thead><tr><th scope="col">Shift date</th><th scope="col">Result</th>
       <th scope="col">Check-in</th><th scope="col">Check-out</th><th scope="col">Worked time</th></tr></thead>
-     <tbody>{mine.days.map(d=><tr key={d.date}><td>{d.date}</td><td>{d.status}</td>
-      <td>{new Date(d.checkInAt).toLocaleString()}</td>
+     <tbody>{mine.days.map(d=><tr key={d.date}><td>{d.date}</td><td>{d.status}{d.leaveDays>0&&" · "+d.leaveDays+" day approved leave"}</td>
+      <td>{d.checkInAt?new Date(d.checkInAt).toLocaleString():"—"}</td>
       <td>{d.checkOutAt?new Date(d.checkOutAt).toLocaleString():"Pending"}</td>
       <td>{d.workedMinutes===null?"—":Math.floor(d.workedMinutes/60)+"h "+d.workedMinutes%60+"m"}</td>
      </tr>)}</tbody>
@@ -261,7 +262,7 @@ export function HrAttendance({canConfigure=false,canManageLeave=false}:{canConfi
      onClick={()=>void assign()}>Assign shift</button>
     <div style={{borderTop:"1px solid #E2E8F0",paddingTop:12,display:"grid",gap:9}}>
      <h3 style={{margin:0}}>Branch attendance</h3>
-     <p style={{margin:0,color:"#64748B"}}>Only recorded check-ins are shown. A missing record is not proof of absence or approved leave.</p>
+     <p style={{margin:0,color:"#64748B"}}>Recorded attendance and approved leave are shown. A missing record is not proof of absence.</p>
      <label>Month<input style={inputStyle} type="month" value={month}
       onChange={e=>{setMonth(e.target.value);setMatrixOffset(0);}}/></label>
      {matrixBusy&&<p>Loading attendance records…</p>}
@@ -270,8 +271,8 @@ export function HrAttendance({canConfigure=false,canManageLeave=false}:{canConfi
        <thead><tr><th scope="col">Employee</th><th scope="col">Verified day records</th></tr></thead>
        <tbody>{matrix.items.map((x,i)=><tr key={x.employeeName+"-"+i}>
         <td>{x.employeeName} — {x.designation}</td>
-        <td>{x.days.length?x.days.map(d=>d.date+": "+d.status).join("; "):
-          "No check-in recorded for this month"}</td>
+        <td>{x.days.length?x.days.map(d=>d.date+": "+d.status+(d.leaveDays>0?" · "+d.leaveDays+" day leave":"")).join("; "):
+          "No attendance or approved leave recorded for this month"}</td>
        </tr>)}</tbody>
       </table></div>}
      {matrixOffset>0&&<button type="button"
@@ -281,6 +282,8 @@ export function HrAttendance({canConfigure=false,canManageLeave=false}:{canConfi
     </div>
    </>}
   </div>}
+  <HrMyLeave onChanged={()=>void refresh()}/>
   {canManageLeave&&<HrLeavePolicies/>}
+  {canReviewLeave&&<HrLeaveReviews onChanged={()=>void refresh()}/>}
  </section>;
 }

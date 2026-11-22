@@ -9,6 +9,10 @@ function allowed(parts:string[],method:string){
  if(parts.length===2&&parts[0]==="attendance"&&parts[1]==="matrix")return method==="GET";
  if(parts.length===1&&["shift-policies","leave-policies"].includes(parts[0]))return method==="GET"||method==="POST";
  if(parts.length===1&&parts[0]==="shift-assignments")return method==="POST";
+ if(parts.length===2&&parts[0]==="me"&&parts[1]==="leave")return method==="GET"||method==="POST";
+ if(parts.length===1&&parts[0]==="leave-reviews")return method==="GET";
+ if(parts.length===2&&parts[0]==="leave-reviews"&&UUID.test(parts[1]))return method==="GET";
+ if(parts.length===3&&parts[0]==="leave-reviews"&&UUID.test(parts[1])&&parts[2]==="decide")return method==="POST";
  if(parts.length===2&&parts[0]==="me"&&parts[1]==="attendance")return method==="GET";
  if(parts.length===3&&parts[0]==="me"&&parts[1]==="attendance"&&
   ["check-in","check-out"].includes(parts[2]))return method==="POST";

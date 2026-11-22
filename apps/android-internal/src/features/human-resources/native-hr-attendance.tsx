@@ -2,14 +2,15 @@ import React,{useCallback,useEffect,useRef,useState} from "react";
 import {ActivityIndicator,Pressable,StyleSheet,Text,TextInput,View} from "react-native";
 import * as Crypto from "expo-crypto";
 import {identityRequest} from "../identity-access/http-client";
+import {NativeHrMyLeave,NativeHrLeaveReviews} from "./native-hr-leave";
 
-type Day={date:string;status:string;checkInAt:string;checkOutAt:string|null;workedMinutes:number|null};
+type Day={date:string;status:string;checkInAt:string|null;checkOutAt:string|null;workedMinutes:number|null;leaveDays:number};
 type Mine={status:string;canCheckOut?:boolean;shift?:{label:string;timeZone:string;start:string;end:string}|null;days:Day[]};
 type Branch={branchRef:string;label:string};
 type Person={reference:string;name:string;designation:string};
 type Rule={policyRef:string;label:string;timeZone:string;start:string;end:string;effectiveFrom:string};
 type Matrix={items:Array<{employeeName:string;designation:string;
- days:Array<{date:string;status:string}>}>;hasMore:boolean};
+ days:Array<{date:string;status:string;leaveDays:number}>}>;hasMore:boolean};
 const today=()=>new Date().toISOString().slice(0,10); // admin policy date input only
 async function api(token:string,path:string,method="GET",body?:object):Promise<unknown>{
  const res=await identityRequest("/api/hr/"+path,{method,cache:"no-store",
@@ -93,8 +94,8 @@ function NativeHrLeavePolicies({token,onExpired}:{token:string;onExpired:()=>voi
  </View>;
 }
 /** Internal Android parity for the original CG10 shift + self check-in API. */
-export function NativeHrAttendance({token,canConfigure,canManageLeave=false,onExpired}:{
- token:string;canConfigure:boolean;canManageLeave?:boolean;onExpired:()=>void
+export function NativeHrAttendance({token,canConfigure,canManageLeave=false,canReviewLeave=false,onExpired}:{
+ token:string;canConfigure:boolean;canManageLeave?:boolean;canReviewLeave?:boolean;onExpired:()=>void
 }){
  const [mine,setMine]=useState<Mine|null>(null),[busy,setBusy]=useState(false);
  const [loading,setLoading]=useState(true),[error,setError]=useState(""),[message,setMessage]=useState("");
@@ -234,8 +235,8 @@ export function NativeHrAttendance({token,canConfigure,canManageLeave=false,onEx
    <Pressable accessibilityRole="button" onPress={()=>void refresh()} style={styles.outline}>
     <Text style={styles.outlineText}>Refresh attendance</Text></Pressable>
    {mine?.days?.map(d=><View key={d.date} style={styles.listItem}>
-    <Text style={styles.label}>{d.date} · {d.status}</Text>
-    <Text style={styles.muted}>Check-in: {new Date(d.checkInAt).toLocaleString()}</Text>
+    <Text style={styles.label}>{d.date} · {d.status}{d.leaveDays>0?" · "+d.leaveDays+" day approved leave":""}</Text>
+    <Text style={styles.muted}>Check-in: {d.checkInAt?new Date(d.checkInAt).toLocaleString():"—"}</Text>
     <Text style={styles.muted}>Check-out: {d.checkOutAt?
      new Date(d.checkOutAt).toLocaleString():"Pending"}</Text>
     {d.workedMinutes!==null&&<Text style={styles.muted}>
@@ -303,15 +304,15 @@ export function NativeHrAttendance({token,canConfigure,canManageLeave=false,onEx
      <Text style={styles.primaryText}>Assign employee shift</Text></Pressable>
     <View style={styles.listItem}>
      <Text style={styles.title}>Branch attendance</Text>
-     <Text style={styles.muted}>Only actual check-ins are shown. Unrecorded is not absent or approved leave.</Text>
+     <Text style={styles.muted}>Recorded attendance and approved leave are shown. Unrecorded is not absent.</Text>
      {field("Month YYYY-MM",month,v=>{setMonth(v);setMatrixOffset(0);},"YYYY-MM")}
      {matrixBusy&&<ActivityIndicator accessibilityLabel="Loading staff attendance"/>}
      {matrix?.items.map((x,i)=><View style={styles.listItem}
       key={x.employeeName+"-"+String(i)}>
       <Text style={styles.label}>{x.employeeName} · {x.designation}</Text>
       {x.days.length?x.days.map(d=><Text style={styles.muted}
-       key={d.date}>{d.date}: {d.status}</Text>):
-       <Text style={styles.muted}>No recorded check-in this month.</Text>}
+       key={d.date}>{d.date}: {d.status}{d.leaveDays>0?" · "+d.leaveDays+" day leave":""}</Text>):
+       <Text style={styles.muted}>No attendance or approved leave recorded this month.</Text>}
      </View>)}
      {matrixOffset>0&&<Pressable accessibilityRole="button" style={styles.outline}
       onPress={()=>setMatrixOffset(v=>Math.max(0,v-25))}>
@@ -322,7 +323,9 @@ export function NativeHrAttendance({token,canConfigure,canManageLeave=false,onEx
     </View>
    </>}
   </View>}
+  <NativeHrMyLeave token={token} onExpired={onExpired} onChanged={()=>void refresh()}/>
   {canManageLeave&&<NativeHrLeavePolicies token={token} onExpired={onExpired}/>}
+  {canReviewLeave&&<NativeHrLeaveReviews token={token} onExpired={onExpired} onChanged={()=>void refresh()}/>}
  </View>;
 }
 const styles=StyleSheet.create({
