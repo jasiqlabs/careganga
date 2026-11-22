@@ -18,7 +18,65 @@ async function api(path:string,init?:RequestInit){
  return payload;
 }
 const today=()=>new Date().toISOString().slice(0,10); // Admin policy effective date input, not attendance clock.
-export function HrAttendance({canConfigure=false}:{canConfigure?:boolean}){
+type LeaveRule={policyRef:string;leaveType:string;annualHalfDays:number;allowHalfDays:boolean;
+ countWeeklyOff:boolean;effectiveFrom:string;effectiveTo:string|null;version:number};
+function HrLeavePolicies(){
+ const [items,setItems]=useState<LeaveRule[]>([]),[more,setMore]=useState(false);
+ const [form,setForm]=useState({leaveType:"",annualDays:"",allowHalfDays:false,
+  countWeeklyOff:false,effectiveFrom:today()});
+ const [busy,setBusy]=useState(false),[loading,setLoading]=useState(true);
+ const [error,setError]=useState(""),[notice,setNotice]=useState("");
+ const key=useRef<string|null>(null);
+ const refresh=useCallback(async()=>{
+  setLoading(true);
+  try{const v=await api("leave-policies");
+   if(!v||typeof v!=="object"||!("items" in v)||!Array.isArray(v.items))
+    throw Error("Leave policies could not be confirmed");
+   setItems(v.items as LeaveRule[]);setMore("hasMore" in v&&v.hasMore===true);setError("");
+  }catch(e){setItems([]);setMore(false);setError(e instanceof Error?e.message:"Leave policies unavailable");}
+  finally{setLoading(false);}
+ },[]);
+ useEffect(()=>{void refresh();},[refresh]);
+ const update=<K extends keyof typeof form,>(field:K,value:(typeof form)[K])=>{
+  key.current=null;setForm(x=>({...x,[field]:value}));
+ };
+ const save=async()=>{
+  if(busy)return;setBusy(true);setNotice("");setError("");
+  const requestKey=key.current??crypto.randomUUID();key.current=requestKey;
+  try{const v=await api("leave-policies",{method:"POST",body:JSON.stringify({
+   requestKey,leaveType:form.leaveType,annualHalfDays:Number(form.annualDays)*2,
+   allowHalfDays:form.allowHalfDays,countWeeklyOff:form.countWeeklyOff,effectiveFrom:form.effectiveFrom})});
+   if(!v||typeof v!=="object"||!("saved" in v)||v.saved!==true)throw Error("Leave policy save could not be confirmed");
+   key.current=null;setNotice("Leave policy version saved.");await refresh();
+  }catch(e){setError(e instanceof Error?e.message:"Save result uncertain. Refresh before retrying.");}
+  finally{setBusy(false);}
+ };
+ return <div style={{background:"#fff",border:"1px solid #E2E8F0",borderRadius:15,padding:18,display:"grid",gap:12}}>
+  <h2 style={{margin:0}}>Leave policies</h2>
+  <p style={{margin:0,color:"#64748B"}}>Set Foundation-wide annual entitlement. A newer effective date creates a new version of the same leave type.</p>
+  {error&&<p role="alert">{error}</p>}{notice&&<p role="status">{notice}</p>}
+  <fieldset disabled={busy} style={{border:0,padding:0,display:"grid",gap:10}}>
+   <label>Leave type<input style={inputStyle} maxLength={80} value={form.leaveType}
+    onChange={e=>update("leaveType",e.target.value)}/></label>
+   <label>Annual entitlement (days)<input style={inputStyle} type="number" min={0.5} max={366}
+    step={form.allowHalfDays?0.5:1} value={form.annualDays} onChange={e=>update("annualDays",e.target.value)}/></label>
+   <label>Effective date<input style={inputStyle} type="date" value={form.effectiveFrom}
+    onChange={e=>update("effectiveFrom",e.target.value)}/></label>
+   <label><input type="checkbox" checked={form.allowHalfDays} onChange={e=>update("allowHalfDays",e.target.checked)}/> Allow half-day leave</label>
+   <label><input type="checkbox" checked={form.countWeeklyOff} onChange={e=>update("countWeeklyOff",e.target.checked)}/> Count weekly days off within leave</label>
+   <button type="button" style={btn} disabled={!form.leaveType.trim()||!form.annualDays||!form.effectiveFrom}
+    onClick={()=>void save()}>Save leave policy</button>
+  </fieldset>
+  <button type="button" disabled={busy||loading} onClick={()=>void refresh()}>Refresh policies</button>
+  {loading?<p>Loading leave policies…</p>:!error&&!items.length?<p>No leave policy configured.</p>:null}
+  {items.map(x=><div key={x.policyRef} style={{borderTop:"1px solid #E2E8F0",paddingTop:8}}>
+   <strong>{x.leaveType}</strong> · {x.annualHalfDays/2} days annually · Version {x.version}
+   <p style={{margin:0}}>From {x.effectiveFrom}{x.effectiveTo?" until "+x.effectiveTo+" (exclusive)":""} · {x.allowHalfDays?"Half-days allowed":"Full days only"} · {x.countWeeklyOff?"Weekly off counted":"Weekly off excluded"}</p>
+  </div>)}
+  {more&&<p>Showing the latest 100 policy versions.</p>}
+ </div>;
+}
+export function HrAttendance({canConfigure=false,canManageLeave=false}:{canConfigure?:boolean;canManageLeave?:boolean}){
  const [mine,setMine]=useState<Self|null>(null),[loading,setLoading]=useState(true);
  const [busy,setBusy]=useState(false),[error,setError]=useState(""),[notice,setNotice]=useState("");
  const [branches,setBranches]=useState<Branch[]>([]),[branch,setBranch]=useState("");
@@ -223,5 +281,6 @@ export function HrAttendance({canConfigure=false}:{canConfigure?:boolean}){
     </div>
    </>}
   </div>}
+  {canManageLeave&&<HrLeavePolicies/>}
  </section>;
 }

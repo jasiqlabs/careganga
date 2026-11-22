@@ -26,9 +26,75 @@ async function api(token:string,path:string,method="GET",body?:object):Promise<u
  }
  return data;
 }
+type LeaveRule={policyRef:string;leaveType:string;annualHalfDays:number;allowHalfDays:boolean;
+ countWeeklyOff:boolean;effectiveFrom:string;effectiveTo:string|null;version:number};
+function NativeHrLeavePolicies({token,onExpired}:{token:string;onExpired:()=>void}){
+ const [items,setItems]=useState<LeaveRule[]>([]),[more,setMore]=useState(false);
+ const [form,setForm]=useState({leaveType:"",annualDays:"",allowHalfDays:false,
+  countWeeklyOff:false,effectiveFrom:today()});
+ const [busy,setBusy]=useState(false),[loading,setLoading]=useState(true);
+ const [error,setError]=useState(""),[notice,setNotice]=useState("");
+ const key=useRef<string|null>(null);
+ const failure=useCallback((e:unknown)=>{
+  if(e&&typeof e==="object"&&"status" in e&&e.status===401)onExpired();
+  setError(e instanceof Error?e.message:"Unable to confirm leave policy");
+ },[onExpired]);
+ const refresh=useCallback(async()=>{
+  setLoading(true);
+  try{const v=await api(token,"leave-policies");
+   if(!v||typeof v!=="object"||!("items" in v)||!Array.isArray(v.items))
+    throw Error("Leave policies could not be confirmed");
+   setItems(v.items as LeaveRule[]);setMore("hasMore" in v&&v.hasMore===true);setError("");
+  }catch(e){setItems([]);setMore(false);failure(e);}finally{setLoading(false);}
+ },[token,failure]);
+ useEffect(()=>{void refresh();},[refresh]);
+ const update=<K extends keyof typeof form,>(field:K,value:(typeof form)[K])=>{
+  key.current=null;setForm(x=>({...x,[field]:value}));
+ };
+ const save=async()=>{
+  if(busy)return;setBusy(true);setError("");setNotice("");
+  const requestKey=key.current??Crypto.randomUUID();key.current=requestKey;
+  try{const v=await api(token,"leave-policies","POST",{requestKey,leaveType:form.leaveType,
+   annualHalfDays:Number(form.annualDays)*2,allowHalfDays:form.allowHalfDays,
+   countWeeklyOff:form.countWeeklyOff,effectiveFrom:form.effectiveFrom});
+   if(!v||typeof v!=="object"||!("saved" in v)||v.saved!==true)throw Error("Leave policy save could not be confirmed");
+   key.current=null;setNotice("Leave policy version saved.");await refresh();
+  }catch(e){failure(e);}finally{setBusy(false);}
+ };
+ const field=(label:string,value:string,onChange:(v:string)=>void)=><View style={styles.field}>
+  <Text style={styles.label}>{label}</Text><TextInput accessibilityLabel={label}
+   style={styles.input} editable={!busy} value={value} onChangeText={onChange}/></View>;
+ return <View style={styles.card}>
+  <Text style={styles.title}>Leave policies</Text>
+  <Text style={styles.muted}>Set Foundation-wide annual entitlement. A newer effective date creates a new version.</Text>
+  {!!error&&<Text accessibilityRole="alert" style={styles.error}>{error}</Text>}
+  {!!notice&&<Text style={styles.success}>{notice}</Text>}
+  {field("Leave type",form.leaveType,v=>update("leaveType",v))}
+  {field("Annual entitlement (days)",form.annualDays,v=>update("annualDays",v))}
+  {field("Effective date YYYY-MM-DD",form.effectiveFrom,v=>update("effectiveFrom",v))}
+  <Pressable accessibilityRole="checkbox" accessibilityState={{checked:form.allowHalfDays,disabled:busy}}
+   disabled={busy} style={styles.outline} onPress={()=>update("allowHalfDays",!form.allowHalfDays)}>
+   <Text style={styles.outlineText}>Half-day leave: {form.allowHalfDays?"Allowed":"Not allowed"}</Text></Pressable>
+  <Pressable accessibilityRole="checkbox" accessibilityState={{checked:form.countWeeklyOff,disabled:busy}}
+   disabled={busy} style={styles.outline} onPress={()=>update("countWeeklyOff",!form.countWeeklyOff)}>
+   <Text style={styles.outlineText}>Weekly days off: {form.countWeeklyOff?"Counted":"Excluded"}</Text></Pressable>
+  <Pressable accessibilityRole="button" disabled={busy||!form.leaveType.trim()||!form.annualDays||!form.effectiveFrom}
+   style={styles.primary} onPress={()=>void save()}><Text style={styles.primaryText}>Save leave policy</Text></Pressable>
+  <Pressable accessibilityRole="button" disabled={busy||loading} style={styles.outline} onPress={()=>void refresh()}>
+   <Text style={styles.outlineText}>Refresh policies</Text></Pressable>
+  {loading?<ActivityIndicator accessibilityLabel="Loading leave policies"/>:!error&&!items.length?
+   <Text style={styles.muted}>No leave policy configured.</Text>:null}
+  {items.map(x=><View key={x.policyRef} style={styles.listItem}>
+   <Text style={styles.label}>{x.leaveType} · {x.annualHalfDays/2} days annually · Version {x.version}</Text>
+   <Text style={styles.muted}>From {x.effectiveFrom}{x.effectiveTo?" until "+x.effectiveTo+" (exclusive)":""}
+    {" · "+(x.allowHalfDays?"Half-days allowed":"Full days only")+" · "+(x.countWeeklyOff?"Weekly off counted":"Weekly off excluded")}</Text>
+  </View>)}
+  {more&&<Text style={styles.muted}>Showing the latest 100 policy versions.</Text>}
+ </View>;
+}
 /** Internal Android parity for the original CG10 shift + self check-in API. */
-export function NativeHrAttendance({token,canConfigure,onExpired}:{
- token:string;canConfigure:boolean;onExpired:()=>void
+export function NativeHrAttendance({token,canConfigure,canManageLeave=false,onExpired}:{
+ token:string;canConfigure:boolean;canManageLeave?:boolean;onExpired:()=>void
 }){
  const [mine,setMine]=useState<Mine|null>(null),[busy,setBusy]=useState(false);
  const [loading,setLoading]=useState(true),[error,setError]=useState(""),[message,setMessage]=useState("");
@@ -256,6 +322,7 @@ export function NativeHrAttendance({token,canConfigure,onExpired}:{
     </View>
    </>}
   </View>}
+  {canManageLeave&&<NativeHrLeavePolicies token={token} onExpired={onExpired}/>}
  </View>;
 }
 const styles=StyleSheet.create({

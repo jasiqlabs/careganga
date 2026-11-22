@@ -32,9 +32,9 @@ async function api(token:string,path:string,method="GET",body?:object){
  ),{status:response.status});
  return response.json() as Promise<unknown>;
 }
-export function NativeHrEnrollment({token,canView,canManage,canReview,canViewEmployees,canSelectAccounts,canSelectRoles,canViewPrivate,canManagePrivate,canConfigureReviews,canConfigureAttendance,onExit,onExpired}:{
+export function NativeHrEnrollment({token,canView,canManage,canReview,canViewEmployees,canSelectAccounts,canSelectRoles,canViewPrivate,canManagePrivate,canConfigureReviews,canConfigureAttendance,canManageLeave=false,onExit,onExpired}:{
  token:string;canView:boolean;canManage:boolean;canReview:boolean;canViewEmployees:boolean;canSelectAccounts:boolean;
- canSelectRoles:boolean;canViewPrivate:boolean;canManagePrivate:boolean;canConfigureReviews:boolean;canConfigureAttendance:boolean;
+ canSelectRoles:boolean;canViewPrivate:boolean;canManagePrivate:boolean;canConfigureReviews:boolean;canConfigureAttendance:boolean;canManageLeave?:boolean;
  onExit:()=>void;onExpired:()=>void
 }){
  const [apps,setApps]=useState<Application[]>([]);
@@ -355,7 +355,7 @@ export function NativeHrEnrollment({token,canView,canManage,canReview,canViewEmp
    </View>
    <NativeHrBioConsent token={token} onExpired={onExpired}/>
    <NativeHrAttendance token={token} onExpired={onExpired}
-     canConfigure={canConfigureAttendance}/>
+     canConfigure={canConfigureAttendance} canManageLeave={canManageLeave}/>
    {canManage&&<View style={styles.card}>
     <Text style={styles.h2}>{selected?"Correct application draft":"Create employee draft"}</Text>
     <Text style={styles.muted}>Saving never activates an employee or grants system access.
