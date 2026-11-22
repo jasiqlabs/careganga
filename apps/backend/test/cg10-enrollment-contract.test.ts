@@ -1,6 +1,7 @@
 import {describe,test} from "node:test";
 import assert from "node:assert/strict";
-import {BadRequestException} from "@nestjs/common";
+import {BadRequestException,ConflictException} from "@nestjs/common";
+import {HrEnrollmentSourceFacade,sourceHash} from "../src/modules/cg-10-human-resources/application/hr-enrollment-source.facade";
 import {HrEnrollmentService,parseHrDraft} from "../src/modules/cg-10-human-resources/application/hr-enrollment.service";
 
 /** CG-10 US-001: executable, pure DTO contract tests.
@@ -140,5 +141,34 @@ describe("CG-10 B20 scoped dashboard",()=>{
   assert.deepEqual(result.departments,[{label:"Operations",count:2}]);
   assert.deepEqual(result.joiners,[{month:"2026-11",count:1}]);
   assert.equal(result.total,2);
+ });
+});
+
+describe("CG-10 original enrollment source integrity",()=>{
+ test("current frozen approval asserts ciphertext version and digest without reading private plaintext",async()=>{
+  const digest="a".repeat(64),snapshot={id,root_realm_id:id,revision_no:1,private_record_version:2,private_payload_digest:digest};
+  const row={application_id:id,root_realm_id:id,revision_no:1,source_digest:sourceHash(snapshot),submitted_by:id,private_file_versions:[],source_snapshot:snapshot,app_state:"SUBMITTED",app_revision_no:1};
+  const service=Object.create(HrEnrollmentSourceFacade.prototype) as HrEnrollmentSourceFacade;
+  const sql:string[]=[];let privateDigest=digest;
+  const tx={query:async(q:string)=>{
+   sql.push(q);
+   return {rows:q.includes("FROM hr_application_private")?[{record_version:2,payload_digest:privateDigest}]:[row]};
+  }} as unknown as Parameters<HrEnrollmentSourceFacade["frozen"]>[0];
+  await service.frozen(tx,id,id,1,row.source_digest);
+  assert.ok(sql.some(q=>q.includes("SELECT record_version,payload_digest")&&q.includes("FOR SHARE")));
+  assert.ok(sql.every(q=>!q.includes("payload_ciphertext")));
+  privateDigest="b".repeat(64);
+  await assert.rejects(service.frozen(tx,id,id,1,row.source_digest),ConflictException);
+  // Historical inspection does not confuse a later authorized correction with the old snapshot.
+  await service.frozen(tx,id,id,1,row.source_digest,false);
+ });
+ test("same submitted key cannot replay a different document set",async()=>{
+  const initial={fileRef:id,fileVersion:1,classification:"HR_IDENTITY_PROOF"};
+  const app={id,cg03_case_ref:id};
+  const tx={query:async(q:string)=>({rows:q.startsWith("SELECT * FROM hr_employee_application")?[app]:q.includes("FROM cg03_case c")?[{id,case_number:"CG-AP-000001",request_key:id,hr_revision_no:1,status:"SUBMITTED",private_file_versions:[initial]}]:[]}),release:()=>{}};
+  const service=Object.create(HrEnrollmentService.prototype) as HrEnrollmentService;
+  Object.assign(service,{sessions:{requireAction:async()=>({realmId:id,accountId:id})},db:{connect:async()=>tx},source:{draft:async()=>app}});
+  assert.equal((await service.submit("test",id,{requestKey:id,expectedRevision:1,files:[initial]})).replayed,true);
+  await assert.rejects(service.submit("test",id,{requestKey:id,expectedRevision:1,files:[{...initial,fileVersion:2}]}),ConflictException);
  });
 });
