@@ -6,6 +6,7 @@ import {DATABASE} from "../../../core/infrastructure/database.module";
 import {publicCampaignSources} from "./campaign-public-source";
 import {DonationOnlineService} from "./donation-online.service";
 import {parseDonationIntent} from "../domain/donation-input";
+import {verifiedDonationPeer} from "../domain/public-donation-ingress";
 type DonationRow={id:string;request_digest:string;source_status:string;amount_minor:string;
  currency:string;campaign_id:string|null;status_token_expires_at:Date;created_at:Date};
 const digest=(x:unknown)=>createHash("sha256").update(JSON.stringify(x)).digest("hex");
@@ -31,9 +32,7 @@ export class DonationIntentsService{
  constructor(@Inject(DATABASE)private readonly db:Pool,
   private readonly online:DonationOnlineService){}
  private async limit(req:object,scope:"create"|"status"){
-  const remote=(req as {socket?:{remoteAddress?:string}}).socket?.remoteAddress;
-  if(typeof remote!=="string"||remote.length>80||!/^[0-9a-fA-F:.]{2,80}$/.test(remote))
-   throw new ServiceUnavailableException("Donation request verification is unavailable.");
+  const remote=verifiedDonationPeer(req,scope);
   const bucket=createHmac("sha256",derived("public-throttle")).update(scope+":"+remote).digest("hex");
   const result=await this.db.query<{attempt_count:number}>(`
    INSERT INTO cg07_public_request_bucket(bucket_digest,window_started_at,attempt_count)

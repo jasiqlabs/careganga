@@ -185,3 +185,23 @@ test("US002-QA09: parent lock serializes concurrent cash and online payment init
  assert.ok(webhook.indexOf("FROM donation ")<webhook.indexOf("FOR UPDATE OF a"));
  assert.match(webhook,/donation_payment_event/);
 });
+
+test("US002-QA13: public API host, browser origin and privacy proof are not client-switched",()=>{
+ const ingress=source("domain/public-donation-ingress.ts");
+ const intent=source("application/donation-intents.service.ts");
+ const donation=source("http/public-donation-intents.controller.ts");
+ const online=source("http/donation-online.controller.ts");
+ const cg19=root("apps/backend/src/modules/cg-19-documents-notifications/http/donation-receipt-document.controller.ts");
+ assert.match(ingress,/CG07_PUBLIC_API_HOSTS/);
+ assert.match(ingress,/headers\.host/);
+ assert.match(ingress,/kind==="donor"/);
+ assert.match(ingress,/process\.env\.WEB_ORIGIN/);
+ assert.match(ingress,/timingSafeEqual/);
+ assert.match(ingress,/CG07_PUBLIC_PROXY_KEY/);
+ assert.doesNotMatch(ingress,/x-forwarded-for|x-forwarded-host/i);
+ assert.match(intent,/verifiedDonationPeer\(req,scope\)/);
+ assert.match(donation,/assertDonationPublicIngress\(req,"donor"\)/);
+ assert.match(online,/assertDonationPublicIngress\(req,"webhook"\)/);
+ assert.match(cg19,/assertDonationPublicIngress\(req,"donor"\)/);
+ assert.match(intent,/status_token_digest=\$1 AND d\.status_token_expires_at>now\(\)/);
+});

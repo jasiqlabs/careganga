@@ -1,5 +1,6 @@
-import {Body,Controller,Get,Header,Headers,Param,Post,StreamableFile} from "@nestjs/common";
+import {Body,Controller,Get,Header,Headers,Param,Post,Req,StreamableFile} from "@nestjs/common";
 import {DonationReceiptDocumentService} from "../application/donation-receipt-document.service";
+import {assertDonationPublicIngress} from "../../cg-07-campaigns-donations/domain/public-donation-ingress";
 @Controller("api/documents/donation-receipts")
 export class DonationReceiptDocumentController{
  constructor(private readonly source:DonationReceiptDocumentService){}
@@ -20,7 +21,8 @@ export class DonorOwnReceiptController{
  @Post("download")
  @Header("Cache-Control","private, no-store")
  @Header("X-Content-Type-Options","nosniff")
- async own(@Body()proof:unknown){
+ async own(@Req()req:object,@Body()proof:unknown){
+  assertDonationPublicIngress(req,"donor");
   const bytes=await this.source.downloadWithProof(proof);
   return new StreamableFile(bytes,{type:"application/pdf",
     disposition:'attachment; filename="CareGanga-Donation-Receipt.pdf"'});
