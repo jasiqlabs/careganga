@@ -75,8 +75,23 @@ export class MembershipApprovalService{
   });
  }
  async detail(token:string,ref:string){const a=await this.reviewer(token),id=uuid(ref);return this.run(a,async tx=>{await this.authority(tx,a);const c=await this.case(tx,a,id);const frozen=await this.exact(tx,a,c,["SUBMITTED","PENDING_OWNER"].includes(c.status));const timeline=(await tx.query("SELECT e.action,e.occurred_at AS \"occurredAt\",a.display_name AS reviewer FROM cg03_case_event e JOIN account a ON a.id=e.actor_id AND a.realm_id=e.realm_id WHERE e.realm_id=$1 AND e.case_id=$2 ORDER BY e.occurred_at DESC,e.id DESC LIMIT 50",[a.realmId,c.id])).rows;
-  const source=frozen.source,summary={applicationNumber:source.application_ref,name:source.display_name,mobile:source.contact_mobile,email:source.contact_email,address:source.address_text,city:source.city,pinCode:source.pin_code,feeMinor:source.accepted_fee_minor,currency:source.currency};
-  return {caseRef:c.id,reference:c.case_number,status:c.status,revision:c.revision,source:summary,files:frozen.files,timeline,canDecide:c.proposer_id!==a.accountId&&c.status==="SUBMITTED"};
+  const source=frozen.source;
+  const labels=(await tx.query<{plan:string;category:string;duration_unit:string;duration_count:number;branch:string|null;state:string|null;district:string|null}>([
+   "SELECT v.name AS plan,v.category,v.duration_unit,v.duration_count,b.name AS branch,area.display_name AS state,district.display_name AS district",
+   "FROM membership_tier_version v LEFT JOIN branch b ON b.root_realm_id=v.root_realm_id AND b.id=$3",
+   "LEFT JOIN geography_area area ON area.root_realm_id=v.root_realm_id AND area.id=$4",
+   "LEFT JOIN geography_area district ON district.root_realm_id=v.root_realm_id AND district.id=$5",
+   "WHERE v.root_realm_id=$1 AND v.id=$2"
+  ].join(" "),[a.realmId,source.tier_version_id,source.branch_ref??null,source.state_ref,source.district_ref])).rows[0];
+  if(!labels)throw changed();
+  const currentFee=await this.fees.statusInTx(tx,a.realmId,c.membership_application_id);
+  const summary={applicationNumber:source.application_ref,name:source.display_name,mobile:source.contact_mobile,email:source.contact_email,
+   address:source.address_text,city:source.city,pinCode:source.pin_code,feeMinor:source.accepted_fee_minor,currency:source.currency,
+   plan:labels.plan,category:labels.category,durationUnit:labels.duration_unit,durationCount:labels.duration_count,
+   branch:labels.branch,state:labels.state,district:labels.district,referral:source.referral_input??"",
+   consentVersion:source.consent_version,consentedAt:source.consented_at};
+  return {caseRef:c.id,reference:c.case_number,status:c.status,revision:c.revision,source:summary,fee:currentFee,
+   files:frozen.files,timeline,canDecide:c.proposer_id!==a.accountId&&c.status==="SUBMITTED"};
  });}
  /** Original CG03 finalized decision source for CG04's short owner transaction.
   * The applicant is not a reviewer: no reviewer grant is issued or inferred. */
