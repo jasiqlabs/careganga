@@ -4,7 +4,7 @@
 
 **Current scope:** US-001 six-step campaigns/CG03+CG18 is source-authored, awaiting final review; US-002 cash and Razorpay donor/finance Web/native is partially source-authored but bank/NEFT/cheque needs original evidence; US-003 CG19 neutral PDF/CG09 physical-cash refund and actual net source is partially source-authored but provider refund, corrected documents, donor history, export and notifications remain.
 
-**Disposition totals (23 November checkpoint):** 31 source surfaces present but not fully reviewed; 15 known requirements incomplete; 10 require independent/runtime evidence; 4 previous gaps have focused source fixes reviewed pending independent/runtime verification. **0/60 original cases are certified RUNTIME_PASS; 0/3 stories certified SOURCE_COMPLETE.** A single row may require more than a single test.
+**Disposition totals (23 November checkpoint):** 31 source surfaces present but not fully reviewed; 14 known requirements incomplete; 10 require independent/runtime evidence; 5 previous gaps have focused source fixes reviewed pending independent/runtime verification. **0/60 original cases are certified RUNTIME_PASS; 0/3 stories certified SOURCE_COMPLETE.** A single row may require more than a single test.
 
 | Original QA ID | Source QA disposition | Current original-owner source | Open proof or implementation |
 |---|---|---|---|
@@ -43,7 +43,7 @@
 | US-002-QA13 | SOURCE_FIX_REVIEWED_RUNTIME_PENDING | public-donation-ingress.ts, donation-intents.service.ts:limit/status, public donation/online/CG19 own-receipt controllers | Explicit trusted Host allowlist and same-origin browser check; native no-Origin supported; signed optional proxy client IP proof, default socket IP and expiring HMAC donor proof. Host-spoof/pentesting and ingress setup NOT_RUN; independent reviewer NOT_RUN |
 | US-002-QA14 | SOURCE_GAP | donation-manual.service.ts | No authenticated BANK/NEFT/CHEQUE evidence and independent verification |
 | US-002-QA15 | SOURCE_PRESENT_NEEDS_REVIEW | 3306/3308 SQL | Source located; independent file:function and scenario review not signed |
-| US-002-QA16 | SOURCE_GAP | donation-online.service.ts / recover | Signed-success outage reconciliation queue still requires completion |
+| US-002-QA16 | SOURCE_FIX_REVIEWED_RUNTIME_PENDING | DonationOnlineFinanceService.reconciliationQueue/verified/post, DonationIntentsService.status, online-finance.controller.ts, staff BFF and donation-finance-actions.tsx | Protected scope and signed-event queue with pending vs verified states, no recharging or posting without immutable signed success and original CG09 journal; source regression authored, provider restart/webhook race and independent QA NOT_RUN |
 | US-002-QA17 | SOURCE_PRESENT_NEEDS_REVIEW | campaign-public-source.ts | Source located; independent file:function and scenario review not signed |
 | US-002-QA18 | SOURCE_FIX_REVIEWED_RUNTIME_PENDING | DonationAdminService.list/exportCsv/donorDetail, readPrivateDonor, Admin Web donation-admin-workspace, protected Next BFF | Root/branch-scoped amount/method/date/campaign/status filters, bounded formula-safe CSV, current authorized donor detail with masked contact/PAN. Source regression authored, final live database/browser/independent security review NOT_RUN |
 | US-002-QA19 | RUNTIME_NOT_VERIFIED | 3306–3308 SQL | Requires actual DB/provider/browser/device/qualified review evidence |
