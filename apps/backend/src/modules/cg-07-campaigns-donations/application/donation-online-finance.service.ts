@@ -150,7 +150,7 @@ export class DonationOnlineFinanceService{
    await tx.query("UPDATE donation_payment_attempt SET status='RECEIVED_POSTED' "+
     "WHERE root_realm_id=$1 AND id=$2",[a.realmId,proof.id]);
    await tx.query("UPDATE donation SET source_status='RECEIVED_POSTED',version=version+1,updated_at=now() "+
-    "WHERE root_realm_id=$1 AND id=$2 ",[a.realmId,d.id]);
+    "WHERE root_realm_id=$1 AND id=$2 AND source_status IN('VERIFIED_EXTERNAL','RECONCILIATION_PENDING')",[a.realmId,d.id]);
    return {status:"RECEIVED_POSTED",donationNumber:d.donation_number,replayed:false};
   });
  }
