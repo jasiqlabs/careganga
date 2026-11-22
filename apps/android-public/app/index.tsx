@@ -322,6 +322,7 @@ export default function PublicHome(){
           </View>
           <PublicCmsContent onContact={()=>setContactOpen(true)}
             onPartnerApplication={()=>setPartnerOpen(true)}
+            onVolunteerApply={()=>setVolunteerOpen(true)}
             onMembershipApply={setMembershipPlan}
             onLoginVisibility={setPublicLoginVisible}/>
           <View style={[styles.card,styles.healthFeatureCard]}>
