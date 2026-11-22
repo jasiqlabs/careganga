@@ -12,5 +12,5 @@ CREATE TABLE cg05_export_audit (
 );
 CREATE INDEX cg05_export_audit_actor_idx ON cg05_export_audit(root_realm_id,actor_account_ref,generated_at DESC);
 CREATE FUNCTION cg05_export_audit_immutable() RETURNS trigger LANGUAGE plpgsql AS $$
-BEGIN RAISE EXCEPTION 'CG05 export audit is append only'; END $$;
+BEGIN RAISE EXCEPTION 'CG05 export audit is append only'; END; $;
 CREATE TRIGGER cg05_export_audit_no_mutation BEFORE UPDATE OR DELETE ON cg05_export_audit FOR EACH ROW EXECUTE FUNCTION cg05_export_audit_immutable();
