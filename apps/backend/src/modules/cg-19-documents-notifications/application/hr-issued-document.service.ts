@@ -16,6 +16,7 @@ import {employeeCardToken,hrTemplateHash,renderHrDocument} from "./hr-document-r
 const hash=(v:string|Buffer)=>createHash("sha256").update(v).digest("hex");
 const kinds=["APPOINTMENT","OFFER","JOINING","EXPERIENCE","RELIEVING","MEMO","EMPLOYEE_ID"];
 type Template={id:string;template_kind:string;version:number;title:string;body:string;content_sha256:string;status:string};
+type ReceiptIntent={id:string;case_id:string;proposal_revision:number;requested_by:string;request_digest:string;request_key:string;mime:string;size_bytes:string;expected_sha256:string;status:string;object_key:string;reserved_until:Date};
 type Doc={id:string;realm_id:string;case_id:string;proposal_revision:number;template_id:string;template_version:number;issue_revision:number;source_snapshot:Record<string,unknown>;source_sha256:string;request_digest:string;issue_key:string;issued_by:string;state:string;object_key:string;object_version:string|null;content_sha256:string|null;created_at:Date;hr_card_token_digest:string|null;attempt_count:number;issued_at:Date|null};
 function body(raw:unknown,keys:string[]){
  if(!raw||typeof raw!=="object"||Array.isArray(raw)||Object.keys(raw).some(k=>!keys.includes(k)))throw new BadRequestException("Check the document details");
@@ -81,10 +82,13 @@ export class HrIssuedDocumentService{
    const ids=docs.map(d=>d.id);
    const receipts=ids.length?(await tx.query<{document_id:string;at:Date}>(`SELECT document_id,max(occurred_at) AS at FROM cg19_document_event
     WHERE realm_id=$1 AND document_id=ANY($2::uuid[]) AND event_key='ACKNOWLEDGED' GROUP BY document_id`,[a.realmId,ids])).rows:[];
+   const copies=ids.length?(await tx.query<{document_ref:string}>(`SELECT DISTINCT i.hr_receipt_document_ref AS document_ref FROM cg19_upload_intent i
+    JOIN cg19_stored_file f ON f.realm_id=i.realm_id AND f.upload_intent_id=i.id AND f.revoked_at IS NULL AND f.scan_status='CLEAN_VERIFIED'
+    WHERE i.realm_id=$1 AND i.hr_receipt_document_ref=ANY($2::uuid[]) AND i.classification='HR_RECEIVED_COPY' AND i.status='VALIDATED'`,[a.realmId,ids])).rows:[];
    const dispatch=ids.length?(await tx.query<{hr_document_ref:string;channel:string;state:string}>(`SELECT hr_document_ref,channel,state FROM cg19_notification
     WHERE realm_id=$1 AND hr_document_ref=ANY($2::uuid[]) AND source_kind='CG10_DOCUMENT_READY' ORDER BY channel`,[a.realmId,ids])).rows:[];
    return {items:rows.slice(0,25).map(r=>{const d=docs.find(d=>d.case_id===r.case_ref);return {...this.source.summary(r),
-    document:d?{...view(d),receiptStatus:receipts.some(x=>x.document_id===d.id)?"ACKNOWLEDGED":"AWAITING_ACKNOWLEDGEMENT",
+    document:d?{...view(d),receiptStatus:copies.some(x=>x.document_ref===d.id)?"RECEIVED_COPY_VERIFIED":receipts.some(x=>x.document_id===d.id)?"ACKNOWLEDGED":"AWAITING_ACKNOWLEDGEMENT",
       dispatch:dispatch.filter(x=>x.hr_document_ref===d.id).map(x=>({channel:x.channel,status:x.state}))}:null,
     canSubmit:!own&&r.status==="DRAFT"&&r.created_by===a.accountId};}),hasMore:rows.length>25,offset};
   });
@@ -243,6 +247,81 @@ export class HrIssuedDocumentService{
     ON CONFLICT DO NOTHING RETURNING id`,[a.realmId,d.case_id,a.accountId,d.id]);
    return {status:"ACKNOWLEDGED",replayed:!q.rowCount};
   });
+ }
+ private async receiptAccess(tx:PoolClient,a:VerifiedFoundationActor,id:string){
+  const {d}=await this.docAccess(tx,a,id,true);
+  const current=(await tx.query<{state:string}>("SELECT state FROM cg19_generated_document WHERE realm_id=$1 AND id=$2 FOR UPDATE",[a.realmId,d.id])).rows[0];
+  if(current?.state!=="ISSUED"||!(await tx.query("SELECT cg19_hr_document_notice_matches($1,$2,$3) AS allowed",[a.realmId,d.id,a.accountId])).rows[0]?.allowed)
+   throw new ForbiddenException({code:"CG10_RECEIPT_UNAVAILABLE"});
+  return d;
+ }
+ private async receiptIntent(tx:PoolClient,a:VerifiedFoundationActor,doc:string,upload:string){
+  const d=await this.receiptAccess(tx,a,doc);
+  const i=(await tx.query<ReceiptIntent>(`SELECT * FROM cg19_upload_intent WHERE realm_id=$1 AND id=$2 AND hr_receipt_document_ref=$3 AND requested_by=$4 AND classification='HR_RECEIVED_COPY' FOR UPDATE`,[a.realmId,leaveId(upload),d.id,a.accountId])).rows[0];
+  if(!i)throw new NotFoundException({code:"CG10_RECEIPT_UNAVAILABLE"});
+  return i;
+ }
+ async initiateReceipt(token:string,id:string,raw:unknown){
+  const x=body(raw,["requestKey","mime","sizeBytes","sha256"]),key=leaveId(x.requestKey);
+  if(typeof x.mime!=="string"||!["application/pdf","image/jpeg","image/png"].includes(x.mime)||!Number.isSafeInteger(x.sizeBytes)||Number(x.sizeBytes)<1||Number(x.sizeBytes)>10485760||typeof x.sha256!=="string"||!/^([a-f0-9]{64})$/.test(x.sha256))
+   throw new BadRequestException({code:"CG10_RECEIPT_FORMAT",field:"file"});
+  const mime=x.mime,size=Number(x.sizeBytes),checksum=x.sha256,a=await this.sessions.verifySession(token);
+  const intent=await this.run(async tx=>{
+   const d=await this.receiptAccess(tx,a,id),digest=hash(JSON.stringify(["CG10_RECEIVED_COPY",d.id,mime,size,checksum]));
+   const q=await tx.query<ReceiptIntent>(`INSERT INTO cg19_upload_intent(realm_id,case_id,proposal_revision,requested_by,request_key,mime,size_bytes,expected_sha256,request_digest,classification,object_key,reserved_until,hr_receipt_document_ref)
+    VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,'HR_RECEIVED_COPY',$10,now()+interval '15 minutes',$11) ON CONFLICT(realm_id,requested_by,request_key) DO NOTHING RETURNING *`,
+    [a.realmId,d.case_id,d.proposal_revision,a.accountId,key,mime,size,checksum,digest,"careganga/private/cg19/"+a.realmId+"/"+randomUUID(),d.id]);
+   if(q.rows[0]){
+    await tx.query("INSERT INTO cg19_document_event(realm_id,case_id,actor_id,intent_id,event_key) VALUES($1,$2,$3,$4,'UPLOAD_INITIATED')",[a.realmId,d.case_id,a.accountId,q.rows[0].id]);
+    return q.rows[0];
+   }
+   const i=(await tx.query<ReceiptIntent>("SELECT * FROM cg19_upload_intent WHERE realm_id=$1 AND requested_by=$2 AND request_key=$3 AND hr_receipt_document_ref=$4 AND classification='HR_RECEIVED_COPY'",[a.realmId,a.accountId,key,d.id])).rows[0];
+   if(!i||i.request_digest!==digest)throw new ConflictException({code:"CG10_RECEIPT_REQUEST_CHANGED"});
+   return i;
+  });
+  if(intent.status==="VALIDATED")return this.receiptStatus(token,id,intent.id);
+  if(["REJECTED","EXPIRED"].includes(intent.status)||intent.reserved_until.getTime()<=Date.now())return {uploadRef:intent.id,status:"EXPIRED_OR_REJECTED",cleanVerified:false};
+  try{
+   const grant=await this.objects.reservePrivateUpload({objectKey:intent.object_key,requestKey:intent.request_key,mime:intent.mime,sizeBytes:Number(intent.size_bytes),sha256:intent.expected_sha256,expiresAt:intent.reserved_until.toISOString()});
+   const url=new URL(grant.url),expires=Date.parse(grant.expiresAt);
+   if(url.protocol!=="https:"||url.username||url.password||url.hash||!Number.isFinite(expires)||expires<=Date.now()||expires>intent.reserved_until.getTime()||!grant.reservationRef||grant.reservationRef.length>160||grant.headers?.["Content-Type"]!==intent.mime||!Object.entries(grant.headers).every(([k,v])=>["Content-Type","x-goog-if-generation-match","x-amz-checksum-sha256","If-None-Match"].includes(k)&&typeof v==="string"&&v.length<=160))throw Error("Private reservation unavailable");
+   await this.run(async tx=>{
+    const i=await this.receiptIntent(tx,a,id,intent.id);
+    if(!["INITIATED","UNKNOWN"].includes(i.status)||i.reserved_until.getTime()<=Date.now())throw new ConflictException({code:"CG10_RECEIPT_UNAVAILABLE"});
+    await tx.query("UPDATE cg19_upload_intent SET storage_reservation_ref=$3,status='INITIATED',updated_at=now() WHERE realm_id=$1 AND id=$2",[a.realmId,i.id,grant.reservationRef]);
+   });
+   return {uploadRef:intent.id,status:"UPLOAD_READY",uploadUrl:grant.url,uploadHeaders:grant.headers,cleanVerified:false};
+  }catch{return {uploadRef:intent.id,status:"STORAGE_UNAVAILABLE",cleanVerified:false};}
+ }
+ async receiptStatus(token:string,id:string,upload:string){
+  const a=await this.sessions.verifySession(token);
+  return this.run(async tx=>{
+   const i=await this.receiptIntent(tx,a,id,upload);
+   const q=await tx.query("SELECT 1 FROM cg19_stored_file WHERE realm_id=$1 AND upload_intent_id=$2 AND scan_status='CLEAN_VERIFIED' AND revoked_at IS NULL",[a.realmId,i.id]);
+   return {uploadRef:i.id,status:i.status,cleanVerified:i.status==="VALIDATED"&&!!q.rowCount};
+  });
+ }
+ async confirmReceipt(token:string,id:string,upload:string){
+  const a=await this.sessions.verifySession(token),i=await this.run(tx=>this.receiptIntent(tx,a,id,upload));
+  if(i.status==="VALIDATED")return this.receiptStatus(token,id,upload);
+  if(["REJECTED","EXPIRED"].includes(i.status)||i.reserved_until.getTime()<=Date.now())return {uploadRef:i.id,status:"EXPIRED_OR_REJECTED",cleanVerified:false};
+  let proof:Awaited<ReturnType<PrivateObjectStorage["verifyPrivateObject"]>>;
+  try{proof=await this.objects.verifyPrivateObject({objectKey:i.object_key,mime:i.mime,sizeBytes:Number(i.size_bytes),sha256:i.expected_sha256});}
+  catch{return {uploadRef:i.id,status:"VERIFICATION_UNAVAILABLE",cleanVerified:false};}
+  const scanAt=Date.parse(proof.verifiedAt);
+  const clean=proof.state==="CLEAN_VERIFIED"&&proof.sha256===i.expected_sha256&&proof.mime===i.mime&&proof.sizeBytes===Number(i.size_bytes)&&proof.objectVersion.length>0&&proof.objectVersion.length<=160&&proof.scanProofRef.length>=8&&proof.scanProofRef.length<=160&&Number.isFinite(scanAt)&&scanAt<=Date.now()+60000&&Date.now()-scanAt<900000;
+  const currentActor=await this.sessions.verifySession(token);
+  await this.run(async tx=>{
+   const locked=await this.receiptIntent(tx,currentActor,id,upload);
+   if(locked.status==="VALIDATED")return;
+   if(["REJECTED","EXPIRED"].includes(locked.status)||locked.reserved_until.getTime()<=Date.now())throw new ConflictException({code:"CG10_RECEIPT_UNAVAILABLE"});
+   await tx.query("UPDATE cg19_upload_intent SET status=$3,updated_at=now() WHERE realm_id=$1 AND id=$2",[a.realmId,i.id,clean?"VALIDATED":"REJECTED"]);
+   if(clean)await tx.query(`INSERT INTO cg19_stored_file(realm_id,upload_intent_id,case_id,proposal_revision,original_mime,verified_sha256,verified_size_bytes,object_key,object_version,scan_status,scan_proof_ref,scanned_at,created_by)
+    VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,'CLEAN_VERIFIED',$10,$11,$12) ON CONFLICT(upload_intent_id) DO NOTHING`,
+    [a.realmId,i.id,i.case_id,i.proposal_revision,i.mime,i.expected_sha256,i.size_bytes,i.object_key,proof.objectVersion,proof.scanProofRef,new Date(proof.verifiedAt),a.accountId]);
+   await tx.query("INSERT INTO cg19_document_event(realm_id,case_id,actor_id,intent_id,event_key) VALUES($1,$2,$3,$4,$5)",[a.realmId,i.case_id,a.accountId,i.id,clean?"UPLOAD_VERIFIED":"UPLOAD_REJECTED"]);
+  });
+  return this.receiptStatus(token,id,upload);
  }
  async verifyPublic(raw:unknown){
   if(typeof raw!=="string"||!/^CGV-[A-F0-9]{24}$/.test(raw))return {status:"INACTIVE"};

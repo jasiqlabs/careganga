@@ -18,6 +18,29 @@ async function api<T>(path:string,body?:object):Promise<T>{
  const v=await r.json().catch(()=>null);if(!r.ok)throw Object.assign(new Error(typeof v?.message==="string"?v.message:"Document unavailable"),{status:r.status});if(!v||typeof v!=="object")throw Error("Original result unconfirmed");return v as T;
 }
 function Select({label,value,options,onChange,disabled=false}:{label:string;value:string;options:{value:string;label:string}[];onChange:(v:string)=>void;disabled?:boolean}){return <label>{label}<select style={field} value={value} disabled={disabled} onChange={e=>onChange(e.target.value)}>{options.map(x=><option key={x.value} value={x.value}>{x.label}</option>)}</select></label>;}
+function ReceiptUpload({id,onVerified,disabled}:{id:string;onVerified:()=>void;disabled:boolean}){
+ const [file,setFile]=useState<File|null>(null),[busy,setBusy]=useState(false),[message,setMessage]=useState("");
+ const original=useRef<{key:string;hash:string;upload?:string}|null>(null);
+ const upload=async()=>{
+  if(!file||busy||disabled)return;
+  if(!["application/pdf","image/jpeg","image/png"].includes(file.type)||file.size<1||file.size>10485760){setMessage("Choose a PDF, JPEG or PNG under 10 MB.");return;}
+  setBusy(true);setMessage("");
+  try{
+   const bytes=await file.arrayBuffer(),digest=Array.from(new Uint8Array(await crypto.subtle.digest("SHA-256",bytes)),x=>x.toString(16).padStart(2,"0")).join("");
+   const cmd=original.current?.hash===digest?original.current:{key:crypto.randomUUID(),hash:digest};original.current=cmd;
+   const path="me/documents/"+id+"/receipt-uploads";
+   if(cmd.upload){const status=await api<{cleanVerified:boolean}>(path+"/"+cmd.upload);if(status.cleanVerified){onVerified();return;}}
+   const grant=await api<{uploadRef:string;status:string;cleanVerified:boolean;uploadUrl?:string;uploadHeaders?:Record<string,string>}>(path,{requestKey:cmd.key,mime:file.type,sizeBytes:file.size,sha256:digest});
+   cmd.upload=grant.uploadRef;if(grant.cleanVerified){onVerified();return;}
+   if(grant.status!=="UPLOAD_READY"||!grant.uploadUrl||!grant.uploadHeaders||!grant.uploadUrl.startsWith("https://"))throw Error("Secure upload unavailable. No copy was accepted.");
+   const sent=await fetch(grant.uploadUrl,{method:"PUT",body:bytes,headers:grant.uploadHeaders,credentials:"omit",cache:"no-store"});
+   const checked=await api<{cleanVerified:boolean}>(path+"/"+cmd.upload+"/confirm",{});if(!checked.cleanVerified)throw Error(!sent.ok?"Transfer unconfirmed. Retry the same file.":"The original scan has not verified the received copy.");
+   onVerified();
+  }catch(e){setMessage(e instanceof Error?e.message:"Receipt outcome unconfirmed.");}finally{setBusy(false);}
+ };
+ return <div style={panel}><label>Upload signed received copy<input type="file" accept="application/pdf,image/jpeg,image/png" disabled={busy||disabled} onChange={e=>{setFile(e.target.files?.[0]??null);original.current=null;}}/></label>
+ <button disabled={!file||busy||disabled} onClick={()=>void upload()}>{busy?"Checking private copy…":"Upload and verify received copy"}</button>{message&&<p role="alert">{message}</p>}</div>;
+}
 export function HrDocuments({mode,canIssue=false,canApproveTemplate=false,canRevoke=false}:{mode:Mode;canIssue?:boolean;canApproveTemplate?:boolean;canRevoke?:boolean}){
 
  const route=mode==="own"?"me/documents":mode==="manage"?"document-requests":"document-reviews";
@@ -87,7 +110,8 @@ export function HrDocuments({mode,canIssue=false,canApproveTemplate=false,canRev
    {mode==="review"&&selected.canReview&&<><label>Current password<input style={field} type="password" value={password} onChange={e=>setPassword(e.target.value)}/></label>{["APPROVE","RETURN","REJECT"].map(action=><button key={action} disabled={blocked||password.length<8} onClick={()=>act("document-reviews/"+selected.caseRef+"/decide",true,{requestKey:key(),expectedRevision:selected.revision,action})}>{title(action)}</button>)}</>}
    {selected.document&&<><p>File: {title(selected.document.status)} · Version {selected.document.issueRevision}</p><p>Receipt: {title(selected.document.receiptStatus)}</p>{selected.document.dispatch.map(x=><p key={x.channel}>{title(x.channel)}: {title(x.status)}</p>)}
     {selected.document.canDownload&&!blocked&&<a href={"/api/hr/"+(mode==="own"?"me/documents/":"issued-documents/")+selected.document.documentRef+"/file"}>Download verified PDF</a>}
-    {mode==="own"&&selected.document.canDownload&&selected.document.receiptStatus!=="ACKNOWLEDGED"&&<button disabled={blocked} onClick={()=>act("me/documents/"+selected.document!.documentRef+"/acknowledge")}>Acknowledge receipt</button>}
+    {mode==="own"&&selected.document.canDownload&&selected.document.receiptStatus==="AWAITING_ACKNOWLEDGEMENT"&&<button disabled={blocked} onClick={()=>act("me/documents/"+selected.document!.documentRef+"/acknowledge")}>Acknowledge receipt</button>}
+    {mode==="own"&&selected.document.canDownload&&selected.document.receiptStatus!=="RECEIVED_COPY_VERIFIED"&&<ReceiptUpload key={selected.document.documentRef} id={selected.document.documentRef} disabled={blocked} onVerified={()=>{setSelected(null);setMessage("Signed received copy verified.");void refresh();}}/>}
     {mode==="manage"&&canIssue&&selected.document.canRetry&&<button disabled={blocked} onClick={()=>act("issued-documents/"+selected.document!.documentRef+"/reconcile")}>Check original issuance</button>}
     {mode==="manage"&&canIssue&&selected.document.canDownload&&["IN_APP","EMAIL","SMS"].map(channel=><button key={channel} disabled={blocked||selected.document!.dispatch.some(x=>x.channel===channel)} onClick={()=>act("issued-documents/"+selected.document!.documentRef+"/dispatch",false,{channel})}>Dispatch {title(channel)}</button>)}
     {mode==="manage"&&canRevoke&&selected.document.canDownload&&<><label>Current password<input style={field} type="password" value={password} onChange={e=>setPassword(e.target.value)}/></label><button disabled={blocked||password.length<8} onClick={()=>act("issued-documents/"+selected.document!.documentRef+"/revoke",true)}>Revoke</button></>}</>}

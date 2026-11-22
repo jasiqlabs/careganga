@@ -15,7 +15,8 @@ function allowed(parts:string[],method:string){
  if(parts.length===3&&parts[0]==="document-reviews"&&UUID.test(parts[1])&&parts[2]==="decide")return method==="POST";
  if(parts.length===3&&parts[0]==="issued-documents"&&UUID.test(parts[1])&&["reconcile","revoke","dispatch","file"].includes(parts[2]))return parts[2]==="file"?method==="GET":method==="POST";
  if(parts.length===2&&parts[0]==="me"&&parts[1]==="documents")return method==="GET";
- if(parts.length===4&&parts[0]==="me"&&parts[1]==="documents"&&UUID.test(parts[2])&&["file","acknowledge"].includes(parts[3]))return parts[3]==="file"?method==="GET":method==="POST";
+ if(parts.length===4&&parts[0]==="me"&&parts[1]==="documents"&&UUID.test(parts[2])&&["file","acknowledge","receipt-uploads"].includes(parts[3]))return parts[3]==="file"?method==="GET":method==="POST";
+ if(parts[0]==="me"&&parts[1]==="documents"&&UUID.test(parts[2]??"")&&parts[3]==="receipt-uploads"&&UUID.test(parts[4]??""))return parts.length===5?method==="GET":parts.length===6&&parts[5]==="confirm"&&method==="POST";
  const change=/^CG-HR-CHG-[0-9]{6,}$/;
  if(parts.length===1&&parts[0]==="employment-changes")return method==="GET"||method==="POST";
  if(parts.length===2&&parts[0]==="employment-changes"&&change.test(parts[1]))return method==="GET";
@@ -97,11 +98,12 @@ async function proxy(req:NextRequest,parts:string[],method:string){
    headers:{Authorization:"Bearer "+token,...(body?{"Content-Type":"application/json"}:{})}});
   if(!res.ok){
    const status=[400,401,403,404,409,429].includes(res.status)?res.status:503;
+   const receiptPath=parts[0]==="me"&&parts[1]==="documents"&&parts[3]==="receipt-uploads";
    const leavePath=parts[0]==="employment-changes"||parts[0]==="employment-change-options"||parts[0]==="employment-change-reviews"||(parts[0]==="me"&&parts[1]==="changes")||parts[0]==="appraisals"||(parts[0]==="attendance"&&parts[1]==="record")||parts[0]==="attendance-corrections"||parts[0]==="attendance-correction-reviews"||parts[0]==="leave-reviews"||(parts[0]==="me"&&parts[1]==="leave");
-   if(leavePath&&status>=400&&status<500){
+   if((leavePath||receiptPath||parts[0]==="document-requests")&&status>=400&&status<500){
     const rejected:unknown=await res.json().catch(()=>null);
     if(rejected&&typeof rejected==="object"&&"code" in rejected&&"message" in rejected&&
-     typeof rejected.code==="string"&&["CG10_CHANGE_INVALID","CG10_CHANGE_STALE","CG10_CHANGE_DATE","CG10_CHANGE_BRANCH_MANAGER","CG10_CHANGE_DESTINATION","CG10_CHANGE_MANAGER","CG10_CHANGE_ACCESS_CHANGED","CG10_CHANGE_INFLIGHT","CG10_CHANGE_NOT_DUE","CG10_CHANGE_ATTENDANCE_CONFLICT","CG10_CLEARANCE_UNAVAILABLE","CG10_APPRAISAL_INVALID","CG10_APPRAISAL_STALE","CG10_APPRAISAL_DUPLICATE","CG10_LEAVE_INVALID","CG10_LEAVE_POLICY_CHANGED","CG10_LEAVE_OVERLAP","CG10_LEAVE_ENTITLEMENT","CG10_LEAVE_PUNCH_CONFLICT","CG10_LEAVE_STALE","CG10_LEAVE_DECISION_INVALID","CG10_CORRECTION_INVALID","CG10_CORRECTION_STALE","CG10_CORRECTION_LEAVE","CG10_CORRECTION_DECISION_INVALID","CG10_LEAVE_DUPLICATE_PENDING","CG10_CORRECTION_DUPLICATE_PENDING"].includes(rejected.code)&&
+     typeof rejected.code==="string"&&["CG10_RECEIPT_FORMAT","CG10_RECEIPT_UNAVAILABLE","CG10_RECEIPT_REQUEST_CHANGED","CG10_CARD_PORTRAIT_REQUIRED","CG10_CHANGE_INVALID","CG10_CHANGE_STALE","CG10_CHANGE_DATE","CG10_CHANGE_BRANCH_MANAGER","CG10_CHANGE_DESTINATION","CG10_CHANGE_MANAGER","CG10_CHANGE_ACCESS_CHANGED","CG10_CHANGE_INFLIGHT","CG10_CHANGE_NOT_DUE","CG10_CHANGE_ATTENDANCE_CONFLICT","CG10_CLEARANCE_UNAVAILABLE","CG10_APPRAISAL_INVALID","CG10_APPRAISAL_STALE","CG10_APPRAISAL_DUPLICATE","CG10_LEAVE_INVALID","CG10_LEAVE_POLICY_CHANGED","CG10_LEAVE_OVERLAP","CG10_LEAVE_ENTITLEMENT","CG10_LEAVE_PUNCH_CONFLICT","CG10_LEAVE_STALE","CG10_LEAVE_DECISION_INVALID","CG10_CORRECTION_INVALID","CG10_CORRECTION_STALE","CG10_CORRECTION_LEAVE","CG10_CORRECTION_DECISION_INVALID","CG10_LEAVE_DUPLICATE_PENDING","CG10_CORRECTION_DUPLICATE_PENDING"].includes(rejected.code)&&
      typeof rejected.message==="string"&&rejected.message.length<=220&&!/[<>\r\n]/.test(rejected.message))
      return NextResponse.json({message:rejected.message},{status,headers:{"Cache-Control":"no-store"}});
    }

@@ -11,6 +11,9 @@ export class HrIssuedDocumentController{
  @Post("document-requests/:ref/issue") issue(@Headers("authorization")t:string,@Param("ref")ref:string,@Body()body:unknown){return this.documents.issue(t,ref,body);}
  @Post("issued-documents/:id/dispatch") dispatch(@Headers("authorization")t:string,@Param("id")id:string,@Body()body:unknown){return this.documents.dispatch(t,id,body);}
  @Post("me/documents/:id/acknowledge") acknowledge(@Headers("authorization")t:string,@Param("id")id:string){return this.documents.acknowledge(t,id);}
+ @Post("me/documents/:id/receipt-uploads") receiptUpload(@Headers("authorization")t:string,@Param("id")id:string,@Body()body:unknown){return this.documents.initiateReceipt(t,id,body);}
+ @Get("me/documents/:id/receipt-uploads/:upload") receiptStatus(@Headers("authorization")t:string,@Param("id")id:string,@Param("upload")upload:string){return this.documents.receiptStatus(t,id,upload);}
+ @Post("me/documents/:id/receipt-uploads/:upload/confirm") receiptConfirm(@Headers("authorization")t:string,@Param("id")id:string,@Param("upload")upload:string){return this.documents.confirmReceipt(t,id,upload);}
  @Post("issued-documents/:id/reconcile") reconcile(@Headers("authorization")t:string,@Param("id")id:string){return this.documents.reconcile(t,id);}
  @Post("issued-documents/:id/revoke") revoke(@Headers("authorization")t:string,@Param("id")id:string,@Body()body:unknown){return this.documents.revoke(t,id,body);}
  @Get("issued-documents/:id/file")

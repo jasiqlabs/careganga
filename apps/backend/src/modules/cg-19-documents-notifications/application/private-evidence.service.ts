@@ -166,7 +166,7 @@ export class PrivateEvidenceService{
     if(!UUID.test(id))throw new BadRequestException("Choose a valid file");
     const actor=await this.sessions.requireAction(bearer,action);
     const rows=await this.db.query<IntentRow>(`
-      SELECT * FROM cg19_upload_intent WHERE id=$1 AND realm_id=$2
+      SELECT * FROM cg19_upload_intent WHERE id=$1 AND realm_id=$2 AND classification<>'HR_RECEIVED_COPY'
     `,[id,actor.realmId]);
     const row=rows.rows[0];
     if(!row)throw new NotFoundException("Private file unavailable");
@@ -268,6 +268,7 @@ export class PrivateEvidenceService{
         object_key,object_version,revoked_at,revision,created_at
       FROM cg19_stored_file
       WHERE realm_id=$1 AND case_id=$2 AND proposal_revision=$3
+        AND NOT EXISTS(SELECT 1 FROM cg19_upload_intent i WHERE i.realm_id=cg19_stored_file.realm_id AND i.id=cg19_stored_file.upload_intent_id AND i.classification='HR_RECEIVED_COPY')
       ORDER BY created_at DESC,id DESC LIMIT 30
     `,[actor.realmId,caseRef,source.proposalRevision]);
     return {files:rows.rows.map(x=>({
@@ -289,6 +290,7 @@ export class PrivateEvidenceService{
       SELECT id,case_id,proposal_revision,original_mime,verified_size_bytes,
         object_key,object_version,revoked_at,revision,created_at
       FROM cg19_stored_file WHERE id=$1 AND realm_id=$2
+        AND NOT EXISTS(SELECT 1 FROM cg19_upload_intent i WHERE i.realm_id=cg19_stored_file.realm_id AND i.id=cg19_stored_file.upload_intent_id AND i.classification='HR_RECEIVED_COPY')
     `,[fileRef,actor.realmId]);
     if(!prior.rowCount)throw new NotFoundException("Private file unavailable");
     await this.scope(bearer,"documents.files.manage",
@@ -339,7 +341,7 @@ export class PrivateEvidenceService{
       FROM cg19_stored_file f JOIN cg19_upload_intent i ON i.id=f.upload_intent_id
         AND i.realm_id=f.realm_id
       WHERE f.id=$1 AND f.realm_id=$2 AND f.scan_status='CLEAN_VERIFIED'
-        AND f.revoked_at IS NULL AND i.status='VALIDATED'
+        AND f.revoked_at IS NULL AND i.status='VALIDATED' AND i.classification<>'HR_RECEIVED_COPY'
     `,[fileRef,actor.realmId]);
     const file=rows.rows[0];
     if(!file)throw new NotFoundException("Private file unavailable");

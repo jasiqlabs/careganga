@@ -1,6 +1,7 @@
 import React,{useCallback,useEffect,useRef,useState} from "react";
 import {View,Text,TextInput,Pressable,StyleSheet,ActivityIndicator} from "react-native";
-import {File,Paths} from "expo-file-system";
+import {File,Paths,UploadType} from "expo-file-system";
+import * as DocumentPicker from "expo-document-picker";
 import * as Crypto from "expo-crypto";
 import {identityRequest} from "../identity-access/http-client";
 type Mode="own"|"manage"|"review";
@@ -21,6 +22,30 @@ async function api<T>(token:string,path:string,body?:object):Promise<T>{
 function Button({name,onPress,disabled=false}:{name:string;onPress:()=>void;disabled?:boolean}){return <Pressable accessibilityRole="button" accessibilityState={{disabled}} disabled={disabled} onPress={onPress} style={[styles.button,disabled&&{opacity:.5}]}><Text>{name}</Text></Pressable>;}
 function Field({label,value,onChange,secure=false,multi=false,disabled=false}:{label:string;value:string;onChange:(v:string)=>void;secure?:boolean;multi?:boolean;disabled?:boolean}){return <View><Text style={styles.label}>{label}</Text><TextInput accessibilityLabel={label} editable={!disabled} secureTextEntry={secure} multiline={multi} style={styles.input} value={value} onChangeText={onChange} maxLength={1200}/></View>;}
 function Select({label,value,options,onChange,disabled=false}:{label:string;value:string;options:{value:string;label:string}[];onChange:(v:string)=>void;disabled?:boolean}){return <View style={{gap:4}}><Text style={styles.label}>{label}</Text>{options.map(x=><Pressable key={x.value} accessibilityRole="radio" accessibilityState={{checked:x.value===value,disabled}} disabled={disabled} style={[styles.button,value===x.value&&{backgroundColor:"#D1FAE5"}]} onPress={()=>onChange(x.value)}><Text>{x.label}</Text></Pressable>)}</View>;}
+function NativeReceiptUpload({token,id,disabled,onVerified,onExpired}:{token:string;id:string;disabled:boolean;onVerified:()=>void;onExpired:()=>void}){
+ const [picked,setPicked]=useState<{uri:string;mime:string;size:number;name:string}|null>(null),[busy,setBusy]=useState(false),[message,setMessage]=useState("");
+ const original=useRef<{key:string;hash:string;upload?:string}|null>(null);
+ const choose=async()=>{if(busy||disabled)return;try{const result=await DocumentPicker.getDocumentAsync({type:["application/pdf","image/jpeg","image/png"],multiple:false,copyToCacheDirectory:true});
+  if(result.canceled)return;const f=result.assets[0];if(!f.mimeType||!["application/pdf","image/jpeg","image/png"].includes(f.mimeType)||!f.size||f.size>10485760){setMessage("Choose a PDF, JPEG or PNG under 10 MB.");return;}
+  setPicked({uri:f.uri,mime:f.mimeType,size:f.size,name:f.name});original.current=null;setMessage("");
+ }catch{setMessage("Private file picker unavailable.");}};
+ const upload=async()=>{if(!picked||busy||disabled)return;setBusy(true);setMessage("");
+  try{const file=new File(picked.uri),digest=await file.digest("SHA-256");if(!/^[a-f0-9]{64}$/.test(digest))throw Error("Original file checksum unavailable.");
+   const cmd=original.current?.hash===digest?original.current:{key:Crypto.randomUUID(),hash:digest};original.current=cmd;
+   const path="me/documents/"+id+"/receipt-uploads";
+   if(cmd.upload){const status=await api<{cleanVerified:boolean}>(token,path+"/"+cmd.upload);if(status.cleanVerified){onVerified();return;}}
+   const grant=await api<{uploadRef:string;status:string;cleanVerified:boolean;uploadUrl?:string;uploadHeaders?:Record<string,string>}>(token,path,{requestKey:cmd.key,mime:picked.mime,sizeBytes:picked.size,sha256:digest});
+   cmd.upload=grant.uploadRef;if(grant.cleanVerified){onVerified();return;}
+   if(grant.status!=="UPLOAD_READY"||!grant.uploadUrl||!grant.uploadHeaders||!grant.uploadUrl.startsWith("https://"))throw Error("Secure upload unavailable. No copy was accepted.");
+   const task=file.createUploadTask(grant.uploadUrl,{httpMethod:"PUT",uploadType:UploadType.BINARY_CONTENT,mimeType:picked.mime,headers:grant.uploadHeaders,sessionType:"foreground"});
+   let result;try{result=await task.uploadAsync();}finally{task.release();}
+   const checked=await api<{cleanVerified:boolean}>(token,path+"/"+cmd.upload+"/confirm",{});if(!checked.cleanVerified)throw Error(result.status<200||result.status>=300?"Transfer unconfirmed. Retry the same file.":"The original scan has not verified the received copy.");
+   onVerified();
+  }catch(e){if(e&&typeof e==="object"&&"status" in e&&e.status===401)onExpired();setMessage(e instanceof Error?e.message:"Receipt outcome unconfirmed.");}finally{setBusy(false);}
+ };
+ return <View style={styles.item}><Button name={picked?"Chosen: "+picked.name:"Choose signed received copy"} disabled={busy||disabled} onPress={()=>void choose()}/>
+ <Button name={busy?"Checking private copy…":"Upload and verify received copy"} disabled={!picked||busy||disabled} onPress={()=>void upload()}/>{!!message&&<Text accessibilityRole="alert">{message}</Text>}</View>;
+}
 export function NativeHrDocuments({token,onExpired,mode,canIssue=false,canApproveTemplate=false,canRevoke=false}:{token:string;onExpired:()=>void;mode:Mode;canIssue?:boolean;canApproveTemplate?:boolean;canRevoke?:boolean}){
 
  const route=mode==="own"?"me/documents":mode==="manage"?"document-requests":"document-reviews";
@@ -94,7 +119,8 @@ export function NativeHrDocuments({token,onExpired,mode,canIssue=false,canApprov
  {mode==="review"&&selected.canReview&&<><Field label="Current password" value={password} onChange={setPassword} secure disabled={blocked}/>{["APPROVE","RETURN","REJECT"].map(action=><Button key={action} name={title(action)} disabled={blocked||password.length<8} onPress={()=>act("document-reviews/"+selected.caseRef+"/decide",true,{requestKey:key(),expectedRevision:selected.revision,action})}/>)}</>}
  {selected.document&&<><Text>File: {title(selected.document.status)} · Version {selected.document.issueRevision}</Text><Text>Receipt: {title(selected.document.receiptStatus)}</Text>{selected.document.dispatch.map(x=><Text key={x.channel}>{title(x.channel)}: {title(x.status)}</Text>)}
  {selected.document.canDownload&&<Button name="View verified PDF" disabled={blocked} onPress={()=>void preview(selected.document!.documentRef)}/>}
- {mode==="own"&&selected.document.canDownload&&selected.document.receiptStatus!=="ACKNOWLEDGED"&&<Button name="Acknowledge receipt" disabled={blocked} onPress={()=>act("me/documents/"+selected.document!.documentRef+"/acknowledge")}/>}
+ {mode==="own"&&selected.document.canDownload&&selected.document.receiptStatus==="AWAITING_ACKNOWLEDGEMENT"&&<Button name="Acknowledge receipt" disabled={blocked} onPress={()=>act("me/documents/"+selected.document!.documentRef+"/acknowledge")}/>}
+ {mode==="own"&&selected.document.canDownload&&selected.document.receiptStatus!=="RECEIVED_COPY_VERIFIED"&&<NativeReceiptUpload key={selected.document.documentRef} token={token} id={selected.document.documentRef} disabled={blocked} onExpired={onExpired} onVerified={()=>{setSelected(null);setMessage("Signed received copy verified.");void refresh();}}/>}
  {mode==="manage"&&canIssue&&selected.document.canRetry&&<Button name="Check original issuance" disabled={blocked} onPress={()=>act("issued-documents/"+selected.document!.documentRef+"/reconcile")}/>}
  {mode==="manage"&&canIssue&&selected.document.canDownload&&["IN_APP","EMAIL","SMS"].map(channel=><Button key={channel} name={"Dispatch "+title(channel)} disabled={blocked||selected.document!.dispatch.some(x=>x.channel===channel)} onPress={()=>act("issued-documents/"+selected.document!.documentRef+"/dispatch",false,{channel})}/>)}
  {mode==="manage"&&canRevoke&&selected.document.canDownload&&<><Field label="Current password" value={password} onChange={setPassword} secure disabled={blocked}/><Button name="Revoke" disabled={blocked||password.length<8} onPress={()=>act("issued-documents/"+selected.document!.documentRef+"/revoke",true)}/></>}</>}
