@@ -104,7 +104,7 @@ END $$;
 CREATE TRIGGER cg05_task_guard BEFORE INSERT OR UPDATE OR DELETE ON project_task
  FOR EACH ROW EXECUTE FUNCTION cg05_task_write_guard();
 -- A version is not a valid committed source without its matching immutable event.
-CREATE FUNCTION cg05_task_event_match() RETURNS trigger LANGUAGE plpgsql AS $
+CREATE FUNCTION cg05_task_event_match() RETURNS trigger LANGUAGE plpgsql AS $$
 DECLARE ev project_task_event%ROWTYPE;
 BEGIN
  SELECT * INTO ev FROM project_task_event WHERE root_realm_id=NEW.root_realm_id
@@ -117,7 +117,7 @@ BEGIN
   RAISE EXCEPTION 'Task revision requires matching immutable event';
  END IF;
  RETURN NULL;
-END $;
+END $$;
 CREATE CONSTRAINT TRIGGER cg05_task_event_at_commit AFTER INSERT OR UPDATE ON project_task
  DEFERRABLE INITIALLY DEFERRED FOR EACH ROW EXECUTE FUNCTION cg05_task_event_match();
 
