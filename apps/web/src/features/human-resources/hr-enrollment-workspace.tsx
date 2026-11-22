@@ -63,8 +63,9 @@ export function HrEnrollmentWorkspace({canViewApps,canManage,canViewEmployees,ca
  const [fileApplication,setFileApplication]=useState<Application|null>(null);
  const [caseStatus,setCaseStatus]=useState<{status:string;caseRef:string|null;reference:string|null}|null>(null);
  const [staff,setStaff]=useState<Array<{reference:string;name:string;designation:string;
-  branch:string;status:string}>>([]);
+  branch:string;status:string;department?:string|null;employmentType?:string;hireDate?:string}>>([]);
  const [staffError,setStaffError]=useState("");
+ const staffRead=useRef(0);const [staffLoading,setStaffLoading]=useState(false);
  const [employeeDetail,setEmployeeDetail]=useState<{reference:string;name:string;designation:string;
   employmentType:string;branch:string;department:string|null;manager:string|null;
   status:string;effectiveFrom:string;effectiveTo:string|null}|null>(null);
@@ -216,7 +217,7 @@ export function HrEnrollmentWorkspace({canViewApps,canManage,canViewEmployees,ca
  };
  const loadEmployees=async(page=0)=>{
   if(!canViewEmployees)return;
-  setStaffError("");
+  const seq=++staffRead.current;setStaffError("");setStaffLoading(true);setStaff([]);setEmpMore(false);setEmployeeDetail(null);
   try{
    const opts=new URLSearchParams({offset:String(page),status:empFilter.status,
      q:empFilter.q.trim()});
@@ -225,12 +226,14 @@ export function HrEnrollmentWorkspace({canViewApps,canManage,canViewEmployees,ca
    const res=await request("employees?"+opts.toString());
    if(!res||typeof res!=="object"||!("items" in res)||!Array.isArray(res.items))
     throw Error("The approved employee directory is unavailable");
+   if(seq!==staffRead.current)return;
    setStaff(res.items as typeof staff);
    setEmpMore("hasMore" in res&&res.hasMore===true);setEmpOffset(page);
-  }catch(e){
+  }catch(e){if(seq!==staffRead.current)return;
    setStaff([]);setEmpMore(false);setStaffError(e instanceof Error?e.message:
     "Employee directory cannot be verified.");
   }
+  finally{if(seq===staffRead.current)setStaffLoading(false);}
  };
 
  useEffect(()=>{
@@ -490,18 +493,15 @@ export function HrEnrollmentWorkspace({canViewApps,canManage,canViewEmployees,ca
     <button type="button" onClick={()=>void loadEmployees(0)}
       style={{...buttonStyle,background:"var(--cg-accent)"}}>Apply directory filters</button>
     {staffError&&<p role="alert" style={{color:"#991B1B"}}>{staffError}</p>}
-    <ul style={{paddingLeft:18}}>
-     {staff.map(row=><li key={row.reference} style={{padding:6}}>
-       <strong>{row.name}</strong> — {row.designation} · {row.branch}
-       <small style={{display:"block",color:"var(--cg-muted)"}}>
-        {row.reference} · {row.status.replaceAll("_"," ")}
-       </small>
+    {staffLoading&&<p role="status">Loading employee directory…</p>}{!staffLoading&&!staffError&&staff.length===0&&<p>No employees match the filters.</p>}<div style={{overflowX:"auto"}}><table style={{width:"100%",textAlign:"left",borderCollapse:"collapse",minWidth:680}}><thead><tr>{["Employee","Designation","Department","Branch","Joining date","Status","Actions"].map(h=><th key={h} style={{padding:10,background:"#F8FAFC"}} scope="col">{h}</th>)}</tr></thead><tbody>
+     {staff.map(row=><tr key={row.reference} style={{borderTop:"1px solid var(--cg-border)"}}><td style={{padding:"10px 8px"}}>
+       <strong>{row.name}</strong><small style={{display:"block",color:"var(--cg-muted)"}}>{row.reference}</small></td><td>{row.designation}</td><td>{row.department??"Not assigned"}</td><td>{row.branch}</td><td>{row.hireDate??"Not available"}</td><td><span style={{padding:5,borderRadius:6,background:row.status==="ACTIVE"?"#DCFCE7":"#F1F5F9"}}>{row.status.replaceAll("_"," ")}</span></td><td>
        <button type="button" onClick={()=>void viewEmployee(row.reference)}
          disabled={detailBusy}
          style={{...buttonStyle,background:"var(--cg-border)",color:"var(--cg-text)",
            padding:".4rem .7rem",marginTop:7}}>View employment</button>
-      </li>)}
-    </ul>
+      </td></tr>)}
+    </tbody></table></div>
     {employeeDetail&&<section aria-label="Current approved employee detail"
       style={{border:"1px solid var(--cg-border)",borderRadius:12,padding:14,
        display:"grid",gap:9,marginTop:12}}>
