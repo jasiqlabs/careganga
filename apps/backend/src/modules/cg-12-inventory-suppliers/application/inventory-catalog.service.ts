@@ -1,5 +1,5 @@
 import {BadRequestException,ConflictException,ForbiddenException,Inject,Injectable,NotFoundException,ServiceUnavailableException} from "@nestjs/common";
-import {createHash,createCipheriv,createDecipheriv,randomBytes} from "node:crypto";
+import {createHash,createHmac,createCipheriv,createDecipheriv,randomBytes,randomUUID} from "node:crypto";
 import type {Pool,PoolClient} from "pg";
 import {DATABASE} from "../../../core/infrastructure/database.module";
 import {SessionService} from "../../cg-01-identity-access/application/session.service";
@@ -126,15 +126,18 @@ export class InventoryCatalogService {
    await this.requireScope(tx,a,null);
    const s=await tx.query("SELECT 1 FROM inventory_supplier WHERE root_realm_id=$1 AND id=$2 FOR SHARE",[a.realmId,ref]);if(!s.rowCount)throw new NotFoundException("Supplier unavailable");
    const row=(await tx.query<{ciphertext:string;nonce:string;tag:string;version:number}>("SELECT ciphertext,nonce,tag,version FROM inventory_supplier_private WHERE root_realm_id=$1 AND supplier_id=$2",[a.realmId,ref])).rows[0];
-   return {details:row?decryptSupplier(row,a.realmId,ref):{phone:"",email:"",address:"",taxRef:""},version:row?.version??0};
+   const details=row?decryptSupplier(row,a.realmId,ref):{phone:"",email:"",address:"",taxRef:""};
+   if(row)await this.audit(tx,a,"SUPPLIER_PRIVATE_READ",ref,randomUUID(),createHash("sha256").update("private-read|"+ref+"|"+row.version).digest("hex"),row.version);
+   return {details,version:row?.version??0};
   });
  }
  async writeSupplierPrivate(token:string,rawRef:unknown,raw:unknown){
   const ref=uuid(rawRef),x=input(raw,["requestKey","expectedVersion","details"]),key=uuid(x.requestKey),expected=version(x.expectedVersion,true),details=privateSupplier(x.details);
-  const digest=createHash("sha256").update(JSON.stringify({ref,expected,details})).digest("hex");
+  
   return this.run(token,"inventory.supplier.private.manage",async(tx,a)=>{
    await this.requireScope(tx,a,null);
    const s=await tx.query("SELECT 1 FROM inventory_supplier WHERE root_realm_id=$1 AND id=$2 FOR UPDATE",[a.realmId,ref]);if(!s.rowCount)throw new NotFoundException("Supplier unavailable");
+   const digest=createHmac("sha256",supplierKey()).update(JSON.stringify({ref,expected,details})).digest("hex");
    const replay=await this.command(tx,a,"SUPPLIER_PRIVATE",key,digest);if(replay)return replay;
    const v=expected+1,[ciphertext,nonce,tag]=encryptSupplier(details,a.realmId,ref,v);
    const q=expected===0?await tx.query("INSERT INTO inventory_supplier_private(root_realm_id,supplier_id,ciphertext,nonce,tag,version) VALUES($1,$2,$3,$4,$5,$6) ON CONFLICT DO NOTHING RETURNING version",[a.realmId,ref,ciphertext,nonce,tag,v]):await tx.query("UPDATE inventory_supplier_private SET ciphertext=$3,nonce=$4,tag=$5,version=$6 WHERE root_realm_id=$1 AND supplier_id=$2 AND version=$7 RETURNING version",[a.realmId,ref,ciphertext,nonce,tag,v,expected]);
@@ -171,7 +174,7 @@ export class InventoryCatalogService {
    }else if(!full)throw new ForbiddenException("Choose a permitted store");
    // Foundation-wide catalog master; non-root users must select a current permitted real store.
    if(kind==="ITEM"){
-    const q=await tx.query("SELECT i.id AS ref,i.sku_norm AS sku,i.name,i.category,i.description,i.unit_code AS unit,i.qty_scale AS scale,i.low_stock_threshold::text AS threshold,i.status,i.version,COALESCE(p.threshold,i.low_stock_threshold)::text AS \"storeThreshold\",COALESCE(p.version,0) AS \"thresholdVersion\" FROM inventory_item i LEFT JOIN inventory_item_location_policy p ON p.root_realm_id=i.root_realm_id AND p.item_id=i.id AND p.location_id=$4::uuid WHERE i.root_realm_id=$1 AND ($2='' OR strpos(lower(i.name),$2)>0 OR strpos(lower(i.sku_norm),$2)>0 OR strpos(lower(i.category),$2)>0) AND ($5='ALL' OR i.status=$5) ORDER BY i.name,i.id LIMIT 26 OFFSET $3",[a.realmId,search,offset,locationInput||null,status]);
+    const q=await tx.query("SELECT i.id AS ref,i.sku_norm AS sku,i.name,i.category,i.description,i.unit_code AS unit,i.qty_scale AS scale,i.low_stock_threshold::text AS threshold,i.status,i.version,COALESCE(p.threshold,i.low_stock_threshold)::text AS \"storeThreshold\",COALESCE(p.version,0) AS \"thresholdVersion\", '0'::text AS \"onHand\", '0'::text AS reserved, '0'::text AS available FROM inventory_item i LEFT JOIN inventory_item_location_policy p ON p.root_realm_id=i.root_realm_id AND p.item_id=i.id AND p.location_id=$4::uuid WHERE i.root_realm_id=$1 AND ($2='' OR strpos(lower(i.name),$2)>0 OR strpos(lower(i.sku_norm),$2)>0 OR strpos(lower(i.category),$2)>0) AND ($5='ALL' OR i.status=$5) ORDER BY i.name,i.id LIMIT 26 OFFSET $3",[a.realmId,search,offset,locationInput||null,status]);
     return {items:q.rows.slice(0,25),hasMore:q.rows.length>25,offset};
    }
    const q=await tx.query("SELECT id AS ref,supplier_code_norm AS code,display_name AS name,category,status,version FROM inventory_supplier WHERE root_realm_id=$1 AND ($2='' OR strpos(lower(display_name),$2)>0 OR strpos(lower(supplier_code_norm),$2)>0 OR strpos(lower(category),$2)>0) AND ($4='ALL' OR status=$4) ORDER BY display_name,id LIMIT 26 OFFSET $3",[a.realmId,search,offset,status]);
