@@ -83,6 +83,14 @@ export function NativeMemberRoster({token,canExport,onExpired}:{token:string;can
   </View>
   {loading&&<ActivityIndicator accessibilityLabel="Loading permitted members"/>}
   {page&&!loading&&<>
+   <View style={styles.card} accessibilityLabel="Membership overview">
+    <Text style={styles.title}>Membership overview</Text>
+    <View style={styles.buttons}>
+     {([["Approved members",page.overview.total],["Active",page.overview.active],["Expired",page.overview.expired],["Cancelled",page.overview.cancelled]] as const).map(([label,value])=>
+      <View key={label} style={styles.metric}><Text style={styles.muted}>{label}</Text><Text style={styles.title}>{value}</Text></View>)}
+    </View>
+    <Text style={styles.muted}>Membership categories: {Object.entries(page.overview.byCategory).map(([type,count])=>type+": "+count).join(" · ")||"No approved member records in your permitted scope."}</Text>
+   </View>
    <Text style={styles.muted}>Showing {page.items.length} approved member records on this page.</Text>
    {!page.items.length&&<Text style={styles.muted}>No approved members match these filters.</Text>}
    {page.items.map(m=><View key={m.ref} style={styles.card}>
@@ -107,6 +115,7 @@ const styles=StyleSheet.create({
  card:{backgroundColor:theme.surface,borderWidth:1,borderColor:theme.border,borderRadius:12,padding:14,gap:9},
  input:{borderWidth:1,borderColor:theme.border,borderRadius:9,padding:11,color:theme.text},
  buttons:{flexDirection:"row",flexWrap:"wrap",gap:8},
+ metric:{minWidth:120,flexGrow:1,paddingVertical:6},
  chip:{borderWidth:1,borderColor:theme.border,backgroundColor:theme.selectedSurface,borderRadius:9,paddingVertical:9,paddingHorizontal:12},
  chipSelected:{backgroundColor:theme.primary,borderColor:theme.primary},
  chipText:{color:theme.primary,fontWeight:"600",fontSize:13},
