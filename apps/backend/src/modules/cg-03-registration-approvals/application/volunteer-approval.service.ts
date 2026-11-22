@@ -69,108 +69,69 @@ export class VolunteerApprovalService{
   if(current){const app=(await tx.query<{version:number;status:string;submitted_digest:string}>("SELECT version,status,submitted_digest FROM volunteer_application WHERE root_realm_id=$1 AND id=$2 FOR SHARE",[a.realmId,c.volunteer_application_id])).rows[0];if(!app||app.status!=="SUBMITTED"||app.version!==s.application_version||app.submitted_digest!==s.source_digest||files.some(f=>f.revoked||f.currentVersion!==f.fileVersion||f.actualHash!==f.sha256||f.scan!=="CLEAN_VERIFIED"))throw changed();}
   return {source:s.source_snapshot.record as Record<string,unknown>,files:files.map(f=>({classification:f.classification,fileRef:f.fileRef,fileVersion:f.fileVersion,verified:!f.revoked&&f.currentVersion===f.fileVersion&&f.actualHash===f.sha256&&f.scan==="CLEAN_VERIFIED"}))};
  }
- async inbox(token:string,q:unknown){
-  const a=await this.reviewer(token),x=object(q,["status","offset","q","category","payment","submittedFrom","submittedTo"]);
-  const status=pick(x.status??"ALL",["ALL","SUBMITTED","PENDING_OWNER","RETURNED","REJECTED","OWNER_COMPLETED"] as const,"status");
-  const category=pick(x.category??"ALL",["ALL","ANNUAL","LIFETIME","HONORARY","STUDENT","OTHER"] as const,"volunteer category");
-  const payment=pick(x.payment??"ALL",["ALL","NOT_DUE","PENDING","AWAITING_BANK_VERIFICATION","VERIFIED","REFUND_PENDING","REFUND_AWAITING_BANK_VERIFICATION","REFUNDED"] as const,"payment status");
-  const term=plain(x.q??"",0,100,"application search").toLowerCase(),offset=x.offset===undefined?0:int(Number(x.offset),0,10000,"page");
-  const submittedDate=(v:unknown,label:string)=>{
-   if(v===undefined||v===null||v==="")return null;
-   if(typeof v!=="string"||!/^[0-9]{4}-[0-9]{2}-[0-9]{2}$/.test(v))throw new BadRequestException("Choose a valid "+label+" date.");
-   const day=new Date(v+"T00:00:00.000Z");
-   if(!Number.isFinite(day.getTime())||day.toISOString().slice(0,10)!==v)throw new BadRequestException("Choose a valid "+label+" date.");
-   return v;
-  };
-  const from=submittedDate(x.submittedFrom,"start"),to=submittedDate(x.submittedTo,"end");
-  if(from&&to&&from>to)throw new BadRequestException("The start date must be on or before the end date.");
+
+ async inbox(token:string,raw:unknown){
+  const a=await this.reviewer(token),x=object(raw,["status","offset","q","departmentRef","availability"]);
+  const status=pick(x.status??"ALL",["ALL","SUBMITTED","PENDING_OWNER","RETURNED","REJECTED","OWNER_COMPLETED"] as const,"review status");
+  const offset=x.offset===undefined?0:int(x.offset,0,5000,"page"),term=plain(x.q??"",0,80,"search").toLowerCase();
+  const department=x.departmentRef===undefined||x.departmentRef===""?null:uuid(x.departmentRef);
+  const availability=pick(x.availability??"ALL",["ALL","FULL_TIME","PART_TIME","WEEKENDS","FLEXIBLE"] as const,"availability");
   return this.run(a,async tx=>{
    await this.authority(tx,a);
-   const sql=[
-    'SELECT c.id AS "caseRef",c.case_number AS reference,c.account_name_snapshot AS name,c.status,c.revision,c.submitted_at AS "submittedAt",',
-    'c.proposer_id<>$2 AND c.status=\'SUBMITTED\' AS "canDecide",v.name AS plan,v.category,pay.status AS "paymentStatus"',
-    'FROM cg03_case c',
-    'JOIN volunteer_application app ON app.root_realm_id=c.realm_id AND app.id=c.volunteer_application_id',
-    'JOIN volunteer_tier_version v ON v.root_realm_id=app.root_realm_id AND v.id=app.tier_version_id',
-    'LEFT JOIN volunteer_approval_effect eff ON eff.root_realm_id=app.root_realm_id AND eff.application_id=app.id',
-    'LEFT JOIN member m ON m.root_realm_id=eff.root_realm_id AND m.id=eff.member_id',
-    'CROSS JOIN LATERAL (SELECT CASE',
-    "WHEN app.accepted_fee_minor=0 THEN 'NOT_DUE'",
-    "WHEN EXISTS(SELECT 1 FROM finance_volunteer_verified_refund f WHERE f.root_realm_id=app.root_realm_id AND f.application_id=app.id) THEN 'REFUNDED'",
-    "WHEN EXISTS(SELECT 1 FROM finance_volunteer_refund_posting f WHERE f.root_realm_id=app.root_realm_id AND f.application_id=app.id) THEN 'REFUND_AWAITING_BANK_VERIFICATION'",
-    "WHEN EXISTS(SELECT 1 FROM finance_volunteer_refund_request f WHERE f.root_realm_id=app.root_realm_id AND f.application_id=app.id) THEN 'REFUND_PENDING'",
-    "WHEN EXISTS(SELECT 1 FROM finance_volunteer_verified_collection f WHERE f.root_realm_id=app.root_realm_id AND f.application_id=app.id) THEN 'VERIFIED'",
-    "WHEN EXISTS(SELECT 1 FROM finance_volunteer_collection f WHERE f.root_realm_id=app.root_realm_id AND f.application_id=app.id) THEN 'AWAITING_BANK_VERIFICATION'",
-    "ELSE 'PENDING' END AS status) pay",
-    "WHERE c.realm_id=$1 AND c.case_kind='VOLUNTEER_APPLICATION'",
-    "AND ($3='ALL' OR c.status=$3)",
-    "AND ($4='' OR strpos(lower(c.case_number),$4)>0 OR strpos(lower(c.account_name_snapshot),$4)>0",
-    "OR strpos(lower(app.application_ref),$4)>0 OR strpos(lower(app.contact_mobile),$4)>0",
-    "OR strpos(lower(coalesce(app.contact_email,'')),$4)>0 OR strpos(lower(coalesce(m.member_no,'')),$4)>0)",
-    "AND ($5='ALL' OR v.category=$5)",
-    "AND ($6='ALL' OR pay.status=$6)",
-    "AND ($7::date IS NULL OR c.submitted_at>=($7::date::timestamp AT TIME ZONE 'Asia/Kolkata'))",
-    "AND ($8::date IS NULL OR c.submitted_at<(($8::date+1)::timestamp AT TIME ZONE 'Asia/Kolkata'))",
-    "ORDER BY c.submitted_at DESC,c.id DESC LIMIT 26 OFFSET $9"
-   ].join(" ");
-   const rows=(await tx.query(sql,[a.realmId,a.accountId,status,term,category,payment,from,to,offset])).rows;
-   const stats=(await tx.query<{
-    total:number;pending:number;approved:number;rejected:number;today:number;average_hours:string|null;
-   }>([
-    'SELECT count(*)::integer AS total,',
-    "count(*) FILTER(WHERE c.status IN('SUBMITTED','PENDING_OWNER'))::integer AS pending,",
-    "count(*) FILTER(WHERE c.status='OWNER_COMPLETED')::integer AS approved,",
-    "count(*) FILTER(WHERE c.status='REJECTED')::integer AS rejected,",
-    "count(*) FILTER(WHERE (c.submitted_at AT TIME ZONE 'Asia/Kolkata')::date=(now() AT TIME ZONE 'Asia/Kolkata')::date)::integer AS today,",
-    "round(avg(CASE WHEN decision.decided_at>=c.submitted_at THEN extract(epoch FROM (decision.decided_at-c.submitted_at))/3600 ELSE NULL END)::numeric,1)::text AS average_hours",
-    'FROM cg03_case c',
-    'LEFT JOIN LATERAL (SELECT min(e.occurred_at) AS decided_at FROM cg03_case_event e',
-    "WHERE e.realm_id=c.realm_id AND e.case_id=c.id AND e.action IN('FINAL_APPROVED','RETURNED','REJECTED')) decision ON true",
-    "WHERE c.realm_id=$1 AND c.case_kind='VOLUNTEER_APPLICATION'"
-   ].join(" "),[a.realmId])).rows[0];
-   return {items:rows.slice(0,25),hasMore:rows.length>25,offset,
-    overview:{total:stats.total,pending:stats.pending,approved:stats.approved,rejected:stats.rejected,today:stats.today,
-     averageDecisionHours:stats.average_hours===null?null:Number(stats.average_hours)}};
-
+   const keyword=term?"%"+term.replace(/[\\%_]/g,"\\$&")+"%":"";
+   const result=await tx.query<{
+    caseRef:string;reference:string;status:string;revision:number;name:string;applicationNumber:string;
+    department:string;availability:string;submittedAt:Date;canDecide:boolean
+   }>(`SELECT c.id AS "caseRef",c.case_number AS reference,c.status,c.revision,
+     (v.first_name||' '||v.last_name) AS name,v.application_ref AS "applicationNumber",
+     d.name AS department,v.availability,c.created_at AS "submittedAt",
+     (c.status='SUBMITTED' AND c.proposer_id<>$2) AS "canDecide"
+     FROM cg03_case c
+     JOIN volunteer_application v ON v.root_realm_id=c.realm_id AND v.id=c.volunteer_application_id
+     JOIN department d ON d.root_realm_id=v.root_realm_id AND d.id=v.department_ref
+     WHERE c.realm_id=$1 AND c.case_kind='VOLUNTEER_APPLICATION'
+       AND ($3='ALL' OR c.status=$3)
+       AND ($4='' OR lower(c.case_number) LIKE $4 ESCAPE '\\'
+         OR lower(v.application_ref) LIKE $4 ESCAPE '\\'
+         OR lower(v.first_name||' '||v.last_name) LIKE $4 ESCAPE '\\')
+       AND ($5::uuid IS NULL OR v.department_ref=$5)
+       AND ($6='ALL' OR v.availability=$6)
+     ORDER BY c.created_at DESC,c.id DESC LIMIT 26 OFFSET $7`,
+    [a.realmId,a.accountId,status,keyword,department,availability,offset]);
+   const counts=(await tx.query<{
+     total:string;active:string;pending:string;rejected:string;today:string
+   }>(`SELECT
+    (SELECT count(*)::text FROM volunteer_application app WHERE app.root_realm_id=$1) AS total,
+    (SELECT count(*)::text FROM volunteer approved WHERE approved.root_realm_id=$1 AND approved.status='ACTIVE') AS active,
+    (SELECT count(*)::text FROM volunteer_application pending WHERE pending.root_realm_id=$1 AND pending.status='SUBMITTED') AS pending,
+    (SELECT count(*)::text FROM volunteer_application rejected WHERE rejected.root_realm_id=$1 AND rejected.status='REJECTED') AS rejected,
+    (SELECT count(*)::text FROM volunteer_application today WHERE today.root_realm_id=$1 AND (today.created_at AT TIME ZONE 'Asia/Kolkata')::date=(now() AT TIME ZONE 'Asia/Kolkata')::date) AS today`,
+    [a.realmId])).rows[0];
+   const current=counts??{total:"0",active:"0",pending:"0",rejected:"0",today:"0"};
+   return {items:result.rows.slice(0,25),hasMore:result.rows.length>25,offset,overview:{
+    total:Number(current.total),active:Number(current.active),pending:Number(current.pending),
+    rejected:Number(current.rejected),today:Number(current.today),
+    approvalRate:Number(current.total)>0?Math.round(100*Number(current.active)/Number(current.total)):null
+   }};
   });
  }
- async detail(token:string,ref:string){const a=await this.reviewer(token),id=uuid(ref);return this.run(a,async tx=>{await this.authority(tx,a);const c=await this.case(tx,a,id);const frozen=await this.exact(tx,a,c,["SUBMITTED","PENDING_OWNER"].includes(c.status));const timeline=(await tx.query("SELECT e.action,e.occurred_at AS \"occurredAt\",a.display_name AS reviewer FROM cg03_case_event e JOIN account a ON a.id=e.actor_id AND a.realm_id=e.realm_id WHERE e.realm_id=$1 AND e.case_id=$2 ORDER BY e.occurred_at DESC,e.id DESC LIMIT 50",[a.realmId,c.id])).rows;
-  const source=frozen.source;
-  const labels=(await tx.query<{plan:string;category:string;duration_unit:string;duration_count:number;branch:string|null;state:string|null;district:string|null}>([
-   "SELECT v.name AS plan,v.category,v.duration_unit,v.duration_count,b.name AS branch,area.display_name AS state,district.display_name AS district",
-   "FROM volunteer_tier_version v LEFT JOIN branch b ON b.root_realm_id=v.root_realm_id AND b.id=$3",
-   "LEFT JOIN geography_area area ON area.root_realm_id=v.root_realm_id AND area.id=$4",
-   "LEFT JOIN geography_area district ON district.root_realm_id=v.root_realm_id AND district.id=$5",
-   "WHERE v.root_realm_id=$1 AND v.id=$2"
-  ].join(" "),[a.realmId,source.tier_version_id,source.branch_ref??null,source.state_ref,source.district_ref])).rows[0];
-  if(!labels)throw changed();
-  const currentFee=await this.fees.statusInTx(tx,a.realmId,c.volunteer_application_id);
-  const summary={applicationNumber:source.application_ref,name:source.display_name,mobile:source.contact_mobile,email:source.contact_email,
-   address:source.address_text,city:source.city,pinCode:source.pin_code,feeMinor:source.accepted_fee_minor,currency:source.currency,
-   plan:labels.plan,category:labels.category,durationUnit:labels.duration_unit,durationCount:labels.duration_count,
-   branch:labels.branch,state:labels.state,district:labels.district,referral:source.referral_input??"",
-   consentVersion:source.consent_version,consentedAt:source.consented_at};
-  // Original CG19 is the only issued-document owner; review displays committed
-  // pack status, not a second source of signed files or a reviewer issue grant.
-  const generated=(await tx.query<{
-   packRef:string;state:string;issueRevision:number;issuedAt:Date|null
-  }>([
-   'SELECT p.id AS "packRef",p.state,p.issue_revision AS "issueRevision",p.issued_at AS "issuedAt"',
-   'FROM volunteer_approval_effect e',
-   'JOIN cg19_member_pack p ON p.root_realm_id=e.root_realm_id AND p.member_id=e.member_id AND p.term_id=e.term_id',
-   'WHERE e.root_realm_id=$1 AND e.application_id=$2',
-   'ORDER BY p.issue_revision DESC,p.id DESC LIMIT 1'
-  ].join(" "),[a.realmId,c.volunteer_application_id])).rows[0];
-  const generatedFiles=generated?(await tx.query<{kind:string;status:string}>(
-   'SELECT kind,state AS status FROM cg19_member_pack_document WHERE root_realm_id=$1 AND pack_id=$2 ORDER BY kind',
-   [a.realmId,generated.packRef])).rows:[];
-  const documentPack=generated?{status:generated.state,issueRevision:generated.issueRevision,
-   issuedAt:generated.issuedAt?.toISOString()??null,files:generatedFiles}:null;
-  return {caseRef:c.id,reference:c.case_number,status:c.status,revision:c.revision,source:summary,fee:currentFee,documentPack,
-   files:frozen.files,timeline,canDecide:c.proposer_id!==a.accountId&&c.status==="SUBMITTED"};
- });}
- /** Original CG03 finalized decision source for CG04's short owner transaction.
-  * The applicant is not a reviewer: no reviewer grant is issued or inferred. */
+ async detail(token:string,ref:string){
+  const a=await this.reviewer(token),id=uuid(ref);
+  return this.run(a,async tx=>{
+   await this.authority(tx,a);
+   const c=await this.case(tx,a,id),source=await this.exact(tx,a,c,["SUBMITTED","PENDING_OWNER"].includes(c.status));
+   const timeline=(await tx.query<{action:string;occurredAt:Date;reviewer:string}>(`SELECT e.action,e.occurred_at AS "occurredAt",account.display_name AS reviewer
+    FROM cg03_case_event e JOIN account account ON account.id=e.actor_id AND account.realm_id=e.realm_id
+    WHERE e.realm_id=$1 AND e.case_id=$2 ORDER BY e.occurred_at,e.id LIMIT 100`,[a.realmId,id])).rows;
+   const names=(await tx.query<{applicationNumber:string;department:string;branch:string|null}>(`SELECT app.application_ref AS "applicationNumber",department.name AS department,branch.name AS branch
+     FROM volunteer_application app JOIN department department ON department.id=app.department_ref AND department.root_realm_id=app.root_realm_id
+     LEFT JOIN branch branch ON branch.id=app.branch_ref AND branch.root_realm_id=app.root_realm_id
+     WHERE app.root_realm_id=$1 AND app.id=$2`,[a.realmId,c.volunteer_application_id])).rows[0];
+   return {caseRef:c.id,reference:c.case_number,status:c.status,revision:c.revision,
+    applicationNumber:names?.applicationNumber??"",department:names?.department??"",branch:names?.branch??null,
+    source:source.source,files:source.files,timeline,canDecide:c.status==="SUBMITTED"&&c.proposer_id!==a.accountId};
+  });
+ }
  async approvedForActivation(tx:PoolClient,a:Actor,app:string,version:number,digest:string){
   const c=(await tx.query<Case>("SELECT * FROM cg03_case WHERE realm_id=$1 AND case_kind='VOLUNTEER_APPLICATION' AND volunteer_application_id=$2 AND proposer_id=$3 AND volunteer_application_version=$4 AND volunteer_review_digest=$5 AND status='PENDING_OWNER' FOR UPDATE",[a.realmId,app,a.accountId,version,digest])).rows[0];
   if(!c)throw new ConflictException("Volunteer review has not been finally approved.");
