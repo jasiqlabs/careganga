@@ -305,16 +305,24 @@ export class DonationOnlineService{
   // configured merchant and compare status, amount, currency and reference.
   const remote=await this.provider("/"+id,"GET");
   return this.tx(async tx=>{
-   const a=(await tx.query<Attempt & {root_realm_id:string;amount_minor:string}>(
-    "SELECT a.*,a.root_realm_id,d.amount_minor::text FROM donation_payment_attempt a "+
-    "JOIN donation d ON d.root_realm_id=a.root_realm_id AND d.id=a.donation_id "+
+   // Read merchant reference without a row lock; lock donation BEFORE attempt.
+   const matches=(await tx.query<Attempt & {root_realm_id:string}>(
+    "SELECT a.*,a.root_realm_id FROM donation_payment_attempt a "+
     "WHERE a.external_reference=$1 AND a.method='ONLINE' AND a.provider='razorpay' "+
-    "FOR UPDATE OF a",[id])).rows[0];
-   if(!a)throw new NotFoundException("Payment link is not part of an eligible Foundation donation.");
-   const configReady=await this.merchant(tx,a.root_realm_id);
+    "LIMIT 2",[id])).rows;
+   if(matches.length!==1)throw new NotFoundException("Provider link has no unique Foundation source.");
+   const original=matches[0];
    const d=(await tx.query<Donation>(
     "SELECT id,root_realm_id,amount_minor::text,source_status FROM donation "+
-    "WHERE root_realm_id=$1 AND id=$2 FOR UPDATE",[a.root_realm_id,a.donation_id])).rows[0];
+    "WHERE root_realm_id=$1 AND id=$2 FOR UPDATE",[original.root_realm_id,original.donation_id])).rows[0];
+   const a=(await tx.query<Attempt & {root_realm_id:string}>(
+    "SELECT a.*,a.root_realm_id FROM donation_payment_attempt a "+
+    "WHERE a.root_realm_id=$1 AND a.id=$2 AND a.donation_id=$3 "+
+    "AND a.method='ONLINE' AND a.provider='razorpay' FOR UPDATE OF a",
+    [original.root_realm_id,original.id,original.donation_id])).rows[0];
+   if(!d||!a||a.donation_id!==d.id||a.external_reference!==id)
+    throw new NotFoundException("Original payment source changed.");
+   const configReady=await this.merchant(tx,d.root_realm_id);
    if(!d||a.merchant_reference!==configReady.key||
     remote.id!==id||remote.reference_id!==a.id.replaceAll("-","")||
     remote.status!==(eventKind==="payment_link.paid"?"paid":

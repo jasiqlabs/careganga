@@ -4,7 +4,7 @@
 
 **Current scope:** US-001 six-step campaigns/CG03+CG18 is source-authored, awaiting final review; US-002 cash and Razorpay donor/finance Web/native is partially source-authored but bank/NEFT/cheque needs original evidence; US-003 CG19 neutral PDF/CG09 physical-cash refund and actual net source is partially source-authored but provider refund, corrected documents, donor history, export and notifications remain.
 
-**Disposition totals (23 November checkpoint):** 31 source surfaces present but not fully reviewed; 18 known requirements incomplete; 10 require independent/runtime evidence; 1 previous gap has a focused source fix reviewed pending independent/runtime verification. **0/60 original cases are certified RUNTIME_PASS; 0/3 stories certified SOURCE_COMPLETE.** A single row may require more than a single test.
+**Disposition totals (23 November checkpoint):** 31 source surfaces present but not fully reviewed; 17 known requirements incomplete; 10 require independent/runtime evidence; 2 previous gaps have focused source fixes reviewed pending independent/runtime verification. **0/60 original cases are certified RUNTIME_PASS; 0/3 stories certified SOURCE_COMPLETE.** A single row may require more than a single test.
 
 | Original QA ID | Source QA disposition | Current original-owner source | Open proof or implementation |
 |---|---|---|---|
@@ -36,7 +36,7 @@
 | US-002-QA06 | RUNTIME_NOT_VERIFIED | A16/A17 screenshot audit | Requires actual DB/provider/browser/device/qualified review evidence |
 | US-002-QA07 | SOURCE_PRESENT_NEEDS_REVIEW | 3308 SQL + webhook | Source located; independent file:function and scenario review not signed |
 | US-002-QA08 | SOURCE_PRESENT_NEEDS_REVIEW | donation-online-finance.service.ts | Source located; independent file:function and scenario review not signed |
-| US-002-QA09 | SOURCE_GAP | donation-online.service.ts | Provider pending/mixed manual races need tested source handling |
+| US-002-QA09 | SOURCE_FIX_REVIEWED_RUNTIME_PENDING | 3311 DB trigger, donation-manual.service.ts:options/prepare/confirm, donation-online.service.ts:link/webhook | Parent-donation lock makes cash/link initiation mutually exclusive across instances; webhook and cash confirmation now lock donation first, then attempt/evidence. Signed evidence preserved. Actual DB race/provider sandbox/independent review NOT_RUN |
 | US-002-QA10 | SOURCE_PRESENT_NEEDS_REVIEW | donation-online.service.ts | Source located; independent file:function and scenario review not signed |
 | US-002-QA11 | SOURCE_GAP | CG09 cash+Razorpay / bank gap | BANK/CHEQUE/NEFT need authentic CG09+CG19 evidence; Cash/Razorpay only |
 | US-002-QA12 | SOURCE_GAP | donation-input.ts + public Web/native | Recurring, remarks, proof/history fields not fully implemented |

@@ -147,15 +147,21 @@ export class DonationManualService{
   await this.sessions.limitFoundationRootProof(a);
   return this.run(bearer,async(tx,actor)=>{
    await this.protectedOwner.verifyReviewer(tx,actor,"approvals.review",true);
+   // Serialize collection/confirmation by locking the donation before its voucher.
+   const source=(await tx.query<{donation_id:string}>(
+    "SELECT donation_id FROM donation_manual_evidence WHERE root_realm_id=$1 AND id=$2",
+    [actor.realmId,ref])).rows[0];
+   if(!source)throw new NotFoundException("Cash voucher not available.");
+   const d=await this.donation(tx,actor,source.donation_id);
    const e=(await tx.query<Evidence>(
     "SELECT id,donation_id,recorded_by,status,source_digest,request_key,voucher_reference,"+
     "amount_minor::text,cash_account_ref,income_account_ref,financial_year_ref,posting_date::text,"+
     "review_request_key,review_digest,reviewed_by,journal_ref "+
     "FROM donation_manual_evidence WHERE root_realm_id=$1 AND id=$2 FOR UPDATE",
     [actor.realmId,ref])).rows[0];
-   if(!e)throw new NotFoundException("Cash voucher not available.");
-   if(e.recorded_by===actor.accountId)throw new ForbiddenException("A different authorized Foundation reviewer must confirm this cash donation.");
-   const d=await this.donation(tx,actor,e.donation_id);
+   if(!e||e.donation_id!==d.id)throw new NotFoundException("Cash voucher not available.");
+   if(e.recorded_by===actor.accountId)
+    throw new ForbiddenException("A different authorized Foundation reviewer must confirm cash.");
    const reviewDigest=digest(["CG07_CASH_VERIFY",e.id,e.source_digest,e.amount_minor]);
    if(e.status==="POSTED"){
     if(e.review_request_key!==key||e.review_digest!==reviewDigest||e.reviewed_by!==actor.accountId)
@@ -164,6 +170,7 @@ export class DonationManualService{
    }
    if(e.status!=="PENDING_REVIEW"||d.source_status!=="REQUESTED"||d.amount_minor!==e.amount_minor)
     throw conflict();
+   await this.ensureNoOnlineCollection(tx,actor,d.id);
    await this.sessions.requireFreshFoundationRootProof(tx,actor,password);
    const j=await this.finance.postCash(tx,actor,{
     donationRef:d.id,amountMinor:d.amount_minor,branchRef:d.branch_ref,

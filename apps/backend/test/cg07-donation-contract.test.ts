@@ -167,3 +167,21 @@ test("US002-QA04: provider terminal/unknown state reconciles only on donor proof
  assert.match(intent,/uncertain\?"RECONCILIATION_PENDING"/);
  assert.match(intent,/Do not pay again/);
 });
+
+test("US002-QA09: parent lock serializes concurrent cash and online payment initiation",()=>{
+ const sql=migration("3311_cg07_payment_channel_guard.sql");
+ const cash=source("application/donation-manual.service.ts");
+ const online=source("application/donation-online.service.ts");
+ assert.match(sql,/CREATE TRIGGER cg07_one_active_payment_path_before_insert/);
+ assert.match(sql,/d\.id=NEW\.donation_id FOR UPDATE/);
+ assert.match(sql,/a\.status NOT IN\('FAILED','EXPIRED'\)/);
+ assert.match(cash,/method='ONLINE' AND status NOT IN\('FAILED','EXPIRED'\)/);
+ assert.match(online,/otherMethod\.rowCount/);
+ assert.match(online,/method<>'ONLINE' AND status NOT IN\('FAILED','EXPIRED'\)/);
+ const confirm=cash.split("async confirm(bearer:string")[1];
+ assert.ok(confirm.indexOf("const d=await this.donation(tx,actor,source.donation_id)")<
+  confirm.indexOf("FROM donation_manual_evidence WHERE root_realm_id=$1 AND id=$2 FOR UPDATE"));
+ const webhook=online.split("async webhook(req:object)")[1];
+ assert.ok(webhook.indexOf("FROM donation ")<webhook.indexOf("FOR UPDATE OF a"));
+ assert.match(webhook,/donation_payment_event/);
+});
