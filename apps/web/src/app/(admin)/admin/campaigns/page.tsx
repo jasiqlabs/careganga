@@ -3,6 +3,7 @@ import {redirect} from "next/navigation";
 import {FoundationAdminNav} from "../../../../shared/foundation-admin-nav";
 import {UnavailablePage} from "../../../../shared/unavailable-page";
 import {CampaignDraftsWorkspace} from "../../../../features/campaigns/campaign-drafts-workspace";
+import {CampaignReviewWorkspace} from "../../../../features/campaigns/campaign-review-workspace";
 export const dynamic="force-dynamic";
 export const metadata={title:"Campaigns | CareGanga Foundation",robots:{index:false,follow:false}};
 export default async function CampaignsPage(){
@@ -19,12 +20,16 @@ export default async function CampaignsPage(){
   const actor=await me.json(),grant=await access.json();
   if(typeof actor?.displayName!=="string"||typeof actor?.roleName!=="string"||!Array.isArray(grant?.actions))throw Error();
   const actions=(grant.actions as unknown[]).filter((v):v is {key:string}=>!!v&&typeof v==="object"&&"key" in v&&typeof v.key==="string").map(v=>v.key);
-  if(!actions.includes("campaigns.view"))return <UnavailablePage title="Campaigns unavailable" description="Your current role cannot access Foundation campaigns." linkLabel="Return to dashboard"/>;
+  const canReview=actions.includes("approvals.review")&&actions.includes("campaigns.review");
+  if(!actions.includes("campaigns.view")&&!canReview)return <UnavailablePage title="Campaigns unavailable" description="Your current role cannot access Foundation campaigns." linkLabel="Return to dashboard"/>;
   return <div className="shell"><FoundationAdminNav active="campaigns" initialActions={actions}
    displayName={actor.displayName} roleName={actor.roleName} canViewRoles={actions.includes("roles.view")}
    canViewAccounts={actions.includes("accounts.view")} canViewBranches={actions.includes("foundation.branches.view")}
    canViewFoundation={actions.includes("foundation.profile.view")}/>
-   <main className="workspace"><CampaignDraftsWorkspace canManage={actions.includes("campaigns.manage")}/></main></div>;
+   <main className="workspace" style={{display:"grid",gap:22}}>
+   {actions.includes("campaigns.view")&&<CampaignDraftsWorkspace canManage={actions.includes("campaigns.manage")}/>}
+   {canReview&&<CampaignReviewWorkspace canConfigure={actions.includes("approvals.process.manage")}/>}
+   </main></div>;
  }catch(e){
   if(e&&typeof e==="object"&&"digest" in e&&typeof e.digest==="string"&&e.digest.startsWith("NEXT_REDIRECT"))throw e;
   return <UnavailablePage title="Campaigns unavailable" description="Current Foundation campaign permissions cannot be verified." linkLabel="Return to dashboard"/>;
