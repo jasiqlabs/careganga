@@ -72,6 +72,7 @@ export class FieldVisitReviewService{
    if(c.proposer_id!==a.accountId&&v.actor_account_ref!==a.accountId&&v.version===c.visit_review_version&&v.status==="PENDING_APPROVAL"&&["SUBMITTED","IN_REVIEW"].includes(c.status)){try{await this.owner.verifyReviewer(tx,a,"approvals.review",true);canReview=true;}catch(e){if(!(e instanceof ForbiddenException))throw e;}}
    const decisions=(await tx.query("SELECT d.action,d.safe_remarks AS remarks,d.fresh_password_verified_at AS at,a.display_name AS reviewer FROM cg03_case_decision d JOIN account a ON a.id=d.actor_id AND a.realm_id=d.realm_id WHERE d.realm_id=$1 AND d.case_id=$2 ORDER BY d.accepted_case_revision",[a.realmId,c.id])).rows;
    const files=(await tx.query("SELECT count(*)::int AS count FROM field_visit_review_file WHERE root_realm_id=$1 AND snapshot_id=$2",[a.realmId,s.id])).rows[0].count;
+   if(canReview&&files)try{await this.identity.assertCurrent(tx,a,"documents.files.view");}catch(e){if(!(e instanceof ForbiddenException))throw e;canReview=false;}
    return {caseRef:canReview?c.id:null,caseNumber:c.case_number,status:c.status,revision:c.revision,canReview,sourceVersion:s.visit_version,report:s.report_snapshot.report_text,locationState:s.report_snapshot.locationState,verifiedFileCount:files,decisions};
   },true);
  }
