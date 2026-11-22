@@ -1,4 +1,4 @@
-import {BadRequestException,ConflictException,Inject,Injectable,ServiceUnavailableException} from "@nestjs/common";
+import {BadRequestException,ConflictException,ForbiddenException,Inject,Injectable,ServiceUnavailableException} from "@nestjs/common";
 import {createCipheriv,createDecipheriv,createHash,randomBytes} from "node:crypto";
 import type {Pool} from "pg";
 import {DATABASE} from "../../../core/infrastructure/database.module";
@@ -7,7 +7,7 @@ import {FoundationStructureIdentityFacade} from "../../cg-01-identity-access/app
 import {HrEnrollmentSourceFacade} from "./hr-enrollment-source.facade";
 type PrivateFields={contactPhone:string|null;postalAddress:string|null;
  emergencyName:string|null;emergencyPhone:string|null;pan:string|null;
- bankAccount:string|null;bankIfsc:string|null;fatherName:string|null;motherName:string|null;dateOfBirth:string|null;gender:string|null;bloodGroup:string|null;contactEmail:string|null;pinCode:string|null;bankName:string|null;accountHolder:string|null;bankBranch:string|null;accountType:string|null;upiId:string|null};
+ bankAccount:string|null;bankIfsc:string|null;fatherName:string|null;motherName:string|null;dateOfBirth:string|null;gender:string|null;bloodGroup:string|null;contactEmail:string|null;pinCode:string|null;bankName:string|null;accountHolder:string|null;bankBranch:string|null;accountType:string|null;upiId:string|null;addressState:string|null;addressDistrict:string|null;addressBlock:string|null;workLocation:string|null;compensationProposal:string|null};
 type Row={payload_ciphertext:string;payload_nonce:string;payload_tag:string;
  payload_digest:string;record_version:number};
 const UUID=/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i;
@@ -31,7 +31,7 @@ export function parseHrPrivateDetails(value:unknown):PrivateFields{
   throw new BadRequestException({code:"CG10_PRIVATE_INVALID"});
  const x=value as Record<string,unknown>;
  const keys=["contactPhone","postalAddress","emergencyName","emergencyPhone",
-   "pan","bankAccount","bankIfsc","fatherName","motherName","dateOfBirth","gender","bloodGroup","contactEmail","pinCode","bankName","accountHolder","bankBranch","accountType","upiId"];
+   "pan","bankAccount","bankIfsc","fatherName","motherName","dateOfBirth","gender","bloodGroup","contactEmail","pinCode","bankName","accountHolder","bankBranch","accountType","upiId","addressState","addressDistrict","addressBlock","workLocation","compensationProposal"];
  if(Object.keys(x).some(k=>!keys.includes(k)))
   throw new BadRequestException({code:"CG10_PRIVATE_INVALID"});
  const optional=(v:unknown,max:number)=>{
@@ -48,6 +48,7 @@ export function parseHrPrivateDetails(value:unknown):PrivateFields{
   bankIfsc=optional(x.bankIfsc,11)?.toUpperCase()??null,
   contactEmail=optional(x.contactEmail,254),dateOfBirth=optional(x.dateOfBirth,10),
   bloodGroup=optional(x.bloodGroup,3)?.toUpperCase()??null,pinCode=optional(x.pinCode,6),
+  compensationProposal=x.compensationProposal===null||x.compensationProposal===undefined||x.compensationProposal===""?null:x.compensationProposal,
   upiId=optional(x.upiId,128),accountType=optional(x.accountType,16)?.toUpperCase()??null;
  if([contactPhone,emergencyPhone].some(v=>v&&!/^\+?[0-9]{10,15}$/.test(v))||
    (pan&&!/^[A-Z]{5}[0-9]{4}[A-Z]$/.test(pan))||
@@ -59,6 +60,7 @@ export function parseHrPrivateDetails(value:unknown):PrivateFields{
    (bloodGroup&&!/^(A|B|AB|O)[+-]$/.test(bloodGroup))||
    (pinCode&&!/^[1-9][0-9]{5}$/.test(pinCode))||
    (upiId&&!/^[A-Za-z0-9._-]+@[A-Za-z0-9.-]+$/.test(upiId))||
+   (compensationProposal!==null&&(typeof compensationProposal!=="string"||! /^(?:[1-9]\d{0,9}|0)(?:\.\d{1,2})?$/.test(compensationProposal)||Number(compensationProposal)<=0))||
    (accountType&&!['SAVINGS','CURRENT','OTHER'].includes(accountType)))
   throw new BadRequestException({code:"CG10_PRIVATE_INVALID"});
  return {contactPhone,postalAddress:optional(x.postalAddress,700),
@@ -66,7 +68,7 @@ export function parseHrPrivateDetails(value:unknown):PrivateFields{
   pan,bankAccount,bankIfsc,fatherName:optional(x.fatherName,120),motherName:optional(x.motherName,120),
   dateOfBirth,gender:optional(x.gender,32),bloodGroup,contactEmail,pinCode,
   bankName:optional(x.bankName,120),accountHolder:optional(x.accountHolder,120),
-  bankBranch:optional(x.bankBranch,120),accountType,upiId};
+  bankBranch:optional(x.bankBranch,120),accountType,upiId,addressState:optional(x.addressState,100),addressDistrict:optional(x.addressDistrict,100),addressBlock:optional(x.addressBlock,100),workLocation:optional(x.workLocation,160),compensationProposal:compensationProposal as string|null};
 }
 function encrypt(fields:PrivateFields,realm:string,ref:string,version:number){
  const iv=randomBytes(12);
@@ -100,6 +102,10 @@ export class HrPrivateDetailService{
   private readonly sessions:SessionService,
   private readonly identity:FoundationStructureIdentityFacade,
   private readonly source:HrEnrollmentSourceFacade){}
+ private async compensationAllowed(tx:import("pg").PoolClient,actor:Awaited<ReturnType<SessionService["requireAction"]>>){
+  try{await this.identity.assertCurrent(tx,actor,"hr.changes.manage");return true;}
+  catch(e){if(e instanceof ForbiddenException)return false;throw e;}
+ }
  async read(token:string,applicationInput:string){
   const actor=await this.sessions.requireAction(token,"hr.employees.private.view");
   const ref=id(applicationInput),tx=await this.db.connect();
@@ -114,13 +120,15 @@ export class HrPrivateDetailService{
    const row=q.rows[0];
    const details=row?decrypt(row,actor.realmId,ref):{
      contactPhone:null,postalAddress:null,emergencyName:null,
-     emergencyPhone:null,pan:null,bankAccount:null,bankIfsc:null,fatherName:null,motherName:null,dateOfBirth:null,gender:null,bloodGroup:null,contactEmail:null,pinCode:null,bankName:null,accountHolder:null,bankBranch:null,accountType:null,upiId:null};
+     emergencyPhone:null,pan:null,bankAccount:null,bankIfsc:null,fatherName:null,motherName:null,dateOfBirth:null,gender:null,bloodGroup:null,contactEmail:null,pinCode:null,bankName:null,accountHolder:null,bankBranch:null,accountType:null,upiId:null,addressState:null,addressDistrict:null,addressBlock:null,workLocation:null,compensationProposal:null};
    await tx.query(
     "INSERT INTO hr_private_access_audit(root_realm_id,application_id,actor_ref,"+
     "event_type,record_version) VALUES($1,$2,$3,'PRIVATE_READ',$4)",
     [actor.realmId,ref,actor.accountId,row?.record_version??1]);
+   const canProposeCompensation=await this.compensationAllowed(tx,actor);
+   const {compensationProposal,...personal}=details;
    await tx.query("COMMIT");
-   return {details,revision:row?.record_version??0};
+   return {details:canProposeCompensation?{...personal,compensationProposal}:personal,revision:row?.record_version??0,canProposeCompensation};
   }catch(e){await tx.query("ROLLBACK");throw e;}
   finally{tx.release();}
  }
@@ -153,6 +161,7 @@ export class HrPrivateDetailService{
    if(current!==expected)throw new ConflictException(
      "Protected employee information changed. Refresh before saving.");
    const prior=row.rows[0]?decrypt(row.rows[0],actor.realmId,ref):{};
+   if(Object.hasOwn(requested,"compensationProposal")&&!(await this.compensationAllowed(tx,actor)))throw new ForbiddenException("Your role cannot manage compensation proposals");
    const data=parseHrPrivateDetails({...prior,...requested});
    const next=current+1,encrypted=encrypt(data,actor.realmId,ref,next);
    if(encrypted.ciphertext.length>8192)throw new BadRequestException({code:"CG10_PRIVATE_INVALID"});
