@@ -126,3 +126,6 @@ Extend current CG-03 QA at owner handoff: document verification must never send 
 - CG-10 US-002 reviewer detail now records private reason access in original hr_audit for leave and attendance correction, with no reason/password in the audit event; 2015 migration and protected detail source authored, runtime and independent review NOT_RUN.
 
 - owner-integration CG10/US-004: genuine HR_DOCUMENT_REVIEW through HrDocumentApprovalService, immutable exact source digest, recipient/proposer exclusion, real protected distinct decision; CG19 consumes approvedSource; no access-role finalization; source only, issuer/client and runtime pending.
+
+
+22-Nov CG05 US004 receiving integration: private FIELD_VISIT_REVIEW original case + immutable report/verified file snapshot and protected distinct reviewer, source CAS effect and deferred DB decision guard (3113–3114, 6f3cf8b/5ef65c7); returned/rejected/approved owner transitions. Single-step final reviewer only; configurable forward remains a source gap, no approval bypass. Source-only author review, formal/runtime/independent gates NOT_RUN.
