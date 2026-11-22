@@ -12,7 +12,7 @@ export async function GET(req:NextRequest,ctx:Ctx){
  if(!base)return reply({message:"Membership roster unavailable."},503);
  try{
   const url=new URL("/api/v1/membership/members"+(parts.length?"/export":""),base);
-  for(const k of ["q","status","category","branch",...(parts.length?[]:["cursor"])])
+  for(const k of ["q","status","category","feeClass","joinedFrom","joinedTo","branch",...(parts.length?[]:["cursor"])])
    if(req.nextUrl.searchParams.has(k))url.searchParams.set(k,req.nextUrl.searchParams.get(k)!);
   const r=await fetch(url,{headers:{Authorization:"Bearer "+token},cache:"no-store",signal:AbortSignal.timeout(12000)});
   if(r.ok){const data:unknown=await r.json();return reply(data);}
