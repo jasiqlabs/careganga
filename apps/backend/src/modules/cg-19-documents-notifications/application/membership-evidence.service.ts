@@ -3,6 +3,7 @@ import {createHash,randomUUID} from "node:crypto";
 import type {Pool,PoolClient} from "pg";
 import {DATABASE} from "../../../core/infrastructure/database.module";
 import {SessionService} from "../../cg-01-identity-access/application/session.service";
+import {ProtectedAccessOwnerService} from "../../cg-01-identity-access/application/protected-access-owner.service";
 import {FoundationStructureIdentityFacade} from "../../cg-01-identity-access/application/foundation-structure-identity.facade";
 import type {VerifiedFoundationActor as Actor} from "../../cg-01-identity-access/public-api";
 import {PrivateObjectStorage} from "../infrastructure/private-object-storage";
@@ -15,7 +16,7 @@ const unavailable=()=>new ServiceUnavailableException("Secure document storage o
 const hash=(x:unknown)=>createHash("sha256").update(JSON.stringify(x)).digest("hex");
 @Injectable()
 export class MembershipEvidenceService{
- constructor(@Inject(DATABASE)private readonly db:Pool,private readonly sessions:SessionService,private readonly identity:FoundationStructureIdentityFacade,private readonly objects:PrivateObjectStorage){}
+ constructor(@Inject(DATABASE)private readonly db:Pool,private readonly sessions:SessionService,private readonly identity:FoundationStructureIdentityFacade,private readonly objects:PrivateObjectStorage,private readonly protectedOwner:ProtectedAccessOwnerService){}
  private async run<T>(token:string,work:(tx:PoolClient,a:Actor)=>Promise<T>){
   const a=await this.sessions.verifySession(token),tx=await this.db.connect();
   try{await tx.query("BEGIN");await this.identity.verifiedCommunityApplicant(tx,a);const r=await work(tx,a);await tx.query("COMMIT");return r;}
@@ -126,7 +127,7 @@ export class MembershipEvidenceService{
   try{
    await tx.query("BEGIN");
    await this.identity.assertCurrent(tx,actor,"membership.applications.review");
-   await this.identity.assertCurrent(tx,actor,"approvals.review");
+   await this.protectedOwner.verifyReviewer(tx,actor,"approvals.review",true);
    await this.identity.assertCurrent(tx,actor,"documents.files.view");
    const f=(await tx.query<File>("SELECT d.* FROM cg03_case c JOIN membership_review_file f ON f.root_realm_id=c.realm_id AND f.snapshot_id=c.membership_review_ref AND f.application_id=c.membership_application_id JOIN cg19_membership_private_file d ON d.realm_id=f.root_realm_id AND d.id=f.file_id AND d.application_id=f.application_id JOIN membership_application a ON a.root_realm_id=c.realm_id AND a.id=c.membership_application_id WHERE c.realm_id=$1 AND c.id=$2 AND c.case_kind='MEMBER_APPLICATION' AND c.proposer_id<>$3 AND c.status IN('SUBMITTED','PENDING_OWNER') AND a.status='SUBMITTED' AND a.version=c.membership_application_version AND a.submitted_digest=c.membership_review_digest AND f.file_id=$4 AND d.revoked_at IS NULL AND d.scan_status='CLEAN_VERIFIED' AND d.revision=f.file_version AND d.sha256=f.sha256 FOR SHARE OF c,d,a",[actor.realmId,uuid(caseRef),actor.accountId,uuid(fileRef)])).rows[0];
    if(!f)throw missing();await tx.query("COMMIT");return f;
