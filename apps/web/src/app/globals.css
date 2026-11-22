@@ -15481,3 +15481,13 @@ button:disabled {
 .cg04-card-face-back{background:var(--cg-surface);color:var(--cg-text);border:2px solid var(--cg-accent)}
 .cg04-card-face-back small{color:var(--cg-muted)}
 @media(max-width:720px){.cg04-card-preview-grid{grid-template-columns:minmax(0,1fr)}.cg04-card-face{padding:16px}}
+
+/* CG04 authenticated original member document setup and real issued-pack controls. */
+.cg04-document-desk{min-width:0;margin:16px 0}
+.cg04-document-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin:14px 0}
+.cg04-document-grid label,.cg04-document-desk>div>label,.cg04-document-desk .cg04-panel>label,.cg04-document-desk .cg04-warning>label{display:grid;min-width:0;gap:7px;color:var(--cg-text);font-weight:650;font-size:var(--cg-text-sm)}
+.cg04-document-desk input{width:100%;min-width:0;min-height:44px;padding:9px 11px;background:var(--cg-surface);border:1px solid var(--cg-border);border-radius:9px;color:var(--cg-text);font:inherit}
+.cg04-document-desk input:focus-visible{outline:3px solid var(--cg-focus);outline-offset:2px}
+.cg04-document-desk .cg04-buttons :is(button,a){min-height:44px;display:inline-flex;align-items:center}
+.cg04-document-desk a{text-decoration:underline;color:var(--cg-accent);overflow-wrap:anywhere}
+@media(max-width:700px){.cg04-document-grid{grid-template-columns:minmax(0,1fr)}}
