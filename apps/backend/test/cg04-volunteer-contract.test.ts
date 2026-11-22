@@ -143,3 +143,23 @@ test("US003-QA17 real CG19 QR encoder accepts only the original opaque code and 
  assert.throws(()=>opaqueAppointmentQr("CGV-EXAMPLE"));
  assert.throws(()=>opaqueAppointmentQr("CGV-0123456789ABCDEF01234567?name=private"));
 });
+
+test("US003-QA17/19/20 historical volunteer card does not imply live eligibility across current Web and Android source",()=>{
+ const read=(file:string)=>readFileSync(join(process.cwd(),"../..",file),"utf8");
+ const service=read("apps/backend/src/modules/cg-19-documents-notifications/application/volunteer-card.service.ts");
+ assert.match(service,/private async present\(tx:PoolClient,c:Card\)/);
+ assert.match(service,/await this\.check\(tx,c\);return status/);
+ assert.match(service,/if\(e instanceof ConflictException\)return \{\.\.\.status,canDownload:false,canRetry:false\}/);
+ assert.match(service,/card:p\?await this\.present\(tx,p\):null/);
+ assert.match(service,/return this\.present\(tx,await this\.actual\(tx,a\.realmId,ref\)\)/);
+ assert.match(service,/items\.push\(await this\.present\(tx,card\)\)/);
+ assert.match(service,/if\(!state\.claim\)return this\.run/);
+ const webIssuer=read("apps/web/src/features/volunteers/volunteer-card-manager.tsx");
+ const webOwn=read("apps/web/src/features/volunteers/volunteer-own-card.tsx");
+ const nativeIssuer=read("apps/android-internal/src/features/volunteers/native-volunteer-card-issuer.tsx");
+ const nativeOwn=read("apps/android-public/src/features/volunteers/native-volunteer-card.tsx");
+ assert.match(webIssuer,/card\?\.status==="ISSUED"&&!card\.canDownload/);
+ assert.match(webOwn,/v\.status==="ISSUED"/);
+ assert.match(nativeIssuer,/card\?\.status==="ISSUED"&&!card\.canDownload/);
+ assert.match(nativeOwn,/v\.status==="ISSUED"/);
+});
