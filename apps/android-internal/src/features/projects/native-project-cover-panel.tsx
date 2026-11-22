@@ -8,11 +8,11 @@ import {careGangaTheme as theme} from "../../../../../packages/design-tokens/src
 const allowed=["image/jpeg","image/png","image/webp"];
 type Cover={fileRef:string;fileVersion:number;mime:string;size:string;createdAt:string};
 type Upload={uploadRef:string;status:string;uploadUrl?:string;uploadHeaders?:Record<string,string>;cleanVerified?:boolean;fileRef?:string|null;fileVersion?:number|null};
-type Picked={uri:string;name:string;mime:string;size:number};
+export type PickedProjectCover={uri:string;name:string;mime:string;size:number};
 type Command={key:string;hash:string;mime:string;size:number;intent?:string};
-export function NativeProjectCoverPanel({projectRef,version,token,onExpired,canUpload}:{projectRef:string;version:number;token:string;onExpired:()=>void;canUpload:boolean}){
- const [files,setFiles]=useState<Cover[]|null>(null),[picked,setPicked]=useState<Picked|null>(null),[selected,setSelected]=useState<Cover|null>(null),[preview,setPreview]=useState(""),[busy,setBusy]=useState(false),[loadingPreview,setLoadingPreview]=useState(false),[error,setError]=useState(""),[message,setMessage]=useState(""),[epoch,setEpoch]=useState(0),[intent,setIntent]=useState("");
- const running=useRef(false),command=useRef<Command|null>(null),cacheFile=useRef<string|null>(null);
+export function NativeProjectCoverPanel({projectRef,version,token,onExpired,canUpload,initialPicked}:{projectRef:string;version:number;token:string;onExpired:()=>void;canUpload:boolean;initialPicked?:PickedProjectCover}){
+ const [files,setFiles]=useState<Cover[]|null>(null),[picked,setPicked]=useState<PickedProjectCover|null>(initialPicked??null),[selected,setSelected]=useState<Cover|null>(null),[preview,setPreview]=useState(""),[busy,setBusy]=useState(false),[loadingPreview,setLoadingPreview]=useState(false),[error,setError]=useState(""),[message,setMessage]=useState(""),[epoch,setEpoch]=useState(0),[intent,setIntent]=useState("");
+ const running=useRef(false),command=useRef<Command|null>(null),cacheFile=useRef<string|null>(initialPicked?.uri??null);
  const discardPicked=()=>{if(cacheFile.current){try{new File(cacheFile.current).delete();}catch{}cacheFile.current=null;}};
  useEffect(()=>()=>discardPicked(),[]);
  const api=async<T,>(path:string,body?:Record<string,unknown>):Promise<T>=>{const r=await identityRequest("/api/v1/project-covers/"+path,{headers:{Authorization:"Bearer "+token,...(body?{"Content-Type":"application/json"}:{})},cache:"no-store",...(body?{method:"POST",body:JSON.stringify(body)}:{})});if(r.status===401){onExpired();throw Error("Sign in again.");}const v=await r.json().catch(()=>null);if(!r.ok||!v)throw Error(r.status===409?"Project or cover changed. Refresh the details.":r.status===403?"Your role or project does not permit this action.":"Secure cover status could not be confirmed.");return v as T;};
