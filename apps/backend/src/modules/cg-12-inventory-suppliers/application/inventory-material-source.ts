@@ -8,7 +8,7 @@ import {inventoryRef,inventoryQuantity,sourceChanged} from "./inventory-receipt-
 import {lockStockBalances,type StockDelta} from "./inventory-stock-command";
 export const materialHash=(v:unknown)=>createHash("sha256").update(JSON.stringify(v)).digest("hex");
 export type MaterialRow={id:string;request_no:string;location_id:string;requester_id:string;priority:string;due_date:string;reason:string;status:string;version:number;current_revision:number};
-export type MaterialLine={id:string;item_id:string;unit_code:string;qty_scale:number;requested_qty:string;approved_qty:string;held_qty:string;issued_qty:string;name:string;sku:string};
+export type MaterialLine={id:string;item_id:string;unit_code:string;qty_scale:number;requested_qty:string;approved_qty:string;held_qty:string;issued_qty:string;name:string;sku:string;category:string};
 @Injectable()
 export class InventoryMaterialSource{
  constructor(private readonly catalog:InventoryCatalogService,private readonly identity:FoundationStructureIdentityFacade){}
@@ -19,7 +19,7 @@ export class InventoryMaterialSource{
   await this.catalog.store(tx,a,r.location_id,active);return r;
  }
  async lines(tx:PoolClient,root:string,ref:string){
-  return (await tx.query<MaterialLine>("SELECT l.*,i.name,i.sku_norm AS sku FROM material_request_line l JOIN inventory_item i ON i.root_realm_id=l.root_realm_id AND i.id=l.item_id WHERE l.root_realm_id=$1 AND l.request_id=$2 ORDER BY l.item_id LIMIT 50",[root,ref])).rows;
+  return (await tx.query<MaterialLine>("SELECT l.*,i.name,i.sku_norm AS sku,i.category FROM material_request_line l JOIN inventory_item i ON i.root_realm_id=l.root_realm_id AND i.id=l.item_id WHERE l.root_realm_id=$1 AND l.request_id=$2 ORDER BY l.item_id LIMIT 50",[root,ref])).rows;
  }
  async liveItems(tx:PoolClient,root:string,lines:MaterialLine[]){
   for(const l of lines)if(!(await tx.query("SELECT id FROM inventory_item WHERE root_realm_id=$1 AND id=$2 AND status='ACTIVE' FOR SHARE",[root,l.item_id])).rowCount)throw sourceChanged();
@@ -38,7 +38,7 @@ export class InventoryMaterialSource{
   const requester=(await this.identity.accountLabels(tx,a,[r.requester_id]))[r.requester_id]??"Staff account";
   const review=(await tx.query<{id:string;case_number:string;status:string;revision:number}>("SELECT id,case_number,status,revision FROM cg03_case WHERE realm_id=$1 AND material_request_id=$2 AND material_revision_no=$3 AND case_kind='MATERIAL_REQUEST_REVIEW'",[a.realmId,r.id,r.current_revision])).rows[0];
   const history=(await tx.query("SELECT c.case_number AS reference,c.material_revision_no AS revision,d.action,d.safe_remarks AS remarks,d.created_at AS \"recordedAt\" FROM cg03_case c JOIN cg03_case_decision d ON d.realm_id=c.realm_id AND d.case_id=c.id WHERE c.realm_id=$1 AND c.material_request_id=$2 AND c.case_kind='MATERIAL_REQUEST_REVIEW' ORDER BY c.material_revision_no DESC,d.id DESC LIMIT 20",[a.realmId,r.id])).rows;
-  return {history,ref:r.id,reference:r.request_no,locationRef:r.location_id,location:label?.label,requester,own:r.requester_id===a.accountId,priority:r.priority,dueDate:r.due_date,reason:r.reason,status:r.status,version:r.version,caseRef:review?.id??null,caseReference:review?.case_number??null,caseStatus:review?.status??null,caseRevision:review?.revision??null,lines:lines.map(l=>({ref:l.id,itemRef:l.item_id,name:l.name,sku:l.sku,unit:l.unit_code,scale:l.qty_scale,requested:l.requested_qty,approved:l.approved_qty,held:l.held_qty,issued:l.issued_qty}))};
+  return {history,ref:r.id,reference:r.request_no,locationRef:r.location_id,location:label?.label,requester,own:r.requester_id===a.accountId,priority:r.priority,dueDate:r.due_date,reason:r.reason,status:r.status,version:r.version,caseRef:review?.id??null,caseReference:review?.case_number??null,caseStatus:review?.status??null,caseRevision:review?.revision??null,lines:lines.map(l=>({ref:l.id,itemRef:l.item_id,name:l.name,sku:l.sku,category:l.category,unit:l.unit_code,scale:l.qty_scale,requested:l.requested_qty,approved:l.approved_qty,held:l.held_qty,issued:l.issued_qty}))};
  }
  async reserve(tx:PoolClient,a:VerifiedFoundationActor,r:MaterialRow,key:string,allowShortage:boolean){
   const lines=await this.lines(tx,a.realmId,r.id);
