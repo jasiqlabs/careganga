@@ -208,7 +208,7 @@ export function CampaignDraftsWorkspace({canManage}:{canManage:boolean}){
      <label style={field}>Campaign status<select style={entry} value={statusFilter}
       onChange={e=>{setStatusFilter(e.target.value);setOffset(0);}}>
       {tabItems.map(t=><option key={t.key} value={t.key}>{t.label}</option>)}
-      {["SUBMITTED","RETURNED","REJECTED","APPROVED","PAUSED"].map(t=>
+      {["SUBMITTED","RETURNED","REJECTED","PAUSED"].map(t=>
        <option key={t} value={t}>{t.replaceAll("_"," ").toLowerCase()}</option>)}
      </select></label>
      <button type="button" disabled={busy} onClick={()=>{setOffset(0);setApplied(q.trim());}}>Apply Filters</button>
@@ -261,9 +261,9 @@ export function CampaignDraftsWorkspace({canManage}:{canManage:boolean}){
      <section className={styles.sideCard}><h3>Campaign Overview</h3>
       <p>Approved campaigns: {summary?.active??"—"}</p>
       <p>Awaiting verification: {summary?"View status filters":"Not available"}</p>
-      <p>The published campaign count comes from the source lifecycle, not this page of results.</p></section>
+      <p>Approved means original CG03 operational approval, not public CG18 publication. Public visibility is checked separately.</p></section>
      <section className={styles.sideCard}><h3>Funding Overview (₹)</h3>
-      <p>Approved/published campaign goals: {summary?"₹"+minorToRupees(summary.goalMinor):"Not available"}</p>
+      <p>CG03-approved planned campaign goals: {summary?"₹"+minorToRupees(summary.goalMinor):"Not available"}</p>
       <p>Raised so far: <strong>Not yet verified by finance</strong></p>
       <p>Unverified donations are never counted as funds raised.</p></section>
      <section className={styles.sideCard}><h3>Recent Activities</h3>
