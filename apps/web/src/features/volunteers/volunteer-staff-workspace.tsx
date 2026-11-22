@@ -2,6 +2,7 @@
 import {useCallback,useEffect,useRef,useState} from "react";
 import type {CG04VolunteerReviewCase,CG04VolunteerReviewPage,CG04VolunteerReviewPolicy,CG04VolunteerRosterPage,CG04VolunteerRosterExport} from "@careganga/api-contracts";
 import {VolunteerCardManager} from "./volunteer-card-manager";
+import {VolunteerReimbursementPanel} from "./volunteer-reimbursement-panel";
 type Decision="APPROVE"|"RETURN"|"REJECT";
 type Pending={ref:string;body:{requestKey:string;expectedRevision:number;action:Decision;remarks:string};digest:string};
 const read=(v:string)=>v.replaceAll("_"," ").toLowerCase().replace(/\b[a-z]/g,c=>c.toUpperCase());
@@ -15,13 +16,14 @@ async function api<T>(path:string,body?:Record<string,unknown>):Promise<T>{
  if(!res.ok||value===null)throw Object.assign(new Error(value&&typeof value==="object"&&typeof (value as {message?:unknown}).message==="string"?(value as {message:string}).message:"Could not verify the current volunteer record."),{status:res.status});
  return value as T;
 }
-export function VolunteerStaffWorkspace({canReview,canRoster,canExport,canConfigure,canIssueCards}:{
- canReview:boolean;canRoster:boolean;canExport:boolean;canConfigure:boolean;canIssueCards:boolean
+export function VolunteerStaffWorkspace({canReview,canRoster,canExport,canConfigure,canIssueCards,canReimburse}:{
+ canReview:boolean;canRoster:boolean;canExport:boolean;canConfigure:boolean;canIssueCards:boolean;canReimburse:boolean
 }){
  const [tab,setTab]=useState<"REVIEW"|"ROSTER">(canReview?"REVIEW":"ROSTER");
  const [policy,setPolicy]=useState<CG04VolunteerReviewPolicy|null>(null),[reviews,setReviews]=useState<CG04VolunteerReviewPage|null>(null);
  const [detail,setDetail]=useState<CG04VolunteerReviewCase|null>(null),[selected,setSelected]=useState<string|null>(null);
  const [roster,setRoster]=useState<CG04VolunteerRosterPage|null>(null);
+ const [reimbursementRef,setReimbursementRef]=useState<string|null>(null);
  const [status,setStatus]=useState("ALL"),[availability,setAvailability]=useState("ALL"),[q,setQ]=useState(""),[applied,setApplied]=useState(""),[offset,setOffset]=useState(0);
  const [busy,setBusy]=useState(false),[loading,setLoading]=useState(true),[error,setError]=useState(""),[notice,setNotice]=useState("");
  const [action,setAction]=useState<Decision>("APPROVE"),[remarks,setRemarks]=useState(""),[password,setPassword]=useState(""),[configPassword,setConfigPassword]=useState("");
@@ -157,6 +159,10 @@ export function VolunteerStaffWorkspace({canReview,canRoster,canExport,canConfig
     <p>{read(row.availability)} · {row.city}, {row.district}</p>
     <p>Joined: {row.joinedOn}</p><p>Contact: {row.mobile}{row.email?" · "+row.email:""}</p><p>Skills: {row.skills.join(", ")||"None recorded"}</p>
     {canIssueCards&&<VolunteerCardManager volunteerRef={row.ref}/>}
+    {canReimburse&&<button type="button" disabled={busy} onClick={()=>setReimbursementRef(v=>v===row.ref?null:row.ref)}>
+     {reimbursementRef===row.ref?"Close reimbursement":"New reimbursement (U42)"}</button>}
+    {canReimburse&&reimbursementRef===row.ref&&<VolunteerReimbursementPanel volunteerRef={row.ref} onClose={()=>setReimbursementRef(null)}/>}
+
    </article>)}</div>
    <div className="cg04-buttons">{offset>0&&<button type="button" onClick={()=>setOffset(Math.max(0,offset-25))}>Previous volunteers</button>}
     {roster.hasMore&&<button type="button" onClick={()=>setOffset(x=>x+25)}>More volunteers</button>}</div>
