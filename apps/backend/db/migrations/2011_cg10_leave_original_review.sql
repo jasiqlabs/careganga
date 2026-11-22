@@ -106,6 +106,12 @@ CREATE TRIGGER cg03_hr_leave_frozen BEFORE UPDATE ON cg03_case FOR EACH ROW EXEC
 CREATE FUNCTION cg10_leave_request_frozen() RETURNS trigger LANGUAGE plpgsql AS $fn$
 BEGIN
  IF TG_OP='DELETE' THEN RAISE EXCEPTION 'Leave requests cannot be deleted'; END IF;
+ IF TG_OP='INSERT' THEN
+  IF NEW.status<>'SUBMITTED' OR NEW.case_ref IS NOT NULL OR NEW.decision_ref IS NOT NULL THEN
+   RAISE EXCEPTION 'New leave must begin as an original submission';
+  END IF;
+  RETURN NEW;
+ END IF;
  IF (to_jsonb(NEW)-ARRAY['case_ref','status','decision_ref','decided_at']) IS DISTINCT FROM
     (to_jsonb(OLD)-ARRAY['case_ref','status','decision_ref','decided_at']) THEN
   RAISE EXCEPTION 'Submitted leave evidence cannot be changed';
@@ -119,6 +125,9 @@ BEGIN
  IF OLD.status='SUBMITTED' AND OLD.case_ref IS NOT NULL AND NEW.case_ref=OLD.case_ref AND
    NEW.status IN('APPROVED','RETURNED','REJECTED') AND EXISTS(
     SELECT 1 FROM cg03_case c JOIN cg03_case_decision d ON d.case_id=c.id AND d.realm_id=c.realm_id
+    JOIN account reviewer ON reviewer.id=d.actor_id AND reviewer.realm_id=d.realm_id AND reviewer.status='ACTIVE'
+    JOIN account_role ar ON ar.account_id=reviewer.id AND ar.realm_id=reviewer.realm_id AND ar.revoked_at IS NULL
+    JOIN role current_role ON current_role.id=ar.role_id AND current_role.realm_id=ar.realm_id AND current_role.active AND current_role.is_protected
     WHERE c.realm_id=NEW.root_realm_id AND c.id=NEW.case_ref
      AND c.case_kind='LEAVE_REQUEST' AND c.hr_leave_request_id=NEW.id
      AND c.hr_leave_source_digest=NEW.source_digest AND d.id=NEW.decision_ref
@@ -127,8 +136,32 @@ BEGIN
      AND ((NEW.status='APPROVED' AND d.action='APPROVE' AND c.status='PENDING_OWNER') OR
           (NEW.status='RETURNED' AND d.action='RETURN' AND c.status='RETURNED') OR
           (NEW.status='REJECTED' AND d.action='REJECT' AND c.status='REJECTED'))
-   ) THEN RETURN NEW; END IF;
+   ) THEN
+  IF NEW.status='APPROVED' THEN
+   PERFORM id FROM hr_employee WHERE root_realm_id=NEW.root_realm_id AND id=NEW.employee_id FOR UPDATE;
+   IF EXISTS(SELECT 1 FROM hr_leave_request other WHERE other.root_realm_id=NEW.root_realm_id
+      AND other.employee_id=NEW.employee_id AND other.id<>NEW.id AND other.status='APPROVED'
+      AND other.start_date<=NEW.end_date AND other.end_date>=NEW.start_date) THEN
+    RAISE EXCEPTION 'Approved leave dates overlap';
+   END IF;
+  END IF;
+  RETURN NEW;
+ END IF;
  RAISE EXCEPTION 'Matching original leave decision is required';
 END $fn$;
-CREATE TRIGGER cg10_leave_request_frozen BEFORE UPDATE OR DELETE ON hr_leave_request
+CREATE TRIGGER cg10_leave_request_frozen BEFORE INSERT OR UPDATE OR DELETE ON hr_leave_request
  FOR EACH ROW EXECUTE FUNCTION cg10_leave_request_frozen();
+
+-- The initial request and actual original case must commit together.
+CREATE FUNCTION cg10_leave_link_required() RETURNS trigger LANGUAGE plpgsql AS $fn$
+BEGIN
+ IF NOT EXISTS(SELECT 1 FROM hr_leave_request r JOIN cg03_case c
+  ON c.id=r.case_ref AND c.realm_id=r.root_realm_id AND c.hr_leave_request_id=r.id
+  AND c.hr_leave_source_digest=r.source_digest AND c.case_kind='LEAVE_REQUEST'
+  AND c.proposer_id=r.submitted_by
+  WHERE r.root_realm_id=NEW.root_realm_id AND r.id=NEW.id)
+ THEN RAISE EXCEPTION 'An original leave case is required before commit'; END IF;
+ RETURN NULL;
+END $fn$;
+CREATE CONSTRAINT TRIGGER cg10_leave_link_required AFTER INSERT OR UPDATE ON hr_leave_request
+ DEFERRABLE INITIALLY DEFERRED FOR EACH ROW EXECUTE FUNCTION cg10_leave_link_required();

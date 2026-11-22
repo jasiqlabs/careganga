@@ -81,7 +81,7 @@ export function NativeHrMyLeave({token,onExpired,onChanged}:{token:string;onExpi
     <Field title="Private reason" value={form.reason} disabled={busy||locked} multiline onChange={v=>change("reason",v)}/>
     {locked&&<Text style={styles.muted}>The previous submission is uncertain. Retry the same request or refresh history; do not send a new application.</Text>}
     <Button title={busy?"Submitting…":locked?"Retry same leave request":"Submit for review"}
-     disabled={busy||!form.policyRef||!form.startDate||!form.endDate||form.reason.trim().length<2} onPress={()=>void submit()}/>
+     disabled={busy||loading||!form.policyRef||!form.startDate||!form.endDate||form.reason.trim().length<2} onPress={()=>void submit()}/>
    </>}
    <Text style={styles.label}>Leave history</Text>
    {!data.requests.length&&<Text style={styles.muted}>No leave requests in this year.</Text>}
@@ -123,7 +123,7 @@ export function NativeHrLeaveReviews({token,onExpired,onChanged}:{token:string;o
    {key:"RETURNED",title:"Returned"},{key:"REJECTED",title:"Rejected"},{key:"ALL",title:"All"}].map(x=>
    <Button key={x.key} title={x.title} selected={status===x.key} disabled={busy||locked}
     onPress={()=>{setStatus(x.key);setOffset(0);setSelected(null);setPassword("");}}/>)}</View>
-  <Button title="Refresh reviews" disabled={busy||loading} onPress={()=>void refresh()}/>
+  <Button title="Refresh reviews" disabled={busy||loading||locked} onPress={()=>void refresh()}/>
   {!!error&&<Text accessibilityRole="alert" style={styles.error}>{error}</Text>}{!!notice&&<Text style={styles.success}>{notice}</Text>}
   {loading&&<ActivityIndicator accessibilityLabel="Loading leave reviews"/>}
   {!loading&&!error&&!items.length&&<Text style={styles.muted}>No matching leave requests.</Text>}

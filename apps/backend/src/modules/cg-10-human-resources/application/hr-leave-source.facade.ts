@@ -8,30 +8,31 @@ const UUID=/^[a-f0-9]{8}-(?:[a-f0-9]{4}-){3}[a-f0-9]{12}$/i;
 const hash=(v:unknown)=>createHash("sha256").update(JSON.stringify(v)).digest("hex");
 export const leaveDate=(v:unknown)=>{
  if(typeof v!=="string"||!/^20\d{2}-\d{2}-\d{2}$/.test(v)||!Number.isFinite(Date.parse(v))||
-    new Date(v+"T00:00:00Z").toISOString().slice(0,10)!==v)throw new BadRequestException("Choose a valid leave date");
+    new Date(v+"T00:00:00Z").toISOString().slice(0,10)!==v)throw new BadRequestException({code:"CG10_LEAVE_INVALID"});
  return v;
 };
 export const leaveId=(v:unknown)=>{if(typeof v!=="string"||!UUID.test(v))
- throw new BadRequestException("Choose a valid leave request or policy");return v;};
+ throw new BadRequestException({code:"CG10_LEAVE_INVALID"});return v;};
 export function parseLeaveRequest(body:unknown){
  if(!body||typeof body!=="object"||Array.isArray(body)||
   Object.keys(body).some(k=>!["requestKey","policyRef","startDate","endDate","halfDay","reason"].includes(k)))
-  throw new BadRequestException("Check the leave form");
+  throw new BadRequestException({code:"CG10_LEAVE_INVALID"});
  const x=body as Record<string,unknown>;
  const startDate=leaveDate(x.startDate),endDate=leaveDate(x.endDate);
  const reason=typeof x.reason==="string"?x.reason.trim():"";
  if(startDate>endDate||startDate.slice(0,4)!==endDate.slice(0,4)||
     typeof x.halfDay!=="boolean"||(x.halfDay&&startDate!==endDate)||
     reason.length<2||reason.length>500||/[\u0000-\u001f\u007f]/.test(reason))
-  throw new BadRequestException("Choose leave dates in one year and enter a reason");
+  throw new BadRequestException({code:"CG10_LEAVE_INVALID"});
  return {requestKey:leaveId(x.requestKey),policyRef:leaveId(x.policyRef),
   startDate,endDate,halfDay:x.halfDay,reason};
 }
 export function countedLeaveDates(start:string,end:string,weeklyOff:number[],countWeeklyOff:boolean){
+ if(start>end||start.slice(0,4)!==end.slice(0,4))throw new BadRequestException({code:"CG10_LEAVE_INVALID"});
  const result:string[]=[];
  for(let at=Date.parse(leaveDate(start)+"T00:00:00Z"),last=Date.parse(leaveDate(end)+"T00:00:00Z");
   at<=last;at+=86400000){
-  if(result.length>366||end.slice(0,4)!==start.slice(0,4))throw new BadRequestException("Split leave at the year boundary");
+  if(result.length>366||end.slice(0,4)!==start.slice(0,4))throw new BadRequestException({code:"CG10_LEAVE_INVALID"});
   const day=new Date(at);
   if(countWeeklyOff||!weeklyOff.includes(day.getUTCDay()))result.push(day.toISOString().slice(0,10));
  }
@@ -87,7 +88,7 @@ export class HrLeaveSourceFacade{
    AND p.effective_from<=$4::date
    AND l.effective_from<=$4::date AND (l.effective_to IS NULL OR l.effective_to>$5::date)
    FOR SHARE OF a,b,s,p,l`,[realm,employee,policy,start,end]);
-  if(q.rows.length!==1)throw new ConflictException("Leave dates must belong to one current branch, assigned shift and effective leave policy. Ask HR or split the request.");
+  if(q.rows.length!==1)throw new ConflictException({code:"CG10_LEAVE_POLICY_CHANGED"});
   return q.rows[0];
  }
  private async used(tx:PoolClient,realm:string,employee:string,typeKey:string,year:string){
@@ -102,7 +103,7 @@ export class HrLeaveSourceFacade{
   const found=await tx.query(`SELECT 1 FROM hr_leave_request WHERE root_realm_id=$1 AND employee_id=$2
     AND status='APPROVED' AND start_date<=$4::date AND end_date>=$3::date LIMIT 1`,
    [realm,employee,start,end]);
-  if(found.rowCount)throw new ConflictException("Approved leave already overlaps these dates");
+  if(found.rowCount)throw new ConflictException({code:"CG10_LEAVE_OVERLAP"});
  }
  private requestDigest(actor:VerifiedFoundationActor,x:ReturnType<typeof parseLeaveRequest>){
   return hash([actor.accountId,x.policyRef,x.startDate,x.endDate,x.halfDay,x.reason]);
@@ -117,17 +118,17 @@ export class HrLeaveSourceFacade{
   if(previous.rows[0]){
    const p=previous.rows[0];
    if(p.employee_id!==employee.id||p.request_digest!==requestDigest||!p.case_ref)
-    throw new ConflictException("This leave request changed. Refresh your leave history.");
+    throw new ConflictException({code:"CG10_LEAVE_STALE"});
    return {replay:true as const,requestRef:p.id,caseRef:p.case_ref};
   }
   const c=await this.context(tx,actor.realmId,employee.id,x.policyRef,x.startDate,x.endDate);
   const days=countedLeaveDates(x.startDate,x.endDate,c.weekly_off_days,c.count_weekly_off);
   const halfDays=x.halfDay?1:days.length*2;
   if(!days.length||(x.halfDay&&!c.allow_half_days))
-   throw new BadRequestException("No leave day is available under the selected policy");
+   throw new BadRequestException({code:"CG10_LEAVE_INVALID"});
   await this.noOverlap(tx,actor.realmId,employee.id,x.startDate,x.endDate);
   if(halfDays+await this.used(tx,actor.realmId,employee.id,c.type_key,x.startDate.slice(0,4))>c.annual_half_days)
-   throw new ConflictException("Requested leave exceeds the available annual entitlement");
+   throw new ConflictException({code:"CG10_LEAVE_ENTITLEMENT"});
   const ref=randomUUID(),privateReason=encrypt(x.reason,actor.realmId,ref);
   const sourceDigest=hash([employee.id,c.assignment_id,c.shift_id,c.shift_policy_id,x.policyRef,
    x.startDate,x.endDate,halfDays,x.halfDay,privateReason,actor.accountId]);
@@ -148,13 +149,13 @@ export class HrLeaveSourceFacade{
     JOIN hr_leave_policy p ON p.id=r.policy_id AND p.root_realm_id=r.root_realm_id
     JOIN hr_employment_assignment a ON a.id=r.assignment_id AND a.root_realm_id=r.root_realm_id
     WHERE r.root_realm_id=$1 AND r.id=$2`,[realm,ref]);
-  if(!q.rows[0])throw new ConflictException("The original leave request is unavailable");
+  if(!q.rows[0])throw new ConflictException({code:"CG10_LEAVE_STALE"});
   return q.rows[0];
  }
  async link(tx:PoolClient,realm:string,ref:string,caseRef:string){
   const q=await tx.query("UPDATE hr_leave_request SET case_ref=$3 WHERE root_realm_id=$1 AND id=$2 AND case_ref IS NULL RETURNING id",
    [realm,ref,caseRef]);
-  if(!q.rowCount)throw new ConflictException("The original leave review changed");
+  if(!q.rowCount)throw new ConflictException({code:"CG10_LEAVE_STALE"});
  }
  reason(row:LeaveRequestRow,realm:string){
   try{
@@ -169,7 +170,7 @@ export class HrLeaveSourceFacade{
  }
  async mine(tx:PoolClient,actor:VerifiedFoundationActor,yearInput:unknown){
   const year=typeof yearInput==="string"?yearInput:String(new Date().getUTCFullYear());
-  if(!/^20\d{2}$/.test(year))throw new BadRequestException("Choose a valid leave year");
+  if(!/^20\d{2}$/.test(year))throw new BadRequestException({code:"CG10_LEAVE_INVALID"});
   const employee=await this.employee(tx,actor);
   if(!employee)return {linked:false,year,policies:[],requests:[]};
   const p=await tx.query<{id:string;leave_type:string;annual_half_days:number;allow_half_days:boolean;
@@ -207,7 +208,7 @@ export class HrLeaveSourceFacade{
   const next=action==="APPROVE"?"APPROVED":action==="RETURN"?"RETURNED":"REJECTED";
   const changed=await tx.query(`UPDATE hr_leave_request SET status=$3,decision_ref=$4,decided_at=now()
     WHERE root_realm_id=$1 AND id=$2 AND status='SUBMITTED' RETURNING id`,[realm,row.id,next,decisionRef]);
-  if(!changed.rowCount)throw new ConflictException("This leave decision was already applied");
+  if(!changed.rowCount)throw new ConflictException({code:"CG10_LEAVE_STALE"});
   if(action!=="APPROVE")return;
   const units=row.half_day?1:2;
   // Never replace a real full-day punch; a half-day can coexist with the
@@ -224,24 +225,24 @@ export class HrLeaveSourceFacade{
     AND hr_attendance_day.assignment_id=EXCLUDED.assignment_id AND hr_attendance_day.shift_id=EXCLUDED.shift_id
     AND hr_attendance_day.policy_id=EXCLUDED.policy_id RETURNING id`,
    [realm,row.employee_id,row.assignment_id,row.shift_id,row.shift_policy_id,days,units,row.id]);
-  if(effected.rowCount!==days.length)throw new ConflictException("A recorded attendance day conflicts with this leave. Review attendance before approving.");
+  if(effected.rowCount!==days.length)throw new ConflictException({code:"CG10_LEAVE_PUNCH_CONFLICT"});
  }
  /** Called by CG03 with original case and employee lock before any decision is written. */
  async validateApproval(tx:PoolClient,realm:string,row:LeaveRequestRow){
   const employee=await tx.query(`SELECT e.id FROM hr_employee e JOIN account a
    ON a.id=e.account_ref AND a.realm_id=e.root_realm_id AND a.status='ACTIVE'
-   WHERE e.root_realm_id=$1 AND e.id=$2 AND e.account_ref=$3 AND e.status IN('ACTIVE','PROBATION') FOR UPDATE OF e`,
+   WHERE e.root_realm_id=$1 AND e.id=$2 AND e.account_ref=$3 AND e.status IN('ACTIVE','PROBATION') FOR UPDATE OF e FOR SHARE OF a`,
    [realm,row.employee_id,row.submitted_by]);
-  if(!employee.rowCount)throw new ConflictException("The employee is no longer eligible for this leave");
+  if(!employee.rowCount)throw new ConflictException({code:"CG10_LEAVE_POLICY_CHANGED"});
   const start=dateText(row.start_date),end=dateText(row.end_date);
   const c=await this.context(tx,realm,row.employee_id,row.policy_id,start,end);
   const days=countedLeaveDates(start,end,c.weekly_off_days,c.count_weekly_off);
   if(c.assignment_id!==row.assignment_id||c.shift_id!==row.shift_id||c.shift_policy_id!==row.shift_policy_id||
    !days.length||(row.half_day&&!c.allow_half_days)||(row.half_day?1:days.length*2)!==row.half_days)
-   throw new ConflictException("The original branch, shift or leave policy changed. Return the request for correction.");
+   throw new ConflictException({code:"CG10_LEAVE_POLICY_CHANGED"});
   await this.noOverlap(tx,realm,row.employee_id,start,end);
   if(row.half_days+await this.used(tx,realm,row.employee_id,c.type_key,start.slice(0,4))>c.annual_half_days)
-   throw new ConflictException("The remaining annual leave entitlement is insufficient");
+   throw new ConflictException({code:"CG10_LEAVE_ENTITLEMENT"});
   return days;
  }
 }

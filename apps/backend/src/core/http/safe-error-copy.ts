@@ -1,6 +1,13 @@
 /** Server-controlled allow-list: authorized overrides can change safe wording only,
  * never rules, status, field binding, redaction, or authentication behavior. */
 export const SAFE_MESSAGE_CATALOG:Readonly<Record<string,string>>=Object.freeze({
+      CG10_LEAVE_INVALID:"Check the leave type, dates, half-day setting and private reason.",
+      CG10_LEAVE_POLICY_CHANGED:"The current branch, assigned shift or leave policy cannot support these dates. Refresh the policy or ask HR for help.",
+      CG10_LEAVE_OVERLAP:"Approved leave already overlaps these dates. Choose a different period.",
+      CG10_LEAVE_ENTITLEMENT:"There is not enough available annual leave entitlement for these dates.",
+      CG10_LEAVE_PUNCH_CONFLICT:"A recorded attendance day conflicts with this leave. Review attendance before approving.",
+      CG10_LEAVE_STALE:"The original leave request or decision changed. Refresh the leave history before retrying.",
+      CG10_LEAVE_DECISION_INVALID:"Choose Approve, Return or Reject and confirm with your current Foundation password.",
       // CG-20 report validation and CG-15 original appointment-source outcomes.
       MIS_DASHBOARD_FILTER_INVALID:"Choose an available report filter. Refresh the year, branch or center choices and try again.",
       MIS_FILTER_FAMILIES_CONFLICT:"Use financial filters with financial reports, or appointment filters with appointment reports.",

@@ -66,7 +66,7 @@ export function HrMyLeave({onChanged}:{onChanged:()=>void}){
       <small>{x.effectiveFrom}{x.effectiveTo?" to before "+x.effectiveTo:" onward"}</small>
      </div>)}
     </div>
-    <fieldset disabled={busy||locked} style={{border:0,padding:0,display:"grid",gap:10}}>
+    <fieldset disabled={busy||locked||loading} style={{border:0,padding:0,display:"grid",gap:10}}>
      <legend>Apply for leave</legend>
      <label>Leave type<select style={field} value={form.policyRef} onChange={e=>setForm(x=>({...x,policyRef:e.target.value,halfDay:false}))}>
       <option value="">Choose leave type</option>{data.policies.map(x=><option key={x.policyRef} value={x.policyRef}>{x.leaveType} · from {x.effectiveFrom}</option>)}</select></label>
@@ -78,7 +78,7 @@ export function HrMyLeave({onChanged}:{onChanged:()=>void}){
      <label>Private reason<textarea style={field} rows={3} maxLength={500} value={form.reason} onChange={e=>change("reason",e.target.value)}/></label>
     </fieldset>
     {locked&&<p role="status">The previous submission is uncertain. Retry the same request or refresh the history; do not send a new application.</p>}
-    <button style={button} disabled={busy||!form.policyRef||!form.startDate||!form.endDate||form.reason.trim().length<2}
+    <button style={button} disabled={busy||loading||!form.policyRef||!form.startDate||!form.endDate||form.reason.trim().length<2}
      onClick={()=>void submit()}>{busy?"Submitting…":locked?"Retry same leave request":"Submit for review"}</button>
    </>}
    <h3 style={{margin:0}}>Leave history</h3>
@@ -130,7 +130,7 @@ export function HrLeaveReviews({onChanged}:{onChanged:()=>void}){
    <option value="SUBMITTED">Pending</option><option value="OWNER_COMPLETED">Approved</option>
    <option value="RETURNED">Returned</option><option value="REJECTED">Rejected</option><option value="ALL">All</option>
   </select></label>
-  <button type="button" disabled={busy||loading} onClick={()=>void refresh()}>Refresh reviews</button>
+  <button type="button" disabled={busy||loading||locked} onClick={()=>void refresh()}>Refresh reviews</button>
   {error&&<p role="alert">{error}</p>}{notice&&<p role="status">{notice}</p>}
   {loading&&<p>Loading leave reviews…</p>}{!loading&&!error&&!items.length&&<p>No matching leave requests.</p>}
   {items.map(x=><div key={x.caseRef} style={{borderTop:"1px solid #E2E8F0",paddingTop:8,display:"grid",gap:4}}>

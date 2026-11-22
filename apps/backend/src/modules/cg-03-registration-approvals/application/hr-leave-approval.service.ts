@@ -12,11 +12,11 @@ type Case={id:string;case_number:string;process_id:string;status:string;revision
  proposer_id:string;hr_leave_request_id:string;hr_leave_source_digest:string;account_name_snapshot:string};
 function decision(body:unknown){
  if(!body||typeof body!=="object"||Array.isArray(body)||Object.keys(body).some(k=>!["requestKey","expectedRevision","action","currentPassword"].includes(k)))
-  throw new BadRequestException("Check the leave review decision");
+  throw new BadRequestException({code:"CG10_LEAVE_DECISION_INVALID"});
  const v=body as Record<string,unknown>;
- if(!Number.isSafeInteger(v.expectedRevision)||Number(v.expectedRevision)<1||!["APPROVE","RETURN","REJECT"].includes(String(v.action))||
+ if(!Number.isSafeInteger(v.expectedRevision)||Number(v.expectedRevision)<1||typeof v.action!=="string"||!["APPROVE","RETURN","REJECT"].includes(v.action)||
     typeof v.currentPassword!=="string"||v.currentPassword.length<8||Buffer.byteLength(v.currentPassword,"utf8")>1024)
-  throw new BadRequestException("Choose a decision and confirm your current password");
+  throw new BadRequestException({code:"CG10_LEAVE_DECISION_INVALID"});
  return {requestKey:leaveId(v.requestKey),expected:Number(v.expectedRevision),
   action:v.action as "APPROVE"|"RETURN"|"REJECT",password:v.currentPassword};
 }
@@ -31,7 +31,7 @@ export class HrLeaveApprovalService{
   const row=await this.source.original(tx,actor.realmId,submission.requestRef);
   if(row.submitted_by!==actor.accountId||row.source_digest!==submission.sourceDigest||row.request_key!==submission.requestKey||
      row.case_ref||row.status!=="SUBMITTED")
-   throw new ConflictException("The original leave submission changed");
+   throw new ConflictException({code:"CG10_LEAVE_STALE"});
   await this.protectedOwner.requireDistinctFinalReviewer(tx,actor.realmId,actor.accountId);
   const existing=await tx.query<{id:string}>(`SELECT id FROM cg03_process WHERE realm_id=$1 AND process_kind='LEAVE_REQUEST' FOR SHARE`,[actor.realmId]);
   let process=existing.rows[0]?.id;
@@ -51,14 +51,14 @@ export class HrLeaveApprovalService{
     FROM cg03_process p WHERE p.realm_id=$1 AND p.id=$8 AND p.process_kind='LEAVE_REQUEST' RETURNING *`,
    [actor.realmId,actor.accountId,row.employee_name,row.source_digest,hash(["CG10_LEAVE",row.id,row.source_digest]),
     submission.requestKey,row.id,process]);
-  if(!c.rows[0])throw new ConflictException("The leave review process is unavailable");
+  if(!c.rows[0])throw new ConflictException({code:"CG10_LEAVE_STALE"});
   await this.event(tx,actor,c.rows[0].id,"SUBMITTED");
   return {caseRef:c.rows[0].id,reference:c.rows[0].case_number,status:c.rows[0].status};
  }
  async current(tx:PoolClient,actor:VerifiedFoundationActor,ref:string,request:string){
   const c=await tx.query<Case>(`SELECT id,case_number,status FROM cg03_case WHERE realm_id=$1 AND id=$2 AND proposer_id=$3
     AND case_kind='LEAVE_REQUEST' AND hr_leave_request_id=$4`,[actor.realmId,ref,actor.accountId,request]);
-  if(!c.rows[0])throw new ConflictException("The original leave case is unavailable");
+  if(!c.rows[0])throw new ConflictException({code:"CG10_LEAVE_STALE"});
   return {caseRef:c.rows[0].id,reference:c.rows[0].case_number,status:c.rows[0].status};
  }
  private async event(tx:PoolClient,actor:VerifiedFoundationActor,ref:string,action:string){
@@ -107,7 +107,7 @@ export class HrLeaveApprovalService{
    const c=(await tx.query<Case>(`SELECT * FROM cg03_case WHERE realm_id=$1 AND id=$2 AND case_kind='LEAVE_REQUEST' FOR SHARE`,[actor.realmId,ref])).rows[0];
    if(!c)throw new NotFoundException("This leave review is unavailable");
    const row=await this.source.original(tx,actor.realmId,c.hr_leave_request_id);
-   if(row.case_ref!==c.id||row.source_digest!==c.hr_leave_source_digest)throw new ConflictException("The original leave source changed");
+   if(row.case_ref!==c.id||row.source_digest!==c.hr_leave_source_digest)throw new ConflictException({code:"CG10_LEAVE_STALE"});
    return {caseRef:c.id,reference:c.case_number,caseStatus:c.status,revision:c.revision,
     ...this.source.summary(row),reason:this.source.reason(row,actor.realmId),
     canReview:c.proposer_id!==actor.accountId&&["SUBMITTED","IN_REVIEW"].includes(c.status)};
@@ -119,7 +119,8 @@ export class HrLeaveApprovalService{
   const digest=hash([d.action,d.expected]);
   return this.run(async tx=>{
    // Shared root lock keeps policy/version changes out of the exact decision.
-   await tx.query("SELECT id FROM access_realm WHERE id=$1 AND realm_key='FOUNDATION_ROOT' FOR SHARE",[actor.realmId]);
+   const root=await tx.query("SELECT id FROM access_realm WHERE id=$1 AND realm_key='FOUNDATION_ROOT' FOR SHARE",[actor.realmId]);
+   if(!root.rowCount)throw new ForbiddenException("Foundation review unavailable");
    await this.requireReviewer(tx,actor);
    const c=(await tx.query<Case>(`SELECT * FROM cg03_case WHERE realm_id=$1 AND id=$2 AND case_kind='LEAVE_REQUEST' FOR UPDATE`,[actor.realmId,ref])).rows[0];
    if(!c)throw new NotFoundException("This leave review is unavailable");
@@ -127,17 +128,17 @@ export class HrLeaveApprovalService{
    const old=(await tx.query<{actor_id:string;request_digest:string}>(`SELECT actor_id,request_digest FROM cg03_case_decision
     WHERE realm_id=$1 AND case_id=$2 AND request_key=$3`,[actor.realmId,ref,d.requestKey])).rows[0];
    if(old){
-    if(old.actor_id!==actor.accountId||old.request_digest!==digest)throw new ConflictException("This decision request was used for another change");
+    if(old.actor_id!==actor.accountId||old.request_digest!==digest)throw new ConflictException({code:"CG10_LEAVE_STALE"});
     return {confirmed:true,status:c.status,reference:c.case_number,replayed:true};
    }
    if(!["SUBMITTED","IN_REVIEW"].includes(c.status)||c.revision!==d.expected)
-    throw new ConflictException("The review changed. Refresh before deciding");
+    throw new ConflictException({code:"CG10_LEAVE_STALE"});
    const row=await this.source.original(tx,actor.realmId,c.hr_leave_request_id);
    if(row.case_ref!==ref||row.source_digest!==c.hr_leave_source_digest||row.submitted_by!==c.proposer_id||row.status!=="SUBMITTED")
-    throw new ConflictException("The original leave request changed");
+    throw new ConflictException({code:"CG10_LEAVE_STALE"});
    const step=await tx.query(`SELECT 1 FROM cg03_process_step WHERE process_id=$1 AND ordinal=$2
     AND capability_key='approvals.review' AND protected_root_required=true FOR SHARE`,[c.process_id,c.current_step]);
-   if(!step.rowCount)throw new ConflictException("The original leave review process is unavailable");
+   if(!step.rowCount)throw new ConflictException({code:"CG10_LEAVE_STALE"});
    await this.sessions.requireFreshFoundationRootProof(tx,actor,d.password);
    const days=d.action==="APPROVE"?await this.source.validateApproval(tx,actor.realmId,row):[];
    const next=d.action==="APPROVE"?"PENDING_OWNER":d.action==="RETURN"?"RETURNED":"REJECTED";

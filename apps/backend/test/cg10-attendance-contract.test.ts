@@ -1,6 +1,7 @@
 import {describe,test} from "node:test";
 import assert from "node:assert/strict";
 import {ConflictException} from "@nestjs/common";
+import {countedLeaveDates,parseLeaveRequest} from "../src/modules/cg-10-human-resources/application/hr-leave-source.facade";
 import {shiftCheckInAt,verifiedWorkedMinutes,leavePolicyInput} from "../src/modules/cg-10-human-resources/application/hr-attendance.service";
 
 /** US-002 source-only time-zone/overnight safety tests; no DB/device/manual QA. */
@@ -57,5 +58,24 @@ describe("CG-10 leave rule source contract",()=>{
   for(const change of [{annualHalfDays:1.5},{annualHalfDays:0},{annualHalfDays:733},
    {annualHalfDays:3,allowHalfDays:false},{countWeeklyOff:"false"},{effectiveFrom:"2027-02-30"}])
    assert.throws(()=>leavePolicyInput({...valid,...change}));
+ });
+});
+
+describe("CG-10 original employee leave request",()=>{
+ const valid={requestKey:"c350419e-c3b2-4984-8e32-7483aca3a6ab",policyRef:"c350419e-c3b2-4984-8e32-7483aca3a6ac",
+  startDate:"2026-11-21",endDate:"2026-11-23",halfDay:false,reason:"Personal leave"};
+ test("weekly off counting follows the selected policy",()=>{
+  assert.deepEqual(countedLeaveDates("2026-11-21","2026-11-23",[0],false),["2026-11-21","2026-11-23"]);
+  assert.deepEqual(countedLeaveDates("2026-11-21","2026-11-23",[0],true),["2026-11-21","2026-11-22","2026-11-23"]);
+ });
+ test("half day is one date, and invalid year, range, hidden fields and private reason are rejected",()=>{
+  assert.equal(parseLeaveRequest({...valid,endDate:valid.startDate,halfDay:true}).halfDay,true);
+  for(const x of [{halfDay:true},{endDate:"2027-01-01"},{startDate:"2026-02-30"},{startDate:"2026-11-24"},
+   {reason:" "},{employeeRef:"spoofed"},{halfDay:"true"}])assert.throws(()=>parseLeaveRequest({...valid,...x}));
+ });
+ test("no invented days for a weekly off-only request or impossible range",()=>{
+  assert.deepEqual(countedLeaveDates("2026-11-22","2026-11-22",[0],false),[]);
+  assert.throws(()=>countedLeaveDates("2026-12-31","2027-01-01",[],true));
+  assert.throws(()=>countedLeaveDates("2026-11-23","2026-11-21",[],true));
  });
 });

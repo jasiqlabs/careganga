@@ -11,9 +11,9 @@ ALTER TABLE hr_attendance_day ADD COLUMN leave_request_id uuid,
   (leave_request_id IS NULL AND leave_half_days IS NULL) OR
   (leave_request_id IS NOT NULL AND leave_half_days IS NOT NULL AND leave_half_days IN(1,2))),
  ADD CONSTRAINT ck_hr_attendance_punch_or_leave CHECK(
-  (status IN('PRESENT','LATE') AND checked_in_at IS NOT NULL AND (leave_half_days IS NULL OR leave_half_days=1))
-  OR (status='LEAVE' AND leave_half_days=2 AND checked_in_at IS NULL AND checked_out_at IS NULL AND worked_minutes IS NULL)
-  OR (status='HALF_DAY_LEAVE' AND leave_half_days=1 AND checked_in_at IS NULL AND checked_out_at IS NULL AND worked_minutes IS NULL));
+  status IN('PRESENT','LATE','LEAVE','HALF_DAY_LEAVE') AND ((status IN('PRESENT','LATE') AND checked_in_at IS NOT NULL AND (leave_half_days IS NULL OR leave_half_days=1))
+  OR (status='LEAVE' AND leave_half_days IS NOT NULL AND leave_half_days=2 AND checked_in_at IS NULL AND checked_out_at IS NULL AND worked_minutes IS NULL)
+  OR (status='HALF_DAY_LEAVE' AND leave_half_days IS NOT NULL AND leave_half_days=1 AND checked_in_at IS NULL AND checked_out_at IS NULL AND worked_minutes IS NULL)));
 CREATE INDEX ix_hr_attendance_leave_source ON hr_attendance_day(root_realm_id,leave_request_id) WHERE leave_request_id IS NOT NULL;
 
 CREATE FUNCTION cg10_attendance_leave_effect_guard() RETURNS trigger LANGUAGE plpgsql AS $fn$
@@ -27,9 +27,11 @@ BEGIN
    AND (lp.count_weekly_off OR NOT (extract(dow from NEW.local_date)::integer=ANY(sp.weekly_off_days)))
    AND NEW.leave_half_days=CASE WHEN r.half_day THEN 1 ELSE 2 END
  ) THEN RAISE EXCEPTION 'Original approved leave is required'; END IF;
- IF TG_OP='UPDATE' AND OLD.leave_request_id IS NOT NULL AND
+ IF TG_OP='UPDATE' THEN
+  IF OLD.leave_request_id IS NOT NULL AND
    (OLD.leave_request_id,OLD.leave_half_days) IS DISTINCT FROM (NEW.leave_request_id,NEW.leave_half_days)
- THEN RAISE EXCEPTION 'Approved leave attendance evidence cannot be removed'; END IF;
+  THEN RAISE EXCEPTION 'Approved leave attendance evidence cannot be removed'; END IF;
+ END IF;
  RETURN NEW;
 END $fn$;
 CREATE TRIGGER cg10_attendance_leave_effect_guard BEFORE INSERT OR UPDATE ON hr_attendance_day

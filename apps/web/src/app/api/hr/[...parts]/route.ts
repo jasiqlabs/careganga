@@ -66,6 +66,14 @@ async function proxy(req:NextRequest,parts:string[],method:string){
    headers:{Authorization:"Bearer "+token,...(body?{"Content-Type":"application/json"}:{})}});
   if(!res.ok){
    const status=[400,401,403,404,409,429].includes(res.status)?res.status:503;
+   const leavePath=parts[0]==="leave-reviews"||(parts[0]==="me"&&parts[1]==="leave");
+   if(leavePath&&status>=400&&status<500){
+    const rejected:unknown=await res.json().catch(()=>null);
+    if(rejected&&typeof rejected==="object"&&"code" in rejected&&"message" in rejected&&
+     typeof rejected.code==="string"&&["CG10_LEAVE_INVALID","CG10_LEAVE_POLICY_CHANGED","CG10_LEAVE_OVERLAP","CG10_LEAVE_ENTITLEMENT","CG10_LEAVE_PUNCH_CONFLICT","CG10_LEAVE_STALE","CG10_LEAVE_DECISION_INVALID"].includes(rejected.code)&&
+     typeof rejected.message==="string"&&rejected.message.length<=220&&!/[<>\r\n]/.test(rejected.message))
+     return NextResponse.json({message:rejected.message},{status,headers:{"Cache-Control":"no-store"}});
+   }
    return NextResponse.json({message:status===400?"Check the employee details."
     :status===401?"Your session expired. Please sign in again."
     :status===403?"Your current role or branch does not permit this action."
