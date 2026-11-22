@@ -10,6 +10,7 @@ import {NativeCmsReviewer} from "./native-cms-reviewer";
 type Page={pageRef:string;kind:string;slug:string;title:string;
  version:string;draftStatus:string;publicStatus:string|null};
 type Section={kind:string;order:number;fields:Record<string,unknown>};
+type EventSource={sourceRef:string;slug:string;title:string;category:string;summary:string;area:string;scheduledStart:string;scheduledEnd:string;status:string};
 type ProjectSource={sourceRef:string;title:string;category:string;area:string};
 type Asset={fileRef:string;version:number;role:string;altText:string;order:number};
 type Navigation={loginDesired:boolean;memberJoinDesired:boolean;
@@ -205,6 +206,11 @@ function EditField({name,value,onChange,locked,depth=0,
  }
  return <Text style={styles.note}>{title(name)}: No value recorded</Text>;
 }
+function eventFields(v:EventSource):Section[]{return [{kind:"ARTICLE_BODY",order:0,fields:{heading:v.title,category:v.category,excerpt:v.summary.slice(0,400),body:v.summary,authorLabel:"CareGanga Foundation",source:"Approved Foundation event",asOfDate:day(),tags:[],sourceEventRef:v.sourceRef}}];}
+function EventSelection({sections,choices,error,locked,refresh,onSelect}:{sections:Section[];choices:EventSource[];error:string;locked:boolean;refresh:()=>void;onSelect:(v:EventSource)=>void}){
+ const current=sections.find(s=>s.kind==="ARTICLE_BODY")?.fields.sourceEventRef;
+ return <View style={styles.panel}><Text accessibilityRole="header" style={styles.heading}>Approved Foundation event</Text><Text style={styles.note}>Only the current reviewed source may be published. Separate CMS approval remains necessary.</Text>{button("Refresh approved events",refresh,locked)}{!!error&&<Text accessibilityRole="alert">{error}</Text>}{!!current&&!choices.some(v=>v.sourceRef===current)&&<Text>Current selection — refresh to verify.</Text>}{choices.map(v=>button((v.sourceRef===current?"✓ ":"")+v.title+" · "+v.category+" · "+new Date(v.scheduledStart).toLocaleString("en-IN",{timeZone:"Asia/Kolkata"}),()=>onSelect(v),locked))}</View>;
+}
 function ProjectSelection({sections,choices,error,locked,refresh,onChange}:{sections:Section[];choices:ProjectSource[];error:string;locked:boolean;refresh:()=>void;onChange:(s:Section[])=>void}){
  const current=sections.find(s=>s.kind==="PROJECT_TEASER"),refs=Array.isArray(current?.fields.sourceRefs)?current.fields.sourceRefs as string[]:[];
  const set=(next:string[])=>onChange([...sections.filter(s=>s.kind!=="PROJECT_TEASER"),...(next.length?[{kind:"PROJECT_TEASER",order:60,fields:{heading:typeof current?.fields.heading==="string"?current.fields.heading:"Our Projects",sourceRefs:next}}]:[])]);
@@ -217,6 +223,8 @@ function ProjectSelection({sections,choices,error,locked,refresh,onChange}:{sect
 export function NativeCmsEditorial({token,canManage,canPublish,canReview,onExit,
  onExpired}:Props){
  const [pages,setPages]=useState<Page[]>([]),[projectChoices,setProjectChoices]=useState<ProjectSource[]>([]),[projectError,setProjectError]=useState("");
+ const [eventChoices,setEventChoices]=useState<EventSource[]>([]),[eventError,setEventError]=useState("");
+ const refreshEvents=()=>{setEventError("");void api<{sources:EventSource[]}>(token,"event-sources").then(v=>setEventChoices(v.sources)).catch(e=>{setEventChoices([]);setEventError("Approved event sources unavailable.");if(e?.status===401)onExpired();});};
  const refreshProjects=()=>{setProjectError("");void api<{sources:ProjectSource[]}>(token,"project-sources").then(v=>setProjectChoices(v.sources)).catch(e=>{setProjectError("Current approved project sources unavailable.");if(e?.status===401)onExpired();});};
  useEffect(()=>{if(canManage)refreshProjects();},[token,canManage]);
  const [selected,setSelected]=useState<Detail|null>(null);
@@ -421,7 +429,7 @@ export function NativeCmsEditorial({token,canManage,canPublish,canReview,onExit,
       impactGroup={typeof sec.fields.group==="string"?sec.fields.group:""}
       onChange={v=>setNewPage(old=>old?{...old,
        sections:old.sections.map((x,j)=>i===j?{...x,
-        fields:v as Record<string,unknown>}:x)}:null)}/>
+        fields:v as Record<string,unknown>}:x)}:null)}/>}
     </View>)}
     {button("Create original unpublished page draft",create,
      locked||newPage.title.trim().length<3)}
@@ -455,7 +463,7 @@ export function NativeCmsEditorial({token,canManage,canPublish,canReview,onExit,
        locked={locked}/>
     </View>)}
     <Text style={styles.note}>Original scanner-verified placements: {draft.assets.length}</Text>
-    {canManage&&selected.status==="DRAFT"&&
+    {canManage&&selected.status==="DRAFT"&&!draft.sections.some(s=>typeof s.fields.sourceEventRef==="string")&&
      <NativeCmsMediaUploader token={token} kind={selected.kind}
       onAttemptChange={setMediaActive}
       sections={draft.sections}
