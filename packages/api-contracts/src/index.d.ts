@@ -279,7 +279,7 @@ export type CG04RosterExport={csv:string;rows:number};
 
 /** Protected CG03 membership review. Caller must currently hold all reviewer rights. */
 export type CG04ReviewPolicy={configured:boolean;version:number;replayed?:boolean};
-export type CG04ReviewItem={caseRef:string;reference:string;name:string;status:string;revision:number;submittedAt:string;canDecide:boolean};
+export type CG04ReviewItem={caseRef:string;reference:string;name:string;status:string;revision:number;submittedAt:string;canDecide:boolean;plan:string;category:CG04TierCategory;paymentStatus:CG04MembershipPaymentStatus};
 export type CG04ReviewPage={items:CG04ReviewItem[];hasMore:boolean;offset:number};
 export type CG04ReviewCase={caseRef:string;reference:string;status:string;revision:number;canDecide:boolean;
  source:{applicationNumber:string;name:string;mobile:string;email:string|null;address:string;city:string;pinCode:string;feeMinor:string;currency:"INR";plan:string;category:CG04TierCategory;durationUnit:CG04TierDuration;durationCount:number;branch:string|null;state:string|null;district:string|null;referral:string;consentVersion:string;consentedAt:string};fee:CG04MembershipFee;
