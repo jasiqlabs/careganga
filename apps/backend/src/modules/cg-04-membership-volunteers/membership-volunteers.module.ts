@@ -1,3 +1,6 @@
+import {FinanceSourceModule} from "../cg-09-finance-accounting/finance-source.module";
+import {MembershipActivationService} from "./application/membership-activation.service";
+import {MembershipActivationController} from "./http/membership-activation.controller";
 import {RegistrationApprovalsModule} from "../cg-03-registration-approvals/registration-approvals.module";
 import {Module} from "@nestjs/common";
 import {DatabaseModule} from "../../core/infrastructure/database.module";
@@ -7,5 +10,5 @@ import {MembershipApplicationsService} from "./application/membership-applicatio
 import {MembershipApplicationsController} from "./http/membership-applications.controller";
 import {MembershipTiersService} from "./application/membership-tiers.service";
 import {MembershipTiersController,PublicMembershipTiersController} from "./http/membership-tiers.controller";
-@Module({imports:[DatabaseModule,IdentityAccessModule,FoundationStructureModule,RegistrationApprovalsModule],providers:[MembershipTiersService,MembershipApplicationsService],controllers:[MembershipTiersController,PublicMembershipTiersController,MembershipApplicationsController],exports:[MembershipTiersService]})
+@Module({imports:[DatabaseModule,IdentityAccessModule,FoundationStructureModule,RegistrationApprovalsModule,FinanceSourceModule],providers:[MembershipTiersService,MembershipApplicationsService,MembershipActivationService],controllers:[MembershipTiersController,PublicMembershipTiersController,MembershipApplicationsController,MembershipActivationController],exports:[MembershipTiersService]})
 export class MembershipVolunteersModule{}
