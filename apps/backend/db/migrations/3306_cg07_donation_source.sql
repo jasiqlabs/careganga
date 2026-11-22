@@ -98,6 +98,12 @@ CREATE TABLE cg07_public_request_bucket(
 -- the transaction must contain a real original CG09 posted journal source.
 CREATE FUNCTION cg07_donation_finance_proof() RETURNS trigger LANGUAGE plpgsql AS $cg07$
 BEGIN
+ IF TG_OP='INSERT' THEN
+  IF NEW.source_status<>'REQUESTED' OR NEW.version<>1 THEN
+   RAISE EXCEPTION 'New donation must be an unverified original request';
+  END IF;
+  RETURN NULL;
+ END IF;
  IF NEW.root_realm_id IS DISTINCT FROM OLD.root_realm_id OR NEW.id IS DISTINCT FROM OLD.id OR
   NEW.amount_minor IS DISTINCT FROM OLD.amount_minor OR NEW.currency IS DISTINCT FROM OLD.currency OR
   NEW.request_digest IS DISTINCT FROM OLD.request_digest OR
@@ -128,5 +134,5 @@ BEGIN
  RETURN NULL;
 END; $cg07$;
 CREATE CONSTRAINT TRIGGER cg07_donation_finance_guard
- AFTER UPDATE ON donation DEFERRABLE INITIALLY DEFERRED
+ AFTER INSERT OR UPDATE ON donation DEFERRABLE INITIALLY DEFERRED
  FOR EACH ROW EXECUTE FUNCTION cg07_donation_finance_proof();

@@ -94,6 +94,20 @@ BEGIN
   WHERE d.root_realm_id=NEW.root_realm_id AND d.id=NEW.donation_id
    AND j.id=NEW.reversal_journal_ref AND j.root_realm_id=NEW.root_realm_id
    AND j.source_ref=NEW.id AND j.status='POSTED' AND j.posting_kind='GENERAL'
+   AND j.immutable_source_event_key=NEW.approval_request_key
+   AND EXISTS(SELECT 1 FROM donation_manual_evidence original
+     WHERE original.root_realm_id=NEW.root_realm_id
+       AND original.donation_id=NEW.donation_id AND original.status='POSTED'
+       AND original.cash_account_ref=NEW.cash_account_ref
+       AND original.income_account_ref=NEW.income_account_ref)
+   AND EXISTS(SELECT 1 FROM journal_line ln
+     WHERE ln.root_realm_id=j.root_realm_id AND ln.journal_id=j.id
+       AND ln.account_id=NEW.income_account_ref
+       AND ln.debit_minor=NEW.amount_minor AND ln.credit_minor=0)
+   AND EXISTS(SELECT 1 FROM journal_line ln
+     WHERE ln.root_realm_id=j.root_realm_id AND ln.journal_id=j.id
+       AND ln.account_id=NEW.cash_account_ref
+       AND ln.credit_minor=NEW.amount_minor AND ln.debit_minor=0)
    AND j.created_by=NEW.approved_by AND j.financial_year_id=NEW.financial_year_ref
    AND j.posting_date=NEW.posting_date
    AND (SELECT count(*) FROM journal_line l WHERE l.root_realm_id=j.root_realm_id
