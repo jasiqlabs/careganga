@@ -182,7 +182,7 @@ export function CampaignDraftsWorkspace({canManage}:{canManage:boolean}){
      disabled={busy||!!pending.current} onClick={()=>setStep(i)} style={{fontWeight:i===step?700:400}}>{i+1}. {name}</button>)}
    </nav>
    <form onSubmit={e=>void save(e)} style={{display:"grid",gap:15}}>
-    {selected&&!editable&&<p role="status">This campaign is currently "{selected.status.replaceAll("_"," ")}. Its submitted and approved information is read-only; corrections require an original returned review.</p>}
+    {selected&&!editable&&<p role="status">This campaign is currently {selected.status.replaceAll("_"," ")}. Its submitted and approved information is read-only; corrections require an original returned review.</p>}
     {step===0&&<>
      {input("Campaign title (required)",draft.basic.title,v=>update("basic","title",v))}
      <p>Type: General Foundation Campaign. A real project may be associated only after source verification.</p>
