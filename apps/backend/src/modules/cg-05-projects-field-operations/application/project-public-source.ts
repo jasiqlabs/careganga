@@ -9,12 +9,13 @@ const current=`
  AND (p.branch_ref IS NULL OR EXISTS(SELECT 1 FROM branch b WHERE b.root_realm_id=p.root_realm_id AND b.id=p.branch_ref AND b.status='ACTIVE'))
  AND EXISTS(SELECT 1 FROM account a JOIN account_role ar ON ar.account_id=a.id AND ar.realm_id=a.realm_id AND ar.revoked_at IS NULL JOIN role r ON r.id=ar.role_id AND r.realm_id=a.realm_id AND r.active
  WHERE a.id=s.submitted_by AND a.realm_id=s.root_realm_id AND a.status='ACTIVE' AND (r.is_protected OR EXISTS(SELECT 1 FROM role_grant g WHERE g.role_id=r.id AND g.capability_key='projects.manage'))
+ AND EXISTS(SELECT 1 FROM account_role vr JOIN role rr ON rr.id=vr.role_id AND rr.realm_id=vr.realm_id AND rr.active WHERE vr.account_id=a.id AND vr.realm_id=a.realm_id AND vr.revoked_at IS NULL AND (rr.is_protected OR EXISTS(SELECT 1 FROM role_grant vg WHERE vg.role_id=rr.id AND vg.capability_key='projects.view')))
  AND (p.branch_ref IS NOT NULL AND EXISTS(SELECT 1 FROM branch b WHERE b.root_realm_id=p.root_realm_id AND b.id=p.branch_ref AND b.manager_account_ref=a.id) OR r.is_protected OR EXISTS(SELECT 1 FROM role_grant g WHERE g.role_id=r.id AND g.capability_key='foundation.branches.admin')))
  AND EXISTS(SELECT 1 FROM cg03_case_decision d JOIN account a ON a.id=d.actor_id AND a.realm_id=d.realm_id AND a.status='ACTIVE' JOIN account_role ar ON ar.account_id=a.id AND ar.realm_id=a.realm_id AND ar.revoked_at IS NULL JOIN role r ON r.id=ar.role_id AND r.realm_id=a.realm_id AND r.active AND r.is_protected WHERE d.case_id=c.id AND d.realm_id=c.realm_id AND d.action='APPROVE' AND d.actor_id<>c.proposer_id AND d.fresh_password_verified_at IS NOT NULL)
 `;
-type Source={sourceRef:string;title:string;category:string;summary:string;area:string;launch:string|null;status:string};
+type Source={sourceRef:string;slug:string;title:string;category:string;summary:string;area:string;launch:string|null;status:string};
 export async function eligibleProjectSources(db:Pool|PoolClient,root:string,refs?:string[]){
- const query=await db.query<Source>('SELECT s.id AS "sourceRef",s.title,s.category,s.safe_summary AS summary,s.general_area AS area,s.planned_launch::text AS launch,s.project_status AS status'+current+(refs?' AND s.id=ANY($2::uuid[])':'')+' ORDER BY s.submitted_at DESC,s.id DESC LIMIT 100',refs?[root,refs]:[root]);
+ const query=await db.query<Source>('SELECT s.id AS "sourceRef",lower(regexp_replace(s.title,\'[^a-zA-Z0-9]+\',\'-\',\'g\'))||\'-\'||substring(md5(s.id::text) for 12) AS slug,s.title,s.category,s.safe_summary AS summary,s.general_area AS area,s.planned_launch::text AS launch,s.project_status AS status'+current+(refs?' AND s.id=ANY($2::uuid[])':'')+' ORDER BY s.submitted_at DESC,s.id DESC LIMIT 100',refs?[root,refs]:[root]);
  return query.rows;
 }
 const uuid=/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i;
