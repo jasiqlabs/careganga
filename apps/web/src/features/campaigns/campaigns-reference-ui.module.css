@@ -1,0 +1,67 @@
+/* A12–A15 original CareGanga client admin geometry. The existing admin
+   shell/navigation/typography remain the project-wide source of truth. */
+.workspace{display:grid;gap:16px;min-width:0;color:var(--cg-text,#18233d)}
+.titleRow{display:flex;justify-content:space-between;align-items:center;gap:14px;flex-wrap:wrap}
+.titleRow h1{font-size:22px;line-height:1.25;margin:0;font-weight:750}
+.titleRow p{font-size:13px;margin:5px 0 0;color:var(--cg-muted,#68768d)}
+.statGrid{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:12px}
+.statCard{display:grid;grid-template-columns:38px minmax(0,1fr);column-gap:10px;align-items:center;background:var(--cg-surface,#fff);border:1px solid var(--cg-border,#e5e9ef);border-radius:11px;padding:15px;min-height:84px}
+.statIcon{display:grid;place-items:center;border-radius:50%;height:34px;width:34px;font-weight:700;color:#fff;background:#2563eb}
+.statNumber{font-size:23px;line-height:1.15;font-weight:750;font-variant-numeric:tabular-nums}
+.statLabel{font-size:11px;color:var(--cg-muted,#64748b)}
+.statBlue .statIcon{background:#2563eb}
+.statGreen .statIcon{background:#0aaf3b}
+.statAmber .statIcon{background:#f2ae17}
+.statPurple .statIcon{background:#5835b9}
+.statRed .statIcon{background:#d52a4b}
+.filterPanel{border:1px solid var(--cg-border,#e5e9ef);border-radius:12px;padding:16px;background:var(--cg-surface,#fff)}
+.filterPanel h2{font-size:14px;margin:0 0 12px;font-weight:700}
+.filterGrid{display:grid;grid-template-columns:minmax(240px,2fr) minmax(160px,1fr) auto auto;gap:12px;align-items:end}
+.filterGrid label{font-size:12px}
+.overviewColumns{display:grid;grid-template-columns:minmax(0,3fr) minmax(240px,1fr);gap:14px;align-items:start}
+.sideRail{display:grid;gap:12px;min-width:0}
+.sideCard{background:var(--cg-surface,#fff);border:1px solid var(--cg-border,#e5e9ef);border-radius:11px;padding:14px;min-width:0}
+.sideCard h3{font-size:13px;margin:0 0 12px}
+.sideCard p{font-size:12px;color:var(--cg-muted,#64748b);margin:8px 0}
+.listTop{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap}
+.tabStrip{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+.tabButton{border:0;background:transparent;color:var(--cg-muted,#64748b);padding:9px 6px;border-bottom:2px solid transparent;font-size:12px;font-weight:600;cursor:pointer}
+.tabActive{border-color:#0da86f;color:#088a5b}
+.launch{color:#fff;background:#0a9f69;border:0;border-radius:8px;padding:10px 15px;font-size:12px;font-weight:650;cursor:pointer;min-height:40px}
+.launch:disabled{opacity:.55;cursor:not-allowed}
+.wizardIntro{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}
+.wizardIntro h2{font-size:20px;margin:0;font-weight:750}
+.wizardIntro p{margin:5px 0 0;font-size:12px;color:var(--cg-muted,#64748b)}
+.wizardGrid{display:grid;grid-template-columns:minmax(0,1fr) minmax(205px,245px) minmax(185px,215px);gap:12px;align-items:start}
+.wizardMain{min-width:0}
+.wizardAside{display:grid;gap:12px;min-width:0}
+.wizardAside h3{font-size:13px;margin:0 0 12px}
+.wizardSideCard{background:#fff;border:1px solid var(--cg-border,#e5e9ef);border-radius:12px;padding:13px;min-width:0}
+.wizardSideCard p{font-size:12px;color:var(--cg-muted,#64748b);margin:5px 0}
+.previewThumb{height:88px;width:100%;background:#f0edff;border-radius:10px;display:grid;place-items:center;color:#6244ef;font-size:22px;overflow:hidden}
+.note{background:#fffbeb;border:1px solid #f9e6ad;border-radius:10px;padding:12px;font-size:12px;color:#6e5611;line-height:1.55}
+.stepsStrip{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:8px;background:#fff;border:1px solid var(--cg-border,#e5e9ef);padding:10px;border-radius:12px}
+.stepButton{display:flex;align-items:center;gap:7px;text-align:left;background:transparent;border:0;border-radius:8px;padding:9px 6px;color:var(--cg-muted,#64748b);font-size:11px;cursor:pointer;min-width:0}
+.stepButton span:first-child{flex:0 0 25px;height:25px;border:1px solid #dae0e8;border-radius:50%;display:grid;place-items:center;background:#fff;font-weight:700}
+.stepButton span:last-child{line-height:1.35}
+.stepActive{color:#3528a6;background:#f1efff;font-weight:700}
+.stepActive span:first-child{color:#fff;background:#6244eb;border-color:#6244eb}
+.stepButton:disabled{opacity:.45}
+.formPanel{background:#fff;border:1px solid var(--cg-border,#e5e9ef);border-radius:12px;padding:18px;min-width:0}
+.formPanel h3{font-size:15px;font-weight:700;margin:0}
+.formPanel p{font-size:12px;color:var(--cg-muted,#64748b);line-height:1.5}
+.formGrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;min-width:0}
+.formGrid>p,.formGrid>h3,.formGrid>[role="alert"],.formGrid>[role="status"]{grid-column:1/-1}
+.formGrid>*{min-width:0}
+.formGrid textarea{min-width:0;resize:vertical}
+.fullWidth{grid-column:1/-1}
+.formFooter{display:flex;justify-content:flex-end;gap:8px;flex-wrap:wrap;grid-column:1/-1}
+.reviewGrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.reviewGrid p{margin:4px 0}
+.miniStep{font-size:12px;display:flex;align-items:center;gap:7px;padding:6px 4px}
+.miniStep strong{width:25px;height:25px;flex:0 0 25px;display:grid;place-items:center;border-radius:50%;background:#f3f4f6;color:#64748b}
+.miniActive{color:#4c36cb;background:#f0edff;border-radius:7px}
+.miniActive strong{background:#6443ed;color:#fff}
+@media(max-width:1260px){.statGrid{grid-template-columns:repeat(3,minmax(0,1fr))}.wizardGrid{grid-template-columns:minmax(0,1fr) minmax(210px,1fr)}.wizardAside:last-child{grid-column:2;grid-row:2}.stepsStrip{grid-template-columns:repeat(3,minmax(0,1fr))}}
+@media(max-width:820px){.statGrid{grid-template-columns:repeat(2,minmax(0,1fr))}.overviewColumns,.wizardGrid{grid-template-columns:1fr}.wizardAside:last-child{grid-column:auto;grid-row:auto}.stepsStrip{grid-template-columns:repeat(2,minmax(0,1fr))}.filterGrid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:540px){.statGrid{grid-template-columns:repeat(2,minmax(0,1fr))}.statCard{padding:10px;grid-template-columns:30px 1fr}.statIcon{height:29px;width:29px}.statNumber{font-size:19px}.filterGrid,.formGrid,.reviewGrid{grid-template-columns:1fr}.stepsStrip{grid-template-columns:repeat(2,minmax(0,1fr))}.formPanel{padding:12px}.titleRow h1{font-size:20px}}
