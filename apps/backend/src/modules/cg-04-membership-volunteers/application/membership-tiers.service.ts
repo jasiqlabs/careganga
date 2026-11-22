@@ -9,7 +9,7 @@ import {categories,conflict,invalid,object,parseTier,pick,plain,statuses,uuid} f
 type Draft=ReturnType<typeof parseTier>;
 const action="membership.tier.manage";
 const projection='t.id AS ref,t.version,v.version_no AS "offerRevision",t.plan_code AS "planCode",v.name,v.category,v.status,v.fee_minor::text AS "feeMinor",v.currency,v.duration_unit AS "durationUnit",v.duration_count AS "durationCount",v.description,v.benefits,v.icon,v.color,v.display_order AS "displayOrder",v.effective_from AS "effectiveFrom"';
-const safeProjection='t.plan_code AS "planCode",v.name,v.category,v.fee_minor::text AS "feeMinor",v.currency,v.duration_unit AS "durationUnit",v.duration_count AS "durationCount",v.description,v.benefits,v.icon,v.color,v.display_order AS "displayOrder"';
+const safeProjection='v.version_no AS "offerRevision",t.plan_code AS "planCode",v.name,v.category,v.fee_minor::text AS "feeMinor",v.currency,v.duration_unit AS "durationUnit",v.duration_count AS "durationCount",v.description,v.benefits,v.icon,v.color,v.display_order AS "displayOrder"';
 const current=" FROM membership_tier t JOIN membership_tier_version v ON v.root_realm_id=t.root_realm_id AND v.tier_id=t.id AND v.version_no=t.version";
 const hash=(v:unknown)=>createHash("sha256").update(JSON.stringify(v)).digest("hex");
 function cursor(raw:unknown):[number,string]{if(raw===undefined||raw==="")return [-1,""];if(typeof raw!=="string"||!/^\d{1,4}:MEM-[0-9A-F]{32}$/.test(raw))return invalid("filter","Refresh the membership plan list.");const [n,code]=raw.split(":");return [Number(n),code];}
