@@ -264,10 +264,10 @@ export function parseExtendedSection(kind:string,raw:unknown):Record<string,unkn
    if(notice===null&&x.publicReleaseConfirmed!==undefined)
    return error("publicReleaseConfirmed");
   return {...(event?{sourceEventRef:event}:{}),...(notice?{sourceNoticeRef:notice,publicReleaseConfirmed:true}:{}),
-   heading:str(x.heading,"heading",180,3),
-   category:str(x.category,"category",80,2),
-   excerpt:str(x.excerpt,"excerpt",400,10),
-   body:str(x.body,"body",7000,20),
+   heading:str(x.heading,"heading",180,event?2:3),
+   category:str(x.category,"category",80,event?1:2),
+   excerpt:str(x.excerpt,"excerpt",400,event?3:10),
+   body:str(x.body,"body",7000,event?3:20),
    authorLabel:str(x.authorLabel,"authorLabel",100,2),
    source:str(x.source,"source",160,3),asOfDate,
    tags:x.tags.map((v,i)=>str(v,"tags["+i+"]",40,2))};
