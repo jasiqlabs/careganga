@@ -5,6 +5,7 @@ export class ProjectsController{
  constructor(private readonly projects:ProjectsService){}
  @Get() list(@Headers("authorization")t:string,@Query()q:Record<string,unknown>){return this.projects.list(t,q);}
  @Get("me") mine(@Headers("authorization")t:string,@Query()q:Record<string,unknown>){return this.projects.list(t,q,true);}
+ @Get("geography") geography(@Headers("authorization")t:string,@Query("stateRef")s?:string){return this.projects.geography(t,s);}
  @Get("options") options(@Headers("authorization")t:string,@Query()q:Record<string,unknown>){return this.projects.options(t,q);}
  @Get("export") export(@Headers("authorization")t:string,@Query()q:Record<string,unknown>){return this.projects.list(t,q,false,true);}
  @Post() create(@Headers("authorization")t:string,@Body()v:unknown){return this.projects.create(t,v);}
