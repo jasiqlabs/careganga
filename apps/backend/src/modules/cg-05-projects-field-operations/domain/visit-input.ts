@@ -8,7 +8,11 @@ export type VisitProvenance=typeof visitProvenance[number];
 export const visitConsents=["GRANTED","DENIED","NOT_REQUESTED","MANUAL_DECLARED"] as const;
 export type VisitConsent=typeof visitConsents[number];
 const workKeys=["projectRef","taskRef","actorRef","stateRef","districtRef","visitType","location","plannedAt","purpose","report"] as const;
-export function visitError(field:string,code="CG05_VISIT_FIELD_INVALID"){return new BadRequestException({code,field});}
+const visitLabels:Record<string,string>={projectRef:"project",taskRef:"task",actorRef:"assigned staff",stateRef:"state",districtRef:"district",visitType:"visit type",location:"visit location",plannedAt:"planned date and time",purpose:"purpose",report:"visit report",status:"status",reason:"cancellation reason",comment:"comment",latitude:"latitude",longitude:"longitude",accuracyM:"location accuracy",deviceRecordedAt:"capture time"};
+export function visitError(field:string,code="CG05_VISIT_FIELD_INVALID"){
+ const messages:Record<string,string>={CG05_VISIT_REPORT_ONLY:"After check-in, only the report may be edited. The original visit plan and assigned staff are preserved.",CG05_VISIT_COORDINATES_INVALID:"Check the latitude, longitude and location accuracy.",CG05_VISIT_CONSENT_REQUIRED:"Confirm location consent or choose manual or unverified location.",CG05_VISIT_CAPTURE_STALE:"Capture the current location again. The recorded device time is stale or out of order.",CG05_ACTIVITY_GEOGRAPHY_INVALID:"Choose a state before choosing its district."};
+ return new BadRequestException({code,field,message:messages[code]??"Check the "+(visitLabels[field]??"visit details")+" and try again."});
+}
 function checked<T>(field:string,fn:()=>T):T{try{return fn();}catch(e){if(e instanceof BadRequestException)throw visitError(field);throw e;}}
 function work(x:Record<string,unknown>){
  const state=checked("stateRef",()=>optionalRef(x.stateRef)),district=checked("districtRef",()=>optionalRef(x.districtRef));
