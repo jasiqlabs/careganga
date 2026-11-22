@@ -432,7 +432,7 @@ export class HrEmploymentChangeSourceFacade{
  }
  async myHistory(tx:PoolClient,actor:VerifiedFoundationActor){
   await this.identity.assertPatientSessionCurrent(tx,actor);
-  const q=await tx.query<ChangeRow>(originalSql+" WHERE h.root_realm_id=$1 AND e.account_ref=$2 AND e.status IN('ACTIVE','PROBATION') ORDER BY h.created_at DESC,h.id DESC LIMIT 50",
+  const q=await tx.query<ChangeRow>(originalSql+" WHERE h.root_realm_id=$1 AND e.account_ref=$2 AND e.status IN('ACTIVE','PROBATION') AND (h.status<>'DRAFT' OR h.created_by=$2) ORDER BY h.created_at DESC,h.id DESC LIMIT 50",
    [actor.realmId,actor.accountId]);
   const linked=(await tx.query("SELECT 1 FROM hr_employee e JOIN hr_employment_assignment a ON a.root_realm_id=e.root_realm_id AND a.employee_id=e.id WHERE e.root_realm_id=$1 AND e.account_ref=$2 AND e.status IN('ACTIVE','PROBATION') AND a.valid_from<=CURRENT_DATE AND a.valid_to IS NULL",[actor.realmId,actor.accountId])).rowCount!==0;
   return {linked,items:q.rows.filter(row=>row.status!=="DRAFT"||row.created_by===actor.accountId)
@@ -446,7 +446,7 @@ export class HrEmploymentChangeSourceFacade{
   await this.target(tx,actor,row.kind==="RESIGNATION"&&row.target_account_ref===actor.accountId?null:row.employee_code);
   return row;
  }
- async staffHistory(tx:PoolClient,actor:VerifiedFoundationActor,offset:number){
+ async staffHistory(tx:PoolClient,actor:VerifiedFoundationActor,offset:number,status="ALL",family="ALL"){
   await this.identity.assertCurrent(tx,actor,"hr.changes.manage");
   const sql=`WITH permitted AS (
    SELECT e.id FROM hr_employee e JOIN LATERAL(
@@ -455,8 +455,8 @@ export class HrEmploymentChangeSourceFacade{
    ) a ON true JOIN branch b ON b.id=a.branch_ref AND b.root_realm_id=a.root_realm_id
    WHERE e.root_realm_id=$1 AND ${actorScope}
   ) `;
-  const q=await tx.query<ChangeRow>(sql+originalSql+" WHERE h.root_realm_id=$1 AND EXISTS(SELECT 1 FROM permitted p WHERE p.id=h.employee_id) AND (h.status<>'DRAFT' OR h.created_by=$2) ORDER BY h.created_at DESC,h.id DESC LIMIT 26 OFFSET $3",
-   [actor.realmId,actor.accountId,offset]);
+  const q=await tx.query<ChangeRow>(sql+originalSql+" WHERE h.root_realm_id=$1 AND EXISTS(SELECT 1 FROM permitted p WHERE p.id=h.employee_id) AND (h.status<>'DRAFT' OR h.created_by=$2) AND ($4='ALL' OR h.status=$4) AND ($5='ALL' OR ($5='EXIT' AND h.kind IN('RESIGNATION','EXIT')) OR ($5='TRANSFER' AND h.kind IN('TRANSFER','PROMOTION','DEPUTATION'))) ORDER BY h.created_at DESC,h.id DESC LIMIT 26 OFFSET $3",
+   [actor.realmId,actor.accountId,offset,status,family]);
   return {items:q.rows.slice(0,25).map(row=>({...this.summary(row),canEdit:row.created_by===actor.accountId&&row.status==="DRAFT",canWithdraw:row.created_by===actor.accountId&&row.status==="SUBMITTED"})),hasMore:q.rows.length>25,offset};
  }
  async staffDetail(tx:PoolClient,actor:VerifiedFoundationActor,ref:string){
