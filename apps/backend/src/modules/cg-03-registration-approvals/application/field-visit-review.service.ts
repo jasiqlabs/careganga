@@ -41,15 +41,19 @@ export class FieldVisitReviewService{
   },true);
  }
  async configure(token:string,raw:unknown){
-  const x=fields(raw,["requestKey","preliminary","currentPassword"]),key=ref(x.requestKey);
+  const x=fields(raw,["requestKey","preliminary","currentPassword","expectedVersion"]),key=ref(x.requestKey);
   if(typeof x.preliminary!=="boolean"||typeof x.currentPassword!=="string"||x.currentPassword.length<8||Buffer.byteLength(x.currentPassword)>1024)throw new BadRequestException("Choose the review route and enter your current password.");
-  const preliminary=x.preliminary,password=x.currentPassword,digest=hash(["FIELD_VISIT_REVIEW",preliminary]);
+  if(typeof x.expectedVersion!=="number"||!Number.isSafeInteger(x.expectedVersion)||x.expectedVersion<0||x.expectedVersion>=2147483647)throw invalid();
+  const preliminary=x.preliminary,password=x.currentPassword,expected=x.expectedVersion,digest=hash(["FIELD_VISIT_REVIEW",preliminary,expected]);
   const actor=await this.sessions.requireAction(token,"approvals.process.manage");await this.sessions.limitFoundationRootProof(actor);
   return this.projects.run(token,"approvals.process.manage",async(tx,a)=>{
    await this.owner.verifyReviewer(tx,a,"approvals.review",true);
    await tx.query("SELECT id FROM access_realm WHERE id=$1 AND realm_key='FOUNDATION_ROOT' FOR UPDATE",[a.realmId]);
    const prior=(await tx.query<{version:number;request_digest:string}>("SELECT p.version,cmd.request_digest FROM cg03_process_command cmd JOIN cg03_process p ON p.id=cmd.process_id AND p.realm_id=cmd.realm_id WHERE cmd.realm_id=$1 AND cmd.actor_id=$2 AND cmd.request_key=$3",[a.realmId,a.accountId,key])).rows[0];
    if(prior){if(prior.request_digest!==digest)throw stale();return {version:prior.version,replayed:true};}
+   const current=(await tx.query<{version:number;first_reviewer_capability:string|null}>("SELECT p.version,p.first_reviewer_capability FROM cg03_visit_review_process_current cur JOIN cg03_process p ON p.id=cur.process_id AND p.realm_id=cur.realm_id WHERE cur.realm_id=$1 FOR UPDATE OF cur",[a.realmId])).rows[0];
+   if((current?.version??0)!==expected)throw new ConflictException("Review settings changed. Reload the current settings before saving.");
+   if(current&&(current.first_reviewer_capability==="projects.visits.manage")===preliminary)throw new BadRequestException("Choose a different review route.");
    await this.sessions.requireFreshFoundationRootProof(tx,a,password);
    const p=await this.makeRoute(tx,a,preliminary);
    await tx.query("INSERT INTO cg03_process_command(realm_id,actor_id,request_key,request_digest,process_id) VALUES($1,$2,$3,$4,$5)",[a.realmId,a.accountId,key,digest,p.id]);
@@ -101,7 +105,8 @@ export class FieldVisitReviewService{
       AND (r.is_protected OR EXISTS(SELECT 1 FROM role_grant g WHERE g.role_id=r.id AND g.capability_key='projects.visits.manage'))
     AND EXISTS(SELECT 1 FROM account_role vr JOIN role rv ON rv.id=vr.role_id AND rv.realm_id=vr.realm_id AND rv.active WHERE vr.realm_id=acc.realm_id AND vr.account_id=acc.id AND vr.revoked_at IS NULL AND (rv.is_protected OR EXISTS(SELECT 1 FROM role_grant g WHERE g.role_id=rv.id AND g.capability_key='projects.visits.view')))
       AND (EXISTS(SELECT 1 FROM account_role gr JOIN role rg ON rg.id=gr.role_id AND rg.realm_id=gr.realm_id AND rg.active WHERE gr.realm_id=acc.realm_id AND gr.account_id=acc.id AND gr.revoked_at IS NULL AND (rg.is_protected OR EXISTS(SELECT 1 FROM role_grant g WHERE g.role_id=rg.id AND g.capability_key='foundation.branches.admin'))) OR EXISTS(SELECT 1 FROM branch b WHERE b.root_realm_id=acc.realm_id AND b.id=$3 AND b.status='ACTIVE' AND b.manager_account_ref=acc.id))
-    GROUP BY acc.id LIMIT 200`,[a.realmId,excluded,v.branch_ref])).rows;
+    AND (NOT $4::boolean OR EXISTS(SELECT 1 FROM account_role fr JOIN role rf ON rf.id=fr.role_id AND rf.realm_id=fr.realm_id AND rf.active WHERE fr.realm_id=acc.realm_id AND fr.account_id=acc.id AND fr.revoked_at IS NULL AND (rf.is_protected OR EXISTS(SELECT 1 FROM role_grant g WHERE g.role_id=rf.id AND g.capability_key='documents.files.view'))))
+    GROUP BY acc.id ORDER BY bool_or(r.is_protected) DESC,acc.id LIMIT 200`,[a.realmId,excluded,v.branch_ref,snap.proof.length>0])).rows;
    const eligible=reviewers.filter(r=>r.root);
    if(!eligible.length||steps.length===2&&!eligible.some(r=>reviewers.some(s=>s.id!==r.id&&s.coordinator)))throw new ConflictException("No distinct eligible reviewers are available for this visit review route. Ask a Foundation administrator to check the review setup.");
    const next=await this.visits.reviewTransition(tx,a,target,expected,"PENDING_APPROVAL",key,snap.digest,"",false);
@@ -122,8 +127,8 @@ export class FieldVisitReviewService{
    let canReview=false;
    const steps=await this.route(tx,c.process_id),step=steps.find(s=>s.ordinal===c.current_step);
    const earlier=(await tx.query("SELECT 1 FROM cg03_case_decision WHERE realm_id=$1 AND case_id=$2 AND actor_id=$3 AND step_ordinal<$4",[a.realmId,c.id,a.accountId,c.current_step])).rowCount;
-   if(step&&!earlier&&c.proposer_id!==a.accountId&&v.actor_account_ref!==a.accountId&&v.version===c.visit_review_version&&v.status==="PENDING_APPROVAL"&&["SUBMITTED","IN_REVIEW"].includes(c.status)){try{await this.authority(tx,a,step);canReview=true;}catch(e){if(!(e instanceof ForbiddenException))throw e;}}
-   const decisions=(await tx.query("SELECT d.action,d.safe_remarks AS remarks,d.created_at AS at,a.display_name AS reviewer FROM cg03_case_decision d JOIN account a ON a.id=d.actor_id AND a.realm_id=d.realm_id WHERE d.realm_id=$1 AND d.case_id=$2 ORDER BY d.accepted_case_revision",[a.realmId,c.id])).rows;
+   if(step&&!earlier&&c.proposer_id!==a.accountId&&v.actor_account_ref!==a.accountId&&v.version===c.visit_review_version&&v.status==="PENDING_APPROVAL"&&["SUBMITTED","IN_REVIEW"].includes(c.status)){try{await this.authority(tx,a,step);await this.visits.guardReview(tx,a,v.id,v.version,false,true);canReview=true;}catch(e){if(!(e instanceof ForbiddenException)&&!(e instanceof ConflictException))throw e;}}
+   const decisions=(await tx.query("SELECT d.action,d.safe_remarks AS remarks,d.created_at AS at,a.display_name AS reviewer,prior.case_number AS \"caseNumber\",d.step_ordinal AS step FROM cg03_case_decision d JOIN account a ON a.id=d.actor_id AND a.realm_id=d.realm_id JOIN cg03_case prior ON prior.id=d.case_id AND prior.realm_id=d.realm_id WHERE d.realm_id=$1 AND prior.case_kind='FIELD_VISIT_REVIEW' AND prior.visit_review_id=$2 ORDER BY prior.visit_review_version DESC,d.accepted_case_revision DESC LIMIT 50",[a.realmId,v.id])).rows;
    const files=(await tx.query("SELECT count(*)::int AS count FROM field_visit_review_file WHERE root_realm_id=$1 AND snapshot_id=$2",[a.realmId,s.id])).rows[0].count;
    if(canReview&&files)try{await this.identity.assertCurrent(tx,a,"documents.files.view");}catch(e){if(!(e instanceof ForbiddenException))throw e;canReview=false;}
    return {caseRef:canReview?c.id:null,caseNumber:c.case_number,status:c.status,revision:c.revision,canReview,allowedDecisions:canReview?(step?.protected_root_required?["APPROVE","RETURN","REJECT"]:["APPROVE","FORWARD","RETURN","REJECT"]):[],requiresCurrentPassword:canReview&&!!step?.protected_root_required,currentStep:c.current_step,totalSteps:steps.length,sourceVersion:s.visit_version,report:s.report_snapshot.report_text,locationState:s.report_snapshot.locationState,verifiedFileCount:files,decisions};
@@ -140,6 +145,7 @@ export class FieldVisitReviewService{
    const c=(await tx.query<Case>("SELECT * FROM cg03_case WHERE realm_id=$1 AND id=$2 AND case_kind='FIELD_VISIT_REVIEW' FOR UPDATE",[a.realmId,target])).rows[0];
    if(!c||c.proposer_id===a.accountId||v.actor_account_ref===a.accountId)throw new ForbiddenException("A different authorized reviewer must decide.");
    const steps=await this.route(tx,c.process_id);
+   if((await tx.query("SELECT 1 FROM field_visit_review_file WHERE root_realm_id=$1 AND snapshot_id=$2 LIMIT 1",[a.realmId,c.visit_review_ref])).rowCount)await this.identity.assertCurrent(tx,a,"documents.files.view");
    const prior=(await tx.query<{actor_id:string;request_digest:string;step_ordinal:number}>("SELECT actor_id,request_digest,step_ordinal FROM cg03_case_decision WHERE realm_id=$1 AND case_id=$2 AND request_key=$3",[a.realmId,target,key])).rows[0];
    if(prior){if(prior.actor_id!==a.accountId||prior.request_digest!==h)throw stale();const original=steps.find(s=>s.ordinal===prior.step_ordinal);if(!original)throw stale();await this.authority(tx,a,original);return {status:c.status,replayed:true};}
    if(c.revision!==expected||v.version!==c.visit_review_version||v.status!=="PENDING_APPROVAL"||!["SUBMITTED","IN_REVIEW"].includes(c.status))throw stale();
