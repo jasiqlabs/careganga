@@ -18,7 +18,7 @@ async function api<T>(path:string,body?:object):Promise<T>{
  const v=await r.json().catch(()=>null);if(!r.ok)throw Object.assign(new Error(typeof v?.message==="string"?v.message:"Document unavailable"),{status:r.status});if(!v||typeof v!=="object")throw Error("Original result unconfirmed");return v as T;
 }
 function Select({label,value,options,onChange,disabled=false}:{label:string;value:string;options:{value:string;label:string}[];onChange:(v:string)=>void;disabled?:boolean}){return <label>{label}<select style={field} value={value} disabled={disabled} onChange={e=>onChange(e.target.value)}>{options.map(x=><option key={x.value} value={x.value}>{x.label}</option>)}</select></label>;}
-function ReceiptUpload({id,onVerified,disabled,assetType,onClear}:{id?:string;onVerified:(fileRef?:string)=>void;disabled:boolean;assetType?:"SIGNATURE"|"SEAL";onClear?:()=>void}){
+function ReceiptUpload({id,onVerified,disabled,assetType,onClear,staff=false}:{id?:string;onVerified:(fileRef?:string)=>void;disabled:boolean;assetType?:"SIGNATURE"|"SEAL";onClear?:()=>void;staff?:boolean}){
  const [file,setFile]=useState<File|null>(null),[busy,setBusy]=useState(false),[message,setMessage]=useState("");
  const original=useRef<{key:string;hash:string;upload?:string}|null>(null);
  const upload=async()=>{
@@ -28,7 +28,7 @@ function ReceiptUpload({id,onVerified,disabled,assetType,onClear}:{id?:string;on
   try{
    const bytes=await file.arrayBuffer(),digest=Array.from(new Uint8Array(await crypto.subtle.digest("SHA-256",bytes)),x=>x.toString(16).padStart(2,"0")).join("");
    const cmd:{key:string;hash:string;upload?:string}=original.current?.hash===digest?original.current:{key:crypto.randomUUID(),hash:digest};original.current=cmd;
-   const path=assetType?"document-templates/assets":"me/documents/"+id+"/receipt-uploads";
+   const path=assetType?"document-templates/assets":(staff?"issued-documents/":"me/documents/")+id+"/receipt-uploads";
    if(cmd.upload){const status=await api<{cleanVerified:boolean;fileRef?:string}>(path+"/"+cmd.upload);if(status.cleanVerified&&(!assetType||status.fileRef)){onVerified(status.fileRef);setMessage("Secure file scan verified.");return;}
     const oldState=(status as {status?:string}).status;
     if(oldState==="REJECTED"||oldState==="EXPIRED"){original.current=null;setMessage("The previous secure file request ended. Choose the file again.");return;}
@@ -125,7 +125,7 @@ export function HrDocuments({mode,canIssue=false,canApproveTemplate=false,canRev
     {selected.document.canDownload&&!blocked&&<><a target="_blank" rel="noopener noreferrer" href={"/api/hr/"+(mode==="own"?"me/documents/":"issued-documents/")+selected.document.documentRef+"/file?view=1"}>View / print verified PDF</a><a href={"/api/hr/"+(mode==="own"?"me/documents/":"issued-documents/")+selected.document.documentRef+"/file"}>Download verified PDF</a></>}
     {selected.document.canDownloadReceipt&&!blocked&&<a href={"/api/hr/"+(mode==="own"?"me/documents/":"issued-documents/")+selected.document.documentRef+"/receipt-file"}>Download scan-verified received copy</a>}
     {mode==="own"&&selected.document.canDownload&&selected.document.receiptStatus==="AWAITING_ACKNOWLEDGEMENT"&&<button disabled={blocked} onClick={()=>act("me/documents/"+selected.document!.documentRef+"/acknowledge")}>Acknowledge receipt</button>}
-    {mode==="own"&&selected.document.canDownload&&selected.document.receiptStatus!=="RECEIVED_COPY_VERIFIED"&&<ReceiptUpload key={selected.document.documentRef} id={selected.document.documentRef} disabled={blocked} onVerified={()=>{setSelected(null);setMessage("Received copy accepted after secure file and malware verification.");void refresh();}}/>}
+    {(mode==="own"||(mode==="manage"&&canIssue))&&selected.document.canDownload&&selected.document.receiptStatus!=="RECEIVED_COPY_VERIFIED"&&<ReceiptUpload key={selected.document.documentRef} staff={mode==="manage"} id={selected.document.documentRef} disabled={blocked} onVerified={()=>{setSelected(null);setMessage("Received copy accepted after secure file and malware verification.");void refresh();}}/>}
     {mode==="manage"&&canIssue&&selected.document.canRetry&&<button disabled={blocked} onClick={()=>act("issued-documents/"+selected.document!.documentRef+"/reconcile")}>Check original issuance</button>}
     {mode==="manage"&&canIssue&&selected.document.canDownload&&["IN_APP","EMAIL","SMS"].map(channel=><button key={channel} disabled={blocked||selected.document!.dispatch.some(x=>x.channel===channel)} onClick={()=>act("issued-documents/"+selected.document!.documentRef+"/dispatch",false,{channel})}>Dispatch {title(channel)}</button>)}
     {mode==="manage"&&canRevoke&&selected.document.canDownload&&<><label>Current password<input style={field} type="password" value={password} onChange={e=>setPassword(e.target.value)}/></label><button disabled={blocked||password.length<8} onClick={()=>act("issued-documents/"+selected.document!.documentRef+"/revoke",true)}>Revoke</button></>}</>}

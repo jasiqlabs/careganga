@@ -20,6 +20,9 @@ export class HrIssuedDocumentController{
  @Post("me/documents/:id/receipt-uploads") receiptUpload(@Headers("authorization")t:string,@Param("id")id:string,@Body()body:unknown){return this.documents.initiateReceipt(t,id,body);}
  @Get("me/documents/:id/receipt-uploads/:upload") receiptStatus(@Headers("authorization")t:string,@Param("id")id:string,@Param("upload")upload:string){return this.documents.receiptStatus(t,id,upload);}
  @Post("me/documents/:id/receipt-uploads/:upload/confirm") receiptConfirm(@Headers("authorization")t:string,@Param("id")id:string,@Param("upload")upload:string){return this.documents.confirmReceipt(t,id,upload);}
+ @Post("issued-documents/:id/receipt-uploads") staffReceiptUpload(@Headers("authorization")t:string,@Param("id")id:string,@Body()body:unknown){return this.documents.initiateReceipt(t,id,body,false);}
+ @Get("issued-documents/:id/receipt-uploads/:upload") staffReceiptStatus(@Headers("authorization")t:string,@Param("id")id:string,@Param("upload")upload:string){return this.documents.receiptStatus(t,id,upload,false);}
+ @Post("issued-documents/:id/receipt-uploads/:upload/confirm") staffReceiptConfirm(@Headers("authorization")t:string,@Param("id")id:string,@Param("upload")upload:string){return this.documents.confirmReceipt(t,id,upload,false);}
  @Post("issued-documents/:id/reconcile") reconcile(@Headers("authorization")t:string,@Param("id")id:string){return this.documents.reconcile(t,id);}
  @Post("issued-documents/:id/revoke") revoke(@Headers("authorization")t:string,@Param("id")id:string,@Body()body:unknown){return this.documents.revoke(t,id,body);}
  @Get("issued-documents/:id/file")

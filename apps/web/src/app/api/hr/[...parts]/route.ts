@@ -14,8 +14,9 @@ function allowed(parts:string[],method:string){
  if(parts.length===3&&parts[0]==="document-requests"&&doc.test(parts[1])&&["submit","issue","preview"].includes(parts[2]))return parts[2]==="preview"?method==="GET":method==="POST";
  if(parts.length===2&&parts[0]==="document-reviews"&&UUID.test(parts[1]))return method==="GET";
  if(parts.length===3&&parts[0]==="document-reviews"&&UUID.test(parts[1])&&parts[2]==="decide")return method==="POST";
- if(parts.length===3&&parts[0]==="issued-documents"&&UUID.test(parts[1])&&["reconcile","revoke","dispatch","file","receipt-file"].includes(parts[2]))return ["file","receipt-file"].includes(parts[2])?method==="GET":method==="POST";
+ if(parts.length===3&&parts[0]==="issued-documents"&&UUID.test(parts[1])&&["reconcile","revoke","dispatch","file","receipt-file","receipt-uploads"].includes(parts[2]))return ["file","receipt-file"].includes(parts[2])?method==="GET":method==="POST";
  if(parts.length===2&&parts[0]==="me"&&parts[1]==="documents")return method==="GET";
+ if(parts[0]==="issued-documents"&&UUID.test(parts[1]??"")&&parts[2]==="receipt-uploads"&&UUID.test(parts[3]??""))return parts.length===4?method==="GET":parts.length===5&&parts[4]==="confirm"&&method==="POST";
  if(parts.length===4&&parts[0]==="me"&&parts[1]==="documents"&&UUID.test(parts[2])&&["file","acknowledge","receipt-uploads","receipt-file"].includes(parts[3]))return ["file","receipt-file"].includes(parts[3])?method==="GET":method==="POST";
  if(parts[0]==="me"&&parts[1]==="documents"&&UUID.test(parts[2]??"")&&parts[3]==="receipt-uploads"&&UUID.test(parts[4]??""))return parts.length===5?method==="GET":parts.length===6&&parts[5]==="confirm"&&method==="POST";
  const change=/^CG-HR-CHG-[0-9]{6,}$/;
@@ -99,7 +100,7 @@ async function proxy(req:NextRequest,parts:string[],method:string){
    headers:{Authorization:"Bearer "+token,...(body?{"Content-Type":"application/json"}:{})}});
   if(!res.ok){
    const status=[400,401,403,404,409,429].includes(res.status)?res.status:503;
-   const receiptPath=parts[0]==="me"&&parts[1]==="documents"&&parts[3]==="receipt-uploads";
+   const receiptPath=(parts[0]==="me"&&parts[1]==="documents"&&parts[3]==="receipt-uploads")||(parts[0]==="issued-documents"&&parts[2]==="receipt-uploads");
    const leavePath=parts[0]==="employment-changes"||parts[0]==="employment-change-options"||parts[0]==="employment-change-reviews"||(parts[0]==="me"&&parts[1]==="changes")||parts[0]==="appraisals"||(parts[0]==="attendance"&&parts[1]==="record")||parts[0]==="attendance-corrections"||parts[0]==="attendance-correction-reviews"||parts[0]==="leave-reviews"||(parts[0]==="me"&&parts[1]==="leave");
    if((leavePath||receiptPath||parts[0]==="document-requests"||parts[0]==="document-templates")&&status>=400&&status<500){
     const rejected:unknown=await res.json().catch(()=>null);
