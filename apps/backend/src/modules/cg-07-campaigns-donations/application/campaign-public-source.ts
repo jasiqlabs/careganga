@@ -5,7 +5,6 @@ import type {Pool,PoolClient} from "pg";
  * placement is REQUIRED for anonymous publication, not just CG03 approval.
  * No donation, financial receipt, donor, internal staff or private docs flow.
  */
-const UUID=/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}-[a-f0-9]{12}$/i;
 const PUBLIC_SLUG=/^cg-camp-[0-9]{8}$/;
 const BASE=`
  FROM campaign c
@@ -20,8 +19,8 @@ const BASE=`
   AND decision.action='APPROVE' AND decision.actor_id<>review.proposer_id
   AND decision.fresh_password_verified_at IS NOT NULL
  WHERE c.source_status='APPROVED'
- AND (c.start_at IS NULL OR c.start_at<=CURRENT_DATE)
- AND (c.end_at IS NULL OR c.end_at>=CURRENT_DATE)
+ AND (c.start_at IS NULL OR c.start_at<=(now() AT TIME ZONE 'Asia/Kolkata')::date)
+ AND (c.end_at IS NULL OR c.end_at>=(now() AT TIME ZONE 'Asia/Kolkata')::date)
  AND (c.branch_ref IS NULL OR EXISTS(SELECT 1 FROM branch b
     WHERE b.root_realm_id=c.root_realm_id AND b.id=c.branch_ref AND b.status='ACTIVE'))
  AND (c.project_source_ref IS NULL OR EXISTS(SELECT 1 FROM project p
@@ -35,6 +34,18 @@ const BASE=`
  AND (c.volunteer_source_ref IS NULL OR EXISTS(SELECT 1 FROM volunteer v
     WHERE v.root_realm_id=c.root_realm_id AND v.id=c.volunteer_source_ref
       AND cg04_current_volunteer(v.root_realm_id,v.id,v.account_ref,c.branch_ref)))
+ AND NOT EXISTS(SELECT 1 FROM jsonb_array_elements_text(
+  COALESCE(rev.step5_media_refs->'supportingFileRefs','[]'::jsonb)
+ ) supporting(ref) WHERE NOT EXISTS(
+  SELECT 1 FROM cg19_stored_file f JOIN cg19_upload_intent i
+    ON i.id=f.upload_intent_id AND i.realm_id=f.realm_id
+  WHERE f.id=supporting.ref::uuid AND f.realm_id=c.root_realm_id
+    AND f.campaign_id=c.id AND f.proposal_revision<=rev.revision_no
+    AND f.owner_kind='CG07_CAMPAIGN' AND f.scan_status='CLEAN_VERIFIED'
+    AND f.revoked_at IS NULL AND i.owner_kind='CG07_CAMPAIGN'
+    AND i.status='VALIDATED' AND i.campaign_id=c.id
+    AND i.classification='CAMPAIGN_DOCUMENT' AND i.campaign_media_rights_confirmed
+ ))
  AND (rev.step5_media_refs->>'coverRef' IS NULL OR EXISTS(
     SELECT 1 FROM cg19_stored_file f JOIN cg19_upload_intent i
        ON i.id=f.upload_intent_id AND i.realm_id=f.realm_id
