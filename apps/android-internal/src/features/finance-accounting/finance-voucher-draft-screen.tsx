@@ -11,8 +11,9 @@ type Voucher={voucherRef:string;voucherNumber:string;type:string;postingDate:str
  purpose:string;totalMinor:string;version:number;status:string;approvalCaseRef:string|null;
  paymentAccountKind:"CASH"|"BANK"|null};
 type Line={description:string;quantity:string;unitRate:string};
+type ProjectChoice={value:string;label:string;branchRef:string|null};
 type Draft={voucherRef:string;voucherNumber:string;version:number;status:string;
- header:{financialYearRef?:string;branchRef?:string|null;type?:string;
+ header:{financialYearRef?:string;branchRef?:string|null;type?:string;projectRef?:string|null;projectLabel?:string|null;
  postingDate?:string;payeeName?:string;purpose?:string;paymentAccountRef?:string|null;
  debitAccountRef?:string|null;creditAccountRef?:string|null};
  lines:{description:string;quantity:number;unitRateMinor:string}[];
@@ -23,7 +24,7 @@ type Props={token:string;years:readonly FinanceYear[];branches:readonly FinanceB
  canPost:boolean;canVerifyPayment:boolean;
  onClose:()=>void;onExpired:()=>void};
 const line=():Line=>({description:"",quantity:"1",unitRate:""});
-const empty=()=>({type:"EXPENSE",financialYearRef:"",branchRef:"",postingDate:"",payeeName:"",
+const empty=()=>({type:"EXPENSE",financialYearRef:"",branchRef:"",projectRef:"",postingDate:"",payeeName:"",
  purpose:"",paymentAccountRef:"",debitAccountRef:"",creditAccountRef:"",tax:"0",charges:"0"});
 function money(v:string){try{const n=BigInt(v),x=n<0n?-n:n;return(n<0n?"−":"")+"₹"+
  (x/100n).toLocaleString("en-IN")+"."+(x%100n).toString().padStart(2,"0");}catch{return"Amount unavailable";}}
@@ -72,6 +73,8 @@ export function FinanceVoucherDraftScreen({token,years,branches,canManage,canVie
  const [accountSearch,setAccountSearch]=useState("");
  const [accounts,setAccounts]=useState<Array<{accountRef:string;name:string;code:string;kind:string;category:string;branchRef:string|null;branchName:string|null}>>([]);
  const [accountError,setAccountError]=useState("");
+ const [projects,setProjects]=useState<ProjectChoice[]>([]),[projectError,setProjectError]=useState("");
+ useEffect(()=>{if(!editing)return;let live=true;setProjects([]);setProjectError("");void identityRequest("/api/finance-accounting/vouchers/options",{cache:"no-store",headers:{Authorization:"Bearer "+token}}).then(async r=>{if(r.status===401){onExpired();return;}if(!r.ok)throw Error("Project options unavailable.");const v=await r.json();if(!Array.isArray(v.projects))throw Error("Project options unavailable.");if(live)setProjects(v.projects);}).catch(e=>{if(live)setProjectError(e.message);});return()=>{live=false;};},[editing,token,onExpired]);
  const [accountMore,setAccountMore]=useState(false);
  const [paymentAccounts,setPaymentAccounts]=useState<Array<{accountRef:string;name:string;code:string;kind:string;branchRef:string|null;branchName:string|null}>>([]);
  const [paymentError,setPaymentError]=useState("");
@@ -153,7 +156,7 @@ export function FinanceVoucherDraftScreen({token,years,branches,canManage,canVie
   });
   return()=>subscription.remove();
  },[editing,busy,pending,workflowRef,onClose]);
- const update=(k:keyof ReturnType<typeof empty>,v:string)=>{setForm(f=>({...f,[k]:v}));setProblem("");};
+ const update=(k:keyof ReturnType<typeof empty>,v:string)=>{setForm(f=>({...f,[k]:v,...(k==="branchRef"||k==="type"?{projectRef:""}:{})}));setProblem("");};
  const itemField=(i:number,k:keyof Line,v:string)=>{setItems(old=>old.map((row,j)=>i===j?{...row,[k]:v}:row));setProblem("");};
  function start(){
   if(!canManage)return;
@@ -173,7 +176,7 @@ export function FinanceVoucherDraftScreen({token,years,branches,canManage,canVie
     throw Error("This voucher is no longer editable. Refresh its latest status.");
    setTarget({ref:d.voucherRef,number:d.voucherNumber,version:d.version});
    setForm({type:d.header.type??"EXPENSE",financialYearRef:d.header.financialYearRef??"",
-    branchRef:d.header.branchRef??"",postingDate:d.header.postingDate??"",
+    branchRef:d.header.branchRef??"",projectRef:d.header.projectRef??"",postingDate:d.header.postingDate??"",
     payeeName:d.header.payeeName??"",purpose:d.header.purpose??"",
     paymentAccountRef:d.header.paymentAccountRef??"",
     debitAccountRef:d.header.debitAccountRef??"",creditAccountRef:d.header.creditAccountRef??"",
@@ -193,6 +196,7 @@ export function FinanceVoucherDraftScreen({token,years,branches,canManage,canVie
     form.paymentAccountRef:form.creditAccountRef,
    lines:items.map(it=>({description:it.description,quantity:Number(it.quantity),unitRate:it.unitRate})),
    ...(form.branchRef?{branchRef:form.branchRef,branchVersion:b?.version}:{}),
+   ...(form.type==="EXPENSE"&&form.projectRef?{projectRef:form.projectRef}:{}),
    ...(target?{expectedVersion:target.version}:{})};
  }
  async function save(original:Pending){
@@ -218,6 +222,7 @@ export function FinanceVoucherDraftScreen({token,years,branches,canManage,canVie
  }
  function submit(){
   if(busy||pending||!canManage)return;
+  if(form.projectRef&&!projects.some(p=>p.value===form.projectRef&&(p.branchRef??"")===form.branchRef)){setProblem("Choose a currently available project or clear it.");return;}
   if(items.some(it=>!/^[1-9][0-9]{0,5}$/.test(it.quantity)||Number(it.quantity)>1000000)){
    setProblem("Enter each item quantity as a whole number between 1 and 1,000,000.");return;
   }
@@ -319,6 +324,7 @@ export function FinanceVoucherDraftScreen({token,years,branches,canManage,canVie
     <Select label="Foundation or Active Branch" value={form.branchRef}
      options={[{value:"",label:"Foundation-wide"},...branches.map(b=>({value:b.branchRef,label:b.name+" · "+b.code}))]}
      onChange={v=>update("branchRef",v)}/>
+    {form.type==="EXPENSE"&&<><Select label="Project (optional)" value={form.projectRef} options={[{value:"",label:"No project"},...projects.filter(p=>(p.branchRef??"")===form.branchRef).map(p=>({value:p.value,label:p.label}))]} onChange={v=>update("projectRef",v)}/>{!!form.projectRef&&!projects.some(p=>p.value===form.projectRef&&(p.branchRef??"")===form.branchRef)&&<Text accessibilityRole="alert">Previous project unavailable. Choose again.</Text>}{!!projectError&&<Text accessibilityRole="alert">{projectError}</Text>}</>}
     <TextField label="Find debit and credit account" maxLength={80}
      value={accountSearch} update={setAccountSearch}
      placeholder="Search permitted account name or code"/>
