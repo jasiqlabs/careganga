@@ -32,9 +32,9 @@ CREATE TABLE membership_application(
  FOREIGN KEY(applicant_account_ref,root_realm_id) REFERENCES account(id,realm_id) ON DELETE RESTRICT,
  FOREIGN KEY(root_realm_id,tier_version_id,accepted_fee_minor,currency)
   REFERENCES membership_tier_version(root_realm_id,id,fee_minor,currency) ON DELETE RESTRICT,
- FOREIGN KEY(root_realm_id,branch_ref) REFERENCES branch(root_realm_id,id) ON DELETE RESTRICT,
- FOREIGN KEY(root_realm_id,state_ref) REFERENCES geography_area(root_realm_id,id) ON DELETE RESTRICT,
- FOREIGN KEY(root_realm_id,district_ref) REFERENCES geography_area(root_realm_id,id) ON DELETE RESTRICT,
+ FOREIGN KEY(branch_ref,root_realm_id) REFERENCES branch(id,root_realm_id) ON DELETE RESTRICT,
+ FOREIGN KEY(state_ref,root_realm_id) REFERENCES geography_area(id,root_realm_id) ON DELETE RESTRICT,
+ FOREIGN KEY(district_ref,root_realm_id) REFERENCES geography_area(id,root_realm_id) ON DELETE RESTRICT,
  CHECK((submitted_digest IS NULL)=(submitted_at IS NULL)),
  CHECK(status IN('DRAFT','CANCELLED') OR submitted_digest IS NOT NULL)
 );
