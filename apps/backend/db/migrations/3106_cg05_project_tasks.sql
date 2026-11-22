@@ -5,7 +5,7 @@ CREATE TABLE project_task (
  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
  root_realm_id uuid NOT NULL,
  project_id uuid NOT NULL,
- task_code text NOT NULL DEFAULT ('TSK-'||to_char(nextval('cg05_task_public_sequence'),'FM00000000')) UNIQUE,
+ task_code text NOT NULL DEFAULT ('TSK-'||nextval('cg05_task_public_sequence')::text) UNIQUE,
  title text NOT NULL CHECK(char_length(btrim(title)) BETWEEN 2 AND 160),
  task_type text NOT NULL CHECK(char_length(btrim(task_type)) BETWEEN 1 AND 80),
  description text NOT NULL DEFAULT '' CHECK(char_length(description)<=2000),
@@ -121,3 +121,29 @@ END $;
 CREATE CONSTRAINT TRIGGER cg05_task_event_at_commit AFTER INSERT OR UPDATE ON project_task
  DEFERRABLE INITIALLY DEFERRED FOR EACH ROW EXECUTE FUNCTION cg05_task_event_match();
 
+
+CREATE FUNCTION cg05_task_event_insert_guard() RETURNS trigger LANGUAGE plpgsql AS $$
+DECLARE t project_task%ROWTYPE; previous_status text;
+BEGIN
+ SELECT * INTO t FROM project_task WHERE root_realm_id=NEW.root_realm_id
+  AND project_id=NEW.project_id AND id=NEW.task_id FOR SHARE;
+ IF NOT FOUND OR t.version<>NEW.result_version OR t.status<>NEW.new_status
+ OR t.assignee_kind<>NEW.assignee_kind
+ OR t.assignee_account_ref IS DISTINCT FROM NEW.assignee_account_ref
+ OR t.assignee_employee_ref IS DISTINCT FROM NEW.assignee_employee_ref
+ OR t.assignee_branch_ref IS DISTINCT FROM NEW.assignee_branch_ref THEN
+  RAISE EXCEPTION 'Task event does not match current source revision';
+ END IF;
+ IF NEW.result_version=1 THEN
+  IF NEW.event_kind<>'CREATE' OR NEW.old_status IS NOT NULL THEN RAISE EXCEPTION 'Invalid initial task event'; END IF;
+ ELSE
+  SELECT new_status INTO previous_status FROM project_task_event WHERE root_realm_id=NEW.root_realm_id
+   AND task_id=NEW.task_id AND result_version=NEW.result_version-1;
+  IF NOT FOUND OR NEW.event_kind='CREATE' OR NEW.old_status IS DISTINCT FROM previous_status THEN
+   RAISE EXCEPTION 'Task event must follow the preceding revision';
+  END IF;
+ END IF;
+ RETURN NEW;
+END $$;
+CREATE TRIGGER cg05_task_event_insert BEFORE INSERT ON project_task_event
+ FOR EACH ROW EXECUTE FUNCTION cg05_task_event_insert_guard();
