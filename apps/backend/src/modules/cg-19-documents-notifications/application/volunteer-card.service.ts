@@ -25,7 +25,8 @@ type Card={id:string;root_realm_id:string;volunteer_id:string;brand_version:numb
  claim_token:string|null;claim_expires_at:Date|null;attempt_count:number;object_key:string;
  object_version:string|null;content_sha256:string|null;created_at:Date;issued_at:Date|null};
 type Brand={config:BrandConfig;assets:Record<"SIGNATURE"|"SEAL"|"LOGO",BrandAsset>};
-const outward=(v:Card)=>({cardRef:v.id,status:v.state,revision:v.issue_revision,issuedAt:v.issued_at?.toISOString()??null,canDownload:v.state==="ISSUED",canRetry:["PENDING","UNKNOWN"].includes(v.state)});
+const outward=(v:Card)=>({cardRef:v.id,status:v.state,revision:v.issue_revision,issuedAt:v.issued_at?.toISOString()??null,canDownload:v.state==="ISSUED",
+ canRetry:v.attempt_count<5&&(["PENDING","UNKNOWN"].includes(v.state)||(v.state==="VERIFYING"&&!!v.claim_expires_at&&v.claim_expires_at.getTime()<=Date.now()))});
 @Injectable()
 export class VolunteerCardService{
  constructor(@Inject(DATABASE)private readonly db:Pool,private readonly sessions:SessionService,
