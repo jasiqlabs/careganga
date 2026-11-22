@@ -722,7 +722,7 @@ export function StaffAuthenticationScreen() {
 
   if(projectsOpen&&token&&actor){
     if(!roleActions.includes("projects.view"))return <AccessDeniedScreen reason="You cannot view projects." onMyAccount={()=>setProjectsOpen(false)}/>;
-    return renderInShell(<ScreenErrorBoundary onExit={()=>setProjectsOpen(false)}><Suspense fallback={<ActivityIndicator style={{marginTop:40}}/>}><NativeProjectsWorkspace token={token} canManage={roleActions.includes("projects.manage")} canExport={roleActions.includes("projects.export")} onExpired={expireSession}/></Suspense></ScreenErrorBoundary>,"projects",()=>setProjectsOpen(false));
+    return renderInShell(<ScreenErrorBoundary onExit={()=>setProjectsOpen(false)}><Suspense fallback={<ActivityIndicator style={{marginTop:40}}/>}><NativeProjectsWorkspace token={token} canManage={roleActions.includes("projects.manage")} canExport={roleActions.includes("projects.export")} canReadCover={roleActions.includes("documents.files.view")} canUploadCover={roleActions.includes("documents.files.view")&&roleActions.includes("documents.files.manage")} onExpired={expireSession}/></Suspense></ScreenErrorBoundary>,"projects",()=>setProjectsOpen(false));
   }
   if(inventoryOpen&&token&&actor){
     if(!roleActions.includes("inventory.catalog.view"))return <AccessDeniedScreen reason="You cannot view inventory." onMyAccount={()=>setInventoryOpen(false)}/>;
