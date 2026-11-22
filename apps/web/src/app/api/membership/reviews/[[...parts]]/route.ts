@@ -33,7 +33,7 @@ async function proxy(req:NextRequest,ctx:Ctx,method:"GET"|"POST"){
    headers:{Authorization:"Bearer "+token,...(body?{"Content-Type":"application/json"}:{})},body});
   if(!r.ok){
    const status=[400,401,403,404,409,429].includes(r.status)?r.status:503;
-   return reply({message:status===401?"Sign in again.":status===403?"Your current protected approval permission is unavailable.":status===404?"This membership application is no longer available.":status===409?"The case or proof changed. Refresh before reviewing.":status===429?"Too many requests. Try again later.":status===400?"Check the approval inputs and your current password.":"The review outcome could not be confirmed. Refresh before retrying."},status);
+   return reply({message:status===401?"Sign in again.":status===403?"Your current protected approval permission is unavailable.":status===404?"This membership application is no longer available.":status===409?"The case or proof changed. Refresh before reviewing.":status===429?"Too many requests. Try again later.":status===400?(method==="POST"?"Check the approval inputs and your current password.":"Check the review filters, status or submitted dates."):"The review outcome could not be confirmed. Refresh before retrying."},status);
   }
   if(parts.length===4&&parts[1]==="files"){
    const mime=(r.headers.get("Content-Type")??"").split(";")[0].trim();
