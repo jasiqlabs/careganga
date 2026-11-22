@@ -94,6 +94,16 @@ export class VolunteerCardService{
   if(brand.config.version!==c.brand_version||hash(JSON.stringify([v,brand.config.version]))!==c.source_digest)throw conflict();
   return {v,brand};
  }
+ private async present(tx:PoolClient,c:Card){
+  const status=outward(c);
+  if(!["ISSUED","PENDING","UNKNOWN"].includes(c.state))return status;
+  try{await this.check(tx,c);return status;}
+  catch(e){
+   // The historical card remains ISSUED/PENDING; current eligibility must never be implied by its status.
+   if(e instanceof ConflictException)return {...status,canDownload:false,canRetry:false};
+   throw e;
+  }
+ }
  private async asset(row:BrandAsset){
   if(row.status!=="VALIDATED"||!row.object_version)throw conflict();
   const bytes=await this.objects.readVerifiedPrivateObject({objectKey:row.object_key,objectVersion:row.object_version,maxBytes:2097152});
@@ -132,12 +142,12 @@ export class VolunteerCardService{
    if(!(await tx.query("SELECT 1 FROM volunteer WHERE root_realm_id=$1 AND id=$2",[a.realmId,id])).rowCount)
     throw new NotFoundException("Volunteer unavailable.");
    const p=(await tx.query<Card>("SELECT * FROM cg19_volunteer_card WHERE root_realm_id=$1 AND volunteer_id=$2 ORDER BY issue_revision DESC LIMIT 1",[a.realmId,id])).rows[0];
-   return {card:p?outward(p):null};
+   return {card:p?await this.present(tx,p):null};
   });
  }
  async info(token:string,ref:string){
   const a=await this.issuer(token);
-  return this.run(async tx=>{await this.authorized(tx,a);return outward(await this.actual(tx,a.realmId,ref));});
+  return this.run(async tx=>{await this.authorized(tx,a);return this.present(tx,await this.actual(tx,a.realmId,ref));});
  }
  async mine(token:string){
   const a=await this.sessions.verifySession(token);
@@ -146,7 +156,9 @@ export class VolunteerCardService{
    const rows=(await tx.query<Card>(`SELECT card.* FROM cg19_volunteer_card card
     JOIN volunteer v ON v.root_realm_id=card.root_realm_id AND v.id=card.volunteer_id
     WHERE card.root_realm_id=$1 AND v.account_ref=$2 ORDER BY card.created_at DESC,card.id DESC LIMIT 26`,[a.realmId,a.accountId])).rows;
-   return {items:rows.slice(0,25).map(outward),hasMore:rows.length>25};
+   const items=[];
+   for(const card of rows.slice(0,25))items.push(await this.present(tx,card));
+   return {items,hasMore:rows.length>25};
   });
  }
  async reconcile(token:string,ref:string){
@@ -162,7 +174,10 @@ export class VolunteerCardService{
     attempt_count=attempt_count+1 WHERE root_realm_id=$1 AND id=$2 RETURNING *`,[a.realmId,id,claim])).rows[0];
    return {card:updated,claim:true};
   });
-  if(!state.claim)return outward(state.card);
+  if(!state.claim)return this.run(async tx=>{
+   await this.authorized(tx,a);
+   return this.present(tx,await this.actual(tx,a.realmId,id));
+  });
   const p=state.card;
   try{
    const proof=await this.run(async tx=>{
