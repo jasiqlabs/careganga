@@ -7,6 +7,7 @@ import {FoundationStructureIdentityFacade} from "../../cg-01-identity-access/app
 import {BranchSourceFacade} from "../../cg-02-foundation-structure/application/branch-source.facade";
 import {CampaignLinkSourceFacade} from "../../cg-05-projects-field-operations/application/campaign-link-source.facade";
 import {requireCurrentVolunteer} from "../../cg-04-membership-volunteers/application/current-volunteer-source";
+import {countPublishedCampaignSources} from "./campaign-public-source";
 import type {VerifiedFoundationActor as Actor} from "../../cg-01-identity-access/public-api";
 import {campaignRef,parseCampaignDraft,type CampaignDraft} from "../domain/campaign-draft-input";
 
@@ -465,8 +466,9 @@ export class CampaignDraftsService{
     FROM campaign WHERE root_realm_id=$1
      AND ($2::boolean OR branch_ref=ANY($3::uuid[]))`,
      [a.realmId,scope.all,scope.branches.map(b=>b.value)])).rows[0];
-   return {items:rows.slice(0,25),offset,hasMore:rows.length>25,summary,
-    message:"Active count is CG03-approved campaign source, not necessarily CG18-published. Planned goal is not money received."};
+   const publicCount=await countPublishedCampaignSources(tx,a.realmId,scope.all,scope.branches.map(b=>b.value));
+   return {items:rows.slice(0,25),offset,hasMore:rows.length>25,summary:{...summary,publicCount},
+    message:"Operational approved and separately effective public counts are distinct; planned fundraising goal is not money received."};
   },true);
  }
 }
