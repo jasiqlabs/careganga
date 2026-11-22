@@ -70,7 +70,8 @@ export class ProjectActivitiesService{
   const currentScope=branch===x.branch_ref&&(!p||!closed(p.status));
   const canProgress=!closed(x.status)&&currentScope&&(canManage||owner&&await this.has(tx,a,"projects.activities.progress"));
   const canAttachEvidence=x.status!=="CANCELLED"&&branch===x.branch_ref&&(scoped&&await this.has(tx,a,"projects.activities.manage")||owner&&await this.has(tx,a,"projects.activities.progress"));
-  return {x,p,branch,canManage,canProgress,canAttachEvidence,scopeChanged:branch!==x.branch_ref};
+  const canReleaseEvent=x.kind==="EVENT"&&["SCHEDULED","ONGOING","COMPLETED"].includes(x.status)&&p?.status!=="CANCELLED"&&branch===x.branch_ref&&scoped&&await this.has(tx,a,"projects.activities.manage");
+  return {x,p,branch,canManage,canProgress,canAttachEvidence,canReleaseEvent,scopeChanged:branch!==x.branch_ref};
  }
  /** CG19 reads/writes are authorized against the original current activity, not caller-supplied branch or file identity. */
  async guardEvidence(tx:PoolClient,a:Actor,key:string,expected:number|null,write:boolean){
@@ -142,10 +143,10 @@ export class ProjectActivitiesService{
  }
  async detail(token:string,key:string){
   return this.projects.run(token,"projects.activities.view",async(tx,a)=>{
-   const {x,canManage,canProgress,canAttachEvidence}=await this.get(tx,a,key);
+   const {x,canManage,canProgress,canAttachEvidence,canReleaseEvent}=await this.get(tx,a,key);
    const row=(await tx.query("SELECT "+select+joins+" WHERE x.root_realm_id=$1 AND x.id=$2",[a.realmId,x.id])).rows[0];
    const history=(await tx.query("SELECT e.action,e.prior_status AS \"priorStatus\",e.resulting_status AS status,e.reason,e.occurred_at AS at,actor.display_name AS actor,owner.display_name AS owner FROM project_activity_event e JOIN account actor ON actor.realm_id=e.root_realm_id AND actor.id=e.actor_ref JOIN account owner ON owner.realm_id=e.root_realm_id AND owner.id=e.owner_account_ref WHERE e.root_realm_id=$1 AND e.activity_id=$2 ORDER BY e.result_version DESC LIMIT 50",[a.realmId,x.id])).rows;
-   return {...row,history,canManage,canProgress,canAttachEvidence};
+   return {...row,history,canManage,canProgress,canAttachEvidence,canReleaseEvent};
   },true);
  }
 
