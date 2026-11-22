@@ -76,7 +76,9 @@ export function VolunteerCardManager({volunteerRef}:{volunteerRef:string}){
   {loading?<p role="status">Checking current official card state…</p>:card?
    <p role="status"><strong>{label(card.status)}</strong> · Revision {card.revision}{card.issuedAt?" · Issued "+new Date(card.issuedAt).toLocaleString("en-IN"):""}</p>:
    <p>No official volunteer card has been issued.</p>}
-  {error&&<p role="alert" className="cg04-error">{error}</p>}{note&&<p role="status">{note}</p>}
+  {card?.status==="ISSUED"&&!card.canDownload&&<p role="alert" className="cg04-error">This card was issued previously, but its current volunteer eligibility or approved Foundation branding has changed. Recheck the official record and revoke the old card before reissuing when appropriate.</p>}
+  {card&&["PENDING","UNKNOWN"].includes(card.status)&&!card.canRetry&&<p role="alert" className="cg04-error">Issuance cannot be retried while the underlying volunteer approval or branding has changed. Review the source record first.</p>}
+  {error&&<p role="alert" className="cg04-error">{error}</p>}{note&&<p role="status">{note}</p>
   <div className="cg04-buttons">
    {(!card||card.status==="REVOKED")&&<label>Current Foundation password<input type="password" autoComplete="current-password" value={password} onChange={e=>setPassword(e.target.value)}/></label>}
    {(!card||card.status==="REVOKED")&&<button type="button" disabled={busy||loading||password.length<8} onClick={issue}>Issue original card</button>}
