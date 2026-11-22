@@ -15428,3 +15428,24 @@ button:disabled {
 .cg04-roster-stat{background:#f8faf9;border:1px solid #e0e8e3;border-radius:12px;padding:14px;display:grid;gap:5px}
 .cg04-roster-stat small{font-size:12px;color:#557163}.cg04-roster-stat strong{font-size:24px;font-weight:800;color:#174632}
 @media(max-width:750px){.cg04-roster-overview{grid-template-columns:repeat(2,minmax(0,1fr))}}
+
+
+/* CG04 U12/U13 — real original applicant-detail source, shared CG01 brand tokens.
+   Tabs that await CG19 document/communications provenance remain disabled. */
+.cg04-review-detail{min-width:0;max-width:100%}
+.cg04-review-tabs{display:flex;align-items:stretch;gap:7px;overflow-x:auto;max-width:100%;padding:4px 0 10px;scrollbar-width:thin}
+.cg04-review-tabs button{white-space:nowrap;flex:0 0 auto;min-height:44px;padding:9px 12px;border:1px solid var(--cg-border);border-radius:9px;background:var(--cg-surface);color:var(--cg-text);font:inherit;font-weight:650}
+.cg04-review-tabs button[aria-selected="true"]{border-color:var(--cg-accent);background:var(--cg-accent);color:var(--cg-accent-text)}
+.cg04-review-tabs button:disabled{background:var(--cg-canvas);color:var(--cg-muted);opacity:.66;cursor:not-allowed}
+.cg04-review-tabs button:focus-visible{outline:3px solid var(--cg-focus);outline-offset:2px}
+.cg04-review-tab-panel{min-width:0;min-height:130px;padding-top:8px}
+.cg04-review-tab-panel :is(p,li){overflow-wrap:anywhere}
+.cg04-review-details{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.cg04-review-details>div{background:var(--cg-surface);border:1px solid var(--cg-border);border-radius:11px;padding:14px;min-width:0}
+.cg04-review-details>div>strong{font-size:var(--cg-text-base);color:var(--cg-text)}
+.cg04-review-details>div>p{margin:7px 0;color:var(--cg-muted);line-height:1.5}
+.cg04-review-decision{display:grid;gap:12px;max-width:660px}
+.cg04-review-decision label{display:grid;gap:6px;color:var(--cg-text);font-weight:650}
+.cg04-review-decision :is(input,select,textarea){width:100%;max-width:100%;border:1px solid var(--cg-border);border-radius:9px;padding:10px 12px;min-height:44px;font:inherit;background:var(--cg-surface);color:var(--cg-text)}
+.cg04-review-decision textarea{min-height:90px;resize:vertical}
+@media(max-width:680px){.cg04-review-details{grid-template-columns:minmax(0,1fr)}.cg04-review-tabs button{font-size:13px;padding:9px 10px}}
