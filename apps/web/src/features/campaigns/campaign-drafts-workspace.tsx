@@ -149,31 +149,87 @@ export function CampaignDraftsWorkspace({canManage}:{canManage:boolean}){
   <label style={field}>{label}{multiline?
    <textarea style={{...entry,minHeight:100}} value={value} onChange={e=>onChange(e.target.value)} disabled={busy||!editable||!!pending.current||!!submitPending.current}/>:
    <input style={entry} value={value} onChange={e=>onChange(e.target.value)} disabled={busy||!editable||!!pending.current||!!submitPending.current}/>}</label>;
- return <section aria-label="Foundation campaigns" style={{display:"grid",gap:18}}>
-  <header><h1>Campaigns</h1><p>Original Foundation campaign drafts and six-step planning. Contributions, approvals and publication are separate verified workflows.</p></header>
-  <section style={panel}><div style={actions}>
-   <strong>Campaign records (current page): {rows.length}</strong>
-   <span>Drafts shown: {rows.filter(x=>x.status==="DRAFT").length}</span>
-   {canManage&&<button className="primary" disabled={busy||!!pending.current} onClick={()=>{reset();setEditing(true);}}>Launch New Campaign</button>}
-  </div>
-  <div style={{...actions,marginTop:12}}>
-   <label style={field}>Search campaign or code<input style={entry} value={q} onChange={e=>setQ(e.target.value)} maxLength={80}/></label>
-   <button type="button" disabled={busy} onClick={()=>{setOffset(0);setApplied(q.trim());}}>Search</button>
-   <button type="button" disabled={busy} onClick={()=>void refresh()}>Refresh</button>
-  </div>
-  {loading&&<p role="status">Verifying current campaign records…</p>}
-  {!loading&&!rows.length&&<p>No permitted campaign drafts match the current search.</p>}
-  <div style={{display:"grid",gap:10,marginTop:12}}>
-   {rows.map(row=><article key={row.ref} style={{...panel,padding:12}}>
-    <div style={{...actions,justifyContent:"space-between"}}><div><strong>{row.title}</strong>
-     <p style={{margin:"4px 0",color:"var(--cg-muted)"}}>{row.code} · {row.status.replaceAll("_"," ")} · {row.category}</p></div>
-     <button type="button" disabled={busy||!!pending.current} onClick={()=>void open(row)}>{canManage?"Open draft":"View details"}</button></div>
-   </article>)}
-  </div>
-  <div style={{...actions,marginTop:12}}>
-   {offset>0&&<button onClick={()=>setOffset(v=>Math.max(0,v-25))} disabled={busy}>Previous page</button>}
-   {hasMore&&<button onClick={()=>setOffset(v=>v+25)} disabled={busy}>Next page</button>}
-  </div></section>
+ const tabItems=[{key:"ALL",label:"All Campaigns",count:summary?.total},
+  {key:"PUBLISHED",label:"Active",count:summary?.active},
+  {key:"DRAFT",label:"Drafts",count:summary?.draft},
+  {key:"CLOSED",label:"Completed",count:summary?.completed},
+  {key:"WITHDRAWN",label:"Cancelled",count:summary?.cancelled}];
+ const kpis=[{name:"Total Campaigns",count:summary?.total,style:styles.statBlue,icon:"◉"},
+  {name:"Active Campaigns",count:summary?.active,style:styles.statGreen,icon:"✓"},
+  {name:"Draft Campaigns",count:summary?.draft,style:styles.statAmber,icon:"◷"},
+  {name:"Completed Campaigns",count:summary?.completed,style:styles.statPurple,icon:"▣"},
+  {name:"Cancelled Campaigns",count:summary?.cancelled,style:styles.statRed,icon:"×"}];
+ return <section aria-label="Foundation campaigns" className={styles.workspace}>
+  {!editing&&<>
+   <header className={styles.titleRow}>
+    <div><h1>Campaigns</h1><p>CareGanga Foundation campaign planning and verification</p></div>
+   </header>
+   <div className={styles.statGrid} aria-label="Campaign source status overview">
+    {kpis.map(item=><article className={styles.statCard+" "+item.style} key={item.name}>
+     <span className={styles.statIcon} aria-hidden="true">{item.icon}</span>
+     <div><div className={styles.statLabel}>{item.name}</div><div className={styles.statNumber}>{item.count??"—"}</div></div>
+    </article>)}
+   </div>
+   <section className={styles.filterPanel} aria-label="Advanced campaign search and filters">
+    <h2>Advanced Search &amp; Filters</h2>
+    <div className={styles.filterGrid}>
+     <label style={field}>Search keyword<input style={entry} value={q} onChange={e=>setQ(e.target.value)}
+       placeholder="Campaign title or code" maxLength={80}/></label>
+     <label style={field}>Campaign status<select style={entry} value={statusFilter}
+      onChange={e=>{setStatusFilter(e.target.value);setOffset(0);}}>
+      {tabItems.map(t=><option key={t.key} value={t.key}>{t.label}</option>)}
+      {["SUBMITTED","RETURNED","REJECTED","APPROVED","PAUSED"].map(t=>
+       <option key={t} value={t}>{t.replaceAll("_"," ").toLowerCase()}</option>)}
+     </select></label>
+     <button type="button" disabled={busy} onClick={()=>{setOffset(0);setApplied(q.trim());}}>Apply Filters</button>
+     <button type="button" disabled={busy} onClick={()=>{setQ("");setApplied("");setStatusFilter("ALL");setOffset(0);}}>Reset</button>
+    </div>
+   </section>
+   <div className={styles.overviewColumns}>
+    <section style={panel} aria-label="Campaign records">
+     <div className={styles.listTop}>
+      <nav className={styles.tabStrip} aria-label="Campaign status tabs">
+       {tabItems.map(t=><button type="button" key={t.key}
+        className={styles.tabButton+(statusFilter===t.key?" "+styles.tabActive:"")}
+        aria-current={statusFilter===t.key?"page":undefined} disabled={busy}
+        onClick={()=>{setOffset(0);setStatusFilter(t.key);}}>
+        {t.label} ({t.count??"—"})</button>)}
+      </nav>
+      {canManage&&<button type="button" className={styles.launch}
+       disabled={busy||!!pending.current||!!submitPending.current}
+       onClick={()=>{reset();setEditing(true);}}>Launch New Campaign</button>}
+     </div>
+     {loading&&<p role="status">Verifying current campaign records…</p>}
+     {!loading&&!rows.length&&<p>No permitted campaign records match the current filters.</p>}
+     <div style={{display:"grid",gap:10,marginTop:12}}>
+      {rows.map(row=><article key={row.ref} style={{...panel,padding:12}}>
+       <div style={{...actions,justifyContent:"space-between"}}>
+        <div><strong>{row.title}</strong>
+         <p style={{margin:"4px 0",color:"var(--cg-muted)"}}>{row.code} · {row.status.replaceAll("_"," ")} · {row.category}</p></div>
+        <button type="button" disabled={busy||!!pending.current||!!submitPending.current}
+         onClick={()=>void open(row)}>{canManage?"Open campaign":"View details"}</button>
+       </div>
+      </article>)}
+     </div>
+     <div style={{...actions,marginTop:12}}>
+      {offset>0&&<button type="button" onClick={()=>setOffset(v=>Math.max(0,v-25))} disabled={busy}>Previous page</button>}
+      {hasMore&&<button type="button" onClick={()=>setOffset(v=>v+25)} disabled={busy}>Next page</button>}
+     </div>
+    </section>
+    <aside className={styles.sideRail} aria-label="Campaign overview sidebar">
+     <section className={styles.sideCard}><h3>Campaign Overview</h3>
+      <p>Active public campaigns: {summary?.active??"—"}</p>
+      <p>Awaiting verification: {summary?"View status filters":"Not available"}</p>
+      <p>The published campaign count comes from the source lifecycle, not this page of results.</p></section>
+     <section className={styles.sideCard}><h3>Funding Overview (₹)</h3>
+      <p>Approved/published campaign goals: {summary?"₹"+minorToRupees(summary.goalMinor):"Not available"}</p>
+      <p>Raised so far: <strong>Not yet verified by finance</strong></p>
+      <p>Unverified donations are never counted as funds raised.</p></section>
+     <section className={styles.sideCard}><h3>Recent Activities</h3>
+      <p>Verified campaign activity feed is not yet connected. Approval history is available to authorized reviewers.</p></section>
+    </aside>
+   </div>
+  </>}
   {editing&&<section style={panel} aria-label="Six-step campaign draft wizard">
    <div style={{...actions,justifyContent:"space-between"}}>
     <h2>{selected?"Edit "+selected.code:"Create New Campaign"}</h2>
