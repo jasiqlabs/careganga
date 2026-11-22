@@ -5,7 +5,7 @@ CREATE TABLE project_task (
  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
  root_realm_id uuid NOT NULL,
  project_id uuid NOT NULL,
- task_code text NOT NULL DEFAULT ('TSK-'||lpad(nextval('cg05_task_public_sequence')::text,8,'0')) UNIQUE,
+ task_code text NOT NULL DEFAULT ('TSK-'||to_char(nextval('cg05_task_public_sequence'),'FM00000000')) UNIQUE,
  title text NOT NULL CHECK(char_length(btrim(title)) BETWEEN 2 AND 160),
  task_type text NOT NULL CHECK(char_length(btrim(task_type)) BETWEEN 1 AND 80),
  description text NOT NULL DEFAULT '' CHECK(char_length(description)<=2000),
@@ -103,3 +103,21 @@ BEGIN
 END $$;
 CREATE TRIGGER cg05_task_guard BEFORE INSERT OR UPDATE OR DELETE ON project_task
  FOR EACH ROW EXECUTE FUNCTION cg05_task_write_guard();
+-- A version is not a valid committed source without its matching immutable event.
+CREATE FUNCTION cg05_task_event_match() RETURNS trigger LANGUAGE plpgsql AS $
+DECLARE ev project_task_event%ROWTYPE;
+BEGIN
+ SELECT * INTO ev FROM project_task_event WHERE root_realm_id=NEW.root_realm_id
+ AND project_id=NEW.project_id AND task_id=NEW.id AND result_version=NEW.version;
+ IF NOT FOUND OR ev.new_status IS DISTINCT FROM NEW.status
+ OR ev.assignee_kind IS DISTINCT FROM NEW.assignee_kind
+ OR ev.assignee_account_ref IS DISTINCT FROM NEW.assignee_account_ref
+ OR ev.assignee_employee_ref IS DISTINCT FROM NEW.assignee_employee_ref
+ OR ev.assignee_branch_ref IS DISTINCT FROM NEW.assignee_branch_ref THEN
+  RAISE EXCEPTION 'Task revision requires matching immutable event';
+ END IF;
+ RETURN NULL;
+END $;
+CREATE CONSTRAINT TRIGGER cg05_task_event_at_commit AFTER INSERT OR UPDATE ON project_task
+ DEFERRABLE INITIALLY DEFERRED FOR EACH ROW EXECUTE FUNCTION cg05_task_event_match();
+
