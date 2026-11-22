@@ -228,6 +228,20 @@ The originals **were accessible**, contrary to an earlier inaccurate statement. 
 
 **Strict progress rule:** Work one numbered task at a time: source inspection → smallest owner fix → focused source regression → independent source re-review → real executable tests when environment available → log original QA evidence → mark `SOURCE_COMPLETE` only for proven source and `RUNTIME_PASS` only for executed passing tests → move to next task. A partially implemented task must **not** be reimplemented wholesale. Keep `CG18 PUBLICATION` and `CG09 DONATION` separate; never claim funds raised from campaign goals. Never change screenshot source references into invented requirements.
 
-**G07-01 incident:** original `3301` created an unconditional `cg07_campaign_draft_only` BEFORE INSERT/UPDATE trigger, but `3302/3303` had not retired it. This makes all later legitimate `DRAFT → SUBMITTED` CG03 review operations fail. Fixed `3303` to retire that trigger/function **only after** installing the deferred original case/decision lifecycle proof guard; added `test:cg07-campaign` source regression test. Independent expert review **not yet performed** and PostgreSQL migration execution **NOT_RUN**; do not mark G07-01 fully tested.
+**G07-01 incident:** original `3301` created an unconditional `cg07_campaign_draft_only` BEFORE INSERT/UPDATE trigger, but `3302/3303` had not retired it. This makes all later legitimate `DRAFT → SUBMITTED` CG03 review operations fail. Fixed `3303` to retire that trigger/function **only after** installing the deferred original case/decision lifecycle proof guard; added `test:cg07-campaign` source regression and new **actual disposable PostgreSQL** `test:cg07-db-integrity` read-only proof for migrated trigger/CG03 case/decision/FKs. Both tests **AUTHORED_NOT_EXECUTED**. Independent expert review **not yet performed** and PostgreSQL migration execution **NOT_RUN**; do not mark G07-01 fully tested.
 
 **If a local runtime gate is blocked:** retain the exact prepared test cases and code; record `BLOCKED_RUNTIME` with required CLI evidence rather than rerun speculative planning. Do not silently move to US002/003 or merge while core CG07 source remains unreviewed.
+
+
+#### G07-01 — Exact test and review evidence required to close this ONE task (not a new story)
+
+Run from a fresh local checkout of the **existing feature branch**; no CI/GitHub Actions and **no production data**. On a disposable PostgreSQL clone apply migrations `3301` → `3302` → `3303` via the existing `db:migrate` runner. From repository root run:
+```bash
+npm ci
+npm run build -w apps/backend
+npm run test:cg07-campaign -w apps/backend
+# Configure apps/backend/.env DATABASE_URL to disposable migrated QA database only.
+npm run test:cg07-db-integrity -w apps/backend
+npm run build -w apps/web
+```
+Then execute original **US001-QA03, QA11, QA19**: (a) real active Foundation author creates/saves DRAFT, submits real frozen revision with configured CG03 policy and second protected reviewer; (b) protected current-password final approval results in APPROVED **without** public publication or donation/receipt; (c) original RETURN permits new edited revision + new independent case, stale version/duplicate request resolves once; (d) direct SQL bypass of CG03 case/decision and cross-realm/branch writes is rejected inside rollback-only scratch transaction; (e) fresh and upgrade migration paths preserve existing CG03/CG04/CG05 status and source history. Capture **command, duration, PASS/FAIL, redacted error, source file + correction commit**. Independent backend/SQL/security expert must review and fixes must be applied to **same CG07 feature branch**, re-reviewed and rerun. **Do not advance G07-01 to PASS based on source regex tests**. Host/container running the GitHub connector here has no checked-out private repository or disposable database; this runtime gate remains explicitly **NOT_RUN**.
