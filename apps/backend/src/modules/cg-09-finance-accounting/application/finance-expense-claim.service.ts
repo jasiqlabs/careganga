@@ -120,9 +120,11 @@ export class FinanceExpenseClaimService{
     replayed,nextStep:"VERIFIED_BILL_REQUIRED_BEFORE_SUBMISSION"};
   }catch(e){await client.query("ROLLBACK");throw e;}finally{client.release();}
  }
- async mine(bearer:string,offsetInput?:string,sourceInput?:string){
+ async mine(bearer:string,offsetInput?:string,sourceInput?:string,statusInput?:string,queryInput?:string){
   if(sourceInput!==undefined&&sourceInput!=="GENERAL"&&sourceInput!=="HR_ALLOWANCE")return invalid("FINANCE_CLAIM_FILTER_INVALID");
   const source=sourceInput??"GENERAL";
+  const status=statusInput??"ALL",search=queryInput??"";
+  if(!["ALL","DRAFT","SUBMITTED","APPROVED","PAYABLE","PAYMENT_REQUESTED","PAYMENT_VERIFIED_UNPOSTED","PAID_VERIFIED","RETURNED","REJECTED"].includes(status)||typeof search!=="string"||search.length>80||/[\u0000-\u001f\u007f]/.test(search))return invalid("FINANCE_CLAIM_FILTER_INVALID");
   const actor=await this.sessions.requireAction(bearer,"finance.claims.view");
   if(offsetInput!==undefined&&!/^(0|[1-9][0-9]{0,4})$/.test(offsetInput))
    return invalid("FINANCE_CLAIM_FILTER_INVALID","offset");
@@ -132,10 +134,8 @@ export class FinanceExpenseClaimService{
    await client.query("BEGIN");
    await this.identity.assertCurrent(client,actor,"finance.claims.view");
    const origin=source==="HR_ALLOWANCE"?await currentHrAllowanceOrigin(client,actor):null;
-   const result=await client.query<{
-    claimRef:string;claimNumber:string;category:string;purpose:string;expenseDate:string;
-    amountMinor:string;status:string;version:number;createdAt:Date;paymentState:string}>(
-    "SELECT id AS \"claimRef\",claim_number AS \"claimNumber\",category_label AS category,purpose, "+
+   type ClaimRow={claimRef:string;claimNumber:string;category:string;purpose:string;expenseDate:string;amountMinor:string;status:string;version:number;createdAt:Date;paymentState:string};
+   const scopedSql="SELECT id AS \"claimRef\",claim_number AS \"claimNumber\",category_label AS category,purpose, "+
     "expense_date::text AS \"expenseDate\",amount_minor::text AS \"amountMinor\", "+
     "status,version,created_at AS \"createdAt\", "+
     "CASE WHEN status<>'APPROVED' THEN 'NOT_PAYABLE' "+
@@ -144,11 +144,28 @@ export class FinanceExpenseClaimService{
     "WHEN EXISTS(SELECT 1 FROM finance_voucher v WHERE v.root_realm_id=expense_claim.root_realm_id AND v.expense_claim_id=expense_claim.id AND v.expense_claim_version=expense_claim.version AND v.voucher_type='PAYMENT' AND v.status='PAYMENT_REQUESTED') THEN 'PAYMENT_REQUESTED' "+
     "WHEN EXISTS(SELECT 1 FROM expense_claim_voucher_link l JOIN finance_voucher v ON v.id=l.voucher_id AND v.root_realm_id=l.root_realm_id AND v.status='POSTED' WHERE l.root_realm_id=expense_claim.root_realm_id AND l.claim_id=expense_claim.id AND l.link_kind='PAYABLE' AND NOT EXISTS(SELECT 1 FROM finance_manual_journal_reversal rev WHERE rev.root_realm_id=l.root_realm_id AND rev.original_journal_id=l.ledger_journal_id)) THEN 'PAYABLE' ELSE 'APPROVED_UNPOSTED' END AS \"paymentState\" FROM expense_claim "+
     "WHERE root_realm_id=$1 AND requested_by=$2 AND source_kind=$4 "+
-    "AND ($4='GENERAL' OR (hr_employee_id=$5::uuid AND hr_assignment_id=$6::uuid AND hr_branch_id=$7::uuid)) "+
-    "ORDER BY created_at DESC,id DESC LIMIT 31 OFFSET $3",
-    [actor.realmId,actor.accountId,offset,source,origin?.hr_employee_id??null,origin?.hr_assignment_id??null,origin?.hr_branch_id??null]);
+    "AND ($4='GENERAL' OR (hr_employee_id=$5::uuid AND hr_assignment_id=$6::uuid AND hr_branch_id=$7::uuid)) ";
+   const params=[actor.realmId,actor.accountId,offset,source,origin?.hr_employee_id??null,origin?.hr_assignment_id??null,origin?.hr_branch_id??null];
+   if(source==="GENERAL"){
+    const result=await client.query<ClaimRow>(scopedSql+"ORDER BY created_at DESC,id DESC LIMIT 31 OFFSET $3",params);
+    await client.query("COMMIT");
+    return {claims:result.rows.slice(0,30),nextOffset:result.rows.length>30?offset+30:null};
+   }
+   const result=await client.query<{page:ClaimRow[];overview:{requestedMinor:string;pendingMinor:string;paidMinor:string;rejectedMinor:string;total:number}}>(
+    `WITH scoped AS (${scopedSql}), page AS (
+      SELECT * FROM scoped WHERE ($8='ALL' OR (CASE WHEN status='APPROVED' AND "paymentState" IN('PAYABLE','PAID_VERIFIED','PAYMENT_REQUESTED','PAYMENT_VERIFIED_UNPOSTED') THEN "paymentState" ELSE status END)=$8)
+      AND ($9='' OR strpos(lower("claimNumber"||' '||category||' '||purpose),$9)>0)
+      ORDER BY "createdAt" DESC,"claimRef" DESC LIMIT 31 OFFSET $3
+    ) SELECT (SELECT COALESCE(jsonb_agg(to_jsonb(page) ORDER BY "createdAt" DESC,"claimRef" DESC),'[]'::jsonb) FROM page) AS page,
+      (SELECT jsonb_build_object(
+       'requestedMinor',COALESCE(SUM("amountMinor"::numeric) FILTER(WHERE status<>'DRAFT'),0)::text,
+       'pendingMinor',COALESCE(SUM("amountMinor"::numeric) FILTER(WHERE status='SUBMITTED'),0)::text,
+       'paidMinor',COALESCE(SUM("amountMinor"::numeric) FILTER(WHERE status='APPROVED' AND "paymentState"='PAID_VERIFIED'),0)::text,
+       'rejectedMinor',COALESCE(SUM("amountMinor"::numeric) FILTER(WHERE status='REJECTED'),0)::text,
+       'total',COUNT(*)::integer) FROM scoped) AS overview`,[...params,status,search.trim().toLowerCase()]);
+   const row=result.rows[0],page=row?.page??[];
    await client.query("COMMIT");
-   return {claims:result.rows.slice(0,30),nextOffset:result.rows.length>30?offset+30:null};
+   return {claims:page.slice(0,30),nextOffset:page.length>30?offset+30:null,overview:row?.overview??null};
   }catch(e){await client.query("ROLLBACK");throw e;}finally{client.release();}
  }
  /** Lost-response check: same actor and request key, no second draft. */
