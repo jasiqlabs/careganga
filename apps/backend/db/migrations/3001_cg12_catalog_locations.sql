@@ -47,7 +47,7 @@ CREATE TABLE inventory_audit (
  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
  root_realm_id uuid NOT NULL REFERENCES access_realm(id) ON DELETE RESTRICT,
  actor_ref uuid NOT NULL,
- source_kind text NOT NULL CHECK(source_kind IN('ITEM','SUPPLIER','LOCATION','THRESHOLD','SUPPLIER_PRIVATE')),
+ source_kind text NOT NULL CHECK(source_kind IN('ITEM','SUPPLIER','LOCATION','THRESHOLD','SUPPLIER_PRIVATE','SUPPLIER_PRIVATE_READ')),
  source_ref uuid NOT NULL,
  event_key uuid NOT NULL,
  payload_digest char(64) NOT NULL CHECK(payload_digest ~ '^[0-9a-f]{64}$'),
@@ -85,3 +85,24 @@ CREATE TABLE inventory_supplier_private (
  PRIMARY KEY(root_realm_id,supplier_id),
  FOREIGN KEY(root_realm_id,supplier_id) REFERENCES inventory_supplier(root_realm_id,id) ON DELETE RESTRICT
 );
+
+-- Source codes and canonical counting units are never rewritten in place.
+CREATE FUNCTION cg12_item_identity_immutable() RETURNS trigger LANGUAGE plpgsql AS $cg12$
+BEGIN
+ IF (NEW.root_realm_id,NEW.id,NEW.sku_norm,NEW.unit_code,NEW.qty_scale) IS DISTINCT FROM
+    (OLD.root_realm_id,OLD.id,OLD.sku_norm,OLD.unit_code,OLD.qty_scale) THEN
+  RAISE EXCEPTION 'Original catalog identity and counting units are immutable';
+ END IF;
+ RETURN NEW;
+END; $cg12$;
+CREATE TRIGGER inventory_item_identity BEFORE UPDATE ON inventory_item
+ FOR EACH ROW EXECUTE FUNCTION cg12_item_identity_immutable();
+CREATE FUNCTION cg12_threshold_scale() RETURNS trigger LANGUAGE plpgsql AS $cg12$
+DECLARE scale smallint;
+BEGIN
+ SELECT qty_scale INTO STRICT scale FROM inventory_item WHERE root_realm_id=NEW.root_realm_id AND id=NEW.item_id FOR SHARE;
+ IF NEW.threshold<>round(NEW.threshold,scale) THEN RAISE EXCEPTION 'Invalid threshold quantity precision'; END IF;
+ RETURN NEW;
+END; $cg12$;
+CREATE TRIGGER inventory_store_threshold_scale BEFORE INSERT OR UPDATE ON inventory_item_location_policy
+ FOR EACH ROW EXECUTE FUNCTION cg12_threshold_scale();
