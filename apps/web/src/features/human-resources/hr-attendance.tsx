@@ -28,8 +28,7 @@ function HrLeavePolicies(){
  const [error,setError]=useState(""),[notice,setNotice]=useState("");
  const key=useRef<string|null>(null);
  const refresh=useCallback(async()=>{
-  const generation=++selfRead.current;setLoading(true);
-  if(!validMonth(selfMonth)){setMine(null);setLoading(false);return;}
+  setLoading(true);
   try{const v=await api("leave-policies");
    if(!v||typeof v!=="object"||!("items" in v)||!Array.isArray(v.items))
     throw Error("Leave policies could not be confirmed");
@@ -37,7 +36,7 @@ function HrLeavePolicies(){
   }catch(e){setItems([]);setMore(false);setError(e instanceof Error?e.message:"Leave policies unavailable");}
   finally{setLoading(false);}
  },[]);
- useEffect(()=>{void refresh();return()=>{selfRead.current++;};},[refresh]);
+ useEffect(()=>{void refresh();},[refresh]);
  const update=<K extends keyof typeof form,>(field:K,value:(typeof form)[K])=>{
   key.current=null;setForm(x=>({...x,[field]:value}));
  };
@@ -104,7 +103,8 @@ export function HrAttendance({canConfigure=false,canManageLeave=false,canReviewL
  const [matrixRefresh,setMatrixRefresh]=useState(0);
  const checkKey=useRef<string|null>(null),checkoutKey=useRef<string|null>(null),policyKey=useRef<string|null>(null),assignKey=useRef<string|null>(null);
  const refresh=useCallback(async()=>{
-  setLoading(true);
+  const generation=++selfRead.current;setLoading(true);
+  if(!validMonth(selfMonth)){setMine(null);setLoading(false);return;}
   try{
    const value=await api("me/attendance?month="+encodeURIComponent(selfMonth));
    if(!value||typeof value!=="object"||!("status" in value)||!("days" in value)||
@@ -113,7 +113,7 @@ export function HrAttendance({canConfigure=false,canManageLeave=false,canReviewL
   }catch(e){if(generation===selfRead.current){setMine(null);setError(e instanceof Error?e.message:"Unable to read attendance");}}
   finally{if(generation===selfRead.current)setLoading(false);}
  },[selfMonth]);
- useEffect(()=>{void refresh();},[refresh]);
+ useEffect(()=>{void refresh();return()=>{selfRead.current++;};},[refresh]);
  useEffect(()=>{if(!canConfigure&&!canViewStaff)return;let live=true;
   void api("attendance/branches").then(v=>{
    if(live&&v&&typeof v==="object"&&"items" in v&&Array.isArray(v.items))

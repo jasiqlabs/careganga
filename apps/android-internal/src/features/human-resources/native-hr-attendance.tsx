@@ -40,15 +40,14 @@ function NativeHrLeavePolicies({token,onExpired}:{token:string;onExpired:()=>voi
   setError(e instanceof Error?e.message:"Unable to confirm leave policy");
  },[onExpired]);
  const refresh=useCallback(async()=>{
-  const generation=++selfRead.current;setLoading(true);
-  if(!validMonth(selfMonth)){setMine(null);setLoading(false);return;}
+  setLoading(true);
   try{const v=await api(token,"leave-policies");
    if(!v||typeof v!=="object"||!("items" in v)||!Array.isArray(v.items))
     throw Error("Leave policies could not be confirmed");
    setItems(v.items as LeaveRule[]);setMore("hasMore" in v&&v.hasMore===true);setError("");
   }catch(e){setItems([]);setMore(false);failure(e);}finally{setLoading(false);}
  },[token,failure]);
- useEffect(()=>{void refresh();return()=>{selfRead.current++;};},[refresh]);
+ useEffect(()=>{void refresh();},[refresh]);
  const update=<K extends keyof typeof form,>(field:K,value:(typeof form)[K])=>{
   key.current=null;setForm(x=>({...x,[field]:value}));
  };
@@ -129,7 +128,8 @@ export function NativeHrAttendance({token,canConfigure,canManageLeave=false,canR
   setError(e instanceof Error?e.message:"Unable to confirm attendance");
  },[onExpired]);
  const refresh=useCallback(async()=>{
-  setLoading(true);
+  const generation=++selfRead.current;setLoading(true);
+  if(!validMonth(selfMonth)){setMine(null);setLoading(false);return;}
   try{
    const value=await api(token,"me/attendance?month="+encodeURIComponent(selfMonth));
    if(!value||typeof value!=="object"||!("status" in value)||!("days" in value)||
@@ -138,7 +138,7 @@ export function NativeHrAttendance({token,canConfigure,canManageLeave=false,canR
   }catch(e){if(generation===selfRead.current){setMine(null);failure(e);}}
   finally{if(generation===selfRead.current)setLoading(false);}
  },[token,failure,selfMonth]);
- useEffect(()=>{void refresh();},[refresh]);
+ useEffect(()=>{void refresh();return()=>{selfRead.current++;};},[refresh]);
  useEffect(()=>{if(!canConfigure&&!canViewStaff)return;let live=true;
   void api(token,"attendance/branches").then(v=>{
    if(live&&v&&typeof v==="object"&&"items" in v&&Array.isArray(v.items))
