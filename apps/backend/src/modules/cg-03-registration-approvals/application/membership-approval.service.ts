@@ -1,3 +1,4 @@
+import {MembershipFeesService} from "../../cg-09-finance-accounting/application/membership-fees.service";
 import {BadRequestException,ConflictException,ForbiddenException,Inject,Injectable,NotFoundException} from "@nestjs/common";
 import {createHash,randomUUID} from "node:crypto";
 import type {Pool,PoolClient} from "pg";
@@ -16,7 +17,7 @@ function stable(x:unknown):string{if(x===null||typeof x!=="object")return JSON.s
 const hash=(x:unknown)=>createHash("sha256").update(stable(x)).digest("hex");
 @Injectable()
 export class MembershipApprovalService{
- constructor(@Inject(DATABASE)private readonly db:Pool,private readonly sessions:SessionService,private readonly identity:FoundationStructureIdentityFacade,private readonly owner:ProtectedAccessOwnerService,private readonly evidence:MembershipEvidenceService){}
+ constructor(@Inject(DATABASE)private readonly db:Pool,private readonly sessions:SessionService,private readonly identity:FoundationStructureIdentityFacade,private readonly owner:ProtectedAccessOwnerService,private readonly evidence:MembershipEvidenceService,private readonly fees:MembershipFeesService){}
  private async run<T>(a:Actor,work:(tx:PoolClient)=>Promise<T>){const tx=await this.db.connect();try{await tx.query("BEGIN");const result=await work(tx);await tx.query("COMMIT");return result;}catch(e){try{await tx.query("ROLLBACK");}catch{}if(e&&typeof e==="object"&&"code" in e&&["23505","23503","23514","40001","40P01","55P03"].includes(String(e.code)))throw changed();throw e;}finally{tx.release();}}
  private async event(tx:PoolClient,a:Actor,id:string,action:string){await tx.query("INSERT INTO cg03_case_event(realm_id,case_id,actor_id,action,step_ordinal,correlation_ref) VALUES($1,$2,$3,$4,1,$5)",[a.realmId,id,a.accountId,action,randomUUID()]);}
  private async reviewer(token:string){const a=await this.sessions.requireAction(token,"approvals.review");await this.sessions.requireAction(token,"membership.applications.review");return a;}
@@ -91,6 +92,7 @@ export class MembershipApprovalService{
    await tx.query("UPDATE cg03_case SET status=$3,revision=revision+1,updated_at=now() WHERE realm_id=$1 AND id=$2 AND revision=$4",[a.realmId,c.id,next,expected]);
    await tx.query("INSERT INTO cg03_case_decision(realm_id,case_id,actor_id,action,step_ordinal,expected_case_revision,accepted_case_revision,request_key,request_digest,safe_remarks,fresh_password_verified_at) VALUES($1,$2,$3,$4,1,$5,$6,$7,$8,$9,now())",[a.realmId,c.id,a.accountId,action,c.revision,c.revision+1,key,digest,remarks]);
    if(action!=="APPROVE"){const applied=await tx.query("UPDATE membership_application SET status=$3,version=version+1,updated_at=now() WHERE root_realm_id=$1 AND id=$2 AND status='SUBMITTED' AND version=$4 RETURNING id",[a.realmId,c.membership_application_id,next,c.membership_application_version]);if(!applied.rowCount)throw changed();}
+   if(action==="REJECT")await this.fees.requestRefundIfPaid(tx,a,c.membership_application_id);
    await this.event(tx,a,c.id,action==="APPROVE"?"FINAL_APPROVED":next);
    return {reference:c.case_number,status:next,revision:c.revision+1,replayed:false};
   });
