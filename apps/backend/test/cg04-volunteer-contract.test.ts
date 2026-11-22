@@ -163,3 +163,10 @@ test("US003-QA17/19/20 historical volunteer card does not imply live eligibility
  assert.match(nativeIssuer,/card\?\.status==="ISSUED"&&!card\.canDownload/);
  assert.match(nativeOwn,/v\.status==="ISSUED"/);
 });
+
+test("US003-QA10 Web/Public Android only render the current published original volunteer Join route",()=>{
+ const web=readFileSync(join(process.cwd(),"../..","apps/web/src/features/cms-public-content/cms-site-header.tsx"),"utf8");
+ const native=readFileSync(join(process.cwd(),"../..","apps/android-public/src/features/cms/public-cms-screen.tsx"),"utf8");
+ assert.match(web,/volunteerJoin\?\.visible===true&&navigation\.volunteerJoin\.path==="\/volunteer"/);
+ assert.match(native,/data\.volunteerJoin\?\.visible===true&&data\.volunteerJoin\?\.path==="\/volunteer"/);
+});
