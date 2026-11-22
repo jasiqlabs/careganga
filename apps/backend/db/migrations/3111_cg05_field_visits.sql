@@ -158,7 +158,7 @@ BEGIN
  END IF;
  IF NEW.task_id IS NOT NULL AND NEW.status NOT IN('CANCELLED','COMPLETED','REJECTED','RETURNED','PENDING_APPROVAL') THEN
   SELECT assignee_account_ref,status INTO t FROM project_task WHERE root_realm_id=NEW.root_realm_id AND project_id=NEW.project_id AND id=NEW.task_id FOR SHARE;
-  IF NOT FOUND OR t.assignee_account_ref IS DISTINCT FROM NEW.actor_account_ref OR t.status NOT IN('ASSIGNED','IN_PROGRESS') THEN
+  IF NOT FOUND OR t.assignee_account_ref IS DISTINCT FROM NEW.actor_account_ref OR (t.status NOT IN('ASSIGNED','IN_PROGRESS') AND NOT (NEW.completed_at IS NOT NULL AND t.status='COMPLETED')) THEN
    RAISE EXCEPTION 'Visit requires current original task assignment';
   END IF;
  END IF;
