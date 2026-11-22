@@ -23,6 +23,15 @@ export function MemberRoster({canExport=false}:{canExport?:boolean}){
  },[filter,cursor,epoch]);
  const apply=(e?:FormEvent)=>{e?.preventDefault();if(draft.joinedFrom&&draft.joinedTo&&draft.joinedFrom>draft.joinedTo){setError("Start date must be on or before the end date.");return;}setError("");setHistory([]);setCursor("");setFilter({...draft,q:draft.q.trim()});};
  const reset=()=>{setDraft(initial());setFilter(initial());setHistory([]);setCursor("");};
+ const presets=[{key:"ALL",label:"All"},{key:"GENERAL",label:"General"},{key:"PAID",label:"Paid"},{key:"EXPIRED",label:"Expired"},{key:"CANCELLED",label:"Cancelled"}] as const;
+ const preset=(key:typeof presets[number]["key"])=>{
+  const next:Filter={...initial(),feeClass:key==="GENERAL"||key==="PAID"?key:"ALL",status:key==="EXPIRED"||key==="CANCELLED"?key:"ALL"};
+  // The previous status must apply to expiry/cancellation, not merely the fee filter.
+  if(key==="EXPIRED"||key==="CANCELLED")next.status=key;
+  setDraft(next);setFilter(next);setHistory([]);setCursor("");setError("");
+ };
+ const currentPreset=filter.q===""&&filter.category==="ALL"&&filter.branch===""&&filter.joinedFrom===""&&filter.joinedTo===""
+  ?filter.status==="EXPIRED"||filter.status==="CANCELLED"?filter.status:filter.status==="ALL"&&["GENERAL","PAID"].includes(filter.feeClass)?filter.feeClass:filter.status==="ALL"&&filter.feeClass==="ALL"?"ALL":null:null;
  async function exportCsv(){
   if(busy)return;setBusy(true);setError("");setNotice("");
   try{
@@ -36,6 +45,7 @@ export function MemberRoster({canExport=false}:{canExport?:boolean}){
  return <section className="cg04-panel cg04-roster" aria-label="Patron roster directory">
  <div className="cg04-roster-head"><div><h2>Patron Roster Directory</h2><p className="cg04-muted">Approved members only. The current role and permitted Foundation locations determine which records appear.</p></div>
  {canExport&&<button type="button" disabled={busy||loading} onClick={()=>void exportCsv()}>Export Members</button>}</div>
+ <nav className="cg04-roster-tabs" aria-label="Membership quick filters">{presets.map(x=><button key={x.key} type="button" disabled={busy||loading} aria-pressed={currentPreset===x.key} onClick={()=>preset(x.key)} title={x.key==="GENERAL"?"Members with no joining fee":x.key==="PAID"?"Members with an accepted joining fee":undefined}>{x.label}</button>)}</nav>
  {!!error&&<p className="cg04-error" role="alert">{error} <button type="button" onClick={()=>setEpoch(x=>x+1)}>Try again</button></p>}
  {!!notice&&<p role="status">{notice}</p>}
  <form className="cg04-roster-filter" onSubmit={apply}>
