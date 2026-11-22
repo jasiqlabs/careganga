@@ -5,7 +5,7 @@ import type {PoolClient} from "pg";
 import type {VerifiedFoundationActor} from "../src/modules/cg-01-identity-access/public-api";
 import {parseFinanceClaimDraft,allowancePurpose} from "../src/modules/cg-09-finance-accounting/application/finance-expense-claim.service";
 import {currentHrAllowanceOrigin,assertOwnClaimOrigin,assertHrAllowanceOrigin} from "../src/modules/cg-10-human-resources/application/hr-allowance-origin";
-import {hrTemplateHash,hrLetterBlocks} from "../src/modules/cg-19-documents-notifications/application/hr-document-renderer";
+import {hrTemplateHash,hrLetterBlocks,hrCardVisibleFields} from "../src/modules/cg-19-documents-notifications/application/hr-document-renderer";
 const requestKey="22222222-2222-4222-8222-222222222222";
 const draft={requestKey,purpose:"Business travel",category:"Travel",expenseDate:"2026-11-21",amount:"125.50"};
 const actor={realmId:"realm",accountId:"account"} as VerifiedFoundationActor;
@@ -55,4 +55,11 @@ describe("CG10 original finance claim and private document source contracts",()=
   const v2=hrTemplateHash("APPOINTMENT","Title","Body",assets);
   assert.notEqual(v2,old);assert.notEqual(v2,hrTemplateHash("APPOINTMENT","Title","Body",{...assets,sealSha256:"c".repeat(64)}));
  });
+});
+
+test("new approved document layout formatting and card visibility are safe allowlists",()=>{
+ assert.deepEqual(hrLetterBlocks("[center] Title\n[numbered] Term\n[underline] Acknowledgment"),[{kind:"center",text:"Title"},{kind:"numbered",text:"Term"},{kind:"underline",text:"Acknowledgment"}]);
+ assert.deepEqual(hrCardVisibleFields("Legacy template without controls"),["designation","branch","issueDate"]);
+ assert.deepEqual(hrCardVisibleFields("[card-fields] branch,bloodGroup,bankAccount,role\nApproved card notes"),["branch"]);
+ assert.deepEqual(hrCardVisibleFields("[card-fields] \nApproved card notes"),[]);
 });
