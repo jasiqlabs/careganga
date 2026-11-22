@@ -6,6 +6,7 @@ async function proxy(req:NextRequest,ctx:Context,method:"GET"|"POST"){
  const p=(await ctx.params).parts,ref=(s:string)=>/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i.test(s);
  const valid=method==="GET"&&p.length===2&&["projects","intents","files"].includes(p[0])&&ref(p[1])||method==="POST"&&(p.length===1&&p[0]==="intents"||p.length===3&&p[0]==="intents"&&ref(p[1])&&p[2]==="confirm");
  const reply=(body:unknown,status=200)=>NextResponse.json(body,{status,headers:{"Cache-Control":"private, no-store","X-Content-Type-Options":"nosniff"}});
+ if(method!=="GET"&&req.headers.get("origin")!==req.nextUrl.origin)return reply({message:"Request origin not allowed."},403);
  if(!valid)return reply({message:"Cover action unavailable."},404);
  const token=(await cookies()).get("cg_staff_session")?.value;if(!token)return reply({message:"Sign in again."},401);
  const base=process.env.BACKEND_URL;if(!base)return reply({message:"Private cover storage unavailable."},503);
