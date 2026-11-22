@@ -990,12 +990,28 @@ export class CmsEditorialService{
    path:p.kind==="ARTICLE"?"/blog/"+p.slug:
     p.kind==="POLICY"?"/policies/"+p.slug:
     p.kind==="HOME"?"/":p.kind==="COMPLIANCE"?"/ngo-information":"/"+p.slug}));
+  // Original approved CMS placements are the publication authority for
+  // project listing routes, not a second operational page master.
+  if(routes.rows.some(p=>p.kind==="HOME"||p.kind==="ABOUT")){
+   const placement=await this.db.query("SELECT 1 FROM cms_page p JOIN access_realm r ON r.id=p.foundation_root_id AND r.realm_key='FOUNDATION_ROOT' JOIN cms_page_effective e ON e.page_id=p.id AND e.foundation_root_id=p.foundation_root_id JOIN cms_publication pub ON pub.id=e.publication_id AND pub.foundation_root_id=e.foundation_root_id JOIN cms_section_revision s ON s.foundation_root_id=pub.foundation_root_id AND s.page_revision_id=pub.page_revision_id WHERE p.kind IN('HOME','ABOUT') AND p.archived_at IS NULL AND pub.state='EFFECTIVE' AND pub.effective_at<=now() AND (pub.expires_at IS NULL OR pub.expires_at>now()) AND s.section_kind='PROJECT_TEASER' LIMIT 1");
+   if(placement.rowCount)publishedRoutes.push({kind:"PROJECTS",slug:"our-work",path:"/our-work"},{kind:"PROJECTS",slug:"upcoming-projects",path:"/upcoming-projects"});
+  }
   return {schemaVersion:1,effectiveGeneration:x?.effective_generation??null,
    publishedRoutes,
    login:{visible:x?.login_desired===true,label:"Staff login",
     path:x?.login_desired?"/admin/login":null},
    memberJoin:{visible:false,label:"Member registration",path:null},
    volunteerJoin:{visible:false,label:"Volunteer registration",path:null}};
+ }
+ async publicProjectCatalogue(slug:"our-work"|"upcoming-projects"){
+  const pages=await Promise.all(["home","about"].map(async name=>{try{return await this.publicPage(name);}catch(e){if(e instanceof NotFoundException)return null;throw e;}}));
+  const approved=pages.filter((p):p is NonNullable<typeof p>=>p!==null);
+  const sections=approved.flatMap(p=>p.sections.filter(s=>s.kind==="PROJECT_TEASER"));
+  if(!sections.length)throw new NotFoundException({code:"CMS_NOT_PUBLISHED"});
+  const selected=new Map<string,Record<string,unknown>>();
+  for(const section of sections){const cards=section.fields.cards;if(!Array.isArray(cards))continue;for(const row of cards){if(!row||typeof row!=="object"||typeof row.slug!=="string")continue;if(slug==="upcoming-projects"&&row.status!=="PLANNED")continue;selected.set(row.slug,row);}}
+  const cards=[...selected.values()],title=slug==="upcoming-projects"?"Upcoming Projects":"Our Work";
+  return {schemaVersion:1,effectiveGeneration:sha([approved.map(p=>p.effectiveGeneration),cards]),kind:"PROJECTS",slug,title,seoTitle:title+" | CareGanga Foundation",seoDescription:"Current approved CareGanga Foundation projects.",canonicalPath:"/"+slug,lastPublishedAt:approved.map(p=>p.lastPublishedAt).sort().at(-1),sections:[{kind:"PROJECT_TEASER",order:0,fields:{heading:title,cards}}],assets:[]};
  }
  async publicPage(slugInput:string){
   const slug=text(slugInput,"slug",70,1);
