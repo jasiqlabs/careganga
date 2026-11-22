@@ -38,7 +38,7 @@ function fromRow(row:Row):Draft{
    startAt:budget?.startAt??"",endAt:budget?.endAt??""}};
 }
 async function api<T>(path:string,method:"GET"|"POST"|"PATCH"="GET",body?:Record<string,unknown>):Promise<T>{
- const r=await fetch("/api/campaigns"+(path?"/"+path:""),{method,cache:"no-store",
+ const r=await fetch("/api/campaigns"+(path.startsWith("?")?path:path?"/"+path:""),{method,cache:"no-store",
   headers:body?{"Content-Type":"application/json"}:undefined,
   body:body?JSON.stringify(body):undefined,signal:AbortSignal.timeout(18000)});
  const data:unknown=await r.json().catch(()=>null);
@@ -99,7 +99,7 @@ export function CampaignDraftsWorkspace({canManage}:{canManage:boolean}){
  };
  const input=(label:string,value:string,onChange:(v:string)=>void,multiline=false)=>
   <label style={field}>{label}{multiline?
-   <textarea style={{...entry,minHeight:100}} value={value} onChange={e=>onChange(e.target.value)} disabled={busy||!!pending.current}/>:
+   <textarea style={{...entry,minHeight:100}} value={value} onChange={e=>onChange(e.target.value)} disabled={busy||!canManage||!!pending.current}/>:
    <input style={entry} value={value} onChange={e=>onChange(e.target.value)} disabled={busy||!!pending.current}/>}</label>;
  return <section aria-label="Foundation campaigns" style={{display:"grid",gap:18}}>
   <header><h1>Campaigns</h1><p>Original Foundation campaign drafts and six-step planning. Contributions, approvals and publication are separate verified workflows.</p></header>
