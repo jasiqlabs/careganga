@@ -35,7 +35,7 @@ async function proxy(req:NextRequest,ctx:Context,method:"GET"|"POST"){
  try{
   const url=new URL(path,process.env.BACKEND_URL);
   if(method==="GET"&&(parts.length===0||route==="export"))
-   for(const key of ["status","q","offset","method","minAmount","maxAmount","dateFrom","dateTo","campaign"])
+   for(const key of ["status","q","offset","method","minAmount","maxAmount","dateFrom","dateTo","campaign","cursor"])
     if(req.nextUrl.searchParams.has(key))url.searchParams.set(key,req.nextUrl.searchParams.get(key)!);
   const r=await fetch(url,{method,body,cache:"no-store",signal:AbortSignal.timeout(16000),
    headers:{Authorization:"Bearer "+token,...(body?{"Content-Type":"application/json"}:{})}});
