@@ -10,7 +10,7 @@ async function proxy(req:NextRequest,ctx:Context,method:"GET"|"POST"){
  const route=parts.join("/");
  const path=parts.length===0&&method==="GET"?"/api/v1/donations":
   route==="export"&&method==="GET"?"/api/v1/donations/export":
-  ["manual/queue","refunds/queue"].includes(route)&&method==="GET"?"/api/v1/donations/"+route:
+  ["manual/queue","refunds/queue","online/reconcile-queue"].includes(route)&&method==="GET"?"/api/v1/donations/"+route:
   ["donor-detail","manual/options","manual/prepare","online/options","online/post","refunds/request"].includes(route)&&method==="POST"?
     "/api/v1/donations/"+route:
   parts.length===3&&parts[0]==="manual"&&UUID.test(parts[1])&&parts[2]==="confirm"&&method==="POST"?
