@@ -1,6 +1,7 @@
 import {BadRequestException,ConflictException,ForbiddenException,Inject,Injectable} from "@nestjs/common";
 import {createHash} from "node:crypto";
 import {financeSqlFailure} from "./finance-sql-error";
+import {inventoryFinanceReceipt,listInventoryFinanceReceipts} from "../../cg-12-inventory-suppliers/application/inventory-finance-receipt-source";
 import type {Pool,PoolClient} from "pg";
 import {DATABASE} from "../../../core/infrastructure/database.module";
 import {SessionService} from "../../cg-01-identity-access/application/session.service";
@@ -12,7 +13,7 @@ type Stage="INFO"|"ITEMS"|"PAYMENT";
 type Draft={info?:{
  financialYearRef:string;branchRef:string|null;branchVersion:number|null;
  invoiceDate:string;dueDate:string;category:string;purpose:string;
- counterpartyName:string;counterpartyAddress:string|null;replacesInvoiceRef?:string|null};
+ counterpartyName:string;counterpartyAddress:string|null;replacesInvoiceRef?:string|null;inventoryReceiptRef?:string;inventoryReceiptNumber?:string;inventorySupplierRef?:string;inventorySupplierName?:string};
  items?:{rows:{description:string;quantity:number;unitRateMinor:string;
   lineTotalMinor:string}[];grossMinor:string;taxMinor:string;chargesMinor:string;
   totalMinor:string};
@@ -62,7 +63,7 @@ function parseStage(stage:Stage,input:unknown):Draft[keyof Draft]{
  if(stage==="INFO"){
   const v=valid(input,["financialYearRef","branchRef","branchVersion",
    "invoiceDate","dueDate","category","purpose","counterpartyName","counterpartyAddress",
-   "replacesInvoiceRef"]);
+   "replacesInvoiceRef","inventoryReceiptRef"]);
   const branch=v.branchRef?ref(v.branchRef,"branchRef"):null;
   const version=branch?v.branchVersion:null;
   if(branch&&(!Number.isSafeInteger(version)||Number(version)<1))
@@ -73,6 +74,7 @@ function parseStage(stage:Stage,input:unknown):Draft[keyof Draft]{
    branchRef:branch,branchVersion:branch?Number(version):null,
    invoiceDate:date,dueDate:due,
    replacesInvoiceRef:v.replacesInvoiceRef?ref(v.replacesInvoiceRef,"replacesInvoiceRef"):null,
+   ...(v.inventoryReceiptRef?{inventoryReceiptRef:ref(v.inventoryReceiptRef,"inventoryReceiptRef")}:{ }),
    category:text(v.category,"category",2,80),purpose:text(v.purpose,"purpose",3,500),
    counterpartyName:text(v.counterpartyName,"counterpartyName",2,150),
    counterpartyAddress:v.counterpartyAddress?text(v.counterpartyAddress,
@@ -152,7 +154,8 @@ export class FinanceInvoiceDraftService{
    "AND replacement.status<>'REJECTED') "+
    "ORDER BY c.created_at DESC LIMIT 50",
    [actor.realmId,scope.all,scope.branchRefs]);
-  return {years:years.rows,branches,allBranches:scope.all,correctedInvoices:corrected.rows};
+  const inventoryReceipts=await listInventoryFinanceReceipts(this.db,actor.realmId,scope.all,scope.branchRefs);
+  return {years:years.rows,branches,allBranches:scope.all,correctedInvoices:corrected.rows,inventoryReceipts};
  }
  async accounts(bearer:string,searchInput?:string){
   const actor=await this.owner(bearer);
@@ -279,7 +282,15 @@ export class FinanceInvoiceDraftService{
    if(payload.info&&!rights.all&&
       (!payload.info.branchRef||!rights.branchRefs.includes(payload.info.branchRef)))
     throw new ForbiddenException("Select an active branch assigned to your account");
-   if(payload.info)await this.validateInfo(tx,actor,payload.info);
+   if(payload.info){
+    await this.validateInfo(tx,actor,payload.info);
+    if(payload.info.inventoryReceiptRef){
+     const source=await inventoryFinanceReceipt(tx,actor.realmId,payload.info.branchRef,payload.info.inventoryReceiptRef);
+     if(stage==="INFO")payload.info={...payload.info,inventoryReceiptNumber:source.receiptNumber,inventorySupplierRef:source.supplierRef,inventorySupplierName:source.supplierName};
+     else if(payload.info.inventorySupplierRef!==source.supplierRef||payload.info.inventoryReceiptNumber!==source.receiptNumber)
+      throw new ConflictException({code:"FINANCE_INVOICE_SOURCE_INVALID",field:"inventoryReceiptRef"});
+    }
+   }
    if(payload.info&&payload.payment)await this.validatePayment(tx,actor,payload);
    const version=invoice?invoice.version+1:1;
    const sourceDigest=digest(["CG09_INVOICE_REVISION_V1",target??"NEW",version,payload]);
