@@ -776,6 +776,7 @@ export function StaffAuthenticationScreen() {
             canConfigure={canReview&&roleActions.includes("approvals.process.manage")}
             canIssueCards={canRoster&&roleActions.includes("volunteers.documents.issue")}
             canReimburse={canRoster&&["finance.claims.create","finance.claims.view","documents.files.manage","documents.files.view"].every(k=>roleActions.includes(k))}
+            canImport={canRoster&&canReview}
             onExpired={expireSession}/>
         </Suspense>
       </ScreenErrorBoundary>,"volunteers",()=>setVolunteersOpen(false));
