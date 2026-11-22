@@ -3,7 +3,7 @@ import {useCallback,useEffect,useRef,useState} from "react";
 type Case={caseRef:string;reference:string;name:string;status:string;
  revision:number;canReview:boolean};
 type Detail={caseRef:string;reference:string;revision:number;name:string;
- status:string;designation:string;employmentType:string;canDecide:boolean;canReadProof:boolean;
+ status:string;designation:string;employmentType:string;canDecide:boolean;canReadProof:boolean;timeline?:{action:string;step:number;occurredAt:string}[];
  evidence:Array<{classification:string;verified:boolean}>};
 const originalStatuses=[{key:"ALL",title:"All"},{key:"SUBMITTED",title:"Submitted"},{key:"IN_REVIEW",title:"In review"},{key:"PENDING_OWNER",title:"Approved — activation pending"},{key:"OWNER_COMPLETED",title:"Activated"},{key:"RETURNED",title:"Returned"},{key:"REJECTED",title:"Rejected"}];
 const stageLabel=(status:string)=>originalStatuses.find(x=>x.key===status)?.title??"Status unavailable";
@@ -157,6 +157,7 @@ export function HrEnrollmentReviews({canConfigure=false}:{canConfigure?:boolean}
    <h3 style={{margin:0}}>{detail.name} — {detail.designation}</h3>
    <p style={{margin:0,color:"var(--cg-muted)"}}>{detail.reference} · {stageLabel(detail.status)}
     {" · "}{detail.employmentType.replaceAll("_"," ")}</p>
+   <div><strong>Original approval history</strong>{detail.timeline?.length?<div style={{display:"grid",gap:8,marginTop:8}}>{detail.timeline.map((e,i)=><div key={i} style={{borderLeft:"3px solid var(--cg-accent)",paddingLeft:10}}><strong>{e.action.replaceAll("_"," ").toLowerCase()}</strong><small style={{display:"block"}}>Step {e.step} · {new Date(e.occurredAt).toLocaleString("en-IN")}</small></div>)}</div>:<p>No recorded approval events available.</p>}</div>
    <div><strong>Original verified evidence</strong>
     {detail.evidence.map((f,i)=><p key={i} style={{margin:"4px 0"}}>
       {f.classification.replaceAll("_"," ")} — {f.verified?"Verified":"Unverified"}
