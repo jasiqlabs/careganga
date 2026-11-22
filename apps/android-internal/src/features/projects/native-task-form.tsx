@@ -1,0 +1,43 @@
+import React,{useEffect,useRef,useState} from "react";
+import {ActivityIndicator,Modal,Pressable,ScrollView,StyleSheet,Text,TextInput,View} from "react-native";
+import * as Crypto from "expo-crypto";
+import {careGangaTheme as t} from "../../../../../packages/design-tokens/src/index";
+import type {CG05TaskDetail,CG05TaskOptions,CG05TaskAssigneeKind} from "@careganga/api-contracts";
+export type TaskMode="create"|"edit"|"assign"|"progress";
+export type TaskCommand={path:string;method:"POST"|"PATCH";body:Record<string,unknown>};
+type Props={mode:TaskMode;progress:string;detail:CG05TaskDetail|null;api:<T>(path:string,c?:TaskCommand)=>Promise<T>;onLocked:(v:boolean)=>void;onComplete:(ref:string)=>void;onConflict:()=>void;onClose:()=>void};
+const nice=(v:string)=>v==="NORMAL"?"Medium":v.toLowerCase().replaceAll("_"," ").replace(/^./,x=>x.toUpperCase());
+const empty=()=>({projectRef:"",title:"",taskType:"",description:"",priority:"NORMAL",startDate:"",dueDate:"",assigneeKind:"UNASSIGNED" as CG05TaskAssigneeKind,assigneeRef:""});
+export function NativeTaskForm({mode,progress,detail,api,onLocked,onComplete,onConflict,onClose}:Props){
+ const [draft,setDraft]=useState(()=>mode==="create"||!detail?empty():{...empty(),projectRef:detail.projectRef,title:detail.title,taskType:detail.taskType,description:detail.description,priority:detail.priority,startDate:detail.startDate??"",dueDate:detail.dueDate??""});
+ const [options,setOptions]=useState<CG05TaskOptions|null>(null),[projects,setProjects]=useState<CG05TaskOptions["projects"]>([]),[search,setSearch]=useState(""),[optsBusy,setOptsBusy]=useState(false),[reason,setReason]=useState(""),[busy,setBusy]=useState(false),[pending,setPending]=useState(false),[error,setError]=useState("");
+ const running=useRef(false),command=useRef<TaskCommand|null>(null);const locked=busy||pending;
+ useEffect(()=>{if(mode==="edit"||mode==="progress")return;let live=true;setOptsBusy(true);setOptions(null);const timer=setTimeout(()=>{void api<CG05TaskOptions>("project-tasks/options?"+new URLSearchParams({projectRef:draft.projectRef,q:search})).then(v=>{if(live){setOptions(v);setProjects(v.projects);}}).catch(e=>{if(live)setError(e.message);}).finally(()=>{if(live)setOptsBusy(false);});},200);return()=>{live=false;clearTimeout(timer);};},[mode,draft.projectRef,search]);
+ const change=(k:keyof typeof draft,v:string)=>setDraft(x=>({...x,[k]:v,...(k==="projectRef"||k==="assigneeKind"?{assigneeRef:""}:{})}));
+ const close=()=>{if(!locked)onClose();};
+ const send=async()=>{if(running.current)return;
+  if(!command.current){
+   const requestKey=Crypto.randomUUID(),expectedVersion=detail?.version,{projectRef,assigneeKind,assigneeRef,...values}=draft;
+   if(mode==="create"||mode==="edit"){if(values.title.trim().length<2||!values.taskType.trim()||!projectRef||mode==="edit"&&!detail)return;if(mode==="create"&&assigneeKind!=="UNASSIGNED"&&!options?.assignees.some(a=>a.kind===assigneeKind&&a.value===assigneeRef))return;command.current={path:mode==="create"?"projects/"+projectRef+"/tasks":"project-tasks/"+detail?.ref,method:mode==="create"?"POST":"PATCH",body:{...values,requestKey,...(mode==="create"?{assigneeKind,assigneeRef:assigneeRef||null}:{expectedVersion})}};}
+   else if(mode==="assign"){if(!detail||assigneeKind==="UNASSIGNED"||!options?.assignees.some(a=>a.kind===assigneeKind&&a.value===assigneeRef)||reason.trim().length<3)return;command.current={path:"project-tasks/"+detail.ref+"/assign",method:"POST",body:{requestKey,expectedVersion,assigneeKind,assigneeRef,reason}};}
+   else{if(!detail||!progress||progress==="CANCELLED"&&reason.trim().length<3)return;command.current={path:"project-tasks/"+detail.ref+"/progress",method:"POST",body:{requestKey,expectedVersion,status:progress,reason}};}
+  }
+  const c=command.current;running.current=true;setBusy(true);onLocked(true);setError("");
+  try{const r=await api<{ref:string;version:number}>(c.path,c);command.current=null;setPending(false);onLocked(false);onComplete(r.ref);}
+  catch(e){const status=(e as {status?:number}).status;setError(e instanceof Error?e.message:"Task result unconfirmed.");if(!status||status>=500||status===408||status===429){setPending(true);onLocked(true);}else{command.current=null;setPending(false);onLocked(false);if(status===403||status===409)onConflict();}}
+  finally{running.current=false;setBusy(false);}
+ };
+ const button=(label:string,press:()=>void,disabled=false,primary=false)=><Pressable key={label} accessibilityRole="button" accessibilityState={{disabled}} disabled={disabled} onPress={press} style={[s.button,primary&&s.primary,disabled&&{opacity:.45}]}><Text style={[s.label,primary&&{color:"#fff"}]}>{label}</Text></Pressable>;
+ const field=(label:string,value:string,onChangeText:(v:string)=>void,multi=false)=><View><Text style={s.label}>{label}</Text><TextInput accessibilityLabel={label} value={value} onChangeText={onChangeText} editable={!locked} multiline={multi} style={[s.input,multi&&{minHeight:84}]}/></View>;
+ const choices=(label:string,value:string,items:{value:string;label:string}[],onChange:(v:string)=>void,disabled=false)=><View><Text style={s.label}>{label}</Text><ScrollView horizontal keyboardShouldPersistTaps="handled" contentContainerStyle={{gap:8}}>{items.map(x=><Pressable key={x.value} accessibilityRole="radio" accessibilityState={{selected:value===x.value,disabled:locked||disabled}} disabled={locked||disabled} onPress={()=>onChange(x.value)} style={[s.button,value===x.value&&s.selected]}><Text>{x.label}</Text></Pressable>)}</ScrollView></View>;
+ const valid=mode==="progress"?!!progress&&(progress!=="CANCELLED"||reason.trim().length>=3):mode==="assign"?!!draft.assigneeRef&&reason.trim().length>=3&&!optsBusy:!!draft.projectRef&&draft.title.trim().length>=2&&!!draft.taskType.trim()&&(mode==="edit"||draft.assigneeKind==="UNASSIGNED"||!!draft.assigneeRef&&!optsBusy);
+ return <Modal visible animationType="slide" onRequestClose={close}><ScrollView contentContainerStyle={s.content} keyboardShouldPersistTaps="handled"><Text accessibilityRole="header" style={s.title}>{mode==="create"?"Create New Task":mode==="edit"?"Edit Task":mode==="assign"?"Assign Task":nice(progress)}</Text>
+ {mode==="create"&&choices("Project",draft.projectRef,projects,v=>change("projectRef",v))}
+ {(mode==="create"||mode==="edit")&&<>{field("Task title",draft.title,v=>change("title",v))}{field("Task type",draft.taskType,v=>change("taskType",v))}{field("Description",draft.description,v=>change("description",v),true)}{choices("Priority",draft.priority,["LOW","NORMAL","HIGH","URGENT"].map(v=>({value:v,label:nice(v)})),v=>change("priority",v))}{field("Start date (YYYY-MM-DD)",draft.startDate,v=>change("startDate",v))}{field("Due date (YYYY-MM-DD)",draft.dueDate,v=>change("dueDate",v))}</>}
+ {(mode==="create"||mode==="assign")&&<>{choices("Assignee type",draft.assigneeKind,[...(mode==="create"?[{value:"UNASSIGNED",label:"Unassigned draft"}]:[]),{value:"ACCOUNT",label:"Foundation operator"},{value:"EMPLOYEE",label:"Current employee"}],v=>change("assigneeKind",v))}{draft.assigneeKind!=="UNASSIGNED"&&<>{field("Find eligible assignee",search,v=>{setSearch(v);change("assigneeRef","");})}{optsBusy?<ActivityIndicator/>:choices("Assigned to",draft.assigneeRef,(options?.assignees??[]).filter(x=>x.kind===draft.assigneeKind),v=>change("assigneeRef",v))}</>}</>}
+ {(mode==="assign"||mode==="progress")&&field(mode==="assign"||progress==="CANCELLED"?"Reason (required)":"Progress note (optional)",reason,setReason,true)}
+ {!!error&&<Text accessibilityRole="alert" style={{color:t.error}}>{error}</Text>}{pending&&<Text accessibilityRole="alert">Original outcome unknown. Retry the same request to confirm it; no offline success is assumed.</Text>}
+ <View style={s.row}>{button("Cancel",close,locked)}{button(pending?"Retry original request":busy?"Confirming…":mode==="create"?"Create Task":"Confirm",()=>void send(),busy||!pending&&!valid,true)}</View>
+ </ScrollView></Modal>;
+}
+const s=StyleSheet.create({content:{padding:16,paddingBottom:36,gap:12,backgroundColor:t.background},title:{fontSize:20,fontWeight:"700",color:t.text},label:{fontSize:13,fontWeight:"600",color:t.text},row:{flexDirection:"row",flexWrap:"wrap",alignItems:"center",gap:8},button:{borderWidth:1,borderColor:t.border,borderRadius:8,minHeight:44,justifyContent:"center",padding:10,backgroundColor:t.surface},primary:{backgroundColor:t.primary,borderColor:t.primary},selected:{borderColor:t.primary,borderWidth:2},input:{padding:10,minHeight:44,borderWidth:1,borderColor:t.border,borderRadius:8,color:t.text,backgroundColor:t.surface}});

@@ -1,4 +1,5 @@
 import {BadRequestException,ConflictException,Inject,Injectable} from "@nestjs/common";
+import {assertFinanceProject} from "../../cg-05-projects-field-operations/application/project-finance-source";
 import type {Pool,PoolClient} from "pg";
 import {DATABASE} from "../../../core/infrastructure/database.module";
 import {SessionService} from "../../cg-01-identity-access/application/session.service";
@@ -27,14 +28,15 @@ export class FinanceBudgetSourceFacade{
   const found=await tx.query<{id:string;budget_number:string;version:number;status:string;
    current_digest:string;created_by:string;budget_name:string;category_label:string;
    approved_ceiling_minor:string;financial_year_id:string;branch_id:string|null;
-   period_start:string;period_end:string}>(
+   period_start:string;period_end:string;project_ref:string|null}>(
    "SELECT id,budget_number,version,status,current_digest,created_by,budget_name,"+
    "category_label,approved_ceiling_minor::text,financial_year_id,branch_id,"+
-   "period_start::text,period_end::text FROM finance_budget "+
+   "period_start::text,period_end::text,project_ref FROM finance_budget "+
    "WHERE root_realm_id=$1 AND id=$2 AND version=$3 FOR SHARE",
    [actor.realmId,ref,version]);
   const b=found.rows[0];
   if(!b)throw new ConflictException({code:"FINANCE_BUDGET_SOURCE_INVALID"});
+  if(b.project_ref)await assertFinanceProject(tx,actor,b.project_ref,b.branch_id);
   return {budgetRef:b.id,budgetNumber:b.budget_number,version:b.version,
    status:b.status,sourceDigest:b.current_digest,createdBy:b.created_by,
    name:b.budget_name,category:b.category_label,
@@ -66,9 +68,9 @@ export class FinanceBudgetSourceFacade{
    await this.identity.assertCurrent(tx,actor,"finance.budgets.review");
    const rows=await tx.query<{created_by:string;budget_number:string;status:string;
     budget_name:string;category_label:string;approved_ceiling_minor:string;
-    period_start:string;period_end:string}>(
+    period_start:string;period_end:string;project_label:string|null}>(
     "SELECT b.created_by,b.budget_number,c.status,r.name AS budget_name,"+
-    "r.category_label,r.approved_ceiling_minor::text,r.period_start::text,"+
+    "r.category_label,r.approved_ceiling_minor::text,r.period_start::text,r.project_label,"+
     "r.period_end::text FROM finance_budget_revision r JOIN finance_budget b "+
     "ON b.id=r.budget_id AND b.root_realm_id=r.root_realm_id "+
     "JOIN cg03_case c ON c.finance_budget_id=b.id AND c.realm_id=b.root_realm_id "+
@@ -81,7 +83,7 @@ export class FinanceBudgetSourceFacade{
    await tx.query("COMMIT");
    return {budgetNumber:x.budget_number,name:x.budget_name,category:x.category_label,
     amountMinor:x.approved_ceiling_minor,periodStart:x.period_start,
-    periodEnd:x.period_end,status:x.status};
+    periodEnd:x.period_end,status:x.status,projectLabel:x.project_label};
   }catch(e){await tx.query("ROLLBACK");throw e;}finally{tx.release();}
  }
 }

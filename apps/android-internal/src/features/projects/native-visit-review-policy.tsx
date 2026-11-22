@@ -1,0 +1,20 @@
+import React,{useEffect,useRef,useState} from "react";
+import {Pressable,Text,TextInput,View,StyleSheet} from "react-native";
+import * as Crypto from "expo-crypto";
+import {identityRequest} from "../identity-access/http-client";
+type Policy={preliminary:boolean;version:number};
+export function NativeVisitReviewPolicy({token,onExpired}:{token:string;onExpired:()=>void}){
+ const [open,setOpen]=useState(false),[policy,setPolicy]=useState<Policy|null>(null),[preliminary,setPreliminary]=useState(false),[password,setPassword]=useState(""),[busy,setBusy]=useState(false),[error,setError]=useState(""),[notice,setNotice]=useState(""),[uncertain,setUncertain]=useState(false);
+ const running=useRef(false),key=useRef<string|null>(null);
+ async function api(body?:unknown){return identityRequest("/api/v1/field-visit-review/policy",{headers:{Authorization:"Bearer "+token,...(body?{"Content-Type":"application/json"}:{})},cache:"no-store",...(body?{method:"POST",body:JSON.stringify(body)}:{})});}
+ async function load(){setBusy(true);setError("");try{const r=await api(),v=await r.json();if(r.status===401)onExpired();if(!r.ok)throw Error("Review settings unavailable to your current role.");setPolicy(v);setPreliminary(v.preliminary);}catch(e){setPolicy(null);setError(e instanceof Error?e.message:"Review settings unavailable.");}finally{setBusy(false);}}
+ useEffect(()=>{if(open)void load();},[open,token]);
+ async function save(){if(running.current||password.length<8||!policy)return;running.current=true;setBusy(true);setError("");setNotice("");const requestKey=key.current??Crypto.randomUUID();key.current=requestKey;try{
+  const r=await api({requestKey,preliminary,currentPassword:password,expectedVersion:policy.version}),v=await r.json().catch(()=>null);
+  if(r.status===401)onExpired();if(!r.ok||!v){if(r.status<500&&r.status!==408&&r.status!==429){key.current=null;setUncertain(false);if(r.status===409){await load();throw Error("Review settings changed. Check the current settings and save again.");}}else setUncertain(true);throw Error(r.status===403?"Your current role or password cannot confirm this change.":"Save not confirmed. Check your password or retry the original change.");}
+  key.current=null;setUncertain(false);setPolicy({preliminary,version:v.version});setNotice("Saved. Already submitted visits keep their original review route.");
+ }catch(e){if(key.current)setUncertain(true);setError(e instanceof Error?e.message:"Save not confirmed.");}finally{setPassword("");setBusy(false);running.current=false;}}
+ function button(label:string,onPress:()=>void,disabled=false){return <Pressable accessibilityRole="button" accessibilityState={{disabled}} disabled={disabled} onPress={onPress} style={[s.button,disabled&&{opacity:.5}]}><Text style={s.text}>{label}</Text></Pressable>;}
+ return <View style={s.card}>{button(open?"Hide review settings":"Review settings",()=>setOpen(v=>!v),busy||uncertain)}{open&&<><Text style={s.title}>Review route for new visits</Text>{policy&&<>{button((!preliminary?"✓ ":"")+"Final Foundation approval",()=>setPreliminary(false),busy||uncertain)}{button((preliminary?"✓ ":"")+"Coordinator, then final Foundation approval",()=>setPreliminary(true),busy||uncertain)}<Text>Coordinator must manage the actual branch. A different authorized Foundation Super Admin makes the final decision. Existing cases keep their original route.</Text><TextInput style={s.button} accessibilityLabel="Current password" placeholder="Current password" secureTextEntry value={password} onChangeText={setPassword} editable={!busy}/>{button(uncertain?"Retry original change":"Save review settings",()=>void save(),busy||password.length<8||!uncertain&&policy.preliminary===preliminary)}</>}{error!==""&&<Text accessibilityRole="alert" style={{color:"#b91c1c"}}>{error}</Text>}{notice!==""&&<Text>{notice}</Text>}</>}</View>;
+}
+const s=StyleSheet.create({card:{padding:12,borderWidth:1,borderColor:"#e2e8f0",borderRadius:10,gap:8,backgroundColor:"#fff"},button:{minHeight:44,padding:10,borderWidth:1,borderColor:"#cbd5e1",borderRadius:8},text:{color:"#1e293b",fontWeight:"600"},title:{fontWeight:"700",fontSize:16}});

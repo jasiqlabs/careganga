@@ -7,6 +7,7 @@ type Section={kind:string;order:number;fields:Record<string,unknown>};
 type Asset={fileRef:string;version:number;role:string;altText:string;order:number};
 type Draft={kind:Kind;slug:string;title:string;seoTitle:string;seoDescription:string;
  sections:Section[];assets:Asset[]};
+type EventSource={sourceRef:string;slug:string;title:string;category:string;summary:string;area:string;scheduledStart:string;scheduledEnd:string;status:string};
 type NoticeSource={noticeRef:string;title:string;body:string;expiresAt:string;asOfDate:string};
 type Item={pageRef:string;kind:string;slug:string;title:string;version:string;
  draftStatus:string;publicStatus:string|null};
@@ -124,6 +125,7 @@ export function CmsExtendedWorkspace({canManage,canPublish,canViewNoticeSources}
  // Original CG19 intent stays associated with one file, authored position
  // and source revision until verified, or source-confirmed rejected/expired.
  const mediaAttempt=useRef<{fingerprint:string;key:string;uploadRef:string|null}|null>(null);
+ const [eventSources,setEventSources]=useState<EventSource[]>([]),[eventSourceError,setEventSourceError]=useState("");
  const [noticeSources,setNoticeSources]=useState<NoticeSource[]>([]);
  const [noticeSourceError,setNoticeSourceError]=useState("");
  const [uploadRole,setUploadRole]=useState("IMPACT"),[uploadOrder,setUploadOrder]=useState(0);
@@ -528,7 +530,7 @@ export function CmsExtendedWorkspace({canManage,canPublish,canViewNoticeSources}
      return <fieldset key={section.kind+"-"+index}>
       <legend>{section.kind==="IMPACT_GROUP"?"Impact: "+groupName.replaceAll("_"," "):
        section.kind.replaceAll("_"," ")}</legend>
-      <Field name="Heading" value={f.heading} onChange={v=>change("heading",v)}/>
+      {typeof f.sourceEventRef==="string"?<p><strong>{str(f.heading)}</strong> · {str(f.category)}<br/>{str(f.body)}</p>:<Field name="Heading" value={f.heading} onChange={v=>change("heading",v)}/>}
       {section.kind==="HERO"&&<>
        <Field name="Healthcare hero subtitle" value={f.subtitle}
         onChange={v=>change("subtitle",v)}/>
@@ -722,7 +724,8 @@ export function CmsExtendedWorkspace({canManage,canPublish,canViewNoticeSources}
          source:"",asOfDate:today(),mediaType:"PHOTO",visible:true})}>Add gallery item</button>}
       </>}
       {section.kind==="ARTICLE_BODY"&&<>
-       {canViewNoticeSources&&<details className="cg-cms-card">
+       {canManage&&<details className="cg-cms-card" open={typeof f.sourceEventRef==="string"}><summary>Approved Foundation event</summary><p>Select a current reviewed event to publish as an article. The original event stays the operational record. CMS approval is still required.</p><button type="button" disabled={busy||!!pending} onClick={()=>{setEventSourceError("");void api<{sources:EventSource[]}>("event-sources").then(v=>setEventSources(v.sources)).catch(()=>{setEventSources([]);setEventSourceError("Approved event sources unavailable.");});}}>Refresh approved events</button>{eventSourceError&&<p role="alert">{eventSourceError}</p>}<label>Approved event<select disabled={busy||!!pending||!!mediaAttempt.current} value={str(f.sourceEventRef)} onChange={e=>{const chosen=eventSources.find(x=>x.sourceRef===e.target.value);if(!chosen)return;setDraft(d=>({...d,slug:selected?d.slug:chosen.slug.slice(0,70),title:chosen.title,seoTitle:(chosen.title+" | CareGanga Foundation").slice(0,180),seoDescription:chosen.summary.slice(0,300),assets:[],sections:d.sections.map((s,i)=>i===index?{...s,fields:{heading:chosen.title,category:chosen.category,excerpt:chosen.summary.slice(0,400).trim(),body:chosen.summary,authorLabel:"CareGanga Foundation",source:"Approved Foundation event",asOfDate:today(),tags:[],sourceEventRef:chosen.sourceRef}}:s)}));}}><option value="">Choose approved event</option>{typeof f.sourceEventRef==="string"&&!eventSources.some(x=>x.sourceRef===f.sourceEventRef)&&<option value={str(f.sourceEventRef)}>Current selection — refresh to verify</option>}{eventSources.map(v=><option key={v.sourceRef} value={v.sourceRef}>{v.title} · {v.category} · {new Date(v.scheduledStart).toLocaleString("en-IN",{timeZone:"Asia/Kolkata"})}</option>)}</select></label>{typeof f.sourceEventRef==="string"&&<p>Event title, category, summary and consented image are locked to the reviewed source. To update, select its latest eligible revision. Withdrawal or cancellation hides the article.</p>}</details>}
+       {canViewNoticeSources&&typeof f.sourceEventRef!=="string"&&<details className="cg-cms-card">
         <summary>Optional: publish an eligible original Foundation notice as an article</summary>
         <p>Only an active, already approved CG-19 all-staff notice can be selected.
          This makes an explicit public copy subject to separate CG-03 CMS approval.
@@ -758,7 +761,7 @@ export function CmsExtendedWorkspace({canManage,canPublish,canViewNoticeSources}
          notice heading/body. Its cancellation or expiry will automatically hide
          this article from both public channels.</p>}
        </details>}
-       {(["category","authorLabel","source"] as const).map(key=><Field key={key}
+       {typeof f.sourceEventRef!=="string"&&<>{(["category","authorLabel","source"] as const).map(key=><Field key={key}
         name={key.replace(/([A-Z])/g," $1")} value={f[key]}
         onChange={v=>change(key,v)}/>)}
        <Field name="Original source date" type="date" value={f.asOfDate}
@@ -768,7 +771,7 @@ export function CmsExtendedWorkspace({canManage,canPublish,canViewNoticeSources}
        <Field name="Article body (plain text, no HTML)" large value={f.body}
         onChange={v=>change("body",v)}/>
        <Field name="Tags (comma-separated)" value={Array.isArray(f.tags)?f.tags.join(", "):""}
-        onChange={v=>change("tags",v.split(",").map(x=>x.trim()).filter(Boolean).slice(0,8))}/>
+        onChange={v=>change("tags",v.split(",").map(x=>x.trim()).filter(Boolean).slice(0,8))}/></>}
       </>}
       {section.kind==="HEALTHCARE_CATEGORIES"&&<>
        <Field name="General healthcare explanation" large value={f.intro}
@@ -849,7 +852,7 @@ export function CmsExtendedWorkspace({canManage,canPublish,canViewNoticeSources}
       kind:"RICH_TEXT",order:d.sections.length,fields:{heading:"",body:"",
        eyebrow:"",variant:"STANDARD",highlights:[]}}]}))}>
       Add legal text section</button>}
-    {selected?.status==="DRAFT"&&draft.kind!=="POLICY"&&
+    {selected?.status==="DRAFT"&&draft.kind!=="POLICY"&&!draft.sections.some(s=>typeof s.fields.sourceEventRef==="string")&&
      <fieldset><legend>Verified original media</legend>
       <p>Only original CG-19 scanned, consented media. Attach one per matching section or item.</p>
       <label>Placement<select value={uploadRole} onChange={e=>setUploadRole(e.target.value)}>

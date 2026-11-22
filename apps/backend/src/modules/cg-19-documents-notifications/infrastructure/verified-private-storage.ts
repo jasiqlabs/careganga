@@ -13,12 +13,12 @@ export type UploadInput={
   sha256:string;expiresAt:string;
 };
 const allowedMime=new Set(["application/pdf","image/jpeg","image/png","image/webp","video/mp4"]);
-// A short MP4 is permitted only for original CG19 scanned CMS assets.
+// CMS short MP4 up to 25 MB; private visit MP4 up to 10 MB, same byte/scan gate.
 const maxFor=(key:string,mime:string)=>
  key.startsWith("careganga/private/cg19/cms/")&&mime==="video/mp4"?
   25*1024*1024:10*1024*1024;
 const supported=(key:string,mime:string)=>allowedMime.has(mime)&&
- (mime!=="video/mp4"||key.startsWith("careganga/private/cg19/cms/"));
+ (mime!=="video/mp4"||key.startsWith("careganga/private/cg19/cms/")||key.startsWith("careganga/private/cg19/visit/"));
 const SHA=/^[a-f0-9]{64}$/;
 const validKey=(key:string)=>
   typeof key==="string"&&key.startsWith("careganga/private/cg19/")&&

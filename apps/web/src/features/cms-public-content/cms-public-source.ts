@@ -18,8 +18,9 @@ export async function publishedCmsPage(slug:string):Promise<CmsPageResult>{
     typeof source.title!=="string"||typeof source.seoTitle!=="string"||
     typeof source.seoDescription!=="string"||!Array.isArray(source.sections)||
     !Array.isArray(source.assets)||source.slug!==slug||
-    !["HOME","ABOUT","IMPACT","COMPLIANCE","GALLERY","ARTICLE","CONTACT","HEALTHCARE","POLICY"].includes(
+    !["HOME","ABOUT","IMPACT","COMPLIANCE","GALLERY","ARTICLE","CONTACT","HEALTHCARE","POLICY","PROJECTS"].includes(
        String(source.kind))||
+    (source.kind==="PROJECTS"&&!["our-work","upcoming-projects"].includes(slug))||
     (source.kind==="HOME"&&slug!=="home")||
     (source.kind==="ABOUT"&&slug!=="about")||
     (source.kind==="IMPACT"&&slug!=="our-impact")||

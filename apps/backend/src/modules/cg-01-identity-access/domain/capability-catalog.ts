@@ -7,6 +7,23 @@ export type Capability = Readonly<{
   sensitive:boolean;
 }>;
 const capabilities:readonly Capability[]=Object.freeze([
+  {key:"projects.operations.view",businessLabel:"View permitted operational summary",group:"Projects",assignable:true,sensitive:true},
+  {key:"projects.operations.export",businessLabel:"Export permitted operational summary",group:"Projects",assignable:true,sensitive:true},
+  {key:"projects.view",businessLabel:"View permitted projects",group:"Projects",assignable:true,sensitive:false},
+  {key:"projects.manage",businessLabel:"Create and manage scoped projects",group:"Projects",assignable:true,sensitive:true},
+  {key:"projects.export",businessLabel:"Export permitted projects",group:"Projects",assignable:true,sensitive:true},
+  {key:"projects.tasks.view",businessLabel:"View permitted project tasks",group:"Projects",assignable:true,sensitive:false},
+  {key:"projects.tasks.manage",businessLabel:"Create, edit and assign scoped project tasks",group:"Projects",assignable:true,sensitive:true},
+  {key:"projects.tasks.progress",businessLabel:"Update my current assigned tasks",group:"Projects",assignable:true,sensitive:false},
+  {key:"projects.tasks.export",businessLabel:"Export permitted project tasks",group:"Projects",assignable:true,sensitive:true},
+  {key:"projects.activities.view",businessLabel:"View permitted Foundation activities and events",group:"Projects",assignable:true,sensitive:false},
+  {key:"projects.activities.manage",businessLabel:"Create and manage permitted Foundation activities and events",group:"Projects",assignable:true,sensitive:true},
+  {key:"projects.activities.progress",businessLabel:"Update my current assigned activities",group:"Projects",assignable:true,sensitive:false},
+  {key:"projects.visits.view",businessLabel:"View permitted field visits",group:"Projects",assignable:true,sensitive:true},
+  {key:"projects.visits.manage",businessLabel:"Manage permitted field visits",group:"Projects",assignable:true,sensitive:true},
+  {key:"projects.visits.capture",businessLabel:"Record my assigned field visits",group:"Projects",assignable:true,sensitive:false},
+  {key:"projects.visits.export",businessLabel:"Export permitted field visits",group:"Projects",assignable:true,sensitive:true},
+  {key:"projects.activities.export",businessLabel:"Export permitted activities and events",group:"Projects",assignable:true,sensitive:true},
   {key:"inventory.requests.view",businessLabel:"View own permitted material requests",group:"Requests & inventory",assignable:true,sensitive:false},
   {key:"inventory.requests.manage",businessLabel:"Prepare and manage own material requests",group:"Requests & inventory",assignable:true,sensitive:true},
   {key:"inventory.requests.review",businessLabel:"Independently review material requests",group:"Requests & inventory",assignable:false,sensitive:true},

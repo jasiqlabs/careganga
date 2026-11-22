@@ -5,6 +5,10 @@ import {CmsEditorialService} from "../application/cms-editorial.service";
 @Controller("api/cms")
 export class CmsEditorialController{
  constructor(private readonly cms:CmsEditorialService){}
+ @Get("event-sources") @Header("Cache-Control","private, no-store")
+ eventSources(@Headers("authorization")auth:string){return this.cms.eventSources(auth);}
+ @Get("project-sources") @Header("Cache-Control","private, no-store")
+ projectSources(@Headers("authorization")auth:string){return this.cms.projectSources(auth);}
  @Get("pages")
  @Header("Cache-Control","private, no-store")
  pages(@Headers("authorization")auth:string){return this.cms.list(auth);}
@@ -59,7 +63,7 @@ export class CmsPublicPagesController{
   // Recheck the effective publication and image rights on EVERY request
   // before a conditional 304. Revoked files change the ETag even if the
   // original page revision is unchanged.
-  const page=await this.cms.publicPage(slug);
+  const page=slug==="our-work"||slug==="upcoming-projects"?await this.cms.publicProjectCatalogue(slug):await this.cms.publicPage(slug);
   const etag='"'+createHash("sha256").update(JSON.stringify(page)).digest("hex")+'"';
   response.setHeader("ETag",etag);
   response.setHeader("X-Content-Type-Options","nosniff");

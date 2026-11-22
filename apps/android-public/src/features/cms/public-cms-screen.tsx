@@ -23,7 +23,7 @@ const text=(v:unknown)=>typeof v==="string"?v:"";
 const safeColor=(v:unknown,fallback:string)=>/^#[a-fA-F0-9]{6}$/.test(text(v))?text(v):fallback;
 const local=(v:unknown)=>{
  const route=text(v);
- return ["/","/about","/contact","/our-impact","/ngo-information","/gallery","/videos","/publications","/healthcare"].includes(route)?route:null;
+ return ["/","/about","/contact","/our-impact","/ngo-information","/gallery","/videos","/publications","/healthcare","/our-work","/upcoming-projects"].includes(route)?route:null;
 };
 async function published(slug:string):Promise<Result>{
  if(!/^[a-z0-9][a-z0-9-]{0,69}$/.test(slug))return {state:"NOT_PUBLISHED",page:null};
@@ -40,10 +40,10 @@ async function published(slug:string):Promise<Result>{
   const data=raw as Record<string,unknown>;
   if(data.schemaVersion!==1||data.slug!==slug||
      data.kind!==({home:"HOME",about:"ABOUT","our-impact":"IMPACT",
-       "80g":"COMPLIANCE",gallery:"GALLERY",contact:"CONTACT",healthcare:"HEALTHCARE"} as Record<string,string>)[slug]&&
+       "80g":"COMPLIANCE",gallery:"GALLERY",contact:"CONTACT",healthcare:"HEALTHCARE","our-work":"PROJECTS","upcoming-projects":"PROJECTS"} as Record<string,string>)[slug]&&
        !(data.kind==="POLICY"&&isPolicySlug(slug))&&
        !(data.kind==="ARTICLE"&&
-         !["home","about","our-impact","80g","gallery","contact","healthcare"].includes(slug)&&
+         !["home","about","our-impact","80g","gallery","contact","healthcare","our-work","upcoming-projects"].includes(slug)&&
          !isPolicySlug(slug))||
      typeof data.title!=="string"||!Array.isArray(data.sections)||
      !Array.isArray(data.assets)||typeof data.effectiveGeneration!=="string")
@@ -112,7 +112,7 @@ async function publishedNavigation():Promise<{login:boolean;paths:string[]}>{
   if(!result||typeof result!=="object"||!("schemaVersion" in result)||
     result.schemaVersion!==1)return {login:false,paths:[]};
   const data=result as {login?:{visible?:boolean};publishedRoutes?:{path:string}[]};
-  const valid=new Set(["/about","/our-impact","/ngo-information","/gallery","/contact","/healthcare",
+  const valid=new Set(["/about","/our-impact","/ngo-information","/gallery","/contact","/healthcare","/our-work","/upcoming-projects",
    ...legalPages.map(([slug])=>"/policies/"+slug)]);
   const paths=Array.isArray(data.publishedRoutes)?data.publishedRoutes
    .map(p=>p.path).filter(p=>typeof p==="string"&&
@@ -133,7 +133,7 @@ function CmsButton({title,onPress,secondary=false}:{
 export function PublicCmsContent({onContact,onPartnerApplication,onLoginVisibility}: {
  onContact:()=>void;onPartnerApplication:()=>void;
  onLoginVisibility:(visible:boolean)=>void}){
- const [slug,setSlug]=useState("home");
+ const [slug,setSlug]=useState("home"),[projectCategory,setProjectCategory]=useState("All Projects");
  const [mediaScope,setMediaScope]=useState<"PHOTO"|"VIDEO"|"PUBLICATION">("PHOTO");
  const [ngoScope,setNgoScope]=useState<"80g"|"pan-details"|
   "registration-certificate"|"annual-reports">("80g");
@@ -200,7 +200,7 @@ export function PublicCmsContent({onContact,onPartnerApplication,onLoginVisibili
    if(slug!=="home"){
     // Article detail returns to News. A published legal policy must
     // return to Home; it is not part of the article reader.
-    setSlug(!["about","our-impact","80g","gallery","contact","healthcare","articles","notices"].includes(slug)&&
+    setSlug(!["about","our-impact","80g","gallery","contact","healthcare","articles","notices","our-work","upcoming-projects"].includes(slug)&&
      !isPolicySlug(slug)?articleBackTarget:"home");return true;
    }return false;
   });
@@ -253,7 +253,7 @@ export function PublicCmsContent({onContact,onPartnerApplication,onLoginVisibili
    {publishedPaths.includes("/about")&&<CmsButton title="About"
     onPress={()=>setSlug("about")} secondary={slug!=="about"}/>}
    {([["/our-impact","Impact","our-impact"],["/ngo-information","NGO Information","80g"],
-     ["/healthcare","Healthcare","healthcare"]] as const)
+     ["/healthcare","Healthcare","healthcare"],["/our-work","Our Work","our-work"],["/upcoming-projects","Upcoming Projects","upcoming-projects"]] as const)
       .filter(([path])=>publishedPaths.includes(path)).map(([,label,name])=>
        <CmsButton key={name} title={label} secondary={slug!==name}
         onPress={()=>setSlug(name)}/>)}
@@ -482,7 +482,8 @@ export function PublicCmsContent({onContact,onPartnerApplication,onLoginVisibili
        ngoScope={section.kind==="COMPLIANCE_FACTS"?ngoScope:undefined}
       onBackToNews={()=>setSlug(articleBackTarget)}
        backLabel={articleBackTarget==="notices"?"Back to notices":"Back to approved articles"}/>;
-    // Project teasers require CG05 original owner and cannot be invented.
+    if(section.kind==="PROJECT_TEASER"){const categories=["All Projects","Education","Healthcare","Livelihood","Social Welfare","Community Development"];const cards=(Array.isArray(fields.cards)?fields.cards:[]).filter(p=>page.kind!=="PROJECTS"||projectCategory==="All Projects"||p&&typeof p==="object"&&text(p.category).toLowerCase()===projectCategory.toLowerCase());return <View key={i} style={styles.card}><Text accessibilityRole="header" style={styles.heading}>{text(fields.heading)||"Projects"}</Text>{page.kind==="PROJECTS"&&<View style={styles.nav}>{categories.map(c=><CmsButton key={c} title={c} secondary={c!==projectCategory} onPress={()=>setProjectCategory(c)}/>)}</View>}{!cards.length?<Text>No currently approved projects to display.</Text>:cards.map((item,j)=>{if(!item||typeof item!=="object")return null;const p=item as Fields;const cover=/^\/api\/public\/content\/media\/[a-f0-9-]{36}$/i.test(text(p.coverSrc))?safeImage({src:text(p.coverSrc),role:"PROJECT",altText:text(p.title),order:0}):null;return <View key={j} style={styles.card}>{!!cover&&<Image source={{uri:cover}} accessibilityLabel={text(p.title)} style={styles.image} resizeMode="cover"/>}<Text style={styles.eyebrow}>{text(p.category)} · {text(p.status)==="PLANNED"?"Planned":"Active"}</Text><Text style={styles.heading}>{text(p.title)}</Text><Text>{text(p.area)}</Text><Text style={styles.body}>{text(p.summary)}</Text>{!!text(p.launch)&&<Text>Planned start: {text(p.launch)}</Text>}</View>;})}</View>;}
+    // Never infer operational projects from CMS-only text.
     return null;
    })}
   </View>}

@@ -7,7 +7,7 @@ import {careGangaTheme as t} from "../../../../../packages/design-tokens/src/ind
 import {identityRequest} from "../identity-access/http-client";
 type Case={caseRef:string;reference:string;voucherNumber:string;status:string;revision:number};
 type Detail=Case&{voucherRef:string;sourceVersion:number;proofFileRef:string;proofRevision:number};
-type Voucher={header:{type:string;payeeName:string;postingDate:string;purpose:string};
+type Voucher={header:{type:string;projectLabel?:string|null;payeeName:string;postingDate:string;purpose:string};
  lines:{description:string;quantity:number;unitRateMinor:string;lineTotalMinor:string}[];
  grossMinor:string;taxMinor:string;chargesMinor:string;totalMinor:string};
 type Pending={key:string;body:Record<string,unknown>;caseRef:string};
@@ -198,7 +198,7 @@ export function FinanceVoucherNativeReviewer({token,onExit,onExpired}:Props){
     <View style={s.card}>
      <Text style={s.bold}>{original.header.type} · {original.header.payeeName}</Text>
      <Text style={s.hint}>Posting date: {original.header.postingDate}</Text>
-     <Text style={s.hint}>Purpose: {original.header.purpose}</Text>
+     <Text style={s.hint}>Purpose: {original.header.purpose}</Text><Text style={s.hint}>Project: {original.header.projectLabel??"Not linked"}</Text>
      {original.lines.map((l,i)=><View key={i} style={s.item}>
       <Text style={s.hint}>{l.description} · Qty {l.quantity}</Text>
       <Text style={s.bold}>{money(l.lineTotalMinor)}</Text>

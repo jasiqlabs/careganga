@@ -4,7 +4,7 @@ import {useCallback,useEffect,useState} from "react";
 type Case={caseRef:string;reference:string;voucherNumber:string;status:string;revision:number;
  submittedAt:string};
 type CaseDetail=Case&{voucherRef:string;sourceVersion:number;proofFileRef:string;proofRevision:number};
-type VoucherDetail={status:string;header:{type:string;postingDate:string;
+type VoucherDetail={status:string;header:{type:string;projectLabel?:string|null;postingDate:string;
  payeeName:string;purpose:string};lines:{description:string;quantity:number;
  unitRateMinor:string;lineTotalMinor:string}[];grossMinor:string;taxMinor:string;
  chargesMinor:string;totalMinor:string};
@@ -202,7 +202,7 @@ export function FinanceVoucherReviewerWorkspace({canInitialize}:{
      <p><strong>Type:</strong> {voucher.header.type}</p>
      <p><strong>Payee:</strong> {voucher.header.payeeName}</p>
      <p><strong>Date:</strong> {voucher.header.postingDate}</p>
-     <p><strong>Purpose:</strong> {voucher.header.purpose}</p>
+     <p><strong>Purpose:</strong> {voucher.header.purpose}</p><p><strong>Project:</strong> {voucher.header.projectLabel??"Not linked"}</p>
      <p><strong>Current review status:</strong> {open.status}</p>
     </div>
     <div className="cg-fin-table-wrap"><table className="cg-fin-table">

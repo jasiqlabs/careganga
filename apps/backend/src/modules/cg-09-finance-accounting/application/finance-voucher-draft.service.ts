@@ -1,5 +1,6 @@
 import {BadRequestException,ConflictException,Inject,Injectable} from "@nestjs/common";
 import {createHash} from "node:crypto";
+import {assertFinanceProject,financeProjectOptions} from "../../cg-05-projects-field-operations/application/project-finance-source";
 import type {Pool,PoolClient} from "pg";
 import {DATABASE} from "../../../core/infrastructure/database.module";
 import {SessionService} from "../../cg-01-identity-access/application/session.service";
@@ -8,7 +9,7 @@ import {BranchSourceFacade} from "../../cg-02-foundation-structure/application/b
 import type {VerifiedFoundationActor} from "../../cg-01-identity-access/public-api";
 
 type SafeDraft={year:string;branch:string|null;branchVersion:number|null;paymentAccount:string|null;
- claimRef:string|null;claimVersion:number|null;
+ claimRef:string|null;claimVersion:number|null;projectRef?:string;
  debitAccount:string;creditAccount:string;
  kind:"PAYMENT"|"EXPENSE"|"CONTRA"|"GENERAL";date:string;payee:string;
  purpose:string;lines:{description:string;quantity:number;unitRateMinor:string;
@@ -54,7 +55,7 @@ function normalize(input:unknown):SafeDraft{
   return fail("FINANCE_VOUCHER_FORM_INVALID");
  const value=input as Record<string,unknown>;
  const fields=["financialYearRef","branchRef","branchVersion","voucherType","postingDate",
-  "payeeName","purpose","paymentAccountRef","debitAccountRef","creditAccountRef","lines","tax","charges","requestKey","expectedVersion","expenseClaimRef","expenseClaimVersion"];
+  "payeeName","purpose","paymentAccountRef","debitAccountRef","creditAccountRef","lines","tax","charges","requestKey","expectedVersion","expenseClaimRef","expenseClaimVersion","projectRef"];
  if(Object.keys(value).some(k=>!fields.includes(k)))
   return fail("FINANCE_VOUCHER_FORM_INVALID");
  const year=uid(value.financialYearRef,"financialYearRef");
@@ -69,6 +70,8 @@ function normalize(input:unknown):SafeDraft{
  const kind=value.voucherType;
  if(!["PAYMENT","EXPENSE","CONTRA","GENERAL"].includes(String(kind)))
   return fail("FINANCE_VOUCHER_TYPE_INVALID","voucherType");
+ const projectRef=value.projectRef?uid(value.projectRef,"projectRef"):null;
+ if(projectRef&&kind!=="EXPENSE")return fail("FINANCE_VOUCHER_FORM_INVALID","projectRef");
  const paymentAccount=value.paymentAccountRef?uid(value.paymentAccountRef,"paymentAccountRef"):null;
  const debitAccount=uid(value.debitAccountRef,"debitAccountRef");
  const creditAccount=uid(value.creditAccountRef,"creditAccountRef");
@@ -106,7 +109,7 @@ function normalize(input:unknown):SafeDraft{
   return fail("FINANCE_VOUCHER_AMOUNT_INVALID","lines");
  return {year,branch,branchVersion:branch?Number(branchVersion):null,paymentAccount,
   claimRef,claimVersion:claimRef?Number(claimVersion):null,
-  debitAccount,creditAccount,
+  ...(projectRef?{projectRef}:{}),debitAccount,creditAccount,
   kind:kind as SafeDraft["kind"],date:date(value.postingDate),
   payee:name(value.payeeName,"payeeName",150),purpose:purpose(value.purpose),
   lines,grossMinor:gross.toString(),taxMinor:tax.toString(),
@@ -180,7 +183,9 @@ export class FinanceVoucherDraftService{
      end_on::text AS "endOn",status FROM financial_year WHERE root_realm_id=$1
      ORDER BY start_on DESC,id DESC LIMIT 30`,[actor.realmId]);
   const branches=await this.branches.financeBranches(bearer,"finance.vouchers.view");
-  return {years:years.rows,branches};
+  const scope=await this.branches.financeReportScope(bearer,"finance.vouchers.view");
+  const projects=await financeProjectOptions(this.db,actor.realmId,scope);
+  return {years:years.rows,branches,projects};
  }
  async list(bearer:string,offsetInput?:string){
   const actor=await this.actor(bearer,"finance.vouchers.view");
@@ -266,6 +271,7 @@ export class FinanceVoucherDraftService{
   if(safe.branch)await this.branches.financeActiveBranch(client,actor,safe.branch,
    safe.branchVersion??0,"finance.vouchers.manage");
   else await this.branches.requireFinanceRootScope(client,actor,"finance.vouchers.manage");
+  const projectLabel=safe.projectRef?(await assertFinanceProject(client,actor,safe.projectRef,safe.branch)).label:null;
   if(safe.claimRef){
    await this.identity.assertCurrent(client,actor,"finance.claims.manage");
    if(!["EXPENSE","PAYMENT"].includes(safe.kind))
@@ -311,6 +317,7 @@ export class FinanceVoucherDraftService{
       found.rows[0].branch_id!==safe.branch))
     throw new ConflictException({code:"FINANCE_VOUCHER_PAYMENT_ACCOUNT_UNAVAILABLE",field:"paymentAccountRef"});
   }
+  return projectLabel;
  }
  private async commitDraft(client:PoolClient,actor:VerifiedFoundationActor,
   key:string,safe:SafeDraft,reference:string|null,expectedVersion:number|null){
@@ -324,7 +331,7 @@ export class FinanceVoucherDraftService{
     voucherNumber:existing.rows[0].voucher_number,
     version:existing.rows[0].version,confirmed:true as const,replayed:true};
   }
-  await this.inspect(client,actor,safe);
+  const projectLabel=await this.inspect(client,actor,safe);
   let voucherRef:string,voucherNumber:string,version:number;
   if(reference){
    const old=await client.query<{id:string;voucher_number:string;version:number;
@@ -348,23 +355,23 @@ export class FinanceVoucherDraftService{
        payee_name=$5,purpose=$6,gross_minor=$7,tax_minor=$8,charges_minor=$9,
        total_minor=$10,version=$11,payment_account_id=$14,
        debit_account_id=$15,credit_account_id=$16,expense_claim_id=$17,
-       expense_claim_version=$18,status='DRAFT',approval_case_id=NULL,
+       expense_claim_version=$18,project_ref=$19,project_label=$20,status='DRAFT',approval_case_id=NULL,
        proof_file_id=NULL,proof_file_revision=NULL,updated_at=now()
      WHERE id=$12 AND root_realm_id=$13`,
     [safe.year,safe.branch,safe.kind,safe.date,safe.payee,safe.purpose,
      safe.grossMinor,safe.taxMinor,safe.chargesMinor,safe.totalMinor,version,
      reference,actor.realmId,safe.paymentAccount,safe.debitAccount,safe.creditAccount,
-     safe.claimRef,safe.claimVersion]);
+     safe.claimRef,safe.claimVersion,safe.projectRef??null,projectLabel]);
   }else{
    const out=await client.query<{id:string;voucher_number:string}>(`
      INSERT INTO finance_voucher(root_realm_id,financial_year_id,branch_id,voucher_type,
       posting_date,payee_name,purpose,gross_minor,tax_minor,charges_minor,total_minor,created_by,payment_account_id,
-      debit_account_id,credit_account_id,expense_claim_id,expense_claim_version)
-     VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17)
+      debit_account_id,credit_account_id,expense_claim_id,expense_claim_version,project_ref,project_label)
+     VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19)
      RETURNING id,voucher_number`,[actor.realmId,safe.year,safe.branch,safe.kind,
       safe.date,safe.payee,safe.purpose,safe.grossMinor,safe.taxMinor,
       safe.chargesMinor,safe.totalMinor,actor.accountId,safe.paymentAccount,
-      safe.debitAccount,safe.creditAccount,safe.claimRef,safe.claimVersion]);
+      safe.debitAccount,safe.creditAccount,safe.claimRef,safe.claimVersion,safe.projectRef??null,projectLabel]);
    voucherRef=out.rows[0].id;
    voucherNumber=out.rows[0].voucher_number;
    version=1;
@@ -372,6 +379,7 @@ export class FinanceVoucherDraftService{
   const header={financialYearRef:safe.year,branchRef:safe.branch,type:safe.kind,paymentAccountRef:safe.paymentAccount,
     debitAccountRef:safe.debitAccount,creditAccountRef:safe.creditAccount,
     expenseClaimRef:safe.claimRef,expenseClaimVersion:safe.claimVersion,
+    ...(safe.projectRef?{projectRef:safe.projectRef,projectLabel}:{}),
     postingDate:safe.date,payeeName:safe.payee,purpose:safe.purpose};
   await client.query(`
     INSERT INTO finance_voucher_draft_revision(root_realm_id,voucher_id,version,
@@ -425,6 +433,7 @@ export class FinanceVoucherDraftService{
      if(e.code==="P0904")throw new ConflictException({code:"FINANCE_BRANCH_INACTIVE",field:"branchRef"});
      if(e.code==="P0907")throw new ConflictException({code:"FINANCE_VOUCHER_STALE"});
      if(e.code==="P0913")throw new BadRequestException({code:"FINANCE_VOUCHER_LINES_INVALID",field:"lines"});
+     if(e.code==="P0924")throw new ConflictException({code:"CG05_FINANCE_PROJECT_UNAVAILABLE",field:"projectRef"});
      if(e.code==="P0914")throw new ConflictException({code:"FINANCE_VOUCHER_PAYMENT_ACCOUNT_UNAVAILABLE",field:"paymentAccountRef"});
     }
     throw e;

@@ -202,3 +202,40 @@ export interface CG19UploadStatus {
   uploadRef:string;status:CG19FileState;fileRef:string|null;
   cleanVerified:boolean;message?:string;
 }
+
+/** CG05 US001 operational project, no public or finance claims. */
+export type CG05Option={value:string;label:string};
+export type CG05Project={ref:string;code:string;title:string;category:string;summary:string;description:string;status:string;priority:string;ownerRef:string;owner:string;branchRef:string|null;branch:string|null;stateRef:string|null;state:string|null;districtRef:string|null;district:string|null;location:string;fundingSource:string;plannedStart:string|null;plannedEnd:string|null;plannedBudgetMinor:string|null;version:number;updatedAt:string;completedAt:string|null};
+export type CG05ProjectFinance={status:"LINKED"|"NOT_LINKED"|"RESTRICTED"|"UNAVAILABLE";linked:number|null;approved:number|null;ceilingMinor:string|null;allocatedMinor:string|null;utilizedMinor:string|null};
+export type CG05ProjectDetail=CG05Project&{canManage:boolean;finance:CG05ProjectFinance;financeStatus:string;publicStatus:string;history:{action:string;priorStatus:string|null;status:string;reason:string;at:string;actor:string}[];branchHistory:{branch:string;validFrom:string;validTo:string|null}[]};
+export type CG05ProjectList={filterOptions?:{owners:CG05Option[]};items:CG05Project[];finance:CG05ProjectFinance;counts:{total:number;active:number;hold:number;completed:number;cancelled:number;planned:number;plannedBudgetMinor:string};categories:{label:string;count:number}[];recent:{title:string;action:string;status:string;at:string}[];offset:number;hasMore:boolean};
+export type CG05ProjectOptions={canManageFoundation:boolean;branches:CG05Option[];owners:CG05Option[];states:CG05Option[];districts:CG05Option[]};
+export type CG05ProjectDraft={code:string;title:string;category:string;summary:string;description:string;priority:string;ownerRef:string;branchRef:string;stateRef:string;districtRef:string;location:string;fundingSource:string;plannedStart:string;plannedEnd:string;plannedBudget:string;status:string};
+
+export type CG05PublicEligibility={status:string;caseRef:string|null;caseNumber?:string;revision?:number;canReview:boolean;canWithdraw:boolean;source:{title:string;category:string;summary:string;area:string;launch:string|null;status:string;coverFileRef?:string|null;coverFileVersion?:number|null}|null};
+
+export type CG05TaskStatus="DRAFT"|"ASSIGNED"|"IN_PROGRESS"|"COMPLETED"|"CANCELLED";
+export type CG05TaskAssigneeKind="UNASSIGNED"|"ACCOUNT"|"EMPLOYEE";
+export type CG05Task={ref:string;code:string;projectRef:string;project:string;projectCode:string;title:string;taskType:string;description:string;priority:"LOW"|"NORMAL"|"HIGH"|"URGENT";startDate:string|null;dueDate:string|null;status:CG05TaskStatus;assigneeKind:CG05TaskAssigneeKind;assignee:string|null;location:string;branch:string|null;version:number;updatedAt:string;completedAt:string|null;overdue:boolean;assignmentCurrent:boolean;canManage?:boolean};
+export type CG05TaskEvent={action:string;priorStatus?:string|null;status:string;reason:string;at:string;actor:string;assignee?:string|null};
+export type CG05TaskDetail=CG05Task & {history:CG05TaskEvent[];canManage:boolean;canProgress:boolean;approvalStatus:"NOT_REQUIRED"};
+export type CG05TaskList={items:CG05Task[];counts:{total:number;mine:number;completed:number;inProgress:number;overdue:number;upcoming:number;cancelled:number};statusCounts:{label:string;count:number}[];priorityCounts:{label:string;count:number}[];overdueItems:CG05Task[];recent:(CG05TaskEvent & {ref:string;code:string;title:string})[];filterOptions:{projects:{value:string;label:string}[];types:string[];assignees:string[];locations:string[]};offset:number;hasMore:boolean};
+export type CG05TaskOptions={projects:{value:string;label:string}[];hasMoreProjects:boolean;assignees:{value:string;label:string;kind:"ACCOUNT"|"EMPLOYEE"}[]};
+
+export type CG05ActivityStatus="DRAFT"|"SCHEDULED"|"ONGOING"|"COMPLETED"|"CANCELLED";
+export type CG05Activity={ref:string;code:string;projectRef:string|null;project:string|null;kind:"ACTIVITY"|"EVENT";title:string;category:string;activityType:string;description:string;program:string;branchRef:string|null;branch:string|null;stateRef:string|null;state:string|null;districtRef:string|null;district:string|null;venue:string;owner:string;ownerRef:string;scheduledStart:string;scheduledEnd:string;actualStart:string|null;actualEnd:string|null;outcome:string;status:CG05ActivityStatus;version:number;updatedAt:string;ownerCurrent:boolean;scopeChanged:boolean};
+export type CG05ActivityDetail=CG05Activity & {canManage:boolean;canProgress:boolean;canAttachEvidence:boolean;canReleaseEvent:boolean;history:{action:string;priorStatus:string|null;status:string;reason:string;at:string;actor:string;owner:string}[]};
+export type CG05ActivityList={items:CG05Activity[];counts:{total:number;completed:number;ongoing:number;upcoming:number;cancelled:number;mine:number};categories:{label:string;count:number}[];statuses:{label:string;count:number}[];recent:{ref:string;code:string;title:string;action:string;status:string;at:string;actor:string}[];filterOptions:{projects:CG05Option[];branches:CG05Option[];categories:string[];types:string[];owners:string[];locations:string[]};offset:number;hasMore:boolean};
+export type CG05ActivityOptions={projects:(CG05Option & {branchRef:string|null})[];branches:CG05Option[];canManageFoundation:boolean;selectedBranch:string|null;owners:CG05Option[];states:CG05Option[];districts:CG05Option[]};
+
+/** Private CG05 field visits: device data is reported provenance, not independently attested GPS. */
+export type CG05VisitStatus="DRAFT"|"PLANNED"|"IN_PROGRESS"|"PENDING_PROOF"|"PENDING_APPROVAL"|"RETURNED"|"REJECTED"|"COMPLETED"|"CANCELLED";
+export type CG05Visit={ref:string;code:string;projectRef:string;project:string;taskRef:string|null;task:string|null;actorRef:string;actor:string;visitType:string;location:string;branchRef:string|null;branch:string|null;stateRef:string|null;state:string|null;districtRef:string|null;district:string|null;plannedAt:string;startedAt:string|null;completedAt:string|null;status:CG05VisitStatus;version:number;updatedAt:string};
+export type CG05VisitCapture={kind:"CHECK_IN"|"CHECK_OUT";latitude:number|null;longitude:number|null;accuracyM:number|null;recordedAt:string;deviceRecordedAt:string|null;locationProvenance:"DEVICE_GPS"|"MANUAL_ENTERED"|"UNAVAILABLE"|"REJECTED";consentState:string};
+export type CG05VisitDetail=CG05Visit&{purpose:string;report:string;captures:CG05VisitCapture[];history:{kind:string;status:CG05VisitStatus;at:string;reason:string;actor:string}[];comments:{body:string;at:string;actor:string}[];assignmentCurrent:boolean;canManage:boolean;canCapture:boolean};
+export type CG05VisitList={items:CG05Visit[];counts:{status:CG05VisitStatus;count:number}[];total:number;recent:{ref:string;code:string;project:string;kind:string;status:CG05VisitStatus;at:string}[];filterOptions:{projects:CG05Option[];types:string[];actors:CG05Option[];branches:CG05Option[]};offset:number;hasMore:boolean};
+export type CG05VisitOptions={projects:CG05Option[];actors:CG05Option[];tasks:CG05Option[];states:CG05Option[];districts:CG05Option[]};
+export type CG05VisitReview={allowedDecisions?:("APPROVE"|"FORWARD"|"RETURN"|"REJECT")[];requiresCurrentPassword?:boolean;currentStep?:number;totalSteps?:number;status:string;caseRef:string|null;caseNumber?:string;revision?:number;canReview:boolean;sourceVersion?:number;report?:string;locationState?:"DEVICE_REPORTED"|"UNVERIFIED_LOCATION";verifiedFileCount?:number;decisions?:{action:string;remarks:string;at:string;reviewer:string;caseNumber?:string;step?:number}[]};
+
+export type CG05OperationsSummary={asOf:string;scope:"MINE"|"PERMITTED";sections:{source:string;metrics:{label:string;value:number|string}[]}[];restricted:string[];finance:CG05ProjectFinance|null;recent:{source:string;title:string;status:string;action:string;at:string}[]};
+export type CG05OperationsExport={csv:string;rows:number;restricted:string[]};

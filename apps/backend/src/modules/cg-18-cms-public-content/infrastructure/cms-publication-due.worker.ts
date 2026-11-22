@@ -5,6 +5,8 @@ import {DATABASE} from "../../../core/infrastructure/database.module";
 import {CmsPublicationApprovalService} from "../../cg-03-registration-approvals/application/cms-publication-approval.service";
 import {CmsDraftMediaService} from "../../cg-19-documents-notifications/application/cms-draft-media.service";
 import {CmsPublicNoticeSource} from "../../cg-19-documents-notifications/application/cms-public-notice-source.service";
+import {projectTeaserRevisionEligible} from "../../cg-05-projects-field-operations/application/project-public-source";
+import {eventArticleRevisionEligible} from "../../cg-05-projects-field-operations/application/event-public-source";
 import {complianceEligible} from "../application/cms-compliance-eligibility";
 
 type Due={id:string;foundation_root_id:string;page_publication_ref:string};
@@ -117,6 +119,8 @@ export class CmsPublicationDueWorker implements OnModuleInit,OnModuleDestroy{
   ]);
   if(!approved||!mediaValid||
     !(await complianceEligible(tx,item.foundation_root_id,item.page_revision_id))||
+    !(await projectTeaserRevisionEligible(tx,item.foundation_root_id,item.page_revision_id))||
+     !(await eventArticleRevisionEligible(tx,item.foundation_root_id,item.page_revision_id))||
     !(await this.notices.revisionEligible(tx,item.foundation_root_id,item.page_revision_id))){
    await this.cancel(tx,due,item);return;
   }

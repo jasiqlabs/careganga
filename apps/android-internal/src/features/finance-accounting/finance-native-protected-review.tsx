@@ -133,7 +133,7 @@ export function FinanceNativeProtectedReview({token,kind,canConfigure,onExit,onE
      <Text style={s.muted}>Items, tax and payment accounts are frozen to this original version.</Text>
     </>:<>
      <Text style={s.text}>Budget: {String(facts.name??"Unavailable")}</Text>
-     <Text style={s.text}>Category: {String(facts.category??"Unavailable")}</Text>
+     <Text style={s.text}>Category: {String(facts.category??"Unavailable")}</Text><Text style={s.text}>Project: {typeof facts.projectLabel==="string"?facts.projectLabel:"Not linked"}</Text>
      <Text style={s.text}>Ceiling: {money(String(facts.amountMinor??"0"))}</Text>
      <Text style={s.text}>Period: {String(facts.periodStart??"")} – {String(facts.periodEnd??"")}</Text>
     </>}

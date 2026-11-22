@@ -93,6 +93,11 @@ export interface ModuleActionHandlers {
   openFinance: () => void;
   openBranches: () => void;
   openHr: () => void;
+  openProjects: () => void;
+  openTasks: () => void;
+  openActivities: () => void;
+  openFieldVisits: () => void;
+  openOperationsSummary: () => void;
   openInventory: () => void;
   openChangePassword: () => void;
 }
@@ -212,6 +217,11 @@ export function getAuthorizedModules(
   // SECTION 3: ORGANIZATION MANAGEMENT
   // ----------------------------------------------------
 
+  if(roleActions.includes("projects.operations.view")&&["projects.view","projects.tasks.view","projects.activities.view","projects.visits.view"].some(k=>roleActions.includes(k)))list.push({key:"operationsSummary",title:"My Work Summary",shortLabel:"My Work",description:"Current owned or assigned operational metrics.",category:"ORGANIZATION MANAGEMENT",iconName:"bar-chart",iconBg:"#E0F2FE",iconColor:"#0369A1",onOpen:handlers.openOperationsSummary});
+  if(roleActions.includes("projects.visits.view"))list.push({key:"fieldVisits",title:roleActions.includes("projects.visits.manage")?"Field Visits":"My Field Visits",shortLabel:"Visits",description:"Private permitted visit records, check-in and review.",category:"ORGANIZATION MANAGEMENT",iconName:"approvals",iconBg:"#E0F2FE",iconColor:"#0369A1",onOpen:handlers.openFieldVisits});
+  if(roleActions.includes("projects.activities.view"))list.push({key:"activities",title:roleActions.includes("projects.activities.manage")?"Activities & Events":"My Activities",shortLabel:"Activities",description:"Current permitted activities, events and recorded progress.",category:"ORGANIZATION MANAGEMENT",iconName:"approvals",iconBg:"#E0F2FE",iconColor:"#0369A1",onOpen:handlers.openActivities});
+  if(roleActions.includes("projects.tasks.view"))list.push({key:"tasks",title:roleActions.includes("projects.tasks.manage")?"Tasks & Assignments":"My Assigned Tasks",shortLabel:"Tasks",description:"Current permitted project tasks and recorded progress.",category:"ORGANIZATION MANAGEMENT",iconName:"approvals",iconBg:"#E0F2FE",iconColor:"#0369A1",onOpen:handlers.openTasks});
+  if(roleActions.includes("projects.view"))list.push({key:"projects",title:"Projects",shortLabel:"Projects",description:"View and manage current permitted Foundation projects.",category:"ORGANIZATION MANAGEMENT",iconName:"building",iconBg:"#E0F2FE",iconColor:"#0369A1",onOpen:handlers.openProjects});
   if(roleActions.includes("inventory.catalog.view"))list.push({key:"inventory",title:"Requests & Inventory",shortLabel:"Inventory",description:"View permitted inventory catalog and warehouses.",category:"ORGANIZATION MANAGEMENT",iconName:"building",iconBg:"#E0F2FE",iconColor:"#0369A1",onOpen:handlers.openInventory});
   // CG-10 self identity: always accessible to a logged-in Foundation staff actor.
   // Backend /api/hr/me never returns anybody else's HR file, bank or salary.

@@ -95,7 +95,7 @@ function allowedSectionFields(kind:string):string[]{
    "videosEmptyText","publicationsEmptyText"]:
   kind==="ARTICLE_BODY"?
   ["heading","category","excerpt","body","authorLabel","source","asOfDate","tags",
-   "sourceNoticeRef","publicReleaseConfirmed"]:
+   "sourceNoticeRef","publicReleaseConfirmed","sourceEventRef"]:
   kind==="HEALTHCARE_CATEGORIES"?
   ["heading","intro","categories","ctaLabel","ctaPath"]:
   kind==="CONTACT_INFO"?["heroTitle","heroIntro","inquiries","faqs","officeHours",
@@ -260,13 +260,14 @@ export function parseExtendedSection(kind:string,raw:unknown):Record<string,unkn
     x.publicReleaseConfirmed!==true)return error("sourceNoticeRef");
    return x.sourceNoticeRef;
   })();
-  if(notice===null&&x.publicReleaseConfirmed!==undefined)
+  const event=x.sourceEventRef===undefined?null:(()=>{if(typeof x.sourceEventRef!=="string"||!/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i.test(x.sourceEventRef)||notice!==null)return error("sourceEventRef");return x.sourceEventRef.toLowerCase();})();
+   if(notice===null&&x.publicReleaseConfirmed!==undefined)
    return error("publicReleaseConfirmed");
-  return {...(notice?{sourceNoticeRef:notice,publicReleaseConfirmed:true}:{}),
-   heading:str(x.heading,"heading",180,3),
-   category:str(x.category,"category",80,2),
-   excerpt:str(x.excerpt,"excerpt",400,10),
-   body:str(x.body,"body",7000,20),
+  return {...(event?{sourceEventRef:event}:{}),...(notice?{sourceNoticeRef:notice,publicReleaseConfirmed:true}:{}),
+   heading:str(x.heading,"heading",180,event?2:3),
+   category:str(x.category,"category",80,event?1:2),
+   excerpt:str(x.excerpt,"excerpt",400,event?3:10),
+   body:str(x.body,"body",7000,event?3:20),
    authorLabel:str(x.authorLabel,"authorLabel",100,2),
    source:str(x.source,"source",160,3),asOfDate,
    tags:x.tags.map((v,i)=>str(v,"tags["+i+"]",40,2))};

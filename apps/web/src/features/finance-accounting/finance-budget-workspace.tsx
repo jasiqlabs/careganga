@@ -1,11 +1,12 @@
 "use client";
 import {useCallback,useEffect,useState} from "react";
 type Year={yearRef:string;name:string;startOn:string;endOn:string;status:string};
+type ProjectChoice={value:string;label:string;branchRef:string|null};
 type Branch={branchRef:string;name:string;version:number};
 type Budget={budgetRef:string;budgetNumber:string;name:string;category:string;status:string;
  ceilingMinor:string;version:number;periodStart:string;periodEnd:string};
 type Detail={budgetRef:string;budgetNumber:string;name:string;status:string;version:number;
- category:string;ceilingMinor:string;financialYearRef:string;branchRef:string|null;
+ category:string;ceilingMinor:string;financialYearRef:string;branchRef:string|null;projectRef?:string|null;projectLabel?:string|null;
  start:string;end:string;allocatedMinor:string;committedOutstandingMinor:string;
  utilizedMinor:string;availableMinor:string;overBudgetMinor:string;releasedMinor:string;
  events:{kind:string;amountMinor:string;recordedAt:string}[]};
@@ -14,10 +15,10 @@ type Dashboard={cards:{total:number;drafts:number;submitted:number;approved:numb
  allocatedMinor:string;committedOutstandingMinor:string;utilizedMinor:string;
  availableMinor:string;overBudgetMinor:string};explanation:string};
 type Expense={journalRef:string;voucherNumber:string;postedDate:string;amountMinor:string};
-type Form={budgetName:string;financialYearRef:string;branchRef:string;branchVersion:number|null;
+type Form={budgetName:string;financialYearRef:string;branchRef:string;branchVersion:number|null;projectRef:string;
  category:string;periodStart:string;periodEnd:string;fundingNote:string;ceiling:string};
 const clean=():Form=>({budgetName:"",financialYearRef:"",branchRef:"",
- branchVersion:null,category:"",periodStart:"",periodEnd:"",
+ branchVersion:null,projectRef:"",category:"",periodStart:"",periodEnd:"",
  fundingNote:"Foundation budget authorization",ceiling:""});
 const currency=(value:string)=>{try{
  const n=BigInt(value);return "₹"+(n/100n).toLocaleString("en-IN")+
@@ -35,7 +36,7 @@ async function failure(res:Response){
 }
 export function FinanceBudgetWorkspace({canManage}:{canManage:boolean}){
  const [years,setYears]=useState<Year[]>([]);
- const [branches,setBranches]=useState<Branch[]>([]);
+ const [branches,setBranches]=useState<Branch[]>([]),[projects,setProjects]=useState<ProjectChoice[]>([]);
  const [categories,setCategories]=useState<{code:string;name:string}[]>([]);
  const [budgets,setBudgets]=useState<Budget[]>([]);
  const [overview,setOverview]=useState<Dashboard|null>(null);
@@ -80,9 +81,9 @@ export function FinanceBudgetWorkspace({canManage}:{canManage:boolean}){
    try{
     const r=await fetch("/api/finance/budgets/options",{cache:"no-store"});
     if(!r.ok)throw Error(await failure(r));
-    const d=await r.json() as {years?:Year[];branches?:Branch[];categories?:{code:string;name:string}[]};
+    const d=await r.json() as {years?:Year[];branches?:Branch[];categories?:{code:string;name:string}[];projects?:ProjectChoice[]};
     if(!Array.isArray(d.years)||!Array.isArray(d.branches)||!Array.isArray(d.categories))throw Error("Invalid budget options");
-    if(mounted){setYears(d.years);setBranches(d.branches);setCategories(d.categories);}
+    if(mounted){setYears(d.years);setBranches(d.branches);setCategories(d.categories);setProjects(Array.isArray(d.projects)?d.projects:[]);}
    }catch(e){if(mounted)setError(e instanceof Error?e.message:"Budget scope unavailable.");}
   })();return()=>{mounted=false;};
  },[]);
@@ -104,7 +105,7 @@ export function FinanceBudgetWorkspace({canManage}:{canManage:boolean}){
    if(["DRAFT","RETURNED"].includes(info.status)){
     const branch=branches.find(x=>x.branchRef===info.branchRef);
     setForm({budgetName:info.name,financialYearRef:info.financialYearRef,
-     branchRef:info.branchRef??"",branchVersion:branch?.version??null,
+     branchRef:info.branchRef??"",branchVersion:branch?.version??null,projectRef:info.projectRef??"",
      category:info.category,periodStart:info.start,periodEnd:info.end,
      fundingNote:"Foundation budget authorization",ceiling:rupees(info.ceilingMinor)});
    }
@@ -144,6 +145,7 @@ export function FinanceBudgetWorkspace({canManage}:{canManage:boolean}){
   finally{setBusy(false);}
  }
  function save(){
+  if(form.projectRef&&!projects.some(p=>p.value===form.projectRef&&(p.branchRef??"")===form.branchRef)){setError("Choose a currently available project or remove the optional project association.");return;}
   void execute(selected&&["DRAFT","RETURNED"].includes(selected.status)?
    "drafts/"+selected.budgetRef:"drafts",selected&&["DRAFT","RETURNED"].includes(selected.status)?"PATCH":"POST",{
    ...form,branchRef:form.branchRef||null,
@@ -222,10 +224,11 @@ export function FinanceBudgetWorkspace({canManage}:{canManage:boolean}){
      <label className="cg-fin-field">Branch
       <select value={form.branchRef} onChange={e=>{
        const b=branches.find(v=>v.branchRef===e.target.value);
-       setForm(v=>({...v,branchRef:b?.branchRef??"",branchVersion:b?.version??null}));}}>
+       setForm(v=>({...v,branchRef:b?.branchRef??"",branchVersion:b?.version??null,projectRef:""}));}}>
        <option value="">Foundation root — no branch</option>
        {branches.map(b=><option key={b.branchRef} value={b.branchRef}>{b.name}</option>)}
       </select></label>
+     <label className="cg-fin-field">Project (optional)<select value={form.projectRef} onChange={e=>update("projectRef",e.target.value)}><option value="">No project — general budget</option>{projects.filter(p=>(p.branchRef??"")===form.branchRef).map(p=><option key={p.value} value={p.value}>{p.label}</option>)}{form.projectRef&&!projects.some(p=>p.value===form.projectRef&&(p.branchRef??"")===form.branchRef)&&<option value={form.projectRef} disabled>Previous project unavailable — choose again</option>}</select></label>
      <label className="cg-fin-field">Expense account group
       <select value={form.category} onChange={e=>update("category",e.target.value)}>
        <option value="">Select an existing expense group</option>

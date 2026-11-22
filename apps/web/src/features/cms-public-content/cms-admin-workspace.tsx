@@ -3,6 +3,7 @@ import {useCallback,useEffect,useRef,useState} from "react";
 import {CmsPublicPage,type PublicCmsPage} from "./cms-public-page";
 import {clientScreenshotHome} from "./cms-client-screenshot-reference";
 type Kind="HOME"|"ABOUT";
+type ProjectSource={sourceRef:string;title:string;category:string;summary:string;area:string;launch:string|null;status:string};
 type Team={name:string;designation:string;bio:string;consentConfirmed:boolean};
 type Asset={fileRef:string;version:number;role:"HERO"|"MOBILE_HERO"|"TEAM"|"ABOUT"|"PROMO"|"FEATURE";altText:string;order:number};
 type NavDesired={loginDesired:boolean;memberJoinDesired:boolean;volunteerJoinDesired:boolean};
@@ -31,7 +32,7 @@ type Draft={kind:Kind;title:string;seoTitle:string;seoDescription:string;
  volunteerTitle:string;volunteerBody:string;volunteerBenefits:string;
  memberTitle:string;memberBody:string;memberBenefits:string;
  footerMission:string;footerAddress:string;footerPhone:string;footerWhatsappNumber:string;footerEmail:string;
- footerNewsletterText:string;teamHeading:string;team:Team[];assets:Asset[];
+ footerNewsletterText:string;teamHeading:string;team:Team[];assets:Asset[];projectSources:string[];projectHeading:string;
  loginDesired:boolean;memberJoinDesired:boolean;volunteerJoinDesired:boolean};
 const blankSlide=():Slide=>({heading:"",subtitle:"",description:"",eyebrow:"",tags:"",visible:true,
  headingFont:"SERIF",headingWeight:"BOLD",headingSize:"LARGE",
@@ -44,7 +45,7 @@ const blank=(kind:Kind):Draft=>({kind,title:"",seoTitle:"",seoDescription:"",
  volunteerTitle:"",volunteerBody:"",volunteerBenefits:"",
  memberTitle:"",memberBody:"",memberBenefits:"",
  footerMission:"",footerAddress:"",footerPhone:"",footerWhatsappNumber:"",footerEmail:"",footerNewsletterText:"",
- teamHeading:"Our team",team:[],assets:[],loginDesired:true,
+ teamHeading:"Our team",team:[],assets:[],projectSources:[],projectHeading:"Our Projects",loginDesired:true,
  memberJoinDesired:false,volunteerJoinDesired:false});
 function val(v:unknown):string{return typeof v==="string"?v:"";}
 function words(v:unknown){return Array.isArray(v)?v.filter(x=>typeof x==="string").join("\n"):"";}
@@ -88,7 +89,7 @@ function fromPage(p:PageDetail):Draft{
    .map(v=>{const person=v as Record<string,unknown>;return {
     name:val(person.name),designation:val(person.designation),bio:val(person.bio),
     consentConfirmed:person.consentConfirmed===true};}):[],
-  assets:p.assets,loginDesired:p.navigation?.loginDesired??true,
+  assets:p.assets,projectSources:Array.isArray(section(p,"PROJECT_TEASER").sourceRefs)?(section(p,"PROJECT_TEASER").sourceRefs as unknown[]).filter((x):x is string=>typeof x==="string"):[],projectHeading:val(section(p,"PROJECT_TEASER").heading)||"Our Projects",loginDesired:p.navigation?.loginDesired??true,
   memberJoinDesired:p.navigation?.memberJoinDesired??false,
   volunteerJoinDesired:p.navigation?.volunteerJoinDesired??false};
 }
@@ -127,6 +128,7 @@ function payload(d:Draft){
    volunteerBenefits:lines(d.volunteerBenefits),
    memberTitle:d.memberTitle,memberBody:d.memberBody,
    memberBenefits:lines(d.memberBenefits)}});
+ if(d.projectSources.length)sections.push({kind:"PROJECT_TEASER",order:60,fields:{heading:d.projectHeading,sourceRefs:d.projectSources}});
  if(d.team.length)sections.push({kind:"TEAM",order:70,
   fields:{heading:d.teamHeading||"Our team",members:d.team}});
  if(d.kind==="HOME"&&(d.footerMission||d.footerAddress||d.footerEmail||d.footerPhone||d.footerWhatsappNumber))
@@ -195,7 +197,9 @@ async function read<T>(path:string,init?:RequestInit):Promise<T>{
 }
 export function CmsAdminWorkspace({canManage,canPublish,canReview}:{
  canManage:boolean;canPublish:boolean;canReview:boolean}){
- const [pages,setPages]=useState<PageItem[]>([]);
+ const [pages,setPages]=useState<PageItem[]>([]),[projectChoices,setProjectChoices]=useState<ProjectSource[]>([]),[projectError,setProjectError]=useState("");
+ const refreshProjects=()=>{setProjectError("");void read<{sources:ProjectSource[]}>("project-sources").then(v=>setProjectChoices(v.sources)).catch(()=>setProjectError("Current approved project sources unavailable."));};
+ useEffect(()=>{if(canManage)refreshProjects();},[canManage]);
  const [selected,setSelected]=useState<PageDetail|null>(null);
  const [draft,setDraft]=useState<Draft>(blank("HOME"));
  const [preview,setPreview]=useState(false),[reviewing,setReviewing]=useState(false);
@@ -610,6 +614,13 @@ export function CmsAdminWorkspace({canManage,canPublish,canReview}:{
        checked={draft.volunteerJoinDesired} onChange={e=>edit("volunteerJoinDesired",e.target.checked)}/>
        Request volunteer registration link when available</label>
      </fieldset>}
+     <fieldset><legend>Approved operational projects</legend><p>Select current CG-05 reviewed sources. Saving or submitting does not publish them.</p>
+      <label>Heading<input maxLength={160} value={draft.projectHeading} disabled={!canManage||busy||!!pending} onChange={e=>edit("projectHeading",e.target.value)}/></label>
+      <button type="button" disabled={!canManage||busy||!!pending} onClick={refreshProjects}>Refresh approved projects</button>
+      {projectError&&<p role="alert">{projectError}</p>}{!projectChoices.length&&!projectError&&<p>No current eligible projects.</p>}
+      {projectChoices.map(p=><label className="cg-cms-consent" key={p.sourceRef}><input type="checkbox" disabled={!canManage||busy||!!pending||(!draft.projectSources.includes(p.sourceRef)&&draft.projectSources.length>=12)} checked={draft.projectSources.includes(p.sourceRef)} onChange={e=>edit("projectSources",e.target.checked?[...draft.projectSources,p.sourceRef]:draft.projectSources.filter(x=>x!==p.sourceRef))}/>{p.title} · {p.category} · {p.area}</label>)}
+      {draft.projectSources.filter(x=>!projectChoices.some(p=>p.sourceRef===x)).map(x=><button key={x} type="button" disabled={!canManage||busy||!!pending} onClick={()=>edit("projectSources",draft.projectSources.filter(y=>y!==x))}>Remove unavailable project selection</button>)}
+     </fieldset>
      <div className="cg-cms-editor-grid">
       <fieldset><legend>Hero banners — original C22–C24</legend>
         <p>Each slide has independent text, buttons and approved desktop/mobile images.

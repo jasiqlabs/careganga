@@ -148,11 +148,14 @@ export function CmsGallery({section,assets,mediaScope="PHOTO"}:{
 }
 export function CmsArticle({section,assets}:{
  section:PublicCmsSection;assets:Asset[]}){
- const f=section.fields,cover=assets.find(a=>a.role==="ARTICLE"&&a.order===0);
+ const f=section.fields,event=f.event&&typeof f.event==="object"?f.event as Record<string,unknown>:null;
+ const cover=event&&/^\/api\/public\/content\/media\/[a-f0-9-]{36}$/i.test(text(event.coverSrc))?{role:"ARTICLE",order:0,altText:text(f.heading),src:text(event.coverSrc)}:assets.find(a=>a.role==="ARTICLE"&&a.order===0);
+ const stamp=(v:unknown)=>typeof v==="string"&&Number.isFinite(Date.parse(v))?new Date(v).toLocaleString("en-IN",{timeZone:"Asia/Kolkata"}):"";
  return <article className="cg-site-content cg-site-article-body">
   <p className="cg-site-eyebrow">{text(f.category)}</p>
   <h1>{text(f.heading)}</h1>
   <p className="cg-site-article-lead">{text(f.excerpt)}</p>
+  {event&&<div className="cg-site-article-lead"><p>{text(event.status)==="SCHEDULED"?"Scheduled":text(event.status)==="ONGOING"?"Ongoing":"Completed"} · {text(event.area)}</p><p>{stamp(event.scheduledStart)} – {stamp(event.scheduledEnd)} IST</p></div>}
   {label(f.source,f.asOfDate)}
   <p className="cg-site-provenance">Editorial credit: {text(f.authorLabel)}</p>
   {photo(cover,"cg-site-article-cover")}

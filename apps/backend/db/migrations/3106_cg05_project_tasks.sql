@@ -1,0 +1,149 @@
+-- CG05 US002: task master belongs to the actual project; assignee is an
+-- original CG01 account or an original CG10 employee linked to that account.
+CREATE SEQUENCE cg05_task_public_sequence;
+CREATE TABLE project_task (
+ id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+ root_realm_id uuid NOT NULL,
+ project_id uuid NOT NULL,
+ task_code text NOT NULL DEFAULT ('TSK-'||nextval('cg05_task_public_sequence')::text) UNIQUE,
+ title text NOT NULL CHECK(char_length(btrim(title)) BETWEEN 2 AND 160),
+ task_type text NOT NULL CHECK(char_length(btrim(task_type)) BETWEEN 1 AND 80),
+ description text NOT NULL DEFAULT '' CHECK(char_length(description)<=2000),
+ priority text NOT NULL CHECK(priority IN('LOW','NORMAL','HIGH','URGENT')),
+ planned_start date,
+ due_at date,
+ CHECK(planned_start IS NULL OR due_at IS NULL OR planned_start<=due_at),
+ status text NOT NULL CHECK(status IN('DRAFT','ASSIGNED','IN_PROGRESS','COMPLETED','CANCELLED')),
+ assignee_kind text NOT NULL CHECK(assignee_kind IN('ACCOUNT','EMPLOYEE','UNASSIGNED')),
+ assignee_account_ref uuid,
+ assignee_employee_ref uuid,
+ assignee_branch_ref uuid,
+ assigned_at timestamptz,
+ completed_at timestamptz,
+ version integer NOT NULL DEFAULT 1 CHECK(version BETWEEN 1 AND 2147483647),
+ created_by uuid NOT NULL,
+ created_at timestamptz NOT NULL DEFAULT now(),
+ updated_at timestamptz NOT NULL DEFAULT now(),
+ UNIQUE(root_realm_id,id),
+ UNIQUE(root_realm_id,project_id,id),
+ FOREIGN KEY(root_realm_id,project_id) REFERENCES project(root_realm_id,id) ON DELETE RESTRICT,
+ FOREIGN KEY(assignee_account_ref,root_realm_id) REFERENCES account(id,realm_id) ON DELETE RESTRICT,
+ FOREIGN KEY(root_realm_id,assignee_employee_ref) REFERENCES hr_employee(root_realm_id,id) ON DELETE RESTRICT,
+ FOREIGN KEY(assignee_branch_ref,root_realm_id) REFERENCES branch(id,root_realm_id) ON DELETE RESTRICT,
+ FOREIGN KEY(created_by,root_realm_id) REFERENCES account(id,realm_id) ON DELETE RESTRICT,
+ CHECK(((assignee_kind='UNASSIGNED' AND status='DRAFT' AND assignee_account_ref IS NULL AND assignee_employee_ref IS NULL AND assignee_branch_ref IS NULL AND assigned_at IS NULL)
+ OR (assignee_kind='ACCOUNT' AND status<>'DRAFT' AND assignee_account_ref IS NOT NULL AND assignee_employee_ref IS NULL AND assigned_at IS NOT NULL)
+ OR (assignee_kind='EMPLOYEE' AND status<>'DRAFT' AND assignee_account_ref IS NOT NULL AND assignee_employee_ref IS NOT NULL AND assignee_branch_ref IS NOT NULL AND assigned_at IS NOT NULL)) IS TRUE),
+ CHECK((status='COMPLETED')=(completed_at IS NOT NULL))
+);
+CREATE INDEX ix_cg05_task_project ON project_task(root_realm_id,project_id,status,due_at,id);
+CREATE INDEX ix_cg05_task_assignee ON project_task(root_realm_id,assignee_account_ref,status,due_at,id);
+CREATE INDEX ix_cg05_task_due ON project_task(root_realm_id,status,due_at,id);
+CREATE TABLE project_task_event (
+ id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+ root_realm_id uuid NOT NULL,
+ project_id uuid NOT NULL,
+ task_id uuid NOT NULL,
+ event_key uuid NOT NULL,
+ payload_digest char(64) NOT NULL CHECK(payload_digest ~ '^[a-f0-9]{64}$'),
+ event_kind text NOT NULL CHECK(event_kind IN('CREATE','EDIT','ASSIGN','PROGRESS')),
+ actor_ref uuid NOT NULL,
+ old_status text CHECK(old_status IN('DRAFT','ASSIGNED','IN_PROGRESS','COMPLETED','CANCELLED')),
+ new_status text NOT NULL CHECK(new_status IN('DRAFT','ASSIGNED','IN_PROGRESS','COMPLETED','CANCELLED')),
+ assignee_kind text NOT NULL CHECK(assignee_kind IN('ACCOUNT','EMPLOYEE','UNASSIGNED')),
+ assignee_account_ref uuid,
+ assignee_employee_ref uuid,
+ assignee_branch_ref uuid,
+ result_version integer NOT NULL CHECK(result_version>0),
+ redacted_reason text NOT NULL DEFAULT '' CHECK(char_length(redacted_reason)<=500),
+ occurred_at timestamptz NOT NULL DEFAULT now(),
+ UNIQUE(root_realm_id,event_key),
+ UNIQUE(root_realm_id,task_id,result_version),
+ FOREIGN KEY(root_realm_id,project_id,task_id) REFERENCES project_task(root_realm_id,project_id,id) ON DELETE RESTRICT,
+ FOREIGN KEY(actor_ref,root_realm_id) REFERENCES account(id,realm_id) ON DELETE RESTRICT,
+ FOREIGN KEY(assignee_account_ref,root_realm_id) REFERENCES account(id,realm_id) ON DELETE RESTRICT,
+ FOREIGN KEY(root_realm_id,assignee_employee_ref) REFERENCES hr_employee(root_realm_id,id) ON DELETE RESTRICT,
+ FOREIGN KEY(assignee_branch_ref,root_realm_id) REFERENCES branch(id,root_realm_id) ON DELETE RESTRICT,
+ CHECK((event_kind='CREATE')=(old_status IS NULL))
+);
+CREATE INDEX ix_cg05_task_events ON project_task_event(root_realm_id,task_id,result_version DESC);
+CREATE TRIGGER cg05_task_event_immutable BEFORE UPDATE OR DELETE ON project_task_event
+ FOR EACH ROW EXECUTE FUNCTION cg05_immutable_project_event();
+
+-- Keep project identity immutable and every mutation versioned; employee
+-- identity is validated against the original HR record, not a client label.
+CREATE FUNCTION cg05_task_write_guard() RETURNS trigger LANGUAGE plpgsql AS $$
+BEGIN
+ IF TG_OP='DELETE' THEN RAISE EXCEPTION 'Task history must remain available'; END IF;
+ IF TG_OP='INSERT' THEN
+  IF NEW.version<>1 OR NEW.status NOT IN('DRAFT','ASSIGNED') THEN RAISE EXCEPTION 'Invalid task initial state'; END IF;
+ ELSE
+  IF (NEW.id,NEW.root_realm_id,NEW.project_id,NEW.task_code,NEW.created_by,NEW.created_at)
+   IS DISTINCT FROM (OLD.id,OLD.root_realm_id,OLD.project_id,OLD.task_code,OLD.created_by,OLD.created_at)
+   OR NEW.version<>OLD.version+1 OR OLD.status IN('COMPLETED','CANCELLED') THEN
+   RAISE EXCEPTION 'Task identity or current revision cannot be changed';
+  END IF;
+  IF NEW.status<>OLD.status AND NOT (
+    NEW.status='ASSIGNED' AND OLD.status IN('DRAFT','IN_PROGRESS')
+    OR OLD.status='ASSIGNED' AND NEW.status IN('IN_PROGRESS','CANCELLED')
+    OR OLD.status='IN_PROGRESS' AND NEW.status IN('COMPLETED','CANCELLED')) THEN
+   RAISE EXCEPTION 'Invalid task status transition';
+  END IF;
+ END IF;
+ IF NEW.assignee_kind='EMPLOYEE' AND (
+  TG_OP='INSERT' OR NEW.assignee_employee_ref IS DISTINCT FROM OLD.assignee_employee_ref
+  OR NEW.assignee_account_ref IS DISTINCT FROM OLD.assignee_account_ref
+  OR NEW.assignee_branch_ref IS DISTINCT FROM OLD.assignee_branch_ref) THEN
+  IF NOT EXISTS(SELECT 1 FROM hr_employee e WHERE e.root_realm_id=NEW.root_realm_id
+   AND e.id=NEW.assignee_employee_ref AND e.account_ref=NEW.assignee_account_ref FOR SHARE) THEN
+   RAISE EXCEPTION 'Task employee must match original account';
+  END IF;
+ END IF;
+ RETURN NEW;
+END $$;
+CREATE TRIGGER cg05_task_guard BEFORE INSERT OR UPDATE OR DELETE ON project_task
+ FOR EACH ROW EXECUTE FUNCTION cg05_task_write_guard();
+-- A version is not a valid committed source without its matching immutable event.
+CREATE FUNCTION cg05_task_event_match() RETURNS trigger LANGUAGE plpgsql AS $$
+DECLARE ev project_task_event%ROWTYPE;
+BEGIN
+ SELECT * INTO ev FROM project_task_event WHERE root_realm_id=NEW.root_realm_id
+ AND project_id=NEW.project_id AND task_id=NEW.id AND result_version=NEW.version;
+ IF NOT FOUND OR ev.new_status IS DISTINCT FROM NEW.status
+ OR ev.assignee_kind IS DISTINCT FROM NEW.assignee_kind
+ OR ev.assignee_account_ref IS DISTINCT FROM NEW.assignee_account_ref
+ OR ev.assignee_employee_ref IS DISTINCT FROM NEW.assignee_employee_ref
+ OR ev.assignee_branch_ref IS DISTINCT FROM NEW.assignee_branch_ref THEN
+  RAISE EXCEPTION 'Task revision requires matching immutable event';
+ END IF;
+ RETURN NULL;
+END $$;
+CREATE CONSTRAINT TRIGGER cg05_task_event_at_commit AFTER INSERT OR UPDATE ON project_task
+ DEFERRABLE INITIALLY DEFERRED FOR EACH ROW EXECUTE FUNCTION cg05_task_event_match();
+
+
+CREATE FUNCTION cg05_task_event_insert_guard() RETURNS trigger LANGUAGE plpgsql AS $$
+DECLARE t project_task%ROWTYPE; previous_status text;
+BEGIN
+ SELECT * INTO t FROM project_task WHERE root_realm_id=NEW.root_realm_id
+  AND project_id=NEW.project_id AND id=NEW.task_id FOR SHARE;
+ IF NOT FOUND OR t.version<>NEW.result_version OR t.status<>NEW.new_status
+ OR t.assignee_kind<>NEW.assignee_kind
+ OR t.assignee_account_ref IS DISTINCT FROM NEW.assignee_account_ref
+ OR t.assignee_employee_ref IS DISTINCT FROM NEW.assignee_employee_ref
+ OR t.assignee_branch_ref IS DISTINCT FROM NEW.assignee_branch_ref THEN
+  RAISE EXCEPTION 'Task event does not match current source revision';
+ END IF;
+ IF NEW.result_version=1 THEN
+  IF NEW.event_kind<>'CREATE' OR NEW.old_status IS NOT NULL THEN RAISE EXCEPTION 'Invalid initial task event'; END IF;
+ ELSE
+  SELECT new_status INTO previous_status FROM project_task_event WHERE root_realm_id=NEW.root_realm_id
+   AND task_id=NEW.task_id AND result_version=NEW.result_version-1;
+  IF NOT FOUND OR NEW.event_kind='CREATE' OR NEW.old_status IS DISTINCT FROM previous_status THEN
+   RAISE EXCEPTION 'Task event must follow the preceding revision';
+  END IF;
+ END IF;
+ RETURN NEW;
+END $$;
+CREATE TRIGGER cg05_task_event_insert BEFORE INSERT ON project_task_event
+ FOR EACH ROW EXECUTE FUNCTION cg05_task_event_insert_guard();

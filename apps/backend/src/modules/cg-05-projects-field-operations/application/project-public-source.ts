@@ -1,0 +1,64 @@
+import {BadRequestException} from "@nestjs/common";
+import type {Pool,PoolClient} from "pg";
+/** Only the independently reviewed, current, consented source. No private
+ * project description, branch/staff identity, GPS, finance or raw cover URL. */
+const current=`
+ FROM project_public_eligibility s JOIN project p ON p.root_realm_id=s.root_realm_id AND p.id=s.project_id AND p.version=s.project_version
+ JOIN cg03_case c ON c.realm_id=s.root_realm_id AND c.case_kind='PROJECT_PUBLIC_ELIGIBILITY' AND c.project_public_ref=s.id AND c.project_public_id=p.id AND c.project_public_version=p.version AND c.project_public_digest=s.source_digest
+ WHERE s.root_realm_id=$1 AND s.revoked_at IS NULL AND s.consent_confirmed AND p.status IN('PLANNED','ACTIVE') AND p.status=s.project_status AND c.status='OWNER_COMPLETED'
+ AND (s.cover_file_ref IS NULL OR EXISTS(SELECT 1 FROM cg19_stored_file f JOIN cg19_upload_intent i ON i.id=f.upload_intent_id AND i.realm_id=f.realm_id WHERE f.id=s.cover_file_ref AND f.realm_id=s.root_realm_id AND f.project_id=s.project_id AND f.proposal_revision=s.project_version AND f.revision=s.cover_file_version AND f.owner_kind='CG05_PROJECT' AND f.scan_status='CLEAN_VERIFIED' AND f.revoked_at IS NULL AND i.status='VALIDATED'))
+ AND (p.branch_ref IS NULL OR EXISTS(SELECT 1 FROM branch b WHERE b.root_realm_id=p.root_realm_id AND b.id=p.branch_ref AND b.status='ACTIVE'))
+ AND EXISTS(SELECT 1 FROM account a JOIN account_role ar ON ar.account_id=a.id AND ar.realm_id=a.realm_id AND ar.revoked_at IS NULL JOIN role r ON r.id=ar.role_id AND r.realm_id=a.realm_id AND r.active
+ WHERE a.id=s.submitted_by AND a.realm_id=s.root_realm_id AND a.status='ACTIVE' AND (r.is_protected OR EXISTS(SELECT 1 FROM role_grant g WHERE g.role_id=r.id AND g.capability_key='projects.manage'))
+ AND EXISTS(SELECT 1 FROM account_role vr JOIN role rr ON rr.id=vr.role_id AND rr.realm_id=vr.realm_id AND rr.active WHERE vr.account_id=a.id AND vr.realm_id=a.realm_id AND vr.revoked_at IS NULL AND (rr.is_protected OR EXISTS(SELECT 1 FROM role_grant vg WHERE vg.role_id=rr.id AND vg.capability_key='projects.view')))
+ AND (s.cover_file_ref IS NULL OR EXISTS(SELECT 1 FROM account_role dr JOIN role rr ON rr.id=dr.role_id AND rr.realm_id=a.realm_id AND rr.active WHERE dr.account_id=a.id AND dr.realm_id=a.realm_id AND dr.revoked_at IS NULL AND (rr.is_protected OR EXISTS(SELECT 1 FROM role_grant dg WHERE dg.role_id=rr.id AND dg.capability_key='documents.files.view'))))
+ AND (p.branch_ref IS NOT NULL AND EXISTS(SELECT 1 FROM branch b WHERE b.root_realm_id=p.root_realm_id AND b.id=p.branch_ref AND b.manager_account_ref=a.id) OR r.is_protected OR EXISTS(SELECT 1 FROM role_grant g WHERE g.role_id=r.id AND g.capability_key='foundation.branches.admin')))
+ AND EXISTS(SELECT 1 FROM cg03_case_decision d JOIN account a ON a.id=d.actor_id AND a.realm_id=d.realm_id AND a.status='ACTIVE' JOIN account_role ar ON ar.account_id=a.id AND ar.realm_id=a.realm_id AND ar.revoked_at IS NULL JOIN role r ON r.id=ar.role_id AND r.realm_id=a.realm_id AND r.active AND r.is_protected WHERE d.case_id=c.id AND d.realm_id=c.realm_id AND d.action='APPROVE' AND d.actor_id<>c.proposer_id AND d.fresh_password_verified_at IS NOT NULL)
+`;
+type Source={sourceRef:string;slug:string;title:string;category:string;summary:string;area:string;launch:string|null;status:string;coverSrc:string|null};
+export async function eligibleProjectSources(db:Pool|PoolClient,root:string,refs?:string[]){
+ const query=await db.query<Source>('SELECT s.id AS "sourceRef",lower(regexp_replace(s.title,\'[^a-zA-Z0-9]+\',\'-\',\'g\'))||\'-\'||substring(md5(s.id::text) for 12) AS slug,s.title,s.category,s.safe_summary AS summary,s.general_area AS area,s.planned_launch::text AS launch,s.project_status AS status,CASE WHEN s.cover_file_ref IS NOT NULL THEN \'/api/public/content/media/\'||s.cover_file_ref::text END AS "coverSrc"'+current+(refs?' AND s.id=ANY($2::uuid[])':'')+' ORDER BY s.submitted_at DESC,s.id DESC LIMIT 100',refs?[root,refs]:[root]);
+ return query.rows;
+}
+const uuid=/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i;
+export function projectTeaserRefs(raw:unknown):string[]{
+ if(!Array.isArray(raw)||raw.length>12||raw.some(x=>typeof x!=="string"||!uuid.test(x))||new Set(raw.map(x=>typeof x==="string"?x.toLowerCase():x)).size!==raw.length)throw new BadRequestException({code:"CMS_PROJECT_SOURCE_INVALID",field:"sourceRefs"});
+ return (raw as string[]).map(x=>x.toLowerCase());
+}
+export async function validateProjectTeaser(db:PoolClient,root:string,fields:Record<string,unknown>){
+ const refs=projectTeaserRefs(fields.sourceRefs??[]);
+ if(refs.length&&(await eligibleProjectSources(db,root,refs)).length!==refs.length)throw new BadRequestException({code:"CMS_PROJECT_SOURCE_UNAVAILABLE",field:"sourceRefs"});
+}
+export async function projectTeaserRevisionEligible(db:Pool|PoolClient,root:string,revision:string){
+ const q=await db.query<{structured_fields:Record<string,unknown>}>("SELECT structured_fields FROM cms_section_revision WHERE foundation_root_id=$1 AND page_revision_id=$2 AND section_kind='PROJECT_TEASER'",[root,revision]);
+ for(const row of q.rows){const refs=projectTeaserRefs(row.structured_fields.sourceRefs??[]);if(refs.length&&(await eligibleProjectSources(db,root,refs)).length!==refs.length)return false;}
+ return true;
+}
+/** Called on every actual published response; revoked/stale cards disappear
+ * without returning an eligibility UUID or fetching private project fields. */
+export async function publicProjectTeaser(db:Pool|PoolClient,root:string,fields:Record<string,unknown>){
+ const refs=projectTeaserRefs(fields.sourceRefs??[]),sources=refs.length?await eligibleProjectSources(db,root,refs):[];
+ const byId=new Map(sources.map(s=>[s.sourceRef,s]));
+ return {heading:typeof fields.heading==="string"?fields.heading:"Projects",cards:refs.flatMap(id=>{const s=byId.get(id);if(!s)return [];const {sourceRef,...safe}=s;return [safe];})};
+}
+
+/** Anonymous bytes lookup: the exact consented file must still be referenced by
+ * an effective, original CMS placement. Never publish on eligibility alone. */
+export async function publishedProjectCover(db:Pool|PoolClient,fileRef:string){
+ if(!uuid.test(fileRef))return null;
+ const q=await db.query<{object_key:string;object_version:string;original_mime:string;verified_sha256:string;verified_size_bytes:string;revision:number}>(`
+ SELECT f.object_key,f.object_version,f.original_mime,f.verified_sha256,f.verified_size_bytes::text,f.revision
+ FROM cg19_stored_file f JOIN project_public_eligibility pe ON pe.cover_file_ref=f.id AND pe.root_realm_id=f.realm_id AND pe.project_id=f.project_id AND pe.project_version=f.proposal_revision AND pe.cover_file_version=f.revision
+ JOIN access_realm root ON root.id=f.realm_id AND root.realm_key='FOUNDATION_ROOT'
+ WHERE f.id=$1 AND f.owner_kind='CG05_PROJECT' AND f.original_mime IN('image/jpeg','image/png','image/webp')
+ AND f.scan_status='CLEAN_VERIFIED' AND f.revoked_at IS NULL
+ AND EXISTS(SELECT 1 ${current.replace("s.root_realm_id=$1","s.root_realm_id=pe.root_realm_id")} AND s.id=pe.id)
+ AND EXISTS(SELECT 1 FROM cms_page page JOIN cms_page_effective e ON e.page_id=page.id AND e.foundation_root_id=page.foundation_root_id
+ JOIN cms_publication pub ON pub.id=e.publication_id AND pub.foundation_root_id=e.foundation_root_id AND pub.page_id=page.id
+ JOIN cms_section_revision sec ON sec.page_revision_id=pub.page_revision_id AND sec.foundation_root_id=pub.foundation_root_id
+ WHERE page.foundation_root_id=pe.root_realm_id AND page.kind IN('HOME','ABOUT') AND page.archived_at IS NULL AND pub.state='EFFECTIVE'
+ AND pub.effective_at<=now() AND (pub.expires_at IS NULL OR pub.expires_at>now())
+ AND sec.section_kind='PROJECT_TEASER' AND (sec.structured_fields->'sourceRefs') ? pe.id::text)
+ LIMIT 1`,[fileRef]);
+ return q.rows[0]??null;
+}

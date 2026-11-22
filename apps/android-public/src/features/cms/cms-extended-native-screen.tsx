@@ -217,17 +217,22 @@ export function CmsPublicExtendedSection({section,assets,mediaUrl,onContact,
    </View>;
   })}
  </View>;
- if(section.kind==="ARTICLE_BODY")return <View style={styles.section}>
+ if(section.kind==="ARTICLE_BODY"){
+ const event=f.event&&typeof f.event==="object"?f.event as Fields:null;
+ const cover=event&&/^\/api\/public\/content\/media\/[a-f0-9-]{36}$/i.test(text(event.coverSrc))?mediaUrl({role:"ARTICLE",order:0,altText:text(f.heading),src:text(event.coverSrc)}):null;
+ const stamp=(v:unknown)=>typeof v==="string"&&Number.isFinite(Date.parse(v))?new Date(v).toLocaleString("en-IN",{timeZone:"Asia/Kolkata"}):"";
+ return <View style={styles.section}>
   <Text style={styles.eyebrow}>{text(f.category)}</Text>
   <Text accessibilityRole="header" style={styles.title}>{text(f.heading)}</Text>
   <Text style={styles.body}>{text(f.excerpt)}</Text>
   <Text style={styles.source}>Source: {text(f.source)} · {text(f.asOfDate)}
    {"\n"}Editorial credit: {text(f.authorLabel)}</Text>
-  {picture("ARTICLE",0)}
+  {event&&<><Text style={styles.body}>{text(event.status)==="SCHEDULED"?"Scheduled":text(event.status)==="ONGOING"?"Ongoing":"Completed"} · {text(event.area)}</Text><Text style={styles.source}>{stamp(event.scheduledStart)} – {stamp(event.scheduledEnd)} IST</Text>{!!cover&&<Image style={styles.photo} source={{uri:cover}} accessibilityLabel={text(f.heading)} resizeMode="cover"/>}</>}
+  {!event&&picture("ARTICLE",0)}
   <Text style={styles.body}>{text(f.body)}</Text>
   {Array.isArray(f.tags)&&<Text style={styles.source}>{f.tags.map(text).join(" · ")}</Text>}
   <Action title={backLabel} onPress={onBackToNews}/>
- </View>;
+ </View>;}
  if(section.kind==="CONTACT_INFO"){
   const permitted=(value:unknown,hosts:string[])=>{
    try{
