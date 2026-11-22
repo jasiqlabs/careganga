@@ -119,7 +119,7 @@ export class DonationIntentsService{
   // existing truthful status rather than retrying or inventing payment.
   await this.online.refreshDonorStatus(token).catch(()=>undefined);
   const q=await this.db.query<{source_status:string;amount_minor:string;currency:string;
-   created_at:Date;refunded_minor:string;receipt_status:string;attempt_status:string|null}>(`
+   created_at:Date;refunded_minor:string;pending_refund_minor:string;receipt_status:string;attempt_status:string|null}>(`
     SELECT d.source_status,d.amount_minor::text,d.currency,d.created_at,
       (SELECT a.status FROM donation_payment_attempt a
        WHERE a.root_realm_id=d.root_realm_id AND a.donation_id=d.id AND a.method='ONLINE'
@@ -129,6 +129,9 @@ export class DonationIntentsService{
         WHERE r.root_realm_id=d.root_realm_id AND r.donation_id=d.id
         AND r.status='FINANCE_REVERSED' AND j.status='POSTED'
         AND j.source_ref=r.id),0)::text AS refunded_minor,
+      coalesce((SELECT sum(r.amount_minor) FROM donation_refund_request r
+       WHERE r.root_realm_id=d.root_realm_id AND r.donation_id=d.id AND r.status='REQUESTED'),0)::text
+       AS pending_refund_minor,
       coalesce((SELECT rec.status FROM cg19_donation_receipt_document rec
         WHERE rec.root_realm_id=d.root_realm_id AND rec.donation_id=d.id),'NOT_ISSUED')
         AS receipt_status
@@ -138,12 +141,15 @@ export class DonationIntentsService{
   const row=q.rows[0];
   if(!row)throw new NotFoundException("Donation status proof expired or unavailable.");
   const gross=BigInt(row.amount_minor),refunded=BigInt(row.refunded_minor);
+  const pendingRefund=BigInt(row.pending_refund_minor);
   const posted=row.source_status==="RECEIVED_POSTED",net=posted?gross-refunded:0n;
   const uncertain=!posted&&row.source_status==="REQUESTED"&&row.attempt_status==="OUTCOME_UNKNOWN";
   const awaitingFinance=!posted&&row.source_status==="VERIFIED_EXTERNAL";
   return {status:(uncertain||awaitingFinance)?"RECONCILIATION_PENDING":!posted?row.source_status:refunded===0n?row.source_status:
     net===0n?"REFUNDED_FULL":"REFUNDED_PARTIAL",
-   amountMinor:row.amount_minor,refundedMinor:row.refunded_minor,netReceivedMinor:net.toString(),
+   amountMinor:row.amount_minor,refundedMinor:row.refunded_minor,
+   refundPendingMinor:pendingRefund.toString(),refundPending:pendingRefund>0n,
+   netReceivedMinor:net.toString(),
    receiptStatus:row.receipt_status,currency:row.currency,received:posted,
    createdAt:row.created_at.toISOString(),
    message:posted?"Confirmed finance received; refunds and issued receipts are separately verified.":
