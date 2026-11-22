@@ -29,7 +29,7 @@ export function VolunteerOwnCard({current}:{current:string}){
    data?.items.length?data.items.map(v=><div key={v.cardRef} className="cg04-buttons">
     <strong>{read(v.status)} · Issue {v.revision}</strong>
     {v.canDownload&&<a href={base+"/cards/"+v.cardRef+"/download">Download my issued official PDF privately</a>}
-    {!v.canDownload&&<span>Document is not currently issued; no public verification is available.</span>}
+    {!v.canDownload&&<span>{v.status==="ISSUED"?"This previously issued card no longer confirms current eligibility. Please contact the Foundation.":"Document is not currently issued; no public verification is available."}</span>}
    </div>):<p>No official volunteer card has been issued.</p>}
   <button type="button" onClick={()=>setNonce(x=>x+1)}>Refresh original card status</button>
  </section>;
