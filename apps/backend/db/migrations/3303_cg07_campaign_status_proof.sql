@@ -57,9 +57,9 @@ BEGIN
        ELSE NEW.source_status END)
   THEN RAISE EXCEPTION 'Campaign status requires verified CG03 decision'; END IF;
   IF (NEW.title,NEW.category,NEW.branch_ref,NEW.project_source_ref,NEW.event_source_ref,
-      NEW.goal_minor,NEW.currency,NEW.start_at,NEW.end_at) IS DISTINCT FROM
+      NEW.volunteer_source_ref,NEW.goal_minor,NEW.currency,NEW.start_at,NEW.end_at) IS DISTINCT FROM
      (OLD.title,OLD.category,OLD.branch_ref,OLD.project_source_ref,OLD.event_source_ref,
-      OLD.goal_minor,OLD.currency,OLD.start_at,OLD.end_at)
+      OLD.volunteer_source_ref,OLD.goal_minor,OLD.currency,OLD.start_at,OLD.end_at)
   THEN RAISE EXCEPTION 'Protected campaign decision cannot rewrite approved source'; END IF;
  ELSE
   RAISE EXCEPTION 'Campaign lifecycle change has no original owner route';
