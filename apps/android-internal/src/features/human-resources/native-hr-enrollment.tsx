@@ -64,7 +64,7 @@ export function NativeHrEnrollment({token,canView,canManage,canReview,canViewEmp
   designation:string;employmentType:string;branch:string;department:string|null;
   manager:string|null;status:string;effectiveFrom:string;effectiveTo:string|null}|null>(null);
  const [detailBusy,setDetailBusy]=useState(false);
- const [headcounts,setHeadcounts]=useState<{total:number;statuses:Record<string,number>}|null>(null);
+ const [headcounts,setHeadcounts]=useState<{total:number;statuses:Record<string,number>;newJoinersThisMonth:number;attendance:{onApprovedLeaveToday:number;employeesWithPendingLeave:number}|null}|null>(null);
  const [empBranches,setEmpBranches]=useState<Option[]>([]);
  const [empDepartments,setEmpDepartments]=useState<Option[]>([]);
  const [empFilter,setEmpFilter]=useState({q:"",status:"ALL",branch:"",department:""});
@@ -283,9 +283,9 @@ export function NativeHrEnrollment({token,canView,canManage,canReview,canViewEmp
   try{
    const value=await api(token,"summary");
    if(!value||typeof value!=="object"||!("statuses" in value)||
-    !("total" in value)||typeof value.total!=="number")
+    !("total" in value)||typeof value.total!=="number"||!("newJoinersThisMonth" in value)||typeof value.newJoinersThisMonth!=="number"||!("attendance" in value))
     throw Error("Original employee summary unavailable.");
-   setHeadcounts(value as {total:number;statuses:Record<string,number>});
+   setHeadcounts(value as {total:number;statuses:Record<string,number>;newJoinersThisMonth:number;attendance:{onApprovedLeaveToday:number;employeesWithPendingLeave:number}|null});
   }catch(e){setHeadcounts(null);failure(e);}
  };
  const loadStaff=async(page=0)=>{
@@ -511,6 +511,9 @@ export function NativeHrEnrollment({token,canView,canManage,canReview,canViewEmp
      {Object.entries(headcounts.statuses).map(([key,value])=>
        <Text key={key} style={styles.muted}>{title(key)}: {value}</Text>)}
      <Text style={styles.label}>Total: {headcounts.total}</Text>
+     <Text style={styles.label}>New joiners this month: {headcounts.newJoinersThisMonth}</Text>
+     {headcounts.attendance&&<><Text style={styles.muted}>On approved leave today: {headcounts.attendance.onApprovedLeaveToday}</Text>
+      <Text style={styles.muted}>Employees with pending leave: {headcounts.attendance.employeesWithPendingLeave}</Text></>}
     </View>}
     {field("Search employees",empFilter.q,
       v=>setEmpFilter(x=>({...x,q:v.slice(0,80)})),"Name or designation")}

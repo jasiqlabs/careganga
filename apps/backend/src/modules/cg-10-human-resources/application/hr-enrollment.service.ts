@@ -785,30 +785,63 @@ export class HrEnrollmentService{
   * public HR export. Current CG01+branch access is checked in the query.
   */
  async employeeSummary(token:string){
-  const actor=await this.sessions.requireAction(token,"hr.employees.view");
-  const r=await this.db.query<{status:string;quantity:string}>(
-   "SELECT e.status,COUNT(*)::text AS quantity FROM hr_employee e "+
-   "JOIN LATERAL (SELECT a.branch_ref FROM hr_employment_assignment a "+
-   "WHERE a.employee_id=e.id AND a.root_realm_id=e.root_realm_id "+
-   "ORDER BY CASE WHEN a.valid_from<=CURRENT_DATE AND "+
-   "(a.valid_to IS NULL OR a.valid_to>CURRENT_DATE) "+
-   "THEN 0 ELSE 1 END,a.valid_from DESC,a.id DESC LIMIT 1) assignment ON true "+
-   "JOIN branch b ON b.id=assignment.branch_ref AND b.root_realm_id=e.root_realm_id "+
-   "WHERE e.root_realm_id=$1 AND (b.manager_account_ref=$2 OR EXISTS("+
-   "SELECT 1 FROM account_role ar JOIN role role_now ON role_now.id=ar.role_id "+
-   "AND role_now.realm_id=ar.realm_id AND role_now.active "+
-   "LEFT JOIN role_grant grant_row ON grant_row.role_id=role_now.id "+
-   "AND grant_row.capability_key='foundation.branches.admin' "+
-   "WHERE ar.account_id=$2 AND ar.realm_id=$1 AND ar.revoked_at IS NULL "+
-   "AND (role_now.is_protected OR grant_row.capability_key IS NOT NULL))) "+
-   "GROUP BY e.status",
-   [actor.realmId,actor.accountId]);
-  const statuses=["ACTIVE","PROBATION","PENDING_ACCESS","ON_HOLD","EXITED"] as const;
-  const counts=Object.fromEntries(statuses.map(k=>[k,0])) as Record<typeof statuses[number],number>;
-  for(const row of r.rows){
-   if(row.status in counts)counts[row.status as keyof typeof counts]=Number(row.quantity);
-  }
-  return {total:Object.values(counts).reduce((x,y)=>x+y,0),statuses:counts};
+  const actor=await this.sessions.requireAction(token,"hr.employees.view"),tx=await this.db.connect();
+  try{
+   await tx.query("BEGIN");
+   await this.identity.assertCurrent(tx,actor,"hr.employees.view");
+   let attendanceVisible=true;
+   try{await this.identity.assertCurrent(tx,actor,"hr.attendance.view");}catch(e){
+    if(!(e instanceof ForbiddenException))throw e;
+    attendanceVisible=false;
+   }
+   const r=await tx.query<{status:string;quantity:string;new_joiners:string;on_leave:string;pending_leave:string}>(
+    `WITH scoped AS (
+     SELECT e.id,e.root_realm_id,e.status,app.hire_date,assignment.branch_ref,
+      (b.status='ACTIVE' AND assignment.valid_from<=CURRENT_DATE AND
+       (assignment.valid_to IS NULL OR assignment.valid_to>CURRENT_DATE)) AS current_assignment
+     FROM hr_employee e
+     JOIN hr_employee_application app ON app.id=e.application_id AND app.root_realm_id=e.root_realm_id
+     JOIN LATERAL (SELECT a.branch_ref,a.valid_from,a.valid_to FROM hr_employment_assignment a
+      WHERE a.employee_id=e.id AND a.root_realm_id=e.root_realm_id
+      ORDER BY CASE WHEN a.valid_from<=CURRENT_DATE AND (a.valid_to IS NULL OR a.valid_to>CURRENT_DATE)
+       THEN 0 ELSE 1 END,a.valid_from DESC,a.id DESC LIMIT 1) assignment ON true
+     JOIN branch b ON b.id=assignment.branch_ref AND b.root_realm_id=e.root_realm_id
+     WHERE e.root_realm_id=$1 AND (b.manager_account_ref=$2 OR EXISTS(
+      SELECT 1 FROM account_role ar JOIN role role_now ON role_now.id=ar.role_id
+      AND role_now.realm_id=ar.realm_id AND role_now.active
+      LEFT JOIN role_grant grant_row ON grant_row.role_id=role_now.id
+      AND grant_row.capability_key='foundation.branches.admin'
+      WHERE ar.account_id=$2 AND ar.realm_id=$1 AND ar.revoked_at IS NULL
+      AND (role_now.is_protected OR grant_row.capability_key IS NOT NULL)))
+    )
+    SELECT e.status,COUNT(*)::text AS quantity,
+     COUNT(*) FILTER(WHERE e.current_assignment AND e.status IN('ACTIVE','PROBATION')
+      AND e.hire_date>=date_trunc('month',CURRENT_DATE::timestamp)::date AND e.hire_date<=CURRENT_DATE)::text AS new_joiners,
+     COUNT(*) FILTER(WHERE $3::boolean AND e.current_assignment AND e.status IN('ACTIVE','PROBATION')
+      AND EXISTS(SELECT 1 FROM hr_attendance_day d
+       JOIN hr_shift_policy sp ON sp.id=d.policy_id AND sp.root_realm_id=d.root_realm_id AND sp.branch_ref=e.branch_ref
+       JOIN hr_leave_request lr ON lr.id=d.leave_request_id AND lr.root_realm_id=d.root_realm_id AND lr.employee_id=e.id AND lr.status='APPROVED'
+       WHERE d.root_realm_id=e.root_realm_id AND d.employee_id=e.id AND d.leave_half_days>0
+        AND d.local_date=(CURRENT_TIMESTAMP AT TIME ZONE sp.time_zone)::date))::text AS on_leave,
+     COUNT(*) FILTER(WHERE $3::boolean AND e.current_assignment AND e.status IN('ACTIVE','PROBATION')
+      AND EXISTS(SELECT 1 FROM hr_leave_request lr JOIN hr_employment_assignment a
+       ON a.id=lr.assignment_id AND a.root_realm_id=lr.root_realm_id AND a.employee_id=lr.employee_id
+       WHERE lr.root_realm_id=e.root_realm_id AND lr.employee_id=e.id AND a.branch_ref=e.branch_ref
+        AND lr.status='SUBMITTED'))::text AS pending_leave
+    FROM scoped e GROUP BY e.status`,
+    [actor.realmId,actor.accountId,attendanceVisible]);
+   const statuses=["ACTIVE","PROBATION","PENDING_ACCESS","ON_HOLD","EXITED"] as const;
+   const counts=Object.fromEntries(statuses.map(k=>[k,0])) as Record<typeof statuses[number],number>;
+   let newJoinersThisMonth=0,onApprovedLeaveToday=0,employeesWithPendingLeave=0;
+   for(const row of r.rows){
+    if(row.status in counts)counts[row.status as keyof typeof counts]=Number(row.quantity);
+    newJoinersThisMonth+=Number(row.new_joiners);onApprovedLeaveToday+=Number(row.on_leave);
+    employeesWithPendingLeave+=Number(row.pending_leave);
+   }
+   await tx.query("COMMIT");
+   return {total:Object.values(counts).reduce((x,y)=>x+y,0),statuses:counts,newJoinersThisMonth,
+    attendance:attendanceVisible?{onApprovedLeaveToday,employeesWithPendingLeave}:null};
+  }catch(e){await tx.query("ROLLBACK");throw e;}finally{tx.release();}
  }
 
  async employeeDirectory(token:string,offsetInput:unknown,branchInput?:unknown,

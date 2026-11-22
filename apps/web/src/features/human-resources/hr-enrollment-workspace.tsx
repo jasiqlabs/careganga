@@ -65,7 +65,7 @@ export function HrEnrollmentWorkspace({canViewApps,canManage,canViewEmployees,ca
   employmentType:string;branch:string;department:string|null;manager:string|null;
   status:string;effectiveFrom:string;effectiveTo:string|null}|null>(null);
  const [detailBusy,setDetailBusy]=useState(false);
- const [headcounts,setHeadcounts]=useState<{total:number;statuses:Record<string,number>}|null>(null);
+ const [headcounts,setHeadcounts]=useState<{total:number;statuses:Record<string,number>;newJoinersThisMonth:number;attendance:{onApprovedLeaveToday:number;employeesWithPendingLeave:number}|null}|null>(null);
  const [empBranches,setEmpBranches]=useState<Choice[]>([]);
  const [empDepartments,setEmpDepartments]=useState<Choice[]>([]);
  const [empFilter,setEmpFilter]=useState({q:"",status:"ALL",branch:"",department:""});
@@ -203,9 +203,9 @@ export function HrEnrollmentWorkspace({canViewApps,canManage,canViewEmployees,ca
   try{
    const value=await request("summary");
    if(!value||typeof value!=="object"||!("statuses" in value)||
-    !("total" in value)||typeof value.total!=="number")
+    !("total" in value)||typeof value.total!=="number"||!("newJoinersThisMonth" in value)||typeof value.newJoinersThisMonth!=="number"||!("attendance" in value))
     throw Error("Approved staff summary unavailable.");
-   setHeadcounts(value as {total:number;statuses:Record<string,number>});
+   setHeadcounts(value as {total:number;statuses:Record<string,number>;newJoinersThisMonth:number;attendance:{onApprovedLeaveToday:number;employeesWithPendingLeave:number}|null});
   }catch(e){setHeadcounts(null);
     setStaffError(e instanceof Error?e.message:
       "Approved employee headcounts cannot be confirmed.");}
@@ -441,6 +441,9 @@ export function HrEnrollmentWorkspace({canViewApps,canManage,canViewEmployees,ca
        <strong>{count}</strong> {key.replaceAll("_"," ").toLowerCase()}
       </span>)}
      <strong style={{padding:9}}>Total {headcounts.total}</strong>
+     <span style={{padding:9}}>New joiners this month: <strong>{headcounts.newJoinersThisMonth}</strong></span>
+     {headcounts.attendance&&<><span style={{padding:9}}>On approved leave today: <strong>{headcounts.attendance.onApprovedLeaveToday}</strong></span>
+      <span style={{padding:9}}>Employees with pending leave: <strong>{headcounts.attendance.employeesWithPendingLeave}</strong></span></>}
     </div>}
     <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(175px,1fr))",
       gap:10,margin:"12px 0"}}>

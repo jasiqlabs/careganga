@@ -101,3 +101,7 @@ CREATE TABLE hr_attendance_event(
 CREATE INDEX ix_hr_attendance_event_day ON hr_attendance_event(root_realm_id,attendance_day_id,created_at);
 CREATE TRIGGER cg10_attendance_event_immutable
  BEFORE UPDATE OR DELETE ON hr_attendance_event FOR EACH ROW EXECUTE FUNCTION cg03_immutable();
+
+-- Shift rule values are immutable once pinned to an attendance record; new rules insert a new row.
+CREATE TRIGGER cg10_shift_policy_immutable BEFORE UPDATE OR DELETE ON hr_shift_policy
+ FOR EACH ROW EXECUTE FUNCTION cg03_immutable();
