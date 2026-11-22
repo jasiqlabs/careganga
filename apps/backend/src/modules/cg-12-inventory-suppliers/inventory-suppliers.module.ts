@@ -10,5 +10,7 @@ import {InventoryMaterialService} from './application/inventory-material.service
 import {InventoryMaterialController} from './http/inventory-material.controller';
 import {InventoryOperationService} from "./application/inventory-operation.service";
 import {InventoryOperationController} from "./http/inventory-operation.controller";
-@Module({imports:[RegistrationApprovalsModule,IdentityAccessModule,InventorySourceModule,DocumentsNotificationsModule],providers:[InventoryOperationService,InventoryStockService,InventoryMaterialService],controllers:[InventoryOperationController,InventoryCatalogController,InventoryStockController,InventoryMaterialController]})
+import {InventoryReportService} from "./application/inventory-report.service";
+import {InventoryReportController} from "./http/inventory-report.controller";
+@Module({imports:[RegistrationApprovalsModule,IdentityAccessModule,InventorySourceModule,DocumentsNotificationsModule],providers:[InventoryReportService,InventoryOperationService,InventoryStockService,InventoryMaterialService],controllers:[InventoryReportController,InventoryOperationController,InventoryCatalogController,InventoryStockController,InventoryMaterialController]})
 export class InventorySuppliersModule {}
