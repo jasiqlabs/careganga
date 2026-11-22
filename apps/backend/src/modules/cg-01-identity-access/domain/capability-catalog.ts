@@ -8,6 +8,9 @@ export type Capability = Readonly<{
 }>;
 const capabilities:readonly Capability[]=Object.freeze([
   {key:"membership.applications.review",businessLabel:"Review protected membership applications",group:"Membership",assignable:false,sensitive:true},
+  {key:"volunteers.applications.review",businessLabel:"Review protected volunteer applications",group:"Volunteers",assignable:false,sensitive:true},
+  {key:"volunteers.view",businessLabel:"View authorized volunteer roster",group:"Volunteers",assignable:true,sensitive:true},
+  {key:"volunteers.export",businessLabel:"Export authorized volunteer roster",group:"Volunteers",assignable:true,sensitive:true},
   {key:"membership.members.view",businessLabel:"View approved membership roster",group:"Membership",assignable:true,sensitive:true},
   {key:"membership.members.export",businessLabel:"Export scoped approved member roster",group:"Membership",assignable:true,sensitive:true},
   {key:"membership.documents.issue",businessLabel:"Approve and issue authentic Foundation membership documents",group:"Membership",assignable:false,sensitive:true},
