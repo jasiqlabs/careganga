@@ -9,6 +9,7 @@ import {NativeCommunityAuth} from "./native-community-auth";
 import {NativeMemberApplication} from "./native-member-application";
 import {NativeMemberProof} from "./native-member-proof";
 const KEY="cg_public_community_membership_session";
+const rupees=(minor:string)=>{if(!/^[0-9]{1,15}$/.test(minor))return "Fee unavailable";const n=BigInt(minor),p=(n%100n).toString().padStart(2,"0");return "₹"+(n/100n).toString()+(p==="00"?"":"."+p);};
 type Pending={path:string;body:Record<string,unknown>};
 export function NativeMemberSelf({onExit,initialPlan}:{onExit:()=>void;initialPlan?:string|null}){
  const [token,setToken]=useState<string|null>(null),[verified,setVerified]=useState(false),[loading,setLoading]=useState(true),[busy,setBusy]=useState(false);
@@ -35,7 +36,7 @@ export function NativeMemberSelf({onExit,initialPlan}:{onExit:()=>void;initialPl
  })();return()=>{active=false;sequence.current++;};},[refresh]);
  useEffect(()=>{const sub=BackHandler.addEventListener("hardwareBackPress",()=>{onExit();return true;});return()=>sub.remove();},[onExit]);
  useEffect(()=>{const sub=AppState.addEventListener("change",state=>{
-  if(state!=="active"){setApps([]);setMember(null);setFee(null);return;}
+  if(state!=="active"){setApps([]);setSelected(null);setMember(null);setFee(null);setVerified(false);return;}
   if(token)void refresh(token).catch(()=>setMessage("Private membership status unavailable. Retry when connected."));
  });return()=>sub.remove();},[token,refresh]);
  useEffect(()=>{if(!selected||!token||!verified){setFee(null);return;}let active=true;
@@ -74,7 +75,7 @@ export function NativeMemberSelf({onExit,initialPlan}:{onExit:()=>void;initialPl
  <View style={s.card}><Text style={s.heading}>Current membership</Text><Text>{member?member.memberNumber+" · "+member.plan+" · "+member.status:"No approved member yet."}</Text>{member&&<Text>Validity: {member.startsOn} to {member.expiresOn??"Lifetime"}</Text>}</View>
  <View style={s.card}><Text style={s.heading}>My applications</Text>{apps.map(a=>button(a.applicationNumber+" · "+a.status,()=>setSelected(a)))}{button("New membership / renewal",()=>setSelected(null),apps.some(a=>["DRAFT","RETURNED","SUBMITTED"].includes(a.status)))}</View>
  {(!selected||["DRAFT","RETURNED"].includes(selected.status))&&<NativeMemberApplication token={token} application={selected} initialPlan={initialPlan} plans={plans} onSaved={()=>refresh(token)}/>}
- {selected&&<View style={s.card}><Text style={s.heading}>{selected.applicationNumber}</Text><Text>Status: {selected.status} · {selected.plan}</Text><Text>Accepted fee: ₹{(BigInt(selected.feeMinor)/100n).toString()} (INR)</Text>
+ {selected&&<View style={s.card}><Text style={s.heading}>{selected.applicationNumber}</Text><Text>Status: {selected.status} · {selected.plan}</Text><Text>Accepted fee: {rupees(selected.feeMinor)}</Text>
  {!!selected.reviewReference&&<Text>Review {selected.reviewReference} · {selected.reviewStatus}</Text>}{!!selected.reviewRemarks&&<Text>Reviewer notes: {selected.reviewRemarks}</Text>}
  <Text>Payment: {fee?.paymentStatus.replaceAll("_"," ")??"Not confirmed"}. A posted bank entry is not verified payment.</Text>
  {["DRAFT","RETURNED"].includes(selected.status)&&<><NativeMemberProof token={token} applicationRef={selected.ref} version={selected.version} editable onChange={()=>void refresh(token)}/>{button("Submit for review",()=>action("submit"))}{button("Cancel draft",()=>action("cancel"))}</>}
