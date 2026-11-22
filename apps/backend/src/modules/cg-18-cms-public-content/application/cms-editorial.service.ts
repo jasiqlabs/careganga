@@ -126,7 +126,8 @@ function parseContent(raw:unknown):Content{
     (kind==="ARTICLE"&&(Object.values(fixed).includes(slug)||POLICY_SLUGS.has(slug)))||
     (kind==="POLICY"&&!POLICY_SLUGS.has(slug)))
   throw new BadRequestException({code:"CMS_INPUT_INVALID",field:"slug"});
- const title=text(v.title,"title",180,3);
+ const hasEvent=kind==="ARTICLE"&&Array.isArray(v.sections)&&v.sections.some(s=>s&&typeof s==="object"&&s.kind==="ARTICLE_BODY"&&s.fields&&typeof s.fields==="object"&&typeof s.fields.sourceEventRef==="string");
+ const title=text(v.title,"title",180,hasEvent?2:3);
  const seoTitle=text(v.seoTitle??v.title,"seoTitle",180,3);
  const seoDescription=text(v.seoDescription??"","seoDescription",300);
  const expectedPath=kind==="HOME"?"/":kind==="ABOUT"?"/about":
@@ -547,6 +548,13 @@ export class CmsEditorialService{
     throw new ConflictException({code:"CMS_SOURCE_CHANGED"});
    let current=await this.revision(tx,actor,page),revisionRef=current.id,
     revisionNo=page.draft_revision_no;
+   if(page.kind==="ARTICLE"){
+    const priorEvent=await tx.query<{activity_id:string}>("SELECT e.activity_id FROM cms_section_revision s JOIN cms_page_revision v ON v.id=s.page_revision_id AND v.foundation_root_id=s.foundation_root_id JOIN event_public_eligibility e ON e.root_realm_id=s.foundation_root_id AND e.id::text=s.structured_fields->>'sourceEventRef' WHERE v.foundation_root_id=$1 AND v.page_id=$2 AND s.section_kind='ARTICLE_BODY' LIMIT 1",[actor.realmId,page.id]);
+    if(priorEvent.rows[0]){
+     const next=value.sections.find(s=>s.kind==="ARTICLE_BODY")?.fields.sourceEventRef;
+     if(typeof next!=="string"||!(await tx.query("SELECT 1 FROM event_public_eligibility WHERE root_realm_id=$1 AND id::text=$2 AND activity_id=$3",[actor.realmId,next,priorEvent.rows[0].activity_id])).rowCount)throw new ConflictException({code:"CMS_PROJECT_SOURCE_UNAVAILABLE"});
+    }
+   }
    if(current.status!=="DRAFT"){
     revisionNo++;
     const rev=await tx.query<{id:string}>(
