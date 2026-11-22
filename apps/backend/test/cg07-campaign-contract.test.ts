@@ -89,8 +89,48 @@ test("US001-QA02/03/04/05/06/20: same owner source on guarded backend, Web and I
  assert.match(bff,/req.headers.get\("origin"\)!==req.nextUrl.origin/);
  assert.match(bff,/\["q","stateRef","branchRef"\]/);
  assert.match(web,/Current active project/);
- assert.match(web,/Submit for Verification \(not yet available\)/);
+ assert.match(web,/Submit for Verification/);
+ assert.match(web,/submitForReview/);
  assert.match(mobile,/Current active project/);
- assert.match(mobile,/Submit for Verification \(not available\)/);
+ assert.match(mobile,/Submit for Verification/);
+ assert.match(mobile,/submitForReview/);
  assert.doesNotMatch(service,/INSERT INTO finance_journal|INSERT INTO donation|PUBLISHED' RETURNING/);
+});
+
+test("US001-QA11/12/19: original CG03 campaign launch keeps review snapshot, case and decision and separate publication",()=>{
+ const sql=root("apps/backend/db/migrations/3302_cg07_original_cg03_campaign_review.sql");
+ const owner=root("apps/backend/src/modules/cg-03-registration-approvals/application/campaign-review.service.ts");
+ const source=root("apps/backend/src/modules/cg-07-campaigns-donations/application/campaign-drafts.service.ts");
+ const controller=root("apps/backend/src/modules/cg-03-registration-approvals/http/campaign-review.controller.ts");
+ for(const clause of ["campaign_review_snapshot","cg03_campaign_process_current",
+  "CAMPAIGN_LAUNCH","cg03_campaign_case_write","cg03_campaign_decision_insert",
+  "cg03_campaign_source_disjoint","fk_cg03_campaign_exact"])assert.ok(sql.includes(clause));
+ assert.match(sql,/FOREIGN KEY\(root_realm_id,campaign_id,source_revision,source_digest\)/);
+ assert.match(owner,/requireDistinctFinalReviewer/);
+ assert.match(owner,/requireFreshFoundationRootProof/);
+ assert.match(owner,/originalCase\(/);
+ assert.match(owner,/acceptReviewEffect\(/);
+ assert.match(owner,/campaigns\.review/);
+ assert.match(source,/freezeForReview\(/);
+ assert.match(source,/source_status='SUBMITTED'/);
+ assert.match(source,/status='ACTIVE'/);
+ assert.match(controller,/@Post\(":ref\/submit"\)/);
+ assert.match(controller,/@Post\(":ref\/decide"\)/);
+ assert.doesNotMatch(owner,/INSERT INTO cms_publication|INSERT INTO donation|INSERT INTO finance_journal/);
+});
+test("US001-QA05/06/14/20: reviewer/author Web-native parity is role-scoped, and unverified public remains disabled",()=>{
+ const webPage=root("apps/web/src/app/(admin)/admin/campaigns/page.tsx");
+ const webReview=root("apps/web/src/features/campaigns/campaign-review-workspace.tsx");
+ const nativeShell=root("apps/android-internal/src/features/identity-access/staff-authentication-screen.tsx");
+ const nativeReview=root("apps/android-internal/src/features/campaigns/native-campaign-reviews.tsx");
+ const nav=root("apps/web/src/shared/foundation-admin-nav.tsx");
+ const app=root("apps/backend/src/app.module.ts");
+ assert.match(webPage,/canReview/);
+ assert.match(webReview,/currentPassword/);
+ assert.match(webReview,/independent/);
+ assert.match(nativeShell,/NativeCampaignReviews/);
+ assert.match(nativeReview,/currentPassword/);
+ assert.match(nav,/campaigns\.review/);
+ assert.match(app,/CampaignsDonationsModule/);
+ assert.doesNotMatch(webPage,/Publish Campaign|Donation Received/);
 });
