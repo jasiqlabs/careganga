@@ -508,7 +508,7 @@ export class HrEnrollmentService{
     if(previous&&previous.request_key===input.requestKey&&
       previous.hr_revision_no===Number(input.expectedRevision)){
      if(!Array.isArray(previous.private_file_versions)||sourceHash(previous.private_file_versions)!==sourceHash(files))
-      throw new ConflictException("Choose the original submitted employee documents before retrying");
+      throw new ConflictException({code:"CG10_ENROLLMENT_EVIDENCE_CHANGED"});
      await tx.query("COMMIT");
      return {caseRef:previous.id,reference:previous.case_number,
       status:previous.status,replayed:true};
