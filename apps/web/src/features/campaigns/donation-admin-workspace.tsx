@@ -13,7 +13,8 @@ type DonationItem={donationNumber:string;donationRef:string;refundMinor:string;r
  campaignTitle:string|null;voucher:string|null;createdAt:string};
 type Report={items:DonationItem[];offset:number;hasMore:boolean;
  summary:{total:number;received:number;pending:number;failed:number;receivedMinor:string;
- netReceivedMinor:string;verifiedRefundMinor:string;verifiedRefundCount:number};message:string};
+ netReceivedMinor:string;verifiedRefundMinor:string;verifiedRefundCount:number};
+ monthlyTrend:{month:string;grossMinor:string;refundMinor:string;netMinor:string}[];message:string};
 const rupees=(n:string)=>{
  try{const value=BigInt(n);return "₹"+(value/100n).toLocaleString("en-IN")+
   "."+(value%100n).toString().padStart(2,"0");}catch{return "Amount unavailable";}
@@ -155,7 +156,20 @@ export function DonationAdminWorkspace({canView,canRecord,canReview,canIssue,can
     as const).map(([name,value])=><div className={styles.statCard} key={name}>
      <div><div className={styles.statNumber}>{value??"—"}</div>
      <div className={styles.statLabel}>{name}</div></div></div>)}
-  </div><div style={panel}>
+  </div>
+  {canView&&!!data?.monthlyTrend?.length&&<section style={panel} aria-label="Verified monthly donations">
+   <h2>Verified monthly donation trend</h2>
+   <p>Only original CG-09 posted income and verified refund corrections are included.</p>
+   <div style={{overflowX:"auto"}}><table style={{width:"100%",borderCollapse:"collapse"}}>
+    <thead><tr>{["Month","Verified gross","Confirmed refunds","Verified net"].map(x=>
+     <th key={x} scope="col" style={{textAlign:"left",padding:9}}>{x}</th>)}</tr></thead>
+    <tbody>{data.monthlyTrend.map(x=><tr key={x.month}>
+     <td style={{padding:9}}>{x.month}</td><td style={{padding:9}}>{rupees(x.grossMinor)}</td>
+     <td style={{padding:9}}>{rupees(x.refundMinor)}</td><td style={{padding:9}}>{rupees(x.netMinor)}</td>
+    </tr>)}</tbody>
+   </table></div>
+  </section>}
+  <div style={panel}>
     <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",gap:12}}>
      <h2>Donation records</h2>
      {canExport&&<button type="button" style={button} disabled={busy} onClick={()=>void exportReport()}>
