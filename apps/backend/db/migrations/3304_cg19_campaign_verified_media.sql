@@ -103,22 +103,43 @@ CREATE TRIGGER cg19_campaign_event_immutable BEFORE UPDATE OR DELETE ON cg19_cam
 -- The scan and consent must still be current when the campaign is submitted
 -- or approved, even if proof was revoked after the author saved their draft.
 CREATE FUNCTION cg07_campaign_media_proof_guard() RETURNS trigger LANGUAGE plpgsql AS $cg07$
-DECLARE banner text; proof_count integer;
+DECLARE banner text; supporting jsonb; document_ref text; proof_count integer;
 BEGIN
  IF NEW.source_status NOT IN('SUBMITTED','APPROVED') THEN RETURN NULL; END IF;
- SELECT step5_media_refs->>'fileRef' INTO banner
- FROM campaign_revision WHERE root_realm_id=NEW.root_realm_id
+ SELECT step5_media_refs->>'fileRef',
+    COALESCE(step5_media_refs->'supportingFileRefs','[]'::jsonb)
+ INTO banner,supporting FROM campaign_revision
+ WHERE root_realm_id=NEW.root_realm_id
   AND campaign_id=NEW.id AND revision_no=NEW.current_revision;
- IF banner IS NULL OR banner='' THEN RETURN NULL; END IF;
- SELECT count(*) INTO proof_count FROM cg19_stored_file f
- JOIN cg19_upload_intent i ON i.id=f.upload_intent_id AND i.realm_id=f.realm_id
- WHERE f.realm_id=NEW.root_realm_id AND f.campaign_id=NEW.id
-  AND f.id=banner::uuid AND f.proposal_revision<=NEW.current_revision
-  AND f.owner_kind='CG07_CAMPAIGN' AND f.scan_status='CLEAN_VERIFIED'
-  AND f.revoked_at IS NULL AND i.owner_kind='CG07_CAMPAIGN'
-  AND i.campaign_media_rights_confirmed AND i.status='VALIDATED'
-  AND i.campaign_id=NEW.id;
- IF proof_count<>1 THEN RAISE EXCEPTION 'Campaign media must have current original CG19 verified consent'; END IF;
+ IF supporting IS NULL OR jsonb_typeof(supporting)<>'array'
+  OR jsonb_array_length(supporting)>6
+ THEN RAISE EXCEPTION 'Campaign supporting document proof shape is invalid'; END IF;
+ IF banner IS NOT NULL AND banner<>'' THEN
+  SELECT count(*) INTO proof_count FROM cg19_stored_file f
+  JOIN cg19_upload_intent i ON i.id=f.upload_intent_id AND i.realm_id=f.realm_id
+  WHERE f.realm_id=NEW.root_realm_id AND f.campaign_id=NEW.id
+    AND f.id=banner::uuid AND f.proposal_revision<=NEW.current_revision
+    AND f.owner_kind='CG07_CAMPAIGN'
+    AND f.original_mime IN('image/jpeg','image/png','image/webp')
+    AND f.scan_status='CLEAN_VERIFIED' AND f.revoked_at IS NULL
+    AND i.owner_kind='CG07_CAMPAIGN' AND i.campaign_media_rights_confirmed
+    AND i.status='VALIDATED' AND i.classification='CAMPAIGN_BANNER'
+    AND i.campaign_id=NEW.id;
+  IF proof_count<>1 THEN RAISE EXCEPTION 'Original campaign banner proof is no longer verified'; END IF;
+ END IF;
+ FOR document_ref IN SELECT jsonb_array_elements_text(supporting) LOOP
+  SELECT count(*) INTO proof_count FROM cg19_stored_file f
+  JOIN cg19_upload_intent i ON i.id=f.upload_intent_id AND i.realm_id=f.realm_id
+  WHERE f.realm_id=NEW.root_realm_id AND f.campaign_id=NEW.id
+    AND f.id=document_ref::uuid AND f.proposal_revision<=NEW.current_revision
+    AND f.owner_kind='CG07_CAMPAIGN'
+    AND f.original_mime IN('image/jpeg','image/png','image/webp','application/pdf')
+    AND f.scan_status='CLEAN_VERIFIED' AND f.revoked_at IS NULL
+    AND i.owner_kind='CG07_CAMPAIGN' AND i.campaign_media_rights_confirmed
+    AND i.status='VALIDATED' AND i.classification='CAMPAIGN_DOCUMENT'
+    AND i.campaign_id=NEW.id;
+  IF proof_count<>1 THEN RAISE EXCEPTION 'Original campaign supporting document proof is no longer verified'; END IF;
+ END LOOP;
  RETURN NULL;
 END $cg07$;
 CREATE CONSTRAINT TRIGGER cg07_campaign_media_proof_after
