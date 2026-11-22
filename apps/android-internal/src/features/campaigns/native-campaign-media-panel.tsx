@@ -20,7 +20,7 @@ export function NativeCampaignMediaPanel({campaignRef,version,token,onExpired,ca
  campaignRef:string;version:number;token:string;onExpired:()=>void;canUpload:boolean;
  kind:"COVER"|"BANNER"|"DOCUMENT";attached:string[];onChange:(next:string[])=>void;
 }){
- const allow=kind==="DOCUMENT"?[...images,"application/pdf"]:images;
+ const allow=kind==="DOCUMENT"?[...images,"application/pdf"]:kind==="COVER"?["image/jpeg","image/png"]:images;
  const limit=kind==="COVER"?2097152:kind==="BANNER"?5242880:10485760;
  const label=kind==="COVER"?"Campaign Cover Image":kind==="BANNER"?"Campaign Hero Banner":"Supporting Documents";
  const classification=kind==="COVER"?"CAMPAIGN_COVER":kind==="BANNER"?"CAMPAIGN_BANNER":"CAMPAIGN_DOCUMENT";
