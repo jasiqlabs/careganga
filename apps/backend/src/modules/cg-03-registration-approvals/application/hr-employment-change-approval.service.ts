@@ -98,7 +98,7 @@ export class HrEmploymentChangeApprovalService{
    await this.currentReviewer(tx,actor);const {c,row}=await this.original(tx,actor.realmId,ref);
    const eligible=c.proposer_id!==actor.accountId&&row.employee_account_ref!==actor.accountId;
    const detail=eligible?await this.source.privateDetail(tx,actor.realmId,row,actor.accountId):this.source.summary(row);
-   return {...detail,caseRef:c.id,caseReference:c.case_number,caseStatus:c.status,revision:c.revision,clearance:await this.source.clearanceSummary(tx,actor.realmId,row),
+   return {...detail,caseRef:c.id,caseReference:c.case_number,caseStatus:c.status,revision:c.revision,timeline:await this.source.changeTimeline(tx,actor.realmId,row),clearance:await this.source.clearanceSummary(tx,actor.realmId,row),
     canReview:eligible&&["SUBMITTED","IN_REVIEW"].includes(c.status),canApply:eligible&&c.status==="PENDING_OWNER"};
   });
  }
