@@ -438,3 +438,6 @@ Fixed A18 receipt selector: Admin report now returns original internal donationR
 
 ### 22-Nov US003 public campaign verified net actuals
 Original CG07 public approved-campaign payload now includes exact CG09 posted donation sum less posted cash-refund corrections, rather than campaign target or merchant pending funds. Strict Next and Android DTO/UX render gross target separately from true verified net, with all pending states excluded. Source updates authored, build/SQL and device tests NOT_RUN. US002-QA05/17/20 and US003-QA04/15/16/20 source candidate.
+
+### 22-Nov source regression tests added (not executed here)
+New `apps/backend/test/cg07-donation-contract.test.ts` contains 14 source-only groups mapped to original US002 and US003 cases: real input validation, scoped SQL/FKs, signed gateway/merchant/timeout, protected CG09 cash+provider, source truth, CG19 private receipt and 80G neutrality, bounded refunds and Web+Android. Run `npm run test:cg07-donation -w apps/backend` in local handoff. These assertions are **not** runtime E2E, provider sandbox, DB mutation or independent reviewer certification; all remain NOT_RUN.
