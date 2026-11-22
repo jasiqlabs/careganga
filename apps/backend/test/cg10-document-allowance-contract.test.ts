@@ -5,7 +5,7 @@ import type {PoolClient} from "pg";
 import type {VerifiedFoundationActor} from "../src/modules/cg-01-identity-access/public-api";
 import {parseFinanceClaimDraft,allowancePurpose} from "../src/modules/cg-09-finance-accounting/application/finance-expense-claim.service";
 import {currentHrAllowanceOrigin,assertOwnClaimOrigin,assertHrAllowanceOrigin} from "../src/modules/cg-10-human-resources/application/hr-allowance-origin";
-import {hrTemplateHash} from "../src/modules/cg-19-documents-notifications/application/hr-document-renderer";
+import {hrTemplateHash,hrLetterBlocks} from "../src/modules/cg-19-documents-notifications/application/hr-document-renderer";
 const requestKey="22222222-2222-4222-8222-222222222222";
 const draft={requestKey,purpose:"Business travel",category:"Travel",expenseDate:"2026-11-21",amount:"125.50"};
 const actor={realmId:"realm",accountId:"account"} as VerifiedFoundationActor;
@@ -42,6 +42,11 @@ describe("CG10 original finance claim and private document source contracts",()=
  test("missing claimant rejected under exclusive mutation lock",async()=>{
   const tx={query:async(sql:string,params:unknown[])=>{assert.match(sql,/requested_by=\$3 FOR UPDATE/);assert.deepEqual(params,["realm","claim","account"]);return {rows:[]};}} as unknown as PoolClient;
   await assert.rejects(()=>assertOwnClaimOrigin(tx,actor,"claim",true),ConflictException);
+ });
+ test("letter formatting is line-based and plain text is preserved",()=>{
+  assert.deepEqual(hrLetterBlocks("# Conditions\n- Joining details\nPlain content\n"),[
+   {kind:"heading",text:"Conditions"},{kind:"bullet",text:"Joining details"},{kind:"paragraph",text:"Plain content"},{kind:"paragraph",text:""}]);
+  assert.deepEqual(hrLetterBlocks("Text # inside\n-"),[{kind:"paragraph",text:"Text # inside"},{kind:"paragraph",text:"-"}]);
  });
  test("signatory and exact asset version digests change template proof without changing legacy hash",()=>{
   const old=hrTemplateHash("APPOINTMENT","Title","Body");

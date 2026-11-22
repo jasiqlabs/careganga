@@ -4,6 +4,16 @@ import fontkit from "@pdf-lib/fontkit";
 import {createHash,createHmac} from "node:crypto";
 import {ServiceUnavailableException} from "@nestjs/common";
 import {opaqueAppointmentQr} from "./cg19-appointment-qr";
+export type HrLetterBlock={kind:"heading"|"bullet"|"paragraph";text:string};
+/** Conservative line-based formatting. No HTML, scripts, URLs, or executable input. */
+export function hrLetterBlocks(body:string):HrLetterBlock[]{
+ return body.split(/\r?\n/).map(line=>{
+  if(line.startsWith("# ")&&line.slice(2).trim())return {kind:"heading",text:line.slice(2).trim()};
+  if(line.startsWith("- ")&&line.slice(2).trim())return {kind:"bullet",text:line.slice(2).trim()};
+  return {kind:"paragraph",text:line};
+ });
+}
+
 export const hrTemplateHash=(kind:string,title:string,body:string,assets?:{signatoryName:string;signatureSha256:string;sealSha256:string})=>createHash("sha256").update(JSON.stringify(assets?["CG19_HR_TEMPLATE_V2",kind,title,body,assets.signatoryName,assets.signatureSha256,assets.sealSha256]:["CG19_HR_TEMPLATE_V1",kind,title,body])).digest("hex");
 export function employeeCardToken(realm:string,document:string,digest:string){
  const key=Buffer.from(process.env.CG19_EMPLOYEE_CARD_QR_KEY??"","base64");
@@ -78,7 +88,20 @@ export async function renderHrDocument(input:{snapshot:Record<string,unknown>;ti
   for(const [label,key] of [["Recipient","recipient"],["Designation","designation"],["Branch","branch"],["Department","department"],["Joining date","hireDate"],["Issue date","issueDate"],...(v.kind==="RELIEVING"?[["Last working date","lastWorkingDate"]]:[])]){
    y=print(page,label+": "+fact(key),45,y,11,505);
   }
-  y-=12;for(const line of wrap(input.body,font,11,505)){if(y<65){page=newLetterPage();y=735;}if(line)page.drawText(line,{x:45,y,size:11,font,color:grey});y-=16;}y-=12;
+  y-=12;
+  for(const block of hrLetterBlocks(input.body)){
+   const size=block.kind==="heading"?14:11,x=block.kind==="bullet"?61:45,width=550-x;
+   const lines=wrap(block.text,font,size,width);
+   if(block.kind==="heading")y-=5;
+   for(let index=0;index<lines.length;index++){
+    if(y<65){page=newLetterPage();y=735;}
+    const line=lines[index];
+    if(block.kind==="bullet"&&index===0)page.drawCircle({x:49,y:y+4,size:2,color:grey});
+    if(line)page.drawText(line,{x,y,size,font,color:block.kind==="heading"?blue:grey});
+    y-=size+5;
+   }
+  }
+  y-=12;
   if(y<185){page=newLetterPage();y=735;}
   const date=fact("issueDate"),year=Number(date.slice(0,4)),start=Number(date.slice(5,7))>=4?year:year-1;
   y=print(page,"Financial year: "+start+"–"+(start+1)+" · "+input.reference+" · Version "+input.issueRevision,45,y,9,505);

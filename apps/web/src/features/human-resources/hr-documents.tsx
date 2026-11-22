@@ -1,5 +1,6 @@
 "use client";
 import {useCallback,useEffect,useRef,useState} from "react";
+import {hrLetterBlocks,appendLetterBlock} from "../../../../../packages/design-tokens/src/hr-letter-format";
 type Mode="own"|"manage"|"review";
 type Template={templateId:string;kind:string;version:number;title:string;body:string;assetsReady:boolean;signatoryName?:string|null};
 type Subject={reference:string;label:string;designation:string;branch:string};
@@ -18,6 +19,9 @@ async function api<T>(path:string,body?:object):Promise<T>{
  const v=await r.json().catch(()=>null);if(!r.ok)throw Object.assign(new Error(typeof v?.message==="string"?v.message:"Document unavailable"),{status:r.status});if(!v||typeof v!=="object")throw Error("Original result unconfirmed");return v as T;
 }
 function Select({label,value,options,onChange,disabled=false}:{label:string;value:string;options:{value:string;label:string}[];onChange:(v:string)=>void;disabled?:boolean}){return <label>{label}<select style={field} value={value} disabled={disabled} onChange={e=>onChange(e.target.value)}>{options.map(x=><option key={x.value} value={x.value}>{x.label}</option>)}</select></label>;}
+function LetterBodyPreview({value}:{value:string}){
+ return <div style={{whiteSpace:"pre-wrap",overflowWrap:"anywhere"}}>{hrLetterBlocks(value).map((b,i)=>b.kind==="heading"?<h4 key={i} style={{margin:"8px 0",color:"#1E53DC"}}>{b.text}</h4>:b.kind==="bullet"?<p key={i} style={{margin:"4px 0",paddingLeft:16}}>• {b.text}</p>:<p key={i} style={{margin:"4px 0",minHeight:b.text?undefined:12}}>{b.text}</p>)}</div>;
+}
 function ReceiptUpload({id,onVerified,disabled,assetType,onClear,staff=false}:{id?:string;onVerified:(fileRef?:string)=>void;disabled:boolean;assetType?:"SIGNATURE"|"SEAL";onClear?:()=>void;staff?:boolean}){
  const [file,setFile]=useState<File|null>(null),[busy,setBusy]=useState(false),[message,setMessage]=useState("");
  const original=useRef<{key:string;hash:string;upload?:string}|null>(null);
@@ -71,6 +75,7 @@ export function HrDocuments({mode,canIssue=false,canApproveTemplate=false,canRev
  },[mode,request,fail]);
  useEffect(()=>{void loadPeople(kind,"");return()=>{personRead.current++;};},[kind,loadPeople]);
  const current=templates.find(x=>x.kind===kind),chosen=templates.find(x=>x.templateId===template&&x.kind===kind&&x.assetsReady),person=people.find(x=>x.reference===subject);
+ useEffect(()=>{if(mode==="manage"&&current?.assetsReady&&!chosen)setTemplate(current.templateId);},[mode,current,chosen]);
  const changeKind=(v:string)=>{setKind(v);setSubject("");setTemplate("");setPeople([]);setSearch("");setHeading("");setTerms("");setExpiry("");setSignatoryName("");setSignatureRef("");setSealRef("");};
  const run=async(path?:string,body?:Record<string,unknown>,proof=false)=>{
   if(running.current)return;let cmd=pending.current;
@@ -79,8 +84,12 @@ export function HrDocuments({mode,canIssue=false,canApproveTemplate=false,canRev
   running.current=true;setBusy(true);setMessage("");
   try{const v=await request<Record<string,unknown>>(cmd.path,{...cmd.body,...(cmd.proof?{currentPassword:password}:{})});
    if(!v.reference&&!v.status&&!v.documentRef&&!v.confirmed)throw Error("Original outcome unconfirmed");
-   pending.current=null;setLocked(false);setPassword("");setSelected(null);await refresh();await loadTemplates();setMessage("Recorded outcome: "+title(String(v.status??"Confirmed")));
-  }catch(e){fail(e);setPassword("");if(known(e)){pending.current=null;setLocked(false);}else setLocked(true);}
+   pending.current=null;setLocked(false);setPassword("");setSelected(null);await refresh();await loadTemplates();
+   if(cmd.path==="document-requests"&&typeof v.reference==="string"&&v.kind===kind&&v.status==="DRAFT"&&Number.isInteger(v.revision)&&v.snapshot&&typeof v.snapshot==="object"){
+    // Original server-confirmed draft: guide directly into preview/submit, with no duplicate save.
+    setSelected({...v,canSubmit:true} as Row);setMessage("Draft saved. Open the private preview, then submit for review.");
+   }else setMessage("Recorded outcome: "+title(String(v.status??"Confirmed")));
+  }catch(e){fail(e);setPassword("");if(!locked&&known(e)){pending.current=null;setLocked(false);}else setLocked(true);}
   finally{running.current=false;setBusy(false);}
  };
  const save=()=>{if(!person||!chosen||!issueDate||(kind==="EMPLOYEE_ID"&&!expiry)){setMessage("Choose recipient, approved template and dates.");return;}
@@ -100,13 +109,13 @@ export function HrDocuments({mode,canIssue=false,canApproveTemplate=false,canRev
    <label>Search eligible recipient<input style={field} value={search} maxLength={80} onChange={e=>setSearch(e.target.value)}/></label><button onClick={()=>void loadPeople(kind,search)}>Search</button>
    <Select label="Recipient" value={subject} options={[{value:"",label:"Choose recipient"},...people.map(x=>({value:x.reference,label:x.label+" · "+x.designation+" · "+x.branch}))]} onChange={setSubject}/>
    <Select label="Approved template" value={template} options={[{value:"",label:"Choose template"},...templates.filter(x=>x.kind===kind&&x.assetsReady).map(x=>({value:x.templateId,label:x.title+" · Version "+x.version}))]} onChange={setTemplate}/>
-   {!current&&<p>No approved template for this document.</p>}
+   {!current?.assetsReady&&<p>No issue-ready template for this document. {canApproveTemplate?"Approve the template and verified signature/seal below first.":"Ask an authorized template approver to complete it."}</p>}
    <label>Issue date<input style={field} type="date" value={issueDate} onChange={e=>setIssueDate(e.target.value)}/></label>{kind==="EMPLOYEE_ID"&&<label>Expiry date<input style={field} type="date" value={expiry} onChange={e=>setExpiry(e.target.value)}/></label>}
-   {person&&chosen&&<article style={{...panel,maxWidth:480}}><strong>CareGanga Foundation · Draft preview</strong><h3>{chosen.title}</h3><p>{person.label} · {person.designation} · {person.branch}</p><p>{issueDate||"No date selected"}</p><p style={{whiteSpace:"pre-wrap"}}>{chosen.body}</p>{kind==="EMPLOYEE_ID"&&<p>Expiry {expiry}; back verification code available only after issue.</p>}<small>Preview only, not an issued PDF.</small></article>}
+   {person&&chosen&&<article style={{...panel,maxWidth:480}}><strong>CareGanga Foundation · Draft preview</strong><h3>{chosen.title}</h3><p>{person.label} · {person.designation} · {person.branch}</p><p>{issueDate||"No date selected"}</p><LetterBodyPreview value={chosen.body}/>{kind==="EMPLOYEE_ID"&&<p>Expiry {expiry}; back verification code available only after issue.</p>}<small>Preview only, not an issued PDF.</small></article>}
    <button disabled={!person||!chosen||!issueDate||(kind==="EMPLOYEE_ID"&&!expiry)} onClick={save}>Save draft</button>
   </fieldset>}
   {mode==="manage"&&canApproveTemplate&&<fieldset style={panel} disabled={blocked}><legend>Approve template — {title(kind)}</legend><p>Current version: {current?.version??0}</p>{current&&<button onClick={()=>{setHeading(current.title);setTerms(current.body);setSignatoryName(current.signatoryName??"");}}>Load current template</button>}
-   <label>Heading<input style={field} maxLength={100} value={heading} onChange={e=>setHeading(e.target.value)}/></label><label>Terms<textarea style={field} maxLength={1200} rows={4} value={terms} onChange={e=>setTerms(e.target.value)}/></label><label>Authorized signatory name<input style={field} maxLength={100} value={signatoryName} onChange={e=>setSignatoryName(e.target.value)}/></label>
+   <label>Heading<input style={field} maxLength={100} value={heading} onChange={e=>setHeading(e.target.value)}/></label><label>Letter body and terms<textarea style={field} maxLength={1200} rows={6} value={terms} onChange={e=>setTerms(e.target.value)}/></label><div style={{display:"flex",gap:8,flexWrap:"wrap"}}><button type="button" onClick={()=>setTerms(v=>appendLetterBlock(v,"heading"))}>Add heading</button><button type="button" onClick={()=>setTerms(v=>appendLetterBlock(v,"bullet"))}>Add bullet</button></div><small>Use # at the start of a heading or - at the start of a bullet. {terms.length}/1200 characters.</small><article style={panel}><strong>Draft template preview</strong><h3>{heading||"Letter heading"}</h3><LetterBodyPreview value={terms}/><small>Signature, seal and final recipient are applied only through the protected issue workflow.</small></article><label>Authorized signatory name<input style={field} maxLength={100} value={signatoryName} onChange={e=>setSignatoryName(e.target.value)}/></label>
    <p>Only use signature and seal images you are authorized to approve. No example image is accepted.</p>
    <ReceiptUpload key={kind+"-signature"} assetType="SIGNATURE" disabled={blocked} onClear={()=>setSignatureRef("")} onVerified={ref=>setSignatureRef(ref??"")}/>
    <ReceiptUpload key={kind+"-seal"} assetType="SEAL" disabled={blocked} onClear={()=>setSealRef("")} onVerified={ref=>setSealRef(ref??"")}/>
@@ -116,7 +125,7 @@ export function HrDocuments({mode,canIssue=false,canApproveTemplate=false,canRev
   {loading?<p>Loading documents…</p>:!visible.length&&<p>No documents in this view.</p>}
   {visible.map(x=><article key={x.reference} style={{borderTop:"1px solid #E2E8F0",paddingTop:10}}><strong>{title(x.kind)} · {x.snapshot?.recipient??x.recipient}</strong><p>{x.reference} · {title(x.document?.status??x.status)}</p><button disabled={blocked} onClick={()=>void open(x)}>View details</button></article>)}
   {offset>0&&<button disabled={blocked} onClick={()=>{setSelected(null);setOffset(v=>Math.max(0,v-25));}}>Previous</button>}{more&&<button disabled={blocked} onClick={()=>{setSelected(null);setOffset(v=>v+25);}}>Next</button>}
-  {selected&&<article style={panel}><h3>{title(selected.kind)} · {selected.reference}</h3><p>{title(selected.status)}</p>
+  {selected&&<article style={panel} ref={node=>{if(node&&selected.status==="DRAFT"&&selected.canSubmit)node.scrollIntoView({block:"nearest",behavior:"auto"});}}><h3>{title(selected.kind)} · {selected.reference}</h3><p>{title(selected.status)}</p>
    {selected.snapshot&&<><p>{selected.snapshot.recipient} · {selected.snapshot.designation} · {selected.snapshot.branch}</p><p>Joining: {selected.snapshot.hireDate} · Issue: {selected.snapshot.issueDate}</p>{selected.snapshot.expiryDate&&<p>Expiry: {selected.snapshot.expiryDate}</p>}{selected.snapshot.lastWorkingDate&&<p>Last working date: {selected.snapshot.lastWorkingDate}</p>}</>}
    {mode==="manage"&&!blocked&&["DRAFT","SUBMITTED","APPROVED"].includes(selected.status)&&<a target="_blank" rel="noopener noreferrer" href={"/api/hr/document-requests/"+selected.reference+"/preview"}>Open private watermarked draft preview</a>}
    {mode==="manage"&&selected.canSubmit&&<button disabled={blocked} onClick={()=>act("document-requests/"+selected.reference+"/submit",false,{requestKey:key(),expectedRevision:selected.revision})}>Submit for review</button>}
