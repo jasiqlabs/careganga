@@ -376,13 +376,17 @@ export class HrAttendanceService{
     hasMore:rows.rows.length>25,offset};
   }catch(e){await tx.query("ROLLBACK");throw e;}finally{tx.release();}
  }
- async mine(token:string){
-  const actor=await this.sessions.verifySession(token),tx=await this.db.connect();
+ async mine(token:string,monthInput?:string){
+  const actor=await this.sessions.verifySession(token);
+  if(monthInput!==undefined&&(typeof monthInput!=="string"||!/^20\d{2}-(0[1-9]|1[0-2])$/.test(monthInput)))
+   throw new BadRequestException("Choose a valid attendance month");
+  const tx=await this.db.connect();
   try{
    await tx.query("BEGIN");
    const employee=await this.self(tx,actor);
-   if(!employee){await tx.query("COMMIT");return {status:"NOT_LINKED",days:[]};}
+   if(!employee){await tx.query("COMMIT");return {status:"NOT_LINKED",month:monthInput??new Date().toISOString().slice(0,7),days:[]};}
    const rule=await this.shift(tx,actor,employee.id);
+   const month=monthInput??(await tx.query<{month:string}>(`SELECT to_char(CURRENT_TIMESTAMP AT TIME ZONE $1,'YYYY-MM') AS month`,[rule?.time_zone??"UTC"])).rows[0].month;
    const rows=await tx.query<{local_date:Date|string;status:string;checked_in_at:Date|string|null;
     checked_out_at:Date|string|null;worked_minutes:number|null;leave_half_days:number|null;version:number;
     time_zone:string;check_in_local:string|null;check_out_local:string|null}>(`
@@ -390,11 +394,12 @@ export class HrAttendanceService{
      to_char(d.checked_in_at AT TIME ZONE p.time_zone,'YYYY-MM-DD"T"HH24:MI') AS check_in_local,
      to_char(d.checked_out_at AT TIME ZONE p.time_zone,'YYYY-MM-DD"T"HH24:MI') AS check_out_local
     FROM hr_attendance_day d JOIN hr_shift_policy p ON p.id=d.policy_id AND p.root_realm_id=d.root_realm_id
-    WHERE d.root_realm_id=$1 AND d.employee_id=$2
-    ORDER BY d.local_date DESC LIMIT 35`,[actor.realmId,employee.id]);
+    WHERE d.root_realm_id=$1 AND d.employee_id=$2 AND d.local_date>=$3::date
+     AND d.local_date<$3::date+interval '1 month'
+    ORDER BY d.local_date DESC LIMIT 31`,[actor.realmId,employee.id,month+"-01"]);
    const open=await tx.query<{available:boolean}>(`SELECT EXISTS(SELECT 1 FROM hr_attendance_day WHERE root_realm_id=$1 AND employee_id=$2 AND checked_out_at IS NULL AND checked_in_at BETWEEN now()-interval '36 hours' AND now()) AS available`,[actor.realmId,employee.id]);
    await tx.query("COMMIT");
-   return {status:rule?"ASSIGNED":"NO_CURRENT_SHIFT",
+   return {status:rule?"ASSIGNED":"NO_CURRENT_SHIFT",month,
     shift:rule?{label:rule.name,timeZone:rule.time_zone,
       start:rule.work_start_local.slice(0,5),end:rule.work_end_local.slice(0,5),
       weeklyOffDays:rule.weekly_off_days}:null,

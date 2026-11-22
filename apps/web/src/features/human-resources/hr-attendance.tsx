@@ -2,7 +2,7 @@
 import {useCallback,useEffect,useRef,useState} from "react";
 import {HrMyLeave,HrLeaveReviews,HrAttendanceCorrections,type CorrectionDay,type CorrectionPerson} from "./hr-leave";
 type Day=CorrectionDay&{checkInAt:string|null;checkOutAt:string|null;workedMinutes:number|null};
-type Self={status:string;canCheckOut?:boolean;shift?:{label:string;timeZone:string;start:string;end:string;weeklyOffDays:number[]}|null;days:Day[]};
+type Self={status:string;month:string;canCheckOut?:boolean;shift?:{label:string;timeZone:string;start:string;end:string;weeklyOffDays:number[]}|null;days:Day[]};
 type Branch={branchRef:string;label:string;manageShifts:boolean};
 type Employee={reference:string;name:string;designation:string};
 type Rule={policyRef:string;label:string;timeZone:string;start:string;end:string;effectiveFrom:string};
@@ -28,7 +28,8 @@ function HrLeavePolicies(){
  const [error,setError]=useState(""),[notice,setNotice]=useState("");
  const key=useRef<string|null>(null);
  const refresh=useCallback(async()=>{
-  setLoading(true);
+  const generation=++selfRead.current;setLoading(true);
+  if(!validMonth(selfMonth)){setMine(null);setLoading(false);return;}
   try{const v=await api("leave-policies");
    if(!v||typeof v!=="object"||!("items" in v)||!Array.isArray(v.items))
     throw Error("Leave policies could not be confirmed");
@@ -36,7 +37,7 @@ function HrLeavePolicies(){
   }catch(e){setItems([]);setMore(false);setError(e instanceof Error?e.message:"Leave policies unavailable");}
   finally{setLoading(false);}
  },[]);
- useEffect(()=>{void refresh();},[refresh]);
+ useEffect(()=>{void refresh();return()=>{selfRead.current++;};},[refresh]);
  const update=<K extends keyof typeof form,>(field:K,value:(typeof form)[K])=>{
   key.current=null;setForm(x=>({...x,[field]:value}));
  };
@@ -76,6 +77,16 @@ function HrLeavePolicies(){
   {more&&<p>Showing the latest 100 policy versions.</p>}
  </div>;
 }
+
+const validMonth=(m:string)=>/^20\d{2}-(0[1-9]|1[0-2])$/.test(m);
+const monthDates=(m:string)=>{
+ if(!validMonth(m))return [];
+ const [y,month]=m.split("-").map(Number);
+ return Array.from({length:new Date(Date.UTC(y,month,0)).getUTCDate()},(_,i)=>m+"-"+String(i+1).padStart(2,"0"));
+};
+const dayCode=(d:CorrectionDay|undefined)=>!d?"—":({PRESENT:"P",LATE:"L",ABSENT:"A",WEEKLY_OFF:"WO",LEAVE:"LV",HALF_DAY_LEAVE:"½"} as Record<string,string>)[d.status]??d.status;
+const dayLabel=(d:CorrectionDay|undefined)=>!d?"Unrecorded":d.status.replaceAll("_"," ").toLowerCase()+(d.leaveDays>0&&d.status!=="LEAVE"&&d.status!=="HALF_DAY_LEAVE"?" · "+d.leaveDays+" day approved leave":"");
+const badgeColor=(d:CorrectionDay|undefined)=>!d?"#64748B":d.status==="PRESENT"?"#166534":d.status==="ABSENT"?"#991B1B":d.status==="LATE"?"#92400E":"#075985";
 export function HrAttendance({canConfigure=false,canManageLeave=false,canReviewLeave=false,canCorrect=false,canReviewCorrection=false,canViewStaff=false}:{canConfigure?:boolean;canManageLeave?:boolean;canReviewLeave?:boolean;canCorrect?:boolean;canReviewCorrection?:boolean;canViewStaff?:boolean}){
  const [mine,setMine]=useState<Self|null>(null),[loading,setLoading]=useState(true);
  const [busy,setBusy]=useState(false),[error,setError]=useState(""),[notice,setNotice]=useState("");
@@ -87,19 +98,21 @@ export function HrAttendance({canConfigure=false,canManageLeave=false,canReviewL
   graceMinutes:"0",breakMinutes:"0",effectiveFrom:today(),weeklyOffDays:[] as number[]});
  const [assignFrom,setAssignFrom]=useState(today());
  const [month,setMonth]=useState(today().slice(0,7)),[matrix,setMatrix]=useState<Matrix|null>(null);
+ const [selfMonth,setSelfMonth]=useState(today().slice(0,7));
+ const selfRead=useRef(0);
  const [matrixOffset,setMatrixOffset]=useState(0),[matrixBusy,setMatrixBusy]=useState(false);
  const [matrixRefresh,setMatrixRefresh]=useState(0);
  const checkKey=useRef<string|null>(null),checkoutKey=useRef<string|null>(null),policyKey=useRef<string|null>(null),assignKey=useRef<string|null>(null);
  const refresh=useCallback(async()=>{
   setLoading(true);
   try{
-   const value=await api("me/attendance");
+   const value=await api("me/attendance?month="+encodeURIComponent(selfMonth));
    if(!value||typeof value!=="object"||!("status" in value)||!("days" in value)||
     !Array.isArray(value.days))throw Error("Employee attendance response unavailable");
-   setMine(value as Self);setError("");
-  }catch(e){setMine(null);setError(e instanceof Error?e.message:"Unable to read attendance");}
-  finally{setLoading(false);}
- },[]);
+   if(generation===selfRead.current){setMine(value as Self);setError("");}
+  }catch(e){if(generation===selfRead.current){setMine(null);setError(e instanceof Error?e.message:"Unable to read attendance");}}
+  finally{if(generation===selfRead.current)setLoading(false);}
+ },[selfMonth]);
  useEffect(()=>{void refresh();},[refresh]);
  useEffect(()=>{if(!canConfigure&&!canViewStaff)return;let live=true;
   void api("attendance/branches").then(v=>{
@@ -119,7 +132,7 @@ export function HrAttendance({canConfigure=false,canManageLeave=false,canReviewL
    setError(x instanceof Error?x.message:"Shift options unavailable");}});
   return()=>{live=false;};
  },[canConfigure,branch,staffOffset,branches]);
- useEffect(()=>{if((!canConfigure&&!canViewStaff)||!branch){setMatrix(null);return;}
+ useEffect(()=>{if((!canConfigure&&!canViewStaff)||!branch||!validMonth(month)){setMatrix(null);setMatrixBusy(false);return;}
   let live=true;setMatrix(null);setMatrixBusy(true);
   void api("attendance/matrix?branch="+encodeURIComponent(branch)+
    "&month="+encodeURIComponent(month)+"&offset="+matrixOffset)
@@ -196,13 +209,20 @@ export function HrAttendance({canConfigure=false,canManageLeave=false,canReviewL
      Check out using server time</button>}
    <button type="button" onClick={()=>void refresh()} disabled={busy}
     style={{...btn,background:"#E2E8F0",color:"#0F172A",marginLeft:10}}>Refresh</button>
-   {!!mine?.days.length&&<div style={{overflowX:"auto",marginTop:12}}>
+   <label style={{display:"block",marginTop:12}}>My attendance month<input style={inputStyle} type="month" value={selfMonth} min="2000-01" max="2099-12" disabled={busy} onChange={e=>{selfRead.current++;setMine(null);setSelfMonth(e.target.value);}}/></label>
+   {mine?.month===selfMonth&&mine.status!=="NOT_LINKED"&&<div aria-label="Monthly attendance calendar" style={{display:"grid",gridTemplateColumns:"repeat(7,minmax(0,1fr))",gap:4,marginTop:12}}>
+    {["Sun","Mon","Tue","Wed","Thu","Fri","Sat"].map(x=><small key={x} style={{textAlign:"center",color:"#64748B"}}>{x}</small>)}
+    {Array.from({length:new Date(selfMonth+"-01T00:00:00Z").getUTCDay()},(_,i)=><span key={"pad-"+i} aria-hidden="true"/>)}
+    {monthDates(selfMonth).map(date=>{const d=mine.days.find(x=>x.date===date);return <div key={date} title={date+" · "+dayLabel(d)} aria-label={date+" "+dayLabel(d)} style={{border:"1px solid #E2E8F0",borderRadius:8,minHeight:46,padding:5,textAlign:"center",display:"grid",color:badgeColor(d)}}><strong>{Number(date.slice(-2))}</strong><small>{dayCode(d)}{d?.leaveDays===0.5&&d.status!=="HALF_DAY_LEAVE"?"½":""}</small></div>})}
+   </div>}
+   <p style={{fontSize:12,color:"#64748B"}}>P Present · L Late · A Absent · WO Weekly off · LV Leave · ½ Half-day leave · — Unrecorded (not absent)</p>
+   {mine?.month===selfMonth&&!!mine.days.length&&<div style={{overflowX:"auto",marginTop:12}}>
     <table style={{width:"100%",borderCollapse:"collapse"}}>
      <thead><tr><th scope="col">Shift date</th><th scope="col">Result</th>
       <th scope="col">Check-in</th><th scope="col">Check-out</th><th scope="col">Worked time</th></tr></thead>
      <tbody>{mine.days.map(d=><tr key={d.date}><td>{d.date}</td><td>{d.status}{d.leaveDays>0&&" · "+d.leaveDays+" day approved leave"}</td>
-      <td>{d.checkInAt?new Date(d.checkInAt).toLocaleString():"—"}</td>
-      <td>{d.checkOutAt?new Date(d.checkOutAt).toLocaleString():"Pending"}</td>
+      <td>{d.checkInAt?(d.checkInLocal??d.checkInAt).replace("T"," "):"—"}</td>
+      <td>{d.checkOutAt?(d.checkOutLocal??d.checkOutAt).replace("T"," "):"Pending"}</td>
       <td>{d.workedMinutes===null?"—":Math.floor(d.workedMinutes/60)+"h "+d.workedMinutes%60+"m"}</td>
      </tr>)}</tbody>
     </table></div>}
@@ -268,11 +288,10 @@ export function HrAttendance({canConfigure=false,canManageLeave=false,canReviewL
      {matrixBusy&&<p>Loading attendance records…</p>}
      {matrix&&<div style={{overflowX:"auto"}}>
       <table style={{width:"100%",borderCollapse:"collapse"}}>
-       <thead><tr><th scope="col">Employee</th><th scope="col">Verified day records</th></tr></thead>
-       <tbody>{matrix.items.map((x,i)=><tr key={x.employeeName+"-"+i}>
-        <td>{x.employeeName} — {x.designation}</td>
-        <td>{x.days.length?x.days.map(d=>d.date+": "+d.status+(d.leaveDays>0?" · "+d.leaveDays+" day leave":"")).join("; "):
-          "No attendance or approved leave recorded for this month"}</td>
+       <thead><tr><th scope="col" style={{minWidth:180,textAlign:"left"}}>Employee</th>{monthDates(matrix.month).map(date=><th scope="col" key={date} title={date} style={{minWidth:40,padding:6}}>{Number(date.slice(-2))}</th>)}</tr></thead>
+       <tbody>{matrix.items.map(x=><tr key={x.employeeReference}>
+        <th scope="row" style={{textAlign:"left",fontWeight:500,padding:8}}>{x.employeeName} — {x.designation}</th>
+        {monthDates(matrix.month).map(date=>{const d=x.days.find(v=>v.date===date);return <td key={date} title={date+" · "+dayLabel(d)} aria-label={date+" "+dayLabel(d)} style={{textAlign:"center",padding:7,border:"1px solid #E2E8F0",color:badgeColor(d)}}>{dayCode(d)}{d?.leaveDays===0.5&&d.status!=="HALF_DAY_LEAVE"?"½":""}</td>})}
        </tr>)}</tbody>
       </table></div>}
      {matrixOffset>0&&<button type="button"
@@ -282,10 +301,10 @@ export function HrAttendance({canConfigure=false,canManageLeave=false,canReviewL
     </div>
    </>}
   </div>}
-  <HrMyLeave onChanged={()=>void refresh()}/>
+  <HrMyLeave onChanged={()=>{void refresh();setMatrixRefresh(v=>v+1);}}/>
   {canManageLeave&&<HrLeavePolicies/>}
-  {canReviewLeave&&<HrLeaveReviews onChanged={()=>void refresh()}/>}
-  <HrAttendanceCorrections days={mine?.days??[]} staff={canCorrect?(matrix?.items??[]):[]} onChanged={()=>{void refresh();setMatrixRefresh(v=>v+1);}}/>
+  {canReviewLeave&&<HrLeaveReviews onChanged={()=>{void refresh();setMatrixRefresh(v=>v+1);}}/>}
+  <HrAttendanceCorrections days={mine?.month===selfMonth?mine.days:[]} staff={canCorrect?(matrix?.items??[]):[]} onChanged={()=>{void refresh();setMatrixRefresh(v=>v+1);}}/>
   {canReviewCorrection&&<HrLeaveReviews kind="correction" onChanged={()=>{void refresh();setMatrixRefresh(v=>v+1);}}/>}
  </section>;
 }

@@ -5,11 +5,11 @@ import {identityRequest} from "../identity-access/http-client";
 import {NativeHrMyLeave,NativeHrLeaveReviews,NativeHrAttendanceCorrections,type CorrectionDay,type CorrectionPerson} from "./native-hr-leave";
 
 type Day=CorrectionDay&{checkInAt:string|null;checkOutAt:string|null;workedMinutes:number|null};
-type Mine={status:string;canCheckOut?:boolean;shift?:{label:string;timeZone:string;start:string;end:string}|null;days:Day[]};
+type Mine={status:string;month:string;canCheckOut?:boolean;shift?:{label:string;timeZone:string;start:string;end:string}|null;days:Day[]};
 type Branch={branchRef:string;label:string;manageShifts:boolean};
 type Person={reference:string;name:string;designation:string};
 type Rule={policyRef:string;label:string;timeZone:string;start:string;end:string;effectiveFrom:string};
-type Matrix={items:Array<CorrectionPerson&{designation:string}>;hasMore:boolean};
+type Matrix={month:string;items:Array<CorrectionPerson&{designation:string}>;hasMore:boolean};
 const today=()=>new Date().toISOString().slice(0,10); // admin policy date input only
 async function api(token:string,path:string,method="GET",body?:object):Promise<unknown>{
  const res=await identityRequest("/api/hr/"+path,{method,cache:"no-store",
@@ -40,14 +40,15 @@ function NativeHrLeavePolicies({token,onExpired}:{token:string;onExpired:()=>voi
   setError(e instanceof Error?e.message:"Unable to confirm leave policy");
  },[onExpired]);
  const refresh=useCallback(async()=>{
-  setLoading(true);
+  const generation=++selfRead.current;setLoading(true);
+  if(!validMonth(selfMonth)){setMine(null);setLoading(false);return;}
   try{const v=await api(token,"leave-policies");
    if(!v||typeof v!=="object"||!("items" in v)||!Array.isArray(v.items))
     throw Error("Leave policies could not be confirmed");
    setItems(v.items as LeaveRule[]);setMore("hasMore" in v&&v.hasMore===true);setError("");
   }catch(e){setItems([]);setMore(false);failure(e);}finally{setLoading(false);}
  },[token,failure]);
- useEffect(()=>{void refresh();},[refresh]);
+ useEffect(()=>{void refresh();return()=>{selfRead.current++;};},[refresh]);
  const update=<K extends keyof typeof form,>(field:K,value:(typeof form)[K])=>{
   key.current=null;setForm(x=>({...x,[field]:value}));
  };
@@ -93,6 +94,16 @@ function NativeHrLeavePolicies({token,onExpired}:{token:string;onExpired:()=>voi
  </View>;
 }
 /** Internal Android parity for the original CG10 shift + self check-in API. */
+
+const validMonth=(m:string)=>/^20\d{2}-(0[1-9]|1[0-2])$/.test(m);
+const monthDates=(m:string)=>{
+ if(!validMonth(m))return [];
+ const [y,month]=m.split("-").map(Number);
+ return Array.from({length:new Date(Date.UTC(y,month,0)).getUTCDate()},(_,i)=>m+"-"+String(i+1).padStart(2,"0"));
+};
+const dayCode=(d:CorrectionDay|undefined)=>!d?"—":({PRESENT:"P",LATE:"L",ABSENT:"A",WEEKLY_OFF:"WO",LEAVE:"LV",HALF_DAY_LEAVE:"½"} as Record<string,string>)[d.status]??d.status;
+const dayLabel=(d:CorrectionDay|undefined)=>!d?"Unrecorded":d.status.replaceAll("_"," ").toLowerCase()+(d.leaveDays>0&&d.status!=="LEAVE"&&d.status!=="HALF_DAY_LEAVE"?" · "+d.leaveDays+" day approved leave":"");
+const badgeColor=(d:CorrectionDay|undefined)=>!d?"#64748B":d.status==="PRESENT"?"#166534":d.status==="ABSENT"?"#991B1B":d.status==="LATE"?"#92400E":"#075985";
 export function NativeHrAttendance({token,canConfigure,canManageLeave=false,canReviewLeave=false,canCorrect=false,canReviewCorrection=false,canViewStaff=false,onExpired}:{
  token:string;canConfigure:boolean;canManageLeave?:boolean;canReviewLeave?:boolean;canCorrect?:boolean;canReviewCorrection?:boolean;canViewStaff?:boolean;onExpired:()=>void
 }){
@@ -106,6 +117,8 @@ export function NativeHrAttendance({token,canConfigure,canManageLeave=false,canR
   graceMinutes:"0",breakMinutes:"0",effectiveFrom:today(),weeklyOffDays:[] as number[]});
  const [validFrom,setValidFrom]=useState(today());
  const [month,setMonth]=useState(today().slice(0,7));
+ const [selfMonth,setSelfMonth]=useState(today().slice(0,7));
+ const selfRead=useRef(0);
  const [matrix,setMatrix]=useState<Matrix|null>(null),[matrixOffset,setMatrixOffset]=useState(0);
  const [matrixBusy,setMatrixBusy]=useState(false);
  const [matrixRefresh,setMatrixRefresh]=useState(0);
@@ -118,13 +131,13 @@ export function NativeHrAttendance({token,canConfigure,canManageLeave=false,canR
  const refresh=useCallback(async()=>{
   setLoading(true);
   try{
-   const value=await api(token,"me/attendance");
+   const value=await api(token,"me/attendance?month="+encodeURIComponent(selfMonth));
    if(!value||typeof value!=="object"||!("status" in value)||!("days" in value)||
     !Array.isArray(value.days))throw Error("Employee attendance is unavailable");
-   setMine(value as Mine);setError("");
-  }catch(e){setMine(null);failure(e);}
-  finally{setLoading(false);}
- },[token,failure]);
+   if(generation===selfRead.current){setMine(value as Mine);setError("");}
+  }catch(e){if(generation===selfRead.current){setMine(null);failure(e);}}
+  finally{if(generation===selfRead.current)setLoading(false);}
+ },[token,failure,selfMonth]);
  useEffect(()=>{void refresh();},[refresh]);
  useEffect(()=>{if(!canConfigure&&!canViewStaff)return;let live=true;
   void api(token,"attendance/branches").then(v=>{
@@ -146,7 +159,7 @@ export function NativeHrAttendance({token,canConfigure,canManageLeave=false,canR
    }).catch(e=>{if(live){setStaff([]);setPolicies([]);failure(e);}});
   return()=>{live=false;};
  },[token,canConfigure,branch,staffOffset,branches,failure]);
- useEffect(()=>{if((!canConfigure&&!canViewStaff)||!branch){setMatrix(null);return;}
+ useEffect(()=>{if((!canConfigure&&!canViewStaff)||!branch||!validMonth(month)){setMatrix(null);setMatrixBusy(false);return;}
   let live=true;setMatrix(null);setMatrixBusy(true);
   void api(token,"attendance/matrix?branch="+encodeURIComponent(branch)+
    "&month="+encodeURIComponent(month)+"&offset="+matrixOffset)
@@ -234,11 +247,18 @@ export function NativeHrAttendance({token,canConfigure,canManageLeave=false,canR
      <Text style={styles.primaryText}>Check out using server time</Text></Pressable>}
    <Pressable accessibilityRole="button" onPress={()=>void refresh()} style={styles.outline}>
     <Text style={styles.outlineText}>Refresh attendance</Text></Pressable>
-   {mine?.days?.map(d=><View key={d.date} style={styles.listItem}>
+   {field("My attendance month YYYY-MM",selfMonth,v=>{selfRead.current++;setMine(null);setSelfMonth(v.slice(0,7));},"YYYY-MM")}
+   {mine?.month===selfMonth&&mine.status!=="NOT_LINKED"&&<View accessibilityLabel="Monthly attendance calendar" style={{flexDirection:"row",flexWrap:"wrap"}}>
+    {["Su","Mo","Tu","We","Th","Fr","Sa"].map(x=><View key={x} style={{width:"14.285%",padding:4,alignItems:"center"}}><Text style={styles.muted}>{x}</Text></View>)}
+    {Array.from({length:new Date(selfMonth+"-01T00:00:00Z").getUTCDay()},(_,i)=><View key={"pad-"+i} style={{width:"14.285%",minHeight:48}}/>)}
+    {monthDates(selfMonth).map(date=>{const d=mine.days.find(x=>x.date===date);return <View key={date} accessible accessibilityLabel={date+" "+dayLabel(d)} style={{width:"14.285%",padding:4,alignItems:"center",minHeight:48,borderWidth:0.5,borderColor:"#E2E8F0"}}><Text style={{fontWeight:"600",color:"#334155"}}>{Number(date.slice(-2))}</Text><Text style={{fontSize:12,color:badgeColor(d)}}>{dayCode(d)}{d?.leaveDays===0.5&&d.status!=="HALF_DAY_LEAVE"?"½":""}</Text></View>})}
+   </View>}
+   <Text style={styles.muted}>P Present · L Late · A Absent · WO Weekly off · LV Leave · ½ Half-day · — Unrecorded</Text>
+   {mine?.month===selfMonth&&mine.days.map(d=><View key={d.date} style={styles.listItem}>
     <Text style={styles.label}>{d.date} · {d.status}{d.leaveDays>0?" · "+d.leaveDays+" day approved leave":""}</Text>
-    <Text style={styles.muted}>Check-in: {d.checkInAt?new Date(d.checkInAt).toLocaleString():"—"}</Text>
+    <Text style={styles.muted}>Check-in: {d.checkInAt?(d.checkInLocal??d.checkInAt).replace("T"," "):"—"}</Text>
     <Text style={styles.muted}>Check-out: {d.checkOutAt?
-     new Date(d.checkOutAt).toLocaleString():"Pending"}</Text>
+     (d.checkOutLocal??d.checkOutAt).replace("T"," "):"Pending"}</Text>
     {d.workedMinutes!==null&&<Text style={styles.muted}>
      Worked: {Math.floor(d.workedMinutes/60)}h {d.workedMinutes%60}m</Text>}
    </View>)}
@@ -307,12 +327,11 @@ export function NativeHrAttendance({token,canConfigure,canManageLeave=false,canR
      <Text style={styles.muted}>Recorded attendance and approved leave are shown. Unrecorded is not absent.</Text>
      {field("Month YYYY-MM",month,v=>{setMonth(v);setMatrixOffset(0);},"YYYY-MM")}
      {matrixBusy&&<ActivityIndicator accessibilityLabel="Loading staff attendance"/>}
-     {matrix?.items.map((x,i)=><View style={styles.listItem}
-      key={x.employeeName+"-"+String(i)}>
+     {matrix?.items.map(x=><View style={styles.listItem} key={x.employeeReference}>
       <Text style={styles.label}>{x.employeeName} · {x.designation}</Text>
-      {x.days.length?x.days.map(d=><Text style={styles.muted}
-       key={d.date}>{d.date}: {d.status}{d.leaveDays>0?" · "+d.leaveDays+" day leave":""}</Text>):
-       <Text style={styles.muted}>No attendance or approved leave recorded this month.</Text>}
+      <View style={{flexDirection:"row",flexWrap:"wrap"}}>
+       {monthDates(matrix.month).map(date=>{const d=x.days.find(v=>v.date===date);return <View key={date} accessible accessibilityLabel={x.employeeName+" "+date+" "+dayLabel(d)} style={{width:"14.285%",padding:4,alignItems:"center",minHeight:44,borderWidth:0.5,borderColor:"#E2E8F0"}}><Text style={{fontSize:12,fontWeight:"600",color:"#334155"}}>{Number(date.slice(-2))}</Text><Text style={{fontSize:12,color:badgeColor(d)}}>{dayCode(d)}{d?.leaveDays===0.5&&d.status!=="HALF_DAY_LEAVE"?"½":""}</Text></View>})}
+      </View>
      </View>)}
      {matrixOffset>0&&<Pressable accessibilityRole="button" style={styles.outline}
       onPress={()=>setMatrixOffset(v=>Math.max(0,v-25))}>
@@ -323,10 +342,10 @@ export function NativeHrAttendance({token,canConfigure,canManageLeave=false,canR
     </View>
    </>}
   </View>}
-  <NativeHrMyLeave token={token} onExpired={onExpired} onChanged={()=>void refresh()}/>
+  <NativeHrMyLeave token={token} onExpired={onExpired} onChanged={()=>{void refresh();setMatrixRefresh(v=>v+1);}}/>
   {canManageLeave&&<NativeHrLeavePolicies token={token} onExpired={onExpired}/>}
-  {canReviewLeave&&<NativeHrLeaveReviews token={token} onExpired={onExpired} onChanged={()=>void refresh()}/>}
-  <NativeHrAttendanceCorrections token={token} onExpired={onExpired} days={mine?.days??[]} staff={canCorrect?(matrix?.items??[]):[]} onChanged={()=>{void refresh();setMatrixRefresh(v=>v+1);}}/>
+  {canReviewLeave&&<NativeHrLeaveReviews token={token} onExpired={onExpired} onChanged={()=>{void refresh();setMatrixRefresh(v=>v+1);}}/>}
+  <NativeHrAttendanceCorrections token={token} onExpired={onExpired} days={mine?.month===selfMonth?mine.days:[]} staff={canCorrect?(matrix?.items??[]):[]} onChanged={()=>{void refresh();setMatrixRefresh(v=>v+1);}}/>
   {canReviewCorrection&&<NativeHrLeaveReviews token={token} onExpired={onExpired} kind="correction" onChanged={()=>{void refresh();setMatrixRefresh(v=>v+1);}}/>}
  </View>;
 }

@@ -30,7 +30,7 @@ export class HrAttendanceController{
   return this.attendance.matrix(token,branch,month,offset);
  }
  @Get("me/attendance")
- mine(@Headers("authorization")token:string){return this.attendance.mine(token);}
+ mine(@Headers("authorization")token:string,@Query("month")month?:string){return this.attendance.mine(token,month);}
  @Post("me/attendance/check-out")
  checkOut(@Headers("authorization")token:string,@Body()body:unknown){
   return this.attendance.checkOut(token,body);
