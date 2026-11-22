@@ -11,7 +11,7 @@ type Draft={
  project:{category:string;branchRef:string|null;projectRef:string|null;eventRef:string|null;stateRef:string|null;districtRef:string|null;location:string;targetGroup:string;plannedBeneficiaries:number|null};
  team:{coordinatorRef:string|null;volunteerRef:string|null};
  budget:{goal:string;expectedCost:string;startAt:string;endAt:string};
- media:{fileRef:string|null;supportingFileRefs:string[];alt:string};review:Record<string,never>;
+ media:{coverRef:string|null;fileRef:string|null;supportingFileRefs:string[];alt:string};review:Record<string,never>;
 };
 type Row={ref:string;code:string;title:string;status:string;category:string;version:number;revision:number;steps?:Record<string,unknown>};
 type Page={items:Row[];offset:number;hasMore:boolean};
@@ -20,7 +20,7 @@ type Choice={value:string;label:string};
 type Choices={canFoundation:boolean;branches:Choice[];states:Choice[];districts:Choice[];coordinators:Choice[];volunteers:Choice[];projects:Choice[];events:(Choice&{projectRef:string|null})[]};
 const blank=():Draft=>({basic:{title:"",type:"GENERAL",summary:"",description:"",tags:[]},
  project:{category:"GENERAL",branchRef:null,projectRef:null,eventRef:null,stateRef:null,districtRef:null,location:"",targetGroup:"",plannedBeneficiaries:null},
- team:{coordinatorRef:null,volunteerRef:null},budget:{goal:"",expectedCost:"",startAt:"",endAt:""},media:{fileRef:null,supportingFileRefs:[],alt:""},review:{}});
+ team:{coordinatorRef:null,volunteerRef:null},budget:{goal:"",expectedCost:"",startAt:"",endAt:""},media:{coverRef:null,fileRef:null,supportingFileRefs:[],alt:""},review:{}});
 const rupees=(v:unknown)=>{try{if(typeof v!=="string"||!/^[0-9]+$/.test(v))return "";
  const n=BigInt(v);return (n/100n).toString()+"."+(n%100n).toString().padStart(2,"0");}catch{return "";}};
 function fromRow(row:Row):Draft{
@@ -38,7 +38,7 @@ function fromRow(row:Row):Draft{
   team:{...blank().team,coordinatorRef:t?.coordinatorRef??null,volunteerRef:t?.volunteerRef??null},
   budget:{goal:rupees(g?.goalMinor),expectedCost:rupees(g?.expectedCostMinor),
    startAt:g?.startAt??"",endAt:g?.endAt??""},
-  media:{fileRef:media?.fileRef??null,supportingFileRefs:Array.isArray(media?.supportingFileRefs)?media.supportingFileRefs:[],alt:media?.alt??""}};
+  media:{coverRef:media?.coverRef??null,fileRef:media?.fileRef??null,supportingFileRefs:Array.isArray(media?.supportingFileRefs)?media.supportingFileRefs:[],alt:media?.alt??""}};
 }
 export function NativeCampaignDrafts({token,canManage,onExpired}:{
  token:string;canManage:boolean;onExpired:()=>void
@@ -194,6 +194,12 @@ export function NativeCampaignDrafts({token,canManage,onExpired}:{
     {field("Short explanation",form.basic.summary,v=>change("basic","summary",v),true)}
     {field("Full explanation",form.basic.description,v=>change("basic","description",v),true)}
     {field("Tags (comma-separated)",form.basic.tags.join(", "),v=>change("basic","tags",v.split(",").map(x=>x.trim()).filter(Boolean)))}
+    {selected?<NativeCampaignMediaPanel key={selected.ref+"-cover"} campaignRef={selected.ref}
+     version={selected.version} token={token} onExpired={onExpired} kind="COVER"
+     canUpload={editable&&!busy&&!pending.current&&!submitPending.current}
+     attached={form.media.coverRef?[form.media.coverRef]:[]}
+     onChange={refs=>change("media","coverRef",refs[0]??null)}/>:
+     <Text style={s.muted}>Save the private campaign draft first to upload an optional cover image.</Text>}
    </>}
    {step===1&&<>
     {pick("Foundation branch",form.project.branchRef,choices?.branches??[],v=>setForm(d=>({...d,project:{...d.project,branchRef:v,projectRef:null,eventRef:null},team:{...d.team,volunteerRef:null}})),
