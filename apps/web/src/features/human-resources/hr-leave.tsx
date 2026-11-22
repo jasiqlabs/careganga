@@ -3,7 +3,7 @@ import {useCallback,useEffect,useRef,useState} from "react";
 type Policy={policyRef:string;leaveType:string;annualDays:number;usedDays:number;availableDays:number;allowHalfDays:boolean;countWeeklyOff:boolean;effectiveFrom:string;effectiveTo:string|null};
 type Request={reference:string;leaveType:string;startDate:string;endDate:string;days:number;status:string;caseStatus:string};
 type Mine={linked:boolean;year:string;policies:Policy[];requests:Request[]};
-type Review=Request&{caseRef:string;employeeName:string;revision:number;canReview:boolean;reason?:string;date?:string;originalStatus?:string;proposedStatus?:string;original?:{status:string;checkInAt?:string|null;checkOutAt?:string|null};proposed?:{status:string;checkInAt?:string|null;checkOutAt?:string|null}};
+type Review=Request&{caseRef:string;employeeName:string;revision:number;canReview:boolean;reason?:string;balance?:{annualDays:number;approvedDays:number;availableDays:number};date?:string;originalStatus?:string;proposedStatus?:string;original?:{status:string;checkInAt?:string|null;checkOutAt?:string|null};proposed?:{status:string;checkInAt?:string|null;checkOutAt?:string|null}};
 const blank=()=>({policyRef:"",startDate:"",endDate:"",halfDay:false,reason:""});
 const label=(status:string)=>(({SUBMITTED:"Pending review",IN_REVIEW:"In review",APPROVED:"Approved",OWNER_COMPLETED:"Approved",RETURNED:"Returned",REJECTED:"Rejected"} as Record<string,string>)[status]??"Review status unavailable");
 const failure=(e:unknown)=>e instanceof Error?e.message:"Could not confirm the result. Refresh before retrying.";
@@ -97,14 +97,15 @@ export function HrLeaveReviews({onChanged,kind="leave"}:{onChanged:()=>void;kind
  const [status,setStatus]=useState("SUBMITTED"),[offset,setOffset]=useState(0),[more,setMore]=useState(false);
  const [loading,setLoading]=useState(true),[busy,setBusy]=useState(false),[error,setError]=useState(""),[notice,setNotice]=useState("");
  const [password,setPassword]=useState(""),[action,setAction]=useState("APPROVE"),[locked,setLocked]=useState(false);
+ const [filter,setFilter]=useState({from:"",to:"",type:"",employee:""}),[applied,setApplied]=useState({from:"",to:"",type:"",employee:""});
  const key=useRef<string|null>(null);
  const refresh=useCallback(async()=>{
   setLoading(true);setError("");
-  try{const v=await api<{items:Review[];hasMore:boolean}>(route+"?status="+status+"&offset="+offset);
+  try{const v=await api<{items:Review[];hasMore:boolean}>(route+"?status="+status+"&offset="+offset+(kind==="leave"?Object.entries(applied).map(([k,v])=>"&"+k+"="+encodeURIComponent(v)).join(""):""));
    if(!Array.isArray(v.items))throw Error("Review list unavailable");
    setItems(v.items);setMore(v.hasMore===true);
   }catch(e){setItems([]);setMore(false);setSelected(null);setError(failure(e));}finally{setLoading(false);}
- },[status,offset,route]);
+ },[status,offset,route,kind,applied]);
  useEffect(()=>{void refresh();},[refresh]);
  const open=async(x:Review)=>{
   if(busy||locked)return;setBusy(true);setError("");setSelected(null);setPassword("");setAction("APPROVE");key.current=null;
@@ -132,6 +133,9 @@ export function HrLeaveReviews({onChanged,kind="leave"}:{onChanged:()=>void;kind
    <option value="SUBMITTED">Pending</option><option value="OWNER_COMPLETED">Approved</option>
    <option value="RETURNED">Returned</option><option value="REJECTED">Rejected</option><option value="ALL">All</option>
   </select></label>
+  {kind==="leave"&&<fieldset disabled={busy||locked} style={{border:0,padding:0,display:"grid",gap:8}}>
+   {(["from","to","type","employee"] as const).map(k=><label key={k}>{k==="from"?"From date":k==="to"?"To date":k==="type"?"Leave type":"Employee name"}<input style={field} type={k==="from"||k==="to"?"date":"text"} maxLength={80} value={filter[k]} onChange={e=>setFilter(x=>({...x,[k]:e.target.value}))}/></label>)}
+   <button type="button" onClick={()=>{setSelected(null);setOffset(0);setApplied({...filter});}}>Apply filters</button></fieldset>}
   <button type="button" disabled={busy||loading||locked} onClick={()=>void refresh()}>Refresh reviews</button>
   {error&&<p role="alert">{error}</p>}{notice&&<p role="status">{notice}</p>}
   {loading&&<p>Loading leave reviews…</p>}{!loading&&!error&&!items.length&&<p>No matching requests.</p>}
@@ -144,6 +148,7 @@ export function HrLeaveReviews({onChanged,kind="leave"}:{onChanged:()=>void;kind
   {selected&&<div style={{...card,background:"#F8FAFC"}}>
    <strong>{selected.employeeName} · {kind==="leave"?selected.leaveType:"Attendance correction"}</strong>
    <span>{selected.reference} · {kind==="leave"?selected.startDate+" – "+selected.endDate+" · "+selected.days+" days":snapshot(selected.original)+" → "+snapshot(selected.proposed)}</span>
+   {selected.balance&&<p>Annual: {selected.balance.annualDays} days · Approved used: {selected.balance.approvedDays} · Available: {selected.balance.availableDays}</p>}
    <p style={{whiteSpace:"pre-wrap",margin:0}}>Private reason: {selected.reason}</p>
    {selected.canReview?<><label>Decision<select style={field} value={action} disabled={busy||locked} onChange={e=>setAction(e.target.value)}>
     <option value="APPROVE">Approve</option><option value="RETURN">Return for correction</option><option value="REJECT">Reject</option>

@@ -9,8 +9,9 @@ export class HrLeaveController{
  @Post("me/leave")
  submit(@Headers("authorization")token:string,@Body()body:unknown){return this.leave.submit(token,body);}
  @Get("leave-reviews")
- inbox(@Headers("authorization")token:string,@Query("offset")offset?:string,@Query("status")status?:string){
-  return this.reviews.inbox(token,offset,status);
+ inbox(@Headers("authorization")token:string,@Query("offset")offset?:string,@Query("status")status?:string,
+  @Query("from")from?:string,@Query("to")to?:string,@Query("type")type?:string,@Query("employee")employee?:string){
+  return this.reviews.inbox(token,offset,status,{from,to,type,employee});
  }
  @Get("leave-reviews/:ref")
  detail(@Headers("authorization")token:string,@Param("ref")ref:string){return this.reviews.detail(token,ref);}

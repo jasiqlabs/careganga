@@ -168,6 +168,13 @@ export class HrLeaveSourceFacade{
   return {employeeName:row.employee_name,leaveType:row.leave_type,startDate:dateText(row.start_date),
    endDate:dateText(row.end_date),days:row.half_days/2,status:row.status};
  }
+ async reviewBalance(tx:PoolClient,realm:string,row:LeaveRequestRow){
+  const p=(await tx.query<{type_key:string;annual_half_days:number}>(`SELECT type_key,annual_half_days
+   FROM hr_leave_policy WHERE root_realm_id=$1 AND id=$2`,[realm,row.policy_id])).rows[0];
+  if(!p)throw new ConflictException({code:"CG10_LEAVE_POLICY_CHANGED"});
+  const used=await this.used(tx,realm,row.employee_id,p.type_key,dateText(row.start_date).slice(0,4));
+  return {annualDays:p.annual_half_days/2,approvedDays:used/2,availableDays:Math.max(0,p.annual_half_days-used)/2};
+ }
  async mine(tx:PoolClient,actor:VerifiedFoundationActor,yearInput:unknown){
   const year=typeof yearInput==="string"?yearInput:String(new Date().getUTCFullYear());
   if(!/^20\d{2}$/.test(year))throw new BadRequestException({code:"CG10_LEAVE_INVALID"});

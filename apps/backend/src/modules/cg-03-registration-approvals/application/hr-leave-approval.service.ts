@@ -6,7 +6,7 @@ import {SessionService} from "../../cg-01-identity-access/application/session.se
 import {ProtectedAccessOwnerService} from "../../cg-01-identity-access/application/protected-access-owner.service";
 import {FoundationStructureIdentityFacade} from "../../cg-01-identity-access/application/foundation-structure-identity.facade";
 import type {VerifiedFoundationActor} from "../../cg-01-identity-access/public-api";
-import {HrLeaveSourceFacade,leaveId,type LeaveSubmission} from "../../cg-10-human-resources/application/hr-leave-source.facade";
+import {HrLeaveSourceFacade,leaveId,leaveDate,type LeaveSubmission} from "../../cg-10-human-resources/application/hr-leave-source.facade";
 const hash=(v:unknown)=>createHash("sha256").update(JSON.stringify(v)).digest("hex");
 type Case={id:string;case_number:string;process_id:string;status:string;revision:number;current_step:number;
  proposer_id:string;hr_leave_request_id:string;hr_leave_source_digest:string;account_name_snapshot:string};
@@ -78,11 +78,21 @@ export class HrLeaveApprovalService{
   await this.identity.assertCurrent(tx,actor,"hr.leave.review");
   await this.protectedOwner.verifyReviewer(tx,actor,"approvals.review",true);
  }
- async inbox(token:string,offsetInput:unknown,statusInput:unknown){
+ async inbox(token:string,offsetInput:unknown,statusInput:unknown,filters:{from?:unknown;to?:unknown;type?:unknown;employee?:unknown}={}){
   const actor=await this.reviewer(token),offset=Number(offsetInput??0),status=String(statusInput??"ALL");
   if(!Number.isSafeInteger(offset)||offset<0||offset>10000||
    !["ALL","SUBMITTED","IN_REVIEW","OWNER_COMPLETED","RETURNED","REJECTED"].includes(status))
-   throw new BadRequestException("Check leave review filters");
+   throw new BadRequestException({code:"CG10_LEAVE_INVALID"});
+  const from=filters.from===undefined||filters.from===""?null:leaveDate(filters.from);
+  const to=filters.to===undefined||filters.to===""?null:leaveDate(filters.to);
+  const filterText=(value:unknown)=>{
+   if(value===undefined||value==="")return "";
+   if(typeof value!=="string"||value.length>80||/[\u0000-\u001f\u007f]/.test(value))
+    throw new BadRequestException({code:"CG10_LEAVE_INVALID"});
+   return value.trim().toLowerCase();
+  };
+  if(from&&to&&from>to)throw new BadRequestException({code:"CG10_LEAVE_INVALID"});
+  const type=filterText(filters.type),employee=filterText(filters.employee);
   return this.run(async tx=>{
    await this.requireReviewer(tx,actor);
    const q=await tx.query<Case&{leave_type:string;start_date:string;end_date:string;half_days:number;leave_status:string}>(`
@@ -93,7 +103,11 @@ export class HrLeaveApprovalService{
      AND r.source_digest=c.hr_leave_source_digest AND r.case_ref=c.id
     JOIN hr_leave_policy p ON p.id=r.policy_id AND p.root_realm_id=r.root_realm_id
     WHERE c.realm_id=$1 AND c.case_kind='LEAVE_REQUEST' AND ($2='ALL' OR c.status=$2)
-    ORDER BY c.submitted_at DESC,c.id DESC LIMIT 26 OFFSET $3`,[actor.realmId,status,offset]);
+     AND ($4::date IS NULL OR r.end_date >= $4::date)
+     AND ($5::date IS NULL OR r.start_date <= $5::date)
+     AND ($6='' OR strpos(lower(p.leave_type),$6)>0)
+     AND ($7='' OR strpos(lower(c.account_name_snapshot),$7)>0)
+    ORDER BY c.submitted_at DESC,c.id DESC LIMIT 26 OFFSET $3`,[actor.realmId,status,offset,from,to,type,employee]);
    return {items:q.rows.slice(0,25).map(c=>({caseRef:c.id,reference:c.case_number,employeeName:c.account_name_snapshot,
     caseStatus:c.status,status:c.leave_status,revision:c.revision,leaveType:c.leave_type,startDate:c.start_date,
     endDate:c.end_date,days:c.half_days/2,canReview:c.proposer_id!==actor.accountId&&["SUBMITTED","IN_REVIEW"].includes(c.status)})),
@@ -112,7 +126,7 @@ export class HrLeaveApprovalService{
    await tx.query("INSERT INTO hr_audit(root_realm_id,actor_ref,employee_ref,event_key,action) VALUES($1,$2,$3,$4,$5)",
     [actor.realmId,actor.accountId,row.employee_id,randomUUID(),"LEAVE_PRIVATE_READ"]);
    return {caseRef:c.id,reference:c.case_number,caseStatus:c.status,revision:c.revision,
-    ...this.source.summary(row),reason,
+    ...this.source.summary(row),reason,balance:await this.source.reviewBalance(tx,actor.realmId,row),
     canReview:c.proposer_id!==actor.accountId&&["SUBMITTED","IN_REVIEW"].includes(c.status)};
   });
  }

@@ -5,7 +5,7 @@ import {identityRequest} from "../identity-access/http-client";
 type Policy={policyRef:string;leaveType:string;annualDays:number;usedDays:number;availableDays:number;allowHalfDays:boolean;countWeeklyOff:boolean;effectiveFrom:string;effectiveTo:string|null};
 type Request={reference:string;leaveType:string;startDate:string;endDate:string;days:number;status:string;caseStatus:string};
 type Mine={linked:boolean;year:string;policies:Policy[];requests:Request[]};
-type Review=Request&{caseRef:string;employeeName:string;revision:number;canReview:boolean;reason?:string;date?:string;originalStatus?:string;proposedStatus?:string;original?:{status:string;checkInAt?:string|null;checkOutAt?:string|null};proposed?:{status:string;checkInAt?:string|null;checkOutAt?:string|null}};
+type Review=Request&{caseRef:string;employeeName:string;revision:number;canReview:boolean;reason?:string;balance?:{annualDays:number;approvedDays:number;availableDays:number};date?:string;originalStatus?:string;proposedStatus?:string;original?:{status:string;checkInAt?:string|null;checkOutAt?:string|null};proposed?:{status:string;checkInAt?:string|null;checkOutAt?:string|null}};
 const blank=()=>({policyRef:"",startDate:"",endDate:"",halfDay:false,reason:""});
 const label=(status:string)=>(({SUBMITTED:"Pending review",IN_REVIEW:"In review",APPROVED:"Approved",OWNER_COMPLETED:"Approved",RETURNED:"Returned",REJECTED:"Rejected"} as Record<string,string>)[status]??"Review status unavailable");
 const failure=(e:unknown)=>e instanceof Error?e.message:"Could not confirm the result. Refresh before retrying.";
@@ -97,13 +97,14 @@ export function NativeHrLeaveReviews({token,onExpired,onChanged,kind="leave"}:{t
  const [status,setStatus]=useState("SUBMITTED"),[offset,setOffset]=useState(0),[more,setMore]=useState(false);
  const [loading,setLoading]=useState(true),[busy,setBusy]=useState(false),[error,setError]=useState(""),[notice,setNotice]=useState("");
  const [password,setPassword]=useState(""),[action,setAction]=useState("APPROVE"),[locked,setLocked]=useState(false);
+ const [filter,setFilter]=useState({from:"",to:"",type:"",employee:""}),[applied,setApplied]=useState({from:"",to:"",type:"",employee:""});
  const key=useRef<string|null>(null),fail=useFailure(onExpired,setError);
  const refresh=useCallback(async()=>{
   setLoading(true);setError("");
-  try{const v=await api<{items:Review[];hasMore:boolean}>(token,route+"?status="+status+"&offset="+offset);
+  try{const v=await api<{items:Review[];hasMore:boolean}>(token,route+"?status="+status+"&offset="+offset+(kind==="leave"?Object.entries(applied).map(([k,v])=>"&"+k+"="+encodeURIComponent(v)).join(""):""));
    if(!Array.isArray(v.items))throw Error("Review list unavailable");setItems(v.items);setMore(v.hasMore===true);
   }catch(e){setItems([]);setMore(false);setSelected(null);fail(e);}finally{setLoading(false);}
- },[token,status,offset,fail,route]);
+ },[token,status,offset,fail,route,kind,applied]);
  useEffect(()=>{void refresh();},[refresh]);
  const open=async(x:Review)=>{
   if(busy||locked)return;setBusy(true);setError("");setSelected(null);setPassword("");setAction("APPROVE");key.current=null;
@@ -125,6 +126,8 @@ export function NativeHrLeaveReviews({token,onExpired,onChanged,kind="leave"}:{t
    {key:"RETURNED",title:"Returned"},{key:"REJECTED",title:"Rejected"},{key:"ALL",title:"All"}].map(x=>
    <Button key={x.key} title={x.title} selected={status===x.key} disabled={busy||locked}
     onPress={()=>{setStatus(x.key);setOffset(0);setSelected(null);setPassword("");}}/>)}</View>
+  {kind==="leave"&&<>{(["from","to","type","employee"] as const).map(k=><Field key={k} title={k==="from"?"From date YYYY-MM-DD":k==="to"?"To date YYYY-MM-DD":k==="type"?"Leave type":"Employee name"} value={filter[k]} maxLength={k==="from"||k==="to"?10:80} disabled={busy||locked} onChange={v=>setFilter(x=>({...x,[k]:v}))}/>)}
+   <Button title="Apply filters" disabled={busy||locked} onPress={()=>{setSelected(null);setOffset(0);setApplied({...filter});}}/></>}
   <Button title="Refresh reviews" disabled={busy||loading||locked} onPress={()=>void refresh()}/>
   {!!error&&<Text accessibilityRole="alert" style={styles.error}>{error}</Text>}{!!notice&&<Text style={styles.success}>{notice}</Text>}
   {loading&&<ActivityIndicator accessibilityLabel="Loading leave reviews"/>}
@@ -136,6 +139,7 @@ export function NativeHrLeaveReviews({token,onExpired,onChanged,kind="leave"}:{t
   {more&&<Button title="Next page" disabled={busy||locked} onPress={()=>{setSelected(null);setOffset(v=>v+25);}}/>}
   {selected&&<View style={styles.item}><Text style={styles.label}>{selected.employeeName} · {kind==="leave"?selected.leaveType:"Attendance correction"}</Text>
    <Text style={styles.muted}>{selected.reference} · {kind==="leave"?selected.startDate+" – "+selected.endDate+" · "+selected.days+" days":snapshot(selected.original)+" → "+snapshot(selected.proposed)}</Text>
+   {selected.balance&&<Text>Annual: {selected.balance.annualDays} days · Approved used: {selected.balance.approvedDays} · Available: {selected.balance.availableDays}</Text>}
    <Text>Private reason: {selected.reason}</Text>
    {selected.canReview?<><View style={styles.choices}>{[{key:"APPROVE",title:"Approve"},{key:"RETURN",title:"Return"},{key:"REJECT",title:"Reject"}].map(x=>
     <Button key={x.key} title={x.title} selected={action===x.key} disabled={busy||locked} onPress={()=>setAction(x.key)}/>)}</View>
