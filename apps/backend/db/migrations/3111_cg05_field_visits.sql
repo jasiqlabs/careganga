@@ -8,6 +8,8 @@ CREATE TABLE field_visit (
  project_id uuid NOT NULL,
  task_id uuid,
  actor_account_ref uuid NOT NULL,
+ actor_employee_ref uuid,
+ actor_branch_ref uuid,
  branch_ref uuid,
  state_ref uuid,
  district_ref uuid,
@@ -28,11 +30,14 @@ CREATE TABLE field_visit (
  FOREIGN KEY(root_realm_id,project_id) REFERENCES project(root_realm_id,id) ON DELETE RESTRICT,
  FOREIGN KEY(root_realm_id,project_id,task_id) REFERENCES project_task(root_realm_id,project_id,id) ON DELETE RESTRICT,
  FOREIGN KEY(actor_account_ref,root_realm_id) REFERENCES account(id,realm_id) ON DELETE RESTRICT,
+ FOREIGN KEY(root_realm_id,actor_employee_ref) REFERENCES hr_employee(root_realm_id,id) ON DELETE RESTRICT,
+ FOREIGN KEY(actor_branch_ref,root_realm_id) REFERENCES branch(id,root_realm_id) ON DELETE RESTRICT,
  FOREIGN KEY(created_by,root_realm_id) REFERENCES account(id,realm_id) ON DELETE RESTRICT,
  FOREIGN KEY(branch_ref,root_realm_id) REFERENCES branch(id,root_realm_id) ON DELETE RESTRICT,
  FOREIGN KEY(state_ref,root_realm_id) REFERENCES geography_area(id,root_realm_id) ON DELETE RESTRICT,
  FOREIGN KEY(district_ref,root_realm_id) REFERENCES geography_area(id,root_realm_id) ON DELETE RESTRICT,
  CHECK(district_ref IS NULL OR state_ref IS NOT NULL),
+ CHECK((actor_employee_ref IS NULL)=(actor_branch_ref IS NULL)),
  CHECK(completed_at IS NULL OR (started_at IS NOT NULL AND completed_at>=started_at)),
  CHECK(((status IN('DRAFT','PLANNED') AND started_at IS NULL AND completed_at IS NULL)
  OR (status='IN_PROGRESS' AND started_at IS NOT NULL AND completed_at IS NULL)
@@ -124,8 +129,8 @@ BEGIN
      OR NEW.version<>OLD.version+1 OR OLD.status IN('COMPLETED','REJECTED','CANCELLED') THEN
     RAISE EXCEPTION 'Invalid visit revision';
   END IF;
-  IF OLD.started_at IS NOT NULL AND (NEW.started_at,NEW.actor_account_ref,NEW.task_id,NEW.branch_ref)
-     IS DISTINCT FROM (OLD.started_at,OLD.actor_account_ref,OLD.task_id,OLD.branch_ref) THEN
+  IF OLD.started_at IS NOT NULL AND (NEW.started_at,NEW.actor_account_ref,NEW.actor_employee_ref,NEW.actor_branch_ref,NEW.task_id,NEW.branch_ref)
+     IS DISTINCT FROM (OLD.started_at,OLD.actor_account_ref,OLD.actor_employee_ref,OLD.actor_branch_ref,OLD.task_id,OLD.branch_ref) THEN
     RAISE EXCEPTION 'Accepted check-in and visit assignment are immutable';
   END IF;
   IF OLD.completed_at IS NOT NULL AND NEW.completed_at IS DISTINCT FROM OLD.completed_at THEN
@@ -147,6 +152,9 @@ BEGIN
  IF NEW.status<>'CANCELLED' AND ((p.planned_start IS NOT NULL AND (NEW.planned_at AT TIME ZONE 'Asia/Kolkata')::date<p.planned_start)
   OR (p.planned_end IS NOT NULL AND (NEW.planned_at AT TIME ZONE 'Asia/Kolkata')::date>p.planned_end)) THEN
    RAISE EXCEPTION 'Visit outside current project dates';
+ END IF;
+ IF NEW.actor_employee_ref IS NOT NULL AND NOT EXISTS(SELECT 1 FROM hr_employee e WHERE e.root_realm_id=NEW.root_realm_id AND e.id=NEW.actor_employee_ref AND e.account_ref=NEW.actor_account_ref FOR SHARE) THEN
+   RAISE EXCEPTION 'Visit employee must match original account';
  END IF;
  IF NEW.task_id IS NOT NULL AND NEW.status NOT IN('CANCELLED','COMPLETED','REJECTED','RETURNED','PENDING_APPROVAL') THEN
   SELECT assignee_account_ref,status INTO t FROM project_task WHERE root_realm_id=NEW.root_realm_id AND project_id=NEW.project_id AND id=NEW.task_id FOR SHARE;
