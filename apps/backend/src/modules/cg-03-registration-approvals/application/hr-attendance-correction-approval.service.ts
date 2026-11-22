@@ -109,8 +109,11 @@ export class HrAttendanceCorrectionApprovalService{
    if(!c)throw new NotFoundException("This attendance correction review is unavailable");
    const row=await this.source.original(tx,actor.realmId,c.hr_attendance_change_id);
    if(row.case_ref!==c.id||row.source_digest!==c.hr_attendance_change_digest||row.expected_version!==c.proposal_revision)throw new ConflictException({code:"CG10_CORRECTION_STALE"});
+   const reason=this.source.reason(row,actor.realmId);
+   await tx.query("INSERT INTO hr_audit(root_realm_id,actor_ref,employee_ref,event_key,action) VALUES($1,$2,$3,$4,$5)",
+    [actor.realmId,actor.accountId,row.employee_id,randomUUID(),"ATTENDANCE_CORRECTION_PRIVATE_READ"]);
    return {caseRef:c.id,reference:c.case_number,caseStatus:c.status,revision:c.revision,
-    ...this.source.summary(row),reason:this.source.reason(row,actor.realmId),
+    ...this.source.summary(row),reason,
     canReview:c.proposer_id!==actor.accountId&&row.employee_account_ref!==actor.accountId&&["SUBMITTED","IN_REVIEW"].includes(c.status)};
   });
  }
