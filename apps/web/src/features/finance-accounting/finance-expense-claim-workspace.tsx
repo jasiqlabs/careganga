@@ -51,6 +51,7 @@ export function FinanceExpenseClaimWorkspace({canCreate,canView,allowanceMode=fa
  const [form,setForm]=useState<Draft>(empty());
  const [correction,setCorrection]=useState<{ref:string;version:number;number:string}|null>(null);
  const [pendingKey,setPendingKey]=useState<string|null>(null);
+ const [uncertain,setUncertain]=useState(false);
  const [fieldError,setFieldError]=useState<{name:string;message:string}|null>(null);
  const [openClaim,setOpenClaim]=useState<string|null>(null);
  const [loading,setLoading]=useState(false);
@@ -75,6 +76,7 @@ export function FinanceExpenseClaimWorkspace({canCreate,canView,allowanceMode=fa
  },[offset,canView,allowanceMode]);
  useEffect(()=>{void refresh();},[refresh]);
  function change(field:keyof Draft,value:string){
+  if(saving||uncertain)return;
   setForm(f=>({...f,[field]:value}));
   setPendingKey(null);setFieldError(null);setFeedback("");
  }
@@ -89,14 +91,14 @@ export function FinanceExpenseClaimWorkspace({canCreate,canView,allowanceMode=fa
    if(!res.ok){
     const p=await problem(res);
     if(p.field)setFieldError({name:p.field,message:p.message??"Check this value."});
-    if(res.status<500){setFeedback(p.message??"The claim could not be saved.");return;}
+    if(res.status<500&&!uncertain){setPendingKey(null);setFeedback(p.message??"The claim could not be saved.");return;}
     throw Error(p.message??"The claim could not be saved.");
    }
    const result:unknown=await res.json();
    if(!result||typeof result!=="object"||!("confirmed" in result)||
       result.confirmed!==true||!("status" in result)||result.status!=="DRAFT")
     throw Error("The claim save could not be verified. Check its status before retrying.");
-   setForm(empty());setPendingKey(null);setCorrection(null);setOffset(0);
+   setForm(empty());setUncertain(false);setPendingKey(null);setCorrection(null);setOffset(0);
    setFeedback(correction?"Returned claim corrected as a new original revision. Upload a fresh scanned bill before resubmitting.":"Expense claim draft saved. A verified bill and separate review are required before any payment or posting.");
    void refresh();
   }catch(e){
@@ -104,13 +106,14 @@ export function FinanceExpenseClaimWorkspace({canCreate,canView,allowanceMode=fa
     const status=await fetch("/api/finance/claims/"+(correction?"workflow-commands":"draft-commands")+"/"+key,{cache:"no-store"});
     if(status.ok){
      const result:unknown=await status.json();
-     if(result&&typeof result==="object"&&"confirmed" in result&&result.confirmed===true&&"status" in result&&result.status==="DRAFT"){
-      setForm(empty());setPendingKey(null);setCorrection(null);setOffset(0);
-      setFeedback("Your original claim draft was saved. It is not submitted, approved or paid.");
+     if(result&&typeof result==="object"&&"confirmed" in result&&result.confirmed===true&&"status" in result&&typeof result.status==="string"){
+      setForm(empty());setUncertain(false);setPendingKey(null);setCorrection(null);setOffset(0);
+      setFeedback("Original request confirmed. Refresh for its current approval and payment status.");
       void refresh();return;
      }
     }
    }catch{/* An unknown outcome must remain unknown. */}
+   setUncertain(true);
    setFeedback(e instanceof Error?e.message:
     "Could not confirm the save. Check your original request before trying again.");
   }finally{setSaving(false);}
@@ -122,30 +125,31 @@ export function FinanceExpenseClaimWorkspace({canCreate,canView,allowanceMode=fa
    </div><button type="button" disabled={loading} onClick={()=>void refresh()}>Refresh</button></div>
   {feedback&&<p role="status" className="cg-fin-notice">{feedback}</p>}
   {notice&&<p role="alert" className="cg-fin-notice">{notice}</p>}
-  {allowanceMode&&allowCreate&&<button type="button" className="primary" onClick={()=>setDrawer(v=>!v)}>{drawer?"Close request form":"Request Allowance"}</button>}
+  {allowanceMode&&allowCreate&&<button type="button" className="primary" disabled={saving||uncertain} onClick={()=>setDrawer(v=>!v)}>{drawer?"Close request form":"Request Allowance"}</button>}
   {allowCreate&&(!allowanceMode||drawer)&&<div className="cg-fin-drawer">
    <h3>{correction?"Correct "+correction.number+" (new revision)":allowanceMode?"Request Allowance":"New expense claim draft"}</h3>
    <form className="cg-fin-form" onSubmit={e=>void save(e)}>
     <label className="cg-fin-field">Expense category *
-     <input required minLength={2} maxLength={80} value={form.category}
+     <input required minLength={2} maxLength={80} disabled={saving||uncertain} value={form.category}
       onChange={e=>change("category",e.target.value)} placeholder="e.g. Travel"/>
      {fieldError?.name==="category"&&<span role="alert">{fieldError.message}</span>}</label>
     <label className="cg-fin-field">Expense date *
-     <input type="date" required value={form.expenseDate}
+     <input type="date" required disabled={saving||uncertain} value={form.expenseDate}
       onChange={e=>change("expenseDate",e.target.value)}/>
      {fieldError?.name==="expenseDate"&&<span role="alert">{fieldError.message}</span>}</label>
     <label className="cg-fin-field">Amount in rupees *
-     <input required type="text" inputMode="decimal" value={form.amount}
+     <input required type="text" inputMode="decimal" disabled={saving||uncertain} value={form.amount}
       onChange={e=>change("amount",e.target.value)}
       placeholder="0.00" pattern="(0|[1-9][0-9]*)(\.[0-9]{1,2})?"/>
      {fieldError?.name==="amount"&&<span role="alert">{fieldError.message}</span>}</label>
     <label className="cg-fin-field">Purpose *
      <textarea required minLength={3} maxLength={500} rows={3}
-      value={form.purpose} onChange={e=>change("purpose",e.target.value)}/>
+      disabled={saving||uncertain} value={form.purpose} onChange={e=>change("purpose",e.target.value)}/>
      {fieldError?.name==="purpose"&&<span role="alert">{fieldError.message}</span>}</label>
+    {uncertain&&<p role="alert">The original result is unknown. Retry this exact request before editing or starting another claim.</p>}
     <p className="cg-fin-help">Save your claim first, then attach its real privately scanned bill below. A separate protected reviewer must approve it before posting or payment.</p>
     <button className="primary" type="submit" disabled={saving}>
-     {saving?"Checking the draft…":correction?"Save corrected claim draft":"Save claim draft"}</button>
+     {saving?"Checking the draft…":uncertain?"Retry original request":correction?"Save corrected claim draft":"Save claim draft"}</button>
    </form>
   </div>}
   {canView&&<div className="cg-fin-table-wrap">
@@ -160,7 +164,7 @@ export function FinanceExpenseClaimWorkspace({canCreate,canView,allowanceMode=fa
      <td className="cg-fin-money">{money(c.amountMinor)}</td>
      <td><span className="cg-fin-status">{claimStatus(c)}</span></td>
      {allowCreate&&<td>{c.status==="RETURNED"&&
-       <button type="button" onClick={()=>{
+       <button type="button" disabled={saving||uncertain} onClick={()=>{
         setDrawer(true);setCorrection({ref:c.claimRef,version:c.version,number:c.claimNumber});
         setForm({purpose:c.purpose,category:c.category,expenseDate:c.expenseDate,
          amount:(BigInt(c.amountMinor)/100n).toString()+"."+(BigInt(c.amountMinor)%100n).toString().padStart(2,"0")});

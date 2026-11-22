@@ -41,7 +41,7 @@ function amount(value:unknown):string{
  return minor.toString();
 }
 type Normal={key:string;purpose:string;category:string;expenseDate:string;amountMinor:string;sourceKind:"GENERAL"|"HR_ALLOWANCE"};
-function parse(input:unknown):Normal{
+export function parseFinanceClaimDraft(input:unknown):Normal{
  if(!input||typeof input!=="object"||Array.isArray(input))
   return invalid("FINANCE_CLAIM_FORM_INVALID");
  const v=input as Record<string,unknown>;
@@ -64,7 +64,7 @@ export class FinanceExpenseClaimService{
  /** Real CG-01 Foundation requester; never invent an HR employee/volunteer. */
  async create(bearer:string,input:unknown){
   const actor=await this.sessions.requireAction(bearer,"finance.claims.create");
-  const v=parse(input);
+  const v=parseFinanceClaimDraft(input);
   const client=await this.db.connect();
   try{
    await client.query("BEGIN");

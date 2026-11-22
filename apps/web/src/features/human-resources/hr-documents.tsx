@@ -48,7 +48,7 @@ export function HrDocuments({mode,canIssue=false,canApproveTemplate=false,canRev
  const [kind,setKind]=useState("APPOINTMENT"),[search,setSearch]=useState(""),[subject,setSubject]=useState(""),[template,setTemplate]=useState("");
  const [issueDate,setIssueDate]=useState(""),[expiry,setExpiry]=useState(""),[heading,setHeading]=useState(""),[terms,setTerms]=useState(""),[password,setPassword]=useState("");
  const [signatoryName,setSignatoryName]=useState(""),[signatureRef,setSignatureRef]=useState(""),[sealRef,setSealRef]=useState("");
- const [selected,setSelected]=useState<Row|null>(null),[offset,setOffset]=useState(0),[more,setMore]=useState(false),[filter,setFilter]=useState("ALL");
+ const [selected,setSelected]=useState<Row|null>(null),[offset,setOffset]=useState(0),[more,setMore]=useState(false),[filter,setFilter]=useState("ALL"),[historySearch,setHistorySearch]=useState("");
  const [busy,setBusy]=useState(false),[loading,setLoading]=useState(true),[locked,setLocked]=useState(false),[message,setMessage]=useState("");
  const pending=useRef<Command|null>(null),running=useRef(false),generation=useRef(0),personRead=useRef(0);
  const request=useCallback(<T,>(p:string,v?:object)=>api<T>(p,v),[]);
@@ -82,7 +82,7 @@ export function HrDocuments({mode,canIssue=false,canApproveTemplate=false,canRev
  const approveTemplate=()=>void run("document-templates/approve",{kind,title:heading,body:terms,signatoryName,signatureFileRef:signatureRef,sealFileRef:sealRef,expectedVersion:current?.version??0,requestKey:crypto.randomUUID()},true);
  const open=async(x:Row)=>{if(mode!=="review"){setSelected(x);return;}if(!x.caseRef||running.current||locked)return;running.current=true;setBusy(true);setSelected(null);
   try{setSelected(await request<Row>(route+"/"+x.caseRef));}catch(e){fail(e);}finally{running.current=false;setBusy(false);}};
- const blocked=busy||locked,visible=rows.filter(x=>filter==="ALL"||(x.document?.status??x.status)===filter);
+ const blocked=busy||locked,visible=rows.filter(x=>(filter==="ALL"||(x.document?.status??x.status)===filter||x.document?.receiptStatus===filter)&&[x.reference,title(x.kind),x.snapshot?.recipient??x.recipient??"",x.snapshot?.branch??""].join(" ").toLowerCase().includes(historySearch.trim().toLowerCase()));
  const act=(path:string,proof=false,body:Record<string,unknown>={})=>void run(path,body,proof);
  const key=()=>crypto.randomUUID();
  
@@ -105,7 +105,8 @@ export function HrDocuments({mode,canIssue=false,canApproveTemplate=false,canRev
    <ReceiptUpload key={kind+"-signature"} assetType="SIGNATURE" disabled={blocked} onClear={()=>setSignatureRef("")} onVerified={ref=>setSignatureRef(ref??"")}/>
    <ReceiptUpload key={kind+"-seal"} assetType="SEAL" disabled={blocked} onClear={()=>setSealRef("")} onVerified={ref=>setSealRef(ref??"")}/>
    <label>Current password<input type="password" autoComplete="current-password" style={field} value={password} onChange={e=>setPassword(e.target.value)}/></label><button disabled={heading.trim().length<10||terms.trim().length<20||signatoryName.trim().length<2||!signatureRef||!sealRef||password.length<8} onClick={approveTemplate}>Approve version</button></fieldset>}
-  <Select label="Filter current page" value={filter} options={["ALL","DRAFT","SUBMITTED","APPROVED","PENDING","ISSUED","REVOKED","UNKNOWN","RETURNED","REJECTED"].map(s=>({value:s,label:title(s)}))} onChange={setFilter} disabled={blocked}/>
+  <label>Search current document page<input style={field} maxLength={80} value={historySearch} disabled={blocked} onChange={e=>setHistorySearch(e.target.value)}/></label>
+  <Select label="Filter current page" value={filter} options={["ALL","DRAFT","SUBMITTED","APPROVED","PENDING","ISSUED","REVOKED","UNKNOWN","RETURNED","REJECTED","ACKNOWLEDGED","RECEIVED_COPY_VERIFIED"].map(s=>({value:s,label:title(s)}))} onChange={setFilter} disabled={blocked}/>
   {loading?<p>Loading documents…</p>:!visible.length&&<p>No documents in this view.</p>}
   {visible.map(x=><article key={x.reference} style={{borderTop:"1px solid #E2E8F0",paddingTop:10}}><strong>{title(x.kind)} · {x.snapshot?.recipient??x.recipient}</strong><p>{x.reference} · {title(x.document?.status??x.status)}</p><button disabled={blocked} onClick={()=>void open(x)}>View details</button></article>)}
   {offset>0&&<button disabled={blocked} onClick={()=>{setSelected(null);setOffset(v=>Math.max(0,v-25));}}>Previous</button>}{more&&<button disabled={blocked} onClick={()=>{setSelected(null);setOffset(v=>v+25);}}>Next</button>}

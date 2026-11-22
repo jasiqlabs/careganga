@@ -72,17 +72,18 @@ export async function renderHrDocument(input:{snapshot:Record<string,unknown>;ti
   back.drawText(name,{x:90,y:29,size:nameSize,font,color:grey});
   if(input.qr&&!input.preview)back.drawText(input.qr,{x:9,y:10,size:7,font,color:grey});
  }else{
-  const page=pdf.addPage([595,842]);page.drawRectangle({x:0,y:815,width:595,height:27,color:blue});
-  page.drawText("CareGanga Foundation",{x:45,y:771,size:20,font,color:blue});
+  const newLetterPage=()=>{const p=pdf.addPage([595,842]);p.drawRectangle({x:0,y:815,width:595,height:27,color:blue});p.drawText("CareGanga Foundation",{x:45,y:771,size:20,font,color:blue});return p;};
+  let page=newLetterPage();
   let y=735;y=print(page,input.title,45,y,16,505);y-=8;
   for(const [label,key] of [["Recipient","recipient"],["Designation","designation"],["Branch","branch"],["Department","department"],["Joining date","hireDate"],["Issue date","issueDate"],...(v.kind==="RELIEVING"?[["Last working date","lastWorkingDate"]]:[])]){
    y=print(page,label+": "+fact(key),45,y,11,505);
   }
-  y-=12;y=print(page,input.body,45,y,11,505);y-=12;
+  y-=12;for(const line of wrap(input.body,font,11,505)){if(y<65){page=newLetterPage();y=735;}if(line)page.drawText(line,{x:45,y,size:11,font,color:grey});y-=16;}y-=12;
+  if(y<185){page=newLetterPage();y=735;}
   const date=fact("issueDate"),year=Number(date.slice(0,4)),start=Number(date.slice(5,7))>=4?year:year-1;
   y=print(page,"Financial year: "+start+"–"+(start+1)+" · "+input.reference+" · Version "+input.issueRevision,45,y,9,505);
   y=print(page,input.preview?"Draft preview only. Not valid for official use.":"Approved private document. No payroll or payment confirmation is implied.",45,y-6,9,505);
-  const signPage=y>=140?page:pdf.addPage([595,842]),signY=y>=140?Math.min(y-82,110):650;
+  const signPage=y>=140?page:newLetterPage(),signY=y>=140?Math.min(y-82,110):650;
   if(signature&&seal){drawAsset(signPage,signature,45,signY,150,45);drawAsset(signPage,seal,245,signY,90,65);}
   else print(signPage,"Signature and seal withheld until protected issuance",45,signY+30,10,505);
   print(signPage,input.signatoryName+" · Authorized signatory",45,signY-10,10,505);

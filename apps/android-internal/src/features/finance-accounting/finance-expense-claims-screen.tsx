@@ -55,6 +55,7 @@ export function FinanceExpenseClaimsScreen({token,canCreate,canView,canUploadBil
  const [correction,setCorrection]=useState<{ref:string;version:number;number:string}|null>(null);
  const [openedBill,setOpenedBill]=useState<string|null>(null);
  const [key,setKey]=useState<string|null>(null);
+ const [uncertain,setUncertain]=useState(false);
  const [fieldError,setFieldError]=useState<{field:string;message:string}|null>(null);
  const [message,setMessage]=useState("");
  const [error,setError]=useState("");
@@ -82,6 +83,7 @@ export function FinanceExpenseClaimsScreen({token,canCreate,canView,canUploadBil
   return()=>back.remove();
  },[onExit]);
  function change(field:keyof Draft,value:string){
+  if(busy||uncertain)return;
   setForm(f=>({...f,[field]:value}));
   setKey(null);setFieldError(null);setMessage("");
  }
@@ -97,14 +99,14 @@ export function FinanceExpenseClaimsScreen({token,canCreate,canView,canUploadBil
    if(!res.ok){
     const x=await failure(res);
     if(x.field)setFieldError({field:x.field,message:x.message??"Please correct this field."});
-    if(res.status<500){setMessage(x.message??"Your claim was not saved.");return;}
+    if(res.status<500&&!uncertain){setKey(null);setMessage(x.message??"Your claim was not saved.");return;}
     throw Error(x.message??"Your claim was not saved.");
    }
    const raw:unknown=await res.json();
    if(!raw||typeof raw!=="object"||!("confirmed" in raw)||raw.confirmed!==true||
      !("status" in raw)||raw.status!=="DRAFT")
     throw Error("Could not confirm the claim. Check its status before retrying.");
-   setForm(clear());setKey(null);setCorrection(null);
+   setForm(clear());setUncertain(false);setKey(null);setCorrection(null);
    setMessage(correction?"Corrected draft saved under the original claim number. Reattach a freshly scanned bill.":"Draft saved. A verified bill and separate approval are required before payment.");
    void refresh();
   }catch(e){
@@ -115,13 +117,14 @@ export function FinanceExpenseClaimsScreen({token,canCreate,canView,canUploadBil
     if(status.status===401){onExpired();return;}
     if(status.ok){
      const raw:unknown=await status.json();
-     if(raw&&typeof raw==="object"&&"confirmed" in raw&&raw.confirmed===true&&"status" in raw&&raw.status==="DRAFT"){
-      setForm(clear());setKey(null);setCorrection(null);
-      setMessage("Your existing draft was saved. It has not been approved or paid.");
+     if(raw&&typeof raw==="object"&&"confirmed" in raw&&raw.confirmed===true&&"status" in raw&&typeof raw.status==="string"){
+      setForm(clear());setUncertain(false);setKey(null);setCorrection(null);
+      setMessage("Original request confirmed. Refresh for its current approval and payment status.");
       void refresh();return;
      }
     }
    }catch{/* Unknown receipt remains unknown. */}
+   setUncertain(true);
    setMessage(e instanceof Error?e.message:"Cannot confirm claim save. Check the status before retrying.");
   }finally{setBusy(false);}
  }
@@ -139,22 +142,23 @@ export function FinanceExpenseClaimsScreen({token,canCreate,canView,canUploadBil
   </View>
   <ScrollView contentContainerStyle={s.content} keyboardShouldPersistTaps="handled">
    <Text style={s.muted}>Submit a draft as an existing Foundation account. Drafts are not approved expenses or payments.</Text>
-   {allowanceMode&&allowCreate&&<Pressable accessibilityRole="button" style={s.action} onPress={()=>setDrawer(v=>!v)}><Text style={s.actionText}>{drawer?"Close request form":"Request Allowance"}</Text></Pressable>}
+   {allowanceMode&&allowCreate&&<Pressable accessibilityRole="button" style={s.action} disabled={busy||uncertain} onPress={()=>setDrawer(v=>!v)}><Text style={s.actionText}>{drawer?"Close request form":"Request Allowance"}</Text></Pressable>}
    {allowCreate&&(!allowanceMode||drawer)&&<View style={s.card}>
     <Text style={s.heading}>{correction?"Correct "+correction.number:allowanceMode?"Request Allowance":"New claim draft"}</Text>
     {fields.map(([field,label,placeholder])=><View key={field}>
      <Text style={s.label}>{label} *</Text>
-     <TextInput accessibilityLabel={label} value={form[field]}
+     <TextInput accessibilityLabel={label} editable={!busy&&!uncertain} value={form[field]}
       onChangeText={v=>change(field,v)} placeholder={placeholder} placeholderTextColor={theme.mutedText}
       keyboardType={field==="amount"?"decimal-pad":"default"}
       multiline={field==="purpose"} maxLength={field==="purpose"?500:field==="category"?80:field==="expenseDate"?10:18}
       style={[s.input,field==="purpose"&&s.area]}/>
      {fieldError?.field===field&&<Text style={s.alert} accessibilityRole="alert">{fieldError.message}</Text>}
     </View>)}
+    {uncertain&&<Text accessibilityRole="alert" style={s.alert}>The original result is unknown. Retry this exact request before editing or starting another claim.</Text>}
     <Text style={s.muted}>A securely verified bill and protected review must be completed separately before approval or payout.</Text>
     <Pressable accessibilityRole="button" disabled={busy} style={[s.action,busy&&s.disabled]}
      onPress={()=>void save()}>
-     <Text style={s.actionText}>{busy?"Checking draft…":correction?"Save corrected draft":"Save claim draft"}</Text>
+     <Text style={s.actionText}>{busy?"Checking draft…":uncertain?"Retry original request":correction?"Save corrected draft":"Save claim draft"}</Text>
     </Pressable>
    </View>}
    {!!message&&<Text style={s.muted} accessibilityRole="alert">{message}</Text>}
@@ -171,7 +175,7 @@ export function FinanceExpenseClaimsScreen({token,canCreate,canView,canUploadBil
      <Text style={s.muted}>{c.expenseDate} · {c.purpose}</Text>
      <Text style={s.pending}>{claimStatus(c)}</Text>
      {c.status==="RETURNED"&&allowCreate&&
-      <Pressable accessibilityRole="button" style={s.action}
+      <Pressable accessibilityRole="button" disabled={busy||uncertain} style={s.action}
        onPress={()=>{
         setDrawer(true);setCorrection({ref:c.claimRef,version:c.version,number:c.claimNumber});
         setForm({category:c.category,purpose:c.purpose,expenseDate:c.expenseDate,
