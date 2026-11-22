@@ -52,6 +52,7 @@ export function NativeCampaignDrafts({token,canManage,onExpired}:{
  const choiceSeq=useRef(0);
  const pending=useRef<{key:string;body:Record<string,unknown>;path:string;method:"POST"|"PATCH"}|null>(null);
  const submitPending=useRef<{key:string;ref:string;version:number}|null>(null);
+ const lifecyclePending=useRef<{key:string;ref:string;version:number;action:"PAUSE"|"RESUME"|"CLOSE"|"WITHDRAW"}|null>(null);
  const seq=useRef(0),active=useRef(true);
  async function api<T>(path:string,method:"GET"|"POST"|"PATCH"="GET",body?:Record<string,unknown>){
   const r=await identityRequest("/api/v1/campaigns"+(path.startsWith("?")?path:path?"/"+path:""),{
@@ -87,18 +88,18 @@ export function NativeCampaignDrafts({token,canManage,onExpired}:{
    active.current=state==="active";
    if(!active.current){
     seq.current++;choiceSeq.current++;setRows([]);setSelected(null);setForm(blank());setSavedForm(blank());setEditing(false);setChoices(null);
-    setError("");setNotice("");pending.current=null;submitPending.current=null;
+    setError("");setNotice("");pending.current=null;submitPending.current=null;lifecyclePending.current=null;
    }else void refresh();
   });
   return()=>subscription.remove();
  },[token,offset,applied]);
  const editable=canManage&&(!selected||selected.status==="DRAFT"||selected.status==="RETURNED");
  const reset=()=>{
-  if(busy||pending.current||submitPending.current)return;
+  if(busy||pending.current||submitPending.current||lifecyclePending.current)return;
   seq.current++;setSelected(null);setForm(blank());setSavedForm(blank());setEditing(false);setStep(0);setError("");setNotice("");
  };
  const open=async(row:Row)=>{
-  if(busy||pending.current||submitPending.current)return;const id=++seq.current;setLoading(true);setError("");
+  if(busy||pending.current||submitPending.current||lifecyclePending.current)return;const id=++seq.current;setLoading(true);setError("");
   try{
    const item=await api<Row>(row.ref);
    if(id===seq.current&&active.current){setSelected(item);setForm(fromRow(item));setSavedForm(fromRow(item));setEditing(true);setStep(0);}
@@ -151,6 +152,36 @@ export function NativeCampaignDrafts({token,canManage,onExpired}:{
    setError(e instanceof Error?e.message:"Review submission outcome uncertain. Retry the same request.");
   }finally{setBusy(false);}
  };
+ const lifecycle=async(row:Row,action:"PAUSE"|"RESUME"|"CLOSE"|"WITHDRAW")=>{
+  if(!canManage||busy||pending.current||submitPending.current||!active.current)return;
+  const old=lifecyclePending.current;
+  if(old&&(old.ref!==row.ref||old.version!==row.version||old.action!==action)){
+   setError("Reconcile the previous campaign status request before changing another campaign.");return;
+  }
+  const allowed=row.status==="APPROVED"?["PAUSE","CLOSE","WITHDRAW"]:
+   row.status==="PAUSED"?["RESUME","CLOSE","WITHDRAW"]:
+   ["DRAFT","RETURNED"].includes(row.status)?["WITHDRAW"]:[];
+  if(!allowed.includes(action))return;
+  if(!lifecyclePending.current)lifecyclePending.current={key:Crypto.randomUUID(),ref:row.ref,
+   version:row.version,action};
+  const command=lifecyclePending.current;
+  setBusy(true);setError("");setNotice("");
+  const activeId=seq.current;
+  try{
+   const result=await api<{status:string;version:number;replayed:boolean}>(command.ref+"/lifecycle","POST",
+    {requestKey:command.key,expectedVersion:command.version,action:command.action});
+   if(!active.current||activeId!==seq.current)return;
+   lifecyclePending.current=null;
+   setNotice("Campaign "+row.code+" is now "+result.status.replaceAll("_"," ").toLowerCase()+
+    ". Public publication is separately protected.");
+   setEditing(false);setSelected(null);setForm(blank());setSavedForm(blank());void refresh();
+  }catch(e){
+   if(!active.current||activeId!==seq.current)return;
+   const status=e&&typeof e==="object"&&"status" in e?Number(e.status):0;
+   if(status>0&&status<500&&![408,429].includes(status))lifecyclePending.current=null;
+   setError(e instanceof Error?e.message:"Campaign status uncertain. Retry the same action.");
+  }finally{setBusy(false);}
+ };
  const unsaved=JSON.stringify(form)!==JSON.stringify(savedForm);
  const button=(label:string,fn:()=>void,disabled=false)=><Pressable accessibilityRole="button" disabled={disabled||busy}
   onPress={fn} style={[s.button,(disabled||busy)&&{opacity:.5}]}><Text style={s.action}>{label}</Text></Pressable>;
@@ -177,7 +208,15 @@ export function NativeCampaignDrafts({token,canManage,onExpired}:{
   {!loading&&!rows.length&&<Text style={s.muted}>No permitted campaigns match the current search.</Text>}
   {rows.map(c=><View key={c.ref} style={s.card}><Text style={s.heading}>{c.title}</Text>
    <Text>{c.code} · {c.status.replaceAll("_"," ")} · {c.category}</Text>
-   {button(canManage?"Open draft":"View details",()=>void open(c),!!pending.current)}
+   {button(canManage?"Open draft":"View details",()=>void open(c),!!pending.current||!!lifecyclePending.current)}
+   {canManage&&(c.status==="APPROVED"||c.status==="PAUSED"||c.status==="DRAFT"||c.status==="RETURNED")&&
+    <View style={s.row}>{(c.status==="APPROVED"?["PAUSE","CLOSE","WITHDRAW"]:
+      c.status==="PAUSED"?["RESUME","CLOSE","WITHDRAW"]:["WITHDRAW"]).map(action=>
+     <View key={action}>{button((lifecyclePending.current?.ref===c.ref&&lifecyclePending.current.action===action?"Retry ":"")+
+       (action==="WITHDRAW"?"Cancel / withdraw":action==="PAUSE"?"Pause":action==="RESUME"?"Resume":"Complete"),
+       ()=>void lifecycle(c,action as "PAUSE"|"RESUME"|"CLOSE"|"WITHDRAW"),
+       !!pending.current||!!submitPending.current||!!lifecyclePending.current&&
+        (lifecyclePending.current.ref!==c.ref||lifecyclePending.current.action!==action))}</View>)}</View>}
   </View>)}
   <View style={s.row}>{offset>0&&button("Previous page",()=>setOffset(v=>Math.max(0,v-25)))}
    {hasMore&&button("Next page",()=>setOffset(v=>v+25))}</View>
@@ -217,7 +256,7 @@ export function NativeCampaignDrafts({token,canManage,onExpired}:{
     {field("Planned target group",form.project.targetGroup,v=>change("project","targetGroup",v))}
     {field("Planned beneficiaries (estimate, not achieved)",form.project.plannedBeneficiaries===null?"":String(form.project.plannedBeneficiaries),
      v=>change("project","plannedBeneficiaries",v===""?null:/^\d+$/.test(v)?Number(v):-1))}
-    <Text style={s.muted}>Project and event links require verified CG-05 source and remain unavailable in this initial draft.</Text>
+    <Text style={s.muted}>Project and event choices are current CG-05 records. General campaigns require neither association.</Text>
    </>}
    {step===2&&<View style={s.block}>
     {pick("Campaign coordinator",form.team.coordinatorRef,choices?.coordinators??[],v=>change("team","coordinatorRef",v),
@@ -266,6 +305,7 @@ export function NativeCampaignDrafts({token,canManage,onExpired}:{
   </View>}
   {!!error&&<Text accessibilityRole="alert" style={s.error}>{error}</Text>}
   {!!notice&&<Text accessibilityRole="alert">{notice}</Text>}
+  {!!lifecyclePending.current&&<Text accessibilityRole="alert">Campaign state outcome unknown. Retry the same original operation before changing another campaign.</Text>}
   {!!pending.current&&<Text accessibilityRole="alert">Original save outcome unconfirmed. Retry the same request or refresh the original list before another change.</Text>}
   {!!submitPending.current&&<Text accessibilityRole="alert">Review submission outcome unknown. Retry with the original request key.</Text>}
  </ScrollView>;
