@@ -45,7 +45,12 @@ export function MemberRoster({canExport=false}:{canExport?:boolean}){
  <label>Foundation branch<select value={draft.branch} onChange={e=>setDraft(x=>({...x,branch:e.target.value}))}><option value="">All permitted branches</option>{page?.branchOptions.map(b=><option key={b.value} value={b.value}>{b.label}</option>)}</select></label>
  <button type="submit" disabled={busy||loading}>Search</button><button type="button" disabled={busy||loading} onClick={reset}>Reset</button>
  </form>
- {loading?<p role="status">Checking currently permitted membership roster…</p>:page&&<><p className="cg04-muted">Showing {page.items.length} authorized member records on this page.</p>
+ {loading?<p role="status">Checking currently permitted membership roster…</p>:page&&<>
+ <div className="cg04-roster-overview" aria-label="Current authorized membership overview">
+  {([["Approved members",page.overview.total],["Active",page.overview.active],["Expired",page.overview.expired],["Cancelled",page.overview.cancelled]] as const).map(([label,count])=><div className="cg04-roster-stat" key={label}><small>{label}</small><strong>{count}</strong></div>)}
+ </div>
+ <p className="cg04-muted">Membership categories: {Object.entries(page.overview.byCategory).map(([category,count])=>category+": "+count).join(" · ")||"No approved member records in your permitted scope."}</p>
+ <p className="cg04-muted">Showing {page.items.length} authorized member records on this page.</p>
  <div className="cg04-roster-scroll" role="region" aria-label="Approved member records" tabIndex={0}>
  <table><thead><tr><th>Member</th><th>Name</th><th>Email</th><th>Mobile</th><th>Tier</th><th>Joined</th><th>Expires</th><th>Status</th><th>City / District</th><th>Branch</th></tr></thead>
  <tbody>{page.items.map(m=><tr key={m.ref}><td>{m.memberNumber}</td><td>{m.name}</td><td>{m.email??"Not provided"}</td><td>{m.mobile}</td><td>{m.plan}</td><td>{m.joinedOn}</td><td>{m.expiresOn??"Lifetime"}</td><td><span className={"cg04-roster-state cg04-state-"+m.status.toLowerCase()}>{m.status}</span></td><td>{m.city} / {m.district}</td><td>{m.branch??"Foundation"}</td></tr>)}
