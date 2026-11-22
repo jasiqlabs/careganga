@@ -1009,9 +1009,9 @@ export class CmsEditorialService{
   const sections=approved.flatMap(p=>p.sections.filter(s=>s.kind==="PROJECT_TEASER"));
   if(!sections.length)throw new NotFoundException({code:"CMS_NOT_PUBLISHED"});
   const selected=new Map<string,Record<string,unknown>>();
-  for(const section of sections){const cards=section.fields.cards;if(!Array.isArray(cards))continue;for(const row of cards){if(!row||typeof row!=="object"||typeof row.slug!=="string")continue;if(slug==="upcoming-projects"&&row.status!=="PLANNED")continue;selected.set(row.slug,row);}}
+  for(const section of sections){const cards=(section.fields as Record<string,unknown>).cards;if(!Array.isArray(cards))continue;for(const row of cards){if(!row||typeof row!=="object"||typeof row.slug!=="string")continue;if(slug==="upcoming-projects"&&row.status!=="PLANNED")continue;selected.set(row.slug,row);}}
   const cards=[...selected.values()],title=slug==="upcoming-projects"?"Upcoming Projects":"Our Work";
-  return {schemaVersion:1,effectiveGeneration:sha([approved.map(p=>p.effectiveGeneration),cards]),kind:"PROJECTS",slug,title,seoTitle:title+" | CareGanga Foundation",seoDescription:"Current approved CareGanga Foundation projects.",canonicalPath:"/"+slug,lastPublishedAt:approved.map(p=>p.lastPublishedAt).sort().at(-1),sections:[{kind:"PROJECT_TEASER",order:0,fields:{heading:title,cards}}],assets:[]};
+  return {schemaVersion:1,effectiveGeneration:sha([approved.map(p=>p.effectiveGeneration),cards]),kind:"PROJECTS",slug,title,seoTitle:title+" | CareGanga Foundation",seoDescription:"Current approved CareGanga Foundation projects.",canonicalPath:"/"+slug,lastPublishedAt:approved.map(p=>p.lastPublishedAt).sort().reverse()[0],sections:[{kind:"PROJECT_TEASER",order:0,fields:{heading:title,cards}}],assets:[]};
  }
  async publicPage(slugInput:string){
   const slug=text(slugInput,"slug",70,1);
