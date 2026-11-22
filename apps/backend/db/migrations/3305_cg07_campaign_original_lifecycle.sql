@@ -110,3 +110,8 @@ BEGIN
  THEN RAISE EXCEPTION 'Campaign state must have one matching immutable owner event'; END IF;
  RETURN NULL;
 END; $cg07$;
+
+-- Original A12 currently-scoped recent activity is read from immutable status
+-- events; this index avoids scanning every campaign history on each dashboard.
+CREATE INDEX ix_cg07_campaign_feed
+ ON campaign_status_event(root_realm_id,at DESC,id DESC);
