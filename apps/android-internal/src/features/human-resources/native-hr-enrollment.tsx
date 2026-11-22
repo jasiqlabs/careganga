@@ -80,7 +80,10 @@ export function NativeHrEnrollment({token,canView,canManage,canReview,canViewEmp
   designation:string;employmentType:string;branch:string;department:string|null;
   manager:string|null;status:string;effectiveFrom:string;effectiveTo:string|null}|null>(null);
  const [detailBusy,setDetailBusy]=useState(false);
- const [headcounts,setHeadcounts]=useState<{total:number;statuses:Record<string,number>;newJoinersThisMonth:number;attendance:{onApprovedLeaveToday:number;employeesWithPendingLeave:number}|null}|null>(null);
+ const summarySequence=useRef(0);
+ const [summaryBusy,setSummaryBusy]=useState(false);
+ const [summaryError,setSummaryError]=useState("");
+ const [headcounts,setHeadcounts]=useState<{total:number;statuses:Record<string,number>;newJoinersThisMonth:number;departments:{label:string;count:number}[];joiners:{month:string;count:number}[];attendance:{onApprovedLeaveToday:number;employeesWithPendingLeave:number}|null}|null>(null);
  const [empBranches,setEmpBranches]=useState<Option[]>([]);
  const [empDepartments,setEmpDepartments]=useState<Option[]>([]);
  const [empFilter,setEmpFilter]=useState({q:"",status:"ALL",branch:"",department:""});
@@ -301,16 +304,19 @@ export function NativeHrEnrollment({token,canView,canManage,canReview,canViewEmp
  };
  const loadHeadcounts=async()=>{
   if(!canViewEmployees)return;
-  setStaffError("");
+  const read=++summarySequence.current;
+  setSummaryError("");setSummaryBusy(true);setHeadcounts(null);
   try{
    const value=await api(token,"summary");
    if(!value||typeof value!=="object"||!("statuses" in value)||
-    !("total" in value)||typeof value.total!=="number"||!("newJoinersThisMonth" in value)||typeof value.newJoinersThisMonth!=="number"||!("attendance" in value))
+    !("total" in value)||typeof value.total!=="number"||!("newJoinersThisMonth" in value)||typeof value.newJoinersThisMonth!=="number"||!("attendance" in value)||
+    !("departments" in value)||!Array.isArray(value.departments)||!("joiners" in value)||!Array.isArray(value.joiners))
     throw Error("Original employee summary unavailable.");
-   setHeadcounts(value as {total:number;statuses:Record<string,number>;newJoinersThisMonth:number;attendance:{onApprovedLeaveToday:number;employeesWithPendingLeave:number}|null});
-  }catch(e){setHeadcounts(null);failure(e);}
+   if(read===summarySequence.current)setHeadcounts(value as NonNullable<typeof headcounts>);
+  }catch(e){if(read===summarySequence.current){setHeadcounts(null);setSummaryError(e instanceof Error?e.message:"HR dashboard unavailable.");failure(e);}}
+  finally{if(read===summarySequence.current)setSummaryBusy(false);}
  };
- useEffect(()=>{if(canViewEmployees&&active==="overview")void loadHeadcounts();},[token,canViewEmployees,active]);
+ useEffect(()=>{if(canViewEmployees&&active==="overview")void loadHeadcounts();else{setHeadcounts(null);setSummaryBusy(false);setSummaryError("");}return()=>{summarySequence.current++;};},[token,canViewEmployees,active]);
  const loadStaff=async(page=0)=>{
   if(!canViewEmployees)return;
   setStaffError("");
@@ -371,8 +377,9 @@ export function NativeHrEnrollment({token,canView,canManage,canReview,canViewEmp
    {!!error&&<Text accessibilityRole="alert" style={styles.error}>{error}</Text>}
    {!!status&&<Text style={styles.success}>{status}</Text>}
    {seen("overview")&&canViewEmployees&&<View style={display("overview")}>
-    <View style={styles.heading}><Text style={styles.h2}>HR Dashboard</Text><Pressable accessibilityRole="button" onPress={()=>void loadHeadcounts()} style={styles.outline}><Text style={styles.outlineText}>Refresh</Text></Pressable></View>
+    <View style={styles.heading}><Text style={styles.h2}>HR Dashboard</Text><Pressable accessibilityRole="button" onPress={()=>void loadHeadcounts()} disabled={summaryBusy} accessibilityState={{disabled:summaryBusy}} style={styles.outline}><Text style={styles.outlineText}>Refresh</Text></Pressable></View>
     <Text style={styles.muted}>Current employee statistics for your permitted branches.</Text>
+    {summaryBusy&&<ActivityIndicator accessibilityLabel="Loading HR dashboard"/>}{!!summaryError&&<Text accessibilityRole="alert" style={styles.error}>{summaryError}</Text>}
     <View style={{flexDirection:"row",flexWrap:"wrap",gap:10}}>{[
      {label:"Total employees",value:headcounts?.total},{label:"Active employees",value:headcounts?.statuses.ACTIVE},
      {label:"On probation",value:headcounts?.statuses.PROBATION},{label:"Pending access",value:headcounts?.statuses.PENDING_ACCESS},
@@ -380,7 +387,9 @@ export function NativeHrEnrollment({token,canView,canManage,canReview,canViewEmp
      ...(headcounts?.attendance?[{label:"On approved leave today",value:headcounts.attendance.onApprovedLeaveToday},{label:"Employees with pending leave",value:headcounts.attendance.employeesWithPendingLeave}]:[])
     ].map(x=><View key={x.label} style={[styles.card,{flexBasis:"46%",flexGrow:1,minWidth:130,padding:13,borderRadius:12}]}><Text style={styles.muted}>{x.label}</Text><Text style={styles.title}>{x.value??"—"}</Text></View>)}</View>
     {headcounts&&<View style={styles.card}><Text style={styles.h2}>Employees by status</Text>{Object.entries(headcounts.statuses).map(([key,count])=><View key={key} style={{gap:5}}><View style={styles.heading}><Text style={styles.label}>{title(key)}</Text><Text style={styles.label}>{count}</Text></View><View accessibilityLabel={title(key)+" "+count+" of "+headcounts.total} style={{height:8,backgroundColor:theme.selectedSurface,borderRadius:8,overflow:"hidden"}}><View style={{height:8,width:(headcounts.total?Math.min(100,100*count/headcounts.total):0)+"%" as `${number}%`,backgroundColor:({ACTIVE:theme.primary,PROBATION:roleColor("green"),PENDING_ACCESS:roleColor("amber"),ON_HOLD:roleColor("violet"),EXITED:theme.error} as Record<string,string>)[key]??theme.mutedText}}/></View></View>)}</View>}
-    <View style={styles.card}><Text style={styles.h2}>Quick actions</Text><View style={{flexDirection:"row",flexWrap:"wrap",gap:10}}>{[{id:"employees",label:canManage&&canView?"Add employee / employee directory":"Employee directory"},{id:"attendance",label:"Attendance sheet / leave requests"},{id:"documents",label:"Document management"},{id:"performance",label:"Performance management"},{id:"profile",label:"My employment / apply for allowance"}].filter(x=>sections.some(s=>s.id===x.id)).map(x=><Pressable key={x.id} accessibilityRole="button" onPress={()=>choose(x.id)} style={[styles.outline,{minHeight:60,justifyContent:"center",flexBasis:"46%",flexGrow:1,minWidth:130,backgroundColor:theme.selectedSurface}]}><Text style={[styles.outlineText,{color:theme.primary}]}>{x.label}</Text></Pressable>)}</View></View>
+    {headcounts&&<View style={styles.card}><Text style={styles.h2}>Current employees by department</Text>{headcounts.departments.length===0?<Text style={styles.muted}>No current employees in permitted branches.</Text>:headcounts.departments.map((x,i)=><View key={i} style={{gap:5}}><View style={styles.heading}><Text style={[styles.label,{flex:1}]}>{x.label}</Text><Text style={styles.label}>{x.count}</Text></View><View style={{height:8,backgroundColor:theme.selectedSurface,borderRadius:8,overflow:"hidden"}}><View style={{height:8,width:(100*x.count/Math.max(1,headcounts.departments.reduce((sum,v)=>sum+v.count,0)))+"%" as `${number}%`,backgroundColor:theme.primary}}/></View></View>)}</View>}
+    {headcounts&&<View style={styles.card}><Text style={styles.h2}>Joining trend</Text><Text style={styles.muted}>Joining month of employees currently in your permitted branches · last six months</Text>{headcounts.joiners.length===0?<Text style={styles.muted}>No employee data available.</Text>:headcounts.joiners.map(x=><View key={x.month} style={{gap:5}}><View style={styles.heading}><Text style={styles.label}>{x.month}</Text><Text style={styles.label}>{x.count}</Text></View><View style={{height:8,backgroundColor:theme.selectedSurface,borderRadius:8,overflow:"hidden"}}><View style={{height:8,width:(100*x.count/Math.max(1,...headcounts.joiners.map(v=>v.count)))+"%" as `${number}%`,backgroundColor:theme.primary}}/></View></View>)}</View>}
+    <View style={styles.card}><Text style={styles.h2}>Quick actions</Text><View style={{flexDirection:"row",flexWrap:"wrap",gap:10}}>{[{id:"employees",label:canManage&&canView?"Add employee / employee directory":"Employee directory"},{id:"attendance",label:"Attendance & leave"},{id:"documents",label:"Letters & ID cards"},{id:"performance",label:"Performance"},{id:"profile",label:"My employment & allowances"}].filter(x=>sections.some(s=>s.id===x.id)).map(x=><Pressable key={x.id} accessibilityRole="button" onPress={()=>choose(x.id)} style={[styles.outline,{minHeight:60,justifyContent:"center",flexBasis:"46%",flexGrow:1,minWidth:130,backgroundColor:theme.selectedSurface}]}><Text style={[styles.outlineText,{color:theme.primary}]}>{x.label}</Text></Pressable>)}</View></View>
    </View>}
    {seen("profile")&&<View style={display("profile")}>
    <View style={styles.card}>
