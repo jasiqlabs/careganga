@@ -5,5 +5,8 @@ import {PrivateObjectStorage} from "./infrastructure/private-object-storage";
 import {makePrivateStorageProvider} from "./infrastructure/private-storage-provider.factory";
 import {MembershipEvidenceService} from "./application/membership-evidence.service";
 import {MembershipEvidenceController} from "./http/membership-evidence.controller";
-@Module({imports:[DatabaseModule,IdentityAccessModule],providers:[MembershipEvidenceService,{provide:PrivateObjectStorage,useFactory:makePrivateStorageProvider}],controllers:[MembershipEvidenceController],exports:[MembershipEvidenceService]})
+import {MemberBrandService} from "./application/member-brand.service";
+import {MemberPackService} from "./application/member-pack.service";
+import {MemberPackController,PublicMemberVerificationController} from "./http/member-pack.controller";
+@Module({imports:[DatabaseModule,IdentityAccessModule],providers:[MembershipEvidenceService,MemberBrandService,MemberPackService,{provide:PrivateObjectStorage,useFactory:makePrivateStorageProvider}],controllers:[MembershipEvidenceController,MemberPackController,PublicMemberVerificationController],exports:[MembershipEvidenceService,MemberBrandService,MemberPackService]})
 export class MembershipEvidenceSourceModule{}
