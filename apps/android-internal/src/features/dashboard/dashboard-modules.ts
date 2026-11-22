@@ -95,6 +95,7 @@ export interface ModuleActionHandlers {
   openHr: () => void;
   openProjects: () => void;
   openTasks: () => void;
+  openActivities: () => void;
   openInventory: () => void;
   openChangePassword: () => void;
 }
@@ -214,6 +215,7 @@ export function getAuthorizedModules(
   // SECTION 3: ORGANIZATION MANAGEMENT
   // ----------------------------------------------------
 
+  if(roleActions.includes("projects.activities.view"))list.push({key:"activities",title:roleActions.includes("projects.activities.manage")?"Activities & Events":"My Activities",shortLabel:"Activities",description:"Current permitted activities, events and recorded progress.",category:"ORGANIZATION MANAGEMENT",iconName:"approvals",iconBg:"#E0F2FE",iconColor:"#0369A1",onOpen:handlers.openActivities});
   if(roleActions.includes("projects.tasks.view"))list.push({key:"tasks",title:roleActions.includes("projects.tasks.manage")?"Tasks & Assignments":"My Assigned Tasks",shortLabel:"Tasks",description:"Current permitted project tasks and recorded progress.",category:"ORGANIZATION MANAGEMENT",iconName:"approvals",iconBg:"#E0F2FE",iconColor:"#0369A1",onOpen:handlers.openTasks});
   if(roleActions.includes("projects.view"))list.push({key:"projects",title:"Projects",shortLabel:"Projects",description:"View and manage current permitted Foundation projects.",category:"ORGANIZATION MANAGEMENT",iconName:"building",iconBg:"#E0F2FE",iconColor:"#0369A1",onOpen:handlers.openProjects});
   if(roleActions.includes("inventory.catalog.view"))list.push({key:"inventory",title:"Requests & Inventory",shortLabel:"Inventory",description:"View permitted inventory catalog and warehouses.",category:"ORGANIZATION MANAGEMENT",iconName:"building",iconBg:"#E0F2FE",iconColor:"#0369A1",onOpen:handlers.openInventory});
