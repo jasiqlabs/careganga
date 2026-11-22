@@ -1,6 +1,11 @@
 /** Server-controlled allow-list: authorized overrides can change safe wording only,
  * never rules, status, field binding, redaction, or authentication behavior. */
 export const SAFE_MESSAGE_CATALOG:Readonly<Record<string,string>>=Object.freeze({
+      CG12_RECEIPT_INVALID:"Choose an active supplier, permitted warehouse and valid receipt lines.",
+      CG12_SOURCE_CHANGED:"The original stock source changed. Refresh it before continuing.",
+      CG12_RECEIPT_PROOF:"A verified receipt document is required or the selected proof is no longer valid.",
+      CG12_STOCK_SHORTAGE:"There is not enough unreserved stock for this action.",
+      CG12_RECEIPT_REVERSED:"This receipt has already been reversed.",
       CG12_STALE:"The record changed, or its original code, unit or scope cannot be changed. Refresh it and retry.",
       CG12_CATALOG_INVALID:"Check the item, supplier or store fields and try again.",
       CG12_UNIT_INVALID:"Choose pieces, kilograms or liters with a valid quantity precision.",
