@@ -4,7 +4,7 @@ import fontkit from "@pdf-lib/fontkit";
 import {createHash,createHmac} from "node:crypto";
 import {ServiceUnavailableException} from "@nestjs/common";
 import {opaqueAppointmentQr} from "./cg19-appointment-qr";
-export const hrTemplateHash=(kind:string,title:string,body:string)=>createHash("sha256").update(JSON.stringify(["CG19_HR_TEMPLATE_V1",kind,title,body])).digest("hex");
+export const hrTemplateHash=(kind:string,title:string,body:string,assets?:{signatoryName:string;signatureSha256:string;sealSha256:string})=>createHash("sha256").update(JSON.stringify(assets?["CG19_HR_TEMPLATE_V2",kind,title,body,assets.signatoryName,assets.signatureSha256,assets.sealSha256]:["CG19_HR_TEMPLATE_V1",kind,title,body])).digest("hex");
 export function employeeCardToken(realm:string,document:string,digest:string){
  const key=Buffer.from(process.env.CG19_EMPLOYEE_CARD_QR_KEY??"","base64");
  if(key.length!==32)throw new ServiceUnavailableException("Employee card verification is not configured");
@@ -22,7 +22,7 @@ function wrap(value:string,font:PDFFont,size:number,width:number){
  }
  return lines;
 }
-export async function renderHrDocument(input:{snapshot:Record<string,unknown>;title:string;body:string;reference:string;sourceDigest:string;documentRef:string;issueRevision:number;createdAt:Date;qr:string|null;portrait?:{bytes:Buffer;mime:string}}){
+export async function renderHrDocument(input:{snapshot:Record<string,unknown>;title:string;body:string;reference:string;sourceDigest:string;documentRef:string;issueRevision:number;createdAt:Date;qr:string|null;portrait?:{bytes:Buffer;mime:string};signature:{bytes:Buffer;mime:string};seal:{bytes:Buffer;mime:string};signatoryName:string}){
  const path=process.env.CG19_PDF_FONT_PATH;
  if(!path||!path.startsWith("/")||path.includes(".."))throw new ServiceUnavailableException("The letter font is unavailable");
  const bytes=await readFile(path);
@@ -33,6 +33,9 @@ export async function renderHrDocument(input:{snapshot:Record<string,unknown>;ti
  pdf.setSubject("CG19-HR:"+input.documentRef+":"+input.sourceDigest+":"+input.issueRevision);
  pdf.setCreationDate(input.createdAt);pdf.setModificationDate(input.createdAt);
  const v=input.snapshot;
+ const loadImage=async(f:{bytes:Buffer;mime:string})=>f.mime==="image/jpeg"?pdf.embedJpg(f.bytes):f.mime==="image/png"?pdf.embedPng(f.bytes):Promise.reject(new ServiceUnavailableException("Approved signatory asset format unavailable"));
+ const signature=await loadImage(input.signature),seal=await loadImage(input.seal);
+ const drawAsset=(page:PDFPage,image:typeof signature,x:number,y:number,width:number,height:number)=>{const fit=image.scaleToFit(width,height);page.drawImage(image,{x:x+(width-fit.width)/2,y:y+(height-fit.height)/2,width:fit.width,height:fit.height});};
  const fact=(key:string)=>typeof v[key]==="string"?String(v[key]):"Not applicable";
  const print=(page:PDFPage,text:string,x:number,y:number,size:number,width:number)=>{
   for(const line of wrap(text,font,size,width)){
@@ -61,7 +64,10 @@ export async function renderHrDocument(input:{snapshot:Record<string,unknown>;ti
   for(let row=0;row<matrix.length;row++)for(let col=0;col<matrix.length;col++)if(matrix[row][col])
    back.drawRectangle({x:origin+col*unit,y:top-(row+1)*unit,width:unit,height:unit,color:rgb(0,0,0)});
   print(back,"Scan the opaque code and verify in CareGanga. No personal details in the QR.",88,109,8,144);
-  back.drawText(input.qr,{x:9,y:22,size:7,font,color:grey});
+  drawAsset(back,signature,90,39,67,24);drawAsset(back,seal,165,39,52,24);
+  const name=input.signatoryName;const nameSize=Math.min(7,140*7/Math.max(1,font.widthOfTextAtSize(name,7)));
+  back.drawText(name,{x:90,y:29,size:nameSize,font,color:grey});
+  back.drawText(input.qr,{x:9,y:10,size:7,font,color:grey});
  }else{
   const page=pdf.addPage([595,842]);page.drawRectangle({x:0,y:815,width:595,height:27,color:blue});
   page.drawText("CareGanga Foundation",{x:45,y:771,size:20,font,color:blue});
@@ -72,7 +78,10 @@ export async function renderHrDocument(input:{snapshot:Record<string,unknown>;ti
   y-=12;y=print(page,input.body,45,y,11,505);y-=12;
   const date=fact("issueDate"),year=Number(date.slice(0,4)),start=Number(date.slice(5,7))>=4?year:year-1;
   y=print(page,"Financial year: "+start+"–"+(start+1)+" · "+input.reference+" · Version "+input.issueRevision,45,y,9,505);
-  print(page,"Approved private document. No payroll or payment confirmation is implied.",45,y-6,9,505);
+  y=print(page,"Approved private document. No payroll or payment confirmation is implied.",45,y-6,9,505);
+  const signPage=y>=140?page:pdf.addPage([595,842]),signY=y>=140?Math.min(y-82,110):650;
+  drawAsset(signPage,signature,45,signY,150,45);drawAsset(signPage,seal,245,signY,90,65);
+  print(signPage,input.signatoryName+" · Authorized signatory",45,signY-10,10,505);
  }
  return Buffer.from(await pdf.save({useObjectStreams:false}));
 }

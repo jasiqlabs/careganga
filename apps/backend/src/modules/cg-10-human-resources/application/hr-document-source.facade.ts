@@ -102,8 +102,8 @@ export class HrDocumentSourceFacade{
   return q.rows[0];
  }
  async template(tx:PoolClient,realm:string,x:Input){
-  const q=await tx.query<Template>("SELECT id,version,title,body,content_sha256 FROM cg19_document_template WHERE realm_id=$1 AND id=$2 AND version=$3 AND template_kind=$4 AND status='APPROVED' FOR SHARE",[realm,x.templateId,x.templateVersion,"HR_"+x.kind]);
-  if(!q.rows[0])throw new ConflictException("The original approved template is unavailable");
+  const q=await tx.query<Template>("SELECT id,version,title,body,content_sha256 FROM cg19_document_template WHERE realm_id=$1 AND id=$2 AND version=$3 AND template_kind=$4 AND status='APPROVED' AND hr_signatory_name IS NOT NULL AND cg19_hr_template_assets_ready(realm_id,hr_signature_file_ref,hr_seal_file_ref) FOR SHARE",[realm,x.templateId,x.templateVersion,"HR_"+x.kind]);
+  if(!q.rows[0])throw new ConflictException({code:"CG10_TEMPLATE_ASSETS_REQUIRED"});
   return q.rows[0];
  }
  async create(tx:PoolClient,actor:VerifiedFoundationActor,raw:unknown){

@@ -7,6 +7,9 @@ export class HrIssuedDocumentController{
  constructor(private readonly documents:HrIssuedDocumentService){}
  @Get("document-requests") list(@Headers("authorization")t:string,@Query("offset")offset?:string){return this.documents.list(t,false,offset);}
  @Get("document-templates") templates(@Headers("authorization")t:string){return this.documents.templates(t);}
+ @Post("document-templates/assets") templateAssetUpload(@Headers("authorization")t:string,@Body()body:unknown){return this.documents.initiateTemplateAsset(t,body);}
+ @Get("document-templates/assets/:upload") templateAssetStatus(@Headers("authorization")t:string,@Param("upload")upload:string){return this.documents.templateAssetStatus(t,upload);}
+ @Post("document-templates/assets/:upload/confirm") templateAssetConfirm(@Headers("authorization")t:string,@Param("upload")upload:string){return this.documents.confirmTemplateAsset(t,upload);}
  @Post("document-templates/approve") template(@Headers("authorization")t:string,@Body()body:unknown){return this.documents.approveTemplate(t,body);}
  @Post("document-requests/:ref/issue") issue(@Headers("authorization")t:string,@Param("ref")ref:string,@Body()body:unknown){return this.documents.issue(t,ref,body);}
  @Post("issued-documents/:id/dispatch") dispatch(@Headers("authorization")t:string,@Param("id")id:string,@Body()body:unknown){return this.documents.dispatch(t,id,body);}

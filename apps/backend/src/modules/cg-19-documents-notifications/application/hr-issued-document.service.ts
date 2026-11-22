@@ -15,7 +15,8 @@ import {PrivateObjectStorage} from "../infrastructure/private-object-storage";
 import {employeeCardToken,hrTemplateHash,renderHrDocument} from "./hr-document-renderer";
 const hash=(v:string|Buffer)=>createHash("sha256").update(v).digest("hex");
 const kinds=["APPOINTMENT","OFFER","JOINING","EXPERIENCE","RELIEVING","MEMO","EMPLOYEE_ID"];
-type Template={id:string;template_kind:string;version:number;title:string;body:string;content_sha256:string;status:string};
+type Template={id:string;template_kind:string;version:number;title:string;body:string;content_sha256:string;status:string;hr_signatory_name:string|null;hr_signature_file_ref:string|null;hr_seal_file_ref:string|null;assets_ready?:boolean};
+type TemplateAsset={id:string;mime:string;sha256:string;object_key:string;object_version:string;size_bytes:string};
 type ReceiptIntent={id:string;case_id:string;proposal_revision:number;requested_by:string;request_digest:string;request_key:string;mime:string;size_bytes:string;expected_sha256:string;status:string;object_key:string;reserved_until:Date};
 type Doc={id:string;realm_id:string;case_id:string;proposal_revision:number;template_id:string;template_version:number;issue_revision:number;source_snapshot:Record<string,unknown>;source_sha256:string;request_digest:string;issue_key:string;issued_by:string;state:string;object_key:string;object_version:string|null;content_sha256:string|null;created_at:Date;hr_card_token_digest:string|null;attempt_count:number;issued_at:Date|null};
 function body(raw:unknown,keys:string[]){
@@ -43,16 +44,17 @@ export class HrIssuedDocumentService{
  async templates(token:string){
   const a=await this.sessions.requireAction(token,"hr.documents.manage");
   return this.run(async tx=>{await this.identity.assertCurrent(tx,a,"hr.documents.manage");
-   const q=await tx.query<Template>("SELECT id,template_kind,version,title,body,status,content_sha256 FROM cg19_document_template WHERE realm_id=$1 AND template_kind LIKE 'HR_%' AND status='APPROVED' ORDER BY template_kind,version DESC LIMIT 20",[a.realmId]);
-   return {items:q.rows.map(x=>({templateId:x.id,kind:x.template_kind.slice(3),version:x.version,title:x.title,body:x.body}))};
+   const q=await tx.query<Template>("SELECT id,template_kind,version,title,body,status,content_sha256,hr_signatory_name,(hr_signatory_name IS NOT NULL AND cg19_hr_template_assets_ready(realm_id,hr_signature_file_ref,hr_seal_file_ref)) AS assets_ready FROM cg19_document_template WHERE realm_id=$1 AND template_kind LIKE 'HR_%' AND status='APPROVED' ORDER BY template_kind,version DESC LIMIT 20",[a.realmId]);
+   return {items:q.rows.map(x=>({templateId:x.id,kind:x.template_kind.slice(3),version:x.version,title:x.title,body:x.body,assetsReady:x.assets_ready===true,signatoryName:x.hr_signatory_name}))};
   });
  }
  async approveTemplate(token:string,raw:unknown){
-  const x=body(raw,["kind","title","body","expectedVersion","requestKey","currentPassword"]);
+  const x=body(raw,["kind","title","body","expectedVersion","requestKey","currentPassword","signatoryName","signatureFileRef","sealFileRef"]);
   if(typeof x.kind!=="string"||!kinds.includes(x.kind)||!Number.isSafeInteger(x.expectedVersion)||Number(x.expectedVersion)<0||typeof x.currentPassword!=="string"||x.currentPassword.length<8||Buffer.byteLength(x.currentPassword,"utf8")>1024)throw new BadRequestException("Check template and current password");
   const kind="HR_"+x.kind,title=text(x.title,10,100),content=text(x.body,20,1200),key=leaveId(x.requestKey),expected=Number(x.expectedVersion),password=x.currentPassword;
   const a=await this.sessions.requireAction(token,"hr.documents.review");await this.sessions.limitFoundationRootProof(a);
-  const digest=hash(JSON.stringify([kind,title,content,expected]));
+  const signatoryName=text(x.signatoryName,2,100),signatureRef=leaveId(x.signatureFileRef),sealRef=leaveId(x.sealFileRef);
+  const digest=hash(JSON.stringify([kind,title,content,expected,signatoryName,signatureRef,sealRef]));
   return this.run(async tx=>{
    await this.root(tx,a);await this.identity.assertCurrent(tx,a,"hr.documents.review");await this.sessions.requireFreshFoundationRootProof(tx,a,password);
    const replay=(await tx.query<{request_digest:string;version:number}>(`SELECT c.request_digest,t.version FROM cg19_template_command c
@@ -60,13 +62,82 @@ export class HrIssuedDocumentService{
    if(replay){if(replay.request_digest!==digest)throw new ConflictException("Original template request differs");return {status:"APPROVED",version:replay.version};}
    const old=(await tx.query<Template>("SELECT * FROM cg19_document_template WHERE realm_id=$1 AND template_kind=$2 ORDER BY version DESC LIMIT 1 FOR UPDATE",[a.realmId,kind])).rows[0];
    if((old?.version??0)!==expected)throw new ConflictException("Template version changed");
+   const signature=await this.templateAsset(tx,a.realmId,signatureRef,"SIGNATURE"),seal=await this.templateAsset(tx,a.realmId,sealRef,"SEAL");
    if(old?.status==="APPROVED"){await tx.query("UPDATE cg19_document_template SET status='WITHDRAWN' WHERE id=$1 AND realm_id=$2",[old.id,a.realmId]);await tx.query("INSERT INTO cg19_template_event(realm_id,template_id,actor_id,action) VALUES($1,$2,$3,'WITHDRAWN')",[a.realmId,old.id,a.accountId]);}
-   const t=(await tx.query<Template>(`INSERT INTO cg19_document_template(realm_id,template_kind,version,content_sha256,title,body,approved_by,status)
-    VALUES($1,$2,$3,$4,$5,$6,$7,'APPROVED') RETURNING *`,[a.realmId,kind,expected+1,hrTemplateHash(kind,title,content),title,content,a.accountId])).rows[0];
+   const t=(await tx.query<Template>(`INSERT INTO cg19_document_template(realm_id,template_kind,version,content_sha256,title,body,approved_by,status,hr_signatory_name,hr_signature_file_ref,hr_seal_file_ref)
+    VALUES($1,$2,$3,$4,$5,$6,$7,'APPROVED',$8,$9,$10) RETURNING *`,[a.realmId,kind,expected+1,hrTemplateHash(kind,title,content,{signatoryName,signatureSha256:signature.sha256,sealSha256:seal.sha256}),title,content,a.accountId,signatoryName,signature.id,seal.id])).rows[0];
    await tx.query("INSERT INTO cg19_template_command(realm_id,actor_id,request_key,request_digest,template_id) VALUES($1,$2,$3,$4,$5)",[a.realmId,a.accountId,key,digest,t.id]);
    await tx.query("INSERT INTO cg19_template_event(realm_id,template_id,actor_id,action) VALUES($1,$2,$3,'APPROVED')",[a.realmId,t.id,a.accountId]);
    return {status:"APPROVED",version:t.version};
   });
+ }
+ private async templateAsset(tx:PoolClient,realm:string,ref:string,kind:"SIGNATURE"|"SEAL"){
+  const q=await tx.query<TemplateAsset>(`SELECT f.id,f.original_mime AS mime,f.verified_sha256 AS sha256,f.object_key,f.object_version,f.verified_size_bytes::text AS size_bytes
+   FROM cg19_stored_file f JOIN cg19_upload_intent i ON i.realm_id=f.realm_id AND i.id=f.upload_intent_id
+   WHERE f.realm_id=$1 AND f.id=$2 AND f.owner_kind='CG19_HR_TEMPLATE_ASSET' AND i.owner_kind=f.owner_kind AND i.classification=$3
+   AND i.status='VALIDATED' AND f.scan_status='CLEAN_VERIFIED' AND f.revoked_at IS NULL AND f.original_mime IN('image/jpeg','image/png')
+   AND f.verified_size_bytes BETWEEN 1 AND 2097152 FOR SHARE OF f,i`,[realm,ref,"HR_TEMPLATE_"+kind]);
+  if(!q.rows[0])throw new ConflictException({code:"CG10_TEMPLATE_ASSETS_REQUIRED"});
+  return q.rows[0];
+ }
+ private async assetIntent(tx:PoolClient,a:VerifiedFoundationActor,upload:string){
+  await this.identity.assertCurrent(tx,a,"hr.documents.review");
+  const q=await tx.query<ReceiptIntent>(`SELECT * FROM cg19_upload_intent WHERE realm_id=$1 AND id=$2 AND requested_by=$3
+  AND owner_kind='CG19_HR_TEMPLATE_ASSET' FOR UPDATE`,[a.realmId,leaveId(upload),a.accountId]);
+  if(!q.rows[0])throw new NotFoundException({code:"CG10_TEMPLATE_ASSETS_REQUIRED"});
+  return q.rows[0];
+ }
+ async initiateTemplateAsset(token:string,raw:unknown){
+  const x=body(raw,["assetType","requestKey","mime","sizeBytes","sha256"]),key=leaveId(x.requestKey);
+  if((x.assetType!=="SIGNATURE"&&x.assetType!=="SEAL")||typeof x.mime!=="string"||!["image/jpeg","image/png"].includes(x.mime)||!Number.isSafeInteger(x.sizeBytes)||Number(x.sizeBytes)<1||Number(x.sizeBytes)>2097152||typeof x.sha256!=="string"||!/^([a-f0-9]{64})$/.test(x.sha256))
+   throw new BadRequestException({code:"CG10_TEMPLATE_ASSET_FORMAT",field:"file"});
+  const classification="HR_TEMPLATE_"+x.assetType,mime=x.mime,size=Number(x.sizeBytes),checksum=x.sha256,a=await this.sessions.requireAction(token,"hr.documents.review");
+  const digest=hash(JSON.stringify([classification,mime,size,checksum]));
+  const i=await this.run(async tx=>{
+   await this.root(tx,a);await this.identity.assertCurrent(tx,a,"hr.documents.review");
+   const q=await tx.query<ReceiptIntent>(`INSERT INTO cg19_upload_intent(realm_id,case_id,proposal_revision,requested_by,request_key,mime,size_bytes,expected_sha256,request_digest,classification,object_key,reserved_until,owner_kind)
+   VALUES($1,NULL,1,$2,$3,$4,$5,$6,$7,$8,$9,now()+interval '15 minutes','CG19_HR_TEMPLATE_ASSET') ON CONFLICT(realm_id,requested_by,request_key) DO NOTHING RETURNING *`,
+    [a.realmId,a.accountId,key,mime,size,checksum,digest,classification,"careganga/private/cg19/"+a.realmId+"/"+randomUUID()]);
+   if(q.rows[0]){await tx.query("INSERT INTO cg19_document_event(realm_id,actor_id,intent_id,hr_template_asset,event_key) VALUES($1,$2,$3,true,'UPLOAD_INITIATED')",[a.realmId,a.accountId,q.rows[0].id]);return q.rows[0];}
+   const prior=(await tx.query<ReceiptIntent>("SELECT * FROM cg19_upload_intent WHERE realm_id=$1 AND requested_by=$2 AND request_key=$3 AND owner_kind='CG19_HR_TEMPLATE_ASSET'",[a.realmId,a.accountId,key])).rows[0];
+   if(!prior||prior.request_digest!==digest)throw new ConflictException({code:"CG10_RECEIPT_REQUEST_CHANGED"});return prior;
+  });
+  if(i.status==="VALIDATED")return this.templateAssetStatus(token,i.id);
+  if(["REJECTED","EXPIRED"].includes(i.status)||i.reserved_until.getTime()<=Date.now())return {uploadRef:i.id,status:"EXPIRED_OR_REJECTED",cleanVerified:false};
+  try{
+   const grant=await this.objects.reservePrivateUpload({objectKey:i.object_key,requestKey:i.request_key,mime:i.mime,sizeBytes:Number(i.size_bytes),sha256:i.expected_sha256,expiresAt:i.reserved_until.toISOString()});
+   const url=new URL(grant.url),expires=Date.parse(grant.expiresAt);
+   if(url.protocol!=="https:"||url.username||url.password||url.hash||!Number.isFinite(expires)||expires<=Date.now()||expires>i.reserved_until.getTime()||!grant.reservationRef||grant.reservationRef.length>160||grant.headers?.["Content-Type"]!==i.mime||!Object.entries(grant.headers).every(([k,v])=>["Content-Type","x-goog-if-generation-match","x-amz-checksum-sha256","If-None-Match"].includes(k)&&typeof v==="string"&&v.length<=160))throw Error("Private reservation unavailable");
+   const current=await this.sessions.requireAction(token,"hr.documents.review");
+   await this.run(async tx=>{const locked=await this.assetIntent(tx,current,i.id);if(!["INITIATED","UNKNOWN"].includes(locked.status)||locked.reserved_until.getTime()<=Date.now())throw new ConflictException({code:"CG10_TEMPLATE_ASSETS_REQUIRED"});await tx.query("UPDATE cg19_upload_intent SET storage_reservation_ref=$3,status='INITIATED',updated_at=now() WHERE realm_id=$1 AND id=$2",[current.realmId,i.id,grant.reservationRef]);});
+   return {uploadRef:i.id,status:"UPLOAD_READY",uploadUrl:grant.url,uploadHeaders:grant.headers,cleanVerified:false};
+  }catch{return {uploadRef:i.id,status:"STORAGE_UNAVAILABLE",cleanVerified:false};}
+ }
+ async templateAssetStatus(token:string,upload:string){
+  const a=await this.sessions.requireAction(token,"hr.documents.review");
+  return this.run(async tx=>{const i=await this.assetIntent(tx,a,upload);
+   const f=(await tx.query<{id:string}>("SELECT id FROM cg19_stored_file WHERE realm_id=$1 AND upload_intent_id=$2 AND owner_kind='CG19_HR_TEMPLATE_ASSET' AND scan_status='CLEAN_VERIFIED' AND revoked_at IS NULL",[a.realmId,i.id])).rows[0];
+   return {uploadRef:i.id,status:i.status,cleanVerified:i.status==="VALIDATED"&&!!f,...(i.status==="VALIDATED"&&f?{fileRef:f.id}:{})};
+  });
+ }
+ async confirmTemplateAsset(token:string,upload:string){
+  const a=await this.sessions.requireAction(token,"hr.documents.review"),i=await this.run(tx=>this.assetIntent(tx,a,upload));
+  if(i.status==="VALIDATED")return this.templateAssetStatus(token,upload);
+  if(["REJECTED","EXPIRED"].includes(i.status)||i.reserved_until.getTime()<=Date.now())return {uploadRef:i.id,status:"EXPIRED_OR_REJECTED",cleanVerified:false};
+  let proof:Awaited<ReturnType<PrivateObjectStorage["verifyPrivateObject"]>>;
+  try{proof=await this.objects.verifyPrivateObject({objectKey:i.object_key,mime:i.mime,sizeBytes:Number(i.size_bytes),sha256:i.expected_sha256});}
+  catch{return {uploadRef:i.id,status:"VERIFICATION_UNAVAILABLE",cleanVerified:false};}
+  const scanAt=Date.parse(proof.verifiedAt),clean=proof.state==="CLEAN_VERIFIED"&&proof.sha256===i.expected_sha256&&proof.mime===i.mime&&proof.sizeBytes===Number(i.size_bytes)&&proof.objectVersion.length>0&&proof.objectVersion.length<=160&&proof.scanProofRef.length>=8&&proof.scanProofRef.length<=160&&Number.isFinite(scanAt)&&scanAt<=Date.now()+60000&&Date.now()-scanAt<900000;
+  const current=await this.sessions.requireAction(token,"hr.documents.review");
+  await this.run(async tx=>{const locked=await this.assetIntent(tx,current,upload);
+   if(locked.status==="VALIDATED")return;
+   if(["REJECTED","EXPIRED"].includes(locked.status)||locked.reserved_until.getTime()<=Date.now())throw new ConflictException({code:"CG10_TEMPLATE_ASSETS_REQUIRED"});
+   await tx.query("UPDATE cg19_upload_intent SET status=$3,updated_at=now() WHERE realm_id=$1 AND id=$2",[current.realmId,i.id,clean?"VALIDATED":"REJECTED"]);
+   if(clean)await tx.query(`INSERT INTO cg19_stored_file(realm_id,upload_intent_id,case_id,proposal_revision,original_mime,verified_sha256,verified_size_bytes,object_key,object_version,scan_status,scan_proof_ref,scanned_at,created_by,owner_kind)
+   VALUES($1,$2,NULL,1,$3,$4,$5,$6,$7,'CLEAN_VERIFIED',$8,$9,$10,'CG19_HR_TEMPLATE_ASSET') ON CONFLICT(upload_intent_id) DO NOTHING`,[current.realmId,i.id,i.mime,i.expected_sha256,i.size_bytes,i.object_key,proof.objectVersion,proof.scanProofRef,new Date(proof.verifiedAt),current.accountId]);
+   await tx.query("INSERT INTO cg19_document_event(realm_id,actor_id,intent_id,hr_template_asset,event_key) VALUES($1,$2,$3,true,$4)",[current.realmId,current.accountId,i.id,clean?"UPLOAD_VERIFIED":"UPLOAD_REJECTED"]);
+  });
+  return this.templateAssetStatus(token,upload);
  }
  private async find(tx:PoolClient,a:VerifiedFoundationActor,reference:string,own=false){
   return this.source.authorizedHistory(tx,a,reference,own);
@@ -128,16 +199,19 @@ export class HrIssuedDocumentService{
   const claim=randomUUID();
   const found=await this.run(async tx=>{
    await this.identity.assertCurrent(tx,a,"documents.letters.issue");const {d,row}=await this.docAccess(tx,a,id);
-   if(["ISSUED","REVOKED","FAILED"].includes(d.state))return {d,claimed:false};
+   if(["ISSUED","REVOKED","FAILED"].includes(d.state))return {d,claimed:false,reference:row.reference};
    await this.approvals.approvedSource(tx,a,row);
    const q=await tx.query<Doc>(`UPDATE cg19_generated_document SET state='VERIFYING',claim_token=$3,claim_expires_at=now()+interval '2 minutes',attempt_count=attempt_count+1
     WHERE realm_id=$1 AND id=$2 AND state IN('PENDING','UNKNOWN','VERIFYING') AND attempt_count<5 AND (claim_expires_at IS NULL OR claim_expires_at<now()) RETURNING *`,[a.realmId,d.id,claim]);
-   return {d:q.rows[0]??d,claimed:!!q.rowCount};
+   return {d:q.rows[0]??d,claimed:!!q.rowCount,reference:row.reference};
   });
   const d=found.d;if(!found.claimed)return view(d);
   try{
    const template=(await this.db.query<Template>("SELECT * FROM cg19_document_template WHERE realm_id=$1 AND id=$2 AND version=$3",[a.realmId,d.template_id,d.template_version])).rows[0];
-   if(!template||template.status!=="APPROVED"||template.content_sha256!==hrTemplateHash(template.template_kind,template.title,template.body))throw Error("Original template unavailable");
+   if(!template||template.status!=="APPROVED"||!template.hr_signatory_name||!template.hr_signature_file_ref||!template.hr_seal_file_ref)throw Error("Original template unavailable");
+   const assets=await this.run(async tx=>({signature:await this.templateAsset(tx,a.realmId,template.hr_signature_file_ref!,"SIGNATURE"),seal:await this.templateAsset(tx,a.realmId,template.hr_seal_file_ref!,"SEAL")}));
+   const signatoryName=template.hr_signatory_name;
+   if(template.content_sha256!==hrTemplateHash(template.template_kind,template.title,template.body,{signatoryName,signatureSha256:assets.signature.sha256,sealSha256:assets.seal.sha256})||d.source_snapshot.templateHash!==template.content_sha256)throw Error("Original template proof changed");
    const qr=d.hr_card_token_digest?employeeCardToken(a.realmId,d.id,d.source_sha256):null;
    if(qr&&hash(qr)!==d.hr_card_token_digest)throw Error("Original QR key changed");
    let stored:{objectVersion:string;sha256:string}|null=null;
@@ -163,7 +237,9 @@ export class HrIssuedDocumentService{
      if(bytes.length!==Number(proof.size_bytes)||hash(bytes)!==proof.sha256)throw Error("Original portrait bytes unavailable");
      portrait={bytes,mime:proof.mime};
     }
-    const bytes=await renderHrDocument({snapshot:d.source_snapshot,title:template.title,body:template.body,reference:String(d.source_snapshot.subjectReference),sourceDigest:d.source_sha256,documentRef:d.id,issueRevision:d.issue_revision,createdAt:d.created_at,qr,portrait});
+    const loadAsset=async(f:TemplateAsset)=>{const bytes=await this.objects.readVerifiedPrivateObject({objectKey:f.object_key,objectVersion:f.object_version,maxBytes:Number(f.size_bytes)});if(bytes.length!==Number(f.size_bytes)||hash(bytes)!==f.sha256)throw Error("Original signatory proof changed");return {bytes,mime:f.mime};};
+    const signature=await loadAsset(assets.signature),seal=await loadAsset(assets.seal);
+    const bytes=await renderHrDocument({snapshot:d.source_snapshot,title:template.title,body:template.body,reference:found.reference,sourceDigest:d.source_sha256,documentRef:d.id,issueRevision:d.issue_revision,createdAt:d.created_at,qr,portrait,signature,seal,signatoryName});
     const checksum=hash(bytes);stored=await this.objects.writeVerifiedPrivateDocument({objectKey:d.object_key,bytes,sha256:checksum});
     if(stored.sha256!==checksum)throw Error("Original bytes not verified");
    }
