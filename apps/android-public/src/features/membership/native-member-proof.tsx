@@ -1,3 +1,4 @@
+import * as Crypto from "expo-crypto";
 import {useCallback,useEffect,useRef,useState} from "react";
 import {Pressable,StyleSheet,Text,View} from "react-native";
 import {File,Paths,UploadType} from "expo-file-system";
@@ -19,7 +20,7 @@ export function NativeMemberProof({token,applicationRef,version,editable,onChang
   const f=pick.result,mime=f.type,size=f.size;
   if(!mime||!["application/pdf","image/jpeg","image/png","image/webp"].includes(mime)||kind==="MEMBER_PORTRAIT"&&mime==="application/pdf"||size<1||size>10485760)throw Error("Select a supported private PDF or image under 10 MB.");
   const sha256=await f.digest("SHA-256");
-  const intent=await memberInvoke<CG04MembershipEvidenceStatus>("/api/documents/membership/intents","POST",{applicationRef,applicationVersion:version,requestKey:crypto.randomUUID(),classification:kind,mime,sizeBytes:size,sha256},token);
+  const intent=await memberInvoke<CG04MembershipEvidenceStatus>("/api/documents/membership/intents","POST",{applicationRef,applicationVersion:version,requestKey:Crypto.randomUUID(),classification:kind,mime,sizeBytes:size,sha256},token);
   if(intent.status!=="UPLOAD_READY"||!intent.uploadUrl||!intent.uploadHeaders)throw Error("Private upload is pending or unavailable. Check its status before retrying.");
   const response=await f.createUploadTask(intent.uploadUrl,{httpMethod:"PUT",uploadType:UploadType.BINARY_CONTENT,mimeType:mime,headers:intent.uploadHeaders}).uploadAsync();
   if(response.status<200||response.status>=300)throw Error("Document upload was not confirmed. Refresh before retrying.");
