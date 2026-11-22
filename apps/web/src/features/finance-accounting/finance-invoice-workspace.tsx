@@ -12,18 +12,19 @@ type Dashboard={cards:{total:number;drafts:number;pending:number;approved:number
  monthly:{month:string;count:number;issuedMinor:string}[];explanation:string};
 type Year={yearRef:string;name:string;status:string};
 type Branch={branchRef:string;name:string;version:number};
+type InventoryReceiptOption={receiptRef:string;receiptNumber:string;supplierName:string;branchRef:string|null;date:string};
 type CorrectedInvoice={invoiceRef:string;invoiceNumber:string;counterpartyName:string;branchRef:string|null};
 type Detail={invoiceRef:string;invoiceNumber:string;version:number;status:string;
  draft:{info?:Record<string,unknown>;items?:Record<string,unknown>;payment?:Record<string,unknown>}};
 type Form={financialYearRef:string;branchRef:string;branchVersion:number|null;
  invoiceDate:string;dueDate:string;category:string;purpose:string;
- counterpartyName:string;counterpartyAddress:string;replacesInvoiceRef:string;
+ counterpartyName:string;counterpartyAddress:string;replacesInvoiceRef:string;inventoryReceiptRef:string;inventoryReceiptLabel:string;
  rows:{description:string;quantity:number;unitRate:string}[];
  tax:string;charges:string;receivableAccountRef:string;incomeAccountRef:string;
  taxAccountRef:string;terms:string;notes:string};
 const empty=():Form=>({financialYearRef:"",branchRef:"",branchVersion:null,
  invoiceDate:"",dueDate:"",category:"",purpose:"",counterpartyName:"",counterpartyAddress:"",
- replacesInvoiceRef:"",
+ replacesInvoiceRef:"",inventoryReceiptRef:"",inventoryReceiptLabel:"",
  rows:[{description:"",quantity:1,unitRate:"0.00"}],tax:"0.00",charges:"0.00",
  receivableAccountRef:"",incomeAccountRef:"",taxAccountRef:"",terms:"Payment due per invoice",notes:""});
 type Active={ref:string;number:string;version:number;status:string};
@@ -49,6 +50,7 @@ export function FinanceInvoiceWorkspace({canManage,canIssue,canPost,canCancel}:{
  const [branches,setBranches]=useState<Branch[]>([]);
  const [allowFoundation,setAllowFoundation]=useState(false);
  const [correctedInvoices,setCorrectedInvoices]=useState<CorrectedInvoice[]>([]);
+ const [inventoryReceipts,setInventoryReceipts]=useState<InventoryReceiptOption[]>([]);
  const [accounts,setAccounts]=useState<Account[]>([]);
  const [active,setActive]=useState<Active|null>(null);
  const [stage,setStage]=useState<Stage>("INFO");
@@ -101,13 +103,13 @@ export function FinanceInvoiceWorkspace({canManage,canIssue,canPost,canCancel}:{
     const [op,ac]=await Promise.all([fetch("/api/finance/invoices/options",{cache:"no-store"}),
       fetch("/api/finance/invoices/posting-accounts",{cache:"no-store"})]);
     if(!op.ok||!ac.ok)throw Error(await errorFor(!op.ok?op:ac));
-    const o=await op.json() as {years?:Year[];branches?:Branch[];allBranches?:boolean;correctedInvoices?:CorrectedInvoice[]};
+    const o=await op.json() as {years?:Year[];branches?:Branch[];allBranches?:boolean;correctedInvoices?:CorrectedInvoice[];inventoryReceipts?:InventoryReceiptOption[]};
     const a=await ac.json() as {accounts?:Account[]};
     if(!Array.isArray(o.years)||!Array.isArray(o.branches)||!Array.isArray(a.accounts))
      throw Error("Current account/branch choices are unavailable.");
     if(live){setYears(o.years);setBranches(o.branches);setAccounts(a.accounts);
      setAllowFoundation(o.allBranches===true);
-     setCorrectedInvoices(o.correctedInvoices??[]);}
+     setCorrectedInvoices(o.correctedInvoices??[]);setInventoryReceipts(Array.isArray(o.inventoryReceipts)?o.inventoryReceipts:[]);}
    }catch(e){if(live)setError(errorMessage(e));}
   })();return()=>{live=false;};
  },[]);
@@ -139,6 +141,7 @@ export function FinanceInvoiceWorkspace({canManage,canIssue,canPost,canCancel}:{
     counterpartyName:String(i.counterpartyName??""),
     counterpartyAddress:String(i.counterpartyAddress??""),
     replacesInvoiceRef:String(i.replacesInvoiceRef??""),
+    inventoryReceiptRef:String(i.inventoryReceiptRef??""),inventoryReceiptLabel:[i.inventoryReceiptNumber,i.inventorySupplierName].filter(v=>typeof v==="string").join(" · "),
     rows:Array.isArray(j.rows)?j.rows.map((r:Record<string,unknown>)=>({
      description:String(r.description??""),quantity:Number(r.quantity??1),
      unitRate:typeof r.unitRateMinor==="string"?(BigInt(r.unitRateMinor)/100n).toString()+
@@ -160,7 +163,7 @@ export function FinanceInvoiceWorkspace({canManage,canIssue,canPost,canCancel}:{
    branchVersion:form.branchRef?form.branchVersion:null,invoiceDate:form.invoiceDate,
    dueDate:form.dueDate,category:form.category,purpose:form.purpose,
    counterpartyName:form.counterpartyName,counterpartyAddress:form.counterpartyAddress||null,
-   replacesInvoiceRef:form.replacesInvoiceRef||null};
+   replacesInvoiceRef:form.replacesInvoiceRef||null,inventoryReceiptRef:form.inventoryReceiptRef||null};
   if(stage==="ITEMS")return {rows:form.rows,tax:form.tax,charges:form.charges};
   return {receivableAccountRef:form.receivableAccountRef,
    incomeAccountRef:form.incomeAccountRef,taxAccountRef:form.taxAccountRef||null,
@@ -308,7 +311,7 @@ export function FinanceInvoiceWorkspace({canManage,canIssue,canPost,canCancel}:{
      <label className="cg-fin-field">Branch<select value={form.branchRef}
       onChange={e=>{const branch=branches.find(b=>b.branchRef===e.target.value);
        setForm(v=>({...v,branchRef:branch?.branchRef??"",branchVersion:branch?.version??null,
-        replacesInvoiceRef:""}));}}>
+        replacesInvoiceRef:"",inventoryReceiptRef:"",inventoryReceiptLabel:""}));}}>
       {allowFoundation?<option value="">Foundation (no branch)</option>:
        <option value="">Select assigned branch</option>}
       {branches.map(b=><option key={b.branchRef} value={b.branchRef}>{b.name}</option>)}
@@ -324,6 +327,11 @@ export function FinanceInvoiceWorkspace({canManage,canIssue,canPost,canCancel}:{
          .map(v=><option key={v.invoiceRef} value={v.invoiceRef}>
           {v.invoiceNumber} · {v.counterpartyName}</option>)}
        </select></label>}
+     { (form.inventoryReceiptRef||inventoryReceipts.some(v=>v.branchRef===(form.branchRef||null)))&&<label className="cg-fin-field">Confirmed inventory receipt (optional)
+       <select value={form.inventoryReceiptRef} onChange={e=>{const v=inventoryReceipts.find(x=>x.receiptRef===e.target.value);setForm(f=>({...f,inventoryReceiptRef:e.target.value,inventoryReceiptLabel:v?v.receiptNumber+" · "+v.supplierName:""}));}}>
+        <option value="">No stock receipt link</option>{form.inventoryReceiptRef&&!inventoryReceipts.some(x=>x.receiptRef===form.inventoryReceiptRef)&&<option value={form.inventoryReceiptRef}>{form.inventoryReceiptLabel||"Previously linked receipt"}</option>}
+        {inventoryReceipts.filter(v=>v.branchRef===(form.branchRef||null)).map(v=><option key={v.receiptRef} value={v.receiptRef}>{v.receiptNumber} · {v.supplierName} · {v.date}</option>)}
+       </select><small>Source reference only. This does not create a supplier payable or change stock.</small></label>}
      {([["invoiceDate","Invoice date"],["dueDate","Due date"]] as const)
       .map(([field,label])=><label className="cg-fin-field" key={field}>{label}
        <input type="date" value={form[field]}
@@ -378,7 +386,7 @@ export function FinanceInvoiceWorkspace({canManage,canIssue,canPost,canCancel}:{
     </>}
     {stage==="REVIEW"&&<div className="cg-fin-card">
      <h4>Review original invoice draft before submission</h4>
-     <p><strong>Customer / organization:</strong> {form.counterpartyName||"Not entered"}</p>
+     <p><strong>Customer / organization:</strong> {form.counterpartyName||"Not entered"}</p>{form.inventoryReceiptRef&&<p><strong>Inventory receipt:</strong> {form.inventoryReceiptLabel||"Previously linked receipt"}</p>}
      <p><strong>Category / purpose:</strong> {form.category||"Not entered"} · {form.purpose||"Not entered"}</p>
      <p><strong>Invoice date / due:</strong> {form.invoiceDate||"Not entered"} · {form.dueDate||"Not entered"}</p>
      <p><strong>Item lines:</strong> {form.rows.length}. Enter the final agreed unit rate (including any discount). Tax and totals are recalculated and frozen by Finance.</p>

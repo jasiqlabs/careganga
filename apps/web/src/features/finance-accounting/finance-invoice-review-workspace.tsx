@@ -112,6 +112,7 @@ export function FinanceInvoiceReviewWorkspace({canConfigure}:{canConfigure:boole
      <button type="button" onClick={()=>setCurrent(null)} aria-label="Close">×</button></div>
     <p>Original case: {current.caseNumber} · {current.status}</p>
     <p>Counterparty: {String(current.source.draft.info?.counterpartyName??"Unavailable")}</p>
+    {typeof current.source.draft.info?.inventoryReceiptNumber==="string"&&<p>Inventory receipt: {String(current.source.draft.info.inventoryReceiptNumber)} · {String(current.source.draft.info.inventorySupplierName??"Supplier")}</p>}
     <p>Purpose: {String(current.source.draft.info?.purpose??"Unavailable")}</p>
     <p>Invoice total (minor INR units): {String(current.source.draft.items?.totalMinor??"Unavailable")}</p>
     <p>Item lines are frozen to the original reviewer case. This is not a bank payment.</p>

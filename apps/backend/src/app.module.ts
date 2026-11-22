@@ -15,5 +15,6 @@ import { HealthcareAssistanceModule } from "./modules/cg-17-healthcare-assistanc
 import { MisReportingModule } from "./modules/cg-20-mis-reporting/mis-reporting.module";
 import { HrEnrollmentModule } from "./modules/cg-10-human-resources/hr-enrollment.module";
 
-@Module({ imports: [DatabaseModule, IdentityAccessModule, PlatformConfigurationModule, RegistrationApprovalsModule, DocumentsNotificationsModule, FoundationStructureModule, FinanceAccountingModule, CmsPublicContentModule, HealthNetworkModule, PatientsAppointmentsModule, DiagnosticsModule, HealthcareAssistanceModule, MisReportingModule, HrEnrollmentModule], controllers: [HealthController] })
+import { InventorySuppliersModule } from "./modules/cg-12-inventory-suppliers/inventory-suppliers.module";
+@Module({ imports: [DatabaseModule, IdentityAccessModule, PlatformConfigurationModule, RegistrationApprovalsModule, DocumentsNotificationsModule, FoundationStructureModule, FinanceAccountingModule, CmsPublicContentModule, HealthNetworkModule, PatientsAppointmentsModule, DiagnosticsModule, HealthcareAssistanceModule, MisReportingModule, HrEnrollmentModule, InventorySuppliersModule], controllers: [HealthController] })
 export class AppModule {}

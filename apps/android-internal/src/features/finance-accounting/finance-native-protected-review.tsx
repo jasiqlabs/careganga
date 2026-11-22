@@ -127,6 +127,7 @@ export function FinanceNativeProtectedReview({token,kind,canConfigure,onExit,onE
     <Text style={s.heading}>{String(facts.invoiceNumber??facts.budgetNumber??"Original finance review")}</Text>
     {kind==="INVOICE"?<>
      <Text style={s.text}>Counterparty: {String(invoiceInfo.counterpartyName??"Unavailable")}</Text>
+     {typeof invoiceInfo.inventoryReceiptNumber==="string"&&<Text style={s.text}>Inventory receipt: {String(invoiceInfo.inventoryReceiptNumber)} · {String(invoiceInfo.inventorySupplierName??"Supplier")}</Text>}
      <Text style={s.text}>Purpose: {String(invoiceInfo.purpose??"Unavailable")}</Text>
      <Text style={s.text}>Original amount: {money(String(invoiceItems.totalMinor??"0"))}</Text>
      <Text style={s.muted}>Items, tax and payment accounts are frozen to this original version.</Text>

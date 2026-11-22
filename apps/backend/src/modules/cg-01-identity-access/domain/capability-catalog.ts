@@ -7,6 +7,19 @@ export type Capability = Readonly<{
   sensitive:boolean;
 }>;
 const capabilities:readonly Capability[]=Object.freeze([
+  {key:"inventory.requests.view",businessLabel:"View own permitted material requests",group:"Requests & inventory",assignable:true,sensitive:false},
+  {key:"inventory.requests.manage",businessLabel:"Prepare and manage own material requests",group:"Requests & inventory",assignable:true,sensitive:true},
+  {key:"inventory.requests.review",businessLabel:"Independently review material requests",group:"Requests & inventory",assignable:false,sensitive:true},
+  {key:"inventory.stock.issue",businessLabel:"Issue and return warehouse items",group:"Requests & inventory",assignable:true,sensitive:true},
+  {key:"inventory.stock.transfer",businessLabel:"Transfer between permitted warehouses",group:"Requests & inventory",assignable:true,sensitive:true},
+  {key:"inventory.stock.adjust",businessLabel:"Prepare stock count adjustments",group:"Requests & inventory",assignable:true,sensitive:true},
+  {key:"inventory.stock.adjust.review",businessLabel:"Independently review stock adjustments",group:"Requests & inventory",assignable:false,sensitive:true},
+  {key:"inventory.stock.view",businessLabel:"View authorized stock transactions and balances",group:"Requests & inventory",assignable:true,sensitive:false},
+  {key:"inventory.stock.receive",businessLabel:"Receive permitted warehouse stock",group:"Requests & inventory",assignable:true,sensitive:true},
+  {key:"inventory.stock.reverse",businessLabel:"Reverse confirmed receipts with available quantity",group:"Requests & inventory",assignable:false,sensitive:true},
+  {key:"inventory.catalog.view",businessLabel:"View permitted inventory catalog and stores",group:"Requests & inventory",assignable:true,sensitive:false},
+  {key:"inventory.supplier.private.manage",businessLabel:"Manage restricted supplier contact and tax details",group:"Requests & inventory",assignable:false,sensitive:true},
+  {key:"inventory.catalog.manage",businessLabel:"Maintain permitted inventory catalog and stores",group:"Requests & inventory",assignable:true,sensitive:true},
   {key:"roles.view",businessLabel:"View roles",group:"Roles & permissions",assignable:true,sensitive:false},
   {key:"roles.select",businessLabel:"Select roles",group:"Roles & permissions",assignable:true,sensitive:false},
   // Until CG-03 approves non-root role-management proposals, this stays root-only.

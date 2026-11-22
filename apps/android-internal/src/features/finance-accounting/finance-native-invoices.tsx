@@ -20,6 +20,7 @@ type Detail={invoiceRef:string;invoiceNumber:string;status:string;version:number
  draft:{info?:Record<string,unknown>;items?:Record<string,unknown>;payment?:Record<string,unknown>}};
 type Year={yearRef:string;name:string;status:string};
 type Branch={branchRef:string;name:string;version:number};
+type InventoryReceiptOption={receiptRef:string;receiptNumber:string;supplierName:string;branchRef:string|null;date:string};
 type CorrectedInvoice={invoiceRef:string;invoiceNumber:string;counterpartyName:string;branchRef:string|null};
 type Account={accountRef:string;code:string;name:string;category:string;branchRef:string|null};
 type ReceiptRow={receiptRef:string;receiptNumber:string;amountMinor:string;paidDate:string};
@@ -31,12 +32,12 @@ type DocumentState={status:string;canDownload?:boolean;documentRef?:string};
 type Line={description:string;quantity:string;unitRate:string};
 type Form={financialYearRef:string;branchRef:string;branchVersion:number|null;
  invoiceDate:string;dueDate:string;category:string;purpose:string;
- counterpartyName:string;counterpartyAddress:string;replacesInvoiceRef:string;lines:Line[];
+ counterpartyName:string;counterpartyAddress:string;replacesInvoiceRef:string;inventoryReceiptRef:string;inventoryReceiptLabel:string;lines:Line[];
  tax:string;charges:string;receivableAccountRef:string;incomeAccountRef:string;
  taxAccountRef:string;terms:string;notes:string};
 const empty=():Form=>({financialYearRef:"",branchRef:"",branchVersion:null,invoiceDate:"",
  dueDate:"",category:"",purpose:"",counterpartyName:"",counterpartyAddress:"",
- replacesInvoiceRef:"",
+ replacesInvoiceRef:"",inventoryReceiptRef:"",inventoryReceiptLabel:"",
  lines:[{description:"",quantity:"1",unitRate:""}],tax:"0.00",charges:"0.00",
  receivableAccountRef:"",incomeAccountRef:"",taxAccountRef:"",
  terms:"Payment due per invoice",notes:""});
@@ -70,6 +71,7 @@ export function FinanceNativeInvoices({token,canManage,canPost,canIssue,canCance
  const [branches,setBranches]=useState<Branch[]>([]);
  const [allowFoundation,setAllowFoundation]=useState(false);
  const [correctedInvoices,setCorrectedInvoices]=useState<CorrectedInvoice[]>([]);
+ const [inventoryReceipts,setInventoryReceipts]=useState<InventoryReceiptOption[]>([]);
  const [accounts,setAccounts]=useState<Account[]>([]);
  const [receipt,setReceipt]=useState<Receipt|null>(null);
  const [receiptOptions,setReceiptOptions]=useState<ReceiptOption[]>([]);
@@ -109,11 +111,11 @@ export function FinanceNativeInvoices({token,canManage,canPost,canIssue,canCance
  useEffect(()=>{let live=true;
   void(async()=>{try{
    const [o,a]=await Promise.all([
-    request<{years:Year[];branches:Branch[];allBranches:boolean;correctedInvoices:CorrectedInvoice[]}>(token,"/api/finance-accounting/invoices/options"),
+    request<{years:Year[];branches:Branch[];allBranches:boolean;correctedInvoices:CorrectedInvoice[];inventoryReceipts?:InventoryReceiptOption[]}>(token,"/api/finance-accounting/invoices/options"),
     request<{accounts:Account[]}>(token,"/api/finance-accounting/invoices/posting-accounts")]);
    if(live){setYears(o.years);setBranches(o.branches);setAccounts(a.accounts);
     setAllowFoundation(o.allBranches===true);
-    setCorrectedInvoices(o.correctedInvoices??[]);}
+    setCorrectedInvoices(o.correctedInvoices??[]);setInventoryReceipts(Array.isArray(o.inventoryReceipts)?o.inventoryReceipts:[]);}
   }catch(e){if(live)setError(problem(e));expire(e);}})();
   return()=>{live=false;};
  },[token,onExpired]);
@@ -169,6 +171,7 @@ export function FinanceNativeInvoices({token,canManage,canPost,canIssue,canCance
     counterpartyName:String(i.counterpartyName??""),
     counterpartyAddress:String(i.counterpartyAddress??""),
     replacesInvoiceRef:String(i.replacesInvoiceRef??""),
+    inventoryReceiptRef:String(i.inventoryReceiptRef??""),inventoryReceiptLabel:[i.inventoryReceiptNumber,i.inventorySupplierName].filter(v=>typeof v==="string").join(" · "),
     lines:lines.length?lines.map(r=>({description:String(r.description??""),
      quantity:String(r.quantity??"1"),unitRate:minorToRupees(String(r.unitRateMinor??"0"))})):
       [{description:"",quantity:"1",unitRate:""}],
@@ -189,7 +192,7 @@ export function FinanceNativeInvoices({token,canManage,canPost,canIssue,canCance
    invoiceDate:form.invoiceDate,dueDate:form.dueDate,category:form.category,
    purpose:form.purpose,counterpartyName:form.counterpartyName,
    counterpartyAddress:form.counterpartyAddress||null,
-   replacesInvoiceRef:form.replacesInvoiceRef||null};
+   replacesInvoiceRef:form.replacesInvoiceRef||null,inventoryReceiptRef:form.inventoryReceiptRef||null};
   if(stage==="ITEMS")return {rows:form.lines.map(r=>({
    description:r.description,quantity:Number(r.quantity),unitRate:r.unitRate})),
    tax:form.tax,charges:form.charges};
@@ -348,7 +351,7 @@ export function FinanceNativeInvoices({token,canManage,canPost,canIssue,canCance
        ...branches.map(x=>({ref:x.branchRef,label:x.name}))]}
        onChange={v=>{const b=branches.find(x=>x.branchRef===v);setForm(f=>({
         ...f,branchRef:b?.branchRef??"",branchVersion:b?.version??null,
-        replacesInvoiceRef:""}));}}/>
+        replacesInvoiceRef:"",inventoryReceiptRef:"",inventoryReceiptLabel:""}));}}/>
       {(Boolean(form.replacesInvoiceRef)||correctedInvoices.some(x=>x.branchRef===(form.branchRef||null)))&&
        <Options label="Replaces credited invoice (optional)" value={form.replacesInvoiceRef}
         options={[{ref:"",label:"New invoice — not a correction"},
@@ -357,6 +360,9 @@ export function FinanceNativeInvoices({token,canManage,canPost,canIssue,canCance
          ...correctedInvoices.filter(x=>x.branchRef===(form.branchRef||null))
          .map(x=>({ref:x.invoiceRef,label:x.invoiceNumber+" · "+x.counterpartyName}))]}
         onChange={v=>change("replacesInvoiceRef",v)}/>}
+      {(form.inventoryReceiptRef||inventoryReceipts.some(v=>v.branchRef===(form.branchRef||null)))&&<><Options label="Confirmed inventory receipt (optional)" value={form.inventoryReceiptRef}
+       options={[{ref:"",label:"No stock receipt link"},...(form.inventoryReceiptRef&&!inventoryReceipts.some(v=>v.receiptRef===form.inventoryReceiptRef)?[{ref:form.inventoryReceiptRef,label:form.inventoryReceiptLabel||"Previously linked receipt"}]:[]),...inventoryReceipts.filter(v=>v.branchRef===(form.branchRef||null)).map(v=>({ref:v.receiptRef,label:v.receiptNumber+" · "+v.supplierName+" · "+v.date}))]}
+       onChange={ref=>{const v=inventoryReceipts.find(x=>x.receiptRef===ref);setForm(f=>({...f,inventoryReceiptRef:ref,inventoryReceiptLabel:v?v.receiptNumber+" · "+v.supplierName:""}));}}/><Text style={s.text}>Source reference only. No supplier payable or stock change.</Text></>}
       {(["invoiceDate","dueDate","category","purpose","counterpartyName","counterpartyAddress"] as const)
        .map(k=><Field key={k} label={k==="invoiceDate"?"Invoice date (YYYY-MM-DD)":
         k==="dueDate"?"Due date (YYYY-MM-DD)":k==="counterpartyName"?
@@ -393,7 +399,7 @@ export function FinanceNativeInvoices({token,canManage,canPost,canIssue,canCance
       <Field label="Invoice notes" value={form.notes} multiline onChange={v=>change("notes",v)}/>
      </>}
      {stage==="REVIEW"&&<Card title="Review original invoice before submission">
-      <Text style={s.text}>Customer: {form.counterpartyName||"Not entered"}</Text>
+      <Text style={s.text}>Customer: {form.counterpartyName||"Not entered"}</Text>{!!form.inventoryReceiptRef&&<Text style={s.text}>Inventory receipt: {form.inventoryReceiptLabel||"Previously linked receipt"}</Text>}
       <Text style={s.text}>Category: {form.category||"Not entered"}</Text>
       <Text style={s.text}>Purpose: {form.purpose||"Not entered"}</Text>
       <Text style={s.text}>Invoice date: {form.invoiceDate||"Not entered"} · Due date: {form.dueDate||"Not entered"}</Text>

@@ -93,6 +93,7 @@ export interface ModuleActionHandlers {
   openFinance: () => void;
   openBranches: () => void;
   openHr: () => void;
+  openInventory: () => void;
   openChangePassword: () => void;
 }
 
@@ -211,6 +212,7 @@ export function getAuthorizedModules(
   // SECTION 3: ORGANIZATION MANAGEMENT
   // ----------------------------------------------------
 
+  if(roleActions.includes("inventory.catalog.view"))list.push({key:"inventory",title:"Requests & Inventory",shortLabel:"Inventory",description:"View permitted inventory catalog and warehouses.",category:"ORGANIZATION MANAGEMENT",iconName:"building",iconBg:"#E0F2FE",iconColor:"#0369A1",onOpen:handlers.openInventory});
   // CG-10 self identity: always accessible to a logged-in Foundation staff actor.
   // Backend /api/hr/me never returns anybody else's HR file, bank or salary.
   list.push({
