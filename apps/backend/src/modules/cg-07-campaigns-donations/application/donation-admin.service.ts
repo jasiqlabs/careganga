@@ -8,7 +8,7 @@ const validate=(v:unknown)=>typeof v==="string"&&/^(ALL|REQUESTED|LINK_READY|PAY
 
 type Filter=Readonly<{
  status:string;q:string;offset:number;method:string;minMinor:string|null;maxMinor:string|null;
- from:string|null;to:string|null;campaign:string}>;
+ from:string|null;to:string|null;campaign:string;cursorTime:string|null;cursorId:string|null}>;
 const date=(raw:unknown):string|null=>{
  if(raw===undefined||raw==="")return null;
  if(typeof raw!=="string"||!/^\d{4}-\d{2}-\d{2}$/.test(raw)||
@@ -28,7 +28,7 @@ const minor=(raw:unknown):string|null=>{
 };
 const filters=(v:Record<string,unknown>):Filter=>{
  if(Object.keys(v).some(k=>!["status","q","offset","method","minAmount","maxAmount",
-  "dateFrom","dateTo","campaign"].includes(k)))
+  "dateFrom","dateTo","campaign","cursor"].includes(k)))
   throw new BadRequestException("Unknown donation filter.");
  const status=v.status??"ALL",q=v.q??"",offset=Number(v.offset??0),
   method=v.method??"ALL",campaign=v.campaign??"ALL";
@@ -42,7 +42,22 @@ const filters=(v:Record<string,unknown>):Filter=>{
  const minMinor=minor(v.minAmount),maxMinor=minor(v.maxAmount);
  if(minMinor!==null&&maxMinor!==null&&BigInt(minMinor)>BigInt(maxMinor))
   throw new BadRequestException("Maximum amount must be at least the minimum amount.");
- return {status,q:q.trim().toLowerCase(),offset,method,campaign,from,to,minMinor,maxMinor};
+ let cursorTime:string|null=null,cursorId:string|null=null;
+ if(v.cursor!==undefined&&v.cursor!==""){
+  if(typeof v.cursor!=="string"||!/^[-_A-Za-z0-9]{30,170}$/.test(v.cursor))
+   throw new BadRequestException("Report cursor is invalid.");
+  try{
+   const decoded:unknown=JSON.parse(Buffer.from(v.cursor,"base64url").toString("utf8"));
+   if(!decoded||typeof decoded!=="object"||Array.isArray(decoded))throw Error();
+   const item=decoded as Record<string,unknown>;
+   if(typeof item.t!=="string"||typeof item.id!=="string"||
+    !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(item.id)||
+    !/^20[0-9]{2}-[0-9]{2}-[0-9]{2}T/.test(item.t)||
+    new Date(item.t).toISOString()!==item.t)throw Error();
+   cursorTime=item.t;cursorId=item.id;
+  }catch{throw new BadRequestException("Report cursor is invalid.");}
+ }
+ return {status,q:q.trim().toLowerCase(),offset,method,campaign,from,to,minMinor,maxMinor,cursorTime,cursorId};
 };
 const where=String.raw`
  WHERE d.root_realm_id=$1 AND ($2::boolean OR d.branch_ref=ANY($3::uuid[]))
