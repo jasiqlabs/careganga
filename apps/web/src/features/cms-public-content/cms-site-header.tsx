@@ -56,12 +56,12 @@ export function CmsSiteHeader({navigation,contact}:{
     {isPublished("/about")?<Link href="/about"
      className={pathname==="/about"?"cg-site-active":undefined}>About Us</Link>:
      <span className="cg-site-unavailable">About Us</span>}
-    <Menu label="Our Work" items={work.map(text=>({text}))}/>
+    <Menu label="Our Work" items={work.map(text=>({text,href:isPublished("/our-work")?"/our-work"+(text==="All Projects"?"":"?category="+encodeURIComponent(text)):undefined}))}/>
     {isPublished("/ngo-information")?<Link href="/ngo-information"
      className={pathname==="/ngo-information"?"cg-site-active":undefined}>NGO Information</Link>:
      <span className="cg-site-unavailable" aria-disabled="true">NGO Information</span>}
     <span className="cg-site-unavailable">Campaigns</span>
-    <span className="cg-site-unavailable">Upcoming Projects</span>
+    {isPublished("/upcoming-projects")?<Link href="/upcoming-projects" className={pathname==="/upcoming-projects"?"cg-site-active":undefined}>Upcoming Projects</Link>:<span className="cg-site-unavailable">Upcoming Projects</span>}
     <Link href="/collaboration" className={pathname.startsWith("/collaboration")?"cg-site-active":undefined}>Partnerships</Link>
     <span className="cg-site-unavailable">Events</span>
     <Menu label="Media & Resources" items={media.map(text=>({text,
