@@ -202,7 +202,7 @@ export class PrivateLetterService{
       const current=await client.query<Template>(`
         SELECT id,version,title,body,content_sha256,status
         FROM cg19_document_template
-        WHERE realm_id=$1 AND status='APPROVED'
+        WHERE realm_id=$1 AND template_kind='PRIVATE_APPROVED_ACCESS_LETTER' AND status='APPROVED'
         ORDER BY version DESC LIMIT 1
       `,[actor.realmId]);
       if(!current.rowCount)throw new ServiceUnavailableException(
