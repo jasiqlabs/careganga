@@ -17,7 +17,9 @@ export function MemberSelfService(){
  const [apps,setApps]=useState<CG04Application[]>([]),[chosen,setChosen]=useState<CG04Application|null>(null),[member,setMember]=useState<CG04Member|null>(null),[fee,setFee]=useState<CG04MembershipFee|null>(null),[plans,setPlans]=useState<CG04PublicTier[]>([]),[code,setCode]=useState("");
  const pending=useRef<Pending|null>(null),sequence=useRef(0);
  const refresh=useCallback(async()=>{
-  const n=++sequence.current,phone=await api<{verified:boolean}>("/mobile/status");
+  const n=++sequence.current;
+  let phone:{verified:boolean};
+  try{phone=await api<{verified:boolean}>("/mobile/status");}catch(e){if(n===sequence.current){setSigned(false);setVerified(false);setApps([]);setChosen(null);setMember(null);setFee(null);}throw e;}
   if(n!==sequence.current)return;
   setSigned(true);setVerified(phone.verified);
   if(!phone.verified){setApps([]);setChosen(null);setMember(null);return;}
