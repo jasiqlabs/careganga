@@ -7,7 +7,7 @@ import {ProtectedAccessOwnerService} from "../../cg-01-identity-access/applicati
 import {FoundationStructureIdentityFacade} from "../../cg-01-identity-access/application/foundation-structure-identity.facade";
 import type {VerifiedFoundationActor as Actor} from "../../cg-01-identity-access/public-api";
 import {PrivateObjectStorage} from "../infrastructure/private-object-storage";
-import {int,object,pick,uuid} from "../../cg-04-volunteer-volunteers/domain/tier-input";
+import {int,object,pick,uuid} from "../../cg-04-membership-volunteers/domain/tier-input";
 type Intent={id:string;realm_id:string;application_id:string;application_version:number;requested_by:string;request_key:string;request_digest:string;classification:string;mime:string;size_bytes:string;sha256:string;object_key:string;reserved_until:Date;status:string};
 type File={id:string;application_id:string;application_version:number;intent_id:string;classification:string;mime:string;size_bytes:string;sha256:string;object_key:string;object_version:string;revision:number;revoked_at:Date|null};
 const missing=()=>new NotFoundException("Your application document is not available.");
@@ -122,11 +122,11 @@ export class VolunteerEvidenceService{
  /** Only the current protected distinct reviewer can read the original
   * proof for a current CG03 case. Never issue a direct signed GET URL. */
  private async reviewFile(token:string,caseRef:string,fileRef:string){
-  const actor=await this.sessions.requireAction(token,"volunteer.applications.review");
+  const actor=await this.sessions.requireAction(token,"volunteers.applications.review");
   const tx=await this.db.connect();
   try{
    await tx.query("BEGIN");
-   await this.identity.assertCurrent(tx,actor,"volunteer.applications.review");
+   await this.identity.assertCurrent(tx,actor,"volunteers.applications.review");
    await this.protectedOwner.verifyReviewer(tx,actor,"approvals.review",true);
    await this.identity.assertCurrent(tx,actor,"documents.files.view");
    const f=(await tx.query<File>("SELECT d.* FROM cg03_case c JOIN volunteer_review_file f ON f.root_realm_id=c.realm_id AND f.snapshot_id=c.volunteer_review_ref AND f.application_id=c.volunteer_application_id JOIN cg19_volunteer_private_file d ON d.realm_id=f.root_realm_id AND d.id=f.file_id AND d.application_id=f.application_id JOIN volunteer_application a ON a.root_realm_id=c.realm_id AND a.id=c.volunteer_application_id WHERE c.realm_id=$1 AND c.id=$2 AND c.case_kind='VOLUNTEER_APPLICATION' AND c.proposer_id<>$3 AND c.status IN('SUBMITTED','PENDING_OWNER') AND a.status='SUBMITTED' AND a.version=c.volunteer_application_version AND a.submitted_digest=c.volunteer_review_digest AND f.file_id=$4 AND d.revoked_at IS NULL AND d.scan_status='CLEAN_VERIFIED' AND d.revision=f.file_version AND d.sha256=f.sha256 FOR SHARE OF c,d,a",[actor.realmId,uuid(caseRef),actor.accountId,uuid(fileRef)])).rows[0];
