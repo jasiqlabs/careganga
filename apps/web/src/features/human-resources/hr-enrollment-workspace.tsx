@@ -3,7 +3,7 @@ import {useCallback,useEffect,useRef,useState,type FormEvent} from "react";
 import {HrEvidenceUploader} from "./hr-evidence-uploader";
 import {HrPrivateDetails} from "./hr-private-details";
 
-type Choice={label:string;branchRef?:string;departmentRef?:string;managerRef?:string;accountRef?:string;geography?:string};
+type Choice={label:string;branchRef?:string;departmentRef?:string;managerRef?:string;accountRef?:string;geography?:string;state?:string|null;district?:string|null};
 type RoleChoice={value:string;label:string;context:string};
 type Application={applicationRef:string;reference:string;name:string;designation:string;
  employmentType:string;branchRef:string;departmentRef:string|null;
@@ -73,7 +73,7 @@ export function HrEnrollmentWorkspace({canViewApps,canManage,canViewEmployees,ca
  const [headcounts,setHeadcounts]=useState<{total:number;statuses:Record<string,number>;newJoinersThisMonth:number;attendance:{onApprovedLeaveToday:number;employeesWithPendingLeave:number}|null}|null>(null);
  const [empBranches,setEmpBranches]=useState<Choice[]>([]);
  const [empDepartments,setEmpDepartments]=useState<Choice[]>([]);
- const [empFilter,setEmpFilter]=useState({q:"",status:"ALL",branch:"",department:""});
+ const [empFilter,setEmpFilter]=useState({q:"",status:"ALL",branch:"",department:"",state:"",district:"",role:""});
  const [empOffset,setEmpOffset]=useState(0);
  const [empMore,setEmpMore]=useState(false);
  const enrollmentKeys=useRef(new Map<string,string>());
@@ -223,6 +223,7 @@ export function HrEnrollmentWorkspace({canViewApps,canManage,canViewEmployees,ca
      q:empFilter.q.trim()});
    if(empFilter.branch)opts.set("branch",empFilter.branch);
    if(empFilter.department)opts.set("department",empFilter.department);
+   if(empFilter.state)opts.set("state",empFilter.state);if(empFilter.district)opts.set("district",empFilter.district);if(canSelectRoles&&empFilter.role.trim())opts.set("role",empFilter.role.trim());
    const res=await request("employees?"+opts.toString());
    if(!res||typeof res!=="object"||!("items" in res)||!Array.isArray(res.items))
     throw Error("The approved employee directory is unavailable");
@@ -476,11 +477,14 @@ export function HrEnrollmentWorkspace({canViewApps,canManage,canViewEmployees,ca
         {["ALL","ACTIVE","PROBATION","ON_HOLD","PENDING_ACCESS","EXITED"].map(v=>
          <option value={v} key={v}>{v.replaceAll("_"," ")}</option>)}
        </select></label>
+      <label style={fieldStyle}>State<select style={inputStyle} value={empFilter.state} onChange={e=>setEmpFilter(x=>({...x,state:e.target.value,district:"",branch:"",department:""}))}><option value="">All permitted states</option>{Array.from(new Set(empBranches.flatMap(v=>v.state?[v.state]:[]))).sort().map(v=><option key={v}>{v}</option>)}</select></label>
+      <label style={fieldStyle}>District<select style={inputStyle} value={empFilter.district} onChange={e=>setEmpFilter(x=>({...x,district:e.target.value,branch:"",department:""}))}><option value="">All permitted districts</option>{Array.from(new Set(empBranches.filter(v=>!empFilter.state||v.state===empFilter.state).flatMap(v=>v.district?[v.district]:[]))).sort().map(v=><option key={v}>{v}</option>)}</select></label>
+      {canSelectRoles&&<label style={fieldStyle}>Current assigned role<input style={inputStyle} maxLength={100} value={empFilter.role} onChange={e=>setEmpFilter(x=>({...x,role:e.target.value}))} placeholder="Role name"/></label>}
       <label style={fieldStyle}>Branch
        <select style={inputStyle} value={empFilter.branch}
         onChange={e=>setEmpFilter(x=>({...x,branch:e.target.value,department:""}))}>
         <option value="">My permitted branches</option>
-        {empBranches.map(v=><option key={v.branchRef} value={v.branchRef}>{v.label}</option>)}
+        {empBranches.filter(v=>(!empFilter.state||v.state===empFilter.state)&&(!empFilter.district||v.district===empFilter.district)).map(v=><option key={v.branchRef} value={v.branchRef}>{v.label}</option>)}
        </select></label>
       {empFilter.branch&&<label style={fieldStyle}>Department
        <select style={inputStyle} value={empFilter.department}
