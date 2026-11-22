@@ -1,6 +1,8 @@
 import {useEffect,useRef,useState} from "react";
 import {AppState,Pressable,ScrollView,StyleSheet,Text,TextInput,View} from "react-native";
 import * as Crypto from "expo-crypto";
+import * as DocumentPicker from "expo-document-picker";
+import {File} from "expo-file-system";
 import {identityRequest} from "../identity-access/http-client";
 import {careGangaTheme as t} from "../../../../../packages/design-tokens/src/index";
 type Row={firstName:string;lastName:string;mobile:string;city:string;alreadyImported:boolean};
@@ -26,6 +28,26 @@ export function NativeVolunteerStaffIntake({token,onExpired}:{token:string;onExp
    r.status===409?"Original import changed. Check existing drafts.":"Check the candidate information or CSV format.");
   return r.json() as Promise<T>;
  }
+ const pickCsv=async()=>{
+  if(busy||pending.current)return;
+  setBusy(true);setNotice("");setPreview(null);
+  try{
+   const selected=await DocumentPicker.getDocumentAsync({type:["text/csv","text/comma-separated-values","text/plain"],
+    multiple:false,copyToCacheDirectory:true});
+   if(selected.canceled)return;
+   const asset=selected.assets?.[0];
+   if(!asset?.uri||!asset.size||asset.size>100000){
+    setNotice("Select a CSV file under 100 KB.");return;
+   }
+   const local=new File(asset.uri);
+   try{
+    const source=await local.text();
+    if(source.length>100000)throw Error("CSV exceeds the allowed 100 KB intake.");
+    if(active.current)setCsv(source);
+   }finally{try{local.delete();}catch{/* Device cache cleanup is best-effort. */}}
+  }catch(e){if(active.current)setNotice(e instanceof Error?e.message:"The CSV file could not be opened.");}
+  finally{setBusy(false);}
+ };
  const requestBody=():Record<string,unknown>=>mode==="SINGLE"?{rows:[person]}:{csv};
  const show=async()=>{if(busy||!active.current)return;setBusy(true);setNotice("");setPreview(null);pending.current=null;
   const id=++sequence.current;
@@ -63,6 +85,7 @@ export function NativeVolunteerStaffIntake({token,onExpired}:{token:string;onExp
   {mode==="SINGLE"?<>{field("First name","firstName")}{field("Last name","lastName")}
     {field("Mobile number","mobile")}{field("City (optional)","city")}</>:
    <><Text>CSV: First Name, Last Name, Mobile, City. Maximum 200 rows, 100 KB.</Text>
+    {button("Choose CSV file",()=>void pickCsv())}
     <TextInput accessibilityLabel="Volunteer CSV rows" multiline value={csv} onChangeText={setCsv} editable={!busy&&!preview&&!pending.current}
      maxLength={100000} style={[s.input,{minHeight:100}]} placeholder="First Name,Last Name,Mobile,City"/></>}
   {!preview&&button("Validate and preview",()=>void show(),mode==="CSV"&&!csv.trim())}
