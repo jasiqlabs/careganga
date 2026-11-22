@@ -5,6 +5,7 @@ import {FoundationAdminNav} from "../../../../shared/foundation-admin-nav";
 import {UnavailablePage} from "../../../../shared/unavailable-page";
 import {HrEnrollmentWorkspace} from "../../../../features/human-resources/hr-enrollment-workspace";
 import {HrAttendance} from "../../../../features/human-resources/hr-attendance";
+import {HrEmploymentChanges} from "../../../../features/human-resources/hr-employment-changes";
 import {HrAppraisalWorkspace,HrMyAppraisals} from "../../../../features/human-resources/hr-appraisals";
 import {HrMyProfile} from "../../../../features/human-resources/hr-my-profile";
 import {HrEnrollmentReviews} from "../../../../features/human-resources/hr-enrollment-reviews";
@@ -56,6 +57,9 @@ export default async function FoundationHrPage(){
     </header>
     <HrMyProfile/>
     <HrMyAppraisals/>
+    <HrEmploymentChanges mode="own"/>
+    {actions.includes("hr.changes.manage")&&<HrEmploymentChanges mode="manage" canSelectRoles={actions.includes("roles.select")}/>}
+    {actions.includes("hr.changes.review")&&actions.includes("approvals.review")&&<HrEmploymentChanges mode="review"/>}
     {actions.includes("hr.appraisals.manage")&&<HrAppraisalWorkspace/>}
     <HrAttendance canViewStaff={actions.includes("hr.attendance.view")} canCorrect={actions.includes("hr.attendance.correct")} canReviewCorrection={actions.includes("hr.attendance.review")&&actions.includes("approvals.review")} canReviewLeave={actions.includes("hr.leave.view")} canManageLeave={actions.includes("hr.leave.policies.manage")} canConfigure={actions.includes("hr.shifts.manage")&&
       actions.includes("hr.attendance.view")&&actions.includes("hr.employees.view")}/>
