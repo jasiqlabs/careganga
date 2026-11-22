@@ -41,7 +41,7 @@ export type CampaignDraft={
   stateRef:string|null;districtRef:string|null;location:string;targetGroup:string;plannedBeneficiaries:number|null};
  team:{coordinatorRef:string|null;volunteerRef:string|null};
  budget:{goalMinor:string|null;expectedCostMinor:string|null;startAt:string|null;endAt:string|null};
- media:{fileRef:string|null;supportingFileRefs:string[];alt:string};
+ media:{coverRef:string|null;fileRef:string|null;supportingFileRefs:string[];alt:string};
  review:Record<string,never>;
 };
 export function parseCampaignDraft(raw:unknown,editing=false):CampaignDraft{
@@ -52,7 +52,7 @@ export function parseCampaignDraft(raw:unknown,editing=false):CampaignDraft{
   "location","targetGroup","plannedBeneficiaries"],"project and category");
  const team=fields(steps.team??{},["coordinatorRef","volunteerRef"],"team assignment");
  const budget=fields(steps.budget??{},["goal","expectedCost","startAt","endAt"],"budget and targets");
- const media=fields(steps.media??{},["fileRef","supportingFileRefs","alt"],"documents and media");
+ const media=fields(steps.media??{},["coverRef","fileRef","supportingFileRefs","alt"],"documents and media");
  fields(steps.review??{},[],"review and submission");
  const rawTags=basic.tags??[];
  if(!Array.isArray(rawTags)||rawTags.length>12)return fail("Use up to 12 short campaign tags.");
@@ -64,7 +64,9 @@ export function parseCampaignDraft(raw:unknown,editing=false):CampaignDraft{
   return fail("Attach at most six verified campaign supporting documents.");
  const supportingFileRefs=rawSupporting.map(v=>campaignRef(v));
  if(new Set(supportingFileRefs).size!==supportingFileRefs.length||
-  (media.fileRef&&supportingFileRefs.includes(campaignRef(media.fileRef))))
+  (media.fileRef&&supportingFileRefs.includes(campaignRef(media.fileRef)))||
+  (media.coverRef&&supportingFileRefs.includes(campaignRef(media.coverRef)))||
+  (media.coverRef&&media.fileRef&&campaignRef(media.coverRef)===campaignRef(media.fileRef)))
   return fail("Remove repeated campaign document references.");
  const estimate=project.plannedBeneficiaries;
  if(estimate!==undefined&&estimate!==null&&estimate!==""&&(!Number.isSafeInteger(estimate)||Number(estimate)<0||Number(estimate)>10000000))
@@ -85,7 +87,8 @@ export function parseCampaignDraft(raw:unknown,editing=false):CampaignDraft{
    plannedBeneficiaries:estimate===undefined||estimate===null||estimate===""?null:Number(estimate)},
   team:{coordinatorRef:optionalRef(team.coordinatorRef),volunteerRef:optionalRef(team.volunteerRef)},
   budget:{goalMinor:money(budget.goal,"fundraising goal"),expectedCostMinor:money(budget.expectedCost,"expected cost"),startAt:start,endAt:end},
-  media:{fileRef:optionalRef(media.fileRef),supportingFileRefs,alt:optionalText(media.alt,"media description",240)},
+  media:{coverRef:optionalRef(media.coverRef),fileRef:optionalRef(media.fileRef),
+   supportingFileRefs,alt:optionalText(media.alt,"media description",240)},
   review:{}
  };
 }
