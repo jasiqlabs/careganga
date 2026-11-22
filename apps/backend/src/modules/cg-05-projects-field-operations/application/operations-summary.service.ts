@@ -12,7 +12,7 @@ type Recent={source:string;title:string;status:string;action:string;at:string};
 type Metrics={label:string;value:number|string}[];
 type Section={source:string;metrics:Metrics;recent:Recent[]};
 const csv=(v:unknown)=>{let s=String(v??"").replace(/[\u0000-\u001f\u007f]/g," ");if(/^\s*[=+\-@]/.test(s))s="'"+s;return '"'+s.replaceAll('"','""')+'"';};
-function metrics(counts:Record<string,unknown>,labels:Record<string,string>):Metrics{return Object.entries(labels).map(([key,label])=>({label,value:Number(counts[key]??0)}));}
+function metrics(counts:Record<string,unknown>,labels:Record<string,string>):Metrics{return Object.entries(labels).map(([key,label])=>{const value=counts[key];if(typeof value!=="number"||!Number.isSafeInteger(value)||value<0)throw Error("Operational metric unavailable");return {label,value};});}
 function recent(source:string,rows:Record<string,unknown>[]):Recent[]{return rows.map(r=>({source,title:String(r.title??r.project??r.code??""),status:String(r.status??""),action:String(r.action??r.kind??""),at:new Date(String(r.at)).toISOString()}));}
 
 @Injectable()
@@ -48,10 +48,10 @@ export class OperationsSummaryService{
    if(await this.allowed(tx,a,"projects.visits",exporting)){
     const r=await this.visits.listInTx(tx,a,mine?{tab:"MY"}:{},false,true);
     if(!("counts" in r)||!r.counts||!r.recent)throw Error("Visit projection unavailable");
-    const counts=Object.fromEntries(r.counts.map(v=>[v.status,v.count]));
+    const counts={COMPLETED:0,PENDING_APPROVAL:0,REJECTED:0,IN_PROGRESS:0,PENDING_PROOF:0,RETURNED:0,CANCELLED:0,...Object.fromEntries(r.counts.map(v=>[v.status,v.count]))};
     sections.push({source:"Field visits",metrics:[{label:"Total",value:Number(r.total)},...metrics(counts,{COMPLETED:"Completed",PENDING_APPROVAL:"Pending approval",REJECTED:"Rejected",IN_PROGRESS:"In progress / checked in",PENDING_PROOF:"Pending proof",RETURNED:"Returned",CANCELLED:"Cancelled"})],recent:recent("Field visits",r.recent)});
    }else restricted.push("Field visits");
-   if(!sections.length)throw new ForbiddenException({code:"CG05_SCOPE_DENIED"});
+   if(!sections.length)throw new ForbiddenException({code:"CG05_SCOPE_DENIED",message:"Your current permissions do not allow access to operational reports."});
    if(exporting){
     const rows=sections.flatMap(s=>s.metrics.map(m=>[asOf,mine?"MINE":"PERMITTED",s.source,m.label,m.value]));
     await this.projects.auditExport(tx,a,"OPERATIONS",mine,rows.length,{scope:mine?"MINE":"PERMITTED",sources:sections.map(s=>s.source)});
