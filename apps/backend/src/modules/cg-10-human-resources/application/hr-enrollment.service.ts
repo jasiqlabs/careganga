@@ -890,8 +890,8 @@ export class HrEnrollmentService{
   const pattern=query?"%"+query.replace(/[\\%_]/g,"\\$&")+"%":"";
   const q=await this.db.query<{employee_code:string;legal_name:string;
     designation:string;status:string;branch_name:string;employment_type:string;
-    department_name:string|null;manager_name:string|null}>(
-   "SELECT e.employee_code,a.legal_name,asg.designation,e.status,"+
+    department_name:string|null;manager_name:string|null;hire_date:string}>(
+   "SELECT e.employee_code,a.legal_name,asg.designation,e.status,to_char(a.hire_date,'YYYY-MM-DD') AS hire_date,"+
    "b.name AS branch_name,asg.employment_type,d.name AS department_name,"+
    "manager_app.legal_name AS manager_name FROM hr_employee e "+
    "JOIN hr_employee_application a ON a.id=e.application_id "+
@@ -924,7 +924,7 @@ export class HrEnrollmentService{
    reference:x.employee_code,name:x.legal_name,
    designation:x.designation,branch:x.branch_name,
    department:x.department_name,manager:x.manager_name,
-   employmentType:x.employment_type,status:x.status
+   employmentType:x.employment_type,status:x.status,hireDate:x.hire_date
   })),hasMore:q.rows.length>25,offset};
  }
 
