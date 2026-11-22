@@ -12,7 +12,7 @@ import {parseTaskCreate,parseTaskEdit,parseTaskAssign,parseTaskProgress,taskStat
 type Actor=VerifiedFoundationActor;
 type Parent={id:string;branch_ref:string|null;owner_account_ref:string;status:string;planned_start:string|null;planned_end:string|null;manager_ref:string|null};
 type Binding={kind:TaskAssigneeKind;account:string|null;employee:string|null;branch:string|null};
-type Task={id:string;project_id:string;status:TaskStatus;version:number;due_at:string|null;assignee_kind:TaskAssigneeKind;assignee_account_ref:string|null;assignee_employee_ref:string|null;assignee_branch_ref:string|null};
+type Task={id:string;project_id:string;status:TaskStatus;version:number;due_at:string|null;planned_start:string|null;assignee_kind:TaskAssigneeKind;assignee_account_ref:string|null;assignee_employee_ref:string|null;assignee_branch_ref:string|null};
 const digest=(value:unknown)=>createHash("sha256").update(JSON.stringify(value)).digest("hex");
 const csvCell=(v:unknown)=>{let s=String(v??"").replace(/[\u0000-\u001f\u007f]/g," ");if(/^\s*[=+\-@]/.test(s))s="'"+s;return '"'+s.replaceAll('"','""')+'"';};
 const terminal=(status:string)=>["COMPLETED","CANCELLED"].includes(status);
@@ -22,7 +22,7 @@ const grants=(a:string,capability:string)=>`EXISTS(SELECT 1 FROM account_role ar
  (r.is_protected OR EXISTS(SELECT 1 FROM role_grant g WHERE g.role_id=r.id AND g.capability_key='${capability}')))`;
 const eligible=(a:string)=>`${a}.status='ACTIVE' AND ${grants(a,"projects.tasks.view")} AND (${grants(a,"projects.tasks.progress")} OR ${grants(a,"projects.tasks.manage")})`;
 const operatorScope=(a:string)=>`(p.branch_ref IS NULL OR b.manager_account_ref=${a}.id OR p.owner_account_ref=${a}.id OR ${grants(a,"foundation.branches.admin")})`;
-const live=`(t.assignee_account_ref IS NOT NULL AND t.assigned_at<=now()
+const live=`(t.assignee_account_ref IS NOT NULL AND t.assigned_at<=now() AND (t.planned_start IS NULL OR t.planned_start<=CURRENT_DATE)
  AND EXISTS(SELECT 1 FROM account aa WHERE aa.realm_id=t.root_realm_id AND aa.id=t.assignee_account_ref AND ${eligible("aa")}
  AND ((t.assignee_kind='ACCOUNT' AND t.assignee_branch_ref IS NOT DISTINCT FROM p.branch_ref
  AND ${operatorScope("aa")} AND NOT EXISTS(SELECT 1 FROM hr_employee e WHERE e.root_realm_id=t.root_realm_id AND e.account_ref=aa.id))
@@ -35,8 +35,8 @@ const joins=` FROM project_task t JOIN project p ON p.id=t.project_id AND p.root
  LEFT JOIN account a ON a.id=t.assignee_account_ref AND a.realm_id=t.root_realm_id`;
 const overdue="t.due_at<CURRENT_DATE AND t.status IN('ASSIGNED','IN_PROGRESS')";
 const upcoming="t.due_at>=CURRENT_DATE AND t.status IN('ASSIGNED','IN_PROGRESS')";
-const projection=`t.id AS ref,t.project_id AS "projectRef",p.title AS project,p.code_norm AS "projectCode",t.title,t.task_type AS "taskType",
- t.description,t.priority,t.due_at::text AS "dueDate",t.status,t.assignee_kind AS "assigneeKind",
+const projection=`t.id AS ref,t.task_code AS code,t.project_id AS "projectRef",p.title AS project,p.code_norm AS "projectCode",t.title,t.task_type AS "taskType",
+ t.description,t.priority,t.planned_start::text AS "startDate",t.due_at::text AS "dueDate",t.status,t.assignee_kind AS "assigneeKind",
  a.display_name AS assignee,p.location_label AS location,b.name AS branch,t.version,t.updated_at AS "updatedAt",
  t.completed_at AS "completedAt",(${overdue}) IS TRUE AS overdue,(${live}) AS "assignmentCurrent"`;
 
@@ -63,13 +63,14 @@ export class ProjectTasksService {
   const s=await this.branches.projectBranchScope(tx,a);
   return p.branch_ref?s.branches.some(b=>b.value===p.branch_ref):s.all||p.owner_account_ref===a.accountId;
  }
- private due(p:Parent,due:string|null){
+ private due(p:Parent,due:string|null,start:string|null=null){
+  if(start&&(p.planned_start&&start<p.planned_start||p.planned_end&&start>p.planned_end||due&&start>due))throw invalid();
   if(due&&(p.planned_start&&due<p.planned_start||p.planned_end&&due>p.planned_end))throw invalid();
  }
  private async account(tx:PoolClient,a:Actor,target:string){
   const found=await tx.query<{id:string}>(`SELECT aa.id FROM account aa WHERE aa.realm_id=$1 AND aa.id=$2 AND ${eligible("aa")} FOR SHARE OF aa`,[a.realmId,target]);
   if(!found.rowCount)throw new ForbiddenException("Choose a current eligible task assignee");
-  await tx.query("SELECT ar.id FROM account_role ar JOIN role r ON r.id=ar.role_id AND r.realm_id=ar.realm_id WHERE ar.realm_id=$1 AND ar.account_id=$2 AND ar.revoked_at IS NULL AND r.active FOR SHARE OF ar,r",[a.realmId,target]);
+  await tx.query("SELECT ar.account_id FROM account_role ar JOIN role r ON r.id=ar.role_id AND r.realm_id=ar.realm_id WHERE ar.realm_id=$1 AND ar.account_id=$2 AND ar.revoked_at IS NULL AND r.active FOR SHARE OF ar,r",[a.realmId,target]);
  }
  private async binding(tx:PoolClient,a:Actor,p:Parent,kind:TaskAssigneeKind,target:string|null):Promise<Binding>{
   if(kind==="UNASSIGNED")return {kind,account:null,employee:null,branch:null};
@@ -100,7 +101,7 @@ export class ProjectTasksService {
   const hint=(await tx.query<{project_id:string}>("SELECT project_id FROM project_task WHERE root_realm_id=$1 AND id=$2",[a.realmId,target])).rows[0];
   if(!hint)throw new NotFoundException("Task unavailable");
   const p=await this.parent(tx,a,hint.project_id);
-  const t=(await tx.query<Task>("SELECT *,due_at::text AS due_at FROM project_task WHERE root_realm_id=$1 AND id=$2 AND project_id=$3 "+(write?"FOR UPDATE":"FOR SHARE"),[a.realmId,target,p.id])).rows[0];
+  const t=(await tx.query<Task>("SELECT *,due_at::text AS due_at,planned_start::text AS planned_start FROM project_task WHERE root_realm_id=$1 AND id=$2 AND project_id=$3 "+(write?"FOR UPDATE":"FOR SHARE"),[a.realmId,target,p.id])).rows[0];
   if(!t)throw new NotFoundException("Task unavailable");
   const scope=await this.scoped(tx,a,p),own=t.assignee_account_ref===a.accountId;
   if(!scope&&!own)throw new NotFoundException("Task unavailable");
@@ -108,7 +109,7 @@ export class ProjectTasksService {
   if(!scope&&!(own&&assignmentCurrent))throw new ForbiddenException("Your task assignment is no longer current");
   const canManage=scope&&!terminal(p.status)&&!terminal(t.status)&&await this.has(tx,a,"projects.tasks.manage")&&
    (p.branch_ref!==null||await this.has(tx,a,"foundation.branches.admin"));
-  const canProgress=assignmentCurrent&&!terminal(p.status)&&!terminal(t.status)&&
+  const canProgress=assignmentCurrent&&(!t.planned_start||t.planned_start<=new Date().toISOString().slice(0,10))&&!terminal(p.status)&&!terminal(t.status)&&
    (canManage||own&&await this.has(tx,a,"projects.tasks.progress"));
   return {t,p,canManage,canProgress,assignmentCurrent};
  }
@@ -128,9 +129,9 @@ export class ProjectTasksService {
   const target=ref(projectId),v=parseTaskCreate(raw),hash=digest([target,v]);
   return this.projects.run(token,"projects.tasks.manage",async(tx,a)=>{
    await this.identity.assertCurrent(tx,a,"projects.tasks.view");const prior=await this.replay(tx,a,v.key,hash,"CREATE",target);if(prior)return prior;
-   const p=await this.parent(tx,a,target);await this.manageParent(tx,a,p);this.due(p,v.dueDate);
+   const p=await this.parent(tx,a,target);await this.manageParent(tx,a,p);this.due(p,v.dueDate,v.startDate);
    const b=await this.binding(tx,a,p,v.kind,v.target);
-   const t=(await tx.query<Task>("INSERT INTO project_task(root_realm_id,project_id,title,task_type,description,priority,due_at,status,assignee_kind,assignee_account_ref,assignee_employee_ref,assignee_branch_ref,assigned_at,created_by) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,CASE WHEN $10::uuid IS NULL THEN NULL ELSE now() END,$13) RETURNING *",[a.realmId,p.id,v.title,v.taskType,v.description,v.priority,v.dueDate,b.account?"ASSIGNED":"DRAFT",b.kind,b.account,b.employee,b.branch,a.accountId])).rows[0];
+   const t=(await tx.query<Task>("INSERT INTO project_task(root_realm_id,project_id,title,task_type,description,priority,planned_start,due_at,status,assignee_kind,assignee_account_ref,assignee_employee_ref,assignee_branch_ref,assigned_at,created_by) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,CASE WHEN $11::uuid IS NULL THEN NULL ELSE now() END,$14) RETURNING *",[a.realmId,p.id,v.title,v.taskType,v.description,v.priority,v.startDate,v.dueDate,b.account?"ASSIGNED":"DRAFT",b.kind,b.account,b.employee,b.branch,a.accountId])).rows[0];
    return this.event(tx,a,t,v.key,hash,"CREATE",null);
   });
  }
@@ -139,8 +140,8 @@ export class ProjectTasksService {
   return this.projects.run(token,"projects.tasks.manage",async(tx,a)=>{
    await this.identity.assertCurrent(tx,a,"projects.tasks.view");const prior=await this.replay(tx,a,v.key,hash,"EDIT",undefined,target);if(prior)return prior;
    const {p,t,canManage}=await this.get(tx,a,target,true);if(!canManage)throw new ForbiddenException("Task editing unavailable");
-   if(t.version!==v.expected)throw stale();this.due(p,v.dueDate);
-   const next=(await tx.query<Task>("UPDATE project_task SET title=$3,task_type=$4,description=$5,priority=$6,due_at=$7,version=version+1,updated_at=now() WHERE root_realm_id=$1 AND id=$2 AND version=$8 RETURNING *",[a.realmId,t.id,v.title,v.taskType,v.description,v.priority,v.dueDate,v.expected])).rows[0];
+   if(t.version!==v.expected)throw stale();this.due(p,v.dueDate,v.startDate);
+   const next=(await tx.query<Task>("UPDATE project_task SET title=$3,task_type=$4,description=$5,priority=$6,planned_start=$7,due_at=$8,version=version+1,updated_at=now() WHERE root_realm_id=$1 AND id=$2 AND version=$9 RETURNING *",[a.realmId,t.id,v.title,v.taskType,v.description,v.priority,v.startDate,v.dueDate,v.expected])).rows[0];
    if(!next)throw stale();return this.event(tx,a,next,v.key,hash,"EDIT",t.status);
   });
  }
@@ -149,7 +150,7 @@ export class ProjectTasksService {
   return this.projects.run(token,"projects.tasks.manage",async(tx,a)=>{
    await this.identity.assertCurrent(tx,a,"projects.tasks.view");const prior=await this.replay(tx,a,v.key,hash,"ASSIGN",undefined,target);if(prior)return prior;
    const {p,t,canManage}=await this.get(tx,a,target,true);if(!canManage)throw new ForbiddenException("Task assignment unavailable");
-   if(t.version!==v.expected)throw stale();this.due(p,t.due_at);const b=await this.binding(tx,a,p,v.kind,v.target);
+   if(t.version!==v.expected)throw stale();this.due(p,t.due_at,t.planned_start);const b=await this.binding(tx,a,p,v.kind,v.target);
    const next=(await tx.query<Task>("UPDATE project_task SET status='ASSIGNED',assignee_kind=$3,assignee_account_ref=$4,assignee_employee_ref=$5,assignee_branch_ref=$6,assigned_at=now(),version=version+1,updated_at=now() WHERE root_realm_id=$1 AND id=$2 AND version=$7 RETURNING *",[a.realmId,t.id,b.kind,b.account,b.employee,b.branch,v.expected])).rows[0];
    if(!next)throw stale();return this.event(tx,a,next,v.key,hash,"ASSIGN",t.status,v.reason);
   });
@@ -162,7 +163,7 @@ export class ProjectTasksService {
    const {p,t,canManage,canProgress}=await this.get(tx,a,target,true);
    if(v.status==="CANCELLED"?!canManage:!canProgress)throw new ForbiddenException("This task action is not currently permitted");
    if(t.version!==v.expected||!taskTransition(t.status,v.status))throw stale();
-   if(v.status!=="CANCELLED")this.due(p,t.due_at);
+   if(v.status!=="CANCELLED")this.due(p,t.due_at,t.planned_start);
    const next=(await tx.query<Task>("UPDATE project_task SET status=$3,completed_at=CASE WHEN $3='COMPLETED' THEN now() ELSE NULL END,version=version+1,updated_at=now() WHERE root_realm_id=$1 AND id=$2 AND version=$4 RETURNING *",[a.realmId,t.id,v.status,v.expected])).rows[0];
    if(!next)throw stale();return this.event(tx,a,next,v.key,hash,"PROGRESS",t.status,v.reason);
   });
@@ -196,24 +197,28 @@ export class ProjectTasksService {
   const projectId=parentRef?ref(parentRef):optionalRef(query.projectRef),q=clean(query.q??"",0,100).toLowerCase(),type=clean(query.taskType??"",0,80),assignee=clean(query.assignee??"",0,100).toLowerCase(),location=clean(query.location??"",0,100).toLowerCase();
   const tab=choice(query.tab??"ALL",["ALL","MY","COMPLETED","IN_PROGRESS","OVERDUE","UPCOMING","CANCELLED"] as const);
   const status=choice(query.status??"ALL",["ALL",...taskStatuses]),priority=choice(query.priority??"ALL",["ALL",...priorities]);
-  const from=date(query.from),to=date(query.to),offset=Number(query.offset??0);
-  if(!Number.isSafeInteger(offset)||offset<0||offset>10000||from&&to&&from>to)throw invalid();
+  const from=date(query.from),to=date(query.to),startFrom=date(query.startFrom),startTo=date(query.startTo),offset=Number(query.offset??0);
+  if(!Number.isSafeInteger(offset)||offset<0||offset>10000||from&&to&&from>to||startFrom&&startTo&&startFrom>startTo)throw invalid();
   return this.projects.run(token,exporting?"projects.tasks.export":"projects.tasks.view",async(tx,a)=>{
    if(exporting)await this.identity.assertCurrent(tx,a,"projects.tasks.view");
    const s=await this.branches.projectBranchScope(tx,a);
    const scope=`t.root_realm_id=$1 AND (p.branch_ref IS NULL OR b.status='ACTIVE') AND
    ((NOT $5::boolean AND ((p.branch_ref IS NULL AND ($2::boolean OR p.owner_account_ref=$4)) OR p.branch_ref=ANY($3::uuid[]))) OR (t.assignee_account_ref=$4 AND ${live}))`;
-   const values=[a.realmId,s.all,s.branches.map(b=>b.value),a.accountId,mine||tab==="MY",projectId,q,type,priority,status,assignee,location,from,to];
-   const filter=" AND ($6::uuid IS NULL OR t.project_id=$6) AND ($7='' OR strpos(lower(t.title),$7)>0 OR strpos(lower(p.title),$7)>0 OR strpos(lower(p.code_norm),$7)>0) AND ($8='' OR lower(t.task_type)=lower($8)) AND ($9='ALL' OR t.priority=$9) AND ($10='ALL' OR t.status=$10) AND ($11='' OR strpos(lower(COALESCE(a.display_name,'')),$11)>0) AND ($12='' OR strpos(lower(p.location_label),$12)>0) AND ($13::date IS NULL OR t.due_at>=$13) AND ($14::date IS NULL OR t.due_at<=$14)";
+   const values=[a.realmId,s.all,s.branches.map(b=>b.value),a.accountId,mine||tab==="MY",projectId,q,type,priority,status,assignee,location,from,to,startFrom,startTo];
+   const filter=" AND ($6::uuid IS NULL OR t.project_id=$6) AND ($7='' OR strpos(lower(t.title),$7)>0 OR strpos(lower(t.description),$7)>0 OR strpos(lower(t.task_code),$7)>0 OR strpos(lower(p.title),$7)>0 OR strpos(lower(p.code_norm),$7)>0) AND ($8='' OR lower(t.task_type)=lower($8)) AND ($9='ALL' OR t.priority=$9) AND ($10='ALL' OR t.status=$10) AND ($11='' OR strpos(lower(COALESCE(a.display_name,'')),$11)>0) AND ($12='' OR strpos(lower(p.location_label),$12)>0) AND ($13::date IS NULL OR t.due_at>=$13) AND ($14::date IS NULL OR t.due_at<=$14) AND ($15::date IS NULL OR t.planned_start>=$15) AND ($16::date IS NULL OR t.planned_start<=$16)";
    const tabFilter=tab==="OVERDUE"?" AND "+overdue:tab==="UPCOMING"?" AND "+upcoming:["COMPLETED","IN_PROGRESS","CANCELLED"].includes(tab)?" AND t.status='"+tab+"'":"";
    const where=" WHERE "+scope+filter;
-   const page=await tx.query("SELECT "+projection+joins+where+tabFilter+" ORDER BY t.due_at ASC NULLS LAST,t.updated_at DESC,t.id LIMIT $15 OFFSET $16",[...values,exporting?501:26,offset]);
+   const page=await tx.query("SELECT "+projection+joins+where+tabFilter+" ORDER BY t.due_at ASC NULLS LAST,t.updated_at DESC,t.id LIMIT $17 OFFSET $18",[...values,exporting?501:26,offset]);
    const items=page.rows.slice(0,exporting?500:25);
-   if(exporting){const columns=["projectCode","project","title","taskType","priority","dueDate","status","assignee","branch","location","overdue"];return {csv:[columns,...items.map(row=>columns.map(c=>row[c]))].map(row=>row.map(csvCell).join(",")).join("\r\n"),rows:items.length,hasMore:page.rows.length>500};}
+   if(exporting){const columns=["code","projectCode","project","title","taskType","priority","startDate","dueDate","status","assignee","branch","location","overdue"];return {csv:[columns,...items.map(row=>columns.map(c=>row[c]))].map(row=>row.map(csvCell).join(",")).join("\r\n"),rows:items.length,hasMore:page.rows.length>500};}
    const counts=(await tx.query(`SELECT count(*)::integer AS total,count(*) FILTER(WHERE t.status='COMPLETED')::integer AS completed,
     count(*) FILTER(WHERE t.status='IN_PROGRESS')::integer AS inProgress,count(*) FILTER(WHERE ${overdue})::integer AS overdue,
     count(*) FILTER(WHERE ${upcoming})::integer AS upcoming,count(*) FILTER(WHERE t.status='CANCELLED')::integer AS cancelled`+joins+where,values)).rows[0];
-   return {items,counts,offset,hasMore:page.rows.length>25};
+   const statusCounts=(await tx.query("SELECT t.status AS label,count(*)::int AS count"+joins+where+" GROUP BY t.status ORDER BY t.status",values)).rows;
+   const priorityCounts=(await tx.query("SELECT t.priority AS label,count(*)::int AS count"+joins+where+" GROUP BY t.priority ORDER BY t.priority",values)).rows;
+   const overdueItems=(await tx.query("SELECT "+projection+joins+where+" AND "+overdue+" ORDER BY t.due_at,t.id LIMIT 5",values)).rows;
+   const recent=(await tx.query("SELECT t.id AS ref,t.task_code AS code,t.title,e.event_kind AS action,e.new_status AS status,e.occurred_at AS at,actor.display_name AS actor,e.redacted_reason AS reason"+joins+" JOIN project_task_event e ON e.root_realm_id=t.root_realm_id AND e.task_id=t.id JOIN account actor ON actor.realm_id=e.root_realm_id AND actor.id=e.actor_ref"+where+" ORDER BY e.occurred_at DESC,e.id DESC LIMIT 8",values)).rows;
+   return {items,counts,statusCounts,priorityCounts,overdueItems,recent,offset,hasMore:page.rows.length>25};
   },true);
  }
 }
