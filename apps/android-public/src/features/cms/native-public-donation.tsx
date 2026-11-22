@@ -146,6 +146,20 @@ export function NativePublicDonation({campaignSlug=null}:{campaignSlug?:string|n
     button("Request secure payment link",pay))}
    {refundedMinor!=="0"&&<Text>Confirmed refund has reduced the verified original donation.</Text>}
    {receiptStatus==="ISSUED"&&button("Open/share your verified private PDF receipt",download)}
+   <Text accessibilityRole="header">My proven donation history</Text>
+   <Text>Enter any other original private status proofs, one per line. Only transactions you can prove are shown.</Text>
+   <TextInput accessibilityLabel="Additional private donor proofs" multiline maxLength={1600}
+    style={{minHeight:70,borderWidth:1,borderColor:t.border,padding:10}}
+    value={extraProofs} onChangeText={setExtraProofs}/>
+   {button("View proven donation history",loadHistory)}
+   {history.map(item=><View key={item.donationNumber} style={{gap:5,padding:10,
+     borderWidth:1,borderColor:t.border,borderRadius:8}}>
+     <Text>{item.donationNumber} · {item.status.replaceAll("_"," ")}</Text>
+     <Text>Confirmed net: ₹{(BigInt(item.netReceivedMinor)/100n).toString()}</Text>
+     <Text>Receipt: {item.receiptNumber??item.receiptStatus.replaceAll("_"," ")}</Text>
+     {item.receiptStatus==="ISSUED"&&!!historyTokens[item.proofIndex]&&
+      button("Open this proven private receipt",()=>void download(historyTokens[item.proofIndex]))}
+    </View>)}
    {button("Check donation status",refresh)}</>}
   {!!error&&<Text accessibilityRole="alert" style={{color:"#a12c3b"}}>{error}</Text>}
  </View>;
