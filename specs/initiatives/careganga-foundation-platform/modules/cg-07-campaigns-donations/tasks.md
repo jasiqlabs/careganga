@@ -390,3 +390,6 @@ Original CG18 site header, campaign list/cards/details now conditionally link /d
 
 ### 22-Nov US002 checkpoint G3 — public donation Web form and no-store protected API
 Public Next /donate and PublicDonationForm implement general/CG18-current campaign donation intent, consent, rupee validation, idempotent retry, private donor proof status, merchant-verified external link, pending/uncertain/no-paid messaging. Public BFF allowlists only POST create/status/payment-link with same-origin check; webhook stays direct trusted backend. Real merchant check gates page; no bank/receipts invented. Original QA01/04/05/06/11/12/13/17/18/20 source partial, browser/device/provider NOT_RUN.
+
+### 22-Nov US002 native public checkpoint — same real donation flow
+Public Android same backed general+campaign donation form with consent, source-key retry, private POST status proof, verified Razorpay HTTPS link, pending/unknown/no issued receipt. Original public campaign source gates UI on CG18 merchant readiness; home displays general action only if enabled. QA01/04/06/11/13/16/18 source candidate. Runtime/device/visual NOT_RUN; US002 IN_PROGRESS.

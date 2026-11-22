@@ -1,5 +1,6 @@
 import {useCallback,useEffect,useRef,useState} from "react";
 import {ActivityIndicator,AppState,BackHandler,Image,Pressable,StyleSheet,Text,View} from "react-native";
+import {NativePublicDonation} from "./native-public-donation";
 import {careGangaTheme as t} from "../../../../../packages/design-tokens/src/index";
 type Campaign={slug:string;title:string;category:string;summary:string;description:string;
  goalMinor:string|null;startAt:string|null;endAt:string|null;area:string;
@@ -35,7 +36,8 @@ const clean=(v:unknown):v is Campaign=>{
 };
 export function NativePublicCampaigns(){
  const [items,setItems]=useState<Campaign[]>([]),[selected,setSelected]=useState<string|null>(null),
-  [loading,setLoading]=useState(false),[unavailable,setUnavailable]=useState(false);
+  [loading,setLoading]=useState(false),[unavailable,setUnavailable]=useState(false),
+  [donationsEnabled,setDonationsEnabled]=useState(false);
  const latest=useRef(0);
  const load=useCallback(async()=>{
   const nonce=++latest.current;setLoading(true);setUnavailable(false);
@@ -49,10 +51,10 @@ export function NativePublicCampaigns(){
     !("cards" in data)||!Array.isArray(data.cards)||data.cards.length>100||
     !data.cards.every(clean))throw Error("Campaign publication source invalid");
    if(nonce===latest.current){
-    setItems(data.cards);
+    setItems(data.cards);setDonationsEnabled(data.donationsEnabled===true);
     setSelected(old=>old&&data.cards.some(c=>c.slug===old)?old:null);
    }
-  }catch{if(nonce===latest.current){setItems([]);setSelected(null);setUnavailable(true);}}
+  }catch{if(nonce===latest.current){setItems([]);setSelected(null);setUnavailable(true);setDonationsEnabled(false);}}
   finally{if(nonce===latest.current)setLoading(false);}
  },[]);
  useEffect(()=>{void load();return()=>{latest.current++};},[load]);
@@ -86,7 +88,7 @@ export function NativePublicCampaigns(){
     {!!campaign.startAt&&<Text>Campaign starts: {campaign.startAt}</Text>}
     {!!campaign.endAt&&<Text>Campaign ends: {campaign.endAt}</Text>}
     {!!money(campaign.goalMinor)&&<Text>Planned fundraising goal: {money(campaign.goalMinor)}. This is not money received.</Text>}
-    <Text style={styles.note}>Contributions are unavailable until the Foundation enables verified payments.</Text>
+    {donationsEnabled?<NativePublicDonation campaignSlug={campaign.slug}/>:<Text style={styles.note}>Online donations are unavailable until the Foundation verifies its merchant.</Text>}
    </View>:items.length===0?<Text>No currently published campaigns are available.</Text>:
    items.map(c=><View key={c.slug} style={styles.card}>
     {!!safeImage(c.coverSrc||c.heroSrc)&&<Image source={{uri:safeImage(c.coverSrc||c.heroSrc)!}}
