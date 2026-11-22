@@ -162,6 +162,26 @@ export function PublicDonationForm({campaignSlug=null}:{campaignSlug?:string|nul
     {" "}Receipt: {receiptStatus.replaceAll("_"," ").toLowerCase()}.</p>}
    {receiptStatus==="ISSUED"&&<button type="button" style={button} disabled={busy}
     onClick={()=>void download()}>Download your original verified receipt (PDF)</button>}
+   <div style={{display:"grid",gap:8,borderTop:"1px solid #d4d9e1",paddingTop:14}}>
+    <h3>My donation history</h3>
+    <p style={{fontSize:13}}>Paste up to 19 other private donation proofs. Only donations proven by your supplied tokens will appear. No account lookup by phone, PAN or email.</p>
+    <textarea aria-label="Additional private donation proofs" style={{...input,minHeight:72}}
+     value={additionalProofs} maxLength={1600} disabled={busy}
+     onChange={e=>setAdditionalProofs(e.target.value)}
+     placeholder="Paste one private proof per line"/>
+    <button type="button" style={button} disabled={busy} onClick={()=>void loadHistory()}>
+     View my proven donation history</button>
+    {history.map(item=><div key={item.donationNumber}
+      style={{display:"grid",gap:5,padding:10,border:"1px solid #d4d9e1",borderRadius:8}}>
+      <strong>{item.donationNumber}</strong>
+      <span>{item.status.replaceAll("_"," ").toLowerCase()} · {item.currency} · verified net {(BigInt(item.netReceivedMinor)/100n).toString()}</span>
+      <span>Receipt: {item.receiptNumber??item.receiptStatus.replaceAll("_"," ").toLowerCase()}</span>
+      {item.receiptStatus==="ISSUED"&&historyTokens[item.proofIndex]&&
+       <button type="button" style={button} disabled={busy}
+        onClick={()=>void download(historyTokens[item.proofIndex])}>
+        Download this proven receipt</button>}
+     </div>)}
+   </div>
    <button type="button" style={button} disabled={busy} onClick={()=>void refresh()}>Check donation status</button>
   </div>}
  </section>;
