@@ -230,17 +230,27 @@ export function CampaignDraftsWorkspace({canManage}:{canManage:boolean}){
     </aside>
    </div>
   </>}
-  {editing&&<section style={panel} aria-label="Six-step campaign draft wizard">
-   <div style={{...actions,justifyContent:"space-between"}}>
-    <h2>{selected?"Edit "+selected.code:"Create New Campaign"}</h2>
-    <button disabled={busy||!!pending.current} onClick={reset}>Close</button>
+  {editing&&<>
+   <div className={styles.wizardIntro}>
+    <div><h2>{selected?"Campaign Details":"Create New Campaign"}</h2>
+     <p>Create and manage a campaign. Independent verification is required before it can appear publicly.</p>
+     {selected&&<p>Campaign code: {selected.code} · Revision {selected.revision}</p>}
+    </div>
+    <button type="button" disabled={busy||!!pending.current||!!submitPending.current} onClick={reset}>
+     Back to Campaigns</button>
    </div>
-   <p role="status">Step {step+1} of 6: {steps[step]} · {selected?"Draft revision "+selected.revision:"Unsaved new campaign"}</p>
-   <nav aria-label="Campaign wizard steps" style={{...actions,marginBottom:18}}>
+   <nav aria-label="Campaign wizard steps" className={styles.stepsStrip}>
     {steps.map((name,i)=><button type="button" key={name} aria-current={i===step?"step":undefined}
-     disabled={busy||!!pending.current} onClick={()=>setStep(i)} style={{fontWeight:i===step?700:400}}>{i+1}. {name}</button>)}
+      disabled={busy||!!pending.current||!!submitPending.current}
+      onClick={()=>setStep(i)} className={styles.stepButton+(step===i?" "+styles.stepActive:"")}>
+      <span>{i+1}</span><span>{name}</span>
+     </button>)}
    </nav>
-   <form onSubmit={e=>void save(e)} style={{display:"grid",gap:15}}>
+   <div className={styles.wizardGrid}>
+    <section className={styles.formPanel} aria-label="Six-step campaign draft wizard">
+     <h3>{step+1}. {steps[step]}</h3>
+     <p role="status">Step {step+1} of 6 · {selected?"Saved revision "+selected.revision:"New campaign draft"}</p>
+     <form onSubmit={e=>void save(e)} className={styles.formGrid}>
     {selected&&!editable&&<p role="status">This campaign is currently {selected.status.replaceAll("_"," ")}. Its submitted and approved information is read-only; corrections require an original returned review.</p>}
     {step===0&&<>
      {input("Campaign title (required)",draft.basic.title,v=>update("basic","title",v))}
@@ -308,8 +318,47 @@ export function CampaignDraftsWorkspace({canManage}:{canManage:boolean}){
      {editable&&<button className="primary" type="submit" disabled={busy||draft.basic.title.trim().length<2}>
       {busy?"Confirming draft…":pending.current?"Retry original save":"Save as Draft"}</button>}
     </div>
-   </form>
-  </section>}
+     </form>
+    </section>
+    <aside className={styles.wizardAside} aria-label="Campaign preview and actions">
+     <section className={styles.wizardSideCard}>
+      <h3>Campaign Preview</h3>
+      <div className={styles.previewThumb} aria-hidden="true">▧</div>
+      <strong>{draft.basic.title||"Campaign Title"}</strong>
+      <p>{draft.basic.summary||"Short description will appear here when entered."}</p>
+      <p>Dates: {draft.budget.startAt||"Not set"} – {draft.budget.endAt||"Not set"}</p>
+      <p>Location: {draft.project.location||"Not set"}</p>
+      <p>Target: {draft.project.plannedBeneficiaries??"Not set"} beneficiaries (planned)</p>
+     </section>
+     <section className={styles.wizardSideCard}><h3>Quick Actions</h3>
+      <div style={{...actions,gap:6}}>
+       <button type="button" disabled={!editable||busy||draft.basic.title.trim().length<2}
+        onClick={()=>void save()}>Save Draft</button>
+       <button type="button" disabled={busy||!!pending.current||!!submitPending.current}
+        onClick={reset}>Back to campaigns</button>
+      </div>
+     </section>
+     <section className={styles.note}>
+      <strong>Important Note</strong>
+      <p>Saving a draft does not publish the campaign or collect donations. Submitting requires a separate independent approval.</p>
+     </section>
+    </aside>
+    <aside className={styles.wizardAside} aria-label="Wizard overview">
+     <section className={styles.wizardSideCard}>
+      <h3>Steps Overview</h3>
+      {steps.map((name,i)=><div key={name} className={styles.miniStep+(step===i?" "+styles.miniActive:"")}>
+        <strong>{i+1}</strong><span>{name}</span></div>)}
+     </section>
+     <section className={styles.wizardSideCard}><h3>Team Summary</h3>
+      <p>Campaign coordinator: {draft.team.coordinatorRef?"Assigned":"Signed-in operator"}</p>
+      <p>Verified volunteer: {draft.team.volunteerRef?"Selected":"Not assigned"}</p>
+     </section>
+     <section className={styles.wizardSideCard}><h3>Need Help?</h3>
+      <p>Complete the six steps, save your draft and submit it for independent Foundation verification. No technical IDs or unverified public actions are required.</p>
+     </section>
+    </aside>
+   </div>
+  </>}
   {!editing&&failure&&<p role="alert">{failure}</p>}
   {!editing&&notice&&<p role="status">{notice}</p>}
  </section>;
