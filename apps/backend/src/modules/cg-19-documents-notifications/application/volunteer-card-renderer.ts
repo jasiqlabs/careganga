@@ -56,7 +56,7 @@ export async function renderVolunteerCard(input:{
  line(front,font,"Department: "+source.department,14,67,8,W-24,navy);
  line(front,font,"Branch: "+(source.branch??"Foundation"),14,52,8,W-24,grey);
  line(front,font,"Joined: "+source.joinedOn,14,37,8,W-24,grey);
- line(back,font,"VERIFY CURRENT VOLUNTEER STATUS",12,103,9,W-25,white);
+ line(back,font,"VERIFY CURRENT VOLUNTEER STATUS",12,103,9,W-25,navy);
  drawQr(back,input.code,14,23,72);
  line(back,font,input.code,94,79,8,W-105,navy);
  line(back,font,"Current affiliation and identity",94,64,7,W-105,grey);
