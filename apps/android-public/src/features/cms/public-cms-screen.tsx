@@ -482,7 +482,8 @@ export function PublicCmsContent({onContact,onPartnerApplication,onLoginVisibili
        ngoScope={section.kind==="COMPLIANCE_FACTS"?ngoScope:undefined}
       onBackToNews={()=>setSlug(articleBackTarget)}
        backLabel={articleBackTarget==="notices"?"Back to notices":"Back to approved articles"}/>;
-    // Project teasers require CG05 original owner and cannot be invented.
+    if(section.kind==="PROJECT_TEASER"){const cards=Array.isArray(fields.cards)?fields.cards:[];return <View key={i} style={styles.card}><Text accessibilityRole="header" style={styles.heading}>{text(fields.heading)||"Projects"}</Text>{!cards.length?<Text>No currently approved projects to display.</Text>:cards.map((item,j)=>{if(!item||typeof item!=="object")return null;const p=item as Fields;return <View key={j} style={styles.card}><Text style={styles.eyebrow}>{text(p.category)} · {text(p.status)==="PLANNED"?"Planned":"Active"}</Text><Text style={styles.heading}>{text(p.title)}</Text><Text>{text(p.area)}</Text><Text style={styles.body}>{text(p.summary)}</Text>{!!text(p.launch)&&<Text>Planned start: {text(p.launch)}</Text>}</View>;})}</View>;}
+    // Never infer operational projects from CMS-only text.
     return null;
    })}
   </View>}
