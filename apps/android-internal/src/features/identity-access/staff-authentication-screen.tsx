@@ -728,7 +728,7 @@ export function StaffAuthenticationScreen() {
 
   if(activitiesOpen&&token&&actor){
     if(!roleActions.includes("projects.activities.view"))return <AccessDeniedScreen reason="You cannot view activities." onMyAccount={()=>setActivitiesOpen(false)}/>;
-    return renderInShell(<ScreenErrorBoundary onExit={()=>setActivitiesOpen(false)}><Suspense fallback={<ActivityIndicator style={{marginTop:40}}/>}><NativeActivitiesWorkspace key={token} token={token} canManage={roleActions.includes("projects.activities.manage")} canExport={roleActions.includes("projects.activities.export")} onExpired={expireSession}/></Suspense></ScreenErrorBoundary>,"activities",()=>setActivitiesOpen(false));
+    return renderInShell(<ScreenErrorBoundary onExit={()=>setActivitiesOpen(false)}><Suspense fallback={<ActivityIndicator style={{marginTop:40}}/>}><NativeActivitiesWorkspace key={token} token={token} canManage={roleActions.includes("projects.activities.manage")} canExport={roleActions.includes("projects.activities.export")} canReadEvidence={roleActions.includes("documents.files.view")} canUploadEvidence={roleActions.includes("documents.files.view")&&roleActions.includes("documents.files.manage")} onExpired={expireSession}/></Suspense></ScreenErrorBoundary>,"activities",()=>setActivitiesOpen(false));
   }
   if(tasksOpen&&token&&actor){
     if(!roleActions.includes("projects.tasks.view"))return <AccessDeniedScreen reason="You cannot view tasks." onMyAccount={()=>setTasksOpen(false)}/>;
