@@ -8,15 +8,15 @@ import type {VerifiedFoundationActor} from "../../cg-01-identity-access/public-a
 
 const UUID=/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const uuid=(v:unknown)=>{if(typeof v!=="string"||!UUID.test(v))throw new BadRequestException("Choose a valid inventory record");return v;};
-const clean=(v:unknown,min:number,max:number)=>{if(typeof v!=="string"||/[\u0000-\u001f\u007f]/.test(v)||v.trim().length<min||v.trim().length>max)throw new BadRequestException("Check the inventory fields");return v.trim();};
+const clean=(v:unknown,min:number,max:number)=>{if(typeof v!=="string"||/[\u0000-\u001f\u007f]/.test(v)||v.trim().length<min||v.trim().length>max)throw new BadRequestException({code:"CG12_CATALOG_INVALID"});return v.trim();};
 const code=(v:unknown)=>{const x=clean(v,1,40).toUpperCase();if(!/^[A-Z0-9][A-Z0-9._-]{0,39}$/.test(x))throw new BadRequestException("Use a valid item or supplier code");return x;};
-const input=(v:unknown,keys:string[])=>{if(!v||typeof v!=="object"||Array.isArray(v)||Object.keys(v).some(k=>!keys.includes(k)))throw new BadRequestException("Check the inventory fields");return v as Record<string,unknown>;};
+const input=(v:unknown,keys:string[])=>{if(!v||typeof v!=="object"||Array.isArray(v)||Object.keys(v).some(k=>!keys.includes(k)))throw new BadRequestException({code:"CG12_CATALOG_INVALID"});return v as Record<string,unknown>;};
 export function parseInventoryItem(value:unknown){
  const x=input(value,["requestKey","sku","name","category","description","unit","scale","threshold"]);
  const unit=x.unit,scale=x.scale;
- if(typeof unit!=="string"||!["PIECE","KG","LITER"].includes(unit)||typeof scale!=="number"||!Number.isInteger(scale)||scale<0||scale>3||(unit==="PIECE"&&scale!==0))throw new BadRequestException("Choose a canonical unit and precision");
+ if(typeof unit!=="string"||!["PIECE","KG","LITER"].includes(unit)||typeof scale!=="number"||!Number.isInteger(scale)||scale<0||scale>3||(unit==="PIECE"&&scale!==0))throw new BadRequestException({code:"CG12_UNIT_INVALID"});
  const threshold=x.threshold;
- if(typeof threshold!=="string"||!/^\d{1,15}(?:\.\d{1,3})?$/.test(threshold)||(threshold.split(".")[1]?.length??0)>scale)throw new BadRequestException("Enter a valid low stock quantity");
+ if(typeof threshold!=="string"||!/^\d{1,15}(?:\.\d{1,3})?$/.test(threshold)||(threshold.split(".")[1]?.length??0)>scale)throw new BadRequestException({code:"CG12_QUANTITY_INVALID"});
  return {requestKey:uuid(x.requestKey),sku:code(x.sku),name:clean(x.name,2,160),category:clean(x.category,1,80),description:clean(x.description??"",0,500),unit,scale,threshold};
 }
 export function parseInventorySupplier(value:unknown){
@@ -34,7 +34,7 @@ export class InventoryCatalogService {
  private async run<T>(token:string,action:string,work:(tx:PoolClient,a:VerifiedFoundationActor)=>Promise<T>){
   const a=await this.sessions.requireAction(token,action),tx=await this.db.connect();
   try{await tx.query("BEGIN");await this.identity.assertCurrent(tx,a,action);const result=await work(tx,a);await tx.query("COMMIT");return result;}
-  catch(e){await tx.query("ROLLBACK");if(e&&typeof e==="object"&&"code" in e&&e.code==="23505")throw new ConflictException("This code is already in use. Refresh the catalog.");throw e;}finally{tx.release();}
+  catch(e){await tx.query("ROLLBACK");if(e&&typeof e==="object"&&"code" in e&&e.code==="23505")throw new ConflictException({code:"CG12_DUPLICATE_CODE"});throw e;}finally{tx.release();}
  }
  private async rootAdmin(tx:PoolClient,a:VerifiedFoundationActor){
   try{await this.identity.assertCurrent(tx,a,"foundation.branches.admin");return true;}catch(e){if(e instanceof ForbiddenException)return false;throw e;}
@@ -82,7 +82,7 @@ export class InventoryCatalogService {
    await tx.query("SELECT pg_advisory_xact_lock(hashtextextended($1,0))",[a.realmId+":"+parsed.requestKey]);
    const prior=await tx.query<{source_ref:string;source_kind:string;actor_ref:string;payload_digest:string;result_version:number}>("SELECT source_ref,source_kind,actor_ref,payload_digest,result_version FROM inventory_audit WHERE root_realm_id=$1 AND event_key=$2",[a.realmId,parsed.requestKey]);
    if(prior.rows[0]){
-    const p=prior.rows[0];if(p.actor_ref!==a.accountId||p.source_kind!==kind||p.payload_digest!==digest)throw new ConflictException("This request key was already used. Refresh before retrying.");
+    const p=prior.rows[0];if(p.actor_ref!==a.accountId||p.source_kind!==kind||p.payload_digest!==digest)throw new ConflictException({code:"CG12_COMMAND_CHANGED"});
     return {ref:p.source_ref,version:p.result_version,replayed:true};
    }
    let row:{id:string;version:number};
