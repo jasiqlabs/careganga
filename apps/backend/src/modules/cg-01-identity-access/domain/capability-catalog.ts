@@ -7,6 +7,9 @@ export type Capability = Readonly<{
   sensitive:boolean;
 }>;
 const capabilities:readonly Capability[]=Object.freeze([
+  {key:"projects.view",businessLabel:"View permitted projects",group:"Projects",assignable:true,sensitive:false},
+  {key:"projects.manage",businessLabel:"Create and manage scoped projects",group:"Projects",assignable:true,sensitive:true},
+  {key:"projects.export",businessLabel:"Export permitted projects",group:"Projects",assignable:true,sensitive:true},
   {key:"inventory.requests.view",businessLabel:"View own permitted material requests",group:"Requests & inventory",assignable:true,sensitive:false},
   {key:"inventory.requests.manage",businessLabel:"Prepare and manage own material requests",group:"Requests & inventory",assignable:true,sensitive:true},
   {key:"inventory.requests.review",businessLabel:"Independently review material requests",group:"Requests & inventory",assignable:false,sensitive:true},
