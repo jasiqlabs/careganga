@@ -15399,6 +15399,10 @@ button:disabled {
 /* CG-04 original membership enrollment and B09 roster — responsive current-source UI */
 .cg04-roster{display:grid;gap:14px;max-width:100%}
 .cg04-roster-head{display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap}
+.cg04-roster-tabs{display:flex;gap:9px;align-items:center;flex-wrap:wrap}
+.cg04-roster-tabs button{min-height:42px;padding:8px 16px;border:1px solid var(--cg-border);border-radius:10px;background:var(--cg-surface);color:var(--cg-text);font-weight:650}
+.cg04-roster-tabs button[aria-pressed="true"]{background:var(--cg-accent);border-color:var(--cg-accent);color:var(--cg-accent-text)}
+.cg04-roster-tabs button:focus-visible{outline:3px solid var(--cg-focus);outline-offset:3px}
 .cg04-roster-filter{display:grid;grid-template-columns:minmax(220px,2fr) repeat(3,minmax(120px,1fr)) auto auto;align-items:end;gap:10px}
 .cg04-roster-filter label,.cg04-enroll-form label,.cg04-auth label{display:grid;gap:6px;color:#27443b;font-weight:600;font-size:13px}
 .cg04-roster-filter :is(input,select),.cg04-enroll-form :is(input:not([type=checkbox]),select,textarea),.cg04-auth :is(input,select){width:100%;min-height:44px;border:1px solid #cddbd3;border-radius:9px;padding:10px 12px;background:#fff;color:#12324d;font:inherit}
