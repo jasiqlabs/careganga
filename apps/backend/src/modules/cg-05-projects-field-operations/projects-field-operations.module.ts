@@ -1,7 +1,5 @@
 import {Module} from "@nestjs/common";
-import {IdentityAccessModule} from "../cg-01-identity-access/identity-access.module";
-import {FoundationStructureModule} from "../cg-02-foundation-structure/foundation-structure.module";
-import {ProjectsService} from "./application/projects.service";
+import {ProjectsSourceModule} from "./projects-source.module";
 import {ProjectsController} from "./http/projects.controller";
-@Module({imports:[IdentityAccessModule,FoundationStructureModule],providers:[ProjectsService],controllers:[ProjectsController],exports:[ProjectsService]})
+@Module({imports:[ProjectsSourceModule],controllers:[ProjectsController],exports:[ProjectsSourceModule]})
 export class ProjectsFieldOperationsModule{}
