@@ -3,7 +3,7 @@ import {useCallback,useEffect,useRef,useState} from "react";
 type Policy={policyRef:string;leaveType:string;annualDays:number;usedDays:number;availableDays:number;allowHalfDays:boolean;countWeeklyOff:boolean;effectiveFrom:string;effectiveTo:string|null};
 type Request={reference:string;leaveType:string;startDate:string;endDate:string;days:number;status:string;caseStatus:string};
 type Mine={linked:boolean;year:string;policies:Policy[];requests:Request[]};
-type Review=Request&{caseRef:string;employeeName:string;revision:number;canReview:boolean;reason?:string};
+type Review=Request&{caseRef:string;employeeName:string;revision:number;canReview:boolean;reason?:string;date?:string;originalStatus?:string;proposedStatus?:string;original?:{status:string;checkInAt?:string|null;checkOutAt?:string|null};proposed?:{status:string;checkInAt?:string|null;checkOutAt?:string|null}};
 const blank=()=>({policyRef:"",startDate:"",endDate:"",halfDay:false,reason:""});
 const label=(status:string)=>(({SUBMITTED:"Pending review",IN_REVIEW:"In review",APPROVED:"Approved",OWNER_COMPLETED:"Approved",RETURNED:"Returned",REJECTED:"Rejected"} as Record<string,string>)[status]??"Review status unavailable");
 const failure=(e:unknown)=>e instanceof Error?e.message:"Could not confirm the result. Refresh before retrying.";
@@ -90,7 +90,9 @@ export function HrMyLeave({onChanged}:{onChanged:()=>void}){
   </>}
  </section>;
 }
-export function HrLeaveReviews({onChanged}:{onChanged:()=>void}){
+const snapshot=(v:Review["original"])=>v?v.status+" · In: "+(v.checkInAt??"—")+" · Out: "+(v.checkOutAt??"—"):"—";
+export function HrLeaveReviews({onChanged,kind="leave"}:{onChanged:()=>void;kind?:"leave"|"correction"}){
+ const route=kind==="leave"?"leave-reviews":"attendance-correction-reviews";
  const [items,setItems]=useState<Review[]>([]),[selected,setSelected]=useState<Review|null>(null);
  const [status,setStatus]=useState("SUBMITTED"),[offset,setOffset]=useState(0),[more,setMore]=useState(false);
  const [loading,setLoading]=useState(true),[busy,setBusy]=useState(false),[error,setError]=useState(""),[notice,setNotice]=useState("");
@@ -98,15 +100,15 @@ export function HrLeaveReviews({onChanged}:{onChanged:()=>void}){
  const key=useRef<string|null>(null);
  const refresh=useCallback(async()=>{
   setLoading(true);setError("");
-  try{const v=await api<{items:Review[];hasMore:boolean}>("leave-reviews?status="+status+"&offset="+offset);
+  try{const v=await api<{items:Review[];hasMore:boolean}>(route+"?status="+status+"&offset="+offset);
    if(!Array.isArray(v.items))throw Error("Review list unavailable");
    setItems(v.items);setMore(v.hasMore===true);
   }catch(e){setItems([]);setMore(false);setSelected(null);setError(failure(e));}finally{setLoading(false);}
- },[status,offset]);
+ },[status,offset,route]);
  useEffect(()=>{void refresh();},[refresh]);
  const open=async(x:Review)=>{
   if(busy||locked)return;setBusy(true);setError("");setSelected(null);setPassword("");setAction("APPROVE");key.current=null;
-  try{const v=await api<Review>("leave-reviews/"+encodeURIComponent(x.caseRef));
+  try{const v=await api<Review>(route+"/"+encodeURIComponent(x.caseRef));
    if(v.reference!==x.reference)throw Error("Original review changed");setSelected(v);
   }catch(e){setError(failure(e));}finally{setBusy(false);}
  };
@@ -115,7 +117,7 @@ export function HrLeaveReviews({onChanged}:{onChanged:()=>void}){
   setBusy(true);setError("");setNotice("");
   const requestKey=key.current??crypto.randomUUID();key.current=requestKey;
   try{
-   const v=await api<{confirmed:boolean;status:string;reference:string}>("leave-reviews/"+encodeURIComponent(selected.caseRef)+"/decide",
+   const v=await api<{confirmed:boolean;status:string;reference:string}>(route+"/"+encodeURIComponent(selected.caseRef)+"/decide",
     {requestKey,expectedRevision:selected.revision,action,currentPassword:password});
    if(v.confirmed!==true)throw Error("Decision result uncertain");
    key.current=null;setLocked(false);setPassword("");setSelected(null);setNotice(v.reference+" · "+label(v.status));
@@ -124,7 +126,7 @@ export function HrLeaveReviews({onChanged}:{onChanged:()=>void}){
   finally{setBusy(false);}
  };
  return <section style={card} aria-label="Employee leave reviews">
-  <h2 style={{margin:0}}>Leave requests</h2>
+  <h2 style={{margin:0}}>{kind==="leave"?"Leave requests":"Attendance correction requests"}</h2>
   <label>Review status<select style={field} disabled={busy||locked} value={status}
    onChange={e=>{setStatus(e.target.value);setOffset(0);setSelected(null);setPassword("");}}>
    <option value="SUBMITTED">Pending</option><option value="OWNER_COMPLETED">Approved</option>
@@ -132,16 +134,16 @@ export function HrLeaveReviews({onChanged}:{onChanged:()=>void}){
   </select></label>
   <button type="button" disabled={busy||loading||locked} onClick={()=>void refresh()}>Refresh reviews</button>
   {error&&<p role="alert">{error}</p>}{notice&&<p role="status">{notice}</p>}
-  {loading&&<p>Loading leave reviews…</p>}{!loading&&!error&&!items.length&&<p>No matching leave requests.</p>}
+  {loading&&<p>Loading leave reviews…</p>}{!loading&&!error&&!items.length&&<p>No matching requests.</p>}
   {items.map(x=><div key={x.caseRef} style={{borderTop:"1px solid #E2E8F0",paddingTop:8,display:"grid",gap:4}}>
-   <strong>{x.employeeName} · {x.leaveType}</strong><span>{x.startDate} – {x.endDate} · {x.days} days · {label(x.status)}</span>
+   <strong>{x.employeeName} · {kind==="leave"?x.leaveType:"Attendance correction"}</strong><span>{kind==="leave"?x.startDate+" – "+x.endDate+" · "+x.days+" days":x.date+" · "+x.originalStatus+" → "+x.proposedStatus} · {label(x.status)}</span>
    <button type="button" disabled={busy||locked} onClick={()=>void open(x)}>View request</button>
   </div>)}
   {offset>0&&<button disabled={busy||locked} onClick={()=>{setSelected(null);setOffset(v=>Math.max(0,v-25));}}>Previous</button>}
   {more&&<button disabled={busy||locked} onClick={()=>{setSelected(null);setOffset(v=>v+25);}}>Next</button>}
   {selected&&<div style={{...card,background:"#F8FAFC"}}>
-   <strong>{selected.employeeName} · {selected.leaveType}</strong>
-   <span>{selected.reference} · {selected.startDate} – {selected.endDate} · {selected.days} days</span>
+   <strong>{selected.employeeName} · {kind==="leave"?selected.leaveType:"Attendance correction"}</strong>
+   <span>{selected.reference} · {kind==="leave"?selected.startDate+" – "+selected.endDate+" · "+selected.days+" days":snapshot(selected.original)+" → "+snapshot(selected.proposed)}</span>
    <p style={{whiteSpace:"pre-wrap",margin:0}}>Private reason: {selected.reason}</p>
    {selected.canReview?<><label>Decision<select style={field} value={action} disabled={busy||locked} onChange={e=>setAction(e.target.value)}>
     <option value="APPROVE">Approve</option><option value="RETURN">Return for correction</option><option value="REJECT">Reject</option>

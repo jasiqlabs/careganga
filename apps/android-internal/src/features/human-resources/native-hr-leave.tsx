@@ -5,7 +5,7 @@ import {identityRequest} from "../identity-access/http-client";
 type Policy={policyRef:string;leaveType:string;annualDays:number;usedDays:number;availableDays:number;allowHalfDays:boolean;countWeeklyOff:boolean;effectiveFrom:string;effectiveTo:string|null};
 type Request={reference:string;leaveType:string;startDate:string;endDate:string;days:number;status:string;caseStatus:string};
 type Mine={linked:boolean;year:string;policies:Policy[];requests:Request[]};
-type Review=Request&{caseRef:string;employeeName:string;revision:number;canReview:boolean;reason?:string};
+type Review=Request&{caseRef:string;employeeName:string;revision:number;canReview:boolean;reason?:string;date?:string;originalStatus?:string;proposedStatus?:string;original?:{status:string;checkInAt?:string|null;checkOutAt?:string|null};proposed?:{status:string;checkInAt?:string|null;checkOutAt?:string|null}};
 const blank=()=>({policyRef:"",startDate:"",endDate:"",halfDay:false,reason:""});
 const label=(status:string)=>(({SUBMITTED:"Pending review",IN_REVIEW:"In review",APPROVED:"Approved",OWNER_COMPLETED:"Approved",RETURNED:"Returned",REJECTED:"Rejected"} as Record<string,string>)[status]??"Review status unavailable");
 const failure=(e:unknown)=>e instanceof Error?e.message:"Could not confirm the result. Refresh before retrying.";
@@ -90,7 +90,9 @@ export function NativeHrMyLeave({token,onExpired,onChanged}:{token:string;onExpi
   </>}
  </View>;
 }
-export function NativeHrLeaveReviews({token,onExpired,onChanged}:{token:string;onExpired:()=>void;onChanged:()=>void}){
+const snapshot=(v:Review["original"])=>v?v.status+" · In: "+(v.checkInAt??"—")+" · Out: "+(v.checkOutAt??"—"):"—";
+export function NativeHrLeaveReviews({token,onExpired,onChanged,kind="leave"}:{token:string;onExpired:()=>void;onChanged:()=>void;kind?:"leave"|"correction"}){
+ const route=kind==="leave"?"leave-reviews":"attendance-correction-reviews";
  const [items,setItems]=useState<Review[]>([]),[selected,setSelected]=useState<Review|null>(null);
  const [status,setStatus]=useState("SUBMITTED"),[offset,setOffset]=useState(0),[more,setMore]=useState(false);
  const [loading,setLoading]=useState(true),[busy,setBusy]=useState(false),[error,setError]=useState(""),[notice,setNotice]=useState("");
@@ -98,27 +100,27 @@ export function NativeHrLeaveReviews({token,onExpired,onChanged}:{token:string;o
  const key=useRef<string|null>(null),fail=useFailure(onExpired,setError);
  const refresh=useCallback(async()=>{
   setLoading(true);setError("");
-  try{const v=await api<{items:Review[];hasMore:boolean}>(token,"leave-reviews?status="+status+"&offset="+offset);
+  try{const v=await api<{items:Review[];hasMore:boolean}>(token,route+"?status="+status+"&offset="+offset);
    if(!Array.isArray(v.items))throw Error("Review list unavailable");setItems(v.items);setMore(v.hasMore===true);
   }catch(e){setItems([]);setMore(false);setSelected(null);fail(e);}finally{setLoading(false);}
- },[token,status,offset,fail]);
+ },[token,status,offset,fail,route]);
  useEffect(()=>{void refresh();},[refresh]);
  const open=async(x:Review)=>{
   if(busy||locked)return;setBusy(true);setError("");setSelected(null);setPassword("");setAction("APPROVE");key.current=null;
-  try{const v=await api<Review>(token,"leave-reviews/"+encodeURIComponent(x.caseRef));
+  try{const v=await api<Review>(token,route+"/"+encodeURIComponent(x.caseRef));
    if(v.reference!==x.reference)throw Error("Original review changed");setSelected(v);
   }catch(e){fail(e);}finally{setBusy(false);}
  };
  const decide=async()=>{
   if(busy||!selected?.canReview)return;setBusy(true);setError("");setNotice("");
   const requestKey=key.current??Crypto.randomUUID();key.current=requestKey;
-  try{const v=await api<{confirmed:boolean;status:string;reference:string}>(token,"leave-reviews/"+encodeURIComponent(selected.caseRef)+"/decide",
+  try{const v=await api<{confirmed:boolean;status:string;reference:string}>(token,route+"/"+encodeURIComponent(selected.caseRef)+"/decide",
     {requestKey,expectedRevision:selected.revision,action,currentPassword:password});
    if(v.confirmed!==true)throw Error("Decision result uncertain");
    key.current=null;setLocked(false);setPassword("");setSelected(null);setNotice(v.reference+" · "+label(v.status));await refresh();onChanged();
   }catch(e){setPassword("");fail(e);if(known(e)){key.current=null;setLocked(false);}else setLocked(true);}finally{setBusy(false);}
  };
- return <View style={styles.card}><Text style={styles.title}>Leave requests</Text>
+ return <View style={styles.card}><Text style={styles.title}>{kind==="leave"?"Leave requests":"Attendance correction requests"}</Text>
   <View style={styles.choices}>{[{key:"SUBMITTED",title:"Pending"},{key:"OWNER_COMPLETED",title:"Approved"},
    {key:"RETURNED",title:"Returned"},{key:"REJECTED",title:"Rejected"},{key:"ALL",title:"All"}].map(x=>
    <Button key={x.key} title={x.title} selected={status===x.key} disabled={busy||locked}
@@ -126,14 +128,14 @@ export function NativeHrLeaveReviews({token,onExpired,onChanged}:{token:string;o
   <Button title="Refresh reviews" disabled={busy||loading||locked} onPress={()=>void refresh()}/>
   {!!error&&<Text accessibilityRole="alert" style={styles.error}>{error}</Text>}{!!notice&&<Text style={styles.success}>{notice}</Text>}
   {loading&&<ActivityIndicator accessibilityLabel="Loading leave reviews"/>}
-  {!loading&&!error&&!items.length&&<Text style={styles.muted}>No matching leave requests.</Text>}
-  {items.map(x=><View key={x.caseRef} style={styles.item}><Text style={styles.label}>{x.employeeName} · {x.leaveType}</Text>
-   <Text style={styles.muted}>{x.startDate} – {x.endDate} · {x.days} days · {label(x.status)}</Text>
+  {!loading&&!error&&!items.length&&<Text style={styles.muted}>No matching requests.</Text>}
+  {items.map(x=><View key={x.caseRef} style={styles.item}><Text style={styles.label}>{x.employeeName} · {kind==="leave"?x.leaveType:"Attendance correction"}</Text>
+   <Text style={styles.muted}>{kind==="leave"?x.startDate+" – "+x.endDate+" · "+x.days+" days":x.date+" · "+x.originalStatus+" → "+x.proposedStatus} · {label(x.status)}</Text>
    <Button title="View request" disabled={busy||locked} onPress={()=>void open(x)}/></View>)}
   {offset>0&&<Button title="Previous page" disabled={busy||locked} onPress={()=>{setSelected(null);setOffset(v=>Math.max(0,v-25));}}/>}
   {more&&<Button title="Next page" disabled={busy||locked} onPress={()=>{setSelected(null);setOffset(v=>v+25);}}/>}
-  {selected&&<View style={styles.item}><Text style={styles.label}>{selected.employeeName} · {selected.leaveType}</Text>
-   <Text style={styles.muted}>{selected.reference} · {selected.startDate} – {selected.endDate} · {selected.days} days</Text>
+  {selected&&<View style={styles.item}><Text style={styles.label}>{selected.employeeName} · {kind==="leave"?selected.leaveType:"Attendance correction"}</Text>
+   <Text style={styles.muted}>{selected.reference} · {kind==="leave"?selected.startDate+" – "+selected.endDate+" · "+selected.days+" days":snapshot(selected.original)+" → "+snapshot(selected.proposed)}</Text>
    <Text>Private reason: {selected.reason}</Text>
    {selected.canReview?<><View style={styles.choices}>{[{key:"APPROVE",title:"Approve"},{key:"RETURN",title:"Return"},{key:"REJECT",title:"Reject"}].map(x=>
     <Button key={x.key} title={x.title} selected={action===x.key} disabled={busy||locked} onPress={()=>setAction(x.key)}/>)}</View>

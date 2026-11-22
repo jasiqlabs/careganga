@@ -10,6 +10,10 @@ function allowed(parts:string[],method:string){
  if(parts.length===1&&["shift-policies","leave-policies"].includes(parts[0]))return method==="GET"||method==="POST";
  if(parts.length===1&&parts[0]==="shift-assignments")return method==="POST";
  if(parts.length===2&&parts[0]==="me"&&parts[1]==="leave")return method==="GET"||method==="POST";
+ if(parts.length===1&&parts[0]==="attendance-corrections")return method==="GET"||method==="POST";
+ if(parts.length===1&&parts[0]==="attendance-correction-reviews")return method==="GET";
+ if(parts.length===2&&parts[0]==="attendance-correction-reviews"&&UUID.test(parts[1]))return method==="GET";
+ if(parts.length===3&&parts[0]==="attendance-correction-reviews"&&UUID.test(parts[1])&&parts[2]==="decide")return method==="POST";
  if(parts.length===1&&parts[0]==="leave-reviews")return method==="GET";
  if(parts.length===2&&parts[0]==="leave-reviews"&&UUID.test(parts[1]))return method==="GET";
  if(parts.length===3&&parts[0]==="leave-reviews"&&UUID.test(parts[1])&&parts[2]==="decide")return method==="POST";
@@ -66,11 +70,11 @@ async function proxy(req:NextRequest,parts:string[],method:string){
    headers:{Authorization:"Bearer "+token,...(body?{"Content-Type":"application/json"}:{})}});
   if(!res.ok){
    const status=[400,401,403,404,409,429].includes(res.status)?res.status:503;
-   const leavePath=parts[0]==="leave-reviews"||(parts[0]==="me"&&parts[1]==="leave");
+   const leavePath=parts[0]==="attendance-corrections"||parts[0]==="attendance-correction-reviews"||parts[0]==="leave-reviews"||(parts[0]==="me"&&parts[1]==="leave");
    if(leavePath&&status>=400&&status<500){
     const rejected:unknown=await res.json().catch(()=>null);
     if(rejected&&typeof rejected==="object"&&"code" in rejected&&"message" in rejected&&
-     typeof rejected.code==="string"&&["CG10_LEAVE_INVALID","CG10_LEAVE_POLICY_CHANGED","CG10_LEAVE_OVERLAP","CG10_LEAVE_ENTITLEMENT","CG10_LEAVE_PUNCH_CONFLICT","CG10_LEAVE_STALE","CG10_LEAVE_DECISION_INVALID"].includes(rejected.code)&&
+     typeof rejected.code==="string"&&["CG10_LEAVE_INVALID","CG10_LEAVE_POLICY_CHANGED","CG10_LEAVE_OVERLAP","CG10_LEAVE_ENTITLEMENT","CG10_LEAVE_PUNCH_CONFLICT","CG10_LEAVE_STALE","CG10_LEAVE_DECISION_INVALID","CG10_CORRECTION_INVALID","CG10_CORRECTION_STALE","CG10_CORRECTION_LEAVE","CG10_CORRECTION_DECISION_INVALID"].includes(rejected.code)&&
      typeof rejected.message==="string"&&rejected.message.length<=220&&!/[<>\r\n]/.test(rejected.message))
      return NextResponse.json({message:rejected.message},{status,headers:{"Cache-Control":"no-store"}});
    }
