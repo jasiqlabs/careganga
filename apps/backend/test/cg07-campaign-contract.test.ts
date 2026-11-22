@@ -189,3 +189,77 @@ test("US001-QA06/14/18: direct A12-A15 client image review maps to responsive We
  assert.match(proxy,/\["q","offset","status"\]/);
  assert.doesNotMatch(web,/Raised so far:\s*₹0/);
 });
+
+
+test("US001-QA04/06/13/18: separate original A13 2MB cover, A15 5MB hero and supporting CG19 file refs are strict",()=>{
+ const mediaOwner=root("apps/backend/src/modules/cg-19-documents-notifications/application/campaign-media-evidence.service.ts");
+ const sql=root("apps/backend/db/migrations/3304_cg19_campaign_verified_media.sql");
+ const domain=root("apps/backend/src/modules/cg-07-campaigns-donations/domain/campaign-draft-input.ts");
+ const src=root("apps/backend/src/modules/cg-07-campaigns-donations/application/campaign-drafts.service.ts");
+ for(const kind of ["CAMPAIGN_COVER","CAMPAIGN_BANNER","CAMPAIGN_DOCUMENT"])
+  assert.ok(sql.includes(kind),"Missing original CG19 kind "+kind);
+ for(const key of ["coverRef","fileRef","supportingFileRefs"])
+  assert.ok(domain.includes(key)&&sql.includes(key)&&src.includes(key),"Missing original media reference "+key);
+ for(const maximum of ["2097152","5242880","10485760"])
+  assert.ok(mediaOwner.includes(maximum),"Missing server-side client asset size bound "+maximum);
+ assert.match(mediaOwner,/x.kind==="COVER"&&x.mime==="image\/webp"/);
+ assert.match(sql,/classification=''CAMPAIGN_COVER'' AND mime IN\(''image\/jpeg'',''image\/png''\)/);
+ assert.match(sql,/classification=''CAMPAIGN_BANNER'' AND mime IN\(''image\/jpeg'',''image\/png'',''image\/webp''\)/);
+ assert.match(src,/requireMediaProof\(tx,a,c.id,c.current_revision,r.media.coverRef,"COVER"\)/);
+ assert.match(src,/requireMediaProof\(tx,a,c.id,c.current_revision,r.media.fileRef,"BANNER"\)/);
+ assert.match(src,/requireMediaProof\(tx,a,c.id,c.current_revision,fileRef,"DOCUMENT"\)/);
+ assert.match(sql,/CREATE CONSTRAINT TRIGGER cg07_campaign_media_proof_after/);
+ assert.match(sql,/f.revoked_at IS NULL/);
+ assert.match(sql,/i.campaign_media_rights_confirmed/);
+ const request=normal();
+ const input={...request,steps:{...request.steps,media:{coverRef:id,fileRef:project,supportingFileRefs:[event],alt:"Original verified media"}}};
+ const parsed=parseCampaignDraft(input);
+ assert.equal(parsed.media.coverRef,id);
+ assert.equal(parsed.media.fileRef,project);
+ assert.deepEqual(parsed.media.supportingFileRefs,[event]);
+ assert.deepEqual(parseCampaignDraft(request).media,{coverRef:null,fileRef:null,supportingFileRefs:[],alt:""});
+ for(const altered of [
+  {coverRef:id,fileRef:id,supportingFileRefs:[],alt:""},
+  {coverRef:null,fileRef:project,supportingFileRefs:[project],alt:""},
+  {coverRef:id,fileRef:null,supportingFileRefs:[id],alt:""},
+  {coverRef:null,fileRef:null,supportingFileRefs:[event,event],alt:""},
+  {coverRef:null,fileRef:null,supportingFileRefs:Array(7).fill(event),alt:""},
+  {coverRef:null,fileRef:null,supportingFileRefs:["not-a-current-file"],alt:""},
+ ]){
+  assert.throws(()=>parseCampaignDraft({...request,steps:{...request.steps,media:altered}}));
+ }
+});
+test("US001-QA02/04/06/13/18: original CG19 private scanned upload and real Web/internal Android parity",()=>{
+ const owner=root("apps/backend/src/modules/cg-19-documents-notifications/application/campaign-media-evidence.service.ts");
+ const controller=root("apps/backend/src/modules/cg-19-documents-notifications/http/campaign-media-evidence.controller.ts");
+ const module=root("apps/backend/src/modules/cg-19-documents-notifications/documents-notifications.module.ts");
+ const bff=root("apps/web/src/app/api/campaign-media/[...parts]/route.ts");
+ const web=root("apps/web/src/features/campaigns/campaign-drafts-workspace.tsx");
+ const uploader=root("apps/web/src/features/campaigns/campaign-banner-panel.tsx");
+ const mobile=root("apps/android-internal/src/features/campaigns/native-campaign-drafts.tsx");
+ const mobileUpload=root("apps/android-internal/src/features/campaigns/native-campaign-media-panel.tsx");
+ const schema=root("apps/backend/db/migrations/3304_cg19_campaign_verified_media.sql");
+ for(const action of ["reservePrivateUpload(","verifyPrivateObject(","readVerifiedPrivateObject(",
+  "expected_sha256","verified_size_bytes","CLEAN_VERIFIED","request_digest",
+  "campaign_media_rights_confirmed","source.guardMedia(","revoked_at IS NULL"])
+  assert.ok(owner.includes(action),"Missing trusted private CG19 evidence boundary "+action);
+ for(const route of ['@Get("campaigns/:ref")','@Post("intents")','@Post("intents/:ref/confirm")','@Get("files/:ref")'])
+  assert.ok(controller.includes(route),"Missing protected CG19 route "+route);
+ assert.match(module,/CampaignMediaEvidenceService/);
+ assert.match(module,/CampaignMediaEvidenceController/);
+ assert.match(bff,/req.headers.get\("origin"\)!==req.nextUrl.origin/);
+ assert.match(bff,/Cache-Control":"private, no-store/);
+ assert.match(bff,/application\/pdf/);
+ const fkIndex=schema.indexOf("uq_cg19_campaign_intent_owner UNIQUE");
+ const eventIndex=schema.indexOf("CREATE TABLE cg19_campaign_media_event");
+ assert.ok(fkIndex>=0&&fkIndex<eventIndex,"Original CG19 event FK owner key must precede event table");
+ for(const keyword of ["kind=\"COVER\"","kind=\"BANNER\"","CampaignSupportingDocumentsPanel"])
+  assert.ok(web.includes(keyword),"Missing Web original A13/A15 media parity "+keyword);
+ for(const keyword of ["kind=\"COVER\"","kind=\"BANNER\"","kind=\"DOCUMENT\""])
+  assert.ok(mobile.includes(keyword),"Missing internal Android original media parity "+keyword);
+ assert.match(uploader,/kind==="COVER"\?\["image\/jpeg","image\/png"\]:allowed/);
+ assert.match(mobileUpload,/kind==="COVER"\?\["image\/jpeg","image\/png"\]:images/);
+ assert.match(uploader,/kind:"DOCUMENT",rightsConfirmed:true/);
+ assert.match(mobileUpload,/rightsConfirmed:true/);
+ assert.doesNotMatch(owner,/INSERT INTO donation|UPDATE campaign SET source_status='PUBLISHED'/);
+});
