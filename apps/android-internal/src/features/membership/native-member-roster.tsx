@@ -5,6 +5,7 @@ import * as Crypto from "expo-crypto";
 import * as Sharing from "expo-sharing";
 import type {CG04RosterPage,CG04RosterExport} from "@careganga/api-contracts";
 import {identityRequest} from "../identity-access/http-client";
+import {careGangaTheme as theme} from "../../../../../packages/design-tokens/src/index";
 
 type Filter={q:string;status:string;category:string;branch:string};
 const empty=():Filter=>({q:"",status:"ALL",category:"ALL",branch:""});
@@ -90,18 +91,18 @@ export function NativeMemberRoster({token,canExport,onExpired}:{token:string;can
  </ScrollView>;
 }
 const styles=StyleSheet.create({
- page:{padding:16,paddingBottom:110,gap:12,backgroundColor:"#F8FAFC"},
- heading:{fontSize:23,fontWeight:"800",color:"#0F172A"},
- title:{fontSize:16,fontWeight:"700",color:"#0F172A"},
- muted:{fontSize:13,color:"#475569",lineHeight:19},
- label:{fontSize:13,fontWeight:"600",color:"#334155"},
- error:{color:"#B91C1C",fontSize:13},
- card:{backgroundColor:"#FFFFFF",borderWidth:1,borderColor:"#E2E8F0",borderRadius:12,padding:14,gap:9},
- input:{borderWidth:1,borderColor:"#CBD5E1",borderRadius:9,padding:11,color:"#0F172A"},
+ page:{padding:16,paddingBottom:110,gap:12,backgroundColor:theme.adminCanvas},
+ heading:{fontSize:23,fontWeight:"800",color:theme.text},
+ title:{fontSize:16,fontWeight:"700",color:theme.text},
+ muted:{fontSize:13,color:theme.mutedText,lineHeight:19},
+ label:{fontSize:13,fontWeight:"600",color:theme.text},
+ error:{color:theme.error,fontSize:13},
+ card:{backgroundColor:theme.surface,borderWidth:1,borderColor:theme.border,borderRadius:12,padding:14,gap:9},
+ input:{borderWidth:1,borderColor:theme.border,borderRadius:9,padding:11,color:theme.text},
  buttons:{flexDirection:"row",flexWrap:"wrap",gap:8},
- chip:{borderWidth:1,borderColor:"#BFDBFE",backgroundColor:"#EFF6FF",borderRadius:9,paddingVertical:9,paddingHorizontal:12},
- chipSelected:{backgroundColor:"#0369A1",borderColor:"#0369A1"},
- chipText:{color:"#0F4C81",fontWeight:"600",fontSize:13},
- chipTextSelected:{color:"#FFFFFF"},
+ chip:{borderWidth:1,borderColor:theme.border,backgroundColor:theme.selectedSurface,borderRadius:9,paddingVertical:9,paddingHorizontal:12},
+ chipSelected:{backgroundColor:theme.primary,borderColor:theme.primary},
+ chipText:{color:theme.primary,fontWeight:"600",fontSize:13},
+ chipTextSelected:{color:theme.primaryText},
  disabled:{opacity:0.45}
 });
