@@ -20,7 +20,7 @@ export class MembershipEvidenceService{
  private async run<T>(token:string,work:(tx:PoolClient,a:Actor)=>Promise<T>){
   const a=await this.sessions.verifySession(token),tx=await this.db.connect();
   try{await tx.query("BEGIN");await this.identity.verifiedCommunityApplicant(tx,a);const r=await work(tx,a);await tx.query("COMMIT");return r;}
-  catch(e){try{await tx.query("ROLLBACK");}catch{}if(e&&typeof e==="object"&&"code" in e&&["23505","23503","23514","40001","40P01","55P03"].includes(String(e.code)))throw changed();throw e;}finally{tx.release();}
+  catch(e){try{await tx.query("ROLLBACK");}catch{}if(e&&typeof e==="object"&&"code" in e&&["23505","23503","23514","40001","40P01","55P03","P0001"].includes(String(e.code)))throw changed();throw e;}finally{tx.release();}
  }
  private async own(tx:PoolClient,a:Actor,app:string,version:number|null,write=false){
   const r=(await tx.query<{version:number;status:string}>("SELECT version,status FROM membership_application WHERE root_realm_id=$1 AND id=$2 AND applicant_account_ref=$3 FOR SHARE",[a.realmId,app,a.accountId])).rows[0];
