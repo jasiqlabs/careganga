@@ -12,8 +12,8 @@ export function VolunteerOwnCard({current}:{current:string}){
    if(!response.ok)throw Error();
    const x:unknown=await response.json();
    if(!x||typeof x!=="object"||!Array.isArray((x as CG19OwnVolunteerCards).items))throw Error();
-   if(!controller.signal.aborted){setData(x as CG19OwnVolunteerCards);setState("READY");}
-  }).catch(()=>{if(!controller.signal.aborted)setState("UNAVAILABLE");});
+   if(!controller.signal.aborted&&document.visibilityState==="visible"){setData(x as CG19OwnVolunteerCards);setState("READY");}
+  }).catch(()=>{if(!controller.signal.aborted&&document.visibilityState==="visible")setState("UNAVAILABLE");});
   return()=>controller.abort();
  },[current,nonce]);
  useEffect(()=>{
