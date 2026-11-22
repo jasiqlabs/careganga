@@ -738,7 +738,7 @@ export function StaffAuthenticationScreen() {
   }
   if(fieldVisitsOpen&&token&&actor){
     if(!roleActions.includes("projects.visits.view"))return <AccessDeniedScreen reason="You cannot view field visits." onMyAccount={()=>setFieldVisitsOpen(false)}/>;
-    return renderInShell(<ScreenErrorBoundary onExit={()=>setFieldVisitsOpen(false)}><Suspense fallback={<ActivityIndicator style={{marginTop:40}}/>}><NativeFieldVisitsWorkspace key={token} token={token} canManage={roleActions.includes("projects.visits.manage")} canExport={roleActions.includes("projects.visits.export")} canReadEvidence={roleActions.includes("documents.files.view")} canUploadEvidence={roleActions.includes("documents.files.view")&&roleActions.includes("documents.files.manage")} onExpired={expireSession}/></Suspense></ScreenErrorBoundary>,"fieldVisits",()=>setFieldVisitsOpen(false));
+    return renderInShell(<ScreenErrorBoundary onExit={()=>setFieldVisitsOpen(false)}><Suspense fallback={<ActivityIndicator style={{marginTop:40}}/>}><NativeFieldVisitsWorkspace canConfigureReview={roleActions.includes("approvals.process.manage")} key={token} token={token} canManage={roleActions.includes("projects.visits.manage")} canExport={roleActions.includes("projects.visits.export")} canReadEvidence={roleActions.includes("documents.files.view")} canUploadEvidence={roleActions.includes("documents.files.view")&&roleActions.includes("documents.files.manage")} onExpired={expireSession}/></Suspense></ScreenErrorBoundary>,"fieldVisits",()=>setFieldVisitsOpen(false));
   }
   if(activitiesOpen&&token&&actor){
     if(!roleActions.includes("projects.activities.view"))return <AccessDeniedScreen reason="You cannot view activities." onMyAccount={()=>setActivitiesOpen(false)}/>;
