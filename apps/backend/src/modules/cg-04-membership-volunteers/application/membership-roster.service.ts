@@ -51,9 +51,9 @@ const where=[
 export class MembershipRosterService{
  constructor(@Inject(DATABASE)private readonly db:Pool,private readonly sessions:SessionService,
   private readonly identity:FoundationStructureIdentityFacade,private readonly branches:BranchSourceFacade){}
- private async run<T>(token:string,permission:string,fn:(tx:PoolClient,a:Actor)=>Promise<T>,readonly:boolean){
+ private async run<T>(token:string,permission:string,fn:(tx:PoolClient,a:Actor)=>Promise<T>,readOnly:boolean){
   const a=await this.sessions.requireAction(token,permission),tx=await this.db.connect();
-  try{await tx.query(readonly?"BEGIN ISOLATION LEVEL REPEATABLE READ":"BEGIN");
+  try{await tx.query(readOnly?"BEGIN ISOLATION LEVEL REPEATABLE READ":"BEGIN");
    await this.identity.assertCurrent(tx,a,permission);const v=await fn(tx,a);await tx.query("COMMIT");return v;
   }catch(e){try{await tx.query("ROLLBACK");}catch{}throw e;}finally{tx.release();}
  }
@@ -68,11 +68,33 @@ export class MembershipRosterService{
   const nextCursor=!exporting&&rs.rows.length>25&&last?Buffer.from(JSON.stringify({at:last.createdAt,id:last.ref})).toString("base64url"):null;
   return {rows,nextCursor,hasMore:rs.rows.length>25&&!exporting,branchOptions:scope.branches.map(({value,label})=>({value,label}))};
  }
+ private async overview(tx:PoolClient,a:Actor){
+  const scope=await this.branches.projectBranchScope(tx,a);
+  const q=await tx.query<{status:string;category:string;total:number}>([
+   "SELECT state.status,v.category,count(*)::integer AS total FROM member m",
+   "JOIN LATERAL (SELECT t.* FROM membership_term t WHERE t.root_realm_id=m.root_realm_id AND t.member_id=m.id",
+   "AND t.starts_on<=(now() AT TIME ZONE 'Asia/Kolkata')::date ORDER BY t.starts_on DESC,t.id DESC LIMIT 1) term ON true",
+   "JOIN membership_tier_version v ON v.root_realm_id=term.root_realm_id AND v.id=term.tier_version_id",
+   "CROSS JOIN LATERAL (SELECT CASE WHEN m.status<>'ACTIVE' THEN m.status",
+   "WHEN term.expires_on<=(now() AT TIME ZONE 'Asia/Kolkata')::date THEN 'EXPIRED' ELSE 'ACTIVE' END AS status) state",
+   "WHERE m.root_realm_id=$1 AND ($2::boolean OR m.branch_ref=ANY($3::uuid[]))",
+   "GROUP BY state.status,v.category LIMIT 30"
+  ].join(" "),[a.realmId,scope.all,scope.branches.map(x=>x.value)]);
+  const byCategory:Record<string,number>={};
+  let total=0,active=0,expired=0,cancelled=0,suspended=0;
+  for(const item of q.rows){const n=Number(item.total);total+=n;byCategory[item.category]=(byCategory[item.category]??0)+n;
+   if(item.status==="ACTIVE")active+=n;
+   else if(item.status==="EXPIRED")expired+=n;
+   else if(item.status==="CANCELLED")cancelled+=n;
+   else if(item.status==="SUSPENDED")suspended+=n;
+  }
+  return {total,active,expired,cancelled,suspended,byCategory};
+ }
  async list(token:string,raw:unknown){
   const filter=read(raw);
   return this.run(token,"membership.members.view",async(tx,a)=>{
    const page=await this.rows(tx,a,filter,false);
-   return {items:page.rows.map(({createdAt,...r})=>r),nextCursor:page.nextCursor,hasMore:page.hasMore,branchOptions:page.branchOptions};
+   return {items:page.rows.map(({createdAt,...r})=>r),nextCursor:page.nextCursor,hasMore:page.hasMore,branchOptions:page.branchOptions,overview:await this.overview(tx,a)};
   },true);
  }
  async export(token:string,raw:unknown){
