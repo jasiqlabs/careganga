@@ -26,7 +26,7 @@ async function request(path:string,init?:RequestInit):Promise<unknown>{
  if(!response.ok){
   const text=obj&&typeof obj==="object"&&"message" in obj&&
     typeof obj.message==="string"?obj.message:"Employee information cannot be confirmed.";
-  throw Error(text);
+  throw Object.assign(Error(text),{status:response.status});
  }
  return obj;
 }
@@ -56,6 +56,10 @@ export function HrEnrollmentWorkspace({canViewApps,canManage,canViewEmployees,ca
  const [hasMore,setHasMore]=useState(false);
  const [requestKey,setRequestKey]=useState(()=>crypto.randomUUID());
  const [attempt,setAttempt]=useState<string|null>(null);
+ const [uncertain,setUncertain]=useState(false);
+ const evidencePanel=useRef<HTMLElement>(null);
+ const fileApplicationPending=useRef(false);
+ useEffect(()=>{if(fileApplicationPending.current&&evidencePanel.current){fileApplicationPending.current=false;evidencePanel.current.scrollIntoView({block:"start",behavior:"auto"});}});
  const [fileApplication,setFileApplication]=useState<Application|null>(null);
  const [caseStatus,setCaseStatus]=useState<{status:string;caseRef:string|null;reference:string|null}|null>(null);
  const [staff,setStaff]=useState<Array<{reference:string;name:string;designation:string;
@@ -118,7 +122,7 @@ export function HrEnrollmentWorkspace({canViewApps,canManage,canViewEmployees,ca
   return()=>{alive=false;};
  },[canViewApps,canManage,canSelectRoles]);
  const review=useCallback(async(app:Application)=>{
-  setFileApplication(app);setCaseStatus(null);setStatus(null);
+  fileApplicationPending.current=true;setFileApplication(app);setCaseStatus(null);setStatus(null);
   try{
    const current=await request("applications/"+app.applicationRef+"/review");
    if(!current||typeof current!=="object"||!("status" in current)||
@@ -247,12 +251,13 @@ export function HrEnrollmentWorkspace({canViewApps,canManage,canViewEmployees,ca
  },[canViewEmployees,empFilter.branch]);
 
  const change=(field:keyof Draft,value:string)=>{
+  if(busy||uncertain)return;
   setForm(v=>({...v,[field]:value,
    ...(field==="branchRef"?{departmentRef:"",managerRef:""}:{})}));
   setAttempt(null);setRequestKey(crypto.randomUUID());
  };
  const beginEdit=(app:Application)=>{
-  if(!canManage||!["DRAFT","RETURNED"].includes(app.status))return;
+  if(!canManage||busy||uncertain||!["DRAFT","RETURNED"].includes(app.status))return;
   setSelected(app);
   setForm({name:app.name,designation:app.designation,
    employmentType:app.employmentType,branchRef:app.branchRef,
@@ -260,7 +265,7 @@ export function HrEnrollmentWorkspace({canViewApps,canManage,canViewEmployees,ca
    accountRef:app.accountRef??"",roleRef:app.roleRef??"",hireDate:app.hireDate});
   setAttempt(null);setRequestKey(crypto.randomUUID());setStatus(null);
  };
- const reset=()=>{setSelected(null);setForm(blank());setRequestKey(crypto.randomUUID());setAttempt(null);};
+ const reset=()=>{setSelected(null);setForm(blank());setRequestKey(crypto.randomUUID());setAttempt(null);setUncertain(false);};
  const save=async(e:FormEvent)=>{
   e.preventDefault();if(!canManage||busy)return;
   if(!form.branchRef||!form.hireDate){
@@ -281,12 +286,20 @@ export function HrEnrollmentWorkspace({canViewApps,canManage,canViewEmployees,ca
     throw Error("The save confirmation is not available.");
    const ref="reference" in result&&typeof result.reference==="string"?
     result.reference:selected?.reference??"";
-   reset();await load(offset);
-   setStatus({message:(selected?"Draft updated":"Draft created")+
-    (ref?" — "+ref:"")+". This is not an approved employee.",error:false});
+   const applicationRef=String(result.applicationRef);
+   // Confirm the original write before opening its current revision. A failed detail read must not repeat a confirmed create.
+   reset();await load(0);
+   try{
+    const current=await request("applications/"+encodeURIComponent(applicationRef)) as Application;
+    if(current.applicationRef!==applicationRef||!Number.isInteger(current.revision)||!current.reference)throw Error("Current draft cannot be confirmed.");
+    await review(current);
+    setStatus({message:"Saved "+current.reference+". Complete private details and evidence below, then submit for approval.",error:false});
+   }catch{setStatus({message:"Saved "+ref+". Refresh applications and open this record to continue.",error:false});}
   }catch(e){
    // Do NOT rotate the original key automatically after an unknown write.
    // Same payload+key is safe to retry after list reconciliation.
+   const known=!uncertain&&e&&typeof e==="object"&&"status" in e&&typeof e.status==="number"&&e.status>=400&&e.status<500;
+   setUncertain(!known);if(known)setAttempt(null);
    setStatus({message:e instanceof Error?e.message:"Save status cannot be confirmed.",error:true});
   }finally{setBusy(false);}
  };
@@ -301,13 +314,13 @@ export function HrEnrollmentWorkspace({canViewApps,canManage,canViewEmployees,ca
   {status&&<p role={status.error?"alert":"status"} style={{borderRadius:10,
    background:status.error?"#FEF2F2":"#ECFDF5",
    color:status.error?"#991B1B":"#166534",padding:".85rem 1rem",margin:0}}>
-   {status.message}{status.error&&attempt?" If your connection failed, refresh the draft list before retrying.":""}
+   {status.message}{status.error&&attempt?" Retry the original save before changing details if its result is uncertain.":""}
   </p>}
   {canViewApps&&canManage&&<form onSubmit={e=>void save(e)} style={{border:"1px solid #E2E8F0",
    borderRadius:16,padding:"1.1rem",display:"grid",gap:15,background:"#fff"}}>
    <header><h2 style={{margin:0,fontSize:"1.15rem"}}>{selected?"Edit draft":"New employee draft"}</h2>
     <p style={{color:"#64748B",margin:"5px 0 0"}}>Personal and employment basics. Private identity and bank documents are not collected here.</p></header>
-   <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(215px,1fr))",gap:13}}>
+   <fieldset disabled={busy||uncertain} style={{border:0,padding:0,margin:0,minWidth:0,display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(215px,1fr))",gap:13}}>
     <label style={fieldStyle}>Employee name
      <input style={inputStyle} value={form.name} maxLength={160} required
       autoComplete="name" onChange={e=>change("name",e.target.value)}/></label>
@@ -357,11 +370,11 @@ export function HrEnrollmentWorkspace({canViewApps,canManage,canViewEmployees,ca
     <label style={fieldStyle}>Joining date
      <input type="date" style={inputStyle} required value={form.hireDate}
       onChange={e=>change("hireDate",e.target.value)}/></label>
-   </div>
+   </fieldset>
    <div style={{display:"flex",gap:10,flexWrap:"wrap"}}>
     <button type="submit" style={buttonStyle} disabled={busy}>
-     {busy?"Saving draft…":selected?"Save corrected draft":"Save draft"}</button>
-    {selected&&<button type="button" onClick={reset}
+     {busy?"Saving draft…":uncertain?"Retry original save":selected?"Save corrected draft":"Save & continue"}</button>
+    {selected&&<button type="button" disabled={busy||uncertain} onClick={reset}
      style={{...buttonStyle,background:"#E2E8F0",color:"#0F172A"}}>Cancel edit</button>}
    </div>
   </form>}
@@ -388,7 +401,7 @@ export function HrEnrollmentWorkspace({canViewApps,canManage,canViewEmployees,ca
         {["DRAFT","RETURNED"].includes(app.status)?"Manage private evidence":"Review status"}
        </button>}
       {canManage&&["DRAFT","RETURNED"].includes(app.status)&&
-       <button type="button" onClick={()=>beginEdit(app)}
+       <button type="button" disabled={busy||uncertain} onClick={()=>beginEdit(app)}
         style={{marginTop:8,...buttonStyle,padding:".45rem .7rem"}}>Edit draft</button>}
      </li>)}
     </ul>}
@@ -399,7 +412,7 @@ export function HrEnrollmentWorkspace({canViewApps,canManage,canViewEmployees,ca
       onClick={()=>void load(offset+25)}>Next</button>}
    </div>
   </section>}
-  {canViewApps&&fileApplication&&canManage&&<section style={{border:"1px solid #CBD5E1",
+  {canViewApps&&fileApplication&&canManage&&<section ref={evidencePanel} style={{border:"1px solid #CBD5E1",
    padding:16,borderRadius:14,background:"#fff",display:"grid",gap:14}}>
    <header style={{display:"flex",justifyContent:"space-between",gap:8}}>
     <h2 style={{margin:0,fontSize:"1.1rem"}}>Original enrollment — {fileApplication.name}</h2>

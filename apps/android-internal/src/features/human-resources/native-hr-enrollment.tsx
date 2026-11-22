@@ -59,6 +59,8 @@ export function NativeHrEnrollment({token,canView,canManage,canReview,canViewEmp
  const [selected,setSelected]=useState<Application|null>(null);
  const [draft,setDraft]=useState<Draft>(blank);
  const [key,setKey]=useState<string|null>(null);
+ const [uncertain,setUncertain]=useState(false);
+ const jumpEvidence=useRef(false);
  const [status,setStatus]=useState("");
  const [error,setError]=useState("");
  const [loading,setLoading]=useState(true),[saving,setSaving]=useState(false);
@@ -153,12 +155,13 @@ export function NativeHrEnrollment({token,canView,canManage,canReview,canViewEmp
   return()=>{active=false;};
  },[token,canManage,canSelectRoles,failure]);
  const change=(field:keyof Draft,value:string)=>{
+  if(saving||uncertain)return;
   setDraft(old=>({...old,[field]:value,
    ...(field==="branchRef"?{departmentRef:"",managerRef:""}:{})}));
   setKey(null);setStatus("");setError("");
  };
  const edit=(item:Application)=>{
-  if(!canManage||!["DRAFT","RETURNED"].includes(item.status))return;
+  if(!canManage||saving||uncertain||!["DRAFT","RETURNED"].includes(item.status))return;
   setSelected(item);
   setDraft({name:item.name,designation:item.designation,employmentType:item.employmentType,
    branchRef:item.branchRef,departmentRef:item.departmentRef??"",
@@ -167,7 +170,7 @@ export function NativeHrEnrollment({token,canView,canManage,canReview,canViewEmp
   setKey(null);setStatus("");setError("");
  };
  const reset=()=>{
-  setSelected(null);setDraft(blank());setKey(null);
+  setSelected(null);setDraft(blank());setKey(null);setUncertain(false);
  };
  const save=async()=>{
   if(!canManage||saving)return;
@@ -185,15 +188,20 @@ export function NativeHrEnrollment({token,canView,canManage,canReview,canViewEmp
    roleRef:draft.roleRef||null,
    ...(selected?{expectedRevision:selected.revision}:{})};
   try{
-   await api(token,selected?"applications/"+selected.applicationRef:"applications",
+   const result=await api(token,selected?"applications/"+selected.applicationRef:"applications",
     selected?"PATCH":"POST",body);
+   if(!result||typeof result!=="object"||!("applicationRef" in result)||typeof result.applicationRef!=="string")throw Error("Save confirmation unavailable.");
+   const ref=result.applicationRef;
    reset();await load(0);
-   setStatus("Draft saved. Employment remains unapproved.");
-  }catch(e){failure(e);}
+   try{const current=await api(token,"applications/"+encodeURIComponent(ref)) as Application;
+    if(current.applicationRef!==ref||!Number.isInteger(current.revision)||!current.reference)throw Error("Current application unavailable.");
+    await openSource(current);setStatus("Saved "+current.reference+". Complete private details and evidence, then submit.");
+   }catch(e){if(e&&typeof e==="object"&&"status" in e&&e.status===401)onExpired();setStatus("Draft saved. Refresh applications and open the original record to continue.");}
+  }catch(e){const known=!uncertain&&e&&typeof e==="object"&&"status" in e&&typeof e.status==="number"&&e.status>=400&&e.status<500;setUncertain(!known);if(known)setKey(null);failure(e);}
   finally{setSaving(false);}
  };
  const openSource=async(app:Application)=>{
-  setFocus(app);setReview(null);setVerifiedFiles([]);
+  jumpEvidence.current=true;setFocus(app);setReview(null);setVerifiedFiles([]);
   setError("");setStatus("");
   try{
    const value=await api(token,"applications/"+app.applicationRef+"/review");
@@ -402,7 +410,34 @@ export function NativeHrEnrollment({token,canView,canManage,canReview,canViewEmp
      canConfigure={canConfigureAttendance} canManageLeave={canManageLeave} canReviewLeave={canReviewLeave} canCorrect={canCorrect} canReviewCorrection={canReviewCorrection} canViewStaff={canViewStaff}/>
    </View>}
    {seen("employees")&&<View style={display("employees")}>
+   {focus&&canManage&&<View style={styles.card} onLayout={()=>{if(jumpEvidence.current){jumpEvidence.current=false;scroll.current?.scrollTo({y:0,animated:false});}}}>
+    <Text style={styles.h2}>Original enrollment — {focus.name}</Text>
+    {canViewPrivate&&<NativeHrPrivate key={focus.applicationRef+"-"+token}
+      token={token} applicationRef={focus.applicationRef}
+      canManage={canManagePrivate&&["DRAFT","RETURNED"].includes(focus.status)}
+      onExpired={onExpired}/>}
+    {review&&<Text style={styles.muted}>
+      {review.reference??"Not submitted"} · {title(review.status)}</Text>}
+    {["DRAFT","RETURNED"].includes(focus.status)&&<>
+      <NativeHrEvidence token={token} applicationRef={focus.applicationRef}
+        revision={focus.revision} onExpired={onExpired} onFiles={setVerifiedFiles}/>
+      <Pressable accessibilityRole="button" disabled={saving}
+        onPress={()=>void submit(focus)} style={styles.primary}>
+        <Text style={styles.primaryText}>Submit scanner-verified enrollment</Text>
+      </Pressable>
+    </>}
+    {focus.status==="FINAL_APPROVED_PENDING_ACTIVATION"&&
+     <Pressable accessibilityRole="button" disabled={saving}
+       style={styles.primary} onPress={()=>void finalize(focus)}>
+       <Text style={styles.primaryText}>Activate independently approved employee</Text>
+     </Pressable>}
+    <Pressable accessibilityRole="button" style={styles.outline}
+      onPress={()=>{setFocus(null);setReview(null);}}>
+      <Text style={styles.outlineText}>Close enrollment</Text>
+    </Pressable>
+   </View>}
    {canManage&&canView&&<View style={styles.card}>
+    {uncertain&&<Text accessibilityRole="alert" style={styles.error}>The original save is uncertain. Retry it before changing the application.</Text>}
     <Text style={styles.h2}>{selected?"Correct application draft":"Create employee draft"}</Text>
     <Text style={styles.muted}>Saving never activates an employee or grants system access.
      A separate Foundation approval is required.</Text>
@@ -480,9 +515,9 @@ export function NativeHrEnrollment({token,canView,canManage,canReview,canViewEmp
     {field("Joining date",draft.hireDate,v=>change("hireDate",v),"YYYY-MM-DD")}
     <Pressable accessibilityRole="button" disabled={saving}
      style={[styles.primary,saving&&{opacity:.5}]} onPress={()=>void save()}>
-     <Text style={styles.primaryText}>{saving?"Saving…":selected?"Update draft":"Save draft"}</Text>
+     <Text style={styles.primaryText}>{saving?"Saving…":uncertain?"Retry original save":selected?"Update & continue":"Save & continue"}</Text>
     </Pressable>
-    {selected&&<Pressable accessibilityRole="button" onPress={reset} style={styles.outline}>
+    {selected&&<Pressable accessibilityRole="button" disabled={saving||uncertain} onPress={reset} style={styles.outline}>
       <Text style={styles.outlineText}>Cancel edit</Text></Pressable>}
    </View>}
    {canReview&&<NativeHrReviews token={token} canConfigure={canConfigureReviews} onExpired={onExpired}/>}
@@ -508,32 +543,6 @@ export function NativeHrEnrollment({token,canView,canManage,canReview,canViewEmp
     {next!==null&&<Pressable accessibilityRole="button" style={styles.outline}
      onPress={()=>void load(next)}>
      <Text style={styles.outlineText}>Load more</Text></Pressable>}
-   </View>}
-   {focus&&canManage&&<View style={styles.card}>
-    <Text style={styles.h2}>Original enrollment — {focus.name}</Text>
-    {canViewPrivate&&<NativeHrPrivate key={focus.applicationRef+"-"+token}
-      token={token} applicationRef={focus.applicationRef}
-      canManage={canManagePrivate&&["DRAFT","RETURNED"].includes(focus.status)}
-      onExpired={onExpired}/>}
-    {review&&<Text style={styles.muted}>
-      {review.reference??"Not submitted"} · {title(review.status)}</Text>}
-    {["DRAFT","RETURNED"].includes(focus.status)&&<>
-      <NativeHrEvidence token={token} applicationRef={focus.applicationRef}
-        revision={focus.revision} onExpired={onExpired} onFiles={setVerifiedFiles}/>
-      <Pressable accessibilityRole="button" disabled={saving}
-        onPress={()=>void submit(focus)} style={styles.primary}>
-        <Text style={styles.primaryText}>Submit scanner-verified enrollment</Text>
-      </Pressable>
-    </>}
-    {focus.status==="FINAL_APPROVED_PENDING_ACTIVATION"&&
-     <Pressable accessibilityRole="button" disabled={saving}
-       style={styles.primary} onPress={()=>void finalize(focus)}>
-       <Text style={styles.primaryText}>Activate independently approved employee</Text>
-     </Pressable>}
-    <Pressable accessibilityRole="button" style={styles.outline}
-      onPress={()=>{setFocus(null);setReview(null);}}>
-      <Text style={styles.outlineText}>Close enrollment</Text>
-    </Pressable>
    </View>}
    {canViewEmployees&&<View style={styles.card}>
     <Text style={styles.h2}>Approved employee directory</Text>
