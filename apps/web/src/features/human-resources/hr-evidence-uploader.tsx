@@ -10,7 +10,11 @@ const types=[
  {value:"HR_IDENTITY_PROOF",label:"Identity proof"},
  {value:"HR_PAN_PROOF",label:"PAN proof (optional)"},
  {value:"HR_QUALIFICATION",label:"Qualification evidence"},
- {value:"HR_PORTRAIT",label:"Employee photograph"}
+ {value:"HR_PORTRAIT",label:"Employee photograph"},
+ {"value":"HR_EXPERIENCE","label":"Experience certificate"},
+ {"value":"HR_POLICE_VERIFICATION","label":"Police verification"},
+ {"value":"HR_RESUME","label":"Resume"},
+ {"value":"HR_APPOINTMENT_DOCUMENT","label":"Existing appointment document"}
 ] as const;
 async function json(path:string,init?:RequestInit):Promise<unknown>{
  const response=await fetch("/api/hr-evidence/"+path,{
