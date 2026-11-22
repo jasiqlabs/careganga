@@ -6,6 +6,7 @@ import * as Sharing from "expo-sharing";
 import type {CG04VolunteerReviewCase,CG04VolunteerReviewPage,CG04VolunteerReviewPolicy,CG04VolunteerRosterPage,CG04VolunteerRosterExport} from "@careganga/api-contracts";
 import {identityRequest} from "../identity-access/http-client";
 import {NativeVolunteerCardIssuer} from "./native-volunteer-card-issuer";
+import {NativeVolunteerReimbursement} from "./native-volunteer-reimbursement";
 import {careGangaTheme as t} from "../../../../../packages/design-tokens/src/index";
 type Decision="APPROVE"|"RETURN"|"REJECT";
 type Pending={ref:string;body:{requestKey:string;expectedRevision:number;action:Decision;remarks:string};digest:string};
@@ -19,19 +20,20 @@ async function request<T>(token:string,path:string,body?:Record<string,unknown>)
   r.status===401?"Sign in again.":r.status===403?"Your current volunteer permission is unavailable.":"Cannot verify this current volunteer record."),{status:r.status});
  return v as T;
 }
-export function NativeVolunteerStaff({token,canReview,canRoster,canExport,canConfigure,canIssueCards,onExpired}:{
- token:string;canReview:boolean;canRoster:boolean;canExport:boolean;canConfigure:boolean;canIssueCards:boolean;onExpired:()=>void
+export function NativeVolunteerStaff({token,canReview,canRoster,canExport,canConfigure,canIssueCards,canReimburse,onExpired}:{
+ token:string;canReview:boolean;canRoster:boolean;canExport:boolean;canConfigure:boolean;canIssueCards:boolean;canReimburse:boolean;onExpired:()=>void
 }){
  const [tab,setTab]=useState<"REVIEW"|"ROSTER">(canReview?"REVIEW":"ROSTER");
  const [policy,setPolicy]=useState<CG04VolunteerReviewPolicy|null>(null),[reviews,setReviews]=useState<CG04VolunteerReviewPage|null>(null);
  const [detail,setDetail]=useState<CG04VolunteerReviewCase|null>(null),[roster,setRoster]=useState<CG04VolunteerRosterPage|null>(null);
+ const [reimbursementRef,setReimbursementRef]=useState<string|null>(null);
  const [status,setStatus]=useState("ALL"),[availability,setAvailability]=useState("ALL"),[q,setQ]=useState(""),[applied,setApplied]=useState(""),[offset,setOffset]=useState(0);
  const [busy,setBusy]=useState(false),[loading,setLoading]=useState(true),[message,setMessage]=useState("");
  const [action,setAction]=useState<Decision>("APPROVE"),[remarks,setRemarks]=useState(""),[password,setPassword]=useState(""),[configPassword,setConfigPassword]=useState("");
  const seq=useRef(0),details=useRef(0),active=useRef(true),pending=useRef<Pending|null>(null),tempFiles=useRef<File[]>([]);
  const scrub=()=>{
   seq.current++;details.current++;setDetail(null);setReviews(null);setRoster(null);setPolicy(null);
-  setPassword("");setConfigPassword("");setRemarks("");setMessage("");
+  setPassword("");setConfigPassword("");setRemarks("");setMessage("");setReimbursementRef(null);
   for(const file of tempFiles.current)try{file.delete();}catch{}tempFiles.current=[];
  };
  const refresh=useCallback(async()=>{
@@ -143,7 +145,7 @@ export function NativeVolunteerStaff({token,canReview,canRoster,canExport,canCon
    }finally{try{dest.delete();}catch{}tempFiles.current=tempFiles.current.filter(x=>x.uri!==dest.uri);}
   }
  });
- const switchTo=(v:"REVIEW"|"ROSTER")=>{seq.current++;details.current++;setTab(v);setReviews(null);setRoster(null);setDetail(null);setStatus("ALL");setQ("");setApplied("");setAvailability("ALL");setOffset(0);setPassword("");setRemarks("");pending.current=null;};
+ const switchTo=(v:"REVIEW"|"ROSTER")=>{seq.current++;details.current++;setTab(v);setReviews(null);setRoster(null);setDetail(null);setStatus("ALL");setQ("");setApplied("");setAvailability("ALL");setOffset(0);setPassword("");setRemarks("");setReimbursementRef(null);pending.current=null;};
  const choice=(text:string,fn:()=>void,selected=false,disabled=false)=><Pressable accessibilityRole="button" accessibilityState={{selected,disabled:disabled||busy}}
   onPress={fn} disabled={disabled||busy} style={[s.button,selected&&s.selected,(disabled||busy)&&{opacity:.5}]}>
   <Text style={[s.buttonText,selected&&s.selectedText]}>{text}</Text></Pressable>;
@@ -211,6 +213,11 @@ export function NativeVolunteerStaff({token,canReview,canRoster,canExport,canCon
     <Text>{label(row.availability)} · {row.city}, {row.district} · Joined {row.joinedOn}</Text>
     <Text>{row.mobile}{row.email?" · "+row.email:""}</Text><Text>Skills: {row.skills.join(", ")||"None recorded"}</Text>
     {canIssueCards&&<NativeVolunteerCardIssuer key={row.ref} token={token} volunteerRef={row.ref} onExpired={onExpired}/> }
+    {canReimburse&&choice(reimbursementRef===row.ref?"Close reimbursement":"New reimbursement (U42)",
+      ()=>setReimbursementRef(v=>v===row.ref?null:row.ref))}
+    {canReimburse&&reimbursementRef===row.ref&&<NativeVolunteerReimbursement token={token}
+      volunteerRef={row.ref} onExpired={onExpired} onClose={()=>setReimbursementRef(null)}/>}
+
    </View>)}
    <View style={s.row}>{offset>0&&choice("Previous volunteers",()=>setOffset(x=>Math.max(0,x-25)))}
     {roster.hasMore&&choice("More volunteers",()=>setOffset(x=>x+25))}</View>
