@@ -56,7 +56,7 @@ export function NativeCampaignReviews({token,canConfigure,onExpired}:{
    active.current=state==="active";counter.current++;
    if(!active.current){
     setItems([]);setDetail(null);setPassword("");setSetupPassword("");setRemarks("");
-    setNotice("");setError("");
+    setNotice("");setError("");request.current=null;
    }else void refresh();
   });
   return()=>sub.remove();
