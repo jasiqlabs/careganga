@@ -166,7 +166,7 @@ export class DonationAdminService{
       ORDER BY a.created_at DESC,a.id DESC LIMIT 1) m ON true
     LEFT JOIN cg19_donation_receipt_document r ON r.root_realm_id=d.root_realm_id
       AND r.donation_id=d.id AND r.status='ISSUED'
-  `+where+" ORDER BY d.created_at DESC,d.id DESC LIMIT 501",args);
+  `+where+" AND $6::integer=0 ORDER BY d.created_at DESC,d.id DESC LIMIT 501",args);
   if(records.rows.length>500)throw new BadRequestException(
    "Narrow the dates or campaign to export up to 500 records per report.");
   const lines=[["Donation number","Campaign","Requested amount INR","Verified gross INR",
