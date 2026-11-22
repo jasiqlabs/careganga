@@ -118,7 +118,7 @@ Verification: On actual implementation source-trace US-003-QA01–QA20 UI→requ
 Dependencies: US-002 actual CG-09 confirmed posting and original CG-19 issued receipt/reversal facades; no CG-20 MIS or future donor identity.
 
 ## Execution progress
-- US-001: BLOCKED | PLANNING_DRAFT_ONLY; implementation NOT_STARTED, source/live/visual QA NOT_RUN, formal approval BLOCKED.
+- US-001: BLOCKED | PLANNING_DRAFT_ONLY; implementation NOT_STARTED, source/live/visual QA NOT_RUN, formal approval BLOCKED. | 22-Nov CG05 US003 current event source authored provisionally; retain existing US001-QA10/17 optional event/campaign relation and revocation in CG07 when authorized. No CG07 campaign association code or QA started, no dependency for standalone private CG05 activity.
 - US-002: BLOCKED | PLANNING_DRAFT_ONLY; implementation NOT_STARTED, source/live/visual QA NOT_RUN, formal approval BLOCKED.
 - US-003: BLOCKED | PLANNING_DRAFT_ONLY; implementation NOT_STARTED, source/live/visual QA NOT_RUN, formal approval BLOCKED.
 
