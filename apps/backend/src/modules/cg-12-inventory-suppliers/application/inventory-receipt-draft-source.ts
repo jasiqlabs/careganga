@@ -29,7 +29,7 @@ export class InventoryReceiptDraftSource {
   const row=q.rows[0];if(!row)throw new NotFoundException("Receipt unavailable");
   if((mode!=="READ"||row.status==="DRAFT")&&row.created_by!==a.accountId)throw new ForbiddenException("This receipt was prepared by another staff account");
   if(mode==="DRAFT"&&row.status!=="DRAFT")throw sourceChanged();
-  const store=await this.catalog.store(tx,a,row.location_id,mode!=="READ");
+  const store=await this.catalog.store(tx,a,row.location_id,mode!=="READ"&&row.status==="DRAFT");
   return {row,proofRequired:store.receipt_proof_required};
  }
 }
