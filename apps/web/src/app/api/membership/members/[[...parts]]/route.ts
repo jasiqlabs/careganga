@@ -1,0 +1,21 @@
+import {cookies} from "next/headers";
+import {NextRequest,NextResponse} from "next/server";
+export const dynamic="force-dynamic";
+type Ctx={params:Promise<{parts?:string[]}>};
+const reply=(body:unknown,status=200)=>NextResponse.json(body,{status,headers:{"Cache-Control":"private, no-store","X-Content-Type-Options":"nosniff"}});
+export async function GET(req:NextRequest,ctx:Ctx){
+ const parts=(await ctx.params).parts??[];
+ if(parts.length>1||parts.length===1&&parts[0]!=="export")return reply({message:"Membership roster action unavailable."},404);
+ const token=(await cookies()).get("cg_staff_session")?.value;
+ if(!token)return reply({message:"Sign in again."},401);
+ const base=process.env.BACKEND_URL;
+ if(!base)return reply({message:"Membership roster unavailable."},503);
+ try{
+  const url=new URL("/api/v1/membership/members"+(parts.length?"/export":""),base);
+  for(const k of ["q","status","category","branch",...(parts.length?[]:["cursor"])])
+   if(req.nextUrl.searchParams.has(k))url.searchParams.set(k,req.nextUrl.searchParams.get(k)!);
+  const r=await fetch(url,{headers:{Authorization:"Bearer "+token},cache:"no-store",signal:AbortSignal.timeout(12000)});
+  if(r.ok){const data:unknown=await r.json();return reply(data);}
+  return reply({message:r.status===401?"Sign in again.":r.status===403?"Your current role or location cannot view these membership records.":r.status===400?"Check the membership roster filters.":r.status===409?"Membership roster changed. Refresh the filters.":"Member records could not be confirmed."},[400,401,403,409].includes(r.status)?r.status:503);
+ }catch{return reply({message:"Member records could not be confirmed. Refresh before retrying."},503);}
+}
