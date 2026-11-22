@@ -273,3 +273,26 @@ test("US002-QA16: signed payment outage stays queued until original protected CG
  assert.match(web,/No signed provider success/);
  assert.match(proxy,/online\/reconcile-queue/);
 });
+
+test("US003-QA01/11: donor history contains only individually proven, unexpired source transactions",()=>{
+ const backend=source("application/donation-intents.service.ts");
+ const controller=source("http/public-donation-intents.controller.ts");
+ const web=root("apps/web/src/features/campaigns/public-donation-form.tsx");
+ const native=root("apps/android-public/src/features/cms/native-public-donation.tsx");
+ const bff=root("apps/web/src/app/api/public/donations/[[...parts]]/route.ts");
+ assert.match(backend,/async ownHistory\(req:object,raw:unknown\)/);
+ assert.match(backend,/statusTokens/);
+ assert.match(backend,/submitted\.length>20/);
+ assert.match(backend,/status_token_digest=ANY/);
+ assert.match(backend,/status_token_expires_at>now\(\)/);
+ assert.match(backend,/proofIndex:hashes\.indexOf/);
+ assert.match(backend,/donation_refund_request/);
+ assert.match(backend,/receiptStatus/);
+ assert.doesNotMatch(backend,/WHERE d\.donor_email=/);
+ assert.match(controller,/@Post\("history"\)/);
+ assert.match(web,/View my proven donation history/);
+ assert.match(web,/download\(historyTokens\[item\.proofIndex\]\)/);
+ assert.match(native,/View proven donation history/);
+ assert.match(native,/download\(historyTokens\[item\.proofIndex\]\)/);
+ assert.match(bff,/\["status","history","payment-link"\]/);
+});
