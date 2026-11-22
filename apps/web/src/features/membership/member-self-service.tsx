@@ -1,6 +1,6 @@
 "use client";
 import {useCallback,useEffect,useRef,useState} from "react";
-import type {CG04Application,CG04Member,CG04MembershipFee,CG04PublicTier,CG04PublicTierPage} from "@careganga/api-contracts";
+import type {CG04Application,CG04Member,CG04MemberHistory,CG04MembershipFee,CG04PublicTier,CG04PublicTierPage} from "@careganga/api-contracts";
 import {CommunityAuth} from "./community-auth";
 import {MemberApplicationForm} from "./member-application-form";
 import {MemberEvidencePanel} from "./member-evidence-panel";
@@ -14,18 +14,18 @@ async function api<T>(path:string,method:"GET"|"POST"="GET",body?:Record<string,
 }
 export function MemberSelfService(){
  const [signed,setSigned]=useState(false),[verified,setVerified]=useState(false),[loading,setLoading]=useState(true),[busy,setBusy]=useState(false),[error,setError]=useState(""),[notice,setNotice]=useState("");
- const [apps,setApps]=useState<CG04Application[]>([]),[chosen,setChosen]=useState<CG04Application|null>(null),[member,setMember]=useState<CG04Member|null>(null),[fee,setFee]=useState<CG04MembershipFee|null>(null),[plans,setPlans]=useState<CG04PublicTier[]>([]),[code,setCode]=useState("");
+ const [apps,setApps]=useState<CG04Application[]>([]),[chosen,setChosen]=useState<CG04Application|null>(null),[member,setMember]=useState<CG04Member|null>(null),[history,setHistory]=useState<CG04MemberHistory|null>(null),[fee,setFee]=useState<CG04MembershipFee|null>(null),[plans,setPlans]=useState<CG04PublicTier[]>([]),[code,setCode]=useState("");
  const pending=useRef<Pending|null>(null),sequence=useRef(0);
  const refresh=useCallback(async()=>{
   const n=++sequence.current;
   let phone:{verified:boolean};
-  try{phone=await api<{verified:boolean}>("/mobile/status");}catch(e){if(n===sequence.current){setSigned(false);setVerified(false);setApps([]);setChosen(null);setMember(null);setFee(null);}throw e;}
+  try{phone=await api<{verified:boolean}>("/mobile/status");}catch(e){if(n===sequence.current){setSigned(false);setVerified(false);setApps([]);setChosen(null);setMember(null);setHistory(null);setFee(null);}throw e;}
   if(n!==sequence.current)return;
   setSigned(true);setVerified(phone.verified);
-  if(!phone.verified){setApps([]);setChosen(null);setMember(null);return;}
-  const [list,self]=await Promise.all([api<{items:CG04Application[]}>("/applications"),api<{member:CG04Member|null}>("/me")]);
+  if(!phone.verified){setApps([]);setChosen(null);setMember(null);setHistory(null);return;}
+  const [list,self,terms]=await Promise.all([api<{items:CG04Application[]}>("/applications"),api<{member:CG04Member|null}>("/me"),api<CG04MemberHistory>("/me/history")]);
   if(n!==sequence.current)return;
-  setApps(list.items);setMember(self.member);
+  setApps(list.items);setMember(self.member);setHistory(terms);
   setChosen(old=>list.items.find(x=>x.ref===old?.ref)??list.items.find(x=>["DRAFT","RETURNED","SUBMITTED"].includes(x.status))??list.items[0]??null);
  },[]);
  useEffect(()=>{
@@ -39,7 +39,7 @@ export function MemberSelfService(){
  },[refresh]);
  useEffect(()=>{
   const onVisibility=()=>{
-   if(document.visibilityState!=="visible"){sequence.current++;setApps([]);setChosen(null);setMember(null);setFee(null);setVerified(false);setLoading(true);setCode("");}
+   if(document.visibilityState!=="visible"){sequence.current++;setApps([]);setChosen(null);setMember(null);setHistory(null);setFee(null);setVerified(false);setLoading(true);setCode("");}
    else void refresh().catch(()=>setError("Private membership status could not be confirmed. Retry.")).finally(()=>setLoading(false));
   };
   document.addEventListener("visibilitychange",onVisibility);
@@ -49,7 +49,7 @@ export function MemberSelfService(){
  const act=async(job:()=>Promise<void>)=>{if(busy)return;setBusy(true);setError("");setNotice("");try{await job();}catch(e){setError(e instanceof Error?e.message:"Outcome uncertain. Refresh before retrying.");}finally{setBusy(false);}};
  const send=(cmd:Pending)=>void act(async()=>{pending.current=cmd;await api(cmd.path,"POST",cmd.body);pending.current=null;await refresh();setNotice("The original action has been confirmed. Review the updated status.");});
  const action=(kind:"submit"|"cancel"|"activate")=>{if(!chosen||busy||pending.current)return;send({path:"/applications/"+chosen.ref+"/"+kind,body:{requestKey:crypto.randomUUID(),...(kind==="activate"?{}:{expectedVersion:chosen.version})}});};
- const logout=()=>void act(async()=>{await api("/logout","POST",{});pending.current=null;setSigned(false);setVerified(false);setChosen(null);setApps([]);setMember(null);setFee(null);});
+ const logout=()=>void act(async()=>{await api("/logout","POST",{});pending.current=null;setSigned(false);setVerified(false);setChosen(null);setApps([]);setMember(null);setHistory(null);setFee(null);});
  const verify=()=>void act(async()=>{await api("/mobile/start","POST",{});setNotice("Verification code requested. Delivery is not guaranteed.");});
  const confirm=()=>void act(async()=>{const r=await api<{status:string}>("/mobile/confirm","POST",{code});if(r.status!=="VERIFIED")throw new Error("Mobile verification was not confirmed.");setCode("");await refresh();});
  return <section className="cg04-public cg04-self-service"><header className="cg04-public-title"><h1>Membership Application</h1><p>Apply, renew or check the original Foundation review and payment status.</p></header>
@@ -58,7 +58,20 @@ export function MemberSelfService(){
  <><div className="cg04-panel cg04-buttons"><strong>Your private membership account</strong><button disabled={busy} onClick={logout}>Sign out</button></div>
  {!verified?<section className="cg04-panel"><h2>Verify contact</h2><p>Verify the mobile number on your account before submitting an application.</p><button disabled={busy} onClick={verify}>Request verification code</button><label>Received code<input value={code} onChange={e=>setCode(e.target.value)} maxLength={10}/></label><button disabled={busy||!code} onClick={confirm}>Verify code</button></section>:
  <>
- <section className="cg04-panel"><h2>Current membership</h2>{member?<p>{member.memberNumber} · {member.plan} · {member.status} · Valid {member.expiresOn?"until "+member.expiresOn:"for lifetime"}</p>:<p>No active membership identity has been issued yet.</p>}</section>
+ <section className="cg04-panel"><h2>Current membership</h2>{member?<p>{member.memberNumber} · {member.plan} · {member.status} · Valid {member.expiresOn?"until "+member.expiresOn:"for lifetime"}</p>:<p>No membership identity has been issued yet.</p>}
+ {member&&history&&<details><summary>Membership renewals and branch history</summary>
+  <h3>Recorded membership terms</h3>
+  {!history.terms.length?<p>No historical terms have been recorded.</p>:<div className="cg04-roster-scroll" role="region" tabIndex={0} aria-label="Your recorded membership terms"><table><thead><tr><th>Plan</th><th>Validity</th><th>Accepted fee</th><th>Application</th></tr></thead><tbody>
+   {history.terms.map(t=><tr key={t.applicationNumber}><td>{t.plan} · {t.category}</td><td>{t.startsOn} to {t.expiresOn??"Lifetime"}</td><td>{priceText(t.feeMinor)}</td><td>{t.applicationNumber}</td></tr>)}
+  </tbody></table></div>}
+  {history.termsHasMore&&<p className="cg04-muted">More older terms exist. Contact the Foundation for your full historical statement.</p>}
+  <h3>Recorded Foundation branch affiliations</h3>
+  {!history.branches.length?<p>No branch history was recorded.</p>:<div className="cg04-roster-scroll" role="region" tabIndex={0} aria-label="Your recorded branch history"><table><thead><tr><th>Branch</th><th>Effective</th><th>Reason</th></tr></thead><tbody>
+   {history.branches.map((h,i)=><tr key={h.effectiveFrom+":"+i}><td>{h.branch??"Foundation"}</td><td>{new Date(h.effectiveFrom).toLocaleDateString("en-IN",{timeZone:"Asia/Kolkata"})} to {h.effectiveTo?new Date(h.effectiveTo).toLocaleDateString("en-IN",{timeZone:"Asia/Kolkata"}):"Current"}</td><td>{h.reason}</td></tr>)}
+  </tbody></table></div>}
+  {history.branchesHasMore&&<p className="cg04-muted">Older branch affiliations are available from the Foundation.</p>}
+ </details>}
+ </section>
  <section className="cg04-panel"><h2>Applications and renewal</h2><div className="cg04-buttons">
  {apps.map(a=><button type="button" key={a.ref} aria-pressed={chosen?.ref===a.ref} onClick={()=>setChosen(a)}>{a.applicationNumber} · {a.status}</button>)}
  <button type="button" disabled={busy||apps.some(a=>["DRAFT","RETURNED","SUBMITTED"].includes(a.status))} onClick={()=>setChosen(null)}>New application / renewal</button>
