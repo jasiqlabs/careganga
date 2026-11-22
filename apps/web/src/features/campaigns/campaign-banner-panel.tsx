@@ -21,6 +21,7 @@ export function CampaignBannerPanel({campaignRef,version,canUpload,currentFileRe
 }){
  const display=kind==="COVER"?"Cover Image":"Hero Banner";
  const limit=(kind==="COVER"?2:5)*MB;
+ const acceptedTypes=kind==="COVER"?["image/jpeg","image/png"]:allowed;
  const [files,setFiles]=useState<MediaFile[]|null>(null),[chosen,setChosen]=useState<File|null>(null),
   [consent,setConsent]=useState(false),[busy,setBusy]=useState(false),
   [error,setError]=useState(""),[message,setMessage]=useState(""),
@@ -47,7 +48,7 @@ export function CampaignBannerPanel({campaignRef,version,canUpload,currentFileRe
  const upload=async()=>{if(!chosen||!consent||!canUpload||running.current)return;
   running.current=true;setBusy(true);setError("");setMessage("");
   try{
-   if(!allowed.includes(chosen.type)||chosen.size<1||chosen.size>limit)
+   if(!acceptedTypes.includes(chosen.type)||chosen.size<1||chosen.size>limit)
     throw Error("Choose JPG, PNG or WebP up to "+(kind==="COVER"?2:5)+" MB.");
    const bytes=await chosen.arrayBuffer();
    const hash=Array.from(new Uint8Array(await crypto.subtle.digest("SHA-256",bytes)),
@@ -75,7 +76,7 @@ export function CampaignBannerPanel({campaignRef,version,canUpload,currentFileRe
  const selected=files?.find(f=>f.fileRef===currentFileRef);
  return <section aria-label={"Optional campaign "+display} style={{padding:14,border:"1px dashed var(--cg-border)",borderRadius:12,display:"grid",gap:9}}>
   <h3 style={{margin:0}}>{display} (optional)</h3>
-  <p style={{margin:0,fontSize:12}}>JPG, PNG or WebP · maximum {kind==="COVER"?2:5} MB. Uploaded privately and scanned by CG19. Only independently approved campaign content can become public.</p>
+  <p style={{margin:0,fontSize:12}}>{kind==="COVER"?"JPG or PNG":"JPG, PNG or WebP"} · maximum {kind==="COVER"?2:5} MB. Uploaded privately and scanned by CG19. Only independently approved campaign content can become public.</p>
   {currentFileRef&&selected?<div><p role="status">Verified original banner selected. Save your latest draft to attach it.</p>
     <img src={base+"files/"+selected.fileRef} alt={"Private campaign "+display+" preview"} style={{maxWidth:"100%",maxHeight:220,objectFit:"contain",borderRadius:9}}/>
     {canUpload&&<button type="button" disabled={busy} onClick={()=>onVerified("")}>Remove banner</button>}
@@ -83,7 +84,7 @@ export function CampaignBannerPanel({campaignRef,version,canUpload,currentFileRe
     :<p>No banner attached. Text-only campaigns are valid.</p>}
   {files===null&&<p role="status">Checking currently verified files…</p>}
   {canUpload&&<>
-   <label><input type="file" accept={allowed.join(",")} disabled={busy}
+   <label><input type="file" accept={acceptedTypes.join(",")} disabled={busy}
     onChange={e=>{setChosen(e.target.files?.[0]??null);setConsent(false);command.current=null;setIntent("");setError("");}}/>
     {chosen&&<span> Selected: {chosen.name} (not yet verified)</span>}
    </label>
