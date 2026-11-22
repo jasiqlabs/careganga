@@ -17,7 +17,7 @@ const current=`
  AND EXISTS(SELECT 1 FROM cg03_case_decision d JOIN account a ON a.id=d.actor_id AND a.realm_id=d.realm_id AND a.status='ACTIVE' JOIN account_role ar ON ar.account_id=a.id AND ar.realm_id=a.realm_id AND ar.revoked_at IS NULL JOIN role r ON r.id=ar.role_id AND r.realm_id=a.realm_id AND r.active AND r.is_protected WHERE d.case_id=c.id AND d.realm_id=c.realm_id AND d.action='APPROVE' AND d.actor_id<>c.proposer_id AND d.fresh_password_verified_at IS NOT NULL)
 `;
 /** Correlated filter for public article/navigation queries. No caller value is interpolated. */
-export const EVENT_CURRENT_SQL=" AND NOT EXISTS(SELECT 1 FROM cms_section_revision ns WHERE ns.foundation_root_id=pub.foundation_root_id AND ns.page_revision_id=pub.page_revision_id AND ns.section_kind='ARTICLE_BODY' AND ns.structured_fields ? 'sourceEventRef' AND NOT EXISTS(SELECT 1 "+current.replace("s.root_realm_id=$1","s.root_realm_id=ns.foundation_root_id")+" AND s.id::text=ns.structured_fields->>'sourceEventRef' AND s.title=ns.structured_fields->>'heading' AND s.safe_summary=ns.structured_fields->>'body' AND s.category=ns.structured_fields->>'category' AND left(s.safe_summary,400)=ns.structured_fields->>'excerpt')) ";
+export const EVENT_CURRENT_SQL=" AND NOT EXISTS(SELECT 1 FROM cms_section_revision ns WHERE ns.foundation_root_id=pub.foundation_root_id AND ns.page_revision_id=pub.page_revision_id AND ns.section_kind='ARTICLE_BODY' AND ns.structured_fields ? 'sourceEventRef' AND NOT EXISTS(SELECT 1 "+current.replace("s.root_realm_id=$1","s.root_realm_id=ns.foundation_root_id")+" AND s.id::text=ns.structured_fields->>'sourceEventRef' AND s.title=ns.structured_fields->>'heading' AND s.safe_summary=ns.structured_fields->>'body' AND s.category=ns.structured_fields->>'category' AND btrim(left(s.safe_summary,400))=ns.structured_fields->>'excerpt')) ";
 type Source={sourceRef:string;slug:string;title:string;category:string;summary:string;area:string;launch:string|null;status:string;scheduledStart:string;scheduledEnd:string;coverSrc:string|null};
 export async function eligibleEventSources(db:Pool|PoolClient,root:string,refs?:string[]){
  const query=await db.query<Source>('SELECT s.id AS "sourceRef",\'event-\'||lower(p.activity_code) AS slug,s.title,s.category,s.safe_summary AS summary,s.general_area AS area,s.planned_launch::text AS launch,s.event_status AS status,s.scheduled_start AS "scheduledStart",s.scheduled_end AS "scheduledEnd",CASE WHEN s.cover_file_ref IS NOT NULL THEN \'/api/public/content/media/\'||s.cover_file_ref::text END AS "coverSrc"'+current+(refs?' AND s.id=ANY($2::uuid[])':'')+' ORDER BY s.submitted_at DESC,s.id DESC LIMIT 100',refs?[root,refs]:[root]);
@@ -29,18 +29,18 @@ export async function validateEventArticle(db:PoolClient,root:string,fields:Reco
  if(fields.sourceEventRef===undefined)return;
  const sources=await eligibleEventSources(db,root,[eventSourceRef(fields.sourceEventRef)]);
  const s=sources[0];
- if(!s||fields.heading!==s.title||fields.body!==s.summary||fields.category!==s.category||fields.excerpt!==s.summary.slice(0,400)||fields.sourceNoticeRef!==undefined)throw new BadRequestException({code:"CMS_PROJECT_SOURCE_UNAVAILABLE",field:"sourceEventRef"});
+ if(!s||fields.heading!==s.title||fields.body!==s.summary||fields.category!==s.category||fields.excerpt!==s.summary.slice(0,400).trim()||fields.sourceNoticeRef!==undefined)throw new BadRequestException({code:"CMS_PROJECT_SOURCE_UNAVAILABLE",field:"sourceEventRef"});
 }
 export async function eventArticleRevisionEligible(db:Pool|PoolClient,root:string,revision:string){
  const q=await db.query<{structured_fields:Record<string,unknown>}>("SELECT structured_fields FROM cms_section_revision WHERE foundation_root_id=$1 AND page_revision_id=$2 AND section_kind='ARTICLE_BODY' AND structured_fields ? 'sourceEventRef'",[root,revision]);
- for(const row of q.rows){const f=row.structured_fields;const s=(await eligibleEventSources(db,root,[eventSourceRef(f.sourceEventRef)]))[0];if(!s||f.heading!==s.title||f.body!==s.summary||f.category!==s.category||f.excerpt!==s.summary.slice(0,400))return false;}
+ for(const row of q.rows){const f=row.structured_fields;const s=(await eligibleEventSources(db,root,[eventSourceRef(f.sourceEventRef)]))[0];if(!s||f.heading!==s.title||f.body!==s.summary||f.category!==s.category||f.excerpt!==s.summary.slice(0,400).trim())return false;}
  return true;
 }
 export async function publicEventArticle(db:Pool|PoolClient,root:string,fields:Record<string,unknown>){
  const s=(await eligibleEventSources(db,root,[eventSourceRef(fields.sourceEventRef)]))[0];
- if(!s||fields.heading!==s.title||fields.body!==s.summary||fields.category!==s.category||fields.excerpt!==s.summary.slice(0,400))return null;
+ if(!s||fields.heading!==s.title||fields.body!==s.summary||fields.category!==s.category||fields.excerpt!==s.summary.slice(0,400).trim())return null;
  const {sourceRef,...safe}=s;
- return {heading:s.title,body:s.summary,category:s.category,excerpt:s.summary.slice(0,400),asOfDate:fields.asOfDate,authorLabel:fields.authorLabel,source:fields.source,tags:fields.tags,event:safe};
+ return {heading:s.title,body:s.summary,category:s.category,excerpt:s.summary.slice(0,400).trim(),asOfDate:fields.asOfDate,authorLabel:fields.authorLabel,source:fields.source,tags:fields.tags,event:safe};
 }
 /** Anonymous bytes lookup: the exact consented file must still be referenced by
  * an effective, original CMS placement. Never publish on eligibility alone. */
@@ -58,7 +58,7 @@ export async function publishedEventCover(db:Pool|PoolClient,fileRef:string){
  JOIN cms_section_revision sec ON sec.page_revision_id=pub.page_revision_id AND sec.foundation_root_id=pub.foundation_root_id
  WHERE page.foundation_root_id=pe.root_realm_id AND page.kind='ARTICLE' AND page.archived_at IS NULL AND pub.state='EFFECTIVE'
  AND pub.effective_at<=now() AND (pub.expires_at IS NULL OR pub.expires_at>now())
- AND sec.section_kind='ARTICLE_BODY' AND sec.structured_fields->>'sourceEventRef'=pe.id::text AND sec.structured_fields->>'heading'=pe.title AND sec.structured_fields->>'body'=pe.safe_summary AND sec.structured_fields->>'category'=pe.category AND sec.structured_fields->>'excerpt'=left(pe.safe_summary,400))
+ AND sec.section_kind='ARTICLE_BODY' AND sec.structured_fields->>'sourceEventRef'=pe.id::text AND sec.structured_fields->>'heading'=pe.title AND sec.structured_fields->>'body'=pe.safe_summary AND sec.structured_fields->>'category'=pe.category AND sec.structured_fields->>'excerpt'=btrim(left(pe.safe_summary,400)))
  LIMIT 1`,[fileRef]);
  return q.rows[0]??null;
 }
