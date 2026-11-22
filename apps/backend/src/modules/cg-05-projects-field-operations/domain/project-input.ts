@@ -14,13 +14,13 @@ export const statuses=["DRAFT","PLANNED","ACTIVE","ON_HOLD","COMPLETED","CANCELL
 export type ProjectStatus=typeof statuses[number];
 export const priorities=["LOW","NORMAL","HIGH","URGENT"] as const;
 const baseKeys=["requestKey","code","title","category","summary","description","priority","ownerRef","stateRef","districtRef","location","fundingSource","plannedStart","plannedEnd","plannedBudget"];
-function values(x:Record<string,unknown>){
- const code=clean(x.code,1,40).toUpperCase();if(!/^[A-Z0-9][A-Z0-9._-]{0,39}$/.test(code))throw invalid();
+function values(x:Record<string,unknown>,allowAutoCode=false){
+ const code=allowAutoCode&&(x.code===undefined||x.code===null||x.code==="")?null:clean(x.code,1,40).toUpperCase();if(code!==null&&!/^[A-Z0-9][A-Z0-9._-]{0,39}$/.test(code))throw invalid();
  const state=optionalRef(x.stateRef),district=optionalRef(x.districtRef),start=date(x.plannedStart),end=date(x.plannedEnd);
  if(district&&!state||start&&end&&start>end)throw invalid();
  return {key:ref(x.requestKey),code,title:clean(x.title,2,160),category:clean(x.category,1,80),summary:clean(x.summary??"",0,500),description:clean(x.description??"",0,4000),priority:choice(x.priority,priorities),owner:ref(x.ownerRef),state,district,location:clean(x.location??"",0,250),funding:clean(x.fundingSource??"",0,160),start,end,budget:budget(x.plannedBudget)};
 }
-export function parseCreate(raw:unknown){const x=fields(raw,[...baseKeys,"branchRef","status"]);return {...values(x),branch:optionalRef(x.branchRef),status:choice(x.status,["DRAFT","PLANNED","ACTIVE"] as const)};}
+export function parseCreate(raw:unknown){const x=fields(raw,[...baseKeys,"branchRef","status"]);return {...values(x,true),branch:optionalRef(x.branchRef),status:choice(x.status,["DRAFT","PLANNED","ACTIVE"] as const)};}
 export function parseEdit(raw:unknown){const x=fields(raw,[...baseKeys,"expectedVersion"]);return {...values(x),expected:version(x.expectedVersion)};}
 export function parseStatus(raw:unknown){const x=fields(raw,["requestKey","expectedVersion","status","reason"]);return {key:ref(x.requestKey),expected:version(x.expectedVersion),status:choice(x.status,statuses),reason:clean(x.reason,3,500)};}
 export function parseBranch(raw:unknown){const x=fields(raw,["requestKey","expectedVersion","branchRef","ownerRef","reason"]);return {key:ref(x.requestKey),expected:version(x.expectedVersion),branch:optionalRef(x.branchRef),owner:ref(x.ownerRef),reason:clean(x.reason,3,500)};}
