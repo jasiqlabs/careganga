@@ -1,6 +1,9 @@
 /** Server-controlled allow-list: authorized overrides can change safe wording only,
  * never rules, status, field binding, redaction, or authentication behavior. */
 export const SAFE_MESSAGE_CATALOG:Readonly<Record<string,string>>=Object.freeze({
+      CG12_PROOF_REQUIRED:"Attach a scanner-verified movement document before confirmation.",
+      CG12_REVIEW_REQUIRED:"The original independent adjustment review must be approved before stock changes.",
+      CG12_REVIEW_UNCONFIGURED:"Configure the original protected review process first.",
       CG12_RECEIPT_INVALID:"Choose an active supplier, permitted warehouse and valid receipt lines.",
       CG12_SOURCE_CHANGED:"The original stock source changed. Refresh it before continuing.",
       CG12_RECEIPT_PROOF:"A verified receipt document is required or the selected proof is no longer valid.",
