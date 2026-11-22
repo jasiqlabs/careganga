@@ -55,6 +55,7 @@ export class FieldVisitReviewService{
     await tx.query("INSERT INTO cg03_process_step(process_id,ordinal,capability_key,protected_root_required) VALUES($1,1,'approvals.review',true)",[process]);
     await tx.query("INSERT INTO cg03_visit_review_process_current(realm_id,process_id) VALUES($1,$2)",[a.realmId,process]);
    }
+   if(!(await tx.query("SELECT 1 FROM cg03_process_step WHERE process_id=$1 AND ordinal=1 AND capability_key='approvals.review' AND protected_root_required AND NOT EXISTS(SELECT 1 FROM cg03_process_step later WHERE later.process_id=$1 AND later.ordinal<>1) FOR SHARE",[process])).rowCount)throw stale();
    const next=await this.visits.reviewTransition(tx,a,target,expected,"PENDING_APPROVAL",key,snap.digest,"",false);
    const s=(await tx.query<{id:string}>("INSERT INTO field_visit_review_snapshot(root_realm_id,visit_id,visit_version,source_digest,report_snapshot,submitted_by,request_key) VALUES($1,$2,$3,$4,$5::jsonb,$6,$7) RETURNING id",[a.realmId,target,next.version,snap.digest,JSON.stringify(snap.report),a.accountId,key])).rows[0];
    for(const f of snap.proof)await tx.query("INSERT INTO field_visit_review_file(root_realm_id,snapshot_id,visit_id,file_ref,source_version,file_version,sha256) VALUES($1,$2,$3,$4,$5,$6,$7)",[a.realmId,s.id,target,f.fileRef,f.sourceVersion,f.fileVersion,f.sha256]);
@@ -89,7 +90,7 @@ export class FieldVisitReviewService{
    const prior=(await tx.query<{actor_id:string;request_digest:string}>("SELECT actor_id,request_digest FROM cg03_case_decision WHERE realm_id=$1 AND case_id=$2 AND request_key=$3",[a.realmId,target,key])).rows[0];
    if(prior){if(prior.actor_id!==a.accountId||prior.request_digest!==h)throw stale();return {status:c.status,replayed:true};}
    if(c.revision!==expected||v.version!==c.visit_review_version||v.status!=="PENDING_APPROVAL"||!["SUBMITTED","IN_REVIEW"].includes(c.status))throw stale();
-   if(!(await tx.query("SELECT 1 FROM cg03_process_step WHERE process_id=$1 AND ordinal=$2 AND capability_key='approvals.review' AND protected_root_required FOR SHARE",[c.process_id,c.current_step])).rowCount)throw stale();
+   if(!(await tx.query("SELECT 1 FROM cg03_process_step WHERE process_id=$1 AND ordinal=$2 AND capability_key='approvals.review' AND protected_root_required AND NOT EXISTS(SELECT 1 FROM cg03_process_step later WHERE later.process_id=$1 AND later.ordinal<>$2) FOR SHARE",[c.process_id,c.current_step])).rowCount)throw stale();
    const s=(await tx.query<Snap>("SELECT * FROM field_visit_review_snapshot WHERE root_realm_id=$1 AND id=$2 AND visit_id=$3 AND visit_version=$4 AND source_digest=$5 FOR SHARE",[a.realmId,c.visit_review_ref,v.id,v.version,c.visit_review_digest])).rows[0];if(!s)throw stale();
    if(action==="APPROVE"){
     const snap=await this.snapshot(tx,a,v.id,v.version-1);
