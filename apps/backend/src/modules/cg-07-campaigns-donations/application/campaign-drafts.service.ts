@@ -333,6 +333,76 @@ export class CampaignDraftsService{
     [root,campaignId,revision,digest,requestKey,"REVIEW_"+decision,status,row.version+1,actorId]);
   return {status,version:row.version+1};
  }
+ /** Original A12 operational lifecycle. CG03 is the independent approval
+  * authority and CG18 owns public placement; this only freezes/withdraws the
+  * original CG07 campaign state and its immutable event, once per request. */
+ async lifecycle(token:string,ref:string,raw:unknown){
+  if(!raw||typeof raw!=="object"||Array.isArray(raw))throw invalid("Choose a campaign action.");
+  const value=raw as Record<string,unknown>;
+  if(Object.keys(value).some(k=>!["requestKey","expectedVersion","action"].includes(k)))
+   throw invalid("Refresh the campaign before changing its status.");
+  const requestKey=campaignRef(value.requestKey);
+  const campaignId=campaignRef(ref),expected=value.expectedVersion;
+  if(!Number.isSafeInteger(expected)||Number(expected)<1||Number(expected)>2147483645)
+   throw invalid("Refresh the original campaign before changing its status.");
+  const action=value.action;
+  if(!["PAUSE","RESUME","CLOSE","WITHDRAW"].includes(String(action)))
+   throw invalid("Choose an allowed campaign action.");
+  return this.run(token,"campaigns.manage",async(tx,a)=>{
+   await this.identity.assertCurrent(tx,a,"campaigns.view");
+   await tx.query("SELECT pg_advisory_xact_lock(hashtextextended($1,0))",
+    ["CG07:CAMPAIGN:LIFECYCLE:"+a.realmId+":"+a.accountId+":"+requestKey]);
+   const previous=(await tx.query<{campaign_id:string;operation:string;
+    prior_status:string;resulting_status:string;resulting_version:number}>(`SELECT campaign_id,operation,prior_status,resulting_status,resulting_version
+     FROM campaign_status_event WHERE root_realm_id=$1 AND actor_ref=$2 AND request_key=$3
+     FOR SHARE`,[a.realmId,a.accountId,requestKey])).rows[0];
+   const target=action==="PAUSE"?"PAUSED":action==="RESUME"?"APPROVED":
+    action==="CLOSE"?"CLOSED":"WITHDRAWN";
+   if(previous){
+    const equivalent=String(action)==="WITHDRAW"&&previous.operation==="CANCEL_DRAFT";
+    if(previous.campaign_id!==campaignId||
+      previous.operation!==(equivalent?"CANCEL_DRAFT":action)||
+      previous.resulting_version!==Number(expected)+1||
+      previous.resulting_status!==target)
+     throw invalid("This campaign change request was already used. Refresh the campaign.");
+    await this.current(tx,a,campaignId);
+    return {ref:campaignId,version:previous.resulting_version,status:target,replayed:true};
+   }
+   const current=await this.current(tx,a,campaignId,true);
+   if(current.version!==Number(expected))throw invalid("Campaign changed. Refresh before updating its status.");
+   const allowed=current.source_status==="APPROVED"?["PAUSE","CLOSE","WITHDRAW"]:
+    current.source_status==="PAUSED"?["RESUME","CLOSE","WITHDRAW"]:
+    ["DRAFT","RETURNED"].includes(current.source_status)?["WITHDRAW"]:[];
+   if(!allowed.includes(String(action)))throw invalid("This campaign status change is not permitted.");
+   const original=(await tx.query<{immutable_digest:string;project_source_ref:string|null;event_source_ref:string|null;
+      volunteer_source_ref:string|null;end_at:string|null}>(`SELECT r.immutable_digest,c.project_source_ref,c.event_source_ref,
+      c.volunteer_source_ref,c.end_at::text FROM campaign c JOIN campaign_revision r
+      ON r.root_realm_id=c.root_realm_id AND r.campaign_id=c.id
+      AND r.revision_no=c.current_revision WHERE c.root_realm_id=$1 AND c.id=$2 FOR SHARE OF r`,
+      [a.realmId,campaignId])).rows[0];
+   if(!original)throw invalid("Current original campaign revision is missing.");
+   if(action==="RESUME"){
+    const today=(await tx.query<{today:string}>(`SELECT (now() AT TIME ZONE 'Asia/Kolkata')::date::text AS today`)).rows[0].today;
+    if(!original.end_at||original.end_at<today)
+     throw invalid("This campaign period has expired. It cannot resume without a new approval.");
+    await this.projectEvents.requireCurrent(tx,a,current.branch_ref,original.project_source_ref,original.event_source_ref);
+    if(original.volunteer_source_ref)
+     await requireCurrentVolunteer(tx,a.realmId,original.volunteer_source_ref,current.branch_ref);
+   }
+   const done=(await tx.query(`UPDATE campaign SET source_status=$3,version=version+1,updated_at=now()
+     WHERE root_realm_id=$1 AND id=$2 AND version=$4 AND source_status=$5
+     RETURNING version`,[a.realmId,campaignId,target,current.version,current.source_status])).rows[0];
+   if(!done)throw invalid("Campaign changed. Refresh its original status.");
+   const operation=action==="WITHDRAW"&&["DRAFT","RETURNED"].includes(current.source_status)?
+    "CANCEL_DRAFT":action;
+   await tx.query(`INSERT INTO campaign_status_event(root_realm_id,campaign_id,source_revision,digest,
+     request_key,operation,prior_status,resulting_status,resulting_version,actor_ref)
+     VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)`,
+    [a.realmId,campaignId,current.current_revision,original.immutable_digest,requestKey,
+     operation,current.source_status,target,current.version+1,a.accountId]);
+   return {ref:campaignId,version:current.version+1,status:target,replayed:false};
+  });
+ }
  async detail(token:string,ref:string){
   return this.run(token,"campaigns.view",async(tx,a)=>{
    const c=await this.current(tx,a,ref);
