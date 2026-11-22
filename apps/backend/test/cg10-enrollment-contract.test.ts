@@ -120,3 +120,25 @@ describe("CG-10 employee draft validation",()=>{
   assert.equal(x.accountRef,null);
  });
 });
+
+describe("CG-10 B20 scoped dashboard",()=>{
+ test("department and joining counts use the same scoped staff source without exposing employee IDs",async()=>{
+  const observed:{sql:string;params?:unknown[]}[]=[];
+  const tx={query:async(sql:string,params?:unknown[])=>{
+   observed.push({sql,params});
+   return {rows:sql.includes("WITH scoped AS")?[{status:"ACTIVE",quantity:"2",new_joiners:"1",on_leave:"0",pending_leave:"0",departments:[{label:"Operations",count:2}],joiners:[{month:"2026-11",count:1}]}]:[]};
+  },release:()=>{}};
+  const service=Object.create(HrEnrollmentService.prototype) as HrEnrollmentService;
+  Object.assign(service,{sessions:{requireAction:async()=>({realmId:id,accountId:id})},identity:{assertCurrent:async()=>{}},db:{connect:async()=>tx}});
+  const result=await service.employeeSummary("test");
+  const query=observed.find(x=>x.sql.includes("WITH scoped AS"))!;
+  assert.deepEqual(query.params,[id,id,true]);
+  assert.match(query.sql,/WHERE e\.root_realm_id=\$1 AND \(b\.manager_account_ref=\$2/);
+  assert.match(query.sql,/dep\.root_realm_id=e\.root_realm_id/);
+  assert.match(query.sql,/FROM scoped WHERE current_assignment AND status IN\('ACTIVE','PROBATION'\)/);
+  assert.match(query.sql,/rank<=10/);
+  assert.deepEqual(result.departments,[{label:"Operations",count:2}]);
+  assert.deepEqual(result.joiners,[{month:"2026-11",count:1}]);
+  assert.equal(result.total,2);
+ });
+});
