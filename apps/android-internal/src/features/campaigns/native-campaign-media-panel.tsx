@@ -29,10 +29,10 @@ export function NativeCampaignMediaPanel({campaignRef,version,token,onExpired,ca
   [error,setError]=useState(""),[notice,setNotice]=useState(""),[epoch,setEpoch]=useState(0),
   [intent,setIntent]=useState(""),[preview,setPreview]=useState("");
  const running=useRef(false),command=useRef<Command|null>(null),
-  attachedRef=useRef(attached),cachedPicked=useRef<string|null>(null);
+  attachedRef=useRef(attached),cachedPicked=useRef<string|null>(null),mounted=useRef(true);
  attachedRef.current=attached;
  const clearPicked=()=>{if(cachedPicked.current){try{new File(cachedPicked.current).delete();}catch{}cachedPicked.current=null;}};
- useEffect(()=>()=>clearPicked(),[]);
+ useEffect(()=>{mounted.current=true;return()=>{mounted.current=false;clearPicked();};},[]);
  const api=async<T,>(route:string,body?:Record<string,unknown>)=>{
   const r=await identityRequest(endpoint+route,{cache:"no-store",
    headers:{Authorization:"Bearer "+token,...(body?{"Content-Type":"application/json"}:{})},
@@ -84,6 +84,7 @@ export function NativeCampaignMediaPanel({campaignRef,version,token,onExpired,ca
  };
  const accepted=(v:Upload)=>{
   if(!v.cleanVerified||!v.fileRef||!v.fileVersion)throw Error("Original CG19 scanner has not verified this file.");
+  if(!mounted.current)return; // Avoid stale callback after switching campaigns.
   const prior=attachedRef.current;
   if(kind!=="DOCUMENT")onChange([v.fileRef]);
   else if(!prior.includes(v.fileRef)){if(prior.length>=6)throw Error("Maximum six documents.");onChange([...prior,v.fileRef]);}
