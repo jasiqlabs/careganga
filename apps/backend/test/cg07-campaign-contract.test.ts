@@ -282,6 +282,9 @@ test("US001-QA01/05/07/10/12/16/17/20: CG18 effective original publication is se
   "cg04_current_volunteer","project_activity","cg19_stored_file","publicCampaignSources"])
   assert.ok(source.includes(phrase),"Missing independently current campaign public source "+phrase);
  assert.match(source,/publication.state='EFFECTIVE'/);
+ assert.match(source,/cms_decision.id=publication.cg03_final_decision_ref/);
+ assert.match(source,/cg18review.cms_content_digest=publication.source_content_digest/);
+ assert.match(source,/countPublishedCampaignSources\(db:Pool\|PoolClient,root:string/);
  assert.match(source,/publication.expires_at IS NULL OR publication.expires_at>now\(\)/);
  assert.match(source,/c.source_status='APPROVED'/);
  assert.match(source,/c.end_at IS NULL OR c.end_at>=/);
