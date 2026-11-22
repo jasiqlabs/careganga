@@ -296,3 +296,23 @@ test("US003-QA01/11: donor history contains only individually proven, unexpired 
  assert.match(native,/download\(historyTokens\[item\.proofIndex\]\)/);
  assert.match(bff,/\["status","history","payment-link"\]/);
 });
+
+test("US003-QA02: private receipt/reversal access remains permission, branch, token and rate bound",()=>{
+ const receipt=root("apps/backend/src/modules/cg-19-documents-notifications/http/donation-receipt-document.controller.ts");
+ const document=root("apps/backend/src/modules/cg-19-documents-notifications/application/donation-receipt-document.service.ts");
+ const intents=source("application/donation-intents.service.ts");
+ const admin=source("application/donation-admin.service.ts");
+ const refund=source("application/donation-refund.service.ts");
+ const module=source("campaigns-donations.module.ts");
+ assert.match(receipt,/assertDonationPublicIngress\(req,"donor"\)/);
+ assert.match(receipt,/throttlePrivateDocumentRead\(req\)/);
+ assert.match(intents,/async throttlePrivateDocumentRead/);
+ assert.match(intents,/await this\.limit\(req,"status"\)/);
+ assert.match(document,/status_token_expires_at>now\(\)/);
+ assert.match(document,/readVerifiedPrivateObject/);
+ assert.match(document,/content_sha256/);
+ assert.match(admin,/documents\.files\.view/);
+ assert.match(admin,/financeReportScope/);
+ assert.match(refund,/requireFinanceActiveBranch|requireFinanceRootScope/);
+ assert.match(module,/exports:\[CampaignDraftsService,DonationReceiptSourceFacade,DonationIntentsService\]/);
+});
