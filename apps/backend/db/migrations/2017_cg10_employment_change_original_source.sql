@@ -138,6 +138,26 @@ BEGIN
  RETURN NULL;
 END; $fn$;
 
+-- CG01 owns the actual role/session effect receipt.
+CREATE TABLE cg01_hr_employment_effect(
+ realm_id uuid NOT NULL,change_ref uuid NOT NULL,source_digest char(64) NOT NULL,source_revision integer NOT NULL,
+ case_ref uuid NOT NULL,decision_ref uuid NOT NULL,target_account_ref uuid NOT NULL,approved_role_ref uuid,
+ approved_role_revision integer,prior_access_version bigint NOT NULL,resulting_access_version bigint NOT NULL,
+ reviewer_ref uuid NOT NULL,effect_kind text NOT NULL CHECK(effect_kind IN('EXIT','REASSIGN')),applied_at timestamptz NOT NULL DEFAULT now(),
+ PRIMARY KEY(realm_id,change_ref),UNIQUE(realm_id,case_ref),UNIQUE(realm_id,decision_ref),
+ CHECK(resulting_access_version=prior_access_version+1),
+ CHECK((effect_kind='EXIT' AND approved_role_ref IS NULL AND approved_role_revision IS NULL)
+  OR (effect_kind='REASSIGN' AND approved_role_ref IS NOT NULL AND approved_role_revision IS NOT NULL)),
+ FOREIGN KEY(realm_id,change_ref,source_digest,source_revision) REFERENCES hr_employment_change(root_realm_id,id,source_digest,revision) ON DELETE RESTRICT,
+ FOREIGN KEY(case_ref,realm_id) REFERENCES cg03_case(id,realm_id) ON DELETE RESTRICT,
+ FOREIGN KEY(decision_ref,case_ref,realm_id) REFERENCES cg03_case_decision(id,case_id,realm_id) ON DELETE RESTRICT,
+ FOREIGN KEY(target_account_ref,realm_id) REFERENCES account(id,realm_id) ON DELETE RESTRICT,
+ FOREIGN KEY(approved_role_ref,realm_id) REFERENCES role(id,realm_id) ON DELETE RESTRICT,
+ FOREIGN KEY(reviewer_ref,realm_id) REFERENCES account(id,realm_id) ON DELETE RESTRICT
+);
+CREATE TRIGGER cg01_hr_employment_effect_immutable BEFORE UPDATE OR DELETE ON cg01_hr_employment_effect
+ FOR EACH ROW EXECUTE FUNCTION cg03_immutable();
+
 CREATE FUNCTION cg10_employment_change_guard() RETURNS trigger LANGUAGE plpgsql AS $fn$
 BEGIN
  IF TG_OP='DELETE' THEN RAISE EXCEPTION 'Employment change history cannot be deleted'; END IF;
@@ -179,7 +199,14 @@ BEGIN
      OR (NEW.status='REJECTED' AND d.action='REJECT' AND c.status='REJECTED'))
  ) THEN RETURN NEW; END IF;
  IF OLD.status='APPROVED_PENDING_EFFECT' AND NEW.status='APPLIED' AND NEW.decision_ref=OLD.decision_ref
-  AND NEW.decided_at=OLD.decided_at AND NEW.effective_date<=CURRENT_DATE AND EXISTS(
+  AND NEW.decided_at=OLD.decided_at AND NEW.effective_date<=CURRENT_DATE
+  AND (NEW.target_account_ref IS NULL OR EXISTS(SELECT 1 FROM cg01_hr_employment_effect eff
+   WHERE eff.realm_id=NEW.root_realm_id AND eff.change_ref=NEW.id AND eff.source_digest=NEW.source_digest
+    AND eff.source_revision=NEW.revision AND eff.case_ref=NEW.case_ref AND eff.decision_ref=NEW.decision_ref
+    AND eff.target_account_ref=NEW.target_account_ref AND eff.prior_access_version=NEW.expected_access_version
+    AND eff.approved_role_ref IS NOT DISTINCT FROM NEW.proposed_role_ref
+    AND eff.approved_role_revision IS NOT DISTINCT FROM NEW.expected_role_revision))
+  AND EXISTS(
    SELECT 1 FROM hr_employment_assignment prior JOIN hr_employee e ON e.id=NEW.employee_id AND e.root_realm_id=NEW.root_realm_id
     WHERE prior.id=NEW.prior_assignment_id AND prior.root_realm_id=NEW.root_realm_id AND prior.employee_id=e.id
     AND prior.valid_to=NEW.effective_date AND prior.assignment_version=NEW.prior_assignment_version+1
