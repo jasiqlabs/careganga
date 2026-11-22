@@ -107,3 +107,27 @@ test("US003-QA17/19/20 volunteer-card source distinguishes outages and suppresse
  assert.match(internal,/at===seq\.current&&AppState\.currentState==="active"/);
  assert.match(publicNative,/at===seq\.current&&AppState\.currentState==="active"/);
 });
+
+test("US003-QA14/19 staff Android protected shares are source-guarded after asynchronous resume",()=>{
+ const native=readFileSync(join(process.cwd(),"../android-internal/src/features/volunteers/native-volunteer-staff.tsx"),"utf8");
+ const first=native.indexOf("const fileAction=");
+ const last=native.indexOf("const switchTo=",first);
+ assert.ok(first>=0&&last>first,"original protected volunteer staff file action must be mounted");
+ const files=native.slice(first,last);
+ assert.match(files,/const current=\(\)=>active\.current&&seq\.current===at/);
+ for(const mime of ["text/csv","application/pdf"]){
+  if(mime==="text/csv"){
+   const share=files.indexOf('Sharing.shareAsync(dest.uri,{mimeType:"text/csv"');
+   const check=files.lastIndexOf("if(!current())return;",share);
+   const availability=files.lastIndexOf("Sharing.isAvailableAsync()",share);
+   assert.ok(share>0&&check>availability&&availability>0,"CSV export must recheck foreground immediately before native sharing");
+  }else{
+   const share=files.indexOf("Sharing.shareAsync(dest.uri,{mimeType:mime");
+   const check=files.lastIndexOf("if(!current())return;",share);
+   const availability=files.lastIndexOf("Sharing.isAvailableAsync()",share);
+   assert.ok(share>0&&check>availability&&availability>0,"private proof must recheck foreground immediately before native sharing");
+  }
+ }
+ assert.match(native,/if\(!active\.current\|\|seq\.current!==at\)return;/);
+ assert.match(native,/try\{await work\(\);\}catch\(e\)\{\s*if\(at===seq\.current&&active\.current\)/);
+});
