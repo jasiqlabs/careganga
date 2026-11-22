@@ -69,24 +69,15 @@ export class ProjectActivitiesService{
   const canManage=scoped&&!closed(x.status)&&await this.has(tx,a,"projects.activities.manage");
   const currentScope=branch===x.branch_ref&&(!p||!closed(p.status));
   const canProgress=!closed(x.status)&&currentScope&&(canManage||owner&&await this.has(tx,a,"projects.activities.progress"));
-  return {x,p,branch,canManage,canProgress,scopeChanged:branch!==x.branch_ref};
+  const canAttachEvidence=x.status!=="CANCELLED"&&branch===x.branch_ref&&(scoped&&await this.has(tx,a,"projects.activities.manage")||owner&&await this.has(tx,a,"projects.activities.progress"));
+  return {x,p,branch,canManage,canProgress,canAttachEvidence,scopeChanged:branch!==x.branch_ref};
  }
  /** CG19 reads/writes are authorized against the original current activity, not caller-supplied branch or file identity. */
  async guardEvidence(tx:PoolClient,a:Actor,key:string,expected:number|null,write:boolean){
   await this.identity.assertCurrent(tx,a,"projects.activities.view");
-  const {x,p,branch,scopeChanged}=await this.get(tx,a,key,write);
+  const {x,scopeChanged,canAttachEvidence}=await this.get(tx,a,key,write);
   if(scopeChanged||expected!==null&&x.version!==expected)throw stale();
-  if(write){
-   if(x.status==="CANCELLED")throw stale();
-   const scope=await this.branches.projectBranchScope(tx,a);
-   const scoped=branch?scope.branches.some(b=>b.value===branch):scope.all;
-   const manager=scoped&&await this.has(tx,a,"projects.activities.manage");
-   let owner=false;
-   if(x.owner_account_ref===a.accountId&&await this.has(tx,a,"projects.activities.progress")){
-    await this.validOwner(tx,a,a.accountId,branch,p);owner=true;
-   }
-   if(!manager&&!owner)throw new ForbiddenException("Current activity evidence permission required");
-  }
+  if(write&&!canAttachEvidence)throw new ForbiddenException("Current activity evidence permission required");
   return {id:x.id,version:x.version};
  }
  private async replay(tx:PoolClient,a:Actor,key:string,digest:string,action:string,target?:string){
@@ -138,10 +129,10 @@ export class ProjectActivitiesService{
  }
  async detail(token:string,key:string){
   return this.projects.run(token,"projects.activities.view",async(tx,a)=>{
-   const {x,canManage,canProgress}=await this.get(tx,a,key);
+   const {x,canManage,canProgress,canAttachEvidence}=await this.get(tx,a,key);
    const row=(await tx.query("SELECT "+select+joins+" WHERE x.root_realm_id=$1 AND x.id=$2",[a.realmId,x.id])).rows[0];
    const history=(await tx.query("SELECT e.action,e.prior_status AS \"priorStatus\",e.resulting_status AS status,e.reason,e.occurred_at AS at,actor.display_name AS actor,owner.display_name AS owner FROM project_activity_event e JOIN account actor ON actor.realm_id=e.root_realm_id AND actor.id=e.actor_ref JOIN account owner ON owner.realm_id=e.root_realm_id AND owner.id=e.owner_account_ref WHERE e.root_realm_id=$1 AND e.activity_id=$2 ORDER BY e.result_version DESC LIMIT 50",[a.realmId,x.id])).rows;
-   return {...row,history,canManage,canProgress};
+   return {...row,history,canManage,canProgress,canAttachEvidence};
   },true);
  }
 
