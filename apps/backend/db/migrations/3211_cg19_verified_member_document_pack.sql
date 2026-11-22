@@ -26,9 +26,9 @@ CREATE TABLE cg19_member_brand_config (
  display_name text NOT NULL CHECK(length(trim(display_name)) BETWEEN 3 AND 120),
  signatory_name text NOT NULL CHECK(length(trim(signatory_name)) BETWEEN 2 AND 120),
  signature_asset_id uuid NOT NULL,seal_asset_id uuid NOT NULL,logo_asset_id uuid NOT NULL,
- approved_by uuid NOT NULL,approved_at timestamptz NOT NULL DEFAULT now(),
+ approved_by uuid NOT NULL,request_key uuid NOT NULL,request_digest char(64) NOT NULL CHECK(request_digest ~ '^[a-f0-9]{64}$'),approved_at timestamptz NOT NULL DEFAULT now(),
  status text NOT NULL CHECK(status IN('APPROVED','WITHDRAWN')),
- PRIMARY KEY(root_realm_id,version),
+ PRIMARY KEY(root_realm_id,version),UNIQUE(root_realm_id,approved_by,request_key),
  FOREIGN KEY(signature_asset_id,root_realm_id) REFERENCES cg19_member_brand_asset(id,root_realm_id),
  FOREIGN KEY(seal_asset_id,root_realm_id) REFERENCES cg19_member_brand_asset(id,root_realm_id),
  FOREIGN KEY(logo_asset_id,root_realm_id) REFERENCES cg19_member_brand_asset(id,root_realm_id),
@@ -46,7 +46,8 @@ CREATE TABLE cg19_member_pack (
  source_snapshot jsonb NOT NULL CHECK(jsonb_typeof(source_snapshot)='object'),
  source_digest char(64) NOT NULL CHECK(source_digest ~ '^[a-f0-9]{64}$'),
  qr_token_digest char(64) NOT NULL CHECK(qr_token_digest ~ '^[a-f0-9]{64}$'),
- state text NOT NULL DEFAULT 'PENDING' CHECK(state IN('PENDING','UNKNOWN','ISSUED','REVOKED')),
+ state text NOT NULL DEFAULT 'PENDING' CHECK(state IN('PENDING','VERIFYING','UNKNOWN','ISSUED','REVOKED')),
+ claim_token uuid,claim_expires_at timestamptz,attempt_count integer NOT NULL DEFAULT 0 CHECK(attempt_count BETWEEN 0 AND 5),
  created_at timestamptz NOT NULL DEFAULT now(),issued_at timestamptz,revoked_at timestamptz,
  PRIMARY KEY(root_realm_id,id),UNIQUE(root_realm_id,issued_by,issue_key),
  UNIQUE(root_realm_id,member_id,term_id,issue_revision),UNIQUE(qr_token_digest),
@@ -58,7 +59,7 @@ CREATE TABLE cg19_member_pack (
  CHECK(state<>'REVOKED' OR revoked_at IS NOT NULL)
 );
 CREATE UNIQUE INDEX ux_cg19_member_pack_current ON cg19_member_pack(root_realm_id,member_id,term_id)
- WHERE state IN('PENDING','UNKNOWN','ISSUED');
+ WHERE state IN('PENDING','VERIFYING','UNKNOWN','ISSUED');
 CREATE INDEX ix_cg19_member_pack_member ON cg19_member_pack(root_realm_id,member_id,created_at DESC);
 
 CREATE TABLE cg19_member_pack_document (
@@ -105,9 +106,9 @@ CREATE TRIGGER cg19_member_brand_asset_guard BEFORE UPDATE ON cg19_member_brand_
 CREATE FUNCTION cg19_member_brand_config_guard() RETURNS trigger LANGUAGE plpgsql AS $$
 BEGIN
  IF TG_OP='UPDATE' AND
-  (NEW.root_realm_id,NEW.version,NEW.display_name,NEW.signatory_name,NEW.signature_asset_id,NEW.seal_asset_id,NEW.logo_asset_id,NEW.approved_by,NEW.approved_at)
+  (NEW.root_realm_id,NEW.version,NEW.display_name,NEW.signatory_name,NEW.signature_asset_id,NEW.seal_asset_id,NEW.logo_asset_id,NEW.approved_by,NEW.request_key,NEW.request_digest,NEW.approved_at)
    IS DISTINCT FROM
-  (OLD.root_realm_id,OLD.version,OLD.display_name,OLD.signatory_name,OLD.signature_asset_id,OLD.seal_asset_id,OLD.logo_asset_id,OLD.approved_by,OLD.approved_at)
+  (OLD.root_realm_id,OLD.version,OLD.display_name,OLD.signatory_name,OLD.signature_asset_id,OLD.seal_asset_id,OLD.logo_asset_id,OLD.approved_by,OLD.request_key,OLD.request_digest,OLD.approved_at)
  THEN RAISE EXCEPTION 'Approved brand snapshot cannot change'; END IF;
  IF TG_OP='INSERT' AND NOT EXISTS(
   SELECT 1 FROM cg19_member_brand_asset a
