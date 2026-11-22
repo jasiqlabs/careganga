@@ -46,7 +46,7 @@ BEGIN
   IF rec.kind='OWNER' THEN
    extra:='owner_kind=''CG07_CAMPAIGN''';
   ELSIF rec.kind='CLASS' THEN
-   extra:='owner_kind=''CG07_CAMPAIGN'' AND ((classification=''CAMPAIGN_BANNER'' AND mime IN(''image/jpeg'',''image/png'',''image/webp'')) OR (classification=''CAMPAIGN_DOCUMENT'' AND mime IN(''image/jpeg'',''image/png'',''image/webp'',''application/pdf'')))';
+   extra:='owner_kind=''CG07_CAMPAIGN'' AND ((classification IN(''CAMPAIGN_COVER'',''CAMPAIGN_BANNER'') AND mime IN(''image/jpeg'',''image/png'',''image/webp'')) OR (classification=''CAMPAIGN_DOCUMENT'' AND mime IN(''image/jpeg'',''image/png'',''image/webp'',''application/pdf'')))';
   ELSE
    extra:='owner_kind=''CG07_CAMPAIGN'' AND campaign_id IS NOT NULL
      AND num_nonnulls(case_id,registration_id,registration_draft_version,
@@ -70,9 +70,10 @@ BEGIN
  IF NEW.campaign_id IS DISTINCT FROM OLD.campaign_id THEN
   RAISE EXCEPTION 'Original campaign file ownership cannot change';
  END IF;
- IF TG_TABLE_NAME='cg19_upload_intent' AND
-  NEW.campaign_media_rights_confirmed IS DISTINCT FROM OLD.campaign_media_rights_confirmed THEN
-  RAISE EXCEPTION 'Original campaign file consent cannot be changed';
+ IF TG_TABLE_NAME='cg19_upload_intent' THEN
+  IF NEW.campaign_media_rights_confirmed IS DISTINCT FROM OLD.campaign_media_rights_confirmed THEN
+   RAISE EXCEPTION 'Original campaign file consent cannot be changed';
+  END IF;
  END IF;
  RETURN NEW;
 END $cg07$;
@@ -103,17 +104,30 @@ CREATE TRIGGER cg19_campaign_event_immutable BEFORE UPDATE OR DELETE ON cg19_cam
 -- The scan and consent must still be current when the campaign is submitted
 -- or approved, even if proof was revoked after the author saved their draft.
 CREATE FUNCTION cg07_campaign_media_proof_guard() RETURNS trigger LANGUAGE plpgsql AS $cg07$
-DECLARE banner text; supporting jsonb; document_ref text; proof_count integer;
+DECLARE cover text; banner text; supporting jsonb; document_ref text; proof_count integer;
 BEGIN
  IF NEW.source_status NOT IN('SUBMITTED','APPROVED') THEN RETURN NULL; END IF;
- SELECT step5_media_refs->>'fileRef',
+ SELECT step5_media_refs->>'coverRef',step5_media_refs->>'fileRef',
     COALESCE(step5_media_refs->'supportingFileRefs','[]'::jsonb)
- INTO banner,supporting FROM campaign_revision
+ INTO cover,banner,supporting FROM campaign_revision
  WHERE root_realm_id=NEW.root_realm_id
   AND campaign_id=NEW.id AND revision_no=NEW.current_revision;
  IF supporting IS NULL OR jsonb_typeof(supporting)<>'array'
   OR jsonb_array_length(supporting)>6
  THEN RAISE EXCEPTION 'Campaign supporting document proof shape is invalid'; END IF;
+ IF cover IS NOT NULL AND cover<>'' THEN
+  SELECT count(*) INTO proof_count FROM cg19_stored_file f
+  JOIN cg19_upload_intent i ON i.id=f.upload_intent_id AND i.realm_id=f.realm_id
+  WHERE f.realm_id=NEW.root_realm_id AND f.campaign_id=NEW.id
+    AND f.id=cover::uuid AND f.proposal_revision<=NEW.current_revision
+    AND f.owner_kind='CG07_CAMPAIGN'
+    AND f.original_mime IN('image/jpeg','image/png','image/webp')
+    AND f.scan_status='CLEAN_VERIFIED' AND f.revoked_at IS NULL
+    AND i.owner_kind='CG07_CAMPAIGN' AND i.campaign_media_rights_confirmed
+    AND i.status='VALIDATED' AND i.classification='CAMPAIGN_COVER'
+    AND i.campaign_id=NEW.id;
+  IF proof_count<>1 THEN RAISE EXCEPTION 'Original campaign cover proof is no longer verified'; END IF;
+ END IF;
  IF banner IS NOT NULL AND banner<>'' THEN
   SELECT count(*) INTO proof_count FROM cg19_stored_file f
   JOIN cg19_upload_intent i ON i.id=f.upload_intent_id AND i.realm_id=f.realm_id
