@@ -69,9 +69,52 @@ export class MembershipApprovalService{
   if(current){const app=(await tx.query<{version:number;status:string;submitted_digest:string}>("SELECT version,status,submitted_digest FROM membership_application WHERE root_realm_id=$1 AND id=$2 FOR SHARE",[a.realmId,c.membership_application_id])).rows[0];if(!app||app.status!=="SUBMITTED"||app.version!==s.application_version||app.submitted_digest!==s.source_digest||files.some(f=>f.revoked||f.currentVersion!==f.fileVersion||f.actualHash!==f.sha256||f.scan!=="CLEAN_VERIFIED"))throw changed();}
   return {source:s.source_snapshot.record as Record<string,unknown>,files:files.map(f=>({classification:f.classification,fileRef:f.fileRef,fileVersion:f.fileVersion,verified:!f.revoked&&f.currentVersion===f.fileVersion&&f.actualHash===f.sha256&&f.scan==="CLEAN_VERIFIED"}))};
  }
- async inbox(token:string,q:unknown){const a=await this.reviewer(token),x=object(q,["status","offset"]),status=pick(x.status??"ALL",["ALL","SUBMITTED","PENDING_OWNER","RETURNED","REJECTED","OWNER_COMPLETED"] as const,"status"),offset=x.offset===undefined?0:int(Number(x.offset),0,10000,"page");
-  return this.run(a,async tx=>{await this.authority(tx,a);
-   const rows=(await tx.query("SELECT id AS \"caseRef\",case_number AS reference,account_name_snapshot AS name,status,revision,submitted_at AS \"submittedAt\",proposer_id<>$2 AND status='SUBMITTED' AS \"canDecide\" FROM cg03_case WHERE realm_id=$1 AND case_kind='MEMBER_APPLICATION' AND ($3='ALL' OR status=$3) ORDER BY submitted_at DESC,id DESC LIMIT 26 OFFSET $4",[a.realmId,a.accountId,status,offset])).rows;return {items:rows.slice(0,25),hasMore:rows.length>25,offset};
+ async inbox(token:string,q:unknown){
+  const a=await this.reviewer(token),x=object(q,["status","offset","q","category","payment","submittedFrom","submittedTo"]);
+  const status=pick(x.status??"ALL",["ALL","SUBMITTED","PENDING_OWNER","RETURNED","REJECTED","OWNER_COMPLETED"] as const,"status");
+  const category=pick(x.category??"ALL",["ALL","ANNUAL","LIFETIME","HONORARY","STUDENT","OTHER"] as const,"membership category");
+  const payment=pick(x.payment??"ALL",["ALL","NOT_DUE","PENDING","AWAITING_BANK_VERIFICATION","VERIFIED","REFUND_PENDING","REFUND_AWAITING_BANK_VERIFICATION","REFUNDED"] as const,"payment status");
+  const term=plain(x.q??"",0,100,"application search").toLowerCase(),offset=x.offset===undefined?0:int(Number(x.offset),0,10000,"page");
+  const submittedDate=(v:unknown,label:string)=>{
+   if(v===undefined||v===null||v==="")return null;
+   if(typeof v!=="string"||!/^[0-9]{4}-[0-9]{2}-[0-9]{2}$/.test(v))throw new BadRequestException("Choose a valid "+label+" date.");
+   const day=new Date(v+"T00:00:00.000Z");
+   if(!Number.isFinite(day.getTime())||day.toISOString().slice(0,10)!==v)throw new BadRequestException("Choose a valid "+label+" date.");
+   return v;
+  };
+  const from=submittedDate(x.submittedFrom,"start"),to=submittedDate(x.submittedTo,"end");
+  if(from&&to&&from>to)throw new BadRequestException("The start date must be on or before the end date.");
+  return this.run(a,async tx=>{
+   await this.authority(tx,a);
+   const sql=[
+    'SELECT c.id AS "caseRef",c.case_number AS reference,c.account_name_snapshot AS name,c.status,c.revision,c.submitted_at AS "submittedAt",',
+    'c.proposer_id<>$2 AND c.status=\'SUBMITTED\' AS "canDecide",v.name AS plan,v.category,pay.status AS "paymentStatus"',
+    'FROM cg03_case c',
+    'JOIN membership_application app ON app.root_realm_id=c.realm_id AND app.id=c.membership_application_id',
+    'JOIN membership_tier_version v ON v.root_realm_id=app.root_realm_id AND v.id=app.tier_version_id',
+    'LEFT JOIN membership_application_effect eff ON eff.root_realm_id=app.root_realm_id AND eff.application_id=app.id',
+    'LEFT JOIN member m ON m.root_realm_id=eff.root_realm_id AND m.id=eff.member_id',
+    'CROSS JOIN LATERAL (SELECT CASE',
+    "WHEN app.accepted_fee_minor=0 THEN 'NOT_DUE'",
+    "WHEN EXISTS(SELECT 1 FROM finance_membership_verified_refund f WHERE f.root_realm_id=app.root_realm_id AND f.application_id=app.id) THEN 'REFUNDED'",
+    "WHEN EXISTS(SELECT 1 FROM finance_membership_refund_posting f WHERE f.root_realm_id=app.root_realm_id AND f.application_id=app.id) THEN 'REFUND_AWAITING_BANK_VERIFICATION'",
+    "WHEN EXISTS(SELECT 1 FROM finance_membership_refund_request f WHERE f.root_realm_id=app.root_realm_id AND f.application_id=app.id) THEN 'REFUND_PENDING'",
+    "WHEN EXISTS(SELECT 1 FROM finance_membership_verified_collection f WHERE f.root_realm_id=app.root_realm_id AND f.application_id=app.id) THEN 'VERIFIED'",
+    "WHEN EXISTS(SELECT 1 FROM finance_membership_collection f WHERE f.root_realm_id=app.root_realm_id AND f.application_id=app.id) THEN 'AWAITING_BANK_VERIFICATION'",
+    "ELSE 'PENDING' END AS status) pay",
+    "WHERE c.realm_id=$1 AND c.case_kind='MEMBER_APPLICATION'",
+    "AND ($3='ALL' OR c.status=$3)",
+    "AND ($4='' OR strpos(lower(c.case_number),$4)>0 OR strpos(lower(c.account_name_snapshot),$4)>0",
+    "OR strpos(lower(app.application_ref),$4)>0 OR strpos(lower(app.contact_mobile),$4)>0",
+    "OR strpos(lower(coalesce(app.contact_email,'')),$4)>0 OR strpos(lower(coalesce(m.member_no,'')),$4)>0)",
+    "AND ($5='ALL' OR v.category=$5)",
+    "AND ($6='ALL' OR pay.status=$6)",
+    "AND ($7::date IS NULL OR c.submitted_at>=($7::date::timestamp AT TIME ZONE 'Asia/Kolkata'))",
+    "AND ($8::date IS NULL OR c.submitted_at<(($8::date+1)::timestamp AT TIME ZONE 'Asia/Kolkata'))",
+    "ORDER BY c.submitted_at DESC,c.id DESC LIMIT 26 OFFSET $9"
+   ].join(" ");
+   const rows=(await tx.query(sql,[a.realmId,a.accountId,status,term,category,payment,from,to,offset])).rows;
+   return {items:rows.slice(0,25),hasMore:rows.length>25,offset};
   });
  }
  async detail(token:string,ref:string){const a=await this.reviewer(token),id=uuid(ref);return this.run(a,async tx=>{await this.authority(tx,a);const c=await this.case(tx,a,id);const frozen=await this.exact(tx,a,c,["SUBMITTED","PENDING_OWNER"].includes(c.status));const timeline=(await tx.query("SELECT e.action,e.occurred_at AS \"occurredAt\",a.display_name AS reviewer FROM cg03_case_event e JOIN account a ON a.id=e.actor_id AND a.realm_id=e.realm_id WHERE e.realm_id=$1 AND e.case_id=$2 ORDER BY e.occurred_at DESC,e.id DESC LIMIT 50",[a.realmId,c.id])).rows;
