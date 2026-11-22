@@ -45,10 +45,10 @@ export class HrEmploymentChangeService{
  async ownDetail(token:string,ref:string){
   const a=await this.sessions.verifySession(token);return this.run(tx=>this.source.ownDetail(tx,a,ref));
  }
- async list(token:string,offsetInput:unknown){
+ async list(token:string,offsetInput:unknown,status:unknown="ALL",family:unknown="ALL"){
   const a=await this.sessions.requireAction(token,"hr.changes.manage"),offset=Number(offsetInput??0);
-  if(!Number.isSafeInteger(offset)||offset<0||offset>10000)throw new BadRequestException({code:"CG10_CHANGE_INVALID"});
-  return this.run(tx=>this.source.staffHistory(tx,a,offset));
+  if(!Number.isSafeInteger(offset)||offset<0||offset>10000||typeof status!=="string"||!["ALL","DRAFT","SUBMITTED","APPROVED_PENDING_EFFECT","APPLIED","RETURNED","REJECTED","WITHDRAWN"].includes(status)||typeof family!=="string"||!["ALL","TRANSFER","EXIT"].includes(family))throw new BadRequestException({code:"CG10_CHANGE_INVALID"});
+  return this.run(tx=>this.source.staffHistory(tx,a,offset,status,family));
  }
  async detail(token:string,ref:string){
   const a=await this.sessions.requireAction(token,"hr.changes.manage");return this.run(tx=>this.source.staffDetail(tx,a,ref));
