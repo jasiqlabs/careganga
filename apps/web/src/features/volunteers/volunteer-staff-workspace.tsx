@@ -24,7 +24,7 @@ export function VolunteerStaffWorkspace({canReview,canRoster,canExport,canConfig
  const [status,setStatus]=useState("ALL"),[availability,setAvailability]=useState("ALL"),[q,setQ]=useState(""),[applied,setApplied]=useState(""),[offset,setOffset]=useState(0);
  const [busy,setBusy]=useState(false),[loading,setLoading]=useState(true),[error,setError]=useState(""),[notice,setNotice]=useState("");
  const [action,setAction]=useState<Decision>("APPROVE"),[remarks,setRemarks]=useState(""),[password,setPassword]=useState(""),[configPassword,setConfigPassword]=useState("");
- const pending=useRef<Pending|null>(null),seq=useRef(0);
+ const pending=useRef<Pending|null>(null),seq=useRef(0),detailSeq=useRef(0);
  const refresh=useCallback(async()=>{
   const id=++seq.current;setLoading(true);
   const params=new URLSearchParams({status,q:applied,offset:String(offset),availability});
@@ -45,15 +45,15 @@ export function VolunteerStaffWorkspace({canReview,canRoster,canExport,canConfig
  useEffect(()=>{void refresh();return()=>{seq.current++;};},[refresh]);
  useEffect(()=>{
   const visibility=()=>{
-   if(document.visibilityState!=="visible"){seq.current++;setDetail(null);setReviews(null);setRoster(null);setPassword("");setConfigPassword("");setRemarks("");setLoading(true);}
+   if(document.visibilityState!=="visible"){seq.current++;detailSeq.current++;setDetail(null);setReviews(null);setRoster(null);setPassword("");setConfigPassword("");setRemarks("");setLoading(true);}
    else void refresh();
   };
   document.addEventListener("visibilitychange",visibility);
   return()=>document.removeEventListener("visibilitychange",visibility);
  },[refresh]);
  const choose=async(ref:string)=>{
-  if(busy)return;setSelected(ref);setDetail(null);setError("");
-  try{const v=await api<CG04VolunteerReviewCase>(reviewBase+"/"+ref);if(document.visibilityState==="visible")setDetail(v);}
+  if(busy)return;const n=++detailSeq.current;setSelected(ref);setDetail(null);setError("");
+  try{const v=await api<CG04VolunteerReviewCase>(reviewBase+"/"+ref);if(document.visibilityState==="visible"&&n===detailSeq.current)setDetail(v);}
   catch(e){setError(e instanceof Error?e.message:"Volunteer review evidence unavailable.");}
  };
  const run=async(work:()=>Promise<void>)=>{
@@ -89,7 +89,7 @@ export function VolunteerStaffWorkspace({canReview,canRoster,canExport,canConfig
   finally{window.setTimeout(()=>URL.revokeObjectURL(url),1500);}
   setNotice(result.rows+" permitted approved volunteer records exported.");
  });
- const switchTab=(value:"REVIEW"|"ROSTER")=>{setTab(value);setOffset(0);setApplied("");setQ("");setStatus("ALL");setAvailability("ALL");setDetail(null);setSelected(null);setPassword("");pending.current=null;};
+ const switchTab=(value:"REVIEW"|"ROSTER")=>{detailSeq.current++;setTab(value);setOffset(0);setApplied("");setQ("");setStatus("ALL");setAvailability("ALL");setDetail(null);setSelected(null);setPassword("");pending.current=null;};
  return <section className="cg04-panel cg04-volunteer-staff" aria-label="Authorized volunteer administration">
   <header><h1>Volunteers</h1><p>Original Foundation volunteer applications, independent reviews and current approved volunteer directory.</p></header>
   <div className="cg04-buttons" role="tablist" aria-label="Volunteer administration">
