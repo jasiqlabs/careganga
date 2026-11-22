@@ -11,6 +11,7 @@ import {CmsPublicNoticeSource} from "../../cg-19-documents-notifications/applica
 import type {VerifiedFoundationActor} from "../../cg-01-identity-access/public-api";
 import {extendedKinds,parseDraftExtendedSection,parseExtendedSection,validateExtendedPage,healthcareEditorialClaimsSafe} from "./cms-extended-sections";
 import {eligibleProjectSources,projectTeaserRefs,validateProjectTeaser,projectTeaserRevisionEligible,publicProjectTeaser} from "../../cg-05-projects-field-operations/application/project-public-source";
+import {eligibleEventSources,validateEventArticle,eventArticleRevisionEligible,publicEventArticle,EVENT_CURRENT_SQL} from "../../cg-05-projects-field-operations/application/event-public-source";
 import {complianceEligible} from "./cms-compliance-eligibility";
 const UUID=/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i;
 const HASH=/^[a-f0-9]{64}$/;
@@ -342,6 +343,10 @@ export class CmsEditorialService{
   const v=result.rows[0];if(!v)throw new ConflictException({code:"CMS_SOURCE_CHANGED"});
   return v;
  }
+ async eventSources(bearer:string){
+  const a=await this.sessions.requireAction(bearer,"cms.content.manage");
+  return this.withTx(async tx=>{await this.identity.assertCurrent(tx,a,"cms.content.manage");return {sources:await eligibleEventSources(tx,a.realmId)};});
+ }
  async projectSources(bearer:string){
   const a=await this.sessions.requireAction(bearer,"cms.content.manage");
   return this.withTx(async tx=>{await this.identity.assertCurrent(tx,a,"cms.content.manage");return {sources:await eligibleProjectSources(tx,a.realmId)};});
@@ -415,8 +420,11 @@ export class CmsEditorialService{
   await tx.query("DELETE FROM cms_section_revision WHERE foundation_root_id=$1 "+
    "AND page_revision_id=$2",[actor.realmId,rev]);
   for(const sec of value.sections){
-   if(sec.kind==="ARTICLE_BODY")
+   if(sec.kind==="ARTICLE_BODY"){
     await this.notices.validateDraft(tx,actor.realmId,sec.fields);
+    await validateEventArticle(tx,actor.realmId,sec.fields);
+    if(sec.fields.sourceEventRef!==undefined&&(value.title!==sec.fields.heading||value.assets.length))throw new BadRequestException({code:"CMS_PROJECT_SOURCE_INVALID",field:"sourceEventRef"});
+   }
    if(sec.kind==="PROJECT_TEASER")await validateProjectTeaser(tx,actor.realmId,sec.fields);
    await tx.query("INSERT INTO cms_section_revision(foundation_root_id,page_revision_id,"+
     "section_kind,order_no,structured_fields) VALUES($1,$2,$3,$4,$5::jsonb)",
@@ -641,7 +649,7 @@ export class CmsEditorialService{
    }
    if(!(await complianceEligible(tx,actor.realmId,rev.id)))
     throw new ConflictException({code:"CMS_COMPLIANCE_EVIDENCE_EXPIRED"});
-   if(!(await projectTeaserRevisionEligible(tx,actor.realmId,rev.id)))throw new ConflictException({code:"CMS_PROJECT_SOURCE_UNAVAILABLE"});
+   if(!(await projectTeaserRevisionEligible(tx,actor.realmId,rev.id))||!(await eventArticleRevisionEligible(tx,actor.realmId,rev.id)))throw new ConflictException({code:"CMS_PROJECT_SOURCE_UNAVAILABLE"});
    if(!(await this.notices.revisionEligible(tx,actor.realmId,rev.id)))
     throw new ConflictException({code:"CMS_ORIGINAL_NOTICE_UNAVAILABLE"});
    for(const asset of assets.rows)
@@ -714,7 +722,7 @@ export class CmsEditorialService{
     throw new ConflictException({code:"CMS_REVIEW_UNAVAILABLE"});
    if(!(await complianceEligible(tx,actor.realmId,rev.id)))
     throw new ConflictException({code:"CMS_COMPLIANCE_EVIDENCE_EXPIRED"});
-   if(!(await projectTeaserRevisionEligible(tx,actor.realmId,rev.id)))throw new ConflictException({code:"CMS_PROJECT_SOURCE_UNAVAILABLE"});
+   if(!(await projectTeaserRevisionEligible(tx,actor.realmId,rev.id))||!(await eventArticleRevisionEligible(tx,actor.realmId,rev.id)))throw new ConflictException({code:"CMS_PROJECT_SOURCE_UNAVAILABLE"});
    if(!(await this.notices.revisionEligible(tx,actor.realmId,rev.id)))
     throw new ConflictException({code:"CMS_ORIGINAL_NOTICE_UNAVAILABLE"});
    const final=await this.approvals.approved(tx,actor,{
@@ -881,7 +889,7 @@ export class CmsEditorialService{
    "a.public_rights_status<>'VALIDATED' OR "+
    "f.scan_status<>'CLEAN_VERIFIED' OR f.public_rights_confirmed=false "+
    "OR f.revision<>a.cg19_validated_version)) "+
-   NOTICE_CURRENT_SQL+
+   NOTICE_CURRENT_SQL+EVENT_CURRENT_SQL+
    "ORDER BY p.slug LIMIT 21",[category,cursor]);
   return {schemaVersion:1,posts:rows.rows.slice(0,20).map(x=>({
    slug:x.slug,title:x.title,category:x.category,excerpt:x.excerpt,
@@ -984,7 +992,7 @@ export class CmsEditorialService{
    "AND cs.section_kind='COMPLIANCE_FACTS' "+
    "AND cs.structured_fields->>'verification'='VERIFIED' "+
    "AND cs.structured_fields->>'validUntil'<to_char(current_date,'YYYY-MM-DD')) "+
-   NOTICE_CURRENT_SQL+
+   NOTICE_CURRENT_SQL+EVENT_CURRENT_SQL+
    "ORDER BY p.slug LIMIT 100");
   const publishedRoutes=routes.rows.map(p=>({kind:p.kind,slug:p.slug,
    path:p.kind==="ARTICLE"?"/blog/"+p.slug:
@@ -1079,6 +1087,12 @@ export class CmsEditorialService{
  const visibleAssets=assets.rows.filter(asset=>placementFits(authoredSections,
   {role:asset.role,order:asset.sort_order})&&
   (asset.role!=="GALLERY"||authoredGallery[asset.sort_order]?.visible!==false));
+ const eventCards=new Map<number,Record<string,unknown>>();
+ for(const section of sections.rows)if(section.section_kind==="ARTICLE_BODY"&&section.structured_fields.sourceEventRef!==undefined){
+  const card=await publicEventArticle(this.db,x.foundation_root_id,section.structured_fields);
+  if(!card)throw new NotFoundException({code:"CMS_NOT_PUBLISHED"});
+  eventCards.set(section.order_no,card);
+ }
  const projectCards=new Map<number,Record<string,unknown>>();
  for(const section of sections.rows)if(section.section_kind==="PROJECT_TEASER")projectCards.set(section.order_no,await publicProjectTeaser(this.db,x.foundation_root_id,section.structured_fields));
  const hiddenHeroOrders=new Set(sections.rows.filter(sec=>
@@ -1091,8 +1105,8 @@ export class CmsEditorialService{
    sections:sections.rows.filter(v=>v.section_kind!=="HERO"||
      !hiddenHeroOrders.has(v.order_no)).map(v=>({kind:v.section_kind,order:v.order_no,
     fields:v.section_kind==="PROJECT_TEASER"?(projectCards.get(v.order_no)??{heading:"Projects",cards:[]}):v.section_kind==="ARTICLE_BODY"?
-      Object.fromEntries(Object.entries(v.structured_fields).filter(([k])=>
-       !["sourceNoticeRef","publicReleaseConfirmed"].includes(k))):
+      (eventCards.get(v.order_no)??Object.fromEntries(Object.entries(v.structured_fields).filter(([k])=>
+       !["sourceNoticeRef","sourceEventRef","publicReleaseConfirmed"].includes(k)))):
      v.section_kind==="TEAM"?{heading:v.structured_fields.heading,members:[]}:
      v.section_kind==="GALLERY_GRID"?{...v.structured_fields,
       items:Array.isArray(v.structured_fields.items)?
