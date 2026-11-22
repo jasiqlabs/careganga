@@ -53,7 +53,7 @@ export function NativeVolunteerCard({token,onExpired}:{token:string;onExpired:()
   {cards?.items.length?cards.items.map(v=><View key={v.cardRef} style={s.row}>
    <Text>{label(v.status)} · Issue {v.revision}</Text>
    {v.canDownload?<Pressable accessibilityRole="button" disabled={busy} onPress={()=>download(v.cardRef)} style={s.button}><Text>Open my issued PDF privately</Text></Pressable>:
-    <Text>Official card not currently issued.</Text>}
+    <Text>{v.status==="ISSUED"?"This previously issued card no longer verifies current eligibility. Contact the Foundation.":"Official card not currently issued."}</Text>}
   </View>):<Text>{cards?"No official volunteer card issued.":"Official card status not yet confirmed."}</Text>}
   <Pressable accessibilityRole="button" disabled={busy} onPress={()=>void refresh()} style={s.button}><Text>Refresh official card status</Text></Pressable>
  </View>;
