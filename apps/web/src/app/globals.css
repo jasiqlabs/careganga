@@ -15460,3 +15460,11 @@ button:disabled {
 .cg04-review-filters>.cg04-buttons button{min-height:44px}
 @media(max-width:1000px){.cg04-review-filters{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:600px){.cg04-review-filters{grid-template-columns:minmax(0,1fr)}}
+
+/* CG04 original U11 approval-summary cards, all metrics are source-backed. */
+.cg04-review-overview{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin:14px 0}
+.cg04-review-stat{min-width:0;padding:14px 16px;border:1px solid var(--cg-border);background:var(--cg-surface);border-radius:12px;display:grid;gap:5px}
+.cg04-review-stat small{color:var(--cg-muted);font-size:var(--cg-text-sm);font-weight:600}
+.cg04-review-stat strong{color:var(--cg-text);font-size:var(--cg-heading-md);font-weight:800;overflow-wrap:anywhere}
+@media(max-width:900px){.cg04-review-overview{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:480px){.cg04-review-overview{grid-template-columns:minmax(0,1fr)}}
