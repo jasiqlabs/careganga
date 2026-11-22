@@ -762,7 +762,7 @@ export function StaffAuthenticationScreen() {
   }
   if(membershipOpen&&token&&actor){
     const canMembers=roleActions.includes("membership.members.view");
-    const canReview=roleActions.includes("approvals.review")&&roleActions.includes("membership.applications.review");
+    const canReview=roleActions.includes("approvals.review")&&roleActions.includes("membership.applications.review")&&roleActions.includes("documents.files.view");
     if(!canMembers&&!canReview)return <AccessDeniedScreen reason="You cannot view membership records." onMyAccount={()=>setMembershipOpen(false)}/>;
     return renderInShell(<ScreenErrorBoundary onExit={()=>setMembershipOpen(false)}><Suspense fallback={<ActivityIndicator style={{marginTop:40}}/>}><NativeMembershipDesk key={token} token={token} canViewMembers={canMembers} canExportMembers={canMembers&&roleActions.includes("membership.members.export")} canReview={canReview} canConfigure={canReview&&roleActions.includes("approvals.process.manage")} onExpired={expireSession}/></Suspense></ScreenErrorBoundary>,"membership",()=>setMembershipOpen(false));
   }
