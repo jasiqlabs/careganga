@@ -48,6 +48,7 @@ export class FieldVisitReviewService{
    if(v.version!==expected||!["PENDING_PROOF","RETURNED"].includes(v.status))throw stale();
    await this.owner.requireDistinctFinalReviewer(tx,a.realmId,a.accountId);
    const snap=await this.snapshot(tx,a,target,expected);
+   if(snap.report.locationState==="UNVERIFIED_LOCATION"&&snap.proof.length===0)throw invalid();
    let process=(await tx.query<{process_id:string}>("SELECT process_id FROM cg03_visit_review_process_current WHERE realm_id=$1 FOR SHARE",[a.realmId])).rows[0]?.process_id;
    if(!process){
     process=(await tx.query<{id:string}>("INSERT INTO cg03_process(realm_id,version,first_reviewer_capability,configured_by,process_kind) SELECT $1,COALESCE(MAX(version),0)+1,NULL,$2,'FIELD_VISIT_REVIEW' FROM cg03_process WHERE realm_id=$1 RETURNING id",[a.realmId,a.accountId])).rows[0].id;
@@ -92,6 +93,7 @@ export class FieldVisitReviewService{
    if(action==="APPROVE"){
     const snap=await this.snapshot(tx,a,v.id,v.version-1);
     if(snap.digest!==s.source_digest)throw stale();
+    if(snap.report.locationState==="UNVERIFIED_LOCATION"&&snap.proof.length===0)throw stale();
     // Approval attests the report; device supplied coordinates are not independently verified GPS.
    }
    await this.sessions.requireFreshFoundationRootProof(tx,a,password);
