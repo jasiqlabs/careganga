@@ -11,6 +11,11 @@ const labels:Record<string,string>={DRAFT:"Draft",SUBMITTED:"Awaiting review",AP
 const kinds:Kind[]=["TRANSFER","PROMOTION","DEPUTATION","RESIGNATION","EXIT"];
 const exit=(k:Kind)=>k==="EXIT"||k==="RESIGNATION";
 const label=(v:string)=>labels[v]??v.toLowerCase().replaceAll("_"," ");
+const stages=["Initiated","Review","Approved","Completed"] as const;
+const reached=(v:string)=>({DRAFT:0,SUBMITTED:1,APPROVED_PENDING_EFFECT:2,APPLIED:3} as Record<string,number>)[v]??-1;
+const families=[{key:"ALL",title:"All requests"},{key:"TRANSFER",title:"Transfer / promotion"},{key:"EXIT",title:"Resignation / exit"}];
+const filters=[{key:"ALL",title:"All"},{key:"DRAFT",title:"Draft"},{key:"SUBMITTED",title:"Pending review"},{key:"APPROVED_PENDING_EFFECT",title:"Approved, pending effect"},{key:"APPLIED",title:"Completed"},{key:"RETURNED",title:"Returned"},{key:"REJECTED",title:"Rejected"},{key:"WITHDRAWN",title:"Withdrawn"}];
+const reviewStatus=(v:string)=>({APPROVED_PENDING_EFFECT:"PENDING_OWNER",APPLIED:"OWNER_COMPLETED",WITHDRAWN:"CANCELLED"} as Record<string,string>)[v]??v;
 const blank=(mode:Mode):Form=>({employeeReference:"",kind:mode==="own"?"RESIGNATION":"TRANSFER",effectiveDate:"",lastWorkingDate:"",branchRef:"",departmentRef:"",managerRef:"",designation:"",roleRef:"",salary:"",reason:""});
 const card={border:"1px solid var(--cg-border)",borderRadius:14,background:"#fff",padding:16,display:"grid",gap:12} as const;
 const field={width:"100%",border:"1px solid var(--cg-border)",borderRadius:8,padding:9,boxSizing:"border-box"} as const;
@@ -29,6 +34,7 @@ function PositionCard({name,value}:{name:string;value:Position}){
 export function HrEmploymentChanges({mode,canSelectRoles=false}:{mode:Mode;canSelectRoles?:boolean}){
  const route=mode==="own"?"me/changes":mode==="review"?"employment-change-reviews":"employment-changes";
  const [items,setItems]=useState<Item[]>([]),[linked,setLinked]=useState<boolean|null>(null),[offset,setOffset]=useState(0),[more,setMore]=useState(false);
+ const [family,setFamily]=useState("ALL"),[status,setStatus]=useState("ALL"),[loading,setLoading]=useState(true);
  const [selected,setSelected]=useState<Item|null>(null),[form,setForm]=useState<Form>(()=>blank(mode)),[editing,setEditing]=useState(false);
  const [people,setPeople]=useState<Employee[]>([]),[branches,setBranches]=useState<Option[]>([]),[departments,setDepartments]=useState<Option[]>([]),[managers,setManagers]=useState<Option[]>([]),[roles,setRoles]=useState<Option[]>([]);
  const [search,setSearch]=useState(""),[roleSearch,setRoleSearch]=useState(""),[password,setPassword]=useState(""),[note,setNote]=useState(""),[clearance,setClearance]=useState("HR");
@@ -36,12 +42,12 @@ export function HrEmploymentChanges({mode,canSelectRoles=false}:{mode:Mode;canSe
  const pending=useRef<{path:string;body:Record<string,unknown>;decision?:boolean}|null>(null),read=useRef(0),destRead=useRef(0),peopleRead=useRef(0),roleRead=useRef(0),inflight=useRef(false);
  const update=<K extends keyof Form,>(k:K,v:Form[K])=>setForm(old=>({...old,[k]:v}));
  const refresh=useCallback(async()=>{
-  const seq=++read.current;setItems([]);setError("");
-  try{const x=await api<{items:Item[];linked?:boolean;hasMore?:boolean}>(route+"?offset="+offset);
+  const seq=++read.current;setItems([]);setMore(false);setError("");setLoading(true);
+  try{const x=await api<{items:Item[];linked?:boolean;hasMore?:boolean}>(route+"?offset="+offset+(mode==="own"?"":"&family="+encodeURIComponent(family)+"&status="+encodeURIComponent(mode==="review"?reviewStatus(status):status)));
    if(!Array.isArray(x.items))throw Error("Employment history unavailable");
    if(seq===read.current){setItems(x.items);setLinked(x.linked??null);setMore(x.hasMore===true);}
-  }catch(e){if(seq===read.current)setError(message(e));}
- },[route,offset]);
+  }catch(e){if(seq===read.current)setError(message(e));}finally{if(seq===read.current)setLoading(false);}
+ },[route,offset,status,family,mode]);
  useEffect(()=>{void refresh();return()=>{read.current++;};},[refresh]);
  const loadPeople=useCallback(async(q:string)=>{const seq=++peopleRead.current;try{const v=await api<{items:Employee[]}>("employment-change-options/employees?search="+encodeURIComponent(q));if(seq===peopleRead.current)setPeople(v.items);}catch(e){if(seq===peopleRead.current)setError(message(e));}},[]);
  const loadRoles=useCallback(async(q:string)=>{const seq=++roleRead.current;if(!canSelectRoles)return;try{const v=await api<{options:Option[]}>("employment-change-options/roles?search="+encodeURIComponent(q));if(seq===roleRead.current)setRoles(v.options);}catch(e){if(seq===roleRead.current)setError(message(e));}},[canSelectRoles]);
@@ -59,7 +65,7 @@ export function HrEmploymentChanges({mode,canSelectRoles=false}:{mode:Mode;canSe
    const v=await api<Item>(route+"/"+encodeURIComponent(ref));if(v.reference!==item.reference)throw Error("Original request changed");setSelected(v);}
   catch(e){setError(message(e));}finally{inflight.current=false;setBusy(false);}
  };
- const start=()=>{if(locked||busy)return;setSelected(null);setForm(blank(mode));setEditing(true);setError("");setNotice("");};
+ const start=()=>{if(locked||busy||inflight.current)return;setSelected(null);setForm({...blank(mode),kind:mode==="own"||family==="EXIT"?"RESIGNATION":"TRANSFER"});setEditing(true);setError("");setNotice("");};
  const edit=()=>{if(!selected?.canEdit||locked)return;const x=selected;setForm({...blank(mode),...x.form,employeeReference:x.employeeReference??"",kind:x.kind,effectiveDate:x.effectiveDate,lastWorkingDate:x.lastWorkingDate??"",branchRef:x.form?.branchRef??"",departmentRef:x.form?.departmentRef??"",managerRef:x.form?.managerRef??"",designation:x.form?.designation??"",roleRef:x.form?.roleRef??"",salary:x.proposedSalaryMinor==null?"":String(x.proposedSalaryMinor/100),reason:x.reason??""});setEditing(true);};
  const run=async(path?:string,body?:Record<string,unknown>,decision=false)=>{
   if(inflight.current)return;let cmd=pending.current;if(!cmd){if(!path||!body)return;cmd={path,body,decision};pending.current=cmd;}
@@ -68,7 +74,7 @@ export function HrEmploymentChanges({mode,canSelectRoles=false}:{mode:Mode;canSe
   try{const v=await api<Record<string,unknown>>(cmd.path,{...cmd.body,...(cmd.decision?{currentPassword:password}:{})});
    if(!v.reference&&v.withdrawn!==true&&v.recorded!==true&&v.applied!==true&&v.confirmed!==true)throw Error("Outcome not confirmed");
    pending.current=null;setLocked(false);setPassword("");setNote("");setSelected(null);setEditing(false);setForm(blank(mode));await refresh();setNotice("Request updated. Current status is shown in the list.");
-  }catch(e){setError(message(e));setPassword("");if(known(e)){pending.current=null;setLocked(false);}else setLocked(true);}
+  }catch(e){setError(message(e));setPassword("");if(!locked&&known(e)){pending.current=null;setLocked(false);}else setLocked(true);}
   finally{inflight.current=false;setBusy(false);}
  };
  const save=()=>{
@@ -90,18 +96,23 @@ export function HrEmploymentChanges({mode,canSelectRoles=false}:{mode:Mode;canSe
    {mode!=="review"&&(mode!=="own"||linked===true)&&<button disabled={busy||locked} onClick={start}>{mode==="own"?"Request resignation":"New change"}</button>}</div>
   {mode==="own"&&linked===false&&<p>No current employment is linked to this account.</p>}
   {error&&<p role="alert" style={{color:"#991B1B"}}>{error}</p>}{notice&&<p role="status">{notice}</p>}
-  {!items.length&&<p>No employment changes in this view.</p>}
+  {mode!=="own"&&<div style={{display:"flex",flexWrap:"wrap",gap:8}}>{families.map(x=><button key={x.key} type="button" aria-pressed={family===x.key} disabled={busy||locked} onClick={()=>{setFamily(x.key);setOffset(0);setSelected(null);setEditing(false);}}>{x.title}</button>)}</div>}
+  {mode!=="own"&&<div style={{display:"flex",flexWrap:"wrap",gap:8}}>{filters.filter(x=>mode!=="review"||x.key!=="DRAFT").map(x=><button key={x.key} type="button" aria-pressed={status===x.key} disabled={busy||locked} onClick={()=>{setStatus(x.key);setOffset(0);setSelected(null);setEditing(false);}}>{x.title}</button>)}</div>}
+  {loading&&<p role="status">Loading employment requests…</p>}{!loading&&!error&&!items.length&&<p>No employment changes match this view.</p>}
+  <style>{`.cg-hr-change-grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,2fr);gap:12px;align-items:start}@media(max-width:1000px){.cg-hr-change-grid{grid-template-columns:1fr}}`}</style><div className="cg-hr-change-grid"><section style={{...card,minWidth:0}} aria-label="Request list">
   {items.map(x=><div key={x.reference} style={{borderTop:"1px solid var(--cg-border)",paddingTop:10,display:"flex",justifyContent:"space-between",alignItems:"center",gap:8,flexWrap:"wrap"}}><div><strong>{x.employeeName??label(x.kind)} · {x.reference}</strong><p style={{margin:"4px 0"}}>{label(x.kind)} · {x.effectiveDate} · {label(x.status)}</p></div><button disabled={busy||locked} onClick={()=>void open(x)}>View</button></div>)}
   {mode!=="own"&&<div style={{display:"flex",gap:8}}>{offset>0&&<button disabled={busy||locked} onClick={()=>setOffset(v=>Math.max(0,v-25))}>Previous</button>}{more&&<button disabled={busy||locked} onClick={()=>setOffset(v=>v+25)}>Next</button>}</div>}
-  {selected&&<div style={card}>
+  </section><section style={{...card,minWidth:0}} aria-label="Request detail">{!selected&&!editing&&<p>Select a request to see details or create a new one.</p>}
+  {selected&&!editing&&<div style={card}>
    <strong>{selected.reference} · {label(selected.status)}</strong>
    <p>{label(selected.kind)} · Effective {selected.effectiveDate}{selected.lastWorkingDate?" · Last working "+selected.lastWorkingDate:""}</p>
-   {selected.current&&<PositionCard name="Current position" value={selected.current}/>}
-   {selected.proposed&&<PositionCard name="Proposed position" value={selected.proposed}/>}
+   <div role="group" aria-label="Actual request progress" style={{display:"grid",gridTemplateColumns:"repeat(4,minmax(0,1fr))",gap:6}}>{stages.map((step,i)=><div key={step} aria-current={reached(selected.status)===i?"step":undefined} style={{padding:7,borderRadius:8,border:"1px solid var(--cg-border)",background:reached(selected.status)>=i?"var(--cg-accent)":"#F8FAFC",color:reached(selected.status)>=i?"#fff":"inherit",fontSize:12}}>{step}</div>)}</div>{reached(selected.status)<0&&<p role="status">{label(selected.status)} — no completion implied.</p>}
+   <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(min(100%,210px),1fr))",gap:8}}>{selected.current&&<PositionCard name="Current position" value={selected.current}/>}
+   {selected.proposed&&<PositionCard name="Proposed position" value={selected.proposed}/>}</div>
    {selected.reason&&<p>Reason: {selected.reason}</p>}
    {selected.proposedSalaryMinor!=null&&<p>Confidential proposed salary: ₹{(selected.proposedSalaryMinor/100).toLocaleString("en-IN")} (proposal only, not applied to payroll)</p>}
    {selected.effectIssue&&<p role="status">{selected.effectIssue}</p>}
-   {selected.clearance&&<div><h3>Exit clearance</h3>{selected.clearance.items.map(c=><p key={c.kind}>{label(c.kind)}: {label(c.status)}</p>)}<p>Finance: {label(selected.clearance.financeStatus)} · Salary and dues: {label(selected.clearance.salaryAndDuesStatus)}</p></div>}
+   {selected.clearance&&<div><h3>Exit clearance</h3><div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(min(100%,150px),1fr))",gap:8}}>{selected.clearance.items.map(c=><div key={c.kind} style={{border:"1px solid var(--cg-border)",padding:9,borderRadius:8}}><strong>{label(c.kind)}</strong><p style={{margin:"4px 0",color:c.status==="CONFIRMED"?"#166534":"inherit"}}>{label(c.status)}</p></div>)}</div><p>Finance: {label(selected.clearance.financeStatus)} · Salary and dues: {label(selected.clearance.salaryAndDuesStatus)}</p></div>}
    {!editing&&mode!=="review"&&<div style={{display:"flex",flexWrap:"wrap",gap:8}}>{selected.canEdit&&<><button disabled={busy||locked} onClick={edit}>Edit draft</button><button disabled={busy||locked} onClick={()=>action("submit")}>Submit for review</button></>}{selected.canWithdraw&&<button disabled={busy||locked} onClick={()=>action("withdraw")}>Withdraw pending request</button>}</div>}
    {mode==="manage"&&selected.canRecordClearance&&<fieldset disabled={busy||locked} style={{border:0,padding:0,display:"grid",gap:8}}>
     <Options name="Clearance" value={clearance} options={(selected.clearance?.items??[]).filter(c=>c.status!=="CONFIRMED").map(c=>({value:c.kind,label:label(c.kind)}))} onChange={setClearance}/>
@@ -125,6 +136,7 @@ export function HrEmploymentChanges({mode,canSelectRoles=false}:{mode:Mode;canSe
     <small>Salary proposals are not approved payroll changes.</small></>}
    <label>Reason<textarea style={field} rows={3} maxLength={1000} value={form.reason} onChange={e=>update("reason",e.target.value)}/></label><button onClick={save}>Save draft</button><button onClick={()=>setEditing(false)}>Close form</button>
   </fieldset>}
+  </section></div>
   {locked&&<div role="alert"><p>Outcome not confirmed. Retry the same request; do not create a duplicate.</p>{pending.current?.decision&&<label>Current password<input style={field} type="password" value={password} autoComplete="current-password" onChange={e=>setPassword(e.target.value)}/></label>}<button disabled={busy||(pending.current?.decision&&!password)} onClick={()=>void run()}>Retry original request</button></div>}
  </section>;
 }
