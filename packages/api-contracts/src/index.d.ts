@@ -266,3 +266,9 @@ export type CG04MembershipEvidenceClass="MEMBER_IDENTITY_PROOF"|"MEMBER_PORTRAIT
 export type CG04MembershipEvidenceFile={fileRef:string;classification:CG04MembershipEvidenceClass;mime:string;sizeBytes:number;fileVersion:number;applicationVersion:number;createdAt:string};
 export type CG04MembershipEvidenceList={files:CG04MembershipEvidenceFile[];pending:{uploadRef:string;classification:CG04MembershipEvidenceClass;status:string;expiresAt:string}[]};
 export type CG04MembershipEvidenceStatus={uploadRef:string;status:string;cleanVerified:boolean;fileRef?:string|null;fileVersion?:number|null;uploadUrl?:string;uploadHeaders?:Record<string,string>;expiresAt?:string};
+
+export type CG04MembershipPaymentStatus="NOT_DUE"|"PENDING"|"AWAITING_BANK_VERIFICATION"|"VERIFIED"|"REFUND_PENDING"|"REFUND_AWAITING_BANK_VERIFICATION"|"REFUNDED";
+export type CG04MembershipFee={feeMinor:string;currency:"INR";paymentStatus:CG04MembershipPaymentStatus;verifiedMinor:string;refundRequired:boolean};
+export type CG04Member={memberNumber:string;name:string;branch:string|null;plan:string;category:CG04TierCategory;feeMinor:string;currency:"INR";startsOn:string;expiresOn:string|null;status:"ACTIVE"|"EXPIRED"|"SUSPENDED"|"CANCELLED"};
+export type CG04MemberProfile={member:CG04Member|null};
+export type CG04MembershipActivationResult={member:CG04Member;replayed:boolean};
