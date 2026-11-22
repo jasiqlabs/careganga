@@ -8,7 +8,7 @@ async function proxy(req:NextRequest,ctx:Context,method:"GET"|"POST"|"PATCH"){
  const parts=(await ctx.params).parts??[];
  const valid=parts.length===0&&(method==="GET"||method==="POST")||
    parts.length===1&&(UUID.test(parts[0])||parts[0]==="options")&&method==="GET"||
-   parts.length===2&&UUID.test(parts[0])&&parts[1]==="draft"&&method==="PATCH";
+   parts.length===2&&UUID.test(parts[0])&&(parts[1]==="draft"&&method==="PATCH"||parts[1]==="submit"&&method==="POST"||parts[1]==="review-history"&&method==="GET");
  if(!valid)return reply({message:"Campaign action unavailable."},404);
  if(method!=="GET"&&req.headers.get("origin")!==req.nextUrl.origin)
   return reply({message:"This campaign request must originate from the Foundation staff panel."},403);
@@ -32,7 +32,7 @@ async function proxy(req:NextRequest,ctx:Context,method:"GET"|"POST"|"PATCH"){
   if(r.ok&&v!==null)return reply(v,r.status);
   const code=[400,401,403,404,409,429].includes(r.status)?r.status:503;
   return reply({message:code===401?"Sign in again.":code===403?"Your current role or branch cannot perform this campaign action.":
-   code===404?"Campaign unavailable in your Foundation scope.":code===409?"Campaign changed. Refresh its current draft before retrying.":
+   code===404?"Campaign unavailable in your Foundation scope.":code===409?"Campaign changed or its independent approval is not configured. Refresh or contact the Foundation administrator.":
    code===400?"Check the campaign title, amounts, dates and six-step information.":
    "Campaign result cannot be confirmed. Retry the original request."},code);
  }catch{return reply({message:"Campaign result is uncertain. Check the saved campaign before retrying."},503);}
