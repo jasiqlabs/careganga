@@ -83,7 +83,16 @@ CREATE TABLE cg19_member_pack_event (
  FOREIGN KEY(root_realm_id,pack_id) REFERENCES cg19_member_pack(root_realm_id,id),
  FOREIGN KEY(actor_ref,root_realm_id) REFERENCES account(id,realm_id)
 );
-CREATE FUNCTION cg19_member_immutable_event() RETURNS trigger LANGUAGE plpgsql AS $$
+CREATE TABLE cg19_member_brand_event (
+ root_realm_id uuid NOT NULL,id uuid NOT NULL DEFAULT gen_random_uuid(),actor_ref uuid NOT NULL,
+ asset_id uuid,brand_version integer,action text NOT NULL CHECK(action IN('UPLOAD_INITIATED','UPLOAD_VERIFIED','UPLOAD_REJECTED','BRAND_APPROVED','BRAND_WITHDRAWN')),
+ occurred_at timestamptz NOT NULL DEFAULT now(),
+ PRIMARY KEY(root_realm_id,id),FOREIGN KEY(actor_ref,root_realm_id) REFERENCES account(id,realm_id),
+ FOREIGN KEY(root_realm_id,asset_id) REFERENCES cg19_member_brand_asset(root_realm_id,id),
+ FOREIGN KEY(root_realm_id,brand_version) REFERENCES cg19_member_brand_config(root_realm_id,version),
+ CHECK(num_nonnulls(asset_id,brand_version)=1)
+);
+CREATE FUNCTION cg19_member_immutable_event() RETURNS trigger LANGUAGE plpgsql AS $
 BEGIN RAISE EXCEPTION 'Issued member document history is immutable'; END; $$;
 CREATE TRIGGER cg19_member_pack_event_immutable BEFORE UPDATE OR DELETE ON cg19_member_pack_event
  FOR EACH ROW EXECUTE FUNCTION cg19_member_immutable_event();
@@ -105,6 +114,8 @@ CREATE TRIGGER cg19_member_brand_asset_guard BEFORE UPDATE ON cg19_member_brand_
 
 CREATE FUNCTION cg19_member_brand_config_guard() RETURNS trigger LANGUAGE plpgsql AS $$
 BEGIN
+ IF TG_OP='UPDATE' AND OLD.status='WITHDRAWN' AND NEW.status<>'WITHDRAWN' THEN
+ RAISE EXCEPTION 'Withdrawn Foundation branding cannot be reapproved'; END IF;
  IF TG_OP='UPDATE' AND
   (NEW.root_realm_id,NEW.version,NEW.display_name,NEW.signatory_name,NEW.signature_asset_id,NEW.seal_asset_id,NEW.logo_asset_id,NEW.approved_by,NEW.request_key,NEW.request_digest,NEW.approved_at)
    IS DISTINCT FROM
@@ -145,3 +156,6 @@ BEGIN
 END; $$;
 CREATE TRIGGER cg19_member_pack_document_guard BEFORE UPDATE ON cg19_member_pack_document FOR EACH ROW
  EXECUTE FUNCTION cg19_member_pack_document_guard();
+
+CREATE TRIGGER cg19_member_brand_event_immutable BEFORE UPDATE OR DELETE ON cg19_member_brand_event
+ FOR EACH ROW EXECUTE FUNCTION cg19_member_immutable_event();
