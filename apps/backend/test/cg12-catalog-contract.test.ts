@@ -1,7 +1,7 @@
 import {test} from "node:test";
 import assert from "node:assert/strict";
 import {BadRequestException} from "@nestjs/common";
-import {parseInventoryItem,parseInventoryLocation,parseInventorySupplier} from "../src/modules/cg-12-inventory-suppliers/application/inventory-catalog.service";
+import {parseInventoryThreshold,parseInventoryItem,parseInventoryLocation,parseInventorySupplier} from "../src/modules/cg-12-inventory-suppliers/application/inventory-catalog.service";
 const requestKey="12345678-1234-4234-8234-123456789abc";
 const item={requestKey,sku:" sample-01 ",name:"Sample item",category:"General",description:"",unit:"PIECE",scale:0,threshold:"5"};
 test("normalizes code, preserves canonical whole-unit threshold",()=>{
@@ -22,4 +22,13 @@ test("supplier catalog command rejects finance and scope spoofing",()=>{
  assert.equal(parseInventorySupplier(supplier).code,"VENDOR1");
  for(const change of [{paid:true},{balance:"10"},{rootRealmId:requestKey},{bankAccount:"123"}])
   assert.throws(()=>parseInventorySupplier({...supplier,...change}),BadRequestException);
+});
+
+test("catalog and warehouse threshold accepts exact persisted decimal zero padding, not fractions beyond precision",()=>{
+ assert.equal(parseInventoryThreshold("5.000",0),"5");
+ assert.equal(parseInventoryThreshold("0.000",0),"0");
+ assert.equal(parseInventoryItem({...item,threshold:"5.000"}).threshold,"5");
+ assert.equal(parseInventoryThreshold("1.250",2),"1.25");
+ assert.throws(()=>parseInventoryThreshold("5.001",0),BadRequestException);
+ assert.throws(()=>parseInventoryThreshold("1.251",2),BadRequestException);
 });
