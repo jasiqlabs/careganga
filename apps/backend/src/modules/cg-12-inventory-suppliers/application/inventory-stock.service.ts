@@ -46,7 +46,8 @@ export class InventoryStockService{
  private async describeDraft(tx:PoolClient,a:VerifiedFoundationActor,row:ReceiptDraftRow,proofRequired:boolean){
   const labels=(await tx.query<{supplier:string;location:string}>("SELECT s.display_name AS supplier,l.label AS location FROM inventory_receipt_draft d JOIN inventory_supplier s ON s.id=d.supplier_id AND s.root_realm_id=d.root_realm_id JOIN inventory_location l ON l.id=d.location_id AND l.root_realm_id=d.root_realm_id WHERE d.root_realm_id=$1 AND d.id=$2",[a.realmId,row.id])).rows[0];
   const lines=await this.draftLines(tx,a,row.id);
-  return {ref:row.id,status:row.status,version:row.source_version,receiptDate:row.receipt_date,sourceNote:row.source_note,supplier:labels.supplier,location:labels.location,locationRef:row.location_id,proofRequired,lines};
+  const committed=row.status==="CONFIRMED"?(await tx.query<{reference:string}>("SELECT event_no AS reference FROM stock_event WHERE root_realm_id=$1 AND receipt_draft_id=$2 AND event_kind='RECEIPT'",[a.realmId,row.id])).rows[0]:null;
+  return {ref:row.id,reference:committed?.reference??null,status:row.status,version:row.source_version,receiptDate:row.receipt_date,sourceNote:row.source_note,supplier:labels.supplier,location:labels.location,locationRef:row.location_id,proofRequired,lines};
  }
  async createDraft(token:string,raw:unknown){
   const v=parseReceiptDraft(raw),hash=frozenDigest(v);
@@ -94,6 +95,7 @@ export class InventoryStockService{
    await lockStockBalances(tx,a.realmId,deltas);
    const event=(await tx.query<StockEvent>("INSERT INTO stock_event(root_realm_id,event_no,source_owner,source_ref,source_event_key,payload_digest,event_kind,actor_ref,receipt_draft_id,effective_date,proof_ref,proof_revision) VALUES($1,'CG-ST-'||to_char(nextval('stock_event_public_sequence'),'FM000000000000'),'CG12',$2,$3,$4,'RECEIPT',$5,$2,$6,$7,$8) RETURNING *",[a.realmId,ref,row.request_key,hash,a.accountId,row.receipt_date,proof,pv])).rows[0];
    await applyStockMovements(tx,a.realmId,event.id,"RECEIPT",deltas);
+   await tx.query("INSERT INTO inventory_audit(root_realm_id,actor_ref,source_kind,source_ref,event_key,payload_digest,result_version) VALUES($1,$2,'RECEIPT',$3,$4,$5,1)",[a.realmId,a.accountId,event.id,row.request_key,hash]);
    await tx.query("UPDATE inventory_receipt_draft SET status='CONFIRMED' WHERE root_realm_id=$1 AND id=$2 AND status='DRAFT'",[a.realmId,ref]);
    return {ref:event.id,reference:event.event_no,status:"CONFIRMED",replayed:false};
   });
@@ -113,6 +115,7 @@ export class InventoryStockService{
    await lockStockBalances(tx,a.realmId,lines);
    const event=(await tx.query<StockEvent>("INSERT INTO stock_event(root_realm_id,event_no,source_owner,source_ref,source_event_key,payload_digest,event_kind,actor_ref,receipt_draft_id,reversal_of_ref,effective_date,reason) VALUES($1,'CG-ST-'||to_char(nextval('stock_event_public_sequence'),'FM000000000000'),'CG12',$2,$3,$4,'RECEIPT_REVERSAL',$5,$6,$2,CURRENT_DATE,$7) RETURNING *",[a.realmId,ref,key,hash,a.accountId,original.receipt_draft_id,reason])).rows[0];
    await applyStockMovements(tx,a.realmId,event.id,"RECEIPT_REVERSAL",lines);
+   await tx.query("INSERT INTO inventory_audit(root_realm_id,actor_ref,source_kind,source_ref,event_key,payload_digest,result_version) VALUES($1,$2,'RECEIPT_REVERSAL',$3,$4,$5,1)",[a.realmId,a.accountId,event.id,key,hash]);
    return {ref:event.id,reference:event.event_no,replayed:false};
   });
  }
