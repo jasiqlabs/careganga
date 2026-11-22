@@ -29,7 +29,8 @@ export default async function VolunteersPage(){
     canViewBranches={actions.includes("foundation.branches.view")} canViewFoundation={actions.includes("foundation.profile.view")}/>
    <main className="workspace"><VolunteerStaffWorkspace canReview={canReview} canRoster={canRoster}
     canExport={canRoster&&actions.includes("volunteers.export")}
-    canConfigure={canReview&&actions.includes("approvals.process.manage")}/></main>
+    canConfigure={canReview&&actions.includes("approvals.process.manage")}
+    canIssueCards={canRoster&&actions.includes("volunteers.documents.issue")}/></main>
   </div>;
  }catch(e){
   if(e&&typeof e==="object"&&"digest" in e&&typeof e.digest==="string"&&e.digest.startsWith("NEXT_REDIRECT"))throw e;
