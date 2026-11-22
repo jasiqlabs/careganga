@@ -219,7 +219,7 @@ export class ProjectTasksService {
    const items=page.rows.slice(0,exporting?500:25);
    if(exporting){await this.projects.auditExport(tx,a,"TASKS",mine,items.length,{query,parentRef});const columns=["code","projectCode","project","title","taskType","priority","startDate","dueDate","status","assignee","branch","location","overdue"];return {csv:[columns,...items.map(row=>columns.map(c=>row[c]))].map(row=>row.map(csvCell).join(",")).join("\r\n"),rows:items.length,hasMore:page.rows.length>500};}
    const counts=(await tx.query(`SELECT count(*)::integer AS total,count(*) FILTER(WHERE t.assignee_account_ref=$4 AND ${live})::integer AS mine,count(*) FILTER(WHERE t.status='COMPLETED')::integer AS completed,
-    count(*) FILTER(WHERE t.status='IN_PROGRESS')::integer AS inProgress,count(*) FILTER(WHERE ${overdue})::integer AS overdue,
+    count(*) FILTER(WHERE t.status='IN_PROGRESS')::integer AS "inProgress",count(*) FILTER(WHERE ${overdue})::integer AS overdue,
     count(*) FILTER(WHERE ${upcoming})::integer AS upcoming,count(*) FILTER(WHERE t.status='CANCELLED')::integer AS cancelled`+joins+where,values)).rows[0];
    const statusCounts=(await tx.query("SELECT t.status AS label,count(*)::int AS count"+joins+where+" GROUP BY t.status ORDER BY t.status",values)).rows;
    const priorityCounts=(await tx.query("SELECT t.priority AS label,count(*)::int AS count"+joins+where+" GROUP BY t.priority ORDER BY t.priority",values)).rows;
