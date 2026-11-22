@@ -140,13 +140,15 @@ export class DonationIntentsService{
   const gross=BigInt(row.amount_minor),refunded=BigInt(row.refunded_minor);
   const posted=row.source_status==="RECEIVED_POSTED",net=posted?gross-refunded:0n;
   const uncertain=!posted&&row.source_status==="REQUESTED"&&row.attempt_status==="OUTCOME_UNKNOWN";
-  return {status:uncertain?"RECONCILIATION_PENDING":!posted?row.source_status:refunded===0n?row.source_status:
+  const awaitingFinance=!posted&&row.source_status==="VERIFIED_EXTERNAL";
+  return {status:(uncertain||awaitingFinance)?"RECONCILIATION_PENDING":!posted?row.source_status:refunded===0n?row.source_status:
     net===0n?"REFUNDED_FULL":"REFUNDED_PARTIAL",
    amountMinor:row.amount_minor,refundedMinor:row.refunded_minor,netReceivedMinor:net.toString(),
    receiptStatus:row.receipt_status,currency:row.currency,received:posted,
    createdAt:row.created_at.toISOString(),
    message:posted?"Confirmed finance received; refunds and issued receipts are separately verified.":
     uncertain?"Merchant response is unknown; keep the original payment request. Do not pay again.":
+    awaitingFinance?"Signed payment is awaiting original Foundation finance reconciliation; no receipt issued yet.":
      "This donation is not yet confirmed as received."};
  }
 }
