@@ -229,6 +229,7 @@ export function CmsPublicPage({page,navigation,siteFooter,children,mediaScope,si
      if(section.kind==="HEALTHCARE_CATEGORIES")return <CmsHealthcare key={key}
       section={section}/>;
      if(section.kind==="CONTACT_INFO")return <CmsContactInfo key={key} section={section} assets={assets}/>;
+     if(section.kind==="PROJECT_TEASER"){const cards=Array.isArray(section.fields.cards)?section.fields.cards:[];return <section key={key} className="cg-site-content"><h2>{text(section.fields.heading)||"Projects"}</h2>{!cards.length?<p>No currently approved projects to display.</p>:cards.map((item,j)=>{if(!item||typeof item!=="object")return null;const p=item as Record<string,unknown>;return <article key={j} style={{background:"#fffaf0",border:"1px solid #e5ddc9",borderRadius:16,padding:24,margin:"16px 0"}}><p className="cg-site-eyebrow">{text(p.category)} · {text(p.status)==="PLANNED"?"Planned":"Active"}</p><h3>{text(p.title)}</h3><p>{text(p.area)}</p><p>{text(p.summary)}</p>{text(p.launch)&&<p>Planned start: {text(p.launch)}</p>}</article>;})}</section>;}
      // Never infer operational projects from CMS-only teaser text.
      return null;
     })}
