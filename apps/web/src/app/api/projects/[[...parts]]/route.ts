@@ -12,7 +12,7 @@ async function proxy(req:NextRequest,ctx:Context,method:"GET"|"POST"|"PATCH"){
  const base=process.env.BACKEND_URL;if(!base)return reply({message:"Projects unavailable."},503);
  try{
   const url=new URL("/api/v1/projects"+(p.length?"/"+p.join("/"):""),base);
-  for(const k of ["q","category","status","priority","fundingSource","stateRef","districtRef","from","to","offset","branchRef"])if(req.nextUrl.searchParams.has(k))url.searchParams.set(k,req.nextUrl.searchParams.get(k)!);
+  for(const k of ["q","category","status","priority","fundingSource","stateRef","districtRef","from","to","offset","branchRef","ownerRef"])if(req.nextUrl.searchParams.has(k))url.searchParams.set(k,req.nextUrl.searchParams.get(k)!);
   let body:string|undefined;if(method!=="GET"){body=await req.text();if(body.length>32768)return reply({message:"Check project fields."},400);}
   const r=await fetch(url,{method,headers:{Authorization:"Bearer "+token,"Content-Type":"application/json"},body,cache:"no-store",signal:AbortSignal.timeout(12000)});
   const v=await r.json().catch(()=>null);if(r.ok&&v!==null)return reply(v,r.status);
