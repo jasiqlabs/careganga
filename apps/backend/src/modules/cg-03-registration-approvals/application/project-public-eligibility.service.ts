@@ -5,6 +5,7 @@ import type {VerifiedFoundationActor} from "../../cg-01-identity-access/public-a
 import {SessionService} from "../../cg-01-identity-access/application/session.service";
 import {FoundationStructureIdentityFacade} from "../../cg-01-identity-access/application/foundation-structure-identity.facade";
 import {ProtectedAccessOwnerService} from "../../cg-01-identity-access/application/protected-access-owner.service";
+import {eligibleProjectSources} from "../../cg-05-projects-field-operations/application/project-public-source";
 import {ProjectsService} from "../../cg-05-projects-field-operations/application/projects.service";
 import {clean,fields,ref,version,choice,invalid,stale} from "../../cg-05-projects-field-operations/domain/project-input";
 type Snapshot={id:string;project_id:string;project_version:number;source_digest:string;title:string;category:string;safe_summary:string;general_area:string;planned_launch:string|null;project_status:string;submitted_by:string;request_key:string;revoked_at:Date|null;cover_file_ref:string|null;cover_file_version:number|null};
@@ -74,8 +75,11 @@ export class ProjectPublicEligibilityService{
      try{await this.owner.verifyReviewer(tx,a,"approvals.review",true);if(current.cover_file_ref)await this.identity.assertCurrent(tx,a,"documents.files.view");canReview=true;}catch(e){if(!(e instanceof ForbiddenException))throw e;}
     }
    }
-   const effective=current.revoked_at||!["PLANNED","ACTIVE"].includes(p.status)?"WITHDRAWN":c.status==="OWNER_COMPLETED"?"ELIGIBLE_NOT_PUBLISHED":c.status;
-   return {status:effective,caseRef:canReview?c.id:null,caseNumber:c.case_number,revision:c.revision,canReview,canWithdraw,source:{title:current.title,category:current.category,summary:current.safe_summary,area:current.general_area,launch:current.planned_launch,status:current.project_status,coverFileRef:current.cover_file_ref,coverFileVersion:current.cover_file_version}};
+   const approvedCurrent=c.status==="OWNER_COMPLETED"&&!current.revoked_at&&["PLANNED","ACTIVE"].includes(p.status)?(await eligibleProjectSources(tx,a.realmId,[current.id])).length===1:false;
+   const effective=current.revoked_at||!["PLANNED","ACTIVE"].includes(p.status)?"WITHDRAWN":c.status==="OWNER_COMPLETED"?(approvedCurrent?"ELIGIBLE_NOT_PUBLISHED":"SOURCE_INVALIDATED"):c.status;
+   let canReadImage=false;
+   if(current.cover_file_ref)try{await this.identity.assertCurrent(tx,a,"documents.files.view");canReadImage=true;}catch(e){if(!(e instanceof ForbiddenException))throw e;}
+   return {status:effective,caseRef:canReview?c.id:null,caseNumber:c.case_number,revision:c.revision,canReview,canWithdraw,source:{title:current.title,category:current.category,summary:current.safe_summary,area:current.general_area,launch:current.planned_launch,status:current.project_status,coverFileRef:canReadImage?current.cover_file_ref:null,coverFileVersion:canReadImage?current.cover_file_version:null}};
   },true);
  }
  async decide(token:string,caseRef:string,raw:unknown){
