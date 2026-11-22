@@ -8,7 +8,7 @@ const steps=["Basic Details","Project & Category","Team & Assignment","Budget & 
 type Draft={
  basic:{title:string;type:"GENERAL";summary:string;description:string;tags:string[]};
  project:{category:string;branchRef:string|null;projectRef:string|null;eventRef:string|null;stateRef:string|null;districtRef:string|null;location:string;targetGroup:string;plannedBeneficiaries:number|null};
- team:{coordinatorRef:string|null;volunteerRef:null};
+ team:{coordinatorRef:string|null;volunteerRef:string|null};
  budget:{goal:string;expectedCost:string;startAt:string;endAt:string};
  media:{fileRef:null;alt:string};review:Record<string,never>;
 };
@@ -16,7 +16,7 @@ type Row={ref:string;code:string;title:string;status:string;category:string;vers
 type Page={items:Row[];offset:number;hasMore:boolean};
 type Saved={ref:string;version:number;code:string;replayed:boolean;status:string};
 type Choice={value:string;label:string};
-type Choices={canFoundation:boolean;branches:Choice[];states:Choice[];districts:Choice[];coordinators:Choice[];projects:Choice[];events:(Choice&{projectRef:string|null})[]};
+type Choices={canFoundation:boolean;branches:Choice[];states:Choice[];districts:Choice[];coordinators:Choice[];volunteers:Choice[];projects:Choice[];events:(Choice&{projectRef:string|null})[]};
 const blank=():Draft=>({basic:{title:"",type:"GENERAL",summary:"",description:"",tags:[]},
  project:{category:"GENERAL",branchRef:null,projectRef:null,eventRef:null,stateRef:null,districtRef:null,location:"",targetGroup:"",plannedBeneficiaries:null},
  team:{coordinatorRef:null,volunteerRef:null},budget:{goal:"",expectedCost:"",startAt:"",endAt:""},media:{fileRef:null,alt:""},review:{}});
@@ -33,7 +33,7 @@ function fromRow(row:Row):Draft{
    projectRef:p?.projectRef??null,eventRef:p?.eventRef??null,
    stateRef:p?.stateRef??null,districtRef:p?.districtRef??null,location:p?.location??"",targetGroup:p?.targetGroup??"",
    plannedBeneficiaries:p?.plannedBeneficiaries??null},
-  team:{...blank().team,coordinatorRef:t?.coordinatorRef??null},
+  team:{...blank().team,coordinatorRef:t?.coordinatorRef??null,volunteerRef:t?.volunteerRef??null},
   budget:{goal:rupees(g?.goalMinor),expectedCost:rupees(g?.expectedCostMinor),
    startAt:g?.startAt??"",endAt:g?.endAt??""}};
 }
@@ -213,7 +213,9 @@ export function NativeCampaignDrafts({token,canManage,onExpired}:{
    {step===2&&<View style={s.block}>
     {pick("Campaign coordinator",form.team.coordinatorRef,choices?.coordinators??[],v=>change("team","coordinatorRef",v),
       "Use signed-in operator")}
-    <Text style={s.muted}>Optional verified volunteer association requires the actual current CG-04 source and does not grant a staff role.</Text>
+    {pick("Current approved volunteer",form.team.volunteerRef,choices?.volunteers??[],
+      v=>change("team","volunteerRef",v),"No volunteer")}
+    <Text style={s.muted}>Only current verified CG-04 volunteers assigned to the selected branch are eligible. Source is rechecked on save, submit and review.</Text>
    </View>}
    {step===3&&<>
     {field("Fundraising goal in INR",form.budget.goal,v=>change("budget","goal",v))}
