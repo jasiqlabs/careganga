@@ -1020,6 +1020,10 @@ export class CmsEditorialService{
    const placement=await this.db.query("SELECT 1 FROM cms_page p JOIN access_realm r ON r.id=p.foundation_root_id AND r.realm_key='FOUNDATION_ROOT' JOIN cms_page_effective e ON e.page_id=p.id AND e.foundation_root_id=p.foundation_root_id JOIN cms_publication pub ON pub.id=e.publication_id AND pub.foundation_root_id=e.foundation_root_id JOIN cms_section_revision s ON s.foundation_root_id=pub.foundation_root_id AND s.page_revision_id=pub.page_revision_id WHERE p.kind IN('HOME','ABOUT') AND p.archived_at IS NULL AND pub.state='EFFECTIVE' AND pub.effective_at<=now() AND (pub.expires_at IS NULL OR pub.expires_at>now()) AND s.section_kind='PROJECT_TEASER' LIMIT 1");
    if(placement.rowCount)publishedRoutes.push({kind:"PROJECTS",slug:"our-work",path:"/our-work"},{kind:"PROJECTS",slug:"upcoming-projects",path:"/upcoming-projects"});
   }
+  // A Campaigns link appears only when a current original CG07 + CG03 +
+  // CG18 effective publication + CG19 media proof produces a real public card.
+  if((await publicCampaignSources(this.db)).length>0)
+   publishedRoutes.push({kind:"CAMPAIGNS",slug:"campaigns",path:"/campaigns"});
   return {schemaVersion:1,effectiveGeneration:x?.effective_generation??null,
    publishedRoutes,
    login:{visible:x?.login_desired===true,label:"Staff login",
