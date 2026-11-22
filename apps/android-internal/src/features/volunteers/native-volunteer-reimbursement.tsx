@@ -78,7 +78,7 @@ export function NativeVolunteerReimbursement({token,volunteerRef,onExpired,onClo
    {field("Amount (INR)", "amount")}
    <Text style={s.label}>Linked current project (optional)</Text>
    <ScrollView horizontal contentContainerStyle={s.options}>
-    {button("No project",()=>change("volunteerProjectRef",""),!!draft.volunteerProjectRef)}
+    {button("No project",()=>change("volunteerProjectRef",""),!draft.volunteerProjectRef)}
     {source.projects.map(p=><View key={p.value}>{button(p.label,()=>change("volunteerProjectRef",p.value),draft.volunteerProjectRef===p.value)}</View>)}
    </ScrollView>
    <Text style={s.label}>Requested method</Text><ScrollView horizontal contentContainerStyle={s.options}>
