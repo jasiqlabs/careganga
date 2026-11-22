@@ -717,7 +717,7 @@ export function StaffAuthenticationScreen() {
 
   if(inventoryOpen&&token&&actor){
     if(!roleActions.includes("inventory.catalog.view"))return <AccessDeniedScreen reason="You cannot view inventory." onMyAccount={()=>setInventoryOpen(false)}/>;
-    return renderInShell(<ScreenErrorBoundary onExit={()=>setInventoryOpen(false)}><Suspense fallback={<ActivityIndicator style={{marginTop:40}}/>}><NativeInventoryCatalog token={token} canManage={roleActions.includes("inventory.catalog.manage")} canPrivate={roleActions.includes("inventory.supplier.private.manage")} onExpired={expireSession}/></Suspense></ScreenErrorBoundary>,"inventory",()=>setInventoryOpen(false));
+    return renderInShell(<ScreenErrorBoundary onExit={()=>setInventoryOpen(false)}><Suspense fallback={<ActivityIndicator style={{marginTop:40}}/>}><NativeInventoryCatalog token={token} canStock={roleActions.includes("inventory.stock.view")} canReceive={roleActions.includes("inventory.stock.receive")} canReverse={roleActions.includes("inventory.stock.reverse")} canReadProof={roleActions.includes("documents.files.view")} canUploadProof={roleActions.includes("documents.files.manage")&&roleActions.includes("documents.files.view")} canManage={roleActions.includes("inventory.catalog.manage")} canPrivate={roleActions.includes("inventory.supplier.private.manage")} onExpired={expireSession}/></Suspense></ScreenErrorBoundary>,"inventory",()=>setInventoryOpen(false));
   }
   if (hrOpen && token && actor) {
     // Same actor self profile is open to every signed-in Foundation employee.
