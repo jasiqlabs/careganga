@@ -10,11 +10,24 @@ import {identityRequest} from "../identity-access/http-client";
 type Decision="APPROVE"|"RETURN"|"REJECT";
 type Command={ref:string;requestKey:string;expectedRevision:number;action:Decision;remarks:string};
 const statuses=["ALL","SUBMITTED","PENDING_OWNER","RETURNED","REJECTED","OWNER_COMPLETED"];
+const detailTabs=[
+ {key:"OVERVIEW",label:"Overview"},
+ {key:"PERSONAL",label:"Personal Info"},
+ {key:"MEMBERSHIP",label:"Membership Details"},
+ {key:"DOCUMENTS",label:"Documents"},
+ {key:"PAYMENT",label:"Payment & Donation"},
+ {key:"GENERATED",label:"Generated Documents",pending:true},
+ {key:"WORKFLOW",label:"Approval Workflow"},
+ {key:"COMMUNICATION",label:"Communication",pending:true},
+ {key:"ACTIVITY",label:"Activity Log"}
+] as const;
+type DetailTab=typeof detailTabs[number]["key"];
 const label=(v:string)=>v.replaceAll("_"," ").toLowerCase().replace(/\b[a-z]/g,c=>c.toUpperCase());
 const amount=(minor:string)=>{if(!/^\d{1,15}$/.test(minor))return "Unavailable";const n=BigInt(minor);return "₹"+(n/100n).toString()+"."+String(n%100n).padStart(2,"0");};
 
 export function NativeMemberReview({token,canConfigure,onExpired}:{token:string;canConfigure:boolean;onExpired:()=>void}){
  const [policy,setPolicy]=useState<CG04ReviewPolicy|null>(null),[page,setPage]=useState<CG04ReviewPage|null>(null),[detail,setDetail]=useState<CG04ReviewCase|null>(null);
+ const [detailTab,setDetailTab]=useState<DetailTab>("OVERVIEW");
  const [status,setStatus]=useState("ALL"),[offset,setOffset]=useState(0),[selected,setSelected]=useState<string|null>(null),[epoch,setEpoch]=useState(0);
  const [loading,setLoading]=useState(true),[detailBusy,setDetailBusy]=useState(false),[busy,setBusy]=useState(false),[error,setError]=useState(""),[notice,setNotice]=useState("");
  const [decision,setDecision]=useState<Decision>("APPROVE"),[remarks,setRemarks]=useState(""),[password,setPassword]=useState(""),[retryPassword,setRetryPassword]=useState(""),[configPassword,setConfigPassword]=useState("");
@@ -83,7 +96,7 @@ export function NativeMemberReview({token,canConfigure,onExpired}:{token:string;
   }catch(e){setError(e instanceof Error?e.message:"Evidence could not be opened.");}
   finally{try{file?.delete();}catch{}running.current=false;setBusy(false);}
  }
- const choose=(ref:string)=>{setError("");setNotice("");setSelected(ref);setPassword("");setRemarks("");};
+ const choose=(ref:string)=>{setError("");setNotice("");setSelected(ref);setDetailTab("OVERVIEW");setPassword("");setRemarks("");};
  const changeStatus=(value:string)=>{setStatus(value);setOffset(0);setSelected(null);setDetail(null);setPassword("");};
  return <ScrollView contentContainerStyle={styles.page} keyboardShouldPersistTaps="handled">
   <Text style={styles.heading}>Membership Applications</Text>
@@ -110,29 +123,78 @@ export function NativeMemberReview({token,canConfigure,onExpired}:{token:string;
   </View>
   {detailBusy&&<ActivityIndicator accessibilityLabel="Loading protected case details"/>}
   {detail&&selected===detail.caseRef&&<View style={styles.card}>
-   <Text style={styles.title}>Review {detail.reference}</Text><Text style={styles.muted}>Application {detail.source.applicationNumber} · {label(detail.status)}</Text>
-   <Text style={styles.label}>Applicant</Text><Text>{detail.source.name} · {detail.source.mobile}</Text>
-   {!!detail.source.email&&<Text>{detail.source.email}</Text>}
-   <Text style={styles.label}>Address</Text><Text>{detail.source.address}, {detail.source.city} · {detail.source.pinCode}</Text>
-   <Text style={styles.label}>Accepted joining fee</Text><Text>{amount(detail.source.feeMinor)}</Text>
-   <Text style={styles.title}>Verified private documents</Text>
-   {detail.files.map(f=><View key={f.fileRef} style={styles.item}><Text>{label(f.classification)} · {f.verified?"Verified":"Changed or unavailable"}</Text>
-    {f.verified&&chip("Open protected proof",()=>void shareProof(f.fileRef),false,busy)}</View>)}
-   <Text style={styles.title}>Original review history</Text>
-   {detail.timeline.map((event,i)=><Text key={i} style={styles.muted}>{label(event.action)} · {event.reviewer} · {new Date(event.occurredAt).toLocaleString("en-IN")}</Text>)}
-   {detail.canDecide&&<View style={styles.item}>
-    <Text style={styles.title}>Independent protected decision</Text>
-    <View style={styles.buttons}>{(["APPROVE","RETURN","REJECT"] as const).map(v=><React.Fragment key={v}>{chip(v==="APPROVE"?"Approve (pending verification)":v==="RETURN"?"Return for correction":"Reject",()=>setDecision(v),decision===v,busy||!!pending.current)}</React.Fragment>)}</View>
-    <Text style={styles.label}>Reviewer remarks {decision==="APPROVE"?"(optional)":"(required)"}</Text>
-    <TextInput accessibilityLabel="Reviewer remarks" style={styles.input} value={remarks} onChangeText={setRemarks} multiline maxLength={500} editable={!busy&&!pending.current}/>
-    <Text style={styles.label}>Current Foundation password</Text>
-    <TextInput accessibilityLabel="Password to confirm review decision" secureTextEntry style={styles.input} value={password} onChangeText={setPassword} editable={!busy&&!pending.current}/>
-    {chip("Confirm protected decision",()=>{
-     if(decision!=="APPROVE"&&remarks.trim().length<3){setError("Provide a reason for returning or rejecting this application.");return;}
-     void send({ref:detail.caseRef,requestKey:Crypto.randomUUID(),expectedRevision:detail.revision,action:decision,remarks:remarks.trim()},password);
-    },false,busy||!!pending.current||password.length<8)}
+   <Text style={styles.title}>Review {detail.reference}</Text>
+   <Text style={styles.muted}>Application {detail.source.applicationNumber} · {label(detail.status)}</Text>
+   <View style={styles.buttons} accessibilityRole="tablist" accessibilityLabel="Applicant details">
+    {detailTabs.map(item=><React.Fragment key={item.key}>{chip(item.label+("pending" in item&&item.pending?" (pending)":""),()=>{
+      setDetailTab(item.key);setPassword("");
+     },detailTab===item.key,busy||("pending" in item&&item.pending===true))}</React.Fragment>)}
+   </View>
+   {detailTab==="OVERVIEW"&&<View style={styles.item}>
+    <Text style={styles.title}>Application overview</Text>
+    <Text>{detail.source.name} · {detail.source.plan}</Text>
+    <Text>{label(detail.status)} · {detail.source.branch??"Foundation"}</Text>
+    <Text>Verified proof: {detail.files.filter(f=>f.verified).length} of {detail.files.length}</Text>
+    <Text>Original payment: {label(detail.fee.paymentStatus)}</Text>
+    <Text>Accepted fee: {amount(detail.source.feeMinor)}</Text>
    </View>}
-   {chip("Back to application list",()=>{setSelected(null);setDetail(null);},false,busy)}
+   {detailTab==="PERSONAL"&&<View style={styles.item}>
+    <Text style={styles.title}>Personal information</Text>
+    <Text>{detail.source.name} · {detail.source.mobile}</Text>
+    <Text>{detail.source.email??"No email provided"}</Text>
+    <Text>{detail.source.address}, {detail.source.city} · {detail.source.pinCode}</Text>
+    <Text>{detail.source.district??"District unavailable"}, {detail.source.state??"State unavailable"}</Text>
+    <Text style={styles.label}>Consent</Text>
+    <Text>{detail.source.consentVersion} · {new Date(detail.source.consentedAt).toLocaleString("en-IN",{timeZone:"Asia/Kolkata"})}</Text>
+    <Text style={styles.label}>Referral</Text><Text>{detail.source.referral||"No referral entered"}</Text>
+   </View>}
+   {detailTab==="MEMBERSHIP"&&<View style={styles.item}>
+    <Text style={styles.title}>Membership details</Text>
+    <Text>Tier: {detail.source.plan} · {label(detail.source.category)}</Text>
+    <Text>Duration: {detail.source.durationUnit==="LIFETIME"?"Lifetime":detail.source.durationCount+" "+label(detail.source.durationUnit)+(detail.source.durationCount===1?"":"s")}</Text>
+    <Text>Branch: {detail.source.branch??"Foundation"}</Text>
+    <Text>Accepted joining fee: {amount(detail.source.feeMinor)}</Text>
+    <Text style={styles.muted}>The original accepted amount is unaffected by later plan changes.</Text>
+   </View>}
+   {detailTab==="DOCUMENTS"&&<View style={styles.item}>
+    <Text style={styles.title}>Protected original documents</Text>
+    {detail.files.length===0&&<Text style={styles.muted}>No verified evidence is attached to this review.</Text>}
+    {detail.files.map(f=><View key={f.fileRef} style={styles.item}>
+     <Text>{label(f.classification)} · {f.verified?"Verified":"Changed or unavailable"}</Text>
+     {f.verified&&chip("Open protected proof",()=>void shareProof(f.fileRef),false,busy)}
+    </View>)}
+   </View>}
+   {detailTab==="PAYMENT"&&<View style={styles.item}>
+    <Text style={styles.title}>Membership fee verification</Text>
+    <Text>Accepted fee: {amount(detail.fee.feeMinor)}</Text>
+    <Text>Payment state: {label(detail.fee.paymentStatus)}</Text>
+    <Text>Bank verified: {amount(detail.fee.verifiedMinor)}</Text>
+    <Text>Refund: {detail.fee.refundRequired?"Verified original fee requires refund":detail.fee.paymentStatus==="REFUNDED"?"Verified refund completed":"No outstanding verified refund indicated"}</Text>
+    <Text style={styles.muted}>CG-09 is authoritative for payments and refunds. Donation records belong to Finance and are not inferred from fees.</Text>
+   </View>}
+   {detailTab==="WORKFLOW"&&<View style={styles.item}>
+    <Text style={styles.title}>Approval workflow</Text><Text>Status: {label(detail.status)}</Text>
+    <Text style={styles.muted}>Review approval is not a verified payment or issued membership.</Text>
+    {detail.canDecide&&<View style={styles.item}>
+     <Text style={styles.title}>Independent protected decision</Text>
+     <View style={styles.buttons}>{(["APPROVE","RETURN","REJECT"] as const).map(v=><React.Fragment key={v}>{chip(v==="APPROVE"?"Approve (pending verification)":v==="RETURN"?"Return for correction":"Reject",()=>setDecision(v),decision===v,busy||!!pending.current)}</React.Fragment>)}</View>
+     <Text style={styles.label}>Reviewer remarks {decision==="APPROVE"?"(optional)":"(required)"}</Text>
+     <TextInput accessibilityLabel="Reviewer remarks" style={styles.input} value={remarks} onChangeText={setRemarks} multiline maxLength={500} editable={!busy&&!pending.current}/>
+     <Text style={styles.label}>Current Foundation password</Text>
+     <TextInput accessibilityLabel="Password to confirm review decision" secureTextEntry style={styles.input} value={password} onChangeText={setPassword} editable={!busy&&!pending.current}/>
+     {chip("Confirm protected decision",()=>{
+      if(decision!=="APPROVE"&&remarks.trim().length<3){setError("Provide a reason for returning or rejecting this application.");return;}
+      void send({ref:detail.caseRef,requestKey:Crypto.randomUUID(),expectedRevision:detail.revision,action:decision,remarks:remarks.trim()},password);
+     },false,busy||!!pending.current||password.length<8)}
+    </View>}
+    {!detail.canDecide&&<Text style={styles.muted}>No decision action is available in this case status or for this reviewer.</Text>}
+   </View>}
+   {detailTab==="ACTIVITY"&&<View style={styles.item}>
+    <Text style={styles.title}>Original review activity</Text>
+    {detail.timeline.length===0&&<Text style={styles.muted}>No committed review events are available.</Text>}
+    {detail.timeline.map((event,i)=><Text key={i} style={styles.muted}>{label(event.action)} · {event.reviewer} · {new Date(event.occurredAt).toLocaleString("en-IN",{timeZone:"Asia/Kolkata"})}</Text>)}
+   </View>}
+   {chip("Back to application list",()=>{setSelected(null);setDetail(null);setPassword("");},false,busy)}
   </View>}
   {pending.current&&<View style={styles.card}><Text style={styles.title}>Review outcome uncertain</Text>
    <Text style={styles.muted}>Check the current case first. Re-enter your password to retry the exact original request; a new decision will not be created.</Text>
