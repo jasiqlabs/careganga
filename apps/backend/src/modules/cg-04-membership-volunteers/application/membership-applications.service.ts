@@ -44,7 +44,7 @@ export class MembershipApplicationsService{
   const id=target===undefined?null:uuid(target),d=parseApplicationDraft(raw,id!==null),kind=id?"EDIT":"CREATE",digest=hash([id,d]);
   return this.run(token,async(tx,a,contact)=>{
    await this.lock(tx,a);const prior=await this.replay(tx,a,d.key,digest,kind,id);if(prior)return prior;
-   if(id){const old=await this.self(tx,a,id,true);if(old.version!==d.expected||old.status!=="DRAFT")return conflict();}
+   if(id){const old=await this.self(tx,a,id,true);if(old.version!==d.expected||!["DRAFT","RETURNED"].includes(old.status))return conflict();}
    const offer=(await tx.query<{id:string;fee_minor:string;currency:string}>(`SELECT v.id,v.fee_minor::text,v.currency FROM membership_tier_version v JOIN membership_tier t ON t.root_realm_id=v.root_realm_id AND t.id=v.tier_id AND t.version=v.version_no
     WHERE t.root_realm_id=$1 AND t.plan_code=$2 AND v.version_no=$3 AND t.status='ACTIVE' AND v.status='ACTIVE' AND v.published_at<=now() FOR SHARE OF t`,[a.realmId,d.planCode,d.offerRevision])).rows[0];
    if(!offer)throw new ConflictException({code:"CG04_OFFER_CHANGED",message:"This membership plan or price changed. Choose the current plan and confirm the new details."});
@@ -52,8 +52,8 @@ export class MembershipApplicationsService{
    plain(contact.name,2,200,"account name");const name=contact.name;
    const values=[d.branch,offer.id,offer.fee_minor,offer.currency,name,contact.mobile,contact.email,d.address,d.city,d.pin,d.state,d.district,d.referral,d.consentVersion];
    let result:{id:string;version:number};
-   if(id){result=(await tx.query<{id:string;version:number}>(`UPDATE membership_application SET branch_ref=$4,tier_version_id=$5,accepted_fee_minor=$6,currency=$7,display_name=$8,contact_mobile=$9,contact_email=$10,address_text=$11,city=$12,pin_code=$13,state_ref=$14,district_ref=$15,referral_input=$16,consent_version=$17,consented_at=now(),version=version+1,updated_at=now()
-    WHERE root_realm_id=$1 AND applicant_account_ref=$2 AND id=$3 AND status='DRAFT' AND version=$18 RETURNING id,version`,[a.realmId,a.accountId,id,...values,d.expected])).rows[0];}
+   if(id){result=(await tx.query<{id:string;version:number}>(`UPDATE membership_application SET branch_ref=$4,tier_version_id=$5,accepted_fee_minor=$6,currency=$7,display_name=$8,contact_mobile=$9,contact_email=$10,address_text=$11,city=$12,pin_code=$13,state_ref=$14,district_ref=$15,referral_input=$16,consent_version=$17,consented_at=now(),status=\'DRAFT\',submitted_at=NULL,submitted_digest=NULL,version=version+1,updated_at=now()
+    WHERE root_realm_id=$1 AND applicant_account_ref=$2 AND id=$3 AND status IN('DRAFT','RETURNED') AND version=$18 RETURNING id,version`,[a.realmId,a.accountId,id,...values,d.expected])).rows[0];}
    else{result=(await tx.query<{id:string;version:number}>(`INSERT INTO membership_application(root_realm_id,applicant_account_ref,branch_ref,tier_version_id,accepted_fee_minor,currency,display_name,contact_mobile,contact_email,address_text,city,pin_code,state_ref,district_ref,referral_input,consent_version,status,version) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,'DRAFT',1) RETURNING id,version`,[a.realmId,a.accountId,...values])).rows[0];}
    if(!result)return conflict();await this.audit(tx,a,result.id,result.version,d.key,digest,kind);return {record:await this.self(tx,a,result.id),replayed:false};
   });
@@ -61,6 +61,6 @@ export class MembershipApplicationsService{
  async cancel(token:string,ref:string,raw:unknown){
   const id=uuid(ref),d=parseDraftCancel(raw),digest=hash([id,d]);return this.run(token,async(tx,a)=>{await this.lock(tx,a);const prior=await this.replay(tx,a,d.key,digest,"CANCEL",id);if(prior)return prior;
    const old=await this.self(tx,a,id,true);if(old.version!==d.expected||old.status!=="DRAFT")return conflict();
-   const v=(await tx.query<{version:number}>("UPDATE membership_application SET status='CANCELLED',version=version+1,updated_at=now() WHERE root_realm_id=$1 AND applicant_account_ref=$2 AND id=$3 AND version=$4 AND status='DRAFT' RETURNING version",[a.realmId,a.accountId,id,d.expected])).rows[0];if(!v)return conflict();await this.audit(tx,a,id,v.version,d.key,digest,"CANCEL");return {record:await this.self(tx,a,id),replayed:false};});
+   const v=(await tx.query<{version:number}>("UPDATE membership_application SET status='CANCELLED',version=version+1,updated_at=now() WHERE root_realm_id=$1 AND applicant_account_ref=$2 AND id=$3 AND version=$4 AND status IN('DRAFT','RETURNED') RETURNING version",[a.realmId,a.accountId,id,d.expected])).rows[0];if(!v)return conflict();await this.audit(tx,a,id,v.version,d.key,digest,"CANCEL");return {record:await this.self(tx,a,id),replayed:false};});
  }
 }
