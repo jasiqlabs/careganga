@@ -153,7 +153,8 @@ export class HrIssuedDocumentService{
    const verified=stored;
    if(!verified.objectVersion||!verified.sha256)throw Error("Original storage proof unavailable");
    const current=await this.sessions.requireAction(token,"documents.letters.issue");
-   return this.run(async tx=>{
+   // Await the final transaction so a rejected commit enters the recovery path.
+   return await this.run(async tx=>{
     await this.identity.assertCurrent(tx,current,"documents.letters.issue");const {row}=await this.docAccess(tx,current,d.id);
     await this.approvals.approvedSource(tx,current,row);
     const q=await tx.query<Doc>(`UPDATE cg19_generated_document SET state='ISSUED',object_version=$4,content_sha256=$5,issued_at=now(),claim_token=NULL,claim_expires_at=NULL
@@ -222,7 +223,9 @@ export class HrIssuedDocumentService{
   const a=await this.sessions.verifySession(token);
   return this.run(async tx=>{
    const {d}=await this.docAccess(tx,a,id,true);
-   if(d.state!=="ISSUED"||!(await tx.query("SELECT cg19_hr_document_notice_matches($1,$2,$3) AS allowed",[a.realmId,d.id,a.accountId])).rows[0]?.allowed)throw new ForbiddenException("The original document is not available for acknowledgement");
+   // Serialize acknowledgement with revocation without trusting the earlier read.
+   const latest=(await tx.query<{state:string}>("SELECT state FROM cg19_generated_document WHERE realm_id=$1 AND id=$2 FOR UPDATE",[a.realmId,d.id])).rows[0];
+   if(latest?.state!=="ISSUED"||!(await tx.query("SELECT cg19_hr_document_notice_matches($1,$2,$3) AS allowed",[a.realmId,d.id,a.accountId])).rows[0]?.allowed)throw new ForbiddenException("The original document is not available for acknowledgement");
    const q=await tx.query(`INSERT INTO cg19_document_event(realm_id,case_id,actor_id,document_id,event_key) VALUES($1,$2,$3,$4,'ACKNOWLEDGED')
     ON CONFLICT DO NOTHING RETURNING id`,[a.realmId,d.case_id,a.accountId,d.id]);
    return {status:"ACKNOWLEDGED",replayed:!q.rowCount};
