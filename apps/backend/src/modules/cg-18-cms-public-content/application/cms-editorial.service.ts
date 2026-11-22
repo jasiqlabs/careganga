@@ -13,7 +13,7 @@ import {extendedKinds,parseDraftExtendedSection,parseExtendedSection,validateExt
 import {eligibleProjectSources,projectTeaserRefs,validateProjectTeaser,projectTeaserRevisionEligible,publicProjectTeaser} from "../../cg-05-projects-field-operations/application/project-public-source";
 import {eligibleEventSources,validateEventArticle,eventArticleRevisionEligible,publicEventArticle,EVENT_CURRENT_SQL} from "../../cg-05-projects-field-operations/application/event-public-source";
 import {complianceEligible} from "./cms-compliance-eligibility";
-import {eligibleCampaignSources,campaignTeaserRefs,validateCampaignTeaser,publicCampaignSources} from "../../cg-07-campaigns-donations/application/campaign-public-source";
+import {eligibleCampaignSources,campaignTeaserRefs,validateCampaignTeaser,publicCampaignSources,onlineDonationReady} from "../../cg-07-campaigns-donations/application/campaign-public-source";
 const UUID=/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i;
 const HASH=/^[a-f0-9]{64}$/;
 const KINDS=new Set(["HOME","ABOUT","IMPACT","COMPLIANCE","GALLERY","ARTICLE","CONTACT","HEALTHCARE","POLICY"]);
@@ -1024,6 +1024,7 @@ export class CmsEditorialService{
   // CG18 effective publication + CG19 media proof produces a real public card.
   if((await publicCampaignSources(this.db)).length>0)
    publishedRoutes.push({kind:"CAMPAIGNS",slug:"campaigns",path:"/campaigns"});
+  if(await onlineDonationReady(this.db))publishedRoutes.push({kind:"DONATE",slug:"donate",path:"/donate"});
   return {schemaVersion:1,effectiveGeneration:x?.effective_generation??null,
    publishedRoutes,
    login:{visible:x?.login_desired===true,label:"Staff login",
@@ -1037,8 +1038,10 @@ export class CmsEditorialService{
    seoTitle:"Campaigns | CareGanga Foundation",
    seoDescription:"Current independently approved CareGanga Foundation fundraising campaigns.",
    canonicalPath:"/campaigns",effectiveGeneration:sha(cards),
-   cards,donationsEnabled:false};
+   cards,donationsEnabled:await onlineDonationReady(this.db)};
  }
+ async publicDonationReadiness(){return {schemaVersion:1,onlineAvailable:await onlineDonationReady(this.db)};}
+
  async publicProjectCatalogue(slug:"our-work"|"upcoming-projects"){
   const pages=await Promise.all(["home","about"].map(async name=>{try{return await this.publicPage(name);}catch(e){if(e instanceof NotFoundException)return null;throw e;}}));
   const approved=pages.filter((p):p is NonNullable<typeof p>=>p!==null);

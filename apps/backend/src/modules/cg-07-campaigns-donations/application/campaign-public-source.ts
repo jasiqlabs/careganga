@@ -173,3 +173,24 @@ export async function publicCampaignMedia(db:Pool|PoolClient,fileRef:string){
  LIMIT 1`,[fileRef]);
  return rows.rows[0]??null;
 }
+
+export async function onlineDonationReady(db:Pool|PoolClient):Promise<boolean>{
+ const ref=process.env.CG07_RAZORPAY_SECRET_REF?.trim()??"",
+  key=process.env.CG07_RAZORPAY_KEY_ID?.trim()??"",
+  secret=process.env.CG07_RAZORPAY_KEY_SECRET?.trim()??"",
+  hook=process.env.CG07_RAZORPAY_WEBHOOK_SECRET?.trim()??"";
+ if(!/^secretref:[A-Za-z0-9/_-]{10,230}$/.test(ref)||
+  !/^rzp_(live|test)_[A-Za-z0-9]{8,}$/.test(key)||
+  secret.length<16||hook.length<16||
+  (process.env.NODE_ENV==="production"&&!key.startsWith("rzp_live_")))return false;
+ const root=await db.query<{id:string}>(
+  "SELECT id FROM access_realm WHERE realm_key='FOUNDATION_ROOT' LIMIT 2");
+ if(root.rows.length!==1)return false;
+ const ready=await db.query(
+  "SELECT 1 FROM integration_connection WHERE foundation_realm_id=$1 "+
+   "AND scope_kind='FOUNDATION' AND provider='razorpay' AND purpose='donations' "+
+   "AND secret_reference=$2 AND verification_status='VERIFIED' "+
+   "AND credential_revision=last_checked_credential_revision LIMIT 1",
+   [root.rows[0].id,ref]);
+ return ready.rowCount===1;
+}

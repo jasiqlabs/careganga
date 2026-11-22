@@ -57,6 +57,8 @@ export class CmsPublicPagesController{
  @Header("Cache-Control","no-store")
  @Header("X-Content-Type-Options","nosniff")
  notices(){return this.cms.publicNotices();}
+ @Get("donations/readiness") @Header("Cache-Control","no-store")
+ donationReadiness(){return this.cms.publicDonationReadiness();}
  @Get("campaigns") @Header("Cache-Control","no-store")
  campaigns(){return this.cms.publicCampaignCatalogue();}
  @Get("campaigns/:slug") @Header("Cache-Control","no-store")
