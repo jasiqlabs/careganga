@@ -33,7 +33,7 @@ export class VisitEvidenceService{
  private async getIntent(tx:PoolClient,a:VerifiedFoundationActor,ref:string,write:boolean,lock=false){
   const r=(await tx.query<Intent>("SELECT * FROM cg19_upload_intent WHERE id=$1 AND realm_id=$2 AND requested_by=$3 AND owner_kind='CG05_VISIT'",[visitRefValue(ref),a.realmId,a.accountId])).rows[0];
   if(!r)throw new NotFoundException("Visit evidence document unavailable");
-  await this.source.guardEvidence(tx,a,r.visit_id,r.proposal_revision,write);
+  await this.source.guardEvidence(tx,a,r.visit_id,write?r.proposal_revision:null,write);
   if(!lock)return r;
   const current=(await tx.query<Intent>("SELECT * FROM cg19_upload_intent WHERE id=$1 AND realm_id=$2 AND requested_by=$3 AND owner_kind='CG05_VISIT' FOR UPDATE",[r.id,a.realmId,a.accountId])).rows[0];
   if(!current)throw changed();return current;
@@ -91,7 +91,7 @@ export class VisitEvidenceService{
  async list(token:string,visitRef:string){
   return this.run(token,false,async(tx,a)=>{
    const source=await this.source.guardEvidence(tx,a,visitRef,null,false);
-   const q=await tx.query("SELECT f.id AS \"fileRef\",f.proposal_revision AS \"sourceVersion\",f.revision AS \"fileVersion\",f.original_mime AS mime,f.verified_size_bytes::text AS size,f.created_at AS \"createdAt\" FROM cg19_stored_file f JOIN cg19_upload_intent i ON i.id=f.upload_intent_id AND i.realm_id=f.realm_id WHERE f.realm_id=$1 AND f.visit_id=$2 AND f.proposal_revision<=$3 AND f.owner_kind='CG05_VISIT' AND f.scan_status='CLEAN_VERIFIED' AND f.revoked_at IS NULL AND i.owner_kind='CG05_VISIT' AND i.status='VALIDATED' ORDER BY f.created_at DESC,f.id DESC LIMIT 16",[a.realmId,source.id,source.version]);
+   const q=await tx.query("SELECT f.id AS \"fileRef\",f.proposal_revision AS \"sourceVersion\",f.revision AS \"fileVersion\",f.original_mime AS mime,f.verified_size_bytes::text AS size,f.created_at AS \"createdAt\" FROM cg19_stored_file f JOIN cg19_upload_intent i ON i.id=f.upload_intent_id AND i.realm_id=f.realm_id WHERE f.realm_id=$1 AND f.visit_id=$2 AND f.proposal_revision<=$3 AND f.owner_kind='CG05_VISIT' AND f.scan_status='CLEAN_VERIFIED' AND f.revoked_at IS NULL AND i.owner_kind='CG05_VISIT' AND i.status='VALIDATED' ORDER BY f.created_at DESC,f.id DESC LIMIT 50",[a.realmId,source.id,source.version]);
    return {files:q.rows,visitVersion:source.version};
   });
  }
