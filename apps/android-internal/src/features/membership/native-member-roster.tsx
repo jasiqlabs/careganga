@@ -38,6 +38,14 @@ export function NativeMemberRoster({token,canExport,onExpired}:{token:string;can
  },[token,filter,cursor,epoch]);
  const apply=()=>{if(draft.joinedFrom&&draft.joinedTo&&draft.joinedFrom>draft.joinedTo){setError("Start date must be on or before end date.");return;}setError("");setHistory([]);setCursor("");setFilter({...draft,q:draft.q.trim()});};
  const reset=()=>{setDraft(empty());setFilter(empty());setCursor("");setHistory([]);};
+ const presets=[{key:"ALL",label:"All"},{key:"GENERAL",label:"General"},{key:"PAID",label:"Paid"},{key:"EXPIRED",label:"Expired"},{key:"CANCELLED",label:"Cancelled"}] as const;
+ const preset=(key:typeof presets[number]["key"])=>{
+  const next:Filter={...empty(),feeClass:key==="GENERAL"||key==="PAID"?key:"ALL",status:key==="EXPIRED"||key==="CANCELLED"?key:"ALL"};
+  if(key==="EXPIRED"||key==="CANCELLED")next.status=key;
+  setDraft(next);setFilter(next);setHistory([]);setCursor("");setError("");
+ };
+ const selectedPreset=filter.q===""&&filter.category==="ALL"&&filter.branch===""&&filter.joinedFrom===""&&filter.joinedTo===""
+  ?filter.status==="EXPIRED"||filter.status==="CANCELLED"?filter.status:filter.status==="ALL"&&["GENERAL","PAID"].includes(filter.feeClass)?filter.feeClass:filter.status==="ALL"&&filter.feeClass==="ALL"?"ALL":null:null;
  const chip=(label:string,onPress:()=>void,selected=false,disabled=false)=>(
   <Pressable accessibilityRole="button" accessibilityState={{selected,disabled}} disabled={disabled} onPress={onPress} style={[styles.chip,selected&&styles.chipSelected,disabled&&styles.disabled]}><Text style={[styles.chipText,selected&&styles.chipTextSelected]}>{label}</Text></Pressable>
  );
@@ -63,6 +71,7 @@ export function NativeMemberRoster({token,canExport,onExpired}:{token:string;can
   <View style={styles.buttons}>{chip("Refresh",()=>setEpoch(x=>x+1),false,busy)}{canExport&&chip(busy?"Preparing…":"Export roster",()=>void shareCsv(),false,disabled||!page)}</View>
   {!!error&&<Text accessibilityRole="alert" style={styles.error}>{error}</Text>}
   {!!notice&&<Text accessibilityRole="text" style={styles.muted}>{notice}</Text>}
+  <View style={styles.buttons} accessibilityLabel="Membership quick filters">{presets.map(item=><React.Fragment key={item.key}>{chip(item.label,()=>preset(item.key),selectedPreset===item.key,busy||loading)}</React.Fragment>)}</View>
   <View style={styles.card}>
    <Text style={styles.title}>Find members</Text>
    <TextInput accessibilityLabel="Member name, number or contact" placeholder="Search member number, name or contact" value={draft.q} maxLength={100} onChangeText={v=>setDraft(x=>({...x,q:v}))} style={styles.input}/>
