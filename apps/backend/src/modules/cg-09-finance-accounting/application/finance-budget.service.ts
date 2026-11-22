@@ -1,5 +1,6 @@
 import {BadRequestException,ConflictException,Inject,Injectable} from "@nestjs/common";
 import {createHash,randomUUID} from "node:crypto";
+import {assertFinanceProject,financeProjectOptions} from "../../cg-05-projects-field-operations/application/project-finance-source";
 import {financeSqlFailure} from "./finance-sql-error";
 import type {Pool,PoolClient} from "pg";
 import {DATABASE} from "../../../core/infrastructure/database.module";
@@ -56,11 +57,11 @@ const minor=(v:unknown,positive=true):string=>{
 type Budget={id:string;budget_number:string;version:number;status:string;
  current_digest:string;approval_case_id:string|null;financial_year_id:string;
  branch_id:string|null;created_by:string;category_label:string;budget_name:string;
- period_start:string;period_end:string;funding_note:string;approved_ceiling_minor:string};
+ period_start:string;period_end:string;funding_note:string;approved_ceiling_minor:string;project_ref:string|null;project_label:string|null};
 type Command={digest:string;budget_id:string;version:number;result_status:string};
 type Input={budgetName:string;financialYearRef:string;branchRef:string|null;
  branchVersion:number|null;category:string;periodStart:string;periodEnd:string;
- fundingNote:string;ceilingMinor:string};
+ fundingNote:string;ceilingMinor:string;projectRef?:string};
 @Injectable()
 export class FinanceBudgetService{
  constructor(@Inject(DATABASE)private readonly db:Pool,
@@ -82,7 +83,7 @@ export class FinanceBudgetService{
    branchRef:branch,branchVersion:bv,
    category:expenseGroupCode(v.category),periodStart,periodEnd,
    fundingNote:label(v.fundingNote??"Foundation budget authorization","fundingNote",250),
-   ceilingMinor:minor(v.ceiling)};
+   ceilingMinor:minor(v.ceiling),...(v.projectRef?{projectRef:id(v.projectRef,"projectRef")}:{})};
  }
  private async validScope(tx:PoolClient,actor:VerifiedFoundationActor,p:Input){
   await this.identity.assertCurrent(tx,actor,"finance.budgets.manage");
@@ -102,6 +103,7 @@ export class FinanceBudgetService{
    [actor.realmId,p.category]);
   if(!groups.rowCount)
    throw new ConflictException({code:"FINANCE_BUDGET_FORM_INVALID",field:"category"});
+  return p.projectRef?(await assertFinanceProject(tx,actor,p.projectRef,p.branchRef)).label:null;
  }
  private async existing(tx:PoolClient,actor:VerifiedFoundationActor,key:string){
   await tx.query("SELECT pg_advisory_xact_lock(hashtextextended($1,0))",
@@ -126,7 +128,7 @@ export class FinanceBudgetService{
   const rows=await tx.query<Budget>(
    "SELECT id,budget_number,version,status,current_digest,approval_case_id,"+
    "financial_year_id,branch_id,created_by,category_label,budget_name,"+
-   "period_start::text,period_end::text,funding_note,approved_ceiling_minor::text "+
+   "period_start::text,period_end::text,funding_note,approved_ceiling_minor::text,project_ref,project_label "+
    "FROM finance_budget WHERE id=$1 AND root_realm_id=$2 FOR UPDATE",
    [ref,actor.realmId]);
   if(!rows.rows[0])
@@ -140,7 +142,7 @@ export class FinanceBudgetService{
  async save(bearer:string,raw:unknown,budgetInput?:string){
   const actor=await this.actor(bearer,true);
   const value=body(raw,["budgetName","financialYearRef","branchRef","branchVersion",
-   "category","periodStart","periodEnd","fundingNote","ceiling","expectedVersion","requestKey"]);
+   "category","periodStart","periodEnd","fundingNote","ceiling","projectRef","expectedVersion","requestKey"]);
   const p=this.parse(value),key=id(value.requestKey,"requestKey"),
    budgetRef=budgetInput?id(budgetInput):randomUUID();
   const expected=budgetInput?version(value.expectedVersion):null;
@@ -157,7 +159,7 @@ export class FinanceBudgetService{
     return {confirmed:true,budgetRef:old.budget_id,version:old.version,
      status:old.result_status,replayed:true};
    }
-   await this.validScope(tx,actor,p);
+   const projectLabel=await this.validScope(tx,actor,p);
    let next=1,action="CREATE",oldBudget:Budget|null=null;
    if(budgetInput){
     oldBudget=await this.load(tx,actor,budgetRef);
@@ -166,30 +168,30 @@ export class FinanceBudgetService{
      throw new ConflictException({code:"FINANCE_BUDGET_STALE"});
     next=oldBudget.version+1;action="REVISE";
    }
-   const sourceDigest=sha(["CG09_BUDGET_REVISION",budgetRef,next,p]);
+   const sourceDigest=sha(["CG09_BUDGET_REVISION",budgetRef,next,p,...(p.projectRef?[projectLabel]:[])]);
    if(!oldBudget)await tx.query(
     "INSERT INTO finance_budget(id,root_realm_id,budget_name,financial_year_id,"+
     "branch_id,category_label,period_start,period_end,funding_note,approved_ceiling_minor,"+
-    "version,current_digest,created_by) "+
-    "VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)",
+    "version,current_digest,created_by,project_ref,project_label) "+
+    "VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15)",
     [budgetRef,actor.realmId,p.budgetName,p.financialYearRef,p.branchRef,
      p.category,p.periodStart,p.periodEnd,p.fundingNote,p.ceilingMinor,
-     next,sourceDigest,actor.accountId]);
+     next,sourceDigest,actor.accountId,p.projectRef??null,projectLabel]);
    await tx.query("INSERT INTO finance_budget_revision(root_realm_id,budget_id,"+
     "version,source_digest,name,category_label,financial_year_id,branch_id,"+
-    "period_start,period_end,funding_note,approved_ceiling_minor,recorded_by) "+
-    "VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)",
+    "period_start,period_end,funding_note,approved_ceiling_minor,recorded_by,project_ref,project_label) "+
+    "VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15)",
     [actor.realmId,budgetRef,next,sourceDigest,p.budgetName,p.category,
      p.financialYearRef,p.branchRef,p.periodStart,p.periodEnd,p.fundingNote,
-     p.ceilingMinor,actor.accountId]);
+     p.ceilingMinor,actor.accountId,p.projectRef??null,projectLabel]);
    if(oldBudget)await tx.query(
     "UPDATE finance_budget SET budget_name=$3,financial_year_id=$4,"+
     "branch_id=$5,category_label=$6,period_start=$7,period_end=$8,"+
     "funding_note=$9,approved_ceiling_minor=$10,version=$11,current_digest=$12,"+
-    "approval_case_id=NULL,status='DRAFT',updated_at=now() "+
+    "approval_case_id=NULL,status='DRAFT',updated_at=now(),project_ref=$14,project_label=$15 "+
     "WHERE id=$1 AND root_realm_id=$2 AND version=$13",
     [budgetRef,actor.realmId,p.budgetName,p.financialYearRef,p.branchRef,p.category,
-     p.periodStart,p.periodEnd,p.fundingNote,p.ceilingMinor,next,sourceDigest,expected]);
+     p.periodStart,p.periodEnd,p.fundingNote,p.ceilingMinor,next,sourceDigest,expected,p.projectRef??null,projectLabel]);
    await this.record(tx,actor,key,fingerprint,budgetRef,next,action,"DRAFT");
    await tx.query("COMMIT");
    return {confirmed:true,budgetRef,version:next,status:"DRAFT",replayed:false};
@@ -215,6 +217,7 @@ export class FinanceBudgetService{
     "AND status='OPEN' AND $3::date>=start_on AND $4::date<=end_on FOR SHARE",
     [budget.financial_year_id,actor.realmId,budget.period_start,budget.period_end]);
    if(!prior.rowCount)throw new ConflictException({code:"FINANCE_BUDGET_PERIOD_INVALID"});
+   if(budget.project_ref)await assertFinanceProject(tx,actor,budget.project_ref,budget.branch_id);
    const reviewer=await this.approvals.createCase(tx,actor,{
     budgetRef:ref,version:expected,digest:budget.current_digest,
     number:budget.budget_number,key});
@@ -334,9 +337,9 @@ export class FinanceBudgetService{
   const scope=await this.branches.financeReportScope(bearer,"finance.budgets.view");
   const budgetRef=id(budgetInput);
   const budget=await this.db.query<{category_label:string;branch_id:string|null;
-   financial_year_id:string;period_start:string;period_end:string;status:string}>(
+   financial_year_id:string;period_start:string;period_end:string;status:string;project_ref:string|null}>(
    "SELECT category_label,branch_id,financial_year_id,period_start::text,"+
-   "period_end::text,status FROM finance_budget WHERE id=$1 AND root_realm_id=$2 "+
+   "period_end::text,status,project_ref FROM finance_budget WHERE id=$1 AND root_realm_id=$2 "+
    "AND ($3::boolean OR branch_id=ANY($4::uuid[]))",
    [budgetRef,actor.realmId,scope.all,scope.branchRefs]);
   const b=budget.rows[0];
@@ -356,12 +359,12 @@ export class FinanceBudgetService{
    "AND j.posting_kind='VOUCHER' AND j.status='POSTED' "+
    "AND j.posting_date BETWEEN $3 AND $4 AND g.category='EXPENSE' AND g.code=$5 "+
    "AND v.voucher_type='EXPENSE' AND v.status IN('POSTED','PAYMENT_REQUESTED','PAID_VERIFIED') "+
-   "AND v.branch_id IS NOT DISTINCT FROM $6::uuid "+
+   "AND v.branch_id IS NOT DISTINCT FROM $6::uuid AND ($7::uuid IS NULL OR v.project_ref=$7) "+
    "AND NOT EXISTS(SELECT 1 FROM finance_budget_event e WHERE "+
    "e.root_realm_id=j.root_realm_id AND e.source_journal_id=j.id) "+
    "ORDER BY j.posting_date DESC,j.id DESC LIMIT 51",
    [actor.realmId,b.financial_year_id,b.period_start,b.period_end,
-    b.category_label,b.branch_id]);
+    b.category_label,b.branch_id,b.project_ref]);
   return {expenses:rows.rows.slice(0,50),hasMore:rows.rows.length>50};
  }
  async detail(bearer:string,budgetInput:string){
@@ -374,7 +377,7 @@ export class FinanceBudgetService{
    "SELECT budget_number AS \"budgetNumber\",status,version,budget_name AS name,"+
    "category_label AS category,approved_ceiling_minor::text AS \"ceilingMinor\","+
    "financial_year_id AS \"financialYearRef\",branch_id AS \"branchRef\","+
-   "period_start::text AS start,period_end::text AS end,approval_case_id AS \"approvalCaseRef\" "+
+   "period_start::text AS start,period_end::text AS end,approval_case_id AS \"approvalCaseRef\",project_ref AS \"projectRef\",project_label AS \"projectLabel\" "+
    "FROM finance_budget WHERE id=$1 AND root_realm_id=$2 "+
    "AND ($3::boolean OR branch_id=ANY($4::uuid[]))",
    [budgetRef,actor.realmId,scope.all,scope.branchRefs]);
@@ -412,7 +415,7 @@ export class FinanceBudgetService{
    "SELECT id AS \"budgetRef\",budget_number AS \"budgetNumber\","+
    "budget_name AS name,status,version,category_label AS category,"+
    "approved_ceiling_minor::text AS \"ceilingMinor\",branch_id AS \"branchRef\","+
-   "period_start::text AS \"periodStart\",period_end::text AS \"periodEnd\" "+
+   "period_start::text AS \"periodStart\",period_end::text AS \"periodEnd\",project_ref AS \"projectRef\",project_label AS \"projectLabel\" "+
    "FROM finance_budget WHERE root_realm_id=$1 "+
    "AND ($3::boolean OR branch_id=ANY($4::uuid[])) "+
    "ORDER BY created_at DESC,id DESC LIMIT 41 OFFSET $2",
@@ -473,7 +476,9 @@ export class FinanceBudgetService{
   const categories=await this.db.query<{code:string;name:string}>(
    "SELECT code,name FROM account_group WHERE root_realm_id=$1 "+
    "AND category='EXPENSE' ORDER BY name,code LIMIT 100",[actor.realmId]);
-  return {years:years.rows,branches,categories:categories.rows};
+  const scope=await this.branches.financeReportScope(bearer,"finance.budgets.view");
+  const projects=await financeProjectOptions(this.db,actor.realmId,scope);
+  return {years:years.rows,branches,categories:categories.rows,projects};
  }
  async commandStatus(bearer:string,keyInput:string){
   const actor=await this.actor(bearer);
