@@ -5,6 +5,10 @@ export class DonationRefundController{
  constructor(private readonly refunds:DonationRefundService){}
  @Get("queue")
  queue(@Headers("authorization")auth:string){return this.refunds.queue(auth);}
+ @Get(":ref/options")
+ options(@Headers("authorization")auth:string,@Param("ref")ref:string){
+  return this.refunds.options(auth,ref);
+ }
  @Post("request")
  request(@Headers("authorization")auth:string,@Body()body:unknown){return this.refunds.request(auth,body);}
  @Post(":ref/confirm-cash")

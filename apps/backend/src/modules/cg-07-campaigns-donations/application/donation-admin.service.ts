@@ -19,10 +19,18 @@ export class DonationAdminService{
   const args=[actor.realmId,scope.all,scope.branchRefs,status,q.trim().toLowerCase(),offset];
   const rows=await this.db.query<{
    donationNumber:string;amountMinor:string;currency:string;status:string;
-   method:string|null;campaignTitle:string|null;voucher:string|null;createdAt:Date}>(
+   method:string|null;campaignTitle:string|null;voucher:string|null;createdAt:Date;
+   donationRef:string;refundMinor:string;receiptStatus:string}>(
     "SELECT d.donation_number AS \"donationNumber\",d.amount_minor::text AS \"amountMinor\","+
     "d.currency,d.source_status AS status,m.method,c.title AS \"campaignTitle\","+
-    "e.voucher_reference AS voucher,d.created_at AS \"createdAt\" "+
+    "e.voucher_reference AS voucher,d.created_at AS \"createdAt\","+
+    "coalesce((SELECT sum(r.amount_minor) FROM donation_refund_request r "+
+    "JOIN journal j ON j.root_realm_id=r.root_realm_id AND j.id=r.reversal_journal_ref "+
+    "WHERE r.root_realm_id=d.root_realm_id AND r.donation_id=d.id "+
+    "AND r.status='FINANCE_REVERSED' AND j.status='POSTED' AND j.source_ref=r.id),0)::text "+
+    "AS \"refundMinor\",coalesce((SELECT rec.status FROM cg19_donation_receipt_document rec "+
+    "WHERE rec.root_realm_id=d.root_realm_id AND rec.donation_id=d.id),'NOT_ISSUED') "+
+    "AS \"receiptStatus\" "+
     "FROM donation d LEFT JOIN campaign c ON c.root_realm_id=d.root_realm_id AND c.id=d.campaign_id "+
     "LEFT JOIN donation_manual_evidence e ON e.root_realm_id=d.root_realm_id AND e.donation_id=d.id "+
     "LEFT JOIN donation_payment_attempt m ON m.root_realm_id=e.root_realm_id AND m.id=e.attempt_id "+
@@ -38,7 +46,19 @@ export class DonationAdminService{
     "coalesce(sum(amount_minor) FILTER(WHERE source_status='RECEIVED_POSTED'),0)::text AS \"receivedMinor\" "+
     "FROM donation WHERE root_realm_id=$1 AND ($2::boolean OR branch_ref=ANY($3::uuid[]))",
     [actor.realmId,scope.all,scope.branchRefs]);
-  return {items:rows.rows.slice(0,25),hasMore:rows.rows.length>25,offset,
-   summary:summary.rows[0],message:"Only original CG09-confirmed posted receipts count as received. Pending requests are excluded."};
+  const verifiedRefunds=await this.db.query<{minor:string;total:number}>(
+    "SELECT coalesce(sum(r.amount_minor),0)::text AS minor,count(*)::int AS total "+
+    "FROM donation_refund_request r "+
+    "JOIN donation d ON d.root_realm_id=r.root_realm_id AND d.id=r.donation_id "+
+    "JOIN journal j ON j.root_realm_id=r.root_realm_id AND j.id=r.reversal_journal_ref "+
+    "WHERE r.root_realm_id=$1 AND ($2::boolean OR d.branch_ref=ANY($3::uuid[])) "+
+    "AND r.status='FINANCE_REVERSED' AND j.status='POSTED' AND j.source_ref=r.id",
+    [actor.realmId,scope.all,scope.branchRefs]);
+   const refunded=BigInt(verifiedRefunds.rows[0]?.minor??"0");
+   const gross=BigInt(summary.rows[0]?.receivedMinor??"0");
+   return {items:rows.rows.slice(0,25),hasMore:rows.rows.length>25,offset,
+   summary:{...summary.rows[0],verifiedRefundMinor:refunded.toString(),
+     verifiedRefundCount:verifiedRefunds.rows[0]?.total??0,
+     netReceivedMinor:(gross-refunded).toString()},message:"Only original CG09-confirmed posted receipts count as received. Pending requests are excluded."};
  }
 }

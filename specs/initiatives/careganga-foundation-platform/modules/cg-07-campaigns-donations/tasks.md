@@ -420,3 +420,6 @@ Public Next donation POST-body proof source now allows only `/receipt/download` 
 
 ### 22-Nov US003 Public Android private PDF and refund status parity
 Native donor status now carries verified CG09 gross/partial/full/refund and current CG19 receipt status. Only ISSUED enables explicit protected PDF POST with private proof; actual bytes validated application/pdf and size then written using Expo SDK58 File.write to private cache, shared with expo-sharing, and cache removed. No token in URLs, no fake receipt when pending, no duplicate payment when refunded. QA01/06/11/16/18 source candidate; Android device/Play/visual/runtime NOT_RUN. Expo SDK58 reference: https://docs.expo.dev/versions/v58.0.0/sdk/filesystem/ .
+
+### 22-Nov US003 backend Admin A18 protected report net and options
+DonationAdminService A16/A18 currently authorized branch-scoped rows include internal action reference (never render technical UUID), receipt status, verified refund amount only from original CG09 posted correction; summary exposes gross/refunded/net and verified refund count. Refund options read current authorized source and real open CG09 years by name for protected A18 workflow. No fabricated bank payout or second ledger. QA05/12/15/17/18 source candidate, runtime not run.

@@ -84,6 +84,21 @@ export class DonationRefundService{
    return {refundRef:inserted.id,status:"REQUESTED",replayed:false};
   });
  }
+ async options(bearer:string,ref:string){
+  if(!ID.test(ref))throw new BadRequestException("Choose an original refund request.");
+  return this.run(bearer,async(tx,a)=>{
+   const row=(await tx.query<{donation_id:string;status:string;amount_minor:string}>(
+    "SELECT donation_id,status,amount_minor::text FROM donation_refund_request "+
+    "WHERE root_realm_id=$1 AND id=$2 FOR SHARE",[a.realmId,ref])).rows[0];
+   if(!row||row.status!=="REQUESTED")throw new NotFoundException("Current refund request unavailable.");
+   await this.current(tx,a,row.donation_id);
+   const years=await tx.query<{value:string;label:string}>(
+    "SELECT id AS value,name AS label FROM financial_year WHERE root_realm_id=$1 "+
+    "AND status='OPEN' ORDER BY start_on DESC,id LIMIT 21",[a.realmId]);
+   return {amountMinor:row.amount_minor,years:years.rows.slice(0,20),
+    complete:years.rows.length<=20};
+  });
+ }
  async queue(bearer:string){
   return this.run(bearer,async(tx,a)=>{
    const scope=await this.branches.financeReportScope(bearer,"finance.journals.post");
