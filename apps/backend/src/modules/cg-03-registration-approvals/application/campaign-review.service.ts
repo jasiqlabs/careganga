@@ -12,8 +12,11 @@ import type {VerifiedFoundationActor as Actor} from "../../cg-01-identity-access
 /** CG03 original approval authority; CG07 owns campaign state, CG18 owns publication. */
 type CaseRow={id:string;case_number:string;process_id:string;proposer_id:string;case_kind:string;
  status:string;revision:number;campaign_review_ref:string;campaign_id:string;campaign_source_revision:number;campaign_source_digest:string};
+type FrozenSteps={basic:unknown;project:unknown;team:unknown;budget:unknown;media:unknown;review:unknown};
+type CampaignFrozen={title:string;category:string;branchRef:string|null;projectRef:string|null;
+ eventRef:string|null;goalMinor:string|null;startAt:string|null;endAt:string|null;steps:FrozenSteps};
 type Source={root_realm_id:string;id:string;campaign_id:string;source_revision:number;source_digest:string;
- submitted_by:string;source_snapshot:Record<string,unknown>};
+ submitted_by:string;source_snapshot:CampaignFrozen};
 const UUID=/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const changed=()=>new ConflictException({code:"CG07_CAMPAIGN_REVIEW_CHANGED",message:"Campaign or independent approval has changed. Refresh the current review."});
 const missing=()=>new NotFoundException("Campaign approval is not available.");
@@ -88,19 +91,24 @@ export class CampaignReviewService{
    [actor.realmId,c.campaign_review_ref,c.campaign_id,c.campaign_source_revision,c.campaign_source_digest])).rows[0];
   if(!s||s.submitted_by!==c.proposer_id)throw changed();
   const original=(await tx.query<{digest:string;current_revision:number;status:string;title:string;
+    category:string;branchRef:string|null;projectRef:string|null;eventRef:string|null;
+    goalMinor:string|null;startAt:string|null;endAt:string|null;
     basic:unknown;project:unknown;team:unknown;budget:unknown;media:unknown;review:unknown}>(
    `SELECT r.immutable_digest AS digest,c.current_revision,c.source_status AS status,c.title,
+     c.category,c.branch_ref AS "branchRef",c.project_source_ref AS "projectRef",
+     c.event_source_ref AS "eventRef",c.goal_minor::text AS "goalMinor",
+     c.start_at::text AS "startAt",c.end_at::text AS "endAt",
      r.step1_basic AS basic,r.step2_project_and_geo AS project,r.step3_team AS team,
      r.step4_budget_targets AS budget,r.step5_media_refs AS media,r.step6_summary AS review
     FROM campaign_revision r JOIN campaign c ON c.root_realm_id=r.root_realm_id AND c.id=r.campaign_id
     WHERE r.root_realm_id=$1 AND r.campaign_id=$2 AND r.revision_no=$3 FOR SHARE OF r`,
    [actor.realmId,c.campaign_id,c.campaign_source_revision])).rows[0];
   if(!original||original.digest!==s.source_digest||
-     hash([original.basic,original.project,original.team,original.budget,original.media,original.review])!==
-     hash([s.source_snapshot?.steps?.basic,s.source_snapshot?.steps?.project,
-       s.source_snapshot?.steps?.team,s.source_snapshot?.steps?.budget,
-       s.source_snapshot?.steps?.media,s.source_snapshot?.steps?.review]))
-   throw changed();
+   hash({title:original.title,category:original.category,branchRef:original.branchRef,
+    projectRef:original.projectRef,eventRef:original.eventRef,goalMinor:original.goalMinor,
+    startAt:original.startAt,endAt:original.endAt,
+    steps:{basic:original.basic,project:original.project,team:original.team,budget:original.budget,
+      media:original.media,review:original.review}})!==hash(s.source_snapshot))throw changed();
   if(current&&(original.current_revision!==s.source_revision||original.status!=="SUBMITTED"))
    throw changed();
   return s;
