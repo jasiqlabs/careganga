@@ -5,6 +5,7 @@ import * as Crypto from "expo-crypto";
 import {identityRequest} from "../identity-access/http-client";
 type Policy={policyRef:string;leaveType:string;annualDays:number;usedDays:number;availableDays:number;allowHalfDays:boolean;countWeeklyOff:boolean;effectiveFrom:string;effectiveTo:string|null};
 type Request={reference:string;leaveType:string;startDate:string;endDate:string;days:number;status:string;caseStatus:string};
+type LeaveOverview={total:number;pending:number;approved:number;returned:number;rejected:number;cancelled:number;types:{label:string;count:number}[];upcoming:{name:string;leaveType:string;startDate:string;endDate:string;days:number}[]};
 type Mine={linked:boolean;year:string;policies:Policy[];requests:Request[]};
 type Review=Request&{caseRef:string;employeeName:string;revision:number;canReview:boolean;reason?:string;balance?:{annualDays:number;approvedDays:number;availableDays:number};date?:string;originalStatus?:string;proposedStatus?:string;original?:{status:string;checkInAt?:string|null;checkOutAt?:string|null};proposed?:{status:string;checkInAt?:string|null;checkOutAt?:string|null}};
 const blank=()=>({policyRef:"",startDate:"",endDate:"",halfDay:false,reason:""});
@@ -126,18 +127,19 @@ const snapshot=(v:Review["original"])=>v?v.status+" · In: "+(v.checkInAt??"—"
 export function NativeHrLeaveReviews({token,onExpired,onChanged,kind="leave"}:{token:string;onExpired:()=>void;onChanged:()=>void;kind?:"leave"|"correction"}){
  const route=kind==="leave"?"leave-reviews":"attendance-correction-reviews";
  const [items,setItems]=useState<Review[]>([]),[selected,setSelected]=useState<Review|null>(null);
+ const [overview,setOverview]=useState<LeaveOverview|null>(null);const reviewSequence=useRef(0);
  const [status,setStatus]=useState("SUBMITTED"),[offset,setOffset]=useState(0),[more,setMore]=useState(false);
  const [loading,setLoading]=useState(true),[busy,setBusy]=useState(false),[error,setError]=useState(""),[notice,setNotice]=useState("");
  const [password,setPassword]=useState(""),[action,setAction]=useState("APPROVE"),[locked,setLocked]=useState(false);
  const [filter,setFilter]=useState({from:"",to:"",type:"",employee:""}),[applied,setApplied]=useState({from:"",to:"",type:"",employee:""});
  const key=useRef<string|null>(null),fail=useFailure(onExpired,setError);
  const refresh=useCallback(async()=>{
-  setLoading(true);setError("");
-  try{const v=await api<{items:Review[];hasMore:boolean}>(token,route+"?status="+status+"&offset="+offset+(kind==="leave"?Object.entries(applied).map(([k,v])=>"&"+k+"="+encodeURIComponent(v)).join(""):""));
-   if(!Array.isArray(v.items))throw Error("Review list unavailable");setItems(v.items);setMore(v.hasMore===true);
-  }catch(e){setItems([]);setMore(false);setSelected(null);fail(e);}finally{setLoading(false);}
+  const read=++reviewSequence.current;setLoading(true);setError("");setOverview(null);setItems([]);setMore(false);
+  try{const v=await api<{items:Review[];hasMore:boolean;overview?:LeaveOverview}>(token,route+"?status="+status+"&offset="+offset+(kind==="leave"?Object.entries(applied).map(([k,v])=>"&"+k+"="+encodeURIComponent(v)).join(""):""));
+   if(!Array.isArray(v.items))throw Error("Review list unavailable");if(read===reviewSequence.current){setItems(v.items);setMore(v.hasMore===true);setOverview(kind==="leave"?v.overview??null:null);}
+  }catch(e){if(read===reviewSequence.current){setItems([]);setMore(false);setSelected(null);setOverview(null);fail(e);}}finally{if(read===reviewSequence.current)setLoading(false);}
  },[token,status,offset,fail,route,kind,applied]);
- useEffect(()=>{void refresh();},[refresh]);
+ useEffect(()=>{void refresh();return()=>{reviewSequence.current++;};},[refresh]);
  const open=async(x:Review)=>{
   if(busy||locked)return;setBusy(true);setError("");setSelected(null);setPassword("");setAction("APPROVE");key.current=null;
   try{const v=await api<Review>(token,route+"/"+encodeURIComponent(x.caseRef));
@@ -154,7 +156,8 @@ export function NativeHrLeaveReviews({token,onExpired,onChanged,kind="leave"}:{t
   }catch(e){setPassword("");fail(e);if(known(e)){key.current=null;setLocked(false);}else setLocked(true);}finally{setBusy(false);}
  };
  return <View style={styles.card}><Text style={styles.title}>{kind==="leave"?"Leave requests":"Attendance correction requests"}</Text>
-  <View style={styles.choices}>{[{key:"SUBMITTED",title:"Pending"},{key:"OWNER_COMPLETED",title:"Approved"},
+  {kind==="leave"&&overview&&<View style={{flexDirection:"row",flexWrap:"wrap",gap:8}}>{[{label:"Total requests",count:overview.total},{label:"Pending review",count:overview.pending},{label:"Approved",count:overview.approved},{label:"Returned",count:overview.returned},{label:"Rejected",count:overview.rejected},{label:"Cancelled",count:overview.cancelled}].map(x=><View key={x.label} style={[styles.card,{flexBasis:"46%",flexGrow:1,minWidth:130,padding:10}]}><Text style={styles.muted}>{x.label}</Text><Text style={styles.title}>{x.count}</Text></View>)}</View>}
+  <View style={styles.choices}>{[{key:"SUBMITTED",title:"Pending"},...(kind==="leave"?[{key:"IN_REVIEW",title:"In review"}]:[]),{key:"OWNER_COMPLETED",title:"Approved"},
    {key:"RETURNED",title:"Returned"},{key:"REJECTED",title:"Rejected"},...(kind==="leave"?[{key:"CANCELLED",title:"Cancelled"}]:[]),{key:"ALL",title:"All"}].map(x=>
    <Button key={x.key} title={x.title} selected={status===x.key} disabled={busy||locked}
     onPress={()=>{setStatus(x.key);setOffset(0);setSelected(null);setPassword("");}}/>)}</View>
@@ -164,6 +167,8 @@ export function NativeHrLeaveReviews({token,onExpired,onChanged,kind="leave"}:{t
   {!!error&&<Text accessibilityRole="alert" style={styles.error}>{error}</Text>}{!!notice&&<Text style={styles.success}>{notice}</Text>}
   {loading&&<ActivityIndicator accessibilityLabel="Loading leave reviews"/>}
   {!loading&&!error&&!items.length&&<Text style={styles.muted}>No matching requests.</Text>}
+  {kind==="leave"&&overview&&<><View style={styles.card}><Text style={styles.label}>Requests by leave type</Text>{overview.types.length===0?<Text style={styles.muted}>No matching requests.</Text>:overview.types.map(x=><View key={x.label} style={{gap:4}}><Text>{x.label} · {x.count}</Text><View style={{height:7,backgroundColor:hrTheme.selectedSurface,borderRadius:8,overflow:"hidden"}}><View style={{height:7,backgroundColor:hrTheme.primary,width:(100*x.count/Math.max(1,overview.total))+"%" as `${number}%`}}/></View></View>)}</View>
+   <View style={styles.card}><Text style={styles.label}>Upcoming approved leaves</Text>{overview.upcoming.length===0?<Text style={styles.muted}>No matching upcoming leave.</Text>:overview.upcoming.map((x,i)=><View key={i} style={styles.item}><Text style={styles.label}>{x.name}</Text><Text style={styles.muted}>{x.leaveType} · {x.startDate} – {x.endDate} · {x.days} days</Text></View>)}</View></>}
   {items.map(x=><View key={x.caseRef} style={styles.item}><Text style={styles.label}>{x.employeeName} · {kind==="leave"?x.leaveType:"Attendance correction"}</Text>
    <Text style={styles.muted}>{kind==="leave"?x.startDate+" – "+x.endDate+" · "+x.days+" days":x.date+" · "+x.originalStatus+" → "+x.proposedStatus} · {label(x.status)}</Text>
    <Button title="View request" disabled={busy||locked} onPress={()=>void open(x)}/></View>)}
