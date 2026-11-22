@@ -14,17 +14,17 @@ type Pending={path:string;body:Record<string,unknown>};
 export function NativeMemberSelf({onExit,initialPlan}:{onExit:()=>void;initialPlan?:string|null}){
  const [token,setToken]=useState<string|null>(null),[verified,setVerified]=useState(false),[loading,setLoading]=useState(true),[busy,setBusy]=useState(false);
  const [message,setMessage]=useState(""),[apps,setApps]=useState<CG04Application[]>([]),[selected,setSelected]=useState<CG04Application|null>(null),[member,setMember]=useState<CG04Member|null>(null),[fee,setFee]=useState<CG04MembershipFee|null>(null),[plans,setPlans]=useState<CG04PublicTier[]>([]),[otp,setOtp]=useState("");
- const pending=useRef<Pending|null>(null),sequence=useRef(0);
+ const pending=useRef<Pending|null>(null),sequence=useRef(0),foreground=useRef(true);
  const clear=useCallback(()=>{sequence.current++;setToken(null);setVerified(false);setApps([]);setSelected(null);setMember(null);setFee(null);pending.current=null;void SecureStore.deleteItemAsync(KEY).catch(()=>undefined);},[]);
  const refresh=useCallback(async(key:string)=>{
   const n=++sequence.current;
   try{
    const phone=await memberInvoke<{verified:boolean}>("/api/identity/mobile/status","GET",undefined,key);
-   if(n!==sequence.current)return;
+   if(n!==sequence.current||!foreground.current)return;
    setToken(key);setVerified(phone.verified);
    if(!phone.verified){setApps([]);setSelected(null);setMember(null);return;}
    const [list,self]=await Promise.all([memberInvoke<{items:CG04Application[]}>("/api/v1/membership/applications","GET",undefined,key),memberInvoke<{member:CG04Member|null}>("/api/v1/membership/me","GET",undefined,key)]);
-   if(n!==sequence.current)return;
+   if(n!==sequence.current||!foreground.current)return;
    setApps(list.items);setMember(self.member);
    setSelected(old=>list.items.find(x=>x.ref===old?.ref)??list.items.find(x=>["DRAFT","RETURNED","SUBMITTED"].includes(x.status))??list.items[0]??null);
   }catch(e){if(e&&typeof e==="object"&&"status" in e&&e.status===401){clear();throw Error("Your membership session expired. Sign in again.");}throw e;}
@@ -36,11 +36,12 @@ export function NativeMemberSelf({onExit,initialPlan}:{onExit:()=>void;initialPl
  })();return()=>{active=false;sequence.current++;};},[refresh]);
  useEffect(()=>{const sub=BackHandler.addEventListener("hardwareBackPress",()=>{onExit();return true;});return()=>sub.remove();},[onExit]);
  useEffect(()=>{const sub=AppState.addEventListener("change",state=>{
-  if(state!=="active"){setApps([]);setSelected(null);setMember(null);setFee(null);setVerified(false);return;}
+  foreground.current=state==="active";
+  if(state!=="active"){sequence.current++;setApps([]);setSelected(null);setMember(null);setFee(null);setVerified(false);setOtp("");return;}
   if(token)void refresh(token).catch(()=>setMessage("Private membership status unavailable. Retry when connected."));
  });return()=>sub.remove();},[token,refresh]);
  useEffect(()=>{if(!selected||!token||!verified){setFee(null);return;}let active=true;
-  void memberInvoke<CG04MembershipFee>("/api/v1/membership/applications/"+selected.ref+"/fee","GET",undefined,token).then(v=>{if(active)setFee(v);}).catch(()=>{if(active)setFee(null);});
+  void memberInvoke<CG04MembershipFee>("/api/v1/membership/applications/"+selected.ref+"/fee","GET",undefined,token).then(v=>{if(active&&foreground.current)setFee(v);}).catch(()=>{if(active&&foreground.current)setFee(null);});
   return()=>{active=false;};
  },[selected?.ref,selected?.version,token,verified]);
  useEffect(()=>{let active=true;void (async()=>{
