@@ -15394,3 +15394,28 @@ button:disabled {
 .cg04-self-service .cg04-panel>label:has(input[type=file]){margin:12px 0}
 .cg04-self-service input[type=file]{min-width:0;max-width:100%;font-size:14px}
 @media(max-width:600px){.cg04-self-service .cg04-panel,.cg04-auth.cg04-panel{padding:15px}.cg04-enroll-form,.cg04-auth form{max-width:100%}.cg04-self-service .cg04-buttons>button{max-width:100%}}
+
+
+/* CG-04 original membership enrollment and B09 roster — responsive current-source UI */
+.cg04-roster{display:grid;gap:14px;max-width:100%}
+.cg04-roster-head{display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap}
+.cg04-roster-filter{display:grid;grid-template-columns:minmax(220px,2fr) repeat(3,minmax(120px,1fr)) auto auto;align-items:end;gap:10px}
+.cg04-roster-filter label,.cg04-enroll-form label,.cg04-auth label{display:grid;gap:6px;color:#27443b;font-weight:600;font-size:13px}
+.cg04-roster-filter :is(input,select),.cg04-enroll-form :is(input:not([type=checkbox]),select,textarea),.cg04-auth :is(input,select){width:100%;min-height:44px;border:1px solid #cddbd3;border-radius:9px;padding:10px 12px;background:#fff;color:#12324d;font:inherit}
+.cg04-enroll-form :is(textarea){min-height:100px;resize:vertical}
+.cg04-enroll-form,.cg04-auth form{display:grid;gap:13px;max-width:760px;width:100%}
+.cg04-roster-scroll{width:100%;max-width:100%;overflow:auto;border:1px solid #e1e9e4;border-radius:12px;background:#fff}
+.cg04-roster-scroll table{width:100%;min-width:1000px;border-collapse:collapse;text-align:left;font-size:13px}
+.cg04-roster-scroll th,.cg04-roster-scroll td{padding:12px;vertical-align:middle;border-bottom:1px solid #edf1ef;white-space:normal}
+.cg04-roster-scroll th{position:sticky;top:0;background:#f5f8f6;color:#38524b;font-weight:700;white-space:nowrap}
+.cg04-roster-scroll td:first-child{font-weight:700;color:#245a45;white-space:nowrap}
+.cg04-roster-state{display:inline-flex;align-items:center;padding:4px 9px;border-radius:18px;font-size:11px;font-weight:700;letter-spacing:.01em;background:#eff4f1;color:#38524b}
+.cg04-state-active{background:#def6e9;color:#196442}.cg04-state-expired{background:#ffe9ef;color:#9a2752}
+.cg04-state-suspended{background:#fff0c6;color:#795416}.cg04-state-cancelled{background:#f1e8eb;color:#87515c}
+.cg04-roster :is(button,a):focus-visible,.cg04-public :is(input,select,textarea,button,a):focus-visible{outline:3px solid #eaa93d;outline-offset:2px}
+.cg04-self-service .cg04-panel,.cg04-member-flow .cg04-panel{display:grid;gap:12px;max-width:100%}
+.cg04-self-service .cg04-buttons,.cg04-member-flow .cg04-buttons{align-items:center}
+.cg04-consent{display:flex!important;align-items:flex-start;gap:10px}
+.cg04-consent input[type=checkbox]{width:20px;min-width:20px;height:20px;margin-top:2px}
+@media(max-width:1100px){.cg04-roster-filter{grid-template-columns:repeat(3,minmax(0,1fr))}.cg04-roster-filter label:first-child{grid-column:1/-1}}
+@media(max-width:650px){.cg04-roster-filter{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}.cg04-roster-filter label:first-child{grid-column:1/-1}.cg04-roster-head{align-items:stretch}.cg04-roster-scroll th,.cg04-roster-scroll td{padding:10px}}
