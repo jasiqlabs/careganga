@@ -1,6 +1,7 @@
 /** Server-controlled allow-list: authorized overrides can change safe wording only,
  * never rules, status, field binding, redaction, or authentication behavior. */
 export const SAFE_MESSAGE_CATALOG:Readonly<Record<string,string>>=Object.freeze({
+      CG12_STALE:"The record changed, or its original code, unit or scope cannot be changed. Refresh it and retry.",
       CG12_CATALOG_INVALID:"Check the item, supplier or store fields and try again.",
       CG12_UNIT_INVALID:"Choose pieces, kilograms or liters with a valid quantity precision.",
       CG12_QUANTITY_INVALID:"Enter a nonnegative threshold matching the selected unit precision.",
