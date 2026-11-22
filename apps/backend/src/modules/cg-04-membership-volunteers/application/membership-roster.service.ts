@@ -40,7 +40,7 @@ function read(raw:unknown):Filter{
 const cols=[
  'm.id AS ref,m.member_no AS "memberNumber",m.display_name AS name',
  'a.contact_email AS email,a.contact_mobile AS mobile,v.name AS plan,v.category',
- 'm.created_at::date::text AS "joinedOn",t.expires_on::text AS "expiresOn"',
+ "((m.created_at AT TIME ZONE 'Asia/Kolkata')::date)::text AS \"joinedOn\",t.expires_on::text AS \"expiresOn\"",
  "CASE WHEN m.status<>'ACTIVE' THEN m.status WHEN t.expires_on<=(now() AT TIME ZONE 'Asia/Kolkata')::date THEN 'EXPIRED' ELSE 'ACTIVE' END AS status",
  'a.city,g.display_name AS district,b.name AS branch,m.created_at AS "createdAt"'
 ].join(",");
