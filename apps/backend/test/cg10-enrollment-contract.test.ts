@@ -1,6 +1,7 @@
 import {describe,test} from "node:test";
 import assert from "node:assert/strict";
 import {BadRequestException,ConflictException} from "@nestjs/common";
+import {parseHrPrivateDetails} from "../src/modules/cg-10-human-resources/application/hr-private-detail.service";
 import {HrEnrollmentSourceFacade,sourceHash} from "../src/modules/cg-10-human-resources/application/hr-enrollment-source.facade";
 import {HrEnrollmentService,parseHrDraft} from "../src/modules/cg-10-human-resources/application/hr-enrollment.service";
 
@@ -170,5 +171,18 @@ describe("CG-10 original enrollment source integrity",()=>{
   Object.assign(service,{sessions:{requireAction:async()=>({realmId:id,accountId:id})},db:{connect:async()=>tx},source:{draft:async()=>app}});
   assert.equal((await service.submit("test",id,{requestKey:id,expectedRevision:1,files:[initial]})).replayed,true);
   await assert.rejects(service.submit("test",id,{requestKey:id,expectedRevision:1,files:[{...initial,fileVersion:2}]}),ConflictException);
+ });
+});
+
+describe("CG-10 B27-B28 protected registration fields",()=>{
+ test("legacy encrypted record remains readable with absent optional additions",()=>{
+  const data=parseHrPrivateDetails({contactPhone:"9876543210",pan:null,bankAccount:null,bankIfsc:null});
+  assert.equal(data.contactPhone,"9876543210");assert.equal(data.contactEmail,null);assert.equal(data.dateOfBirth,null);
+ });
+ test("approved optional personal and bank fields accept valid formats and no permission or salary flags",()=>{
+  const data=parseHrPrivateDetails({fatherName:"Sample Parent",dateOfBirth:"1990-02-28",gender:"Female",bloodGroup:"A+",contactEmail:"sample@example.test",pinCode:"411001",accountHolder:"Sample Employee",bankName:"Sample bank",bankBranch:"Main",accountType:"Savings",upiId:"sample@bank",bankAccount:"1234567890",bankIfsc:"ABCD0123456"});
+  assert.equal(data.accountType,"SAVINGS");assert.equal(data.bloodGroup,"A+");
+  for(const invalid of [{dateOfBirth:"1990-02-30"},{dateOfBirth:"2099-01-01"},{pinCode:"000000"},{bloodGroup:"C+"},{contactEmail:"abc"},{upiId:"no-at-sign"},{accountType:"FAKE"},{salary:"123"},{role:"ADMIN"}])
+   assert.throws(()=>parseHrPrivateDetails(invalid),BadRequestException);
  });
 });
