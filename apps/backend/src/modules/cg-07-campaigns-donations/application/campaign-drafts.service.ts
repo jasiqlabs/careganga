@@ -428,16 +428,16 @@ export class CampaignDraftsService{
     ORDER BY c.updated_at DESC,c.id DESC LIMIT 26 OFFSET $6`,[...args])).rows;
    const summary=(await tx.query<{total:number;active:number;draft:number;completed:number;cancelled:number;goalMinor:string}>(`
     SELECT count(*)::integer AS total,
-      count(*) FILTER (WHERE source_status='PUBLISHED')::integer AS active,
+      count(*) FILTER (WHERE source_status='APPROVED')::integer AS active,
       count(*) FILTER (WHERE source_status='DRAFT')::integer AS draft,
       count(*) FILTER (WHERE source_status='CLOSED')::integer AS completed,
       count(*) FILTER (WHERE source_status='WITHDRAWN')::integer AS cancelled,
-      COALESCE(sum(goal_minor) FILTER (WHERE source_status IN('APPROVED','PUBLISHED')),0)::text AS "goalMinor"
+      COALESCE(sum(goal_minor) FILTER (WHERE source_status='APPROVED'),0)::text AS "goalMinor"
     FROM campaign WHERE root_realm_id=$1
      AND ($2::boolean OR branch_ref=ANY($3::uuid[]))`,
      [a.realmId,scope.all,scope.branches.map(b=>b.value)])).rows[0];
    return {items:rows.slice(0,25),offset,hasMore:rows.length>25,summary,
-    message:"Scope-wide campaign counts are original campaign statuses; funding collected is unavailable until verified finance integration."};
+    message:"Active count is CG03-approved campaign source, not necessarily CG18-published. Planned goal is not money received."};
   },true);
  }
 }
