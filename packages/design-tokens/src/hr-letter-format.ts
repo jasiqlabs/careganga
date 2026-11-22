@@ -6,7 +6,7 @@ export function hrLetterBlocks(body:string):HrLetterBlock[]{
  return body.split(/\r?\n/).map(line=>{
   for(const kind of ["heading","bullet","numbered","center","underline"] as const){
    const prefix=marker[kind];
-   if(line.startsWith(prefix)&&(line.slice(prefix.length).trim()||kind!=="heading"&&kind!=="bullet"))return {kind,text:line.slice(prefix.length).trim()};
+   if(line.startsWith(prefix))return {kind,text:line.slice(prefix.length)};
   }
   return {kind:"paragraph",text:line};
  });
@@ -22,7 +22,7 @@ export function hrCardVisibleFields(body:string):HrCardField[]{
 }
 
 export function appendLetterBlock(body:string,kind:HrLetterKind){
- const next=body+(body&&!body.endsWith("\n")?"\n":"")+marker[kind];
+ const next=body+(body?"\n":"")+marker[kind];
  return next.length<=1200?next:body;
 }
 export function updateLetterBlock(body:string,index:number,kind:HrLetterKind,text:string){
