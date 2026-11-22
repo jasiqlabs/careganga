@@ -2,6 +2,7 @@ import {ConflictException,ForbiddenException,Injectable,NotFoundException} from 
 import {createHash} from "node:crypto";
 import type {PoolClient} from "pg";
 import type {VerifiedFoundationActor} from "../../cg-01-identity-access/public-api";
+import {FoundationStructureIdentityFacade} from "../../cg-01-identity-access/application/foundation-structure-identity.facade";
 import {InventoryCatalogService} from "./inventory-catalog.service";
 import {inventoryRef,inventoryQuantity,sourceChanged} from "./inventory-receipt-draft-source";
 import {lockStockBalances,type StockDelta} from "./inventory-stock-command";
@@ -10,7 +11,7 @@ export type MaterialRow={id:string;request_no:string;location_id:string;requeste
 export type MaterialLine={id:string;item_id:string;unit_code:string;qty_scale:number;requested_qty:string;approved_qty:string;held_qty:string;issued_qty:string;name:string;sku:string};
 @Injectable()
 export class InventoryMaterialSource{
- constructor(private readonly catalog:InventoryCatalogService){}
+ constructor(private readonly catalog:InventoryCatalogService,private readonly identity:FoundationStructureIdentityFacade){}
  async row(tx:PoolClient,a:VerifiedFoundationActor,ref:string,own:boolean,write=false,active=true){
   const r=(await tx.query<MaterialRow>("SELECT *,due_date::text FROM material_request WHERE root_realm_id=$1 AND id=$2 "+(write?"FOR UPDATE":"FOR SHARE"),[a.realmId,inventoryRef(ref)])).rows[0];
   if(!r)throw new NotFoundException("Material request unavailable");
@@ -33,9 +34,10 @@ export class InventoryMaterialSource{
  }
  async view(tx:PoolClient,a:VerifiedFoundationActor,r:MaterialRow){
   const lines=await this.lines(tx,a.realmId,r.id);
-  const label=(await tx.query<{label:string;requester:string}>("SELECT l.label,a.display_name AS requester FROM inventory_location l JOIN account a ON a.id=$3 AND a.realm_id=$1 WHERE l.root_realm_id=$1 AND l.id=$2",[a.realmId,r.location_id,r.requester_id])).rows[0];
+  const label=(await tx.query<{label:string}>("SELECT label FROM inventory_location WHERE root_realm_id=$1 AND id=$2",[a.realmId,r.location_id])).rows[0];
+  const requester=(await this.identity.accountLabels(tx,a,[r.requester_id]))[r.requester_id]??"Staff account";
   const review=(await tx.query<{id:string;case_number:string;status:string;revision:number}>("SELECT id,case_number,status,revision FROM cg03_case WHERE realm_id=$1 AND material_request_id=$2 AND material_revision_no=$3 AND case_kind='MATERIAL_REQUEST_REVIEW'",[a.realmId,r.id,r.current_revision])).rows[0];
-  return {ref:r.id,reference:r.request_no,locationRef:r.location_id,location:label?.label,requester:label?.requester,own:r.requester_id===a.accountId,priority:r.priority,dueDate:r.due_date,reason:r.reason,status:r.status,version:r.version,caseRef:review?.id??null,caseReference:review?.case_number??null,caseStatus:review?.status??null,caseRevision:review?.revision??null,lines:lines.map(l=>({ref:l.id,itemRef:l.item_id,name:l.name,sku:l.sku,unit:l.unit_code,scale:l.qty_scale,requested:l.requested_qty,approved:l.approved_qty,held:l.held_qty,issued:l.issued_qty}))};
+  return {ref:r.id,reference:r.request_no,locationRef:r.location_id,location:label?.label,requester,own:r.requester_id===a.accountId,priority:r.priority,dueDate:r.due_date,reason:r.reason,status:r.status,version:r.version,caseRef:review?.id??null,caseReference:review?.case_number??null,caseStatus:review?.status??null,caseRevision:review?.revision??null,lines:lines.map(l=>({ref:l.id,itemRef:l.item_id,name:l.name,sku:l.sku,unit:l.unit_code,scale:l.qty_scale,requested:l.requested_qty,approved:l.approved_qty,held:l.held_qty,issued:l.issued_qty}))};
  }
  async reserve(tx:PoolClient,a:VerifiedFoundationActor,r:MaterialRow,key:string,allowShortage:boolean){
   const lines=await this.lines(tx,a.realmId,r.id);
