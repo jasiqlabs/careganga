@@ -105,10 +105,10 @@ BEGIN
  JOIN cg03_case_decision d ON d.realm_id=c.realm_id AND d.case_id=c.id AND d.action='APPROVE' AND d.accepted_case_revision=c.revision
  JOIN member m ON m.root_realm_id=a.root_realm_id AND m.original_application_id=a.id
  JOIN membership_term t ON t.root_realm_id=m.root_realm_id AND t.member_id=m.id AND t.original_application_id=a.id
- JOIN member_branch_history b ON b.root_realm_id=m.root_realm_id AND b.member_id=m.id AND b.branch_ref IS NOT DISTINCT FROM m.branch_ref AND b.effective_to IS NULL
+ JOIN member_branch_history b ON b.root_realm_id=m.root_realm_id AND b.member_id=m.id AND b.branch_ref IS NOT DISTINCT FROM m.branch_ref AND b.effective_to IS NULL AND b.actor_ref=a.applicant_account_ref
  WHERE a.root_realm_id=NEW.root_realm_id AND a.id=NEW.application_id AND c.id=NEW.case_id AND d.id=NEW.decision_id
  AND c.membership_application_version=NEW.pinned_review_revision AND c.membership_review_digest=NEW.source_digest
- AND m.id=NEW.member_id AND t.id=NEW.term_id
+ AND m.id=NEW.member_id AND t.id=NEW.term_id AND NEW.actor_ref=a.applicant_account_ref
  AND ((a.accepted_fee_minor=0 AND NEW.fee_journal_id IS NULL) OR EXISTS(SELECT 1 FROM finance_membership_verified_collection v WHERE v.root_realm_id=a.root_realm_id AND v.application_id=a.id AND v.journal_id=NEW.fee_journal_id AND v.amount_minor=a.accepted_fee_minor)))
  THEN RAISE EXCEPTION 'Membership effect must match original approval, fee and term'; END IF;
  RETURN NEW;
@@ -191,3 +191,13 @@ BEGIN
  RETURN NEW;
 END; $$;
 CREATE TRIGGER cg04_member_initial_branch_write BEFORE INSERT OR UPDATE OR DELETE ON member_branch_history FOR EACH ROW EXECUTE FUNCTION cg04_initial_branch_history_guard();
+
+-- A direct case transition cannot bypass either the protected decision or owner effect.
+CREATE FUNCTION cg04_review_completion_at_commit() RETURNS trigger LANGUAGE plpgsql AS $$
+BEGIN
+ IF NEW.case_kind<>'MEMBER_APPLICATION' THEN RETURN NULL; END IF;
+ IF NEW.status='OWNER_COMPLETED' AND NOT EXISTS(SELECT 1 FROM membership_application_effect e JOIN membership_application a ON a.root_realm_id=e.root_realm_id AND a.id=e.application_id WHERE e.root_realm_id=NEW.realm_id AND e.case_id=NEW.id AND e.application_id=NEW.membership_application_id AND a.status='APPROVED') THEN RAISE EXCEPTION 'Original membership owner effect required'; END IF;
+ IF NEW.status='PENDING_OWNER' AND NOT EXISTS(SELECT 1 FROM cg03_case_decision d WHERE d.realm_id=NEW.realm_id AND d.case_id=NEW.id AND d.action='APPROVE' AND d.step_ordinal=1 AND d.fresh_password_verified_at IS NOT NULL AND d.accepted_case_revision=NEW.revision) THEN RAISE EXCEPTION 'Original protected membership decision required'; END IF;
+ RETURN NULL;
+END; $$;
+CREATE CONSTRAINT TRIGGER cg04_review_completed_at_commit AFTER INSERT OR UPDATE ON cg03_case DEFERRABLE INITIALLY DEFERRED FOR EACH ROW EXECUTE FUNCTION cg04_review_completion_at_commit();
