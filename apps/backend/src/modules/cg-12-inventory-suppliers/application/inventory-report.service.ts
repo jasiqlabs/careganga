@@ -30,5 +30,5 @@ export class InventoryReportService{
    return {csv,rows:items.length,hasMore,offset};
   });
  }
- export(token:string,raw:unknown){return this.report(token,inventoryInput(raw,["location","report","q","category","offset","status","priority","from","to"]),true);}
+ export(token:string,raw:unknown){return this.report(token,inventoryInput(raw,["location","report","q","category","offset","status","priority","requestType","from","to"]),true);}
 }
