@@ -110,12 +110,37 @@ export class DonationAdminService{
     "WHERE r.root_realm_id=$1 AND ($2::boolean OR d.branch_ref=ANY($3::uuid[])) "+
     "AND r.status='FINANCE_REVERSED' AND j.status='POSTED' AND j.source_ref=r.id",
     [actor.realmId,scope.all,scope.branchRefs]);
+   const trends=await this.db.query<{month:string;grossMinor:string;refundMinor:string;netMinor:string}>(`
+    WITH entries AS (
+     SELECT j.posting_date AS day,d.amount_minor::numeric AS gross,0::numeric AS refund
+     FROM donation d JOIN donation_finance_effect e ON e.root_realm_id=d.root_realm_id AND e.donation_id=d.id
+     JOIN journal j ON j.root_realm_id=e.root_realm_id AND j.id=e.journal_id
+     WHERE d.root_realm_id=$1 AND ($2::boolean OR d.branch_ref=ANY($3::uuid[]))
+      AND d.source_status='RECEIVED_POSTED' AND e.status='POSTED'
+      AND j.status='POSTED' AND j.source_ref=d.id
+      AND j.immutable_source_event_key=e.source_event_key
+      AND j.immutable_payload_digest=e.immutable_digest
+      AND j.posting_date>=date_trunc('month',current_date)-interval '11 months'
+     UNION ALL
+     SELECT j.posting_date AS day,0::numeric,r.amount_minor::numeric AS refund
+     FROM donation_refund_request r JOIN donation d
+      ON d.root_realm_id=r.root_realm_id AND d.id=r.donation_id
+     JOIN journal j ON j.root_realm_id=r.root_realm_id AND j.id=r.reversal_journal_ref
+     WHERE r.root_realm_id=$1 AND ($2::boolean OR d.branch_ref=ANY($3::uuid[]))
+      AND r.status='FINANCE_REVERSED' AND j.status='POSTED' AND j.source_ref=r.id
+      AND j.posting_date>=date_trunc('month',current_date)-interval '11 months'
+    )
+    SELECT to_char(date_trunc('month',day),'YYYY-MM') AS month,
+     sum(gross)::text AS "grossMinor",sum(refund)::text AS "refundMinor",
+     (sum(gross)-sum(refund))::text AS "netMinor"
+    FROM entries GROUP BY date_trunc('month',day) ORDER BY month ASC`,
+    [actor.realmId,scope.all,scope.branchRefs]);
    const refunded=BigInt(verifiedRefunds.rows[0]?.minor??"0");
    const gross=BigInt(summary.rows[0]?.receivedMinor??"0");
    return {items:rows.rows.slice(0,25),hasMore:rows.rows.length>25,offset:f.offset,
    summary:{...summary.rows[0],verifiedRefundMinor:refunded.toString(),
      verifiedRefundCount:verifiedRefunds.rows[0]?.total??0,
-     netReceivedMinor:(gross-refunded).toString()},message:"Only original CG09-confirmed posted receipts count as received. Pending requests are excluded."};
+     netReceivedMinor:(gross-refunded).toString()},monthlyTrend:trends.rows,message:"Only original CG09-confirmed posted receipts count as received. Pending requests are excluded."};
  }
  /** Role-checked, branch-scoped, bounded original report export.
   * No unmasked donor identity, PAN, bank credentials or technical UUIDs. */
