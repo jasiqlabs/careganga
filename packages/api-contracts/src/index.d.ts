@@ -293,4 +293,28 @@ export type CG04ReviewCase={caseRef:string;reference:string;status:string;revisi
  files:{fileRef:string;fileVersion:number;classification:string;verified:boolean}[];
  documentPack:{status:"PENDING"|"VERIFYING"|"UNKNOWN"|"ISSUED"|"REVOKED";issueRevision:number;issuedAt:string|null;files:{kind:"CARD"|"CERTIFICATE"|"WELCOME";status:"PENDING"|"ISSUED"}[]}|null;
  timeline:{action:string;occurredAt:string;reviewer:string}[]};
+export type CG04VolunteerAvailability="FULL_TIME"|"PART_TIME"|"WEEKENDS"|"FLEXIBLE";
+export type CG04VolunteerApplication={
+ ref:string;applicationNumber:string;status:"DRAFT"|"SUBMITTED"|"RETURNED"|"REJECTED"|"APPROVED"|"CANCELLED";version:number;
+ firstName:string;lastName:string;dateOfBirth:string;gender:string;bloodGroup:string|null;mobile:string;email:string|null;
+ address:string;city:string;village:string;pinCode:string;stateRef:string;state:string;districtRef:string;district:string;
+ branchRef:string|null;branch:string|null;departmentRef:string;department:string;availability:CG04VolunteerAvailability;
+ skills:string[];experience:string;referral:string;consentVersion:"VOLUNTEER_V1";submittedAt:string|null;updatedAt:string
+};
+export type CG04VolunteerApplicationPage={items:CG04VolunteerApplication[]};
+export type CG04VolunteerOption={value:string;label:string};
+export type CG04VolunteerOptions={
+ contact:{name:string;mobile:string;email:string|null};
+ branches:CG04VolunteerOption[];states:CG04VolunteerOption[];districts:CG04VolunteerOption[];
+ departments:CG04VolunteerOption[];availabilities:CG04VolunteerAvailability[]
+};
+export type CG04VolunteerProfile={volunteer:{volunteerNumber:string;name:string;branch:string|null;department:string;
+ availability:CG04VolunteerAvailability;skills:string[];status:"ACTIVE"|"INACTIVE"|"SUSPENDED";joinedOn:string}|null};
+export type CG04VolunteerReviewItem={caseRef:string;reference:string;status:string;revision:number;name:string;applicationNumber:string;
+ department:string;availability:CG04VolunteerAvailability;submittedAt:string;canDecide:boolean};
+export type CG04VolunteerReviewPage={items:CG04VolunteerReviewItem[];hasMore:boolean;offset:number;
+ overview:{total:number;active:number;pending:number;rejected:number;today:number;approvalRate:number|null}};
+export type CG04VolunteerReviewCase={caseRef:string;reference:string;status:string;revision:number;applicationNumber:string;department:string;branch:string|null;
+ source:Record<string,unknown>;files:{fileRef:string;fileVersion:number;classification:string;verified:boolean}[];
+ timeline:{action:string;occurredAt:string;reviewer:string}[];canDecide:boolean};
 export type CG04ReviewDecisionResult={reference:string;status:string;revision:number;replayed:boolean};
