@@ -78,6 +78,20 @@ export class MembershipApprovalService{
   const source=frozen.source,summary={applicationNumber:source.application_ref,name:source.display_name,mobile:source.contact_mobile,email:source.contact_email,address:source.address_text,city:source.city,pinCode:source.pin_code,feeMinor:source.accepted_fee_minor,currency:source.currency};
   return {caseRef:c.id,reference:c.case_number,status:c.status,revision:c.revision,source:summary,files:frozen.files,timeline,canDecide:c.proposer_id!==a.accountId&&c.status==="SUBMITTED"};
  });}
+ /** Original CG03 finalized decision source for CG04's short owner transaction.
+  * The applicant is not a reviewer: no reviewer grant is issued or inferred. */
+ async approvedForActivation(tx:PoolClient,a:Actor,app:string,version:number,digest:string){
+  const c=(await tx.query<Case>("SELECT * FROM cg03_case WHERE realm_id=$1 AND case_kind='MEMBER_APPLICATION' AND membership_application_id=$2 AND proposer_id=$3 AND membership_application_version=$4 AND membership_review_digest=$5 AND status='PENDING_OWNER' FOR UPDATE",[a.realmId,app,a.accountId,version,digest])).rows[0];
+  if(!c)throw new ConflictException("Membership review has not been finally approved.");
+  await this.exact(tx,a,c,true);
+  const d=(await tx.query<{id:string}>("SELECT d.id FROM cg03_case_decision d JOIN account r ON r.realm_id=d.realm_id AND r.id=d.actor_id AND r.status='ACTIVE' JOIN account_role ar ON ar.account_id=r.id AND ar.realm_id=r.realm_id AND ar.revoked_at IS NULL JOIN role role ON role.id=ar.role_id AND role.realm_id=ar.realm_id AND role.active AND role.is_protected WHERE d.realm_id=$1 AND d.case_id=$2 AND d.action='APPROVE' AND d.actor_id<>$3 AND d.fresh_password_verified_at IS NOT NULL AND d.accepted_case_revision=$4 AND d.step_ordinal=1 LIMIT 1 FOR SHARE OF d,r,ar,role",[a.realmId,c.id,a.accountId,c.revision])).rows[0];
+  if(!d)throw new ConflictException("A current independent protected approval is required.");
+  return {caseRef:c.id,decisionRef:d.id};
+ }
+ async completeMembership(tx:PoolClient,a:Actor,caseRef:string,app:string){
+  const updated=await tx.query("UPDATE cg03_case c SET status='OWNER_COMPLETED',revision=revision+1,updated_at=now() WHERE c.realm_id=$1 AND c.id=$2 AND c.case_kind='MEMBER_APPLICATION' AND c.status='PENDING_OWNER' AND c.membership_application_id=$3 AND EXISTS(SELECT 1 FROM membership_application_effect e WHERE e.root_realm_id=c.realm_id AND e.application_id=$3 AND e.case_id=c.id AND e.actor_ref=$4) RETURNING id",[a.realmId,caseRef,app,a.accountId]);
+  if(!updated.rowCount)throw changed();await this.event(tx,a,caseRef,"OWNER_COMPLETED");
+ }
  async proof(token:string,ref:string,file:string){const a=await this.reviewer(token);await this.run(a,async tx=>{await this.authority(tx,a);const v=await this.case(tx,a,uuid(ref));if(v.proposer_id===a.accountId||!["SUBMITTED","PENDING_OWNER"].includes(v.status))throw unavailable();await this.exact(tx,a,v,true);});return this.evidence.reviewDownload(token,ref,file);}
  async decide(token:string,ref:string,raw:unknown){
   const a=await this.reviewer(token),id=uuid(ref),x=object(raw,["requestKey","expectedRevision","action","remarks","currentPassword"]),key=uuid(x.requestKey),expected=int(x.expectedRevision,1,2147483646,"review revision"),action=pick(x.action,["APPROVE","RETURN","REJECT"] as const,"decision"),remarks=plain(x.remarks??"",action==="APPROVE"?0:3,500,"review remarks");
