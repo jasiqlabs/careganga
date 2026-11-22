@@ -64,7 +64,7 @@ export class HrEnrollmentSourceFacade{
   const row=q.rows[0];
   if(row&&(!Number.isSafeInteger(row.record_version)||row.record_version<1||
     !/^[a-f0-9]{64}$/.test(row.payload_digest)))
-   throw new ConflictException("The protected employee revision cannot be verified");
+   throw new ConflictException({code:"CG10_ENROLLMENT_PRIVATE_CHANGED"});
   return {private_record_version:row?.record_version??0,private_payload_digest:row?.payload_digest??null};
  }
  async frozen(tx:PoolClient,realm:string,revisionRef:string,revisionNo:number,
@@ -99,7 +99,7 @@ export class HrEnrollmentSourceFacade{
    const pin=await this.privatePin(tx,realm,source.application_id);
    if(snap.private_record_version!==pin.private_record_version||
       snap.private_payload_digest!==pin.private_payload_digest)
-    throw new ConflictException("The protected employee revision cannot be verified");
+    throw new ConflictException({code:"CG10_ENROLLMENT_PRIVATE_CHANGED"});
   }
   return {applicationRef:source.application_id,revisionRef,
     revisionNo,digest,proposerRef:source.submitted_by,
