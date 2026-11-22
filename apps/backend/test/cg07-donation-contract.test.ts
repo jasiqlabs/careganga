@@ -251,3 +251,25 @@ test("US002-QA12: optional donor preferences are encrypted private input, not pr
  }
  assert.match(web,/\[receiptStatus,setReceiptStatus\]/);
 });
+
+test("US002-QA16: signed payment outage stays queued until original protected CG09 post",()=>{
+ const finance=source("application/donation-online-finance.service.ts");
+ const status=source("application/donation-intents.service.ts");
+ const controller=source("http/donation-online-finance.controller.ts");
+ const web=root("apps/web/src/features/campaigns/donation-finance-actions.tsx");
+ const proxy=root("apps/web/src/app/api/donations/[[...parts]]/route.ts");
+ assert.match(finance,/async reconciliationQueue\(token:string\)/);
+ assert.match(finance,/financeReportScope/);
+ assert.match(finance,/p\.outcome='SUCCESS'/);
+ assert.match(finance,/NOT EXISTS\(SELECT 1 FROM donation_finance_effect/);
+ assert.match(finance,/this\.verified\(tx,a,d\.id\)/);
+ assert.match(finance,/requireFreshFoundationRootProof/);
+ assert.match(finance,/this\.finance\.postProvider/);
+ assert.match(finance,/donation_finance_effect/);
+ assert.match(status,/awaitingFinance/);
+ assert.match(status,/RECONCILIATION_PENDING/);
+ assert.match(controller,/@Get\("reconcile-queue"\)/);
+ assert.match(web,/refreshReconciliations/);
+ assert.match(web,/No signed provider success/);
+ assert.match(proxy,/online\/reconcile-queue/);
+});
