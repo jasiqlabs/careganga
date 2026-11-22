@@ -12,6 +12,7 @@ const empty=():Filter=>({q:"",status:"ALL",category:"ALL",feeClass:"ALL",joinedF
 const statuses=[["ALL","All"],["ACTIVE","Active"],["EXPIRED","Expired"],["SUSPENDED","Suspended"],["CANCELLED","Cancelled"]];
 const categories=[["ALL","All tiers"],["ANNUAL","Annual"],["LIFETIME","Lifetime"],["HONORARY","Honorary"],["STUDENT","Student"],["OTHER","Other"]];
 const feeClasses=[["ALL","All members"],["GENERAL","General · no fee"],["PAID","Paid"]];
+const human=(v:string)=>v.replaceAll("_"," ").toLowerCase().replace(/\b[a-z]/g,c=>c.toUpperCase());
 export function NativeMemberRoster({token,canExport,onExpired}:{token:string;canExport:boolean;onExpired:()=>void}){
  const [draft,setDraft]=useState<Filter>(empty),[filter,setFilter]=useState<Filter>(empty),[cursor,setCursor]=useState(""),[history,setHistory]=useState<string[]>([]);
  const [page,setPage]=useState<CG04RosterPage|null>(null),[loading,setLoading]=useState(true),[busy,setBusy]=useState(false),[error,setError]=useState(""),[notice,setNotice]=useState(""),[epoch,setEpoch]=useState(0);
@@ -98,13 +99,13 @@ export function NativeMemberRoster({token,canExport,onExpired}:{token:string;can
      {([["Approved members",page.overview.total],["Active",page.overview.active],["Expired",page.overview.expired],["Cancelled",page.overview.cancelled]] as const).map(([label,value])=>
       <View key={label} style={styles.metric}><Text style={styles.muted}>{label}</Text><Text style={styles.title}>{value}</Text></View>)}
     </View>
-    <Text style={styles.muted}>Membership categories: {Object.entries(page.overview.byCategory).map(([type,count])=>type+": "+count).join(" · ")||"No approved member records in your permitted scope."}</Text>
+    <Text style={styles.muted}>Membership categories: {Object.entries(page.overview.byCategory).map(([type,count])=>human(type)+": "+count).join(" · ")||"No approved member records in your permitted scope."}</Text>
    </View>
    <Text style={styles.muted}>Showing {page.items.length} approved member records on this page.</Text>
    {!page.items.length&&<Text style={styles.muted}>No approved members match these filters.</Text>}
    {page.items.map(m=><View key={m.ref} style={styles.card}>
-    <Text style={styles.title}>{m.name}</Text><Text style={styles.muted}>{m.memberNumber} · {m.status}</Text>
-    <Text>Plan: {m.plan} ({m.category})</Text>
+    <Text style={styles.title}>{m.name}</Text><Text style={styles.muted}>{m.memberNumber} · {human(m.status)}</Text>
+    <Text>Plan: {m.plan} ({human(m.category)})</Text>
     <Text>Joined: {m.joinedOn} · Valid until: {m.expiresOn??"Lifetime"}</Text>
     <Text>Location: {m.city}, {m.district} · {m.branch??"Foundation"}</Text>
     <Text>Contact: {m.mobile}{m.email?" · "+m.email:""}</Text>
