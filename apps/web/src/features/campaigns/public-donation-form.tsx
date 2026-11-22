@@ -2,6 +2,9 @@
 import {useRef,useState,type FormEvent} from "react";
 type Outcome={status:string;amountMinor:string;statusToken:string;expiresAt:string;replayed:boolean};
 type Payment={status:string;checkoutUrl:string|null;message?:string};
+type HistoricalDonation={donationNumber:string;proofIndex:number;createdAt:string;
+ grossMinor:string;refundedMinor:string;netReceivedMinor:string;currency:string;
+ status:string;receiptStatus:string;receiptNumber:string|null};
 const input={display:"block",width:"100%",minHeight:44,borderRadius:9,padding:12,
  border:"1px solid #d4d9e1",background:"white",color:"#243349"} as const;
 const label={display:"grid",gap:6,fontSize:14,fontWeight:600} as const;
@@ -27,6 +30,9 @@ export function PublicDonationForm({campaignSlug=null}:{campaignSlug?:string|nul
   [checkout,setCheckout]=useState(""),[linkState,setLinkState]=useState(""),[received,setReceived]=useState(false);
  const [receiptStatus,setReceiptStatus]=useState("NOT_ISSUED"),
   [netMinor,setNetMinor]=useState("0"),[refundMinor,setRefundMinor]=useState("0");
+ const [additionalProofs,setAdditionalProofs]=useState(""),
+  [history,setHistory]=useState<HistoricalDonation[]>([]),
+  [historyTokens,setHistoryTokens]=useState<string[]>([]);
  const intentKey=useRef<string|null>(null),linkKey=useRef<string|null>(null);
  const create=async(event:FormEvent)=>{
   event.preventDefault();if(busy||!consent||!amount.trim())return;
@@ -66,13 +72,25 @@ export function PublicDonationForm({campaignSlug=null}:{campaignSlug?:string|nul
   }catch(e){setError(e instanceof Error?e.message:"Donation status currently unavailable.");}
   finally{setBusy(false);}
  };
- const download=async()=>{
-  if(!proof||busy||receiptStatus!=="ISSUED")return;
+ const loadHistory=async()=>{
+  if(busy||!proof)return;
+  setBusy(true);setError("");
+  try{
+   const tokens=[proof,...additionalProofs.split(/\s+/)].filter(Boolean);
+   if(tokens.length>20||new Set(tokens).size!==tokens.length)
+    throw new Error("Enter up to 20 distinct original private donation proofs.");
+   const result=await api<{items:HistoricalDonation[]}>("/history",{statusTokens:tokens});
+   setHistoryTokens(tokens);setHistory(result.items);
+  }catch(e){setError(e instanceof Error?e.message:"Private history unavailable.");}
+  finally{setBusy(false);}
+ };
+ const download=async(historyToken=proof)=>{
+  if(!historyToken||busy)return;
   setBusy(true);setError("");
   try{
    const r=await fetch("/api/public/donations/receipt/download",{
     method:"POST",headers:{"Content-Type":"application/json"},
-    body:JSON.stringify({statusToken:proof}),cache:"no-store",signal:AbortSignal.timeout(17000)});
+    body:JSON.stringify({statusToken:historyToken}),cache:"no-store",signal:AbortSignal.timeout(17000)});
    if(!r.ok||r.headers.get("content-type")?.split(";")[0]!=="application/pdf")
     throw Error("Your private receipt is not currently available.");
    const blob=await r.blob();
