@@ -15419,3 +15419,8 @@ button:disabled {
 .cg04-consent input[type=checkbox]{width:20px;min-width:20px;height:20px;margin-top:2px}
 @media(max-width:1100px){.cg04-roster-filter{grid-template-columns:repeat(3,minmax(0,1fr))}.cg04-roster-filter label:first-child{grid-column:1/-1}}
 @media(max-width:650px){.cg04-roster-filter{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}.cg04-roster-filter label:first-child{grid-column:1/-1}.cg04-roster-head{align-items:stretch}.cg04-roster-scroll th,.cg04-roster-scroll td{padding:10px}}
+
+.cg04-roster-overview{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}
+.cg04-roster-stat{background:#f8faf9;border:1px solid #e0e8e3;border-radius:12px;padding:14px;display:grid;gap:5px}
+.cg04-roster-stat small{font-size:12px;color:#557163}.cg04-roster-stat strong{font-size:24px;font-weight:800;color:#174632}
+@media(max-width:750px){.cg04-roster-overview{grid-template-columns:repeat(2,minmax(0,1fr))}}
