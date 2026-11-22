@@ -8,7 +8,8 @@ export async function projectBudgetProjection(tx:PoolClient,a:VerifiedFoundation
    SELECT b.id,b.root_realm_id,b.status,b.approved_ceiling_minor
    FROM finance_budget b JOIN project p ON p.id=b.project_ref AND p.root_realm_id=b.root_realm_id
    WHERE b.root_realm_id=$1 AND p.branch_ref IS NOT DISTINCT FROM b.branch_id
-    AND ($2::boolean OR b.branch_id=ANY($3::uuid[]))
+    AND ((b.branch_id IS NULL AND $2::boolean) OR b.branch_id=ANY($3::uuid[]))
+    AND (b.branch_id IS NULL OR EXISTS(SELECT 1 FROM branch br WHERE br.root_realm_id=b.root_realm_id AND br.id=b.branch_id AND br.status='ACTIVE'))
     AND (NOT $4::boolean OR p.owner_account_ref=$5)
     AND ($6::uuid IS NULL OR p.id=$6)
   ), movement AS(
