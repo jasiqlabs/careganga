@@ -2,7 +2,7 @@ import "server-only";
 export type PublicCampaign={slug:string;title:string;category:string;summary:string;description:string;
  goalMinor:string|null;startAt:string|null;endAt:string|null;area:string;
  coverSrc:string|null;heroSrc:string|null;heroAlt:string};
-type Result={state:"PUBLISHED"|"NOT_PUBLISHED"|"UNAVAILABLE";cards:PublicCampaign[]};
+type Result={state:"PUBLISHED"|"NOT_PUBLISHED"|"UNAVAILABLE";cards:PublicCampaign[];donationsEnabled:boolean};
 const slug=/^cg-camp-[0-9]{8}$/;
 const media=/^\/api\/public\/campaigns\/media\/[0-9a-f-]{36}$/i;
 function valid(raw:unknown):raw is PublicCampaign{
@@ -22,19 +22,20 @@ function valid(raw:unknown):raw is PublicCampaign{
   (x.endAt===null||typeof x.endAt==="string"&&/^20[0-9]{2}-[0-9]{2}-[0-9]{2}$/.test(x.endAt));
 }
 export async function publishedCampaigns(one?:string):Promise<Result>{
- if(one!==undefined&&!slug.test(one))return {state:"NOT_PUBLISHED",cards:[]};
- if(!process.env.BACKEND_URL)return {state:"UNAVAILABLE",cards:[]};
+ if(one!==undefined&&!slug.test(one))return {state:"NOT_PUBLISHED",cards:[],donationsEnabled:false};
+ if(!process.env.BACKEND_URL)return {state:"UNAVAILABLE",cards:[],donationsEnabled:false};
  try{
   const path="/api/public/content/campaigns"+(one?"/"+one:"");
   const response=await fetch(new URL(path,process.env.BACKEND_URL),{
    cache:"no-store",signal:AbortSignal.timeout(9000)});
-  if(response.status===404)return {state:"NOT_PUBLISHED",cards:[]};
-  if(!response.ok)return {state:"UNAVAILABLE",cards:[]};
+  if(response.status===404)return {state:"NOT_PUBLISHED",cards:[],donationsEnabled:false};
+  if(!response.ok)return {state:"UNAVAILABLE",cards:[],donationsEnabled:false};
   const value:unknown=await response.json();
   const cards=one?[value]:(value&&typeof value==="object"&&"cards" in value&&Array.isArray(value.cards)?value.cards:[]);
   if(cards.length>100||cards.some(x=>!valid(x)))throw Error("Invalid original public campaign response");
-  return {state:cards.length?"PUBLISHED":"NOT_PUBLISHED",cards:cards as PublicCampaign[]};
- }catch{return {state:"UNAVAILABLE",cards:[]};}
+  return {state:cards.length?"PUBLISHED":"NOT_PUBLISHED",cards:cards as PublicCampaign[],
+    donationsEnabled:one===undefined&&!!value&&typeof value==="object"&&"donationsEnabled" in value&&value.donationsEnabled===true};
+ }catch{return {state:"UNAVAILABLE",cards:[],donationsEnabled:false};}
 }
 export const goalText=(minor:string|null)=>{
  if(minor===null)return null;
@@ -42,3 +43,14 @@ export const goalText=(minor:string|null)=>{
   ((BigInt(minor)%100n)===0n?"":"."+(BigInt(minor)%100n).toString().padStart(2,"0"));}
  catch{return null;}
 };
+
+export async function onlineDonationAvailability(){
+ if(!process.env.BACKEND_URL)return false;
+ try{
+  const r=await fetch(new URL("/api/public/content/donations/readiness",process.env.BACKEND_URL),
+   {cache:"no-store",signal:AbortSignal.timeout(7000)});
+  if(!r.ok)return false;const v:unknown=await r.json();
+  return !!v&&typeof v==="object"&&"schemaVersion" in v&&v.schemaVersion===1&&
+   "onlineAvailable" in v&&v.onlineAvailable===true;
+ }catch{return false;}
+}

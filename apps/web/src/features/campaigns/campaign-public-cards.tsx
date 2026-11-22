@@ -1,6 +1,6 @@
 import Link from "next/link";
 import {goalText,type PublicCampaign} from "./campaign-public-source";
-export function CampaignPublicCards({cards,heading="Campaigns"}:{cards:PublicCampaign[];heading?:string}){
+export function CampaignPublicCards({cards,heading="Campaigns",donationsEnabled=false}:{cards:PublicCampaign[];heading?:string;donationsEnabled?:boolean}){
  return <section className="cg-site-content" aria-label="Published fundraising campaigns">
   <h2>{heading}</h2>
   {!cards.length?<p>No independently published campaigns are currently available.</p>:
@@ -14,6 +14,7 @@ export function CampaignPublicCards({cards,heading="Campaigns"}:{cards:PublicCam
      {c.summary&&<p style={{margin:0}}>{c.summary}</p>}
      {goalText(c.goalMinor)&&<p style={{margin:0}}><strong>Fundraising goal: {goalText(c.goalMinor)}</strong><small style={{display:"block"}}>Planned target, not money received</small></p>}
      <Link href={"/campaigns/"+c.slug}>Read about this campaign</Link>
+     {donationsEnabled&&<Link href={"/donate?campaign="+encodeURIComponent(c.slug)}>Support this campaign</Link>}
     </article>)}
    </div>}
  </section>;

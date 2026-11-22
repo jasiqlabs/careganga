@@ -61,6 +61,7 @@ export function CmsSiteHeader({navigation,contact}:{
     {isPublished("/ngo-information")?<Link href="/ngo-information"
      className={pathname==="/ngo-information"?"cg-site-active":undefined}>NGO Information</Link>:
      <span className="cg-site-unavailable" aria-disabled="true">NGO Information</span>}
+    {isPublished("/donate")&&<Link href="/donate">Donate Now</Link>}
     {isPublished("/campaigns")?<Link href="/campaigns"
      className={pathname.startsWith("/campaigns")?"cg-site-active":undefined}>Campaigns</Link>:
      <span className="cg-site-unavailable" aria-disabled="true">Campaigns</span>}

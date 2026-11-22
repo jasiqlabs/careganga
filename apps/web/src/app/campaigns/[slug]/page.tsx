@@ -1,7 +1,7 @@
 import Link from "next/link";
 import {notFound} from "next/navigation";
 import type {Metadata} from "next";
-import {goalText,publishedCampaigns} from "../../../features/campaigns/campaign-public-source";
+import {goalText,publishedCampaigns,onlineDonationAvailability} from "../../../features/campaigns/campaign-public-source";
 export const dynamic="force-dynamic";
 type P={params:Promise<{slug:string}>};
 export async function generateMetadata({params}:P):Promise<Metadata>{
@@ -13,6 +13,7 @@ export async function generateMetadata({params}:P):Promise<Metadata>{
 export default async function CampaignDetail({params}:P){
  const {slug}=await params,r=await publishedCampaigns(slug);
  if(r.state==="NOT_PUBLISHED")notFound();
+ const donationsEnabled=await onlineDonationAvailability();
  const c=r.cards[0];
  if(!c)return <main className="page main"><h1>Campaign unavailable</h1><p>Current independently approved campaign information could not be confirmed. Please check again.</p><Link href="/campaigns">Return to campaigns</Link></main>;
  return <main className="page main" id="main-content">
@@ -28,7 +29,7 @@ export default async function CampaignDetail({params}:P){
    {c.startAt&&<p><strong>Campaign start:</strong> {c.startAt}</p>}
    {c.endAt&&<p><strong>Campaign end:</strong> {c.endAt}</p>}
    {goalText(c.goalMinor)&&<p><strong>Planned fundraising goal:</strong> {goalText(c.goalMinor)}. This is not confirmed money received.</p>}
-   <p>Online contributions for this campaign are not enabled yet. Please contact the Foundation for current assistance information.</p>
+   {donationsEnabled?<p><Link href={"/donate?campaign="+encodeURIComponent(c.slug)}>Support this campaign</Link></p>:<p>Online donations are unavailable. Contact the Foundation.</p>}
    <Link href="/contact">Contact CareGanga Foundation</Link>
   </article>
  </main>;

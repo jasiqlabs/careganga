@@ -384,3 +384,6 @@ Added CG09 `DonationFinancePostingFacade.providerOptions/postProvider`: independ
 
 ### 22-Nov US002 checkpoint G1 — genuine CG21-backed CTA eligibility
 CG07 onlineDonationReady now checks exactly verified current CG21 Razorpay merchant reference and protected key/secret; original CG18 public catalogue and navigation expose only actual available Donate Now action plus read-only availability route, no false success. QA05/07/11/17/18 source-progress, visual/runtime NOT_RUN, US002 remains IN_PROGRESS.
+
+### 22-Nov US002 checkpoint G2 — original Next public navigation/card/detail verified donation links
+Original CG18 site header, campaign list/cards/details now conditionally link /donate only when CG21 merchant readiness is current; no fabricated payment on unavailable merchant. SSR readiness has no-store read, no donor PII in URL. QA05/07/11/17/18 source candidate, runtime/visual NOT_RUN. US002 remains IN_PROGRESS.

@@ -18,8 +18,8 @@ export default async function CampaignsPage(){
    <strong>CareGanga Foundation</strong></Link><Link href="/contact">Contact</Link></header>
   <h1>Our Campaigns</h1>
   {r.state==="UNAVAILABLE"?<p role="alert">Campaign information is temporarily unavailable. Please check again.</p>:
-   <CampaignPublicCards cards={r.cards}/>}
-  <p>Donations are not available through this page until the Foundation enables its verified contribution service.</p>
+   <CampaignPublicCards cards={r.cards} donationsEnabled={r.donationsEnabled}/>}
+  {r.donationsEnabled?<p><Link href="/donate">Make a general donation</Link></p>:<p>Online donations are unavailable until Foundation payment verification is enabled.</p>}
   <Link href="/">Back to CareGanga</Link>
  </main>;
 }
