@@ -5,7 +5,7 @@ import type {VerifiedFoundationActor} from "../../cg-01-identity-access/public-a
 import {FoundationStructureIdentityFacade} from "../../cg-01-identity-access/application/foundation-structure-identity.facade";
 import {BranchSourceFacade} from "../../cg-02-foundation-structure/application/branch-source.facade";
 import {lockCurrentTaskEmployee} from "../../cg-10-human-resources/application/hr-project-task-source";
-import {requireCurrentVolunteer} from "../../cg-04-membership-volunteers/application/current-volunteer-source";
+import {currentVolunteerPredicate,requireCurrentVolunteer} from "../../cg-04-membership-volunteers/application/current-volunteer-source";
 import {ProjectsService} from "./projects.service";
 import {choice,clean,date,optionalRef,ref,stale,invalid} from "../domain/project-input";
 import {parseVisitCreate,parseVisitEdit,parseVisitCapture,validateVisitCaptureTime,parseVisitCancel,parseVisitComment,visitStatuses,visitError,type VisitStatus} from "../domain/visit-input";
@@ -98,8 +98,29 @@ export class FieldVisitsService{
  async detail(token:string,id:string){return this.projects.run(token,"projects.visits.view",async(tx,a)=>{const g=await this.access(tx,a,id);const row=(await tx.query("SELECT "+select+",v.purpose,v.report_text AS report"+joins+" WHERE v.root_realm_id=$1 AND v.id=$2",[a.realmId,id])).rows[0];const captures=g.current?(await tx.query('SELECT kind,latitude,longitude,accuracy_m AS "accuracyM",recorded_at AS "recordedAt",device_recorded_at AS "deviceRecordedAt",location_provenance AS "locationProvenance",consent_state AS "consentState" FROM visit_checkin_event WHERE root_realm_id=$1 AND visit_id=$2 ORDER BY recorded_at',[a.realmId,id])).rows:[];const history=(await tx.query('SELECT e.event_kind AS kind,e.resulting_status AS status,e.occurred_at AS at,e.reason_private AS reason,a.display_name AS actor FROM field_visit_event e JOIN account a ON a.realm_id=e.root_realm_id AND a.id=e.actor_account_ref WHERE e.root_realm_id=$1 AND e.visit_id=$2 ORDER BY e.result_version DESC LIMIT 50',[a.realmId,id])).rows;const comments=(await tx.query('SELECT c.body_private AS body,c.occurred_at AS at,a.display_name AS actor FROM visit_comment_event c JOIN account a ON a.realm_id=c.root_realm_id AND a.id=c.actor_account_ref WHERE c.root_realm_id=$1 AND c.visit_id=$2 ORDER BY c.occurred_at DESC LIMIT 50',[a.realmId,id])).rows;return {...row,captures,history,comments,assignmentCurrent:g.current,canManage:g.manage,canCapture:g.canCapture};},true);}
  async geography(token:string,state:unknown){return this.projects.run(token,"projects.visits.view",(tx,a)=>this.branches.projectGeographyOptions(tx,a,optionalRef(state)),true);}
  async options(token:string,q:Record<string,unknown>){return this.projects.run(token,"projects.visits.manage",async(tx,a)=>{await this.identity.assertCurrent(tx,a,"projects.visits.view");const s=await this.branches.projectBranchScope(tx,a),project=optionalRef(q.projectRef),actor=optionalRef(q.actorRef),state=optionalRef(q.stateRef),search=clean(q.q??"",0,80);const projects=(await tx.query('SELECT id AS value,title AS label FROM project WHERE root_realm_id=$1 AND status NOT IN(\'COMPLETED\',\'CANCELLED\') AND ($2::boolean OR branch_ref=ANY($3::uuid[])) ORDER BY title LIMIT 200',[a.realmId,s.all,s.branches.map(b=>b.value)])).rows;
- let actors:{value:string;label:string}[]=[],tasks:{value:string;label:string}[]=[];if(project){const p=await this.parent(tx,a,project);await this.branches.projectBranch(tx,a,p.branch_ref);const candidates=await tx.query<{value:string;label:string}>(`SELECT aa.id AS value,aa.display_name AS label FROM account aa WHERE aa.realm_id=$1 AND ${eligible("aa")} AND (aa.display_name ILIKE '%'||$2||'%' OR aa.id=$3::uuid) ORDER BY (aa.id=$3::uuid) DESC NULLS LAST,aa.display_name LIMIT 100`,[a.realmId,search,actor]);for(const c of candidates.rows){try{await this.binding(tx,a,p,c.value,null);actors.push(c);}catch(e){if(!(e instanceof ForbiddenException))throw e;}}if(actor&&actors.some(c=>c.value===actor))tasks=(await tx.query("SELECT id AS value,title AS label FROM project_task WHERE root_realm_id=$1 AND project_id=$2 AND assignee_account_ref=$3 AND status IN('ASSIGNED','IN_PROGRESS') ORDER BY title LIMIT 100",[a.realmId,project,actor])).rows;}
- return {projects,actors,tasks,states:await this.branches.projectGeographyOptions(tx,a,null),districts:state?await this.branches.projectGeographyOptions(tx,a,state):[]};},true);}
+ let actors:{value:string;label:string}[]=[],tasks:{value:string;label:string}[]=[],volunteers:{value:string;label:string;accountRef:string}[]=[];
+ if(project){
+  const p=await this.parent(tx,a,project);await this.branches.projectBranch(tx,a,p.branch_ref);
+  const candidates=await tx.query<{value:string;label:string}>(`SELECT aa.id AS value,aa.display_name AS label FROM account aa
+   WHERE aa.realm_id=$1 AND ${eligible("aa")} AND (aa.display_name ILIKE '%'||$2||'%' OR aa.id=$3::uuid)
+   ORDER BY (aa.id=$3::uuid) DESC NULLS LAST,aa.display_name LIMIT 100`,[a.realmId,search,actor]);
+  for(const c of candidates.rows){try{await this.binding(tx,a,p,c.value,null);actors.push(c);}catch(e){if(!(e instanceof ForbiddenException))throw e;}}
+  volunteers=(await tx.query<{value:string;label:string;accountRef:string}>(`SELECT v.id AS value,v.display_name||' · '||v.volunteer_no AS label,v.account_ref AS "accountRef"
+   FROM volunteer v JOIN account aa ON aa.realm_id=v.root_realm_id AND aa.id=v.account_ref
+   WHERE v.root_realm_id=$1 AND ${eligible("aa")} AND ${currentVolunteerPredicate("v","aa.id","$3::uuid")}
+    AND ($2='' OR strpos(lower(v.display_name),lower($2))>0 OR strpos(lower(v.volunteer_no),lower($2))>0)
+   ORDER BY v.display_name,v.id LIMIT 100`,[a.realmId,search,p.branch_ref])).rows;
+  if(actor&&(actors.some(c=>c.value===actor)||volunteers.some(c=>c.accountRef===actor))){
+   const requestedVolunteer=optionalRef(q.volunteerRef);
+   if(requestedVolunteer&&!volunteers.some(v=>v.value===requestedVolunteer&&v.accountRef===actor))
+    throw new ForbiddenException("Choose an eligible approved volunteer.");
+   tasks=(await tx.query<{value:string;label:string}>(`SELECT id AS value,title AS label FROM project_task
+    WHERE root_realm_id=$1 AND project_id=$2 AND assignee_account_ref=$3
+     AND assignee_volunteer_ref IS NOT DISTINCT FROM $4::uuid AND status IN('ASSIGNED','IN_PROGRESS')
+    ORDER BY title LIMIT 100`,[a.realmId,project,actor,requestedVolunteer])).rows;
+  }
+ }
+ return {projects,actors,tasks,volunteers,states:await this.branches.projectGeographyOptions(tx,a,null),districts:state?await this.branches.projectGeographyOptions(tx,a,state):[]};},true);}
  async list(token:string,q:Record<string,unknown>,exporting=false){return this.projects.run(token,exporting?"projects.visits.export":"projects.visits.view",(tx,a)=>this.listInTx(tx,a,q,exporting),true);}
  async listInTx(tx:PoolClient,a:Actor,q:Record<string,unknown>,exporting=false,summaryOnly=false){await this.identity.assertCurrent(tx,a,exporting?"projects.visits.export":"projects.visits.view");await this.identity.assertCurrent(tx,a,"projects.visits.view");const s=await this.branches.projectBranchScope(tx,a),mine=choice(q.tab??"ALL",["ALL","MY"] as const)==="MY";const vals:unknown[]=[a.realmId,s.all,s.branches.map(b=>b.value),a.accountId];const filters=["v.root_realm_id=$1"];const scope="(v.branch_ref IS NOT DISTINCT FROM p.branch_ref AND (v.branch_ref IS NULL OR b.status='ACTIVE') AND ((v.branch_ref IS NULL AND $2::boolean) OR v.branch_ref=ANY($3::uuid[])))";
  // Assigned-only access is revalidated below; manager scope is current effective project scope.
