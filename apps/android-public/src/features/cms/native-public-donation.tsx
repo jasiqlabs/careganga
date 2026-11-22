@@ -1,5 +1,5 @@
 import {useEffect,useRef,useState} from "react";
-import {Linking,Pressable,Text,TextInput,View} from "react-native";
+import {AppState,Linking,Pressable,Text,TextInput,View} from "react-native";
 import * as Crypto from "expo-crypto";
 import {File,Paths} from "expo-file-system";
 import * as Sharing from "expo-sharing";
@@ -27,7 +27,7 @@ export function NativePublicDonation({campaignSlug=null}:{campaignSlug?:string|n
  const [token,setToken]=useState(""),[status,setStatus]=useState(""),
   [paymentUrl,setPaymentUrl]=useState(""),[error,setError]=useState(""),[busy,setBusy]=useState(false);
  const [received,setReceived]=useState(false),[receiptStatus,setReceiptStatus]=useState("NOT_ISSUED"),
-  [refundedMinor,setRefundedMinor]=useState("0");
+  [refundedMinor,setRefundedMinor]=useState("0"),[refundPending,setRefundPending]=useState(false);
  const [extraProofs,setExtraProofs]=useState(""),[history,setHistory]=useState<HistoryRow[]>([]),
   [historyTokens,setHistoryTokens]=useState<string[]>([]);
  const key=useRef<string|null>(null),paymentKey=useRef<string|null>(null);
@@ -58,10 +58,10 @@ export function NativePublicDonation({campaignSlug=null}:{campaignSlug?:string|n
   setPaymentUrl(u.toString());await Linking.openURL(u.toString());
  });
  const refresh=()=>call(async()=>{
-  const v=await request<{status:string;received:boolean;receiptStatus:string;refundedMinor:string}>(
+  const v=await request<{status:string;received:boolean;receiptStatus:string;refundedMinor:string;refundPending:boolean}>(
    "/status",{statusToken:token});
   setStatus(v.status);setReceived(v.received);setReceiptStatus(v.receiptStatus);
-  setRefundedMinor(v.refundedMinor);
+  setRefundedMinor(v.refundedMinor);setRefundPending(v.refundPending);
  });
  const loadHistory=()=>call(async()=>{
   if(!token)return;
@@ -144,7 +144,8 @@ export function NativePublicDonation({campaignSlug=null}:{campaignSlug?:string|n
    <Text selectable>Private status proof (keep safe): {token}</Text>
    {!received&&(paymentUrl?button("Open existing secure payment",()=>void Linking.openURL(paymentUrl)):
     button("Request secure payment link",pay))}
-   {refundedMinor!=="0"&&<Text>Confirmed refund has reduced the verified original donation.</Text>}
+   {refundedMinor!=="0"&&<Text>Confirmed refund has reduced verified net donations.</Text>}
+   {refundPending&&<Text accessibilityRole="alert">Refund requested; actual payout has not been verified.</Text>}
    {receiptStatus==="ISSUED"&&button("Open/share your verified private PDF receipt",download)}
    <Text accessibilityRole="header">My proven donation history</Text>
    <Text>Enter any other original private status proofs, one per line. Only transactions you can prove are shown.</Text>
