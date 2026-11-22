@@ -50,7 +50,15 @@ export class InventoryCatalogService {
    const full=await this.rootAdmin(tx,a);
    const branches=await tx.query<{id:string;name:string}>("SELECT id,name FROM branch WHERE root_realm_id=$1 AND status='ACTIVE' AND ($2::boolean OR manager_account_ref=$3) ORDER BY name,id LIMIT 100",[a.realmId,full,a.accountId]);
    const stores=await tx.query<{id:string;label:string;location_code_norm:string;scope_kind:string}>("SELECT l.id,l.label,l.location_code_norm,l.scope_kind FROM inventory_location l LEFT JOIN branch b ON b.id=l.branch_ref AND b.root_realm_id=l.root_realm_id WHERE l.root_realm_id=$1 AND l.status='ACTIVE' AND (l.scope_kind='FOUNDATION' AND $2::boolean OR l.scope_kind='BRANCH' AND b.status='ACTIVE' AND ($2::boolean OR b.manager_account_ref=$3)) ORDER BY l.label,l.id LIMIT 100",[a.realmId,full,a.accountId]);
-   return {canManageFoundation:full,branches:branches.rows.map(x=>({ref:x.id,label:x.name})),stores:stores.rows.map(x=>({ref:x.id,label:x.label,code:x.location_code_norm,scope:x.scope_kind}))};
+   // Shared Foundation catalog is readable only when root-admin or at least one eligible warehouse is present.
+   const permitted=full||stores.rows.length>0;
+   const totals=permitted?await tx.query<{items:number;suppliers:number;warehouses:number}>(`
+    SELECT (SELECT COUNT(*)::integer FROM inventory_item WHERE root_realm_id=$1) AS items,
+     (SELECT COUNT(*)::integer FROM inventory_supplier WHERE root_realm_id=$1) AS suppliers,
+     (SELECT COUNT(*)::integer FROM inventory_location l LEFT JOIN branch b ON b.id=l.branch_ref AND b.root_realm_id=l.root_realm_id
+      WHERE l.root_realm_id=$1 AND l.status='ACTIVE' AND (l.scope_kind='FOUNDATION' AND $2::boolean OR l.scope_kind='BRANCH' AND b.status='ACTIVE' AND ($2::boolean OR b.manager_account_ref=$3))) AS warehouses`,[a.realmId,full,a.accountId]):null;
+   const categories=permitted?await tx.query<{label:string;count:number}>("SELECT category AS label,COUNT(*)::integer AS count FROM inventory_item WHERE root_realm_id=$1 GROUP BY category ORDER BY COUNT(*) DESC,category LIMIT 10",[a.realmId]):null;
+   return {canManageFoundation:full,branches:branches.rows.map(x=>({ref:x.id,label:x.name})),stores:stores.rows.map(x=>({ref:x.id,label:x.label,code:x.location_code_norm,scope:x.scope_kind})),summary:totals?.rows[0]??null,categories:categories?.rows??[]};
   });
  }
  async list(token:string,kind:Kind,locationInput:unknown,searchInput:unknown,offsetInput:unknown){
