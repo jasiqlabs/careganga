@@ -221,6 +221,7 @@ export class HrEnrollmentApprovalService{
     branchRef:frozen.source.proposed_branch_ref,
     proposedJoiningDate:frozen.source.hire_date,
     evidence:frozen.files.map(f=>({classification:f.classification,verified:true})),
+    canReadProof:c.proposer_id!==actor.accountId,
     canDecide:c.proposer_id!==actor.accountId&&
       ["SUBMITTED","IN_REVIEW"].includes(c.status)};
   }catch(e){await tx.query("ROLLBACK");throw e;}
