@@ -5,6 +5,7 @@ import type {PoolClient} from "pg";
 import type {VerifiedFoundationActor} from "../src/modules/cg-01-identity-access/public-api";
 import {parseFinanceClaimDraft,allowancePurpose} from "../src/modules/cg-09-finance-accounting/application/finance-expense-claim.service";
 import {currentHrAllowanceOrigin,assertOwnClaimOrigin,assertHrAllowanceOrigin} from "../src/modules/cg-10-human-resources/application/hr-allowance-origin";
+import {parseHrDocumentDraft} from "../src/modules/cg-10-human-resources/application/hr-document-source.facade";
 import {hrTemplateHash,hrLetterBlocks,hrCardVisibleFields} from "../src/modules/cg-19-documents-notifications/application/hr-document-renderer";
 const requestKey="22222222-2222-4222-8222-222222222222";
 const draft={requestKey,purpose:"Business travel",category:"Travel",expenseDate:"2026-11-21",amount:"125.50"};
@@ -62,4 +63,13 @@ test("new approved document layout formatting and card visibility are safe allow
  assert.deepEqual(hrCardVisibleFields("Legacy template without controls"),["designation","branch","issueDate"]);
  assert.deepEqual(hrCardVisibleFields("[card-fields] branch,bloodGroup,bankAccount,role\nApproved card notes"),["branch"]);
  assert.deepEqual(hrCardVisibleFields("[card-fields] \nApproved card notes"),[]);
+});
+
+test("per-letter body exact approved snapshot input and safe legacy compatibility",()=>{
+ const base={kind:"APPOINTMENT",subjectReference:"CG-HR-EMP-000001",templateId:requestKey,templateVersion:1,issueDate:"2026-11-22",requestKey};
+ assert.ok(!("letterBody" in parseHrDocumentDraft(base)));
+ const letterBody="# Joining\nReport at the approved Foundation branch.";
+ assert.equal(parseHrDocumentDraft({...base,letterBody}).letterBody,letterBody);
+ for(const invalid of ["", "x".repeat(1201),"[card-fields] branch\nAn ordinary letter."])assert.throws(()=>parseHrDocumentDraft({...base,letterBody:invalid}),BadRequestException);
+ assert.throws(()=>parseHrDocumentDraft({...base,kind:"EMPLOYEE_ID",expiryDate:"2027-11-22",letterBody}),BadRequestException);
 });
