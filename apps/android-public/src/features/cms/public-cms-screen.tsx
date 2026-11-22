@@ -4,6 +4,7 @@ import {ActivityIndicator,AppState,BackHandler,Image,Pressable,
 import {careGangaTheme as t} from "../../../../../packages/design-tokens/src/index";
 import {CmsPublicExtendedSection} from "./cms-extended-native-screen";
 import {NativeMembershipPlans} from "../membership/native-membership-plans";
+import {NativePublicCampaigns} from "./native-public-campaigns";
 type Fields=Record<string,unknown>;
 type Section={kind:string;order:number;fields:Fields};
 type Asset={role:string;altText:string;src:string;order:number};
@@ -184,7 +185,7 @@ export function PublicCmsContent({onContact,onPartnerApplication,onMembershipApp
   setResult(response);setLoading(false);
  },[]);
  useEffect(()=>{
-  void load(slug);
+  if(slug!=="campaigns")void load(slug);
   return()=>{latestPageRequest.current++};
  },[slug,load]);
  useEffect(()=>{
@@ -193,7 +194,7 @@ export function PublicCmsContent({onContact,onPartnerApplication,onMembershipApp
  },[refreshNavigation]);
  useEffect(()=>{
   const sub=AppState.addEventListener("change",state=>{
-   if(state==="active"){void load(slug);void refreshNavigation();}
+   if(state==="active"){if(slug!=="campaigns")void load(slug);void refreshNavigation();}
   });
   return()=>sub.remove();
  },[slug,load,refreshNavigation]);
@@ -203,7 +204,7 @@ export function PublicCmsContent({onContact,onPartnerApplication,onMembershipApp
    if(slug!=="home"){
     // Article detail returns to News. A published legal policy must
     // return to Home; it is not part of the article reader.
-    setSlug(!["about","our-impact","80g","gallery","contact","healthcare","articles","notices","our-work","upcoming-projects","membership"].includes(slug)&&
+    setSlug(!["about","our-impact","80g","gallery","contact","healthcare","articles","notices","our-work","upcoming-projects","membership","campaigns"].includes(slug)&&
      !isPolicySlug(slug)?articleBackTarget:"home");return true;
    }return false;
   });
@@ -275,6 +276,7 @@ export function PublicCmsContent({onContact,onPartnerApplication,onMembershipApp
    ] as const).map(([scope,label])=><CmsButton key={scope} title={label}
     secondary={slug!=="gallery"||mediaScope!==scope}
     onPress={()=>{setMediaScope(scope);setSlug("gallery");}}/>)}
+   <CmsButton title="Campaigns" secondary={slug!=="campaigns"} onPress={()=>setSlug("campaigns")}/>
    <CmsButton title="Notices" secondary={slug!=="notices"} onPress={()=>setSlug("notices")}/>
    {publishedPaths.some(p=>p.startsWith("/blog/"))&&
     <CmsButton title="News" secondary={slug!=="articles"}
@@ -291,7 +293,7 @@ export function PublicCmsContent({onContact,onPartnerApplication,onMembershipApp
      <CmsButton key={name} title={title} secondary={slug!==name}
       onPress={()=>setSlug(name)}/>)}
   </View>
-  {slug==="membership"?<NativeMembershipPlans onApply={onMembershipApply}/>:loading?<ActivityIndicator accessibilityLabel="Checking current published website content"/>:
+  {slug==="campaigns"?<NativePublicCampaigns/>:slug==="membership"?<NativeMembershipPlans onApply={onMembershipApply}/>:loading?<ActivityIndicator accessibilityLabel="Checking current published website content"/>:
    slug==="articles"?<View style={styles.card}>
     <Text accessibilityRole="header" style={styles.heading}>Approved News &amp; Articles</Text>
     {!articleFeed.available?<Text accessibilityRole="alert" style={styles.muted}>
@@ -488,6 +490,19 @@ export function PublicCmsContent({onContact,onPartnerApplication,onMembershipApp
        ngoScope={section.kind==="COMPLIANCE_FACTS"?ngoScope:undefined}
       onBackToNews={()=>setSlug(articleBackTarget)}
        backLabel={articleBackTarget==="notices"?"Back to notices":"Back to approved articles"}/>;
+    if(section.kind==="CAMPAIGN_TEASER"){
+     const approved=(Array.isArray(fields.cards)?fields.cards:[])
+      .filter(c=>c&&typeof c==="object"&&/^cg-camp-[0-9]{8}$/.test(text(c.slug)));
+     return <View key={i} style={styles.card}>
+      <Text accessibilityRole="header" style={styles.heading}>{text(fields.heading)||"Campaigns"}</Text>
+      {!approved.length?<Text>No independently published campaigns to display.</Text>:
+       approved.map((c,j)=><View key={j} style={styles.person}>
+        <Text style={styles.heading}>{text(c.title)}</Text>
+        {!!text(c.summary)&&<Text style={styles.body}>{text(c.summary)}</Text>}
+       </View>)}
+      <CmsButton title="View current published campaigns" onPress={()=>setSlug("campaigns")}/>
+     </View>;
+    }
     if(section.kind==="PROJECT_TEASER"){const categories=["All Projects","Education","Healthcare","Livelihood","Social Welfare","Community Development"];const cards=(Array.isArray(fields.cards)?fields.cards:[]).filter(p=>page.kind!=="PROJECTS"||projectCategory==="All Projects"||p&&typeof p==="object"&&text(p.category).toLowerCase()===projectCategory.toLowerCase());return <View key={i} style={styles.card}><Text accessibilityRole="header" style={styles.heading}>{text(fields.heading)||"Projects"}</Text>{page.kind==="PROJECTS"&&<View style={styles.nav}>{categories.map(c=><CmsButton key={c} title={c} secondary={c!==projectCategory} onPress={()=>setProjectCategory(c)}/>)}</View>}{!cards.length?<Text>No currently approved projects to display.</Text>:cards.map((item,j)=>{if(!item||typeof item!=="object")return null;const p=item as Fields;const cover=/^\/api\/public\/content\/media\/[a-f0-9-]{36}$/i.test(text(p.coverSrc))?safeImage({src:text(p.coverSrc),role:"PROJECT",altText:text(p.title),order:0}):null;return <View key={j} style={styles.card}>{!!cover&&<Image source={{uri:cover}} accessibilityLabel={text(p.title)} style={styles.image} resizeMode="cover"/>}<Text style={styles.eyebrow}>{text(p.category)} · {text(p.status)==="PLANNED"?"Planned":"Active"}</Text><Text style={styles.heading}>{text(p.title)}</Text><Text>{text(p.area)}</Text><Text style={styles.body}>{text(p.summary)}</Text>{!!text(p.launch)&&<Text>Planned start: {text(p.launch)}</Text>}</View>;})}</View>;}
     // Never infer operational projects from CMS-only text.
     return null;
