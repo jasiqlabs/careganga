@@ -91,3 +91,19 @@ test("US003-QA14/18 authorized export audit is append-only and scoped, not a pub
  assert.match(evidence,/cg04_tier_history_immutable/);
  assert.match(evidence,/exported_rows integer NOT NULL CHECK\(exported_rows BETWEEN 0 AND 500\)/);
 });
+
+test("US003-QA17/19/20 volunteer-card source distinguishes outages and suppresses stale private displays",()=>{
+ const backend=readFileSync(join(process.cwd(),"src/modules/cg-19-documents-notifications/application/volunteer-card.service.ts"),"utf8");
+ const issuer=readFileSync(join(process.cwd(),"../web/src/features/volunteers/volunteer-card-manager.tsx"),"utf8");
+ const own=readFileSync(join(process.cwd(),"../web/src/features/volunteers/volunteer-own-card.tsx"),"utf8");
+ const internal=readFileSync(join(process.cwd(),"../android-internal/src/features/volunteers/native-volunteer-card-issuer.tsx"),"utf8");
+ const publicNative=readFileSync(join(process.cwd(),"../android-public/src/features/volunteers/native-volunteer-card.tsx"),"utf8");
+ assert.match(backend,/key\(\); \/\/ An unavailable QR signing key is a service outage/);
+ assert.match(backend,/throw new ServiceUnavailableException\("Current official volunteer verification is temporarily unavailable\."\)/);
+ assert.match(issuer,/\[reload,setReload\]=useState\(0\)/);
+ assert.match(issuer,/at===seq\.current&&document\.visibilityState==="visible"/);
+ assert.match(issuer,/if\(!current\(\)\)return;/);
+ assert.match(own,/!controller\.signal\.aborted&&document\.visibilityState==="visible"/);
+ assert.match(internal,/at===seq\.current&&AppState\.currentState==="active"/);
+ assert.match(publicNative,/at===seq\.current&&AppState\.currentState==="active"/);
+});
