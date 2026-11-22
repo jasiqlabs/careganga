@@ -2,6 +2,7 @@ import {BadRequestException,ConflictException,Inject,Injectable} from "@nestjs/c
 import {createHash} from "node:crypto";
 import {currentHrAllowanceOrigin,assertOwnClaimOrigin} from "../../cg-10-human-resources/application/hr-allowance-origin";
 import {requireCurrentVolunteer} from "../../cg-04-membership-volunteers/application/current-volunteer-source";
+import {BranchSourceFacade} from "../../cg-02-foundation-structure/application/branch-source.facade";
 import type {Pool} from "pg";
 import {FinanceClaimApprovalService} from "../../cg-03-registration-approvals/application/finance-claim-approval.service";
 import {FinanceClaimEvidenceService} from "../../cg-19-documents-notifications/application/finance-claim-evidence.service";
@@ -88,6 +89,7 @@ export class FinanceExpenseClaimService{
  constructor(@Inject(DATABASE)private readonly db:Pool,
   private readonly sessions:SessionService,
   private readonly identity:FoundationStructureIdentityFacade,
+  private readonly branches:BranchSourceFacade,
   private readonly approvals:FinanceClaimApprovalService,
   private readonly evidence:FinanceClaimEvidenceService,
   private readonly billSource:FinanceClaimBillSourceFacade){}
@@ -102,10 +104,15 @@ export class FinanceExpenseClaimService{
    const origin=v.sourceKind==="HR_ALLOWANCE"?await currentHrAllowanceOrigin(client,actor):null;
    let volunteer:{id:string;branch_ref:string|null}|null=null;
    if(v.volunteerRef){
+    // The form permission is not enough: direct CG09 requests must carry the same
+    // current CG04 roster capability and CG02 branch scope as the volunteer screen.
+    await this.identity.assertCurrent(client,actor,"volunteers.view");
+    const scope=await this.branches.projectBranchScope(client,actor);
     const candidate=(await client.query<{branch_ref:string|null}>(
      "SELECT branch_ref FROM volunteer WHERE root_realm_id=$1 AND id=$2 FOR SHARE",
      [actor.realmId,v.volunteerRef])).rows[0];
-    if(!candidate)throw new ConflictException({code:"FINANCE_CLAIM_SOURCE_INVALID"});
+    if(!candidate||!(scope.all||candidate.branch_ref&&scope.branches.some(b=>b.value===candidate.branch_ref)))
+     throw new ConflictException({code:"FINANCE_CLAIM_SOURCE_INVALID"});
     volunteer=await requireCurrentVolunteer(client,actor.realmId,v.volunteerRef,candidate.branch_ref);
     if(v.volunteerProjectRef){
      const permitted=(await client.query("SELECT 1 FROM project WHERE root_realm_id=$1 AND id=$2 AND branch_ref IS NOT DISTINCT FROM $3::uuid AND status NOT IN('COMPLETED','CANCELLED') FOR SHARE",
