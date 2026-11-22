@@ -4,7 +4,7 @@ CREATE TABLE field_visit_review_snapshot(
  visit_version integer NOT NULL CHECK(visit_version>1),source_digest char(64) NOT NULL CHECK(source_digest~'^[a-f0-9]{64}$'),
  report_snapshot jsonb NOT NULL CHECK(jsonb_typeof(report_snapshot)='object'),
  submitted_by uuid NOT NULL,request_key uuid NOT NULL,submitted_at timestamptz NOT NULL DEFAULT now(),
- UNIQUE(root_realm_id,id),UNIQUE(root_realm_id,visit_id,visit_version),UNIQUE(root_realm_id,request_key),
+ UNIQUE(root_realm_id,id),UNIQUE(root_realm_id,id,visit_id),UNIQUE(root_realm_id,visit_id,visit_version),UNIQUE(root_realm_id,request_key),
  UNIQUE(root_realm_id,id,visit_id,visit_version,source_digest),
  FOREIGN KEY(root_realm_id,visit_id,visit_version) REFERENCES field_visit_event(root_realm_id,visit_id,result_version) ON DELETE RESTRICT,
  FOREIGN KEY(submitted_by,root_realm_id) REFERENCES account(id,realm_id) ON DELETE RESTRICT
@@ -15,7 +15,7 @@ CREATE TABLE field_visit_review_file(
  source_version integer NOT NULL CHECK(source_version>0),file_version integer NOT NULL CHECK(file_version>0),
  sha256 char(64) NOT NULL CHECK(sha256~'^[a-f0-9]{64}$'),
  PRIMARY KEY(root_realm_id,snapshot_id,file_ref),
- FOREIGN KEY(root_realm_id,snapshot_id) REFERENCES field_visit_review_snapshot(root_realm_id,id) ON DELETE RESTRICT,
+ FOREIGN KEY(root_realm_id,snapshot_id,visit_id) REFERENCES field_visit_review_snapshot(root_realm_id,id,visit_id) ON DELETE RESTRICT,
  FOREIGN KEY(file_ref,root_realm_id,visit_id,source_version) REFERENCES cg19_stored_file(id,realm_id,visit_id,proposal_revision) ON DELETE RESTRICT
 );
 CREATE TRIGGER cg05_visit_review_file_immutable BEFORE UPDATE OR DELETE ON field_visit_review_file FOR EACH ROW EXECUTE FUNCTION cg05_immutable_project_event();
