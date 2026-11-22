@@ -227,7 +227,10 @@ export class DonationOnlineService{
   try{event=JSON.parse(bytes.toString("utf8"));}catch{throw new BadRequestException("Payment event invalid.");}
   if(!event||typeof event!=="object"||Array.isArray(event))throw fail();
   const body=event as Record<string,unknown>;
-  if(body.event!=="payment_link.paid")return {accepted:true,ignored:true};
+  const eventKind=body.event;
+  if(!["payment_link.paid","payment_link.expired","payment_link.cancelled"].includes(String(eventKind)))
+   return {accepted:true,ignored:true};
+  const terminal=eventKind==="payment_link.expired"||eventKind==="payment_link.cancelled";
   const payload=body.payload as Record<string,unknown>|undefined;
   const linkObj=(payload?.payment_link as Record<string,unknown>|undefined)?.entity as Record<string,unknown>|undefined;
   const id=linkObj?.id;
@@ -249,9 +252,13 @@ export class DonationOnlineService{
     "WHERE root_realm_id=$1 AND id=$2 FOR UPDATE",[a.root_realm_id,a.donation_id])).rows[0];
    if(!d||a.merchant_reference!==configReady.key||
     remote.id!==id||remote.reference_id!==a.id.replaceAll("-","")||
-    remote.status!=="paid"||remote.currency!=="INR"||
-    remote.amount!==Number(d.amount_minor)||remote.amount_paid!==Number(d.amount_minor))
+    remote.status!==(eventKind==="payment_link.paid"?"paid":
+       eventKind==="payment_link.expired"?"expired":"cancelled")||
+    remote.currency!=="INR"||remote.amount!==Number(d.amount_minor)||
+    remote.amount_paid!==(terminal?0:Number(d.amount_minor)))
     throw new ConflictException("Payment provider merchant, identity or amount did not match.");
+   if(terminal&&["VERIFIED_EXTERNAL","RECEIVED_POSTED"].includes(d.source_status))
+    return {accepted:true,ignored:true,status:d.source_status};
    const eventDigest=createHash("sha256").update(bytes).digest("hex");
    const previous=(await tx.query<{immutable_digest:string}>(
     "SELECT immutable_digest FROM donation_payment_event WHERE root_realm_id=$1 "+
@@ -263,8 +270,19 @@ export class DonationOnlineService{
    }
    await tx.query("INSERT INTO donation_payment_event(root_realm_id,donation_id,attempt_id,"+
     "provider,merchant_reference,external_event_id,immutable_digest,amount_minor,currency,"+
-    "outcome,signed_verified_at) VALUES($1,$2,$3,'razorpay',$4,$5,$6,$7,'INR','SUCCESS',now())",
-    [a.root_realm_id,d.id,a.id,configReady.key,eventId,eventDigest,d.amount_minor]);
+    "outcome,signed_verified_at) VALUES($1,$2,$3,'razorpay',$4,$5,$6,$7,'INR',$8,now())",
+    [a.root_realm_id,d.id,a.id,configReady.key,eventId,eventDigest,d.amount_minor,
+     terminal?"FAILED":"SUCCESS"]);
+   if(terminal){
+    const next=eventKind==="payment_link.expired"?"EXPIRED":"FAILED";
+    if(d.source_status!==next){
+     await tx.query("UPDATE donation_payment_attempt SET status=$3 WHERE root_realm_id=$1 AND id=$2",
+      [a.root_realm_id,a.id,next]);
+     await tx.query("UPDATE donation SET source_status=$3,version=version+1,updated_at=now() "+
+      "WHERE root_realm_id=$1 AND id=$2",[a.root_realm_id,d.id,next]);
+    }
+    return {accepted:true,status:next,replayed:false};
+   }
    if(d.source_status!=="RECEIVED_POSTED"){
     await tx.query("UPDATE donation_payment_attempt SET status='VERIFIED_EXTERNAL' "+
      "WHERE root_realm_id=$1 AND id=$2",[a.root_realm_id,a.id]);
