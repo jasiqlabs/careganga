@@ -138,7 +138,7 @@ export function VolunteerSelfService(){
      <button type="button" disabled={busy} onClick={()=>void refresh()}>Refresh current status</button>
      <button type="button" disabled={busy} onClick={()=>void action(async()=>{await api("/api/community/logout","POST",{});seq.current++;setSigned(false);setApps([]);setSelected(null);setProfile(null);})}>Sign out</button>
     </div>
-    {profile?.volunteer&&<p role="status"><strong>Approved volunteer:</strong {profile.volunteer.volunteerNumber} · {profile.volunteer.name} · {display(profile.volunteer.status)} · {profile.volunteer.department}</p>}
+    {profile?.volunteer&&<p role="status"><strong>Approved volunteer:</strong> {profile.volunteer.volunteerNumber} · {profile.volunteer.name} · {display(profile.volunteer.status)} · {profile.volunteer.department}</p>}
     {selected&&<p>Current application: <strong>{selected.applicationNumber} · {display(selected.status)}</strong>{selected.reviewReference?" · Foundation review "+selected.reviewReference:""}{selected.reviewRemarks?" · Reviewer feedback: "+selected.reviewRemarks:""}</p>}
    </div>
    {profile?.volunteer&&<VolunteerOwnCard current={profile.volunteer.volunteerNumber}/>}
