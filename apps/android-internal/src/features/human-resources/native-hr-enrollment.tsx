@@ -6,6 +6,7 @@ import {NativeHrDocuments} from "./native-hr-documents";
 import {FinanceExpenseClaimsScreen} from "../finance-accounting/finance-expense-claims-screen";
 import {NativeHrEmploymentChanges} from "./native-hr-employment-changes";
 import {NativeHrMyAppraisals} from "./native-hr-appraisals";
+import {careGangaTheme as theme} from "../../../../../packages/design-tokens/src/index";
 import {NativeHrAttendance} from "./native-hr-attendance";
 import {NativeHrBioConsent} from "./native-hr-bio-consent";
 import * as Crypto from "expo-crypto";
@@ -36,12 +37,19 @@ async function api(token:string,path:string,method="GET",body?:object){
  ),{status:response.status});
  return response.json() as Promise<unknown>;
 }
-export function NativeHrEnrollment({token,canView,canManage,canReview,canViewEmployees,canSelectAccounts,canSelectRoles,canViewPrivate,canManagePrivate,canConfigureReviews,canConfigureAttendance,canManageLeave=false,canReviewLeave=false,canCorrect=false,canReviewCorrection=false,canViewStaff=false,canManageChanges=false,canReviewChanges=false,canManageDocuments=false,canReviewDocuments=false,canIssueDocuments=false,canRevokeDocuments=false,canViewAllowances=false,canRequestAllowances=false,canUploadAllowanceBill=false,onExit,onExpired}:{
+export function NativeHrEnrollment({token,canView,canManage,canReview,canViewEmployees,canSelectAccounts,canSelectRoles,canViewPrivate,canManagePrivate,canConfigureReviews,canConfigureAttendance,canManageLeave=false,canReviewLeave=false,canCorrect=false,canReviewCorrection=false,canViewStaff=false,canManageChanges=false,canReviewChanges=false,canManageDocuments=false,canReviewDocuments=false,canApproveTemplates=false,canIssueDocuments=false,canRevokeDocuments=false,canViewAllowances=false,canRequestAllowances=false,canUploadAllowanceBill=false,onExit,onExpired}:{
  token:string;canView:boolean;canManage:boolean;canReview:boolean;canViewEmployees:boolean;canSelectAccounts:boolean;
- canSelectRoles:boolean;canViewPrivate:boolean;canManagePrivate:boolean;canConfigureReviews:boolean;canConfigureAttendance:boolean;canManageLeave?:boolean;canReviewLeave?:boolean;canCorrect?:boolean;canReviewCorrection?:boolean;canViewStaff?:boolean;canManageChanges?:boolean;canReviewChanges?:boolean;canManageDocuments?:boolean;canReviewDocuments?:boolean;canIssueDocuments?:boolean;canRevokeDocuments?:boolean;canViewAllowances?:boolean;canRequestAllowances?:boolean;canUploadAllowanceBill?:boolean;
+ canSelectRoles:boolean;canViewPrivate:boolean;canManagePrivate:boolean;canConfigureReviews:boolean;canConfigureAttendance:boolean;canManageLeave?:boolean;canReviewLeave?:boolean;canCorrect?:boolean;canReviewCorrection?:boolean;canViewStaff?:boolean;canManageChanges?:boolean;canReviewChanges?:boolean;canManageDocuments?:boolean;canReviewDocuments?:boolean;canApproveTemplates?:boolean;canIssueDocuments?:boolean;canRevokeDocuments?:boolean;canViewAllowances?:boolean;canRequestAllowances?:boolean;canUploadAllowanceBill?:boolean;
  onExit:()=>void;onExpired:()=>void
 }){
  const [allowancesOpen,setAllowancesOpen]=useState(false);
+ const [section,setSection]=useState("profile"),[visited,setVisited]=useState<string[]>(["profile"]);
+ const scroll=useRef<ScrollView>(null);
+ const sections=[{id:"profile",label:"My employment & allowances"},...((canView||canViewEmployees||canReview)?[{id:"employees",label:"Employees & enrollment"}]:[]),{id:"attendance",label:"Attendance & leave"},{id:"performance",label:"Performance"},{id:"changes",label:"Employment changes"},{id:"documents",label:"Letters & ID cards"}];
+ const active=sections.some(s=>s.id===section)?section:"profile";
+ const choose=(id:string)=>{setSection(id);setVisited(v=>v.includes(id)?v:[...v,id]);scroll.current?.scrollTo({y:0,animated:false});};
+ const seen=(id:string)=>visited.includes(id)||active===id;
+ const display=(id:string)=>({display:active===id?"flex" as const:"none" as const,gap:12});
  const [apps,setApps]=useState<Application[]>([]);
  const [branches,setBranches]=useState<Option[]>([]);
  const [departments,setDepartments]=useState<Option[]>([]);
@@ -338,16 +346,18 @@ export function NativeHrEnrollment({token,canView,canManage,canReview,canViewEmp
   </View>
  );
  if(allowancesOpen&&canViewAllowances&&self&&["ACTIVE","PROBATION"].includes(self.status))return <FinanceExpenseClaimsScreen token={token} allowanceMode canView canCreate={canRequestAllowances} canUploadBill={canUploadAllowanceBill} onExit={()=>setAllowancesOpen(false)} onExpired={onExpired}/>;
- return <ScrollView style={styles.page} keyboardShouldPersistTaps="handled"
+ return <ScrollView ref={scroll} style={styles.page} keyboardShouldPersistTaps="handled"
   contentContainerStyle={styles.content}>
    <View style={styles.heading}>
     <Text style={styles.title}>Human Resources</Text>
     <Pressable accessibilityRole="button" onPress={onExit} style={styles.outline}>
      <Text style={styles.outlineText}>Back</Text></Pressable>
    </View>
+   <View style={styles.choices} accessibilityLabel="Human resources workflows">{sections.map(s=><Pressable key={s.id} accessibilityRole="button" accessibilityState={{selected:active===s.id}} onPress={()=>choose(s.id)} style={[styles.chip,{minHeight:44,justifyContent:"center"},active===s.id&&{backgroundColor:theme.primary,borderColor:theme.primary}]}><Text style={active===s.id?styles.selectedText:styles.chipText}>{s.label}</Text></Pressable>)}</View>
    {loading&&<ActivityIndicator accessibilityLabel="Loading employee records"/>}
    {!!error&&<Text accessibilityRole="alert" style={styles.error}>{error}</Text>}
    {!!status&&<Text style={styles.success}>{status}</Text>}
+   {seen("profile")&&<View style={display("profile")}>
    <View style={styles.card}>
     <Text style={styles.h2}>My employment</Text>
     {self?.status==="NOT_LINKED"?
@@ -361,16 +371,38 @@ export function NativeHrEnrollment({token,canView,canManage,canReview,canViewEmp
    </View>
    {canViewAllowances&&self&&["ACTIVE","PROBATION"].includes(self.status)&&<Pressable accessibilityRole="button" style={styles.outline} onPress={()=>setAllowancesOpen(true)}><Text style={styles.outlineText}>My Allowances</Text></Pressable>}
    <NativeHrBioConsent token={token} onExpired={onExpired}/>
-   <NativeHrMyAppraisals token={token} onExpired={onExpired}/>
+   {pendingLink?.pending&&<View style={styles.card}>
+    <Text style={styles.h2}>Accept approved employment</Text>
+    <Text style={styles.muted}>{pendingLink.name} · {pendingLink.designation}
+      {" — "}You must confirm this existing staff login belongs to you.
+      No new role or privilege will be granted.</Text>
+    <Pressable accessibilityRole="button" onPress={()=>void acceptLink()}
+      disabled={saving} style={styles.primary}>
+      <Text style={styles.primaryText}>Accept my employee account link</Text>
+    </Pressable>
+   </View>}
+   <Pressable accessibilityRole="button" onPress={()=>void loadPending()}
+     style={styles.outline}><Text style={styles.outlineText}>
+      Check my pending account acceptance</Text></Pressable>
+
+   </View>}
+   {seen("performance")&&<View style={display("performance")}><NativeHrMyAppraisals token={token} onExpired={onExpired}/></View>}
+   {seen("documents")&&<View style={display("documents")}>
    <NativeHrDocuments token={token} onExpired={onExpired} mode="own"/>
-   {canManageDocuments&&<NativeHrDocuments token={token} onExpired={onExpired} mode="manage" canIssue={canIssueDocuments} canApproveTemplate={canReviewDocuments} canRevoke={canRevokeDocuments}/>}
+   {canManageDocuments&&<NativeHrDocuments token={token} onExpired={onExpired} mode="manage" canIssue={canIssueDocuments} canApproveTemplate={canApproveTemplates} canRevoke={canRevokeDocuments}/>}
    {canReviewDocuments&&<NativeHrDocuments token={token} onExpired={onExpired} mode="review"/>}
+   </View>}
+   {seen("changes")&&<View style={display("changes")}>
    <NativeHrEmploymentChanges token={token} mode="own" onExpired={onExpired}/>
    {canManageChanges&&<NativeHrEmploymentChanges token={token} mode="manage" canSelectRoles={canSelectRoles} onExpired={onExpired}/>}
    {canReviewChanges&&<NativeHrEmploymentChanges token={token} mode="review" onExpired={onExpired}/>}
+   </View>}
+   {seen("attendance")&&<View style={display("attendance")}>
    <NativeHrAttendance token={token} onExpired={onExpired}
      canConfigure={canConfigureAttendance} canManageLeave={canManageLeave} canReviewLeave={canReviewLeave} canCorrect={canCorrect} canReviewCorrection={canReviewCorrection} canViewStaff={canViewStaff}/>
-   {canManage&&<View style={styles.card}>
+   </View>}
+   {seen("employees")&&<View style={display("employees")}>
+   {canManage&&canView&&<View style={styles.card}>
     <Text style={styles.h2}>{selected?"Correct application draft":"Create employee draft"}</Text>
     <Text style={styles.muted}>Saving never activates an employee or grants system access.
      A separate Foundation approval is required.</Text>
@@ -453,19 +485,6 @@ export function NativeHrEnrollment({token,canView,canManage,canReview,canViewEmp
     {selected&&<Pressable accessibilityRole="button" onPress={reset} style={styles.outline}>
       <Text style={styles.outlineText}>Cancel edit</Text></Pressable>}
    </View>}
-   {pendingLink?.pending&&<View style={styles.card}>
-    <Text style={styles.h2}>Accept approved employment</Text>
-    <Text style={styles.muted}>{pendingLink.name} · {pendingLink.designation}
-      {" — "}You must confirm this existing staff login belongs to you.
-      No new role or privilege will be granted.</Text>
-    <Pressable accessibilityRole="button" onPress={()=>void acceptLink()}
-      disabled={saving} style={styles.primary}>
-      <Text style={styles.primaryText}>Accept my employee account link</Text>
-    </Pressable>
-   </View>}
-   <Pressable accessibilityRole="button" onPress={()=>void loadPending()}
-     style={styles.outline}><Text style={styles.outlineText}>
-      Check my pending account acceptance</Text></Pressable>
    {canReview&&<NativeHrReviews token={token} canConfigure={canConfigureReviews} onExpired={onExpired}/>}
    {canView&&<View style={styles.card}>
     <View style={styles.heading}><Text style={styles.h2}>Employee applications</Text>
@@ -603,6 +622,7 @@ export function NativeHrEnrollment({token,canView,canManage,canReview,canViewEmp
        <Text style={styles.outlineText}>Next employees</Text>
       </Pressable>}
     </View>
+   </View>}
    </View>}
   </ScrollView>;
 }

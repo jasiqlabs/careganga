@@ -8,6 +8,7 @@ import {HrAttendance} from "../../../../features/human-resources/hr-attendance";
 import {HrDocuments} from "../../../../features/human-resources/hr-documents";
 import {HrEmploymentChanges} from "../../../../features/human-resources/hr-employment-changes";
 import {HrAppraisalWorkspace,HrMyAppraisals} from "../../../../features/human-resources/hr-appraisals";
+import {HrWorkspaceNavigation} from "../../../../features/human-resources/hr-workspace-navigation";
 import {HrMyProfile} from "../../../../features/human-resources/hr-my-profile";
 import {HrEnrollmentReviews} from "../../../../features/human-resources/hr-enrollment-reviews";
 export const dynamic="force-dynamic";
@@ -56,18 +57,10 @@ export default async function FoundationHrPage(){
       Your current Foundation employment status and, if permitted, employee applications.
      </p>
     </header>
-    <HrMyProfile canViewAllowances={actions.includes("finance.claims.view")} canRequestAllowances={actions.includes("finance.claims.create")} canUploadAllowanceBill={actions.includes("documents.files.manage")&&actions.includes("documents.files.view")}/>
-    <HrMyAppraisals/>
-    <HrDocuments mode="own"/>
-    {actions.includes("hr.documents.manage")&&<HrDocuments mode="manage" canIssue={actions.includes("documents.letters.issue")} canApproveTemplate={actions.includes("hr.documents.review")} canRevoke={actions.includes("documents.letters.revoke")}/>}
-    {actions.includes("hr.documents.review")&&actions.includes("approvals.review")&&<HrDocuments mode="review"/>}
-    <HrEmploymentChanges mode="own"/>
-    {actions.includes("hr.changes.manage")&&<HrEmploymentChanges mode="manage" canSelectRoles={actions.includes("roles.select")}/>}
-    {actions.includes("hr.changes.review")&&actions.includes("approvals.review")&&<HrEmploymentChanges mode="review"/>}
-    {actions.includes("hr.appraisals.manage")&&<HrAppraisalWorkspace/>}
-    <HrAttendance canViewStaff={actions.includes("hr.attendance.view")} canCorrect={actions.includes("hr.attendance.correct")} canReviewCorrection={actions.includes("hr.attendance.review")&&actions.includes("approvals.review")} canReviewLeave={actions.includes("hr.leave.view")} canManageLeave={actions.includes("hr.leave.policies.manage")} canConfigure={actions.includes("hr.shifts.manage")&&
-      actions.includes("hr.attendance.view")&&actions.includes("hr.employees.view")}/>
-    {(actions.includes("hr.applications.view")||actions.includes("hr.employees.view"))&&
+    <HrWorkspaceNavigation sections={[
+     {id:"profile",label:"My employment & allowances",content:<>    <HrMyProfile canViewAllowances={actions.includes("finance.claims.view")} canRequestAllowances={actions.includes("finance.claims.create")} canUploadAllowanceBill={actions.includes("documents.files.manage")&&actions.includes("documents.files.view")}/>
+</>},
+     ...((actions.includes("hr.applications.view")||actions.includes("hr.employees.view")||(actions.includes("hr.employees.review")&&actions.includes("approvals.review")))?[{id:"employees",label:"Employees & enrollment",content:<>    {(actions.includes("hr.applications.view")||actions.includes("hr.employees.view"))&&
      <HrEnrollmentWorkspace canViewApps={actions.includes("hr.applications.view")} canManage={actions.includes("hr.applications.manage")}
        canViewEmployees={actions.includes("hr.employees.view")}
        canSelectAccounts={actions.includes("accounts.select")}
@@ -76,6 +69,22 @@ export default async function FoundationHrPage(){
        canManagePrivate={actions.includes("hr.employees.private.manage")}/> }
     {actions.includes("hr.employees.review")&&actions.includes("approvals.review")&&
       <HrEnrollmentReviews canConfigure={actions.includes("approvals.process.manage")}/>}
+</>}]:[]),
+     {id:"attendance",label:"Attendance & leave",content:<>    <HrAttendance canViewStaff={actions.includes("hr.attendance.view")} canCorrect={actions.includes("hr.attendance.correct")} canReviewCorrection={actions.includes("hr.attendance.review")&&actions.includes("approvals.review")} canReviewLeave={actions.includes("hr.leave.view")} canManageLeave={actions.includes("hr.leave.policies.manage")} canConfigure={actions.includes("hr.shifts.manage")&&
+      actions.includes("hr.attendance.view")&&actions.includes("hr.employees.view")}/>
+</>},
+     {id:"performance",label:"Performance",content:<>    <HrMyAppraisals/>
+    {actions.includes("hr.appraisals.manage")&&<HrAppraisalWorkspace/>}
+</>},
+     {id:"changes",label:"Employment changes",content:<>    <HrEmploymentChanges mode="own"/>
+    {actions.includes("hr.changes.manage")&&<HrEmploymentChanges mode="manage" canSelectRoles={actions.includes("roles.select")}/>}
+    {actions.includes("hr.changes.review")&&actions.includes("approvals.review")&&<HrEmploymentChanges mode="review"/>}
+</>},
+     {id:"documents",label:"Letters & ID cards",content:<>    <HrDocuments mode="own"/>
+    {actions.includes("hr.documents.manage")&&<HrDocuments mode="manage" canIssue={actions.includes("documents.letters.issue")} canApproveTemplate={actions.includes("hr.documents.review")} canRevoke={actions.includes("documents.letters.revoke")}/>}
+    {actions.includes("hr.documents.review")&&actions.includes("approvals.review")&&<HrDocuments mode="review"/>}
+</>}
+    ]}/>
    </main>
   </div>;
  }catch(error){
