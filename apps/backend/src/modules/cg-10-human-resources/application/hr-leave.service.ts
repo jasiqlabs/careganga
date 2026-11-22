@@ -17,6 +17,10 @@ export class HrLeaveService{
   const actor=await this.sessions.verifySession(token);
   return this.run(tx=>this.source.mine(tx,actor,year));
  }
+ async ownReason(token:string,reference:string){
+  const actor=await this.sessions.verifySession(token);
+  return this.run(tx=>this.source.ownReason(tx,actor,reference));
+ }
  async withdraw(token:string,reference:string,body:unknown){
   const actor=await this.sessions.verifySession(token);
   return this.run(async tx=>{

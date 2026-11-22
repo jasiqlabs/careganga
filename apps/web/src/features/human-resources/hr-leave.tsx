@@ -28,14 +28,17 @@ export function HrMyLeave({onChanged}:{onChanged:()=>void}){
  const key=useRef<string|null>(null);
  const pendingCancel=useRef<{reference:string;key:string}|null>(null);
  const [cancelRef,setCancelRef]=useState("");
+ const [privateDetail,setPrivateDetail]=useState<{reference:string;reason:string}|null>(null),[privateBusy,setPrivateBusy]=useState(false);
+ const privateRead=useRef(0);
  const refresh=useCallback(async()=>{
+  privateRead.current++;setPrivateDetail(null);setPrivateBusy(false);
   setLoading(true);setError("");
   try{const v=await api<Mine>("me/leave?year="+encodeURIComponent(year));
    if(typeof v.linked!=="boolean"||!Array.isArray(v.requests)||!Array.isArray(v.policies))throw Error("Leave history is unavailable");
    setData(v);
   }catch(e){setData(null);setError(failure(e));}finally{setLoading(false);}
  },[year]);
- useEffect(()=>{void refresh();},[refresh]);
+ useEffect(()=>{void refresh();return()=>{privateRead.current++;};},[refresh]);
  const change=<K extends keyof typeof form,>(name:K,value:(typeof form)[K])=>setForm(x=>({...x,[name]:value}));
  const selected=data?.policies.find(x=>x.policyRef===form.policyRef);
  const submit=async()=>{
@@ -48,6 +51,16 @@ export function HrMyLeave({onChanged}:{onChanged:()=>void}){
    key.current=null;setLocked(false);setForm(blank());setNotice(v.reference+" · "+label(v.caseStatus));await refresh();onChanged();
   }catch(e){setError(failure(e));if(known(e)){key.current=null;setLocked(false);}else setLocked(true);}
   finally{setBusy(false);}
+ };
+ const openPrivate=async(reference:string)=>{
+  if(busy||privateBusy||locked||cancelRef)return;
+  if(privateDetail?.reference===reference){privateRead.current++;setPrivateDetail(null);return;}
+  const generation=++privateRead.current;setPrivateDetail(null);setPrivateBusy(true);setError("");
+  try{const result=await api<{reference:string;reason:string}>("me/leave/"+encodeURIComponent(reference));
+   if(result.reference!==reference||typeof result.reason!=="string")throw Error("Original leave reason is unavailable");
+   if(generation===privateRead.current)setPrivateDetail(result);
+  }catch(e){if(generation===privateRead.current)setError(failure(e));}
+  finally{if(generation===privateRead.current)setPrivateBusy(false);}
  };
  const cancel=async(reference:string)=>{
   if(busy||locked||(cancelRef&&cancelRef!==reference))return;
@@ -65,7 +78,7 @@ export function HrMyLeave({onChanged}:{onChanged:()=>void}){
   <div style={{display:"flex",gap:8,alignItems:"end",flexWrap:"wrap"}}>
    <label>Leave year<input style={field} value={yearInput} inputMode="numeric" maxLength={4} disabled={busy||!!cancelRef||locked}
     onChange={e=>setYearInput(e.target.value)}/></label>
-   <button type="button" disabled={busy||!!cancelRef||locked||!/^20\d{2}$/.test(yearInput)} onClick={()=>{setForm(blank());if(year===yearInput)void refresh();else setYear(yearInput);}}>View year</button>
+   <button type="button" disabled={busy||!!cancelRef||locked||!/^20\d{2}$/.test(yearInput)} onClick={()=>{privateRead.current++;setPrivateDetail(null);setPrivateBusy(false);setForm(blank());if(year===yearInput)void refresh();else setYear(yearInput);}}>View year</button>
    <button type="button" disabled={busy||!!cancelRef||loading} onClick={()=>void refresh()}>Refresh</button>
   </div>
   {error&&<p role="alert">{error}</p>}{notice&&<p role="status">{notice}</p>}
@@ -100,6 +113,8 @@ export function HrMyLeave({onChanged}:{onChanged:()=>void}){
    {data.requests.map(x=><div key={x.reference} style={{borderTop:"1px solid #E2E8F0",paddingTop:8}}>
     <strong>{x.leaveType} · {label(x.status)}</strong><p style={{margin:0}}>{x.startDate} – {x.endDate} · {x.days} days</p>
     <small>{x.reference}</small>
+    <button type="button" disabled={busy||privateBusy||locked||!!cancelRef||loading} onClick={()=>void openPrivate(x.reference)}>{privateDetail?.reference===x.reference?"Hide my reason":"View my submitted reason"}</button>
+    {privateDetail?.reference===x.reference&&<p style={{whiteSpace:"pre-wrap"}}>Private reason: {privateDetail.reason}</p>}
     {x.status==="SUBMITTED"&&!cancelRef&&<button type="button" disabled={busy||locked||loading} onClick={()=>void cancel(x.reference)}>Cancel pending request</button>}
    </div>)}
   </>}

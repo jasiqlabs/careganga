@@ -1,4 +1,4 @@
-import {BadRequestException,ConflictException,ForbiddenException,Injectable,ServiceUnavailableException} from "@nestjs/common";
+import {BadRequestException,ConflictException,ForbiddenException,Injectable,NotFoundException,ServiceUnavailableException} from "@nestjs/common";
 import {createCipheriv,createDecipheriv,createHash,randomBytes,randomUUID} from "node:crypto";
 import type {PoolClient} from "pg";
 import {FoundationStructureIdentityFacade} from "../../cg-01-identity-access/application/foundation-structure-identity.facade";
@@ -172,6 +172,25 @@ export class HrLeaveSourceFacade{
  summary(row:LeaveRequestRow){
   return {employeeName:row.employee_name,leaveType:row.leave_type,startDate:dateText(row.start_date),
    endDate:dateText(row.end_date),days:row.half_days/2,status:row.status};
+ }
+ async ownReason(tx:PoolClient,actor:VerifiedFoundationActor,reference:string){
+  if(!/^CG-AP-[0-9]{6,}$/.test(reference))throw new BadRequestException({code:"CG10_LEAVE_INVALID"});
+  const employee=await this.employee(tx,actor);
+  if(!employee)throw new NotFoundException("This leave request is unavailable");
+  const q=await tx.query<LeaveRequestRow>(`SELECT r.*,app.legal_name AS employee_name,p.leave_type,a.branch_ref
+   FROM hr_leave_request r JOIN cg03_case c ON c.id=r.case_ref AND c.realm_id=r.root_realm_id
+    AND c.case_kind='LEAVE_REQUEST' AND c.hr_leave_request_id=r.id AND c.hr_leave_source_digest=r.source_digest
+   JOIN hr_leave_policy p ON p.id=r.policy_id AND p.root_realm_id=r.root_realm_id
+   JOIN hr_employment_assignment a ON a.id=r.assignment_id AND a.root_realm_id=r.root_realm_id
+   JOIN hr_employee e ON e.id=r.employee_id AND e.root_realm_id=r.root_realm_id
+   JOIN hr_employee_application app ON app.id=e.application_id AND app.root_realm_id=e.root_realm_id
+   WHERE r.root_realm_id=$1 AND r.employee_id=$2 AND r.submitted_by=$3 AND c.proposer_id=$3 AND c.case_number=$4
+   FOR SHARE OF r,c`,[actor.realmId,employee.id,actor.accountId,reference]);
+  const row=q.rows[0];if(!row)throw new NotFoundException("This leave request is unavailable");
+  const reason=this.reason(row,actor.realmId);
+  await tx.query("INSERT INTO hr_audit(root_realm_id,actor_ref,employee_ref,event_key,action) VALUES($1,$2,$3,$4,$5)",
+   [actor.realmId,actor.accountId,employee.id,randomUUID(),"LEAVE_PRIVATE_READ"]);
+  return {reference,reason};
  }
  async assertOwnRequest(tx:PoolClient,actor:VerifiedFoundationActor,row:LeaveRequestRow){
   const employee=await this.employee(tx,actor,true);

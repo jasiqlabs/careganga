@@ -8,6 +8,8 @@ export class HrLeaveController{
  mine(@Headers("authorization")token:string,@Query("year")year?:string){return this.leave.mine(token,year);}
  @Post("me/leave")
  submit(@Headers("authorization")token:string,@Body()body:unknown){return this.leave.submit(token,body);}
+ @Get("me/leave/:reference")
+ reason(@Headers("authorization")token:string,@Param("reference")reference:string){return this.leave.ownReason(token,reference);}
  @Post("me/leave/:reference/cancel")
  cancel(@Headers("authorization")token:string,@Param("reference")reference:string,@Body()body:unknown){
   return this.leave.withdraw(token,reference,body);

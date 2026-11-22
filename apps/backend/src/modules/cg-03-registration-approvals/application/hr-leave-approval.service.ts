@@ -20,6 +20,28 @@ function decision(body:unknown){
  return {requestKey:leaveId(v.requestKey),expected:Number(v.expectedRevision),
   action:v.action as "APPROVE"|"RETURN"|"REJECT",password:v.currentPassword};
 }
+export function parsePendingLeaveWithdrawal(reference:unknown,body:unknown){
+ if(typeof reference!=="string"||!/^CG-AP-[0-9]{6,}$/.test(reference)||!body||typeof body!=="object"||Array.isArray(body)||
+    Object.keys(body).some(k=>k!=="requestKey"))throw new BadRequestException({code:"CG10_LEAVE_INVALID"});
+ return {reference,requestKey:leaveId((body as Record<string,unknown>).requestKey)};
+}
+export function parseLeaveReviewFilters(offsetInput:unknown,statusInput:unknown,filters:{from?:unknown;to?:unknown;type?:unknown;employee?:unknown}={}){
+ const offset=Number(offsetInput??0),status=statusInput??"ALL";
+ if((offsetInput!==undefined&&typeof offsetInput!=="string"&&typeof offsetInput!=="number")||
+  !Number.isSafeInteger(offset)||offset<0||offset>10000||typeof status!=="string"||
+  !["ALL","SUBMITTED","IN_REVIEW","OWNER_COMPLETED","RETURNED","REJECTED","CANCELLED"].includes(status))
+  throw new BadRequestException({code:"CG10_LEAVE_INVALID"});
+ const from=filters.from===undefined||filters.from===""?null:leaveDate(filters.from);
+ const to=filters.to===undefined||filters.to===""?null:leaveDate(filters.to);
+ const filterText=(value:unknown)=>{
+  if(value===undefined||value==="")return "";
+  if(typeof value!=="string"||value.length>80||/[\u0000-\u001f\u007f]/.test(value))
+   throw new BadRequestException({code:"CG10_LEAVE_INVALID"});
+  return value.trim().toLowerCase();
+ };
+ if(from&&to&&from>to)throw new BadRequestException({code:"CG10_LEAVE_INVALID"});
+ return {offset,status,from,to,type:filterText(filters.type),employee:filterText(filters.employee)};
+}
 @Injectable()
 export class HrLeaveApprovalService{
  constructor(@Inject(DATABASE)private readonly db:Pool,private readonly sessions:SessionService,
@@ -90,9 +112,7 @@ export class HrLeaveApprovalService{
   return q.rows[0];
  }
  async withdraw(tx:PoolClient,actor:VerifiedFoundationActor,reference:string,body:unknown){
-  if(!/^CG-AP-[0-9]{6,}$/.test(reference)||!body||typeof body!=="object"||Array.isArray(body)||
-     Object.keys(body).some(k=>k!=="requestKey"))throw new BadRequestException({code:"CG10_LEAVE_INVALID"});
-  const requestKey=leaveId((body as Record<string,unknown>).requestKey);
+  const {requestKey}=parsePendingLeaveWithdrawal(reference,body);
   const c=(await tx.query<Case>(`SELECT * FROM cg03_case WHERE realm_id=$1 AND case_number=$2
     AND proposer_id=$3 AND case_kind='LEAVE_REQUEST' FOR UPDATE`,[actor.realmId,reference,actor.accountId])).rows[0];
   if(!c)throw new NotFoundException("This leave request is unavailable");
@@ -117,20 +137,8 @@ export class HrLeaveApprovalService{
   return {cancelled:true,reference:c.case_number,status:"CANCELLED",replayed:false};
  }
  async inbox(token:string,offsetInput:unknown,statusInput:unknown,filters:{from?:unknown;to?:unknown;type?:unknown;employee?:unknown}={}){
-  const actor=await this.sessions.requireAction(token,"hr.leave.view"),offset=Number(offsetInput??0),status=String(statusInput??"ALL");
-  if(!Number.isSafeInteger(offset)||offset<0||offset>10000||
-   !["ALL","SUBMITTED","IN_REVIEW","OWNER_COMPLETED","RETURNED","REJECTED","CANCELLED"].includes(status))
-   throw new BadRequestException({code:"CG10_LEAVE_INVALID"});
-  const from=filters.from===undefined||filters.from===""?null:leaveDate(filters.from);
-  const to=filters.to===undefined||filters.to===""?null:leaveDate(filters.to);
-  const filterText=(value:unknown)=>{
-   if(value===undefined||value==="")return "";
-   if(typeof value!=="string"||value.length>80||/[\u0000-\u001f\u007f]/.test(value))
-    throw new BadRequestException({code:"CG10_LEAVE_INVALID"});
-   return value.trim().toLowerCase();
-  };
-  if(from&&to&&from>to)throw new BadRequestException({code:"CG10_LEAVE_INVALID"});
-  const type=filterText(filters.type),employee=filterText(filters.employee);
+  const actor=await this.sessions.requireAction(token,"hr.leave.view");
+  const {offset,status,from,to,type,employee}=parseLeaveReviewFilters(offsetInput,statusInput,filters);
   return this.run(async tx=>{
    const rights=await this.viewRights(tx,actor);
    const q=await tx.query<Case&{leave_type:string;start_date:string;end_date:string;half_days:number;leave_status:string}>(`

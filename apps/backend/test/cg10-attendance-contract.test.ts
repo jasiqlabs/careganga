@@ -2,6 +2,7 @@ import {describe,test} from "node:test";
 import assert from "node:assert/strict";
 import {ConflictException} from "@nestjs/common";
 import {parseAttendanceCorrection} from "../src/modules/cg-10-human-resources/application/hr-attendance-correction-source.facade";
+import {parseLeaveReviewFilters,parsePendingLeaveWithdrawal} from "../src/modules/cg-03-registration-approvals/application/hr-leave-approval.service";
 import {countedLeaveDates,parseLeaveRequest} from "../src/modules/cg-10-human-resources/application/hr-leave-source.facade";
 import {shiftCheckInAt,verifiedWorkedMinutes,leavePolicyInput} from "../src/modules/cg-10-human-resources/application/hr-attendance.service";
 
@@ -86,4 +87,22 @@ describe("CG-10 original attendance correction contract",()=>{
  test("correction retains original version and local times",()=>{const r=parseAttendanceCorrection(valid);assert.equal(r.expectedVersion,1);assert.equal(r.checkInLocal,valid.checkInLocal);});
  test("rejects stale-shaped input, impossible times, fabricated scope and hidden fields",()=>{for(const patch of [{expectedVersion:0},{expectedVersion:"1"},{date:"2026-02-30"},{checkInLocal:"2026-11-21T25:00"},{employeeReference:"fake"},{status:"APPROVED"},{checkOutLocal:null}])assert.throws(()=>parseAttendanceCorrection({...valid,...patch}));});
  test("nonworked requests cannot carry fabricated punches",()=>{const r=parseAttendanceCorrection({...valid,result:"ABSENT",checkInLocal:null,checkOutLocal:null});assert.equal(r.checkInLocal,null);for(const value of [false,0,"2026-11-21T09:00"])assert.throws(()=>parseAttendanceCorrection({...valid,result:"ABSENT",checkInLocal:value,checkOutLocal:null}));});
+});
+
+describe("CG10 original leave withdrawal and filtered review",()=>{
+ const key="c350419e-c3b2-4984-8e32-7483aca3a6ab";
+ test("withdrawal accepts only the real business case reference and original request key",()=>{
+  assert.deepEqual(parsePendingLeaveWithdrawal("CG-AP-123456",{requestKey:key}),{reference:"CG-AP-123456",requestKey:key});
+  for(const [ref,body] of [["fake",{requestKey:key}],["CG-AP-123456",{requestKey:"fake"}],["CG-AP-123456",{requestKey:key,status:"APPROVED"}]])
+   assert.throws(()=>parsePendingLeaveWithdrawal(ref,body));
+ });
+ test("date overlap and employee filters retain bounded normalized parameters",()=>{
+  assert.deepEqual(parseLeaveReviewFilters("25","CANCELLED",{from:"2026-11-01",to:"2026-11-30",type:" Annual ",employee:" Alice "}),
+   {offset:25,status:"CANCELLED",from:"2026-11-01",to:"2026-11-30",type:"annual",employee:"alice"});
+ });
+ test("reject reversed, impossible and malformed review filters",()=>{
+  const invalid: Array<[unknown,unknown,{from?:unknown;to?:unknown;type?:unknown;employee?:unknown}]>=[[-1,"ALL",{}],[0,["ALL"],{}],[0,"ALL",{from:"2026-02-30"}],[0,"ALL",{from:"2026-12-01",to:"2026-11-01"}],[0,"ALL",{employee:"a".repeat(81)}],[0,"ALL",{type:["annual"]}]];
+  for(const [offset,status,filters] of invalid)
+   assert.throws(()=>parseLeaveReviewFilters(offset,status,filters));
+ });
 });
