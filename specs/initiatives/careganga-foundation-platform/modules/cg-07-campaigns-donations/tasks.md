@@ -387,3 +387,6 @@ CG07 onlineDonationReady now checks exactly verified current CG21 Razorpay merch
 
 ### 22-Nov US002 checkpoint G2 — original Next public navigation/card/detail verified donation links
 Original CG18 site header, campaign list/cards/details now conditionally link /donate only when CG21 merchant readiness is current; no fabricated payment on unavailable merchant. SSR readiness has no-store read, no donor PII in URL. QA05/07/11/17/18 source candidate, runtime/visual NOT_RUN. US002 remains IN_PROGRESS.
+
+### 22-Nov US002 checkpoint G3 — public donation Web form and no-store protected API
+Public Next /donate and PublicDonationForm implement general/CG18-current campaign donation intent, consent, rupee validation, idempotent retry, private donor proof status, merchant-verified external link, pending/uncertain/no-paid messaging. Public BFF allowlists only POST create/status/payment-link with same-origin check; webhook stays direct trusted backend. Real merchant check gates page; no bank/receipts invented. Original QA01/04/05/06/11/12/13/17/18/20 source partial, browser/device/provider NOT_RUN.

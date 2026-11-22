@@ -1,0 +1,34 @@
+import {NextRequest,NextResponse} from "next/server";
+export const dynamic="force-dynamic";
+type Context={params:Promise<{parts?:string[]}>};
+const reply=(value:unknown,status=200)=>NextResponse.json(value,{status,
+ headers:{"Cache-Control":"private, no-store","X-Content-Type-Options":"nosniff",
+ "Referrer-Policy":"no-referrer"}});
+export async function POST(req:NextRequest,ctx:Context){
+ const parts=(await ctx.params).parts??[];
+ const path=parts.length===0?"/api/public/donations":
+  parts.length===1&&["status","payment-link"].includes(parts[0])?
+  "/api/public/donations/"+parts[0]:null;
+ if(!path)return reply({message:"Donation action unavailable."},404);
+ if(req.headers.get("origin")!==req.nextUrl.origin)
+  return reply({message:"Use the current CareGanga donation form."},403);
+ if(!req.headers.get("content-type")?.includes("application/json"))
+  return reply({message:"Check the original donation form."},415);
+ if(!process.env.BACKEND_URL)return reply({message:"Donation service unavailable."},503);
+ let body:string;
+ try{body=await req.text();if(body.length>5000)throw Error();JSON.parse(body);}
+ catch{return reply({message:"Check donation amount and contact details."},400);}
+ try{
+  const response=await fetch(new URL(path,process.env.BACKEND_URL),{
+   method:"POST",body,cache:"no-store",signal:AbortSignal.timeout(17000),
+   headers:{"Content-Type":"application/json"}});
+  const value:unknown=await response.json().catch(()=>null);
+  if(response.ok&&value!==null)return reply(value,response.status);
+  const status=[400,401,403,404,409,429].includes(response.status)?response.status:503;
+  return reply({message:status===409?"This donation request changed. Check original status before retrying.":
+   status===429?"Too many requests. Try again shortly.":
+   status===404?"This donation or campaign is no longer available.":
+   status===400?"Check the donation amount and consent.":
+   "Donation outcome cannot be confirmed. Keep your original request reference."},status);
+ }catch{return reply({message:"Donation result is uncertain. Retry the same original request."},503);}
+}
