@@ -185,3 +185,35 @@ BEGIN
  RETURN NEW;
 END; $$;
 CREATE TRIGGER cg09_membership_fee_pin BEFORE UPDATE ON membership_application FOR EACH ROW EXECUTE FUNCTION cg09_membership_fee_pin_guard();
+
+-- Posted source pins the historical offer through a returned correction.
+CREATE OR REPLACE FUNCTION cg04_application_draft_guard() RETURNS trigger LANGUAGE plpgsql AS $$
+BEGIN
+ IF TG_OP='DELETE' THEN RAISE EXCEPTION 'Membership application history must be retained'; END IF;
+ IF TG_OP='INSERT' THEN
+  IF NEW.status<>'DRAFT' OR NEW.version<>1 OR NEW.submitted_digest IS NOT NULL THEN RAISE EXCEPTION 'Invalid membership application start'; END IF;
+ ELSE
+  IF NEW.version<>OLD.version+1 OR (NEW.id,NEW.root_realm_id,NEW.application_ref,NEW.applicant_account_ref,NEW.created_at)
+   IS DISTINCT FROM (OLD.id,OLD.root_realm_id,OLD.application_ref,OLD.applicant_account_ref,OLD.created_at)
+   OR NOT ((OLD.status IN('DRAFT','RETURNED') AND NEW.status IN('DRAFT','CANCELLED','SUBMITTED')) OR (OLD.status='SUBMITTED' AND NEW.status IN('RETURNED','REJECTED')))
+   THEN RAISE EXCEPTION 'Invalid membership application revision'; END IF;
+  IF NEW.status IN('SUBMITTED','RETURNED','REJECTED','CANCELLED')
+   AND (to_jsonb(NEW)-'status'-'version'-'updated_at'-'submitted_at'-'submitted_digest') IS DISTINCT FROM (to_jsonb(OLD)-'status'-'version'-'updated_at'-'submitted_at'-'submitted_digest')
+   THEN RAISE EXCEPTION 'A review transition cannot change the accepted applicant source'; END IF;
+  IF OLD.status='SUBMITTED' AND (NEW.submitted_digest,NEW.submitted_at) IS DISTINCT FROM (OLD.submitted_digest,OLD.submitted_at)
+   THEN RAISE EXCEPTION 'Original submitted snapshot is immutable'; END IF;
+ END IF;
+ IF NOT EXISTS(SELECT 1 FROM access_realm r WHERE r.id=NEW.root_realm_id AND r.realm_key='FOUNDATION_ROOT') THEN RAISE EXCEPTION 'Invalid Foundation membership scope'; END IF;
+ IF NEW.status IN('DRAFT','SUBMITTED') THEN
+  IF NOT EXISTS(SELECT 1 FROM account a WHERE a.id=NEW.applicant_account_ref AND a.realm_id=NEW.root_realm_id
+    AND a.status='ACTIVE' AND a.contact_phone_verified_at IS NOT NULL AND a.contact_phone=NEW.contact_mobile
+    AND a.display_name=NEW.display_name AND a.normalized_email IS NOT DISTINCT FROM NEW.contact_email FOR SHARE)
+   THEN RAISE EXCEPTION 'A verified original applicant contact is required'; END IF;
+  IF NOT EXISTS(SELECT 1 FROM membership_tier_version v JOIN membership_tier t ON t.root_realm_id=v.root_realm_id AND t.id=v.tier_id
+   WHERE v.root_realm_id=NEW.root_realm_id AND v.id=NEW.tier_version_id AND t.version=v.version_no AND t.status='ACTIVE'
+    AND v.status='ACTIVE' AND v.published_at<=now() FOR SHARE OF t) AND NOT EXISTS(SELECT 1 FROM finance_membership_collection fee WHERE fee.root_realm_id=NEW.root_realm_id AND fee.application_id=NEW.id AND fee.amount_minor=NEW.accepted_fee_minor AND fee.branch_id IS NOT DISTINCT FROM NEW.branch_ref) THEN RAISE EXCEPTION 'Select a current published membership plan'; END IF;
+  IF NEW.branch_ref IS NOT NULL AND NOT EXISTS(SELECT 1 FROM branch b WHERE b.root_realm_id=NEW.root_realm_id AND b.id=NEW.branch_ref AND b.status='ACTIVE' FOR SHARE) THEN RAISE EXCEPTION 'Select an active branch'; END IF;
+  IF NOT EXISTS(SELECT 1 FROM geography_area s JOIN geography_area d ON d.root_realm_id=s.root_realm_id AND d.parent_area_id=s.id WHERE s.root_realm_id=NEW.root_realm_id AND s.id=NEW.state_ref AND s.level='STATE' AND s.status='ACTIVE' AND d.id=NEW.district_ref AND d.level='DISTRICT' AND d.status='ACTIVE' FOR SHARE OF s,d) THEN RAISE EXCEPTION 'Select current state and district'; END IF;
+ END IF;
+ RETURN NEW;
+END; $$;
