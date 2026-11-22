@@ -5,7 +5,7 @@ import {NativeHrPrivate} from "./native-hr-private";
 import {NativeHrDocuments} from "./native-hr-documents";
 import {FinanceExpenseClaimsScreen} from "../finance-accounting/finance-expense-claims-screen";
 import {NativeHrEmploymentChanges} from "./native-hr-employment-changes";
-import {NativeHrMyAppraisals} from "./native-hr-appraisals";
+import {NativeHrMyAppraisals,NativeHrAppraisalWorkspace} from "./native-hr-appraisals";
 import {careGangaTheme as theme} from "../../../../../packages/design-tokens/src/index";
 import {NativeHrAttendance} from "./native-hr-attendance";
 import {NativeHrBioConsent} from "./native-hr-bio-consent";
@@ -37,9 +37,9 @@ async function api(token:string,path:string,method="GET",body?:object){
  ),{status:response.status});
  return response.json() as Promise<unknown>;
 }
-export function NativeHrEnrollment({token,canView,canManage,canReview,canViewEmployees,canSelectAccounts,canSelectRoles,canViewPrivate,canManagePrivate,canConfigureReviews,canConfigureAttendance,canManageLeave=false,canReviewLeave=false,canCorrect=false,canReviewCorrection=false,canViewStaff=false,canManageChanges=false,canReviewChanges=false,canManageDocuments=false,canReviewDocuments=false,canApproveTemplates=false,canIssueDocuments=false,canRevokeDocuments=false,canViewAllowances=false,canRequestAllowances=false,canUploadAllowanceBill=false,onExit,onExpired}:{
+export function NativeHrEnrollment({token,canView,canManage,canReview,canViewEmployees,canSelectAccounts,canSelectRoles,canViewPrivate,canManagePrivate,canConfigureReviews,canConfigureAttendance,canManageLeave=false,canReviewLeave=false,canCorrect=false,canReviewCorrection=false,canViewStaff=false,canManageChanges=false,canReviewChanges=false,canManageDocuments=false,canReviewDocuments=false,canApproveTemplates=false,canManageAppraisals=false,canIssueDocuments=false,canRevokeDocuments=false,canViewAllowances=false,canRequestAllowances=false,canUploadAllowanceBill=false,onExit,onExpired}:{
  token:string;canView:boolean;canManage:boolean;canReview:boolean;canViewEmployees:boolean;canSelectAccounts:boolean;
- canSelectRoles:boolean;canViewPrivate:boolean;canManagePrivate:boolean;canConfigureReviews:boolean;canConfigureAttendance:boolean;canManageLeave?:boolean;canReviewLeave?:boolean;canCorrect?:boolean;canReviewCorrection?:boolean;canViewStaff?:boolean;canManageChanges?:boolean;canReviewChanges?:boolean;canManageDocuments?:boolean;canReviewDocuments?:boolean;canApproveTemplates?:boolean;canIssueDocuments?:boolean;canRevokeDocuments?:boolean;canViewAllowances?:boolean;canRequestAllowances?:boolean;canUploadAllowanceBill?:boolean;
+ canSelectRoles:boolean;canViewPrivate:boolean;canManagePrivate:boolean;canConfigureReviews:boolean;canConfigureAttendance:boolean;canManageLeave?:boolean;canReviewLeave?:boolean;canCorrect?:boolean;canReviewCorrection?:boolean;canViewStaff?:boolean;canManageChanges?:boolean;canReviewChanges?:boolean;canManageDocuments?:boolean;canReviewDocuments?:boolean;canApproveTemplates?:boolean;canManageAppraisals?:boolean;canIssueDocuments?:boolean;canRevokeDocuments?:boolean;canViewAllowances?:boolean;canRequestAllowances?:boolean;canUploadAllowanceBill?:boolean;
  onExit:()=>void;onExpired:()=>void
 }){
  const [allowancesOpen,setAllowancesOpen]=useState(false);
@@ -386,7 +386,7 @@ export function NativeHrEnrollment({token,canView,canManage,canReview,canViewEmp
       Check my pending account acceptance</Text></Pressable>
 
    </View>}
-   {seen("performance")&&<View style={display("performance")}><NativeHrMyAppraisals token={token} onExpired={onExpired}/></View>}
+   {seen("performance")&&<View style={display("performance")}><NativeHrMyAppraisals token={token} onExpired={onExpired}/>{canManageAppraisals&&<NativeHrAppraisalWorkspace token={token} onExpired={onExpired}/>}</View>}
    {seen("documents")&&<View style={display("documents")}>
    <NativeHrDocuments token={token} onExpired={onExpired} mode="own"/>
    {canManageDocuments&&<NativeHrDocuments token={token} onExpired={onExpired} mode="manage" canIssue={canIssueDocuments} canApproveTemplate={canApproveTemplates} canRevoke={canRevokeDocuments}/>}
