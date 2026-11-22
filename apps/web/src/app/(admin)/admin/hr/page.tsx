@@ -56,7 +56,7 @@ export default async function FoundationHrPage(){
       Your current Foundation employment status and, if permitted, employee applications.
      </p>
     </header>
-    <HrMyProfile/>
+    <HrMyProfile canViewAllowances={actions.includes("finance.claims.view")} canRequestAllowances={actions.includes("finance.claims.create")} canUploadAllowanceBill={actions.includes("documents.files.manage")&&actions.includes("documents.files.view")}/>
     <HrMyAppraisals/>
     <HrDocuments mode="own"/>
     {actions.includes("hr.documents.manage")&&<HrDocuments mode="manage" canIssue={actions.includes("documents.letters.issue")} canApproveTemplate={actions.includes("hr.documents.review")} canRevoke={actions.includes("documents.letters.revoke")}/>}

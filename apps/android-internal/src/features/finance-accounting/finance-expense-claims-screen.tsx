@@ -7,7 +7,21 @@ import {identityRequest} from "../identity-access/http-client";
 import {FinanceClaimNativeBill} from "./finance-claim-native-bill";
 
 type Claim={claimRef:string;claimNumber:string;category:string;purpose:string;expenseDate:string;
- amountMinor:string;status:string;version:number};
+ amountMinor:string;status:string;version:number;paymentState?:string};
+function claimStatus(c:Claim){
+ if(c.paymentState==="PAID_VERIFIED"&&c.status==="APPROVED")return "Paid — verified";
+ if(c.paymentState==="PAYABLE"&&c.status==="APPROVED")return "Payable — payment not verified";
+ return c.status==="DRAFT"?"Draft — verified bill required":c.status==="SUBMITTED"?"Awaiting protected review":
+ c.status==="APPROVED"?"Approved — posting/payment separate":c.status==="RETURNED"?"Returned for correction":
+ c.status==="REJECTED"?"Rejected":"Check original status";
+}
+function matches(c:Claim,filter:string,search:string){
+ const status=c.status==="APPROVED"&&["PAYABLE","PAID_VERIFIED"].includes(c.paymentState??"")?c.paymentState:c.status;
+ return (filter==="ALL"||status===filter)&&(!search.trim()||[c.claimNumber,c.category,c.purpose].join(" ").toLowerCase().includes(search.trim().toLowerCase()));
+}
+const filters=["ALL","DRAFT","SUBMITTED","APPROVED","PAYABLE","PAID_VERIFIED","RETURNED","REJECTED"];
+const filterLabel=(v:string)=>({ALL:"All",DRAFT:"Draft",SUBMITTED:"Pending review",APPROVED:"Approved",PAYABLE:"Payable",PAID_VERIFIED:"Paid verified",RETURNED:"Returned",REJECTED:"Rejected"} as Record<string,string>)[v]??v;
+
 type Draft={category:string;purpose:string;expenseDate:string;amount:string};
 type Problem={message?:string;field?:string};
 const clear=():Draft=>({category:"",purpose:"",expenseDate:"",amount:""});
@@ -28,10 +42,13 @@ async function failure(response:Response):Promise<Problem>{
   response.status===409?"This claim changed. Check the original record before retrying.":
   "The result could not be confirmed. Check your saved claims before retrying."};
 }
-export function FinanceExpenseClaimsScreen({token,canCreate,canView,canUploadBill=false,onExit,onExpired}:{
- token:string;canCreate:boolean;canView:boolean;canUploadBill?:boolean;onExit:()=>void;onExpired:()=>void
+export function FinanceExpenseClaimsScreen({token,canCreate,canView,canUploadBill=false,allowanceMode=false,onExit,onExpired}:{
+ token:string;canCreate:boolean;canView:boolean;canUploadBill?:boolean;allowanceMode?:boolean;onExit:()=>void;onExpired:()=>void
 }){
  const [claims,setClaims]=useState<Claim[]>([]);
+ const [eligible,setEligible]=useState(false),[search,setSearch]=useState(""),[filter,setFilter]=useState("ALL"),[drawer,setDrawer]=useState(false);
+ const [offset,setOffset]=useState(0),[nextOffset,setNextOffset]=useState<number|null>(null);
+ const allowCreate=canCreate&&(!allowanceMode||eligible);
  const [form,setForm]=useState<Draft>(clear());
  const [correction,setCorrection]=useState<{ref:string;version:number;number:string}|null>(null);
  const [openedBill,setOpenedBill]=useState<string|null>(null);
@@ -45,18 +62,18 @@ export function FinanceExpenseClaimsScreen({token,canCreate,canView,canUploadBil
   if(!canView)return;
   setLoading(true);setError("");
   try{
-   const res=await identityRequest("/api/finance-accounting/claims/mine",{
+   const res=await identityRequest("/api/finance-accounting/claims/mine?offset="+offset+(allowanceMode?"&source=HR_ALLOWANCE":""),{
     headers:{Authorization:"Bearer "+token},cache:"no-store"});
    if(res.status===401){onExpired();return;}
    if(!res.ok)throw Error((await failure(res)).message);
    const raw:unknown=await res.json();
    if(!raw||typeof raw!=="object"||!("claims" in raw)||!Array.isArray(raw.claims))
     throw Error("The current claim list could not be verified.");
-   setClaims(raw.claims as Claim[]);
-  }catch(e){setClaims([]);setError(e instanceof Error?e.message:
+   setClaims(raw.claims as Claim[]);setEligible(true);setNextOffset("nextOffset" in raw&&typeof raw.nextOffset==="number"?raw.nextOffset:null);
+  }catch(e){setClaims([]);setEligible(false);setNextOffset(null);setError(e instanceof Error?e.message:
    "Your claims cannot be loaded. Retry when connected.");}
   finally{setLoading(false);}
- },[token,canView,onExpired]);
+ },[token,canView,onExpired,offset,allowanceMode]);
  useEffect(()=>{void refresh();},[refresh]);
  useEffect(()=>{
   const back=BackHandler.addEventListener("hardwareBackPress",()=>{onExit();return true;});
@@ -67,17 +84,18 @@ export function FinanceExpenseClaimsScreen({token,canCreate,canView,canUploadBil
   setKey(null);setFieldError(null);setMessage("");
  }
  async function save(){
-  if(!canCreate||busy)return;
+  if(!allowCreate||busy)return;
   const requestKey=key??Crypto.randomUUID();setKey(requestKey);
   setBusy(true);setFieldError(null);setMessage("");
   try{
    const res=await identityRequest(correction?"/api/finance-accounting/claims/"+correction.ref+"/correct":"/api/finance-accounting/claims/drafts",{
     method:"POST",headers:{"Authorization":"Bearer "+token,"Content-Type":"application/json"},
-    body:JSON.stringify({...form,requestKey,...(correction?{expectedVersion:correction.version}:{})})});
+    body:JSON.stringify({...form,requestKey,...(correction?{expectedVersion:correction.version}:allowanceMode?{sourceKind:"HR_ALLOWANCE"}:{})})});
    if(res.status===401){onExpired();return;}
    if(!res.ok){
     const x=await failure(res);
     if(x.field)setFieldError({field:x.field,message:x.message??"Please correct this field."});
+    if(res.status<500){setMessage(x.message??"Your claim was not saved.");return;}
     throw Error(x.message??"Your claim was not saved.");
    }
    const raw:unknown=await res.json();
@@ -95,7 +113,7 @@ export function FinanceExpenseClaimsScreen({token,canCreate,canView,canUploadBil
     if(status.status===401){onExpired();return;}
     if(status.ok){
      const raw:unknown=await status.json();
-     if(raw&&typeof raw==="object"&&"confirmed" in raw&&raw.confirmed===true){
+     if(raw&&typeof raw==="object"&&"confirmed" in raw&&raw.confirmed===true&&"status" in raw&&raw.status==="DRAFT"){
       setForm(clear());setKey(null);setCorrection(null);
       setMessage("Your existing draft was saved. It has not been approved or paid.");
       void refresh();return;
@@ -109,17 +127,19 @@ export function FinanceExpenseClaimsScreen({token,canCreate,canView,canUploadBil
   ["category","Category","e.g. Travel"],["expenseDate","Expense date","YYYY-MM-DD"],
   ["amount","Amount (₹)","e.g. 125.50"],["purpose","Purpose","Describe the expense"]
  ];
+ const visible=allowanceMode?claims.filter(c=>matches(c,filter,search)):claims;
  return <SafeAreaView style={s.safe} edges={["left","right"]}>
   <View style={s.header}>
    <Pressable accessibilityRole="button" onPress={onExit} style={s.back}>
     <Text style={s.backText}>‹ Back</Text></Pressable>
-   <View><Text style={s.eyebrow}>FOUNDATION / FINANCE</Text>
-    <Text style={s.title} accessibilityRole="header">Expense Claims</Text></View>
+   <View><Text style={s.eyebrow}>{allowanceMode?"FOUNDATION / HUMAN RESOURCES":"FOUNDATION / FINANCE"}</Text>
+    <Text style={s.title} accessibilityRole="header">{allowanceMode?"My Allowances":"Expense Claims"}</Text></View>
   </View>
   <ScrollView contentContainerStyle={s.content} keyboardShouldPersistTaps="handled">
    <Text style={s.muted}>Submit a draft as an existing Foundation account. Drafts are not approved expenses or payments.</Text>
-   {canCreate&&<View style={s.card}>
-    <Text style={s.heading}>{correction?"Correct "+correction.number:"New claim draft"}</Text>
+   {allowanceMode&&allowCreate&&<Pressable accessibilityRole="button" style={s.action} onPress={()=>setDrawer(v=>!v)}><Text style={s.actionText}>{drawer?"Close request form":"Request Allowance"}</Text></Pressable>}
+   {allowCreate&&(!allowanceMode||drawer)&&<View style={s.card}>
+    <Text style={s.heading}>{correction?"Correct "+correction.number:allowanceMode?"Request Allowance":"New claim draft"}</Text>
     {fields.map(([field,label,placeholder])=><View key={field}>
      <Text style={s.label}>{label} *</Text>
      <TextInput accessibilityLabel={label} value={form[field]}
@@ -137,39 +157,37 @@ export function FinanceExpenseClaimsScreen({token,canCreate,canView,canUploadBil
    </View>}
    {!!message&&<Text style={s.muted} accessibilityRole="alert">{message}</Text>}
    {canView&&<View style={s.card}>
-    <View style={s.row}><Text style={s.heading}>My claims</Text>
+    <View style={s.row}><Text style={s.heading}>{allowanceMode?"My allowance requests":"My claims"}</Text>
      <Pressable accessibilityRole="button" onPress={()=>void refresh()} disabled={loading}>
       <Text style={s.backText}>Refresh</Text></Pressable></View>
+    {allowanceMode&&eligible&&<View style={{gap:6}}><Text style={s.muted}>Current page: {claims.length} requests · {claims.filter(c=>c.status==="SUBMITTED").length} pending · {claims.filter(c=>c.paymentState==="PAID_VERIFIED").length} paid verified</Text><TextInput accessibilityLabel="Search current page" value={search} onChangeText={setSearch} maxLength={80} placeholder="Search requests" style={s.input}/><View style={{flexDirection:"row",flexWrap:"wrap",gap:8}}>{filters.map(v=><Pressable key={v} accessibilityRole="button" accessibilityState={{selected:filter===v}} onPress={()=>setFilter(v)} style={{padding:10,borderWidth:1,borderColor:theme.border,backgroundColor:filter===v?theme.primary:theme.surface,borderRadius:8}}><Text style={{color:filter===v?theme.primaryText:theme.text}}>{filterLabel(v)}</Text></Pressable>)}</View></View>}
     {loading&&<ActivityIndicator color={theme.primary}/>}
     {!!error&&<Text style={s.alert} accessibilityRole="alert">{error}</Text>}
     {!loading&&!error&&claims.length===0&&<Text style={s.muted}>No saved claims yet.</Text>}
-    {claims.map(c=><View key={c.claimRef} style={s.claim}>
+    {visible.map(c=><View key={c.claimRef} style={s.claim}>
      <Text style={s.heading}>{c.claimNumber} · {c.category} · {inr(c.amountMinor)}</Text>
      <Text style={s.muted}>{c.expenseDate} · {c.purpose}</Text>
-     <Text style={s.pending}>{c.status==="DRAFT"?"Draft — verified bill required":
-      c.status==="SUBMITTED"?"Awaiting protected review":
-      c.status==="APPROVED"?"Approved — posting/payment separate":
-      c.status==="RETURNED"?"Returned for correction":
-      c.status==="REJECTED"?"Rejected":"Check current source"}</Text>
-     {c.status==="RETURNED"&&canCreate&&
+     <Text style={s.pending}>{claimStatus(c)}</Text>
+     {c.status==="RETURNED"&&allowCreate&&
       <Pressable accessibilityRole="button" style={s.action}
        onPress={()=>{
-        setCorrection({ref:c.claimRef,version:c.version,number:c.claimNumber});
+        setDrawer(true);setCorrection({ref:c.claimRef,version:c.version,number:c.claimNumber});
         setForm({category:c.category,purpose:c.purpose,expenseDate:c.expenseDate,
          amount:(BigInt(c.amountMinor)/100n).toString()+"."+(BigInt(c.amountMinor)%100n).toString().padStart(2,"0")});
         setMessage("");setKey(null);setFieldError(null);
        }}><Text style={s.actionText}>Correct returned claim</Text></Pressable>}
-     {c.status==="DRAFT"&&canCreate&&canUploadBill&&
+     {c.status==="DRAFT"&&allowCreate&&canUploadBill&&
       <Pressable accessibilityRole="button" style={s.action}
        onPress={()=>setOpenedBill(x=>x===c.claimRef?null:c.claimRef)}>
        <Text style={s.actionText}>{openedBill===c.claimRef?"Hide bill":"Attach verified bill"}</Text>
       </Pressable>}
-     {c.status==="DRAFT"&&c.claimRef===openedBill&&canUploadBill&&
+     {c.status==="DRAFT"&&c.claimRef===openedBill&&allowCreate&&canUploadBill&&
       <FinanceClaimNativeBill token={token} claim={c} canUpload={canUploadBill}
        onUpdated={()=>{setOpenedBill(null);void refresh();}} onExpired={onExpired}/>}
 
     </View>)}
-    <Text style={s.muted}>Showing your most recent claims only.</Text>
+    {!loading&&!error&&claims.length>0&&visible.length===0&&<Text style={s.muted}>No matching requests on this page.</Text>}
+    <View style={s.row}><Pressable accessibilityRole="button" disabled={offset===0||loading} onPress={()=>setOffset(v=>Math.max(0,v-30))}><Text style={s.backText}>Previous</Text></Pressable><Pressable accessibilityRole="button" disabled={nextOffset===null||loading} onPress={()=>setOffset(nextOffset??0)}><Text style={s.backText}>Next</Text></Pressable></View>
    </View>}
   </ScrollView>
  </SafeAreaView>;

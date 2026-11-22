@@ -3,6 +3,7 @@ import {NativeHrEvidence,type HrFile} from "./native-hr-evidence";
 import {NativeHrReviews} from "./native-hr-reviews";
 import {NativeHrPrivate} from "./native-hr-private";
 import {NativeHrDocuments} from "./native-hr-documents";
+import {FinanceExpenseClaimsScreen} from "../finance-accounting/finance-expense-claims-screen";
 import {NativeHrEmploymentChanges} from "./native-hr-employment-changes";
 import {NativeHrMyAppraisals} from "./native-hr-appraisals";
 import {NativeHrAttendance} from "./native-hr-attendance";
@@ -35,11 +36,12 @@ async function api(token:string,path:string,method="GET",body?:object){
  ),{status:response.status});
  return response.json() as Promise<unknown>;
 }
-export function NativeHrEnrollment({token,canView,canManage,canReview,canViewEmployees,canSelectAccounts,canSelectRoles,canViewPrivate,canManagePrivate,canConfigureReviews,canConfigureAttendance,canManageLeave=false,canReviewLeave=false,canCorrect=false,canReviewCorrection=false,canViewStaff=false,canManageChanges=false,canReviewChanges=false,canManageDocuments=false,canReviewDocuments=false,canIssueDocuments=false,canRevokeDocuments=false,onExit,onExpired}:{
+export function NativeHrEnrollment({token,canView,canManage,canReview,canViewEmployees,canSelectAccounts,canSelectRoles,canViewPrivate,canManagePrivate,canConfigureReviews,canConfigureAttendance,canManageLeave=false,canReviewLeave=false,canCorrect=false,canReviewCorrection=false,canViewStaff=false,canManageChanges=false,canReviewChanges=false,canManageDocuments=false,canReviewDocuments=false,canIssueDocuments=false,canRevokeDocuments=false,canViewAllowances=false,canRequestAllowances=false,canUploadAllowanceBill=false,onExit,onExpired}:{
  token:string;canView:boolean;canManage:boolean;canReview:boolean;canViewEmployees:boolean;canSelectAccounts:boolean;
- canSelectRoles:boolean;canViewPrivate:boolean;canManagePrivate:boolean;canConfigureReviews:boolean;canConfigureAttendance:boolean;canManageLeave?:boolean;canReviewLeave?:boolean;canCorrect?:boolean;canReviewCorrection?:boolean;canViewStaff?:boolean;canManageChanges?:boolean;canReviewChanges?:boolean;canManageDocuments?:boolean;canReviewDocuments?:boolean;canIssueDocuments?:boolean;canRevokeDocuments?:boolean;
+ canSelectRoles:boolean;canViewPrivate:boolean;canManagePrivate:boolean;canConfigureReviews:boolean;canConfigureAttendance:boolean;canManageLeave?:boolean;canReviewLeave?:boolean;canCorrect?:boolean;canReviewCorrection?:boolean;canViewStaff?:boolean;canManageChanges?:boolean;canReviewChanges?:boolean;canManageDocuments?:boolean;canReviewDocuments?:boolean;canIssueDocuments?:boolean;canRevokeDocuments?:boolean;canViewAllowances?:boolean;canRequestAllowances?:boolean;canUploadAllowanceBill?:boolean;
  onExit:()=>void;onExpired:()=>void
 }){
+ const [allowancesOpen,setAllowancesOpen]=useState(false);
  const [apps,setApps]=useState<Application[]>([]);
  const [branches,setBranches]=useState<Option[]>([]);
  const [departments,setDepartments]=useState<Option[]>([]);
@@ -335,6 +337,7 @@ export function NativeHrEnrollment({token,canView,canManage,canReview,canViewEmp
     autoCapitalize={label==="Joining date"?"none":"words"}/>
   </View>
  );
+ if(allowancesOpen&&canViewAllowances&&self&&["ACTIVE","PROBATION"].includes(self.status))return <FinanceExpenseClaimsScreen token={token} allowanceMode canView canCreate={canRequestAllowances} canUploadBill={canUploadAllowanceBill} onExit={()=>setAllowancesOpen(false)} onExpired={onExpired}/>;
  return <ScrollView style={styles.page} keyboardShouldPersistTaps="handled"
   contentContainerStyle={styles.content}>
    <View style={styles.heading}>
@@ -356,6 +359,7 @@ export function NativeHrEnrollment({token,canView,canManage,canReview,canViewEmp
       </View>:
       <Text style={styles.muted}>Profile unavailable until your session is verified.</Text>}
    </View>
+   {canViewAllowances&&self&&["ACTIVE","PROBATION"].includes(self.status)&&<Pressable accessibilityRole="button" style={styles.outline} onPress={()=>setAllowancesOpen(true)}><Text style={styles.outlineText}>My Allowances</Text></Pressable>}
    <NativeHrBioConsent token={token} onExpired={onExpired}/>
    <NativeHrMyAppraisals token={token} onExpired={onExpired}/>
    <NativeHrDocuments token={token} onExpired={onExpired} mode="own"/>

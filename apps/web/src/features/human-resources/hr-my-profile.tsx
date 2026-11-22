@@ -1,9 +1,10 @@
 "use client";
 import {useCallback,useEffect,useState} from "react";
+import {FinanceExpenseClaimWorkspace} from "../finance-accounting/finance-expense-claim-workspace";
 type Self={status:string;employeeReference?:string;name?:string;
  designation?:string;branch?:string;employmentType?:string;
  effectiveFrom?:string;message?:string};
-export function HrMyProfile(){
+export function HrMyProfile({canViewAllowances=false,canRequestAllowances=false,canUploadAllowanceBill=false}:{canViewAllowances?:boolean;canRequestAllowances?:boolean;canUploadAllowanceBill?:boolean}={}){
  const [self,setSelf]=useState<Self|null>(null);
  const [busy,setBusy]=useState(true);
  const [problem,setProblem]=useState("");
@@ -105,7 +106,7 @@ export function HrMyProfile(){
  };
  useEffect(()=>{void refresh();void checkPending();void refreshBio();},
   [refresh,checkPending,refreshBio]);
- return <section aria-labelledby="cg-hr-my-profile" style={{padding:"1rem 1.2rem",
+ return <><section aria-labelledby="cg-hr-my-profile" style={{padding:"1rem 1.2rem",
   border:"1px solid #E2E8F0",borderRadius:14,background:"#fff",marginBottom:18}}>
   <header style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:10}}>
    <h2 id="cg-hr-my-profile" style={{fontSize:"1.15rem",margin:0}}>My employment</h2>
@@ -158,5 +159,7 @@ export function HrMyProfile(){
    <button type="button" onClick={()=>void checkPending()} style={{marginTop:10,
     padding:"8px 11px",border:"1px solid #CBD5E1",borderRadius:9,background:"#F8FAFC"}}>
     Check pending employment acceptance</button>
- </section>;
+ </section>
+ {canViewAllowances&&self&&["ACTIVE","PROBATION"].includes(self.status)&&<FinanceExpenseClaimWorkspace allowanceMode canView canCreate={canRequestAllowances} canUploadBill={canUploadAllowanceBill}/>}
+ </>;
 }

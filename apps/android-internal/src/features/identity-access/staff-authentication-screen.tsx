@@ -715,7 +715,7 @@ export function StaffAuthenticationScreen() {
     // Application list/create remain behind per-action server HR permissions.
     return renderInShell(<ScreenErrorBoundary onExit={() => setHrOpen(false)}>
       <Suspense fallback={<ActivityIndicator style={{marginTop:40}}/>}>
-        <NativeHrEnrollment token={token} canView={roleActions.includes("hr.applications.view")}
+        <NativeHrEnrollment token={token} canViewAllowances={roleActions.includes("finance.claims.view")} canRequestAllowances={roleActions.includes("finance.claims.create")} canUploadAllowanceBill={roleActions.includes("documents.files.manage")&&roleActions.includes("documents.files.view")} canView={roleActions.includes("hr.applications.view")}
           canManage={roleActions.includes("hr.applications.manage")}
           canSelectAccounts={roleActions.includes("accounts.select")}
           canSelectRoles={roleActions.includes("roles.select")}

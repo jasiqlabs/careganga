@@ -195,6 +195,11 @@ async function handler(request:NextRequest,parts:string[],method:string){
   if(!/^(0|[1-9][0-9]{0,4})$/.test(offset))
    return NextResponse.json({message:"Choose a valid claim list page and try again."},{status:400});
   target.searchParams.set("offset",offset);
+  if(parts[1]==="mine"){
+   const source=request.nextUrl.searchParams.get("source")??"GENERAL";
+   if(source!=="GENERAL"&&source!=="HR_ALLOWANCE")return NextResponse.json({message:"Choose a valid claim source."},{status:400});
+   target.searchParams.set("source",source);
+  }
  }
  if(method==="GET"&&parts[0]==="vouchers"&&parts[1]==="drafts"&&parts.length===2){
   const offset=request.nextUrl.searchParams.get("offset")??"0";
