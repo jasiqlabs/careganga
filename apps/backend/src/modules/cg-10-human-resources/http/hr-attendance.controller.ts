@@ -4,6 +4,12 @@ import {HrAttendanceService} from "../application/hr-attendance.service";
 @Controller("api/hr")
 export class HrAttendanceController{
  constructor(private readonly attendance:HrAttendanceService){}
+ @Get("leave-policies")
+ leavePolicies(@Headers("authorization")token:string){return this.attendance.leavePolicies(token);}
+ @Post("leave-policies")
+ createLeavePolicy(@Headers("authorization")token:string,@Body()body:unknown){
+  return this.attendance.createLeavePolicy(token,body);
+ }
  @Get("shift-policies")
  policies(@Headers("authorization")token:string,@Query("branch")branch:string){
   return this.attendance.policies(token,branch);

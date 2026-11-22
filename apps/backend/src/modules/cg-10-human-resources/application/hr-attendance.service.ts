@@ -51,6 +51,22 @@ export function shiftCheckInAt(instant:Date,timezone:string,startText:string,
  return {businessDate:overnight&&clock.minute<end?previous(clock.day):clock.day,
   late:afterStart>graceMinutes};
 }
+/** Annual entitlement is stored in integer half-day units, not floating balances. */
+export function leavePolicyInput(body:unknown){
+ const v=input(body,["requestKey","leaveType","annualHalfDays","allowHalfDays","countWeeklyOff","effectiveFrom"]);
+ const requestKey=id(v.requestKey,"save request");
+ const leaveType=typeof v.leaveType==="string"?v.leaveType.trim().replace(/\s+/g," "):"";
+ if(leaveType.length<2||leaveType.length>80||/[\u0000-\u001f\u007f]/.test(leaveType))
+  throw new BadRequestException("Enter a valid leave type");
+ if(typeof v.annualHalfDays!=="number"||!Number.isInteger(v.annualHalfDays)||
+  v.annualHalfDays<1||v.annualHalfDays>732||typeof v.allowHalfDays!=="boolean"||
+  typeof v.countWeeklyOff!=="boolean"||(!v.allowHalfDays&&v.annualHalfDays%2!==0))
+  throw new BadRequestException("Check annual leave days and half-day settings");
+ return {requestKey,leaveType,typeKey:leaveType.toLowerCase(),annualHalfDays:v.annualHalfDays,
+  allowHalfDays:v.allowHalfDays,countWeeklyOff:v.countWeeklyOff,effectiveFrom:date(v.effectiveFrom)};
+}
+type LeaveRule={id:string;leave_type:string;annual_half_days:number;allow_half_days:boolean;
+ count_weekly_off:boolean;effective_from:Date|string;effective_to:Date|string|null;version:number};
 type Rule={id:string;name:string;time_zone:string;work_start_local:string;
  work_end_local:string;grace_minutes:number;break_minutes:number;
  weekly_off_days:number[];effective_from:Date|string;branch_ref:string};
@@ -60,6 +76,57 @@ export class HrAttendanceService{
  constructor(@Inject(DATABASE)private readonly db:Pool,
   private readonly sessions:SessionService,
   private readonly identity:FoundationStructureIdentityFacade){}
+ async leavePolicies(token:string){
+  const actor=await this.sessions.requireAction(token,"hr.leave.policies.manage");
+  const tx=await this.db.connect();
+  try{
+   await tx.query("BEGIN");
+   await this.identity.assertCurrent(tx,actor,"hr.leave.policies.manage");
+   const q=await tx.query<LeaveRule>(`SELECT id,leave_type,annual_half_days,allow_half_days,
+    count_weekly_off,effective_from,effective_to,version FROM hr_leave_policy
+    WHERE root_realm_id=$1 ORDER BY effective_from DESC,id DESC LIMIT 101`,[actor.realmId]);
+   await tx.query("COMMIT");
+   return {items:q.rows.slice(0,100).map(x=>({policyRef:x.id,leaveType:x.leave_type,
+    annualHalfDays:x.annual_half_days,allowHalfDays:x.allow_half_days,countWeeklyOff:x.count_weekly_off,
+    effectiveFrom:sqlDate(x.effective_from),effectiveTo:x.effective_to?sqlDate(x.effective_to):null,
+    version:x.version})),hasMore:q.rows.length>100};
+  }catch(e){await tx.query("ROLLBACK");throw e;}finally{tx.release();}
+ }
+ async createLeavePolicy(token:string,body:unknown){
+  const actor=await this.sessions.requireAction(token,"hr.leave.policies.manage");
+  const v=leavePolicyInput(body);
+  const hash=digest([actor.accountId,v.typeKey,v.leaveType,v.annualHalfDays,
+   v.allowHalfDays,v.countWeeklyOff,v.effectiveFrom]);
+  const tx=await this.db.connect();
+  try{
+   await tx.query("BEGIN");
+   const root=await tx.query("SELECT id FROM access_realm WHERE id=$1 AND realm_key='FOUNDATION_ROOT' FOR UPDATE",
+    [actor.realmId]);
+   if(!root.rowCount)throw new ForbiddenException("Foundation leave policy access is unavailable");
+   await this.identity.assertCurrent(tx,actor,"hr.leave.policies.manage");
+   const replay=await tx.query<{request_digest:string}>("SELECT request_digest FROM hr_leave_policy WHERE root_realm_id=$1 AND request_key=$2",
+    [actor.realmId,v.requestKey]);
+   if(replay.rows[0]){
+    if(replay.rows[0].request_digest!==hash)throw new ConflictException("This leave policy request was used for another change");
+    await tx.query("COMMIT");return {saved:true,replayed:true};
+   }
+   const prior=await tx.query<{id:string;effective_from:Date|string;version:number}>(`
+    SELECT id,effective_from,version FROM hr_leave_policy WHERE root_realm_id=$1
+    AND type_key=$2 AND effective_to IS NULL FOR UPDATE`,[actor.realmId,v.typeKey]);
+   if(prior.rows[0]){
+    if(sqlDate(prior.rows[0].effective_from)>=v.effectiveFrom)
+     throw new ConflictException("A new leave policy version must begin after the previous version");
+    await tx.query("UPDATE hr_leave_policy SET effective_to=$3 WHERE root_realm_id=$1 AND id=$2",
+     [actor.realmId,prior.rows[0].id,v.effectiveFrom]);
+   }
+   await tx.query(`INSERT INTO hr_leave_policy(root_realm_id,leave_type,type_key,
+    annual_half_days,allow_half_days,count_weekly_off,effective_from,version,created_by,request_key,request_digest)
+    VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)`,
+    [actor.realmId,v.leaveType,v.typeKey,v.annualHalfDays,v.allowHalfDays,v.countWeeklyOff,
+     v.effectiveFrom,(prior.rows[0]?.version??0)+1,actor.accountId,v.requestKey,hash]);
+   await tx.query("COMMIT");return {saved:true,replayed:false};
+  }catch(e){await tx.query("ROLLBACK");throw e;}finally{tx.release();}
+ }
  private async allowedBranch(tx:PoolClient,actor:VerifiedFoundationActor,branchRef:string){
   const q=await tx.query<{id:string}>(`SELECT b.id FROM branch b WHERE b.id=$1
    AND b.root_realm_id=$2 AND b.status='ACTIVE'

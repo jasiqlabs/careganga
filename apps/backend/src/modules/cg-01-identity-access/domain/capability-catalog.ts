@@ -52,6 +52,7 @@ const capabilities:readonly Capability[]=Object.freeze([
   {key:"hr.employees.private.manage",businessLabel:"Maintain separately authorized encrypted employee personal details",group:"Human resources",assignable:false,sensitive:true},
   {key:"hr.employees.review",businessLabel:"Review protected employee enrollment decisions",group:"Human resources",assignable:false,sensitive:true},
   // CG-10 US-002: real shift configuration and bounded attendance; employee self is separately authenticated.
+  {key:"hr.leave.policies.manage",businessLabel:"Maintain Foundation-wide effective leave policies",group:"Human resources",assignable:false,sensitive:true},
   {key:"hr.shifts.manage",businessLabel:"Maintain real branch shifts and employee shift assignments",group:"Human resources",assignable:true,sensitive:true},
   {key:"hr.attendance.view",businessLabel:"View permitted branch shift rules",group:"Human resources",assignable:true,sensitive:true},
   {key:"documents.files.view",businessLabel:"View protected case evidence",group:"Documents & files",assignable:true,sensitive:true},

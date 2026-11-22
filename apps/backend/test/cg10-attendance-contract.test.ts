@@ -1,7 +1,7 @@
 import {describe,test} from "node:test";
 import assert from "node:assert/strict";
 import {ConflictException} from "@nestjs/common";
-import {shiftCheckInAt,verifiedWorkedMinutes} from "../src/modules/cg-10-human-resources/application/hr-attendance.service";
+import {shiftCheckInAt,verifiedWorkedMinutes,leavePolicyInput} from "../src/modules/cg-10-human-resources/application/hr-attendance.service";
 
 /** US-002 source-only time-zone/overnight safety tests; no DB/device/manual QA. */
 describe("CG-10 original attendance business-day classification",()=>{
@@ -42,5 +42,20 @@ describe("CG-10 original attendance business-day classification",()=>{
    "Asia/Kolkata","09:00","17:00",10),ConflictException);
   assert.throws(()=>shiftCheckInAt(new Date("2026-11-21T09:00:00.000Z"),
    "Asia/Kolkata","22:00","06:00",10),ConflictException);
+ });
+});
+
+describe("CG-10 leave rule source contract",()=>{
+ const valid={requestKey:"c350419e-c3b2-4984-8e32-7483aca3a6ab",
+  leaveType:"Annual leave",annualHalfDays:24,allowHalfDays:true,countWeeklyOff:false,effectiveFrom:"2027-01-01"};
+ test("leave entitlement uses exact half-day units and normalized type",()=>{
+  const r=leavePolicyInput({...valid,leaveType:" Annual   Leave "});
+  assert.equal(r.typeKey,"annual leave");assert.equal(r.annualHalfDays,24);
+  assert.equal(r.countWeeklyOff,false);
+ });
+ test("invalid entitlement, non-boolean rule and impossible date fail",()=>{
+  for(const change of [{annualHalfDays:1.5},{annualHalfDays:0},{annualHalfDays:733},
+   {annualHalfDays:3,allowHalfDays:false},{countWeeklyOff:"false"},{effectiveFrom:"2027-02-30"}])
+   assert.throws(()=>leavePolicyInput({...valid,...change}));
  });
 });
