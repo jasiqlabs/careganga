@@ -112,7 +112,7 @@ export class DonationAdminService{
     [actor.realmId,scope.all,scope.branchRefs]);
    const refunded=BigInt(verifiedRefunds.rows[0]?.minor??"0");
    const gross=BigInt(summary.rows[0]?.receivedMinor??"0");
-   return {items:rows.rows.slice(0,25),hasMore:rows.rows.length>25,offset,
+   return {items:rows.rows.slice(0,25),hasMore:rows.rows.length>25,offset:f.offset,
    summary:{...summary.rows[0],verifiedRefundMinor:refunded.toString(),
      verifiedRefundCount:verifiedRefunds.rows[0]?.total??0,
      netReceivedMinor:(gross-refunded).toString()},message:"Only original CG09-confirmed posted receipts count as received. Pending requests are excluded."};
