@@ -15257,3 +15257,44 @@ button:disabled {
 @media(max-width:21rem){
  .cg-diagnostics-kpis{grid-template-columns:minmax(0,1fr)}
 }
+
+/* CG05 A09: original six KPI cards, main/aside panels and responsive task drawer. */
+.cg05-task-page{display:grid;gap:16px;min-width:0}
+.cg05-task-kpis{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:10px}
+.cg05-task-kpi{display:flex;align-items:flex-start;gap:10px}
+.cg05-task-kpi strong,.cg05-task-kpi small,.cg05-task-table small{display:block}
+.cg05-task-kpi strong{font-size:21px;line-height:1.2;margin:3px 0}
+.cg05-task-kpi small,.cg05-task-muted,.cg05-task-table small{color:var(--cg-muted,#64748b);font-size:11px}
+.cg05-task-icon{display:grid;place-items:center;border-radius:50%;color:#fff;width:34px;height:34px;flex:none;font-size:19px}
+.cg05-task-grid{display:grid;grid-template-columns:minmax(0,3.15fr) minmax(220px,1fr);gap:16px;align-items:start}
+.cg05-task-main,.cg05-task-aside{display:grid;gap:16px;min-width:0}
+.cg05-task-page h3{font-size:14px;margin:0 0 12px;color:var(--cg-text,#1f2937)}
+.cg05-task-toolbar,.cg05-task-actions{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px}
+.cg05-task-actions{justify-content:flex-end}
+.cg05-task-filters{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:12px;margin-top:12px;align-items:end}
+.cg05-task-filters input,.cg05-task-filters select,.cg05-task-form input,.cg05-task-form select,.cg05-task-form textarea{box-sizing:border-box}
+.cg05-task-tabs{display:flex;flex-wrap:wrap;gap:4px}
+.cg05-task-tabs button{font-size:12px;background:transparent;color:var(--cg-muted,#475569);border:0;border-bottom:2px solid transparent;padding:12px 8px;cursor:pointer}
+.cg05-task-tabs button.current{color:var(--cg-accent,#4f24dd);border-color:var(--cg-accent,#4f24dd);font-weight:700}
+.cg05-task-table{overflow-x:auto;margin:12px 0}
+.cg05-task-table table{border-collapse:collapse;width:100%;font-size:12px;text-align:left}
+.cg05-task-table th{background:var(--cg-bg,#f1f5f4);white-space:nowrap;padding:10px;color:var(--cg-muted,#475569)}
+.cg05-task-table td{border-bottom:1px solid var(--cg-border,#e5e7eb);padding:10px;vertical-align:top}
+.cg05-task-status-chart{display:flex;align-items:center;gap:14px;font-size:12px;flex-wrap:wrap}
+.cg05-task-donut{border-radius:50%;width:106px;height:106px;padding:13px;display:grid;place-items:center;flex:none;box-sizing:border-box}
+.cg05-task-donut>div{width:100%;height:100%;border-radius:50%;background:var(--cg-surface,#fff);display:grid;place-content:center;text-align:center}
+.cg05-task-donut small{font-size:10px;color:var(--cg-muted,#64748b)}
+.cg05-task-priority{margin:10px 0}
+.cg05-task-priority>div:first-child{display:flex;justify-content:space-between;font-size:12px}
+.cg05-task-track{height:7px;border-radius:8px;background:#e5e7eb;margin-top:5px;overflow:hidden}
+.cg05-task-track span{height:100%;display:block;border-radius:8px}
+.cg05-task-quick{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+.cg05-task-quick button{min-height:60px;font-size:12px}
+.cg05-task-overlay{position:fixed;inset:0;background:#0f172a66;z-index:1000;display:flex;justify-content:flex-end}
+.cg05-task-drawer{height:100%;overflow-y:auto;background:var(--cg-surface,#fff);width:min(560px,100%);padding:22px;box-sizing:border-box}
+.cg05-task-form{display:grid;gap:16px;margin-top:16px}
+.cg05-task-page button:focus-visible,.cg05-task-page input:focus-visible,.cg05-task-page select:focus-visible,.cg05-task-page textarea:focus-visible{outline:2px solid var(--cg-accent,#4f24dd);outline-offset:2px}
+.cg05-task-page button:disabled{opacity:.5;cursor:not-allowed}
+@media(max-width:1450px){.cg05-task-kpis{grid-template-columns:repeat(3,minmax(0,1fr))}.cg05-task-filters{grid-template-columns:repeat(3,minmax(0,1fr))}}
+@media(max-width:1000px){.cg05-task-grid{grid-template-columns:minmax(0,1fr)}.cg05-task-aside{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:600px){.cg05-task-kpis,.cg05-task-filters{grid-template-columns:repeat(2,minmax(0,1fr))}.cg05-task-aside{grid-template-columns:1fr}.cg05-task-drawer{padding:16px}}
