@@ -23,7 +23,7 @@ export class ProjectCoverEvidenceService{
  private async run<T>(token:string,write:boolean,work:(tx:PoolClient,a:VerifiedFoundationActor)=>Promise<T>){
   const action=write?"documents.files.manage":"documents.files.view";
   const a=await this.sessions.requireAction(token,action),tx=await this.db.connect();
-  try{await tx.query("BEGIN");await this.identity.assertCurrent(tx,a,action);const result=await work(tx,a);await tx.query("COMMIT");return result;}
+  try{await tx.query("BEGIN");await this.identity.assertCurrent(tx,a,action);if(write)await this.identity.assertCurrent(tx,a,"documents.files.view");const result=await work(tx,a);await tx.query("COMMIT");return result;}
   catch(e){await tx.query("ROLLBACK");throw e;}finally{tx.release();}
  }
  private async event(tx:PoolClient,a:VerifiedFoundationActor,row:Intent,action:string){
