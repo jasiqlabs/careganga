@@ -20,7 +20,7 @@ const detailTabs=[
  {key:"MEMBERSHIP",label:"Membership Details"},
  {key:"DOCUMENTS",label:"Documents"},
  {key:"PAYMENT",label:"Payment & Donation"},
- {key:"GENERATED",label:"Generated Documents",pending:true},
+ {key:"GENERATED",label:"Generated Documents"},
  {key:"WORKFLOW",label:"Approval Workflow"},
  {key:"COMMUNICATION",label:"Communication",pending:true},
  {key:"ACTIVITY",label:"Activity Log"}
@@ -201,6 +201,13 @@ export function NativeMemberReview({token,canConfigure,onExpired}:{token:string;
      <Text>{label(f.classification)} · {f.verified?"Verified":"Changed or unavailable"}</Text>
      {f.verified&&chip("Open protected proof",()=>void shareProof(f.fileRef),false,busy)}
     </View>)}
+   </View>}
+   {detailTab==="GENERATED"&&<View style={styles.item}>
+    <Text style={styles.title}>Original issued membership documents</Text>
+    {detail.documentPack?<><Text>Issue state: {label(detail.documentPack.status)} · revision {detail.documentPack.issueRevision}</Text>
+      {detail.documentPack.files.map(doc=><View key={doc.kind} style={styles.item}><Text>{doc.kind==="CARD"?"Member card (front/back)":doc.kind==="CERTIFICATE"?"Membership certificate":"Welcome letter"}: {label(doc.status)}</Text></View>)}
+      <Text style={styles.muted}>These are original CG-19 issue states. Issuing/downloading requires its separate authorized Foundation or member workflow.</Text>
+    </>:<Text style={styles.muted}>No signed original membership documents have been issued for this application.</Text>}
    </View>}
    {detailTab==="PAYMENT"&&<View style={styles.item}>
     <Text style={styles.title}>Membership fee verification</Text>
