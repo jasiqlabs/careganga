@@ -751,7 +751,7 @@ export function FoundationAdminNav({
     ...(allowed("projects.visits.view",false)?[{key:"fieldVisits" as const,label:"Field Visits",href:"/admin/field-visits"}]:[]),
     ...(allowed("projects.activities.view",false)?[{key:"activities" as const,label:"Activities & Events",href:"/admin/activities"}]:[]),
     ...(allowed("projects.tasks.view",false)?[{key:"tasks" as const,label:"Tasks & Assignments",href:"/admin/tasks"}]:[]),
-    ...((allowed("membership.tier.manage",false)||allowed("membership.members.view",false))?[{key:"membership" as const,label:"Membership",href:"/admin/membership"}]:[]),
+    ...((allowed("membership.tier.manage",false)||allowed("membership.members.view",false)||allowed("membership.applications.review",false))?[{key:"membership" as const,label:"Membership",href:"/admin/membership"}]:[]),
     ...(allowed("inventory.catalog.view",false)?[{key:"inventory" as const,label:"Requests & Inventory",href:"/admin/inventory"}]:[]),
     {key:"hr" as const,label:hrAccess?"Human Resources":"My employment",href:"/admin/hr"},
     ...(cmsAccess ? [{ key: "cms" as const, label: "Website CMS", href: "/admin/website" }] : []),
