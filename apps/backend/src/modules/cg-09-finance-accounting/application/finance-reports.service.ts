@@ -1,3 +1,4 @@
+import {MembershipFeesService} from "./membership-fees.service";
 import {BadRequestException,ConflictException,ForbiddenException,Inject,Injectable} from "@nestjs/common";
 import {createHash} from "node:crypto";
 import {financeSqlFailure} from "./finance-sql-error";
@@ -44,7 +45,7 @@ export class FinanceReportsService{
   private readonly identity:FoundationStructureIdentityFacade,
   private readonly protectedOwner:ProtectedAccessOwnerService,
   private readonly statementProof:FinanceBankStatementProofFacade,
-   private readonly branches:BranchSourceFacade){}
+   private readonly branches:BranchSourceFacade,private readonly membershipFees:MembershipFeesService){}
  private actor(bearer:string,write=false){
   return this.sessions.requireAction(bearer,
    write?"finance.reconciliation.manage":"finance.reports.view");
@@ -573,6 +574,7 @@ export class FinanceReportsService{
     "UPDATE finance_bank_reconciliation SET status=$3,verified_by=$4,verified_at=now() "+
     "WHERE id=$1 AND root_realm_id=$2 AND status='PENDING'",
     [ref,actor.realmId,v.action==="VERIFY"?"VERIFIED":"REJECTED",actor.accountId]);
+   if(v.action==="VERIFY")await this.membershipFees.onReconciliationVerified(tx,actor,ref);
    await tx.query("COMMIT");
    return {confirmed:true,status:v.action==="VERIFY"?"VERIFIED":"REJECTED",replayed:false,
     explanation:"A separate reviewer checked the uploaded scanned statement and exact bank line. This does not confirm gateway or outgoing settlement."};
