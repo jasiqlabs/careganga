@@ -88,3 +88,23 @@ BEGIN
  RETURN NEW;
 END; $$;
 CREATE TRIGGER cg04_tier_version_insert BEFORE INSERT ON membership_tier_version FOR EACH ROW EXECUTE FUNCTION cg04_tier_version_guard();
+
+-- A committed revision must have the original actor-bound command. The
+-- circular reference is checked at commit after the atomic service writes.
+ALTER TABLE membership_tier_command ADD CONSTRAINT uq_cg04_tier_command_actor
+ UNIQUE(root_realm_id,tier_id,result_version,actor_ref);
+ALTER TABLE membership_tier_version ADD CONSTRAINT fk_cg04_tier_version_command
+ FOREIGN KEY(root_realm_id,tier_id,version_no,actor_ref)
+ REFERENCES membership_tier_command(root_realm_id,tier_id,result_version,actor_ref)
+ DEFERRABLE INITIALLY DEFERRED;
+CREATE TABLE membership_tier_export_audit(
+ id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+ root_realm_id uuid NOT NULL REFERENCES access_realm(id) ON DELETE RESTRICT,
+ actor_ref uuid NOT NULL,
+ row_count integer NOT NULL CHECK(row_count BETWEEN 0 AND 500),
+ filter_digest char(64) NOT NULL CHECK(filter_digest ~ '^[a-f0-9]{64}$'),
+ exported_at timestamptz NOT NULL DEFAULT now(),
+ FOREIGN KEY(actor_ref,root_realm_id) REFERENCES account(id,realm_id) ON DELETE RESTRICT
+);
+CREATE INDEX ix_cg04_tier_export_audit ON membership_tier_export_audit(root_realm_id,exported_at DESC);
+CREATE TRIGGER cg04_tier_export_immutable BEFORE UPDATE OR DELETE ON membership_tier_export_audit FOR EACH ROW EXECUTE FUNCTION cg04_tier_history_immutable();
