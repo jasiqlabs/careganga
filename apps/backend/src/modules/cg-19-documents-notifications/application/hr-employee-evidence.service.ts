@@ -110,8 +110,8 @@ export class HrEmployeeEvidenceService{
     sizeBytes:Number(intent.size_bytes),sha256:intent.expected_sha256,
     expiresAt:intent.reserved_until.toISOString()
    });
-   const expires=Date.parse(u.expiresAt);
-   if(!u.url.startsWith("https://")||!Number.isFinite(expires)||
+   const expires=Date.parse(u.expiresAt),url=new URL(u.url);
+   if(url.protocol!=="https:"||url.username||url.password||url.hash||!Number.isFinite(expires)||
      expires<=Date.now()||expires>intent.reserved_until.getTime()||
      !u.reservationRef||u.reservationRef.length>160||
      u.headers?.["Content-Type"]!==intent.mime||
@@ -119,12 +119,24 @@ export class HrEmployeeEvidenceService{
        ["Content-Type","x-goog-if-generation-match","x-amz-checksum-sha256",
          "If-None-Match"].includes(k)&&typeof v==="string"&&v.length<=160))
     throw new ServiceUnavailableException("Private upload authorization unavailable");
-   const confirm=await this.db.query(
-    "UPDATE cg19_upload_intent SET storage_reservation_ref=$3,status='INITIATED',updated_at=now() "+
-    "WHERE id=$1 AND realm_id=$2 AND owner_kind='CG10_DRAFT' "+
-    "AND status IN('INITIATED','UNKNOWN') AND reserved_until>now() RETURNING id",
-    [intent.id,actor.realmId,u.reservationRef]);
-   if(!confirm.rowCount)throw new ConflictException("Upload authorization expired");
+   // The storage call is outside SQL; re-authorize the exact draft and actor
+   // before disclosing the short-lived private upload grant.
+   const current=await this.sessions.requireAction(token,"hr.applications.manage");
+   if(current.realmId!==actor.realmId||current.accountId!==actor.accountId)
+    throw new ForbiddenException("Private upload authorization changed");
+   const grantTx=await this.db.connect();
+   try{
+    await grantTx.query("BEGIN");
+    await this.app(grantTx,current,intent.hr_application_id,intent.hr_source_version,true);
+    const confirm=await grantTx.query(
+     "UPDATE cg19_upload_intent SET storage_reservation_ref=$3,status='INITIATED',updated_at=now() "+
+     "WHERE id=$1 AND realm_id=$2 AND owner_kind='CG10_DRAFT' AND requested_by=$4 "+
+     "AND status IN('INITIATED','UNKNOWN') AND reserved_until>now() RETURNING id",
+     [intent.id,current.realmId,u.reservationRef,current.accountId]);
+    if(!confirm.rowCount)throw new ConflictException("Upload authorization expired");
+    await grantTx.query("COMMIT");
+   }catch(e){await grantTx.query("ROLLBACK");throw e;}
+   finally{grantTx.release();}
    return {uploadRef:intent.id,status:"UPLOAD_READY",uploadUrl:u.url,
     uploadHeaders:u.headers,expiresAt:u.expiresAt,
     message:"The file is private and will be accepted only after a verified malware scan."};
@@ -145,7 +157,7 @@ export class HrEmployeeEvidenceService{
    await tx.query("BEGIN");
    const q=await tx.query<Intent>(
     "SELECT * FROM cg19_upload_intent WHERE id=$1 AND realm_id=$2 "+
-    "AND owner_kind='CG10_DRAFT' FOR SHARE",[ref,actor.realmId]);
+    "AND owner_kind='CG10_DRAFT' AND requested_by=$3",[ref,actor.realmId,actor.accountId]);
    const row=q.rows[0];
    if(!row)throw new NotFoundException("Private employee upload unavailable");
    if(row.requested_by!==actor.accountId)
@@ -191,16 +203,20 @@ export class HrEmployeeEvidenceService{
    original.objectVersion.length>0&&original.objectVersion.length<=160&&
    original.scanProofRef.length>=8&&original.scanProofRef.length<=160&&
    Number.isFinite(scanAt)&&scanAt<=now+60000&&now-scanAt<900000;
+  const current=await this.sessions.requireAction(token,"hr.applications.manage");
+  if(current.realmId!==actor.realmId||current.accountId!==actor.accountId)
+   throw new ForbiddenException("Private upload authorization changed");
   const tx=await this.db.connect();
   try{
    await tx.query("BEGIN");
+   // Same draft-before-intent lock order as initiation and submission.
+   await this.app(tx,current,row.hr_application_id,row.hr_source_version,true);
    const q=await tx.query<Intent>(
     "SELECT * FROM cg19_upload_intent WHERE id=$1 AND realm_id=$2 "+
-    "AND owner_kind='CG10_DRAFT' FOR UPDATE",[row.id,actor.realmId]);
+    "AND owner_kind='CG10_DRAFT' AND requested_by=$3 FOR UPDATE",[row.id,current.realmId,current.accountId]);
    if(!q.rows[0]||["REJECTED","EXPIRED"].includes(q.rows[0].status)||
      q.rows[0].reserved_until.getTime()<=Date.now())
     throw new ConflictException("The original private upload has expired");
-   await this.app(tx,actor,row.hr_application_id,row.hr_source_version,true);
    if(q.rows[0].status!=="VALIDATED"){
     await tx.query("UPDATE cg19_upload_intent SET status=$3,updated_at=now() "+
      "WHERE id=$1 AND realm_id=$2",[row.id,actor.realmId,clean?"VALIDATED":"REJECTED"]);
