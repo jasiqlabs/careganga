@@ -280,8 +280,9 @@ export class CampaignReviewService{
   const action=x.action,remarks=note(x.remarks??"",action==="APPROVE"?0:3);
   if(!["APPROVE","RETURN","REJECT"].includes(String(action)))
    throw new BadRequestException("Choose Approve, Return or Reject.");
-  if(typeof x.currentPassword!=="string"||x.currentPassword.length<8||
-   Buffer.byteLength(x.currentPassword,"utf8")>1024)
+  const password=x.currentPassword;
+  if(typeof password!=="string"||password.length<8||
+   Buffer.byteLength(password,"utf8")>1024)
    throw new BadRequestException("Enter your current password for independent campaign review.");
   const digest=hash(["CAMPAIGN_DECISION",id,action,expected,remarks]);
   await this.sessions.limitFoundationRootProof(actor);
@@ -304,7 +305,7 @@ export class CampaignReviewService{
      AND s.ordinal=1 AND s.capability_key='approvals.review' AND s.protected_root_required
     FOR SHARE OF p,s`,[actor.realmId,c.process_id])).rows[0];
    if(!route)throw changed();
-   await this.sessions.requireFreshFoundationRootProof(tx,actor,x.currentPassword);
+   await this.sessions.requireFreshFoundationRootProof(tx,actor,password);
    const next=action==="APPROVE"?"PENDING_OWNER":action==="RETURN"?"RETURNED":"REJECTED";
    await tx.query(`UPDATE cg03_case SET status=$3,revision=revision+1,updated_at=now()
     WHERE realm_id=$1 AND id=$2 AND status='SUBMITTED' AND revision=$4`,
