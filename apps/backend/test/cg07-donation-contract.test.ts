@@ -205,3 +205,23 @@ test("US002-QA13: public API host, browser origin and privacy proof are not clie
  assert.match(cg19,/assertDonationPublicIngress\(req,"donor"\)/);
  assert.match(intent,/status_token_digest=\$1 AND d\.status_token_expires_at>now\(\)/);
 });
+
+test("US002-QA18 A16 scoped filters, bounded CSV and masked donor details",()=>{
+ const admin=source("application/donation-admin.service.ts");
+ const controller=source("http/donation-admin.controller.ts");
+ const decoder=source("application/donation-receipt-source.facade.ts");
+ const web=root("apps/web/src/features/campaigns/donation-admin-workspace.tsx");
+ const bff=root("apps/web/src/app/api/donations/[[...parts]]/route.ts");
+ assert.match(admin,/minAmount/);assert.match(admin,/maxAmount/);
+ assert.match(admin,/dateFrom/);assert.match(admin,/dateTo/);
+ assert.match(admin,/method/);assert.match(admin,/campaign/);
+ assert.match(admin,/async exportCsv/);assert.match(admin,/LIMIT 501/);
+ assert.match(admin,/async donorDetail/);assert.match(admin,/mobileMasked/);
+ assert.match(admin,/panMasked/);assert.match(admin,/financeReportScope/);
+ assert.match(admin,/documents\.files\.view/);
+ assert.match(decoder,/aes-256-gcm/);
+ assert.match(controller,/@Post\("donor-detail"\)/);
+ assert.match(web,/View donor/);assert.match(web,/Export protected CSV/);
+ assert.match(bff,/route==="export"/);
+ assert.match(bff,/donor-detail/);
+});
