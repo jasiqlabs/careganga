@@ -7,7 +7,7 @@ import {FoundationStructureIdentityFacade} from "../../cg-01-identity-access/app
 import {HrEnrollmentSourceFacade} from "./hr-enrollment-source.facade";
 type PrivateFields={contactPhone:string|null;postalAddress:string|null;
  emergencyName:string|null;emergencyPhone:string|null;pan:string|null;
- bankAccount:string|null;bankIfsc:string|null};
+ bankAccount:string|null;bankIfsc:string|null;fatherName:string|null;motherName:string|null;dateOfBirth:string|null;gender:string|null;bloodGroup:string|null;contactEmail:string|null;pinCode:string|null;bankName:string|null;accountHolder:string|null;bankBranch:string|null;accountType:string|null;upiId:string|null};
 type Row={payload_ciphertext:string;payload_nonce:string;payload_tag:string;
  payload_digest:string;record_version:number};
 const UUID=/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i;
@@ -26,35 +26,47 @@ function key(){
   throw new ServiceUnavailableException("Private employee encryption is not configured");
  return bytes;
 }
-function parse(value:unknown):PrivateFields{
+export function parseHrPrivateDetails(value:unknown):PrivateFields{
  if(!value||typeof value!=="object"||Array.isArray(value))
-  throw new BadRequestException("Check the protected personal details");
+  throw new BadRequestException({code:"CG10_PRIVATE_INVALID"});
  const x=value as Record<string,unknown>;
  const keys=["contactPhone","postalAddress","emergencyName","emergencyPhone",
-   "pan","bankAccount","bankIfsc"];
+   "pan","bankAccount","bankIfsc","fatherName","motherName","dateOfBirth","gender","bloodGroup","contactEmail","pinCode","bankName","accountHolder","bankBranch","accountType","upiId"];
  if(Object.keys(x).some(k=>!keys.includes(k)))
-  throw new BadRequestException("This protected field cannot be changed here");
+  throw new BadRequestException({code:"CG10_PRIVATE_INVALID"});
  const optional=(v:unknown,max:number)=>{
   if(v===null||v===undefined||v==="")return null;
   if(typeof v!=="string"||v.trim().length>max||
     /[\u0000-\u001f\u007f]/.test(v)||v.trim().length<2)
-   throw new BadRequestException("Check the protected employee information");
+   throw new BadRequestException({code:"CG10_PRIVATE_INVALID"});
   return v.trim().replace(/\s+/g," ");
  };
  const contactPhone=optional(x.contactPhone,20),
   emergencyPhone=optional(x.emergencyPhone,20),
   pan=optional(x.pan,10)?.toUpperCase()??null,
   bankAccount=optional(x.bankAccount,22),
-  bankIfsc=optional(x.bankIfsc,11)?.toUpperCase()??null;
+  bankIfsc=optional(x.bankIfsc,11)?.toUpperCase()??null,
+  contactEmail=optional(x.contactEmail,254),dateOfBirth=optional(x.dateOfBirth,10),
+  bloodGroup=optional(x.bloodGroup,3)?.toUpperCase()??null,pinCode=optional(x.pinCode,6),
+  upiId=optional(x.upiId,128),accountType=optional(x.accountType,16)?.toUpperCase()??null;
  if([contactPhone,emergencyPhone].some(v=>v&&!/^\+?[0-9]{10,15}$/.test(v))||
    (pan&&!/^[A-Z]{5}[0-9]{4}[A-Z]$/.test(pan))||
    (bankAccount&&!/^[0-9]{6,22}$/.test(bankAccount))||
    (bankIfsc&&!/^[A-Z]{4}0[A-Z0-9]{6}$/.test(bankIfsc))||
-   Boolean(bankAccount)!==Boolean(bankIfsc))
-  throw new BadRequestException("Check phone, PAN and bank details");
+   Boolean(bankAccount)!==Boolean(bankIfsc)||
+   (contactEmail&&!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(contactEmail))||
+   (dateOfBirth&&(!/^(19|20)\d{2}-\d{2}-\d{2}$/.test(dateOfBirth)||Number.isNaN(Date.parse(dateOfBirth))||new Date(dateOfBirth+"T00:00:00Z").toISOString().slice(0,10)!==dateOfBirth||dateOfBirth>new Date().toISOString().slice(0,10)))||
+   (bloodGroup&&!/^(A|B|AB|O)[+-]$/.test(bloodGroup))||
+   (pinCode&&!/^[1-9][0-9]{5}$/.test(pinCode))||
+   (upiId&&!/^[A-Za-z0-9._-]+@[A-Za-z0-9.-]+$/.test(upiId))||
+   (accountType&&!['SAVINGS','CURRENT','OTHER'].includes(accountType)))
+  throw new BadRequestException({code:"CG10_PRIVATE_INVALID"});
  return {contactPhone,postalAddress:optional(x.postalAddress,700),
   emergencyName:optional(x.emergencyName,120),emergencyPhone,
-  pan,bankAccount,bankIfsc};
+  pan,bankAccount,bankIfsc,fatherName:optional(x.fatherName,120),motherName:optional(x.motherName,120),
+  dateOfBirth,gender:optional(x.gender,32),bloodGroup,contactEmail,pinCode,
+  bankName:optional(x.bankName,120),accountHolder:optional(x.accountHolder,120),
+  bankBranch:optional(x.bankBranch,120),accountType,upiId};
 }
 function encrypt(fields:PrivateFields,realm:string,ref:string,version:number){
  const iv=randomBytes(12);
@@ -76,7 +88,7 @@ function decrypt(row:Row,realm:string,ref:string):PrivateFields{
   const clear=Buffer.concat([decipher.update(
    Buffer.from(row.payload_ciphertext,"base64url")),decipher.final()])
    .toString("utf8");
-  return parse(JSON.parse(clear));
+  return parseHrPrivateDetails(JSON.parse(clear));
  }catch{
   // Nothing about source bytes, key, PAN or bank account reaches responses/logs.
   throw new ServiceUnavailableException("Protected employee information is unavailable");
@@ -102,7 +114,7 @@ export class HrPrivateDetailService{
    const row=q.rows[0];
    const details=row?decrypt(row,actor.realmId,ref):{
      contactPhone:null,postalAddress:null,emergencyName:null,
-     emergencyPhone:null,pan:null,bankAccount:null,bankIfsc:null};
+     emergencyPhone:null,pan:null,bankAccount:null,bankIfsc:null,fatherName:null,motherName:null,dateOfBirth:null,gender:null,bloodGroup:null,contactEmail:null,pinCode:null,bankName:null,accountHolder:null,bankBranch:null,accountType:null,upiId:null};
    await tx.query(
     "INSERT INTO hr_private_access_audit(root_realm_id,application_id,actor_ref,"+
     "event_type,record_version) VALUES($1,$2,$3,'PRIVATE_READ',$4)",
@@ -122,7 +134,10 @@ export class HrPrivateDetailService{
    Number((value as {expectedRevision:number}).expectedRevision)<0)
    throw new BadRequestException("Refresh the protected employee form");
   const expected=Number((value as {expectedRevision:number}).expectedRevision);
-  const data=parse((value as {details:unknown}).details);
+  const requested=(value as {details:unknown}).details;
+  // Validate the submitted shape before taking a lock. Preserve fields omitted by
+  // older clients, and validate the complete merged record under the version lock.
+  if(!requested||typeof requested!=="object"||Array.isArray(requested))throw new BadRequestException({code:"CG10_PRIVATE_INVALID"});
   const tx=await this.db.connect();
   try{
    await tx.query("BEGIN");
@@ -137,7 +152,10 @@ export class HrPrivateDetailService{
    const current=row.rows[0]?.record_version??0;
    if(current!==expected)throw new ConflictException(
      "Protected employee information changed. Refresh before saving.");
+   const prior=row.rows[0]?decrypt(row.rows[0],actor.realmId,ref):{};
+   const data=parseHrPrivateDetails({...prior,...requested});
    const next=current+1,encrypted=encrypt(data,actor.realmId,ref,next);
+   if(encrypted.ciphertext.length>8192)throw new BadRequestException({code:"CG10_PRIVATE_INVALID"});
    const updated=await tx.query(
     "INSERT INTO hr_application_private(application_id,root_realm_id,"+
     "payload_ciphertext,payload_nonce,payload_tag,payload_digest,record_version,"+
