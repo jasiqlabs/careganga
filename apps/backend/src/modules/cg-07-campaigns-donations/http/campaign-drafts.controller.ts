@@ -7,6 +7,7 @@ export class CampaignDraftsController{
  @Get() list(@Headers("authorization")token:string,@Query()query:Record<string,unknown>){return this.campaigns.list(token,query);}
  @Get("options") options(@Headers("authorization")token:string,@Query()query:Record<string,unknown>){return this.campaigns.options(token,query);}
  @Post() create(@Headers("authorization")token:string,@Body()body:unknown){return this.campaigns.create(token,body);}
- @Get(":ref") detail(@Headers("authorization")token:string,@Param("ref")ref:string){return this.campaigns.detail(token,ref);}
+ @Post(":ref/lifecycle") lifecycle(@Headers("authorization")token:string,@Param("ref")ref:string,@Body()body:unknown){return this.campaigns.lifecycle(token,ref,body);}
+  @Get(":ref") detail(@Headers("authorization")token:string,@Param("ref")ref:string){return this.campaigns.detail(token,ref);}
  @Patch(":ref/draft") save(@Headers("authorization")token:string,@Param("ref")ref:string,@Body()body:unknown){return this.campaigns.save(token,ref,body);}
 }
