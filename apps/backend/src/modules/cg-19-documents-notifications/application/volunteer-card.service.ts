@@ -97,7 +97,8 @@ export class VolunteerCardService{
  }
  private async present(tx:PoolClient,c:Card){
   const status=outward(c);
-  if(!["ISSUED","PENDING","UNKNOWN"].includes(c.state))return status;
+  // Check all currently offered actions, including recovery of an expired VERIFYING claim.
+  if(!status.canDownload&&!status.canRetry)return status;
   try{await this.check(tx,c);return status;}
   catch(e){
    // The historical card remains ISSUED/PENDING; current eligibility must never be implied by its status.
