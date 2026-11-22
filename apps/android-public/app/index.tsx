@@ -13,6 +13,7 @@ const RecipientNotifications = lazy(() => import("../../../packages/native-commu
 const FoundationContactScreen = lazy(() => import("../src/features/support/foundation-contact-screen").then(m => ({ default: m.FoundationContactScreen })));
 const PublicHealthcareDirectory = lazy(() => import("../src/features/health-network/public-healthcare-directory").then(m => ({ default: m.PublicHealthcareDirectory })));
 const PatientProfileNative = lazy(() => import("../src/features/patients/patient-profile-native").then(m => ({ default: m.PatientProfileNative })));
+const NativeMemberSelf = lazy(() => import("../src/features/membership/native-member-self").then(m => ({ default: m.NativeMemberSelf })));
 
 class PublicScreenErrorBoundary extends Component<
   { onExit: () => void; children: React.ReactNode },
@@ -122,6 +123,7 @@ export default function PublicHome(){
   const [contactOpen,setContactOpen]=useState(false);
   const [directoryOpen,setDirectoryOpen]=useState(false);
   const [patientOpen,setPatientOpen]=useState(false);
+  const [membershipPlan,setMembershipPlan]=useState<string|null>(null);
   const [partnerOpen,setPartnerOpen]=useState(false);
   const [publicLoginVisible,setPublicLoginVisible]=useState(false);
   const revoke=useCallback(()=>{
@@ -281,6 +283,12 @@ export default function PublicHome(){
       <PublicPartnerApplication onExit={()=>setPartnerOpen(false)}
        onContact={()=>{setPartnerOpen(false);setContactOpen(true);}}/>
     </PublicScreenErrorBoundary>;
+  if(membershipPlan!==null)
+    return <PublicScreenErrorBoundary onExit={()=>setMembershipPlan(null)}>
+      <Suspense fallback={<ActivityIndicator style={{marginTop:40}}/>}>
+        <NativeMemberSelf initialPlan={membershipPlan} onExit={()=>setMembershipPlan(null)}/>
+      </Suspense>
+    </PublicScreenErrorBoundary>;
   if(patientOpen)
     return <PublicScreenErrorBoundary onExit={()=>setPatientOpen(false)}>
       <Suspense fallback={<ActivityIndicator style={{marginTop:40}}/>}>
@@ -306,6 +314,7 @@ export default function PublicHome(){
           </View>
           <PublicCmsContent onContact={()=>setContactOpen(true)}
             onPartnerApplication={()=>setPartnerOpen(true)}
+            onMembershipApply={setMembershipPlan}
             onLoginVisibility={setPublicLoginVisible}/>
           <View style={[styles.card,styles.healthFeatureCard]}>
             <Text style={styles.heading}>Healthcare Network</Text>
