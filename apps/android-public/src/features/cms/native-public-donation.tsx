@@ -18,7 +18,10 @@ async function request<T>(path:string,value:object):Promise<T>{
 export function NativePublicDonation({campaignSlug=null}:{campaignSlug?:string|null}){
  const [enabled,setEnabled]=useState(false),[amount,setAmount]=useState(""),
   [name,setName]=useState(""),[mobile,setMobile]=useState(""),[email,setEmail]=useState(""),
-  [pan,setPan]=useState(""),[address,setAddress]=useState(""),[consent,setConsent]=useState(false);
+  [pan,setPan]=useState(""),[address,setAddress]=useState(""),
+  [geography,setGeography]=useState(""),[remarks,setRemarks]=useState(""),
+  [paymentReferenceNote,setPaymentReferenceNote]=useState(""),
+  [recurringIntent,setRecurringIntent]=useState(false),[consent,setConsent]=useState(false);
  const [token,setToken]=useState(""),[status,setStatus]=useState(""),
   [paymentUrl,setPaymentUrl]=useState(""),[error,setError]=useState(""),[busy,setBusy]=useState(false);
  const [received,setReceived]=useState(false),[receiptStatus,setReceiptStatus]=useState("NOT_ISSUED"),
@@ -38,7 +41,7 @@ export function NativePublicDonation({campaignSlug=null}:{campaignSlug?:string|n
   if(!key.current)key.current=Crypto.randomUUID();
   const v=await request<{status:string;statusToken:string}>("",{
    requestKey:key.current,campaignSlug,amount,consent:true,
-   donor:{name,mobile,email,pan,address}});
+   donor:{name,mobile,email,pan,address,geography,remarks,recurringIntent,paymentReferenceNote}});
   setToken(v.statusToken);setStatus(v.status);setReceived(v.status==="RECEIVED_POSTED");
  });
  const pay=()=>call(async()=>{
@@ -104,7 +107,23 @@ export function NativePublicDonation({campaignSlug=null}:{campaignSlug?:string|n
    <TextInput accessibilityLabel="Donor PAN" maxLength={10}
     autoCapitalize="characters" style={{minHeight:46,borderWidth:1,borderColor:t.border,padding:11}}
     editable={!key.current} value={pan} onChangeText={v=>setPan(v.toUpperCase())}/>
-   <Text>Supplying PAN does not automatically make this a tax-deductible 80G donation.</Text>
+   <Text>City / area (optional)</Text>
+   <TextInput accessibilityLabel="Donor city or area" maxLength={100}
+    style={{minHeight:46,borderWidth:1,borderColor:t.border,padding:11}}
+    editable={!key.current} value={geography} onChangeText={setGeography}/>
+   <Text>Remarks (optional)</Text>
+   <TextInput accessibilityLabel="Donation remarks" maxLength={300} multiline
+    style={{minHeight:64,borderWidth:1,borderColor:t.border,padding:11}}
+    editable={!key.current} value={remarks} onChangeText={setRemarks}/>
+   <Text>Payment reference note (unverified, optional)</Text>
+   <TextInput accessibilityLabel="Unverified payment reference note" maxLength={100}
+    style={{minHeight:46,borderWidth:1,borderColor:t.border,padding:11}}
+    editable={!key.current} value={paymentReferenceNote} onChangeText={setPaymentReferenceNote}/>
+   <Pressable accessibilityRole="checkbox" accessibilityState={{checked:recurringIntent}}
+    onPress={()=>{if(!key.current)setRecurringIntent(x=>!x);}}>
+    <Text>{recurringIntent?"☑":"☐"} I may donate again (no automatic recurring charge).</Text>
+   </Pressable>
+   <Text>Payment reference notes do not prove bank settlement. PAN does not guarantee 80G eligibility.</Text>
    <Pressable accessibilityRole="checkbox" accessibilityState={{checked:consent}}
     onPress={()=>{if(!key.current)setConsent(x=>!x);}}>
     <Text>{consent?"☑":"☐"} I consent to the Foundation processing the supplied donation information.</Text></Pressable>
