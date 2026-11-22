@@ -69,7 +69,7 @@ CREATE FUNCTION cg04_tier_revision_guard() RETURNS trigger LANGUAGE plpgsql AS $
 BEGIN
  IF TG_OP='DELETE' THEN RAISE EXCEPTION 'Membership plan history must be retained'; END IF;
  IF TG_OP='INSERT' THEN
-  IF NEW.version<>1 THEN RAISE EXCEPTION 'Invalid starting plan revision'; END IF;
+  IF NEW.version<>1 OR NOT EXISTS(SELECT 1 FROM access_realm WHERE id=NEW.root_realm_id AND realm_key='FOUNDATION_ROOT') THEN RAISE EXCEPTION 'Invalid starting plan revision or Foundation scope'; END IF;
  ELSE
   IF NEW.version<>OLD.version+1 OR (NEW.id,NEW.root_realm_id,NEW.plan_code,NEW.created_by,NEW.created_at)
      IS DISTINCT FROM (OLD.id,OLD.root_realm_id,OLD.plan_code,OLD.created_by,OLD.created_at)
@@ -82,7 +82,8 @@ CREATE FUNCTION cg04_tier_version_guard() RETURNS trigger LANGUAGE plpgsql AS $$
 BEGIN
  IF NOT EXISTS(SELECT 1 FROM membership_tier t WHERE t.root_realm_id=NEW.root_realm_id AND t.id=NEW.tier_id AND t.version=NEW.version_no AND t.status=NEW.status FOR SHARE)
   THEN RAISE EXCEPTION 'Membership plan version must match its current revision'; END IF;
- IF EXISTS(SELECT 1 FROM jsonb_array_elements(NEW.benefits) b WHERE jsonb_typeof(b)<>'string' OR char_length(btrim(b#>>'{}')) NOT BETWEEN 1 AND 200)
+ IF EXISTS(SELECT 1 FROM jsonb_array_elements(NEW.benefits) b WHERE jsonb_typeof(b)<>'object' OR NOT (b ? 'title' AND b ? 'description') OR jsonb_typeof(b->'title') IS DISTINCT FROM 'string' OR jsonb_typeof(b->'description') IS DISTINCT FROM 'string' OR char_length(btrim(b->>'title')) NOT BETWEEN 1 AND 200 OR char_length(b->>'description')>500 OR b - 'title' - 'description' <> '{}'::jsonb)
+ OR EXISTS(SELECT 1 FROM jsonb_array_elements(NEW.benefits) b GROUP BY lower(btrim(b->>'title')) HAVING count(*)>1)
   THEN RAISE EXCEPTION 'Invalid membership plan benefit'; END IF;
  RETURN NEW;
 END; $$;
