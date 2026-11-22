@@ -63,6 +63,7 @@ const FinanceNativeInvoices = lazy(() => import("../finance-accounting/finance-n
 const FinanceNativeBudgets = lazy(() => import("../finance-accounting/finance-native-budgets").then(m => ({ default: m.FinanceNativeBudgets })));
 const FinanceNativeReports = lazy(() => import("../finance-accounting/finance-native-reports").then(m => ({ default: m.FinanceNativeReports })));
 const NativeMisWorkspaceScreen = lazy(() => import("../mis-reporting/native-mis-workspace-screen").then(m => ({default:m.NativeMisWorkspaceScreen})));
+const NativeInventoryCatalog = lazy(() => import("../inventory/native-inventory-catalog").then(m=>({default:m.NativeInventoryCatalog})));
 const NativeHrEnrollment = lazy(() => import("../human-resources/native-hr-enrollment").then(m => ({default:m.NativeHrEnrollment})));
 const FinanceNativeProtectedReview = lazy(() => import("../finance-accounting/finance-native-protected-review").then(m => ({ default: m.FinanceNativeProtectedReview })));
 
@@ -181,6 +182,7 @@ export function StaffAuthenticationScreen() {
   const [reportsOpen, setReportsOpen] = useState(false);
   const [misOpen, setMisOpen] = useState(false);
   const [hrOpen, setHrOpen] = useState(false);
+  const [inventoryOpen,setInventoryOpen]=useState(false);
   const [communicationsOpen, setCommunicationsOpen] = useState(false);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const [supportOpen, setSupportOpen] = useState(false);
@@ -227,7 +229,7 @@ export function StaffAuthenticationScreen() {
     hideToast();
     setMessage("");
     setActor(null); setToken(null); setRoleActions([]); setAccountOpen(false); setRolesOpen(false); setAccountsOpen(false); setPolicyOpen(false); setApprovalsOpen(false); setOwnCenterOpen(false); setWebsiteCmsOpen(false); setPlatformConfigOpen(false); setHealthDoctorOpen(false); setCenterPublisherOpen(false); setHealthProviderOpen(false); setHealthReviewsOpen(false); setDoctorLeaveReviewsOpen(false); setPatientAdminOpen(false); setPatientQueueOpen(false); setLabOrdersOpen(false); setLabEquipmentOpen(false); setHealthcarePoliciesOpen(false); setCenterMerchantOpen(false); setFoundationLiabilitiesOpen(false); setMonthlyProviderSettlementsOpen(false); setPartnerSettlementsOpen(false); setLabTestMasterOpen(false); setMyLabPricingOpen(false); setPatientBookingOpen(false); setDocumentsOpen(false); setCommunicationsOpen(false); setNotificationsOpen(false); setSupportOpen(false); setNoticeAdminOpen(false); setBranchesOpen(false); setFinanceOpen(false); setVoucherOnlyOpen(false); setFinanceReviewOpen(false); setFinanceClaimsOpen(false); setFinanceClaimReviewsOpen(false); setInvoiceOpen(false); setInvoiceReviewOpen(false);
-    setBudgetOpen(false); setBudgetReviewOpen(false); setReportsOpen(false); setMisOpen(false); setHrOpen(false);
+    setBudgetOpen(false); setBudgetReviewOpen(false); setReportsOpen(false); setMisOpen(false); setHrOpen(false); setInventoryOpen(false);
     void SecureStore.deleteItemAsync(STORE_KEY).catch(() => undefined);
   }, [hideToast]);
 
@@ -273,6 +275,7 @@ export function StaffAuthenticationScreen() {
       budgetReviewOpen ||
       reportsOpen ||
       misOpen ||
+      inventoryOpen ||
       hrOpen ||
       financeOpen ||
       branchesOpen ||
@@ -303,7 +306,7 @@ export function StaffAuthenticationScreen() {
       setInvoiceReviewOpen(false);
       setBudgetOpen(false);
       setBudgetReviewOpen(false);
-      setReportsOpen(false); setMisOpen(false); setHrOpen(false);
+      setReportsOpen(false); setMisOpen(false); setHrOpen(false); setInventoryOpen(false);
       setFinanceOpen(false);
       setBranchesOpen(false);
       setChangePasswordOpen(false);
@@ -352,6 +355,7 @@ export function StaffAuthenticationScreen() {
     budgetReviewOpen,
     reportsOpen,
     misOpen,
+    inventoryOpen,
     hrOpen,
     financeOpen,
     branchesOpen,
@@ -595,7 +599,7 @@ export function StaffAuthenticationScreen() {
       // Backend revocation is authoritative. The UI must not continue showing an
       // authenticated actor if on-device deletion fails afterward.
       setActor(null); setToken(null); setRoleActions([]); setRolesOpen(false); setAccountsOpen(false); setPolicyOpen(false); setApprovalsOpen(false); setOwnCenterOpen(false); setWebsiteCmsOpen(false); setPlatformConfigOpen(false); setHealthDoctorOpen(false); setCenterPublisherOpen(false); setHealthProviderOpen(false); setHealthReviewsOpen(false); setDoctorLeaveReviewsOpen(false); setPatientAdminOpen(false); setPatientQueueOpen(false); setLabOrdersOpen(false); setLabEquipmentOpen(false); setHealthcarePoliciesOpen(false); setCenterMerchantOpen(false); setFoundationLiabilitiesOpen(false); setMonthlyProviderSettlementsOpen(false); setLabTestMasterOpen(false); setMyLabPricingOpen(false); setPatientBookingOpen(false); setDocumentsOpen(false); setCommunicationsOpen(false); setNotificationsOpen(false); setSupportOpen(false); setNoticeAdminOpen(false); setBranchesOpen(false); setFinanceOpen(false); setVoucherOnlyOpen(false);
-      setFinanceReviewOpen(false); setFinanceClaimsOpen(false); setFinanceClaimReviewsOpen(false); setInvoiceOpen(false); setInvoiceReviewOpen(false); setBudgetOpen(false); setBudgetReviewOpen(false); setReportsOpen(false); setMisOpen(false); setHrOpen(false);
+      setFinanceReviewOpen(false); setFinanceClaimsOpen(false); setFinanceClaimReviewsOpen(false); setInvoiceOpen(false); setInvoiceReviewOpen(false); setBudgetOpen(false); setBudgetReviewOpen(false); setReportsOpen(false); setMisOpen(false); setHrOpen(false); setInventoryOpen(false);
       try {
         await SecureStore.deleteItemAsync(STORE_KEY);
       } catch {
@@ -631,7 +635,7 @@ export function StaffAuthenticationScreen() {
         setInvoiceReviewOpen(false);
         setBudgetOpen(false);
         setBudgetReviewOpen(false);
-        setReportsOpen(false); setMisOpen(false); setHrOpen(false);
+        setReportsOpen(false); setMisOpen(false); setHrOpen(false); setInventoryOpen(false);
         setFinanceOpen(false);
         setBranchesOpen(false);
         setChangePasswordOpen(false);
@@ -685,6 +689,7 @@ export function StaffAuthenticationScreen() {
       openReports: () => openOnly(setReportsOpen),
       openMis: () => openOnly(setMisOpen),
       openHr: () => openOnly(setHrOpen),
+      openInventory: () => openOnly(setInventoryOpen),
       openFinance: () => openOnly(setFinanceOpen),
       openBranches: () => openOnly(setBranchesOpen),
       openChangePassword: () => openOnly(setChangePasswordOpen)
@@ -710,6 +715,10 @@ export function StaffAuthenticationScreen() {
     </AuthenticatedAppShell>
   );
 
+  if(inventoryOpen&&token&&actor){
+    if(!roleActions.includes("inventory.catalog.view"))return <AccessDeniedScreen reason="You cannot view inventory." onMyAccount={()=>setInventoryOpen(false)}/>;
+    return renderInShell(<ScreenErrorBoundary onExit={()=>setInventoryOpen(false)}><Suspense fallback={<ActivityIndicator style={{marginTop:40}}/>}><NativeInventoryCatalog token={token} onExpired={expireSession}/></Suspense></ScreenErrorBoundary>,"inventory",()=>setInventoryOpen(false));
+  }
   if (hrOpen && token && actor) {
     // Same actor self profile is open to every signed-in Foundation employee.
     // Application list/create remain behind per-action server HR permissions.
