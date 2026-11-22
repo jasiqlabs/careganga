@@ -432,3 +432,6 @@ Protected Next BFF now allowlists original CG07 online/provider-finance + manual
 
 ### US002 source-review correction — lost provider response
 Original link key retry now checks Razorpay GET by original reference_id instead of recharging, validates single exact INR/nonpartial link and expiry; prior paid merchant result requires signed event/CG09 before RECEIVED. Server-side token-scope rate limiting added. QA03/08/09/10/16 source candidate; sandbox/provider race NOT_RUN.
+
+### CG07 A16/A18 source review correction
+Fixed A18 receipt selector: Admin report now returns original internal donationRef for protected CG19 issue API instead of undefined; reference still never displayed. A16 latest real CASH/ONLINE attempt method is now reported using scoped latest-source lateral read. Typed ReactNode imported for Admin finance panel; no active runtime QA claimed.

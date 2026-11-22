@@ -1,5 +1,5 @@
 "use client";
-import {useRef,useState,type FormEvent} from "react";
+import {useRef,useState,type FormEvent,type ReactNode} from "react";
 
 type Choice={value:string;label:string};
 type Donation={donationNumber:string;donationRef:string;status:string;amountMinor:string;
@@ -28,7 +28,7 @@ const money=(minor:string)=>{
  try{const n=BigInt(minor);return "₹"+(n/100n).toLocaleString("en-IN")+
   "."+(n%100n).toString().padStart(2,"0");}catch{return "Unavailable";}
 };
-const field=(name:string,children:React.ReactNode)=>
+const field=(name:string,children:ReactNode)=>
  <label style={{display:"grid",gap:5,fontSize:13,fontWeight:600}}>{name}{children}</label>;
 const choices=(items:Choice[],value:string,set:(v:string)=>void)=>
  <select style={control} required value={value} onChange={e=>set(e.target.value)}>

@@ -21,7 +21,7 @@ export class DonationAdminService{
    donationNumber:string;amountMinor:string;currency:string;status:string;
    method:string|null;campaignTitle:string|null;voucher:string|null;createdAt:Date;
    donationRef:string;refundMinor:string;receiptStatus:string}>(
-    "SELECT d.donation_number AS \"donationNumber\",d.amount_minor::text AS \"amountMinor\","+
+    "SELECT d.id AS "donationRef",d.donation_number AS \"donationNumber\",d.amount_minor::text AS \"amountMinor\","+
     "d.currency,d.source_status AS status,m.method,c.title AS \"campaignTitle\","+
     "e.voucher_reference AS voucher,d.created_at AS \"createdAt\","+
     "coalesce((SELECT sum(r.amount_minor) FROM donation_refund_request r "+
@@ -33,7 +33,7 @@ export class DonationAdminService{
     "AS \"receiptStatus\" "+
     "FROM donation d LEFT JOIN campaign c ON c.root_realm_id=d.root_realm_id AND c.id=d.campaign_id "+
     "LEFT JOIN donation_manual_evidence e ON e.root_realm_id=d.root_realm_id AND e.donation_id=d.id "+
-    "LEFT JOIN donation_payment_attempt m ON m.root_realm_id=e.root_realm_id AND m.id=e.attempt_id "+
+    "LEFT JOIN LATERAL (SELECT a.method FROM donation_payment_attempt a WHERE a.root_realm_id=d.root_realm_id AND a.donation_id=d.id ORDER BY a.created_at DESC,a.id DESC LIMIT 1) m ON true "+
     "WHERE d.root_realm_id=$1 AND ($2::boolean OR d.branch_ref=ANY($3::uuid[])) "+
     "AND ($4='ALL' OR d.source_status=$4) "+
     "AND ($5='' OR strpos(lower(d.donation_number),$5)>0 OR strpos(lower(coalesce(c.title,'')),$5)>0) "+
