@@ -15298,3 +15298,31 @@ button:disabled {
 @media(max-width:1450px){.cg05-task-kpis{grid-template-columns:repeat(3,minmax(0,1fr))}.cg05-task-filters{grid-template-columns:repeat(3,minmax(0,1fr))}}
 @media(max-width:1000px){.cg05-task-grid{grid-template-columns:minmax(0,1fr)}.cg05-task-aside{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:600px){.cg05-task-kpis,.cg05-task-filters{grid-template-columns:repeat(2,minmax(0,1fr))}.cg05-task-aside{grid-template-columns:1fr}.cg05-task-drawer{padding:16px}}
+
+/* CG05: A02/A03 original records + map + approval panels; A04 centered
+   visit form; A05/A06 detail surface retains the shared admin sidebar. */
+.cg05-visit-page{min-width:0}
+.cg05-visit-list-grid{display:grid;grid-template-columns:minmax(0,2.1fr) minmax(0,1fr) minmax(0,1fr);gap:14px;align-items:start}
+.cg05-visit-list-grid .cg05-task-filters{grid-template-columns:repeat(3,minmax(0,1fr))}
+.cg05-visit-selected{background:#f3f0ff}
+.cg05-visit-link{background:transparent;border:0;color:var(--cg-accent,#4f24dd);font-weight:700;padding:0;text-align:left;cursor:pointer}
+.cg05-visit-status{display:inline-block;border-radius:5px;background:#eef2f7;color:#334155;padding:4px 7px;font-size:11px;font-weight:650}
+.cg05-visit-completed{background:#dcfce7;color:#166534}
+.cg05-visit-in_progress{background:#dbeafe;color:#1d4ed8}
+.cg05-visit-pending_approval,.cg05-visit-pending_proof{background:#fef3c7;color:#92400e}
+.cg05-visit-rejected,.cg05-visit-cancelled{background:#fee2e2;color:#991b1b}
+.cg05-visit-summary-counts{display:grid;gap:8px}
+.cg05-visit-summary-counts span{display:flex;justify-content:space-between;gap:10px}
+.cg05-visit-detail{display:grid;gap:14px;min-width:0}
+.cg05-visit-detail-grid{display:grid;grid-template-columns:minmax(0,3fr) minmax(230px,1fr);gap:14px;align-items:start}
+.cg05-visit-detail-cards{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.cg05-visit-detail p,.cg05-visit-list-grid p{overflow-wrap:anywhere}
+.cg05-visit-modal-overlay{align-items:center;justify-content:center;padding:16px;box-sizing:border-box}
+.cg05-visit-modal{background:var(--cg-surface,#fff);border-radius:14px;padding:22px;width:min(600px,100%);max-height:calc(100dvh - 32px);overflow-y:auto;box-sizing:border-box;box-shadow:0 12px 40px #0f172a33}
+.cg05-visit-form{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.cg05-visit-form textarea,.cg05-visit-form input,.cg05-visit-form select{box-sizing:border-box}
+.cg05-visit-form label:has(textarea),.cg05-visit-form>p,.cg05-visit-form>.cg05-task-actions{grid-column:1/-1}
+.cg05-visit-policy{padding:0 0 10px;font-size:13px}
+@media(max-width:1250px){.cg05-visit-list-grid{grid-template-columns:minmax(0,1fr) minmax(230px,0.7fr)}.cg05-visit-list-grid>.cg05-task-aside:last-child{grid-column:1/-1;grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:900px){.cg05-visit-list-grid,.cg05-visit-detail-grid{grid-template-columns:minmax(0,1fr)}.cg05-visit-list-grid>.cg05-task-aside:last-child{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:600px){.cg05-visit-list-grid .cg05-task-filters,.cg05-visit-form,.cg05-visit-detail-cards,.cg05-visit-list-grid>.cg05-task-aside:last-child{grid-template-columns:minmax(0,1fr)}.cg05-visit-modal{padding:16px}}
