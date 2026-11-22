@@ -52,9 +52,9 @@ const stale=()=>new ConflictException({code:"CG12_STALE"});
 @Injectable()
 export class InventoryCatalogService {
  constructor(@Inject(DATABASE) private readonly db:Pool,private readonly sessions:SessionService,private readonly identity:FoundationStructureIdentityFacade){}
- async run<T>(token:string,action:string,work:(tx:PoolClient,a:VerifiedFoundationActor)=>Promise<T>){
+ async run<T>(token:string,action:string,work:(tx:PoolClient,a:VerifiedFoundationActor)=>Promise<T>,consistentRead=false){
   const a=await this.sessions.requireAction(token,action),tx=await this.db.connect();
-  try{await tx.query("BEGIN");await this.identity.assertCurrent(tx,a,action);const result=await work(tx,a);await tx.query("COMMIT");return result;}
+  try{await tx.query(consistentRead?"BEGIN ISOLATION LEVEL REPEATABLE READ":"BEGIN");await this.identity.assertCurrent(tx,a,action);const result=await work(tx,a);await tx.query("COMMIT");return result;}
   catch(e){await tx.query("ROLLBACK");if(e&&typeof e==="object"&&"code" in e&&e.code==="23505")throw new ConflictException({code:"CG12_DUPLICATE_CODE"});throw e;}finally{tx.release();}
  }
  async rootAdmin(tx:PoolClient,a:VerifiedFoundationActor){
