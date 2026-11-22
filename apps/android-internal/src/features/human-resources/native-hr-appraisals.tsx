@@ -3,6 +3,15 @@ import {ActivityIndicator,Pressable,StyleSheet,Text,TextInput,View} from "react-
 import * as Crypto from "expo-crypto";
 import {careGangaTheme as theme} from "../../../../../packages/design-tokens/src/index";
 import {identityRequest} from "../identity-access/http-client";
+type Summary={total:number;draft:number;submitted:number;released:number;averageScore:number|null;outstanding:number};
+// B26 displays an unweighted average on a five-point scale; persisted scores stay 0..100.
+const five=(value:number)=>Number((value/20).toFixed(2)).toString();
+const overall=(value:{goal:number;competency:number;attendance:number})=>five((value.goal+value.competency+value.attendance)/3);
+const scoreSummary=(value:{total:number;draft:number;submitted:number;released:number;averageScore:number|null;outstanding:number})=>[
+ {label:"Total reviews",value:String(value.total)},{label:"Submitted (including released)",value:String(value.submitted+value.released)},
+ {label:"Average score",value:value.averageScore===null?"—":value.averageScore.toFixed(2)+" / 5"},{label:"Perfect score (5/5)",value:String(value.outstanding)}
+];
+const statusOptions=[{value:"ALL",label:"All status"},{value:"DRAFT",label:"Draft"},{value:"SUBMITTED",label:"Submitted"},{value:"RELEASED",label:"Released"}] as const;
 type Item={reference:string;periodStart:string;periodEnd:string;goal:number;competency:number;attendance:number;status:string};
 export function NativeHrMyAppraisals({token,onExpired}:{token:string;onExpired:()=>void}){
  const [items,setItems]=useState<Item[]>([]),[linked,setLinked]=useState<boolean|null>(null),[loading,setLoading]=useState(true),[error,setError]=useState("");
@@ -28,7 +37,7 @@ export function NativeHrMyAppraisals({token,onExpired}:{token:string;onExpired:(
   {linked===true&&!items.length&&<Text style={styles.muted}>No appraisal has been released to you.</Text>}
   {items.map(x=><View key={x.reference} style={styles.item}>
    <Text style={styles.label}>{x.periodStart} – {x.periodEnd}</Text>
-   <Text>Goal & delivery: {x.goal}/100</Text><Text>Competency: {x.competency}/100</Text><Text>Attendance & conduct: {x.attendance}/100</Text><Text style={styles.muted}>Released</Text>
+   <Text>Goal & delivery: {five(x.goal)}/5</Text><Text>Competency: {five(x.competency)}/5</Text><Text>Attendance & conduct: {five(x.attendance)}/5</Text><Text style={styles.label}>Overall {overall(x)}/5 · Released</Text>
   </View>)}
  </View>;
 }
@@ -44,7 +53,8 @@ const scores=[["goal","Goal & delivery"],["competency","Competency"],["attendanc
 type Command={path:string;body:object};
 const label=(v:string)=>({DRAFT:"Draft",SUBMITTED:"Submitted",RELEASED:"Released"} as Record<string,string>)[v]??"Unavailable";
 export function NativeHrAppraisalWorkspace({token,onExpired}:{token:string;onExpired:()=>void}){
- const [items,setItems]=useState<StaffItem[]>([]),[summary,setSummary]=useState<{total:number;draft:number;submitted:number;released:number}|null>(null),[offset,setOffset]=useState(0),[more,setMore]=useState(false);
+ const [items,setItems]=useState<StaffItem[]>([]),[summary,setSummary]=useState<Summary|null>(null),[offset,setOffset]=useState(0),[more,setMore]=useState(false);
+ const [status,setStatus]=useState("ALL");
  const [people,setPeople]=useState<Person[]>([]),[search,setSearch]=useState(""),[optionsError,setOptionsError]=useState("");
  const [form,setForm]=useState<Form>(empty),[selected,setSelected]=useState<Detail|null>(null),[editor,setEditor]=useState(false);
  const [loading,setLoading]=useState(true),[busy,setBusy]=useState(false),[error,setError]=useState(""),[notice,setNotice]=useState(""),[locked,setLocked]=useState(false);
@@ -58,12 +68,12 @@ export function NativeHrAppraisalWorkspace({token,onExpired}:{token:string;onExp
   return v as T;
  },[token,onExpired]);
  const refresh=useCallback(async()=>{const seq=++reads.current;setLoading(true);setError("");setItems([]);setSummary(null);setMore(false);
-  try{const v=await api<{items:StaffItem[];summary:{total:number;draft:number;submitted:number;released:number};hasMore:boolean}>("appraisals?offset="+offset);
+  try{const v=await api<{items:StaffItem[];summary:Summary;hasMore:boolean}>("appraisals?offset="+offset+"&status="+encodeURIComponent(status));
    if(!Array.isArray(v.items)||!v.summary)throw Error("Performance list unavailable");
    if(seq===reads.current){setItems(v.items);setSummary(v.summary);setMore(v.hasMore===true);}
   }catch(e){if(seq===reads.current)setError(e instanceof Error?e.message:"Unable to load appraisals.");}
   finally{if(seq===reads.current)setLoading(false);}
- },[api,offset]);
+ },[api,offset,status]);
  useEffect(()=>{void refresh();return()=>{reads.current++;};},[refresh]);
  const options=useCallback(async(q:string)=>{const seq=++optionReads.current;setPeople([]);setOptionsError("");
   try{const v=await api<{items:Person[]}>("appraisals/options?search="+encodeURIComponent(q));if(!Array.isArray(v.items))throw Error("Employee choices unavailable");
@@ -91,7 +101,7 @@ export function NativeHrAppraisalWorkspace({token,onExpired}:{token:string;onExp
   running.current=true;setBusy(true);setError("");setNotice("");
   try{const result=await api<StaffItem>(cmd.path,cmd.body);
    if(!result.reference||!Number.isInteger(result.revision)||!["DRAFT","SUBMITTED","RELEASED"].includes(result.status))throw Error("Appraisal result is uncertain.");
-   pending.current=null;setLocked(false);setSelected(null);setForm(empty());setEditor(false);await refresh();setNotice(label(result.status)+" · "+result.reference);
+   pending.current=null;setLocked(false);const notes={strengths:form.strengths.trim(),improvement:form.improvement.trim()};setSelected({...result,...notes});setForm({employeeReference:result.employeeReference,periodStart:result.periodStart,periodEnd:result.periodEnd,goal:result.goal,competency:result.competency,attendance:result.attendance,...notes});setEditor(true);await refresh();setNotice(label(result.status)+" · "+result.reference);
   }catch(e){setError(e instanceof Error?e.message:"Result unknown.");if(!locked&&e&&typeof e==="object"&&"status" in e&&typeof e.status==="number"&&e.status>=400&&e.status<500){pending.current=null;setLocked(false);}else setLocked(true);}
   finally{running.current=false;setBusy(false);}
  };
@@ -102,12 +112,13 @@ export function NativeHrAppraisalWorkspace({token,onExpired}:{token:string;onExp
  const field=(name:string,value:string,onChange:(v:string)=>void,maxLength:number,multi=false)=><View style={{gap:4}}><Text style={styles.label}>{name}</Text><TextInput accessibilityLabel={name} editable={!blocked&&editable} value={value} onChangeText={onChange} maxLength={maxLength} multiline={multi} style={{minHeight:44,borderWidth:1,borderColor:theme.border,borderRadius:8,padding:10,color:theme.text,backgroundColor:theme.surface}}/></View>;
  return <View style={styles.card} accessibilityLabel="Performance management">
   <Text style={styles.title}>Performance management</Text>
-  {summary&&<Text style={styles.muted}>Total {summary.total} · Draft {summary.draft} · Submitted {summary.submitted} · Released {summary.released}</Text>}
+  {summary&&<View style={{flexDirection:"row",flexWrap:"wrap",gap:8}}>{scoreSummary(summary).map(x=><View key={x.label} style={[styles.card,{flexBasis:"46%",flexGrow:1,minWidth:130,padding:10}]}><Text style={styles.muted}>{x.label}</Text><Text style={styles.title}>{x.value}</Text></View>)}</View>}
   {btn("New appraisal",start,blocked,true)}{btn("Refresh list",()=>void refresh(),blocked||loading)}
   {!!error&&<Text accessibilityRole="alert" style={styles.error}>{error}</Text>}{!!notice&&<Text accessibilityRole="alert" style={styles.label}>{notice}</Text>}
   {loading&&<ActivityIndicator accessibilityLabel="Loading staff appraisals"/>}
-  {!loading&&!items.length&&!error&&<Text style={styles.muted}>No appraisals in your permitted scope.</Text>}
-  {items.map(x=><View key={x.reference} style={styles.item}><Text style={styles.label}>{x.employeeName} · {label(x.status)}</Text><Text>{x.periodStart} – {x.periodEnd}</Text><Text style={styles.muted}>Goal {x.goal}/100 · Competency {x.competency}/100 · Attendance {x.attendance}/100</Text>{btn("View appraisal",()=>void open(x),blocked)}</View>)}
+  <Text style={styles.label}>Performance reviews</Text><View style={{flexDirection:"row",flexWrap:"wrap",gap:8}}>{statusOptions.map(x=><Pressable key={x.value} accessibilityRole="button" accessibilityState={{selected:status===x.value,disabled:blocked}} disabled={blocked} onPress={()=>{setStatus(x.value);setOffset(0);}} style={[styles.button,{paddingHorizontal:12,backgroundColor:status===x.value?theme.primary:theme.selectedSurface}]}><Text style={[styles.label,{color:status===x.value?theme.primaryText:theme.text}]}>{x.label}</Text></Pressable>)}</View>
+  {!loading&&!items.length&&!error&&<Text style={styles.muted}>No appraisals match this status in your permitted scope.</Text>}
+  {items.map(x=><View key={x.reference} style={styles.item}><Text style={styles.label}>{x.employeeName} · {label(x.status)}</Text><Text>{x.periodStart} – {x.periodEnd}</Text><Text style={styles.muted}>Goal {five(x.goal)}/5 · Competency {five(x.competency)}/5 · Attendance {five(x.attendance)}/5</Text><Text style={styles.label}>Overall {overall(x)}/5{x.goal===100&&x.competency===100&&x.attendance===100?" · Outstanding":""}</Text>{btn("View appraisal",()=>void open(x),blocked)}</View>)}
   {offset>0&&btn("Previous appraisals",()=>setOffset(v=>Math.max(0,v-25)),blocked||loading)}
   {more&&btn("Next appraisals",()=>setOffset(v=>v+25),blocked||loading)}
   {editor&&<View style={styles.item}><Text style={styles.title}>{selected?selected.employeeName+" · "+label(selected.status):"New appraisal"}</Text>
@@ -117,9 +128,9 @@ export function NativeHrAppraisalWorkspace({token,onExpired}:{token:string;onExp
    {people.map(x=><Pressable key={x.employeeReference} accessibilityRole="button" accessibilityState={{selected:form.employeeReference===x.employeeReference,disabled:blocked}} disabled={blocked} onPress={()=>set("employeeReference",x.employeeReference)} style={[styles.button,{padding:8,backgroundColor:form.employeeReference===x.employeeReference?theme.selectedSurface:theme.surface,borderWidth:1,borderColor:theme.border}]}><Text>{x.employeeName}</Text></Pressable>)}
    {field("Period start (YYYY-MM-DD)",form.periodStart,v=>set("periodStart",v),10)}{field("Period end (YYYY-MM-DD)",form.periodEnd,v=>set("periodEnd",v),10)}</>}
    {selected&&<Text>{form.periodStart} – {form.periodEnd}</Text>}
-   {scores.map(([k,name])=><View key={k} style={{gap:4}}><Text style={styles.label}>{name}: {form[k]}/100</Text><View style={{flexDirection:"row",gap:8,alignItems:"center"}}>{btn("−",()=>set(k,Math.max(0,form[k]-1)),blocked||!editable||form[k]===0)}<TextInput accessibilityLabel={name+" score from 0 to 100"} keyboardType="number-pad" editable={!blocked&&editable} value={String(form[k])} onChangeText={v=>{if(/^\d{0,3}$/.test(v)&&Number(v)<=100)set(k,Number(v));}} style={{flex:1,minHeight:44,borderWidth:1,borderColor:theme.border,borderRadius:8,padding:10}}/>{btn("+",()=>set(k,Math.min(100,form[k]+1)),blocked||!editable||form[k]===100)}</View></View>)}
+   {scores.map(([k,name])=><View key={k} style={{gap:4}}><Text style={styles.label}>{name}: {five(form[k])}/5</Text><View accessible accessibilityLabel={name+" "+five(form[k])+" out of five"} style={{height:8,backgroundColor:theme.selectedSurface,borderRadius:8,overflow:"hidden"}}><View style={{height:8,backgroundColor:theme.primary,width:(form[k]+"%") as `${number}%`}}/></View><View style={{flexDirection:"row",gap:8,alignItems:"center"}}>{btn("−",()=>set(k,Math.max(0,form[k]-1)),blocked||!editable||form[k]===0)}<TextInput accessibilityLabel={name+" score from 0 to 100 (100 equals 5)"} keyboardType="number-pad" editable={!blocked&&editable} value={String(form[k])} onChangeText={v=>{if(/^\d{0,3}$/.test(v)&&Number(v)<=100)set(k,Number(v));}} style={{flex:1,minHeight:44,borderWidth:1,borderColor:theme.border,borderRadius:8,padding:10}}/>{btn("+",()=>set(k,Math.min(100,form[k]+1)),blocked||!editable||form[k]===100)}</View></View>)}
    {field("Strengths (private reviewer notes)",form.strengths,v=>set("strengths",v),1000,true)}{field("Areas to improve (private reviewer notes)",form.improvement,v=>set("improvement",v),1000,true)}
-   <Text style={styles.muted}>Component scores are separate; no overall weighting is assumed.</Text>
+   <View style={[styles.card,{backgroundColor:theme.selectedSurface}]}><Text style={styles.label}>Overall score: {overall(form)} / 5</Text><Text style={styles.muted}>Average of all three components. The numeric inputs use 0–100 (100 equals 5). Only the confirmed perfect-score rating is labeled.</Text></View>
    {locked?<><Text accessibilityRole="alert" style={styles.error}>The original result is unknown. Retry the same command before editing.</Text>{btn("Retry original command",()=>void execute("save"),busy,true)}</>:<>
    {editable&&btn("Save draft",()=>void execute("save"),busy,true)}
    {selected?.status==="DRAFT"&&btn("Submit saved appraisal",()=>void execute("submit"),busy||changed,true)}
