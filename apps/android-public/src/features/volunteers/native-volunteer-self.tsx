@@ -8,6 +8,7 @@ import {careGangaTheme as t} from "../../../../../packages/design-tokens/src/ind
 import {NativeCommunityAuth} from "../membership/native-community-auth";
 import {memberInvoke} from "../membership/member-native-api";
 import {NativeVolunteerProof} from "./native-volunteer-proof";
+import {NativeVolunteerCard} from "./native-volunteer-card";
 const KEY="cg_public_community_membership_session";
 type Draft={firstName:string;lastName:string;dateOfBirth:string;gender:string;bloodGroup:string;address:string;city:string;village:string;
  pinCode:string;stateRef:string;districtRef:string;branchRef:string;departmentRef:string;availability:string;skills:string;experience:string;referral:string;consent:boolean};
@@ -157,6 +158,7 @@ export function NativeVolunteerSelf({onExit}:{onExit:()=>void}){
    {profile?.volunteer&&<Text>Approved volunteer: {profile.volunteer.volunteerNumber} · {profile.volunteer.name} · {profile.volunteer.department}</Text>}
    {selected&&<Text>Current status: {readable(selected.status)} · {selected.applicationNumber}{selected.reviewStatus?" · "+readable(selected.reviewStatus):""}{selected.reviewRemarks?" · "+selected.reviewRemarks:""}</Text>}
   </View>
+  {profile?.volunteer&&token&&<NativeVolunteerCard token={token} onExpired={clear}/>}
   {editable&&<View style={s.card}>
    <Text accessibilityRole="header" style={s.title}>Volunteer Application</Text>
    <View style={s.row}>{steps.map((label,index)=><View key={label}>{button((index+1)+". "+label,()=>setStep(index),false,step===index)}</View>)}</View>
