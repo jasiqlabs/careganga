@@ -33,16 +33,26 @@ export function MemberReviewPanel({canConfigure=false}:{canConfigure?:boolean}){
  const [action,setAction]=useState<"APPROVE"|"RETURN"|"REJECT">("APPROVE"),[remarks,setRemarks]=useState(""),[password,setPassword]=useState(""),[retryPassword,setRetryPassword]=useState(""),[configPassword,setConfigPassword]=useState("");
  const pending=useRef<Pending|null>(null),seq=useRef(0);
  useEffect(()=>{
+  const onVisibility=()=>{
+   if(document.visibilityState==="hidden"){
+    seq.current++;setPage(null);setDetail(null);setLoading(true);
+    setPassword("");setRetryPassword("");setConfigPassword("");
+   }else setEpoch(x=>x+1);
+  };
+  document.addEventListener("visibilitychange",onVisibility);
+  return()=>document.removeEventListener("visibilitychange",onVisibility);
+ },[]);
+ useEffect(()=>{
   const n=++seq.current;setLoading(true);setError("");
   void Promise.all([req<CG04ReviewPolicy>("/policy"),req<CG04ReviewPage>("?"+new URLSearchParams({status,offset:String(offset)}))])
-   .then(([p,list])=>{if(n===seq.current){setPolicy(p);setPage(list);if(!list.items.some(x=>x.caseRef===selected))setSelected(null);}})
+   .then(([p,list])=>{if(n===seq.current&&document.visibilityState==="visible"){setPolicy(p);setPage(list);if(!list.items.some(x=>x.caseRef===selected))setSelected(null);}})
    .catch(e=>{if(n===seq.current){setPage(null);setError(e.message);if(e.status===401)window.location.assign("/admin/login");}})
    .finally(()=>{if(n===seq.current)setLoading(false);});
   return()=>{seq.current++;};
  },[status,offset,epoch]);
  useEffect(()=>{
   if(!selected){setDetail(null);return;}let active=true;setDetail(null);
-  void req<CG04ReviewCase>("/"+selected).then(v=>{if(active)setDetail(v);})
+  void req<CG04ReviewCase>("/"+selected).then(v=>{if(active&&document.visibilityState==="visible")setDetail(v);})
    .catch(e=>{if(active)setError(e.message);});return()=>{active=false;};
  },[selected,epoch]);
  const refresh=()=>setEpoch(x=>x+1);
