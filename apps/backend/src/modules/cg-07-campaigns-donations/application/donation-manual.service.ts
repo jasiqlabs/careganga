@@ -53,6 +53,23 @@ export class DonationManualService{
  }
  /** The cashier must receive the donor's private POST-body status proof
   * rather than discover an anonymous donor's unredacted roster. */
+ async options(bearer:string,raw:unknown){
+  const x=record(raw,["statusToken"]),proof=x.statusToken;
+  if(typeof proof!=="string"||!/^[A-Za-z0-9_-]{43}$/.test(proof))
+   throw new BadRequestException("Enter the original private donation status proof.");
+  const hash=createHash("sha256").update(proof).digest("hex");
+  return this.run(bearer,async(tx,a)=>{
+   const d=(await tx.query<Donation>(
+    "SELECT id,source_status,amount_minor::text,branch_ref,donation_number FROM donation "+
+    "WHERE root_realm_id=$1 AND status_token_digest=$2 AND status_token_expires_at>now() FOR SHARE",
+    [a.realmId,hash])).rows[0];
+   if(!d)throw new NotFoundException("This donor status proof is unavailable.");
+   await this.scope(tx,a,d.branch_ref);
+   if(d.source_status!=="REQUESTED")throw conflict();
+   return {donationNumber:d.donation_number,amountMinor:d.amount_minor,
+    ...await this.finance.options(tx,a,d.branch_ref)};
+  });
+ }
  async prepare(bearer:string,raw:unknown){
   const x=record(raw,["statusToken","requestKey","cashVoucher","cashAccountRef",
    "incomeAccountRef","financialYearRef","postingDate"]);

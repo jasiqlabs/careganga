@@ -3,6 +3,9 @@ import {DonationManualService} from "../application/donation-manual.service";
 @Controller("api/v1/donations/manual")
 export class DonationManualController{
  constructor(private readonly cash:DonationManualService){}
+ @Post("options") options(@Headers("authorization")t:string,@Body()b:unknown){
+  return this.cash.options(t,b);
+ }
  @Post("prepare") prepare(@Headers("authorization")t:string,@Body()b:unknown){
   return this.cash.prepare(t,b);
  }

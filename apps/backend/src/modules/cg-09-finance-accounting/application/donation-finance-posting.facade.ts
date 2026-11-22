@@ -30,6 +30,24 @@ export class DonationFinancePostingFacade{
    !accounts.rows.some(v=>v.id===x.incomeAccountRef&&v.category==="INCOME"&&v.account_kind==="GENERAL"))
    throw new ConflictException("Cash or donation income account is inactive or outside this Foundation branch.");
  }
+ async options(tx:PoolClient,a:VerifiedFoundationActor,branchRef:string|null){
+  const choices=await tx.query<{id:string;name:string;account_kind:string;category:string}>(`
+   SELECT a.id,a.name,a.account_kind,g.category FROM finance_account a
+   JOIN account_group g ON g.id=a.group_id AND g.root_realm_id=a.root_realm_id
+   WHERE a.root_realm_id=$1 AND a.status='ACTIVE'
+     AND (a.branch_id IS NULL OR a.branch_id IS NOT DISTINCT FROM $2::uuid)
+     AND ((a.account_kind='CASH' AND g.category='ASSET')
+       OR (a.account_kind='GENERAL' AND g.category='INCOME'))
+   ORDER BY a.name,a.id LIMIT 101`,[a.realmId,branchRef]);
+  if(choices.rows.length>100)throw new ConflictException("Ask Finance Admin to narrow the cash account list.");
+  const years=await tx.query<{id:string;name:string}>(`
+    SELECT id,name FROM financial_year WHERE root_realm_id=$1 AND status='OPEN'
+    ORDER BY start_on DESC,id LIMIT 21`,[a.realmId]);
+  return {cashAccounts:choices.rows.filter(x=>x.account_kind==="CASH").map(x=>({value:x.id,label:x.name})),
+   incomeAccounts:choices.rows.filter(x=>x.account_kind==="GENERAL").map(x=>({value:x.id,label:x.name})),
+   years:years.rows.slice(0,20).map(x=>({value:x.id,label:x.name})),
+   complete:choices.rows.length<=100&&years.rows.length<=20};
+ }
  async postCash(tx:PoolClient,a:VerifiedFoundationActor,x:Cash){
   if(!ID.test(x.donationRef)||!ID.test(x.eventKey)||!/^[a-f0-9]{64}$/.test(x.digest)||
     !/^[1-9][0-9]{0,13}$/.test(x.amountMinor))

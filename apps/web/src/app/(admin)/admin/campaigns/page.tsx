@@ -1,3 +1,4 @@
+import Link from "next/link";
 import {cookies} from "next/headers";
 import {redirect} from "next/navigation";
 import {FoundationAdminNav} from "../../../../shared/foundation-admin-nav";
@@ -27,6 +28,8 @@ export default async function CampaignsPage(){
    canViewAccounts={actions.includes("accounts.view")} canViewBranches={actions.includes("foundation.branches.view")}
    canViewFoundation={actions.includes("foundation.profile.view")}/>
    <main className="workspace" style={{display:"grid",gap:22}}>
+    {(actions.includes("finance.reports.view")||actions.includes("finance.journals.post"))&&
+     <p><Link href="/admin/donations">Donation records and cash verification</Link></p>}
    {actions.includes("campaigns.view")&&<CampaignDraftsWorkspace canManage={actions.includes("campaigns.manage")}/>}
    {canReview&&<CampaignReviewWorkspace canConfigure={actions.includes("approvals.process.manage")}/>}
    </main></div>;
