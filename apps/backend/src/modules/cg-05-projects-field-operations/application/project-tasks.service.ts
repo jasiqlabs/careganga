@@ -22,7 +22,7 @@ const grants=(a:string,capability:string)=>`EXISTS(SELECT 1 FROM account_role ar
  (r.is_protected OR EXISTS(SELECT 1 FROM role_grant g WHERE g.role_id=r.id AND g.capability_key='${capability}')))`;
 const eligible=(a:string)=>`${a}.status='ACTIVE' AND ${grants(a,"projects.tasks.view")} AND (${grants(a,"projects.tasks.progress")} OR ${grants(a,"projects.tasks.manage")})`;
 const operatorScope=(a:string)=>`(p.branch_ref IS NULL OR b.manager_account_ref=${a}.id OR p.owner_account_ref=${a}.id OR ${grants(a,"foundation.branches.admin")})`;
-const live=`(t.assignee_account_ref IS NOT NULL AND t.assigned_at<=now() AND (t.planned_start IS NULL OR t.planned_start<=CURRENT_DATE)
+const live=`(t.assignee_account_ref IS NOT NULL AND t.assigned_at<=now()
  AND EXISTS(SELECT 1 FROM account aa WHERE aa.realm_id=t.root_realm_id AND aa.id=t.assignee_account_ref AND ${eligible("aa")}
  AND ((t.assignee_kind='ACCOUNT' AND t.assignee_branch_ref IS NOT DISTINCT FROM p.branch_ref
  AND ${operatorScope("aa")} AND NOT EXISTS(SELECT 1 FROM hr_employee e WHERE e.root_realm_id=t.root_realm_id AND e.account_ref=aa.id))
@@ -106,7 +106,7 @@ export class ProjectTasksService {
   if(!t)throw new NotFoundException("Task unavailable");
   const scope=await this.scoped(tx,a,p),own=t.assignee_account_ref===a.accountId;
   if(!scope&&!own)throw new NotFoundException("Task unavailable");
-  const assignmentCurrent=t.effective_now===true&&await this.currentBinding(tx,a,p,t);
+  const assignmentCurrent=await this.currentBinding(tx,a,p,t);
   if(!scope&&!(own&&assignmentCurrent))throw new ForbiddenException("Your task assignment is no longer current");
   const canManage=scope&&!terminal(p.status)&&!terminal(t.status)&&await this.has(tx,a,"projects.tasks.manage")&&
    (p.branch_ref!==null||await this.has(tx,a,"foundation.branches.admin"));
