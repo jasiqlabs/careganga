@@ -6,7 +6,7 @@ type Draft=Omit<CG04TierWrite,"expectedVersion"|"requestKey">;
 type Command={ref?:string;body:CG04TierWrite};
 const empty=():Draft=>({name:"",category:"ANNUAL",status:"DRAFT",price:"",currency:"INR",durationUnit:"YEAR",durationCount:1,description:"",benefits:[],icon:"CARD",color:"GREEN",displayOrder:0});
 const from=(v:CG04Tier):Draft=>({name:v.name,category:v.category,status:v.status,price:priceInput(v.feeMinor),currency:"INR",durationUnit:v.durationUnit,durationCount:v.durationCount,description:v.description,benefits:v.benefits.map(b=>({...b})),icon:v.icon,color:v.color,displayOrder:v.displayOrder});
-function minor(s:string){if(!/^(?:0|[1-9]\d{0,12})(?:\.\d{1,2})?$/.test(s))return "";const [w,f=""]=s.split(".");return String(BigInt(w)*100n+BigInt(f.padEnd(2,"0")));}
+function minor(s:string){if(!/^(?:0|[1-9]\d{0,12})(?:\.\d{1,2})?$/.test(s))return "";const [w,f=""]=s.split("."),n=BigInt(w)*100n+BigInt(f.padEnd(2,"0"));return n>999999999999999n?"":String(n);}
 const statusLabel:Record<CG04TierStatus,string>={ACTIVE:"Active plan",INACTIVE:"Inactive plan",DRAFT:"Draft"};
 const base="/api/membership/tiers";
 async function api<T>(url:string,init?:RequestInit):Promise<T>{
@@ -18,7 +18,7 @@ async function api<T>(url:string,init?:RequestInit):Promise<T>{
 export function MembershipWorkspace(){
  const [data,setData]=useState<CG04TierPage|null>(null),[loading,setLoading]=useState(true),[error,setError]=useState(""),[notice,setNotice]=useState(""),[q,setQ]=useState(""),[category,setCategory]=useState("ALL"),[status,setStatus]=useState("ALL"),[filters,setFilters]=useState({q:"",category:"ALL",status:"ALL"}),[cursor,setCursor]=useState(""),[history,setHistory]=useState<string[]>([]),[epoch,setEpoch]=useState(0),[editor,setEditor]=useState<"create"|"edit"|null>(null),[selected,setSelected]=useState<CG04Tier|null>(null),[draft,setDraft]=useState<Draft>(empty),[pending,setPending]=useState<Command|null>(null),[busy,setBusy]=useState(false);
  const locked=busy||pending!==null,seq=useRef(0),running=useRef(false),heading=useRef<HTMLHeadingElement>(null);
- useEffect(()=>{const n=++seq.current;setLoading(true);setData(null);setError("");void api<CG04TierPage>(base+"?"+new URLSearchParams({...filters,cursor})).then(v=>{if(n===seq.current)setData(v);}).catch(e=>{if(n===seq.current)setError(e.message);}).finally(()=>{if(n===seq.current)setLoading(false);});return()=>{seq.current++;};},[filters,cursor,epoch]);
+ useEffect(()=>{const n=++seq.current;setLoading(true);setData(null);setError("");void api<CG04TierPage>(base+"?"+new URLSearchParams({...filters,cursor})).then(v=>{if(n===seq.current)setData(v);}).catch(e=>{if(n===seq.current){setError(e.message);if(e.status===401)location.assign("/admin/login");}}).finally(()=>{if(n===seq.current)setLoading(false);});return()=>{seq.current++;};},[filters,cursor,epoch]);
  useEffect(()=>{heading.current?.focus();},[editor]);
  const apply=()=>{setFilters({q:q.trim(),category,status});setHistory([]);setCursor("");};
  const reset=()=>{setQ("");setCategory("ALL");setStatus("ALL");setFilters({q:"",category:"ALL",status:"ALL"});setHistory([]);setCursor("");};
@@ -34,6 +34,7 @@ export function MembershipWorkspace(){
   finally{running.current=false;setBusy(false);}
  }
  function submit(e:FormEvent){e.preventDefault();if(locked||!editor)return;if(!minor(draft.price)||!draft.name.trim()||draft.benefits.some(b=>!b.title.trim())||!Number.isSafeInteger(draft.durationCount)||!Number.isSafeInteger(draft.displayOrder)){setError("Enter a valid plan name, INR price, validity and benefit titles.");return;}
+  if(draft.category==="LIFETIME"&&draft.durationUnit!=="LIFETIME"){setError("Choose lifetime validity for a lifetime plan.");return;}
   void send({ref:selected?.ref,body:{...draft,requestKey:crypto.randomUUID(),...(selected?{expectedVersion:selected.version}:{})}});
  }
  async function exportPlans(){if(running.current)return;running.current=true;setBusy(true);setError("");try{const r=await api<{csv:string;rows:number}>(base+"/export?"+new URLSearchParams(filters));const url=URL.createObjectURL(new Blob([r.csv],{type:"text/csv;charset=utf-8"}));const a=document.createElement("a");a.href=url;a.download="CareGanga-membership-plans.csv";a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);setNotice("Membership plan export ready.");}catch(e){setError(e instanceof Error?e.message:"Export unavailable.");}finally{running.current=false;setBusy(false);}}
