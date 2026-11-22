@@ -8,7 +8,7 @@ type RoleChoice={value:string;label:string;context:string};
 type Application={applicationRef:string;reference:string;name:string;designation:string;
  employmentType:string;branchRef:string;departmentRef:string|null;
  managerRef:string|null;roleRef:string|null;accountRef:string|null;
- hireDate:string;revision:number;status:string};
+ hireDate:string;revision:number;status:string;summary?:{branch:string;department:string|null;manager:string|null}};
 type Draft={name:string;designation:string;employmentType:string;
  branchRef:string;departmentRef:string;managerRef:string;roleRef:string;accountRef:string;hireDate:string};
 const blank=():Draft=>({name:"",designation:"",employmentType:"FULL_TIME",
@@ -61,6 +61,7 @@ export function HrEnrollmentWorkspace({canViewApps,canManage,canViewEmployees,ca
  const fileApplicationPending=useRef(false);
  useEffect(()=>{if(fileApplicationPending.current&&evidencePanel.current){fileApplicationPending.current=false;evidencePanel.current.scrollIntoView({block:"start",behavior:"auto"});}});
  const [fileApplication,setFileApplication]=useState<Application|null>(null);
+ const enrollmentRead=useRef(0);const [enrollmentLoading,setEnrollmentLoading]=useState(false);
  const [caseStatus,setCaseStatus]=useState<{status:string;caseRef:string|null;reference:string|null}|null>(null);
  const [staff,setStaff]=useState<Array<{reference:string;name:string;designation:string;
   branch:string;status:string;department?:string|null;employmentType?:string;hireDate?:string}>>([]);
@@ -123,17 +124,19 @@ export function HrEnrollmentWorkspace({canViewApps,canManage,canViewEmployees,ca
   return()=>{alive=false;};
  },[canViewApps,canManage,canSelectRoles]);
  const review=useCallback(async(app:Application)=>{
-  fileApplicationPending.current=true;setFileApplication(app);setCaseStatus(null);setStatus(null);
+  const read=++enrollmentRead.current;setEnrollmentLoading(true);fileApplicationPending.current=true;setFileApplication({...app,summary:undefined});setCaseStatus(null);setStatus(null);
   try{
-   const current=await request("applications/"+app.applicationRef+"/review");
+   const [detail,current]=await Promise.all([request("applications/"+app.applicationRef),request("applications/"+app.applicationRef+"/review")]);
+   if(read!==enrollmentRead.current)return;
+   if(!detail||typeof detail!=="object"||!("applicationRef" in detail)||detail.applicationRef!==app.applicationRef||!("summary" in detail)||!detail.summary)throw Error("Enrollment summary cannot be confirmed.");
+   setFileApplication(detail as Application);
    if(!current||typeof current!=="object"||!("status" in current)||
     typeof current.status!=="string")
     throw Error("Original enrollment status could not be confirmed.");
    setCaseStatus(current as {status:string;caseRef:string|null;reference:string|null});
-  }catch(e){
-   setStatus({error:true,message:e instanceof Error?e.message:
+  }catch(e){if(read===enrollmentRead.current)setStatus({error:true,message:e instanceof Error?e.message:
     "Original enrollment status is unavailable."});
-  }
+  }finally{if(read===enrollmentRead.current)setEnrollmentLoading(false);}
  },[]);
  const submit=async(app:Application)=>{
   if(busy||!canManage)return;
@@ -423,9 +426,11 @@ export function HrEnrollmentWorkspace({canViewApps,canManage,canViewEmployees,ca
    padding:16,borderRadius:14,background:"#fff",display:"grid",gap:14}}>
    <header style={{display:"flex",justifyContent:"space-between",gap:8}}>
     <h2 style={{margin:0,fontSize:"1.1rem"}}>Original enrollment — {fileApplication.name}</h2>
-    <button type="button" onClick={()=>{setFileApplication(null);setCaseStatus(null);}}
+    <button type="button" disabled={busy} onClick={()=>{enrollmentRead.current++;setEnrollmentLoading(false);setFileApplication(null);setCaseStatus(null);}}
      style={{...buttonStyle,background:"var(--cg-border)",color:"var(--cg-text)"}}>Close</button>
    </header>
+   {enrollmentLoading&&<p role="status">Confirming current registration details…</p>}
+   {fileApplication.summary&&<section aria-label="Employee registration summary" style={{border:"1px solid var(--cg-border)",borderRadius:10,padding:12}}><h3 style={{marginTop:0}}>Registration summary</h3><dl style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(150px,1fr))",gap:12,margin:0}}>{[["Application",fileApplication.reference],["Employee",fileApplication.name],["Designation",fileApplication.designation],["Employment type",fileApplication.employmentType.replaceAll("_"," ")],["Foundation branch",fileApplication.summary.branch],["Department",fileApplication.summary.department??"Not assigned"],["Reporting manager",fileApplication.summary.manager??"Not assigned"],["Joining date",fileApplication.hireDate],["Application status",fileApplication.status.replaceAll("_"," ")]].map(([label,value])=><div key={label}><dt style={{color:"var(--cg-muted)",fontSize:13}}>{label}</dt><dd style={{margin:0,fontWeight:600}}>{value}</dd></div>)}</dl></section>}
    {canViewPrivate&&<HrPrivateDetails key={fileApplication.applicationRef}
      applicationRef={fileApplication.applicationRef} canView={canViewPrivate}
      canManage={canManagePrivate&&["DRAFT","RETURNED"].includes(fileApplication.status)}/>}
@@ -434,11 +439,11 @@ export function HrEnrollmentWorkspace({canViewApps,canManage,canViewEmployees,ca
    {["DRAFT","RETURNED"].includes(fileApplication.status)&&<>
     <HrEvidenceUploader applicationRef={fileApplication.applicationRef}
       revision={fileApplication.revision} canManage={canManage}/>
-    <button type="button" onClick={()=>void submit(fileApplication)} disabled={busy}
+    <button type="button" onClick={()=>void submit(fileApplication)} disabled={busy||enrollmentLoading||!fileApplication.summary||!caseStatus}
       style={buttonStyle}>Submit original verified enrollment</button>
    </>}
    {fileApplication.status==="FINAL_APPROVED_PENDING_ACTIVATION"&&
-    <button type="button" onClick={()=>void finalize(fileApplication)} disabled={busy}
+    <button type="button" onClick={()=>void finalize(fileApplication)} disabled={busy||enrollmentLoading||!fileApplication.summary||!caseStatus}
       style={buttonStyle}>Complete approved enrollment</button>}
    <p style={{color:"var(--cg-muted)",fontSize:13,margin:0}}>
     Only an original CG-03 independent decision and current CG-19 clean scan can activate employment.
