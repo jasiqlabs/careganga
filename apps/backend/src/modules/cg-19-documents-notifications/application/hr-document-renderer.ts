@@ -80,7 +80,7 @@ export async function renderHrDocument(input:{snapshot:Record<string,unknown>;ti
   for(const [label,k,y] of [["Employee","subjectReference",95],["Branch","branch",77],["Issue date","issueDate",59],["Valid until","expiryDate",41]] as const){
    fit(front,label,x1+9,y+7,W-18,6.5,grey);fit(front,fact(k),x1+9,y-1,W-18,8.5,navy);
   }
-  fit(front,"Version "+input.issueRevision,x1+9,7,W-18,7,white);
+  fit(front,input.preview?"DRAFT - NOT VALID":"Version "+input.issueRevision,x1+9,7,W-18,7,white);
   fit(back,"VERIFY EMPLOYEE CARD",x2+9,H-43,W-18,10,navy);
   if(input.qr&&!input.preview){
    const matrix=opaqueAppointmentQr(input.qr),unit=74/(matrix.length+8),origin=x2+(W-74)/2+4*unit,top=H-54-4*unit;
@@ -97,7 +97,7 @@ export async function renderHrDocument(input:{snapshot:Record<string,unknown>;ti
   }
   fit(back,input.signatoryName,x2+9,29,W-18,8,navy);
   fit(back,"Authorized signatory",x2+9,20,W-18,6.5,grey);
-  fit(back,"CareGanga Foundation",x2+9,7,W-18,7,white);
+  fit(back,input.preview?"DRAFT - NOT VALID":"CareGanga Foundation",x2+9,7,W-18,7,white);
  }else{
   const newLetterPage=()=>{const p=pdf.addPage([595,842]);p.drawRectangle({x:0,y:815,width:595,height:27,color:blue});p.drawText("CareGanga Foundation",{x:45,y:771,size:20,font,color:blue});return p;};
   let page=newLetterPage();
