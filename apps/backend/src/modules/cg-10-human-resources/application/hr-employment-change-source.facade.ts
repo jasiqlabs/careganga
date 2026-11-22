@@ -314,7 +314,10 @@ export class HrEmploymentChangeSourceFacade{
  }
  async validateApproval(tx:PoolClient,realm:string,row:ChangeRow){
   if(row.status!=="SUBMITTED")throw new ConflictException({code:"CG10_CHANGE_STALE"});
-  return this.validateExact(tx,realm,row);
+  const target=await this.validateExact(tx,realm,row);
+  const incompatible=await tx.query("SELECT 1 FROM hr_attendance_day WHERE root_realm_id=$1 AND employee_id=$2 AND assignment_id=$3 AND local_date >= $4::date LIMIT 1",[realm,row.employee_id,row.prior_assignment_id,row.effective_date]);
+  if(incompatible.rowCount)throw new ConflictException({code:"CG10_CHANGE_ATTENDANCE_CONFLICT"});
+  return target;
  }
  async applyDecision(tx:PoolClient,realm:string,row:ChangeRow,decisionRef:string,actor:string,action:"APPROVE"|"RETURN"|"REJECT"){
   const status=action==="APPROVE"?"APPROVED_PENDING_EFFECT":action==="RETURN"?"RETURNED":"REJECTED";

@@ -109,6 +109,8 @@ CREATE FUNCTION cg03_hr_employment_change_frozen() RETURNS trigger LANGUAGE plpg
 BEGIN
  IF (NEW.hr_employment_change_id,NEW.hr_employment_change_digest) IS DISTINCT FROM
   (OLD.hr_employment_change_id,OLD.hr_employment_change_digest) THEN RAISE EXCEPTION 'Original employment change proof cannot change'; END IF;
+ IF OLD.case_kind IN('HR_TRANSFER_PROMOTION','HR_EXIT_REVIEW') AND NEW.status='CANCELLED' AND OLD.status NOT IN('SUBMITTED','IN_REVIEW','CANCELLED')
+ THEN RAISE EXCEPTION 'Only pending employment cases may be withdrawn'; END IF;
  IF OLD.case_kind IN('HR_TRANSFER_PROMOTION','HR_EXIT_REVIEW') AND OLD.status='CANCELLED' AND NEW.status<>OLD.status
  THEN RAISE EXCEPTION 'Withdrawn employment case is terminal'; END IF;
  RETURN NEW;
@@ -242,25 +244,10 @@ CREATE TRIGGER cg10_assignment_no_overlap BEFORE INSERT OR UPDATE OF valid_from,
 CREATE TABLE hr_exit_clearance(
  root_realm_id uuid NOT NULL,change_id uuid NOT NULL,
  clearance_kind text NOT NULL CHECK(clearance_kind IN('HR','ASSETS','HANDOVER')),
- verified_by uuid NOT NULL, request_key uuid NOT NULL, request_digest char(64) NOT NULL CHECK(request_digest ~ '^[0-9a-f]{64}
- verified_at timestamptz NOT NULL DEFAULT now(),
- PRIMARY KEY(root_realm_id,change_id,clearance_kind),UNIQUE(root_realm_id,verified_by,request_key),
- FOREIGN KEY(root_realm_id,change_id) REFERENCES hr_employment_change(root_realm_id,id) ON DELETE RESTRICT,
- FOREIGN KEY(verified_by,root_realm_id) REFERENCES account(id,realm_id) ON DELETE RESTRICT
-);
-CREATE TRIGGER cg10_exit_clearance_immutable BEFORE UPDATE OR DELETE ON hr_exit_clearance FOR EACH ROW EXECUTE FUNCTION cg03_immutable();
-
-ALTER TABLE hr_audit DROP CONSTRAINT hr_audit_action_check;
-ALTER TABLE hr_audit ADD CONSTRAINT hr_audit_action_check CHECK(action IN(
- 'DRAFT_CREATED','DRAFT_UPDATED','SUBMITTED','RETURNED','REJECTED','ACTIVATED','PENDING_ACCESS','ACCESS_CONFIRMED',
- 'LEAVE_PRIVATE_READ','ATTENDANCE_CORRECTION_PRIVATE_READ','APPRAISAL_DRAFT_CREATED','APPRAISAL_DRAFT_UPDATED',
- 'APPRAISAL_SUBMITTED','APPRAISAL_RELEASED','APPRAISAL_PRIVATE_READ','EMPLOYMENT_CHANGE_PRIVATE_READ',
- 'EMPLOYMENT_CHANGE_DRAFT','EMPLOYMENT_CHANGE_EDITED','EMPLOYMENT_CHANGE_SUBMITTED','EMPLOYMENT_CHANGE_APPROVED',
- 'EMPLOYMENT_CHANGE_RETURNED','EMPLOYMENT_CHANGE_REJECTED','EMPLOYMENT_CHANGE_WITHDRAWN','EMPLOYMENT_CHANGE_APPLIED','EXIT_CLEARANCE_RECORDED'));
-),
+ verified_by uuid NOT NULL, request_key uuid NOT NULL, request_digest char(64) NOT NULL CHECK(request_digest ~ '^[0-9a-f]{64}$'),
  evidence_note_ciphertext text NOT NULL, evidence_note_nonce text NOT NULL,evidence_note_tag text NOT NULL,
  verified_at timestamptz NOT NULL DEFAULT now(),
- PRIMARY KEY(root_realm_id,change_id,clearance_kind),
+ PRIMARY KEY(root_realm_id,change_id,clearance_kind),UNIQUE(root_realm_id,verified_by,request_key),
  FOREIGN KEY(root_realm_id,change_id) REFERENCES hr_employment_change(root_realm_id,id) ON DELETE RESTRICT,
  FOREIGN KEY(verified_by,root_realm_id) REFERENCES account(id,realm_id) ON DELETE RESTRICT
 );
