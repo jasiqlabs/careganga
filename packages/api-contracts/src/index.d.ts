@@ -253,3 +253,10 @@ export type CG04TierWrite=Omit<CG04PublicTier,"planCode"|"offerRevision"|"feeMin
 export type CG04PublicTierPage={items:CG04PublicTier[];nextCursor:string|null};
 export type CG04TierPage={items:CG04Tier[];nextCursor:string|null;counts:{total:number;active:number;draft:number;inactive:number}};
 export type CG04TierResult={record:CG04Tier;replayed:boolean};
+
+/** Authenticated own applicant draft. No public roster or payment authority. */
+export type CG04ApplicationDraftWrite={requestKey:string;expectedVersion?:number;planCode:string;offerRevision:number;address:string;city:string;pinCode:string;stateRef:string;districtRef:string;branchRef?:string|null;referral?:string;consent:true};
+export type CG04Application={ref:string;applicationNumber:string;version:number;status:"DRAFT"|"SUBMITTED"|"RETURNED"|"REJECTED"|"APPROVED"|"CANCELLED";name:string;mobile:string;email:string|null;address:string;city:string;pinCode:string;stateRef:string;state:string;districtRef:string;district:string;branchRef:string|null;branch:string|null;referral:string;consentVersion:string;planCode:string;offerRevision:number;plan:string;feeMinor:string;currency:"INR";durationUnit:CG04TierDuration;durationCount:number;currentOffer:boolean;updatedAt:string};
+export type CG04ApplicantOption={value:string;label:string};
+export type CG04ApplicantOptions={contact:{name:string;mobile:string;email:string|null};branches:CG04ApplicantOption[];states:CG04ApplicantOption[];districts:CG04ApplicantOption[]};
+export type CG04ApplicationResult={record:CG04Application;replayed:boolean};
