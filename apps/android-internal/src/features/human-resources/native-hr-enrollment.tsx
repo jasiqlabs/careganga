@@ -29,12 +29,13 @@ async function api(token:string,path:string,method="GET",body?:object){
  const response=await identityRequest("/api/hr/"+path,{method,cache:"no-store",
   headers:{Authorization:"Bearer "+token,...(body?{"Content-Type":"application/json"}:{})},
   ...(body?{body:JSON.stringify(body)}:{})});
- if(!response.ok)throw Object.assign(new Error(
+ if(!response.ok){const rejected:unknown=await response.json().catch(()=>null);throw Object.assign(new Error(
+  response.status===409&&rejected&&typeof rejected==="object"&&"code" in rejected&&typeof rejected.code==="string"&&["CG10_ENROLLMENT_EVIDENCE_CHANGED","CG10_ENROLLMENT_PRIVATE_CHANGED"].includes(rejected.code)&&"message" in rejected&&typeof rejected.message==="string"?rejected.message:
   response.status===401?"Your session has expired. Sign in again.":
   response.status===403?"Your current role or branch cannot perform this employee action.":
   response.status===409?"The employee application has changed. Refresh before saving.":
   "The employee result could not be confirmed. Refresh before retrying."
- ),{status:response.status});
+ ),{status:response.status});}
  return response.json() as Promise<unknown>;
 }
 export function NativeHrEnrollment({token,canView,canManage,canReview,canViewEmployees,canSelectAccounts,canSelectRoles,canViewPrivate,canManagePrivate,canConfigureReviews,canConfigureAttendance,canManageLeave=false,canReviewLeave=false,canCorrect=false,canReviewCorrection=false,canViewStaff=false,canManageChanges=false,canReviewChanges=false,canManageDocuments=false,canReviewDocuments=false,canApproveTemplates=false,canManageAppraisals=false,canIssueDocuments=false,canRevokeDocuments=false,canViewAllowances=false,canRequestAllowances=false,canUploadAllowanceBill=false,onExit,onExpired}:{
