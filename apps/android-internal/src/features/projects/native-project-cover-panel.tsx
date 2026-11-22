@@ -1,0 +1,45 @@
+import React,{useEffect,useRef,useState} from "react";
+import {ActivityIndicator,Image,Pressable,Text,View,StyleSheet} from "react-native";
+import * as Crypto from "expo-crypto";
+import * as Picker from "expo-document-picker";
+import {File,Paths,UploadType} from "expo-file-system";
+import {identityRequest} from "../identity-access/http-client";
+import {careGangaTheme as theme} from "../../../../../packages/design-tokens/src/index";
+const allowed=["image/jpeg","image/png","image/webp"];
+type Cover={fileRef:string;fileVersion:number;mime:string;size:string;createdAt:string};
+type Upload={uploadRef:string;status:string;uploadUrl?:string;uploadHeaders?:Record<string,string>;cleanVerified?:boolean;fileRef?:string|null;fileVersion?:number|null};
+type Picked={uri:string;name:string;mime:string;size:number};
+type Command={key:string;hash:string;mime:string;size:number;intent?:string};
+export function NativeProjectCoverPanel({projectRef,version,token,onExpired,canUpload}:{projectRef:string;version:number;token:string;onExpired:()=>void;canUpload:boolean}){
+ const [files,setFiles]=useState<Cover[]|null>(null),[picked,setPicked]=useState<Picked|null>(null),[selected,setSelected]=useState<Cover|null>(null),[preview,setPreview]=useState(""),[busy,setBusy]=useState(false),[loadingPreview,setLoadingPreview]=useState(false),[error,setError]=useState(""),[message,setMessage]=useState(""),[epoch,setEpoch]=useState(0),[intent,setIntent]=useState("");
+ const running=useRef(false),command=useRef<Command|null>(null),cacheFile=useRef<string|null>(null);
+ const discardPicked=()=>{if(cacheFile.current){try{new File(cacheFile.current).delete();}catch{}cacheFile.current=null;}};
+ useEffect(()=>()=>discardPicked(),[]);
+ const api=async<T,>(path:string,body?:Record<string,unknown>):Promise<T>=>{const r=await identityRequest("/api/v1/project-covers/"+path,{headers:{Authorization:"Bearer "+token,...(body?{"Content-Type":"application/json"}:{})},cache:"no-store",...(body?{method:"POST",body:JSON.stringify(body)}:{})});if(r.status===401){onExpired();throw Error("Sign in again.");}const v=await r.json().catch(()=>null);if(!r.ok||!v)throw Error(r.status===409?"Project or cover changed. Refresh the details.":r.status===403?"Your role or project does not permit this action.":"Secure cover status could not be confirmed.");return v as T;};
+ useEffect(()=>{let live=true;setFiles(null);setSelected(null);void api<{files:Cover[];projectVersion:number}>("projects/"+projectRef).then(v=>{if(!live)return;if(v.projectVersion!==version){setError("Project changed. Refresh the project details.");return;}setFiles(v.files);setSelected(v.files[0]??null);}).catch(e=>{if(live)setError(e.message);});return()=>{live=false;};},[token,projectRef,version,epoch]);
+ useEffect(()=>{let live=true;let cache:File|null=null;setPreview("");setLoadingPreview(false);if(!selected)return;setLoadingPreview(true);void (async()=>{try{
+  const r=await identityRequest("/api/v1/project-covers/files/"+selected.fileRef,{headers:{Authorization:"Bearer "+token},cache:"no-store"});if(r.status===401){onExpired();throw Error("Sign in again.");}
+  if(!r.ok||!allowed.includes(r.headers.get("content-type")?.split(";")[0]??""))throw Error("Verified image preview unavailable.");
+  const bytes=new Uint8Array(await r.arrayBuffer());if(bytes.length<1||bytes.length>10485760)throw Error("Verified image preview unavailable.");if(!live)return;
+  cache=new File(Paths.cache,"project-cover-"+Crypto.randomUUID()+(selected.mime==="image/png"?".png":selected.mime==="image/webp"?".webp":".jpg"));cache.create();cache.write(bytes);if(live)setPreview(cache.uri);
+ }catch(e){if(live)setError(e instanceof Error?e.message:"Verified image preview unavailable.");}finally{if(live)setLoadingPreview(false);}})();return()=>{live=false;try{cache?.delete();}catch{};};},[selected,token]);
+ const pick=async()=>{if(running.current)return;try{const res=await Picker.getDocumentAsync({type:allowed,multiple:false,copyToCacheDirectory:true});if(res.canceled)return;const x=res.assets[0];if(!x?.size||x.size>10485760||!x.mimeType||!allowed.includes(x.mimeType)){if(x?.uri)try{new File(x.uri).delete();}catch{}setError("Choose a JPEG, PNG or WebP image up to 10 MB.");return;}discardPicked();cacheFile.current=x.uri;setPicked({uri:x.uri,name:x.name,size:x.size,mime:x.mimeType});command.current=null;setIntent("");setError("");}catch{setError("File picker unavailable.");}};
+ const accept=(v:Upload)=>{if(!v.cleanVerified||!v.fileRef||!v.fileVersion)throw Error("The original scanner has not verified this image.");setMessage("Cover scanner-verified for this project revision. It remains private.");setEpoch(x=>x+1);command.current=null;setIntent("");discardPicked();setPicked(null);};
+ const verify=async()=>{if(!command.current?.intent||running.current)return;running.current=true;setBusy(true);setError("");try{accept(await api<Upload>("intents/"+command.current.intent+"/confirm",{}));}catch(e){setError(e instanceof Error?e.message:"Verification unavailable.");}finally{running.current=false;setBusy(false);}};
+ const upload=async()=>{if(!canUpload||!picked||running.current)return;running.current=true;setBusy(true);setError("");setMessage("");try{
+  const file=new File(picked.uri),hash=await file.digest("SHA-256");if(!/^[a-f0-9]{64}$/.test(hash))throw Error("Image checksum unavailable.");
+  const prior=command.current,cmd=prior??{key:Crypto.randomUUID(),hash,mime:picked.mime,size:picked.size};if(cmd.hash!==hash||cmd.mime!==picked.mime||cmd.size!==picked.size)throw Error("The chosen image changed.");command.current=cmd;
+  const v=await api<Upload>("intents",{projectRef,projectVersion:version,requestKey:cmd.key,mime:cmd.mime,sizeBytes:cmd.size,sha256:cmd.hash});cmd.intent=v.uploadRef;setIntent(v.uploadRef);
+  if(v.cleanVerified){accept(v);return;}if(v.status!=="UPLOAD_READY"||!v.uploadUrl||!v.uploadHeaders)throw Error("Secure storage unavailable. No cover accepted.");
+  const url=new URL(v.uploadUrl);if(url.protocol!=="https:"||url.username||url.password||url.hash||v.uploadHeaders["Content-Type"]!==cmd.mime)throw Error("Invalid secure upload permission.");
+  const task=file.createUploadTask(v.uploadUrl,{httpMethod:"PUT",uploadType:UploadType.BINARY_CONTENT,mimeType:picked.mime,headers:v.uploadHeaders,sessionType:"foreground"});let result;try{result=await task.uploadAsync();}finally{task.release();}if(result.status<200||result.status>=300)throw Error("Upload outcome unconfirmed. Verify the original upload.");
+  accept(await api<Upload>("intents/"+v.uploadRef+"/confirm",{}));
+ }catch(e){setError(e instanceof Error?e.message:"Cover unavailable.");}finally{running.current=false;setBusy(false);}};
+ const button=(label:string,onPress:()=>void,disabled=false)=><Pressable accessibilityRole="button" accessibilityState={{disabled}} disabled={disabled} style={[s.button,disabled&&{opacity:.5}]} onPress={onPress}><Text style={{color:theme.text,fontWeight:"600"}}>{label}</Text></Pressable>;
+ return <View style={s.card}><Text style={s.label}>Cover Image</Text><Text style={s.muted}>Private, current verified project revision. Changes to the project require verifying a cover for the new revision.</Text>
+ {files===null?<Text>Cover status not confirmed.</Text>:!files.length?<Text>No verified cover for this revision.</Text>:files.map((f,i)=><Pressable key={f.fileRef} accessibilityRole="button" accessibilityState={{selected:f.fileRef===selected?.fileRef}} style={s.button} onPress={()=>setSelected(f)}><Text>{i===0?"Latest image":"Previous verified image"} · {new Date(f.createdAt).toLocaleDateString()}</Text></Pressable>)}
+ {loadingPreview&&<ActivityIndicator accessibilityLabel="Loading image"/>}{!!preview&&<Image source={{uri:preview}} accessibilityLabel="Private project cover" style={{height:200,width:"100%",borderRadius:8}} resizeMode="contain" onError={()=>{setPreview("");setError("Verified image preview unavailable.");}}/>}
+ {canUpload&&<>{button(picked?"Chosen: "+picked.name:"Choose cover image",()=>void pick(),busy)}{button(busy?"Working…":"Upload and verify cover",()=>void upload(),busy||!picked)}{!!intent&&button("Verify original upload",()=>void verify(),busy)}</>}
+ {button("Refresh cover",()=>{setError("");setEpoch(x=>x+1);},busy)}{!!message&&<Text accessibilityRole="alert">{message}</Text>}{!!error&&<Text accessibilityRole="alert" style={{color:theme.error}}>{error}</Text>}</View>;
+}
+const s=StyleSheet.create({card:{padding:12,borderRadius:10,borderColor:theme.border,borderWidth:1,gap:8,backgroundColor:theme.surface},label:{fontSize:16,fontWeight:"700",color:theme.text},muted:{color:theme.mutedText,fontSize:13},button:{padding:12,borderWidth:1,borderColor:theme.border,borderRadius:8,minHeight:44,justifyContent:"center"}});
