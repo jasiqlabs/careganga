@@ -9,7 +9,7 @@ const allowed=["image/jpeg","image/png","image/webp"];
 const MAX_BANNER=2*1024*1024;
 const base="/api/campaign-media/";
 async function api<T>(route:string,body?:Record<string,unknown>):Promise<T>{
- const r=await fetch(base+route,{cache:"no-store",...body?{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)}:{}});
+ const r=await fetch(base+route,{cache:"no-store",...(body?{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)}:{})});
  const v=await r.json().catch(()=>null);
  if(!r.ok||!v)throw Error(typeof v?.message==="string"?v.message:"Original campaign media status is unavailable.");
  return v as T;
