@@ -4,25 +4,38 @@ import {Pressable,StyleSheet,Text,TextInput,View} from "react-native";
 import {identityRequest} from "../identity-access/http-client";
 type Fields={contactPhone:string|null;postalAddress:string|null;
  emergencyName:string|null;emergencyPhone:string|null;
- pan:string|null;bankAccount:string|null;bankIfsc:string|null};
+ pan:string|null;bankAccount:string|null;bankIfsc:string|null;fatherName:string|null;motherName:string|null;dateOfBirth:string|null;gender:string|null;bloodGroup:string|null;contactEmail:string|null;pinCode:string|null;bankName:string|null;accountHolder:string|null;bankBranch:string|null;accountType:string|null;upiId:string|null};
 const empty=():Fields=>({contactPhone:null,postalAddress:null,emergencyName:null,
- emergencyPhone:null,pan:null,bankAccount:null,bankIfsc:null});
+ emergencyPhone:null,pan:null,bankAccount:null,bankIfsc:null,fatherName:null,motherName:null,dateOfBirth:null,gender:null,bloodGroup:null,contactEmail:null,pinCode:null,bankName:null,accountHolder:null,bankBranch:null,accountType:null,upiId:null});
 const fields=[
  ["contactPhone","Contact phone"],["postalAddress","Postal address"],
  ["emergencyName","Emergency contact name"],["emergencyPhone","Emergency contact phone"],
- ["pan","PAN (if required)"],["bankAccount","Bank account number"],["bankIfsc","IFSC"]
+ ["pan","PAN (if required)"],["bankAccount","Bank account number"],["bankIfsc","IFSC"],
+ ["fatherName","Father's name (optional)"],
+ ["motherName","Mother's name (optional)"],
+ ["dateOfBirth","Date of birth (YYYY-MM-DD)"],
+ ["gender","Gender (optional)"],
+ ["bloodGroup","Blood group (optional, e.g. A+)"],
+ ["contactEmail","Email address"],
+ ["pinCode","PIN code"],
+ ["bankName","Bank name"],
+ ["accountHolder","Account holder name"],
+ ["bankBranch","Bank branch"],
+ ["accountType","Account type (Savings / Current / Other)"],
+ ["upiId","UPI ID (optional)"]
 ] as const;
 async function api(token:string,path:string,method:"GET"|"PATCH"="GET",body?:object){
  const res=await identityRequest("/api/hr/private/"+encodeURIComponent(path),{
   method,cache:"no-store",headers:{Authorization:"Bearer "+token,
    ...(body?{"Content-Type":"application/json"}:{})},
   ...(body?{body:JSON.stringify(body)}:{})});
- if(!res.ok)throw Object.assign(new Error(
+ if(!res.ok){const rejected:unknown=await res.json().catch(()=>null);throw Object.assign(new Error(
+  res.status===400&&rejected&&typeof rejected==="object"&&"code" in rejected&&rejected.code==="CG10_PRIVATE_INVALID"&&"message" in rejected&&typeof rejected.message==="string"?rejected.message:
   res.status===401?"Session expired. Sign in again.":
   res.status===403?"Your current role does not permit private employee details.":
   res.status===409?"The employee record changed. Refresh before saving.":
    "Private employee information cannot be verified; do not repeat an uncertain write."
- ),{status:res.status});
+ ),{status:res.status});}
  return res.json() as Promise<unknown>;
 }
 export function NativeHrPrivate({token,applicationRef,canManage,onExpired}:{
@@ -86,6 +99,8 @@ export function NativeHrPrivate({token,applicationRef,canManage,onExpired}:{
       placeholder="Optional" placeholderTextColor="#94A3B8"
       autoCapitalize="none" style={styles.input}
       onChangeText={v=>setData(old=>({...old,[field]:v}))}
+      maxLength={field==="postalAddress"?700:field==="contactEmail"?254:field==="upiId"?128:field==="contactPhone"||field==="emergencyPhone"?20:field==="bankAccount"?22:field==="bankIfsc"?11:field==="pan"||field==="dateOfBirth"?10:field==="pinCode"?6:field==="bloodGroup"?3:field==="accountType"?16:field==="gender"?32:120}
+      keyboardType={field==="contactEmail"?"email-address":field==="contactPhone"||field==="emergencyPhone"?"phone-pad":field==="pinCode"||field==="bankAccount"?"number-pad":"default"}
       multiline={field==="postalAddress"}/>
     </View>)}
     {canManage&&<Pressable accessibilityRole="button" style={styles.primary}
