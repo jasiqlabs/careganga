@@ -73,7 +73,11 @@ export class VolunteerApprovalService{
  async inbox(token:string,raw:unknown){
   const a=await this.reviewer(token),x=object(raw,["status","offset","q","departmentRef","availability"]);
   const status=pick(x.status??"ALL",["ALL","SUBMITTED","PENDING_OWNER","RETURNED","REJECTED","OWNER_COMPLETED"] as const,"review status");
-  const offset=x.offset===undefined?0:int(x.offset,0,5000,"page"),term=plain(x.q??"",0,80,"search").toLowerCase();
+  // Express GET @Query yields strings, unlike POST JSON numeric revisions.
+  const offset=x.offset===undefined||x.offset===""?0:
+   typeof x.offset==="string"&&/^(0|[1-9][0-9]{0,3})$/.test(x.offset)?Number(x.offset):NaN;
+  if(!Number.isSafeInteger(offset)||offset<0||offset>5000)throw new BadRequestException("Choose a valid volunteer review page.");
+  const term=plain(x.q??"",0,80,"search").toLowerCase();
   const department=x.departmentRef===undefined||x.departmentRef===""?null:uuid(x.departmentRef);
   const availability=pick(x.availability??"ALL",["ALL","FULL_TIME","PART_TIME","WEEKENDS","FLEXIBLE"] as const,"availability");
   return this.run(a,async tx=>{
