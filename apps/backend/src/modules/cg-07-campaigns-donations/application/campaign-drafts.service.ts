@@ -299,18 +299,31 @@ export class CampaignDraftsService{
  async list(token:string,query:Record<string,unknown>){
   const offset=query.offset===undefined?0:Number(query.offset);
   const q=typeof query.q==="string"?query.q.trim().toLowerCase():"";
-  if(!Number.isSafeInteger(offset)||offset<0||offset>5000||q.length>80||
-   Object.keys(query).some(k=>!["offset","q"].includes(k)))
+  const status=query.status??"ALL";
+  if(typeof status!=="string"||!["ALL","DRAFT","PUBLISHED","CLOSED","WITHDRAWN","SUBMITTED","RETURNED","REJECTED","APPROVED","PAUSED"].includes(status)||
+   !Number.isSafeInteger(offset)||offset<0||offset>5000||q.length>80||
+   Object.keys(query).some(k=>!["offset","q","status"].includes(k)))
    throw invalid("Check the campaign search and page filters.");
   return this.run(token,"campaigns.view",async(tx,a)=>{
    const scope=await this.branches.projectBranchScope(tx,a);
-   const args=[a.realmId,scope.all,scope.branches.map(b=>b.value),q,offset] as const;
+   const args=[a.realmId,scope.all,scope.branches.map(b=>b.value),q,status,offset] as const;
    const rows=(await tx.query(`SELECT ${projection}${joins}
     WHERE c.root_realm_id=$1 AND ($2::boolean OR c.branch_ref=ANY($3::uuid[]))
      AND ($4='' OR strpos(lower(c.title),$4)>0 OR strpos(lower(c.code_norm),$4)>0)
-    ORDER BY c.updated_at DESC,c.id DESC LIMIT 26 OFFSET $5`,[...args])).rows;
-   return {items:rows.slice(0,25),offset,hasMore:rows.length>25,
-    message:"Only original Foundation campaign drafts are included. No donation or publication is inferred."};
+     AND ($5='ALL' OR c.source_status=$5)
+    ORDER BY c.updated_at DESC,c.id DESC LIMIT 26 OFFSET $6`,[...args])).rows;
+   const summary=(await tx.query<{total:number;active:number;draft:number;completed:number;cancelled:number;goalMinor:string}>(`
+    SELECT count(*)::integer AS total,
+      count(*) FILTER (WHERE source_status='PUBLISHED')::integer AS active,
+      count(*) FILTER (WHERE source_status='DRAFT')::integer AS draft,
+      count(*) FILTER (WHERE source_status='CLOSED')::integer AS completed,
+      count(*) FILTER (WHERE source_status='WITHDRAWN')::integer AS cancelled,
+      COALESCE(sum(goal_minor) FILTER (WHERE source_status IN('APPROVED','PUBLISHED')),0)::text AS "goalMinor"
+    FROM campaign WHERE root_realm_id=$1
+     AND ($2::boolean OR branch_ref=ANY($3::uuid[]))`,
+     [a.realmId,scope.all,scope.branches.map(b=>b.value)])).rows[0];
+   return {items:rows.slice(0,25),offset,hasMore:rows.length>25,summary,
+    message:"Scope-wide campaign counts are original campaign statuses; funding collected is unavailable until verified finance integration."};
   },true);
  }
 }
