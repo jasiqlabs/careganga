@@ -15,7 +15,7 @@ export function parseHrDocumentDraft(raw:unknown){
   throw new BadRequestException("Choose an eligible document subject and template");
  const kind=x.kind as HrDocumentKind,reference=x.subjectReference;
  if(!(kind==="OFFER"?/^CG-HR-APP-[0-9]{6,}$/:/^CG-HR-EMP-[0-9]{6,}$/).test(reference))throw new BadRequestException("Choose the original eligible employee or pending application");
- const issueDate=leaveDate(x.issueDate),expiryDate=x.expiryDate?leaveDate(x.expiryDate):null;
+ const issueDate=leaveDate(x.issueDate),expiryDate=x.expiryDate===undefined||x.expiryDate===null||x.expiryDate===""?null:leaveDate(x.expiryDate);
  if(kind==="EMPLOYEE_ID"?(!expiryDate||expiryDate<=issueDate):expiryDate!==null)throw new BadRequestException("Check the ID card expiry date");
  return {kind,subjectReference:reference,templateId:leaveId(x.templateId),templateVersion:Number(x.templateVersion),issueDate,expiryDate,requestKey:leaveId(x.requestKey)};
 }
@@ -127,9 +127,9 @@ export class HrDocumentSourceFacade{
   const q=await tx.query<HrDocumentRow>(`SELECT h.* FROM hr_document_request h JOIN branch b ON b.id=h.source_branch_ref AND b.root_realm_id=h.root_realm_id
    LEFT JOIN hr_employee e ON e.id=h.employee_id AND e.root_realm_id=h.root_realm_id
    WHERE h.root_realm_id=$1 AND ($3::text IS NULL OR h.reference=$3)
-    AND (${own?`e.account_ref=$2 AND e.status IN('ACTIVE','PROBATION') AND h.status='APPROVED' AND EXISTS(
+    AND (${own?`e.account_ref=$2 AND e.status IN('ACTIVE','PROBATION') AND h.status='APPROVED' AND EXISTS(SELECT 1 FROM hr_employment_assignment current_assignment JOIN branch current_branch ON current_branch.id=current_assignment.branch_ref AND current_branch.root_realm_id=current_assignment.root_realm_id AND current_branch.status='ACTIVE' WHERE current_assignment.root_realm_id=e.root_realm_id AND current_assignment.employee_id=e.id AND current_assignment.valid_from<=CURRENT_DATE AND current_assignment.valid_to IS NULL) AND EXISTS(
      SELECT 1 FROM cg19_generated_document d WHERE d.realm_id=h.root_realm_id AND d.case_id=h.case_ref AND d.state IN('ISSUED','REVOKED'))`:`${scope} AND (
-     h.employee_id IS NULL OR EXISTS(SELECT 1 FROM hr_employment_assignment a WHERE a.root_realm_id=h.root_realm_id AND a.employee_id=h.employee_id
+     (h.employee_id IS NULL AND EXISTS(SELECT 1 FROM hr_employee_application ap WHERE ap.root_realm_id=h.root_realm_id AND ap.id=h.application_id AND ap.proposed_branch_ref=h.source_branch_ref)) OR EXISTS(SELECT 1 FROM hr_employment_assignment a WHERE a.root_realm_id=h.root_realm_id AND a.employee_id=h.employee_id
       AND a.branch_ref=h.source_branch_ref AND a.valid_from<=CURRENT_DATE AND (a.valid_to IS NULL OR (e.status='EXITED' AND a.id=h.assignment_id)))
      OR EXISTS(SELECT 1 FROM account_role ar JOIN role r ON r.id=ar.role_id AND r.realm_id=ar.realm_id AND r.active AND r.is_protected WHERE ar.realm_id=$1 AND ar.account_id=$2 AND ar.revoked_at IS NULL))
      AND (h.status<>'DRAFT' OR h.created_by=$2)`})
@@ -140,6 +140,7 @@ export class HrDocumentSourceFacade{
   const snapshot=row.source_snapshot;
   if(typeof snapshot.subjectReference!=="string")throw new ConflictException("Original document subject unavailable");
   const s=await this.subject(tx,actor,row.kind,snapshot.subjectReference);
+  if(typeof snapshot.expiryDate==="string"&&snapshot.expiryDate<=s.today)throw new ConflictException("Employee card expiry has passed; create a new request");
   const t=await this.template(tx,actor.realmId,{kind:row.kind,templateId:row.template_id,templateVersion:row.template_version,subjectReference:snapshot.subjectReference,issueDate:String(snapshot.issueDate),expiryDate:typeof snapshot.expiryDate==="string"?snapshot.expiryDate:null,requestKey:row.id});
   if(s.employee_id!==row.employee_id||s.application_id!==row.application_id||s.branch_ref!==row.source_branch_ref||
    sha([s.employee_id,s.application_id,s.application_revision_id,s.assignment_id,s.exit_change_id,t.id,{

@@ -7,7 +7,7 @@ import {SessionService} from "../../cg-01-identity-access/application/session.se
 import {FoundationStructureIdentityFacade} from "../../cg-01-identity-access/application/foundation-structure-identity.facade";
 import type {VerifiedFoundationActor} from "../../cg-01-identity-access/public-api";
 import {HrDocumentApprovalService} from "../../cg-03-registration-approvals/application/hr-document-approval.service";
-import {HrDocumentSourceFacade,type HrDocumentRow,type HrDocumentKind} from "../../cg-10-human-resources/application/hr-document-source.facade";
+import {HrDocumentSourceFacade,type HrDocumentRow} from "../../cg-10-human-resources/application/hr-document-source.facade";
 import {leaveId} from "../../cg-10-human-resources/application/hr-leave-source.facade";
 import {CommunicationRecipientSource} from "../../cg-01-identity-access/application/communication-recipient-source.service";
 import {NotificationService} from "./notification.service";
@@ -100,11 +100,12 @@ export class HrIssuedDocumentService{
    const existing=(await tx.query<Doc>("SELECT * FROM cg19_generated_document WHERE realm_id=$1 AND issued_by=$2 AND issue_key=$3 FOR UPDATE",[a.realmId,a.accountId,key])).rows[0];
    if(existing){if(existing.request_digest!==digest||existing.case_id!==c.id)throw new ConflictException("Original issue request differs");return existing;}
    if((await tx.query("SELECT 1 FROM cg19_generated_document WHERE realm_id=$1 AND case_id=$2 AND state IN('PENDING','UNKNOWN','VERIFYING','ISSUED')",[a.realmId,c.id])).rowCount)throw new ConflictException("An original document already exists. Review or retry it.");
+   if(row.kind==="EMPLOYEE_ID"&&(await tx.query("SELECT 1 FROM cg19_generated_document WHERE realm_id=$1 AND hr_card_employee_ref=$2 AND state IN('PENDING','UNKNOWN','VERIFYING','ISSUED')",[a.realmId,row.employee_id])).rowCount)throw new ConflictException("Revoke or resolve the previous employee card before issuing a replacement");
    const version=(await tx.query<{rev:number}>("SELECT COALESCE(MAX(issue_revision),0)+1 AS rev FROM cg19_generated_document WHERE realm_id=$1 AND case_id=$2",[a.realmId,c.id])).rows[0].rev;
    const id=randomUUID(),objectKey="careganga/private/cg19/"+a.realmId+"/hr-documents/"+id;
    const qr=row.kind==="EMPLOYEE_ID"?employeeCardToken(a.realmId,id,row.source_digest):null;
-   const d=(await tx.query<Doc>(`INSERT INTO cg19_generated_document(id,realm_id,case_id,proposal_revision,template_id,template_version,issue_revision,source_snapshot,source_sha256,issue_key,request_digest,issued_by,state,object_key,hr_card_token_digest)
-    VALUES($1,$2,$3,$4,$5,$6,$7,$8::jsonb,$9,$10,$11,$12,'PENDING',$13,$14) RETURNING *`,[id,a.realmId,c.id,row.revision,row.template_id,row.template_version,version,JSON.stringify(row.source_snapshot),row.source_digest,key,digest,a.accountId,objectKey,qr?hash(qr):null])).rows[0];
+   const d=(await tx.query<Doc>(`INSERT INTO cg19_generated_document(id,realm_id,case_id,proposal_revision,template_id,template_version,issue_revision,source_snapshot,source_sha256,issue_key,request_digest,issued_by,state,object_key,hr_card_token_digest,hr_card_employee_ref)
+    VALUES($1,$2,$3,$4,$5,$6,$7,$8::jsonb,$9,$10,$11,$12,'PENDING',$13,$14,$15) RETURNING *`,[id,a.realmId,c.id,row.revision,row.template_id,row.template_version,version,JSON.stringify(row.source_snapshot),row.source_digest,key,digest,a.accountId,objectKey,qr?hash(qr):null,qr?row.employee_id:null])).rows[0];
    await this.event(tx,a,d,"ISSUE_PENDING");return d;
   });
   return this.reconcile(token,doc.id);
@@ -229,9 +230,9 @@ export class HrIssuedDocumentService{
  }
  async verifyPublic(raw:unknown){
   if(typeof raw!=="string"||!/^CGV-[A-F0-9]{24}$/.test(raw))return {status:"INACTIVE"};
-  const q=await this.db.query<{result:string}>(`SELECT CASE WHEN h.expiry_date<=CURRENT_DATE THEN 'EXPIRED'
+  const q=await this.db.query<{result:string}>(`SELECT CASE WHEN d.state<>'ISSUED' THEN 'INACTIVE' WHEN h.expiry_date<=CURRENT_DATE THEN 'EXPIRED'
    WHEN d.state='ISSUED' AND e.status IN('ACTIVE','PROBATION') AND e.status_version=h.employee_version
-    AND a.id=h.assignment_id AND a.assignment_version=h.assignment_version AND a.valid_to IS NULL AND b.status='ACTIVE' THEN 'VALID' ELSE 'INACTIVE' END AS result
+    AND a.id=h.assignment_id AND a.assignment_version=h.assignment_version AND a.valid_from<=CURRENT_DATE AND a.valid_to IS NULL AND b.status='ACTIVE' THEN 'VALID' ELSE 'INACTIVE' END AS result
    FROM cg19_generated_document d JOIN hr_document_request h ON h.root_realm_id=d.realm_id AND h.case_ref=d.case_id AND h.kind='EMPLOYEE_ID' AND h.source_digest=d.source_sha256
    JOIN hr_employee e ON e.root_realm_id=h.root_realm_id AND e.id=h.employee_id
    JOIN hr_employment_assignment a ON a.root_realm_id=h.root_realm_id AND a.id=h.assignment_id

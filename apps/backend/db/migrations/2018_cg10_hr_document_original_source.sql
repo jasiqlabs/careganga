@@ -160,3 +160,25 @@ BEGIN
  RETURN NEW;
 END; $fn$;
 CREATE TRIGGER cg19_hr_card_guard BEFORE INSERT OR UPDATE ON cg19_generated_document FOR EACH ROW EXECUTE FUNCTION cg19_hr_card_guard();
+
+-- An employee card is tied to its original subject, not just a case. Prevent two active cards across different requests.
+ALTER TABLE cg19_generated_document ADD COLUMN hr_card_employee_ref uuid;
+ALTER TABLE cg19_generated_document ADD CONSTRAINT fk_cg19_hr_card_subject FOREIGN KEY(hr_card_employee_ref,realm_id) REFERENCES hr_employee(id,root_realm_id) ON DELETE RESTRICT;
+CREATE UNIQUE INDEX ux_cg19_one_current_employee_card ON cg19_generated_document(realm_id,hr_card_employee_ref)
+ WHERE hr_card_employee_ref IS NOT NULL AND state IN('PENDING','VERIFYING','UNKNOWN','ISSUED');
+CREATE FUNCTION cg19_hr_card_subject_guard() RETURNS trigger LANGUAGE plpgsql AS $fn$
+BEGIN
+ IF TG_OP='UPDATE' AND NEW.hr_card_employee_ref IS DISTINCT FROM OLD.hr_card_employee_ref THEN RAISE EXCEPTION 'Original card subject cannot change'; END IF;
+ IF NEW.hr_card_token_digest IS NOT NULL THEN
+  IF NEW.hr_card_employee_ref IS NULL OR NOT EXISTS(SELECT 1 FROM hr_document_request h
+   WHERE h.root_realm_id=NEW.realm_id AND h.case_ref=NEW.case_id AND h.kind='EMPLOYEE_ID' AND h.employee_id=NEW.hr_card_employee_ref)
+   THEN RAISE EXCEPTION 'Original employee card subject required'; END IF;
+ ELSIF NEW.hr_card_employee_ref IS NOT NULL THEN RAISE EXCEPTION 'Card subject is only valid for employee ID cards';
+ END IF;
+ IF TG_OP='INSERT' AND EXISTS(SELECT 1 FROM hr_document_request h WHERE h.root_realm_id=NEW.realm_id AND h.case_ref=NEW.case_id)
+ AND NEW.state<>'PENDING' THEN RAISE EXCEPTION 'HR document must begin pending verified storage'; END IF;
+ IF TG_OP='UPDATE' AND EXISTS(SELECT 1 FROM hr_document_request h WHERE h.root_realm_id=NEW.realm_id AND h.case_ref=NEW.case_id)
+ AND OLD.state='REVOKED' AND NEW.state IS DISTINCT FROM OLD.state THEN RAISE EXCEPTION 'Revoked HR documents cannot be reactivated'; END IF;
+ RETURN NEW;
+END; $fn$;
+CREATE TRIGGER cg19_hr_card_subject_guard BEFORE INSERT OR UPDATE ON cg19_generated_document FOR EACH ROW EXECUTE FUNCTION cg19_hr_card_subject_guard();
