@@ -161,7 +161,7 @@ export class ProjectsService{
    const branchHistory=(await tx.query("SELECT COALESCE(b.name,'Foundation') AS branch,h.valid_from AS \"validFrom\",h.valid_to AS \"validTo\" FROM project_branch_history h LEFT JOIN branch b ON b.id=h.branch_ref AND b.root_realm_id=h.root_realm_id WHERE h.root_realm_id=$1 AND h.project_id=$2 ORDER BY h.valid_from DESC LIMIT 50",[a.realmId,target])).rows;
    let canManage=false;try{await this.identity.assertCurrent(tx,a,"projects.manage");await this.branches.projectBranch(tx,a,item.branchRef);canManage=true;}catch(e){if(!(e instanceof ForbiddenException))throw e;}
    const finance=await this.budgetOverview(tx,a,await this.branches.projectBranchScope(tx,a),false,target);
-   return {...item,history,branchHistory,canManage,finance,financeStatus:finance.status,publicStatus:"PRIVATE"};
+   return {...item,history,branchHistory,canManage,finance,financeStatus:finance.status,publicStatus:"CHECK_ELIGIBILITY"};
   },true);
  }
 }
