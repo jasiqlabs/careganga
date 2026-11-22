@@ -1,0 +1,7 @@
+import test from "node:test";
+import assert from "node:assert/strict";
+import {parseApplicationDraft,parseDraftCancel} from "../src/modules/cg-04-membership-volunteers/domain/member-application-input";
+const id="11111111-1111-4111-8111-111111111111";
+const input={requestKey:id,planCode:"MEM-"+"A".repeat(32),offerRevision:1,address:"Example application address",city:"Example city",pinCode:"123456",stateRef:id,districtRef:id,consent:true};
+test("US002 QA01/04/08: pinned offer, genuine consent and validated draft fields",()=>{const x=parseApplicationDraft(input,false);assert.equal(x.offerRevision,1);assert.equal(x.branch,null);assert.equal(x.consentVersion,"MEMBERSHIP_V1");for(const extra of [{offerRevision:0},{planCode:"draft"},{consent:false},{pinCode:"000000"},{districtRef:"invalid"},{address:"x"}])assert.throws(()=>parseApplicationDraft({...input,...extra},false));});
+test("US002 QA02/03/13/17: reject caller identity, payment, approval and cross-scope spoofing",()=>{for(const extra of [{accountRef:id},{name:"Other account"},{mobile:"9999999999"},{feeMinor:"0"},{status:"APPROVED"},{paymentStatus:"VERIFIED"},{rootRealmId:id}])assert.throws(()=>parseApplicationDraft({...input,...extra},false));assert.equal(parseApplicationDraft({...input,expectedVersion:1},true).expected,1);assert.throws(()=>parseApplicationDraft(input,true));assert.throws(()=>parseDraftCancel({requestKey:id,expectedVersion:0}));});
