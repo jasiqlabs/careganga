@@ -11,7 +11,8 @@
     "test:cg20-source-contracts": "tsx --test test/cg20-source-contract.test.ts",
     "test:cg10-enrollment": "tsx --test test/cg10-enrollment-contract.test.ts",
     "test:cg10-attendance": "tsx --test test/cg10-attendance-contract.test.ts",
-    "test:cg10-document-allowance": "tsx --test test/cg10-document-allowance-contract.test.ts"
+    "test:cg10-document-allowance": "tsx --test test/cg10-document-allowance-contract.test.ts",
+    "test:cg19-migration-compatibility": "tsx --test test/cg19-migration-compatibility.test.ts"
   },
   "dependencies": {
     "@nestjs/common": "12.5.0",

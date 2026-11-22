@@ -353,8 +353,11 @@ export function NativeHrEnrollment({token,canView,canManage,canReview,canViewEmp
     autoCapitalize={label==="Joining date"?"none":"words"}/>
   </View>
  );
- if(allowancesOpen&&canViewAllowances&&self&&["ACTIVE","PROBATION"].includes(self.status))return <FinanceExpenseClaimsScreen token={token} allowanceMode canView canCreate={canRequestAllowances} canUploadBill={canUploadAllowanceBill} onExit={()=>setAllowancesOpen(false)} onExpired={onExpired}/>;
- return <ScrollView ref={scroll} style={styles.page} keyboardShouldPersistTaps="handled"
+ const allowanceEligible=canViewAllowances&&!!self&&["ACTIVE","PROBATION"].includes(self.status);
+ const allowanceVisible=allowancesOpen&&allowanceEligible;
+ return <View style={{flex:1}}>
+ {allowanceEligible&&allowancesOpen&&<View style={{flex:1}}><FinanceExpenseClaimsScreen token={token} allowanceMode canView canCreate={canRequestAllowances} canUploadBill={canUploadAllowanceBill} onExit={()=>setAllowancesOpen(false)} onExpired={onExpired}/></View>}
+ <ScrollView ref={scroll} style={[styles.page,allowanceVisible&&{display:"none"}]} accessibilityElementsHidden={allowanceVisible} importantForAccessibility={allowanceVisible?"no-hide-descendants":"auto"} keyboardShouldPersistTaps="handled"
   contentContainerStyle={styles.content}>
    <View style={styles.heading}>
     <Text style={styles.title}>Human Resources</Text>
@@ -633,7 +636,8 @@ export function NativeHrEnrollment({token,canView,canManage,canReview,canViewEmp
     </View>
    </View>}
    </View>}
-  </ScrollView>;
+  </ScrollView>
+ </View>;
 }
 const styles=StyleSheet.create({
  page:{flex:1,backgroundColor:"#F8FAFC"},
