@@ -10,6 +10,10 @@ import {identityRequest} from "../identity-access/http-client";
 type Decision="APPROVE"|"RETURN"|"REJECT";
 type Command={ref:string;requestKey:string;expectedRevision:number;action:Decision;remarks:string};
 const statuses=["ALL","SUBMITTED","PENDING_OWNER","RETURNED","REJECTED","OWNER_COMPLETED"];
+const categories=["ALL","ANNUAL","LIFETIME","HONORARY","STUDENT","OTHER"];
+const paymentStates=["ALL","NOT_DUE","PENDING","AWAITING_BANK_VERIFICATION","VERIFIED","REFUND_PENDING","REFUND_AWAITING_BANK_VERIFICATION","REFUNDED"];
+type SearchFilter={q:string;category:string;payment:string;submittedFrom:string;submittedTo:string};
+const emptySearch=():SearchFilter=>({q:"",category:"ALL",payment:"ALL",submittedFrom:"",submittedTo:""});
 const detailTabs=[
  {key:"OVERVIEW",label:"Overview"},
  {key:"PERSONAL",label:"Personal Info"},
@@ -28,6 +32,7 @@ const amount=(minor:string)=>{if(!/^\d{1,15}$/.test(minor))return "Unavailable";
 export function NativeMemberReview({token,canConfigure,onExpired}:{token:string;canConfigure:boolean;onExpired:()=>void}){
  const [policy,setPolicy]=useState<CG04ReviewPolicy|null>(null),[page,setPage]=useState<CG04ReviewPage|null>(null),[detail,setDetail]=useState<CG04ReviewCase|null>(null);
  const [detailTab,setDetailTab]=useState<DetailTab>("OVERVIEW");
+ const [searchOpen,setSearchOpen]=useState(false),[draftSearch,setDraftSearch]=useState<SearchFilter>(emptySearch),[search,setSearch]=useState<SearchFilter>(emptySearch);
  const [status,setStatus]=useState("ALL"),[offset,setOffset]=useState(0),[selected,setSelected]=useState<string|null>(null),[epoch,setEpoch]=useState(0);
  const [loading,setLoading]=useState(true),[detailBusy,setDetailBusy]=useState(false),[busy,setBusy]=useState(false),[error,setError]=useState(""),[notice,setNotice]=useState("");
  const [decision,setDecision]=useState<Decision>("APPROVE"),[remarks,setRemarks]=useState(""),[password,setPassword]=useState(""),[retryPassword,setRetryPassword]=useState(""),[configPassword,setConfigPassword]=useState("");
@@ -45,11 +50,11 @@ export function NativeMemberReview({token,canConfigure,onExpired}:{token:string;
  });return()=>sub.remove();},[]);
  useEffect(()=>{
   const n=++seq.current;setLoading(true);setPage(null);setError("");
-  void Promise.all([request<CG04ReviewPolicy>("/policy"),request<CG04ReviewPage>("?"+new URLSearchParams({status,offset:String(offset)}))]).then(([p,list])=>{
+  void Promise.all([request<CG04ReviewPolicy>("/policy"),request<CG04ReviewPage>("?"+new URLSearchParams({status,offset:String(offset),...search}))]).then(([p,list])=>{
    if(n===seq.current&&foreground.current){setPolicy(p);setPage(list);}
   }).catch(e=>{if(n===seq.current&&foreground.current)setError(e instanceof Error?e.message:"Membership reviews unavailable.");}).finally(()=>{if(n===seq.current&&foreground.current)setLoading(false);});
   return()=>{seq.current++;};
- },[token,status,offset,epoch]);
+ },[token,status,offset,search,epoch]);
  useEffect(()=>{
   const n=++detailSeq.current;setDetail(null);setDetailBusy(!!selected);if(!selected)return;
   void request<CG04ReviewCase>("/"+selected).then(v=>{if(n===detailSeq.current&&foreground.current)setDetail(v);})
@@ -58,6 +63,11 @@ export function NativeMemberReview({token,canConfigure,onExpired}:{token:string;
   return()=>{detailSeq.current++;};
  },[token,selected,epoch]);
  const refresh=()=>setEpoch(x=>x+1);
+ const applySearch=()=>{
+  if(draftSearch.submittedFrom&&draftSearch.submittedTo&&draftSearch.submittedFrom>draftSearch.submittedTo){setError("Start date must be on or before the end date.");return;}
+  setError("");setSearch({...draftSearch,q:draftSearch.q.trim()});setOffset(0);setSelected(null);setDetail(null);setPassword("");
+ };
+ const resetSearch=()=>{setDraftSearch(emptySearch());setSearch(emptySearch());setOffset(0);setSelected(null);setDetail(null);setPassword("");};
  const chip=(title:string,onPress:()=>void,selectedChip=false,disabled=false)=>(
   <Pressable accessibilityRole="button" accessibilityState={{selected:selectedChip,disabled}} disabled={disabled} onPress={onPress} style={[styles.chip,selectedChip&&styles.chipSelected,disabled&&styles.disabled]}><Text style={[styles.chipText,selectedChip&&styles.chipTextSelected]}>{title}</Text></Pressable>
  );
@@ -110,12 +120,28 @@ export function NativeMemberReview({token,canConfigure,onExpired}:{token:string;
     {chip("Configure protected review",()=>void configure(),false,busy||configPassword.length<8)}</>:<Text style={styles.muted}>Ask an authorized Foundation administrator to configure membership approval.</Text>}
   </View>}
   <View style={styles.card}><Text style={styles.title}>Review status</Text>
+   {chip(searchOpen?"Hide search filters":"Filter applications",()=>setSearchOpen(v=>!v),searchOpen,busy)}
+   {searchOpen&&<View style={styles.item}>
+    <Text style={styles.label}>Find applicant, member number or reference</Text>
+    <TextInput accessibilityLabel="Search application name, email, phone or reference" style={styles.input} value={draftSearch.q} maxLength={100} onChangeText={v=>setDraftSearch(x=>({...x,q:v}))}/>
+    <Text style={styles.label}>Membership tier</Text><View style={styles.buttons}>
+     {categories.map(v=><React.Fragment key={v}>{chip(v==="ALL"?"All tiers":label(v),()=>setDraftSearch(x=>({...x,category:v})),draftSearch.category===v,busy)}</React.Fragment>)}
+    </View>
+    <Text style={styles.label}>Verified fee status</Text><View style={styles.buttons}>
+     {paymentStates.map(v=><React.Fragment key={v}>{chip(v==="ALL"?"All payment states":label(v),()=>setDraftSearch(x=>({...x,payment:v})),draftSearch.payment===v,busy)}</React.Fragment>)}
+    </View>
+    <Text style={styles.label}>Submitted from (YYYY-MM-DD)</Text>
+    <TextInput accessibilityLabel="Submitted from date, year month day" value={draftSearch.submittedFrom} style={styles.input} maxLength={10} placeholder="YYYY-MM-DD" editable={!busy} onChangeText={v=>setDraftSearch(x=>({...x,submittedFrom:v}))}/>
+    <Text style={styles.label}>Submitted through (YYYY-MM-DD)</Text>
+    <TextInput accessibilityLabel="Submitted through date, year month day" value={draftSearch.submittedTo} style={styles.input} maxLength={10} placeholder="YYYY-MM-DD" editable={!busy} onChangeText={v=>setDraftSearch(x=>({...x,submittedTo:v}))}/>
+    <View style={styles.buttons}>{chip("Search",applySearch,false,busy||loading)}{chip("Reset",resetSearch,false,busy||loading)}</View>
+   </View>}
    <View style={styles.buttons}>{statuses.map(v=><React.Fragment key={v}>{chip(label(v),()=>changeStatus(v),status===v,busy)}</React.Fragment>)}</View>
    {loading&&<ActivityIndicator accessibilityLabel="Loading current membership review cases"/>}
    {page&&!loading&&<>
-    {page.items.length===0&&<Text style={styles.muted}>No current membership applications in this status.</Text>}
-    {page.items.map(item=><View key={item.caseRef} style={styles.item}><Text style={styles.title}>{item.name}</Text><Text>{item.reference} · {label(item.status)}</Text>
-     <Text style={styles.muted}>Submitted: {new Date(item.submittedAt).toLocaleDateString("en-IN")}</Text>
+    {page.items.length===0&&<Text style={styles.muted}>No membership applications match your permitted filters.</Text>}
+    {page.items.map(item=><View key={item.caseRef} style={styles.item}><Text style={styles.title}>{item.name}</Text><Text>{item.reference} · {label(item.status)}</Text><Text style={styles.muted}>Tier: {item.plan} · {label(item.category)}</Text><Text style={styles.muted}>Payment: {label(item.paymentStatus)}</Text>
+     <Text style={styles.muted}>Submitted: {new Date(item.submittedAt).toLocaleDateString("en-IN",{timeZone:"Asia/Kolkata"})}</Text>
      {chip(selected===item.caseRef?"Selected":"View application",()=>choose(item.caseRef),selected===item.caseRef,busy)}</View>)}
     <View style={styles.buttons}>{chip("Previous",()=>{setOffset(x=>Math.max(0,x-25));setSelected(null);},false,busy||offset===0)}
      {chip("Next",()=>{setOffset(x=>x+25);setSelected(null);},false,busy||!page.hasMore)}</View>
