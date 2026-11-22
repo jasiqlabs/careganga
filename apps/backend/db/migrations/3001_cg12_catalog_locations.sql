@@ -47,7 +47,7 @@ CREATE TABLE inventory_audit (
  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
  root_realm_id uuid NOT NULL REFERENCES access_realm(id) ON DELETE RESTRICT,
  actor_ref uuid NOT NULL,
- source_kind text NOT NULL CHECK(source_kind IN('ITEM','SUPPLIER','LOCATION')),
+ source_kind text NOT NULL CHECK(source_kind IN('ITEM','SUPPLIER','LOCATION','THRESHOLD','SUPPLIER_PRIVATE')),
  source_ref uuid NOT NULL,
  event_key uuid NOT NULL,
  payload_digest char(64) NOT NULL CHECK(payload_digest ~ '^[0-9a-f]{64}$'),
@@ -56,11 +56,32 @@ CREATE TABLE inventory_audit (
  UNIQUE(root_realm_id,event_key),
  FOREIGN KEY(actor_ref,root_realm_id) REFERENCES account(id,realm_id) ON DELETE RESTRICT
 );
-CREATE FUNCTION cg12_inventory_audit_immutable() RETURNS trigger LANGUAGE plpgsql AS $
-BEGIN RAISE EXCEPTION 'Inventory audit is immutable'; END; $;
+CREATE FUNCTION cg12_inventory_audit_immutable() RETURNS trigger LANGUAGE plpgsql AS $cg12$
+BEGIN RAISE EXCEPTION 'Inventory audit is immutable'; END; $cg12$;
 CREATE TRIGGER inventory_audit_immutable BEFORE UPDATE OR DELETE ON inventory_audit
  FOR EACH ROW EXECUTE FUNCTION cg12_inventory_audit_immutable();
 CREATE INDEX ix_inventory_item_list ON inventory_item(root_realm_id,status,name,id);
 CREATE INDEX ix_inventory_supplier_list ON inventory_supplier(root_realm_id,status,display_name,id);
 CREATE INDEX ix_inventory_location_scope ON inventory_location(root_realm_id,branch_ref,status,label,id);
 -- No synthetic opening stock, future-owner FK, money, or writable balance.
+
+CREATE TABLE inventory_item_location_policy (
+ root_realm_id uuid NOT NULL,
+ item_id uuid NOT NULL,
+ location_id uuid NOT NULL,
+ threshold numeric(18,3) NOT NULL CHECK(threshold>=0),
+ version integer NOT NULL DEFAULT 1 CHECK(version>0),
+ PRIMARY KEY(root_realm_id,item_id,location_id),
+ FOREIGN KEY(root_realm_id,item_id) REFERENCES inventory_item(root_realm_id,id) ON DELETE RESTRICT,
+ FOREIGN KEY(root_realm_id,location_id) REFERENCES inventory_location(root_realm_id,id) ON DELETE RESTRICT
+);
+CREATE TABLE inventory_supplier_private (
+ root_realm_id uuid NOT NULL,
+ supplier_id uuid NOT NULL,
+ ciphertext text NOT NULL,
+ nonce text NOT NULL,
+ tag text NOT NULL,
+ version integer NOT NULL CHECK(version>0),
+ PRIMARY KEY(root_realm_id,supplier_id),
+ FOREIGN KEY(root_realm_id,supplier_id) REFERENCES inventory_supplier(root_realm_id,id) ON DELETE RESTRICT
+);
