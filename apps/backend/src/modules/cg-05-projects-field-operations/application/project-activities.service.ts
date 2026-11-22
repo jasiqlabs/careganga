@@ -171,11 +171,15 @@ export class ProjectActivitiesService{
   },true);
  }
  async list(token:string,query:Record<string,unknown>,mine=false,exporting=false){
+  return this.projects.run(token,exporting?"projects.activities.export":"projects.activities.view",(tx,a)=>this.listInTx(tx,a,query,mine,exporting),true);
+ }
+ async listInTx(tx:PoolClient,a:Actor,query:Record<string,unknown>,mine=false,exporting=false){
+  await this.identity.assertCurrent(tx,a,exporting?"projects.activities.export":"projects.activities.view");
+  if(exporting)await this.identity.assertCurrent(tx,a,"projects.activities.view");
   const q=clean(query.q??"",0,100).toLowerCase(),project=optionalRef(query.projectRef),kind=choice(query.kind??"ALL",["ALL",...activityKinds]),type=clean(query.activityType??"",0,80),category=clean(query.category??"",0,80),
    status=choice(query.status??"ALL",["ALL",...activityStatuses]),tab=choice(query.tab??"ALL",["ALL","COMPLETED","ONGOING","UPCOMING","CANCELLED","MY"] as const),state=optionalRef(query.stateRef),district=optionalRef(query.districtRef),branch=optionalRef(query.branchRef),owner=clean(query.owner??"",0,100).toLowerCase(),location=clean(query.location??"",0,100).toLowerCase(),from=date(query.from),to=date(query.to),offset=Number(query.offset??0);
   if(!Number.isSafeInteger(offset)||offset<0||offset>10000||from&&to&&from>to||district&&!state)throw invalid();
-  return this.projects.run(token,exporting?"projects.activities.export":"projects.activities.view",async(tx,a)=>{
-   if(exporting)await this.identity.assertCurrent(tx,a,"projects.activities.view");
+
    if(state||district)await this.branches.projectGeography(tx,a,state,district);
    const s=await this.branches.projectBranchScope(tx,a);
    const scope=`x.root_realm_id=$1 AND ((${effectiveBranch}) IS NULL OR b.status='ACTIVE') AND
@@ -190,7 +194,7 @@ export class ProjectActivitiesService{
    const tabFilter=tab==="UPCOMING"?" AND "+upcoming:tab==="MY"?" AND x.owner_account_ref=$4 AND "+ownerCurrent:["COMPLETED","ONGOING","CANCELLED"].includes(tab)?" AND x.status='"+tab+"'":"";
    const page=await tx.query("SELECT "+select+joins+where+tabFilter+" ORDER BY x.scheduled_start ASC,x.id LIMIT $19 OFFSET $20",[...vals,exporting?501:26,offset]);
    const items=page.rows.slice(0,exporting?500:25);
-   if(exporting){const columns=["code","title","kind","project","program","category","activityType","venue","branch","state","district","scheduledStart","scheduledEnd","owner","status"];return {csv:[columns,...items.map(row=>columns.map(k=>row[k]))].map(row=>row.map(csv).join(",")).join("\r\n"),rows:items.length,hasMore:page.rows.length>500};}
+   if(exporting){await this.projects.auditExport(tx,a,"ACTIVITIES",mine,items.length,query);const columns=["code","title","kind","project","program","category","activityType","venue","branch","state","district","scheduledStart","scheduledEnd","owner","status"];return {csv:[columns,...items.map(row=>columns.map(k=>row[k]))].map(row=>row.map(csv).join(",")).join("\r\n"),rows:items.length,hasMore:page.rows.length>500};}
    const counts=(await tx.query(`SELECT count(*)::int AS total,count(*) FILTER(WHERE x.status='COMPLETED')::int AS completed,count(*) FILTER(WHERE x.status='ONGOING')::int AS ongoing,count(*) FILTER(WHERE ${upcoming})::int AS upcoming,count(*) FILTER(WHERE x.status='CANCELLED')::int AS cancelled,count(*) FILTER(WHERE x.owner_account_ref=$4 AND ${ownerCurrent})::int AS mine`+joins+where,vals)).rows[0];
    const categories=(await tx.query("SELECT x.category AS label,count(*)::int AS count"+joins+where+" GROUP BY x.category ORDER BY count DESC,label LIMIT 8",vals)).rows;
    const statuses=(await tx.query("SELECT x.status AS label,count(*)::int AS count"+joins+where+" GROUP BY x.status ORDER BY x.status",vals)).rows;
@@ -203,6 +207,5 @@ export class ProjectActivitiesService{
     (SELECT COALESCE(jsonb_agg(v.owner),'[]'::jsonb) FROM (SELECT DISTINCT owner FROM allowed ORDER BY owner LIMIT 100) v) AS owners,
     (SELECT COALESCE(jsonb_agg(v.venue_label),'[]'::jsonb) FROM (SELECT DISTINCT venue_label FROM allowed ORDER BY venue_label LIMIT 100) v) AS locations`,vals.slice(0,5))).rows[0];
    return {items,counts,categories,statuses,recent,filterOptions:choices,offset,hasMore:page.rows.length>25};
-  },true);
  }
 }
