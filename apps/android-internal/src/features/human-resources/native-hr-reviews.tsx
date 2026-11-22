@@ -14,12 +14,13 @@ async function api<T>(token:string,path:string,method="GET",body?:object):Promis
   method,cache:"no-store",headers:{Authorization:"Bearer "+token,
   ...(body?{"Content-Type":"application/json"}:{})},
   ...(body?{body:JSON.stringify(body)}:{})});
- if(!response.ok)throw Object.assign(new Error(
+ if(!response.ok){const rejected:unknown=await response.json().catch(()=>null);throw Object.assign(new Error(
+  response.status===409&&rejected&&typeof rejected==="object"&&"code" in rejected&&typeof rejected.code==="string"&&["CG10_ENROLLMENT_EVIDENCE_CHANGED","CG10_ENROLLMENT_PRIVATE_CHANGED"].includes(rejected.code)&&"message" in rejected&&typeof rejected.message==="string"?rejected.message:
   response.status===401?"Session expired. Sign in again.":
   response.status===403?"Current role cannot review this protected HR case.":
   response.status===409?"Original review state changed. Refresh before deciding.":
   "Independent enrollment decision cannot be verified. Check the original case."
- ),{status:response.status});
+ ),{status:response.status});}
  return response.json() as Promise<T>;
 }
 const label=(s:string)=>s.replaceAll("_"," ").toLowerCase().replace(/\b\w/g,v=>v.toUpperCase());
