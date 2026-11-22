@@ -192,7 +192,7 @@ export function CampaignDraftsWorkspace({canManage}:{canManage:boolean}){
     </>}
     {step===1&&<>
      {select("Foundation branch",draft.project.branchRef,choices?.branches??[],
-       v=>setDraft(d=>({...d,project:{...d.project,branchRef:v,projectRef:null,eventRef:null}})),
+       v=>setDraft(d=>({...d,project:{...d.project,branchRef:v,projectRef:null,eventRef:null},team:{...d.team,volunteerRef:null}})),
        choices?.canFoundation?"Foundation-wide campaign":"Select your assigned branch")}
      {select("State",draft.project.stateRef,choices?.states??[],v=>
        setDraft(d=>({...d,project:{...d.project,stateRef:v,districtRef:null}})),"No state selected")}
