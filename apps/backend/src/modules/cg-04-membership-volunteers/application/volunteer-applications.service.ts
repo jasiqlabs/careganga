@@ -139,6 +139,11 @@ export class VolunteerApplicationsService{
     VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19::jsonb,$20,$21,$22,'DRAFT',1) RETURNING id,version`,
     [a.realmId,a.accountId,...values])).rows[0];
    if(!row)throw changed();
+   // A staff-intake candidate can be linked ONLY after this independently verified,
+   // actual CG01 self-registration with explicit VOLUNTEER_V1 consent. Never auto-approve.
+   await tx.query(`UPDATE volunteer_staff_intake_draft SET linked_application_id=$3,linked_at=now()
+    WHERE root_realm_id=$1 AND contact_mobile=$2 AND linked_application_id IS NULL AND expires_at>now()`,
+    [a.realmId,contact.mobile,row.id]);
    await this.audit(tx,a,row.id,row.version,d.key,digest,action);
    return {record:await this.self(tx,a,row.id),replayed:false};
   });
