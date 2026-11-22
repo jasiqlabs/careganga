@@ -1,0 +1,61 @@
+"use client";
+import {useEffect,useRef,useState,type CSSProperties,type FormEvent} from "react";
+type Option={ref:string;label:string;code?:string;scope?:string};
+type Options={canManageFoundation:boolean;branches:Option[];stores:Option[]};
+type Item={ref:string;sku?:string;code?:string;name:string;category:string;unit?:string;threshold?:string;status:string};
+type Tab="items"|"suppliers"|"locations";
+type Command={path:Tab;body:Record<string,unknown>};
+const panel:CSSProperties={background:"var(--cg-surface,#fff)",border:"1px solid var(--cg-border)",borderRadius:12,padding:16,minWidth:0};
+const field:CSSProperties={display:"grid",gap:4,fontSize:13};
+const input:CSSProperties={padding:10,border:"1px solid var(--cg-border)",borderRadius:8,width:"100%",minWidth:0};
+const button:CSSProperties={padding:"10px 14px",border:0,borderRadius:8,background:"var(--cg-accent)",color:"#fff",fontWeight:600};
+const blank=()=>({code:"",name:"",legalName:"",category:"",description:"",unit:"PIECE",scale:"0",threshold:"0",branchRef:""});
+async function api<T>(path:string,body?:Record<string,unknown>):Promise<T>{
+ const r=await fetch("/api/inventory/"+path,{cache:"no-store",credentials:"same-origin",...(body?{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)}:{})});
+ const v=await r.json().catch(()=>null);
+ if(!r.ok)throw Object.assign(Error(v?.message??"Inventory is unavailable."),{status:r.status});
+ return v as T;
+}
+export function InventoryCatalogWorkspace({canManage}:{canManage:boolean}){
+ const [options,setOptions]=useState<Options|null>(null),[tab,setTab]=useState<Tab>("items"),[location,setLocation]=useState(""),[query,setQuery]=useState(""),[applied,setApplied]=useState(""),[offset,setOffset]=useState(0),[rows,setRows]=useState<Item[]>([]),[more,setMore]=useState(false),[loading,setLoading]=useState(false),[error,setError]=useState(""),[notice,setNotice]=useState("");
+ const [editing,setEditing]=useState<Tab|null>(null),[draft,setDraft]=useState(blank),[busy,setBusy]=useState(false),[uncertain,setUncertain]=useState(false);
+ const command=useRef<Command|null>(null),running=useRef(false),seq=useRef(0);
+ const loadOptions=async()=>{try{const o=await api<Options>("options");setOptions(o);setLocation(old=>o.stores.some(x=>x.ref===old)?old:o.stores[0]?.ref??"");}catch(e){setOptions(null);setError(e instanceof Error?e.message:"Inventory unavailable.");}};
+ useEffect(()=>{void loadOptions();},[]);
+ const refresh=async()=>{const read=++seq.current;setRows([]);setMore(false);if(!options||tab==="locations"||(!location&&!options.canManageFoundation))return;setLoading(true);setError("");try{const q=new URLSearchParams({q:applied,offset:String(offset)});if(location)q.set("location",location);const v=await api<{items:Item[];hasMore:boolean}>(tab+"?"+q);if(read===seq.current){setRows(v.items);setMore(v.hasMore);}}catch(e){if(read===seq.current)setError(e instanceof Error?e.message:"Inventory unavailable.");}finally{if(read===seq.current)setLoading(false);}};
+ useEffect(()=>{void refresh();return()=>{seq.current++;};},[options,tab,location,applied,offset]);
+ const open=(kind:Tab)=>{if(command.current||running.current)return;setEditing(kind);setDraft(blank());setError("");setNotice("");};
+ const save=async(e:FormEvent)=>{e.preventDefault();if(running.current||!editing)return;let cmd=command.current;
+  if(!cmd){const key=crypto.randomUUID();const body=editing==="items"?{requestKey:key,sku:draft.code,name:draft.name,category:draft.category,description:draft.description,unit:draft.unit,scale:Number(draft.scale),threshold:draft.threshold}:editing==="suppliers"?{requestKey:key,code:draft.code,displayName:draft.name,legalName:draft.legalName,category:draft.category}:{requestKey:key,code:draft.code,label:draft.name,branchRef:draft.branchRef||null};cmd={path:editing,body};command.current=cmd;}
+  running.current=true;setBusy(true);setError("");setNotice("");try{await api(cmd.path,cmd.body);command.current=null;setUncertain(false);setEditing(null);setNotice("Catalog record saved.");setTab(cmd.path);setOffset(0);await loadOptions();}catch(e){const status=(e as {status?:number}).status;if(status&&[400,401,403,404,409,422].includes(status)&&!uncertain){command.current=null;setUncertain(false);}else setUncertain(true);setError(e instanceof Error?e.message:"Could not confirm the save.");}finally{running.current=false;setBusy(false);}
+ };
+ const full=options?.canManageFoundation===true,managed=canManage&&full;
+ const tabs:[Tab,string][]=[["items","Inventory Management"],["suppliers","Vendors & Suppliers"],["locations","Settings"]];
+ const change=(k:keyof ReturnType<typeof blank>,v:string)=>setDraft(old=>({...old,[k]:v,...(k==="unit"&&v==="PIECE"?{scale:"0",threshold:"0"}:{})}));
+ return <div style={{display:"grid",gap:16}}>
+  <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(145px,1fr))",gap:10}}>
+   <div style={panel}><small>Active warehouses (available options)</small><h2>{options?options.stores.length:"—"}</h2></div>
+   <div style={panel}><small>Catalog records on this page</small><h2>{tab==="locations"?options?.stores.length??"—":loading?"—":rows.length}</h2></div>
+   <div style={panel}><small>Stock transactions</small><p>Available after receipt workflow</p></div>
+  </div>
+  <nav aria-label="Requests & inventory tabs" style={{display:"flex",gap:6,flexWrap:"wrap",borderBottom:"1px solid var(--cg-border)"}}>{tabs.map(([key,label])=><button type="button" key={key} disabled={busy||uncertain} aria-current={tab===key?"page":undefined} onClick={()=>{setTab(key);setOffset(0);setQuery("");setApplied("");}} style={{padding:"12px 14px",background:"transparent",border:0,borderBottom:tab===key?"2px solid var(--cg-accent)":"2px solid transparent",color:tab===key?"var(--cg-accent)":"var(--cg-muted)",fontWeight:600}}>{label}</button>)}</nav>
+  {notice&&<p role="status">{notice}</p>}{error&&!editing&&<p role="alert" style={{color:"var(--cg-error,#A12235)"}}>{error} <button onClick={()=>void loadOptions()}>Refresh</button></p>}
+  <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(min(100%,340px),1fr))",gap:16,alignItems:"start"}}>
+   <section style={panel}><h2 style={{fontSize:18,marginTop:0}}>{tabs.find(x=>x[0]===tab)?.[1]}</h2>
+   {tab!=="locations"&&<><label style={field}>Current warehouse<select style={input} value={location} onChange={e=>{setLocation(e.target.value);setOffset(0);}} disabled={busy||uncertain}><option value="">{full?"Foundation catalog":"Choose warehouse"}</option>{options?.stores.map(x=><option key={x.ref} value={x.ref}>{x.label}</option>)}</select></label>
+   <form onSubmit={e=>{e.preventDefault();setApplied(query);setOffset(0);}} style={{display:"flex",gap:8,margin:"12px 0",flexWrap:"wrap"}}><input aria-label="Search catalog" placeholder="Search name or code" maxLength={80} value={query} onChange={e=>setQuery(e.target.value)} style={{...input,flex:1}}/><button style={button}>Filter</button><button type="button" onClick={()=>{setQuery("");setApplied("");setOffset(0);}}>Reset</button></form>
+   {loading?<p role="status">Loading catalog…</p>:!options?<p>Confirming your inventory access.</p>:!location&&!full?<p>Choose an eligible warehouse.</p>:rows.length===0?<p>No catalog records in this scope.</p>:<div style={{overflowX:"auto"}}><table style={{width:"100%",minWidth:420,borderCollapse:"collapse",textAlign:"left"}}><thead><tr>{["Code","Name","Category",...(tab==="items"?["Unit","Threshold"]:[]),"Status"].map(h=><th key={h} style={{padding:8,borderBottom:"1px solid var(--cg-border)"}}>{h}</th>)}</tr></thead><tbody>{rows.map(x=><tr key={x.ref} style={{borderBottom:"1px solid var(--cg-border)"}}><td style={{padding:8}}>{x.sku??x.code}</td><td style={{padding:8}}>{x.name}</td><td>{x.category}</td>{tab==="items"&&<><td>{x.unit}</td><td>{x.threshold}</td></>}<td>{x.status.toLowerCase()}</td></tr>)}</tbody></table></div>}
+   <div style={{display:"flex",gap:8,marginTop:10}}><button disabled={offset===0||loading} onClick={()=>setOffset(x=>Math.max(0,x-25))}>Previous</button><button disabled={!more||loading} onClick={()=>setOffset(x=>x+25)}>Next</button></div></>}
+   {tab==="locations"&&<><p>Warehouse settings</p>{options?.stores.length?options.stores.map(x=><div key={x.ref} style={{padding:10,borderBottom:"1px solid var(--cg-border)"}}><strong>{x.label}</strong><div>{x.code} · {x.scope==="FOUNDATION"?"Foundation":"Branch"}</div></div>):<p>No eligible active warehouses.</p>}</>}
+   </section>
+   <aside style={{display:"grid",gap:14}}><section style={panel}><h3>Quick Actions</h3><div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(120px,1fr))",gap:8}}>{managed&&<><button style={button} onClick={()=>open("items")}>Add New Item</button><button style={button} onClick={()=>open("suppliers")}>Add Supplier</button></>}{canManage&&(full||!!options?.branches.length)&&<button style={button} onClick={()=>open("locations")}>Add Warehouse</button>}</div>{!canManage&&<p>Catalog read access only.</p>}</section><section style={panel}><h3>Inventory by Category</h3>{[...new Set(rows.map(x=>x.category))].map(c=><p key={c}>{c} · {rows.filter(x=>x.category===c).length} on page</p>)}{rows.length===0&&<p>No categories on this page.</p>}</section><section style={panel}><h3>Inventory Overview</h3><p>Stock receipts and movements are not part of the initial catalog workflow. No stock value or request result has been assumed.</p></section></aside>
+  </div>
+  {editing&&<div role="dialog" aria-modal="true" aria-label="New catalog record" style={{...panel,border:"2px solid var(--cg-accent)"}}><h2>{editing==="items"?"Add New Item":editing==="suppliers"?"Add Supplier":"Add Warehouse"}</h2><form onSubmit={save} style={{display:"grid",gap:12}}><fieldset disabled={busy||uncertain} style={{border:0,padding:0,margin:0,display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(180px,1fr))",gap:10}}>
+   <label style={field}>Code<input style={input} required maxLength={40} value={draft.code} onChange={e=>change("code",e.target.value)}/></label><label style={field}>{editing==="locations"?"Warehouse name":"Name"}<input style={input} required maxLength={160} value={draft.name} onChange={e=>change("name",e.target.value)}/></label>
+   {editing!=="locations"&&<label style={field}>Category<input style={input} required maxLength={80} value={draft.category} onChange={e=>change("category",e.target.value)}/></label>}
+   {editing==="suppliers"&&<label style={field}>Legal name<input style={input} required maxLength={160} value={draft.legalName} onChange={e=>change("legalName",e.target.value)}/></label>}
+   {editing==="items"&&<><label style={field}>Description<input style={input} maxLength={500} value={draft.description} onChange={e=>change("description",e.target.value)}/></label><label style={field}>Base unit<select style={input} value={draft.unit} onChange={e=>change("unit",e.target.value)}><option value="PIECE">Pieces</option><option value="KG">Kilograms</option><option value="LITER">Liters</option></select></label><label style={field}>Quantity precision<select style={input} value={draft.scale} onChange={e=>change("scale",e.target.value)}>{(draft.unit==="PIECE"?[0]:[0,1,2,3]).map(v=><option key={v}>{v}</option>)}</select></label><label style={field}>Low stock threshold<input style={input} required inputMode="decimal" value={draft.threshold} onChange={e=>change("threshold",e.target.value)}/></label></>}
+   {editing==="locations"&&<label style={field}>Store scope<select style={input} value={draft.branchRef} required={!full} onChange={e=>change("branchRef",e.target.value)}><option value="" disabled={!full}>{full?"Foundation warehouse":"Choose permitted branch"}</option>{options?.branches.map(x=><option key={x.ref} value={x.ref}>{x.label}</option>)}</select></label>}
+   </fieldset>{error&&<p role="alert">{error}</p>}{uncertain&&<p role="status">Retry the exact original save to confirm its result. Fields remain locked.</p>}<div style={{display:"flex",gap:8}}><button style={button} disabled={busy}>{busy?"Saving…":uncertain?"Retry original save":"Save"}</button><button type="button" disabled={busy||uncertain} onClick={()=>{setEditing(null);setError("");}}>Cancel</button></div></form></div>}
+ </div>;
+}
