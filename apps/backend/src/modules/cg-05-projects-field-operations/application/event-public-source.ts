@@ -20,7 +20,7 @@ const current=`
 export const EVENT_CURRENT_SQL=" AND NOT EXISTS(SELECT 1 FROM cms_section_revision ns WHERE ns.foundation_root_id=pub.foundation_root_id AND ns.page_revision_id=pub.page_revision_id AND ns.section_kind='ARTICLE_BODY' AND ns.structured_fields ? 'sourceEventRef' AND NOT EXISTS(SELECT 1 "+current.replace("s.root_realm_id=$1","s.root_realm_id=ns.foundation_root_id")+" AND s.id::text=ns.structured_fields->>'sourceEventRef' AND s.title=ns.structured_fields->>'heading' AND s.safe_summary=ns.structured_fields->>'body' AND s.category=ns.structured_fields->>'category' AND left(s.safe_summary,400)=ns.structured_fields->>'excerpt')) ";
 type Source={sourceRef:string;slug:string;title:string;category:string;summary:string;area:string;launch:string|null;status:string;scheduledStart:string;scheduledEnd:string;coverSrc:string|null};
 export async function eligibleEventSources(db:Pool|PoolClient,root:string,refs?:string[]){
- const query=await db.query<Source>('SELECT s.id AS "sourceRef",lower(regexp_replace(s.title,\'[^a-zA-Z0-9]+\',\'-\',\'g\'))||\'-\'||substring(md5(s.id::text) for 12) AS slug,s.title,s.category,s.safe_summary AS summary,s.general_area AS area,s.planned_launch::text AS launch,s.event_status AS status,s.scheduled_start AS "scheduledStart",s.scheduled_end AS "scheduledEnd",CASE WHEN s.cover_file_ref IS NOT NULL THEN \'/api/public/content/media/\'||s.cover_file_ref::text END AS "coverSrc"'+current+(refs?' AND s.id=ANY($2::uuid[])':'')+' ORDER BY s.submitted_at DESC,s.id DESC LIMIT 100',refs?[root,refs]:[root]);
+ const query=await db.query<Source>('SELECT s.id AS "sourceRef",\'event-\'||lower(p.activity_code) AS slug,s.title,s.category,s.safe_summary AS summary,s.general_area AS area,s.planned_launch::text AS launch,s.event_status AS status,s.scheduled_start AS "scheduledStart",s.scheduled_end AS "scheduledEnd",CASE WHEN s.cover_file_ref IS NOT NULL THEN \'/api/public/content/media/\'||s.cover_file_ref::text END AS "coverSrc"'+current+(refs?' AND s.id=ANY($2::uuid[])':'')+' ORDER BY s.submitted_at DESC,s.id DESC LIMIT 100',refs?[root,refs]:[root]);
  return query.rows;
 }
 const uuid=/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i;
@@ -58,7 +58,7 @@ export async function publishedEventCover(db:Pool|PoolClient,fileRef:string){
  JOIN cms_section_revision sec ON sec.page_revision_id=pub.page_revision_id AND sec.foundation_root_id=pub.foundation_root_id
  WHERE page.foundation_root_id=pe.root_realm_id AND page.kind='ARTICLE' AND page.archived_at IS NULL AND pub.state='EFFECTIVE'
  AND pub.effective_at<=now() AND (pub.expires_at IS NULL OR pub.expires_at>now())
- AND sec.section_kind='ARTICLE_BODY' AND sec.structured_fields->>'sourceEventRef'=pe.id::text AND sec.structured_fields->>'heading'=pe.title AND sec.structured_fields->>'body'=pe.safe_summary)
+ AND sec.section_kind='ARTICLE_BODY' AND sec.structured_fields->>'sourceEventRef'=pe.id::text AND sec.structured_fields->>'heading'=pe.title AND sec.structured_fields->>'body'=pe.safe_summary AND sec.structured_fields->>'category'=pe.category AND sec.structured_fields->>'excerpt'=left(pe.safe_summary,400))
  LIMIT 1`,[fileRef]);
  return q.rows[0]??null;
 }
