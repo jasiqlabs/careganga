@@ -100,10 +100,14 @@ export class CampaignDraftsService{
   if(typeof search!=="string"||search.length>80)throw invalid("Use a shorter campaign staff search.");
   return this.run(token,"campaigns.view",async(tx,a)=>{
    const scope=await this.branches.projectBranchScope(tx,a);
+   const managers=branch?await this.branches.projectBranch(tx,a,branch):null;
+   const staff=await this.identity.eligibleOfficeholderOptions(tx,a,search);
+   const coordinators=branch?
+    staff.filter(x=>x.value===a.accountId||x.value===managers?.managerRef):staff;
    return {canFoundation:scope.all,branches:scope.branches.map(({value,label})=>({value,label})),
     states:await this.branches.projectGeographyOptions(tx,a,null),
     districts:state?await this.branches.projectGeographyOptions(tx,a,state):[],
-    coordinators:await this.identity.eligibleOfficeholderOptions(tx,a,search),
+    coordinators,
     ...(scope.all||branch?await this.projectEvents.options(tx,a,branch,search):
       {projects:[],events:[]})};
   },true);
