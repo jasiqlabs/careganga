@@ -23,8 +23,8 @@ Authority: [CG-REF-ADMIN-001](../research/CAREGANGA-ADMIN-PANEL-SCREENSHOT-UIUX-
 | B35–40 | Letter/memo lifecycle, approved signature/seal and received copy action present. Original WYSIWYG/full A4 live preview and memo drawer/register layout remain different; safe heading/bullet text editor is not full rich text. |
 | B41/42 | Shared CG19 staff card; original member/volunteer options depend on CG04. Exact card layout/preview and field visibility controls require comparison. |
 | B43 | CG11 payroll setup owner; no fake payroll. |
-| B44/45 | Employment change flow present; compare original stepper/current-versus-proposed layout and order list; only actual approval states. |
-| B46–48 | Exit workflow source present; original drawer/clearance detail/history and action placement need actual comparison. |
+| B44/45 | Original B44/45: real status/family-filtered list, four-step progress derived only from original owner state, responsive Web current/proposed comparison and Android full-screen detail/form. Rendered spacing and order-history visual acceptance pending. |
+| B46–48 | Original B46–48: separate resignation/exit family and actual status filters, request detail stepper and truthful clearance cards, native guarded scrollable modal form. Rendered drawer/list and clearance history/action placement remain to verify. |
 | B49–51 | Original CG09 claim-integrated allowance UI; verify KPI/filter/status tabs, request drawer and breakdown/bill journey with rendered source statuses. B49 filename is not the visible screen title. |
 
 ## Final gate
