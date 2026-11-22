@@ -3,6 +3,7 @@ import dns from "node:dns";
 import { readdir, readFile } from "node:fs/promises";
 import { join } from "node:path";
 import { Pool } from "pg";
+import {composeCg19HistoricalMigration} from "./cg19-migration-compatibility";
 
 // Ensure dual-stack environments resolve IPv4 addresses first to avoid ISP IPv6 DNS ENOTFOUND
 try { dns.setDefaultResultOrder?.("ipv4first"); } catch {}
@@ -105,7 +106,7 @@ async function migrate(): Promise<void> {
         }
         await client.query("BEGIN");
         try {
-          await client.query(sql);
+          await client.query(composeCg19HistoricalMigration(name,sql));
           await client.query("INSERT INTO schema_migration (filename, sha256) VALUES ($1,$2)", [name, digest]);
           await client.query("COMMIT");
         } catch (error) {
