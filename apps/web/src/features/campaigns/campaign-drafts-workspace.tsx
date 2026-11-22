@@ -6,7 +6,8 @@ const steps=["Basic Details","Project & Category","Team & Assignment","Budget & 
 type Row={ref:string;code:string;title:string;category:string;status:string;version:number;revision:number;
  branch:string|null;goalMinor:string|null;updatedAt:string;steps?:Record<string,unknown>};
 type Summary={total:number;active:number;publicCount:number;draft:number;completed:number;cancelled:number;goalMinor:string};
-type Page={items:Row[];offset:number;hasMore:boolean;summary:Summary};
+type Activity={code:string;title:string;action:string;at:string;by:string};
+type Page={items:Row[];offset:number;hasMore:boolean;summary:Summary;recentActivities:Activity[]};
 type Choice={value:string;label:string};
 type CampaignFilters={stateRef:string;districtRef:string;leaderRef:string;branchRef:string;featured:"ALL"|"YES"|"NO";createdFrom:string;createdTo:string};
 const emptyCampaignFilters=():CampaignFilters=>({stateRef:"",districtRef:"",leaderRef:"",branchRef:"",featured:"ALL",createdFrom:"",createdTo:""});
@@ -72,7 +73,8 @@ export function CampaignDraftsWorkspace({canManage}:{canManage:boolean}){
   [savedDraft,setSavedDraft]=useState<Draft>(blank),
   [summary,setSummary]=useState<Summary|null>(null),[statusFilter,setStatusFilter]=useState("ALL"),
   [filters,setFilters]=useState<CampaignFilters>(emptyCampaignFilters),[appliedFilters,setAppliedFilters]=useState<CampaignFilters>(emptyCampaignFilters),
-  [filterChoices,setFilterChoices]=useState<Choices|null>(null),[filterError,setFilterError]=useState("");
+  [filterChoices,setFilterChoices]=useState<Choices|null>(null),[filterError,setFilterError]=useState(""),
+  [activities,setActivities]=useState<Activity[]>([]);
  const choiceSeq=useRef(0),filterSeq=useRef(0);
  const pending=useRef<{key:string;body:Record<string,unknown>;method:"POST"|"PATCH";path:string}|null>(null);
  const submitPending=useRef<{key:string;ref:string;version:number}|null>(null);
@@ -82,8 +84,8 @@ export function CampaignDraftsWorkspace({canManage}:{canManage:boolean}){
   const id=++serial.current;setLoading(true);
   try{
    const data=await api<Page>("?"+new URLSearchParams({offset:String(offset),q:applied,status:statusFilter,...appliedFilters}));
-   if(id===serial.current){setRows(data.items);setHasMore(data.hasMore);setSummary(data.summary);setFailure("");}
-  }catch(e){if(id===serial.current){setRows([]);setSummary(null);setFailure(e instanceof Error?e.message:"Campaign records unavailable.");}}
+   if(id===serial.current){setRows(data.items);setHasMore(data.hasMore);setSummary(data.summary);setActivities(data.recentActivities??[]);setFailure("");}
+  }catch(e){if(id===serial.current){setRows([]);setSummary(null);setActivities([]);setFailure(e instanceof Error?e.message:"Campaign records unavailable.");}}
   finally{if(id===serial.current)setLoading(false);}
  },[offset,applied,statusFilter,appliedFilters]);
  useEffect(()=>{void refresh();return()=>{serial.current++;editingSerial.current++;};},[refresh]);
@@ -310,7 +312,14 @@ export function CampaignDraftsWorkspace({canManage}:{canManage:boolean}){
       <p>Raised so far: <strong>Not yet verified by finance</strong></p>
       <p>Unverified donations are never counted as funds raised.</p></section>
      <section className={styles.sideCard}><h3>Recent Activities</h3>
-      <p>Verified campaign activity feed is not yet connected. Approval history is available to authorized reviewers.</p></section>
+      {!activities.length?<p>No campaign changes recorded in your current scope.</p>:
+       <div style={{display:"grid",gap:10}}>{activities.map((item,i)=>
+        <article key={item.code+"-"+item.at+"-"+i}>
+         <strong>{item.title}</strong>
+         <p style={{margin:0}}>{item.action.replaceAll("_"," ").toLowerCase()} · {item.by}</p>
+         <small>{Number.isFinite(Date.parse(item.at))?new Date(item.at).toLocaleString("en-IN"):"Recorded"}</small>
+        </article>)}</div>}
+     </section>
     </aside>
    </div>
   </>}
