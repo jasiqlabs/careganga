@@ -14,7 +14,7 @@ async function api<T>(path:string,body?:Record<string,unknown>):Promise<T>{
 /** This component only exists behind the verified Foundation issue capability. */
 export function VolunteerCardManager({volunteerRef}:{volunteerRef:string}){
  const [card,setCard]=useState<CG19VolunteerCardStatus|null>(null),[password,setPassword]=useState(""),
-  [busy,setBusy]=useState(false),[loading,setLoading]=useState(true),[error,setError]=useState(""),[note,setNote]=useState("");
+  [reload,setReload]=useState(0),[busy,setBusy]=useState(false),[loading,setLoading]=useState(true),[error,setError]=useState(""),[note,setNote]=useState("");
  const seq=useRef(0),pending=useRef<Pending|null>(null);
  useEffect(()=>{
   const id=++seq.current;setLoading(true);setCard(null);setPassword("");pending.current=null;setError("");setNote("");
