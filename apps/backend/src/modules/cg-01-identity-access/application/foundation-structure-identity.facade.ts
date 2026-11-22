@@ -30,7 +30,7 @@ export class FoundationStructureIdentityFacade {
    * Current session, account/access version and Foundation-root proof still
    * must be checked in the same patient financial transaction.
    */
-  async assertPatientSessionCurrent(client:PoolClient,actor:VerifiedFoundationActor){
+  async assertRootSelfSessionCurrent(client:PoolClient,actor:VerifiedFoundationActor){
     const q=await client.query(
       "SELECT 1 FROM auth_session s "+
       "JOIN account a ON a.id=s.account_id AND a.realm_id=$3 "+
@@ -47,7 +47,7 @@ export class FoundationStructureIdentityFacade {
       [actor.activeSessionId,actor.accountId,actor.realmId]
     );
     if(!q.rowCount)
-      throw new ForbiddenException("Your private patient session has changed");
+      throw new ForbiddenException("Your current private session has changed");
   }
   async eligibleOfficeholder(client:PoolClient,actor:VerifiedFoundationActor,accountRef:string):Promise<{accountRef:string;displayName:string}>{
     const found=await client.query<{id:string;display_name:string}>(`
@@ -58,6 +58,24 @@ export class FoundationStructureIdentityFacade {
       FOR SHARE OF a,ar,r`,[accountRef,actor.realmId]);
     if(!found.rowCount)throw new ForbiddenException("Select an eligible current Foundation account");
     return {accountRef:found.rows[0].id,displayName:found.rows[0].display_name};
+  }
+  async assertPatientSessionCurrent(client:PoolClient,actor:VerifiedFoundationActor){
+    return this.assertRootSelfSessionCurrent(client,actor);
+  }
+  /** Current verified community applicant, without a patient record or staff
+   * grant. Only the actual signed-in account may consume this private proof. */
+  async verifiedCommunityApplicant(client:PoolClient,actor:VerifiedFoundationActor){
+    await this.assertRootSelfSessionCurrent(client,actor);
+    const q=await client.query<{display_name:string;contact_phone:string;normalized_email:string|null}>(`
+     SELECT a.display_name,a.contact_phone,a.normalized_email FROM account a
+     WHERE a.id=$1 AND a.realm_id=$2 AND a.status='ACTIVE'
+       AND a.contact_phone_verified_at IS NOT NULL
+       AND a.contact_phone ~ '^[+]91[6-9][0-9]{9}$'
+       AND EXISTS(SELECT 1 FROM account_role ar JOIN role r ON r.id=ar.role_id AND r.realm_id=ar.realm_id AND r.active
+        WHERE ar.account_id=a.id AND ar.realm_id=a.realm_id AND ar.revoked_at IS NULL)
+     FOR SHARE OF a`,[actor.accountId,actor.realmId]);
+    if(!q.rows[0])throw new ForbiddenException("Verify your mobile contact and sign in before starting an application.");
+    const v=q.rows[0];return {name:v.display_name,mobile:v.contact_phone,email:v.normalized_email};
   }
   /** Read-only, root-scoped display projection for permitted CG-02 lists/history.
    * Inactive accounts retain their actual historical names; this never grants access.

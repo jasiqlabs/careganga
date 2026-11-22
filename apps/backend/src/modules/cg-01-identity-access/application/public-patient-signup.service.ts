@@ -97,7 +97,7 @@ export class PublicPatientSignupService{
     throw new HttpException({code:"CG01_PUBLIC_SIGNUP_LIMIT"},HttpStatus.TOO_MANY_REQUESTS);
   }
  }
- async register(raw:unknown,remote:string){
+ async register(raw:unknown,remote:string,audience:"PATIENT"|"COMMUNITY"="PATIENT"){
   if(!raw||typeof raw!=="object"||Array.isArray(raw))
    throw new BadRequestException({code:"CG01_PUBLIC_SIGNUP_INVALID"});
   const v=raw as Record<string,unknown>;
@@ -127,7 +127,7 @@ export class PublicPatientSignupService{
    throw new ServiceUnavailableException({code:"CG01_PUBLIC_SIGNUP_UNAVAILABLE"});
   await this.attempt(remote,digits,key,"finish");
   const signature=hash(key,JSON.stringify({safeFirst,safeLast,digits,
-   normalizedEmail,password,code}));
+   normalizedEmail,password,code,...(audience==="COMMUNITY"?{audience}: {})}));
   // Keep external SMS verification and password hashing OUTSIDE PostgreSQL
   // transactions; recheck the idempotency key under a row lock before insert.
   const realm=await this.db.query<{id:string}>(
@@ -144,7 +144,7 @@ export class PublicPatientSignupService{
     throw new ConflictException({code:"CG01_PUBLIC_SIGNUP_CONFLICT"});
    if(replay.rows[0].account_id)
     return {status:"ACCOUNT_CREATED" as const,
-     nextStep:"SIGN_IN_THEN_CREATE_PATIENT_PROFILE" as const};
+     nextStep:audience==="COMMUNITY"?"SIGN_IN_THEN_START_APPLICATION" as const:"SIGN_IN_THEN_CREATE_PATIENT_PROFILE" as const};
   }
   const check=await this.provider("VerificationCheck",
    new URLSearchParams({To:"+91"+digits,Code:code}));
@@ -168,13 +168,13 @@ export class PublicPatientSignupService{
    if(saved.account_id){
     await tx.query("COMMIT");open=false;
     return {status:"ACCOUNT_CREATED" as const,
-     nextStep:"SIGN_IN_THEN_CREATE_PATIENT_PROFILE" as const};
+     nextStep:audience==="COMMUNITY"?"SIGN_IN_THEN_START_APPLICATION" as const:"SIGN_IN_THEN_CREATE_PATIENT_PROFILE" as const};
    }
    const role=await tx.query<{id:string}>(
     "SELECT r.id FROM role r WHERE r.realm_id=$1 "+
-    "AND r.normalized_name='careganga patient' AND r.active AND NOT r.is_protected "+
+    "AND r.normalized_name=$2 AND r.active AND NOT r.is_protected "+
     "AND NOT EXISTS(SELECT 1 FROM role_grant g WHERE g.role_id=r.id) "+
-    "FOR SHARE OF r",[root]);
+    "FOR SHARE OF r",[root,audience==="COMMUNITY"?"careganga community applicant":"careganga patient"]);
    if(!role.rows[0])throw new ServiceUnavailableException({
     code:"CG01_PUBLIC_SIGNUP_UNAVAILABLE"});
    // Verified SMS controls a CONTACT, not a unique human. Keep the
@@ -210,9 +210,9 @@ export class PublicPatientSignupService{
     "WHERE root_realm_id=$1 AND request_key=$2",[root,requestKey,id]);
    await tx.query("COMMIT");open=false;
    return {status:"ACCOUNT_CREATED" as const,
-    nextStep:"SIGN_IN_THEN_CREATE_PATIENT_PROFILE" as const};
+    nextStep:audience==="COMMUNITY"?"SIGN_IN_THEN_START_APPLICATION" as const:"SIGN_IN_THEN_CREATE_PATIENT_PROFILE" as const};
   }catch(error){
-   if(open)await tx.query("ROLLBACK");
+   if(open)try{await tx.query("ROLLBACK");}catch{}
    if(error&&typeof error==="object"&&"code" in error&&error.code==="23505")
     throw new ConflictException({code:"CG01_PUBLIC_SIGNUP_EXISTS"});
    throw error;

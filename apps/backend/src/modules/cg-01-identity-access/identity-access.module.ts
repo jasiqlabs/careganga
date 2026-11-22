@@ -1,3 +1,4 @@
+import {PublicCommunitySignupController} from "./http/public-community-signup.controller";
 import { FoundationStructureIdentityFacade } from "./application/foundation-structure-identity.facade";
 import { HealthNetworkIdentityFacade } from "./application/health-network-identity.facade";
 import { Module } from "@nestjs/common";
@@ -24,7 +25,7 @@ import { PublicPatientSignupController } from "./http/public-patient-signup.cont
 import { PublicPatientSignupService } from "./application/public-patient-signup.service";
 
 @Module({
-  controllers:[SessionController,RecoveryController,RolesController,AuditController,AccountsController,SecurityPolicyController,MobileVerificationController,PublicPatientSignupController],
+  controllers:[SessionController,RecoveryController,RolesController,AuditController,AccountsController,SecurityPolicyController,MobileVerificationController,PublicPatientSignupController,PublicCommunitySignupController],
   providers:[HrEmploymentAccessOwnerService,HealthNetworkIdentityFacade,FoundationStructureIdentityFacade,SessionService,SessionGuard,RecoveryService,RecoveryDelivery,RolesService,AccountsService,AccessAuditReader,SecurityPolicyService,ProtectedAccessOwnerService,CommunicationRecipientSource,MobileVerificationService,PublicPatientSignupService],
   exports:[HrEmploymentAccessOwnerService,HealthNetworkIdentityFacade,SessionService,RolesService,AccessAuditReader,AccountsService,ProtectedAccessOwnerService,CommunicationRecipientSource,FoundationStructureIdentityFacade]
 })

@@ -25,8 +25,9 @@ export function CmsSiteHeader({navigation,contact}:{
  const pathname=usePathname();
  const member=navigation?.memberJoin?.visible&&navigation.memberJoin.path?
   navigation.memberJoin.path:undefined;
- const volunteer=navigation?.volunteerJoin?.visible&&navigation.volunteerJoin.path?
-  navigation.volunteerJoin.path:undefined;
+ // The same exact original route check as Public Android; never render a guessed CMS CTA.
+ const volunteer=navigation?.volunteerJoin?.visible===true&&navigation.volunteerJoin.path==="/volunteer"?
+  "/volunteer":undefined;
  const routes=navigation?.publishedRoutes??[];
  const isPublished=(path:string)=>routes.some(x=>x.path===path);
  const anyArticles=routes.some(x=>x.kind==="ARTICLE"&&/^\/blog\/[a-z0-9-]+$/.test(x.path));

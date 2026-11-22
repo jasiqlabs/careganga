@@ -481,6 +481,18 @@ export class BranchSourceFacade{
   if(state&&!(await tx.query("SELECT 1 FROM geography_area WHERE id=$1 AND root_realm_id=$2 AND status='ACTIVE' AND level='STATE' FOR SHARE",[ensureId(state),a.realmId])).rowCount)throw new BadRequestException("Choose a current state");
   if(district&&!(await tx.query("SELECT 1 FROM geography_area WHERE id=$1 AND parent_area_id=$2 AND root_realm_id=$3 AND status='ACTIVE' AND level='DISTRICT' FOR SHARE",[ensureId(district),state,a.realmId])).rowCount)throw new BadRequestException("Choose a district in the selected state");
  }
+ /** A verified self applicant chooses an actual public branch preference;
+  * this is not a Foundation operator grant or branch management access. */
+ async membershipApplicantBranch(tx:PoolClient,a:VerifiedFoundationActor,ref:string|null){
+  if(ref===null)return null;
+  const result=await tx.query<{name:string}>("SELECT name FROM branch WHERE root_realm_id=$1 AND id=$2 AND status='ACTIVE' FOR SHARE",[a.realmId,ensureId(ref)]);
+  if(!result.rows[0])throw new BadRequestException("Choose an active Foundation branch.");
+  return result.rows[0].name;
+ }
+ async membershipApplicantBranches(tx:PoolClient,a:VerifiedFoundationActor){
+  const q=await tx.query<{value:string;label:string}>("SELECT id AS value,name AS label FROM branch WHERE root_realm_id=$1 AND status='ACTIVE' ORDER BY name,id LIMIT 200",[a.realmId]);
+  return q.rows;
+ }
  async projectGeographyOptions(tx:PoolClient,a:VerifiedFoundationActor,state:string|null){
   if(state)await this.projectGeography(tx,a,state,null);
   const q=await tx.query<{id:string;display_name:string}>("SELECT id,display_name FROM geography_area WHERE root_realm_id=$1 AND status='ACTIVE' AND (($2::uuid IS NULL AND level='STATE') OR (level='DISTRICT' AND parent_area_id=$2)) ORDER BY display_name,id LIMIT 200",[a.realmId,state]);

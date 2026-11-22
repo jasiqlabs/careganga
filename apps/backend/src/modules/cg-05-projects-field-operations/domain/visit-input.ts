@@ -7,7 +7,7 @@ export const visitProvenance=["DEVICE_GPS","MANUAL_ENTERED","UNAVAILABLE","REJEC
 export type VisitProvenance=typeof visitProvenance[number];
 export const visitConsents=["GRANTED","DENIED","NOT_REQUESTED","MANUAL_DECLARED"] as const;
 export type VisitConsent=typeof visitConsents[number];
-const workKeys=["projectRef","taskRef","actorRef","stateRef","districtRef","visitType","location","plannedAt","purpose","report"] as const;
+const workKeys=["projectRef","taskRef","actorRef","volunteerRef","stateRef","districtRef","visitType","location","plannedAt","purpose","report"] as const;
 const visitLabels:Record<string,string>={projectRef:"project",taskRef:"task",actorRef:"assigned staff",stateRef:"state",districtRef:"district",visitType:"visit type",location:"visit location",plannedAt:"planned date and time",purpose:"purpose",report:"visit report",status:"status",reason:"cancellation reason",comment:"comment",latitude:"latitude",longitude:"longitude",accuracyM:"location accuracy",deviceRecordedAt:"capture time"};
 export function visitError(field:string,code="CG05_VISIT_FIELD_INVALID"){
  const messages:Record<string,string>={CG05_VISIT_REPORT_ONLY:"After check-in, only the report may be edited. The original visit plan and assigned staff are preserved.",CG05_VISIT_COORDINATES_INVALID:"Check the latitude, longitude and location accuracy.",CG05_VISIT_CONSENT_REQUIRED:"Confirm location consent or choose manual or unverified location.",CG05_VISIT_CAPTURE_STALE:"Capture the current location again. The recorded device time is stale or out of order.",CG05_ACTIVITY_GEOGRAPHY_INVALID:"Choose a state before choosing its district."};
@@ -17,7 +17,7 @@ function checked<T>(field:string,fn:()=>T):T{try{return fn();}catch(e){if(e inst
 function work(x:Record<string,unknown>){
  const state=checked("stateRef",()=>optionalRef(x.stateRef)),district=checked("districtRef",()=>optionalRef(x.districtRef));
  if(district&&!state)throw visitError("stateRef","CG05_ACTIVITY_GEOGRAPHY_INVALID");
- return {project:checked("projectRef",()=>ref(x.projectRef)),task:checked("taskRef",()=>optionalRef(x.taskRef)),actor:checked("actorRef",()=>ref(x.actorRef)),state,district,
+ return {project:checked("projectRef",()=>ref(x.projectRef)),task:checked("taskRef",()=>optionalRef(x.taskRef)),actor:checked("actorRef",()=>ref(x.actorRef)),volunteer:checked("volunteerRef",()=>optionalRef(x.volunteerRef)),state,district,
   kind:checked("visitType",()=>clean(x.visitType,1,80)),location:checked("location",()=>clean(x.location,2,250)),planned:checked("plannedAt",()=>instant(x.plannedAt)),purpose:checked("purpose",()=>clean(x.purpose,2,500)),report:checked("report",()=>clean(x.report??"",0,4000))};
 }
 export function parseVisitCreate(raw:unknown){const x=fields(raw,["requestKey",...workKeys,"status"]);return {key:ref(x.requestKey),...work(x),status:checked("status",()=>choice(x.status,["DRAFT","PLANNED"] as const))};}

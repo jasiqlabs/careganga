@@ -215,12 +215,12 @@ export type CG05ProjectDraft={code:string;title:string;category:string;summary:s
 export type CG05PublicEligibility={status:string;caseRef:string|null;caseNumber?:string;revision?:number;canReview:boolean;canWithdraw:boolean;source:{title:string;category:string;summary:string;area:string;launch:string|null;status:string;coverFileRef?:string|null;coverFileVersion?:number|null}|null};
 
 export type CG05TaskStatus="DRAFT"|"ASSIGNED"|"IN_PROGRESS"|"COMPLETED"|"CANCELLED";
-export type CG05TaskAssigneeKind="UNASSIGNED"|"ACCOUNT"|"EMPLOYEE";
+export type CG05TaskAssigneeKind="UNASSIGNED"|"ACCOUNT"|"EMPLOYEE"|"VOLUNTEER";
 export type CG05Task={ref:string;code:string;projectRef:string;project:string;projectCode:string;title:string;taskType:string;description:string;priority:"LOW"|"NORMAL"|"HIGH"|"URGENT";startDate:string|null;dueDate:string|null;status:CG05TaskStatus;assigneeKind:CG05TaskAssigneeKind;assignee:string|null;location:string;branch:string|null;version:number;updatedAt:string;completedAt:string|null;overdue:boolean;assignmentCurrent:boolean;canManage?:boolean};
 export type CG05TaskEvent={action:string;priorStatus?:string|null;status:string;reason:string;at:string;actor:string;assignee?:string|null};
 export type CG05TaskDetail=CG05Task & {history:CG05TaskEvent[];canManage:boolean;canProgress:boolean;approvalStatus:"NOT_REQUIRED"};
 export type CG05TaskList={items:CG05Task[];counts:{total:number;mine:number;completed:number;inProgress:number;overdue:number;upcoming:number;cancelled:number};statusCounts:{label:string;count:number}[];priorityCounts:{label:string;count:number}[];overdueItems:CG05Task[];recent:(CG05TaskEvent & {ref:string;code:string;title:string})[];filterOptions:{projects:{value:string;label:string}[];types:string[];assignees:string[];locations:string[]};offset:number;hasMore:boolean};
-export type CG05TaskOptions={projects:{value:string;label:string}[];hasMoreProjects:boolean;assignees:{value:string;label:string;kind:"ACCOUNT"|"EMPLOYEE"}[]};
+export type CG05TaskOptions={projects:{value:string;label:string}[];hasMoreProjects:boolean;assignees:{value:string;label:string;kind:"ACCOUNT"|"EMPLOYEE"|"VOLUNTEER"}[]};
 
 export type CG05ActivityStatus="DRAFT"|"SCHEDULED"|"ONGOING"|"COMPLETED"|"CANCELLED";
 export type CG05Activity={ref:string;code:string;projectRef:string|null;project:string|null;kind:"ACTIVITY"|"EVENT";title:string;category:string;activityType:string;description:string;program:string;branchRef:string|null;branch:string|null;stateRef:string|null;state:string|null;districtRef:string|null;district:string|null;venue:string;owner:string;ownerRef:string;scheduledStart:string;scheduledEnd:string;actualStart:string|null;actualEnd:string|null;outcome:string;status:CG05ActivityStatus;version:number;updatedAt:string;ownerCurrent:boolean;scopeChanged:boolean};
@@ -230,12 +230,107 @@ export type CG05ActivityOptions={projects:(CG05Option & {branchRef:string|null})
 
 /** Private CG05 field visits: device data is reported provenance, not independently attested GPS. */
 export type CG05VisitStatus="DRAFT"|"PLANNED"|"IN_PROGRESS"|"PENDING_PROOF"|"PENDING_APPROVAL"|"RETURNED"|"REJECTED"|"COMPLETED"|"CANCELLED";
-export type CG05Visit={ref:string;code:string;projectRef:string;project:string;taskRef:string|null;task:string|null;actorRef:string;actor:string;visitType:string;location:string;branchRef:string|null;branch:string|null;stateRef:string|null;state:string|null;districtRef:string|null;district:string|null;plannedAt:string;startedAt:string|null;completedAt:string|null;status:CG05VisitStatus;version:number;updatedAt:string};
+export type CG05Visit={ref:string;code:string;projectRef:string;project:string;taskRef:string|null;task:string|null;actorRef:string;actor:string;volunteerRef:string|null;visitType:string;location:string;branchRef:string|null;branch:string|null;stateRef:string|null;state:string|null;districtRef:string|null;district:string|null;plannedAt:string;startedAt:string|null;completedAt:string|null;status:CG05VisitStatus;version:number;updatedAt:string};
 export type CG05VisitCapture={kind:"CHECK_IN"|"CHECK_OUT";latitude:number|null;longitude:number|null;accuracyM:number|null;recordedAt:string;deviceRecordedAt:string|null;locationProvenance:"DEVICE_GPS"|"MANUAL_ENTERED"|"UNAVAILABLE"|"REJECTED";consentState:string};
 export type CG05VisitDetail=CG05Visit&{purpose:string;report:string;captures:CG05VisitCapture[];history:{kind:string;status:CG05VisitStatus;at:string;reason:string;actor:string}[];comments:{body:string;at:string;actor:string}[];assignmentCurrent:boolean;canManage:boolean;canCapture:boolean};
 export type CG05VisitList={items:CG05Visit[];counts:{status:CG05VisitStatus;count:number}[];total:number;recent:{ref:string;code:string;project:string;kind:string;status:CG05VisitStatus;at:string}[];filterOptions:{projects:CG05Option[];types:string[];actors:CG05Option[];branches:CG05Option[]};offset:number;hasMore:boolean};
-export type CG05VisitOptions={projects:CG05Option[];actors:CG05Option[];tasks:CG05Option[];states:CG05Option[];districts:CG05Option[]};
+export type CG05VisitOptions={projects:CG05Option[];actors:CG05Option[];volunteers:(CG05Option&{accountRef:string})[];tasks:CG05Option[];states:CG05Option[];districts:CG05Option[]};
 export type CG05VisitReview={allowedDecisions?:("APPROVE"|"FORWARD"|"RETURN"|"REJECT")[];requiresCurrentPassword?:boolean;currentStep?:number;totalSteps?:number;status:string;caseRef:string|null;caseNumber?:string;revision?:number;canReview:boolean;sourceVersion?:number;report?:string;locationState?:"DEVICE_REPORTED"|"UNVERIFIED_LOCATION";verifiedFileCount?:number;decisions?:{action:string;remarks:string;at:string;reviewer:string;caseNumber?:string;step?:number}[]};
 
 export type CG05OperationsSummary={asOf:string;scope:"MINE"|"PERMITTED";sections:{source:string;metrics:{label:string;value:number|string}[]}[];restricted:string[];finance:CG05ProjectFinance|null;recent:{source:string;title:string;status:string;action:string;at:string}[]};
 export type CG05OperationsExport={csv:string;rows:number;restricted:string[]};
+
+/** CG04 US001: public plan code is an opaque selection key; never render it as a label. */
+export type CG04TierStatus="DRAFT"|"ACTIVE"|"INACTIVE";
+export type CG04TierCategory="ANNUAL"|"LIFETIME"|"HONORARY"|"STUDENT"|"OTHER";
+export type CG04TierDuration="DAY"|"MONTH"|"YEAR"|"LIFETIME";
+export type CG04TierIcon="CARD"|"STAR"|"HEART"|"CROWN"|"GRADUATION"|"SHIELD"|"USERS";
+export type CG04TierColor="BLUE"|"GREEN"|"AMBER"|"PURPLE"|"TEAL"|"ROSE"|"SLATE";
+export type CG04TierBenefit={title:string;description:string};
+export type CG04PublicTier={planCode:string;offerRevision:number;name:string;category:CG04TierCategory;feeMinor:string;currency:"INR";durationUnit:CG04TierDuration;durationCount:number;description:string;benefits:CG04TierBenefit[];icon:CG04TierIcon;color:CG04TierColor;displayOrder:number};
+export type CG04Tier=CG04PublicTier&{ref:string;version:number;status:CG04TierStatus;effectiveFrom:string};
+export type CG04TierWrite=Omit<CG04PublicTier,"planCode"|"offerRevision"|"feeMinor">&{price:string;status:CG04TierStatus;requestKey:string;expectedVersion?:number};
+export type CG04PublicTierPage={items:CG04PublicTier[];nextCursor:string|null};
+export type CG04TierPage={items:CG04Tier[];nextCursor:string|null;counts:{total:number;active:number;draft:number;inactive:number}};
+export type CG04TierResult={record:CG04Tier;replayed:boolean};
+
+/** Authenticated own applicant draft. No public roster or payment authority. */
+export type CG04ApplicationDraftWrite={requestKey:string;expectedVersion?:number;planCode:string;offerRevision:number;address:string;city:string;pinCode:string;stateRef:string;districtRef:string;branchRef?:string|null;referral?:string;consent:true};
+export type CG04Application={ref:string;applicationNumber:string;version:number;status:"DRAFT"|"SUBMITTED"|"RETURNED"|"REJECTED"|"APPROVED"|"CANCELLED";name:string;mobile:string;email:string|null;address:string;city:string;pinCode:string;stateRef:string;state:string;districtRef:string;district:string;branchRef:string|null;branch:string|null;referral:string;consentVersion:string;planCode:string;offerRevision:number;plan:string;feeMinor:string;currency:"INR";durationUnit:CG04TierDuration;durationCount:number;currentOffer:boolean;feeRecorded:boolean;updatedAt:string;reviewReference:string|null;reviewStatus:string|null;reviewRemarks:string|null};
+export type CG04ApplicantOption={value:string;label:string};
+export type CG04ApplicantOptions={contact:{name:string;mobile:string;email:string|null};branches:CG04ApplicantOption[];states:CG04ApplicantOption[];districts:CG04ApplicantOption[]};
+export type CG04ApplicationResult={record:CG04Application;replayed:boolean};
+
+export type CG04MembershipReviewSubmit={reference:string;status:string;replayed:boolean};
+export type CG04MembershipEvidenceClass="MEMBER_IDENTITY_PROOF"|"MEMBER_PORTRAIT";
+export type CG04MembershipEvidenceFile={fileRef:string;classification:CG04MembershipEvidenceClass;mime:string;sizeBytes:number;fileVersion:number;applicationVersion:number;createdAt:string};
+export type CG04MembershipEvidenceList={files:CG04MembershipEvidenceFile[];pending:{uploadRef:string;classification:CG04MembershipEvidenceClass;status:string;expiresAt:string}[]};
+export type CG04MembershipEvidenceStatus={uploadRef:string;status:string;cleanVerified:boolean;fileRef?:string|null;fileVersion?:number|null;uploadUrl?:string;uploadHeaders?:Record<string,string>;expiresAt?:string};
+
+export type CG19VolunteerCardStatus={
+ cardRef:string;status:"PENDING"|"VERIFYING"|"UNKNOWN"|"ISSUED"|"REVOKED";
+ revision:number;issuedAt:string|null;canDownload:boolean;canRetry:boolean
+};
+export type CG19OwnVolunteerCards={items:CG19VolunteerCardStatus[];hasMore:boolean};
+export type CG04VolunteerEvidenceClass="VOLUNTEER_IDENTITY_PROOF"|"VOLUNTEER_PORTRAIT";
+export type CG04VolunteerEvidenceFile={fileRef:string;classification:CG04VolunteerEvidenceClass;mime:string;sizeBytes:number;fileVersion:number;applicationVersion:number;createdAt:string};
+export type CG04VolunteerEvidenceList={files:CG04VolunteerEvidenceFile[];pending:{uploadRef:string;classification:CG04VolunteerEvidenceClass;status:string;expiresAt:string}[]};
+export type CG04VolunteerEvidenceStatus=CG04MembershipEvidenceStatus;
+
+export type CG04MembershipPaymentStatus="NOT_DUE"|"PENDING"|"AWAITING_BANK_VERIFICATION"|"VERIFIED"|"REFUND_PENDING"|"REFUND_AWAITING_BANK_VERIFICATION"|"REFUNDED";
+export type CG04MembershipFee={feeMinor:string;currency:"INR";paymentStatus:CG04MembershipPaymentStatus;verifiedMinor:string;refundRequired:boolean};
+export type CG04Member={memberNumber:string;name:string;branch:string|null;plan:string;category:CG04TierCategory;feeMinor:string;currency:"INR";startsOn:string;expiresOn:string|null;status:"ACTIVE"|"EXPIRED"|"SUSPENDED"|"CANCELLED"};
+export type CG04MemberProfile={member:CG04Member|null};
+export type CG19MemberPackStatus={packRef:string;status:"PENDING"|"VERIFYING"|"UNKNOWN"|"ISSUED"|"REVOKED";issueRevision:number;issuedAt:string|null;canDownload:boolean;canRetry:boolean};
+export type CG19OwnMemberPacks={items:CG19MemberPackStatus[];hasMore:boolean};
+export type CG19MemberBrandStatus={configured:boolean;version:number;displayName?:string;signatoryName?:string};
+
+export type CG04MemberHistory={terms:{plan:string;category:CG04TierCategory;feeMinor:string;currency:"INR";startsOn:string;expiresOn:string|null;applicationNumber:string;recordedAt:string}[];
+ branches:{branch:string|null;effectiveFrom:string;effectiveTo:string|null;reason:string}[];
+ termsHasMore:boolean;branchesHasMore:boolean};
+export type CG04MembershipActivationResult={member:CG04Member;replayed:boolean};
+
+export type CG04RosterRow={ref:string;memberNumber:string;name:string;email:string|null;mobile:string;plan:string;category:CG04TierCategory;joinedOn:string;expiresOn:string|null;status:"ACTIVE"|"EXPIRED"|"SUSPENDED"|"CANCELLED";city:string;district:string;branch:string|null};
+export type CG04RosterPage={items:CG04RosterRow[];nextCursor:string|null;hasMore:boolean;branchOptions:{value:string;label:string}[];overview:{total:number;active:number;expired:number;cancelled:number;suspended:number;byCategory:Record<string,number>}};
+export type CG04RosterExport={csv:string;rows:number};
+
+/** Protected CG03 membership review. Caller must currently hold all reviewer rights. */
+export type CG04ReviewPolicy={configured:boolean;version:number;replayed?:boolean};
+export type CG04ReviewItem={caseRef:string;reference:string;name:string;status:string;revision:number;submittedAt:string;canDecide:boolean;plan:string;category:CG04TierCategory;paymentStatus:CG04MembershipPaymentStatus};
+export type CG04ReviewPage={items:CG04ReviewItem[];hasMore:boolean;offset:number;overview:{total:number;pending:number;approved:number;rejected:number;today:number;averageDecisionHours:number|null}};
+export type CG04ReviewCase={caseRef:string;reference:string;status:string;revision:number;canDecide:boolean;
+ source:{applicationNumber:string;name:string;mobile:string;email:string|null;address:string;city:string;pinCode:string;feeMinor:string;currency:"INR";plan:string;category:CG04TierCategory;durationUnit:CG04TierDuration;durationCount:number;branch:string|null;state:string|null;district:string|null;referral:string;consentVersion:string;consentedAt:string};fee:CG04MembershipFee;
+ files:{fileRef:string;fileVersion:number;classification:string;verified:boolean}[];
+ documentPack:{status:"PENDING"|"VERIFYING"|"UNKNOWN"|"ISSUED"|"REVOKED";issueRevision:number;issuedAt:string|null;files:{kind:"CARD"|"CERTIFICATE"|"WELCOME";status:"PENDING"|"ISSUED"}[]}|null;
+ timeline:{action:string;occurredAt:string;reviewer:string}[]};
+export type CG04VolunteerAvailability="FULL_TIME"|"PART_TIME"|"WEEKENDS"|"FLEXIBLE";
+export type CG04VolunteerApplication={
+ ref:string;applicationNumber:string;status:"DRAFT"|"SUBMITTED"|"RETURNED"|"REJECTED"|"APPROVED"|"CANCELLED";version:number;
+ firstName:string;lastName:string;dateOfBirth:string;gender:string;bloodGroup:string|null;mobile:string;email:string|null;
+ address:string;city:string;village:string;pinCode:string;stateRef:string;state:string;districtRef:string;district:string;
+ branchRef:string|null;branch:string|null;departmentRef:string;department:string;availability:CG04VolunteerAvailability;
+ skills:string[];experience:string;referral:string;consentVersion:"VOLUNTEER_V1";submittedAt:string|null;updatedAt:string;reviewReference:string|null;reviewStatus:string|null;reviewRemarks:string|null
+};
+export type CG04VolunteerApplicationPage={items:CG04VolunteerApplication[]};
+export type CG04VolunteerOption={value:string;label:string};
+export type CG04VolunteerOptions={
+ contact:{name:string;mobile:string;email:string|null};
+ branches:CG04VolunteerOption[];states:CG04VolunteerOption[];districts:CG04VolunteerOption[];
+ departments:CG04VolunteerOption[];availabilities:CG04VolunteerAvailability[]
+};
+export type CG04VolunteerProfile={volunteer:{volunteerNumber:string;name:string;branch:string|null;department:string;
+ availability:CG04VolunteerAvailability;skills:string[];status:"ACTIVE"|"INACTIVE"|"SUSPENDED";joinedOn:string}|null};
+export type CG04VolunteerReviewItem={caseRef:string;reference:string;status:string;revision:number;name:string;applicationNumber:string;
+ department:string;availability:CG04VolunteerAvailability;submittedAt:string;canDecide:boolean};
+export type CG04VolunteerRosterItem={ref:string;volunteerNumber:string;name:string;mobile:string;email:string|null;branch:string|null;
+ department:string;availability:CG04VolunteerAvailability;joinedOn:string;status:"ACTIVE"|"INACTIVE"|"SUSPENDED";city:string;district:string;skills:string[]};
+export type CG04VolunteerRosterPage={items:CG04VolunteerRosterItem[];hasMore:boolean;offset:number;branchOptions:CG04VolunteerOption[];
+ overview:{total:number;active:number;inactive:number;suspended:number}};
+export type CG04VolunteerRosterExport={csv:string;rows:number};
+export type CG04VolunteerReviewPolicy={configured:boolean;version:number;replayed?:boolean};
+export type CG04VolunteerReviewPage={items:CG04VolunteerReviewItem[];hasMore:boolean;offset:number;
+ overview:{total:number;active:number;pending:number;rejected:number;today:number;approvalRate:number|null}};
+export type CG04VolunteerReviewCase={caseRef:string;reference:string;status:string;revision:number;applicationNumber:string;department:string;branch:string|null;
+ source:Record<string,unknown>;files:{fileRef:string;fileVersion:number;classification:string;verified:boolean}[];
+ timeline:{action:string;occurredAt:string;reviewer:string}[];canDecide:boolean};
+export type CG04ReviewDecisionResult={reference:string;status:string;revision:number;replayed:boolean};

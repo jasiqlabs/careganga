@@ -3,6 +3,7 @@ import {ActivityIndicator,AppState,BackHandler,Image,Pressable,
  StyleSheet,Text,TextInput,View} from "react-native";
 import {careGangaTheme as t} from "../../../../../packages/design-tokens/src/index";
 import {CmsPublicExtendedSection} from "./cms-extended-native-screen";
+import {NativeMembershipPlans} from "../membership/native-membership-plans";
 type Fields=Record<string,unknown>;
 type Section={kind:string;order:number;fields:Fields};
 type Asset={role:string;altText:string;src:string;order:number};
@@ -100,25 +101,25 @@ async function publishedNotices():Promise<{available:boolean;notices:Notice[]}>{
   return {available:true,notices:data.notices};
  }catch{return {available:false,notices:[]};}
 }
-async function publishedNavigation():Promise<{login:boolean;paths:string[]}>{
+async function publishedNavigation():Promise<{login:boolean;paths:string[];volunteer:boolean}>{
  if(!base||!/^https?:\/\//.test(base)||
   (process.env.NODE_ENV==="production"&&!base.startsWith("https://")))
-  return {login:false,paths:[]};
+  return {login:false,paths:[],volunteer:false};
  try{
   const r=await fetch(new URL("/api/public/content/navigation",base).toString(),
    {cache:"no-store",signal:AbortSignal.timeout(9000)});
   if(!r.ok)throw Error();
   const result:unknown=await r.json();
   if(!result||typeof result!=="object"||!("schemaVersion" in result)||
-    result.schemaVersion!==1)return {login:false,paths:[]};
-  const data=result as {login?:{visible?:boolean};publishedRoutes?:{path:string}[]};
+    result.schemaVersion!==1)return {login:false,paths:[],volunteer:false};
+  const data=result as {login?:{visible?:boolean};volunteerJoin?:{visible?:boolean;path?:string};publishedRoutes?:{path:string}[]};
   const valid=new Set(["/about","/our-impact","/ngo-information","/gallery","/contact","/healthcare","/our-work","/upcoming-projects",
    ...legalPages.map(([slug])=>"/policies/"+slug)]);
   const paths=Array.isArray(data.publishedRoutes)?data.publishedRoutes
    .map(p=>p.path).filter(p=>typeof p==="string"&&
     (valid.has(p)||/^\/blog\/[a-z0-9-]{1,70}$/.test(p))).slice(0,100):[];
-  return {login:data.login?.visible===true,paths};
- }catch{return {login:false,paths:[]};}
+  return {login:data.login?.visible===true,volunteer:data.volunteerJoin?.visible===true&&data.volunteerJoin?.path==="/volunteer",paths};
+ }catch{return {login:false,paths:[],volunteer:false};}
 }
 function CmsButton({title,onPress,secondary=false}:{
  title:string;onPress:()=>void;secondary?:boolean}){
@@ -130,8 +131,8 @@ function CmsButton({title,onPress,secondary=false}:{
 /** Public Android receives the same original immutable public DTO as Next.js.
  * Revalidate on foreground; neither old cache nor a guessed CG04 Join is shown.
  */
-export function PublicCmsContent({onContact,onPartnerApplication,onLoginVisibility}: {
- onContact:()=>void;onPartnerApplication:()=>void;
+export function PublicCmsContent({onContact,onPartnerApplication,onMembershipApply,onVolunteerApply,onLoginVisibility}: {
+ onContact:()=>void;onPartnerApplication:()=>void;onMembershipApply:(planCode:string)=>void;onVolunteerApply:()=>void;
  onLoginVisibility:(visible:boolean)=>void}){
  const [slug,setSlug]=useState("home"),[projectCategory,setProjectCategory]=useState("All Projects");
  const [mediaScope,setMediaScope]=useState<"PHOTO"|"VIDEO"|"PUBLICATION">("PHOTO");
@@ -139,6 +140,7 @@ export function PublicCmsContent({onContact,onPartnerApplication,onLoginVisibili
   "registration-certificate"|"annual-reports">("80g");
  const [policiesExpanded,setPoliciesExpanded]=useState(false);
  const [publishedPaths,setPublishedPaths]=useState<string[]>([]);
+ const [volunteerJoin,setVolunteerJoin]=useState(false);
  const [articleFeed,setArticleFeed]=useState<{available:boolean;posts:Article[]}>({
   available:false,posts:[]});
  const [noticeFeed,setNoticeFeed]=useState<{available:boolean;notices:Notice[]}>({
@@ -154,15 +156,16 @@ export function PublicCmsContent({onContact,onPartnerApplication,onLoginVisibili
  const latestNavRequest=useRef(0);
  const refreshNavigation=useCallback(async()=>{
   const request=++latestNavRequest.current;
-  onLoginVisibility(false);
+  onLoginVisibility(false);setVolunteerJoin(false);
   const nav=await publishedNavigation();
   if(request===latestNavRequest.current){
-   onLoginVisibility(nav.login);setPublishedPaths(nav.paths);
+   onLoginVisibility(nav.login);setPublishedPaths(nav.paths);setVolunteerJoin(nav.volunteer);
   }
  },[onLoginVisibility]);
  const load=useCallback(async(target:string)=>{
   const request=++latestPageRequest.current;
   setLoading(true);setActiveSlide(0);
+  if(target==="membership"){setResult({state:"UNAVAILABLE",page:null});setLoading(false);return;}
   if(target==="articles"){
    const feed=await publishedArticles();
    if(request!==latestPageRequest.current)return;
@@ -200,7 +203,7 @@ export function PublicCmsContent({onContact,onPartnerApplication,onLoginVisibili
    if(slug!=="home"){
     // Article detail returns to News. A published legal policy must
     // return to Home; it is not part of the article reader.
-    setSlug(!["about","our-impact","80g","gallery","contact","healthcare","articles","notices","our-work","upcoming-projects"].includes(slug)&&
+    setSlug(!["about","our-impact","80g","gallery","contact","healthcare","articles","notices","our-work","upcoming-projects","membership"].includes(slug)&&
      !isPolicySlug(slug)?articleBackTarget:"home");return true;
    }return false;
   });
@@ -276,6 +279,7 @@ export function PublicCmsContent({onContact,onPartnerApplication,onLoginVisibili
    {publishedPaths.some(p=>p.startsWith("/blog/"))&&
     <CmsButton title="News" secondary={slug!=="articles"}
      onPress={()=>setSlug("articles")}/>}
+   <CmsButton title="Membership Plans" secondary={slug!=="membership"} onPress={()=>setSlug("membership")}/>
    <CmsButton title="Partnerships" secondary onPress={onPartnerApplication}/>
    <CmsButton title="Contact" onPress={()=>navigate("/contact")}
     secondary={slug!=="contact"}/>
@@ -287,7 +291,7 @@ export function PublicCmsContent({onContact,onPartnerApplication,onLoginVisibili
      <CmsButton key={name} title={title} secondary={slug!==name}
       onPress={()=>setSlug(name)}/>)}
   </View>
-  {loading?<ActivityIndicator accessibilityLabel="Checking current published website content"/>:
+  {slug==="membership"?<NativeMembershipPlans onApply={onMembershipApply}/>:loading?<ActivityIndicator accessibilityLabel="Checking current published website content"/>:
    slug==="articles"?<View style={styles.card}>
     <Text accessibilityRole="header" style={styles.heading}>Approved News &amp; Articles</Text>
     {!articleFeed.available?<Text accessibilityRole="alert" style={styles.muted}>
@@ -427,6 +431,7 @@ export function PublicCmsContent({onContact,onPartnerApplication,onLoginVisibili
      <Text style={styles.body}>{text(fields.volunteerBody)}</Text>
      {(Array.isArray(fields.volunteerBenefits)?fields.volunteerBenefits:[]).map((v,j)=>
       <Text style={styles.highlight} key={j}>✓ {text(v)}</Text>)}
+     {volunteerJoin&&<CmsButton title="Become a Volunteer" onPress={onVolunteerApply}/>}
      <Text accessibilityRole="header" style={styles.heading}>{text(fields.memberTitle)}</Text>
      <Text style={styles.body}>{text(fields.memberBody)}</Text>
      {(Array.isArray(fields.memberBenefits)?fields.memberBenefits:[]).map((v,j)=>
@@ -441,8 +446,9 @@ export function PublicCmsContent({onContact,onPartnerApplication,onLoginVisibili
       {!!text(fields.body)&&<Text style={styles.heroBody}>{text(fields.body)}</Text>}
       {!!uri&&<Image style={styles.image} source={{uri}}
        accessibilityLabel={image?.altText||"Foundation volunteers"}/>}
-      {local(fields.path)&&text(fields.label)&&
-       <CmsButton title={text(fields.label)} onPress={()=>navigate(fields.path)}/>}
+      {text(fields.path)==="/volunteer"?volunteerJoin&&text(fields.label)?
+       <CmsButton title={text(fields.label)} onPress={onVolunteerApply}/>:null:
+       local(fields.path)&&text(fields.label)&&<CmsButton title={text(fields.label)} onPress={()=>navigate(fields.path)}/>}
      </View>;
     }
     if(section.kind==="SITE_FOOTER")return <View style={styles.card} key={i}>

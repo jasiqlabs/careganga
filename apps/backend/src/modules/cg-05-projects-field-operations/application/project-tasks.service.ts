@@ -8,11 +8,12 @@ import {currentTaskEmployee,taskEmployeeFrom,lockCurrentTaskEmployee} from "../.
 import {ProjectsService} from "./projects.service";
 import {choice,clean,date,invalid,optionalRef,priorities,ref,stale} from "../domain/project-input";
 import {parseTaskCreate,parseTaskEdit,parseTaskAssign,parseTaskProgress,taskStatuses,taskTransition,type TaskStatus,type TaskAssigneeKind} from "../domain/task-input";
+import {currentVolunteerPredicate,requireCurrentVolunteer} from "../../cg-04-membership-volunteers/application/current-volunteer-source";
 
 type Actor=VerifiedFoundationActor;
 type Parent={id:string;branch_ref:string|null;owner_account_ref:string;status:string;planned_start:string|null;planned_end:string|null;manager_ref:string|null};
-type Binding={kind:TaskAssigneeKind;account:string|null;employee:string|null;branch:string|null};
-type Task={id:string;project_id:string;status:TaskStatus;version:number;due_at:string|null;planned_start:string|null;effective_now?:boolean;assignee_kind:TaskAssigneeKind;assignee_account_ref:string|null;assignee_employee_ref:string|null;assignee_branch_ref:string|null};
+type Binding={kind:TaskAssigneeKind;account:string|null;employee:string|null;branch:string|null;volunteer:string|null};
+type Task={id:string;project_id:string;status:TaskStatus;version:number;due_at:string|null;planned_start:string|null;effective_now?:boolean;assignee_kind:TaskAssigneeKind;assignee_account_ref:string|null;assignee_employee_ref:string|null;assignee_branch_ref:string|null;assignee_volunteer_ref:string|null};
 const digest=(value:unknown)=>createHash("sha256").update(JSON.stringify(value)).digest("hex");
 const csvCell=(v:unknown)=>{let s=String(v??"").replace(/[\u0000-\u001f\u007f]/g," ");if(/^\s*[=+\-@]/.test(s))s="'"+s;return '"'+s.replaceAll('"','""')+'"';};
 const terminal=(status:string)=>["COMPLETED","CANCELLED"].includes(status);
@@ -24,8 +25,13 @@ const eligible=(a:string)=>`${a}.status='ACTIVE' AND ${grants(a,"projects.tasks.
 const operatorScope=(a:string)=>`(p.branch_ref IS NULL OR b.manager_account_ref=${a}.id OR p.owner_account_ref=${a}.id OR ${grants(a,"foundation.branches.admin")})`;
 const live=`(t.assignee_account_ref IS NOT NULL AND t.assigned_at<=now()
  AND EXISTS(SELECT 1 FROM account aa WHERE aa.realm_id=t.root_realm_id AND aa.id=t.assignee_account_ref AND ${eligible("aa")}
- AND ((t.assignee_kind='ACCOUNT' AND t.assignee_branch_ref IS NOT DISTINCT FROM p.branch_ref
+ AND ((t.assignee_kind='ACCOUNT' AND t.assignee_volunteer_ref IS NULL AND t.assignee_branch_ref IS NOT DISTINCT FROM p.branch_ref
  AND ${operatorScope("aa")} AND NOT EXISTS(SELECT 1 FROM hr_employee e WHERE e.root_realm_id=t.root_realm_id AND e.account_ref=aa.id))
+ OR (t.assignee_kind='ACCOUNT' AND t.assignee_volunteer_ref IS NOT NULL
+ AND t.assignee_branch_ref IS NOT DISTINCT FROM p.branch_ref AND NOT EXISTS(
+  SELECT 1 FROM hr_employee e WHERE e.root_realm_id=t.root_realm_id AND e.account_ref=aa.id)
+ AND EXISTS(SELECT 1 FROM volunteer v WHERE v.root_realm_id=t.root_realm_id AND v.id=t.assignee_volunteer_ref
+  AND ${currentVolunteerPredicate("v","aa.id","p.branch_ref")}))
  OR (t.assignee_kind='EMPLOYEE' AND EXISTS(SELECT 1 FROM ${taskEmployeeFrom}
  WHERE e.root_realm_id=t.root_realm_id AND e.id=t.assignee_employee_ref AND e.account_ref=aa.id
  AND h.branch_ref=t.assignee_branch_ref AND (p.branch_ref IS NULL OR h.branch_ref=p.branch_ref)
@@ -36,7 +42,7 @@ const joins=` FROM project_task t JOIN project p ON p.id=t.project_id AND p.root
 const overdue="t.due_at<(now() AT TIME ZONE 'Asia/Kolkata')::date AND t.status IN('ASSIGNED','IN_PROGRESS')";
 const upcoming="t.due_at>=(now() AT TIME ZONE 'Asia/Kolkata')::date AND t.status IN('ASSIGNED','IN_PROGRESS')";
 const projection=`t.id AS ref,t.task_code AS code,t.project_id AS "projectRef",p.title AS project,p.code_norm AS "projectCode",t.title,t.task_type AS "taskType",
- t.description,t.priority,t.planned_start::text AS "startDate",t.due_at::text AS "dueDate",t.status,t.assignee_kind AS "assigneeKind",
+ t.description,t.priority,t.planned_start::text AS "startDate",t.due_at::text AS "dueDate",t.status,CASE WHEN t.assignee_volunteer_ref IS NOT NULL THEN 'VOLUNTEER' ELSE t.assignee_kind END AS "assigneeKind",
  a.display_name AS assignee,p.location_label AS location,b.name AS branch,t.version,t.updated_at AS "updatedAt",
  t.completed_at AS "completedAt",(${overdue}) IS TRUE AS overdue,(${live}) AS "assignmentCurrent"`;
 
@@ -74,13 +80,20 @@ export class ProjectTasksService {
   if(!(await tx.query(`SELECT 1 FROM account aa WHERE aa.realm_id=$1 AND aa.id=$2 AND ${eligible("aa")}`,[a.realmId,target])).rowCount)throw new ForbiddenException("Choose a current eligible task assignee");
  }
  private async binding(tx:PoolClient,a:Actor,p:Parent,kind:TaskAssigneeKind,target:string|null):Promise<Binding>{
-  if(kind==="UNASSIGNED")return {kind,account:null,employee:null,branch:null};
+  if(kind==="UNASSIGNED")return {kind,account:null,employee:null,branch:null,volunteer:null};
   if(!target)throw invalid();
+  if(kind==="VOLUNTEER"){
+   const v=await requireCurrentVolunteer(tx,a.realmId,target,p.branch_ref);
+   await this.account(tx,a,v.account_ref);
+   if((await tx.query("SELECT 1 FROM hr_employee WHERE root_realm_id=$1 AND account_ref=$2",[a.realmId,v.account_ref])).rowCount)
+    throw new ForbiddenException("Use the employee assignment for this account.");
+   return {kind:"ACCOUNT",account:v.account_ref,employee:null,branch:p.branch_ref,volunteer:v.id};
+  }
   if(kind==="EMPLOYEE"){
    const e=await lockCurrentTaskEmployee(tx,a.realmId,target,p.branch_ref);
    if(!e)throw new ForbiddenException("Choose an active employee in the current project branch");
    await this.account(tx,a,e.accountRef);
-   return {kind,account:e.accountRef,employee:e.employeeRef,branch:e.branchRef};
+   return {kind,account:e.accountRef,employee:e.employeeRef,branch:e.branchRef,volunteer:null};
   }
   await this.account(tx,a,target);
   if((await tx.query("SELECT 1 FROM hr_employee WHERE root_realm_id=$1 AND account_ref=$2",[a.realmId,target])).rowCount)throw new ForbiddenException("Choose the original employee assignment");
@@ -88,13 +101,16 @@ export class ProjectTasksService {
    const q=await tx.query(`SELECT 1 FROM account aa WHERE aa.realm_id=$1 AND aa.id=$2 AND ${grants("aa","foundation.branches.admin")}`,[a.realmId,target]);
    if(!q.rowCount)throw new ForbiddenException("Choose a current permitted branch operator");
   }
-  return {kind,account:target,employee:null,branch:p.branch_ref};
+  return {kind,account:target,employee:null,branch:p.branch_ref,volunteer:null};
  }
  private async currentBinding(tx:PoolClient,a:Actor,p:Parent,t:Task){
   if(!t.assignee_account_ref||t.assignee_kind==="UNASSIGNED")return false;
   try{
-   const b=await this.binding(tx,a,p,t.assignee_kind,t.assignee_kind==="EMPLOYEE"?t.assignee_employee_ref:t.assignee_account_ref);
-   return b.account===t.assignee_account_ref&&b.employee===t.assignee_employee_ref&&b.branch===t.assignee_branch_ref;
+   const kind=t.assignee_volunteer_ref?"VOLUNTEER":t.assignee_kind;
+   const target=t.assignee_volunteer_ref??(t.assignee_kind==="EMPLOYEE"?t.assignee_employee_ref:t.assignee_account_ref);
+   const b=await this.binding(tx,a,p,kind,target);
+   return b.account===t.assignee_account_ref&&b.employee===t.assignee_employee_ref
+    &&b.branch===t.assignee_branch_ref&&b.volunteer===t.assignee_volunteer_ref;
   }catch(e){if(e instanceof ForbiddenException)return false;throw e;}
  }
  private async get(tx:PoolClient,a:Actor,key:string,write=false){
@@ -123,7 +139,7 @@ export class ProjectTasksService {
   return {ref:e.task_id,version:e.result_version,replayed:true};
  }
  private async event(tx:PoolClient,a:Actor,t:Task,key:string,hash:string,kind:string,prior:TaskStatus|null,reason=""){
-  await tx.query("INSERT INTO project_task_event(root_realm_id,project_id,task_id,event_key,payload_digest,event_kind,actor_ref,old_status,new_status,assignee_kind,assignee_account_ref,assignee_employee_ref,assignee_branch_ref,result_version,redacted_reason) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15)",[a.realmId,t.project_id,t.id,key,hash,kind,a.accountId,prior,t.status,t.assignee_kind,t.assignee_account_ref,t.assignee_employee_ref,t.assignee_branch_ref,t.version,reason]);
+  await tx.query("INSERT INTO project_task_event(root_realm_id,project_id,task_id,event_key,payload_digest,event_kind,actor_ref,old_status,new_status,assignee_kind,assignee_account_ref,assignee_employee_ref,assignee_branch_ref,assignee_volunteer_ref,result_version,redacted_reason) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16)",[a.realmId,t.project_id,t.id,key,hash,kind,a.accountId,prior,t.status,t.assignee_kind,t.assignee_account_ref,t.assignee_employee_ref,t.assignee_branch_ref,t.assignee_volunteer_ref,t.version,reason]);
   return {ref:t.id,version:t.version,replayed:false};
  }
  async create(token:string,projectId:string,raw:unknown){
@@ -132,7 +148,7 @@ export class ProjectTasksService {
    await this.identity.assertCurrent(tx,a,"projects.tasks.view");const prior=await this.replay(tx,a,v.key,hash,"CREATE",target);if(prior)return prior;
    const p=await this.parent(tx,a,target);await this.manageParent(tx,a,p);this.due(p,v.dueDate,v.startDate);
    const b=await this.binding(tx,a,p,v.kind,v.target);
-   const t=(await tx.query<Task>("INSERT INTO project_task(root_realm_id,project_id,title,task_type,description,priority,planned_start,due_at,status,assignee_kind,assignee_account_ref,assignee_employee_ref,assignee_branch_ref,assigned_at,created_by) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,CASE WHEN $11::uuid IS NULL THEN NULL ELSE now() END,$14) RETURNING *",[a.realmId,p.id,v.title,v.taskType,v.description,v.priority,v.startDate,v.dueDate,b.account?"ASSIGNED":"DRAFT",b.kind,b.account,b.employee,b.branch,a.accountId])).rows[0];
+   const t=(await tx.query<Task>("INSERT INTO project_task(root_realm_id,project_id,title,task_type,description,priority,planned_start,due_at,status,assignee_kind,assignee_account_ref,assignee_employee_ref,assignee_branch_ref,assignee_volunteer_ref,assigned_at,created_by) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,CASE WHEN $11::uuid IS NULL THEN NULL ELSE now() END,$15) RETURNING *",[a.realmId,p.id,v.title,v.taskType,v.description,v.priority,v.startDate,v.dueDate,b.account?"ASSIGNED":"DRAFT",b.kind,b.account,b.employee,b.branch,b.volunteer,a.accountId])).rows[0];
    return this.event(tx,a,t,v.key,hash,"CREATE",null);
   });
  }
@@ -152,7 +168,7 @@ export class ProjectTasksService {
    await this.identity.assertCurrent(tx,a,"projects.tasks.view");const prior=await this.replay(tx,a,v.key,hash,"ASSIGN",undefined,target);if(prior)return prior;
    const {p,t,canManage}=await this.get(tx,a,target,true);if(!canManage)throw new ForbiddenException("Task assignment unavailable");
    if(t.version!==v.expected)throw stale();this.due(p,t.due_at,t.planned_start);const b=await this.binding(tx,a,p,v.kind,v.target);
-   const next=(await tx.query<Task>("UPDATE project_task SET status='ASSIGNED',assignee_kind=$3,assignee_account_ref=$4,assignee_employee_ref=$5,assignee_branch_ref=$6,assigned_at=now(),version=version+1,updated_at=now() WHERE root_realm_id=$1 AND id=$2 AND version=$7 RETURNING *",[a.realmId,t.id,b.kind,b.account,b.employee,b.branch,v.expected])).rows[0];
+   const next=(await tx.query<Task>("UPDATE project_task SET status='ASSIGNED',assignee_kind=$3,assignee_account_ref=$4,assignee_employee_ref=$5,assignee_branch_ref=$6,assignee_volunteer_ref=$7,assigned_at=now(),version=version+1,updated_at=now() WHERE root_realm_id=$1 AND id=$2 AND version=$8 RETURNING *",[a.realmId,t.id,b.kind,b.account,b.employee,b.branch,b.volunteer,v.expected])).rows[0];
    if(!next)throw stale();return this.event(tx,a,next,v.key,hash,"ASSIGN",t.status,v.reason);
   });
  }
@@ -191,7 +207,14 @@ export class ProjectTasksService {
    const employees=(await tx.query(`SELECT e.id AS value,aa.display_name||' · '||e.employee_code AS label,'EMPLOYEE' AS kind FROM ${taskEmployeeFrom} JOIN account aa ON aa.realm_id=e.root_realm_id AND aa.id=e.account_ref
    WHERE e.root_realm_id=$1 AND ${currentTaskEmployee} AND ${eligible("aa")} AND ($2='' OR strpos(lower(aa.display_name),$2)>0 OR strpos(lower(e.employee_code),$2)>0)
    AND ($3::uuid IS NULL OR h.branch_ref=$3) ORDER BY aa.display_name,e.id LIMIT 50`,[a.realmId,q,p.branch_ref])).rows;
-   return {projects:projects.slice(0,100),hasMoreProjects:projects.length>100,assignees:[...operators,...employees]};
+   const volunteers=(await tx.query<{value:string;label:string;kind:"VOLUNTEER"}>(`SELECT v.id AS value,v.display_name||' · '||v.volunteer_no AS label,'VOLUNTEER' AS kind
+    FROM volunteer v JOIN account aa ON aa.realm_id=v.root_realm_id AND aa.id=v.account_ref
+    WHERE v.root_realm_id=$1 AND ${eligible("aa")}
+      AND ${currentVolunteerPredicate("v","aa.id","$3::uuid")}
+      AND NOT EXISTS(SELECT 1 FROM hr_employee e WHERE e.root_realm_id=v.root_realm_id AND e.account_ref=aa.id)
+      AND ($2='' OR strpos(lower(v.display_name),$2)>0 OR strpos(lower(v.volunteer_no),$2)>0)
+    ORDER BY v.display_name,v.id LIMIT 50`,[a.realmId,q,p.branch_ref])).rows;
+   return {projects:projects.slice(0,100),hasMoreProjects:projects.length>100,assignees:[...operators,...employees,...volunteers]};
   },true);
  }
  async list(token:string,query:Record<string,unknown>,mine=false,exporting=false,parentRef?:string){
