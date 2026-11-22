@@ -91,10 +91,10 @@ export function CampaignDraftsWorkspace({canManage}:{canManage:boolean}){
   finally{if(id===editingSerial.current)setLoading(false);}
  };
  const update=<K extends keyof Draft>(kind:K,key:string,value:unknown)=>{
-  if(pending.current||submitPending.current)return;
+  if(!editable||pending.current||submitPending.current)return;
   setDraft(d=>({...d,[kind]:{...d[kind],[key]:value}}));
  };
- const save=async(e?:FormEvent)=>{e?.preventDefault();if(!canManage||busy||submitPending.current)return;setBusy(true);setFailure("");setNotice("");
+ const save=async(e?:FormEvent)=>{e?.preventDefault();if(!editable||busy||submitPending.current)return;setBusy(true);setFailure("");setNotice("");
   if(!pending.current){
    const key=crypto.randomUUID();
    pending.current={key,method:selected?"PATCH":"POST",path:selected?selected.ref+"/draft":"",
@@ -114,6 +114,7 @@ export function CampaignDraftsWorkspace({canManage}:{canManage:boolean}){
    setFailure(e instanceof Error?e.message:"Campaign result uncertain. Check the saved draft.");
   }finally{setBusy(false);}
  };
+ const editable=canManage&&(!selected||selected.status==="DRAFT"||selected.status==="RETURNED");
  const submitForReview=async()=>{
   if(!canManage||busy||pending.current||!selected||selected.status!=="DRAFT")return;
   if(JSON.stringify(draft)!==JSON.stringify(savedDraft)){
@@ -137,14 +138,14 @@ export function CampaignDraftsWorkspace({canManage}:{canManage:boolean}){
  };
  const hasUnsavedChanges=JSON.stringify(draft)!==JSON.stringify(savedDraft);
  const select=(label:string,value:string|null,items:Choice[],change:(v:string|null)=>void,empty:string)=>
-  <label style={field}>{label}<select style={entry} disabled={busy||!canManage||!!pending.current||!choices}
+  <label style={field}>{label}<select style={entry} disabled={busy||!editable||!!pending.current||!!submitPending.current||!choices}
    value={value??""} onChange={e=>change(e.target.value||null)}>
     <option value="">{empty}</option>{items.map(c=><option key={c.value} value={c.value}>{c.label}</option>)}
   </select></label>;
  const input=(label:string,value:string,onChange:(v:string)=>void,multiline=false)=>
   <label style={field}>{label}{multiline?
-   <textarea style={{...entry,minHeight:100}} value={value} onChange={e=>onChange(e.target.value)} disabled={busy||!canManage||!!pending.current}/>:
-   <input style={entry} value={value} onChange={e=>onChange(e.target.value)} disabled={busy||!canManage||!!pending.current}/>}</label>;
+   <textarea style={{...entry,minHeight:100}} value={value} onChange={e=>onChange(e.target.value)} disabled={busy||!editable||!!pending.current||!!submitPending.current}/>:
+   <input style={entry} value={value} onChange={e=>onChange(e.target.value)} disabled={busy||!editable||!!pending.current||!!submitPending.current}/>}</label>;
  return <section aria-label="Foundation campaigns" style={{display:"grid",gap:18}}>
   <header><h1>Campaigns</h1><p>Original Foundation campaign drafts and six-step planning. Contributions, approvals and publication are separate verified workflows.</p></header>
   <section style={panel}><div style={actions}>
@@ -181,6 +182,7 @@ export function CampaignDraftsWorkspace({canManage}:{canManage:boolean}){
      disabled={busy||!!pending.current} onClick={()=>setStep(i)} style={{fontWeight:i===step?700:400}}>{i+1}. {name}</button>)}
    </nav>
    <form onSubmit={e=>void save(e)} style={{display:"grid",gap:15}}>
+    {selected&&!editable&&<p role="status">This campaign is currently "{selected.status.replaceAll("_"," ")}. Its submitted and approved information is read-only; corrections require an original returned review.</p>}
     {step===0&&<>
      {input("Campaign title (required)",draft.basic.title,v=>update("basic","title",v))}
      <p>Type: General Foundation Campaign. A real project may be associated only after source verification.</p>
@@ -206,7 +208,7 @@ export function CampaignDraftsWorkspace({canManage}:{canManage:boolean}){
      {input("Target group (planned, not verified)",draft.project.targetGroup,v=>update("project","targetGroup",v))}
      <label style={field}>Planned beneficiaries (estimate only)
       <input style={entry} type="number" min="0" max="10000000" step="1" value={draft.project.plannedBeneficiaries??""}
-       disabled={busy||!canManage||!!pending.current} onChange={e=>update("project","plannedBeneficiaries",e.target.value===""?null:Number(e.target.value))}/></label>
+       disabled={busy||!editable||!!pending.current||!!submitPending.current} onChange={e=>update("project","plannedBeneficiaries",e.target.value===""?null:Number(e.target.value))}/></label>
      <p>Project and event links require verified CG-05 source and are not yet available in this initial draft slice.</p>
     </>}
     {step===2&&<>{select("Campaign coordinator",draft.team.coordinatorRef,choices?.coordinators??[],
@@ -242,7 +244,7 @@ export function CampaignDraftsWorkspace({canManage}:{canManage:boolean}){
     <div style={actions}>
      <button type="button" disabled={busy||step===0||!!pending.current} onClick={()=>setStep(v=>Math.max(0,v-1))}>Previous</button>
      <button type="button" disabled={busy||step===5||!!pending.current} onClick={()=>setStep(v=>Math.min(5,v+1))}>Next</button>
-     {canManage&&<button className="primary" type="submit" disabled={busy||draft.basic.title.trim().length<2}>
+     {editable&&<button className="primary" type="submit" disabled={busy||draft.basic.title.trim().length<2}>
       {busy?"Confirming draft…":pending.current?"Retry original save":"Save as Draft"}</button>}
     </div>
    </form>
