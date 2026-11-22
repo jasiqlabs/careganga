@@ -21,6 +21,36 @@ export class MembershipActivationService{
   return record??null;
  }
  async me(token:string){return this.run(token,async(tx,a)=>({member:await this.ownMember(tx,a)}));}
+ /** Own history only: same verified CG01 community identity, same CG04 member.
+  * Immutable paid terms are read from original CG09-confirmed activation records.
+  * Names, visible business numbers and real branch labels are exposed; never UUIDs. */
+ async history(token:string){
+  return this.run(token,async(tx,a)=>{
+   const member=(await tx.query<{id:string}>(
+    "SELECT id FROM member WHERE root_realm_id=$1 AND account_ref=$2 FOR SHARE",
+    [a.realmId,a.accountId])).rows[0];
+   if(!member)return {terms:[],branches:[],termsHasMore:false,branchesHasMore:false};
+   const [terms,branches]=await Promise.all([
+    tx.query<{plan:string;category:string;feeMinor:string;currency:string;startsOn:string;expiresOn:string|null;applicationNumber:string;recordedAt:string}>(
+     `SELECT v.name AS plan,v.category,t.fee_minor::text AS "feeMinor",t.currency,
+     t.starts_on::text AS "startsOn",t.expires_on::text AS "expiresOn",
+     app.application_ref AS "applicationNumber",t.created_at AS "recordedAt"
+     FROM membership_term t
+     JOIN membership_tier_version v ON v.root_realm_id=t.root_realm_id AND v.id=t.tier_version_id
+     JOIN membership_application app ON app.root_realm_id=t.root_realm_id AND app.id=t.original_application_id
+     WHERE t.root_realm_id=$1 AND t.member_id=$2
+     ORDER BY t.starts_on DESC,t.id DESC LIMIT 26`,[a.realmId,member.id]),
+    tx.query<{branch:string|null;effectiveFrom:string;effectiveTo:string|null;reason:string}>(
+     `SELECT b.name AS branch,h.effective_from AS "effectiveFrom",
+     h.effective_to AS "effectiveTo",h.reason
+     FROM member_branch_history h LEFT JOIN branch b ON b.root_realm_id=h.root_realm_id AND b.id=h.branch_ref
+     WHERE h.root_realm_id=$1 AND h.member_id=$2
+     ORDER BY h.effective_from DESC,h.id DESC LIMIT 26`,[a.realmId,member.id])
+   ]);
+   return {terms:terms.rows.slice(0,25),branches:branches.rows.slice(0,25),
+    termsHasMore:terms.rows.length>25,branchesHasMore:branches.rows.length>25};
+  });
+ }
  async fee(token:string,ref:string){const id=uuid(ref);return this.run(token,async(tx,a)=>{
   if(!(await tx.query("SELECT 1 FROM membership_application WHERE root_realm_id=$1 AND id=$2 AND applicant_account_ref=$3 FOR SHARE",[a.realmId,id,a.accountId])).rowCount)throw new NotFoundException("Your membership application is unavailable.");
   return this.fees.statusInTx(tx,a.realmId,id);
