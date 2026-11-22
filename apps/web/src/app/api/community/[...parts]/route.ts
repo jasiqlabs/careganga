@@ -20,7 +20,10 @@ function destination(parts:string[],method:string):string|null{
  if(parts.length===4&&parts[0]==="volunteers"&&parts[1]==="applications"&&UUID.test(parts[2])&&["submit","cancel","activate"].includes(parts[3])&&method==="POST")
   return "/api/v1/volunteers/applications/"+parts[2]+"/"+parts[3];
  if(route==="volunteers/me"&&method==="GET")return "/api/v1/volunteers/me";
- if(route==="volunteers/documents/intents"&&method==="POST")return "/api/documents/volunteer/intents";
+ if(route==="volunteers/documents/me"&&method==="GET")return "/api/v1/volunteers/documents/me";
+ if(parts.length===5&&parts[0]==="volunteers"&&parts[1]==="documents"&&parts[2]==="cards"&&UUID.test(parts[3])&&parts[4]==="download"&&method==="GET")
+  return "/api/v1/volunteers/documents/cards/"+parts[3]+"/download";
+  if(route==="volunteers/documents/intents"&&method==="POST")return "/api/documents/volunteer/intents";
  if(parts.length===4&&parts[0]==="volunteers"&&parts[1]==="documents"&&parts[2]==="intents"&&UUID.test(parts[3])&&method==="GET")
   return "/api/documents/volunteer/intents/"+parts[3];
  if(parts.length===5&&parts[0]==="volunteers"&&parts[1]==="documents"&&parts[2]==="intents"&&UUID.test(parts[3])&&parts[4]==="confirm"&&method==="POST")
@@ -97,12 +100,12 @@ async function proxy(request:NextRequest,ctx:Ctx,method:"GET"|"POST"|"PATCH"){
    const out=reply({signedIn:true});
    out.cookies.set("cg_community_session",s.sessionToken,{httpOnly:true,secure:process.env.NODE_ENV==="production",sameSite:"strict",path:"/",expires:new Date(s.expiresAt)});return out;
   }
-  if((route.startsWith("documents/files/")||route.startsWith("documents/packs/")||route.startsWith("volunteers/documents/files/"))&&route.endsWith("/download")){
+  if((route.startsWith("documents/files/")||route.startsWith("documents/packs/")||(route.startsWith("volunteers/documents/files/")||route.startsWith("volunteers/documents/cards/")))&&route.endsWith("/download")){
    const type=r.headers.get("Content-Type")??"application/octet-stream";
    if(!["application/pdf","image/jpeg","image/png","image/webp"].includes(type.split(";")[0].trim()))return reply({message:"Protected document unavailable."},503);
    const bytes=await r.arrayBuffer();
    if(bytes.byteLength>10485760)return reply({message:"Protected document is too large."},503);
-   return new NextResponse(bytes,{status:200,headers:{"Cache-Control":"private, no-store","X-Content-Type-Options":"nosniff","Content-Type":type,"Content-Disposition":'attachment; filename="CareGanga-membership-document"'}});
+   return new NextResponse(bytes,{status:200,headers:{"Cache-Control":"private, no-store","X-Content-Type-Options":"nosniff","Content-Type":type,"Content-Disposition":'attachment; filename="CareGanga-original-private-document"'}});
   }
   const v:unknown=await r.json();return reply(v,r.status);
  }catch{return reply({message:"The result is uncertain. Refresh the application status before trying again."},503);}
