@@ -122,7 +122,7 @@ test("US003-QA03/08/12/13/19: refund source caps concurrent requests and exact p
  const sql=migration("3310_cg07_donation_refund_source.sql");
  assert.match(sql,/FOR UPDATE OF d/);
  assert.match(sql,/reserved\+NEW\.amount_minor>received/);
- assert.match(sql,/NEW\.approved_by<>NEW\.requested_by|NEW\.approved_by=NEW\.requested_by/);
+ assert.match(sql,/approved_by<>requested_by/);
  assert.match(sql,/cg07_refund_requires_posted_finance/);
  assert.match(sql,/l\.account_id=NEW\.cash_account_ref|ln\.account_id=NEW\.cash_account_ref/);
  const refund=source("application/donation-refund.service.ts");
