@@ -19,7 +19,7 @@ async function api<T>(route:string,value:object):Promise<T>{
 /** Never treat link creation as receipt; private status proof stays in POST body. */
 export function PublicDonationForm({campaignSlug=null}:{campaignSlug?:string|null}){
  const [amount,setAmount]=useState(""),[name,setName]=useState(""),[mobile,setMobile]=useState(""),
-  [email,setEmail]=useState(""),[consent,setConsent]=useState(false),[busy,setBusy]=useState(false);
+  [email,setEmail]=useState(""),[pan,setPan]=useState(""),[address,setAddress]=useState(""),[consent,setConsent]=useState(false),[busy,setBusy]=useState(false);
  const [status,setStatus]=useState(""),[error,setError]=useState(""),[proof,setProof]=useState(""),
   [checkout,setCheckout]=useState(""),[linkState,setLinkState]=useState(""),[received,setReceived]=useState(false);
  const intentKey=useRef<string|null>(null),linkKey=useRef<string|null>(null);
@@ -29,7 +29,7 @@ export function PublicDonationForm({campaignSlug=null}:{campaignSlug?:string|nul
   setBusy(true);setError("");
   try{
    const out=await api<Outcome>("",{requestKey:intentKey.current,campaignSlug,amount,consent:true,
-    donor:{name,mobile,email,pan:"",address:""}});
+    donor:{name,mobile,email,pan,address}});
    setProof(out.statusToken);setStatus(out.status);setReceived(out.status==="RECEIVED_POSTED");
    if(!linkKey.current)linkKey.current=crypto.randomUUID();
   }catch(e){setError((e instanceof Error?e.message:"Donation result uncertain.")+
@@ -93,6 +93,12 @@ export function PublicDonationForm({campaignSlug=null}:{campaignSlug?:string|nul
     onChange={e=>{if(!intentKey.current)setMobile(e.target.value);}}/></label>
    <label style={label}>Email (optional)<input style={input} type="email" value={email} maxLength={254}
     onChange={e=>{if(!intentKey.current)setEmail(e.target.value);}}/></label>
+   <label style={label}>Address (optional)<textarea style={{...input,minHeight:70}}
+    value={address} maxLength={300} onChange={e=>{if(!intentKey.current)setAddress(e.target.value);}}/></label>
+   <label style={label}>PAN (optional, private Foundation records)
+    <input style={input} value={pan} maxLength={10} autoCapitalize="characters"
+     onChange={e=>{if(!intentKey.current)setPan(e.target.value.toUpperCase());}}/></label>
+   <p style={{fontSize:12,margin:0}}>PAN is optional, kept encrypted, and does not automatically qualify a donation for 80G tax deduction.</p>
    <label style={{display:"flex",gap:9,alignItems:"flex-start",fontSize:14}}>
     <input type="checkbox" checked={consent} disabled={!!intentKey.current} required
      onChange={e=>setConsent(e.target.checked)}/>
