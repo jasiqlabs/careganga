@@ -1,6 +1,6 @@
 import {describe,test} from "node:test";
 import assert from "node:assert/strict";
-import {BadRequestException,ConflictException} from "@nestjs/common";
+import {BadRequestException,ConflictException,ForbiddenException} from "@nestjs/common";
 import {parseHrPrivateDetails} from "../src/modules/cg-10-human-resources/application/hr-private-detail.service";
 import {HrEnrollmentSourceFacade,sourceHash} from "../src/modules/cg-10-human-resources/application/hr-enrollment-source.facade";
 import {HrEnrollmentService,parseHrDraft} from "../src/modules/cg-10-human-resources/application/hr-enrollment.service";
@@ -184,5 +184,32 @@ describe("CG-10 B27-B28 protected registration fields",()=>{
   assert.equal(data.accountType,"SAVINGS");assert.equal(data.bloodGroup,"A+");
   for(const invalid of [{dateOfBirth:"1990-02-30"},{dateOfBirth:"2099-01-01"},{pinCode:"000000"},{bloodGroup:"C+"},{contactEmail:"abc"},{upiId:"no-at-sign"},{accountType:"FAKE"},{salary:"123"},{role:"ADMIN"}])
    assert.throws(()=>parseHrPrivateDetails(invalid),BadRequestException);
+ });
+});
+
+describe("CG10 final original directory and protected registration source contracts",()=>{
+ test("extended protected fields and salary proposal never alter public input",()=>{
+  const details=parseHrPrivateDetails({addressState:"Maharashtra",addressDistrict:"Pune",addressBlock:"Haveli",workLocation:"Foundation office",compensationProposal:"22500.50"});
+  assert.equal(details.compensationProposal,"22500.50");assert.equal(details.addressDistrict,"Pune");
+  assert.equal(parseHrPrivateDetails({}).compensationProposal,null);
+  for(const v of ["0","-100","100.123","9999999999999","not money",500])
+   assert.throws(()=>parseHrPrivateDetails({compensationProposal:v}),BadRequestException);
+  assert.throws(()=>parseHrDraft({...base(),compensationProposal:"22500.50"}),BadRequestException);
+ });
+ test("bounded geographic and role directory filters use original branch and account role scope",async()=>{
+  const observed:{sql:string;params?:unknown[]}[]=[],actions:string[]=[];
+  const tx={query:async(sql:string,params?:unknown[])=>{observed.push({sql,params});return {rows:[]};},release:()=>{}};
+  const service=Object.create(HrEnrollmentService.prototype) as HrEnrollmentService;
+  Object.assign(service,{sessions:{requireAction:async(_token:string,action:string)=>{actions.push(action);return {realmId:id,accountId:id};}},identity:{assertCurrent:async(_tx:unknown,_actor:unknown,action:string)=>{actions.push(action);}},db:{connect:async()=>tx}});
+  const result=await service.employeeDirectory("test",0,undefined,"ALL","",undefined,"Maharashtra","Pune","Coordinator");
+  assert.deepEqual(result.items,[]);
+  assert.ok(actions.includes("roles.select"));
+  const q=observed.find(x=>x.sql.includes("FROM hr_employee e"))!;
+  assert.deepEqual(q.params,[id,id,null,0,"ALL","",null,"maharashtra","pune","coordinator"]);
+  assert.match(q.sql,/g\.root_realm_id=p\.root_realm_id/);assert.match(q.sql,/assigned\.realm_id=e\.root_realm_id/);
+  assert.match(q.sql,/LIMIT 26 OFFSET \$4/);
+  const restricted=Object.create(HrEnrollmentService.prototype) as HrEnrollmentService;
+  Object.assign(restricted,{sessions:{requireAction:async(_token:string,action:string)=>{if(action==="roles.select")throw new ForbiddenException();return {realmId:id,accountId:id};}}});
+  await assert.rejects(restricted.employeeDirectory("test",0,undefined,"ALL","",undefined,"Maharashtra","Pune","Coordinator"),ForbiddenException);
  });
 });
