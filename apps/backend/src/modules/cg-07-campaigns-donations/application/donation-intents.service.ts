@@ -189,7 +189,8 @@ export class DonationIntentsService{
     grossMinor:received?x.amountMinor:"0",refundedMinor:x.refundedMinor,
     netReceivedMinor:remaining.toString(),currency:x.currency,
     status:received?(remaining===0n?"REFUNDED_FULL":BigInt(x.refundedMinor)>0n?
-     "REFUNDED_PARTIAL":"RECEIVED_POSTED"):x.status,
+     "REFUNDED_PARTIAL":"RECEIVED_POSTED"):x.status==="VERIFIED_EXTERNAL"?
+      "RECONCILIATION_PENDING":x.status,
     receiptStatus:x.receiptStatus,receiptNumber:x.receiptNumber};
   });
   // A missing, expired or wrong-root proof never expands the result set.
