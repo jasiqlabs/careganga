@@ -7,6 +7,9 @@ export type Capability = Readonly<{
   sensitive:boolean;
 }>;
 const capabilities:readonly Capability[]=Object.freeze([
+  {key:"inventory.stock.view",businessLabel:"View authorized stock transactions and balances",group:"Requests & inventory",assignable:true,sensitive:false},
+  {key:"inventory.stock.receive",businessLabel:"Receive permitted warehouse stock",group:"Requests & inventory",assignable:true,sensitive:true},
+  {key:"inventory.stock.reverse",businessLabel:"Reverse confirmed receipts with available quantity",group:"Requests & inventory",assignable:false,sensitive:true},
   {key:"inventory.catalog.view",businessLabel:"View permitted inventory catalog and stores",group:"Requests & inventory",assignable:true,sensitive:false},
   {key:"inventory.supplier.private.manage",businessLabel:"Manage restricted supplier contact and tax details",group:"Requests & inventory",assignable:false,sensitive:true},
   {key:"inventory.catalog.manage",businessLabel:"Maintain permitted inventory catalog and stores",group:"Requests & inventory",assignable:true,sensitive:true},
