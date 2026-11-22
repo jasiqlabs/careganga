@@ -33,7 +33,7 @@ export class InventoryOperationService{
   return this.catalog.run(token,review?"inventory.stock.adjust.review":"inventory.stock.view",async(tx,a)=>{
    await this.catalog.store(tx,a,loc,false);
    const rs=await tx.query<OperationRow>("SELECT * FROM stock_operation_draft WHERE root_realm_id=$1 AND location_id=$2 AND "+(review?"kind='ADJUSTMENT' AND actor_ref<>$3 AND status='SUBMITTED'":"actor_ref=$3")+" ORDER BY created_at DESC,id DESC LIMIT 30",[a.realmId,loc,a.accountId]);
-   const out=[];for(const r of rs.rows){const g=await this.source.guard(tx,a,r.id,"READ",review);out.push({...await this.view(tx,a,r),proofRequired:g.proofRequired,reviewRequired:g.reviewRequired});}return out;
+   const out=[];for(const r of rs.rows){try{const g=await this.source.guard(tx,a,r.id,"READ",review);out.push({...await this.view(tx,a,r),proofRequired:g.proofRequired,reviewRequired:g.reviewRequired});}catch(e){if(!(e instanceof ForbiddenException)&&!(e instanceof NotFoundException))throw e;}}return out;
   });
  }
  async held(token:string,location:unknown){
@@ -47,10 +47,10 @@ export class InventoryOperationService{
  async create(token:string,raw:unknown){
   const v=parseOperation(raw);
   return this.catalog.run(token,operationAction(v.kind),async(tx,a)=>{
-   for(const l of [v.loc,...(v.dest?[v.dest]:[])].sort())await this.catalog.store(tx,a,l);
+   let policy;for(const l of [v.loc,...(v.dest?[v.dest]:[])].sort()){const s=await this.catalog.store(tx,a,l);if(l===v.loc)policy=s;}
    await tx.query("SELECT pg_advisory_xact_lock(hashtextextended($1,0))",[a.realmId+":"+v.key]);
    const prior=(await tx.query<OperationRow>("SELECT * FROM stock_operation_draft WHERE root_realm_id=$1 AND request_key=$2",[a.realmId,v.key])).rows[0];
-   if(prior){if(prior.actor_ref!==a.accountId||prior.digest!==materialHash([v,prior.system_quantity,prior.balance_version]))throw sourceChanged();return this.view(tx,a,prior);}
+   if(prior){if(prior.actor_ref!==a.accountId||prior.digest!==materialHash([v,prior.system_quantity,prior.balance_version]))throw sourceChanged();return {...await this.view(tx,a,prior),proofRequired:!!policy?.delivery_proof_required,reviewRequired:!!policy?.adjustment_review_required};}
    const item=(await tx.query<{unit_code:string;qty_scale:number;status:string}>("SELECT unit_code,qty_scale,status FROM inventory_item WHERE root_realm_id=$1 AND id=$2 FOR SHARE",[a.realmId,v.item])).rows[0];
    if(!item||(v.kind!=="RETURN"&&item.status!=="ACTIVE"))throw sourceChanged();
    const qty=v.kind==="ADJUSTMENT"&&v.quantity==="0"?"0":inventoryQuantity(v.quantity,item.qty_scale);
@@ -62,7 +62,7 @@ export class InventoryOperationService{
     const s=(await tx.query<{on_hand_qty:string;version:number}>("SELECT on_hand_qty::text,version FROM stock_balance WHERE root_realm_id=$1 AND item_id=$2 AND location_id=$3 AND on_hand_qty<>$4::numeric AND reserved_qty<=$4::numeric",[a.realmId,v.item,v.loc,qty])).rows[0];if(!s)throw shortage();system=s.on_hand_qty;version=s.version;
    }
    const row=(await tx.query<OperationRow>("INSERT INTO stock_operation_draft(root_realm_id,request_key,actor_ref,kind,location_id,destination_id,request_id,recipient_id,original_movement_id,request_line_id,item_id,unit_code,qty_scale,quantity,system_quantity,balance_version,expected_request_version,reason,digest) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19) RETURNING *",[a.realmId,v.key,a.accountId,v.kind,v.loc,v.dest,v.request,recipient,v.original,v.line,v.item,item.unit_code,item.qty_scale,qty,system,version,v.version,v.reason,materialHash([v,system,version])])).rows[0];
-   return this.view(tx,a,row);
+   return {...await this.view(tx,a,row),proofRequired:!!policy?.delivery_proof_required,reviewRequired:!!policy?.adjustment_review_required};
   });
  }
  async confirm(token:string,ref:string,raw:unknown){
