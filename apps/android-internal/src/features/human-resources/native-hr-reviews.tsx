@@ -6,7 +6,7 @@ import {Modal,Pressable,ScrollView,StyleSheet,Text,TextInput,View} from "react-n
 import {identityRequest} from "../identity-access/http-client";
 type Case={caseRef:string;reference:string;name:string;status:string;revision:number;canReview:boolean};
 type Detail={caseRef:string;reference:string;name:string;status:string;
- designation:string;employmentType:string;revision:number;canDecide:boolean;canReadProof:boolean;
+ designation:string;employmentType:string;revision:number;canDecide:boolean;canReadProof:boolean;timeline?:{action:string;step:number;occurredAt:string}[];
  evidence:{classification:string;verified:boolean}[]};
 const originalStatuses=[{key:"ALL",title:"All"},{key:"SUBMITTED",title:"Submitted"},{key:"IN_REVIEW",title:"In review"},{key:"PENDING_OWNER",title:"Approved — activation pending"},{key:"OWNER_COMPLETED",title:"Activated"},{key:"RETURNED",title:"Returned"},{key:"REJECTED",title:"Rejected"}];
 const stageLabel=(status:string)=>originalStatuses.find(x=>x.key===status)?.title??"Status unavailable";
@@ -178,6 +178,7 @@ export function NativeHrReviews({token,canConfigure=false,onExpired}:{
   <Modal visible={!!selected} animationType="slide" onRequestClose={()=>{if(!busy&&!uncertain){setSelected(null);setPassword("");setKey(null);}}}><View style={{flex:1,backgroundColor:hrTheme.surface}}><ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={{padding:16,gap:10}}>{!!error&&<Text accessibilityRole="alert" style={styles.error}>{error}</Text>}{selected&&<View style={styles.detail}>
    <Text style={styles.heading}>{selected.name} — {selected.designation}</Text>
    <Text style={styles.hint}>{selected.reference} · {stageLabel(selected.status)}</Text>
+   <Text style={styles.label}>Original approval history</Text>{selected.timeline?.length?selected.timeline.map((e,i)=><View key={i} style={{borderLeftWidth:3,borderLeftColor:hrTheme.primary,paddingLeft:10,gap:4}}><Text style={styles.label}>{label(e.action)}</Text><Text style={styles.hint}>Step {e.step} · {new Date(e.occurredAt).toLocaleString("en-IN")}</Text></View>):<Text style={styles.hint}>No recorded approval events available.</Text>}
    <Text style={styles.label}>Scanner-verified source evidence</Text>
    {selected.evidence.map((e,i)=><View key={i} style={{gap:5}}>
     <Text style={styles.hint}>
