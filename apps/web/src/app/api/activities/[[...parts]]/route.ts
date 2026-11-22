@@ -22,6 +22,7 @@ async function proxy(req:NextRequest,ctx:Context,method:"GET"|"POST"|"PATCH"){
   let body:string|undefined;if(method!=="GET"){body=await req.text();if(body.length>16384)return reply({message:"Check activity fields."},400);}
   const r=await fetch(url,{method,body,headers:{Authorization:"Bearer "+token,"Content-Type":"application/json"},cache:"no-store",signal:AbortSignal.timeout(15000)});
   const v=await r.json().catch(()=>null);if(r.ok&&v!==null)return reply(v,r.status);
+  if(r.status===400&&typeof v?.message==="string"&&typeof v?.code==="string"&&/^CG05_ACTIVITY_[A-Z_]+$/.test(v.code))return reply({message:v.message,code:v.code,field:typeof v.field==="string"?v.field:undefined},400);
   return reply({message:r.status===401?"Sign in again.":r.status===403?"Your current activity or branch permission does not allow this action.":r.status===404?"Activity unavailable.":r.status===409?"The activity changed. Refresh and review the current record.":r.status===400?"Check activity details and project dates.":"Activity result could not be confirmed."},r.ok?503:r.status);
  }catch{return reply({message:"Activity result could not be confirmed."},503);}
 }
