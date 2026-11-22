@@ -17,15 +17,15 @@ function parse(v:unknown){
  const x=v as Record<string,unknown>;
  if(Object.keys(x).some(k=>!["campaignRef","campaignVersion","requestKey","mime","sizeBytes",
   "sha256","kind","rightsConfirmed"].includes(k))||
-  !["BANNER","DOCUMENT"].includes(String(x.kind))||
+  !["COVER","BANNER","DOCUMENT"].includes(String(x.kind))||
   x.rightsConfirmed!==true||typeof x.mime!=="string"||!MIME.includes(x.mime)||
-  (x.kind==="BANNER"&&x.mime==="application/pdf")||
+  (x.kind!=="DOCUMENT"&&x.mime==="application/pdf")||
   !Number.isSafeInteger(x.campaignVersion)||Number(x.campaignVersion)<1||
-  !Number.isSafeInteger(x.sizeBytes)||Number(x.sizeBytes)<1||Number(x.sizeBytes)>(x.kind==="BANNER"?2097152:10485760)||
+  !Number.isSafeInteger(x.sizeBytes)||Number(x.sizeBytes)<1||Number(x.sizeBytes)>(x.kind==="COVER"?2097152:x.kind==="BANNER"?5242880:10485760)||
   typeof x.sha256!=="string"||!/^[a-f0-9]{64}$/.test(x.sha256))throw invalid();
  return {campaignRef:campaignRefValue(x.campaignRef),campaignVersion:Number(x.campaignVersion),
   requestKey:campaignRefValue(x.requestKey),mime:x.mime,sizeBytes:Number(x.sizeBytes),
-  sha256:x.sha256,kind:String(x.kind) as "BANNER"|"DOCUMENT"};
+  sha256:x.sha256,kind:String(x.kind) as "COVER"|"BANNER"|"DOCUMENT"};
 }
 @Injectable()
 export class CampaignMediaEvidenceService{
@@ -52,7 +52,7 @@ export class CampaignMediaEvidenceService{
   const input=parse(body),digest=createHash("sha256").update(JSON.stringify(input)).digest("hex");
   const intent=await this.run(token,true,async(tx,a)=>{
    const source=await this.source.guardMedia(tx,a,input.campaignRef,input.campaignVersion,true);
-   const classification=input.kind==="BANNER"?"CAMPAIGN_BANNER":"CAMPAIGN_DOCUMENT";
+   const classification=input.kind==="COVER"?"CAMPAIGN_COVER":input.kind==="BANNER"?"CAMPAIGN_BANNER":"CAMPAIGN_DOCUMENT";
    const q=await tx.query<Intent>("INSERT INTO cg19_upload_intent(realm_id,case_id,proposal_revision,requested_by,request_key,mime,size_bytes,expected_sha256,request_digest,classification,object_key,reserved_until,owner_kind,campaign_id,campaign_media_rights_confirmed) VALUES($1,NULL,$10,$2,$3,$4,$5,$6,$7,$11,$8,now()+interval '15 minutes','CG07_CAMPAIGN',$9,true) ON CONFLICT(realm_id,requested_by,request_key) DO NOTHING RETURNING *",[a.realmId,a.accountId,input.requestKey,input.mime,input.sizeBytes,input.sha256,digest,"careganga/private/cg19/"+a.realmId+"/"+randomUUID(),input.campaignRef,source.version,classification]);
    if(q.rows[0]){await this.event(tx,a,q.rows[0],"UPLOAD_INITIATED");return q.rows[0];}
    const prior=(await tx.query<Intent>("SELECT * FROM cg19_upload_intent WHERE realm_id=$1 AND requested_by=$2 AND request_key=$3 AND owner_kind='CG07_CAMPAIGN' FOR SHARE",[a.realmId,a.accountId,input.requestKey])).rows[0];
