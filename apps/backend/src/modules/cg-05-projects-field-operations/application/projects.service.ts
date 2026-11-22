@@ -54,7 +54,7 @@ export class ProjectsService{
  async guardCover(tx:PoolClient,a:VerifiedFoundationActor,projectRef:string,expectedVersion:number|null,write:boolean){
   await this.identity.assertCurrent(tx,a,"projects.view");
   if(write)await this.identity.assertCurrent(tx,a,"projects.manage");
-  const p=await this.row(tx,a,projectRef,false);
+  const p=await this.row(tx,a,projectRef,write);
   if(write){await this.branches.projectBranch(tx,a,p.branch_ref);if(["CANCELLED","COMPLETED"].includes(p.status))throw stale();}
   if(expectedVersion!==null&&p.version!==expectedVersion)throw stale();
   return p;
