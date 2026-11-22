@@ -69,7 +69,7 @@ const NativeActivitiesWorkspace = lazy(() => import("../projects/native-activiti
 const NativeTasksWorkspace = lazy(() => import("../projects/native-tasks-workspace").then(m=>({default:m.NativeTasksWorkspace})));
 const NativeProjectsWorkspace = lazy(() => import("../projects/native-projects-workspace").then(m=>({default:m.NativeProjectsWorkspace})));
 const NativeInventoryCatalog = lazy(() => import("../inventory/native-inventory-catalog").then(m=>({default:m.NativeInventoryCatalog})));
-const NativeMemberRoster = lazy(() => import("../membership/native-member-roster").then(m=>({default:m.NativeMemberRoster})));
+const NativeMembershipDesk = lazy(() => import("../membership/native-membership-desk").then(m=>({default:m.NativeMembershipDesk})));
 const NativeHrEnrollment = lazy(() => import("../human-resources/native-hr-enrollment").then(m => ({default:m.NativeHrEnrollment})));
 const FinanceNativeProtectedReview = lazy(() => import("../finance-accounting/finance-native-protected-review").then(m => ({ default: m.FinanceNativeProtectedReview })));
 
@@ -761,8 +761,10 @@ export function StaffAuthenticationScreen() {
     return renderInShell(<ScreenErrorBoundary onExit={()=>setInventoryOpen(false)}><Suspense fallback={<ActivityIndicator style={{marginTop:40}}/>}><NativeInventoryCatalog token={token} canRequests={roleActions.includes("inventory.requests.view")||roleActions.includes("inventory.requests.review")} canRequestManage={roleActions.includes("inventory.requests.manage")} canReview={roleActions.includes("inventory.requests.review")&&roleActions.includes("approvals.review")} canConfigure={roleActions.includes("approvals.process.manage")} canIssue={roleActions.includes("inventory.stock.issue")} canTransfer={roleActions.includes("inventory.stock.transfer")} canAdjust={roleActions.includes("inventory.stock.adjust")} canAdjustReview={roleActions.includes("inventory.stock.adjust.review")&&roleActions.includes("approvals.review")} canStock={roleActions.includes("inventory.stock.view")} canReceive={roleActions.includes("inventory.stock.receive")} canReverse={roleActions.includes("inventory.stock.reverse")} canReadProof={roleActions.includes("documents.files.view")} canUploadProof={roleActions.includes("documents.files.manage")&&roleActions.includes("documents.files.view")} canManage={roleActions.includes("inventory.catalog.manage")} canPrivate={roleActions.includes("inventory.supplier.private.manage")} onExpired={expireSession}/></Suspense></ScreenErrorBoundary>,"inventory",()=>setInventoryOpen(false));
   }
   if(membershipOpen&&token&&actor){
-    if(!roleActions.includes("membership.members.view"))return <AccessDeniedScreen reason="You cannot view member records." onMyAccount={()=>setMembershipOpen(false)}/>;
-    return renderInShell(<ScreenErrorBoundary onExit={()=>setMembershipOpen(false)}><Suspense fallback={<ActivityIndicator style={{marginTop:40}}/>}><NativeMemberRoster key={token} token={token} canExport={roleActions.includes("membership.members.export")} onExpired={expireSession}/></Suspense></ScreenErrorBoundary>,"membership",()=>setMembershipOpen(false));
+    const canMembers=roleActions.includes("membership.members.view");
+    const canReview=roleActions.includes("approvals.review")&&roleActions.includes("membership.applications.review");
+    if(!canMembers&&!canReview)return <AccessDeniedScreen reason="You cannot view membership records." onMyAccount={()=>setMembershipOpen(false)}/>;
+    return renderInShell(<ScreenErrorBoundary onExit={()=>setMembershipOpen(false)}><Suspense fallback={<ActivityIndicator style={{marginTop:40}}/>}><NativeMembershipDesk key={token} token={token} canViewMembers={canMembers} canExportMembers={canMembers&&roleActions.includes("membership.members.export")} canReview={canReview} canConfigure={canReview&&roleActions.includes("approvals.process.manage")} onExpired={expireSession}/></Suspense></ScreenErrorBoundary>,"membership",()=>setMembershipOpen(false));
   }
   if (hrOpen && token && actor) {
     // Same actor self profile is open to every signed-in Foundation employee.
