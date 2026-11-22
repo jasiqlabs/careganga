@@ -1,0 +1,161 @@
+import React,{useEffect,useRef,useState} from "react";
+import {ActivityIndicator,AppState,Pressable,ScrollView,StyleSheet,Text,TextInput,View} from "react-native";
+import {File,Paths} from "expo-file-system";
+import * as Crypto from "expo-crypto";
+import * as Sharing from "expo-sharing";
+import type {CG04ReviewPage,CG04ReviewPolicy,CG04ReviewCase,CG04ReviewDecisionResult} from "@careganga/api-contracts";
+import {careGangaTheme as theme} from "../../../../../packages/design-tokens/src/index";
+import {identityRequest} from "../identity-access/http-client";
+
+type Decision="APPROVE"|"RETURN"|"REJECT";
+type Command={ref:string;requestKey:string;expectedRevision:number;action:Decision;remarks:string};
+const statuses=["ALL","SUBMITTED","PENDING_OWNER","RETURNED","REJECTED","OWNER_COMPLETED"];
+const label=(v:string)=>v.replaceAll("_"," ");
+const amount=(minor:string)=>{if(!/^\d{1,15}$/.test(minor))return "Unavailable";const n=BigInt(minor);return "₹"+(n/100n).toString()+"."+String(n%100n).padStart(2,"0");};
+
+export function NativeMemberReview({token,canConfigure,onExpired}:{token:string;canConfigure:boolean;onExpired:()=>void}){
+ const [policy,setPolicy]=useState<CG04ReviewPolicy|null>(null),[page,setPage]=useState<CG04ReviewPage|null>(null),[detail,setDetail]=useState<CG04ReviewCase|null>(null);
+ const [status,setStatus]=useState("ALL"),[offset,setOffset]=useState(0),[selected,setSelected]=useState<string|null>(null),[epoch,setEpoch]=useState(0);
+ const [loading,setLoading]=useState(true),[detailBusy,setDetailBusy]=useState(false),[busy,setBusy]=useState(false),[error,setError]=useState(""),[notice,setNotice]=useState("");
+ const [decision,setDecision]=useState<Decision>("APPROVE"),[remarks,setRemarks]=useState(""),[password,setPassword]=useState(""),[retryPassword,setRetryPassword]=useState(""),[configPassword,setConfigPassword]=useState("");
+ const pending=useRef<Command|null>(null),seq=useRef(0),detailSeq=useRef(0),foreground=useRef(true),running=useRef(false);
+ async function request<T>(path:string,body?:Record<string,unknown>):Promise<T>{
+  const r=await identityRequest("/api/v1/membership/reviews"+path,{headers:{Authorization:"Bearer "+token,...(body?{"Content-Type":"application/json"}:{})},cache:"no-store",...(body?{method:"POST",body:JSON.stringify(body)}:{})});
+  if(r.status===401){onExpired();throw Error("Sign in again.");}
+  if(!r.ok)throw Object.assign(new Error(r.status===403?"Current Foundation review permission is unavailable.":r.status===404?"This membership case or proof is unavailable.":r.status===409?"The review changed. Refresh the case before deciding.":r.status===400?"Check the review form and current password.":"Membership review result could not be confirmed. Refresh before retrying."),{status:r.status});
+  return await r.json() as T;
+ }
+ useEffect(()=>{const sub=AppState.addEventListener("change",state=>{
+  foreground.current=state==="active";
+  if(state!=="active"){seq.current++;detailSeq.current++;setPolicy(null);setPage(null);setDetail(null);setPassword("");setRetryPassword("");setConfigPassword("");}
+  else setEpoch(x=>x+1);
+ });return()=>sub.remove();},[]);
+ useEffect(()=>{
+  const n=++seq.current;setLoading(true);setPage(null);setError("");
+  void Promise.all([request<CG04ReviewPolicy>("/policy"),request<CG04ReviewPage>("?"+new URLSearchParams({status,offset:String(offset)}))]).then(([p,list])=>{
+   if(n===seq.current&&foreground.current){setPolicy(p);setPage(list);}
+  }).catch(e=>{if(n===seq.current&&foreground.current)setError(e instanceof Error?e.message:"Membership reviews unavailable.");}).finally(()=>{if(n===seq.current&&foreground.current)setLoading(false);});
+  return()=>{seq.current++;};
+ },[token,status,offset,epoch]);
+ useEffect(()=>{
+  const n=++detailSeq.current;setDetail(null);setDetailBusy(!!selected);if(!selected)return;
+  void request<CG04ReviewCase>("/"+selected).then(v=>{if(n===detailSeq.current&&foreground.current)setDetail(v);})
+   .catch(e=>{if(n===detailSeq.current&&foreground.current)setError(e instanceof Error?e.message:"Case details unavailable.");})
+   .finally(()=>{if(n===detailSeq.current&&foreground.current)setDetailBusy(false);});
+  return()=>{detailSeq.current++;};
+ },[token,selected,epoch]);
+ const refresh=()=>setEpoch(x=>x+1);
+ const chip=(title:string,onPress:()=>void,selectedChip=false,disabled=false)=>(
+  <Pressable accessibilityRole="button" accessibilityState={{selected:selectedChip,disabled}} disabled={disabled} onPress={onPress} style={[styles.chip,selectedChip&&styles.chipSelected,disabled&&styles.disabled]}><Text style={[styles.chipText,selectedChip&&styles.chipTextSelected]}>{title}</Text></Pressable>
+ );
+ async function configure(){
+  if(running.current||configPassword.length<8)return;running.current=true;setBusy(true);setError("");
+  const secret=configPassword;setConfigPassword("");
+  try{const result=await request<CG04ReviewPolicy>("/policy",{currentPassword:secret});setPolicy(result);setNotice("Protected Foundation membership review workflow configured.");refresh();}
+  catch(e){setError(e instanceof Error?e.message:"Configuration could not be confirmed.");}
+  finally{running.current=false;setBusy(false);}
+ }
+ async function send(cmd:Command,secret:string){
+  if(running.current||secret.length<8)return;running.current=true;setBusy(true);setError("");setNotice("");pending.current=cmd;
+  try{
+   const outcome=await request<CG04ReviewDecisionResult>("/"+cmd.ref+"/decide",{requestKey:cmd.requestKey,expectedRevision:cmd.expectedRevision,action:cmd.action,remarks:cmd.remarks,currentPassword:secret});
+   pending.current=null;setNotice(outcome.status==="PENDING_OWNER"?"Approval recorded. Membership is not active until payment and owner completion are verified.":"Review decision recorded as "+label(outcome.status)+".");
+   setRemarks("");setDecision("APPROVE");refresh();
+  }catch(e){setError(e instanceof Error?e.message:"Decision outcome uncertain. Check the case before retrying.");}
+  finally{setPassword("");setRetryPassword("");running.current=false;setBusy(false);}
+ }
+ async function shareProof(fileRef:string){
+  if(running.current||!detail)return;running.current=true;setBusy(true);setError("");let file:File|null=null;
+  try{
+   const r=await identityRequest("/api/v1/membership/reviews/"+detail.caseRef+"/files/"+fileRef+"/download",{headers:{Authorization:"Bearer "+token},cache:"no-store"});
+   if(r.status===401){onExpired();throw Error("Sign in again.");}
+   if(!r.ok)throw Error("Current protected evidence is unavailable. Refresh the review.");
+   const mime=(r.headers.get("content-type")??"").split(";")[0].trim();
+   if(!["application/pdf","image/png","image/jpeg","image/webp"].includes(mime))throw Error("This evidence format is unavailable.");
+   const bytes=new Uint8Array(await r.arrayBuffer());
+   if(!bytes.length||bytes.length>10485760)throw Error("Protected evidence is unavailable.");
+   if(!await Sharing.isAvailableAsync())throw Error("Private file sharing is not available on this device.");
+   const extension=mime==="application/pdf"?"pdf":mime==="image/png"?"png":mime==="image/webp"?"webp":"jpg";
+   file=new File(Paths.cache,"careganga-private-member-proof-"+Crypto.randomUUID()+"."+extension);
+   file.create();file.write(bytes);
+   await Sharing.shareAsync(file.uri,{mimeType:mime,dialogTitle:"Share private verified membership proof"});
+   setNotice("Protected evidence opened. Do not share it outside authorized Foundation review.");
+  }catch(e){setError(e instanceof Error?e.message:"Evidence could not be opened.");}
+  finally{try{file?.delete();}catch{}running.current=false;setBusy(false);}
+ }
+ const choose=(ref:string)=>{setError("");setNotice("");setSelected(ref);setPassword("");setRemarks("");};
+ const changeStatus=(value:string)=>{setStatus(value);setOffset(0);setSelected(null);setDetail(null);setPassword("");};
+ return <ScrollView contentContainerStyle={styles.page} keyboardShouldPersistTaps="handled">
+  <Text style={styles.heading}>Membership Applications</Text>
+  <Text style={styles.muted}>Original protected Foundation review cases. Approval does not issue an ID or confirm payment.</Text>
+  <View style={styles.buttons}>{chip("Refresh cases",refresh,false,busy)}</View>
+  {!!error&&<Text accessibilityRole="alert" style={styles.error}>{error}</Text>}
+  {!!notice&&<Text style={styles.muted} accessibilityRole="text">{notice}</Text>}
+  {policy&&!policy.configured&&<View style={styles.card}><Text style={styles.title}>Review workflow not configured</Text>
+   <Text style={styles.muted}>Saved applications cannot be submitted until authorized Foundation setup is complete.</Text>
+   {canConfigure?<><Text style={styles.label}>Current Foundation password</Text><TextInput secureTextEntry accessibilityLabel="Password to configure membership review" value={configPassword} onChangeText={setConfigPassword} style={styles.input} editable={!busy}/>
+    {chip("Configure protected review",()=>void configure(),false,busy||configPassword.length<8)}</>:<Text style={styles.muted}>Ask an authorized Foundation administrator to configure membership approval.</Text>}
+  </View>}
+  <View style={styles.card}><Text style={styles.title}>Review status</Text>
+   <View style={styles.buttons}>{statuses.map(v=><React.Fragment key={v}>{chip(label(v),()=>changeStatus(v),status===v,busy)}</React.Fragment>)}</View>
+   {loading&&<ActivityIndicator accessibilityLabel="Loading current membership review cases"/>}
+   {page&&!loading&&<>
+    {page.items.length===0&&<Text style={styles.muted}>No current membership applications in this status.</Text>}
+    {page.items.map(item=><View key={item.caseRef} style={styles.item}><Text style={styles.title}>{item.name}</Text><Text>{item.reference} · {label(item.status)}</Text>
+     <Text style={styles.muted}>Submitted: {new Date(item.submittedAt).toLocaleDateString("en-IN")}</Text>
+     {chip(selected===item.caseRef?"Selected":"View application",()=>choose(item.caseRef),selected===item.caseRef,busy)}</View>)}
+    <View style={styles.buttons}>{chip("Previous",()=>{setOffset(x=>Math.max(0,x-25));setSelected(null);},false,busy||offset===0)}
+     {chip("Next",()=>{setOffset(x=>x+25);setSelected(null);},false,busy||!page.hasMore)}</View>
+   </>}
+  </View>
+  {detailBusy&&<ActivityIndicator accessibilityLabel="Loading protected case details"/>}
+  {detail&&selected===detail.caseRef&&<View style={styles.card}>
+   <Text style={styles.title}>Review {detail.reference}</Text><Text style={styles.muted}>Application {detail.source.applicationNumber} · {label(detail.status)}</Text>
+   <Text style={styles.label}>Applicant</Text><Text>{detail.source.name} · {detail.source.mobile}</Text>
+   {!!detail.source.email&&<Text>{detail.source.email}</Text>}
+   <Text style={styles.label}>Address</Text><Text>{detail.source.address}, {detail.source.city} · {detail.source.pinCode}</Text>
+   <Text style={styles.label}>Accepted joining fee</Text><Text>{amount(detail.source.feeMinor)}</Text>
+   <Text style={styles.title}>Verified private documents</Text>
+   {detail.files.map(f=><View key={f.fileRef} style={styles.item}><Text>{label(f.classification)} · {f.verified?"Verified":"Changed or unavailable"}</Text>
+    {f.verified&&chip("Open protected proof",()=>void shareProof(f.fileRef),false,busy)}</View>)}
+   <Text style={styles.title}>Original review history</Text>
+   {detail.timeline.map((event,i)=><Text key={i} style={styles.muted}>{label(event.action)} · {event.reviewer} · {new Date(event.occurredAt).toLocaleString("en-IN")}</Text>)}
+   {detail.canDecide&&<View style={styles.item}>
+    <Text style={styles.title}>Independent protected decision</Text>
+    <View style={styles.buttons}>{(["APPROVE","RETURN","REJECT"] as const).map(v=><React.Fragment key={v}>{chip(v==="APPROVE"?"Approve (pending verification)":v==="RETURN"?"Return for correction":"Reject",()=>setDecision(v),decision===v,busy||!!pending.current)}</React.Fragment>)}</View>
+    <Text style={styles.label}>Reviewer remarks {decision==="APPROVE"?"(optional)":"(required)"}</Text>
+    <TextInput accessibilityLabel="Reviewer remarks" style={styles.input} value={remarks} onChangeText={setRemarks} multiline maxLength={500} editable={!busy&&!pending.current}/>
+    <Text style={styles.label}>Current Foundation password</Text>
+    <TextInput accessibilityLabel="Password to confirm review decision" secureTextEntry style={styles.input} value={password} onChangeText={setPassword} editable={!busy&&!pending.current}/>
+    {chip("Confirm protected decision",()=>{
+     if(decision!=="APPROVE"&&remarks.trim().length<3){setError("Provide a reason for returning or rejecting this application.");return;}
+     void send({ref:detail.caseRef,requestKey:Crypto.randomUUID(),expectedRevision:detail.revision,action:decision,remarks:remarks.trim()},password);
+    },false,busy||!!pending.current||password.length<8)}
+   </View>}
+   {chip("Back to application list",()=>{setSelected(null);setDetail(null);},false,busy)}
+  </View>}
+  {pending.current&&<View style={styles.card}><Text style={styles.title}>Review outcome uncertain</Text>
+   <Text style={styles.muted}>Check the current case first. Re-enter your password to retry the exact original request; a new decision will not be created.</Text>
+   {chip("Refresh original case",refresh,false,busy)}
+   <TextInput accessibilityLabel="Re-enter password to retry original decision" secureTextEntry style={styles.input} value={retryPassword} onChangeText={setRetryPassword}/>
+   {chip("Retry original decision",()=>{const cmd=pending.current;if(cmd)void send(cmd,retryPassword);},false,busy||retryPassword.length<8)}
+  </View>}
+ </ScrollView>;
+}
+const styles=StyleSheet.create({
+ page:{padding:16,paddingBottom:120,gap:12,backgroundColor:theme.adminCanvas},
+ heading:{fontSize:23,fontWeight:"800",color:theme.text},
+ title:{fontSize:16,fontWeight:"700",color:theme.text},
+ label:{fontWeight:"700",fontSize:13,color:theme.text},
+ muted:{fontSize:13,lineHeight:19,color:theme.mutedText},
+ error:{color:theme.error,fontSize:13},
+ card:{backgroundColor:theme.surface,borderWidth:1,borderColor:theme.border,borderRadius:12,padding:14,gap:10},
+ item:{borderTopWidth:1,borderColor:theme.border,paddingVertical:11,gap:8},
+ input:{borderRadius:9,borderWidth:1,borderColor:theme.border,padding:11,color:theme.text,minHeight:42},
+ buttons:{flexDirection:"row",flexWrap:"wrap",gap:8},
+ chip:{borderWidth:1,borderColor:theme.border,backgroundColor:theme.selectedSurface,paddingHorizontal:12,paddingVertical:10,borderRadius:9},
+ chipSelected:{backgroundColor:theme.primary,borderColor:theme.primary},
+ chipText:{fontSize:13,fontWeight:"600",color:theme.primary},
+ chipTextSelected:{color:theme.primaryText},
+ disabled:{opacity:0.45}
+});
