@@ -7,6 +7,8 @@ export type Capability = Readonly<{
   sensitive:boolean;
 }>;
 const capabilities:readonly Capability[]=Object.freeze([
+  {key:"inventory.catalog.view",businessLabel:"View permitted inventory catalog and stores",group:"Requests & inventory",assignable:true,sensitive:false},
+  {key:"inventory.catalog.manage",businessLabel:"Maintain permitted inventory catalog and stores",group:"Requests & inventory",assignable:true,sensitive:true},
   {key:"roles.view",businessLabel:"View roles",group:"Roles & permissions",assignable:true,sensitive:false},
   {key:"roles.select",businessLabel:"Select roles",group:"Roles & permissions",assignable:true,sensitive:false},
   // Until CG-03 approves non-root role-management proposals, this stays root-only.
