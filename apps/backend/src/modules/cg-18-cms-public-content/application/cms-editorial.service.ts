@@ -1118,7 +1118,6 @@ export class CmsEditorialService{
   eventCards.set(section.order_no,card);
  }
  const campaignCards=new Map<number,Record<string,unknown>>();
- const currentCampaigns=await publicCampaignSources(this.db);
  for(const section of sections.rows)if(section.section_kind==="CAMPAIGN_TEASER"){
   const refs=campaignTeaserRefs(section.structured_fields.sourceRefs??[]);
   const sources=await eligibleCampaignSources(this.db,x.foundation_root_id,refs);
