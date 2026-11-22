@@ -102,7 +102,7 @@ export function NativeHrReviews({token,canConfigure=false,onExpired}:{
     action==="RETURN"?"Returned for HR correction.":"Enrollment rejected.");
    setSelected(null);setPassword("");setRemarks("");setKey(null);setUncertain(false);
    await refresh();
-  }catch(e){setPassword("");setUncertain(true);failure(e);}
+  }catch(e){setPassword("");if(!uncertain&&e&&typeof e==="object"&&"status" in e&&[400,401,403,404,409,422].includes(Number(e.status))){setKey(null);setUncertain(false);}else setUncertain(true);failure(e);}
   finally{running.current=false;setBusy(false);}
  };
  const preview=async(kind:string)=>{
@@ -183,7 +183,7 @@ export function NativeHrReviews({token,canConfigure=false,onExpired}:{
     <Text style={styles.hint}>
      {label(e.classification)} · {e.verified?"Verified":"Not verified"}</Text>
     {e.verified&&selected.canReadProof&&button("View original protected proof",
-      ()=>void preview(e.classification),busy)}
+      ()=>void preview(e.classification),busy||uncertain)}
    </View>)}
    {selected.canDecide&&<>
     <Text style={styles.label}>Your decision</Text>
