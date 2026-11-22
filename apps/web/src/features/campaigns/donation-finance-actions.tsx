@@ -4,6 +4,7 @@ import {useRef,useState,type FormEvent,type ReactNode} from "react";
 type Choice={value:string;label:string};
 type Donation={donationNumber:string;donationRef:string;status:string;amountMinor:string;
  receiptStatus:string;refundMinor:string};
+type Reconciliation={donationNumber:string;amountMinor:string;providerStatus:string;signedVerified:boolean;createdAt:string};
 type Online={donationNumber:string;amountMinor:string;clearingAccounts:Choice[];
  incomeAccounts:Choice[];years:Choice[]};
 type Refund={refundRef:string;donationNumber:string;amountMinor:string;reason:string;
@@ -38,6 +39,7 @@ const choices=(items:Choice[],value:string,set:(v:string)=>void)=>
 export function DonationFinanceActions({items,canRecord,canReview,canIssue,onChange}:{
  items:Donation[];canRecord:boolean;canReview:boolean;canIssue:boolean;onChange:()=>void}){
  const [online,setOnline]=useState<Online|null>(null),[number,setNumber]=useState("");
+ const [reconciliations,setReconciliations]=useState<Reconciliation[]>([]);
  const [clearing,setClearing]=useState(""),[income,setIncome]=useState(""),
  [year,setYear]=useState(""),[date,setDate]=useState(""),[password,setPassword]=useState("");
  const [busy,setBusy]=useState(false),[error,setError]=useState(""),[notice,setNotice]=useState("");
@@ -56,6 +58,11 @@ export function DonationFinanceActions({items,canRecord,canReview,canIssue,onCha
   try{await fn();}catch(e){setError(e instanceof Error?e.message:"Original result uncertain. Retry with the same request key.");}
   finally{setBusy(false);}
  };
+ const refreshReconciliations=()=>run(async()=>{
+  const r=await request<{items:Reconciliation[]}>("/online/reconcile-queue");
+  setReconciliations(r.items);
+  if(r.items.length===0)setNotice("No pending provider reconciliations in this Foundation scope.");
+ });
  const onlineOptions=()=>run(async()=>{
   const x=await request<Online>("/online/options",{donationNumber:number});
   setOnline(x);setClearing(x.clearingAccounts[0]?.value??"");
@@ -121,6 +128,17 @@ export function DonationFinanceActions({items,canRecord,canReview,canIssue,onCha
  const canSettle=canRecord&&canReview;
  return <div style={{display:"grid",gap:16}}>
   {canSettle&&<section style={box}><h2>Verify online donation</h2>
+    <button type="button" style={button} disabled={busy} onClick={()=>void refreshReconciliations()}>
+     Refresh signed gateway reconciliation queue</button>
+    {reconciliations.map(x=><div key={x.donationNumber}
+     style={{display:"grid",gap:5,border:"1px solid var(--cg-border)",borderRadius:8,padding:10}}>
+     <strong>{x.donationNumber} · {money(x.amountMinor)}</strong>
+     <span>{x.signedVerified?"Signed provider event verified; awaiting CG-09 posting.":
+      "No signed provider success: request the original webhook replay, do not post money."}</span>
+     {x.signedVerified&&<button type="button" style={button} disabled={busy}
+      onClick={()=>{setNumber(x.donationNumber);setOnline(null);onlineKey.current=null;}}>
+       Select for finance verification</button>}
+    </div>)}
    <p>Only a genuine signed provider success can be posted; payment links are not received funds.</p>
    {field("Donation number",<input style={control} maxLength={15} value={number}
     onChange={e=>{if(!onlineKey.current){setNumber(e.target.value.toUpperCase());setOnline(null);}}}/>)}
