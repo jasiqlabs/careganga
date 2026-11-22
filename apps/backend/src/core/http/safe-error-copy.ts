@@ -179,6 +179,7 @@ export const SAFE_MESSAGE_CATALOG:Readonly<Record<string,string>>=Object.freeze(
       FINANCE_CLAIM_AMOUNT_INVALID:"Enter an expense amount greater than zero, in rupees with no more than two decimal places.",
       FINANCE_CLAIM_REPLAY_CONFLICT:"This claim request was already used with different details. Check your saved claims before retrying.",
       FINANCE_CLAIM_FILTER_INVALID:"Refresh your expense claim list and choose a valid page.",
+      FINANCE_CLAIM_BREAKDOWN_INVALID:"Enter a description or expense breakdown of up to 300 characters.",
       FINANCE_CLAIM_SOURCE_INVALID:"Select your current Foundation expense claim from the permitted list.",
       FINANCE_CLAIM_NOT_EDITABLE:"This claim is already under review or has a final decision. Refresh its status.",
       FINANCE_CLAIM_BILL_INVALID:"Upload a real PDF or image bill and wait for secure malware verification before submitting.",

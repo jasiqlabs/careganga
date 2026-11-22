@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import {BadRequestException,ConflictException} from "@nestjs/common";
 import type {PoolClient} from "pg";
 import type {VerifiedFoundationActor} from "../src/modules/cg-01-identity-access/public-api";
-import {parseFinanceClaimDraft} from "../src/modules/cg-09-finance-accounting/application/finance-expense-claim.service";
+import {parseFinanceClaimDraft,allowancePurpose} from "../src/modules/cg-09-finance-accounting/application/finance-expense-claim.service";
 import {currentHrAllowanceOrigin,assertOwnClaimOrigin,assertHrAllowanceOrigin} from "../src/modules/cg-10-human-resources/application/hr-allowance-origin";
 import {hrTemplateHash} from "../src/modules/cg-19-documents-notifications/application/hr-document-renderer";
 const requestKey="22222222-2222-4222-8222-222222222222";
@@ -19,6 +19,12 @@ describe("CG10 original finance claim and private document source contracts",()=
   for(const field of ["employeeRef","branchRef","status","paid","currency"])
    assert.throws(()=>parseFinanceClaimDraft({...draft,[field]:"fake"}),BadRequestException);
   assert.throws(()=>parseFinanceClaimDraft({...draft,sourceKind:"PAYROLL"}),BadRequestException);
+ });
+ test("B51 description is canonical in the original purpose, not a second amount",()=>{
+  assert.equal(allowancePurpose("Travel","Bus and metro"),"Travel | Breakdown: Bus and metro");
+  assert.equal(parseFinanceClaimDraft({...draft,sourceKind:"HR_ALLOWANCE",breakdown:"Bus and metro"}).purpose,"Business travel | Breakdown: Bus and metro");
+  assert.throws(()=>parseFinanceClaimDraft({...draft,breakdown:"not HR"}),BadRequestException);
+  assert.throws(()=>allowancePurpose("Travel","x".repeat(301)),BadRequestException);
  });
  test("claim draft rejects invalid amount and overflow date",()=>{
   for(const amount of ["0","-1","1.001","NaN","9999999999999"])

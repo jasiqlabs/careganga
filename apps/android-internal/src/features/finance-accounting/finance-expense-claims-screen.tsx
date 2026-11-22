@@ -1,4 +1,4 @@
-import {useCallback,useEffect,useState} from "react";
+import {useCallback,useEffect,useRef,useState} from "react";
 import * as Crypto from "expo-crypto";
 import {ActivityIndicator,BackHandler,Pressable,ScrollView,StyleSheet,Text,TextInput,View} from "react-native";
 import {SafeAreaView} from "react-native-safe-area-context";
@@ -24,7 +24,8 @@ function matches(c:Claim,filter:string,search:string){
 const filters=["ALL","DRAFT","SUBMITTED","APPROVED","PAYABLE","PAYMENT_REQUESTED","PAYMENT_VERIFIED_UNPOSTED","PAID_VERIFIED","RETURNED","REJECTED"];
 const filterLabel=(v:string)=>({ALL:"All",DRAFT:"Draft",SUBMITTED:"Pending review",APPROVED:"Approved",PAYABLE:"Payable",PAYMENT_REQUESTED:"Payment requested",PAYMENT_VERIFIED_UNPOSTED:"Verified, posting pending",PAID_VERIFIED:"Paid verified",RETURNED:"Returned",REJECTED:"Rejected"} as Record<string,string>)[v]??v;
 
-type Draft={category:string;purpose:string;expenseDate:string;amount:string};
+type Draft={category:string;purpose:string;expenseDate:string;amount:string;breakdown?:string};
+const splitPurpose=(purpose:string)=>{const marker=" | Breakdown: ",at=purpose.indexOf(marker);return at<0?{purpose,breakdown:""}:{purpose:purpose.slice(0,at),breakdown:purpose.slice(at+marker.length)};};
 type Problem={message?:string;field?:string};
 const clear=():Draft=>({category:"",purpose:"",expenseDate:"",amount:""});
 const inr=(s:string)=>{
@@ -48,6 +49,7 @@ export function FinanceExpenseClaimsScreen({token,canCreate,canView,canUploadBil
  token:string;canCreate:boolean;canView:boolean;canUploadBill?:boolean;allowanceMode?:boolean;onExit:()=>void;onExpired:()=>void
 }){
  const [claims,setClaims]=useState<Claim[]>([]);
+ const readGeneration=useRef(0),writeInFlight=useRef(false);
  const [eligible,setEligible]=useState(false),[search,setSearch]=useState(""),[filter,setFilter]=useState("ALL"),[drawer,setDrawer]=useState(false);
  const [offset,setOffset]=useState(0),[nextOffset,setNextOffset]=useState<number|null>(null);
  const allowCreate=canCreate&&(!allowanceMode||eligible);
@@ -62,7 +64,8 @@ export function FinanceExpenseClaimsScreen({token,canCreate,canView,canUploadBil
  const [busy,setBusy]=useState(false);
  const [loading,setLoading]=useState(false);
  const refresh=useCallback(async()=>{
-  if(!canView)return;
+  const generation=++readGeneration.current;
+  if(!canView){setClaims([]);setEligible(false);setNextOffset(null);setLoading(false);return;}
   setLoading(true);setError("");
   try{
    const res=await identityRequest("/api/finance-accounting/claims/mine?offset="+offset+(allowanceMode?"&source=HR_ALLOWANCE":""),{
@@ -72,12 +75,12 @@ export function FinanceExpenseClaimsScreen({token,canCreate,canView,canUploadBil
    const raw:unknown=await res.json();
    if(!raw||typeof raw!=="object"||!("claims" in raw)||!Array.isArray(raw.claims))
     throw Error("The current claim list could not be verified.");
-   setClaims(raw.claims as Claim[]);setEligible(true);setNextOffset("nextOffset" in raw&&typeof raw.nextOffset==="number"?raw.nextOffset:null);
-  }catch(e){setClaims([]);setEligible(false);setNextOffset(null);setError(e instanceof Error?e.message:
+   if(generation!==readGeneration.current)return;setClaims(raw.claims as Claim[]);setEligible(true);setNextOffset("nextOffset" in raw&&typeof raw.nextOffset==="number"?raw.nextOffset:null);
+  }catch(e){if(generation!==readGeneration.current)return;setClaims([]);setEligible(false);setNextOffset(null);setError(e instanceof Error?e.message:
    "Your claims cannot be loaded. Retry when connected.");}
-  finally{setLoading(false);}
+  finally{if(generation===readGeneration.current)setLoading(false);}
  },[token,canView,onExpired,offset,allowanceMode]);
- useEffect(()=>{void refresh();},[refresh]);
+ useEffect(()=>{void refresh();return()=>{readGeneration.current++;};},[refresh]);
  useEffect(()=>{
   const back=BackHandler.addEventListener("hardwareBackPress",()=>{onExit();return true;});
   return()=>back.remove();
@@ -88,13 +91,13 @@ export function FinanceExpenseClaimsScreen({token,canCreate,canView,canUploadBil
   setKey(null);setFieldError(null);setMessage("");
  }
  async function save(){
-  if(!allowCreate||busy)return;
+  if(!allowCreate||busy||writeInFlight.current)return;writeInFlight.current=true;
   const requestKey=key??Crypto.randomUUID();setKey(requestKey);
   setBusy(true);setFieldError(null);setMessage("");
   try{
    const res=await identityRequest(correction?"/api/finance-accounting/claims/"+correction.ref+"/correct":"/api/finance-accounting/claims/drafts",{
     method:"POST",headers:{"Authorization":"Bearer "+token,"Content-Type":"application/json"},
-    body:JSON.stringify({...form,requestKey,...(correction?{expectedVersion:correction.version}:allowanceMode?{sourceKind:"HR_ALLOWANCE"}:{})})});
+    body:JSON.stringify({category:form.category,purpose:form.purpose,expenseDate:form.expenseDate,amount:form.amount,...(allowanceMode?{breakdown:form.breakdown??""}:{}),requestKey,...(correction?{expectedVersion:correction.version}:allowanceMode?{sourceKind:"HR_ALLOWANCE"}:{})})});
    if(res.status===401){onExpired();return;}
    if(!res.ok){
     const x=await failure(res);
@@ -126,11 +129,11 @@ export function FinanceExpenseClaimsScreen({token,canCreate,canView,canUploadBil
    }catch{/* Unknown receipt remains unknown. */}
    setUncertain(true);
    setMessage(e instanceof Error?e.message:"Cannot confirm claim save. Check the status before retrying.");
-  }finally{setBusy(false);}
+  }finally{writeInFlight.current=false;setBusy(false);}
  }
  const fields:[keyof Draft,string,string][]=[
   ["category","Category","e.g. Travel"],["expenseDate","Expense date","YYYY-MM-DD"],
-  ["amount","Amount (₹)","e.g. 125.50"],["purpose","Purpose","Describe the expense"]
+  ["amount","Amount (₹)","e.g. 125.50"],["purpose","Purpose","Describe the expense"],...(allowanceMode?[["breakdown","Description / breakdown","What was the expense for?"] as [keyof Draft,string,string]]:[])
  ];
  const visible=allowanceMode?claims.filter(c=>matches(c,filter,search)):claims;
  return <SafeAreaView style={s.safe} edges={["left","right"]}>
@@ -147,11 +150,11 @@ export function FinanceExpenseClaimsScreen({token,canCreate,canView,canUploadBil
     <Text style={s.heading}>{correction?"Correct "+correction.number:allowanceMode?"Request Allowance":"New claim draft"}</Text>
     {fields.map(([field,label,placeholder])=><View key={field}>
      <Text style={s.label}>{label} *</Text>
-     <TextInput accessibilityLabel={label} editable={!busy&&!uncertain} value={form[field]}
+     <TextInput accessibilityLabel={label} editable={!busy&&!uncertain} value={form[field]??""}
       onChangeText={v=>change(field,v)} placeholder={placeholder} placeholderTextColor={theme.mutedText}
       keyboardType={field==="amount"?"decimal-pad":"default"}
-      multiline={field==="purpose"} maxLength={field==="purpose"?500:field==="category"?80:field==="expenseDate"?10:18}
-      style={[s.input,field==="purpose"&&s.area]}/>
+      multiline={field==="purpose"||field==="breakdown"} maxLength={field==="breakdown"?300:field==="purpose"?(allowanceMode?180:500):field==="category"?80:field==="expenseDate"?10:18}
+      style={[s.input,(field==="purpose"||field==="breakdown")&&s.area]}/>
      {fieldError?.field===field&&<Text style={s.alert} accessibilityRole="alert">{fieldError.message}</Text>}
     </View>)}
     {uncertain&&<Text accessibilityRole="alert" style={s.alert}>The original result is unknown. Retry this exact request before editing or starting another claim.</Text>}
@@ -178,7 +181,7 @@ export function FinanceExpenseClaimsScreen({token,canCreate,canView,canUploadBil
       <Pressable accessibilityRole="button" disabled={busy||uncertain} style={s.action}
        onPress={()=>{
         setDrawer(true);setCorrection({ref:c.claimRef,version:c.version,number:c.claimNumber});
-        setForm({category:c.category,purpose:c.purpose,expenseDate:c.expenseDate,
+        setForm({category:c.category,...(allowanceMode?splitPurpose(c.purpose):{purpose:c.purpose}),expenseDate:c.expenseDate,
          amount:(BigInt(c.amountMinor)/100n).toString()+"."+(BigInt(c.amountMinor)%100n).toString().padStart(2,"0")});
         setMessage("");setKey(null);setFieldError(null);
        }}><Text style={s.actionText}>Correct returned claim</Text></Pressable>}

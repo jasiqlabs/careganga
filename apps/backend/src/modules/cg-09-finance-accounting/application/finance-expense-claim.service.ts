@@ -40,15 +40,27 @@ function amount(value:unknown):string{
   return invalid("FINANCE_CLAIM_AMOUNT_INVALID","amount");
  return minor.toString();
 }
+// The original B51 description is free text. Store it in the same immutable claim/revision
+// purpose and digest so every reviewer sees it; it never creates a second amount or ledger.
+export function allowancePurpose(purpose:unknown,breakdown:unknown):string{
+ const title=label(purpose,"purpose",3,180);
+ if(title.includes(" | Breakdown: "))return invalid("FINANCE_CLAIM_PURPOSE_INVALID","purpose");
+ if(breakdown===undefined||breakdown==="")return title;
+ if(typeof breakdown!=="string"||breakdown.trim().length>300||/[\u0000-\u001f\u007f]/.test(breakdown.replace(/[\n\r\t]/g,""))||breakdown.includes(" | Breakdown: "))
+  return invalid("FINANCE_CLAIM_BREAKDOWN_INVALID","breakdown");
+ const detail=breakdown.trim().replace(/\s+/g," ");
+ return detail?title+" | Breakdown: "+detail:title;
+}
 type Normal={key:string;purpose:string;category:string;expenseDate:string;amountMinor:string;sourceKind:"GENERAL"|"HR_ALLOWANCE"};
 export function parseFinanceClaimDraft(input:unknown):Normal{
  if(!input||typeof input!=="object"||Array.isArray(input))
   return invalid("FINANCE_CLAIM_FORM_INVALID");
  const v=input as Record<string,unknown>;
- if(Object.keys(v).some(k=>!["requestKey","purpose","category","expenseDate","amount","sourceKind"].includes(k)))
+ if(Object.keys(v).some(k=>!["requestKey","purpose","category","expenseDate","amount","sourceKind","breakdown"].includes(k)))
   return invalid("FINANCE_CLAIM_FORM_INVALID");
  if(v.sourceKind!==undefined&&v.sourceKind!=="GENERAL"&&v.sourceKind!=="HR_ALLOWANCE")return invalid("FINANCE_CLAIM_FORM_INVALID");
- return {sourceKind:v.sourceKind==="HR_ALLOWANCE"?"HR_ALLOWANCE":"GENERAL",key:keyOf(v.requestKey),purpose:label(v.purpose,"purpose",3,500),
+ if(v.sourceKind!=="HR_ALLOWANCE"&&v.breakdown!==undefined)return invalid("FINANCE_CLAIM_FORM_INVALID");
+ return {sourceKind:v.sourceKind==="HR_ALLOWANCE"?"HR_ALLOWANCE":"GENERAL",key:keyOf(v.requestKey),purpose:v.sourceKind==="HR_ALLOWANCE"?allowancePurpose(v.purpose,v.breakdown):label(v.purpose,"purpose",3,500),
   category:label(v.category,"category",2,80),
   expenseDate:dateOnly(v.expenseDate),amountMinor:amount(v.amount)};
 }
@@ -171,13 +183,13 @@ export class FinanceExpenseClaimService{
   if(!value||typeof value!=="object"||Array.isArray(value))
    return invalid("FINANCE_CLAIM_FORM_INVALID");
   const body=value as Record<string,unknown>;
-  if(Object.keys(body).some(k=>!["requestKey","expectedVersion","purpose","category","expenseDate","amount"].includes(k)))
+  if(Object.keys(body).some(k=>!["requestKey","expectedVersion","purpose","category","expenseDate","amount","breakdown"].includes(k)))
    return invalid("FINANCE_CLAIM_FORM_INVALID");
   const key=keyOf(body.requestKey);
   if(!Number.isSafeInteger(body.expectedVersion)||Number(body.expectedVersion)<1)
    return invalid("FINANCE_CLAIM_STALE","expectedVersion");
   const expected=Number(body.expectedVersion);
-  const v={purpose:label(body.purpose,"purpose",3,500),
+  const v={purpose:body.breakdown!==undefined?allowancePurpose(body.purpose,body.breakdown):label(body.purpose,"purpose",3,500),
    category:label(body.category,"category",2,80),
    expenseDate:dateOnly(body.expenseDate),amountMinor:amount(body.amount)};
   const revision=expected+1;
@@ -202,11 +214,12 @@ export class FinanceExpenseClaimService{
     return {confirmed:true,claimRef,status:"DRAFT",
      version:revision,replayed:true};
    }
-   const current=await tx.query<{id:string;version:number;status:string;requested_by:string;
+   const current=await tx.query<{id:string;version:number;status:string;requested_by:string;source_kind:string;
     approval_case_id:string|null}>(
-    "SELECT id,version,status,requested_by,approval_case_id FROM expense_claim "+
+    "SELECT id,version,status,requested_by,source_kind,approval_case_id FROM expense_claim "+
     "WHERE root_realm_id=$1 AND id=$2 FOR UPDATE",[actor.realmId,claimRef]);
    const row=current.rows[0];
+   if(body.breakdown!==undefined&&row?.source_kind!=="HR_ALLOWANCE")return invalid("FINANCE_CLAIM_FORM_INVALID");
    if(!row||row.requested_by!==actor.accountId||row.status!=="RETURNED"||
       row.version!==expected||!row.approval_case_id)
     throw new ConflictException({code:"FINANCE_CLAIM_STALE"});

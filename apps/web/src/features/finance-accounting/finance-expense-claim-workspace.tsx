@@ -1,5 +1,5 @@
 "use client";
-import {FormEvent,useCallback,useEffect,useState} from "react";
+import {FormEvent,useCallback,useEffect,useRef,useState} from "react";
 import {FinanceClaimBillTools} from "./finance-claim-bill-tools";
 
 type Claim={claimRef:string;claimNumber:string;category:string;purpose:string;expenseDate:string;
@@ -20,7 +20,8 @@ function matches(c:Claim,filter:string,search:string){
 const filters=["ALL","DRAFT","SUBMITTED","APPROVED","PAYABLE","PAYMENT_REQUESTED","PAYMENT_VERIFIED_UNPOSTED","PAID_VERIFIED","RETURNED","REJECTED"];
 const filterLabel=(v:string)=>({ALL:"All",DRAFT:"Draft",SUBMITTED:"Pending review",APPROVED:"Approved",PAYABLE:"Payable",PAYMENT_REQUESTED:"Payment requested",PAYMENT_VERIFIED_UNPOSTED:"Verified, posting pending",PAID_VERIFIED:"Paid verified",RETURNED:"Returned",REJECTED:"Rejected"} as Record<string,string>)[v]??v;
 
-type Draft={category:string;purpose:string;expenseDate:string;amount:string};
+type Draft={category:string;purpose:string;expenseDate:string;amount:string;breakdown?:string};
+const splitPurpose=(purpose:string)=>{const marker=" | Breakdown: ",at=purpose.indexOf(marker);return at<0?{purpose,breakdown:""}:{purpose:purpose.slice(0,at),breakdown:purpose.slice(at+marker.length)};};
 const empty=():Draft=>({category:"",purpose:"",expenseDate:"",amount:""});
 function money(minor:string){
  try{const v=BigInt(minor);return "₹"+(v/100n).toLocaleString("en-IN")+
@@ -43,6 +44,7 @@ async function problem(res:Response):Promise<SafeProblem>{
 export function FinanceExpenseClaimWorkspace({canCreate,canView,allowanceMode=false,canUploadBill=true}:{
  canCreate:boolean;canView:boolean;allowanceMode?:boolean;canUploadBill?:boolean}){
  const [claims,setClaims]=useState<Claim[]>([]);
+ const readGeneration=useRef(0),writeInFlight=useRef(false);
  const [eligible,setEligible]=useState(false),[search,setSearch]=useState(""),[filter,setFilter]=useState("ALL");
  const [drawer,setDrawer]=useState(false);
  const allowCreate=canCreate&&(!allowanceMode||eligible);
@@ -59,7 +61,8 @@ export function FinanceExpenseClaimWorkspace({canCreate,canView,allowanceMode=fa
  const [notice,setNotice]=useState("");
  const [feedback,setFeedback]=useState("");
  const refresh=useCallback(async()=>{
-  if(!canView)return;
+  const generation=++readGeneration.current;
+  if(!canView){setClaims([]);setEligible(false);setNextOffset(null);setLoading(false);return;}
   setLoading(true);setNotice("");
   try{
    const res=await fetch("/api/finance/claims/mine?offset="+offset+(allowanceMode?"&source=HR_ALLOWANCE":""),{cache:"no-store"});
@@ -69,25 +72,25 @@ export function FinanceExpenseClaimWorkspace({canCreate,canView,allowanceMode=fa
      !Array.isArray(raw.claims)||!("nextOffset" in raw)||
      !(raw.nextOffset===null||typeof raw.nextOffset==="number"))
     throw Error("Claim records could not be verified. Refresh the page.");
-   setClaims(raw.claims as Claim[]);setNextOffset(raw.nextOffset);setEligible(true);
-  }catch(e){setClaims([]);setNextOffset(null);setEligible(false);setNotice(
+   if(generation!==readGeneration.current)return;setClaims(raw.claims as Claim[]);setNextOffset(raw.nextOffset);setEligible(true);
+  }catch(e){if(generation!==readGeneration.current)return;setClaims([]);setNextOffset(null);setEligible(false);setNotice(
    e instanceof Error?e.message:"Could not load your claims. Refresh and retry.");}
-  finally{setLoading(false);}
+  finally{if(generation===readGeneration.current)setLoading(false);}
  },[offset,canView,allowanceMode]);
- useEffect(()=>{void refresh();},[refresh]);
+ useEffect(()=>{void refresh();return()=>{readGeneration.current++;};},[refresh]);
  function change(field:keyof Draft,value:string){
   if(saving||uncertain)return;
   setForm(f=>({...f,[field]:value}));
   setPendingKey(null);setFieldError(null);setFeedback("");
  }
  async function save(e:FormEvent<HTMLFormElement>){
-  e.preventDefault();if(!allowCreate||saving)return;
+  e.preventDefault();if(!allowCreate||saving||writeInFlight.current)return;writeInFlight.current=true;
   const key=pendingKey??crypto.randomUUID();setPendingKey(key);
   setSaving(true);setFeedback("");setFieldError(null);
   try{
    const res=await fetch(correction?"/api/finance/claims/"+correction.ref+"/correct":"/api/finance/claims/drafts",{
     method:"POST",headers:{"Content-Type":"application/json"},
-    body:JSON.stringify({...form,requestKey:key,...(correction?{expectedVersion:correction.version}:allowanceMode?{sourceKind:"HR_ALLOWANCE"}:{})})});
+    body:JSON.stringify({category:form.category,purpose:form.purpose,expenseDate:form.expenseDate,amount:form.amount,...(allowanceMode?{breakdown:form.breakdown??""}:{}),requestKey:key,...(correction?{expectedVersion:correction.version}:allowanceMode?{sourceKind:"HR_ALLOWANCE"}:{})})});
    if(!res.ok){
     const p=await problem(res);
     if(p.field)setFieldError({name:p.field,message:p.message??"Check this value."});
@@ -116,7 +119,7 @@ export function FinanceExpenseClaimWorkspace({canCreate,canView,allowanceMode=fa
    setUncertain(true);
    setFeedback(e instanceof Error?e.message:
     "Could not confirm the save. Check your original request before trying again.");
-  }finally{setSaving(false);}
+  }finally{writeInFlight.current=false;setSaving(false);}
  }
  const visible=allowanceMode?claims.filter(c=>matches(c,filter,search)):claims;
  return <section className="cg-fin-manual" aria-label={allowanceMode?"Employee allowances":"Foundation expense claims"}>
@@ -143,10 +146,11 @@ export function FinanceExpenseClaimWorkspace({canCreate,canView,allowanceMode=fa
       placeholder="0.00" pattern="(0|[1-9][0-9]*)(\.[0-9]{1,2})?"/>
      {fieldError?.name==="amount"&&<span role="alert">{fieldError.message}</span>}</label>
     <label className="cg-fin-field">Purpose *
-     <textarea required minLength={3} maxLength={500} rows={3}
+     <textarea required minLength={3} maxLength={allowanceMode?180:500} rows={3}
       disabled={saving||uncertain} value={form.purpose} onChange={e=>change("purpose",e.target.value)}/>
      {fieldError?.name==="purpose"&&<span role="alert">{fieldError.message}</span>}</label>
     {uncertain&&<p role="alert">The original result is unknown. Retry this exact request before editing or starting another claim.</p>}
+    {allowanceMode&&<label className="cg-fin-field">Description / breakdown<textarea maxLength={300} rows={3} disabled={saving||uncertain} value={form.breakdown??""} onChange={e=>change("breakdown",e.target.value)}/>{fieldError?.name==="breakdown"&&<span role="alert">{fieldError.message}</span>}</label>}
     <p className="cg-fin-help">Save your claim first, then attach its real privately scanned bill below. A separate protected reviewer must approve it before posting or payment.</p>
     <button className="primary" type="submit" disabled={saving}>
      {saving?"Checking the draft…":uncertain?"Retry original request":correction?"Save corrected claim draft":"Save claim draft"}</button>
@@ -166,7 +170,7 @@ export function FinanceExpenseClaimWorkspace({canCreate,canView,allowanceMode=fa
      {allowCreate&&<td>{c.status==="RETURNED"&&
        <button type="button" disabled={saving||uncertain} onClick={()=>{
         setDrawer(true);setCorrection({ref:c.claimRef,version:c.version,number:c.claimNumber});
-        setForm({purpose:c.purpose,category:c.category,expenseDate:c.expenseDate,
+        setForm({...(allowanceMode?splitPurpose(c.purpose):{purpose:c.purpose}),category:c.category,expenseDate:c.expenseDate,
          amount:(BigInt(c.amountMinor)/100n).toString()+"."+(BigInt(c.amountMinor)%100n).toString().padStart(2,"0")});
         setPendingKey(null);setFeedback("");setFieldError(null);
        }}>Correct returned claim</button>}
