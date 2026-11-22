@@ -411,3 +411,6 @@ Added CG09 DonationRefundPostingFacade based on original posted cash voucher, ac
 
 ### 22-Nov US002/US003 independent-style DB source review defect fixes
 CG07 3306 deferred donation proof originally ran only AFTER UPDATE, allowing a direct SQL INSERT with arbitrary RECEIVED_POSTED before a genuine CG09 effect. Fixed source migration to require INSERT starts REQUESTED version 1 and extends constraint to AFTER INSERT OR UPDATE. Original 3310 refund CG09 proof also tightened to require exact reviewer request key, actual posted original cash evidence and debit INCOME/credit same original CASH lines, not just any balanced unrelated journal. QA US002-19, US003-03/12/19 SOURCE_FIX_AUTHORED; independent PostgreSQL execution NOT_RUN and reviewer availability must not be fabricated.
+
+### 22-Nov US003 donor-proof status follows true posted refund and CG19 document
+CG07 public donor-proof POST status now returns only own original money, original CG09 posted refund amount/net, derived FULL/PARTIAL refunded state, and CG19 issued/pending receipt; no fake paid count or technical IDs. QA01/04/08/11/16 SOURCE_PARTIAL; runtime NOT_RUN.

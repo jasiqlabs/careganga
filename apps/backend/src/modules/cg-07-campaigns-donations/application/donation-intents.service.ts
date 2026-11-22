@@ -107,19 +107,36 @@ export class DonationIntentsService{
  async status(req:object,raw:unknown){
   await this.limit(req,"status");
   if(!raw||typeof raw!=="object"||Array.isArray(raw)||
-   Object.keys(raw).some(k=>k!=="statusToken"))throw new BadRequestException("Enter the original donation status proof.");
+   Object.keys(raw).some(k=>k!=="statusToken"))
+   throw new BadRequestException("Enter the original donation status proof.");
   const token=(raw as Record<string,unknown>).statusToken;
   if(typeof token!=="string"||!/^[A-Za-z0-9_-]{43}$/.test(token))
    throw new NotFoundException("Donation status proof unavailable.");
-  const hash=createHash("sha256").update(token).digest("hex");
-  const result=await this.db.query<{source_status:string;amount_minor:string;currency:string;created_at:Date}>(
-   "SELECT source_status,amount_minor::text,currency,created_at FROM donation "+
-   "WHERE status_token_digest=$1 AND status_token_expires_at>now()",[hash]);
-  const row=result.rows[0];
+  const tokenHash=createHash("sha256").update(token).digest("hex");
+  const q=await this.db.query<{source_status:string;amount_minor:string;currency:string;
+   created_at:Date;refunded_minor:string;receipt_status:string}>(`
+    SELECT d.source_status,d.amount_minor::text,d.currency,d.created_at,
+      coalesce((SELECT sum(r.amount_minor) FROM donation_refund_request r
+        JOIN journal j ON j.root_realm_id=r.root_realm_id AND j.id=r.reversal_journal_ref
+        WHERE r.root_realm_id=d.root_realm_id AND r.donation_id=d.id
+        AND r.status='FINANCE_REVERSED' AND j.status='POSTED'
+        AND j.source_ref=r.id),0)::text AS refunded_minor,
+      coalesce((SELECT rec.status FROM cg19_donation_receipt_document rec
+        WHERE rec.root_realm_id=d.root_realm_id AND rec.donation_id=d.id),'NOT_ISSUED')
+        AS receipt_status
+    FROM donation d
+    WHERE d.status_token_digest=$1 AND d.status_token_expires_at>now()
+   `,[tokenHash]);
+  const row=q.rows[0];
   if(!row)throw new NotFoundException("Donation status proof expired or unavailable.");
-  return {status:row.source_status,amountMinor:row.amount_minor,currency:row.currency,
-   createdAt:row.created_at.toISOString(),received:row.source_status==="RECEIVED_POSTED",
-   message:row.source_status==="RECEIVED_POSTED"?"Foundation finance has confirmed this donation.":
-    "This donation is not yet a confirmed Foundation receipt."};
+  const gross=BigInt(row.amount_minor),refunded=BigInt(row.refunded_minor);
+  const posted=row.source_status==="RECEIVED_POSTED",net=posted?gross-refunded:0n;
+  return {status:!posted?row.source_status:refunded===0n?row.source_status:
+    net===0n?"REFUNDED_FULL":"REFUNDED_PARTIAL",
+   amountMinor:row.amount_minor,refundedMinor:row.refunded_minor,netReceivedMinor:net.toString(),
+   receiptStatus:row.receipt_status,currency:row.currency,received:posted,
+   createdAt:row.created_at.toISOString(),
+   message:posted?"Confirmed finance received; refunds and issued receipts are separately verified.":
+     "This donation is not yet confirmed as received."};
  }
 }
