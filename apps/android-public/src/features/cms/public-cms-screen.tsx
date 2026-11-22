@@ -131,8 +131,8 @@ function CmsButton({title,onPress,secondary=false}:{
 /** Public Android receives the same original immutable public DTO as Next.js.
  * Revalidate on foreground; neither old cache nor a guessed CG04 Join is shown.
  */
-export function PublicCmsContent({onContact,onPartnerApplication,onLoginVisibility}: {
- onContact:()=>void;onPartnerApplication:()=>void;
+export function PublicCmsContent({onContact,onPartnerApplication,onMembershipApply,onLoginVisibility}: {
+ onContact:()=>void;onPartnerApplication:()=>void;onMembershipApply:(planCode:string)=>void;
  onLoginVisibility:(visible:boolean)=>void}){
  const [slug,setSlug]=useState("home"),[projectCategory,setProjectCategory]=useState("All Projects");
  const [mediaScope,setMediaScope]=useState<"PHOTO"|"VIDEO"|"PUBLICATION">("PHOTO");
@@ -290,7 +290,7 @@ export function PublicCmsContent({onContact,onPartnerApplication,onLoginVisibili
      <CmsButton key={name} title={title} secondary={slug!==name}
       onPress={()=>setSlug(name)}/>)}
   </View>
-  {slug==="membership"?<NativeMembershipPlans/>:loading?<ActivityIndicator accessibilityLabel="Checking current published website content"/>:
+  {slug==="membership"?<NativeMembershipPlans onApply={onMembershipApply}/>:loading?<ActivityIndicator accessibilityLabel="Checking current published website content"/>:
    slug==="articles"?<View style={styles.card}>
     <Text accessibilityRole="header" style={styles.heading}>Approved News &amp; Articles</Text>
     {!articleFeed.available?<Text accessibilityRole="alert" style={styles.muted}>
