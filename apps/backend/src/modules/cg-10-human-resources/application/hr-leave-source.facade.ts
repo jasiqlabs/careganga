@@ -168,6 +168,16 @@ export class HrLeaveSourceFacade{
   return {employeeName:row.employee_name,leaveType:row.leave_type,startDate:dateText(row.start_date),
    endDate:dateText(row.end_date),days:row.half_days/2,status:row.status};
  }
+ async assertOwnRequest(tx:PoolClient,actor:VerifiedFoundationActor,row:LeaveRequestRow){
+  const employee=await this.employee(tx,actor,true);
+  if(!employee||employee.id!==row.employee_id||row.submitted_by!==actor.accountId)
+   throw new ForbiddenException("This leave request is not available for your current employment");
+ }
+ async applyCancellation(tx:PoolClient,realm:string,row:LeaveRequestRow,eventRef:string){
+  const q=await tx.query(`UPDATE hr_leave_request SET status='CANCELLED',cancel_event_ref=$3,decided_at=now()
+   WHERE root_realm_id=$1 AND id=$2 AND status='SUBMITTED' RETURNING id`,[realm,row.id,eventRef]);
+  if(!q.rowCount)throw new ConflictException({code:"CG10_LEAVE_STALE"});
+ }
  async reviewBalance(tx:PoolClient,realm:string,row:LeaveRequestRow){
   const p=(await tx.query<{type_key:string;annual_half_days:number}>(`SELECT type_key,annual_half_days
    FROM hr_leave_policy WHERE root_realm_id=$1 AND id=$2`,[realm,row.policy_id])).rows[0];

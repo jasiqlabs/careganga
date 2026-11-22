@@ -5,7 +5,7 @@ type Request={reference:string;leaveType:string;startDate:string;endDate:string;
 type Mine={linked:boolean;year:string;policies:Policy[];requests:Request[]};
 type Review=Request&{caseRef:string;employeeName:string;revision:number;canReview:boolean;reason?:string;balance?:{annualDays:number;approvedDays:number;availableDays:number};date?:string;originalStatus?:string;proposedStatus?:string;original?:{status:string;checkInAt?:string|null;checkOutAt?:string|null};proposed?:{status:string;checkInAt?:string|null;checkOutAt?:string|null}};
 const blank=()=>({policyRef:"",startDate:"",endDate:"",halfDay:false,reason:""});
-const label=(status:string)=>(({SUBMITTED:"Pending review",IN_REVIEW:"In review",APPROVED:"Approved",OWNER_COMPLETED:"Approved",RETURNED:"Returned",REJECTED:"Rejected"} as Record<string,string>)[status]??"Review status unavailable");
+const label=(status:string)=>(({SUBMITTED:"Pending review",IN_REVIEW:"In review",APPROVED:"Approved",OWNER_COMPLETED:"Approved",RETURNED:"Returned",REJECTED:"Rejected",CANCELLED:"Cancelled"} as Record<string,string>)[status]??"Review status unavailable");
 const failure=(e:unknown)=>e instanceof Error?e.message:"Could not confirm the result. Refresh before retrying.";
 const known=(e:unknown)=>e&&typeof e==="object"&&"status" in e&&typeof e.status==="number"&&e.status>=400&&e.status<500;
 
@@ -26,6 +26,8 @@ export function HrMyLeave({onChanged}:{onChanged:()=>void}){
  const [loading,setLoading]=useState(true),[busy,setBusy]=useState(false),[locked,setLocked]=useState(false);
  const [error,setError]=useState(""),[notice,setNotice]=useState("");
  const key=useRef<string|null>(null);
+ const pendingCancel=useRef<{reference:string;key:string}|null>(null);
+ const [cancelRef,setCancelRef]=useState("");
  const refresh=useCallback(async()=>{
   setLoading(true);setError("");
   try{const v=await api<Mine>("me/leave?year="+encodeURIComponent(year));
@@ -37,7 +39,7 @@ export function HrMyLeave({onChanged}:{onChanged:()=>void}){
  const change=<K extends keyof typeof form,>(name:K,value:(typeof form)[K])=>setForm(x=>({...x,[name]:value}));
  const selected=data?.policies.find(x=>x.policyRef===form.policyRef);
  const submit=async()=>{
-  if(busy||!data?.linked)return;
+  if(busy||!data?.linked||cancelRef)return;
   setBusy(true);setError("");setNotice("");
   const requestKey=key.current??crypto.randomUUID();key.current=requestKey;
   try{
@@ -47,17 +49,29 @@ export function HrMyLeave({onChanged}:{onChanged:()=>void}){
   }catch(e){setError(failure(e));if(known(e)){key.current=null;setLocked(false);}else setLocked(true);}
   finally{setBusy(false);}
  };
+ const cancel=async(reference:string)=>{
+  if(busy||locked||(cancelRef&&cancelRef!==reference))return;
+  setBusy(true);setError("");setNotice("");
+  const command=pendingCancel.current?.reference===reference?pendingCancel.current:{reference,key:crypto.randomUUID()};
+  pendingCancel.current=command;setCancelRef(reference);
+  try{const v=await api<{cancelled:boolean;reference:string;status:string}>("me/leave/"+encodeURIComponent(reference)+"/cancel",{requestKey:command.key});
+   if(v.cancelled!==true||v.reference!==reference||v.status!=="CANCELLED")throw Error("Cancellation result is uncertain");
+   pendingCancel.current=null;setCancelRef("");await refresh();setNotice(reference+" · Cancelled");onChanged();
+  }catch(e){setError(failure(e));if(known(e)){pendingCancel.current=null;setCancelRef("");await refresh();}}
+  finally{setBusy(false);}
+ };
  return <section aria-label="My leave" style={card}>
   <h2 style={{margin:0}}>My leave</h2>
   <div style={{display:"flex",gap:8,alignItems:"end",flexWrap:"wrap"}}>
-   <label>Leave year<input style={field} value={yearInput} inputMode="numeric" maxLength={4} disabled={busy||locked}
+   <label>Leave year<input style={field} value={yearInput} inputMode="numeric" maxLength={4} disabled={busy||!!cancelRef||locked}
     onChange={e=>setYearInput(e.target.value)}/></label>
-   <button type="button" disabled={busy||locked||!/^20\d{2}$/.test(yearInput)} onClick={()=>{setForm(blank());if(year===yearInput)void refresh();else setYear(yearInput);}}>View year</button>
-   <button type="button" disabled={busy||loading} onClick={()=>void refresh()}>Refresh</button>
+   <button type="button" disabled={busy||!!cancelRef||locked||!/^20\d{2}$/.test(yearInput)} onClick={()=>{setForm(blank());if(year===yearInput)void refresh();else setYear(yearInput);}}>View year</button>
+   <button type="button" disabled={busy||!!cancelRef||loading} onClick={()=>void refresh()}>Refresh</button>
   </div>
   {error&&<p role="alert">{error}</p>}{notice&&<p role="status">{notice}</p>}
   {loading&&<p>Loading leave balances…</p>}
   {data&&!data.linked&&<p>No current approved employment is linked to this account.</p>}
+  {cancelRef&&<button type="button" disabled={busy} onClick={()=>void cancel(cancelRef)}>Retry cancellation of original request</button>}
   {data?.linked&&<>
    {data.policies.length===0?<p>No effective leave policy is configured for this year.</p>:<>
     <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(160px,1fr))",gap:8}}>
@@ -66,7 +80,7 @@ export function HrMyLeave({onChanged}:{onChanged:()=>void}){
       <small>{x.effectiveFrom}{x.effectiveTo?" to before "+x.effectiveTo:" onward"}</small>
      </div>)}
     </div>
-    <fieldset disabled={busy||locked||loading} style={{border:0,padding:0,display:"grid",gap:10}}>
+    <fieldset disabled={busy||!!cancelRef||locked||loading} style={{border:0,padding:0,display:"grid",gap:10}}>
      <legend>Apply for leave</legend>
      <label>Leave type<select style={field} value={form.policyRef} onChange={e=>setForm(x=>({...x,policyRef:e.target.value,halfDay:false}))}>
       <option value="">Choose leave type</option>{data.policies.map(x=><option key={x.policyRef} value={x.policyRef}>{x.leaveType} · from {x.effectiveFrom}</option>)}</select></label>
@@ -78,7 +92,7 @@ export function HrMyLeave({onChanged}:{onChanged:()=>void}){
      <label>Private reason<textarea style={field} rows={3} maxLength={500} value={form.reason} onChange={e=>change("reason",e.target.value)}/></label>
     </fieldset>
     {locked&&<p role="status">The previous submission is uncertain. Retry the same request or refresh the history; do not send a new application.</p>}
-    <button style={button} disabled={busy||loading||!form.policyRef||!form.startDate||!form.endDate||form.reason.trim().length<2}
+    <button style={button} disabled={busy||!!cancelRef||loading||!form.policyRef||!form.startDate||!form.endDate||form.reason.trim().length<2}
      onClick={()=>void submit()}>{busy?"Submitting…":locked?"Retry same leave request":"Submit for review"}</button>
    </>}
    <h3 style={{margin:0}}>Leave history</h3>
@@ -86,6 +100,7 @@ export function HrMyLeave({onChanged}:{onChanged:()=>void}){
    {data.requests.map(x=><div key={x.reference} style={{borderTop:"1px solid #E2E8F0",paddingTop:8}}>
     <strong>{x.leaveType} · {label(x.status)}</strong><p style={{margin:0}}>{x.startDate} – {x.endDate} · {x.days} days</p>
     <small>{x.reference}</small>
+    {x.status==="SUBMITTED"&&!cancelRef&&<button type="button" disabled={busy||locked||loading} onClick={()=>void cancel(x.reference)}>Cancel pending request</button>}
    </div>)}
   </>}
  </section>;
@@ -131,7 +146,7 @@ export function HrLeaveReviews({onChanged,kind="leave"}:{onChanged:()=>void;kind
   <label>Review status<select style={field} disabled={busy||locked} value={status}
    onChange={e=>{setStatus(e.target.value);setOffset(0);setSelected(null);setPassword("");}}>
    <option value="SUBMITTED">Pending</option><option value="OWNER_COMPLETED">Approved</option>
-   <option value="RETURNED">Returned</option><option value="REJECTED">Rejected</option><option value="ALL">All</option>
+   <option value="RETURNED">Returned</option><option value="REJECTED">Rejected</option>{kind==="leave"&&<option value="CANCELLED">Cancelled</option>}<option value="ALL">All</option>
   </select></label>
   {kind==="leave"&&<fieldset disabled={busy||locked} style={{border:0,padding:0,display:"grid",gap:8}}>
    {(["from","to","type","employee"] as const).map(k=><label key={k}>{k==="from"?"From date":k==="to"?"To date":k==="type"?"Leave type":"Employee name"}<input style={field} type={k==="from"||k==="to"?"date":"text"} maxLength={80} value={filter[k]} onChange={e=>setFilter(x=>({...x,[k]:e.target.value}))}/></label>)}

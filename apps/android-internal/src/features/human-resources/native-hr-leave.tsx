@@ -7,7 +7,7 @@ type Request={reference:string;leaveType:string;startDate:string;endDate:string;
 type Mine={linked:boolean;year:string;policies:Policy[];requests:Request[]};
 type Review=Request&{caseRef:string;employeeName:string;revision:number;canReview:boolean;reason?:string;balance?:{annualDays:number;approvedDays:number;availableDays:number};date?:string;originalStatus?:string;proposedStatus?:string;original?:{status:string;checkInAt?:string|null;checkOutAt?:string|null};proposed?:{status:string;checkInAt?:string|null;checkOutAt?:string|null}};
 const blank=()=>({policyRef:"",startDate:"",endDate:"",halfDay:false,reason:""});
-const label=(status:string)=>(({SUBMITTED:"Pending review",IN_REVIEW:"In review",APPROVED:"Approved",OWNER_COMPLETED:"Approved",RETURNED:"Returned",REJECTED:"Rejected"} as Record<string,string>)[status]??"Review status unavailable");
+const label=(status:string)=>(({SUBMITTED:"Pending review",IN_REVIEW:"In review",APPROVED:"Approved",OWNER_COMPLETED:"Approved",RETURNED:"Returned",REJECTED:"Rejected",CANCELLED:"Cancelled"} as Record<string,string>)[status]??"Review status unavailable");
 const failure=(e:unknown)=>e instanceof Error?e.message:"Could not confirm the result. Refresh before retrying.";
 const known=(e:unknown)=>e&&typeof e==="object"&&"status" in e&&typeof e.status==="number"&&e.status>=400&&e.status<500;
 
@@ -38,6 +38,8 @@ export function NativeHrMyLeave({token,onExpired,onChanged}:{token:string;onExpi
  const [loading,setLoading]=useState(true),[busy,setBusy]=useState(false),[locked,setLocked]=useState(false);
  const [error,setError]=useState(""),[notice,setNotice]=useState("");
  const key=useRef<string|null>(null),fail=useFailure(onExpired,setError);
+ const pendingCancel=useRef<{reference:string;key:string}|null>(null);
+ const [cancelRef,setCancelRef]=useState("");
  const refresh=useCallback(async()=>{
   setLoading(true);setError("");
   try{const v=await api<Mine>(token,"me/leave?year="+encodeURIComponent(year));
@@ -49,7 +51,7 @@ export function NativeHrMyLeave({token,onExpired,onChanged}:{token:string;onExpi
  const change=<K extends keyof typeof form,>(name:K,value:(typeof form)[K])=>setForm(x=>({...x,[name]:value}));
  const selected=data?.policies.find(x=>x.policyRef===form.policyRef);
  const submit=async()=>{
-  if(busy||!data?.linked)return;
+  if(busy||!data?.linked||cancelRef)return;
   setBusy(true);setError("");setNotice("");
   const requestKey=key.current??Crypto.randomUUID();key.current=requestKey;
   try{
@@ -59,34 +61,48 @@ export function NativeHrMyLeave({token,onExpired,onChanged}:{token:string;onExpi
   }catch(e){fail(e);if(known(e)){key.current=null;setLocked(false);}else setLocked(true);}
   finally{setBusy(false);}
  };
+ const cancel=async(reference:string)=>{
+  if(busy||locked||(cancelRef&&cancelRef!==reference))return;
+  setBusy(true);setError("");setNotice("");
+  const command=pendingCancel.current?.reference===reference?pendingCancel.current:{reference,key:Crypto.randomUUID()};
+  pendingCancel.current=command;setCancelRef(reference);
+  try{const v=await api<{cancelled:boolean;reference:string;status:string}>(token,"me/leave/"+encodeURIComponent(reference)+"/cancel",{requestKey:command.key});
+   if(v.cancelled!==true||v.reference!==reference||v.status!=="CANCELLED")throw Error("Cancellation result is uncertain");
+   pendingCancel.current=null;setCancelRef("");await refresh();setNotice(reference+" · Cancelled");onChanged();
+  }catch(e){fail(e);if(known(e)){pendingCancel.current=null;setCancelRef("");await refresh();}}
+  finally{setBusy(false);}
+ };
  return <View style={styles.card}>
   <Text style={styles.title}>My leave</Text>
-  <Field title="Leave year" value={yearInput} maxLength={4} disabled={busy||locked} onChange={setYearInput}/>
-  <Button title="View year" disabled={busy||locked||!/^20\d{2}$/.test(yearInput)} onPress={()=>{setForm(blank());if(year===yearInput)void refresh();else setYear(yearInput);}}/>
-  <Button title="Refresh leave history" disabled={busy||loading} onPress={()=>void refresh()}/>
+  <Field title="Leave year" value={yearInput} maxLength={4} disabled={busy||!!cancelRef||locked} onChange={setYearInput}/>
+  <Button title="View year" disabled={busy||!!cancelRef||locked||!/^20\d{2}$/.test(yearInput)} onPress={()=>{setForm(blank());if(year===yearInput)void refresh();else setYear(yearInput);}}/>
+  <Button title="Refresh leave history" disabled={busy||!!cancelRef||loading} onPress={()=>void refresh()}/>
   {!!error&&<Text accessibilityRole="alert" style={styles.error}>{error}</Text>}{!!notice&&<Text style={styles.success}>{notice}</Text>}
   {loading&&<ActivityIndicator accessibilityLabel="Loading leave balances"/>}
   {data&&!data.linked&&<Text style={styles.muted}>No current approved employment is linked to this account.</Text>}
+  {!!cancelRef&&<Button title="Retry cancellation of original request" disabled={busy} onPress={()=>void cancel(cancelRef)}/>}
   {data?.linked&&<>
    {data.policies.length===0?<Text style={styles.muted}>No effective leave policy configured for this year.</Text>:<>
     {data.policies.map(x=><View key={x.policyRef} style={styles.item}><Text style={styles.label}>{x.leaveType}</Text>
      <Text style={styles.muted}>{x.availableDays} available · {x.usedDays} approved · From {x.effectiveFrom}{x.effectiveTo?" to before "+x.effectiveTo:" onward"}</Text></View>)}
     <Text style={styles.label}>Apply for leave · Choose leave type</Text>
-    {data.policies.map(x=><Button key={x.policyRef} title={x.leaveType+" · from "+x.effectiveFrom} disabled={busy||locked}
+    {data.policies.map(x=><Button key={x.policyRef} title={x.leaveType+" · from "+x.effectiveFrom} disabled={busy||!!cancelRef||locked}
      selected={form.policyRef===x.policyRef} onPress={()=>setForm(v=>({...v,policyRef:x.policyRef,halfDay:false}))}/>)}
-    <Field title="Start date YYYY-MM-DD" value={form.startDate} disabled={busy||locked} maxLength={10} onChange={v=>change("startDate",v)}/>
-    <Field title="End date YYYY-MM-DD" value={form.endDate} disabled={busy||locked} maxLength={10} onChange={v=>change("endDate",v)}/>
+    <Field title="Start date YYYY-MM-DD" value={form.startDate} disabled={busy||!!cancelRef||locked} maxLength={10} onChange={v=>change("startDate",v)}/>
+    <Field title="End date YYYY-MM-DD" value={form.endDate} disabled={busy||!!cancelRef||locked} maxLength={10} onChange={v=>change("endDate",v)}/>
     {selected?.allowHalfDays&&<Button title={form.halfDay?"Half day selected":"Full day(s) · tap for half day"} selected={form.halfDay}
-     disabled={busy||locked} onPress={()=>change("halfDay",!form.halfDay)}/>}
-    <Field title="Private reason" value={form.reason} disabled={busy||locked} multiline onChange={v=>change("reason",v)}/>
+     disabled={busy||!!cancelRef||locked} onPress={()=>change("halfDay",!form.halfDay)}/>}
+    <Field title="Private reason" value={form.reason} disabled={busy||!!cancelRef||locked} multiline onChange={v=>change("reason",v)}/>
     {locked&&<Text style={styles.muted}>The previous submission is uncertain. Retry the same request or refresh history; do not send a new application.</Text>}
     <Button title={busy?"Submitting…":locked?"Retry same leave request":"Submit for review"}
-     disabled={busy||loading||!form.policyRef||!form.startDate||!form.endDate||form.reason.trim().length<2} onPress={()=>void submit()}/>
+     disabled={busy||!!cancelRef||loading||!form.policyRef||!form.startDate||!form.endDate||form.reason.trim().length<2} onPress={()=>void submit()}/>
    </>}
    <Text style={styles.label}>Leave history</Text>
    {!data.requests.length&&<Text style={styles.muted}>No leave requests in this year.</Text>}
    {data.requests.map(x=><View key={x.reference} style={styles.item}><Text style={styles.label}>{x.leaveType} · {label(x.status)}</Text>
-    <Text style={styles.muted}>{x.startDate} – {x.endDate} · {x.days} days · {x.reference}</Text></View>)}
+    <Text style={styles.muted}>{x.startDate} – {x.endDate} · {x.days} days · {x.reference}</Text>
+    {x.status==="SUBMITTED"&&!cancelRef&&<Button title="Cancel pending request" disabled={busy||locked||loading} onPress={()=>void cancel(x.reference)}/>}
+   </View>)}
   </>}
  </View>;
 }
@@ -123,7 +139,7 @@ export function NativeHrLeaveReviews({token,onExpired,onChanged,kind="leave"}:{t
  };
  return <View style={styles.card}><Text style={styles.title}>{kind==="leave"?"Leave requests":"Attendance correction requests"}</Text>
   <View style={styles.choices}>{[{key:"SUBMITTED",title:"Pending"},{key:"OWNER_COMPLETED",title:"Approved"},
-   {key:"RETURNED",title:"Returned"},{key:"REJECTED",title:"Rejected"},{key:"ALL",title:"All"}].map(x=>
+   {key:"RETURNED",title:"Returned"},{key:"REJECTED",title:"Rejected"},...(kind==="leave"?[{key:"CANCELLED",title:"Cancelled"}]:[]),{key:"ALL",title:"All"}].map(x=>
    <Button key={x.key} title={x.title} selected={status===x.key} disabled={busy||locked}
     onPress={()=>{setStatus(x.key);setOffset(0);setSelected(null);setPassword("");}}/>)}</View>
   {kind==="leave"&&<>{(["from","to","type","employee"] as const).map(k=><Field key={k} title={k==="from"?"From date YYYY-MM-DD":k==="to"?"To date YYYY-MM-DD":k==="type"?"Leave type":"Employee name"} value={filter[k]} maxLength={k==="from"||k==="to"?10:80} disabled={busy||locked} onChange={v=>setFilter(x=>({...x,[k]:v}))}/>)}

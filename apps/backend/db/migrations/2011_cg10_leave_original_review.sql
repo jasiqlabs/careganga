@@ -1,4 +1,15 @@
 -- CG10 US002 / CG03: one immutable original leave request, original CG03 case.
+-- Pending leave withdrawal is a proposer action, never a reviewer decision.
+ALTER TABLE cg03_case DROP CONSTRAINT cg03_case_status_check;
+ALTER TABLE cg03_case ADD CONSTRAINT cg03_case_status_check CHECK(
+ status IN('SUBMITTED','IN_REVIEW','RETURNED','REJECTED','FINAL_APPROVED','PENDING_OWNER','OWNER_COMPLETED','OWNER_BLOCKED','OWNER_FAILED_RETRYABLE')
+ OR (status='CANCELLED' AND case_kind='LEAVE_REQUEST'));
+ALTER TABLE cg03_case_event DROP CONSTRAINT cg03_case_event_action_check;
+ALTER TABLE cg03_case_event ADD CONSTRAINT cg03_case_event_action_check CHECK(action IN(
+ 'SUBMITTED','CORRECTED','APPROVED','FORWARDED','RETURNED','REJECTED','FINAL_APPROVED','PENDING_OWNER',
+ 'OWNER_COMPLETED','OWNER_BLOCKED','OWNER_FAILED_RETRYABLE','CANCELLED'));
+ALTER TABLE cg03_case_event ADD CONSTRAINT uq_cg03_case_event_original_scope UNIQUE(id,case_id,realm_id);
+CREATE UNIQUE INDEX ux_cg03_leave_cancel_event ON cg03_case_event(realm_id,case_id) WHERE action='CANCELLED';
 CREATE TABLE hr_leave_request(
  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
  root_realm_id uuid NOT NULL,
@@ -19,8 +30,9 @@ CREATE TABLE hr_leave_request(
  request_digest char(64) NOT NULL CHECK(request_digest ~ '^[a-f0-9]{64}$'),
  source_digest char(64) NOT NULL CHECK(source_digest ~ '^[a-f0-9]{64}$'),
  case_ref uuid,
- status text NOT NULL DEFAULT 'SUBMITTED' CHECK(status IN('SUBMITTED','APPROVED','RETURNED','REJECTED')),
+ status text NOT NULL DEFAULT 'SUBMITTED' CHECK(status IN('SUBMITTED','APPROVED','RETURNED','REJECTED','CANCELLED')),
  decision_ref uuid,
+ cancel_event_ref uuid,
  submitted_at timestamptz NOT NULL DEFAULT now(),
  decided_at timestamptz,
  UNIQUE(root_realm_id,id),
@@ -38,8 +50,10 @@ CREATE TABLE hr_leave_request(
  FOREIGN KEY(decision_ref,case_ref,root_realm_id) REFERENCES cg03_case_decision(id,case_id,realm_id) ON DELETE RESTRICT,
  CHECK(end_date>=start_date AND extract(year from start_date)=extract(year from end_date)),
  CHECK((half_day AND start_date=end_date AND half_days=1) OR (NOT half_day AND half_days%2=0)),
- CHECK((status='SUBMITTED' AND decision_ref IS NULL AND decided_at IS NULL) OR
-  (status<>'SUBMITTED' AND case_ref IS NOT NULL AND decision_ref IS NOT NULL AND decided_at IS NOT NULL))
+ FOREIGN KEY(cancel_event_ref,case_ref,root_realm_id) REFERENCES cg03_case_event(id,case_id,realm_id) ON DELETE RESTRICT,
+ CHECK((status='SUBMITTED' AND decision_ref IS NULL AND cancel_event_ref IS NULL AND decided_at IS NULL) OR
+  (status IN('APPROVED','RETURNED','REJECTED') AND case_ref IS NOT NULL AND decision_ref IS NOT NULL AND cancel_event_ref IS NULL AND decided_at IS NOT NULL) OR
+  (status='CANCELLED' AND case_ref IS NOT NULL AND decision_ref IS NULL AND cancel_event_ref IS NOT NULL AND decided_at IS NOT NULL))
 );
 CREATE INDEX ix_hr_leave_employee_year ON hr_leave_request(root_realm_id,employee_id,start_date,end_date,status);
 CREATE INDEX ix_hr_leave_policy_usage ON hr_leave_request(root_realm_id,employee_id,policy_id,start_date) WHERE status='APPROVED';
@@ -112,8 +126,8 @@ BEGIN
   END IF;
   RETURN NEW;
  END IF;
- IF (to_jsonb(NEW)-ARRAY['case_ref','status','decision_ref','decided_at']) IS DISTINCT FROM
-    (to_jsonb(OLD)-ARRAY['case_ref','status','decision_ref','decided_at']) THEN
+ IF (to_jsonb(NEW)-ARRAY['case_ref','status','decision_ref','cancel_event_ref','decided_at']) IS DISTINCT FROM
+    (to_jsonb(OLD)-ARRAY['case_ref','status','decision_ref','cancel_event_ref','decided_at']) THEN
   RAISE EXCEPTION 'Submitted leave evidence cannot be changed';
  END IF;
  IF OLD.case_ref IS NULL AND NEW.case_ref IS NOT NULL AND OLD.status='SUBMITTED' AND
@@ -122,6 +136,13 @@ BEGIN
      AND c.case_kind='LEAVE_REQUEST' AND c.hr_leave_request_id=NEW.id
      AND c.hr_leave_source_digest=NEW.source_digest AND c.proposer_id=NEW.submitted_by
    ) THEN RETURN NEW; END IF;
+ IF OLD.status='SUBMITTED' AND OLD.case_ref IS NOT NULL AND NEW.case_ref=OLD.case_ref AND NEW.status='CANCELLED' AND EXISTS(
+   SELECT 1 FROM cg03_case c JOIN cg03_case_event ev ON ev.case_id=c.id AND ev.realm_id=c.realm_id
+   WHERE c.realm_id=NEW.root_realm_id AND c.id=NEW.case_ref AND c.case_kind='LEAVE_REQUEST'
+    AND c.hr_leave_request_id=NEW.id AND c.hr_leave_source_digest=NEW.source_digest
+    AND c.status='CANCELLED' AND c.proposer_id=NEW.submitted_by
+    AND ev.id=NEW.cancel_event_ref AND ev.action='CANCELLED' AND ev.actor_id=NEW.submitted_by
+ ) THEN RETURN NEW; END IF;
  IF OLD.status='SUBMITTED' AND OLD.case_ref IS NOT NULL AND NEW.case_ref=OLD.case_ref AND
    NEW.status IN('APPROVED','RETURNED','REJECTED') AND EXISTS(
     SELECT 1 FROM cg03_case c JOIN cg03_case_decision d ON d.case_id=c.id AND d.realm_id=c.realm_id
@@ -165,3 +186,29 @@ BEGIN
 END $fn$;
 CREATE CONSTRAINT TRIGGER cg10_leave_link_required AFTER INSERT OR UPDATE ON hr_leave_request
  DEFERRABLE INITIALLY DEFERRED FOR EACH ROW EXECUTE FUNCTION cg10_leave_link_required();
+
+-- The cancelled original case, immutable cancellation event and source status
+-- are committed together. Other case families cannot acquire cancellation events.
+CREATE FUNCTION cg03_leave_cancel_event_guard() RETURNS trigger LANGUAGE plpgsql AS $fn$
+BEGIN
+ IF NEW.action='CANCELLED' AND NOT EXISTS(
+  SELECT 1 FROM cg03_case c WHERE c.id=NEW.case_id AND c.realm_id=NEW.realm_id
+   AND c.case_kind='LEAVE_REQUEST' AND c.status='CANCELLED' AND c.proposer_id=NEW.actor_id
+ ) THEN RAISE EXCEPTION 'Original own pending leave cancellation required'; END IF;
+ RETURN NEW;
+END; $fn$;
+CREATE TRIGGER cg03_leave_cancel_event_guard BEFORE INSERT ON cg03_case_event
+ FOR EACH ROW EXECUTE FUNCTION cg03_leave_cancel_event_guard();
+CREATE FUNCTION cg03_leave_cancel_effect_required() RETURNS trigger LANGUAGE plpgsql AS $fn$
+BEGIN
+ IF NEW.status='CANCELLED' AND NOT EXISTS(
+  SELECT 1 FROM hr_leave_request r JOIN cg03_case_event ev
+   ON ev.id=r.cancel_event_ref AND ev.case_id=r.case_ref AND ev.realm_id=r.root_realm_id
+  WHERE r.root_realm_id=NEW.realm_id AND r.id=NEW.hr_leave_request_id AND r.case_ref=NEW.id
+   AND r.source_digest=NEW.hr_leave_source_digest AND r.status='CANCELLED'
+   AND ev.action='CANCELLED' AND ev.actor_id=NEW.proposer_id
+ ) THEN RAISE EXCEPTION 'Original leave cancellation source effect required'; END IF;
+ RETURN NULL;
+END; $fn$;
+CREATE CONSTRAINT TRIGGER cg03_leave_cancel_effect_required AFTER UPDATE ON cg03_case
+ DEFERRABLE INITIALLY DEFERRED FOR EACH ROW EXECUTE FUNCTION cg03_leave_cancel_effect_required();

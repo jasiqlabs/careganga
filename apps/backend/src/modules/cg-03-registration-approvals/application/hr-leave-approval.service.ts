@@ -78,10 +78,37 @@ export class HrLeaveApprovalService{
   await this.identity.assertCurrent(tx,actor,"hr.leave.review");
   await this.protectedOwner.verifyReviewer(tx,actor,"approvals.review",true);
  }
+ async withdraw(tx:PoolClient,actor:VerifiedFoundationActor,reference:string,body:unknown){
+  if(!/^CG-AP-[0-9]{6,}$/.test(reference)||!body||typeof body!=="object"||Array.isArray(body)||
+     Object.keys(body).some(k=>k!=="requestKey"))throw new BadRequestException({code:"CG10_LEAVE_INVALID"});
+  const requestKey=leaveId((body as Record<string,unknown>).requestKey);
+  const c=(await tx.query<Case>(`SELECT * FROM cg03_case WHERE realm_id=$1 AND case_number=$2
+    AND proposer_id=$3 AND case_kind='LEAVE_REQUEST' FOR UPDATE`,[actor.realmId,reference,actor.accountId])).rows[0];
+  if(!c)throw new NotFoundException("This leave request is unavailable");
+  const row=await this.source.original(tx,actor.realmId,c.hr_leave_request_id);
+  if(row.case_ref!==c.id||row.source_digest!==c.hr_leave_source_digest)
+   throw new ConflictException({code:"CG10_LEAVE_STALE"});
+  await this.source.assertOwnRequest(tx,actor,row);
+  if(c.status==="CANCELLED"){
+   const old=await tx.query(`SELECT id FROM cg03_case_event WHERE realm_id=$1 AND case_id=$2 AND actor_id=$3
+    AND action='CANCELLED' AND correlation_ref=$4`,[actor.realmId,c.id,actor.accountId,requestKey]);
+   if(!old.rowCount||row.status!=="CANCELLED")throw new ConflictException({code:"CG10_LEAVE_STALE"});
+   return {cancelled:true,reference:c.case_number,status:c.status,replayed:true};
+  }
+  if(!["SUBMITTED","IN_REVIEW"].includes(c.status)||row.status!=="SUBMITTED")
+   throw new ConflictException({code:"CG10_LEAVE_STALE"});
+  const changed=await tx.query(`UPDATE cg03_case SET status='CANCELLED',revision=revision+1,updated_at=now()
+   WHERE realm_id=$1 AND id=$2 AND revision=$3 AND status IN('SUBMITTED','IN_REVIEW') RETURNING id`,[actor.realmId,c.id,c.revision]);
+  if(!changed.rowCount)throw new ConflictException({code:"CG10_LEAVE_STALE"});
+  const ev=await tx.query<{id:string}>(`INSERT INTO cg03_case_event(realm_id,case_id,actor_id,action,step_ordinal,correlation_ref)
+   VALUES($1,$2,$3,'CANCELLED',$4,$5) RETURNING id`,[actor.realmId,c.id,actor.accountId,c.current_step,requestKey]);
+  await this.source.applyCancellation(tx,actor.realmId,row,ev.rows[0].id);
+  return {cancelled:true,reference:c.case_number,status:"CANCELLED",replayed:false};
+ }
  async inbox(token:string,offsetInput:unknown,statusInput:unknown,filters:{from?:unknown;to?:unknown;type?:unknown;employee?:unknown}={}){
   const actor=await this.reviewer(token),offset=Number(offsetInput??0),status=String(statusInput??"ALL");
   if(!Number.isSafeInteger(offset)||offset<0||offset>10000||
-   !["ALL","SUBMITTED","IN_REVIEW","OWNER_COMPLETED","RETURNED","REJECTED"].includes(status))
+   !["ALL","SUBMITTED","IN_REVIEW","OWNER_COMPLETED","RETURNED","REJECTED","CANCELLED"].includes(status))
    throw new BadRequestException({code:"CG10_LEAVE_INVALID"});
   const from=filters.from===undefined||filters.from===""?null:leaveDate(filters.from);
   const to=filters.to===undefined||filters.to===""?null:leaveDate(filters.to);

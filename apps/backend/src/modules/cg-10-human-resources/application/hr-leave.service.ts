@@ -17,6 +17,14 @@ export class HrLeaveService{
   const actor=await this.sessions.verifySession(token);
   return this.run(tx=>this.source.mine(tx,actor,year));
  }
+ async withdraw(token:string,reference:string,body:unknown){
+  const actor=await this.sessions.verifySession(token);
+  return this.run(async tx=>{
+   const root=await tx.query("SELECT id FROM access_realm WHERE id=$1 AND realm_key='FOUNDATION_ROOT' FOR SHARE",[actor.realmId]);
+   if(!root.rowCount)throw new ForbiddenException("Foundation leave access unavailable");
+   return this.approvals.withdraw(tx,actor,reference,body);
+  });
+ }
  async submit(token:string,body:unknown){
   const actor=await this.sessions.verifySession(token);
   return this.run(async tx=>{
