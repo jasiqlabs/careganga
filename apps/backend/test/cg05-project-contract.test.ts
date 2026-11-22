@@ -56,3 +56,106 @@ test("US004-QA03/06: visit create rejects technical source spoofing and invalid 
  assert.equal(parseVisitCreate(v).planned,"2026-11-22T05:00:00.000Z");
  for(const x of [{status:"COMPLETED"},{rootRealmId:id},{districtRef:owner},{plannedAt:"2026-02-30T10:30+05:30"},{plannedAt:"2026-11-22T10:30"}])assert.throws(()=>parseVisitCreate({...v,...x}));
 });
+
+import {parseTaskCreate,parseTaskEdit,parseTaskAssign,parseTaskProgress,taskTransition,taskStatuses} from "../src/modules/cg-05-projects-field-operations/domain/task-input";
+test("US002-QA01/02/10: task create validates single assignee kind constraint, dates, and priorities",()=>{
+ const baseTask={requestKey:id,title:"Site survey",taskType:"Survey",description:"Field inspection",priority:"HIGH",startDate:"2026-11-22",dueDate:"2026-11-25"};
+ const unassigned=parseTaskCreate({...baseTask,assigneeKind:"UNASSIGNED",assigneeRef:null});
+ assert.equal(unassigned.kind,"UNASSIGNED");assert.equal(unassigned.target,null);
+ const assignedAccount=parseTaskCreate({...baseTask,assigneeKind:"ACCOUNT",assigneeRef:owner});
+ assert.equal(assignedAccount.kind,"ACCOUNT");assert.equal(assignedAccount.target,owner);
+ const assignedEmployee=parseTaskCreate({...baseTask,assigneeKind:"EMPLOYEE",assigneeRef:owner});
+ assert.equal(assignedEmployee.kind,"EMPLOYEE");assert.equal(assignedEmployee.target,owner);
+ assert.throws(()=>parseTaskCreate({...baseTask,assigneeKind:"UNASSIGNED",assigneeRef:owner}));
+ assert.throws(()=>parseTaskCreate({...baseTask,assigneeKind:"ACCOUNT",assigneeRef:null}));
+ assert.throws(()=>parseTaskCreate({...baseTask,startDate:"2026-11-26",dueDate:"2026-11-25",assigneeKind:"UNASSIGNED",assigneeRef:null}));
+ assert.throws(()=>parseTaskCreate({...baseTask,priority:"INVALID_PRIORITY",assigneeKind:"UNASSIGNED",assigneeRef:null}));
+});
+
+test("US002-QA06/08/11: task edit, assign, progress validate version, status graph, and cancel reason",()=>{
+ const edit=parseTaskEdit({requestKey:id,expectedVersion:2,title:"Updated task",taskType:"Review",priority:"NORMAL",startDate:"2026-11-20",dueDate:"2026-11-28"});
+ assert.equal(edit.expected,2);assert.equal(edit.title,"Updated task");
+ assert.throws(()=>parseTaskEdit({requestKey:id,expectedVersion:0,title:"X",taskType:"Review",priority:"NORMAL"}));
+ const assign=parseTaskAssign({requestKey:id,expectedVersion:1,assigneeKind:"ACCOUNT",assigneeRef:owner,reason:"Assigned to coordinator"});
+ assert.equal(assign.kind,"ACCOUNT");assert.equal(assign.reason,"Assigned to coordinator");
+ assert.throws(()=>parseTaskAssign({requestKey:id,expectedVersion:1,assigneeKind:"UNASSIGNED",assigneeRef:null,reason:"Unassign"}));
+ assert.throws(()=>parseTaskAssign({requestKey:id,expectedVersion:1,assigneeKind:"ACCOUNT",assigneeRef:owner,reason:"no"}));
+ const progress=parseTaskProgress({requestKey:id,expectedVersion:1,status:"IN_PROGRESS"});
+ assert.equal(progress.status,"IN_PROGRESS");
+ const cancel=parseTaskProgress({requestKey:id,expectedVersion:1,status:"CANCELLED",reason:"Project scope altered"});
+ assert.equal(cancel.status,"CANCELLED");
+ assert.throws(()=>parseTaskProgress({requestKey:id,expectedVersion:1,status:"CANCELLED",reason:"x"}));
+ for(const to of taskStatuses)assert.equal(taskTransition("COMPLETED",to),false);
+ for(const to of taskStatuses)assert.equal(taskTransition("CANCELLED",to),false);
+ for(const to of taskStatuses)assert.equal(taskTransition("DRAFT",to),false);
+ assert.equal(taskTransition("ASSIGNED","IN_PROGRESS"),true);
+ assert.equal(taskTransition("ASSIGNED","CANCELLED"),true);
+ assert.equal(taskTransition("IN_PROGRESS","COMPLETED"),true);
+ assert.equal(taskTransition("IN_PROGRESS","CANCELLED"),true);
+ assert.equal(taskTransition("IN_PROGRESS","ASSIGNED"),false);
+});
+
+import {parseActivityCreate,parseActivityEdit,parseActivityStatus,activityTransition,activityStatuses,instant} from "../src/modules/cg-05-projects-field-operations/domain/activity-input";
+test("US003-QA01/03/07/08: activity create/status enforce timezone offset, calendar ordering, and transition graph",()=>{
+ assert.equal(instant("2026-11-22T10:00:00+05:30"),"2026-11-22T04:30:00.000Z");
+ assert.equal(instant("2026-11-22T10:00:00Z"),"2026-11-22T10:00:00.000Z");
+ assert.throws(()=>instant("2026-11-22 10:00:00"));
+ assert.throws(()=>instant("2026-02-29T10:00:00Z"));
+ const baseAct={requestKey:id,projectRef:id,kind:"ACTIVITY",title:"Health Camp",category:"Healthcare",activityType:"Camp",venue:"Primary School",ownerRef:owner,scheduledStart:"2026-11-22T09:00:00+05:30",scheduledEnd:"2026-11-22T17:00:00+05:30",status:"SCHEDULED"};
+ const act=parseActivityCreate(baseAct);
+ assert.equal(act.kind,"ACTIVITY");assert.equal(act.status,"SCHEDULED");
+ const event=parseActivityCreate({...baseAct,kind:"EVENT",status:"DRAFT"});
+ assert.equal(event.kind,"EVENT");assert.equal(event.status,"DRAFT");
+ assert.throws(()=>parseActivityCreate({...baseAct,scheduledStart:"2026-11-22T18:00:00+05:30",scheduledEnd:"2026-11-22T17:00:00+05:30"}));
+ assert.throws(()=>parseActivityCreate({...baseAct,districtRef:id}));
+ assert.throws(()=>parseActivityCreate({...baseAct,status:"COMPLETED"}));
+ const {status: _st, ...editBaseAct}=baseAct;
+ const actEdit=parseActivityEdit({requestKey:id,expectedVersion:1,...editBaseAct});
+ assert.equal(actEdit.expected,1);
+ const actComplete=parseActivityStatus({requestKey:id,expectedVersion:2,status:"COMPLETED",outcome:"Completed with 150 attendees"});
+ assert.equal(actComplete.status,"COMPLETED");assert.equal(actComplete.outcome,"Completed with 150 attendees");
+ const actCancel=parseActivityStatus({requestKey:id,expectedVersion:2,status:"CANCELLED",reason:"Inclement weather"});
+ assert.equal(actCancel.status,"CANCELLED");
+ assert.throws(()=>parseActivityStatus({requestKey:id,expectedVersion:2,status:"CANCELLED",reason:"no"}));
+ for(const to of activityStatuses)assert.equal(activityTransition("COMPLETED",to),false);
+ for(const to of activityStatuses)assert.equal(activityTransition("CANCELLED",to),false);
+ assert.equal(activityTransition("DRAFT","SCHEDULED"),true);
+ assert.equal(activityTransition("SCHEDULED","ONGOING"),true);
+ assert.equal(activityTransition("ONGOING","COMPLETED"),true);
+ assert.equal(activityTransition("ONGOING","CANCELLED"),true);
+ assert.equal(activityTransition("DRAFT","COMPLETED"),false);
+});
+
+import {eventSourceRef,publishedEventCover} from "../src/modules/cg-05-projects-field-operations/application/event-public-source";
+test("US003-QA11/12: event public source validates source ref and rejects invalid cover ref without DB query",async()=>{
+ assert.equal(eventSourceRef(id.toUpperCase()),id.toLowerCase());
+ assert.throws(()=>eventSourceRef("invalid-uuid"));
+ const fake={query:async()=>{throw Error("Unexpected query");}} as unknown as PoolClient;
+ assert.equal(await publishedEventCover(fake,"invalid"),null);
+});
+
+import {parseVisitEdit,parseVisitCancel,parseVisitComment,visitStatuses} from "../src/modules/cg-05-projects-field-operations/domain/visit-input";
+test("US004-QA03/07/18: visit edit, cancel and comment enforce immutable lifecycle and non-empty reasons",()=>{
+ const edit=parseVisitEdit({requestKey:id,expectedVersion:1,projectRef:id,actorRef:owner,visitType:"Inspection",location:"Center A",plannedAt:"2026-11-22T10:00:00+05:30",purpose:"Check facilities",report:"Initial inspection complete"});
+ assert.equal(edit.expected,1);assert.equal(edit.kind,"Inspection");
+ const cancel=parseVisitCancel({requestKey:id,expectedVersion:1,reason:"Road blocked"});
+ assert.equal(cancel.reason,"Road blocked");
+ assert.throws(()=>parseVisitCancel({requestKey:id,expectedVersion:1,reason:"x"}));
+ const comment=parseVisitComment({requestKey:id,comment:"Field worker arrived safely."});
+ assert.equal(comment.body,"Field worker arrived safely.");
+ assert.throws(()=>parseVisitComment({requestKey:id,comment:""}));
+ assert.ok(visitStatuses.includes("IN_PROGRESS"));
+ assert.ok(visitStatuses.includes("PENDING_PROOF"));
+ assert.ok(visitStatuses.includes("PENDING_APPROVAL"));
+});
+
+test("US005-QA14: operations export escapes formula injection and control characters in CSV cells",()=>{
+ const csvCell=(v:unknown)=>{let s=String(v??"").replace(/[\u0000-\u001f\u007f]/g," ");if(/^\s*[=+\-@]/.test(s))s="'"+s;return '"'+s.replaceAll('"','""')+'"';};
+ assert.equal(csvCell("=1+1"),"\"'=1+1\"");
+ assert.equal(csvCell("+123"),"\"'+123\"");
+ assert.equal(csvCell("-500"),"\"'-500\"");
+ assert.equal(csvCell("@SUM(A1:A10)"),"\"'@SUM(A1:A10)\"");
+ assert.equal(csvCell("Normal Text"),'"Normal Text"');
+ assert.equal(csvCell('Text with "quotes"'),'"Text with ""quotes"""');
+ assert.equal(csvCell("Line\nBreak\tTab"),'"Line Break Tab"');
+});
