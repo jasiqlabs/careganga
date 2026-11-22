@@ -3,6 +3,7 @@ import {useEffect,useRef,useState,type FormEvent} from "react";
 import type {CG04RosterPage,CG04RosterExport} from "@careganga/api-contracts";
 const categories={ALL:"All tiers",ANNUAL:"Annual",LIFETIME:"Lifetime",HONORARY:"Honorary",STUDENT:"Student",OTHER:"Other"};
 const statuses={ALL:"All statuses",ACTIVE:"Active",EXPIRED:"Expired",SUSPENDED:"Suspended",CANCELLED:"Cancelled"};
+const human=(v:string)=>v.replaceAll("_"," ").toLowerCase().replace(/\b[a-z]/g,c=>c.toUpperCase());
 type Filter={q:string;status:string;category:string;feeClass:string;joinedFrom:string;joinedTo:string;branch:string};
 const initial=():Filter=>({q:"",status:"ALL",category:"ALL",feeClass:"ALL",joinedFrom:"",joinedTo:"",branch:""});
 async function request<T>(url:string):Promise<T>{
@@ -62,11 +63,11 @@ export function MemberRoster({canExport=false}:{canExport?:boolean}){
  <div className="cg04-roster-overview" aria-label="Current authorized membership overview">
   {([["Approved members",page.overview.total],["Active",page.overview.active],["Expired",page.overview.expired],["Cancelled",page.overview.cancelled]] as const).map(([label,count])=><div className="cg04-roster-stat" key={label}><small>{label}</small><strong>{count}</strong></div>)}
  </div>
- <p className="cg04-muted">Membership categories: {Object.entries(page.overview.byCategory).map(([category,count])=>category+": "+count).join(" · ")||"No approved member records in your permitted scope."}</p>
+ <p className="cg04-muted">Membership categories: {Object.entries(page.overview.byCategory).map(([category,count])=>human(category)+": "+count).join(" · ")||"No approved member records in your permitted scope."}</p>
  <p className="cg04-muted">Showing {page.items.length} authorized member records on this page.</p>
  <div className="cg04-roster-scroll" role="region" aria-label="Approved member records" tabIndex={0}>
  <table><thead><tr><th>Member</th><th>Name</th><th>Email</th><th>Mobile</th><th>Tier</th><th>Joined</th><th>Expires</th><th>Status</th><th>City / District</th><th>Branch</th></tr></thead>
- <tbody>{page.items.map(m=><tr key={m.ref}><td>{m.memberNumber}</td><td>{m.name}</td><td>{m.email??"Not provided"}</td><td>{m.mobile}</td><td>{m.plan}</td><td>{m.joinedOn}</td><td>{m.expiresOn??"Lifetime"}</td><td><span className={"cg04-roster-state cg04-state-"+m.status.toLowerCase()}>{m.status}</span></td><td>{m.city} / {m.district}</td><td>{m.branch??"Foundation"}</td></tr>)}
+ <tbody>{page.items.map(m=><tr key={m.ref}><td>{m.memberNumber}</td><td>{m.name}</td><td>{m.email??"Not provided"}</td><td>{m.mobile}</td><td>{m.plan}</td><td>{m.joinedOn}</td><td>{m.expiresOn??"Lifetime"}</td><td><span className={"cg04-roster-state cg04-state-"+m.status.toLowerCase()}>{human(m.status)}</span></td><td>{m.city} / {m.district}</td><td>{m.branch??"Foundation"}</td></tr>)}
  {!page.items.length&&<tr><td colSpan={10}>No approved members match your permitted filters.</td></tr>}</tbody></table></div>
  <div className="cg04-buttons"><button disabled={!history.length||busy} type="button" onClick={()=>{setCursor(history.at(-1)??"");setHistory(x=>x.slice(0,-1));}}>Previous page</button>
  <button disabled={!page.nextCursor||busy} type="button" onClick={()=>{setHistory(x=>[...x,cursor]);setCursor(page.nextCursor??"");}}>Next page</button></div>
