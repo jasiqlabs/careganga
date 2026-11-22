@@ -23,9 +23,9 @@ export function VolunteerCardManager({volunteerRef}:{volunteerRef:string}){
    .catch(e=>{if(id===seq.current)setError(e instanceof Error?e.message:"Official volunteer card unavailable.");})
    .finally(()=>{if(id===seq.current)setLoading(false);});
   return()=>{seq.current++;};
- },[volunteerRef]);
+ },[volunteerRef,reload]);
  useEffect(()=>{
-  const hide=()=>{if(document.visibilityState!=="visible"){seq.current++;setCard(null);setPassword("");setLoading(true);pending.current=null;}};
+  const hide=()=>{if(document.visibilityState!=="visible"){seq.current++;setCard(null);setPassword("");setLoading(true);pending.current=null;}else setReload(v=>v+1);};
   document.addEventListener("visibilitychange",hide);
   return()=>document.removeEventListener("visibilitychange",hide);
  },[]);
