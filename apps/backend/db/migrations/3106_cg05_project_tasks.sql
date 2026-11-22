@@ -69,3 +69,37 @@ CREATE TABLE project_task_event (
 CREATE INDEX ix_cg05_task_events ON project_task_event(root_realm_id,task_id,result_version DESC);
 CREATE TRIGGER cg05_task_event_immutable BEFORE UPDATE OR DELETE ON project_task_event
  FOR EACH ROW EXECUTE FUNCTION cg05_immutable_project_event();
+
+-- Keep project identity immutable and every mutation versioned; employee
+-- identity is validated against the original HR record, not a client label.
+CREATE FUNCTION cg05_task_write_guard() RETURNS trigger LANGUAGE plpgsql AS $$
+BEGIN
+ IF TG_OP='DELETE' THEN RAISE EXCEPTION 'Task history must remain available'; END IF;
+ IF TG_OP='INSERT' THEN
+  IF NEW.version<>1 OR NEW.status NOT IN('DRAFT','ASSIGNED') THEN RAISE EXCEPTION 'Invalid task initial state'; END IF;
+ ELSE
+  IF (NEW.id,NEW.root_realm_id,NEW.project_id,NEW.task_code,NEW.created_by,NEW.created_at)
+   IS DISTINCT FROM (OLD.id,OLD.root_realm_id,OLD.project_id,OLD.task_code,OLD.created_by,OLD.created_at)
+   OR NEW.version<>OLD.version+1 OR OLD.status IN('COMPLETED','CANCELLED') THEN
+   RAISE EXCEPTION 'Task identity or current revision cannot be changed';
+  END IF;
+  IF NEW.status<>OLD.status AND NOT (
+    NEW.status='ASSIGNED' AND OLD.status IN('DRAFT','IN_PROGRESS')
+    OR OLD.status='ASSIGNED' AND NEW.status IN('IN_PROGRESS','CANCELLED')
+    OR OLD.status='IN_PROGRESS' AND NEW.status IN('COMPLETED','CANCELLED')) THEN
+   RAISE EXCEPTION 'Invalid task status transition';
+  END IF;
+ END IF;
+ IF NEW.assignee_kind='EMPLOYEE' AND (
+  TG_OP='INSERT' OR NEW.assignee_employee_ref IS DISTINCT FROM OLD.assignee_employee_ref
+  OR NEW.assignee_account_ref IS DISTINCT FROM OLD.assignee_account_ref
+  OR NEW.assignee_branch_ref IS DISTINCT FROM OLD.assignee_branch_ref) THEN
+  IF NOT EXISTS(SELECT 1 FROM hr_employee e WHERE e.root_realm_id=NEW.root_realm_id
+   AND e.id=NEW.assignee_employee_ref AND e.account_ref=NEW.assignee_account_ref FOR SHARE) THEN
+   RAISE EXCEPTION 'Task employee must match original account';
+  END IF;
+ END IF;
+ RETURN NEW;
+END $$;
+CREATE TRIGGER cg05_task_guard BEFORE INSERT OR UPDATE OR DELETE ON project_task
+ FOR EACH ROW EXECUTE FUNCTION cg05_task_write_guard();
