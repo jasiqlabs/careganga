@@ -22,8 +22,8 @@ export async function eligibleProjectSources(db:Pool|PoolClient,root:string,refs
 }
 const uuid=/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i;
 export function projectTeaserRefs(raw:unknown):string[]{
- if(!Array.isArray(raw)||raw.length>12||raw.some(x=>typeof x!=="string"||!uuid.test(x))||new Set(raw).size!==raw.length)throw new BadRequestException({code:"CMS_PROJECT_SOURCE_INVALID",field:"sourceRefs"});
- return raw;
+ if(!Array.isArray(raw)||raw.length>12||raw.some(x=>typeof x!=="string"||!uuid.test(x))||new Set(raw.map(x=>typeof x==="string"?x.toLowerCase():x)).size!==raw.length)throw new BadRequestException({code:"CMS_PROJECT_SOURCE_INVALID",field:"sourceRefs"});
+ return (raw as string[]).map(x=>x.toLowerCase());
 }
 export async function validateProjectTeaser(db:PoolClient,root:string,fields:Record<string,unknown>){
  const refs=projectTeaserRefs(fields.sourceRefs??[]);
