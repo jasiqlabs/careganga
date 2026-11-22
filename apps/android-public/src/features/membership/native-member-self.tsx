@@ -3,7 +3,7 @@ import {ActivityIndicator,AppState,BackHandler,Pressable,ScrollView,StyleSheet,T
 import {SafeAreaView} from "react-native-safe-area-context";
 import * as SecureStore from "expo-secure-store";
 import * as Crypto from "expo-crypto";
-import type {CG04Application,CG04Member,CG04MembershipFee,CG04PublicTier,CG04PublicTierPage} from "@careganga/api-contracts";
+import type {CG04Application,CG04Member,CG04MemberHistory,CG04MembershipFee,CG04PublicTier,CG04PublicTierPage} from "@careganga/api-contracts";
 import {memberInvoke} from "./member-native-api";
 import {NativeCommunityAuth} from "./native-community-auth";
 import {NativeMemberApplication} from "./native-member-application";
@@ -13,19 +13,19 @@ const rupees=(minor:string)=>{if(!/^[0-9]{1,15}$/.test(minor))return "Fee unavai
 type Pending={path:string;body:Record<string,unknown>};
 export function NativeMemberSelf({onExit,initialPlan}:{onExit:()=>void;initialPlan?:string|null}){
  const [token,setToken]=useState<string|null>(null),[verified,setVerified]=useState(false),[loading,setLoading]=useState(true),[busy,setBusy]=useState(false);
- const [message,setMessage]=useState(""),[apps,setApps]=useState<CG04Application[]>([]),[selected,setSelected]=useState<CG04Application|null>(null),[member,setMember]=useState<CG04Member|null>(null),[fee,setFee]=useState<CG04MembershipFee|null>(null),[plans,setPlans]=useState<CG04PublicTier[]>([]),[otp,setOtp]=useState("");
+ const [message,setMessage]=useState(""),[apps,setApps]=useState<CG04Application[]>([]),[selected,setSelected]=useState<CG04Application|null>(null),[member,setMember]=useState<CG04Member|null>(null),[history,setHistory]=useState<CG04MemberHistory|null>(null),[showHistory,setShowHistory]=useState(false),[fee,setFee]=useState<CG04MembershipFee|null>(null),[plans,setPlans]=useState<CG04PublicTier[]>([]),[otp,setOtp]=useState("");
  const pending=useRef<Pending|null>(null),sequence=useRef(0),foreground=useRef(true);
- const clear=useCallback(()=>{sequence.current++;setToken(null);setVerified(false);setApps([]);setSelected(null);setMember(null);setFee(null);pending.current=null;void SecureStore.deleteItemAsync(KEY).catch(()=>undefined);},[]);
+ const clear=useCallback(()=>{sequence.current++;setToken(null);setVerified(false);setApps([]);setSelected(null);setMember(null);setHistory(null);setShowHistory(false);setFee(null);pending.current=null;void SecureStore.deleteItemAsync(KEY).catch(()=>undefined);},[]);
  const refresh=useCallback(async(key:string)=>{
   const n=++sequence.current;
   try{
    const phone=await memberInvoke<{verified:boolean}>("/api/identity/mobile/status","GET",undefined,key);
    if(n!==sequence.current||!foreground.current)return;
    setToken(key);setVerified(phone.verified);
-   if(!phone.verified){setApps([]);setSelected(null);setMember(null);return;}
-   const [list,self]=await Promise.all([memberInvoke<{items:CG04Application[]}>("/api/v1/membership/applications","GET",undefined,key),memberInvoke<{member:CG04Member|null}>("/api/v1/membership/me","GET",undefined,key)]);
+   if(!phone.verified){setApps([]);setSelected(null);setMember(null);setHistory(null);return;}
+   const [list,self,terms]=await Promise.all([memberInvoke<{items:CG04Application[]}>("/api/v1/membership/applications","GET",undefined,key),memberInvoke<{member:CG04Member|null}>("/api/v1/membership/me","GET",undefined,key),memberInvoke<CG04MemberHistory>("/api/v1/membership/me/history","GET",undefined,key)]);
    if(n!==sequence.current||!foreground.current)return;
-   setApps(list.items);setMember(self.member);
+   setApps(list.items);setMember(self.member);setHistory(terms);
    setSelected(old=>list.items.find(x=>x.ref===old?.ref)??list.items.find(x=>["DRAFT","RETURNED","SUBMITTED"].includes(x.status))??list.items[0]??null);
   }catch(e){if(e&&typeof e==="object"&&"status" in e&&e.status===401){clear();throw Error("Your membership session expired. Sign in again.");}throw e;}
  },[clear]);
@@ -37,7 +37,7 @@ export function NativeMemberSelf({onExit,initialPlan}:{onExit:()=>void;initialPl
  useEffect(()=>{const sub=BackHandler.addEventListener("hardwareBackPress",()=>{onExit();return true;});return()=>sub.remove();},[onExit]);
  useEffect(()=>{const sub=AppState.addEventListener("change",state=>{
   foreground.current=state==="active";
-  if(state!=="active"){sequence.current++;setApps([]);setSelected(null);setMember(null);setFee(null);setVerified(false);setOtp("");return;}
+  if(state!=="active"){sequence.current++;setApps([]);setSelected(null);setMember(null);setHistory(null);setFee(null);setVerified(false);setOtp("");return;}
   if(token)void refresh(token).catch(()=>setMessage("Private membership status unavailable. Retry when connected."));
  });return()=>sub.remove();},[token,refresh]);
  useEffect(()=>{if(!selected||!token||!verified){setFee(null);return;}let active=true;
@@ -73,7 +73,25 @@ export function NativeMemberSelf({onExit,initialPlan}:{onExit:()=>void;initialPl
  {button("Confirm code",()=>void act(async()=>{const v=await memberInvoke<{status:string}>("/api/identity/mobile/verify/confirm","POST",{code:otp},token);if(v.status!=="VERIFIED")throw Error("Code not verified.");setOtp("");await refresh(token);}),!otp)}
  </View>:
  <>
- <View style={s.card}><Text style={s.heading}>Current membership</Text><Text>{member?member.memberNumber+" · "+member.plan+" · "+member.status:"No approved member yet."}</Text>{member&&<Text>Validity: {member.startsOn} to {member.expiresOn??"Lifetime"}</Text>}</View>
+ <View style={s.card}><Text style={s.heading}>Current membership</Text><Text>{member?member.memberNumber+" · "+member.plan+" · "+member.status:"No approved member yet."}</Text>{member&&<Text>Validity: {member.startsOn} to {member.expiresOn??"Lifetime"}</Text>}
+ {member&&history&&button(showHistory?"Hide history":"Renewals and branch history",()=>setShowHistory(x=>!x))}
+ {member&&history&&showHistory&&<View style={s.history}>
+  <Text style={s.heading}>Recorded terms</Text>
+  {!history.terms.length&&<Text>No recorded membership terms yet.</Text>}
+  {history.terms.map(t=><View key={t.applicationNumber} style={s.historyItem}>
+   <Text style={s.heading}>{t.plan} · {t.category}</Text>
+   <Text>{t.startsOn} to {t.expiresOn??"Lifetime"}</Text><Text>Accepted fee: {rupees(t.feeMinor)}</Text><Text>{t.applicationNumber}</Text>
+  </View>)}
+  {history.termsHasMore&&<Text>More older terms are available from the Foundation.</Text>}
+  <Text style={s.heading}>Foundation branch history</Text>
+  {!history.branches.length&&<Text>No recorded branch history yet.</Text>}
+  {history.branches.map((h,i)=><View key={h.effectiveFrom+":"+i} style={s.historyItem}>
+   <Text style={s.heading}>{h.branch??"Foundation"}</Text>
+   <Text>{new Date(h.effectiveFrom).toLocaleDateString("en-IN",{timeZone:"Asia/Kolkata"})} to {h.effectiveTo?new Date(h.effectiveTo).toLocaleDateString("en-IN",{timeZone:"Asia/Kolkata"}):"Current"}</Text><Text>{h.reason}</Text>
+  </View>)}
+  {history.branchesHasMore&&<Text>Older affiliations are available from the Foundation.</Text>}
+ </View>}
+ </View>
  <View style={s.card}><Text style={s.heading}>My applications</Text>{apps.map(a=>button(a.applicationNumber+" · "+a.status,()=>setSelected(a)))}{button("New membership / renewal",()=>setSelected(null),apps.some(a=>["DRAFT","RETURNED","SUBMITTED"].includes(a.status)))}</View>
  {(!selected||["DRAFT","RETURNED"].includes(selected.status))&&<NativeMemberApplication token={token} application={selected} initialPlan={initialPlan} plans={plans} onSaved={()=>refresh(token)}/>}
  {selected&&<View style={s.card}><Text style={s.heading}>{selected.applicationNumber}</Text><Text>Status: {selected.status} · {selected.plan}</Text><Text>Accepted fee: {rupees(selected.feeMinor)}</Text>
@@ -88,4 +106,4 @@ export function NativeMemberSelf({onExit,initialPlan}:{onExit:()=>void;initialPl
  </>}
  </ScrollView></SafeAreaView>;
 }
-const s=StyleSheet.create({screen:{flex:1,backgroundColor:"#f5f7f9"},content:{padding:18,paddingBottom:48,gap:14,width:"100%",maxWidth:740,alignSelf:"center"},head:{flexDirection:"row",alignItems:"center",justifyContent:"space-between"},title:{fontSize:23,fontWeight:"800",color:"#174632",flexShrink:1},heading:{fontSize:18,fontWeight:"700",color:"#174632"},card:{backgroundColor:"white",borderRadius:13,borderWidth:1,borderColor:"#d9e5df",padding:15,gap:11},button:{minHeight:46,padding:12,borderWidth:1,borderColor:"#a7c6b4",borderRadius:9,justifyContent:"center"},buttonText:{fontWeight:"700",color:"#174632"},input:{minHeight:46,padding:10,borderWidth:1,borderColor:"#c4d6cd",borderRadius:8,color:"#12324d"},message:{padding:12,backgroundColor:"white",color:"#993b28",borderRadius:9}});
+const s=StyleSheet.create({screen:{flex:1,backgroundColor:"#f5f7f9"},content:{padding:18,paddingBottom:48,gap:14,width:"100%",maxWidth:740,alignSelf:"center"},head:{flexDirection:"row",alignItems:"center",justifyContent:"space-between"},title:{fontSize:23,fontWeight:"800",color:"#174632",flexShrink:1},heading:{fontSize:18,fontWeight:"700",color:"#174632"},card:{backgroundColor:"white",borderRadius:13,borderWidth:1,borderColor:"#d9e5df",padding:15,gap:11},button:{minHeight:46,padding:12,borderWidth:1,borderColor:"#a7c6b4",borderRadius:9,justifyContent:"center"},buttonText:{fontWeight:"700",color:"#174632"},input:{minHeight:46,padding:10,borderWidth:1,borderColor:"#c4d6cd",borderRadius:8,color:"#12324d"},message:{padding:12,backgroundColor:"white",color:"#993b28",borderRadius:9},history:{gap:9},historyItem:{paddingVertical:9,borderBottomWidth:1,borderColor:"#d9e5df",gap:5}});
