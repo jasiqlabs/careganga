@@ -15367,3 +15367,30 @@ button:disabled {
 .cg04-visually-hidden{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
 @media(max-width:900px){.cg04-overview,.cg04-edit-grid{grid-template-columns:1fr}.cg04-benefit{grid-template-columns:1fr 1fr}.cg04-public-plan{grid-template-columns:140px minmax(0,1fr)}.cg04-public-actions{grid-column:1/-1;flex-direction:row;align-items:center;justify-content:flex-end}}
 @media(max-width:570px){.cg04-plan-grid,.cg04-form-grid,.cg04-benefit,.cg04-public-tabs,.cg04-public-plan{grid-template-columns:1fr}.cg04-card-art{max-width:230px}.cg04-search-row{align-items:stretch}.cg04-admin button,.cg04-public button{min-height:44px}}
+
+/* CG04 original public membership journey: shared responsive CareGanga palette. */
+.cg04-self-service{max-width:100%;overflow-wrap:anywhere}
+.cg04-self-service .cg04-panel,.cg04-auth.cg04-panel{padding:clamp(16px,3vw,28px);border-radius:13px;min-width:0}
+.cg04-enroll-form,.cg04-auth form{display:grid;gap:15px;max-width:780px}
+.cg04-enroll-form label,.cg04-auth form label,.cg04-self-service label{display:grid;gap:7px;color:#244559;font-weight:650}
+.cg04-enroll-form input:not([type=checkbox]):not([type=file]),.cg04-enroll-form select,.cg04-enroll-form textarea,
+.cg04-auth input,.cg04-self-service input:not([type=checkbox]):not([type=file]){
+ width:100%;max-width:100%;border:1px solid #bdcfda;border-radius:9px;background:#fff;color:#1b3445;
+ min-height:45px;padding:10px 12px;font:inherit
+}
+.cg04-enroll-form textarea{min-height:96px;resize:vertical}
+.cg04-enroll-form label:has(input[type=checkbox]){display:flex;flex-direction:row;gap:10px;align-items:flex-start;font-weight:500}
+.cg04-enroll-form input[type=checkbox]{width:20px;height:20px;flex:none}
+.cg04-enroll-form :is(input,select,textarea,button):focus-visible,
+.cg04-auth :is(input,button):focus-visible,
+.cg04-self-service :is(a,button,input):focus-visible{outline:3px solid #e3a73a;outline-offset:2px}
+.cg04-self-service .cg04-buttons{flex-wrap:wrap;gap:10px;align-items:center}
+.cg04-self-service .cg04-buttons>a,.cg04-self-service .cg04-buttons>button{overflow-wrap:anywhere}
+.cg04-self-service a.cg04-primary,.cg04-public-plan a.cg04-primary{display:inline-flex;justify-content:center;align-items:center;text-decoration:none;border-radius:9px;padding:11px 18px;background:#174632;color:white;min-height:44px;font-weight:650}
+.cg04-self-service a:not(.cg04-primary){color:#155f82;text-decoration:underline;text-underline-offset:2px}
+.cg04-self-service .cg04-panel h2{margin:0 0 8px;font-size:clamp(18px,2vw,23px)}
+.cg04-self-service .cg04-panel h3{margin:10px 0 6px}
+.cg04-self-service .cg04-panel p{line-height:1.55}
+.cg04-self-service .cg04-panel>label:has(input[type=file]){margin:12px 0}
+.cg04-self-service input[type=file]{min-width:0;max-width:100%;font-size:14px}
+@media(max-width:600px){.cg04-self-service .cg04-panel,.cg04-auth.cg04-panel{padding:15px}.cg04-enroll-form,.cg04-auth form{max-width:100%}.cg04-self-service .cg04-buttons>button{max-width:100%}}
