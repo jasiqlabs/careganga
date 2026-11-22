@@ -69,7 +69,8 @@ function unseal(realm:string,r:Row){
   return {strengths:note(v.strengths),improvement:note(v.improvement)};
  }catch{throw new ServiceUnavailableException("Protected appraisal feedback is unavailable");}
 }
-const projection=(r:Row)=>({reference:r.reference,employeeReference:r.employee_code,employeeName:r.employee_name,
+type ListRow=Pick<Row,"reference"|"employee_code"|"employee_name"|"period_start"|"period_end"|"goal_delivery_score"|"competency_score"|"attendance_conduct_score"|"status"|"revision">;
+const projection=(r:ListRow)=>({reference:r.reference,employeeReference:r.employee_code,employeeName:r.employee_name,
  periodStart:r.period_start,periodEnd:r.period_end,goal:r.goal_delivery_score,competency:r.competency_score,
  attendance:r.attendance_conduct_score,status:r.status,revision:r.revision});
 const baseQuery=`SELECT ar.*,to_char(ar.period_start,'YYYY-MM-DD') AS period_start,to_char(ar.period_end,'YYYY-MM-DD') AS period_end,
@@ -144,7 +145,7 @@ export class HrAppraisalService{
   return this.run(async tx=>{
    await this.identity.assertCurrent(tx,actor,"hr.appraisals.manage");
    // One consistent scoped snapshot for summary and bounded page; never fetch encrypted notes into a list.
-   const q=await tx.query<{page:Row[];summary:{total:number;draft:number;submitted:number;released:number;averageScore:number|null;outstanding:number}}>(`
+   const q=await tx.query<{page:ListRow[];summary:{total:number;draft:number;submitted:number;released:number;averageScore:number|null;outstanding:number}}>(`
     WITH targets AS (${targetQuery}), scoped AS (
       SELECT ar.id,ar.reference,ar.status,ar.revision,ar.period_end AS sort_end,
        to_char(ar.period_start,'YYYY-MM-DD') AS period_start,to_char(ar.period_end,'YYYY-MM-DD') AS period_end,
@@ -257,8 +258,12 @@ export class HrAppraisalService{
     WHERE e.root_realm_id=$1 AND e.account_ref=$2 AND e.status IN('ACTIVE','PROBATION')
     AND a.valid_from<=CURRENT_DATE AND (a.valid_to IS NULL OR a.valid_to>CURRENT_DATE) FOR SHARE OF e,a,b`,[actor.realmId,actor.accountId]);
    if(q.rows.length!==1)return {linked:false,items:[]};
-   const v=await tx.query<Row>(baseQuery+" WHERE ar.root_realm_id=$1 AND ar.employee_id=$2 AND ar.status='RELEASED' ORDER BY ar.period_end DESC,ar.id DESC LIMIT 50",
-    [actor.realmId,q.rows[0].id]);
+   // Own released view never reads protected feedback, reviewer identity or command keys.
+   const v=await tx.query<Pick<ListRow,"reference"|"period_start"|"period_end"|"goal_delivery_score"|"competency_score"|"attendance_conduct_score"|"status">>(`
+    SELECT reference,to_char(period_start,'YYYY-MM-DD') AS period_start,to_char(period_end,'YYYY-MM-DD') AS period_end,
+     goal_delivery_score,competency_score,attendance_conduct_score,status
+    FROM hr_appraisal WHERE root_realm_id=$1 AND employee_id=$2 AND status='RELEASED'
+    ORDER BY period_end DESC,id DESC LIMIT 50`,[actor.realmId,q.rows[0].id]);
    return {linked:true,items:v.rows.map(r=>({reference:r.reference,periodStart:r.period_start,periodEnd:r.period_end,
     goal:r.goal_delivery_score,competency:r.competency_score,attendance:r.attendance_conduct_score,status:r.status}))};
   });
