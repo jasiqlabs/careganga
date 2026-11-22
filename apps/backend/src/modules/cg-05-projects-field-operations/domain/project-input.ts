@@ -1,6 +1,6 @@
 import {BadRequestException,ConflictException} from "@nestjs/common";
-export const invalid=()=>new BadRequestException({code:"CG05_INVALID"});
-export const stale=()=>new ConflictException({code:"CG05_SOURCE_CHANGED"});
+export const invalid=()=>new BadRequestException({code:"CG05_INVALID",message:"Check the required fields, dates and permitted selections."});
+export const stale=()=>new ConflictException({code:"CG05_SOURCE_CHANGED",message:"This record or your current assignment has changed. Refresh the details before trying again."});
 const UUID=/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i;
 export function ref(v:unknown){if(typeof v!=="string"||!UUID.test(v))throw invalid();return v.toLowerCase();}
 export const optionalRef=(v:unknown)=>v===null||v===undefined||v===""?null:ref(v);
