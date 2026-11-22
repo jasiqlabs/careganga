@@ -8,7 +8,7 @@ const KINDS=["APPOINTMENT","OFFER","JOINING","EXPERIENCE","RELIEVING","MEMO","EM
 export type HrDocumentKind=typeof KINDS[number];
 const sha=(v:unknown)=>createHash("sha256").update(JSON.stringify(v)).digest("hex");
 export function parseHrDocumentDraft(raw:unknown){
- if(!raw||typeof raw!=="object"||Array.isArray(raw)||Object.keys(raw).some(k=>!["kind","subjectReference","templateId","templateVersion","issueDate","expiryDate","requestKey"].includes(k)))
+ if(!raw||typeof raw!=="object"||Array.isArray(raw)||Object.keys(raw).some(k=>!["kind","subjectReference","templateId","templateVersion","issueDate","expiryDate","requestKey","letterBody"].includes(k)))
   throw new BadRequestException("Check the document request");
  const x=raw as Record<string,unknown>;
  if(typeof x.kind!=="string"||!KINDS.some(k=>k===x.kind)||typeof x.subjectReference!=="string"||!Number.isSafeInteger(x.templateVersion)||Number(x.templateVersion)<1)
@@ -17,7 +17,9 @@ export function parseHrDocumentDraft(raw:unknown){
  if(!(kind==="OFFER"?/^CG-HR-APP-[0-9]{6,}$/:/^CG-HR-EMP-[0-9]{6,}$/).test(reference))throw new BadRequestException("Choose the original eligible employee or pending application");
  const issueDate=leaveDate(x.issueDate),expiryDate=x.expiryDate===undefined||x.expiryDate===null||x.expiryDate===""?null:leaveDate(x.expiryDate);
  if(kind==="EMPLOYEE_ID"?(!expiryDate||expiryDate<=issueDate):expiryDate!==null)throw new BadRequestException("Check the ID card expiry date");
- return {kind,subjectReference:reference,templateId:leaveId(x.templateId),templateVersion:Number(x.templateVersion),issueDate,expiryDate,requestKey:leaveId(x.requestKey)};
+ const letterBody=x.letterBody;
+ if(letterBody!==undefined&&(kind==="EMPLOYEE_ID"||typeof letterBody!=="string"||letterBody.trim().length<20||letterBody.length>1200||/[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/.test(letterBody)||letterBody.split(/\r?\n/).some(line=>line.startsWith("[card-fields] "))))throw new BadRequestException("Check the letter body and terms");
+ return {kind,subjectReference:reference,templateId:leaveId(x.templateId),templateVersion:Number(x.templateVersion),issueDate,expiryDate,requestKey:leaveId(x.requestKey),...(typeof letterBody==="string"?{letterBody}:{})};
 }
 type Input=ReturnType<typeof parseHrDocumentDraft>;
 type Subject={employee_id:string|null;application_id:string|null;application_revision_id:string|null;application_revision_no:number|null;application_source_digest:string|null;assignment_id:string|null;assignment_version:number|null;employee_version:number|null;exit_change_id:string|null;branch_ref:string;recipient:string;designation:string;branch:string;department:string|null;hire_date:string;last_working_date:string|null;account_ref:string|null;today:string};
@@ -115,7 +117,7 @@ export class HrDocumentSourceFacade{
   const portrait=x.kind==="EMPLOYEE_ID"?await this.cardPortrait(tx,actor.realmId,s.employee_id!):null;
   const snapshot={kind:x.kind,subjectReference:x.subjectReference,recipient:s.recipient,designation:s.designation,branch:s.branch,department:s.department,
    hireDate:s.hire_date,lastWorkingDate:s.last_working_date,issueDate:x.issueDate,expiryDate:x.expiryDate,templateVersion:t.version,templateHash:t.content_sha256,
-   salaryStatus:"NOT_APPLICABLE",sourceVersion:s.employee_version??s.application_revision_no,assignmentVersion:s.assignment_version,...(portrait?{portraitSha256:portrait.sha256}:{})};
+   salaryStatus:"NOT_APPLICABLE",sourceVersion:s.employee_version??s.application_revision_no,assignmentVersion:s.assignment_version,...(portrait?{portraitSha256:portrait.sha256}:{}),...(x.letterBody!==undefined?{letterBody:x.letterBody}:{})};
   const sourceDigest=sha([s.employee_id,s.application_id,s.application_revision_id,s.assignment_id,s.exit_change_id,t.id,snapshot]);
   const q=await tx.query<HrDocumentRow>(`INSERT INTO hr_document_request(root_realm_id,kind,employee_id,application_id,application_revision_id,application_revision_no,application_source_digest,
    assignment_id,assignment_version,employee_version,exit_change_id,source_branch_ref,template_id,template_version,issue_date,expiry_date,source_snapshot,source_digest,request_key,request_digest,created_by)
@@ -160,6 +162,7 @@ export class HrDocumentSourceFacade{
  }
  async verifyCurrent(tx:PoolClient,actor:VerifiedFoundationActor,row:HrDocumentRow){
   const snapshot=row.source_snapshot;
+  if(snapshot.letterBody!==undefined&&(row.kind==="EMPLOYEE_ID"||typeof snapshot.letterBody!=="string"||snapshot.letterBody.length>1200||snapshot.letterBody.trim().length<20||/[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/.test(snapshot.letterBody)||snapshot.letterBody.split(/\r?\n/).some(line=>line.startsWith("[card-fields] "))))throw new ConflictException("Original letter content is invalid");
   if(typeof snapshot.subjectReference!=="string")throw new ConflictException("Original document subject unavailable");
   const s=await this.subject(tx,actor,row.kind,snapshot.subjectReference);
   if(typeof snapshot.expiryDate==="string"&&snapshot.expiryDate<=s.today)throw new ConflictException("Employee card expiry has passed; create a new request");
@@ -169,7 +172,7 @@ export class HrDocumentSourceFacade{
    sha([s.employee_id,s.application_id,s.application_revision_id,s.assignment_id,s.exit_change_id,t.id,{
     kind:row.kind,subjectReference:snapshot.subjectReference,recipient:s.recipient,designation:s.designation,branch:s.branch,department:s.department,
     hireDate:s.hire_date,lastWorkingDate:s.last_working_date,issueDate:snapshot.issueDate,expiryDate:snapshot.expiryDate,templateVersion:t.version,templateHash:t.content_sha256,
-    salaryStatus:"NOT_APPLICABLE",sourceVersion:s.employee_version??s.application_revision_no,assignmentVersion:s.assignment_version,...(portrait?{portraitSha256:portrait.sha256}:{})}])!==row.source_digest)
+    salaryStatus:"NOT_APPLICABLE",sourceVersion:s.employee_version??s.application_revision_no,assignmentVersion:s.assignment_version,...(portrait?{portraitSha256:portrait.sha256}:{}),...(typeof snapshot.letterBody==="string"?{letterBody:snapshot.letterBody}:{})}])!==row.source_digest)
    throw new ConflictException("The original employee, assignment or approved template changed");
   return s;
  }
