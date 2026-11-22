@@ -151,4 +151,49 @@ export class DonationIntentsService{
     awaitingFinance?"Signed payment is awaiting original Foundation finance reconciliation; no receipt issued yet.":
      "This donation is not yet confirmed as received."};
  }
+ /** Accountless donor history: each 256-bit body-only status proof authorizes
+  * exactly one transaction. Never infer ownership from a typed email/PAN. */
+ async ownHistory(req:object,raw:unknown){
+  await this.limit(req,"status");
+  if(!raw||typeof raw!=="object"||Array.isArray(raw)||
+   Object.keys(raw).some(k=>k!=="statusTokens"))
+   throw new BadRequestException("Provide your original private donation proofs.");
+  const submitted=(raw as Record<string,unknown>).statusTokens;
+  if(!Array.isArray(submitted)||submitted.length<1||submitted.length>20||
+   submitted.some(x=>typeof x!=="string"||!/^[A-Za-z0-9_-]{43}$/.test(x))||
+   new Set(submitted).size!==submitted.length)
+   throw new BadRequestException("Provide 1 to 20 distinct original private donation proofs.");
+  const hashes=submitted.map(x=>createHash("sha256").update(x).digest("hex"));
+  const records=await this.db.query<{
+    donationNumber:string;amountMinor:string;currency:string;status:string;
+    refundedMinor:string;receiptStatus:string;receiptNumber:string|null;
+    createdAt:Date}>(`
+   SELECT d.donation_number AS "donationNumber",d.amount_minor::text AS "amountMinor",
+    d.currency,d.source_status AS status,d.created_at AS "createdAt",
+    coalesce((SELECT sum(r.amount_minor) FROM donation_refund_request r
+     JOIN journal j ON j.root_realm_id=r.root_realm_id AND j.id=r.reversal_journal_ref
+     WHERE r.root_realm_id=d.root_realm_id AND r.donation_id=d.id
+       AND r.status='FINANCE_REVERSED' AND j.status='POSTED' AND j.source_ref=r.id),0)::text
+      AS "refundedMinor",
+    coalesce(rec.status,'NOT_ISSUED') AS "receiptStatus",
+    CASE WHEN rec.status='ISSUED' THEN rec.receipt_number ELSE NULL END AS "receiptNumber"
+   FROM donation d LEFT JOIN cg19_donation_receipt_document rec
+    ON rec.root_realm_id=d.root_realm_id AND rec.donation_id=d.id
+   WHERE d.status_token_digest=ANY($1::char(64)[])
+    AND d.status_token_expires_at>now()
+   ORDER BY d.created_at DESC,d.id DESC LIMIT 21`,[hashes]);
+  const rows=records.rows.map(x=>{
+   const received=x.status==="RECEIVED_POSTED";
+   const remaining=received?BigInt(x.amountMinor)-BigInt(x.refundedMinor):0n;
+   return {donationNumber:x.donationNumber,createdAt:x.createdAt.toISOString(),
+    grossMinor:received?x.amountMinor:"0",refundedMinor:x.refundedMinor,
+    netReceivedMinor:remaining.toString(),currency:x.currency,
+    status:received?(remaining===0n?"REFUNDED_FULL":BigInt(x.refundedMinor)>0n?
+     "REFUNDED_PARTIAL":"RECEIVED_POSTED"):x.status,
+    receiptStatus:x.receiptStatus,receiptNumber:x.receiptNumber};
+  });
+  // A missing, expired or wrong-root proof never expands the result set.
+  return {items:rows,submitted:hashes.length,matched:rows.length};
+ }
+
 }
