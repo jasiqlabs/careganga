@@ -54,9 +54,28 @@ export function PublicDonationForm({campaignSlug=null}:{campaignSlug?:string|nul
  const refresh=async()=>{
   if(!proof||busy)return;
   setBusy(true);setError("");
-  try{const x=await api<{status:string;received:boolean}>("/status",{statusToken:proof});
-   setStatus(x.status);setReceived(x.received);
+  try{const x=await api<{status:string;received:boolean;receiptStatus:string;
+    netReceivedMinor:string;refundedMinor:string}>("/status",{statusToken:proof});
+   setStatus(x.status);setReceived(x.received);setReceiptStatus(x.receiptStatus);
+   setNetMinor(x.netReceivedMinor);setRefundMinor(x.refundedMinor);
   }catch(e){setError(e instanceof Error?e.message:"Donation status currently unavailable.");}
+  finally{setBusy(false);}
+ };
+ const download=async()=>{
+  if(!proof||busy||receiptStatus!=="ISSUED")return;
+  setBusy(true);setError("");
+  try{
+   const r=await fetch("/api/public/donations/receipt/download",{
+    method:"POST",headers:{"Content-Type":"application/json"},
+    body:JSON.stringify({statusToken:proof}),cache:"no-store",signal:AbortSignal.timeout(17000)});
+   if(!r.ok||r.headers.get("content-type")?.split(";")[0]!=="application/pdf")
+    throw Error("Your private receipt is not currently available.");
+   const blob=await r.blob();
+   if(blob.size<100||blob.size>10485760)throw Error("Receipt file could not be verified.");
+   const url=URL.createObjectURL(blob),anchor=document.createElement("a");
+   anchor.href=url;anchor.download="CareGanga-Donation-Receipt.pdf";
+   anchor.click();setTimeout(()=>URL.revokeObjectURL(url),10000);
+  }catch(e){setError(e instanceof Error?e.message:"Receipt download unavailable.");}
   finally{setBusy(false);}
  };
  return <section style={{border:"1px solid #e0e5e9",borderRadius:16,padding:20,
@@ -93,6 +112,11 @@ export function PublicDonationForm({campaignSlug=null}:{campaignSlug?:string|nul
    {checkout&&<a href={checkout} target="_blank" rel="noopener noreferrer"
     referrerPolicy="no-referrer">Open secure payment page</a>}
    {linkState==="OUTCOME_UNKNOWN"&&<p role="alert">Payment-link outcome is uncertain. Do not create another request.</p>}
+   {received&&<p>Verified net received: ₹{(BigInt(netMinor)/100n).toString()}.
+    {refundMinor!=="0"?" Confirmed refund(s) have been applied.":""}
+    {" "}Receipt: {receiptStatus.replaceAll("_"," ").toLowerCase()}.</p>}
+   {receiptStatus==="ISSUED"&&<button type="button" style={button} disabled={busy}
+    onClick={()=>void download()}>Download your original verified receipt (PDF)</button>}
    <button type="button" style={button} disabled={busy} onClick={()=>void refresh()}>Check donation status</button>
   </div>}
  </section>;

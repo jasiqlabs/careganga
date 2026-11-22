@@ -414,3 +414,6 @@ CG07 3306 deferred donation proof originally ran only AFTER UPDATE, allowing a d
 
 ### 22-Nov US003 donor-proof status follows true posted refund and CG19 document
 CG07 public donor-proof POST status now returns only own original money, original CG09 posted refund amount/net, derived FULL/PARTIAL refunded state, and CG19 issued/pending receipt; no fake paid count or technical IDs. QA01/04/08/11/16 SOURCE_PARTIAL; runtime NOT_RUN.
+
+### 22-Nov US003 original donor Web PDF self-service
+Public Next donation POST-body proof source now allows only `/receipt/download` binary from original CG19 (BFF no-store, same-origin, MIME/size checked, never webhook/secret URL), and PublicDonationForm shows own verified net/partial/full refund/CG19 receipt status plus a protected original PDF download only after ISSUED. No 80G claim, anonymous donor roster or source ID exposed. QA01/04/06/09/11/16/18 source candidate; actual browser/PDF/runtime NOT_RUN.
