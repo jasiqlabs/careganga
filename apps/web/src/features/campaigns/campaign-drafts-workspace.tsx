@@ -15,7 +15,7 @@ type Draft={
   targetGroup:string;plannedBeneficiaries:number|null};
  team:{coordinatorRef:string|null;volunteerRef:string|null};
  budget:{goal:string;expectedCost:string;startAt:string;endAt:string};
- media:{fileRef:string|null;supportingFileRefs:string[];alt:string};review:Record<string,never>;
+ media:{coverRef:string|null;fileRef:string|null;supportingFileRefs:string[];alt:string};review:Record<string,never>;
 };
 const blank=():Draft=>({
  basic:{title:"",type:"GENERAL",summary:"",description:"",tags:[]},
@@ -23,7 +23,7 @@ const blank=():Draft=>({
   location:"",targetGroup:"",plannedBeneficiaries:null},
  team:{coordinatorRef:null,volunteerRef:null},
  budget:{goal:"",expectedCost:"",startAt:"",endAt:""},
- media:{fileRef:null,supportingFileRefs:[],alt:""},review:{}
+ media:{coverRef:null,fileRef:null,supportingFileRefs:[],alt:""},review:{}
 });
 const minorToRupees=(value:unknown)=>{
  try{if(typeof value!=="string"||!/^[0-9]+$/.test(value))return "";
@@ -46,7 +46,7 @@ function fromRow(row:Row):Draft{
   team:{...blank().team,coordinatorRef:team?.coordinatorRef??null,volunteerRef:team?.volunteerRef??null},
   budget:{goal:minorToRupees(budget?.goalMinor),expectedCost:minorToRupees(budget?.expectedCostMinor),
    startAt:budget?.startAt??"",endAt:budget?.endAt??""},
-  media:{fileRef:media?.fileRef??null,supportingFileRefs:Array.isArray(media?.supportingFileRefs)?media.supportingFileRefs:[],alt:media?.alt??""}};
+  media:{coverRef:media?.coverRef??null,fileRef:media?.fileRef??null,supportingFileRefs:Array.isArray(media?.supportingFileRefs)?media.supportingFileRefs:[],alt:media?.alt??""}};
 }
 async function api<T>(path:string,method:"GET"|"POST"|"PATCH"="GET",body?:Record<string,unknown>):Promise<T>{
  const r=await fetch("/api/campaigns"+(path.startsWith("?")?path:path?"/"+path:""),{method,cache:"no-store",
@@ -261,6 +261,12 @@ export function CampaignDraftsWorkspace({canManage}:{canManage:boolean}){
      {input("Short description",draft.basic.summary,v=>update("basic","summary",v),true)}
      {input("Full campaign explanation",draft.basic.description,v=>update("basic","description",v),true)}
      {input("Tags (comma-separated)",draft.basic.tags.join(", "),v=>update("basic","tags",v.split(",").map(x=>x.trim()).filter(Boolean)))}
+     {selected?<div className={styles.fullWidth}>
+      <CampaignBannerPanel key={selected.ref+"-cover"} campaignRef={selected.ref} version={selected.version}
+       kind="COVER" canUpload={editable&&!busy&&!pending.current&&!submitPending.current}
+       currentFileRef={draft.media.coverRef}
+       onVerified={ref=>update("media","coverRef",ref||null)}/>
+     </div>:<p className={styles.fullWidth}>Save the new campaign as a draft to enable the optional cover image. Cover images are not publicly visible before independent approval.</p>}
     </>}
     {step===1&&<>
      {select("Foundation branch",draft.project.branchRef,choices?.branches??[],
@@ -300,7 +306,7 @@ export function CampaignDraftsWorkspace({canManage}:{canManage:boolean}){
     {step===4&&<>
      <p>Documents &amp; Media. The banner is optional. Only original CG19-scanned private evidence can be saved; an uploaded file never publishes or receives donations.</p>
      {selected?<div className={styles.fullWidth}>
-      <CampaignBannerPanel key={selected.ref} campaignRef={selected.ref} version={selected.version}
+      <CampaignBannerPanel key={selected.ref+"-hero"} campaignRef={selected.ref} kind="BANNER" version={selected.version}
        canUpload={editable&&!busy&&!pending.current&&!submitPending.current}
        currentFileRef={draft.media.fileRef}
        onVerified={ref=>update("media","fileRef",ref||null)}/>
