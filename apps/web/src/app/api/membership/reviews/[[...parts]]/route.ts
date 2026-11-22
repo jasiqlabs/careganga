@@ -2,7 +2,7 @@ import {cookies} from "next/headers";
 import {NextRequest,NextResponse} from "next/server";
 export const dynamic="force-dynamic";
 type Ctx={params:Promise<{parts?:string[]}>};
-const id=/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const id=/^[0-9a-f]{8}-(?:[0-9a-f]{4}-){3}[0-9a-f]{12}$/i;
 const reply=(data:unknown,status=200)=>NextResponse.json(data,{status,headers:{"Cache-Control":"private, no-store","X-Content-Type-Options":"nosniff"}});
 function path(parts:string[],method:"GET"|"POST"):string|null{
  if(parts.length===0&&method==="GET")return "/api/v1/membership/reviews";
