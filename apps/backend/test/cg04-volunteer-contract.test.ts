@@ -4,6 +4,7 @@ import {readFileSync} from "node:fs";
 import {join} from "node:path";
 import {parseVolunteerCancel,parseVolunteerDraft,volunteerAvailabilities} from "../src/modules/cg-04-membership-volunteers/domain/volunteer-application-input";
 import {opaqueAppointmentQr} from "../src/modules/cg-19-documents-notifications/application/cg19-appointment-qr";
+import {parseVolunteerStaffIntake} from "../src/modules/cg-04-membership-volunteers/domain/volunteer-staff-intake-input";
 /** SOURCE-CONTRACT ONLY. These tests do not constitute executed SQL/Web/Android CG04 QA. */
 const key="11111111-1111-4111-8111-111111111111",state="22222222-2222-4222-8222-222222222222",
  district="33333333-3333-4333-8333-333333333333",branch="44444444-4444-4444-8444-444444444444",department="55555555-5555-4555-8555-555555555555";
@@ -178,4 +179,77 @@ test("US003-QA17 expired CG19 verifying claim retry matches current state and fi
  assert.match(source,/v\.state==="VERIFYING"&&!!v\.claim_expires_at&&v\.claim_expires_at\.getTime\(\)<=Date\.now\(\)/);
  assert.match(source,/if\(p\.attempt_count>=5\)throw new ConflictException/);
  assert.match(source,/if\(p\.state==="VERIFYING"&&p\.claim_expires_at&&p\.claim_expires_at\.getTime\(\)>Date\.now\(\)\)/);
+});
+
+test("US003-QA06/13 original U14 single candidate and quoted CSV validation never includes consent or role",()=>{
+ const rows=parseVolunteerStaffIntake({rows:[{firstName:" Amina ",lastName:"Rahman",mobile:"9876543210",city:"Pune"}]});
+ assert.deepEqual(rows,[{firstName:"Amina",lastName:"Rahman",mobile:"+919876543210",city:"Pune"}]);
+ const csv=parseVolunteerStaffIntake({csv:'First Name,Last Name,Mobile,City\r\nAmina,Rahman,+919876543210,"Pune, Maharashtra"\r\n'});
+ assert.equal(csv.length,1);
+ assert.equal(csv[0].city,"Pune, Maharashtra");
+ for(const row of [...rows,...csv])for(const privateKey of ["consent","status","approval","role","isEmployee","proofVerified"])
+  assert.equal(privateKey in row,false);
+});
+test("US003-QA04/06/13 U14 strictly rejects CSV injection, consent forgery, duplicate mobiles and oversized intake",()=>{
+ const ok={firstName:"Amina",lastName:"Rahman",mobile:"9876543210",city:"Pune"};
+ for(const invalid of [
+  {rows:[{...ok,consent:true}]},{rows:[{...ok,status:"APPROVED"}]},
+  {rows:[ok,ok]},{rows:[{...ok,mobile:"1234567890"}]},
+  {rows:[{...ok,firstName:"=IMPORT()"}]},{rows:[]},
+  {rows:Array(201).fill(ok)}, {csv:"First Name,Mobile\nAmina,9876543210"},
+  {csv:'First Name,Last Name,Mobile,City\n"Amina,Rahman,9876543210,Pune'},
+  {csv:"First Name,Last Name,Mobile,City\nAmina,Rahman,9876543210,=FORMULA"},
+  {csv:"x".repeat(100001)}, {rows:[ok],rootRealmId:key}
+ ])assert.throws(()=>parseVolunteerStaffIntake(invalid));
+});
+test("US003-QA11/12 task/visit persistence uses explicit volunteer identity, source check and no new role",()=>{
+ const migration=sql("3218_cg04_current_volunteer_cg05_assignment.sql");
+ assert.match(migration,/CREATE FUNCTION cg04_current_volunteer/);
+ assert.match(migration,/ALTER TABLE project_task ADD COLUMN assignee_volunteer_ref uuid/);
+ assert.match(migration,/ALTER TABLE field_visit ADD COLUMN actor_volunteer_ref uuid/);
+ assert.match(migration,/cg04_task_volunteer_event_at_commit/);
+ assert.match(migration,/cg04_visit_volunteer_event_at_commit/);
+ assert.match(migration,/Accepted field visit volunteer assignment is immutable/);
+ assert.doesNotMatch(migration,/INSERT INTO account_role|INSERT INTO finance_event|CREATE TABLE volunteer\(/);
+ const read=(f:string)=>readFileSync(join(process.cwd(),"../..",f),"utf8");
+ const tasks=read("apps/backend/src/modules/cg-05-projects-field-operations/application/project-tasks.service.ts");
+ const visits=read("apps/backend/src/modules/cg-05-projects-field-operations/application/field-visits.service.ts");
+ assert.match(tasks,/assignee_volunteer_ref=\$7/);
+ assert.match(tasks,/requireCurrentVolunteer\(tx,a.realmId,target,p.branch_ref\)/);
+ assert.match(tasks,/currentVolunteerPredicate\("v","aa.id","p.branch_ref"\)/);
+ assert.match(visits,/await requireCurrentVolunteer\(tx,a.realmId,volunteerRef,p.branch_ref,account\)/);
+ assert.match(visits,/t.assignee_volunteer_ref!==volunteerRef/);
+ assert.match(visits,/x.volunteer===v.actor_volunteer_ref/);
+});
+test("US003-QA09 CG09 real U42 source and protected Web/Android submission never issues a payment",()=>{
+ const migration=sql("3219_cg04_volunteer_cg09_claim_origin.sql");
+ assert.match(migration,/ALTER TABLE expense_claim/);
+ assert.match(migration,/cg04_current_volunteer/);
+ assert.match(migration,/volunteer_entered_utr/);
+ assert.doesNotMatch(migration,/INSERT INTO finance_journal|INSERT INTO finance_voucher|INSERT INTO finance_voucher_payment/);
+ const read=(f:string)=>readFileSync(join(process.cwd(),"../..",f),"utf8");
+ const claim=read("apps/backend/src/modules/cg-09-finance-accounting/application/finance-expense-claim.service.ts");
+ const web=read("apps/web/src/features/volunteers/volunteer-reimbursement-panel.tsx");
+ const native=read("apps/android-internal/src/features/volunteers/native-volunteer-reimbursement.tsx");
+ assert.match(claim,/this.identity.assertCurrent\(client,actor,"volunteers.view"\)/);
+ assert.match(claim,/this.branches.projectBranchScope\(client,actor\)/);
+ assert.match(claim,/CG09_VOLUNTEER_CLAIM_V1/);
+ assert.match(web,/FinanceClaimBillTools/);
+ assert.match(native,/FinanceClaimNativeBill/);
+});
+test("US003-QA06/13 U14 batch replay and verified self linkage never create an account or approval",()=>{
+ const migration=sql("3220_cg04_volunteer_staff_draft_intake.sql");
+ assert.match(migration,/UNIQUE\(root_realm_id,actor_ref,request_key\)/);
+ assert.match(migration,/state='UNVERIFIED_DRAFT'/);
+ assert.match(migration,/app.consent_version='VOLUNTEER_V1'/);
+ assert.doesNotMatch(migration,/INSERT INTO account|INSERT INTO volunteer\(|INSERT INTO cg03_case/);
+ const read=(f:string)=>readFileSync(join(process.cwd(),"../..",f),"utf8");
+ const roster=read("apps/backend/src/modules/cg-04-membership-volunteers/application/volunteer-roster.service.ts");
+ const self=read("apps/backend/src/modules/cg-04-membership-volunteers/application/volunteer-applications.service.ts");
+ assert.match(roster,/async previewImport\(/);
+ assert.match(roster,/async importDrafts\(/);
+ assert.match(roster,/pg_advisory_xact_lock/);
+ assert.match(self,/UPDATE volunteer_staff_intake_draft SET linked_application_id=\$3,linked_at=now\(\)/);
+ assert.match(read("apps/web/src/features/volunteers/volunteer-staff-intake.tsx"),/draft-only intake/);
+ assert.match(read("apps/android-internal/src/features/volunteers/native-volunteer-staff-intake.tsx"),/Confirm draft-only intake/);
 });
