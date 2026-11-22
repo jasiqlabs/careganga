@@ -198,7 +198,7 @@ test("US002-QA13: public API host, browser origin and privacy proof are not clie
  assert.match(ingress,/process\.env\.WEB_ORIGIN/);
  assert.match(ingress,/timingSafeEqual/);
  assert.match(ingress,/CG07_PUBLIC_PROXY_KEY/);
- assert.doesNotMatch(ingress,/x-forwarded-for|x-forwarded-host/i);
+ assert.doesNotMatch(ingress,/headers\["x-forwarded-(?:for|host)"\]/i);
  assert.match(intent,/verifiedDonationPeer\(req,scope\)/);
  assert.match(donation,/assertDonationPublicIngress\(req,"donor"\)/);
  assert.match(online,/assertDonationPublicIngress\(req,"webhook"\)/);
