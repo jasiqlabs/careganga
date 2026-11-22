@@ -1,7 +1,7 @@
 "use client";
 import {useCallback,useEffect,useRef,useState,type FormEvent} from "react";
 import styles from "./campaigns-reference-ui.module.css";
-import {CampaignBannerPanel} from "./campaign-banner-panel";
+import {CampaignBannerPanel,CampaignSupportingDocumentsPanel} from "./campaign-banner-panel";
 const steps=["Basic Details","Project & Category","Team & Assignment","Budget & Targets","Documents & Media","Review & Submit"];
 type Row={ref:string;code:string;title:string;category:string;status:string;version:number;revision:number;
  branch:string|null;goalMinor:string|null;updatedAt:string;steps?:Record<string,unknown>};
@@ -15,7 +15,7 @@ type Draft={
   targetGroup:string;plannedBeneficiaries:number|null};
  team:{coordinatorRef:string|null;volunteerRef:string|null};
  budget:{goal:string;expectedCost:string;startAt:string;endAt:string};
- media:{fileRef:null;alt:string};review:Record<string,never>;
+ media:{fileRef:string|null;supportingFileRefs:string[];alt:string};review:Record<string,never>;
 };
 const blank=():Draft=>({
  basic:{title:"",type:"GENERAL",summary:"",description:"",tags:[]},
@@ -23,7 +23,7 @@ const blank=():Draft=>({
   location:"",targetGroup:"",plannedBeneficiaries:null},
  team:{coordinatorRef:null,volunteerRef:null},
  budget:{goal:"",expectedCost:"",startAt:"",endAt:""},
- media:{fileRef:null,alt:""},review:{}
+ media:{fileRef:null,supportingFileRefs:[],alt:""},review:{}
 });
 const minorToRupees=(value:unknown)=>{
  try{if(typeof value!=="string"||!/^[0-9]+$/.test(value))return "";
@@ -46,7 +46,7 @@ function fromRow(row:Row):Draft{
   team:{...blank().team,coordinatorRef:team?.coordinatorRef??null,volunteerRef:team?.volunteerRef??null},
   budget:{goal:minorToRupees(budget?.goalMinor),expectedCost:minorToRupees(budget?.expectedCostMinor),
    startAt:budget?.startAt??"",endAt:budget?.endAt??""},
-  media:{fileRef:media?.fileRef??null,alt:media?.alt??""}};
+  media:{fileRef:media?.fileRef??null,supportingFileRefs:Array.isArray(media?.supportingFileRefs)?media.supportingFileRefs:[],alt:media?.alt??""}};
 }
 async function api<T>(path:string,method:"GET"|"POST"|"PATCH"="GET",body?:Record<string,unknown>):Promise<T>{
  const r=await fetch("/api/campaigns"+(path.startsWith("?")?path:path?"/"+path:""),{method,cache:"no-store",
@@ -304,9 +304,12 @@ export function CampaignDraftsWorkspace({canManage}:{canManage:boolean}){
        canUpload={editable&&!busy&&!pending.current&&!submitPending.current}
        currentFileRef={draft.media.fileRef}
        onVerified={ref=>update("media","fileRef",ref||null)}/>
-     </div>:<p>Save your campaign draft first to enable secure original file uploads. A campaign without an image can still be submitted.</p>}
+      <CampaignSupportingDocumentsPanel key={selected.ref+"-documents"} campaignRef={selected.ref}
+       version={selected.version} canUpload={editable&&!busy&&!pending.current&&!submitPending.current}
+       refs={draft.media.supportingFileRefs}
+       onChange={refs=>update("media","supportingFileRefs",refs)}/>
+     </div>:<p>Save your campaign draft first to enable secure original file uploads. A campaign without documents can still be submitted.</p>}
      {input("Image description (optional)",draft.media.alt,v=>update("media","alt",v))}
-     <p>Supporting documents require separate CG19 ownership verification and are not yet available in this source slice. No document has been accepted or uploaded automatically.</p>
     </>}
     {step===5&&<>
      <h3>Review private campaign details</h3>
