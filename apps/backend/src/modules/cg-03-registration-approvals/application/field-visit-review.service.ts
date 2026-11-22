@@ -99,7 +99,9 @@ export class FieldVisitReviewService{
     JOIN role r ON r.id=ar.role_id AND r.realm_id=acc.realm_id AND r.active
     WHERE acc.realm_id=$1 AND acc.status='ACTIVE' AND NOT(acc.id=ANY($2::uuid[]))
       AND (r.is_protected OR EXISTS(SELECT 1 FROM role_grant g WHERE g.role_id=r.id AND g.capability_key='projects.visits.manage'))
-    GROUP BY acc.id LIMIT 200`,[a.realmId,excluded])).rows;
+    AND EXISTS(SELECT 1 FROM account_role vr JOIN role rv ON rv.id=vr.role_id AND rv.realm_id=vr.realm_id AND rv.active WHERE vr.realm_id=acc.realm_id AND vr.account_id=acc.id AND vr.revoked_at IS NULL AND (rv.is_protected OR EXISTS(SELECT 1 FROM role_grant g WHERE g.role_id=rv.id AND g.capability_key='projects.visits.view')))
+      AND (EXISTS(SELECT 1 FROM account_role gr JOIN role rg ON rg.id=gr.role_id AND rg.realm_id=gr.realm_id AND rg.active WHERE gr.realm_id=acc.realm_id AND gr.account_id=acc.id AND gr.revoked_at IS NULL AND (rg.is_protected OR EXISTS(SELECT 1 FROM role_grant g WHERE g.role_id=rg.id AND g.capability_key='foundation.branches.admin'))) OR EXISTS(SELECT 1 FROM branch b WHERE b.root_realm_id=acc.realm_id AND b.id=$3 AND b.status='ACTIVE' AND b.manager_account_ref=acc.id))
+    GROUP BY acc.id LIMIT 200`,[a.realmId,excluded,v.branch_ref])).rows;
    const eligible=reviewers.filter(r=>r.root);
    if(!eligible.length||steps.length===2&&!eligible.some(r=>reviewers.some(s=>s.id!==r.id&&s.coordinator)))throw new ConflictException("No distinct eligible reviewers are available for this visit review route. Ask a Foundation administrator to check the review setup.");
    const next=await this.visits.reviewTransition(tx,a,target,expected,"PENDING_APPROVAL",key,snap.digest,"",false);
@@ -157,7 +159,11 @@ export class FieldVisitReviewService{
    if(!(await tx.query("UPDATE cg03_case SET status=$3,current_step=$4,revision=revision+1,updated_at=now() WHERE realm_id=$1 AND id=$2 AND revision=$5",[a.realmId,target,next,nextStep,expected])).rowCount)throw stale();
    await tx.query("INSERT INTO cg03_case_decision(realm_id,case_id,actor_id,action,step_ordinal,expected_case_revision,accepted_case_revision,request_key,request_digest,safe_remarks,fresh_password_verified_at) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,CASE WHEN $11::boolean THEN now() ELSE NULL END)",[a.realmId,target,a.accountId,action,c.current_step,expected,expected+1,key,h,remarks,step.protected_root_required]);
    await this.event(tx,a,target,next==="PENDING_OWNER"?"FINAL_APPROVED":next==="IN_REVIEW"?(action==="FORWARD"?"FORWARDED":"APPROVED"):next,c.current_step,remarks);
-   if(next==="IN_REVIEW")return {status:next,replayed:false};
+   if(next==="IN_REVIEW"){
+    const final=(await tx.query("SELECT 1 FROM account acc JOIN account_role ar ON ar.realm_id=acc.realm_id AND ar.account_id=acc.id AND ar.revoked_at IS NULL JOIN role r ON r.realm_id=ar.realm_id AND r.id=ar.role_id AND r.is_protected AND r.active WHERE acc.realm_id=$1 AND acc.status='ACTIVE' AND NOT(acc.id=ANY($2::uuid[])) LIMIT 1",[a.realmId,[c.proposer_id,v.actor_account_ref,a.accountId]])).rowCount;
+    if(!final)throw new ConflictException("No distinct final reviewer is available. Ask a Foundation administrator to review the setup.");
+    return {status:next,replayed:false};
+   }
    await this.visits.reviewTransition(tx,a,v.id,v.version,next==="PENDING_OWNER"?"COMPLETED":action==="RETURN"?"RETURNED":"REJECTED",key,h,remarks,true);
    if(next==="PENDING_OWNER"){await tx.query("UPDATE cg03_case SET status='OWNER_COMPLETED',revision=revision+1,updated_at=now() WHERE realm_id=$1 AND id=$2",[a.realmId,target]);await this.event(tx,a,target,"OWNER_COMPLETED",c.current_step);}
    return {status:next==="PENDING_OWNER"?"OWNER_COMPLETED":next,replayed:false};
