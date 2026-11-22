@@ -1,7 +1,7 @@
 "use client";
 import {useCallback,useEffect,useRef,useState} from "react";
 type Mode="own"|"manage"|"review";
-type Template={templateId:string;kind:string;version:number;title:string;body:string};
+type Template={templateId:string;kind:string;version:number;title:string;body:string;assetsReady:boolean;signatoryName?:string|null};
 type Subject={reference:string;label:string;designation:string;branch:string};
 type Snapshot={recipient:string;designation:string;branch:string;department?:string|null;hireDate:string;issueDate:string;expiryDate?:string|null;lastWorkingDate?:string|null;templateVersion:number};
 type DocumentStatus={documentRef:string;status:string;issueRevision:number;canDownload:boolean;canRetry:boolean;receiptStatus:string;canDownloadReceipt?:boolean;dispatch:{channel:string;status:string}[]};
@@ -18,28 +18,28 @@ async function api<T>(path:string,body?:object):Promise<T>{
  const v=await r.json().catch(()=>null);if(!r.ok)throw Object.assign(new Error(typeof v?.message==="string"?v.message:"Document unavailable"),{status:r.status});if(!v||typeof v!=="object")throw Error("Original result unconfirmed");return v as T;
 }
 function Select({label,value,options,onChange,disabled=false}:{label:string;value:string;options:{value:string;label:string}[];onChange:(v:string)=>void;disabled?:boolean}){return <label>{label}<select style={field} value={value} disabled={disabled} onChange={e=>onChange(e.target.value)}>{options.map(x=><option key={x.value} value={x.value}>{x.label}</option>)}</select></label>;}
-function ReceiptUpload({id,onVerified,disabled}:{id:string;onVerified:()=>void;disabled:boolean}){
+function ReceiptUpload({id,onVerified,disabled,assetType,onClear}:{id?:string;onVerified:(fileRef?:string)=>void;disabled:boolean;assetType?:"SIGNATURE"|"SEAL";onClear?:()=>void}){
  const [file,setFile]=useState<File|null>(null),[busy,setBusy]=useState(false),[message,setMessage]=useState("");
  const original=useRef<{key:string;hash:string;upload?:string}|null>(null);
  const upload=async()=>{
   if(!file||busy||disabled)return;
-  if(!["application/pdf","image/jpeg","image/png"].includes(file.type)||file.size<1||file.size>10485760){setMessage("Choose a PDF, JPEG or PNG under 10 MB.");return;}
+  if(!(assetType?["image/jpeg","image/png"]:["application/pdf","image/jpeg","image/png"]).includes(file.type)||file.size<1||file.size>(assetType?2097152:10485760)){setMessage(assetType?"Choose a JPEG or PNG under 2 MB.":"Choose a PDF, JPEG or PNG under 10 MB.");return;}
   setBusy(true);setMessage("");
   try{
    const bytes=await file.arrayBuffer(),digest=Array.from(new Uint8Array(await crypto.subtle.digest("SHA-256",bytes)),x=>x.toString(16).padStart(2,"0")).join("");
    const cmd:{key:string;hash:string;upload?:string}=original.current?.hash===digest?original.current:{key:crypto.randomUUID(),hash:digest};original.current=cmd;
-   const path="me/documents/"+id+"/receipt-uploads";
-   if(cmd.upload){const status=await api<{cleanVerified:boolean}>(path+"/"+cmd.upload);if(status.cleanVerified){onVerified();return;}}
-   const grant=await api<{uploadRef:string;status:string;cleanVerified:boolean;uploadUrl?:string;uploadHeaders?:Record<string,string>}>(path,{requestKey:cmd.key,mime:file.type,sizeBytes:file.size,sha256:digest});
-   cmd.upload=grant.uploadRef;if(grant.cleanVerified){onVerified();return;}
+   const path=assetType?"document-templates/assets":"me/documents/"+id+"/receipt-uploads";
+   if(cmd.upload){const status=await api<{cleanVerified:boolean;fileRef?:string}>(path+"/"+cmd.upload);if(status.cleanVerified&&(!assetType||status.fileRef)){onVerified(status.fileRef);setMessage("Secure file scan verified.");return;}}
+   const grant=await api<{uploadRef:string;status:string;cleanVerified:boolean;fileRef?:string;uploadUrl?:string;uploadHeaders?:Record<string,string>}>(path,{requestKey:cmd.key,mime:file.type,sizeBytes:file.size,sha256:digest,...(assetType?{assetType}:{})});
+   cmd.upload=grant.uploadRef;if(grant.cleanVerified&&(!assetType||grant.fileRef)){onVerified(grant.fileRef);setMessage("Secure file scan verified.");return;}
    if(grant.status!=="UPLOAD_READY"||!grant.uploadUrl||!grant.uploadHeaders||!grant.uploadUrl.startsWith("https://"))throw Error("Secure upload unavailable. No copy was accepted.");
    const sent=await fetch(grant.uploadUrl,{method:"PUT",body:bytes,headers:grant.uploadHeaders,credentials:"omit",cache:"no-store"});
-   const checked=await api<{cleanVerified:boolean}>(path+"/"+cmd.upload+"/confirm",{});if(!checked.cleanVerified)throw Error(!sent.ok?"Transfer unconfirmed. Retry the same file.":"The original scan has not verified the received copy.");
-   onVerified();
+   const checked=await api<{cleanVerified:boolean;fileRef?:string}>(path+"/"+cmd.upload+"/confirm",{});if(!checked.cleanVerified)throw Error(!sent.ok?"Transfer unconfirmed. Retry the same file.":"The original scan has not verified the received copy.");
+   if(assetType&&!checked.fileRef)throw Error("Original asset reference was not confirmed.");onVerified(checked.fileRef);setMessage("Secure file scan verified.");
   }catch(e){setMessage(e instanceof Error?e.message:"Receipt outcome unconfirmed.");}finally{setBusy(false);}
  };
- return <div style={panel}><label>Upload signed received copy<input type="file" accept="application/pdf,image/jpeg,image/png" disabled={busy||disabled} onChange={e=>{setFile(e.target.files?.[0]??null);original.current=null;}}/></label>
- <button disabled={!file||busy||disabled} onClick={()=>void upload()}>{busy?"Checking private copy…":"Upload and verify received copy"}</button>{message&&<p role="alert">{message}</p>}</div>;
+ return <div style={panel}><label>{assetType?title(assetType)+" image":"Upload signed received copy"}<input type="file" accept={assetType?"image/jpeg,image/png":"application/pdf,image/jpeg,image/png"} disabled={busy||disabled} onChange={e=>{setFile(e.target.files?.[0]??null);original.current=null;onClear?.();setMessage("");}}/></label>
+ <button disabled={!file||busy||disabled} onClick={()=>void upload()}>{busy?"Checking private file…":assetType?"Upload and verify "+title(assetType):"Upload and verify received copy"}</button>{message&&<p role="alert">{message}</p>}</div>;
 }
 export function HrDocuments({mode,canIssue=false,canApproveTemplate=false,canRevoke=false}:{mode:Mode;canIssue?:boolean;canApproveTemplate?:boolean;canRevoke?:boolean}){
 
@@ -47,6 +47,7 @@ export function HrDocuments({mode,canIssue=false,canApproveTemplate=false,canRev
  const [rows,setRows]=useState<Row[]>([]),[templates,setTemplates]=useState<Template[]>([]),[people,setPeople]=useState<Subject[]>([]);
  const [kind,setKind]=useState("APPOINTMENT"),[search,setSearch]=useState(""),[subject,setSubject]=useState(""),[template,setTemplate]=useState("");
  const [issueDate,setIssueDate]=useState(""),[expiry,setExpiry]=useState(""),[heading,setHeading]=useState(""),[terms,setTerms]=useState(""),[password,setPassword]=useState("");
+ const [signatoryName,setSignatoryName]=useState(""),[signatureRef,setSignatureRef]=useState(""),[sealRef,setSealRef]=useState("");
  const [selected,setSelected]=useState<Row|null>(null),[offset,setOffset]=useState(0),[more,setMore]=useState(false),[filter,setFilter]=useState("ALL");
  const [busy,setBusy]=useState(false),[loading,setLoading]=useState(true),[locked,setLocked]=useState(false),[message,setMessage]=useState("");
  const pending=useRef<Command|null>(null),running=useRef(false),generation=useRef(0),personRead=useRef(0);
@@ -63,8 +64,8 @@ export function HrDocuments({mode,canIssue=false,canApproveTemplate=false,canRev
   try{const v=await request<{items:Subject[]}>("document-subjects?kind="+encodeURIComponent(k)+"&search="+encodeURIComponent(q));if(g===personRead.current)setPeople(v.items);}catch(e){if(g===personRead.current)fail(e);}
  },[mode,request,fail]);
  useEffect(()=>{void loadPeople(kind,"");return()=>{personRead.current++;};},[kind,loadPeople]);
- const current=templates.find(x=>x.kind===kind),chosen=templates.find(x=>x.templateId===template&&x.kind===kind),person=people.find(x=>x.reference===subject);
- const changeKind=(v:string)=>{setKind(v);setSubject("");setTemplate("");setPeople([]);setSearch("");setHeading("");setTerms("");setExpiry("");};
+ const current=templates.find(x=>x.kind===kind),chosen=templates.find(x=>x.templateId===template&&x.kind===kind&&x.assetsReady),person=people.find(x=>x.reference===subject);
+ const changeKind=(v:string)=>{setKind(v);setSubject("");setTemplate("");setPeople([]);setSearch("");setHeading("");setTerms("");setExpiry("");setSignatoryName("");setSignatureRef("");setSealRef("");};
  const run=async(path?:string,body?:Record<string,unknown>,proof=false)=>{
   if(running.current)return;let cmd=pending.current;
   if(!cmd){if(!path||!body)return;if(proof&&password.length<8){setMessage("Confirm current password.");return;}cmd={path,body,proof};pending.current=cmd;}
@@ -78,7 +79,7 @@ export function HrDocuments({mode,canIssue=false,canApproveTemplate=false,canRev
  };
  const save=()=>{if(!person||!chosen||!issueDate||(kind==="EMPLOYEE_ID"&&!expiry)){setMessage("Choose recipient, approved template and dates.");return;}
   void run("document-requests",{requestKey:crypto.randomUUID(),kind,subjectReference:subject,templateId:chosen.templateId,templateVersion:chosen.version,issueDate,...(kind==="EMPLOYEE_ID"?{expiryDate:expiry}:{})});};
- const approveTemplate=()=>void run("document-templates/approve",{kind,title:heading,body:terms,expectedVersion:current?.version??0,requestKey:crypto.randomUUID()},true);
+ const approveTemplate=()=>void run("document-templates/approve",{kind,title:heading,body:terms,signatoryName,signatureFileRef:signatureRef,sealFileRef:sealRef,expectedVersion:current?.version??0,requestKey:crypto.randomUUID()},true);
  const open=async(x:Row)=>{if(mode!=="review"){setSelected(x);return;}if(!x.caseRef||running.current||locked)return;running.current=true;setBusy(true);setSelected(null);
   try{setSelected(await request<Row>(route+"/"+x.caseRef));}catch(e){fail(e);}finally{running.current=false;setBusy(false);}};
  const blocked=busy||locked,visible=rows.filter(x=>filter==="ALL"||(x.document?.status??x.status)===filter);
@@ -92,14 +93,18 @@ export function HrDocuments({mode,canIssue=false,canApproveTemplate=false,canRev
    <Select label="Document type" value={kind} options={kinds.map(k=>({value:k,label:title(k)}))} onChange={changeKind}/>
    <label>Search eligible recipient<input style={field} value={search} maxLength={80} onChange={e=>setSearch(e.target.value)}/></label><button onClick={()=>void loadPeople(kind,search)}>Search</button>
    <Select label="Recipient" value={subject} options={[{value:"",label:"Choose recipient"},...people.map(x=>({value:x.reference,label:x.label+" · "+x.designation+" · "+x.branch}))]} onChange={setSubject}/>
-   <Select label="Approved template" value={template} options={[{value:"",label:"Choose template"},...templates.filter(x=>x.kind===kind).map(x=>({value:x.templateId,label:x.title+" · Version "+x.version}))]} onChange={setTemplate}/>
+   <Select label="Approved template" value={template} options={[{value:"",label:"Choose template"},...templates.filter(x=>x.kind===kind&&x.assetsReady).map(x=>({value:x.templateId,label:x.title+" · Version "+x.version}))]} onChange={setTemplate}/>
    {!current&&<p>No approved template for this document.</p>}
    <label>Issue date<input style={field} type="date" value={issueDate} onChange={e=>setIssueDate(e.target.value)}/></label>{kind==="EMPLOYEE_ID"&&<label>Expiry date<input style={field} type="date" value={expiry} onChange={e=>setExpiry(e.target.value)}/></label>}
    {person&&chosen&&<article style={{...panel,maxWidth:480}}><strong>CareGanga Foundation · Draft preview</strong><h3>{chosen.title}</h3><p>{person.label} · {person.designation} · {person.branch}</p><p>{issueDate||"No date selected"}</p><p style={{whiteSpace:"pre-wrap"}}>{chosen.body}</p>{kind==="EMPLOYEE_ID"&&<p>Expiry {expiry}; back verification code available only after issue.</p>}<small>Preview only, not an issued PDF.</small></article>}
    <button disabled={!person||!chosen||!issueDate||(kind==="EMPLOYEE_ID"&&!expiry)} onClick={save}>Save draft</button>
   </fieldset>}
-  {mode==="manage"&&canApproveTemplate&&<fieldset style={panel} disabled={blocked}><legend>Approve template — {title(kind)}</legend><p>Current version: {current?.version??0}</p>{current&&<button onClick={()=>{setHeading(current.title);setTerms(current.body);}}>Load current template</button>}
-   <label>Heading<input style={field} maxLength={100} value={heading} onChange={e=>setHeading(e.target.value)}/></label><label>Terms<textarea style={field} maxLength={1200} rows={4} value={terms} onChange={e=>setTerms(e.target.value)}/></label><label>Current password<input type="password" autoComplete="current-password" style={field} value={password} onChange={e=>setPassword(e.target.value)}/></label><button disabled={heading.trim().length<10||terms.trim().length<20||password.length<8} onClick={approveTemplate}>Approve version</button></fieldset>}
+  {mode==="manage"&&canApproveTemplate&&<fieldset style={panel} disabled={blocked}><legend>Approve template — {title(kind)}</legend><p>Current version: {current?.version??0}</p>{current&&<button onClick={()=>{setHeading(current.title);setTerms(current.body);setSignatoryName(current.signatoryName??"");}}>Load current template</button>}
+   <label>Heading<input style={field} maxLength={100} value={heading} onChange={e=>setHeading(e.target.value)}/></label><label>Terms<textarea style={field} maxLength={1200} rows={4} value={terms} onChange={e=>setTerms(e.target.value)}/></label><label>Authorized signatory name<input style={field} maxLength={100} value={signatoryName} onChange={e=>setSignatoryName(e.target.value)}/></label>
+   <p>Only use signature and seal images you are authorized to approve. No example image is accepted.</p>
+   <ReceiptUpload key={kind+"-signature"} assetType="SIGNATURE" disabled={blocked} onClear={()=>setSignatureRef("")} onVerified={ref=>setSignatureRef(ref??"")}/>
+   <ReceiptUpload key={kind+"-seal"} assetType="SEAL" disabled={blocked} onClear={()=>setSealRef("")} onVerified={ref=>setSealRef(ref??"")}/>
+   <label>Current password<input type="password" autoComplete="current-password" style={field} value={password} onChange={e=>setPassword(e.target.value)}/></label><button disabled={heading.trim().length<10||terms.trim().length<20||signatoryName.trim().length<2||!signatureRef||!sealRef||password.length<8} onClick={approveTemplate}>Approve version</button></fieldset>}
   <Select label="Filter current page" value={filter} options={["ALL","DRAFT","SUBMITTED","APPROVED","PENDING","ISSUED","REVOKED","UNKNOWN","RETURNED","REJECTED"].map(s=>({value:s,label:title(s)}))} onChange={setFilter} disabled={blocked}/>
   {loading?<p>Loading documents…</p>:!visible.length&&<p>No documents in this view.</p>}
   {visible.map(x=><article key={x.reference} style={{borderTop:"1px solid #E2E8F0",paddingTop:10}}><strong>{title(x.kind)} · {x.snapshot?.recipient??x.recipient}</strong><p>{x.reference} · {title(x.document?.status??x.status)}</p><button disabled={blocked} onClick={()=>void open(x)}>View details</button></article>)}
