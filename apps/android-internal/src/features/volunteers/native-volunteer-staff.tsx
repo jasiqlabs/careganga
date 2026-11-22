@@ -61,10 +61,14 @@ export function NativeVolunteerStaff({token,canReview,canRoster,canExport,canCon
   return()=>{sub.remove();scrub();};
  },[refresh]);
  const run=async(work:()=>Promise<void>)=>{
-  if(busy)return;setBusy(true);setMessage("");
+  if(busy||!active.current)return;
+  const at=seq.current;
+  setBusy(true);setMessage("");
   try{await work();}catch(e){
-   setMessage(e instanceof Error?e.message:"The original review result is uncertain. Refresh and check its status.");
-   if(e&&typeof e==="object"&&"status" in e&&e.status===401)onExpired();
+   if(at===seq.current&&active.current){
+    setMessage(e instanceof Error?e.message:"The original review result is uncertain. Refresh and check its status.");
+    if(e&&typeof e==="object"&&"status" in e&&e.status===401)onExpired();
+   }
   }finally{setBusy(false);}
  };
  const open=async(ref:string)=>run(async()=>{
@@ -89,27 +93,46 @@ export function NativeVolunteerStaff({token,canReview,canRoster,canExport,canCon
   setMessage("Independent volunteer decision recorded.");
  });
  const fileAction=(path:string,mimeHint?:string,exporting=false)=>void run(async()=>{
+  // A protected proof or roster export must never open a share sheet after
+  // a user backgrounds the app, changes scope or dismisses this staff view.
+  const at=seq.current;
+  const current=()=>active.current&&seq.current===at;
   const r=await identityRequest(path,{headers:{Authorization:"Bearer "+token}});
+  if(!current())return;
   if(!r.ok){if(r.status===401)onExpired();throw Error("This protected Foundation file could not be verified.");}
   const mime=(r.headers.get("content-type")??"").split(";")[0].trim();
-  if(exporting){if(mime!=="application/json")throw Error("Audited original export response is unavailable.");
+  if(exporting){
+   if(mime!=="application/json")throw Error("Audited original export response is unavailable.");
    const v:CG04VolunteerRosterExport=await r.json();
-   if(typeof v.csv!=="string"||v.rows>500||v.rows<0)throw Error("Volunteer export failed its original scope check.");
+   if(!current())return;
+   if(typeof v.csv!=="string"||!Number.isSafeInteger(v.rows)||v.rows>500||v.rows<0)
+    throw Error("Volunteer export failed its original scope check.");
    const dest=new File(Paths.cache,"careganga-approved-volunteers-"+Crypto.randomUUID()+".csv");
-   try{await dest.write(v.csv);tempFiles.current.push(dest);
-    if(!(await Sharing.isAvailableAsync()))throw Error("Sharing permitted original volunteers is unavailable on this device.");
+   try{
+    if(!current())return;
+    await dest.write(v.csv);tempFiles.current.push(dest);
+    if(!current())return;
+    const available=await Sharing.isAvailableAsync();
+    if(!current())return;
+    if(!available)throw Error("Sharing permitted original volunteers is unavailable on this device.");
     await Sharing.shareAsync(dest.uri,{mimeType:"text/csv",dialogTitle:"Approved Foundation volunteers"});
    }finally{try{dest.delete();}catch{}tempFiles.current=tempFiles.current.filter(x=>x.uri!==dest.uri);}
-   setMessage(v.rows+" permitted approved volunteers exported.");
+   if(current())setMessage(v.rows+" permitted approved volunteers exported.");
   }else{
    if(!["application/pdf","image/jpeg","image/png","image/webp"].includes(mime)||mimeHint&&mimeHint!==mime)
     throw Error("Original identity document type could not be confirmed.");
    const bytes=await r.arrayBuffer();
+   if(!current())return;
    if(bytes.byteLength<1||bytes.byteLength>10485760)throw Error("Protected proof is invalid.");
    const suffix=mime==="application/pdf"?".pdf":mime==="image/png"?".png":mime==="image/webp"?".webp":".jpg";
    const dest=new File(Paths.cache,"careganga-review-proof-"+Crypto.randomUUID()+suffix);
-   try{await dest.write(new Uint8Array(bytes));tempFiles.current.push(dest);
-    if(!(await Sharing.isAvailableAsync()))throw Error("Private file viewing is not available on this device.");
+   try{
+    if(!current())return;
+    await dest.write(new Uint8Array(bytes));tempFiles.current.push(dest);
+    if(!current())return;
+    const available=await Sharing.isAvailableAsync();
+    if(!current())return;
+    if(!available)throw Error("Private file viewing is not available on this device.");
     await Sharing.shareAsync(dest.uri,{mimeType:mime,dialogTitle:"Private volunteer identity proof"});
    }finally{try{dest.delete();}catch{}tempFiles.current=tempFiles.current.filter(x=>x.uri!==dest.uri);}
   }
