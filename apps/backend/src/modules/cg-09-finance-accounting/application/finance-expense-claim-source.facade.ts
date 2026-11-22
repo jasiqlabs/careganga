@@ -4,6 +4,7 @@ import {DATABASE} from "../../../core/infrastructure/database.module";
 import {SessionService} from "../../cg-01-identity-access/application/session.service";
 import {FoundationStructureIdentityFacade} from "../../cg-01-identity-access/application/foundation-structure-identity.facade";
 import type {VerifiedFoundationActor} from "../../cg-01-identity-access/public-api";
+import {assertOwnClaimOrigin} from "../../cg-10-human-resources/application/hr-allowance-origin";
 
 const UUID=/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 type Original={id:string;root_realm_id:string;requested_by:string;version:number;
@@ -26,6 +27,7 @@ export class FinanceExpenseClaimSourceFacade{
   const c=found.rows[0];
   if(!c||c.requested_by!==actor.accountId)
    throw new ConflictException({code:"FINANCE_CLAIM_SOURCE_INVALID"});
+  await assertOwnClaimOrigin(client,actor,c.id);
   return c;
  }
  async current(bearer:string,reference:string,version:number,write=false){
@@ -60,6 +62,7 @@ export class FinanceExpenseClaimSourceFacade{
    const value=rows.rows[0];
    if(!value||value.requested_by!==actor.accountId)
     throw new ConflictException({code:"FINANCE_CLAIM_SOURCE_INVALID"});
+   await assertOwnClaimOrigin(tx,actor,value.id);
    await tx.query("COMMIT");
    return {claimRef:value.id,revision:version,status:value.status,
     sourceDigest:value.current_digest};

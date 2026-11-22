@@ -1,0 +1,287 @@
+import {careGangaTheme as hrTheme} from "../../../../../packages/design-tokens/src/index";
+import React,{useCallback,useEffect,useRef,useState} from "react";
+import {ActivityIndicator,Pressable,StyleSheet,Text,TextInput,View} from "react-native";
+import * as Crypto from "expo-crypto";
+import {identityRequest} from "../identity-access/http-client";
+type Policy={policyRef:string;leaveType:string;annualDays:number;usedDays:number;availableDays:number;allowHalfDays:boolean;countWeeklyOff:boolean;effectiveFrom:string;effectiveTo:string|null};
+type Request={reference:string;leaveType:string;startDate:string;endDate:string;days:number;status:string;caseStatus:string};
+type LeaveOverview={total:number;pending:number;approved:number;returned:number;rejected:number;cancelled:number;types:{label:string;count:number}[];upcoming:{name:string;leaveType:string;startDate:string;endDate:string;days:number}[]};
+type Mine={linked:boolean;year:string;policies:Policy[];requests:Request[]};
+type Review=Request&{caseRef:string;employeeName:string;revision:number;canReview:boolean;reason?:string;balance?:{annualDays:number;approvedDays:number;availableDays:number};date?:string;originalStatus?:string;proposedStatus?:string;original?:{status:string;checkInAt?:string|null;checkOutAt?:string|null};proposed?:{status:string;checkInAt?:string|null;checkOutAt?:string|null}};
+const blank=()=>({policyRef:"",startDate:"",endDate:"",halfDay:false,reason:""});
+const label=(status:string)=>(({SUBMITTED:"Pending review",IN_REVIEW:"In review",APPROVED:"Approved",OWNER_COMPLETED:"Approved",RETURNED:"Returned",REJECTED:"Rejected",CANCELLED:"Cancelled"} as Record<string,string>)[status]??"Review status unavailable");
+const failure=(e:unknown)=>e instanceof Error?e.message:"Could not confirm the result. Refresh before retrying.";
+const known=(e:unknown)=>e&&typeof e==="object"&&"status" in e&&typeof e.status==="number"&&e.status>=400&&e.status<500;
+
+async function api<T>(token:string,path:string,body?:object):Promise<T>{
+ const res=await identityRequest("/api/hr/"+path,{method:body?"POST":"GET",cache:"no-store",
+  headers:{Authorization:"Bearer "+token,...(body?{"Content-Type":"application/json"}:{})},...(body?{body:JSON.stringify(body)}:{})});
+ const data=await res.json().catch(()=>null);
+ if(!res.ok)throw Object.assign(new Error(res.status===401?"Your session expired. Sign in again.":
+  typeof data?.message==="string"?data.message:"Leave result unavailable"),{status:res.status});
+ if(!data||typeof data!=="object")throw Error("Leave result unavailable");
+ return data as T;
+}
+function Button({title,onPress,disabled=false,selected=false}:{title:string;onPress:()=>void;disabled?:boolean;selected?:boolean}){
+ return <Pressable accessibilityRole="button" accessibilityState={{disabled,selected}} disabled={disabled} onPress={onPress}
+ style={[styles.button,selected&&styles.active,disabled&&styles.disabled]}><Text style={selected?styles.activeText:styles.buttonText}>{title}</Text></Pressable>;
+}
+function Field({title,value,onChange,disabled=false,secure=false,multiline=false,maxLength=500}:{title:string;value:string;onChange:(v:string)=>void;disabled?:boolean;secure?:boolean;multiline?:boolean;maxLength?:number}){
+ return <View style={{gap:4}}><Text style={styles.label}>{title}</Text><TextInput accessibilityLabel={title} editable={!disabled}
+  style={[styles.input,multiline&&{minHeight:80}]} value={value} onChangeText={onChange} secureTextEntry={secure}
+  multiline={multiline} maxLength={maxLength} autoCapitalize="none"/></View>;
+}
+function useFailure(onExpired:()=>void,setError:(v:string)=>void){
+ return useCallback((e:unknown)=>{if(e&&typeof e==="object"&&"status" in e&&e.status===401)onExpired();setError(failure(e));},[onExpired,setError]);
+}
+export function NativeHrMyLeave({token,onExpired,onChanged}:{token:string;onExpired:()=>void;onChanged:()=>void}){
+ const [year,setYear]=useState(String(new Date().getFullYear())),[yearInput,setYearInput]=useState(year);
+ const [data,setData]=useState<Mine|null>(null),[form,setForm]=useState(blank);
+ const [loading,setLoading]=useState(true),[busy,setBusy]=useState(false),[locked,setLocked]=useState(false);
+ const [error,setError]=useState(""),[notice,setNotice]=useState("");
+ const key=useRef<string|null>(null),fail=useFailure(onExpired,setError);
+ const pendingCancel=useRef<{reference:string;key:string}|null>(null);
+ const [cancelRef,setCancelRef]=useState("");
+ const [privateDetail,setPrivateDetail]=useState<{reference:string;reason:string}|null>(null),[privateBusy,setPrivateBusy]=useState(false);
+ const privateRead=useRef(0);
+ const refresh=useCallback(async()=>{
+  privateRead.current++;setPrivateDetail(null);setPrivateBusy(false);
+  setLoading(true);setError("");
+  try{const v=await api<Mine>(token,"me/leave?year="+encodeURIComponent(year));
+   if(typeof v.linked!=="boolean"||!Array.isArray(v.requests)||!Array.isArray(v.policies))throw Error("Leave history unavailable");
+   setData(v);
+  }catch(e){setData(null);fail(e);}finally{setLoading(false);}
+ },[token,year,fail]);
+ useEffect(()=>{void refresh();return()=>{privateRead.current++;};},[refresh]);
+ const change=<K extends keyof typeof form,>(name:K,value:(typeof form)[K])=>setForm(x=>({...x,[name]:value}));
+ const selected=data?.policies.find(x=>x.policyRef===form.policyRef);
+ const submit=async()=>{
+  if(busy||!data?.linked||cancelRef)return;
+  setBusy(true);setError("");setNotice("");
+  const requestKey=key.current??Crypto.randomUUID();key.current=requestKey;
+  try{
+   const v=await api<{submitted:boolean;reference:string;caseStatus:string}>(token,"me/leave",{requestKey,...form});
+   if(v.submitted!==true||typeof v.reference!=="string")throw Error("Leave result is uncertain");
+   key.current=null;setLocked(false);setForm(blank());setNotice(v.reference+" · "+label(v.caseStatus));await refresh();onChanged();
+  }catch(e){fail(e);if(known(e)){key.current=null;setLocked(false);}else setLocked(true);}
+  finally{setBusy(false);}
+ };
+ const openPrivate=async(reference:string)=>{
+  if(busy||privateBusy||locked||cancelRef)return;
+  if(privateDetail?.reference===reference){privateRead.current++;setPrivateDetail(null);return;}
+  const generation=++privateRead.current;setPrivateDetail(null);setPrivateBusy(true);setError("");
+  try{const result=await api<{reference:string;reason:string}>(token,"me/leave/"+encodeURIComponent(reference));
+   if(result.reference!==reference||typeof result.reason!=="string")throw Error("Original leave reason is unavailable");
+   if(generation===privateRead.current)setPrivateDetail(result);
+  }catch(e){if(generation===privateRead.current)fail(e);}
+  finally{if(generation===privateRead.current)setPrivateBusy(false);}
+ };
+ const cancel=async(reference:string)=>{
+  if(busy||locked||(cancelRef&&cancelRef!==reference))return;
+  setBusy(true);setError("");setNotice("");
+  const command=pendingCancel.current?.reference===reference?pendingCancel.current:{reference,key:Crypto.randomUUID()};
+  pendingCancel.current=command;setCancelRef(reference);
+  try{const v=await api<{cancelled:boolean;reference:string;status:string}>(token,"me/leave/"+encodeURIComponent(reference)+"/cancel",{requestKey:command.key});
+   if(v.cancelled!==true||v.reference!==reference||v.status!=="CANCELLED")throw Error("Cancellation result is uncertain");
+   pendingCancel.current=null;setCancelRef("");await refresh();setNotice(reference+" · Cancelled");onChanged();
+  }catch(e){fail(e);if(known(e)){pendingCancel.current=null;setCancelRef("");await refresh();}}
+  finally{setBusy(false);}
+ };
+ return <View style={styles.card}>
+  <Text style={styles.title}>My leave</Text>
+  <Field title="Leave year" value={yearInput} maxLength={4} disabled={busy||!!cancelRef||locked} onChange={setYearInput}/>
+  <Button title="View year" disabled={busy||!!cancelRef||locked||!/^20\d{2}$/.test(yearInput)} onPress={()=>{privateRead.current++;setPrivateDetail(null);setPrivateBusy(false);setForm(blank());if(year===yearInput)void refresh();else setYear(yearInput);}}/>
+  <Button title="Refresh leave history" disabled={busy||!!cancelRef||loading} onPress={()=>void refresh()}/>
+  {!!error&&<Text accessibilityRole="alert" style={styles.error}>{error}</Text>}{!!notice&&<Text style={styles.success}>{notice}</Text>}
+  {loading&&<ActivityIndicator accessibilityLabel="Loading leave balances"/>}
+  {data&&!data.linked&&<Text style={styles.muted}>No current approved employment is linked to this account.</Text>}
+  {!!cancelRef&&<Button title="Retry cancellation of original request" disabled={busy} onPress={()=>void cancel(cancelRef)}/>}
+  {data?.linked&&<>
+   {data.policies.length===0?<Text style={styles.muted}>No effective leave policy configured for this year.</Text>:<>
+    {data.policies.map(x=><View key={x.policyRef} style={styles.item}><Text style={styles.label}>{x.leaveType}</Text>
+     <Text style={styles.muted}>{x.availableDays} available · {x.usedDays} approved · From {x.effectiveFrom}{x.effectiveTo?" to before "+x.effectiveTo:" onward"}</Text></View>)}
+    <Text style={styles.label}>Apply for leave · Choose leave type</Text>
+    {data.policies.map(x=><Button key={x.policyRef} title={x.leaveType+" · from "+x.effectiveFrom} disabled={busy||!!cancelRef||locked}
+     selected={form.policyRef===x.policyRef} onPress={()=>setForm(v=>({...v,policyRef:x.policyRef,halfDay:false}))}/>)}
+    <Field title="Start date YYYY-MM-DD" value={form.startDate} disabled={busy||!!cancelRef||locked} maxLength={10} onChange={v=>change("startDate",v)}/>
+    <Field title="End date YYYY-MM-DD" value={form.endDate} disabled={busy||!!cancelRef||locked} maxLength={10} onChange={v=>change("endDate",v)}/>
+    {selected?.allowHalfDays&&<Button title={form.halfDay?"Half day selected":"Full day(s) · tap for half day"} selected={form.halfDay}
+     disabled={busy||!!cancelRef||locked} onPress={()=>change("halfDay",!form.halfDay)}/>}
+    <Field title="Private reason" value={form.reason} disabled={busy||!!cancelRef||locked} multiline onChange={v=>change("reason",v)}/>
+    {locked&&<Text style={styles.muted}>The previous submission is uncertain. Retry the same request or refresh history; do not send a new application.</Text>}
+    <Button title={busy?"Submitting…":locked?"Retry same leave request":"Submit for review"}
+     disabled={busy||!!cancelRef||loading||!form.policyRef||!form.startDate||!form.endDate||form.reason.trim().length<2} onPress={()=>void submit()}/>
+   </>}
+   <Text style={styles.label}>Leave history</Text>
+   {!data.requests.length&&<Text style={styles.muted}>No leave requests in this year.</Text>}
+   {data.requests.map(x=><View key={x.reference} style={styles.item}><Text style={styles.label}>{x.leaveType} · {label(x.status)}</Text>
+    <Text style={styles.muted}>{x.startDate} – {x.endDate} · {x.days} days · {x.reference}</Text>
+    <Button title={privateDetail?.reference===x.reference?"Hide my reason":"View my submitted reason"} disabled={busy||privateBusy||locked||!!cancelRef||loading} onPress={()=>void openPrivate(x.reference)}/>
+    {privateDetail?.reference===x.reference&&<Text>Private reason: {privateDetail.reason}</Text>}
+    {x.status==="SUBMITTED"&&!cancelRef&&<Button title="Cancel pending request" disabled={busy||locked||loading} onPress={()=>void cancel(x.reference)}/>}
+   </View>)}
+  </>}
+ </View>;
+}
+const snapshot=(v:Review["original"])=>v?v.status+" · In: "+(v.checkInAt??"—")+" · Out: "+(v.checkOutAt??"—"):"—";
+export function NativeHrLeaveReviews({token,onExpired,onChanged,kind="leave"}:{token:string;onExpired:()=>void;onChanged:()=>void;kind?:"leave"|"correction"}){
+ const route=kind==="leave"?"leave-reviews":"attendance-correction-reviews";
+ const [items,setItems]=useState<Review[]>([]),[selected,setSelected]=useState<Review|null>(null);
+ const [overview,setOverview]=useState<LeaveOverview|null>(null);const reviewSequence=useRef(0);
+ const [status,setStatus]=useState("SUBMITTED"),[offset,setOffset]=useState(0),[more,setMore]=useState(false);
+ const [loading,setLoading]=useState(true),[busy,setBusy]=useState(false),[error,setError]=useState(""),[notice,setNotice]=useState("");
+ const [password,setPassword]=useState(""),[action,setAction]=useState("APPROVE"),[locked,setLocked]=useState(false);
+ const [filter,setFilter]=useState({from:"",to:"",type:"",employee:""}),[applied,setApplied]=useState({from:"",to:"",type:"",employee:""});
+ const key=useRef<string|null>(null),fail=useFailure(onExpired,setError);
+ const refresh=useCallback(async()=>{
+  const read=++reviewSequence.current;setLoading(true);setError("");setOverview(null);setItems([]);setMore(false);
+  try{const v=await api<{items:Review[];hasMore:boolean;overview?:LeaveOverview}>(token,route+"?status="+status+"&offset="+offset+(kind==="leave"?Object.entries(applied).map(([k,v])=>"&"+k+"="+encodeURIComponent(v)).join(""):""));
+   if(!Array.isArray(v.items))throw Error("Review list unavailable");if(read===reviewSequence.current){setItems(v.items);setMore(v.hasMore===true);setOverview(kind==="leave"?v.overview??null:null);}
+  }catch(e){if(read===reviewSequence.current){setItems([]);setMore(false);setSelected(null);setOverview(null);fail(e);}}finally{if(read===reviewSequence.current)setLoading(false);}
+ },[token,status,offset,fail,route,kind,applied]);
+ useEffect(()=>{void refresh();return()=>{reviewSequence.current++;};},[refresh]);
+ const open=async(x:Review)=>{
+  if(busy||locked)return;setBusy(true);setError("");setSelected(null);setPassword("");setAction("APPROVE");key.current=null;
+  try{const v=await api<Review>(token,route+"/"+encodeURIComponent(x.caseRef));
+   if(v.reference!==x.reference)throw Error("Original review changed");setSelected(v);
+  }catch(e){fail(e);}finally{setBusy(false);}
+ };
+ const decide=async()=>{
+  if(busy||!selected?.canReview)return;setBusy(true);setError("");setNotice("");
+  const requestKey=key.current??Crypto.randomUUID();key.current=requestKey;
+  try{const v=await api<{confirmed:boolean;status:string;reference:string}>(token,route+"/"+encodeURIComponent(selected.caseRef)+"/decide",
+    {requestKey,expectedRevision:selected.revision,action,currentPassword:password});
+   if(v.confirmed!==true)throw Error("Decision result uncertain");
+   key.current=null;setLocked(false);setPassword("");setSelected(null);setNotice(v.reference+" · "+label(v.status));await refresh();onChanged();
+  }catch(e){setPassword("");fail(e);if(known(e)){key.current=null;setLocked(false);}else setLocked(true);}finally{setBusy(false);}
+ };
+ return <View style={styles.card}><Text style={styles.title}>{kind==="leave"?"Leave requests":"Attendance correction requests"}</Text>
+  {kind==="leave"&&overview&&<View style={{flexDirection:"row",flexWrap:"wrap",gap:8}}>{[{label:"Total requests",count:overview.total},{label:"Pending review",count:overview.pending},{label:"Approved",count:overview.approved},{label:"Returned",count:overview.returned},{label:"Rejected",count:overview.rejected},{label:"Cancelled",count:overview.cancelled}].map(x=><View key={x.label} style={[styles.card,{flexBasis:"46%",flexGrow:1,minWidth:130,padding:10}]}><Text style={styles.muted}>{x.label}</Text><Text style={styles.title}>{x.count}</Text></View>)}</View>}
+  <View style={styles.choices}>{[{key:"SUBMITTED",title:"Pending"},...(kind==="leave"?[{key:"IN_REVIEW",title:"In review"}]:[]),{key:"OWNER_COMPLETED",title:"Approved"},
+   {key:"RETURNED",title:"Returned"},{key:"REJECTED",title:"Rejected"},...(kind==="leave"?[{key:"CANCELLED",title:"Cancelled"}]:[]),{key:"ALL",title:"All"}].map(x=>
+   <Button key={x.key} title={x.title} selected={status===x.key} disabled={busy||locked}
+    onPress={()=>{setStatus(x.key);setOffset(0);setSelected(null);setPassword("");}}/>)}</View>
+  {kind==="leave"&&<>{(["from","to","type","employee"] as const).map(k=><Field key={k} title={k==="from"?"From date YYYY-MM-DD":k==="to"?"To date YYYY-MM-DD":k==="type"?"Leave type":"Employee name"} value={filter[k]} maxLength={k==="from"||k==="to"?10:80} disabled={busy||locked} onChange={v=>setFilter(x=>({...x,[k]:v}))}/>)}
+   <Button title="Apply filters" disabled={busy||locked} onPress={()=>{setSelected(null);setOffset(0);setApplied({...filter});}}/></>}
+  <Button title="Refresh reviews" disabled={busy||loading||locked} onPress={()=>void refresh()}/>
+  {!!error&&<Text accessibilityRole="alert" style={styles.error}>{error}</Text>}{!!notice&&<Text style={styles.success}>{notice}</Text>}
+  {loading&&<ActivityIndicator accessibilityLabel="Loading leave reviews"/>}
+  {!loading&&!error&&!items.length&&<Text style={styles.muted}>No matching requests.</Text>}
+  {kind==="leave"&&overview&&<><View style={styles.card}><Text style={styles.label}>Requests by leave type</Text>{overview.types.length===0?<Text style={styles.muted}>No matching requests.</Text>:overview.types.map(x=><View key={x.label} style={{gap:4}}><Text>{x.label} · {x.count}</Text><View style={{height:7,backgroundColor:hrTheme.selectedSurface,borderRadius:8,overflow:"hidden"}}><View style={{height:7,backgroundColor:hrTheme.primary,width:(100*x.count/Math.max(1,overview.total))+"%" as `${number}%`}}/></View></View>)}</View>
+   <View style={styles.card}><Text style={styles.label}>Upcoming approved leaves</Text>{overview.upcoming.length===0?<Text style={styles.muted}>No matching upcoming leave.</Text>:overview.upcoming.map((x,i)=><View key={i} style={styles.item}><Text style={styles.label}>{x.name}</Text><Text style={styles.muted}>{x.leaveType} · {x.startDate} – {x.endDate} · {x.days} days</Text></View>)}</View></>}
+  {items.map(x=><View key={x.caseRef} style={styles.item}><Text style={styles.label}>{x.employeeName} · {kind==="leave"?x.leaveType:"Attendance correction"}</Text>
+   <Text style={styles.muted}>{kind==="leave"?x.startDate+" – "+x.endDate+" · "+x.days+" days":x.date+" · "+x.originalStatus+" → "+x.proposedStatus} · {label(x.status)}</Text>
+   <Button title="View request" disabled={busy||locked} onPress={()=>void open(x)}/></View>)}
+  {offset>0&&<Button title="Previous page" disabled={busy||locked} onPress={()=>{setSelected(null);setOffset(v=>Math.max(0,v-25));}}/>}
+  {more&&<Button title="Next page" disabled={busy||locked} onPress={()=>{setSelected(null);setOffset(v=>v+25);}}/>}
+  {selected&&<View style={styles.item}><Text style={styles.label}>{selected.employeeName} · {kind==="leave"?selected.leaveType:"Attendance correction"}</Text>
+   <Text style={styles.muted}>{selected.reference} · {kind==="leave"?selected.startDate+" – "+selected.endDate+" · "+selected.days+" days":snapshot(selected.original)+" → "+snapshot(selected.proposed)}</Text>
+   {selected.balance&&<Text>Annual: {selected.balance.annualDays} days · Approved used: {selected.balance.approvedDays} · Available: {selected.balance.availableDays}</Text>}
+   {selected.reason!==undefined&&<Text>Private reason: {selected.reason}</Text>}
+   {selected.canReview?<><View style={styles.choices}>{[{key:"APPROVE",title:"Approve"},{key:"RETURN",title:"Return"},{key:"REJECT",title:"Reject"}].map(x=>
+    <Button key={x.key} title={x.title} selected={action===x.key} disabled={busy||locked} onPress={()=>setAction(x.key)}/>)}</View>
+    <Field title="Current password" secure value={password} disabled={busy} maxLength={256} onChange={setPassword}/>
+    {locked&&<Text style={styles.muted}>Decision outcome uncertain. Re-enter your password to retry the same decision.</Text>}
+    <Button title={busy?"Confirming…":"Confirm decision"} disabled={busy||password.length<8} onPress={()=>void decide()}/>
+   </>:<Text style={styles.muted}>{label(selected.status)}{selected.status==="SUBMITTED"?" · Awaiting an independent authorized reviewer.":""}</Text>}
+   <Button title="Close request" disabled={busy||locked} onPress={()=>{setSelected(null);setPassword("");key.current=null;}}/>
+  </View>}
+ </View>;
+}
+const styles=StyleSheet.create({
+ card:{borderWidth:1,borderColor:hrTheme.border,borderRadius:14,padding:14,backgroundColor:hrTheme.surface,gap:10},
+ title:{fontSize:17,fontWeight:"700",color:hrTheme.text},label:{fontSize:14,fontWeight:"600",color:hrTheme.text},
+ muted:{fontSize:13,color:hrTheme.mutedText,lineHeight:20},error:{color:"#991B1B",backgroundColor:"#FEE2E2",padding:10,borderRadius:8},
+ success:{color:"#166534",backgroundColor:"#DCFCE7",padding:10,borderRadius:8},input:{borderWidth:1,borderColor:hrTheme.border,borderRadius:9,padding:11,minHeight:46,color:hrTheme.text},
+ button:{padding:11,borderRadius:9,backgroundColor:"#F1F5F9",alignItems:"center",minHeight:44,justifyContent:"center"},
+ buttonText:{fontSize:14,color:hrTheme.text,fontWeight:"600"},active:{backgroundColor:hrTheme.primary},activeText:{color:hrTheme.surface,fontWeight:"700"},
+ disabled:{opacity:0.5},item:{borderTopWidth:1,borderColor:hrTheme.border,paddingTop:10,gap:6},choices:{flexDirection:"row",flexWrap:"wrap",gap:6}
+});
+
+export type CorrectionDay={date:string;status:string;version:number;timeZone:string;checkInLocal:string|null;checkOutLocal:string|null;leaveDays:number};
+export type CorrectionPerson={employeeReference:string;employeeName:string;days:CorrectionDay[]};
+type CorrectionHistory={reference:string;status:string;caseStatus:string;original:Review["original"];proposed:Review["proposed"]};
+const correctionBlank=()=>({date:"",expectedVersion:0,timeZone:"",result:"WORKED",checkInLocal:"",checkOutLocal:"",reason:""});
+const fromDay=(d:CorrectionDay)=>({date:d.date,expectedVersion:d.version,timeZone:d.timeZone,result:d.status==="ABSENT"?"ABSENT":d.status==="WEEKLY_OFF"?"WEEKLY_OFF":"WORKED",checkInLocal:d.checkInLocal??"",checkOutLocal:d.checkOutLocal??"",reason:""});
+
+export function NativeHrAttendanceCorrections({token,onExpired,days,staff,onChanged}:{token:string;onExpired:()=>void;days:CorrectionDay[];staff:CorrectionPerson[];onChanged:()=>void}){
+ const [target,setTarget]=useState(""),[form,setForm]=useState(correctionBlank),[history,setHistory]=useState<CorrectionHistory[]>([]);
+ const [busy,setBusy]=useState(false),[loading,setLoading]=useState(false),[locked,setLocked]=useState(false),[error,setError]=useState(""),[notice,setNotice]=useState("");
+ const [linked,setLinked]=useState(false);
+ const key=useRef<string|null>(null),readSequence=useRef(0);
+ const fail=useFailure(onExpired,setError);
+ const person=staff.find(x=>x.employeeReference===target),authorized=!target||!!person;
+ const available=(target?person?.days??[]:days).filter(d=>d.version>0&&d.leaveDays<1);
+ const refresh=useCallback(async()=>{
+  const generation=++readSequence.current;setLoading(true);setError("");setHistory([]);setLinked(false);
+  try{const v=await api<{linked:boolean;items:CorrectionHistory[]}>(token,"attendance-corrections"+(target?"?employeeReference="+encodeURIComponent(target):""));
+   if(!Array.isArray(v.items)||typeof v.linked!=="boolean")throw Error("Correction history unavailable");
+   if(generation===readSequence.current){setHistory(v.items);setLinked(v.linked);}
+  }catch(e){if(generation===readSequence.current)fail(e);}finally{if(generation===readSequence.current)setLoading(false);}
+ },[target,token,fail]);
+ useEffect(()=>{if(authorized)void refresh();else{readSequence.current++;setHistory([]);setLinked(false);setLoading(false);}},[refresh,authorized]);
+ const selectTarget=(v:string)=>{readSequence.current++;setTarget(v);setForm(correctionBlank());key.current=null;setHistory([]);setLinked(false);setNotice("");};
+ const change=<K extends keyof typeof form,>(k:K,v:(typeof form)[K])=>setForm(x=>({...x,[k]:v}));
+ const valid=!!form.date&&form.expectedVersion>0&&form.reason.trim().length>=2&&(form.result!=="WORKED"||!!form.checkInLocal&&!!form.checkOutLocal);
+ const submit=async()=>{
+  if(busy||!authorized||(!locked&&!linked)||!valid)return;
+  setBusy(true);setError("");setNotice("");
+  const requestKey=key.current??Crypto.randomUUID();key.current=requestKey;
+  try{const v=await api<{submitted:boolean;reference:string;caseStatus:string}>(token,"attendance-corrections",{
+   requestKey,...(target?{employeeReference:target}:{}),date:form.date,expectedVersion:form.expectedVersion,
+   result:form.result,checkInLocal:form.result==="WORKED"?form.checkInLocal:null,checkOutLocal:form.result==="WORKED"?form.checkOutLocal:null,reason:form.reason});
+   if(v.submitted!==true||typeof v.reference!=="string")throw Error("Correction submission uncertain");
+   key.current=null;setLocked(false);setForm(correctionBlank());setNotice(v.reference+" · "+label(v.caseStatus));await refresh();onChanged();
+  }catch(e){fail(e);if(known(e)){key.current=null;setLocked(false);}else setLocked(true);}
+  finally{setBusy(false);}
+ };
+
+ return <View style={styles.card}><Text style={styles.title}>Attendance corrections</Text>
+  <Button title="My attendance" selected={!target} disabled={busy||locked||loading} onPress={()=>selectTarget("")}/>
+  {staff.map(x=><Button key={x.employeeReference} title={x.employeeName} selected={target===x.employeeReference} disabled={busy||locked||loading} onPress={()=>selectTarget(x.employeeReference)}/>)}
+  {!authorized&&<Text style={styles.muted}>Selected employee is no longer in the current attendance view.</Text>}
+  {!!error&&<Text accessibilityRole="alert" style={styles.error}>{error}</Text>}{!!notice&&<Text style={styles.success}>{notice}</Text>}
+  {loading&&<ActivityIndicator accessibilityLabel="Loading correction history"/>}
+  {authorized&&(linked||locked)&&<>
+   <Text style={styles.label}>Choose recorded day</Text>
+   {available.map(d=><Button key={d.date} title={d.date+" · "+d.status} selected={form.date===d.date} disabled={busy||locked||loading} onPress={()=>setForm(fromDay(d))}/>)}
+   {!!form.date&&<><Text style={styles.muted}>Shift timezone: {form.timeZone}</Text>
+    <View style={styles.choices}>{["WORKED","ABSENT","WEEKLY_OFF"].map(x=><Button key={x} title={x==="WORKED"?"Worked":x==="ABSENT"?"Absent":"Weekly off"} selected={form.result===x} disabled={busy||locked} onPress={()=>change("result",x)}/>)}</View>
+    {form.result==="WORKED"&&<><Field title="Local check-in YYYY-MM-DDTHH:mm" value={form.checkInLocal} maxLength={16} disabled={busy||locked} onChange={v=>change("checkInLocal",v)}/>
+    <Field title="Local check-out YYYY-MM-DDTHH:mm" value={form.checkOutLocal} maxLength={16} disabled={busy||locked} onChange={v=>change("checkOutLocal",v)}/></>}
+    <Field title="Private reason" value={form.reason} disabled={busy||locked} multiline onChange={v=>change("reason",v)}/>
+   </>}{locked&&<Text style={styles.muted}>Outcome uncertain. Retry the original request without changing its details.</Text>}
+   <Button title={locked?"Retry original correction":"Submit correction for review"} disabled={busy||loading||!valid} onPress={()=>void submit()}/>
+  </>}
+  <NativeHrInitialNonworking token={token} staff={staff} onExpired={onExpired} onChanged={onChanged}/>
+  <Button title="Refresh correction history" disabled={busy||locked||loading||!authorized} onPress={()=>void refresh()}/>
+  <Text style={styles.label}>Correction history</Text>
+  {authorized&&history.map(x=><View key={x.reference} style={styles.item}><Text style={styles.label}>{x.reference} · {label(x.status)}</Text><Text>{snapshot(x.original)} → {snapshot(x.proposed)}</Text></View>)}
+ </View>;
+}
+
+function NativeHrInitialNonworking({token,staff,onExpired,onChanged}:{token:string;staff:CorrectionPerson[];onExpired:()=>void;onChanged:()=>void}){
+ const [employee,setEmployee]=useState(""),[date,setDate]=useState(""),[result,setResult]=useState("ABSENT");
+ const [busy,setBusy]=useState(false),[locked,setLocked]=useState(false),[notice,setNotice]=useState(""),[error,setError]=useState("");
+ const key=useRef<string|null>(null);
+ const fail=useFailure(onExpired,setError);
+ const eligible=staff.some(x=>x.employeeReference===employee);
+ const save=async()=>{
+  if(busy||!eligible||!date)return;setBusy(true);setError("");setNotice("");
+  const requestKey=key.current??Crypto.randomUUID();key.current=requestKey;
+  try{const v=await api<{recorded:boolean;date:string;status:string}>(token,"attendance/record",{requestKey,employeeReference:employee,date,result});
+   if(v.recorded!==true)throw Error("Initial record could not be confirmed");
+   key.current=null;setLocked(false);setDate("");setNotice(v.date+" · "+v.status);onChanged();
+  }catch(e){fail(e);if(known(e)){key.current=null;setLocked(false);}else setLocked(true);}finally{setBusy(false);}
+ };
+
+ if(!staff.length&&!employee)return null;
+ return <View style={styles.item}><Text style={styles.label}>Record initial absence or weekly off</Text>
+  <Text style={styles.muted}>Only an already finished shift with no recorded day. A recorded day needs reviewed correction.</Text>
+  {staff.map(x=><Button key={x.employeeReference} title={x.employeeName} selected={employee===x.employeeReference} disabled={busy||locked} onPress={()=>setEmployee(x.employeeReference)}/>)}
+  <Field title="Finished shift date YYYY-MM-DD" value={date} maxLength={10} disabled={busy||locked} onChange={setDate}/>
+  <View style={styles.choices}>{["ABSENT","WEEKLY_OFF"].map(x=><Button key={x} title={x==="ABSENT"?"Absent":"Weekly off"} selected={result===x} disabled={busy||locked} onPress={()=>setResult(x)}/>)}</View>
+  {!!error&&<Text accessibilityRole="alert" style={styles.error}>{error}</Text>}{!!notice&&<Text style={styles.success}>{notice}</Text>}
+  <Button title={locked?"Retry same record":"Record finished shift"} disabled={busy||!eligible||!date} onPress={()=>void save()}/>
+ </View>;
+}

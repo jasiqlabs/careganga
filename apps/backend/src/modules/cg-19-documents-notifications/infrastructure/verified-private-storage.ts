@@ -84,7 +84,7 @@ export abstract class VerifiedPrivateStorage extends PrivateObjectStorage{
   async reservePrivateUpload(request:UploadInput):Promise<PrivateUploadReservation>{
     const expiry=Date.parse(request.expiresAt);
     // Only the backend may create issued invoice, receipt and generated lab PDF keys.
-    if(!validKey(request.objectKey)||/\/(?:invoices|receipts|lab-generated|mis)\//.test(request.objectKey)||
+    if(!validKey(request.objectKey)||/\/(?:invoices|receipts|lab-generated|mis|hr-documents)\//.test(request.objectKey)||
       !supported(request.objectKey,request.mime)||
       !Number.isSafeInteger(request.sizeBytes)||request.sizeBytes<1||
       request.sizeBytes>maxFor(request.objectKey,request.mime)||!SHA.test(request.sha256)||
@@ -130,7 +130,7 @@ export abstract class VerifiedPrivateStorage extends PrivateObjectStorage{
     objectKey:string;maxBytes:number
   }):Promise<{objectVersion:string;sha256:string;sizeBytes:number}>{
     // An invoice/receipt key is server-created, random and never signed for upload.
-    if(!/^careganga\/private\/cg19\/[0-9a-f-]{36}\/(invoices|receipts)\/[0-9a-f-]{36}$/.test(request.objectKey)||
+    if(!/^careganga\/private\/cg19\/[0-9a-f-]{36}\/(invoices|receipts|hr-documents)\/[0-9a-f-]{36}$/.test(request.objectKey)||
       !Number.isSafeInteger(request.maxBytes)||request.maxBytes<100||
       request.maxBytes>10*1024*1024)
       throw new BadRequestException("Invalid private document recovery request");

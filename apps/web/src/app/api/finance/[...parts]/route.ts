@@ -9,7 +9,7 @@ const financeErrors=new Set([
  "FINANCE_BRANCH_STALE","FINANCE_YEAR_CLOSED","FINANCE_ACCOUNT_INACTIVE","FINANCE_ACCOUNT_SCOPE",
  "FINANCE_OPENING_AMOUNT","FINANCE_DEBITS_CREDITS","FINANCE_OPENING_DATE","FINANCE_JOURNAL_REVERSAL_INVALID","FINANCE_JOURNAL_REVERSAL_CONFLICT",
  "FINANCE_REQUEST_CONFLICT","FINANCE_PERMISSION","FINANCE_UNAVAILABLE",
- "FINANCE_CLAIM_FORM_INVALID","FINANCE_CLAIM_REQUEST_KEY_INVALID","FINANCE_CLAIM_PURPOSE_INVALID",
+ "FINANCE_CLAIM_FORM_INVALID","FINANCE_CLAIM_REQUEST_KEY_INVALID","FINANCE_CLAIM_PURPOSE_INVALID","FINANCE_CLAIM_BREAKDOWN_INVALID",
  "FINANCE_CLAIM_CATEGORY_INVALID","FINANCE_CLAIM_DATE_INVALID","FINANCE_CLAIM_AMOUNT_INVALID",
  "FINANCE_CLAIM_REPLAY_CONFLICT","FINANCE_CLAIM_FILTER_INVALID",
  "FINANCE_CLAIM_SOURCE_INVALID","FINANCE_CLAIM_NOT_EDITABLE","FINANCE_CLAIM_BILL_INVALID",
@@ -195,6 +195,14 @@ async function handler(request:NextRequest,parts:string[],method:string){
   if(!/^(0|[1-9][0-9]{0,4})$/.test(offset))
    return NextResponse.json({message:"Choose a valid claim list page and try again."},{status:400});
   target.searchParams.set("offset",offset);
+  if(parts[1]==="mine"){
+   const source=request.nextUrl.searchParams.get("source")??"GENERAL";
+   if(source!=="GENERAL"&&source!=="HR_ALLOWANCE")return NextResponse.json({message:"Choose a valid claim source."},{status:400});
+   target.searchParams.set("source",source);
+   if(source==="HR_ALLOWANCE"){const status=request.nextUrl.searchParams.get("status")??"ALL",q=request.nextUrl.searchParams.get("q")??"";
+    if(!["ALL","DRAFT","SUBMITTED","APPROVED","PAYABLE","PAYMENT_REQUESTED","PAYMENT_VERIFIED_UNPOSTED","PAID_VERIFIED","RETURNED","REJECTED"].includes(status)||q.length>80)return NextResponse.json({message:"Choose an allowance status or shorter search."},{status:400});
+    target.searchParams.set("status",status);target.searchParams.set("q",q);}
+  }
  }
  if(method==="GET"&&parts[0]==="vouchers"&&parts[1]==="drafts"&&parts.length===2){
   const offset=request.nextUrl.searchParams.get("offset")??"0";

@@ -107,7 +107,7 @@ Dependencies: US-002
 
 ## Execution progress
 - US-001: BLOCKED | OWNER_DELEGATED_DESIGN_APPROVED_CURRENT_ARTIFACT; FORMAL_HARNESS_INDEPENDENT_DB_SQL_QA_NOT_RUN; actual CG-01/02/10/03 source implementation NOT_VERIFIED, code NOT_STARTED, 20 source QA NOT_RUN, real SQL/Web/Android/pixel/Play NOT_RUN.
-- US-002: BLOCKED | OWNER_DELEGATED_DESIGN_APPROVED_CURRENT_ARTIFACT; FORMAL_HARNESS_INDEPENDENT_DB_SQL_QA_NOT_RUN; prerequisite US-001 real source NOT_VERIFIED, current CG-10 attendance/CG-03 case NOT_VERIFIED, code NOT_STARTED, 20 source QA NOT_RUN, real SQL/Web/Android/finance/visual NOT_RUN.
+- US-002: BLOCKED | OWNER_DELEGATED_DESIGN_APPROVED_CURRENT_ARTIFACT; FORMAL_HARNESS_INDEPENDENT_DB_SQL_QA_NOT_RUN; prerequisite US-001 real source NOT_VERIFIED, current CG-10 attendance/CG-03 case NOT_VERIFIED, code NOT_STARTED, 20 source QA NOT_RUN, real SQL/Web/Android/finance/visual NOT_RUN. | pending-integration=CG-10/US-002-QA17; trigger=real_CG11_US002_calculation_and_freeze; consume=HrPayrollAttendanceSourceFacade.readEmployeePeriod_current_authorized_HR_source_value_and_revision_digest; verify=CG11_current_payroll_grant_scope+immutable_period_snapshot+missing/open_punch_validation+late_CG10_correction_creates_separate_reviewed_adjustment_never_rewrites_approved_run_or_payslip; current_payroll_source=NOT_IMPLEMENTED; runtime=NOT_RUN.
 - US-003: BLOCKED | OWNER_DELEGATED_DESIGN_APPROVED_CURRENT_ARTIFACT; FORMAL_HARNESS_INDEPENDENT_DB_SQL_QA_NOT_RUN; prerequisite US-002 and actual CG-09/CG-19 source NOT_VERIFIED, code NOT_STARTED, 20 source QA NOT_RUN, real bank/CG-09/SQL/Web/Android/Play/visual NOT_RUN.
 
 

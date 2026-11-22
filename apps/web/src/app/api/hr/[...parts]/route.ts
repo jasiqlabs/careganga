@@ -1,0 +1,144 @@
+import {cookies} from "next/headers";
+import {NextRequest,NextResponse} from "next/server";
+export const dynamic="force-dynamic";
+const UUID=/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i;
+function allowed(parts:string[],method:string){
+ if(parts.length===2&&parts[0]==="private"&&parts[1]==="birthdays")return method==="GET";
+ if(parts.length===1&&["me","branch-options","applications","employees","my-pending-link",
+  "managers","account-options","role-options","employee-branches","employee-departments","summary"].includes(parts[0]))
+  return parts[0]==="applications"?["GET","POST"].includes(method):method==="GET";
+ const doc=/^CG-HR-DOC-[0-9]{6,}$/;
+ if(parts.length===1&&["document-subjects","document-templates","document-reviews"].includes(parts[0]))return method==="GET";
+ if(parts.length===1&&parts[0]==="document-requests")return method==="GET"||method==="POST";
+ if(parts.length===2&&parts[0]==="document-templates"&&["approve","assets"].includes(parts[1]))return method==="POST";
+ if(parts[0]==="document-templates"&&parts[1]==="assets"&&UUID.test(parts[2]??""))return parts.length===3?method==="GET":parts.length===4&&parts[3]==="confirm"&&method==="POST";
+ if(parts.length===3&&parts[0]==="document-requests"&&doc.test(parts[1])&&["submit","issue","preview"].includes(parts[2]))return parts[2]==="preview"?method==="GET":method==="POST";
+ if(parts.length===2&&parts[0]==="document-reviews"&&UUID.test(parts[1]))return method==="GET";
+ if(parts.length===3&&parts[0]==="document-reviews"&&UUID.test(parts[1])&&parts[2]==="decide")return method==="POST";
+ if(parts.length===3&&parts[0]==="issued-documents"&&UUID.test(parts[1])&&["reconcile","revoke","dispatch","file","receipt-file","receipt-uploads"].includes(parts[2]))return ["file","receipt-file"].includes(parts[2])?method==="GET":method==="POST";
+ if(parts.length===2&&parts[0]==="me"&&parts[1]==="documents")return method==="GET";
+ if(parts[0]==="issued-documents"&&UUID.test(parts[1]??"")&&parts[2]==="receipt-uploads"&&UUID.test(parts[3]??""))return parts.length===4?method==="GET":parts.length===5&&parts[4]==="confirm"&&method==="POST";
+ if(parts.length===4&&parts[0]==="me"&&parts[1]==="documents"&&UUID.test(parts[2])&&["file","acknowledge","receipt-uploads","receipt-file"].includes(parts[3]))return ["file","receipt-file"].includes(parts[3])?method==="GET":method==="POST";
+ if(parts[0]==="me"&&parts[1]==="documents"&&UUID.test(parts[2]??"")&&parts[3]==="receipt-uploads"&&UUID.test(parts[4]??""))return parts.length===5?method==="GET":parts.length===6&&parts[5]==="confirm"&&method==="POST";
+ const change=/^CG-HR-CHG-[0-9]{6,}$/;
+ if(parts.length===1&&parts[0]==="employment-changes")return method==="GET"||method==="POST";
+ if(parts.length===2&&parts[0]==="employment-changes"&&change.test(parts[1]))return method==="GET";
+ if(parts.length===3&&parts[0]==="employment-changes"&&change.test(parts[1])&&["edit","submit","withdraw","clearance"].includes(parts[2]))return method==="POST";
+ if(parts.length===2&&parts[0]==="employment-change-options"&&["employees","branches","destination","roles"].includes(parts[1]))return method==="GET";
+ if(parts.length===2&&parts[0]==="me"&&parts[1]==="changes")return method==="GET";
+ if(parts.length===3&&parts[0]==="me"&&parts[1]==="changes"&&change.test(parts[2]))return method==="GET";
+ if(parts.length===1&&parts[0]==="employment-change-reviews")return method==="GET";
+ if(parts.length===2&&parts[0]==="employment-change-reviews"&&UUID.test(parts[1]))return method==="GET";
+ if(parts.length===3&&parts[0]==="employment-change-reviews"&&UUID.test(parts[1])&&["decide","apply"].includes(parts[2]))return method==="POST";
+ if(parts.length===1&&parts[0]==="appraisals")return method==="GET"||method==="POST";
+ if(parts.length===2&&parts[0]==="appraisals"&&(parts[1]==="options"||/^CG-HR-APR-[0-9]{6,}$/.test(parts[1])))return method==="GET";
+ if(parts.length===3&&parts[0]==="appraisals"&&/^CG-HR-APR-[0-9]{6,}$/.test(parts[1])&&["edit","submit","release"].includes(parts[2]))return method==="POST";
+ if(parts.length===2&&parts[0]==="me"&&parts[1]==="appraisals")return method==="GET";
+ if(parts.length===2&&parts[0]==="attendance"&&["matrix","branches"].includes(parts[1]))return method==="GET";
+ if(parts.length===1&&["shift-policies","leave-policies"].includes(parts[0]))return method==="GET"||method==="POST";
+ if(parts.length===1&&parts[0]==="shift-assignments")return method==="POST";
+ if(parts.length===2&&parts[0]==="me"&&parts[1]==="leave")return method==="GET"||method==="POST";
+ if(parts.length===3&&parts[0]==="me"&&parts[1]==="leave"&&/^CG-AP-[0-9]{6,}$/.test(parts[2]))return method==="GET";
+ if(parts.length===4&&parts[0]==="me"&&parts[1]==="leave"&&/^CG-AP-[0-9]{6,}$/.test(parts[2])&&parts[3]==="cancel")return method==="POST";
+ if(parts.length===2&&parts[0]==="attendance"&&parts[1]==="record")return method==="POST";
+ if(parts.length===1&&parts[0]==="attendance-corrections")return method==="GET"||method==="POST";
+ if(parts.length===1&&parts[0]==="attendance-correction-reviews")return method==="GET";
+ if(parts.length===2&&parts[0]==="attendance-correction-reviews"&&UUID.test(parts[1]))return method==="GET";
+ if(parts.length===3&&parts[0]==="attendance-correction-reviews"&&UUID.test(parts[1])&&parts[2]==="decide")return method==="POST";
+ if(parts.length===1&&parts[0]==="leave-reviews")return method==="GET";
+ if(parts.length===2&&parts[0]==="leave-reviews"&&UUID.test(parts[1]))return method==="GET";
+ if(parts.length===3&&parts[0]==="leave-reviews"&&UUID.test(parts[1])&&parts[2]==="decide")return method==="POST";
+ if(parts.length===2&&parts[0]==="me"&&parts[1]==="attendance")return method==="GET";
+ if(parts.length===3&&parts[0]==="me"&&parts[1]==="attendance"&&
+  ["check-in","check-out"].includes(parts[2]))return method==="POST";
+ if(parts.length===1&&parts[0]==="my-bio-consent")return method==="GET"||method==="POST";
+ if(parts.length===2&&parts[0]==="employees"&&
+  /^CG-HR-EMP-[0-9]{6,}$/.test(parts[1]))return method==="GET";
+ if(parts.length===2&&parts[0]==="my-link"&&parts[1]==="accept")
+  return method==="POST";
+ if(parts.length===1&&parts[0]==="departments")return method==="GET";
+ if(parts.length===2&&parts[0]==="applications"&&UUID.test(parts[1]))
+  return method==="GET"||method==="PATCH";
+ if(parts.length===2&&parts[0]==="private"&&UUID.test(parts[1]))
+  return method==="GET"||method==="PATCH";
+ if(parts.length===3&&parts[0]==="applications"&&UUID.test(parts[1])&&
+  ["submit","finalize"].includes(parts[2]))return method==="POST";
+ if(parts.length===3&&parts[0]==="applications"&&UUID.test(parts[1])&&
+  parts[2]==="review")return method==="GET";
+ if(parts.length===1&&parts[0]==="reviews")return method==="GET";
+ if(parts.length===2&&parts[0]==="reviews"&&parts[1]==="process")
+  return method==="GET"||method==="POST";
+ if(parts.length===2&&parts[0]==="reviews"&&UUID.test(parts[1]))return method==="GET";
+ if(parts.length===3&&parts[0]==="reviews"&&UUID.test(parts[1])&&
+  parts[2]==="decide")return method==="POST";
+ return false;
+}
+async function proxy(req:NextRequest,parts:string[],method:string){
+ if(!allowed(parts,method))
+  return NextResponse.json({message:"This employee action is unavailable."},{status:404});
+ if(method!=="GET"&&req.headers.get("origin")!==req.nextUrl.origin)
+  return NextResponse.json({message:"Please submit this form from CareGanga."},{status:403});
+ const token=(await cookies()).get("cg_staff_session")?.value;
+ if(!token)return NextResponse.json({message:"Please sign in again."},{status:401});
+ if(!process.env.BACKEND_URL)
+  return NextResponse.json({message:"Employee services are temporarily unavailable."},{status:503});
+ let body:string|undefined;
+ if(method!=="GET"){
+  try{
+   const value:unknown=await req.json();
+   if(!value||typeof value!=="object"||Array.isArray(value))
+    throw Error("Bad form");
+   body=JSON.stringify(value);
+   if(body.length>6000)throw Error("Form too large");
+  }catch{
+   return NextResponse.json({message:"Check the employee form before saving."},{status:400});
+  }
+ }
+ const target=new URL("/api/hr/"+parts.join("/"),process.env.BACKEND_URL);
+ if(method==="GET")target.search=req.nextUrl.search;
+ try{
+  const res=await fetch(target,{method,body,cache:"no-store",signal:AbortSignal.timeout(10000),
+   headers:{Authorization:"Bearer "+token,...(body?{"Content-Type":"application/json"}:{})}});
+  if(!res.ok){
+   const status=[400,401,403,404,409,429].includes(res.status)?res.status:503;
+   const receiptPath=(parts[0]==="me"&&parts[1]==="documents"&&parts[3]==="receipt-uploads")||(parts[0]==="issued-documents"&&parts[2]==="receipt-uploads");
+   const leavePath=parts[0]==="employment-changes"||parts[0]==="employment-change-options"||parts[0]==="employment-change-reviews"||(parts[0]==="me"&&parts[1]==="changes")||parts[0]==="appraisals"||(parts[0]==="attendance"&&parts[1]==="record")||parts[0]==="attendance-corrections"||parts[0]==="attendance-correction-reviews"||parts[0]==="leave-reviews"||(parts[0]==="me"&&parts[1]==="leave");
+   if((leavePath||receiptPath||parts[0]==="document-requests"||parts[0]==="document-templates"||["private","applications","reviews"].includes(parts[0]))&&status>=400&&status<500){
+    const rejected:unknown=await res.json().catch(()=>null);
+    if(rejected&&typeof rejected==="object"&&"code" in rejected&&"message" in rejected&&
+     typeof rejected.code==="string"&&["CG10_PRIVATE_INVALID","CG10_ENROLLMENT_EVIDENCE_CHANGED","CG10_ENROLLMENT_PRIVATE_CHANGED","CG10_TEMPLATE_ASSETS_REQUIRED","CG10_TEMPLATE_ASSET_FORMAT","CG10_RECEIPT_FORMAT","CG10_RECEIPT_UNAVAILABLE","CG10_RECEIPT_REQUEST_CHANGED","CG10_CARD_PORTRAIT_REQUIRED","CG10_CHANGE_INVALID","CG10_CHANGE_STALE","CG10_CHANGE_DATE","CG10_CHANGE_BRANCH_MANAGER","CG10_CHANGE_DESTINATION","CG10_CHANGE_MANAGER","CG10_CHANGE_ACCESS_CHANGED","CG10_CHANGE_INFLIGHT","CG10_CHANGE_NOT_DUE","CG10_CHANGE_ATTENDANCE_CONFLICT","CG10_CLEARANCE_UNAVAILABLE","CG10_APPRAISAL_INVALID","CG10_APPRAISAL_STALE","CG10_APPRAISAL_DUPLICATE","CG10_LEAVE_INVALID","CG10_LEAVE_POLICY_CHANGED","CG10_LEAVE_OVERLAP","CG10_LEAVE_ENTITLEMENT","CG10_LEAVE_PUNCH_CONFLICT","CG10_LEAVE_STALE","CG10_LEAVE_DECISION_INVALID","CG10_CORRECTION_INVALID","CG10_CORRECTION_STALE","CG10_CORRECTION_LEAVE","CG10_CORRECTION_DECISION_INVALID","CG10_LEAVE_DUPLICATE_PENDING","CG10_CORRECTION_DUPLICATE_PENDING"].includes(rejected.code)&&
+     typeof rejected.message==="string"&&rejected.message.length<=220&&!/[<>\r\n]/.test(rejected.message))
+     return NextResponse.json({message:rejected.message},{status,headers:{"Cache-Control":"no-store"}});
+   }
+   return NextResponse.json({message:status===400?"Check the employee details."
+    :status===401?"Your session expired. Please sign in again."
+    :status===403?"Your current role or branch does not permit this action."
+    :status===404?"The employee record is no longer available."
+    :status===409?"This record changed. Refresh it before retrying."
+    :status===429?"Too many requests. Try again later."
+    :"The result is uncertain. Refresh before resubmitting."},
+    {status,headers:{"Cache-Control":"no-store"}});
+  }
+  if(parts[parts.length-1]==="receipt-file"){
+   const mime=res.headers.get("content-type")?.split(";")[0];if(!mime||!["application/pdf","image/jpeg","image/png"].includes(mime))throw Error("Original copy unavailable");
+   const length=Number(res.headers.get("content-length")??0);if(length>10485760)throw Error("Original copy outside limits");
+   const bytes=await res.arrayBuffer();if(bytes.byteLength<1||bytes.byteLength>10485760)throw Error("Original copy outside limits");
+   return new NextResponse(bytes,{headers:{"Content-Type":mime,"Content-Disposition":'attachment; filename="CareGanga-received-copy.'+(mime==="application/pdf"?"pdf":mime==="image/png"?"png":"jpg")+'"',"Cache-Control":"private, no-store","X-Content-Type-Options":"nosniff","X-Robots-Tag":"noindex, nofollow"}});
+  }
+  if((parts[parts.length-1]==="preview"&&parts[0]==="document-requests")||(parts[parts.length-1]==="file"&&(parts[0]==="issued-documents"||(parts[0]==="me"&&parts[1]==="documents")))){
+   if(!res.headers.get("content-type")?.startsWith("application/pdf"))throw Error("Original PDF unavailable");
+   const bytes=await res.arrayBuffer();
+   if(bytes.byteLength<100||bytes.byteLength>10*1024*1024)throw Error("Original PDF outside limits");
+   return new NextResponse(bytes,{headers:{"Content-Type":"application/pdf","Content-Disposition":parts[2]==="preview"?'inline; filename="CareGanga-draft-not-valid.pdf"':req.nextUrl.searchParams.get("view")==="1"?'inline; filename="CareGanga-employee-document.pdf"':'attachment; filename="CareGanga-employee-document.pdf"',"Cache-Control":"private, no-store","X-Content-Type-Options":"nosniff","X-Robots-Tag":"noindex, nofollow"}});
+  }
+  const data:unknown=await res.json();
+  return NextResponse.json(data,{headers:{"Cache-Control":"no-store"}});
+ }catch{
+  return NextResponse.json({message:"Could not confirm the result. Check the list before retrying."},
+   {status:503,headers:{"Cache-Control":"no-store"}});
+ }
+}
+type Context={params:Promise<{parts:string[]}>};
+export const GET=async(req:NextRequest,ctx:Context)=>proxy(req,(await ctx.params).parts,"GET");
+export const POST=async(req:NextRequest,ctx:Context)=>proxy(req,(await ctx.params).parts,"POST");
+export const PATCH=async(req:NextRequest,ctx:Context)=>proxy(req,(await ctx.params).parts,"PATCH");

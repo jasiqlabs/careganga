@@ -15,6 +15,7 @@ import { AccountsService } from "./application/accounts.service";
 import { AccountsController } from "./http/accounts.controller";
 import { SecurityPolicyService } from "./application/security-policy.service";
 import { SecurityPolicyController } from "./http/security-policy.controller";
+import { HrEmploymentAccessOwnerService } from "./application/hr-employment-access-owner.service";
 import { ProtectedAccessOwnerService } from "./application/protected-access-owner.service";
 import { CommunicationRecipientSource } from "./application/communication-recipient-source.service";
 import { MobileVerificationService } from "./application/mobile-verification.service";
@@ -24,7 +25,7 @@ import { PublicPatientSignupService } from "./application/public-patient-signup.
 
 @Module({
   controllers:[SessionController,RecoveryController,RolesController,AuditController,AccountsController,SecurityPolicyController,MobileVerificationController,PublicPatientSignupController],
-  providers:[HealthNetworkIdentityFacade,FoundationStructureIdentityFacade,SessionService,SessionGuard,RecoveryService,RecoveryDelivery,RolesService,AccountsService,AccessAuditReader,SecurityPolicyService,ProtectedAccessOwnerService,CommunicationRecipientSource,MobileVerificationService,PublicPatientSignupService],
-  exports:[HealthNetworkIdentityFacade,SessionService,AccessAuditReader,AccountsService,ProtectedAccessOwnerService,CommunicationRecipientSource,FoundationStructureIdentityFacade]
+  providers:[HrEmploymentAccessOwnerService,HealthNetworkIdentityFacade,FoundationStructureIdentityFacade,SessionService,SessionGuard,RecoveryService,RecoveryDelivery,RolesService,AccountsService,AccessAuditReader,SecurityPolicyService,ProtectedAccessOwnerService,CommunicationRecipientSource,MobileVerificationService,PublicPatientSignupService],
+  exports:[HrEmploymentAccessOwnerService,HealthNetworkIdentityFacade,SessionService,RolesService,AccessAuditReader,AccountsService,ProtectedAccessOwnerService,CommunicationRecipientSource,FoundationStructureIdentityFacade]
 })
 export class IdentityAccessModule {}

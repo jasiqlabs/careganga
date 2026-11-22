@@ -150,6 +150,43 @@ export class RolesService {
     return {options:rows.rows.map(r=>({value:r.id,label:r.name,context:"Foundation"}))};
   }
 
+  /** CG10 may freeze only an original active, non-protected role proposal;
+   * HR never applies or manufactures a CG01 role grant.
+   */
+  async requireHrSelectableRole(tx:PoolClient,actor:VerifiedFoundationActor,ref:string){
+    if(typeof ref!=="string"||!UUID.test(ref))
+      throw new BadRequestException("Choose an eligible Foundation role");
+    const rows=await tx.query(
+      "SELECT r.id FROM role r WHERE r.id=$1 AND r.realm_id=$2 AND "+
+      "r.active AND NOT r.is_protected AND NOT EXISTS("+
+      "SELECT 1 FROM role_grant g WHERE g.role_id=r.id "+
+      "AND g.capability_key IN('roles.manage','identity.security-policy.manage')) "+
+      "FOR SHARE OF r",[ref,actor.realmId]);
+    if(!rows.rowCount)throw new ForbiddenException(
+      "The selected staff role is not eligible");
+  }
+
+  /** Self-consent does not create a grant. CG10 may only ask CG01 whether the
+   * original proposed role is actually assigned and active, in the same root.
+   */
+  async currentHrRoleAssigned(tx:PoolClient,actor:VerifiedFoundationActor,
+    proposedRole:string):Promise<boolean>{
+    if(typeof proposedRole!=="string"||!UUID.test(proposedRole))
+      throw new BadRequestException("Choose a current role proposal");
+    const rows=await tx.query(
+      "SELECT 1 FROM auth_session s JOIN account a ON a.id=s.account_id "+
+      "AND a.realm_id=$1 AND a.status='ACTIVE' "+
+      "AND a.access_version=s.account_access_version "+
+      "JOIN account_role ar ON ar.account_id=a.id AND ar.realm_id=a.realm_id "+
+      "AND ar.revoked_at IS NULL AND ar.role_id=$3 "+
+      "JOIN role r ON r.id=ar.role_id AND r.realm_id=ar.realm_id AND r.active "+
+      "WHERE s.id=$4 AND a.id=$2 AND s.revoked_at IS NULL "+
+      "AND s.expires_at>now() AND s.password_authenticated_at IS NOT NULL "+
+      "LIMIT 1 FOR SHARE OF s,a,ar,r",
+      [actor.realmId,actor.accountId,proposedRole,actor.activeSessionId]);
+    return Boolean(rows.rowCount);
+  }
+
   private async authorizeWrite(client:PoolClient,actor:VerifiedFoundationActor):Promise<boolean>{
     // Lock actual session/account/assignment/role so security changes cannot race through a write.
     const q=await client.query<{is_protected:boolean;approved_sensitive:boolean}>(`

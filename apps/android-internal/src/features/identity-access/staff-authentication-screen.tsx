@@ -63,6 +63,7 @@ const FinanceNativeInvoices = lazy(() => import("../finance-accounting/finance-n
 const FinanceNativeBudgets = lazy(() => import("../finance-accounting/finance-native-budgets").then(m => ({ default: m.FinanceNativeBudgets })));
 const FinanceNativeReports = lazy(() => import("../finance-accounting/finance-native-reports").then(m => ({ default: m.FinanceNativeReports })));
 const NativeMisWorkspaceScreen = lazy(() => import("../mis-reporting/native-mis-workspace-screen").then(m => ({default:m.NativeMisWorkspaceScreen})));
+const NativeHrEnrollment = lazy(() => import("../human-resources/native-hr-enrollment").then(m => ({default:m.NativeHrEnrollment})));
 const FinanceNativeProtectedReview = lazy(() => import("../finance-accounting/finance-native-protected-review").then(m => ({ default: m.FinanceNativeProtectedReview })));
 
 class ScreenErrorBoundary extends Component<
@@ -179,6 +180,7 @@ export function StaffAuthenticationScreen() {
   const [budgetReviewOpen, setBudgetReviewOpen] = useState(false);
   const [reportsOpen, setReportsOpen] = useState(false);
   const [misOpen, setMisOpen] = useState(false);
+  const [hrOpen, setHrOpen] = useState(false);
   const [communicationsOpen, setCommunicationsOpen] = useState(false);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const [supportOpen, setSupportOpen] = useState(false);
@@ -225,7 +227,7 @@ export function StaffAuthenticationScreen() {
     hideToast();
     setMessage("");
     setActor(null); setToken(null); setRoleActions([]); setAccountOpen(false); setRolesOpen(false); setAccountsOpen(false); setPolicyOpen(false); setApprovalsOpen(false); setOwnCenterOpen(false); setWebsiteCmsOpen(false); setPlatformConfigOpen(false); setHealthDoctorOpen(false); setCenterPublisherOpen(false); setHealthProviderOpen(false); setHealthReviewsOpen(false); setDoctorLeaveReviewsOpen(false); setPatientAdminOpen(false); setPatientQueueOpen(false); setLabOrdersOpen(false); setLabEquipmentOpen(false); setHealthcarePoliciesOpen(false); setCenterMerchantOpen(false); setFoundationLiabilitiesOpen(false); setMonthlyProviderSettlementsOpen(false); setPartnerSettlementsOpen(false); setLabTestMasterOpen(false); setMyLabPricingOpen(false); setPatientBookingOpen(false); setDocumentsOpen(false); setCommunicationsOpen(false); setNotificationsOpen(false); setSupportOpen(false); setNoticeAdminOpen(false); setBranchesOpen(false); setFinanceOpen(false); setVoucherOnlyOpen(false); setFinanceReviewOpen(false); setFinanceClaimsOpen(false); setFinanceClaimReviewsOpen(false); setInvoiceOpen(false); setInvoiceReviewOpen(false);
-    setBudgetOpen(false); setBudgetReviewOpen(false); setReportsOpen(false); setMisOpen(false);
+    setBudgetOpen(false); setBudgetReviewOpen(false); setReportsOpen(false); setMisOpen(false); setHrOpen(false);
     void SecureStore.deleteItemAsync(STORE_KEY).catch(() => undefined);
   }, [hideToast]);
 
@@ -271,6 +273,7 @@ export function StaffAuthenticationScreen() {
       budgetReviewOpen ||
       reportsOpen ||
       misOpen ||
+      hrOpen ||
       financeOpen ||
       branchesOpen ||
       changePasswordOpen;
@@ -300,7 +303,7 @@ export function StaffAuthenticationScreen() {
       setInvoiceReviewOpen(false);
       setBudgetOpen(false);
       setBudgetReviewOpen(false);
-      setReportsOpen(false); setMisOpen(false);
+      setReportsOpen(false); setMisOpen(false); setHrOpen(false);
       setFinanceOpen(false);
       setBranchesOpen(false);
       setChangePasswordOpen(false);
@@ -349,6 +352,7 @@ export function StaffAuthenticationScreen() {
     budgetReviewOpen,
     reportsOpen,
     misOpen,
+    hrOpen,
     financeOpen,
     branchesOpen,
     changePasswordOpen
@@ -591,7 +595,7 @@ export function StaffAuthenticationScreen() {
       // Backend revocation is authoritative. The UI must not continue showing an
       // authenticated actor if on-device deletion fails afterward.
       setActor(null); setToken(null); setRoleActions([]); setRolesOpen(false); setAccountsOpen(false); setPolicyOpen(false); setApprovalsOpen(false); setOwnCenterOpen(false); setWebsiteCmsOpen(false); setPlatformConfigOpen(false); setHealthDoctorOpen(false); setCenterPublisherOpen(false); setHealthProviderOpen(false); setHealthReviewsOpen(false); setDoctorLeaveReviewsOpen(false); setPatientAdminOpen(false); setPatientQueueOpen(false); setLabOrdersOpen(false); setLabEquipmentOpen(false); setHealthcarePoliciesOpen(false); setCenterMerchantOpen(false); setFoundationLiabilitiesOpen(false); setMonthlyProviderSettlementsOpen(false); setLabTestMasterOpen(false); setMyLabPricingOpen(false); setPatientBookingOpen(false); setDocumentsOpen(false); setCommunicationsOpen(false); setNotificationsOpen(false); setSupportOpen(false); setNoticeAdminOpen(false); setBranchesOpen(false); setFinanceOpen(false); setVoucherOnlyOpen(false);
-      setFinanceReviewOpen(false); setFinanceClaimsOpen(false); setFinanceClaimReviewsOpen(false); setInvoiceOpen(false); setInvoiceReviewOpen(false); setBudgetOpen(false); setBudgetReviewOpen(false); setReportsOpen(false); setMisOpen(false);
+      setFinanceReviewOpen(false); setFinanceClaimsOpen(false); setFinanceClaimReviewsOpen(false); setInvoiceOpen(false); setInvoiceReviewOpen(false); setBudgetOpen(false); setBudgetReviewOpen(false); setReportsOpen(false); setMisOpen(false); setHrOpen(false);
       try {
         await SecureStore.deleteItemAsync(STORE_KEY);
       } catch {
@@ -627,7 +631,7 @@ export function StaffAuthenticationScreen() {
         setInvoiceReviewOpen(false);
         setBudgetOpen(false);
         setBudgetReviewOpen(false);
-        setReportsOpen(false); setMisOpen(false);
+        setReportsOpen(false); setMisOpen(false); setHrOpen(false);
         setFinanceOpen(false);
         setBranchesOpen(false);
         setChangePasswordOpen(false);
@@ -680,6 +684,7 @@ export function StaffAuthenticationScreen() {
       openBudgetReview: () => openOnly(setBudgetReviewOpen),
       openReports: () => openOnly(setReportsOpen),
       openMis: () => openOnly(setMisOpen),
+      openHr: () => openOnly(setHrOpen),
       openFinance: () => openOnly(setFinanceOpen),
       openBranches: () => openOnly(setBranchesOpen),
       openChangePassword: () => openOnly(setChangePasswordOpen)
@@ -705,6 +710,30 @@ export function StaffAuthenticationScreen() {
     </AuthenticatedAppShell>
   );
 
+  if (hrOpen && token && actor) {
+    // Same actor self profile is open to every signed-in Foundation employee.
+    // Application list/create remain behind per-action server HR permissions.
+    return renderInShell(<ScreenErrorBoundary onExit={() => setHrOpen(false)}>
+      <Suspense fallback={<ActivityIndicator style={{marginTop:40}}/>}>
+        <NativeHrEnrollment token={token} canViewAllowances={roleActions.includes("finance.claims.view")} canRequestAllowances={roleActions.includes("finance.claims.create")} canUploadAllowanceBill={roleActions.includes("documents.files.manage")&&roleActions.includes("documents.files.view")} canView={roleActions.includes("hr.applications.view")}
+          canManage={roleActions.includes("hr.applications.manage")}
+          canSelectAccounts={roleActions.includes("accounts.select")}
+          canSelectRoles={roleActions.includes("roles.select")}
+          canViewPrivate={roleActions.includes("hr.employees.private.view")}
+          canManagePrivate={roleActions.includes("hr.employees.private.manage")}
+          canViewEmployees={roleActions.includes("hr.employees.view")}
+          canConfigureReviews={roleActions.includes("approvals.process.manage")}
+          canManageDocuments={roleActions.includes("hr.documents.manage")} canManageAppraisals={roleActions.includes("hr.appraisals.manage")} canApproveTemplates={roleActions.includes("hr.documents.review")} canReviewDocuments={roleActions.includes("hr.documents.review")&&roleActions.includes("approvals.review")} canIssueDocuments={roleActions.includes("documents.letters.issue")} canRevokeDocuments={roleActions.includes("documents.letters.revoke")} canManageChanges={roleActions.includes("hr.changes.manage")} canReviewChanges={roleActions.includes("hr.changes.review")&&roleActions.includes("approvals.review")} canViewStaff={roleActions.includes("hr.attendance.view")} canCorrect={roleActions.includes("hr.attendance.correct")} canReviewCorrection={roleActions.includes("hr.attendance.review")&&roleActions.includes("approvals.review")}
+          canReviewLeave={roleActions.includes("hr.leave.view")}
+          canManageLeave={roleActions.includes("hr.leave.policies.manage")}
+          canConfigureAttendance={roleActions.includes("hr.shifts.manage")&&
+            roleActions.includes("hr.attendance.view")&&roleActions.includes("hr.employees.view")}
+          canReview={roleActions.includes("approvals.review")&&
+            roleActions.includes("hr.employees.review")}
+          onExit={() => setHrOpen(false)} onExpired={expireSession}/>
+      </Suspense>
+    </ScreenErrorBoundary>,"hr",()=>setHrOpen(false));
+  }
   if (recover)
     return (
       <ScreenErrorBoundary onExit={() => setRecover(false)}>

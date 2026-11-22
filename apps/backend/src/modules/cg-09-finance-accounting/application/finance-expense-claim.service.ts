@@ -1,5 +1,6 @@
 import {BadRequestException,ConflictException,Inject,Injectable} from "@nestjs/common";
 import {createHash} from "node:crypto";
+import {currentHrAllowanceOrigin,assertOwnClaimOrigin} from "../../cg-10-human-resources/application/hr-allowance-origin";
 import type {Pool} from "pg";
 import {FinanceClaimApprovalService} from "../../cg-03-registration-approvals/application/finance-claim-approval.service";
 import {FinanceClaimEvidenceService} from "../../cg-19-documents-notifications/application/finance-claim-evidence.service";
@@ -39,14 +40,27 @@ function amount(value:unknown):string{
   return invalid("FINANCE_CLAIM_AMOUNT_INVALID","amount");
  return minor.toString();
 }
-type Normal={key:string;purpose:string;category:string;expenseDate:string;amountMinor:string};
-function parse(input:unknown):Normal{
+// The original B51 description is free text. Store it in the same immutable claim/revision
+// purpose and digest so every reviewer sees it; it never creates a second amount or ledger.
+export function allowancePurpose(purpose:unknown,breakdown:unknown):string{
+ const title=label(purpose,"purpose",3,180);
+ if(title.includes(" | Breakdown: "))return invalid("FINANCE_CLAIM_PURPOSE_INVALID","purpose");
+ if(breakdown===undefined||breakdown==="")return title;
+ if(typeof breakdown!=="string"||breakdown.trim().length>300||/[\u0000-\u001f\u007f]/.test(breakdown.replace(/[\n\r\t]/g,""))||breakdown.includes(" | Breakdown: "))
+  return invalid("FINANCE_CLAIM_BREAKDOWN_INVALID","breakdown");
+ const detail=breakdown.trim().replace(/\s+/g," ");
+ return detail?title+" | Breakdown: "+detail:title;
+}
+type Normal={key:string;purpose:string;category:string;expenseDate:string;amountMinor:string;sourceKind:"GENERAL"|"HR_ALLOWANCE"};
+export function parseFinanceClaimDraft(input:unknown):Normal{
  if(!input||typeof input!=="object"||Array.isArray(input))
   return invalid("FINANCE_CLAIM_FORM_INVALID");
  const v=input as Record<string,unknown>;
- if(Object.keys(v).some(k=>!["requestKey","purpose","category","expenseDate","amount"].includes(k)))
+ if(Object.keys(v).some(k=>!["requestKey","purpose","category","expenseDate","amount","sourceKind","breakdown"].includes(k)))
   return invalid("FINANCE_CLAIM_FORM_INVALID");
- return {key:keyOf(v.requestKey),purpose:label(v.purpose,"purpose",3,500),
+ if(v.sourceKind!==undefined&&v.sourceKind!=="GENERAL"&&v.sourceKind!=="HR_ALLOWANCE")return invalid("FINANCE_CLAIM_FORM_INVALID");
+ if(v.sourceKind!=="HR_ALLOWANCE"&&v.breakdown!==undefined)return invalid("FINANCE_CLAIM_FORM_INVALID");
+ return {sourceKind:v.sourceKind==="HR_ALLOWANCE"?"HR_ALLOWANCE":"GENERAL",key:keyOf(v.requestKey),purpose:v.sourceKind==="HR_ALLOWANCE"?allowancePurpose(v.purpose,v.breakdown):label(v.purpose,"purpose",3,500),
   category:label(v.category,"category",2,80),
   expenseDate:dateOnly(v.expenseDate),amountMinor:amount(v.amount)};
 }
@@ -62,21 +76,23 @@ export class FinanceExpenseClaimService{
  /** Real CG-01 Foundation requester; never invent an HR employee/volunteer. */
  async create(bearer:string,input:unknown){
   const actor=await this.sessions.requireAction(bearer,"finance.claims.create");
-  const v=parse(input),digest=createHash("sha256").update(JSON.stringify(
-   ["CG09_CLAIM_DRAFT_V1",v.purpose,v.category,v.expenseDate,v.amountMinor]
-  )).digest("hex");
+  const v=parseFinanceClaimDraft(input);
   const client=await this.db.connect();
   try{
    await client.query("BEGIN");
    await this.identity.assertCurrent(client,actor,"finance.claims.create");
+   const origin=v.sourceKind==="HR_ALLOWANCE"?await currentHrAllowanceOrigin(client,actor):null;
+   const digest=createHash("sha256").update(JSON.stringify(origin?
+    ["CG09_HR_ALLOWANCE_V1",v.purpose,v.category,v.expenseDate,v.amountMinor,origin.hr_employee_id,origin.hr_assignment_id,origin.hr_branch_id]:
+    ["CG09_CLAIM_DRAFT_V1",v.purpose,v.category,v.expenseDate,v.amountMinor])).digest("hex");
    const created=await client.query<Claim>(
     "INSERT INTO expense_claim(root_realm_id,requested_by,category_label,purpose,"+
-    " expense_date,amount_minor,create_request_key,create_digest,current_digest) "+
-    " VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9) "+
+    " expense_date,amount_minor,create_request_key,create_digest,current_digest,source_kind,hr_employee_id,hr_assignment_id,hr_branch_id) "+
+    " VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13) "+
     " ON CONFLICT(root_realm_id,requested_by,create_request_key) DO NOTHING "+
     " RETURNING id,status,version,create_digest",
     [actor.realmId,actor.accountId,v.category,v.purpose,v.expenseDate,
-     v.amountMinor,v.key,digest,digest]);
+     v.amountMinor,v.key,digest,digest,v.sourceKind,origin?.hr_employee_id??null,origin?.hr_assignment_id??null,origin?.hr_branch_id??null]);
    let row=created.rows[0],replayed=false;
    if(!row){
     const found=await client.query<Claim>(
@@ -84,6 +100,7 @@ export class FinanceExpenseClaimService{
      "WHERE root_realm_id=$1 AND requested_by=$2 AND create_request_key=$3 FOR SHARE",
      [actor.realmId,actor.accountId,v.key]);
     row=found.rows[0];
+    if(row)await assertOwnClaimOrigin(client,actor,row.id);
     if(!row||row.create_digest!==digest)
      throw new ConflictException({code:"FINANCE_CLAIM_REPLAY_CONFLICT",field:"requestKey"});
     replayed=true;
@@ -103,7 +120,11 @@ export class FinanceExpenseClaimService{
     replayed,nextStep:"VERIFIED_BILL_REQUIRED_BEFORE_SUBMISSION"};
   }catch(e){await client.query("ROLLBACK");throw e;}finally{client.release();}
  }
- async mine(bearer:string,offsetInput?:string){
+ async mine(bearer:string,offsetInput?:string,sourceInput?:string,statusInput?:string,queryInput?:string){
+  if(sourceInput!==undefined&&sourceInput!=="GENERAL"&&sourceInput!=="HR_ALLOWANCE")return invalid("FINANCE_CLAIM_FILTER_INVALID");
+  const source=sourceInput??"GENERAL";
+  const status=statusInput??"ALL",search=queryInput??"";
+  if(!["ALL","DRAFT","SUBMITTED","APPROVED","PAYABLE","PAYMENT_REQUESTED","PAYMENT_VERIFIED_UNPOSTED","PAID_VERIFIED","RETURNED","REJECTED"].includes(status)||typeof search!=="string"||search.length>80||/[\u0000-\u001f\u007f]/.test(search))return invalid("FINANCE_CLAIM_FILTER_INVALID");
   const actor=await this.sessions.requireAction(bearer,"finance.claims.view");
   if(offsetInput!==undefined&&!/^(0|[1-9][0-9]{0,4})$/.test(offsetInput))
    return invalid("FINANCE_CLAIM_FILTER_INVALID","offset");
@@ -112,17 +133,39 @@ export class FinanceExpenseClaimService{
   try{
    await client.query("BEGIN");
    await this.identity.assertCurrent(client,actor,"finance.claims.view");
-   const result=await client.query<{
-    claimRef:string;claimNumber:string;category:string;purpose:string;expenseDate:string;
-    amountMinor:string;status:string;version:number;createdAt:Date}>(
-    "SELECT id AS \"claimRef\",claim_number AS \"claimNumber\",category_label AS category,purpose, "+
+   const origin=source==="HR_ALLOWANCE"?await currentHrAllowanceOrigin(client,actor):null;
+   type ClaimRow={claimRef:string;claimNumber:string;category:string;purpose:string;expenseDate:string;amountMinor:string;status:string;version:number;createdAt:Date;paymentState:string};
+   const scopedSql="SELECT id AS \"claimRef\",claim_number AS \"claimNumber\",category_label AS category,purpose, "+
     "expense_date::text AS \"expenseDate\",amount_minor::text AS \"amountMinor\", "+
-    "status,version,created_at AS \"createdAt\" FROM expense_claim "+
-    "WHERE root_realm_id=$1 AND requested_by=$2 "+
-    "ORDER BY created_at DESC,id DESC LIMIT 31 OFFSET $3",
-    [actor.realmId,actor.accountId,offset]);
+    "status,version,created_at AS \"createdAt\", "+
+    "CASE WHEN status<>'APPROVED' THEN 'NOT_PAYABLE' "+
+    "WHEN EXISTS(SELECT 1 FROM expense_claim_voucher_link l JOIN finance_voucher v ON v.id=l.voucher_id AND v.root_realm_id=l.root_realm_id AND v.status='POSTED' JOIN finance_voucher_payment_verification p ON p.voucher_id=v.id AND p.root_realm_id=v.root_realm_id AND p.status='VERIFIED' WHERE l.root_realm_id=expense_claim.root_realm_id AND l.claim_id=expense_claim.id AND l.link_kind='PAYOUT' AND p.voucher_revision=v.version AND v.expense_claim_id=expense_claim.id AND v.expense_claim_version=expense_claim.version AND NOT EXISTS(SELECT 1 FROM finance_manual_journal_reversal rev WHERE rev.root_realm_id=l.root_realm_id AND rev.original_journal_id=l.ledger_journal_id)) THEN 'PAID_VERIFIED' "+
+    "WHEN EXISTS(SELECT 1 FROM finance_voucher v JOIN finance_voucher_payment_verification p ON p.voucher_id=v.id AND p.root_realm_id=v.root_realm_id AND p.voucher_revision=v.version AND p.status='VERIFIED' WHERE v.root_realm_id=expense_claim.root_realm_id AND v.expense_claim_id=expense_claim.id AND v.expense_claim_version=expense_claim.version AND v.voucher_type='PAYMENT' AND v.status='PAID_VERIFIED') THEN 'PAYMENT_VERIFIED_UNPOSTED' "+
+    "WHEN EXISTS(SELECT 1 FROM finance_voucher v WHERE v.root_realm_id=expense_claim.root_realm_id AND v.expense_claim_id=expense_claim.id AND v.expense_claim_version=expense_claim.version AND v.voucher_type='PAYMENT' AND v.status='PAYMENT_REQUESTED') THEN 'PAYMENT_REQUESTED' "+
+    "WHEN EXISTS(SELECT 1 FROM expense_claim_voucher_link l JOIN finance_voucher v ON v.id=l.voucher_id AND v.root_realm_id=l.root_realm_id AND v.status='POSTED' WHERE l.root_realm_id=expense_claim.root_realm_id AND l.claim_id=expense_claim.id AND l.link_kind='PAYABLE' AND NOT EXISTS(SELECT 1 FROM finance_manual_journal_reversal rev WHERE rev.root_realm_id=l.root_realm_id AND rev.original_journal_id=l.ledger_journal_id)) THEN 'PAYABLE' ELSE 'APPROVED_UNPOSTED' END AS \"paymentState\" FROM expense_claim "+
+    "WHERE root_realm_id=$1 AND requested_by=$2 AND source_kind=$4 "+
+    "AND ($4='GENERAL' OR (hr_employee_id=$5::uuid AND hr_assignment_id=$6::uuid AND hr_branch_id=$7::uuid)) ";
+   const params=[actor.realmId,actor.accountId,offset,source,origin?.hr_employee_id??null,origin?.hr_assignment_id??null,origin?.hr_branch_id??null];
+   if(source==="GENERAL"){
+    const result=await client.query<ClaimRow>(scopedSql+"ORDER BY created_at DESC,id DESC LIMIT 31 OFFSET $3",params);
+    await client.query("COMMIT");
+    return {claims:result.rows.slice(0,30),nextOffset:result.rows.length>30?offset+30:null};
+   }
+   const result=await client.query<{page:ClaimRow[];overview:{requestedMinor:string;pendingMinor:string;paidMinor:string;rejectedMinor:string;total:number}}>(
+    `WITH scoped AS (${scopedSql}), page AS (
+      SELECT * FROM scoped WHERE ($8='ALL' OR (CASE WHEN status='APPROVED' AND "paymentState" IN('PAYABLE','PAID_VERIFIED','PAYMENT_REQUESTED','PAYMENT_VERIFIED_UNPOSTED') THEN "paymentState" ELSE status END)=$8)
+      AND ($9='' OR strpos(lower("claimNumber"||' '||category||' '||purpose),$9)>0)
+      ORDER BY "createdAt" DESC,"claimRef" DESC LIMIT 31 OFFSET $3
+    ) SELECT (SELECT COALESCE(jsonb_agg(to_jsonb(page) ORDER BY "createdAt" DESC,"claimRef" DESC),'[]'::jsonb) FROM page) AS page,
+      (SELECT jsonb_build_object(
+       'requestedMinor',COALESCE(SUM("amountMinor"::numeric) FILTER(WHERE status<>'DRAFT'),0)::text,
+       'pendingMinor',COALESCE(SUM("amountMinor"::numeric) FILTER(WHERE status='SUBMITTED'),0)::text,
+       'paidMinor',COALESCE(SUM("amountMinor"::numeric) FILTER(WHERE status='APPROVED' AND "paymentState"='PAID_VERIFIED'),0)::text,
+       'rejectedMinor',COALESCE(SUM("amountMinor"::numeric) FILTER(WHERE status='REJECTED'),0)::text,
+       'total',COUNT(*)::integer) FROM scoped) AS overview`,[...params,status,search.trim().toLowerCase()]);
+   const row=result.rows[0],page=row?.page??[];
    await client.query("COMMIT");
-   return {claims:result.rows.slice(0,30),nextOffset:result.rows.length>30?offset+30:null};
+   return {claims:page.slice(0,30),nextOffset:page.length>30?offset+30:null,overview:row?.overview??null};
   }catch(e){await client.query("ROLLBACK");throw e;}finally{client.release();}
  }
  /** Lost-response check: same actor and request key, no second draft. */
@@ -137,6 +180,7 @@ export class FinanceExpenseClaimService{
     "SELECT id,status,version FROM expense_claim "+
     "WHERE root_realm_id=$1 AND requested_by=$2 AND create_request_key=$3",
     [actor.realmId,actor.accountId,key]);
+   if(result.rows[0])await assertOwnClaimOrigin(client,actor,result.rows[0].id);
    await client.query("COMMIT");
    return result.rows[0]?{confirmed:true,claimRef:result.rows[0].id,
     status:result.rows[0].status,version:result.rows[0].version}:
@@ -156,13 +200,13 @@ export class FinanceExpenseClaimService{
   if(!value||typeof value!=="object"||Array.isArray(value))
    return invalid("FINANCE_CLAIM_FORM_INVALID");
   const body=value as Record<string,unknown>;
-  if(Object.keys(body).some(k=>!["requestKey","expectedVersion","purpose","category","expenseDate","amount"].includes(k)))
+  if(Object.keys(body).some(k=>!["requestKey","expectedVersion","purpose","category","expenseDate","amount","breakdown"].includes(k)))
    return invalid("FINANCE_CLAIM_FORM_INVALID");
   const key=keyOf(body.requestKey);
   if(!Number.isSafeInteger(body.expectedVersion)||Number(body.expectedVersion)<1)
    return invalid("FINANCE_CLAIM_STALE","expectedVersion");
   const expected=Number(body.expectedVersion);
-  const v={purpose:label(body.purpose,"purpose",3,500),
+  const v={purpose:body.breakdown!==undefined?allowancePurpose(body.purpose,body.breakdown):label(body.purpose,"purpose",3,500),
    category:label(body.category,"category",2,80),
    expenseDate:dateOnly(body.expenseDate),amountMinor:amount(body.amount)};
   const revision=expected+1;
@@ -175,6 +219,7 @@ export class FinanceExpenseClaimService{
   try{
    await tx.query("BEGIN");
    await this.identity.assertCurrent(tx,actor,"finance.claims.create");
+   await assertOwnClaimOrigin(tx,actor,claimRef,true);
    const existing=await tx.query<{request_digest:string;result_status:string}>(
     "SELECT request_digest,result_status FROM expense_claim_command "+
     "WHERE root_realm_id=$1 AND actor_ref=$2 AND request_key=$3 FOR SHARE",
@@ -186,11 +231,12 @@ export class FinanceExpenseClaimService{
     return {confirmed:true,claimRef,status:"DRAFT",
      version:revision,replayed:true};
    }
-   const current=await tx.query<{id:string;version:number;status:string;requested_by:string;
+   const current=await tx.query<{id:string;version:number;status:string;requested_by:string;source_kind:string;
     approval_case_id:string|null}>(
-    "SELECT id,version,status,requested_by,approval_case_id FROM expense_claim "+
+    "SELECT id,version,status,requested_by,source_kind,approval_case_id FROM expense_claim "+
     "WHERE root_realm_id=$1 AND id=$2 FOR UPDATE",[actor.realmId,claimRef]);
    const row=current.rows[0];
+   if(body.breakdown!==undefined&&row?.source_kind!=="HR_ALLOWANCE")return invalid("FINANCE_CLAIM_FORM_INVALID");
    if(!row||row.requested_by!==actor.accountId||row.status!=="RETURNED"||
       row.version!==expected||!row.approval_case_id)
     throw new ConflictException({code:"FINANCE_CLAIM_STALE"});
@@ -257,6 +303,7 @@ export class FinanceExpenseClaimService{
   try{
    await tx.query("BEGIN");
    await this.identity.assertCurrent(tx,actor,"finance.claims.create");
+   await assertOwnClaimOrigin(tx,actor,claimRef,true);
    const existing=await tx.query<{request_digest:string;result_status:string;case_id:string}>(
     "SELECT request_digest,result_status,case_id FROM expense_claim_command "+
     "WHERE root_realm_id=$1 AND actor_ref=$2 AND request_key=$3 FOR SHARE",
@@ -451,7 +498,10 @@ export class FinanceExpenseClaimService{
  async detail(bearer:string,claimInput:string){
   const actor=await this.sessions.requireAction(bearer,"finance.claims.view");
   const claimRef=keyOf(claimInput);
-  const rows=await this.db.query<{
+  const tx=await this.db.connect();
+  try{await tx.query("BEGIN");await this.identity.assertCurrent(tx,actor,"finance.claims.view");
+  await assertOwnClaimOrigin(tx,actor,claimRef);
+  const rows=await tx.query<{
    claimRef:string;claimNumber:string;category:string;purpose:string;expenseDate:string;amountMinor:string;
    status:string;version:number;caseRef:string|null;billFileRef:string|null;
    billVersion:number|null;payableVoucherNumber:string|null;
@@ -470,16 +520,24 @@ export class FinanceExpenseClaimService{
    "WHERE c.root_realm_id=$1 AND c.id=$2 AND c.requested_by=$3",
    [actor.realmId,claimRef,actor.accountId]);
   if(!rows.rows[0])throw new ConflictException({code:"FINANCE_CLAIM_SOURCE_INVALID"});
-  return rows.rows[0];
+  await tx.query("COMMIT");return rows.rows[0];
+  }catch(e){await tx.query("ROLLBACK");throw e;}finally{tx.release();}
  }
  async workflowCommand(bearer:string,requestInput:string){
-  const actor=await this.sessions.requireAction(bearer,"finance.claims.create");
+  const actor=await this.sessions.verifySession(bearer);
   const key=keyOf(requestInput);
-  const rows=await this.db.query<{result_status:string}>(
-   "SELECT result_status FROM expense_claim_command "+
+  const tx=await this.db.connect();
+  try{await tx.query("BEGIN");await this.identity.assertPatientSessionCurrent(tx,actor);
+  const rows=await tx.query<{result_status:string;claim_id:string;action:string}>(
+   "SELECT result_status,claim_id,action FROM expense_claim_command "+
    "WHERE root_realm_id=$1 AND actor_ref=$2 AND request_key=$3",
    [actor.realmId,actor.accountId,key]);
-  return {confirmed:!!rows.rows[0],status:rows.rows[0]?.result_status??null};
+  const result=rows.rows[0];
+  if(result&&["RECONCILE","LINK_PAYABLE","LINK_PAYMENT"].includes(result.action))await this.identity.assertCurrent(tx,actor,"finance.claims.manage");
+  else if(result){await this.identity.assertCurrent(tx,actor,"finance.claims.create");await assertOwnClaimOrigin(tx,actor,result.claim_id);}
+  else{try{await this.identity.assertCurrent(tx,actor,"finance.claims.create");}catch{await this.identity.assertCurrent(tx,actor,"finance.claims.manage");}}
+  await tx.query("COMMIT");return {confirmed:!!rows.rows[0],status:rows.rows[0]?.result_status??null};
+  }catch(e){await tx.query("ROLLBACK");throw e;}finally{tx.release();}
  }
 
 
