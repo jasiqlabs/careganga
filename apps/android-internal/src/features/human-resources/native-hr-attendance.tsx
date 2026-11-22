@@ -6,7 +6,7 @@ import {NativeHrMyLeave,NativeHrLeaveReviews,NativeHrAttendanceCorrections,type 
 
 type Day=CorrectionDay&{checkInAt:string|null;checkOutAt:string|null;workedMinutes:number|null};
 type Mine={status:string;canCheckOut?:boolean;shift?:{label:string;timeZone:string;start:string;end:string}|null;days:Day[]};
-type Branch={branchRef:string;label:string};
+type Branch={branchRef:string;label:string;manageShifts:boolean};
 type Person={reference:string;name:string;designation:string};
 type Rule={policyRef:string;label:string;timeZone:string;start:string;end:string;effectiveFrom:string};
 type Matrix={items:Array<CorrectionPerson&{designation:string}>;hasMore:boolean};
@@ -127,13 +127,13 @@ export function NativeHrAttendance({token,canConfigure,canManageLeave=false,canR
  },[token,failure]);
  useEffect(()=>{void refresh();},[refresh]);
  useEffect(()=>{if(!canConfigure&&!canViewStaff)return;let live=true;
-  void api(token,"employee-branches").then(v=>{
+  void api(token,"attendance/branches").then(v=>{
    if(live&&v&&typeof v==="object"&&"items" in v&&Array.isArray(v.items))
     setBranches(v.items as Branch[]);
   }).catch(e=>{if(live){setBranches([]);failure(e);}});
   return()=>{live=false;};
  },[token,canConfigure,canViewStaff,failure]);
- useEffect(()=>{if(!canConfigure||!branch){setStaff([]);setPolicies([]);return;}
+ useEffect(()=>{if(!canConfigure||!branch||!branches.some(x=>x.branchRef===branch&&x.manageShifts)){setStaff([]);setPolicies([]);return;}
   let live=true;
   void Promise.all([api(token,"employees?branch="+encodeURIComponent(branch)+
    "&offset="+staffOffset),api(token,"shift-policies?branch="+encodeURIComponent(branch))])
@@ -145,7 +145,7 @@ export function NativeHrAttendance({token,canConfigure,canManageLeave=false,canR
       rules.items as Rule[]:[]);
    }).catch(e=>{if(live){setStaff([]);setPolicies([]);failure(e);}});
   return()=>{live=false;};
- },[token,canConfigure,branch,staffOffset,failure]);
+ },[token,canConfigure,branch,staffOffset,branches,failure]);
  useEffect(()=>{if((!canConfigure&&!canViewStaff)||!branch){setMatrix(null);return;}
   let live=true;setMatrix(null);setMatrixBusy(true);
   void api(token,"attendance/matrix?branch="+encodeURIComponent(branch)+
@@ -228,10 +228,10 @@ export function NativeHrAttendance({token,canConfigure,canManageLeave=false,canR
     <Pressable accessibilityRole="button" accessibilityState={{disabled:busy}} disabled={busy}
      onPress={()=>void checkIn()} style={styles.primary}>
      <Text style={styles.primaryText}>{busy?"Checking…":"Check in using server time"}</Text></Pressable>
-    {mine.canCheckOut&&<Pressable accessibilityRole="button" disabled={busy}
+   </>}
+    {mine?.canCheckOut&&<Pressable accessibilityRole="button" disabled={busy}
      onPress={()=>void checkOut()} style={styles.primary}>
      <Text style={styles.primaryText}>Check out using server time</Text></Pressable>}
-   </>}
    <Pressable accessibilityRole="button" onPress={()=>void refresh()} style={styles.outline}>
     <Text style={styles.outlineText}>Refresh attendance</Text></Pressable>
    {mine?.days?.map(d=><View key={d.date} style={styles.listItem}>
@@ -255,7 +255,7 @@ export function NativeHrAttendance({token,canConfigure,canManageLeave=false,canR
     <Text style={branch===x.branchRef?styles.activeText:styles.chipText}>{x.label}</Text>
    </Pressable>)}</View>
    {!!branch&&<>
-    {canConfigure&&<>{field("Shift name",rule.name,v=>change("name",v),"Shift name")}
+    {canConfigure&&branches.some(x=>x.branchRef===branch&&x.manageShifts)&&<>{field("Shift name",rule.name,v=>change("name",v),"Shift name")}
     {field("IANA timezone",rule.timeZone,v=>change("timeZone",v),"e.g. Asia/Kolkata")}
     {field("24-hour start",rule.start,v=>change("start",v),"09:00")}
     {field("24-hour end",rule.end,v=>change("end",v),"17:00")}

@@ -23,7 +23,7 @@ export function parseAttendanceCorrection(body:unknown){
   reason.length<2||reason.length>500||/[\u0000-\u001f\u007f]/.test(reason)||
   (x.employeeReference!==undefined&&(typeof x.employeeReference!=="string"||!EMP.test(x.employeeReference))))
   throw new BadRequestException({code:"CG10_CORRECTION_INVALID"});
- if(x.result!=="WORKED"&&(x.checkInLocal||x.checkOutLocal))
+ if(x.result!=="WORKED"&&[x.checkInLocal,x.checkOutLocal].some(v=>v!==null&&v!==undefined&&v!==""))
   throw new BadRequestException({code:"CG10_CORRECTION_INVALID"});
  return {requestKey:leaveId(x.requestKey),employeeReference:x.employeeReference as string|undefined,date,
   expectedVersion:Number(x.expectedVersion),result:x.result as "WORKED"|"ABSENT"|"WEEKLY_OFF",

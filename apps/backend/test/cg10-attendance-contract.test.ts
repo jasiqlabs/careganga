@@ -1,6 +1,7 @@
 import {describe,test} from "node:test";
 import assert from "node:assert/strict";
 import {ConflictException} from "@nestjs/common";
+import {parseAttendanceCorrection} from "../src/modules/cg-10-human-resources/application/hr-attendance-correction-source.facade";
 import {countedLeaveDates,parseLeaveRequest} from "../src/modules/cg-10-human-resources/application/hr-leave-source.facade";
 import {shiftCheckInAt,verifiedWorkedMinutes,leavePolicyInput} from "../src/modules/cg-10-human-resources/application/hr-attendance.service";
 
@@ -78,4 +79,11 @@ describe("CG-10 original employee leave request",()=>{
   assert.throws(()=>countedLeaveDates("2026-12-31","2027-01-01",[],true));
   assert.throws(()=>countedLeaveDates("2026-11-23","2026-11-21",[],true));
  });
+});
+
+describe("CG-10 original attendance correction contract",()=>{
+ const valid={requestKey:"c350419e-c3b2-4984-8e32-7483aca3a6ab",date:"2026-11-21",expectedVersion:1,result:"WORKED",checkInLocal:"2026-11-21T09:00",checkOutLocal:"2026-11-21T17:00",reason:"Incorrect recorded punch"};
+ test("correction retains original version and local times",()=>{const r=parseAttendanceCorrection(valid);assert.equal(r.expectedVersion,1);assert.equal(r.checkInLocal,valid.checkInLocal);});
+ test("rejects stale-shaped input, impossible times, fabricated scope and hidden fields",()=>{for(const patch of [{expectedVersion:0},{expectedVersion:"1"},{date:"2026-02-30"},{checkInLocal:"2026-11-21T25:00"},{employeeReference:"fake"},{status:"APPROVED"},{checkOutLocal:null}])assert.throws(()=>parseAttendanceCorrection({...valid,...patch}));});
+ test("nonworked requests cannot carry fabricated punches",()=>{const r=parseAttendanceCorrection({...valid,result:"ABSENT",checkInLocal:null,checkOutLocal:null});assert.equal(r.checkInLocal,null);for(const value of [false,0,"2026-11-21T09:00"])assert.throws(()=>parseAttendanceCorrection({...valid,result:"ABSENT",checkInLocal:value,checkOutLocal:null}));});
 });

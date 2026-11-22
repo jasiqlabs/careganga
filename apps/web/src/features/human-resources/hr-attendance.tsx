@@ -3,7 +3,7 @@ import {useCallback,useEffect,useRef,useState} from "react";
 import {HrMyLeave,HrLeaveReviews,HrAttendanceCorrections,type CorrectionDay,type CorrectionPerson} from "./hr-leave";
 type Day=CorrectionDay&{checkInAt:string|null;checkOutAt:string|null;workedMinutes:number|null};
 type Self={status:string;canCheckOut?:boolean;shift?:{label:string;timeZone:string;start:string;end:string;weeklyOffDays:number[]}|null;days:Day[]};
-type Branch={branchRef:string;label:string};
+type Branch={branchRef:string;label:string;manageShifts:boolean};
 type Employee={reference:string;name:string;designation:string};
 type Rule={policyRef:string;label:string;timeZone:string;start:string;end:string;effectiveFrom:string};
 type Matrix={month:string;items:Array<CorrectionPerson&{designation:string}>;hasMore:boolean;offset:number};
@@ -102,13 +102,13 @@ export function HrAttendance({canConfigure=false,canManageLeave=false,canReviewL
  },[]);
  useEffect(()=>{void refresh();},[refresh]);
  useEffect(()=>{if(!canConfigure&&!canViewStaff)return;let live=true;
-  void api("employee-branches").then(v=>{
+  void api("attendance/branches").then(v=>{
    if(live&&v&&typeof v==="object"&&"items" in v&&Array.isArray(v.items))
     setBranches(v.items as Branch[]);
   }).catch(()=>{if(live)setBranches([]);});
   return()=>{live=false;};
  },[canConfigure,canViewStaff]);
- useEffect(()=>{if(!canConfigure||!branch){setEmployees([]);setPolicies([]);return;}
+ useEffect(()=>{if(!canConfigure||!branch||!branches.some(x=>x.branchRef===branch&&x.manageShifts)){setEmployees([]);setPolicies([]);return;}
   let live=true;
   void Promise.all([api("employees?branch="+encodeURIComponent(branch)+"&offset="+staffOffset),
    api("shift-policies?branch="+encodeURIComponent(branch))]).then(([e,p])=>{
@@ -118,7 +118,7 @@ export function HrAttendance({canConfigure=false,canManageLeave=false,canReviewL
   }).catch(x=>{if(live){setEmployees([]);setPolicies([]);
    setError(x instanceof Error?x.message:"Shift options unavailable");}});
   return()=>{live=false;};
- },[canConfigure,branch,staffOffset]);
+ },[canConfigure,branch,staffOffset,branches]);
  useEffect(()=>{if((!canConfigure&&!canViewStaff)||!branch){setMatrix(null);return;}
   let live=true;setMatrix(null);setMatrixBusy(true);
   void api("attendance/matrix?branch="+encodeURIComponent(branch)+
@@ -190,10 +190,10 @@ export function HrAttendance({canConfigure=false,canManageLeave=false,canReviewL
      {" "}({mine.shift.timeZone})</p>
     <button type="button" style={btn} disabled={busy} onClick={()=>void checkIn()}>
      {busy?"Checking…":"Check in using server time"}</button>
-    {mine.canCheckOut&&<button type="button" disabled={busy}
+   </>}
+    {mine?.canCheckOut&&<button type="button" disabled={busy}
      style={{...btn,marginLeft:10}} onClick={()=>void checkOut()}>
      Check out using server time</button>}
-   </>}
    <button type="button" onClick={()=>void refresh()} disabled={busy}
     style={{...btn,background:"#E2E8F0",color:"#0F172A",marginLeft:10}}>Refresh</button>
    {!!mine?.days.length&&<div style={{overflowX:"auto",marginTop:12}}>
@@ -216,7 +216,7 @@ export function HrAttendance({canConfigure=false,canManageLeave=false,canReviewL
      {branches.map(x=><option key={x.branchRef} value={x.branchRef}>{x.label}</option>)}
     </select></label>
    {branch&&<>
-    {canConfigure&&<><div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(190px,1fr))",gap:10}}>
+    {canConfigure&&branches.some(x=>x.branchRef===branch&&x.manageShifts)&&<><div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(190px,1fr))",gap:10}}>
      <label>Shift name<input style={inputStyle} maxLength={100} value={policy.name}
       onChange={e=>change("name",e.target.value)}/></label>
      <label>IANA timezone<input style={inputStyle} value={policy.timeZone}

@@ -301,6 +301,26 @@ export class HrAttendanceService{
    [actor.realmId,employeeId]);
   return q.rows[0]??null;
  }
+ /** Staff attendance read has narrower direct-report scope than shift management. */
+ async attendanceBranches(token:string){
+  const actor=await this.sessions.requireAction(token,"hr.attendance.view"),tx=await this.db.connect();
+  try{
+   await tx.query("BEGIN");await this.identity.assertCurrent(tx,actor,"hr.attendance.view");
+   const q=await tx.query<{id:string;name:string;broad:boolean}>(`SELECT b.id,b.name,(b.manager_account_ref=$2 OR EXISTS(SELECT 1 FROM account_role ar JOIN role r ON r.id=ar.role_id
+ AND r.realm_id=ar.realm_id AND r.active
+ LEFT JOIN role_grant g ON g.role_id=r.id AND g.capability_key='foundation.branches.admin'
+ WHERE ar.account_id=$2 AND ar.realm_id=$1 AND ar.revoked_at IS NULL AND (r.is_protected OR g.capability_key IS NOT NULL))) AS broad
+    FROM branch b WHERE b.root_realm_id=$1 AND b.status='ACTIVE' AND ((b.manager_account_ref=$2 OR EXISTS(SELECT 1 FROM account_role ar JOIN role r ON r.id=ar.role_id
+ AND r.realm_id=ar.realm_id AND r.active
+ LEFT JOIN role_grant g ON g.role_id=r.id AND g.capability_key='foundation.branches.admin'
+ WHERE ar.account_id=$2 AND ar.realm_id=$1 AND ar.revoked_at IS NULL AND (r.is_protected OR g.capability_key IS NOT NULL))) OR EXISTS(SELECT 1 FROM hr_employment_assignment a JOIN hr_employee e ON e.id=a.employee_id AND e.root_realm_id=a.root_realm_id
+ JOIN hr_employee m ON m.id=a.manager_employee_ref AND m.root_realm_id=a.root_realm_id
+ WHERE a.root_realm_id=$1 AND a.branch_ref=b.id AND a.valid_from<=CURRENT_DATE AND (a.valid_to IS NULL OR a.valid_to>CURRENT_DATE)
+ AND e.status IN('ACTIVE','PROBATION','ON_HOLD','PENDING_ACCESS') AND m.account_ref=$2 AND m.status IN('ACTIVE','PROBATION')))
+    ORDER BY b.name,b.id LIMIT 100`,[actor.realmId,actor.accountId]);
+   await tx.query("COMMIT");return {items:q.rows.map(x=>({branchRef:x.id,label:x.name,manageShifts:x.broad}))};
+  }catch(e){await tx.query("ROLLBACK");throw e;}finally{tx.release();}
+ }
  async matrix(token:string,branchInput:string,monthInput:string,offsetInput:unknown){
   const actor=await this.sessions.requireAction(token,"hr.attendance.view");
   const branch=id(branchInput,"branch");
@@ -313,7 +333,17 @@ export class HrAttendanceService{
   try{
    await tx.query("BEGIN");
    await this.identity.assertCurrent(tx,actor,"hr.attendance.view");
-   await this.allowedBranch(tx,actor,branch);
+   const scope=await tx.query<{broad:boolean}>(`SELECT (b.manager_account_ref=$2 OR EXISTS(SELECT 1 FROM account_role ar JOIN role r ON r.id=ar.role_id
+ AND r.realm_id=ar.realm_id AND r.active
+ LEFT JOIN role_grant g ON g.role_id=r.id AND g.capability_key='foundation.branches.admin'
+ WHERE ar.account_id=$2 AND ar.realm_id=$1 AND ar.revoked_at IS NULL AND (r.is_protected OR g.capability_key IS NOT NULL))) AS broad FROM branch b WHERE b.root_realm_id=$1 AND b.id=$3 AND b.status='ACTIVE' AND ((b.manager_account_ref=$2 OR EXISTS(SELECT 1 FROM account_role ar JOIN role r ON r.id=ar.role_id
+ AND r.realm_id=ar.realm_id AND r.active
+ LEFT JOIN role_grant g ON g.role_id=r.id AND g.capability_key='foundation.branches.admin'
+ WHERE ar.account_id=$2 AND ar.realm_id=$1 AND ar.revoked_at IS NULL AND (r.is_protected OR g.capability_key IS NOT NULL))) OR EXISTS(SELECT 1 FROM hr_employment_assignment a JOIN hr_employee e ON e.id=a.employee_id AND e.root_realm_id=a.root_realm_id
+ JOIN hr_employee m ON m.id=a.manager_employee_ref AND m.root_realm_id=a.root_realm_id
+ WHERE a.root_realm_id=$1 AND a.branch_ref=b.id AND a.valid_from<=CURRENT_DATE AND (a.valid_to IS NULL OR a.valid_to>CURRENT_DATE)
+ AND e.status IN('ACTIVE','PROBATION','ON_HOLD','PENDING_ACCESS') AND m.account_ref=$2 AND m.status IN('ACTIVE','PROBATION'))) FOR SHARE OF b`,[actor.realmId,actor.accountId,branch]);
+   if(!scope.rows[0])throw new ForbiddenException("This branch is not available for your attendance view");
    const rows=await tx.query<{employee_code:string;legal_name:string;designation:string;
     days:Array<{date:string;status:string;version:number;timeZone:string;checkInLocal:string|null;checkOutLocal:string|null}>}>(`SELECT e.employee_code,
     app.legal_name,a.designation,
@@ -335,10 +365,11 @@ export class HrAttendanceService{
         AND da.root_realm_id=d.root_realm_id AND da.branch_ref=$2)
     LEFT JOIN hr_shift_policy dp ON dp.id=d.policy_id AND dp.root_realm_id=d.root_realm_id
     WHERE e.root_realm_id=$1 AND a.branch_ref=$2
+      AND ($5::boolean OR EXISTS(SELECT 1 FROM hr_employee m WHERE m.id=a.manager_employee_ref AND m.root_realm_id=a.root_realm_id AND m.account_ref=$6 AND m.status IN('ACTIVE','PROBATION')))
       AND e.status IN('ACTIVE','PROBATION','ON_HOLD','PENDING_ACCESS')
     GROUP BY e.id,e.employee_code,app.legal_name,a.designation
     ORDER BY app.legal_name,e.id LIMIT 26 OFFSET $4`,
-    [actor.realmId,branch,monthInput+"-01",offset]);
+    [actor.realmId,branch,monthInput+"-01",offset,scope.rows[0].broad,actor.accountId]);
    await tx.query("COMMIT");
    return {month:monthInput,items:rows.rows.slice(0,25).map(x=>({
     employeeReference:x.employee_code,employeeName:x.legal_name,designation:x.designation,days:x.days})),
@@ -361,14 +392,13 @@ export class HrAttendanceService{
     FROM hr_attendance_day d JOIN hr_shift_policy p ON p.id=d.policy_id AND p.root_realm_id=d.root_realm_id
     WHERE d.root_realm_id=$1 AND d.employee_id=$2
     ORDER BY d.local_date DESC LIMIT 35`,[actor.realmId,employee.id]);
+   const open=await tx.query<{available:boolean}>(`SELECT EXISTS(SELECT 1 FROM hr_attendance_day WHERE root_realm_id=$1 AND employee_id=$2 AND checked_out_at IS NULL AND checked_in_at BETWEEN now()-interval '36 hours' AND now()) AS available`,[actor.realmId,employee.id]);
    await tx.query("COMMIT");
    return {status:rule?"ASSIGNED":"NO_CURRENT_SHIFT",
     shift:rule?{label:rule.name,timeZone:rule.time_zone,
       start:rule.work_start_local.slice(0,5),end:rule.work_end_local.slice(0,5),
       weeklyOffDays:rule.weekly_off_days}:null,
-    canCheckOut:rows.rows.some(x=>x.checked_in_at!==null&&!x.checked_out_at&&
-      Date.now()-new Date(x.checked_in_at).getTime()<=36*3600000 &&
-      Date.now()>=new Date(x.checked_in_at).getTime()),
+    canCheckOut:open.rows[0]?.available===true,
     days:rows.rows.map(x=>({date:sqlDate(x.local_date),status:x.status,
       checkInAt:x.checked_in_at?new Date(x.checked_in_at).toISOString():null,
       leaveDays:(x.leave_half_days??0)/2,version:x.version,timeZone:x.time_zone,

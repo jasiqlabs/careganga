@@ -22,6 +22,8 @@ export class HrAttendanceController{
  assign(@Headers("authorization")token:string,@Body()body:unknown){
   return this.attendance.assign(token,body);
  }
+ @Get("attendance/branches")
+ branches(@Headers("authorization")token:string){return this.attendance.attendanceBranches(token);}
  @Get("attendance/matrix")
  matrix(@Headers("authorization")token:string,@Query("branch")branch:string,
   @Query("month")month:string,@Query("offset")offset?:string){
