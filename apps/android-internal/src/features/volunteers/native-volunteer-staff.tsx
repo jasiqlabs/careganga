@@ -5,6 +5,7 @@ import * as Crypto from "expo-crypto";
 import * as Sharing from "expo-sharing";
 import type {CG04VolunteerReviewCase,CG04VolunteerReviewPage,CG04VolunteerReviewPolicy,CG04VolunteerRosterPage,CG04VolunteerRosterExport} from "@careganga/api-contracts";
 import {identityRequest} from "../identity-access/http-client";
+import {NativeVolunteerCardIssuer} from "./native-volunteer-card-issuer";
 import {careGangaTheme as t} from "../../../../../packages/design-tokens/src/index";
 type Decision="APPROVE"|"RETURN"|"REJECT";
 type Pending={ref:string;body:{requestKey:string;expectedRevision:number;action:Decision;remarks:string};digest:string};
@@ -18,8 +19,8 @@ async function request<T>(token:string,path:string,body?:Record<string,unknown>)
   r.status===401?"Sign in again.":r.status===403?"Your current volunteer permission is unavailable.":"Cannot verify this current volunteer record."),{status:r.status});
  return v as T;
 }
-export function NativeVolunteerStaff({token,canReview,canRoster,canExport,canConfigure,onExpired}:{
- token:string;canReview:boolean;canRoster:boolean;canExport:boolean;canConfigure:boolean;onExpired:()=>void
+export function NativeVolunteerStaff({token,canReview,canRoster,canExport,canConfigure,canIssueCards,onExpired}:{
+ token:string;canReview:boolean;canRoster:boolean;canExport:boolean;canConfigure:boolean;canIssueCards:boolean;onExpired:()=>void
 }){
  const [tab,setTab]=useState<"REVIEW"|"ROSTER">(canReview?"REVIEW":"ROSTER");
  const [policy,setPolicy]=useState<CG04VolunteerReviewPolicy|null>(null),[reviews,setReviews]=useState<CG04VolunteerReviewPage|null>(null);
@@ -180,6 +181,7 @@ export function NativeVolunteerStaff({token,canReview,canRoster,canExport,canCon
     <Text>{row.department}{row.branch?" · "+row.branch:""} · {label(row.status)}</Text>
     <Text>{label(row.availability)} · {row.city}, {row.district} · Joined {row.joinedOn}</Text>
     <Text>{row.mobile}{row.email?" · "+row.email:""}</Text><Text>Skills: {row.skills.join(", ")||"None recorded"}</Text>
+    {canIssueCards&&<NativeVolunteerCardIssuer key={row.ref} token={token} volunteerRef={row.ref} onExpired={onExpired}/> }
    </View>)}
    <View style={s.row}>{offset>0&&choice("Previous volunteers",()=>setOffset(x=>Math.max(0,x-25)))}
     {roster.hasMore&&choice("More volunteers",()=>setOffset(x=>x+25))}</View>
