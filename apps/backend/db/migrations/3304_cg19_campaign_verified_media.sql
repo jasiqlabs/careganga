@@ -46,7 +46,7 @@ BEGIN
   IF rec.kind='OWNER' THEN
    extra:='owner_kind=''CG07_CAMPAIGN''';
   ELSIF rec.kind='CLASS' THEN
-   extra:='owner_kind=''CG07_CAMPAIGN'' AND ((classification IN(''CAMPAIGN_COVER'',''CAMPAIGN_BANNER'') AND mime IN(''image/jpeg'',''image/png'',''image/webp'')) OR (classification=''CAMPAIGN_DOCUMENT'' AND mime IN(''image/jpeg'',''image/png'',''image/webp'',''application/pdf'')))';
+   extra:='owner_kind=''CG07_CAMPAIGN'' AND ((classification=''CAMPAIGN_COVER'' AND mime IN(''image/jpeg'',''image/png'')) OR (classification=''CAMPAIGN_BANNER'' AND mime IN(''image/jpeg'',''image/png'',''image/webp'')) OR (classification=''CAMPAIGN_DOCUMENT'' AND mime IN(''image/jpeg'',''image/png'',''image/webp'',''application/pdf'')))';
   ELSE
    extra:='owner_kind=''CG07_CAMPAIGN'' AND campaign_id IS NOT NULL
      AND num_nonnulls(case_id,registration_id,registration_draft_version,
