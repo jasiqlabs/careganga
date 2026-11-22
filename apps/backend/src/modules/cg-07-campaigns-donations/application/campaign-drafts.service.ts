@@ -156,6 +156,13 @@ export class CampaignDraftsService{
    return this.record(tx,a,next,value,digest,"SAVE_DRAFT",existing.source_status==="RETURNED"?"RETURNED":"DRAFT");
   });
  }
+ /** Historic review list is returned only after a fresh CG01+CG02 current
+  * campaign scope check. CG03 must not expose foreign campaign references. */
+ async readForReviewHistory(tx:PoolClient,actor:Actor,campaignId:string):Promise<boolean>{
+  await this.identity.assertCurrent(tx,actor,"campaigns.view");
+  await this.current(tx,actor,campaignId);
+  return true;
+ }
  /** Original CG07 mutable source authority consumed by the protected CG03 review owner,
   * using the SAME caller transaction. CG03 owns the approval case and decision. */
  async freezeForReview(tx:PoolClient,a:Actor,campaignId:string,expectedVersion:number,requestKey:string){
