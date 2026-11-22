@@ -417,11 +417,24 @@ export class HrEmploymentChangeSourceFacade{
   await this.audit(tx,realm,reviewer,target.id,"EMPLOYMENT_CHANGE_APPLIED");
   return {applied:true,replayed:false};
  }
+ async ownDetail(tx:PoolClient,actor:VerifiedFoundationActor,ref:string){
+  await this.identity.assertPatientSessionCurrent(tx,actor);
+  if(!REF.test(ref))throw new BadRequestException({code:"CG10_CHANGE_INVALID"});
+  const row=(await tx.query<ChangeRow>(originalSql+" WHERE h.root_realm_id=$1 AND h.reference=$2 AND e.account_ref=$3 AND e.status IN('ACTIVE','PROBATION') AND (h.status<>'DRAFT' OR h.created_by=$3)",[actor.realmId,ref,actor.accountId])).rows[0];
+  if(!row)throw new NotFoundException("Employment request unavailable");
+  const own=row.created_by===actor.accountId&&row.kind==="RESIGNATION";
+  const reason=own?(await this.privateDetail(tx,actor.realmId,row,actor.accountId)).reason:undefined;
+  return {reference:row.reference,kind:row.kind,effectiveDate:row.effective_date,lastWorkingDate:row.last_working_date,status:row.status,
+   revision:row.revision,caseReference:row.case_number,caseStatus:row.case_status,reason,current:{branch:row.prior_branch_name,designation:row.prior_designation},
+   proposed:exitKind(row.kind)?null:{branch:row.proposed_branch_name,designation:row.proposed_designation},
+   clearance:await this.clearanceSummary(tx,actor.realmId,row),canEdit:own&&row.status==="DRAFT",canWithdraw:own&&row.status==="SUBMITTED"};
+ }
  async myHistory(tx:PoolClient,actor:VerifiedFoundationActor){
   await this.identity.assertPatientSessionCurrent(tx,actor);
   const q=await tx.query<ChangeRow>(originalSql+" WHERE h.root_realm_id=$1 AND e.account_ref=$2 AND e.status IN('ACTIVE','PROBATION') ORDER BY h.created_at DESC,h.id DESC LIMIT 50",
    [actor.realmId,actor.accountId]);
-  return {items:q.rows.filter(row=>row.status!=="DRAFT"||row.created_by===actor.accountId)
+  const linked=(await tx.query("SELECT 1 FROM hr_employee e JOIN hr_employment_assignment a ON a.root_realm_id=e.root_realm_id AND a.employee_id=e.id WHERE e.root_realm_id=$1 AND e.account_ref=$2 AND e.status IN('ACTIVE','PROBATION') AND a.valid_from<=CURRENT_DATE AND a.valid_to IS NULL",[actor.realmId,actor.accountId])).rowCount!==0;
+  return {linked,items:q.rows.filter(row=>row.status!=="DRAFT"||row.created_by===actor.accountId)
    .map(row=>({reference:row.reference,kind:row.kind,effectiveDate:row.effective_date,lastWorkingDate:row.last_working_date,status:row.status,
      revision:row.revision,caseReference:row.case_number,caseStatus:row.case_status,current:{branch:row.prior_branch_name,designation:row.prior_designation},
      proposed:exitKind(row.kind)?null:{branch:row.proposed_branch_name,designation:row.proposed_designation},canEdit:row.created_by===actor.accountId&&row.status==="DRAFT",
