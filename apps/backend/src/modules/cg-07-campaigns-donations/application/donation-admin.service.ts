@@ -1,4 +1,5 @@
-import {BadRequestException,Inject,Injectable} from "@nestjs/common";
+import {BadRequestException,Inject,Injectable,NotFoundException} from "@nestjs/common";
+import {readPrivateDonor} from "./donation-receipt-source.facade";
 import type {Pool} from "pg";
 import {DATABASE} from "../../../core/infrastructure/database.module";
 import {SessionService} from "../../cg-01-identity-access/application/session.service";
@@ -149,6 +150,30 @@ export class DonationAdminService{
     r.receipt_number??""].map(csvCell).join(","));
   }
   return Buffer.from(lines.join("\r\n")+"\r\n","utf8");
+ }
+ async donorDetail(bearer:string,raw:unknown){
+  const actor=await this.sessions.requireAction(bearer,"finance.reports.view");
+  await this.sessions.requireAction(bearer,"documents.files.view");
+  if(!raw||typeof raw!=="object"||Array.isArray(raw)||
+    Object.keys(raw).some(k=>k!=="donationNumber"))
+   throw new BadRequestException("Select a donation from your current report.");
+  const number=(raw as Record<string,unknown>).donationNumber;
+  if(typeof number!=="string"||!/^CG-DON-[0-9]{8}$/.test(number))
+   throw new BadRequestException("Select a valid original donation number.");
+  const scope=await this.branches.financeReportScope(bearer,"finance.reports.view");
+  const row=(await this.db.query<{donation_number:string;donor_private_ciphertext:string}>(
+    "SELECT d.donation_number,d.donor_private_ciphertext FROM donation d "+
+    "WHERE d.root_realm_id=$1 AND d.donation_number=$2 "+
+    "AND ($3::boolean OR d.branch_ref=ANY($4::uuid[])) LIMIT 1",
+    [actor.realmId,number,scope.all,scope.branchRefs])).rows[0];
+  if(!row)throw new NotFoundException("Donation unavailable to your Foundation branch.");
+  const donor=readPrivateDonor(row.donor_private_ciphertext);
+  const mobile=donor.mobile?"*".repeat(Math.max(0,donor.mobile.length-4))+donor.mobile.slice(-4):"";
+  const email=donor.email.includes("@")?donor.email.slice(0,1)+"***"+
+   donor.email.slice(donor.email.indexOf("@")):"";
+  const pan=donor.pan?donor.pan.slice(0,2)+"*******"+donor.pan.slice(-1):"";
+  return {donationNumber:row.donation_number,name:donor.name||"Anonymous",
+   mobileMasked:mobile,emailMasked:email,panMasked:pan,location:donor.geography||"Not provided"};
  }
 
 }
