@@ -71,6 +71,12 @@ export function NativePublicDonation({campaignSlug=null}:{campaignSlug?:string|n
   const result=await request<{items:HistoryRow[]}>("/history",{statusTokens:proofs});
   setHistoryTokens(proofs);setHistory(result.items);
  });
+ useEffect(()=>{
+  const sub=AppState.addEventListener("change",state=>{
+   if(state==="active"&&token&&!busy)void refresh();
+  });
+  return()=>sub.remove();
+ },[token,busy]);
  const download=(proofToken=token)=>call(async()=>{
   if(!proofToken||!base)throw Error("Private receipt proof unavailable.");
   const r=await fetch(new URL("/api/public/donations/receipt/download",base),{
