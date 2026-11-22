@@ -1,4 +1,4 @@
-import {ForbiddenException,Injectable} from "@nestjs/common";
+import {Injectable} from "@nestjs/common";
 import type {PoolClient} from "pg";
 import type {VerifiedFoundationActor} from "../../cg-01-identity-access/public-api";
 import {InventoryMaterialApprovalService} from "../../cg-03-registration-approvals/application/inventory-material-approval.service";
