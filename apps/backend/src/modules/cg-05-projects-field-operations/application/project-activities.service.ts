@@ -162,7 +162,7 @@ export class ProjectActivitiesService{
     AND ($8='ALL' OR x.kind=$8) AND ($9='' OR lower(x.activity_type)=lower($9)) AND ($10='' OR lower(x.category)=lower($10)) AND ($11='ALL' OR x.status=$11)
     AND ($12::uuid IS NULL OR x.state_ref=$12) AND ($13::uuid IS NULL OR x.district_ref=$13) AND ($14::uuid IS NULL OR (${effectiveBranch})=$14)
     AND ($15='' OR strpos(lower(a.display_name),$15)>0) AND ($16='' OR strpos(lower(x.venue_label),$16)>0)
-    AND ($17::date IS NULL OR (x.scheduled_start AT TIME ZONE 'Asia/Kolkata')::date>=$17) AND ($18::date IS NULL OR (x.scheduled_start AT TIME ZONE 'Asia/Kolkata')::date<=$18)`;
+    AND ($17::date IS NULL OR x.scheduled_start>=($17::date::timestamp AT TIME ZONE 'Asia/Kolkata')) AND ($18::date IS NULL OR x.scheduled_start<(($18::date+1)::timestamp AT TIME ZONE 'Asia/Kolkata'))`;
    const where=" WHERE "+scope+filters,upcoming="x.status='SCHEDULED' AND x.scheduled_start>=now()";
    const tabFilter=tab==="UPCOMING"?" AND "+upcoming:tab==="MY"?" AND x.owner_account_ref=$4 AND "+ownerCurrent:["COMPLETED","ONGOING","CANCELLED"].includes(tab)?" AND x.status='"+tab+"'":"";
    const page=await tx.query("SELECT "+select+joins+where+tabFilter+" ORDER BY x.scheduled_start ASC,x.id LIMIT $19 OFFSET $20",[...vals,exporting?501:26,offset]);
