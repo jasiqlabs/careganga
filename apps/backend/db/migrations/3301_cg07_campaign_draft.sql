@@ -82,3 +82,23 @@ BEGIN
 END; $cg07$;
 CREATE TRIGGER cg07_campaign_event_immutable BEFORE UPDATE OR DELETE ON campaign_status_event
  FOR EACH ROW EXECUTE FUNCTION cg07_campaign_event_immutable();
+
+-- A partially deployed draft source must NEVER be directly promoted to a public
+-- approved/published campaign before CG03/CG18 adapters are introduced and reviewed.
+CREATE FUNCTION cg07_campaign_draft_only() RETURNS trigger LANGUAGE plpgsql AS $cg07$
+BEGIN
+ IF NEW.source_status<>'DRAFT' THEN
+  RAISE EXCEPTION 'Campaign approval and publication are not configured';
+ END IF;
+ RETURN NEW;
+END; $cg07$;
+CREATE TRIGGER cg07_campaign_draft_only BEFORE INSERT OR UPDATE ON campaign
+ FOR EACH ROW EXECUTE FUNCTION cg07_campaign_draft_only();
+
+-- Exactly one current immutable revision is required at transaction commit.
+-- The writer inserts/updates the campaign then creates the matching revision
+-- within the same transaction, with no separate shadow approval/public state.
+ALTER TABLE campaign ADD CONSTRAINT fk_cg07_current_campaign_revision
+ FOREIGN KEY(root_realm_id,id,current_revision)
+ REFERENCES campaign_revision(root_realm_id,campaign_id,revision_no)
+ DEFERRABLE INITIALLY DEFERRED;
