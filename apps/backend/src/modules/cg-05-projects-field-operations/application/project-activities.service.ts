@@ -71,6 +71,24 @@ export class ProjectActivitiesService{
   const canProgress=!closed(x.status)&&currentScope&&(canManage||owner&&await this.has(tx,a,"projects.activities.progress"));
   return {x,p,branch,canManage,canProgress,scopeChanged:branch!==x.branch_ref};
  }
+ /** CG19 reads/writes are authorized against the original current activity, not caller-supplied branch or file identity. */
+ async guardEvidence(tx:PoolClient,a:Actor,key:string,expected:number|null,write:boolean){
+  await this.identity.assertCurrent(tx,a,"projects.activities.view");
+  const {x,p,branch,scopeChanged}=await this.get(tx,a,key,write);
+  if(scopeChanged||expected!==null&&x.version!==expected)throw stale();
+  if(write){
+   if(x.status==="CANCELLED")throw stale();
+   const scope=await this.branches.projectBranchScope(tx,a);
+   const scoped=branch?scope.branches.some(b=>b.value===branch):scope.all;
+   const manager=scoped&&await this.has(tx,a,"projects.activities.manage");
+   let owner=false;
+   if(x.owner_account_ref===a.accountId&&await this.has(tx,a,"projects.activities.progress")){
+    await this.validOwner(tx,a,a.accountId,branch,p);owner=true;
+   }
+   if(!manager&&!owner)throw new ForbiddenException("Current activity evidence permission required");
+  }
+  return {id:x.id,version:x.version};
+ }
  private async replay(tx:PoolClient,a:Actor,key:string,digest:string,action:string,target?:string){
   await tx.query("SELECT pg_advisory_xact_lock(hashtextextended($1,0))",[a.realmId+":CG05:ACTIVITY:"+key]);
   const e=(await tx.query<{activity_id:string;actor_ref:string;payload_digest:string;action:string;result_version:number}>("SELECT activity_id,actor_ref,payload_digest,action,result_version FROM project_activity_event WHERE root_realm_id=$1 AND event_key=$2",[a.realmId,key])).rows[0];
