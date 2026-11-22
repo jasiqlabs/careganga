@@ -167,8 +167,8 @@ export class DonationIntentsService{
   const records=await this.db.query<{
     donationNumber:string;amountMinor:string;currency:string;status:string;
     refundedMinor:string;receiptStatus:string;receiptNumber:string|null;
-    createdAt:Date}>(`
-   SELECT d.donation_number AS "donationNumber",d.amount_minor::text AS "amountMinor",
+    createdAt:Date;tokenDigest:string}>(`
+   SELECT d.status_token_digest::text AS "tokenDigest",d.donation_number AS "donationNumber",d.amount_minor::text AS "amountMinor",
     d.currency,d.source_status AS status,d.created_at AS "createdAt",
     coalesce((SELECT sum(r.amount_minor) FROM donation_refund_request r
      JOIN journal j ON j.root_realm_id=r.root_realm_id AND j.id=r.reversal_journal_ref
@@ -185,7 +185,7 @@ export class DonationIntentsService{
   const rows=records.rows.map(x=>{
    const received=x.status==="RECEIVED_POSTED";
    const remaining=received?BigInt(x.amountMinor)-BigInt(x.refundedMinor):0n;
-   return {donationNumber:x.donationNumber,createdAt:x.createdAt.toISOString(),
+   return {donationNumber:x.donationNumber,proofIndex:hashes.indexOf(x.tokenDigest),createdAt:x.createdAt.toISOString(),
     grossMinor:received?x.amountMinor:"0",refundedMinor:x.refundedMinor,
     netReceivedMinor:remaining.toString(),currency:x.currency,
     status:received?(remaining===0n?"REFUNDED_FULL":BigInt(x.refundedMinor)>0n?
