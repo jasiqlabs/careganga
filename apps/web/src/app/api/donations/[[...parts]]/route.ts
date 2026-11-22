@@ -9,6 +9,7 @@ async function proxy(req:NextRequest,ctx:Context,method:"GET"|"POST"){
  const parts=(await ctx.params).parts??[];
  const route=parts.join("/");
  const path=parts.length===0&&method==="GET"?"/api/v1/donations":
+  route==="export"&&method==="GET"?"/api/v1/donations/export":
   ["manual/queue","refunds/queue"].includes(route)&&method==="GET"?"/api/v1/donations/"+route:
   ["manual/options","manual/prepare","online/options","online/post","refunds/request"].includes(route)&&method==="POST"?
     "/api/v1/donations/"+route:
@@ -33,11 +34,22 @@ async function proxy(req:NextRequest,ctx:Context,method:"GET"|"POST"){
  }
  try{
   const url=new URL(path,process.env.BACKEND_URL);
-  if(method==="GET"&&parts.length===0)
-   for(const key of ["status","q","offset"])
+  if(method==="GET"&&(parts.length===0||route==="export"))
+   for(const key of ["status","q","offset","method","minAmount","maxAmount","dateFrom","dateTo","campaign"])
     if(req.nextUrl.searchParams.has(key))url.searchParams.set(key,req.nextUrl.searchParams.get(key)!);
   const r=await fetch(url,{method,body,cache:"no-store",signal:AbortSignal.timeout(16000),
    headers:{Authorization:"Bearer "+token,...(body?{"Content-Type":"application/json"}:{})}});
+  if(route==="export"){
+   if(!r.ok)return respond({message:r.status===403?
+    "Current Foundation permissions do not permit this export.":
+    "Donation export could not be verified."},r.status===403?403:503);
+   const bytes=await r.arrayBuffer();
+   if(bytes.byteLength>2000000)return respond({message:"Narrow the donation report dates."},413);
+   return new NextResponse(bytes,{status:200,headers:{
+    "Content-Type":"text/csv; charset=utf-8",
+    "Content-Disposition":'attachment; filename="CareGanga-Donations.csv"',
+    "Cache-Control":"private, no-store","X-Content-Type-Options":"nosniff"}});
+  }
   const value:unknown=await r.json().catch(()=>null);
   if(r.ok&&value!==null)return respond(value,r.status);
   const code=[400,401,403,404,409,429].includes(r.status)?r.status:503;
