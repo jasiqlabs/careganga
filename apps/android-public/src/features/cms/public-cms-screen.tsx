@@ -3,6 +3,7 @@ import {ActivityIndicator,AppState,BackHandler,Image,Pressable,
  StyleSheet,Text,TextInput,View} from "react-native";
 import {careGangaTheme as t} from "../../../../../packages/design-tokens/src/index";
 import {CmsPublicExtendedSection} from "./cms-extended-native-screen";
+import {NativeMembershipPlans} from "../membership/native-membership-plans";
 type Fields=Record<string,unknown>;
 type Section={kind:string;order:number;fields:Fields};
 type Asset={role:string;altText:string;src:string;order:number};
@@ -163,6 +164,7 @@ export function PublicCmsContent({onContact,onPartnerApplication,onLoginVisibili
  const load=useCallback(async(target:string)=>{
   const request=++latestPageRequest.current;
   setLoading(true);setActiveSlide(0);
+  if(target==="membership"){setResult({state:"UNAVAILABLE",page:null});setLoading(false);return;}
   if(target==="articles"){
    const feed=await publishedArticles();
    if(request!==latestPageRequest.current)return;
@@ -200,7 +202,7 @@ export function PublicCmsContent({onContact,onPartnerApplication,onLoginVisibili
    if(slug!=="home"){
     // Article detail returns to News. A published legal policy must
     // return to Home; it is not part of the article reader.
-    setSlug(!["about","our-impact","80g","gallery","contact","healthcare","articles","notices","our-work","upcoming-projects"].includes(slug)&&
+    setSlug(!["about","our-impact","80g","gallery","contact","healthcare","articles","notices","our-work","upcoming-projects","membership"].includes(slug)&&
      !isPolicySlug(slug)?articleBackTarget:"home");return true;
    }return false;
   });
@@ -276,6 +278,7 @@ export function PublicCmsContent({onContact,onPartnerApplication,onLoginVisibili
    {publishedPaths.some(p=>p.startsWith("/blog/"))&&
     <CmsButton title="News" secondary={slug!=="articles"}
      onPress={()=>setSlug("articles")}/>}
+   <CmsButton title="Membership Plans" secondary={slug!=="membership"} onPress={()=>setSlug("membership")}/>
    <CmsButton title="Partnerships" secondary onPress={onPartnerApplication}/>
    <CmsButton title="Contact" onPress={()=>navigate("/contact")}
     secondary={slug!=="contact"}/>
@@ -287,7 +290,7 @@ export function PublicCmsContent({onContact,onPartnerApplication,onLoginVisibili
      <CmsButton key={name} title={title} secondary={slug!==name}
       onPress={()=>setSlug(name)}/>)}
   </View>
-  {loading?<ActivityIndicator accessibilityLabel="Checking current published website content"/>:
+  {slug==="membership"?<NativeMembershipPlans/>:loading?<ActivityIndicator accessibilityLabel="Checking current published website content"/>:
    slug==="articles"?<View style={styles.card}>
     <Text accessibilityRole="header" style={styles.heading}>Approved News &amp; Articles</Text>
     {!articleFeed.available?<Text accessibilityRole="alert" style={styles.muted}>
