@@ -186,7 +186,7 @@ test("US001-QA06/14/18: direct A12-A15 client image review maps to responsive We
  assert.match(api,/count\(\*\) FILTER \(WHERE source_status='DRAFT'\)/);
  assert.match(api,/count\(\*\) FILTER \(WHERE source_status='APPROVED'\)/);
  assert.match(api,/\$5='ALL' OR c.source_status=\$5/);
- assert.match(proxy,/\["q","offset","status"\]/);
+ assert.match(proxy,/\["q","offset","status","stateRef","districtRef","leaderRef","branchRef","featured","createdFrom","createdTo"\]/);
  assert.doesNotMatch(web,/Raised so far:\s*₹0/);
 });
 
@@ -337,4 +337,25 @@ test("US001-QA03/05/07/12/19: original CG07 cancel, pause, complete, resume are 
   assert.match(client,/Retry/);
  }
  assert.doesNotMatch(service,/INSERT INTO donation|INSERT INTO finance_journal/);
+});
+
+test("US001-QA05/06/14: A12 original filters are backed by current owner records, not decorative options",()=>{
+ const backend=root("apps/backend/src/modules/cg-07-campaigns-donations/application/campaign-drafts.service.ts");
+ const web=root("apps/web/src/features/campaigns/campaign-drafts-workspace.tsx");
+ const bff=root("apps/web/src/app/api/campaigns/[[...parts]]/route.ts");
+ for(const key of ["stateRef","districtRef","leaderRef","branchRef","featured","createdFrom","createdTo"]){
+  assert.ok(web.includes(key)&&backend.includes(key)&&bff.includes(key),"Original real filter missing: "+key);
+ }
+ assert.match(backend,/r.step2_project_and_geo->>'stateRef'/);
+ assert.match(backend,/r.step2_project_and_geo->>'districtRef'/);
+ assert.match(backend,/r.step3_team->>'coordinatorRef'/);
+ assert.match(backend,/cms_page_effective/);
+ assert.match(backend,/cms_publication/);
+ assert.match(backend,/sec.section_kind='CAMPAIGN_TEASER'/);
+ assert.match(backend,/c.created_at AT TIME ZONE 'Asia\/Kolkata'/);
+ assert.match(backend,/COALESCE\(r.step3_team->>'coordinatorRef',c.created_by::text\)/);
+ assert.match(web,/Current campaign area and fundraiser choices could not be verified/);
+ assert.match(web,/Apply Filters/);
+ assert.match(web,/Reset/);
+ assert.doesNotMatch(web,/Project and event links require verified CG-05 source and are not yet available/);
 });
