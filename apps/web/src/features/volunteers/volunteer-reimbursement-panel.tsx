@@ -65,7 +65,7 @@ export function VolunteerReimbursementPanel({volunteerRef,onClose}:{volunteerRef
    <label>Expense category<input required maxLength={80} minLength={2} value={input.category} disabled={busy||!!key.current} onChange={e=>changed("category",e.target.value)}/></label>
    <label>Purpose<textarea required maxLength={500} minLength={3} value={input.purpose} disabled={busy||!!key.current} onChange={e=>changed("purpose",e.target.value)}/></label>
    <label>Expense date<input type="date" required value={input.expenseDate} disabled={busy||!!key.current} onChange={e=>changed("expenseDate",e.target.value)}/></label>
-   <label>Amount (INR)<input type="text" required inputMode="decimal" pattern="(0|[1-9][0-9]*)(\\.[0-9]{1,2})?" value={input.amount} disabled={busy||!!key.current} onChange={e=>changed("amount",e.target.value)}/></label>
+   <label>Amount (INR)<input type="text" required inputMode="decimal" pattern="(0|[1-9][0-9]*)(\.[0-9]{1,2})?" value={input.amount} disabled={busy||!!key.current} onChange={e=>changed("amount",e.target.value)}/></label>
    <label>Project (optional)<select value={input.volunteerProjectRef} disabled={busy||!!key.current} onChange={e=>changed("volunteerProjectRef",e.target.value)}>
     <option value="">No linked project</option>{options.projects.map(p=><option key={p.value} value={p.value}>{p.label}</option>)}</select></label>
    <label>Requested payment method<select value={input.paymentMethod} disabled={busy||!!key.current} onChange={e=>changed("paymentMethod",e.target.value)}>
