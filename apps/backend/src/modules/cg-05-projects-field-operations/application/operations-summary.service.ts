@@ -49,7 +49,7 @@ export class OperationsSummaryService{
     const r=await this.visits.listInTx(tx,a,mine?{tab:"MY"}:{});
     if(!("counts" in r)||!r.counts||!r.recent)throw Error("Visit projection unavailable");
     const counts=Object.fromEntries(r.counts.map(v=>[v.status,v.count]));
-    sections.push({source:"Field visits",metrics:[{label:"Total",value:r.total},...metrics(counts,{COMPLETED:"Completed",PENDING_APPROVAL:"Pending approval",REJECTED:"Rejected",IN_PROGRESS:"In progress / checked in",PENDING_PROOF:"Pending proof",RETURNED:"Returned",CANCELLED:"Cancelled"})],recent:recent("Field visits",r.recent)});
+    sections.push({source:"Field visits",metrics:[{label:"Total",value:Number(r.total)},...metrics(counts,{COMPLETED:"Completed",PENDING_APPROVAL:"Pending approval",REJECTED:"Rejected",IN_PROGRESS:"In progress / checked in",PENDING_PROOF:"Pending proof",RETURNED:"Returned",CANCELLED:"Cancelled"})],recent:recent("Field visits",r.recent)});
    }else restricted.push("Field visits");
    if(!sections.length)throw new ForbiddenException({code:"CG05_SCOPE_DENIED"});
    if(exporting){
