@@ -12,12 +12,12 @@ import {lockStockBalances,applyStockMovements,type StockDelta} from "./inventory
 const opt=(v:unknown)=>v===undefined||v===null?null:inventoryRef(v);
 const shortage=()=>new ConflictException({code:"CG12_STOCK_SHORTAGE"});
 export function parseOperation(raw:unknown){
- const x=inventoryInput(raw,["requestKey","kind","locationRef","destinationRef","requestRef","requestLineRef","expectedRequestVersion","itemRef","quantity","originalMovementRef","reason"]);
+ const x=inventoryInput(raw,["requestKey","kind","locationRef","destinationRef","requestRef","requestLineRef","expectedRequestVersion","itemRef","quantity","originalMovementRef","reason","recipientRef"]);
  const kind=x.kind as OperationKind;
  if(!["ISSUE","RETURN","TRANSFER","ADJUSTMENT"].includes(kind))throw receiptInvalid();
- const loc=inventoryRef(x.locationRef),dest=opt(x.destinationRef),request=opt(x.requestRef),line=opt(x.requestLineRef),original=opt(x.originalMovementRef),version=x.expectedRequestVersion??null;
- if((dest!==null)!==(kind==="TRANSFER")||dest===loc||(original!==null)!==(kind==="RETURN")||(request!==null)!==(line!==null)||(request!==null&&kind!=="ISSUE")||(request===null&&version!==null)||(request!==null&&(typeof version!=="number"||!Number.isSafeInteger(version)||version<1)))throw receiptInvalid();
- return {key:inventoryRef(x.requestKey),kind,loc,dest,request,line,original,version:version as number|null,item:inventoryRef(x.itemRef),quantity:kind==="ADJUSTMENT"&&x.quantity==="0"?"0":inventoryQuantity(x.quantity),reason:inventoryText(x.reason,3,300)};
+ const loc=inventoryRef(x.locationRef),dest=opt(x.destinationRef),request=opt(x.requestRef),line=opt(x.requestLineRef),original=opt(x.originalMovementRef),version=x.expectedRequestVersion??null,recipient=opt(x.recipientRef);
+ if((recipient!==null&&(kind!=="ISSUE"||request!==null))||(dest!==null)!==(kind==="TRANSFER")||dest===loc||(original!==null)!==(kind==="RETURN")||(request!==null)!==(line!==null)||(request!==null&&kind!=="ISSUE")||(request===null&&version!==null)||(request!==null&&(typeof version!=="number"||!Number.isSafeInteger(version)||version<1)))throw receiptInvalid();
+ return {key:inventoryRef(x.requestKey),kind,loc,dest,request,line,original,...(recipient?{recipient}:{}),version:version as number|null,item:inventoryRef(x.itemRef),quantity:kind==="ADJUSTMENT"&&x.quantity==="0"?"0":inventoryQuantity(x.quantity),reason:inventoryText(x.reason,3,300)};
 }
 type Event={id:string;event_no:string;payload_digest:string};
 @Injectable()
@@ -34,6 +34,30 @@ export class InventoryOperationService{
    await this.catalog.store(tx,a,loc,false);
    const rs=await tx.query<OperationRow>("SELECT * FROM stock_operation_draft WHERE root_realm_id=$1 AND location_id=$2 AND "+(review?"kind='ADJUSTMENT' AND actor_ref<>$3 AND status='SUBMITTED'":"actor_ref=$3")+" ORDER BY created_at DESC,id DESC LIMIT 30",[a.realmId,loc,a.accountId]);
    const out=[];for(const r of rs.rows){try{const g=await this.source.guard(tx,a,r.id,"READ",review);out.push({...await this.view(tx,a,r),proofRequired:g.proofRequired,reviewRequired:g.reviewRequired});}catch(e){if(!(e instanceof ForbiddenException)&&!(e instanceof NotFoundException))throw e;}}return out;
+  });
+ }
+ private async scopedDirectRecipient(tx:PoolClient,a:VerifiedFoundationActor,loc:string,ref:string){
+  const store=await this.catalog.store(tx,a,loc);
+  if(store.branch_ref&&ref!==a.accountId){
+   const q=await tx.query("SELECT 1 FROM branch WHERE root_realm_id=$1 AND id=$2 AND status='ACTIVE' AND manager_account_ref=$3 FOR SHARE",[a.realmId,store.branch_ref,ref]);
+   if(!q.rowCount)throw new ForbiddenException("Choose your warehouse's assigned staff recipient");
+  }
+  return this.identity.eligibleOfficeholder(tx,a,ref);
+ }
+ async recipients(token:string,location:unknown,search:unknown){
+  const loc=inventoryRef(location),q=inventoryText(search??"",0,80);
+  return this.catalog.run(token,"inventory.stock.issue",async(tx,a)=>{
+   const store=await this.catalog.store(tx,a,loc);
+   const self=await this.identity.eligibleOfficeholder(tx,a,a.accountId);
+   if(!store.branch_ref){
+    const rows=await this.identity.eligibleOfficeholderOptions(tx,a,q);
+    return [{value:self.accountRef,label:self.displayName},...rows.filter(v=>v.value!==self.accountRef)];
+   }
+   const b=await tx.query<{manager_account_ref:string|null}>("SELECT manager_account_ref FROM branch WHERE root_realm_id=$1 AND id=$2 AND status='ACTIVE' FOR SHARE",[a.realmId,store.branch_ref]);
+   const ids=[a.accountId,...(b.rows[0]?.manager_account_ref&&b.rows[0].manager_account_ref!==a.accountId?[b.rows[0].manager_account_ref]:[])];
+   const rows:{value:string;label:string}[]=[];
+   for(const id of ids){try{const v=await this.identity.eligibleOfficeholder(tx,a,id);rows.push({value:v.accountRef,label:v.displayName});}catch(e){if(!(e instanceof ForbiddenException))throw e;}}
+   return rows;
   });
  }
  async held(token:string,location:unknown){
@@ -55,6 +79,7 @@ export class InventoryOperationService{
    if(!item||(v.kind!=="RETURN"&&item.status!=="ACTIVE"))throw sourceChanged();
    const qty=v.kind==="ADJUSTMENT"&&v.quantity==="0"?"0":inventoryQuantity(v.quantity,item.qty_scale);
    let recipient:string|null=v.kind==="ISSUE"?a.accountId:null,system:string|null=null,version:number|null=null;
+   if(v.kind==="ISSUE"&&!v.request)recipient=(await this.scopedDirectRecipient(tx,a,v.loc,v.recipient??a.accountId)).accountRef;
    if(v.request){const req=await this.material.row(tx,a,v.request,false);if(req.location_id!==v.loc||req.version!==v.version||!["HELD","PARTIAL"].includes(req.status))throw sourceChanged();const l=await tx.query("SELECT 1 FROM material_request_line WHERE root_realm_id=$1 AND request_id=$2 AND id=$3 AND item_id=$4 AND held_qty>=$5::numeric",[a.realmId,v.request,v.line,v.item,qty]);if(!l.rowCount)throw shortage();recipient=req.requester_id;}
    if(v.original&&!(await tx.query("SELECT 1 FROM stock_movement WHERE root_realm_id=$1 AND id=$2 AND location_id=$3 AND item_id=$4 AND event_kind='ISSUE' AND -signed_qty>=$5::numeric",[a.realmId,v.original,v.loc,v.item,qty])).rowCount)throw sourceChanged();
    if(v.kind==="ADJUSTMENT"){
@@ -84,6 +109,7 @@ export class InventoryOperationService{
     if(pending)return {ref:r.id,status:"SUBMITTED",replayed:true};
     approvedCase=(await this.approval.approved(tx,a,r,proof,proofVersion)).id;
    }
+   if(r.kind==="ISSUE"&&!r.request_id){if(!r.recipient_id)throw sourceChanged();await this.scopedDirectRecipient(tx,a,r.location_id,r.recipient_id);}
    if(r.kind!=="RETURN"&&!(await tx.query("SELECT 1 FROM inventory_item WHERE root_realm_id=$1 AND id=$2 AND status='ACTIVE' FOR SHARE",[a.realmId,r.item_id])).rowCount)throw sourceChanged();
    if(r.request_id){const req=await this.material.row(tx,a,r.request_id,false,true);if(req.version!==r.expected_request_version||req.location_id!==r.location_id||req.requester_id!==r.recipient_id||!["HELD","PARTIAL"].includes(req.status))throw sourceChanged();}
    if(r.original_movement_id){
