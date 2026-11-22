@@ -393,3 +393,6 @@ Public Next /donate and PublicDonationForm implement general/CG18-current campai
 
 ### 22-Nov US002 native public checkpoint — same real donation flow
 Public Android same backed general+campaign donation form with consent, source-key retry, private POST status proof, verified Razorpay HTTPS link, pending/unknown/no issued receipt. Original public campaign source gates UI on CG18 merchant readiness; home displays general action only if enabled. QA01/04/06/11/13/16/18 source candidate. Runtime/device/visual NOT_RUN; US002 IN_PROGRESS.
+
+### 22-Nov US003 checkpoint A — original CG19 source-bound neutral receipt persistence
+Added 3309_cg19_donation_receipt_document.sql: once-only root-scoped CG19 receipt number/source digest, private immutable issued file metadata, issued-after-current-CG09-post deferred SQL guard, no arbitrary paid conversion and no fake legal 80G. CG19 document service/rendering and donor history still being developed, original US003 QA01/04/07/09/10/14/19 source partial, runtime/migration/independent review NOT_RUN.
