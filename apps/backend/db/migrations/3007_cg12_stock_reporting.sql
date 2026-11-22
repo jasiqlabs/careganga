@@ -32,3 +32,11 @@ CREATE TRIGGER cg12_item_alert AFTER UPDATE OF status,low_stock_threshold ON inv
 CREATE INDEX ix_cg12_low_alert_active ON stock_low_alert(root_realm_id,location_id,changed_at DESC) WHERE active;
 CREATE INDEX ix_cg12_event_date ON stock_event(root_realm_id,effective_date DESC,id);
 CREATE INDEX ix_cg12_request_priority ON material_request(root_realm_id,location_id,priority,created_at DESC,id);
+
+CREATE FUNCTION cg12_alert_location() RETURNS trigger LANGUAGE plpgsql AS $cg12$
+DECLARE item uuid;
+BEGIN
+ FOR item IN SELECT item_id FROM stock_low_alert WHERE root_realm_id=NEW.root_realm_id AND location_id=NEW.id LOOP
+ PERFORM cg12_refresh_low_alert(NEW.root_realm_id,item,NEW.id); END LOOP; RETURN NEW;
+END; $cg12$;
+CREATE TRIGGER cg12_location_alert AFTER UPDATE OF status ON inventory_location FOR EACH ROW EXECUTE FUNCTION cg12_alert_location();
