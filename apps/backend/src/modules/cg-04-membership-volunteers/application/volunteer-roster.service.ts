@@ -112,6 +112,9 @@ export class VolunteerRosterService{
   return this.run(token,"volunteers.applications.review",async(tx,a)=>{
    await this.intakeAuthority(tx,a);
    await tx.query("SELECT pg_advisory_xact_lock(hashtextextended($1,0))",["CG04:STAFF_INTAKE:"+a.realmId]);
+   // Serialize same-contact self-registration versus staff import; sort to prevent deadlock.
+   for(const mobile of rows.map(r=>r.mobile).sort())await tx.query(
+    "SELECT pg_advisory_xact_lock(hashtextextended($1,0))",["CG04:VOLUNTEER_PHONE:"+a.realmId+":"+mobile]);
    const prior=(await tx.query<{payload_digest:string;row_count:number;imported_count:number}>(
     "SELECT payload_digest,row_count,imported_count FROM volunteer_staff_import_batch WHERE root_realm_id=$1 AND actor_ref=$2 AND request_key=$3",
     [a.realmId,a.accountId,requestKey])).rows[0];
