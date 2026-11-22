@@ -10,8 +10,9 @@ type Voucher=VoucherWorkflowRow&{type:string;postingDate:string;
  payeeName:string;purpose:string;totalMinor:string;version:number};
 type Item={description:string;quantity:string;unitRate:string};
 type ClaimOption={claimRef:string;claimNumber:string;version:number;category:string;purpose:string;amountMinor:string};
+type ProjectChoice={value:string;label:string;branchRef:string|null};
 type Detail={voucherRef:string;voucherNumber:string;version:number;status:string;
- header:{financialYearRef?:string;branchRef?:string|null;type?:string;
+ header:{financialYearRef?:string;branchRef?:string|null;type?:string;projectRef?:string|null;projectLabel?:string|null;
   postingDate?:string;payeeName?:string;purpose?:string;paymentAccountRef?:string|null;
   debitAccountRef?:string|null;creditAccountRef?:string|null;
   expenseClaimRef?:string|null;expenseClaimVersion?:number|null};
@@ -41,7 +42,7 @@ async function failure(res:Response):Promise<string>{
   "The save outcome could not be confirmed. Check the original request before retrying.";
 }
 const item=():Item=>({description:"",quantity:"1",unitRate:""});
-const initial=()=>({type:"EXPENSE",financialYearRef:"",branchRef:"",
+const initial=()=>({type:"EXPENSE",financialYearRef:"",branchRef:"",projectRef:"",
  postingDate:"",payeeName:"",purpose:"",paymentAccountRef:"",
  debitAccountRef:"",creditAccountRef:"",expenseClaimRef:"",expenseClaimVersion:"",tax:"0",charges:"0"});
 export function FinanceVoucherDraftWorkspace({years,branches,canManage,canLinkClaims=false,canViewEvidence=false,canUploadEvidence=false,canPost=false,canVerifyPayment=false}:{
@@ -67,6 +68,8 @@ export function FinanceVoucherDraftWorkspace({years,branches,canManage,canLinkCl
  const [accountSearch,setAccountSearch]=useState("");
  const [accounts,setAccounts]=useState<Array<{accountRef:string;name:string;code:string;kind:string;category:string;branchRef:string|null;branchName:string|null}>>([]);
  const [accountError,setAccountError]=useState("");
+ const [projects,setProjects]=useState<ProjectChoice[]>([]),[projectError,setProjectError]=useState("");
+ useEffect(()=>{if(!editing)return;let live=true;setProjects([]);setProjectError("");void fetch("/api/finance/vouchers/options",{cache:"no-store"}).then(async r=>{if(!r.ok)throw Error("Project options unavailable.");const v=await r.json();if(!Array.isArray(v.projects))throw Error("Project options unavailable.");if(live)setProjects(v.projects);}).catch(e=>{if(live)setProjectError(e.message);});return()=>{live=false;};},[editing]);
  const [accountMore,setAccountMore]=useState(false);
  const [paymentError,setPaymentError]=useState("");
  const [paymentMore,setPaymentMore]=useState(false);
@@ -161,7 +164,7 @@ export function FinanceVoucherDraftWorkspace({years,branches,canManage,canLinkCl
      throw Error("The voucher is no longer a draft. Refresh its review status.");
    setTarget({ref:raw.voucherRef,number:raw.voucherNumber,version:raw.version});
    setForm({type:raw.header.type??"EXPENSE",financialYearRef:raw.header.financialYearRef??"",
-    branchRef:raw.header.branchRef??"",postingDate:raw.header.postingDate??"",
+    branchRef:raw.header.branchRef??"",projectRef:raw.header.projectRef??"",postingDate:raw.header.postingDate??"",
     payeeName:raw.header.payeeName??"",purpose:raw.header.purpose??"",
     paymentAccountRef:raw.header.paymentAccountRef??"",
     debitAccountRef:raw.header.debitAccountRef??"",
@@ -176,7 +179,7 @@ export function FinanceVoucherDraftWorkspace({years,branches,canManage,canLinkCl
   finally{setLoadingDraft(false);}
  }
  function field(name:keyof ReturnType<typeof initial>,value:string){
-  setForm(v=>({...v,[name]:value}));setNotice("");
+  setForm(v=>({...v,[name]:value,...(name==="branchRef"||name==="type"?{projectRef:""}:{})}));setNotice("");
  }
  function updateItem(index:number,field:keyof Item,value:string){
   setItems(v=>v.map((l,i)=>i===index?{...l,[field]:value}:l));setNotice("");
@@ -191,6 +194,7 @@ export function FinanceVoucherDraftWorkspace({years,branches,canManage,canLinkCl
    creditAccountRef:["PAYMENT","CONTRA"].includes(form.type)?
      form.paymentAccountRef:form.creditAccountRef,
    ...(form.branchRef?{branchRef:form.branchRef,branchVersion:branch?.version}:{}),
+   ...(form.type==="EXPENSE"&&form.projectRef?{projectRef:form.projectRef}:{}),
    lines:items.map(l=>({description:l.description,
      quantity:Number(l.quantity),unitRate:l.unitRate})),
    tax:form.tax,charges:form.charges,
@@ -223,6 +227,7 @@ export function FinanceVoucherDraftWorkspace({years,branches,canManage,canLinkCl
  }
  function submit(event:FormEvent<HTMLFormElement>){
   event.preventDefault();if(!canManage||busy||pending)return;
+  if(form.projectRef&&!projects.some(p=>p.value===form.projectRef&&(p.branchRef??"")===form.branchRef)){setNotice("Choose a currently available project or clear it.");return;}
   const invalid=items.some(l=>!/^([1-9][0-9]{0,5})$/.test(l.quantity));
   if(invalid){setNotice("Enter each item's whole-unit quantity between 1 and 1,000,000.");return;}
   if(["PAYMENT","CONTRA"].includes(form.type)&&!form.paymentAccountRef){
@@ -360,6 +365,7 @@ export function FinanceVoucherDraftWorkspace({years,branches,canManage,canLinkCl
        {branches.map(b=><option key={b.branchRef} value={b.branchRef}>
         {b.name} — {b.code}</option>)}
       </select></label>
+     {form.type==="EXPENSE"&&<label className="cg-fin-field">Project (optional)<select value={form.projectRef} onChange={e=>field("projectRef",e.target.value)}><option value="">No project</option>{projects.filter(p=>(p.branchRef??"")===form.branchRef).map(p=><option key={p.value} value={p.value}>{p.label}</option>)}{form.projectRef&&!projects.some(p=>p.value===form.projectRef&&(p.branchRef??"")===form.branchRef)&&<option value={form.projectRef} disabled>Previous project unavailable</option>}</select>{projectError&&<small>{projectError}</small>}</label>}
      <div className="cg-fin-field">
       <label htmlFor="cg-fin-account-search">Find debit and credit accounts by name or code</label>
       <input id="cg-fin-account-search" value={accountSearch} maxLength={80}
