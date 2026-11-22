@@ -24,13 +24,21 @@ export function VolunteerOwnCard({current}:{current:string}){
  return <section className="cg04-panel" aria-label="Your privately issued official volunteer card">
   <h3>My official volunteer card</h3>
   <p className="cg04-muted">Cards are issued by the Foundation after independent approval. Your card is not an employee ID or permission to access private work.</p>
-  {state==="LOADING"?<p role="status">Checking current official card issuance…</p>:
-   state==="UNAVAILABLE"?<p role="alert">Original card status could not be verified. Refresh before relying on it.</p>:
-   data?.items.length?data.items.map(v=><div key={v.cardRef} className="cg04-buttons">
-    <strong>{read(v.status)} · Issue {v.revision}</strong>
-    {v.canDownload&&<a href={base+"/cards/"+v.cardRef+"/download">Download my issued official PDF privately</a>}
-    {!v.canDownload&&<span>{v.status==="ISSUED"?"This previously issued card no longer confirms current eligibility. Please contact the Foundation.":"Document is not currently issued; no public verification is available."}</span>}
-   </div>):<p>No official volunteer card has been issued.</p>}
+  {state==="LOADING" ? (
+   <p role="status">Checking current official card issuance…</p>
+  ) : state==="UNAVAILABLE" ? (
+   <p role="alert">Original card status could not be verified. Refresh before relying on it.</p>
+  ) : data?.items.length ? (
+   data.items.map(v => (
+    <div key={v.cardRef} className="cg04-buttons">
+     <strong>{read(v.status)} · Issue {v.revision}</strong>
+     {v.canDownload ? <a href={base+"/cards/"+v.cardRef+"/download"}>Download my issued official PDF privately</a> : null}
+     {!v.canDownload ? <span>{v.status==="ISSUED"?"This previously issued card no longer confirms current eligibility. Please contact the Foundation.":"Document is not currently issued; no public verification is available."}</span> : null}
+    </div>
+   ))
+  ) : (
+   <p>No official volunteer card has been issued.</p>
+  )}
   <button type="button" onClick={()=>setNonce(x=>x+1)}>Refresh original card status</button>
  </section>;
 }

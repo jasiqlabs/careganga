@@ -134,10 +134,18 @@ export function VolunteerStaffWorkspace({canReview,canRoster,canExport,canConfig
       <p key={key}><strong>{read(key)}</strong>: {typeof detail.source[key]==="string"?String(detail.source[key]):Array.isArray(detail.source[key])?(detail.source[key] as string[]).join(", "):"Not supplied"}</p>)}
     </div>
     <h3>Current original verified identity evidence</h3>
-    {detail.files.length?detail.files.map(file=><div key={file.fileRef} className="cg04-buttons">
-     <span>{read(file.classification)} · {file.verified?"Verified":"Not currently verified"}</span>
-     {file.verified&&["SUBMITTED","PENDING_OWNER"].includes(detail.status)&&<a href={reviewBase+"/"+detail.caseRef+"/files/"+file.fileRef+"/download">Download original private proof</a>}
-    </div>):<p>No original protected document was found.</p>}
+    {detail.files.length ? (
+     detail.files.map(file => (
+      <div key={file.fileRef} className="cg04-buttons">
+       <span>{read(file.classification)} · {file.verified ? "Verified" : "Not currently verified"}</span>
+       {file.verified && ["SUBMITTED","PENDING_OWNER"].includes(detail.status) ? (
+        <a href={reviewBase+"/"+detail.caseRef+"/files/"+file.fileRef+"/download"}>Download original private proof</a>
+       ) : null}
+      </div>
+     ))
+    ) : (
+     <p>No original protected document was found.</p>
+    )}
     <h3>Approval activity</h3>{detail.timeline.map((event,i)=><p key={i}>{read(event.action)} · {event.reviewer} · {new Date(event.occurredAt).toLocaleString("en-IN")}</p>)}
     {detail.canDecide&&detail.status==="SUBMITTED"&&<div className="cg04-panel">
      <h3>Independent protected decision</h3>

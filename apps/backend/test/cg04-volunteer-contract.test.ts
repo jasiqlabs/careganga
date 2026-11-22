@@ -12,7 +12,8 @@ const input=()=>({requestKey:key,firstName:"Amina",lastName:"Rahman",dateOfBirth
  address:"Pune Foundation Road",city:"Pune",village:"",pinCode:"411028",stateRef:state,districtRef:district,
  branchRef:branch,departmentRef:department,availability:"WEEKENDS",skills:["Teaching","Community support"],experience:"Community activity",
  referral:"",consent:true});
-const sql=(name:string)=>readFileSync(join(process.cwd(),"db/migrations",name),"utf8");
+const readRoot=(file:string)=>readFileSync(new URL("../../../"+file,import.meta.url),"utf8");
+const sql=(name:string)=>readRoot("apps/backend/db/migrations/"+name);
 test("US003-QA01/07/16 original verified self draft captures only approved personal/interest/department fields",()=>{
  const result=parseVolunteerDraft(input());
  assert.equal(result.first,"Amina");assert.equal(result.last,"Rahman");
@@ -37,7 +38,8 @@ test("US003-QA04 date, consent, PIN and branch validation are fail-closed",()=>{
  for(const v of ["2026-02-30","2026-13-01","2026-00-01","2026-02-29","2020-11-23T00:00:00Z","",undefined])assert.throws(()=>parseVolunteerDraft({...input(),dateOfBirth:v}));
  for(const v of ["004110","41102","4110287","abcdef",""])assert.throws(()=>parseVolunteerDraft({...input(),pinCode:v}));
  for(const v of [false,"true",undefined])assert.throws(()=>parseVolunteerDraft({...input(),consent:v}));
- for(const v of ["not-uuid","",123])assert.throws(()=>parseVolunteerDraft({...input(),branchRef:v}));
+ for(const v of ["not-uuid","12345",123])assert.throws(()=>parseVolunteerDraft({...input(),branchRef:v}));
+ assert.equal(parseVolunteerDraft({...input(),branchRef:""}).branch,null);
 });
 test("US003-QA01/02 blood group is private optional applicant value and cannot be elevated to medical proof",()=>{
  assert.equal(parseVolunteerDraft(input()).blood,null);
@@ -81,7 +83,7 @@ test("US003-QA17 original optional issued volunteer card requires real CG19 appr
  assert.match(migration,/ux_cg19_volunteer_card_current/);
  assert.match(migration,/OLD\.claim_expires_at<=now\(\)/);
  assert.match(migration,/cg19_volunteer_card_event_immutable/);
- const src=readFileSync(join(process.cwd(),"src/modules/cg-19-documents-notifications/application/volunteer-card.service.ts"),"utf8");
+ const src=readRoot("apps/backend/src/modules/cg-19-documents-notifications/application/volunteer-card.service.ts");
  assert.match(src,/volunteers\.documents\.issue/);
  assert.match(src,/return valid\?\{valid:true,status:"ACTIVE"\}/);
  assert.match(src,/makeToken\(card\.root_realm_id,card\.id,card\.source_digest\)/);
@@ -95,11 +97,11 @@ test("US003-QA14/18 authorized export audit is append-only and scoped, not a pub
 });
 
 test("US003-QA17/19/20 volunteer-card source distinguishes outages and suppresses stale private displays",()=>{
- const backend=readFileSync(join(process.cwd(),"src/modules/cg-19-documents-notifications/application/volunteer-card.service.ts"),"utf8");
- const issuer=readFileSync(join(process.cwd(),"../web/src/features/volunteers/volunteer-card-manager.tsx"),"utf8");
- const own=readFileSync(join(process.cwd(),"../web/src/features/volunteers/volunteer-own-card.tsx"),"utf8");
- const internal=readFileSync(join(process.cwd(),"../android-internal/src/features/volunteers/native-volunteer-card-issuer.tsx"),"utf8");
- const publicNative=readFileSync(join(process.cwd(),"../android-public/src/features/volunteers/native-volunteer-card.tsx"),"utf8");
+ const backend=readRoot("apps/backend/src/modules/cg-19-documents-notifications/application/volunteer-card.service.ts");
+ const issuer=readRoot("apps/web/src/features/volunteers/volunteer-card-manager.tsx");
+ const own=readRoot("apps/web/src/features/volunteers/volunteer-own-card.tsx");
+ const internal=readRoot("apps/android-internal/src/features/volunteers/native-volunteer-card-issuer.tsx");
+ const publicNative=readRoot("apps/android-public/src/features/volunteers/native-volunteer-card.tsx");
  assert.match(backend,/key\(\); \/\/ An unavailable QR signing key is a service outage/);
  assert.match(backend,/throw new ServiceUnavailableException\("Current official volunteer verification is temporarily unavailable\."\)/);
  assert.match(issuer,/\[reload,setReload\]=useState\(0\)/);
@@ -111,7 +113,7 @@ test("US003-QA17/19/20 volunteer-card source distinguishes outages and suppresse
 });
 
 test("US003-QA14/19 staff Android protected shares are source-guarded after asynchronous resume",()=>{
- const native=readFileSync(join(process.cwd(),"../android-internal/src/features/volunteers/native-volunteer-staff.tsx"),"utf8");
+ const native=readRoot("apps/android-internal/src/features/volunteers/native-volunteer-staff.tsx");
  const first=native.indexOf("const fileAction=");
  const last=native.indexOf("const switchTo=",first);
  assert.ok(first>=0&&last>first,"original protected volunteer staff file action must be mounted");
@@ -146,7 +148,7 @@ test("US003-QA17 real CG19 QR encoder accepts only the original opaque code and 
 });
 
 test("US003-QA17/19/20 historical volunteer card does not imply live eligibility across current Web and Android source",()=>{
- const read=(file:string)=>readFileSync(join(process.cwd(),"../..",file),"utf8");
+ const read=(file:string)=>readRoot(file);
  const service=read("apps/backend/src/modules/cg-19-documents-notifications/application/volunteer-card.service.ts");
  assert.match(service,/private async present\(tx:PoolClient,c:Card\)/);
  assert.match(service,/await this\.check\(tx,c\);return status/);
@@ -167,14 +169,14 @@ test("US003-QA17/19/20 historical volunteer card does not imply live eligibility
 });
 
 test("US003-QA10 Web/Public Android only render the current published original volunteer Join route",()=>{
- const web=readFileSync(join(process.cwd(),"../..","apps/web/src/features/cms-public-content/cms-site-header.tsx"),"utf8");
- const native=readFileSync(join(process.cwd(),"../..","apps/android-public/src/features/cms/public-cms-screen.tsx"),"utf8");
+ const web=readRoot("apps/web/src/features/cms-public-content/cms-site-header.tsx");
+ const native=readRoot("apps/android-public/src/features/cms/public-cms-screen.tsx");
  assert.match(web,/volunteerJoin\?\.visible===true&&navigation\.volunteerJoin\.path==="\/volunteer"/);
  assert.match(native,/data\.volunteerJoin\?\.visible===true&&data\.volunteerJoin\?\.path==="\/volunteer"/);
 });
 
 test("US003-QA17 expired CG19 verifying claim retry matches current state and five-attempt cap",()=>{
- const source=readFileSync(join(process.cwd(),"src/modules/cg-19-documents-notifications/application/volunteer-card.service.ts"),"utf8");
+ const source=readRoot("apps/backend/src/modules/cg-19-documents-notifications/application/volunteer-card.service.ts");
  assert.match(source,/canRetry:v\.attempt_count<5/);
  assert.match(source,/v\.state==="VERIFYING"&&!!v\.claim_expires_at&&v\.claim_expires_at\.getTime\(\)<=Date\.now\(\)/);
  assert.match(source,/if\(p\.attempt_count>=5\)throw new ConflictException/);
@@ -213,9 +215,8 @@ test("US003-QA11/12 task/visit persistence uses explicit volunteer identity, sou
  assert.match(migration,/cg04_visit_volunteer_event_at_commit/);
  assert.match(migration,/Accepted field visit volunteer assignment is immutable/);
  assert.doesNotMatch(migration,/INSERT INTO account_role|INSERT INTO finance_event|CREATE TABLE volunteer\(/);
- const read=(f:string)=>readFileSync(join(process.cwd(),"../..",f),"utf8");
- const tasks=read("apps/backend/src/modules/cg-05-projects-field-operations/application/project-tasks.service.ts");
- const visits=read("apps/backend/src/modules/cg-05-projects-field-operations/application/field-visits.service.ts");
+ const tasks=readRoot("apps/backend/src/modules/cg-05-projects-field-operations/application/project-tasks.service.ts");
+ const visits=readRoot("apps/backend/src/modules/cg-05-projects-field-operations/application/field-visits.service.ts");
  assert.match(tasks,/assignee_volunteer_ref=\$7/);
  assert.match(tasks,/requireCurrentVolunteer\(tx,a.realmId,target,p.branch_ref\)/);
  assert.match(tasks,/currentVolunteerPredicate\("v","aa.id","p.branch_ref"\)/);
@@ -229,10 +230,9 @@ test("US003-QA09 CG09 real U42 source and protected Web/Android submission never
  assert.match(migration,/cg04_current_volunteer/);
  assert.match(migration,/volunteer_entered_utr/);
  assert.doesNotMatch(migration,/INSERT INTO finance_journal|INSERT INTO finance_voucher|INSERT INTO finance_voucher_payment/);
- const read=(f:string)=>readFileSync(join(process.cwd(),"../..",f),"utf8");
- const claim=read("apps/backend/src/modules/cg-09-finance-accounting/application/finance-expense-claim.service.ts");
- const web=read("apps/web/src/features/volunteers/volunteer-reimbursement-panel.tsx");
- const native=read("apps/android-internal/src/features/volunteers/native-volunteer-reimbursement.tsx");
+ const claim=readRoot("apps/backend/src/modules/cg-09-finance-accounting/application/finance-expense-claim.service.ts");
+ const web=readRoot("apps/web/src/features/volunteers/volunteer-reimbursement-panel.tsx");
+ const native=readRoot("apps/android-internal/src/features/volunteers/native-volunteer-reimbursement.tsx");
  assert.match(claim,/this.identity.assertCurrent\(client,actor,"volunteers.view"\)/);
  assert.match(claim,/this.branches.projectBranchScope\(client,actor\)/);
  assert.match(claim,/CG09_VOLUNTEER_CLAIM_V1/);
@@ -245,9 +245,8 @@ test("US003-QA06/13 U14 batch replay and verified self linkage never create an a
  assert.match(migration,/state='UNVERIFIED_DRAFT'/);
  assert.match(migration,/app.consent_version='VOLUNTEER_V1'/);
  assert.doesNotMatch(migration,/INSERT INTO account|INSERT INTO volunteer\(|INSERT INTO cg03_case/);
- const read=(f:string)=>readFileSync(join(process.cwd(),"../..",f),"utf8");
- const roster=read("apps/backend/src/modules/cg-04-membership-volunteers/application/volunteer-roster.service.ts");
- const self=read("apps/backend/src/modules/cg-04-membership-volunteers/application/volunteer-applications.service.ts");
+ const roster=readRoot("apps/backend/src/modules/cg-04-membership-volunteers/application/volunteer-roster.service.ts");
+ const self=readRoot("apps/backend/src/modules/cg-04-membership-volunteers/application/volunteer-applications.service.ts");
  assert.match(roster,/async previewImport\(/);
  assert.match(roster,/async importDrafts\(/);
  assert.match(roster,/pg_advisory_xact_lock/);
@@ -255,6 +254,6 @@ test("US003-QA06/13 U14 batch replay and verified self linkage never create an a
  assert.match(roster,/UNION SELECT contact_mobile FROM volunteer_application/);
  assert.match(self,/CG04:VOLUNTEER_PHONE:/);
  assert.match(self,/UPDATE volunteer_staff_intake_draft SET linked_application_id=\$3,linked_at=now\(\)/);
- assert.match(read("apps/web/src/features/volunteers/volunteer-staff-intake.tsx"),/draft-only intake/);
- assert.match(read("apps/android-internal/src/features/volunteers/native-volunteer-staff-intake.tsx"),/Confirm draft-only intake/);
+ assert.match(readRoot("apps/web/src/features/volunteers/volunteer-staff-intake.tsx"),/draft-only intake/);
+ assert.match(readRoot("apps/android-internal/src/features/volunteers/native-volunteer-staff-intake.tsx"),/Confirm draft-only intake/);
 });

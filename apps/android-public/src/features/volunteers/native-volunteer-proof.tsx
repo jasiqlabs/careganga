@@ -34,7 +34,7 @@ export function NativeVolunteerProof({token,applicationRef,version,editable,onCh
  });
  const revoke=(ref:string,expectedVersion:number)=>void act(async()=>{await memberInvoke("/api/documents/volunteer/files/"+ref+"/revoke","POST",{expectedVersion},token);await refresh();onChange();setMessage("Previous proof revoked.");});
  const preview=(ref:string,mime:string)=>void act(async()=>{
-  const r=await expoFetch(memberEndpoint("/api/documents/volunteer/files/"+ref+"/download"),{headers:{Authorization:"Bearer "+token},cache:"no-store"});
+  const r=await expoFetch(memberEndpoint("/api/documents/volunteer/files/"+ref+"/download"),{headers:{Authorization:"Bearer "+token}});
   if(!r.ok)throw Error("Protected document unavailable.");
   const serverMime=(r.headers.get("content-type")??"").split(";")[0].trim();
   if(serverMime!==mime||!["application/pdf","image/jpeg","image/png","image/webp"].includes(serverMime))throw Error("Protected document type could not be verified.");

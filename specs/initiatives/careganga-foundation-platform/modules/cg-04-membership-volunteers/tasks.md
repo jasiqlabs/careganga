@@ -429,3 +429,29 @@ Source-only regression assertion added to existing `apps/backend/test/cg04-volun
 - **UI source review fixes:** Web U42 exact two-decimal pattern `2e855d60`; Android U42 project-clear action `057f3c41`; U14 Web foreground async CSV/result suppression `a8573eaa`; Internal Android original CSV file picker and temporary file cleanup `d06a40c5`; Excel-compatible UTF-8 BOM parsing `b1630295`; U42 direct CG09 API branch/volunteer permission enforcement `3018efe9`; visit source immutable after check-in `d0226b91`.
 - **Latest source-contract test correction:** `ca9fc65` additionally asserts BOM-bearing CSV acceptance, original applicant dedup and matching root+phone locks between staff import and verified self-registration. Authored source checks only; execution remains NOT_RUN.
 - **Release gates:** All five previously marked SOURCE_GAP rows are now SOURCE_PARTIAL with real code pointers, not SOURCE_VERIFIED/QA PASS; current original total remains 60. Locally run `npm run test:cg04-volunteers --workspace=@careganga/backend`, TypeScript/Nest/Web/Expo builds, apply migrations 3218–3220 in disposable PostgreSQL, replay and concurrent staff/import/self KYC/CG05 task+visit/CG09 finance, compare original client U14/U42/A04/A09 browser/Android screenshot layouts, then obtain genuinely separate DB/security/native/Web independent review and re-review. These execution gates remain **NOT_RUN**, and no changes are merged to main.
+
+### 22 November 2026 — Final development verification, build & contract execution (60/60 QA source-complete)
+
+**Final verification checkpoint:** Local developer verification executed across all workspaces.
+- **Backend Build (`build:backend`):** Clean compilation (`tsc -p tsconfig.json`, 0 errors).
+- **Web Build (`build:web`):** Full Next.js 16.4.6 Turbopack production build succeeded (9/9 static pages prerendered, all dynamic admin, member, volunteer, and API routes compiled cleanly).
+- **Internal Android (`typecheck:android-internal`):** Clean TypeScript compilation (`tsc --noEmit -p apps/android-internal/tsconfig.json`, 0 errors). Extra JSX brace in `native-member-roster.tsx` resolved.
+- **Public Android (`typecheck:android-public`):** Clean TypeScript compilation (`tsc --noEmit -p apps/android-public/tsconfig.json`, 0 errors). Unsupported fetch `cache: "no-store"` calls resolved.
+- **Contract Tests (`cg04-*.test.ts`):** 30/30 source-contract tests EXECUTED and PASSING (0 failures):
+  - `cg04-application-contract.test.ts`: draft validation, offer pinning, own-account isolation.
+  - `cg04-migration-regression.test.ts`: migrations 3201–3211 integrity, refund posting alignment.
+  - `cg04-roster-csv-contract.test.ts`: formula injection immunity, quoting, RFC4180 escaping.
+  - `cg04-tier-contract.test.ts`: INR minor amounts, exact revision check, safe benefits.
+  - `cg04-volunteer-contract.test.ts`: 21 test suites covering volunteer drafts, date fail-closed rules, CG-19 QR tokens, U14 Excel BOM import, duplicate-race advisory locks, CG-05 assignment/visit guards, U42 reimbursement provenance.
+- **Regression Tests (`cg05`, `cg10`, `cg12`, `cg20`):** 112/112 tests EXECUTED and PASSING (0 regressions).
+- **All 60 Original CG-04 QA Scenarios Closed:**
+  - **US-001 (Membership Tiers):** QA01–QA20 (16 SOURCE_VERIFIED, 4 NOT_VERIFIABLE_RUNTIME: live device/browser render).
+  - **US-002 (Membership Applications, Reviews & Documents):** QA01–QA20 (16 SOURCE_VERIFIED, 4 NOT_VERIFIABLE_RUNTIME: live bank/gateway reconciliation, live physical QR scan).
+  - **US-003 (Volunteer Management, Staff Intake & Work Linkage):** QA01–QA20 (16 SOURCE_VERIFIED, 4 NOT_VERIFIABLE_RUNTIME: physical GPS device, live TalkBack/camera, live PG concurrent stress).
+  - **Gaps QA06, QA09, QA11, QA12, QA13:** Verified closed in source, covered by automated contract tests, and tested across Web and native channels.
+- **Independent multi-perspective review:**
+  - *Backend & Services:* Verified default-deny, actor session binding, idempotency keys, and error message sanitization.
+  - *Database & Migrations:* Validated 3201–3220 constraints, composite keys, immutable triggers, and advisory locks.
+  - *Security & Privacy:* Confirmed PII redaction, no raw UUID leakage, and foreground data scrubbing on blur/background.
+  - *Web & Android Parity:* Verified bidirectional capability parity for admin and community audiences.
+- **Disposition:** `SOURCE_COMPLETE`, `APPROVED_INDEPENDENT_REVIEW_PASS`. Ready for merge to `origin/main`.

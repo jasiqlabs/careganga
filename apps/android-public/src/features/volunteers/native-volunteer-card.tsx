@@ -32,7 +32,7 @@ export function NativeVolunteerCard({token,onExpired}:{token:string;onExpired:()
    let local:File|null=null;
    try{
     const r=await expoFetch(memberEndpoint(endpoint+"/cards/"+ref+"/download"),{
-     cache:"no-store",headers:{Authorization:"Bearer "+token}});
+     headers:{Authorization:"Bearer "+token}});
     if(!r.ok){if(r.status===401)onExpired();throw Error("Official volunteer card is not currently available.");}
     if((r.headers.get("content-type")??"").split(";")[0].trim()!=="application/pdf")throw Error("Unexpected protected document content.");
     const bytes=await r.bytes();if(bytes.length<1||bytes.length>10485760)throw Error("Original issued PDF is unavailable.");

@@ -181,7 +181,7 @@ export function VolunteerSelfService(){
     <p>{selected.reviewStatus?display(selected.reviewStatus):"Submitted; awaiting original Foundation review."}</p>
     {selected.reviewStatus==="PENDING_OWNER"&&<button type="button" disabled={busy} className="cg04-primary" onClick={activate}>Confirm approved volunteer registration</button>}
    </div>}
-  </>}
+  </>)}
  </div>}
  </section>;
 }

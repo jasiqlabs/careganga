@@ -17,8 +17,8 @@ export function PublicMemberVerification(){
   try{
    const r=await fetch("/api/public/membership/verify",{method:"POST",cache:"no-store",headers:{"Content-Type":"application/json"},body:JSON.stringify({code:v}),signal:AbortSignal.timeout(10000)});
    if(!r.ok)throw Error("Cannot check current status.");
-   const v:unknown=await r.json();
-   if(id===active.current)setState(v&&typeof v==="object"&&(v as {valid?:boolean;status?:string}).valid===true&&(v as {status:string}).status==="ACTIVE"?"ACTIVE":"NOT_VALID");
+   const payload:unknown=await r.json();
+   if(id===active.current)setState(payload&&typeof payload==="object"&&(payload as {valid?:boolean;status?:string}).valid===true&&(payload as {status:string}).status==="ACTIVE"?"ACTIVE":"NOT_VALID");
   }catch{if(id===active.current)setState("UNAVAILABLE");}
  };
  return <section className="cg04-search-card" aria-label="Verify original member card">

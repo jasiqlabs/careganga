@@ -65,7 +65,7 @@ export function NativeMemberSelf({onExit,initialPlan}:{onExit:()=>void;initialPl
   let file:File|null=null;
   try{
    const url=memberEndpoint("/api/v1/membership/documents/packs/"+ref+"/"+kind+"/download");
-   const result=await expoFetch(url,{headers:{Authorization:"Bearer "+token},cache:"no-store"});
+   const result=await expoFetch(url,{headers:{Authorization:"Bearer "+token}});
    if(!result.ok)throw Error("This official membership document is no longer available. Refresh your membership status.");
    if((result.headers.get("content-type")??"").split(";")[0].trim()!=="application/pdf")throw Error("Official document format could not be confirmed.");
    const bytes=new Uint8Array(await result.arrayBuffer());

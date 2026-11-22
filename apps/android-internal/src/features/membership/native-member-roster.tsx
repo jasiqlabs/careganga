@@ -118,7 +118,7 @@ export function NativeMemberRoster({token,canExport,canIssueDocs,onExpired}:{tok
      <View style={styles.cardFace}><Text style={styles.faceTag}>CAREGANGA FOUNDATION · MEMBER</Text><Text style={styles.faceName}>{m.name}</Text><Text style={styles.faceText}>Membership number: {m.memberNumber}</Text><Text style={styles.faceText}>Plan: {m.plan} · {human(m.category)}</Text><Text style={styles.faceText}>Status: {human(m.status)}</Text><Text style={styles.faceText}>Valid until: {m.expiresOn??"Lifetime"}</Text></View>
      <View style={styles.cardFace}><Text style={styles.faceTag}>MEMBERSHIP INFORMATION</Text><Text style={styles.faceText}>Branch: {m.branch??"Foundation"}</Text><Text style={styles.faceText}>Joined: {m.joinedOn}</Text><Text style={styles.faceText}>No verification QR issued</Text></View>
     </View>}
-   </View>)}}
+   </View>)}
    <View style={styles.buttons}>{chip("Previous page",()=>{setCursor(history.at(-1)??"");setHistory(x=>x.slice(0,-1));},false,disabled||!history.length)}
     {chip("Next page",()=>{setHistory(x=>[...x,cursor]);setCursor(page.nextCursor??"");},false,disabled||!page.nextCursor)}</View>
   </>}
