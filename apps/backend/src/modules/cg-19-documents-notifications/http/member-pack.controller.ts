@@ -20,6 +20,8 @@ export class MemberPackController{
  confirmAsset(@Headers("authorization")token:string,@Param("ref")ref:string){return this.brands.confirm(token,ref);}
  @Get("me") @Header("Cache-Control","private, no-store")
  mine(@Headers("authorization")token:string){return this.packs.mine(token);}
+ @Get("members/:ref") @Header("Cache-Control","private, no-store")
+ memberStatus(@Headers("authorization")token:string,@Param("ref")ref:string){return this.packs.memberStatus(token,ref);}
  @Post("members/:ref/issue") @Header("Cache-Control","private, no-store")
  issue(@Headers("authorization")token:string,@Param("ref")ref:string,@Body()body:unknown){return this.packs.issue(token,ref,body);}
  @Get("packs/:ref") @Header("Cache-Control","private, no-store")
