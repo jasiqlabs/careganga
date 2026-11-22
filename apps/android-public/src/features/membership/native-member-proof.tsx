@@ -1,6 +1,6 @@
 import * as Crypto from "expo-crypto";
 import {useCallback,useEffect,useRef,useState} from "react";
-import {Pressable,StyleSheet,Text,View} from "react-native";
+import {AppState,Pressable,StyleSheet,Text,View} from "react-native";
 import {File,Paths,UploadType} from "expo-file-system";
 import {fetch as expoFetch} from "expo/fetch";
 import type {CG04MembershipEvidenceList,CG04MembershipEvidenceStatus} from "@careganga/api-contracts";
@@ -11,7 +11,11 @@ export function NativeMemberProof({token,applicationRef,version,editable,onChang
  const previews=useRef<File[]>([]);
  const refresh=useCallback(async()=>{setList(await memberInvoke<CG04MembershipEvidenceList>("/api/documents/membership/applications/"+applicationRef+"/files","GET",undefined,token));},[applicationRef,token]);
  useEffect(()=>{let active=true;void memberInvoke<CG04MembershipEvidenceList>("/api/documents/membership/applications/"+applicationRef+"/files","GET",undefined,token).then(v=>{if(active)setList(v);}).catch(()=>{if(active)setMessage("Verified evidence could not be read. Retry.");});return()=>{active=false;};},[refresh,version]);
- useEffect(()=>()=>{for(const f of previews.current)try{f.delete();}catch{}previews.current=[];},[]);
+ useEffect(()=>{
+  const clear=()=>{for(const f of previews.current)try{f.delete();}catch{}previews.current=[];};
+  const sub=AppState.addEventListener("change",state=>{if(state!=="active"){clear();setList(null);}});
+  return()=>{sub.remove();clear();};
+ },[]);
  const act=async(work:()=>Promise<void>)=>{if(busy)return;setBusy(true);setMessage("");try{await work();}catch(e){setMessage(e instanceof Error?e.message:"Document state is uncertain. Refresh before retrying.");}finally{setBusy(false);}};
  const upload=(kind:Kind)=>void act(async()=>{
   if(!editable)return;
@@ -32,10 +36,13 @@ export function NativeMemberProof({token,applicationRef,version,editable,onChang
  const preview=(ref:string,mime:string)=>void act(async()=>{
   const r=await expoFetch(memberEndpoint("/api/documents/membership/files/"+ref+"/download"),{headers:{Authorization:"Bearer "+token},cache:"no-store"});
   if(!r.ok)throw Error("Protected document unavailable.");
+  const serverMime=(r.headers.get("content-type")??"").split(";")[0].trim();
+  if(serverMime!==mime||!["application/pdf","image/jpeg","image/png","image/webp"].includes(serverMime))throw Error("Protected document type could not be verified.");
   const bytes=await r.bytes();if(!bytes.length||bytes.length>10485760)throw Error("Document content could not be verified.");
   const suffix=mime==="application/pdf"?".pdf":mime==="image/png"?".png":mime==="image/webp"?".webp":".jpg";
-  const local=new File(Paths.cache,"careganga-member-"+Date.now()+suffix);
-  await local.write(bytes);previews.current.push(local);await local.preview({mimeType:mime,title:"CareGanga private membership evidence"});
+  const local=new File(Paths.cache,"careganga-private-member-"+Crypto.randomUUID()+suffix);
+  try{await local.write(bytes);previews.current.push(local);await local.preview({mimeType:mime,title:"CareGanga private membership evidence"});}
+  finally{try{local.delete();}catch{}previews.current=previews.current.filter(f=>f.uri!==local.uri);}
  });
  const button=(title:string,fn:()=>void)=> <Pressable accessibilityRole="button" disabled={busy} onPress={fn} style={[s.button,busy&&{opacity:.5}]}><Text style={s.text}>{title}</Text></Pressable>;
  return <View style={s.card}><Text style={s.heading}>Private verified documents</Text><Text>Identity proof must be scanned and verified before submission. These files are not public.</Text>
