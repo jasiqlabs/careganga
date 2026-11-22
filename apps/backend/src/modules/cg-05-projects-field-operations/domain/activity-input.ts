@@ -6,7 +6,7 @@ export type ActivityStatus=typeof activityStatuses[number];
 const workKeys=["projectRef","kind","title","category","activityType","description","program","branchRef","stateRef","districtRef","venue","ownerRef","scheduledStart","scheduledEnd"] as const;
 /** Explicit offset is mandatory: never interpret device-local wall time on the backend. */
 export function instant(v:unknown){
- if(typeof v!=="string"||!/^20\d\d-\d\d-\d\dT\d\d:\d\d(?::\d\d)?(?:Z|[+-]\d\d:\d\d)$/.test(v))throw invalid();
+ if(typeof v!=="string"||!/^20\d\d-\d\d-\d\dT\d\d:\d\d(?::\d\d(?:\.\d{1,3})?)?(?:Z|[+-]\d\d:\d\d)$/.test(v))throw invalid();
  const ms=Date.parse(v);if(!Number.isFinite(ms))throw invalid();
  const day=v.slice(0,10);if(new Date(day+"T00:00:00Z").toISOString().slice(0,10)!==day)throw invalid();
  const [hh,mm,ss="0"]=v.slice(11).split(/[:Z+-]/);
