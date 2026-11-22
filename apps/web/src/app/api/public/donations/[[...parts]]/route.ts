@@ -9,7 +9,7 @@ export async function POST(req:NextRequest,ctx:Context){
  const receipt=parts.length===2&&parts[0]==="receipt"&&parts[1]==="download";
  const path=receipt?"/api/public/donations/receipt/download":
   parts.length===0?"/api/public/donations":
-  parts.length===1&&["status","payment-link"].includes(parts[0])?
+  parts.length===1&&["status","history","payment-link"].includes(parts[0])?
   "/api/public/donations/"+parts[0]:null;
  if(!path)return reply({message:"Donation action unavailable."},404);
  if(req.headers.get("origin")!==req.nextUrl.origin)
