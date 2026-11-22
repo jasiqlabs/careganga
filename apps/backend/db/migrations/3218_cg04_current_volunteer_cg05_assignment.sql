@@ -80,6 +80,9 @@ ALTER TABLE field_visit_event ADD CONSTRAINT fk_cg04_visit_event_volunteer
 CREATE FUNCTION cg04_visit_volunteer_guard() RETURNS trigger LANGUAGE plpgsql AS $$
 DECLARE assigned record;
 BEGIN
+ IF TG_OP='UPDATE' AND OLD.started_at IS NOT NULL
+   AND NEW.actor_volunteer_ref IS DISTINCT FROM OLD.actor_volunteer_ref
+ THEN RAISE EXCEPTION 'Accepted field visit volunteer assignment is immutable'; END IF;
  IF NEW.actor_volunteer_ref IS NOT NULL AND NEW.status NOT IN('CANCELLED','COMPLETED','REJECTED')
   AND NOT cg04_current_volunteer(NEW.root_realm_id,NEW.actor_volunteer_ref,NEW.actor_account_ref,NEW.branch_ref)
  THEN RAISE EXCEPTION 'Current approved volunteer affiliation required for field visit'; END IF;
