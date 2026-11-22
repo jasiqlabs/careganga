@@ -1,5 +1,6 @@
 import {BadRequestException,ConflictException,Inject,Injectable} from "@nestjs/common";
 import {createHash} from "node:crypto";
+import {currentHrAllowanceOrigin,assertOwnClaimOrigin} from "../../cg-10-human-resources/application/hr-allowance-origin";
 import type {Pool} from "pg";
 import {FinanceClaimApprovalService} from "../../cg-03-registration-approvals/application/finance-claim-approval.service";
 import {FinanceClaimEvidenceService} from "../../cg-19-documents-notifications/application/finance-claim-evidence.service";
@@ -39,14 +40,15 @@ function amount(value:unknown):string{
   return invalid("FINANCE_CLAIM_AMOUNT_INVALID","amount");
  return minor.toString();
 }
-type Normal={key:string;purpose:string;category:string;expenseDate:string;amountMinor:string};
+type Normal={key:string;purpose:string;category:string;expenseDate:string;amountMinor:string;sourceKind:"GENERAL"|"HR_ALLOWANCE"};
 function parse(input:unknown):Normal{
  if(!input||typeof input!=="object"||Array.isArray(input))
   return invalid("FINANCE_CLAIM_FORM_INVALID");
  const v=input as Record<string,unknown>;
- if(Object.keys(v).some(k=>!["requestKey","purpose","category","expenseDate","amount"].includes(k)))
+ if(Object.keys(v).some(k=>!["requestKey","purpose","category","expenseDate","amount","sourceKind"].includes(k)))
   return invalid("FINANCE_CLAIM_FORM_INVALID");
- return {key:keyOf(v.requestKey),purpose:label(v.purpose,"purpose",3,500),
+ if(v.sourceKind!==undefined&&v.sourceKind!=="GENERAL"&&v.sourceKind!=="HR_ALLOWANCE")return invalid("FINANCE_CLAIM_FORM_INVALID");
+ return {sourceKind:v.sourceKind==="HR_ALLOWANCE"?"HR_ALLOWANCE":"GENERAL",key:keyOf(v.requestKey),purpose:label(v.purpose,"purpose",3,500),
   category:label(v.category,"category",2,80),
   expenseDate:dateOnly(v.expenseDate),amountMinor:amount(v.amount)};
 }
@@ -62,21 +64,23 @@ export class FinanceExpenseClaimService{
  /** Real CG-01 Foundation requester; never invent an HR employee/volunteer. */
  async create(bearer:string,input:unknown){
   const actor=await this.sessions.requireAction(bearer,"finance.claims.create");
-  const v=parse(input),digest=createHash("sha256").update(JSON.stringify(
-   ["CG09_CLAIM_DRAFT_V1",v.purpose,v.category,v.expenseDate,v.amountMinor]
-  )).digest("hex");
+  const v=parse(input);
   const client=await this.db.connect();
   try{
    await client.query("BEGIN");
    await this.identity.assertCurrent(client,actor,"finance.claims.create");
+   const origin=v.sourceKind==="HR_ALLOWANCE"?await currentHrAllowanceOrigin(client,actor):null;
+   const digest=createHash("sha256").update(JSON.stringify(origin?
+    ["CG09_HR_ALLOWANCE_V1",v.purpose,v.category,v.expenseDate,v.amountMinor,origin.hr_employee_id,origin.hr_assignment_id,origin.hr_branch_id]:
+    ["CG09_CLAIM_DRAFT_V1",v.purpose,v.category,v.expenseDate,v.amountMinor])).digest("hex");
    const created=await client.query<Claim>(
     "INSERT INTO expense_claim(root_realm_id,requested_by,category_label,purpose,"+
-    " expense_date,amount_minor,create_request_key,create_digest,current_digest) "+
-    " VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9) "+
+    " expense_date,amount_minor,create_request_key,create_digest,current_digest,source_kind,hr_employee_id,hr_assignment_id,hr_branch_id) "+
+    " VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13) "+
     " ON CONFLICT(root_realm_id,requested_by,create_request_key) DO NOTHING "+
     " RETURNING id,status,version,create_digest",
     [actor.realmId,actor.accountId,v.category,v.purpose,v.expenseDate,
-     v.amountMinor,v.key,digest,digest]);
+     v.amountMinor,v.key,digest,digest,v.sourceKind,origin?.hr_employee_id??null,origin?.hr_assignment_id??null,origin?.hr_branch_id??null]);
    let row=created.rows[0],replayed=false;
    if(!row){
     const found=await client.query<Claim>(
@@ -84,6 +88,7 @@ export class FinanceExpenseClaimService{
      "WHERE root_realm_id=$1 AND requested_by=$2 AND create_request_key=$3 FOR SHARE",
      [actor.realmId,actor.accountId,v.key]);
     row=found.rows[0];
+    if(row)await assertOwnClaimOrigin(client,actor,row.id);
     if(!row||row.create_digest!==digest)
      throw new ConflictException({code:"FINANCE_CLAIM_REPLAY_CONFLICT",field:"requestKey"});
     replayed=true;
@@ -103,7 +108,9 @@ export class FinanceExpenseClaimService{
     replayed,nextStep:"VERIFIED_BILL_REQUIRED_BEFORE_SUBMISSION"};
   }catch(e){await client.query("ROLLBACK");throw e;}finally{client.release();}
  }
- async mine(bearer:string,offsetInput?:string){
+ async mine(bearer:string,offsetInput?:string,sourceInput?:string){
+  if(sourceInput!==undefined&&sourceInput!=="GENERAL"&&sourceInput!=="HR_ALLOWANCE")return invalid("FINANCE_CLAIM_FILTER_INVALID");
+  const source=sourceInput??"GENERAL";
   const actor=await this.sessions.requireAction(bearer,"finance.claims.view");
   if(offsetInput!==undefined&&!/^(0|[1-9][0-9]{0,4})$/.test(offsetInput))
    return invalid("FINANCE_CLAIM_FILTER_INVALID","offset");
@@ -112,15 +119,20 @@ export class FinanceExpenseClaimService{
   try{
    await client.query("BEGIN");
    await this.identity.assertCurrent(client,actor,"finance.claims.view");
+   const origin=source==="HR_ALLOWANCE"?await currentHrAllowanceOrigin(client,actor):null;
    const result=await client.query<{
     claimRef:string;claimNumber:string;category:string;purpose:string;expenseDate:string;
-    amountMinor:string;status:string;version:number;createdAt:Date}>(
+    amountMinor:string;status:string;version:number;createdAt:Date;paymentState:string}>(
     "SELECT id AS \"claimRef\",claim_number AS \"claimNumber\",category_label AS category,purpose, "+
     "expense_date::text AS \"expenseDate\",amount_minor::text AS \"amountMinor\", "+
-    "status,version,created_at AS \"createdAt\" FROM expense_claim "+
-    "WHERE root_realm_id=$1 AND requested_by=$2 "+
+    "status,version,created_at AS \"createdAt\", "+
+    "CASE WHEN status<>'APPROVED' THEN 'NOT_PAYABLE' "+
+    "WHEN EXISTS(SELECT 1 FROM expense_claim_voucher_link l JOIN finance_voucher v ON v.id=l.voucher_id AND v.root_realm_id=l.root_realm_id AND v.status='POSTED' JOIN finance_voucher_payment_verification p ON p.voucher_id=v.id AND p.root_realm_id=v.root_realm_id AND p.status='VERIFIED' WHERE l.root_realm_id=expense_claim.root_realm_id AND l.claim_id=expense_claim.id AND l.link_kind='PAYOUT') THEN 'PAID_VERIFIED' "+
+    "WHEN EXISTS(SELECT 1 FROM expense_claim_voucher_link l JOIN finance_voucher v ON v.id=l.voucher_id AND v.root_realm_id=l.root_realm_id AND v.status='POSTED' WHERE l.root_realm_id=expense_claim.root_realm_id AND l.claim_id=expense_claim.id AND l.link_kind='PAYABLE') THEN 'PAYABLE' ELSE 'APPROVED_UNPOSTED' END AS \"paymentState\" FROM expense_claim "+
+    "WHERE root_realm_id=$1 AND requested_by=$2 AND source_kind=$4 "+
+    "AND ($4='GENERAL' OR (hr_employee_id=$5::uuid AND hr_assignment_id=$6::uuid AND hr_branch_id=$7::uuid)) "+
     "ORDER BY created_at DESC,id DESC LIMIT 31 OFFSET $3",
-    [actor.realmId,actor.accountId,offset]);
+    [actor.realmId,actor.accountId,offset,source,origin?.hr_employee_id??null,origin?.hr_assignment_id??null,origin?.hr_branch_id??null]);
    await client.query("COMMIT");
    return {claims:result.rows.slice(0,30),nextOffset:result.rows.length>30?offset+30:null};
   }catch(e){await client.query("ROLLBACK");throw e;}finally{client.release();}
@@ -137,6 +149,7 @@ export class FinanceExpenseClaimService{
     "SELECT id,status,version FROM expense_claim "+
     "WHERE root_realm_id=$1 AND requested_by=$2 AND create_request_key=$3",
     [actor.realmId,actor.accountId,key]);
+   if(result.rows[0])await assertOwnClaimOrigin(client,actor,result.rows[0].id);
    await client.query("COMMIT");
    return result.rows[0]?{confirmed:true,claimRef:result.rows[0].id,
     status:result.rows[0].status,version:result.rows[0].version}:
@@ -175,6 +188,7 @@ export class FinanceExpenseClaimService{
   try{
    await tx.query("BEGIN");
    await this.identity.assertCurrent(tx,actor,"finance.claims.create");
+   await assertOwnClaimOrigin(tx,actor,claimRef);
    const existing=await tx.query<{request_digest:string;result_status:string}>(
     "SELECT request_digest,result_status FROM expense_claim_command "+
     "WHERE root_realm_id=$1 AND actor_ref=$2 AND request_key=$3 FOR SHARE",
@@ -257,6 +271,7 @@ export class FinanceExpenseClaimService{
   try{
    await tx.query("BEGIN");
    await this.identity.assertCurrent(tx,actor,"finance.claims.create");
+   await assertOwnClaimOrigin(tx,actor,claimRef);
    const existing=await tx.query<{request_digest:string;result_status:string;case_id:string}>(
     "SELECT request_digest,result_status,case_id FROM expense_claim_command "+
     "WHERE root_realm_id=$1 AND actor_ref=$2 AND request_key=$3 FOR SHARE",
@@ -451,7 +466,10 @@ export class FinanceExpenseClaimService{
  async detail(bearer:string,claimInput:string){
   const actor=await this.sessions.requireAction(bearer,"finance.claims.view");
   const claimRef=keyOf(claimInput);
-  const rows=await this.db.query<{
+  const tx=await this.db.connect();
+  try{await tx.query("BEGIN");await this.identity.assertCurrent(tx,actor,"finance.claims.view");
+  await assertOwnClaimOrigin(tx,actor,claimRef);
+  const rows=await tx.query<{
    claimRef:string;claimNumber:string;category:string;purpose:string;expenseDate:string;amountMinor:string;
    status:string;version:number;caseRef:string|null;billFileRef:string|null;
    billVersion:number|null;payableVoucherNumber:string|null;
@@ -470,16 +488,21 @@ export class FinanceExpenseClaimService{
    "WHERE c.root_realm_id=$1 AND c.id=$2 AND c.requested_by=$3",
    [actor.realmId,claimRef,actor.accountId]);
   if(!rows.rows[0])throw new ConflictException({code:"FINANCE_CLAIM_SOURCE_INVALID"});
-  return rows.rows[0];
+  await tx.query("COMMIT");return rows.rows[0];
+  }catch(e){await tx.query("ROLLBACK");throw e;}finally{tx.release();}
  }
  async workflowCommand(bearer:string,requestInput:string){
   const actor=await this.sessions.requireAction(bearer,"finance.claims.create");
   const key=keyOf(requestInput);
-  const rows=await this.db.query<{result_status:string}>(
-   "SELECT result_status FROM expense_claim_command "+
+  const tx=await this.db.connect();
+  try{await tx.query("BEGIN");await this.identity.assertCurrent(tx,actor,"finance.claims.create");
+  const rows=await tx.query<{result_status:string;claim_id:string}>(
+   "SELECT result_status,claim_id FROM expense_claim_command "+
    "WHERE root_realm_id=$1 AND actor_ref=$2 AND request_key=$3",
    [actor.realmId,actor.accountId,key]);
-  return {confirmed:!!rows.rows[0],status:rows.rows[0]?.result_status??null};
+  if(rows.rows[0])await assertOwnClaimOrigin(tx,actor,rows.rows[0].claim_id);
+  await tx.query("COMMIT");return {confirmed:!!rows.rows[0],status:rows.rows[0]?.result_status??null};
+  }catch(e){await tx.query("ROLLBACK");throw e;}finally{tx.release();}
  }
 
 
