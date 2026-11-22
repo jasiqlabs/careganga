@@ -5,12 +5,12 @@ type Row={ref:string;code:string;title:string;category:string;status:string;vers
  branch:string|null;goalMinor:string|null;updatedAt:string;steps?:Record<string,unknown>};
 type Page={items:Row[];offset:number;hasMore:boolean};
 type Choice={value:string;label:string};
-type Choices={canFoundation:boolean;branches:Choice[];states:Choice[];districts:Choice[];coordinators:Choice[];projects:Choice[];events:(Choice&{projectRef:string|null})[]};
+type Choices={canFoundation:boolean;branches:Choice[];states:Choice[];districts:Choice[];coordinators:Choice[];volunteers:Choice[];projects:Choice[];events:(Choice&{projectRef:string|null})[]};
 type Draft={
  basic:{title:string;type:"GENERAL";summary:string;description:string;tags:string[]};
  project:{category:string;branchRef:string|null;projectRef:string|null;eventRef:string|null;stateRef:string|null;districtRef:string|null;location:string;
   targetGroup:string;plannedBeneficiaries:number|null};
- team:{coordinatorRef:string|null;volunteerRef:null};
+ team:{coordinatorRef:string|null;volunteerRef:string|null};
  budget:{goal:string;expectedCost:string;startAt:string;endAt:string};
  media:{fileRef:null;alt:string};review:Record<string,never>;
 };
@@ -39,7 +39,7 @@ function fromRow(row:Row):Draft{
    projectRef:project?.projectRef??null,eventRef:project?.eventRef??null,
    stateRef:project?.stateRef??null,districtRef:project?.districtRef??null,location:project?.location??"",
    targetGroup:project?.targetGroup??"",plannedBeneficiaries:project?.plannedBeneficiaries??null},
-  team:{...blank().team,coordinatorRef:team?.coordinatorRef??null},
+  team:{...blank().team,coordinatorRef:team?.coordinatorRef??null,volunteerRef:team?.volunteerRef??null},
   budget:{goal:minorToRupees(budget?.goalMinor),expectedCost:minorToRupees(budget?.expectedCostMinor),
    startAt:budget?.startAt??"",endAt:budget?.endAt??""}};
 }
@@ -213,7 +213,9 @@ export function CampaignDraftsWorkspace({canManage}:{canManage:boolean}){
     </>}
     {step===2&&<>{select("Campaign coordinator",draft.team.coordinatorRef,choices?.coordinators??[],
       v=>update("team","coordinatorRef",v),"Use current signed-in Foundation operator")}
-     <p>Optional CG-04 volunteer association needs a currently approved volunteer and never creates a staff grant.</p></>}
+     {select("Current approved volunteer (optional)",draft.team.volunteerRef,choices?.volunteers??[],
+       v=>update("team","volunteerRef",v),"No volunteer assigned")}
+     <p>The original CG-04 active volunteer and branch affiliation are rechecked at save, submission and independent approval. No staff permission is granted.</p></>}
     {step===3&&<>
      {input("Fundraising goal (INR, planned)",draft.budget.goal,v=>update("budget","goal",v))}
      {input("Expected cost (INR, planned)",draft.budget.expectedCost,v=>update("budget","expectedCost",v))}
