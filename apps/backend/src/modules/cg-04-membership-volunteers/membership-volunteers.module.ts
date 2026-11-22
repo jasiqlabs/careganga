@@ -8,7 +8,9 @@ import {IdentityAccessModule} from "../cg-01-identity-access/identity-access.mod
 import {FoundationStructureModule} from "../cg-02-foundation-structure/foundation-structure.module";
 import {MembershipApplicationsService} from "./application/membership-applications.service";
 import {MembershipApplicationsController} from "./http/membership-applications.controller";
+import {MembershipRosterService} from "./application/membership-roster.service";
+import {MembershipRosterController} from "./http/membership-roster.controller";
 import {MembershipTiersService} from "./application/membership-tiers.service";
 import {MembershipTiersController,PublicMembershipTiersController} from "./http/membership-tiers.controller";
-@Module({imports:[DatabaseModule,IdentityAccessModule,FoundationStructureModule,RegistrationApprovalsModule,FinanceSourceModule],providers:[MembershipTiersService,MembershipApplicationsService,MembershipActivationService],controllers:[MembershipTiersController,PublicMembershipTiersController,MembershipApplicationsController,MembershipActivationController],exports:[MembershipTiersService]})
+@Module({imports:[DatabaseModule,IdentityAccessModule,FoundationStructureModule,RegistrationApprovalsModule,FinanceSourceModule],providers:[MembershipRosterService,MembershipTiersService,MembershipApplicationsService,MembershipActivationService],controllers:[MembershipRosterController,MembershipTiersController,PublicMembershipTiersController,MembershipApplicationsController,MembershipActivationController],exports:[MembershipTiersService]})
 export class MembershipVolunteersModule{}
