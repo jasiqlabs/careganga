@@ -7,14 +7,16 @@ import {careGangaTheme as t} from "../../../../../packages/design-tokens/src/ind
 const steps=["Basic Details","Project & Category","Team & Assignment","Budget & Targets","Documents & Media","Review & Submit"];
 type Draft={
  basic:{title:string;type:"GENERAL";summary:string;description:string;tags:string[]};
- project:{category:string;branchRef:null;projectRef:null;eventRef:null;stateRef:null;districtRef:null;location:string;targetGroup:string;plannedBeneficiaries:number|null};
- team:{coordinatorRef:null;volunteerRef:null};
+ project:{category:string;branchRef:string|null;projectRef:null;eventRef:null;stateRef:string|null;districtRef:string|null;location:string;targetGroup:string;plannedBeneficiaries:number|null};
+ team:{coordinatorRef:string|null;volunteerRef:null};
  budget:{goal:string;expectedCost:string;startAt:string;endAt:string};
  media:{fileRef:null;alt:string};review:Record<string,never>;
 };
 type Row={ref:string;code:string;title:string;status:string;category:string;version:number;revision:number;steps?:Record<string,unknown>};
 type Page={items:Row[];offset:number;hasMore:boolean};
 type Saved={ref:string;version:number;code:string;replayed:boolean;status:string};
+type Choice={value:string;label:string};
+type Choices={canFoundation:boolean;branches:Choice[];states:Choice[];districts:Choice[];coordinators:Choice[]};
 const blank=():Draft=>({basic:{title:"",type:"GENERAL",summary:"",description:"",tags:[]},
  project:{category:"GENERAL",branchRef:null,projectRef:null,eventRef:null,stateRef:null,districtRef:null,location:"",targetGroup:"",plannedBeneficiaries:null},
  team:{coordinatorRef:null,volunteerRef:null},budget:{goal:"",expectedCost:"",startAt:"",endAt:""},media:{fileRef:null,alt:""},review:{}});
@@ -23,11 +25,14 @@ const rupees=(v:unknown)=>{try{if(typeof v!=="string"||!/^[0-9]+$/.test(v))retur
 function fromRow(row:Row):Draft{
  const b=row.steps?.basic as Partial<Draft["basic"]>|undefined;
  const p=row.steps?.project as Partial<Draft["project"]>|undefined;
+ const t=row.steps?.team as Partial<Draft["team"]>|undefined;
  const g=row.steps?.budget as {goalMinor?:string;expectedCostMinor?:string;startAt?:string|null;endAt?:string|null}|undefined;
  return {...blank(),basic:{...blank().basic,title:b?.title??row.title,summary:b?.summary??"",
   description:b?.description??"",tags:Array.isArray(b?.tags)?b.tags:[]},
-  project:{...blank().project,category:p?.category??row.category,location:p?.location??"",targetGroup:p?.targetGroup??"",
+  project:{...blank().project,category:p?.category??row.category,branchRef:p?.branchRef??null,
+   stateRef:p?.stateRef??null,districtRef:p?.districtRef??null,location:p?.location??"",targetGroup:p?.targetGroup??"",
    plannedBeneficiaries:p?.plannedBeneficiaries??null},
+  team:{...blank().team,coordinatorRef:t?.coordinatorRef??null},
   budget:{goal:rupees(g?.goalMinor),expectedCost:rupees(g?.expectedCostMinor),
    startAt:g?.startAt??"",endAt:g?.endAt??""}};
 }
@@ -38,7 +43,8 @@ export function NativeCampaignDrafts({token,canManage,onExpired}:{
  const [form,setForm]=useState<Draft>(blank),[step,setStep]=useState(0),[editing,setEditing]=useState(false);
  const [offset,setOffset]=useState(0),[hasMore,setHasMore]=useState(false),[search,setSearch]=useState("");
  const [applied,setApplied]=useState(""),[busy,setBusy]=useState(false),[loading,setLoading]=useState(false);
- const [notice,setNotice]=useState(""),[error,setError]=useState("");
+ const [notice,setNotice]=useState(""),[error,setError]=useState(""),[choices,setChoices]=useState<Choices|null>(null);
+ const choiceSeq=useRef(0);
  const pending=useRef<{key:string;body:Record<string,unknown>;path:string;method:"POST"|"PATCH"}|null>(null);
  const seq=useRef(0),active=useRef(true);
  async function api<T>(path:string,method:"GET"|"POST"|"PATCH"="GET",body?:Record<string,unknown>){
@@ -63,10 +69,18 @@ export function NativeCampaignDrafts({token,canManage,onExpired}:{
  };
  useEffect(()=>{void refresh();return()=>{seq.current++;};},[token,offset,applied]);
  useEffect(()=>{
+  if(!editing||!active.current){setChoices(null);return;}
+  const id=++choiceSeq.current;
+  void api<Choices>("options?"+new URLSearchParams({stateRef:form.project.stateRef??""}).toString())
+   .then(value=>{if(id===choiceSeq.current&&active.current)setChoices(value);})
+   .catch(()=>{if(id===choiceSeq.current&&active.current){setChoices(null);setError("Current campaign branch and area choices are unavailable.");}});
+  return()=>{choiceSeq.current++;};
+ },[editing,form.project.stateRef,token]);
+ useEffect(()=>{
   const subscription=AppState.addEventListener("change",state=>{
    active.current=state==="active";
    if(!active.current){
-    seq.current++;setRows([]);setSelected(null);setForm(blank());setEditing(false);
+    seq.current++;choiceSeq.current++;setRows([]);setSelected(null);setForm(blank());setEditing(false);setChoices(null);
     setError("");setNotice("");pending.current=null;
    }else void refresh();
   });
@@ -110,6 +124,14 @@ export function NativeCampaignDrafts({token,canManage,onExpired}:{
  };
  const button=(label:string,fn:()=>void,disabled=false)=><Pressable accessibilityRole="button" disabled={disabled||busy}
   onPress={fn} style={[s.button,(disabled||busy)&&{opacity:.5}]}><Text style={s.action}>{label}</Text></Pressable>;
+ const pick=(label:string,value:string|null,items:Choice[],onPick:(v:string|null)=>void,empty:string)=>
+  <View style={s.block}><Text style={s.label}>{label}</Text>
+   <ScrollView horizontal contentContainerStyle={s.row} nestedScrollEnabled>
+    {button(empty,()=>onPick(null),!!pending.current||!choices||value===null)}
+    {items.map(item=><View key={item.value}>{button((value===item.value?"✓ ":"")+item.label,
+     ()=>onPick(item.value),!!pending.current||!choices||item.value===value)}</View>)}
+   </ScrollView>
+  </View>;
  const field=(label:string,value:string,changeValue:(v:string)=>void,large=false)=><View style={s.block}>
   <Text style={s.label}>{label}</Text><TextInput accessibilityLabel={label} style={[s.input,large&&{minHeight:92}]}
    multiline={large} editable={canManage&&!busy&&!pending.current} value={value} onChangeText={changeValue}/></View>;
