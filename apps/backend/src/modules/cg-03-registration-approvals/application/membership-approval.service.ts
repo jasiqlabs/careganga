@@ -150,7 +150,23 @@ export class MembershipApprovalService{
    plan:labels.plan,category:labels.category,durationUnit:labels.duration_unit,durationCount:labels.duration_count,
    branch:labels.branch,state:labels.state,district:labels.district,referral:source.referral_input??"",
    consentVersion:source.consent_version,consentedAt:source.consented_at};
-  return {caseRef:c.id,reference:c.case_number,status:c.status,revision:c.revision,source:summary,fee:currentFee,
+  // Original CG19 is the only issued-document owner; review displays committed
+  // pack status, not a second source of signed files or a reviewer issue grant.
+  const generated=(await tx.query<{
+   packRef:string;state:string;issueRevision:number;issuedAt:Date|null
+  }>([
+   'SELECT p.id AS "packRef",p.state,p.issue_revision AS "issueRevision",p.issued_at AS "issuedAt"',
+   'FROM membership_application_effect e',
+   'JOIN cg19_member_pack p ON p.root_realm_id=e.root_realm_id AND p.member_id=e.member_id AND p.term_id=e.term_id',
+   'WHERE e.root_realm_id=$1 AND e.application_id=$2',
+   'ORDER BY p.issue_revision DESC,p.id DESC LIMIT 1'
+  ].join(" "),[a.realmId,c.membership_application_id])).rows[0];
+  const generatedFiles=generated?(await tx.query<{kind:string;status:string}>(
+   'SELECT kind,state AS status FROM cg19_member_pack_document WHERE root_realm_id=$1 AND pack_id=$2 ORDER BY kind',
+   [a.realmId,generated.packRef])).rows:[];
+  const documentPack=generated?{status:generated.state,issueRevision:generated.issueRevision,
+   issuedAt:generated.issuedAt?.toISOString()??null,files:generatedFiles}:null;
+  return {caseRef:c.id,reference:c.case_number,status:c.status,revision:c.revision,source:summary,fee:currentFee,documentPack,
    files:frozen.files,timeline,canDecide:c.proposer_id!==a.accountId&&c.status==="SUBMITTED"};
  });}
  /** Original CG03 finalized decision source for CG04's short owner transaction.
