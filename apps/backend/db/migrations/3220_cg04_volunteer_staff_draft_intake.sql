@@ -38,7 +38,11 @@ CREATE INDEX ix_cg04_staff_intake_current ON volunteer_staff_intake_draft(root_r
  WHERE linked_application_id IS NULL;
 CREATE FUNCTION cg04_staff_intake_guard() RETURNS trigger LANGUAGE plpgsql AS $$
 BEGIN
- IF TG_OP='DELETE' THEN RAISE EXCEPTION 'Unverified intake must be removed through approved privacy retention'; END IF;
+ IF TG_OP='DELETE' THEN
+  IF OLD.expires_at>now() OR OLD.linked_application_id IS NOT NULL
+  THEN RAISE EXCEPTION 'Unverified intake must be retained until privacy expiry or applicant linkage'; END IF;
+  RETURN OLD;
+ END IF;
  IF TG_OP='UPDATE' THEN
   IF OLD.linked_application_id IS NOT NULL OR NEW.linked_application_id IS NULL OR NEW.linked_at IS NULL
    OR (NEW.root_realm_id,NEW.id,NEW.batch_id,NEW.first_name,NEW.last_name,NEW.contact_mobile,
