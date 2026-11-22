@@ -98,7 +98,7 @@ export class HrDocumentSourceFacade{
    WHERE e.root_realm_id=$1 AND e.id=$2 AND f.owner_kind='CG10_DRAFT' AND f.scan_status='CLEAN_VERIFIED' AND f.revoked_at IS NULL
      AND i.status='VALIDATED' AND f.original_mime IN('image/jpeg','image/png') AND f.verified_size_bytes BETWEEN 1 AND 10485760
    FOR SHARE OF e,a,v,p,f,i`,[realm,employee]);
-  if(q.rows.length!==1)throw new ConflictException("A single approved JPEG or PNG employee portrait is required for the ID card");
+  if(q.rows.length!==1)throw new ConflictException({code:"CG10_CARD_PORTRAIT_REQUIRED"});
   return q.rows[0];
  }
  async template(tx:PoolClient,realm:string,x:Input){
@@ -121,7 +121,11 @@ export class HrDocumentSourceFacade{
    assignment_id,assignment_version,employee_version,exit_change_id,source_branch_ref,template_id,template_version,issue_date,expiry_date,source_snapshot,source_digest,request_key,request_digest,created_by)
    VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17::jsonb,$18,$19,$20,$21) ON CONFLICT DO NOTHING RETURNING *`,
    [actor.realmId,x.kind,s.employee_id,s.application_id,s.application_revision_id,s.application_revision_no,s.application_source_digest,s.assignment_id,s.assignment_version,s.employee_version,s.exit_change_id,s.branch_ref,t.id,t.version,x.issueDate,x.expiryDate,JSON.stringify(snapshot),sourceDigest,x.requestKey,requestDigest,actor.accountId]);
-  if(!q.rows[0])throw new ConflictException("An identical document intent already exists. Refresh before retrying.");
+  if(!q.rows[0]){
+   const concurrent=(await tx.query<HrDocumentRow>("SELECT * FROM hr_document_request WHERE root_realm_id=$1 AND created_by=$2 AND request_key=$3",[actor.realmId,actor.accountId,x.requestKey])).rows[0];
+   if(concurrent){if(concurrent.request_digest!==requestDigest)throw new ConflictException("The original request key belongs to different document details");return this.summary(concurrent);}
+   throw new ConflictException("An identical document intent already exists. Refresh before retrying.");
+  }
   return this.summary(q.rows[0]);
  }
  summary(row:HrDocumentRow){return {reference:row.reference,kind:row.kind,status:row.status,revision:row.revision,snapshot:row.source_snapshot};}

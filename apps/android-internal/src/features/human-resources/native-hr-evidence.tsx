@@ -62,14 +62,15 @@ export function NativeHrEvidence({token,applicationRef,revision,onExpired,onFile
  const choose=async()=>{
   if(busy)return;
   try{
+   const allowed=kind==="HR_PORTRAIT"?["image/jpeg","image/png"]:["application/pdf","image/jpeg","image/png","image/webp"];
    const pickedFile=await DocumentPicker.getDocumentAsync({
-    type:["application/pdf","image/jpeg","image/png","image/webp"],
+    type:allowed,
     multiple:false,copyToCacheDirectory:true});
    if(pickedFile.canceled)return;
    const file=pickedFile.assets?.[0];
    if(!file||!file.size||file.size<1||file.size>10485760||
-      !file.mimeType||!["application/pdf","image/jpeg","image/png","image/webp"].includes(file.mimeType)){
-    setMessage("Select one original PDF or image smaller than 10 MB.");return;
+      !file.mimeType||!allowed.includes(file.mimeType)){
+    setMessage(kind==="HR_PORTRAIT"?"Choose a JPEG or PNG employee photograph smaller than 10 MB.":"Select one original PDF or image smaller than 10 MB.");return;
    }
    setPicked({uri:file.uri,name:file.name,size:file.size,mime:file.mimeType});
    original.current=null;setIntent("");setUncertain(false);setMessage("");
@@ -90,6 +91,9 @@ export function NativeHrEvidence({token,applicationRef,revision,onExpired,onFile
  };
  const upload=async()=>{
   if(!picked||busy||uncertain)return;
+  if(kind==="HR_PORTRAIT"&&!["image/jpeg","image/png"].includes(picked.mime)){
+   setMessage("Choose a JPEG or PNG employee photograph.");return;
+  }
   setBusy(true);setMessage("");
   try{
    const file=new File(picked.uri);
@@ -151,18 +155,18 @@ export function NativeHrEvidence({token,applicationRef,revision,onExpired,onFile
  };
  const chip=(label:string,fn:()=>void,active=false)=>(
   <Pressable accessibilityRole="button" accessibilityState={{selected:active}}
-   onPress={fn} style={[styles.chip,active&&styles.active]}>
+   onPress={fn} disabled={busy} style={[styles.chip,active&&styles.active]}>
    <Text style={[styles.chipText,active&&styles.activeText]}>{label}</Text>
   </Pressable>
  );
  return <View style={styles.card}>
   <Text style={styles.heading}>Private enrollment evidence</Text>
   <Text style={styles.hint}>Original scanned identity evidence is required.
-   No file is public or approved until the CG-19 scanner and CG-03 reviewer confirm it.</Text>
+   No file is public or approved until secure scanning and Foundation review confirm it.</Text>
   {!!message&&<Text accessibilityRole="alert" style={styles.hint}>{message}</Text>}
   <View style={styles.choices}>
    {(["HR_IDENTITY_PROOF","HR_PAN_PROOF","HR_QUALIFICATION","HR_PORTRAIT"] as Kind[]).map(k=>
-    <View key={k}>{chip(title(k),()=>{
+    <View key={k}>{chip(({HR_IDENTITY_PROOF:"Identity proof",HR_PAN_PROOF:"PAN proof",HR_QUALIFICATION:"Qualification evidence",HR_PORTRAIT:"Employee photograph"})[k],()=>{
      setKind(k);setPicked(null);setIntent("");setUncertain(false);original.current=null;
     },kind===k)}</View>)}
   </View>

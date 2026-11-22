@@ -1,6 +1,8 @@
 /** Server-controlled allow-list: authorized overrides can change safe wording only,
  * never rules, status, field binding, redaction, or authentication behavior. */
 export const SAFE_MESSAGE_CATALOG:Readonly<Record<string,string>>=Object.freeze({
+      CG10_PORTRAIT_FORMAT:"Choose a JPEG or PNG employee photograph under 10 MB.",
+      CG10_CARD_PORTRAIT_REQUIRED:"The ID card needs one scan-verified photograph from the approved employee enrollment. Ask HR to check the original evidence before issuing.",
       CG10_CORRECTION_INVALID:"Choose an actual attendance day and enter valid local punch times or the correct attendance status and reason.",
       CG10_CORRECTION_STALE:"The original attendance record or review changed. Refresh the employee attendance and submit its current version.",
       CG10_CORRECTION_LEAVE:"Approved leave cannot be removed by an attendance correction. Contact HR for the original leave process.",

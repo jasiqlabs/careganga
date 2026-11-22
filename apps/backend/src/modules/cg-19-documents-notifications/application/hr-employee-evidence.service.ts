@@ -33,6 +33,8 @@ function parse(input:unknown):Input{
  if(!input||typeof input!=="object"||Array.isArray(input))
   throw new BadRequestException("Check the private HR upload details");
  const x=input as Record<string,unknown>;
+ if(x.classification==="HR_PORTRAIT"&&x.mime!=="image/jpeg"&&x.mime!=="image/png")
+  throw new BadRequestException({code:"CG10_PORTRAIT_FORMAT",field:"mime"});
  if(Object.keys(x).some(k=>!["applicationRef","sourceVersion","classification",
    "requestKey","mime","sizeBytes","sha256"].includes(k))||
    !Number.isSafeInteger(x.sourceVersion)||Number(x.sourceVersion)<1||

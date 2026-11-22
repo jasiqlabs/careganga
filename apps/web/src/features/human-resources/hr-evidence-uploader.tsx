@@ -76,6 +76,9 @@ export function HrEvidenceUploader({applicationRef,revision,canManage,
  };
  const upload=async()=>{
   if(!canManage||!selected||busy)return;
+  if(kind==="HR_PORTRAIT"&&!["image/jpeg","image/png"].includes(selected.type)){
+   setProblem("Choose a JPEG or PNG employee photograph.");return;
+  }
   if(!["application/pdf","image/jpeg","image/png","image/webp"].includes(selected.type)||
     selected.size<1||selected.size>10485760){
    setProblem("Choose a PDF or image smaller than 10 MB.");return;
@@ -151,12 +154,12 @@ export function HrEvidenceUploader({applicationRef,revision,canManage,
      </li>)}</ul>:<p style={{margin:0}}>No verified files for this application.</p>}
   {canManage&&<div style={{display:"grid",gap:10}}>
     <label style={{display:"grid",gap:5,fontWeight:600}}>Evidence category
-     <select value={kind} onChange={e=>{setKind(e.target.value);activeUpload.current=null;}}
+     <select value={kind} disabled={busy} onChange={e=>{setKind(e.target.value);setSelected(null);activeUpload.current=null;}}
       style={{padding:12,borderRadius:9,border:"1px solid #CBD5E1"}}>
       {types.map(x=><option value={x.value} key={x.value}>{x.label}</option>)}
      </select></label>
     <label style={{display:"grid",gap:5,fontWeight:600}}>Choose protected file
-     <input type="file" accept="application/pdf,image/jpeg,image/png,image/webp"
+     <input key={kind} type="file" disabled={busy} accept={kind==="HR_PORTRAIT"?"image/jpeg,image/png":"application/pdf,image/jpeg,image/png,image/webp"}
       onChange={e=>{setSelected(e.target.files?.[0]??null);activeUpload.current=null;}}
       style={{padding:10,border:"1px solid #CBD5E1",borderRadius:9}}/>
     </label>
