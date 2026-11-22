@@ -60,7 +60,7 @@ test("US003-QA02/03/07/18 actual source schema binds original applicant/root/CG0
  const intake=sql("3212_cg04_volunteer_intake.sql"),evidence=sql("3213_cg19_volunteer_evidence.sql");
  const approval=sql("3214_cg03_volunteer_original_review.sql"),activation=sql("3215_cg04_verified_volunteer_activation.sql");
  assert.match(intake,/UNIQUE\(root_realm_id,account_ref\)/);
- assert.match(intake,/UNIQUE\(root_realm_id,application_id\)/);
+ assert.match(intake,/PRIMARY KEY\(root_realm_id,application_id\)/);
  assert.match(intake,/cg04_volunteer_command_commit/);
  assert.match(evidence,/VOLUNTEER_IDENTITY_PROOF/);
  assert.match(evidence,/CLEAN_VERIFIED/);
@@ -70,6 +70,20 @@ test("US003-QA02/03/07/18 actual source schema binds original applicant/root/CG0
  assert.match(activation,/cg04_volunteer_approved_source/);
  assert.match(activation,/DEFERRABLE INITIALLY DEFERRED/);
  assert.doesNotMatch(activation,/INSERT INTO account_role|INSERT INTO finance_|INSERT INTO cg05_/);
+});
+test("US003-QA17 original optional issued volunteer card requires real CG19 approval, immutable private source and no public personal fields",()=>{
+ const migration=sql("3217_cg19_verified_volunteer_card.sql");
+ assert.match(migration,/FOREIGN KEY\(root_realm_id,volunteer_id\) REFERENCES volunteer/);
+ assert.match(migration,/cg03_case decision/);
+ assert.match(migration,/cg19_member_brand_config/);
+ assert.match(migration,/ux_cg19_volunteer_card_current/);
+ assert.match(migration,/OLD\.claim_expires_at<=now\(\)/);
+ assert.match(migration,/cg19_volunteer_card_event_immutable/);
+ const src=readFileSync(join(process.cwd(),"src/modules/cg-19-documents-notifications/application/volunteer-card.service.ts"),"utf8");
+ assert.match(src,/volunteers\.documents\.issue/);
+ assert.match(src,/return valid\?\{valid:true,status:"ACTIVE"\}/);
+ assert.match(src,/makeToken\(card\.root_realm_id,card\.id,card\.source_digest\)/);
+ assert.doesNotMatch(src,/INSERT INTO account_role|INSERT INTO finance_|INSERT INTO cg05_/);
 });
 test("US003-QA14/18 authorized export audit is append-only and scoped, not a public phone directory",()=>{
  const evidence=sql("3216_cg04_volunteer_roster_export_audit.sql");
