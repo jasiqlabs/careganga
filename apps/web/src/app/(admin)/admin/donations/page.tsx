@@ -38,7 +38,8 @@ export default async function DonationsPage(){
    <main className="workspace">
     <p><Link href="/admin/campaigns">Campaign management</Link></p>
     <DonationAdminWorkspace canView={canView} canRecord={canRecord}
-     canReview={canRecord&&actions.includes("approvals.review")}/>
+     canReview={canRecord&&actions.includes("approvals.review")}
+     canIssue={canRecord&&actions.includes("documents.files.manage")}/>
    </main></div>;
  }catch(e){
   if(e&&typeof e==="object"&&"digest" in e&&typeof e.digest==="string"&&

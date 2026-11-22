@@ -1,15 +1,18 @@
 "use client";
 import {useCallback,useEffect,useRef,useState,type FormEvent} from "react";
 import styles from "./campaigns-reference-ui.module.css";
+import {DonationFinanceActions} from "./donation-finance-actions";
 type Choice={value:string;label:string};
 type Options={donationNumber:string;amountMinor:string;cashAccounts:Choice[];incomeAccounts:Choice[];
  years:Choice[];complete:boolean};
 type QueueItem={evidenceRef:string;voucher:string;status:string;amountMinor:string;
  donationNumber:string;postingDate:string;recordedAt:string;canReview:boolean};
-type DonationItem={donationNumber:string;amountMinor:string;status:string;method:string|null;
+type DonationItem={donationNumber:string;donationRef:string;refundMinor:string;receiptStatus:string;
+ amountMinor:string;status:string;method:string|null;
  campaignTitle:string|null;voucher:string|null;createdAt:string};
 type Report={items:DonationItem[];offset:number;hasMore:boolean;
- summary:{total:number;received:number;pending:number;failed:number;receivedMinor:string};message:string};
+ summary:{total:number;received:number;pending:number;failed:number;receivedMinor:string;
+ netReceivedMinor:string;verifiedRefundMinor:string;verifiedRefundCount:number};message:string};
 const rupees=(n:string)=>{
  try{const value=BigInt(n);return "₹"+(value/100n).toLocaleString("en-IN")+
   "."+(value%100n).toString().padStart(2,"0");}catch{return "Amount unavailable";}
@@ -30,8 +33,8 @@ const panel={border:"1px solid var(--cg-border)",borderRadius:12,
  padding:18,background:"var(--cg-surface)",display:"grid",gap:12} as const;
 const button={padding:"10px 14px",background:"#0a9f69",color:"white",
  border:0,borderRadius:8,minHeight:44,cursor:"pointer"} as const;
-export function DonationAdminWorkspace({canView,canRecord,canReview}:{
- canView:boolean;canRecord:boolean;canReview:boolean}){
+export function DonationAdminWorkspace({canView,canRecord,canReview,canIssue}:{
+ canView:boolean;canRecord:boolean;canReview:boolean;canIssue:boolean}){
  const [data,setData]=useState<Report|null>(null),[queue,setQueue]=useState<QueueItem[]>([]);
  const [filter,setFilter]=useState("ALL"),[search,setSearch]=useState(""),[offset,setOffset]=useState(0);
  const [proof,setProof]=useState(""),[options,setOptions]=useState<Options|null>(null);
@@ -113,7 +116,9 @@ export function DonationAdminWorkspace({canView,canRecord,canReview}:{
     ["Received",data?.summary.received??null],
     ["Pending",data?.summary.pending??null],
     ["Failed / expired",data?.summary.failed??null],
-    ["Verified received",data?.summary.receivedMinor?rupees(data.summary.receivedMinor):null]]
+    ["Gross verified",data?.summary.receivedMinor?rupees(data.summary.receivedMinor):null],
+    ["Confirmed refunds",data?.summary.verifiedRefundMinor?rupees(data.summary.verifiedRefundMinor):null],
+    ["Net verified",data?.summary.netReceivedMinor?rupees(data.summary.netReceivedMinor):null]]
     as const).map(([name,value])=><div className={styles.statCard} key={name}>
      <div><div className={styles.statNumber}>{value??"—"}</div>
      <div className={styles.statLabel}>{name}</div></div></div>)}
@@ -182,6 +187,8 @@ export function DonationAdminWorkspace({canView,canRecord,canReview}:{
      <button type="button" disabled={busy} onClick={()=>{setReview(null);setPassword("");confirmPending.current=null;}}>Cancel</button>
     </div></form>}
   </div>}
-  <p className={styles.note}>Online gateway, NEFT, cheque and bank transfers remain unavailable until genuine merchant/finance evidence is connected. Cash vouchers are not payment links or receipts.</p>
+  <DonationFinanceActions items={data?.items??[]} canRecord={canRecord} canReview={canReview}
+   canIssue={canIssue} onChange={()=>void refresh()}/>
+  <p className={styles.note}>Cash and verified Razorpay collections post into the original CG-09 journal. Bank/NEFT/cheque and provider refunds remain unavailable without genuine payment evidence.</p>
  </section>;
 }
