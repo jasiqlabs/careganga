@@ -41,12 +41,14 @@ export function NativeCampaignDrafts({token,canManage,onExpired}:{
  token:string;canManage:boolean;onExpired:()=>void
 }){
  const [rows,setRows]=useState<Row[]>([]),[selected,setSelected]=useState<Row|null>(null);
- const [form,setForm]=useState<Draft>(blank),[step,setStep]=useState(0),[editing,setEditing]=useState(false);
+ const [form,setForm]=useState<Draft>(blank),[savedForm,setSavedForm]=useState<Draft>(blank),
+  [step,setStep]=useState(0),[editing,setEditing]=useState(false);
  const [offset,setOffset]=useState(0),[hasMore,setHasMore]=useState(false),[search,setSearch]=useState("");
  const [applied,setApplied]=useState(""),[busy,setBusy]=useState(false),[loading,setLoading]=useState(false);
  const [notice,setNotice]=useState(""),[error,setError]=useState(""),[choices,setChoices]=useState<Choices|null>(null);
  const choiceSeq=useRef(0);
  const pending=useRef<{key:string;body:Record<string,unknown>;path:string;method:"POST"|"PATCH"}|null>(null);
+ const submitPending=useRef<{key:string;ref:string;version:number}|null>(null);
  const seq=useRef(0),active=useRef(true);
  async function api<T>(path:string,method:"GET"|"POST"|"PATCH"="GET",body?:Record<string,unknown>){
   const r=await identityRequest("/api/v1/campaigns"+(path.startsWith("?")?path:path?"/"+path:""),{
@@ -81,29 +83,29 @@ export function NativeCampaignDrafts({token,canManage,onExpired}:{
   const subscription=AppState.addEventListener("change",state=>{
    active.current=state==="active";
    if(!active.current){
-    seq.current++;choiceSeq.current++;setRows([]);setSelected(null);setForm(blank());setEditing(false);setChoices(null);
+    seq.current++;choiceSeq.current++;setRows([]);setSelected(null);setForm(blank());setSavedForm(blank());setEditing(false);setChoices(null);
     setError("");setNotice("");pending.current=null;
    }else void refresh();
   });
   return()=>subscription.remove();
  },[token,offset,applied]);
  const reset=()=>{
-  if(busy||pending.current)return;
-  seq.current++;setSelected(null);setForm(blank());setEditing(false);setStep(0);setError("");setNotice("");
+  if(busy||pending.current||submitPending.current)return;
+  seq.current++;setSelected(null);setForm(blank());setSavedForm(blank());setEditing(false);setStep(0);setError("");setNotice("");
  };
  const open=async(row:Row)=>{
-  if(busy||pending.current)return;const id=++seq.current;setLoading(true);setError("");
+  if(busy||pending.current||submitPending.current)return;const id=++seq.current;setLoading(true);setError("");
   try{
    const item=await api<Row>(row.ref);
-   if(id===seq.current&&active.current){setSelected(item);setForm(fromRow(item));setEditing(true);setStep(0);}
+   if(id===seq.current&&active.current){setSelected(item);setForm(fromRow(item));setSavedForm(fromRow(item));setEditing(true);setStep(0);}
   }catch(e){if(id===seq.current&&active.current)setError(e instanceof Error?e.message:"Campaign details unavailable.");}
   finally{if(id===seq.current&&active.current)setLoading(false);}
  };
  const change=<K extends keyof Draft>(name:K,key:string,value:unknown)=>{
-  if(!canManage||pending.current)return;setForm(x=>({...x,[name]:{...x[name],[key]:value}}));
+  if(!canManage||pending.current||submitPending.current)return;setForm(x=>({...x,[name]:{...x[name],[key]:value}}));
  };
  const save=async()=>{
-  if(!canManage||busy||!form.basic.title.trim()||!active.current)return;setBusy(true);setError("");setNotice("");
+  if(!canManage||busy||submitPending.current||!form.basic.title.trim()||!active.current)return;setBusy(true);setError("");setNotice("");
   if(!pending.current)pending.current={key:Crypto.randomUUID(),path:selected?selected.ref+"/draft":"",
    method:selected?"PATCH":"POST",body:{requestKey:"",...(selected?{expectedVersion:selected.version}:{}),steps:form}};
   const current=pending.current;current.body.requestKey=current.key;
@@ -115,7 +117,7 @@ export function NativeCampaignDrafts({token,canManage,onExpired}:{
    setNotice("Campaign "+outcome.code+" saved as private draft. No publication or donation has been approved.");
    const row=await api<Row>(outcome.ref);
    if(!active.current||id!==seq.current)return;
-   setSelected(row);setForm(fromRow(row));setEditing(true);await refresh();
+   setSelected(row);setForm(fromRow(row));setSavedForm(fromRow(row));setEditing(true);await refresh();
   }catch(e){
    if(!active.current||id!==seq.current)return;
    const code=e&&typeof e==="object"&&"status" in e?Number(e.status):0;
@@ -123,6 +125,29 @@ export function NativeCampaignDrafts({token,canManage,onExpired}:{
    setError(e instanceof Error?e.message:"Save result uncertain. Retry the same original request.");
   }finally{setBusy(false);}
  };
+ const submitForReview=async()=>{
+  if(!canManage||busy||pending.current||!selected||selected.status!=="DRAFT"||!active.current)return;
+  if(JSON.stringify(form)!==JSON.stringify(savedForm)){
+   setError("Save the current six-step draft before submitting it for independent review.");return;
+  }
+  setBusy(true);setError("");setNotice("");
+  if(!submitPending.current)submitPending.current={key:Crypto.randomUUID(),ref:selected.ref,version:selected.version};
+  const cmd=submitPending.current,id=seq.current;
+  try{
+   const result=await api<{reference:string;status:string;replayed:boolean}>(cmd.ref+"/submit","POST",
+    {requestKey:cmd.key,expectedVersion:cmd.version});
+   if(!active.current||id!==seq.current)return;
+   submitPending.current=null;
+   setNotice("Campaign submitted as "+result.reference+" for independent verification. No public donation is enabled.");
+   setEditing(false);setSelected(null);setForm(blank());setSavedForm(blank());void refresh();
+  }catch(e){
+   if(!active.current||id!==seq.current)return;
+   const status=e&&typeof e==="object"&&"status" in e?Number(e.status):0;
+   if(status>0&&status<500&&![408,429].includes(status))submitPending.current=null;
+   setError(e instanceof Error?e.message:"Review submission outcome uncertain. Retry the same request.");
+  }finally{setBusy(false);}
+ };
+ const unsaved=JSON.stringify(form)!==JSON.stringify(savedForm);
  const button=(label:string,fn:()=>void,disabled=false)=><Pressable accessibilityRole="button" disabled={disabled||busy}
   onPress={fn} style={[s.button,(disabled||busy)&&{opacity:.5}]}><Text style={s.action}>{label}</Text></Pressable>;
  const pick=(label:string,value:string|null,items:Choice[],onPick:(v:string|null)=>void,empty:string)=>
@@ -202,7 +227,8 @@ export function NativeCampaignDrafts({token,canManage,onExpired}:{
     <Text>Target: {form.budget.goal||"Not entered"} INR</Text>
     <Text>Dates: {form.budget.startAt||"Not entered"} to {form.budget.endAt||"Not entered"}</Text>
     <Text style={s.muted}>Submitting requires genuine CG-03 review followed by independently approved CG-18 publication. Draft does not enable donation.</Text>
-    {button("Submit for Verification (not available)",()=>{},true)}
+    {canManage&&button(submitPending.current?"Retry original verification request":"Submit for Verification",
+      ()=>void submitForReview(),!selected||selected.status!=="DRAFT"||!!pending.current||unsaved)}
    </View>}
    <View style={s.row}>
     {button("Previous",()=>setStep(v=>Math.max(0,v-1)),step===0||!!pending.current)}
@@ -214,6 +240,7 @@ export function NativeCampaignDrafts({token,canManage,onExpired}:{
   {!!error&&<Text accessibilityRole="alert" style={s.error}>{error}</Text>}
   {!!notice&&<Text accessibilityRole="alert">{notice}</Text>}
   {!!pending.current&&<Text accessibilityRole="alert">Original save outcome unconfirmed. Retry the same request or refresh the original list before another change.</Text>}
+  {!!submitPending.current&&<Text accessibilityRole="alert">Review submission outcome unknown. Retry with the original request key.</Text>}
  </ScrollView>;
 }
 const s=StyleSheet.create({
