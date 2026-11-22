@@ -46,10 +46,13 @@ export class CampaignDraftsService{
   const p=v.project;
   if(p.projectRef||p.eventRef||v.team.volunteerRef||v.media.fileRef)
    throw new ForbiddenException("Project, event, volunteer or media linking requires the current verified source. Save the general campaign without those links.");
-  await this.scope(tx,a,p.branchRef);
+  const branch=await this.branches.projectBranch(tx,a,p.branchRef);
   await this.branches.projectGeography(tx,a,p.stateRef,p.districtRef);
-  if(v.team.coordinatorRef&&v.team.coordinatorRef!==a.accountId)
+  if(v.team.coordinatorRef&&v.team.coordinatorRef!==a.accountId){
+   if(p.branchRef&&v.team.coordinatorRef!==branch.managerRef)
+    throw new ForbiddenException("Choose your permitted Foundation branch coordinator.");
    await this.identity.eligibleOfficeholder(tx,a,v.team.coordinatorRef);
+  }
  }
  private async record(tx:PoolClient,a:Actor,c:CampaignRow,v:CampaignDraft,digest:string,kind:"CREATE_DRAFT"|"SAVE_DRAFT"){
   await tx.query(`INSERT INTO campaign_revision(root_realm_id,campaign_id,revision_no,immutable_digest,
