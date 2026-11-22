@@ -30,23 +30,23 @@ export class OperationsSummaryService{
    const sections:Section[]=[],restricted:string[]=[];
    let finance:unknown=null;
    if(await this.allowed(tx,a,"projects",exporting)){
-    const r=await this.projects.listInTx(tx,a,{},mine);
+    const r=await this.projects.listInTx(tx,a,{},mine,false,true);
     if(!("counts" in r)||!r.counts||!r.recent)throw Error("Project projection unavailable");
     sections.push({source:"Projects",metrics:metrics(r.counts,{total:"Total",active:"Active",hold:"On hold",completed:"Completed",cancelled:"Cancelled",planned:"Planned or draft"}),recent:recent("Projects",r.recent)});
     finance=r.finance;
    }else restricted.push("Projects");
    if(await this.allowed(tx,a,"projects.tasks",exporting)){
-    const r=await this.tasks.listInTx(tx,a,{},mine);
+    const r=await this.tasks.listInTx(tx,a,{},mine,false,undefined,true);
     if(!("counts" in r)||!r.counts||!r.recent)throw Error("Task projection unavailable");
     sections.push({source:"Tasks",metrics:metrics(r.counts,{total:"Total",completed:"Completed",inProgress:"In progress",overdue:"Overdue",upcoming:"Upcoming",cancelled:"Cancelled"}),recent:recent("Tasks",r.recent)});
    }else restricted.push("Tasks");
    if(await this.allowed(tx,a,"projects.activities",exporting)){
-    const r=await this.activities.listInTx(tx,a,{},mine);
+    const r=await this.activities.listInTx(tx,a,{},mine,false,true);
     if(!("counts" in r)||!r.counts||!r.recent)throw Error("Activity projection unavailable");
     sections.push({source:"Activities",metrics:metrics(r.counts,{total:"Total",completed:"Completed",ongoing:"Ongoing",upcoming:"Upcoming",cancelled:"Cancelled"}),recent:recent("Activities",r.recent)});
    }else restricted.push("Activities");
    if(await this.allowed(tx,a,"projects.visits",exporting)){
-    const r=await this.visits.listInTx(tx,a,mine?{tab:"MY"}:{});
+    const r=await this.visits.listInTx(tx,a,mine?{tab:"MY"}:{},false,true);
     if(!("counts" in r)||!r.counts||!r.recent)throw Error("Visit projection unavailable");
     const counts=Object.fromEntries(r.counts.map(v=>[v.status,v.count]));
     sections.push({source:"Field visits",metrics:[{label:"Total",value:Number(r.total)},...metrics(counts,{COMPLETED:"Completed",PENDING_APPROVAL:"Pending approval",REJECTED:"Rejected",IN_PROGRESS:"In progress / checked in",PENDING_PROOF:"Pending proof",RETURNED:"Returned",CANCELLED:"Cancelled"})],recent:recent("Field visits",r.recent)});
