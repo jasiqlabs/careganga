@@ -25,41 +25,47 @@ export function VolunteerCardManager({volunteerRef}:{volunteerRef:string}){
   return()=>{seq.current++;};
  },[volunteerRef,reload]);
  useEffect(()=>{
-  const hide=()=>{if(document.visibilityState!=="visible"){seq.current++;setCard(null);setPassword("");setLoading(true);pending.current=null;}else setReload(v=>v+1);};
+  const hide=()=>{if(document.visibilityState!=="visible"){seq.current++;setCard(null);setPassword("");setLoading(true);setError("");setNote("");pending.current=null;}else setReload(v=>v+1);};
   document.addEventListener("visibilitychange",hide);
   return()=>document.removeEventListener("visibilitychange",hide);
  },[]);
- const refresh=async()=>{
+ const refresh=async(current:()=>boolean)=>{
   const v=await api<{card:CG19VolunteerCardStatus|null}>("/volunteers/"+volunteerRef);
-  setCard(v.card);setLoading(false);
+  if(current()){setCard(v.card);setLoading(false);}
  };
- const act=async(work:()=>Promise<void>)=>{
-  if(busy)return;setBusy(true);setError("");setNote("");
-  try{await work();}catch(e){setError(e instanceof Error?e.message:"The original card outcome is uncertain. Refresh the current record.");}
-  finally{setBusy(false);setPassword("");}
+ const act=async(work:(current:()=>boolean)=>Promise<void>)=>{
+  if(busy)return;
+  const at=seq.current,current=()=>at===seq.current&&document.visibilityState==="visible";
+  setBusy(true);setError("");setNote("");
+  try{await work(current);}catch(e){if(current())setError(e instanceof Error?e.message:"The original card outcome is uncertain. Refresh the current record.");}
+  finally{setBusy(false);if(current())setPassword("");}
  };
- const issue=()=>void act(async()=>{
+ const issue=()=>void act(async current=>{
   if(password.length<8)throw Error("Enter your current protected Foundation password.");
   if(!pending.current||pending.current.ref!==volunteerRef)pending.current={ref:volunteerRef,requestKey:crypto.randomUUID()};
   const status=await api<CG19VolunteerCardStatus>("/volunteers/"+volunteerRef+"/issue",{requestKey:pending.current.requestKey,currentPassword:password});
+  if(!current())return;
   pending.current=null;setCard(status);setNote(status.status==="ISSUED"?"Original volunteer card issued.":"Issuance is pending verification. Check current status before retrying.");
  });
- const reconcile=()=>void act(async()=>{
+ const reconcile=()=>void act(async current=>{
   if(!card||!card.canRetry)throw Error("This original card is not currently retryable.");
   const status=await api<CG19VolunteerCardStatus>("/cards/"+card.cardRef+"/reconcile",{});
+  if(!current())return;
   setCard(status);setNote(status.status==="ISSUED"?"Original volunteer card now issued.":"The original card status is still pending.");
  });
- const revoke=()=>void act(async()=>{
+ const revoke=()=>void act(async current=>{
   if(!card||password.length<8)throw Error("Enter your current Foundation password to revoke the card.");
   const result=await api<CG19VolunteerCardStatus>("/cards/"+card.cardRef+"/revoke",{currentPassword:password});
+  if(!current())return;
   setCard(result);setNote("Previous volunteer card revoked; its public verification will not remain valid.");
  });
- const download=()=>void act(async()=>{
+ const download=()=>void act(async current=>{
   if(!card||!card.canDownload)throw Error("The original volunteer PDF has not been issued.");
   const r=await fetch(base+"/cards/"+card.cardRef+"/download",{cache:"no-store",signal:AbortSignal.timeout(17000)});
   if(!r.ok||(r.headers.get("content-type")??"").split(";")[0]!=="application/pdf")throw Error("Official private volunteer card is not available.");
   const blob=await r.blob();
   if(!blob.size||blob.size>10485760)throw Error("The issued PDF could not be verified.");
+  if(!current())return;
   const url=URL.createObjectURL(blob),link=document.createElement("a");
   try{link.href=url;link.download="CareGanga-issued-volunteer-card.pdf";link.click();}
   finally{setTimeout(()=>URL.revokeObjectURL(url),1500);}
