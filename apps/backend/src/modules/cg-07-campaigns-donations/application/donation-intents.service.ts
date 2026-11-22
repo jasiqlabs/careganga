@@ -85,6 +85,10 @@ export class DonationIntentsService{
      "SELECT id,branch_ref FROM campaign WHERE root_realm_id=$1 AND lower(code_norm)=$2 "+
      "AND source_status='APPROVED' FOR SHARE",[root,v.campaignSlug])).rows[0];
     if(!campaign)throw new NotFoundException("This campaign is no longer accepting new contributions.");
+    // Revalidate after obtaining the campaign row lock; a withdrawn source
+    // cannot be accepted merely because an earlier list was cached.
+    if((await publicCampaignSources(client,v.campaignSlug)).length!==1)
+     throw new NotFoundException("This campaign was withdrawn before your request.");
     campaignId=campaign.id;branchId=campaign.branch_ref;
    }
    const snapshot=privateDonor(v.donor);

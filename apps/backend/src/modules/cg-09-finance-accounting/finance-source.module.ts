@@ -1,3 +1,4 @@
+import {DonationFinancePostingFacade} from "./application/donation-finance-posting.facade";
 import {MembershipFeesService} from "./application/membership-fees.service";
 import {Module} from "@nestjs/common";
 import {IdentityAccessModule} from "../cg-01-identity-access/identity-access.module";
@@ -16,7 +17,7 @@ import {HealthcareProviderPayoutProofFacade} from "./application/healthcare-prov
  */
 @Module({
  imports:[IdentityAccessModule,FoundationStructureModule],
- providers:[MembershipFeesService,FinanceJournalPostingService,HealthcareProviderPayoutProofFacade,HealthcareFoundationPostingFacade,FinanceVoucherSourceFacade,FinanceExpenseClaimSourceFacade,FinanceInvoiceSourceFacade,FinanceBudgetSourceFacade,FinanceReceiptSourceFacade,FinanceBankStatementSourceFacade],
- exports:[MembershipFeesService,HealthcareProviderPayoutProofFacade,HealthcareFoundationPostingFacade,FinanceVoucherSourceFacade,FinanceExpenseClaimSourceFacade,FinanceInvoiceSourceFacade,FinanceBudgetSourceFacade,FinanceReceiptSourceFacade,FinanceBankStatementSourceFacade]
+ providers:[DonationFinancePostingFacade,MembershipFeesService,FinanceJournalPostingService,HealthcareProviderPayoutProofFacade,HealthcareFoundationPostingFacade,FinanceVoucherSourceFacade,FinanceExpenseClaimSourceFacade,FinanceInvoiceSourceFacade,FinanceBudgetSourceFacade,FinanceReceiptSourceFacade,FinanceBankStatementSourceFacade],
+ exports:[DonationFinancePostingFacade,MembershipFeesService,HealthcareProviderPayoutProofFacade,HealthcareFoundationPostingFacade,FinanceVoucherSourceFacade,FinanceExpenseClaimSourceFacade,FinanceInvoiceSourceFacade,FinanceBudgetSourceFacade,FinanceReceiptSourceFacade,FinanceBankStatementSourceFacade]
 })
 export class FinanceSourceModule{}

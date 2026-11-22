@@ -112,8 +112,18 @@ BEGIN
    ON j.id=e.journal_id AND j.root_realm_id=e.root_realm_id
    WHERE e.root_realm_id=NEW.root_realm_id AND e.donation_id=NEW.id
      AND e.status='POSTED' AND j.status='POSTED'
+     AND j.source_ref=NEW.id AND j.posting_kind='GENERAL'
      AND j.immutable_source_event_key=e.source_event_key
-     AND j.immutable_payload_digest=e.immutable_digest)
+     AND j.immutable_payload_digest=e.immutable_digest
+     AND (SELECT count(*) FROM journal_line l
+          WHERE l.root_realm_id=j.root_realm_id AND l.journal_id=j.id)=2
+     AND (SELECT coalesce(sum(l.debit_minor),0) FROM journal_line l
+          WHERE l.root_realm_id=j.root_realm_id AND l.journal_id=j.id)=NEW.amount_minor
+     AND (SELECT coalesce(sum(l.credit_minor),0) FROM journal_line l
+          WHERE l.root_realm_id=j.root_realm_id AND l.journal_id=j.id)=NEW.amount_minor
+     AND NOT EXISTS(SELECT 1 FROM journal_line l
+          WHERE l.root_realm_id=j.root_realm_id AND l.journal_id=j.id
+           AND l.branch_id IS DISTINCT FROM NEW.branch_ref))
  THEN RAISE EXCEPTION 'Original verified CG09 journal required for received donation'; END IF;
  RETURN NULL;
 END; $cg07$;
