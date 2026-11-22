@@ -17,7 +17,7 @@ export class MembershipActivationService{
   catch(e){try{await tx.query("ROLLBACK");}catch{}if(e&&typeof e==="object"&&"code" in e&&["23505","23503","23514","40001","40P01","55P03","P0001"].includes(String(e.code)))throw changed();throw e;}finally{tx.release();}
  }
  private async ownMember(tx:PoolClient,a:Actor){
-  const record=(await tx.query("SELECT m.member_no AS \"memberNumber\",m.display_name AS name,b.name AS branch,v.name AS plan,v.category,t.fee_minor::text AS \"feeMinor\",t.currency,t.starts_on::text AS \"startsOn\",t.expires_on::text AS \"expiresOn\",CASE WHEN m.status='ACTIVE' AND t.expires_on IS NOT NULL AND t.expires_on<=(now() AT TIME ZONE 'Asia/Kolkata')::date THEN 'EXPIRED' ELSE m.status END AS status FROM member m JOIN membership_term t ON t.root_realm_id=m.root_realm_id AND t.member_id=m.id JOIN membership_tier_version v ON v.root_realm_id=t.root_realm_id AND v.id=t.tier_version_id LEFT JOIN branch b ON b.root_realm_id=m.root_realm_id AND b.id=m.branch_ref WHERE m.root_realm_id=$1 AND m.account_ref=$2 ORDER BY t.starts_on DESC LIMIT 1",[a.realmId,a.accountId])).rows[0];
+  const record=(await tx.query("SELECT m.member_no AS \"memberNumber\",m.display_name AS name,b.name AS branch,v.name AS plan,v.category,t.fee_minor::text AS \"feeMinor\",t.currency,t.starts_on::text AS \"startsOn\",t.expires_on::text AS \"expiresOn\",CASE WHEN m.status='ACTIVE' AND t.expires_on IS NOT NULL AND t.expires_on<=(now() AT TIME ZONE 'Asia/Kolkata')::date THEN 'EXPIRED' ELSE m.status END AS status FROM member m JOIN membership_term t ON t.root_realm_id=m.root_realm_id AND t.member_id=m.id JOIN membership_tier_version v ON v.root_realm_id=t.root_realm_id AND v.id=t.tier_version_id LEFT JOIN branch b ON b.root_realm_id=m.root_realm_id AND b.id=m.branch_ref WHERE m.root_realm_id=$1 AND m.account_ref=$2 AND t.starts_on<=(now() AT TIME ZONE 'Asia/Kolkata')::date ORDER BY t.starts_on DESC LIMIT 1",[a.realmId,a.accountId])).rows[0];
   return record??null;
  }
  async me(token:string){return this.run(token,async(tx,a)=>({member:await this.ownMember(tx,a)}));}
@@ -42,12 +42,22 @@ export class MembershipActivationService{
     if(!locked.rowCount)throw changed();journal=paid.journal_id;
    }
    if(!(await tx.query("SELECT 1 WHERE cg04_member_approved_source($1,$2)",[a.realmId,id])).rowCount)throw changed();
-   const m=(await tx.query<{id:string}>("INSERT INTO member(root_realm_id,original_application_id,account_ref,display_name,branch_ref) VALUES($1,$2,$3,$4,$5) RETURNING id",[a.realmId,id,a.accountId,app.display_name,app.branch_ref])).rows[0];
-   const t=(await tx.query<{id:string}>(`WITH day AS (SELECT (now() AT TIME ZONE 'Asia/Kolkata')::date AS start)
+
+   const existing=(await tx.query<{id:string;status:string;branch_ref:string|null}>("SELECT id,status,branch_ref FROM member WHERE root_realm_id=$1 AND account_ref=$2 FOR UPDATE",[a.realmId,a.accountId])).rows[0];
+   if(existing&&(existing.status!=="ACTIVE"||existing.branch_ref!==app.branch_ref))throw new ConflictException("Renew using your current membership branch. A protected transfer must be approved separately.");
+   let starts:string;
+   if(existing){
+    const last=(await tx.query<{starts:string;ends:string|null;today:string}>("SELECT starts_on::text AS starts,expires_on::text AS ends,(now() AT TIME ZONE 'Asia/Kolkata')::date::text AS today FROM membership_term WHERE root_realm_id=$1 AND member_id=$2 ORDER BY starts_on DESC,id DESC LIMIT 1 FOR SHARE",[a.realmId,existing.id])).rows[0];
+    if(!last||last.ends===null||last.starts>last.today)throw new ConflictException("Your membership has lifetime or already scheduled validity. Another renewal is not available yet.");
+    starts=last.ends>last.today?last.ends:last.today;
+   }else starts=(await tx.query<{today:string}>("SELECT (now() AT TIME ZONE 'Asia/Kolkata')::date::text AS today")).rows[0].today;
+   const effectKind=existing?"RENEW" as const:"ACTIVATE" as const;
+   const m=existing??(await tx.query<{id:string}>("INSERT INTO member(root_realm_id,original_application_id,account_ref,display_name,branch_ref) VALUES($1,$2,$3,$4,$5) RETURNING id",[a.realmId,id,a.accountId,app.display_name,app.branch_ref])).rows[0];
+   const t=(await tx.query<{id:string}>(`WITH day AS (SELECT $9::date AS start)
     INSERT INTO membership_term(root_realm_id,member_id,original_application_id,tier_version_id,fee_minor,currency,starts_on,expires_on)
-    SELECT $1,$2,$3,$4,$5,$6,day.start,CASE $7::text WHEN 'LIFETIME' THEN NULL::date WHEN 'DAY' THEN day.start+$8::int WHEN 'MONTH' THEN (day.start+make_interval(months=>$8::int))::date ELSE (day.start+make_interval(years=>$8::int))::date END FROM day RETURNING id`,[a.realmId,m.id,id,app.tier_version_id,app.accepted_fee_minor,app.currency,app.duration_unit,app.duration_count])).rows[0];
-   await tx.query("INSERT INTO member_branch_history(root_realm_id,member_id,branch_ref,reason,actor_ref) VALUES($1,$2,$3,'Initial approved membership',$4)",[a.realmId,m.id,app.branch_ref,a.accountId]);
-   await tx.query("INSERT INTO membership_application_effect(root_realm_id,application_id,case_id,decision_id,member_id,term_id,pinned_review_revision,source_digest,fee_journal_id,request_key,actor_ref) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)",[a.realmId,id,review.caseRef,review.decisionRef,m.id,t.id,app.version,app.submitted_digest,journal,key,a.accountId]);
+    SELECT $1,$2,$3,$4,$5,$6,day.start,CASE $7::text WHEN 'LIFETIME' THEN NULL::date WHEN 'DAY' THEN day.start+$8::int WHEN 'MONTH' THEN (day.start+make_interval(months=>$8::int))::date ELSE (day.start+make_interval(years=>$8::int))::date END FROM day RETURNING id`,[a.realmId,m.id,id,app.tier_version_id,app.accepted_fee_minor,app.currency,app.duration_unit,app.duration_count,starts])).rows[0];
+   if(!existing)await tx.query("INSERT INTO member_branch_history(root_realm_id,member_id,branch_ref,reason,actor_ref) VALUES($1,$2,$3,'Initial approved membership',$4)",[a.realmId,m.id,app.branch_ref,a.accountId]);
+   await tx.query("INSERT INTO membership_application_effect(root_realm_id,application_id,case_id,decision_id,member_id,term_id,pinned_review_revision,source_digest,fee_journal_id,request_key,actor_ref,effect_kind) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)",[a.realmId,id,review.caseRef,review.decisionRef,m.id,t.id,app.version,app.submitted_digest,journal,key,a.accountId,effectKind]);
    const updated=await tx.query("UPDATE membership_application SET status='APPROVED',version=version+1,updated_at=now() WHERE root_realm_id=$1 AND id=$2 AND status='SUBMITTED' AND version=$3 RETURNING id",[a.realmId,id,app.version]);
    if(!updated.rowCount)throw changed();await this.approvals.completeMembership(tx,a,review.caseRef,id);const member=await this.ownMember(tx,a);if(!member)throw changed();return {member,replayed:false};
   });
