@@ -136,19 +136,36 @@ export class HrAppraisalService{
    return {items:q.rows.slice(0,50).map(x=>({employeeReference:x.employee_code,employeeName:x.employee_name})),hasMore:q.rows.length>50};
   });
  }
- async list(token:string,offsetInput:unknown){
-  const actor=await this.reviewer(token),offset=Number(offsetInput??0);
-  if(!Number.isSafeInteger(offset)||offset<0||offset>10000)throw new BadRequestException({code:"CG10_APPRAISAL_INVALID"});
+ async list(token:string,offsetInput:unknown,statusInput:unknown="ALL"){
+  const actor=await this.reviewer(token),offset=Number(offsetInput??0),status=statusInput??"ALL";
+  if(!Number.isSafeInteger(offset)||offset<0||offset>10000||
+   typeof status!=="string"||!["ALL","DRAFT","SUBMITTED","RELEASED"].includes(status))
+   throw new BadRequestException({code:"CG10_APPRAISAL_INVALID"});
   return this.run(async tx=>{
    await this.identity.assertCurrent(tx,actor,"hr.appraisals.manage");
-   const scope=`WITH targets AS (${targetQuery}) `;
-   const filter=" WHERE ar.root_realm_id=$1 AND ar.reviewer_account_ref=$2 AND EXISTS(SELECT 1 FROM targets t WHERE t.id=ar.employee_id AND t.assignment_id=ar.assignment_id AND t.reviewer_id=ar.reviewer_employee_ref)";
-   const q=await tx.query<Row>(scope+baseQuery+filter+" ORDER BY ar.period_end DESC,ar.id DESC LIMIT 26 OFFSET $3",[actor.realmId,actor.accountId,offset]);
-   const counts=await tx.query<{total:string;draft:string;submitted:string;released:string}>(scope+
-    "SELECT count(*)::text AS total,count(*) FILTER(WHERE ar.status='DRAFT')::text AS draft,count(*) FILTER(WHERE ar.status='SUBMITTED')::text AS submitted,count(*) FILTER(WHERE ar.status='RELEASED')::text AS released FROM hr_appraisal ar"+filter,[actor.realmId,actor.accountId]);
-   const n=counts.rows[0];
-   return {items:q.rows.slice(0,25).map(projection),hasMore:q.rows.length>25,offset,
-    summary:{total:Number(n.total),draft:Number(n.draft),submitted:Number(n.submitted),released:Number(n.released)}};
+   // One consistent scoped snapshot for summary and bounded page; never fetch encrypted notes into a list.
+   const q=await tx.query<{page:Row[];summary:{total:number;draft:number;submitted:number;released:number;averageScore:number|null;outstanding:number}}>(`
+    WITH targets AS (${targetQuery}), scoped AS (
+      SELECT ar.id,ar.reference,ar.status,ar.revision,ar.period_end AS sort_end,
+       to_char(ar.period_start,'YYYY-MM-DD') AS period_start,to_char(ar.period_end,'YYYY-MM-DD') AS period_end,
+       t.employee_code,t.employee_name,ar.goal_delivery_score,ar.competency_score,ar.attendance_conduct_score
+      FROM hr_appraisal ar JOIN targets t ON t.id=ar.employee_id AND t.assignment_id=ar.assignment_id
+       AND t.reviewer_id=ar.reviewer_employee_ref
+      WHERE ar.root_realm_id=$1 AND ar.reviewer_account_ref=$2
+    ), page AS (
+      SELECT * FROM scoped WHERE ($4='ALL' OR status=$4) ORDER BY sort_end DESC,id DESC LIMIT 26 OFFSET $3
+    ) SELECT
+     (SELECT COALESCE(jsonb_agg(to_jsonb(page) ORDER BY sort_end DESC,id DESC),'[]'::jsonb) FROM page) AS page,
+     (SELECT jsonb_build_object('total',COUNT(*)::integer,
+      'draft',COUNT(*) FILTER(WHERE status='DRAFT')::integer,
+      'submitted',COUNT(*) FILTER(WHERE status='SUBMITTED')::integer,
+      'released',COUNT(*) FILTER(WHERE status='RELEASED')::integer,
+      'averageScore',ROUND(AVG((goal_delivery_score+competency_score+attendance_conduct_score)/60.0),2),
+      'outstanding',COUNT(*) FILTER(WHERE goal_delivery_score=100 AND competency_score=100 AND attendance_conduct_score=100)::integer)
+      FROM scoped) AS summary`,[actor.realmId,actor.accountId,offset,status]);
+   const page=q.rows[0]?.page??[];
+   return {items:page.slice(0,25).map(projection),hasMore:page.length>25,offset,
+    summary:q.rows[0]?.summary??{total:0,draft:0,submitted:0,released:0,averageScore:null,outstanding:0}};
   });
  }
  async detail(token:string,ref:string){
