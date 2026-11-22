@@ -6,5 +6,6 @@ import {FieldVisitsService} from "./application/field-visits.service";
 import {ProjectActivitiesService} from "./application/project-activities.service";
 import {ProjectTasksService} from "./application/project-tasks.service";
 import {ProjectsService} from "./application/projects.service";
-@Module({imports:[IdentityAccessModule,FoundationStructureModule],providers:[ProjectsService,ProjectTasksService,ProjectActivitiesService,FieldVisitsService,OperationsSummaryService],exports:[ProjectsService,ProjectTasksService,ProjectActivitiesService,FieldVisitsService,OperationsSummaryService]})
+import {CampaignLinkSourceFacade} from "./application/campaign-link-source.facade";
+@Module({imports:[IdentityAccessModule,FoundationStructureModule],providers:[ProjectsService,ProjectTasksService,ProjectActivitiesService,FieldVisitsService,OperationsSummaryService,CampaignLinkSourceFacade],exports:[ProjectsService,ProjectTasksService,ProjectActivitiesService,FieldVisitsService,OperationsSummaryService,CampaignLinkSourceFacade]})
 export class ProjectsSourceModule{}
