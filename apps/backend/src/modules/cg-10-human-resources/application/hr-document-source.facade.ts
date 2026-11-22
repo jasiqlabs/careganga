@@ -91,6 +91,26 @@ export class HrDocumentSourceFacade{
   const q=await tx.query<HrDocumentRow>("SELECT * FROM hr_document_request WHERE root_realm_id=$1 AND reference=$2 AND created_by=$3"+(lock?" FOR UPDATE":""),[actor.realmId,ref,actor.accountId]);
   if(!q.rows[0])throw new NotFoundException("Document request unavailable");return q.rows[0];
  }
+ async authorizedHistory(tx:PoolClient,actor:VerifiedFoundationActor,ref:string,own=false){
+  if(!/^CG-HR-DOC-[0-9]{6,}$/.test(ref))throw new BadRequestException("Choose the original document");
+  const q=await this.history(tx,actor,own,0,ref);
+  if(q.length!==1)throw new NotFoundException("Employee document unavailable");return q[0];
+ }
+ async history(tx:PoolClient,actor:VerifiedFoundationActor,own:boolean,offset:number,reference:string|null=null){
+  if(own)await this.identity.assertPatientSessionCurrent(tx,actor);
+  else await this.identity.assertCurrent(tx,actor,"hr.documents.manage");
+  const q=await tx.query<HrDocumentRow>(`SELECT h.* FROM hr_document_request h JOIN branch b ON b.id=h.source_branch_ref AND b.root_realm_id=h.root_realm_id
+   LEFT JOIN hr_employee e ON e.id=h.employee_id AND e.root_realm_id=h.root_realm_id
+   WHERE h.root_realm_id=$1 AND ($3::text IS NULL OR h.reference=$3)
+    AND (${own?`e.account_ref=$2 AND e.status IN('ACTIVE','PROBATION') AND h.status='APPROVED' AND EXISTS(
+     SELECT 1 FROM cg19_generated_document d WHERE d.realm_id=h.root_realm_id AND d.case_id=h.case_ref AND d.state IN('ISSUED','REVOKED'))`:`${scope} AND (
+     h.employee_id IS NULL OR EXISTS(SELECT 1 FROM hr_employment_assignment a WHERE a.root_realm_id=h.root_realm_id AND a.employee_id=h.employee_id
+      AND a.branch_ref=h.source_branch_ref AND a.valid_from<=CURRENT_DATE AND (a.valid_to IS NULL OR (e.status='EXITED' AND a.id=h.assignment_id)))
+     OR EXISTS(SELECT 1 FROM account_role ar JOIN role r ON r.id=ar.role_id AND r.realm_id=ar.realm_id AND r.active AND r.is_protected WHERE ar.realm_id=$1 AND ar.account_id=$2 AND ar.revoked_at IS NULL))
+     AND (h.status<>'DRAFT' OR h.created_by=$2)`})
+   ORDER BY h.created_at DESC,h.id DESC LIMIT 26 OFFSET $4`,[actor.realmId,actor.accountId,reference,offset]);
+  return q.rows;
+ }
  async verifyCurrent(tx:PoolClient,actor:VerifiedFoundationActor,row:HrDocumentRow){
   const snapshot=row.source_snapshot;
   if(typeof snapshot.subjectReference!=="string")throw new ConflictException("Original document subject unavailable");

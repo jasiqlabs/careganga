@@ -148,3 +148,15 @@ BEGIN
 END; $fn$;
 CREATE CONSTRAINT TRIGGER cg03_hr_document_link_required AFTER INSERT OR UPDATE ON cg03_case
  DEFERRABLE INITIALLY DEFERRED FOR EACH ROW EXECUTE FUNCTION cg03_hr_document_link_required();
+
+ALTER TABLE cg19_generated_document ADD COLUMN hr_card_token_digest char(64) CHECK(hr_card_token_digest ~ '^[a-f0-9]{64}$');
+CREATE UNIQUE INDEX ux_cg19_employee_card_verifier ON cg19_generated_document(hr_card_token_digest) WHERE hr_card_token_digest IS NOT NULL;
+CREATE FUNCTION cg19_hr_card_guard() RETURNS trigger LANGUAGE plpgsql AS $fn$
+BEGIN
+ IF TG_OP='UPDATE' AND NEW.hr_card_token_digest IS DISTINCT FROM OLD.hr_card_token_digest THEN RAISE EXCEPTION 'Original card verification identity is immutable'; END IF;
+ IF TG_OP='INSERT' AND (NEW.hr_card_token_digest IS NOT NULL) IS DISTINCT FROM EXISTS(
+  SELECT 1 FROM hr_document_request h WHERE h.root_realm_id=NEW.realm_id AND h.case_ref=NEW.case_id AND h.kind='EMPLOYEE_ID')
+ THEN RAISE EXCEPTION 'Only an original employee card may have a card verifier'; END IF;
+ RETURN NEW;
+END; $fn$;
+CREATE TRIGGER cg19_hr_card_guard BEFORE INSERT OR UPDATE ON cg19_generated_document FOR EACH ROW EXECUTE FUNCTION cg19_hr_card_guard();

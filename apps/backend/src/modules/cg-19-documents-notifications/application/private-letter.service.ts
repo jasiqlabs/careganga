@@ -371,7 +371,7 @@ export class PrivateLetterService{
       if(!root.rowCount)throw new ForbiddenException();
       const saved=await client.query<Letter>(`
         SELECT * FROM cg19_generated_document
-        WHERE realm_id=$1 AND id=$2 FOR UPDATE
+        WHERE realm_id=$1 AND id=$2 AND EXISTS(SELECT 1 FROM cg19_document_template t WHERE t.id=cg19_generated_document.template_id AND t.realm_id=cg19_generated_document.realm_id AND t.template_kind='PRIVATE_APPROVED_ACCESS_LETTER') FOR UPDATE
       `,[actor.realmId,ref]);
       const row=saved.rows[0];
       if(!row)throw new NotFoundException("Private letter unavailable");
