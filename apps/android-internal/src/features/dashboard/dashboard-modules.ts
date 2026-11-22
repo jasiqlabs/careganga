@@ -99,6 +99,7 @@ export interface ModuleActionHandlers {
   openFieldVisits: () => void;
   openOperationsSummary: () => void;
   openInventory: () => void;
+  openMembership: () => void;
   openChangePassword: () => void;
 }
 
@@ -223,6 +224,7 @@ export function getAuthorizedModules(
   if(roleActions.includes("projects.tasks.view"))list.push({key:"tasks",title:roleActions.includes("projects.tasks.manage")?"Tasks & Assignments":"My Assigned Tasks",shortLabel:"Tasks",description:"Current permitted project tasks and recorded progress.",category:"ORGANIZATION MANAGEMENT",iconName:"approvals",iconBg:"#E0F2FE",iconColor:"#0369A1",onOpen:handlers.openTasks});
   if(roleActions.includes("projects.view"))list.push({key:"projects",title:"Projects",shortLabel:"Projects",description:"View and manage current permitted Foundation projects.",category:"ORGANIZATION MANAGEMENT",iconName:"building",iconBg:"#E0F2FE",iconColor:"#0369A1",onOpen:handlers.openProjects});
   if(roleActions.includes("inventory.catalog.view"))list.push({key:"inventory",title:"Requests & Inventory",shortLabel:"Inventory",description:"View permitted inventory catalog and warehouses.",category:"ORGANIZATION MANAGEMENT",iconName:"building",iconBg:"#E0F2FE",iconColor:"#0369A1",onOpen:handlers.openInventory});
+  if(roleActions.includes("membership.members.view"))list.push({key:"membership",title:"Membership Program",shortLabel:"Members",description:"Search and view authorized approved members, with separate export permission.",category:"ORGANIZATION MANAGEMENT",iconName:"users",iconBg:"#E0F2FE",iconColor:"#0369A1",onOpen:handlers.openMembership});
   // CG-10 self identity: always accessible to a logged-in Foundation staff actor.
   // Backend /api/hr/me never returns anybody else's HR file, bank or salary.
   list.push({
