@@ -71,7 +71,14 @@ BEGIN
  END IF;
  IF NOT EXISTS(SELECT 1 FROM access_realm r WHERE r.id=NEW.root_realm_id AND r.realm_key='FOUNDATION_ROOT') THEN
   RAISE EXCEPTION 'Invalid Foundation membership scope'; END IF;
+ IF TG_OP='UPDATE' AND NEW.status='CANCELLED' AND (to_jsonb(NEW)-'status'-'version'-'updated_at') IS DISTINCT FROM (to_jsonb(OLD)-'status'-'version'-'updated_at') THEN
+  RAISE EXCEPTION 'Cancelling a draft cannot modify the accepted source';
+ END IF;
  IF NEW.status='DRAFT' THEN
+  IF NOT EXISTS(SELECT 1 FROM account a WHERE a.id=NEW.applicant_account_ref AND a.realm_id=NEW.root_realm_id
+    AND a.status='ACTIVE' AND a.contact_phone_verified_at IS NOT NULL AND a.contact_phone=NEW.contact_mobile
+    AND a.display_name=NEW.display_name AND a.normalized_email IS NOT DISTINCT FROM NEW.contact_email FOR SHARE) THEN
+   RAISE EXCEPTION 'A verified original applicant contact is required'; END IF;
   IF NOT EXISTS(SELECT 1 FROM membership_tier_version v JOIN membership_tier t ON t.root_realm_id=v.root_realm_id AND t.id=v.tier_id
    WHERE v.root_realm_id=NEW.root_realm_id AND v.id=NEW.tier_version_id AND t.version=v.version_no AND t.status='ACTIVE'
     AND v.status='ACTIVE' AND v.published_at<=now() FOR SHARE OF t) THEN
@@ -84,3 +91,25 @@ BEGIN
  RETURN NEW;
 END; $$;
 CREATE TRIGGER cg04_application_draft_write BEFORE INSERT OR UPDATE OR DELETE ON membership_application FOR EACH ROW EXECUTE FUNCTION cg04_application_draft_guard();
+
+CREATE FUNCTION cg04_application_command_guard() RETURNS trigger LANGUAGE plpgsql AS $$
+BEGIN
+ IF NOT EXISTS(SELECT 1 FROM membership_application a WHERE a.root_realm_id=NEW.root_realm_id
+   AND a.id=NEW.application_id AND a.applicant_account_ref=NEW.actor_ref AND a.version=NEW.result_version
+   AND ((NEW.action='CREATE' AND a.version=1 AND a.status='DRAFT')
+        OR (NEW.action='EDIT' AND a.version>1 AND a.status='DRAFT')
+        OR (NEW.action='CANCEL' AND a.version>1 AND a.status='CANCELLED'))) THEN
+   RAISE EXCEPTION 'Application command must match the original applicant and current revision'; END IF;
+ RETURN NEW;
+END; $$;
+CREATE TRIGGER cg04_application_command_insert BEFORE INSERT ON membership_application_command
+ FOR EACH ROW EXECUTE FUNCTION cg04_application_command_guard();
+CREATE FUNCTION cg04_application_command_required() RETURNS trigger LANGUAGE plpgsql AS $$
+BEGIN
+ IF NOT EXISTS(SELECT 1 FROM membership_application_command c WHERE c.root_realm_id=NEW.root_realm_id
+   AND c.application_id=NEW.id AND c.result_version=NEW.version AND c.actor_ref=NEW.applicant_account_ref) THEN
+  RAISE EXCEPTION 'An immutable original applicant command is required'; END IF;
+ RETURN NULL;
+END; $$;
+CREATE CONSTRAINT TRIGGER cg04_application_command_commit AFTER INSERT OR UPDATE ON membership_application
+ DEFERRABLE INITIALLY DEFERRED FOR EACH ROW EXECUTE FUNCTION cg04_application_command_required();
