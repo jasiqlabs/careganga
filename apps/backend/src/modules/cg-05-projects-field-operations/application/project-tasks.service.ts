@@ -194,10 +194,10 @@ export class ProjectTasksService {
    return {projects:projects.slice(0,100),hasMoreProjects:projects.length>100,assignees:[...operators,...employees]};
   },true);
  }
- async list(token:string,query:Record<string,unknown>,mine=false,exporting=false,parentRef?:string,summaryOnly=false){
+ async list(token:string,query:Record<string,unknown>,mine=false,exporting=false,parentRef?:string){
   return this.projects.run(token,exporting?"projects.tasks.export":"projects.tasks.view",(tx,a)=>this.listInTx(tx,a,query,mine,exporting,parentRef),true);
  }
- async listInTx(tx:PoolClient,a:Actor,query:Record<string,unknown>,mine=false,exporting=false,parentRef?:string){
+ async listInTx(tx:PoolClient,a:Actor,query:Record<string,unknown>,mine=false,exporting=false,parentRef?:string,summaryOnly=false){
   await this.identity.assertCurrent(tx,a,exporting?"projects.tasks.export":"projects.tasks.view");
   if(exporting)await this.identity.assertCurrent(tx,a,"projects.tasks.view");
   const projectId=parentRef?ref(parentRef):optionalRef(query.projectRef),q=clean(query.q??"",0,100).toLowerCase(),type=clean(query.taskType??"",0,80),assignee=clean(query.assignee??"",0,100).toLowerCase(),location=clean(query.location??"",0,100).toLowerCase();
