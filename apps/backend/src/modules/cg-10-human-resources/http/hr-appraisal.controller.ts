@@ -6,7 +6,7 @@ export class HrAppraisalController{
  @Get("appraisals/options")
  options(@Headers("authorization")token:string,@Query("search")search?:string){return this.appraisals.options(token,search);}
  @Get("appraisals")
- list(@Headers("authorization")token:string,@Query("offset")offset?:string){return this.appraisals.list(token,offset);}
+ list(@Headers("authorization")token:string,@Query("offset")offset?:string,@Query("status")status?:string){return this.appraisals.list(token,offset,status);}
  @Post("appraisals")
  create(@Headers("authorization")token:string,@Body()body:unknown){return this.appraisals.create(token,body);}
  @Get("appraisals/:ref")
