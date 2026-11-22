@@ -35,6 +35,9 @@ BEGIN
  IF TG_OP='DELETE' THEN RAISE EXCEPTION 'Appraisal history cannot be deleted'; END IF;
  IF TG_OP='INSERT' THEN
   IF NEW.status<>'DRAFT' OR NEW.revision<>1 THEN RAISE EXCEPTION 'Appraisal starts as draft'; END IF;
+  IF NOT EXISTS(SELECT 1 FROM hr_employee e WHERE e.root_realm_id=NEW.root_realm_id
+   AND e.id=NEW.reviewer_employee_ref AND e.account_ref=NEW.reviewer_account_ref AND e.status IN('ACTIVE','PROBATION'))
+  THEN RAISE EXCEPTION 'Appraisal must have its actual reviewer account'; END IF;
   RETURN NEW;
  END IF;
  IF (NEW.id,NEW.root_realm_id,NEW.reference,NEW.employee_id,NEW.assignment_id,NEW.reviewer_employee_ref,

@@ -109,11 +109,15 @@ export class HrAppraisalService{
  }
  private async row(tx:PoolClient,actor:VerifiedFoundationActor,reference:string,lock=false){
   if(!REF.test(reference))throw new BadRequestException({code:"CG10_APPRAISAL_INVALID"});
-  const r=(await tx.query<Row>(baseQuery+" WHERE ar.root_realm_id=$1 AND ar.reference=$2 AND ar.reviewer_account_ref=$3"+(lock?" FOR UPDATE OF ar":""),
-    [actor.realmId,reference,actor.accountId])).rows[0];
-  if(!r)throw new NotFoundException("This appraisal is unavailable");
-  const current=await this.target(tx,actor,r.employee_code);
-  if(current.id!==r.employee_id||current.assignment_id!==r.assignment_id||current.reviewer_id!==r.reviewer_employee_ref)
+  await this.identity.assertCurrent(tx,actor,"hr.appraisals.manage");
+  const query=baseQuery+" WHERE ar.root_realm_id=$1 AND ar.reference=$2 AND ar.reviewer_account_ref=$3";
+  const params=[actor.realmId,reference,actor.accountId];
+  const original=(await tx.query<Row>(query,params)).rows[0];
+  if(!original)throw new NotFoundException("This appraisal is unavailable");
+  // Lock order: current identity and assignment before the appraisal row.
+  const current=await this.target(tx,actor,original.employee_code);
+  const r=(await tx.query<Row>(query+(lock?" FOR UPDATE OF ar":" FOR SHARE OF ar"),params)).rows[0];
+  if(!r||current.id!==r.employee_id||current.assignment_id!==r.assignment_id||current.reviewer_id!==r.reviewer_employee_ref)
    throw new ConflictException({code:"CG10_APPRAISAL_STALE"});
   return r;
  }
@@ -173,7 +177,15 @@ export class HrAppraisalService{
     VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$15,$16)
     ON CONFLICT DO NOTHING RETURNING reference`,[id,actor.realmId,employee.id,employee.assignment_id,employee.reviewer_id,
       actor.accountId,x.periodStart,x.periodEnd,x.goal,x.competency,x.attendance,encrypted.ciphertext,encrypted.nonce,encrypted.tag,x.requestKey,d]);
-   if(!inserted.rowCount)throw new ConflictException({code:"CG10_APPRAISAL_DUPLICATE"});
+   if(!inserted.rowCount){
+    // A concurrent identical CREATE can win after the first replay lookup.
+    const accepted=(await tx.query<Row>(baseQuery+" WHERE ar.root_realm_id=$1 AND ar.reviewer_account_ref=$2 AND ar.request_key=$3 FOR SHARE OF ar",
+     [actor.realmId,actor.accountId,x.requestKey])).rows[0];
+    if(accepted&&accepted.request_digest===d&&accepted.employee_id===employee.id&&
+      accepted.assignment_id===employee.assignment_id&&accepted.reviewer_employee_ref===employee.reviewer_id)
+     return {...projection(accepted),replayed:true};
+    throw new ConflictException({code:accepted?"CG10_APPRAISAL_STALE":"CG10_APPRAISAL_DUPLICATE"});
+   }
    await this.audit(tx,actor,employee.id,"APPRAISAL_DRAFT_CREATED");
    const r=await this.row(tx,actor,inserted.rows[0].reference);
    return {...projection(r),replayed:false};
@@ -189,10 +201,11 @@ export class HrAppraisalService{
    }
    if(r.status!=="DRAFT"||r.revision!==x.expectedRevision)throw new ConflictException({code:"CG10_APPRAISAL_STALE"});
    const encrypted=seal(actor.realmId,r.id,{strengths:x.strengths,improvement:x.improvement});
-   await tx.query(`UPDATE hr_appraisal SET goal_delivery_score=$3,competency_score=$4,attendance_conduct_score=$5,
+   const updated=await tx.query(`UPDATE hr_appraisal SET goal_delivery_score=$3,competency_score=$4,attendance_conduct_score=$5,
     feedback_ciphertext=$6,feedback_nonce=$7,feedback_tag=$8,last_command_key=$9,last_command_digest=$10,
-    revision=revision+1,updated_at=now() WHERE root_realm_id=$1 AND id=$2 AND revision=$11`,
+    revision=revision+1,updated_at=now() WHERE root_realm_id=$1 AND id=$2 AND revision=$11 AND status='DRAFT' RETURNING id`,
     [actor.realmId,r.id,x.goal,x.competency,x.attendance,encrypted.ciphertext,encrypted.nonce,encrypted.tag,x.requestKey,d,x.expectedRevision]);
+   if(!updated.rowCount)throw new ConflictException({code:"CG10_APPRAISAL_STALE"});
    await this.audit(tx,actor,r.employee_id,"APPRAISAL_DRAFT_UPDATED");
    return {...projection(await this.row(tx,actor,ref)),replayed:false};
   });
@@ -221,8 +234,11 @@ export class HrAppraisalService{
   const actor=await this.sessions.verifySession(token);
   return this.run(async tx=>{
    await this.identity.assertPatientSessionCurrent(tx,actor);
-   const q=await tx.query<{id:string}>(`SELECT id FROM hr_employee WHERE root_realm_id=$1 AND account_ref=$2
-    AND status IN('ACTIVE','PROBATION') FOR SHARE`,[actor.realmId,actor.accountId]);
+   const q=await tx.query<{id:string}>(`SELECT e.id FROM hr_employee e JOIN hr_employment_assignment a
+    ON a.employee_id=e.id AND a.root_realm_id=e.root_realm_id
+    JOIN branch b ON b.id=a.branch_ref AND b.root_realm_id=a.root_realm_id AND b.status='ACTIVE'
+    WHERE e.root_realm_id=$1 AND e.account_ref=$2 AND e.status IN('ACTIVE','PROBATION')
+    AND a.valid_from<=CURRENT_DATE AND (a.valid_to IS NULL OR a.valid_to>CURRENT_DATE) FOR SHARE OF e,a,b`,[actor.realmId,actor.accountId]);
    if(q.rows.length!==1)return {linked:false,items:[]};
    const v=await tx.query<Row>(baseQuery+" WHERE ar.root_realm_id=$1 AND ar.employee_id=$2 AND ar.status='RELEASED' ORDER BY ar.period_end DESC,ar.id DESC LIMIT 50",
     [actor.realmId,q.rows[0].id]);
