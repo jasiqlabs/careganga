@@ -5,7 +5,7 @@ import * as DocumentPicker from "expo-document-picker";
 import {File,UploadType} from "expo-file-system";
 import * as Crypto from "expo-crypto";
 import {identityRequest} from "../identity-access/http-client";
-type Kind="HR_IDENTITY_PROOF"|"HR_PAN_PROOF"|"HR_QUALIFICATION"|"HR_PORTRAIT";
+type Kind="HR_IDENTITY_PROOF"|"HR_PAN_PROOF"|"HR_QUALIFICATION"|"HR_PORTRAIT"|"HR_EXPERIENCE"|"HR_POLICE_VERIFICATION"|"HR_RESUME"|"HR_APPOINTMENT_DOCUMENT";
 type Picked={uri:string;name:string;size:number;mime:string};
 type Intent={uploadRef:string;status:string;uploadUrl?:string;
  uploadHeaders?:Record<string,string>};
@@ -166,8 +166,8 @@ export function NativeHrEvidence({token,applicationRef,revision,onExpired,onFile
    No file is public or approved until secure scanning and Foundation review confirm it.</Text>
   {!!message&&<Text accessibilityRole="alert" style={styles.hint}>{message}</Text>}
   <View style={styles.choices}>
-   {(["HR_IDENTITY_PROOF","HR_PAN_PROOF","HR_QUALIFICATION","HR_PORTRAIT"] as Kind[]).map(k=>
-    <View key={k}>{chip(({HR_IDENTITY_PROOF:"Identity proof",HR_PAN_PROOF:"PAN proof",HR_QUALIFICATION:"Qualification evidence",HR_PORTRAIT:"Employee photograph"})[k],()=>{
+   {(["HR_IDENTITY_PROOF","HR_PAN_PROOF","HR_QUALIFICATION","HR_PORTRAIT","HR_EXPERIENCE","HR_POLICE_VERIFICATION","HR_RESUME","HR_APPOINTMENT_DOCUMENT"] as Kind[]).map(k=>
+    <View key={k}>{chip(({HR_IDENTITY_PROOF:"Identity proof",HR_PAN_PROOF:"PAN proof",HR_QUALIFICATION:"Qualification evidence",HR_PORTRAIT:"Employee photograph",HR_EXPERIENCE:"Experience certificate",HR_POLICE_VERIFICATION:"Police verification",HR_RESUME:"Resume",HR_APPOINTMENT_DOCUMENT:"Existing appointment document"})[k],()=>{
      setKind(k);setPicked(null);setIntent("");setUncertain(false);original.current=null;
     },kind===k)}</View>)}
   </View>
