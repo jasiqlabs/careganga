@@ -1,3 +1,4 @@
+import {MembershipFeesController} from "./http/membership-fees.controller";
 import {Module} from "@nestjs/common";
 import {IdentityAccessModule} from "../cg-01-identity-access/identity-access.module";
 import {FoundationStructureModule} from "../cg-02-foundation-structure/foundation-structure.module";
@@ -34,7 +35,7 @@ import {FinanceExpenseClaimController} from "./http/finance-expense-claim.contro
 @Module({
  imports:[IdentityAccessModule,FoundationStructureModule,RegistrationApprovalsModule,DocumentsNotificationsModule,FinanceSourceModule,FinanceEvidenceSourceModule],
  providers:[FinanceAccountsService,FinanceJournalPostingService,FinanceJournalReversalService,FinanceVoucherDraftService,FinanceVoucherWorkflowService,FinanceVoucherPaymentService,FinanceVoucherDashboardService,FinanceExpenseClaimService,FinanceInvoiceDraftService,FinanceInvoiceWorkflowService,FinanceInvoiceCancellationService,FinanceInvoiceAdjustmentService,FinanceBudgetService,FinanceReportsService],
- controllers:[FinanceAccountsController,FinanceVoucherDraftController,FinanceVoucherWorkflowController,FinanceVoucherPaymentController,FinanceVoucherDashboardController,FinanceExpenseClaimController,FinanceInvoiceDraftController,FinanceInvoiceWorkflowController,FinanceBudgetController,FinanceReportsController],
+ controllers:[MembershipFeesController,FinanceAccountsController,FinanceVoucherDraftController,FinanceVoucherWorkflowController,FinanceVoucherPaymentController,FinanceVoucherDashboardController,FinanceExpenseClaimController,FinanceInvoiceDraftController,FinanceInvoiceWorkflowController,FinanceBudgetController,FinanceReportsController],
  exports:[FinanceAccountsService,FinanceReportsService]
 })
 export class FinanceAccountingModule {}
