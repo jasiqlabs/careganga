@@ -2,7 +2,7 @@ import {describe,test} from "node:test";
 import assert from "node:assert/strict";
 import {ConflictException} from "@nestjs/common";
 import {parseAttendanceCorrection} from "../src/modules/cg-10-human-resources/application/hr-attendance-correction-source.facade";
-import {parseLeaveReviewFilters,parsePendingLeaveWithdrawal} from "../src/modules/cg-03-registration-approvals/application/hr-leave-approval.service";
+import {HrLeaveApprovalService,parseLeaveReviewFilters,parsePendingLeaveWithdrawal} from "../src/modules/cg-03-registration-approvals/application/hr-leave-approval.service";
 import {countedLeaveDates,parseLeaveRequest} from "../src/modules/cg-10-human-resources/application/hr-leave-source.facade";
 import {shiftCheckInAt,verifiedWorkedMinutes,leavePolicyInput} from "../src/modules/cg-10-human-resources/application/hr-attendance.service";
 
@@ -104,5 +104,25 @@ describe("CG10 original leave withdrawal and filtered review",()=>{
   const invalid: Array<[unknown,unknown,{from?:unknown;to?:unknown;type?:unknown;employee?:unknown}]>=[[-1,"ALL",{}],[0,["ALL"],{}],[0,"ALL",{from:"2026-02-30"}],[0,"ALL",{from:"2026-12-01",to:"2026-11-01"}],[0,"ALL",{employee:"a".repeat(81)}],[0,"ALL",{type:["annual"]}]];
   for(const [offset,status,filters] of invalid)
    assert.throws(()=>parseLeaveReviewFilters(offset,status,filters));
+ });
+});
+
+describe("CG-10 B21 leave overview source",()=>{
+ test("leave overview uses the same restricted scope and returns a bounded safe request projection",async()=>{
+  const queries:{sql:string;params?:unknown[]}[]=[];
+  const overview={total:2,pending:1,approved:1,returned:0,rejected:0,cancelled:0,types:[{label:"Annual",count:2}],upcoming:[{name:"Sample Employee",leaveType:"Annual",startDate:"2026-12-01",endDate:"2026-12-02",days:2}]};
+  const page=[{id:"internal-case",case_number:"CG-AP-000001",status:"SUBMITTED",revision:1,proposer_id:"other",account_name_snapshot:"Sample Employee",leave_type:"Annual",start_date:"2026-12-01",end_date:"2026-12-02",half_days:4,leave_status:"SUBMITTED"}];
+  const tx={query:async(sql:string,params?:unknown[])=>{queries.push({sql,params});return {rows:sql.includes("WITH scoped AS")?[{page,overview}]:sql.includes("protected_root")?[{protected_root:false,branch_admin:false}]:[]};},release:()=>{}};
+  const service=Object.create(HrLeaveApprovalService.prototype) as HrLeaveApprovalService;
+  Object.assign(service,{sessions:{requireAction:async()=>({realmId:"root",accountId:"manager"})},identity:{assertCurrent:async()=>{}},db:{connect:async()=>tx}});
+  const result=await service.inbox("session","0","SUBMITTED",{type:"Annual"});
+  assert.equal(result.items[0].days,2);assert.equal(result.items[0].canReview,false);
+  assert.equal(result.overview?.total,2);assert.equal(result.overview?.upcoming[0].name,"Sample Employee");
+  const query=queries.find(x=>x.sql.includes("WITH scoped AS"))!;
+  assert.match(query.sql,/origin\.root_realm_id=r\.root_realm_id/);
+  assert.match(query.sql,/current\.branch_ref=origin\.branch_ref/);
+  assert.match(query.sql,/LIMIT 26 OFFSET \$3/);
+  assert.match(query.sql,/ORDER BY start_date,id LIMIT 5/);
+  assert.deepEqual(query.params,["root","SUBMITTED",0,null,null,"annual","","manager",false,false]);
  });
 });
