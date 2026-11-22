@@ -1,4 +1,5 @@
 import {ConflictException,Inject,Injectable} from "@nestjs/common";
+import {assertFinanceProject} from "../../cg-05-projects-field-operations/application/project-finance-source";
 import type {Pool,PoolClient} from "pg";
 import {DATABASE} from "../../../core/infrastructure/database.module";
 import {SessionService} from "../../cg-01-identity-access/application/session.service";
@@ -29,8 +30,8 @@ export class FinanceVoucherSourceFacade{
     !Number.isSafeInteger(revision)||revision<1)
    throw new ConflictException({code:"FINANCE_VOUCHER_STALE"});
   const row=await client.query<{id:string;root_realm_id:string;version:number;
-    created_by:string;branch_id:string|null;status:VerifiedVoucherDraftSource["status"];payload_digest:string}>(`
-    SELECT v.id,v.root_realm_id,v.version,v.created_by,v.branch_id,v.status,r.payload_digest
+    created_by:string;branch_id:string|null;project_ref:string|null;status:VerifiedVoucherDraftSource["status"];payload_digest:string}>(`
+    SELECT v.id,v.root_realm_id,v.version,v.created_by,v.branch_id,v.project_ref,v.status,r.payload_digest
     FROM finance_voucher v JOIN finance_voucher_draft_revision r
       ON r.voucher_id=v.id AND r.root_realm_id=v.root_realm_id AND r.version=v.version
     WHERE v.id=$1 AND v.root_realm_id=$2 AND v.version=$3 FOR SHARE OF v,r`,
@@ -40,6 +41,7 @@ export class FinanceVoucherSourceFacade{
   if(v.branch_id)
    await this.branches.requireFinanceActorBranch(client,actor,v.branch_id,capability);
   else await this.branches.requireFinanceRootScope(client,actor,capability);
+  if(v.project_ref&&["DRAFT","SUBMITTED","APPROVED"].includes(v.status))await assertFinanceProject(client,actor,v.project_ref,v.branch_id);
   return {voucherRef:v.id,rootRef:v.root_realm_id,revision:v.version,
    createdBy:v.created_by,status:v.status,sourceDigest:v.payload_digest};
  }
