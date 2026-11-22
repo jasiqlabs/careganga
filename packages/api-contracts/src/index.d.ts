@@ -213,3 +213,11 @@ export type CG05ProjectOptions={canManageFoundation:boolean;branches:CG05Option[
 export type CG05ProjectDraft={code:string;title:string;category:string;summary:string;description:string;priority:string;ownerRef:string;branchRef:string;stateRef:string;districtRef:string;location:string;fundingSource:string;plannedStart:string;plannedEnd:string;plannedBudget:string;status:string};
 
 export type CG05PublicEligibility={status:string;caseRef:string|null;caseNumber?:string;revision?:number;canReview:boolean;canWithdraw:boolean;source:{title:string;category:string;summary:string;area:string;launch:string|null;status:string;coverFileRef?:string|null;coverFileVersion?:number|null}|null};
+
+export type CG05TaskStatus="DRAFT"|"ASSIGNED"|"IN_PROGRESS"|"COMPLETED"|"CANCELLED";
+export type CG05TaskAssigneeKind="UNASSIGNED"|"ACCOUNT"|"EMPLOYEE";
+export type CG05Task={ref:string;code:string;projectRef:string;project:string;projectCode:string;title:string;taskType:string;description:string;priority:"LOW"|"NORMAL"|"HIGH"|"URGENT";startDate:string|null;dueDate:string|null;status:CG05TaskStatus;assigneeKind:CG05TaskAssigneeKind;assignee:string|null;location:string;branch:string|null;version:number;updatedAt:string;completedAt:string|null;overdue:boolean;assignmentCurrent:boolean};
+export type CG05TaskEvent={action:string;priorStatus?:string|null;status:string;reason:string;at:string;actor:string;assignee?:string|null};
+export type CG05TaskDetail=CG05Task & {history:CG05TaskEvent[];canManage:boolean;canProgress:boolean;approvalStatus:"NOT_REQUIRED"};
+export type CG05TaskList={items:CG05Task[];counts:{total:number;completed:number;inProgress:number;overdue:number;upcoming:number;cancelled:number};statusCounts:{label:string;count:number}[];priorityCounts:{label:string;count:number}[];overdueItems:CG05Task[];recent:(CG05TaskEvent & {ref:string;code:string;title:string})[];offset:number;hasMore:boolean};
+export type CG05TaskOptions={projects:{value:string;label:string}[];hasMoreProjects:boolean;assignees:{value:string;label:string;kind:"ACCOUNT"|"EMPLOYEE"}[]};
