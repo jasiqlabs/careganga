@@ -141,15 +141,17 @@ export class HrLeaveApprovalService{
   const {offset,status,from,to,type,employee}=parseLeaveReviewFilters(offsetInput,statusInput,filters);
   return this.run(async tx=>{
    const rights=await this.viewRights(tx,actor);
-   const q=await tx.query<Case&{leave_type:string;start_date:string;end_date:string;half_days:number;leave_status:string}>(`
-    SELECT c.id,c.case_number,c.status,c.revision,c.proposer_id,c.account_name_snapshot,
+   type Item=Case&{leave_type:string;start_date:string;end_date:string;half_days:number;leave_status:string};
+   type Overview={total:number;pending:number;approved:number;returned:number;rejected:number;cancelled:number;types:{label:string;count:number}[];upcoming:{name:string;leaveType:string;startDate:string;endDate:string;days:number}[]};
+   const q=await tx.query<{page:Item[];overview:Overview}>(`
+    WITH scoped AS (
+    SELECT c.id,c.case_number,c.status,c.revision,c.proposer_id,c.account_name_snapshot,c.submitted_at,
      p.leave_type,to_char(r.start_date,'YYYY-MM-DD') AS start_date,to_char(r.end_date,'YYYY-MM-DD') AS end_date,
      r.half_days,r.status AS leave_status
     FROM cg03_case c JOIN hr_leave_request r ON r.root_realm_id=c.realm_id AND r.id=c.hr_leave_request_id
      AND r.source_digest=c.hr_leave_source_digest AND r.case_ref=c.id
     JOIN hr_leave_policy p ON p.id=r.policy_id AND p.root_realm_id=r.root_realm_id
-    WHERE c.realm_id=$1 AND c.case_kind='LEAVE_REQUEST' AND ($2='ALL' OR c.status=$2)
-     AND ($4::date IS NULL OR r.end_date >= $4::date)
+    WHERE c.realm_id=$1 AND c.case_kind='LEAVE_REQUEST' AND ($4::date IS NULL OR r.end_date >= $4::date)
      AND ($5::date IS NULL OR r.start_date <= $5::date)
      AND ($6='' OR strpos(lower(p.leave_type),$6)>0)
      AND ($7='' OR strpos(lower(c.account_name_snapshot),$7)>0)
@@ -164,11 +166,25 @@ export class HrLeaveApprovalService{
         WHERE manager.id=current.manager_employee_ref AND manager.root_realm_id=current.root_realm_id
          AND manager.account_ref=$8 AND manager.status IN('ACTIVE','PROBATION')))
      ))
-    ORDER BY c.submitted_at DESC,c.id DESC LIMIT 26 OFFSET $3`,[actor.realmId,status,offset,from,to,type,employee,actor.accountId,rights.protected_root,rights.branch_admin]);
-   return {items:q.rows.slice(0,25).map(c=>({caseRef:c.id,reference:c.case_number,employeeName:c.account_name_snapshot,
+    ), page AS (
+     SELECT * FROM scoped WHERE ($2='ALL' OR status=$2) ORDER BY submitted_at DESC,id DESC LIMIT 26 OFFSET $3
+    ), type_counts AS (
+     SELECT leave_type,COUNT(*)::integer AS quantity FROM scoped GROUP BY leave_type ORDER BY quantity DESC,leave_type LIMIT 10
+    ), upcoming AS (
+     SELECT id,account_name_snapshot,leave_type,start_date,end_date,half_days FROM scoped
+      WHERE leave_status='APPROVED' AND start_date::date>=CURRENT_DATE ORDER BY start_date,id LIMIT 5
+    ) SELECT
+     (SELECT COALESCE(jsonb_agg(to_jsonb(page) ORDER BY submitted_at DESC,id DESC),'[]'::jsonb) FROM page) AS page,
+     (SELECT jsonb_build_object('total',COUNT(*)::integer,'pending',COUNT(*) FILTER(WHERE status IN('SUBMITTED','IN_REVIEW'))::integer,
+      'approved',COUNT(*) FILTER(WHERE leave_status='APPROVED')::integer,'returned',COUNT(*) FILTER(WHERE status='RETURNED')::integer,
+      'rejected',COUNT(*) FILTER(WHERE status='REJECTED')::integer,'cancelled',COUNT(*) FILTER(WHERE status='CANCELLED')::integer,
+      'types',(SELECT COALESCE(jsonb_agg(jsonb_build_object('label',leave_type,'count',quantity) ORDER BY quantity DESC,leave_type),'[]'::jsonb) FROM type_counts),
+      'upcoming',(SELECT COALESCE(jsonb_agg(jsonb_build_object('name',account_name_snapshot,'leaveType',leave_type,'startDate',start_date,'endDate',end_date,'days',half_days/2.0) ORDER BY start_date,id),'[]'::jsonb) FROM upcoming)) FROM scoped) AS overview`,[actor.realmId,status,offset,from,to,type,employee,actor.accountId,rights.protected_root,rights.branch_admin]);
+   const page=q.rows[0]?.page??[];
+   return {items:page.slice(0,25).map(c=>({caseRef:c.id,reference:c.case_number,employeeName:c.account_name_snapshot,
     caseStatus:c.status,status:c.leave_status,revision:c.revision,leaveType:c.leave_type,startDate:c.start_date,
     endDate:c.end_date,days:c.half_days/2,canReview:rights.protected_root&&c.proposer_id!==actor.accountId&&["SUBMITTED","IN_REVIEW"].includes(c.status)})),
-    hasMore:q.rows.length>25,offset};
+    hasMore:page.length>25,offset,overview:q.rows[0]?.overview??null};
   });
  }
  async detail(token:string,refInput:string){
