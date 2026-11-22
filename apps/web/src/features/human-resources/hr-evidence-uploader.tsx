@@ -33,7 +33,7 @@ const digest=async(data:ArrayBuffer)=>{
  const hash=await crypto.subtle.digest("SHA-256",data);
  return Array.from(new Uint8Array(hash),v=>v.toString(16).padStart(2,"0")).join("");
 };
-const looksLikeFiles=(v:unknown):v is {files:Verified[]}=>Boolean(v)&&
+const looksLikeFiles=(v:unknown):v is {files:Verified[]}=>v!==null&&
  typeof v==="object"&&"files" in v&&Array.isArray((v as {files:unknown}).files);
 export function HrEvidenceUploader({applicationRef,revision,canManage,
  onValidated}:Props){

@@ -814,7 +814,8 @@ export function FoundationAdminNav({
     financeClaims: "Expense Claims",
     financeClaimReviews: "Expense Claim Reviews",
     financeVouchers: "Finance Voucher Drafts",
-    financeReviews: "Finance Voucher Reviews"
+    financeReviews: "Finance Voucher Reviews",
+    hr: "Human Resources"
   };
 
   const handleSignOut = async () => {

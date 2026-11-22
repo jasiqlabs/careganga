@@ -1,7 +1,6 @@
-import {Body,Controller,Get,Header,Headers,Param,Post,Query} from "@nestjs/common";
+import {Body,Controller,Get,Headers,Param,Post,Query} from "@nestjs/common";
 import {HrDocumentApprovalService} from "../application/hr-document-approval.service";
 @Controller("api/hr")
-@Header("Cache-Control","private, no-store")
 export class HrDocumentApprovalController{
  constructor(private readonly approvals:HrDocumentApprovalService){}
  @Get("document-subjects") subjects(@Headers("authorization")t:string,@Query("kind")kind:string,@Query("search")search?:string){return this.approvals.subjects(t,kind,search);}

@@ -27,7 +27,7 @@ export class HrEmploymentChangeApprovalService{
   private readonly identity:FoundationStructureIdentityFacade,private readonly protectedOwner:ProtectedAccessOwnerService,
   private readonly source:HrEmploymentChangeSourceFacade){}
  private stale():never{throw new ConflictException({code:"CG10_CHANGE_STALE"});}
- private async event(tx:PoolClient,realm:string,actor:string,ref:string,action:string,key=randomUUID()){
+ private async event(tx:PoolClient,realm:string,actor:string,ref:string,action:string,key:string=randomUUID()){
   return (await tx.query<{id:string}>(`INSERT INTO cg03_case_event(realm_id,case_id,actor_id,action,step_ordinal,correlation_ref)
    VALUES($1,$2,$3,$4,1,$5) RETURNING id`,[realm,ref,actor,action,key])).rows[0].id;
  }

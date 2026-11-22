@@ -31,11 +31,11 @@ async function request(path:string,init?:RequestInit):Promise<unknown>{
  return obj;
 }
 function isApps(x:unknown):x is {items:Application[];hasMore:boolean}{
- return Boolean(x)&&typeof x==="object"&&"items" in x&&
+ return x!==null&&typeof x==="object"&&"items" in x&&
   Array.isArray((x as {items:unknown}).items);
 }
 function isChoices(x:unknown):x is {items:Choice[]} {
- return Boolean(x)&&typeof x==="object"&&"items" in x&&
+ return x!==null&&typeof x==="object"&&"items" in x&&
   Array.isArray((x as {items:unknown}).items);
 }
 export function HrEnrollmentWorkspace({canViewApps,canManage,canViewEmployees,canSelectAccounts,canSelectRoles,canViewPrivate,canManagePrivate}:{

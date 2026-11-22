@@ -2,7 +2,6 @@ import {BadRequestException,Body,Controller,Get,Header,Headers,Param,Post,Query,
 import {HrIssuedDocumentService} from "../application/hr-issued-document.service";
 import {HealthPublicRequestThrottleService} from "../../cg-14-healthcare-network/application/health-public-request-throttle.service";
 @Controller("api/hr")
-@Header("Cache-Control","private, no-store")
 export class HrIssuedDocumentController{
  constructor(private readonly documents:HrIssuedDocumentService){}
  @Get("document-requests") list(@Headers("authorization")t:string,@Query("offset")offset?:string){return this.documents.list(t,false,offset);}

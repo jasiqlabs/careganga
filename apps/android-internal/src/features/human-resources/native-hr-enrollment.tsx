@@ -46,7 +46,7 @@ export function NativeHrEnrollment({token,canView,canManage,canReview,canViewEmp
  const [allowancesOpen,setAllowancesOpen]=useState(false);
  const initialSection=canViewEmployees?"overview":"profile";
  const [section,setSection]=useState(initialSection),[visited,setVisited]=useState<string[]>([initialSection]);
- const scroll=useRef<ScrollView>(null);
+ const scroll=useRef<React.ComponentRef<typeof ScrollView>>(null);
  const sections=[...(canViewEmployees?[{id:"overview",label:"HR Dashboard"}]:[]),{id:"profile",label:"My employment & allowances"},...((canView||canViewEmployees||canReview)?[{id:"employees",label:"Employees & enrollment"}]:[]),{id:"attendance",label:"Attendance & leave"},{id:"performance",label:"Performance"},{id:"changes",label:"Employment changes"},{id:"documents",label:"Letters & ID cards"}];
  const active=sections.some(s=>s.id===section)?section:"profile";
  const choose=(id:string)=>{setSection(id);setVisited(v=>v.includes(id)?v:[...v,id]);scroll.current?.scrollTo({y:0,animated:false});};
