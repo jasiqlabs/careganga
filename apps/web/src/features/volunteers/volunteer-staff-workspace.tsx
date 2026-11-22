@@ -1,6 +1,7 @@
 "use client";
 import {useCallback,useEffect,useRef,useState} from "react";
 import type {CG04VolunteerReviewCase,CG04VolunteerReviewPage,CG04VolunteerReviewPolicy,CG04VolunteerRosterPage,CG04VolunteerRosterExport} from "@careganga/api-contracts";
+import {VolunteerCardManager} from "./volunteer-card-manager";
 type Decision="APPROVE"|"RETURN"|"REJECT";
 type Pending={ref:string;body:{requestKey:string;expectedRevision:number;action:Decision;remarks:string};digest:string};
 const read=(v:string)=>v.replaceAll("_"," ").toLowerCase().replace(/\b[a-z]/g,c=>c.toUpperCase());
@@ -14,8 +15,8 @@ async function api<T>(path:string,body?:Record<string,unknown>):Promise<T>{
  if(!res.ok||value===null)throw Object.assign(new Error(value&&typeof value==="object"&&typeof (value as {message?:unknown}).message==="string"?(value as {message:string}).message:"Could not verify the current volunteer record."),{status:res.status});
  return value as T;
 }
-export function VolunteerStaffWorkspace({canReview,canRoster,canExport,canConfigure}:{
- canReview:boolean;canRoster:boolean;canExport:boolean;canConfigure:boolean
+export function VolunteerStaffWorkspace({canReview,canRoster,canExport,canConfigure,canIssueCards}:{
+ canReview:boolean;canRoster:boolean;canExport:boolean;canConfigure:boolean;canIssueCards:boolean
 }){
  const [tab,setTab]=useState<"REVIEW"|"ROSTER">(canReview?"REVIEW":"ROSTER");
  const [policy,setPolicy]=useState<CG04VolunteerReviewPolicy|null>(null),[reviews,setReviews]=useState<CG04VolunteerReviewPage|null>(null);
@@ -155,6 +156,7 @@ export function VolunteerStaffWorkspace({canReview,canRoster,canExport,canConfig
     <strong>{row.volunteerNumber} · {row.name}</strong><p>{row.department}{row.branch?" · "+row.branch:""} · {read(row.status)}</p>
     <p>{read(row.availability)} · {row.city}, {row.district}</p>
     <p>Joined: {row.joinedOn}</p><p>Contact: {row.mobile}{row.email?" · "+row.email:""}</p><p>Skills: {row.skills.join(", ")||"None recorded"}</p>
+    {canIssueCards&&<VolunteerCardManager volunteerRef={row.ref}/>}
    </article>)}</div>
    <div className="cg04-buttons">{offset>0&&<button type="button" onClick={()=>setOffset(Math.max(0,offset-25))}>Previous volunteers</button>}
     {roster.hasMore&&<button type="button" onClick={()=>setOffset(x=>x+25)}>More volunteers</button>}</div>
