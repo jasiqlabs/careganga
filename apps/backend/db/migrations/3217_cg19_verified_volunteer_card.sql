@@ -46,9 +46,23 @@ BEGIN
    OR OLD.state='REVOKED'
    OR NOT ((OLD.state='PENDING' AND NEW.state IN('VERIFYING','REVOKED'))
     OR (OLD.state='VERIFYING' AND NEW.state IN('ISSUED','UNKNOWN','REVOKED'))
+    OR (OLD.state='VERIFYING' AND NEW.state='VERIFYING'
+      AND OLD.claim_expires_at IS NOT NULL AND OLD.claim_expires_at<=now()
+      AND NEW.claim_token IS DISTINCT FROM OLD.claim_token
+      AND NEW.claim_token IS NOT NULL AND NEW.claim_expires_at>now()
+      AND NEW.attempt_count=OLD.attempt_count+1)
     OR (OLD.state='UNKNOWN' AND NEW.state IN('VERIFYING','REVOKED'))
     OR (OLD.state='ISSUED' AND NEW.state='REVOKED'))
   THEN RAISE EXCEPTION 'Official volunteer card issuance history cannot be modified'; END IF;
+  IF (OLD.object_version,OLD.content_sha256,OLD.issued_at,OLD.revoked_at) IS DISTINCT FROM
+    (NEW.object_version,NEW.content_sha256,NEW.issued_at,NEW.revoked_at)
+    AND NOT ((OLD.state='VERIFYING' AND NEW.state='ISSUED' AND OLD.object_version IS NULL
+      AND OLD.content_sha256 IS NULL AND NEW.object_version IS NOT NULL
+      AND NEW.content_sha256 IS NOT NULL AND NEW.issued_at IS NOT NULL)
+      OR (NEW.state='REVOKED' AND NEW.revoked_at IS NOT NULL AND OLD.revoked_at IS NULL
+       AND (NEW.object_version,NEW.content_sha256,NEW.issued_at)
+        IS NOT DISTINCT FROM (OLD.object_version,OLD.content_sha256,OLD.issued_at)))
+  THEN RAISE EXCEPTION 'Original approved volunteer card file must remain immutable'; END IF;
  ELSE
   IF NEW.state<>'PENDING' OR NEW.issue_revision<1 OR
    NOT EXISTS(SELECT 1 FROM volunteer v JOIN volunteer_approval_effect effect
