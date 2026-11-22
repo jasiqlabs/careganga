@@ -180,12 +180,12 @@ export function CampaignDraftsWorkspace({canManage}:{canManage:boolean}){
    <textarea style={{...entry,minHeight:100}} value={value} onChange={e=>onChange(e.target.value)} disabled={busy||!editable||!!pending.current||!!submitPending.current}/>:
    <input style={entry} value={value} onChange={e=>onChange(e.target.value)} disabled={busy||!editable||!!pending.current||!!submitPending.current}/>}</label>;
  const tabItems=[{key:"ALL",label:"All Campaigns",count:summary?.total},
-  {key:"PUBLISHED",label:"Active",count:summary?.active},
+  {key:"APPROVED",label:"Approved",count:summary?.active},
   {key:"DRAFT",label:"Drafts",count:summary?.draft},
   {key:"CLOSED",label:"Completed",count:summary?.completed},
   {key:"WITHDRAWN",label:"Cancelled",count:summary?.cancelled}];
  const kpis=[{name:"Total Campaigns",count:summary?.total,style:styles.statBlue,icon:"◉"},
-  {name:"Active Campaigns",count:summary?.active,style:styles.statGreen,icon:"✓"},
+  {name:"Approved Campaigns",count:summary?.active,style:styles.statGreen,icon:"✓"},
   {name:"Draft Campaigns",count:summary?.draft,style:styles.statAmber,icon:"◷"},
   {name:"Completed Campaigns",count:summary?.completed,style:styles.statPurple,icon:"▣"},
   {name:"Cancelled Campaigns",count:summary?.cancelled,style:styles.statRed,icon:"×"}];
@@ -259,7 +259,7 @@ export function CampaignDraftsWorkspace({canManage}:{canManage:boolean}){
     </section>
     <aside className={styles.sideRail} aria-label="Campaign overview sidebar">
      <section className={styles.sideCard}><h3>Campaign Overview</h3>
-      <p>Active public campaigns: {summary?.active??"—"}</p>
+      <p>Approved campaigns: {summary?.active??"—"}</p>
       <p>Awaiting verification: {summary?"View status filters":"Not available"}</p>
       <p>The published campaign count comes from the source lifecycle, not this page of results.</p></section>
      <section className={styles.sideCard}><h3>Funding Overview (₹)</h3>
