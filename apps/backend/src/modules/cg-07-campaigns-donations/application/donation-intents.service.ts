@@ -4,6 +4,7 @@ import {createCipheriv,createHash,createHmac,randomBytes} from "node:crypto";
 import type {Pool,PoolClient} from "pg";
 import {DATABASE} from "../../../core/infrastructure/database.module";
 import {publicCampaignSources} from "./campaign-public-source";
+import {DonationOnlineService} from "./donation-online.service";
 import {parseDonationIntent} from "../domain/donation-input";
 type DonationRow={id:string;request_digest:string;source_status:string;amount_minor:string;
  currency:string;campaign_id:string|null;status_token_expires_at:Date;created_at:Date};
@@ -27,7 +28,8 @@ function privateDonor(source:object):string{
 }
 @Injectable()
 export class DonationIntentsService{
- constructor(@Inject(DATABASE)private readonly db:Pool){}
+ constructor(@Inject(DATABASE)private readonly db:Pool,
+  private readonly online:DonationOnlineService){}
  private async limit(req:object,scope:"create"|"status"){
   const remote=(req as {socket?:{remoteAddress?:string}}).socket?.remoteAddress;
   if(typeof remote!=="string"||remote.length>80||!/^[0-9a-fA-F:.]{2,80}$/.test(remote))
@@ -113,9 +115,16 @@ export class DonationIntentsService{
   if(typeof token!=="string"||!/^[A-Za-z0-9_-]{43}$/.test(token))
    throw new NotFoundException("Donation status proof unavailable.");
   const tokenHash=createHash("sha256").update(token).digest("hex");
+  // A donor-initiated check may reconcile a genuinely expired/cancelled link
+  // or a provider-paid item awaiting signed webhook. Errors preserve the
+  // existing truthful status rather than retrying or inventing payment.
+  await this.online.refreshDonorStatus(token).catch(()=>undefined);
   const q=await this.db.query<{source_status:string;amount_minor:string;currency:string;
-   created_at:Date;refunded_minor:string;receipt_status:string}>(`
+   created_at:Date;refunded_minor:string;receipt_status:string;attempt_status:string|null}>(`
     SELECT d.source_status,d.amount_minor::text,d.currency,d.created_at,
+      (SELECT a.status FROM donation_payment_attempt a
+       WHERE a.root_realm_id=d.root_realm_id AND a.donation_id=d.id AND a.method='ONLINE'
+       ORDER BY a.created_at DESC,a.id DESC LIMIT 1) AS attempt_status,
       coalesce((SELECT sum(r.amount_minor) FROM donation_refund_request r
         JOIN journal j ON j.root_realm_id=r.root_realm_id AND j.id=r.reversal_journal_ref
         WHERE r.root_realm_id=d.root_realm_id AND r.donation_id=d.id
@@ -131,12 +140,14 @@ export class DonationIntentsService{
   if(!row)throw new NotFoundException("Donation status proof expired or unavailable.");
   const gross=BigInt(row.amount_minor),refunded=BigInt(row.refunded_minor);
   const posted=row.source_status==="RECEIVED_POSTED",net=posted?gross-refunded:0n;
-  return {status:!posted?row.source_status:refunded===0n?row.source_status:
+  const uncertain=!posted&&row.source_status==="REQUESTED"&&row.attempt_status==="OUTCOME_UNKNOWN";
+  return {status:uncertain?"RECONCILIATION_PENDING":!posted?row.source_status:refunded===0n?row.source_status:
     net===0n?"REFUNDED_FULL":"REFUNDED_PARTIAL",
    amountMinor:row.amount_minor,refundedMinor:row.refunded_minor,netReceivedMinor:net.toString(),
    receiptStatus:row.receipt_status,currency:row.currency,received:posted,
    createdAt:row.created_at.toISOString(),
    message:posted?"Confirmed finance received; refunds and issued receipts are separately verified.":
+    uncertain?"Merchant response is unknown; keep the original payment request. Do not pay again.":
      "This donation is not yet confirmed as received."};
  }
 }

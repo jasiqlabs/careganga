@@ -210,7 +210,66 @@ export class DonationOnlineService{
     replayed:false};
   });
  }
- /** No browser redirect ever verifies money. Exactly signed *raw* bytes and
+ /** Explicit donor status refresh only: no idle polling, no new charge, no
+  * receipt and no promotion to VERIFIED_EXTERNAL without a signed event.
+  * An authenticated merchant read may establish EXPIRED/FAILED or that a
+  * signed success needs reconciliation; it cannot establish received money. */
+ async refreshDonorStatus(proof:string):Promise<void>{
+  if(!/^[A-Za-z0-9_-]{43}$/.test(proof))return;
+  await this.throttleLink(proof);
+  const tokenDigest=createHash("sha256").update(proof).digest("hex");
+  const candidate=(await this.db.query<{
+    id:string;root_realm_id:string;amount_minor:string;source_status:string;
+    attempt_id:string;external_reference:string;merchant_reference:string}>(
+   "SELECT d.id,d.root_realm_id,d.amount_minor::text,d.source_status,"+
+   "a.id AS attempt_id,a.external_reference,a.merchant_reference "+
+   "FROM donation d JOIN LATERAL ("+
+   " SELECT id,external_reference,merchant_reference FROM donation_payment_attempt a "+
+   " WHERE a.root_realm_id=d.root_realm_id AND a.donation_id=d.id "+
+   " AND a.method='ONLINE' AND a.status IN('LINK_READY','PAYMENT_PENDING','RECONCILIATION_PENDING') "+
+   " ORDER BY a.created_at DESC,a.id DESC LIMIT 1) a ON true "+
+   "WHERE d.status_token_digest=$1 AND d.status_token_expires_at>now() "+
+   "AND d.source_status IN('LINK_READY','PAYMENT_PENDING','RECONCILIATION_PENDING') LIMIT 1",
+   [tokenDigest])).rows[0];
+  if(!candidate||!/^plink_[A-Za-z0-9]{8,}$/.test(candidate.external_reference))return;
+  const remote=await this.provider("/"+candidate.external_reference,"GET");
+  if(remote.id!==candidate.external_reference||
+   remote.reference_id!==candidate.attempt_id.replaceAll("-","")||
+   remote.currency!=="INR"||remote.amount!==Number(candidate.amount_minor)||
+   remote.accept_partial!==false)return;
+  let next:"RECONCILIATION_PENDING"|"EXPIRED"|"FAILED"|null=null;
+  if(remote.status==="paid"&&remote.amount_paid===Number(candidate.amount_minor))
+   next="RECONCILIATION_PENDING";
+  else if(remote.status==="expired"&&remote.amount_paid===0)next="EXPIRED";
+  else if(remote.status==="cancelled"&&remote.amount_paid===0)next="FAILED";
+  if(!next)return;
+  await this.tx(async tx=>{
+   // Fixed lock order shared by the link path: donation first, then attempt.
+   const d=(await tx.query<Donation>(
+    "SELECT id,root_realm_id,amount_minor::text,source_status FROM donation "+
+    "WHERE root_realm_id=$1 AND id=$2 AND status_token_digest=$3 "+
+    "AND status_token_expires_at>now() FOR UPDATE",
+    [candidate.root_realm_id,candidate.id,tokenDigest])).rows[0];
+   if(!d||!["LINK_READY","PAYMENT_PENDING","RECONCILIATION_PENDING"].includes(d.source_status))return;
+   const a=(await tx.query<Attempt>(
+    "SELECT * FROM donation_payment_attempt WHERE root_realm_id=$1 AND id=$2 "+
+    "AND donation_id=$3 FOR UPDATE",
+    [d.root_realm_id,candidate.attempt_id,d.id])).rows[0];
+   if(!a||!["LINK_READY","PAYMENT_PENDING","RECONCILIATION_PENDING"].includes(a.status)||
+    a.external_reference!==candidate.external_reference||d.amount_minor!==candidate.amount_minor)return;
+   const merchant=await this.merchant(tx,d.root_realm_id);
+   if(a.merchant_reference!==merchant.key)return;
+   if(d.source_status==="RECONCILIATION_PENDING"&&next!=="RECONCILIATION_PENDING")return;
+   if(d.source_status===next)return;
+   await tx.query("UPDATE donation_payment_attempt SET status=$3 "+
+    "WHERE root_realm_id=$1 AND id=$2 AND status IN('LINK_READY','PAYMENT_PENDING','RECONCILIATION_PENDING')",
+    [d.root_realm_id,a.id,next]);
+   await tx.query("UPDATE donation SET source_status=$3,version=version+1,updated_at=now() "+
+    "WHERE root_realm_id=$1 AND id=$2 AND source_status IN('LINK_READY','PAYMENT_PENDING','RECONCILIATION_PENDING')",
+    [d.root_realm_id,d.id,next]);
+  });
+ }
+  /** No browser redirect ever verifies money. Exactly signed *raw* bytes and
   * authenticated merchant API facts establish VERIFIED_EXTERNAL, not POSTED. */
  async webhook(req:object){
   const x=req as {rawBody?:Buffer;headers?:Record<string,string|undefined>};

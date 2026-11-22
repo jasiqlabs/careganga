@@ -4,7 +4,7 @@
 
 **Current scope:** US-001 six-step campaigns/CG03+CG18 is source-authored, awaiting final review; US-002 cash and Razorpay donor/finance Web/native is partially source-authored but bank/NEFT/cheque needs original evidence; US-003 CG19 neutral PDF/CG09 physical-cash refund and actual net source is partially source-authored but provider refund, corrected documents, donor history, export and notifications remain.
 
-**Disposition totals:** 31 source surfaces present but not fully reviewed; 19 known requirements incomplete; 10 require independent/runtime evidence. **0/60 original cases are certified RUNTIME_PASS; 0/3 stories certified SOURCE_COMPLETE.** A single row may require more than a single test.
+**Disposition totals (23 November checkpoint):** 31 source surfaces present but not fully reviewed; 18 known requirements incomplete; 10 require independent/runtime evidence; 1 previous gap has a focused source fix reviewed pending independent/runtime verification. **0/60 original cases are certified RUNTIME_PASS; 0/3 stories certified SOURCE_COMPLETE.** A single row may require more than a single test.
 
 | Original QA ID | Source QA disposition | Current original-owner source | Open proof or implementation |
 |---|---|---|---|
@@ -31,7 +31,7 @@
 | US-002-QA01 | SOURCE_PRESENT_NEEDS_REVIEW | donation-intents.service.ts | Source located; independent file:function and scenario review not signed |
 | US-002-QA02 | SOURCE_PRESENT_NEEDS_REVIEW | donation-manual.service.ts | Source located; independent file:function and scenario review not signed |
 | US-002-QA03 | SOURCE_PRESENT_NEEDS_REVIEW | donation-online.service.ts | Source located; independent file:function and scenario review not signed |
-| US-002-QA04 | SOURCE_GAP | donation-input.ts | FAILED/EXPIRED provider state and offline unknown paths incomplete |
+| US-002-QA04 | SOURCE_FIX_REVIEWED_RUNTIME_PENDING | donation-input.ts, donation-online.service.ts:refreshDonorStatus/webhook/recover, donation-intents.service.ts:status | Donor-requested status rechecks exact merchant and classifies expired/cancelled or paid-but-not-signed as reconciliation pending; lost link response surfaced as unknown. Source reviewed; Razorpay sandbox, actual SQL and fault-injection still NOT_RUN; independent reviewer NOT_RUN |
 | US-002-QA05 | SOURCE_PRESENT_NEEDS_REVIEW | donation-admin.service.ts | Source located; independent file:function and scenario review not signed |
 | US-002-QA06 | RUNTIME_NOT_VERIFIED | A16/A17 screenshot audit | Requires actual DB/provider/browser/device/qualified review evidence |
 | US-002-QA07 | SOURCE_PRESENT_NEEDS_REVIEW | 3308 SQL + webhook | Source located; independent file:function and scenario review not signed |

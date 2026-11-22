@@ -149,3 +149,21 @@ test("US003-QA06/14/18/20: A18 original protected actions and no private entity 
  assert.match(admin,/canIssue=\{canIssue\}/);
  assert.doesNotMatch(admin,/<td[^>]*>\{x\.donationRef\}/);
 });
+
+test("US002-QA04: provider terminal/unknown state reconciles only on donor proof refresh",()=>{
+ const online=source("application/donation-online.service.ts");
+ const intent=source("application/donation-intents.service.ts");
+ assert.match(online,/async refreshDonorStatus\(proof:string\)/);
+ assert.match(online,/this\.throttleLink\(proof\)/);
+ assert.match(online,/remote\.status==="expired"/);
+ assert.match(online,/remote\.status==="cancelled"/);
+ assert.match(online,/remote\.status==="paid"/);
+ assert.match(online,/next="RECONCILIATION_PENDING"/);
+ assert.doesNotMatch(online,/refreshDonorStatus[\s\S]*?next="RECEIVED_POSTED"/);
+ assert.match(online,/status_token_expires_at>now\(\) FOR UPDATE/);
+ assert.match(online,/const merchant=await this\.merchant\(tx,d\.root_realm_id\)/);
+ assert.match(intent,/await this\.online\.refreshDonorStatus\(token\)/);
+ assert.match(intent,/row\.attempt_status==="OUTCOME_UNKNOWN"/);
+ assert.match(intent,/uncertain\?"RECONCILIATION_PENDING"/);
+ assert.match(intent,/Do not pay again/);
+});
