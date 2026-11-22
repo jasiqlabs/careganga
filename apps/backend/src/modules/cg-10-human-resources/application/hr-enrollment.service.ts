@@ -404,7 +404,7 @@ export class HrEnrollmentService{
   try{
    await tx.query("BEGIN");await this.identity.assertCurrent(tx,a,"hr.applications.view");
    const q=await tx.query<Row>(
-    "SELECT * FROM hr_employee_application WHERE id=$1 AND root_realm_id=$2",
+    "SELECT * FROM hr_employee_application WHERE id=$1 AND root_realm_id=$2 FOR SHARE",
     [ref,a.realmId]);
    if(!q.rows[0])throw new NotFoundException("Employee application not found");
    const application=q.rows[0],branch=await this.branch(tx,a,application.proposed_branch_ref);
