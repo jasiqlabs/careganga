@@ -356,3 +356,15 @@ Source review fixes this pass: `fb54209` fixed GET string pagination rejection, 
 
 
 22-Nov CG19 original card source checkpoint: additive schema 3217, guarded issuer, approved signed PDF and opaque QR. Both public Verify Volunteer screens use server-only issued state; private own Web/Android and staff Web/Android card management require current CG01 identity/capability. Fixes: expired VERIFYING claim recovery (cf5a3d3), card contrast (6ba9c67), root issuer capability (411e383), HTTP registration (121be30), PDF verification type narrowing (2b51c0b), local source-contract test assertion correction (dda8560). Runtime/QR scan/PostgreSQL/independent approval NOT_RUN, and 20/20 SOURCE_PASS is NOT claimed.
+
+
+### 22 Nov 2026 — follow-up independent source-graph review of original US-003-QA10/17/19/20
+
+**Scope:** Existing user stories and original 60 QA IDs only. The four volunteer-card channel routes and original CG-18 Volunteer Join conditional were reviewed against current files, not screenshot pixel/runtime execution. No extra requirement or test case was introduced.
+
+- **US-003-QA10 remains SOURCE_PARTIAL:** CG-18 published volunteerJoin conditional CTA and standalone CG-04 Web/native /volunteer are present. Published flag transitions, old-cache/offline, disabled visual state and native/browser execution remain **NOT_RUN**. Do not upgrade to PASS.
+- **US-003-QA17 remains SOURCE_PARTIAL:** CG-19 original 3217 SQL/issuer/approved brand/PDF/opaque token, private owner and staff Web + Android, and server-side public current-state verification are connected. Review found a Web issuer build-breaking undefined reload state; fixed in d6ce021. Web issue/reconcile/revoke/download stale completion after tab hiding/ref switch fixed in ce4235b; own card response after background fixed in 41b6146; verification backend now returns service-unavailable for key/DB outages instead of falsely saying invalid in 96d16ac. Card render/DB/QR scan/issuer race/real brand files/security independent execution remain **NOT_RUN**.
+- **US-003-QA19 remains SOURCE_PARTIAL:** Internal Android issuer stale background responses/private share blocked in a3d88f2; Public Android pending private-PDF sharing blocked on background in 2eb69aa. Real app lifecycle/device/accessibility/network-abort/runtime assertions remain **NOT_RUN**.
+- **US-003-QA20 remains SOURCE_PARTIAL:** Source-only regression assertions for existing QA17/19/20 added in df5e4c6 and inspected; command `npm run test:cg04-volunteers --workspace=@careganga/backend` is **NOT_EXECUTED** in this GitHub-only review. Do not promote remaining CG-05 A09/A04, CG-09 U42 or U14 importer SOURCE_GAP; those are still the original pending owner gaps.
+
+**Source review outcome:** Fixed verified code defects on the authorized feature branch; no merge, CI, deployment or runtime/SQL/device/pixel claim. Next = independent expert re-review of changed files, original QA trace for pending US-003 functionality (not invented cases), clean PostgreSQL migration/rollback, controlled storage/QR issuance and real Web+Android developer manual QA before handoff/merge approval.
