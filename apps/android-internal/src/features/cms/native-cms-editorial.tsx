@@ -206,7 +206,7 @@ function EditField({name,value,onChange,locked,depth=0,
  }
  return <Text style={styles.note}>{title(name)}: No value recorded</Text>;
 }
-function eventFields(v:EventSource):Section[]{return [{kind:"ARTICLE_BODY",order:0,fields:{heading:v.title,category:v.category,excerpt:v.summary.slice(0,400),body:v.summary,authorLabel:"CareGanga Foundation",source:"Approved Foundation event",asOfDate:day(),tags:[],sourceEventRef:v.sourceRef}}];}
+function eventFields(v:EventSource):Section[]{return [{kind:"ARTICLE_BODY",order:0,fields:{heading:v.title,category:v.category,excerpt:v.summary.slice(0,400).trim(),body:v.summary,authorLabel:"CareGanga Foundation",source:"Approved Foundation event",asOfDate:day(),tags:[],sourceEventRef:v.sourceRef}}];}
 function EventSelection({sections,choices,error,locked,refresh,onSelect}:{sections:Section[];choices:EventSource[];error:string;locked:boolean;refresh:()=>void;onSelect:(v:EventSource)=>void}){
  const current=sections.find(s=>s.kind==="ARTICLE_BODY")?.fields.sourceEventRef;
  return <View style={styles.panel}><Text accessibilityRole="header" style={styles.heading}>Approved Foundation event</Text><Text style={styles.note}>Only the current reviewed source may be published. Separate CMS approval remains necessary.</Text>{button("Refresh approved events",refresh,locked)}{!!error&&<Text accessibilityRole="alert">{error}</Text>}{!!current&&!choices.some(v=>v.sourceRef===current)&&<Text>Current selection — refresh to verify.</Text>}{choices.map(v=>button((v.sourceRef===current?"✓ ":"")+v.title+" · "+v.category+" · "+new Date(v.scheduledStart).toLocaleString("en-IN",{timeZone:"Asia/Kolkata"}),()=>onSelect(v),locked))}</View>;
