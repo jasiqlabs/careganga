@@ -12,6 +12,7 @@ function route(parts:string[],method:Method):{path:string;binary:boolean}|null{
  if(method==="POST"&&["config","assets"].includes(path))return {path,binary:false};
  if(method==="GET"&&parts.length===2&&parts[0]==="assets"&&uuid.test(parts[1]))return {path,binary:false};
  if(method==="POST"&&parts.length===3&&parts[0]==="assets"&&uuid.test(parts[1])&&parts[2]==="confirm")return {path,binary:false};
+ if(method==="GET"&&parts.length===2&&parts[0]==="members"&&uuid.test(parts[1]))return {path,binary:false};
  if(method==="POST"&&parts.length===3&&parts[0]==="members"&&uuid.test(parts[1])&&parts[2]==="issue")return {path,binary:false};
  if(method==="GET"&&parts.length===2&&parts[0]==="packs"&&uuid.test(parts[1]))return {path,binary:false};
  if(method==="POST"&&parts.length===3&&parts[0]==="packs"&&uuid.test(parts[1])&&["reconcile","revoke"].includes(parts[2]))return {path,binary:false};
