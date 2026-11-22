@@ -323,3 +323,33 @@ Extend existing US-002 / US-003 acceptance within existing scenario counts: real
 **Within original CG04 US001/002/003 QA IDs (no new IDs):** Public Web and Public Android Join Now exposes only actual approved Become a Member and Become a Volunteer owner routes after CG04 implemented; as of checked source, CG18 returns both unavailable and CG04 is FUTURE_NOT_IMPLEMENTED. Partner With Us on /collaboration must never submit into CG04 member/volunteer tables, activate a CG01 role, or return a volunteer card as healthcare partner proof. Separate CG14 healthcare professional/provider eligibility and CG08 CSR registration. Positive/negative source QA to execute when CG04 is approved; actual QA NOT_RUN.
 
 - pending-integration: origin=CG-20/US-002-QA04; owner=CG-04/US-002; trigger=CG04 source enrollment and verified member/volunteer status; verify=Live consented member/volunteer roster and authorized aggregates in CG-20; no private contact/address fields without source grants; state=PENDING_OWNER_IMPLEMENTATION; web_android_parity=REQUIRED_FOR_AUTHORIZED_STAFF; runtime=NOT_RUN; approved_original_CG20_QA_TEXT=UNCHANGED
+
+
+### US-003 source-review matrix — 22 Nov 2026
+
+This is a **review of the existing US-003-QA01–QA20 only**, not newly invented tests. Source pointers reflect actual committed files; SOURCE_PARTIAL means some relevant code exists, not that the scenario passed. The authored local test `apps/backend/test/cg04-volunteer-contract.test.ts` (command `npm run test:cg04-volunteers --workspace=@careganga/backend`) is **NOT_EXECUTED**. Live SQL, API integration, private storage, browser, real Android, accessibility, pixel parity and independent review remain NOT_RUN.
+
+| Original scenario | Honest source gate | Existing source pointers and blocker |
+|---|---|---|
+| US-003-QA01 | **SOURCE_PARTIAL** | volunteer-application-input.parseVolunteerDraft; VolunteerApplicationsService.save/options; VolunteerSelfService; NativeVolunteerSelf; VolunteerEvidenceService; **open:** Admin Add Volunteer original form still absent; independent browser/native not run |
+| US-003-QA02 | **SOURCE_PARTIAL** | VolunteerApplicationsService.run/self; VolunteerEvidenceService.own/reviewFile; VolunteerRosterService.run/rows; volunteer Web/native staff permission gates; **open:** Cross-root/branch adversarial DB/runtime not run |
+| US-003-QA03 | **SOURCE_PARTIAL** | VolunteerApplicationsService.replay/audit; VolunteerApprovalService.submit/decide; VolunteerActivationService.activate; migrations 3212/3214/3215; **open:** Lost-response and concurrent SQL transactions not executed |
+| US-003-QA04 | **SOURCE_PARTIAL** | parseVolunteerDraft; BranchSourceFacade.projectGeography; VolunteerEvidenceService.confirm/frozenProof; **open:** MIME/scan/provider and native error assertions not run |
+| US-003-QA05 | **SOURCE_PARTIAL** | VolunteerStaffWorkspace; NativeVolunteerStaff; VolunteerSelfService; NativeVolunteerSelf; single volunteer tables; **open:** CG05 actual task/role current-state integration missing |
+| US-003-QA06 | **SOURCE_GAP** | VolunteerStaffWorkspace and NativeVolunteerStaff current genuine counters/directory/review + responsive source; **open:** Original U14 Add Volunteer modal/import, original unified status tabs and pixel parity incomplete |
+| US-003-QA07 | **SOURCE_PARTIAL** | VolunteerApprovalService.decide RETURN; cg04_volunteer_draft_guard; VolunteerEvidenceService.revoke/frozenProof; VolunteerActivationService.activate; **open:** Return/resubmit proof-concurrency DB checks not run |
+| US-003-QA08 | **SOURCE_PARTIAL** | VolunteerApplicationsService.eligibleDepartment; CG02 active link checks; migrations 3212/3215 affiliation; **open:** Protected existing volunteer branch transfer workflow and concurrent CG05 reassignment not traced |
+| US-003-QA09 | **SOURCE_GAP** | No CG04 volunteer U42 CG09 expense_claim receiving adapter/screens yet; **open:** Original U42 owner handoff and source QA pending; no fake paid/invoice state |
+| US-003-QA10 | **SOURCE_GAP** | /volunteer real Web/Android source route; CG18 CMS app available; **open:** Published CG18 Volunteer Join enabled/disabled conditional and synchronized native CTA not traced |
+| US-003-QA11 | **SOURCE_GAP** | volunteer account_ref and current CG02 association available; **open:** CG05 A09 real restricted volunteer assignee facade/picker not wired |
+| US-003-QA12 | **SOURCE_GAP** | volunteer_affiliation_history created; **open:** CG05 A04/A05 source recheck/assignment/revocation not wired |
+| US-003-QA13 | **SOURCE_GAP** | VolunteerRosterService.export and source export audit only; **open:** U14 validated preview/dedupe draft-only CSV importer is not implemented |
+| US-003-QA14 | **SOURCE_PARTIAL** | VolunteerRosterService.export, rosterCsvCell, migration 3216, authorized Web/native BFF download; **open:** Original CG19 optional genuine notification/WhatsApp callback and provider state not traced |
+| US-003-QA15 | **SOURCE_PARTIAL** | parseVolunteerDraft.skills/availability; CG02 real department picker; self current source; **open:** Central dynamic U16 interest/config ownership and change-history not fully reviewed |
+| US-003-QA16 | **SOURCE_PARTIAL** | verifiedCommunityApplicant, one account_ref; CG01 effective guard; no role grant on activation; **open:** Revoked staff's actual CG05 private task denial remains CG05 integration gap |
+| US-003-QA17 | **SOURCE_GAP** | volunteer original ID fields in volunteer table; member CG19 branding exists; **open:** Optional CG19 issued volunteer card + genuine live public Verify Volunteer source not implemented; must not fake issued |
+| US-003-QA18 | **SOURCE_PARTIAL** | migrations 3212-3216 composite FKs/unique/reviewer frozen proof/deferrable completion; cg04-volunteer-contract test authored; **open:** PostgreSQL apply/restore/independent privacy/concurrency tests not executed |
+| US-003-QA19 | **SOURCE_PARTIAL** | native-volunteer-self, native-volunteer-proof, native-volunteer-staff mounted in app shell; **open:** Real Android/offline/TalkBack/back/photo-permission/SDK/Play verification not executed |
+| US-003-QA20 | **SOURCE_GAP** | Nest modules + Web/Public Android/Admin Web/Internal Android endpoints and shared types connected; authored source tests; **open:** Full 20/20 source QA and cross-owner CG05/09/18/19 regressions incomplete; no runtime or independent QA |
+
+Source review fixes this pass: `fb54209` fixed GET string pagination rejection, `a907da5` fixed out-of-order protected reviewer selection, `bb64832` and `4b71cc0` removed stale/unused Web state. All are committed on the authorized CG-04 feature branch, not main. **US-003 remains IN_PROGRESS; no QA PASS or module completion claim; do not merge or ask developer to build yet.**
