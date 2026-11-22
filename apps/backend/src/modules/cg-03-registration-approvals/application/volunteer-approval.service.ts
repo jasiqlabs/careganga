@@ -42,7 +42,7 @@ export class VolunteerApprovalService{
   return this.run(a,async tx=>{
    await this.identity.verifiedCommunityApplicant(tx,a);
    await tx.query("SELECT pg_advisory_xact_lock(hashtextextended($1,0))",["CG04:VOLUNTEER:"+a.realmId+":"+a.accountId]);
-   const row=(await tx.query<{version:number;status:string;source:Record<string,unknown>;display_name:string}>("SELECT a.version,a.status,a.display_name,to_jsonb(a)-'status'-'version'-'updated_at'-'submitted_at'-'submitted_digest' AS source FROM volunteer_application a WHERE a.root_realm_id=$1 AND a.id=$2 AND a.applicant_account_ref=$3 FOR UPDATE OF a",[a.realmId,id,a.accountId])).rows[0];if(!row)throw unavailable();
+   const row=(await tx.query<{version:number;status:string;source:Record<string,unknown>;display_name:string}>("SELECT a.version,a.status,(a.first_name||' '||a.last_name) AS display_name,to_jsonb(a)-'status'-'version'-'updated_at'-'submitted_at'-'submitted_digest' AS source FROM volunteer_application a WHERE a.root_realm_id=$1 AND a.id=$2 AND a.applicant_account_ref=$3 FOR UPDATE OF a",[a.realmId,id,a.accountId])).rows[0];if(!row)throw unavailable();
    const prior=(await tx.query<{application_id:string;actor_ref:string;payload_digest:string;action:string;result_version:number}>("SELECT application_id,actor_ref,payload_digest,action,result_version FROM volunteer_application_command WHERE root_realm_id=$1 AND request_key=$2",[a.realmId,key])).rows[0];
    if(prior){if(prior.application_id!==id||prior.actor_ref!==a.accountId||prior.action!=="SUBMIT"||prior.payload_digest!==requestDigest||prior.result_version!==expected+1)throw changed();const c=(await tx.query<Case>("SELECT * FROM cg03_case WHERE realm_id=$1 AND case_kind='VOLUNTEER_APPLICATION' AND volunteer_application_id=$2 AND volunteer_application_version=$3",[a.realmId,id,prior.result_version])).rows[0];if(!c)throw changed();return {reference:c.case_number,status:c.status,replayed:true};}
    if(row.version!==expected||!["DRAFT","RETURNED"].includes(row.status))throw changed();
@@ -197,7 +197,7 @@ export class VolunteerApprovalService{
    await tx.query("UPDATE cg03_case SET status=$3,revision=revision+1,updated_at=now() WHERE realm_id=$1 AND id=$2 AND revision=$4",[a.realmId,c.id,next,expected]);
    await tx.query("INSERT INTO cg03_case_decision(realm_id,case_id,actor_id,action,step_ordinal,expected_case_revision,accepted_case_revision,request_key,request_digest,safe_remarks,fresh_password_verified_at) VALUES($1,$2,$3,$4,1,$5,$6,$7,$8,$9,now())",[a.realmId,c.id,a.accountId,action,c.revision,c.revision+1,key,digest,remarks]);
    if(action!=="APPROVE"){const applied=await tx.query("UPDATE volunteer_application SET status=$3,version=version+1,updated_at=now() WHERE root_realm_id=$1 AND id=$2 AND status='SUBMITTED' AND version=$4 RETURNING id",[a.realmId,c.volunteer_application_id,next,c.volunteer_application_version]);if(!applied.rowCount)throw changed();}
-   if(action==="REJECT")await this.fees.requestRefundIfPaid(tx,a,c.volunteer_application_id);
+   // Volunteers are free; no CG09 membership refund or fee ledger is created.
    await this.event(tx,a,c.id,action==="APPROVE"?"FINAL_APPROVED":next);
    return {reference:c.case_number,status:next,revision:c.revision+1,replayed:false};
   });
