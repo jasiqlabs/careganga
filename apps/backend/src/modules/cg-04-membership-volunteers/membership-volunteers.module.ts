@@ -1,6 +1,8 @@
 import {FinanceSourceModule} from "../cg-09-finance-accounting/finance-source.module";
 import {MembershipActivationService} from "./application/membership-activation.service";
 import {MembershipActivationController} from "./http/membership-activation.controller";
+import {VolunteerApplicationsService} from "./application/volunteer-applications.service";
+import {VolunteerApplicationsController} from "./http/volunteer-applications.controller";
 import {RegistrationApprovalsModule} from "../cg-03-registration-approvals/registration-approvals.module";
 import {Module} from "@nestjs/common";
 import {DatabaseModule} from "../../core/infrastructure/database.module";
@@ -12,5 +14,5 @@ import {MembershipRosterService} from "./application/membership-roster.service";
 import {MembershipRosterController} from "./http/membership-roster.controller";
 import {MembershipTiersService} from "./application/membership-tiers.service";
 import {MembershipTiersController,PublicMembershipTiersController} from "./http/membership-tiers.controller";
-@Module({imports:[DatabaseModule,IdentityAccessModule,FoundationStructureModule,RegistrationApprovalsModule,FinanceSourceModule],providers:[MembershipRosterService,MembershipTiersService,MembershipApplicationsService,MembershipActivationService],controllers:[MembershipRosterController,MembershipTiersController,PublicMembershipTiersController,MembershipApplicationsController,MembershipActivationController],exports:[MembershipTiersService]})
+@Module({imports:[DatabaseModule,IdentityAccessModule,FoundationStructureModule,RegistrationApprovalsModule,FinanceSourceModule],providers:[MembershipRosterService,MembershipTiersService,MembershipApplicationsService,MembershipActivationService,VolunteerApplicationsService],controllers:[MembershipRosterController,MembershipTiersController,PublicMembershipTiersController,MembershipApplicationsController,MembershipActivationController,VolunteerApplicationsController],exports:[MembershipTiersService]})
 export class MembershipVolunteersModule{}
