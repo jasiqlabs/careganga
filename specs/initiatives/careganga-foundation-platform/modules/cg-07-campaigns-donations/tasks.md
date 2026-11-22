@@ -429,3 +429,6 @@ Protected Next BFF now allowlists original CG07 online/provider-finance + manual
 
 ### 22-Nov-2026 US002+US003 Admin A17/A18 interactive source closure slice
 `donation-finance-actions.tsx` integrates original admin donations workspace with true verified-online-posting CG09 options + protected signer, refund request and own scope, separate cash-refund queue/independent payout attestation and protected CG19 receipt issuer. Selected original donation labels are human readable; source refs stay inside request payload only. Stable request keys retained through uncertain outcomes and cleared only on success; unsupported bank/NEFT/cheque/gateway refund UI hidden. A16 gross/refund/net cards now reflect returned source. Staff BFF already origin-checked. Original QA US002 05/06/11/14/16/18/20 and US003 01/04/06/08/09/12/14/15/18/20 source advanced to review candidate; actual SQL/Next/Android/visual and independent reviewer remain NOT_RUN.
+
+### US002 source-review correction — lost provider response
+Original link key retry now checks Razorpay GET by original reference_id instead of recharging, validates single exact INR/nonpartial link and expiry; prior paid merchant result requires signed event/CG09 before RECEIVED. Server-side token-scope rate limiting added. QA03/08/09/10/16 source candidate; sandbox/provider race NOT_RUN.

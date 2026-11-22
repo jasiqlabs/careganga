@@ -61,6 +61,64 @@ export class DonationOnlineService{
   if(!raw||typeof raw!=="object"||Array.isArray(raw))throw fail();
   return raw as Record<string,unknown>;
  }
+ 
+ /** A provider timeout cannot justify another payment-link CREATE. */
+ private async recover(attempt:Attempt,donation:Donation){
+  const ref=attempt.id.replaceAll("-","");
+  let list:Record<string,unknown>;
+  try{list=await this.provider("?reference_id="+encodeURIComponent(ref),"GET");}
+  catch{return {status:"OUTCOME_UNKNOWN",checkoutUrl:null,message:"Original provider outcome is uncertain; do not pay twice."};}
+  if(!Array.isArray(list.items)||list.items.length!==1)
+   return {status:"OUTCOME_UNKNOWN",checkoutUrl:null,message:"Original link is not yet confirmed by the merchant."};
+  const link=list.items[0] as Record<string,unknown>;
+  if(typeof link.id!=="string"||!/^plink_[A-Za-z0-9]{8,}$/.test(link.id)||
+   link.reference_id!==ref||link.currency!=="INR"||
+   link.amount!==Number(donation.amount_minor)||link.accept_partial!==false)
+   return {status:"OUTCOME_UNKNOWN",checkoutUrl:null,message:"Original provider link details do not match."};
+  const usable=["created","issued"].includes(String(link.status))&&urlAllowed(link.short_url);
+  const settled=link.status==="paid"&&link.amount_paid===Number(donation.amount_minor);
+  if(!usable&&!settled)return {status:"OUTCOME_UNKNOWN",checkoutUrl:null,message:"Original merchant outcome is not confirmed."};
+  return this.tx(async tx=>{
+   const d=(await tx.query<Donation>(
+    "SELECT id,root_realm_id,source_status FROM donation WHERE root_realm_id=$1 AND id=$2 FOR UPDATE",
+    [donation.root_realm_id,donation.id])).rows[0];
+   const a=(await tx.query<Attempt>(
+    "SELECT * FROM donation_payment_attempt WHERE root_realm_id=$1 AND id=$2 FOR UPDATE",
+    [donation.root_realm_id,attempt.id])).rows[0];
+   if(!d||!a)throw fail();
+   if(a.status==="LINK_READY"&&urlAllowed(a.checkout_url)&&a.expires_at&&a.expires_at.getTime()>Date.now())
+    return {status:"LINK_READY",checkoutUrl:a.checkout_url,replayed:true};
+   if(!["DRAFT","OUTCOME_UNKNOWN"].includes(a.status)||d.source_status!=="REQUESTED")
+    return {status:"OUTCOME_UNKNOWN",checkoutUrl:null,message:"Original payment state changed. Check status."};
+   if(usable&&a.expires_at&&a.expires_at.getTime()>Date.now()){
+    await tx.query("UPDATE donation_payment_attempt SET status='LINK_READY',external_reference=$3,checkout_url=$4 "+
+     "WHERE root_realm_id=$1 AND id=$2",[d.root_realm_id,a.id,link.id,link.short_url]);
+    await tx.query("UPDATE donation SET source_status='LINK_READY',version=version+1,updated_at=now() "+
+     "WHERE root_realm_id=$1 AND id=$2",[d.root_realm_id,d.id]);
+    return {status:"LINK_READY",checkoutUrl:link.short_url,replayed:true,expiresAt:a.expires_at.toISOString()};
+   }
+   if(!settled)return {status:"OUTCOME_UNKNOWN",checkoutUrl:null,message:"Original link expired without verified payment."};
+   await tx.query("UPDATE donation_payment_attempt SET status='RECONCILIATION_PENDING',external_reference=$3 "+
+    "WHERE root_realm_id=$1 AND id=$2",[d.root_realm_id,a.id,link.id]);
+   await tx.query("UPDATE donation SET source_status='RECONCILIATION_PENDING',version=version+1,updated_at=now() "+
+    "WHERE root_realm_id=$1 AND id=$2",[d.root_realm_id,d.id]);
+   return {status:"RECONCILIATION_PENDING",checkoutUrl:null,
+    message:"Provider reports payment, but signed verification and CG09 finance posting are still pending."};
+  });
+ }
+ private async throttleLink(proof:string){
+  const bucket=createHash("sha256").update("cg07-link:"+proof).digest("hex");
+  const v=await this.db.query<{attempt_count:number}>(
+   "INSERT INTO cg07_public_request_bucket(bucket_digest,window_started_at,attempt_count) "+
+   "VALUES($1,now(),1) ON CONFLICT(bucket_digest) DO UPDATE SET "+
+   "attempt_count=CASE WHEN cg07_public_request_bucket.window_started_at<now()-interval '60 seconds' "+
+   "THEN 1 ELSE LEAST(cg07_public_request_bucket.attempt_count+1,2147483647) END,"+
+   "window_started_at=CASE WHEN cg07_public_request_bucket.window_started_at<now()-interval '60 seconds' "+
+   "THEN now() ELSE cg07_public_request_bucket.window_started_at END RETURNING attempt_count",[bucket]);
+  if((v.rows[0]?.attempt_count??999)>12)
+   throw new ServiceUnavailableException("Too many original payment-link checks. Try again shortly.");
+ }
+
  /** An online link is an EXTERNAL REQUEST, never payment confirmation. */
  async link(raw:unknown){
   if(!raw||typeof raw!=="object"||Array.isArray(raw)||Object.keys(raw).some(k=>
@@ -68,6 +126,7 @@ export class DonationOnlineService{
   const v=raw as Record<string,unknown>,key=donationUuid(v.requestKey),proof=v.statusToken;
   if(typeof proof!=="string"||!/^[A-Za-z0-9_-]{43}$/.test(proof))
    throw new NotFoundException("Private donation proof unavailable.");
+  await this.throttleLink(proof);
   const tokenDigest=createHash("sha256").update(proof).digest("hex");
   const reserved=await this.tx(async tx=>{
    const d=(await tx.query<Donation>(
@@ -105,10 +164,11 @@ export class DonationOnlineService{
   });
   const {attempt,donation}=reserved;
   if(!reserved.created){
-   if(attempt.status==="LINK_READY"&&urlAllowed(attempt.checkout_url))
-    return {status:"LINK_READY",checkoutUrl:attempt.checkout_url,expiresAt:attempt.expires_at?.toISOString(),replayed:true};
-   return {status:"OUTCOME_UNKNOWN",checkoutUrl:null,
-    message:"The original link cannot be confirmed. Do not request another payment."};
+   if(attempt.status==="LINK_READY"&&urlAllowed(attempt.checkout_url)&&
+     attempt.expires_at&&attempt.expires_at.getTime()>Date.now())
+    return {status:"LINK_READY",checkoutUrl:attempt.checkout_url,expiresAt:attempt.expires_at.toISOString(),replayed:true};
+   if(["DRAFT","OUTCOME_UNKNOWN"].includes(attempt.status))return this.recover(attempt,donation);
+   return {status:attempt.status,checkoutUrl:null,message:"Original provider state changed; check your donation status."};
   }
   let link:Record<string,unknown>;
   const reference=attempt.id.replaceAll("-","");
