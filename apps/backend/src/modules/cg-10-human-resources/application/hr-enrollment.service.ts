@@ -799,14 +799,14 @@ export class HrEnrollmentService{
     if(!(e instanceof ForbiddenException))throw e;
     attendanceVisible=false;
    }
-   const r=await tx.query<{status:string;quantity:string;new_joiners:string;on_leave:string;pending_leave:string;departments:{label:string;count:number}[];joiners:{month:string;count:number}[]}>(
+   const r=await tx.query<{status:string;quantity:string;new_joiners:string;on_leave:string;pending_leave:string;departments:{label:string;count:number}[];joiners:{month:string;count:number}[];daily:{label:string;count:number}[]}>(
     `WITH scoped AS (
-     SELECT e.id,e.root_realm_id,e.status,app.hire_date,assignment.branch_ref,COALESCE(dep.name,'Unassigned') AS department_name,
+     SELECT e.id,e.root_realm_id,e.status,app.hire_date,assignment.id AS assignment_id,assignment.branch_ref,COALESCE(dep.name,'Unassigned') AS department_name,
       (b.status='ACTIVE' AND assignment.valid_from<=CURRENT_DATE AND
        (assignment.valid_to IS NULL OR assignment.valid_to>CURRENT_DATE)) AS current_assignment
      FROM hr_employee e
      JOIN hr_employee_application app ON app.id=e.application_id AND app.root_realm_id=e.root_realm_id
-     JOIN LATERAL (SELECT a.branch_ref,a.department_ref,a.valid_from,a.valid_to FROM hr_employment_assignment a
+     JOIN LATERAL (SELECT a.id,a.branch_ref,a.department_ref,a.valid_from,a.valid_to FROM hr_employment_assignment a
       WHERE a.employee_id=e.id AND a.root_realm_id=e.root_realm_id
       ORDER BY CASE WHEN a.valid_from<=CURRENT_DATE AND (a.valid_to IS NULL OR a.valid_to>CURRENT_DATE)
        THEN 0 ELSE 1 END,a.valid_from DESC,a.id DESC LIMIT 1) assignment ON true
@@ -821,6 +821,17 @@ export class HrEnrollmentService{
       AND (role_now.is_protected OR grant_row.capability_key IS NOT NULL)))
     ), current_staff AS (
      SELECT * FROM scoped WHERE current_assignment AND status IN('ACTIVE','PROBATION')
+    ), daily_attendance AS (
+     SELECT COALESCE(day_record.status,'NOT_RECORDED') AS label,COUNT(*)::integer AS quantity
+     FROM current_staff staff
+     LEFT JOIN LATERAL (
+      SELECT d.status FROM hr_attendance_day d
+      JOIN hr_shift_policy sp ON sp.id=d.policy_id AND sp.root_realm_id=d.root_realm_id AND sp.branch_ref=staff.branch_ref
+      WHERE d.root_realm_id=staff.root_realm_id AND d.employee_id=staff.id AND d.assignment_id=staff.assignment_id
+       AND d.local_date=(CURRENT_TIMESTAMP AT TIME ZONE sp.time_zone)::date
+      ORDER BY d.local_date DESC,d.id DESC LIMIT 1
+     ) day_record ON true
+     WHERE $3::boolean GROUP BY COALESCE(day_record.status,'NOT_RECORDED')
     ), dept_counts AS (
      SELECT department_name,COUNT(*)::integer AS quantity FROM current_staff GROUP BY department_name
     ), ranked_departments AS (
@@ -854,7 +865,8 @@ export class HrEnrollmentService{
     FROM scoped e GROUP BY e.status
     ) SELECT stats.*,
      (SELECT COALESCE(jsonb_agg(jsonb_build_object('label',label,'count',quantity) ORDER BY rank),'[]'::jsonb) FROM dept_display) AS departments,
-     (SELECT COALESCE(jsonb_agg(jsonb_build_object('month',month,'count',quantity) ORDER BY month),'[]'::jsonb) FROM month_display) AS joiners
+     (SELECT COALESCE(jsonb_agg(jsonb_build_object('month',month,'count',quantity) ORDER BY month),'[]'::jsonb) FROM month_display) AS joiners,
+     (SELECT COALESCE(jsonb_agg(jsonb_build_object('label',label,'count',quantity) ORDER BY label),'[]'::jsonb) FROM daily_attendance) AS daily
     FROM stats`,
     [actor.realmId,actor.accountId,attendanceVisible]);
    const statuses=["ACTIVE","PROBATION","PENDING_ACCESS","ON_HOLD","EXITED"] as const;
@@ -867,7 +879,7 @@ export class HrEnrollmentService{
    }
    await tx.query("COMMIT");
    return {total:Object.values(counts).reduce((x,y)=>x+y,0),statuses:counts,newJoinersThisMonth,
-    attendance:attendanceVisible?{onApprovedLeaveToday,employeesWithPendingLeave}:null,
+    attendance:attendanceVisible?{onApprovedLeaveToday,employeesWithPendingLeave,daily:r.rows[0]?.daily??[]}:null,
     departments:r.rows[0]?.departments??[],joiners:r.rows[0]?.joiners??[]};
   }catch(e){await tx.query("ROLLBACK");throw e;}finally{tx.release();}
  }
