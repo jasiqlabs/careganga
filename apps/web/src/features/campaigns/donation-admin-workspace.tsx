@@ -7,6 +7,7 @@ type Options={donationNumber:string;amountMinor:string;cashAccounts:Choice[];inc
  years:Choice[];complete:boolean};
 type QueueItem={evidenceRef:string;voucher:string;status:string;amountMinor:string;
  donationNumber:string;postingDate:string;recordedAt:string;canReview:boolean};
+type MaskedDonor={donationNumber:string;name:string;mobileMasked:string;emailMasked:string;panMasked:string;location:string};
 type DonationItem={donationNumber:string;donationRef:string;refundMinor:string;receiptStatus:string;
  amountMinor:string;status:string;method:string|null;
  campaignTitle:string|null;voucher:string|null;createdAt:string};
@@ -36,6 +37,7 @@ const button={padding:"10px 14px",background:"#0a9f69",color:"white",
 export function DonationAdminWorkspace({canView,canRecord,canReview,canIssue,canExport}:{
  canView:boolean;canRecord:boolean;canReview:boolean;canIssue:boolean;canExport:boolean}){
  const [data,setData]=useState<Report|null>(null),[queue,setQueue]=useState<QueueItem[]>([]);
+ const [donor,setDonor]=useState<MaskedDonor|null>(null);
  const [filter,setFilter]=useState("ALL"),[search,setSearch]=useState(""),[offset,setOffset]=useState(0);
  const [method,setMethod]=useState("ALL"),[minAmount,setMinAmount]=useState(""),[maxAmount,setMaxAmount]=useState(""),
   [dateFrom,setDateFrom]=useState(""),[dateTo,setDateTo]=useState(""),[campaign,setCampaign]=useState("");
@@ -79,6 +81,15 @@ export function DonationAdminWorkspace({canView,canRecord,canReview,canIssue,can
    setNotice("Scoped report exported without donor PAN, contacts or technical identifiers.");
   }catch(e){setError(e instanceof Error?e.message:"Donation export unavailable.");}
   finally{setBusy(false);}
+ };
+ const viewDonor=async(number:string)=>{
+  if(busy||!canExport)return;
+  setBusy(true);setError("");setDonor(null);
+  try{
+   const detail=await api<MaskedDonor>("/donor-detail","POST",{donationNumber:number});
+   if(mounted.current)setDonor(detail);
+  }catch(e){if(mounted.current)setError(e instanceof Error?e.message:"Protected donor details unavailable.");}
+  finally{if(mounted.current)setBusy(false);}
  };
  const findOptions=async()=>{
   if(busy||!canRecord||!proof.trim())return;
@@ -180,11 +191,22 @@ export function DonationAdminWorkspace({canView,canRecord,canReview,canIssue,can
      <thead><tr>{["Donation","Campaign","Amount","Method","Status","Date"].map(t=>
       <th key={t} scope="col" style={{textAlign:"left",padding:10,borderBottom:"1px solid var(--cg-border)"}}>{t}</th>)}</tr></thead>
      <tbody>{data?.items.map(x=><tr key={x.donationNumber}>
-      <td style={{padding:10}}>{x.donationNumber}</td><td style={{padding:10}}>{x.campaignTitle??"General donation"}</td>
+      <td style={{padding:10}}>{x.donationNumber}
+       {canExport&&<button type="button" disabled={busy}
+        onClick={()=>void viewDonor(x.donationNumber)}>View donor</button>}</td>
+       <td style={{padding:10}}>{x.campaignTitle??"General donation"}</td>
       <td style={{padding:10}}>{rupees(x.amountMinor)}</td><td style={{padding:10}}>{x.method??"Not selected"}</td>
       <td style={{padding:10}}>{x.status.replaceAll("_"," ").toLowerCase()}</td>
       <td style={{padding:10}}>{new Date(x.createdAt).toLocaleDateString("en-IN")}</td>
      </tr>)}</tbody></table></div>}
+   {donor&&canExport&&<aside aria-label="Protected donor details" style={panel}>
+     <strong>Donor: {donor.name}</strong>
+     <span>Mobile: {donor.mobileMasked||"Not provided"}</span>
+     <span>Email: {donor.emailMasked||"Not provided"}</span>
+     <span>PAN (masked): {donor.panMasked||"Not provided"}</span>
+     <span>Location: {donor.location}</span>
+     <button type="button" onClick={()=>setDonor(null)}>Close donor details</button>
+    </aside>}
    <div style={{display:"flex",gap:10}}>
     <button type="button" disabled={offset===0||busy} onClick={()=>setOffset(x=>Math.max(0,x-25))}>Previous</button>
     <button type="button" disabled={!data?.hasMore||busy} onClick={()=>setOffset(x=>x+25)}>Next</button>
