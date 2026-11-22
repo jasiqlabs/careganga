@@ -7,6 +7,7 @@ import {FoundationStructureIdentityFacade} from "../../cg-01-identity-access/app
 import {BranchSourceFacade} from "../../cg-02-foundation-structure/application/branch-source.facade";
 import type {VerifiedFoundationActor as Actor} from "../../cg-01-identity-access/public-api";
 import {object,pick,plain,uuid} from "../domain/tier-input";
+import {requireCurrentVolunteer} from "./current-volunteer-source";
 import {rosterCsvCell} from "../domain/roster-csv-cell";
 const states=["ALL","ACTIVE","INACTIVE","SUSPENDED"] as const;
 const windows=["ALL","FULL_TIME","PART_TIME","WEEKENDS","FLEXIBLE"] as const;
@@ -77,6 +78,24 @@ export class VolunteerRosterService{
      total:Number(overview?.total??0),active:Number(overview?.active??0),
      inactive:Number(overview?.inactive??0),suspended:Number(overview?.suspended??0)}
    };
+  });
+ }
+ async reimbursementOptions(token:string,ref:string){
+  const volunteerRef=uuid(ref);
+  return this.run(token,"finance.claims.create",async(tx,a)=>{
+   await this.identity.assertCurrent(tx,a,"volunteers.view");
+   const scope=await this.branches.projectBranchScope(tx,a);
+   const candidate=(await tx.query<{branch_ref:string|null}>(
+    "SELECT branch_ref FROM volunteer WHERE root_realm_id=$1 AND id=$2",
+    [a.realmId,volunteerRef])).rows[0];
+   if(!candidate||candidate.branch_ref&&!scope.all&&!scope.branches.some(b=>b.value===candidate.branch_ref))
+    throw new ForbiddenException("Volunteer reimbursement source unavailable for your Foundation scope.");
+   const volunteer=await requireCurrentVolunteer(tx,a.realmId,volunteerRef,candidate.branch_ref);
+   const projects=(await tx.query<{value:string;label:string}>(`SELECT id AS value,title AS label FROM project
+    WHERE root_realm_id=$1 AND branch_ref IS NOT DISTINCT FROM $2::uuid
+     AND status NOT IN('COMPLETED','CANCELLED') ORDER BY title,id LIMIT 100`,
+    [a.realmId,volunteer.branch_ref])).rows;
+   return {volunteerName:volunteer.display_name,projects};
   });
  }
  async export(token:string,raw:unknown){
