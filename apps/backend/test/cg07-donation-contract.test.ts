@@ -316,3 +316,19 @@ test("US003-QA02: private receipt/reversal access remains permission, branch, to
  assert.match(refund,/requireFinanceActiveBranch|requireFinanceRootScope/);
  assert.match(module,/exports:\[CampaignDraftsService,DonationReceiptSourceFacade,DonationIntentsService\]/);
 });
+
+test("US003-QA16: separate pending refund from verified net and native foreground refresh",()=>{
+ const service=source("application/donation-intents.service.ts");
+ const web=root("apps/web/src/features/campaigns/public-donation-form.tsx");
+ const native=root("apps/android-public/src/features/cms/native-public-donation.tsx");
+ assert.match(service,/pending_refund_minor/);
+ assert.match(service,/refundPendingMinor:pendingRefund\.toString\(\)/);
+ assert.match(service,/refundPending:pendingRefund>0n/);
+ assert.match(service,/netReceivedMinor:net\.toString\(\)/);
+ assert.match(web,/Refund requested/);
+ assert.match(web,/refundPending/);
+ assert.match(native,/Refund requested/);
+ assert.match(native,/AppState\.addEventListener\("change"/);
+ assert.match(native,/state==="active"&&token/);
+ assert.doesNotMatch(native,/setInterval\(/);
+});
