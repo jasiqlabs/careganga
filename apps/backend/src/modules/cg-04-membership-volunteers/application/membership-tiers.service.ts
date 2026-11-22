@@ -54,15 +54,15 @@ export class MembershipTiersService{
  async list(token:string,raw:unknown,exporting=false){
   const f=filters(raw),limit=exporting?500:50;
   return this.run(token,async(tx,a)=>{
-   const rows=(await tx.query("SELECT "+projection+current+" WHERE t.root_realm_id=$1 AND ($2='' OR strpos(lower(v.name),$2)>0 OR strpos(lower(v.description),$2)>0) AND ($3='ALL' OR v.category=$3) AND ($4='ALL' OR t.status=$4) AND (v.display_order,t.plan_code)>($5::int,$6::text) ORDER BY v.display_order,t.plan_code LIMIT $7",[a.realmId,f.q,f.category,f.status,...(exporting?[-1,""]:f.cursor),limit+1])).rows;
-   if(exporting){if(rows.length>limit)return invalid("filter","More than 500 plans match. Narrow the filters before exporting.");const headings=["Name","Category","Status","Fee (minor INR units)","Validity unit","Validity count","Revision"];return {csv:[headings.map(csv).join(","),...rows.map(r=>[r.name,r.category,r.status,r.feeMinor,r.durationUnit,r.durationCount,r.version].map(csv).join(","))].join("\r\n"),rows:rows.length};}
+   const rows=(await tx.query("SELECT "+projection+current+" WHERE t.root_realm_id=$1 AND ($2='' OR strpos(lower(v.name),$2)>0 OR strpos(lower(v.description),$2)>0 OR EXISTS(SELECT 1 FROM jsonb_array_elements(v.benefits) b WHERE strpos(lower(b->>'title'),$2)>0 OR strpos(lower(b->>'description'),$2)>0)) AND ($3='ALL' OR v.category=$3) AND ($4='ALL' OR t.status=$4) AND (v.display_order,t.plan_code)>($5::int,$6::text) ORDER BY v.display_order,t.plan_code LIMIT $7",[a.realmId,f.q,f.category,f.status,...(exporting?[-1,""]:f.cursor),limit+1])).rows;
+   if(exporting){if(rows.length>limit)return invalid("filter","More than 500 plans match. Narrow the filters before exporting.");await tx.query("INSERT INTO membership_tier_export_audit(root_realm_id,actor_ref,row_count,filter_digest) VALUES($1,$2,$3,$4)",[a.realmId,a.accountId,rows.length,hash({q:f.q,category:f.category,status:f.status})]);const headings=["Name","Category","Status","Fee (minor INR units)","Validity unit","Validity count","Revision"];return {csv:[headings.map(csv).join(","),...rows.map(r=>[r.name,r.category,r.status,r.feeMinor,r.durationUnit,r.durationCount,r.version].map(csv).join(","))].join("\r\n"),rows:rows.length};}
    const counts=(await tx.query("SELECT count(*)::int AS total,count(*) FILTER(WHERE status='ACTIVE')::int AS active,count(*) FILTER(WHERE status='DRAFT')::int AS draft,count(*) FILTER(WHERE status='INACTIVE')::int AS inactive FROM membership_tier WHERE root_realm_id=$1",[a.realmId])).rows[0];
    return {...page(rows,limit),counts};
   },true);
  }
  async publicList(raw:unknown){
   const f=filters(raw,true);
-  const rows=(await this.db.query("SELECT "+safeProjection+current+" JOIN access_realm root ON root.id=t.root_realm_id AND root.realm_key='FOUNDATION_ROOT' WHERE t.status='ACTIVE' AND v.status='ACTIVE' AND v.published_at<=now() AND ($1='' OR strpos(lower(v.name),$1)>0 OR strpos(lower(v.description),$1)>0) AND ($2='ALL' OR v.category=$2) AND (v.display_order,t.plan_code)>($3::int,$4::text) ORDER BY v.display_order,t.plan_code LIMIT 51",[f.q,f.category,...f.cursor])).rows;
+  const rows=(await this.db.query("SELECT "+safeProjection+current+" JOIN access_realm root ON root.id=t.root_realm_id AND root.realm_key='FOUNDATION_ROOT' WHERE t.status='ACTIVE' AND v.status='ACTIVE' AND v.published_at<=now() AND ($1='' OR strpos(lower(v.name),$1)>0 OR strpos(lower(v.description),$1)>0 OR EXISTS(SELECT 1 FROM jsonb_array_elements(v.benefits) b WHERE strpos(lower(b->>'title'),$1)>0 OR strpos(lower(b->>'description'),$1)>0)) AND ($2='ALL' OR v.category=$2) AND (v.display_order,t.plan_code)>($3::int,$4::text) ORDER BY v.display_order,t.plan_code LIMIT 51",[f.q,f.category,...f.cursor])).rows;
   return page(rows,50);
  }
 }
