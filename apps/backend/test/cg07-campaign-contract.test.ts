@@ -156,6 +156,20 @@ test("US001-QA15 original optional volunteer assignment is a current CG04 origin
  assert.doesNotMatch(src,/INSERT INTO account_role|UPDATE role_grant/);
 });
 
+test("US001-QA11/19: temporary draft-only blocker is retired after secured 3303 transition proof",()=>{
+ const draftSql=root("apps/backend/db/migrations/3301_cg07_campaign_draft.sql");
+ const guardSql=root("apps/backend/db/migrations/3303_cg07_campaign_status_proof.sql");
+ assert.match(draftSql,/CREATE TRIGGER cg07_campaign_draft_only BEFORE INSERT OR UPDATE ON campaign/);
+ const guardPosition=guardSql.indexOf("CREATE CONSTRAINT TRIGGER cg07_campaign_status_proof_after");
+ const dropPosition=guardSql.indexOf("DROP TRIGGER cg07_campaign_draft_only ON campaign");
+ assert.ok(guardPosition>=0&&dropPosition>guardPosition,"do not remove safety guard before installing CG03 proof");
+ assert.match(guardSql,/DROP FUNCTION cg07_campaign_draft_only\(\)/);
+ assert.match(guardSql,/campaign_review_snapshot/);
+ assert.match(guardSql,/cg03_case_decision/);
+ assert.match(guardSql,/CREATE_DRAFT/);
+ assert.match(guardSql,/REVIEW_APPROVE/);
+});
+
 test("US001-QA06/14/18: direct A12-A15 client image review maps to responsive Web structure and correct source totals",()=>{
  const original=root("docs/research/CAREGANGA-CG07-ORIGINAL-A12-A15-DIRECT-VISUAL-AUDIT-20261122.md");
  const web=root("apps/web/src/features/campaigns/campaign-drafts-workspace.tsx");
