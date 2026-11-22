@@ -466,8 +466,16 @@ export class CampaignDraftsService{
     FROM campaign WHERE root_realm_id=$1
      AND ($2::boolean OR branch_ref=ANY($3::uuid[]))`,
      [a.realmId,scope.all,scope.branches.map(b=>b.value)])).rows[0];
+   const recentActivities=(await tx.query<{code:string;title:string;action:string;at:string;by:string}>(`
+    SELECT c.code_norm AS code,c.title,e.operation AS action,e.at::text AS at,
+     actor.display_name AS by
+    FROM campaign_status_event e JOIN campaign c ON c.root_realm_id=e.root_realm_id AND c.id=e.campaign_id
+    JOIN account actor ON actor.realm_id=e.root_realm_id AND actor.id=e.actor_ref
+    WHERE e.root_realm_id=$1 AND ($2::boolean OR c.branch_ref=ANY($3::uuid[]))
+    ORDER BY e.at DESC,e.id DESC LIMIT 8`,
+    [a.realmId,scope.all,scope.branches.map(b=>b.value)])).rows;
    const publicCount=await countPublishedCampaignSources(tx,a.realmId,scope.all,scope.branches.map(b=>b.value));
-   return {items:rows.slice(0,25),offset,hasMore:rows.length>25,summary:{...summary,publicCount},
+   return {items:rows.slice(0,25),offset,hasMore:rows.length>25,summary:{...summary,publicCount},recentActivities,
     message:"Operational approved and separately effective public counts are distinct; planned fundraising goal is not money received."};
   },true);
  }
