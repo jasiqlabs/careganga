@@ -10,7 +10,7 @@ import {identityRequest} from "../identity-access/http-client";
 type Decision="APPROVE"|"RETURN"|"REJECT";
 type Command={ref:string;requestKey:string;expectedRevision:number;action:Decision;remarks:string};
 const statuses=["ALL","SUBMITTED","PENDING_OWNER","RETURNED","REJECTED","OWNER_COMPLETED"];
-const label=(v:string)=>v.replaceAll("_"," ");
+const label=(v:string)=>v.replaceAll("_"," ").toLowerCase().replace(/\b[a-z]/g,c=>c.toUpperCase());
 const amount=(minor:string)=>{if(!/^\d{1,15}$/.test(minor))return "Unavailable";const n=BigInt(minor);return "₹"+(n/100n).toString()+"."+String(n%100n).padStart(2,"0");};
 
 export function NativeMemberReview({token,canConfigure,onExpired}:{token:string;canConfigure:boolean;onExpired:()=>void}){
