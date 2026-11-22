@@ -433,7 +433,7 @@ export class CampaignDraftsService{
   return this.run(token,"campaigns.view",async(tx,a)=>{
    const scope=await this.branches.projectBranchScope(tx,a);
    const args=[a.realmId,scope.all,scope.branches.map(b=>b.value),q,status,
-    stateRef,districtRef,leaderRef,featured,start,end,branchRef,offset] as const;
+    stateRef,districtRef,leaderRef,featured,start||null,end||null,branchRef,offset] as const;
    const rows=(await tx.query(`SELECT ${projection}${joins}
     WHERE c.root_realm_id=$1 AND ($2::boolean OR c.branch_ref=ANY($3::uuid[]))
      AND ($4='' OR strpos(lower(c.title),$4)>0 OR strpos(lower(c.code_norm),$4)>0)
@@ -441,8 +441,8 @@ export class CampaignDraftsService{
      AND ($6::text IS NULL OR r.step2_project_and_geo->>'stateRef'=$6::text)
      AND ($7::text IS NULL OR r.step2_project_and_geo->>'districtRef'=$7::text)
      AND ($8::text IS NULL OR COALESCE(r.step3_team->>'coordinatorRef',c.created_by::text)=$8::text)
-     AND ($10='' OR (c.created_at AT TIME ZONE 'Asia/Kolkata')::date>=$10::date)
-     AND ($11='' OR (c.created_at AT TIME ZONE 'Asia/Kolkata')::date<=$11::date)
+     AND ($10::date IS NULL OR (c.created_at AT TIME ZONE 'Asia/Kolkata')::date>=$10::date)
+     AND ($11::date IS NULL OR (c.created_at AT TIME ZONE 'Asia/Kolkata')::date<=$11::date)
      AND ($12::uuid IS NULL OR c.branch_ref=$12::uuid)
      AND ($9='ALL' OR
        (EXISTS(SELECT 1 FROM cms_page p JOIN cms_page_effective pe
