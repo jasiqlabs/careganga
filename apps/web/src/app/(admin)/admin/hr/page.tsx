@@ -5,6 +5,7 @@ import {FoundationAdminNav} from "../../../../shared/foundation-admin-nav";
 import {UnavailablePage} from "../../../../shared/unavailable-page";
 import {HrEnrollmentWorkspace} from "../../../../features/human-resources/hr-enrollment-workspace";
 import {HrAttendance} from "../../../../features/human-resources/hr-attendance";
+import {HrDocuments} from "../../../../features/human-resources/hr-documents";
 import {HrEmploymentChanges} from "../../../../features/human-resources/hr-employment-changes";
 import {HrAppraisalWorkspace,HrMyAppraisals} from "../../../../features/human-resources/hr-appraisals";
 import {HrMyProfile} from "../../../../features/human-resources/hr-my-profile";
@@ -57,6 +58,9 @@ export default async function FoundationHrPage(){
     </header>
     <HrMyProfile/>
     <HrMyAppraisals/>
+    <HrDocuments mode="own"/>
+    {actions.includes("hr.documents.manage")&&<HrDocuments mode="manage" canIssue={actions.includes("documents.letters.issue")} canApproveTemplate={actions.includes("hr.documents.review")} canRevoke={actions.includes("documents.letters.revoke")}/>}
+    {actions.includes("hr.documents.review")&&actions.includes("approvals.review")&&<HrDocuments mode="review"/>}
     <HrEmploymentChanges mode="own"/>
     {actions.includes("hr.changes.manage")&&<HrEmploymentChanges mode="manage" canSelectRoles={actions.includes("roles.select")}/>}
     {actions.includes("hr.changes.review")&&actions.includes("approvals.review")&&<HrEmploymentChanges mode="review"/>}

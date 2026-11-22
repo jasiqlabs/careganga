@@ -2,6 +2,7 @@ import React,{useCallback,useEffect,useRef,useState} from "react";
 import {NativeHrEvidence,type HrFile} from "./native-hr-evidence";
 import {NativeHrReviews} from "./native-hr-reviews";
 import {NativeHrPrivate} from "./native-hr-private";
+import {NativeHrDocuments} from "./native-hr-documents";
 import {NativeHrEmploymentChanges} from "./native-hr-employment-changes";
 import {NativeHrMyAppraisals} from "./native-hr-appraisals";
 import {NativeHrAttendance} from "./native-hr-attendance";
@@ -34,9 +35,9 @@ async function api(token:string,path:string,method="GET",body?:object){
  ),{status:response.status});
  return response.json() as Promise<unknown>;
 }
-export function NativeHrEnrollment({token,canView,canManage,canReview,canViewEmployees,canSelectAccounts,canSelectRoles,canViewPrivate,canManagePrivate,canConfigureReviews,canConfigureAttendance,canManageLeave=false,canReviewLeave=false,canCorrect=false,canReviewCorrection=false,canViewStaff=false,canManageChanges=false,canReviewChanges=false,onExit,onExpired}:{
+export function NativeHrEnrollment({token,canView,canManage,canReview,canViewEmployees,canSelectAccounts,canSelectRoles,canViewPrivate,canManagePrivate,canConfigureReviews,canConfigureAttendance,canManageLeave=false,canReviewLeave=false,canCorrect=false,canReviewCorrection=false,canViewStaff=false,canManageChanges=false,canReviewChanges=false,canManageDocuments=false,canReviewDocuments=false,canIssueDocuments=false,canRevokeDocuments=false,onExit,onExpired}:{
  token:string;canView:boolean;canManage:boolean;canReview:boolean;canViewEmployees:boolean;canSelectAccounts:boolean;
- canSelectRoles:boolean;canViewPrivate:boolean;canManagePrivate:boolean;canConfigureReviews:boolean;canConfigureAttendance:boolean;canManageLeave?:boolean;canReviewLeave?:boolean;canCorrect?:boolean;canReviewCorrection?:boolean;canViewStaff?:boolean;canManageChanges?:boolean;canReviewChanges?:boolean;
+ canSelectRoles:boolean;canViewPrivate:boolean;canManagePrivate:boolean;canConfigureReviews:boolean;canConfigureAttendance:boolean;canManageLeave?:boolean;canReviewLeave?:boolean;canCorrect?:boolean;canReviewCorrection?:boolean;canViewStaff?:boolean;canManageChanges?:boolean;canReviewChanges?:boolean;canManageDocuments?:boolean;canReviewDocuments?:boolean;canIssueDocuments?:boolean;canRevokeDocuments?:boolean;
  onExit:()=>void;onExpired:()=>void
 }){
  const [apps,setApps]=useState<Application[]>([]);
@@ -357,6 +358,9 @@ export function NativeHrEnrollment({token,canView,canManage,canReview,canViewEmp
    </View>
    <NativeHrBioConsent token={token} onExpired={onExpired}/>
    <NativeHrMyAppraisals token={token} onExpired={onExpired}/>
+   <NativeHrDocuments token={token} onExpired={onExpired} mode="own"/>
+   {canManageDocuments&&<NativeHrDocuments token={token} onExpired={onExpired} mode="manage" canIssue={canIssueDocuments} canApproveTemplate={canReviewDocuments} canRevoke={canRevokeDocuments}/>}
+   {canReviewDocuments&&<NativeHrDocuments token={token} onExpired={onExpired} mode="review"/>}
    <NativeHrEmploymentChanges token={token} mode="own" onExpired={onExpired}/>
    {canManageChanges&&<NativeHrEmploymentChanges token={token} mode="manage" canSelectRoles={canSelectRoles} onExpired={onExpired}/>}
    {canReviewChanges&&<NativeHrEmploymentChanges token={token} mode="review" onExpired={onExpired}/>}

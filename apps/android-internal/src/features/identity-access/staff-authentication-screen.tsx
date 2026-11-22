@@ -723,7 +723,7 @@ export function StaffAuthenticationScreen() {
           canManagePrivate={roleActions.includes("hr.employees.private.manage")}
           canViewEmployees={roleActions.includes("hr.employees.view")}
           canConfigureReviews={roleActions.includes("approvals.process.manage")}
-          canManageChanges={roleActions.includes("hr.changes.manage")} canReviewChanges={roleActions.includes("hr.changes.review")&&roleActions.includes("approvals.review")} canViewStaff={roleActions.includes("hr.attendance.view")} canCorrect={roleActions.includes("hr.attendance.correct")} canReviewCorrection={roleActions.includes("hr.attendance.review")&&roleActions.includes("approvals.review")}
+          canManageDocuments={roleActions.includes("hr.documents.manage")} canReviewDocuments={roleActions.includes("hr.documents.review")&&roleActions.includes("approvals.review")} canIssueDocuments={roleActions.includes("documents.letters.issue")} canRevokeDocuments={roleActions.includes("documents.letters.revoke")} canManageChanges={roleActions.includes("hr.changes.manage")} canReviewChanges={roleActions.includes("hr.changes.review")&&roleActions.includes("approvals.review")} canViewStaff={roleActions.includes("hr.attendance.view")} canCorrect={roleActions.includes("hr.attendance.correct")} canReviewCorrection={roleActions.includes("hr.attendance.review")&&roleActions.includes("approvals.review")}
           canReviewLeave={roleActions.includes("hr.leave.view")}
           canManageLeave={roleActions.includes("hr.leave.policies.manage")}
           canConfigureAttendance={roleActions.includes("hr.shifts.manage")&&
