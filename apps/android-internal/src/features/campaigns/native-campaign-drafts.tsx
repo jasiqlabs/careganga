@@ -89,6 +89,7 @@ export function NativeCampaignDrafts({token,canManage,onExpired}:{
   });
   return()=>subscription.remove();
  },[token,offset,applied]);
+ const editable=canManage&&(!selected||selected.status==="DRAFT"||selected.status==="RETURNED");
  const reset=()=>{
   if(busy||pending.current||submitPending.current)return;
   seq.current++;setSelected(null);setForm(blank());setSavedForm(blank());setEditing(false);setStep(0);setError("");setNotice("");
@@ -102,10 +103,10 @@ export function NativeCampaignDrafts({token,canManage,onExpired}:{
   finally{if(id===seq.current&&active.current)setLoading(false);}
  };
  const change=<K extends keyof Draft>(name:K,key:string,value:unknown)=>{
-  if(!canManage||pending.current||submitPending.current)return;setForm(x=>({...x,[name]:{...x[name],[key]:value}}));
+  if(!editable||pending.current||submitPending.current)return;setForm(x=>({...x,[name]:{...x[name],[key]:value}}));
  };
  const save=async()=>{
-  if(!canManage||busy||submitPending.current||!form.basic.title.trim()||!active.current)return;setBusy(true);setError("");setNotice("");
+  if(!editable||busy||submitPending.current||!form.basic.title.trim()||!active.current)return;setBusy(true);setError("");setNotice("");
   if(!pending.current)pending.current={key:Crypto.randomUUID(),path:selected?selected.ref+"/draft":"",
    method:selected?"PATCH":"POST",body:{requestKey:"",...(selected?{expectedVersion:selected.version}:{}),steps:form}};
   const current=pending.current;current.body.requestKey=current.key;
@@ -160,7 +161,7 @@ export function NativeCampaignDrafts({token,canManage,onExpired}:{
   </View>;
  const field=(label:string,value:string,changeValue:(v:string)=>void,large=false)=><View style={s.block}>
   <Text style={s.label}>{label}</Text><TextInput accessibilityLabel={label} style={[s.input,large&&{minHeight:92}]}
-   multiline={large} editable={canManage&&!busy&&!pending.current} value={value} onChangeText={changeValue}/></View>;
+   multiline={large} editable={editable&&!busy&&!pending.current&&!submitPending.current} value={value} onChangeText={changeValue}/></View>;
  return <ScrollView contentContainerStyle={s.page} keyboardShouldPersistTaps="handled">
   <Text accessibilityRole="header" style={s.title}>Campaigns</Text>
   <Text style={s.muted}>Current Foundation campaign drafts. Verified contributions and public publication are separate.</Text>
@@ -183,6 +184,7 @@ export function NativeCampaignDrafts({token,canManage,onExpired}:{
    <ScrollView horizontal contentContainerStyle={s.row}>
     {steps.map((name,i)=><View key={name}>{button((i+1)+". "+name,()=>setStep(i),!!pending.current)}</View>)}
    </ScrollView>
+   {selected&&!editable&&<Text style={s.muted}>This campaign is {selected.status.replaceAll("_"," ")}. The submitted or approved source is read-only.</Text>}
    {step===0&&<>
     {field("Campaign title (required)",form.basic.title,v=>change("basic","title",v))}
     <Text>General Foundation Campaign</Text>
@@ -233,7 +235,7 @@ export function NativeCampaignDrafts({token,canManage,onExpired}:{
    <View style={s.row}>
     {button("Previous",()=>setStep(v=>Math.max(0,v-1)),step===0||!!pending.current)}
     {button("Next",()=>setStep(v=>Math.min(5,v+1)),step===5||!!pending.current)}
-    {canManage&&button(pending.current?"Retry original draft":"Save as Draft",()=>void save(),form.basic.title.trim().length<2)}
+    {editable&&button(pending.current?"Retry original draft":"Save as Draft",()=>void save(),form.basic.title.trim().length<2)}
     {button("Close",reset,!!pending.current)}
    </View>
   </View>}
