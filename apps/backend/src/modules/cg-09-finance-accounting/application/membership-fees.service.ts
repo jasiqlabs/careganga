@@ -67,9 +67,10 @@ export class MembershipFeesService{
   if(r)await this.requestRefundIfPaid(tx,a,r.application_id);
  }
  async approveRefund(token:string,ref:string,raw:unknown){
-  const id=uuid(ref),x=object(raw,["requestKey","financialYearRef","postingDate","currentPassword"]),key=uuid(x.requestKey),year=uuid(x.financialYearRef),day=date(x.postingDate);
+  const id=uuid(ref),x=object(raw,["requestKey","financialYearRef","postingDate","currentPassword","transferReference"]),key=uuid(x.requestKey),year=uuid(x.financialYearRef),day=date(x.postingDate);
   if(typeof x.currentPassword!=="string"||x.currentPassword.length<8||Buffer.byteLength(x.currentPassword)>1024)throw new BadRequestException("Enter your current password to confirm the original refund.");
-  const password=x.currentPassword,requestDigest=digest(["MEMBERSHIP_REFUND",id,year,day]),actor=await this.sessions.requireAction(token,"finance.journals.post");await this.sessions.limitFoundationRootProof(actor);
+  if(typeof x.transferReference!=="string"||!/^[A-Za-z0-9._/: -]{4,100}$/.test(x.transferReference.trim()))throw new BadRequestException("Enter the actual bank transfer reference. The refund remains unverified until reconciliation.");
+  const transferReference=x.transferReference.trim(),password=x.currentPassword,requestDigest=digest(["MEMBERSHIP_REFUND",id,year,day,transferReference]),actor=await this.sessions.requireAction(token,"finance.journals.post");await this.sessions.limitFoundationRootProof(actor);
   return this.run(token,async(tx,a)=>{
    await this.owner.verifyReviewer(tx,a,"approvals.review",true);const app=await this.application(tx,a,id);
    if(app.status!=="REJECTED")throw changed();
@@ -82,7 +83,7 @@ export class MembershipFeesService{
    await this.checkAccounts(tx,a,collection.branch_id,collection.bank_account_id,collection.income_account_id,year,day);
    await this.sessions.requireFreshFoundationRootProof(tx,a,password);
    const j=await this.posting.postBalanced(tx,a,{financialYearRef:year,postingDate:day,sourceRef:id,eventKey:key,immutableDigest:digest([requestDigest,collection.journal_id,request.amount_minor]),kind:"REFUND",description:"Original rejected membership fee refund "+app.application_ref,lines:[{accountRef:collection.income_account_id,branchRef:collection.branch_id,debitMinor:request.amount_minor,creditMinor:"0"},{accountRef:collection.bank_account_id,branchRef:collection.branch_id,debitMinor:"0",creditMinor:request.amount_minor}]});
-   await tx.query("INSERT INTO finance_membership_refund_posting(root_realm_id,application_id,journal_id,request_key,request_digest,approved_by,password_verified_at) VALUES($1,$2,$3,$4,$5,$6,now())",[a.realmId,id,j,key,requestDigest,a.accountId]);
+   await tx.query("INSERT INTO finance_membership_refund_posting(root_realm_id,application_id,journal_id,request_key,request_digest,approved_by,transfer_reference,password_verified_at) VALUES($1,$2,$3,$4,$5,$6,$7,now())",[a.realmId,id,j,key,requestDigest,a.accountId,transferReference]);
    await tx.query("INSERT INTO finance_event(root_realm_id,actor_ref,entity_kind,entity_ref,action,request_key) VALUES($1,$2,'JOURNAL',$3,'MEMBERSHIP_REFUND_POSTED',$4)",[a.realmId,a.accountId,j,key]);
    return {...await this.statusInTx(tx,a.realmId,id),replayed:false};
   });
