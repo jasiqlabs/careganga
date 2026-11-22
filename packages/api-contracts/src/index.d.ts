@@ -274,5 +274,5 @@ export type CG04MemberProfile={member:CG04Member|null};
 export type CG04MembershipActivationResult={member:CG04Member;replayed:boolean};
 
 export type CG04RosterRow={ref:string;memberNumber:string;name:string;email:string|null;mobile:string;plan:string;category:CG04TierCategory;joinedOn:string;expiresOn:string|null;status:"ACTIVE"|"EXPIRED"|"SUSPENDED"|"CANCELLED";city:string;district:string;branch:string|null};
-export type CG04RosterPage={items:CG04RosterRow[];nextCursor:string|null;hasMore:boolean;branchOptions:{value:string;label:string}[]};
+export type CG04RosterPage={items:CG04RosterRow[];nextCursor:string|null;hasMore:boolean;branchOptions:{value:string;label:string}[];overview:{total:number;active:number;expired:number;cancelled:number;suspended:number;byCategory:Record<string,number>}};
 export type CG04RosterExport={csv:string;rows:number};
