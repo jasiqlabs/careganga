@@ -109,6 +109,16 @@ export function MemberReviewPanel({canConfigure=false}:{canConfigure?:boolean}){
    <button type="button" disabled={busy||loading} onClick={resetSearch}>Reset</button>
    <button type="button" disabled={busy||loading} onClick={refresh}>Refresh</button></div>
  </form>
+ {page&&!loading&&<div className="cg04-review-overview" aria-label="Current Foundation membership review statistics">
+  {([
+   ["Applications",page.overview.total],
+   ["Pending",page.overview.pending],
+   ["Approved & activated",page.overview.approved],
+   ["Rejected",page.overview.rejected],
+   ["Submitted today",page.overview.today],
+   ["Average decision time",page.overview.averageDecisionHours===null?"Not available":page.overview.averageDecisionHours+" hours"]
+  ] as const).map(([name,value])=><div className="cg04-review-stat" key={name}><small>{name}</small><strong>{value}</strong></div>)}
+ </div>}
  {loading?<p role="status">Checking current protected registration cases…</p>:page?<><div className="cg04-roster-scroll" role="region" aria-label="Membership review applications" tabIndex={0}><table><thead><tr><th>Application</th><th>Applicant</th><th>Tier</th><th>Fee status</th><th>Status</th><th>Submitted</th><th>Actions</th></tr></thead><tbody>
  {page.items.map(c=><tr key={c.caseRef}><td>{c.reference}</td><td>{c.name}</td><td>{c.plan} · {readable(c.category)}</td><td>{readable(c.paymentStatus)}</td><td>{readable(c.status)}</td><td>{new Date(c.submittedAt).toLocaleDateString("en-IN",{timeZone:"Asia/Kolkata"})}</td><td><button type="button" onClick={()=>{setDetail(null);setSelected(c.caseRef);setDetailTab("OVERVIEW");setPassword("");setRemarks("");setAction("APPROVE");}} aria-pressed={selected===c.caseRef}>View application</button></td></tr>)}
  {!page.items.length&&<tr><td colSpan={7}>No membership applications match your permitted filters.</td></tr>}</tbody></table></div>
