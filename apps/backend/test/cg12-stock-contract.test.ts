@@ -52,3 +52,11 @@ test("failed balance update never appends a movement",async()=>{
  let calls=0;const tx={query:async()=>{calls++;return {rows:[],rowCount:0};}} as unknown as PoolClient;
  await assert.rejects(applyStockMovements(tx,id(9),id(10),"ISSUE",[{itemRef:id(3),locationRef:id(2),unit:"PIECE",scale:0,delta:"-1",lineNo:1}]));assert.equal(calls,1);
 });
+
+test("direct issue recipient is an explicit source only for direct issue; held requester is not overridden",()=>{
+ assert.equal(parseOperation({...base,kind:"ISSUE",recipientRef:id(11)}).recipient,id(11));
+ assert.equal(parseOperation({...base,kind:"ISSUE"}).recipient,undefined);
+ assert.throws(()=>parseOperation({...base,kind:"ISSUE",recipientRef:id(11),requestRef:id(6),requestLineRef:id(7),expectedRequestVersion:2}));
+ assert.throws(()=>parseOperation({...base,kind:"TRANSFER",destinationRef:id(8),recipientRef:id(11)}));
+ assert.throws(()=>parseOperation({...base,kind:"ISSUE",recipientRef:"invented-recipient"}));
+});
