@@ -497,14 +497,18 @@ export class HrEnrollmentService{
    await this.source.draft(tx,actor,applicationRef);
    if(app.cg03_case_ref){
     const existing=await tx.query<{id:string;case_number:string;request_key:string;
-      hr_revision_no:number;status:string}>(
-     "SELECT id,case_number,request_key,hr_revision_no,status FROM cg03_case "+
-     "WHERE id=$1 AND realm_id=$2 AND case_kind='EMPLOYEE_ENROLLMENT' "+
-     "AND hr_application_id=$3 FOR SHARE",
+      hr_revision_no:number;status:string;private_file_versions:unknown}>(
+     "SELECT c.id,c.case_number,c.request_key,c.hr_revision_no,c.status,rev.private_file_versions FROM cg03_case c "+
+     "JOIN hr_application_revision rev ON rev.root_realm_id=c.realm_id AND rev.id=c.hr_revision_id "+
+     "AND rev.application_id=c.hr_application_id AND rev.revision_no=c.hr_revision_no AND rev.source_digest=c.hr_source_digest "+
+     "WHERE c.id=$1 AND c.realm_id=$2 AND c.case_kind='EMPLOYEE_ENROLLMENT' "+
+     "AND c.hr_application_id=$3 FOR SHARE OF c,rev",
      [app.cg03_case_ref,actor.realmId,app.id]);
     const previous=existing.rows[0];
     if(previous&&previous.request_key===input.requestKey&&
       previous.hr_revision_no===Number(input.expectedRevision)){
+     if(!Array.isArray(previous.private_file_versions)||sourceHash(previous.private_file_versions)!==sourceHash(files))
+      throw new ConflictException("Choose the original submitted employee documents before retrying");
      await tx.query("COMMIT");
      return {caseRef:previous.id,reference:previous.case_number,
       status:previous.status,replayed:true};
@@ -529,7 +533,8 @@ export class HrEnrollmentService{
     department_ref:app.department_ref,applicant_account_ref:app.applicant_account_ref,
     proposed_manager_employee_ref:app.proposed_manager_employee_ref,
     proposed_role_ref:app.proposed_role_ref,
-    hire_date:iso(app.hire_date),created_by:app.created_by,state:app.state
+    hire_date:iso(app.hire_date),created_by:app.created_by,state:app.state,
+    ...await this.source.privatePin(tx,actor.realmId,app.id)
    };
    const sourceDigest=sourceHash(frozen);
    const revision=await tx.query<{id:string}>(
