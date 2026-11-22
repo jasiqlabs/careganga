@@ -11,7 +11,7 @@ const five=(value:number)=>Number((value/20).toFixed(2)).toString();
 const overall=(value:{goal:number;competency:number;attendance:number})=>five((value.goal+value.competency+value.attendance)/3);
 const scoreSummary=(value:{total:number;draft:number;submitted:number;released:number;averageScore:number|null;outstanding:number})=>[
  {label:"Total reviews",value:String(value.total)},{label:"Submitted (including released)",value:String(value.submitted+value.released)},
- {label:"Average score",value:value.averageScore===null?"—":value.averageScore.toFixed(2)+" / 5"},{label:"Perfect score (5/5)",value:String(value.outstanding)}
+ {label:"Average score",value:typeof value.averageScore==="number"&&Number.isFinite(value.averageScore)?value.averageScore.toFixed(2)+" / 5":"—"},{label:"Perfect score (5/5)",value:Number.isSafeInteger(value.outstanding)?String(value.outstanding):"—"}
 ];
 const statusOptions=[{value:"ALL",label:"All status"},{value:"DRAFT",label:"Draft"},{value:"SUBMITTED",label:"Submitted"},{value:"RELEASED",label:"Released"}] as const;
 
@@ -99,12 +99,19 @@ export function HrAppraisalWorkspace(){
   }
   running.current=true;setBusy(true);setNotice("");setError("");
   try{
-   const result=await api<Item>(cmd.path,cmd.body);
+   const result=await api<Item&{replayed?:boolean}>(cmd.path,cmd.body);
    if(!result.reference||!Number.isInteger(result.revision)||!["DRAFT","SUBMITTED","RELEASED"].includes(result.status))throw Error("Appraisal result is uncertain");
    pending.current=null;setLocked(false);
-   const notes={strengths:form.strengths.trim(),improvement:form.improvement.trim()};
-   setSelected({...result,...notes});setForm({employeeReference:result.employeeReference,periodStart:result.periodStart,periodEnd:result.periodEnd,goal:result.goal,competency:result.competency,attendance:result.attendance,...notes});await refresh();
-   setNotice(statusLabel(result.status)+" · "+result.reference);
+   let current:Detail={...result,strengths:form.strengths.trim(),improvement:form.improvement.trim()};
+   if(result.replayed!==false){
+    // Replay may return a newer revision than the previously sent notes.
+    try{const fresh=await api<Detail>("appraisals/"+encodeURIComponent(result.reference));
+     if(fresh.reference!==result.reference||typeof fresh.strengths!=="string"||typeof fresh.improvement!=="string")throw Error("Detail unavailable");
+     current=fresh;
+    }catch{setSelected(null);setForm(blank());await refresh();setNotice("Appraisal result confirmed. Open the saved review to verify its latest details.");return;}
+   }
+   setSelected(current);setForm({employeeReference:current.employeeReference,periodStart:current.periodStart,periodEnd:current.periodEnd,goal:current.goal,competency:current.competency,attendance:current.attendance,strengths:current.strengths,improvement:current.improvement});await refresh();
+   setNotice(statusLabel(current.status)+" · "+current.reference);
   }catch(e){setError(message(e));if(!locked&&known(e)){pending.current=null;setLocked(false);}else setLocked(true);}
   finally{running.current=false;setBusy(false);}
  };
