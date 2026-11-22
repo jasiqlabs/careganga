@@ -24,8 +24,9 @@ export function parseInventorySupplier(value:unknown){
  return {requestKey:uuid(x.requestKey),code:code(x.code),legalName:clean(x.legalName,2,160),displayName:clean(x.displayName,2,160),category:clean(x.category,1,80)};
 }
 export function parseInventoryLocation(value:unknown){
- const x=input(value,["requestKey","code","label","branchRef"]);
- return {requestKey:uuid(x.requestKey),code:code(x.code),label:clean(x.label,2,160),branchRef:x.branchRef===null?null:uuid(x.branchRef)};
+ const x=input(value,["requestKey","code","label","branchRef","receiptProofRequired"]);
+ if(x.receiptProofRequired!==undefined&&typeof x.receiptProofRequired!=="boolean")throw new BadRequestException({code:"CG12_CATALOG_INVALID"});
+ return {requestKey:uuid(x.requestKey),code:code(x.code),label:clean(x.label,2,160),branchRef:x.branchRef===null?null:uuid(x.branchRef),receiptProofRequired:x.receiptProofRequired===true};
 }
 type Kind="ITEM"|"SUPPLIER"|"LOCATION";
 type PrivateSupplier={phone:string;email:string;address:string;taxRef:string};
@@ -46,12 +47,12 @@ const stale=()=>new ConflictException({code:"CG12_STALE"});
 @Injectable()
 export class InventoryCatalogService {
  constructor(@Inject(DATABASE) private readonly db:Pool,private readonly sessions:SessionService,private readonly identity:FoundationStructureIdentityFacade){}
- private async run<T>(token:string,action:string,work:(tx:PoolClient,a:VerifiedFoundationActor)=>Promise<T>){
+ async run<T>(token:string,action:string,work:(tx:PoolClient,a:VerifiedFoundationActor)=>Promise<T>){
   const a=await this.sessions.requireAction(token,action),tx=await this.db.connect();
   try{await tx.query("BEGIN");await this.identity.assertCurrent(tx,a,action);const result=await work(tx,a);await tx.query("COMMIT");return result;}
   catch(e){await tx.query("ROLLBACK");if(e&&typeof e==="object"&&"code" in e&&e.code==="23505")throw new ConflictException({code:"CG12_DUPLICATE_CODE"});throw e;}finally{tx.release();}
  }
- private async rootAdmin(tx:PoolClient,a:VerifiedFoundationActor){
+ async rootAdmin(tx:PoolClient,a:VerifiedFoundationActor){
   try{await this.identity.assertCurrent(tx,a,"foundation.branches.admin");return true;}catch(e){if(e instanceof ForbiddenException)return false;throw e;}
  }
  private async requireScope(tx:PoolClient,a:VerifiedFoundationActor,branch:string|null){
@@ -71,8 +72,8 @@ export class InventoryCatalogService {
   await tx.query("INSERT INTO inventory_audit(root_realm_id,actor_ref,source_kind,source_ref,event_key,payload_digest,result_version) VALUES($1,$2,$3,$4,$5,$6,$7)",[a.realmId,a.accountId,kind,ref,key,digest,v]);
   return {ref,version:v,replayed:false};
  }
- private async store(tx:PoolClient,a:VerifiedFoundationActor,ref:string,active=true,write=false){
-  const row=(await tx.query<{branch_ref:string|null;status:string;version:number}>("SELECT branch_ref,status,version FROM inventory_location WHERE root_realm_id=$1 AND id=$2 "+(write?"FOR UPDATE":"FOR SHARE"),[a.realmId,ref])).rows[0];
+ async store(tx:PoolClient,a:VerifiedFoundationActor,ref:string,active=true,write=false){
+  const row=(await tx.query<{branch_ref:string|null;status:string;version:number;receipt_proof_required:boolean}>("SELECT branch_ref,status,version,receipt_proof_required FROM inventory_location WHERE root_realm_id=$1 AND id=$2 "+(write?"FOR UPDATE":"FOR SHARE"),[a.realmId,ref])).rows[0];
   if(!row||(active&&row.status!=="ACTIVE"))throw new NotFoundException("Store unavailable");
   await this.requireScope(tx,a,row.branch_ref);return row;
  }
@@ -80,12 +81,12 @@ export class InventoryCatalogService {
   const ref=uuid(refInput);
   return this.run(token,"inventory.catalog.manage",async(tx,a)=>{
    if(kind==="LOCATION")await this.store(tx,a,ref,false);else await this.requireScope(tx,a,null);
-   const sql=kind==="ITEM"?"SELECT id AS ref,sku_norm AS sku,name,category,description,unit_code AS unit,qty_scale AS scale,low_stock_threshold::text AS threshold,status,version FROM inventory_item":kind==="SUPPLIER"?"SELECT id AS ref,supplier_code_norm AS code,display_name AS name,legal_name AS \"legalName\",category,status,version FROM inventory_supplier":"SELECT id AS ref,location_code_norm AS code,label AS name,branch_ref AS \"branchRef\",status,version FROM inventory_location";
+   const sql=kind==="ITEM"?"SELECT id AS ref,sku_norm AS sku,name,category,description,unit_code AS unit,qty_scale AS scale,low_stock_threshold::text AS threshold,status,version FROM inventory_item":kind==="SUPPLIER"?"SELECT id AS ref,supplier_code_norm AS code,display_name AS name,legal_name AS \"legalName\",category,status,version FROM inventory_supplier":"SELECT id AS ref,location_code_norm AS code,label AS name,branch_ref AS \"branchRef\",receipt_proof_required AS \"receiptProofRequired\",status,version FROM inventory_location";
    const q=await tx.query(sql+" WHERE root_realm_id=$1 AND id=$2",[a.realmId,ref]);if(!q.rows[0])throw new NotFoundException("Catalog record unavailable");return q.rows[0];
   });
  }
  async update(token:string,kind:Kind,refInput:unknown,raw:unknown){
-  const ref=uuid(refInput),v=input(raw,["requestKey","expectedVersion","status","sku","name","category","description","unit","scale","threshold","code","displayName","legalName","label","branchRef"]);
+  const ref=uuid(refInput),v=input(raw,["requestKey","expectedVersion","status","sku","name","category","description","unit","scale","threshold","code","displayName","legalName","label","branchRef","receiptProofRequired"]);
   const {expectedVersion,status,...body}=v,expected=version(expectedVersion);
   if(typeof status!=="string"||!(kind==="SUPPLIER"?["ACTIVE","BLOCKED"]:["ACTIVE","INACTIVE"]).includes(status))throw new BadRequestException({code:"CG12_CATALOG_INVALID"});
   const parsed=kind==="ITEM"?parseInventoryItem(body):kind==="SUPPLIER"?parseInventorySupplier(body):parseInventoryLocation(body);
@@ -103,7 +104,7 @@ export class InventoryCatalogService {
     q=await tx.query("UPDATE inventory_supplier SET legal_name=$3,display_name=$4,category=$5,status=$6,version=version+1,updated_at=now() WHERE root_realm_id=$1 AND id=$2 AND version=$7 AND supplier_code_norm=$8 RETURNING version",[a.realmId,ref,x.legalName,x.displayName,x.category,status,expected,x.code]);
    }else{
     const x=parsed as ReturnType<typeof parseInventoryLocation>;
-    q=await tx.query("UPDATE inventory_location SET label=$3,status=$4,version=version+1,updated_at=now() WHERE root_realm_id=$1 AND id=$2 AND version=$5 AND location_code_norm=$6 AND branch_ref IS NOT DISTINCT FROM $7::uuid RETURNING version",[a.realmId,ref,x.label,status,expected,x.code,x.branchRef]);
+    q=await tx.query("UPDATE inventory_location SET label=$3,status=$4,receipt_proof_required=$8,version=version+1,updated_at=now() WHERE root_realm_id=$1 AND id=$2 AND version=$5 AND location_code_norm=$6 AND branch_ref IS NOT DISTINCT FROM $7::uuid RETURNING version",[a.realmId,ref,x.label,status,expected,x.code,x.branchRef,x.receiptProofRequired]);
    }
    if(!q.rows[0])throw stale();return this.audit(tx,a,kind,ref,parsed.requestKey,digest,q.rows[0].version);
   });
@@ -174,7 +175,7 @@ export class InventoryCatalogService {
    }else if(!full)throw new ForbiddenException("Choose a permitted store");
    // Foundation-wide catalog master; non-root users must select a current permitted real store.
    if(kind==="ITEM"){
-    const q=await tx.query("SELECT i.id AS ref,i.sku_norm AS sku,i.name,i.category,i.description,i.unit_code AS unit,i.qty_scale AS scale,i.low_stock_threshold::text AS threshold,i.status,i.version,COALESCE(p.threshold,i.low_stock_threshold)::text AS \"storeThreshold\",COALESCE(p.version,0) AS \"thresholdVersion\", '0'::text AS \"onHand\", '0'::text AS reserved, '0'::text AS available FROM inventory_item i LEFT JOIN inventory_item_location_policy p ON p.root_realm_id=i.root_realm_id AND p.item_id=i.id AND p.location_id=$4::uuid WHERE i.root_realm_id=$1 AND ($2='' OR strpos(lower(i.name),$2)>0 OR strpos(lower(i.sku_norm),$2)>0 OR strpos(lower(i.category),$2)>0) AND ($5='ALL' OR i.status=$5) ORDER BY i.name,i.id LIMIT 26 OFFSET $3",[a.realmId,search,offset,locationInput||null,status]);
+    const q=await tx.query("SELECT i.id AS ref,i.sku_norm AS sku,i.name,i.category,i.description,i.unit_code AS unit,i.qty_scale AS scale,i.low_stock_threshold::text AS threshold,i.status,i.version,COALESCE(p.threshold,i.low_stock_threshold)::text AS \"storeThreshold\",COALESCE(p.version,0) AS \"thresholdVersion\", COALESCE(sb.on_hand_qty,0)::text AS \"onHand\",COALESCE(sb.reserved_qty,0)::text AS reserved,(COALESCE(sb.on_hand_qty,0)-COALESCE(sb.reserved_qty,0))::text AS available FROM inventory_item i LEFT JOIN stock_balance sb ON sb.root_realm_id=i.root_realm_id AND sb.item_id=i.id AND sb.location_id=$4::uuid LEFT JOIN inventory_item_location_policy p ON p.root_realm_id=i.root_realm_id AND p.item_id=i.id AND p.location_id=$4::uuid WHERE i.root_realm_id=$1 AND ($2='' OR strpos(lower(i.name),$2)>0 OR strpos(lower(i.sku_norm),$2)>0 OR strpos(lower(i.category),$2)>0) AND ($5='ALL' OR i.status=$5) ORDER BY i.name,i.id LIMIT 26 OFFSET $3",[a.realmId,search,offset,locationInput||null,status]);
     return {items:q.rows.slice(0,25),hasMore:q.rows.length>25,offset};
    }
    const q=await tx.query("SELECT id AS ref,supplier_code_norm AS code,display_name AS name,category,status,version FROM inventory_supplier WHERE root_realm_id=$1 AND ($2='' OR strpos(lower(display_name),$2)>0 OR strpos(lower(supplier_code_norm),$2)>0 OR strpos(lower(category),$2)>0) AND ($4='ALL' OR status=$4) ORDER BY display_name,id LIMIT 26 OFFSET $3",[a.realmId,search,offset,status]);
@@ -203,7 +204,7 @@ export class InventoryCatalogService {
     row=(await tx.query<{id:string;version:number}>("INSERT INTO inventory_supplier(root_realm_id,supplier_code_norm,legal_name,display_name,category) VALUES($1,$2,$3,$4,$5) RETURNING id,version",[a.realmId,x.code,x.legalName,x.displayName,x.category])).rows[0];
    }else{
     const x=parsed as ReturnType<typeof parseInventoryLocation>;
-    row=(await tx.query<{id:string;version:number}>("INSERT INTO inventory_location(root_realm_id,location_code_norm,label,branch_ref,scope_kind) VALUES($1,$2,$3,$4,$5) RETURNING id,version",[a.realmId,x.code,x.label,x.branchRef,x.branchRef?"BRANCH":"FOUNDATION"])).rows[0];
+    row=(await tx.query<{id:string;version:number}>("INSERT INTO inventory_location(root_realm_id,location_code_norm,label,branch_ref,scope_kind,receipt_proof_required) VALUES($1,$2,$3,$4,$5,$6) RETURNING id,version",[a.realmId,x.code,x.label,x.branchRef,x.branchRef?"BRANCH":"FOUNDATION",x.receiptProofRequired])).rows[0];
    }
    await tx.query("INSERT INTO inventory_audit(root_realm_id,actor_ref,source_kind,source_ref,event_key,payload_digest,result_version) VALUES($1,$2,$3,$4,$5,$6,$7)",[a.realmId,a.accountId,kind,row.id,parsed.requestKey,digest,row.version]);
    return {ref:row.id,version:row.version,replayed:false};
