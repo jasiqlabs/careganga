@@ -10,7 +10,7 @@ import {careGangaTheme as theme, roleColor} from "../../../../../packages/design
 import {NativeHrAttendance} from "./native-hr-attendance";
 import {NativeHrBioConsent} from "./native-hr-bio-consent";
 import * as Crypto from "expo-crypto";
-import {ActivityIndicator,Pressable,ScrollView,StyleSheet,Text,TextInput,View} from "react-native";
+import {ActivityIndicator,Modal,Pressable,ScrollView,StyleSheet,Text,TextInput,View} from "react-native";
 import {identityRequest} from "../identity-access/http-client";
 
 type Application={applicationRef:string;reference:string;name:string;designation:string;
@@ -75,8 +75,9 @@ export function NativeHrEnrollment({token,canView,canManage,canReview,canViewEmp
  const [pendingLink,setPendingLink]=useState<{pending:boolean;applicationRef?:string;
   name?:string;designation?:string}|null>(null);
  const [staff,setStaff]=useState<Array<{reference:string;name:string;designation:string;
-  branch:string;status:string}>>([]);
+  branch:string;status:string;department?:string|null;employmentType?:string;hireDate?:string}>>([]);
  const [staffError,setStaffError]=useState("");
+ const staffRead=useRef(0);const [staffLoading,setStaffLoading]=useState(false);
  const [employeeDetail,setEmployeeDetail]=useState<{reference:string;name:string;
   designation:string;employmentType:string;branch:string;department:string|null;
   manager:string|null;status:string;effectiveFrom:string;effectiveTo:string|null}|null>(null);
@@ -317,10 +318,10 @@ export function NativeHrEnrollment({token,canView,canManage,canReview,canViewEmp
   }catch(e){if(read===summarySequence.current){setHeadcounts(null);setSummaryError(e instanceof Error?e.message:"HR dashboard unavailable.");failure(e);}}
   finally{if(read===summarySequence.current)setSummaryBusy(false);}
  };
- useEffect(()=>{if(canViewEmployees&&active==="overview")void loadHeadcounts();else{setHeadcounts(null);setSummaryBusy(false);setSummaryError("");}return()=>{summarySequence.current++;};},[token,canViewEmployees,active]);
+ useEffect(()=>{if(canViewEmployees&&(active==="overview"||active==="employees"))void loadHeadcounts();else{setHeadcounts(null);setSummaryBusy(false);setSummaryError("");}return()=>{summarySequence.current++;};},[token,canViewEmployees,active]);
  const loadStaff=async(page=0)=>{
   if(!canViewEmployees)return;
-  setStaffError("");
+  const seq=++staffRead.current;setStaffError("");setStaffLoading(true);setStaff([]);setEmpMore(false);setEmployeeDetail(null);
   try{
    const opts=new URLSearchParams({offset:String(page),status:empFilter.status,
      q:empFilter.q.trim()});
@@ -329,10 +330,12 @@ export function NativeHrEnrollment({token,canView,canManage,canReview,canViewEmp
    const data=await api(token,"employees?"+opts.toString());
    if(!data||typeof data!=="object"||!("items" in data)||
     !Array.isArray(data.items))throw Error("Original employee directory cannot be verified.");
+   if(seq!==staffRead.current)return;
    setStaff(data.items as typeof staff);
    setEmpMore("hasMore" in data&&data.hasMore===true);setEmpOffset(page);
-  }catch(e){setStaff([]);setEmpMore(false);
+  }catch(e){if(seq!==staffRead.current)return;setStaff([]);setEmpMore(false);
    setStaffError(e instanceof Error?e.message:"Employee directory unavailable.");}
+  finally{if(seq===staffRead.current)setStaffLoading(false);}
  };
 
  useEffect(()=>{
@@ -578,9 +581,10 @@ export function NativeHrEnrollment({token,canView,canManage,canReview,canViewEmp
     <Pressable accessibilityRole="button" onPress={()=>void loadHeadcounts()}
       style={styles.outline}><Text style={styles.outlineText}>
        Refresh actual employee headcount</Text></Pressable>
+    {summaryBusy&&<ActivityIndicator accessibilityLabel="Loading directory totals"/>}{!!summaryError&&<Text accessibilityRole="alert" style={styles.error}>{summaryError}</Text>}
     {headcounts&&<View style={styles.choices}>
      {Object.entries(headcounts.statuses).map(([key,value])=>
-       <Text key={key} style={styles.muted}>{title(key)}: {value}</Text>)}
+       <View key={key} style={[styles.card,{flexBasis:"46%",flexGrow:1,padding:10}]}><Text style={styles.muted}>{title(key)}</Text><Text style={styles.h2}>{value}</Text></View>)}
      <Text style={styles.label}>Total: {headcounts.total}</Text>
      <Text style={styles.label}>New joiners this month: {headcounts.newJoinersThisMonth}</Text>
      {headcounts.attendance&&<><Text style={styles.muted}>On approved leave today: {headcounts.attendance.onApprovedLeaveToday}</Text>
@@ -627,15 +631,16 @@ export function NativeHrEnrollment({token,canView,canManage,canReview,canViewEmp
       <Text style={styles.primaryText}>Apply employee filters</Text>
     </Pressable>
     {!!staffError&&<Text accessibilityRole="alert" style={styles.error}>{staffError}</Text>}
+    {staffLoading&&<ActivityIndicator accessibilityLabel="Loading employee directory"/>}{!staffLoading&&!staffError&&!staff.length&&<Text style={styles.muted}>No employees match the filters.</Text>}
     {staff.map(item=><View key={item.reference} style={styles.item}>
       <Text style={styles.label}>{item.name} — {item.designation}</Text>
-      <Text style={styles.muted}>{item.reference} · {item.branch} · {title(item.status)}</Text>
+      <Text style={styles.muted}>{item.reference} · {item.branch} · {title(item.status)}</Text><Text style={styles.muted}>Department: {item.department??"Not assigned"} · Joined: {item.hireDate??"Not available"}</Text>
       <Pressable accessibilityRole="button" style={styles.outline}
         disabled={detailBusy} onPress={()=>void viewEmployee(item.reference)}>
         <Text style={styles.outlineText}>View employment</Text>
       </Pressable>
     </View>)}
-    {employeeDetail&&<View style={styles.card}>
+    <Modal visible={!!employeeDetail} animationType="slide" onRequestClose={()=>setEmployeeDetail(null)}><View style={{flex:1,backgroundColor:theme.surface}}><ScrollView contentContainerStyle={{padding:16}}>{employeeDetail&&<View style={styles.card}>
       <Text style={styles.h2}>{employeeDetail.name}</Text>
       <Text style={styles.muted}>{employeeDetail.reference} · {title(employeeDetail.status)}</Text>
       <Text style={styles.label}>Designation: {employeeDetail.designation}</Text>
@@ -649,7 +654,7 @@ export function NativeHrEnrollment({token,canView,canManage,canReview,canViewEmp
       <Pressable accessibilityRole="button" onPress={()=>setEmployeeDetail(null)}
         style={styles.outline}><Text style={styles.outlineText}>Close employee</Text>
       </Pressable>
-    </View>}
+    </View>}</ScrollView></View></Modal>
     <View style={styles.choices}>
      {empOffset>0&&<Pressable accessibilityRole="button"
        onPress={()=>void loadStaff(Math.max(0,empOffset-25))} style={styles.outline}>
