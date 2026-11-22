@@ -13,6 +13,8 @@ export function CampaignPublicCards({cards,heading="Campaigns",donationsEnabled=
      {c.area&&<p style={{margin:0}}>{c.area}</p>}
      {c.summary&&<p style={{margin:0}}>{c.summary}</p>}
      {goalText(c.goalMinor)&&<p style={{margin:0}}><strong>Fundraising goal: {goalText(c.goalMinor)}</strong><small style={{display:"block"}}>Planned target, not money received</small></p>}
+     <p style={{margin:0}}><strong>Verified net contributions: {goalText(c.raisedMinor)}</strong>
+      <small style={{display:"block"}}>Original posted donations less confirmed refunds</small></p>
      <Link href={"/campaigns/"+c.slug}>Read about this campaign</Link>
      {donationsEnabled&&<Link href={"/donate?campaign="+encodeURIComponent(c.slug)}>Support this campaign</Link>}
     </article>)}

@@ -435,3 +435,6 @@ Original link key retry now checks Razorpay GET by original reference_id instead
 
 ### CG07 A16/A18 source review correction
 Fixed A18 receipt selector: Admin report now returns original internal donationRef for protected CG19 issue API instead of undefined; reference still never displayed. A16 latest real CASH/ONLINE attempt method is now reported using scoped latest-source lateral read. Typed ReactNode imported for Admin finance panel; no active runtime QA claimed.
+
+### 22-Nov US003 public campaign verified net actuals
+Original CG07 public approved-campaign payload now includes exact CG09 posted donation sum less posted cash-refund corrections, rather than campaign target or merchant pending funds. Strict Next and Android DTO/UX render gross target separately from true verified net, with all pending states excluded. Source updates authored, build/SQL and device tests NOT_RUN. US002-QA05/17/20 and US003-QA04/15/16/20 source candidate.

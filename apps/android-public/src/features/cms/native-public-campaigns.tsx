@@ -3,7 +3,7 @@ import {ActivityIndicator,AppState,BackHandler,Image,Pressable,StyleSheet,Text,V
 import {NativePublicDonation} from "./native-public-donation";
 import {careGangaTheme as t} from "../../../../../packages/design-tokens/src/index";
 type Campaign={slug:string;title:string;category:string;summary:string;description:string;
- goalMinor:string|null;startAt:string|null;endAt:string|null;area:string;
+ goalMinor:string|null;raisedMinor:string;startAt:string|null;endAt:string|null;area:string;
  coverSrc:string|null;heroSrc:string|null;heroAlt:string};
 const slug=/^cg-camp-[0-9]{8}$/;
 const base=process.env.EXPO_PUBLIC_API_URL;
@@ -31,6 +31,7 @@ const clean=(v:unknown):v is Campaign=>{
   (x.coverSrc===null||typeof x.coverSrc==="string"&&safeImage(x.coverSrc)!==null)&&
   (x.heroSrc===null||typeof x.heroSrc==="string"&&safeImage(x.heroSrc)!==null)&&
   (x.goalMinor===null||typeof x.goalMinor==="string"&&/^[0-9]{1,14}$/.test(x.goalMinor))&&
+  typeof x.raisedMinor==="string"&&/^(0|[1-9][0-9]{0,27})$/.test(x.raisedMinor)&&
   (x.startAt===null||typeof x.startAt==="string"&&/^20[0-9]{2}-[0-9]{2}-[0-9]{2}$/.test(x.startAt))&&
   (x.endAt===null||typeof x.endAt==="string"&&/^20[0-9]{2}-[0-9]{2}-[0-9]{2}$/.test(x.endAt));
 };
@@ -88,6 +89,7 @@ export function NativePublicCampaigns(){
     {!!campaign.startAt&&<Text>Campaign starts: {campaign.startAt}</Text>}
     {!!campaign.endAt&&<Text>Campaign ends: {campaign.endAt}</Text>}
     {!!money(campaign.goalMinor)&&<Text>Planned fundraising goal: {money(campaign.goalMinor)}. This is not money received.</Text>}
+    <Text>Verified net contributions: {money(campaign.raisedMinor)}. Pending payments are not included.</Text>
     {donationsEnabled?<NativePublicDonation campaignSlug={campaign.slug}/>:<Text style={styles.note}>Online donations are unavailable until the Foundation verifies its merchant.</Text>}
    </View>:items.length===0?<Text>No currently published campaigns are available.</Text>:
    items.map(c=><View key={c.slug} style={styles.card}>

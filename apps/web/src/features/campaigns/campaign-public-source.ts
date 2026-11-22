@@ -1,6 +1,6 @@
 import "server-only";
 export type PublicCampaign={slug:string;title:string;category:string;summary:string;description:string;
- goalMinor:string|null;startAt:string|null;endAt:string|null;area:string;
+ goalMinor:string|null;raisedMinor:string;startAt:string|null;endAt:string|null;area:string;
  coverSrc:string|null;heroSrc:string|null;heroAlt:string};
 type Result={state:"PUBLISHED"|"NOT_PUBLISHED"|"UNAVAILABLE";cards:PublicCampaign[];donationsEnabled:boolean};
 const slug=/^cg-camp-[0-9]{8}$/;
@@ -16,6 +16,7 @@ function valid(raw:unknown):raw is PublicCampaign{
   typeof x.area==="string"&&x.area.length<=250&&
   typeof x.heroAlt==="string"&&x.heroAlt.length<=240&&
   (x.goalMinor===null||typeof x.goalMinor==="string"&&/^[1-9][0-9]{0,13}$/.test(x.goalMinor))&&
+  typeof x.raisedMinor==="string"&&/^(0|[1-9][0-9]{0,27})$/.test(x.raisedMinor)&&
   (x.coverSrc===null||typeof x.coverSrc==="string"&&media.test(x.coverSrc))&&
   (x.heroSrc===null||typeof x.heroSrc==="string"&&media.test(x.heroSrc))&&
   (x.startAt===null||typeof x.startAt==="string"&&/^20[0-9]{2}-[0-9]{2}-[0-9]{2}$/.test(x.startAt))&&
