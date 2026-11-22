@@ -121,6 +121,11 @@ export class HrLeaveSourceFacade{
     throw new ConflictException({code:"CG10_LEAVE_STALE"});
    return {replay:true as const,requestRef:p.id,caseRef:p.case_ref};
   }
+  // A client restart may lose its in-memory key; an identical pending command must still not create another case.
+  const duplicate=await tx.query(`SELECT 1 FROM hr_leave_request WHERE root_realm_id=$1 AND employee_id=$2
+   AND submitted_by=$3 AND request_digest=$4 AND status='SUBMITTED' LIMIT 1`,
+   [actor.realmId,employee.id,actor.accountId,requestDigest]);
+  if(duplicate.rowCount)throw new ConflictException({code:"CG10_LEAVE_DUPLICATE_PENDING"});
   const c=await this.context(tx,actor.realmId,employee.id,x.policyRef,x.startDate,x.endDate);
   const days=countedLeaveDates(x.startDate,x.endDate,c.weekly_off_days,c.count_weekly_off);
   const halfDays=x.halfDay?1:days.length*2;

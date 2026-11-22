@@ -176,6 +176,11 @@ export class HrAttendanceCorrectionSourceFacade{
    if(p.employee_id!==employee.id||p.request_digest!==requestDigest||!p.case_ref)throw new ConflictException({code:"CG10_CORRECTION_STALE"});
    return {replay:true as const,requestRef:p.id,caseRef:p.case_ref};
   }
+  // A client restart may lose its in-memory key; an identical pending command must still not create another case.
+  const duplicate=await tx.query(`SELECT 1 FROM hr_attendance_change WHERE root_realm_id=$1 AND employee_id=$2
+   AND submitted_by=$3 AND request_digest=$4 AND status='SUBMITTED' LIMIT 1`,
+   [actor.realmId,employee.id,actor.accountId,requestDigest]);
+  if(duplicate.rowCount)throw new ConflictException({code:"CG10_CORRECTION_DUPLICATE_PENDING"});
   const d=await this.day(tx,actor.realmId,employee.id,x.date,true);
   if(d.branch_ref!==employee.branch_ref||d.version!==x.expectedVersion)throw new ConflictException({code:"CG10_CORRECTION_STALE"});
   const before=snapshot(d),after=await this.proposed(tx,d,x);

@@ -10,6 +10,8 @@ export const SAFE_MESSAGE_CATALOG:Readonly<Record<string,string>>=Object.freeze(
       CG10_LEAVE_OVERLAP:"Approved leave already overlaps these dates. Choose a different period.",
       CG10_LEAVE_ENTITLEMENT:"There is not enough available annual leave entitlement for these dates.",
       CG10_LEAVE_PUNCH_CONFLICT:"A recorded attendance day conflicts with this leave. Review attendance before approving.",
+      CG10_LEAVE_DUPLICATE_PENDING:"An identical leave request is already awaiting review. Refresh your leave history.",
+      CG10_CORRECTION_DUPLICATE_PENDING:"An identical attendance correction is already awaiting review. Refresh correction history.",
       CG10_LEAVE_STALE:"The original leave request or decision changed. Refresh the leave history before retrying.",
       CG10_LEAVE_DECISION_INVALID:"Choose Approve, Return or Reject and confirm with your current Foundation password.",
       // CG-20 report validation and CG-15 original appointment-source outcomes.

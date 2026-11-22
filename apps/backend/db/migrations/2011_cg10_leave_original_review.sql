@@ -55,6 +55,7 @@ CREATE TABLE hr_leave_request(
   (status IN('APPROVED','RETURNED','REJECTED') AND case_ref IS NOT NULL AND decision_ref IS NOT NULL AND cancel_event_ref IS NULL AND decided_at IS NOT NULL) OR
   (status='CANCELLED' AND case_ref IS NOT NULL AND decision_ref IS NULL AND cancel_event_ref IS NOT NULL AND decided_at IS NOT NULL))
 );
+CREATE UNIQUE INDEX ux_hr_leave_identical_pending ON hr_leave_request(root_realm_id,submitted_by,request_digest) WHERE status='SUBMITTED';
 CREATE INDEX ix_hr_leave_employee_year ON hr_leave_request(root_realm_id,employee_id,start_date,end_date,status);
 CREATE INDEX ix_hr_leave_policy_usage ON hr_leave_request(root_realm_id,employee_id,policy_id,start_date) WHERE status='APPROVED';
 CREATE INDEX ix_hr_leave_review_queue ON hr_leave_request(root_realm_id,status,submitted_at DESC,id DESC);

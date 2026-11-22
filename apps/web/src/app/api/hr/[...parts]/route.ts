@@ -76,7 +76,7 @@ async function proxy(req:NextRequest,parts:string[],method:string){
    if(leavePath&&status>=400&&status<500){
     const rejected:unknown=await res.json().catch(()=>null);
     if(rejected&&typeof rejected==="object"&&"code" in rejected&&"message" in rejected&&
-     typeof rejected.code==="string"&&["CG10_LEAVE_INVALID","CG10_LEAVE_POLICY_CHANGED","CG10_LEAVE_OVERLAP","CG10_LEAVE_ENTITLEMENT","CG10_LEAVE_PUNCH_CONFLICT","CG10_LEAVE_STALE","CG10_LEAVE_DECISION_INVALID","CG10_CORRECTION_INVALID","CG10_CORRECTION_STALE","CG10_CORRECTION_LEAVE","CG10_CORRECTION_DECISION_INVALID"].includes(rejected.code)&&
+     typeof rejected.code==="string"&&["CG10_LEAVE_INVALID","CG10_LEAVE_POLICY_CHANGED","CG10_LEAVE_OVERLAP","CG10_LEAVE_ENTITLEMENT","CG10_LEAVE_PUNCH_CONFLICT","CG10_LEAVE_STALE","CG10_LEAVE_DECISION_INVALID","CG10_CORRECTION_INVALID","CG10_CORRECTION_STALE","CG10_CORRECTION_LEAVE","CG10_CORRECTION_DECISION_INVALID","CG10_LEAVE_DUPLICATE_PENDING","CG10_CORRECTION_DUPLICATE_PENDING"].includes(rejected.code)&&
      typeof rejected.message==="string"&&rejected.message.length<=220&&!/[<>\r\n]/.test(rejected.message))
      return NextResponse.json({message:rejected.message},{status,headers:{"Cache-Control":"no-store"}});
    }

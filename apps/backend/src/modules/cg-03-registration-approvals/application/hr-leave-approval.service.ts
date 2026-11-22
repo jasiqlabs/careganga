@@ -78,6 +78,17 @@ export class HrLeaveApprovalService{
   await this.identity.assertCurrent(tx,actor,"hr.leave.review");
   await this.protectedOwner.verifyReviewer(tx,actor,"approvals.review",true);
  }
+ /** View-only staff must have a current grant and current original branch/report scope.
+  * Protected final review is a separate action and remains password-confirmed. */
+ private async viewRights(tx:PoolClient,actor:VerifiedFoundationActor){
+  await this.identity.assertCurrent(tx,actor,"hr.leave.view");
+  const q=await tx.query<{protected_root:boolean;branch_admin:boolean}>(`
+   SELECT COALESCE(bool_or(r.is_protected),false) AS protected_root,
+    COALESCE(bool_or(EXISTS(SELECT 1 FROM role_grant g WHERE g.role_id=r.id AND g.capability_key='foundation.branches.admin')),false) AS branch_admin
+   FROM account_role ar JOIN role r ON r.id=ar.role_id AND r.realm_id=ar.realm_id AND r.active
+   WHERE ar.realm_id=$1 AND ar.account_id=$2 AND ar.revoked_at IS NULL`,[actor.realmId,actor.accountId]);
+  return q.rows[0];
+ }
  async withdraw(tx:PoolClient,actor:VerifiedFoundationActor,reference:string,body:unknown){
   if(!/^CG-AP-[0-9]{6,}$/.test(reference)||!body||typeof body!=="object"||Array.isArray(body)||
      Object.keys(body).some(k=>k!=="requestKey"))throw new BadRequestException({code:"CG10_LEAVE_INVALID"});
@@ -106,7 +117,7 @@ export class HrLeaveApprovalService{
   return {cancelled:true,reference:c.case_number,status:"CANCELLED",replayed:false};
  }
  async inbox(token:string,offsetInput:unknown,statusInput:unknown,filters:{from?:unknown;to?:unknown;type?:unknown;employee?:unknown}={}){
-  const actor=await this.reviewer(token),offset=Number(offsetInput??0),status=String(statusInput??"ALL");
+  const actor=await this.sessions.requireAction(token,"hr.leave.view"),offset=Number(offsetInput??0),status=String(statusInput??"ALL");
   if(!Number.isSafeInteger(offset)||offset<0||offset>10000||
    !["ALL","SUBMITTED","IN_REVIEW","OWNER_COMPLETED","RETURNED","REJECTED","CANCELLED"].includes(status))
    throw new BadRequestException({code:"CG10_LEAVE_INVALID"});
@@ -121,7 +132,7 @@ export class HrLeaveApprovalService{
   if(from&&to&&from>to)throw new BadRequestException({code:"CG10_LEAVE_INVALID"});
   const type=filterText(filters.type),employee=filterText(filters.employee);
   return this.run(async tx=>{
-   await this.requireReviewer(tx,actor);
+   const rights=await this.viewRights(tx,actor);
    const q=await tx.query<Case&{leave_type:string;start_date:string;end_date:string;half_days:number;leave_status:string}>(`
     SELECT c.id,c.case_number,c.status,c.revision,c.proposer_id,c.account_name_snapshot,
      p.leave_type,to_char(r.start_date,'YYYY-MM-DD') AS start_date,to_char(r.end_date,'YYYY-MM-DD') AS end_date,
@@ -134,27 +145,54 @@ export class HrLeaveApprovalService{
      AND ($5::date IS NULL OR r.start_date <= $5::date)
      AND ($6='' OR strpos(lower(p.leave_type),$6)>0)
      AND ($7='' OR strpos(lower(c.account_name_snapshot),$7)>0)
-    ORDER BY c.submitted_at DESC,c.id DESC LIMIT 26 OFFSET $3`,[actor.realmId,status,offset,from,to,type,employee]);
+     AND ($9::boolean OR EXISTS(
+      SELECT 1 FROM hr_employment_assignment origin
+      JOIN hr_employment_assignment current ON current.employee_id=origin.employee_id AND current.root_realm_id=origin.root_realm_id
+       AND current.branch_ref=origin.branch_ref AND current.valid_from<=CURRENT_DATE AND (current.valid_to IS NULL OR current.valid_to>CURRENT_DATE)
+      JOIN hr_employee e ON e.id=current.employee_id AND e.root_realm_id=current.root_realm_id AND e.status IN('ACTIVE','PROBATION')
+      JOIN branch b ON b.id=current.branch_ref AND b.root_realm_id=current.root_realm_id AND b.status='ACTIVE'
+      WHERE origin.root_realm_id=r.root_realm_id AND origin.id=r.assignment_id AND origin.employee_id=r.employee_id
+       AND ($10::boolean OR b.manager_account_ref=$8 OR EXISTS(SELECT 1 FROM hr_employee manager
+        WHERE manager.id=current.manager_employee_ref AND manager.root_realm_id=current.root_realm_id
+         AND manager.account_ref=$8 AND manager.status IN('ACTIVE','PROBATION')))
+     ))
+    ORDER BY c.submitted_at DESC,c.id DESC LIMIT 26 OFFSET $3`,[actor.realmId,status,offset,from,to,type,employee,actor.accountId,rights.protected_root,rights.branch_admin]);
    return {items:q.rows.slice(0,25).map(c=>({caseRef:c.id,reference:c.case_number,employeeName:c.account_name_snapshot,
     caseStatus:c.status,status:c.leave_status,revision:c.revision,leaveType:c.leave_type,startDate:c.start_date,
-    endDate:c.end_date,days:c.half_days/2,canReview:c.proposer_id!==actor.accountId&&["SUBMITTED","IN_REVIEW"].includes(c.status)})),
+    endDate:c.end_date,days:c.half_days/2,canReview:rights.protected_root&&c.proposer_id!==actor.accountId&&["SUBMITTED","IN_REVIEW"].includes(c.status)})),
     hasMore:q.rows.length>25,offset};
   });
  }
  async detail(token:string,refInput:string){
-  const actor=await this.reviewer(token),ref=leaveId(refInput);
+  const actor=await this.sessions.requireAction(token,"hr.leave.view"),ref=leaveId(refInput);
   return this.run(async tx=>{
-   await this.requireReviewer(tx,actor);
-   const c=(await tx.query<Case>(`SELECT * FROM cg03_case WHERE realm_id=$1 AND id=$2 AND case_kind='LEAVE_REQUEST' FOR SHARE`,[actor.realmId,ref])).rows[0];
+   const rights=await this.viewRights(tx,actor);
+   const c=(await tx.query<Case>(`SELECT c.* FROM cg03_case c JOIN hr_leave_request r
+    ON r.root_realm_id=c.realm_id AND r.id=c.hr_leave_request_id AND r.case_ref=c.id AND r.source_digest=c.hr_leave_source_digest
+    WHERE c.realm_id=$1 AND c.id=$2 AND c.case_kind='LEAVE_REQUEST'
+    AND ($4::boolean OR EXISTS(
+      SELECT 1 FROM hr_employment_assignment origin
+      JOIN hr_employment_assignment current ON current.employee_id=origin.employee_id AND current.root_realm_id=origin.root_realm_id
+       AND current.branch_ref=origin.branch_ref AND current.valid_from<=CURRENT_DATE AND (current.valid_to IS NULL OR current.valid_to>CURRENT_DATE)
+      JOIN hr_employee e ON e.id=current.employee_id AND e.root_realm_id=current.root_realm_id AND e.status IN('ACTIVE','PROBATION')
+      JOIN branch b ON b.id=current.branch_ref AND b.root_realm_id=current.root_realm_id AND b.status='ACTIVE'
+      WHERE origin.root_realm_id=r.root_realm_id AND origin.id=r.assignment_id AND origin.employee_id=r.employee_id
+       AND ($5::boolean OR b.manager_account_ref=$3 OR EXISTS(SELECT 1 FROM hr_employee manager
+        WHERE manager.id=current.manager_employee_ref AND manager.root_realm_id=current.root_realm_id
+         AND manager.account_ref=$3 AND manager.status IN('ACTIVE','PROBATION')))
+     )) FOR SHARE OF c`,[actor.realmId,ref,actor.accountId,rights.protected_root,rights.branch_admin])).rows[0];
    if(!c)throw new NotFoundException("This leave review is unavailable");
    const row=await this.source.original(tx,actor.realmId,c.hr_leave_request_id);
    if(row.case_ref!==c.id||row.source_digest!==c.hr_leave_source_digest)throw new ConflictException({code:"CG10_LEAVE_STALE"});
-   const reason=this.source.reason(row,actor.realmId);
-   await tx.query("INSERT INTO hr_audit(root_realm_id,actor_ref,employee_ref,event_key,action) VALUES($1,$2,$3,$4,$5)",
-    [actor.realmId,actor.accountId,row.employee_id,randomUUID(),"LEAVE_PRIVATE_READ"]);
+   let reason:string|undefined;
+   if(rights.protected_root){
+    reason=this.source.reason(row,actor.realmId);
+    await tx.query("INSERT INTO hr_audit(root_realm_id,actor_ref,employee_ref,event_key,action) VALUES($1,$2,$3,$4,$5)",
+     [actor.realmId,actor.accountId,row.employee_id,randomUUID(),"LEAVE_PRIVATE_READ"]);
+   }
    return {caseRef:c.id,reference:c.case_number,caseStatus:c.status,revision:c.revision,
     ...this.source.summary(row),reason,balance:await this.source.reviewBalance(tx,actor.realmId,row),
-    canReview:c.proposer_id!==actor.accountId&&["SUBMITTED","IN_REVIEW"].includes(c.status)};
+    canReview:rights.protected_root&&c.proposer_id!==actor.accountId&&["SUBMITTED","IN_REVIEW"].includes(c.status)};
   });
  }
  async decide(token:string,refInput:string,body:unknown){

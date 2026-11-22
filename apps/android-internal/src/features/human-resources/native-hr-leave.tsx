@@ -156,13 +156,13 @@ export function NativeHrLeaveReviews({token,onExpired,onChanged,kind="leave"}:{t
   {selected&&<View style={styles.item}><Text style={styles.label}>{selected.employeeName} · {kind==="leave"?selected.leaveType:"Attendance correction"}</Text>
    <Text style={styles.muted}>{selected.reference} · {kind==="leave"?selected.startDate+" – "+selected.endDate+" · "+selected.days+" days":snapshot(selected.original)+" → "+snapshot(selected.proposed)}</Text>
    {selected.balance&&<Text>Annual: {selected.balance.annualDays} days · Approved used: {selected.balance.approvedDays} · Available: {selected.balance.availableDays}</Text>}
-   <Text>Private reason: {selected.reason}</Text>
+   {selected.reason!==undefined&&<Text>Private reason: {selected.reason}</Text>}
    {selected.canReview?<><View style={styles.choices}>{[{key:"APPROVE",title:"Approve"},{key:"RETURN",title:"Return"},{key:"REJECT",title:"Reject"}].map(x=>
     <Button key={x.key} title={x.title} selected={action===x.key} disabled={busy||locked} onPress={()=>setAction(x.key)}/>)}</View>
     <Field title="Current password" secure value={password} disabled={busy} maxLength={256} onChange={setPassword}/>
     {locked&&<Text style={styles.muted}>Decision outcome uncertain. Re-enter your password to retry the same decision.</Text>}
     <Button title={busy?"Confirming…":"Confirm decision"} disabled={busy||password.length<8} onPress={()=>void decide()}/>
-   </>:<Text style={styles.muted}>{label(selected.status)} · A different authorized reviewer is required for your own request.</Text>}
+   </>:<Text style={styles.muted}>{label(selected.status)}{selected.status==="SUBMITTED"?" · Awaiting an independent authorized reviewer.":""}</Text>}
    <Button title="Close request" disabled={busy||locked} onPress={()=>{setSelected(null);setPassword("");key.current=null;}}/>
   </View>}
  </View>;

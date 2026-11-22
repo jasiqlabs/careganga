@@ -39,6 +39,7 @@ CREATE TABLE hr_attendance_change(
  CHECK((status='SUBMITTED' AND decision_ref IS NULL AND decided_at IS NULL) OR
   (status<>'SUBMITTED' AND case_ref IS NOT NULL AND decision_ref IS NOT NULL AND decided_at IS NOT NULL))
 );
+CREATE UNIQUE INDEX ux_hr_correction_identical_pending ON hr_attendance_change(root_realm_id,submitted_by,request_digest) WHERE status='SUBMITTED';
 CREATE UNIQUE INDEX ux_hr_correction_applied_version ON hr_attendance_change(root_realm_id,attendance_day_id,expected_version)
  WHERE status='APPROVED';
 CREATE INDEX ix_hr_correction_employee ON hr_attendance_change(root_realm_id,employee_id,submitted_at DESC,id DESC);

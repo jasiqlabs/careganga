@@ -54,7 +54,7 @@ export default async function FoundationHrPage(){
      </p>
     </header>
     <HrMyProfile/>
-    <HrAttendance canViewStaff={actions.includes("hr.attendance.view")} canCorrect={actions.includes("hr.attendance.correct")} canReviewCorrection={actions.includes("hr.attendance.review")&&actions.includes("approvals.review")} canReviewLeave={actions.includes("hr.leave.review")&&actions.includes("approvals.review")} canManageLeave={actions.includes("hr.leave.policies.manage")} canConfigure={actions.includes("hr.shifts.manage")&&
+    <HrAttendance canViewStaff={actions.includes("hr.attendance.view")} canCorrect={actions.includes("hr.attendance.correct")} canReviewCorrection={actions.includes("hr.attendance.review")&&actions.includes("approvals.review")} canReviewLeave={actions.includes("hr.leave.view")} canManageLeave={actions.includes("hr.leave.policies.manage")} canConfigure={actions.includes("hr.shifts.manage")&&
       actions.includes("hr.attendance.view")&&actions.includes("hr.employees.view")}/>
     {(actions.includes("hr.applications.view")||actions.includes("hr.employees.view"))&&
      <HrEnrollmentWorkspace canViewApps={actions.includes("hr.applications.view")} canManage={actions.includes("hr.applications.manage")}

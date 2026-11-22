@@ -164,14 +164,14 @@ export function HrLeaveReviews({onChanged,kind="leave"}:{onChanged:()=>void;kind
    <strong>{selected.employeeName} · {kind==="leave"?selected.leaveType:"Attendance correction"}</strong>
    <span>{selected.reference} · {kind==="leave"?selected.startDate+" – "+selected.endDate+" · "+selected.days+" days":snapshot(selected.original)+" → "+snapshot(selected.proposed)}</span>
    {selected.balance&&<p>Annual: {selected.balance.annualDays} days · Approved used: {selected.balance.approvedDays} · Available: {selected.balance.availableDays}</p>}
-   <p style={{whiteSpace:"pre-wrap",margin:0}}>Private reason: {selected.reason}</p>
+   {selected.reason!==undefined&&<p style={{whiteSpace:"pre-wrap",margin:0}}>Private reason: {selected.reason}</p>}
    {selected.canReview?<><label>Decision<select style={field} value={action} disabled={busy||locked} onChange={e=>setAction(e.target.value)}>
     <option value="APPROVE">Approve</option><option value="RETURN">Return for correction</option><option value="REJECT">Reject</option>
    </select></label>
     <label>Current password<input style={field} type="password" autoComplete="current-password" value={password} disabled={busy} onChange={e=>setPassword(e.target.value)}/></label>
     {locked&&<p>Decision outcome uncertain. Re-enter your password to retry the same decision.</p>}
     <button style={button} disabled={busy||password.length<8} onClick={()=>void decide()}>{busy?"Confirming…":"Confirm decision"}</button>
-   </>:<p>{label(selected.status)} · A different authorized reviewer is required for your own request.</p>}
+   </>:<p>{label(selected.status)}{selected.status==="SUBMITTED"?" · Awaiting an independent authorized reviewer.":""}</p>}
    <button disabled={busy||locked} onClick={()=>{setSelected(null);setPassword("");key.current=null;}}>Close request</button>
   </div>}
  </section>;

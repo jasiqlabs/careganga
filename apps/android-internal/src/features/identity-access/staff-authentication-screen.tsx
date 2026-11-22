@@ -724,7 +724,7 @@ export function StaffAuthenticationScreen() {
           canViewEmployees={roleActions.includes("hr.employees.view")}
           canConfigureReviews={roleActions.includes("approvals.process.manage")}
           canViewStaff={roleActions.includes("hr.attendance.view")} canCorrect={roleActions.includes("hr.attendance.correct")} canReviewCorrection={roleActions.includes("hr.attendance.review")&&roleActions.includes("approvals.review")}
-          canReviewLeave={roleActions.includes("hr.leave.review")&&roleActions.includes("approvals.review")}
+          canReviewLeave={roleActions.includes("hr.leave.view")}
           canManageLeave={roleActions.includes("hr.leave.policies.manage")}
           canConfigureAttendance={roleActions.includes("hr.shifts.manage")&&
             roleActions.includes("hr.attendance.view")&&roleActions.includes("hr.employees.view")}
