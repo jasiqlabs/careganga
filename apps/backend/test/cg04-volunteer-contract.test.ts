@@ -149,6 +149,7 @@ test("US003-QA17/19/20 historical volunteer card does not imply live eligibility
  const service=read("apps/backend/src/modules/cg-19-documents-notifications/application/volunteer-card.service.ts");
  assert.match(service,/private async present\(tx:PoolClient,c:Card\)/);
  assert.match(service,/await this\.check\(tx,c\);return status/);
+ assert.match(service,/if\(!status\.canDownload&&!status\.canRetry\)return status/);
  assert.match(service,/if\(e instanceof ConflictException\)return \{\.\.\.status,canDownload:false,canRetry:false\}/);
  assert.match(service,/card:p\?await this\.present\(tx,p\):null/);
  assert.match(service,/return this\.present\(tx,await this\.actual\(tx,a\.realmId,ref\)\)/);
