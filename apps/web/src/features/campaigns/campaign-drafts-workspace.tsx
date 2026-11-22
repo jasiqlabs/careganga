@@ -8,6 +8,8 @@ type Row={ref:string;code:string;title:string;category:string;status:string;vers
 type Summary={total:number;active:number;draft:number;completed:number;cancelled:number;goalMinor:string};
 type Page={items:Row[];offset:number;hasMore:boolean;summary:Summary};
 type Choice={value:string;label:string};
+type CampaignFilters={stateRef:string;districtRef:string;leaderRef:string;branchRef:string;featured:"ALL"|"YES"|"NO";createdFrom:string;createdTo:string};
+const emptyCampaignFilters=():CampaignFilters=>({stateRef:"",districtRef:"",leaderRef:"",branchRef:"",featured:"ALL",createdFrom:"",createdTo:""});
 type Choices={canFoundation:boolean;branches:Choice[];states:Choice[];districts:Choice[];coordinators:Choice[];volunteers:Choice[];projects:Choice[];events:(Choice&{projectRef:string|null})[]};
 type Draft={
  basic:{title:string;type:"GENERAL";summary:string;description:string;tags:string[]};
@@ -68,8 +70,10 @@ export function CampaignDraftsWorkspace({canManage}:{canManage:boolean}){
   [busy,setBusy]=useState(false),[loading,setLoading]=useState(true),[notice,setNotice]=useState(""),
   [failure,setFailure]=useState(""),[choices,setChoices]=useState<Choices|null>(null),
   [savedDraft,setSavedDraft]=useState<Draft>(blank),
-  [summary,setSummary]=useState<Summary|null>(null),[statusFilter,setStatusFilter]=useState("ALL");
- const choiceSeq=useRef(0);
+  [summary,setSummary]=useState<Summary|null>(null),[statusFilter,setStatusFilter]=useState("ALL"),
+  [filters,setFilters]=useState<CampaignFilters>(emptyCampaignFilters),[appliedFilters,setAppliedFilters]=useState<CampaignFilters>(emptyCampaignFilters),
+  [filterChoices,setFilterChoices]=useState<Choices|null>(null),[filterError,setFilterError]=useState("");
+ const choiceSeq=useRef(0),filterSeq=useRef(0);
  const pending=useRef<{key:string;body:Record<string,unknown>;method:"POST"|"PATCH";path:string}|null>(null);
  const submitPending=useRef<{key:string;ref:string;version:number}|null>(null);
  const lifecyclePending=useRef<{key:string;ref:string;version:number;action:"PAUSE"|"RESUME"|"CLOSE"|"WITHDRAW"}|null>(null);
@@ -77,11 +81,11 @@ export function CampaignDraftsWorkspace({canManage}:{canManage:boolean}){
  const refresh=useCallback(async()=>{
   const id=++serial.current;setLoading(true);
   try{
-   const data=await api<Page>("?"+new URLSearchParams({offset:String(offset),q:applied,status:statusFilter}));
+   const data=await api<Page>("?"+new URLSearchParams({offset:String(offset),q:applied,status:statusFilter,...appliedFilters}));
    if(id===serial.current){setRows(data.items);setHasMore(data.hasMore);setSummary(data.summary);setFailure("");}
   }catch(e){if(id===serial.current){setRows([]);setSummary(null);setFailure(e instanceof Error?e.message:"Campaign records unavailable.");}}
   finally{if(id===serial.current)setLoading(false);}
- },[offset,applied,statusFilter]);
+ },[offset,applied,statusFilter,appliedFilters]);
  useEffect(()=>{void refresh();return()=>{serial.current++;editingSerial.current++;};},[refresh]);
  useEffect(()=>{
   if(!editing){setChoices(null);return;}
@@ -91,7 +95,15 @@ export function CampaignDraftsWorkspace({canManage}:{canManage:boolean}){
    .catch(()=>{if(id===choiceSeq.current){setChoices(null);setFailure("Current branch, area or coordinator choices could not be verified.");}});
   return()=>{choiceSeq.current++;};
  },[editing,draft.project.stateRef,draft.project.branchRef]);
- const reset=()=>{if(busy||pending.current||submitPending.current||lifecyclePending.current)return;editingSerial.current++;setSelected(null);setDraft(blank());setSavedDraft(blank());setStep(0);setEditing(false);setFailure("");setNotice("");};
+ useEffect(()=>{
+  if(editing){setFilterChoices(null);return;}
+  const id=++filterSeq.current;setFilterError("");
+  void api<Choices>("options?"+new URLSearchParams({stateRef:filters.stateRef,branchRef:filters.branchRef}))
+   .then(data=>{if(id===filterSeq.current)setFilterChoices(data);})
+   .catch(()=>{if(id===filterSeq.current){setFilterChoices(null);setFilterError("Current campaign area and fundraiser choices could not be verified.");}});
+  return()=>{filterSeq.current++;};
+ },[editing,filters.stateRef,filters.branchRef]);
+  const reset=()=>{if(busy||pending.current||submitPending.current||lifecyclePending.current)return;editingSerial.current++;setSelected(null);setDraft(blank());setSavedDraft(blank());setStep(0);setEditing(false);setFailure("");setNotice("");};
  const open=async(row:Row)=>{if(busy||pending.current||submitPending.current||lifecyclePending.current)return;const id=++editingSerial.current;setLoading(true);setFailure("");
   try{const result=await api<Row>(row.ref);if(id===editingSerial.current){setSelected(result);setDraft(fromRow(result));setSavedDraft(fromRow(result));setEditing(true);setStep(0);setNotice("");}}
   catch(e){if(id===editingSerial.current)setFailure(e instanceof Error?e.message:"Campaign detail unavailable.");}
@@ -211,8 +223,38 @@ export function CampaignDraftsWorkspace({canManage}:{canManage:boolean}){
       {["SUBMITTED","RETURNED","REJECTED","PAUSED"].map(t=>
        <option key={t} value={t}>{t.replaceAll("_"," ").toLowerCase()}</option>)}
      </select></label>
-     <button type="button" disabled={busy} onClick={()=>{setOffset(0);setApplied(q.trim());}}>Apply Filters</button>
-     <button type="button" disabled={busy} onClick={()=>{setQ("");setApplied("");setStatusFilter("ALL");setOffset(0);}}>Reset</button>
+     <label style={field}>Foundation branch<select style={entry} value={filters.branchRef}
+       onChange={e=>setFilters(f=>({...f,branchRef:e.target.value,leaderRef:""}))}>
+       <option value="">All permitted branches</option>
+       {(filterChoices?.branches??[]).map(x=><option key={x.value} value={x.value}>{x.label}</option>)}
+      </select></label>
+     <label style={field}>Campaign leader<select style={entry} value={filters.leaderRef}
+       onChange={e=>setFilters(f=>({...f,leaderRef:e.target.value}))}>
+       <option value="">All permitted leaders</option>
+       {(filterChoices?.coordinators??[]).map(x=><option key={x.value} value={x.value}>{x.label}</option>)}
+      </select></label>
+     <label style={field}>State<select style={entry} value={filters.stateRef}
+       onChange={e=>setFilters(f=>({...f,stateRef:e.target.value,districtRef:""}))}>
+       <option value="">All permitted states</option>
+       {(filterChoices?.states??[]).map(x=><option key={x.value} value={x.value}>{x.label}</option>)}
+      </select></label>
+     <label style={field}>District<select style={entry} value={filters.districtRef}
+       disabled={!filters.stateRef} onChange={e=>setFilters(f=>({...f,districtRef:e.target.value}))}>
+       <option value="">All districts</option>
+       {(filterChoices?.districts??[]).map(x=><option key={x.value} value={x.value}>{x.label}</option>)}
+      </select></label>
+     <label style={field}>Featured on published website<select style={entry} value={filters.featured}
+       onChange={e=>setFilters(f=>({...f,featured:e.target.value as CampaignFilters["featured"]}))}>
+       <option value="ALL">All campaigns</option><option value="YES">Editorially featured</option>
+       <option value="NO">Not editorially featured</option>
+      </select></label>
+     <label style={field}>Created from<input type="date" style={entry} value={filters.createdFrom}
+       onChange={e=>setFilters(f=>({...f,createdFrom:e.target.value}))}/></label>
+     <label style={field}>Created through<input type="date" style={entry} value={filters.createdTo}
+       onChange={e=>setFilters(f=>({...f,createdTo:e.target.value}))}/></label>
+     {filterError&&<p role="alert">{filterError}</p>}
+     <button type="button" disabled={busy} onClick={()=>{setOffset(0);setApplied(q.trim());setAppliedFilters({...filters});}}>Apply Filters</button>
+     <button type="button" disabled={busy} onClick={()=>{setQ("");setApplied("");setStatusFilter("ALL");setFilters(emptyCampaignFilters());setAppliedFilters(emptyCampaignFilters());setOffset(0);}}>Reset</button>
     </div>
    </section>
    <div className={styles.overviewColumns}>
