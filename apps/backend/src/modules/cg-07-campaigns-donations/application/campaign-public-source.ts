@@ -129,6 +129,18 @@ const PUBLISHED=`
 /** Public DTO deliberately strips the opaque source id. No donation CTA
  * becomes active until US002's genuine verified donation route exists.
  */
+/** Actual live public count under the caller's current CG02 branch scope.
+ * Uses exactly the same original CG07/CG03/CG18/CG19 eligibility as the
+ * public cards (no 100-item pagination), unlike operational APPROVED totals.
+ */
+export async function countPublishedCampaignSources(db:Pool|PoolClient,root:string,
+ allBranches:boolean,branches:string[]){
+ const rows=await db.query<{total:number}>(`SELECT count(DISTINCT c.id)::integer AS total
+  ${BASE}${PUBLISHED}
+  AND c.root_realm_id=$1
+  AND ($2::boolean OR c.branch_ref=ANY($3::uuid[]))`,[root,allBranches,branches]);
+ return rows.rows[0]?.total??0;
+}
 export async function publicCampaignSources(db:Pool|PoolClient,slug?:string){
  if(slug!==undefined&&!PUBLIC_SLUG.test(slug))return [];
  const rows=await db.query<Source>(`SELECT DISTINCT ON (c.id) ${PUBLIC_COLUMNS}${BASE}${PUBLISHED}
