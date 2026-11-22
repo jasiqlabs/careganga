@@ -3,27 +3,21 @@ import {useState} from "react";
 type Details={contactPhone:string|null;postalAddress:string|null;
  emergencyName:string|null;emergencyPhone:string|null;
  pan:string|null;bankAccount:string|null;bankIfsc:string|null;fatherName:string|null;motherName:string|null;dateOfBirth:string|null;gender:string|null;bloodGroup:string|null;contactEmail:string|null;pinCode:string|null;bankName:string|null;accountHolder:string|null;bankBranch:string|null;accountType:string|null;upiId:string|null};
-const fields=[
- ["contactPhone","Contact phone"],
- ["postalAddress","Postal address"],
- ["emergencyName","Emergency contact name"],
- ["emergencyPhone","Emergency contact phone"],
- ["pan","PAN (if required)"],
- ["bankAccount","Bank account number"],
- ["bankIfsc","IFSC"],
- ["fatherName","Father's name (optional)"],
- ["motherName","Mother's name (optional)"],
- ["dateOfBirth","Date of birth (YYYY-MM-DD)"],
- ["gender","Gender (optional)"],
- ["bloodGroup","Blood group (optional, e.g. A+)"],
- ["contactEmail","Email address"],
- ["pinCode","PIN code"],
- ["bankName","Bank name"],
- ["accountHolder","Account holder name"],
- ["bankBranch","Bank branch"],
- ["accountType","Account type (Savings / Current / Other)"],
- ["upiId","UPI ID (optional)"]
+const groups=[
+ {title:"Personal and contact information",fields:[
+  ["fatherName","Father's name (optional)"],["motherName","Mother's name (optional)"],
+  ["dateOfBirth","Date of birth"],["gender","Gender (optional)"],
+  ["bloodGroup","Blood group (optional)"],["pan","PAN (if required)"],
+  ["contactPhone","Contact phone"],["contactEmail","Email address"],["postalAddress","Postal address"],["pinCode","PIN code"],
+  ["emergencyName","Emergency contact name"],["emergencyPhone","Emergency contact phone"]
+ ]},
+ {title:"Bank details",fields:[
+  ["bankName","Bank name"],["accountHolder","Account holder name"],["bankAccount","Bank account number"],["bankIfsc","IFSC"],
+  ["bankBranch","Bank branch"],["accountType","Account type"],["upiId","UPI ID (optional)"]
+ ]}
 ] as const;
+const choices={bloodGroup:["A+","A-","B+","B-","AB+","AB-","O+","O-"],accountType:["SAVINGS","CURRENT","OTHER"]} as const;
+
 const empty=():Details=>({
  contactPhone:null,postalAddress:null,emergencyName:null,emergencyPhone:null,
  pan:null,bankAccount:null,bankIfsc:null,fatherName:null,motherName:null,dateOfBirth:null,gender:null,bloodGroup:null,contactEmail:null,pinCode:null,bankName:null,accountHolder:null,bankBranch:null,accountType:null,upiId:null
@@ -34,6 +28,9 @@ export function HrPrivateDetails({applicationRef,canView,canManage}:{
  const [open,setOpen]=useState(false);
  const [data,setData]=useState<Details>(empty);
  const [revision,setRevision]=useState(0);
+ const [savedAccount,setSavedAccount]=useState("");
+ const [confirmAccount,setConfirmAccount]=useState("");
+ const confirmNeeded=canManage&&Boolean(data.bankAccount)&&data.bankAccount!==savedAccount;
  const [busy,setBusy]=useState(false);
  const [message,setMessage]=useState("");
  const [error,setError]=useState("");
@@ -51,13 +48,14 @@ export function HrPrivateDetails({applicationRef,canView,canManage}:{
     !("revision" in value)||typeof value.revision!=="number"||
     !value.details||typeof value.details!=="object")
     throw Error("Protected details cannot be verified.");
-   setData(value.details as Details);setRevision(value.revision);setOpen(true);
+   setData(value.details as Details);setSavedAccount((value.details as Details).bankAccount??"");setConfirmAccount("");setRevision(value.revision);setOpen(true);
   }catch(e){setData(empty());setOpen(false);
    setError(e instanceof Error?e.message:"Private employee information is unavailable.");}
   finally{setBusy(false);}
  };
  const save=async()=>{
   if(!canManage||!open||busy)return;
+  if(confirmNeeded&&data.bankAccount!==confirmAccount.trim()){setError("Confirm the new bank account number before saving.");return;}
   setBusy(true);setError("");setMessage("");
   try{
    const res=await fetch("/api/hr/private/"+applicationRef,{
@@ -72,7 +70,7 @@ export function HrPrivateDetails({applicationRef,canView,canManage}:{
    if(!value||typeof value!=="object"||!("saved" in value)||
     value.saved!==true||!("revision" in value)||typeof value.revision!=="number")
     throw Error("The original protected update cannot be confirmed.");
-   setRevision(value.revision);
+   setRevision(value.revision);setSavedAccount(data.bankAccount??"");setConfirmAccount("");
    setMessage("Protected employee data saved and audited. No approval or login was granted.");
   }catch(e){setError(e instanceof Error?e.message:
    "The update status is uncertain. Check before repeating.");}
@@ -91,20 +89,29 @@ export function HrPrivateDetails({applicationRef,canView,canManage}:{
    style={{padding:10,alignSelf:"start",borderRadius:9,background:"#F1F5F9",
     border:"1px solid var(--cg-border)"}}>Open audited private details</button>}
   {open&&<>
-   {fields.map(([key,title])=><label key={key} style={{display:"grid",gap:5}}>
-     <span style={{fontWeight:600}}>{title}</span>
-     <input autoComplete="off" value={data[key]??""} disabled={!canManage||busy}
-      type={key==="dateOfBirth"?"date":key==="contactEmail"?"email":"text"} maxLength={key==="postalAddress"?700:key==="contactEmail"?254:key==="upiId"?128:key==="contactPhone"||key==="emergencyPhone"?20:key==="bankAccount"?22:key==="bankIfsc"?11:key==="pan"||key==="dateOfBirth"?10:key==="pinCode"?6:key==="bloodGroup"?3:key==="accountType"?16:key==="gender"?32:120}
-      onChange={e=>setData(old=>({...old,[key]:e.target.value}))}
-      style={{padding:10,borderRadius:9,border:"1px solid var(--cg-border)",
-       background:canManage?"#fff":"#F8FAFC"}}/>
-    </label>)}
+   {groups.map(group=><section key={group.title} style={{borderTop:"1px solid var(--cg-border)",paddingTop:12,display:"grid",gap:12}}>
+    <h3 style={{margin:0,color:"var(--cg-accent)",fontSize:"1rem"}}>{group.title}</h3>
+    <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(min(100%,200px),1fr))",gap:12}}>
+     {group.fields.map(([key,title])=><div key={key} style={{display:"grid",gap:6}}>
+      <label style={{display:"grid",gap:5}}>
+       <span style={{fontWeight:600}}>{title}</span>
+       {key==="bloodGroup"||key==="accountType"?<select value={data[key]??""} disabled={!canManage||busy} onChange={e=>setData(old=>({...old,[key]:e.target.value}))} style={{padding:10,borderRadius:9,border:"1px solid var(--cg-border)",background:"var(--cg-surface,#fff)"}}><option value="">Not provided</option>{choices[key].map(v=><option key={v} value={v}>{key==="accountType"?v[0]+v.slice(1).toLowerCase():v}</option>)}</select>:
+        <input autoComplete="off" value={data[key]??""} disabled={!canManage||busy}
+         type={key==="dateOfBirth"?"date":key==="contactEmail"?"email":"text"} maxLength={key==="postalAddress"?700:key==="contactEmail"?254:key==="upiId"?128:key==="contactPhone"||key==="emergencyPhone"?20:key==="bankAccount"?22:key==="bankIfsc"?11:key==="pan"||key==="dateOfBirth"?10:key==="pinCode"?6:key==="gender"?32:120}
+         inputMode={key==="bankAccount"||key==="pinCode"?"numeric":key==="contactPhone"||key==="emergencyPhone"?"tel":undefined}
+         onChange={e=>{if(key==="bankAccount")setConfirmAccount("");setData(old=>({...old,[key]:e.target.value}));}}
+         style={{padding:10,borderRadius:9,border:"1px solid var(--cg-border)",background:canManage?"#fff":"#F8FAFC"}}/>}
+      </label>
+      {key==="bankAccount"&&confirmNeeded&&<label style={{display:"grid",gap:5,fontWeight:600}}>Confirm bank account number<input autoComplete="off" inputMode="numeric" type="text" maxLength={22} value={confirmAccount} disabled={busy} onChange={e=>setConfirmAccount(e.target.value)} style={{padding:10,borderRadius:9,border:"1px solid var(--cg-border)"}}/></label>}
+     </div>)}
+    </div>
+   </section>)}
    <div style={{display:"flex",gap:10}}>
     {canManage&&<button type="button" onClick={()=>void save()} disabled={busy}
      style={{padding:11,border:0,background:"var(--cg-accent)",
       color:"#fff",borderRadius:9,fontWeight:700}}>
      {busy?"Saving private details…":"Save encrypted private details"}</button>}
-    <button type="button" disabled={busy} onClick={()=>{setOpen(false);setData(empty());setError("");setMessage("");}}
+    <button type="button" disabled={busy} onClick={()=>{setOpen(false);setData(empty());setSavedAccount("");setConfirmAccount("");setError("");setMessage("");}}
      style={{padding:11,border:"1px solid var(--cg-border)",borderRadius:9,
       background:"#F8FAFC"}}>Close and clear</button>
    </div>
