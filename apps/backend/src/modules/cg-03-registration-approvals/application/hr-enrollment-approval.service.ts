@@ -56,10 +56,10 @@ export class HrEnrollmentApprovalService{
    throw new ConflictException("The original employee submission does not match");
   for(const file of frozen.files){
    if(!file||!ID.test(file.fileRef)||!Number.isSafeInteger(file.fileVersion)||
-    !["HR_IDENTITY_PROOF","HR_PAN_PROOF","HR_QUALIFICATION","HR_PORTRAIT"].includes(file.classification))
+    !["HR_IDENTITY_PROOF","HR_PAN_PROOF","HR_QUALIFICATION","HR_PORTRAIT","HR_EXPERIENCE","HR_POLICE_VERIFICATION","HR_RESUME","HR_APPOINTMENT_DOCUMENT"].includes(file.classification))
     throw new ConflictException("Original employee documents cannot be verified");
    await this.files.prove(tx,realm,frozen.applicationRef,frozen.revisionNo,
-    file.fileRef,file.classification as "HR_IDENTITY_PROOF"|"HR_PAN_PROOF"|"HR_QUALIFICATION"|"HR_PORTRAIT",
+    file.fileRef,file.classification as "HR_IDENTITY_PROOF"|"HR_PAN_PROOF"|"HR_QUALIFICATION"|"HR_PORTRAIT"|"HR_EXPERIENCE"|"HR_POLICE_VERIFICATION"|"HR_RESUME"|"HR_APPOINTMENT_DOCUMENT",
     file.fileVersion);
   }
   if(!frozen.files.some(x=>x.classification==="HR_IDENTITY_PROOF"))
@@ -136,7 +136,7 @@ export class HrEnrollmentApprovalService{
    throw new ForbiddenException("This employee submission is assigned to another person");
   for(const file of frozen.files){
    await this.files.prove(tx,actor.realmId,input.applicationRef,input.revisionNo,
-    file.fileRef,file.classification as "HR_IDENTITY_PROOF"|"HR_PAN_PROOF"|"HR_QUALIFICATION"|"HR_PORTRAIT",
+    file.fileRef,file.classification as "HR_IDENTITY_PROOF"|"HR_PAN_PROOF"|"HR_QUALIFICATION"|"HR_PORTRAIT"|"HR_EXPERIENCE"|"HR_POLICE_VERIFICATION"|"HR_RESUME"|"HR_APPOINTMENT_DOCUMENT",
     file.fileVersion);
   }
   if(!frozen.files.some(f=>f.classification==="HR_IDENTITY_PROOF"))
@@ -235,7 +235,7 @@ export class HrEnrollmentApprovalService{
   */
  async originalProof(token:string,caseInput:string,kindInput:string){
   const actor=await this.reviewer(token),ref=id(caseInput);
-  if(!["HR_IDENTITY_PROOF","HR_PAN_PROOF","HR_QUALIFICATION","HR_PORTRAIT"].includes(kindInput))
+  if(!["HR_IDENTITY_PROOF","HR_PAN_PROOF","HR_QUALIFICATION","HR_PORTRAIT","HR_EXPERIENCE","HR_POLICE_VERIFICATION","HR_RESUME","HR_APPOINTMENT_DOCUMENT"].includes(kindInput))
    throw new BadRequestException("Choose an original employee proof category");
   const tx=await this.db.connect();
   let file:{fileRef:string;fileVersion:number;classification:string}|undefined;
@@ -259,7 +259,7 @@ export class HrEnrollmentApprovalService{
   }catch(e){await tx.query("ROLLBACK");throw e;}
   finally{tx.release();}
   return this.files.protectedReviewRead(actor,c!.hr_application_id,c!.hr_revision_no,
-   file!.fileRef,kindInput as "HR_IDENTITY_PROOF"|"HR_PAN_PROOF"|"HR_QUALIFICATION"|"HR_PORTRAIT");
+   file!.fileRef,kindInput as "HR_IDENTITY_PROOF"|"HR_PAN_PROOF"|"HR_QUALIFICATION"|"HR_PORTRAIT"|"HR_EXPERIENCE"|"HR_POLICE_VERIFICATION"|"HR_RESUME"|"HR_APPOINTMENT_DOCUMENT");
  }
 
  async decide(token:string,caseRef:string,body:unknown){
