@@ -48,6 +48,54 @@ export class DonationFinancePostingFacade{
    years:years.rows.slice(0,20).map(x=>({value:x.id,label:x.name})),
    complete:choices.rows.length<=100&&years.rows.length<=20};
  }
+ async providerOptions(tx:PoolClient,a:VerifiedFoundationActor,branchRef:string|null){
+  const choices=await tx.query<{id:string;name:string;account_kind:string;category:string}>(`
+    SELECT f.id,f.name,f.account_kind,g.category FROM finance_account f
+    JOIN account_group g ON g.id=f.group_id AND g.root_realm_id=f.root_realm_id
+    WHERE f.root_realm_id=$1 AND f.status='ACTIVE'
+      AND (f.branch_id IS NULL OR f.branch_id IS NOT DISTINCT FROM $2::uuid)
+      AND ((g.category='ASSET' AND f.account_kind='GENERAL')
+         OR (g.category='INCOME' AND f.account_kind='GENERAL'))
+    ORDER BY f.name,f.id LIMIT 101`,[a.realmId,branchRef]);
+  const years=await tx.query<{id:string;name:string}>(`
+    SELECT id,name FROM financial_year WHERE root_realm_id=$1 AND status='OPEN'
+    ORDER BY start_on DESC,id LIMIT 21`,[a.realmId]);
+  if(choices.rows.length>100||years.rows.length>20)
+   throw new ConflictException("Finance account/year choices need administrator review.");
+  return {clearingAccounts:choices.rows.filter(x=>x.category==="ASSET").map(x=>({value:x.id,label:x.name})),
+   incomeAccounts:choices.rows.filter(x=>x.category==="INCOME").map(x=>({value:x.id,label:x.name})),
+   years:years.rows.map(x=>({value:x.id,label:x.name}))};
+ }
+ async postProvider(tx:PoolClient,a:VerifiedFoundationActor,x:{
+  donationRef:string;branchRef:string|null;clearingAccountRef:string;incomeAccountRef:string;
+  yearRef:string;postingDate:string;amountMinor:string;eventKey:string;digest:string;
+  paymentReference:string}){
+  if(![x.donationRef,x.clearingAccountRef,x.incomeAccountRef,x.yearRef,x.eventKey].every(v=>ID.test(v))||
+   x.clearingAccountRef===x.incomeAccountRef||!/^[a-f0-9]{64}$/.test(x.digest)||
+   !/^[1-9][0-9]{0,13}$/.test(x.amountMinor)||!/^\d{4}-\d{2}-\d{2}$/.test(x.postingDate)||
+   !/^plink_[A-Za-z0-9]{8,}$/.test(x.paymentReference))
+   throw new BadRequestException("Verified gateway settlement details are incomplete.");
+  const year=await tx.query("SELECT id FROM financial_year WHERE root_realm_id=$1 AND id=$2 "+
+   "AND status='OPEN' AND $3::date BETWEEN start_on AND end_on FOR SHARE",
+   [a.realmId,x.yearRef,x.postingDate]);
+  if(!year.rowCount)throw new ConflictException("Select an open current finance year.");
+  const rows=await tx.query<{id:string;category:string;account_kind:string}>(
+   "SELECT f.id,g.category,f.account_kind FROM finance_account f "+
+   "JOIN account_group g ON g.root_realm_id=f.root_realm_id AND g.id=f.group_id "+
+   "WHERE f.root_realm_id=$1 AND f.id=ANY($2::uuid[]) "+
+   "AND f.status='ACTIVE' AND (f.branch_id IS NULL OR f.branch_id IS NOT DISTINCT FROM $3::uuid) "+
+   "FOR SHARE OF f,g",
+   [a.realmId,[x.clearingAccountRef,x.incomeAccountRef],x.branchRef]);
+  if(rows.rows.length!==2||
+   !rows.rows.some(r=>r.id===x.clearingAccountRef&&r.category==="ASSET"&&r.account_kind==="GENERAL")||
+   !rows.rows.some(r=>r.id===x.incomeAccountRef&&r.category==="INCOME"&&r.account_kind==="GENERAL"))
+   throw new ConflictException("Choose active gateway clearing and donation income accounts.");
+  return this.journal.postBalanced(tx,a,{financialYearRef:x.yearRef,postingDate:x.postingDate,
+   sourceRef:x.donationRef,eventKey:x.eventKey,immutableDigest:x.digest,kind:"GENERAL",
+   description:"Verified gateway donation "+x.paymentReference,
+   lines:[{accountRef:x.clearingAccountRef,branchRef:x.branchRef,debitMinor:x.amountMinor,creditMinor:"0"},
+    {accountRef:x.incomeAccountRef,branchRef:x.branchRef,debitMinor:"0",creditMinor:x.amountMinor}]});
+ }
  async postCash(tx:PoolClient,a:VerifiedFoundationActor,x:Cash){
   if(!ID.test(x.donationRef)||!ID.test(x.eventKey)||!/^[a-f0-9]{64}$/.test(x.digest)||
     !/^[1-9][0-9]{0,13}$/.test(x.amountMinor))
