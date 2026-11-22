@@ -27,7 +27,7 @@ CREATE TABLE project_task (
  FOREIGN KEY(root_realm_id,assignee_employee_ref) REFERENCES hr_employee(root_realm_id,id) ON DELETE RESTRICT,
  FOREIGN KEY(assignee_branch_ref,root_realm_id) REFERENCES branch(id,root_realm_id) ON DELETE RESTRICT,
  FOREIGN KEY(created_by,root_realm_id) REFERENCES account(id,realm_id) ON DELETE RESTRICT,
- CHECK(((assignee_kind='UNASSIGNED' AND status IN('DRAFT','CANCELLED') AND assignee_account_ref IS NULL AND assignee_employee_ref IS NULL AND assignee_branch_ref IS NULL AND assigned_at IS NULL)
+ CHECK(((assignee_kind='UNASSIGNED' AND status='DRAFT' AND assignee_account_ref IS NULL AND assignee_employee_ref IS NULL AND assignee_branch_ref IS NULL AND assigned_at IS NULL)
  OR (assignee_kind='ACCOUNT' AND status<>'DRAFT' AND assignee_account_ref IS NOT NULL AND assignee_employee_ref IS NULL AND assigned_at IS NOT NULL)
  OR (assignee_kind='EMPLOYEE' AND status<>'DRAFT' AND assignee_account_ref IS NOT NULL AND assignee_employee_ref IS NOT NULL AND assignee_branch_ref IS NOT NULL AND assigned_at IS NOT NULL)) IS TRUE),
  CHECK((status='COMPLETED')=(completed_at IS NOT NULL))
