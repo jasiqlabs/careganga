@@ -70,7 +70,7 @@ export type ChangeRow={id:string;reference:string;employee_id:string;employee_co
  effective_date:string;last_working_date:string|null;target_account_ref:string|null;expected_access_version:string|null;expected_role_revision:number|null;
  private_ciphertext:string;private_nonce:string;private_tag:string;created_by:string;request_key:string;request_digest:string;
  source_digest:string;revision:number;last_command_key:string;last_command_digest:string;status:string;case_ref:string|null;
- decision_ref:string|null;cancel_event_ref:string|null;case_number:string|null;case_status:string|null};
+ decision_ref:string|null;cancel_event_ref:string|null;effect_attempt_count:number;case_number:string|null;case_status:string|null};
 export type ChangeSubmission={requestRef:string;sourceDigest:string;requestKey:string;revision:number;kind:Kind;employeeName:string};
 const currentSql=`SELECT e.id,e.employee_code,app.legal_name AS employee_name,e.account_ref,e.status,e.status_version,
  a.id AS assignment_id,a.assignment_version,a.branch_ref,b.name AS branch_name,a.department_ref,dp.name AS department_name,
@@ -217,6 +217,7 @@ export class HrEmploymentChangeSourceFacade{
    status:row.status,revision:row.revision,caseReference:row.case_number,caseStatus:row.case_status,
    current:{branch:row.prior_branch_name,department:row.prior_department_name,designation:row.prior_designation,manager:row.prior_manager_name},
    proposed:exitKind(row.kind)?null:{branch:row.proposed_branch_name,department:row.proposed_department_name,designation:row.proposed_designation,manager:row.proposed_manager_name,role:row.proposed_role_name},
+   effectIssue:row.status==="APPROVED_PENDING_EFFECT"&&row.effect_attempt_count>0?"Application not confirmed; HR review or retry required":null,
    salaryStatus:"HR_PROPOSAL_NOT_APPLIED" as const};
  }
  async privateDetail(tx:PoolClient,realm:string,row:ChangeRow,actor:string){

@@ -2,6 +2,7 @@ import {Module} from "@nestjs/common";
 import {IdentityAccessModule} from "../cg-01-identity-access/identity-access.module";
 import {HrAttendanceCorrectionService} from "./application/hr-attendance-correction.service";
 import {HrAttendanceCorrectionController} from "./http/hr-attendance-correction.controller";
+import {HrEmploymentChangeDueWorker} from "./application/hr-employment-change-due.worker";
 import {HrEmploymentChangeService} from "./application/hr-employment-change.service";
 import {HrEmploymentChangeController} from "./http/hr-employment-change.controller";
 import {HrAppraisalService} from "./application/hr-appraisal.service";
@@ -25,7 +26,7 @@ import {HrEnrollmentController} from "./http/hr-enrollment.controller";
  */
 @Module({
  imports:[IdentityAccessModule,HrSourceModule,RegistrationApprovalsModule,HrEvidenceSourceModule],
- providers:[HrEmploymentChangeService,HrAppraisalService,HrAttendanceCorrectionService,HrLeaveService,HrEnrollmentService,HrPrivateDetailService,HrPublicBioConsentService,HrAttendanceService],
+ providers:[HrEmploymentChangeDueWorker,HrEmploymentChangeService,HrAppraisalService,HrAttendanceCorrectionService,HrLeaveService,HrEnrollmentService,HrPrivateDetailService,HrPublicBioConsentService,HrAttendanceService],
  controllers:[HrEmploymentChangeController,HrAppraisalController,HrAttendanceCorrectionController,HrLeaveController,HrEnrollmentController,HrPrivateDetailController,HrPublicBioConsentController,HrAttendanceController],
  exports:[HrEnrollmentService,HrPublicBioConsentService]
 })

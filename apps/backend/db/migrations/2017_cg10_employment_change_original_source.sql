@@ -23,6 +23,7 @@ CREATE TABLE hr_employment_change(
  case_ref uuid,decision_ref uuid,cancel_event_ref uuid,new_assignment_ref uuid,
  created_at timestamptz NOT NULL DEFAULT now(), updated_at timestamptz NOT NULL DEFAULT now(),
  decided_at timestamptz,applied_at timestamptz,
+ effect_attempt_count integer NOT NULL DEFAULT 0 CHECK(effect_attempt_count>=0),next_effect_attempt_at timestamptz,
  CHECK(proposed_manager_ref IS NULL OR proposed_manager_ref<>employee_id),
  CHECK((target_account_ref IS NULL AND expected_access_version IS NULL AND proposed_role_ref IS NULL AND expected_role_revision IS NULL)
   OR (target_account_ref IS NOT NULL AND expected_access_version IS NOT NULL AND expected_access_version>0
@@ -56,7 +57,7 @@ CREATE TABLE hr_employment_change(
 -- One pending/approved effective operation per employee at once, to keep exit/transfer ordering deterministic.
 CREATE UNIQUE INDEX ux_hr_change_one_inflight ON hr_employment_change(root_realm_id,employee_id)
  WHERE status IN('SUBMITTED','APPROVED_PENDING_EFFECT');
-CREATE INDEX ix_hr_change_due ON hr_employment_change(effective_date,root_realm_id,id) WHERE status='APPROVED_PENDING_EFFECT';
+CREATE INDEX ix_hr_change_due ON hr_employment_change(effective_date,next_effect_attempt_at,root_realm_id,id) WHERE status='APPROVED_PENDING_EFFECT';
 CREATE INDEX ix_hr_change_employee_history ON hr_employment_change(root_realm_id,employee_id,created_at DESC,id);
 CREATE INDEX ix_hr_change_creator_history ON hr_employment_change(root_realm_id,created_by,created_at DESC,id);
 ALTER TABLE cg03_case ADD COLUMN hr_employment_change_id uuid,
@@ -170,6 +171,11 @@ BEGIN
  IF (NEW.id,NEW.root_realm_id,NEW.reference,NEW.employee_id,NEW.kind,NEW.created_by,NEW.request_key,NEW.request_digest,NEW.created_at)
  IS DISTINCT FROM (OLD.id,OLD.root_realm_id,OLD.reference,OLD.employee_id,OLD.kind,OLD.created_by,OLD.request_key,OLD.request_digest,OLD.created_at)
  THEN RAISE EXCEPTION 'Original employment change identity cannot change'; END IF;
+ IF OLD.status='APPROVED_PENDING_EFFECT' AND NEW.status=OLD.status AND NEW.effect_attempt_count=OLD.effect_attempt_count+1
+  AND NEW.next_effect_attempt_at>now() AND
+  (to_jsonb(NEW)-ARRAY['effect_attempt_count','next_effect_attempt_at','updated_at']) =
+  (to_jsonb(OLD)-ARRAY['effect_attempt_count','next_effect_attempt_at','updated_at'])
+ THEN RETURN NEW; END IF;
  IF OLD.status='DRAFT' AND NEW.status='DRAFT' AND NEW.revision=OLD.revision+1 THEN RETURN NEW; END IF;
  IF (to_jsonb(NEW)-ARRAY['status','case_ref','decision_ref','cancel_event_ref','new_assignment_ref','decided_at','applied_at','updated_at','last_command_key','last_command_digest'])
  IS DISTINCT FROM
