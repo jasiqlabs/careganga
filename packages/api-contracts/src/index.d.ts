@@ -202,3 +202,11 @@ export interface CG19UploadStatus {
   uploadRef:string;status:CG19FileState;fileRef:string|null;
   cleanVerified:boolean;message?:string;
 }
+
+/** CG05 US001 operational project, no public or finance claims. */
+export type CG05Option={value:string;label:string};
+export type CG05Project={ref:string;code:string;title:string;category:string;summary:string;description:string;status:string;priority:string;ownerRef:string;owner:string;branchRef:string|null;branch:string|null;stateRef:string|null;state:string|null;districtRef:string|null;district:string|null;location:string;fundingSource:string;plannedStart:string|null;plannedEnd:string|null;plannedBudgetMinor:string|null;version:number;updatedAt:string;completedAt:string|null};
+export type CG05ProjectDetail=CG05Project&{canManage:boolean;financeStatus:string;publicStatus:string;history:{action:string;priorStatus:string|null;status:string;reason:string;at:string;actor:string}[];branchHistory:{branch:string;validFrom:string;validTo:string|null}[]};
+export type CG05ProjectList={items:CG05Project[];counts:{total:number;active:number;hold:number;completed:number;cancelled:number;planned:number;plannedBudgetMinor:string};categories:{label:string;count:number}[];recent:{title:string;action:string;status:string;at:string}[];offset:number;hasMore:boolean};
+export type CG05ProjectOptions={canManageFoundation:boolean;branches:CG05Option[];owners:CG05Option[];states:CG05Option[];districts:CG05Option[]};
+export type CG05ProjectDraft={code:string;title:string;category:string;summary:string;description:string;priority:string;ownerRef:string;branchRef:string;stateRef:string;districtRef:string;location:string;fundingSource:string;plannedStart:string;plannedEnd:string;plannedBudget:string;status:string};
