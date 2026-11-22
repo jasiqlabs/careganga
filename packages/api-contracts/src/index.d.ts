@@ -304,7 +304,7 @@ export type CG04VolunteerApplication={
  firstName:string;lastName:string;dateOfBirth:string;gender:string;bloodGroup:string|null;mobile:string;email:string|null;
  address:string;city:string;village:string;pinCode:string;stateRef:string;state:string;districtRef:string;district:string;
  branchRef:string|null;branch:string|null;departmentRef:string;department:string;availability:CG04VolunteerAvailability;
- skills:string[];experience:string;referral:string;consentVersion:"VOLUNTEER_V1";submittedAt:string|null;updatedAt:string
+ skills:string[];experience:string;referral:string;consentVersion:"VOLUNTEER_V1";submittedAt:string|null;updatedAt:string;reviewReference:string|null;reviewStatus:string|null;reviewRemarks:string|null
 };
 export type CG04VolunteerApplicationPage={items:CG04VolunteerApplication[]};
 export type CG04VolunteerOption={value:string;label:string};
