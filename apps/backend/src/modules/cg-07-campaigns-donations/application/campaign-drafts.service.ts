@@ -88,6 +88,19 @@ export class CampaignDraftsService{
    [a.realmId,c.id])).rows[0].code_norm;
   return {ref:c.id,version:prior.resulting_version,code,status:c.source_status,replayed:true};
  }
+ async options(token:string,query:Record<string,unknown>){
+  if(Object.keys(query).some(k=>!["stateRef","q"].includes(k)))throw invalid("Check the campaign choices.");
+  const state=query.stateRef===undefined||query.stateRef===""?null:campaignRef(query.stateRef);
+  const search=query.q??"";
+  if(typeof search!=="string"||search.length>80)throw invalid("Use a shorter campaign staff search.");
+  return this.run(token,"campaigns.view",async(tx,a)=>{
+   const scope=await this.branches.projectBranchScope(tx,a);
+   return {canFoundation:scope.all,branches:scope.branches.map(({value,label})=>({value,label})),
+    states:await this.branches.projectGeographyOptions(tx,a,null),
+    districts:state?await this.branches.projectGeographyOptions(tx,a,state):[],
+    coordinators:await this.identity.eligibleOfficeholderOptions(tx,a,search)};
+  },true);
+ }
  async create(token:string,raw:unknown){
   const value=parseCampaignDraft(raw),digest=hash(["CG07_CREATE_V1",value]);
   return this.run(token,"campaigns.manage",async(tx,a)=>{
