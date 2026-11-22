@@ -21,7 +21,7 @@ export class ProjectsService{
  async run<T>(token:string,action:string,work:(tx:PoolClient,a:VerifiedFoundationActor)=>Promise<T>,read=false){
   const a=await this.sessions.requireAction(token,action),tx=await this.db.connect();
   try{await tx.query(read?"BEGIN ISOLATION LEVEL REPEATABLE READ":"BEGIN");await this.identity.assertCurrent(tx,a,action);const v=await work(tx,a);await tx.query("COMMIT");return v;}
-  catch(e){await tx.query("ROLLBACK");if(e&&typeof e==="object"&&"code" in e&&e.code==="23505")throw new ConflictException({code:"CG05_DUPLICATE"});if(e&&typeof e==="object"&&"code" in e&&e.code==="40001")throw stale();throw e;}finally{tx.release();}
+  catch(e){try{await tx.query("ROLLBACK");}catch{/* Do not replace the original transaction failure. */}if(e&&typeof e==="object"&&"code" in e&&e.code==="23505")throw new ConflictException({code:"CG05_DUPLICATE",message:"A matching record or request already exists. Refresh and review it."});if(e&&typeof e==="object"&&"code" in e&&["40001","40P01","55P03","23503","23514"].includes(String(e.code)))throw stale();throw e;}finally{tx.release();}
  }
  private async budgetOverview(tx:PoolClient,a:VerifiedFoundationActor,s:Scope,mine:boolean,target:string|null){
   await tx.query("SAVEPOINT cg05_budget_read");
