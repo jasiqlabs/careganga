@@ -127,11 +127,12 @@ export class InventoryStockService{
    const q=await tx.query<{actorRef:string;[k:string]:unknown}>(`
     SELECT e.id AS ref,e.event_no AS reference,e.event_kind AS kind,e.effective_date::text AS date,e.occurred_at AS "recordedAt",
      e.actor_ref AS "actorRef",m.id AS "movementRef",m.item_id AS "itemRef",m.source_line_no AS line,m.signed_qty::text AS quantity,m.unit_code AS unit,i.name AS item,i.sku_norm AS sku,l.label AS location,
-     s.display_name AS supplier,CASE WHEN e.event_kind='RECEIPT' AND EXISTS(SELECT 1 FROM stock_event rev WHERE rev.root_realm_id=e.root_realm_id AND rev.reversal_of_ref=e.id AND rev.event_kind='RECEIPT_REVERSAL') THEN 'REVERSED' ELSE 'CONFIRMED' END AS status
+     s.display_name AS supplier,CASE WHEN e.event_kind='ISSUE' THEN (-m.signed_qty-COALESCE(ret.qty,0))::text END AS "returnable",CASE WHEN e.event_kind='ISSUE' AND COALESCE(ret.qty,0)=-m.signed_qty THEN 'RETURNED' WHEN e.event_kind='ISSUE' AND COALESCE(ret.qty,0)>0 THEN 'PARTIALLY_RETURNED' WHEN e.event_kind='RECEIPT' AND EXISTS(SELECT 1 FROM stock_event rev WHERE rev.root_realm_id=e.root_realm_id AND rev.reversal_of_ref=e.id AND rev.event_kind='RECEIPT_REVERSAL') THEN 'REVERSED' ELSE 'CONFIRMED' END AS status
     FROM stock_movement m JOIN stock_event e ON e.id=m.stock_event_id AND e.root_realm_id=m.root_realm_id
     JOIN inventory_item i ON i.id=m.item_id AND i.root_realm_id=m.root_realm_id JOIN inventory_location l ON l.id=m.location_id AND l.root_realm_id=m.root_realm_id
     LEFT JOIN inventory_receipt_draft d ON d.id=e.receipt_draft_id AND d.root_realm_id=e.root_realm_id
     LEFT JOIN inventory_supplier s ON s.id=d.supplier_id AND s.root_realm_id=d.root_realm_id
+    LEFT JOIN LATERAL(SELECT SUM(n.signed_qty) AS qty FROM stock_event re JOIN stock_movement n ON n.root_realm_id=re.root_realm_id AND n.stock_event_id=re.id WHERE re.root_realm_id=m.root_realm_id AND re.original_movement_id=m.id AND re.event_kind='RETURN') ret ON e.event_kind='ISSUE'
     WHERE m.root_realm_id=$1 AND m.location_id=$2 AND ($3='' OR strpos(lower(e.event_no),$3)>0 OR strpos(lower(i.name),$3)>0 OR strpos(lower(i.sku_norm),$3)>0 OR strpos(lower(COALESCE(s.display_name,'')),$3)>0)
      AND ($4='ALL' OR e.event_kind=$4) AND ($5::date IS NULL OR e.effective_date>=$5) AND ($6::date IS NULL OR e.effective_date<=$6)
     ORDER BY e.occurred_at DESC,e.id DESC,m.source_line_no LIMIT 26 OFFSET $7`,[a.realmId,loc,search,kind,from,to,offset]);
