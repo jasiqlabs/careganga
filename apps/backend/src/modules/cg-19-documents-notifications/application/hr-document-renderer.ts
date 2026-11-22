@@ -12,7 +12,7 @@ export function hrLetterBlocks(body:string):HrLetterBlock[]{
  return body.split(/\r?\n/).map(line=>{
   for(const kind of ["heading","bullet","numbered","center","underline"] as const){
    const prefix=marker[kind];
-   if(line.startsWith(prefix)&&(line.slice(prefix.length).trim()||kind!=="heading"&&kind!=="bullet"))return {kind,text:line.slice(prefix.length).trim()};
+   if(line.startsWith(prefix))return {kind,text:line.slice(prefix.length)};
   }
   return {kind:"paragraph",text:line};
  });
