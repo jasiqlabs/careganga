@@ -68,12 +68,26 @@ const BASE=`
       AND i.campaign_media_rights_confirmed AND i.classification='CAMPAIGN_BANNER'))
  `;
 type Source={sourceRef:string;slug:string;title:string;category:string;summary:string;
- description:string;goalMinor:string|null;startAt:string|null;endAt:string|null;
+ description:string;goalMinor:string|null;raisedMinor:string;startAt:string|null;endAt:string|null;
  area:string;coverSrc:string|null;heroSrc:string|null;heroAlt:string};
 const PUBLIC_COLUMNS=`c.id AS "sourceRef",lower(c.code_norm) AS slug,c.title,c.category,
   left(rev.step1_basic->>'summary',500) AS summary,
   left(rev.step1_basic->>'description',4000) AS description,
-  c.goal_minor::text AS "goalMinor",c.start_at::text AS "startAt",c.end_at::text AS "endAt",
+  c.goal_minor::text AS "goalMinor",
+ (
+  coalesce((SELECT sum(d.amount_minor) FROM donation d
+   JOIN donation_finance_effect e ON e.root_realm_id=d.root_realm_id AND e.donation_id=d.id
+   JOIN journal j ON j.root_realm_id=e.root_realm_id AND j.id=e.journal_id
+   WHERE d.root_realm_id=c.root_realm_id AND d.campaign_id=c.id
+     AND d.source_status='RECEIVED_POSTED' AND e.status='POSTED'
+     AND j.status='POSTED' AND j.source_ref=d.id),0)
+  -
+  coalesce((SELECT sum(r.amount_minor) FROM donation_refund_request r
+   JOIN donation d ON d.root_realm_id=r.root_realm_id AND d.id=r.donation_id
+   JOIN journal j ON j.root_realm_id=r.root_realm_id AND j.id=r.reversal_journal_ref
+   WHERE d.root_realm_id=c.root_realm_id AND d.campaign_id=c.id
+     AND r.status='FINANCE_REVERSED' AND j.status='POSTED' AND j.source_ref=r.id),0)
+ )::text AS "raisedMinor",c.start_at::text AS "startAt",c.end_at::text AS "endAt",
   left(coalesce(rev.step2_project_and_geo->>'location',''),250) AS area,
   CASE WHEN rev.step5_media_refs->>'coverRef' IS NOT NULL THEN
    '/api/public/campaigns/media/'||(rev.step5_media_refs->>'coverRef') END AS "coverSrc",
