@@ -40,7 +40,7 @@ export function NativeMemberReview({token,canConfigure,onExpired}:{token:string;
  async function request<T>(path:string,body?:Record<string,unknown>):Promise<T>{
   const r=await identityRequest("/api/v1/membership/reviews"+path,{headers:{Authorization:"Bearer "+token,...(body?{"Content-Type":"application/json"}:{})},cache:"no-store",...(body?{method:"POST",body:JSON.stringify(body)}:{})});
   if(r.status===401){onExpired();throw Error("Sign in again.");}
-  if(!r.ok)throw Object.assign(new Error(r.status===403?"Current Foundation review permission is unavailable.":r.status===404?"This membership case or proof is unavailable.":r.status===409?"The review changed. Refresh the case before deciding.":r.status===400?"Check the review form and current password.":"Membership review result could not be confirmed. Refresh before retrying."),{status:r.status});
+  if(!r.ok)throw Object.assign(new Error(r.status===403?"Current Foundation review permission is unavailable.":r.status===404?"This membership case or proof is unavailable.":r.status===409?"The review changed. Refresh the case before deciding.":r.status===400?(body?"Check the decision or password fields.":"Check the search filters, status and submitted dates."):"Membership review result could not be confirmed. Refresh before retrying."),{status:r.status});
   return await r.json() as T;
  }
  useEffect(()=>{const sub=AppState.addEventListener("change",state=>{
