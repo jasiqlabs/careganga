@@ -78,7 +78,9 @@ export function NativeVolunteerStaff({token,canReview,canRoster,canExport,canCon
  });
  const configure=()=>void run(async()=>{
   if(!canConfigure||!configPassword)throw Error("Enter current password to configure original Foundation volunteer review.");
+  const at=seq.current;
   const value=await request<CG04VolunteerReviewPolicy>(token,"/api/v1/volunteers/reviews/policy",{currentPassword:configPassword});
+  if(!active.current||seq.current!==at)return;
   setConfigPassword("");setPolicy(value);setMessage("Original independent volunteer review configured.");
  });
  const decide=()=>void run(async()=>{
@@ -87,10 +89,14 @@ export function NativeVolunteerStaff({token,canReview,canRoster,canExport,canCon
   const digest=JSON.stringify([detail.caseRef,detail.revision,action,remarks.trim()]);
   if(!pending.current||pending.current.digest!==digest)pending.current={ref:detail.caseRef,digest,
    body:{requestKey:Crypto.randomUUID(),expectedRevision:detail.revision,action,remarks:remarks.trim()}};
-  const p=pending.current;
+  const p=pending.current,at=seq.current;
   await request(token,"/api/v1/volunteers/reviews/"+p.ref+"/decide",{...p.body,currentPassword:password});
-  pending.current=null;setPassword("");setRemarks("");setDetail(null);await refresh();
-  setMessage("Independent volunteer decision recorded.");
+  // A successful server decision is re-read on foreground; never repopulate
+  // an old account, background screen or changed review selection.
+  if(!active.current||seq.current!==at)return;
+  pending.current=null;setPassword("");setRemarks("");setDetail(null);
+  await refresh();
+  if(active.current&&seq.current===at+1)setMessage("Independent volunteer decision recorded.");
  });
  const fileAction=(path:string,mimeHint?:string,exporting=false)=>void run(async()=>{
   // A protected proof or roster export must never open a share sheet after
