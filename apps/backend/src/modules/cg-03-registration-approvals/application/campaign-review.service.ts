@@ -14,7 +14,7 @@ type CaseRow={id:string;case_number:string;process_id:string;proposer_id:string;
  status:string;revision:number;campaign_review_ref:string;campaign_id:string;campaign_source_revision:number;campaign_source_digest:string};
 type FrozenSteps={basic:unknown;project:unknown;team:unknown;budget:unknown;media:unknown;review:unknown};
 type CampaignFrozen={title:string;category:string;branchRef:string|null;projectRef:string|null;
- eventRef:string|null;goalMinor:string|null;startAt:string|null;endAt:string|null;steps:FrozenSteps};
+ eventRef:string|null;volunteerRef:string|null;goalMinor:string|null;startAt:string|null;endAt:string|null;steps:FrozenSteps};
 type Source={root_realm_id:string;id:string;campaign_id:string;source_revision:number;source_digest:string;
  submitted_by:string;source_snapshot:CampaignFrozen};
 const UUID=/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -97,7 +97,7 @@ export class CampaignReviewService{
    [actor.realmId,c.campaign_review_ref,c.campaign_id,c.campaign_source_revision,c.campaign_source_digest])).rows[0];
   if(!s||s.submitted_by!==c.proposer_id)throw changed();
   const original=(await tx.query<{digest:string;current_revision:number;status:string;title:string;
-    category:string;branchRef:string|null;projectRef:string|null;eventRef:string|null;
+    category:string;branchRef:string|null;projectRef:string|null;eventRef:string|null;volunteerRef:string|null;
     goalMinor:string|null;startAt:string|null;endAt:string|null;
     basic:unknown;project:unknown;team:unknown;budget:unknown;media:unknown;review:unknown}>(
    `SELECT r.immutable_digest AS digest,c.current_revision,c.source_status AS status,
@@ -106,6 +106,7 @@ export class CampaignReviewService{
      r.step2_project_and_geo->>'branchRef' AS "branchRef",
      r.step2_project_and_geo->>'projectRef' AS "projectRef",
      r.step2_project_and_geo->>'eventRef' AS "eventRef",
+     r.step3_team->>'volunteerRef' AS "volunteerRef",
      r.step4_budget_targets->>'goalMinor' AS "goalMinor",
      r.step4_budget_targets->>'startAt' AS "startAt",
      r.step4_budget_targets->>'endAt' AS "endAt",
@@ -116,7 +117,8 @@ export class CampaignReviewService{
    [actor.realmId,c.campaign_id,c.campaign_source_revision])).rows[0];
   if(!original||original.digest!==s.source_digest||
    hash({title:original.title,category:original.category,branchRef:original.branchRef,
-    projectRef:original.projectRef,eventRef:original.eventRef,goalMinor:original.goalMinor,
+    projectRef:original.projectRef,eventRef:original.eventRef,volunteerRef:original.volunteerRef,
+    goalMinor:original.goalMinor,
     startAt:original.startAt,endAt:original.endAt,
     steps:{basic:original.basic,project:original.project,team:original.team,budget:original.budget,
       media:original.media,review:original.review}})!==hash(s.source_snapshot))throw changed();
@@ -124,15 +126,16 @@ export class CampaignReviewService{
    if(original.current_revision!==s.source_revision||original.status!=="SUBMITTED")
     throw changed();
    const latest=(await tx.query<{title:string;category:string;branchRef:string|null;
-     projectRef:string|null;eventRef:string|null;goalMinor:string|null;startAt:string|null;endAt:string|null}>(`
+     projectRef:string|null;eventRef:string|null;volunteerRef:string|null;goalMinor:string|null;startAt:string|null;endAt:string|null}>(`
     SELECT title,category,branch_ref AS "branchRef",project_source_ref AS "projectRef",
-      event_source_ref AS "eventRef",goal_minor::text AS "goalMinor",
+      event_source_ref AS "eventRef",volunteer_source_ref AS "volunteerRef",goal_minor::text AS "goalMinor",
       start_at::text AS "startAt",end_at::text AS "endAt"
      FROM campaign WHERE root_realm_id=$1 AND id=$2 FOR SHARE`,
      [actor.realmId,c.campaign_id])).rows[0];
    if(!latest||hash(latest)!==hash({title:s.source_snapshot.title,category:s.source_snapshot.category,
     branchRef:s.source_snapshot.branchRef,projectRef:s.source_snapshot.projectRef,
-    eventRef:s.source_snapshot.eventRef,goalMinor:s.source_snapshot.goalMinor,
+    eventRef:s.source_snapshot.eventRef,volunteerRef:s.source_snapshot.volunteerRef,
+    goalMinor:s.source_snapshot.goalMinor,
     startAt:s.source_snapshot.startAt,endAt:s.source_snapshot.endAt}))
     throw changed();
   }
