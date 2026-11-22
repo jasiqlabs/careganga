@@ -57,30 +57,47 @@ export async function renderHrDocument(input:{snapshot:Record<string,unknown>;ti
  };
  if(v.kind==="EMPLOYEE_ID"){
   if((!input.preview&&!input.qr)||!input.portrait)throw new ServiceUnavailableException("Card verification or approved portrait unavailable");
-  const front=pdf.addPage([242.65,153.07]),back=pdf.addPage([242.65,153.07]);
-  for(const page of [front,back])page.drawRectangle({x:0,y:131,width:243,height:22,color:blue});
-  front.drawText("CareGanga Foundation",{x:9,y:138,size:10,font,color:rgb(1,1,1)});
-  const image=input.portrait.mime==="image/jpeg"?await pdf.embedJpg(input.portrait.bytes):
-   input.portrait.mime==="image/png"?await pdf.embedPng(input.portrait.bytes):null;
-  if(!image)throw new ServiceUnavailableException("Approved portrait format unavailable");
-  const photo=image.scaleToFit(58,78);
-  front.drawImage(image,{x:10+(58-photo.width)/2,y:38+(78-photo.height)/2,width:photo.width,height:photo.height});
-  let y=112;y=print(front,fact("recipient"),76,y,10,155);
-  y=print(front,fact("designation")+" · "+fact("branch"),76,y,8,155);
-  y=print(front,"Employee: "+fact("subjectReference"),76,y,8,155);
-  y=print(front,"Expires: "+fact("expiryDate"),76,y,8,155);
-  print(front,"Version "+input.issueRevision,76,y,8,155);
-  back.drawText("Employee ID verification",{x:9,y:138,size:10,font,color:rgb(1,1,1)});
+  const W=153.07,H=242.65,margin=12,gap=10;
+  const previewSheet=input.preview?pdf.addPage([W*2+margin*2+gap,H+margin*2+20]):null;
+  const front=previewSheet??pdf.addPage([W,H]),back=previewSheet??pdf.addPage([W,H]);
+  const y0=input.preview?margin+20:0,x1=input.preview?margin:0,x2=input.preview?margin+W+gap:0;
+  const navy=rgb(.055,.16,.31),green=rgb(.08,.43,.32),pale=rgb(.95,.97,.98),white=rgb(1,1,1);
+  const rect=(page:PDFPage,x:number,y:number,width:number,height:number,color:ReturnType<typeof rgb>)=>page.drawRectangle({x,y:y+y0,width,height,color});
+  const fit=(page:PDFPage,value:string,x:number,y:number,width:number,size:number,color=grey)=>{
+   const one=value.replace(/\s+/g," ").trim()||"Not specified";
+   const actual=Math.min(size,width*size/Math.max(1,font.widthOfTextAtSize(one,size)));
+   page.drawText(one,{x,y:y+y0,size:actual,font,color});
+  };
+  for(const [page,x] of [[front,x1],[back,x2]] as const){
+   rect(page,x,0,W,H,pale);rect(page,x,H-27,W,27,navy);rect(page,x,0,W,17,navy);
+   fit(page,"CAREGANGA FOUNDATION",x+8,H-15,W-16,10,white);
+   fit(page,"EMPLOYEE IDENTIFICATION",x+8,H-24,W-16,6.5,white);
+  }
+  const photo=await loadImage(input.portrait);
+  drawAsset(front,photo,x1+42,y0+142,69,69);
+  fit(front,fact("recipient"),x1+9,129,W-18,12,navy);
+  fit(front,fact("designation"),x1+9,115,W-18,8,green);
+  for(const [label,k,y] of [["Employee","subjectReference",95],["Branch","branch",77],["Issue date","issueDate",59],["Valid until","expiryDate",41]] as const){
+   fit(front,label,x1+9,y+7,W-18,6.5,grey);fit(front,fact(k),x1+9,y-1,W-18,8.5,navy);
+  }
+  fit(front,"Version "+input.issueRevision,x1+9,7,W-18,7,white);
+  fit(back,"VERIFY EMPLOYEE CARD",x2+9,H-43,W-18,10,navy);
   if(input.qr&&!input.preview){
-  const matrix=opaqueAppointmentQr(input.qr),unit=2.1,origin=9+4*unit,top=119-4*unit;
-  for(let row=0;row<matrix.length;row++)for(let col=0;col<matrix.length;col++)if(matrix[row][col])
-   back.drawRectangle({x:origin+col*unit,y:top-(row+1)*unit,width:unit,height:unit,color:rgb(0,0,0)});
-  print(back,"Scan the opaque code and verify in CareGanga. No personal details in the QR.",88,109,8,144);
-  }else print(back,"Verification code and signature appear only on an authorized issued card.",12,110,9,216);
-  if(signature&&seal){drawAsset(back,signature,90,39,67,24);drawAsset(back,seal,165,39,52,24);}
-  const name=input.signatoryName;const nameSize=Math.min(7,140*7/Math.max(1,font.widthOfTextAtSize(name,7)));
-  back.drawText(name,{x:90,y:29,size:nameSize,font,color:grey});
-  if(input.qr&&!input.preview)back.drawText(input.qr,{x:9,y:10,size:7,font,color:grey});
+   const matrix=opaqueAppointmentQr(input.qr),unit=74/(matrix.length+8),origin=x2+(W-74)/2+4*unit,top=H-54-4*unit;
+   rect(back,x2+(W-74)/2,H-54-74,74,74,white);
+   for(let row=0;row<matrix.length;row++)for(let col=0;col<matrix.length;col++)if(matrix[row][col])
+    rect(back,origin+col*unit,top-(row+1)*unit,unit,unit,rgb(0,0,0));
+   fit(back,input.qr,x2+8,102,W-16,6,grey);
+   fit(back,"Verify the opaque code in CareGanga.",x2+9,89,W-18,7,grey);
+   if(signature&&seal){drawAsset(back,signature,x2+9,y0+43,70,32);drawAsset(back,seal,x2+83,y0+39,60,39);}
+  }else{
+   rect(back,x2+39,H-126,75,68,white);
+   fit(back,"QR withheld",x2+47,H-95,59,9,grey);
+   fit(back,"Signature and seal only after issue.",x2+9,88,W-18,7,grey);
+  }
+  fit(back,input.signatoryName,x2+9,29,W-18,8,navy);
+  fit(back,"Authorized signatory",x2+9,20,W-18,6.5,grey);
+  fit(back,"CareGanga Foundation",x2+9,7,W-18,7,white);
  }else{
   const newLetterPage=()=>{const p=pdf.addPage([595,842]);p.drawRectangle({x:0,y:815,width:595,height:27,color:blue});p.drawText("CareGanga Foundation",{x:45,y:771,size:20,font,color:blue});return p;};
   let page=newLetterPage();
