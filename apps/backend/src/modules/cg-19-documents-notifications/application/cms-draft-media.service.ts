@@ -1,3 +1,4 @@
+import {publishedEventCover} from "../../cg-05-projects-field-operations/application/event-public-source";
 import {publishedProjectCover} from "../../cg-05-projects-field-operations/application/project-public-source";
 import {BadRequestException,ConflictException,ForbiddenException,Inject,Injectable,
  NotFoundException,ServiceUnavailableException} from "@nestjs/common";
@@ -335,11 +336,11 @@ export class CmsDraftMediaService{
    "LIMIT 1",[ref]);
   const x=result.rows[0];
   if(!x){
-   const cover=await publishedProjectCover(this.db,ref);
+   const cover=(await publishedProjectCover(this.db,ref))??(await publishedEventCover(this.db,ref));
    if(!cover)throw new NotFoundException();
    let bytes:Buffer;try{bytes=await this.objects.readVerifiedPrivateObject({objectKey:cover.object_key,objectVersion:cover.object_version,maxBytes:10485760});}catch{throw new ServiceUnavailableException("The published image is temporarily unavailable");}
    if(bytes.length!==Number(cover.verified_size_bytes)||createHash("sha256").update(bytes).digest("hex")!==cover.verified_sha256)throw new ServiceUnavailableException("The approved image could not be verified");
-   const latest=await publishedProjectCover(this.db,ref);
+   const latest=(await publishedProjectCover(this.db,ref))??(await publishedEventCover(this.db,ref));
    if(!latest||latest.revision!==cover.revision||latest.object_version!==cover.object_version)throw new NotFoundException();
    return {mime:cover.original_mime,bytes};
   }
