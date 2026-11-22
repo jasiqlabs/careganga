@@ -21,7 +21,7 @@ export class DonationAdminService{
    donationNumber:string;amountMinor:string;currency:string;status:string;
    method:string|null;campaignTitle:string|null;voucher:string|null;createdAt:Date;
    donationRef:string;refundMinor:string;receiptStatus:string}>(
-    "SELECT d.id AS "donationRef",d.donation_number AS \"donationNumber\",d.amount_minor::text AS \"amountMinor\","+
+    "SELECT d.id AS \"donationRef\",d.donation_number AS \"donationNumber\",d.amount_minor::text AS \"amountMinor\","+
     "d.currency,d.source_status AS status,m.method,c.title AS \"campaignTitle\","+
     "e.voucher_reference AS voucher,d.created_at AS \"createdAt\","+
     "coalesce((SELECT sum(r.amount_minor) FROM donation_refund_request r "+
