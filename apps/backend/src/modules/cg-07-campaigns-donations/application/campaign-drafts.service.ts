@@ -141,20 +141,108 @@ export class CampaignDraftsService{
    await this.identity.assertCurrent(tx,a,"campaigns.view");
    const prior=await this.replay(tx,a,value.key,digest,"SAVE_DRAFT",key);if(prior)return prior;
    const existing=await this.current(tx,a,key,true);
-   if(existing.source_status!=="DRAFT"||existing.version!==value.expected)
+   if(!["DRAFT","RETURNED"].includes(existing.source_status)||existing.version!==value.expected)
     throw invalid("This campaign has changed. Refresh its draft before saving again.");
    await this.eligibleDraft(tx,a,value);
    const next=(await tx.query<CampaignRow>(`UPDATE campaign SET title=$3,category=$4,branch_ref=$5,
     goal_minor=$6::bigint,start_at=$7::date,end_at=$8::date,
-    project_source_ref=$10,event_source_ref=$11,
+    project_source_ref=$10,event_source_ref=$11,source_status='DRAFT',
     current_revision=current_revision+1,version=version+1,updated_at=now()
-    WHERE root_realm_id=$1 AND id=$2 AND version=$9 AND source_status='DRAFT'
+    WHERE root_realm_id=$1 AND id=$2 AND version=$9 AND source_status IN('DRAFT','RETURNED')
     RETURNING id,root_realm_id,branch_ref,created_by,source_status,version,current_revision`,
     [a.realmId,key,value.basic.title,value.project.category,value.project.branchRef,value.budget.goalMinor,
      value.budget.startAt,value.budget.endAt,value.expected,value.project.projectRef,value.project.eventRef])).rows[0];
    if(!next)throw invalid("This campaign was updated elsewhere. Refresh its current draft.");
    return this.record(tx,a,next,value,digest,"SAVE_DRAFT");
   });
+ }
+ /** Original CG07 mutable source authority consumed by the protected CG03 review owner,
+  * using the SAME caller transaction. CG03 owns the approval case and decision. */
+ async freezeForReview(tx:PoolClient,a:Actor,campaignId:string,expectedVersion:number,requestKey:string){
+  await this.identity.assertCurrent(tx,a,"campaigns.manage");
+  await this.identity.assertCurrent(tx,a,"campaigns.view");
+  const c=await this.current(tx,a,campaignId,true);
+  if(c.source_status!=="DRAFT"||c.version!==expectedVersion)
+   throw invalid("Campaign draft changed. Refresh and submit its current revision.");
+  const r=(await tx.query<{immutable_digest:string;title:string;category:string;branch_ref:string|null;
+   project_source_ref:string|null;event_source_ref:string|null;goal_minor:string|null;start_at:string|null;end_at:string|null;
+   basic:Record<string,unknown>;project:Record<string,unknown>;team:Record<string,unknown>;
+   budget:Record<string,unknown>;media:Record<string,unknown>;review:Record<string,unknown>}>(
+   `SELECT r.immutable_digest,c.title,c.category,c.branch_ref,c.project_source_ref,c.event_source_ref,
+      c.goal_minor::text,c.start_at::text,c.end_at::text,r.step1_basic AS basic,
+      r.step2_project_and_geo AS project,r.step3_team AS team,r.step4_budget_targets AS budget,
+      r.step5_media_refs AS media,r.step6_summary AS review
+    FROM campaign c JOIN campaign_revision r ON r.root_realm_id=c.root_realm_id
+     AND r.campaign_id=c.id AND r.revision_no=c.current_revision
+    WHERE c.root_realm_id=$1 AND c.id=$2 FOR SHARE OF r`,
+   [a.realmId,c.id])).rows[0];
+  if(!r||r.goal_minor===null||BigInt(r.goal_minor)<1n||!r.start_at||!r.end_at||
+    r.end_at<(new Date().toISOString().slice(0,10))||!r.basic?.summary)
+   throw invalid("Complete the campaign title, description, fundraising target and valid campaign period before review.");
+  if(r.media?.fileRef||r.team?.volunteerRef)
+   throw invalid("Unverified campaign media or volunteer association must be removed before verification.");
+  await this.projectEvents.requireCurrent(tx,a,c.branch_ref,r.project_source_ref,r.event_source_ref);
+  if(r.team?.coordinatorRef&&typeof r.team.coordinatorRef==="string"&&r.team.coordinatorRef!==a.accountId){
+   const manager=await this.branches.projectBranch(tx,a,c.branch_ref);
+   if(c.branch_ref&&r.team.coordinatorRef!==manager.managerRef)
+    throw invalid("Campaign coordinator no longer belongs to the current selected branch.");
+   await this.identity.eligibleOfficeholder(tx,a,r.team.coordinatorRef);
+  }
+  const nextVersion=c.version+1;
+  const event=(await tx.query(
+   `UPDATE campaign SET source_status='SUBMITTED',version=version+1,updated_at=now()
+    WHERE root_realm_id=$1 AND id=$2 AND version=$3 AND source_status='DRAFT' RETURNING version`,
+   [a.realmId,c.id,c.version]));
+  if(event.rowCount!==1)throw invalid("Campaign draft changed before submission.");
+  await tx.query(`INSERT INTO campaign_status_event(root_realm_id,campaign_id,source_revision,digest,
+   request_key,operation,prior_status,resulting_status,resulting_version,actor_ref)
+   VALUES($1,$2,$3,$4,$5,'SUBMIT','DRAFT','SUBMITTED',$6,$7)`,
+   [a.realmId,c.id,c.current_revision,r.immutable_digest,requestKey,nextVersion,a.accountId]);
+  return {campaignId:c.id,version:nextVersion,revision:c.current_revision,digest:r.immutable_digest,title:r.title,
+   sourceSnapshot:{title:r.title,category:r.category,branchRef:r.branch_ref,projectRef:r.project_source_ref,
+    eventRef:r.event_source_ref,goalMinor:r.goal_minor,startAt:r.start_at,endAt:r.end_at,
+    steps:{basic:r.basic,project:r.project,team:r.team,budget:r.budget,media:r.media,review:r.review}}};
+ }
+ /** Only CG03's independently authenticated final decision may invoke this
+  * transaction-scoped owner effect; it never creates an original CG18 publication. */
+ async acceptReviewEffect(tx:PoolClient,root:string,campaignId:string,revision:number,digest:string,
+  decision:"APPROVE"|"RETURN"|"REJECT",actorId:string,requestKey:string){
+  const row=(await tx.query<{version:number;current_revision:number;status:string;project_source_ref:string|null;
+    event_source_ref:string|null;branch_ref:string|null;digest:string}>(
+   `SELECT c.version,c.current_revision,c.source_status AS status,c.project_source_ref,
+      c.event_source_ref,c.branch_ref,r.immutable_digest AS digest FROM campaign c
+    JOIN campaign_revision r ON r.root_realm_id=c.root_realm_id
+     AND r.campaign_id=c.id AND r.revision_no=c.current_revision
+    WHERE c.root_realm_id=$1 AND c.id=$2 FOR UPDATE OF c`,
+   [root,campaignId])).rows[0];
+  if(!row||row.status!=="SUBMITTED"||row.current_revision!==revision||row.digest!==digest)
+   throw invalid("The submitted campaign revision changed. Do not approve old details.");
+  if(decision==="APPROVE"){
+   if(row.project_source_ref){
+    const valid=await tx.query(`SELECT 1 FROM project
+     WHERE root_realm_id=$1 AND id=$2 AND status='ACTIVE'
+       AND branch_ref IS NOT DISTINCT FROM $3::uuid FOR SHARE`,
+     [root,row.project_source_ref,row.branch_ref]);
+    if(!valid.rowCount)throw invalid("Linked project is no longer active. Return the campaign for correction.");
+   }
+   if(row.event_source_ref){
+    const valid=await tx.query(`SELECT 1 FROM project_activity
+     WHERE root_realm_id=$1 AND id=$2 AND kind='EVENT' AND status IN('SCHEDULED','ONGOING')
+       AND branch_ref IS NOT DISTINCT FROM $3::uuid
+       AND project_id IS NOT DISTINCT FROM $4::uuid FOR SHARE`,
+     [root,row.event_source_ref,row.branch_ref,row.project_source_ref]);
+    if(!valid.rowCount)throw invalid("Linked event has changed. Return the campaign for correction.");
+   }
+  }
+  const status=decision==="APPROVE"?"APPROVED":decision==="RETURN"?"RETURNED":"REJECTED";
+  await tx.query(`UPDATE campaign SET source_status=$3,version=version+1,updated_at=now()
+    WHERE root_realm_id=$1 AND id=$2 AND source_status='SUBMITTED'`,
+    [root,campaignId,status]);
+  await tx.query(`INSERT INTO campaign_status_event(root_realm_id,campaign_id,source_revision,digest,
+    request_key,operation,prior_status,resulting_status,resulting_version,actor_ref)
+    VALUES($1,$2,$3,$4,$5,$6,'SUBMITTED',$7,$8,$9)`,
+    [root,campaignId,revision,digest,requestKey,"REVIEW_"+decision,status,row.version+1,actorId]);
+  return {status,version:row.version+1};
  }
  async detail(token:string,ref:string){
   return this.run(token,"campaigns.view",async(tx,a)=>{
