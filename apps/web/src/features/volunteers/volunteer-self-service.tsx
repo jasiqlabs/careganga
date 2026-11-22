@@ -4,6 +4,7 @@ import type {CG04VolunteerApplication,CG04VolunteerOptions,CG04VolunteerProfile}
 import {CommunityAuth} from "../membership/community-auth";
 import {VolunteerEvidencePanel} from "./volunteer-evidence-panel";
 import {PublicVolunteerVerification} from "./public-volunteer-verification";
+import {VolunteerOwnCard} from "./volunteer-own-card";
 
 type Form={
  firstName:string;lastName:string;dateOfBirth:string;gender:string;bloodGroup:string;
@@ -137,9 +138,10 @@ export function VolunteerSelfService(){
      <button type="button" disabled={busy} onClick={()=>void refresh()}>Refresh current status</button>
      <button type="button" disabled={busy} onClick={()=>void action(async()=>{await api("/api/community/logout","POST",{});seq.current++;setSigned(false);setApps([]);setSelected(null);setProfile(null);})}>Sign out</button>
     </div>
-    {profile?.volunteer&&<p role="status"><strong>Approved volunteer:</strong> {profile.volunteer.volunteerNumber} · {profile.volunteer.name} · {display(profile.volunteer.status)} · {profile.volunteer.department}</p>}
+    {profile?.volunteer&&<p role="status"><strong>Approved volunteer:</strong {profile.volunteer.volunteerNumber} · {profile.volunteer.name} · {display(profile.volunteer.status)} · {profile.volunteer.department}</p>}
     {selected&&<p>Current application: <strong>{selected.applicationNumber} · {display(selected.status)}</strong>{selected.reviewReference?" · Foundation review "+selected.reviewReference:""}{selected.reviewRemarks?" · Reviewer feedback: "+selected.reviewRemarks:""}</p>}
    </div>
+   {profile?.volunteer&&<VolunteerOwnCard current={profile.volunteer.volunteerNumber}/>}
    {canEdit&&<section className="cg04-panel">
     <h2>Volunteer application</h2><nav className="cg04-volunteer-steps" aria-label="Four application steps">
      {steps.map((title,i)=><button type="button" aria-current={step===i?"step":undefined} key={title} disabled={busy} onClick={()=>setStep(i)}>{i+1}. {title}</button>)}
