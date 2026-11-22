@@ -92,11 +92,11 @@ export function NativeHrDocuments({token,onExpired,mode,canIssue=false,canApprov
  const act=(path:string,proof=false,body:Record<string,unknown>={})=>void run(path,body,proof);
  const key=()=>Crypto.randomUUID();
  
- const preview=async(id:string,receipt=false)=>{if(running.current||locked)return;running.current=true;setBusy(true);let file:File|undefined;
-  try{const r=await identityRequest("/api/hr/"+(mode==="own"?"me/documents/":"issued-documents/")+id+(receipt?"/receipt-file":"/file"),{method:"GET",cache:"no-store",headers:{Authorization:"Bearer "+token}});
+ const preview=async(id:string,receipt=false,draft=false)=>{if(running.current||locked)return;running.current=true;setBusy(true);let file:File|undefined;
+  try{const r=await identityRequest("/api/hr/"+(draft?"document-requests/":mode==="own"?"me/documents/":"issued-documents/")+id+(draft?"/preview":receipt?"/receipt-file":"/file"),{method:"GET",cache:"no-store",headers:{Authorization:"Bearer "+token}});
    if(!r.ok)throw Object.assign(new Error("Private document unavailable"),{status:r.status});const mime=r.headers.get("content-type")?.split(";")[0];if(!mime||!(receipt?["application/pdf","image/jpeg","image/png"]:["application/pdf"]).includes(mime))throw Error("Invalid original private file");
    const len=r.headers.get("content-length");if(len&&Number(len)>10485760)throw Error("PDF exceeds limit");const bytes=new Uint8Array(await r.arrayBuffer());if(bytes.length<1||bytes.length>10485760)throw Error("Private file exceeds limit");
-   file=new File(Paths.cache,"careganga-employee-"+Crypto.randomUUID()+"."+(mime==="application/pdf"?"pdf":mime==="image/png"?"png":"jpg"));file.create();await file.write(bytes);await file.preview({title:receipt?"Private received copy":"Private employee document"});
+   file=new File(Paths.cache,"careganga-employee-"+Crypto.randomUUID()+"."+(mime==="application/pdf"?"pdf":mime==="image/png"?"png":"jpg"));file.create();await file.write(bytes);await file.preview({title:draft?"Draft preview — not valid":receipt?"Private received copy":"Private employee document"});
   }catch(e){fail(e);}finally{try{file?.delete();}catch{}running.current=false;setBusy(false);}
  };
  return <View style={styles.card}><Text style={styles.title}>{mode==="own"?"My documents & ID":mode==="manage"?"Employee letters, memos & ID cards":"Employee document approvals"}</Text>
@@ -117,6 +117,7 @@ export function NativeHrDocuments({token,onExpired,mode,canIssue=false,canApprov
  {offset>0&&<Button name="Previous" disabled={blocked} onPress={()=>{setSelected(null);setOffset(v=>Math.max(0,v-25));}}/>}{more&&<Button name="Next" disabled={blocked} onPress={()=>{setSelected(null);setOffset(v=>v+25);}}/>}
  {selected&&<View style={styles.item}><Text style={styles.label}>{title(selected.kind)} · {selected.reference}</Text><Text>{title(selected.status)}</Text>
  {selected.snapshot&&<><Text>{selected.snapshot.recipient} · {selected.snapshot.designation} · {selected.snapshot.branch}</Text><Text>Joining: {selected.snapshot.hireDate} · Issue: {selected.snapshot.issueDate}</Text>{!!selected.snapshot.expiryDate&&<Text>Expiry: {selected.snapshot.expiryDate}</Text>}{!!selected.snapshot.lastWorkingDate&&<Text>Last working date: {selected.snapshot.lastWorkingDate}</Text>}</>}
+ {mode==="manage"&&["DRAFT","SUBMITTED","APPROVED"].includes(selected.status)&&<Button name="Open private watermarked draft preview" disabled={blocked} onPress={()=>void preview(selected.reference,false,true)}/>}
  {mode==="manage"&&selected.canSubmit&&<Button name="Submit for review" disabled={blocked} onPress={()=>act("document-requests/"+selected.reference+"/submit",false,{requestKey:key(),expectedRevision:selected.revision})}/>}
  {mode==="review"&&selected.canReview&&<><Field label="Current password" value={password} onChange={setPassword} secure disabled={blocked}/>{["APPROVE","RETURN","REJECT"].map(action=><Button key={action} name={title(action)} disabled={blocked||password.length<8} onPress={()=>act("document-reviews/"+selected.caseRef+"/decide",true,{requestKey:key(),expectedRevision:selected.revision,action})}/>)}</>}
  {selected.document&&<><Text>File: {title(selected.document.status)} · Version {selected.document.issueRevision}</Text><Text>Receipt: {title(selected.document.receiptStatus)}</Text>{selected.document.dispatch.map(x=><Text key={x.channel}>{title(x.channel)}: {title(x.status)}</Text>)}

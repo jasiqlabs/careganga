@@ -25,9 +25,9 @@ export async function assertHrAllowanceOrigin(tx:PoolClient,actor:VerifiedFounda
  if(current.hr_employee_id!==origin.hr_employee_id||current.hr_assignment_id!==origin.hr_assignment_id||current.hr_branch_id!==origin.hr_branch_id)
   throw new ConflictException({code:"FINANCE_CLAIM_SOURCE_INVALID"});
 }
-export async function assertOwnClaimOrigin(tx:PoolClient,actor:VerifiedFoundationActor,claimRef:string){
+export async function assertOwnClaimOrigin(tx:PoolClient,actor:VerifiedFoundationActor,claimRef:string,write=false){
  const q=await tx.query<ClaimOrigin>(`SELECT source_kind,hr_employee_id,hr_assignment_id,hr_branch_id FROM expense_claim
- WHERE root_realm_id=$1 AND id=$2 AND requested_by=$3 FOR SHARE`,[actor.realmId,claimRef,actor.accountId]);
+ WHERE root_realm_id=$1 AND id=$2 AND requested_by=$3 `+(write?"FOR UPDATE":"FOR SHARE"),[actor.realmId,claimRef,actor.accountId]);
  if(q.rows.length!==1)throw new ConflictException({code:"FINANCE_CLAIM_SOURCE_INVALID"});
  await assertHrAllowanceOrigin(tx,actor,q.rows[0]);
 }

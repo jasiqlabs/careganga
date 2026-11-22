@@ -11,7 +11,7 @@ function allowed(parts:string[],method:string){
  if(parts.length===1&&parts[0]==="document-requests")return method==="GET"||method==="POST";
  if(parts.length===2&&parts[0]==="document-templates"&&["approve","assets"].includes(parts[1]))return method==="POST";
  if(parts[0]==="document-templates"&&parts[1]==="assets"&&UUID.test(parts[2]??""))return parts.length===3?method==="GET":parts.length===4&&parts[3]==="confirm"&&method==="POST";
- if(parts.length===3&&parts[0]==="document-requests"&&doc.test(parts[1])&&["submit","issue"].includes(parts[2]))return method==="POST";
+ if(parts.length===3&&parts[0]==="document-requests"&&doc.test(parts[1])&&["submit","issue","preview"].includes(parts[2]))return parts[2]==="preview"?method==="GET":method==="POST";
  if(parts.length===2&&parts[0]==="document-reviews"&&UUID.test(parts[1]))return method==="GET";
  if(parts.length===3&&parts[0]==="document-reviews"&&UUID.test(parts[1])&&parts[2]==="decide")return method==="POST";
  if(parts.length===3&&parts[0]==="issued-documents"&&UUID.test(parts[1])&&["reconcile","revoke","dispatch","file","receipt-file"].includes(parts[2]))return ["file","receipt-file"].includes(parts[2])?method==="GET":method==="POST";
@@ -123,11 +123,11 @@ async function proxy(req:NextRequest,parts:string[],method:string){
    const bytes=await res.arrayBuffer();if(bytes.byteLength<1||bytes.byteLength>10485760)throw Error("Original copy outside limits");
    return new NextResponse(bytes,{headers:{"Content-Type":mime,"Content-Disposition":'attachment; filename="CareGanga-received-copy.'+(mime==="application/pdf"?"pdf":mime==="image/png"?"png":"jpg")+'"',"Cache-Control":"private, no-store","X-Content-Type-Options":"nosniff","X-Robots-Tag":"noindex, nofollow"}});
   }
-  if(parts[parts.length-1]==="file"&&(parts[0]==="issued-documents"||(parts[0]==="me"&&parts[1]==="documents"))){
+  if((parts[parts.length-1]==="preview"&&parts[0]==="document-requests")||(parts[parts.length-1]==="file"&&(parts[0]==="issued-documents"||(parts[0]==="me"&&parts[1]==="documents")))){
    if(!res.headers.get("content-type")?.startsWith("application/pdf"))throw Error("Original PDF unavailable");
    const bytes=await res.arrayBuffer();
    if(bytes.byteLength<100||bytes.byteLength>10*1024*1024)throw Error("Original PDF outside limits");
-   return new NextResponse(bytes,{headers:{"Content-Type":"application/pdf","Content-Disposition":'attachment; filename="CareGanga-employee-document.pdf"',"Cache-Control":"private, no-store","X-Content-Type-Options":"nosniff","X-Robots-Tag":"noindex, nofollow"}});
+   return new NextResponse(bytes,{headers:{"Content-Type":"application/pdf","Content-Disposition":parts[2]==="preview"?'inline; filename="CareGanga-draft-not-valid.pdf"':req.nextUrl.searchParams.get("view")==="1"?'inline; filename="CareGanga-employee-document.pdf"':'attachment; filename="CareGanga-employee-document.pdf"',"Cache-Control":"private, no-store","X-Content-Type-Options":"nosniff","X-Robots-Tag":"noindex, nofollow"}});
   }
   const data:unknown=await res.json();
   return NextResponse.json(data,{headers:{"Cache-Control":"no-store"}});

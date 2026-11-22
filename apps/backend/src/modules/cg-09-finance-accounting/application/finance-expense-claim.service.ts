@@ -127,8 +127,10 @@ export class FinanceExpenseClaimService{
     "expense_date::text AS \"expenseDate\",amount_minor::text AS \"amountMinor\", "+
     "status,version,created_at AS \"createdAt\", "+
     "CASE WHEN status<>'APPROVED' THEN 'NOT_PAYABLE' "+
-    "WHEN EXISTS(SELECT 1 FROM expense_claim_voucher_link l JOIN finance_voucher v ON v.id=l.voucher_id AND v.root_realm_id=l.root_realm_id AND v.status='POSTED' JOIN finance_voucher_payment_verification p ON p.voucher_id=v.id AND p.root_realm_id=v.root_realm_id AND p.status='VERIFIED' WHERE l.root_realm_id=expense_claim.root_realm_id AND l.claim_id=expense_claim.id AND l.link_kind='PAYOUT') THEN 'PAID_VERIFIED' "+
-    "WHEN EXISTS(SELECT 1 FROM expense_claim_voucher_link l JOIN finance_voucher v ON v.id=l.voucher_id AND v.root_realm_id=l.root_realm_id AND v.status='POSTED' WHERE l.root_realm_id=expense_claim.root_realm_id AND l.claim_id=expense_claim.id AND l.link_kind='PAYABLE') THEN 'PAYABLE' ELSE 'APPROVED_UNPOSTED' END AS \"paymentState\" FROM expense_claim "+
+    "WHEN EXISTS(SELECT 1 FROM expense_claim_voucher_link l JOIN finance_voucher v ON v.id=l.voucher_id AND v.root_realm_id=l.root_realm_id AND v.status='POSTED' JOIN finance_voucher_payment_verification p ON p.voucher_id=v.id AND p.root_realm_id=v.root_realm_id AND p.status='VERIFIED' WHERE l.root_realm_id=expense_claim.root_realm_id AND l.claim_id=expense_claim.id AND l.link_kind='PAYOUT' AND p.voucher_revision=v.version AND v.expense_claim_id=expense_claim.id AND v.expense_claim_version=expense_claim.version AND NOT EXISTS(SELECT 1 FROM finance_manual_journal_reversal rev WHERE rev.root_realm_id=l.root_realm_id AND rev.original_journal_id=l.ledger_journal_id)) THEN 'PAID_VERIFIED' "+
+    "WHEN EXISTS(SELECT 1 FROM finance_voucher v JOIN finance_voucher_payment_verification p ON p.voucher_id=v.id AND p.root_realm_id=v.root_realm_id AND p.voucher_revision=v.version AND p.status='VERIFIED' WHERE v.root_realm_id=expense_claim.root_realm_id AND v.expense_claim_id=expense_claim.id AND v.expense_claim_version=expense_claim.version AND v.voucher_type='PAYMENT' AND v.status='PAID_VERIFIED') THEN 'PAYMENT_VERIFIED_UNPOSTED' "+
+    "WHEN EXISTS(SELECT 1 FROM finance_voucher v WHERE v.root_realm_id=expense_claim.root_realm_id AND v.expense_claim_id=expense_claim.id AND v.expense_claim_version=expense_claim.version AND v.voucher_type='PAYMENT' AND v.status='PAYMENT_REQUESTED') THEN 'PAYMENT_REQUESTED' "+
+    "WHEN EXISTS(SELECT 1 FROM expense_claim_voucher_link l JOIN finance_voucher v ON v.id=l.voucher_id AND v.root_realm_id=l.root_realm_id AND v.status='POSTED' WHERE l.root_realm_id=expense_claim.root_realm_id AND l.claim_id=expense_claim.id AND l.link_kind='PAYABLE' AND NOT EXISTS(SELECT 1 FROM finance_manual_journal_reversal rev WHERE rev.root_realm_id=l.root_realm_id AND rev.original_journal_id=l.ledger_journal_id)) THEN 'PAYABLE' ELSE 'APPROVED_UNPOSTED' END AS \"paymentState\" FROM expense_claim "+
     "WHERE root_realm_id=$1 AND requested_by=$2 AND source_kind=$4 "+
     "AND ($4='GENERAL' OR (hr_employee_id=$5::uuid AND hr_assignment_id=$6::uuid AND hr_branch_id=$7::uuid)) "+
     "ORDER BY created_at DESC,id DESC LIMIT 31 OFFSET $3",
@@ -188,7 +190,7 @@ export class FinanceExpenseClaimService{
   try{
    await tx.query("BEGIN");
    await this.identity.assertCurrent(tx,actor,"finance.claims.create");
-   await assertOwnClaimOrigin(tx,actor,claimRef);
+   await assertOwnClaimOrigin(tx,actor,claimRef,true);
    const existing=await tx.query<{request_digest:string;result_status:string}>(
     "SELECT request_digest,result_status FROM expense_claim_command "+
     "WHERE root_realm_id=$1 AND actor_ref=$2 AND request_key=$3 FOR SHARE",
@@ -271,7 +273,7 @@ export class FinanceExpenseClaimService{
   try{
    await tx.query("BEGIN");
    await this.identity.assertCurrent(tx,actor,"finance.claims.create");
-   await assertOwnClaimOrigin(tx,actor,claimRef);
+   await assertOwnClaimOrigin(tx,actor,claimRef,true);
    const existing=await tx.query<{request_digest:string;result_status:string;case_id:string}>(
     "SELECT request_digest,result_status,case_id FROM expense_claim_command "+
     "WHERE root_realm_id=$1 AND actor_ref=$2 AND request_key=$3 FOR SHARE",
@@ -492,15 +494,18 @@ export class FinanceExpenseClaimService{
   }catch(e){await tx.query("ROLLBACK");throw e;}finally{tx.release();}
  }
  async workflowCommand(bearer:string,requestInput:string){
-  const actor=await this.sessions.requireAction(bearer,"finance.claims.create");
+  const actor=await this.sessions.verifySession(bearer);
   const key=keyOf(requestInput);
   const tx=await this.db.connect();
-  try{await tx.query("BEGIN");await this.identity.assertCurrent(tx,actor,"finance.claims.create");
-  const rows=await tx.query<{result_status:string;claim_id:string}>(
-   "SELECT result_status,claim_id FROM expense_claim_command "+
+  try{await tx.query("BEGIN");await this.identity.assertPatientSessionCurrent(tx,actor);
+  const rows=await tx.query<{result_status:string;claim_id:string;action:string}>(
+   "SELECT result_status,claim_id,action FROM expense_claim_command "+
    "WHERE root_realm_id=$1 AND actor_ref=$2 AND request_key=$3",
    [actor.realmId,actor.accountId,key]);
-  if(rows.rows[0])await assertOwnClaimOrigin(tx,actor,rows.rows[0].claim_id);
+  const result=rows.rows[0];
+  if(result&&["RECONCILE","LINK_PAYABLE","LINK_PAYMENT"].includes(result.action))await this.identity.assertCurrent(tx,actor,"finance.claims.manage");
+  else if(result){await this.identity.assertCurrent(tx,actor,"finance.claims.create");await assertOwnClaimOrigin(tx,actor,result.claim_id);}
+  else{try{await this.identity.assertCurrent(tx,actor,"finance.claims.create");}catch{await this.identity.assertCurrent(tx,actor,"finance.claims.manage");}}
   await tx.query("COMMIT");return {confirmed:!!rows.rows[0],status:rows.rows[0]?.result_status??null};
   }catch(e){await tx.query("ROLLBACK");throw e;}finally{tx.release();}
  }

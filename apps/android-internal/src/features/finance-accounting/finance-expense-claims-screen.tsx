@@ -10,17 +10,19 @@ type Claim={claimRef:string;claimNumber:string;category:string;purpose:string;ex
  amountMinor:string;status:string;version:number;paymentState?:string};
 function claimStatus(c:Claim){
  if(c.paymentState==="PAID_VERIFIED"&&c.status==="APPROVED")return "Paid — verified";
+ if(c.paymentState==="PAYMENT_REQUESTED"&&c.status==="APPROVED")return "Payment requested — verification pending";
+ if(c.paymentState==="PAYMENT_VERIFIED_UNPOSTED"&&c.status==="APPROVED")return "Payment verified — posting pending";
  if(c.paymentState==="PAYABLE"&&c.status==="APPROVED")return "Payable — payment not verified";
  return c.status==="DRAFT"?"Draft — verified bill required":c.status==="SUBMITTED"?"Awaiting protected review":
  c.status==="APPROVED"?"Approved — posting/payment separate":c.status==="RETURNED"?"Returned for correction":
  c.status==="REJECTED"?"Rejected":"Check original status";
 }
 function matches(c:Claim,filter:string,search:string){
- const status=c.status==="APPROVED"&&["PAYABLE","PAID_VERIFIED"].includes(c.paymentState??"")?c.paymentState:c.status;
+ const status=c.status==="APPROVED"&&["PAYABLE","PAID_VERIFIED","PAYMENT_REQUESTED","PAYMENT_VERIFIED_UNPOSTED"].includes(c.paymentState??"")?c.paymentState:c.status;
  return (filter==="ALL"||status===filter)&&(!search.trim()||[c.claimNumber,c.category,c.purpose].join(" ").toLowerCase().includes(search.trim().toLowerCase()));
 }
-const filters=["ALL","DRAFT","SUBMITTED","APPROVED","PAYABLE","PAID_VERIFIED","RETURNED","REJECTED"];
-const filterLabel=(v:string)=>({ALL:"All",DRAFT:"Draft",SUBMITTED:"Pending review",APPROVED:"Approved",PAYABLE:"Payable",PAID_VERIFIED:"Paid verified",RETURNED:"Returned",REJECTED:"Rejected"} as Record<string,string>)[v]??v;
+const filters=["ALL","DRAFT","SUBMITTED","APPROVED","PAYABLE","PAYMENT_REQUESTED","PAYMENT_VERIFIED_UNPOSTED","PAID_VERIFIED","RETURNED","REJECTED"];
+const filterLabel=(v:string)=>({ALL:"All",DRAFT:"Draft",SUBMITTED:"Pending review",APPROVED:"Approved",PAYABLE:"Payable",PAYMENT_REQUESTED:"Payment requested",PAYMENT_VERIFIED_UNPOSTED:"Verified, posting pending",PAID_VERIFIED:"Paid verified",RETURNED:"Returned",REJECTED:"Rejected"} as Record<string,string>)[v]??v;
 
 type Draft={category:string;purpose:string;expenseDate:string;amount:string};
 type Problem={message?:string;field?:string};

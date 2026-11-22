@@ -262,6 +262,27 @@ export class HrIssuedDocumentService{
    });
   }
  }
+ /** Source-pinned preview only: never persists a generated file or renders reusable approval/QR assets. */
+ async preview(token:string,ref:string){
+  const a=await this.sessions.requireAction(token,"hr.documents.manage");
+  const proof=await this.run(async tx=>{
+   const row=await this.source.authorizedHistory(tx,a,ref);
+   if(!["DRAFT","SUBMITTED","APPROVED"].includes(row.status))throw new ConflictException("Create a current document request to preview.");
+   await this.source.verifyCurrent(tx,a,row);
+   const t=(await tx.query<Template>("SELECT * FROM cg19_document_template WHERE realm_id=$1 AND id=$2 AND version=$3 AND status='APPROVED' FOR SHARE",[a.realmId,row.template_id,row.template_version])).rows[0];
+   if(!t||!t.hr_signatory_name||t.content_sha256!==row.source_snapshot.templateHash)throw new ConflictException("Original template unavailable");
+   const portrait=row.kind==="EMPLOYEE_ID"?await this.source.cardPortrait(tx,a.realmId,row.employee_id!):null;
+   return {row,t,portrait};
+  });
+  let portrait:{bytes:Buffer;mime:string}|undefined;
+  if(proof.portrait){const f=proof.portrait,bytes=await this.objects.readVerifiedPrivateObject({objectKey:f.object_key,objectVersion:f.object_version,maxBytes:Number(f.size_bytes)});
+   if(hash(bytes)!==f.sha256||f.sha256!==proof.row.source_snapshot.portraitSha256)throw new ConflictException("Original approved portrait changed");portrait={bytes,mime:f.mime};}
+  const bytes=await renderHrDocument({snapshot:proof.row.source_snapshot,title:proof.t.title,body:proof.t.body,reference:proof.row.reference,sourceDigest:proof.row.source_digest,documentRef:proof.row.id,issueRevision:proof.row.revision,createdAt:new Date(),qr:null,portrait,signatoryName:proof.t.hr_signatory_name!,preview:true});
+  if(bytes.length>10*1024*1024)throw new ServiceUnavailableException("Draft preview exceeds the safe file limit");
+  const current=await this.sessions.requireAction(token,"hr.documents.manage");
+  await this.run(async tx=>{const latest=await this.source.authorizedHistory(tx,current,ref);if(latest.source_digest!==proof.row.source_digest||latest.revision!==proof.row.revision||!["DRAFT","SUBMITTED","APPROVED"].includes(latest.status))throw new ConflictException("Original request changed");await this.source.verifyCurrent(tx,current,latest);});
+  return bytes;
+ }
  async download(token:string,id:string,own=false){
   const a=own?await this.sessions.verifySession(token):await this.sessions.requireAction(token,"hr.documents.manage");
   const d=await this.run(async tx=>{const {d}=await this.docAccess(tx,a,id,own);if(d.state!=="ISSUED"||!d.object_version||!d.content_sha256)throw new NotFoundException("Employee document unavailable");return d;});

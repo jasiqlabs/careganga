@@ -11,6 +11,9 @@ export class HrIssuedDocumentController{
  @Get("document-templates/assets/:upload") templateAssetStatus(@Headers("authorization")t:string,@Param("upload")upload:string){return this.documents.templateAssetStatus(t,upload);}
  @Post("document-templates/assets/:upload/confirm") templateAssetConfirm(@Headers("authorization")t:string,@Param("upload")upload:string){return this.documents.confirmTemplateAsset(t,upload);}
  @Post("document-templates/approve") template(@Headers("authorization")t:string,@Body()body:unknown){return this.documents.approveTemplate(t,body);}
+ @Get("document-requests/:ref/preview")
+ @Header("X-Content-Type-Options","nosniff") @Header("X-Robots-Tag","noindex, nofollow")
+ async preview(@Headers("authorization")t:string,@Param("ref")ref:string){return new StreamableFile(await this.documents.preview(t,ref),{type:"application/pdf",disposition:'inline; filename="CareGanga-draft-not-valid.pdf"'});}
  @Post("document-requests/:ref/issue") issue(@Headers("authorization")t:string,@Param("ref")ref:string,@Body()body:unknown){return this.documents.issue(t,ref,body);}
  @Post("issued-documents/:id/dispatch") dispatch(@Headers("authorization")t:string,@Param("id")id:string,@Body()body:unknown){return this.documents.dispatch(t,id,body);}
  @Post("me/documents/:id/acknowledge") acknowledge(@Headers("authorization")t:string,@Param("id")id:string){return this.documents.acknowledge(t,id);}
