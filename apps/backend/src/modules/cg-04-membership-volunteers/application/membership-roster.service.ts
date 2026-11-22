@@ -59,7 +59,7 @@ const where=[
  " AND ($6='' OR strpos(lower(m.member_no),$6)>0 OR strpos(lower(m.display_name),$6)>0 OR strpos(lower(a.contact_mobile),$6)>0 OR strpos(lower(coalesce(a.contact_email,'')),$6)>0)",
  " AND ($8='ALL' OR ($8='GENERAL' AND t.fee_minor=0) OR ($8='PAID' AND t.fee_minor>0))",
  " AND ($9::date IS NULL OR m.created_at>=($9::date::timestamp AT TIME ZONE 'Asia/Kolkata'))",
- " AND ($10::date IS NULL OR m.created_at<=(($10::date+1)::timestamp AT TIME ZONE 'Asia/Kolkata')-interval '1 microsecond')"
+ " AND ($10::date IS NULL OR m.created_at < (($10::date+1)::timestamp AT TIME ZONE 'Asia/Kolkata'))"
 ].join("");
 @Injectable()
 export class MembershipRosterService{
