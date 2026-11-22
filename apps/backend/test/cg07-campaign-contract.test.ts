@@ -359,3 +359,22 @@ test("US001-QA05/06/14: A12 original filters are backed by current owner records
  assert.match(web,/Reset/);
  assert.doesNotMatch(web,/Project and event links require verified CG-05 source and are not yet available/);
 });
+
+test("US001-QA05/06/16/18: A12 approved and public counts and recent activities use genuine current immutable sources",()=>{
+ const source=root("apps/backend/src/modules/cg-07-campaigns-donations/application/campaign-drafts.service.ts");
+ const publicSource=root("apps/backend/src/modules/cg-07-campaigns-donations/application/campaign-public-source.ts");
+ const ui=root("apps/web/src/features/campaigns/campaign-drafts-workspace.tsx");
+ const schema=root("apps/backend/db/migrations/3305_cg07_campaign_original_lifecycle.sql");
+ assert.match(source,/countPublishedCampaignSources\(tx,a.realmId,scope.all/);
+ assert.match(source,/FROM campaign_status_event e JOIN campaign c/);
+ assert.match(source,/c.branch_ref=ANY\(\$3::uuid\[\]\)/);
+ assert.match(source,/ORDER BY e.at DESC,e.id DESC LIMIT 8/);
+ assert.match(source,/actor.display_name AS by/);
+ assert.match(ui,/Currently published campaigns: \{summary\?\.publicCount/);
+ assert.match(ui,/Recent Activities/);
+ assert.match(ui,/activities.map/);
+ assert.match(ui,/Fundraising goal|Fundraising target|CG03-approved planned campaign goals/);
+ assert.match(publicSource,/count\(DISTINCT c.id\)::integer AS total/);
+ assert.match(schema,/CREATE INDEX ix_cg07_campaign_feed/);
+ assert.doesNotMatch(ui,/Verified campaign activity feed is not yet connected/);
+});
