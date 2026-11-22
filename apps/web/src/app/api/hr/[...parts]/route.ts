@@ -13,9 +13,9 @@ function allowed(parts:string[],method:string){
  if(parts.length===3&&parts[0]==="document-requests"&&doc.test(parts[1])&&["submit","issue"].includes(parts[2]))return method==="POST";
  if(parts.length===2&&parts[0]==="document-reviews"&&UUID.test(parts[1]))return method==="GET";
  if(parts.length===3&&parts[0]==="document-reviews"&&UUID.test(parts[1])&&parts[2]==="decide")return method==="POST";
- if(parts.length===3&&parts[0]==="issued-documents"&&UUID.test(parts[1])&&["reconcile","revoke","file"].includes(parts[2]))return parts[2]==="file"?method==="GET":method==="POST";
+ if(parts.length===3&&parts[0]==="issued-documents"&&UUID.test(parts[1])&&["reconcile","revoke","dispatch","file"].includes(parts[2]))return parts[2]==="file"?method==="GET":method==="POST";
  if(parts.length===2&&parts[0]==="me"&&parts[1]==="documents")return method==="GET";
- if(parts.length===4&&parts[0]==="me"&&parts[1]==="documents"&&UUID.test(parts[2])&&parts[3]==="file")return method==="GET";
+ if(parts.length===4&&parts[0]==="me"&&parts[1]==="documents"&&UUID.test(parts[2])&&["file","acknowledge"].includes(parts[3]))return parts[3]==="file"?method==="GET":method==="POST";
  const change=/^CG-HR-CHG-[0-9]{6,}$/;
  if(parts.length===1&&parts[0]==="employment-changes")return method==="GET"||method==="POST";
  if(parts.length===2&&parts[0]==="employment-changes"&&change.test(parts[1]))return method==="GET";

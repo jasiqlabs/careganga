@@ -9,6 +9,8 @@ export class HrIssuedDocumentController{
  @Get("document-templates") templates(@Headers("authorization")t:string){return this.documents.templates(t);}
  @Post("document-templates/approve") template(@Headers("authorization")t:string,@Body()body:unknown){return this.documents.approveTemplate(t,body);}
  @Post("document-requests/:ref/issue") issue(@Headers("authorization")t:string,@Param("ref")ref:string,@Body()body:unknown){return this.documents.issue(t,ref,body);}
+ @Post("issued-documents/:id/dispatch") dispatch(@Headers("authorization")t:string,@Param("id")id:string,@Body()body:unknown){return this.documents.dispatch(t,id,body);}
+ @Post("me/documents/:id/acknowledge") acknowledge(@Headers("authorization")t:string,@Param("id")id:string){return this.documents.acknowledge(t,id);}
  @Post("issued-documents/:id/reconcile") reconcile(@Headers("authorization")t:string,@Param("id")id:string){return this.documents.reconcile(t,id);}
  @Post("issued-documents/:id/revoke") revoke(@Headers("authorization")t:string,@Param("id")id:string,@Body()body:unknown){return this.documents.revoke(t,id,body);}
  @Get("issued-documents/:id/file")

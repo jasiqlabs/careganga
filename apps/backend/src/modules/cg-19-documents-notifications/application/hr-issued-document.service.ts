@@ -9,6 +9,8 @@ import type {VerifiedFoundationActor} from "../../cg-01-identity-access/public-a
 import {HrDocumentApprovalService} from "../../cg-03-registration-approvals/application/hr-document-approval.service";
 import {HrDocumentSourceFacade,type HrDocumentRow,type HrDocumentKind} from "../../cg-10-human-resources/application/hr-document-source.facade";
 import {leaveId} from "../../cg-10-human-resources/application/hr-leave-source.facade";
+import {CommunicationRecipientSource} from "../../cg-01-identity-access/application/communication-recipient-source.service";
+import {NotificationService} from "./notification.service";
 import {PrivateObjectStorage} from "../infrastructure/private-object-storage";
 import {employeeCardToken,hrTemplateHash,renderHrDocument} from "./hr-document-renderer";
 const hash=(v:string|Buffer)=>createHash("sha256").update(v).digest("hex");
@@ -29,7 +31,7 @@ const view=(d:Doc)=>({documentRef:d.id,status:d.state,issueRevision:d.issue_revi
 export class HrIssuedDocumentService{
  constructor(@Inject(DATABASE)private readonly db:Pool,private readonly sessions:SessionService,
   private readonly identity:FoundationStructureIdentityFacade,private readonly source:HrDocumentSourceFacade,
-  private readonly approvals:HrDocumentApprovalService,private readonly objects:PrivateObjectStorage){}
+  private readonly approvals:HrDocumentApprovalService,private readonly objects:PrivateObjectStorage,private readonly recipients:CommunicationRecipientSource,private readonly notifications:NotificationService){}
  private async run<T>(fn:(tx:PoolClient)=>Promise<T>){
   const tx=await this.db.connect();try{await tx.query("BEGIN");await tx.query("SET LOCAL lock_timeout='3s'");
   const v=await fn(tx);await tx.query("COMMIT");return v;}catch(e){await tx.query("ROLLBACK");throw e;}finally{tx.release();}
@@ -76,7 +78,15 @@ export class HrIssuedDocumentService{
    const refs=rows.slice(0,25).map(x=>x.case_ref).filter((x):x is string=>!!x);
    const docs=refs.length?(await tx.query<Doc>(`SELECT DISTINCT ON(case_id) * FROM cg19_generated_document WHERE realm_id=$1 AND case_id=ANY($2::uuid[])
     ORDER BY case_id,issue_revision DESC`,[a.realmId,refs])).rows:[];
-   return {items:rows.slice(0,25).map(r=>({...this.source.summary(r),document:docs.find(d=>d.case_id===r.case_ref)?view(docs.find(d=>d.case_id===r.case_ref)!):null,canSubmit:!own&&r.status==="DRAFT"&&r.created_by===a.accountId})),hasMore:rows.length>25,offset};
+   const ids=docs.map(d=>d.id);
+   const receipts=ids.length?(await tx.query<{document_id:string;at:Date}>(`SELECT document_id,max(occurred_at) AS at FROM cg19_document_event
+    WHERE realm_id=$1 AND document_id=ANY($2::uuid[]) AND event_key='ACKNOWLEDGED' GROUP BY document_id`,[a.realmId,ids])).rows:[];
+   const dispatch=ids.length?(await tx.query<{hr_document_ref:string;channel:string;state:string}>(`SELECT hr_document_ref,channel,state FROM cg19_notification
+    WHERE realm_id=$1 AND hr_document_ref=ANY($2::uuid[]) AND source_kind='CG10_DOCUMENT_READY' ORDER BY channel`,[a.realmId,ids])).rows:[];
+   return {items:rows.slice(0,25).map(r=>{const d=docs.find(d=>d.case_id===r.case_ref);return {...this.source.summary(r),
+    document:d?{...view(d),receiptStatus:receipts.some(x=>x.document_id===d.id)?"ACKNOWLEDGED":"AWAITING_ACKNOWLEDGEMENT",
+      dispatch:dispatch.filter(x=>x.hr_document_ref===d.id).map(x=>({channel:x.channel,status:x.state}))}:null,
+    canSubmit:!own&&r.status==="DRAFT"&&r.created_by===a.accountId};}),hasMore:rows.length>25,offset};
   });
  }
  async issue(token:string,reference:string,raw:unknown){
@@ -173,6 +183,49 @@ export class HrIssuedDocumentService{
    const {d}=await this.docAccess(tx,a,id);if(d.state==="REVOKED")return view(d);
    const q=await tx.query<Doc>("UPDATE cg19_generated_document SET state='REVOKED',revoked_at=now() WHERE realm_id=$1 AND id=$2 AND state='ISSUED' RETURNING *",[a.realmId,d.id]);if(!q.rows[0])throw new ConflictException("Only a verified issued document can be revoked");
    await this.event(tx,a,d,"REVOKED");return view(q.rows[0]);});
+ }
+ async dispatch(token:string,id:string,raw:unknown){
+  const x=body(raw,["channel"]);
+  if(x.channel!=="IN_APP"&&x.channel!=="EMAIL"&&x.channel!=="SMS")throw new BadRequestException("Choose a supported dispatch channel");
+  const channel=x.channel,a=await this.sessions.requireAction(token,"hr.documents.manage");
+  await this.sessions.requireAction(token,"documents.letters.issue");
+  return this.run(async tx=>{
+   await this.identity.assertCurrent(tx,a,"documents.letters.issue");const {d,row}=await this.docAccess(tx,a,id);
+   if(d.state!=="ISSUED"||!row.employee_id)throw new ConflictException("A verified document and linked employee are required for dispatch");
+   const recipient=(await tx.query<{account_ref:string}>(`SELECT e.account_ref FROM hr_employee e WHERE e.root_realm_id=$1 AND e.id=$2 AND e.account_ref IS NOT NULL
+    AND cg19_hr_document_notice_matches($1,$3,e.account_ref) FOR SHARE OF e`,[a.realmId,row.employee_id,d.id])).rows[0]?.account_ref;
+   if(!recipient)throw new ConflictException("No current linked recipient is available");
+   const previous=(await tx.query<{state:string}>(`SELECT state FROM cg19_notification WHERE realm_id=$1 AND hr_document_ref=$2 AND recipient_id=$3 AND channel=$4 AND source_kind='CG10_DOCUMENT_READY'`,[a.realmId,d.id,recipient,channel])).rows[0];
+   if(previous)return {channel,status:previous.state,replayed:true};
+   const current=await this.recipients.get(tx,a.realmId,recipient);
+   if(!current?.active)throw new ConflictException("No current linked recipient is available");
+   if(channel!=="IN_APP"&&(!(channel==="EMAIL"?current.email:current.mobile)||!await this.notifications.hasConsent(tx,a.realmId,recipient,channel,"TRANSACTIONAL")))
+    throw new ForbiddenException("The verified contact or transactional consent is unavailable");
+   const title="Private CareGanga document ready",content=channel==="SMS"?"Sign in to your private CareGanga account to check your document.":"A private CareGanga document is available. Sign in to check your current access and view it securely.";
+   await tx.query(`INSERT INTO cg19_message_template(realm_id,kind,channel,version,subject,body,status,origin)
+    VALUES($1,'CG10_DOCUMENT_READY',$2,1,$3,$4,'APPROVED','SYSTEM') ON CONFLICT(realm_id,kind,channel,version) DO NOTHING`,[a.realmId,channel,title,content]);
+   const template=(await tx.query<{id:string;version:number;subject:string;body:string}>(`SELECT id,version,subject,body FROM cg19_message_template WHERE realm_id=$1
+    AND kind='CG10_DOCUMENT_READY' AND channel=$2 AND version=1 AND status='APPROVED'`,[a.realmId,channel])).rows[0];
+   if(!template)throw new ConflictException("Original dispatch template unavailable");
+   const inserted=await tx.query<{id:string;state:string}>(`INSERT INTO cg19_notification(realm_id,source_kind,source_key,hr_document_ref,recipient_id,template_id,template_version,channel,subject_snapshot,body_snapshot,purpose,state,due_at,expires_at)
+    VALUES($1,'CG10_DOCUMENT_READY',$2,$2,$3,$4,$5,$6,$7,$8,'TRANSACTIONAL',CASE WHEN $6='IN_APP' THEN 'IN_APP' ELSE 'QUEUED' END,
+    CASE WHEN $6='IN_APP' THEN NULL ELSE now() END,now()+interval '30 days') ON CONFLICT DO NOTHING RETURNING id,state`,
+    [a.realmId,d.id,recipient,template.id,template.version,channel,template.subject,template.body]);
+   if(inserted.rows[0])await tx.query("INSERT INTO cg19_communication_event(realm_id,notification_id,actor_id,kind) VALUES($1,$2,$3,'SOURCE_CAPTURED')",[a.realmId,inserted.rows[0].id,a.accountId]);
+   const confirmed=inserted.rows[0]??(await tx.query<{state:string}>(`SELECT state FROM cg19_notification WHERE realm_id=$1 AND hr_document_ref=$2 AND recipient_id=$3 AND channel=$4 AND source_kind='CG10_DOCUMENT_READY'`,[a.realmId,d.id,recipient,channel])).rows[0];
+   if(!confirmed)throw new ConflictException("The dispatch result could not be confirmed");
+   return {channel,status:confirmed.state,replayed:!inserted.rowCount};
+  });
+ }
+ async acknowledge(token:string,id:string){
+  const a=await this.sessions.verifySession(token);
+  return this.run(async tx=>{
+   const {d}=await this.docAccess(tx,a,id,true);
+   if(d.state!=="ISSUED"||!(await tx.query("SELECT cg19_hr_document_notice_matches($1,$2,$3) AS allowed",[a.realmId,d.id,a.accountId])).rows[0]?.allowed)throw new ForbiddenException("The original document is not available for acknowledgement");
+   const q=await tx.query(`INSERT INTO cg19_document_event(realm_id,case_id,actor_id,document_id,event_key) VALUES($1,$2,$3,$4,'ACKNOWLEDGED')
+    ON CONFLICT DO NOTHING RETURNING id`,[a.realmId,d.case_id,a.accountId,d.id]);
+   return {status:"ACKNOWLEDGED",replayed:!q.rowCount};
+  });
  }
  async verifyPublic(raw:unknown){
   if(typeof raw!=="string"||!/^CGV-[A-F0-9]{24}$/.test(raw))return {status:"INACTIVE"};
