@@ -81,6 +81,8 @@ CREATE TRIGGER cg19_campaign_intent_identity BEFORE UPDATE ON cg19_upload_intent
 CREATE TRIGGER cg19_campaign_file_identity BEFORE UPDATE ON cg19_stored_file
  FOR EACH ROW EXECUTE FUNCTION cg19_campaign_media_identity_immutable();
 
+ALTER TABLE cg19_upload_intent ADD CONSTRAINT uq_cg19_campaign_intent_owner UNIQUE(id,realm_id,campaign_id);
+
 CREATE TABLE cg19_campaign_media_event(
  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
  realm_id uuid NOT NULL,
@@ -94,7 +96,6 @@ CREATE TABLE cg19_campaign_media_event(
  FOREIGN KEY(intent_ref,realm_id,campaign_id)
  REFERENCES cg19_upload_intent(id,realm_id,campaign_id) ON DELETE RESTRICT
 );
-ALTER TABLE cg19_upload_intent ADD CONSTRAINT uq_cg19_campaign_intent_owner UNIQUE(id,realm_id,campaign_id);
 CREATE TRIGGER cg19_campaign_event_immutable BEFORE UPDATE OR DELETE ON cg19_campaign_media_event
  FOR EACH ROW EXECUTE FUNCTION cg19_document_event_immutable();
 
