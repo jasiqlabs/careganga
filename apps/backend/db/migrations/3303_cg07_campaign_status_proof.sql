@@ -76,3 +76,12 @@ END; $cg07$;
 CREATE CONSTRAINT TRIGGER cg07_campaign_status_proof_after
  AFTER INSERT OR UPDATE ON campaign DEFERRABLE INITIALLY DEFERRED
  FOR EACH ROW EXECUTE FUNCTION cg07_campaign_status_proof_guard();
+
+-- CG07 3301 deliberately blocks every non-draft write until the owner review
+-- and deferred CG03 evidence guard are both installed. Keeping that trigger
+-- would make every genuine DRAFT -> SUBMITTED transaction fail at runtime.
+-- Replace (not bypass) the temporary guard only after the new proof guard is
+-- successfully defined in this same migration transaction.
+DROP TRIGGER cg07_campaign_draft_only ON campaign;
+DROP FUNCTION cg07_campaign_draft_only();
+
