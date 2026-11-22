@@ -110,9 +110,12 @@ const PUBLISHED=`
   JOIN cg03_case cg18review ON cg18review.realm_id=p.foundation_root_id
     AND cg18review.case_kind='CMS_PUBLICATION'
     AND cg18review.cms_page_id=p.id AND cg18review.cms_page_revision_id=publication.page_revision_id
+    AND cg18review.cms_content_digest=publication.source_content_digest
     AND cg18review.status='OWNER_COMPLETED'
   JOIN cg03_case_decision cms_decision ON cms_decision.realm_id=cg18review.realm_id
-    AND cms_decision.case_id=cg18review.id AND cms_decision.action='APPROVE'
+    AND cms_decision.case_id=cg18review.id
+    AND cms_decision.id=publication.cg03_final_decision_ref
+    AND cms_decision.action='APPROVE'
     AND cms_decision.actor_id<>cg18review.proposer_id
     AND cms_decision.fresh_password_verified_at IS NOT NULL
   JOIN cms_section_revision section ON section.foundation_root_id=p.foundation_root_id
