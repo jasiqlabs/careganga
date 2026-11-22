@@ -170,3 +170,11 @@ test("US003-QA10 Web/Public Android only render the current published original v
  assert.match(web,/volunteerJoin\?\.visible===true&&navigation\.volunteerJoin\.path==="\/volunteer"/);
  assert.match(native,/data\.volunteerJoin\?\.visible===true&&data\.volunteerJoin\?\.path==="\/volunteer"/);
 });
+
+test("US003-QA17 expired CG19 verifying claim retry matches current state and five-attempt cap",()=>{
+ const source=readFileSync(join(process.cwd(),"src/modules/cg-19-documents-notifications/application/volunteer-card.service.ts"),"utf8");
+ assert.match(source,/canRetry:v\.attempt_count<5/);
+ assert.match(source,/v\.state==="VERIFYING"&&!!v\.claim_expires_at&&v\.claim_expires_at\.getTime\(\)<=Date\.now\(\)/);
+ assert.match(source,/if\(p\.attempt_count>=5\)throw new ConflictException/);
+ assert.match(source,/if\(p\.state==="VERIFYING"&&p\.claim_expires_at&&p\.claim_expires_at\.getTime\(\)>Date\.now\(\)\)/);
+});
