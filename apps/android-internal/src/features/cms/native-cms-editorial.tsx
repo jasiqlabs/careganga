@@ -12,6 +12,7 @@ type Page={pageRef:string;kind:string;slug:string;title:string;
 type Section={kind:string;order:number;fields:Record<string,unknown>};
 type EventSource={sourceRef:string;slug:string;title:string;category:string;summary:string;area:string;scheduledStart:string;scheduledEnd:string;status:string};
 type ProjectSource={sourceRef:string;title:string;category:string;area:string};
+type CampaignSource={sourceRef:string;title:string;category:string;area:string};
 type Asset={fileRef:string;version:number;role:string;altText:string;order:number};
 type Navigation={loginDesired:boolean;memberJoinDesired:boolean;
  volunteerJoinDesired:boolean};
@@ -220,13 +221,40 @@ function ProjectSelection({sections,choices,error,locked,refresh,onChange}:{sect
  {choices.map(p=><Pressable key={p.sourceRef} accessibilityRole="checkbox" accessibilityState={{checked:refs.includes(p.sourceRef),disabled:locked||(!refs.includes(p.sourceRef)&&refs.length>=12)}} disabled={locked||(!refs.includes(p.sourceRef)&&refs.length>=12)} onPress={()=>set(refs.includes(p.sourceRef)?refs.filter(x=>x!==p.sourceRef):[...refs,p.sourceRef])}><Text style={styles.note}>{refs.includes(p.sourceRef)?"✓ ":"○ "}{p.title} · {p.category} · {p.area}</Text></Pressable>)}
  {refs.filter(x=>!choices.some(p=>p.sourceRef===x)).map(x=><Pressable key={x} accessibilityRole="button" disabled={locked} onPress={()=>set(refs.filter(y=>y!==x))}><Text>Remove unavailable project selection</Text></Pressable>)}</View>;
 }
+function CampaignSelection({sections,choices,error,locked,refresh,onChange}:{sections:Section[];choices:CampaignSource[];
+ error:string;locked:boolean;refresh:()=>void;onChange:(s:Section[])=>void}){
+ const current=sections.find(s=>s.kind==="CAMPAIGN_TEASER");
+ const refs=Array.isArray(current?.fields.sourceRefs)?current.fields.sourceRefs as string[]:[];
+ const set=(next:string[])=>onChange([...sections.filter(s=>s.kind!=="CAMPAIGN_TEASER"),
+  ...(next.length?[{kind:"CAMPAIGN_TEASER",order:61,fields:{heading:typeof current?.fields.heading==="string"?current.fields.heading:"Campaigns",sourceRefs:next}}]:[])]);
+ return <View style={styles.panel}>
+  <Text accessibilityRole="header" style={styles.heading}>Original independently published campaigns</Text>
+  <Text style={styles.note}>Select only current CG-03-approved campaigns. Saving requires independent CG-18 CMS review and publication; uploads and draft edits never publish or accept money.</Text>
+  <Pressable accessibilityRole="button" disabled={locked} onPress={refresh}>
+   <Text style={styles.heading}>Refresh approved campaigns</Text></Pressable>
+  {!!error&&<Text accessibilityRole="alert">{error}</Text>}
+  {!choices.length&&!error&&<Text>No currently approved campaign is eligible.</Text>}
+  {choices.map(c=><Pressable key={c.sourceRef} accessibilityRole="checkbox"
+   accessibilityState={{checked:refs.includes(c.sourceRef),disabled:locked||(!refs.includes(c.sourceRef)&&refs.length>=12)}}
+   disabled={locked||(!refs.includes(c.sourceRef)&&refs.length>=12)}
+   onPress={()=>set(refs.includes(c.sourceRef)?refs.filter(x=>x!==c.sourceRef):[...refs,c.sourceRef])}>
+   <Text style={styles.note}>{refs.includes(c.sourceRef)?"✓ ":"○ "}{c.title} · {c.category} · {c.area||"Foundation-wide"}</Text>
+  </Pressable>)}
+  {refs.filter(x=>!choices.some(c=>c.sourceRef===x)).map(ref=>
+   <Pressable key={ref} accessibilityRole="button" disabled={locked}
+    onPress={()=>set(refs.filter(x=>x!==ref))}><Text>Remove unavailable campaign selection</Text></Pressable>)}
+ </View>;
+}
 export function NativeCmsEditorial({token,canManage,canPublish,canReview,onExit,
  onExpired}:Props){
  const [pages,setPages]=useState<Page[]>([]),[projectChoices,setProjectChoices]=useState<ProjectSource[]>([]),[projectError,setProjectError]=useState("");
+ const [campaignChoices,setCampaignChoices]=useState<CampaignSource[]>([]),[campaignError,setCampaignError]=useState("");
  const [eventChoices,setEventChoices]=useState<EventSource[]>([]),[eventError,setEventError]=useState("");
  const refreshEvents=()=>{setEventError("");void api<{sources:EventSource[]}>(token,"event-sources").then(v=>setEventChoices(v.sources)).catch(e=>{setEventChoices([]);setEventError("Approved event sources unavailable.");if(e?.status===401)onExpired();});};
  const refreshProjects=()=>{setProjectError("");void api<{sources:ProjectSource[]}>(token,"project-sources").then(v=>setProjectChoices(v.sources)).catch(e=>{setProjectError("Current approved project sources unavailable.");if(e?.status===401)onExpired();});};
- useEffect(()=>{if(canManage)refreshProjects();},[token,canManage]);
+ const refreshCampaigns=()=>{setCampaignError("");void api<{sources:CampaignSource[]}>(token,"campaign-sources")
+  .then(v=>setCampaignChoices(v.sources)).catch(e=>{setCampaignError("Approved campaign sources unavailable.");if(e?.status===401)onExpired();});};
+ useEffect(()=>{if(canManage){refreshProjects();refreshCampaigns();}},[token,canManage]);
  const [selected,setSelected]=useState<Detail|null>(null);
  const [newPage,setNewPage]=useState<NewPage|null>(null);
  const [draft,setDraft]=useState<Detail|null>(null);
@@ -422,8 +450,9 @@ export function NativeCmsEditorial({token,canManage,canPublish,canReview,onExit,
      <EditField name="Approved original navigation choices" value={newPage.navigation}
       locked={locked} onChange={v=>changeNew({navigation:v as Navigation})}/>}
     {(newPage.kind==="HOME"||newPage.kind==="ABOUT")&&<ProjectSelection sections={newPage.sections} choices={projectChoices} error={projectError} locked={locked} refresh={refreshProjects} onChange={sections=>changeNew({sections})}/>}
+    {(newPage.kind==="HOME"||newPage.kind==="ABOUT")&&<CampaignSelection sections={newPage.sections} choices={campaignChoices} error={campaignError} locked={locked} refresh={refreshCampaigns} onChange={sections=>changeNew({sections})}/>}
     {newPage.kind==="ARTICLE"&&<EventSelection sections={newPage.sections} choices={eventChoices} error={eventError} locked={locked} refresh={refreshEvents} onSelect={v=>changeNew({slug:v.slug.slice(0,70),title:v.title,seoTitle:(v.title+" | CareGanga Foundation").slice(0,180),seoDescription:v.summary.slice(0,300),assets:[],sections:eventFields(v)})}/>}
-    {newPage.sections.filter(sec=>sec.kind!=="PROJECT_TEASER").map((sec,i)=><View key={sec.kind+"-"+i} style={styles.panel}>
+    {newPage.sections.filter(sec=>sec.kind!=="PROJECT_TEASER"&&sec.kind!=="CAMPAIGN_TEASER").map((sec,i)=><View key={sec.kind+"-"+i} style={styles.panel}>
      <Text style={styles.heading}>{title(sec.kind)}</Text>
      {typeof sec.fields.sourceEventRef==="string"?<><Text>{String(sec.fields.heading)} · {String(sec.fields.category)}</Text><Text>{String(sec.fields.body)}</Text></>:<EditField name="Source content" value={sec.fields} locked={locked}
       sectionKind={sec.kind}
@@ -454,8 +483,9 @@ export function NativeCmsEditorial({token,canManage,canPublish,canReview,onExit,
       locked={locked} onChange={v=>change("navigation",v as Navigation)}/>
     </View>}
     {(draft.kind==="HOME"||draft.kind==="ABOUT")&&<ProjectSelection sections={draft.sections} choices={projectChoices} error={projectError} locked={locked} refresh={refreshProjects} onChange={sections=>change("sections",sections)}/>}
+    {(draft.kind==="HOME"||draft.kind==="ABOUT")&&<CampaignSelection sections={draft.sections} choices={campaignChoices} error={campaignError} locked={locked} refresh={refreshCampaigns} onChange={sections=>change("sections",sections)}/>}
     {draft.kind==="ARTICLE"&&<EventSelection sections={draft.sections} choices={eventChoices} error={eventError} locked={locked} refresh={refreshEvents} onSelect={v=>setDraft(x=>x?{...x,title:v.title,seoTitle:(v.title+" | CareGanga Foundation").slice(0,180),seoDescription:v.summary.slice(0,300),assets:[],sections:eventFields(v)}:null)}/>}
-    {draft.sections.map((section,i)=>section.kind==="PROJECT_TEASER"?null:<View key={section.kind+"-"+section.order}
+    {draft.sections.map((section,i)=>["PROJECT_TEASER","CAMPAIGN_TEASER"].includes(section.kind)?null:<View key={section.kind+"-"+section.order}
      style={styles.panel}>
       <Text style={styles.heading}>{title(section.kind)} · Section {i+1}</Text>
       {typeof section.fields.sourceEventRef==="string"?<><Text>{String(section.fields.heading)} · {String(section.fields.category)}</Text><Text>{String(section.fields.body)}</Text></>:<EditField name="Original section fields" value={section.fields}
