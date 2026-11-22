@@ -80,6 +80,19 @@ export class ProjectActivitiesService{
   if(write&&!canAttachEvidence)throw new ForbiddenException("Current activity evidence permission required");
   return {id:x.id,version:x.version};
  }
+ /** Public release is a distinct coordinator operation, even after completion. */
+ async guardPublicEvent(tx:PoolClient,a:Actor,key:string,expected:number|null,write:boolean){
+  await this.identity.assertCurrent(tx,a,"projects.activities.view");
+  const {x,p,branch,scopeChanged}=await this.get(tx,a,key,write);
+  if(x.kind!=="EVENT"||scopeChanged||expected!==null&&x.version!==expected)throw stale();
+  if(write){
+   await this.identity.assertCurrent(tx,a,"projects.activities.manage");
+   await this.branches.projectBranch(tx,a,branch);
+  }
+  if(branch!==null&&!(await tx.query("SELECT 1 FROM branch WHERE root_realm_id=$1 AND id=$2 AND status='ACTIVE' FOR SHARE",[a.realmId,branch])).rowCount)throw stale();
+  if(p?.status==="CANCELLED")throw stale();
+  return {id:x.id,version:x.version,status:x.status};
+ }
  private async replay(tx:PoolClient,a:Actor,key:string,digest:string,action:string,target?:string){
   await tx.query("SELECT pg_advisory_xact_lock(hashtextextended($1,0))",[a.realmId+":CG05:ACTIVITY:"+key]);
   const e=(await tx.query<{activity_id:string;actor_ref:string;payload_digest:string;action:string;result_version:number}>("SELECT activity_id,actor_ref,payload_digest,action,result_version FROM project_activity_event WHERE root_realm_id=$1 AND event_key=$2",[a.realmId,key])).rows[0];
