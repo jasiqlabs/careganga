@@ -11,12 +11,17 @@ const uuid=(v:unknown)=>{if(typeof v!=="string"||!UUID.test(v))throw new BadRequ
 const clean=(v:unknown,min:number,max:number)=>{if(typeof v!=="string"||/[\u0000-\u001f\u007f]/.test(v)||v.trim().length<min||v.trim().length>max)throw new BadRequestException({code:"CG12_CATALOG_INVALID"});return v.trim();};
 const code=(v:unknown)=>{const x=clean(v,1,40).toUpperCase();if(!/^[A-Z0-9][A-Z0-9._-]{0,39}$/.test(x))throw new BadRequestException("Use a valid item or supplier code");return x;};
 const input=(v:unknown,keys:string[])=>{if(!v||typeof v!=="object"||Array.isArray(v)||Object.keys(v).some(k=>!keys.includes(k)))throw new BadRequestException({code:"CG12_CATALOG_INVALID"});return v as Record<string,unknown>;};
+export function parseInventoryThreshold(value:unknown,scale:number){
+ if(typeof value!=="string"||!/^\d{1,15}(?:\.\d{1,3})?$/.test(value))throw new BadRequestException({code:"CG12_QUANTITY_INVALID"});
+ const normalized=value.replace(/(\.\d*?[1-9])0+$/,"$1").replace(/\.0+$/,"").replace(/^0+(?=\d)/,"");
+ if((normalized.split(".")[1]?.length??0)>scale)throw new BadRequestException({code:"CG12_QUANTITY_INVALID"});
+ return normalized;
+}
 export function parseInventoryItem(value:unknown){
  const x=input(value,["requestKey","sku","name","category","description","unit","scale","threshold"]);
  const unit=x.unit,scale=x.scale;
  if(typeof unit!=="string"||!["PIECE","KG","LITER"].includes(unit)||typeof scale!=="number"||!Number.isInteger(scale)||scale<0||scale>3||(unit==="PIECE"&&scale!==0))throw new BadRequestException({code:"CG12_UNIT_INVALID"});
- const threshold=x.threshold;
- if(typeof threshold!=="string"||!/^\d{1,15}(?:\.\d{1,3})?$/.test(threshold)||(threshold.split(".")[1]?.length??0)>scale)throw new BadRequestException({code:"CG12_QUANTITY_INVALID"});
+ const threshold=parseInventoryThreshold(x.threshold,scale);
  return {requestKey:uuid(x.requestKey),sku:code(x.sku),name:clean(x.name,2,160),category:clean(x.category,1,80),description:clean(x.description??"",0,500),unit,scale,threshold};
 }
 export function parseInventorySupplier(value:unknown){
@@ -111,14 +116,14 @@ export class InventoryCatalogService {
   });
  }
  async threshold(token:string,raw:unknown){
-  const x=input(raw,["requestKey","itemRef","locationRef","expectedVersion","threshold"]),key=uuid(x.requestKey),item=uuid(x.itemRef),loc=uuid(x.locationRef),expected=version(x.expectedVersion,true),qty=x.threshold;
-  if(typeof qty!=="string"||!/^\d{1,15}(?:\.\d{1,3})?$/.test(qty))throw new BadRequestException({code:"CG12_QUANTITY_INVALID"});
+  const x=input(raw,["requestKey","itemRef","locationRef","expectedVersion","threshold"]),key=uuid(x.requestKey),item=uuid(x.itemRef),loc=uuid(x.locationRef),expected=version(x.expectedVersion,true),qty=parseInventoryThreshold(x.threshold,3);
   const digest=createHash("sha256").update(JSON.stringify({item,loc,expected,qty})).digest("hex");
   return this.run(token,"inventory.catalog.manage",async(tx,a)=>{
    await this.store(tx,a,loc);
    const replay=await this.command(tx,a,"THRESHOLD",key,digest);if(replay)return replay;
    const r=(await tx.query<{qty_scale:number}>("SELECT qty_scale FROM inventory_item WHERE root_realm_id=$1 AND id=$2 AND status='ACTIVE' FOR SHARE",[a.realmId,item])).rows[0];
-   if(!r||(qty.split(".")[1]?.length??0)>r.qty_scale)throw new BadRequestException({code:"CG12_QUANTITY_INVALID"});
+   if(!r)throw new BadRequestException({code:"CG12_QUANTITY_INVALID"});
+   parseInventoryThreshold(qty,r.qty_scale);
    const q=expected===0?await tx.query("INSERT INTO inventory_item_location_policy(root_realm_id,item_id,location_id,threshold) VALUES($1,$2,$3,$4) ON CONFLICT DO NOTHING RETURNING version",[a.realmId,item,loc,qty]):await tx.query("UPDATE inventory_item_location_policy SET threshold=$4,version=version+1 WHERE root_realm_id=$1 AND item_id=$2 AND location_id=$3 AND version=$5 RETURNING version",[a.realmId,item,loc,qty,expected]);
    if(!q.rows[0])throw stale();return this.audit(tx,a,"THRESHOLD",item,key,digest,q.rows[0].version);
   });
