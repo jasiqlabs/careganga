@@ -13,7 +13,7 @@ export async function assertFinanceProject(tx:PoolClient,actor:VerifiedFoundatio
 }
 export async function financeProjectOptions(db:Pool|PoolClient,root:string,scope:{all:boolean;branchRefs:string[]}){
  const q=await db.query<{value:string;label:string;branchRef:string|null}>(
-  "SELECT id AS value,code_norm||' · '||title AS label,branch_ref AS \"branchRef\" FROM project WHERE root_realm_id=$1 AND status IN('PLANNED','ACTIVE','ON_HOLD') AND ($2::boolean OR branch_ref=ANY($3::uuid[])) ORDER BY title,id LIMIT 100",
+  "SELECT id AS value,code_norm||' · '||title AS label,branch_ref AS \"branchRef\" FROM project WHERE root_realm_id=$1 AND status IN('PLANNED','ACTIVE','ON_HOLD') AND ($2::boolean OR branch_ref=ANY($3::uuid[])) AND (branch_ref IS NULL OR EXISTS(SELECT 1 FROM branch b WHERE b.root_realm_id=project.root_realm_id AND b.id=project.branch_ref AND b.status='ACTIVE')) ORDER BY title,id LIMIT 100",
   [root,scope.all,scope.branchRefs]);
  return q.rows;
 }
