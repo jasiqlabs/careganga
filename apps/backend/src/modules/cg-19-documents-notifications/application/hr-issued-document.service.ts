@@ -241,7 +241,7 @@ export class HrIssuedDocumentService{
     }
     const loadAsset=async(f:TemplateAsset)=>{const bytes=await this.objects.readVerifiedPrivateObject({objectKey:f.object_key,objectVersion:f.object_version,maxBytes:Number(f.size_bytes)});if(bytes.length!==Number(f.size_bytes)||hash(bytes)!==f.sha256)throw Error("Original signatory proof changed");return {bytes,mime:f.mime};};
     const signature=await loadAsset(assets.signature),seal=await loadAsset(assets.seal);
-    const bytes=await renderHrDocument({snapshot:d.source_snapshot,title:template.title,body:template.body,reference:found.reference,sourceDigest:d.source_sha256,documentRef:d.id,issueRevision:d.issue_revision,createdAt:d.created_at,qr,portrait,signature,seal,signatoryName});
+    const bytes=await renderHrDocument({snapshot:d.source_snapshot,title:template.title,body:typeof d.source_snapshot.letterBody==="string"&&d.source_snapshot.kind!=="EMPLOYEE_ID"?d.source_snapshot.letterBody:template.body,reference:found.reference,sourceDigest:d.source_sha256,documentRef:d.id,issueRevision:d.issue_revision,createdAt:d.created_at,qr,portrait,signature,seal,signatoryName});
     const checksum=hash(bytes);stored=await this.objects.writeVerifiedPrivateDocument({objectKey:d.object_key,bytes,sha256:checksum});
     if(stored.sha256!==checksum)throw Error("Original bytes not verified");
    }
@@ -279,7 +279,7 @@ export class HrIssuedDocumentService{
   let portrait:{bytes:Buffer;mime:string}|undefined;
   if(proof.portrait){const f=proof.portrait,bytes=await this.objects.readVerifiedPrivateObject({objectKey:f.object_key,objectVersion:f.object_version,maxBytes:Number(f.size_bytes)});
    if(bytes.length!==Number(f.size_bytes)||hash(bytes)!==f.sha256||f.sha256!==proof.row.source_snapshot.portraitSha256)throw new ConflictException("Original approved portrait changed");portrait={bytes,mime:f.mime};}
-  const bytes=await renderHrDocument({snapshot:proof.row.source_snapshot,title:proof.t.title,body:proof.t.body,reference:proof.row.reference,sourceDigest:proof.row.source_digest,documentRef:proof.row.id,issueRevision:proof.row.revision,createdAt:new Date(),qr:null,portrait,signatoryName:proof.t.hr_signatory_name!,preview:true});
+  const bytes=await renderHrDocument({snapshot:proof.row.source_snapshot,title:proof.t.title,body:typeof proof.row.source_snapshot.letterBody==="string"&&proof.row.kind!=="EMPLOYEE_ID"?proof.row.source_snapshot.letterBody:proof.t.body,reference:proof.row.reference,sourceDigest:proof.row.source_digest,documentRef:proof.row.id,issueRevision:proof.row.revision,createdAt:new Date(),qr:null,portrait,signatoryName:proof.t.hr_signatory_name!,preview:true});
   if(bytes.length>10*1024*1024)throw new ServiceUnavailableException("Draft preview exceeds the safe file limit");
   const current=await this.sessions.requireAction(token,"hr.documents.manage");
   await this.run(async tx=>{const latest=await this.source.authorizedHistory(tx,current,ref);if(latest.source_digest!==proof.row.source_digest||latest.revision!==proof.row.revision||!["DRAFT","SUBMITTED","APPROVED"].includes(latest.status))throw new ConflictException("Original request changed");await this.source.verifyCurrent(tx,current,latest);});
