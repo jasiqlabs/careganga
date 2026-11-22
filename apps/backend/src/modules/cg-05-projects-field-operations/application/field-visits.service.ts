@@ -6,7 +6,7 @@ import {FoundationStructureIdentityFacade} from "../../cg-01-identity-access/app
 import {BranchSourceFacade} from "../../cg-02-foundation-structure/application/branch-source.facade";
 import {lockCurrentTaskEmployee} from "../../cg-10-human-resources/application/hr-project-task-source";
 import {ProjectsService} from "./projects.service";
-import {clean,date,optionalRef,ref,stale,invalid} from "../domain/project-input";
+import {choice,clean,date,optionalRef,ref,stale,invalid} from "../domain/project-input";
 import {parseVisitCreate,parseVisitEdit,parseVisitCapture,validateVisitCaptureTime,parseVisitCancel,parseVisitComment,visitStatuses,visitError,type VisitStatus} from "../domain/visit-input";
 type Actor=VerifiedFoundationActor;
 type Parent={id:string;branch_ref:string|null;owner_account_ref:string;status:string;planned_start:string|null;planned_end:string|null};
