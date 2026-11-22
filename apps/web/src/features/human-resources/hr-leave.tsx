@@ -167,19 +167,19 @@ export function HrAttendanceCorrections({days,staff,onChanged}:{days:CorrectionD
  const [target,setTarget]=useState(""),[form,setForm]=useState(correctionBlank),[history,setHistory]=useState<CorrectionHistory[]>([]);
  const [busy,setBusy]=useState(false),[loading,setLoading]=useState(false),[locked,setLocked]=useState(false),[error,setError]=useState(""),[notice,setNotice]=useState("");
  const [linked,setLinked]=useState(false);
- const key=useRef<string|null>(null);
+ const key=useRef<string|null>(null),readSequence=useRef(0);
  
  const person=staff.find(x=>x.employeeReference===target),authorized=!target||!!person;
  const available=(target?person?.days??[]:days).filter(d=>d.version>0&&d.leaveDays<1);
  const refresh=useCallback(async()=>{
-  setLoading(true);setError("");setHistory([]);setLinked(false);
+  const generation=++readSequence.current;setLoading(true);setError("");setHistory([]);setLinked(false);
   try{const v=await api<{linked:boolean;items:CorrectionHistory[]}>("attendance-corrections"+(target?"?employeeReference="+encodeURIComponent(target):""));
    if(!Array.isArray(v.items)||typeof v.linked!=="boolean")throw Error("Correction history unavailable");
-   setHistory(v.items);setLinked(v.linked);
-  }catch(e){setError(failure(e));}finally{setLoading(false);}
+   if(generation===readSequence.current){setHistory(v.items);setLinked(v.linked);}
+  }catch(e){if(generation===readSequence.current)setError(failure(e));}finally{if(generation===readSequence.current)setLoading(false);}
  },[target]);
- useEffect(()=>{if(authorized)void refresh();else{setHistory([]);setLinked(false);}},[refresh,authorized]);
- const selectTarget=(v:string)=>{setTarget(v);setForm(correctionBlank());key.current=null;setHistory([]);setLinked(false);setNotice("");};
+ useEffect(()=>{if(authorized)void refresh();else{readSequence.current++;setHistory([]);setLinked(false);setLoading(false);}},[refresh,authorized]);
+ const selectTarget=(v:string)=>{readSequence.current++;setTarget(v);setForm(correctionBlank());key.current=null;setHistory([]);setLinked(false);setNotice("");};
  const change=<K extends keyof typeof form,>(k:K,v:(typeof form)[K])=>setForm(x=>({...x,[k]:v}));
  const valid=!!form.date&&form.expectedVersion>0&&form.reason.trim().length>=2&&(form.result!=="WORKED"||!!form.checkInLocal&&!!form.checkOutLocal);
  const submit=async()=>{
@@ -197,7 +197,7 @@ export function HrAttendanceCorrections({days,staff,onChanged}:{days:CorrectionD
 
  return <section style={card} aria-label="Attendance corrections">
   <h2 style={{margin:0}}>Attendance corrections</h2>
-  <label>Employee<select style={field} value={target} disabled={busy||locked} onChange={e=>selectTarget(e.target.value)}>
+  <label>Employee<select style={field} value={target} disabled={busy||locked||loading} onChange={e=>selectTarget(e.target.value)}>
    <option value="">My attendance</option>{staff.map(x=><option value={x.employeeReference} key={x.employeeReference}>{x.employeeName}</option>)}
   </select></label>
   {!authorized&&<p>Selected employee is no longer in the current attendance view. Select a permitted employee.</p>}
@@ -217,8 +217,37 @@ export function HrAttendanceCorrections({days,staff,onChanged}:{days:CorrectionD
    </>}
   </fieldset>{locked&&<p>Outcome uncertain. Retry the original request without changing its details.</p>}
   <button style={button} disabled={busy||loading||!valid} onClick={()=>void submit()}>{locked?"Retry original correction":"Submit correction for review"}</button></>}
+  <HrInitialNonworking staff={staff} onChanged={onChanged}/>
   <button disabled={busy||locked||loading||!authorized} onClick={()=>void refresh()}>Refresh correction history</button>
   <h3 style={{margin:0}}>Correction history</h3>
   {authorized&&history.map(x=><div key={x.reference}><strong>{x.reference} · {label(x.status)}</strong><p>{snapshot(x.original)} → {snapshot(x.proposed)}</p></div>)}
  </section>;
+}
+
+function HrInitialNonworking({staff,onChanged}:{staff:CorrectionPerson[];onChanged:()=>void}){
+ const [employee,setEmployee]=useState(""),[date,setDate]=useState(""),[result,setResult]=useState("ABSENT");
+ const [busy,setBusy]=useState(false),[locked,setLocked]=useState(false),[notice,setNotice]=useState(""),[error,setError]=useState("");
+ const key=useRef<string|null>(null);
+ 
+ const eligible=staff.some(x=>x.employeeReference===employee);
+ const save=async()=>{
+  if(busy||!eligible||!date)return;setBusy(true);setError("");setNotice("");
+  const requestKey=key.current??crypto.randomUUID();key.current=requestKey;
+  try{const v=await api<{recorded:boolean;date:string;status:string}>("attendance/record",{requestKey,employeeReference:employee,date,result});
+   if(v.recorded!==true)throw Error("Initial record could not be confirmed");
+   key.current=null;setLocked(false);setDate("");setNotice(v.date+" · "+v.status);onChanged();
+  }catch(e){setError(failure(e));if(known(e)){key.current=null;setLocked(false);}else setLocked(true);}finally{setBusy(false);}
+ };
+
+ if(!staff.length&&!employee)return null;
+ return <div style={card}><h3 style={{margin:0}}>Record initial absence or weekly off</h3>
+  <p style={{margin:0}}>Only an already finished shift with no recorded day. A recorded day needs reviewed correction.</p>
+  <fieldset disabled={busy||locked} style={{border:0,padding:0,display:"grid",gap:8}}>
+   <label>Employee<select style={field} value={employee} onChange={e=>setEmployee(e.target.value)}><option value="">Choose employee</option>{staff.map(x=><option key={x.employeeReference} value={x.employeeReference}>{x.employeeName}</option>)}</select></label>
+   <label>Finished shift date<input type="date" style={field} value={date} onChange={e=>setDate(e.target.value)}/></label>
+   <label>Result<select style={field} value={result} onChange={e=>setResult(e.target.value)}><option value="ABSENT">Absent</option><option value="WEEKLY_OFF">Weekly off</option></select></label>
+  </fieldset>
+  {error&&<p role="alert">{error}</p>}{notice&&<p role="status">{notice}</p>}
+  <button type="button" style={button} disabled={busy||!eligible||!date} onClick={()=>void save()}>{locked?"Retry same record":"Record finished shift"}</button>
+ </div>;
 }

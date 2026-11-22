@@ -167,19 +167,19 @@ export function NativeHrAttendanceCorrections({token,onExpired,days,staff,onChan
  const [target,setTarget]=useState(""),[form,setForm]=useState(correctionBlank),[history,setHistory]=useState<CorrectionHistory[]>([]);
  const [busy,setBusy]=useState(false),[loading,setLoading]=useState(false),[locked,setLocked]=useState(false),[error,setError]=useState(""),[notice,setNotice]=useState("");
  const [linked,setLinked]=useState(false);
- const key=useRef<string|null>(null);
+ const key=useRef<string|null>(null),readSequence=useRef(0);
  const fail=useFailure(onExpired,setError);
  const person=staff.find(x=>x.employeeReference===target),authorized=!target||!!person;
  const available=(target?person?.days??[]:days).filter(d=>d.version>0&&d.leaveDays<1);
  const refresh=useCallback(async()=>{
-  setLoading(true);setError("");setHistory([]);setLinked(false);
+  const generation=++readSequence.current;setLoading(true);setError("");setHistory([]);setLinked(false);
   try{const v=await api<{linked:boolean;items:CorrectionHistory[]}>(token,"attendance-corrections"+(target?"?employeeReference="+encodeURIComponent(target):""));
    if(!Array.isArray(v.items)||typeof v.linked!=="boolean")throw Error("Correction history unavailable");
-   setHistory(v.items);setLinked(v.linked);
-  }catch(e){fail(e);}finally{setLoading(false);}
+   if(generation===readSequence.current){setHistory(v.items);setLinked(v.linked);}
+  }catch(e){if(generation===readSequence.current)fail(e);}finally{if(generation===readSequence.current)setLoading(false);}
  },[target,token,fail]);
- useEffect(()=>{if(authorized)void refresh();else{setHistory([]);setLinked(false);}},[refresh,authorized]);
- const selectTarget=(v:string)=>{setTarget(v);setForm(correctionBlank());key.current=null;setHistory([]);setLinked(false);setNotice("");};
+ useEffect(()=>{if(authorized)void refresh();else{readSequence.current++;setHistory([]);setLinked(false);setLoading(false);}},[refresh,authorized]);
+ const selectTarget=(v:string)=>{readSequence.current++;setTarget(v);setForm(correctionBlank());key.current=null;setHistory([]);setLinked(false);setNotice("");};
  const change=<K extends keyof typeof form,>(k:K,v:(typeof form)[K])=>setForm(x=>({...x,[k]:v}));
  const valid=!!form.date&&form.expectedVersion>0&&form.reason.trim().length>=2&&(form.result!=="WORKED"||!!form.checkInLocal&&!!form.checkOutLocal);
  const submit=async()=>{
@@ -196,8 +196,8 @@ export function NativeHrAttendanceCorrections({token,onExpired,days,staff,onChan
  };
 
  return <View style={styles.card}><Text style={styles.title}>Attendance corrections</Text>
-  <Button title="My attendance" selected={!target} disabled={busy||locked} onPress={()=>selectTarget("")}/>
-  {staff.map(x=><Button key={x.employeeReference} title={x.employeeName} selected={target===x.employeeReference} disabled={busy||locked} onPress={()=>selectTarget(x.employeeReference)}/>)}
+  <Button title="My attendance" selected={!target} disabled={busy||locked||loading} onPress={()=>selectTarget("")}/>
+  {staff.map(x=><Button key={x.employeeReference} title={x.employeeName} selected={target===x.employeeReference} disabled={busy||locked||loading} onPress={()=>selectTarget(x.employeeReference)}/>)}
   {!authorized&&<Text style={styles.muted}>Selected employee is no longer in the current attendance view.</Text>}
   {!!error&&<Text accessibilityRole="alert" style={styles.error}>{error}</Text>}{!!notice&&<Text style={styles.success}>{notice}</Text>}
   {loading&&<ActivityIndicator accessibilityLabel="Loading correction history"/>}
@@ -212,8 +212,35 @@ export function NativeHrAttendanceCorrections({token,onExpired,days,staff,onChan
    </>}{locked&&<Text style={styles.muted}>Outcome uncertain. Retry the original request without changing its details.</Text>}
    <Button title={locked?"Retry original correction":"Submit correction for review"} disabled={busy||loading||!valid} onPress={()=>void submit()}/>
   </>}
+  <NativeHrInitialNonworking token={token} staff={staff} onExpired={onExpired} onChanged={onChanged}/>
   <Button title="Refresh correction history" disabled={busy||locked||loading||!authorized} onPress={()=>void refresh()}/>
   <Text style={styles.label}>Correction history</Text>
   {authorized&&history.map(x=><View key={x.reference} style={styles.item}><Text style={styles.label}>{x.reference} · {label(x.status)}</Text><Text>{snapshot(x.original)} → {snapshot(x.proposed)}</Text></View>)}
+ </View>;
+}
+
+function NativeHrInitialNonworking({token,staff,onExpired,onChanged}:{token:string;staff:CorrectionPerson[];onExpired:()=>void;onChanged:()=>void}){
+ const [employee,setEmployee]=useState(""),[date,setDate]=useState(""),[result,setResult]=useState("ABSENT");
+ const [busy,setBusy]=useState(false),[locked,setLocked]=useState(false),[notice,setNotice]=useState(""),[error,setError]=useState("");
+ const key=useRef<string|null>(null);
+ const fail=useFailure(onExpired,setError);
+ const eligible=staff.some(x=>x.employeeReference===employee);
+ const save=async()=>{
+  if(busy||!eligible||!date)return;setBusy(true);setError("");setNotice("");
+  const requestKey=key.current??Crypto.randomUUID();key.current=requestKey;
+  try{const v=await api<{recorded:boolean;date:string;status:string}>(token,"attendance/record",{requestKey,employeeReference:employee,date,result});
+   if(v.recorded!==true)throw Error("Initial record could not be confirmed");
+   key.current=null;setLocked(false);setDate("");setNotice(v.date+" · "+v.status);onChanged();
+  }catch(e){fail(e);if(known(e)){key.current=null;setLocked(false);}else setLocked(true);}finally{setBusy(false);}
+ };
+
+ if(!staff.length&&!employee)return null;
+ return <View style={styles.item}><Text style={styles.label}>Record initial absence or weekly off</Text>
+  <Text style={styles.muted}>Only an already finished shift with no recorded day. A recorded day needs reviewed correction.</Text>
+  {staff.map(x=><Button key={x.employeeReference} title={x.employeeName} selected={employee===x.employeeReference} disabled={busy||locked} onPress={()=>setEmployee(x.employeeReference)}/>)}
+  <Field title="Finished shift date YYYY-MM-DD" value={date} maxLength={10} disabled={busy||locked} onChange={setDate}/>
+  <View style={styles.choices}>{["ABSENT","WEEKLY_OFF"].map(x=><Button key={x} title={x==="ABSENT"?"Absent":"Weekly off"} selected={result===x} disabled={busy||locked} onPress={()=>setResult(x)}/>)}</View>
+  {!!error&&<Text accessibilityRole="alert" style={styles.error}>{error}</Text>}{!!notice&&<Text style={styles.success}>{notice}</Text>}
+  <Button title={locked?"Retry same record":"Record finished shift"} disabled={busy||!eligible||!date} onPress={()=>void save()}/>
  </View>;
 }
