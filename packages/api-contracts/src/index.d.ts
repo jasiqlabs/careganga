@@ -282,7 +282,7 @@ export type CG04ReviewPolicy={configured:boolean;version:number;replayed?:boolea
 export type CG04ReviewItem={caseRef:string;reference:string;name:string;status:string;revision:number;submittedAt:string;canDecide:boolean};
 export type CG04ReviewPage={items:CG04ReviewItem[];hasMore:boolean;offset:number};
 export type CG04ReviewCase={caseRef:string;reference:string;status:string;revision:number;canDecide:boolean;
- source:{applicationNumber:string;name:string;mobile:string;email:string|null;address:string;city:string;pinCode:string;feeMinor:string;currency:"INR"};
+ source:{applicationNumber:string;name:string;mobile:string;email:string|null;address:string;city:string;pinCode:string;feeMinor:string;currency:"INR";plan:string;category:CG04TierCategory;durationUnit:CG04TierDuration;durationCount:number;branch:string|null;state:string|null;district:string|null;referral:string;consentVersion:string;consentedAt:string};fee:CG04MembershipFee;
  files:{fileRef:string;fileVersion:number;classification:string;verified:boolean}[];
  timeline:{action:string;occurredAt:string;reviewer:string}[]};
 export type CG04ReviewDecisionResult={reference:string;status:string;revision:number;replayed:boolean};
