@@ -137,6 +137,18 @@ export function NativeMemberReview({token,canConfigure,onExpired}:{token:string;
     <View style={styles.buttons}>{chip("Search",applySearch,false,busy||loading)}{chip("Reset",resetSearch,false,busy||loading)}</View>
    </View>}
    <View style={styles.buttons}>{statuses.map(v=><React.Fragment key={v}>{chip(label(v),()=>changeStatus(v),status===v,busy)}</React.Fragment>)}</View>
+   {page&&!loading&&<View style={styles.metrics} accessibilityLabel="Verified Foundation membership review statistics">
+    {([
+     ["Applications",page.overview.total],
+     ["Pending",page.overview.pending],
+     ["Approved & activated",page.overview.approved],
+     ["Rejected",page.overview.rejected],
+     ["Submitted today",page.overview.today],
+     ["Average decision time",page.overview.averageDecisionHours===null?"Not available":page.overview.averageDecisionHours+" hours"]
+    ] as const).map(([title,value])=><View key={title} style={styles.metric}>
+     <Text style={styles.muted}>{title}</Text><Text style={styles.title}>{value}</Text>
+    </View>)}
+   </View>}
    {loading&&<ActivityIndicator accessibilityLabel="Loading current membership review cases"/>}
    {page&&!loading&&<>
     {page.items.length===0&&<Text style={styles.muted}>No membership applications match your permitted filters.</Text>}
@@ -241,6 +253,8 @@ const styles=StyleSheet.create({
  item:{borderTopWidth:1,borderColor:theme.border,paddingVertical:11,gap:8},
  input:{borderRadius:9,borderWidth:1,borderColor:theme.border,padding:11,color:theme.text,minHeight:42},
  buttons:{flexDirection:"row",flexWrap:"wrap",gap:8},
+ metrics:{flexDirection:"row",flexWrap:"wrap",gap:10},
+ metric:{flexGrow:1,minWidth:120,padding:11,borderColor:theme.border,borderWidth:1,borderRadius:10,backgroundColor:theme.selectedSurface,gap:6},
  chip:{borderWidth:1,borderColor:theme.border,backgroundColor:theme.selectedSurface,paddingHorizontal:12,paddingVertical:10,borderRadius:9},
  chipSelected:{backgroundColor:theme.primary,borderColor:theme.primary},
  chipText:{fontSize:13,fontWeight:"600",color:theme.primary},
