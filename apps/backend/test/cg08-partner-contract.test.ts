@@ -313,3 +313,17 @@ test("US001-QA02/12/17/18: in-flight protected details invalidated on branch/sta
  assert.ok(web.includes('closeDetail();setOffset(0);setBranchFilter('));
  assert.ok(native.includes('closeDetail();setOffset(0);setFilter('));
 });
+
+
+test("US001-QA07/10/12: original CG19 agreement file selector is visible only to verified document readers",()=>{
+ const service=readFileSync(join(process.cwd(),"src/modules/cg-08-csr-funding/application/csr-partners.service.ts"),"utf8");
+ const web=readFileSync(join(process.cwd(),"../web/src/app/(admin)/admin/csr/page.tsx"),"utf8");
+ const native=readFileSync(join(process.cwd(),"../android-internal/src/features/identity-access/staff-authentication-screen.tsx"),"utf8");
+ const release=service.slice(service.indexOf("async publicRelease("),service.indexOf("async authorizePublic("));
+ const authorize=service.slice(service.indexOf("async authorizePublic("),service.indexOf("async withdrawPublic("));
+ assert.ok(release.includes('await this.identity.assertCurrent(tx,a,"documents.files.view")'));
+ assert.ok(release.includes('const approved=canInspect?'));
+ assert.ok(authorize.includes('await this.identity.assertCurrent(tx,a,"documents.files.view")'));
+ assert.ok(web.includes('canManagePublic={actions.includes("cms.content.manage")&&actions.includes("csr.partners.manage")&&actions.includes("documents.files.view")}'));
+ assert.ok(native.includes('canManagePublic={roleActions.includes("csr.partners.manage")&&roleActions.includes("cms.content.manage")&&roleActions.includes("documents.files.view")}'));
+});

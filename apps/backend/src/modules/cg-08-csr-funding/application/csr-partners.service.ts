@@ -161,7 +161,17 @@ export class CsrPartnersService{
     evidence_file_id:string}>(
     "SELECT version,state,public_summary,evidence_file_id FROM csr_partner_public_release "+
     "WHERE root_realm_id=$1 AND partner_id=$2",[a.realmId,p.id])).rows[0];
-   const approved=(await tx.query<{evidence_file_id:string}>(
+   // A CSR directory reader is not automatically allowed to learn a private
+   // CG19 agreement reference. Only an authorized publisher who may inspect
+   // the original proof receives the attestation source selector.
+   let canInspect=false;
+   try{
+    await this.identity.assertCurrent(tx,a,"csr.partners.manage");
+    await this.identity.assertCurrent(tx,a,"cms.content.manage");
+    await this.identity.assertCurrent(tx,a,"documents.files.view");
+    canInspect=true;
+   }catch(e){if(!(e instanceof ForbiddenException))throw e;}
+   const approved=canInspect?(await tx.query<{evidence_file_id:string}>(
     "SELECT snap.evidence_file_id FROM csr_partner_review_snapshot snap "+
     "JOIN cg03_case c ON c.realm_id=snap.root_realm_id AND c.csr_review_ref=snap.id "+
     "AND c.csr_partner_id=snap.partner_id AND c.csr_source_version=snap.source_version "+
@@ -174,7 +184,7 @@ export class CsrPartnersService{
     "WHERE snap.root_realm_id=$1 AND snap.partner_id=$2 AND c.status='OWNER_COMPLETED' "+
     "AND d.action='APPROVE' AND d.fresh_password_verified_at IS NOT NULL "+
     "AND f.scan_status='CLEAN_VERIFIED' AND f.revoked_at IS NULL AND i.status='VALIDATED' "+
-    "ORDER BY snap.submitted_at DESC LIMIT 1",[a.realmId,p.id])).rows[0];
+    "ORDER BY snap.submitted_at DESC LIMIT 1",[a.realmId,p.id])).rows[0]:undefined;
    return {partnerStatus:p.status,version:x?.version??0,state:x?.state??"NOT_AUTHORIZED",
     publicSummary:x?.public_summary??"",approvedAgreementFileRef:approved?.evidence_file_id??null};
   },true);
@@ -192,6 +202,7 @@ export class CsrPartnersService{
   const hash=digest(["CG08_PUBLIC_AUTHORIZE",id,v.expectedVersion,file,summary]);
   return this.run(token,"csr.partners.manage",async(tx,a)=>{
    await this.identity.assertCurrent(tx,a,"cms.content.manage");
+   await this.identity.assertCurrent(tx,a,"documents.files.view");
    const previous=await this.replay(tx,a,key,hash,"AUTHORIZE_PUBLIC",id);
    if(previous)return previous;
    const p=await this.row(tx,a,id,true);
