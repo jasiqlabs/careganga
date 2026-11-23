@@ -29,6 +29,7 @@ export function PublicRewardsCatalogue(){
  const load=useCallback(async (target:number,replace:boolean)=>{
   const serial=++latest.current;
   setLoading(true);setError("");
+  if(replace){setItems([]);setMore(false);}
   try{
    const params=new URLSearchParams({page:String(target)});
    if(appliedSearch)params.set("q",appliedSearch);
