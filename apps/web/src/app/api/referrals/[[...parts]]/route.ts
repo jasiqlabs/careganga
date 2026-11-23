@@ -100,7 +100,7 @@ async function proxy(req:NextRequest,ctx:Context,method:Method){
     ((status!==null||from!==null||to!==null)&&!redemptionAdmin&&!referralAdmin)||
     (kind!==null&&(!referralAdmin||!["MEMBER","VOLUNTEER"].includes(kind)))||
     ([location,rank,sort].some(v=>v!==null)&&!referralAdmin)||
-    (branchRef!==null&&(!referralAdmin||!UUID.test(branchRef)))||
+    (branchRef!==null&&(!(referralAdmin||redemptionAdmin)||!UUID.test(branchRef)))||
     (sort!==null&&!["REFERRALS","RECENT"].includes(sort))||
     (location!==null&&(location.length>120||/[\u0000-\u001f\u007f]/.test(location)))||
     (rank!==null&&(rank.length>120||/[\u0000-\u001f\u007f]/.test(rank)))||
