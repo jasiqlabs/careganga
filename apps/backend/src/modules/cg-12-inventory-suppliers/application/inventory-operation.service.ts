@@ -143,7 +143,7 @@ export class InventoryOperationService{
      "AND recipient_account_ref<>$5 FOR UPDATE",
      [a.realmId,r.reward_hold_id,r.item_id,r.location_id,a.accountId]);
     if(!h.rows[0]||h.rows[0].state!=="HELD"||
-     h.rows[0].issueKey!==r.request_key||r.quantity!=="1"||
+     h.rows[0].issueKey!==r.request_key||Number(r.quantity)!==1||
      r.unit_code!=="PIECE"||r.qty_scale!==0)throw sourceChanged();
     confirmedRewardHold=h.rows[0].id;
     // The ORIGINAL stock_movement ISSUE consumes one held item; both original
