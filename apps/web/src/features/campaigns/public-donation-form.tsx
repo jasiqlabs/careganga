@@ -2,6 +2,7 @@
 import {useRef,useState,type FormEvent} from "react";
 type Outcome={status:string;amountMinor:string;statusToken:string;expiresAt:string;replayed:boolean};
 type Payment={status:string;checkoutUrl:string|null;message?:string};
+type CorrectionRow={correctionNumber:string;originalNumber:string;amountMinor:string;issuedAt:string};
 type HistoricalDonation={donationNumber:string;proofIndex:number;createdAt:string;
  grossMinor:string;refundedMinor:string;netReceivedMinor:string;currency:string;
  status:string;receiptStatus:string;receiptNumber:string|null};
@@ -33,7 +34,9 @@ export function PublicDonationForm({campaignSlug=null}:{campaignSlug?:string|nul
   [refundPending,setRefundPending]=useState(false);
  const [additionalProofs,setAdditionalProofs]=useState(""),
   [history,setHistory]=useState<HistoricalDonation[]>([]),
-  [historyTokens,setHistoryTokens]=useState<string[]>([]);
+  [historyTokens,setHistoryTokens]=useState<string[]>([]),
+  [corrections,setCorrections]=useState<CorrectionRow[]>([]),
+  [correctionProof,setCorrectionProof]=useState("");
  const intentKey=useRef<string|null>(null),linkKey=useRef<string|null>(null);
  const create=async(event:FormEvent)=>{
   event.preventDefault();if(busy||!consent||!amount.trim())return;
@@ -84,6 +87,34 @@ export function PublicDonationForm({campaignSlug=null}:{campaignSlug?:string|nul
    const result=await api<{items:HistoricalDonation[]}>("/history",{statusTokens:tokens});
    setHistoryTokens(tokens);setHistory(result.items);
   }catch(e){setError(e instanceof Error?e.message:"Private history unavailable.");}
+  finally{setBusy(false);}
+ };
+ const listCorrections=async(historyToken=proof)=>{
+  if(!historyToken||busy)return;
+  setBusy(true);setError("");
+  try{
+   const result=await api<{items:CorrectionRow[]}>("/receipt/corrections",
+    {statusToken:historyToken});
+   setCorrections(result.items);setCorrectionProof(historyToken);
+  }catch(e){setError(e instanceof Error?e.message:"Protected corrections unavailable.");}
+  finally{setBusy(false);}
+ };
+ const downloadCorrection=async(number:string)=>{
+  if(!correctionProof||busy)return;
+  setBusy(true);setError("");
+  try{
+   const response=await fetch("/api/public/donations/receipt/correction-download",{
+    method:"POST",cache:"no-store",headers:{"Content-Type":"application/json"},
+    body:JSON.stringify({statusToken:correctionProof,correctionNumber:number}),
+    signal:AbortSignal.timeout(17000)});
+   if(!response.ok||response.headers.get("content-type")?.split(";")[0]!=="application/pdf")
+    throw Error("Your private refund correction is unavailable.");
+   const bytes=await response.blob();
+   if(bytes.size<100||bytes.size>10485760)throw Error("Protected correction PDF was not verified.");
+   const url=URL.createObjectURL(bytes),anchor=document.createElement("a");
+   anchor.href=url;anchor.download="CareGanga-Donation-Correction.pdf";
+   anchor.click();setTimeout(()=>URL.revokeObjectURL(url),10000);
+  }catch(e){setError(e instanceof Error?e.message:"Private correction unavailable.");}
   finally{setBusy(false);}
  };
  const download=async(historyToken=proof)=>{
@@ -165,6 +196,16 @@ export function PublicDonationForm({campaignSlug=null}:{campaignSlug?:string|nul
     {" "}Receipt: {receiptStatus.replaceAll("_"," ").toLowerCase()}.</p>}
    {receiptStatus==="ISSUED"&&<button type="button" style={button} disabled={busy}
     onClick={()=>void download()}>Download your original verified receipt (PDF)</button>}
+   {received&&refundMinor!=="0"&&<button type="button" style={button} disabled={busy}
+    onClick={()=>void listCorrections()}>View issued refund corrections</button>}
+   {corrections.map(item=><div key={item.correctionNumber} style={{display:"grid",gap:6,
+    border:"1px solid #d4d9e1",borderRadius:8,padding:10}}>
+    <strong>{item.correctionNumber} — linked to original receipt {item.originalNumber}</strong>
+    <span>Verified refund: ₹{(BigInt(item.amountMinor)/100n).toString()}</span>
+    <button type="button" style={button} disabled={busy}
+     onClick={()=>void downloadCorrection(item.correctionNumber)}>
+     Download separate verified correction</button>
+   </div>)}
    <div style={{display:"grid",gap:8,borderTop:"1px solid #d4d9e1",paddingTop:14}}>
     <h3>My donation history</h3>
     <p style={{fontSize:13}}>Paste up to 19 other private donation proofs. Only donations proven by your supplied tokens will appear. No account lookup by phone, PAN or email.</p>
@@ -183,6 +224,10 @@ export function PublicDonationForm({campaignSlug=null}:{campaignSlug?:string|nul
        <button type="button" style={button} disabled={busy}
         onClick={()=>void download(historyTokens[item.proofIndex])}>
         Download this proven receipt</button>}
+      {item.status.startsWith("REFUNDED")&&historyTokens[item.proofIndex]&&
+       <button type="button" style={button} disabled={busy}
+        onClick={()=>void listCorrections(historyTokens[item.proofIndex])}>
+        View this donation's refund corrections</button>}
      </div>)}
    </div>
    <button type="button" style={button} disabled={busy} onClick={()=>void refresh()}>Check donation status</button>
