@@ -1,0 +1,419 @@
+"use client";
+import {useCallback,useEffect,useMemo,useRef,useState,type CSSProperties} from "react";
+
+type Rank={name:string;verifiedReferrals:number|string;minimumPoints:number|string;benefitsSummary:string;sortOrder?:number};
+type Programme={ref:string;code:string;name:string;audience:"MEMBER"|"VOLUNTEER"|"BOTH";
+ status:"ACTIVE"|"INACTIVE";version:number;policyVersion:number;effectiveFrom:string;
+ qualifyingEvent:"MEMBERSHIP_ACTIVATED_VERIFIED"|"VOLUNTEER_APPROVED_ACTIVE";
+ awardPoints:string;minimumClaimPoints:string;displayInrRatio:string|null;
+ autoRankUpgrade:boolean;ranks?:Rank[]};
+type Reward={ref:string;programmeRef:string;type:"DIGITAL"|"PHYSICAL";category:string;
+ name:string;description:string;pointsPrice:string;eligibleAudience:"MEMBER"|"VOLUNTEER"|"BOTH";
+ status:"DRAFT"|"ACTIVE"|"ARCHIVED";highlighted:boolean;publicVisible:boolean;
+ imageUrl:string|null;itemRef:string|null;storeRef:string|null;version:number};
+type Option={ref:string;name:string};
+type Stock={availableQuantity:string;itemName:string;stockStatus:string;notice:string};
+type Command={method:"POST"|"PATCH";path:string;body:Record<string,unknown>};
+type ProgrammeDraft={programmeCode:string;name:string;audience:Programme["audience"];
+ effectiveFrom:string;qualifyingEvent:Programme["qualifyingEvent"];awardPoints:string;
+ minimumClaimPoints:string;displayInrRatio:string;autoRankUpgrade:boolean;ranks:Rank[]};
+type RewardDraft={type:Reward["type"];category:string;name:string;description:string;
+ pointsPrice:string;eligibleAudience:Reward["eligibleAudience"];status:Reward["status"];
+ highlighted:boolean;publicVisible:boolean;imageUrl:string;itemRef:string;storeRef:string};
+const today=()=>new Date(Date.now()+19800000).toISOString().slice(0,10);
+const blankProgramme=():ProgrammeDraft=>({programmeCode:"",name:"",audience:"BOTH",
+ effectiveFrom:today(),qualifyingEvent:"MEMBERSHIP_ACTIVATED_VERIFIED",
+ awardPoints:"",minimumClaimPoints:"0",displayInrRatio:"",autoRankUpgrade:true,ranks:[]});
+const blankReward=():RewardDraft=>({type:"DIGITAL",category:"",name:"",description:"",
+ pointsPrice:"",eligibleAudience:"BOTH",status:"DRAFT",highlighted:false,
+ publicVisible:true,imageUrl:"",itemRef:"",storeRef:""});
+const css:Record<string,CSSProperties>={
+ panel:{background:"var(--cg-surface,#fff)",border:"1px solid var(--cg-border,#DCE4ED)",
+  padding:18,borderRadius:14,display:"grid",gap:12,minWidth:0},
+ field:{display:"grid",gap:6,fontSize:13,fontWeight:600,color:"inherit"},
+ control:{width:"100%",minHeight:44,padding:"9px 11px",border:"1px solid var(--cg-border,#CBD5E1)",
+  borderRadius:9,background:"var(--cg-surface,#fff)",color:"inherit",font:"inherit",boxSizing:"border-box"},
+ button:{padding:"10px 15px",borderRadius:9,border:"1px solid var(--cg-border,#CBD5E1)",
+  background:"var(--cg-surface,#fff)",color:"inherit",cursor:"pointer",minHeight:44},
+ primary:{padding:"10px 15px",borderRadius:9,border:"none",background:"var(--cg-accent,#244CA4)",
+  color:"#fff",fontWeight:650,cursor:"pointer",minHeight:44},
+};
+async function api<T>(path:string,cmd?:Command):Promise<T>{
+ const response=await fetch("/api/referrals"+path,{cache:"no-store",
+  signal:AbortSignal.timeout(16000),method:cmd?.method??"GET",
+  ...(cmd?{headers:{"Content-Type":"application/json"},body:JSON.stringify(cmd.body)}:{})});
+ const body:unknown=await response.json().catch(()=>null);
+ if(!response.ok||!body)throw Object.assign(Error(response.status===409?
+  "The source was changed or the request was already applied. Refresh before retrying.":
+  response.status===403?"Your current Foundation permissions do not allow this action.":
+  response.status===400?"Check the eligible programme, rank and product fields.":
+  "The outcome is uncertain. Refresh the original record or retry the same request."),{status:response.status||503});
+ return body as T;
+}
+const num=(v:string,field:string):number=>{
+ const n=Number(v);
+ if(!/^\d+$/.test(v)||!Number.isSafeInteger(n))throw Error("Enter a whole number for "+field);
+ return n;
+};
+const fromProgramme=(v:Programme):ProgrammeDraft=>({programmeCode:v.code,name:v.name,
+ audience:v.audience,effectiveFrom:v.effectiveFrom.slice(0,10),
+ qualifyingEvent:v.qualifyingEvent,awardPoints:v.awardPoints,
+ minimumClaimPoints:v.minimumClaimPoints,displayInrRatio:v.displayInrRatio??"",
+ autoRankUpgrade:v.autoRankUpgrade,ranks:(v.ranks??[]).map(x=>({...x,
+  verifiedReferrals:String(x.verifiedReferrals),minimumPoints:String(x.minimumPoints)}))});
+const fromProduct=(v:Reward):RewardDraft=>({type:v.type,name:v.name,category:v.category,
+ description:v.description,pointsPrice:v.pointsPrice,eligibleAudience:v.eligibleAudience,
+ status:v.status,highlighted:v.highlighted,publicVisible:v.publicVisible,
+ imageUrl:v.imageUrl??"",itemRef:v.itemRef??"",storeRef:v.storeRef??""});
+export function ReferralRewardsWorkspace({canManagePolicy,canManageRewards}:{
+ canManagePolicy:boolean;canManageRewards:boolean}){
+ const [programmes,setProgrammes]=useState<Programme[]>([]);
+ const [selected,setSelected]=useState(""),[detail,setDetail]=useState<Programme|null>(null);
+ const [products,setProducts]=useState<Reward[]>([]),[edition,setEdition]=useState<Reward|null>(null);
+ const [section,setSection]=useState<"PROGRAMMES"|"REWARDS">("PROGRAMMES");
+ const [drawer,setDrawer]=useState<"POLICY"|"PRODUCT"|null>(null);
+ const [programmeForm,setProgrammeForm]=useState<ProgrammeDraft>(blankProgramme);
+ const [rewardForm,setRewardForm]=useState<RewardDraft>(blankReward);
+ const [stockOptions,setStockOptions]=useState<{items:Option[];stores:Option[]}|null>(null);
+ const [stock,setStock]=useState<Stock|null>(null);
+ const [loading,setLoading]=useState(true),[busy,setBusy]=useState(false),[error,setError]=useState("");
+ const [notice,setNotice]=useState(""),[epoch,setEpoch]=useState(0);
+ const [pending,setPending]=useState<Command|null>(null);
+ const lock=useRef(false);
+ const refresh=useCallback(()=>setEpoch(v=>v+1),[]);
+ useEffect(()=>{
+  let live=true;setLoading(true);setError("");
+  void api<{items:Programme[]}>("/programmes").then(v=>{
+   if(!live)return;
+   setProgrammes(v.items);setSelected(current=>
+    v.items.some(x=>x.ref===current)?current:v.items[0]?.ref??"");
+  }).catch(e=>{if(live){setProgrammes([]);setError(e instanceof Error?e.message:"Programmes unavailable.");}})
+   .finally(()=>{if(live)setLoading(false);});
+  return()=>{live=false;};
+ },[epoch]);
+ useEffect(()=>{
+  let live=true;setDetail(null);setProducts([]);
+  if(!selected)return;
+  void Promise.all([api<Programme>("/programmes/"+selected),
+   api<{items:Reward[]}>("/programmes/"+selected+"/products")])
+   .then(([p,v])=>{if(live){setDetail(p);setProducts(v.items);}})
+   .catch(e=>{if(live)setError(e instanceof Error?e.message:"Current programme unavailable.");});
+  return()=>{live=false;};
+ },[selected,epoch]);
+ useEffect(()=>{
+  let live=true;setStockOptions(null);
+  if(drawer!=="PRODUCT"||rewardForm.type!=="PHYSICAL")return;
+  void api<{items:Option[];stores:Option[]}>("/stock-options")
+   .then(v=>{if(live)setStockOptions(v);})
+   .catch(e=>{if(live)setError(e instanceof Error?e.message:"CG12 stock options unavailable.");});
+  return()=>{live=false;};
+ },[drawer,rewardForm.type,epoch]);
+ useEffect(()=>{
+  let live=true;setStock(null);
+  if(drawer!=="PRODUCT"||rewardForm.type!=="PHYSICAL"||!rewardForm.itemRef||!rewardForm.storeRef)return;
+  void api<Stock>("/stock-preview/"+rewardForm.itemRef+"/"+rewardForm.storeRef)
+   .then(v=>{if(live)setStock(v);})
+   .catch(e=>{if(live)setError(e instanceof Error?e.message:"Stock status unavailable.");});
+  return()=>{live=false;};
+ },[drawer,rewardForm.type,rewardForm.itemRef,rewardForm.storeRef,epoch]);
+ useEffect(()=>{
+  if(!drawer)return;
+  const handler=(e:KeyboardEvent)=>{if(e.key==="Escape"&&!pending&&!busy)setDrawer(null);};
+  window.addEventListener("keydown",handler);return()=>window.removeEventListener("keydown",handler);
+ },[drawer,pending,busy]);
+ const send=async(request:Command)=>{
+  if(lock.current)return;
+  lock.current=true;setBusy(true);setPending(request);setError("");setNotice("");
+  try{
+   const result=await api<{ref:string;version:number;replayed:boolean}>(request.path,request);
+   setPending(null);setDrawer(null);setEdition(null);
+   if(request.path==="/programmes"||request.path.startsWith("/programmes/"))setSelected(result.ref);
+   setNotice(result.replayed?"Original request found; no duplicate was created.":"Saved to original CG13 source.");
+   refresh();
+  }catch(e){
+   const status=e&&typeof e==="object"&&"status" in e?Number(e.status):503;
+   if(status>=400&&status<500)setPending(null);
+   setError(status>=500?"The outcome may have committed. Retry the SAME request or refresh the record.":
+    e instanceof Error?e.message:"This action was rejected.");
+  }finally{lock.current=false;setBusy(false);}
+ };
+ const openPolicy=(current=false)=>{
+  setError("");setPending(null);
+  setProgrammeForm(current&&detail?fromProgramme(detail):blankProgramme());setDrawer("POLICY");
+ };
+ const openProduct=(item?:Reward)=>{
+  setError("");setPending(null);setEdition(item??null);
+  setRewardForm(item?fromProduct(item):blankReward());setDrawer("PRODUCT");
+ };
+ const saveProgramme=()=>{
+  try{
+   if(pending){void send(pending);return;}
+   const p=programmeForm;
+   const body:Record<string,unknown>={requestKey:crypto.randomUUID(),name:p.name,
+    audience:p.audience,qualifyingEvent:p.qualifyingEvent,effectiveFrom:p.effectiveFrom,
+    awardPoints:num(p.awardPoints,"points per verified referral"),
+    minimumClaimPoints:num(p.minimumClaimPoints,"minimum claim"),
+    displayInrRatio:p.displayInrRatio||null,autoRankUpgrade:p.autoRankUpgrade,
+    ranks:p.ranks.map(x=>({name:x.name,verifiedReferrals:num(String(x.verifiedReferrals),"rank referrals"),
+     minimumPoints:num(String(x.minimumPoints),"rank points"),benefitsSummary:x.benefitsSummary}))};
+   if(detail&&programmeForm.programmeCode===detail.code){
+    body.expectedVersion=detail.version;
+    void send({path:"/programmes/"+detail.ref,method:"PATCH",body});
+   }else{
+    body.programmeCode=p.programmeCode;
+    void send({path:"/programmes",method:"POST",body});
+   }
+  }catch(e){setError(e instanceof Error?e.message:"Check the current programme and rank thresholds.");}
+ };
+ const saveProduct=()=>{
+  try{
+   if(pending){void send(pending);return;}
+   if(!selected)throw Error("Select an original referral programme first.");
+   if(rewardForm.type==="PHYSICAL"&&!stock)
+    throw Error("Check current original CG12 available stock before saving.");
+   const p=rewardForm;
+   const body:Record<string,unknown>={requestKey:crypto.randomUUID(),
+    programmeRef:selected,type:p.type,name:p.name,description:p.description,
+    category:p.category,pointsPrice:num(p.pointsPrice,"product points"),
+    eligibleAudience:p.eligibleAudience,status:p.status,highlighted:p.highlighted,
+    publicVisible:p.publicVisible,imageUrl:p.imageUrl||null,
+    itemRef:p.type==="PHYSICAL"?p.itemRef:null,
+    storeRef:p.type==="PHYSICAL"?p.storeRef:null};
+   if(edition){
+    body.expectedVersion=edition.version;
+    void send({path:"/products/"+edition.ref,method:"PATCH",body});
+   }else void send({path:"/products",method:"POST",body});
+  }catch(e){setError(e instanceof Error?e.message:"Check product source fields.");}
+ };
+ const setRank=(i:number,field:keyof Rank,v:string)=>{
+  setProgrammeForm(p=>({...p,ranks:p.ranks.map((x,k)=>k===i?{...x,[field]:v}:x)}));
+ };
+ const activeProducts=products.filter(p=>p.status==="ACTIVE");
+ const availableRanks=detail?.ranks??[];
+ const programmeTitle=programmes.find(p=>p.ref===selected)?.name??"No active programme selected";
+ const orderedProducts=useMemo(()=>[...products].sort((a,b)=>
+  Number(b.highlighted)-Number(a.highlighted)||a.name.localeCompare(b.name)),[products]);
+ const rowInput=(title:string,value:string,fn:(v:string)=>void,type="text")=><label style={css.field}>{title}
+  <input style={css.control} type={type} value={value}
+   onChange={e=>fn(e.target.value)} autoComplete="off"/></label>;
+ return <div style={{display:"grid",gap:18}}>
+  <header style={{display:"flex",alignItems:"flex-start",justifyContent:"space-between",gap:12,flexWrap:"wrap"}}>
+   <div><h1 style={{margin:0,fontSize:27}}>Referral Programme & Rewards</h1>
+    <p style={{margin:"6px 0 0",color:"var(--cg-text-muted,#64748B)",fontSize:13}}>
+     Original B11–B16 · verified referral points, rank policy and real reward catalogue</p></div>
+   <button type="button" style={css.button} onClick={refresh} disabled={busy}>Refresh current sources</button>
+  </header>
+  <nav aria-label="Referral workspace sections" style={{display:"flex",gap:8,flexWrap:"wrap"}}>
+   <button type="button" style={section==="PROGRAMMES"?css.primary:css.button}
+    onClick={()=>setSection("PROGRAMMES")}>Referral Programme & Ranks</button>
+   <button type="button" style={section==="REWARDS"?css.primary:css.button}
+    onClick={()=>setSection("REWARDS")}>Rewards Store</button>
+  </nav>
+  {!!notice&&<p role="status" style={{padding:12,border:"1px solid #86EFAC",borderRadius:8}}>{notice}</p>}
+  {!!error&&<p role="alert" style={{padding:12,border:"1px solid #FCA5A5",borderRadius:8,color:"#B91C1C"}}>{error}</p>}
+  {loading?<p role="status">Loading authorized Foundation source…</p>:<>
+   {section==="PROGRAMMES"?<>
+    <section style={css.panel} aria-label="B11 original rank and policy overview">
+     <div style={{display:"flex",justifyContent:"space-between",gap:10,flexWrap:"wrap",alignItems:"center"}}>
+      <div><h2 style={{margin:0,fontSize:21}}>Referral Programme</h2>
+       <p style={{margin:"5px 0",fontSize:13}}>Only independently recorded CG04 outcomes will earn points.
+        A click or application submission is not a verified referral.</p></div>
+      {canManagePolicy&&<div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
+       <button style={css.button} onClick={()=>openPolicy(false)}>New Programme</button>
+       {!!detail&&<button style={css.primary} onClick={()=>openPolicy(true)}>Configure Referral Settings</button>}
+      </div>}
+     </div>
+     <label style={css.field}>Current programme
+      <select style={css.control} value={selected} onChange={e=>setSelected(e.target.value)}>
+       {!programmes.length&&<option value="">No recorded programmes</option>}
+       {programmes.map(p=><option key={p.ref} value={p.ref}>{p.name} · {p.status}</option>)}
+      </select></label>
+     {!!detail?<><div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(160px,1fr))",gap:10}}>
+      {[
+       ["Recorded programme status",detail.status],
+       ["Verified referral award",detail.awardPoints+" points"],
+       ["Minimum claim policy",detail.minimumClaimPoints+" points"],
+       ["Effective policy",detail.effectiveFrom.slice(0,10)],
+      ].map(([k,v])=><div key={k} style={{padding:13,borderRadius:10,background:"var(--cg-surface-alt,#F1F5F9)"}}>
+       <div style={{fontSize:12,opacity:.8}}>{k}</div><strong>{v}</strong></div>)}
+     </div>
+     <h3 style={{fontSize:16,margin:"12px 0 0"}}>Rank Wise Details</h3>
+     <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(155px,1fr))",gap:10}}>
+      {availableRanks.map((rank,i)=><div key={rank.name+i} style={{border:"1px solid var(--cg-border,#CBD5E1)",borderRadius:12,padding:12}}>
+       <strong>{rank.name}</strong>
+       <p style={{margin:"6px 0",fontSize:13}}>{rank.verifiedReferrals} verified referrals</p>
+       <p style={{margin:0,fontSize:12}}>{rank.minimumPoints} eligible points</p>
+       {!!rank.benefitsSummary&&<p style={{margin:"8px 0 0",fontSize:12}}>{rank.benefitsSummary}</p>}
+      </div>)}
+      {!availableRanks.length&&<p>No original rank policy has been recorded.</p>}
+     </div>
+     <p style={{fontSize:12}}>Member/Volunteer rank counts and Top Referrers become available
+      only after genuine CG04-qualified events in US-002. No demonstration figures are displayed.</p>
+     {canManagePolicy&&<button style={css.button} disabled={busy}
+      onClick={()=>void send({method:"POST",path:"/programmes/"+detail.ref+"/status",
+       body:{requestKey:crypto.randomUUID(),expectedVersion:detail.version,
+        status:detail.status==="ACTIVE"?"INACTIVE":"ACTIVE"}})}>
+      {detail.status==="ACTIVE"?"Deactivate future programme":"Reactivate current programme"}</button>}
+    </>:<p>No programme has been recorded. Create a policy to begin; no member account,
+      stock inventory or cash provider is required for a digital reward.</p>}
+    </section>
+   </>:<>
+    <section style={{...css.panel,background:"linear-gradient(115deg,#0C5B68,#118876)",color:"#fff"}}>
+     <h2 style={{margin:0}}>Redeem Items & Rewards Store</h2>
+     <p style={{margin:0,fontSize:13}}>Current approved reward catalogue. Physical stock is read-only
+      from CG12; points represent programme eligibility, never withdrawable rupees.</p>
+    </section>
+    <section style={css.panel}>
+     <div style={{display:"flex",justifyContent:"space-between",flexWrap:"wrap",gap:10}}>
+      <div><h3 style={{margin:0}}>Reward Products Catalogue</h3>
+       <p style={{fontSize:13,margin:"5px 0"}}>{activeProducts.length} active recorded products for {programmeTitle}</p></div>
+      {canManageRewards&&<button style={css.primary} onClick={()=>openProduct()}>Add New Product</button>}
+     </div>
+     <label style={css.field}>Selected programme
+      <select style={css.control} value={selected} onChange={e=>setSelected(e.target.value)}>
+       {!programmes.length&&<option value="">No programme configured</option>}
+       {programmes.map(p=><option key={p.ref} value={p.ref}>{p.name} · {p.status}</option>)}
+      </select></label>
+     <p style={{fontSize:12}}>Redemptions, points spent and pending fulfillment are not invented:
+      those screens activate with the genuine US-002 ledger and US-003 fulfillment events.</p>
+     <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(220px,1fr))",gap:12}}>
+      {orderedProducts.map(p=><article key={p.ref} style={{border:"1px solid var(--cg-border,#CBD5E1)",borderRadius:13,overflow:"hidden"}}>
+       <div style={{height:98,background:"var(--cg-surface-alt,#F0F6F7)",display:"grid",placeItems:"center"}}>
+        {p.imageUrl?<img src={p.imageUrl} alt="" loading="lazy" referrerPolicy="no-referrer"
+         style={{maxWidth:"100%",height:"100%",objectFit:"contain"}}/>:
+         <span style={{fontSize:12,opacity:.7}}>Product image not provided</span>}
+       </div>
+       <div style={{padding:12,display:"grid",gap:6}}>
+        <strong>{p.name}</strong>
+        <span style={{fontSize:12}}>{p.category} · {p.type} · {p.status}</span>
+        <strong>{p.pointsPrice} points</strong>
+        <span style={{fontSize:12}}>{p.highlighted?"Highlighted · ":""}{p.publicVisible?"Public eligible catalogue":"Staff only"}</span>
+        {p.type==="PHYSICAL"&&<span style={{fontSize:12}}>Original CG12 item/store — read-only</span>}
+        {canManageRewards&&<button style={css.button} onClick={()=>openProduct(p)}>Edit product</button>}
+       </div>
+      </article>)}
+     </div>
+     {!products.length&&<p>No real products yet. A DIGITAL recognition reward can be recorded
+      without inventory, bank deposits or issued voucher codes.</p>}
+    </section>
+   </>}
+  </>}
+  {drawer&&<div style={{position:"fixed",inset:0,background:"rgba(10,22,45,.58)",zIndex:200,
+   display:"flex",justifyContent:"flex-end"}} onMouseDown={e=>{
+    if(e.target===e.currentTarget&&!pending&&!busy)setDrawer(null);
+   }}>
+   <aside role="dialog" aria-modal="true" aria-label={drawer==="POLICY"?"Configure Referral Settings":"Add or Edit Reward Product"}
+    style={{background:"var(--cg-surface,#fff)",color:"inherit",width:"min(100%,520px)",height:"100%",
+     overflowY:"auto",padding:22,display:"grid",alignContent:"start",gap:13,
+     boxShadow:"-8px 0 35px rgba(8,20,40,.15)"}}>
+    <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+     <h2 style={{margin:0,fontSize:21}}>{drawer==="POLICY"?"Configure Referral Settings":"Add Reward Product"}</h2>
+     <button type="button" style={css.button} disabled={busy||!!pending} onClick={()=>setDrawer(null)}
+      aria-label="Close editor">Close</button>
+    </div>
+    {drawer==="POLICY"?<>
+     {rowInput("Programme code",programmeForm.programmeCode,v=>setProgrammeForm(p=>({...p,programmeCode:v})))}
+     {rowInput("Programme display name",programmeForm.name,v=>setProgrammeForm(p=>({...p,name:v})))}
+     <label style={css.field}>Eligible relationship
+      <select style={css.control} value={programmeForm.audience}
+       onChange={e=>setProgrammeForm(p=>({...p,audience:e.target.value as Programme["audience"]}))}>
+       <option value="MEMBER">Members</option><option value="VOLUNTEER">Volunteers</option>
+       <option value="BOTH">Members and Volunteers</option></select></label>
+     <label style={css.field}>Actual qualification source
+      <select style={css.control} value={programmeForm.qualifyingEvent}
+       onChange={e=>setProgrammeForm(p=>({...p,qualifyingEvent:e.target.value as Programme["qualifyingEvent"]}))}>
+       <option value="MEMBERSHIP_ACTIVATED_VERIFIED">Verified member activation</option>
+       <option value="VOLUNTEER_APPROVED_ACTIVE">Approved active volunteer</option></select></label>
+     {rowInput("Points per verified referral",programmeForm.awardPoints,
+      v=>setProgrammeForm(p=>({...p,awardPoints:v})),"text")}
+     {rowInput("Minimum points to claim",programmeForm.minimumClaimPoints,
+      v=>setProgrammeForm(p=>({...p,minimumClaimPoints:v})),"text")}
+     {rowInput("Effective date (India)",programmeForm.effectiveFrom,
+      v=>setProgrammeForm(p=>({...p,effectiveFrom:v})),"date")}
+     {rowInput("Points to INR display rate (optional; NOT cash)",programmeForm.displayInrRatio,
+      v=>setProgrammeForm(p=>({...p,displayInrRatio:v})),"text")}
+     <label style={css.field}><input type="checkbox" checked={programmeForm.autoRankUpgrade}
+      onChange={e=>setProgrammeForm(p=>({...p,autoRankUpgrade:e.target.checked}))}/>
+      Automatic rank upgrade on a genuinely verified event</label>
+     <p style={{fontSize:12}}>Points never expire by default. INR conversion is an informational
+      reference and does not issue money or a guaranteed reward.</p>
+     <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+      <strong>Rank thresholds</strong>
+      <button type="button" style={css.button} disabled={programmeForm.ranks.length>=30}
+       onClick={()=>setProgrammeForm(p=>({...p,ranks:[...p.ranks,{
+        name:"",verifiedReferrals:p.ranks.length===0?"0":String(Number(p.ranks[p.ranks.length-1].verifiedReferrals)+1),
+        minimumPoints:p.ranks.length===0?"0":String(p.ranks[p.ranks.length-1].minimumPoints),
+        benefitsSummary:""}]}))}>Add rank</button>
+     </div>
+     {programmeForm.ranks.map((rank,i)=><div key={i} style={{...css.panel,padding:12}}>
+      <strong>Rank {i+1}</strong>
+      {rowInput("Rank name",rank.name,v=>setRank(i,"name",v))}
+      {rowInput("Minimum verified referrals",String(rank.verifiedReferrals),v=>setRank(i,"verifiedReferrals",v))}
+      {rowInput("Minimum eligible points",String(rank.minimumPoints),v=>setRank(i,"minimumPoints",v))}
+      {rowInput("Benefit summary (optional)",rank.benefitsSummary,v=>setRank(i,"benefitsSummary",v))}
+      <button type="button" style={css.button} onClick={()=>setProgrammeForm(p=>({...p,
+       ranks:p.ranks.filter((_,j)=>j!==i)}))}>Remove rank</button>
+     </div>)}
+     {!programmeForm.ranks.length&&<p>Add at least one original rank. The first rank begins
+      at 0 verified referrals and 0 eligible points; there are no hardcoded tiers.</p>}
+    </>:<>
+     {rowInput("Product title",rewardForm.name,v=>setRewardForm(p=>({...p,name:v})))}
+     {rowInput("Category",rewardForm.category,v=>setRewardForm(p=>({...p,category:v})))}
+     <label style={css.field}>Product type
+      <select style={css.control} value={rewardForm.type}
+       onChange={e=>setRewardForm(p=>({...p,type:e.target.value as Reward["type"],itemRef:"",storeRef:""}))}>
+       <option value="DIGITAL">Digital recognition (no stock)</option>
+       <option value="PHYSICAL">Physical item (real CG12 stock)</option></select></label>
+     {rowInput("Redemption points (not rupees)",rewardForm.pointsPrice,
+      v=>setRewardForm(p=>({...p,pointsPrice:v})),"text")}
+     <label style={css.field}>Eligible marketplace
+      <select style={css.control} value={rewardForm.eligibleAudience}
+       onChange={e=>setRewardForm(p=>({...p,eligibleAudience:e.target.value as Reward["eligibleAudience"]}))}>
+       <option value="MEMBER">Members</option><option value="VOLUNTEER">Volunteers</option>
+       <option value="BOTH">Members and Volunteers</option></select></label>
+     <label style={css.field}>Product status<select style={css.control} value={rewardForm.status}
+      onChange={e=>setRewardForm(p=>({...p,status:e.target.value as Reward["status"]}))}>
+      <option value="DRAFT">Draft</option><option value="ACTIVE">Active catalogue</option>
+      <option value="ARCHIVED">Archived</option></select></label>
+     <label style={css.field}>Description<textarea style={{...css.control,minHeight:85}}
+      maxLength={1000} value={rewardForm.description}
+      onChange={e=>setRewardForm(p=>({...p,description:e.target.value}))}/></label>
+     {rowInput("Approved public HTTPS image URL (optional)",rewardForm.imageUrl,
+      v=>setRewardForm(p=>({...p,imageUrl:v})),"url")}
+     <label style={css.field}><input type="checkbox" checked={rewardForm.highlighted}
+      onChange={e=>setRewardForm(p=>({...p,highlighted:e.target.checked}))}/>
+      Highlight on reward card</label>
+     <label style={css.field}><input type="checkbox" checked={rewardForm.publicVisible}
+      onChange={e=>setRewardForm(p=>({...p,publicVisible:e.target.checked}))}/>
+      Visible to eligible members and volunteers</label>
+     {rewardForm.type==="PHYSICAL"&&<>
+      <label style={css.field}>Real CG12 item
+       <select style={css.control} value={rewardForm.itemRef}
+        onChange={e=>setRewardForm(p=>({...p,itemRef:e.target.value}))}>
+        <option value="">Choose an active whole-piece item</option>
+        {(stockOptions?.items??[]).map(x=><option key={x.ref} value={x.ref}>{x.name}</option>)}
+       </select></label>
+      <label style={css.field}>Authorized CG12 store
+       <select style={css.control} value={rewardForm.storeRef}
+        onChange={e=>setRewardForm(p=>({...p,storeRef:e.target.value}))}>
+        <option value="">Choose an active store</option>
+        {(stockOptions?.stores??[]).map(x=><option key={x.ref} value={x.ref}>{x.name}</option>)}
+       </select></label>
+      <p style={{fontSize:13}}>Stock units — <strong>{stock?
+       stock.availableQuantity+" available (original CG12)": "Source not yet verified"}</strong>.
+       Read-only; changing reward details never creates stock.</p>
+      {!stockOptions&&<p role="status">Checking current warehouse options…</p>}
+     </>}
+    </>}
+    <div style={{display:"flex",justifyContent:"flex-end",gap:8,position:"sticky",bottom:0,
+     padding:"10px 0",background:"var(--cg-surface,#fff)"}}>
+     <button type="button" style={css.button} disabled={busy||!!pending}
+      onClick={()=>setDrawer(null)}>Cancel</button>
+     <button type="button" style={css.primary} disabled={busy}
+      onClick={drawer==="POLICY"?saveProgramme:saveProduct}>
+      {pending?"Retry same request":busy?"Saving…":"Save to original CG13 source"}</button>
+    </div>
+   </aside>
+  </div>}
+ </div>;
+}
