@@ -283,3 +283,18 @@ test("US001-QA18/20: original CMS private partner preview includes only matching
  assert.ok(!publicPreview.includes("Milaap")&&!publicPreview.includes("Ketto"));
  assert.ok(backend.includes('"CONTACT_INFO"|"PARTNER_CARDS";order:number'));
 });
+
+
+test("US001-QA12/16/17/19: direct original CG19 logo URL also denies revoked and closed-branch partners",()=>{
+ const media=readFileSync(join(process.cwd(),"src/modules/cg-19-documents-notifications/application/cms-draft-media.service.ts"),"utf8");
+ const source=readFileSync(join(process.cwd(),"src/modules/cg-08-csr-funding/application/csr-partner-public-source.ts"),"utf8");
+ assert.match(media,/PARTNER_CARDS/);
+ assert.match(media,/release\.version::text/);
+ assert.match(media,/release\.state='AUTHORIZED'/);
+ assert.match(media,/original\.status='OWNER_COMPLETED'/);
+ assert.match(media,/proof\.scan_status='CLEAN_VERIFIED'/);
+ assert.match(media,/original_branch\.status='ACTIVE'/);
+ assert.ok(media.split("PUBLIC_MEDIA_SECTION_ALLOWED+PUBLIC_MEDIA_MIME_ALLOWED").length===3,
+  "Original CG19 URL must recheck before and after storage reads");
+ assert.match(source,/current_branch\.status=/);
+});

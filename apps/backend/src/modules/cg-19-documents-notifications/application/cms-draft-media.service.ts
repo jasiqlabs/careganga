@@ -28,6 +28,36 @@ const PUBLIC_MEDIA_SECTION_ALLOWED=
  "(a.role='FEATURE' AND sec.section_kind='FEATURE_CARDS' "+
  "AND a.sort_order < CASE WHEN jsonb_typeof(sec.structured_fields->'cards')='array' "+
  "THEN jsonb_array_length(sec.structured_fields->'cards') ELSE 0 END) OR "+
+
+ "(a.role='FEATURE' AND sec.section_kind='PARTNER_CARDS' "+
+ "AND EXISTS(SELECT 1 FROM csr_partner p "+
+ "JOIN csr_partner_public_release release ON release.root_realm_id=p.root_realm_id "+
+ "AND release.partner_id=p.id AND release.state='AUTHORIZED' "+
+ "JOIN csr_partner_review_snapshot snap ON snap.root_realm_id=p.root_realm_id "+
+ "AND snap.partner_id=p.id AND snap.evidence_file_id=release.evidence_file_id "+
+ "JOIN cg03_case original ON original.realm_id=snap.root_realm_id "+
+ "AND original.csr_review_ref=snap.id AND original.csr_partner_id=p.id "+
+ "AND original.csr_source_version=snap.source_version "+
+ "AND original.csr_source_digest=snap.source_digest "+
+ "AND original.case_kind='CSR_PARTNER_REVIEW' AND original.status='OWNER_COMPLETED' "+
+ "JOIN cg03_case_decision decision ON decision.realm_id=original.realm_id "+
+ "AND decision.case_id=original.id AND decision.action='APPROVE' "+
+ "AND decision.fresh_password_verified_at IS NOT NULL "+
+ "JOIN cg19_stored_file proof ON proof.id=snap.evidence_file_id "+
+ "AND proof.realm_id=p.root_realm_id AND proof.csr_partner_id=p.id "+
+ "AND proof.owner_kind='CG08_CSR_AGREEMENT' "+
+ "AND proof.scan_status='CLEAN_VERIFIED' AND proof.revoked_at IS NULL "+
+ "JOIN cg19_upload_intent intent ON intent.id=proof.upload_intent_id "+
+ "AND intent.realm_id=proof.realm_id AND intent.csr_partner_id=proof.csr_partner_id "+
+ "AND intent.owner_kind='CG08_CSR_AGREEMENT' AND intent.status='VALIDATED' "+
+ "WHERE p.root_realm_id=a.foundation_root_id AND p.status='APPROVED' "+
+ "AND p.id::text=sec.structured_fields->'partners'->a.sort_order->>'sourceRef' "+
+ "AND release.version::text=sec.structured_fields->'partners'->a.sort_order->>'rightsVersion' "+
+ "AND (p.branch_ref IS NULL OR EXISTS(SELECT 1 FROM branch original_branch "+
+ "WHERE original_branch.id=p.branch_ref "+
+ "AND original_branch.root_realm_id=p.root_realm_id "+
+ "AND original_branch.status='ACTIVE')))) OR "+
+
  "(a.role='GALLERY' AND sec.section_kind='GALLERY_GRID' "+
  "AND a.sort_order < CASE WHEN jsonb_typeof(sec.structured_fields->'items')='array' "+
  "THEN jsonb_array_length(sec.structured_fields->'items') ELSE 0 END "+

@@ -20,6 +20,9 @@ const eligibleSql=
  'JOIN csr_partner_public_release r ON r.root_realm_id=p.root_realm_id '+
  'AND r.partner_id=p.id AND r.state=\'AUTHORIZED\' '+
  'WHERE p.root_realm_id=$1 AND p.status=\'APPROVED\' '+
+ 'AND (p.branch_ref IS NULL OR EXISTS(SELECT 1 FROM branch current_branch '+
+ 'WHERE current_branch.id=p.branch_ref AND current_branch.root_realm_id=p.root_realm_id '+
+ 'AND current_branch.status=\'ACTIVE\')) '+
  'AND EXISTS(SELECT 1 FROM csr_partner_review_snapshot s '+
  'JOIN cg03_case c ON c.realm_id=s.root_realm_id AND c.csr_review_ref=s.id '+
  'AND c.csr_partner_id=s.partner_id AND c.csr_source_version=s.source_version '+
