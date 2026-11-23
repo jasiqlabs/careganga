@@ -17,6 +17,16 @@ type Option={ref:string;name:string};
 type Stock={availableQuantity:string;onHandQuantity:string;reservedQuantity:string;
  itemName:string;stockStatus:string;notice:string};
 type Command={method:"POST"|"PATCH";path:string;body:Record<string,unknown>};
+type RealReferralSummary={
+ metrics:{activeReferrers:string;successfulReferrals:string;earnedPoints:string;netPoints:string};
+ rankCounts:{kind:"MEMBER"|"VOLUNTEER";rank:string|null;count:string;
+  referrals:string;points:string;lastActivity:string|null}[];
+ rankCountsTruncated:boolean;redemptionMetricsAvailable:boolean;notice:string;
+};
+const pointsDisplay=(x:string|null|undefined)=>{
+ try{return x&&/^[0-9]{1,18}$/.test(x)?BigInt(x).toLocaleString("en-IN"):"—";}
+ catch{return "—";}
+};
 type ProgrammeDraft={programmeCode:string;name:string;audience:Programme["audience"];
  effectiveFrom:string;qualifyingEvent:Programme["qualifyingEvent"];awardPoints:string;
  minimumClaimPoints:string;displayInrRatio:string;autoRankUpgrade:boolean;ranks:Rank[]};
@@ -91,6 +101,8 @@ export function ReferralRewardsWorkspace({canViewPolicy,canViewRewards,canManage
  const [section,setSection]=useState<"PROGRAMMES"|"REWARDS">(canViewPolicy?"PROGRAMMES":"REWARDS");
  const [rankTab,setRankTab]=useState<"MEMBER"|"VOLUNTEER">("MEMBER");
  const [selectedRank,setSelectedRank]=useState(0);
+ const [summary,setSummary]=useState<RealReferralSummary|null>(null);
+ const [summaryLoading,setSummaryLoading]=useState(false);
  const [categoryFilter,setCategoryFilter]=useState("All");
  const [searchProduct,setSearchProduct]=useState(""),[appliedSearch,setAppliedSearch]=useState("");
  const [availableCategories,setAvailableCategories]=useState<string[]>([]);
@@ -160,6 +172,17 @@ export function ReferralRewardsWorkspace({canViewPolicy,canViewRewards,canManage
    .finally(()=>{if(live)setProductsLoading(false);});
   return()=>{live=false;};
  },[selected,epoch,canViewPolicy,canViewRewards,appliedSearch,categoryFilter]);
+ useEffect(()=>{
+  let live=true;setSummary(null);
+  if(!selected||!canViewPolicy){setSummaryLoading(false);return;}
+  setSummaryLoading(true);
+  void api<RealReferralSummary>("/programmes/"+selected+"/summary")
+   .then(v=>{if(live)setSummary(v);})
+   .catch(e=>{if(live)setError(e instanceof Error?e.message:
+    "Verified referral totals are unavailable.");})
+   .finally(()=>{if(live)setSummaryLoading(false);});
+  return()=>{live=false;};
+ },[selected,epoch,canViewPolicy]);
  useEffect(()=>{
   let live=true;setStockOptions(null);
   if(drawer!=="PRODUCT"||rewardForm.type!=="PHYSICAL")return;
@@ -364,19 +387,32 @@ export function ReferralRewardsWorkspace({canViewPolicy,canViewRewards,canManage
         <strong>🏅 {rank.name}</strong><div style={{fontSize:11}}>Rank {i+1}</div>
         <div style={{fontSize:11}}>{rank.verifiedReferrals} verified referrals required</div>
         <div style={{fontSize:11}}>{rank.minimumPoints} minimum eligible points</div>
+        {summary&&<div style={{fontSize:11}}>
+         {pointsDisplay(summary.rankCounts.filter(x=>x.rank===rank.name)
+          .reduce((total,x)=>total+BigInt(x.count),0n).toString())} recorded referrers
+        </div>}
        </button>)}
        {!availableRanks.length&&<p>{detail.effectivePolicyVersion===null?
         "No rank policy is effective yet. The programme is scheduled.":
         "No rank policy recorded."}</p>}
       </div>
       <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(170px,1fr))",gap:9}}>
-       {["TOTAL ACTIVE REFERRERS","TOTAL SUCCESSFUL REFERRALS","TOTAL REFERRAL POINTS",
-        "TOTAL REWARDS REDEEMED","PENDING REWARDS"].map(label=><div key={label}
+       {([
+        ["TOTAL ACTIVE REFERRERS",summary?.metrics.activeReferrers],
+        ["TOTAL SUCCESSFUL REFERRALS",summary?.metrics.successfulReferrals],
+        ["TOTAL REFERRAL POINTS",summary?.metrics.netPoints],
+        ["TOTAL REWARDS REDEEMED",null],
+        ["PENDING REWARDS",null]
+       ] as const).map(([label,value])=><div key={label}
         style={{...css.panel,padding:12,gap:3}}>
         <span style={{fontSize:10,fontWeight:700}}>{label}</span>
-        <strong style={{fontSize:23}}>—</strong>
-        <span style={{fontSize:11,color:"var(--cg-text-muted,#64748B)"}}>Awaiting verified events</span>
+        <strong style={{fontSize:23}}>{pointsDisplay(value)}</strong>
+        <span style={{fontSize:11,color:"var(--cg-text-muted,#64748B)"}}>
+         {value!==null&&value!==undefined?
+          "Verified original ledger":"Unavailable until real recorded redemptions"}
+        </span>
        </div>)}
+       {summaryLoading&&<p role="status">Checking verified referral activity…</p>}
       </div>
       <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(min(100%,330px),1fr))",
        gap:12,alignItems:"start"}}>
@@ -394,9 +430,26 @@ export function ReferralRewardsWorkspace({canViewPolicy,canViewRewards,canManage
           <thead><tr>{["MEMBER / VOLUNTEER","NAME","REFERRAL COUNT","TOTAL POINTS",
            "RANK","STATUS","LAST ACTIVITY"].map(t=><th scope="col" key={t}
            style={{padding:10,textAlign:"left",borderBottom:"1px solid var(--cg-border,#CBD5E1)"}}>{t}</th>)}</tr></thead>
-          <tbody><tr><td colSpan={7} style={{textAlign:"center",padding:24}}>
-           No verified {rankTab==="MEMBER"?"member":"volunteer"} referrals available.
-           Referral counts and points will appear after verified referral activity is recorded.</td></tr></tbody>
+          <tbody>
+           {summary?.rankCounts.filter(x=>x.kind===rankTab&&
+            x.rank===availableRanks[selectedRank]?.name).map((x,i)=><tr key={x.kind+":"+x.rank+":"+i}>
+             <td style={{padding:9}}>{rankTab==="MEMBER"?"Members":"Volunteers"}</td>
+             <td style={{padding:9}}>Private aggregate — {pointsDisplay(x.count)} referrers</td>
+             <td style={{padding:9}}>{pointsDisplay(x.referrals)}</td>
+             <td style={{padding:9}}>{pointsDisplay(x.points)}</td>
+             <td style={{padding:9}}>{x.rank}</td>
+             <td style={{padding:9}}>Verified ledger</td>
+             <td style={{padding:9}}>{x.lastActivity?
+              new Date(x.lastActivity).toLocaleDateString("en-IN",{timeZone:"Asia/Kolkata"}):
+              "—"}</td>
+            </tr>)}
+           {!summary?.rankCounts.some(x=>x.kind===rankTab&&
+             x.rank===availableRanks[selectedRank]?.name)&&<tr><td colSpan={7}
+             style={{textAlign:"center",padding:24}}>
+              No verified {rankTab==="MEMBER"?"member":"volunteer"} referrers recorded in this rank.
+              Applicant identities remain private.
+             </td></tr>}
+          </tbody>
          </table>
         </div>
        </section>
