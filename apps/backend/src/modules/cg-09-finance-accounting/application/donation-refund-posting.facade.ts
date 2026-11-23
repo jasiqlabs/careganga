@@ -57,4 +57,64 @@ export class DonationRefundPostingFacade{
    ]
   });
  }
+ /** Confirm the identical original posted gateway-clearing/INCOME accounts.
+  * A caller may not substitute an unrelated bank account for a refund. */
+ async providerAccounts(tx:PoolClient,a:VerifiedFoundationActor,donationRef:string){
+  if(!ID.test(donationRef))throw new BadRequestException("Original online donation unavailable.");
+  const rows=await tx.query<{
+   account_id:string;account_kind:string;category:string;name:string;
+   debit_minor:string;credit_minor:string;branch_id:string|null
+  }>(
+   "SELECT l.account_id,f.account_kind,g.category,f.name,l.debit_minor::text,"+
+   "l.credit_minor::text,l.branch_id FROM donation_finance_effect e "+
+   "JOIN journal j ON j.root_realm_id=e.root_realm_id AND j.id=e.journal_id "+
+   "JOIN donation_payment_event captured ON captured.root_realm_id=e.root_realm_id "+
+   "AND captured.donation_id=e.donation_id AND captured.outcome='SUCCESS' "+
+   "AND captured.provider='razorpay' AND captured.provider_payment_id IS NOT NULL "+
+   "JOIN journal_line l ON l.root_realm_id=j.root_realm_id AND l.journal_id=j.id "+
+   "JOIN finance_account f ON f.root_realm_id=l.root_realm_id AND f.id=l.account_id "+
+   "JOIN account_group g ON g.root_realm_id=f.root_realm_id AND g.id=f.group_id "+
+   "WHERE e.root_realm_id=$1 AND e.donation_id=$2 AND e.status='POSTED' "+
+   "AND j.status='POSTED' AND j.source_ref=e.donation_id AND f.status='ACTIVE' "+
+   "ORDER BY l.id FOR SHARE OF j,e,l,f,g,captured",
+   [a.realmId,donationRef]);
+  if(rows.rows.length!==2)throw new ConflictException(
+   "Original verified Razorpay gateway finance journal must contain two active accounts.");
+  const asset=rows.rows.find(x=>x.account_kind==="GENERAL"&&x.category==="ASSET"&&
+   BigInt(x.debit_minor)>0n&&BigInt(x.credit_minor)===0n);
+  const income=rows.rows.find(x=>x.account_kind==="GENERAL"&&x.category==="INCOME"&&
+   BigInt(x.credit_minor)>0n&&BigInt(x.debit_minor)===0n);
+  if(!asset||!income||asset.branch_id!==income.branch_id||
+   BigInt(asset.debit_minor)!==BigInt(income.credit_minor))
+   throw new ConflictException("Original gateway asset/income source is not a balanced donation.");
+  return {clearingAccountRef:asset.account_id,clearingLabel:asset.name,
+   incomeAccountRef:income.account_id,incomeLabel:income.name,branchRef:asset.branch_id};
+ }
+ async postProvider(tx:PoolClient,a:VerifiedFoundationActor,x:{
+  refundRef:string;donationRef:string;amountMinor:string;yearRef:string;date:string;
+  eventKey:string;digest:string;providerRefundId:string
+ }){
+  if(![x.refundRef,x.donationRef,x.yearRef,x.eventKey].every(v=>ID.test(v))||
+   !/^[a-f0-9]{64}$/.test(x.digest)||!/^[1-9][0-9]{0,13}$/.test(x.amountMinor)||
+   !/^\d{4}-\d{2}-\d{2}$/.test(x.date)||
+   !/^rfnd_[A-Za-z0-9]{8,}$/.test(x.providerRefundId))
+   throw new BadRequestException("Verify the original processed gateway refund details.");
+  const original=await this.providerAccounts(tx,a,x.donationRef);
+  const y=await tx.query("SELECT 1 FROM financial_year WHERE root_realm_id=$1 "+
+   "AND id=$2 AND status='OPEN' AND $3::date BETWEEN start_on AND end_on FOR SHARE",
+   [a.realmId,x.yearRef,x.date]);
+  if(y.rowCount!==1)throw new ConflictException("Choose an open original CG09 financial year.");
+  return this.journal.postBalanced(tx,a,{
+   financialYearRef:x.yearRef,postingDate:x.date,sourceRef:x.refundRef,
+   eventKey:x.eventKey,immutableDigest:x.digest,kind:"GENERAL",
+   description:"Signed provider-processed CareGanga refund "+x.providerRefundId,
+   lines:[
+    {accountRef:original.incomeAccountRef,branchRef:original.branchRef,
+     debitMinor:x.amountMinor,creditMinor:"0"},
+    {accountRef:original.clearingAccountRef,branchRef:original.branchRef,
+     debitMinor:"0",creditMinor:x.amountMinor}
+   ]
+  });
+ }
+
 }
