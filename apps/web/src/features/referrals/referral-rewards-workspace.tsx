@@ -96,8 +96,10 @@ const fromProduct=(v:Reward):RewardDraft=>({type:v.type,name:v.name,category:v.c
  status:v.status,highlighted:v.highlighted,publicVisible:v.publicVisible,
  imageUrl:v.imageUrl??"",itemRef:v.itemRef??"",storeRef:v.storeRef??"",
  digitalFulfillmentMethod:v.digitalFulfillmentMethod??"PENDING_EXTERNAL_PROOF"});
-export function ReferralRewardsWorkspace({canViewPolicy,canViewRewards,canManagePolicy,canManageRewards}:{
- canViewPolicy:boolean;canViewRewards:boolean;canManagePolicy:boolean;canManageRewards:boolean}){
+export function ReferralRewardsWorkspace({canViewPolicy,canViewRewards,canManagePolicy,canManageRewards,
+ canIssueStock}:{
+ canViewPolicy:boolean;canViewRewards:boolean;canManagePolicy:boolean;canManageRewards:boolean;
+ canIssueStock:boolean}){
  const [programmes,setProgrammes]=useState<ProgrammeSummary[]>([]);
  const [selected,setSelected]=useState(""),[detail,setDetail]=useState<Programme|null>(null);
  const [products,setProducts]=useState<Reward[]>([]),[edition,setEdition]=useState<Reward|null>(null);
@@ -585,7 +587,8 @@ export function ReferralRewardsWorkspace({canViewPolicy,canViewRewards,canManage
        "No rewards are recorded for this programme yet."}</p>}
     </section>:<section style={css.panel}>
      <AdminRedemptionsTable programme={selected} programmes={programmes}
-      onProgrammeChange={setSelected} refreshEpoch={epoch}/>
+      onProgrammeChange={setSelected} refreshEpoch={epoch}
+      canIssueStock={canIssueStock}/>
     </section>}
    </>}
   </>}
