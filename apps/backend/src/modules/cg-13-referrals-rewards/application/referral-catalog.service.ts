@@ -791,9 +791,10 @@ export class ReferralCatalogService{
   */
  async adminRedemptions(bearer:string,programmeInput:string,
   pageInput?:string,statusInput?:string,searchInput?:string,
-  fromInput?:string,toInput?:string){
+  fromInput?:string,toInput?:string,categoryInput?:string){
   const programme=ref(programmeInput),page=catalogPage(pageInput);
   const status=statusInput??"ALL";
+  const category=optional(categoryInput,"category",80);
   if(!["ALL","HELD","CANCELLED","ISSUED_AWAITING_HANDOVER","FULFILLED"].includes(status))
    throw bad("status");
   const search=optional(searchInput,"search",80).toLowerCase();
@@ -847,9 +848,10 @@ export class ReferralCatalogService{
     "ELSE '' END),$6)>0) "+
     "AND ($7::date IS NULL OR (r.requested_at AT TIME ZONE 'Asia/Kolkata')::date >= $7::date) "+
     "AND ($8::date IS NULL OR (r.requested_at AT TIME ZONE 'Asia/Kolkata')::date <= $8::date) "+
+    "AND ($12::text='' OR product.category=$12) "+
     "ORDER BY r.requested_at DESC,r.id DESC LIMIT 26 OFFSET $9",
     [a.realmId,programme,scope.full,scope.branches,status,search,from,to,
-     (page-1)*25,memberNames,volunteerNames]);
+     (page-1)*25,memberNames,volunteerNames,category]);
    return {items:rows.rows.slice(0,25),hasMore:rows.rows.length>25,page,
     notice:"Statuses use original redemption and immutable points holds. Private recipient names appear only with current matching CG04 roster permission; other roles see restricted labels."};
   },true);
