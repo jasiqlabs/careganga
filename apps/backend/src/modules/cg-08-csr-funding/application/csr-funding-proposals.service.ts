@@ -209,11 +209,27 @@ export class CsrFundingProposalsService{
     "ORDER BY f.updated_at DESC,f.id DESC LIMIT 26 OFFSET $8",
     [a.realmId,scope.all,scope.branches.map(x=>x.value),branch===undefined,
      branch??null,q,status,offset]);
+   // Original B07 requested-only summary. Same CG02 root/branch/search scope
+   // as the source rows, independent of page size and selected status tab.
+   // Does NOT compute committed, bank-received, allocated or utilized cash.
+   const sum=await tx.query<{requests:string;drafts:string;requestedMinor:string}>(
+    "SELECT count(*)::text AS requests,"+
+    "count(*) FILTER (WHERE f.status='DRAFT')::text AS drafts,"+
+    "coalesce(sum(f.requested_minor),0)::text AS \"requestedMinor\" "+
+    "FROM csr_funding_proposal f WHERE f.root_realm_id=$1 "+
+    "AND ($2::boolean OR f.branch_ref=ANY($3::uuid[])) "+
+    "AND ($4::boolean OR f.branch_ref IS NOT DISTINCT FROM $5::uuid) "+
+    "AND ($6='' OR strpos(lower(f.purpose),$6)>0)",
+    [a.realmId,scope.all,scope.branches.map(x=>x.value),branch===undefined,
+     branch??null,q]);
+   const totals=sum.rows[0];
+   const summary={requests:Number(totals?.requests??0),
+    drafts:Number(totals?.drafts??0),requestedMinor:totals?.requestedMinor??"0"};
    const permittedProjects=await this.canSeeProjects(tx,a);
    const records=rows.rows.slice(0,25) as Record<string,unknown>[];
    return {items:permittedProjects?records:records.map(v=>({...v,
     projectRef:null,projectVersion:null,projectName:null})),
-    hasMore:rows.rows.length>25};
+    hasMore:rows.rows.length>25,summary};
   },true);
  }
 }
