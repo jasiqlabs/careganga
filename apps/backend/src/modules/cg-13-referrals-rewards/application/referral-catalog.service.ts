@@ -811,12 +811,24 @@ export class ReferralCatalogService{
    await this.root(tx,a);
    await this.program(tx,a,programme);
    const scope=await this.inventory.rewardStoreScope(tx,a);
+   // Reward-catalogue read does NOT grant private CG04 roster access.
+   // Inspect the current session/role within this same transaction; do not
+   // allow a query term to infer otherwise hidden member/volunteer names.
+   const rosterAllowed=async(action:string)=>{
+    try{await this.identity.assertCurrent(tx,a,action);return true;}
+    catch(e){if(e instanceof ForbiddenException)return false;throw e;}
+   };
+   const memberNames=await rosterAllowed("membership.members.view");
+   const volunteerNames=await rosterAllowed("volunteers.view");
+   const canName="(wallet.referrer_kind='MEMBER' AND $10::boolean OR "+
+    "wallet.referrer_kind='VOLUNTEER' AND $11::boolean)";
    const rows=await tx.query<{
     ref:string;type:"DIGITAL"|"PHYSICAL";kind:string;name:string;
     productName:string;pointsCost:string;status:string;requestedAt:string
    }>(
     "SELECT r.id AS ref,r.product_type AS type,wallet.referrer_kind AS kind,"+
-    "COALESCE(m.display_name,v.display_name) AS name,"+
+    "CASE WHEN "+canName+" THEN COALESCE(m.display_name,v.display_name) "+
+    "ELSE 'Recipient restricted' END AS name,"+
     "product.name AS \"productName\",r.points_cost::text AS \"pointsCost\","+
     "r.state AS status,r.requested_at AS \"requestedAt\" "+
     "FROM redemption r JOIN points_account wallet "+
@@ -830,13 +842,16 @@ export class ReferralCatalogService{
     "WHERE r.root_realm_id=$1 AND r.programme_id=$2 "+
     "AND ($3::boolean OR COALESCE(m.branch_ref,v.branch_ref)=ANY($4::uuid[])) "+
     "AND ($5::text='ALL' OR r.state=$5) "+
-    "AND ($6::text='' OR strpos(lower(COALESCE(m.display_name,v.display_name)||' '||product.name),$6)>0) "+
+    "AND ($6::text='' OR strpos(lower(product.name||' '||"+
+    "CASE WHEN "+canName+" THEN COALESCE(m.display_name,v.display_name) "+
+    "ELSE '' END),$6)>0) "+
     "AND ($7::date IS NULL OR (r.requested_at AT TIME ZONE 'Asia/Kolkata')::date >= $7::date) "+
     "AND ($8::date IS NULL OR (r.requested_at AT TIME ZONE 'Asia/Kolkata')::date <= $8::date) "+
     "ORDER BY r.requested_at DESC,r.id DESC LIMIT 26 OFFSET $9",
-    [a.realmId,programme,scope.full,scope.branches,status,search,from,to,(page-1)*25]);
+    [a.realmId,programme,scope.full,scope.branches,status,search,from,to,
+     (page-1)*25,memberNames,volunteerNames]);
    return {items:rows.rows.slice(0,25),hasMore:rows.rows.length>25,page,
-    notice:"Statuses come from verified original redemption and immutable points holds, never from a requested fulfillment flag."};
+    notice:"Statuses use original redemption and immutable points holds. Private recipient names appear only with current matching CG04 roster permission; other roles see restricted labels."};
   },true);
  }
  async stockOptions(bearer:string){
