@@ -526,7 +526,8 @@ export class ReferralCatalogService{
     "p.category,p.name,p.description,p.points_price::text AS \"pointsPrice\","+
     "p.approved_image_url AS \"imageUrl\",p.highlighted,"+
     "CASE WHEN p.product_type='DIGITAL' THEN 'NO_STOCK_REQUIRED' "+
-    "WHEN item.status='ACTIVE' AND loc.status='ACTIVE' "+
+    "WHEN item.status='ACTIVE' AND item.unit_code='PIECE' AND item.qty_scale=0 "+
+    "AND loc.status='ACTIVE' "+
     "AND (loc.branch_ref IS NULL OR br.status='ACTIVE') "+
     "AND COALESCE(bal.on_hand_qty-bal.reserved_qty,0)>0 THEN 'AVAILABLE' "+
     "ELSE 'OUT_OF_STOCK' END AS availability "+
