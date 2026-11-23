@@ -227,3 +227,8 @@ An introducing CG03 source service now creates actual protected CSR_PARTNER_REVI
 ### 23 Nov 2026 — focused CG03/CG19 revision verification fix
 
 A targeted review of the newly wired CG03 decision path exposed that a verified CG19 agreement is bound to the **submitted draft's old source revision**, while CG08 increments the partner version on SUBMIT. Original CG19 `requireCurrentProof` now accepts only matching current DRAFT/RETURNED revision or exact SUBMITTED version+1 with unrevoked scanner evidence; mismatched version, later changed or rejected source remains forbidden. No new requirements or issue IDs. US001-QA10/11/13/19 source fix authored, independently reviewed real Postgres race and browser/device execution still NOT_RUN.
+
+
+### 23 November 2026 — Web CSR protected review UI and draft submission source
+
+New guarded Web BFF and reviewer-only Admin page path for original CG03 CSR review policy, list/detail, distinct password-verified decision and replay-key retries. Partner editor now permits only currently scanner-verified CG19 evidence to be explicitly selected and submitted as original CSR_PARTNER_REVIEW case. Reviewer-only roles see the CSR sidebar and review workspace, without broad partner-manage access. Evidence upload/scan is **not** approval, and CG03 decision is **not** public listing or money. Original US001-QA01/06/08/10/11/13/15/18/19/20 SOURCE_UI_AUTHORED, runtime/device and independent re-review NOT_RUN. Existing 60 original scenarios unchanged.

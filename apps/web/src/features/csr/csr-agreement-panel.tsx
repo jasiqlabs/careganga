@@ -4,6 +4,7 @@ type Evidence={fileRef:string;fileVersion:number;mime:string;createdAt:string};
 type Upload={uploadRef:string;status:string;uploadUrl?:string;uploadHeaders?:Record<string,string>;
  cleanVerified?:boolean;fileRef?:string|null;fileVersion?:number|null};
 type Command={requestKey:string;hash:string;mime:string;size:number;intent?:string};
+type Submit={requestKey:string;expectedVersion:number;evidenceFileRef:string};
 const allowed=["application/pdf","image/jpeg","image/png","image/webp"];
 async function api<T>(path:string,body?:Record<string,unknown>):Promise<T>{
  const r=await fetch("/api/csr/agreements/"+path,{cache:"no-store",
@@ -13,11 +14,12 @@ async function api<T>(path:string,body?:Record<string,unknown>):Promise<T>{
  return v as T;
 }
 /** CG19 private source proof. Uploading never approves a CSR company or receives funds. */
-export function CsrAgreementPanel({partnerRef,version,canUpload}:{partnerRef:string;version:number;canUpload:boolean}){
+export function CsrAgreementPanel({partnerRef,version,canUpload,canSubmit,onSubmitted}:{partnerRef:string;version:number;canUpload:boolean;canSubmit:boolean;onSubmitted:()=>void}){
  const [files,setFiles]=useState<Evidence[]|null>(null),[chosen,setChosen]=useState<File|null>(null),
   [consent,setConsent]=useState(false),[busy,setBusy]=useState(false),[error,setError]=useState(""),[message,setMessage]=useState(""),
   [epoch,setEpoch]=useState(0),[intent,setIntent]=useState("");
  const command=useRef<Command|null>(null),running=useRef(false),mounted=useRef(true);
+ const [selectedProof,setSelectedProof]=useState(""),[submission,setSubmission]=useState<Submit|null>(null),[submitError,setSubmitError]=useState("");
  useEffect(()=>{mounted.current=true;return()=>{mounted.current=false;};},[]);
  useEffect(()=>{let live=true;setFiles(null);
   void api<{files:Evidence[];currentVersion:number}>("partners/"+partnerRef).then(v=>{
@@ -39,6 +41,26 @@ export function CsrAgreementPanel({partnerRef,version,canUpload}:{partnerRef:str
   catch(e){setError(e instanceof Error?e.message:"Agreement verification is unavailable.");}
   finally{running.current=false;setBusy(false);}
  };
+ const submitForApproval=async()=>{
+  if(!canSubmit||busy||running.current||!selectedProof||!files?.some(f=>f.fileRef===selectedProof))return;
+  const cmd=submission??{requestKey:crypto.randomUUID(),expectedVersion:version,evidenceFileRef:selectedProof};
+  setSubmission(cmd);setBusy(true);setSubmitError("");
+  try{
+   const response=await fetch("/api/csr/partners/"+partnerRef+"/submit",{method:"POST",cache:"no-store",
+    headers:{"Content-Type":"application/json"},body:JSON.stringify(cmd),signal:AbortSignal.timeout(16000)});
+   const body:unknown=await response.json().catch(()=>null);
+   if(!response.ok||body===null){
+    const message=body&&typeof body==="object"&&"message" in body&&typeof body.message==="string"?body.message:"CSR submission could not be confirmed.";
+    throw Object.assign(Error(message),{status:response.status});
+   }
+   setSubmission(null);setMessage("CSR application submitted for independent approval, not yet approved.");onSubmitted();
+  }catch(e){
+   const status=e&&typeof e==="object"&&"status" in e?Number(e.status):503;
+   if(status>0&&status<500){setSubmission(null);setSubmitError(e instanceof Error?e.message:"Review submission rejected. Refresh your draft.");}
+   else setSubmitError("Result uncertain. Check review history or retry the exact original submission.");
+  }finally{setBusy(false);}
+ };
+ useEffect(()=>{if(!submission)setSelectedProof("");},[partnerRef,version]);
  const upload=async()=>{
   if(!canUpload||!chosen||!consent||running.current)return;
   running.current=true;setBusy(true);setError("");setMessage("");
@@ -73,6 +95,17 @@ export function CsrAgreementPanel({partnerRef,version,canUpload}:{partnerRef:str
    <ul>{files.map((f,i)=><li key={f.fileRef}>
     Verified private document {i+1} ({f.mime==="application/pdf"?"PDF":"image"}) · <a href={"/api/csr/agreements/files/"+f.fileRef}>Download privately</a>
    </li>)}</ul>}
+  {canSubmit&&<div style={{display:"grid",gap:8,padding:10,background:"var(--cg-surface,#fff)",borderRadius:9}}>
+    <h4 style={{margin:0}}>Submit for independent CSR review</h4>
+    <p style={{fontSize:12,margin:0}}>Select a scanner-verified agreement. Another authorized Foundation reviewer must approve this application.</p>
+    <select value={submission?.evidenceFileRef??selectedProof} disabled={busy||!!submission} onChange={e=>setSelectedProof(e.target.value)}>
+     <option value="">Select verified agreement</option>
+     {files?.map((f,i)=><option key={f.fileRef} value={f.fileRef}>Verified agreement {i+1}</option>)}
+    </select>
+    <button type="button" disabled={busy||!files?.length||!selectedProof} onClick={()=>void submitForApproval()}>{busy?"Submitting…":"Submit for review"}</button>
+    {submission&&<button type="button" disabled={busy} onClick={()=>void submitForApproval()}>Retry exact submission</button>}
+    {submitError&&<p role="alert">{submitError}</p>}
+   </div>}
   {canUpload&&<>
    <label>Select signed CSR agreement
     <input type="file" accept={allowed.join(",")} disabled={busy} onChange={e=>{setChosen(e.target.files?.[0]??null);setConsent(false);command.current=null;setIntent("");setError("");}}/>

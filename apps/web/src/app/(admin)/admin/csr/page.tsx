@@ -3,6 +3,7 @@ import {redirect} from "next/navigation";
 import {FoundationAdminNav} from "../../../../shared/foundation-admin-nav";
 import {UnavailablePage} from "../../../../shared/unavailable-page";
 import {CsrPartnersWorkspace} from "../../../../features/csr/csr-partners-workspace";
+import {CsrReviewWorkspace} from "../../../../features/csr/csr-review-workspace";
 export const dynamic="force-dynamic";
 export const metadata={title:"CSR & Partnerships | CareGanga Foundation",robots:{index:false,follow:false}};
 export default async function CsrPage(){
@@ -21,15 +22,18 @@ export default async function CsrPage(){
    !("roleName" in actor)||typeof actor.roleName!=="string"||!grant||typeof grant!=="object"||
    !("actions" in grant)||!Array.isArray(grant.actions))throw Error();
   const actions=(grant.actions as unknown[]).filter((x):x is {key:string}=>!!x&&typeof x==="object"&&"key" in x&&typeof x.key==="string").map(x=>x.key);
-  if(!actions.includes("csr.partners.view"))
+  const canReview=actions.includes("csr.partners.review")&&actions.includes("approvals.review");
+  if(!actions.includes("csr.partners.view")&&!canReview)
    return <UnavailablePage title="CSR access unavailable" description="Your current role cannot view CSR partner records." linkLabel="Return to dashboard"/>;
   return <div className="shell"><FoundationAdminNav active="csr" initialActions={actions}
    displayName={actor.displayName} roleName={actor.roleName}
    canViewRoles={actions.includes("roles.view")} canViewAccounts={actions.includes("accounts.view")}
    canViewBranches={actions.includes("foundation.branches.view")} canViewFoundation={actions.includes("foundation.profile.view")}/>
-   <main className="workspace"><CsrPartnersWorkspace canManage={actions.includes("csr.partners.manage")}
+   <main className="workspace" style={{display:"grid",gap:22}}>{actions.includes("csr.partners.view")&&<CsrPartnersWorkspace canManage={actions.includes("csr.partners.manage")}
     canReadAgreement={actions.includes("documents.files.view")}
-    canUploadAgreement={actions.includes("documents.files.manage")&&actions.includes("documents.files.view")}/></main></div>;
+    canUploadAgreement={actions.includes("documents.files.manage")&&actions.includes("documents.files.view")}/>}
+   {canReview&&<CsrReviewWorkspace canConfigure={actions.includes("approvals.process.manage")}/>}
+   </main></div>;
  }catch(e){
   if(e&&typeof e==="object"&&"digest" in e&&typeof e.digest==="string"&&e.digest.startsWith("NEXT_REDIRECT"))throw e;
   return <UnavailablePage title="CSR service unavailable" description="Your current CSR access could not be verified." linkLabel="Return to dashboard"/>;

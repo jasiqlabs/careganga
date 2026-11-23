@@ -755,7 +755,7 @@ export function FoundationAdminNav({
     ...(foundationAccess ? [{ key: "foundation" as const, label: "Foundation Structure", href: "/admin/foundation" }] : []),
     ...(branchAccess ? [{ key: "branches" as const, label: "Branches & registration", href: "/admin/foundation/branches" }] : []),
     ...((allowed("campaigns.view",false)||allowed("campaigns.review",false)&&allowed("approvals.review",false))?[{key:"campaigns" as const,label:"Campaigns",href:"/admin/campaigns"}]:[]),
-    ...(allowed("csr.partners.view",false)?[{key:"csr" as const,label:"CSR & Partnerships",href:"/admin/csr"}]:[]),
+    ...((allowed("csr.partners.view",false)||(allowed("csr.partners.review",false)&&allowed("approvals.review",false)))?[{key:"csr" as const,label:"CSR & Partnerships",href:"/admin/csr"}]:[]),
     ...(allowed("projects.view",false)?[{key:"projects" as const,label:"Projects",href:"/admin/projects"}]:[]),
     ...(allowed("projects.visits.view",false)?[{key:"fieldVisits" as const,label:"Field Visits",href:"/admin/field-visits"}]:[]),
     ...(allowed("projects.activities.view",false)?[{key:"activities" as const,label:"Activities & Events",href:"/admin/activities"}]:[]),
