@@ -26,7 +26,15 @@ test("CG-MB-001 current protected grant/end and revocation require genuine CG01 
  assert.match(service,/requireAction\(bearer,"foundation\.branches\.admin"\)/);
  assert.match(service,/limitFoundationRootProof/);
  assert.match(service,/requireFreshFoundationRootProof/);
- assert.match(service,/eligibleOfficeholder\(tx,a,account\)/);
+ assert.match(service,/eligibleDelegatedStaff\(tx,a,account\)/);
+ assert.match(service,/eligibleDelegatedStaffOptions/);
+ const identity=backend("src/modules/cg-01-identity-access/application/foundation-structure-identity.facade.ts");
+ assert.match(identity,/async eligibleDelegatedStaff\(/);
+ assert.match(identity,/FOR UPDATE OF a/);
+ assert.match(identity,/careganga patient/);
+ assert.match(identity,/careganga community applicant/);
+ assert.match(identity,/r\.normalized_name NOT IN/);
+ assert.match(identity,/async eligibleDelegatedStaffOptions\(/);
  assert.match(service,/status='ACTIVE' FOR SHARE/);
  assert.match(service,/request_digest/);
  assert.match(service,/access_version=access_version\+1/g);
