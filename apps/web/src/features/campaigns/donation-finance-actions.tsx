@@ -50,8 +50,9 @@ export function DonationFinanceActions({items,canRecord,canReview,canIssue,onCha
  [refundDate,setRefundDate]=useState(""),[refundVoucher,setRefundVoucher]=useState(""),
  [refundPassword,setRefundPassword]=useState(""),[paidOut,setPaidOut]=useState(false);
  const [issueFor,setIssueFor]=useState<Donation|null>(null);
+ const [correctionRefund,setCorrectionRefund]=useState("");
  const onlineKey=useRef<string|null>(null),refundKey=useRef<string|null>(null),
- refundConfirmKey=useRef<string|null>(null),receiptKey=useRef<string|null>(null);
+ refundConfirmKey=useRef<string|null>(null),receiptKey=useRef<string|null>(null),correctionKey=useRef<string|null>(null);
  const run=async(fn:()=>Promise<void>)=>{
   if(busy)return;
   setBusy(true);setError("");setNotice("");
@@ -110,6 +111,19 @@ export function DonationFinanceActions({items,canRecord,canReview,canIssue,onCha
   setNotice("Physical cash refund confirmed by original CG09 balanced correction.");
   setRefundReview(null);setRefundPassword("");refundConfirmKey.current=null;onChange();
   const list=await request<{items:Refund[]}>("/refunds/queue");setRefunds(list.items);
+ });};
+ const issueCorrection=(event:FormEvent)=>{event.preventDefault();void run(async()=>{
+  const row=refunds.find(x=>x.refundRef===correctionRefund&&x.status==="FINANCE_REVERSED");
+  if(!row)throw new Error("Choose an actual posted refund with an already issued original receipt.");
+  if(!correctionKey.current)correctionKey.current=crypto.randomUUID();
+  const response=await fetch("/api/donation-receipts/"+row.refundRef+"/correction",{
+   method:"POST",cache:"no-store",headers:{"Content-Type":"application/json"},
+   body:JSON.stringify({requestKey:correctionKey.current}),signal:AbortSignal.timeout(18000)});
+  const value:unknown=await response.json().catch(()=>null);
+  if(!response.ok||!value||typeof value!=="object"||!("status" in value)||
+    value.status!=="ISSUED")throw Error("Correction outcome uncertain. Retry the same original request.");
+  setNotice("Separate CG19 correction issued. Original receipt remains unchanged.");
+  setCorrectionRefund("");correctionKey.current=null;onChange();
  });};
  const issue=(event:FormEvent)=>{event.preventDefault();void run(async()=>{
   if(!issueFor)throw Error("Choose a posted donation.");
@@ -215,6 +229,19 @@ export function DonationFinanceActions({items,canRecord,canReview,canIssue,onCha
     <button type="submit" style={button} disabled={busy||issueFor.receiptStatus==="ISSUED"}>
      {issueFor.receiptStatus==="ISSUED"?"Receipt already issued":"Issue original private receipt"}</button>
    </form>}
+  </section>}
+  {canIssue&&<section style={box}><h2>Issue verified refund correction</h2>
+   <p>The original issued receipt stays immutable; only a posted CG09 refund may have a separate correction PDF.</p>
+   <button type="button" style={button} disabled={busy} onClick={()=>void refreshRefunds()}>Load verified refund history</button>
+   <form style={{display:"grid",gap:10}} onSubmit={issueCorrection}>
+    {field("Verified refund",<select style={control} required value={correctionRefund}
+     onChange={e=>{correctionKey.current=null;setCorrectionRefund(e.target.value);}}>
+     <option value="">Select posted refund</option>
+     {refunds.filter(x=>x.status==="FINANCE_REVERSED").map(x=>
+      <option key={x.refundRef} value={x.refundRef}>{x.donationNumber} · {money(x.amountMinor)}</option>)}
+    </select>)}
+    <button type="submit" style={button} disabled={busy||!correctionRefund}>Issue separate private correction</button>
+   </form>
   </section>}
   {error&&<p role="alert">{error}</p>}
   {notice&&<p role="status">{notice}</p>}
