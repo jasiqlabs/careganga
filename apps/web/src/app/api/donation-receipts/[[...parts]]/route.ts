@@ -8,7 +8,8 @@ const reply=(body:unknown,status=200)=>NextResponse.json(body,{status,
 async function proxy(req:NextRequest,ctx:Context,method:"GET"|"POST"){
  const parts=(await ctx.params).parts??[];
  if(parts.length!==2||!UUID.test(parts[0])||
-   !(parts[1]==="status"&&method==="GET"||parts[1]==="issue"&&method==="POST"))
+   !(parts[1]==="status"&&method==="GET"||
+    ["issue","correction"].includes(parts[1])&&method==="POST"))
   return reply({message:"Original document action unavailable."},404);
  if(method==="POST"&&req.headers.get("origin")!==req.nextUrl.origin)
   return reply({message:"Use the authorized Foundation documents panel."},403);

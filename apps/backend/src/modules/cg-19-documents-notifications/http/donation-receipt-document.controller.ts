@@ -31,6 +31,23 @@ export class DonationReceiptDocumentController{
 export class DonorOwnReceiptController{
  constructor(private readonly source:DonationReceiptDocumentService,
   private readonly requests:DonationIntentsService){}
+ @Post("corrections")
+ @Header("Cache-Control","private, no-store")
+ async corrections(@Req()req:object,@Body()body:unknown){
+  assertDonationPublicIngress(req,"donor");
+  await this.requests.throttlePrivateDocumentRead(req);
+  return this.source.ownCorrections(body);
+ }
+ @Post("correction-download")
+ @Header("Cache-Control","private, no-store")
+ @Header("X-Content-Type-Options","nosniff")
+ async correctionDownload(@Req()req:object,@Body()body:unknown){
+  assertDonationPublicIngress(req,"donor");
+  await this.requests.throttlePrivateDocumentRead(req);
+  const bytes=await this.source.downloadCorrection(body);
+  return new StreamableFile(bytes,{type:"application/pdf",
+   disposition:'attachment; filename="CareGanga-Donation-Correction.pdf"'});
+ }
  @Post("download")
  @Header("Cache-Control","private, no-store")
  @Header("X-Content-Type-Options","nosniff")

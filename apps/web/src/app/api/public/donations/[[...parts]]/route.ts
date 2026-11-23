@@ -6,8 +6,10 @@ const reply=(value:unknown,status=200)=>NextResponse.json(value,{status,
  "Referrer-Policy":"no-referrer"}});
 export async function POST(req:NextRequest,ctx:Context){
  const parts=(await ctx.params).parts??[];
- const receipt=parts.length===2&&parts[0]==="receipt"&&parts[1]==="download";
- const path=receipt?"/api/public/donations/receipt/download":
+ const receipt=parts.length===2&&parts[0]==="receipt"&&["download","correction-download"].includes(parts[1]);
+ const correctionList=parts.length===2&&parts[0]==="receipt"&&parts[1]==="corrections";
+ const path=receipt?"/api/public/donations/receipt/"+parts[1]:
+  correctionList?"/api/public/donations/receipt/corrections":
   parts.length===0?"/api/public/donations":
   parts.length===1&&["status","history","payment-link"].includes(parts[0])?
   "/api/public/donations/"+parts[0]:null;
@@ -30,7 +32,7 @@ export async function POST(req:NextRequest,ctx:Context){
    if(bytes.byteLength<100||bytes.byteLength>10485760)
     return reply({message:"Original private receipt is unavailable."},503);
    return new NextResponse(bytes,{status:200,headers:{"Content-Type":"application/pdf",
-    "Content-Disposition":'attachment; filename="CareGanga-Donation-Receipt.pdf"',
+    "Content-Disposition":parts[1]==="correction-download"?'attachment; filename="CareGanga-Donation-Correction.pdf"':'attachment; filename="CareGanga-Donation-Receipt.pdf"',
     "Cache-Control":"private, no-store","X-Content-Type-Options":"nosniff",
     "Referrer-Policy":"no-referrer"}});
   }

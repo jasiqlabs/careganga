@@ -172,7 +172,7 @@ export class DonationReceiptDocumentService{
     if(correction.issue_key!==key||correction.source_digest!==basis.source_digest||
      correction.amount_minor!==basis.amount_minor)
      throw new ConflictException("Original correction issuance request changed.");
-   }else correction=(await tx.query<typeof correction extends infer T ? NonNullable<T> : never>(
+   }else correction=(await tx.query<{id:string;status:string;correction_number:string;source_digest:string;issue_key:string;object_key:string;created_at:Date;amount_minor:string}>(
     "INSERT INTO cg19_donation_receipt_correction(root_realm_id,donation_id,"+
     "original_receipt_id,refund_request_id,source_digest,issue_key,issued_by,"+
     "amount_minor,object_key) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9) RETURNING *",
@@ -236,6 +236,83 @@ export class DonationReceiptDocumentService{
     "WHERE root_realm_id=$1 AND id=$2 AND status='PENDING'",[a.realmId,c.id]).catch(()=>undefined);
    return {status:"UNKNOWN",confirmed:false};
   }
+ }
+
+
+ /** Private status-token correction history; never search by donor name,
+  * PAN, email, phone, another branch or public correction number alone. */
+ async ownCorrections(raw:unknown){
+  if(!raw||typeof raw!=="object"||Array.isArray(raw)||
+   Object.keys(raw).some(k=>k!=="statusToken"))
+   throw new BadRequestException("Provide the original private donation proof.");
+  const value=(raw as Record<string,unknown>).statusToken;
+  if(typeof value!=="string"||!/^[A-Za-z0-9_-]{43}$/.test(value))
+   throw new NotFoundException("Private donation proof unavailable.");
+  const hash=createHash("sha256").update(value).digest("hex");
+  const rows=await this.db.query<{correctionNumber:string;originalNumber:string;
+   amountMinor:string;issuedAt:Date}>(
+   "SELECT c.correction_number AS \"correctionNumber\",o.receipt_number AS \"originalNumber\","+
+   "c.amount_minor::text AS \"amountMinor\",c.issued_at AS \"issuedAt\" "+
+   "FROM donation d JOIN cg19_donation_receipt_correction c "+
+   "ON c.root_realm_id=d.root_realm_id AND c.donation_id=d.id "+
+   "JOIN cg19_donation_receipt_document o ON o.root_realm_id=c.root_realm_id "+
+   "AND o.id=c.original_receipt_id "+
+   "JOIN donation_refund_request r ON r.root_realm_id=c.root_realm_id AND r.id=c.refund_request_id "+
+   "JOIN journal j ON j.root_realm_id=r.root_realm_id AND j.id=r.reversal_journal_ref "+
+   "WHERE d.status_token_digest=$1 AND d.status_token_expires_at>now() "+
+   "AND d.source_status='RECEIVED_POSTED' AND c.status='ISSUED' AND o.status='ISSUED' "+
+   "AND r.status='FINANCE_REVERSED' AND j.status='POSTED' AND j.source_ref=r.id "+
+   "AND j.immutable_payload_digest=c.source_digest "+
+   "ORDER BY c.issued_at DESC,c.id DESC LIMIT 51",[hash]);
+  if(rows.rows.length>50)throw new ConflictException("Too many corrections; request an authorized Foundation lookup.");
+  return {items:rows.rows.map(x=>({...x,issuedAt:x.issuedAt.toISOString()}))};
+ }
+ /** Retrieval is POST-only and revalidates owner proof after private storage.
+  * No correction token or object storage path appears in browser URLs. */
+ async downloadCorrection(raw:unknown){
+  if(!raw||typeof raw!=="object"||Array.isArray(raw)||
+    Object.keys(raw).some(k=>!["statusToken","correctionNumber"].includes(k)))
+   throw new BadRequestException("Enter your private correction proof.");
+  const body=raw as Record<string,unknown>,token=body.statusToken,number=body.correctionNumber;
+  if(typeof token!=="string"||!/^[A-Za-z0-9_-]{43}$/.test(token)||
+   typeof number!=="string"||!/^CG-COR-[0-9]{9}$/.test(number))
+   throw new NotFoundException("Private correction unavailable.");
+  const hash=createHash("sha256").update(token).digest("hex");
+  const correction=(await this.db.query<{id:string;root_realm_id:string;object_key:string;
+   object_version:string;content_sha256:string;content_length:number}>(
+   "SELECT c.id,c.root_realm_id,c.object_key,c.object_version,c.content_sha256,c.content_length "+
+   "FROM donation d JOIN cg19_donation_receipt_correction c "+
+   "ON c.root_realm_id=d.root_realm_id AND c.donation_id=d.id "+
+   "JOIN donation_refund_request r ON r.root_realm_id=c.root_realm_id AND r.id=c.refund_request_id "+
+   "JOIN journal j ON j.root_realm_id=r.root_realm_id AND j.id=r.reversal_journal_ref "+
+   "WHERE d.status_token_digest=$1 AND d.status_token_expires_at>now() "+
+   "AND c.correction_number=$2 AND d.source_status='RECEIVED_POSTED' "+
+   "AND c.status='ISSUED' AND r.status='FINANCE_REVERSED' "+
+   "AND j.status='POSTED' AND j.source_ref=r.id "+
+   "AND j.immutable_payload_digest=c.source_digest",[hash,number])).rows[0];
+  if(!correction||!correction.object_version||!correction.content_sha256||
+   correction.content_length<100||correction.content_length>10485760)
+   throw new NotFoundException("Private correction has not been issued.");
+  const bytes=await this.storage.readVerifiedPrivateObject({
+   objectKey:correction.object_key,objectVersion:correction.object_version,
+   maxBytes:correction.content_length});
+  if(bytes.length!==correction.content_length||
+   createHash("sha256").update(bytes).digest("hex")!==correction.content_sha256)
+   throw new ConflictException("Protected correction bytes could not be verified.");
+  const still=await this.db.query(
+   "SELECT 1 FROM cg19_donation_receipt_correction c "+
+   "JOIN donation d ON d.root_realm_id=c.root_realm_id AND d.id=c.donation_id "+
+   "JOIN donation_refund_request r ON r.root_realm_id=c.root_realm_id AND r.id=c.refund_request_id "+
+   "JOIN journal j ON j.root_realm_id=r.root_realm_id AND j.id=r.reversal_journal_ref "+
+   "WHERE c.root_realm_id=$1 AND c.id=$2 AND c.status='ISSUED' "+
+   "AND c.object_version=$3 AND c.content_sha256=$4 "+
+   "AND d.status_token_digest=$5 AND d.status_token_expires_at>now() "+
+   "AND d.source_status='RECEIVED_POSTED' AND r.status='FINANCE_REVERSED' "+
+   "AND j.status='POSTED' AND j.immutable_payload_digest=c.source_digest",
+   [correction.root_realm_id,correction.id,correction.object_version,
+    correction.content_sha256,hash]);
+  if(still.rowCount!==1)throw new NotFoundException("Protected correction has changed.");
+  return bytes;
  }
 
  async downloadWithProof(raw:unknown){
