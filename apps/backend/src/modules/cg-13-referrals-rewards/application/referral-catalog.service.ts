@@ -662,10 +662,10 @@ export class ReferralCatalogService{
    await this.program(tx,a,programme);
    const scope=await this.inventory.rewardStoreScope(tx,a);
    const rows=await tx.query<{
-    kind:string;name:string;productName:string;pointsCost:string;
-    status:string;requestedAt:string
+    ref:string;type:"DIGITAL"|"PHYSICAL";kind:string;name:string;
+    productName:string;pointsCost:string;status:string;requestedAt:string
    }>(
-    "SELECT wallet.referrer_kind AS kind,"+
+    "SELECT r.id AS ref,r.product_type AS type,wallet.referrer_kind AS kind,"+
     "COALESCE(m.display_name,v.display_name) AS name,"+
     "product.name AS \"productName\",r.points_cost::text AS \"pointsCost\","+
     "r.state AS status,r.requested_at AS \"requestedAt\" "+
@@ -709,7 +709,8 @@ export class ReferralCatalogService{
    const found=await this.stockSource(tx,a,{
     programmeRef:"",type:"PHYSICAL",category:"",name:"",description:"",
     pointsPrice:1,eligibleAudience:"BOTH",status:"ACTIVE",
-    highlighted:false,publicVisible:false,approvedImageUrl:null,itemRef,storeRef});
+    highlighted:false,publicVisible:false,approvedImageUrl:null,itemRef,storeRef,
+    digitalFulfillmentMethod:"PENDING_EXTERNAL_PROOF"});
    if(!found)throw new ServiceUnavailableException("Original CG12 stock unavailable");
    return {itemName:found.label,availableQuantity:found.available,
     onHandQuantity:found.onHand,reservedQuantity:found.reserved,
