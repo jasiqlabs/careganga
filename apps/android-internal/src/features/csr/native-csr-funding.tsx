@@ -4,6 +4,7 @@ import * as Crypto from "expo-crypto";
 import {identityRequest} from "../identity-access/http-client";
 import {NativeCsrFundingAgreementPanel} from "./native-csr-funding-agreement-panel";
 import {NativeCsrFundingReceiptsPanel} from "./native-csr-funding-receipts-panel";
+import {NativeCsrFundingBudgetPanel} from "./native-csr-funding-budget-panel";
 type Choice={value:string;label:string;branchRef?:string|null;projectVersion?:number};
 type Options={foundation:boolean;branches:Choice[];partners:Choice[];projects:Choice[]};
 type Proposal={ref:string;branchRef:string|null;partnerRef:string|null;projectRef:string|null;
@@ -41,9 +42,9 @@ async function api<T,>(token:string,path:string,method:"GET"|"POST"|"PATCH"="GET
   {status:res.status||503});
  return x as T;
 }
-export function NativeCsrFunding({token,canManage,canReadAgreement,canUploadAgreement,canReadFinance,canLinkFinance,onExpired}:{
+export function NativeCsrFunding({token,canManage,canReadAgreement,canUploadAgreement,canReadFinance,canLinkFinance,canBudgetManage,onExpired}:{
  token:string;canManage:boolean;canReadAgreement:boolean;canUploadAgreement:boolean;
- canReadFinance:boolean;canLinkFinance:boolean;onExpired:()=>void}){
+ canReadFinance:boolean;canLinkFinance:boolean;canBudgetManage:boolean;onExpired:()=>void}){
  const [options,setOptions]=useState<Options|null>(null);
  const [page,setPage]=useState<{items:Proposal[];hasMore:boolean;summary?:{requests:number;drafts:number;requestedMinor:string;verifiedFinance:null|{committedMinor:string;verifiedReceivedMinor:string;revalidationRequiredMinor:string;allocatedMinor:string;utilizedMinor:string;availableMinor:string|null;utilizationPercent:string|null;needsRevalidation:boolean}}}>({items:[],hasMore:false});
  const [scope,setScope]=useState("ALL"),[status,setStatus]=useState("ALL"),
@@ -304,6 +305,9 @@ export function NativeCsrFunding({token,canManage,canReadAgreement,canUploadAgre
    canSubmit={canManage&&selected.status==="DRAFT"}
    onSubmitted={()=>{clearDetail();setEpoch(x=>x+1);setNotice("Funding review submitted. No cash posted.");}}
    onExpired={onExpired}/>}
+  {editing&&selected?.status==="APPROVED"&&canManage&&canBudgetManage&&
+   <NativeCsrFundingBudgetPanel token={token} proposalRef={selected.ref}
+    version={selected.version} onExpired={onExpired}/>}
   {editing&&selected?.status==="APPROVED"&&canReadFinance&&
    <NativeCsrFundingReceiptsPanel key={selected.ref+":"+selected.version}
     token={token} proposalRef={selected.ref} version={selected.version}
