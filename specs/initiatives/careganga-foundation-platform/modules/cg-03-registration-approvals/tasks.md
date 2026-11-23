@@ -129,3 +129,16 @@ Extend current CG-03 QA at owner handoff: document verification must never send 
 
 
 
+
+
+## CG-MB cross-branch/center QA overlay — 23 Nov 2026
+
+**Scope:** ROOT actor and immutable source-owned branch/center/process; not general approver permission. **Bug references:** CG-MB-005, CG-MB-010. [Run-book (MB-T01–T22)](../../../../../docs/qa/CAREGANGA-MULTIBRANCH-SOURCE-AND-RUNTIME-TEST-PLAN-20261123.md) · [issue register](../../../../../docs/bugs/multibranch/README.md). **All original QA IDs, requirements and prior execution statuses remain unchanged.** The anchors below supplement existing cases, they are not new original QA IDs or evidence of PASS. The developer must run two real ACTIVE branches A/B, a third closed branch C and root-only record; never use fictitious staff grants or browser-selected UUID as permission.
+
+| Original story and existing QA anchor | Concrete A/B+root acceptance step | Mandatory proof across applicable channels | Status |
+| --- | --- | --- | --- |
+| **US-001** (existing US-001-QA01) | Freeze CG-01 protected role or genuine CG-02 branch registration case with original root, source branch, applicant, revision and approver route; reject cross-A/B read/case replacement. | Admin Web + applicable native Web/Android, typed API, source row/CG-01/02/14 guard, PostgreSQL FK/trigger, wrong-branch 403/404, two-worker replay, export/doc/notification | NOT_RUN |
+| **US-002** (existing US-002-QA02) | Manager A must not approve their own case or B-only case; independent protected reviewer must be current at decision and after branch reassignment, using only true owner grant. | Admin Web + applicable native Web/Android, typed API, source row/CG-01/02/14 guard, PostgreSQL FK/trigger, wrong-branch 403/404, two-worker replay, export/doc/notification | NOT_RUN |
+| **US-003** (existing US-003-QA01) | Finalize only genuine approved immutable case into original CG-01/02 record; stale branch/source revision or revoked reviewer cannot trigger a second effect. | Admin Web + applicable native Web/Android, typed API, source row/CG-01/02/14 guard, PostgreSQL FK/trigger, wrong-branch 403/404, two-worker replay, export/doc/notification | NOT_RUN |
+
+**Cross-story negative/closure trace (NOT_RUN):** With manager A and B, an ordinary non-manager action-role holder, protected root, revoked user and separate actual center X/Y where relevant: check same-root A→B and foreign-root UUID bypass; branch deactivation/reassignment in middle of edit/export/upload; file/notice/worker visibility; history versus current authorization; Foundation-only NULL branch; no overbroad client filter; list/KPI/CSV/PDF report consistency; two-worker replay/rollback; original client screenshot UI and applicable Internal/Public Android parity. Record reviewer, exact commit, PostgreSQL migration/trigger/EXPLAIN and real API/device screenshots for **every original story**; separate SOURCE_REVIEWED from RUNTIME_PASS. For branch-assignment policy blocked by missing non-manager grants, mark BLOCKED CG-MB-001, not a false PASS. No merge into main.
