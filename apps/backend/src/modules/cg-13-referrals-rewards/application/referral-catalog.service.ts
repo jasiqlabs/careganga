@@ -476,12 +476,11 @@ export class ReferralCatalogService{
     "AND bal.item_id=p.cg12_item_ref AND bal.location_id=p.cg12_location_ref "+
     "WHERE p.root_realm_id=$1 AND p.status='ACTIVE' AND p.public_visible "+
     "AND pr.status='ACTIVE' AND policy.effective_from<=now() "+
-    "AND ($2::boolean OR p.eligible_audience='MEMBER') "+
-    "AND ($3::boolean OR p.eligible_audience='VOLUNTEER') "+
-    "AND (p.eligible_audience='BOTH' OR p.eligible_audience=ANY($4::text[])) "+
-    "AND (pr.audience='BOTH' OR pr.audience=ANY($4::text[])) "+
+    "AND (p.eligible_audience='BOTH' AND cardinality($2::text[])>0 "+
+    "OR p.eligible_audience=ANY($2::text[])) "+
+    "AND (pr.audience='BOTH' OR pr.audience=ANY($2::text[])) "+
     "ORDER BY p.highlighted DESC,p.created_at DESC,p.id DESC LIMIT 101",
-    [a.realmId,kinds.includes("MEMBER"),kinds.includes("VOLUNTEER"),kinds]);
+    [a.realmId,kinds]);
    await tx.query("COMMIT");
    return {eligibleRelationships:kinds,items:q.rows.slice(0,100),hasMore:q.rows.length>100,
     notice:kinds.length?"Points are not cash. Products require genuine earned CG13 points before redemption.":
