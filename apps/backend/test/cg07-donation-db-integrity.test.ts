@@ -16,7 +16,8 @@ test("CG07 US002/003: 3306–3310 installed and finance/receipt evidence guards 
    await db.query("BEGIN READ ONLY");
    const tables=["donation","donation_payment_attempt","donation_payment_event",
     "donation_finance_effect","donation_manual_evidence","cg07_public_request_bucket",
-    "cg19_donation_receipt_document","donation_refund_request","cg19_donation_receipt_correction"];
+    "cg19_donation_receipt_document","donation_refund_request","cg19_donation_receipt_correction",
+    "cg19_donation_receipt_message"];
    for(const name of tables){
     const found=await db.query<{ref:string|null}>("SELECT to_regclass($1)::text AS ref",[name]);
     assert.ok(found.rows[0]?.ref,"Missing migrated CG07/CG19 table: "+name);
@@ -34,7 +35,8 @@ test("CG07 US002/003: 3306–3310 installed and finance/receipt evidence guards 
     "cg07_guard_payment_event","cg07_manual_proof_immutable",
     "cg07_refund_source_reserve","cg07_refund_requires_posted_finance",
     "cg19_donation_receipt_proof","cg19_donation_receipt_no_rewrite",
-    "cg19_correction_history_guard","cg19_correction_posted_refund"];
+    "cg19_correction_history_guard","cg19_correction_posted_refund",
+    "cg19_donation_message_guard"];
    for(const name of essential){
     const t=map.get(name);
     assert.ok(t,"Missing critical source protection trigger: "+name);
@@ -52,7 +54,8 @@ test("CG07 US002/003: 3306–3310 installed and finance/receipt evidence guards 
      AND co.contype IN('f','u','p','c')
     `,[tables]);
    for(const table of ["donation","donation_payment_attempt","donation_payment_event",
-    "donation_finance_effect","donation_refund_request","cg19_donation_receipt_document","cg19_donation_receipt_correction"]){
+    "donation_finance_effect","donation_refund_request","cg19_donation_receipt_document","cg19_donation_receipt_correction",
+    "cg19_donation_receipt_message"]){
     assert.ok(constraints.rows.some(x=>x.table_name===table&&x.definition.includes("root_realm_id")),
      "No root-scoped integrity contract found for "+table);
    }

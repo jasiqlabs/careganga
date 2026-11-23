@@ -420,3 +420,37 @@ test("US003-QA05: original verified gross/net, correction numbers and scoped rep
  assert.match(web,/View issued refund corrections/);
  assert.match(native,/View my issued refund corrections/);
 });
+
+test("US003-QA18: genuine CG19 receipt sends no false delivered message on missing provider",()=>{
+ const sql=migration("3313_cg19_donation_receipt_message.sql");
+ const sourceFile=root("apps/backend/src/modules/cg-19-documents-notifications/application/donation-receipt-message.service.ts");
+ const controller=root("apps/backend/src/modules/cg-19-documents-notifications/http/donation-receipt-document.controller.ts");
+ const provider=root("apps/backend/src/modules/cg-19-documents-notifications/infrastructure/channel-providers.ts");
+ const bff=root("apps/web/src/app/api/public/donations/[[...parts]]/route.ts");
+ const web=root("apps/web/src/features/campaigns/public-donation-form.tsx");
+ const native=root("apps/android-public/src/features/cms/native-public-donation.tsx");
+ assert.match(sql,/CREATE TABLE cg19_donation_receipt_message/);
+ assert.match(sql,/UNIQUE\(root_realm_id,donation_id,channel\)/);
+ assert.match(sql,/cg19_donation_message_guard/);
+ assert.match(sql,/r\.status='ISSUED'/);
+ assert.match(sql,/j\.status='POSTED'/);
+ assert.match(sourceFile,/async request\(raw:unknown\)/);
+ assert.match(sourceFile,/async current\(raw:unknown\)/);
+ assert.match(sourceFile,/verifiedEmailReady/);
+ assert.match(sourceFile,/last_result_class='CHECK_ACCEPTED'/);
+ assert.match(sourceFile,/this\.providers\.configured\("EMAIL","TRANSACTIONAL"\)/);
+ assert.match(sourceFile,/this\.providers\.send/);
+ assert.match(sourceFile,/if\(channel==="WHATSAPP"\)return format\("MESSAGE_PENDING"\)/);
+ assert.match(sourceFile,/delivered:false/);
+ assert.match(sourceFile,/receiptStatus:"ISSUED",downloadAvailable:true/);
+ assert.match(sourceFile,/providerAccepted:state==="PROVIDER_ACCEPTED"/);
+ assert.match(provider,/response\.status===202/);
+ assert.match(controller,/@Post\("message"\)/);
+ assert.match(controller,/@Post\("message\/status"\)/);
+ assert.match(controller,/throttlePrivateDocumentRead\(req\)/);
+ assert.match(bff,/receiptMessage/);
+ assert.match(web,/requestReceiptMessage/);
+ assert.match(web,/refreshReceiptMessage/);
+ assert.match(native,/requestReceiptMessage/);
+ assert.match(native,/checkReceiptMessage/);
+});
