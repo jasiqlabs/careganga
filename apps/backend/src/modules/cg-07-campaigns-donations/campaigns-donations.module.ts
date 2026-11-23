@@ -11,6 +11,8 @@ import {DonationManualService} from "./application/donation-manual.service";
 import {DonationManualController} from "./http/donation-manual.controller";
 import {DonationRefundService} from "./application/donation-refund.service";
 import {DonationRefundController} from "./http/donation-refund.controller";
+import {DonationProviderRefundService} from "./application/donation-provider-refund.service";
+import {DonationProviderRefundController,DonationProviderRefundWebhookController} from "./http/donation-provider-refund.controller";
 import {DonationReceiptSourceFacade} from "./application/donation-receipt-source.facade";
 import {CampaignDraftsService} from "./application/campaign-drafts.service";
 import {DonationIntentsService} from "./application/donation-intents.service";
@@ -21,5 +23,5 @@ import {DonationOnlineController} from "./http/donation-online.controller";
 import {PublicDonationIntentsController} from "./http/public-donation-intents.controller";
 import {CampaignDraftsController} from "./http/campaign-drafts.controller";
 @Module({imports:[IdentityAccessModule,FoundationStructureModule,ProjectsSourceModule,FinanceSourceModule],
- providers:[DonationBankService,DonationRefundService,DonationReceiptSourceFacade,CampaignDraftsService,DonationIntentsService,DonationManualService,DonationAdminService,DonationOnlineService,DonationOnlineFinanceService],controllers:[DonationBankController,DonationRefundController,CampaignDraftsController,PublicDonationIntentsController,DonationManualController,DonationAdminController,DonationOnlineController,DonationOnlineFinanceController],exports:[CampaignDraftsService,DonationReceiptSourceFacade,DonationIntentsService]})
+ providers:[DonationBankService,DonationRefundService,DonationProviderRefundService,DonationReceiptSourceFacade,CampaignDraftsService,DonationIntentsService,DonationManualService,DonationAdminService,DonationOnlineService,DonationOnlineFinanceService],controllers:[DonationBankController,DonationRefundController,DonationProviderRefundController,DonationProviderRefundWebhookController,CampaignDraftsController,PublicDonationIntentsController,DonationManualController,DonationAdminController,DonationOnlineController,DonationOnlineFinanceController],exports:[CampaignDraftsService,DonationReceiptSourceFacade,DonationIntentsService]})
 export class CampaignsDonationsModule{}
