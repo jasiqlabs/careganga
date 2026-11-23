@@ -1,3 +1,4 @@
+import {DonationBankCollectionFacade} from "./donation-bank-collection.facade";
 import {MembershipFeesService} from "./membership-fees.service";
 import {BadRequestException,ConflictException,ForbiddenException,Inject,Injectable} from "@nestjs/common";
 import {createHash} from "node:crypto";
@@ -45,7 +46,8 @@ export class FinanceReportsService{
   private readonly identity:FoundationStructureIdentityFacade,
   private readonly protectedOwner:ProtectedAccessOwnerService,
   private readonly statementProof:FinanceBankStatementProofFacade,
-   private readonly branches:BranchSourceFacade,private readonly membershipFees:MembershipFeesService){}
+   private readonly branches:BranchSourceFacade,private readonly membershipFees:MembershipFeesService,
+  private readonly bankDonations:DonationBankCollectionFacade){}
  private actor(bearer:string,write=false){
   return this.sessions.requireAction(bearer,
    write?"finance.reconciliation.manage":"finance.reports.view");
@@ -575,6 +577,11 @@ export class FinanceReportsService{
     "WHERE id=$1 AND root_realm_id=$2 AND status='PENDING'",
     [ref,actor.realmId,v.action==="VERIFY"?"VERIFIED":"REJECTED",actor.accountId]);
    if(v.action==="VERIFY")await this.membershipFees.onReconciliationVerified(tx,actor,ref);
+   // CG07 only consumes an independently approved original CG09 decision
+   // and original CG19 frozen statement evidence in THIS SAME transaction.
+   // A general bank reconciliation remains unchanged.
+   await this.bankDonations.onReconciliation(tx,actor,ref,
+    v.action==="VERIFY"?"VERIFIED":"REJECTED");
    await tx.query("COMMIT");
    return {confirmed:true,status:v.action==="VERIFY"?"VERIFIED":"REJECTED",replayed:false,
     explanation:"A separate reviewer checked the uploaded scanned statement and exact bank line. This does not confirm gateway or outgoing settlement."};
