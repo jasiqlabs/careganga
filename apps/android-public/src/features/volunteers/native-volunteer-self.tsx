@@ -160,6 +160,7 @@ export function NativeVolunteerSelf({onExit}:{onExit:()=>void}){
    {selected&&<Text>Current status: {readable(selected.status)} · {selected.applicationNumber}{selected.reviewStatus?" · "+readable(selected.reviewStatus):""}{selected.reviewRemarks?" · "+selected.reviewRemarks:""}</Text>}
   </View>
   {profile?.volunteer&&token&&<NativeVolunteerCard token={token} onExpired={clear}/>}
+  <NativeEligibleRewardsCatalogue token={token} onExpired={clear}/>
   {editable&&<View style={s.card}>
    <Text accessibilityRole="header" style={s.title}>Volunteer Application</Text>
    <View style={s.row}>{steps.map((label,index)=><View key={label}>{button((index+1)+". "+label,()=>setStep(index),false,step===index)}</View>)}</View>
