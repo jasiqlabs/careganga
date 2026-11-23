@@ -84,7 +84,7 @@ const currentSql=`SELECT e.id,e.employee_code,app.legal_name AS employee_name,e.
  LEFT JOIN hr_employee manager ON manager.id=a.manager_employee_ref AND manager.root_realm_id=e.root_realm_id
  LEFT JOIN hr_employee_application mp ON mp.id=manager.application_id AND mp.root_realm_id=e.root_realm_id
  WHERE e.root_realm_id=$1 AND e.status IN('ACTIVE','PROBATION') AND a.valid_from<=CURRENT_DATE AND a.valid_to IS NULL`;
-const actorScope=(branchParam:number)=>`(b.manager_account_ref=$2 OR b.id=ANY(${branchParam}::uuid[]) OR EXISTS(SELECT 1 FROM hr_employee supervisor
+const actorScope=(branchParam:number)=>`(b.manager_account_ref=$2 OR b.id=ANY($${branchParam}::uuid[]) OR EXISTS(SELECT 1 FROM hr_employee supervisor
  JOIN hr_employment_assignment sa ON sa.employee_id=supervisor.id AND sa.root_realm_id=supervisor.root_realm_id
  WHERE supervisor.id=a.manager_employee_ref AND supervisor.root_realm_id=e.root_realm_id AND supervisor.account_ref=$2
  AND supervisor.status IN('ACTIVE','PROBATION') AND sa.branch_ref=a.branch_ref AND sa.valid_from<=CURRENT_DATE AND sa.valid_to IS NULL)
