@@ -442,26 +442,26 @@ export function ReferralRewardsWorkspace({canViewPolicy,canViewRewards,canManage
           style={rankTab===t?css.primary:css.button}
           onClick={()=>setRankTab(t)}>{t==="MEMBER"?"Members":"Volunteers"}</button>)}
         </div>
+        <p style={{fontSize:12,margin:0}}>Verified rank totals only. Individual
+         referrers appear separately below, subject to your current CG04 roster permission.</p>
         <div style={{overflowX:"auto"}}>
-         <table style={{width:"100%",minWidth:600,borderCollapse:"collapse",fontSize:12}}>
-          <thead><tr>{["MEMBER / VOLUNTEER","NAME","REFERRAL COUNT","TOTAL POINTS",
-           "RANK","STATUS","LAST ACTIVITY"].map(t=><th scope="col" key={t}
+         <table style={{width:"100%",minWidth:510,borderCollapse:"collapse",fontSize:12}}>
+          <thead><tr>{["RELATIONSHIP","VERIFIED REFERRERS","REFERRAL COUNT","NET POINTS",
+           "LAST ACTIVITY"].map(t=><th scope="col" key={t}
            style={{padding:10,textAlign:"left",borderBottom:"1px solid var(--cg-border,#CBD5E1)"}}>{t}</th>)}</tr></thead>
           <tbody>
            {summary?.rankCounts.filter(x=>x.kind===rankTab&&
             x.rank===availableRanks[selectedRank]?.name).map((x,i)=><tr key={x.kind+":"+x.rank+":"+i}>
              <td style={{padding:9}}>{rankTab==="MEMBER"?"Members":"Volunteers"}</td>
-             <td style={{padding:9}}>Private aggregate — {pointsDisplay(x.count)} referrers</td>
+             <td style={{padding:9}}>{pointsDisplay(x.count)}</td>
              <td style={{padding:9}}>{pointsDisplay(x.referrals)}</td>
              <td style={{padding:9}}>{pointsDisplay(x.points)}</td>
-             <td style={{padding:9}}>{x.rank}</td>
-             <td style={{padding:9}}>Verified ledger</td>
              <td style={{padding:9}}>{x.lastActivity?
               new Date(x.lastActivity).toLocaleDateString("en-IN",{timeZone:"Asia/Kolkata"}):
               "—"}</td>
             </tr>)}
            {!summary?.rankCounts.some(x=>x.kind===rankTab&&
-             x.rank===availableRanks[selectedRank]?.name)&&<tr><td colSpan={7}
+             x.rank===availableRanks[selectedRank]?.name)&&<tr><td colSpan={5}
              style={{textAlign:"center",padding:24}}>
               No verified {rankTab==="MEMBER"?"member":"volunteer"} referrers recorded in this rank.
               Applicant identities remain private.
