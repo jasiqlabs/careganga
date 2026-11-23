@@ -31,6 +31,10 @@ export class CsrFundingProposalsController{
  @Post(":ref/finance/budget-effects")
  effect(@Headers("authorization")auth:string,@Param("ref")ref:string,
   @Body()body:unknown){return this.source.applyFinanceBudgetEffect(auth,ref,body);}
+ @Get(":ref/project-context")
+ projectContext(@Headers("authorization")auth:string,@Param("ref")ref:string){
+  return this.source.fundingProjectContext(auth,ref);
+ }
  @Get(":ref") detail(@Headers("authorization")auth:string,@Param("ref")ref:string){
   return this.source.detail(auth,ref);
  }
