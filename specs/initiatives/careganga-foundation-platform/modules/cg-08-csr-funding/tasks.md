@@ -113,7 +113,7 @@ Verification: On actual implementation source-trace US-003-QA01–QA20 UI→requ
 Dependencies: US-002
 
 ## Execution progress
-- US-001: BLOCKED | PLANNING_DRAFT_ONLY; implementation NOT_STARTED, source/live/visual QA NOT_RUN, formal approval BLOCKED.
+- US-001: IN_PROGRESS | original CG08/CG03/CG19/Web/Internal Android partner and review source authored; public attribution and CG18 editorial still SOURCE_GAP; independent source review/real DB/Web/native/visual QA NOT_RUN.
 - US-002: BLOCKED | PLANNING_DRAFT_ONLY; implementation NOT_STARTED, source/live/visual QA NOT_RUN, formal approval BLOCKED.
 - US-003: BLOCKED | PLANNING_DRAFT_ONLY; implementation NOT_STARTED, source/live/visual QA NOT_RUN, formal approval BLOCKED.
 
@@ -339,3 +339,8 @@ Focused exception review: Web and Internal Android CG19 agreement panels previou
 ### 23-Nov-2026 — immediate test self-review correction (CG19 proof unavailable)
 
 Fixed the just-added US001-QA04/10 test's source-text assertion: it looked for a `proofLoadError)` token not present in the Web JSX guard, causing a false test failure. The corrected assertion checks the actual fail-closed Web `!!proofLoadError` and native `||proofLoadError` guards; no runtime behavior changed. Still TEST_AUTHORED_NOT_EXECUTED, independent review and devices pending. Existing tracker and QA IDs preserved.
+
+
+### 23-Nov-2026 — US001 public identity rights: original source migration
+
+Added 3404_cg08_partner_public_release.sql: one CG08 partner-linked revocable publicity attestation, referencing its original CG19 private clean agreement used by final independent CG03 approval, with original CG08 immutable request ledger reused. Default state is absent, not publicly authorized; no partner names, contacts, logo assets or agreements are published by this migration. Only original US001-QA03/07/08/10/11/12/13/16/17/19/20 scope. API, staff UI and CG18 approved editorial binding STILL SOURCE_GAP. Migration/TS/backend/DB/provider QA and independent review NOT_RUN. No new story, no altered original QA IDs.
