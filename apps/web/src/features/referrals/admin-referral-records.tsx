@@ -6,7 +6,8 @@ type Top={name:string;participantNumber:string;rank:string|null;
 type Recent={name:string;participantNumber:string;rank:string|null;
  status:"QUALIFICATION"|"QUALIFICATION_REVERSAL";points:string;recordedAt:string};
 type Source={kind:Kind;topReferrers:Top[];recentEvents:Recent[];
- hasMore:boolean;page:number;notice:string};
+ availableBranches:{ref:string;name:string}[];branchesTruncated:boolean;
+ selectedBranch:string|null;hasMore:boolean;page:number;notice:string};
 const control:CSSProperties={width:"100%",maxWidth:220,minHeight:38,
  padding:"7px 9px",border:"1px solid var(--cg-border,#CBD5E1)",borderRadius:8,
  color:"inherit",background:"var(--cg-surface,#fff)"};
@@ -23,6 +24,9 @@ export function AdminReferralRecords({programme,kind,selectedRank,canViewMember,
  const [status,setStatus]=useState("ALL"),[from,setFrom]=useState(""),[to,setTo]=useState("");
  const [location,setLocation]=useState(""),[locationFilter,setLocationFilter]=useState("");
  const [sort,setSort]=useState("REFERRALS");
+ const [branchRef,setBranchRef]=useState("");
+ const [branchOptions,setBranchOptions]=useState<{ref:string;name:string}[]>([]);
+ const [branchOptionsTruncated,setBranchOptionsTruncated]=useState(false);
  const [source,setSource]=useState<Source|null>(null);
  const [loading,setLoading]=useState(false),[error,setError]=useState("");
  const [older,setOlder]=useState(false);
@@ -31,7 +35,10 @@ export function AdminReferralRecords({programme,kind,selectedRank,canViewMember,
  useEffect(()=>{const t=setTimeout(()=>setLocationFilter(location.trim()),300);return()=>clearTimeout(t);},[location]);
  const load=useCallback(async(page:number,append=false)=>{
   const request=++seq.current;
-  if(!programme||!allowed){setSource(null);setLoading(false);setOlder(false);return;}
+  if(!programme||!allowed){
+   setSource(null);setBranchOptions([]);setBranchOptionsTruncated(false);
+   setLoading(false);setOlder(false);return;
+  }
   if(from&&to&&from>to){
    setSource(null);setLoading(false);setOlder(false);
    setError("Start date must be before end date.");return;
@@ -43,6 +50,7 @@ export function AdminReferralRecords({programme,kind,selectedRank,canViewMember,
    if(query)params.set("q",query);
    if(locationFilter)params.set("location",locationFilter);
    if(selectedRank)params.set("rank",selectedRank);
+   if(branchRef)params.set("branchRef",branchRef);
    params.set("sort",sort);
    if(from)params.set("from",from);
    if(to)params.set("to",to);
@@ -54,12 +62,19 @@ export function AdminReferralRecords({programme,kind,selectedRank,canViewMember,
     "Verified referral records are unavailable. Refresh before retrying.");
    const received=await response.json() as Source;
    if(request!==seq.current)return;
+   if(!Array.isArray(received.availableBranches))
+    throw Error("The current authorized branch choices could not be verified.");
+   setBranchOptions(received.availableBranches);
+   setBranchOptionsTruncated(received.branchesTruncated);
    setSource(old=>append&&old&&page===old.page+1?
     {...received,recentEvents:[...old.recentEvents,...received.recentEvents]}:received);
-  }catch(e){if(request===seq.current)setError(e instanceof Error?e.message:
-   "Referral status uncertain. Refresh the original records.");}
+  }catch(e){if(request===seq.current){
+   setSource(null);setBranchOptions([]);setBranchOptionsTruncated(false);
+   setError(e instanceof Error?e.message:
+    "Referral status uncertain. Refresh the original records.");
+  }}
   finally{if(request===seq.current){setLoading(false);setOlder(false);}}
- },[programme,kind,allowed,query,status,from,to,locationFilter,selectedRank,sort]);
+ },[programme,kind,allowed,query,status,from,to,locationFilter,selectedRank,sort,branchRef]);
  useEffect(()=>{void load(1);return()=>{seq.current++;};},[load,refreshEpoch]);
  if(!programme)return null;
  return <section aria-label="Original B12 authorized referral records"
@@ -76,6 +91,11 @@ export function AdminReferralRecords({programme,kind,selectedRank,canViewMember,
    {kind==="MEMBER"?" member":" volunteer"} roster-view permission.
    Referral programme aggregate totals remain available above.</p>:<>
    <div style={{display:"flex",alignItems:"end",flexWrap:"wrap",gap:9}}>
+    <label style={{display:"grid",gap:3,fontSize:12}}>Active Foundation branch
+     <select style={control} value={branchRef} onChange={e=>setBranchRef(e.target.value)}>
+      <option value="">All current permitted branches</option>
+      {branchOptions.map(b=><option key={b.ref} value={b.ref}>{b.name}</option>)}
+     </select></label>
     <label style={{display:"grid",gap:3,fontSize:12}}>Name or member/volunteer number
      <input style={{...control,maxWidth:265}} type="search" maxLength={80}
       value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search authorized records"/></label>
@@ -96,9 +116,12 @@ export function AdminReferralRecords({programme,kind,selectedRank,canViewMember,
      <input style={control} type="date" value={to} onChange={e=>setTo(e.target.value)}/></label>
     <button style={button} type="button" disabled={loading||older}
      onClick={()=>{setSearch("");setQuery("");setLocation("");setLocationFilter("");
-      setSort("REFERRALS");setStatus("ALL");setFrom("");setTo("");}}>
+      setBranchRef("");setSort("REFERRALS");setStatus("ALL");setFrom("");setTo("");}}>
      Clear filters</button>
    </div>
+   {branchOptionsTruncated&&<p role="status" style={{fontSize:12}}>
+    The first 200 currently permitted active branches are listed.
+   </p>}
    {!!error&&<p role="alert" style={{fontSize:13,color:"#B91C1C"}}>{error}</p>}
    {loading&&<p role="status">Checking current authorized referral events…</p>}
    {source&&<><p style={{fontSize:12,margin:0}}>{source.notice}</p>
