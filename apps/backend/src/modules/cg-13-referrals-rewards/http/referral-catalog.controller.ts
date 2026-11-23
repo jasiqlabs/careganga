@@ -19,6 +19,10 @@ export class ReferralCatalogController{
  createProgramme(@Headers("authorization")auth:string,@Body()body:unknown){
   return this.catalog.createProgramme(auth,body);
  }
+ @Get("programmes/:programmeRef/summary")
+ summary(@Headers("authorization")auth:string,@Param("programmeRef")ref:string){
+  return this.catalog.adminSummary(auth,ref);
+ }
  @Get("programmes/:programmeRef")
  programme(@Headers("authorization")auth:string,@Param("programmeRef")ref:string){
   return this.catalog.programmeDetail(auth,ref);
