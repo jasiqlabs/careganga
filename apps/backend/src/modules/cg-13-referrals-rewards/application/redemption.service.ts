@@ -11,6 +11,8 @@ import {reserveRewardStock,releaseRewardStock} from
  "../../cg-12-inventory-suppliers/application/reward-stock-source";
 import {recordAcknowledgedRewardRecognition} from
  "../../cg-19-documents-notifications/application/reward-recognition-source";
+import {recordAcknowledgedPhysicalRewardHandover} from
+ "../../cg-19-documents-notifications/application/reward-handover-source";
 
 const UUID=/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const ref=(x:unknown):string=>{
@@ -33,7 +35,7 @@ type Wallet={id:string;earned:string;reversed:string;held:string;spent:string};
 type Redemption={ref:string;state:string;type:"DIGITAL"|"PHYSICAL";productName:string;
  pointsCost:string;revision:number;requestedAt:string;
  digitalFulfillmentMethod:string;recognitionTitle:string|null;
- recognitionDescription:string|null;recognizedAt:string|null};
+ recognitionDescription:string|null;recognizedAt:string|null;handedOverAt:string|null};
 const parse=(raw:unknown):Request=>{
  const x=obj(raw,["programmeRef","productRef","relationship","expectedProductVersion","requestKey"]);
  if(x.relationship!=="MEMBER"&&x.relationship!=="VOLUNTEER")
@@ -345,12 +347,15 @@ export class RedemptionService {
     "p.digital_fulfillment_method AS \"digitalFulfillmentMethod\","+
     "proof.title AS \"recognitionTitle\",proof.description AS \"recognitionDescription\","+
     "proof.acknowledged_at AS \"recognizedAt\","+
+    "handover.acknowledged_at AS \"handedOverAt\","+
     "r.points_cost::text AS \"pointsCost\",r.revision,"+
     "r.requested_at AS \"requestedAt\" FROM redemption r "+
     "JOIN reward_product_revision p ON p.root_realm_id=r.root_realm_id "+
     "AND p.product_id=r.product_id AND p.revision=r.product_revision "+
     "LEFT JOIN cg19_reward_recognition proof ON proof.realm_id=r.root_realm_id "+
     "AND proof.redemption_id=r.id AND proof.recipient_account_ref=r.recipient_account_ref "+
+    "LEFT JOIN cg19_reward_handover handover ON handover.realm_id=r.root_realm_id "+
+    "AND handover.redemption_id=r.id AND handover.recipient_account_ref=r.recipient_account_ref "+
     "WHERE r.root_realm_id=$1 AND r.recipient_account_ref=$2 "+
     "AND ((r.relationship_kind='MEMBER' AND EXISTS("+
     "SELECT 1 FROM member m JOIN membership_term term "+
