@@ -147,7 +147,15 @@ export class CsrFundingProposalsService{
   * it cannot invent commitment totals or bypass the CG02 scope. */
  async fundingReviewSource(tx:PoolClient,a:VerifiedFoundationActor,proposalRef:string){
   await this.identity.assertCurrent(tx,a,"csr.partners.review");
-  const p=await this.original(tx,a,proposalRef);
+  // Only original CG03's protected-root reviewer (or the CG19 adapter invoked
+  // from that reviewer) may use this historical-source path. Branch closure
+  // must not prevent an independent RETURN/REJECT or historical inspection.
+  // Other staff endpoints continue to enforce CG02 active-branch permissions.
+  const p=(await tx.query<ProposalRow>(
+   "SELECT id,branch_ref,csr_partner_id,project_ref,project_source_version,"+
+   "status,version FROM csr_funding_proposal WHERE root_realm_id=$1 AND id=$2 FOR SHARE",
+   [a.realmId,ref(proposalRef)])).rows[0];
+  if(!p)throw missing();
   const row=(await tx.query<{
    branch_ref:string|null;csr_partner_id:string|null;project_ref:string|null;
    project_source_version:number|null;purpose:string;fund_type:string;currency:string;
