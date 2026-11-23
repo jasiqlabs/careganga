@@ -25,7 +25,7 @@ function fixture(grant=true){
    if(!grant)throw Error("Not authorized");
    return {realmId:R,accountId:A,activeSessionId:A};
   }} as never,
-  {assertCurrent:async()=>undefined} as never,
+  {assertCurrent:async()=>undefined,assertRootSelfSessionCurrent:async()=>undefined} as never,
   {rewardStoreScope:async()=>({full:false,branches:[BRANCH]})} as never);
  return {svc,seen};
 }
