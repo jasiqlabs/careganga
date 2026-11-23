@@ -36,6 +36,7 @@ function fixture(block=false,media:"ABSENT"|"APPROVED"|"WITHDRAWN"="ABSENT",
    if(sql.includes("FROM reward_product p JOIN referral_program pr")&&
     sql.includes("LEFT JOIN stock_balance"))
     return {rows:[],rowCount:0};
+   if(sql.includes('AS "activeTotal"'))return {rows:[{activeTotal:"85"}],rowCount:1};
    if(sql.includes("FROM reward_product p LEFT JOIN inventory_location"))
     return {rows:media==="ABSENT"?[]:[{ref:ITEM,programmeRef:PROGRAMME,
      name:"Recognition",type:"DIGITAL",imageUrl:MEDIA_URL}],rowCount:media==="ABSENT"?0:1};
@@ -96,6 +97,23 @@ describe("CG13 US001 branch/permission owner boundary",()=>{
   assert.equal(result.page,2);
   assert.deepEqual(f.actions,["rewards.catalog.view"]);
   assert.deepEqual(f.stats(),{connections:1,released:1,storeCalls:0});
+ });
+ test("B14 ACTIVE PRODUCTS counts all genuinely permitted active items, not one filtered page",async()=>{
+  const f=fixture();
+  const result=await f.service.listProducts("actor",PROGRAMME,"2","recognition","Recognition");
+  assert.equal(result.activeTotal,"85");
+  assert.equal(result.items.length,0);
+  const total=f.seen.find(x=>x.sql.includes('AS "activeTotal"'));
+  assert.ok(total);
+  assert.deepEqual(total.params,[ROOT,PROGRAMME,false,[BRANCH_A]]);
+  assert.match(total.sql,/p\.status='ACTIVE'/);
+  assert.match(total.sql,/p\.root_realm_id=\$1 AND p\.programme_id=\$2/);
+  assert.match(total.sql,/loc\.scope_kind='BRANCH'/);
+  assert.match(total.sql,/branch\.status='ACTIVE'/);
+  assert.ok(!total.sql.includes("LIMIT"));
+  assert.ok(!total.sql.includes("p.category="));
+  assert.ok(!total.sql.includes("strpos"));
+  assert.deepEqual(f.actions,["rewards.catalog.view"]);
  });
  test("category chips use same current permitted physical-product source",async()=>{
   const f=fixture();
