@@ -537,9 +537,24 @@ export class ReferralCatalogService{
     "ORDER BY p.created_at DESC,p.id DESC LIMIT $3 OFFSET $4",
     [a.realmId,programId,CATALOG_PAGE_SIZE+1,(page-1)*CATALOG_PAGE_SIZE,
      scope.full,scope.branches,search,category]);
+   // B14 active-product KPI is independent of the requested page, category or search.
+   // Use the exact CG02 permitted-store boundary from the product list.
+   const activeCount=await tx.query<{activeTotal:string}>(
+    "SELECT COUNT(*)::text AS \"activeTotal\" FROM reward_product p "+
+    "LEFT JOIN inventory_location loc ON loc.root_realm_id=p.root_realm_id "+
+    "AND loc.id=p.cg12_location_ref "+
+    "LEFT JOIN branch branch ON branch.root_realm_id=loc.root_realm_id "+
+    "AND branch.id=loc.branch_ref "+
+    "WHERE p.root_realm_id=$1 AND p.programme_id=$2 AND p.status='ACTIVE' AND "+
+    "(p.product_type='DIGITAL' OR (loc.status='ACTIVE' AND "+
+    "(loc.scope_kind='FOUNDATION' AND $3::boolean OR "+
+    "loc.scope_kind='BRANCH' AND branch.status='ACTIVE' AND "+
+    "($3::boolean OR branch.id=ANY($4::uuid[])))))",
+    [a.realmId,programId,scope.full,scope.branches]);
    return {items:await this.approvedPageImages(tx,a,
      q.rows.slice(0,CATALOG_PAGE_SIZE) as {imageUrl:unknown}[]),
-    hasMore:q.rows.length>CATALOG_PAGE_SIZE,page};
+    hasMore:q.rows.length>CATALOG_PAGE_SIZE,page,
+    activeTotal:activeCount.rows[0]?.activeTotal??"0"};
   },true);
  }
  /** Distinct current categories from the SAME permitted product source as listProducts. */
