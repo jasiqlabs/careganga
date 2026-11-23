@@ -285,7 +285,10 @@ export class FinanceReportsService{
   await this.sessions.requireScheduledMisAction(root,account,"finance.reports.view");
   const year=yearInput?uuid(yearInput,"yearRef"):null;
   const branch=branchInput?uuid(branchInput,"branchRef"):null;
-  await this.branches.requireScheduledFinanceReportBranch(root,account,branch);
+  // Single branch must be CURRENT; an omitted branch is an EXPLICIT
+  // currently authorized all-assigned union, not guessed root authority.
+  const assigned=branch?null:await this.branches.scheduledFinanceScope(root,account);
+  if(branch)await this.branches.requireScheduledFinanceReportBranch(root,account,branch);
   if(year){
    const exists=await this.db.query(
     "SELECT 1 FROM financial_year WHERE id=$1 AND root_realm_id=$2",
@@ -293,7 +296,20 @@ export class FinanceReportsService{
    if(!exists.rowCount)
     throw new ForbiddenException("The scheduled financial year is unavailable");
   }
-  return this.readPostedSummary(root,year,branch);
+  const result=await this.readPostedSummary(root,year,branch,
+   assigned&&!assigned.all?assigned.branchRefs:null);
+  // A pending CG19 delivery must never release bytes after the owner loses
+  // branch, protected root or original CG01 finance permission mid-read.
+  await this.sessions.requireScheduledMisAction(root,account,"finance.reports.view");
+  if(branch)await this.branches.requireScheduledFinanceReportBranch(root,account,branch);
+  else{
+   const current=await this.branches.scheduledFinanceScope(root,account);
+   if(assigned?.all&&!current.all||
+     assigned&&!assigned.all&&!current.all&&
+      assigned.branchRefs.some(ref=>!current.branchRefs.includes(ref)))
+    throw new ForbiddenException("Scheduled report scope changed. Refresh the original report.");
+  }
+  return result;
  }
  /** CG-20 US-001 source-owned narrow trend, never a separate MIS ledger.
   * Month uses original posting_date, only POSTED journal lines and the same
