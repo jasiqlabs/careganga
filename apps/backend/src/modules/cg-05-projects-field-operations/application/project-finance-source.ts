@@ -40,3 +40,21 @@ export async function assertCsrFundingProject(tx:PoolClient,actor:VerifiedFounda
  if(!p)throw new ConflictException({code:"CG05_CSR_PROJECT_CHANGED"});
  return {value:p.id,label:p.code_norm+" · "+p.title,version:p.version};
 }
+
+
+/** Original CG05 picker for the CG08 funding draft; no shadow project list. */
+export async function csrFundingProjectOptions(tx:PoolClient,root:string,
+ scope:{all:boolean;branches:{value:string}[]}){
+ const q=await tx.query<{value:string;label:string;branchRef:string|null;projectVersion:number}>(
+  "SELECT p.id AS value,p.code_norm||' · '||p.title AS label,"+
+  "p.branch_ref AS \"branchRef\",p.version AS \"projectVersion\" "+
+  "FROM project p WHERE p.root_realm_id=$1 "+
+  "AND p.status IN('PLANNED','ACTIVE') "+
+  "AND ($2::boolean OR p.branch_ref=ANY($3::uuid[])) "+
+  "AND (p.branch_ref IS NULL OR EXISTS(SELECT 1 FROM branch b "+
+  "WHERE b.id=p.branch_ref AND b.root_realm_id=p.root_realm_id "+
+  "AND b.status='ACTIVE')) ORDER BY p.title,p.id LIMIT 101",
+  [root,scope.all,scope.branches.map(x=>x.value)]);
+ if(q.rows.length>100)throw new ConflictException({code:"CG05_CSR_PROJECT_PICKER_TOO_LARGE"});
+ return q.rows;
+}

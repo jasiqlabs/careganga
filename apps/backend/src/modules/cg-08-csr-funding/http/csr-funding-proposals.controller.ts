@@ -7,6 +7,7 @@ export class CsrFundingProposalsController{
  @Get() list(@Headers("authorization")auth:string,@Query()query:Record<string,unknown>){
   return this.source.list(auth,query);
  }
+ @Get("options") options(@Headers("authorization")auth:string){return this.source.options(auth);}
  @Get(":ref") detail(@Headers("authorization")auth:string,@Param("ref")ref:string){
   return this.source.detail(auth,ref);
  }

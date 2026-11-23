@@ -1,11 +1,11 @@
 import {BadRequestException,ConflictException,ForbiddenException,Inject,Injectable,NotFoundException} from "@nestjs/common";
-import {Pool,PoolClient} from "pg";
+import type {Pool,PoolClient} from "pg";
 import {DATABASE} from "../../../core/infrastructure/database.module";
 import {SessionService} from "../../cg-01-identity-access/application/session.service";
 import {FoundationStructureIdentityFacade} from "../../cg-01-identity-access/application/foundation-structure-identity.facade";
 import type {VerifiedFoundationActor} from "../../cg-01-identity-access/public-api";
 import {BranchSourceFacade} from "../../cg-02-foundation-structure/application/branch-source.facade";
-import {assertCsrFundingProject} from "../../cg-05-projects-field-operations/application/project-finance-source";
+import {assertCsrFundingProject,csrFundingProjectOptions} from "../../cg-05-projects-field-operations/application/project-finance-source";
 import {CsrPartnersService,csrDigest} from "./csr-partners.service";
 import {parseFundingProposal} from "../domain/funding-proposal-input";
 
@@ -142,6 +142,23 @@ export class CsrFundingProposalsService{
    if(!updated)throw changed();
    return this.event(tx,a,id,v.requestKey,digest,"EDIT",updated.version);
   });
+ }
+ /** Original B08 selectors from CG01/CG02/CG05/CG08 current sources only. */
+ async options(bearer:string){
+  return this.run(bearer,"csr.partners.view",async(tx,a)=>{
+   const scope=await this.branches.projectBranchScope(tx,a);
+   const partners=await tx.query<{value:string;label:string;branchRef:string|null}>(
+    'SELECT p.id AS value,p.legal_name AS label,p.branch_ref AS "branchRef" '+
+    "FROM csr_partner p WHERE p.root_realm_id=$1 AND p.status='APPROVED' "+
+    "AND ($2::boolean OR p.branch_ref=ANY($3::uuid[])) "+
+    "ORDER BY p.legal_name,p.id LIMIT 101",
+    [a.realmId,scope.all,scope.branches.map(x=>x.value)]);
+   if(partners.rows.length>100)
+    throw new ConflictException("Narrow the authorized CSR partner catalogue.");
+   return {foundation:scope.all,branches:scope.branches.map(x=>({value:x.value,label:x.label})),
+    partners:partners.rows,
+    projects:await csrFundingProjectOptions(tx,a.realmId,scope)};
+  },true);
  }
  async detail(bearer:string,proposalRef:string){
   return this.run(bearer,"csr.partners.view",async(tx,a)=>{
