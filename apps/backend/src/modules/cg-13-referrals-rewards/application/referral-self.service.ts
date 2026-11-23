@@ -142,4 +142,104 @@ export class ReferralSelfService{
     notice:"A referral only earns points after independent verification and eligible activation. A visit or signup alone earns nothing."};
   });
  }
+ /** One current CG04 owner/relationship gate for every private balance,
+  * rank and event page. Foreign programme, root and applicant identity NEVER
+  * come from the caller except the chosen programme UUID and relationship kind.
+  */
+ private async ownWallet(token:string,programmeInput:unknown,kindInput:unknown,
+  fn:(tx:PoolClient,wallet:{id:string;earnedPoints:string;reversedPoints:string;
+   heldPoints:string;spentPoints:string;qualifiedReferrals:number;
+   currentRankName:string|null;currentRankSort:number|null;
+   currentRankPolicyVersion:number|null;revision:number}|null)=>
+   Promise<Record<string,unknown>>){
+  const programme=programmeRef(programmeInput),kind=relationshipKind(kindInput);
+  return this.inCurrentSelf(token,true,async(tx,actor)=>{
+   const current=await this.currentRelationships(tx,actor);
+   const relationship=current.find(x=>x.kind===kind);
+   if(!relationship)throw new ForbiddenException("An active verified relationship is required.");
+   const programmeResult=await tx.query(
+    "SELECT 1 FROM referral_program p WHERE p.root_realm_id=$1 AND p.id=$2 "+
+    "AND (p.audience=$3 OR p.audience='BOTH')",
+    [actor.realmId,programme,kind]);
+   if(!programmeResult.rowCount)throw new ForbiddenException("This referral source is unavailable.");
+   const result=await tx.query<{
+    id:string;earnedPoints:string;reversedPoints:string;heldPoints:string;
+    spentPoints:string;qualifiedReferrals:number;currentRankName:string|null;
+    currentRankSort:number|null;currentRankPolicyVersion:number|null;revision:number
+   }>(
+    "SELECT id,earned_points::text AS \"earnedPoints\","+
+    "reversed_points::text AS \"reversedPoints\","+
+    "held_points::text AS \"heldPoints\",spent_points::text AS \"spentPoints\","+
+    "qualified_referrals AS \"qualifiedReferrals\","+
+    "current_rank_name AS \"currentRankName\","+
+    "current_rank_sort AS \"currentRankSort\","+
+    "current_rank_policy_version AS \"currentRankPolicyVersion\",revision "+
+    "FROM points_account WHERE root_realm_id=$1 AND programme_id=$2 "+
+    "AND referrer_kind=$3 AND referrer_relationship_ref=$4 "+
+    "AND referrer_account_ref=$5",
+    [actor.realmId,programme,kind,relationship.ref,actor.accountId]);
+   return fn(tx,result.rows[0]??null);
+  });
+ }
+ async myBalance(token:string,programmeInput:unknown,kindInput:unknown){
+  return this.ownWallet(token,programmeInput,kindInput,async(_tx,wallet)=>{
+   if(!wallet)return {earnedPoints:"0",reversedPoints:"0",heldPoints:"0",
+    spentPoints:"0",availablePoints:"0",adjustmentDuePoints:"0",
+    qualifiedReferrals:0,currentRankName:null,revision:0,
+    notice:"No verified qualifying referral has been credited yet. Points are not money."};
+   const remainder=BigInt(wallet.earnedPoints)-BigInt(wallet.reversedPoints)-
+    BigInt(wallet.heldPoints)-BigInt(wallet.spentPoints);
+   return {earnedPoints:wallet.earnedPoints,reversedPoints:wallet.reversedPoints,
+    heldPoints:wallet.heldPoints,spentPoints:wallet.spentPoints,
+    availablePoints:(remainder>0n?remainder:0n).toString(),
+    adjustmentDuePoints:(remainder<0n?-remainder:0n).toString(),
+    qualifiedReferrals:wallet.qualifiedReferrals,
+    currentRankName:wallet.currentRankName,revision:wallet.revision,
+    notice:"Verified referral points cannot be withdrawn as cash."};
+  });
+ }
+ async myHistory(token:string,programmeInput:unknown,kindInput:unknown,pageInput?:string){
+  const page=catalogPage(pageInput);
+  return this.ownWallet(token,programmeInput,kindInput,async(tx,wallet)=>{
+   if(!wallet)return {items:[],hasMore:false,page};
+   const events=await tx.query<{
+    kind:string;points:string;recordedAt:string;rank:string|null
+   }>(
+    "SELECT event.event_kind AS kind,event.points_delta::text AS points,"+
+    "event.source_recorded_at AS \"recordedAt\","+
+    "rank.resulting_rank_name AS rank FROM points_event event "+
+    "LEFT JOIN reward_rank_event rank ON rank.root_realm_id=event.root_realm_id "+
+    "AND rank.qualifying_points_event_id=event.id "+
+    "WHERE event.root_realm_id=$1 AND event.points_account_id=$2 "+
+    "ORDER BY event.source_recorded_at DESC,event.id DESC LIMIT 26 OFFSET $3",
+    [(await tx.query<{realm:string}>(
+      "SELECT root_realm_id AS realm FROM points_account WHERE id=$1",
+      [wallet.id])).rows[0]?.realm,wallet.id,(page-1)*25]);
+   return {items:events.rows.slice(0,25).map(e=>({
+    status:e.kind==="QUALIFICATION"?"QUALIFIED":"REVERSED",
+    points:e.points,recordedAt:e.recordedAt,rank:e.rank
+   })),hasMore:events.rows.length>25,page};
+  });
+ }
+ async myRank(token:string,programmeInput:unknown,kindInput:unknown,pageInput?:string){
+  const page=catalogPage(pageInput);
+  return this.ownWallet(token,programmeInput,kindInput,async(tx,wallet)=>{
+   if(!wallet)return {rank:null,qualifiedReferrals:0,history:[],
+    hasMore:false,page};
+   const events=await tx.query<{
+    previous:string|null;current:string|null;qualifiedReferrals:number;
+    eligiblePoints:string;recordedAt:string
+   }>(
+    "SELECT prior_rank_name AS previous,resulting_rank_name AS current,"+
+    "qualified_referrals_snapshot AS \"qualifiedReferrals\","+
+    "eligible_points_snapshot::text AS \"eligiblePoints\","+
+    "created_at AS \"recordedAt\" FROM reward_rank_event "+
+    "WHERE root_realm_id=(SELECT root_realm_id FROM points_account WHERE id=$1) "+
+    "AND points_account_id=$1 ORDER BY created_at DESC,id DESC LIMIT 26 OFFSET $2",
+    [wallet.id,(page-1)*25]);
+   return {rank:wallet.currentRankName,qualifiedReferrals:wallet.qualifiedReferrals,
+    history:events.rows.slice(0,25),hasMore:events.rows.length>25,page};
+  });
+ }
+
 }
