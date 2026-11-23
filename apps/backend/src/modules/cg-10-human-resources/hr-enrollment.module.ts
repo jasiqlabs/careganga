@@ -1,5 +1,6 @@
 import {Module} from "@nestjs/common";
 import {IdentityAccessModule} from "../cg-01-identity-access/identity-access.module";
+import {FoundationStructureModule} from "../cg-02-foundation-structure/foundation-structure.module";
 import {HrAttendanceCorrectionService} from "./application/hr-attendance-correction.service";
 import {HrAttendanceCorrectionController} from "./http/hr-attendance-correction.controller";
 import {HrEmploymentChangeDueWorker} from "./application/hr-employment-change-due.worker";
@@ -25,7 +26,7 @@ import {HrEnrollmentController} from "./http/hr-enrollment.controller";
  * approval case, file store or salary ledger authority is created here.
  */
 @Module({
- imports:[IdentityAccessModule,HrSourceModule,RegistrationApprovalsModule,HrEvidenceSourceModule],
+ imports:[IdentityAccessModule,FoundationStructureModule,HrSourceModule,RegistrationApprovalsModule,HrEvidenceSourceModule],
  providers:[HrEmploymentChangeDueWorker,HrEmploymentChangeService,HrAppraisalService,HrAttendanceCorrectionService,HrLeaveService,HrEnrollmentService,HrPrivateDetailService,HrPublicBioConsentService,HrAttendanceService],
  controllers:[HrEmploymentChangeController,HrAppraisalController,HrAttendanceCorrectionController,HrLeaveController,HrEnrollmentController,HrPrivateDetailController,HrPublicBioConsentController,HrAttendanceController],
  exports:[HrEnrollmentService,HrPublicBioConsentService]
