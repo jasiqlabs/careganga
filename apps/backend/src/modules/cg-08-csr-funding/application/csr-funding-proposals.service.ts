@@ -105,6 +105,91 @@ export class CsrFundingProposalsService{
   }
   return {ref:p.id,version:p.version,status:p.status};
  }
+ /** CG03 submits this one original proposal version and frozen exact amounts.
+  * A scanned file is not independently verified signature or cash receipt. */
+ async freezeForFundingReview(tx:PoolClient,a:VerifiedFoundationActor,
+  proposalRef:string,sourceVersion:number,evidenceFileRef:string){
+  const guarded=await this.guardFundingAgreement(tx,a,proposalRef,sourceVersion,true);
+  if(guarded.status!=="DRAFT")throw changed();
+  const row=(await tx.query<{
+   branch_ref:string|null;csr_partner_id:string|null;project_ref:string|null;
+   project_source_version:number|null;purpose:string;fund_type:string;currency:string;
+   requested_minor:string;csr_share_bps:number;foundation_share_bps:number;
+   csr_requested_minor:string;foundation_requested_minor:string;
+   proposed_from:string|null;proposed_until:string|null;agreement_summary:string;
+  }>("SELECT branch_ref,csr_partner_id,project_ref,project_source_version,purpose,"+
+   "fund_type,currency,requested_minor::text,csr_share_bps,foundation_share_bps,"+
+   "csr_requested_minor::text,foundation_requested_minor::text,"+
+   "proposed_from::text,proposed_until::text,agreement_summary "+
+   "FROM csr_funding_proposal WHERE root_realm_id=$1 AND id=$2 FOR UPDATE",
+   [a.realmId,guarded.ref])).rows[0];
+  if(!row||row.currency!=="INR")throw changed();
+  const snapshot={
+   proposalRef:guarded.ref,branchRef:row.branch_ref,partnerRef:row.csr_partner_id,
+   projectRef:row.project_ref,projectVersion:row.project_source_version,
+   purpose:row.purpose,fundType:row.fund_type,currency:row.currency,
+   amountMinor:row.requested_minor,csrShareBps:row.csr_share_bps,
+   foundationShareBps:row.foundation_share_bps,csrRequestedMinor:row.csr_requested_minor,
+   foundationRequestedMinor:row.foundation_requested_minor,
+   proposedFrom:row.proposed_from,proposedUntil:row.proposed_until,
+   agreementSummary:row.agreement_summary,evidenceFileRef};
+  const sourceDigest=csrDigest(["CG08_FUNDING_REVIEW_SOURCE_V1",snapshot]);
+  const written=await tx.query(
+   "UPDATE csr_funding_proposal SET status='SUBMITTED',version=version+1,"+
+   "updated_by=$3,updated_at=now() WHERE root_realm_id=$1 AND id=$2 "+
+   "AND version=$4 AND status='DRAFT' RETURNING id",
+   [a.realmId,guarded.ref,a.accountId,sourceVersion]);
+  if(!written.rowCount)throw changed();
+  return {sourceVersion,sourceDigest,snapshot,
+   title:row.purpose.slice(0,160)};
+ }
+ /** The independent, protected CG03 reviewer reads the same original source;
+  * it cannot invent commitment totals or bypass the CG02 scope. */
+ async fundingReviewSource(tx:PoolClient,a:VerifiedFoundationActor,proposalRef:string){
+  await this.identity.assertCurrent(tx,a,"csr.partners.review");
+  const p=await this.original(tx,a,proposalRef);
+  const row=(await tx.query<{
+   branch_ref:string|null;csr_partner_id:string|null;project_ref:string|null;
+   project_source_version:number|null;purpose:string;fund_type:string;currency:string;
+   requested_minor:string;csr_share_bps:number;foundation_share_bps:number;
+   csr_requested_minor:string;foundation_requested_minor:string;
+   proposed_from:string|null;proposed_until:string|null;agreement_summary:string;
+  }>("SELECT branch_ref,csr_partner_id,project_ref,project_source_version,purpose,"+
+   "fund_type,currency,requested_minor::text,csr_share_bps,foundation_share_bps,"+
+   "csr_requested_minor::text,foundation_requested_minor::text,"+
+   "proposed_from::text,proposed_until::text,agreement_summary "+
+   "FROM csr_funding_proposal WHERE root_realm_id=$1 AND id=$2",
+   [a.realmId,p.id])).rows[0];
+  if(!row)throw changed();
+  return {ref:p.id,status:p.status,version:p.version,branchRef:row.branch_ref,
+   partnerRef:row.csr_partner_id,projectRef:row.project_ref,
+   projectVersion:row.project_source_version,purpose:row.purpose,
+   fundType:row.fund_type,currency:row.currency,amountMinor:row.requested_minor,
+   csrShareBps:row.csr_share_bps,foundationShareBps:row.foundation_share_bps,
+   csrRequestedMinor:row.csr_requested_minor,
+   foundationRequestedMinor:row.foundation_requested_minor,
+   proposedFrom:row.proposed_from,proposedUntil:row.proposed_until,
+   agreementSummary:row.agreement_summary};
+ }
+ /** Only called by original CG03 after a password-verified immutable decision.
+  * DB deferred proof enforces exact case+reviewer+document provenance at COMMIT. */
+ async acceptFundingReviewEffect(tx:PoolClient,realm:string,proposalRef:string,
+  sourceVersion:number,action:"APPROVE"|"RETURN"|"REJECT",reviewer:string){
+  const id=ref(proposalRef);
+  const row=(await tx.query<ProposalRow>(
+   "SELECT id,branch_ref,csr_partner_id,project_ref,project_source_version,"+
+   "status,version FROM csr_funding_proposal WHERE root_realm_id=$1 AND id=$2 FOR UPDATE",
+   [realm,id])).rows[0];
+  if(!row||row.status!=="SUBMITTED"||row.version!==sourceVersion+1)throw changed();
+  const status=action==="APPROVE"?"APPROVED":action==="RETURN"?"RETURNED":"REJECTED";
+  const done=await tx.query(
+   "UPDATE csr_funding_proposal SET status=$3,version=version+1,updated_by=$4,"+
+   "updated_at=now() WHERE root_realm_id=$1 AND id=$2 AND version=$5 "+
+   "AND status='SUBMITTED' RETURNING version",
+   [realm,id,status,reviewer,row.version]);
+  if(!done.rowCount)throw changed();
+  return {status,version:row.version+1};
+ }
  private async replay(tx:PoolClient,a:VerifiedFoundationActor,key:string,digest:string,
   action:"CREATE"|"EDIT",target?:string){
   await tx.query("SELECT pg_advisory_xact_lock(hashtextextended($1,0))",
