@@ -1,5 +1,6 @@
 "use client";
 import {useCallback,useEffect,useRef,useState} from "react";
+import {PublicReferralPoints} from "./public-referral-points";
 type Choice={programmeRef:string;programmeName:string;relationship:"MEMBER"|"VOLUNTEER"};
 type Options={items:Choice[];hasMore:boolean;page:number;notice:string};
 type Issued={programmeName:string;relationship:Choice["relationship"];code:string;sharePath:string;notice:string};
@@ -97,5 +98,9 @@ export function PublicReferralCode(){
    <p>Share this link only with an interested new applicant. Actual referral points
     will appear only after the Foundation verifies the qualifying application and activation.</p>
   </div>}
+  {issued&&choices.some(c=>c.programmeRef+"|"+c.relationship===chosen)&&
+   (()=>{const choice=choices.find(c=>c.programmeRef+"|"+c.relationship===chosen)!;
+    return <PublicReferralPoints key={chosen} programmeRef={choice.programmeRef}
+     relationship={choice.relationship}/>;})()}
  </section>;
 }
