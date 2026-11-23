@@ -26,7 +26,7 @@ CREATE TABLE referral_attribution (
  recorded_at timestamptz NOT NULL DEFAULT now(),
  PRIMARY KEY(root_realm_id,id),
  UNIQUE(root_realm_id,programme_id,applicant_account_ref),
- UNIQUE(root_realm_id,applicant_kind,member_application_ref,volunteer_application_ref),
+
  UNIQUE(root_realm_id,original_submit_key),
  FOREIGN KEY(root_realm_id,programme_id)
   REFERENCES referral_program(root_realm_id,id) ON DELETE RESTRICT,
@@ -50,6 +50,13 @@ CREATE TABLE referral_attribution (
  CHECK((qualifying_event='MEMBERSHIP_ACTIVATED_VERIFIED' AND applicant_kind='MEMBER')
    OR (qualifying_event='VOLUNTEER_APPROVED_ACTIVE' AND applicant_kind='VOLUNTEER'))
 );
+-- NULL in either polymorphic application column cannot weaken uniqueness.
+CREATE UNIQUE INDEX ux_cg13_attribution_member_application
+ ON referral_attribution(root_realm_id,member_application_ref)
+ WHERE applicant_kind='MEMBER';
+CREATE UNIQUE INDEX ux_cg13_attribution_volunteer_application
+ ON referral_attribution(root_realm_id,volunteer_application_ref)
+ WHERE applicant_kind='VOLUNTEER';
 CREATE INDEX ix_cg13_attribution_event_due
  ON referral_attribution(root_realm_id,applicant_kind,state,recorded_at,id);
 CREATE INDEX ix_cg13_attribution_referrer_private
