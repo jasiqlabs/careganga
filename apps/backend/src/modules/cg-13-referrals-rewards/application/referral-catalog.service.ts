@@ -607,7 +607,11 @@ export class ReferralCatalogService{
     netPoints:string
    }>(
     "SELECT COUNT(*) FILTER(WHERE "+
-    "(wallet.referrer_kind='MEMBER' AND m.status='ACTIVE' AND EXISTS("+
+    "(wallet.referrer_kind='MEMBER' AND m.status='ACTIVE' "+
+    "AND (m.branch_ref IS NULL OR EXISTS(SELECT 1 FROM branch currentBranch "+
+    "WHERE currentBranch.root_realm_id=m.root_realm_id "+
+    "AND currentBranch.id=m.branch_ref AND currentBranch.status='ACTIVE')) "+
+    "AND EXISTS("+
     "SELECT 1 FROM membership_term term WHERE term.root_realm_id=m.root_realm_id "+
     "AND term.member_id=m.id AND term.starts_on<=(now() AT TIME ZONE 'Asia/Kolkata')::date "+
     "AND (term.expires_on IS NULL OR term.expires_on>(now() AT TIME ZONE 'Asia/Kolkata')::date))) "+
@@ -667,7 +671,7 @@ export class ReferralCatalogService{
     redemptionMetrics:redemptions.rows[0]??{
      pending:"0",cancelled:"0",fulfilled:"0",total:"0",spentPoints:"0"},
     redemptionMetricsAvailable:true,
-    notice:"Verified referral points and source-recorded digital reward requests only; held rewards are not delivered."};
+    notice:"Verified referral points and genuine digital/physical reward requests only. Warehouse issue is not recipient handover; held rewards are not delivered."};
   },true);
  }
  /** B11/B12: individual top referrers and immutable qualifying events are
@@ -736,7 +740,11 @@ export class ReferralCatalogService{
     "AND wallet.referrer_kind=$3 AND COALESCE(m.id,v.id) IS NOT NULL "+
     "AND ($4::boolean OR COALESCE(m.branch_ref,v.branch_ref)=ANY($5::uuid[]))";
    const eligibility="CASE WHEN wallet.referrer_kind='MEMBER' "+
-    "AND m.status='ACTIVE' AND EXISTS(SELECT 1 FROM membership_term term "+
+    "AND m.status='ACTIVE' "+
+    "AND (m.branch_ref IS NULL OR EXISTS(SELECT 1 FROM branch currentBranch "+
+    "WHERE currentBranch.root_realm_id=m.root_realm_id "+
+    "AND currentBranch.id=m.branch_ref AND currentBranch.status='ACTIVE')) "+
+    "AND EXISTS(SELECT 1 FROM membership_term term "+
     "WHERE term.root_realm_id=m.root_realm_id AND term.member_id=m.id "+
     "AND term.starts_on<=(now() AT TIME ZONE 'Asia/Kolkata')::date "+
     "AND (term.expires_on IS NULL OR term.expires_on>(now() AT TIME ZONE 'Asia/Kolkata')::date)) "+
