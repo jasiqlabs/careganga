@@ -367,6 +367,15 @@ export class CsrFundingProposalsService{
    return this.receipts.eligibleBudgets(tx,a,source);
   },true);
  }
+ async eligibleFinanceAllocations(bearer:string,proposalRef:string,
+  budgetRef:string,partyKind:CsrParty){
+  if(!["CSR","FOUNDATION"].includes(partyKind))
+   throw new BadRequestException("Choose an approved funding party.");
+  return this.run(bearer,"csr.partners.view",async(tx,a)=>{
+   const source=await this.approvedFinanceSource(tx,a,proposalRef);
+   return this.receipts.eligibleBudgetAllocations(tx,a,source,ref(budgetRef),partyKind);
+  },true);
+ }
  async eligibleFinanceExpenses(bearer:string,proposalRef:string,budgetRef:string){
   return this.run(bearer,"csr.partners.view",async(tx,a)=>{
    const source=await this.approvedFinanceSource(tx,a,proposalRef);
@@ -378,21 +387,26 @@ export class CsrFundingProposalsService{
    throw new BadRequestException("Select the original approved budget effect.");
   const v=raw as Record<string,unknown>;
   if(Object.keys(v).some(k=>!["requestKey","expectedVersion","budgetRef","partyKind",
-   "kind","amountMinor","journalRef"].includes(k))||
+   "kind","amountMinor","journalRef","correctionOfEventRef"].includes(k))||
    !Number.isSafeInteger(v.expectedVersion)||Number(v.expectedVersion)<1||
    !["CSR","FOUNDATION"].includes(String(v.partyKind))||
-   !["ALLOCATE","UTILIZE"].includes(String(v.kind))||
+   !["ALLOCATE","UTILIZE","DEALLOCATE"].includes(String(v.kind))||
    typeof v.amountMinor!=="string"||!/^[1-9][0-9]{0,13}$/.test(v.amountMinor))
    throw new BadRequestException("The approved budget or amount is invalid.");
   const journal=v.journalRef===null||v.journalRef===undefined?null:ref(v.journalRef);
-  if((v.kind==="UTILIZE"&&!journal)||(v.kind==="ALLOCATE"&&journal))
-   throw new BadRequestException("Only actual posted expenses can be utilized.");
+  const correction=v.correctionOfEventRef===null||v.correctionOfEventRef===undefined?
+   null:ref(v.correctionOfEventRef);
+  if((v.kind==="UTILIZE"&&!journal)||(v.kind!=="UTILIZE"&&journal)||
+   (v.kind==="DEALLOCATE"&&!correction)||(v.kind!=="DEALLOCATE"&&correction))
+   throw new BadRequestException("Choose an original unspent allocation or posted expense.");
   return this.run(bearer,"csr.partners.manage",async(tx,a)=>{
    const source=await this.approvedFinanceSource(tx,a,proposalRef,true);
    if(source.sourceVersion!==v.expectedVersion)throw changed();
    return this.receipts.recordBudgetEffect(tx,a,source,{
-    requestKey:ref(v.requestKey),budgetRef:ref(v.budgetRef),kind:v.kind as "ALLOCATE"|"UTILIZE",
-    partyKind:v.partyKind as CsrParty,amountMinor:v.amountMinor as string,journalRef:journal});
+    requestKey:ref(v.requestKey),budgetRef:ref(v.budgetRef),
+    kind:v.kind as "ALLOCATE"|"UTILIZE"|"DEALLOCATE",
+    partyKind:v.partyKind as CsrParty,amountMinor:v.amountMinor as string,
+    journalRef:journal,correctionOfEventRef:correction});
   });
  }
  /** Original CG05 owner, project geography and scope for B08.
