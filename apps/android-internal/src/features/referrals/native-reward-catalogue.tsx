@@ -18,7 +18,7 @@ export function NativeRewardCatalogue({token,onExpired}:{
  const [moreProgrammes,setMoreProgrammes]=useState(false),[moreProducts,setMoreProducts]=useState(false);
  const [loading,setLoading]=useState(false),[error,setError]=useState("");
  const [expanded,setExpanded]=useState<string|null>(null);
- const sequence=useRef(0);
+ const programmeSeq=useRef(0),productSeq=useRef(0);
  const call=useCallback(async<T,>(path:string):Promise<T>=>{
   const response=await identityRequest("/api/v1/referrals/"+path,{
    headers:{Authorization:"Bearer "+token},cache:"no-store"});
@@ -29,42 +29,42 @@ export function NativeRewardCatalogue({token,onExpired}:{
   return response.json() as Promise<T>;
  },[token,onExpired]);
  const loadProgrammes=useCallback(async(page:number,append:boolean)=>{
-  const serial=++sequence.current;setLoading(true);setError("");
+  const serial=++programmeSeq.current;setLoading(true);setError("");
   if(!append){setProgrammes([]);setItems([]);setChosen("");setExpanded(null);}
   try{
    const data=await call<Paged<Programme>>("catalogue-programmes?page="+page);
-   if(serial!==sequence.current)return;
+   if(serial!==programmeSeq.current)return;
    if(!Array.isArray(data.items)||typeof data.hasMore!=="boolean")throw Error("Catalogue data unavailable.");
    setProgrammes(old=>append?[...old,...data.items.filter(p=>!old.some(x=>x.ref===p.ref))]:data.items);
    setMoreProgrammes(data.hasMore);setNextProgramme(page+1);
    if(!append)setChosen(data.items[0]?.ref??"");
-  }catch(e){if(serial===sequence.current)setError(e instanceof Error?e.message:"Catalogue unavailable.");}
-  finally{if(serial===sequence.current)setLoading(false);}
+  }catch(e){if(serial===programmeSeq.current)setError(e instanceof Error?e.message:"Catalogue unavailable.");}
+  finally{if(serial===programmeSeq.current)setLoading(false);}
  },[call]);
  const loadProducts=useCallback(async(programme:string,page:number,append:boolean)=>{
-  const serial=++sequence.current;setLoading(true);setError("");
+  const serial=++productSeq.current;setLoading(true);setError("");
   if(!append){setItems([]);setExpanded(null);setMoreProducts(false);}
   try{
    const data=await call<Paged<Reward>>("programmes/"+programme+"/products?page="+page);
-   if(serial!==sequence.current)return;
+   if(serial!==productSeq.current)return;
    if(!Array.isArray(data.items)||typeof data.hasMore!=="boolean")throw Error("Catalogue data unavailable.");
    setItems(old=>append?[...old,...data.items.filter(p=>!old.some(x=>x.ref===p.ref))]:data.items);
    setMoreProducts(data.hasMore);setNextProduct(page+1);
-  }catch(e){if(serial===sequence.current)setError(e instanceof Error?e.message:"Catalogue unavailable.");}
-  finally{if(serial===sequence.current)setLoading(false);}
+  }catch(e){if(serial===productSeq.current)setError(e instanceof Error?e.message:"Catalogue unavailable.");}
+  finally{if(serial===productSeq.current)setLoading(false);}
  },[call]);
  useEffect(()=>{
   void loadProgrammes(1,false);
   const sub=AppState.addEventListener("change",state=>{
-   if(state!=="active"){sequence.current++;setItems([]);setProgrammes([]);setExpanded(null);}
+   if(state!=="active"){programmeSeq.current++;productSeq.current++;setItems([]);setProgrammes([]);setExpanded(null);}
    else void loadProgrammes(1,false);
   });
-  return()=>{sequence.current++;sub.remove();};
+  return()=>{programmeSeq.current++;productSeq.current++;sub.remove();};
  },[loadProgrammes]);
  useEffect(()=>{
   if(!chosen)return;
   void loadProducts(chosen,1,false);
-  return()=>{sequence.current++;};
+  return()=>{productSeq.current++;};
  },[chosen,loadProducts]);
  const btn=(label:string,fn:()=>void,disabled=false)=>
   <Pressable accessibilityRole="button" disabled={disabled} accessibilityState={{disabled}}
