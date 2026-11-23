@@ -48,7 +48,8 @@ export function DonationAdminWorkspace({canView,canRecord,canReview,canIssue,can
  const [cash,setCash]=useState(""),[income,setIncome]=useState(""),[year,setYear]=useState("");
  const [voucher,setVoucher]=useState(""),[postingDate,setPostingDate]=useState("");
  const [privateFile,setPrivateFile]=useState<File|null>(null),[privateFileStatus,setPrivateFileStatus]=useState("");
- const [privateProofHistory,setPrivateProofHistory]=useState<{mime:string;status:string;verified:boolean}[]>([]);
+ const [fileChooserVersion,setFileChooserVersion]=useState(0);
+ const [privateProofHistory,setPrivateProofHistory]=useState<{proofRef:string;mime:string;status:string;verified:boolean}[]>([]);
  const privateFileKey=useRef<string|null>(null);
  const [review,setReview]=useState<QueueItem|null>(null),[password,setPassword]=useState("");
  const [busy,setBusy]=useState(false),[error,setError]=useState(""),[notice,setNotice]=useState("");
@@ -115,7 +116,8 @@ export function DonationAdminWorkspace({canView,canRecord,canReview,canIssue,can
      donationNumber:options.donationNumber,requestKey:privateFileKey.current,
      mime:privateFile.type,sizeBytes:privateFile.size,sha256});
    if(prepared.status==="VALIDATED"&&prepared.cleanVerified){
-    setPrivateFileStatus("Original private document verified as clean.");return;
+    setPrivateFileStatus("Original private document verified as clean.");
+    privateFileKey.current=null;setPrivateFile(null);setFileChooserVersion(n=>n+1);return;
    }
    if(prepared.status!=="UPLOAD_READY"||!prepared.uploadUrl||!prepared.uploadHeaders)
     throw Error("Private storage reservation unavailable. No proof was accepted.");
@@ -129,14 +131,35 @@ export function DonationAdminWorkspace({canView,canRecord,canReview,canIssue,can
    setPrivateFileStatus(verified.cleanVerified&&verified.status==="VALIDATED"?
     "CG19 scanner verified this private document. It is not proof of received money.":
     "CG19 proof is pending or rejected; do not treat it as verified.");
+   if(verified.cleanVerified&&verified.status==="VALIDATED"){
+    privateFileKey.current=null;setPrivateFile(null);setFileChooserVersion(n=>n+1);
+   }
   }catch(e){setError(e instanceof Error?e.message:"Private proof was not verified.");}
+  finally{setBusy(false);}
+ };
+ const downloadDonorProof=async(proofRef:string,mime:string)=>{
+  if(busy||!canViewProof)return;
+  setBusy(true);setError("");
+  try{
+   const r=await fetch("/api/donations/proofs/"+proofRef+"/download",{
+    method:"POST",headers:{"Content-Type":"application/json"},body:"{}",
+    cache:"no-store",signal:AbortSignal.timeout(18000)});
+   if(!r.ok||r.headers.get("content-type")?.split(";")[0]!==mime)
+    throw new Error("The verified private donor document is not available.");
+   const file=await r.blob();
+   if(file.size<1||file.size>5242880)throw new Error("CG19 private file bytes were not verified.");
+   const url=URL.createObjectURL(file),a=document.createElement("a");
+   a.href=url;a.download="CareGanga-Private-Donor-Proof."+
+    (mime==="application/pdf"?"pdf":mime==="image/png"?"png":"jpg");
+   a.click();setTimeout(()=>URL.revokeObjectURL(url),10000);
+  }catch(e){setError(e instanceof Error?e.message:"Protected private document cannot be opened.");}
   finally{setBusy(false);}
  };
  const reviewDonorProof=async(donationNumber:string)=>{
   if(busy||!canViewProof)return;
   setBusy(true);setError("");setPrivateProofHistory([]);
   try{
-   const report=await api<{proofs:{mime:string;status:string;verified:boolean}[]}>(
+   const report=await api<{proofs:{proofRef:string;mime:string;status:string;verified:boolean}[]}>(
     "/proofs/donation/"+donationNumber);
    setPrivateProofHistory(report.proofs);
    setNotice("CG19 private evidence scan status loaded. A verified file does not confirm a donation payment.");
@@ -295,7 +318,7 @@ export function DonationAdminWorkspace({canView,canRecord,canReview,canIssue,can
     {canAttachProof&&<section style={{display:"grid",gap:9,padding:12,border:"1px solid var(--cg-border)",borderRadius:8}}>
      <strong>Optional private donor document — securely scanned</strong>
      <p>PDF, JPG or PNG; maximum 5 MB. This file is confidential and never marks an unverified payment as received.</p>
-     <input type="file" accept=".pdf,.jpg,.jpeg,.png,application/pdf,image/jpeg,image/png"
+     <input key={fileChooserVersion} type="file" accept=".pdf,.jpg,.jpeg,.png,application/pdf,image/jpeg,image/png"
       aria-label="Private donor supporting document" disabled={busy}
       onChange={e=>{if(!privateFileKey.current){setPrivateFile(e.target.files?.[0]??null);setPrivateFileStatus("");}}}/>
      <button type="button" style={button} disabled={busy||!privateFile}
@@ -330,8 +353,12 @@ export function DonationAdminWorkspace({canView,canRecord,canReview,canIssue,can
    </div>)}
    {canViewProof&&privateProofHistory.length>0&&<div>
     <strong>Private donor document statuses</strong>
-    {privateProofHistory.map((item,i)=><p key={i}>
-     {item.mime} — {item.verified?"Clean-verified":item.status.toLowerCase()}</p>)}
+    {privateProofHistory.map(item=><div key={item.proofRef} style={{display:"flex",gap:9,alignItems:"center"}}>
+     <span>{item.mime} — {item.verified?"Clean-verified":item.status.toLowerCase()}</span>
+     {item.verified&&<button type="button" disabled={busy}
+      onClick={()=>void downloadDonorProof(item.proofRef,item.mime)}>
+      Open protected file</button>}
+    </div>)}
     <p>Only CG19 clean-verified documents may be used as evidence; independent finance verification is still required.</p>
    </div>}
    {review&&<form onSubmit={e=>void verify(e)} style={{display:"grid",gap:12}}>

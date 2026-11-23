@@ -15,6 +15,8 @@ async function proxy(req:NextRequest,ctx:Context,method:"GET"|"POST"){
     "/api/v1/donations/proofs/donation/"+parts[2]:
   ["manual/queue","refunds/queue","online/reconcile-queue"].includes(route)&&method==="GET"?"/api/v1/donations/"+route:
   route==="proofs/initiate"&&method==="POST"?"/api/v1/donations/proofs/initiate":
+  parts.length===3&&parts[0]==="proofs"&&UUID.test(parts[1])&&parts[2]==="download"&&method==="POST"?
+    "/api/v1/donations/proofs/"+parts[1]+"/download":
   parts.length===3&&parts[0]==="proofs"&&UUID.test(parts[1])&&parts[2]==="confirm"&&method==="POST"?
     "/api/v1/donations/proofs/"+parts[1]+"/confirm":
   ["donor-detail","manual/options","manual/prepare","online/options","online/post","refunds/request"].includes(route)&&method==="POST"?
@@ -45,6 +47,20 @@ async function proxy(req:NextRequest,ctx:Context,method:"GET"|"POST"){
     if(req.nextUrl.searchParams.has(key))url.searchParams.set(key,req.nextUrl.searchParams.get(key)!);
   const r=await fetch(url,{method,body,cache:"no-store",signal:AbortSignal.timeout(16000),
    headers:{Authorization:"Bearer "+token,...(body?{"Content-Type":"application/json"}:{})}});
+  if(parts[0]==="proofs"&&parts.length===3&&parts[2]==="download"){
+   if(!r.ok)return respond({message:"Private clean-verified document unavailable to your current Foundation role."},
+    [401,403,404].includes(r.status)?r.status:503);
+   const mime=r.headers.get("content-type")?.split(";")[0]??"";
+   if(!["application/pdf","image/jpeg","image/png"].includes(mime))
+    return respond({message:"Private donor file type unavailable."},503);
+   const bytes=await r.arrayBuffer();
+   if(bytes.byteLength<1||bytes.byteLength>5242880)
+    return respond({message:"Private donor file bytes cannot be verified."},503);
+   return new NextResponse(bytes,{status:200,headers:{
+    "Content-Type":mime,"Cache-Control":"private, no-store",
+    "Content-Disposition":'attachment; filename="CareGanga-Private-Donor-Proof"',
+    "X-Content-Type-Options":"nosniff"}});
+  }
   if(route==="export"){
    if(!r.ok)return respond({message:r.status===403?
     "Current Foundation permissions do not permit this export.":
