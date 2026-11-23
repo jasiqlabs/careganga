@@ -52,7 +52,10 @@ test("US002-QA02/12/17: current CG02 role/branch and actual CG05 project source 
 });
 test("US002-QA05/06/18: B07/B08 Web uses original four steps, not synthetic available cash",()=>{
  const s=readFileSync(join(process.cwd(),"../web/src/features/csr/csr-funding-workspace.tsx"),"utf8");
- for(const token of ['"Fund information"','"Project & split"','"Agreement notes"','"Review & save"',
+ for(const token of ['aria-label="1. Funder, contact & period"',
+   'aria-label="2. Project Details & funding parties"',
+   'aria-label="3. Budget Details & agreement terms"',
+   'aria-label="5. Documents & Agreement"',
    'const detailEpoch=useRef(0)',
    'const request=++detailEpoch.current',
    'if(request!==detailEpoch.current)return;',
@@ -97,7 +100,7 @@ test("US002-QA14: native funding split remains a numeric value",()=>{
 });
 
 
-test("US002-QA05/06/16/18: B07 totals are requested-only, root/branch scoped and not page-limited",()=>{
+test("US002-QA05/06/16/18: B07 requested totals and real CG09 finance metrics use independent branch-scoped source",()=>{
  const backend=readFileSync(join(process.cwd(),"src/modules/cg-08-csr-funding/application/csr-funding-proposals.service.ts"),"utf8");
  const web=readFileSync(join(process.cwd(),"../web/src/features/csr/csr-funding-workspace.tsx"),"utf8");
  const native=readFileSync(join(process.cwd(),"../android-internal/src/features/csr/native-csr-funding.tsx"),"utf8");
@@ -106,8 +109,10 @@ test("US002-QA05/06/16/18: B07 totals are requested-only, root/branch scoped and
  assert.ok(backend.includes("AND ($2::boolean OR f.branch_ref=ANY($3::uuid[]))"));
  assert.ok(backend.includes("hasMore:rows.rows.length>25,summary"));
  assert.ok(!backend.includes("FROM finance_journal"),"CG08 requested totals are not bank cash");
- assert.ok(web.includes('aria-label="Original requested funding totals"'));
- assert.ok(native.includes('accessibilityLabel="Scoped requested-only funding totals"'));
- assert.ok(web.includes("Total requested (not cash)"));
- assert.ok(native.includes("Requested (not cash)"));
+ assert.ok(web.includes('aria-label="Original B07 requested, committed and verified finance figures"'));
+ assert.ok(native.includes('accessibilityLabel="Original B07 scoped requested and independently verified money"'));
+ assert.ok(web.includes("Total Fund / CSR requested"));
+ assert.ok(native.includes("Total Fund / CSR requested"));
+ assert.ok(web.includes("Received · CG09 verified"));
+ assert.ok(native.includes("Utilization %"));
 });
