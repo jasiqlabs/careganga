@@ -845,6 +845,10 @@ export function StaffAuthenticationScreen() {
     return renderInShell(<ScreenErrorBoundary onExit={()=>setRewardsOpen(false)}>
      <Suspense fallback={<ActivityIndicator style={{marginTop:40}}/>}>
       <NativeRewardCatalogue token={token} canViewStock={roleActions.includes("inventory.catalog.view")}
+       canIssueStock={roleActions.includes("inventory.stock.issue")&&
+        roleActions.includes("inventory.stock.view")&&roleActions.includes("inventory.catalog.view")}
+       canViewMembers={roleActions.includes("membership.members.view")}
+       canViewVolunteers={roleActions.includes("volunteers.view")}
        onExpired={expireSession}/>
      </Suspense>
     </ScreenErrorBoundary>,"rewards",()=>setRewardsOpen(false));
