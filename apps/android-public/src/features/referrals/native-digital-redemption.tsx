@@ -7,9 +7,12 @@ type Kind="MEMBER"|"VOLUNTEER";
 export type NativeRedeemableReward={
  ref:string;programmeRef:string;name:string;type:"DIGITAL"|"PHYSICAL";
  pointsPrice:string;version:number;eligibleAudience:Kind|"BOTH";
- programmeAudience:Kind|"BOTH";
+ programmeAudience:Kind|"BOTH";digitalFulfillmentMethod:
+  "PENDING_EXTERNAL_PROOF"|"ON_PLATFORM_RECOGNITION";
 };
-type Receipt={ref:string;state:string;productName:string;pointsCost:string;requestedAt:string};
+type Receipt={ref:string;state:string;productName:string;pointsCost:string;requestedAt:string;
+ digitalFulfillmentMethod:string;recognitionTitle:string|null;
+ recognitionDescription:string|null;recognizedAt:string|null};
 type Page={items:Receipt[];hasMore:boolean;page:number};
 type Created={ref:string;state:string;replayed:boolean;pointsCost:string;notice:string};
 export function NativeDigitalRedemption({token,onExpired,selected,onClose,audiences}:{
@@ -79,6 +82,18 @@ export function NativeDigitalRedemption({token,onExpired,selected,onClose,audien
    "Cancellation uncertain. Refresh original history first.");}
   finally{locked.current=false;setBusy(false);}
  };
+ const acknowledge=async(x:Receipt)=>{
+  if(busy||locked.current||x.state!=="HELD"||
+   x.digitalFulfillmentMethod!=="ON_PLATFORM_RECOGNITION")return;
+  locked.current=true;setBusy(true);setError("");setNotice("");
+  try{
+   const result=await api<{notice:string}>(
+    "redemptions/"+x.ref+"/claim-recognition","POST",{});
+   setNotice(result.notice);await refresh();
+  }catch(e){setError(e instanceof Error?e.message:
+   "Recognition status uncertain. Refresh original request history.");}
+  finally{locked.current=false;setBusy(false);}
+ };
  const button=(title:string,fn:()=>void,disabled=false)=>{
   return <Pressable style={s.button} accessibilityRole="button" disabled={disabled}
    accessibilityState={{disabled}} onPress={fn}><Text style={s.action}>{title}</Text></Pressable>;
@@ -116,6 +131,15 @@ export function NativeDigitalRedemption({token,onExpired,selected,onClose,audien
     "Points held — delivery pending":x.state==="CANCELLED"?"Cancelled — points released":x.state}</Text>
    <Text style={s.note}>{new Date(x.requestedAt).toLocaleDateString("en-IN",
     {timeZone:"Asia/Kolkata"})}</Text>
+   {x.state==="HELD"&&x.digitalFulfillmentMethod==="ON_PLATFORM_RECOGNITION"&&
+    button("Open and acknowledge my recognition",()=>void acknowledge(x),busy)}
+   {x.state==="FULFILLED"&&!!x.recognitionTitle&&<View style={s.item}>
+    <Text style={s.title}>{x.recognitionTitle}</Text>
+    {!!x.recognitionDescription&&<Text style={s.note}>{x.recognitionDescription}</Text>}
+    <Text style={s.note}>Actually acknowledged {x.recognizedAt?
+      new Date(x.recognizedAt).toLocaleDateString("en-IN",{timeZone:"Asia/Kolkata"}):
+      ""}</Text>
+   </View>}
    {x.state==="HELD"&&button("Cancel pending request",()=>void cancel(x),busy)}
   </View>)}
   <View style={s.row}>
