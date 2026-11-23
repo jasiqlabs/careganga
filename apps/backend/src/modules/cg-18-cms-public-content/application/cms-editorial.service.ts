@@ -987,8 +987,10 @@ export class CmsEditorialService{
   }))};
  }
  async publicNavigation(){
-  const response=await this.db.query<{effective_generation:string;login_desired:boolean}>(
-   'SELECT n.id AS "effective_generation",n.login_desired '+
+  const response=await this.db.query<{effective_generation:string;login_desired:boolean;
+   member_join_desired:boolean;volunteer_join_desired:boolean}>(
+   'SELECT n.id AS "effective_generation",n.login_desired,'+
+   'n.member_join_desired,n.volunteer_join_desired '+
    'FROM cms_navigation_effective e JOIN cms_navigation_revision n '+
    'ON n.id=e.revision_id AND n.foundation_root_id=e.foundation_root_id '+
    'JOIN cms_page_revision v ON v.id=n.home_revision_id '+
@@ -1050,12 +1052,19 @@ export class CmsEditorialService{
   if((await publicCampaignSources(this.db)).length>0)
    publishedRoutes.push({kind:"CAMPAIGNS",slug:"campaigns",path:"/campaigns"});
   if(await onlineDonationReady(this.db))publishedRoutes.push({kind:"DONATE",slug:"donate",path:"/donate"});
+  // Reuse only the ORIGINAL approved Home navigation revision. This row is
+  // already bound above to the current CG03 approval and effective homepage;
+  // unapproved or withdrawn changes must never activate visitor CTAs.
+  const memberJoin=x?.member_join_desired===true;
+  const volunteerJoin=x?.volunteer_join_desired===true;
   return {schemaVersion:1,effectiveGeneration:x?.effective_generation??null,
    publishedRoutes,
    login:{visible:x?.login_desired===true,label:"Staff login",
     path:x?.login_desired?"/admin/login":null},
-   memberJoin:{visible:false,label:"Member registration",path:null},
-   volunteerJoin:{visible:false,label:"Volunteer registration",path:null}};
+   memberJoin:{visible:memberJoin,label:"Become a Member",
+    path:memberJoin?"/membership":null},
+   volunteerJoin:{visible:volunteerJoin,label:"Become a Volunteer",
+    path:volunteerJoin?"/volunteer":null}};
  }
  async publicCampaignCatalogue(slug?:string){
   const cards=await publicCampaignSources(this.db,slug);
