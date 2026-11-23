@@ -4,6 +4,7 @@ import {DATABASE} from "../../../core/infrastructure/database.module";
 import {SessionService} from "../../cg-01-identity-access/application/session.service";
 import {FoundationStructureIdentityFacade} from "../../cg-01-identity-access/application/foundation-structure-identity.facade";
 import type {VerifiedFoundationActor} from "../../cg-01-identity-access/public-api";
+import {FinanceCsrReceiptSourceFacade,type ApprovedFundingSource,type CsrParty} from "../../cg-09-finance-accounting/application/finance-csr-receipt-source.facade";
 import {BranchSourceFacade} from "../../cg-02-foundation-structure/application/branch-source.facade";
 import {assertCsrFundingProject,csrFundingProjectOptions} from "../../cg-05-projects-field-operations/application/project-finance-source";
 import {CsrPartnersService,csrDigest} from "./csr-partners.service";
@@ -39,7 +40,8 @@ export class CsrFundingProposalsService{
   private readonly sessions:SessionService,
   private readonly identity:FoundationStructureIdentityFacade,
   private readonly branches:BranchSourceFacade,
-  private readonly partners:CsrPartnersService){}
+  private readonly partners:CsrPartnersService,
+  private readonly receipts:FinanceCsrReceiptSourceFacade){}
  private async run<T>(bearer:string,action:string,
   fn:(tx:PoolClient,a:VerifiedFoundationActor)=>Promise<T>,read=false):Promise<T>{
   const a=await this.sessions.requireAction(bearer,action),tx=await this.db.connect();
@@ -51,7 +53,7 @@ export class CsrFundingProposalsService{
   }catch(e){
    try{await tx.query("ROLLBACK");}catch{}
    if(e&&typeof e==="object"&&"code" in e&&
-    ["23505","23503","23514","40001","40P01","55P03","P0001"].includes(String(e.code)))
+    ["23505","23503","23514","40001","40P01","55P03","P0001","P3409"].includes(String(e.code)))
     throw changed();
    throw e;
   }finally{tx.release();}
@@ -292,6 +294,66 @@ export class CsrFundingProposalsService{
     [a.realmId,id,a.accountId,expected])).rows[0];
    if(!updated)throw changed();
    return this.event(tx,a,id,key,hash,"RESUME",updated.version);
+  });
+ }
+
+ /** Original funding approval is a promise only. CG09 owns all real money. */
+ private async approvedFinanceSource(tx:PoolClient,a:VerifiedFoundationActor,
+  id:string,write=false):Promise<ApprovedFundingSource>{
+  await this.identity.assertCurrent(tx,a,write?"csr.partners.manage":"csr.partners.view");
+  const current=await this.original(tx,a,ref(id),write);
+  if(current.status!=="APPROVED")throw changed();
+  if(current.csr_partner_id!==null){
+   const sponsor=await this.partners.guardAgreement(tx,a,current.csr_partner_id,null,false);
+   if(sponsor.status!=="APPROVED"||
+    sponsor.branch_ref!==null&&sponsor.branch_ref!==current.branch_ref)throw changed();
+  }
+  if(current.project_ref!==null){
+   await this.identity.assertCurrent(tx,a,"projects.view");
+   await assertCsrFundingProject(tx,a,current.project_ref,
+    current.branch_ref,current.project_source_version!);
+  }
+  const value=(await tx.query<{csr_requested_minor:string;foundation_requested_minor:string}>(
+   "SELECT csr_requested_minor::text,foundation_requested_minor::text "+
+   "FROM csr_funding_proposal WHERE root_realm_id=$1 AND id=$2",
+   [a.realmId,current.id])).rows[0];
+  if(!value)throw changed();
+  return {proposalRef:current.id,sourceVersion:current.version,
+   branchRef:current.branch_ref,csrMinor:value.csr_requested_minor,
+   foundationMinor:value.foundation_requested_minor,status:"APPROVED"};
+ }
+ async verifiedFinance(bearer:string,proposalRef:string){
+  return this.run(bearer,"csr.partners.view",async(tx,a)=>{
+   const source=await this.approvedFinanceSource(tx,a,proposalRef);
+   const amounts=await this.receipts.currentReceived(tx,a,source);
+   return {proposalStatus:source.status,sourceVersion:source.sourceVersion,
+    csrCommittedMinor:source.csrMinor,foundationCommittedMinor:source.foundationMinor,
+    ...amounts,
+    allocationStatus:"NOT_LINKED",
+    notice:"CG09 verified receipts are real bank transactions. Approved budget allocation and utilization remain separate."};
+  },true);
+ }
+ async eligibleVerifiedReceipts(bearer:string,proposalRef:string){
+  return this.run(bearer,"csr.partners.view",async(tx,a)=>{
+   const source=await this.approvedFinanceSource(tx,a,proposalRef);
+   return this.receipts.eligibleReceipts(tx,a,source);
+  },true);
+ }
+ async linkVerifiedReceipt(bearer:string,proposalRef:string,raw:unknown){
+  if(!raw||typeof raw!=="object"||Array.isArray(raw))
+   throw new BadRequestException("Select one original CG09 verified bank receipt.");
+  const v=raw as Record<string,unknown>;
+  if(Object.keys(v).some(x=>!["requestKey","expectedVersion","partyKind","reconciliationRef"].includes(x))||
+   typeof v.expectedVersion!=="number"||!Number.isSafeInteger(v.expectedVersion)||
+   v.expectedVersion<1||v.expectedVersion>=2147483647||
+   !["CSR","FOUNDATION"].includes(String(v.partyKind)))
+   throw new BadRequestException("Refresh the approved funding source and bank match.");
+  return this.run(bearer,"csr.partners.manage",async(tx,a)=>{
+   const source=await this.approvedFinanceSource(tx,a,proposalRef,true);
+   if(source.sourceVersion!==v.expectedVersion)throw changed();
+   return this.receipts.linkReceipt(tx,a,source,{
+    partyKind:v.partyKind as CsrParty,requestKey:ref(v.requestKey),
+    reconciliationRef:ref(v.reconciliationRef)});
   });
  }
  /** Original B08 selectors from CG01/CG02/CG05/CG08 current sources only. */
