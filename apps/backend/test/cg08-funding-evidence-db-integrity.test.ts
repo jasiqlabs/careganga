@@ -15,12 +15,14 @@ test("CG08 US002 3406/3407 funding ownership and CG19 proof constraints",
  try{
   await pg.query("BEGIN READ ONLY");
   const migrations=["3406_cg08_csr_funding_proposals.sql",
-   "3407_cg19_csr_funding_agreement_evidence.sql"];
+   "3407_cg19_csr_funding_agreement_evidence.sql",
+   "3408_cg03_csr_funding_review.sql"];
   const m=await pg.query<{filename:string}>(
    "SELECT filename FROM schema_migration WHERE filename=ANY($1::text[])",[migrations]);
   assert.equal(m.rowCount,migrations.length,"Both original funding migrations are required");
   for(const name of ["csr_funding_proposal","csr_funding_command",
-   "cg19_upload_intent","cg19_stored_file","cg19_funding_evidence_event"]){
+   "cg19_upload_intent","cg19_stored_file","cg19_funding_evidence_event",
+   "csr_funding_review_snapshot","cg03_funding_process_current"]){
    const t=await pg.query<{ref:string|null}>("SELECT to_regclass($1)::text AS ref",[name]);
    assert.ok(t.rows[0]?.ref,name+" missing");
   }
@@ -28,12 +30,15 @@ test("CG08 US002 3406/3407 funding ownership and CG19 proof constraints",
    "SELECT c.relname AS rel,k.conname AS name,pg_get_constraintdef(k.oid) AS def "+
    "FROM pg_constraint k JOIN pg_class c ON c.oid=k.conrelid "+
    "WHERE c.relname=ANY($1::text[]) AND k.contype IN('f','c','u')",
-   [["csr_funding_proposal","cg19_upload_intent","cg19_stored_file"]]);
+   [["csr_funding_proposal","cg19_upload_intent","cg19_stored_file",
+    "csr_funding_review_snapshot","cg03_case"]]);
   const by=new Map(constraints.rows.map(v=>[v.name,v]));
   for(const name of ["cg19_funding_intent_proposal_fk",
     "cg19_funding_file_proposal_fk","cg19_funding_file_intent_fk",
     "cg19_funding_intent_disjoint","cg19_funding_file_disjoint",
-    "uq_cg19_funding_intent_identity","uq_cg19_funding_intent_owner"]){
+    "uq_cg19_funding_intent_identity","uq_cg19_funding_intent_owner",
+    "uq_cg19_funding_file_owner","cg03_funding_review_exact_fk",
+    "cg03_funding_review_disjoint"]){
    assert.ok(by.has(name),"Missing original CG19 protected funding guard: "+name);
   }
   assert.match(by.get("cg19_funding_file_intent_fk")!.def,
@@ -48,11 +53,14 @@ test("CG08 US002 3406/3407 funding ownership and CG19 proof constraints",
    "JOIN pg_class c ON c.oid=t.tgrelid WHERE c.relname=ANY($1::text[]) "+
    "AND NOT t.tgisinternal",
    [["csr_funding_proposal","cg19_upload_intent","cg19_stored_file",
-     "cg19_funding_evidence_event"]]);
+     "cg19_funding_evidence_event","csr_funding_review_snapshot",
+     "cg03_case","cg03_case_decision"]]);
   const triggers=new Map(trigger.rows.map(v=>[v.name,v]));
   for(const name of ["cg08_funding_source_guard",
     "cg19_funding_intent_owner_immutable","cg19_funding_file_owner_immutable",
-    "cg19_funding_evidence_event_immutable"]){
+    "cg19_funding_evidence_event_immutable",
+    "csr_funding_review_snapshot_immutable","cg03_funding_case_write",
+    "cg03_funding_decision_insert","cg08_funding_status_proof_after"]){
    const v=triggers.get(name);assert.ok(v,name+" missing");
    assert.ok(["O","A"].includes(v.enabled),name+" disabled");
   }
