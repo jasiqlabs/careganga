@@ -11,16 +11,20 @@ type Upload={uploadRef:string;status:string;uploadUrl?:string;uploadHeaders?:Rec
  cleanVerified?:boolean;fileRef?:string|null;fileVersion?:number|null};
 type Chosen={uri:string;name:string;mime:string;size:number};
 type Command={key:string;hash:string;mime:string;size:number;intent?:string};
+type ReviewSubmit={requestKey:string;expectedVersion:number;evidenceFileRef:string};
 const MIME=["application/pdf","image/jpeg","image/png","image/webp"];
 const base="/api/v1/csr-funding-agreements/";
-export function NativeCsrFundingAgreementPanel({token,proposalRef,version,canUpload,onExpired}:{
- token:string;proposalRef:string;version:number;canUpload:boolean;onExpired:()=>void}){
+export function NativeCsrFundingAgreementPanel({token,proposalRef,version,canUpload,canSubmit,onSubmitted,onExpired}:{
+ token:string;proposalRef:string;version:number;canUpload:boolean;canSubmit:boolean;
+ onSubmitted:()=>void;onExpired:()=>void}){
  const [files,setFiles]=useState<Proof[]|null>(null),
   [loadError,setLoadError]=useState(""),[error,setError]=useState(""),
   [notice,setNotice]=useState(""),[selected,setSelected]=useState<Chosen|null>(null),
   [consent,setConsent]=useState(false),[busy,setBusy]=useState(false),
   [intent,setIntent]=useState(""),[epoch,setEpoch]=useState(0);
  const command=useRef<Command|null>(null),running=useRef(false),cached=useRef<string|null>(null);
+ const [selectedProof,setSelectedProof]=useState(""),
+  [pendingReview,setPendingReview]=useState<ReviewSubmit|null>(null);
  const clear=()=>{if(cached.current){try{new File(cached.current).delete();}catch{}cached.current=null;}};
  useEffect(()=>()=>{clear();},[]);
  const api=async<T,>(path:string,body?:Record<string,unknown>):Promise<T>=>{
@@ -43,6 +47,33 @@ export function NativeCsrFundingAgreementPanel({token,proposalRef,version,canUpl
   }).catch(e=>{if(live)setLoadError(e instanceof Error?e.message:"Cannot inspect private funding proof.");});
   return()=>{live=false;};
  },[token,proposalRef,version,epoch]);
+ useEffect(()=>{if(!pendingReview)setSelectedProof("");},[proposalRef,version]);
+ const submitForReview=async()=>{
+  if(!canSubmit||busy||running.current||!files||!(pendingReview||selectedProof))return;
+  if(!pendingReview&&!files.some(f=>f.fileRef===selectedProof&&f.sourceVersion===version))return;
+  const payload=pendingReview??{requestKey:Crypto.randomUUID(),
+   expectedVersion:version,evidenceFileRef:selectedProof};
+  setPendingReview(payload);setBusy(true);setError("");
+  try{
+   const response=await identityRequest("/api/v1/csr/funding-proposals/"+proposalRef+"/submit",{
+    method:"POST",cache:"no-store",
+    headers:{Authorization:"Bearer "+token,"Content-Type":"application/json"},
+    body:JSON.stringify(payload)});
+   if(response.status===401){onExpired();throw Object.assign(Error("Sign in again."),{status:401});}
+   if(!response.ok)throw Object.assign(Error(response.status===409?
+    "Original funding proposal or signed evidence changed. Refresh.":
+    "Funding review submission outcome uncertain."),{status:response.status||503});
+   setPendingReview(null);
+   setNotice("Funding request submitted for independent signed review. No cash posted.");
+   onSubmitted();
+  }catch(e){
+   const status=e&&typeof e==="object"&&"status" in e?Number(e.status):503;
+   if(status>0&&status<500)setPendingReview(null);
+   setError(status>=500||status===0?
+    "Submission result uncertain. Check original case history or retry EXACTLY the same request.":
+    e instanceof Error?e.message:"Funding submission rejected.");
+  }finally{setBusy(false);}
+ };
  const verified=(v:Upload)=>{
   if(!v.cleanVerified||!v.fileRef||!v.fileVersion)
    throw Error("Original CG19 scanner has not verified this funding document.");
@@ -141,6 +172,22 @@ export function NativeCsrFundingAgreementPanel({token,proposalRef,version,canUpl
      "Current proposal revision":"Earlier revision"}</Text>
     {action("Download or share privately",()=>void share(file))}
    </View>)}
+  {canSubmit&&<View style={styles.panel}>
+   <Text style={styles.heading}>Submit for independent funding review</Text>
+   <Text style={styles.note}>Choose a scanner-verified document from the current
+    proposal revision. A different authorized Foundation reviewer approves
+    the signed commitment. This is not bank cash.</Text>
+   {files?.filter(f=>f.sourceVersion===version).map((f,i)=><Pressable
+    key={f.fileRef} accessibilityRole="radio"
+    accessibilityState={{checked:selectedProof===f.fileRef}}
+    disabled={busy||!!pendingReview}
+    onPress={()=>setSelectedProof(f.fileRef)} style={styles.button}>
+    <Text style={styles.action}>{selectedProof===f.fileRef?"◉":"○"} Private document {i+1}</Text>
+   </Pressable>)}
+   {action("Submit for protected CG03 approval",()=>void submitForReview(),
+    !selectedProof||!files?.some(f=>f.fileRef===selectedProof&&f.sourceVersion===version)||!!pendingReview)}
+   {pendingReview&&action("Retry exact review submission",()=>void submitForReview())}
+  </View>}
   {canUpload&&<>
    {action(selected?"Selected: "+selected.name:"Choose signed funding agreement",
     ()=>void pick(),!!loadError)}
