@@ -7,7 +7,7 @@ type Summary={sourceVersion:number;csrCommittedMinor:string;foundationCommittedM
  csrNeedsRevalidationMinor:string;foundationNeedsRevalidationMinor:string};
 type Candidate={reconciliationRef:string;verifiedDate:string;amountMinor:string;
  bankName:string;bankItemMasked:string};
-type Command={requestKey:string;expectedVersion:number;partyKind:"CSR"|"FOUNDATION";reconciliationRef:string};
+type Command={requestKey:string;expectedVersion:number;partyKind:"CSR"|"FOUNDATION";reconciliationRef:string;remitterConfirmed:true};
 const money=(minor:string)=>{try{const n=BigInt(minor);return "₹"+(n/100n).toLocaleString("en-IN")+
  "."+(n%100n).toString().padStart(2,"0");}catch{return "Amount unavailable";}};
 export function NativeCsrFundingReceiptsPanel({token,proposalRef,version,canLink,onExpired}:{
@@ -15,6 +15,7 @@ export function NativeCsrFundingReceiptsPanel({token,proposalRef,version,canLink
  const [summary,setSummary]=useState<Summary|null>(null);
  const [options,setOptions]=useState<Candidate[]>([]);
  const [chosen,setChosen]=useState(""),[party,setParty]=useState<"CSR"|"FOUNDATION">("CSR");
+ const [remitterConfirmed,setRemitterConfirmed]=useState(false);
  const [busy,setBusy]=useState(false),[loading,setLoading]=useState(true);
  const [error,setError]=useState(""),[notice,setNotice]=useState("");
  const [pending,setPending]=useState<Command|null>(null),[epoch,setEpoch]=useState(0);
@@ -38,7 +39,7 @@ export function NativeCsrFundingReceiptsPanel({token,proposalRef,version,canLink
    api<{items:Candidate[]}>("/eligible-receipts")]).then(([v,candidates])=>{
    if(!live||sequence.current!==n)return;
    if(v.sourceVersion!==version)throw Error("Funding version changed; refresh.");
-   setSummary(v);setOptions(candidates.items);setChosen("");
+   setSummary(v);setOptions(candidates.items);setChosen("");setRemitterConfirmed(false);
    setParty(BigInt(v.csrCommittedMinor)>0n?"CSR":"FOUNDATION");
   }).catch(e=>{if(live&&sequence.current===n){setSummary(null);setOptions([]);
    setError(e instanceof Error?e.message:"Finance verification unavailable.");}})
@@ -46,14 +47,14 @@ export function NativeCsrFundingReceiptsPanel({token,proposalRef,version,canLink
   return()=>{live=false;sequence.current++;};
  },[token,proposalRef,version,epoch]);
  const link=async()=>{
-  if(lock.current||!canLink||loading||!summary||!chosen&&!pending)return;
+  if(lock.current||!canLink||loading||!summary||!chosen&&!pending||!remitterConfirmed&&!pending)return;
   if(!pending&&!options.some(v=>v.reconciliationRef===chosen))return;
   const input=pending??{requestKey:Crypto.randomUUID(),expectedVersion:version,
-   partyKind:party,reconciliationRef:chosen};
+   partyKind:party,reconciliationRef:chosen,remitterConfirmed:true as const};
   lock.current=true;setBusy(true);setPending(input);setError("");setNotice("");
   try{
    await api("/receipts",input);
-   setPending(null);setChosen("");
+   setPending(null);setChosen("");setRemitterConfirmed(false);
    setNotice("Original CG09 verified bank receipt linked. Not allocated.");
    setEpoch(x=>x+1);
   }catch(e){
@@ -96,8 +97,16 @@ export function NativeCsrFundingReceiptsPanel({token,proposalRef,version,canLink
      (party==="CSR"?"● ":"○ ")+"CSR partner share",()=>setParty("CSR"),!!pending)}
     {BigInt(summary.foundationCommittedMinor)>0n&&button(
      (party==="FOUNDATION"?"● ":"○ ")+"Foundation share",()=>setParty("FOUNDATION"),!!pending)}
+    <Pressable accessibilityRole="checkbox" accessibilityState={{checked:remitterConfirmed}}
+     disabled={busy||!!pending} onPress={()=>setRemitterConfirmed(v=>!v)}
+     style={styles.option}>
+     <Text style={styles.note}>{remitterConfirmed?"☑":"☐"} I checked the actual
+      CG09 bank statement and confirmed the remitter belongs to this selected
+      CSR partner or Foundation share. Bank reconciliation alone does not prove
+      the payer.</Text>
+    </Pressable>
     {button(pending?"Retry exact bank receipt link":"Link verified original bank receipt",
-      ()=>void link(),!pending&&!chosen)}
+      ()=>void link(),!pending&&(!chosen||!remitterConfirmed))}
    </View>}
   </>}
   {button("Refresh original CG09 verification",()=>setEpoch(x=>x+1))}
