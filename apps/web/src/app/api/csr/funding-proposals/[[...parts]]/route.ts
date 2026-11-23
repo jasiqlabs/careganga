@@ -12,7 +12,7 @@ async function proxy(req:NextRequest,ctx:Context,method:"GET"|"POST"|"PATCH"){
    method==="PATCH"&&UUID.test(parts[0])))||
   (parts.length===2&&UUID.test(parts[0])&&(
    method==="POST"&&["submit","resume"].includes(parts[1])||
-   method==="GET"&&["review-history","finance"].includes(parts[1])))||
+   method==="GET"&&["review-history","finance","project-context"].includes(parts[1])))||
   (parts.length===3&&UUID.test(parts[0])&&parts[1]==="finance"&&(
    method==="GET"&&["eligible-receipts","budgets"].includes(parts[2])||
    method==="POST"&&["receipts","budget-effects"].includes(parts[2])))||
