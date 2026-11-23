@@ -486,6 +486,7 @@ export function ReferralRewardsWorkspace({canViewPolicy,canViewRewards,canManage
        </aside>
       </div>
       <AdminReferralRecords programme={selected} kind={rankTab}
+       selectedRank={availableRanks[selectedRank]?.name??""}
        canViewMember={canViewMemberRoster} canViewVolunteer={canViewVolunteerRoster}
        refreshEpoch={epoch}/>
       {canManagePolicy&&<button style={{...css.button,justifySelf:"start"}} disabled={busy}
