@@ -160,7 +160,11 @@ export class CsrAgreementEvidenceService{
   * protected root role and the current CSR review grant in the same SQL tx.
   * Keep the file row locked during the private byte read so revocation cannot
   * race the export. This is not a public download or signed upload URL. */
- async readForOriginalReview(tx:PoolClient,a:VerifiedFoundationActor,partnerId:string,sourceVersion:number,fileRef:string){
+
+ /** One locked, original CG03-scoped snapshot for the reviewer. Never await
+  * private storage while this or any other SQL transaction holds locks. */
+ async prepareOriginalReviewFile(tx:PoolClient,a:VerifiedFoundationActor,
+  partnerId:string,sourceVersion:number,fileRef:string):Promise<FileRow>{
   await this.requireCurrentProof(tx,a,partnerId,sourceVersion,fileRef,true);
   const f=(await tx.query<FileRow>(
    "SELECT f.id,f.csr_partner_id,f.proposal_revision,f.revision,f.original_mime,"+
@@ -173,14 +177,32 @@ export class CsrAgreementEvidenceService{
    "AND i.status='VALIDATED' FOR SHARE OF f,i",
    [a.realmId,uid(fileRef),uid(partnerId),sourceVersion])).rows[0];
   if(!f)throw changed();
+  return f;
+ }
+ /** Explicitly outside all PostgreSQL transactions, for storage latency/NFR.
+  * Caller MUST revalidate the same source, review case and immutable bytes
+  * after this read before allowing a user to see the confidential document. */
+ async readPreparedOriginalReviewFile(prepared:FileRow){
   let bytes:Buffer;
   try{bytes=await this.objects.readVerifiedPrivateObject({
-   objectKey:f.object_key,objectVersion:f.object_version,maxBytes:10485760});}
+   objectKey:prepared.object_key,objectVersion:prepared.object_version,maxBytes:10485760});}
   catch{throw unavailable();}
-  if(bytes.length!==Number(f.verified_size_bytes)||
-   createHash("sha256").update(bytes).digest("hex")!==f.verified_sha256||
-   !MIME.includes(f.original_mime))throw changed();
-  return {bytes,mime:f.original_mime};
+  if(bytes.length!==Number(prepared.verified_size_bytes)||
+   createHash("sha256").update(bytes).digest("hex")!==prepared.verified_sha256||
+   !MIME.includes(prepared.original_mime))throw changed();
+  return {bytes,mime:prepared.original_mime};
+ }
+ /** Called inside the CG03 post-read protected transaction.  No database
+  * credential or storage key is ever sent to the original reviewer UI. */
+ async assertOriginalReviewFileUnchanged(tx:PoolClient,a:VerifiedFoundationActor,
+  partnerId:string,sourceVersion:number,fileRef:string,prepared:FileRow){
+  const latest=await this.prepareOriginalReviewFile(tx,a,partnerId,sourceVersion,fileRef);
+  if(latest.id!==prepared.id||latest.revision!==prepared.revision||
+   latest.object_version!==prepared.object_version||
+   latest.object_key!==prepared.object_key||
+   latest.verified_sha256!==prepared.verified_sha256||
+   latest.verified_size_bytes!==prepared.verified_size_bytes||
+   latest.original_mime!==prepared.original_mime)throw changed();
  }
 
  async list(bearer:string,partnerId:string){

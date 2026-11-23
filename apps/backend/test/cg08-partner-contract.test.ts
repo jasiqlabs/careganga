@@ -327,3 +327,19 @@ test("US001-QA07/10/12: original CG19 agreement file selector is visible only to
  assert.ok(web.includes('canManagePublic={actions.includes("cms.content.manage")&&actions.includes("csr.partners.manage")&&actions.includes("documents.files.view")}'));
  assert.ok(native.includes('canManagePublic={roleActions.includes("csr.partners.manage")&&roleActions.includes("cms.content.manage")&&roleActions.includes("documents.files.view")}'));
 });
+
+
+test("US001-QA04/10/11: confidential reviewer file read is outside database locks and reauthorized",()=>{
+ const reviewer=readFileSync(join(process.cwd(),"src/modules/cg-03-registration-approvals/application/csr-partner-review.service.ts"),"utf8");
+ const evidence=readFileSync(join(process.cwd(),"src/modules/cg-19-documents-notifications/application/csr-agreement-evidence.service.ts"),"utf8");
+ const start=reviewer.indexOf("async verifiedAgreement("),end=reviewer.indexOf("async partnerHistory(",start);
+ const src=reviewer.slice(start,end);
+ assert.ok(src.includes("prepareOriginalReviewFile(tx,a"));
+ assert.ok(src.includes("readPreparedOriginalReviewFile(prepared.originalFile)"));
+ assert.ok(src.includes("assertOriginalReviewFileUnchanged(tx,a"));
+ assert.ok(src.indexOf("readPreparedOriginalReviewFile")>src.indexOf("},true);"));
+ assert.ok(src.indexOf("assertOriginalReviewFileUnchanged")>src.indexOf("readPreparedOriginalReviewFile"));
+ assert.ok(evidence.includes("latest.object_version!==prepared.object_version"));
+ assert.ok(evidence.includes("latest.verified_sha256!==prepared.verified_sha256"));
+ assert.ok(!evidence.includes("async readForOriginalReview(tx:PoolClient"),"No storage call under CG03 SQL locks");
+});

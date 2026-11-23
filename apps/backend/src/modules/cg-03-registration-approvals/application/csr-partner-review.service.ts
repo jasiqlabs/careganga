@@ -275,13 +275,32 @@ export class CsrPartnerReviewService {
   * file permissions to infer reviewer authority. */
  async verifiedAgreement(bearer:string,caseRef:string){
   const a=await this.reviewer(bearer);
-  return this.transaction(async tx=>{
+  const prepared=await this.transaction(async tx=>{
    await this.reviewerCurrent(tx,a);
    const c=await this.case(tx,a,caseRef);
    if(c.status!=="SUBMITTED")throw changed();
    const proof=await this.snapshot(tx,a,c,true);
-   return this.evidence.readForOriginalReview(tx,a,proof.partner_id,proof.source_version,proof.evidence_file_id);
-  });
+   const originalFile=await this.evidence.prepareOriginalReviewFile(tx,a,
+    proof.partner_id,proof.source_version,proof.evidence_file_id);
+   return {caseId:c.id,sourceVersion:proof.source_version,
+    evidenceFileId:proof.evidence_file_id,partnerId:proof.partner_id,
+    originalFile};
+  },true);
+  // The private object storage read has no open SQL transaction/row locks.
+  const verified=await this.evidence.readPreparedOriginalReviewFile(prepared.originalFile);
+  await this.transaction(async tx=>{
+   await this.reviewerCurrent(tx,a);
+   const c=await this.case(tx,a,caseRef);
+   if(c.id!==prepared.caseId||c.status!=="SUBMITTED")throw changed();
+   const proof=await this.snapshot(tx,a,c,true);
+   if(proof.partner_id!==prepared.partnerId||
+      proof.source_version!==prepared.sourceVersion||
+      proof.evidence_file_id!==prepared.evidenceFileId)throw changed();
+   await this.evidence.assertOriginalReviewFileUnchanged(tx,a,
+    prepared.partnerId,prepared.sourceVersion,prepared.evidenceFileId,
+    prepared.originalFile);
+  },true);
+  return verified;
  }
 
  async partnerHistory(bearer:string,partnerRef:string){
