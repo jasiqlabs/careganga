@@ -58,7 +58,8 @@ export class BranchStaffAccessService{
  }
  async options(bearer:string,query:string){
   const actor=await this.administrator(bearer);
-  if(query.length>100)throw new BadRequestException("Narrow the staff search");
+  if(typeof query!=="string"||query.length>100)
+   throw new BadRequestException("Narrow the staff search");
   const client=await this.db.connect();
   try{
    const accounts=await this.identity.eligibleOfficeholderOptions(client,actor,query.trim());
@@ -88,6 +89,7 @@ export class BranchStaffAccessService{
  }
  async grant(bearer:string,raw:unknown){
   const x=object(raw,["requestKey","accountRef","scopeKind","branchRef","areaRef","reason","currentPassword"]);
+  if(typeof x.currentPassword!=="string")throw new BadRequestException("Confirm your administrator password");
   const account=id(x.accountRef),key=id(x.requestKey),kind=x.scopeKind;
   if(kind!=="BRANCH"&&kind!=="AREA")throw new BadRequestException("Select branch or geographic area access");
   const branch=kind==="BRANCH"?id(x.branchRef):null,area=kind==="AREA"?id(x.areaRef):null;
@@ -144,6 +146,7 @@ export class BranchStaffAccessService{
  async end(bearer:string,assignmentInput:string,raw:unknown){
   const assignment=id(assignmentInput);
   const x=object(raw,["requestKey","currentPassword"]),key=id(x.requestKey);
+  if(typeof x.currentPassword!=="string")throw new BadRequestException("Confirm your administrator password");
   return this.protectedWrite(bearer,x.currentPassword,async(tx,a)=>{
    const row=await tx.query<Grant>(
     "SELECT * FROM cg02_staff_scope_assignment WHERE id=$1 AND root_realm_id=$2 FOR UPDATE",
