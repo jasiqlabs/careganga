@@ -86,6 +86,10 @@ function recordsFixture({roster=true,kind="MEMBER"}:{roster?:boolean;kind?:"MEMB
   seen.push({sql,params});
   if(sql.includes("SELECT id,status,audience,active_policy_version FROM referral_program"))
    return {rows:[{id:PROGRAMME,status:"ACTIVE",audience:"BOTH",active_policy_version:1}]};
+  if(sql.includes("SELECT id AS ref,name FROM branch"))
+   return {rows:[{ref:BRANCH,name:"Assigned Active Branch"}],rowCount:1};
+  if(sql.includes("SELECT id FROM branch WHERE root_realm_id=$1 AND id=$2"))
+   return {rows:[{id:BRANCH}],rowCount:1};
   if(sql.includes("wallet.current_rank_name AS rank")&&sql.includes("LIMIT 15"))
    return {rows:[{name:"Eligible Referrer",participantNumber:"CG/MEM/01",
     rank:"Gold",referrals:"5",points:"450",lastActivity:"2026-11-23T10:00:00Z",
@@ -112,35 +116,51 @@ describe("CG13 US002 B12 individual records require existing current CG04 roster
  test("member top and immutable event records bind current root, programme, branch, dates and page",async()=>{
   const f=recordsFixture();
   const rows=await f.svc.adminReferralRecords("staff",PROGRAMME,"MEMBER","2","ACTIVE",
-   "2026-11-01","2026-11-23","Eligible","Pune","Gold","RECENT");
+   "2026-11-01","2026-11-23","Eligible","Pune","Gold","RECENT",BRANCH);
   assert.equal(rows.topReferrers[0]?.name,"Eligible Referrer");
   assert.equal(rows.recentEvents[0]?.status,"QUALIFICATION");
   assert.equal(rows.page,2);
+  assert.equal(rows.selectedBranch,BRANCH);
+  assert.deepEqual(rows.availableBranches,[{ref:BRANCH,name:"Assigned Active Branch"}]);
+  const branches=f.seen.find(x=>x.sql.includes("SELECT id AS ref,name FROM branch"))!;
+  assert.deepEqual(branches.params,[ROOT,false,[BRANCH]]);
+  assert.match(branches.sql,/status='ACTIVE'/);
   assert.deepEqual(f.actions,["membership.members.view","referrals.programmes.view"]);
   assert.ok(f.checks.includes("membership.members.view"));
   const top=f.seen.find(x=>x.sql.includes("wallet.current_rank_name AS rank")&&x.sql.includes("LIMIT 15"))!;
   assert.ok(top);
-  assert.deepEqual(top.params,[ROOT,PROGRAMME,"MEMBER",false,[BRANCH],"eligible","ACTIVE","pune","Gold"]);
+  assert.deepEqual(top.params,[ROOT,PROGRAMME,"MEMBER",false,[BRANCH],"eligible","ACTIVE","pune","Gold",BRANCH]);
   assert.match(top.sql,/wallet.referrer_kind=\$3/);
   assert.match(top.sql,/COALESCE\(m.branch_ref,v.branch_ref\)=ANY\(\$5::uuid\[\]\)/);
   assert.match(top.sql,/cg04_current_volunteer/);
   assert.match(top.sql,/memberApp.city/);
   assert.match(top.sql,/memberDistrict.display_name/);
   assert.match(top.sql,/wallet.current_rank_name=\$9/);
+  assert.match(top.sql,/\$10::uuid IS NULL OR COALESCE\(m.branch_ref,v.branch_ref\)=\$10::uuid/);
   assert.match(top.sql,/ORDER BY wallet.updated_at DESC/);
   const event=f.seen.find(x=>x.sql.includes("FROM points_event event JOIN points_account wallet"))!;
   assert.ok(event);
   assert.deepEqual(event.params,
-   [ROOT,PROGRAMME,"MEMBER",false,[BRANCH],"eligible","ACTIVE","2026-11-01","2026-11-23","pune","Gold",25]);
+   [ROOT,PROGRAMME,"MEMBER",false,[BRANCH],"eligible","ACTIVE","2026-11-01","2026-11-23","pune","Gold",25,BRANCH]);
   assert.match(event.sql,/event.event_kind IN\('QUALIFICATION','QUALIFICATION_REVERSAL'\)/);
   assert.match(event.sql,/event.source_recorded_at AT TIME ZONE 'Asia\/Kolkata'/);
   assert.match(event.sql,/memberApp.city/);
   assert.match(event.sql,/wallet.current_rank_name=\$11/);
+  assert.match(event.sql,/\$13::uuid IS NULL OR COALESCE\(m.branch_ref,v.branch_ref\)=\$13::uuid/);
   for(const query of [top,event]){
    assert.ok(!query.sql.includes("applicant_account_ref"));
    assert.ok(!query.sql.includes("contact_phone"));
    assert.ok(!query.sql.includes("finance_membership_collection"));
   }
+ });
+ test("an unassigned branch is denied before any private top-referrer or ledger query",async()=>{
+  const f=recordsFixture();
+  await assert.rejects(()=>f.svc.adminReferralRecords(
+   "staff",PROGRAMME,"MEMBER","1","ALL",
+   undefined,undefined,undefined,undefined,undefined,undefined,ACCOUNT));
+  assert.ok(!f.seen.some(x=>x.sql.includes("wallet.current_rank_name AS rank")));
+  assert.ok(!f.seen.some(x=>x.sql.includes("FROM points_event event JOIN points_account")));
+  assert.ok(!f.seen.some(x=>x.sql.includes("SELECT id AS ref,name FROM branch")));
  });
  test("volunteer history demands volunteer roster grant instead of member grant",async()=>{
   const f=recordsFixture({kind:"VOLUNTEER"});
