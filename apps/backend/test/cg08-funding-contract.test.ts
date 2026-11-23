@@ -77,3 +77,21 @@ test("US002-QA02/04/06/17/18: Internal Android separates list failure and invali
  assert.ok(s.includes('!!selected&&selected.status!=="DRAFT"'));
  assert.ok(s.includes('Save outcome unknown. Retry the same original funding request only.'));
 });
+
+
+test("US002-QA02/10/13: CG05 project selectors, read labels and linked writes require project-view",()=>{
+ const source=readFileSync(join(process.cwd(),"src/modules/cg-08-csr-funding/application/csr-funding-proposals.service.ts"),"utf8");
+ const option=source.slice(source.indexOf("async options("),source.indexOf("async detail("));
+ const detail=source.slice(source.indexOf("async detail("),source.indexOf("async list("));
+ const list=source.slice(source.indexOf("async list("));
+ assert.ok(source.includes('await this.identity.assertCurrent(tx,a,"projects.view");'));
+ assert.ok(option.includes("await this.canSeeProjects(tx,a)?"));
+ assert.ok(option.includes("csrFundingProjectOptions(tx,a.realmId,scope):[]"));
+ assert.ok(detail.includes("projectRef:null,projectVersion:null,projectName:null"));
+ assert.ok(list.includes("projectRef:null,projectVersion:null,projectName:null"));
+ assert.ok(source.includes('if(e instanceof ForbiddenException)return false'));
+});
+test("US002-QA14: native funding split remains a numeric value",()=>{
+ const native=readFileSync(join(process.cwd(),"../android-internal/src/features/csr/native-csr-funding.tsx"),"utf8");
+ assert.ok(native.includes('key==="csrPercent"?Number(v):v'));
+});
