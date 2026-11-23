@@ -77,6 +77,7 @@ export function ReferralRewardsWorkspace({canManagePolicy,canManageRewards}:{
  const [searchProduct,setSearchProduct]=useState("");
  const [rewardView,setRewardView]=useState<"CATALOG"|"REDEMPTIONS">("CATALOG");
  const [drawer,setDrawer]=useState<"POLICY"|"PRODUCT"|null>(null);
+ const [editingPolicy,setEditingPolicy]=useState(false);
  const [programmeForm,setProgrammeForm]=useState<ProgrammeDraft>(blankProgramme);
  const [rewardForm,setRewardForm]=useState<RewardDraft>(blankReward);
  const [stockOptions,setStockOptions]=useState<{items:Option[];stores:Option[]}|null>(null);
@@ -84,6 +85,7 @@ export function ReferralRewardsWorkspace({canManagePolicy,canManageRewards}:{
  const [loading,setLoading]=useState(true),[busy,setBusy]=useState(false),[error,setError]=useState("");
  const [notice,setNotice]=useState(""),[epoch,setEpoch]=useState(0);
  const [pending,setPending]=useState<Command|null>(null);
+ useEffect(()=>{setSelectedRank(0);setCategoryFilter("All");},[selected]);
  const lock=useRef(false);
  const refresh=useCallback(()=>setEpoch(v=>v+1),[]);
  useEffect(()=>{
@@ -144,7 +146,7 @@ export function ReferralRewardsWorkspace({canManagePolicy,canManageRewards}:{
  };
  const openPolicy=(current=false)=>{
   setError("");setPending(null);
-  setProgrammeForm(current&&detail?fromProgramme(detail):blankProgramme());setDrawer("POLICY");
+  setEditingPolicy(Boolean(current&&detail));setProgrammeForm(current&&detail?fromProgramme(detail):blankProgramme());setDrawer("POLICY");
  };
  const openProduct=(item?:Reward)=>{
   setError("");setPending(null);setEdition(item??null);
@@ -161,7 +163,7 @@ export function ReferralRewardsWorkspace({canManagePolicy,canManageRewards}:{
     displayInrRatio:p.displayInrRatio||null,autoRankUpgrade:p.autoRankUpgrade,
     ranks:p.ranks.map(x=>({name:x.name,verifiedReferrals:num(String(x.verifiedReferrals),"rank referrals"),
      minimumPoints:num(String(x.minimumPoints),"rank points"),benefitsSummary:x.benefitsSummary}))};
-   if(detail&&programmeForm.programmeCode===detail.code){
+   if(editingPolicy&&detail){
     body.expectedVersion=detail.version;
     void send({path:"/programmes/"+detail.ref,method:"PATCH",body});
    }else{
@@ -174,7 +176,7 @@ export function ReferralRewardsWorkspace({canManagePolicy,canManageRewards}:{
   try{
    if(pending){void send(pending);return;}
    if(!selected)throw Error("Select an original referral programme first.");
-   if(rewardForm.type==="PHYSICAL"&&!stock)
+   if(rewardForm.type==="PHYSICAL"&&rewardForm.status!=="ARCHIVED"&&!stock)
     throw Error("Check current original CG12 available stock before saving.");
    const p=rewardForm;
    const body:Record<string,unknown>={requestKey:crypto.randomUUID(),
@@ -240,8 +242,7 @@ export function ReferralRewardsWorkspace({canManagePolicy,canManageRewards}:{
      {!!detail?<>
       <div style={{display:"flex",justifyContent:"space-between",gap:10,flexWrap:"wrap"}}>
        <h3 style={{fontSize:16,margin:0}}>Referral Ranks ({availableRanks.length} Levels)</h3>
-       {canManagePolicy&&<button type="button" style={css.primary}
-        onClick={()=>openPolicy(true)}>+ Configure Referral Settings</button>}
+       
       </div>
       <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(140px,1fr))",gap:9}}>
        {availableRanks.map((rank,i)=><button type="button" key={i}
@@ -264,7 +265,7 @@ export function ReferralRewardsWorkspace({canManagePolicy,canManageRewards}:{
         <span style={{fontSize:11,color:"var(--cg-text-muted,#64748B)"}}>Awaiting verified events</span>
        </div>)}
       </div>
-      <div style={{display:"grid",gridTemplateColumns:"minmax(0,2fr) minmax(230px,1fr)",
+      <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(min(100%,330px),1fr))",
        gap:12,alignItems:"start"}}>
        <section style={{...css.panel,padding:13}}>
         <h3 style={{margin:0,fontSize:16}}>Rank Wise Details — {availableRanks[selectedRank]?.name??"Not configured"}</h3>
@@ -406,7 +407,11 @@ export function ReferralRewardsWorkspace({canManagePolicy,canManageRewards}:{
       aria-label="Close editor">Close</button>
     </div>
     {drawer==="POLICY"?<>
-     {rowInput("Programme code",programmeForm.programmeCode,v=>setProgrammeForm(p=>({...p,programmeCode:v})))}
+     <label style={css.field}>Programme code (immutable after creation)
+      <input style={css.control} disabled={editingPolicy} autoComplete="off"
+       value={programmeForm.programmeCode}
+       onChange={e=>setProgrammeForm(p=>({...p,programmeCode:e.target.value}))}/>
+     </label>
      {rowInput("Programme display name",programmeForm.name,v=>setProgrammeForm(p=>({...p,name:v})))}
      <label style={css.field}>Eligible relationship
       <select style={css.control} value={programmeForm.audience}
