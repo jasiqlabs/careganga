@@ -134,10 +134,17 @@ export class FinanceCsrReceiptSourceFacade{
  async eligibleBudgets(tx:PoolClient,a:VerifiedFoundationActor,p:ApprovedFundingSource){
   await this.scope(tx,a,p,"finance.budgets.manage");
   const rows=await tx.query<{budgetRef:string;name:string;category:string;
-   ceilingMinor:string;periodStart:string;periodEnd:string}>(
+   ceilingMinor:string;periodStart:string;periodEnd:string;
+   items:{description:string;quantityMilli:string;unitRateMinor:string;totalMinor:string}[]}>( 
    'SELECT b.id AS "budgetRef",b.budget_name AS name,b.category_label AS category,'+
    'b.approved_ceiling_minor::text AS "ceilingMinor",'+
-   'b.period_start::text AS "periodStart",b.period_end::text AS "periodEnd" '+
+   'b.period_start::text AS "periodStart",b.period_end::text AS "periodEnd",'+
+   "coalesce((SELECT jsonb_agg(jsonb_build_object("+
+   "'description',item.description,'quantityMilli',item.quantity_milli::text,"+
+   "'unitRateMinor',item.unit_rate_minor::text,'totalMinor',item.line_total_minor::text) "+
+   "ORDER BY item.line_no) FROM finance_budget_item_revision item "+
+   "WHERE item.root_realm_id=b.root_realm_id AND item.budget_id=b.id "+
+   "AND item.version=b.version),'[]'::jsonb) AS items "+
    "FROM finance_budget b JOIN financial_year fy ON fy.id=b.financial_year_id "+
    "AND fy.root_realm_id=b.root_realm_id AND fy.status='OPEN' "+
    "WHERE b.root_realm_id=$1 AND b.status='APPROVED' "+
