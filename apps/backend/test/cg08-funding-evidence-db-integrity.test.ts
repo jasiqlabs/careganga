@@ -4,7 +4,7 @@ import {Client} from "pg";
 
 /** Read-only against a disposable already-migrated test/qa PostgreSQL DB.
  * Never invoke this on production. Complements manual 2-branch/provider QA. */
-test("CG08 US002 3406–3410 original CG09/CG03/CG19 proof integrity",
+test("CG08 US002/US003 3406–3411 original CG09/CG03/CG19 funding/report proof integrity",
  {timeout:20_000},async()=>{
  const url=process.env.TEST_DATABASE_URL;
  assert.ok(url,"Set disposable migrated TEST_DATABASE_URL, never production.");
@@ -18,10 +18,11 @@ test("CG08 US002 3406–3410 original CG09/CG03/CG19 proof integrity",
    "3407_cg19_csr_funding_agreement_evidence.sql",
    "3408_cg03_csr_funding_review.sql",
    "3409_cg09_csr_verified_bank_receipt_links.sql",
-   "3410_cg09_csr_budget_effect_links.sql"];
+   "3410_cg09_csr_budget_effect_links.sql",
+   "3411_cg08_funding_report_scope_index.sql"];
   const m=await pg.query<{filename:string}>(
    "SELECT filename FROM schema_migration WHERE filename=ANY($1::text[])",[migrations]);
-  assert.equal(m.rowCount,migrations.length,"All five original funding migrations are required");
+  assert.equal(m.rowCount,migrations.length,"All six original funding/report migrations are required");
   for(const name of ["csr_funding_proposal","csr_funding_command",
    "cg19_upload_intent","cg19_stored_file","cg19_funding_evidence_event",
    "csr_funding_review_snapshot","cg03_funding_process_current",
@@ -92,6 +93,12 @@ test("CG08 US002 3406–3410 original CG09/CG03/CG19 proof integrity",
   }
   assert.equal(triggers.get("cg08_funding_status_proof_after")?.deferred,true,
    "Commitment status proof must be checked at COMMIT");
+  const reportIndex=await pg.query<{name:string}>(
+   "SELECT indexname AS name FROM pg_indexes WHERE schemaname=current_schema() "+
+   "AND tablename='csr_funding_proposal' "+
+   "AND indexname='ix_cg08_funding_report_root_cursor'");
+  assert.equal(reportIndex.rows.length,1,
+   "Bounded root-scoped US003 seek index must be migrated");
   await pg.query("ROLLBACK");
  }catch(e){await pg.query("ROLLBACK").catch(()=>{});throw e;}
  finally{await pg.end();}
