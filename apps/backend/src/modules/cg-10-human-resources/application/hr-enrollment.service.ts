@@ -904,6 +904,7 @@ export class HrEnrollmentService{
  async employeeDirectory(token:string,offsetInput:unknown,branchInput?:unknown,
   statusInput?:unknown,queryInput?:unknown,departmentInput?:unknown,stateInput?:unknown,districtInput?:unknown,roleInput?:unknown){
   const actor=await this.sessions.requireAction(token,"hr.employees.view");
+  const scope=await this.branches.staffBranchScope(token,"hr.employees.view");
   const offset=Number(offsetInput??0);
   if(!Number.isSafeInteger(offset)||offset<0||offset>10000)
    throw new BadRequestException("Check the staff directory page");
@@ -950,14 +951,10 @@ export class HrEnrollmentService{
    "UNION ALL SELECT g.level,g.display_name,g.parent_area_id,g.root_realm_id,p.depth+1 FROM path p JOIN geography_area g ON g.id=p.parent_area_id AND g.root_realm_id=p.root_realm_id WHERE p.depth<6) "+
    "SELECT 1 FROM path HAVING ($8='' OR bool_or(level='STATE' AND lower(display_name)=$8)) AND ($9='' OR bool_or(level='DISTRICT' AND lower(display_name)=$9)))) "+
    "AND ($10='' OR EXISTS(SELECT 1 FROM account_role assigned JOIN role rr ON rr.id=assigned.role_id AND rr.realm_id=assigned.realm_id AND rr.active WHERE assigned.realm_id=e.root_realm_id AND assigned.account_id=e.account_ref AND assigned.revoked_at IS NULL AND strpos(lower(rr.name),$10)>0)) "+
-   "AND (b.manager_account_ref=$2 OR EXISTS("+
-   "SELECT 1 FROM account_role ar JOIN role r ON r.id=ar.role_id "+
-   "AND r.realm_id=ar.realm_id AND r.active "+
-   "LEFT JOIN role_grant g ON g.role_id=r.id AND g.capability_key='foundation.branches.admin' "+
-   "WHERE ar.account_id=$2 AND ar.realm_id=$1 AND ar.revoked_at IS NULL "+
-   "AND (r.is_protected OR g.capability_key IS NOT NULL))) "+
+   "AND ($11::boolean OR b.id=ANY($12::uuid[])) "+
    "ORDER BY a.legal_name,e.id LIMIT 26 OFFSET $4",
-   [actor.realmId,actor.accountId,branch,offset,status,pattern,department,state,district,role]);
+   [actor.realmId,actor.accountId,branch,offset,status,pattern,department,state,district,role,
+    scope.all,scope.branchRefs]);
   await tx.query("COMMIT");
   return {items:q.rows.slice(0,25).map(x=>({
    reference:x.employee_code,name:x.legal_name,
