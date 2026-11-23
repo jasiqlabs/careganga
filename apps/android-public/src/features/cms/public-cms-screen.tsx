@@ -25,7 +25,7 @@ const text=(v:unknown)=>typeof v==="string"?v:"";
 const safeColor=(v:unknown,fallback:string)=>/^#[a-fA-F0-9]{6}$/.test(text(v))?text(v):fallback;
 const local=(v:unknown)=>{
  const route=text(v);
- return ["/","/about","/contact","/our-impact","/ngo-information","/gallery","/videos","/publications","/healthcare","/our-work","/upcoming-projects"].includes(route)?route:null;
+ return ["/","/about","/contact","/our-impact","/ngo-information","/gallery","/videos","/publications","/healthcare","/our-work","/upcoming-projects","/collaboration"].includes(route)?route:null;
 };
 async function published(slug:string):Promise<Result>{
  if(!/^[a-z0-9][a-z0-9-]{0,69}$/.test(slug))return {state:"NOT_PUBLISHED",page:null};
@@ -42,7 +42,7 @@ async function published(slug:string):Promise<Result>{
   const data=raw as Record<string,unknown>;
   if(data.schemaVersion!==1||data.slug!==slug||
      data.kind!==({home:"HOME",about:"ABOUT","our-impact":"IMPACT",
-       "80g":"COMPLIANCE",gallery:"GALLERY",contact:"CONTACT",healthcare:"HEALTHCARE","our-work":"PROJECTS","upcoming-projects":"PROJECTS"} as Record<string,string>)[slug]&&
+       "80g":"COMPLIANCE",gallery:"GALLERY",contact:"CONTACT",healthcare:"HEALTHCARE","our-work":"PROJECTS","upcoming-projects":"PROJECTS",collaboration:"PARTNERS"} as Record<string,string>)[slug]&&
        !(data.kind==="POLICY"&&isPolicySlug(slug))&&
        !(data.kind==="ARTICLE"&&
          !["home","about","our-impact","80g","gallery","contact","healthcare","our-work","upcoming-projects"].includes(slug)&&
@@ -114,7 +114,7 @@ async function publishedNavigation():Promise<{login:boolean;paths:string[];volun
   if(!result||typeof result!=="object"||!("schemaVersion" in result)||
     result.schemaVersion!==1)return {login:false,paths:[],volunteer:false};
   const data=result as {login?:{visible?:boolean};volunteerJoin?:{visible?:boolean;path?:string};publishedRoutes?:{path:string}[]};
-  const valid=new Set(["/about","/our-impact","/ngo-information","/gallery","/contact","/healthcare","/our-work","/upcoming-projects","/campaigns",
+  const valid=new Set(["/about","/our-impact","/ngo-information","/gallery","/contact","/healthcare","/our-work","/upcoming-projects","/collaboration","/campaigns",
    ...legalPages.map(([slug])=>"/policies/"+slug)]);
   const paths=Array.isArray(data.publishedRoutes)?data.publishedRoutes
    .map(p=>p.path).filter(p=>typeof p==="string"&&
@@ -204,7 +204,7 @@ export function PublicCmsContent({onContact,onPartnerApplication,onMembershipApp
    if(slug!=="home"){
     // Article detail returns to News. A published legal policy must
     // return to Home; it is not part of the article reader.
-    setSlug(!["about","our-impact","80g","gallery","contact","healthcare","articles","notices","our-work","upcoming-projects","membership","campaigns"].includes(slug)&&
+    setSlug(!["about","our-impact","80g","gallery","contact","healthcare","articles","notices","our-work","upcoming-projects","collaboration","membership","campaigns"].includes(slug)&&
      !isPolicySlug(slug)?articleBackTarget:"home");return true;
    }return false;
   });
@@ -282,7 +282,9 @@ export function PublicCmsContent({onContact,onPartnerApplication,onMembershipApp
     <CmsButton title="News" secondary={slug!=="articles"}
      onPress={()=>setSlug("articles")}/>}
    <CmsButton title="Membership Plans" secondary={slug!=="membership"} onPress={()=>setSlug("membership")}/>
-   <CmsButton title="Partnerships" secondary onPress={onPartnerApplication}/>
+   {publishedPaths.includes("/collaboration")&&<CmsButton title="Corporate Partners"
+    secondary={slug!=="collaboration"} onPress={()=>setSlug("collaboration")}/>}
+   <CmsButton title="Healthcare Partner Application" secondary onPress={onPartnerApplication}/>
    <CmsButton title="Contact" onPress={()=>navigate("/contact")}
     secondary={slug!=="contact"}/>
    {legalPages.some(([name])=>publishedPaths.includes("/policies/"+name))&&
@@ -501,6 +503,36 @@ export function PublicCmsContent({onContact,onPartnerApplication,onMembershipApp
         {!!text(c.summary)&&<Text style={styles.body}>{text(c.summary)}</Text>}
        </View>)}
       <CmsButton title="View current published campaigns" onPress={()=>setSlug("campaigns")}/>
+     </View>;
+    }
+    if(section.kind==="PARTNER_CARDS"&&page.kind==="PARTNERS"){
+     const rows=Array.isArray(fields.cards)?fields.cards.slice(0,12):[];
+     const verified=rows.flatMap((entry)=>{
+      if(!entry||typeof entry!=="object"||Array.isArray(entry))return [];
+      const value=entry as Fields;
+      if(typeof value.name!=="string"||value.name.trim().length<2||value.name.length>200||
+       typeof value.summary!=="string"||value.summary.trim().length<10||
+       value.summary.length>500||!Number.isSafeInteger(value.originalIndex)||
+       Number(value.originalIndex)<0||Number(value.originalIndex)>11)return [];
+      return [{name:value.name as string,summary:value.summary as string,
+       originalIndex:value.originalIndex as number}];
+     });
+     return <View key={i} style={styles.card}>
+      <Text accessibilityRole="header" style={styles.heading}>
+       {text(fields.heading)||"Meet Our Partners"}</Text>
+      <Text style={styles.body}>{text(fields.intro)||"Only currently approved public partnership details appear here."}</Text>
+      {!verified.length&&<Text style={styles.muted}>
+       No partner identities are currently approved for public display.</Text>}
+      {verified.map((entry,j)=>{
+       const logo=page.assets.find(a=>a.role==="FEATURE"&&a.order===entry.originalIndex);
+       const url=safeImage(logo);
+       return <View style={styles.person} key={entry.name+":"+j}>
+        {url&&<Image source={{uri:url}} style={styles.image}
+         accessibilityLabel={logo?.altText||"Approved partner logo"} resizeMode="contain"/>}
+        <Text style={styles.heading}>{entry.name}</Text>
+        <Text style={styles.body}>{entry.summary}</Text>
+       </View>;
+      })}
      </View>;
     }
     if(section.kind==="PROJECT_TEASER"){const categories=["All Projects","Education","Healthcare","Livelihood","Social Welfare","Community Development"];const cards=(Array.isArray(fields.cards)?fields.cards:[]).filter(p=>page.kind!=="PROJECTS"||projectCategory==="All Projects"||p&&typeof p==="object"&&text(p.category).toLowerCase()===projectCategory.toLowerCase());return <View key={i} style={styles.card}><Text accessibilityRole="header" style={styles.heading}>{text(fields.heading)||"Projects"}</Text>{page.kind==="PROJECTS"&&<View style={styles.nav}>{categories.map(c=><CmsButton key={c} title={c} secondary={c!==projectCategory} onPress={()=>setProjectCategory(c)}/>)}</View>}{!cards.length?<Text>No currently approved projects to display.</Text>:cards.map((item,j)=>{if(!item||typeof item!=="object")return null;const p=item as Fields;const cover=/^\/api\/public\/content\/media\/[a-f0-9-]{36}$/i.test(text(p.coverSrc))?safeImage({src:text(p.coverSrc),role:"PROJECT",altText:text(p.title),order:0}):null;return <View key={j} style={styles.card}>{!!cover&&<Image source={{uri:cover}} accessibilityLabel={text(p.title)} style={styles.image} resizeMode="cover"/>}<Text style={styles.eyebrow}>{text(p.category)} · {text(p.status)==="PLANNED"?"Planned":"Active"}</Text><Text style={styles.heading}>{text(p.title)}</Text><Text>{text(p.area)}</Text><Text style={styles.body}>{text(p.summary)}</Text>{!!text(p.launch)&&<Text>Planned start: {text(p.launch)}</Text>}</View>;})}</View>;}
