@@ -30,6 +30,12 @@ test("CG-MB-001 new CG02 source: real composite FKs, immutable history and activ
   assert.ok(idx.rows.some(x=>x.indexname==="ux_cg02_active_staff_scope"&&
    x.indexdef.includes("ended_at IS NULL")));
   assert.ok(idx.rows.some(x=>x.indexname==="ux_cg02_staff_scope_end_key"));
+  assert.ok(idx.rows.some(x=>x.indexname==="ux_cg02_active_staff_all_branches"&&
+   x.indexdef.includes("scope_kind")&&x.indexdef.includes("ALL_BRANCHES")));
+  const checkExpr=await db.query<{definition:string}>(
+   "SELECT pg_get_constraintdef(oid) AS definition FROM pg_constraint "+
+   "WHERE conrelid='cg02_staff_scope_assignment'::regclass AND contype='c'");
+  assert.ok(checkExpr.rows.some(x=>x.definition.includes("ALL_BRANCHES")));
   const triggers=await db.query<{tgname:string;enabled:string;definition:string}>(`
     SELECT t.tgname,t.tgenabled AS enabled,pg_get_triggerdef(t.oid) AS definition
     FROM pg_trigger t WHERE t.tgrelid='cg02_staff_scope_assignment'::regclass
