@@ -299,7 +299,7 @@ export class CsrFundingProposalsService{
 
  /** Original funding approval is a promise only. CG09 owns all real money. */
  private async approvedFinanceSource(tx:PoolClient,a:VerifiedFoundationActor,
-  id:string,write=false):Promise<ApprovedFundingSource>{
+  id:string,write=false,correctionOnly=false):Promise<ApprovedFundingSource>{
   await this.identity.assertCurrent(tx,a,write?"csr.partners.manage":"csr.partners.view");
   const current=await this.original(tx,a,ref(id),write);
   if(current.status!=="APPROVED")throw changed();
@@ -308,7 +308,9 @@ export class CsrFundingProposalsService{
    if(sponsor.status!=="APPROVED"||
     sponsor.branch_ref!==null&&sponsor.branch_ref!==current.branch_ref)throw changed();
   }
-  if(current.project_ref!==null){
+  // A historical unspent allocation may be corrected after the linked
+  // CG05 project closes. New receipt/allocation/utilization still need live CG05.
+  if(current.project_ref!==null&&!correctionOnly){
    await this.identity.assertCurrent(tx,a,"projects.view");
    await assertCsrFundingProject(tx,a,current.project_ref,
     current.branch_ref,current.project_source_version!);
@@ -400,7 +402,8 @@ export class CsrFundingProposalsService{
    (v.kind==="DEALLOCATE"&&!correction)||(v.kind!=="DEALLOCATE"&&correction))
    throw new BadRequestException("Choose an original unspent allocation or posted expense.");
   return this.run(bearer,"csr.partners.manage",async(tx,a)=>{
-   const source=await this.approvedFinanceSource(tx,a,proposalRef,true);
+   const source=await this.approvedFinanceSource(tx,a,proposalRef,true,
+    v.kind==="DEALLOCATE");
    if(source.sourceVersion!==v.expectedVersion)throw changed();
    return this.receipts.recordBudgetEffect(tx,a,source,{
     requestKey:ref(v.requestKey),budgetRef:ref(v.budgetRef),
