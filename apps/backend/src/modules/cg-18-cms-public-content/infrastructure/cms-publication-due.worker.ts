@@ -8,6 +8,8 @@ import {CmsPublicNoticeSource} from "../../cg-19-documents-notifications/applica
 import {projectTeaserRevisionEligible} from "../../cg-05-projects-field-operations/application/project-public-source";
 import {eventArticleRevisionEligible} from "../../cg-05-projects-field-operations/application/event-public-source";
 import {complianceEligible} from "../application/cms-compliance-eligibility";
+import {CsrPartnerPublicSource,type CsrEditorialSelection} from "../../cg-08-csr-funding/application/csr-partner-public-source";
+import {parseExtendedSection} from "../application/cms-extended-sections";
 
 type Due={id:string;foundation_root_id:string;page_publication_ref:string};
 type Original={id:string;page_id:string;page_revision_id:string;
@@ -27,7 +29,8 @@ export class CmsPublicationDueWorker implements OnModuleInit,OnModuleDestroy{
  constructor(@Inject(DATABASE)private readonly db:Pool,
   private readonly decisions:CmsPublicationApprovalService,
   private readonly media:CmsDraftMediaService,
-  private readonly notices:CmsPublicNoticeSource){}
+  private readonly notices:CmsPublicNoticeSource,
+  private readonly csrPartners:CsrPartnerPublicSource){}
  onModuleInit(){
   this.stopped=false;
   void this.tick().catch(err=>{
@@ -68,6 +71,22 @@ export class CmsPublicationDueWorker implements OnModuleInit,OnModuleDestroy{
   await tx.query("UPDATE cms_publication_due SET status='CANCELLED' "+
    "WHERE id=$1 AND foundation_root_id=$2 AND status='READY'",
    [due.id,due.foundation_root_id]);
+ }
+ /** Scheduled CG18 must recheck original CG08 consent at actual due time.
+  * No second queue/reviewer; a withdrawn partner cannot be reactivated by
+  * yesterday's approved editorial submission. */
+ private async partnerRevisionEligible(tx:PoolClient,root:string,rev:string,kind:string){
+  if(kind!=="PARTNERS")return true;
+  const q=await tx.query<{structured_fields:Record<string,unknown>}>(
+   "SELECT structured_fields FROM cms_section_revision "+
+   "WHERE foundation_root_id=$1 AND page_revision_id=$2 "+
+   "AND section_kind='PARTNER_CARDS'",[root,rev]);
+  if(q.rows.length!==1)return false;
+  try{
+   const sections=parseExtendedSection("PARTNER_CARDS",q.rows[0].structured_fields);
+   const selected=sections.partners as CsrEditorialSelection[];
+   return (await this.csrPartners.currentCards(tx,root,selected)).length===selected.length;
+  }catch{return false;}
  }
  private async apply(tx:PoolClient,due:Due){
   // Always lock the CMS page before its publication and due row. Other CMS
@@ -121,7 +140,8 @@ export class CmsPublicationDueWorker implements OnModuleInit,OnModuleDestroy{
     !(await complianceEligible(tx,item.foundation_root_id,item.page_revision_id))||
     !(await projectTeaserRevisionEligible(tx,item.foundation_root_id,item.page_revision_id))||
      !(await eventArticleRevisionEligible(tx,item.foundation_root_id,item.page_revision_id))||
-    !(await this.notices.revisionEligible(tx,item.foundation_root_id,item.page_revision_id))){
+    !(await this.notices.revisionEligible(tx,item.foundation_root_id,item.page_revision_id))||
+    !(await this.partnerRevisionEligible(tx,item.foundation_root_id,item.page_revision_id,item.page_kind))){
    await this.cancel(tx,due,item);return;
   }
   const active=await tx.query<{publication_id:string}>(

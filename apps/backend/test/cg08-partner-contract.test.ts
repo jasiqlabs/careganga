@@ -362,3 +362,13 @@ test("US001-QA06/18: original collaboration hero, public SEO and CTA are CG18 ap
  assert.ok(page.includes('href="/contact"'));
  assert.ok(!page.includes("Milaap")&&!page.includes("Ketto"));
 });
+
+
+test("US001-QA11/16/19: scheduled CG18 collaboration cannot publish after source rights withdrawal",()=>{
+ const worker=readFileSync(join(process.cwd(),"src/modules/cg-18-cms-public-content/infrastructure/cms-publication-due.worker.ts"),"utf8");
+ assert.ok(worker.includes('private async partnerRevisionEligible('));
+ assert.ok(worker.includes('if(kind!=="PARTNERS")return true'));
+ assert.ok(worker.includes('this.csrPartners.currentCards(tx,root,selected)'));
+ assert.ok(worker.includes('await this.partnerRevisionEligible(tx,item.foundation_root_id,item.page_revision_id,item.page_kind)'));
+ assert.ok(worker.includes('await this.cancel(tx,due,item);return;'),"Stale scheduled release must be cancelled");
+});
