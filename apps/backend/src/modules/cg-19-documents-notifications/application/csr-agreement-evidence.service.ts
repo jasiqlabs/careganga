@@ -142,8 +142,11 @@ export class CsrAgreementEvidenceService{
  }
  /** Approved review owner may only treat scanner-CLEAN, same current revision
   * as proof. A reserved upload URL is not evidence. */
- async requireCurrentProof(tx:PoolClient,a:VerifiedFoundationActor,partnerId:string,version:number,fileId:string){
-  const owner=await this.partners.guardAgreement(tx,a,partnerId,null,false);
+ async requireCurrentProof(tx:PoolClient,a:VerifiedFoundationActor,partnerId:string,version:number,fileId:string,independentReview=false){
+  // CG03's already verified protected reviewer must use its own current review grant;
+  // ordinary staff proof checks still require current partner-view branch scope.
+  const owner=independentReview?await this.partners.reviewSource(tx,a,partnerId):
+   await this.partners.guardAgreement(tx,a,partnerId,null,false);
   // Submit increments the source version once, while the signed proof is
   // deliberately pinned to its immutable prior draft revision.
   if(!(owner.version===version&&["DRAFT","RETURNED"].includes(owner.status)||

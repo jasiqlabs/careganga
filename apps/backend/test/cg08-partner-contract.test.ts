@@ -25,6 +25,8 @@ import {join} from "node:path";
 import {ForbiddenException} from "@nestjs/common";
 import type {Pool} from "pg";
 import {CsrPartnersService} from "../src/modules/cg-08-csr-funding/application/csr-partners.service";
+import type {PoolClient} from "pg";
+import type {PrivateObjectStorage} from "../src/modules/cg-19-documents-notifications/infrastructure/private-object-storage";
 import type {SessionService} from "../src/modules/cg-01-identity-access/application/session.service";
 import type {FoundationStructureIdentityFacade} from "../src/modules/cg-01-identity-access/application/foundation-structure-identity.facade";
 import type {BranchSourceFacade} from "../src/modules/cg-02-foundation-structure/application/branch-source.facade";
@@ -85,4 +87,31 @@ test("US001-QA10: private agreement download re-hashes raw bytes, not serialized
  assert.ok(code.includes("readVerifiedPrivateObject"),"Never use a public file URL");
  assert.ok(code.includes("verifyPrivateObject"),"Scanner must verify the uploaded bytes");
  assert.ok(code.includes("requireCurrentProof"),"Review uses exact current verified evidence");
+});
+
+
+import {CsrAgreementEvidenceService} from "../src/modules/cg-19-documents-notifications/application/csr-agreement-evidence.service";
+import type {VerifiedFoundationActor} from "../src/modules/cg-01-identity-access/public-api";
+test("US001-QA10/11: independent protected CG03 reviewer uses review grant, not ordinary CSR partner-view",async()=>{
+ const audit:string[]=[];
+ const actor={realmId:key,accountId:branch} as unknown as VerifiedFoundationActor;
+ const db={} as Pool;
+ const sessions={} as SessionService;
+ const identity={} as FoundationStructureIdentityFacade;
+ const partners={
+  reviewSource:async()=>{audit.push("review");return {version:2,status:"SUBMITTED"};},
+  guardAgreement:async()=>{audit.push("staff-view");throw new ForbiddenException("not granted");}
+ } as unknown as CsrPartnersService;
+ const storage={} as PrivateObjectStorage;
+ const evidence=new CsrAgreementEvidenceService(db,sessions,identity,partners,storage);
+ const tx={query:async()=>({rowCount:1,rows:[{id:key}]})} as unknown as PoolClient;
+ await evidence.requireCurrentProof(tx,actor,key,1,branch,true);
+ assert.deepEqual(audit,["review"]);
+ await assert.rejects(()=>evidence.requireCurrentProof(tx,actor,key,1,branch),ForbiddenException);
+});
+test("US001-QA11: CG19 re-exports its source module rather than an undeclared class provider",()=>{
+ const code=readFileSync(join(process.cwd(),"src/modules/cg-19-documents-notifications/documents-notifications.module.ts"),"utf8");
+ assert.match(code,/imports:\[CsrAgreementSourceModule,/);
+ assert.match(code,/exports:\[CsrAgreementSourceModule,/);
+ assert.ok(!code.includes("exports:[CsrAgreementEvidenceService,"));
 });

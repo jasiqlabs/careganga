@@ -95,7 +95,7 @@ export class CsrPartnerReviewService {
     p.registrationReference!==r.source_snapshot.registrationReference||
     p.contactName!==r.source_snapshot.contactName||p.contactEmail!==r.source_snapshot.contactEmail||
     p.contactMobile!==r.source_snapshot.contactMobile||p.supportSummary!==r.source_snapshot.supportSummary)throw changed();
-   await this.evidence.requireCurrentProof(tx,a,r.partner_id,r.source_version,r.evidence_file_id);
+   await this.evidence.requireCurrentProof(tx,a,r.partner_id,r.source_version,r.evidence_file_id,true);
   }
   return r;
  }

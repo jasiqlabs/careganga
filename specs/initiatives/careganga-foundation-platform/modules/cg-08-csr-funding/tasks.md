@@ -237,3 +237,8 @@ New guarded Web BFF and reviewer-only Admin page path for original CG03 CSR revi
 ### 23 November 2026 — original CG03 staff Internal Android submissions/review flows authored
 
 Native CSR partner editor can now submit a selected original CG19 CLEAN_VERIFIED agreement to CG03 using the partner revision and stable command ID. Internal Android protected reviewer-only access has a separate original review list, policy configuration, case detail/history, and distinct fresh-password decision actions. CSR menu is visible to reviewers without granting partner management; both views use the current permission-filtered app shell. No fake partner activation, finance or public entity. Original US001-QA01/05/06/08/10/11/13/14/15/18/19/20 SOURCE_AUTHORED; native build, actual CG03/19/branch DB tests and independent QA NOT_RUN. Original 60 case IDs unchanged.
+
+
+### 23-Nov-2026 — US001 targeted independent-review evidence and Nest module export fix
+
+Fixed exactly two CG08 integration defects within existing source: (1) CG03 protected reviewer checks CG19 scanner evidence through the current **csr.partners.review** + original partner source guard; ordinary submit/upload remains on current **csr.partners.view** + branch permissions. This prevents a protected root reviewer with no separately assigned staff view grant from being blocked after a valid case submission. (2) CG19 re-exports its actual `CsrAgreementSourceModule` instead of trying to export a service only provided by that imported module. Added original US001-QA10/11 source-contract regressions. **Tests authored but not executed; real Nest module boot and PostgreSQL review transaction are NOT_RUN.** No new issue, scope or QA identifiers. US001 remains IN_PROGRESS.

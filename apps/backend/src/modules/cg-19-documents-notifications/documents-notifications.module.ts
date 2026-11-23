@@ -91,7 +91,6 @@ import {CommunicationsController,CommunicationProviderWebhookController} from
  * Missing secured credentials or a real ClamAV scanner stays unavailable.
  */
 import {CsrAgreementSourceModule} from "./csr-agreement-source.module";
-import {CsrAgreementEvidenceService} from "./application/csr-agreement-evidence.service";
 import {CsrAgreementEvidenceController} from "./http/csr-agreement-evidence.controller";
 import {InventoryMovementEvidenceService} from './application/inventory-movement-evidence.service';
 import {InventoryMovementEvidenceController} from './http/inventory-movement-evidence.controller';
@@ -105,6 +104,6 @@ import {InventoryMovementEvidenceController} from './http/inventory-movement-evi
     CommunicationProviders,CommunicationWorker,SupportService,HealthCenterSupportScopeFacade,
     HealthCenterContentMediaService,CenterSupportAttachmentService,
     {provide:PrivateObjectStorage,useFactory:makePrivateStorageProvider}],
-  exports:[CsrAgreementEvidenceService,ProjectCoverEvidenceService,CampaignMediaEvidenceService,InventoryMovementEvidenceService,InventoryReceiptEvidenceService,CenterSupportAttachmentService,HealthCenterContentMediaService,HealthDraftEvidenceService,HealthDoctorPrivateEvidenceService,PrivateEvidenceService,CmsDraftMediaService,CmsPublicNoticeSource,PrivateLetterService,SupportService,BranchPrivateEvidenceService,ActiveBranchEvidenceService,FinanceVoucherEvidenceService,FinanceClaimEvidenceService,FinanceInvoiceDocumentService,FinanceReceiptDocumentService,FinanceBankStatementEvidenceService,MisProtectedArtifactService,MisReportNoticeService]
+  exports:[CsrAgreementSourceModule,ProjectCoverEvidenceService,CampaignMediaEvidenceService,InventoryMovementEvidenceService,InventoryReceiptEvidenceService,CenterSupportAttachmentService,HealthCenterContentMediaService,HealthDraftEvidenceService,HealthDoctorPrivateEvidenceService,PrivateEvidenceService,CmsDraftMediaService,CmsPublicNoticeSource,PrivateLetterService,SupportService,BranchPrivateEvidenceService,ActiveBranchEvidenceService,FinanceVoucherEvidenceService,FinanceClaimEvidenceService,FinanceInvoiceDocumentService,FinanceReceiptDocumentService,FinanceBankStatementEvidenceService,MisProtectedArtifactService,MisReportNoticeService]
 })
 export class DocumentsNotificationsModule{}
