@@ -177,3 +177,8 @@ The authorized partner list now projects only organization name, branch, status,
 ### 23-Nov-2026 — US001 focused source-test additions
 
 Added positive validation and negative source tests for revoked CG02 branch before write, private-column list projection, root/branch uniqueness and draft status constraints in the **existing** backend test runner. These are test definitions only (TEST_AUTHORED_NOT_EXECUTED); no runtime PASS, no new issue, no new QA IDs. Source review is impact-scoped to CG08 current commits and remains independently unverified.
+
+
+### 23-Nov-2026 — authoring defect fixed before SQL execution
+
+Impact-scoped review caught a SQL string-substitution defect in the initial `3401_cg08_csr_partner_drafts.sql` email CHECK (a replacement tool had expanded a literal end-of-line dollar token into source suffix). Restored exact original unexecuted migration, applied email syntax CHECK without replacement expansion and added a regression assertion for one closed constraint/one partner table. This is a **source fix**, not migration execution, independent DB signoff or scenario runtime PASS; no BWC added, no new issue or QA identifier. US001 remains IN_PROGRESS.

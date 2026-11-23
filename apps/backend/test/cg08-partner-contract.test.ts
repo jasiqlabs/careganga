@@ -61,3 +61,12 @@ test("US001-QA03/19: original greenfield migration constrains root, branch and d
  assert.match(ddl,/NEW\.status NOT IN\('DRAFT','INACTIVE'\)/);
  assert.match(ddl,/CREATE TRIGGER cg08_partner_command_no_change/);
 });
+
+test("US001-QA14: CG08 direct-SQL email constraint is single and syntactically closed",()=>{
+ const ddl=readFileSync(join(process.cwd(),"db/migrations/3401_cg08_csr_partner_drafts.sql"),"utf8");
+ const email=ddl.split("\n").find(line=>line.trimStart().startsWith("contact_email text"));
+ assert.ok(email&&email.endsWith(")),"));
+ assert.match(email,/\+\$'\)\)/);
+ assert.equal(ddl.split("contact_mobile text").length,2);
+ assert.equal(ddl.split("CREATE TABLE csr_partner (").length,2);
+});
