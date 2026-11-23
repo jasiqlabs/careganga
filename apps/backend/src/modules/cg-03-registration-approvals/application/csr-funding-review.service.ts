@@ -98,7 +98,7 @@ export class CsrFundingReviewService{
  }
  /** Case/source version, currency, split, branch, project and evidence must
   * remain precisely the immutable applicant-signed review snapshot. */
- private async snapshot(tx:PoolClient,a:Actor,c:Case,current=false){
+ private async snapshot(tx:PoolClient,a:Actor,c:Case,current=false,requireEvidence=true){
   const r=(await tx.query<Snapshot>(
    "SELECT * FROM csr_funding_review_snapshot WHERE root_realm_id=$1 "+
    "AND id=$2 AND proposal_id=$3 AND source_version=$4 AND source_digest=$5 FOR SHARE",
@@ -122,7 +122,7 @@ export class CsrFundingReviewService{
     agreementSummary:actual.agreementSummary,evidenceFileRef:r.evidence_file_id};
    if(csrDigest(["CG08_FUNDING_REVIEW_SOURCE_V1",expected])!==r.source_digest)
     throw stale();
-   await this.proof.requireCurrentProof(tx,a,r.proposal_id,
+   if(requireEvidence)await this.proof.requireCurrentProof(tx,a,r.proposal_id,
     r.source_version,r.evidence_file_id,true);
   }
   return r;
@@ -285,7 +285,9 @@ export class CsrFundingReviewService{
     return {reference:c.case_number,status:c.status,revision:c.revision,replayed:true};
    }
    if(c.status!=="SUBMITTED"||c.revision!==expected)throw stale();
-   await this.snapshot(tx,a,c,true);
+   // A revoked/unsafe document must prevent approval, but never prevent
+   // an authorized independent reviewer from RETURNING or REJECTING the case.
+   await this.snapshot(tx,a,c,true,action==="APPROVE");
    const route=await tx.query(
     "SELECT 1 FROM cg03_process p JOIN cg03_process_step s ON s.process_id=p.id "+
     "WHERE p.realm_id=$1 AND p.id=$2 AND p.process_kind='CSR_FUNDING_REVIEW' "+
