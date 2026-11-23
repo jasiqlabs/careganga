@@ -8,53 +8,70 @@ type Reward={
  pointsPrice:string;imageUrl:string|null;
  availability:"NO_STOCK_REQUIRED"|"AVAILABLE"|"OUT_OF_STOCK";
 };
-type Page={eligibleRelationships:string[];items:Reward[];hasMore:boolean;notice:string};
+type Page={eligibleRelationships:string[];items:Reward[];hasMore:boolean;notice:string;
+ categories:string[];categoriesTruncated:boolean};
 export function NativeEligibleRewardsCatalogue({token,onExpired}:{
  token:string;onExpired:()=>void}){
  const [items,setItems]=useState<Reward[]>([]),[audiences,setAudiences]=useState<string[]>([]);
  const [notice,setNotice]=useState(""),[error,setError]=useState("");
  const [busy,setBusy]=useState(false),[more,setMore]=useState(false),[page,setPage]=useState(2);
  const [category,setCategory]=useState("All"),[search,setSearch]=useState("");
+ const [appliedSearch,setAppliedSearch]=useState("");
+ const [availableCategories,setAvailableCategories]=useState<string[]>([]);
+ const [categoriesTruncated,setCategoriesTruncated]=useState(false);
+ useEffect(()=>{
+  const handle=setTimeout(()=>setAppliedSearch(search.trim()),300);
+  return()=>clearTimeout(handle);
+ },[search]);
  const [detail,setDetail]=useState<string|null>(null),sequence=useRef(0);
  const load=useCallback(async(target:number,replace:boolean)=>{
   const request=++sequence.current;setBusy(true);setError("");
   try{
-   const result=await memberInvoke<Page>("/api/v1/referrals/my-catalog?page="+target,
+   const params=new URLSearchParams({page:String(target)});
+   if(appliedSearch)params.set("q",appliedSearch);
+   if(category!=="All")params.set("category",category);
+   const result=await memberInvoke<Page>("/api/v1/referrals/my-catalog?"+params.toString(),
     "GET",undefined,token);
    if(!Array.isArray(result.items)||!Array.isArray(result.eligibleRelationships)||
-    typeof result.hasMore!=="boolean")throw Error("Rewards are temporarily unavailable.");
+    !Array.isArray(result.categories)||!result.categories.every(c=>typeof c==="string")||
+    typeof result.hasMore!=="boolean"||typeof result.categoriesTruncated!=="boolean")
+    throw Error("Rewards are temporarily unavailable.");
    if(request!==sequence.current)return;
    setAudiences(result.eligibleRelationships);setNotice(result.notice);
+   setAvailableCategories(result.categories);
+   setCategoriesTruncated(result.categoriesTruncated);
    setItems(old=>replace?result.items:
     [...old,...result.items.filter(x=>!old.some(v=>v.ref===x.ref))]);
    setMore(result.hasMore);setPage(target+1);
   }catch(e){
    if(request!==sequence.current)return;
-   if(replace){setItems([]);setAudiences([]);setMore(false);setDetail(null);}
+   if(replace){setItems([]);setAudiences([]);setMore(false);setDetail(null);
+    setAvailableCategories([]);setCategoriesTruncated(false);}
    if(e&&typeof e==="object"&&"status" in e&&e.status===401){onExpired();return;}
    setError(e instanceof Error?e.message:"Rewards are temporarily unavailable.");
   }finally{if(request===sequence.current)setBusy(false);}
- },[token,onExpired]);
+ },[token,onExpired,appliedSearch,category]);
  useEffect(()=>{
   void load(1,true);
   const sub=AppState.addEventListener("change",state=>{
    if(state!=="active"){
     sequence.current++;setItems([]);setAudiences([]);setDetail(null);setMore(false);
+    setAvailableCategories([]);setCategoriesTruncated(false);
    }else void load(1,true);
   });
   return()=>{sequence.current++;sub.remove();};
  },[load]);
- const categories=useMemo(()=>["All",...new Set(items.map(x=>x.category))],[items]);
+ const categories=useMemo(()=>["All",...new Set(availableCategories)],[availableCategories]);
  const filtered=useMemo(()=>items.filter(x=>
   (category==="All"||x.category===category)&&
-  (x.name+" "+x.category+" "+x.description).toLowerCase().includes(search.trim().toLowerCase())),
-  [items,category,search]);
+  (x.name+" "+x.category+" "+x.description).toLowerCase().includes(appliedSearch.toLowerCase())),
+  [items,category,appliedSearch]);
  return <View style={s.card} accessibilityLabel="Your eligible rewards catalogue">
   <Text style={s.heading}>Rewards catalogue</Text>
   <Text style={s.muted}>Browse rewards offered to active members and volunteers.
    Points are not cash; redemption is not yet available.</Text>
   <Pressable style={s.button} accessibilityRole="button" disabled={busy}
-   onPress={()=>{setCategory("All");setSearch("");void load(1,true);}}>
+   onPress={()=>void load(1,true)}>
    <Text style={s.buttonText}>Refresh rewards</Text>
   </Pressable>
   {busy&&<Text accessibilityRole="text">Checking current rewards…</Text>}
@@ -66,6 +83,8 @@ export function NativeEligibleRewardsCatalogue({token,onExpired}:{
      accessibilityRole="button" accessibilityState={{selected:category===c}}
      onPress={()=>setCategory(c)}><Text style={[s.buttonText,category===c&&s.selectedText]}>{c}</Text></Pressable>)}
    </View>
+   {categoriesTruncated&&<Text style={s.muted}>More categories exist.
+    Search all eligible rewards to find them.</Text>}
    <TextInput style={s.input} value={search} onChangeText={setSearch}
     placeholder="Search rewards" maxLength={100} accessibilityLabel="Search rewards by name or category"/>
    {filtered.map(p=><View key={p.ref} style={s.product}>
