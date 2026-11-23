@@ -135,6 +135,109 @@ export class DonationReceiptDocumentService{
    return {status:"ISSUED",receiptNumber:receipt.receipt_number,confirmed:true};
   });
  }
+
+ /** A refund never changes an original issued receipt; CG19 issues a
+  * separate neutral correction after a genuine CG09 balanced reversal. */
+ async issueCorrection(bearer:string,refundRef:string,issueKey:string){
+  const a=await this.actor(bearer,true),refund=ref(refundRef),key=ref(issueKey);
+  const details=await this.inTx(async tx=>{
+   const basis=(await tx.query<{
+    refund_id:string;donation_id:string;amount_minor:string;source_digest:string;
+    original_receipt_id:string;original_number:string;donation_number:string;posted_on:string}>(
+    "SELECT r.id AS refund_id,d.id AS donation_id,r.amount_minor::text,"+
+    "j.immutable_payload_digest AS source_digest,o.id AS original_receipt_id,"+
+    "o.receipt_number AS original_number,d.donation_number,j.posting_date::text AS posted_on "+
+    "FROM donation_refund_request r JOIN donation d ON d.root_realm_id=r.root_realm_id "+
+    "AND d.id=r.donation_id JOIN donation_finance_effect e ON e.root_realm_id=d.root_realm_id "+
+    "AND e.donation_id=d.id JOIN journal collected ON collected.root_realm_id=e.root_realm_id "+
+    "AND collected.id=e.journal_id JOIN cg19_donation_receipt_document o "+
+    "ON o.root_realm_id=d.root_realm_id AND o.donation_id=d.id "+
+    "JOIN journal j ON j.root_realm_id=r.root_realm_id AND j.id=r.reversal_journal_ref "+
+    "WHERE r.root_realm_id=$1 AND r.id=$2 AND r.status='FINANCE_REVERSED' "+
+    "AND o.status='ISSUED' AND o.source_digest=e.immutable_digest "+
+    "AND e.status='POSTED' AND collected.status='POSTED' AND collected.source_ref=d.id "+
+    "AND d.source_status='RECEIVED_POSTED' AND j.status='POSTED' "+
+    "AND j.source_ref=r.id AND j.immutable_source_event_key=r.approval_request_key "+
+    "FOR SHARE OF r,d,e,o,j,collected",[a.realmId,refund])).rows[0];
+   if(!basis)throw new NotFoundException("Verified refund and original issued receipt are required.");
+   await this.source.original(tx,a,basis.donation_id);
+   await tx.query("SELECT pg_advisory_xact_lock(hashtextextended($1,0))",
+    ["CG19:CORRECTION:"+a.realmId+":"+refund]);
+   let correction=(await tx.query<{
+    id:string;status:string;correction_number:string;source_digest:string;issue_key:string;
+    object_key:string;created_at:Date;amount_minor:string}>(
+    "SELECT * FROM cg19_donation_receipt_correction "+
+    "WHERE root_realm_id=$1 AND refund_request_id=$2 FOR UPDATE",[a.realmId,refund])).rows[0];
+   if(correction){
+    if(correction.issue_key!==key||correction.source_digest!==basis.source_digest||
+     correction.amount_minor!==basis.amount_minor)
+     throw new ConflictException("Original correction issuance request changed.");
+   }else correction=(await tx.query<typeof correction extends infer T ? NonNullable<T> : never>(
+    "INSERT INTO cg19_donation_receipt_correction(root_realm_id,donation_id,"+
+    "original_receipt_id,refund_request_id,source_digest,issue_key,issued_by,"+
+    "amount_minor,object_key) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9) RETURNING *",
+    [a.realmId,basis.donation_id,basis.original_receipt_id,refund,basis.source_digest,key,
+     a.accountId,basis.amount_minor,
+     "careganga/private/cg19/"+a.realmId+"/corrections/"+randomUUID()])).rows[0];
+   return {basis,correction};
+  });
+  const c=details.correction;
+  if(!c)throw new ConflictException("Original correction could not be reserved.");
+  if(c.status==="ISSUED")return {status:"ISSUED",correctionNumber:c.correction_number,replayed:true};
+  try{
+   let object:{objectVersion:string;sha256:string;sizeBytes:number}|null=null;
+   if(c.status==="UNKNOWN"){
+    try{object=await this.storage.reconcileIssuedPrivateDocument({
+     objectKey:c.object_key,maxBytes:10485760});}catch{/* retry same private key */}
+   }
+   if(!object){
+    const pdf=await PDFDocument.create();
+    pdf.setTitle("CareGanga Donation Refund Correction");
+    pdf.setSubject("CG19-REFUND:"+c.source_digest);
+    pdf.setCreationDate(c.created_at);
+    const page=pdf.addPage([595,842]),font=await pdf.embedFont(StandardFonts.Helvetica);
+    const label=(s:string,y:number)=>page.drawText(s,{x:48,y,size:12,font,
+     color:rgb(.12,.21,.33)});
+    const amount=BigInt(details.basis.amount_minor);
+    label("CareGanga Foundation - Donation Refund Correction",765);
+    label("Correction: "+c.correction_number,708);
+    label("Original receipt: "+details.basis.original_number,676);
+    label("Donation: "+details.basis.donation_number,650);
+    label("Confirmed refund: INR "+(amount/100n)+"."+String(amount%100n).padStart(2,"0"),620);
+    label("Finance posting date: "+details.basis.posted_on,591);
+    label("The original issued receipt is retained unchanged.",543);
+    label("This is not an 80G tax deduction certificate.",510);
+    label("Only actual posted CG09 refunds alter verified donation net.",477);
+    const bytes=Buffer.from(await pdf.save()),sha=createHash("sha256").update(bytes).digest("hex");
+    const saved=await this.storage.writeVerifiedPrivateDocument({
+     objectKey:c.object_key,bytes,sha256:sha});
+    if(saved.sha256!==sha||!saved.objectVersion)
+     throw new ConflictException("Private correction write was not verified.");
+    object={objectVersion:saved.objectVersion,sha256:sha,sizeBytes:bytes.length};
+   }
+   await this.actor(bearer,true);
+   return await this.inTx(async tx=>{
+    const row=(await tx.query<{status:string;source_digest:string}>(
+     "SELECT status,source_digest FROM cg19_donation_receipt_correction "+
+     "WHERE root_realm_id=$1 AND id=$2 FOR UPDATE",[a.realmId,c.id])).rows[0];
+    if(!row||row.source_digest!==c.source_digest)
+     throw new ConflictException("Original correction source changed.");
+    if(row.status!=="ISSUED"){
+     await this.source.original(tx,a,details.basis.donation_id);
+     await tx.query("UPDATE cg19_donation_receipt_correction SET status='ISSUED',"+
+      "object_version=$3,content_sha256=$4,content_length=$5,issued_at=$6 "+
+      "WHERE root_realm_id=$1 AND id=$2 AND status IN('PENDING','UNKNOWN')",
+      [a.realmId,c.id,object.objectVersion,object.sha256,object.sizeBytes,c.created_at]);
+    }
+    return {status:"ISSUED",correctionNumber:c.correction_number,replayed:row.status==="ISSUED"};
+   });
+  }catch{
+   await this.db.query("UPDATE cg19_donation_receipt_correction SET status='UNKNOWN' "+
+    "WHERE root_realm_id=$1 AND id=$2 AND status='PENDING'",[a.realmId,c.id]).catch(()=>undefined);
+   return {status:"UNKNOWN",confirmed:false};
+  }
+ }
+
  async downloadWithProof(raw:unknown){
   if(!raw||typeof raw!=="object"||Array.isArray(raw)||
     Object.keys(raw).some(x=>x!=="statusToken"))throw new BadRequestException("Enter your original private donation proof.");

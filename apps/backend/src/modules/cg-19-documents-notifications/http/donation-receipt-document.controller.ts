@@ -5,6 +5,17 @@ import {assertDonationPublicIngress} from "../../cg-07-campaigns-donations/domai
 @Controller("api/documents/donation-receipts")
 export class DonationReceiptDocumentController{
  constructor(private readonly source:DonationReceiptDocumentService){}
+
+ @Post(":refundRef/correction")
+ @Header("Cache-Control","private, no-store")
+ issueCorrection(@Headers("authorization")bearer:string,@Param("refundRef")refund:string,
+  @Body()body:unknown){
+  if(!body||typeof body!=="object"||Array.isArray(body)||
+   Object.keys(body).some(x=>x!=="requestKey"))
+   return {status:"INVALID_REQUEST"};
+  return this.source.issueCorrection(bearer,refund,(body as {requestKey:string}).requestKey);
+ }
+
  @Get(":donationRef/status") @Header("Cache-Control","private, no-store")
  status(@Headers("authorization")token:string,@Param("donationRef")id:string){
   return this.source.status(token,id);
