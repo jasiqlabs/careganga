@@ -153,3 +153,57 @@ test("CG-MB-004 employment change source keeps self and manager exceptions but n
  assert.match(source,/scope\.branches\.map\(x=>x\.value\)/);
  assert.match(source,/supervisor\.account_ref=\$2/);
 });
+
+
+test("CG-MB-004 named HR official document and attendance corrections use current CG02 assigned A/B branch",()=>{
+ const documents=backend("src/modules/cg-10-human-resources/application/hr-document-source.facade.ts");
+ const attendance=backend("src/modules/cg-10-human-resources/application/hr-attendance-correction-source.facade.ts");
+ const module=backend("src/modules/cg-10-human-resources/hr-source.module.ts");
+ assert.match(documents,/private readonly branches:BranchSourceFacade/);
+ assert.match(documents,/const scope=\(parameter:number\)=>/);
+ assert.match(documents,/b\.id=ANY\(\$\$\{parameter\}::uuid\[\]\)/);
+ assert.match(documents,/this\.branches\.currentStaffBranchRefs\(tx,actor\.realmId,actor\.accountId\)/);
+ assert.match(documents,/scope\(4\)/);
+ assert.match(documents,/scope\(5\)/);
+ assert.match(attendance,/this\.branches\.currentStaffBranchRefs\(tx,actor\.realmId,actor\.accountId\)/);
+ assert.match(attendance,/reference===undefined\?\[\]/);
+ assert.match(attendance,/b\.id=ANY\(\$4::uuid\[\]\)/);
+ assert.match(attendance,/assertPatientSessionCurrent\(tx,actor\)/);
+ assert.match(module,/FoundationStructureModule/);
+});
+test("CG-MB-005 manager or location transfer is protected, without broadening delegated maintenance",()=>{
+ const operations=backend("src/modules/cg-02-foundation-structure/application/branch-operations.service.ts");
+ assert.match(operations,/manager!==branch\.manager_account_ref\|\|/);
+ assert.match(operations,/location!==branch\.geography_area_id/);
+ assert.match(operations,/this\.identity\.assertCurrent\(client,actor,"foundation\.branches\.admin"\)/);
+ assert.match(operations,/this\.branches\.requireAssignedStaffBranch\(client,actor,branchRef\)/);
+ assert.match(operations,/this\.ensureActive\(branch\)/);
+});
+test("CG-MB-010/011 public health centers never derive clinical access from CG02 branch or unapproved public sources",()=>{
+ const center=backend("src/modules/cg-14-healthcare-network/application/health-center-support-scope.facade.ts");
+ const clinic=backend("src/modules/cg-14-healthcare-network/application/health-public-center.service.ts");
+ const campaigns=backend("src/modules/cg-07-campaigns-donations/application/campaign-public-source.ts");
+ const projects=backend("src/modules/cg-05-projects-field-operations/application/project-public-source.ts");
+ const events=backend("src/modules/cg-05-projects-field-operations/application/event-public-source.ts");
+ assert.match(center,/health_center_account_affiliation/);
+ assert.match(center,/affiliation\.status='ACTIVE'/);
+ assert.match(center,/center\.access_state='ENABLED'/);
+ assert.doesNotMatch(center,/cg02_staff_scope_assignment/);
+ assert.match(clinic,/health_center_publication/);
+ assert.match(clinic,/publication_generation/);
+ assert.match(campaigns,/b\.status='ACTIVE'/);
+ assert.match(projects,/b\.status='ACTIVE'/);
+ assert.match(events,/b\.status='ACTIVE'/);
+});
+test("CG-MB-014 stock transfer locks destination and source and never invents another ledger",()=>{
+ const src=backend("src/modules/cg-12-inventory-suppliers/application/inventory-operation-source.ts");
+ const op=backend("src/modules/cg-12-inventory-suppliers/application/inventory-operation.service.ts");
+ const stock=backend("src/modules/cg-12-inventory-suppliers/application/inventory-stock-command.ts");
+ assert.match(src,/r\.location_id,\.\.\.\(r\.destination_id/);
+ assert.match(src,/await this\.catalog\.store\(tx,a,loc,active\)/);
+ assert.match(op,/await lockStockBalances\(tx,a\.realmId,deltas\)/);
+ assert.match(op,/await applyStockMovements\(tx,a\.realmId,e\.id,r\.kind,deltas\)/);
+ assert.match(stock,/keys=\[\.\.\.new Map/);
+ assert.match(stock,/FOR UPDATE/);
+ assert.match(stock,/on_hand_qty\+\$4::numeric>=reserved_qty\+\$5::numeric/);
+});
