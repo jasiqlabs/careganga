@@ -17,3 +17,26 @@ export async function financeProjectOptions(db:Pool|PoolClient,root:string,scope
   [root,scope.all,scope.branchRefs]);
  return q.rows;
 }
+
+
+/** CG05-owned current funding target, independent of the finance budget.
+ * An original CSR proposal may reference a Foundation or branch project,
+ * but only the same-root/same-branch currently PLANNED or ACTIVE project.
+ * Caller also checks its actual current CG02 authorization.
+ */
+export async function assertCsrFundingProject(tx:PoolClient,actor:VerifiedFoundationActor,
+ projectRef:string,branchRef:string|null,expectedVersion:number){
+ if(!Number.isSafeInteger(expectedVersion)||expectedVersion<1||expectedVersion>2147483646)
+  throw new ConflictException({code:"CG05_CSR_PROJECT_CHANGED"});
+ const p=(await tx.query<{id:string;code_norm:string;title:string;version:number}>(
+  "SELECT p.id,p.code_norm,p.title,p.version FROM project p "+
+  "WHERE p.root_realm_id=$1 AND p.id=$2 "+
+  "AND p.branch_ref IS NOT DISTINCT FROM $3::uuid "+
+  "AND p.version=$4 AND p.status IN('PLANNED','ACTIVE') "+
+  "AND (p.branch_ref IS NULL OR EXISTS(SELECT 1 FROM branch b "+
+  "WHERE b.id=p.branch_ref AND b.root_realm_id=p.root_realm_id "+
+  "AND b.status='ACTIVE' FOR SHARE)) FOR SHARE OF p",
+  [actor.realmId,ref(projectRef),branchRef,expectedVersion])).rows[0];
+ if(!p)throw new ConflictException({code:"CG05_CSR_PROJECT_CHANGED"});
+ return {value:p.id,label:p.code_norm+" · "+p.title,version:p.version};
+}

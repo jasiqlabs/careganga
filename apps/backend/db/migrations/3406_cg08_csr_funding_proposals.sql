@@ -7,6 +7,7 @@ CREATE TABLE csr_funding_proposal (
  branch_ref uuid,
  csr_partner_id uuid,
  project_ref uuid,
+ project_source_version integer CHECK(project_source_version>0),
  purpose text NOT NULL CHECK(length(btrim(purpose)) BETWEEN 10 AND 500),
  fund_type text NOT NULL CHECK(fund_type IN('CSR_PARTNER','FOUNDATION','MIXED')),
  currency char(3) NOT NULL DEFAULT 'INR' CHECK(currency='INR'),
@@ -33,6 +34,7 @@ CREATE TABLE csr_funding_proposal (
  FOREIGN KEY(project_ref,root_realm_id) REFERENCES project(id,root_realm_id) ON DELETE RESTRICT,
  FOREIGN KEY(created_by,root_realm_id) REFERENCES account(id,realm_id) ON DELETE RESTRICT,
  FOREIGN KEY(updated_by,root_realm_id) REFERENCES account(id,realm_id) ON DELETE RESTRICT,
+ CHECK((project_ref IS NULL)=(project_source_version IS NULL)),
  CHECK(csr_share_bps+foundation_share_bps=10000),
  CHECK((fund_type='FOUNDATION' AND csr_partner_id IS NULL AND csr_share_bps=0)
     OR (fund_type='CSR_PARTNER' AND csr_partner_id IS NOT NULL AND csr_share_bps=10000)
@@ -83,7 +85,8 @@ BEGIN
  IF NEW.project_ref IS NOT NULL AND NOT EXISTS(
   SELECT 1 FROM project WHERE id=NEW.project_ref
    AND root_realm_id=NEW.root_realm_id AND status IN('PLANNED','ACTIVE')
-   AND branch_ref IS NOT DISTINCT FROM NEW.branch_ref FOR SHARE)
+   AND branch_ref IS NOT DISTINCT FROM NEW.branch_ref
+   AND version=NEW.project_source_version FOR SHARE)
  THEN RAISE EXCEPTION 'Current same-branch CG05 project required'; END IF;
  IF TG_OP='INSERT' THEN
   IF NEW.status<>'DRAFT' OR NEW.version<>1
