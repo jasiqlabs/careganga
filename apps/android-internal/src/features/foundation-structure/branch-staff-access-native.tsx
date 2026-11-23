@@ -6,7 +6,7 @@ import {identityRequest} from "../identity-access/http-client";
 
 type Option={value:string;label:string};
 type Options={accounts:Option[];branches:Option[];areas:Option[]};
-type Assignment={assignmentRef:string;staffName:string;scopeKind:"BRANCH"|"AREA";
+type Assignment={assignmentRef:string;staffName:string;scopeKind:"BRANCH"|"AREA"|"ALL_BRANCHES";
  scopeName:string;reason:string;endedAt:string|null};
 type Result={canGrant:boolean;items:Assignment[]};
 const url="/api/foundation-structure/branch-access";
@@ -24,7 +24,7 @@ async function request<T>(token:string,path:string,method:"GET"|"POST"="GET",bod
 export function BranchStaffAccessNative({token,onExpired}:{token:string;onExpired:()=>void}){
  const [visible,setVisible]=useState(false),[listing,setListing]=useState<Result|null>(null);
  const [choices,setChoices]=useState<Options|null>(null),[search,setSearch]=useState("");
- const [account,setAccount]=useState(""),[kind,setKind]=useState<"BRANCH"|"AREA">("BRANCH");
+ const [account,setAccount]=useState(""),[kind,setKind]=useState<"BRANCH"|"AREA"|"ALL_BRANCHES">("BRANCH");
  const [scope,setScope]=useState(""),[reason,setReason]=useState(""),[password,setPassword]=useState("");
  const [panel,setPanel]=useState<"ACCOUNT"|"SCOPE"|null>(null);
  const [busy,setBusy]=useState(false),[blocked,setBlocked]=useState(false);
@@ -56,13 +56,14 @@ export function BranchStaffAccessNative({token,onExpired}:{token:string;onExpire
      <Text style={styles.copy}>{x.label}</Text></Pressable>))}
   </View>);
  async function grant(){
-  if(busy||blocked||!listing?.canGrant||!account||!scope||reason.trim().length<6||password.length<8)return;
+  if(busy||blocked||!listing?.canGrant||!account||
+   (kind!=="ALL_BRANCHES"&&!scope)||reason.trim().length<6||password.length<8)return;
   if(!requestKey.current)requestKey.current=Crypto.randomUUID();
   setBusy(true);setMessage("");
   try{
    const outcome=await request<{message:string}>(token,"/assignments","POST",{
     requestKey:requestKey.current,accountRef:account,scopeKind:kind,
-    ...(kind==="BRANCH"?{branchRef:scope}:{areaRef:scope}),
+    ...(kind==="BRANCH"?{branchRef:scope}:kind==="AREA"?{areaRef:scope}:{}),
     reason:reason.trim(),currentPassword:password});
    requestKey.current=null;setPassword("");setReason("");setScope("");
    await refresh(search);setMessage(outcome.message);
@@ -101,9 +102,14 @@ export function BranchStaffAccessNative({token,onExpired}:{token:string;onExpire
      "Eligible staff cannot be verified.")),busy)}
     {pick("Staff account",choices?.accounts??[],account,setAccount)}
     <Text style={styles.label}>Scope type</Text>
-    {(["BRANCH","AREA"] as const).map(x=>press(x==="BRANCH"?"Specific branch":"State / district / block",
+    {(["BRANCH","AREA","ALL_BRANCHES"] as const).map(x=>press(
+      x==="BRANCH"?"Specific branch":x==="AREA"?"State / district / block":
+       "All active branches (not Foundation master)",
       ()=>{setKind(x);setScope("");requestKey.current=null;},busy||kind===x))}
-    {pick("Access scope",kind==="BRANCH"?choices?.branches??[]:choices?.areas??[],scope,setScope)}
+    {kind!=="ALL_BRANCHES"&&pick("Access scope",
+      kind==="BRANCH"?choices?.branches??[]:choices?.areas??[],scope,setScope)}
+    {kind==="ALL_BRANCHES"&&<Text style={styles.copy}>
+      This assignment includes current and future active branches, but never Foundation-only legal or financial records.</Text>}
     <Text style={styles.label}>Reason for access</Text>
     <TextInput style={styles.input} value={reason} onChangeText={x=>{setReason(x);requestKey.current=null;}}
      maxLength={500} multiline accessibilityLabel="Reason for access"/>
@@ -111,13 +117,15 @@ export function BranchStaffAccessNative({token,onExpired}:{token:string;onExpire
     <TextInput style={styles.input} value={password} onChangeText={setPassword}
      secureTextEntry accessibilityLabel="Current administrator password"/>
     {press("Grant selected restricted access",()=>void grant(),
-     busy||blocked||!account||!scope||reason.trim().length<6||password.length<8)}
+     busy||blocked||!account||(kind!=="ALL_BRANCHES"&&!scope)||
+      reason.trim().length<6||password.length<8)}
    </>}
    {listing&&!listing.canGrant&&<Text style={styles.copy}>
     Only a protected Foundation administrator may change delegated scope.</Text>}
    {listing?.items.map(x=><View key={x.assignmentRef} style={styles.option}>
     <Text style={styles.label}>{x.staffName} · {x.scopeName}</Text>
-    <Text style={styles.copy}>{x.scopeKind==="BRANCH"?"Branch":"Geographic area"} ·
+    <Text style={styles.copy}>{x.scopeKind==="BRANCH"?"Branch":x.scopeKind==="AREA"?
+      "Geographic area":"All active Foundation branches"} ·
      {x.endedAt?"Ended":"Active"}</Text>
     {listing.canGrant&&!x.endedAt&&press("End this staff access",()=>void end(x.assignmentRef),
      busy||blocked||password.length<8)}
