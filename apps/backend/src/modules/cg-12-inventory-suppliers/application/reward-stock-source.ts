@@ -1,4 +1,7 @@
 import {ConflictException,ForbiddenException} from "@nestjs/common";
+import {createHash} from "node:crypto";
+import type {VerifiedFoundationActor} from "../../cg-01-identity-access/public-api";
+import type {InventoryCatalogService} from "./inventory-catalog.service";
 import type {PoolClient} from "pg";
 
 /** CG12 original same-Postgres stock_balance owner. Only backend CG13 owner
@@ -124,4 +127,58 @@ export async function releaseRewardStock(tx:PoolClient,s:{
   "source_key,actor_account_ref) VALUES($1,$2,'RELEASED',$3,$4)",
   [s.root,item.id,item.requestKey,s.recipient]);
  return {status:"RELEASED" as const,replayed:false};
+}
+
+/** Only current CG12-issued staff may prepare an authentic original
+ * stock_operation_draft for a verified physical reward. Existing original
+ * CG12 Stock Operations UI + CG19 movement proof confirm this SAME draft.
+ */
+export async function prepareRewardIssueDraft(tx:PoolClient,
+ actor:VerifiedFoundationActor,catalog:InventoryCatalogService,
+ redemptionRef:string){
+ const found=await tx.query<{holdId:string;issueKey:string;item:string;
+  location:string;state:string;recipient:string;kind:string;relationshipRef:string;
+  recipientKind:"MEMBER"|"VOLUNTEER"}>(
+  "SELECT h.id AS \"holdId\",h.issue_key AS \"issueKey\",h.item_id AS item,"+
+  "h.location_id AS location,h.state,r.recipient_account_ref AS recipient,"+
+  "r.product_type AS kind,r.relationship_ref AS \"relationshipRef\","+
+  "r.relationship_kind AS \"recipientKind\" "+
+  "FROM stock_reward_hold h JOIN redemption r "+
+  "ON r.root_realm_id=h.root_realm_id AND r.id=h.redemption_id "+
+  "WHERE h.root_realm_id=$1 AND h.redemption_id=$2 AND r.state='HELD' "+
+  "AND r.product_type='PHYSICAL' FOR SHARE OF r",
+  [actor.realmId,redemptionRef]);
+ const h=found.rows[0];
+ if(!h||h.state!=="HELD")throw new ConflictException("The real physical reward hold is unavailable.");
+ const store=await catalog.store(tx,actor,h.location);
+ const activeRecipient=await eligibleBranch(tx,{
+  root:actor.realmId,redemption:redemptionRef,recipient:h.recipient,
+  relationship:h.recipientKind,relationshipRef:h.relationshipRef,
+  item:h.item,location:h.location,requestKey:h.issueKey
+ });
+ if(store.branch_ref!==null&&store.branch_ref!==activeRecipient)
+  throw new ForbiddenException("The original reward recipient no longer belongs to this warehouse branch.");
+ const original=await tx.query<{ref:string;actor:string;status:string}>(
+  "SELECT id AS ref,actor_ref AS actor,status FROM stock_operation_draft "+
+  "WHERE root_realm_id=$1 AND reward_hold_id=$2",
+  [actor.realmId,h.holdId]);
+ if(original.rows[0]){
+  if(original.rows[0].actor!==actor.accountId)
+   throw new ForbiddenException("Only the original warehouse issuing staff may complete this draft.");
+  return {operationRef:original.rows[0].ref,status:original.rows[0].status,
+   proofRequired:store.delivery_proof_required,replayed:true};
+ }
+ const hash=createHash("sha256").update(JSON.stringify([
+  "CG13_REWARD_STAFF_ISSUE",h.holdId,h.issueKey,h.item,h.location,actor.accountId
+ ])).digest("hex");
+ const q=await tx.query<{ref:string}>(
+  "INSERT INTO stock_operation_draft(root_realm_id,request_key,actor_ref,kind,"+
+  "location_id,item_id,unit_code,qty_scale,quantity,recipient_id,"+
+  "reason,digest,reward_hold_id) "+
+  "VALUES($1,$2,$3,'ISSUE',$4,$5,'PIECE',0,1,$3,"+
+  "'Original physical reward warehouse issue',$6,$7) RETURNING id AS ref",
+  [actor.realmId,h.issueKey,actor.accountId,h.location,h.item,hash,h.holdId]);
+ if(!q.rows[0])throw new ConflictException("Original warehouse ISSUE draft unavailable.");
+ return {operationRef:q.rows[0].ref,status:"DRAFT",
+  proofRequired:store.delivery_proof_required,replayed:false};
 }
