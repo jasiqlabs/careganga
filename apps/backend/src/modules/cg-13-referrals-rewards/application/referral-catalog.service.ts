@@ -815,10 +815,11 @@ export class ReferralCatalogService{
   */
  async adminRedemptions(bearer:string,programmeInput:string,
   pageInput?:string,statusInput?:string,searchInput?:string,
-  fromInput?:string,toInput?:string,categoryInput?:string){
+  fromInput?:string,toInput?:string,categoryInput?:string,branchInput?:string){
   const programme=ref(programmeInput),page=catalogPage(pageInput);
   const status=statusInput??"ALL";
   const category=optional(categoryInput,"category",80);
+  const selectedBranch=branchInput?ref(branchInput,"branchRef"):null;
   if(!["ALL","HELD","CANCELLED","ISSUED_AWAITING_HANDOVER","FULFILLED"].includes(status))
    throw bad("status");
   const search=optional(searchInput,"search",80).toLowerCase();
@@ -836,6 +837,19 @@ export class ReferralCatalogService{
    await this.root(tx,a);
    await this.program(tx,a,programme);
    const scope=await this.inventory.rewardStoreScope(tx,a);
+   if(selectedBranch&&!scope.full&&!scope.branches.includes(selectedBranch))
+    throw new ForbiddenException("This Foundation branch is not currently assigned to your role.");
+   if(selectedBranch){
+    const live=await tx.query(
+     "SELECT id FROM branch WHERE root_realm_id=$1 AND id=$2 "+
+     "AND status='ACTIVE' FOR SHARE",[a.realmId,selectedBranch]);
+    if(!live.rows[0])
+     throw new ForbiddenException("The selected branch is unavailable or inactive.");
+   }
+   const branches=await tx.query<{ref:string;name:string}>(
+    "SELECT id AS ref,name FROM branch WHERE root_realm_id=$1 AND status='ACTIVE' "+
+    "AND ($2::boolean OR id=ANY($3::uuid[])) ORDER BY name,id LIMIT 201",
+    [a.realmId,scope.full,scope.branches]);
    // Reward-catalogue read does NOT grant private CG04 roster access.
    // Inspect the current session/role within this same transaction; do not
    // allow a query term to infer otherwise hidden member/volunteer names.
@@ -873,11 +887,14 @@ export class ReferralCatalogService{
     "AND ($7::date IS NULL OR (r.requested_at AT TIME ZONE 'Asia/Kolkata')::date >= $7::date) "+
     "AND ($8::date IS NULL OR (r.requested_at AT TIME ZONE 'Asia/Kolkata')::date <= $8::date) "+
     "AND ($12::text='' OR product.category=$12) "+
+    "AND ($13::uuid IS NULL OR COALESCE(m.branch_ref,v.branch_ref)=$13::uuid) "+
     "ORDER BY r.requested_at DESC,r.id DESC LIMIT 26 OFFSET $9",
     [a.realmId,programme,scope.full,scope.branches,status,search,from,to,
-     (page-1)*25,memberNames,volunteerNames,category]);
+     (page-1)*25,memberNames,volunteerNames,category,selectedBranch]);
    return {items:rows.rows.slice(0,25),hasMore:rows.rows.length>25,page,
-    notice:"Statuses use original redemption and immutable points holds. Private recipient names appear only with current matching CG04 roster permission; other roles see restricted labels."};
+    availableBranches:branches.rows.slice(0,200),branchesTruncated:branches.rows.length>200,
+    selectedBranch,
+    notice:"Statuses use original CG13 points holds and current CG02 ACTIVE branch. Private recipient names appear only with the matching current CG04 roster permission."};
   },true);
  }
  async stockOptions(bearer:string){
