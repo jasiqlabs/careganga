@@ -780,7 +780,11 @@ export function StaffAuthenticationScreen() {
       </View>}
       <Suspense fallback={<ActivityIndicator style={{marginTop:40}}/>}>
        {canDrafts&&csrTab==="FUNDING"?
-        <NativeCsrFunding key={token} token={token} canManage={roleActions.includes("csr.partners.manage")} onExpired={expireSession}/>:
+        <NativeCsrFunding key={token} token={token}
+         canManage={roleActions.includes("csr.partners.manage")}
+         canReadAgreement={roleActions.includes("documents.files.view")}
+         canUploadAgreement={roleActions.includes("documents.files.manage")&&roleActions.includes("documents.files.view")}
+         onExpired={expireSession}/>:
         canDrafts&&(!canReviews||csrTab==="DRAFTS")?
         <NativeCsrPartners key={token} token={token} canManage={roleActions.includes("csr.partners.manage")}
          canReadAgreement={roleActions.includes("documents.files.view")}
