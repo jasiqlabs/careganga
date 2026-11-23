@@ -187,3 +187,10 @@ Impact-scoped review caught a SQL string-substitution defect in the initial `340
 ### 23-Nov-2026 — US001 original CG19 private agreement DB integration (source only)
 - Added **source-owned** CG08 `guardAgreement` for CG19, current action + real CG02 branch + source version; one additive `3402_cg19_csr_agreement_evidence.sql` extending existing CG19 private object intent/stored-file with real same-root CSR partner FK and immutable owner reference. Existing CG19 scanner/object service remains the only bytes authority. Original classifications, other owners' constraints and CSR unapproved status stay separate. No second partner/CRM master or public file URL.
 - **Incomplete until corresponding CG19 backend/controller and Web/native file flow exist:** US001-QA01/08/10/11/19/20 still source gaps; migration/source contract must be independently reviewed and executed with fresh/upgrade Postgres before proof approval. This is not runtime/independent PASS. No other story started and no branch merge.
+
+
+### 23-Nov-2026 — CG19 original CSR agreement proof adapter source authored
+
+- **CG19 source:** \`CsrAgreementEvidenceService\` uses original \`PrivateObjectStorage\` scanner-backed reservation, byte/checksum/size/version proof, durable initiated/unknown/validated/rejected intent, replay conflict, scoped owner guards and private non-public download after current reauthorization. One original verified evidence list and typed \`requireCurrentProof\` for CG03 review. Validated only with actual CLEAN_VERIFIED scanner proof; a presigned URL never verifies the agreement.
+- **Wiring:** existing CG19 module owns controller, private object provider and exported typed adapter; CG08 owns exact partner/branch/version guard. Migration 3402 also added the required unique same-root intent owner FK for immutable event attribution.
+- **Source states:** CG19 agreement backend is **SOURCE_AUTHORED_REVIEW_PENDING**; Web/native upload selection and CG03 protected review/decision are not yet implemented. Original US001-QA01/08/10/11/19/20 are PARTIAL_SOURCE_CANDIDATE, not passed. No SQL/provider/runtime/independent tests have run; no main merge. 

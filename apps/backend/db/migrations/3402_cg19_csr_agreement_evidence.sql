@@ -6,6 +6,7 @@ ALTER TABLE cg19_upload_intent
  ADD CONSTRAINT cg19_csr_intent_partner_fk
   FOREIGN KEY(realm_id,csr_partner_id) REFERENCES csr_partner(root_realm_id,id) ON DELETE RESTRICT,
  ADD CONSTRAINT uq_cg19_csr_intent_identity UNIQUE(id,realm_id,csr_partner_id,proposal_revision),
+ ADD CONSTRAINT uq_cg19_csr_intent_owner UNIQUE(id,realm_id,csr_partner_id),
  ADD CONSTRAINT cg19_csr_intent_disjoint CHECK(
   (owner_kind='CG08_CSR_AGREEMENT')=(csr_partner_id IS NOT NULL));
 ALTER TABLE cg19_stored_file
