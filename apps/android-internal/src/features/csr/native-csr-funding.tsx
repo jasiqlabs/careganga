@@ -134,7 +134,7 @@ export function NativeCsrFunding({token,canManage,onExpired}:{
  const field=(title:string,key:keyof Draft,large=false)=><View style={styles.field}>
   <Text style={styles.label}>{title}</Text>
   <TextInput value={String(draft[key])} editable={canManage&&(!selected||selected.status==="DRAFT")&&!busy&&!pending}
-   onChangeText={v=>setDraft(x=>({...x,[key]:v}))}
+   onChangeText={v=>setDraft(x=>({...x,[key]:key==="csrPercent"?Number(v):v}))}
    style={[styles.input,large&&styles.large]} multiline={large}
    placeholderTextColor="#64748B" placeholder={title}
    keyboardType={key==="rupees"?"decimal-pad":"default"}/>
