@@ -7,18 +7,22 @@ type Programme={ref:string;name:string;status:"ACTIVE"|"INACTIVE"};
 type Reward={ref:string;programmeRef:string;type:"DIGITAL"|"PHYSICAL";name:string;
  category:string;description:string;pointsPrice:string;eligibleAudience:string;
  status:"DRAFT"|"ACTIVE"|"ARCHIVED";highlighted:boolean;
- imageUrl:string|null;publicVisible:boolean};
+ imageUrl:string|null;publicVisible:boolean;itemRef:string|null;storeRef:string|null};
+type Stock={itemName:string;availableQuantity:string;onHandQuantity:string;
+ reservedQuantity:string;stockStatus:string};
 type Paged<T>={items:T[];hasMore:boolean;page:number};
 
-export function NativeRewardCatalogue({token,onExpired}:{
- token:string;onExpired:()=>void}){
+export function NativeRewardCatalogue({token,onExpired,canViewStock}:{
+ token:string;onExpired:()=>void;canViewStock:boolean}){
  const [programmes,setProgrammes]=useState<Programme[]>([]),[chosen,setChosen]=useState("");
  const [items,setItems]=useState<Reward[]>([]);
  const [nextProgramme,setNextProgramme]=useState(2),[nextProduct,setNextProduct]=useState(2);
  const [moreProgrammes,setMoreProgrammes]=useState(false),[moreProducts,setMoreProducts]=useState(false);
  const [loading,setLoading]=useState(false),[error,setError]=useState("");
  const [expanded,setExpanded]=useState<string|null>(null);
- const programmeSeq=useRef(0),productSeq=useRef(0);
+ const [stock,setStock]=useState<Stock|null>(null),[stockError,setStockError]=useState("");
+ const [stockBusy,setStockBusy]=useState(false);
+ const programmeSeq=useRef(0),productSeq=useRef(0),stockSeq=useRef(0);
  const call=useCallback(async<T,>(path:string):Promise<T>=>{
   const response=await identityRequest("/api/v1/referrals/"+path,{
    headers:{Authorization:"Bearer "+token},cache:"no-store"});
@@ -30,7 +34,8 @@ export function NativeRewardCatalogue({token,onExpired}:{
  },[token,onExpired]);
  const loadProgrammes=useCallback(async(page:number,append:boolean)=>{
   const serial=++programmeSeq.current;setLoading(true);setError("");
-  if(!append){setProgrammes([]);setItems([]);setChosen("");setExpanded(null);}
+  if(!append){stockSeq.current++;setStock(null);setStockError("");
+   setProgrammes([]);setItems([]);setChosen("");setExpanded(null);}
   try{
    const data=await call<Paged<Programme>>("catalogue-programmes?page="+page);
    if(serial!==programmeSeq.current)return;
@@ -43,7 +48,8 @@ export function NativeRewardCatalogue({token,onExpired}:{
  },[call]);
  const loadProducts=useCallback(async(programme:string,page:number,append:boolean)=>{
   const serial=++productSeq.current;setLoading(true);setError("");
-  if(!append){setItems([]);setExpanded(null);setMoreProducts(false);}
+  if(!append){stockSeq.current++;setStock(null);setStockError("");
+   setItems([]);setExpanded(null);setMoreProducts(false);}
   try{
    const data=await call<Paged<Reward>>("programmes/"+programme+"/products?page="+page);
    if(serial!==productSeq.current)return;
@@ -56,16 +62,29 @@ export function NativeRewardCatalogue({token,onExpired}:{
  useEffect(()=>{
   void loadProgrammes(1,false);
   const sub=AppState.addEventListener("change",state=>{
-   if(state!=="active"){programmeSeq.current++;productSeq.current++;setItems([]);setProgrammes([]);setExpanded(null);}
+   if(state!=="active"){programmeSeq.current++;productSeq.current++;stockSeq.current++;
+    setItems([]);setProgrammes([]);setStock(null);setExpanded(null);}
    else void loadProgrammes(1,false);
   });
-  return()=>{programmeSeq.current++;productSeq.current++;sub.remove();};
+  return()=>{programmeSeq.current++;productSeq.current++;stockSeq.current++;sub.remove();};
  },[loadProgrammes]);
  useEffect(()=>{
   if(!chosen)return;
   void loadProducts(chosen,1,false);
-  return()=>{productSeq.current++;};
+  return()=>{productSeq.current++;stockSeq.current++;};
  },[chosen,loadProducts]);
+ const openDetails=async(p:Reward)=>{
+  if(expanded===p.ref){stockSeq.current++;setExpanded(null);setStock(null);return;}
+  const serial=++stockSeq.current;setExpanded(p.ref);setStock(null);setStockError("");
+  if(p.type!=="PHYSICAL"||!canViewStock||!p.itemRef||!p.storeRef)return;
+  setStockBusy(true);
+  try{
+   const result=await call<Stock>("stock-preview/"+p.itemRef+"/"+p.storeRef);
+   if(serial===stockSeq.current)setStock(result);
+  }catch(e){if(serial===stockSeq.current)setStockError(e instanceof Error?e.message:
+    "Current stock status is unavailable.");}
+  finally{if(serial===stockSeq.current)setStockBusy(false);}
+ };
  const btn=(label:string,fn:()=>void,disabled=false)=>
   <Pressable accessibilityRole="button" disabled={disabled} accessibilityState={{disabled}}
    style={[s.button,disabled&&s.disabled]} onPress={fn}>
@@ -98,8 +117,19 @@ export function NativeRewardCatalogue({token,onExpired}:{
     <Text style={s.muted}>{p.status} · {p.eligibleAudience} ·
      {p.publicVisible?" Eligible catalogue":" Staff only"}</Text>
     {btn(expanded===p.ref?"Hide details":"Product details",
-     ()=>setExpanded(v=>v===p.ref?null:p.ref))}
-    {expanded===p.ref&&<Text>{p.description||"No description provided."}</Text>}
+     ()=>void openDetails(p))}
+    {expanded===p.ref&&<View style={{gap:8}}>
+     <Text>{p.description||"No description provided."}</Text>
+     {p.type==="PHYSICAL"&&<>
+      {!canViewStock&&<Text style={s.muted}>Stock details require warehouse-view permission.</Text>}
+      {canViewStock&&stockBusy&&<Text style={s.muted}>Checking current stock…</Text>}
+      {canViewStock&&!!stockError&&<Text style={s.error} accessibilityRole="alert">{stockError}</Text>}
+      {canViewStock&&stock&&!stockBusy&&<Text>
+       On hand: {stock.onHandQuantity} · Reserved: {stock.reservedQuantity}
+       {"\n"}Available: {stock.availableQuantity} · {stock.stockStatus==="AVAILABLE"?"In stock":"Out of stock"}
+      </Text>}
+     </>}
+    </View>}
    </View>)}
    {!items.length&&!loading&&!error&&<Text>No products recorded for this programme.</Text>}
    {moreProducts&&btn("Load more products",()=>void loadProducts(chosen,nextProduct,true),loading)}
