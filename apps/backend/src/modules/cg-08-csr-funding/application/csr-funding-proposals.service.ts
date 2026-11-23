@@ -17,7 +17,7 @@ const ref=(x:unknown):string=>{
 };
 const changed=()=>new ConflictException("The original funding proposal changed. Refresh and try again.");
 const missing=()=>new NotFoundException("The funding proposal is unavailable in your permitted branch.");
-type ProposalRow={id:string;branch_ref:string|null;csr_partner_id:string|null;status:string;version:number};
+type ProposalRow={id:string;branch_ref:string|null;csr_partner_id:string|null;project_ref:string|null;project_source_version:number|null;status:string;version:number};
 const projection='f.id AS ref,f.branch_ref AS "branchRef",b.name AS branch,'+
  'f.csr_partner_id AS "partnerRef",p.legal_name AS "partnerName",'+
  'f.project_ref AS "projectRef",f.project_source_version AS "projectVersion",'+
@@ -75,12 +75,35 @@ export class CsrFundingProposalsService{
  }
  private async original(tx:PoolClient,a:VerifiedFoundationActor,id:string,update=false){
   const p=(await tx.query<ProposalRow>(
-   "SELECT id,branch_ref,csr_partner_id,status,version FROM csr_funding_proposal "+
+   "SELECT id,branch_ref,csr_partner_id,project_ref,project_source_version,status,version FROM csr_funding_proposal "+
    "WHERE root_realm_id=$1 AND id=$2 "+(update?"FOR UPDATE":"FOR SHARE"),
    [a.realmId,ref(id)])).rows[0];
   if(!p)throw missing();
   await this.branches.projectBranch(tx,a,p.branch_ref);
   return p;
+ }
+ /** CG19 current-source authority for a proposal-specific, private funding file.
+  * The source, approval and finance modules remain the only respective masters.
+  * Call within CG19's short transaction; never around a storage-provider await. */
+ async guardFundingAgreement(tx:PoolClient,a:VerifiedFoundationActor,
+  proposalRef:string,sourceVersion:number|null,write:boolean){
+  await this.identity.assertCurrent(tx,a,write?"csr.partners.manage":"csr.partners.view");
+  const p=await this.original(tx,a,ref(proposalRef),write);
+  if(sourceVersion!==null&&p.version!==sourceVersion)throw changed();
+  if(write&&p.status!=="DRAFT"&&p.status!=="RETURNED")throw changed();
+  if(p.csr_partner_id!==null){
+   const sponsor=await this.partners.guardAgreement(tx,a,p.csr_partner_id,null,false);
+   if(sponsor.status!=="APPROVED"||
+    sponsor.branch_ref!==null&&sponsor.branch_ref!==p.branch_ref)
+    throw changed();
+  }
+  // A project-linked agreement may disclose protected project facts.
+  // The original CG05 read grant is required even to retrieve the file.
+  if(p.project_ref!==null){
+   await this.identity.assertCurrent(tx,a,"projects.view");
+   if(write)await assertCsrFundingProject(tx,a,p.project_ref,p.branch_ref,p.project_source_version!);
+  }
+  return {ref:p.id,version:p.version,status:p.status};
  }
  private async replay(tx:PoolClient,a:VerifiedFoundationActor,key:string,digest:string,
   action:"CREATE"|"EDIT",target?:string){
