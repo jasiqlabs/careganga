@@ -135,6 +135,7 @@ test("US002-QA05/06/08/11/18: six B07 tiles separate actual CG09 money from unav
   assert.ok(text.includes("Received · CG09 verified"));
   assert.ok(text.includes("Committed · CG03 approved"));
   assert.ok(text.includes("Utilization %"));
-  assert.ok(text.includes("Pending"));
+  assert.ok(text.includes("Utilized · CG09"));
+  assert.ok(text.includes("Available · CG09"));
  }
 });
