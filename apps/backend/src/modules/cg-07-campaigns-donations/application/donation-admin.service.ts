@@ -1,4 +1,4 @@
-import {BadRequestException,Inject,Injectable,NotFoundException} from "@nestjs/common";
+import {BadRequestException,ForbiddenException,Inject,Injectable,NotFoundException} from "@nestjs/common";
 import {readPrivateDonor} from "./donation-receipt-source.facade";
 import type {Pool} from "pg";
 import {DATABASE} from "../../../core/infrastructure/database.module";
@@ -8,7 +8,7 @@ const validate=(v:unknown)=>typeof v==="string"&&/^(ALL|REQUESTED|LINK_READY|PAY
 
 type Filter=Readonly<{
  status:string;q:string;offset:number;method:string;minMinor:string|null;maxMinor:string|null;
- from:string|null;to:string|null;campaign:string;cursorTime:string|null;cursorId:string|null}>;
+ from:string|null;to:string|null;campaign:string;branchRef:string;cursorTime:string|null;cursorId:string|null}>;
 const date=(raw:unknown):string|null=>{
  if(raw===undefined||raw==="")return null;
  if(typeof raw!=="string"||!/^\d{4}-\d{2}-\d{2}$/.test(raw)||
@@ -28,14 +28,16 @@ const minor=(raw:unknown):string|null=>{
 };
 const filters=(v:Record<string,unknown>):Filter=>{
  if(Object.keys(v).some(k=>!["status","q","offset","method","minAmount","maxAmount",
-  "dateFrom","dateTo","campaign","cursor"].includes(k)))
+  "dateFrom","dateTo","campaign","cursor","branchRef"].includes(k)))
   throw new BadRequestException("Unknown donation filter.");
  const status=v.status??"ALL",q=v.q??"",offset=Number(v.offset??0),
-  method=v.method??"ALL",campaign=v.campaign??"ALL";
+  method=v.method??"ALL",campaign=v.campaign??"ALL",branchRef=v.branchRef??"ALL";
  if((!validate(status)&&status!=="REFUNDED")||typeof q!=="string"||q.length>80||
   /[<>\u0000-\u001f\u007f]/.test(q)||!Number.isSafeInteger(offset)||offset<0||offset>5000||
   typeof method!=="string"||!["ALL","CASH","BANK","CHEQUE","NEFT","ONLINE"].includes(method)||
-  typeof campaign!=="string"||(campaign!=="ALL"&&!/^cg-camp-[0-9]{8}$/.test(campaign)))
+  typeof campaign!=="string"||(campaign!=="ALL"&&!/^cg-camp-[0-9]{8}$/.test(campaign))||
+   typeof branchRef!=="string"||
+   !/^(ALL|FOUNDATION|[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12})$/i.test(branchRef))
   throw new BadRequestException("Check donation filter options.");
  const from=date(v.dateFrom),to=date(v.dateTo);
  if(from&&to&&from>to)throw new BadRequestException("End date must not precede start date.");
@@ -57,7 +59,7 @@ const filters=(v:Record<string,unknown>):Filter=>{
    cursorTime=item.t;cursorId=item.id;
   }catch{throw new BadRequestException("Report cursor is invalid.");}
  }
- return {status,q:q.trim().toLowerCase(),offset,method,campaign,from,to,minMinor,maxMinor,cursorTime,cursorId};
+ return {status,q:q.trim().toLowerCase(),offset,method,campaign,branchRef,from,to,minMinor,maxMinor,cursorTime,cursorId};
 };
 const where=String.raw`
  WHERE d.root_realm_id=$1 AND ($2::boolean OR d.branch_ref=ANY($3::uuid[]))
@@ -75,6 +77,9 @@ const where=String.raw`
  AND ($11::date IS NULL OR d.created_at<($11::date+interval '1 day'))
  AND ($12='ALL' OR lower(c.code_norm)=$12)
 `;
+// The branch selector can only narrow the current CG02 actor permission.
+const branchSql=(n:number)=>" AND ($"+n+"::text='ALL' OR ($"+n+"::text='FOUNDATION' AND d.branch_ref IS NULL) OR d.branch_ref=$"+(n+1)+"::uuid)";
+const selected=(v:string)=>v==="ALL"||v==="FOUNDATION"?null:v;
 const csvCell=(raw:unknown)=>{
  const clean=String(raw??"").slice(0,256).replace(/[\u0000-\u001f\u007f]/g," ");
  const safe=/^[=+\-@]/.test(clean.trimStart())?"'"+clean:clean;
@@ -85,19 +90,29 @@ const csvCell=(raw:unknown)=>{
 export class DonationAdminService{
  constructor(@Inject(DATABASE)private readonly db:Pool,
   private readonly sessions:SessionService,private readonly branches:BranchSourceFacade){}
+ private async reportScope(bearer:string,branchRef:string){
+  const scope=await this.branches.financeReportScope(bearer,"finance.reports.view");
+  const active=await this.branches.financeBranches(bearer,"finance.reports.view");
+  if(branchRef==="FOUNDATION"&&!scope.all)
+   throw new ForbiddenException("Foundation-wide donations require administrator access.");
+  if(!["ALL","FOUNDATION"].includes(branchRef)&&
+   !active.some(x=>x.branchRef===branchRef))
+   throw new ForbiddenException("Choose an accessible active branch.");
+  return {scope,active};
+ }
  async list(bearer:string,input:Record<string,unknown>){
   const actor=await this.sessions.requireAction(bearer,"finance.reports.view");
   const f=filters(input);
-  const scope=await this.branches.financeReportScope(bearer,"finance.reports.view");
+  const {scope,active}=await this.reportScope(bearer,f.branchRef);
   const args=[actor.realmId,scope.all,scope.branchRefs,f.status,f.q,f.offset,f.method,
-   f.minMinor,f.maxMinor,f.from,f.to,f.campaign,f.cursorTime,f.cursorId];
+   f.minMinor,f.maxMinor,f.from,f.to,f.campaign,f.cursorTime,f.cursorId,f.branchRef,selected(f.branchRef)];
   const rows=await this.db.query<{
    donationNumber:string;amountMinor:string;currency:string;status:string;
-   method:string|null;campaignTitle:string|null;voucher:string|null;createdAt:Date;
+   method:string|null;campaignTitle:string|null;branchName:string|null;voucher:string|null;createdAt:Date;
    donationRef:string;refundMinor:string;receiptStatus:string;latestCorrectionNumber:string|null}>(
     "SELECT d.id AS \"donationRef\",d.donation_number AS \"donationNumber\",d.amount_minor::text AS \"amountMinor\","+
     "d.currency,d.source_status AS status,m.method,c.title AS \"campaignTitle\","+
-    "e.voucher_reference AS voucher,d.created_at AS \"createdAt\","+
+    "b.name AS \"branchName\",e.voucher_reference AS voucher,d.created_at AS \"createdAt\","+
     "coalesce((SELECT sum(r.amount_minor) FROM donation_refund_request r "+
     "JOIN journal j ON j.root_realm_id=r.root_realm_id AND j.id=r.reversal_journal_ref "+
     "WHERE r.root_realm_id=d.root_realm_id AND r.donation_id=d.id "+
@@ -109,32 +124,36 @@ export class DonationAdminService{
     "WHERE corr.root_realm_id=d.root_realm_id AND corr.donation_id=d.id "+
     "AND corr.status='ISSUED' ORDER BY corr.issued_at DESC,corr.id DESC LIMIT 1) "+
     "AS \"latestCorrectionNumber\" "+
-    "FROM donation d LEFT JOIN campaign c ON c.root_realm_id=d.root_realm_id AND c.id=d.campaign_id "+
+    "FROM donation d LEFT JOIN branch b ON b.root_realm_id=d.root_realm_id AND b.id=d.branch_ref "+
+    "LEFT JOIN campaign c ON c.root_realm_id=d.root_realm_id AND c.id=d.campaign_id "+
     "LEFT JOIN donation_manual_evidence e ON e.root_realm_id=d.root_realm_id AND e.donation_id=d.id "+
     "LEFT JOIN LATERAL (SELECT a.method FROM donation_payment_attempt a WHERE a.root_realm_id=d.root_realm_id AND a.donation_id=d.id ORDER BY a.created_at DESC,a.id DESC LIMIT 1) m ON true "+
-    where+" AND ($13::timestamptz IS NULL OR (d.created_at,d.id)<($13::timestamptz,$14::uuid)) ORDER BY d.created_at DESC,d.id DESC LIMIT 26 OFFSET $6",args);
+    where+branchSql(15)+" AND ($13::timestamptz IS NULL OR (d.created_at,d.id)<($13::timestamptz,$14::uuid)) ORDER BY d.created_at DESC,d.id DESC LIMIT 26 OFFSET $6",args);
   const summary=await this.db.query<{total:number;received:number;pending:number;failed:number;
    receivedMinor:string}>(
     "SELECT count(*)::int AS total,count(*) FILTER(WHERE source_status='RECEIVED_POSTED')::int AS received,"+
     "count(*) FILTER(WHERE source_status IN('REQUESTED','LINK_READY','PAYMENT_PENDING','VERIFIED_EXTERNAL','RECONCILIATION_PENDING'))::int AS pending,"+
     "count(*) FILTER(WHERE source_status IN('FAILED','EXPIRED'))::int AS failed,"+
     "coalesce(sum(amount_minor) FILTER(WHERE source_status='RECEIVED_POSTED'),0)::text AS \"receivedMinor\" "+
-    "FROM donation WHERE root_realm_id=$1 AND ($2::boolean OR branch_ref=ANY($3::uuid[]))",
-    [actor.realmId,scope.all,scope.branchRefs]);
+    "FROM donation WHERE root_realm_id=$1 AND ($2::boolean OR branch_ref=ANY($3::uuid[])) "+
+    "AND ($4::text='ALL' OR ($4::text='FOUNDATION' AND branch_ref IS NULL) OR branch_ref=$5::uuid)",
+    [actor.realmId,scope.all,scope.branchRefs,f.branchRef,selected(f.branchRef)]);
   const verifiedRefunds=await this.db.query<{minor:string;total:number}>(
     "SELECT coalesce(sum(r.amount_minor),0)::text AS minor,count(*)::int AS total "+
     "FROM donation_refund_request r "+
     "JOIN donation d ON d.root_realm_id=r.root_realm_id AND d.id=r.donation_id "+
     "JOIN journal j ON j.root_realm_id=r.root_realm_id AND j.id=r.reversal_journal_ref "+
     "WHERE r.root_realm_id=$1 AND ($2::boolean OR d.branch_ref=ANY($3::uuid[])) "+
+    "AND ($4::text='ALL' OR ($4::text='FOUNDATION' AND d.branch_ref IS NULL) OR d.branch_ref=$5::uuid) "+
     "AND r.status='FINANCE_REVERSED' AND j.status='POSTED' AND j.source_ref=r.id",
-    [actor.realmId,scope.all,scope.branchRefs]);
+    [actor.realmId,scope.all,scope.branchRefs,f.branchRef,selected(f.branchRef)]);
    const trends=await this.db.query<{month:string;grossMinor:string;refundMinor:string;netMinor:string}>(`
     WITH entries AS (
      SELECT j.posting_date AS day,d.amount_minor::numeric AS gross,0::numeric AS refund
      FROM donation d JOIN donation_finance_effect e ON e.root_realm_id=d.root_realm_id AND e.donation_id=d.id
      JOIN journal j ON j.root_realm_id=e.root_realm_id AND j.id=e.journal_id
      WHERE d.root_realm_id=$1 AND ($2::boolean OR d.branch_ref=ANY($3::uuid[]))
+      AND ($4::text='ALL' OR ($4::text='FOUNDATION' AND d.branch_ref IS NULL) OR d.branch_ref=$5::uuid)
       AND d.source_status='RECEIVED_POSTED' AND e.status='POSTED'
       AND j.status='POSTED' AND j.source_ref=d.id
       AND j.immutable_source_event_key=e.source_event_key
@@ -146,6 +165,7 @@ export class DonationAdminService{
       ON d.root_realm_id=r.root_realm_id AND d.id=r.donation_id
      JOIN journal j ON j.root_realm_id=r.root_realm_id AND j.id=r.reversal_journal_ref
      WHERE r.root_realm_id=$1 AND ($2::boolean OR d.branch_ref=ANY($3::uuid[]))
+      AND ($4::text='ALL' OR ($4::text='FOUNDATION' AND d.branch_ref IS NULL) OR d.branch_ref=$5::uuid)
       AND r.status='FINANCE_REVERSED' AND j.status='POSTED' AND j.source_ref=r.id
       AND j.posting_date>=date_trunc('month',current_date)-interval '11 months'
     )
@@ -153,14 +173,18 @@ export class DonationAdminService{
      sum(gross)::text AS "grossMinor",sum(refund)::text AS "refundMinor",
      (sum(gross)-sum(refund))::text AS "netMinor"
     FROM entries GROUP BY date_trunc('month',day) ORDER BY month ASC`,
-    [actor.realmId,scope.all,scope.branchRefs]);
+    [actor.realmId,scope.all,scope.branchRefs,f.branchRef,selected(f.branchRef)]);
    const refunded=BigInt(verifiedRefunds.rows[0]?.minor??"0");
    const gross=BigInt(summary.rows[0]?.receivedMinor??"0");
    const last=rows.rows.slice(0,25).at(-1);
    const nextCursor=rows.rows.length>25&&last?
     Buffer.from(JSON.stringify({t:last.createdAt.toISOString(),id:last.donationRef})).toString("base64url"):null;
    return {items:rows.rows.slice(0,25),hasMore:rows.rows.length>25,offset:f.offset,nextCursor,
-   summary:{...summary.rows[0],verifiedRefundMinor:refunded.toString(),
+   branchSelection:f.branchRef,branchOptions:[
+      {value:"ALL",label:scope.all?"Foundation and all branches":"All permitted branches"},
+      ...(scope.all?[{value:"FOUNDATION",label:"Foundation-wide only"}]:[]),
+      ...active.map(x=>({value:x.branchRef,label:x.name}))],
+    summary:{...summary.rows[0],verifiedRefundMinor:refunded.toString(),
      verifiedRefundCount:verifiedRefunds.rows[0]?.total??0,
      netReceivedMinor:(gross-refunded).toString()},monthlyTrend:trends.rows,message:"Only original CG09-confirmed posted receipts count as received. Pending requests are excluded."};
  }
@@ -170,9 +194,9 @@ export class DonationAdminService{
   const actor=await this.sessions.requireAction(bearer,"finance.reports.view");
   await this.sessions.requireAction(bearer,"documents.files.view");
   const f=filters({...input,offset:"0"});
-  const scope=await this.branches.financeReportScope(bearer,"finance.reports.view");
+  const {scope}=await this.reportScope(bearer,f.branchRef);
   const args=[actor.realmId,scope.all,scope.branchRefs,f.status,f.q,0,f.method,
-   f.minMinor,f.maxMinor,f.from,f.to,f.campaign];
+   f.minMinor,f.maxMinor,f.from,f.to,f.campaign,f.branchRef,selected(f.branchRef)];
   const records=await this.db.query<{donation_number:string;amount_minor:string;
     currency:string;source_status:string;method:string|null;title:string|null;
     receipt_number:string|null;correction_number:string|null;created_on:string;refund_minor:string}>(`
@@ -191,7 +215,7 @@ export class DonationAdminService{
       ORDER BY a.created_at DESC,a.id DESC LIMIT 1) m ON true
     LEFT JOIN cg19_donation_receipt_document r ON r.root_realm_id=d.root_realm_id
       AND r.donation_id=d.id AND r.status='ISSUED'
-  `+where+" AND $6::integer=0 ORDER BY d.created_at DESC,d.id DESC LIMIT 501",args);
+  `+where+branchSql(13)+" AND $6::integer=0 ORDER BY d.created_at DESC,d.id DESC LIMIT 501",args);
   if(records.rows.length>500)throw new BadRequestException(
    "Narrow the dates or campaign to export up to 500 records per report.");
   const lines=[["Donation number","Campaign","Requested amount INR","Verified gross INR",
