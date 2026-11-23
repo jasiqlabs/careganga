@@ -97,11 +97,18 @@ export class DonationRefundService{
  async options(bearer:string,ref:string){
   if(!ID.test(ref))throw new BadRequestException("Choose an original refund request.");
   return this.run(bearer,async(tx,a)=>{
+   // Parent donation first, then child refund: consistent lock order with
+   // immutable refund reservation and independent finance confirmation.
+   const pointer=(await tx.query<{donation_id:string}>(
+    "SELECT donation_id FROM donation_refund_request WHERE root_realm_id=$1 AND id=$2",
+    [a.realmId,ref])).rows[0];
+   if(!pointer)throw new NotFoundException("Original refund request unavailable.");
+   await this.current(tx,a,pointer.donation_id);
    const row=(await tx.query<{donation_id:string;status:string;amount_minor:string;settlement_method:string}>(
     "SELECT donation_id,status,amount_minor::text,settlement_method FROM donation_refund_request "+
     "WHERE root_realm_id=$1 AND id=$2 FOR SHARE",[a.realmId,ref])).rows[0];
-   if(!row||row.status!=="REQUESTED")throw new NotFoundException("Current refund request unavailable.");
-   await this.current(tx,a,row.donation_id);
+   if(!row||row.status!=="REQUESTED"||row.donation_id!==pointer.donation_id)
+    throw new NotFoundException("Current refund request unavailable.");
    const years=await tx.query<{value:string;label:string}>(
     "SELECT id AS value,name AS label FROM financial_year WHERE root_realm_id=$1 "+
     "AND status='OPEN' ORDER BY start_on DESC,id LIMIT 21",[a.realmId]);
@@ -140,15 +147,20 @@ export class DonationRefundService{
   await this.sessions.limitFoundationRootProof(actor);
   return this.run(bearer,async(tx,a)=>{
    await this.owner.verifyReviewer(tx,a,"approvals.review",true);
+   const pointer=(await tx.query<{donation_id:string}>(
+    "SELECT donation_id FROM donation_refund_request WHERE root_realm_id=$1 AND id=$2",
+    [a.realmId,refundInput])).rows[0];
+   if(!pointer)throw new NotFoundException("Original refund request unavailable.");
+   const d=await this.current(tx,a,pointer.donation_id);
    const r=(await tx.query<Refund>(
     "SELECT id,donation_id,amount_minor::text,reason,request_key,request_digest,"+
     "requested_by,status,approval_request_key,reversal_journal_ref,settlement_method "+
     "FROM donation_refund_request WHERE root_realm_id=$1 AND id=$2 FOR UPDATE",
     [a.realmId,refundInput])).rows[0];
-   if(!r)throw new NotFoundException("Original refund request unavailable.");
+   if(!r||r.donation_id!==pointer.donation_id)
+    throw new NotFoundException("Original refund request unavailable.");
    if(r.settlement_method!=="CASH")throw new ConflictException("Online and bank refunds cannot be attested as physical cash.");
    if(r.requested_by===a.accountId)throw new ForbiddenException("An independent Foundation reviewer must confirm this physical cash refund.");
-   const d=await this.current(tx,a,r.donation_id);
    const digest=hash(["CG07_CASH_REFUND",r.id,r.request_digest,r.amount_minor,
     x.cashVoucher,x.yearRef,x.postingDate]);
    if(r.status==="FINANCE_REVERSED"){
