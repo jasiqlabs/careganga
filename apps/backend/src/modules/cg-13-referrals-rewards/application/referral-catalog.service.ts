@@ -623,6 +623,60 @@ export class ReferralCatalogService{
     notice:"Verified referral points and source-recorded digital reward requests only; held rewards are not delivered."};
   },true);
  }
+ /** B14/B15: genuine source-backed redemption history, paged and scoped
+  * by the CURRENT original CG02 branch access. No person contact, UUID, CG12
+  * supplier/warehouse private data or fictitious fulfillment is returned.
+  */
+ async adminRedemptions(bearer:string,programmeInput:string,
+  pageInput?:string,statusInput?:string,searchInput?:string,
+  fromInput?:string,toInput?:string){
+  const programme=ref(programmeInput),page=catalogPage(pageInput);
+  const status=statusInput??"ALL";
+  if(!["ALL","HELD","CANCELLED","FULFILLMENT_PENDING","FULFILLED"].includes(status))
+   throw bad("status");
+  const search=optional(searchInput,"search",80).toLowerCase();
+  const day=(v:string|undefined)=>{
+   if(!v)return null;
+   if(!/^\\d{4}-\\d{2}-\\d{2}$/.test(v)||
+    Number.isNaN(Date.parse(v+"T00:00:00Z"))||
+    new Date(v+"T00:00:00Z").toISOString().slice(0,10)!==v)
+    throw bad("date");
+   return v;
+  };
+  const from=day(fromInput),to=day(toInput);
+  if(from&&to&&from>to)throw bad("date");
+  return this.run(bearer,"rewards.catalog.view",async(tx,a)=>{
+   await this.root(tx,a);
+   await this.program(tx,a,programme);
+   const scope=await this.inventory.rewardStoreScope(tx,a);
+   const rows=await tx.query<{
+    kind:string;name:string;productName:string;pointsCost:string;
+    status:string;requestedAt:string
+   }>(
+    "SELECT wallet.referrer_kind AS kind,"+
+    "COALESCE(m.display_name,v.display_name) AS name,"+
+    "product.name AS \"productName\",r.points_cost::text AS \"pointsCost\","+
+    "r.state AS status,r.requested_at AS \"requestedAt\" "+
+    "FROM redemption r JOIN points_account wallet "+
+    "ON wallet.root_realm_id=r.root_realm_id AND wallet.id=r.points_account_id "+
+    "JOIN reward_product_revision product ON product.root_realm_id=r.root_realm_id "+
+    "AND product.product_id=r.product_id AND product.revision=r.product_revision "+
+    "LEFT JOIN member m ON m.root_realm_id=wallet.root_realm_id "+
+    "AND m.id=wallet.referrer_relationship_ref AND wallet.referrer_kind='MEMBER' "+
+    "LEFT JOIN volunteer v ON v.root_realm_id=wallet.root_realm_id "+
+    "AND v.id=wallet.referrer_relationship_ref AND wallet.referrer_kind='VOLUNTEER' "+
+    "WHERE r.root_realm_id=$1 AND r.programme_id=$2 "+
+    "AND ($3::boolean OR COALESCE(m.branch_ref,v.branch_ref)=ANY($4::uuid[])) "+
+    "AND ($5::text='ALL' OR r.state=$5) "+
+    "AND ($6::text='' OR strpos(lower(COALESCE(m.display_name,v.display_name)||' '||product.name),$6)>0) "+
+    "AND ($7::date IS NULL OR (r.requested_at AT TIME ZONE 'Asia/Kolkata')::date >= $7::date) "+
+    "AND ($8::date IS NULL OR (r.requested_at AT TIME ZONE 'Asia/Kolkata')::date <= $8::date) "+
+    "ORDER BY r.requested_at DESC,r.id DESC LIMIT 26 OFFSET $9",
+    [a.realmId,programme,scope.full,scope.branches,status,search,from,to,(page-1)*25]);
+   return {items:rows.rows.slice(0,25),hasMore:rows.rows.length>25,page,
+    notice:"Statuses come from verified original redemption and immutable points holds, never from a requested fulfillment flag."};
+  },true);
+ }
  async stockOptions(bearer:string){
   return this.run(bearer,"rewards.catalog.manage",async(tx,a)=>{
    await this.root(tx,a);
