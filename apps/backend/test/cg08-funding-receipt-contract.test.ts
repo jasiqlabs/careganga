@@ -93,3 +93,32 @@ test("US002-QA16/18/19: invalidated proof/reversal is NOT current bank receipt o
  assert.ok(sql.includes("original.id AND reversal.posting_kind='REVERSAL'"));
  assert.doesNotMatch(src,/INSERT INTO finance_budget_event/);
 });
+
+test("US002-QA05/06/08/11/18: six B07 tiles separate actual CG09 money from unavailable allocations",()=>{
+ const sourceOwner=funding(),financeOwner=finance();
+ const web=read("../web/src/features/csr/csr-funding-workspace.tsx");
+ const native=read("../android-internal/src/features/csr/native-csr-funding.tsx");
+ for(const value of [
+  'financeReportScope(bearer,"finance.reports.view")',
+  'const all=scope.all&&financeScope.all',
+  'csrBranches.filter(x=>financeScope!.branchRefs.includes(x))',
+  'this.receipts.dashboardSummary(tx,a,',
+  'summary:{...summary,verifiedFinance}'
+ ])assert.ok(sourceOwner.includes(value),value);
+ for(const value of [
+  "WITH selected AS MATERIALIZED",
+  "f.status='APPROVED'",
+  "finance_csr_verified_receipt_link",
+  "rec.status='VERIFIED'",
+  "reversal.reversal_of_id=j.id",
+  "file.revoked_at IS NULL",
+  "allocatedMinor:null,utilizedMinor:null,availableMinor:null,utilizationPercent:null"
+ ])assert.ok(financeOwner.includes(value),value);
+ for(const text of [web,native]){
+  assert.ok(text.includes("Total Fund / CSR requested"));
+  assert.ok(text.includes("Received · CG09 verified"));
+  assert.ok(text.includes("Committed · CG03 approved"));
+  assert.ok(text.includes("Utilization %"));
+  assert.ok(text.includes("Pending"));
+ }
+});
