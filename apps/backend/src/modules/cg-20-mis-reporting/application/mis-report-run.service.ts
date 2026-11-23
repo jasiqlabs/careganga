@@ -26,6 +26,7 @@ type Row={
  safe_request:SafeReportRequest;state:string;artifact_ref:string|null;
  format:ReportFormat|null;saved_ref:string|null;definition_revision:number|null;
  source_as_of:Date|null;result_row_count:number|null;
+ original_scope_all:boolean|null;original_scope_branch_refs:string[]|null;
  created_at:Date;updated_at:Date;expires_at:Date;
 };
 type NewRun={
@@ -81,6 +82,15 @@ export class MisReportRunService{
    message:"This report is not available."});
   return {row,actor};
  }
+ private async validateOriginalScope(token:string,row:Row){
+  if(!row.source_key.startsWith("FINANCE_"))return;
+  if(row.original_scope_all===null||row.original_scope_branch_refs===null)
+   throw new ForbiddenException("The original report scope is not verified. Create a current report.");
+  const scope=await this.sources.originalFinanceScope(token,row.safe_request);
+  if(!scope||row.original_scope_all&&!scope.all||
+    !scope.all&&row.original_scope_branch_refs.some(ref=>!scope.branchRefs.includes(ref)))
+   throw new ForbiddenException("Report branch access changed. Create a current report.");
+ }
  private async validateSource(token:string,row:Row){
   if(row.saved_ref){
    const q=await this.db.query<{state:string;current_revision:number}>(
@@ -91,9 +101,11 @@ export class MisReportRunService{
     throw new NotFoundException({code:"MIS_RUN_STALE",
      message:"Saved report changed or was retired. Create a fresh report."});
   }
+  await this.validateOriginalScope(token,row);
   // Current original CG-09/CG-15 row, field, branch, center and purpose grants,
   // including sensitive small population suppression.
   const preview=await this.sources.preview(token,row.safe_request);
+  await this.validateOriginalScope(token,row);
   if(preview.state==="PARTIAL")
    throw new BadRequestException({code:"MIS_RUN_PARTIAL",
     message:"This source is incomplete. Narrow filters before exporting."});
@@ -122,6 +134,7 @@ export class MisReportRunService{
   if(preview.nextOffset!==null)
    throw new BadRequestException({code:"MIS_RUN_LIMIT",field:"rows",
     message:"This report has more than 50 entries. Apply a narrower filter first."});
+  const originalScope=await this.sources.originalFinanceScope(token,request);
   const identity=digest({request,format:input.format,savedRef,revision});
   const tx=await this.db.connect();let active=false,row:Row,isNew=false;
   try{
@@ -202,7 +215,15 @@ export class MisReportRunService{
      canDownload:false,message:"File status is unconfirmed. Refresh before retrying."};
    }
    // A role/scope revoked during object storage must prevent READY response.
-   const post=await this.validateSource(token,claimed.rows[0]);
+   // A newly queued row has no persisted proof until READY: compare against
+   // the exact source-granted branches captured before the original render.
+   const currentScope=await this.sources.originalFinanceScope(token,request);
+   if(originalScope&&(!currentScope||
+     originalScope.all&&!currentScope.all||
+     !currentScope.all&&originalScope.branchRefs.some(ref=>
+      !currentScope.branchRefs.includes(ref))))
+    throw new ForbiddenException("Report branch access changed during generation.");
+   const post=await this.sources.preview(token,claimed.rows[0].safe_request);
    // Re-read the original source after CG19 finishes the protected file.
    // If authorization, consent or source data changed, old bytes must not
    // become downloadable even though the storage write was confirmed.
@@ -215,10 +236,11 @@ export class MisReportRunService{
      message:"The source changed during export. Create a fresh report."});
    const done=await this.db.query<Row>(
     "UPDATE cg20_report_run SET state='READY',artifact_ref=$3,"+
-    "source_as_of=$4,result_row_count=$5,updated_at=now() "+
+    "source_as_of=$4,result_row_count=$5,original_scope_all=$6,"+
+    "original_scope_branch_refs=$7::uuid[],updated_at=now() "+
     "WHERE root_realm_id=$1 AND id=$2 AND state='RUNNING' RETURNING *",
     [actor.realmId,row.id,artifact.artifactRef,fresh.sourceAsOf??null,
-     fresh.rows.length]);
+     fresh.rows.length,originalScope?.all??null,originalScope?.branchRefs??null]);
    if(!done.rows[0])throw new ConflictException({code:"MIS_RUN_CHANGED"});
    return {...this.summary(done.rows[0]),replayed:!isNew};
   }catch(error){
