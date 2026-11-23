@@ -3,7 +3,7 @@ import {useCallback,useEffect,useRef,useState} from "react";
 type Rel="MEMBER"|"VOLUNTEER";
 type Balance={earnedPoints:string;reversedPoints:string;heldPoints:string;
  spentPoints:string;availablePoints:string;adjustmentDuePoints:string;
- qualifiedReferrals:number;currentRankName:string|null;notice:string};
+ qualifiedReferrals:number;pendingReferrals:string;currentRankName:string|null;notice:string};
 type Entry={status:"QUALIFIED"|"REVERSED";points:string;recordedAt:string;rank:string|null};
 type History={items:Entry[];hasMore:boolean;page:number};
 type Rank={rank:string|null;qualifiedReferrals:number;
@@ -79,6 +79,7 @@ export function PublicReferralPoints({programmeRef,relationship}:{
     <div><dt>Held</dt><dd>{formatted(balance.heldPoints)}</dd></div>
     <div><dt>Reversed</dt><dd>{formatted(balance.reversedPoints)}</dd></div>
     <div><dt>Verified referrals</dt><dd>{balance.qualifiedReferrals}</dd></div>
+    <div><dt>Qualification pending</dt><dd>{formatted(balance.pendingReferrals)}</dd></div>
     <div><dt>Current rank</dt><dd>{rank?.rank??"Not ranked yet"}</dd></div>
    </dl>
    {balance.adjustmentDuePoints!=="0"&&<p role="status">
