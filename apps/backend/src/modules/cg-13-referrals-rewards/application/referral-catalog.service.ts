@@ -679,7 +679,7 @@ export class ReferralCatalogService{
  async adminReferralRecords(bearer:string,programmeInput:string,
   kindInput?:string,pageInput?:string,statusInput?:string,
   fromInput?:string,toInput?:string,searchInput?:string,
-  locationInput?:string,rankInput?:string,sortInput?:string){
+  locationInput?:string,rankInput?:string,sortInput?:string,branchInput?:string){
   const programme=ref(programmeInput),page=catalogPage(pageInput);
   const kind=kindInput??"MEMBER",status=statusInput??"ALL";
   if(kind!=="MEMBER"&&kind!=="VOLUNTEER")throw bad("kind");
@@ -689,6 +689,7 @@ export class ReferralCatalogService{
   const selectedRank=optional(rankInput,"rank",120);
   const sort=sortInput??"REFERRALS";
   if(!["REFERRALS","RECENT"].includes(sort))throw bad("sort");
+  const selectedBranch=branchInput?ref(branchInput,"branchRef"):null;
   const day=(value:string|undefined)=>{
    if(!value)return null;
    if(!/^\d{4}-\d{2}-\d{2}$/.test(value)||
@@ -705,6 +706,19 @@ export class ReferralCatalogService{
    await this.root(tx,a);await this.program(tx,a,programme);
    await this.identity.assertCurrent(tx,a,rosterAction);
    const scope=await this.inventory.rewardStoreScope(tx,a);
+   if(selectedBranch&&!scope.full&&!scope.branches.includes(selectedBranch))
+    throw new ForbiddenException("This current Foundation branch is not assigned to your role.");
+   if(selectedBranch){
+    const live=await tx.query(
+     "SELECT id FROM branch WHERE root_realm_id=$1 AND id=$2 "+
+     "AND status='ACTIVE' FOR SHARE",[a.realmId,selectedBranch]);
+    if(!live.rows[0])
+     throw new ForbiddenException("The selected branch is unavailable or inactive.");
+   }
+   const branches=await tx.query<{ref:string;name:string}>(
+    "SELECT id AS ref,name FROM branch WHERE root_realm_id=$1 AND status='ACTIVE' "+
+    "AND ($2::boolean OR id=ANY($3::uuid[])) ORDER BY name,id LIMIT 201",
+    [a.realmId,scope.full,scope.branches]);
    const fromWallet=" FROM points_account wallet "+
     "LEFT JOIN member m ON m.root_realm_id=wallet.root_realm_id "+
     "AND m.id=wallet.referrer_relationship_ref AND wallet.referrer_kind='MEMBER' "+
@@ -747,10 +761,11 @@ export class ReferralCatalogService{
     "AND ($7::text='ALL' OR "+eligibility+"=$7) "+
     "AND ($8::text='' OR strpos("+locationSql+",$8)>0) "+
     "AND ($9::text='' OR wallet.current_rank_name=$9) "+
+    "AND ($10::uuid IS NULL OR COALESCE(m.branch_ref,v.branch_ref)=$10::uuid) "+
     (sort==="RECENT"?"ORDER BY wallet.updated_at DESC,wallet.id DESC LIMIT 15":
      "ORDER BY wallet.qualified_referrals DESC,"+
      "(wallet.earned_points-wallet.reversed_points) DESC,wallet.id DESC LIMIT 15"),
-    [a.realmId,programme,kind,scope.full,scope.branches,search,status,location,selectedRank]);
+    [a.realmId,programme,kind,scope.full,scope.branches,search,status,location,selectedRank,selectedBranch]);
    const recent=await tx.query<{status:string;points:string;
     recordedAt:string;name:string;participantNumber:string;rank:string|null}>(
     "SELECT event.event_kind AS status,event.points_delta::text AS points,"+
@@ -785,11 +800,13 @@ export class ReferralCatalogService{
     "AND ($9::date IS NULL OR (event.source_recorded_at AT TIME ZONE 'Asia/Kolkata')::date <= $9::date) "+
     "AND ($10::text='' OR strpos("+locationSql+",$10)>0) "+
     "AND ($11::text='' OR wallet.current_rank_name=$11) "+
+    "AND ($13::uuid IS NULL OR COALESCE(m.branch_ref,v.branch_ref)=$13::uuid) "+
     "ORDER BY event.source_recorded_at DESC,event.id DESC LIMIT 26 OFFSET $12",
-    [...args,(page-1)*25]);
-   return {kind,topReferrers:top.rows,
+    [...args,(page-1)*25,selectedBranch]);
+   return {kind,topReferrers:top.rows,availableBranches:branches.rows.slice(0,200),
+    branchesTruncated:branches.rows.length>200,selectedBranch,
     recentEvents:recent.rows.slice(0,25),hasMore:recent.rows.length>25,page,
-    notice:"The selected-rank top referrers use current all-time points; date range filters only recent source events. City/district, current eligibility and original authorized CG02 branch scope apply to both."};
+    notice:"The selected-rank top referrers use current all-time points; date range filters only recent source events. City/district, selected ACTIVE CG02 branch and current eligibility scope both sources."};
   },true);
  }
  /** B14/B15: genuine source-backed redemption history, paged and scoped
