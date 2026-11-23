@@ -467,7 +467,7 @@ export function ReferralRewardsWorkspace({canViewPolicy,canViewRewards,canManage
         {cat}</button>)}
       </div>
       <input type="search" aria-label="Search reward products" placeholder="Search products…"
-       value={searchProduct} onChange={e=>setSearchProduct(e.target.value)}
+       maxLength={100} value={searchProduct} onChange={e=>setSearchProduct(e.target.value)}
        style={{...css.control,minHeight:35,maxWidth:225}}/>
      </div>
      <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(206px,1fr))",gap:12}}>
@@ -503,9 +503,10 @@ export function ReferralRewardsWorkspace({canViewPolicy,canViewRewards,canManage
      {productsLoading&&<p role="status">Loading current reward products…</p>}
      {categoriesTruncated&&<p style={{fontSize:12}}>More categories exist. Search
       the full catalogue to find products outside the displayed category choices.</p>}
-     {!productsLoading&&!orderedProducts.length&&<p>{products.length?
-       "No recorded product matches this search or category.":
-       "No authentic product yet. Digital rewards require no warehouse."}</p>}
+     {!productsLoading&&!orderedProducts.length&&<p>{products.length||
+      appliedSearch||categoryFilter!=="All"?
+       "No products match the current search or category.":
+       "No rewards are recorded for this programme yet."}</p>}
     </section>:<section style={css.panel}>
      <h3 style={{margin:0}}>Volunteer & Member Redemptions</h3>
      <p style={{fontSize:13}}>Redemption history will appear when eligible members and volunteers have
