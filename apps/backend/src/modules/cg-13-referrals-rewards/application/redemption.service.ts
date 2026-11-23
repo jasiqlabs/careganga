@@ -32,7 +32,8 @@ const parse=(raw:unknown):Request=>{
  const x=obj(raw,["programmeRef","productRef","relationship","expectedProductVersion","requestKey"]);
  if(x.relationship!=="MEMBER"&&x.relationship!=="VOLUNTEER")
   throw new BadRequestException("Choose your verified relationship.");
- if(!Number.isSafeInteger(x.expectedProductVersion)||Number(x.expectedProductVersion)<1
+ if(typeof x.expectedProductVersion!=="number"||
+  !Number.isSafeInteger(x.expectedProductVersion)||x.expectedProductVersion<1
   ||Number(x.expectedProductVersion)>2147483647)
   throw new BadRequestException("Refresh the current reward price before confirming.");
  return {programmeRef:ref(x.programmeRef),productRef:ref(x.productRef),
