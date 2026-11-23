@@ -135,9 +135,9 @@ export function NativeCsrFundingBudgetPanel({token,proposalRef,version,onExpired
       </View>}
      {kind==="DEALLOCATE"&&<View style={styles.panel}>
       <Text style={styles.title}>Original allocation being corrected</Text>
-      {allocations.map(a=>pick("Unspent "+money(a.remainingMinor),
+      {allocations.map(a=>pick("Uncorrected original "+money(a.remainingMinor),
        original===a.allocationRef,()=>setOriginal(a.allocationRef),!!pending))}
-      {!allocations.length&&<Text style={styles.note}>No unspent original allocation available.</Text>}
+      {!allocations.length&&<Text style={styles.note}>No original allocation remains uncorrected.</Text>}
      </View>}
      <Pressable accessibilityRole="button"
       accessibilityState={{disabled:busy||!pending&&(!budget||kind!=="UTILIZE"&&!minor(rupees)||
