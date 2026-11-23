@@ -51,7 +51,7 @@ function setup({available="900",product=true,existing=false,
    return {rows:[{exists:true}],rowCount:1};
   if(sql.includes("UPDATE redemption SET state='CANCELLED'"))
    return {rows:[],rowCount:1};
-  if(sql.includes("FROM redemption r ")&&sql.includes("JOIN reward_product p"))
+  if(sql.includes("FROM redemption r ")&&sql.includes("JOIN reward_product_revision p"))
    return {rows:[{ref:REDEMPTION,state:"HELD",productName:"Verified digital badge",
     pointsCost:"600",requestedAt:"2026-11-23T10:00:00Z",revision:1}],rowCount:1};
   return {rows:[],rowCount:1};
@@ -140,6 +140,7 @@ describe("CG13 US003 digital points hold/cancel contracts (mock only; no real PG
   const listing=f.seen.find(x=>x.sql.includes('AS "productName"'));
   assert.ok(listing);assert.deepEqual(listing.params,[R,ACCOUNT,25]);
   assert.match(listing.sql,/r\.recipient_account_ref=\$2/);
+  assert.match(listing.sql,/p\.revision=r\.product_revision/);
  });
  test("source migrations enforce original same-ledger projection and fail closed on fulfillment",()=>{
   const ledger=readFileSync("db/migrations/3506_cg13_us002_verified_points_rank_ledger.sql","utf8");
