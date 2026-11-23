@@ -4,7 +4,7 @@ import {careGangaTheme as t} from "../../../../../packages/design-tokens/src/ind
 import {memberInvoke} from "../membership/member-native-api";
 type Kind="MEMBER"|"VOLUNTEER";
 type Balance={earnedPoints:string;reversedPoints:string;heldPoints:string;
- availablePoints:string;qualifiedReferrals:number;currentRankName:string|null;
+ availablePoints:string;qualifiedReferrals:number;pendingReferrals:string;currentRankName:string|null;
  adjustmentDuePoints:string};
 type Entry={status:"QUALIFIED"|"REVERSED";points:string;recordedAt:string;rank:string|null};
 type History={items:Entry[];page:number;hasMore:boolean};
@@ -67,6 +67,7 @@ export function NativeReferralPoints({token,onExpired,programmeRef,relationship}
    <Text style={s.text}>Held: {display(balance.heldPoints)}</Text>
    <Text style={s.text}>Reversed: {display(balance.reversedPoints)}</Text>
    <Text style={s.text}>Verified referrals: {balance.qualifiedReferrals}</Text>
+   <Text style={s.text}>Qualification pending: {display(balance.pendingReferrals)}</Text>
    <Text style={s.text}>Current rank: {rank?.rank??"Not ranked yet"}</Text>
    {balance.adjustmentDuePoints!=="0"&&<Text style={s.sub}>
     Adjustment under review: {display(balance.adjustmentDuePoints)} points</Text>}
