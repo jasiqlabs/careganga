@@ -82,3 +82,26 @@ test("US003-QA05/06/20: original Foundation Admin and Internal Android screen bo
    assert.ok(text.includes(x),x);
  }
 });
+
+test("US003-QA13/18: public partner attribution stays under original CG08 rights plus independent CG18 editorial approval",()=>{
+ const partners=src("src/modules/cg-08-csr-funding/application/csr-partner-public-source.ts");
+ const cms=src("src/modules/cg-18-cms-public-content/application/cms-editorial.service.ts");
+ const publicPage=src("../web/src/app/collaboration/page.tsx");
+ const publicSource=src("../web/src/features/cms-public-content/cms-public-source.ts");
+ for(const x of [
+  "p.status='APPROVED'","r.state='AUTHORIZED'",
+  "s.evidence_file_id=r.evidence_file_id",
+  "f.scan_status='CLEAN_VERIFIED'","f.revoked_at IS NULL",
+  "i.status='VALIDATED'","c.status='OWNER_COMPLETED'",
+  "r.version AS \"rightsVersion\"",
+  "currentCards(db:Pool|PoolClient"
+ ])assert.ok(partners.includes(x),x);
+ for(const x of [
+  "partnerRevisionCurrent","this.csrPartners.currentCards",
+  "kind===\"PARTNERS\"","PARTNER_CARDS"
+ ])assert.ok(cms.includes(x),x);
+ assert.ok(publicPage.includes('publishedCmsPage("collaboration")'));
+ assert.ok(publicPage.includes("safeCards"));
+ assert.ok(publicSource.includes('source.kind==="PARTNERS"&&slug!=="collaboration"'));
+ assert.ok(!publicPage.includes("finance_csr_verified_receipt_link"));
+});
