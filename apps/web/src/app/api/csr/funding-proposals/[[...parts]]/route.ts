@@ -17,7 +17,8 @@ async function proxy(req:NextRequest,ctx:Context,method:"GET"|"POST"|"PATCH"){
    method==="GET"&&["eligible-receipts","budgets"].includes(parts[2])||
    method==="POST"&&["receipts","budget-effects"].includes(parts[2])))||
   (parts.length===5&&UUID.test(parts[0])&&parts[1]==="finance"&&
-   parts[2]==="budgets"&&UUID.test(parts[3])&&parts[4]==="expenses"&&method==="GET");
+   parts[2]==="budgets"&&UUID.test(parts[3])&&
+   ["expenses","allocations"].includes(parts[4])&&method==="GET");
  if(!allowed)return reply({message:"The original CSR funding action is unavailable."},404);
  if(method!=="GET"&&req.headers.get("origin")!==req.nextUrl.origin)
   return reply({message:"Save funding through the authenticated Foundation panel."},403);
@@ -43,6 +44,12 @@ async function proxy(req:NextRequest,ctx:Context,method:"GET"|"POST"|"PATCH"){
    for(const key of ["q","status","branchRef","offset"])
     if(req.nextUrl.searchParams.has(key))
      url.searchParams.set(key,req.nextUrl.searchParams.get(key)!);
+  if(method==="GET"&&parts.length===5&&parts[4]==="allocations"){
+   const party=req.nextUrl.searchParams.get("partyKind");
+   if(party!=="CSR"&&party!=="FOUNDATION")
+    return reply({message:"Choose the actual funding share."},400);
+   url.searchParams.set("partyKind",party);
+  }
   const res=await fetch(url,{method,body,cache:"no-store",signal:AbortSignal.timeout(15000),
    headers:{Authorization:"Bearer "+session,...(body?{"Content-Type":"application/json"}:{})}});
   const result:unknown=await res.json().catch(()=>null);
