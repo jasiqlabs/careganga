@@ -292,3 +292,8 @@ The existing authorized Internal Android reviewer can explicitly open the **same
 | US-001-QA20 | Web/CG01/CG02/CG03/CG19/CG08 full route authored, private native parity, CG18 safe public leg absent; no compiled or manual evidence | SOURCE_GAP (CG18 publication leg and final QA) | NOT_RUN |
 
 **Source completion gate:** US-001 is **NOT SOURCE_COMPLETE** because original CG18 controlled public partner attribution and original client B02/B03–B08 exact UI fidelity remain unclosed; runtime and independent source reviewer remain separate later gates. No CG07 parent/main merge. **US-002 and US-003 remain NOT_STARTED** in this checkpoint. All 60 original scenarios remain unchanged. No CI/GitHub Actions or new ticket IDs.
+
+
+### 23-Nov-2026 — CG18 original `/collaboration` receiving-page structure (safe source only)
+
+US001/QA05/06/16/18/20 original public corporate-partner layout receives dark-green hero, Why Partner cards, Meet Our Partners section, healthcare service partner separation, Partner With Us/Let's Collaborate CTAs and mobile-responsive styles on existing `apps/web/src/app/collaboration/page.tsx`; no logos, fake Milaap/Ketto endorsement, proof-free claims or private contact. This **does not yet fulfill dynamic CG08→CG18 approved partner/right/media CMS projection**, which remains SOURCE_GAP. Actual original screenshots/PNG QA NOT_RUN. No new module/issue or CSR Admin native/public identity.
