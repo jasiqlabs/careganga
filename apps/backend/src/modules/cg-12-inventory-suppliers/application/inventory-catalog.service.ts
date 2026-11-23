@@ -4,6 +4,7 @@ import type {Pool,PoolClient} from "pg";
 import {DATABASE} from "../../../core/infrastructure/database.module";
 import {SessionService} from "../../cg-01-identity-access/application/session.service";
 import {FoundationStructureIdentityFacade} from "../../cg-01-identity-access/application/foundation-structure-identity.facade";
+import {BranchSourceFacade} from "../../cg-02-foundation-structure/application/branch-source.facade";
 import type {VerifiedFoundationActor} from "../../cg-01-identity-access/public-api";
 
 const UUID=/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -51,7 +52,8 @@ const stale=()=>new ConflictException({code:"CG12_STALE"});
 
 @Injectable()
 export class InventoryCatalogService {
- constructor(@Inject(DATABASE) private readonly db:Pool,private readonly sessions:SessionService,private readonly identity:FoundationStructureIdentityFacade){}
+ constructor(@Inject(DATABASE) private readonly db:Pool,private readonly sessions:SessionService,
+ private readonly identity:FoundationStructureIdentityFacade,private readonly branches:BranchSourceFacade){}
  async run<T>(token:string,action:string,work:(tx:PoolClient,a:VerifiedFoundationActor)=>Promise<T>,consistentRead=false){
   const a=await this.sessions.requireAction(token,action),tx=await this.db.connect();
   try{await tx.query(consistentRead?"BEGIN ISOLATION LEVEL REPEATABLE READ":"BEGIN");await this.identity.assertCurrent(tx,a,action);const result=await work(tx,a);await tx.query("COMMIT");return result;}
@@ -63,8 +65,12 @@ export class InventoryCatalogService {
  private async requireScope(tx:PoolClient,a:VerifiedFoundationActor,branch:string|null){
   const full=await this.rootAdmin(tx,a);
   if(branch===null){if(!full)throw new ForbiddenException("Your role cannot manage the Foundation store");return;}
-  const q=await tx.query("SELECT id FROM branch WHERE id=$1 AND root_realm_id=$2 AND status='ACTIVE' AND ($3::boolean OR manager_account_ref=$4) FOR SHARE",[branch,a.realmId,full,a.accountId]);
-  if(!q.rowCount)throw new ForbiddenException("The selected branch is not permitted or active");
+  const q=await tx.query<{manager_account_ref:string}>(
+   "SELECT manager_account_ref FROM branch WHERE id=$1 AND root_realm_id=$2 "+
+   "AND status='ACTIVE' FOR SHARE",[branch,a.realmId]);
+  if(!q.rowCount)throw new ForbiddenException("The selected branch is unavailable");
+  if(!full&&q.rows[0].manager_account_ref!==a.accountId)
+   await this.branches.requireAssignedStaffBranch(tx,a,branch);
  }
  private async command(tx:PoolClient,a:VerifiedFoundationActor,kind:string,key:string,digest:string){
   await tx.query("SELECT pg_advisory_xact_lock(hashtextextended($1,0))",[a.realmId+":"+key]);
