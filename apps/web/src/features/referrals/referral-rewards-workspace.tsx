@@ -13,7 +13,8 @@ type Reward={ref:string;programmeRef:string;type:"DIGITAL"|"PHYSICAL";category:s
  status:"DRAFT"|"ACTIVE"|"ARCHIVED";highlighted:boolean;publicVisible:boolean;
  imageUrl:string|null;itemRef:string|null;storeRef:string|null;version:number};
 type Option={ref:string;name:string};
-type Stock={availableQuantity:string;itemName:string;stockStatus:string;notice:string};
+type Stock={availableQuantity:string;onHandQuantity:string;reservedQuantity:string;
+ itemName:string;stockStatus:string;notice:string};
 type Command={method:"POST"|"PATCH";path:string;body:Record<string,unknown>};
 type ProgrammeDraft={programmeCode:string;name:string;audience:Programme["audience"];
  effectiveFrom:string;qualifyingEvent:Programme["qualifyingEvent"];awardPoints:string;
@@ -604,6 +605,11 @@ export function ReferralRewardsWorkspace({canViewPolicy,canViewRewards,canManage
       <p style={{fontSize:13}}>Stock units — <strong>{stock?
        stock.availableQuantity+" available (warehouse)": "Source not yet verified"}</strong>.
        Read-only; changing reward details never creates stock.</p>
+      {stock&&<p style={{fontSize:12,margin:0}}>
+       On hand: <strong>{stock.onHandQuantity}</strong> ·
+       Reserved: <strong>{stock.reservedQuantity}</strong> ·
+       Available: <strong>{stock.availableQuantity}</strong>
+      </p>}
       {!stockOptions&&<p role="status">Checking current warehouse options…</p>}
      </>}
     </>}
