@@ -265,7 +265,8 @@ export class FinanceCsrReceiptSourceFacade{
    for(const branch of scope.branchRefs)
     await this.branches.requireFinanceActiveBranch(tx,a,branch,"finance.reports.view");
   }
-  const x=await tx.query<{committed_minor:string;received_minor:string;invalid_minor:string}>(
+  const x=await tx.query<{committed_minor:string;received_minor:string;invalid_minor:string;
+   allocated_minor:string;utilized_minor:string}>(
    "WITH selected AS MATERIALIZED (SELECT f.id,f.root_realm_id,f.requested_minor "+
    "FROM csr_funding_proposal f WHERE f.root_realm_id=$1 "+
    "AND f.status='APPROVED' "+
@@ -295,16 +296,39 @@ export class FinanceCsrReceiptSourceFacade{
    "AND intent.owner_kind='CG09_BANK_STATEMENT' AND intent.status='VALIDATED' "+
    "LEFT JOIN journal reversal ON reversal.root_realm_id=j.root_realm_id "+
    "AND reversal.reversal_of_id=j.id AND reversal.posting_kind='REVERSAL') "+
+   "budget AS (SELECT coalesce(sum(ev.amount_minor) "+
+   "FILTER(WHERE ev.kind='ALLOCATE'),0)::text AS allocated,"+
+   "coalesce(sum(CASE WHEN ev.kind='UTILIZE' AND NOT EXISTS "+
+   "(SELECT 1 FROM journal reversal WHERE reversal.root_realm_id=ev.root_realm_id "+
+   "AND reversal.reversal_of_id=ev.source_journal_id "+
+   "AND reversal.posting_kind='REVERSAL') THEN ev.amount_minor ELSE 0 END),0)::text AS utilized "+
+   "FROM selected s JOIN finance_csr_budget_effect link "+
+   "ON link.root_realm_id=s.root_realm_id AND link.funding_proposal_id=s.id "+
+   "JOIN finance_budget_event ev ON ev.root_realm_id=link.root_realm_id "+
+   "AND ev.id=link.budget_event_id) "+
    "SELECT c.amount AS committed_minor,m.received AS received_minor,"+
-   "m.invalid AS invalid_minor FROM commitments c CROSS JOIN money m",
+   "m.invalid AS invalid_minor,b.allocated AS allocated_minor,"+
+   "b.utilized AS utilized_minor FROM commitments c CROSS JOIN money m CROSS JOIN budget b",
    [a.realmId,scope.all,scope.branchRefs,scope.branchFilter===undefined,
     scope.branchFilter??null,scope.query]);
   const v=x.rows[0];
+  const received=BigInt(v?.received_minor??"0"),
+   allocated=BigInt(v?.allocated_minor??"0"),
+   utilized=BigInt(v?.utilized_minor??"0");
+  const needsRevalidation=allocated>received||utilized>allocated||
+   BigInt(v?.invalid_minor??"0")>0n;
   return {committedMinor:v?.committed_minor??"0",
    verifiedReceivedMinor:v?.received_minor??"0",
    revalidationRequiredMinor:v?.invalid_minor??"0",
-   allocatedMinor:null,utilizedMinor:null,availableMinor:null,utilizationPercent:null,
-   notice:"Allocations and utilization are not available until actual CG09 budget effects are linked."};
+   allocatedMinor:allocated.toString(),utilizedMinor:utilized.toString(),
+   availableMinor:needsRevalidation?null:(received-allocated).toString(),
+   utilizationPercent:needsRevalidation?null:allocated===0n?"0.00":
+    (utilized*10000n/allocated/100n).toString()+"."+
+    (utilized*10000n/allocated%100n).toString().padStart(2,"0"),
+   needsRevalidation,
+   notice:needsRevalidation?
+    "Original receipt or budget effect requires Finance revalidation.":
+    "Money and budget totals derive only from independently verified CG09 sources."};
  }
  /** Invalidated statement proof or reversed general journal cannot fund a
   * NEW allocation; prior immutable financial history is retained. */
