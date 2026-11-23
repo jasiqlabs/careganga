@@ -152,6 +152,106 @@ export class CsrPartnersService{
   return {status:next,version:c.version+1};
  }
 
+ /** Explicit original scanned public naming attestation. Does NOT publish: CG18
+  * independent editorial authorization is a separate, necessary gate. */
+ async publicRelease(token:string,partnerRef:string){
+  return this.run(token,"csr.partners.view",async(tx,a)=>{
+   const p=await this.row(tx,a,partnerRef);
+   const x=(await tx.query<{version:number;state:string;public_summary:string;
+    evidence_file_id:string}>(
+    "SELECT version,state,public_summary,evidence_file_id FROM csr_partner_public_release "+
+    "WHERE root_realm_id=$1 AND partner_id=$2",[a.realmId,p.id])).rows[0];
+   const approved=(await tx.query<{evidence_file_id:string}>(
+    "SELECT snap.evidence_file_id FROM csr_partner_review_snapshot snap "+
+    "JOIN cg03_case c ON c.realm_id=snap.root_realm_id AND c.csr_review_ref=snap.id "+
+    "AND c.csr_partner_id=snap.partner_id AND c.csr_source_version=snap.source_version "+
+    "AND c.csr_source_digest=snap.source_digest AND c.case_kind='CSR_PARTNER_REVIEW' "+
+    "JOIN cg03_case_decision d ON d.realm_id=c.realm_id AND d.case_id=c.id "+
+    "JOIN cg19_stored_file f ON f.id=snap.evidence_file_id AND f.realm_id=snap.root_realm_id "+
+    "AND f.csr_partner_id=snap.partner_id AND f.owner_kind='CG08_CSR_AGREEMENT' "+
+    "JOIN cg19_upload_intent i ON i.id=f.upload_intent_id AND i.realm_id=f.realm_id "+
+    "AND i.csr_partner_id=f.csr_partner_id AND i.owner_kind='CG08_CSR_AGREEMENT' "+
+    "WHERE snap.root_realm_id=$1 AND snap.partner_id=$2 AND c.status='OWNER_COMPLETED' "+
+    "AND d.action='APPROVE' AND d.fresh_password_verified_at IS NOT NULL "+
+    "AND f.scan_status='CLEAN_VERIFIED' AND f.revoked_at IS NULL AND i.status='VALIDATED' "+
+    "ORDER BY snap.submitted_at DESC LIMIT 1",[a.realmId,p.id])).rows[0];
+   return {partnerStatus:p.status,version:x?.version??0,state:x?.state??"NOT_AUTHORIZED",
+    publicSummary:x?.public_summary??"",approvedAgreementFileRef:approved?.evidence_file_id??null};
+  },true);
+ }
+ async authorizePublic(token:string,partnerRef:string,raw:unknown){
+  const id=ref(partnerRef),v=body(raw,["requestKey","expectedVersion",
+   "evidenceFileRef","publicSummary","publicRightsConfirmed"]);
+  if(v.publicRightsConfirmed!==true)throw new BadRequestException(
+   "Confirm the signed original agreement expressly permits public naming.");
+  if(typeof v.expectedVersion!=="number"||!Number.isSafeInteger(v.expectedVersion)||
+    v.expectedVersion<0||v.expectedVersion>=2147483647)
+   throw new BadRequestException("Refresh CSR public display permission.");
+  const key=ref(v.requestKey),file=ref(v.evidenceFileRef);
+  const summary=text(v.publicSummary,"public partnership description",10,500);
+  const hash=digest(["CG08_PUBLIC_AUTHORIZE",id,v.expectedVersion,file,summary]);
+  return this.run(token,"csr.partners.manage",async(tx,a)=>{
+   await this.identity.assertCurrent(tx,a,"cms.content.manage");
+   const previous=await this.replay(tx,a,key,hash,"AUTHORIZE_PUBLIC",id);
+   if(previous)return previous;
+   const p=await this.row(tx,a,id,true);
+   if(p.status!=="APPROVED")throw changed();
+   const prior=(await tx.query<{version:number;state:string}>(
+    "SELECT version,state FROM csr_partner_public_release WHERE root_realm_id=$1 "+
+    "AND partner_id=$2 FOR UPDATE",[a.realmId,id])).rows[0];
+   if((prior?.version??0)!==v.expectedVersion||prior?.state==="AUTHORIZED")
+    throw changed();
+   const proof=await tx.query(
+    "SELECT 1 FROM csr_partner_review_snapshot snap "+
+    "JOIN cg03_case c ON c.realm_id=snap.root_realm_id AND c.csr_review_ref=snap.id "+
+    "AND c.csr_partner_id=snap.partner_id AND c.csr_source_version=snap.source_version "+
+    "AND c.csr_source_digest=snap.source_digest AND c.case_kind='CSR_PARTNER_REVIEW' "+
+    "JOIN cg03_case_decision d ON d.realm_id=c.realm_id AND d.case_id=c.id "+
+    "JOIN cg19_stored_file f ON f.id=snap.evidence_file_id AND f.realm_id=snap.root_realm_id "+
+    "AND f.csr_partner_id=snap.partner_id AND f.owner_kind='CG08_CSR_AGREEMENT' "+
+    "JOIN cg19_upload_intent i ON i.id=f.upload_intent_id AND i.realm_id=f.realm_id "+
+    "AND i.csr_partner_id=f.csr_partner_id AND i.owner_kind='CG08_CSR_AGREEMENT' "+
+    "WHERE snap.root_realm_id=$1 AND snap.partner_id=$2 AND snap.evidence_file_id=$3 "+
+    "AND c.status='OWNER_COMPLETED' AND d.action='APPROVE' "+
+    "AND d.fresh_password_verified_at IS NOT NULL "+
+    "AND f.scan_status='CLEAN_VERIFIED' AND f.revoked_at IS NULL AND i.status='VALIDATED' "+
+    "LIMIT 1 FOR SHARE OF snap,c,d,f,i",[a.realmId,id,file]);
+   if(!proof.rowCount)throw new ConflictException(
+    "Original approved agreement is unavailable. Refresh and check its scanner status.");
+   const result=prior?await tx.query<{version:number}>(
+    "UPDATE csr_partner_public_release SET state='AUTHORIZED',version=version+1,"+
+    "public_summary=$3,evidence_file_id=$4,authorized_by=$5,updated_by=$5,"+
+    "authorized_at=now(),withdrawn_at=NULL,updated_at=now() "+
+    "WHERE root_realm_id=$1 AND partner_id=$2 AND version=$6 AND state='WITHDRAWN' "+
+    "RETURNING version",[a.realmId,id,summary,file,a.accountId,v.expectedVersion]):
+    await tx.query<{version:number}>(
+    "INSERT INTO csr_partner_public_release(root_realm_id,partner_id,state,"+
+    "public_summary,evidence_file_id,authorized_by,updated_by) "+
+    "VALUES($1,$2,'AUTHORIZED',$3,$4,$5,$5) RETURNING version",
+    [a.realmId,id,summary,file,a.accountId]);
+   if(!result.rows[0])throw changed();
+   return this.event(tx,a,id,key,hash,"AUTHORIZE_PUBLIC",result.rows[0].version);
+  });
+ }
+ async withdrawPublic(token:string,partnerRef:string,raw:unknown){
+  const id=ref(partnerRef),v=body(raw,["requestKey","expectedVersion"]);
+  const key=ref(v.requestKey),expected=version(v.expectedVersion);
+  const hash=digest(["CG08_PUBLIC_WITHDRAW",id,expected]);
+  return this.run(token,"csr.partners.manage",async(tx,a)=>{
+   await this.identity.assertCurrent(tx,a,"cms.content.manage");
+   const previous=await this.replay(tx,a,key,hash,"WITHDRAW_PUBLIC",id);
+   if(previous)return previous;
+   await this.row(tx,a,id,true);
+   const q=await tx.query<{version:number}>(
+    "UPDATE csr_partner_public_release SET state='WITHDRAWN',"+
+    "version=version+1,withdrawn_at=now(),updated_by=$3,updated_at=now() "+
+    "WHERE root_realm_id=$1 AND partner_id=$2 AND state='AUTHORIZED' "+
+    "AND version=$4 RETURNING version",[a.realmId,id,a.accountId,expected]);
+   if(!q.rows[0])throw changed();
+   return this.event(tx,a,id,key,hash,"WITHDRAW_PUBLIC",q.rows[0].version);
+  });
+ }
+
  private async replay(tx:PoolClient,a:VerifiedFoundationActor,key:string,hash:string,action:string,target?:string){
   await tx.query("SELECT pg_advisory_xact_lock(hashtextextended($1,0))",["CG08:"+a.realmId+":"+key]);
   const c=(await tx.query<{partner_id:string;actor_ref:string;action:string;payload_digest:string;result_version:number}>(

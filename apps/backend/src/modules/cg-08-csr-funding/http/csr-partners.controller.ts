@@ -9,5 +9,8 @@ export class CsrPartnersController{
  @Get(":ref") detail(@Headers("authorization")token:string,@Param("ref")ref:string){return this.partners.detail(token,ref);}
  @Post() create(@Headers("authorization")token:string,@Body()body:unknown){return this.partners.create(token,body);}
  @Patch(":ref") edit(@Headers("authorization")token:string,@Param("ref")ref:string,@Body()body:unknown){return this.partners.edit(token,ref,body);}
+ @Get(":ref/public-release") publicRelease(@Headers("authorization")token:string,@Param("ref")ref:string){return this.partners.publicRelease(token,ref);}
+ @Post(":ref/public-release") authorizePublic(@Headers("authorization")token:string,@Param("ref")ref:string,@Body()body:unknown){return this.partners.authorizePublic(token,ref,body);}
+ @Post(":ref/public-release/withdraw") withdrawPublic(@Headers("authorization")token:string,@Param("ref")ref:string,@Body()body:unknown){return this.partners.withdrawPublic(token,ref,body);}
  @Post(":ref/cancel") cancel(@Headers("authorization")token:string,@Param("ref")ref:string,@Body()body:unknown){return this.partners.cancel(token,ref,body);}
 }
