@@ -485,8 +485,18 @@ export class ReferralCatalogService{
     "SELECT version_no FROM referral_policy_version "+
     "WHERE root_realm_id=$1 AND programme_id=$2 AND effective_from<=now() "+
     "ORDER BY effective_from DESC,version_no DESC LIMIT 1",[a.realmId,id]);
-   return {...q.rows[0],ranks:tiers.rows,
-    effectivePolicyVersion:applied.rows[0]?.version_no??null};
+   const currentVersion=applied.rows[0]?.version_no??null;
+   const effectiveRanks=currentVersion===null?[]:
+    currentVersion===(q.rows[0] as {policyVersion:number}).policyVersion?tiers.rows:
+    (await tx.query(
+     "SELECT rank_name AS name,minimum_verified_referrals AS \"verifiedReferrals\","+
+     "minimum_eligible_points::text AS \"minimumPoints\","+
+     "benefits_summary AS \"benefitsSummary\",sort_order AS \"sortOrder\" "+
+     "FROM referral_rank_rule WHERE root_realm_id=$1 AND programme_id=$2 "+
+     "AND policy_version=$3 ORDER BY sort_order",
+     [a.realmId,id,currentVersion])).rows;
+   return {...q.rows[0],ranks:tiers.rows,effectiveRanks,
+    effectivePolicyVersion:currentVersion};
   },true);
  }
  async listProducts(bearer:string,programInput:string,pageInput?:string,
