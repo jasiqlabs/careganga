@@ -33,10 +33,11 @@ export function NativeCsrPartners({token,canManage,canReadAgreement,canUploadAgr
  const [query,setQuery]=useState(""),[filter,setFilter]=useState("ALL"),[statusFilter,setStatusFilter]=useState<ReviewStatus>("ALL"),[offset,setOffset]=useState(0),[epoch,setEpoch]=useState(0);
  const [loading,setLoading]=useState(true),[listError,setListError]=useState(""),[error,setError]=useState(""),[notice,setNotice]=useState("");
  const [draft,setDraft]=useState<Draft>(blank),[selected,setSelected]=useState<Partner|null>(null),[editing,setEditing]=useState(false);
- const [busy,setBusy]=useState(false),[pending,setPending]=useState<Command|null>(null),seq=useRef(0);
+ const [busy,setBusy]=useState(false),[pending,setPending]=useState<Command|null>(null),seq=useRef(0),detailSequence=useRef(0);
  const [history,setHistory]=useState<ReviewHistory|null>(null),[historyError,setHistoryError]=useState("");
  const canEditCurrent=canManage&&(!selected||["DRAFT","RETURNED"].includes(selected.status));
- const refresh=()=>{setSelected(null);setEditing(false);setEpoch(n=>n+1);};
+ const closeDetail=()=>{detailSequence.current+=1;setSelected(null);setEditing(false);};
+ const refresh=()=>{closeDetail();setEpoch(n=>n+1);};
  useEffect(()=>{
   let live=true;const n=++seq.current;setLoading(true);setListError("");
   const p=new URLSearchParams({offset:String(offset)});
@@ -63,16 +64,23 @@ export function NativeCsrPartners({token,canManage,canReadAgreement,canUploadAgr
   return()=>{live=false;};
  },[token,selected?.ref,epoch,onExpired]);
  const set=(k:keyof Draft,v:string)=>setDraft(x=>({...x,[k]:v}));
- const start=()=>{if(pending||busy)return;setSelected(null);setDraft({...blank(),branchRef:options?.foundation?"":options?.branches[0]?.value??""});setEditing(true);setError("");};
+ const start=()=>{if(pending||busy)return;closeDetail();setDraft({...blank(),branchRef:options?.foundation?"":options?.branches[0]?.value??""});setEditing(true);setError("");};
  const loadPartner=async(p:Partner)=>{
   if(pending||busy)return;
-  try{const full=await api<Partner>(token,"/"+p.ref);setSelected(full);setDraft(from(full));setEditing(true);setError("");}
-  catch(e){setSelected(null);setEditing(false);setError(e instanceof Error?e.message:"CSR partner unavailable.");
-   if(e&&typeof e==="object"&&"status" in e&&e.status===401)onExpired();}
+  const request=++detailSequence.current;setSelected(null);setEditing(false);
+  try{
+   const full=await api<Partner>(token,"/"+p.ref);
+   if(request!==detailSequence.current)return;
+   setSelected(full);setDraft(from(full));setEditing(true);setError("");
+  }catch(e){
+   if(request!==detailSequence.current)return;
+   closeDetail();setError(e instanceof Error?e.message:"CSR partner unavailable.");
+   if(e&&typeof e==="object"&&"status" in e&&e.status===401)onExpired();
+  }
  };
  const send=async(cmd:Command)=>{
   setBusy(true);setPending(cmd);setError("");
-  try{await api(token,cmd.path,cmd.method,cmd.body);setPending(null);setEditing(false);setSelected(null);setDraft(blank());setNotice("CSR draft saved. It is not approved or publicly listed.");setOffset(0);setStatusFilter("ALL");refresh();}
+  try{await api(token,cmd.path,cmd.method,cmd.body);setPending(null);closeDetail();setDraft(blank());setNotice("CSR draft saved. It is not approved or publicly listed.");setOffset(0);setStatusFilter("ALL");refresh();}
   catch(e){const status=e&&typeof e==="object"&&"status" in e?Number(e.status):503;
    if(status===401){onExpired();return;}
    if(status<500&&status!==0){setPending(null);setError(e instanceof Error?e.message:"CSR draft not saved.");}
@@ -114,15 +122,15 @@ export function NativeCsrPartners({token,canManage,canReadAgreement,canUploadAgr
   <View style={styles.panel}>
    <Text style={styles.label}>CSR review status</Text>
    <ScrollView horizontal contentContainerStyle={styles.choices}>
-    {reviewTabs.map(tab=>choice(tab.value,tab.label,statusFilter,v=>{setSelected(null);setEditing(false);setOffset(0);setStatusFilter(v as ReviewStatus);},!!pending))}
+    {reviewTabs.map(tab=>choice(tab.value,tab.label,statusFilter,v=>{closeDetail();setOffset(0);setStatusFilter(v as ReviewStatus);},!!pending))}
    </ScrollView>
    <Text style={styles.label}>Search organization</Text>
    <TextInput style={styles.input} value={query} placeholder="Organization name" onChangeText={v=>{setOffset(0);setQuery(v);}} autoCapitalize="none"/>
    <Text style={styles.label}>Current permitted branch</Text>
    <ScrollView horizontal contentContainerStyle={styles.choices}>
-    {choice("ALL","All assigned",filter,v=>{setSelected(null);setEditing(false);setOffset(0);setFilter(v);},!!pending)}
-    {options?.foundation&&choice("FOUNDATION","Foundation",filter,v=>{setSelected(null);setEditing(false);setOffset(0);setFilter(v);},!!pending)}
-    {options?.branches.map(b=>choice(b.value,b.label,filter,v=>{setSelected(null);setEditing(false);setOffset(0);setFilter(v);},!!pending))}
+    {choice("ALL","All assigned",filter,v=>{closeDetail();setOffset(0);setFilter(v);},!!pending)}
+    {options?.foundation&&choice("FOUNDATION","Foundation",filter,v=>{closeDetail();setOffset(0);setFilter(v);},!!pending)}
+    {options?.branches.map(b=>choice(b.value,b.label,filter,v=>{closeDetail();setOffset(0);setFilter(v);},!!pending))}
    </ScrollView>
    <View style={styles.actions}>
     <Pressable accessibilityRole="button" style={styles.btn} disabled={!!pending||busy} accessibilityState={{disabled:!!pending||busy}} onPress={refresh}><Text>Refresh</Text></Pressable>
@@ -155,7 +163,7 @@ export function NativeCsrPartners({token,canManage,canReadAgreement,canUploadAgr
    {field("Contact email","contactEmail")}
    {field("Indian contact mobile (+91…)","contactMobile")}
    {field("Proposed CSR support","supportSummary",true)}
-   {selected&&canReadAgreement&&<NativeCsrAgreementPanel token={token} partnerRef={selected.ref} version={selected.version} canUpload={canUploadAgreement&&canEditCurrent} canSubmit={canEditCurrent&&selected.status==="DRAFT"} onSubmitted={()=>{setEditing(false);setSelected(null);setNotice("Submitted for independent review.");refresh();}} onExpired={onExpired}/>}
+   {selected&&canReadAgreement&&<NativeCsrAgreementPanel token={token} partnerRef={selected.ref} version={selected.version} canUpload={canUploadAgreement&&canEditCurrent} canSubmit={canEditCurrent&&selected.status==="DRAFT"} onSubmitted={()=>{closeDetail();setNotice("Submitted for independent review.");refresh();}} onExpired={onExpired}/>}
    {selected?.status==="APPROVED"&&<NativeCsrPublicRightsPanel key={selected.ref} token={token} partnerRef={selected.ref} canManage={canManagePublic} onExpired={onExpired}/>}
    {selected&&<View style={styles.panel}><Text style={styles.subheading}>Original review history</Text>
     {!!historyError&&<Text accessibilityRole="alert" style={styles.error}>{historyError}</Text>}
@@ -166,7 +174,7 @@ export function NativeCsrPartners({token,canManage,canReadAgreement,canUploadAgr
    <View style={styles.actions}>
     {canEditCurrent&&<Pressable accessibilityRole="button" style={styles.primary} disabled={busy||!!pending} onPress={save}>
      <Text style={styles.primaryText}>{busy?"Saving…":"Save draft"}</Text></Pressable>}
-    <Pressable accessibilityRole="button" style={styles.btn} disabled={busy||!!pending} onPress={()=>{setEditing(false);setSelected(null);}}><Text>Close</Text></Pressable>
+    <Pressable accessibilityRole="button" style={styles.btn} disabled={busy||!!pending} onPress={closeDetail}><Text>Close</Text></Pressable>
     {selected&&canEditCurrent&&<Pressable accessibilityRole="button" style={styles.btn} disabled={busy||!!pending} onPress={discard}><Text>Discard draft</Text></Pressable>}
    </View>
   </View>}

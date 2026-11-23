@@ -298,3 +298,18 @@ test("US001-QA12/16/17/19: direct original CG19 logo URL also denies revoked and
   "Original CG19 URL must recheck before and after storage reads");
  assert.match(source,/current_branch\.status=/);
 });
+
+
+test("US001-QA02/12/17/18: in-flight protected details invalidated on branch/status change",()=>{
+ const web=readFileSync(join(process.cwd(),"../web/src/features/csr/csr-partners-workspace.tsx"),"utf8");
+ const native=readFileSync(join(process.cwd(),"../android-internal/src/features/csr/native-csr-partners.tsx"),"utf8");
+ for(const src of [web,native]){
+  assert.ok(src.includes('detailSequence=useRef(0)'),"Separate private detail request generation");
+  assert.ok(src.includes('const closeDetail=()=>{detailSequence.current+=1;'),"Scope change invalidates old request");
+  assert.ok(src.includes('const request=++detailSequence.current'),"Every detail request has own generation");
+  assert.ok(src.includes('if(request!==detailSequence.current)return;'),"No stale result or stale error may reopen detail");
+  assert.ok(src.includes('closeDetail();setOffset(0);setStatusFilter('),"Status filter invalidates private detail");
+ }
+ assert.ok(web.includes('closeDetail();setOffset(0);setBranchFilter('));
+ assert.ok(native.includes('closeDetail();setOffset(0);setFilter('));
+});

@@ -37,7 +37,8 @@ export function CsrPartnersWorkspace({canManage,canReadAgreement,canUploadAgreem
  const [draft,setDraft]=useState<Draft>(empty),[selected,setSelected]=useState<Partner|null>(null);
  const [editing,setEditing]=useState(false),[busy,setBusy]=useState(false),[pending,setPending]=useState<Command|null>(null);
  const [history,setHistory]=useState<ReviewHistory|null>(null),[historyError,setHistoryError]=useState("");
- const seq=useRef(0);
+ const seq=useRef(0),detailSequence=useRef(0);
+ const closeDetail=()=>{detailSequence.current+=1;setSelected(null);setEditing(false);};
  const refresh=useCallback(()=>setEpoch(n=>n+1),[]);
  const canEditCurrent=canManage&&(!selected||["DRAFT","RETURNED"].includes(selected.status));
  useEffect(()=>{
@@ -61,16 +62,23 @@ export function CsrPartnersWorkspace({canManage,canReadAgreement,canUploadAgreem
   let live=true;void api<Options>("/options").then(v=>{if(live)setChoices(v);}).catch(()=>{if(live)setError("Current CSR branch choices cannot be confirmed.");});
   return()=>{live=false;};
  },[epoch]);
- const begin=()=>{if(pending)return;setSelected(null);setDraft({...empty(),branchRef:choices?.foundation?"":choices?.branches[0]?.value??""});setEditing(true);setMessage("");setError("");};
+ const begin=()=>{if(pending)return;closeDetail();setDraft({...empty(),branchRef:choices?.foundation?"":choices?.branches[0]?.value??""});setEditing(true);setMessage("");setError("");};
  const choose=async(item:Partner)=>{
   if(pending)return;
-  setError("");try{const full=await api<Partner>("/"+item.ref);setSelected(full);setDraft(from(full));setEditing(true);}
-  catch(e){setSelected(null);setEditing(false);setError(e instanceof Error?e.message:"This CSR record is unavailable.");}
+  const request=++detailSequence.current;setSelected(null);setEditing(false);
+  setError("");try{
+   const full=await api<Partner>("/"+item.ref);
+   if(request!==detailSequence.current)return;
+   setSelected(full);setDraft(from(full));setEditing(true);
+  }catch(e){
+   if(request!==detailSequence.current)return;
+   closeDetail();setError(e instanceof Error?e.message:"This CSR record is unavailable.");
+  }
  };
  const send=async(cmd:Command)=>{
   setBusy(true);setPending(cmd);setError("");
   try{await api<{ref:string;version:number}>(cmd.path,cmd.method,cmd.body);
-   setPending(null);setEditing(false);setSelected(null);setDraft(empty());setMessage("CSR draft saved. It is not approved or publicly listed.");setOffset(0);setStatusFilter("ALL");refresh();}
+   setPending(null);closeDetail();setDraft(empty());setMessage("CSR draft saved. It is not approved or publicly listed.");setOffset(0);setStatusFilter("ALL");refresh();}
   catch(e){
    const code=e&&typeof e==="object"&&"status" in e?Number(e.status):503;
    if(code>=500||code===0){setError("The result is uncertain. Refresh the list to check it, or retry the exact original request.");}
@@ -85,7 +93,7 @@ export function CsrPartnersWorkspace({canManage,canReadAgreement,canUploadAgreem
   if(selected)body.expectedVersion=selected.version;
   void send({path:selected?"/"+selected.ref:"",method:selected?"PATCH":"POST",body});
  };
- const cancel=()=>{if(pending||busy)return;setEditing(false);setSelected(null);setDraft(empty());};
+ const cancel=()=>{if(pending||busy)return;closeDetail();setDraft(empty());};
  const archive=()=>{if(!selected||!canManage||busy||pending||!confirm("Discard this CSR draft? This cannot be undone."))return;
   void send({path:"/"+selected.ref+"/cancel",method:"POST",body:{requestKey:crypto.randomUUID(),expectedVersion:selected.version}});
  };
@@ -97,18 +105,18 @@ export function CsrPartnersWorkspace({canManage,canReadAgreement,canUploadAgreem
   <section style={panel} aria-label="CSR partner directory">
    <div role="group" aria-label="CSR partner review status" style={{display:"flex",gap:8,flexWrap:"wrap",marginBottom:15}}>
     {reviewTabs.map(tab=><button key={tab.value} type="button" style={{...button,background:statusFilter===tab.value?"var(--cg-accent)":"var(--cg-surface,#fff)",color:statusFilter===tab.value?"#fff":"inherit"}}
-     aria-pressed={statusFilter===tab.value} disabled={!!pending} onClick={()=>{setSelected(null);setEditing(false);setOffset(0);setStatusFilter(tab.value);}}>{tab.label}</button>)}
+     aria-pressed={statusFilter===tab.value} disabled={!!pending} onClick={()=>{closeDetail();setOffset(0);setStatusFilter(tab.value);}}>{tab.label}</button>)}
    </div>
    <div style={{display:"flex",gap:12,alignItems:"end",flexWrap:"wrap",justifyContent:"space-between"}}>
     <label style={{...field,flex:"1 1 190px"}}>Search organizations<input style={control} value={search} maxLength={80} placeholder="Registered organization" onChange={e=>{setOffset(0);setSearch(e.target.value);}}/></label>
     <label style={{...field,flex:"1 1 180px"}}>Branch
-     <select style={control} value={branchFilter} disabled={!!pending} onChange={e=>{setSelected(null);setEditing(false);setOffset(0);setBranchFilter(e.target.value);}}>
+     <select style={control} value={branchFilter} disabled={!!pending} onChange={e=>{closeDetail();setOffset(0);setBranchFilter(e.target.value);}}>
       <option value="ALL">All permitted branches</option>
       {choices?.foundation&&<option value="FOUNDATION">Foundation-wide</option>}
       {choices?.branches.map(b=><option key={b.value} value={b.value}>{b.label}</option>)}
      </select>
     </label>
-    <button style={button} type="button" onClick={()=>{setSelected(null);setEditing(false);refresh();}}>Refresh</button>
+    <button style={button} type="button" onClick={()=>{closeDetail();refresh();}}>Refresh</button>
     {canManage&&<button style={primary} type="button" disabled={!!pending} onClick={begin}>New CSR partner</button>}
    </div>
    {listError&&<p role="alert">{listError}</p>}
@@ -156,7 +164,7 @@ export function CsrPartnersWorkspace({canManage,canReadAgreement,canUploadAgreem
    </form>
    {selected&&canReadAgreement&&<CsrAgreementPanel partnerRef={selected.ref} version={selected.version}
     canUpload={canUploadAgreement&&canEditCurrent} canSubmit={canEditCurrent&&selected.status==="DRAFT"}
-    onSubmitted={()=>{setEditing(false);setSelected(null);setMessage("CSR application submitted for independent review. It is not approved or public.");refresh();}}/>}
+    onSubmitted={()=>{closeDetail();setMessage("CSR application submitted for independent review. It is not approved or public.");refresh();}}/>}
    {selected?.status==="APPROVED"&&<CsrPublicRightsPanel key={selected.ref} partnerRef={selected.ref} canManage={canManagePublic}/>}
    {selected&&<section aria-label="CSR approval history" style={{display:"grid",gap:6,marginTop:12}}>
     <h3>Review history</h3>
