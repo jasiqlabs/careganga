@@ -644,7 +644,7 @@ export class ReferralCatalogService{
   fromInput?:string,toInput?:string){
   const programme=ref(programmeInput),page=catalogPage(pageInput);
   const status=statusInput??"ALL";
-  if(!["ALL","HELD","CANCELLED","FULFILLMENT_PENDING","FULFILLED"].includes(status))
+  if(!["ALL","HELD","CANCELLED","ISSUED_AWAITING_HANDOVER","FULFILLED"].includes(status))
    throw bad("status");
   const search=optional(searchInput,"search",80).toLowerCase();
   const day=(v:string|undefined)=>{
