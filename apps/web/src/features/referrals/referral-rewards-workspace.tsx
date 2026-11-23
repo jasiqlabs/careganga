@@ -309,12 +309,38 @@ export function ReferralRewardsWorkspace({canManagePolicy,canManageRewards}:{
       stock inventory or cash provider is required for a digital reward.</p>}
     </section>
    </>:<>
-    <section style={{...css.panel,background:"linear-gradient(115deg,#0C5B68,#118876)",color:"#fff"}}>
-     <h2 style={{margin:0}}>Redeem Items & Rewards Store</h2>
+    <section style={{...css.panel,background:"linear-gradient(105deg,#076843,#0F7663 60%,#0F172A)",color:"#fff",border:0,padding:22}}>
+     <span style={{fontSize:11,color:"#B2F3D0",fontWeight:700}}>REWARDS MARKETPLACE HUB</span>
+     <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",gap:12,flexWrap:"wrap"}}>
+      <h2 style={{margin:0,fontSize:24}}>Redeem Items &amp; Rewards Store</h2>
+      <div style={{display:"flex",gap:8}}>
+       <button type="button" style={{...css.button,background:"#155E53",color:"#fff",borderColor:"#155E53"}}
+        onClick={refresh}>Refresh</button>
+       {canManageRewards&&<button type="button" style={{...css.primary,background:"#06D48A",color:"#073A30"}}
+        onClick={()=>openProduct()}>+ Add New Product</button>}
+      </div>
+     </div>
      <p style={{margin:0,fontSize:13}}>Current approved reward catalogue. Physical stock is read-only
       from CG12; points represent programme eligibility, never withdrawable rupees.</p>
     </section>
-    <section style={css.panel}>
+    <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(180px,1fr))",gap:9}}>
+     {[["ACTIVE PRODUCTS (SHOWN)",String(activeProducts.length)],["POINTS REDEEMED","—"],
+      ["PENDING ORDERS","—"],["FULFILLED ORDERS","—"]].map(([label,value],i)=>
+      <div key={label} style={{...css.panel,padding:12,gap:4}}>
+       <span style={{fontSize:11,color:"var(--cg-text-muted,#64748B)"}}>
+        <span style={{color:["#0B9D67","#D38A07","#2C60CC","#8A45C3"][i]}}>◈ </span>{label}</span>
+       <strong style={{fontSize:22}}>{value}</strong>
+       {i>0&&<span style={{fontSize:11}}>Awaiting verified CG13 events</span>}
+      </div>)}
+    </div>
+    <nav aria-label="Rewards Store sections" style={{display:"flex",gap:8,flexWrap:"wrap"}}>
+     {(["CATALOG","REDEMPTIONS"] as const).map(tab=>
+      <button type="button" key={tab} aria-pressed={rewardView===tab}
+       style={rewardView===tab?css.primary:css.button}
+       onClick={()=>setRewardView(tab)}>
+       {tab==="CATALOG"?"Reward Products Catalogue":"Volunteer & Member Redemptions"}</button>)}
+    </nav>
+    {rewardView==="CATALOG"?<section style={css.panel}>
      <div style={{display:"flex",justifyContent:"space-between",flexWrap:"wrap",gap:10}}>
       <div><h3 style={{margin:0}}>Reward Products Catalogue</h3>
        <p style={{fontSize:13,margin:"5px 0"}}>{activeProducts.length} active recorded products for {programmeTitle}</p></div>
@@ -325,28 +351,45 @@ export function ReferralRewardsWorkspace({canManagePolicy,canManageRewards}:{
        {!programmes.length&&<option value="">No programme configured</option>}
        {programmes.map(p=><option key={p.ref} value={p.ref}>{p.name} · {p.status}</option>)}
       </select></label>
-     <p style={{fontSize:12}}>Redemptions, points spent and pending fulfillment are not invented:
-      those screens activate with the genuine US-002 ledger and US-003 fulfillment events.</p>
-     <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(220px,1fr))",gap:12}}>
+     <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:8,
+      flexWrap:"wrap",borderBottom:"1px solid var(--cg-border,#DCE4ED)",paddingBottom:9}}>
+      <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
+       {categories.map(cat=><button type="button" key={cat} aria-pressed={categoryFilter===cat}
+        onClick={()=>setCategoryFilter(cat)}
+        style={{...css.button,fontSize:12,padding:"5px 10px",minHeight:32,
+         ...(categoryFilter===cat?{background:"#059669",color:"#fff",borderColor:"#059669"}:{})}}>
+        {cat}</button>)}
+      </div>
+      <input type="search" aria-label="Search reward products" placeholder="Search products…"
+       value={searchProduct} onChange={e=>setSearchProduct(e.target.value)}
+       style={{...css.control,minHeight:35,maxWidth:225}}/>
+     </div>
+     <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(206px,1fr))",gap:12}}>
       {orderedProducts.map(p=><article key={p.ref} style={{border:"1px solid var(--cg-border,#CBD5E1)",borderRadius:13,overflow:"hidden"}}>
-       <div style={{height:98,background:"var(--cg-surface-alt,#F0F6F7)",display:"grid",placeItems:"center"}}>
+       <div style={{height:148,background:"#E8FBF2",display:"grid",placeItems:"center"}}>
         {p.imageUrl?<img src={p.imageUrl} alt="" loading="lazy" referrerPolicy="no-referrer"
-         style={{maxWidth:"100%",height:"100%",objectFit:"contain"}}/>:
+         style={{maxWidth:"100%",height:"100%",objectFit:"cover"}}/>:
          <span style={{fontSize:12,opacity:.7}}>Product image not provided</span>}
        </div>
        <div style={{padding:12,display:"grid",gap:6}}>
         <strong>{p.name}</strong>
         <span style={{fontSize:12}}>{p.category} · {p.type} · {p.status}</span>
-        <strong>{p.pointsPrice} points</strong>
+        <strong style={{color:"#FDE68A",background:"#172338",padding:"4px 8px",borderRadius:16,justifySelf:"start"}}>{p.pointsPrice} Pts</strong>
         <span style={{fontSize:12}}>{p.highlighted?"Highlighted · ":""}{p.publicVisible?"Public eligible catalogue":"Staff only"}</span>
         {p.type==="PHYSICAL"&&<span style={{fontSize:12}}>Original CG12 item/store — read-only</span>}
         {canManageRewards&&<button style={css.button} onClick={()=>openProduct(p)}>Edit product</button>}
        </div>
       </article>)}
      </div>
-     {!products.length&&<p>No real products yet. A DIGITAL recognition reward can be recorded
-      without inventory, bank deposits or issued voucher codes.</p>}
-    </section>
+     {!orderedProducts.length&&<p>{products.length?
+       "No recorded product matches this search or category.":
+       "No authentic product yet. Digital rewards require no warehouse."}</p>}
+    </section>:<section style={css.panel}>
+     <h3 style={{margin:0}}>Volunteer & Member Redemptions</h3>
+     <p style={{fontSize:13}}>Genuine redemptions are not available until US-002
+      credits verified CG04 referrals and US-003 implements fulfillment.
+      No invented points, pending orders or delivered gifts.</p>
+    </section>}
    </>}
   </>}
   {drawer&&<div style={{position:"fixed",inset:0,background:"rgba(10,22,45,.58)",zIndex:200,
