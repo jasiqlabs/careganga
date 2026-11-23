@@ -423,9 +423,15 @@ export class FinanceBudgetService{
    "COALESCE(SUM(amount_minor) FILTER(WHERE kind='DEALLOCATE'),0))::text AS allocated,"+
    "COALESCE(SUM(amount_minor) FILTER(WHERE kind='COMMIT'),0)::text AS committed,"+
    "COALESCE(SUM(amount_minor) FILTER(WHERE kind='RELEASE'),0)::text AS released,"+
-   "COALESCE(SUM(amount_minor) FILTER(WHERE kind='UTILIZE'),0)::text AS utilized,"+
-   "COALESCE(SUM(commitment_applied_minor),0)::text AS applied "+
-   "FROM finance_budget_event WHERE root_realm_id=$1 AND budget_id=$2",
+   "COALESCE(SUM(CASE WHEN ev.kind='UTILIZE' AND "+ 
+   "NOT EXISTS(SELECT 1 FROM journal reversal WHERE reversal.root_realm_id=ev.root_realm_id "+
+   "AND reversal.reversal_of_id=ev.source_journal_id "+
+   "AND reversal.posting_kind='REVERSAL' AND reversal.status='POSTED') THEN ev.amount_minor ELSE 0 END),0)::text AS utilized,"+
+   "COALESCE(SUM(CASE WHEN ev.kind='UTILIZE' AND "+
+   "NOT EXISTS(SELECT 1 FROM journal reversal WHERE reversal.root_realm_id=ev.root_realm_id "+
+   "AND reversal.reversal_of_id=ev.source_journal_id "+
+   "AND reversal.posting_kind='REVERSAL' AND reversal.status='POSTED') THEN ev.commitment_applied_minor ELSE 0 END),0)::text AS applied "+
+   "FROM finance_budget_event ev WHERE ev.root_realm_id=$1 AND ev.budget_id=$2",
    [actor.realmId,budgetRef]);
   const items=await this.db.query<{description:string;quantityMilli:string;
    unitRateMinor:string;totalMinor:string}>(
@@ -481,9 +487,15 @@ export class FinanceBudgetService{
    "COALESCE(SUM(amount_minor) FILTER(WHERE kind='DEALLOCATE'),0)) AS allocated,"+
    "COALESCE(SUM(amount_minor) FILTER(WHERE kind='COMMIT'),0) AS committed,"+
    "COALESCE(SUM(amount_minor) FILTER(WHERE kind='RELEASE'),0) AS released,"+
-   "COALESCE(SUM(amount_minor) FILTER(WHERE kind='UTILIZE'),0) AS utilized,"+
-   "COALESCE(SUM(commitment_applied_minor),0) AS applied "+
-   "FROM finance_budget_event WHERE root_realm_id=$1 GROUP BY root_realm_id,budget_id),"+
+   "COALESCE(SUM(CASE WHEN ev.kind='UTILIZE' AND "+
+   "NOT EXISTS(SELECT 1 FROM journal reversal WHERE reversal.root_realm_id=ev.root_realm_id "+
+   "AND reversal.reversal_of_id=ev.source_journal_id "+
+   "AND reversal.posting_kind='REVERSAL' AND reversal.status='POSTED') THEN ev.amount_minor ELSE 0 END),0) AS utilized,"+
+   "COALESCE(SUM(CASE WHEN ev.kind='UTILIZE' AND "+
+   "NOT EXISTS(SELECT 1 FROM journal reversal WHERE reversal.root_realm_id=ev.root_realm_id "+
+   "AND reversal.reversal_of_id=ev.source_journal_id "+
+   "AND reversal.posting_kind='REVERSAL' AND reversal.status='POSTED') THEN ev.commitment_applied_minor ELSE 0 END),0) AS applied "+
+   "FROM finance_budget_event ev WHERE ev.root_realm_id=$1 GROUP BY ev.root_realm_id,ev.budget_id),"+
    "fact AS(SELECT b.status,b.approved_ceiling_minor,"+
    "COALESCE(m.allocated,0) AS allocated,"+
    "GREATEST(0,COALESCE(m.committed,0)-COALESCE(m.released,0)-COALESCE(m.applied,0)) AS outstanding,"+
