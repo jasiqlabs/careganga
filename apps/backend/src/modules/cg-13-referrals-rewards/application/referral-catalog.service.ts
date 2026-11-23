@@ -595,11 +595,32 @@ export class ReferralCatalogService{
     "MAX(wallet.updated_at) AS \"lastActivity\""+
     from+" GROUP BY wallet.referrer_kind,wallet.current_rank_name "+
     "ORDER BY wallet.referrer_kind,wallet.current_rank_name LIMIT 61",args);
+   // Genuine CG13 DIGITAL pending/cancelled/fulfilled totals. A physical
+   // gift or unverified digital entitlement is NEVER counted as delivered.
+   // Same original CG02 current branch scope as the qualification ledger.
+   const redemptions=await tx.query<{
+    pending:string;cancelled:string;fulfilled:string;total:string
+   }>(
+    "SELECT COUNT(*) FILTER(WHERE r.state='HELD')::text AS pending,"+
+    "COUNT(*) FILTER(WHERE r.state='CANCELLED')::text AS cancelled,"+
+    "COUNT(*) FILTER(WHERE r.state='FULFILLED')::text AS fulfilled,"+
+    "COUNT(*)::text AS total FROM redemption r "+
+    "JOIN points_account wallet ON wallet.root_realm_id=r.root_realm_id "+
+    "AND wallet.id=r.points_account_id "+
+    "LEFT JOIN member m ON m.root_realm_id=wallet.root_realm_id "+
+    "AND m.id=wallet.referrer_relationship_ref AND wallet.referrer_kind='MEMBER' "+
+    "LEFT JOIN volunteer v ON v.root_realm_id=wallet.root_realm_id "+
+    "AND v.id=wallet.referrer_relationship_ref AND wallet.referrer_kind='VOLUNTEER' "+
+    "WHERE r.root_realm_id=$1 AND r.programme_id=$2 "+
+    "AND ($3::boolean OR COALESCE(m.branch_ref,v.branch_ref)=ANY($4::uuid[]))",
+    args);
    return {metrics:totals.rows[0]??{activeReferrers:"0",successfulReferrals:"0",
     earnedPoints:"0",netPoints:"0"},rankCounts:ranks.rows,
     rankCountsTruncated:ranks.rows.length>60,
-    redemptionMetricsAvailable:false,
-    notice:"All referral totals come from verified immutable CG04 points events. Redemption totals remain unavailable until recorded."};
+    redemptionMetrics:redemptions.rows[0]??{
+     pending:"0",cancelled:"0",fulfilled:"0",total:"0"},
+    redemptionMetricsAvailable:true,
+    notice:"Verified referral points and source-recorded digital reward requests only; held rewards are not delivered."};
   },true);
  }
  async stockOptions(bearer:string){
