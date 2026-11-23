@@ -63,4 +63,29 @@ export class ReferralResolveService{
    notice:row?"Eligible referral programme. Only a verified qualifying activation can earn points.":
     "This referral code is not currently eligible. You may continue without it."};
  }
+
+ /** Public groups only: suppress every cohort below five real credited owners.
+  * No codes, contact info, branches or individually ranked referrals.
+  */
+ async publicLeaderboard(){
+  const q=await this.db.query<{programme:string;rank:string;participants:string;
+   qualifiedReferrals:string}>(
+   "SELECT p.display_name AS programme,"+
+   "COALESCE(wallet.current_rank_name,'Unranked') AS rank,"+
+   "COUNT(*)::text AS participants,"+
+   "SUM(wallet.qualified_referrals)::text AS \"qualifiedReferrals\" "+
+   "FROM points_account wallet "+
+   "JOIN referral_program p ON p.root_realm_id=wallet.root_realm_id "+
+   "AND p.id=wallet.programme_id AND p.status='ACTIVE' "+
+   "JOIN access_realm realm ON realm.id=wallet.root_realm_id "+
+   "AND realm.realm_key='FOUNDATION_ROOT' "+
+   "WHERE wallet.qualified_referrals>0 "+
+   "AND EXISTS(SELECT 1 FROM referral_policy_version policy "+
+   "WHERE policy.root_realm_id=p.root_realm_id AND policy.programme_id=p.id "+
+   "AND policy.effective_from<=now()) "+
+   "GROUP BY wallet.root_realm_id,p.id,p.display_name,wallet.current_rank_name "+
+   "HAVING COUNT(*)>=5 ORDER BY p.display_name,rank LIMIT 50");
+  return {groups:q.rows,minimumPublicGroupSize:5,
+   notice:"Only aggregated groups of five or more verified referrers are shown. No names or private applicant details are published."};
+ }
 }
