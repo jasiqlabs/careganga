@@ -774,12 +774,12 @@ export function StaffAuthenticationScreen() {
     if(!canDrafts&&!canReviews)return <AccessDeniedScreen reason="Your current role cannot access CSR partners." onMyAccount={()=>setCsrOpen(false)}/>;
     return renderInShell(<ScreenErrorBoundary onExit={()=>setCsrOpen(false)}>
      <View style={{flex:1}}>
-      {canDrafts&&<View style={{flexDirection:"row",gap:9,padding:9,flexWrap:"wrap"}}>
-       <Pressable accessibilityRole="button" onPress={()=>setCsrTab("DRAFTS")} style={{padding:12,borderWidth:1,borderRadius:9,borderColor:"#B9C7E8"}}><Text>CSR partners</Text></Pressable>
-       <Pressable accessibilityRole="button" onPress={()=>setCsrTab("FUNDING")} style={{padding:12,borderWidth:1,borderRadius:9,borderColor:"#B9C7E8"}}><Text>Funding requests</Text></Pressable>
+      <View style={{flexDirection:"row",gap:9,padding:9,flexWrap:"wrap"}}>
+       {canDrafts&&<Pressable accessibilityRole="button" onPress={()=>setCsrTab("DRAFTS")} style={{padding:12,borderWidth:1,borderRadius:9,borderColor:"#B9C7E8"}}><Text>CSR partners</Text></Pressable>}
+       {canDrafts&&<Pressable accessibilityRole="button" onPress={()=>setCsrTab("FUNDING")} style={{padding:12,borderWidth:1,borderRadius:9,borderColor:"#B9C7E8"}}><Text>Funding requests</Text></Pressable>}
        {canReviews&&<Pressable accessibilityRole="button" onPress={()=>setCsrTab("REVIEWS")} style={{padding:12,borderWidth:1,borderRadius:9,borderColor:"#B9C7E8"}}><Text>Independent reviews</Text></Pressable>}
        {canReviews&&<Pressable accessibilityRole="button" onPress={()=>setCsrTab("FUNDING_REVIEWS")} style={{padding:12,borderWidth:1,borderRadius:9,borderColor:"#B9C7E8"}}><Text>Funding approvals</Text></Pressable>}
-      </View>}
+      </View>
       <Suspense fallback={<ActivityIndicator style={{marginTop:40}}/>}>
        {canDrafts&&csrTab==="FUNDING"?
         <NativeCsrFunding key={token} token={token}
