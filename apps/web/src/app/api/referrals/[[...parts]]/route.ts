@@ -9,6 +9,8 @@ const response=(body:unknown,status:number)=>NextResponse.json(body,{status,head
 function route(parts:string[],method:Method):{target:string;isSelf:boolean}|null{
  const segment=parts.join("/");
  if(segment==="my-catalog"&&method==="GET")return {target:"my-catalog",isSelf:true};
+ if(segment==="catalogue-programmes"&&method==="GET")
+  return {target:segment,isSelf:false};
  if(segment==="programmes"&&(method==="GET"||method==="POST"))
   return {target:segment,isSelf:false};
  if(parts.length===2&&parts[0]==="programmes"&&UUID.test(parts[1])&&
@@ -33,7 +35,7 @@ async function proxy(req:NextRequest,ctx:Context,method:Method){
  if(!path)return response({message:"That referral or reward action is unavailable."},404);
  const params=req.nextUrl.searchParams;
  const page=params.get("page");
- const paged=method==="GET"&&(path.target==="programmes"||
+ const paged=method==="GET"&&(path.target==="programmes"||path.target==="catalogue-programmes"||
   path.target==="my-catalog"||path.target.endsWith("/products"));
  if([...params.keys()].some(k=>k!=="page")||
     params.getAll("page").length>1||
