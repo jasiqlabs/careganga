@@ -1,4 +1,4 @@
-import {Body,Controller,Header,Ip,Post} from "@nestjs/common";
+import {Body,Controller,Get,Header,Ip,Post} from "@nestjs/common";
 import {ReferralResolveService} from "../application/referral-resolve.service";
 
 /** Public code check is NOT membership validation, identity proof or credit.
@@ -7,6 +7,9 @@ import {ReferralResolveService} from "../application/referral-resolve.service";
 @Controller("api/v1/referrals")
 export class ReferralResolveController{
  constructor(private readonly resolver:ReferralResolveService){}
+ @Get("leaderboard")
+ @Header("Cache-Control","public, max-age=60")
+ leaderboard(){return this.resolver.publicLeaderboard();}
  @Post("resolve")
  @Header("Cache-Control","no-store")
  resolve(@Body()body:unknown,@Ip()requestIp:string){
