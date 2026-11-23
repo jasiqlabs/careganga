@@ -55,7 +55,7 @@ async function api<T>(path:string,method:"GET"|"POST"|"PATCH"="GET",body?:Record
 export function CsrFundingWorkspace({canManage,canReadAgreement,canUploadAgreement,canReadFinance,canLinkFinance}:{canManage:boolean;canReadAgreement:boolean;canUploadAgreement:boolean;canReadFinance:boolean;canLinkFinance:boolean}){
  const [page,setPage]=useState<{items:Proposal[];hasMore:boolean;summary?:{requests:number;drafts:number;requestedMinor:string;verifiedFinance:null|{
   committedMinor:string;verifiedReceivedMinor:string;revalidationRequiredMinor:string;
-  allocatedMinor:null;utilizedMinor:null;availableMinor:null;utilizationPercent:null;notice:string
+  allocatedMinor:string;utilizedMinor:string;availableMinor:string|null;utilizationPercent:string|null;notice:string;needsRevalidation:boolean
  }}}>({items:[],hasMore:false});
  const [options,setOptions]=useState<Options|null>(null);
  const [offset,setOffset]=useState(0),[epoch,setEpoch]=useState(0),[loading,setLoading]=useState(true);
@@ -177,9 +177,9 @@ export function CsrFundingWorkspace({canManage,canReadAgreement,canUploadAgreeme
        INR(page.summary.verifiedFinance.verifiedReceivedMinor):"Finance access restricted"],
       ["committed","Committed · CG03 approved",page.summary.verifiedFinance?
        INR(page.summary.verifiedFinance.committedMinor):"Finance access restricted"],
-      ["utilized","Utilized · CG09","Pending allocation integration"],
-      ["available","Available · CG09","Pending allocation integration"],
-      ["percent","Utilization %","Pending allocation integration"]
+      ["utilized","Utilized · CG09",page.summary.verifiedFinance?INR(page.summary.verifiedFinance.utilizedMinor):"Finance access restricted"],
+      ["available","Available · CG09",page.summary.verifiedFinance?.availableMinor!==null&&page.summary.verifiedFinance?.availableMinor!==undefined?INR(page.summary.verifiedFinance.availableMinor):"Finance revalidation / access restricted"],
+      ["percent","Utilization %",page.summary.verifiedFinance?.utilizationPercent!==null&&page.summary.verifiedFinance?.utilizationPercent!==undefined?page.summary.verifiedFinance.utilizationPercent+"%":"Finance revalidation / access restricted"]
     ] as const).map(([key,label,value])=><div key={key} style={box}>
      <strong style={{display:"block",fontSize:key==="total"||key==="received"||key==="committed"?22:14,
       fontVariantNumeric:"tabular-nums"}}>{value}</strong>
@@ -190,7 +190,7 @@ export function CsrFundingWorkspace({canManage,canReadAgreement,canUploadAgreeme
     {page.summary.requests} original funding requests · {page.summary.drafts} unapproved drafts.
     Only independently reconciled CG09 deposits are received money. A pledge is not cash.
    </p>
-   {page.summary.verifiedFinance&&BigInt(page.summary.verifiedFinance.revalidationRequiredMinor)>0n&&
+   {page.summary.verifiedFinance&&page.summary.verifiedFinance.needsRevalidation&&
     <p role="alert" style={{color:"#B91C1C"}}>Some previous bank money is now unverified
      or reversed; these amounts are excluded from Received and cannot support allocation.</p>}
   </div>}
