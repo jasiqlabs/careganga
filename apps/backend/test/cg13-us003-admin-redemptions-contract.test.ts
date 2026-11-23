@@ -34,14 +34,14 @@ describe("CG13 US003 B14/B15 verified redemption reporting (mock, NOT live SQL)"
  test("a branch-granted staff role sees only original scoped frozen product results",async()=>{
   const x=fixture();
   const result=await x.svc.adminRedemptions(
-   "staff",P,"2","HELD","digital","2026-11-01","2026-11-23");
+   "staff",P,"2","HELD","digital","2026-11-01","2026-11-23","Recognition");
   assert.equal(result.page,2);
   assert.equal(result.items[0].status,"HELD");
   assert.equal(result.items[0].productName,"Original frozen digital recognition");
   const query=x.seen.find(v=>v.sql.includes("FROM redemption r JOIN points_account wallet"));
   assert.ok(query);
   assert.deepEqual(query.params,
-   [R,P,false,[BRANCH],"HELD","digital","2026-11-01","2026-11-23",25,true,true]);
+   [R,P,false,[BRANCH],"HELD","digital","2026-11-01","2026-11-23",25,true,true,"Recognition"]);
   assert.match(query.sql,/COALESCE\(m.branch_ref,v.branch_ref\)=ANY\(\$4::uuid\[\]\)/);
   assert.match(query.sql,/JOIN reward_product_revision product/);
   assert.match(query.sql,/product.revision=r.product_revision/);
@@ -49,6 +49,9 @@ describe("CG13 US003 B14/B15 verified redemption reporting (mock, NOT live SQL)"
   assert.match(query.sql,/wallet.referrer_kind='MEMBER' AND \$10::boolean/);
   assert.match(query.sql,/wallet.referrer_kind='VOLUNTEER' AND \$11::boolean/);
   assert.match(query.sql,/ELSE 'Recipient restricted' END AS name/);
+  assert.match(query.sql,/\(\$12::text='' OR product.category=\$12\)/);
+  // Original B15 category must never move the query outside the same CG02 branch.
+  assert.ok(query.sql.includes("r.root_realm_id=$1 AND r.programme_id=$2"));
   assert.ok(!query.sql.includes("applicant_account_ref"));
   assert.ok(!query.sql.includes("contact_phone"));
  });
