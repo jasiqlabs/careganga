@@ -69,10 +69,16 @@ const imageUrl=(v:unknown):string|null=>{
  try{
   const url=new URL(v);
   const host=url.hostname.toLowerCase();
+  // Browsers load product images directly. Never expose an arbitrary operator-
+  // supplied host to authenticated members: external hosts can track visitors.
+  // Only Foundation-approved exact public image hosts may appear in catalogues.
+  const approved=(process.env.CG13_APPROVED_PUBLIC_IMAGE_HOSTS??"")
+   .split(",").map(x=>x.trim().toLowerCase()).filter(Boolean);
   if(url.protocol!=="https:"||url.username||url.password||url.search||url.hash||
+   url.port||!(/\.(?:png|jpe?g|webp)$/i).test(url.pathname)||
    !/^[a-z0-9.-]+\.[a-z]{2,}$/.test(host)||
    host.endsWith(".local")||host.endsWith(".internal")||
-   host==="localhost"||!(/\.(?:png|jpe?g|webp)$/i).test(url.pathname))
+   !approved.includes(host))
    throw Error("invalid");
   return url.href;
  }catch{throw bad("imageUrl");}
