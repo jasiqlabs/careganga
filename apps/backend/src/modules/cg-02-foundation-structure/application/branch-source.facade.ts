@@ -48,6 +48,10 @@ export class BranchSourceFacade{
   */
  private async permittedStaffBranches(client:Pool|PoolClient,root:string,account:string):
   Promise<{id:string;name:string;manager_account_ref:string}[]>{
+  // The root read fence orders an in-transaction decision against CG02
+  // geography reparent/deactivation; the branch row share lock orders manager
+  // reassignment/closure. Pool-backed read-only projections recheck per request.
+  await client.query("SELECT id FROM access_realm WHERE id=$1 FOR SHARE",[root]);
   await client.query("SELECT id FROM cg02_staff_scope_assignment "+
    "WHERE root_realm_id=$1 AND account_ref=$2 AND ended_at IS NULL FOR SHARE",
    [root,account]);
@@ -73,7 +77,7 @@ export class BranchSourceFacade{
        OR (grant_scope.scope_kind='AREA' AND EXISTS(
         SELECT 1 FROM ancestors a WHERE a.branch_id=b.id AND a.area_id=grant_scope.area_ref)))
     ))
-   ORDER BY b.name,b.id LIMIT 201
+   ORDER BY b.name,b.id LIMIT 201 FOR SHARE OF b
   `,[root,account]);
   if(rows.rows.length>200)throw new ForbiddenException("Ask an administrator to narrow the assigned branches");
   return rows.rows;
