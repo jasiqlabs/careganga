@@ -1,6 +1,7 @@
 "use client";
 import {useCallback,useEffect,useMemo,useRef,useState,type CSSProperties} from "react";
 import {AdminRedemptionsTable} from "./admin-redemptions-table";
+import {AdminReferralRecords} from "./admin-referral-records";
 
 type Rank={name:string;verifiedReferrals:number|string;minimumPoints:number|string;benefitsSummary:string;sortOrder?:number};
 type Programme={ref:string;code:string;name:string;audience:"MEMBER"|"VOLUNTEER"|"BOTH";
@@ -97,9 +98,9 @@ const fromProduct=(v:Reward):RewardDraft=>({type:v.type,name:v.name,category:v.c
  imageUrl:v.imageUrl??"",itemRef:v.itemRef??"",storeRef:v.storeRef??"",
  digitalFulfillmentMethod:v.digitalFulfillmentMethod??"PENDING_EXTERNAL_PROOF"});
 export function ReferralRewardsWorkspace({canViewPolicy,canViewRewards,canManagePolicy,canManageRewards,
- canIssueStock}:{
+ canIssueStock,canViewMemberRoster,canViewVolunteerRoster}:{
  canViewPolicy:boolean;canViewRewards:boolean;canManagePolicy:boolean;canManageRewards:boolean;
- canIssueStock:boolean}){
+ canIssueStock:boolean;canViewMemberRoster:boolean;canViewVolunteerRoster:boolean}){
  const [programmes,setProgrammes]=useState<ProgrammeSummary[]>([]);
  const [selected,setSelected]=useState(""),[detail,setDetail]=useState<Programme|null>(null);
  const [products,setProducts]=useState<Reward[]>([]),[edition,setEdition]=useState<Reward|null>(null);
@@ -478,6 +479,9 @@ export function ReferralRewardsWorkspace({canViewPolicy,canViewRewards,canManage
         </div>
        </aside>
       </div>
+      <AdminReferralRecords programme={selected} kind={rankTab}
+       canViewMember={canViewMemberRoster} canViewVolunteer={canViewVolunteerRoster}
+       refreshEpoch={epoch}/>
       {canManagePolicy&&<button style={{...css.button,justifySelf:"start"}} disabled={busy}
        onClick={()=>void send({method:"POST",path:"/programmes/"+detail.ref+"/status",
         body:{requestKey:crypto.randomUUID(),expectedVersion:detail.version,
