@@ -1,5 +1,6 @@
 import {Body,Controller,Get,Header,Headers,Param,Post,Req,StreamableFile} from "@nestjs/common";
 import {DonationReceiptDocumentService} from "../application/donation-receipt-document.service";
+import {DonationReceiptMessageService} from "../application/donation-receipt-message.service";
 import {DonationIntentsService} from "../../cg-07-campaigns-donations/application/donation-intents.service";
 import {assertDonationPublicIngress} from "../../cg-07-campaigns-donations/domain/public-donation-ingress";
 @Controller("api/documents/donation-receipts")
@@ -30,7 +31,8 @@ export class DonationReceiptDocumentController{
 @Controller("api/public/donations/receipt")
 export class DonorOwnReceiptController{
  constructor(private readonly source:DonationReceiptDocumentService,
-  private readonly requests:DonationIntentsService){}
+  private readonly requests:DonationIntentsService,
+  private readonly messages:DonationReceiptMessageService){}
  @Post("corrections")
  @Header("Cache-Control","private, no-store")
  async corrections(@Req()req:object,@Body()body:unknown){
@@ -47,6 +49,20 @@ export class DonorOwnReceiptController{
   const bytes=await this.source.downloadCorrection(body);
   return new StreamableFile(bytes,{type:"application/pdf",
    disposition:'attachment; filename="CareGanga-Donation-Correction.pdf"'});
+ }
+ @Post("message")
+ @Header("Cache-Control","private, no-store")
+ async requestMessage(@Req()req:object,@Body()body:unknown){
+  assertDonationPublicIngress(req,"donor");
+  await this.requests.throttlePrivateDocumentRead(req);
+  return this.messages.request(body);
+ }
+ @Post("message/status")
+ @Header("Cache-Control","private, no-store")
+ async messageStatus(@Req()req:object,@Body()body:unknown){
+  assertDonationPublicIngress(req,"donor");
+  await this.requests.throttlePrivateDocumentRead(req);
+  return this.messages.current(body);
  }
  @Post("download")
  @Header("Cache-Control","private, no-store")
