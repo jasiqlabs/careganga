@@ -3,7 +3,8 @@ import {ActivityIndicator,Pressable,StyleSheet,Text,TextInput,View} from "react-
 import * as Crypto from "expo-crypto";
 import {identityRequest} from "../identity-access/http-client";
 
-type Budget={budgetRef:string;name:string;category:string;ceilingMinor:string};
+type Budget={budgetRef:string;name:string;category:string;ceilingMinor:string;
+ items:{description:string;quantityMilli:string;unitRateMinor:string;totalMinor:string}[]};
 type Expense={journalRef:string;voucherNumber:string;amountMinor:string;postedDate:string};
 type Party="CSR"|"FOUNDATION";
 type Kind="ALLOCATE"|"UTILIZE";
@@ -95,6 +96,13 @@ export function NativeCsrFundingBudgetPanel({token,proposalRef,version,onExpired
      <Text style={styles.title}>Approved category and budget</Text>
      {budgets.map(v=>pick(v.name+" · "+v.category+" · "+money(v.ceilingMinor),
       budget===v.budgetRef,()=>setBudget(v.budgetRef),!!pending))}
+     <Text style={styles.title}>Original category / quantity / rate</Text>
+     {budgets.find(x=>x.budgetRef===budget)?.items?.length?
+      budgets.find(x=>x.budgetRef===budget)!.items.map((v,i)=>
+       <Text key={i} style={styles.note}>{v.description} ·
+        {(Number(v.quantityMilli)/1000).toFixed(3)} × {money(v.unitRateMinor)}
+        {" = "}{money(v.totalMinor)}</Text>):
+      <Text style={styles.note}>No item breakdown recorded in this approved CG09 budget.</Text>}
      <Text style={styles.title}>Funding share</Text>
      {pick("CSR partner share",party==="CSR",()=>setParty("CSR"),!!pending)}
      {pick("Foundation share",party==="FOUNDATION",()=>setParty("FOUNDATION"),!!pending)}
