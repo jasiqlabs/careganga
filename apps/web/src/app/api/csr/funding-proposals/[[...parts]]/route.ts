@@ -11,7 +11,7 @@ async function proxy(req:NextRequest,ctx:Context,method:"GET"|"POST"|"PATCH"){
   (parts.length===1&&(method==="GET"&&(parts[0]==="options"||UUID.test(parts[0]))||
    method==="PATCH"&&UUID.test(parts[0])))||
   (parts.length===2&&UUID.test(parts[0])&&(
-   method==="POST"&&parts[1]==="submit"||
+   method==="POST"&&["submit","resume"].includes(parts[1])||
    method==="GET"&&parts[1]==="review-history"));
  if(!allowed)return reply({message:"The original CSR funding action is unavailable."},404);
  if(method!=="GET"&&req.headers.get("origin")!==req.nextUrl.origin)
