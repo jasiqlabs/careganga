@@ -16,7 +16,7 @@ const DIGEST="a".repeat(64);
 type Trace={sql:string;params:unknown[]};
 function fixture(kind:"MEMBER"|"VOLUNTEER"="MEMBER",
  options:{attribution?:boolean;fraud?:boolean;already?:boolean;current?:boolean;
-  latestDigest?:string;changedCode?:boolean}={}){
+  latestDigest?:string;changedCode?:boolean;autoRank?:boolean}={}){
  const trace:Trace[]=[];
  const client={
   query:async(sql:string,params:unknown[]=[])=>{
@@ -37,9 +37,14 @@ function fixture(kind:"MEMBER"|"VOLUNTEER"="MEMBER",
      referral:options.changedCode?"Q".repeat(32):"C".repeat(32)}]};
    if(sql.includes("FROM points_account")&&sql.includes("FOR UPDATE"))
     return {rows:[{id:WALLET,earnedPoints:"125",reversedPoints:"0",
-     spentPoints:"0",heldPoints:"0",qualifiedReferrals:2,currentRankName:"Starter"}]};
+     spentPoints:"0",heldPoints:"0",qualifiedReferrals:2,currentRankName:"Starter",
+     currentRankSort:1,currentRankPolicyVersion:1}]};
    if(sql.includes("INSERT INTO points_event("))return {rows:[{id:EVENT}]};
-   if(sql.includes("FROM referral_rank_rule"))return {rows:[{name:"Champion",sort:3}]};
+   if(sql.includes("FROM referral_policy_version"))
+    return {rows:[{autoRankUpgrade:options.autoRank!==false}]};
+   if(sql.includes("FROM referral_rank_rule"))
+    return {rows:sql.includes("minimum_verified_referrals<=$4")?
+     [{name:"Champion",sort:3}]:[{name:"Starter",sort:1}]};
    return {rows:[],rowCount:1};
   }
  };
@@ -57,6 +62,17 @@ describe("CG13 US002 genuine CG04 qualification adapter source-contract, NOT liv
   const rank=x.trace.find(t=>t.sql.includes("INSERT INTO reward_rank_event("));
   assert.ok(rank);assert.deepEqual(rank.params,[ROOT,WALLET,EVENT,2,"Starter","Champion",3,3,"200"]);
   assert.ok(!x.trace.some(t=>/UPDATE referral_attribution|INSERT INTO member|INSERT INTO volunteer/.test(t.sql)));
+ });
+ test("auto-rank disabled preserves current rank without inventing a promotion",async()=>{
+  const x=fixture("MEMBER",{autoRank:false});
+  assert.equal(await creditVerifiedCG04Qualification(x.client as never,x.input),"CREDITED");
+  const wallet=x.trace.find(t=>t.sql.includes("UPDATE points_account SET"));
+  assert.ok(wallet);
+  assert.deepEqual(wallet.params,[ROOT,WALLET,"200",3,"Starter",1,1]);
+  const event=x.trace.find(t=>t.sql.includes("INSERT INTO reward_rank_event("));
+  assert.ok(event);
+  assert.deepEqual(event.params,[ROOT,WALLET,EVENT,2,"Starter","Starter",1,3,"200"]);
+  assert.ok(x.trace.some(t=>t.sql.includes("SELECT auto_rank_upgrade")));
  });
  test("a corrected CG04 application uses its CURRENT approved digest but preserves original award",async()=>{
   const newDigest="b".repeat(64);
