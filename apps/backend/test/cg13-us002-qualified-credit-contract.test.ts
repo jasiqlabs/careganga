@@ -127,6 +127,26 @@ describe("CG13 US002 genuine CG04 qualification adapter source-contract, NOT liv
    assert.ok(completed>0&&credited>completed);
   }
  });
+ test("verified credit is in the ORIGINAL CG04 activation transaction, not a best-effort callback",()=>{
+  for(const owner of ["membership-activation","volunteer-activation"]){
+   const src=readFileSync(
+    "src/modules/cg-04-membership-volunteers/application/"+owner+".service.ts","utf8");
+   assert.match(src,/await tx\.query\("BEGIN"\)/);
+   assert.match(src,/await tx\.query\("COMMIT"\)/);
+   assert.match(src,/await tx\.query\("ROLLBACK"\)/);
+   const completion=owner.startsWith("membership")?
+    "await this.approvals.completeMembership":"await this.approvals.completeVolunteer";
+   const start=src.indexOf("async activate(");
+   assert.ok(start>=0);
+   const body=src.slice(start);
+   assert.ok(body.indexOf(completion)>=0);
+   assert.ok(body.indexOf("await creditVerifiedCG04Qualification")>
+    body.indexOf(completion));
+   // Same transaction worker fn contains activation and award; failure
+   // rolls both back. No out-of-TX asynchronous points callback exists.
+   assert.ok(body.includes("return this.run(token,async(tx,a)=>"));
+  }
+ });
  test("migration requires immutable CG04 effects and defers balance projection check",()=>{
   const migration=readFileSync("db/migrations/3506_cg13_us002_verified_points_rank_ledger.sql","utf8");
   for(const signature of ["CREATE FUNCTION cg13_points_event_source_guard",
