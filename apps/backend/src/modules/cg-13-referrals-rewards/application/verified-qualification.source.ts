@@ -20,6 +20,7 @@ type Pending={
 type Wallet={
  id:string;earnedPoints:string;reversedPoints:string;heldPoints:string;
  spentPoints:string;qualifiedReferrals:number;currentRankName:string|null;
+ currentRankSort:number|null;currentRankPolicyVersion:number|null;
 };
 const MAX_SIGNED=9223372036854775807n;
 export type QualificationOutcome="NONE"|"HELD_FRAUD_REVIEW"|"INELIGIBLE"|"PREVIOUS"|"CREDITED";
@@ -74,7 +75,9 @@ export async function creditVerifiedCG04Qualification(tx:PoolClient,src:Committe
   "reversed_points::text AS \"reversedPoints\","+
   "held_points::text AS \"heldPoints\",spent_points::text AS \"spentPoints\","+
   "qualified_referrals AS \"qualifiedReferrals\","+
-  "current_rank_name AS \"currentRankName\" FROM points_account "+
+  "current_rank_name AS \"currentRankName\","+
+  "current_rank_sort AS \"currentRankSort\","+
+  "current_rank_policy_version AS \"currentRankPolicyVersion\" FROM points_account "+
   "WHERE root_realm_id=$1 AND programme_id=$2 AND referrer_kind=$3 "+
   "AND referrer_relationship_ref=$4 AND referrer_account_ref=$5 FOR UPDATE",
   [src.root,att.programme,att.referrerKind,att.referrerRelationship,att.referrerAccount]);
@@ -96,20 +99,35 @@ export async function creditVerifiedCG04Qualification(tx:PoolClient,src:Committe
   "ON CONFLICT(root_realm_id,attribution_id,event_kind) DO NOTHING RETURNING id",
   [src.root,wallet.id,att.id,att.policyVersion,att.awardPoints,latest.rows[0].digest]);
  if(!event.rows[0])return "PREVIOUS";
+ const policy=await tx.query<{autoRankUpgrade:boolean}>(
+  "SELECT auto_rank_upgrade AS \"autoRankUpgrade\" FROM referral_policy_version "+
+  "WHERE root_realm_id=$1 AND programme_id=$2 AND version_no=$3",
+  [src.root,att.programme,att.policyVersion]);
+ if(!policy.rows[0])throw Error("Original effective referral policy unavailable");
+ const autoRank=policy.rows[0].autoRankUpgrade;
  const ranked=await tx.query<{name:string;sort:number}>(
   "SELECT rank_name AS name,sort_order AS sort FROM referral_rank_rule "+
   "WHERE root_realm_id=$1 AND programme_id=$2 AND policy_version=$3 "+
-  "AND minimum_verified_referrals<=$4 AND minimum_eligible_points<=$5::bigint "+
-  "ORDER BY sort_order DESC LIMIT 1",
-  [src.root,att.programme,att.policyVersion,count,available.toString()]);
- const rank=ranked.rows[0];
- if(!rank)throw Error("Original effective referral rank rules are unavailable");
+  (autoRank?
+   "AND minimum_verified_referrals<=$4 AND minimum_eligible_points<=$5::bigint "+
+   "ORDER BY sort_order DESC LIMIT 1":
+   "ORDER BY sort_order ASC LIMIT 1"),
+  autoRank?[src.root,att.programme,att.policyVersion,count,available.toString()]:
+   [src.root,att.programme,att.policyVersion]);
+ const baseline=ranked.rows[0];
+ if(!baseline)throw Error("Original effective referral rank rules are unavailable");
+ // Disabling auto-upgrade prevents promotion; it does not erase a prior
+ // original rank. Unranked accounts start at the policy's configured base.
+ const rank=!autoRank&&wallet.currentRankName&&wallet.currentRankSort?
+  {name:wallet.currentRankName,sort:wallet.currentRankSort,
+   version:wallet.currentRankPolicyVersion??att.policyVersion}:
+  {...baseline,version:att.policyVersion};
  await tx.query(
   "UPDATE points_account SET earned_points=$3,qualified_referrals=$4,"+
   "current_rank_name=$5,current_rank_sort=$6,current_rank_policy_version=$7,"+
   "revision=revision+1,updated_at=now() "+
   "WHERE root_realm_id=$1 AND id=$2",
-  [src.root,wallet.id,earned.toString(),count,rank.name,rank.sort,att.policyVersion]);
+  [src.root,wallet.id,earned.toString(),count,rank.name,rank.sort,rank.version]);
  await tx.query(
   "INSERT INTO reward_rank_event(root_realm_id,points_account_id,"+
   "qualifying_points_event_id,policy_version,prior_rank_name,"+
