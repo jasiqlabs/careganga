@@ -52,6 +52,7 @@ export function parsePartner(raw:unknown):PartnerDraft&{requestKey:string;expect
 }
 type PartnerRow={id:string;branch_ref:string|null;status:string;version:number;created_by:string};
 const projection='p.id AS ref,p.branch_ref AS "branchRef",b.name AS branch,p.legal_name AS "legalName",p.registration_reference AS "registrationReference",p.contact_name AS "contactName",p.contact_email AS "contactEmail",p.contact_mobile AS "contactMobile",p.support_summary AS "supportSummary",p.status,p.version,p.updated_at AS "updatedAt"';
+const listProjection='p.id AS ref,p.branch_ref AS "branchRef",b.name AS branch,p.legal_name AS "legalName",p.status,p.version,p.updated_at AS "updatedAt"';
 const joins=" FROM csr_partner p LEFT JOIN branch b ON b.id=p.branch_ref AND b.root_realm_id=p.root_realm_id";
 const digest=(v:unknown)=>createHash("sha256").update(JSON.stringify(v)).digest("hex");
 
@@ -112,10 +113,10 @@ export class CsrPartnersService{
    const scope=await this.branches.projectBranchScope(tx,a);
    if(branch===null&&!scope.all)throw new ForbiddenException("Foundation-wide CSR information is restricted.");
    if(branch&&!(scope.all||scope.branches.some(b=>b.value===branch)))throw new ForbiddenException("CSR branch is not assigned.");
-   const rows=await tx.query("SELECT "+projection+joins+
+   const rows=await tx.query("SELECT "+listProjection+joins+
     " WHERE p.root_realm_id=$1 AND ($2::boolean OR p.branch_ref=ANY($3::uuid[])) "+
     "AND ($4::boolean OR p.branch_ref IS NOT DISTINCT FROM $5::uuid) "+
-    "AND ($6='' OR p.legal_name_norm LIKE '%'||$6||'%') "+
+    "AND ($6='' OR strpos(p.legal_name_norm,$6)>0) "+
     "AND ($7::text IS NULL OR p.status=$7) "+
     "ORDER BY p.updated_at DESC,p.id DESC LIMIT 26 OFFSET $8",
     [a.realmId,scope.all,scope.branches.map(b=>b.value),branch===undefined,branch??null,q,s,offset]);

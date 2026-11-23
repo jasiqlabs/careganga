@@ -167,3 +167,8 @@ Receiving tests within original **US-001/002/003** QA: real partnered state, app
 
 - **Real source:** Internal Android `NativeCsrPartners` calls the same `/api/v1/csr/partners` backend with current CG01 roles, same CG02 branch selector, original create/edit/discard and source retry key. Staff module directory is role-filtered, route sign-out clears CSR view, and the screen uses the existing shared native shell. Public Android has no private CSR Admin module. No fake document upload, approval button, bank receipt or verified/public logo.
 - **Case-by-case intent:** US001-QA05/06/14/17/18/20 have both Web and native draft paths, still **SOURCE_REVIEW_PENDING** until error states, native TS build and client B02 screenshots are checked; US001-QA01/08/10/11/13/16 remain **SOURCE_GAP** for real CG03/CG19/approval. The original 60 QA IDs are unchanged. Native/device/runtime proof NOT_RUN; no story completion claimed.
+
+
+### 23 Nov 2026 — US001 targeted review and privacy/source fix
+
+The authorized partner list now projects only organization name, branch, status, version and modification time, not contact name/mobile/email, registration number or support narrative. Detail still uses a separate current-action and original CG02 branch guard. Filter search uses literal substring rather than SQL wildcard interpretation. This greenfield, unexecuted original 3401 migration now checks email syntax at the database boundary as well as in API input validation. Original US001-QA02/12/14/17/19 impacted; existing IDs unchanged. **SOURCE_FIX_AUTHORED_REVIEW_PENDING**, independent reviewer, TypeScript, SQL migrations, actual two-branch tests, Web/Android and client screenshot QA NOT_RUN. Original CG03/CG19 approval/proof still SOURCE_GAP, no false approved state.
