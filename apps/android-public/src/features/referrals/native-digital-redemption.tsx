@@ -1,5 +1,5 @@
 import {useCallback,useEffect,useRef,useState} from "react";
-import {AppState,Pressable,StyleSheet,Text,View} from "react-native";
+import {Alert,AppState,Pressable,StyleSheet,Text,View} from "react-native";
 import * as Crypto from "expo-crypto";
 import {careGangaTheme as t} from "../../../../../packages/design-tokens/src/index";
 import {memberInvoke} from "../membership/member-native-api";
@@ -13,7 +13,7 @@ export type NativeRedeemableReward={
 };
 type Receipt={ref:string;state:string;type:"DIGITAL"|"PHYSICAL";productName:string;pointsCost:string;requestedAt:string;
  digitalFulfillmentMethod:string;recognitionTitle:string|null;
- recognitionDescription:string|null;recognizedAt:string|null};
+ recognitionDescription:string|null;recognizedAt:string|null;handedOverAt:string|null};
 type Page={items:Receipt[];hasMore:boolean;page:number};
 type Created={ref:string;state:string;replayed:boolean;pointsCost:string;notice:string};
 export function NativeDigitalRedemption({token,onExpired,selected,onClose,audiences}:{
@@ -96,6 +96,24 @@ export function NativeDigitalRedemption({token,onExpired,selected,onClose,audien
    "Recognition status uncertain. Refresh original request history.");}
   finally{locked.current=false;setBusy(false);}
  };
+ const acknowledgeHandover=async(x:Receipt)=>{
+  if(busy||locked.current||x.type!=="PHYSICAL"||x.state!=="ISSUED_AWAITING_HANDOVER")return;
+  locked.current=true;setBusy(true);setError("");setNotice("");
+  try{
+   const result=await api<{notice:string}>(
+    "redemptions/"+x.ref+"/acknowledge-handover","POST",{});
+   setNotice(result.notice);await refresh();
+  }catch(e){setError(e instanceof Error?e.message:
+   "Handover uncertain. Refresh original request history before retrying.");}
+  finally{locked.current=false;setBusy(false);}
+ };
+ const confirmHandover=(x:Receipt)=>{
+  if(busy||locked.current||x.type!=="PHYSICAL"||x.state!=="ISSUED_AWAITING_HANDOVER")return;
+  Alert.alert("Confirm actual physical receipt",
+   "Only confirm after the warehouse staff have genuinely handed you this reward. Your held points will be permanently spent.",
+   [{text:"Not received",style:"cancel"},
+    {text:"I received it",onPress:()=>void acknowledgeHandover(x)}]);
+ };
  const button=(title:string,fn:()=>void,disabled=false)=>{
   return <Pressable style={s.button} accessibilityRole="button" disabled={disabled}
    accessibilityState={{disabled}} onPress={fn}><Text style={s.action}>{title}</Text></Pressable>;
@@ -128,16 +146,25 @@ export function NativeDigitalRedemption({token,onExpired,selected,onClose,audien
   {!!error&&<Text accessibilityRole="alert" style={s.error}>{error}</Text>}
   {!!notice&&<Text accessibilityRole="text" style={s.note}>{notice}</Text>}
   <Text style={s.title}>My request history</Text>
-  {!items.length&&<Text style={s.note}>No confirmed digital requests are recorded.</Text>}
+  {!items.length&&<Text style={s.note}>No confirmed reward requests are recorded.</Text>}
   {items.map(x=><View key={x.ref} style={s.item}>
    <Text style={s.title}>{x.productName}</Text>
    <Text style={s.note}>{x.pointsCost} points · {x.state==="HELD"?
     (x.type==="PHYSICAL"?"Points and real stock held — issue pending":
-     "Points held — delivery pending"):x.state==="CANCELLED"?"Cancelled — points released":x.state}</Text>
+     "Points held — delivery pending"):x.state==="ISSUED_AWAITING_HANDOVER"?
+     "Warehouse issued — actual recipient handover pending":
+    x.state==="FULFILLED"?"Delivered and confirmed":
+    x.state==="CANCELLED"?"Cancelled — points released":x.state}</Text>
    <Text style={s.note}>{new Date(x.requestedAt).toLocaleDateString("en-IN",
     {timeZone:"Asia/Kolkata"})}</Text>
-   {x.state==="HELD"&&x.digitalFulfillmentMethod==="ON_PLATFORM_RECOGNITION"&&
+   {x.state==="ISSUED_AWAITING_HANDOVER"&&x.type==="PHYSICAL"&&
+    button("I received the physical reward — confirm handover",()=>confirmHandover(x),busy)}
+   {x.state==="HELD"&&x.type==="DIGITAL"&&x.digitalFulfillmentMethod==="ON_PLATFORM_RECOGNITION"&&
     button("Open and acknowledge my recognition",()=>void acknowledge(x),busy)}
+   {x.state==="FULFILLED"&&x.type==="PHYSICAL"&&!!x.handedOverAt&&
+    <Text style={s.note}>Original warehouse issue and your receipt confirmed on {
+     new Date(x.handedOverAt).toLocaleDateString("en-IN",{timeZone:"Asia/Kolkata"})}.
+     Verified held points were spent after your confirmation.</Text>}
    {x.state==="FULFILLED"&&!!x.recognitionTitle&&<View style={s.item}>
     <Text style={s.title}>{x.recognitionTitle}</Text>
     {!!x.recognitionDescription&&<Text style={s.note}>{x.recognitionDescription}</Text>}
