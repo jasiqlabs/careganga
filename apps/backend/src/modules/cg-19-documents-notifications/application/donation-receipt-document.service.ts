@@ -187,8 +187,17 @@ export class DonationReceiptDocumentService{
   try{
    let object:{objectVersion:string;sha256:string;sizeBytes:number}|null=null;
    if(c.status==="UNKNOWN"){
-    try{object=await this.storage.reconcileIssuedPrivateDocument({
-     objectKey:c.object_key,maxBytes:10485760});}catch{/* retry same private key */}
+    try{
+     const found=await this.storage.reconcileIssuedPrivateDocument({
+      objectKey:c.object_key,maxBytes:10485760});
+     const bytes=await this.storage.readVerifiedPrivateObject({
+      objectKey:c.object_key,objectVersion:found.objectVersion,maxBytes:found.sizeBytes});
+     if(bytes.length!==found.sizeBytes||
+      createHash("sha256").update(bytes).digest("hex")!==found.sha256)throw Error();
+     const parsed=await PDFDocument.load(bytes,{updateMetadata:false});
+     if(parsed.getSubject()!=="CG19-REFUND:"+c.source_digest)throw Error();
+     object=found;
+    }catch{/* Never declare a mismatched recovered private object issued. */}
    }
    if(!object){
     const pdf=await PDFDocument.create();

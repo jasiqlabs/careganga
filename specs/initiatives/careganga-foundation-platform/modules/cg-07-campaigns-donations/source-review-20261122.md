@@ -4,7 +4,7 @@
 
 **Current scope:** US-001 six-step campaigns/CG03+CG18 is source-authored, awaiting final review; US-002 cash and Razorpay donor/finance Web/native is partially source-authored but bank/NEFT/cheque needs original evidence; US-003 CG19 neutral PDF/CG09 physical-cash refund and actual net source is partially source-authored but provider refund, corrected documents, donor history, export and notifications remain.
 
-**Disposition totals (23 November checkpoint):** 31 source surfaces present but not fully reviewed; 9 known requirements incomplete; 11 require independent/runtime evidence; 9 prior source gaps fixed/reviewed with runtime verification pending. **0/60 original cases are certified RUNTIME_PASS; 0/3 stories certified SOURCE_COMPLETE.** A single row may require more than a single test.
+**Disposition totals (23 November checkpoint):** 31 source surfaces present but not fully reviewed; 7 known requirements incomplete; 11 require independent/runtime evidence; 11 prior source gaps fixed/reviewed with runtime verification pending. **0/60 original cases are certified RUNTIME_PASS; 0/3 stories certified SOURCE_COMPLETE.** A single row may require more than a single test.
 
 | Original QA ID | Source QA disposition | Current original-owner source | Open proof or implementation |
 |---|---|---|---|
@@ -55,13 +55,13 @@
 | US-003-QA05 | SOURCE_GAP | donation-admin.service.ts | Monthly trend/export/receipt correction missing |
 | US-003-QA06 | RUNTIME_NOT_VERIFIED | A16/A18 screenshot audit | Requires actual DB/provider/browser/device/qualified review evidence |
 | US-003-QA07 | SOURCE_PRESENT_NEEDS_REVIEW | 3309 DB guard | Source located; independent file:function and scenario review not signed |
-| US-003-QA08 | SOURCE_GAP | donation-refund.service.ts | CG19 correction/credit note after refunded receipt missing |
+| US-003-QA08 | SOURCE_FIX_REVIEWED_RUNTIME_PENDING | CG07 donation-refund.service.ts; CG19 3312 protected correction; A18 Admin; donor Web/native | Only CG09-posted partial/full refund produces a separate immutable correction linked to original CG19 issued receipt. Source reviewed, regression tests authored; real PostgreSQL/CG19 storage, browser/device and independent reviewer NOT_RUN |
 | US-003-QA09 | SOURCE_PRESENT_NEEDS_REVIEW | CG19 private PDF issuer | Source located; independent file:function and scenario review not signed |
 | US-003-QA10 | SOURCE_PRESENT_NEEDS_REVIEW | CG19 neutral 80G PDF | Source located; independent file:function and scenario review not signed |
 | US-003-QA11 | SOURCE_FIX_REVIEWED_RUNTIME_PENDING | DonationIntentsService.ownHistory with individually provided 256-bit token digest, expiry, strict max20, original public controller and Next BFF | Each history row authorized only by own valid expiring body-only token; no email/PAN identity inference, no donor roster or raw token in URL. Penetration, token replay and native runtime QA NOT_RUN |
 | US-003-QA12 | SOURCE_PRESENT_NEEDS_REVIEW | 3310 DB cap | Source located; independent file:function and scenario review not signed |
 | US-003-QA13 | SOURCE_GAP | CG07 cash refund; provider gap | Real merchant refund confirmation/reconciliation not developed |
-| US-003-QA14 | SOURCE_GAP | CG19 original receipt, correction gap | Separate CG19 correction PDF/credit note not developed |
+| US-003-QA14 | SOURCE_FIX_REVIEWED_RUNTIME_PENDING | CG19 3312 original receipt/refund FKs, exact journal and immutable correction; protected status-token Web/native own download | Original PDF/number retained, one correction per verified refund, checksum/subject-verified uncertain recovery, no unsupported 80G. Source reviewed; actual file/DB/visual and independent reviewer NOT_RUN |
 | US-003-QA15 | SOURCE_FIX_REVIEWED_RUNTIME_PENDING | DonationAdminService.list/exportCsv/donorDetail monthlyTrend and cursor-keyset, Admin donation workspace+protected BFF, CG18 public verified net | Original root/branch scoped monthly CG09 posted gross/refunded/net and pending excluding, safe capped CSV with receipt number, authorized masked PAN and stable keyset; source regression authored. Database reports, browser export, visual and independent QA NOT_RUN |
 | US-003-QA16 | RUNTIME_NOT_VERIFIED | DonationIntentsService.status refundPending/net/receiptStatus; public-donation-form.tsx; native-public-donation.tsx AppState foreground refresh | Source distinguishes pending refund from posted reversal, receipt pending from issued, Web/native status and manual retry. Actual PNG/TalkBack/hardware Back/offline transitions/Expo device and independent review NOT_RUN; final QA still mandatory |
 | US-003-QA17 | SOURCE_PRESENT_NEEDS_REVIEW | CG07/09/18/19 owners | Source located; independent file:function and scenario review not signed |

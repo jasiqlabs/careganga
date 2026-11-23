@@ -16,7 +16,7 @@ test("CG07 US002/003: 3306–3310 installed and finance/receipt evidence guards 
    await db.query("BEGIN READ ONLY");
    const tables=["donation","donation_payment_attempt","donation_payment_event",
     "donation_finance_effect","donation_manual_evidence","cg07_public_request_bucket",
-    "cg19_donation_receipt_document","donation_refund_request"];
+    "cg19_donation_receipt_document","donation_refund_request","cg19_donation_receipt_correction"];
    for(const name of tables){
     const found=await db.query<{ref:string|null}>("SELECT to_regclass($1)::text AS ref",[name]);
     assert.ok(found.rows[0]?.ref,"Missing migrated CG07/CG19 table: "+name);
@@ -33,7 +33,8 @@ test("CG07 US002/003: 3306–3310 installed and finance/receipt evidence guards 
     "cg07_donation_finance_guard","cg07_payment_event_immutable",
     "cg07_guard_payment_event","cg07_manual_proof_immutable",
     "cg07_refund_source_reserve","cg07_refund_requires_posted_finance",
-    "cg19_donation_receipt_proof","cg19_donation_receipt_no_rewrite"];
+    "cg19_donation_receipt_proof","cg19_donation_receipt_no_rewrite",
+    "cg19_correction_history_guard","cg19_correction_posted_refund"];
    for(const name of essential){
     const t=map.get(name);
     assert.ok(t,"Missing critical source protection trigger: "+name);
@@ -43,6 +44,7 @@ test("CG07 US002/003: 3306–3310 installed and finance/receipt evidence guards 
    assert.match(map.get("cg07_donation_finance_guard")?.definition??"",/AFTER INSERT OR UPDATE/);
    assert.equal(map.get("cg07_refund_requires_posted_finance")?.tgdeferrable,true);
    assert.equal(map.get("cg19_donation_receipt_proof")?.tgdeferrable,true);
+   assert.equal(map.get("cg19_correction_posted_refund")?.tgdeferrable,true);
    const constraints=await db.query<{table_name:string;conname:string;definition:string}>(`
     SELECT c.relname AS table_name,co.conname,pg_get_constraintdef(co.oid) AS definition
     FROM pg_constraint co JOIN pg_class c ON c.oid=co.conrelid
@@ -50,7 +52,7 @@ test("CG07 US002/003: 3306–3310 installed and finance/receipt evidence guards 
      AND co.contype IN('f','u','p','c')
     `,[tables]);
    for(const table of ["donation","donation_payment_attempt","donation_payment_event",
-    "donation_finance_effect","donation_refund_request","cg19_donation_receipt_document"]){
+    "donation_finance_effect","donation_refund_request","cg19_donation_receipt_document","cg19_donation_receipt_correction"]){
     assert.ok(constraints.rows.some(x=>x.table_name===table&&x.definition.includes("root_realm_id")),
      "No root-scoped integrity contract found for "+table);
    }
