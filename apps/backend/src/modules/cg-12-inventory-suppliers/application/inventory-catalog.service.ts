@@ -92,9 +92,13 @@ export class InventoryCatalogService {
   * The caller must first check inventory.catalog.view in this SAME transaction.
   * Never return other-branch or Foundation-wide stores to ordinary staff.
   */
- async permittedRewardStores(tx:PoolClient,a:VerifiedFoundationActor){
+ async rewardStoreScope(tx:PoolClient,a:VerifiedFoundationActor){
   const full=await this.rootAdmin(tx,a);
-  const assigned=full?[]:await this.branches.currentStaffBranchRefs(tx,a.realmId,a.accountId);
+  const branches=full?[]:await this.branches.currentStaffBranchRefs(tx,a.realmId,a.accountId);
+  return {full,branches};
+ }
+ async permittedRewardStores(tx:PoolClient,a:VerifiedFoundationActor){
+  const {full,branches:assigned}=await this.rewardStoreScope(tx,a);
   const rows=await tx.query<{ref:string;name:string;branchRef:string|null}>(
    "SELECT l.id AS ref,l.label AS name,l.branch_ref AS \"branchRef\" "+
    "FROM inventory_location l LEFT JOIN branch b ON b.id=l.branch_ref "+
