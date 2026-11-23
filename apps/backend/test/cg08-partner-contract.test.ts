@@ -173,3 +173,55 @@ test("US001-QA04/15: native retry success can refresh while manual refresh stays
  assert.match(code,/disabled=\{!!pending\|\|busy\} accessibilityState=\{\{disabled:!!pending\|\|busy\}\} onPress=\{refresh\}/);
  assert.ok(!code.includes("const refresh=()=>{if(pending)return"),"Do not capture stale pending after a confirmed original retry");
 });
+
+
+test("US001-QA02/12/17: assigned manager denied foreign/Foundation scope before CSR query",async()=>{
+ const other="44444444-4444-4444-8444-444444444444",statements:string[]=[];
+ const actor={realmId:key,accountId:branch};
+ const tx={query:async(sql:string)=>{statements.push(sql);return {rows:[],rowCount:0};},release:()=>{}};
+ const db={connect:async()=>tx} as unknown as Pool;
+ const sessions={requireAction:async()=>actor} as unknown as SessionService;
+ const identity={assertCurrent:async()=>{}} as unknown as FoundationStructureIdentityFacade;
+ const branches={projectBranchScope:async()=>({all:false,branches:[{value:branch,label:"Assigned branch",managerRef:actor.accountId}]})} as unknown as BranchSourceFacade;
+ const svc=new CsrPartnersService(db,sessions,identity,branches);
+ await assert.rejects(()=>svc.list("Bearer assigned",{branchRef:other}),ForbiddenException);
+ await assert.rejects(()=>svc.list("Bearer assigned",{branchRef:"FOUNDATION"}),ForbiddenException);
+ assert.equal(statements.filter(x=>x.includes("FROM csr_partner p")).length,0,"No foreign/foundation data query before permission");
+ const rows=await svc.list("Bearer assigned",{branchRef:branch,status:"SUBMITTED"});
+ assert.deepEqual(rows,{items:[],hasMore:false});
+ assert.equal(statements.filter(x=>x.includes("FROM csr_partner p")).length,1);
+});
+
+test("US001-QA12/17: current scope is an explicit parameter in every CSR list query",async()=>{
+ const calls:{sql:string;params:unknown[]}[]=[];
+ const actor={realmId:key,accountId:branch};
+ const tx={query:async(sql:string,params:unknown[]=[])=>{calls.push({sql,params});return {rows:[],rowCount:0};},release:()=>{}};
+ const db={connect:async()=>tx} as unknown as Pool;
+ const sessions={requireAction:async()=>actor} as unknown as SessionService;
+ const identity={assertCurrent:async()=>{}} as unknown as FoundationStructureIdentityFacade;
+ const branches={projectBranchScope:async()=>({all:false,branches:[{value:branch,label:"Assigned branch",managerRef:actor.accountId}]})} as unknown as BranchSourceFacade;
+ const svc=new CsrPartnersService(db,sessions,identity,branches);
+ await svc.list("Bearer assigned",{status:"APPROVED"});
+ const read=calls.find(x=>x.sql.includes("FROM csr_partner p"));
+ assert.ok(read,"Partner list query must reach real DB");
+ assert.match(read.sql,/p\.root_realm_id=\$1/);
+ assert.match(read.sql,/p\.branch_ref=ANY\(\$3::uuid\[\]\)/);
+ assert.deepEqual(read.params.slice(0,3),[key,false,[branch]]);
+ assert.equal(read.params[6],"APPROVED");
+ assert.equal(read.sql.includes("contact_email"),false,"Private contacts cannot enter list projection");
+});
+
+test("US001-QA17: only current Foundation administrator may filter Foundation-owned partners",async()=>{
+ const statements:{sql:string;params:unknown[]}[]=[];
+ const actor={realmId:key,accountId:branch};
+ const tx={query:async(sql:string,params:unknown[]=[])=>{statements.push({sql,params});return {rows:[],rowCount:0};},release:()=>{}};
+ const db={connect:async()=>tx} as unknown as Pool;
+ const sessions={requireAction:async()=>actor} as unknown as SessionService;
+ const identity={assertCurrent:async()=>{}} as unknown as FoundationStructureIdentityFacade;
+ const branches={projectBranchScope:async()=>({all:true,branches:[]})} as unknown as BranchSourceFacade;
+ const svc=new CsrPartnersService(db,sessions,identity,branches);
+ await svc.list("Bearer Foundation admin",{branchRef:"FOUNDATION"});
+ const list=statements.find(x=>x.sql.includes("FROM csr_partner p"));
+ assert.ok(list);
+ assert.deepEqual(list.params.slice(0,5),[key,true,[],false,null]);
+});

@@ -319,3 +319,8 @@ Closed Android companion of US001-QA02/04/12/17/18: current partner private deta
 ### 23-Nov-2026 — US001 native original write-retry refresh closure fixed
 
 Immediately re-reviewed the previous branch-switch guard: `refresh()` was conditional on a render-captured `pending`, so a successful exact-key retry after a lost response could fail to update the directory. Corrected the function to always clear stale detail and refetch after a **confirmed** write; only the user-facing manual Refresh button is disabled while the same command is pending/busy. Original US001-QA04/15 current source regression test added; **not executed**. No new process or scope. Native compile/actual provider timeout/retry still NOT_RUN.
+
+
+### 23-Nov-2026 — US001 CG02 multi-branch negative source tests authored
+
+Extended **existing** `test:cg08-partner` service-level tests using only the actual CG02 `projectBranchScope` contract: assigned branch user cannot filter a foreign branch or `FOUNDATION` records (blocked before SELECT), permitted branch and status remain bound parameters in the actual CSR SQL, no contact details appear in list projection, and root administration wider selector requires `scope.all=true` returned by current CG02. Original US001-QA02/12/17 with no new scenario IDs. **Mocked tests authored, NOT_EXECUTED;** real two-root/two-branch manager/delegation/revocation and PostgreSQL scope-gate QA still NOT_RUN. Test evidence must not be labelled PASS until local developer executes it.
