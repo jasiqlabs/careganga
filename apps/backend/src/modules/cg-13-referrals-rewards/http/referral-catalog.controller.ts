@@ -46,6 +46,11 @@ export class ReferralCatalogController{
  stockOptions(@Headers("authorization")auth:string){
   return this.catalog.stockOptions(auth);
  }
+ @Get("stock-preview/:itemRef/:storeRef")
+ stockPreview(@Headers("authorization")auth:string,
+  @Param("itemRef")itemRef:string,@Param("storeRef")storeRef:string){
+  return this.catalog.stockPreview(auth,itemRef,storeRef);
+ }
  @Get("my-catalog")
  ownCatalog(@Headers("authorization")auth:string){
   return this.catalog.publicEligibleCatalog(auth);
