@@ -51,7 +51,7 @@ async function api<T>(path:string,method:"GET"|"POST"|"PATCH"="GET",body?:Record
  return x as T;
 }
 export function CsrFundingWorkspace({canManage}:{canManage:boolean}){
- const [page,setPage]=useState<{items:Proposal[];hasMore:boolean}>({items:[],hasMore:false});
+ const [page,setPage]=useState<{items:Proposal[];hasMore:boolean;summary?:{requests:number;drafts:number;requestedMinor:string}}>({items:[],hasMore:false});
  const [options,setOptions]=useState<Options|null>(null);
  const [offset,setOffset]=useState(0),[epoch,setEpoch]=useState(0),[loading,setLoading]=useState(true);
  const [filter,setFilter]=useState("ALL"),[status,setStatus]=useState("ALL"),[query,setQuery]=useState("");
@@ -74,7 +74,7 @@ export function CsrFundingWorkspace({canManage}:{canManage:boolean}){
   if(filter!=="ALL")p.set("branchRef",filter);
   if(status!=="ALL")p.set("status",status);
   if(query.trim())p.set("q",query.trim());
-  void api<{items:Proposal[];hasMore:boolean}>("?"+p.toString()).then(data=>{
+  void api<{items:Proposal[];hasMore:boolean;summary:{requests:number;drafts:number;requestedMinor:string}}>("?"+p.toString()).then(data=>{
    if(live)setPage(data);
   }).catch(e=>{if(live){setPage({items:[],hasMore:false});
    setListError(e instanceof Error?e.message:"Funding list unavailable.");}})
@@ -158,6 +158,16 @@ export function CsrFundingWorkspace({canManage}:{canManage:boolean}){
    Original B07–B08 funding requests · {cashNote}</p></header>
   {!!notice&&<p role="status" style={{color:"#166534"}}>{notice}</p>}
   {!!error&&<p role="alert" style={{color:"#B91C1C"}}>{error}</p>}
+  {page.summary&&!listError&&<div aria-label="Original requested funding totals"
+   style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(180px,1fr))",gap:12}}>
+   {([["requests","Funding requests",String(page.summary.requests)],
+      ["drafts","Unapproved drafts",String(page.summary.drafts)],
+      ["requested","Total requested (not cash)",INR(page.summary.requestedMinor)]] as const)
+     .map(([key,label,value])=><div key={key} style={box}>
+      <strong style={{display:"block",fontSize:23,fontVariantNumeric:"tabular-nums"}}>{value}</strong>
+      <span style={{fontSize:13,color:"var(--cg-muted)"}}>{label}</span>
+     </div>)}
+  </div>}
   <div style={box}>
    <div style={{display:"flex",gap:10,flexWrap:"wrap",justifyContent:"space-between",alignItems:"center"}}>
     <div><h3 style={{margin:0}}>Funding proposals</h3><p style={{fontSize:13,color:"var(--cg-muted)"}}>
