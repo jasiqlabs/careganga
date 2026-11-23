@@ -79,6 +79,7 @@ export function PublicReferralPoints({programmeRef,relationship}:{
     <div><dt>Earned</dt><dd>{formatted(balance.earnedPoints)}</dd></div>
     <div><dt>Available</dt><dd>{formatted(balance.availablePoints)}</dd></div>
     <div><dt>Held</dt><dd>{formatted(balance.heldPoints)}</dd></div>
+    <div><dt>Redeemed (verified spent)</dt><dd>{formatted(balance.spentPoints)}</dd></div>
     <div><dt>Reversed</dt><dd>{formatted(balance.reversedPoints)}</dd></div>
     <div><dt>Verified referrals</dt><dd>{balance.qualifiedReferrals}</dd></div>
     <div><dt>Qualification pending</dt><dd>{formatted(balance.pendingReferrals)}</dd></div>
