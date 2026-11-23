@@ -99,6 +99,27 @@ BEGIN
  -- US003 uses this SAME immutable points_event table. Digital requests are
  -- checked against the original eligible reward and locked wallet via the
  -- independently guarded redemption table created in forward migration 3507.
+ IF NEW.event_kind='POINTS_SPENT' THEN
+  IF NOT EXISTS(
+   SELECT 1 FROM redemption r
+   JOIN points_account wallet ON wallet.root_realm_id=r.root_realm_id
+    AND wallet.id=r.points_account_id
+   JOIN cg19_reward_recognition proof ON proof.realm_id=r.root_realm_id
+    AND proof.redemption_id=r.id
+   JOIN reward_product_revision product ON product.root_realm_id=r.root_realm_id
+    AND product.product_id=r.product_id AND product.revision=r.product_revision
+   WHERE r.root_realm_id=NEW.root_realm_id AND r.id=NEW.redemption_id
+    AND r.state='FULFILLED' AND r.product_type='DIGITAL'
+    AND r.points_account_id=NEW.points_account_id
+    AND r.policy_version=NEW.policy_version
+    AND r.payload_digest=NEW.qualifying_source_digest
+    AND r.points_cost=NEW.points_delta
+    AND proof.recipient_account_ref=r.recipient_account_ref
+    AND proof.source_key=r.request_key
+    AND product.digital_fulfillment_method='ON_PLATFORM_RECOGNITION'
+  ) THEN RAISE EXCEPTION 'Original acknowledged CG19 recognition is required to spend points'; END IF;
+  RETURN NEW;
+ END IF;
  IF NEW.event_kind IN('POINTS_HOLD','POINTS_RELEASE') THEN
   IF NOT EXISTS(
    SELECT 1 FROM redemption r JOIN points_account wallet
