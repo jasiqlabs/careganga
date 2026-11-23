@@ -304,7 +304,7 @@ export class FinanceCsrReceiptSourceFacade{
    "GROUP BY e.kind",[a.realmId,p.proposalRef]);
   const amount=(kind:string)=>q.rows.find(x=>x.kind===kind)?.amountMinor??"0";
   return {allocatedMinor:(BigInt(amount("ALLOCATE"))-BigInt(amount("DEALLOCATE"))).toString(),
-   utilizedMinor:amount("UTILIZE"),
+   releasedMinor:amount("DEALLOCATE"),utilizedMinor:amount("UTILIZE"),
    source:"CG09_APPROVED_BUDGET_EVENTS" as const};
  }
  /** Single bounded B07 finance projection from original posted sources.
@@ -325,7 +325,7 @@ export class FinanceCsrReceiptSourceFacade{
     await this.branches.requireFinanceActiveBranch(tx,a,branch,"finance.reports.view");
   }
   const x=await tx.query<{committed_minor:string;received_minor:string;invalid_minor:string;
-   allocated_minor:string;utilized_minor:string}>(
+   allocated_minor:string;released_minor:string;utilized_minor:string}>(
    "WITH selected AS MATERIALIZED (SELECT f.id,f.root_realm_id,f.requested_minor "+
    "FROM csr_funding_proposal f WHERE f.root_realm_id=$1 "+
    "AND f.status='APPROVED' "+
@@ -357,6 +357,7 @@ export class FinanceCsrReceiptSourceFacade{
    "AND reversal.reversal_of_id=j.id AND reversal.posting_kind='REVERSAL'), "+
    "budget AS (SELECT coalesce(sum(CASE WHEN ev.kind='ALLOCATE' THEN ev.amount_minor "+
    "WHEN ev.kind='DEALLOCATE' THEN -ev.amount_minor ELSE 0 END),0)::text AS allocated,"+
+   "coalesce(sum(ev.amount_minor) FILTER(WHERE ev.kind='DEALLOCATE'),0)::text AS released,"+
    "coalesce(sum(CASE WHEN ev.kind='UTILIZE' AND NOT EXISTS "+
    "(SELECT 1 FROM journal reversal WHERE reversal.root_realm_id=ev.root_realm_id "+
    "AND reversal.reversal_of_id=ev.source_journal_id "+
@@ -367,6 +368,7 @@ export class FinanceCsrReceiptSourceFacade{
    "AND ev.id=link.budget_event_id) "+
    "SELECT c.amount AS committed_minor,m.received AS received_minor,"+
    "m.invalid AS invalid_minor,b.allocated AS allocated_minor,"+
+   "b.released AS released_minor,"+
    "b.utilized AS utilized_minor FROM commitments c CROSS JOIN money m CROSS JOIN budget b",
    [a.realmId,scope.all,scope.branchRefs,scope.branchFilter===undefined,
     scope.branchFilter??null,scope.query]);
@@ -379,7 +381,8 @@ export class FinanceCsrReceiptSourceFacade{
   return {committedMinor:v?.committed_minor??"0",
    verifiedReceivedMinor:v?.received_minor??"0",
    revalidationRequiredMinor:v?.invalid_minor??"0",
-   allocatedMinor:allocated.toString(),utilizedMinor:utilized.toString(),
+   allocatedMinor:allocated.toString(),releasedMinor:v?.released_minor??"0",
+   utilizedMinor:utilized.toString(),
    availableMinor:needsRevalidation?null:(received-allocated).toString(),
    utilizationPercent:needsRevalidation?null:allocated===0n?"0.00":
     (utilized*10000n/allocated/100n).toString()+"."+
