@@ -248,6 +248,7 @@ export class HrEmploymentChangeSourceFacade{
    return {...this.summary(old),replayed:true};
   }
   if(x.roleRef)await this.identity.assertCurrent(tx,actor,"roles.select");
+  if(x.branchRef!==null)await this.branches.projectBranch(tx,actor,x.branchRef);
   const access=await this.validatePlan(tx,actor.realmId,target,x),id=randomUUID();
   const secret=seal(actor.realmId,id,{reason:x.reason,proposedSalaryMinor:x.proposedSalaryMinor});
   const source=this.digest(target,x,access,secret,1);
@@ -272,6 +273,7 @@ export class HrEmploymentChangeSourceFacade{
   }
   if(row.status!=="DRAFT"||row.revision!==x.expectedRevision)throw new ConflictException({code:"CG10_CHANGE_STALE"});
   if(x.roleRef)await this.identity.assertCurrent(tx,actor,"roles.select");
+  if(x.branchRef!==null)await this.branches.projectBranch(tx,actor,x.branchRef);
   const access=await this.validatePlan(tx,actor.realmId,target,x),secret=seal(actor.realmId,row.id,{reason:x.reason,proposedSalaryMinor:x.proposedSalaryMinor});
   const source=this.digest(target,x,access,secret,row.revision+1);
   const q=await tx.query(`UPDATE hr_employment_change SET prior_assignment_id=$3,prior_assignment_version=$4,prior_employee_version=$5,
@@ -292,6 +294,20 @@ export class HrEmploymentChangeSourceFacade{
    target.status_version!==row.prior_employee_version||target.account_ref!==row.target_account_ref)
    throw new ConflictException({code:"CG10_CHANGE_STALE"});
   await this.currentProposer(tx,realm,row,target);
+  if(row.proposed_branch_ref!==null){
+   const assigned=await this.branches.currentStaffBranchRefs(tx,realm,row.created_by);
+   if(!assigned.includes(row.proposed_branch_ref)){
+    const root=await tx.query(
+     "SELECT 1 FROM account_role ar JOIN role r ON r.id=ar.role_id "+
+     "AND r.realm_id=ar.realm_id AND r.active=true "+
+     "LEFT JOIN role_grant g ON g.role_id=r.id "+
+     "AND g.capability_key='foundation.branches.admin' "+
+     "WHERE ar.realm_id=$1 AND ar.account_id=$2 AND ar.revoked_at IS NULL "+
+     "AND (r.is_protected OR g.capability_key IS NOT NULL) LIMIT 1 FOR SHARE OF ar,r",
+     [realm,row.created_by]);
+    if(!root.rowCount)throw new ConflictException({code:"CG10_CHANGE_DESTINATION_ACCESS_CHANGED"});
+   }
+  }
   const pin=await this.validatePlan(tx,realm,target,this.fields(row),due);
   if(pin.accessVersion!==row.expected_access_version||pin.roleRevision!==row.expected_role_revision)
    throw new ConflictException({code:"CG10_CHANGE_ACCESS_CHANGED"});
