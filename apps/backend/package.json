@@ -23,7 +23,9 @@
     "test:cg10-document-allowance": "tsx --test test/cg10-document-allowance-contract.test.ts",
     "test:cg19-migration-compatibility": "tsx --test test/cg19-migration-compatibility.test.ts",
     "test:cg07-donation": "tsx --test test/cg07-donation-contract.test.ts",
-    "test:cg07-donation-db": "node --env-file=.env ../../node_modules/tsx/dist/cli.mjs --test test/cg07-donation-db-integrity.test.ts"
+    "test:cg07-donation-db": "node --env-file=.env ../../node_modules/tsx/dist/cli.mjs --test test/cg07-donation-db-integrity.test.ts",
+    "test:cg02-staff-scope": "tsx --test test/cg02-staff-scope-contract.test.ts",
+    "test:cg02-staff-scope-db": "node --env-file=.env ../../node_modules/tsx/dist/cli.mjs --test test/cg02-staff-scope-db-integrity.test.ts"
   },
   "dependencies": {
     "@nestjs/common": "12.5.0",
