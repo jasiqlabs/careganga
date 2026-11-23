@@ -266,7 +266,7 @@ The existing authorized Internal Android reviewer can explicitly open the **same
 
 ## CG08/US-001 — canonical 20 original QA source trace, 23-Nov-2026
 
-**Classification:** `SOURCE_IMPLEMENTED_REVIEW_PENDING` = owning route, guards and persisted contracts authored, not independently certified or executed. `SOURCE_GAP` = a required source/visual receiving-owner path remains absent. **Actual executable PostgreSQL, Vercel Web, Android, CG19 object store/scanner, CG03 independent user, parallel race and screenshots all NOT_RUN.** The original 20 QA IDs below are unchanged. No new issues or scenarios.
+**Classification:** `SOURCE_IMPLEMENTED_REVIEW_PENDING` = owning route, guards and persisted contracts authored, not independently certified or executed. `SOURCE_GAP` = missing current source. `SOURCE_PRESENT_VISUAL_NOT_VERIFIED` = original UI source exists but actual screenshot/device visual comparison has not run. **Actual executable PostgreSQL, Vercel Web, Android, CG19 object store/scanner, CG03 independent user, parallel race and screenshots all NOT_RUN.** The original 20 QA IDs below are unchanged. No new issues or scenarios.
 
 | Original QA | Actual source evidence / end-to-end route | Source status | Runtime |
 |---|---|---|---|
@@ -274,8 +274,8 @@ The existing authorized Internal Android reviewer can explicitly open the **same
 | US-001-QA02 | `CsrPartnersService.run/row/list` current CG01/02 grants, privacy-limited list; CG19 `file` recheck + backend scope | SOURCE_IMPLEMENTED_REVIEW_PENDING | NOT_RUN |
 | US-001-QA03 | Normalized `csr_partner` root/legal uniqueness; `csr_partner_command` replay + original `cg03_case` request digest; DB concurrency not run | SOURCE_IMPLEMENTED_REVIEW_PENDING | NOT_RUN |
 | US-001-QA04 | `parsePartner/parseCsrAgreementUpload`, `CsrPartnerReviewService` revision/password, Web/Android unknown-state messages; scanner/provider uncertainty untested | SOURCE_IMPLEMENTED_REVIEW_PENDING | NOT_RUN |
-| US-001-QA05 | Current approved status read-only `CsrPartnersWorkspace` and protected agreement viewer; original CG18 public approved-logo source/right not yet wired | SOURCE_GAP (CG18 original display contract) | NOT_RUN |
-| US-001-QA06 | Admin Web CSR page/nav and Internal Android source present; mandatory B02 screenshot/form/motion/mobile rendered comparison not performed | SOURCE_GAP (B02 visual fidelity unproven) | NOT_RUN |
+| US-001-QA05 | Approved partner readonly Web/native detail, protected CG19 agreement and CG03 history; explicit revocable CG08 public rights plus independently effective CG18 collaboration publication and CG19 logo current-authorization checks | SOURCE_IMPLEMENTED_REVIEW_PENDING | NOT_RUN |
+| US-001-QA06 | Web and native original B03–B06 CSR status tabs, current details, reviewer UI, CG01 shell and responsive original /collaboration source present; exact client PNG/video rendering and motion not independently verified | SOURCE_PRESENT_VISUAL_NOT_VERIFIED | NOT_RUN |
 | US-001-QA07 | Scoped Web API and CG19 authorization plus same-root FKs; rollback/negative account/root replay and DB races not executed | SOURCE_IMPLEMENTED_REVIEW_PENDING | NOT_RUN |
 | US-001-QA08 | `CsrPartnerReviewService.decide(RETURN)`, immutable CG03 decision and `CsrPartnersService.edit` for RETURNED; verified file must be resubmitted from current draft version | SOURCE_IMPLEMENTED_REVIEW_PENDING | NOT_RUN |
 | US-001-QA09 | `CsrPartnersService.create` has no CG05/09/07/20 dependency; CG03 submit uses existing CG19 agreement proof | SOURCE_IMPLEMENTED_REVIEW_PENDING | NOT_RUN |
@@ -285,13 +285,13 @@ The existing authorized Internal Android reviewer can explicitly open the **same
 | US-001-QA13 | RETURNED → editable DRAFT → new source version → distinct CG03 case, original case history `partnerHistory` remains | SOURCE_IMPLEMENTED_REVIEW_PENDING | NOT_RUN |
 | US-001-QA14 | Backend legal/contact/mobile limits, 10 MB PDF/image scan-bound MIME, SQL email/identity checks; true registry validation not claimed | SOURCE_IMPLEMENTED_REVIEW_PENDING | NOT_RUN |
 | US-001-QA15 | CG08 command immutable request key/digest + CG03 original case key/digest, source version/locking; replay and race proof pending | SOURCE_IMPLEMENTED_REVIEW_PENDING | NOT_RUN |
-| US-001-QA16 | Current approved partner is **not** published automatically; CG18 separately approved logo/right/client content gating still missing from actual receiving-owner code | SOURCE_GAP (CG18 exact public attribution integration) | NOT_RUN |
+| US-001-QA16 | CG08 explicit versioned public authorization/withdrawal, original CG18 editorial CG03 independent review/publish, CG19 media verified proof plus current direct media URL revocation and closed-branch checks | SOURCE_IMPLEMENTED_REVIEW_PENDING | NOT_RUN |
 | US-001-QA17 | CG02 active branch/assigned manager selector/row/list enforcement, Foundation-null root restricted, export/public private contact blocked | SOURCE_IMPLEMENTED_REVIEW_PENDING | NOT_RUN |
-| US-001-QA18 | Current Admin Web and reviewer page; original B02/B03–B08 visual layout/KPI/table/detail screenshot comparison and fidelity still missing | SOURCE_GAP (original screenshot match) | NOT_RUN |
+| US-001-QA18 | B03–B06 original Web/native tabs, agreement/reviewer history, CG18 approved partner selector/preview and public cards authored; B07–B08 financial screens belong US002/US003; rendered screenshots/native fidelity NOT_RUN | SOURCE_PRESENT_VISUAL_NOT_VERIFIED | NOT_RUN |
 | US-001-QA19 | Migrations 3401–3403 FKs/unique/deferred proof + `test:cg08-db-integrity` read-only actual-schema verification **authored**, not executed | SOURCE_IMPLEMENTED_REVIEW_PENDING | NOT_RUN |
-| US-001-QA20 | Web/CG01/CG02/CG03/CG19/CG08 full route authored, private native parity, CG18 safe public leg absent; no compiled or manual evidence | SOURCE_GAP (CG18 publication leg and final QA) | NOT_RUN |
+| US-001-QA20 | Staff Web/native → original CG08 partner, CG19 private scanner, CG03 reviewer → CG08 revocable consent → CG18 independently reviewed PARTNERS page → /collaboration and protected CG19 logo; source authored, not executed | SOURCE_IMPLEMENTED_REVIEW_PENDING | NOT_RUN |
 
-**Source completion gate:** US-001 is **NOT SOURCE_COMPLETE** because original CG18 controlled public partner attribution and original client B02/B03–B08 exact UI fidelity remain unclosed; runtime and independent source reviewer remain separate later gates. No CG07 parent/main merge. **US-002 and US-003 remain NOT_STARTED** in this checkpoint. All 60 original scenarios remain unchanged. No CI/GitHub Actions or new ticket IDs.
+**Source completion gate:** US-001 is **NOT INDEPENDENTLY SOURCE-CLEARED**. The current original 20-case matrix has **18 SOURCE_IMPLEMENTED_REVIEW_PENDING, 2 SOURCE_PRESENT_VISUAL_NOT_VERIFIED and no known missing CG08→CG18 wiring**, but original screenshots, independent source specialist review and executable TypeScript/PG/CG03/CG19/Android/Web multi-branch tests remain NOT_RUN. Do not claim source certification or deployment readiness. No CG07 parent/main merge. **US-002 and US-003 remain NOT_STARTED** in this checkpoint. All 60 original scenarios remain unchanged. No CI/GitHub Actions or new ticket IDs.
 
 
 ### 23-Nov-2026 — CG18 original `/collaboration` receiving-page structure (safe source only)
@@ -419,3 +419,8 @@ Fixed public-attribution evidence disclosure: a staff actor with only `csr.partn
 ### 23-Nov-2026 — US001 original protected CG03 reviewer document NFR/exception fix
 
 Focused source review found original `CsrAgreementEvidenceService.readForOriginalReview` awaited the private cloud object provider **inside the CG03 database transaction/row locks**, causing long transaction holding during slow storage and complicating revocation races. Refactored original same source owner to a two-phase safe read: current independent reviewer/case/CG08 branch + exact CLEAN_VERIFIED CG19 file metadata snapshot locked in a short transaction; private object read+checksum verification outside any transaction; second independently authorized transaction rechecks original CG03 case revision/status, current reviewer/branch rights and exact CG19 file identity, scanner validity, object-version and SHA-256 before returning protected bytes. Existing original US001-QA04/10/11/12/15 contract regression authored, **not executed**. Missing/revoked/stale provider proof fails closed with user-safe errors. No new storage table/role, no main/CG07 merge; independent reviewer/real provider outage and concurrency QA NOT_RUN.
+
+
+### 23-Nov-2026 — US001 canonical QA matrix corrected after current-source integration
+
+Reconciled the original 20 QA IDs against actual latest private/public source. QA05/16/20 no longer incorrectly claim missing CG08→CG18 code; QA06/18 remain `SOURCE_PRESENT_VISUAL_NOT_VERIFIED`, because exact original rendered client PNG/video and device comparisons were not performed. **18 source-implemented review pending; 2 authored UI visual unverified; 0 live tests executed; independent source review NOT_DONE.** Corrected original QA08/10/11 assertions to reference the new short SQL proof snapshot → out-of-transaction provider read → independently reauthorized post-read CG03/CG19 proof flow. Stories unchanged, no CG07/main merge or runtime-pass claim.

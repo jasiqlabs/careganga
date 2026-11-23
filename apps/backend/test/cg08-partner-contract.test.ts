@@ -132,8 +132,11 @@ test("US001-QA08/10/11: CSR reviewer evidence download is original-case and scan
  const evidence=readFileSync(join(process.cwd(),"src/modules/cg-19-documents-notifications/application/csr-agreement-evidence.service.ts"),"utf8");
  const controller=readFileSync(join(process.cwd(),"src/modules/cg-03-registration-approvals/http/csr-partner-review.controller.ts"),"utf8");
  assert.match(approval,/await this\.reviewerCurrent\(tx,a\);[\s\S]*?await this\.case\(tx,a,caseRef\);/);
- assert.match(approval,/readForOriginalReview\(tx,a,proof\.partner_id,proof\.source_version,proof\.evidence_file_id\)/);
- assert.match(evidence,/readForOriginalReview\(/);
+ assert.match(approval,/prepareOriginalReviewFile\(tx,a,/);
+ assert.match(approval,/readPreparedOriginalReviewFile\(prepared\.originalFile\)/);
+ assert.match(approval,/assertOriginalReviewFileUnchanged\(tx,a,/);
+ assert.match(evidence,/prepareOriginalReviewFile\(/);
+ assert.match(evidence,/readPreparedOriginalReviewFile\(/);
  assert.match(evidence,/i\.status='VALIDATED' FOR SHARE OF f,i/);
  assert.match(evidence,/createHash\("sha256"\)\.update\(bytes\)\.digest\("hex"\)/);
  assert.match(controller,/@Get\(":ref\/agreement"\)/);
