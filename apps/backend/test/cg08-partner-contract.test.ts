@@ -19,3 +19,45 @@ test("US001-QA03/13/15: protected current revision and request identity are mand
  for(const version of [0,-1,1.5,"2",2147483647])assert.throws(()=>parsePartner({...draft,expectedVersion:version}));
  assert.throws(()=>parsePartner({...draft,requestKey:"same-token"}));
 });
+
+import {readFileSync} from "node:fs";
+import {join} from "node:path";
+import {ForbiddenException} from "@nestjs/common";
+import type {Pool} from "pg";
+import {CsrPartnersService} from "../src/modules/cg-08-csr-funding/application/csr-partners.service";
+import type {SessionService} from "../src/modules/cg-01-identity-access/application/session.service";
+import type {FoundationStructureIdentityFacade} from "../src/modules/cg-01-identity-access/application/foundation-structure-identity.facade";
+import type {BranchSourceFacade} from "../src/modules/cg-02-foundation-structure/application/branch-source.facade";
+test("US001-QA02/12/17: private contacts never appear in CSR list projection",()=>{
+ const code=readFileSync(join(process.cwd(),"src/modules/cg-08-csr-funding/application/csr-partners.service.ts"),"utf8");
+ const selected=code.match(/const listProjection='([^']+)'/);
+ assert.ok(selected,"Privacy-limited list projection exists");
+ for(const column of ["contact_email","contact_mobile","registration_reference","support_summary","contact_name"]){
+  assert.ok(!selected[1].includes(column),column);
+ }
+ assert.ok(code.includes('const rows=await tx.query("SELECT "+listProjection+joins'));
+ assert.ok(code.includes("await this.row(tx,a,key);"),"Detail needs current original scope");
+ assert.ok(code.includes("projectBranchScope(tx,a)"),"Current branch assignments checked");
+});
+test("US001-QA02/17: revoked branch authorization aborts before CSR insert",async()=>{
+ const events:string[]=[];
+ const actor={realmId:key,accountId:"33333333-3333-4333-8333-333333333333"};
+ const tx={query:async(sql:string)=>{events.push(sql);return {rows:[]};},release:()=>{events.push("RELEASE");}};
+ const db={connect:async()=>tx} as unknown as Pool;
+ const sessions={requireAction:async()=>actor} as unknown as SessionService;
+ const identity={assertCurrent:async()=>{events.push("CURRENT_ACTION");}} as unknown as FoundationStructureIdentityFacade;
+ const branches={projectBranch:async()=>{throw new ForbiddenException("Current branch access revoked");}} as unknown as BranchSourceFacade;
+ const svc=new CsrPartnersService(db,sessions,identity,branches);
+ await assert.rejects(()=>svc.create("Bearer original",draft),ForbiddenException);
+ assert.ok(events.includes("BEGIN"));
+ assert.ok(events.includes("ROLLBACK"));
+ assert.equal(events.some(v=>v.startsWith("INSERT INTO csr_partner")),false);
+});
+test("US001-QA03/19: original greenfield migration constrains root, branch and draft-only status",()=>{
+ const ddl=readFileSync(join(process.cwd(),"db/migrations/3401_cg08_csr_partner_drafts.sql"),"utf8");
+ assert.match(ddl,/UNIQUE\(root_realm_id,legal_name_norm\)/);
+ assert.match(ddl,/FOREIGN KEY\(branch_ref,root_realm_id\)/);
+ assert.match(ddl,/OLD\.status NOT IN\('DRAFT','RETURNED'\)/);
+ assert.match(ddl,/NEW\.status NOT IN\('DRAFT','INACTIVE'\)/);
+ assert.match(ddl,/CREATE TRIGGER cg08_partner_command_no_change/);
+});

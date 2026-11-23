@@ -172,3 +172,8 @@ Receiving tests within original **US-001/002/003** QA: real partnered state, app
 ### 23 Nov 2026 — US001 targeted review and privacy/source fix
 
 The authorized partner list now projects only organization name, branch, status, version and modification time, not contact name/mobile/email, registration number or support narrative. Detail still uses a separate current-action and original CG02 branch guard. Filter search uses literal substring rather than SQL wildcard interpretation. This greenfield, unexecuted original 3401 migration now checks email syntax at the database boundary as well as in API input validation. Original US001-QA02/12/14/17/19 impacted; existing IDs unchanged. **SOURCE_FIX_AUTHORED_REVIEW_PENDING**, independent reviewer, TypeScript, SQL migrations, actual two-branch tests, Web/Android and client screenshot QA NOT_RUN. Original CG03/CG19 approval/proof still SOURCE_GAP, no false approved state.
+
+
+### 23-Nov-2026 — US001 focused source-test additions
+
+Added positive validation and negative source tests for revoked CG02 branch before write, private-column list projection, root/branch uniqueness and draft status constraints in the **existing** backend test runner. These are test definitions only (TEST_AUTHORED_NOT_EXECUTED); no runtime PASS, no new issue, no new QA IDs. Source review is impact-scoped to CG08 current commits and remains independently unverified.
