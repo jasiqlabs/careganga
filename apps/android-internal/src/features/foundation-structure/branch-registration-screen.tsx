@@ -7,6 +7,7 @@ import {careGangaTheme as theme} from "../../../../../packages/design-tokens/src
 import {identityRequest} from "../identity-access/http-client";
 import {BranchNativeUploader} from "./branch-native-uploader";
 import {BranchNativeEvidenceHistory} from "./branch-native-evidence-history";
+import {BranchStaffAccessNative} from "./branch-staff-access-native";
 
 type Draft={recordRef:string;branchName:string;branchType:string;version:number;
   status:string;currentStep:number;updatedAt:string};
@@ -232,6 +233,8 @@ export function BranchRegistrationScreen({token,canManage,onExit,onExpired}:Prop
           },busy||!!pending)}
           {canManage&&button("New branch draft",()=>{setCreating(true);setName("");setBranchType("");setOpeningDate("");},busy||!!pending,true)}
         </View>}
+        {!selected&&!creating&&canManage&&
+         <BranchStaffAccessNative token={token} onExpired={onExpired}/>}
         {creating&&<View style={styles.card}>
           <Text style={styles.heading}>Start branch</Text>
           {input("Branch name",name,setName)}
