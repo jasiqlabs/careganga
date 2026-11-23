@@ -555,6 +555,43 @@ export class ReferralCatalogService{
     hasMore:q.rows.length>200};
   },true);
  }
+ /** B11: scoped ORIGINAL ledger aggregates only; no applicant/member PII
+  * and no invented US003 redemption totals. Every branch choice is CG02-owned.
+  */
+ async adminSummary(bearer:string,programmeInput:string){
+  const id=ref(programmeInput);
+  return this.run(bearer,"referrals.programmes.view",async(tx,a)=>{
+   await this.root(tx,a);await this.program(tx,a,id);
+   const scope=await this.inventory.rewardStoreScope(tx,a);
+   const from=" FROM points_account wallet "+
+    "LEFT JOIN member m ON m.root_realm_id=wallet.root_realm_id "+
+    "AND m.id=wallet.referrer_relationship_ref AND wallet.referrer_kind='MEMBER' "+
+    "LEFT JOIN volunteer v ON v.root_realm_id=wallet.root_realm_id "+
+    "AND v.id=wallet.referrer_relationship_ref AND wallet.referrer_kind='VOLUNTEER' "+
+    "WHERE wallet.root_realm_id=$1 AND wallet.programme_id=$2 "+
+    "AND ($3::boolean OR COALESCE(m.branch_ref,v.branch_ref)=ANY($4::uuid[]))";
+   const args=[a.realmId,id,scope.full,scope.branches];
+   const totals=await tx.query<{
+    activeReferrers:string;successfulReferrals:string;earnedPoints:string;
+    netPoints:string
+   }>(
+    "SELECT COUNT(*)::text AS \"activeReferrers\","+
+    "COALESCE(SUM(wallet.qualified_referrals),0)::text AS \"successfulReferrals\","+
+    "COALESCE(SUM(wallet.earned_points),0)::text AS \"earnedPoints\","+
+    "COALESCE(SUM(wallet.earned_points-wallet.reversed_points),0)::text AS \"netPoints\""+
+    from,args);
+   const ranks=await tx.query<{kind:string;rank:string|null;count:string;referrals:string}>(
+    "SELECT wallet.referrer_kind AS kind,wallet.current_rank_name AS rank,"+
+    "COUNT(*)::text AS count,COALESCE(SUM(wallet.qualified_referrals),0)::text AS referrals"+
+    from+" GROUP BY wallet.referrer_kind,wallet.current_rank_name "+
+    "ORDER BY wallet.referrer_kind,wallet.current_rank_name LIMIT 61",args);
+   return {metrics:totals.rows[0]??{activeReferrers:"0",successfulReferrals:"0",
+    earnedPoints:"0",netPoints:"0"},rankCounts:ranks.rows,
+    rankCountsTruncated:ranks.rows.length>60,
+    redemptionMetricsAvailable:false,
+    notice:"All referral totals come from verified immutable CG04 points events. Redemption totals remain unavailable until recorded."};
+  },true);
+ }
  async stockOptions(bearer:string){
   return this.run(bearer,"rewards.catalog.manage",async(tx,a)=>{
    await this.root(tx,a);
