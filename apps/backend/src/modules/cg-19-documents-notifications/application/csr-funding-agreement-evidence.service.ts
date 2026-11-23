@@ -204,8 +204,11 @@ export class CsrFundingAgreementEvidenceService{
   * immutable scanner proof must match exactly; this proves uploaded bytes,
   * NOT that the agreement was signed or that cash was received. */
  async requireCurrentProof(tx:PoolClient,a:VerifiedFoundationActor,
-  proposalRef:string,version:number,fileRef:string){
-  await this.funding.guardFundingAgreement(tx,a,proposalRef,version,false);
+  proposalRef:string,version:number,fileRef:string,independentReview=false){
+  if(independentReview){
+   const source=await this.funding.fundingReviewSource(tx,a,proposalRef);
+   if(source.status!=="SUBMITTED"||source.version!==version+1)throw changed();
+  }else await this.funding.guardFundingAgreement(tx,a,proposalRef,version,false);
   const q=await tx.query(
    "SELECT f.id FROM cg19_stored_file f JOIN cg19_upload_intent i "+
    "ON i.id=f.upload_intent_id AND i.realm_id=f.realm_id "+
@@ -217,6 +220,47 @@ export class CsrFundingAgreementEvidenceService{
    "AND i.classification='CSR_FUNDING_AGREEMENT' AND i.status='VALIDATED' "+
    "FOR SHARE OF f,i",[a.realmId,uid(proposalRef),uid(fileRef),version]);
   if(!q.rowCount)throw changed();
+ }
+ /** Independent CG03 review must first take this scoped metadata snapshot
+  * in a short SQL transaction, read provider bytes WITHOUT SQL locks, then
+  * re-check current case/reviewer/owner/object version in a second transaction. */
+ async prepareFundingReviewFile(tx:PoolClient,a:VerifiedFoundationActor,
+  proposalRef:string,version:number,fileRef:string):Promise<FileRow>{
+  await this.requireCurrentProof(tx,a,proposalRef,version,fileRef,true);
+  const row=(await tx.query<FileRow>(
+   "SELECT f.id,f.funding_proposal_id,f.proposal_revision,f.revision,f.original_mime,"+
+   "f.verified_size_bytes::text,f.verified_sha256,f.object_key,f.object_version "+
+   "FROM cg19_stored_file f JOIN cg19_upload_intent i "+
+   "ON i.id=f.upload_intent_id AND i.realm_id=f.realm_id "+
+   "WHERE f.realm_id=$1 AND f.id=$2 AND f.funding_proposal_id=$3 "+
+   "AND f.proposal_revision=$4 AND f.owner_kind='CG08_FUNDING_AGREEMENT' "+
+   "AND f.scan_status='CLEAN_VERIFIED' AND f.revoked_at IS NULL "+
+   "AND i.funding_proposal_id=f.funding_proposal_id "+
+   "AND i.owner_kind='CG08_FUNDING_AGREEMENT' AND i.status='VALIDATED' "+
+   "FOR SHARE OF f,i",[a.realmId,uid(fileRef),uid(proposalRef),version])).rows[0];
+  if(!row)throw changed();
+  return row;
+ }
+ async readPreparedFundingReviewFile(prepared:FileRow){
+  let bytes:Buffer;
+  try{bytes=await this.objects.readVerifiedPrivateObject({
+   objectKey:prepared.object_key,objectVersion:prepared.object_version,maxBytes:10485760});}
+  catch{throw unavailable();}
+  if(bytes.length!==Number(prepared.verified_size_bytes)||
+    createHash("sha256").update(bytes).digest("hex")!==prepared.verified_sha256||
+    !MIME.includes(prepared.original_mime))throw changed();
+  return {bytes,mime:prepared.original_mime};
+ }
+ async assertFundingReviewFileUnchanged(tx:PoolClient,a:VerifiedFoundationActor,
+  proposalRef:string,version:number,fileRef:string,prepared:FileRow){
+  const current=await this.prepareFundingReviewFile(tx,a,proposalRef,version,fileRef);
+  if(current.id!==prepared.id||current.funding_proposal_id!==prepared.funding_proposal_id||
+   current.proposal_revision!==prepared.proposal_revision||
+   current.revision!==prepared.revision||current.original_mime!==prepared.original_mime||
+   current.verified_size_bytes!==prepared.verified_size_bytes||
+   current.verified_sha256!==prepared.verified_sha256||
+   current.object_key!==prepared.object_key||
+   current.object_version!==prepared.object_version)throw changed();
  }
  async list(bearer:string,proposalRef:string){
   return this.run(bearer,false,async(tx,a)=>{
