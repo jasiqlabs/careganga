@@ -66,7 +66,7 @@ const budgetItems=(v:unknown,ceiling:string):BudgetItem[]=>{
   const row=item as Record<string,unknown>;
   const desc=label(row.description,"items["+i+"].description",200);
   if(typeof row.quantity!=="string"||
-   !/^(0|[1-9][0-9]{0,9})(\\.[0-9]{1,3})?$/.test(row.quantity))
+   !/^(0|[1-9][0-9]{0,9})(\.[0-9]{1,3})?$/.test(row.quantity))
    throw new BadRequestException({code:"FINANCE_BUDGET_FORM_INVALID",field:"items["+i+"].quantity"});
   const parts=row.quantity.split(".");
   const qty=BigInt(parts[0])*1000n+BigInt((parts[1]??"").padEnd(3,"0"));
