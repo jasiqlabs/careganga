@@ -1,6 +1,7 @@
 "use client";
 import {useCallback,useEffect,useRef,useState,type CSSProperties} from "react";
 import {CsrFundingAgreementPanel} from "./csr-funding-agreement-panel";
+import {CsrFundingReceiptsPanel} from "./csr-funding-receipts-panel";
 type Choice={value:string;label:string;branchRef?:string|null;projectVersion?:number};
 type Options={foundation:boolean;branches:Choice[];partners:Choice[];projects:Choice[]};
 type Proposal={ref:string;branchRef:string|null;branch:string|null;partnerRef:string|null;
@@ -51,7 +52,7 @@ async function api<T>(path:string,method:"GET"|"POST"|"PATCH"="GET",body?:Record
  }
  return x as T;
 }
-export function CsrFundingWorkspace({canManage,canReadAgreement,canUploadAgreement}:{canManage:boolean;canReadAgreement:boolean;canUploadAgreement:boolean}){
+export function CsrFundingWorkspace({canManage,canReadAgreement,canUploadAgreement,canReadFinance,canLinkFinance}:{canManage:boolean;canReadAgreement:boolean;canUploadAgreement:boolean;canReadFinance:boolean;canLinkFinance:boolean}){
  const [page,setPage]=useState<{items:Proposal[];hasMore:boolean;summary?:{requests:number;drafts:number;requestedMinor:string}}>({items:[],hasMore:false});
  const [options,setOptions]=useState<Options|null>(null);
  const [offset,setOffset]=useState(0),[epoch,setEpoch]=useState(0),[loading,setLoading]=useState(true);
@@ -317,6 +318,9 @@ export function CsrFundingWorkspace({canManage,canReadAgreement,canUploadAgreeme
    key={selected.ref+":"+selected.version} proposalRef={selected.ref}
    version={selected.version} canUpload={canUploadAgreement&&canManage&&selected.status==="DRAFT"}
    canSubmit={canManage&&selected.status==="DRAFT"} onSubmitted={()=>{invalidateDetail();refresh();}}/>}
+  {editing&&selected?.status==="APPROVED"&&canReadFinance&&<CsrFundingReceiptsPanel
+    key={selected.ref+":"+selected.version} proposalRef={selected.ref}
+    version={selected.version} canLink={canManage&&canLinkFinance}/>}
   {pending&&<div style={box} role="alert">
    <p>The last original funding write may have reached the server. Retry the exact same command key rather than creating another request.</p>
    <button type="button" style={btn} disabled={busy} onClick={()=>void send(pending)}>Retry original funding write</button>
