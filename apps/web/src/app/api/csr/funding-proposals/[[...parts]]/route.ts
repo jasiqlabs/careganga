@@ -9,7 +9,10 @@ async function proxy(req:NextRequest,ctx:Context,method:"GET"|"POST"|"PATCH"){
  const parts=(await ctx.params).parts??[];
  const allowed=(parts.length===0&&(method==="GET"||method==="POST"))||
   (parts.length===1&&(method==="GET"&&(parts[0]==="options"||UUID.test(parts[0]))||
-   method==="PATCH"&&UUID.test(parts[0])));
+   method==="PATCH"&&UUID.test(parts[0])))||
+  (parts.length===2&&UUID.test(parts[0])&&(
+   method==="POST"&&parts[1]==="submit"||
+   method==="GET"&&parts[1]==="review-history"));
  if(!allowed)return reply({message:"The original CSR funding action is unavailable."},404);
  if(method!=="GET"&&req.headers.get("origin")!==req.nextUrl.origin)
   return reply({message:"Save funding through the authenticated Foundation panel."},403);
