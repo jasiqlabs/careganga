@@ -126,7 +126,9 @@ test("US002-QA05/06/08/11/18: six B07 tiles separate actual CG09 money from unav
   "rec.status='VERIFIED'",
   "reversal.reversal_of_id=j.id",
   "file.revoked_at IS NULL",
-  "allocatedMinor:null,utilizedMinor:null,availableMinor:null,utilizationPercent:null"
+  "allocatedMinor:null,utilizedMinor:null,availableMinor:null,utilizationPercent:null",
+  'await this.branches.requireFinanceRootScope(tx,a,"finance.reports.view")',
+  'await this.branches.requireFinanceActiveBranch(tx,a,branch,"finance.reports.view")'
  ])assert.ok(financeOwner.includes(value),value);
  for(const text of [web,native]){
   assert.ok(text.includes("Total Fund / CSR requested"));
