@@ -22,6 +22,7 @@ export function NativeRewardCatalogue({token,onExpired,canViewStock}:{
  const [productsLoading,setProductsLoading]=useState(false),[error,setError]=useState("");
  const loading=programmesLoading||productsLoading;
  const [expanded,setExpanded]=useState<string|null>(null);
+ const [failedImages,setFailedImages]=useState<Record<string,true>>({});
  const [stock,setStock]=useState<Stock|null>(null),[stockError,setStockError]=useState("");
  const [stockBusy,setStockBusy]=useState(false);
  const programmeSeq=useRef(0),productSeq=useRef(0),stockSeq=useRef(0);
@@ -51,7 +52,7 @@ export function NativeRewardCatalogue({token,onExpired,canViewStock}:{
  const loadProducts=useCallback(async(programme:string,page:number,append:boolean)=>{
   const serial=++productSeq.current;setProductsLoading(true);setError("");
   if(!append){stockSeq.current++;setStock(null);setStockError("");
-   setItems([]);setExpanded(null);setMoreProducts(false);}
+   setItems([]);setFailedImages({});setExpanded(null);setMoreProducts(false);}
   try{
    const data=await call<Paged<Reward>>("programmes/"+programme+"/products?page="+page);
    if(serial!==productSeq.current)return;
@@ -66,6 +67,7 @@ export function NativeRewardCatalogue({token,onExpired,canViewStock}:{
   const sub=AppState.addEventListener("change",state=>{
    if(state!=="active"){programmeSeq.current++;productSeq.current++;stockSeq.current++;
     setItems([]);setProgrammes([]);setChosen("");setStock(null);setStockBusy(false);
+    setFailedImages({});
     setProgrammesLoading(false);setProductsLoading(false);setExpanded(null);}
    else void loadProgrammes(1,false);
   });
@@ -113,8 +115,10 @@ export function NativeRewardCatalogue({token,onExpired,canViewStock}:{
   {!!chosen&&<View style={s.card}>
    <Text style={s.heading}>Reward products</Text>
    {items.map(p=><View key={p.ref} style={s.product}>
-    {!!p.imageUrl&&<Image source={{uri:p.imageUrl}} style={s.image}
-     resizeMode="contain" accessibilityLabel={p.name}/>}
+    {!!p.imageUrl&&!failedImages[p.ref]&&<Image source={{uri:p.imageUrl}} style={s.image}
+     resizeMode="contain" accessibilityLabel={p.name}
+     onError={()=>setFailedImages(old=>({...old,[p.ref]:true}))}/>}
+    {!p.imageUrl||failedImages[p.ref]?<Text style={s.muted}>Image unavailable</Text>:null}
     <Text style={s.heading}>{p.name}</Text>
     <Text>{p.category} · {p.type==="DIGITAL"?"Digital":"Physical"} · {p.pointsPrice} points</Text>
     <Text style={s.muted}>{p.status} · {p.eligibleAudience} ·
