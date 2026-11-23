@@ -40,6 +40,7 @@ export function CsrFundingReceiptsPanel({proposalRef,version,canLink}:{
    if(id!==seq.current)return;
    if(v.sourceVersion!==version)throw Error("Approved funding source changed. Refresh.");
    setSummary(v);setItems(eligible.items);setCandidate("");
+   setParty(BigInt(v.csrCommittedMinor)>0n?"CSR":"FOUNDATION");
   }).catch(e=>{if(id===seq.current){
    setSummary(null);setItems([]);
    setError(e instanceof Error?e.message:"Finance evidence cannot be verified.");}})
@@ -99,7 +100,7 @@ export function CsrFundingReceiptsPanel({proposalRef,version,canLink}:{
    <label>Actual funding party
     <select value={party} disabled={busy||!!command} onChange={e=>setParty(e.target.value as "CSR"|"FOUNDATION")}>
      {BigInt(summary.csrCommittedMinor)>0n&&<option value="CSR">CSR partner portion</option>}
-     <option value="FOUNDATION">Foundation portion</option>
+     {BigInt(summary.foundationCommittedMinor)>0n&&<option value="FOUNDATION">Foundation portion</option>}
     </select>
    </label>
    <button type="button" disabled={busy||!candidate&&!command} onClick={()=>void submit()}>
