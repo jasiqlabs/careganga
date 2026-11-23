@@ -7,6 +7,7 @@ import type {CG04VolunteerApplication,CG04VolunteerOptions,CG04VolunteerProfile}
 import {careGangaTheme as t} from "../../../../../packages/design-tokens/src/index";
 import {NativeCommunityAuth} from "../membership/native-community-auth";
 import {memberInvoke} from "../membership/member-native-api";
+import {NativeEligibleRewardsCatalogue} from "../referrals/native-eligible-rewards-catalogue";
 import {NativeVolunteerProof} from "./native-volunteer-proof";
 import {NativeVolunteerCard} from "./native-volunteer-card";
 const KEY="cg_public_community_membership_session";
