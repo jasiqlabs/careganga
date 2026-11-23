@@ -143,6 +143,7 @@ export function VolunteerSelfService(){
     {selected&&<p>Current application: <strong>{selected.applicationNumber} · {display(selected.status)}</strong>{selected.reviewReference?" · Foundation review "+selected.reviewReference:""}{selected.reviewRemarks?" · Reviewer feedback: "+selected.reviewRemarks:""}</p>}
    </div>
    {profile?.volunteer&&<VolunteerOwnCard current={profile.volunteer.volunteerNumber}/>}
+    <PublicRewardsCatalogue/>
    {canEdit&&<section className="cg04-panel">
     <h2>Volunteer application</h2><nav className="cg04-volunteer-steps" aria-label="Four application steps">
      {steps.map((title,i)=><button type="button" aria-current={step===i?"step":undefined} key={title} disabled={busy} onClick={()=>setStep(i)}>{i+1}. {title}</button>)}
