@@ -67,6 +67,11 @@ CREATE INDEX ix_cg19_funding_verified
  ON cg19_stored_file(realm_id,funding_proposal_id,proposal_revision,created_at DESC,id DESC)
  WHERE owner_kind='CG08_FUNDING_AGREEMENT' AND revoked_at IS NULL;
 
+-- Required before the event FK is created, not afterwards.
+ALTER TABLE cg19_upload_intent
+ ADD CONSTRAINT uq_cg19_funding_intent_owner
+ UNIQUE(id,realm_id,funding_proposal_id);
+
 CREATE TABLE cg19_funding_evidence_event (
  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
  realm_id uuid NOT NULL,
@@ -83,10 +88,6 @@ CREATE TABLE cg19_funding_evidence_event (
  FOREIGN KEY(actor_ref,realm_id) REFERENCES account(id,realm_id) ON DELETE RESTRICT
 );
 
--- The audit FK above must reference an actual unique key in CG19.
-ALTER TABLE cg19_upload_intent
- ADD CONSTRAINT uq_cg19_funding_intent_owner
- UNIQUE(id,realm_id,funding_proposal_id);
 CREATE TRIGGER cg19_funding_evidence_event_immutable
  BEFORE UPDATE OR DELETE ON cg19_funding_evidence_event
  FOR EACH ROW EXECUTE FUNCTION cg19_document_event_immutable();
