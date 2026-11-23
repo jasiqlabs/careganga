@@ -599,14 +599,17 @@ export class ReferralCatalogService{
    // gift or unverified digital entitlement is NEVER counted as delivered.
    // Same original CG02 current branch scope as the qualification ledger.
    const redemptions=await tx.query<{
-    pending:string;cancelled:string;fulfilled:string;total:string
+    pending:string;cancelled:string;fulfilled:string;total:string;spentPoints:string
    }>(
     "SELECT COUNT(*) FILTER(WHERE r.state='HELD')::text AS pending,"+
     "COUNT(*) FILTER(WHERE r.state='CANCELLED')::text AS cancelled,"+
     "COUNT(*) FILTER(WHERE r.state='FULFILLED')::text AS fulfilled,"+
-    "COUNT(*)::text AS total FROM redemption r "+
+    "COUNT(*)::text AS total,"+
+    "COALESCE(SUM(spent.points_delta),0)::text AS \"spentPoints\" FROM redemption r "+
     "JOIN points_account wallet ON wallet.root_realm_id=r.root_realm_id "+
     "AND wallet.id=r.points_account_id "+
+    "LEFT JOIN points_event spent ON spent.root_realm_id=r.root_realm_id "+
+    "AND spent.redemption_id=r.id AND spent.event_kind='POINTS_SPENT' "+
     "LEFT JOIN member m ON m.root_realm_id=wallet.root_realm_id "+
     "AND m.id=wallet.referrer_relationship_ref AND wallet.referrer_kind='MEMBER' "+
     "LEFT JOIN volunteer v ON v.root_realm_id=wallet.root_realm_id "+
@@ -618,7 +621,7 @@ export class ReferralCatalogService{
     earnedPoints:"0",netPoints:"0"},rankCounts:ranks.rows,
     rankCountsTruncated:ranks.rows.length>60,
     redemptionMetrics:redemptions.rows[0]??{
-     pending:"0",cancelled:"0",fulfilled:"0",total:"0"},
+     pending:"0",cancelled:"0",fulfilled:"0",total:"0",spentPoints:"0"},
     redemptionMetricsAvailable:true,
     notice:"Verified referral points and source-recorded digital reward requests only; held rewards are not delivered."};
   },true);
