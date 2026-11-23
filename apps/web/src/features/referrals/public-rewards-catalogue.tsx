@@ -7,6 +7,7 @@ type Reward={
  name:string;description:string;pointsPrice:string;version:number;
  eligibleAudience:"MEMBER"|"VOLUNTEER"|"BOTH";
  programmeAudience:"MEMBER"|"VOLUNTEER"|"BOTH";imageUrl:string|null;
+ digitalFulfillmentMethod:"PENDING_EXTERNAL_PROOF"|"ON_PLATFORM_RECOGNITION";
  availability:"NO_STOCK_REQUIRED"|"AVAILABLE"|"OUT_OF_STOCK";highlighted:boolean;
 };
 type Page={eligibleRelationships:string[];items:Reward[];hasMore:boolean;page:number;notice:string;
