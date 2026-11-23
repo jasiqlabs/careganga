@@ -1,6 +1,6 @@
 # CG-MB-002 — cg09 finance delegated branch operators
 
-**Priority:** P0 · **Owner:** CG-09 finance + CG-02 · **Status:** CONFIRMED_SOURCE_DEPENDENCY · **Scope:** active CG-07 feature branch only · **Runtime:** NOT_RUN
+**Priority:** P0 · **Owner:** CG-09 finance + CG-02 · **Status:** SOURCE_INTEGRATION_AUTHORED_REVIEW_PENDING · **Scope:** active CG-07 feature branch only · **Runtime:** NOT_RUN
 
 ## Source evidence / observed limitation
 
@@ -19,3 +19,7 @@ Direct GET/POST finance account/voucher/report/journal/statement on A/B/C using 
 Resolve CG-MB-001 in owner, then trace every CG-09 list/selector/post/approve/export/CSV/PDF/worker and CG-07 payout through it. Check journals original branch lines and historic closed-branch visibility.
 
 **Receiving modules:** CG-01,CG-02,CG-09,CG-07,CG-20. **Common QA:** [Two-branch and center scenario matrix](../../qa/CAREGANGA-MULTIBRANCH-SOURCE-AND-RUNTIME-TEST-PLAN-20261123.md). Verify original story QA IDs and do not replace them. **Gate:** Implement → independent Review → Fix → Re-review → source trace → local PostgreSQL/Web/Android/device/provider QA. Document real test fixtures, exact file:function and result. No CI/GitHub Actions or merge.
+
+## Source integration update — 23 November
+
+CG-02 shared `requireFinanceActorBranch`, `financeReportScope`, `financeBranches`, and scheduled report checks now resolve current delegated A/B/AREA assignment with the existing CG-01 finance action. Source review of CG-09 FinanceAccounts, Budget, Invoice, Voucher, Reports found their owner services call the CG-02 facade rather than a second finance branch-grant table. Original CG-09 ledger/journal unchanged; protected Foundation-null scope preserved. **Still open:** direct account/voucher/claim/payment report API, actual private PDF/CSV, cash/bank/CG07 refund, role revoke, 2-worker race and Web/Internal Android PostgreSQL proof NOT_RUN; independent reviewer NOT_RUN.
