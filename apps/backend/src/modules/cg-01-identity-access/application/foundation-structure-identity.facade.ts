@@ -74,7 +74,14 @@ export class FoundationStructureIdentityFacade {
           ON r.id=ar.role_id AND r.realm_id=ar.realm_id
         WHERE ar.realm_id=a.realm_id AND ar.account_id=a.id
           AND ar.revoked_at IS NULL AND r.active
+          AND NOT r.is_protected
           AND r.normalized_name NOT IN ('careganga patient','careganga community applicant')
+       )
+       AND NOT EXISTS(
+        SELECT 1 FROM account_role roots JOIN role elevated
+         ON elevated.id=roots.role_id AND elevated.realm_id=roots.realm_id
+        WHERE roots.account_id=a.id AND roots.realm_id=a.realm_id
+          AND roots.revoked_at IS NULL AND elevated.active AND elevated.is_protected
        ) FOR UPDATE OF a`,[accountRef,actor.realmId]);
     if(!q.rows[0])throw new ForbiddenException("Choose an active Foundation staff account");
     return {accountRef:q.rows[0].id,displayName:q.rows[0].display_name};
@@ -92,7 +99,14 @@ export class FoundationStructureIdentityFacade {
           ON r.id=ar.role_id AND r.realm_id=ar.realm_id
         WHERE ar.realm_id=a.realm_id AND ar.account_id=a.id
           AND ar.revoked_at IS NULL AND r.active
+          AND NOT r.is_protected
           AND r.normalized_name NOT IN ('careganga patient','careganga community applicant')
+       )
+       AND NOT EXISTS(
+        SELECT 1 FROM account_role roots JOIN role elevated
+         ON elevated.id=roots.role_id AND elevated.realm_id=roots.realm_id
+        WHERE roots.account_id=a.id AND roots.realm_id=a.realm_id
+          AND roots.revoked_at IS NULL AND elevated.active AND elevated.is_protected
        )
       ORDER BY a.display_name,a.id LIMIT 30`,[actor.realmId,
        search?"%"+search.toLowerCase().replace(/[\\%_]/g,"\\$&")+"%":""]);
