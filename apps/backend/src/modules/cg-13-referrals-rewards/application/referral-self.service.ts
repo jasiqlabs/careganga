@@ -111,13 +111,15 @@ export class ReferralSelfService{
    const current=await this.currentRelationships(tx,actor);
    const rel=current.find(x=>x.kind===kind);
    if(!rel)throw new ForbiddenException("An active, verified relationship is required.");
-   const eligible=await tx.query<{ref:string;name:string}>(
-    "SELECT p.id AS ref,p.display_name AS name FROM referral_program p "+
-    "WHERE p.root_realm_id=$1 AND p.id=$2 AND p.status='ACTIVE' "+
-    "AND (p.audience=$3 OR p.audience='BOTH') "+
-    "AND EXISTS(SELECT 1 FROM referral_policy_version policy "+
+   const eligible=await tx.query<{ref:string;name:string;qualifyingEvent:string}>(
+    "SELECT p.id AS ref,p.display_name AS name,"+
+    "rules.qualifying_event AS \"qualifyingEvent\" FROM referral_program p "+
+    "JOIN LATERAL (SELECT policy.qualifying_event FROM referral_policy_version policy "+
     "WHERE policy.root_realm_id=p.root_realm_id AND policy.programme_id=p.id "+
-    "AND policy.effective_from<=now()) FOR SHARE OF p",
+    "AND policy.effective_from<=now() "+
+    "ORDER BY policy.effective_from DESC,policy.version_no DESC LIMIT 1) rules ON true "+
+    "WHERE p.root_realm_id=$1 AND p.id=$2 AND p.status='ACTIVE' "+
+    "AND (p.audience=$3 OR p.audience='BOTH') FOR SHARE OF p",
     [actor.realmId,programme,kind]);
    if(!eligible.rows[0])throw new ForbiddenException("This referral programme is unavailable.");
    const opaque=randomBytes(24).toString("base64url");
@@ -134,7 +136,8 @@ export class ReferralSelfService{
     [actor.realmId,programme,kind,rel.ref,actor.accountId]);
    if(!saved.rows[0])throw new ConflictException({code:"CG13_CURRENT_SOURCE_UNAVAILABLE"});
    return {programmeName:eligible.rows[0].name,relationship:kind,code:saved.rows[0].code,
-    sharePath:kind==="MEMBER"?"/membership?ref="+saved.rows[0].code:
+    sharePath:eligible.rows[0].qualifyingEvent==="MEMBERSHIP_ACTIVATED_VERIFIED"?
+     "/membership?ref="+saved.rows[0].code:
      "/volunteer?ref="+saved.rows[0].code,
     notice:"A referral only earns points after independent verification and eligible activation. A visit or signup alone earns nothing."};
   });
