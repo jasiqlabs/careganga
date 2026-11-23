@@ -88,3 +88,33 @@ test("CG-MB-001 current Web and native Internal Android protected operations use
  assert.match(android,/setBlocked\(true\)/);
  assert.match(screen,/<BranchStaffAccessNative token=\{token\}/);
 });
+
+
+test("CG-MB-004 HR employee/app roster, summary and private original/current branch never use manager-only list",()=>{
+ const hr=backend("src/modules/cg-10-human-resources/application/hr-enrollment.service.ts");
+ const source=backend("src/modules/cg-10-human-resources/application/hr-enrollment-source.facade.ts");
+ const module=backend("src/modules/cg-10-human-resources/hr-source.module.ts");
+ const attendance=backend("src/modules/cg-10-human-resources/application/hr-attendance.service.ts");
+ const privateData=backend("src/modules/cg-10-human-resources/application/hr-private-detail.service.ts");
+ assert.match(hr,/availableBranches\(a,token,"hr\.applications\.view"\)/);
+ assert.match(hr,/availableBranches\(a,token,"hr\.employees\.view"\)/);
+ assert.match(hr,/this\.branches\.staffBranchScope\(token,"hr\.applications\.view"\)/);
+ assert.match(hr,/this\.branches\.staffBranchScope\(token,"hr\.employees\.view"\)/);
+ assert.match(hr,/const scope=await this\.branches\.projectBranchScope\(tx,actor\)/);
+ assert.match(hr,/b\.id=ANY\(\$11::uuid\[\]\)/);
+ assert.match(hr,/scope\.branches\.map\(x=>x\.value\)/);
+ assert.match(source,/this\.branches\.requireAssignedStaffBranch\(tx,actor,app\.proposed_branch_ref\)/);
+ assert.match(module,/FoundationStructureModule/);
+ assert.match(attendance,/this\.branches\.projectBranchScope\(tx,actor\)/);
+ assert.match(attendance,/b\.id=ANY\(\$4::uuid\[\]\)/);
+ assert.match(privateData,/current_branch\.id=ANY\(\$4::uuid\[\]\)/);
+ assert.match(privateData,/origin_branch\.id=ANY\(\$4::uuid\[\]\)/);
+});
+test("CG-MB-003 warehouse selectors, real availability and KPI counts all use current source",()=>{
+ const catalog=backend("src/modules/cg-12-inventory-suppliers/application/inventory-catalog.service.ts");
+ assert.match(catalog,/permittedBranches=full\?\[\]:await this\.branches\.currentStaffBranchRefs/);
+ assert.match(catalog,/id=ANY\(\$3::uuid\[\]\)/);
+ assert.match(catalog,/b\.id=ANY\(\$3::uuid\[\]\)/);
+ assert.doesNotMatch(catalog.slice(catalog.indexOf(" async options(token:string){"),
+  catalog.indexOf(" async list(token:string,")),/manager_account_ref/);
+});
