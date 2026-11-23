@@ -460,17 +460,13 @@ export class ReferralCatalogService{
   return this.run(bearer,"rewards.catalog.manage",async(tx,a)=>{
    await this.root(tx,a);
    await this.identity.assertCurrent(tx,a,"inventory.catalog.view");
-   const stores=await tx.query(
-    "SELECT id AS ref,label AS name,branch_ref AS \"branchRef\" "+
-    "FROM inventory_location WHERE root_realm_id=$1 AND status='ACTIVE' "+
-    "AND (branch_ref IS NULL OR EXISTS(SELECT 1 FROM branch b "+
-    "WHERE b.root_realm_id=$1 AND b.id=inventory_location.branch_ref AND b.status='ACTIVE')) "+
-    "ORDER BY label,id LIMIT 100",[a.realmId]);
+   const stores=await this.inventory.permittedRewardStores(tx,a);
    const items=await tx.query(
     "SELECT id AS ref,name FROM inventory_item "+
     "WHERE root_realm_id=$1 AND status='ACTIVE' AND unit_code='PIECE' AND qty_scale=0 "+
     "ORDER BY name,id LIMIT 100",[a.realmId]);
-   return {items:items.rows,stores:stores.rows,notice:"Stock is read-only CG12 source. No reward edit changes inventory."};
+   return {items:stores.length?items.rows:[],stores,
+    notice:"Only your currently permitted active stores are shown. Reward changes never adjust inventory."};
   },true);
  }
  async stockPreview(bearer:string,itemInput:string,storeInput:string){
