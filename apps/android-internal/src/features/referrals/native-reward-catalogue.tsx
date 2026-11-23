@@ -34,7 +34,7 @@ export function NativeRewardCatalogue({token,onExpired,canViewStock}:{
  },[token,onExpired]);
  const loadProgrammes=useCallback(async(page:number,append:boolean)=>{
   const serial=++programmeSeq.current;setLoading(true);setError("");
-  if(!append){stockSeq.current++;setStock(null);setStockError("");
+  if(!append){stockSeq.current++;setStock(null);setStockBusy(false);setStockError("");
    setProgrammes([]);setItems([]);setChosen("");setExpanded(null);}
   try{
    const data=await call<Paged<Programme>>("catalogue-programmes?page="+page);
@@ -63,7 +63,7 @@ export function NativeRewardCatalogue({token,onExpired,canViewStock}:{
   void loadProgrammes(1,false);
   const sub=AppState.addEventListener("change",state=>{
    if(state!=="active"){programmeSeq.current++;productSeq.current++;stockSeq.current++;
-    setItems([]);setProgrammes([]);setStock(null);setExpanded(null);}
+    setItems([]);setProgrammes([]);setStock(null);setStockBusy(false);setExpanded(null);}
    else void loadProgrammes(1,false);
   });
   return()=>{programmeSeq.current++;productSeq.current++;stockSeq.current++;sub.remove();};
@@ -74,8 +74,8 @@ export function NativeRewardCatalogue({token,onExpired,canViewStock}:{
   return()=>{productSeq.current++;stockSeq.current++;};
  },[chosen,loadProducts]);
  const openDetails=async(p:Reward)=>{
-  if(expanded===p.ref){stockSeq.current++;setExpanded(null);setStock(null);return;}
-  const serial=++stockSeq.current;setExpanded(p.ref);setStock(null);setStockError("");
+  if(expanded===p.ref){stockSeq.current++;setExpanded(null);setStock(null);setStockBusy(false);return;}
+  const serial=++stockSeq.current;setExpanded(p.ref);setStock(null);setStockBusy(false);setStockError("");
   if(p.type!=="PHYSICAL"||!canViewStock||!p.itemRef||!p.storeRef)return;
   setStockBusy(true);
   try{
