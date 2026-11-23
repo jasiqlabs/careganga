@@ -8,8 +8,11 @@ CREATE FUNCTION cg07_donation_branch_provenance() RETURNS trigger LANGUAGE plpgs
 DECLARE original_campaign_branch uuid;
 BEGIN
  IF TG_OP='UPDATE' THEN
-  IF NEW.branch_ref IS DISTINCT FROM OLD.branch_ref THEN
-   RAISE EXCEPTION 'Original donation branch is immutable';
+  IF NEW.branch_ref IS DISTINCT FROM OLD.branch_ref OR
+     NEW.donation_kind IS DISTINCT FROM OLD.donation_kind OR
+     NEW.campaign_id IS DISTINCT FROM OLD.campaign_id OR
+     NEW.root_realm_id IS DISTINCT FROM OLD.root_realm_id THEN
+   RAISE EXCEPTION 'Original donation source and branch are immutable';
   END IF;
   RETURN NEW;
  END IF;
