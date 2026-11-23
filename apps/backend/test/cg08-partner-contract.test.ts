@@ -248,7 +248,7 @@ test("US001-QA04/10: protected proof-list failure differs from loading and legit
   assert.match(source,/setProofLoadError\(""\)/);
   assert.match(source,/proofLoadError\?/);
   assert.match(source,/setProofLoadError\(e instanceof Error\?/);
-  assert.match(source,/proofLoadError\)/);
+  assert.ok(source.includes("!!proofLoadError")||source.includes("||proofLoadError"),"Fail closed while proof status is unavailable");
  }
  assert.ok(web.includes('disabled={busy||!!proofLoadError}'));
  assert.ok(native.includes('if(running.current||proofLoadError)return;'));

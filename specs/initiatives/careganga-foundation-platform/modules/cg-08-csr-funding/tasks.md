@@ -334,3 +334,8 @@ Focused review found the existing CG19 history list lacked the proof's source dr
 ### 23-Nov-2026 — US001 CG19 proof unavailable vs valid empty UI error-state fix
 
 Focused exception review: Web and Internal Android CG19 agreement panels previously left `files=null` and displayed infinite `Checking…` when the original private proof list returned 401/403/503 or the partner's version changed. Both now keep a separate `proofLoadError` from local upload/submission failures and render a truthful unavailable/stale-source message; a genuine successful empty list remains distinct. File picker/upload is disabled while current proof access cannot be verified; Refresh can re-check original CG19 permission/version. Existing original US001-QA04/05/10/12/13/20 regression definitions appended (source only); provider timeout, revoked document/session and UI runtime QA NOT_RUN. No new state machine, endpoint or requirement.
+
+
+### 23-Nov-2026 — immediate test self-review correction (CG19 proof unavailable)
+
+Fixed the just-added US001-QA04/10 test's source-text assertion: it looked for a `proofLoadError)` token not present in the Web JSX guard, causing a false test failure. The corrected assertion checks the actual fail-closed Web `!!proofLoadError` and native `||proofLoadError` guards; no runtime behavior changed. Still TEST_AUTHORED_NOT_EXECUTED, independent review and devices pending. Existing tracker and QA IDs preserved.
