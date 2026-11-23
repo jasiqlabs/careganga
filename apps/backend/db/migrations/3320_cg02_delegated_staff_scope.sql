@@ -5,7 +5,7 @@ CREATE TABLE cg02_staff_scope_assignment(
  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
  root_realm_id uuid NOT NULL REFERENCES access_realm(id) ON DELETE RESTRICT,
  account_ref uuid NOT NULL,
- scope_kind text NOT NULL CHECK(scope_kind IN('BRANCH','AREA')),
+ scope_kind text NOT NULL CHECK(scope_kind IN('BRANCH','AREA','ALL_BRANCHES')),
  branch_ref uuid,
  area_ref uuid,
  reason text NOT NULL CHECK(char_length(btrim(reason)) BETWEEN 6 AND 500),
@@ -25,14 +25,19 @@ CREATE TABLE cg02_staff_scope_assignment(
  FOREIGN KEY(branch_ref,root_realm_id) REFERENCES branch(id,root_realm_id) ON DELETE RESTRICT,
  FOREIGN KEY(area_ref,root_realm_id) REFERENCES geography_area(id,root_realm_id) ON DELETE RESTRICT,
  CHECK((scope_kind='BRANCH' AND branch_ref IS NOT NULL AND area_ref IS NULL)
-    OR (scope_kind='AREA' AND branch_ref IS NULL AND area_ref IS NOT NULL)),
+    OR (scope_kind='AREA' AND branch_ref IS NULL AND area_ref IS NOT NULL)
+    OR (scope_kind='ALL_BRANCHES' AND branch_ref IS NULL AND area_ref IS NULL)),
  CHECK((ended_at IS NULL AND ended_by IS NULL AND end_request_key IS NULL AND source_version=1)
     OR (ended_at IS NOT NULL AND ended_by IS NOT NULL AND end_request_key IS NOT NULL
       AND ended_at>=granted_at AND source_version=2))
 );
 CREATE UNIQUE INDEX ux_cg02_active_staff_scope
  ON cg02_staff_scope_assignment(root_realm_id,account_ref,scope_kind,
-   (COALESCE(branch_ref,area_ref))) WHERE ended_at IS NULL;
+   (COALESCE(branch_ref,area_ref))) WHERE ended_at IS NULL
+ AND scope_kind IN('BRANCH','AREA');
+CREATE UNIQUE INDEX ux_cg02_active_staff_all_branches
+ ON cg02_staff_scope_assignment(root_realm_id,account_ref)
+ WHERE ended_at IS NULL AND scope_kind='ALL_BRANCHES';
 CREATE UNIQUE INDEX ux_cg02_staff_scope_end_key
  ON cg02_staff_scope_assignment(root_realm_id,ended_by,end_request_key)
  WHERE ended_at IS NOT NULL;
