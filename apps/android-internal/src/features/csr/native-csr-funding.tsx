@@ -281,7 +281,11 @@ export function NativeCsrFunding({token,canManage,canReadAgreement,canUploadAgre
     <Text style={styles.heading}>{minor(draft.rupees)?money(minor(draft.rupees)!):"Invalid INR amount"}</Text>
     <Text style={styles.note}>{draft.purpose||"Purpose not entered"}</Text>
     <Text style={styles.note}>CSR {draft.csrPercent}% / Foundation {100-draft.csrPercent}%</Text>
-    <Text style={styles.note}>After saving: DRAFT. Not approved, received, allocated or utilized.</Text>
+    <Text style={styles.note}>{selected?
+     selected.status==="APPROVED"?
+      "Approved commitment; only CG09 independently proves received money and budget effects.":
+      "Current funding status: "+selected.status:
+     "After saving: DRAFT. Not approved, received, allocated or utilized."}</Text>
    </View>
    <View style={styles.actions}>
     {chooseItem("close","Close","",clearDetail)}
