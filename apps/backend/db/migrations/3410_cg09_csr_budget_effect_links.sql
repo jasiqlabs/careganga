@@ -7,6 +7,7 @@ CREATE TABLE finance_csr_budget_effect(
  approved_source_version integer NOT NULL CHECK(approved_source_version>0),
  party_kind text NOT NULL CHECK(party_kind IN('CSR','FOUNDATION')),
  budget_event_id uuid NOT NULL,
+ correction_of_event_id uuid,
  request_key uuid NOT NULL,
  request_digest char(64) NOT NULL CHECK(request_digest~'^[a-f0-9]{64}$'),
  actor_ref uuid NOT NULL,
@@ -16,6 +17,8 @@ CREATE TABLE finance_csr_budget_effect(
  FOREIGN KEY(root_realm_id,funding_proposal_id)
   REFERENCES csr_funding_proposal(root_realm_id,id) ON DELETE RESTRICT,
  FOREIGN KEY(budget_event_id)
+  REFERENCES finance_budget_event(id) ON DELETE RESTRICT,
+ FOREIGN KEY(correction_of_event_id)
   REFERENCES finance_budget_event(id) ON DELETE RESTRICT,
  FOREIGN KEY(actor_ref,root_realm_id)
   REFERENCES account(id,realm_id) ON DELETE RESTRICT
@@ -44,7 +47,7 @@ BEGIN
   ON bud.id=ev.budget_id AND bud.root_realm_id=ev.root_realm_id
  WHERE ev.id=NEW.budget_event_id AND ev.root_realm_id=NEW.root_realm_id
  FOR SHARE OF ev,bud;
- IF NOT FOUND OR e.kind NOT IN('ALLOCATE','UTILIZE') OR e.budget_status<>'APPROVED'
+ IF NOT FOUND OR e.kind NOT IN('ALLOCATE','UTILIZE','DEALLOCATE') OR e.budget_status<>'APPROVED'
   OR e.branch_id IS DISTINCT FROM p.branch_ref
   OR e.project_ref IS DISTINCT FROM p.project_ref THEN
   RAISE EXCEPTION 'Original approved project/category budget effect required' USING ERRCODE='P3410';
@@ -77,17 +80,80 @@ BEGIN
   AND (ev.kind='ALLOCATE' OR NOT EXISTS(SELECT 1 FROM journal reversal
     WHERE reversal.root_realm_id=ev.root_realm_id AND reversal.reversal_of_id=ev.source_journal_id
      AND reversal.posting_kind='REVERSAL'));
- IF e.kind='ALLOCATE' THEN
+ IF e.kind='DEALLOCATE' THEN
+  IF NEW.correction_of_event_id IS NULL THEN
+   RAISE EXCEPTION 'Select the original CG09 allocation to correct' USING ERRCODE='P3410';
+  END IF;
+  DECLARE original_allocation record; corrected numeric; net_allocated numeric;
+   net_utilized numeric;
+  BEGIN
+   SELECT original.id,original.amount_minor,original.budget_id
+    INTO original_allocation FROM finance_budget_event original
+    JOIN finance_csr_budget_effect original_link
+     ON original_link.budget_event_id=original.id
+     AND original_link.root_realm_id=original.root_realm_id
+    WHERE original.id=NEW.correction_of_event_id
+     AND original.root_realm_id=NEW.root_realm_id AND original.kind='ALLOCATE'
+     AND original.budget_id=e.budget_id
+     AND original_link.funding_proposal_id=NEW.funding_proposal_id
+     AND original_link.party_kind=NEW.party_kind FOR SHARE OF original,original_link;
+   IF NOT FOUND THEN RAISE EXCEPTION 'Original allocation is not from this funding share'
+     USING ERRCODE='P3410'; END IF;
+   SELECT COALESCE(sum(ce.amount_minor),0) INTO corrected
+   FROM finance_csr_budget_effect correction
+   JOIN finance_budget_event ce ON ce.id=correction.budget_event_id
+    AND ce.root_realm_id=correction.root_realm_id AND ce.kind='DEALLOCATE'
+   WHERE correction.root_realm_id=NEW.root_realm_id
+    AND correction.correction_of_event_id=NEW.correction_of_event_id;
+   IF corrected+e.amount_minor>original_allocation.amount_minor THEN
+    RAISE EXCEPTION 'Cannot correct more than this original allocation'
+     USING ERRCODE='P3410';
+   END IF;
+   SELECT COALESCE(sum(CASE WHEN event.kind='ALLOCATE' THEN event.amount_minor
+    WHEN event.kind='DEALLOCATE' THEN -event.amount_minor ELSE 0 END),0),
+    COALESCE(sum(CASE WHEN event.kind='UTILIZE' AND NOT EXISTS(
+     SELECT 1 FROM journal reversal WHERE reversal.root_realm_id=event.root_realm_id
+      AND reversal.reversal_of_id=event.source_journal_id
+      AND reversal.posting_kind='REVERSAL') THEN event.amount_minor ELSE 0 END),0)
+    INTO net_allocated,net_utilized
+   FROM finance_csr_budget_effect linked
+   JOIN finance_budget_event event ON event.id=linked.budget_event_id
+    AND event.root_realm_id=linked.root_realm_id
+   WHERE linked.root_realm_id=NEW.root_realm_id
+    AND linked.funding_proposal_id=NEW.funding_proposal_id
+    AND linked.party_kind=NEW.party_kind AND event.budget_id=e.budget_id;
+   IF net_allocated-e.amount_minor<net_utilized THEN
+    RAISE EXCEPTION 'Only unspent original allocation can be corrected'
+     USING ERRCODE='P3410';
+   END IF;
+  END;
+ ELSIF e.kind='ALLOCATE' THEN
+  IF NEW.correction_of_event_id IS NOT NULL THEN
+   RAISE EXCEPTION 'Only a deallocation can reference an original allocation'
+    USING ERRCODE='P3410';
+  END IF;
   -- Sum across all budgets for this party before comparing against bank cash.
-  SELECT COALESCE(sum(ev.amount_minor),0) INTO allocated
+  SELECT COALESCE(sum(CASE ev.kind WHEN 'ALLOCATE' THEN ev.amount_minor
+   WHEN 'DEALLOCATE' THEN -ev.amount_minor ELSE 0 END),0) INTO allocated
   FROM finance_csr_budget_effect link JOIN finance_budget_event ev
    ON ev.id=link.budget_event_id AND ev.root_realm_id=link.root_realm_id
   WHERE link.root_realm_id=NEW.root_realm_id AND link.funding_proposal_id=NEW.funding_proposal_id
-   AND link.party_kind=NEW.party_kind AND ev.kind='ALLOCATE';
+   AND link.party_kind=NEW.party_kind AND ev.kind IN('ALLOCATE','DEALLOCATE');
   IF allocated+e.amount_minor>received THEN
    RAISE EXCEPTION 'CSR budget allocation exceeds currently verified original bank receipts' USING ERRCODE='P3410';
   END IF;
  ELSE
+  IF NEW.correction_of_event_id IS NOT NULL THEN
+   RAISE EXCEPTION 'Only a deallocation can reference an original allocation' USING ERRCODE='P3410';
+  END IF;
+  -- Compare to net same-budget allocation (allocation less all prior corrections).
+  SELECT COALESCE(sum(CASE WHEN ev.kind='ALLOCATE' THEN ev.amount_minor
+   WHEN ev.kind='DEALLOCATE' THEN -ev.amount_minor ELSE 0 END),0)
+   INTO allocated
+  FROM finance_csr_budget_effect link JOIN finance_budget_event ev
+   ON ev.id=link.budget_event_id AND ev.root_realm_id=link.root_realm_id
+  WHERE link.root_realm_id=NEW.root_realm_id AND link.funding_proposal_id=NEW.funding_proposal_id
+   AND link.party_kind=NEW.party_kind AND ev.budget_id=e.budget_id;
   IF utilized+e.amount_minor>allocated THEN
    RAISE EXCEPTION 'CSR utilization exceeds same-budget attributed allocation' USING ERRCODE='P3410';
   END IF;
