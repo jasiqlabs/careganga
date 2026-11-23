@@ -260,7 +260,15 @@ export class FinanceReportsService{
   if(scope.branchRefs.length===0)
    throw new ForbiddenException("No active reporting branch is assigned to your account");
   if(year)await this.verifyAssignedMisYear(actor.realmId,year);
-  return this.readPostedSummary(actor.realmId,year,null,scope.branchRefs);
+  const result=await this.readPostedSummary(actor.realmId,year,null,scope.branchRefs);
+  // A revoked branch grant bumps CG01 access_version. Do not return a stale
+  // regional report if the session or selected CG02 branch scope changed
+  // while the read-only PostgreSQL snapshot was being assembled.
+  await this.actor(bearer);
+  const latest=await this.branches.financeReportScope(bearer,"finance.reports.view");
+  if(!latest.all&&scope.branchRefs.some(ref=>!latest.branchRefs.includes(ref)))
+   throw new ForbiddenException("Your assigned branch reporting scope changed. Refresh the report.");
+  return result;
  }
  private async verifyAssignedMisYear(root:string,year:string){
   const row=await this.db.query(
@@ -333,7 +341,12 @@ export class FinanceReportsService{
   if(scope.branchRefs.length===0)
    throw new ForbiddenException("No active reporting branch is assigned to your account");
   if(year)await this.verifyAssignedMisYear(actor.realmId,year);
-  return this.readMonthlyMisTrend(actor.realmId,year,null,scope.branchRefs);
+  const result=await this.readMonthlyMisTrend(actor.realmId,year,null,scope.branchRefs);
+  await this.actor(bearer);
+  const latest=await this.branches.financeReportScope(bearer,"finance.reports.view");
+  if(!latest.all&&scope.branchRefs.some(ref=>!latest.branchRefs.includes(ref)))
+   throw new ForbiddenException("Your assigned branch reporting scope changed. Refresh the report.");
+  return result;
  }
  /** Typed CG20 C49 grouping is computed ONLY by the original CG09
   * posted-ledger owner. No CG20 SQL, arbitrary columns or client-side totals
