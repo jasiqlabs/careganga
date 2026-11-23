@@ -65,6 +65,10 @@ describe("CG13 US002 B11 branch-scoped verified ledger aggregates source contrac
   assert.deepEqual(spent.params,[ROOT,PROGRAMME,false,[BRANCH]]);
   assert.ok(!JSON.stringify(result).includes(ACCOUNT));
   const walletReads=f.seen.filter(x=>x.sql.includes("FROM points_account wallet"));
+  const activeWallet=walletReads.find(x=>x.sql.includes('AS "activeReferrers"'))!;
+  assert.ok(activeWallet);
+  assert.match(activeWallet.sql,/currentBranch.status='ACTIVE'/);
+  assert.match(activeWallet.sql,/currentBranch.root_realm_id=m.root_realm_id/);
   assert.equal(walletReads.length,2);
   for(const query of walletReads){
    assert.deepEqual(query.params,[ROOT,PROGRAMME,false,[BRANCH]]);
@@ -133,6 +137,7 @@ describe("CG13 US002 B12 individual records require existing current CG04 roster
   assert.match(top.sql,/wallet.referrer_kind=\$3/);
   assert.match(top.sql,/COALESCE\(m.branch_ref,v.branch_ref\)=ANY\(\$5::uuid\[\]\)/);
   assert.match(top.sql,/cg04_current_volunteer/);
+  assert.match(top.sql,/currentBranch.status='ACTIVE'/);
   assert.match(top.sql,/memberApp.city/);
   assert.match(top.sql,/memberDistrict.display_name/);
   assert.match(top.sql,/wallet.current_rank_name=\$9/);
