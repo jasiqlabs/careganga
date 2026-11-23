@@ -7,6 +7,8 @@ import {SessionService} from "../../cg-01-identity-access/application/session.se
 import {FoundationStructureIdentityFacade} from "../../cg-01-identity-access/application/foundation-structure-identity.facade";
 import type {VerifiedFoundationActor} from "../../cg-01-identity-access/public-api";
 import {catalogPage} from "./referral-catalog.service";
+import {reserveRewardStock,releaseRewardStock} from
+ "../../cg-12-inventory-suppliers/application/reward-stock-source";
 import {recordAcknowledgedRewardRecognition} from
  "../../cg-19-documents-notifications/application/reward-recognition-source";
 
@@ -28,7 +30,7 @@ type Request={
  expectedProductVersion:number;requestKey:string;
 };
 type Wallet={id:string;earned:string;reversed:string;held:string;spent:string};
-type Redemption={ref:string;state:string;productName:string;
+type Redemption={ref:string;state:string;type:"DIGITAL"|"PHYSICAL";productName:string;
  pointsCost:string;revision:number;requestedAt:string;
  digitalFulfillmentMethod:string;recognitionTitle:string|null;
  recognitionDescription:string|null;recognizedAt:string|null};
@@ -115,8 +117,11 @@ export class RedemptionService {
      pointsCost:existing.rows[0].pointsCost,replayed:true,
      notice:"Your original digital reward request has been retrieved."};
    }
-   const product=await tx.query<{price:string;version:number;name:string;policyVersion:number;minimumClaimPoints:string}>(
+   const product=await tx.query<{price:string;version:number;name:string;policyVersion:number;
+    minimumClaimPoints:string;type:"DIGITAL"|"PHYSICAL";itemRef:string|null;storeRef:string|null}>(
     "SELECT p.points_price::text AS price,p.version,p.name,"+
+    "p.product_type AS type,p.cg12_item_ref AS \"itemRef\","+
+    "p.cg12_location_ref AS \"storeRef\","+
     "policy.version_no AS \"policyVersion\","+
     "policy.minimum_claim_points::text AS \"minimumClaimPoints\" FROM reward_product p "+
     "JOIN referral_program programme ON programme.root_realm_id=p.root_realm_id "+
@@ -126,7 +131,8 @@ export class RedemptionService {
     "AND pv.effective_from<=now() ORDER BY pv.effective_from DESC,pv.version_no DESC "+
     "LIMIT 1) policy ON true "+
     "WHERE p.root_realm_id=$1 AND p.id=$2 AND p.programme_id=$3 "+
-    "AND p.product_type='DIGITAL' AND p.status='ACTIVE' AND p.public_visible "+
+    "AND p.product_type IN('DIGITAL','PHYSICAL') "+
+    "AND p.status='ACTIVE' AND p.public_visible "+
     "AND programme.status='ACTIVE' AND "+
     "(programme.audience='BOTH' OR programme.audience=$4) "+
     "AND (p.eligible_audience='BOTH' OR p.eligible_audience=$4) "+
@@ -138,8 +144,8 @@ export class RedemptionService {
     throw new ConflictException("The reward changed. Refresh its current price.");
    const price=BigInt(product.rows[0].price);
    const claimMinimum=BigInt(product.rows[0].minimumClaimPoints);
-   // The current migration supports one DIGITAl hold of at most 1 billion
-   // points. Reject an incompatible catalog price before DB transition.
+   // The actual original catalogue supports up to 1 trillion reward points.
+   // The original current claim threshold remains capped at 1 billion.
    if(price<=0n||price>1000000000000n||claimMinimum>1000000000n)
     throw new ConflictException("This reward is not available for points redemption.");
    const account=await tx.query<Wallet>(
@@ -157,12 +163,23 @@ export class RedemptionService {
     "INSERT INTO redemption(root_realm_id,programme_id,policy_version,points_account_id,"+
     "recipient_account_ref,relationship_kind,relationship_ref,product_id,"+
     "product_revision,product_type,points_cost,request_key,payload_digest) "+
-    "VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,'DIGITAL',$10,$11,$12) RETURNING id AS ref",
+    "VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13) RETURNING id AS ref",
     [a.realmId,source.programmeRef,product.rows[0].policyVersion,wallet.id,
      a.accountId,source.relationship,relationship,source.productRef,
-     source.expectedProductVersion,price.toString(),source.requestKey,hash]);
+     source.expectedProductVersion,product.rows[0].type,
+     price.toString(),source.requestKey,hash]);
    const redemption=created.rows[0];
    if(!redemption)throw new ConflictException("Reward request outcome uncertain.");
+   if(product.rows[0].type==="PHYSICAL"){
+    if(!product.rows[0].itemRef||!product.rows[0].storeRef)
+     throw new ConflictException("Current verified warehouse item is unavailable.");
+    await reserveRewardStock(tx,{
+     root:a.realmId,redemption:redemption.ref,recipient:a.accountId,
+     relationship:source.relationship,relationshipRef:relationship,
+     item:product.rows[0].itemRef,location:product.rows[0].storeRef,
+     requestKey:source.requestKey
+    });
+   }
    const held=await tx.query<{ref:string}>(
     "INSERT INTO points_event(root_realm_id,points_account_id,redemption_id,"+
     "event_kind,policy_version,points_delta,qualifying_source_digest) "+
@@ -182,24 +199,30 @@ export class RedemptionService {
     "INSERT INTO redemption_event(root_realm_id,redemption_id,event_kind,"+
     "original_points_event_id,source_key) VALUES($1,$2,'REQUESTED',$3,$4)",
     [a.realmId,redemption.ref,held.rows[0].ref,source.requestKey]);
-   return {ref:redemption.ref,state:"HELD",pointsCost:price.toString(),replayed:false,
-    notice:"Points reserved. Digital delivery remains pending verified fulfillment; no gift code or cash entitlement is issued."};
+   return {ref:redemption.ref,state:"HELD",pointsCost:price.toString(),
+    type:product.rows[0].type,replayed:false,
+    notice:product.rows[0].type==="PHYSICAL"?
+     "One real warehouse item and verified points are reserved. Staff issue and recipient handover have not occurred.":
+     "Points reserved. Delivery remains pending actual recipient recognition or approved evidence; no gift code or cash is issued."};
   });
  }
  async cancel(token:string,redemptionInput:unknown){
   const redemptionRef=ref(redemptionInput);
   return this.run(token,async(tx,a)=>{
    const found=await tx.query<{
-    ref:string;state:string;price:string;wallet:string;relationship:Kind
+    ref:string;state:string;price:string;wallet:string;relationship:Kind;
+    relationshipRef:string;type:"DIGITAL"|"PHYSICAL"
    }>(
     "SELECT id AS ref,state,points_cost::text AS price,"+
-    "points_account_id AS wallet,relationship_kind AS relationship "+
+    "points_account_id AS wallet,relationship_kind AS relationship,"+
+    "relationship_ref AS \"relationshipRef\",product_type AS type "+
     "FROM redemption WHERE root_realm_id=$1 AND id=$2 "+
     "AND recipient_account_ref=$3 FOR UPDATE",
     [a.realmId,redemptionRef,a.accountId]);
    const redemption=found.rows[0];
    if(!redemption)throw new NotFoundException("Your reward request was not found.");
-   await this.current(tx,a,redemption.relationship);
+   if(await this.current(tx,a,redemption.relationship)!==redemption.relationshipRef)
+    throw new ForbiddenException("The original verified relationship has changed.");
    if(redemption.state==="CANCELLED")
     return {state:"CANCELLED",replayed:true};
    if(redemption.state!=="HELD")
@@ -210,6 +233,10 @@ export class RedemptionService {
     "AND referrer_account_ref=$3 FOR UPDATE",
     [a.realmId,redemption.wallet,a.accountId]);
    if(!lock.rowCount)throw new ForbiddenException("Your original points account is unavailable.");
+   if(redemption.type==="PHYSICAL")
+    await releaseRewardStock(tx,{
+     root:a.realmId,redemption:redemptionRef,recipient:a.accountId
+    });
    const change=await tx.query(
     "UPDATE redemption SET state='CANCELLED',revision=revision+1,cancelled_at=now() "+
     "WHERE root_realm_id=$1 AND id=$2 AND state='HELD'",
@@ -314,7 +341,7 @@ export class RedemptionService {
   return this.run(token,async(tx,a)=>{
    // Only the same authenticated actor; no applicant, staff or referrer PII.
    const records=await tx.query<Redemption>(
-    "SELECT r.id AS ref,r.state,p.name AS \"productName\","+
+    "SELECT r.id AS ref,r.state,r.product_type AS type,p.name AS \"productName\","+
     "p.digital_fulfillment_method AS \"digitalFulfillmentMethod\","+
     "proof.title AS \"recognitionTitle\",proof.description AS \"recognitionDescription\","+
     "proof.acknowledged_at AS \"recognizedAt\","+
