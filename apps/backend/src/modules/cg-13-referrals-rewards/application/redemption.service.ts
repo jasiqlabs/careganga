@@ -7,6 +7,8 @@ import {SessionService} from "../../cg-01-identity-access/application/session.se
 import {FoundationStructureIdentityFacade} from "../../cg-01-identity-access/application/foundation-structure-identity.facade";
 import type {VerifiedFoundationActor} from "../../cg-01-identity-access/public-api";
 import {catalogPage} from "./referral-catalog.service";
+import {recordAcknowledgedRewardRecognition} from
+ "../../cg-19-documents-notifications/application/reward-recognition-source";
 
 const UUID=/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const ref=(x:unknown):string=>{
@@ -27,7 +29,9 @@ type Request={
 };
 type Wallet={id:string;earned:string;reversed:string;held:string;spent:string};
 type Redemption={ref:string;state:string;productName:string;
- pointsCost:string;revision:number;requestedAt:string};
+ pointsCost:string;revision:number;requestedAt:string;
+ digitalFulfillmentMethod:string;recognitionTitle:string|null;
+ recognitionDescription:string|null;recognizedAt:string|null};
 const parse=(raw:unknown):Request=>{
  const x=obj(raw,["programmeRef","productRef","relationship","expectedProductVersion","requestKey"]);
  if(x.relationship!=="MEMBER"&&x.relationship!=="VOLUNTEER")
@@ -233,16 +237,93 @@ export class RedemptionService {
     notice:"Your pending request was cancelled. The held points were released."};
   });
  }
+ /** Original CG19 ON_PLATFORM_RECOGNITION is the delivered benefit itself:
+  * a current signed-in recipient expressly acknowledges seeing their original
+  * immutable recognition inside this same points/recognition transaction.
+  * External vouchers, generic digital items and PDFs are NEVER auto-fulfilled.
+  */
+ async claimRecognition(token:string,redemptionInput:unknown){
+  const id=ref(redemptionInput);
+  return this.run(token,async(tx,a)=>{
+   const found=await tx.query<{
+    id:string;state:string;wallet:string;relationship:Kind;
+    relationshipRef:string;price:string;requestKey:string
+   }>(
+    "SELECT id,state,points_account_id AS wallet,"+
+    "relationship_kind AS relationship,relationship_ref AS \"relationshipRef\","+
+    "points_cost::text AS price,request_key AS \"requestKey\" "+
+    "FROM redemption WHERE root_realm_id=$1 AND id=$2 "+
+    "AND recipient_account_ref=$3 FOR UPDATE",
+    [a.realmId,id,a.accountId]);
+   const row=found.rows[0];
+   if(!row)throw new NotFoundException("Your reward recognition is unavailable.");
+   if(await this.current(tx,a,row.relationship)!==row.relationshipRef)
+    throw new ForbiddenException("Your original verified recipient relationship has changed.");
+   if(row.state==="FULFILLED"){
+    const prior=await tx.query<{title:string;description:string}>(
+     "SELECT title,description FROM cg19_reward_recognition "+
+     "WHERE realm_id=$1 AND redemption_id=$2 AND recipient_account_ref=$3",
+     [a.realmId,id,a.accountId]);
+    if(!prior.rows[0])throw new ConflictException("Original recognition proof unavailable.");
+    return {state:"FULFILLED",replayed:true,
+     recognition:{title:prior.rows[0].title,description:prior.rows[0].description},
+     notice:"Your previously acknowledged on-platform recognition is ready."};
+   }
+   if(row.state!=="HELD")
+    throw new ConflictException("This recognition cannot be claimed in its current state.");
+   const locked=await tx.query<{id:string}>(
+    "SELECT id FROM points_account WHERE root_realm_id=$1 AND id=$2 "+
+    "AND referrer_account_ref=$3 AND held_points>=$4::bigint FOR UPDATE",
+    [a.realmId,row.wallet,a.accountId,row.price]);
+   if(!locked.rows[0])throw new ConflictException("Original held points are unavailable.");
+   const proof=await recordAcknowledgedRewardRecognition(tx,{
+    root:a.realmId,redemption:id,recipient:a.accountId,requestKey:row.requestKey
+   });
+   const change=await tx.query(
+    "UPDATE redemption SET state='FULFILLED',revision=revision+1,fulfilled_at=now() "+
+    "WHERE root_realm_id=$1 AND id=$2 AND recipient_account_ref=$3 AND state='HELD'",
+    [a.realmId,id,a.accountId]);
+   if(change.rowCount!==1)throw new ConflictException("Recognition was already changed.");
+   const spent=await tx.query<{id:string}>(
+    "INSERT INTO points_event(root_realm_id,points_account_id,redemption_id,"+
+    "event_kind,policy_version,points_delta,qualifying_source_digest) "+
+    "SELECT $1,$2,$3,'POINTS_SPENT',r.policy_version,r.points_cost,"+
+    "r.payload_digest FROM redemption r "+
+    "WHERE r.root_realm_id=$1 AND r.id=$3 "+
+    "AND r.recipient_account_ref=$4 RETURNING id",
+    [a.realmId,row.wallet,id,a.accountId]);
+   if(!spent.rows[0])throw new ConflictException("Original points spend evidence unavailable.");
+   const wallet=await tx.query(
+    "UPDATE points_account SET held_points=held_points-$3::bigint,"+
+    "spent_points=spent_points+$3::bigint,revision=revision+1,updated_at=now() "+
+    "WHERE root_realm_id=$1 AND id=$2 AND held_points>=$3::bigint",
+    [a.realmId,row.wallet,row.price]);
+   if(wallet.rowCount!==1)throw new ConflictException("Points projection changed.");
+   await tx.query(
+    "INSERT INTO redemption_event(root_realm_id,redemption_id,event_kind,"+
+    "original_points_event_id,source_key) "+
+    "VALUES($1,$2,'RECOGNIZED',$3,$4)",
+    [a.realmId,id,spent.rows[0].id,row.requestKey]);
+   return {state:"FULFILLED",replayed:false,
+    recognition:{title:proof.title,description:proof.description},
+    notice:"Your on-platform recognition was acknowledged and issued. Original held points were spent."};
+  });
+ }
  async myHistory(token:string,pageInput?:string){
   const page=catalogPage(pageInput);
   return this.run(token,async(tx,a)=>{
    // Only the same authenticated actor; no applicant, staff or referrer PII.
    const records=await tx.query<Redemption>(
     "SELECT r.id AS ref,r.state,p.name AS \"productName\","+
+    "p.digital_fulfillment_method AS \"digitalFulfillmentMethod\","+
+    "proof.title AS \"recognitionTitle\",proof.description AS \"recognitionDescription\","+
+    "proof.acknowledged_at AS \"recognizedAt\","+
     "r.points_cost::text AS \"pointsCost\",r.revision,"+
     "r.requested_at AS \"requestedAt\" FROM redemption r "+
     "JOIN reward_product_revision p ON p.root_realm_id=r.root_realm_id "+
     "AND p.product_id=r.product_id AND p.revision=r.product_revision "+
+    "LEFT JOIN cg19_reward_recognition proof ON proof.realm_id=r.root_realm_id "+
+    "AND proof.redemption_id=r.id AND proof.recipient_account_ref=r.recipient_account_ref "+
     "WHERE r.root_realm_id=$1 AND r.recipient_account_ref=$2 "+
     "AND ((r.relationship_kind='MEMBER' AND EXISTS("+
     "SELECT 1 FROM member m JOIN membership_term term "+
