@@ -166,3 +166,10 @@ test("US001-QA05/06/08/13/17/18: real B03-B06 review tabs and branch-limited rea
  assert.ok(web.includes('aria-pressed={statusFilter===tab.value}'),"Web active-state a11y");
  assert.ok(android.includes('editable={canEditCurrent&&!busy&&!pending}'),"Native readonly input guard");
 });
+
+test("US001-QA04/15: native retry success can refresh while manual refresh stays disabled mid-command",()=>{
+ const code=readFileSync(join(process.cwd(),"../android-internal/src/features/csr/native-csr-partners.tsx"),"utf8");
+ assert.match(code,/const refresh=\(\)=>\{setSelected\(null\);setEditing\(false\);setEpoch\(/);
+ assert.match(code,/disabled=\{!!pending\|\|busy\} accessibilityState=\{\{disabled:!!pending\|\|busy\}\} onPress=\{refresh\}/);
+ assert.ok(!code.includes("const refresh=()=>{if(pending)return"),"Do not capture stale pending after a confirmed original retry");
+});

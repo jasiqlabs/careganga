@@ -35,7 +35,7 @@ export function NativeCsrPartners({token,canManage,canReadAgreement,canUploadAgr
  const [busy,setBusy]=useState(false),[pending,setPending]=useState<Command|null>(null),seq=useRef(0);
  const [history,setHistory]=useState<ReviewHistory|null>(null),[historyError,setHistoryError]=useState("");
  const canEditCurrent=canManage&&(!selected||["DRAFT","RETURNED"].includes(selected.status));
- const refresh=()=>{if(pending)return;setSelected(null);setEditing(false);setEpoch(n=>n+1);};
+ const refresh=()=>{setSelected(null);setEditing(false);setEpoch(n=>n+1);};
  useEffect(()=>{
   let live=true;const n=++seq.current;setLoading(true);setListError("");
   const p=new URLSearchParams({offset:String(offset)});
@@ -124,7 +124,7 @@ export function NativeCsrPartners({token,canManage,canReadAgreement,canUploadAgr
     {options?.branches.map(b=>choice(b.value,b.label,filter,v=>{setSelected(null);setEditing(false);setOffset(0);setFilter(v);},!!pending))}
    </ScrollView>
    <View style={styles.actions}>
-    <Pressable accessibilityRole="button" style={styles.btn} onPress={refresh}><Text>Refresh</Text></Pressable>
+    <Pressable accessibilityRole="button" style={styles.btn} disabled={!!pending||busy} accessibilityState={{disabled:!!pending||busy}} onPress={refresh}><Text>Refresh</Text></Pressable>
     {canManage&&<Pressable accessibilityRole="button" style={styles.primary} disabled={!!pending} onPress={start}><Text style={styles.primaryText}>New draft</Text></Pressable>}
    </View>
    {!!listError&&<Text accessibilityRole="alert" style={styles.error}>{listError}</Text>}

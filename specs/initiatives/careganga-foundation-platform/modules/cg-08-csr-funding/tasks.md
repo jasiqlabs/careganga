@@ -314,3 +314,8 @@ Fixed original US001-QA02/04/12/17/18: switching CSR review status, Foundation b
 ### 23-Nov-2026 — US001 Internal Android scoped-view source review/fix
 
 Closed Android companion of US001-QA02/04/12/17/18: current partner private detail is discarded when the operator changes a CG02 branch filter or B03–B06 status tab, and on permitted manual refresh; original uncertain write blocks scope change until its idempotent request is resolved. A successful list fetch no longer suppresses an unrelated draft-save/approval error, and an expired credential on partner detail calls the existing session-expired flow. Existing CG01/02 backend revocation gates unchanged. **Source fix authored, native compile/device A/B multi-branch QA NOT_RUN.** No new issue or new QA ID, no main/CG07 change.
+
+
+### 23-Nov-2026 — US001 native original write-retry refresh closure fixed
+
+Immediately re-reviewed the previous branch-switch guard: `refresh()` was conditional on a render-captured `pending`, so a successful exact-key retry after a lost response could fail to update the directory. Corrected the function to always clear stale detail and refetch after a **confirmed** write; only the user-facing manual Refresh button is disabled while the same command is pending/busy. Original US001-QA04/15 current source regression test added; **not executed**. No new process or scope. Native compile/actual provider timeout/retry still NOT_RUN.
