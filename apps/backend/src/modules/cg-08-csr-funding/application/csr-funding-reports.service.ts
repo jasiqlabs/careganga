@@ -113,7 +113,8 @@ export class CsrFundingReportsService{
  "WHERE link.root_realm_id=v.root_realm_id AND link.funding_proposal_id=v.id",
  "AND link.remitter_attested) bank ON TRUE",
  "LEFT JOIN LATERAL (SELECT",
- "sum(ev.amount_minor) FILTER(WHERE ev.kind='ALLOCATE') AS allocated,",
+ "sum(CASE WHEN ev.kind='ALLOCATE' THEN ev.amount_minor "+
+ "WHEN ev.kind='DEALLOCATE' THEN -ev.amount_minor ELSE 0 END) AS allocated,",
  "sum(ev.amount_minor) FILTER(WHERE ev.kind='UTILIZE' AND NOT EXISTS (",
  "SELECT 1 FROM journal reversal WHERE reversal.root_realm_id=ev.root_realm_id",
  "AND reversal.reversal_of_id=ev.source_journal_id",
