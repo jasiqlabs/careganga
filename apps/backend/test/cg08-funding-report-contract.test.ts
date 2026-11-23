@@ -89,6 +89,7 @@ test("US003-QA13/18: public partner attribution stays under original CG08 rights
  const cms=src("src/modules/cg-18-cms-public-content/application/cms-editorial.service.ts");
  const publicPage=src("../web/src/app/collaboration/page.tsx");
  const publicSource=src("../web/src/features/cms-public-content/cms-public-source.ts");
+ const publicAndroid=src("../android-public/src/features/cms/public-cms-screen.tsx");
  for(const x of [
   "p.status='APPROVED'","r.state='AUTHORIZED'",
   "s.evidence_file_id=r.evidence_file_id",
@@ -104,5 +105,14 @@ test("US003-QA13/18: public partner attribution stays under original CG08 rights
  assert.ok(publicPage.includes('publishedCmsPage("collaboration")'));
  assert.ok(publicPage.includes("safeCards"));
  assert.ok(publicSource.includes('source.kind==="PARTNERS"&&slug!=="collaboration"'));
+ for(const x of [
+  'collaboration:"PARTNERS"',
+  'section.kind==="PARTNER_CARDS"&&page.kind==="PARTNERS"',
+  'publishedPaths.includes("/collaboration")',
+  'Corporate Partners',
+  'const url=safeImage(logo)',
+  'No partner identities are currently approved for public display.'
+ ])assert.ok(publicAndroid.includes(x),x);
  assert.ok(!publicPage.includes("finance_csr_verified_receipt_link"));
+ assert.ok(!publicAndroid.includes("finance_csr_verified_receipt_link"));
 });
