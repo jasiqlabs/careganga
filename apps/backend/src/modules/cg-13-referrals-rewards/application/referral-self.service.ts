@@ -57,6 +57,8 @@ export class ReferralSelfService{
    "AND app.id=m.original_application_id AND app.status='APPROVED' "+
    "JOIN cg03_case review ON review.realm_id=effect.root_realm_id "+
    "AND review.id=effect.case_id AND review.status='OWNER_COMPLETED' "+
+   "JOIN account verified ON verified.realm_id=m.root_realm_id AND verified.id=m.account_ref "+
+   "AND verified.status='ACTIVE' AND verified.contact_phone_verified_at IS NOT NULL "+
    "JOIN membership_term term ON term.root_realm_id=m.root_realm_id AND term.member_id=m.id "+
    "LEFT JOIN branch b ON b.root_realm_id=m.root_realm_id AND b.id=m.branch_ref "+
    "WHERE m.root_realm_id=$1 AND m.account_ref=$2 AND m.status='ACTIVE' "+
