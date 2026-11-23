@@ -19,6 +19,18 @@ export class CsrFundingProposalsController{
  @Post(":ref/finance/receipts")
  linkVerifiedReceipt(@Headers("authorization")auth:string,@Param("ref")ref:string,
   @Body()body:unknown){return this.source.linkVerifiedReceipt(auth,ref,body);}
+ @Get(":ref/finance/budgets")
+ budgets(@Headers("authorization")auth:string,@Param("ref")ref:string){
+  return this.source.eligibleFinanceBudgets(auth,ref);
+ }
+ @Get(":ref/finance/budgets/:budgetRef/expenses")
+ expenses(@Headers("authorization")auth:string,@Param("ref")ref:string,
+  @Param("budgetRef")budgetRef:string){
+  return this.source.eligibleFinanceExpenses(auth,ref,budgetRef);
+ }
+ @Post(":ref/finance/budget-effects")
+ effect(@Headers("authorization")auth:string,@Param("ref")ref:string,
+  @Body()body:unknown){return this.source.applyFinanceBudgetEffect(auth,ref,body);}
  @Get(":ref") detail(@Headers("authorization")auth:string,@Param("ref")ref:string){
   return this.source.detail(auth,ref);
  }
