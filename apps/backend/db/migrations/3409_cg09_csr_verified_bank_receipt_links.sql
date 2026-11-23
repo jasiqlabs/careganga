@@ -47,7 +47,7 @@ BEGIN
  END IF;
  PERFORM 1 FROM cg03_case c JOIN cg03_case_decision d
   ON d.case_id=c.id AND d.realm_id=c.realm_id
- WHERE c.realm_id=NEW.root_realm_id AND c.csr_funding_proposal_id=funding_proposal_id
+ WHERE c.realm_id=NEW.root_realm_id AND c.csr_funding_proposal_id=NEW.funding_proposal_id
   AND c.case_kind='CSR_FUNDING_REVIEW' AND c.status='OWNER_COMPLETED'
   AND c.csr_funding_source_version+2=f.version
   AND d.action='APPROVE' AND d.fresh_password_verified_at IS NOT NULL
