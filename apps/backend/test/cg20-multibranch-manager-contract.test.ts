@@ -34,7 +34,7 @@ test("CG-MB-009 Dashboard only requests source-owned assigned union when no sing
  assert.match(mis,/filters\.branchRef\?this\.finance\.summary/);
  assert.match(mis,/this\.finance\.assignedMisSummary\(bearer,filters\.yearRef\)/);
  assert.match(mis,/this\.finance\.assignedMisMonthlyTrend\(bearer,filters\.yearRef\)/);
- assert.match(mis,/if\(filters\.branchRef\)throw error/);
+ assert.match(mis,/if\(filters\.branchRef\|\|view==="FINANCE"\)throw error/);
  assert.doesNotMatch(mis,/SELECT .* FROM journal_line/);
 });
 
@@ -68,4 +68,36 @@ test("CG-MB-009 saved/export and due-worker A+B scope use original CG09 and rech
  assert.match(schedule,/this\.sources\.preview\(token,saved\.request\)/);
  // No second shadow finance/posting source is added to MIS.
  assert.doesNotMatch(source,/FROM journal_line/);
+});
+
+
+test("CG-MB-008/009 durable A+B source-of-truth for on-demand/scheduled downloads and notices",()=>{
+ const migration=read("db/migrations/3321_cg20_immutable_report_branch_scope.sql");
+ const source=read("src/modules/cg-20-mis-reporting/application/mis-report-source.service.ts");
+ const module=read("src/modules/cg-20-mis-reporting/mis-reporting.module.ts");
+ const run=read("src/modules/cg-20-mis-reporting/application/mis-report-run.service.ts");
+ const worker=read("src/modules/cg-20-mis-reporting/infrastructure/mis-report-schedule.worker.ts");
+ const notice=read("src/modules/cg-19-documents-notifications/application/mis-report-notice.service.ts");
+ const inbox=read("src/modules/cg-19-documents-notifications/application/notification.service.ts");
+ assert.match(migration,/ADD COLUMN original_scope_all boolean/);
+ assert.match(migration,/original_scope_branch_refs uuid\[\]/);
+ assert.match(migration,/cg20_finance_ready_scope_guard/);
+ assert.match(migration,/cg20_report_run_scope_no_retarget/);
+ assert.match(source,/async originalFinanceScope\(/);
+ assert.match(source,/async originalScheduledFinanceScope\(/);
+ assert.match(source,/return \{all:false,branchRefs:\[request.branchRef\]\}/);
+ assert.match(source,/this\.branches\.financeReportScope/);
+ assert.match(module,/FoundationStructureModule/);
+ assert.match(run,/original_scope_all=\$6/);
+ assert.match(run,/original_scope_branch_refs=\$7::uuid\[\]/);
+ assert.match(run,/validateOriginalScope/);
+ assert.match(run,/if\(originalReady\)await this\.validateOriginalScope/);
+ assert.match(run,/validateSource\(token,claimed.rows\[0\],false\)/);
+ assert.match(run,/this\.validateSource\(token,row\)/);
+ assert.match(worker,/original_scope_all=\$6/);
+ assert.match(worker,/original_scope_branch_refs=\$7::uuid\[\]/);
+ assert.match(worker,/run\.original_scope_all&&!latest\.all/);
+ assert.match(notice,/original\.original_scope_all&&!current\.all/);
+ assert.match(inbox,/report\.original_scope_branch_refs <@ \$6::uuid\[\]/);
+ assert.equal(inbox.split("report.original_scope_branch_refs <@ $6::uuid[]").length-1,2);
 });
