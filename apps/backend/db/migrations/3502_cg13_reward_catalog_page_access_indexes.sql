@@ -10,3 +10,8 @@ CREATE INDEX IF NOT EXISTS cg13_product_root_programme_recent_page_idx
 
 CREATE INDEX IF NOT EXISTS cg13_product_root_programme_category_page_idx
  ON reward_product(root_realm_id,programme_id,category,created_at DESC,id DESC);
+
+-- Effective-time lookup: scheduled policy revisions must not hide a still
+-- effective earlier version or rewrite existing immutable historical awards.
+CREATE INDEX IF NOT EXISTS cg13_policy_root_effective_time_idx
+ ON referral_policy_version(root_realm_id,programme_id,effective_from DESC,version_no DESC);
