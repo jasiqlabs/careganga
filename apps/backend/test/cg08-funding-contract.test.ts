@@ -95,3 +95,19 @@ test("US002-QA14: native funding split remains a numeric value",()=>{
  const native=readFileSync(join(process.cwd(),"../android-internal/src/features/csr/native-csr-funding.tsx"),"utf8");
  assert.ok(native.includes('key==="csrPercent"?Number(v):v'));
 });
+
+
+test("US002-QA05/06/16/18: B07 totals are requested-only, root/branch scoped and not page-limited",()=>{
+ const backend=readFileSync(join(process.cwd(),"src/modules/cg-08-csr-funding/application/csr-funding-proposals.service.ts"),"utf8");
+ const web=readFileSync(join(process.cwd(),"../web/src/features/csr/csr-funding-workspace.tsx"),"utf8");
+ const native=readFileSync(join(process.cwd(),"../android-internal/src/features/csr/native-csr-funding.tsx"),"utf8");
+ assert.ok(backend.includes("coalesce(sum(f.requested_minor),0)::text"));
+ assert.ok(backend.includes('count(*) FILTER (WHERE f.status=\\'DRAFT\\')'));
+ assert.ok(backend.includes("AND ($2::boolean OR f.branch_ref=ANY($3::uuid[]))"));
+ assert.ok(backend.includes("hasMore:rows.rows.length>25,summary"));
+ assert.ok(!backend.includes("FROM finance_journal"),"CG08 requested totals are not bank cash");
+ assert.ok(web.includes('aria-label="Original requested funding totals"'));
+ assert.ok(native.includes('accessibilityLabel="Scoped requested-only funding totals"'));
+ assert.ok(web.includes("Total requested (not cash)"));
+ assert.ok(native.includes("Requested (not cash)"));
+});
