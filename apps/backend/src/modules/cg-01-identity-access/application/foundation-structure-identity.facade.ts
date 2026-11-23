@@ -93,7 +93,7 @@ export class FoundationStructureIdentityFacade {
     const q=await client.query<{id:string;display_name:string}>(`
       SELECT a.id,a.display_name FROM account a
       WHERE a.realm_id=$1 AND a.status='ACTIVE'
-       AND ($2='' OR lower(a.display_name) LIKE $2 ESCAPE '\')
+       AND ($2='' OR strpos(lower(a.display_name),$2)>0)
        AND EXISTS(
         SELECT 1 FROM account_role ar JOIN role r
           ON r.id=ar.role_id AND r.realm_id=ar.realm_id
@@ -109,7 +109,7 @@ export class FoundationStructureIdentityFacade {
           AND roots.revoked_at IS NULL AND elevated.active AND elevated.is_protected
        )
       ORDER BY a.display_name,a.id LIMIT 30`,[actor.realmId,
-       search?"%"+search.toLowerCase().replace(/[\\%_]/g,"\\$&")+"%":""]);
+       search.trim().toLowerCase()]);
     return q.rows.map(x=>({value:x.id,label:x.display_name}));
   }
   async assertPatientSessionCurrent(client:PoolClient,actor:VerifiedFoundationActor){
