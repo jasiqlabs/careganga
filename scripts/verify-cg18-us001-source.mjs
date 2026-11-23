@@ -15,6 +15,7 @@ const files={
  media:read("apps/backend/src/modules/cg-19-documents-notifications/application/cms-draft-media.service.ts"),
  migration:read("apps/backend/db/migrations/0936_cg18_original_site_editorial_media_roles.sql"),
  web:read("apps/web/src/features/cms-public-content/cms-public-page.tsx"),
+ homepage:read("apps/web/src/app/page.tsx"),
  header:read("apps/web/src/features/cms-public-content/cms-site-header.tsx"),
  carousel:read("apps/web/src/features/cms-public-content/cms-hero-carousel.tsx"),
  admin:read("apps/web/src/features/cms-public-content/cms-admin-workspace.tsx"),
@@ -514,6 +515,28 @@ checks.push(["Existing CG18 typed parser proves native first-item schema",
  files.extended.includes('kind==="HEALTHCARE_CATEGORIES"')&&
  files.extended.includes('kind==="GALLERY_GRID"')&&
  files.extended.includes('kind==="CONTACT_INFO"')]);
+// Deployment incident 23-Nov: a source merge is not a CMS publication. This
+// checks safe navigation wiring, not actual live publication/DB or rendered UI.
+checks.push(["Current Home CG03 approval only controls Member and Volunteer Join visibility",
+ files.backend.includes("n.member_join_desired,n.volunteer_join_desired")&&
+ files.backend.includes("memberJoin=x?.member_join_desired===true")&&
+ files.backend.includes("volunteerJoin=x?.volunteer_join_desired===true")&&
+ files.backend.includes('path:memberJoin?"/membership":null')&&
+ files.backend.includes('path:volunteerJoin?"/volunteer":null')&&
+ files.backend.includes("c.status='OWNER_COMPLETED'")&&
+ files.backend.includes("n.status='APPROVED'")]);
+checks.push(["Public Web/footer never fabricate fundraiser links",
+ files.web.includes('isPublished("/campaigns")?<Link href="/campaigns">Campaigns</Link>')&&
+ files.web.includes('isPublished("/donate")?<Link href="/donate">Donate</Link>')&&
+ files.web.includes('aria-disabled="true"')]);
+checks.push(["Unpublished Home remains non-indexed but exposes truthful shared public shell",
+ files.homepage.includes('robots:{index:false,follow:false}')&&
+ files.homepage.includes('return <CmsPublicShell navigation={navigation}>')&&
+ files.homepage.includes('result.state==="NOT_PUBLISHED"')]);
+checks.push(["Public Android accepts only an approved canonical membership/volunteer join path",
+ files.android.includes('data.memberJoin?.visible===true&&data.memberJoin?.path==="/membership"')&&
+ files.android.includes('data.volunteerJoin?.visible===true&&data.volunteerJoin?.path==="/volunteer"')&&
+ files.android.includes('memberJoin&&<CmsButton title="Become a Member"')]);
 let errors=0;
 for(const [label,ok] of checks){
  console.log((ok?"SOURCE-PRESENT":"SOURCE-FAIL")+": "+label);
