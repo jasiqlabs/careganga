@@ -32,7 +32,7 @@ CREATE TABLE cg02_staff_scope_assignment(
 );
 CREATE UNIQUE INDEX ux_cg02_active_staff_scope
  ON cg02_staff_scope_assignment(root_realm_id,account_ref,scope_kind,
-   COALESCE(branch_ref,area_ref)) WHERE ended_at IS NULL;
+   (COALESCE(branch_ref,area_ref))) WHERE ended_at IS NULL;
 CREATE UNIQUE INDEX ux_cg02_staff_scope_end_key
  ON cg02_staff_scope_assignment(root_realm_id,ended_by,end_request_key)
  WHERE ended_at IS NOT NULL;
