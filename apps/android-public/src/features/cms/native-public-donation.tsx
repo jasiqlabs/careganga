@@ -54,6 +54,7 @@ export function NativePublicDonation({campaignSlug=null}:{campaignSlug?:string|n
   setToken(v.statusToken);setStatus(v.status);setReceived(v.status==="RECEIVED_POSTED");
  });
  const pay=()=>call(async()=>{
+  if(!["REQUESTED","LINK_READY"].includes(status))return;
   if(!paymentKey.current)paymentKey.current=Crypto.randomUUID();
   const v=await request<{status:string;checkoutUrl:string|null;message?:string}>("/payment-link",{
    statusToken:token,requestKey:paymentKey.current});
@@ -193,7 +194,8 @@ export function NativePublicDonation({campaignSlug=null}:{campaignSlug?:string|n
   <><Text accessibilityRole="header">Status: {status.replaceAll("_"," ")}</Text>
    <Text selectable>Private status proof (keep safe): {token}</Text>
    {!received&&(paymentUrl?button("Open existing secure payment",()=>void Linking.openURL(paymentUrl)):
-    button("Request secure payment link",pay))}
+    ["REQUESTED","LINK_READY"].includes(status)?button("Request secure payment link",pay):
+    <Text accessibilityRole="alert">Original payment verification is pending or failed. Do not initiate another method for this donation.</Text>)}
    {refundedMinor!=="0"&&<Text>Confirmed refund has reduced verified net donations.</Text>}
    {refundPending&&<Text accessibilityRole="alert">Refund requested; actual payout has not been verified.</Text>}
    {receiptStatus==="ISSUED"&&button("Open/share your verified private PDF receipt",download)}

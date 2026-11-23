@@ -2,6 +2,7 @@ import {BadRequestException,ConflictException,Injectable} from "@nestjs/common";
 import {createHash} from "node:crypto";
 import type {PoolClient} from "pg";
 import {FinanceJournalPostingService} from "./finance-journal-posting.service";
+import {FoundationStructureIdentityFacade} from "../../cg-01-identity-access/application/foundation-structure-identity.facade";
 import type {VerifiedFoundationActor as Actor} from "../../cg-01-identity-access/public-api";
 const ID=/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i;
 const sha=(v:unknown)=>createHash("sha256").update(JSON.stringify(v)).digest("hex");
@@ -14,7 +15,8 @@ type Source=Readonly<{
 type Choice={id:string;name:string;account_kind:string;category:string};
 @Injectable()
 export class DonationBankCollectionFacade{
- constructor(private readonly posting:FinanceJournalPostingService){}
+ constructor(private readonly posting:FinanceJournalPostingService,
+  private readonly identity:FoundationStructureIdentityFacade){}
  async options(tx:PoolClient,a:Actor,branch:string|null){
   const accounts=await tx.query<Choice>(
    "SELECT f.id,f.name,f.account_kind,g.category FROM finance_account f "+
@@ -113,6 +115,9 @@ export class DonationBankCollectionFacade{
   const row=q.rows[0];
   if(row.source_status!=="PENDING"||row.recorded_by===a.accountId)
    throw new ConflictException("A different reviewer or changed bank collection was detected.");
+  // Original bank-statement approval alone cannot silently grant the separate
+  // finance.journals.post privilege needed to recognize/reverse real money.
+  await this.identity.assertCurrent(tx,a,"finance.journals.post");
   const amount=row.amount_minor;
   const verifiedDigest=sha(["CG07_BANK_DECISION",row.id,row.content_digest,
    row.decision_key,row.statement_file_id,row.statement_file_version,status]);

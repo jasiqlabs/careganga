@@ -54,7 +54,7 @@ export function PublicDonationForm({campaignSlug=null}:{campaignSlug?:string|nul
   finally{setBusy(false);}
  };
  const payment=async()=>{
-  if(!proof||busy)return;
+  if(!proof||busy||!["REQUESTED","LINK_READY"].includes(status))return;
   if(!linkKey.current)linkKey.current=crypto.randomUUID();
   setBusy(true);setError("");
   try{
@@ -212,10 +212,11 @@ export function PublicDonationForm({campaignSlug=null}:{campaignSlug?:string|nul
    <p style={{fontSize:13}}>Save this private status proof somewhere safe. Do not post it publicly.</p>
    <textarea aria-label="Private donation status proof" rows={2} style={{...input,fontFamily:"monospace",fontSize:12}}
     readOnly value={proof}/>
-   {!received&&!checkout&&<button type="button" style={button} disabled={busy} onClick={()=>void payment()}>
+   {!received&&!checkout&&["REQUESTED","LINK_READY"].includes(status)&&<button type="button" style={button} disabled={busy} onClick={()=>void payment()}>
     Generate verified payment link</button>}
    {checkout&&<a href={checkout} target="_blank" rel="noopener noreferrer"
     referrerPolicy="no-referrer">Open secure payment page</a>}
+   {status==="PAYMENT_PENDING"&&<p role="status">Your bank or other payment is awaiting original finance verification. Do not create another payment link.</p>}
    {linkState==="OUTCOME_UNKNOWN"&&<p role="alert">Payment-link outcome is uncertain. Do not create another request.</p>}
    {received&&<p>Verified net received: ₹{(BigInt(netMinor)/100n).toString()}.
     {refundMinor!=="0"?" Confirmed refund(s) have been applied.":""}
