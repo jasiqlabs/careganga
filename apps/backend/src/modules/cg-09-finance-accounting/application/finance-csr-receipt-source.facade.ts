@@ -185,25 +185,52 @@ export class FinanceCsrReceiptSourceFacade{
    [budget,a.realmId,p.branchRef,p.projectRef]);
   return {items:rows.rows.slice(0,25),hasMore:rows.rows.length>25};
  }
+ /** Current original allocations available for a correction, never a new balance. */
+ async eligibleBudgetAllocations(tx:PoolClient,a:VerifiedFoundationActor,
+  p:ApprovedFundingSource,budgetRef:string,party:CsrParty){
+  await this.scope(tx,a,p,"finance.budgets.manage");
+  if(!["CSR","FOUNDATION"].includes(party))throw new BadRequestException("Choose the approved party.");
+  const rows=await tx.query<{allocationRef:string;originalMinor:string;
+   correctedMinor:string;remainingMinor:string}>(
+   'SELECT original.id AS "allocationRef",original.amount_minor::text AS "originalMinor",'+
+   'coalesce(sum(ce.amount_minor),0)::text AS "correctedMinor",'+
+   '(original.amount_minor-coalesce(sum(ce.amount_minor),0))::text AS "remainingMinor" '+
+   "FROM finance_csr_budget_effect link JOIN finance_budget_event original "+
+   "ON original.id=link.budget_event_id AND original.root_realm_id=link.root_realm_id "+
+   "AND original.kind='ALLOCATE' "+
+   "LEFT JOIN finance_csr_budget_effect correction "+
+   "ON correction.root_realm_id=link.root_realm_id AND correction.correction_of_event_id=original.id "+
+   "LEFT JOIN finance_budget_event ce ON ce.id=correction.budget_event_id "+
+   "AND ce.root_realm_id=correction.root_realm_id AND ce.kind='DEALLOCATE' "+
+   "WHERE link.root_realm_id=$1 AND link.funding_proposal_id=$2 "+
+   "AND link.party_kind=$3 AND original.budget_id=$4 "+
+   "GROUP BY original.id,original.amount_minor "+
+   "HAVING original.amount_minor>coalesce(sum(ce.amount_minor),0) "+
+   "ORDER BY original.id LIMIT 26",
+   [a.realmId,p.proposalRef,party,uid(budgetRef)]);
+  return {items:rows.rows.slice(0,25),hasMore:rows.rows.length>25};
+ }
  /** One original CG09 ALLOCATE/UTILIZE event and one immutable attribution
   * are committed in the same transaction; failed review rolls both back.
   * Original finance_budget_event capacity and posted voucher guards remain
   * authoritative, independently of our CG08 receipt-capacity guard. */
  async recordBudgetEffect(tx:PoolClient,a:VerifiedFoundationActor,p:ApprovedFundingSource,
-  raw:{partyKind:CsrParty;kind:"ALLOCATE"|"UTILIZE";budgetRef:string;
-   amountMinor:string;journalRef:string|null;requestKey:string}){
+  raw:{partyKind:CsrParty;kind:"ALLOCATE"|"UTILIZE"|"DEALLOCATE";budgetRef:string;
+   amountMinor:string;journalRef:string|null;correctionOfEventRef:string|null;requestKey:string}){
   await this.scope(tx,a,p,"finance.budgets.manage");
   if(!["CSR","FOUNDATION"].includes(raw.partyKind)||
-   !["ALLOCATE","UTILIZE"].includes(raw.kind)||
+   !["ALLOCATE","UTILIZE","DEALLOCATE"].includes(raw.kind)||
    !/^[1-9][0-9]{0,13}$/.test(raw.amountMinor)||
    BigInt(raw.amountMinor)>99999999999999n||
    raw.kind==="UTILIZE"&&!raw.journalRef||
-   raw.kind==="ALLOCATE"&&raw.journalRef!==null)
+   raw.kind!=="UTILIZE"&&raw.journalRef!==null||
+   raw.kind==="DEALLOCATE"&&!raw.correctionOfEventRef||
+   raw.kind!=="DEALLOCATE"&&raw.correctionOfEventRef!==null)
    throw new BadRequestException("Check the approved allocation or original posted expense.");
   const budget=uid(raw.budgetRef),key=uid(raw.requestKey),
    journal=raw.journalRef===null?null:uid(raw.journalRef);
   const hash=digest(["CG09_CSR_BUDGET_EFFECT_V1",p.proposalRef,p.sourceVersion,
-   raw.partyKind,raw.kind,budget,raw.amountMinor,journal]);
+   raw.partyKind,raw.kind,budget,raw.amountMinor,journal,raw.correctionOfEventRef]);
   await tx.query("SELECT pg_advisory_xact_lock(hashtextextended($1,0))",
    ["CG09:CSR:BUDGET:"+a.realmId+":"+a.accountId+":"+key]);
   const prior=(await tx.query<{funding_proposal_id:string;approved_source_version:number;
@@ -225,6 +252,12 @@ export class FinanceCsrReceiptSourceFacade{
    if(!eligible.items.some(x=>x.journalRef===journal&&x.amountMinor===raw.amountMinor))
     throw new ConflictException("Choose the exact current posted Finance expense.");
   }
+  if(raw.kind==="DEALLOCATE"){
+   const allowed=await this.eligibleBudgetAllocations(tx,a,p,budget,raw.partyKind);
+   if(!allowed.items.some(x=>x.allocationRef===raw.correctionOfEventRef&&
+    BigInt(x.remainingMinor)>=BigInt(raw.amountMinor)))
+    throw new ConflictException("Selected original allocation changed. Refresh Finance.");
+  }
   const ev=(await tx.query<{id:string}>(
    "INSERT INTO finance_budget_event(root_realm_id,budget_id,kind,amount_minor,"+
    "event_key,source_digest,source_journal_id,actor_ref) "+
@@ -233,9 +266,11 @@ export class FinanceCsrReceiptSourceFacade{
   if(!ev)throw stale();
   await tx.query(
    "INSERT INTO finance_csr_budget_effect(root_realm_id,funding_proposal_id,"+
-   "approved_source_version,party_kind,budget_event_id,request_key,request_digest,actor_ref) "+
-   "VALUES($1,$2,$3,$4,$5,$6,$7,$8)",
-   [a.realmId,p.proposalRef,p.sourceVersion,raw.partyKind,ev.id,key,hash,a.accountId]);
+   "approved_source_version,party_kind,budget_event_id,request_key,request_digest,"+
+   "actor_ref,correction_of_event_id) "+
+   "VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9)",
+   [a.realmId,p.proposalRef,p.sourceVersion,raw.partyKind,ev.id,key,hash,a.accountId,
+    raw.correctionOfEventRef]);
   // Original CG09's event command and Finance audit must be written along
   // with the existing budget event. The CSR link alone is not a replacement
   // for the budget owner's normal immutable command audit.
@@ -268,7 +303,8 @@ export class FinanceCsrReceiptSourceFacade{
    "AND reversal.reversal_of_id=e.source_journal_id AND reversal.posting_kind='REVERSAL')) "+
    "GROUP BY e.kind",[a.realmId,p.proposalRef]);
   const amount=(kind:string)=>q.rows.find(x=>x.kind===kind)?.amountMinor??"0";
-  return {allocatedMinor:amount("ALLOCATE"),utilizedMinor:amount("UTILIZE"),
+  return {allocatedMinor:(BigInt(amount("ALLOCATE"))-BigInt(amount("DEALLOCATE"))).toString(),
+   utilizedMinor:amount("UTILIZE"),
    source:"CG09_APPROVED_BUDGET_EVENTS" as const};
  }
  /** Single bounded B07 finance projection from original posted sources.
@@ -319,8 +355,8 @@ export class FinanceCsrReceiptSourceFacade{
    "AND intent.owner_kind='CG09_BANK_STATEMENT' AND intent.status='VALIDATED' "+
    "LEFT JOIN journal reversal ON reversal.root_realm_id=j.root_realm_id "+
    "AND reversal.reversal_of_id=j.id AND reversal.posting_kind='REVERSAL'), "+
-   "budget AS (SELECT coalesce(sum(ev.amount_minor) "+
-   "FILTER(WHERE ev.kind='ALLOCATE'),0)::text AS allocated,"+
+   "budget AS (SELECT coalesce(sum(CASE WHEN ev.kind='ALLOCATE' THEN ev.amount_minor "+
+   "WHEN ev.kind='DEALLOCATE' THEN -ev.amount_minor ELSE 0 END),0)::text AS allocated,"+
    "coalesce(sum(CASE WHEN ev.kind='UTILIZE' AND NOT EXISTS "+
    "(SELECT 1 FROM journal reversal WHERE reversal.root_realm_id=ev.root_realm_id "+
    "AND reversal.reversal_of_id=ev.source_journal_id "+
