@@ -262,6 +262,10 @@ export class CsrFundingAgreementEvidenceService{
    !MIME.includes(f.original_mime))throw changed();
   const newest=await this.run(bearer,false,(tx,a)=>this.file(tx,a,fileRef));
   if(newest.revision!==f.revision||newest.object_version!==f.object_version||
+    newest.object_key!==f.object_key||newest.verified_sha256!==f.verified_sha256||
+    newest.verified_size_bytes!==f.verified_size_bytes||
+    newest.original_mime!==f.original_mime||
+    newest.proposal_revision!==f.proposal_revision||
     newest.funding_proposal_id!==f.funding_proposal_id)throw changed();
   return {bytes,mime:f.original_mime};
  }
