@@ -626,3 +626,42 @@ test("US003-QA04: donor Web and Android expose refund uncertainty without fake n
  assert.match(cg19,/This document is NOT a tax deduction or 80G certificate/);
  assert.match(cg19,/separate neutral correction/);
 });
+
+
+test("CG07 multi-branch scope: Foundation, assigned manager, branch-bound donation and safe reporting",()=>{
+ const owner=root("apps/backend/src/modules/cg-02-foundation-structure/application/branch-source.facade.ts");
+ const admin=source("application/donation-admin.service.ts");
+ const intents=source("application/donation-intents.service.ts");
+ const campaigns=source("application/campaign-drafts.service.ts");
+ const bff=root("apps/web/src/app/api/donations/[[...parts]]/route.ts");
+ const web=root("apps/web/src/features/campaigns/donation-admin-workspace.tsx");
+ const origin=migration("3306_cg07_donation_source.sql");
+ const sql=migration("3319_cg07_donation_branch_provenance.sql");
+ assert.match(owner,/financeReportScope/);
+ assert.match(owner,/manager_account_ref=\$2/);
+ assert.match(owner,/requireFinanceActiveBranch/);
+ assert.match(owner,/requireFinanceRootScope/);
+ assert.match(campaigns,/projectBranchScope/);
+ assert.match(campaigns,/projectBranch\(tx,a,p\.branchRef\)/);
+ assert.match(origin,/FOREIGN KEY\(branch_ref,root_realm_id\) REFERENCES branch/);
+ assert.match(intents,/branchId=campaign\.branch_ref/);
+ assert.match(sql,/CREATE TRIGGER cg07_donation_branch_no_retarget/);
+ assert.match(sql,/NEW\.branch_ref IS DISTINCT FROM OLD\.branch_ref/);
+ assert.match(sql,/c\.root_realm_id=NEW\.root_realm_id AND c\.id=NEW\.campaign_id/);
+ assert.match(sql,/NEW\.branch_ref IS DISTINCT FROM original_campaign_branch/);
+ assert.match(admin,/financeReportScope/);
+ assert.match(admin,/financeBranches/);
+ assert.match(admin,/branchRef==="FOUNDATION"&&!scope\.all/);
+ assert.match(admin,/!active\.some\(x=>x\.branchRef===branchRef\)/);
+ assert.match(admin,/branchSql\(15\)/);
+ assert.match(admin,/branchSql\(13\)/);
+ assert.match(admin,/branchSelection:f\.branchRef/);
+ assert.match(admin,/branchOptions/);
+ assert.match(admin,/branch_name\?\?"Foundation-wide"/);
+ assert.match(admin,/AND \(\$4::text='ALL' OR \(\$4::text='FOUNDATION' AND branch_ref IS NULL\)/);
+ assert.match(bff,/"campaign","cursor","branchRef"/);
+ assert.match(web,/Foundation \/ branch reporting scope/);
+ assert.match(web,/branchRef\}\)\):Promise\.resolve\(null\)/);
+ assert.match(web,/setCursorTrail\(\[\]\)/);
+ assert.match(web,/x\.branchName\?\?"Foundation-wide"/);
+});
