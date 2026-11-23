@@ -34,13 +34,13 @@ export function NativeReferralCode({token,onExpired}:{token:string;onExpired:()=
    setMore(result.hasMore);setNextPage(page+1);
   }catch(e){if(request===sequence.current)setError(e instanceof Error?e.message:
     "Could not verify current referral eligibility.");}
-  finally{requestLocked.current=false;if(request===sequence.current)setLoading(false);}
+  finally{if(request===sequence.current){requestLocked.current=false;setLoading(false);}}
  },[safeRequest]);
  useEffect(()=>{
   void load(1,false);
   const sub=AppState.addEventListener("change",state=>{
    if(state!=="active"){
-    sequence.current++;setIssued(null);setChoices([]);setChosen("");setMore(false);setLoading(false);
+    sequence.current++;requestLocked.current=false;setIssued(null);setChoices([]);setChosen("");setMore(false);setLoading(false);
    }else void load(1,false);
   });
   return()=>{sequence.current++;sub.remove();};
@@ -61,7 +61,7 @@ export function NativeReferralCode({token,onExpired}:{token:string;onExpired:()=
    setIssued(data);
   }catch(e){if(request===sequence.current)setError(e instanceof Error?e.message:
     "Referral code cannot be confirmed.");}
-  finally{requestLocked.current=false;if(request===sequence.current)setLoading(false);}
+  finally{if(request===sequence.current){requestLocked.current=false;setLoading(false);}}
  };
  const share=async()=>{
   if(!issued)return;
