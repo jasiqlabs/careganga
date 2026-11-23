@@ -212,7 +212,7 @@ export class DonationProviderRefundService{
      "Merchant state checked. Await the original signed processed webhook and independent CG09 posting."};
   }
   const list=await this.provider("payments/"+p.captured_payment_id+"/refunds?count=100&skip=0","GET");
-  if(!Array.isArray(list.items)||list.items.length>100)
+  if(!Array.isArray(list.items)||list.items.length>=100)
    return {status:"OUTCOME_UNKNOWN",message:"Merchant refund lookup is incomplete. Contact the gateway; do not retry."};
   const matches=list.items.filter(x=>x&&typeof x==="object"&&!Array.isArray(x)&&
    (x as Record<string,unknown>).receipt===p.provider_receipt);
@@ -284,14 +284,16 @@ export class DonationProviderRefundService{
      p.provider_refund_id!==refundId)throw conflict();
     return {accepted:true,replayed:true,status:p.state};
    }
+   if(p.state==="PROVIDER_FAILED"&&event.event==="refund.failed"&&
+    p.provider_refund_id===refundId)
+    return {accepted:true,replayed:true,status:p.state};
    if(r.status!=="REQUESTED"||!["RESERVED","OUTCOME_UNKNOWN","PROVIDER_PENDING"].includes(p.state))
     throw conflict();
    await tx.query("UPDATE donation_provider_refund SET state=$3,provider_refund_id=$4,"+
     "signed_event_id=$5,signed_digest=$6,processed_at=$7,updated_at=now() "+
     "WHERE root_realm_id=$1 AND refund_request_id=$2",
     [root,refundRef,event.event==="refund.processed"?"PROVIDER_PROCESSED":"PROVIDER_FAILED",
-     refundId,event.event==="refund.processed"?eventId:null,
-     event.event==="refund.processed"?signedDigest:null,
+     refundId,eventId,signedDigest,
      event.event==="refund.processed"?new Date():null]);
    return {accepted:true,status:event.event==="refund.processed"?
     "REFUND_RECONCILIATION_PENDING":"PROVIDER_FAILED"};
