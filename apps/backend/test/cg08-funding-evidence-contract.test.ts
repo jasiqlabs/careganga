@@ -32,7 +32,12 @@ test("US002-QA02/04/19: CG19 checks original current CG01/02/05/08 and document 
   'proof.state==="CLEAN_VERIFIED"',
   "AND i.classification='CSR_FUNDING_AGREEMENT'",
   "AND f.revoked_at IS NULL",
-  'await this.run(bearer,false,(tx,a)=>this.file(tx,a,fileRef))'
+  'await this.run(bearer,false,(tx,a)=>this.file(tx,a,fileRef))',
+  'newest.object_key!==f.object_key',
+  'newest.verified_sha256!==f.verified_sha256',
+  'newest.verified_size_bytes!==f.verified_size_bytes',
+  'newest.original_mime!==f.original_mime',
+  'newest.proposal_revision!==f.proposal_revision'
  ])assert.ok(owner.includes(x),x);
  for(const x of [
   'await this.branches.projectBranch(tx,a,p.branch_ref)',
