@@ -81,6 +81,17 @@ export class CsrPartnersService{
   await this.permitted(tx,a,r.branch_ref);
   return r;
  }
+
+ /** Original CG08 owner authority, used only by CG19 private CSR agreement evidence.
+  * Verify current actor and assigned active branch in the SAME transaction. */
+ async guardAgreement(tx:PoolClient,a:VerifiedFoundationActor,partnerRef:string,sourceVersion:number|null,write:boolean){
+  await this.identity.assertCurrent(tx,a,write?"csr.partners.manage":"csr.partners.view");
+  const p=await this.row(tx,a,partnerRef,write);
+  if(sourceVersion!==null&&p.version!==sourceVersion)throw changed();
+  if(write&&!["DRAFT","RETURNED"].includes(p.status))throw changed();
+  return p;
+ }
+
  private async replay(tx:PoolClient,a:VerifiedFoundationActor,key:string,hash:string,action:string,target?:string){
   await tx.query("SELECT pg_advisory_xact_lock(hashtextextended($1,0))",["CG08:"+a.realmId+":"+key]);
   const c=(await tx.query<{partner_id:string;actor_ref:string;action:string;payload_digest:string;result_version:number}>(

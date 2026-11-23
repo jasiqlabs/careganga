@@ -182,3 +182,8 @@ Added positive validation and negative source tests for revoked CG02 branch befo
 ### 23-Nov-2026 — authoring defect fixed before SQL execution
 
 Impact-scoped review caught a SQL string-substitution defect in the initial `3401_cg08_csr_partner_drafts.sql` email CHECK (a replacement tool had expanded a literal end-of-line dollar token into source suffix). Restored exact original unexecuted migration, applied email syntax CHECK without replacement expansion and added a regression assertion for one closed constraint/one partner table. This is a **source fix**, not migration execution, independent DB signoff or scenario runtime PASS; no BWC added, no new issue or QA identifier. US001 remains IN_PROGRESS.
+
+
+### 23-Nov-2026 — US001 original CG19 private agreement DB integration (source only)
+- Added **source-owned** CG08 `guardAgreement` for CG19, current action + real CG02 branch + source version; one additive `3402_cg19_csr_agreement_evidence.sql` extending existing CG19 private object intent/stored-file with real same-root CSR partner FK and immutable owner reference. Existing CG19 scanner/object service remains the only bytes authority. Original classifications, other owners' constraints and CSR unapproved status stay separate. No second partner/CRM master or public file URL.
+- **Incomplete until corresponding CG19 backend/controller and Web/native file flow exist:** US001-QA01/08/10/11/19/20 still source gaps; migration/source contract must be independently reviewed and executed with fresh/upgrade Postgres before proof approval. This is not runtime/independent PASS. No other story started and no branch merge.
