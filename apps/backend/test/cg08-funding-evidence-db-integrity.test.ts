@@ -44,6 +44,13 @@ test("CG08 US002 3406–3408 current funding/CG19/CG03 proof integrity",
     "cg03_funding_review_disjoint"]){
    assert.ok(by.has(name),"Missing original CG19 protected funding guard: "+name);
   }
+  const payerAttestation=await pg.query<{required:boolean;type:string}>(
+   "SELECT attnotnull AS required,format_type(atttypid,atttypmod) AS type "+
+   "FROM pg_attribute WHERE attrelid='finance_csr_verified_receipt_link'::regclass "+
+   "AND attname='remitter_attested' AND NOT attisdropped");
+  assert.equal(payerAttestation.rows[0]?.required,true,
+   "An original bank deposit cannot be attributed without finance operator attestation");
+  assert.equal(payerAttestation.rows[0]?.type,"boolean");
   assert.ok(constraints.rows.some(v=>v.rel==="finance_csr_verified_receipt_link"&&
    v.def.includes("UNIQUE (root_realm_id, reconciliation_id)")),
    "One original reconciled bank deposit cannot be attributed twice");
