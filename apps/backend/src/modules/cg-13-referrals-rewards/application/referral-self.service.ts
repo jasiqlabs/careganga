@@ -146,12 +146,12 @@ export class ReferralSelfService{
   * rank and event page. Foreign programme, root and applicant identity NEVER
   * come from the caller except the chosen programme UUID and relationship kind.
   */
- private async ownWallet(token:string,programmeInput:unknown,kindInput:unknown,
+ private async ownWallet<T>(token:string,programmeInput:unknown,kindInput:unknown,
   fn:(tx:PoolClient,wallet:{id:string;earnedPoints:string;reversedPoints:string;
    heldPoints:string;spentPoints:string;qualifiedReferrals:number;
    currentRankName:string|null;currentRankSort:number|null;
    currentRankPolicyVersion:number|null;revision:number}|null,realm:string)=>
-   Promise<Record<string,unknown>>){
+   Promise<T>):Promise<T>{
   const programme=programmeRef(programmeInput),kind=relationshipKind(kindInput);
   return this.inCurrentSelf(token,true,async(tx,actor)=>{
    const current=await this.currentRelationships(tx,actor);
