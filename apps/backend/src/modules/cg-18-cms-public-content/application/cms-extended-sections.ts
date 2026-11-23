@@ -6,7 +6,7 @@ import {BadRequestException} from "@nestjs/common";
  */
 export const extendedKinds=new Set([
  "IMPACT_GROUP","COMPLIANCE_FACTS","GALLERY_GRID",
- "ARTICLE_BODY","HEALTHCARE_CATEGORIES","CONTACT_INFO"
+ "ARTICLE_BODY","HEALTHCARE_CATEGORIES","CONTACT_INFO","PARTNER_CARDS"
 ]);
 export const impactGroups=[
  "HERO","PILLARS","STATS","GROWTH","GEOGRAPHY",
@@ -99,7 +99,8 @@ function allowedSectionFields(kind:string):string[]{
   kind==="HEALTHCARE_CATEGORIES"?
   ["heading","intro","categories","ctaLabel","ctaPath"]:
   kind==="CONTACT_INFO"?["heroTitle","heroIntro","inquiries","faqs","officeHours",
-   "mapUrl","socialLinks"]: [];
+   "mapUrl","socialLinks"]:
+  kind==="PARTNER_CARDS"?["heading","intro","partners"]: [];
 
 }
 /**
@@ -141,6 +142,18 @@ export function parseDraftExtendedSection(kind:string,raw:unknown):Record<string
 export function parseExtendedSection(kind:string,raw:unknown):Record<string,unknown>{
  const allowed=allowedSectionFields(kind);
  const x=obj(raw,"fields",allowed);
+ if(kind==="PARTNER_CARDS"){
+  if(!Array.isArray(x.partners)||x.partners.length>12)return error("partners");
+  const partners=x.partners.map((raw,i)=>{
+   const v=obj(raw,"partners["+i+"]",["sourceRef","rightsVersion"]);
+   const sourceRef=str(v.sourceRef,"sourceRef",36,36);
+   if(!/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i.test(sourceRef))return error("sourceRef");
+   if(!Number.isSafeInteger(v.rightsVersion)||Number(v.rightsVersion)<1||Number(v.rightsVersion)>2147483647)return error("rightsVersion");
+   return {sourceRef,rightsVersion:v.rightsVersion as number};
+  });
+  if(new Set(partners.map(v=>v.sourceRef)).size!==partners.length)return error("partners");
+  return {heading:str(x.heading,"heading",180,3),intro:str(x.intro??"","intro",700),partners};
+ }
  if(kind==="IMPACT_GROUP"){
   const group=str(x.group,"group",32,3);
   if(!impactGroups.includes(group as typeof impactGroups[number]))
@@ -367,11 +380,14 @@ export function validateExtendedPage(kind:string,sections:readonly EditorialSect
   ARTICLE:["ARTICLE_BODY"],
   CONTACT:["RICH_TEXT","CTA","CONTACT_INFO"],
   HEALTHCARE:["HERO","RICH_TEXT","HEALTHCARE_CATEGORIES","CTA"],
-  POLICY:["RICH_TEXT"]
+  POLICY:["RICH_TEXT"],
+  PARTNERS:["HERO","RICH_TEXT","CTA","PARTNER_CARDS"]
  };
  const whitelist=permitted[kind];
  if(!whitelist||types.some(v=>!whitelist.includes(v)))
   return error("sections");
+ if(kind==="PARTNERS"&&(types.filter(k=>k==="PARTNER_CARDS").length!==1||
+  sections.length>8))return error("sections");
  if(kind==="IMPACT"){
   const entries=sections.map(s=>s.fields.group);
   if(entries.length!==10||new Set(entries).size!==10||
