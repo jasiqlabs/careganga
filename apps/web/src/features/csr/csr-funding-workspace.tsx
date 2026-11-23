@@ -53,7 +53,10 @@ async function api<T>(path:string,method:"GET"|"POST"|"PATCH"="GET",body?:Record
  return x as T;
 }
 export function CsrFundingWorkspace({canManage,canReadAgreement,canUploadAgreement,canReadFinance,canLinkFinance}:{canManage:boolean;canReadAgreement:boolean;canUploadAgreement:boolean;canReadFinance:boolean;canLinkFinance:boolean}){
- const [page,setPage]=useState<{items:Proposal[];hasMore:boolean;summary?:{requests:number;drafts:number;requestedMinor:string}}>({items:[],hasMore:false});
+ const [page,setPage]=useState<{items:Proposal[];hasMore:boolean;summary?:{requests:number;drafts:number;requestedMinor:string;verifiedFinance:null|{
+  committedMinor:string;verifiedReceivedMinor:string;revalidationRequiredMinor:string;
+  allocatedMinor:null;utilizedMinor:null;availableMinor:null;utilizationPercent:null;notice:string
+ }}}>({items:[],hasMore:false});
  const [options,setOptions]=useState<Options|null>(null);
  const [offset,setOffset]=useState(0),[epoch,setEpoch]=useState(0),[loading,setLoading]=useState(true);
  const [filter,setFilter]=useState("ALL"),[status,setStatus]=useState("ALL"),[query,setQuery]=useState("");
@@ -76,7 +79,10 @@ export function CsrFundingWorkspace({canManage,canReadAgreement,canUploadAgreeme
   if(filter!=="ALL")p.set("branchRef",filter);
   if(status!=="ALL")p.set("status",status);
   if(query.trim())p.set("q",query.trim());
-  void api<{items:Proposal[];hasMore:boolean;summary:{requests:number;drafts:number;requestedMinor:string}}>("?"+p.toString()).then(data=>{
+  void api<{items:Proposal[];hasMore:boolean;summary:{requests:number;drafts:number;requestedMinor:string;
+ verifiedFinance:null|{committedMinor:string;verifiedReceivedMinor:string;
+ revalidationRequiredMinor:string;allocatedMinor:null;utilizedMinor:null;
+ availableMinor:null;utilizationPercent:null;notice:string}}}>("?"+p.toString()).then(data=>{
    if(live)setPage(data);
   }).catch(e=>{if(live){setPage({items:[],hasMore:false});
    setListError(e instanceof Error?e.message:"Funding list unavailable.");}})
@@ -162,15 +168,31 @@ export function CsrFundingWorkspace({canManage,canReadAgreement,canUploadAgreeme
    Original B07–B08 funding requests · {cashNote}</p></header>
   {!!notice&&<p role="status" style={{color:"#166534"}}>{notice}</p>}
   {!!error&&<p role="alert" style={{color:"#B91C1C"}}>{error}</p>}
-  {page.summary&&!listError&&<div aria-label="Original requested funding totals"
-   style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(180px,1fr))",gap:12}}>
-   {([["requests","Funding requests",String(page.summary.requests)],
-      ["drafts","Unapproved drafts",String(page.summary.drafts)],
-      ["requested","Total requested (not cash)",INR(page.summary.requestedMinor)]] as const)
-     .map(([key,label,value])=><div key={key} style={box}>
-      <strong style={{display:"block",fontSize:23,fontVariantNumeric:"tabular-nums"}}>{value}</strong>
-      <span style={{fontSize:13,color:"var(--cg-muted)"}}>{label}</span>
-     </div>)}
+  {page.summary&&!listError&&<div>
+   <div aria-label="Original B07 requested, committed and verified finance figures"
+    style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(180px,1fr))",gap:12}}>
+    {([
+      ["total","Total Fund / CSR requested",INR(page.summary.requestedMinor)],
+      ["received","Received · CG09 verified",page.summary.verifiedFinance?
+       INR(page.summary.verifiedFinance.verifiedReceivedMinor):"Finance access restricted"],
+      ["committed","Committed · CG03 approved",page.summary.verifiedFinance?
+       INR(page.summary.verifiedFinance.committedMinor):"Finance access restricted"],
+      ["utilized","Utilized · CG09","Pending allocation integration"],
+      ["available","Available · CG09","Pending allocation integration"],
+      ["percent","Utilization %","Pending allocation integration"]
+    ] as const).map(([key,label,value])=><div key={key} style={box}>
+     <strong style={{display:"block",fontSize:key==="total"||key==="received"||key==="committed"?22:14,
+      fontVariantNumeric:"tabular-nums"}}>{value}</strong>
+     <span style={{fontSize:13,color:"var(--cg-muted)"}}>{label}</span>
+    </div>)}
+   </div>
+   <p style={{fontSize:13,color:"var(--cg-muted)"}}>
+    {page.summary.requests} original funding requests · {page.summary.drafts} unapproved drafts.
+    Only independently reconciled CG09 deposits are received money. A pledge is not cash.
+   </p>
+   {page.summary.verifiedFinance&&BigInt(page.summary.verifiedFinance.revalidationRequiredMinor)>0n&&
+    <p role="alert" style={{color:"#B91C1C"}}>Some previous bank money is now unverified
+     or reversed; these amounts are excluded from Received and cannot support allocation.</p>}
   </div>}
   <div style={box}>
    <div style={{display:"flex",gap:10,flexWrap:"wrap",justifyContent:"space-between",alignItems:"center"}}>
