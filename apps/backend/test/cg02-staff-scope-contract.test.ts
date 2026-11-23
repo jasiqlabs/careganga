@@ -121,3 +121,17 @@ test("CG-MB-003 warehouse selectors, real availability and KPI counts all use cu
  assert.doesNotMatch(catalog.slice(catalog.indexOf(" async options(token:string){"),
   catalog.indexOf(" async list(token:string,")),/manager_account_ref/);
 });
+
+
+test("CG-MB-004 employment change source keeps self and manager exceptions but narrows staff options, history and destination",()=>{
+ const source=backend("src/modules/cg-10-human-resources/application/hr-employment-change-source.facade.ts");
+ assert.match(source,/actorScope=\(branchParam:number\)/);
+ assert.match(source,/b\.id=ANY\(\$\$\{branchParam\}::uuid\[\]\)/);
+ assert.match(source,/actorScope\(4\)/);
+ assert.match(source,/actorScope\(6\)/);
+ assert.match(source,/const assigned=await this\.branches\.currentStaffBranchRefs/);
+ assert.match(source,/this\.branches\.projectBranch\(tx,actor,leaveId\(branch\)\)/);
+ assert.match(source,/SELECT id,name FROM branch WHERE root_realm_id=\$1 AND status='ACTIVE'/);
+ assert.match(source,/scope\.branches\.map\(x=>x\.value\)/);
+ assert.match(source,/supervisor\.account_ref=\$2/);
+});
