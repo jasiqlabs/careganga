@@ -15,8 +15,8 @@ CREATE TABLE finance_csr_verified_receipt_link(
  UNIQUE(id,root_realm_id),
  UNIQUE(root_realm_id,reconciliation_id),
  UNIQUE(root_realm_id,actor_ref,request_key),
- FOREIGN KEY(funding_proposal_id,root_realm_id)
-  REFERENCES csr_funding_proposal(id,root_realm_id) ON DELETE RESTRICT,
+ FOREIGN KEY(root_realm_id,funding_proposal_id)
+  REFERENCES csr_funding_proposal(root_realm_id,id) ON DELETE RESTRICT,
  FOREIGN KEY(reconciliation_id,root_realm_id)
   REFERENCES finance_bank_reconciliation(id,root_realm_id) ON DELETE RESTRICT,
  FOREIGN KEY(actor_ref,root_realm_id)
@@ -121,9 +121,14 @@ BEGIN
  FROM finance_csr_verified_receipt_link linked
  JOIN finance_bank_reconciliation rec
   ON rec.root_realm_id=linked.root_realm_id AND rec.id=linked.reconciliation_id
+ JOIN journal original ON original.id=rec.journal_id
+  AND original.root_realm_id=rec.root_realm_id
  WHERE linked.root_realm_id=NEW.root_realm_id
   AND linked.funding_proposal_id=NEW.funding_proposal_id
-  AND linked.party_kind=NEW.party_kind;
+  AND linked.party_kind=NEW.party_kind
+  AND NOT EXISTS(SELECT 1 FROM journal reversal
+   WHERE reversal.root_realm_id=original.root_realm_id
+    AND reversal.reversal_of_id=original.id AND reversal.posting_kind='REVERSAL');
  IF used+r.posted_amount_minor>cap THEN
   RAISE EXCEPTION 'Verified bank receipts exceed original approved funding share' USING ERRCODE='P3409';
  END IF;
