@@ -33,10 +33,14 @@ export class ReferralCatalogController{
   @Param("programmeRef")ref:string,@Body()body:unknown){
   return this.catalog.changeProgrammeStatus(auth,ref,body);
  }
+ @Get("programmes/:programmeRef/categories")
+ categories(@Headers("authorization")auth:string,@Param("programmeRef")ref:string){
+  return this.catalog.productCategories(auth,ref);
+ }
  @Get("programmes/:programmeRef/products")
  products(@Headers("authorization")auth:string,@Param("programmeRef")ref:string,
-  @Query("page")page?:string){
-  return this.catalog.listProducts(auth,ref,page);
+  @Query("page")page?:string,@Query("q")search?:string,@Query("category")category?:string){
+  return this.catalog.listProducts(auth,ref,page,search,category);
  }
  @Post("products")
  createProduct(@Headers("authorization")auth:string,@Body()body:unknown){
