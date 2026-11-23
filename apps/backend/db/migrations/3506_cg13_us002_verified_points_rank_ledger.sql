@@ -107,6 +107,7 @@ BEGIN
     AND wallet.id=NEW.points_account_id
     AND wallet.referrer_account_ref=r.recipient_account_ref
     AND r.policy_version=NEW.policy_version
+    AND r.payload_digest=NEW.qualifying_source_digest
     AND ((NEW.event_kind='POINTS_HOLD' AND r.state='HELD'
       AND NEW.points_delta=r.points_cost)
      OR (NEW.event_kind='POINTS_RELEASE' AND r.state='CANCELLED'
