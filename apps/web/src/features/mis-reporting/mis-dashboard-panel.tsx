@@ -47,7 +47,8 @@ export function MisDashboardPanel(){
    if(live){setYears(options.years);setBranches(options.branches);
     setFinanceAvailable(options.state==="AVAILABLE");
     setAllBranches(options.allBranches===true);
-    setBranch(options.allBranches===true?"":options.branches[0]?.ref??"");
+    setBranch(options.allBranches===true||options.branches.length>1?
+      "":options.branches[0]?.ref??"");
     setHealthAvailable(options.healthAvailable===true);
     setCenters(Array.isArray(options.centers)?options.centers:[]);
     setCentersComplete(options.centersComplete!==false);setReady(true);}
@@ -130,7 +131,8 @@ export function MisDashboardPanel(){
     </select></label>
     {!!branches.length&&<label>Branch <select value={branch}
      onChange={e=>setBranch(e.target.value)}>
-     {allBranches&&<option value="">All permitted branches</option>}
+     {(allBranches||branches.length>1)&&
+       <option value="">{allBranches?"Foundation and all branches":"All assigned branches"}</option>}
      {branches.map(b=><option key={b.ref} value={b.ref}>{b.name}</option>)}
     </select></label>}
    </div>}
