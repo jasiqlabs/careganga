@@ -41,8 +41,10 @@ CREATE TABLE points_event (
  root_realm_id uuid NOT NULL,
  id uuid NOT NULL DEFAULT gen_random_uuid(),
  points_account_id uuid NOT NULL,
- attribution_id uuid NOT NULL,
- event_kind text NOT NULL CHECK(event_kind IN('QUALIFICATION','QUALIFICATION_REVERSAL')),
+ attribution_id uuid,
+ redemption_id uuid,
+ event_kind text NOT NULL CHECK(event_kind IN(
+  'QUALIFICATION','QUALIFICATION_REVERSAL','POINTS_HOLD','POINTS_RELEASE','POINTS_SPENT')),
  policy_version integer NOT NULL CHECK(policy_version>0),
  points_delta bigint NOT NULL CHECK(points_delta<>0 AND abs(points_delta)<=1000000000),
  qualifying_source_digest char(64) NOT NULL CHECK(qualifying_source_digest ~ '^[0-9a-f]{64}$'),
@@ -53,8 +55,13 @@ CREATE TABLE points_event (
   REFERENCES points_account(root_realm_id,id) ON DELETE RESTRICT,
  FOREIGN KEY(root_realm_id,attribution_id)
   REFERENCES referral_attribution(root_realm_id,id) ON DELETE RESTRICT,
- CHECK((event_kind='QUALIFICATION' AND points_delta>0)
+ CHECK(((event_kind='QUALIFICATION' AND points_delta>0)
    OR (event_kind='QUALIFICATION_REVERSAL' AND points_delta<0))
+   AND attribution_id IS NOT NULL AND redemption_id IS NULL
+   OR (event_kind IN('POINTS_HOLD','POINTS_SPENT') AND points_delta>0
+       AND redemption_id IS NOT NULL AND attribution_id IS NULL)
+   OR (event_kind='POINTS_RELEASE' AND points_delta<0
+       AND redemption_id IS NOT NULL AND attribution_id IS NULL))
 );
 CREATE INDEX ix_cg13_points_event_account_page
  ON points_event(root_realm_id,points_account_id,source_recorded_at DESC,id DESC);
@@ -205,11 +212,17 @@ BEGIN
  SELECT COALESCE(SUM(points_delta) FILTER(WHERE event_kind='QUALIFICATION'),0)::bigint AS earned,
   COALESCE(-SUM(points_delta) FILTER(WHERE event_kind='QUALIFICATION_REVERSAL'),0)::bigint AS reversed,
   COUNT(*) FILTER(WHERE event_kind='QUALIFICATION')::integer-
-   COUNT(*) FILTER(WHERE event_kind='QUALIFICATION_REVERSAL')::integer AS qualifying_count
+   COUNT(*) FILTER(WHERE event_kind='QUALIFICATION_REVERSAL')::integer AS qualifying_count,
+  COALESCE(SUM(points_delta) FILTER(WHERE event_kind='POINTS_HOLD'),0)::bigint+
+   COALESCE(SUM(points_delta) FILTER(WHERE event_kind='POINTS_RELEASE'),0)::bigint-
+   COALESCE(SUM(points_delta) FILTER(WHERE event_kind='POINTS_SPENT'),0)::bigint AS held,
+  COALESCE(SUM(points_delta) FILTER(WHERE event_kind='POINTS_SPENT'),0)::bigint AS spent
   INTO totals FROM points_event WHERE root_realm_id=realm AND points_account_id=wallet;
  IF (current_account.earned_points,current_account.reversed_points,
-    current_account.qualified_referrals)
-   IS DISTINCT FROM (totals.earned,totals.reversed,totals.qualifying_count)
+    current_account.qualified_referrals,current_account.held_points,
+    current_account.spent_points)
+   IS DISTINCT FROM (totals.earned,totals.reversed,totals.qualifying_count,
+    totals.held,totals.spent)
  THEN RAISE EXCEPTION 'Points account must match original immutable events'; END IF;
  IF TG_TABLE_NAME='points_event' AND NEW.event_kind='QUALIFICATION' AND NOT EXISTS(
   SELECT 1 FROM reward_rank_event rank
