@@ -13,7 +13,8 @@ const safeCodes:Record<string,string>={
  CG13_PROGRAMME_STALE:"This programme has changed. Refresh before saving.",
  CG13_PHYSICAL_ITEM_UNAVAILABLE:"Select a permitted active whole-piece warehouse item.",
  CG13_PROGRAMME_INACTIVE:"The selected programme is inactive.",
- CG13_PRODUCT_STALE:"The product has changed. Reload its current details."
+ CG13_PRODUCT_STALE:"The product has changed. Reload its current details.",
+ CG13_MEDIA_UNAVAILABLE:"The selected image is not currently approved for public use. Choose another or leave blank."
 };
 const safeFields:Record<string,string>={
  programmeCode:"Programme code",name:"Name",audience:"Eligible audience",
