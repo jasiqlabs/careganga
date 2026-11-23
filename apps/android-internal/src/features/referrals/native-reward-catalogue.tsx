@@ -63,7 +63,7 @@ export function NativeRewardCatalogue({token,onExpired,canViewStock}:{
   void loadProgrammes(1,false);
   const sub=AppState.addEventListener("change",state=>{
    if(state!=="active"){programmeSeq.current++;productSeq.current++;stockSeq.current++;
-    setItems([]);setProgrammes([]);setStock(null);setStockBusy(false);setExpanded(null);}
+    setItems([]);setProgrammes([]);setChosen("");setStock(null);setStockBusy(false);setExpanded(null);}
    else void loadProgrammes(1,false);
   });
   return()=>{programmeSeq.current++;productSeq.current++;stockSeq.current++;sub.remove();};
