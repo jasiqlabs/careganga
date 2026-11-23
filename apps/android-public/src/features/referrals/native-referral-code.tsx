@@ -2,6 +2,7 @@ import {useCallback,useEffect,useRef,useState} from "react";
 import {AppState,Pressable,Share,StyleSheet,Text,View} from "react-native";
 import {careGangaTheme as t} from "../../../../../packages/design-tokens/src/index";
 import {memberInvoke} from "../membership/member-native-api";
+import {NativeReferralPoints} from "./native-referral-points";
 
 type Relationship="MEMBER"|"VOLUNTEER";
 type Choice={programmeRef:string;programmeName:string;relationship:Relationship};
@@ -109,6 +110,9 @@ export function NativeReferralCode({token,onExpired}:{token:string;onExpired:()=
    <Text style={s.note}>The code can be reused. Applicant approval and an eligible
     qualifying event are required before any points can be earned.</Text>
    {button("Share referral code",()=>void share())}
+   {choices.filter(c=>c.programmeRef+"|"+c.relationship===chosen).map(c=>
+    <NativeReferralPoints key={chosen} token={token} onExpired={onExpired}
+     programmeRef={c.programmeRef} relationship={c.relationship}/>)}
   </View>}
  </View>;
 }
