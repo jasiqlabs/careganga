@@ -48,6 +48,8 @@ function route(parts:string[],method:Method):{target:string;isSelf:boolean}|null
  if(parts.length===3&&parts[0]==="programmes"&&UUID.test(parts[1])&&
   parts[2]==="status"&&method==="POST")return {target:segment,isSelf:false};
  if(parts.length===3&&parts[0]==="programmes"&&UUID.test(parts[1])&&
+  parts[2]==="summary"&&method==="GET")return {target:segment,isSelf:false};
+ if(parts.length===3&&parts[0]==="programmes"&&UUID.test(parts[1])&&
   parts[2]==="categories"&&method==="GET")return {target:segment,isSelf:false};
  if(parts.length===3&&parts[0]==="programmes"&&UUID.test(parts[1])&&
   parts[2]==="products"&&method==="GET")return {target:segment,isSelf:false};
