@@ -62,8 +62,19 @@ function initial(kind:Kind):Draft{
    {kind:"RICH_TEXT",order:1,fields:{
     heading:"Contact the Foundation",body:"Send a private message to CareGanga Foundation for general information.",
     eyebrow:"",variant:"STANDARD",highlights:[]}}]:
-  kind==="PARTNERS"?[{kind:"PARTNER_CARDS",order:0,fields:{
-   heading:"Meet Our Partners",intro:"Only currently verified partnerships are listed.",partners:[]}}]:
+  kind==="PARTNERS"?[
+   {kind:"HERO",order:0,fields:{heading:"Corporate Partners",
+    subtitle:"Make a meaningful difference through responsible partnerships.",
+    description:"We welcome genuine corporate social responsibility discussions, service collaborations and long-term support.",
+    eyebrow:"CareGanga Foundation · Collaboration",tags:[],visible:true,
+    primaryLabel:"Partner With Us",primaryPath:"/contact"}},
+   {kind:"PARTNER_CARDS",order:1,fields:{
+    heading:"Meet Our Partners",intro:"Only currently verified partnerships are listed.",partners:[]}},
+   {kind:"CTA",order:2,fields:{heading:"Let's Collaborate",
+    eyebrow:"WORK WITH CAREGANGA",
+    body:"Share your organization's interest and we will help direct your enquiry to the right Foundation team.",
+    label:"Get in Touch",path:"/contact"}}
+  ]:
   kind==="POLICY"?[{kind:"RICH_TEXT",order:0,fields:{
    heading:legalPages[0][1],body:"",eyebrow:"",variant:"STANDARD",highlights:[]}}]:
   [{kind:"HERO",order:0,fields:{heading:"Healthcare Assistance",subtitle:"",description:"",eyebrow:"",
@@ -541,12 +552,17 @@ export function CmsExtendedWorkspace({canManage,canPublish,canViewNoticeSources}
        section.kind.replaceAll("_"," ")}</legend>
       {typeof f.sourceEventRef==="string"?<p><strong>{str(f.heading)}</strong> · {str(f.category)}<br/>{str(f.body)}</p>:<Field name="Heading" value={f.heading} onChange={v=>change("heading",v)}/>}
       {section.kind==="HERO"&&<>
-       <Field name="Healthcare hero subtitle" value={f.subtitle}
+       <Field name={draft.kind==="PARTNERS"?"Corporate partnership hero subtitle":"Healthcare hero subtitle"} value={f.subtitle}
         onChange={v=>change("subtitle",v)}/>
        <Field name="Short hero description" large value={f.description}
         onChange={v=>change("description",v)}/>
        <Field name="Section label" value={f.eyebrow}
         onChange={v=>change("eyebrow",v)}/>
+       {draft.kind==="PARTNERS"&&<>
+        <Field name="Hero contact button label" value={f.primaryLabel}
+         onChange={v=>{change("primaryLabel",v);}}/>
+        <p>The original Partner With Us destination is the Foundation contact page.</p>
+       </>}
       </>}
       {section.kind==="IMPACT_GROUP"&&<>
        {groupName==="HERO"&&<>
@@ -781,6 +797,15 @@ export function CmsExtendedWorkspace({canManage,canPublish,canViewNoticeSources}
         onChange={v=>change("body",v)}/>
        <Field name="Tags (comma-separated)" value={Array.isArray(f.tags)?f.tags.join(", "):""}
         onChange={v=>change("tags",v.split(",").map(x=>x.trim()).filter(Boolean).slice(0,8))}/></>}
+      </>}
+      {section.kind==="CTA"&&draft.kind==="PARTNERS"&&<>
+       <Field name="Final contact section label" value={f.eyebrow}
+        onChange={v=>change("eyebrow",v)}/>
+       <Field name="Final collaboration explanation" value={f.body} large
+        onChange={v=>change("body",v)}/>
+       <Field name="Contact button label" value={f.label}
+        onChange={v=>change("label",v)}/>
+       <p>The final contact button uses the original existing /contact route.</p>
       </>}
       {section.kind==="PARTNER_CARDS"&&<>
        <Field name="Original partner section introduction" value={f.intro} large

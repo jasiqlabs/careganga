@@ -346,3 +346,19 @@ test("US001-QA04/10/11: confidential reviewer file read is outside database lock
  assert.ok(evidence.includes("latest.verified_sha256!==prepared.verified_sha256"));
  assert.ok(!evidence.includes("async readForOriginalReview(tx:PoolClient"),"No storage call under CG03 SQL locks");
 });
+
+
+test("US001-QA06/18: original collaboration hero, public SEO and CTA are CG18 approved editorial",()=>{
+ const admin=readFileSync(join(process.cwd(),"../web/src/features/cms-public-content/cms-extended-workspace.tsx"),"utf8");
+ const page=readFileSync(join(process.cwd(),"../web/src/app/collaboration/page.tsx"),"utf8");
+ assert.ok(admin.includes('kind==="PARTNERS"?['));
+ for(const required of ['{kind:"HERO",order:0','{kind:"PARTNER_CARDS",order:1','{kind:"CTA",order:2'])
+  assert.ok(admin.includes(required),required);
+ assert.ok(page.includes('generateMetadata():Promise<Metadata>'));
+ assert.ok(page.includes('approved.find(s=>s.kind==="HERO")'));
+ assert.ok(page.includes('approved.find(s=>s.kind==="CTA")'));
+ assert.ok(page.includes('{heroTitle}'));
+ assert.ok(page.includes('{finalBody}'));
+ assert.ok(page.includes('href="/contact"'));
+ assert.ok(!page.includes("Milaap")&&!page.includes("Ketto"));
+});

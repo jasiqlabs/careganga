@@ -5,11 +5,20 @@ import styles from "./collaboration.module.css";
 import {publishedCmsPage} from "../../features/cms-public-content/cms-public-source";
 export const dynamic="force-dynamic";
 
-export const metadata:Metadata={
+const fallbackMetadata:Metadata={
  title:"Corporate Partnerships | CareGanga Foundation",
  description:"Partner with CareGanga Foundation. Explore responsible CSR collaborations and verified healthcare service partnerships.",
  alternates:{canonical:"/collaboration"},robots:{index:true,follow:true}
 };
+
+export async function generateMetadata():Promise<Metadata>{
+ const original=await publishedCmsPage("collaboration");
+ return original.state==="PUBLISHED"&&original.page.kind==="PARTNERS"?{
+  ...fallbackMetadata,title:original.page.seoTitle,
+  description:original.page.seoDescription,
+  alternates:{canonical:"/collaboration"}
+ }:fallbackMetadata;
+}
 
 /** Original client-owned corporate-partner destination. All public names
  * come exclusively from a currently EFFECTIVE CG18 publication with current
@@ -29,6 +38,20 @@ export default async function Partnerships(){
  const approvedAssets=result.state==="PUBLISHED"&&result.page.kind==="PARTNERS"?result.page.assets:[];
  const logoFor=(index:number)=>approvedAssets.find(a=>a.role==="FEATURE"&&a.order===index&&
   /^\/api\/public\/content\/media\/[a-f0-9-]{36}$/i.test(a.src));
+ const approved=result.state==="PUBLISHED"&&result.page.kind==="PARTNERS"?result.page.sections:[];
+ const hero=approved.find(s=>s.kind==="HERO")?.fields;
+ const final=approved.find(s=>s.kind==="CTA")?.fields;
+ const copy=(value:unknown,fallback:string,max=700)=>
+  typeof value==="string"&&value.trim().length>0&&value.length<=max?value:fallback;
+ const heroTitle=copy(hero?.heading,"Corporate Partners",180);
+ const heroEyebrow=copy(hero?.eyebrow,"CareGanga Foundation · Collaboration",100);
+ const heroSubtitle=copy(hero?.subtitle,"Make a meaningful difference through responsible partnerships.",700);
+ const heroIntro=copy(hero?.description,"We welcome genuine corporate social responsibility discussions, service collaborations and long-term support. Every partnership is verified before we describe it publicly.",400);
+ const heroCta=copy(hero?.primaryLabel,"Partner With Us",60);
+ const finalTitle=copy(final?.heading,"Let's Collaborate",160);
+ const finalEyebrow=copy(final?.eyebrow,"WORK WITH CAREGANGA",80);
+ const finalBody=copy(final?.body,"Share your organization's interest and we will help direct the enquiry to the relevant Foundation team. An enquiry is not a registered or verified partnership.",400);
+ const finalLabel=copy(final?.label,"Get in Touch",80);
  const partnerHeading=typeof section?.fields.heading==="string"?section.fields.heading:"Meet Our Partners";
  const partnerIntro=typeof section?.fields.intro==="string"&&section.fields.intro.trim()?section.fields.intro:
   "Only organizations with verified Foundation approval and current permission for public attribution appear here.";
@@ -36,15 +59,12 @@ export default async function Partnerships(){
   <main className={styles.shell}>
    <section className={styles.hero} aria-labelledby="corporate-heading">
     <div className={styles.heroInner}>
-     <p className={styles.eyebrow}>CareGanga Foundation · Collaboration</p>
-     <h1 id="corporate-heading">Corporate Partners</h1>
-     <p className={styles.lead}>Make a meaningful difference through responsible
-      partnerships that support people and communities.</p>
-     <p className={styles.intro}>We welcome genuine corporate social responsibility
-      discussions, service collaborations and long-term support. Every
-      partnership is verified before we describe it publicly.</p>
+     <p className={styles.eyebrow}>{heroEyebrow}</p>
+     <h1 id="corporate-heading">{heroTitle}</h1>
+     <p className={styles.lead}>{heroSubtitle}</p>
+     <p className={styles.intro}>{heroIntro}</p>
      <div className={styles.heroActions}>
-      <Link className={styles.primary} href="/contact">Partner With Us</Link>
+      <Link className={styles.primary} href="/contact">{heroCta}</Link>
       <a className={styles.secondary} href="#corporate-partners">Meet Our Partners</a>
      </div>
     </div>
@@ -111,11 +131,10 @@ export default async function Partnerships(){
     <Link className={styles.outline} href="/collaboration/healthcare-partner">Apply as a Healthcare Partner</Link>
    </section>
    <section className={styles.finalCta} aria-labelledby="collaborate-heading">
-    <p className={styles.kicker}>WORK WITH CAREGANGA</p>
-    <h2 id="collaborate-heading">Let&apos;s Collaborate</h2>
-    <p>Share your organization's interest and we will help direct the enquiry
-     to the relevant Foundation team. An enquiry is not a registered or verified partnership.</p>
-    <Link className={styles.primary} href="/contact">Get in Touch</Link>
+    <p className={styles.kicker}>{finalEyebrow}</p>
+    <h2 id="collaborate-heading">{finalTitle}</h2>
+    <p>{finalBody}</p>
+    <Link className={styles.primary} href="/contact">{finalLabel}</Link>
    </section>
   </main>
  </HealthcarePublicChrome>;
