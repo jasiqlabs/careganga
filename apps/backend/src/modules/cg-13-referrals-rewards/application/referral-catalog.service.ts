@@ -8,6 +8,7 @@ import {DATABASE} from "../../../core/infrastructure/database.module";
 import {SessionService} from "../../cg-01-identity-access/application/session.service";
 import {FoundationStructureIdentityFacade} from "../../cg-01-identity-access/application/foundation-structure-identity.facade";
 import {InventoryCatalogService} from "../../cg-12-inventory-suppliers/application/inventory-catalog.service";
+import {eligiblePublishedRewardImageRefs} from "../../cg-19-documents-notifications/application/cms-draft-media.service";
 import type {VerifiedFoundationActor} from "../../cg-01-identity-access/public-api";
 
 const UUID=/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -63,31 +64,40 @@ const day=(v:unknown):string=>{
   throw bad("effectiveFrom");
  return dt.toISOString();
 };
-export const imageUrl=(v:unknown):string|null=>{
- if(v===undefined||v===null||v==="")return null;
- if(typeof v!=="string"||v.length>500)throw bad("imageUrl");
+/** Only a current CG19 source-backed published photo may be used. The
+ * public URL belongs to CareGanga Web, never an arbitrary external host.
+ * Query-time CG19 checks below and CG19 publicBytes validate publication,
+ * consent/rights, scan, exact MIME, file size and SHA-256 independently.
+ */
+const publicMediaOrigin=():string=>{
+ const configured=process.env.CG13_PUBLIC_MEDIA_ORIGIN??"";
  try{
-  const url=new URL(v);
-  const host=url.hostname.toLowerCase();
-  // Browsers load product images directly. Never expose an arbitrary operator-
-  // supplied host to authenticated members: external hosts can track visitors.
-  // Only Foundation-approved exact public image hosts may appear in catalogues.
-  const approved=(process.env.CG13_APPROVED_PUBLIC_IMAGE_HOSTS??"")
-   .split(",").map(x=>x.trim().toLowerCase()).filter(Boolean);
-  if(url.protocol!=="https:"||url.username||url.password||url.search||url.hash||
-   url.port||!(/\.(?:png|jpe?g|webp)$/i).test(url.pathname)||
-   !/^[a-z0-9.-]+\.[a-z]{2,}$/.test(host)||
-   host.endsWith(".local")||host.endsWith(".internal")||
-   !approved.includes(host))
-   throw Error("invalid");
-  return url.href;
+  const parsed=new URL(configured);
+  if(parsed.protocol!=="https:"||parsed.username||parsed.password||
+     parsed.search||parsed.hash||parsed.port||parsed.pathname!=="/"||
+     !/^[a-z0-9.-]+\.[a-z]{2,}$/.test(parsed.hostname)||
+     parsed.hostname.endsWith(".local")||parsed.hostname.endsWith(".internal"))
+   throw Error("invalid origin");
+  return parsed.origin;
  }catch{throw bad("imageUrl");}
 };
-/** Re-evaluate approved hosts on every read, including historical records.
- * Revoked image hosts must never reach member browsers or Android clients.
- */
-export const safePublicRewardImage=(value:unknown):string|null=>{
- try{return imageUrl(value);}catch{return null;}
+export const imageUrl=(v:unknown):string|null=>{
+ if(v===null||v===undefined||v==="")return null;
+ if(typeof v!=="string"||v.length>500)throw bad("imageUrl");
+ try{
+  const parsed=new URL(v);
+  if(parsed.origin!==publicMediaOrigin()||parsed.search||parsed.hash||
+     parsed.username||parsed.password||parsed.port||
+     !/^\/api\/public\/content\/media\/[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i.test(parsed.pathname))
+   throw Error("invalid published source");
+  return parsed.href;
+ }catch{throw bad("imageUrl");}
+};
+/** Published file identity is all the CG13 domain needs; CG19 owns proof. */
+export const rewardImageFileRef=(v:string|null):string|null=>
+ v?v.slice(v.lastIndexOf("/")+1).toLowerCase():null;
+export const safePublicRewardImage=(v:unknown):string|null=>{
+ try{return imageUrl(v);}catch{return null;}
 };
 type Rank={name:string;verifiedReferrals:number;minimumPoints:number;benefitsSummary:string};
 const ranks=(v:unknown):Rank[]=>{
