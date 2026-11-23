@@ -24,7 +24,7 @@ function fixture(options:{renewal?:boolean;valid?:boolean;prior?:boolean;
     programme:PROGRAM,codeRef:CODE_REF,
     referrerAccount:options.self?APPLICANT:REFERRER,
     referrerKind:"MEMBER",referrerRelationship:REL,
-    policyVersion:2,qualifyingEvent:"MEMBERSHIP_ACTIVATED_VERIFIED",awardPoints:"75"
+    policyVersion:2,qualifyingEvent:params[3],awardPoints:"75"
    }],rowCount:options.valid===false?0:1};
   if(sql.startsWith("SELECT id FROM referral_attribution")&&
    sql.includes("AND applicant_account_ref=$3"))
