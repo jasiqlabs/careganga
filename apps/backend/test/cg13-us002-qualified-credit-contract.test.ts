@@ -15,7 +15,8 @@ const EVENT="99999999-9999-4999-8999-999999999999";
 const DIGEST="a".repeat(64);
 type Trace={sql:string;params:unknown[]};
 function fixture(kind:"MEMBER"|"VOLUNTEER"="MEMBER",
- options:{attribution?:boolean;fraud?:boolean;already?:boolean;current?:boolean}={}){
+ options:{attribution?:boolean;fraud?:boolean;already?:boolean;current?:boolean;
+  latestDigest?:string;changedCode?:boolean}={}){
  const trace:Trace[]=[];
  const client={
   query:async(sql:string,params:unknown[]=[])=>{
@@ -31,6 +32,9 @@ function fixture(kind:"MEMBER"|"VOLUNTEER"="MEMBER",
     return {rows:options.already?[{exists:true}]:[],rowCount:options.already?1:0};
    if(sql.includes("SELECT cg13_referral_code_current"))
     return {rows:[{current:options.current!==false}]};
+   if(sql.includes("SELECT submitted_digest AS digest,referral_input AS referral FROM "))
+    return {rows:[{digest:options.latestDigest??DIGEST,
+     referral:options.changedCode?"Q".repeat(32):"C".repeat(32)}]};
    if(sql.includes("FROM points_account")&&sql.includes("FOR UPDATE"))
     return {rows:[{id:WALLET,earnedPoints:"125",reversedPoints:"0",
      spentPoints:"0",heldPoints:"0",qualifiedReferrals:2,currentRankName:"Starter"}]};
@@ -53,6 +57,23 @@ describe("CG13 US002 genuine CG04 qualification adapter source-contract, NOT liv
   const rank=x.trace.find(t=>t.sql.includes("INSERT INTO reward_rank_event("));
   assert.ok(rank);assert.deepEqual(rank.params,[ROOT,WALLET,EVENT,2,"Starter","Champion",3,3,"200"]);
   assert.ok(!x.trace.some(t=>/UPDATE referral_attribution|INSERT INTO member|INSERT INTO volunteer/.test(t.sql)));
+ });
+ test("a corrected CG04 application uses its CURRENT approved digest but preserves original award",async()=>{
+  const newDigest="b".repeat(64);
+  const x=fixture("MEMBER",{latestDigest:newDigest});
+  assert.equal(await creditVerifiedCG04Qualification(x.client as never,x.input),"CREDITED");
+  const event=x.trace.find(t=>t.sql.includes("INSERT INTO points_event("));
+  assert.ok(event);
+  assert.deepEqual(event.params,[ROOT,WALLET,ATTRIBUTION,2,"75",newDigest]);
+  const current=x.trace.find(t=>t.sql.includes("SELECT submitted_digest AS digest"));
+  assert.ok(current);
+  assert.match(current.sql,/membership_application/);
+  assert.deepEqual(current.params,[ROOT,APPLICATION,APPLICANT]);
+ });
+ test("a corrected application cannot swap the first attributed referrer",async()=>{
+  const x=fixture("MEMBER",{changedCode:true});
+  assert.equal(await creditVerifiedCG04Qualification(x.client as never,x.input),"INELIGIBLE");
+  assert.ok(!x.trace.some(t=>t.sql.includes("INSERT INTO points_event(")));
  });
  test("volunteer credits require actual volunteer application and SAME frozen event",async()=>{
   const x=fixture("VOLUNTEER");
