@@ -376,7 +376,8 @@ export class BranchOperationsService{
        // Local and delegated managers may maintain branch metadata, but a
        // manager transfer needs the independent protected Foundation action.
        // Existing source checks revoke the former manager's access at commit.
-       if(manager!==branch.manager_account_ref)
+       if(manager!==branch.manager_account_ref||
+          location!==branch.geography_area_id)
         await this.identity.assertCurrent(client,actor,"foundation.branches.admin");
        await this.identity.eligibleOfficeholder(client,actor,manager);
        // Versioned, verified replacements never silently remove unrelated
