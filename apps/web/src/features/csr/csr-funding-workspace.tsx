@@ -308,7 +308,8 @@ export function CsrFundingWorkspace({canManage,canReadAgreement,canUploadAgreeme
   </div>}
   {editing&&selected&&canReadAgreement&&<CsrFundingAgreementPanel
    key={selected.ref+":"+selected.version} proposalRef={selected.ref}
-   version={selected.version} canUpload={canUploadAgreement&&canManage&&selected.status==="DRAFT"}/>}
+   version={selected.version} canUpload={canUploadAgreement&&canManage&&selected.status==="DRAFT"}
+   canSubmit={canManage&&selected.status==="DRAFT"} onSubmitted={()=>{invalidateDetail();refresh();}}/>}
   {pending&&<div style={box} role="alert">
    <p>The last original funding write may have reached the server. Retry the exact same command key rather than creating another request.</p>
    <button type="button" style={btn} disabled={busy} onClick={()=>void send(pending)}>Retry original funding write</button>
