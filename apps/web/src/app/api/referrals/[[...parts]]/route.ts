@@ -32,6 +32,7 @@ const response=(body:unknown,status:number)=>NextResponse.json(body,{status,head
  "Cache-Control":"private, no-store","X-Content-Type-Options":"nosniff"}});
 function route(parts:string[],method:Method):{target:string;isSelf:boolean}|null{
  const segment=parts.join("/");
+ if(segment==="resolve"&&method==="POST")return {target:segment,isSelf:false};
  if(segment==="my-catalog"&&method==="GET")return {target:"my-catalog",isSelf:true};
  if((segment==="my-code"||segment==="my-code/options")&&method==="GET")
   return {target:segment,isSelf:true};
@@ -81,9 +82,10 @@ async function proxy(req:NextRequest,ctx:Context,method:Method){
   return response({message:"Invalid catalogue filters."},400);
  if(method!=="GET"&&req.headers.get("origin")!==req.nextUrl.origin)
   return response({message:"Use the authenticated CareGanga form."},403);
+ const anonymous=path.target==="resolve";
  const cookieName=path.isSelf?"cg_community_session":"cg_staff_session";
- const token=(await cookies()).get(cookieName)?.value;
- if(!token)return response({message:path.isSelf?
+ const token=anonymous?null:(await cookies()).get(cookieName)?.value;
+ if(!anonymous&&!token)return response({message:path.isSelf?
   "Sign in as an eligible member or volunteer.":"Sign in to the Foundation admin panel."},401);
  const backend=process.env.BACKEND_URL;
  if(!backend)return response({message:"Original reward catalogue temporarily unavailable."},503);
@@ -95,7 +97,7 @@ async function proxy(req:NextRequest,ctx:Context,method:Method){
    const raw:unknown=await req.json();
    if(!raw||typeof raw!=="object"||Array.isArray(raw))throw Error();
    body=JSON.stringify(raw);
-   if(body.length>12000)throw Error();
+   if(body.length>(anonymous?300:12000))throw Error();
   }catch{return response({message:"Check current programme and reward fields."},400);}
  }
  try{
@@ -107,7 +109,8 @@ async function proxy(req:NextRequest,ctx:Context,method:Method){
   if(relationship!==null)url.searchParams.set("relationship",relationship);
   const result=await fetch(url,{method,body,cache:"no-store",
    signal:AbortSignal.timeout(15000),
-   headers:{Authorization:"Bearer "+token,...(body?{"Content-Type":"application/json"}:{})}});
+   headers:{...(token?{Authorization:"Bearer "+token}:{}),
+    ...(body?{"Content-Type":"application/json"}:{})}});
   const decoded:unknown=await result.json().catch(()=>null);
   if(result.ok&&decoded!==null)return response(decoded,result.status);
   const status=[400,401,403,404,409,429].includes(result.status)?result.status:503;
@@ -124,7 +127,8 @@ async function proxy(req:NextRequest,ctx:Context,method:Method){
    "Your current role or membership cannot access that reward source.":status===404?
    "Original programme or reward unavailable.":status===409?
    "This source was changed or already recorded. Refresh and retry the same request.":
-   status===400?"Check the real programme rules, rank thresholds and eligible product fields.":
+   status===429?"Too many referral checks. Try again later.":
+   status===400?"Check the original referral code or programme fields.":
    "Result uncertain. Refresh original records before submitting again."},status);
  }catch{return response({message:"Result uncertain. Refresh original records before submitting again."},503);}
 }
