@@ -182,11 +182,13 @@ BEGIN
  IF NOT EXISTS(SELECT 1 FROM access_realm
   WHERE id=NEW.root_realm_id AND realm_key='FOUNDATION_ROOT')
  THEN RAISE EXCEPTION 'Foundation funding source required'; END IF;
- IF NEW.branch_ref IS NOT NULL AND NOT EXISTS(
+ IF NEW.branch_ref IS NOT NULL AND NEW.status IN('DRAFT','SUBMITTED','APPROVED')
+  AND NOT EXISTS(
   SELECT 1 FROM branch WHERE id=NEW.branch_ref
    AND root_realm_id=NEW.root_realm_id AND status='ACTIVE' FOR SHARE)
  THEN RAISE EXCEPTION 'Active original CG02 funding branch required'; END IF;
- IF NEW.csr_partner_id IS NOT NULL AND NOT EXISTS(
+ IF NEW.csr_partner_id IS NOT NULL AND NEW.status IN('DRAFT','SUBMITTED','APPROVED')
+  AND NOT EXISTS(
   SELECT 1 FROM csr_partner WHERE id=NEW.csr_partner_id
    AND root_realm_id=NEW.root_realm_id AND status='APPROVED'
    AND (branch_ref IS NULL OR branch_ref IS NOT DISTINCT FROM NEW.branch_ref)
