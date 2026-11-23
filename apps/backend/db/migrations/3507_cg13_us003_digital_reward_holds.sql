@@ -32,6 +32,8 @@ CREATE TABLE redemption (
   REFERENCES points_account(root_realm_id,id) ON DELETE RESTRICT,
  FOREIGN KEY(root_realm_id,product_id)
   REFERENCES reward_product(root_realm_id,id) ON DELETE RESTRICT,
+ FOREIGN KEY(root_realm_id,product_id,product_revision)
+  REFERENCES reward_product_revision(root_realm_id,product_id,revision) ON DELETE RESTRICT,
  FOREIGN KEY(recipient_account_ref,root_realm_id)
   REFERENCES account(id,realm_id) ON DELETE RESTRICT,
  CHECK((state='CANCELLED' AND cancelled_at IS NOT NULL) OR
