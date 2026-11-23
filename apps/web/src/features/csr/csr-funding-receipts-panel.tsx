@@ -4,7 +4,8 @@ type Summary={proposalStatus:string;sourceVersion:number;
  csrCommittedMinor:string;foundationCommittedMinor:string;
  csrReceivedMinor:string;foundationReceivedMinor:string;
  csrNeedsRevalidationMinor:string;foundationNeedsRevalidationMinor:string;
- allocationStatus:string};
+ allocatedMinor:string;utilizedMinor:string;availableMinor:string|null;
+ needsFinanceRevalidation:boolean};
 type Candidate={reconciliationRef:string;verifiedDate:string;amountMinor:string;
  bankName:string;bankItemMasked:string};
 type Command={requestKey:string;expectedVersion:number;partyKind:"CSR"|"FOUNDATION";reconciliationRef:string;remitterConfirmed:true};
@@ -79,9 +80,13 @@ export function CsrFundingReceiptsPanel({proposalRef,version,canLink}:{
     <div>CSR bank received: <strong>{currency(summary.csrReceivedMinor)}</strong></div>
     <div>Foundation committed: <strong>{currency(summary.foundationCommittedMinor)}</strong></div>
     <div>Foundation bank received: <strong>{currency(summary.foundationReceivedMinor)}</strong></div>
-    <div>Budget allocation: <strong>Not yet linked to CG09 budget source</strong></div>
+    <div>CG09 approved allocation: <strong>{currency(summary.allocatedMinor)}</strong></div>
+    <div>CG09 posted utilization: <strong>{currency(summary.utilizedMinor)}</strong></div>
+    <div>Available verified balance: <strong>{summary.availableMinor!==null?
+     currency(summary.availableMinor):"Finance revalidation required"}</strong></div>
    </div>}
-  {summary&&(BigInt(summary.csrNeedsRevalidationMinor)>0n||
+  {summary&&(summary.needsFinanceRevalidation||
+   BigInt(summary.csrNeedsRevalidationMinor)>0n||
    BigInt(summary.foundationNeedsRevalidationMinor)>0n)&&
    <p role="alert" style={{color:"#b91c1c"}}>Earlier linked bank receipt evidence
     has been revoked or reversed. Recheck CG09 and do not allocate against it.</p>}
