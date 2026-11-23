@@ -4,7 +4,7 @@ import {Client} from "pg";
 
 /** Read-only against a disposable already-migrated test/qa PostgreSQL DB.
  * Never invoke this on production. Complements manual 2-branch/provider QA. */
-test("CG08 US002/US003 3406–3413 original CG09/CG03/CG19 funding/report proof integrity",
+test("CG08 US002/US003 3406–3414 original CG09/CG03/CG19 funding/report proof integrity",
  {timeout:20_000},async()=>{
  const url=process.env.TEST_DATABASE_URL;
  assert.ok(url,"Set disposable migrated TEST_DATABASE_URL, never production.");
@@ -21,10 +21,11 @@ test("CG08 US002/US003 3406–3413 original CG09/CG03/CG19 funding/report proof 
    "3410_cg09_csr_budget_effect_links.sql",
    "3411_cg08_funding_report_scope_index.sql",
    "3412_cg09_budget_itemized_revision.sql",
-   "3413_cg09_original_budget_deallocation.sql"];
+   "3413_cg09_original_budget_deallocation.sql",
+   "3414_cg09_budget_item_revision_freeze.sql"];
   const m=await pg.query<{filename:string}>(
    "SELECT filename FROM schema_migration WHERE filename=ANY($1::text[])",[migrations]);
-  assert.equal(m.rowCount,migrations.length,"All eight original funding/report migrations are required");
+  assert.equal(m.rowCount,migrations.length,"All nine original funding/report migrations are required");
   for(const name of ["csr_funding_proposal","csr_funding_command",
    "cg19_upload_intent","cg19_stored_file","cg19_funding_evidence_event",
    "csr_funding_review_snapshot","cg03_funding_process_current",
