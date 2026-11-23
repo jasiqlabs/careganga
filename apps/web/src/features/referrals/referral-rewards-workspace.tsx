@@ -97,8 +97,10 @@ export function ReferralRewardsWorkspace({canViewPolicy,canViewRewards,canManage
  const [stock,setStock]=useState<Stock|null>(null);
  const [loading,setLoading]=useState(true),[busy,setBusy]=useState(false),[error,setError]=useState("");
  const [notice,setNotice]=useState(""),[epoch,setEpoch]=useState(0);
+ const [failedImages,setFailedImages]=useState<Record<string,true>>({});
  const [pending,setPending]=useState<Command|null>(null);
  useEffect(()=>{setSelectedRank(0);setCategoryFilter("All");},[selected]);
+ useEffect(()=>setFailedImages({}),[selected,epoch]);
  const lock=useRef(false);
  const dialogRef=useRef<HTMLElement|null>(null);
  const editorOrigin=useRef("");
@@ -450,7 +452,9 @@ export function ReferralRewardsWorkspace({canViewPolicy,canViewRewards,canManage
      <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(206px,1fr))",gap:12}}>
       {orderedProducts.map(p=><article key={p.ref} style={{border:"1px solid var(--cg-border,#CBD5E1)",borderRadius:13,overflow:"hidden"}}>
        <div style={{height:148,background:"#E8FBF2",display:"grid",placeItems:"center",position:"relative"}}>
-        {p.imageUrl?<img src={p.imageUrl} alt="" loading="lazy" referrerPolicy="no-referrer"
+        {p.imageUrl&&!failedImages[p.ref]?<img src={p.imageUrl} alt={p.name}
+         loading="lazy" referrerPolicy="no-referrer"
+         onError={()=>setFailedImages(old=>({...old,[p.ref]:true}))}
          style={{maxWidth:"100%",height:"100%",objectFit:"cover"}}/>:
          <span aria-label="Product image not provided" style={{fontSize:32,color:"#0FBA78"}}>▢</span>}
          <span style={{position:"absolute",top:7,left:7,padding:"3px 7px",borderRadius:14,
