@@ -60,7 +60,8 @@ async function proxy(req:NextRequest,ctx:Context,method:Method){
  if(!path)return response({message:"That referral or reward action is unavailable."},404);
  const params=req.nextUrl.searchParams;
  const page=params.get("page"),search=params.get("q"),category=params.get("category");
- const products=method==="GET"&&path.target.endsWith("/products");
+ const products=method==="GET"&&
+  (path.target.endsWith("/products")||path.target==="my-catalog");
  const paged=method==="GET"&&(path.target==="programmes"||path.target==="catalogue-programmes"||
   path.target==="my-catalog"||products);
  if([...params.keys()].some(k=>!["page","q","category"].includes(k))||
