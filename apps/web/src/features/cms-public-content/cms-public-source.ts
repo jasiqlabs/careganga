@@ -18,7 +18,7 @@ export async function publishedCmsPage(slug:string):Promise<CmsPageResult>{
     typeof source.title!=="string"||typeof source.seoTitle!=="string"||
     typeof source.seoDescription!=="string"||!Array.isArray(source.sections)||
     !Array.isArray(source.assets)||source.slug!==slug||
-    !["HOME","ABOUT","IMPACT","COMPLIANCE","GALLERY","ARTICLE","CONTACT","HEALTHCARE","POLICY","PROJECTS"].includes(
+    !["HOME","ABOUT","IMPACT","COMPLIANCE","GALLERY","ARTICLE","CONTACT","HEALTHCARE","POLICY","PARTNERS","PROJECTS"].includes(
        String(source.kind))||
     (source.kind==="PROJECTS"&&!["our-work","upcoming-projects"].includes(slug))||
     (source.kind==="HOME"&&slug!=="home")||
@@ -28,6 +28,7 @@ export async function publishedCmsPage(slug:string):Promise<CmsPageResult>{
     (source.kind==="GALLERY"&&slug!=="gallery")||
     (source.kind==="HEALTHCARE"&&slug!=="healthcare")||
     (source.kind==="CONTACT"&&slug!=="contact")||
+    (source.kind==="PARTNERS"&&slug!=="collaboration")||
     (source.kind==="POLICY"&&
      !["terms-and-conditions","privacy-policy","cookie-policy","disclaimer",
       "refund-and-cancellation","grievance-redressal",

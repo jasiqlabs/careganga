@@ -1159,6 +1159,30 @@ export class CmsEditorialService{
  }
  const projectCards=new Map<number,Record<string,unknown>>();
  for(const section of sections.rows)if(section.section_kind==="PROJECT_TEASER")projectCards.set(section.order_no,await publicProjectTeaser(this.db,x.foundation_root_id,section.structured_fields));
+ const currentPartnerCards=new Map<number,Record<string,unknown>>();
+ const publicPartnerLogoOrders=new Set<number>();
+ for(const section of sections.rows){
+  if(section.section_kind!=="PARTNER_CARDS")continue;
+  if(x.kind!=="PARTNERS")throw new NotFoundException({code:"CMS_NOT_PUBLISHED"});
+  let selected:CsrEditorialSelection[];
+  try{
+   const parsed=parseExtendedSection("PARTNER_CARDS",section.structured_fields);
+   selected=parsed.partners as CsrEditorialSelection[];
+  }catch{throw new NotFoundException({code:"CMS_NOT_PUBLISHED"});}
+  const approved=await this.csrPartners.currentCards(this.db,x.foundation_root_id,selected);
+  const byRef=new Map(approved.map(row=>[row.sourceRef,row]));
+  const cards=selected.flatMap((item,index)=>{
+   const v=byRef.get(item.sourceRef);
+   if(!v||v.rightsVersion!==item.rightsVersion)return [];
+   publicPartnerLogoOrders.add(index);
+   // No source ref, consent evidence, registration/contact or money outside.
+   return [{name:v.name,summary:v.summary,originalIndex:index}];
+  });
+  currentPartnerCards.set(section.order_no,{
+   heading:section.structured_fields.heading,intro:section.structured_fields.intro,
+   cards
+  });
+ }
  const hiddenHeroOrders=new Set(sections.rows.filter(sec=>
    sec.section_kind==="HERO"&&sec.structured_fields?.visible===false)
    .map(sec=>sec.order_no));
@@ -1168,7 +1192,7 @@ export class CmsEditorialService{
    lastPublishedAt:x.changed_at.toISOString(),
    sections:sections.rows.filter(v=>v.section_kind!=="HERO"||
      !hiddenHeroOrders.has(v.order_no)).map(v=>({kind:v.section_kind,order:v.order_no,
-    fields:v.section_kind==="PROJECT_TEASER"?(projectCards.get(v.order_no)??{heading:"Projects",cards:[]}):v.section_kind==="CAMPAIGN_TEASER"?(campaignCards.get(v.order_no)??{heading:"Campaigns",cards:[]}):v.section_kind==="ARTICLE_BODY"?
+    fields:v.section_kind==="PARTNER_CARDS"?(currentPartnerCards.get(v.order_no)??{heading:"Partners",cards:[]}):v.section_kind==="PROJECT_TEASER"?(projectCards.get(v.order_no)??{heading:"Projects",cards:[]}):v.section_kind==="CAMPAIGN_TEASER"?(campaignCards.get(v.order_no)??{heading:"Campaigns",cards:[]}):v.section_kind==="ARTICLE_BODY"?
       (eventCards.get(v.order_no)??Object.fromEntries(Object.entries(v.structured_fields).filter(([k])=>
        !["sourceNoticeRef","sourceEventRef","publicReleaseConfirmed"].includes(k)))):
      v.section_kind==="TEAM"?{heading:v.structured_fields.heading,members:[]}:
@@ -1177,7 +1201,7 @@ export class CmsEditorialService{
        (v.structured_fields.items as Record<string,unknown>[]).flatMap((item,index)=>
         item&&item.visible!==false?[{...item,originalIndex:index}]:[]):[]}:
      v.structured_fields})),
-   assets:visibleAssets.filter(v=>v.role!=="TEAM").filter(v=>!["HERO","MOBILE_HERO"].includes(v.role)||
+   assets:visibleAssets.filter(v=>v.role!=="TEAM").filter(v=>x.kind!=="PARTNERS"||v.role!=="FEATURE"||publicPartnerLogoOrders.has(v.sort_order)).filter(v=>!["HERO","MOBILE_HERO"].includes(v.role)||
      !hiddenHeroOrders.has(v.sort_order)).map(v=>({role:v.role,altText:v.alt_text,
     src:"/api/public/content/media/"+v.cg19_file_ref,order:v.sort_order}))};
  }
