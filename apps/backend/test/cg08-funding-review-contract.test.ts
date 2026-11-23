@@ -97,7 +97,7 @@ test("US002-QA05/06/16/20: Web/native B08 source and protected approval screens 
  assert.ok(bff.includes('parts[1]==="review-history"'));
  assert.ok(bff.includes('req.headers.get("origin")!==req.nextUrl.origin'));
  assert.ok(reviewer.includes("/api/v1/csr-funding-reviews"));
- assert.ok(web.includes("/api/csr/funding-proposals/"+ "proposalRef"+"/submit"));
+ assert.ok(web.includes('"/api/csr/funding-proposals/"+proposalRef+"/submit"'));
  assert.ok(agreement.includes('"/api/v1/csr/funding-proposals/"+proposalRef+"/submit"'));
  assert.ok(admin.includes("CsrFundingReviewWorkspace"));
  assert.ok(native.includes("NativeCsrFundingReviews"));
