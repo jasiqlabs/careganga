@@ -4,7 +4,7 @@ import {Client} from "pg";
 
 /** Read-only against a disposable already-migrated test/qa PostgreSQL DB.
  * Never invoke this on production. Complements manual 2-branch/provider QA. */
-test("CG08 US002 3406/3407 funding ownership and CG19 proof constraints",
+test("CG08 US002 3406–3408 current funding/CG19/CG03 proof integrity",
  {timeout:20_000},async()=>{
  const url=process.env.TEST_DATABASE_URL;
  assert.ok(url,"Set disposable migrated TEST_DATABASE_URL, never production.");
@@ -19,7 +19,7 @@ test("CG08 US002 3406/3407 funding ownership and CG19 proof constraints",
    "3408_cg03_csr_funding_review.sql"];
   const m=await pg.query<{filename:string}>(
    "SELECT filename FROM schema_migration WHERE filename=ANY($1::text[])",[migrations]);
-  assert.equal(m.rowCount,migrations.length,"Both original funding migrations are required");
+  assert.equal(m.rowCount,migrations.length,"All three original funding migrations are required");
   for(const name of ["csr_funding_proposal","csr_funding_command",
    "cg19_upload_intent","cg19_stored_file","cg19_funding_evidence_event",
    "csr_funding_review_snapshot","cg03_funding_process_current"]){
@@ -48,8 +48,8 @@ test("CG08 US002 3406/3407 funding ownership and CG19 proof constraints",
   assert.match(props,/csr_share_bps \+ foundation_share_bps/);
   assert.match(props,/REFERENCES csr_partner/);
   assert.match(props,/REFERENCES project/);
-  const trigger=await pg.query<{name:string;enabled:string}>(
-   "SELECT tgname AS name,tgenabled AS enabled FROM pg_trigger t "+
+  const trigger=await pg.query<{name:string;enabled:string;deferred:boolean}>(
+   "SELECT tgname AS name,tgenabled AS enabled,tgdeferrable AS deferred FROM pg_trigger t "+
    "JOIN pg_class c ON c.oid=t.tgrelid WHERE c.relname=ANY($1::text[]) "+
    "AND NOT t.tgisinternal",
    [["csr_funding_proposal","cg19_upload_intent","cg19_stored_file",
@@ -64,6 +64,8 @@ test("CG08 US002 3406/3407 funding ownership and CG19 proof constraints",
    const v=triggers.get(name);assert.ok(v,name+" missing");
    assert.ok(["O","A"].includes(v.enabled),name+" disabled");
   }
+  assert.equal(triggers.get("cg08_funding_status_proof_after")?.deferred,true,
+   "Commitment status proof must be checked at COMMIT");
   await pg.query("ROLLBACK");
  }catch(e){await pg.query("ROLLBACK").catch(()=>{});throw e;}
  finally{await pg.end();}
