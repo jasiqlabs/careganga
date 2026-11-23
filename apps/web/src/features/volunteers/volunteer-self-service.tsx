@@ -59,6 +59,11 @@ export function VolunteerSelfService(){
  },[]);
  useEffect(()=>{void refresh();return()=>{seq.current++;};},[refresh]);
  useEffect(()=>{
+  const incoming=new URLSearchParams(window.location.search).get("ref")??"";
+  if(/^[A-Za-z0-9_-]{32}$/.test(incoming))
+   setForm(current=>({...current,referral:current.referral||incoming}));
+ },[]);
+ useEffect(()=>{
   const onHide=()=>{if(document.visibilityState!=="visible"){seq.current++;setApps([]);setSelected(null);setProfile(null);setOptions(null);setForm(blank());setError("");setLoading(true);}
     else void refresh();};
   document.addEventListener("visibilitychange",onHide);
