@@ -16,13 +16,15 @@ test("CG08 US002 3406–3408 current funding/CG19/CG03 proof integrity",
   await pg.query("BEGIN READ ONLY");
   const migrations=["3406_cg08_csr_funding_proposals.sql",
    "3407_cg19_csr_funding_agreement_evidence.sql",
-   "3408_cg03_csr_funding_review.sql"];
+   "3408_cg03_csr_funding_review.sql",
+   "3409_cg09_csr_verified_bank_receipt_links.sql"];
   const m=await pg.query<{filename:string}>(
    "SELECT filename FROM schema_migration WHERE filename=ANY($1::text[])",[migrations]);
   assert.equal(m.rowCount,migrations.length,"All three original funding migrations are required");
   for(const name of ["csr_funding_proposal","csr_funding_command",
    "cg19_upload_intent","cg19_stored_file","cg19_funding_evidence_event",
-   "csr_funding_review_snapshot","cg03_funding_process_current"]){
+   "csr_funding_review_snapshot","cg03_funding_process_current",
+   "finance_csr_verified_receipt_link"]){
    const t=await pg.query<{ref:string|null}>("SELECT to_regclass($1)::text AS ref",[name]);
    assert.ok(t.rows[0]?.ref,name+" missing");
   }
@@ -31,7 +33,8 @@ test("CG08 US002 3406–3408 current funding/CG19/CG03 proof integrity",
    "FROM pg_constraint k JOIN pg_class c ON c.oid=k.conrelid "+
    "WHERE c.relname=ANY($1::text[]) AND k.contype IN('f','c','u')",
    [["csr_funding_proposal","cg19_upload_intent","cg19_stored_file",
-    "csr_funding_review_snapshot","cg03_case"]]);
+    "csr_funding_review_snapshot","cg03_case",
+    "finance_csr_verified_receipt_link"]]);
   const by=new Map(constraints.rows.map(v=>[v.name,v]));
   for(const name of ["cg19_funding_intent_proposal_fk",
     "cg19_funding_file_proposal_fk","cg19_funding_file_intent_fk",
@@ -41,6 +44,12 @@ test("CG08 US002 3406–3408 current funding/CG19/CG03 proof integrity",
     "cg03_funding_review_disjoint"]){
    assert.ok(by.has(name),"Missing original CG19 protected funding guard: "+name);
   }
+  assert.ok(constraints.rows.some(v=>v.rel==="finance_csr_verified_receipt_link"&&
+   v.def.includes("UNIQUE (root_realm_id, reconciliation_id)")),
+   "One original reconciled bank deposit cannot be attributed twice");
+  assert.ok(constraints.rows.some(v=>v.rel==="finance_csr_verified_receipt_link"&&
+   v.def.includes("FOREIGN KEY (root_realm_id, funding_proposal_id)")),
+   "Original approved CG08 funding parent must share Foundation root");
   assert.match(by.get("cg19_funding_file_intent_fk")!.def,
    /FOREIGN KEY \(upload_intent_id, realm_id, funding_proposal_id, proposal_revision\)/);
   const props=constraints.rows.filter(v=>v.rel==="csr_funding_proposal")
@@ -54,13 +63,15 @@ test("CG08 US002 3406–3408 current funding/CG19/CG03 proof integrity",
    "AND NOT t.tgisinternal",
    [["csr_funding_proposal","cg19_upload_intent","cg19_stored_file",
      "cg19_funding_evidence_event","csr_funding_review_snapshot",
-     "cg03_case","cg03_case_decision"]]);
+     "cg03_case","cg03_case_decision",
+     "finance_csr_verified_receipt_link"]]);
   const triggers=new Map(trigger.rows.map(v=>[v.name,v]));
   for(const name of ["cg08_funding_source_guard",
     "cg19_funding_intent_owner_immutable","cg19_funding_file_owner_immutable",
     "cg19_funding_evidence_event_immutable",
     "csr_funding_review_snapshot_immutable","cg03_funding_case_write",
-    "cg03_funding_decision_insert","cg08_funding_status_proof_after"]){
+    "cg03_funding_decision_insert","cg08_funding_status_proof_after",
+    "cg09_csr_receipt_link_immutable","cg09_csr_receipt_link_source_guard"]){
    const v=triggers.get(name);assert.ok(v,name+" missing");
    assert.ok(["O","A"].includes(v.enabled),name+" disabled");
   }
