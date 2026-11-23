@@ -116,8 +116,6 @@ test("CG08 US002/US003 3406–3413 original CG09/CG03/CG19 funding/report proof 
    "Original CG09 budget must enforce unused allocation reversal capacity");
   assert.match(budgetFunction.rows[0]?.definition??"",/reversal_of_id/,
    "Original CG09 budget utilization must exclude a reversed posted expense");
-  const budgetKind=constraints.rows.some(v=>v.rel==="finance_budget_event"&&
-   v.def.includes("DEALLOCATE"));
   // The original event CHECK must permit only the authenticated correction path.
   const kindGuard=await pg.query<{def:string}>(
    "SELECT pg_get_constraintdef(c.oid) AS def FROM pg_constraint c "+
