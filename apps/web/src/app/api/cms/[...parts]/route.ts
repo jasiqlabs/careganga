@@ -1,11 +1,12 @@
 import {cookies} from "next/headers";
 import {NextRequest,NextResponse} from "next/server";
+import {isAllowedOrigin} from "../../../shared/request-origin";
 export const dynamic="force-dynamic";
 type Ctx={params:Promise<{parts:string[]}>};
 type Method="GET"|"POST"|"PUT";
 const UUID=/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i;
 function permitted(parts:string[],method:Method){
- if(parts.length===1&&["notice-sources","project-sources","event-sources","partner-sources"].includes(parts[0]))return method==="GET";
+ if(parts.length===1&&["notice-sources","project-sources","event-sources","partner-sources","campaign-sources"].includes(parts[0]))return method==="GET";
  if(parts[0]==="pages"){
   if(parts.length===1)return method==="GET"||method==="POST";
   if(parts.length===2&&UUID.test(parts[1]))return method==="GET";
@@ -35,7 +36,7 @@ function fail(status:number,message:string){
 async function handler(request:NextRequest,ctx:Ctx,method:Method){
  const parts=(await ctx.params).parts;
  if(!permitted(parts,method))return fail(404,"Website content action unavailable.");
- if(method!=="GET"&&request.headers.get("origin")!==request.nextUrl.origin)
+ if(method!=="GET"&&!isAllowedOrigin(request))
   return fail(403,"Submit changes from the original CareGanga page.");
  const token=(await cookies()).get("cg_staff_session")?.value;
  if(!token)return fail(401,"Sign in to manage the website.");

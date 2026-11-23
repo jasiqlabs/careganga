@@ -1,4 +1,4 @@
-import { writeFileSync, existsSync } from "node:fs";
+import { writeFileSync, readFileSync, existsSync } from "node:fs";
 import { resolve, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -65,3 +65,29 @@ try {
 `;
   writeFileSync(tscPath, tscContent, "utf8");
 }
+
+const nextUrlPath = resolve(root, "node_modules/next/dist/server/web/next-url.js");
+if (existsSync(nextUrlPath)) {
+  let content = readFileSync(nextUrlPath, "utf8");
+  const target = `    get origin() {
+        return this[Internal].url.origin;
+    }`;
+  const replacement = `    get origin() {
+        const h = this[Internal].options && this[Internal].options.headers;
+        if (h) {
+            const host = h["x-forwarded-host"] || h["host"];
+            const proto = h["x-forwarded-proto"] || "https";
+            if (host) {
+                const hVal = Array.isArray(host) ? host[0] : host;
+                const pVal = Array.isArray(proto) ? proto[0] : proto;
+                return pVal + "://" + hVal;
+            }
+        }
+        return this[Internal].url.origin;
+    }`;
+  if (content.includes(target)) {
+    content = content.replace(target, replacement);
+    writeFileSync(nextUrlPath, content, "utf8");
+  }
+}
+
