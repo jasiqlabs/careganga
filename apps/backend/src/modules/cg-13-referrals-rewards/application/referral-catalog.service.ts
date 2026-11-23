@@ -641,8 +641,21 @@ export class ReferralCatalogService{
     "WHERE r.root_realm_id=$1 AND r.programme_id=$2 "+
     "AND ($3::boolean OR COALESCE(m.branch_ref,v.branch_ref)=ANY($4::uuid[]))",
     args);
+   // QA08: circular referral holds exist before any points wallet is created;
+   // display only their current CG02-scoped aggregate, never an applicant name.
+   const fraudHolds=await tx.query<{count:string}>(
+    "SELECT COUNT(*)::text AS count FROM referral_attribution att "+
+    "LEFT JOIN member m ON m.root_realm_id=att.root_realm_id "+
+    "AND m.id=att.referrer_relationship_ref AND att.referrer_kind='MEMBER' "+
+    "LEFT JOIN volunteer v ON v.root_realm_id=att.root_realm_id "+
+    "AND v.id=att.referrer_relationship_ref AND att.referrer_kind='VOLUNTEER' "+
+    "WHERE att.root_realm_id=$1 AND att.programme_id=$2 "+
+    "AND att.state='HELD_FRAUD_REVIEW' "+
+    "AND ($3::boolean OR COALESCE(m.branch_ref,v.branch_ref)=ANY($4::uuid[]))",
+    args);
    return {metrics:totals.rows[0]??{activeReferrers:"0",successfulReferrals:"0",
     earnedPoints:"0",netPoints:"0"},rankCounts:ranks.rows,
+    heldForFraudReview:fraudHolds.rows[0]?.count??"0",
     rankCountsTruncated:ranks.rows.length>60,
     redemptionMetrics:redemptions.rows[0]??{
      pending:"0",cancelled:"0",fulfilled:"0",total:"0",spentPoints:"0"},
