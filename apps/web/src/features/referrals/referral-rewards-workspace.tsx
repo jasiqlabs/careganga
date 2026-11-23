@@ -1,5 +1,6 @@
 "use client";
 import {useCallback,useEffect,useMemo,useRef,useState,type CSSProperties} from "react";
+import {AdminRedemptionsTable} from "./admin-redemptions-table";
 
 type Rank={name:string;verifiedReferrals:number|string;minimumPoints:number|string;benefitsSummary:string;sortOrder?:number};
 type Programme={ref:string;code:string;name:string;audience:"MEMBER"|"VOLUNTEER"|"BOTH";
@@ -494,13 +495,17 @@ export function ReferralRewardsWorkspace({canViewPolicy,canViewRewards,canManage
       from warehouse inventory; points represent programme eligibility, never withdrawable rupees.</p>
     </section>
     <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(180px,1fr))",gap:9}}>
-     {[["ACTIVE PRODUCTS (SHOWN)",String(activeProducts.length)],["POINTS REDEEMED","—"],
-      ["PENDING ORDERS","—"],["FULFILLED ORDERS","—"]].map(([label,value],i)=>
+     {([
+      ["ACTIVE PRODUCTS (SHOWN)",String(activeProducts.length)],
+      ["POINTS REDEEMED",summary?.redemptionMetrics?.fulfilled??"—"],
+      ["PENDING ORDERS",summary?.redemptionMetrics?.pending??"—"],
+      ["FULFILLED ORDERS",summary?.redemptionMetrics?.fulfilled??"—"]
+     ] as const).map(([label,value],i)=>
       <div key={label} style={{...css.panel,padding:12,gap:4}}>
        <span style={{fontSize:11,color:"var(--cg-text-muted,#64748B)"}}>
         <span style={{color:["#0B9D67","#D38A07","#2C60CC","#8A45C3"][i]}}>◈ </span>{label}</span>
        <strong style={{fontSize:22}}>{value}</strong>
-       {i>0&&<span style={{fontSize:11}}>Awaiting verified redemptions</span>}
+       {i>0&&<span style={{fontSize:11}}>Recorded source events only</span>}
       </div>)}
     </div>
     <nav aria-label="Rewards Store sections" style={{display:"flex",gap:8,flexWrap:"wrap"}}>
@@ -574,10 +579,8 @@ export function ReferralRewardsWorkspace({canViewPolicy,canViewRewards,canManage
        "No products match the current search or category.":
        "No rewards are recorded for this programme yet."}</p>}
     </section>:<section style={css.panel}>
-     <h3 style={{margin:0}}>Volunteer & Member Redemptions</h3>
-     <p style={{fontSize:13}}>Redemption history will appear when eligible members and volunteers have
-      earned verified points and the redemption service is available.
-      No redemptions have been recorded here.</p>
+     <AdminRedemptionsTable programme={selected} programmes={programmes}
+      onProgrammeChange={setSelected} refreshEpoch={epoch}/>
     </section>}
    </>}
   </>}
