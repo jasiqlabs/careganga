@@ -941,19 +941,19 @@ export class HrEnrollmentService{
    "AND manager.root_realm_id=e.root_realm_id "+
    "LEFT JOIN hr_employee_application manager_app ON manager_app.id=manager.application_id "+
    "AND manager_app.root_realm_id=e.root_realm_id "+
-   "WHERE e.root_realm_id=$1 AND ($3::uuid IS NULL OR b.id=$3) "+
-   "AND ($5::text='ALL' OR e.status=$5) "+
-   "AND ($6::text='' OR lower(a.legal_name) LIKE $6 ESCAPE '\\' OR "+
-   "lower(asg.designation) LIKE $6 ESCAPE '\\' OR lower(e.employee_code) LIKE $6 ESCAPE '\\') "+
-   "AND ($7::uuid IS NULL OR asg.department_ref=$7) "+
-   "AND (($8='' AND $9='') OR EXISTS(WITH RECURSIVE path(level,display_name,parent_area_id,root_realm_id,depth) AS ("+
+   "WHERE e.root_realm_id=$1 AND ($2::uuid IS NULL OR b.id=$2) "+
+   "AND ($4::text='ALL' OR e.status=$4) "+
+   "AND ($5::text='' OR lower(a.legal_name) LIKE $5 ESCAPE '\\' OR "+
+   "lower(asg.designation) LIKE $5 ESCAPE '\\' OR lower(e.employee_code) LIKE $5 ESCAPE '\\') "+
+   "AND ($6::uuid IS NULL OR asg.department_ref=$6) "+
+   "AND (($7='' AND $8='') OR EXISTS(WITH RECURSIVE path(level,display_name,parent_area_id,root_realm_id,depth) AS ("+
    "SELECT g.level,g.display_name,g.parent_area_id,g.root_realm_id,0 FROM geography_area g WHERE g.id=b.geography_area_id AND g.root_realm_id=b.root_realm_id "+
    "UNION ALL SELECT g.level,g.display_name,g.parent_area_id,g.root_realm_id,p.depth+1 FROM path p JOIN geography_area g ON g.id=p.parent_area_id AND g.root_realm_id=p.root_realm_id WHERE p.depth<6) "+
-   "SELECT 1 FROM path HAVING ($8='' OR bool_or(level='STATE' AND lower(display_name)=$8)) AND ($9='' OR bool_or(level='DISTRICT' AND lower(display_name)=$9)))) "+
-   "AND ($10='' OR EXISTS(SELECT 1 FROM account_role assigned JOIN role rr ON rr.id=assigned.role_id AND rr.realm_id=assigned.realm_id AND rr.active WHERE assigned.realm_id=e.root_realm_id AND assigned.account_id=e.account_ref AND assigned.revoked_at IS NULL AND strpos(lower(rr.name),$10)>0)) "+
-   "AND ($11::boolean OR b.id=ANY($12::uuid[])) "+
-   "ORDER BY a.legal_name,e.id LIMIT 26 OFFSET $4",
-   [actor.realmId,actor.accountId,branch,offset,status,pattern,department,state,district,role,
+   "SELECT 1 FROM path HAVING ($7='' OR bool_or(level='STATE' AND lower(display_name)=$7)) AND ($8='' OR bool_or(level='DISTRICT' AND lower(display_name)=$8)))) "+
+   "AND ($9='' OR EXISTS(SELECT 1 FROM account_role assigned JOIN role rr ON rr.id=assigned.role_id AND rr.realm_id=assigned.realm_id AND rr.active WHERE assigned.realm_id=e.root_realm_id AND assigned.account_id=e.account_ref AND assigned.revoked_at IS NULL AND strpos(lower(rr.name),$9)>0)) "+
+   "AND ($10::boolean OR b.id=ANY($11::uuid[])) "+
+   "ORDER BY a.legal_name,e.id LIMIT 26 OFFSET $3",
+   [actor.realmId,branch,offset,status,pattern,department,state,district,role,
     scope.all,scope.branchRefs]);
   await tx.query("COMMIT");
   return {items:q.rows.slice(0,25).map(x=>({
