@@ -604,7 +604,7 @@ export function ReferralRewardsWorkspace({canViewPolicy,canViewRewards,canManage
        "No products match the current search or category.":
        "No rewards are recorded for this programme yet."}</p>}
     </section>:<section style={css.panel}>
-     <AdminRedemptionsTable programme={selected} programmes={programmes}
+     <AdminRedemptionsTable key={selected} programme={selected} programmes={programmes}
       onProgrammeChange={setSelected} refreshEpoch={epoch}
       canIssueStock={canIssueStock}/>
     </section>}
