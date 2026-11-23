@@ -51,7 +51,7 @@ const csv=(value:unknown)=>{
 type SourceRow={ref:string;branchRef:string|null;branchName:string|null;
  partnerName:string|null;projectName:string|null;hasProject:boolean;purpose:string;fundType:string;
  status:string;updatedAt:string;requestedMinor:string;
- receivedMinor:string;allocatedMinor:string;utilizedMinor:string;invalidMinor:string};
+ receivedMinor:string;allocatedMinor:string;releasedMinor:string;utilizedMinor:string;invalidMinor:string};
 
 /** US003: exclusively original signed CG08 commitment + original posted CG09.
  * No CG07 donation, CG17 patient money, private CG19 files, contact, or
@@ -89,6 +89,7 @@ export class CsrFundingReportsService{
  "coalesce(bank.received,0)::text AS \"receivedMinor\",",
  "coalesce(bank.invalid,0)::text AS \"invalidMinor\",",
  "coalesce(bud.allocated,0)::text AS \"allocatedMinor\",",
+ "coalesce(bud.released,0)::text AS \"releasedMinor\",",
  "coalesce(bud.utilized,0)::text AS \"utilizedMinor\"",
  "FROM visible v",
  "LEFT JOIN LATERAL (SELECT",
@@ -115,6 +116,7 @@ export class CsrFundingReportsService{
  "LEFT JOIN LATERAL (SELECT",
  "sum(CASE WHEN ev.kind='ALLOCATE' THEN ev.amount_minor "+
  "WHEN ev.kind='DEALLOCATE' THEN -ev.amount_minor ELSE 0 END) AS allocated,",
+ "sum(ev.amount_minor) FILTER(WHERE ev.kind='DEALLOCATE') AS released,",
  "sum(ev.amount_minor) FILTER(WHERE ev.kind='UTILIZE' AND NOT EXISTS (",
  "SELECT 1 FROM journal reversal WHERE reversal.root_realm_id=ev.root_realm_id",
  "AND reversal.reversal_of_id=ev.source_journal_id",
@@ -163,7 +165,8 @@ export class CsrFundingReportsService{
      purpose:v.purpose,fundType:v.fundType,status:v.status,updatedAt:v.updatedAt,
      requestedMinor:v.requestedMinor,
      committedMinor:v.status==="APPROVED"?v.requestedMinor:"0",
-     receivedMinor:v.receivedMinor,allocatedMinor:v.allocatedMinor,utilizedMinor:v.utilizedMinor,
+     receivedMinor:v.receivedMinor,allocatedMinor:v.allocatedMinor,releasedMinor:v.releasedMinor,
+     utilizedMinor:v.utilizedMinor,
      availableMinor:recheck?null:String(received-allocated),
      financeStatus:recheck?"REVALIDATION_REQUIRED":
       v.status==="APPROVED"?(received===0n?"RECEIPT_PENDING":"VERIFIED_SOURCE"):"NOT_APPROVED"};
@@ -187,10 +190,10 @@ export class CsrFundingReportsService{
   if(result.hasMore)throw new ConflictException("Narrow your report before exporting more than 1,000 rows.");
   const header=["Status","Finance verification","CSR partner","Project","Branch","Purpose",
    "Requested minor INR","Committed minor INR","Received minor INR","Allocated minor INR",
-   "Utilized minor INR","Available minor INR","Updated"];
+   "Released unspent allocation minor INR","Utilized minor INR","Available minor INR","Updated"];
   const content=result.items.map(v=>[v.status,v.financeStatus,v.partnerName??"Foundation",
    v.projectName??"General purpose",v.branchName??"Foundation",v.purpose,
-   v.requestedMinor,v.committedMinor,v.receivedMinor,v.allocatedMinor,
+   v.requestedMinor,v.committedMinor,v.receivedMinor,v.allocatedMinor,v.releasedMinor,
    v.utilizedMinor,v.availableMinor??"Verification pending",v.updatedAt].map(csv).join(","));
   return "\uFEFF"+header.map(csv).join(",")+"\r\n"+content.join("\r\n")+"\r\n";
  }
