@@ -3,6 +3,7 @@ import {useCallback,useEffect,useRef,useState} from "react";
 import type {CG04VolunteerApplication,CG04VolunteerOptions,CG04VolunteerProfile} from "@careganga/api-contracts";
 import {CommunityAuth} from "../membership/community-auth";
 import {PublicRewardsCatalogue} from "../referrals/public-rewards-catalogue";
+import {PublicReferralCode} from "../referrals/public-referral-code";
 import {VolunteerEvidencePanel} from "./volunteer-evidence-panel";
 import {PublicVolunteerVerification} from "./public-volunteer-verification";
 import {VolunteerOwnCard} from "./volunteer-own-card";
@@ -144,6 +145,7 @@ export function VolunteerSelfService(){
    </div>
    {profile?.volunteer&&<VolunteerOwnCard current={profile.volunteer.volunteerNumber}/>}
     <PublicRewardsCatalogue/>
+ <PublicReferralCode/>
    {canEdit&&<section className="cg04-panel">
     <h2>Volunteer application</h2><nav className="cg04-volunteer-steps" aria-label="Four application steps">
      {steps.map((title,i)=><button type="button" aria-current={step===i?"step":undefined} key={title} disabled={busy} onClick={()=>setStep(i)}>{i+1}. {title}</button>)}
