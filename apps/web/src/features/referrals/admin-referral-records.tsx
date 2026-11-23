@@ -32,7 +32,10 @@ export function AdminReferralRecords({programme,kind,selectedRank,canViewMember,
  const load=useCallback(async(page:number,append=false)=>{
   const request=++seq.current;
   if(!programme||!allowed){setSource(null);setLoading(false);setOlder(false);return;}
-  if(from&&to&&from>to){setError("Start date must be before end date.");return;}
+  if(from&&to&&from>to){
+   setSource(null);setLoading(false);setOlder(false);
+   setError("Start date must be before end date.");return;
+  }
   if(append)setOlder(true);else{setSource(null);setLoading(true);}
   setError("");
   try{
