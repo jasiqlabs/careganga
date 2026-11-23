@@ -8,6 +8,7 @@ import {careGangaTheme as t} from "../../../../../packages/design-tokens/src/ind
 import {NativeCommunityAuth} from "../membership/native-community-auth";
 import {memberInvoke} from "../membership/member-native-api";
 import {NativeEligibleRewardsCatalogue} from "../referrals/native-eligible-rewards-catalogue";
+import {NativeReferralCodeCheck} from "../referrals/native-referral-code-check";
 import {NativeReferralCode} from "../referrals/native-referral-code";
 import {NativeVolunteerProof} from "./native-volunteer-proof";
 import {NativeVolunteerCard} from "./native-volunteer-card";
@@ -182,6 +183,7 @@ export function NativeVolunteerSelf({onExit}:{onExit:()=>void}){
     {field("Skills and interests (comma-separated)","skills")}{field("Relevant experience","experience")}
    </>}
    {step===3&&<>{field("Referral (optional)","referral")}
+  <NativeReferralCodeCheck code={draft.referral}/>
     {button(draft.consent?"Consent confirmed":"Confirm original volunteer application consent",()=>change("consent",!draft.consent),false,draft.consent)}
     <Text style={s.muted}>Application and private verified ID proof are required for independent CG03 review. No automatic member, paid benefit, task or staff access is granted.</Text>
    </>}
