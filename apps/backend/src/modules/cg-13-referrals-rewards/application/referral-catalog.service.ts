@@ -436,7 +436,7 @@ export class ReferralCatalogService{
    const q=await tx.query(
     "SELECT p.id AS ref,p.programme_code AS code,p.display_name AS name,p.audience,p.status,"+
     "p.version,p.active_policy_version AS \"policyVersion\",v.award_points::text AS \"awardPoints\","+
-    "v.minimum_claim_points::text AS \"minimumClaimPoints\",v.effective_from::text AS \"effectiveFrom\","+
+    "v.minimum_claim_points::text AS \"minimumClaimPoints\",to_char(v.effective_from AT TIME ZONE 'Asia/Kolkata','YYYY-MM-DD') AS \"effectiveFrom\","+
     "v.qualifying_event AS \"qualifyingEvent\",v.points_to_inr_display_ratio::text AS \"displayInrRatio\","+
     "v.auto_rank_upgrade AS \"autoRankUpgrade\" "+
     "FROM referral_program p JOIN referral_policy_version v ON v.root_realm_id=p.root_realm_id "+
@@ -465,7 +465,7 @@ export class ReferralCatalogService{
    await this.root(tx,a);
    const q=await tx.query(
     "SELECT p.id AS ref,p.programme_code AS code,p.display_name AS name,p.audience,p.status,p.version,"+
-    "p.active_policy_version AS \"policyVersion\",v.effective_from::text AS \"effectiveFrom\","+
+    "p.active_policy_version AS \"policyVersion\",to_char(v.effective_from AT TIME ZONE 'Asia/Kolkata','YYYY-MM-DD') AS \"effectiveFrom\","+
     "v.qualifying_event AS \"qualifyingEvent\",v.award_points::text AS \"awardPoints\","+
     "v.minimum_claim_points::text AS \"minimumClaimPoints\","+
     "v.points_to_inr_display_ratio::text AS \"displayInrRatio\","+
@@ -481,7 +481,12 @@ export class ReferralCatalogService{
     "FROM referral_rank_rule WHERE root_realm_id=$1 AND programme_id=$2 "+
     "AND policy_version=$3 ORDER BY sort_order",
     [a.realmId,id,(q.rows[0] as {policyVersion:number}).policyVersion]);
-   return {...q.rows[0],ranks:tiers.rows};
+   const applied=await tx.query<{version_no:number}>(
+    "SELECT version_no FROM referral_policy_version "+
+    "WHERE root_realm_id=$1 AND programme_id=$2 AND effective_from<=now() "+
+    "ORDER BY effective_from DESC,version_no DESC LIMIT 1",[a.realmId,id]);
+   return {...q.rows[0],ranks:tiers.rows,
+    effectivePolicyVersion:applied.rows[0]?.version_no??null};
   },true);
  }
  async listProducts(bearer:string,programInput:string,pageInput?:string,
@@ -599,8 +604,10 @@ export class ReferralCatalogService{
     "ELSE 'OUT_OF_STOCK' END AS availability "+
     "FROM reward_product p JOIN referral_program pr ON pr.id=p.programme_id "+
     "AND pr.root_realm_id=p.root_realm_id "+
-    "JOIN referral_policy_version policy ON policy.root_realm_id=pr.root_realm_id "+
-    "AND policy.programme_id=pr.id AND policy.version_no=pr.active_policy_version "+
+    "JOIN LATERAL (SELECT pv.version_no,pv.effective_from FROM referral_policy_version pv "+
+    "WHERE pv.root_realm_id=pr.root_realm_id AND pv.programme_id=pr.id "+
+    "AND pv.effective_from<=now() "+
+    "ORDER BY pv.effective_from DESC,pv.version_no DESC LIMIT 1) policy ON true "+
     "LEFT JOIN inventory_item item ON item.root_realm_id=p.root_realm_id AND item.id=p.cg12_item_ref "+
     "LEFT JOIN inventory_location loc ON loc.root_realm_id=p.root_realm_id AND loc.id=p.cg12_location_ref "+
     "LEFT JOIN branch br ON br.root_realm_id=loc.root_realm_id AND br.id=loc.branch_ref "+
@@ -618,8 +625,10 @@ export class ReferralCatalogService{
    const categories=await tx.query<{category:string}>(
     "SELECT DISTINCT p.category FROM reward_product p "+
     "JOIN referral_program pr ON pr.root_realm_id=p.root_realm_id AND pr.id=p.programme_id "+
-    "JOIN referral_policy_version policy ON policy.root_realm_id=pr.root_realm_id "+
-    "AND policy.programme_id=pr.id AND policy.version_no=pr.active_policy_version "+
+    "JOIN LATERAL (SELECT pv.version_no,pv.effective_from FROM referral_policy_version pv "+
+    "WHERE pv.root_realm_id=pr.root_realm_id AND pv.programme_id=pr.id "+
+    "AND pv.effective_from<=now() "+
+    "ORDER BY pv.effective_from DESC,pv.version_no DESC LIMIT 1) policy ON true "+
     "WHERE p.root_realm_id=$1 AND p.status='ACTIVE' AND p.public_visible "+
     "AND pr.status='ACTIVE' AND policy.effective_from<=now() "+
     "AND ((p.eligible_audience='BOTH' AND cardinality($2::text[])>0) "+
