@@ -575,7 +575,14 @@ export class ReferralCatalogService{
     activeReferrers:string;successfulReferrals:string;earnedPoints:string;
     netPoints:string
    }>(
-    "SELECT COUNT(*)::text AS \"activeReferrers\","+
+    "SELECT COUNT(*) FILTER(WHERE "+
+    "(wallet.referrer_kind='MEMBER' AND m.status='ACTIVE' AND EXISTS("+
+    "SELECT 1 FROM membership_term term WHERE term.root_realm_id=m.root_realm_id "+
+    "AND term.member_id=m.id AND term.starts_on<=(now() AT TIME ZONE 'Asia/Kolkata')::date "+
+    "AND (term.expires_on IS NULL OR term.expires_on>(now() AT TIME ZONE 'Asia/Kolkata')::date))) "+
+    "OR (wallet.referrer_kind='VOLUNTEER' AND v.status='ACTIVE' "+
+    "AND cg04_current_volunteer(v.root_realm_id,v.id,v.account_ref,v.branch_ref)))::text "+
+    "AS \"activeReferrers\","+
     "COALESCE(SUM(wallet.qualified_referrals),0)::text AS \"successfulReferrals\","+
     "COALESCE(SUM(wallet.earned_points),0)::text AS \"earnedPoints\","+
     "COALESCE(SUM(wallet.earned_points-wallet.reversed_points),0)::text AS \"netPoints\""+
