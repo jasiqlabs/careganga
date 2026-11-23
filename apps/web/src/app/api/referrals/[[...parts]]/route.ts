@@ -14,7 +14,8 @@ const safeCodes:Record<string,string>={
  CG13_PHYSICAL_ITEM_UNAVAILABLE:"Select a permitted active whole-piece warehouse item.",
  CG13_PROGRAMME_INACTIVE:"The selected programme is inactive.",
  CG13_PRODUCT_STALE:"The product has changed. Reload its current details.",
- CG13_MEDIA_UNAVAILABLE:"The selected image is not currently approved for public use. Choose another or leave blank."
+ CG13_MEDIA_UNAVAILABLE:"The selected image is not currently approved for public use. Choose another or leave blank.",
+ CG13_CODE_UNAVAILABLE:"Your referral code is unavailable. Verify your membership or volunteer status."
 };
 const safeFields:Record<string,string>={
  programmeCode:"Programme code",name:"Name",audience:"Eligible audience",
@@ -32,6 +33,8 @@ const response=(body:unknown,status:number)=>NextResponse.json(body,{status,head
 function route(parts:string[],method:Method):{target:string;isSelf:boolean}|null{
  const segment=parts.join("/");
  if(segment==="my-catalog"&&method==="GET")return {target:"my-catalog",isSelf:true};
+ if((segment==="my-code"||segment==="my-code/options")&&method==="GET")
+  return {target:segment,isSelf:true};
  if(segment==="catalogue-programmes"&&method==="GET")
   return {target:segment,isSelf:false};
  if(segment==="programmes"&&(method==="GET"||method==="POST"))
@@ -60,12 +63,17 @@ async function proxy(req:NextRequest,ctx:Context,method:Method){
  if(!path)return response({message:"That referral or reward action is unavailable."},404);
  const params=req.nextUrl.searchParams;
  const page=params.get("page"),search=params.get("q"),category=params.get("category");
+ const programme=params.get("programmeRef"),relationship=params.get("relationship");
+ const codePath=path.target==="my-code",codeOptions=path.target==="my-code/options";
  const products=method==="GET"&&
   (path.target.endsWith("/products")||path.target==="my-catalog");
  const paged=method==="GET"&&(path.target==="programmes"||path.target==="catalogue-programmes"||
-  path.target==="my-catalog"||products);
- if([...params.keys()].some(k=>!["page","q","category"].includes(k))||
-    ["page","q","category"].some(k=>params.getAll(k).length>1)||
+  path.target==="my-catalog"||products||codeOptions);
+ if([...params.keys()].some(k=>!["page","q","category","programmeRef","relationship"].includes(k))||
+    ["page","q","category","programmeRef","relationship"].some(k=>params.getAll(k).length>1)||
+    ((programme!==null||relationship!==null)&&!codePath)||
+    (codePath&&(!programme||!UUID.test(programme)||!["MEMBER","VOLUNTEER"].includes(relationship??"")))||
+    (codePath&&(page!==null||search!==null||category!==null))||
     (page!==null&&(!paged||!(/^[1-9][0-9]{0,3}$/).test(page)))||
     ((search!==null||category!==null)&&!products)||
     (search!==null&&(search.length>100||/[\u0000-\u001f\u007f]/.test(search)))||
@@ -95,6 +103,8 @@ async function proxy(req:NextRequest,ctx:Context,method:Method){
   if(page!==null)url.searchParams.set("page",page);
   if(search!==null)url.searchParams.set("q",search);
   if(category!==null)url.searchParams.set("category",category);
+  if(programme!==null)url.searchParams.set("programmeRef",programme);
+  if(relationship!==null)url.searchParams.set("relationship",relationship);
   const result=await fetch(url,{method,body,cache:"no-store",
    signal:AbortSignal.timeout(15000),
    headers:{Authorization:"Bearer "+token,...(body?{"Content-Type":"application/json"}:{})}});
