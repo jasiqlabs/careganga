@@ -4,7 +4,7 @@ type Summary={proposalStatus:string;sourceVersion:number;
  csrCommittedMinor:string;foundationCommittedMinor:string;
  csrReceivedMinor:string;foundationReceivedMinor:string;
  csrNeedsRevalidationMinor:string;foundationNeedsRevalidationMinor:string;
- allocatedMinor:string;utilizedMinor:string;availableMinor:string|null;
+ allocatedMinor:string;releasedMinor:string;utilizedMinor:string;availableMinor:string|null;
  needsFinanceRevalidation:boolean};
 type Candidate={reconciliationRef:string;verifiedDate:string;amountMinor:string;
  bankName:string;bankItemMasked:string};
@@ -81,6 +81,7 @@ export function CsrFundingReceiptsPanel({proposalRef,version,canLink}:{
     <div>Foundation committed: <strong>{currency(summary.foundationCommittedMinor)}</strong></div>
     <div>Foundation bank received: <strong>{currency(summary.foundationReceivedMinor)}</strong></div>
     <div>CG09 approved allocation: <strong>{currency(summary.allocatedMinor)}</strong></div>
+    <div>Released unused CG09 allocation: <strong>{currency(summary.releasedMinor)}</strong></div>
     <div>CG09 posted utilization: <strong>{currency(summary.utilizedMinor)}</strong></div>
     <div>Available verified balance: <strong>{summary.availableMinor!==null?
      currency(summary.availableMinor):"Finance revalidation required"}</strong></div>
