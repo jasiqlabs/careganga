@@ -25,7 +25,8 @@ const safeFields:Record<string,string>={
  imageUrl:"Approved image URL",itemRef:"Warehouse item",storeRef:"Warehouse",
  programmeRef:"Programme",type:"Product type",category:"Category",
  eligibleAudience:"Reward audience",physicalStock:"Linked warehouse stock",
- request:"Request fields",page:"Page number",status:"Status",expectedVersion:"Record version"
+ request:"Request fields",page:"Page number",status:"Status",expectedVersion:"Record version",
+  digitalFulfillmentMethod:"Verified digital delivery method"
 };
 
 const response=(body:unknown,status:number)=>NextResponse.json(body,{status,headers:{
