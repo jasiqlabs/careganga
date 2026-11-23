@@ -2,6 +2,7 @@ import {BadRequestException,ConflictException,ForbiddenException,Inject,Injectab
 import type {PoolClient} from "pg";
 import {createHash} from "node:crypto";
 import {FoundationStructureIdentityFacade} from "../../cg-01-identity-access/application/foundation-structure-identity.facade";
+import {BranchSourceFacade} from "../../cg-02-foundation-structure/application/branch-source.facade";
 import type {VerifiedFoundationActor} from "../../cg-01-identity-access/public-api";
 const ID=/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i;
 export type HrApplicationSnapshot={id:string;root_realm_id:string;revision_no:number;
@@ -28,7 +29,8 @@ const uuid=(v:unknown)=>{if(typeof v!=="string"||!ID.test(v))
  throw new BadRequestException("Choose an existing employee application");return v;};
 @Injectable()
 export class HrEnrollmentSourceFacade{
- constructor(private readonly identity:FoundationStructureIdentityFacade){}
+ constructor(private readonly identity:FoundationStructureIdentityFacade,
+  private readonly branches:BranchSourceFacade){}
  /** Only this CG10 owner reads application rows; CG03/CG19 call here. */
  async draft(tx:PoolClient,actor:VerifiedFoundationActor,ref:string,
   forWrite=true):Promise<HrApplicationSnapshot>{
@@ -50,9 +52,10 @@ export class HrEnrollmentSourceFacade{
    "AND (r.is_protected OR g.capability_key IS NOT NULL)) AS full_access "+
    "FROM branch b WHERE b.id=$1 AND b.root_realm_id=$3 AND b.status='ACTIVE' "+
    "FOR SHARE OF b",[app.proposed_branch_ref,actor.accountId,actor.realmId]);
-  if(!branch.rows[0]||(!branch.rows[0].full_access&&
-   branch.rows[0].manager_account_ref!==actor.accountId))
-   throw new ForbiddenException("The employee branch is no longer assigned to your account");
+  if(!branch.rows[0])
+   throw new ForbiddenException("The employee branch is no longer available");
+  if(!branch.rows[0].full_access&&branch.rows[0].manager_account_ref!==actor.accountId)
+   await this.branches.requireAssignedStaffBranch(tx,actor,app.proposed_branch_ref);
   return app;
  }
  /** No personal plaintext is returned. The application row must already be locked
