@@ -140,6 +140,7 @@ type Product={
  description:string;pointsPrice:number;eligibleAudience:"MEMBER"|"VOLUNTEER"|"BOTH";
  status:"DRAFT"|"ACTIVE"|"ARCHIVED";highlighted:boolean;publicVisible:boolean;
  approvedImageUrl:string|null;itemRef:string|null;storeRef:string|null;
+ digitalFulfillmentMethod:"PENDING_EXTERNAL_PROOF"|"ON_PLATFORM_RECOGNITION";
 };
 const product=(o:Record<string,unknown>):Product=>{
  const type=choice(o.type,"type",["DIGITAL","PHYSICAL"] as const),
@@ -154,7 +155,10 @@ const product=(o:Record<string,unknown>):Product=>{
   eligibleAudience:choice(o.eligibleAudience,"eligibleAudience",["MEMBER","VOLUNTEER","BOTH"] as const),
   status:choice(o.status??"DRAFT","status",["DRAFT","ACTIVE","ARCHIVED"] as const),
   highlighted:bool(o.highlighted,"highlighted"),publicVisible:bool(o.publicVisible,"publicVisible",true),
-  approvedImageUrl:imageUrl(o.imageUrl),itemRef,storeRef};
+  approvedImageUrl:imageUrl(o.imageUrl),itemRef,storeRef,
+  digitalFulfillmentMethod:type==="PHYSICAL"?"PENDING_EXTERNAL_PROOF":
+   choice(o.digitalFulfillmentMethod??"PENDING_EXTERNAL_PROOF","digitalFulfillmentMethod",
+    ["PENDING_EXTERNAL_PROOF","ON_PLATFORM_RECOGNITION"] as const)};
 };
 type ProgramRow={id:string;version:number;active_policy_version:number;
  effective_from:string;audience:string;status:string};
@@ -353,7 +357,7 @@ export class ReferralCatalogService{
  async createProduct(bearer:string,raw:unknown){
   const o=fields(raw,["requestKey","programmeRef","type","category","name",
    "description","pointsPrice","eligibleAudience","status","highlighted",
-   "publicVisible","imageUrl","itemRef","storeRef"]);
+   "publicVisible","imageUrl","itemRef","storeRef","digitalFulfillmentMethod"]);
   const key=ref(o.requestKey,"requestKey"),p=product(o);
   return this.run(bearer,"rewards.catalog.manage",async(tx,a)=>{
    await this.root(tx,a);
@@ -369,11 +373,12 @@ export class ReferralCatalogService{
    const x=await tx.query<{id:string}>(
     "INSERT INTO reward_product(root_realm_id,programme_id,product_type,category,name,"+
     "description,points_price,eligible_audience,status,highlighted,public_visible,"+
-    "approved_image_url,cg12_item_ref,cg12_location_ref,created_by,updated_by) "+
-    "VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$15) RETURNING id",
+    "approved_image_url,cg12_item_ref,cg12_location_ref,created_by,updated_by,"+
+    "digital_fulfillment_method) "+
+    "VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$15,$16) RETURNING id",
     [a.realmId,p.programmeRef,p.type,p.category,p.name,p.description,p.pointsPrice,
      p.eligibleAudience,p.status,p.highlighted,p.publicVisible,p.approvedImageUrl,
-     p.itemRef,p.storeRef,a.accountId]);
+     p.itemRef,p.storeRef,a.accountId,p.digitalFulfillmentMethod]);
    const id=x.rows[0].id;
    await this.saveProductRevision(tx,a,id,1,p);
    await this.audit(tx,a,key,"PRODUCT_CREATE",p,id,1);
@@ -385,16 +390,18 @@ export class ReferralCatalogService{
   await tx.query(
    "INSERT INTO reward_product_revision(root_realm_id,product_id,revision,"+
    "product_type,name,category,description,points_price,eligible_audience,status,"+
-   "highlighted,public_visible,approved_image_url,cg12_item_ref,cg12_location_ref,changed_by) "+
-   "VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16)",
+   "highlighted,public_visible,approved_image_url,cg12_item_ref,cg12_location_ref,changed_by,"+
+    "digital_fulfillment_method) "+
+   "VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17)",
    [a.realmId,id,revision,p.type,p.name,p.category,p.description,p.pointsPrice,
     p.eligibleAudience,p.status,p.highlighted,p.publicVisible,p.approvedImageUrl,
-    p.itemRef,p.storeRef,a.accountId]);
+    p.itemRef,p.storeRef,a.accountId,p.digitalFulfillmentMethod]);
  }
  async reviseProduct(bearer:string,productInput:string,raw:unknown){
   const productRef=ref(productInput),o=fields(raw,["requestKey","expectedVersion",
    "programmeRef","type","category","name","description","pointsPrice",
-   "eligibleAudience","status","highlighted","publicVisible","imageUrl","itemRef","storeRef"]);
+   "eligibleAudience","status","highlighted","publicVisible","imageUrl","itemRef","storeRef",
+    "digitalFulfillmentMethod"]);
   const key=ref(o.requestKey,"requestKey"),expected=integer(o.expectedVersion,"expectedVersion",1,2147483600),
    p=product(o),data={productRef,expected,p};
   return this.run(bearer,"rewards.catalog.manage",async(tx,a)=>{
@@ -418,11 +425,12 @@ export class ReferralCatalogService{
     "UPDATE reward_product SET product_type=$3,category=$4,name=$5,description=$6,"+
     "points_price=$7,eligible_audience=$8,status=$9,highlighted=$10,public_visible=$11,"+
     "approved_image_url=$12,cg12_item_ref=$13,cg12_location_ref=$14,"+
-    "version=version+1,updated_by=$15,updated_at=now() "+
+    "version=version+1,updated_by=$15,updated_at=now(),"+
+     "digital_fulfillment_method=$17 "+
     "WHERE root_realm_id=$1 AND id=$2 AND version=$16 RETURNING id",
     [a.realmId,productRef,p.type,p.category,p.name,p.description,p.pointsPrice,
      p.eligibleAudience,p.status,p.highlighted,p.publicVisible,p.approvedImageUrl,
-     p.itemRef,p.storeRef,a.accountId,expected]);
+     p.itemRef,p.storeRef,a.accountId,expected,p.digitalFulfillmentMethod]);
    if(changed.rowCount!==1)throw new ConflictException({code:"CG13_PRODUCT_STALE"});
    await this.saveProductRevision(tx,a,productRef,expected+1,p);
    await this.audit(tx,a,key,"PRODUCT_EDIT",data,productRef,expected+1);
