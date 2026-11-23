@@ -45,13 +45,13 @@ export class BranchStaffAccessService{
    WHERE s.root_realm_id=$1 AND ($2::uuid IS NULL OR s.account_ref=$2)
    ORDER BY (s.ended_at IS NULL) DESC,s.granted_at DESC,s.id DESC LIMIT 101
   `,[actor.realmId,account]);
-  if(rows.rows.length>100)throw new ConflictException("Narrow the assignment list by staff member");
+  const hasMore=rows.rows.length>100;
   const protectedRole=await this.db.query<{allowed:boolean}>(
    "SELECT EXISTS(SELECT 1 FROM account_role ar JOIN role r ON r.id=ar.role_id "+
    "WHERE ar.realm_id=$1 AND ar.account_id=$2 AND ar.revoked_at IS NULL "+
    "AND r.active=true AND r.is_protected=true) AS allowed",[actor.realmId,actor.accountId]);
-  return {canGrant:protectedRole.rows[0]?.allowed===true,
-   items:rows.rows.map(x=>({assignmentRef:x.id,accountRef:x.account_ref,
+  return {canGrant:protectedRole.rows[0]?.allowed===true,hasMore,
+   items:rows.rows.slice(0,100).map(x=>({assignmentRef:x.id,accountRef:x.account_ref,
     staffName:x.display_name,scopeKind:x.scope_kind,scopeName:x.scope_name,
     scopeRef:x.branch_ref??x.area_ref,reason:x.reason,sourceVersion:x.source_version,
     grantedAt:x.granted_at,endedAt:x.ended_at}))};
