@@ -417,7 +417,17 @@ export class BranchSourceFacade{
      (expectedVersion!==undefined&&row.version!==expectedVersion))
      throw new ConflictException("The operating branch changed or is unavailable");
    if(row.manager_account_ref!==actor.accountId){
-     await this.sessions.requireAction(bearer,"foundation.branches.admin");
+    let rootAdmin=false;
+    try{await this.sessions.requireAction(bearer,"foundation.branches.admin");rootAdmin=true;}
+    catch(e){if(!(e instanceof ForbiddenException))throw e;}
+    if(!rootAdmin){
+     // A senior delegated manager may edit only ACTIVE assigned branches.
+     // This does not grant control of pending registrations or Foundation masters.
+     if(row.status!=="ACTIVE"||
+       !(await this.permittedStaffBranches(this.db,actor.realmId,actor.accountId))
+        .some(x=>x.id===reference))
+      throw new ForbiddenException("The operating branch is not assigned to your account");
+    }
    }
    return {branchRef:row.id,version:row.version,root:actor.realmId,name:row.name};
  }
@@ -432,8 +442,16 @@ export class BranchSourceFacade{
    const row=rows.rows[0];
    if(!row||(write&&row.status!=="ACTIVE")||row.version!==expectedVersion)
      throw new ConflictException("The current branch evidence source changed");
-   if(row.manager_account_ref!==actor.accountId)
-     await this.identity.assertCurrent(client,actor,"foundation.branches.admin");
+   if(row.manager_account_ref!==actor.accountId){
+    let rootAdmin=false;
+    try{await this.identity.assertCurrent(client,actor,"foundation.branches.admin");rootAdmin=true;}
+    catch(e){if(!(e instanceof ForbiddenException))throw e;}
+    if(!rootAdmin){
+     if(row.status!=="ACTIVE")
+      throw new ForbiddenException("The operating branch is not active");
+     await this.requireAssignedStaffBranch(client,actor,branchRef);
+    }
+   }
  }
  /** Historical evidence revocation cannot retarget a submitted snapshot.
   * Check CG-01 current grants and CG-02 scope in the same transaction.
