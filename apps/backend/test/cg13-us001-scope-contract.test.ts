@@ -14,7 +14,8 @@ const MEDIA_URL="https://foundation.careganga.example/api/public/content/media/"
 const actor={realmId:ROOT,accountId:"77777777-7777-4777-8777-777777777777",
  activeSessionId:"88888888-8888-4888-8888-888888888888"};
 type Seen={sql:string;params:unknown[]};
-function fixture(block=false,media:"ABSENT"|"APPROVED"|"WITHDRAWN"="ABSENT"){
+function fixture(block=false,media:"ABSENT"|"APPROVED"|"WITHDRAWN"="ABSENT",
+ eligible=true){
  const seen:Seen[]=[],actions:string[]=[],scopeCalls:string[]=[];
  let connections=0,released=0,storeCalls=0;
  const tx={
@@ -23,7 +24,7 @@ function fixture(block=false,media:"ABSENT"|"APPROVED"|"WITHDRAWN"="ABSENT"){
    if(sql.includes("FROM referral_program")&&sql.includes("active_policy_version"))
     return {rows:[{id:PROGRAMME,status:"ACTIVE",audience:"BOTH",active_policy_version:1}],rowCount:1};
    if(sql.includes("SELECT 'MEMBER' AS kind"))
-    return {rows:[{kind:"MEMBER"}],rowCount:1};
+    return {rows:eligible?[{kind:"MEMBER"}]:[],rowCount:eligible?1:0};
    if(sql.includes("FROM reward_product p JOIN referral_program pr")&&
     sql.includes("LEFT JOIN stock_balance"))
     return {rows:[],rowCount:0};
@@ -38,8 +39,10 @@ function fixture(block=false,media:"ABSENT"|"APPROVED"|"WITHDRAWN"="ABSENT"){
     return {rows:[{name:"Eligible boxed items",unit_code:"PIECE"}],rowCount:1};
    if(sql.includes("FROM inventory_item"))
     return {rows:[{ref:ITEM,name:"Eligible boxed items"}],rowCount:1};
-   if(sql.includes("SELECT DISTINCT p.category"))
-    return {rows:[{category:"Recognition"}],rowCount:1};
+   if(sql.includes("SELECT DISTINCT p.category")){
+    const categories=sql.includes("FROM reward_product p")&&!eligible?[]:[{category:"Recognition"}];
+    return {rows:categories,rowCount:categories.length};
+   }
    return {rows:[],rowCount:0};
   },
   release:()=>{released++;}
@@ -156,6 +159,21 @@ describe("CG13 US001 branch/permission owner boundary",()=>{
   assert.match(category.sql,/pr\.status='ACTIVE'/);
   assert.match(category.sql,/policy\.effective_from<=now\(\)/);
   assert.equal(f.stats().connections,1);
+  assert.equal(f.stats().released,1);
+ });
+ test("public catalogue with no active CG04 relationship cannot select public rewards",async()=>{
+  const f=fixture(false,"ABSENT",false);
+  const result=await f.service.publicEligibleCatalog("inactive-relationship","1");
+  assert.deepEqual(result.eligibleRelationships,[]);
+  assert.deepEqual(result.items,[]);
+  assert.deepEqual(result.categories,[]);
+  const read=f.seen.find(x=>x.sql.includes("LEFT JOIN stock_balance")&&
+   x.sql.includes("FROM reward_product p JOIN referral_program pr"));
+  assert.ok(read);
+  assert.deepEqual(read.params,[ROOT,[],41,0,"",""]);
+  assert.match(read.sql,/cardinality\(\$2::text\[\]\)>0/);
+  assert.match(read.sql,/pr\.status='ACTIVE'/);
+  assert.match(read.sql,/p\.status='ACTIVE'/);
   assert.equal(f.stats().released,1);
  });
  test("rejected protected action stops before connecting to the database",async()=>{
