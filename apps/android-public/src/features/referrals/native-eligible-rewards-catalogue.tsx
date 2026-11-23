@@ -2,10 +2,12 @@ import {useCallback,useEffect,useMemo,useRef,useState} from "react";
 import {AppState,Image,Pressable,StyleSheet,Text,TextInput,View} from "react-native";
 import {careGangaTheme as t} from "../../../../../packages/design-tokens/src/index";
 import {memberInvoke} from "../membership/member-native-api";
+import {NativeDigitalRedemption} from "./native-digital-redemption";
 
 type Reward={
- ref:string;type:"DIGITAL"|"PHYSICAL";category:string;name:string;description:string;
- pointsPrice:string;imageUrl:string|null;
+ ref:string;programmeRef:string;type:"DIGITAL"|"PHYSICAL";category:string;name:string;description:string;
+ pointsPrice:string;version:number;eligibleAudience:"MEMBER"|"VOLUNTEER"|"BOTH";
+ programmeAudience:"MEMBER"|"VOLUNTEER"|"BOTH";imageUrl:string|null;
  availability:"NO_STOCK_REQUIRED"|"AVAILABLE"|"OUT_OF_STOCK";
 };
 type Page={eligibleRelationships:string[];items:Reward[];hasMore:boolean;notice:string;
@@ -25,6 +27,7 @@ export function NativeEligibleRewardsCatalogue({token,onExpired}:{
   return()=>clearTimeout(handle);
  },[search]);
  const [detail,setDetail]=useState<string|null>(null),sequence=useRef(0);
+ const [selectedDigital,setSelectedDigital]=useState<Reward|null>(null);
  const load=useCallback(async(target:number,replace:boolean)=>{
   const request=++sequence.current;setBusy(true);setError("");
   if(replace){setItems([]);setMore(false);}
@@ -58,7 +61,8 @@ export function NativeEligibleRewardsCatalogue({token,onExpired}:{
   void load(1,true);
   const sub=AppState.addEventListener("change",state=>{
    if(state!=="active"){
-    sequence.current++;setItems([]);setAudiences([]);setDetail(null);setMore(false);
+    sequence.current++;setItems([]);setAudiences([]);setDetail(null);
+    setSelectedDigital(null);setMore(false);
     setAvailableCategories([]);setCategoriesTruncated(false);
    }else void load(1,true);
   });
@@ -72,7 +76,7 @@ export function NativeEligibleRewardsCatalogue({token,onExpired}:{
  return <View style={s.card} accessibilityLabel="Your eligible rewards catalogue">
   <Text style={s.heading}>Rewards catalogue</Text>
   <Text style={s.muted}>Browse rewards offered to active members and volunteers.
-   Points are not cash; redemption is not yet available.</Text>
+   Points are not cash. Verified DIGITAL points can be held pending genuine delivery.</Text>
   <Pressable style={s.button} accessibilityRole="button" disabled={busy}
    onPress={()=>void load(1,true)}>
    <Text style={s.buttonText}>Refresh rewards</Text>
@@ -105,8 +109,16 @@ export function NativeEligibleRewardsCatalogue({token,onExpired}:{
      <Text style={s.buttonText}>{detail===p.ref?"Hide details":"Product details"}</Text>
     </Pressable>
     {detail===p.ref&&<Text>{p.description||"No description provided."}
-     {"\n"}Rewards can be requested after verified referral points and fulfilment are enabled.</Text>}
+     {"\n"}{p.type==="DIGITAL"?
+     "Confirm a real points hold. Delivery requires independent verified evidence.":
+     "Physical stock reservation is not available until CG12 source verification."}</Text>}
+    {p.type==="DIGITAL"&&<Pressable style={s.button} accessibilityRole="button"
+     onPress={()=>setSelectedDigital(p)}>
+     <Text style={s.buttonText}>Request with earned points</Text></Pressable>}
    </View>)}
+   <NativeDigitalRedemption token={token} onExpired={onExpired}
+    selected={selectedDigital} audiences={audiences}
+    onClose={()=>setSelectedDigital(null)}/>
    {!filtered.length&&!busy&&<Text>No rewards match these filters.</Text>}
    {more&&<Pressable style={s.button} accessibilityRole="button" disabled={busy}
     onPress={()=>void load(page,false)}><Text style={s.buttonText}>Load more rewards</Text></Pressable>}
