@@ -17,6 +17,9 @@ test("CG-MB-009 root vs region: permission plus CG02 current branch scope, no Fo
  assert.match(finance,/if\(scope\.all\)return this\.summary\(bearer,yearInput\)/);
  assert.match(finance,/scope\.branchRefs\.length===0/);
  assert.match(finance,/readPostedSummary\(actor\.realmId,year,null,scope\.branchRefs\)/);
+ assert.match(finance,/await this\.actor\(bearer\)/);
+ assert.match(finance,/scope\.branchRefs\.some\(ref=>!latest\.branchRefs\.includes\(ref\)\)/);
+ assert.match(finance,/Your assigned branch reporting scope changed/);
  assert.match(finance,/l\.branch_id=ANY\(\$4::uuid\[\]\)/);
  assert.match(finance,/async assignedMisMonthlyTrend\(bearer:string,yearInput\?:string\)/);
  assert.match(finance,/readMonthlyMisTrend\(actor\.realmId,year,null,scope\.branchRefs\)/);
