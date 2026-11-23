@@ -1,7 +1,7 @@
 import {describe,test} from "node:test";
 import assert from "node:assert/strict";
 import {BadRequestException} from "@nestjs/common";
-import {catalogPage,imageUrl} from "../src/modules/cg-13-referrals-rewards/application/referral-catalog.service";
+import {catalogPage,imageUrl,safePublicRewardImage} from "../src/modules/cg-13-referrals-rewards/application/referral-catalog.service";
 
 /** Pure original US001 input guards. No network/DB/provider or runtime QA simulated. */
 describe("CG13 US001 catalogue page boundary",()=>{
@@ -46,6 +46,21 @@ describe("CG13 US001 public image privacy",()=>{
     "https://media.careganga.example/private/document.pdf",
     "https://unknown.example/photo.jpg"
    ])assert.throws(()=>imageUrl(invalid),BadRequestException,invalid);
+  }finally{
+   if(previous===undefined)delete process.env.CG13_APPROVED_PUBLIC_IMAGE_HOSTS;
+   else process.env.CG13_APPROVED_PUBLIC_IMAGE_HOSTS=previous;
+  }
+ });
+ test("revoking an image host hides previously approved media on subsequent reads",()=>{
+  const previous=process.env.CG13_APPROVED_PUBLIC_IMAGE_HOSTS;
+  const url="https://media.careganga.example/rewards/photo.png";
+  try{
+   process.env.CG13_APPROVED_PUBLIC_IMAGE_HOSTS="media.careganga.example";
+   assert.equal(safePublicRewardImage(url),url);
+   process.env.CG13_APPROVED_PUBLIC_IMAGE_HOSTS="another.careganga.example";
+   assert.equal(safePublicRewardImage(url),null);
+   assert.equal(safePublicRewardImage(null),null);
+   assert.equal(safePublicRewardImage("https://unknown.example/img.jpg"),null);
   }finally{
    if(previous===undefined)delete process.env.CG13_APPROVED_PUBLIC_IMAGE_HOSTS;
    else process.env.CG13_APPROVED_PUBLIC_IMAGE_HOSTS=previous;
