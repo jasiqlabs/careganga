@@ -241,7 +241,8 @@ export class RedemptionService {
     "SELECT r.id AS ref,r.state,p.name AS \"productName\","+
     "r.points_cost::text AS \"pointsCost\",r.revision,"+
     "r.requested_at AS \"requestedAt\" FROM redemption r "+
-    "JOIN reward_product p ON p.root_realm_id=r.root_realm_id AND p.id=r.product_id "+
+    "JOIN reward_product_revision p ON p.root_realm_id=r.root_realm_id "+
+    "AND p.product_id=r.product_id AND p.revision=r.product_revision "+
     "WHERE r.root_realm_id=$1 AND r.recipient_account_ref=$2 "+
     "AND ((r.relationship_kind='MEMBER' AND EXISTS("+
     "SELECT 1 FROM member m JOIN membership_term term "+
