@@ -4,7 +4,8 @@ import * as Crypto from "expo-crypto";
 import {identityRequest} from "../identity-access/http-client";
 type Summary={sourceVersion:number;csrCommittedMinor:string;foundationCommittedMinor:string;
  csrReceivedMinor:string;foundationReceivedMinor:string;
- csrNeedsRevalidationMinor:string;foundationNeedsRevalidationMinor:string};
+ csrNeedsRevalidationMinor:string;foundationNeedsRevalidationMinor:string;
+ allocatedMinor:string;utilizedMinor:string;availableMinor:string|null;needsFinanceRevalidation:boolean};
 type Candidate={reconciliationRef:string;verifiedDate:string;amountMinor:string;
  bankName:string;bankItemMasked:string};
 type Command={requestKey:string;expectedVersion:number;partyKind:"CSR"|"FOUNDATION";reconciliationRef:string;remitterConfirmed:true};
@@ -78,8 +79,11 @@ export function NativeCsrFundingReceiptsPanel({token,proposalRef,version,canLink
    <Text>CSR bank received {money(summary.csrReceivedMinor)}</Text>
    <Text>Foundation committed {money(summary.foundationCommittedMinor)}</Text>
    <Text>Foundation bank received {money(summary.foundationReceivedMinor)}</Text>
-   <Text style={styles.note}>Allocation: not yet linked to CG09 approved budget.</Text>
-   {(BigInt(summary.csrNeedsRevalidationMinor)>0n||
+   <Text>CG09 approved allocation {money(summary.allocatedMinor)}</Text>
+   <Text>CG09 posted utilization {money(summary.utilizedMinor)}</Text>
+   <Text>Available verified balance {summary.availableMinor!==null?
+    money(summary.availableMinor):"Finance revalidation required"}</Text>
+   {(summary.needsFinanceRevalidation||BigInt(summary.csrNeedsRevalidationMinor)>0n||
     BigInt(summary.foundationNeedsRevalidationMinor)>0n)&&
     <Text accessibilityRole="alert" style={styles.error}>Linked statement was revoked or
      journal reversed. Do not allocate this money until checked.</Text>}
