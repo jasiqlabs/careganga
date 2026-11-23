@@ -149,6 +149,7 @@ test("US002-QA06: B08 original CG09 itemized category quantity/rate belongs to b
  const owner=read("src/modules/cg-09-finance-accounting/application/finance-budget.service.ts");
  const reviewer=read("src/modules/cg-09-finance-accounting/application/finance-budget-source.facade.ts");
  const financeWeb=read("../web/src/features/finance-accounting/finance-budget-workspace.tsx");
+ const financeNative=read("../android-internal/src/features/finance-accounting/finance-native-budgets.tsx");
  const web=read("../web/src/features/csr/csr-funding-budget-panel.tsx");
  const native=read("../android-internal/src/features/csr/native-csr-funding-budget-panel.tsx");
  for(const x of [
@@ -164,6 +165,9 @@ test("US002-QA06: B08 original CG09 itemized category quantity/rate belongs to b
   assert.ok(owner.includes(x),x);
  assert.ok(reviewer.includes("items:lines.rows"));
  assert.ok(financeWeb.includes("Original CG09 itemized budget"));
+ assert.ok(financeNative.includes("Original CG09 budget items"));
+ assert.ok(financeNative.includes("items:(x.items??[]).map"));
+ assert.ok(financeNative.includes("Original Finance item breakdown"));
  assert.ok(web.includes("Original CG09 budget itemization"));
  assert.ok(native.includes("Original category / quantity / rate"));
 });
