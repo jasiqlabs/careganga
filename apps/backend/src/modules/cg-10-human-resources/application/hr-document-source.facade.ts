@@ -26,7 +26,7 @@ type Input=ReturnType<typeof parseHrDocumentDraft>;
 type Subject={employee_id:string|null;application_id:string|null;application_revision_id:string|null;application_revision_no:number|null;application_source_digest:string|null;assignment_id:string|null;assignment_version:number|null;employee_version:number|null;exit_change_id:string|null;branch_ref:string;recipient:string;designation:string;branch:string;department:string|null;hire_date:string;last_working_date:string|null;account_ref:string|null;today:string};
 type Template={id:string;version:number;title:string;body:string;content_sha256:string};
 export type HrDocumentRow={id:string;root_realm_id:string;reference:string;kind:HrDocumentKind;employee_id:string|null;application_id:string|null;source_branch_ref:string;created_by:string;status:string;revision:number;case_ref:string|null;source_digest:string;request_digest:string;template_id:string;template_version:number;source_snapshot:Record<string,unknown>;decision_ref:string|null;issue_date:string;expiry_date:string|null};
-const scope=(parameter:number)=>`(b.manager_account_ref=$2 OR b.id=ANY(${parameter}::uuid[]) OR EXISTS(SELECT 1 FROM account_role ar JOIN role r ON r.id=ar.role_id AND r.realm_id=ar.realm_id AND r.active
+const scope=(parameter:number)=>`(b.manager_account_ref=$2 OR b.id=ANY($${parameter}::uuid[]) OR EXISTS(SELECT 1 FROM account_role ar JOIN role r ON r.id=ar.role_id AND r.realm_id=ar.realm_id AND r.active
  LEFT JOIN role_grant g ON g.role_id=r.id AND g.capability_key='foundation.branches.admin'
  WHERE ar.realm_id=$1 AND ar.account_id=$2 AND ar.revoked_at IS NULL AND (r.is_protected OR g.role_id IS NOT NULL)))`;
 @Injectable()
