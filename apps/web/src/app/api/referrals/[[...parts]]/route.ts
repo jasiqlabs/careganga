@@ -31,6 +31,14 @@ function route(parts:string[],method:Method):{target:string;isSelf:boolean}|null
 async function proxy(req:NextRequest,ctx:Context,method:Method){
  const path=route((await ctx.params).parts??[],method);
  if(!path)return response({message:"That referral or reward action is unavailable."},404);
+ const params=req.nextUrl.searchParams;
+ const page=params.get("page");
+ const paged=method==="GET"&&(path.target==="programmes"||
+  path.target==="my-catalog"||path.target.endsWith("/products"));
+ if([...params.keys()].some(k=>k!=="page")||
+    params.getAll("page").length>1||
+    (page!==null&&(!paged||!(/^[1-9][0-9]{0,3}$/).test(page))))
+  return response({message:"Invalid catalogue page."},400);
  if(method!=="GET"&&req.headers.get("origin")!==req.nextUrl.origin)
   return response({message:"Use the authenticated CareGanga form."},403);
  const cookieName=path.isSelf?"cg_community_session":"cg_staff_session";
@@ -52,6 +60,7 @@ async function proxy(req:NextRequest,ctx:Context,method:Method){
  }
  try{
   const url=new URL("/api/v1/referrals/"+path.target,backend);
+  if(page!==null)url.searchParams.set("page",page);
   const result=await fetch(url,{method,body,cache:"no-store",
    signal:AbortSignal.timeout(15000),
    headers:{Authorization:"Bearer "+token,...(body?{"Content-Type":"application/json"}:{})}});
