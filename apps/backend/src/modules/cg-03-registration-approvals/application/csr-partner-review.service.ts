@@ -270,6 +270,20 @@ export class CsrPartnerReviewService {
     partnerStatus:effect.status,revision:expected+(action==="APPROVE"?2:1),replayed:false};
   });
  }
+
+ /** Restricted to an actual submitted CG03 case. Never use generic CG19 staff
+  * file permissions to infer reviewer authority. */
+ async verifiedAgreement(bearer:string,caseRef:string){
+  const a=await this.reviewer(bearer);
+  return this.transaction(async tx=>{
+   await this.reviewerCurrent(tx,a);
+   const c=await this.case(tx,a,caseRef);
+   if(c.status!=="SUBMITTED")throw changed();
+   const proof=await this.snapshot(tx,a,c,true);
+   return this.evidence.readForOriginalReview(tx,a,proof.partner_id,proof.source_version,proof.evidence_file_id);
+  });
+ }
+
  async partnerHistory(bearer:string,partnerRef:string){
   const a=await this.sessions.requireAction(bearer,"csr.partners.view"),id=key(partnerRef);
   return this.transaction(async tx=>{

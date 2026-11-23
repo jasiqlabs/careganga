@@ -155,6 +155,34 @@ export class CsrAgreementEvidenceService{
    [a.realmId,uid(partnerId),uid(fileId),version]);
   if(!q.rowCount)throw changed();
  }
+
+ /** CG03 is the only caller. A reviewer must independently hold the real
+  * protected root role and the current CSR review grant in the same SQL tx.
+  * Keep the file row locked during the private byte read so revocation cannot
+  * race the export. This is not a public download or signed upload URL. */
+ async readForOriginalReview(tx:PoolClient,a:VerifiedFoundationActor,partnerId:string,sourceVersion:number,fileRef:string){
+  await this.requireCurrentProof(tx,a,partnerId,sourceVersion,fileRef,true);
+  const f=(await tx.query<FileRow>(
+   "SELECT f.id,f.csr_partner_id,f.proposal_revision,f.revision,f.original_mime,"+
+   "f.verified_size_bytes::text,f.verified_sha256,f.object_key,f.object_version "+
+   "FROM cg19_stored_file f JOIN cg19_upload_intent i ON i.id=f.upload_intent_id AND i.realm_id=f.realm_id "+
+   "WHERE f.realm_id=$1 AND f.id=$2 AND f.csr_partner_id=$3 AND f.proposal_revision=$4 "+
+   "AND f.owner_kind='CG08_CSR_AGREEMENT' AND f.scan_status='CLEAN_VERIFIED' "+
+   "AND f.revoked_at IS NULL AND i.owner_kind='CG08_CSR_AGREEMENT' "+
+   "AND i.classification='CSR_AGREEMENT' AND i.csr_partner_id=f.csr_partner_id "+
+   "AND i.status='VALIDATED' FOR SHARE OF f,i",
+   [a.realmId,uid(fileRef),uid(partnerId),sourceVersion])).rows[0];
+  if(!f)throw changed();
+  let bytes:Buffer;
+  try{bytes=await this.objects.readVerifiedPrivateObject({
+   objectKey:f.object_key,objectVersion:f.object_version,maxBytes:10485760});}
+  catch{throw unavailable();}
+  if(bytes.length!==Number(f.verified_size_bytes)||
+   createHash("sha256").update(bytes).digest("hex")!==f.verified_sha256||
+   !MIME.includes(f.original_mime))throw changed();
+  return {bytes,mime:f.original_mime};
+ }
+
  async list(bearer:string,partnerId:string){
   return this.run(bearer,false,async(tx,a)=>{
    const partner=await this.partners.guardAgreement(tx,a,partnerId,null,false);

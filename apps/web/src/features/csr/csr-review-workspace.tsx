@@ -76,6 +76,7 @@ export function CsrReviewWorkspace({canConfigure}:{canConfigure:boolean}){
    <p>Proposed support: {detail.source.supportSummary}</p>
    <p>Contact: {detail.source.contactName} {detail.source.contactEmail??detail.source.contactMobile??""}</p>
    <p>Current review: {detail.status.replaceAll("_"," ").toLowerCase()}</p>
+   {detail.status==="SUBMITTED"&&<p><a href={"/api/csr/reviews/"+detail.caseRef+"/agreement"} download>Download scanner-verified private CSR agreement</a></p>}
    {detail.history.length>0&&<div>{detail.history.map((e,i)=><p key={i} style={{fontSize:12,margin:0}}>{e.actor}: {e.action} {e.remarks}</p>)}</div>}
    {detail.canDecide&&<><label>Decision<select style={field} value={action} disabled={!!pending} onChange={e=>setAction(e.target.value as Decision["action"])}>
      <option value="APPROVE">Approve</option><option value="RETURN">Return for correction</option><option value="REJECT">Reject</option>
