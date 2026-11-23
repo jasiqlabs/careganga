@@ -19,6 +19,14 @@ const CODE=/^[A-Za-z0-9_-]{32}$/;
 export async function recordCommittedReferralAttribution(
  tx:PoolClient,source:CommittedReferralInput):Promise<"NONE"|"RECORDED"|"PREVIOUS">{
  if(!source.code||!CODE.test(source.code))return "NONE";
+ // CG04 renewal is NOT a new qualifying signup; do not freeze a new
+ // attribution for an already-issued original member identity.
+ if(source.kind==="MEMBER"){
+  const existing=await tx.query(
+   "SELECT 1 FROM member WHERE root_realm_id=$1 AND account_ref=$2 LIMIT 1",
+   [source.root,source.applicantAccount]);
+  if(existing.rowCount)return "NONE";
+ }
  // Current encrypted CG01 identity and signed CG04 submitted source are
  // already verified by the calling owner. This function independently binds
  // application, account, original source digest and policy inside that TX.
