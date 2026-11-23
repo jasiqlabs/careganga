@@ -119,8 +119,13 @@ export class DonationIntentsService{
   // existing truthful status rather than retrying or inventing payment.
   await this.online.refreshDonorStatus(token).catch(()=>undefined);
   const q=await this.db.query<{source_status:string;amount_minor:string;currency:string;
-   created_at:Date;refunded_minor:string;pending_refund_minor:string;receipt_status:string;attempt_status:string|null}>(`
+   created_at:Date;refunded_minor:string;pending_refund_minor:string;receipt_status:string;attempt_status:string|null;provider_refund_state:string|null}>(`
     SELECT d.source_status,d.amount_minor::text,d.currency,d.created_at,
+      (SELECT p.state FROM donation_provider_refund p
+       JOIN donation_refund_request r ON r.root_realm_id=p.root_realm_id
+        AND r.id=p.refund_request_id
+       WHERE r.root_realm_id=d.root_realm_id AND r.donation_id=d.id AND r.status='REQUESTED'
+       ORDER BY r.requested_at DESC,r.id DESC LIMIT 1) AS provider_refund_state,
       (SELECT a.status FROM donation_payment_attempt a
        WHERE a.root_realm_id=d.root_realm_id AND a.donation_id=d.id AND a.method='ONLINE'
        ORDER BY a.created_at DESC,a.id DESC LIMIT 1) AS attempt_status,
@@ -145,14 +150,26 @@ export class DonationIntentsService{
   const posted=row.source_status==="RECEIVED_POSTED",net=posted?gross-refunded:0n;
   const uncertain=!posted&&row.source_status==="REQUESTED"&&row.attempt_status==="OUTCOME_UNKNOWN";
   const awaitingFinance=!posted&&row.source_status==="VERIFIED_EXTERNAL";
+  const gatewayRefundPending=["RESERVED","OUTCOME_UNKNOWN","PROVIDER_PENDING","PROVIDER_PROCESSED"]
+   .includes(row.provider_refund_state??"");
+  const refundStatus=gatewayRefundPending?"REFUND_RECONCILIATION_PENDING":
+   row.provider_refund_state==="PROVIDER_FAILED"?"REFUND_FAILED_REVIEW_REQUIRED":
+   pendingRefund>0n?"REFUND_REQUESTED":
+   refunded>0n?"REFUND_FINANCE_POSTED":"NO_REFUND";
   return {status:(uncertain||awaitingFinance)?"RECONCILIATION_PENDING":!posted?row.source_status:refunded===0n?row.source_status:
     net===0n?"REFUNDED_FULL":"REFUNDED_PARTIAL",
    amountMinor:row.amount_minor,refundedMinor:row.refunded_minor,
    refundPendingMinor:pendingRefund.toString(),refundPending:pendingRefund>0n,
-   netReceivedMinor:net.toString(),
+   refundStatus,netReceivedMinor:net.toString(),
    receiptStatus:row.receipt_status,currency:row.currency,received:posted,
    createdAt:row.created_at.toISOString(),
-   message:posted?"Confirmed finance received; refunds and issued receipts are separately verified.":
+   message:posted&&gatewayRefundPending?
+    row.provider_refund_state==="PROVIDER_PROCESSED"?
+     "Merchant confirms refund processed, but original CG09 reversal is pending. Verified net is unchanged.":
+     "Original refund outcome is pending or unknown. Never issue a second payout; verified net is unchanged.":
+    posted&&row.provider_refund_state==="PROVIDER_FAILED"?
+     "Merchant refund failed; manual review required. Verified finance net is unchanged.":
+    posted?"Confirmed finance received; only CG09-posted refunds reduce the verified amount.":
     uncertain?"Merchant response is unknown; keep the original payment request. Do not pay again.":
     awaitingFinance?"Signed payment is awaiting original Foundation finance reconciliation; no receipt issued yet.":
      "This donation is not yet confirmed as received."};
