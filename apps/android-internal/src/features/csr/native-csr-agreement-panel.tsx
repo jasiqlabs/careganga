@@ -10,16 +10,18 @@ type Proof={fileRef:string;fileVersion:number;mime:string;createdAt:string};
 type Upload={uploadRef:string;status:string;uploadUrl?:string;uploadHeaders?:Record<string,string>;cleanVerified?:boolean;fileRef?:string|null;fileVersion?:number|null};
 type Picked={uri:string;name:string;mime:string;size:number};
 type Command={key:string;hash:string;mime:string;size:number;intent?:string};
+type ReviewSubmit={requestKey:string;expectedVersion:number;evidenceFileRef:string};
 const allowed=["application/pdf","image/jpeg","image/png","image/webp"];
 const endpoint="/api/v1/csr-agreements/";
-export function NativeCsrAgreementPanel({token,partnerRef,version,canUpload,onExpired}:{
- token:string;partnerRef:string;version:number;canUpload:boolean;onExpired:()=>void;
+export function NativeCsrAgreementPanel({token,partnerRef,version,canUpload,canSubmit,onSubmitted,onExpired}:{
+ token:string;partnerRef:string;version:number;canUpload:boolean;canSubmit:boolean;onSubmitted:()=>void;onExpired:()=>void;
 }){
  const [files,setFiles]=useState<Proof[]|null>(null),[chosen,setChosen]=useState<Picked|null>(null),
   [consent,setConsent]=useState(false),[busy,setBusy]=useState(false),
   [error,setError]=useState(""),[message,setMessage]=useState(""),
   [intent,setIntent]=useState(""),[epoch,setEpoch]=useState(0);
  const command=useRef<Command|null>(null),running=useRef(false),cache=useRef<string|null>(null),mounted=useRef(true);
+ const [selectedProof,setSelectedProof]=useState(""),[pendingReview,setPendingReview]=useState<ReviewSubmit|null>(null);
  const clear=()=>{if(cache.current){try{new File(cache.current).delete();}catch{}cache.current=null;}};
  useEffect(()=>{mounted.current=true;return()=>{mounted.current=false;clear();};},[]);
  const api=async<T,>(path:string,body?:Record<string,unknown>)=>{
@@ -41,6 +43,27 @@ export function NativeCsrAgreementPanel({token,partnerRef,version,canUpload,onEx
   }).catch(e=>{if(live)setError(e instanceof Error?e.message:"Private agreement proof is unavailable.");});
   return()=>{live=false;};
  },[token,partnerRef,version,epoch]);
+ const submitForReview=async()=>{
+  if(!canSubmit||busy||running.current||!(pendingReview||selectedProof))return;
+  if(!pendingReview&&!files?.some(f=>f.fileRef===selectedProof))return;
+  const cmd=pendingReview??{requestKey:Crypto.randomUUID(),expectedVersion:version,evidenceFileRef:selectedProof};
+  setPendingReview(cmd);setBusy(true);setError("");
+  try{
+   const r=await identityRequest("/api/v1/csr/partners/"+partnerRef+"/submit",{method:"POST",cache:"no-store",
+    headers:{Authorization:"Bearer "+token,"Content-Type":"application/json"},body:JSON.stringify(cmd)});
+   if(r.status===401){onExpired();throw Error("Sign in again to submit CSR review.");}
+   if(!r.ok){
+    const v:unknown=await r.json().catch(()=>null);
+    const message=v&&typeof v==="object"&&"message" in v&&typeof v.message==="string"?v.message:"CSR submission not confirmed.";
+    throw Object.assign(Error(message),{status:r.status});
+   }
+   setPendingReview(null);setMessage("Application submitted to an independent Foundation reviewer.");onSubmitted();
+  }catch(e){
+   const code=e&&typeof e==="object"&&"status" in e?Number(e.status):503;
+   if(code>0&&code<500)setPendingReview(null);
+   setError(e instanceof Error?e.message:"CSR submission uncertain. Check original review history before retrying.");
+  }finally{setBusy(false);}
+ };
  const pick=async()=>{
   if(running.current)return;
   try{const r=await Picker.getDocumentAsync({type:allowed,multiple:false,copyToCacheDirectory:true});
@@ -115,8 +138,15 @@ export function NativeCsrAgreementPanel({token,partnerRef,version,canUpload,onEx
   {files===null?<ActivityIndicator accessibilityLabel="Checking original scanned files"/>:
    files.length===0?<Text style={styles.muted}>No verified private agreement yet.</Text>:
    files.map((p,i)=><View key={p.fileRef} style={styles.row}><Text style={styles.muted}>Scanner-verified agreement {i+1}</Text>
+    {canSubmit&&<Pressable accessibilityRole="radio" accessibilityState={{checked:selectedProof===p.fileRef}} disabled={busy||!!pendingReview} onPress={()=>setSelectedProof(p.fileRef)}><Text style={styles.actionText}>{selectedProof===p.fileRef?"◉ Selected for review":"○ Select for review"}</Text></Pressable>}
     {action("Download / share privately",()=>void share(p))}
    </View>)}
+  {canSubmit&&<View style={styles.section}>
+   <Text style={styles.title}>Independent CSR partner review</Text>
+   <Text style={styles.muted}>Select an original scanner-verified agreement; uploading alone does not approve a partner.</Text>
+   {action("Submit for independent review",()=>void submitForReview(),!selectedProof||!!pendingReview)}
+   {!!pendingReview&&action("Retry exact review submission",()=>void submitForReview())}
+  </View>}
   {canUpload&&<>
    {action(chosen?"Selected: "+chosen.name:"Choose agreement",()=>void pick())}
    <Pressable accessibilityRole="checkbox" accessibilityState={{checked:consent}} style={styles.row}

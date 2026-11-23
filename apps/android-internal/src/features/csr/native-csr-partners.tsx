@@ -132,7 +132,7 @@ export function NativeCsrPartners({token,canManage,canReadAgreement,canUploadAgr
    {field("Contact email","contactEmail")}
    {field("Indian contact mobile (+91…)","contactMobile")}
    {field("Proposed CSR support","supportSummary",true)}
-   {selected&&canReadAgreement&&<NativeCsrAgreementPanel token={token} partnerRef={selected.ref} version={selected.version} canUpload={canUploadAgreement&&canManage} onExpired={onExpired}/>}
+   {selected&&canReadAgreement&&<NativeCsrAgreementPanel token={token} partnerRef={selected.ref} version={selected.version} canUpload={canUploadAgreement&&canManage} canSubmit={canManage&&selected.status==="DRAFT"} onSubmitted={()=>{setEditing(false);setSelected(null);setNotice("Submitted for independent review.");refresh();}} onExpired={onExpired}/>}
    <View style={styles.actions}>
     <Pressable accessibilityRole="button" style={styles.primary} disabled={busy||!!pending} onPress={save}>
      <Text style={styles.primaryText}>{busy?"Saving…":"Save draft"}</Text></Pressable>

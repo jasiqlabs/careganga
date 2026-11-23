@@ -232,3 +232,8 @@ A targeted review of the newly wired CG03 decision path exposed that a verified 
 ### 23 November 2026 — Web CSR protected review UI and draft submission source
 
 New guarded Web BFF and reviewer-only Admin page path for original CG03 CSR review policy, list/detail, distinct password-verified decision and replay-key retries. Partner editor now permits only currently scanner-verified CG19 evidence to be explicitly selected and submitted as original CSR_PARTNER_REVIEW case. Reviewer-only roles see the CSR sidebar and review workspace, without broad partner-manage access. Evidence upload/scan is **not** approval, and CG03 decision is **not** public listing or money. Original US001-QA01/06/08/10/11/13/15/18/19/20 SOURCE_UI_AUTHORED, runtime/device and independent re-review NOT_RUN. Existing 60 original scenarios unchanged.
+
+
+### 23 November 2026 — original CG03 staff Internal Android submissions/review flows authored
+
+Native CSR partner editor can now submit a selected original CG19 CLEAN_VERIFIED agreement to CG03 using the partner revision and stable command ID. Internal Android protected reviewer-only access has a separate original review list, policy configuration, case detail/history, and distinct fresh-password decision actions. CSR menu is visible to reviewers without granting partner management; both views use the current permission-filtered app shell. No fake partner activation, finance or public entity. Original US001-QA01/05/06/08/10/11/13/14/15/18/19/20 SOURCE_AUTHORED; native build, actual CG03/19/branch DB tests and independent QA NOT_RUN. Original 60 case IDs unchanged.
