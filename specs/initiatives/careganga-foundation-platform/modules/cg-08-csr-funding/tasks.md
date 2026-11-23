@@ -349,3 +349,8 @@ Added 3404_cg08_partner_public_release.sql: one CG08 partner-linked revocable pu
 ### 23-Nov-2026 — US001 CG08 publicity entitlement API source authored
 
 Added authenticated partner-linked read, original approval-proof/public-right attestation and withdraw commands to existing CG08 service/controller, reusing original once-only immutable CG08 request ledger and CG02 branch guard; require both csr.partners.manage and cms.content.manage as current actions for changes. Current source CG03 approved decision and CG19 CLEAN_VERIFIED exact file are required in the same transaction; staff cannot force a submitted/rejected/inactive partner public. Old permission versions return conflict; retried original key cannot duplicate. Returning from withdrawn to authorized requires a fresh current-version attestation and will be handled by CG18 version-bound editorial selection. The commands do NOT publish names, contacts, agreement or logos. Still needs staff UI, CG18 independently reviewed page, tests, focused source review. US001-QA07/08/10/11/12/13/16/17/19/20; runtime NOT_RUN.
+
+
+### 23-Nov-2026 — US001 independent source review: publicity reauthorization revision
+
+Corrected 3404's first-draft transition guard: WITHDRAWN partner rights now permit a **new** approved-evidence authorization at release version+1, while preventing edits to the old authorized grant and retaining immutable original partner/root identity. Old CG18 editorial approval will be pinned to the earlier authorization version and must not become public again after new consent. This follows the original US001-QA11/16/19 withdrawal-and-restoration acceptance; still requires CG18 projection and DB QA, NOT_RUN.

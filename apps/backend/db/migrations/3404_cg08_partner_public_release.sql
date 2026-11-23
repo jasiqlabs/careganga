@@ -36,12 +36,17 @@ ALTER TABLE csr_partner_command ADD CONSTRAINT csr_partner_command_action_check
 
 CREATE FUNCTION cg08_public_release_guard() RETURNS trigger LANGUAGE plpgsql AS $cg08$
 BEGIN
- IF TG_OP='UPDATE' AND
-   ((NEW.root_realm_id,NEW.partner_id,NEW.evidence_file_id,NEW.authorized_by,NEW.authorized_at)
-     IS DISTINCT FROM
-    (OLD.root_realm_id,OLD.partner_id,OLD.evidence_file_id,OLD.authorized_by,OLD.authorized_at)
-    OR NEW.version<>OLD.version+1 OR OLD.state<>'AUTHORIZED' OR NEW.state<>'WITHDRAWN')
- THEN RAISE EXCEPTION 'CSR public release cannot be silently rewritten or restored'; END IF;
+ IF TG_OP='UPDATE' THEN
+  IF (NEW.root_realm_id,NEW.partner_id) IS DISTINCT FROM
+     (OLD.root_realm_id,OLD.partner_id) OR NEW.version<>OLD.version+1
+     OR NOT ((OLD.state='AUTHORIZED' AND NEW.state='WITHDRAWN'
+        AND (NEW.evidence_file_id,NEW.authorized_by,NEW.authorized_at,NEW.public_summary)
+         IS NOT DISTINCT FROM
+            (OLD.evidence_file_id,OLD.authorized_by,OLD.authorized_at,OLD.public_summary))
+       OR (OLD.state='WITHDRAWN' AND NEW.state='AUTHORIZED'
+        AND NEW.withdrawn_at IS NULL AND NEW.authorized_at>=OLD.authorized_at))
+  THEN RAISE EXCEPTION 'CSR public release revision or immutable identity invalid'; END IF;
+ END IF;
  IF NEW.state='AUTHORIZED' AND NOT EXISTS(
   SELECT 1 FROM csr_partner p
   JOIN csr_partner_review_snapshot s
