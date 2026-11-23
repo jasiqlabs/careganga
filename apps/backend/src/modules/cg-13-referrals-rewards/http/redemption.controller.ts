@@ -17,6 +17,12 @@ export class RedemptionController {
  cancel(@Headers("authorization")auth:string,@Param("redemptionRef")id:string){
   return this.rewards.cancel(auth,id);
  }
+ @Post("redemptions/:redemptionRef/claim-recognition")
+ @Header("Cache-Control","private, no-store")
+ claimRecognition(@Headers("authorization")auth:string,
+  @Param("redemptionRef")id:string){
+  return this.rewards.claimRecognition(auth,id);
+ }
  @Get("redemptions/my-history")
  @Header("Cache-Control","private, no-store")
  history(@Headers("authorization")auth:string,@Query("page")page?:string){
