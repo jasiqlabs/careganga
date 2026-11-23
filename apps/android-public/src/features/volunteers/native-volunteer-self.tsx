@@ -8,6 +8,7 @@ import {careGangaTheme as t} from "../../../../../packages/design-tokens/src/ind
 import {NativeCommunityAuth} from "../membership/native-community-auth";
 import {memberInvoke} from "../membership/member-native-api";
 import {NativeEligibleRewardsCatalogue} from "../referrals/native-eligible-rewards-catalogue";
+import {NativeReferralCode} from "../referrals/native-referral-code";
 import {NativeVolunteerProof} from "./native-volunteer-proof";
 import {NativeVolunteerCard} from "./native-volunteer-card";
 const KEY="cg_public_community_membership_session";
@@ -161,6 +162,7 @@ export function NativeVolunteerSelf({onExit}:{onExit:()=>void}){
   </View>
   {profile?.volunteer&&token&&<NativeVolunteerCard token={token} onExpired={clear}/>}
   <NativeEligibleRewardsCatalogue token={token} onExpired={clear}/>
+  <NativeReferralCode token={token} onExpired={clear}/>
   {editable&&<View style={s.card}>
    <Text accessibilityRole="header" style={s.title}>Volunteer Application</Text>
    <View style={s.row}>{steps.map((label,index)=><View key={label}>{button((index+1)+". "+label,()=>setStep(index),false,step===index)}</View>)}</View>
