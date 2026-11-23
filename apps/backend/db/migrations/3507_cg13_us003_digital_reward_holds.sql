@@ -58,7 +58,7 @@ CREATE TABLE redemption_event (
  root_realm_id uuid NOT NULL,
  id uuid NOT NULL DEFAULT gen_random_uuid(),
  redemption_id uuid NOT NULL,
- event_kind text NOT NULL CHECK(event_kind IN('REQUESTED','CANCELLED')),
+ event_kind text NOT NULL CHECK(event_kind IN('REQUESTED','CANCELLED','RECOGNIZED')),
  original_points_event_id uuid NOT NULL,
  source_key uuid NOT NULL,
  recorded_at timestamptz NOT NULL DEFAULT now(),
@@ -87,10 +87,22 @@ BEGIN
       NEW.recipient_account_ref,NEW.relationship_kind,NEW.relationship_ref,
       NEW.product_id,NEW.product_revision,NEW.product_type,NEW.points_cost,
       NEW.request_key,NEW.payload_digest,NEW.requested_at)
-    OR NOT (OLD.state='HELD' AND NEW.state='CANCELLED')
     OR NEW.revision<>OLD.revision+1
-    OR NEW.cancelled_at IS NULL OR NEW.fulfilled_at IS NOT NULL
-  THEN RAISE EXCEPTION 'Digital redemption requires original verified state transition'; END IF;
+    OR NOT (
+     (OLD.state='HELD' AND NEW.state='CANCELLED'
+      AND NEW.cancelled_at IS NOT NULL AND NEW.fulfilled_at IS NULL)
+     OR
+     (OLD.state='HELD' AND NEW.state='FULFILLED'
+      AND NEW.cancelled_at IS NULL AND NEW.fulfilled_at IS NOT NULL
+      AND EXISTS(
+       SELECT 1 FROM cg19_reward_recognition proof
+       WHERE proof.realm_id=NEW.root_realm_id AND proof.redemption_id=NEW.id
+        AND proof.recipient_account_ref=NEW.recipient_account_ref
+        AND proof.source_key=NEW.request_key
+        AND proof.product_id=NEW.product_id
+        AND proof.product_revision=NEW.product_revision))
+    )
+  THEN RAISE EXCEPTION 'Digital redemption requires exact verified original source transition'; END IF;
   RETURN NEW;
  END IF;
  IF NEW.state<>'HELD' OR NEW.revision<>1 OR NEW.cancelled_at IS NOT NULL
@@ -162,6 +174,20 @@ BEGIN
    AND e.event_kind='POINTS_HOLD' AND e.points_delta=NEW.points_cost
    AND receipt.event_kind='REQUESTED'
  ) THEN RAISE EXCEPTION 'Original points hold and source receipt required'; END IF;
+ IF NEW.state='FULFILLED' AND NOT EXISTS(
+  SELECT 1 FROM points_event e JOIN redemption_event receipt
+   ON receipt.root_realm_id=e.root_realm_id
+    AND receipt.original_points_event_id=e.id AND receipt.redemption_id=NEW.id
+  JOIN cg19_reward_recognition proof ON proof.realm_id=NEW.root_realm_id
+   AND proof.redemption_id=NEW.id
+  WHERE e.root_realm_id=NEW.root_realm_id AND e.redemption_id=NEW.id
+   AND e.points_account_id=NEW.points_account_id
+   AND e.event_kind='POINTS_SPENT' AND e.points_delta=NEW.points_cost
+   AND e.policy_version=NEW.policy_version
+   AND e.qualifying_source_digest=NEW.payload_digest
+   AND receipt.event_kind='RECOGNIZED'
+   AND proof.recipient_account_ref=NEW.recipient_account_ref
+ ) THEN RAISE EXCEPTION 'Delivered recognition requires exact spent points and immutable CG19 proof'; END IF;
  IF NEW.state='CANCELLED' AND NOT EXISTS(
   SELECT 1 FROM points_event e JOIN redemption_event receipt
    ON receipt.root_realm_id=e.root_realm_id
