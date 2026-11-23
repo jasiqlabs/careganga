@@ -333,7 +333,7 @@ export class FinanceBudgetService{
   const v=body(raw,["kind","amount","journalRef","requestKey"]),
    key=id(v.requestKey,"requestKey");
   const kind=v.kind;
-  if(!["ALLOCATE","DEALLOCATE","COMMIT","RELEASE","UTILIZE"].includes(String(kind)))
+  if(!["ALLOCATE","COMMIT","RELEASE","UTILIZE"].includes(String(kind)))
    throw new BadRequestException({code:"FINANCE_BUDGET_EVENT_INVALID",field:"kind"});
   const amount=minor(v.amount);
   const journal=kind==="UTILIZE"?id(v.journalRef,"journalRef"):null;
