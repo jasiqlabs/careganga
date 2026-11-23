@@ -3,7 +3,7 @@ import {useEffect,useMemo,useState} from "react";
 
 type ReportRow={ref:string;branchName:string|null;partnerName:string|null;
  projectName:string|null;purpose:string;fundType:string;status:string;updatedAt:string;
- requestedMinor:string;committedMinor:string;receivedMinor:string;allocatedMinor:string;
+ requestedMinor:string;committedMinor:string;receivedMinor:string;allocatedMinor:string;releasedMinor:string;
  utilizedMinor:string;availableMinor:string|null;financeStatus:string};
 type Page={items:ReportRow[];hasMore:boolean;nextCursor:string|null;
  currency:"INR";notice:string};
@@ -105,7 +105,7 @@ export function CsrFundingReportsWorkspace(){
     <div style={{overflowX:"auto"}}>
      <table style={{width:"100%",borderCollapse:"collapse",fontSize:13}}>
       <thead><tr>{["CSR sponsor / purpose","Branch / project","Funding status",
-       "Requested","Committed","Received","Allocated","Utilized","Available"].map(x=>
+       "Requested","Committed","Received","Allocated","Released unused","Utilized","Available"].map(x=>
        <th key={x} scope="col" style={{padding:9,textAlign:"left",
         borderBottom:"1px solid var(--cg-border,#CBD5E1)",whiteSpace:"nowrap"}}>{x}</th>)}</tr></thead>
       <tbody>{page.items.map(x=><tr key={x.ref}>
@@ -118,7 +118,7 @@ export function CsrFundingReportsWorkspace(){
           x.financeStatus==="NOT_APPROVED"?"Not yet approved as a commitment":
           "Finance revalidation required"}</div>}</td>
        {[x.requestedMinor,x.committedMinor,x.receivedMinor,x.allocatedMinor,
-        x.utilizedMinor,x.availableMinor].map((v,i)=>
+        x.releasedMinor,x.utilizedMinor,x.availableMinor].map((v,i)=>
          <td key={i} style={{padding:9,whiteSpace:"nowrap"}}>{amount(v)}</td>)}
       </tr>)}</tbody>
      </table>
