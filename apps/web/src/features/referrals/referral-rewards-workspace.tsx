@@ -25,6 +25,7 @@ type RealReferralSummary={
  rankCounts:{kind:"MEMBER"|"VOLUNTEER";rank:string|null;count:string;
   referrals:string;points:string;lastActivity:string|null}[];
  rankCountsTruncated:boolean;redemptionMetricsAvailable:boolean;
+ heldForFraudReview:string;
  redemptionMetrics?:{pending:string;cancelled:string;fulfilled:string;total:string;spentPoints:string};
  notice:string;
 };
@@ -423,7 +424,12 @@ export function ReferralRewardsWorkspace({canViewPolicy,canViewRewards,canManage
           "Verified source-recorded activity":"Unavailable until real recorded source"}
         </span>
        </div>)}
-       {summaryLoading&&<p role="status">Checking verified referral activity…</p>}
+       {summary&&summary.heldForFraudReview!=="0"&&<p role="status"
+        style={{fontSize:12,margin:0}}>
+        {pointsDisplay(summary.heldForFraudReview)} attempted circular referrals are held
+        for protected review. They have not received points or rank credit.
+       </p>}
+       {summaryLoading&&<p role="status">Checking verified referral activity…</p>
       </div>
       <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(min(100%,330px),1fr))",
        gap:12,alignItems:"start"}}>
