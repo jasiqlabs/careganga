@@ -2,6 +2,7 @@
 import {useCallback,useEffect,useRef,useState} from "react";
 import type {CG04VolunteerApplication,CG04VolunteerOptions,CG04VolunteerProfile} from "@careganga/api-contracts";
 import {CommunityAuth} from "../membership/community-auth";
+import {PublicRewardsCatalogue} from "../referrals/public-rewards-catalogue";
 import {VolunteerEvidencePanel} from "./volunteer-evidence-panel";
 import {PublicVolunteerVerification} from "./public-volunteer-verification";
 import {VolunteerOwnCard} from "./volunteer-own-card";
