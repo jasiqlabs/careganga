@@ -54,7 +54,14 @@ type PartnerRow={id:string;branch_ref:string|null;status:string;version:number;c
 const projection='p.id AS ref,p.branch_ref AS "branchRef",b.name AS branch,p.legal_name AS "legalName",p.registration_reference AS "registrationReference",p.contact_name AS "contactName",p.contact_email AS "contactEmail",p.contact_mobile AS "contactMobile",p.support_summary AS "supportSummary",p.status,p.version,p.updated_at AS "updatedAt"';
 const listProjection='p.id AS ref,p.branch_ref AS "branchRef",b.name AS branch,p.legal_name AS "legalName",p.status,p.version,p.updated_at AS "updatedAt"';
 const joins=" FROM csr_partner p LEFT JOIN branch b ON b.id=p.branch_ref AND b.root_realm_id=p.root_realm_id";
-const digest=(v:unknown)=>createHash("sha256").update(JSON.stringify(v)).digest("hex");
+const stable=(v:unknown):string=>{
+ if(v===null||typeof v!=="object")return JSON.stringify(v)??"null";
+ if(Array.isArray(v))return "["+v.map(stable).join(",")+"]";
+ const obj=v as Record<string,unknown>;
+ return "{"+Object.keys(obj).sort().map(k=>JSON.stringify(k)+":"+stable(obj[k])).join(",")+"}";
+};
+export const csrDigest=(v:unknown)=>createHash("sha256").update(stable(v)).digest("hex");
+const digest=csrDigest;
 
 @Injectable()
 export class CsrPartnersService{

@@ -217,3 +217,8 @@ The greenfield `3403_cg03_csr_partner_review.sql` introduces only the existing C
 ### 23 Nov 2026 — CG08 source owner shared transaction and CG19 proof DI boundary
 
 CG08 now exposes typed, current CG01/02-scoped `freezeForReview`, `reviewSource` and `acceptReviewEffect` for the original CG03 reviewer. Same-root source snapshot includes immutable reviewed private file ref and digest; only DRAFT can submit; only a password-verifiable CG03 decision can change a SUBMITTED partner. The original CG19 scanner service is factored through `CsrAgreementSourceModule` so CG03 can consume the existing proof adapter **without importing the entire CG19/Cg03 cyclic feature module**. CG19 HTTP controller uses the exported original service. US001 approval API/UI next; no verified approval or public attribution yet. No runtime/independent QA or branch merge.
+
+
+### 23 Nov 2026 — CG03 original protected CSR review backend source
+
+An introducing CG03 source service now creates actual protected CSR_PARTNER_REVIEW process/cases/immutable proposal snapshots against current CG08 partner + CG19 CLEAN_VERIFIED agreement, with strict current CG01/02 scope. A distinct protected reviewer uses original CG03 approval grant, fresh current-password proof and one transaction to record approval/return/rejection and apply original CG08 source status. The proposal cannot create finance cash, public partner cards, or another approval master. All related Web/Internal Android reviewer actions and actual runtime SQL/migration/provider/independent review remain to implement/verify. US001 IN_PROGRESS; 60 original QA IDs preserved, no main or CG07 parent merge.
