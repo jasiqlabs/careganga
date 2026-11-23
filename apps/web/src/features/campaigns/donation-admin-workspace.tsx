@@ -8,7 +8,7 @@ type Options={donationNumber:string;amountMinor:string;cashAccounts:Choice[];inc
 type QueueItem={evidenceRef:string;voucher:string;status:string;amountMinor:string;
  donationNumber:string;postingDate:string;recordedAt:string;canReview:boolean};
 type MaskedDonor={donationNumber:string;name:string;mobileMasked:string;emailMasked:string;panMasked:string;location:string};
-type DonationItem={donationNumber:string;donationRef:string;refundMinor:string;receiptStatus:string;
+type DonationItem={donationNumber:string;donationRef:string;refundMinor:string;receiptStatus:string;latestCorrectionNumber:string|null;
  amountMinor:string;status:string;method:string|null;
  campaignTitle:string|null;voucher:string|null;createdAt:string};
 type Report={items:DonationItem[];offset:number;hasMore:boolean;nextCursor:string|null;
@@ -204,7 +204,7 @@ export function DonationAdminWorkspace({canView,canRecord,canReview,canIssue,can
    </div>
    {data?.items.length===0?<p>No matching donation records.</p>:
     <div style={{overflowX:"auto"}}><table style={{width:"100%",borderCollapse:"collapse",fontSize:13}}>
-     <thead><tr>{["Donation","Campaign","Amount","Method","Status","Date"].map(t=>
+     <thead><tr>{["Donation","Campaign","Amount","Method","Status","Receipt / correction","Date"].map(t=>
       <th key={t} scope="col" style={{textAlign:"left",padding:10,borderBottom:"1px solid var(--cg-border)"}}>{t}</th>)}</tr></thead>
      <tbody>{data?.items.map(x=><tr key={x.donationNumber}>
       <td style={{padding:10}}>{x.donationNumber}
@@ -213,6 +213,10 @@ export function DonationAdminWorkspace({canView,canRecord,canReview,canIssue,can
        <td style={{padding:10}}>{x.campaignTitle??"General donation"}</td>
       <td style={{padding:10}}>{rupees(x.amountMinor)}</td><td style={{padding:10}}>{x.method??"Not selected"}</td>
       <td style={{padding:10}}>{x.status.replaceAll("_"," ").toLowerCase()}</td>
+      <td style={{padding:10}}>{x.receiptStatus.replaceAll("_"," ").toLowerCase()}
+       {x.latestCorrectionNumber&&<p>Latest correction: {x.latestCorrectionNumber}</p>}
+       {x.refundMinor!=="0"&&!x.latestCorrectionNumber&&<p>Refund posted; correction pending or unavailable.</p>}
+      </td>
       <td style={{padding:10}}>{new Date(x.createdAt).toLocaleDateString("en-IN")}</td>
      </tr>)}</tbody></table></div>}
    {donor&&canExport&&<aside aria-label="Protected donor details" style={panel}>

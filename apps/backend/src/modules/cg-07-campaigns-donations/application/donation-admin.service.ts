@@ -94,7 +94,7 @@ export class DonationAdminService{
   const rows=await this.db.query<{
    donationNumber:string;amountMinor:string;currency:string;status:string;
    method:string|null;campaignTitle:string|null;voucher:string|null;createdAt:Date;
-   donationRef:string;refundMinor:string;receiptStatus:string}>(
+   donationRef:string;refundMinor:string;receiptStatus:string;latestCorrectionNumber:string|null}>(
     "SELECT d.id AS \"donationRef\",d.donation_number AS \"donationNumber\",d.amount_minor::text AS \"amountMinor\","+
     "d.currency,d.source_status AS status,m.method,c.title AS \"campaignTitle\","+
     "e.voucher_reference AS voucher,d.created_at AS \"createdAt\","+
@@ -104,7 +104,11 @@ export class DonationAdminService{
     "AND r.status='FINANCE_REVERSED' AND j.status='POSTED' AND j.source_ref=r.id),0)::text "+
     "AS \"refundMinor\",coalesce((SELECT rec.status FROM cg19_donation_receipt_document rec "+
     "WHERE rec.root_realm_id=d.root_realm_id AND rec.donation_id=d.id),'NOT_ISSUED') "+
-    "AS \"receiptStatus\" "+
+    "AS \"receiptStatus\","+
+    "(SELECT corr.correction_number FROM cg19_donation_receipt_correction corr "+
+    "WHERE corr.root_realm_id=d.root_realm_id AND corr.donation_id=d.id "+
+    "AND corr.status='ISSUED' ORDER BY corr.issued_at DESC,corr.id DESC LIMIT 1) "+
+    "AS \"latestCorrectionNumber\" "+
     "FROM donation d LEFT JOIN campaign c ON c.root_realm_id=d.root_realm_id AND c.id=d.campaign_id "+
     "LEFT JOIN donation_manual_evidence e ON e.root_realm_id=d.root_realm_id AND e.donation_id=d.id "+
     "LEFT JOIN LATERAL (SELECT a.method FROM donation_payment_attempt a WHERE a.root_realm_id=d.root_realm_id AND a.donation_id=d.id ORDER BY a.created_at DESC,a.id DESC LIMIT 1) m ON true "+
@@ -171,13 +175,16 @@ export class DonationAdminService{
    f.minMinor,f.maxMinor,f.from,f.to,f.campaign];
   const records=await this.db.query<{donation_number:string;amount_minor:string;
     currency:string;source_status:string;method:string|null;title:string|null;
-    receipt_number:string|null;created_on:string;refund_minor:string}>(`
+    receipt_number:string|null;correction_number:string|null;created_on:string;refund_minor:string}>(`
     SELECT d.donation_number,d.amount_minor::text,d.currency,d.source_status,m.method,
      c.title,r.receipt_number,d.created_at::date::text AS created_on,
       coalesce((SELECT sum(x.amount_minor) FROM donation_refund_request x
        JOIN journal j ON j.root_realm_id=x.root_realm_id AND j.id=x.reversal_journal_ref
        WHERE x.root_realm_id=d.root_realm_id AND x.donation_id=d.id
-        AND x.status='FINANCE_REVERSED' AND j.status='POSTED' AND j.source_ref=x.id),0)::text AS refund_minor
+        AND x.status='FINANCE_REVERSED' AND j.status='POSTED' AND j.source_ref=x.id),0)::text AS refund_minor,
+    (SELECT corr.correction_number FROM cg19_donation_receipt_correction corr
+     WHERE corr.root_realm_id=d.root_realm_id AND corr.donation_id=d.id AND corr.status='ISSUED'
+     ORDER BY corr.issued_at DESC,corr.id DESC LIMIT 1) AS correction_number
     FROM donation d LEFT JOIN campaign c ON c.root_realm_id=d.root_realm_id AND c.id=d.campaign_id
     LEFT JOIN LATERAL (SELECT a.method FROM donation_payment_attempt a
       WHERE a.root_realm_id=d.root_realm_id AND a.donation_id=d.id
@@ -188,7 +195,7 @@ export class DonationAdminService{
   if(records.rows.length>500)throw new BadRequestException(
    "Narrow the dates or campaign to export up to 500 records per report.");
   const lines=[["Donation number","Campaign","Requested amount INR","Verified gross INR",
-   "Verified refund INR","Verified net INR","Status","Method","Date","Issued receipt"].map(csvCell).join(",")];
+   "Verified refund INR","Verified net INR","Status","Method","Date","Original receipt","Latest correction"].map(csvCell).join(",")];
   for(const r of records.rows){
    const money=(v:bigint)=>(v/100n).toString()+"."+(v%100n).toString().padStart(2,"0");
    const requested=BigInt(r.amount_minor),posted=r.source_status==="RECEIVED_POSTED";
@@ -196,7 +203,7 @@ export class DonationAdminService{
    lines.push([r.donation_number,r.title??"General donation",money(requested),
     money(gross),money(refunded),money(gross-refunded),
     r.source_status,r.method??"Not selected",r.created_on,
-    r.receipt_number??""].map(csvCell).join(","));
+    r.receipt_number??"",r.correction_number??""].map(csvCell).join(","));
   }
   return Buffer.from(lines.join("\r\n")+"\r\n","utf8");
  }

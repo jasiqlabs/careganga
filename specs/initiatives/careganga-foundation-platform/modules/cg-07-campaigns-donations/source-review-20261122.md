@@ -4,7 +4,7 @@
 
 **Current scope:** US-001 six-step campaigns/CG03+CG18 is source-authored, awaiting final review; US-002 cash and Razorpay donor/finance Web/native is partially source-authored but bank/NEFT/cheque needs original evidence; US-003 CG19 neutral PDF/CG09 physical-cash refund and actual net source is partially source-authored but provider refund, corrected documents, donor history, export and notifications remain.
 
-**Disposition totals (23 November checkpoint):** 31 source surfaces present but not fully reviewed; 7 known requirements incomplete; 11 require independent/runtime evidence; 11 prior source gaps fixed/reviewed with runtime verification pending. **0/60 original cases are certified RUNTIME_PASS; 0/3 stories certified SOURCE_COMPLETE.** A single row may require more than a single test.
+**Disposition totals (23 November checkpoint):** 31 source surfaces present but not fully reviewed; 6 known requirements incomplete; 11 require independent/runtime evidence; 12 prior source gaps fixed/reviewed with runtime verification pending. **0/60 original cases are certified RUNTIME_PASS; 0/3 stories certified SOURCE_COMPLETE.** A single row may require more than a single test.
 
 | Original QA ID | Source QA disposition | Current original-owner source | Open proof or implementation |
 |---|---|---|---|
@@ -52,7 +52,7 @@
 | US-003-QA02 | SOURCE_FIX_REVIEWED_RUNTIME_PENDING | CG19 donor-own private PDF throttled by CG07 origin/signed-proxy limiter, encrypted source, exact token expiry+PDF hash; DonationAdminService.donorDetail/exportCsv role+branch guards; refund role+branch scope | Source safeguards reviewed and regression authored; independent security reviewer, guessed-token penetration and cross-root live tests still REQUIRED and NOT_RUN |
 | US-003-QA03 | SOURCE_PRESENT_NEEDS_REVIEW | 3309/3310 SQL | Source located; independent file:function and scenario review not signed |
 | US-003-QA04 | SOURCE_GAP | donation-receipt-document.service.ts | Verified provider refund and lawful 80G proof unavailable; neutral fail-closed |
-| US-003-QA05 | SOURCE_GAP | donation-admin.service.ts | Monthly trend/export/receipt correction missing |
+| US-003-QA05 | SOURCE_FIX_REVIEWED_RUNTIME_PENDING | donation-admin.service.ts list/monthlyTrend/exportCsv; CG07 campaign-public-source.ts; CG19 original and correction PDF; Admin A16/A18; donor Web/Android | Verified CG09 journal-posted gross/refund/net drives monthly trend/public campaign and protected CSV; original issued receipt and latest verified correction displayed separately. Source reviewed, contract tests authored; actual PostgreSQL/CSV/visual/native and independent reviewer NOT_RUN |
 | US-003-QA06 | RUNTIME_NOT_VERIFIED | A16/A18 screenshot audit | Requires actual DB/provider/browser/device/qualified review evidence |
 | US-003-QA07 | SOURCE_PRESENT_NEEDS_REVIEW | 3309 DB guard | Source located; independent file:function and scenario review not signed |
 | US-003-QA08 | SOURCE_FIX_REVIEWED_RUNTIME_PENDING | CG07 donation-refund.service.ts; CG19 3312 protected correction; A18 Admin; donor Web/native | Only CG09-posted partial/full refund produces a separate immutable correction linked to original CG19 issued receipt. Source reviewed, regression tests authored; real PostgreSQL/CG19 storage, browser/device and independent reviewer NOT_RUN |

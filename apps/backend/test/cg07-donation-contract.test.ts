@@ -397,3 +397,26 @@ test("US003-QA08/14: true posted refund gets separate immutable CG19 correction 
  assert.match(proxy,/correction-download/);
  assert.match(staff,/\["issue","correction"\]/);
 });
+
+test("US003-QA05: original verified gross/net, correction numbers and scoped report match donor channels",()=>{
+ const backend=source("application/donation-admin.service.ts");
+ const cg18=source("application/campaign-public-source.ts");
+ const cg19=root("apps/backend/src/modules/cg-19-documents-notifications/application/donation-receipt-document.service.ts");
+ const ui=root("apps/web/src/features/campaigns/donation-admin-workspace.tsx");
+ const web=root("apps/web/src/features/campaigns/public-donation-form.tsx");
+ const native=root("apps/android-public/src/features/cms/native-public-donation.tsx");
+ assert.match(backend,/monthlyTrend:trends\.rows/);
+ assert.match(backend,/j\.posting_date>=date_trunc/);
+ assert.match(backend,/j\.source_ref=r\.id/);
+ assert.match(backend,/latestCorrectionNumber/);
+ assert.match(backend,/AS correction_number/);
+ assert.match(backend,/Original receipt","Latest correction/);
+ assert.match(backend,/financeReportScope/);
+ assert.match(backend,/documents\.files\.view/);
+ assert.match(cg18,/donation_finance_effect/);
+ assert.match(cg18,/donation_refund_request/);
+ assert.match(cg19,/downloadCorrection/);
+ assert.match(ui,/Latest correction:/);
+ assert.match(web,/View issued refund corrections/);
+ assert.match(native,/View my issued refund corrections/);
+});
