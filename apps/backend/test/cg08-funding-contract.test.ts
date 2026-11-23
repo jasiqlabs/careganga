@@ -63,3 +63,17 @@ test("US002-QA05/06/18: B07/B08 Web uses original four steps, not synthetic avai
  assert.ok(s.includes('This is a request, not an approved commitment or received cash.'));
  assert.ok(s.includes('disabled={busy||!!pending||!canManage||!!selected&&selected.status!=="DRAFT"}'));
 });
+
+
+test("US002-QA02/04/06/17/18: Internal Android separates list failure and invalidates private details on pagination",()=>{
+ const s=readFileSync(join(process.cwd(),"../android-internal/src/features/csr/native-csr-funding.tsx"),"utf8");
+ assert.ok(s.includes('[listError,setListError]=useState("")'));
+ assert.ok(s.includes('setPage(v);setListError("")'));
+ assert.ok(s.includes('setPage({items:[],hasMore:false});setListError('));
+ assert.ok(s.includes('listError?null:'));
+ assert.ok(s.includes('const seq=++generation.current'));
+ assert.ok(s.includes('if(seq!==generation.current)return;'));
+ assert.ok(s.includes('()=>{clearDetail();setOffset(x=>x+25);'));
+ assert.ok(s.includes('!!selected&&selected.status!=="DRAFT"'));
+ assert.ok(s.includes('Save outcome unknown. Retry the same original funding request only.'));
+});

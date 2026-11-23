@@ -45,7 +45,7 @@ export function NativeCsrFunding({token,canManage,onExpired}:{
  const [page,setPage]=useState<{items:Proposal[];hasMore:boolean}>({items:[],hasMore:false});
  const [scope,setScope]=useState("ALL"),[status,setStatus]=useState("ALL"),
   [offset,setOffset]=useState(0),[epoch,setEpoch]=useState(0);
- const [loading,setLoading]=useState(true),[error,setError]=useState(""),[notice,setNotice]=useState("");
+ const [loading,setLoading]=useState(true),[listError,setListError]=useState(""),[error,setError]=useState(""),[notice,setNotice]=useState("");
  const [editing,setEditing]=useState(false),[step,setStep]=useState(0),
   [selected,setSelected]=useState<Proposal|null>(null),[draft,setDraft]=useState<Draft>(empty);
  const [busy,setBusy]=useState(false),[pending,setPending]=useState<Command|null>(null);
@@ -61,14 +61,14 @@ export function NativeCsrFunding({token,canManage,onExpired}:{
   return()=>{live=false;};
  },[token,epoch,onExpired]);
  useEffect(()=>{
-  let live=true;setLoading(true);
+  let live=true;setLoading(true);setListError("");
   const query=new URLSearchParams({offset:String(offset)});
   if(scope!=="ALL")query.set("branchRef",scope);
   if(status!=="ALL")query.set("status",status);
   void api<{items:Proposal[];hasMore:boolean}>(token,"?"+query).then(v=>{
-   if(live){setPage(v);setError("");}
+   if(live){setPage(v);setListError("");}
   }).catch(e=>{
-   if(live){setPage({items:[],hasMore:false});setError(e instanceof Error?e.message:"Funding list unavailable.");}
+   if(live){setPage({items:[],hasMore:false});setListError(e instanceof Error?e.message:"Funding list unavailable.");}
    if(e&&typeof e==="object"&&"status" in e&&e.status===401)onExpired();
   }).finally(()=>{if(live)setLoading(false);});
   return()=>{live=false;};
@@ -154,6 +154,7 @@ export function NativeCsrFunding({token,canManage,onExpired}:{
   <Text style={styles.note}>B07–B08 original funding requests. No pledge is received,
    allocated or utilized money until original CG03/CG09 validation.</Text>
   {!!error&&<Text accessibilityRole="alert" style={styles.error}>{error}</Text>}
+  {!!listError&&<Text accessibilityRole="alert" style={styles.error}>{listError}</Text>}
   {!!notice&&<Text style={styles.success}>{notice}</Text>}
   <View style={styles.panel}>
    <Text style={styles.heading}>Funding requests</Text>
@@ -177,7 +178,7 @@ export function NativeCsrFunding({token,canManage,onExpired}:{
      clearDetail();setDraft(empty(options.foundation?"":options.branches[0]?.value??""));
      setEditing(true);setError("");},!options)}
    </View>
-   {loading?<ActivityIndicator accessibilityLabel="Checking original funding"/>:
+   {loading?<ActivityIndicator accessibilityLabel="Checking original funding"/>:listError?null:
     page.items.length===0?<Text style={styles.note}>No verified source drafts for this filter.</Text>:
     page.items.map(item=><View key={item.ref} style={styles.record}>
      <Text style={styles.heading}>{item.purpose}</Text>
@@ -187,9 +188,9 @@ export function NativeCsrFunding({token,canManage,onExpired}:{
      {chooseItem(item.ref,"View funding request","",()=>void choose(item))}
     </View>)}
    <View style={styles.actions}>
-    {chooseItem("previous","Previous","",()=>setOffset(x=>Math.max(0,x-25)),offset===0)}
+    {chooseItem("previous","Previous","",()=>{clearDetail();setOffset(x=>Math.max(0,x-25));},offset===0)}
     <Text style={styles.note}>Page {1+Math.floor(offset/25)}</Text>
-    {chooseItem("next","Next","",()=>setOffset(x=>x+25),!page.hasMore)}
+    {chooseItem("next","Next","",()=>{clearDetail();setOffset(x=>x+25);},!page.hasMore)}
    </View>
   </View>
   {editing&&<View style={styles.panel}>
@@ -233,9 +234,9 @@ export function NativeCsrFunding({token,canManage,onExpired}:{
     <Text style={styles.label}>Current project (optional)</Text>
     <ScrollView horizontal contentContainerStyle={styles.horizontal}>
      {chooseItem("","General purpose — no project",draft.projectRef,v=>
-      setDraft(z=>({...z,projectRef:v})))}
+      setDraft(z=>({...z,projectRef:v})),!!selected&&selected.status!=="DRAFT")}
      {projects.map(x=>chooseItem(x.value,x.label,draft.projectRef,v=>
-      setDraft(z=>({...z,projectRef:v}))))}
+      setDraft(z=>({...z,projectRef:v})),!!selected&&selected.status!=="DRAFT"))}
     </ScrollView>
     {draft.fundType==="MIXED"&&field("CSR percentage (1–99)","csrPercent")}
     <Text style={styles.note}>CSR: {draft.csrPercent}% · Foundation: {100-draft.csrPercent}%.
