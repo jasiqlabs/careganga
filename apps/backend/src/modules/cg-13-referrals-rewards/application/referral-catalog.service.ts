@@ -451,14 +451,25 @@ export class ReferralCatalogService{
   return this.run(bearer,"rewards.catalog.view",async(tx,a)=>{
    await this.root(tx,a);
    await this.program(tx,a,programId);
+   const scope=await this.inventory.rewardStoreScope(tx,a);
    const q=await tx.query(
-    "SELECT id AS ref,programme_id AS \"programmeRef\",product_type AS type,category,name,"+
-    "description,points_price::text AS \"pointsPrice\",eligible_audience AS \"eligibleAudience\","+
-    "status,highlighted,public_visible AS \"publicVisible\",approved_image_url AS \"imageUrl\","+
-    "cg12_item_ref AS \"itemRef\",cg12_location_ref AS \"storeRef\",version "+
-    "FROM reward_product WHERE root_realm_id=$1 AND programme_id=$2 "+
-    "ORDER BY created_at DESC,id DESC LIMIT $3 OFFSET $4",
-    [a.realmId,programId,CATALOG_PAGE_SIZE+1,(page-1)*CATALOG_PAGE_SIZE]);
+    "SELECT p.id AS ref,p.programme_id AS \"programmeRef\",p.product_type AS type,p.category,p.name,"+
+    "p.description,p.points_price::text AS \"pointsPrice\",p.eligible_audience AS \"eligibleAudience\","+
+    "p.status,p.highlighted,p.public_visible AS \"publicVisible\",p.approved_image_url AS \"imageUrl\","+
+    "p.cg12_item_ref AS \"itemRef\",p.cg12_location_ref AS \"storeRef\",p.version "+
+    "FROM reward_product p LEFT JOIN inventory_location loc ON "+
+    "loc.root_realm_id=p.root_realm_id AND loc.id=p.cg12_location_ref "+
+    "LEFT JOIN branch branch ON branch.root_realm_id=loc.root_realm_id "+
+    "AND branch.id=loc.branch_ref "+
+    "WHERE p.root_realm_id=$1 AND p.programme_id=$2 AND "+
+    "(p.product_type='DIGITAL' OR "+
+    "(loc.status='ACTIVE' AND "+
+    "(loc.scope_kind='FOUNDATION' AND $5::boolean OR "+
+    "loc.scope_kind='BRANCH' AND branch.status='ACTIVE' AND "+
+    "($5::boolean OR branch.id=ANY($6::uuid[]))))) "+
+    "ORDER BY p.created_at DESC,p.id DESC LIMIT $3 OFFSET $4",
+    [a.realmId,programId,CATALOG_PAGE_SIZE+1,(page-1)*CATALOG_PAGE_SIZE,
+     scope.full,scope.branches]);
    return {items:q.rows.slice(0,CATALOG_PAGE_SIZE).map(x=>({
     ...x,imageUrl:safePublicRewardImage((x as {imageUrl:unknown}).imageUrl)})),
     hasMore:q.rows.length>CATALOG_PAGE_SIZE,page};
