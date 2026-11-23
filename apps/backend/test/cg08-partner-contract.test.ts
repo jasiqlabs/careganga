@@ -383,3 +383,19 @@ test("US001-QA19: CG18 new partner CMS migration preserves every original preexi
  assert.ok(newKinds.has("PARTNERS"));
  assert.ok(newKinds.has("POLICY"),"Historical footer legal policies must remain functional");
 });
+
+
+test("US001-QA05/06/12/17/18: original B03-B05 status tiles use current CG02 scoped source counts",()=>{
+ const svc=readFileSync(join(process.cwd(),"src/modules/cg-08-csr-funding/application/csr-partners.service.ts"),"utf8");
+ const web=readFileSync(join(process.cwd(),"../web/src/features/csr/csr-partners-workspace.tsx"),"utf8");
+ const native=readFileSync(join(process.cwd(),"../android-internal/src/features/csr/native-csr-partners.tsx"),"utf8");
+ const list=svc.slice(svc.indexOf("async list("),svc.indexOf("async detail("));
+ assert.ok(list.includes("SELECT p.status,count(*)::text AS count "));
+ assert.ok(list.includes("p.root_realm_id=$1 AND ($2::boolean OR p.branch_ref=ANY($3::uuid[]))"));
+ assert.ok(list.includes('grouped.rows.map(x=>[x.status,Number(x.count)])'));
+ assert.ok(list.includes("pending:statusCounts.SUBMITTED??0"));
+ assert.ok(web.includes('aria-label="Current CSR status totals"'));
+ assert.ok(native.includes('accessibilityLabel="CSR status counts for current permitted branches"'));
+ assert.ok(web.includes('closeDetail();setOffset(0);setSearch('));
+ assert.ok(native.includes('closeDetail();setOffset(0);setQuery('));
+});

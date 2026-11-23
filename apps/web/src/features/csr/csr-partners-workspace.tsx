@@ -6,7 +6,7 @@ type Choice={value:string;label:string};
 type Options={foundation:boolean;branches:Choice[]};
 type Partner={ref:string;branchRef:string|null;branch:string|null;legalName:string;registrationReference:string|null;
  contactName:string;contactEmail:string|null;contactMobile:string|null;supportSummary:string;status:string;version:number;updatedAt:string};
-type Page={items:Partner[];hasMore:boolean};
+type Page={items:Partner[];hasMore:boolean;counts?:{all:number;pending:number;approved:number;rejected:number}};
 const reviewTabs=[{value:"ALL",label:"All Partners"},{value:"SUBMITTED",label:"Pending Review"},
  {value:"APPROVED",label:"Approved Partners"},{value:"REJECTED",label:"Rejected"}] as const;
 type ReviewStatus=(typeof reviewTabs)[number]["value"];
@@ -103,12 +103,24 @@ export function CsrPartnersWorkspace({canManage,canReadAgreement,canUploadAgreem
   {message&&<p role="status" style={{color:"#166534"}}>{message}</p>}
   {error&&<p role="alert" style={{color:"#b91c1c"}}>{error}</p>}
   <section style={panel} aria-label="CSR partner directory">
+   {data.counts&&!listError&&<div aria-label="Current CSR status totals" style={{
+    display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(150px,1fr))",
+    gap:12,marginBottom:18}}>
+    {([["all","All partners"],["pending","Pending review"],
+      ["approved","Approved partners"],["rejected","Rejected"]] as const)
+     .map(([status,label])=><div key={status} style={{border:"1px solid var(--cg-border)",
+      borderRadius:12,padding:"14px 16px",background:"var(--cg-surface,#fff)"}}>
+      <strong style={{fontSize:23,display:"block",fontVariantNumeric:"tabular-nums"}}>
+       {data.counts?.[status]??0}</strong>
+      <span style={{fontSize:13,color:"var(--cg-muted)"}}>{label}</span>
+     </div>)}
+   </div>}
    <div role="group" aria-label="CSR partner review status" style={{display:"flex",gap:8,flexWrap:"wrap",marginBottom:15}}>
     {reviewTabs.map(tab=><button key={tab.value} type="button" style={{...button,background:statusFilter===tab.value?"var(--cg-accent)":"var(--cg-surface,#fff)",color:statusFilter===tab.value?"#fff":"inherit"}}
      aria-pressed={statusFilter===tab.value} disabled={!!pending} onClick={()=>{closeDetail();setOffset(0);setStatusFilter(tab.value);}}>{tab.label}</button>)}
    </div>
    <div style={{display:"flex",gap:12,alignItems:"end",flexWrap:"wrap",justifyContent:"space-between"}}>
-    <label style={{...field,flex:"1 1 190px"}}>Search organizations<input style={control} value={search} maxLength={80} placeholder="Registered organization" onChange={e=>{setOffset(0);setSearch(e.target.value);}}/></label>
+    <label style={{...field,flex:"1 1 190px"}}>Search organizations<input style={control} value={search} maxLength={80} placeholder="Registered organization" onChange={e=>{closeDetail();setOffset(0);setSearch(e.target.value);}}/></label>
     <label style={{...field,flex:"1 1 180px"}}>Branch
      <select style={control} value={branchFilter} disabled={!!pending} onChange={e=>{closeDetail();setOffset(0);setBranchFilter(e.target.value);}}>
       <option value="ALL">All permitted branches</option>
@@ -126,7 +138,14 @@ export function CsrPartnersWorkspace({canManage,canReadAgreement,canUploadAgreem
      <tbody>{data.items.map(p=><tr key={p.ref}>
       <td style={{padding:10,borderBottom:"1px solid var(--cg-border)"}}>{p.legalName}</td>
       <td style={{padding:10,borderBottom:"1px solid var(--cg-border)"}}>{p.branch??"Foundation"}</td>
-      <td style={{padding:10,borderBottom:"1px solid var(--cg-border)"}}>{p.status}</td>
+      <td style={{padding:10,borderBottom:"1px solid var(--cg-border)"}}>
+       <span style={{display:"inline-flex",borderRadius:999,
+        border:"1px solid var(--cg-border)",padding:"5px 10px",
+        fontWeight:600,fontSize:12,background:"var(--cg-surface,#fff)"}}>
+        {p.status==="SUBMITTED"?"Pending review":p.status==="APPROVED"?
+         "Approved":p.status==="REJECTED"?"Rejected":p.status==="RETURNED"?
+         "Returned for changes":p.status==="INACTIVE"?"Inactive":"Draft"}
+       </span></td>
       <td style={{padding:10,borderBottom:"1px solid var(--cg-border)"}}>{new Date(p.updatedAt).toLocaleDateString("en-IN")}</td>
       <td style={{padding:10,borderBottom:"1px solid var(--cg-border)"}}><button style={button} disabled={!!pending} type="button" onClick={()=>void choose(p)}>{canManage&&["DRAFT","RETURNED"].includes(p.status)?"Edit":"View"}</button></td>
      </tr>)}</tbody>

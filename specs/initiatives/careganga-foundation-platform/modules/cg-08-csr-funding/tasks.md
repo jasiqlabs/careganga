@@ -439,3 +439,8 @@ Targeted CG18 due-worker source review identified that `CmsEditorialService.publ
 ### Independent database review after `main` sync — CG18 policy page regression fixed
 
 **CRITICAL source gap CG08-US001-DB-01:** 3405 new CMS PARTNERS migration had replaced `cms_page_kind_check` with a list missing the original `POLICY` kind introduced in 0940. That could reject an existing user-authored legal policy page during migration or disable future `/policies/*` editor use. Repaired 3405 to retain all original kinds including POLICY and added a targeted original QA19 source regression against 0940's allowed set. This is a greenfield source fix; no BWC workaround, no new CMS master. Independent source review found/fixed; PostgreSQL execution still NOT_RUN.
+
+
+### Independent UI/UX review — original Admin B03–B06 real branch-scoped status tiles
+
+Compared the actual CG08 Web/Internal Android directory code with `docs/research/CAREGANGA-ADMIN-PANEL-SCREENSHOT-UIUX-AUDIT.md` B03/B04/B05 original client requirements. Missing KPI tiles and raw uppercase SQL state labels were real fidelity gaps. Added actual `pending/approved/rejected/all` aggregate counts through existing CG08 list query with **the same root + current CG02 branch + optional scoped branch + search** as partner list, explicitly ignoring only the selected status tab so tiles stay meaningful; no synthetic totals, no new table or private contacts in list. Both clients show accessible compact tiles and human-readable status text. Search now also invalidates in-flight private details. Original US001-QA05/06/12/17/18 source contract authored; original screenshots were described in audit MD, but binary screenshot/pixel comparison and Android device not executed, so UI fidelity remains NOT_VERIFIED.

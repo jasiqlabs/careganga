@@ -302,7 +302,19 @@ export class CsrPartnersService{
     "AND ($7::text IS NULL OR p.status=$7) "+
     "ORDER BY p.updated_at DESC,p.id DESC LIMIT 26 OFFSET $8",
     [a.realmId,scope.all,scope.branches.map(b=>b.value),branch===undefined,branch??null,q,s,offset]);
-   return {items:rows.rows.slice(0,25),hasMore:rows.rows.length>25};
+   // B03–B05 screenshot status tiles must use real current rows in exactly
+   // the same current CG02 Foundation/branch/search scope as the directory.
+   const grouped=await tx.query<{status:string;count:string}>(
+    "SELECT p.status,count(*)::text AS count "+joins+
+    " WHERE p.root_realm_id=$1 AND ($2::boolean OR p.branch_ref=ANY($3::uuid[])) "+
+    "AND ($4::boolean OR p.branch_ref IS NOT DISTINCT FROM $5::uuid) "+
+    "AND ($6='' OR strpos(p.legal_name_norm,$6)>0) GROUP BY p.status",
+    [a.realmId,scope.all,scope.branches.map(b=>b.value),branch===undefined,branch??null,q]);
+   const statusCounts=Object.fromEntries(grouped.rows.map(x=>[x.status,Number(x.count)]));
+   const counts={all:Object.values(statusCounts).reduce((sum,v)=>sum+v,0),
+    pending:statusCounts.SUBMITTED??0,approved:statusCounts.APPROVED??0,
+    rejected:statusCounts.REJECTED??0};
+   return {items:rows.rows.slice(0,25),hasMore:rows.rows.length>25,counts};
   },true);
  }
  async detail(token:string,key:string){

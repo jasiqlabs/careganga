@@ -9,7 +9,7 @@ type Option={value:string;label:string};
 type Options={foundation:boolean;branches:Option[]};
 type Partner={ref:string;branchRef:string|null;branch:string|null;legalName:string;registrationReference:string|null;
  contactName:string;contactEmail:string|null;contactMobile:string|null;supportSummary:string;status:string;version:number};
-type Page={items:Partner[];hasMore:boolean};
+type Page={items:Partner[];hasMore:boolean;counts?:{all:number;pending:number;approved:number;rejected:number}};
 const reviewTabs=[{value:"ALL",label:"All Partners"},{value:"SUBMITTED",label:"Pending Review"},
  {value:"APPROVED",label:"Approved Partners"},{value:"REJECTED",label:"Rejected"}] as const;
 type ReviewStatus=(typeof reviewTabs)[number]["value"];
@@ -120,12 +120,22 @@ export function NativeCsrPartners({token,canManage,canReadAgreement,canUploadAgr
   {!!error&&<Text accessibilityRole="alert" style={styles.error}>{error}</Text>}
   {!!notice&&<Text style={styles.notice}>{notice}</Text>}
   <View style={styles.panel}>
+   {!!page.counts&&!listError&&<View accessibilityLabel="CSR status counts for current permitted branches"
+    style={{flexDirection:"row",flexWrap:"wrap",gap:8}}>
+    {([["all","All"],["pending","Pending"],["approved","Approved"],
+      ["rejected","Rejected"]] as const).map(([key,label])=>
+     <View key={key} style={{minWidth:92,padding:12,borderRadius:9,
+      borderWidth:1,borderColor:"#CBD5E1",backgroundColor:"#F8FAFC"}}>
+      <Text style={{fontSize:20,fontWeight:"700",color:"#1E293B"}}>{page.counts?.[key]??0}</Text>
+      <Text style={styles.description}>{label}</Text>
+     </View>)}
+   </View>}
    <Text style={styles.label}>CSR review status</Text>
    <ScrollView horizontal contentContainerStyle={styles.choices}>
     {reviewTabs.map(tab=>choice(tab.value,tab.label,statusFilter,v=>{closeDetail();setOffset(0);setStatusFilter(v as ReviewStatus);},!!pending))}
    </ScrollView>
    <Text style={styles.label}>Search organization</Text>
-   <TextInput style={styles.input} value={query} placeholder="Organization name" onChangeText={v=>{setOffset(0);setQuery(v);}} autoCapitalize="none"/>
+   <TextInput style={styles.input} value={query} placeholder="Organization name" onChangeText={v=>{closeDetail();setOffset(0);setQuery(v);}} autoCapitalize="none"/>
    <Text style={styles.label}>Current permitted branch</Text>
    <ScrollView horizontal contentContainerStyle={styles.choices}>
     {choice("ALL","All assigned",filter,v=>{closeDetail();setOffset(0);setFilter(v);},!!pending)}
@@ -140,7 +150,10 @@ export function NativeCsrPartners({token,canManage,canReadAgreement,canUploadAgr
    {loading?<ActivityIndicator/>:listError?null:page.items.length===0?<Text style={styles.description}>No CSR partners match the current status, search and permitted branches.</Text>:
     page.items.map(p=><View key={p.ref} style={styles.record}>
      <Text style={styles.recordTitle}>{p.legalName}</Text>
-     <Text style={styles.description}>{p.branch??"Foundation"} · {p.status}</Text>
+     <Text style={styles.description}>{p.branch??"Foundation"} · {
+      p.status==="SUBMITTED"?"Pending review":p.status==="APPROVED"?"Approved":
+      p.status==="RETURNED"?"Returned for correction":
+      p.status==="REJECTED"?"Rejected":p.status==="INACTIVE"?"Inactive":"Draft"}</Text>
      <Pressable accessibilityRole="button" style={styles.btn} disabled={!!pending} onPress={()=>void loadPartner(p)}><Text>{canManage&&["DRAFT","RETURNED"].includes(p.status)?"Edit draft":"View details"}</Text></Pressable>
     </View>)}
    <View style={styles.actions}>
