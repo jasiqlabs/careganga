@@ -2,6 +2,7 @@ import React,{useCallback,useEffect,useRef,useState} from "react";
 import {AppState,Image,Pressable,ScrollView,StyleSheet,Text,View} from "react-native";
 import {identityRequest} from "../identity-access/http-client";
 import {careGangaTheme as t} from "../../../../../packages/design-tokens/src/index";
+import {NativeRewardRequests} from "./native-reward-requests";
 
 type Programme={ref:string;name:string;status:"ACTIVE"|"INACTIVE"};
 type Reward={ref:string;programmeRef:string;type:"DIGITAL"|"PHYSICAL";name:string;
@@ -12,8 +13,10 @@ type Stock={itemName:string;availableQuantity:string;onHandQuantity:string;
  reservedQuantity:string;stockStatus:string};
 type Paged<T>={items:T[];hasMore:boolean;page:number};
 
-export function NativeRewardCatalogue({token,onExpired,canViewStock}:{
- token:string;onExpired:()=>void;canViewStock:boolean}){
+export function NativeRewardCatalogue({token,onExpired,canViewStock,
+ canIssueStock,canViewMembers,canViewVolunteers}:{
+ token:string;onExpired:()=>void;canViewStock:boolean;canIssueStock:boolean;
+ canViewMembers:boolean;canViewVolunteers:boolean}){
  const [programmes,setProgrammes]=useState<Programme[]>([]),[chosen,setChosen]=useState("");
  const [items,setItems]=useState<Reward[]>([]);
  const [nextProgramme,setNextProgramme]=useState(2),[nextProduct,setNextProduct]=useState(2);
@@ -141,6 +144,10 @@ export function NativeRewardCatalogue({token,onExpired,canViewStock}:{
    {!items.length&&!loading&&!error&&<Text>No products recorded for this programme.</Text>}
    {moreProducts&&btn("Load more products",()=>void loadProducts(chosen,nextProduct,true),loading)}
   </View>}
+  {canIssueStock&&!!chosen&&<NativeRewardRequests token={token} onExpired={onExpired}
+   programme={programmes.find(p=>p.ref===chosen)??null}
+   canIssueStock={canIssueStock} canViewMembers={canViewMembers}
+   canViewVolunteers={canViewVolunteers}/>}
  </ScrollView>;
 }
 const s=StyleSheet.create({
