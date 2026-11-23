@@ -307,6 +307,7 @@ export function CsrFundingWorkspace({canManage,canReadAgreement,canUploadAgreeme
       value={draft.csrPercent} onChange={e=>set("csrPercent",Number(e.target.value))}/>
     </label>
     <p>Requested split: <strong>{draft.csrPercent}% CSR / {100-draft.csrPercent}% Foundation.</strong> The request does not make either share spendable cash.</p>
+    {selected&&<CsrFundingProjectContext proposalRef={selected.ref} mode="PROJECT"/>}
    </div></section>
    <section aria-label="3. Budget Details & agreement terms" style={{marginBottom:16}}>
     <h4 style={{margin:"0 0 12px"}}>3. Budget Details & agreement terms</h4>
@@ -344,7 +345,10 @@ export function CsrFundingWorkspace({canManage,canReadAgreement,canUploadAgreeme
      {busy?"Saving…":"Save funding draft"}</button>}
    </div>
   </div>}
-  {editing&&selected&&<div style={box}><CsrFundingProjectContext proposalRef={selected.ref}/></div>}
+  {editing&&<section aria-label="4. Team & Members" style={box}>
+   {selected?<CsrFundingProjectContext proposalRef={selected.ref} mode="TEAM"/>:
+    <p>Save the funding draft to view its original CG05 project team.</p>}
+  </section>}
   {editing&&<section aria-label="5. Documents & Agreement" style={box}>
    <h4>5. Documents & Agreement</h4>
    {!selected&&<p>Save the funding draft before attaching a private agreement.</p>}
