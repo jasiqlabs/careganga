@@ -58,7 +58,7 @@ CREATE TABLE redemption_event (
  root_realm_id uuid NOT NULL,
  id uuid NOT NULL DEFAULT gen_random_uuid(),
  redemption_id uuid NOT NULL,
- event_kind text NOT NULL CHECK(event_kind IN('REQUESTED','CANCELLED','RECOGNIZED')),
+ event_kind text NOT NULL CHECK(event_kind IN('REQUESTED','CANCELLED','RECOGNIZED','HANDED_OVER')),
  original_points_event_id uuid NOT NULL,
  source_key uuid NOT NULL,
  recorded_at timestamptz NOT NULL DEFAULT now(),
@@ -113,6 +113,16 @@ BEGIN
        WHERE h.root_realm_id=NEW.root_realm_id AND h.redemption_id=NEW.id
         AND h.recipient_account_ref=NEW.recipient_account_ref
         AND h.state='RELEASED')))
+     OR
+     (OLD.state='ISSUED_AWAITING_HANDOVER' AND NEW.state='FULFILLED'
+      AND NEW.product_type='PHYSICAL'
+      AND NEW.cancelled_at IS NULL AND NEW.fulfilled_at IS NOT NULL
+      AND EXISTS(
+       SELECT 1 FROM cg19_reward_handover actual
+       WHERE actual.realm_id=NEW.root_realm_id
+        AND actual.redemption_id=NEW.id
+        AND actual.recipient_account_ref=NEW.recipient_account_ref
+        AND actual.source_key=NEW.request_key))
      OR
      (OLD.state='HELD' AND NEW.state='FULFILLED'
       AND NEW.product_type='DIGITAL'
@@ -202,16 +212,24 @@ BEGIN
   SELECT 1 FROM points_event e JOIN redemption_event receipt
    ON receipt.root_realm_id=e.root_realm_id
     AND receipt.original_points_event_id=e.id AND receipt.redemption_id=NEW.id
-  JOIN cg19_reward_recognition proof ON proof.realm_id=NEW.root_realm_id
+  LEFT JOIN cg19_reward_recognition proof ON proof.realm_id=NEW.root_realm_id
    AND proof.redemption_id=NEW.id
+  LEFT JOIN cg19_reward_handover actual ON actual.realm_id=NEW.root_realm_id
+   AND actual.redemption_id=NEW.id
   WHERE e.root_realm_id=NEW.root_realm_id AND e.redemption_id=NEW.id
    AND e.points_account_id=NEW.points_account_id
    AND e.event_kind='POINTS_SPENT' AND e.points_delta=NEW.points_cost
    AND e.policy_version=NEW.policy_version
    AND e.qualifying_source_digest=NEW.payload_digest
-   AND receipt.event_kind='RECOGNIZED'
-   AND proof.recipient_account_ref=NEW.recipient_account_ref
- ) THEN RAISE EXCEPTION 'Delivered recognition requires exact spent points and immutable CG19 proof'; END IF;
+   AND ((NEW.product_type='DIGITAL'
+    AND receipt.event_kind='RECOGNIZED'
+    AND proof.recipient_account_ref=NEW.recipient_account_ref
+    AND proof.source_key=NEW.request_key)
+    OR (NEW.product_type='PHYSICAL'
+    AND receipt.event_kind='HANDED_OVER'
+    AND actual.recipient_account_ref=NEW.recipient_account_ref
+    AND actual.source_key=NEW.request_key))
+ ) THEN RAISE EXCEPTION 'Delivered reward needs exact spent points and original CG19 recipient proof'; END IF;
  IF NEW.product_type='PHYSICAL' AND NOT EXISTS(
   SELECT 1 FROM stock_reward_hold h
   JOIN reward_product_revision p ON p.root_realm_id=NEW.root_realm_id
@@ -221,7 +239,8 @@ BEGIN
    AND h.item_id=p.cg12_item_ref AND h.location_id=p.cg12_location_ref
    AND ((NEW.state='HELD' AND h.state='HELD')
     OR (NEW.state='CANCELLED' AND h.state='RELEASED')
-    OR (NEW.state='ISSUED_AWAITING_HANDOVER' AND h.state='ISSUED'))
+    OR (NEW.state='ISSUED_AWAITING_HANDOVER' AND h.state='ISSUED')
+    OR (NEW.state='FULFILLED' AND h.state='ISSUED'))
  ) THEN RAISE EXCEPTION 'Original CG12 one-unit reservation source required'; END IF;
  IF NEW.state='CANCELLED' AND NOT EXISTS(
   SELECT 1 FROM points_event e JOIN redemption_event receipt
