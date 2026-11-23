@@ -155,12 +155,22 @@ export class MisReportSourceService{
   const scope=await this.branches.financeReportScope(token,"finance.reports.view");
   if(!scope.all&&scope.branchRefs.length===0)
    throw new ForbiddenException("No current branch is assigned for this report");
-  if(request.branchRef&&!scope.all&&!scope.branchRefs.includes(request.branchRef))
-   throw new ForbiddenException("The requested report branch is not assigned");
+  if(request.branchRef){
+   if(!scope.all&&!scope.branchRefs.includes(request.branchRef))
+    throw new ForbiddenException("The requested report branch is not assigned");
+   // Only that source branch entered the bytes, never the actor's unrelated
+   // B/C grants. A later B revoke must not revoke a still-authorized A report.
+   return {all:false,branchRefs:[request.branchRef]};
+  }
   return {all:scope.all,branchRefs:[...scope.branchRefs].sort()};
  }
- async originalScheduledFinanceScope(root:string,account:string){
+ async originalScheduledFinanceScope(root:string,account:string,request?:SafeReportRequest){
   const scope=await this.branches.scheduledFinanceScope(root,account);
+  if(request?.branchRef){
+   if(!scope.all&&!scope.branchRefs.includes(request.branchRef))
+    throw new ForbiddenException("Scheduled report branch is no longer assigned");
+   return {all:false,branchRefs:[request.branchRef]};
+  }
   return {all:scope.all,branchRefs:[...scope.branchRefs].sort()};
  }
  async catalog(token:string){
