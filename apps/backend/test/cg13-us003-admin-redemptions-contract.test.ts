@@ -1,6 +1,6 @@
 import {describe,test} from "node:test";
 import assert from "node:assert/strict";
-import {BadRequestException} from "@nestjs/common";
+import {BadRequestException,ForbiddenException} from "@nestjs/common";
 import {readFileSync} from "node:fs";
 import {ReferralCatalogService} from
  "../src/modules/cg-13-referrals-rewards/application/referral-catalog.service";
@@ -8,7 +8,7 @@ const R="11111111-1111-4111-8111-111111111111";
 const A="22222222-2222-4222-8222-222222222222";
 const P="33333333-3333-4333-8333-333333333333";
 const BRANCH="44444444-4444-4444-8444-444444444444";
-function fixture(grant=true){
+function fixture(grant=true,memberRoster=true,volunteerRoster=true){
  const seen:{sql:string;params:unknown[]}[]=[];
  const tx={query:async(sql:string,params:unknown[]=[])=>{
   seen.push({sql,params});
@@ -26,7 +26,10 @@ function fixture(grant=true){
    if(!grant)throw Error("Not authorized");
    return {realmId:R,accountId:A,activeSessionId:A};
   }} as never,
-  {assertCurrent:async()=>undefined,assertRootSelfSessionCurrent:async()=>undefined} as never,
+  {assertCurrent:async(_tx:unknown,_actor:unknown,action:string)=>{
+   if(action==="membership.members.view"&&!memberRoster)throw new ForbiddenException();
+   if(action==="volunteers.view"&&!volunteerRoster)throw new ForbiddenException();
+  },assertRootSelfSessionCurrent:async()=>undefined} as never,
   {rewardStoreScope:async()=>({full:false,branches:[BRANCH]})} as never);
  return {svc,seen};
 }
@@ -54,6 +57,16 @@ describe("CG13 US003 B14/B15 verified redemption reporting (mock, NOT live SQL)"
   assert.ok(query.sql.includes("r.root_realm_id=$1 AND r.programme_id=$2"));
   assert.ok(!query.sql.includes("applicant_account_ref"));
   assert.ok(!query.sql.includes("contact_phone"));
+ });
+ test("catalogue permission alone never authorizes CG04 recipient names",async()=>{
+  const x=fixture(true,false,false);
+  const result=await x.svc.adminRedemptions("staff",P);
+  assert.equal(result.items.length,1);
+  const query=x.seen.find(v=>v.sql.includes("FROM redemption r JOIN points_account wallet"))!;
+  assert.ok(query);
+  assert.deepEqual(query.params.slice(9),[false,false,""]);
+  assert.match(query.sql,/ELSE 'Recipient restricted' END AS name/);
+  assert.ok(!query.sql.includes("contact_mobile"));
  });
  test("invalid date, status and bounded pages never reach the database",async()=>{
   const x=fixture();
