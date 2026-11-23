@@ -225,3 +225,18 @@ test("US001-QA17: only current Foundation administrator may filter Foundation-ow
  assert.ok(list);
  assert.deepEqual(list.params.slice(0,5),[key,true,[],false,null]);
 });
+
+
+test("US001-QA08/10/13: old scanner proof stays historical and cannot re-submit amended source",()=>{
+ const service=readFileSync(join(process.cwd(),"src/modules/cg-19-documents-notifications/application/csr-agreement-evidence.service.ts"),"utf8");
+ const web=readFileSync(join(process.cwd(),"../web/src/features/csr/csr-agreement-panel.tsx"),"utf8");
+ const android=readFileSync(join(process.cwd(),"../android-internal/src/features/csr/native-csr-agreement-panel.tsx"),"utf8");
+ assert.match(service,/f\.proposal_revision AS \\"sourceVersion\\"/);
+ assert.match(service,/f\.proposal_revision=\$4/);
+ for(const src of [web,android]){
+  assert.match(src,/sourceVersion:number/);
+  assert.match(src,/f\.sourceVersion===version/);
+  assert.ok(src.includes("Earlier draft"),"Historical CG19 agreement must not be presented as current");
+ }
+ assert.match(android,/p\.sourceVersion===version&&<Pressable/);
+});

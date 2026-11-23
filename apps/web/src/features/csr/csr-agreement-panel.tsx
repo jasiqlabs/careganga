@@ -1,6 +1,6 @@
 "use client";
 import {useEffect,useRef,useState} from "react";
-type Evidence={fileRef:string;fileVersion:number;mime:string;createdAt:string};
+type Evidence={fileRef:string;fileVersion:number;sourceVersion:number;mime:string;createdAt:string};
 type Upload={uploadRef:string;status:string;uploadUrl?:string;uploadHeaders?:Record<string,string>;
  cleanVerified?:boolean;fileRef?:string|null;fileVersion?:number|null};
 type Command={requestKey:string;hash:string;mime:string;size:number;intent?:string};
@@ -42,7 +42,7 @@ export function CsrAgreementPanel({partnerRef,version,canUpload,canSubmit,onSubm
   finally{running.current=false;setBusy(false);}
  };
  const submitForApproval=async()=>{
-  if(!canSubmit||busy||running.current||!selectedProof||!files?.some(f=>f.fileRef===selectedProof))return;
+  if(!canSubmit||busy||running.current||!selectedProof||!files?.some(f=>f.fileRef===selectedProof&&f.sourceVersion===version))return;
   const cmd=submission??{requestKey:crypto.randomUUID(),expectedVersion:version,evidenceFileRef:selectedProof};
   setSubmission(cmd);setBusy(true);setSubmitError("");
   try{
@@ -93,16 +93,16 @@ export function CsrAgreementPanel({partnerRef,version,canUpload,canSubmit,onSubm
   <p style={{fontSize:13,margin:0}}>PDF, JPG, PNG or WebP up to 10 MB. Retained privately by CareGanga and malware-scanned. Neither file upload nor scan verification is partner approval.</p>
   {files===null?<p role="status">Checking verified documents…</p>:files.length===0?<p>No scanner-verified agreement yet.</p>:
    <ul>{files.map((f,i)=><li key={f.fileRef}>
-    Verified private document {i+1} ({f.mime==="application/pdf"?"PDF":"image"}) · <a href={"/api/csr/agreements/files/"+f.fileRef}>Download privately</a>
+    Verified private document {i+1} ({f.mime==="application/pdf"?"PDF":"image"}) {f.sourceVersion===version?"· Current draft":"· Earlier draft; not eligible for a new submission"} · <a href={"/api/csr/agreements/files/"+f.fileRef}>Download privately</a>
    </li>)}</ul>}
   {canSubmit&&<div style={{display:"grid",gap:8,padding:10,background:"var(--cg-surface,#fff)",borderRadius:9}}>
     <h4 style={{margin:0}}>Submit for independent CSR review</h4>
     <p style={{fontSize:12,margin:0}}>Select a scanner-verified agreement. Another authorized Foundation reviewer must approve this application.</p>
     <select value={submission?.evidenceFileRef??selectedProof} disabled={busy||!!submission} onChange={e=>setSelectedProof(e.target.value)}>
      <option value="">Select verified agreement</option>
-     {files?.map((f,i)=><option key={f.fileRef} value={f.fileRef}>Verified agreement {i+1}</option>)}
+     {files?.filter(f=>f.sourceVersion===version).map((f,i)=><option key={f.fileRef} value={f.fileRef}>Current draft verified agreement {i+1}</option>)}
     </select>
-    <button type="button" disabled={busy||!files?.length||!selectedProof} onClick={()=>void submitForApproval()}>{busy?"Submitting…":"Submit for review"}</button>
+    <button type="button" disabled={busy||!selectedProof||!files?.some(f=>f.fileRef===selectedProof&&f.sourceVersion===version)} onClick={()=>void submitForApproval()}>{busy?"Submitting…":"Submit for review"}</button>
     {submission&&<button type="button" disabled={busy} onClick={()=>void submitForApproval()}>Retry exact submission</button>}
     {submitError&&<p role="alert">{submitError}</p>}
    </div>}

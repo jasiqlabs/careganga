@@ -6,7 +6,7 @@ import * as Sharing from "expo-sharing";
 import {File,Paths,UploadType} from "expo-file-system";
 import {identityRequest} from "../identity-access/http-client";
 
-type Proof={fileRef:string;fileVersion:number;mime:string;createdAt:string};
+type Proof={fileRef:string;fileVersion:number;sourceVersion:number;mime:string;createdAt:string};
 type Upload={uploadRef:string;status:string;uploadUrl?:string;uploadHeaders?:Record<string,string>;cleanVerified?:boolean;fileRef?:string|null;fileVersion?:number|null};
 type Picked={uri:string;name:string;mime:string;size:number};
 type Command={key:string;hash:string;mime:string;size:number;intent?:string};
@@ -45,7 +45,7 @@ export function NativeCsrAgreementPanel({token,partnerRef,version,canUpload,canS
  },[token,partnerRef,version,epoch]);
  const submitForReview=async()=>{
   if(!canSubmit||busy||running.current||!(pendingReview||selectedProof))return;
-  if(!pendingReview&&!files?.some(f=>f.fileRef===selectedProof))return;
+  if(!pendingReview&&!files?.some(f=>f.fileRef===selectedProof&&f.sourceVersion===version))return;
   const cmd=pendingReview??{requestKey:Crypto.randomUUID(),expectedVersion:version,evidenceFileRef:selectedProof};
   setPendingReview(cmd);setBusy(true);setError("");
   try{
@@ -137,14 +137,14 @@ export function NativeCsrAgreementPanel({token,partnerRef,version,canUpload,canS
   <Text style={styles.muted}>Signed PDF or image, maximum 10 MB. Private storage and malware scan required. Never an approval or payment.</Text>
   {files===null?<ActivityIndicator accessibilityLabel="Checking original scanned files"/>:
    files.length===0?<Text style={styles.muted}>No verified private agreement yet.</Text>:
-   files.map((p,i)=><View key={p.fileRef} style={styles.row}><Text style={styles.muted}>Scanner-verified agreement {i+1}</Text>
-    {canSubmit&&<Pressable accessibilityRole="radio" accessibilityState={{checked:selectedProof===p.fileRef}} disabled={busy||!!pendingReview} onPress={()=>setSelectedProof(p.fileRef)}><Text style={styles.actionText}>{selectedProof===p.fileRef?"◉ Selected for review":"○ Select for review"}</Text></Pressable>}
+   files.map((p,i)=><View key={p.fileRef} style={styles.row}><Text style={styles.muted}>Scanner-verified agreement {i+1} · {p.sourceVersion===version?"Current draft":"Earlier draft: upload a new signed agreement"}</Text>
+    {canSubmit&&p.sourceVersion===version&&<Pressable accessibilityRole="radio" accessibilityState={{checked:selectedProof===p.fileRef}} disabled={busy||!!pendingReview} onPress={()=>setSelectedProof(p.fileRef)}><Text style={styles.actionText}>{selectedProof===p.fileRef?"◉ Selected for review":"○ Select for review"}</Text></Pressable>}
     {action("Download / share privately",()=>void share(p))}
    </View>)}
   {canSubmit&&<View style={styles.section}>
    <Text style={styles.title}>Independent CSR partner review</Text>
    <Text style={styles.muted}>Select an original scanner-verified agreement; uploading alone does not approve a partner.</Text>
-   {action("Submit for independent review",()=>void submitForReview(),!selectedProof||!!pendingReview)}
+   {action("Submit for independent review",()=>void submitForReview(),!selectedProof||!files?.some(f=>f.fileRef===selectedProof&&f.sourceVersion===version)||!!pendingReview)}
    {!!pendingReview&&action("Retry exact review submission",()=>void submitForReview())}
   </View>}
   {canUpload&&<>

@@ -186,7 +186,7 @@ export class CsrAgreementEvidenceService{
  async list(bearer:string,partnerId:string){
   return this.run(bearer,false,async(tx,a)=>{
    const partner=await this.partners.guardAgreement(tx,a,partnerId,null,false);
-   const q=await tx.query("SELECT f.id AS \"fileRef\",f.revision AS \"fileVersion\",f.original_mime AS mime,f.created_at AS \"createdAt\" FROM cg19_stored_file f JOIN cg19_upload_intent i ON i.id=f.upload_intent_id AND i.realm_id=f.realm_id WHERE f.realm_id=$1 AND f.csr_partner_id=$2 AND f.owner_kind='CG08_CSR_AGREEMENT' AND f.scan_status='CLEAN_VERIFIED' AND f.revoked_at IS NULL AND i.status='VALIDATED' AND i.owner_kind='CG08_CSR_AGREEMENT' ORDER BY f.created_at DESC,f.id DESC LIMIT 16",[a.realmId,partner.id]);
+   const q=await tx.query("SELECT f.id AS \"fileRef\",f.revision AS \"fileVersion\",f.proposal_revision AS \"sourceVersion\",f.original_mime AS mime,f.created_at AS \"createdAt\" FROM cg19_stored_file f JOIN cg19_upload_intent i ON i.id=f.upload_intent_id AND i.realm_id=f.realm_id WHERE f.realm_id=$1 AND f.csr_partner_id=$2 AND f.owner_kind='CG08_CSR_AGREEMENT' AND f.scan_status='CLEAN_VERIFIED' AND f.revoked_at IS NULL AND i.status='VALIDATED' AND i.owner_kind='CG08_CSR_AGREEMENT' ORDER BY f.created_at DESC,f.id DESC LIMIT 16",[a.realmId,partner.id]);
    return {files:q.rows,currentVersion:partner.version};
   });
  }

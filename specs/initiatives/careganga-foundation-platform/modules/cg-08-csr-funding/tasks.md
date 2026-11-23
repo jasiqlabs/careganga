@@ -324,3 +324,8 @@ Immediately re-reviewed the previous branch-switch guard: `refresh()` was condit
 ### 23-Nov-2026 — US001 CG02 multi-branch negative source tests authored
 
 Extended **existing** `test:cg08-partner` service-level tests using only the actual CG02 `projectBranchScope` contract: assigned branch user cannot filter a foreign branch or `FOUNDATION` records (blocked before SELECT), permitted branch and status remain bound parameters in the actual CSR SQL, no contact details appear in list projection, and root administration wider selector requires `scope.all=true` returned by current CG02. Original US001-QA02/12/17 with no new scenario IDs. **Mocked tests authored, NOT_EXECUTED;** real two-root/two-branch manager/delegation/revocation and PostgreSQL scope-gate QA still NOT_RUN. Test evidence must not be labelled PASS until local developer executes it.
+
+
+### 23-Nov-2026 — US001 returned-review document source revision guard
+
+Focused review found the existing CG19 history list lacked the proof's source draft revision. For an application RETURNED by CG03 and then edited to a new DRAFT version, an earlier CLEAN_VERIFIED agreement was still selectable on Web/Android even though real CG19 `requireCurrentProof` would correctly reject it on submit. The original scoped CG19 file list now returns **sourceVersion**; both staff UIs distinguish historical scan proof from a current-version file, permit current revision only in selection/submission, and keep older private evidence visible for authorized history. Existing US001-QA08/10/13/14/20 source contract regression appended, not executed; no new API/table/approval owner. Real returned-case end-to-end and device QA remain NOT_RUN.
