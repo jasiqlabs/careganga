@@ -135,6 +135,16 @@ export class FinanceCsrReceiptSourceFacade{
   all:boolean;branchRefs:string[];branchFilter:string|null|undefined;query:string
  }){
   await this.identity.assertCurrent(tx,a,"finance.reports.view");
+  // The list snapshot may have been resolved BEFORE this SQL transaction.
+  // Reverify each CG02 branch assignment under the current account/role
+  // lock (and root-wide permission when full) before the aggregate runs.
+  if(scope.all)await this.branches.requireFinanceRootScope(tx,a,"finance.reports.view");
+  else{
+   if(scope.branchRefs.length>100)
+    throw new ConflictException("Narrow the permitted finance branch scope.");
+   for(const branch of scope.branchRefs)
+    await this.branches.requireFinanceActiveBranch(tx,a,branch,"finance.reports.view");
+  }
   const x=await tx.query<{committed_minor:string;received_minor:string;invalid_minor:string}>(
    "WITH selected AS MATERIALIZED (SELECT f.id,f.root_realm_id,f.requested_minor "+
    "FROM csr_funding_proposal f WHERE f.root_realm_id=$1 "+
