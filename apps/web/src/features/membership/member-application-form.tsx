@@ -9,7 +9,9 @@ export function MemberApplicationForm({application,plans,onSaved}:{application:C
  const [draft,setDraft]=useState<Draft>(blank),[offer,setOffer]=useState(""),[options,setOptions]=useState<CG04ApplicantOptions|null>(null);
  const [busy,setBusy]=useState(false),[error,setError]=useState(""),[notice,setNotice]=useState("");
  const pending=useRef<Command|null>(null);
- useEffect(()=>{setOffer(application?.planCode??new URLSearchParams(window.location.search).get("plan")??plans[0]?.planCode??"");setDraft(application?{address:application.address,city:application.city,pinCode:application.pinCode,stateRef:application.stateRef,districtRef:application.districtRef,branchRef:application.branchRef??"",referral:application.referral,consent:false}:blank());},[application?.ref,application?.version,plans.length]);
+ useEffect(()=>{setOffer(application?.planCode??new URLSearchParams(window.location.search).get("plan")??plans[0]?.planCode??"");const incoming=new URLSearchParams(window.location.search).get("ref")??"";
+ const referral=/^[A-Za-z0-9_-]{32}$/.test(incoming)?incoming:"";
+ setDraft(application?{address:application.address,city:application.city,pinCode:application.pinCode,stateRef:application.stateRef,districtRef:application.districtRef,branchRef:application.branchRef??"",referral:application.referral,consent:false}:{...blank(),referral});},[application?.ref,application?.version,plans.length]);
  useEffect(()=>{let active=true;const url="/api/community/applications/options"+(draft.stateRef?"?stateRef="+encodeURIComponent(draft.stateRef):"");void fetch(url,{cache:"no-store"}).then(async r=>{if(!r.ok)throw Error();return r.json() as Promise<CG04ApplicantOptions>}).then(v=>{if(active)setOptions(v)}).catch(()=>{if(active)setOptions(null)});return()=>{active=false;};},[draft.stateRef]);
  const update=(k:keyof Draft,v:string|boolean)=>setDraft(d=>({...d,[k]:v}));
  const send=async(cmd:Command)=>{if(busy)return;setBusy(true);setError("");setNotice("");
