@@ -91,6 +91,18 @@ export function ReferralRewardsWorkspace({canManagePolicy,canManageRewards}:{
  const [pending,setPending]=useState<Command|null>(null);
  useEffect(()=>{setSelectedRank(0);setCategoryFilter("All");},[selected]);
  const lock=useRef(false);
+ const dialogRef=useRef<HTMLElement|null>(null);
+ const editorOrigin=useRef("");
+ const editorState=useRef({drawer,busy,pending,programmeForm,rewardForm});
+ editorState.current={drawer,busy,pending,programmeForm,rewardForm};
+ const closeDrawer=useCallback(()=>{
+  const current=editorState.current;
+  if(current.busy||current.pending||!current.drawer)return;
+  const draft=current.drawer==="POLICY"?current.programmeForm:current.rewardForm;
+  if(JSON.stringify(draft)!==editorOrigin.current&&
+   !window.confirm("Discard unsaved changes to this form?"))return;
+  setDrawer(null);setEdition(null);
+ },[]);
  const refresh=useCallback(()=>setEpoch(v=>v+1),[]);
  useEffect(()=>{
   let live=true;programmeGeneration.current++;
@@ -131,9 +143,29 @@ export function ReferralRewardsWorkspace({canManagePolicy,canManageRewards}:{
  },[drawer,rewardForm.type,rewardForm.itemRef,rewardForm.storeRef,epoch]);
  useEffect(()=>{
   if(!drawer)return;
-  const handler=(e:KeyboardEvent)=>{if(e.key==="Escape"&&!pending&&!busy)setDrawer(null);};
-  window.addEventListener("keydown",handler);return()=>window.removeEventListener("keydown",handler);
- },[drawer,pending,busy]);
+  const previous=document.activeElement instanceof HTMLElement?document.activeElement:null;
+  const bodyOverflow=document.body.style.overflow;
+  document.body.style.overflow="hidden";
+  const dialog=dialogRef.current;
+  dialog?.querySelector<HTMLElement>('button:not([disabled]),input:not([disabled])')?.focus();
+  const handler=(e:KeyboardEvent)=>{
+   if(e.key==="Escape"){e.preventDefault();closeDrawer();return;}
+   if(e.key!=="Tab"||!dialog)return;
+   const focusable=Array.from(dialog.querySelectorAll<HTMLElement>(
+    'a[href],button:not([disabled]),input:not([disabled]),select:not([disabled]),textarea:not([disabled]),[tabindex]:not([tabindex="-1"])'))
+    .filter(el=>el.getClientRects().length>0);
+   if(!focusable.length){e.preventDefault();dialog.focus();return;}
+   const first=focusable[0],last=focusable[focusable.length-1];
+   if(e.shiftKey&&(document.activeElement===first||!dialog.contains(document.activeElement))){
+    e.preventDefault();last.focus();
+   }else if(!e.shiftKey&&(document.activeElement===last||!dialog.contains(document.activeElement))){
+    e.preventDefault();first.focus();
+   }
+  };
+  window.addEventListener("keydown",handler);
+  return()=>{window.removeEventListener("keydown",handler);
+   document.body.style.overflow=bodyOverflow;previous?.focus();};
+ },[drawer,closeDrawer]);
  const send=async(request:Command)=>{
   if(lock.current)return;
   lock.current=true;setBusy(true);setPending(request);setError("");setNotice("");
@@ -152,11 +184,15 @@ export function ReferralRewardsWorkspace({canManagePolicy,canManageRewards}:{
  };
  const openPolicy=(current=false)=>{
   setError("");setPending(null);
-  setEditingPolicy(Boolean(current&&detail));setProgrammeForm(current&&detail?fromProgramme(detail):blankProgramme());setDrawer("POLICY");
+  const draft=current&&detail?fromProgramme(detail):blankProgramme();
+  editorOrigin.current=JSON.stringify(draft);
+  setEditingPolicy(Boolean(current&&detail));setProgrammeForm(draft);setDrawer("POLICY");
  };
  const openProduct=(item?:Reward)=>{
   setError("");setPending(null);setEdition(item??null);
-  setRewardForm(item?fromProduct(item):blankReward());setDrawer("PRODUCT");
+  const draft=item?fromProduct(item):blankReward();
+  editorOrigin.current=JSON.stringify(draft);
+  setRewardForm(draft);setDrawer("PRODUCT");
  };
  const saveProgramme=()=>{
   try{
@@ -439,15 +475,15 @@ export function ReferralRewardsWorkspace({canManagePolicy,canManageRewards}:{
   </>}
   {drawer&&<div style={{position:"fixed",inset:0,background:"rgba(10,22,45,.58)",zIndex:200,
    display:"flex",justifyContent:"flex-end"}} onMouseDown={e=>{
-    if(e.target===e.currentTarget&&!pending&&!busy)setDrawer(null);
+    if(e.target===e.currentTarget)closeDrawer();
    }}>
-   <aside role="dialog" aria-modal="true" aria-label={drawer==="POLICY"?"Configure Referral Settings":"Add or Edit Reward Product"}
+   <aside ref={dialogRef} role="dialog" tabIndex={-1} aria-modal="true" aria-labelledby="cg13-editor-heading"
     style={{background:"var(--cg-surface,#fff)",color:"inherit",width:"min(100%,410px)",height:"100%",
      overflowY:"auto",padding:18,display:"grid",alignContent:"start",gap:13,
      boxShadow:"-8px 0 35px rgba(8,20,40,.15)"}}>
     <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-     <h2 style={{margin:0,fontSize:21}}>{drawer==="POLICY"?"Configure Referral Settings":"Add Reward Product"}</h2>
-     <button type="button" style={css.button} disabled={busy||!!pending} onClick={()=>setDrawer(null)}
+     <h2 id="cg13-editor-heading" style={{margin:0,fontSize:21}}>{drawer==="POLICY"?"Configure Referral Settings":"Add Reward Product"}</h2>
+     <button type="button" style={css.button} disabled={busy||!!pending} onClick={closeDrawer}
       aria-label="Close editor">Close</button>
     </div>
     {drawer==="POLICY"?<>
@@ -560,7 +596,7 @@ export function ReferralRewardsWorkspace({canManagePolicy,canManageRewards}:{
     <div style={{display:"flex",justifyContent:"flex-end",gap:8,position:"sticky",bottom:0,
      padding:"10px 0",background:"var(--cg-surface,#fff)"}}>
      <button type="button" style={css.button} disabled={busy||!!pending}
-      onClick={()=>setDrawer(null)}>Cancel</button>
+      onClick={closeDrawer}>Cancel</button>
      <button type="button" style={css.primary} disabled={busy}
       onClick={drawer==="POLICY"?saveProgramme:saveProduct}>
       {pending?"Retry same request":busy?"Saving…":"Save to original CG13 source"}</button>
