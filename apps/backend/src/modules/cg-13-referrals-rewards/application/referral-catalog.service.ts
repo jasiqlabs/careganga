@@ -164,8 +164,12 @@ export class ReferralCatalogService{
    throw e;
   }finally{tx.release();}
  }
+ /** Keep catalog roles independent of unrelated branch-administration grants.
+  * run() already checks the exact CG13 action in-session and again in this TX.
+  * Catalog records are Foundation-root scoped; CG12 enforces store/branch grants.
+  */
  private root(tx:PoolClient,a:VerifiedFoundationActor){
-  return this.identity.assertCurrent(tx,a,"foundation.branches.admin");
+  return this.identity.assertRootSelfSessionCurrent(tx,a);
  }
  private async command(tx:PoolClient,a:VerifiedFoundationActor,
   key:string,kind:string,data:unknown):Promise<{ref:string;version:number;replayed:true}|null>{
