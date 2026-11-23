@@ -14,6 +14,9 @@ export class CsrFundingProposalsController{
  @Post() create(@Headers("authorization")auth:string,@Body()body:unknown){
   return this.source.create(auth,body);
  }
+ @Post(":ref/resume")
+ resume(@Headers("authorization")auth:string,@Param("ref")ref:string,
+  @Body()body:unknown){return this.source.resumeReturned(auth,ref,body);}
  @Patch(":ref") edit(@Headers("authorization")auth:string,@Param("ref")ref:string,
   @Body()body:unknown){return this.source.edit(auth,ref,body);}
 }
