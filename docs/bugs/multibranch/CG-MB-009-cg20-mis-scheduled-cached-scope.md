@@ -1,6 +1,6 @@
 # CG-MB-009 — cg20 mis scheduled cached scope
 
-**Priority:** P0 · **Owner:** CG-20 MIS · **Status:** VERIFICATION_GAP · **Scope:** active CG-07 feature branch only · **Runtime:** NOT_RUN
+**Priority:** P0 · **Owner:** CG-20 MIS · **Status:** SOURCE_FIX_REVIEWED_RUNTIME_PENDING · **Scope:** active CG-07 feature branch only · **Runtime:** NOT_RUN
 
 ## Source evidence / observed limitation
 
@@ -33,3 +33,12 @@ Review MisSavedReportService, MisReportRunService, MisReportScheduleService, CG-
 CG-MB-009 review found the dashboard used authorized A+B combined totals but CG-20 saved/export and scheduled previews still relied on single-branch-only CG09 summary. Corrected in the original CG09 `FinanceReportsService.scheduledSummary` and `assignedMisSummary/assignedMisMonthlyTrend`, CG02 `scheduledFinanceScope` (current unattended CG01 capability, real role/protected authority and currently active branch/AREA/ALL_BRANCHES grants), and CG20 `MisReportSourceService.preview/previewScheduledFinance`. Never send a synthesized bearer or create a CG20 shadow journal. Rechecks current CG01 role and CG02 scope after reading and before releasing the result; CG19 download keeps existing post-write revalidation.
 
 **QA not executed:** A+B manager schedules all-assigned summary and later loses B, target account suspended, branch B closes, state area reparent or protected role revoked; trigger due job and verify only current authorized A scope (or deny stale output), no Foundation journal/Center X/Y leak, current recipient and delivered PDF bytes match fresh CG09; verify saved preview, on-demand CSV/PDF and original server role. Test non-root A-only no branch selector, root full Foundation, high ALL_BRANCHES manager A+B+C (no Foundation). Recheck unknown worker/file result and concurrency, 2 devices, actual migrated PostgreSQL and live CG19 artifacts. Contract assertions authored but not executed. Bug remains OPEN source candidate.
+
+
+### 23-Nov-2026 — final source-owner review disposition
+
+**Reviewed original owner source:** CG09 original POSTED A+B and ALL_BRANCHES finance projections, CG20 Web/native, saved and scheduled source, 3321 immutable original scope, CG20 download/scheduled worker and CG19 notice/inbox/read now enforce current A/B and protected root, forbidding old report artifact leakage.
+
+**Next evidence:** Local PostgreSQL migration 3321, original PDF/CSV bytes, role/revocation races, 81 existing CG20 QA and scheduler outage/unknown outcomes NOT_RUN.
+
+**Gate:** Not a runtime PASS; future gates are not existing source defects; no GH Actions and no merge before local verified QA.
