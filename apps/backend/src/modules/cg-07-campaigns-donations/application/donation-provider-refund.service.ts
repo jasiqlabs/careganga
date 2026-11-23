@@ -58,11 +58,13 @@ export class DonationProviderRefundService{
   if(q.rowCount!==1)throw new ServiceUnavailableException("Current Foundation merchant is not verified.");
   return c;
  }
- private async provider(path:string,method:"GET"|"POST",body?:Record<string,unknown>){
+ private async provider(path:string,method:"GET"|"POST",body?:Record<string,unknown>,
+  refundIdempotencyKey?:string){
   const c=this.credentials();
   const response=await fetch("https://api.razorpay.com/v1/"+path,{
    method,headers:{Authorization:"Basic "+Buffer.from(c.key+":"+c.secret).toString("base64"),
-    ...(body?{"Content-Type":"application/json"}:{})},
+    ...(body?{"Content-Type":"application/json"}:{}),
+    ...(refundIdempotencyKey?{"X-Refund-Idempotency":refundIdempotencyKey}:{})},
    ...(body?{body:JSON.stringify(body)}:{}),cache:"no-store",signal:AbortSignal.timeout(9000)});
   if(!response.ok)throw new ServiceUnavailableException("Razorpay refund outcome is unavailable.");
   const data:unknown=await response.json();
@@ -168,7 +170,8 @@ export class DonationProviderRefundService{
   let result:Record<string,unknown>;
   try{
    result=await this.provider("payments/"+reserved.p.captured_payment_id+"/refund","POST",{
-    amount:Number(reserved.p.amount_minor),speed:"normal",receipt:reserved.p.provider_receipt});
+    amount:Number(reserved.p.amount_minor),speed:"normal",receipt:reserved.p.provider_receipt},
+    reserved.p.request_key);
    if(!this.validRemote(result,reserved.p))throw conflict();
   }catch{
    return {status:"OUTCOME_UNKNOWN",message:"Merchant refund result is uncertain. Do not retry payout; reconcile the original receipt."};
@@ -219,14 +222,35 @@ export class DonationProviderRefundService{
   if(matches.length!==1||!this.validRemote(matches[0] as Record<string,unknown>,p))
    return {status:"OUTCOME_UNKNOWN",message:"Original receipt is not uniquely confirmed. Never repeat the refund."};
   const found=matches[0] as Record<string,unknown>;
-  await this.tx(async tx=>tx.query(
-   "UPDATE donation_provider_refund SET provider_refund_id=$3,state='PROVIDER_PENDING',updated_at=now() "+
-   "WHERE root_realm_id=$1 AND refund_request_id=$2 AND request_key=$3 "+
-   "AND state IN('RESERVED','OUTCOME_UNKNOWN') "+
-   "AND (provider_refund_id IS NULL OR provider_refund_id=$4)",
-   [p.root_realm_id,refundRef,p.request_key,found.id]));
-  return {status:"REFUND_RECONCILIATION_PENDING",merchantStatus:found.status,
-   message:"Found original merchant refund. Signed processed webhook and CG09 posting are still required."};
+  const currentState=await this.tx(async tx=>{
+   const row=(await tx.query<ProviderRow>(
+    "SELECT * FROM donation_provider_refund WHERE root_realm_id=$1 "+
+    "AND refund_request_id=$2 FOR UPDATE",
+    [p.root_realm_id,refundRef])).rows[0];
+   if(!row||row.request_key!==p.request_key||
+     (row.provider_refund_id&&row.provider_refund_id!==found.id))
+    throw conflict();
+   // Never overwrite an already processed signed event or posted journal.
+   if(["PROVIDER_PROCESSED","PROVIDER_FAILED","FINANCE_POSTED"].includes(row.state))
+    return row.state;
+   if(!["RESERVED","OUTCOME_UNKNOWN","PROVIDER_PENDING"].includes(row.state))
+    throw conflict();
+   const updated=await tx.query<{state:string}>(
+    "UPDATE donation_provider_refund SET provider_refund_id=$4,"+
+    "state='PROVIDER_PENDING',updated_at=now() "+
+    "WHERE root_realm_id=$1 AND refund_request_id=$2 AND request_key=$3 "+
+    "AND state IN('RESERVED','OUTCOME_UNKNOWN','PROVIDER_PENDING') "+
+    "RETURNING state",
+    [p.root_realm_id,refundRef,p.request_key,found.id]);
+   if(!updated.rows[0])throw conflict();
+   return updated.rows[0].state;
+  });
+  return {status:currentState==="PROVIDER_FAILED"?"PROVIDER_FAILED":
+   currentState==="FINANCE_POSTED"?"FINANCE_REVERSED":
+    "REFUND_RECONCILIATION_PENDING",merchantStatus:found.status,
+   message:currentState==="FINANCE_POSTED"?
+    "Original signed refund and CG09 financial correction are posted.":
+    "Original refund located. Signed processed webhook and CG09 posting determine verified net."};
  }
  /** A signed Razorpay event is independently checked against the merchant GET.
   * No forged browser status, refund ID or receipt can mark money refunded. */
