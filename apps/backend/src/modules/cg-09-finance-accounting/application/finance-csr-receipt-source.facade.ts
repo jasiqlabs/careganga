@@ -229,6 +229,22 @@ export class FinanceCsrReceiptSourceFacade{
    "approved_source_version,party_kind,budget_event_id,request_key,request_digest,actor_ref) "+
    "VALUES($1,$2,$3,$4,$5,$6,$7,$8)",
    [a.realmId,p.proposalRef,p.sourceVersion,raw.partyKind,ev.id,key,hash,a.accountId]);
+  // Original CG09's event command and Finance audit must be written along
+  // with the existing budget event. The CSR link alone is not a replacement
+  // for the budget owner's normal immutable command audit.
+  const budgetVersion=(await tx.query<{version:number}>(
+   "SELECT version FROM finance_budget WHERE id=$1 AND root_realm_id=$2 FOR SHARE",
+   [budget,a.realmId])).rows[0]?.version;
+  if(!budgetVersion)throw stale();
+  await tx.query(
+   "INSERT INTO finance_budget_command(root_realm_id,actor_ref,request_key,"+
+   "budget_id,action,digest,result_status,version) "+
+   "VALUES($1,$2,$3,$4,'EVENT',$5,'CONFIRMED',$6)",
+   [a.realmId,a.accountId,key,budget,hash,budgetVersion]);
+  await tx.query(
+   "INSERT INTO finance_event(root_realm_id,actor_ref,entity_kind,entity_ref,action,request_key) "+
+   "VALUES($1,$2,'BUDGET',$3,$4,$5)",
+   [a.realmId,a.accountId,budget,"BUDGET_EVENT_CONFIRMED",key]);
   return {confirmed:true,replayed:false};
  }
  /** A receipt is not an allocation; allocations and actual utilization
