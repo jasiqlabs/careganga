@@ -19,3 +19,8 @@ Migrate fresh and upgraded DB; insert correct A and Foundation campaign donation
 Run disposable SQL trigger and migration rollback/restore; independent review, then runtime source+Web+native sign-off; keep A/B original finance evidence.
 
 **Receiving modules:** CG-07,CG-09,CG-19. **Common QA:** [Two-branch and center scenario matrix](../../qa/CAREGANGA-MULTIBRANCH-SOURCE-AND-RUNTIME-TEST-PLAN-20261123.md). Verify original story QA IDs and do not replace them. **Gate:** Implement → independent Review → Fix → Re-review → source trace → local PostgreSQL/Web/Android/device/provider QA. Document real test fixtures, exact file:function and result. No CI/GitHub Actions or merge.
+
+
+### 23-Nov — Independent source reviewer correction (source-only; open)
+
+Original `3319_cg07_donation_branch_provenance.sql` has been tightened: UPDATE cannot retarget branch, source kind (`GENERAL` vs `CAMPAIGN`), source campaign ID or Foundation root. Original 3306 finance proof already binds the posted journal's branch to the original donation branch. Regression source assertion added in `cg07-donation-contract.test.ts`. **No disposable PostgreSQL execution/SQL tamper proof yet.** Merge BLOCKED until negative insert, update, financial posting, receipt/refund and stale-session tests all pass and independent DB reviewer accepts. See [developer handoff](../../qa/CAREGANGA-CG07-MULTIBRANCH-LOCAL-DEVELOPER-HANDOFF-20261123.md).
