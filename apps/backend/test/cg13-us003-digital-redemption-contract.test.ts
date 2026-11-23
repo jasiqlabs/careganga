@@ -20,7 +20,8 @@ const request={programmeRef:P,productRef:PRODUCT,relationship:"MEMBER" as const,
 const DIGEST=createHash("sha256").update(JSON.stringify([P,PRODUCT,"MEMBER",2])).digest("hex");
 type Seen={sql:string;params:unknown[]};
 function setup({available="900",product=true,existing=false,
- cancelled=false,account=true,minimumClaim="700",rewardPrice="600"}={}){
+ cancelled=false,account=true,minimumClaim="700",rewardPrice="600",
+ deliveryMethod="ON_PLATFORM_RECOGNITION"}={}){
  const seen:Seen[]=[],issued:{value:boolean}={value:false};
  let commits=0,rollbacks=0;
  const tx={query:async(sql:string,params:unknown[]=[])=>{
@@ -34,7 +35,8 @@ function setup({available="900",product=true,existing=false,
     payloadDigest:DIGEST}]:[],rowCount:existing?1:0};
   if(sql.includes("p.points_price::text AS price"))
    return {rows:product?[{price:rewardPrice,version:2,name:"Verified digital badge",policyVersion:1,
-    minimumClaimPoints:minimumClaim,type:"DIGITAL",itemRef:null,storeRef:null}]:[],rowCount:product?1:0};
+    minimumClaimPoints:minimumClaim,type:"DIGITAL",itemRef:null,storeRef:null,
+    digitalFulfillmentMethod:deliveryMethod}]:[],rowCount:product?1:0};
   if(sql.includes('earned_points::text AS earned'))
    return {rows:[{id:WALLET,earned:available,reversed:"0",held:"0",spent:"0"}],rowCount:1};
   if(sql.includes("INSERT INTO redemption("))
@@ -102,6 +104,17 @@ describe("CG13 US003 digital points hold/cancel contracts (mock only; no real PG
   const f=setup({rewardPrice:"1000000000001"});
   await assert.rejects(()=>f.service.request("own",request),ConflictException);
   assert.ok(!f.seen.some(v=>v.sql.includes("INSERT INTO redemption(")));
+ });
+ test("unsupported future-only digital delivery cannot hold real points",async()=>{
+  const f=setup({deliveryMethod:"PENDING_EXTERNAL_PROOF"});
+  await assert.rejects(()=>f.service.request("own",request),ConflictException);
+  const productRead=f.seen.find(v=>v.sql.includes("p.points_price::text AS price"))!;
+  assert.ok(productRead);
+  assert.match(productRead.sql,/p.digital_fulfillment_method AS "digitalFulfillmentMethod"/);
+  assert.ok(!f.seen.some(v=>v.sql.includes("FROM points_account ")));
+  assert.ok(!f.seen.some(v=>v.sql.includes("INSERT INTO redemption(")));
+  assert.ok(!f.seen.some(v=>v.sql.includes("'POINTS_HOLD'")));
+  assert.equal(f.stats().rollbacks,1);
  });
  test("stale reward version and unverified member fail before wallet/hold",async()=>{
   const stale=setup({product:false});
