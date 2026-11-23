@@ -16,7 +16,10 @@ async function proxy(request:NextRequest,ctx:Context,method:Method){
  const claimRecognition=method==="POST"&&path.length===3&&
   path[0]==="redemptions"&&UUID.test(path[1])&&
   path[2]==="claim-recognition";
- if(!list&&!create&&!cancel&&!claimRecognition)return json({message:"That reward action is unavailable."},404);
+ const acknowledgeHandover=method==="POST"&&path.length===3&&
+  path[0]==="redemptions"&&UUID.test(path[1])&&path[2]==="acknowledge-handover";
+ if(!list&&!create&&!cancel&&!claimRecognition&&!acknowledgeHandover)
+  return json({message:"That reward action is unavailable."},404);
  const params=request.nextUrl.searchParams;
  if([...params.keys()].some(x=>x!=="page")||params.getAll("page").length>1||
   (!list&&params.size>0)||
