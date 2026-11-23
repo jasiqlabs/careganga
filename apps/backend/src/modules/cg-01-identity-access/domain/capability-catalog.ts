@@ -7,6 +7,12 @@ export type Capability = Readonly<{
   sensitive:boolean;
 }>;
 const capabilities:readonly Capability[]=Object.freeze([
+  // CG-13 US-001: Foundation programme policy and genuine reward catalog.
+  {key:"referrals.programmes.view",businessLabel:"View approved Foundation referral programmes and ranks",group:"Referrals & rewards",assignable:true,sensitive:false},
+  {key:"referrals.programmes.manage",businessLabel:"Manage current versioned Foundation referral policies",group:"Referrals & rewards",assignable:true,sensitive:true},
+  {key:"rewards.catalog.view",businessLabel:"View authorized reward catalogue and permitted stock previews",group:"Referrals & rewards",assignable:true,sensitive:false},
+  {key:"rewards.catalog.manage",businessLabel:"Create and edit reward products with original CG12 stock sources",group:"Referrals & rewards",assignable:true,sensitive:true},
+
   {key:"csr.partners.view",businessLabel:"View permitted CSR partner registrations",group:"CSR & partnerships",assignable:true,sensitive:true},
   {key:"csr.partners.manage",businessLabel:"Create and update assigned CSR partner applications",group:"CSR & partnerships",assignable:true,sensitive:true},
   {key:"csr.partners.review",businessLabel:"Independently review CSR partner applications",group:"CSR & partnerships",assignable:false,sensitive:true},
