@@ -7,6 +7,14 @@ export type Capability = Readonly<{
   sensitive:boolean;
 }>;
 const capabilities:readonly Capability[]=Object.freeze([
+  {key:"csr.partners.view",businessLabel:"View permitted CSR partner registrations",group:"CSR & partnerships",assignable:true,sensitive:true},
+  {key:"csr.partners.manage",businessLabel:"Create and update assigned CSR partner applications",group:"CSR & partnerships",assignable:true,sensitive:true},
+  {key:"csr.partners.review",businessLabel:"Independently review CSR partner applications",group:"CSR & partnerships",assignable:false,sensitive:true},
+  {key:"csr.funding.view",businessLabel:"View authorized CSR funding proposals",group:"CSR & partnerships",assignable:true,sensitive:true},
+  {key:"csr.funding.manage",businessLabel:"Prepare permitted CSR funding proposals",group:"CSR & partnerships",assignable:true,sensitive:true},
+  {key:"csr.funding.review",businessLabel:"Independently review proposed CSR commitments",group:"CSR & partnerships",assignable:false,sensitive:true},
+  {key:"csr.reports.view",businessLabel:"View source-backed scoped CSR reports",group:"CSR & partnerships",assignable:true,sensitive:true},
+  {key:"csr.reports.export",businessLabel:"Export permitted CSR source reports",group:"CSR & partnerships",assignable:true,sensitive:true},
   {key:"membership.applications.review",businessLabel:"Review protected membership applications",group:"Membership",assignable:false,sensitive:true},
   {key:"volunteers.applications.review",businessLabel:"Review protected volunteer applications",group:"Volunteers",assignable:false,sensitive:true},
   {key:"volunteers.view",businessLabel:"View authorized volunteer roster",group:"Volunteers",assignable:true,sensitive:true},

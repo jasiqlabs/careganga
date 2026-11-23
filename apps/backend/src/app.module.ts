@@ -18,6 +18,7 @@ import { HrEnrollmentModule } from "./modules/cg-10-human-resources/hr-enrollmen
 import { ProjectsFieldOperationsModule } from "./modules/cg-05-projects-field-operations/projects-field-operations.module";
 import { InventorySuppliersModule } from "./modules/cg-12-inventory-suppliers/inventory-suppliers.module";
 import { MembershipVolunteersModule } from "./modules/cg-04-membership-volunteers/membership-volunteers.module";
+import {CsrFundingModule} from "./modules/cg-08-csr-funding/csr-funding.module";
 import {CampaignsDonationsModule} from "./modules/cg-07-campaigns-donations/campaigns-donations.module";
-@Module({ imports: [DatabaseModule, IdentityAccessModule, PlatformConfigurationModule, RegistrationApprovalsModule, DocumentsNotificationsModule, FoundationStructureModule, FinanceAccountingModule, CmsPublicContentModule, HealthNetworkModule, PatientsAppointmentsModule, DiagnosticsModule, HealthcareAssistanceModule, MisReportingModule, HrEnrollmentModule, InventorySuppliersModule, ProjectsFieldOperationsModule, MembershipVolunteersModule, CampaignsDonationsModule], controllers: [HealthController] })
+@Module({ imports: [DatabaseModule, IdentityAccessModule, PlatformConfigurationModule, RegistrationApprovalsModule, DocumentsNotificationsModule, FoundationStructureModule, FinanceAccountingModule, CmsPublicContentModule, HealthNetworkModule, PatientsAppointmentsModule, DiagnosticsModule, HealthcareAssistanceModule, MisReportingModule, HrEnrollmentModule, InventorySuppliersModule, ProjectsFieldOperationsModule, MembershipVolunteersModule, CampaignsDonationsModule, CsrFundingModule], controllers: [HealthController] })
 export class AppModule {}
