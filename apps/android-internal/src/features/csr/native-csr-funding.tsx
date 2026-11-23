@@ -49,11 +49,11 @@ export function NativeCsrFunding({token,canManage,canReadAgreement,canUploadAgre
  const [scope,setScope]=useState("ALL"),[status,setStatus]=useState("ALL"),
   [offset,setOffset]=useState(0),[epoch,setEpoch]=useState(0);
  const [loading,setLoading]=useState(true),[listError,setListError]=useState(""),[error,setError]=useState(""),[notice,setNotice]=useState("");
- const [editing,setEditing]=useState(false),[step,setStep]=useState(0),
+ const [editing,setEditing]=useState(false),
   [selected,setSelected]=useState<Proposal|null>(null),[draft,setDraft]=useState<Draft>(empty);
  const [busy,setBusy]=useState(false),[pending,setPending]=useState<Command|null>(null);
  const generation=useRef(0);
- const clearDetail=()=>{generation.current+=1;setEditing(false);setSelected(null);setStep(0);};
+ const clearDetail=()=>{generation.current+=1;setEditing(false);setSelected(null);};
  const refresh=()=>{clearDetail();setEpoch(v=>v+1);};
  useEffect(()=>{
   let live=true;
@@ -82,7 +82,7 @@ export function NativeCsrFunding({token,canManage,canReadAgreement,canUploadAgre
   try{
    const current=await api<Proposal>(token,"/"+p.ref);
    if(seq!==generation.current)return;
-   setDraft(from(current));setSelected(current);setEditing(true);setStep(0);
+   setDraft(from(current));setSelected(current);setEditing(true);
   }catch(e){if(seq===generation.current){
    clearDetail();setError(e instanceof Error?e.message:"Funding detail unavailable.");
    if(e&&typeof e==="object"&&"status" in e&&e.status===401)onExpired();
@@ -220,12 +220,9 @@ export function NativeCsrFunding({token,canManage,canReadAgreement,canUploadAgre
   </View>
   {editing&&<View style={styles.panel}>
    <Text style={styles.heading}>{selected?"Original funding details":"New funding request"}</Text>
-   <Text style={styles.note}>Four original steps. Save Draft does not submit or approve money.</Text>
-   <ScrollView horizontal contentContainerStyle={styles.horizontal}>
-    {["Information","Project & split","Agreement notes","Review"].map((label,i)=>
-     chooseItem(String(i),String(i+1)+" · "+label,String(step),v=>setStep(Number(v))))}
-   </ScrollView>
-   {step===0&&<>
+   <Text style={styles.note}>Five original vertical sections. Save draft does not approve or receive funds.</Text>
+   <View style={styles.panel}>
+    <Text style={styles.heading}>1. Funder, contact & period</Text>
     <Text style={styles.label}>Permitted Foundation branch</Text>
     <ScrollView horizontal contentContainerStyle={styles.horizontal}>
      {options?.foundation&&chooseItem("","Foundation-wide",draft.branchRef,v=>{
@@ -245,8 +242,9 @@ export function NativeCsrFunding({token,canManage,canReadAgreement,canUploadAgre
     {field("Requested INR amount","rupees")}
     {field("Proposed start YYYY-MM-DD","proposedFrom")}
     {field("Proposed end YYYY-MM-DD","proposedUntil")}
-   </>}
-   {step===1&&<>
+   </View>
+   <View style={styles.panel}>
+    <Text style={styles.heading}>2. Project Details & funding share</Text>
     {draft.fundType!=="FOUNDATION"&&<>
      <Text style={styles.label}>Actual approved CSR sponsor</Text>
      <ScrollView horizontal contentContainerStyle={styles.horizontal}>
@@ -266,31 +264,41 @@ export function NativeCsrFunding({token,canManage,canReadAgreement,canUploadAgre
     {draft.fundType==="MIXED"&&field("CSR percentage (1–99)","csrPercent")}
     <Text style={styles.note}>CSR: {draft.csrPercent}% · Foundation: {100-draft.csrPercent}%.
      This is a planned split only, not cash.</Text>
-   </>}
-   {step===2&&<>
+   </View>
+   <View style={styles.panel}>
+    <Text style={styles.heading}>3. Budget Details & agreement terms</Text>
     {field("Private agreement scope and notes","agreementSummary",true)}
     <Text style={styles.note}>Actual signed proof must be verified through CG19;
-     independent funding approval through CG03 is not yet available.</Text>
-   </>}
-   {step===3&&<>
+     independent approval uses original CG03 funding review.</Text>
+   </View>
+   <View style={styles.panel}>
+    <Text style={styles.heading}>Review & Save</Text>
     <Text style={styles.label}>Review requested-only amount</Text>
     <Text style={styles.heading}>{minor(draft.rupees)?money(minor(draft.rupees)!):"Invalid INR amount"}</Text>
     <Text style={styles.note}>{draft.purpose||"Purpose not entered"}</Text>
     <Text style={styles.note}>CSR {draft.csrPercent}% / Foundation {100-draft.csrPercent}%</Text>
     <Text style={styles.note}>After saving: DRAFT. Not approved, received, allocated or utilized.</Text>
-   </>}
+   </View>
    <View style={styles.actions}>
     {chooseItem("close","Close","",clearDetail)}
     {selected?.status==="RETURNED"&&canManage&&chooseItem("resume","Revise returned funding request","",()=>{
      void send({path:"/"+selected.ref+"/resume",method:"POST",
       body:{requestKey:Crypto.randomUUID(),expectedVersion:selected.version}});
     })}
-    {step>0&&chooseItem("back","Previous","",()=>setStep(x=>Math.max(0,x-1)))}
-    {step<3?chooseItem("forward","Next","",()=>setStep(x=>Math.min(3,x+1))):
-     canManage&&(!selected||selected.status==="DRAFT")&&chooseItem("save","Save draft","",save)}
-   </View>
+    {canManage&&(!selected||selected.status==="DRAFT")&&
+     chooseItem("save","Save funding draft","",save)}
+    </View>
   </View>}
-  {editing&&selected&&canReadAgreement&&<NativeCsrFundingAgreementPanel
+  {editing&&<View style={styles.panel}>
+    <Text style={styles.heading}>4. Team & Members</Text>
+    <Text style={styles.note}>Actual team and task assignees remain in original CG05 Projects.
+     No unverified CSR roster is generated.</Text>
+    <Text style={styles.note}>Project: {projects.find(x=>x.value===draft.projectRef)?.label
+     ??"General Foundation purpose"}</Text>
+   </View>}
+   {editing&&<Text style={styles.heading}>5. Documents & Agreement</Text>}
+   {editing&&!selected&&<Text style={styles.note}>Save draft before the CG19 agreement upload.</Text>}
+   {editing&&selected&&canReadAgreement&&<NativeCsrFundingAgreementPanel
    key={selected.ref+":"+selected.version} token={token} proposalRef={selected.ref}
    version={selected.version} canUpload={canManage&&canUploadAgreement&&selected.status==="DRAFT"}
    canSubmit={canManage&&selected.status==="DRAFT"}
