@@ -136,7 +136,7 @@ export class RedemptionService {
    const claimMinimum=BigInt(product.rows[0].minimumClaimPoints);
    // The current migration supports one DIGITAl hold of at most 1 billion
    // points. Reject an incompatible catalog price before DB transition.
-   if(price<=0n||price>1000000000n||claimMinimum>1000000000n)
+   if(price<=0n||price>1000000000000n||claimMinimum>1000000000n)
     throw new ConflictException("This reward is not available for points redemption.");
    const account=await tx.query<Wallet>(
     "SELECT id,earned_points::text AS earned,reversed_points::text AS reversed,"+
