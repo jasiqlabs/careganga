@@ -4,7 +4,9 @@ type Programme={ref:string;name:string;status:string};
 type RewardEvent={ref:string;type:"DIGITAL"|"PHYSICAL";
  kind:"MEMBER"|"VOLUNTEER";name:string;productName:string;
  pointsCost:string;status:string;requestedAt:string};
-type Result={items:RewardEvent[];hasMore:boolean;page:number;notice:string};
+type Result={items:RewardEvent[];hasMore:boolean;page:number;notice:string;
+ availableBranches:{ref:string;name:string}[];branchesTruncated:boolean;
+ selectedBranch:string|null};
 const styles={
  control:{minHeight:42,padding:"8px 11px",border:"1px solid var(--cg-border,#CBD5E1)",
   borderRadius:9,background:"var(--cg-surface,#fff)",color:"inherit",maxWidth:"100%"},
@@ -25,6 +27,9 @@ export function AdminRedemptionsTable({programme,programmes,onProgrammeChange,re
  const [status,setStatus]=useState("ALL"),[search,setSearch]=useState("");
  const [appliedSearch,setAppliedSearch]=useState("");
  const [from,setFrom]=useState(""),[to,setTo]=useState("");
+ const [branchRef,setBranchRef]=useState("");
+ const [branches,setBranches]=useState<{ref:string;name:string}[]>([]);
+ const [branchesTruncated,setBranchesTruncated]=useState(false);
  const [category,setCategory]=useState("");
  const [categories,setCategories]=useState<string[]>([]);
  const [categoryError,setCategoryError]=useState("");
@@ -39,7 +44,10 @@ export function AdminRedemptionsTable({programme,programmes,onProgrammeChange,re
  const load=useCallback(async(target=1,append=false)=>{
   const seq=++sequence.current;
   setBusy(true);setError("");
-  if(!programme){setItems([]);setMore(false);setBusy(false);return;}
+  if(!programme){
+   setItems([]);setBranches([]);setBranchesTruncated(false);
+   setMore(false);setBusy(false);return;
+  }
   if(from&&to&&from>to){
    setItems([]);setMore(false);setBusy(false);
    setError("The start date must not be later than the end date.");return;
@@ -48,6 +56,7 @@ export function AdminRedemptionsTable({programme,programmes,onProgrammeChange,re
    const params=new URLSearchParams({page:String(target),status});
    if(appliedSearch)params.set("q",appliedSearch);
    if(category)params.set("category",category);
+   if(branchRef)params.set("branchRef",branchRef);
    if(from)params.set("from",from);
    if(to)params.set("to",to);
    const response=await fetch("/api/referrals/programmes/"+
@@ -58,16 +67,22 @@ export function AdminRedemptionsTable({programme,programmes,onProgrammeChange,re
     "Your current role cannot view these reward requests.":
     "Verified redemption history is unavailable. Refresh the original records.");
    const data=await response.json() as Result;
-   if(!Array.isArray(data.items)||typeof data.hasMore!=="boolean")
-    throw Error("The verified redemption history is unavailable.");
+   if(!Array.isArray(data.items)||typeof data.hasMore!=="boolean"||
+    !Array.isArray(data.availableBranches))
+    throw Error("The verified redemption/branch history is unavailable.");
    if(seq!==sequence.current)return;
+   setBranches(data.availableBranches);
+   setBranchesTruncated(data.branchesTruncated);
    setItems(old=>append?[...old,...data.items]:data.items);
    setMore(data.hasMore);setPage(target+1);
   }catch(e){
-   if(seq===sequence.current)setError(e instanceof Error?e.message:
-    "Cannot confirm the current reward history.");
+   if(seq===sequence.current){
+    setItems([]);setBranches([]);setBranchesTruncated(false);setMore(false);
+    setError(e instanceof Error?e.message:
+     "Cannot confirm the current reward history.");
+   }
   }finally{if(seq===sequence.current)setBusy(false);}
- },[programme,status,appliedSearch,category,from,to]);
+ },[programme,status,appliedSearch,category,branchRef,from,to]);
  useEffect(()=>{
   const current=new AbortController();
   // Category choices are original reward_product values under the same
@@ -124,7 +139,9 @@ export function AdminRedemptionsTable({programme,programmes,onProgrammeChange,re
   <h3 style={{margin:0}}>Volunteer &amp; Member Redemptions</h3>
   <p style={{fontSize:13,margin:0}}>Real points holds and verified reward outcomes only.
    An unfulfilled DIGITAL request is never counted as delivered.
-   Records are restricted to your current Foundation branch access.</p>
+   Records are restricted to your current Foundation branch access.
+   The summary KPI cards above cover all permitted branches; this filter
+   narrows only the verified redemption table.</p>
   <div style={{display:"flex",flexWrap:"wrap",gap:10,alignItems:"end"}}>
    <label style={{display:"grid",gap:5}}>Programme
     <select style={styles.control} value={programme}
@@ -132,6 +149,13 @@ export function AdminRedemptionsTable({programme,programmes,onProgrammeChange,re
      {!programmes.length&&<option value="">No programme configured</option>}
      {programmes.map(p=><option value={p.ref} key={p.ref}>
       {p.name} · {p.status}</option>)}
+    </select>
+   </label>
+   <label style={{display:"grid",gap:5}}>Active Foundation branch
+    <select style={styles.control} value={branchRef}
+     onChange={e=>setBranchRef(e.target.value)}>
+     <option value="">All current permitted branches</option>
+     {branches.map(b=><option key={b.ref} value={b.ref}>{b.name}</option>)}
     </select>
    </label>
    <label style={{display:"grid",gap:5}}>Status
@@ -162,7 +186,9 @@ export function AdminRedemptionsTable({programme,programmes,onProgrammeChange,re
    <button type="button" style={styles.button} disabled={busy}
     onClick={()=>void load(1,false)}>Refresh records</button>
   </div>
-  {busy&&<p role="status">Checking original reward requests…</p>}
+  {branchesTruncated&&<p role="status">The first 200 current permitted
+   branches are available for selection.</p>}
+  {busy&&<p role="status">Checking original reward requests…</p>
   {error&&<p role="alert">{error}</p>}
   {categoryError&&<p role="status">{categoryError} Category filter is unavailable; the unfiltered original records remain visible.</p>
   {notice&&<p role="status">{notice}{" "}
