@@ -437,3 +437,8 @@ Extend real CG09 financial integration QA: one original payment event → one po
 
 
 **CG-MB-001 senior Finance manager manager-role regression (NOT_RUN):** With CG-01 `finance.reports.view`, CG-02 ALL_BRANCHES senior manager gets all active A/B/C posted finance but excludes Foundation-null root-only journals; District AREA grants only A/B descendants; explicit A+B assignment sees A+B. Protected Admin gets root plus A/B/C. Ordinary branch A manager/accountant sees A if assigned and action allowed, cannot select B/ROOT. Read separate branch filters, combined CG-20 all assigned, original trial balance/ledger, CG-19 export, scheduled reports, role revoke/close. Compare real journal_line sums and original source counts, no client-side aggregation or report permission bypass. Source authored, local test NOT_RUN.
+
+
+### 23-Nov-2026 — scheduled/preview CG-MB-009 Finance original-owner source checks
+
+For original CG09 posted Finance and CG20 scheduled report integration, current protected root may request full Foundation+branch aggregates, while non-root `ALL_BRANCHES` / `AREA` / explicit A+B managers may request only currently allowed branch union; no null-branch Foundation line. `FinanceReportsService.scheduledSummary` now calls CG02 `scheduledFinanceScope` for an omitted branch and validates CG01 role+original current scope after source reading. Explicit branch routes keep `requireScheduledFinanceReportBranch`. Test before/after role/branch revoke, closed branch, current-year error and last-run artifact reconciliation. Independent security/DB review, worker, Postgres and Android QA NOT_RUN; do not claim PASS.
