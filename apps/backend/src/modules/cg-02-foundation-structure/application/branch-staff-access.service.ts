@@ -148,6 +148,14 @@ export class BranchStaffAccessService{
   const x=object(raw,["requestKey","currentPassword"]),key=id(x.requestKey);
   if(typeof x.currentPassword!=="string")throw new BadRequestException("Confirm your administrator password");
   return this.protectedWrite(bearer,x.currentPassword,async(tx,a)=>{
+   // Lock the account BEFORE the assignment. Grants lock the same account
+   // first; consistent ordering prevents competing grant/end deadlocks.
+   const account=await tx.query<{account_ref:string}>(
+    "SELECT account_ref FROM cg02_staff_scope_assignment WHERE id=$1 AND root_realm_id=$2",
+    [assignment,a.realmId]);
+   if(!account.rows[0])throw new ConflictException("Staff assignment is unavailable");
+   await tx.query("SELECT id FROM account WHERE realm_id=$1 AND id=$2 FOR UPDATE",
+    [a.realmId,account.rows[0].account_ref]);
    const row=await tx.query<Grant>(
     "SELECT * FROM cg02_staff_scope_assignment WHERE id=$1 AND root_realm_id=$2 FOR UPDATE",
     [assignment,a.realmId]);
