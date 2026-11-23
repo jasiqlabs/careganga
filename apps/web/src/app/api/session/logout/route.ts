@@ -1,9 +1,9 @@
 import { cookies } from "next/headers";
 import { NextRequest,NextResponse } from "next/server";
+import { isAllowedOrigin } from "../../../../shared/request-origin";
 export const dynamic="force-dynamic";
 export async function POST(request:NextRequest) {
-  const origin=request.headers.get("origin");
-  if (!origin || origin !== request.nextUrl.origin)
+  if (!isAllowedOrigin(request))
     return NextResponse.json({signedOut:false},{status:403});
   const token=(await cookies()).get("cg_staff_session")?.value;
   if(!token) return NextResponse.json({signedOut:true});

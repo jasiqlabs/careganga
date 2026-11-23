@@ -1,9 +1,10 @@
 import {cookies} from "next/headers";
 import {NextRequest,NextResponse} from "next/server";
+import { isAllowedOrigin } from "../../../../../shared/request-origin";
 
 export const dynamic="force-dynamic";
 export async function POST(request:NextRequest) {
-  if(request.headers.get("origin")!==request.nextUrl.origin)
+  if(!isAllowedOrigin(request))
     return NextResponse.json({message:"Retry from CareGanga."},{status:403});
   const token=(await cookies()).get("cg_staff_session")?.value;
   if(!token)return NextResponse.json({message:"Sign in again."},{status:401});

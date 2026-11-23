@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
+import { isAllowedOrigin } from "../../../../../shared/request-origin";
 export const dynamic="force-dynamic";
 export async function POST(request:NextRequest) {
-  const origin=request.headers.get("origin");
-  if(!origin||origin!==request.nextUrl.origin)
+  if(!isAllowedOrigin(request))
     return NextResponse.json({message:"Request could not be completed"},{status:403});
   const backend=process.env.BACKEND_URL;
   if(!backend)return NextResponse.json({message:"Account recovery unavailable"},{status:503});
