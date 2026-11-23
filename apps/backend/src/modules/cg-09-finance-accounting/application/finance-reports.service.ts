@@ -197,7 +197,10 @@ export class FinanceReportsService{
    year=yearInput?uuid(yearInput,"yearRef"):null,
    branch=branchInput?uuid(branchInput,"branchRef"):null;
   await this.verifyFilterScope(bearer,actor.realmId,{fy:year,branch,account:null});
-  return this.readPostedSummary(actor.realmId,year,branch);
+  const result=await this.readPostedSummary(actor.realmId,year,branch);
+  await this.actor(bearer);
+  await this.verifyFilterScope(bearer,actor.realmId,{fy:year,branch,account:null});
+  return result;
  }
  /** Same original posted-metric formula for both interactive and current-role
   * CG20 scheduled readers. Never a second CG20 finance SQL/projection.
@@ -322,7 +325,10 @@ export class FinanceReportsService{
   const year=yearInput?uuid(yearInput,"yearRef"):null;
   const branch=branchInput?uuid(branchInput,"branchRef"):null;
   await this.verifyFilterScope(bearer,actor.realmId,{fy:year,branch,account:null});
-  return this.readMonthlyMisTrend(actor.realmId,year,branch,null);
+  const trend=await this.readMonthlyMisTrend(actor.realmId,year,branch,null);
+  await this.actor(bearer);
+  await this.verifyFilterScope(bearer,actor.realmId,{fy:year,branch,account:null});
+  return trend;
  }
  private async readMonthlyMisTrend(root:string,year:string|null,branch:string|null,
   permittedBranches:readonly string[]|null){
