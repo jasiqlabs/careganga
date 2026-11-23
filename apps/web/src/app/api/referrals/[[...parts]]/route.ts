@@ -94,7 +94,7 @@ async function proxy(req:NextRequest,ctx:Context,method:Method){
     (selector&&(search!==null||category!==null))||
     (page!==null&&(!paged||!(/^[1-9][0-9]{0,3}$/).test(page)))||
     (search!==null&&!products&&!redemptionAdmin&&!referralAdmin)||
-    (category!==null&&!products)||
+    (category!==null&&!products&&!redemptionAdmin)||
     ((status!==null||from!==null||to!==null)&&!redemptionAdmin&&!referralAdmin)||
     (kind!==null&&(!referralAdmin||!["MEMBER","VOLUNTEER"].includes(kind)))||
     ([location,rank,sort].some(v=>v!==null)&&!referralAdmin)||
