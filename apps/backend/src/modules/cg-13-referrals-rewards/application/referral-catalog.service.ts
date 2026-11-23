@@ -441,6 +441,20 @@ export class ReferralCatalogService{
    return {items:items.rows,stores:stores.rows,notice:"Stock is read-only CG12 source. No reward edit changes inventory."};
   },true);
  }
+ async stockPreview(bearer:string,itemInput:string,storeInput:string){
+  const itemRef=ref(itemInput,"itemRef"),storeRef=ref(storeInput,"storeRef");
+  return this.run(bearer,"rewards.catalog.manage",async(tx,a)=>{
+   await this.root(tx,a);
+   const found=await this.stockSource(tx,a,{
+    programmeRef:"",type:"PHYSICAL",category:"",name:"",description:"",
+    pointsPrice:1,eligibleAudience:"BOTH",status:"ACTIVE",
+    highlighted:false,publicVisible:false,approvedImageUrl:null,itemRef,storeRef});
+   if(!found)throw new ServiceUnavailableException("Original CG12 stock unavailable");
+   return {itemName:found.label,availableQuantity:found.available,
+    stockStatus:found.available==="0"?"OUT_OF_STOCK":"AVAILABLE",
+    notice:"Read-only original CG12 available quantity. No warehouse stock is changed."};
+  },true);
+ }
  async publicEligibleCatalog(bearer:string){
   const a=await this.sessions.verifySession(bearer),tx=await this.db.connect();
   try{
