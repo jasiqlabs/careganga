@@ -1,6 +1,7 @@
 import {describe,test} from "node:test";
 import assert from "node:assert/strict";
 import {BadRequestException} from "@nestjs/common";
+import {readFileSync} from "node:fs";
 import {ReferralCatalogService} from
  "../src/modules/cg-13-referrals-rewards/application/referral-catalog.service";
 const R="11111111-1111-4111-8111-111111111111";
@@ -61,5 +62,25 @@ describe("CG13 US003 B14/B15 verified redemption reporting (mock, NOT live SQL)"
   const x=fixture(false);
   await assert.rejects(()=>x.svc.adminRedemptions("denied",P,"1","ALL"));
   assert.ok(!x.seen.some(v=>v.sql.includes("FROM redemption r")));
+ });
+});
+
+describe("CG13 US003 QA17 Internal Android actual CG12 stock issue source boundary",()=>{
+ test("native queue is role-gated and prepares only original warehouse ISSUE, not fake delivery",()=>{
+  const screen=readFileSync("../android-internal/src/features/referrals/native-reward-requests.tsx","utf8");
+  const parent=readFileSync("../android-internal/src/features/identity-access/staff-authentication-screen.tsx","utf8");
+  const handover=readFileSync("../android-public/src/features/referrals/native-digital-redemption.tsx","utf8");
+  assert.match(parent,/canIssueStock=\{roleActions.includes\("inventory.stock.issue"\)/);
+  assert.match(parent,/roleActions.includes\("inventory.stock.view"\)/);
+  assert.match(parent,/roleActions.includes\("inventory.catalog.view"\)/);
+  assert.match(screen,/\/api\/v1\/rewards\/admin\/redemptions\//);
+  assert.match(screen,/prepare-issue/);
+  assert.match(screen,/\/api\/v1\/referrals\/programmes\//);
+  assert.match(screen,/ISSUED_AWAITING_HANDOVER/);
+  assert.match(screen,/canViewMembers/);
+  assert.match(screen,/canViewVolunteers/);
+  assert.ok(!screen.includes("approve-redemption"));
+  assert.ok(!screen.includes("mark-delivered"));
+  assert.match(handover,/acknowledge-handover/);
  });
 });
