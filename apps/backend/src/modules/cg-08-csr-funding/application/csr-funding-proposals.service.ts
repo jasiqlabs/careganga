@@ -326,7 +326,7 @@ export class CsrFundingProposalsService{
  }
  async verifiedFinance(bearer:string,proposalRef:string){
   return this.run(bearer,"csr.partners.view",async(tx,a)=>{
-   const source=await this.approvedFinanceSource(tx,a,proposalRef);
+   const source=await this.approvedFinanceSource(tx,a,proposalRef,false,true);
    const amounts=await this.receipts.currentReceived(tx,a,source);
    const movements=await this.receipts.currentBudgetEffects(tx,a,source);
    const received=BigInt(amounts.csrReceivedMinor)+BigInt(amounts.foundationReceivedMinor);
@@ -365,7 +365,7 @@ export class CsrFundingProposalsService{
  /** Real original CG09 approved budget selectors; no new category master. */
  async eligibleFinanceBudgets(bearer:string,proposalRef:string){
   return this.run(bearer,"csr.partners.view",async(tx,a)=>{
-   const source=await this.approvedFinanceSource(tx,a,proposalRef);
+   const source=await this.approvedFinanceSource(tx,a,proposalRef,false,true);
    return this.receipts.eligibleBudgets(tx,a,source);
   },true);
  }
@@ -374,7 +374,7 @@ export class CsrFundingProposalsService{
   if(!["CSR","FOUNDATION"].includes(partyKind))
    throw new BadRequestException("Choose an approved funding party.");
   return this.run(bearer,"csr.partners.view",async(tx,a)=>{
-   const source=await this.approvedFinanceSource(tx,a,proposalRef);
+   const source=await this.approvedFinanceSource(tx,a,proposalRef,false,true);
    return this.receipts.eligibleBudgetAllocations(tx,a,source,ref(budgetRef),partyKind);
   },true);
  }
