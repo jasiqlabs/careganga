@@ -86,7 +86,7 @@ export class FoundationStructureIdentityFacade {
     const q=await client.query<{id:string;display_name:string}>(`
       SELECT a.id,a.display_name FROM account a
       WHERE a.realm_id=$1 AND a.status='ACTIVE'
-       AND ($2='' OR lower(a.display_name) LIKE $2 ESCAPE '\\')
+       AND ($2='' OR lower(a.display_name) LIKE $2 ESCAPE '\')
        AND EXISTS(
         SELECT 1 FROM account_role ar JOIN role r
           ON r.id=ar.role_id AND r.realm_id=ar.realm_id
@@ -95,7 +95,7 @@ export class FoundationStructureIdentityFacade {
           AND r.normalized_name NOT IN ('careganga patient','careganga community applicant')
        )
       ORDER BY a.display_name,a.id LIMIT 30`,[actor.realmId,
-       search?"%"+search.toLowerCase().replace(/[\\%_]/g,"\\  async assertPatientSessionCurrent(client:PoolClient,actor:VerifiedFoundationActor){")+"%":""]);
+       search?"%"+search.toLowerCase().replace(/[\\%_]/g,"\\$&")+"%":""]);
     return q.rows.map(x=>({value:x.id,label:x.display_name}));
   }
   async assertPatientSessionCurrent(client:PoolClient,actor:VerifiedFoundationActor){
