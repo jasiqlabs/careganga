@@ -434,3 +434,8 @@ Targeted original-website/CG18 ownership review found the first partnership CMS 
 ### 23-Nov-2026 — US001 scheduled original CMS publication source-revocation guard
 
 Targeted CG18 due-worker source review identified that `CmsEditorialService.publish` revalidated rights when scheduling, but the existing CG18 due worker could set the page publication state to EFFECTIVE after the original CG08 naming consent had been withdrawn or branch closed. Added **one current-source eligibility check inside the already-existing CG18 due transaction**, using the same strict original PARTNER_CARDS version selection and CG08 current approved source. Stale or malformed partner selection cancels its original scheduled publication through existing failure/audit path, leaving previous effective content untouched. Unrelated CMS sections and all other module sources unchanged; no new scheduler, no new approval master, no new scenario ID. Existing US001-QA11/16/19 and `test:cg08-partner` regression authored, NOT_EXECUTED; real cancellation race and PostgreSQL tests NOT_RUN.
+
+
+### Independent database review after `main` sync — CG18 policy page regression fixed
+
+**CRITICAL source gap CG08-US001-DB-01:** 3405 new CMS PARTNERS migration had replaced `cms_page_kind_check` with a list missing the original `POLICY` kind introduced in 0940. That could reject an existing user-authored legal policy page during migration or disable future `/policies/*` editor use. Repaired 3405 to retain all original kinds including POLICY and added a targeted original QA19 source regression against 0940's allowed set. This is a greenfield source fix; no BWC workaround, no new CMS master. Independent source review found/fixed; PostgreSQL execution still NOT_RUN.

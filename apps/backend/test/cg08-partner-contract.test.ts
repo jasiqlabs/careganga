@@ -372,3 +372,14 @@ test("US001-QA11/16/19: scheduled CG18 collaboration cannot publish after source
  assert.ok(worker.includes('await this.partnerRevisionEligible(tx,item.foundation_root_id,item.page_revision_id,item.page_kind)'));
  assert.ok(worker.includes('await this.cancel(tx,due,item);return;'),"Stale scheduled release must be cancelled");
 });
+
+
+test("US001-QA19: CG18 new partner CMS migration preserves every original preexisting page kind",()=>{
+ const legacy=readFileSync(join(process.cwd(),"db/migrations/0940_cg18_original_footer_policy_editorial.sql"),"utf8");
+ const current=readFileSync(join(process.cwd(),"db/migrations/3405_cg18_csr_partner_editorial.sql"),"utf8");
+ const allowed=(sql:string)=>[...sql.matchAll(/'([A-Z_]+)'/g)].map(x=>x[1]);
+ const oldKinds=new Set(allowed(legacy)),newKinds=new Set(allowed(current));
+ for(const kind of oldKinds)assert.ok(newKinds.has(kind),"CG18 preexisting kind "+kind+" must not be removed");
+ assert.ok(newKinds.has("PARTNERS"));
+ assert.ok(newKinds.has("POLICY"),"Historical footer legal policies must remain functional");
+});
