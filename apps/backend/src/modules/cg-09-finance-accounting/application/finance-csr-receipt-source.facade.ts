@@ -96,12 +96,14 @@ export class FinanceCsrReceiptSourceFacade{
    bankItemMasked:v.bank_item_masked})),hasMore:rows.rows.length>25};
  }
  async linkReceipt(tx:PoolClient,a:VerifiedFoundationActor,p:ApprovedFundingSource,
-  input:{partyKind:CsrParty;reconciliationRef:string;requestKey:string}){
+  input:{partyKind:CsrParty;reconciliationRef:string;requestKey:string;remitterConfirmed:boolean}){
   await this.scope(tx,a,p,"finance.reconciliation.manage");
+  if(input.remitterConfirmed!==true)
+   throw new BadRequestException("Confirm the bank statement shows the actual funding remitter.");
   if(input.partyKind!=="CSR"&&input.partyKind!=="FOUNDATION")
    throw new BadRequestException("Choose an approved funding party.");
   const ref=uid(input.reconciliationRef),key=uid(input.requestKey);
-  const hash=digest(["CG09_CSR_RECEIPT_LINK_V1",p.proposalRef,p.sourceVersion,input.partyKind,ref]);
+  const hash=digest(["CG09_CSR_RECEIPT_LINK_V2",p.proposalRef,p.sourceVersion,input.partyKind,ref,input.remitterConfirmed]);
   await tx.query("SELECT pg_advisory_xact_lock(hashtextextended($1,0))",
    ["CG09:CSR:RECEIPT:"+a.realmId+":"+a.accountId+":"+key]);
   const prior=(await tx.query<{id:string;funding_proposal_id:string;
@@ -119,9 +121,10 @@ export class FinanceCsrReceiptSourceFacade{
   }
   const saved=await tx.query(
    "INSERT INTO finance_csr_verified_receipt_link(root_realm_id,funding_proposal_id,"+
-   "approved_source_version,party_kind,reconciliation_id,request_key,request_digest,actor_ref) "+
-   "VALUES($1,$2,$3,$4,$5,$6,$7,$8) RETURNING id",
-   [a.realmId,p.proposalRef,p.sourceVersion,input.partyKind,ref,key,hash,a.accountId]);
+   "approved_source_version,party_kind,reconciliation_id,request_key,request_digest,"+
+   "actor_ref,remitter_attested) "+
+   "VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9) RETURNING id",
+   [a.realmId,p.proposalRef,p.sourceVersion,input.partyKind,ref,key,hash,a.accountId,true]);
   if(!saved.rowCount)throw stale();
   return {linked:true,replayed:false};
  }
