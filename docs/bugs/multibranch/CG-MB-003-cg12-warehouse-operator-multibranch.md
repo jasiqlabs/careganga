@@ -1,6 +1,6 @@
 # CG-MB-003 — cg12 warehouse operator multibranch
 
-**Priority:** P1 · **Owner:** CG-12 inventory · **Status:** CONFIRMED_SOURCE_DEPENDENCY · **Scope:** active CG-07 feature branch only · **Runtime:** NOT_RUN
+**Priority:** P1 · **Owner:** CG-12 inventory · **Status:** SOURCE_INTEGRATION_AUTHORED_REVIEW_PENDING · **Scope:** active CG-07 feature branch only · **Runtime:** NOT_RUN
 
 ## Source evidence / observed limitation
 
@@ -19,3 +19,7 @@ Try create/receive/issue/transfer/return/adjust/review/export from store A to B 
 Implement only after CG-MB-001 approved genuine branch grant; both destination+source current checks, historical immutable movement, signed proof and no negative stock.
 
 **Receiving modules:** CG-01,CG-02,CG-12,CG-06,CG-13. **Common QA:** [Two-branch and center scenario matrix](../../qa/CAREGANGA-MULTIBRANCH-SOURCE-AND-RUNTIME-TEST-PLAN-20261123.md). Verify original story QA IDs and do not replace them. **Gate:** Implement → independent Review → Fix → Re-review → source trace → local PostgreSQL/Web/Android/device/provider QA. Document real test fixtures, exact file:function and result. No CI/GitHub Actions or merge.
+
+## Source integration update — 23 November
+
+CG-12 `InventoryCatalogService.requireScope` now checks original current CG-02 grants; Foundation-null store remains protected. `InventoryCatalogService.options` currently filters branch/store lists, locations and warehouse KPI counts by the same delegated scope. `InventoryOperationSource.guard` continues to demand both actual source and target stores. `InventorySourceModule` imports current CG02 owner. **Still open:** independent reviewer, actual last-unit/concurrent transfer, direct API, private supplier, counts, unsafe stale A/B selection, PostgreSQL and Internal Android source/runtime QA. Existing CG-MB-014 transfer race remains separate.
