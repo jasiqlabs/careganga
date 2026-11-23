@@ -169,6 +169,11 @@ END; $cg08fund$;
 CREATE TRIGGER cg03_funding_decision_insert BEFORE INSERT ON cg03_case_decision
  FOR EACH ROW EXECUTE FUNCTION cg03_funding_decision_guard();
 
+-- The original immutable command ledger also protects returned-source reopen.
+ALTER TABLE csr_funding_command DROP CONSTRAINT csr_funding_command_action_check;
+ALTER TABLE csr_funding_command ADD CONSTRAINT csr_funding_command_action_check
+ CHECK(action IN('CREATE','EDIT','RESUME'));
+
 -- Replace only the original CG08 funding draft guard: source identity remains
 -- immutable, source terms freeze at submission, no direct approval bypass.
 CREATE OR REPLACE FUNCTION cg08_funding_proposal_guard()
@@ -188,6 +193,7 @@ BEGIN
    FOR SHARE)
  THEN RAISE EXCEPTION 'Original approved CSR funder required'; END IF;
  IF NEW.project_ref IS NOT NULL AND NEW.status IN('DRAFT','SUBMITTED','APPROVED')
+  AND NOT (TG_OP='UPDATE' AND OLD.status='RETURNED' AND NEW.status='DRAFT')
   AND NOT EXISTS(
    SELECT 1 FROM project WHERE id=NEW.project_ref
     AND root_realm_id=NEW.root_realm_id AND status IN('PLANNED','ACTIVE')
