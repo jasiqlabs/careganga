@@ -8,11 +8,13 @@ import { BranchSourceFacade } from "./application/branch-source.facade";
 import { BranchLifecycleService } from "./application/branch-lifecycle.service";
 import { BranchOperationsService } from "./application/branch-operations.service";
 import { BranchOperationsController } from "./http/branch-operations.controller";
+import { BranchStaffAccessService } from "./application/branch-staff-access.service";
+import { BranchStaffAccessController } from "./http/branch-staff-access.controller";
 
 @Module({
   imports:[IdentityAccessModule],
-  providers:[FoundationStructureService,BranchRegistrationDraftService,BranchSourceFacade,BranchLifecycleService,BranchOperationsService],
-  controllers:[FoundationStructureController,BranchRegistrationDraftController,BranchOperationsController],
-  exports:[FoundationStructureService,BranchRegistrationDraftService,BranchSourceFacade,BranchLifecycleService,BranchOperationsService]
+  providers:[FoundationStructureService,BranchRegistrationDraftService,BranchSourceFacade,BranchLifecycleService,BranchOperationsService,BranchStaffAccessService],
+  controllers:[FoundationStructureController,BranchRegistrationDraftController,BranchOperationsController,BranchStaffAccessController],
+  exports:[FoundationStructureService,BranchRegistrationDraftService,BranchSourceFacade,BranchLifecycleService,BranchOperationsService,BranchStaffAccessService]
 })
 export class FoundationStructureModule {}
