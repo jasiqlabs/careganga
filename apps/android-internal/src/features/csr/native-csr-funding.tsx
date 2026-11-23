@@ -2,6 +2,7 @@ import React,{useCallback,useEffect,useRef,useState} from "react";
 import {ActivityIndicator,Pressable,ScrollView,StyleSheet,Text,TextInput,View} from "react-native";
 import * as Crypto from "expo-crypto";
 import {identityRequest} from "../identity-access/http-client";
+import {NativeCsrFundingAgreementPanel} from "./native-csr-funding-agreement-panel";
 type Choice={value:string;label:string;branchRef?:string|null;projectVersion?:number};
 type Options={foundation:boolean;branches:Choice[];partners:Choice[];projects:Choice[]};
 type Proposal={ref:string;branchRef:string|null;partnerRef:string|null;projectRef:string|null;
@@ -39,8 +40,8 @@ async function api<T,>(token:string,path:string,method:"GET"|"POST"|"PATCH"="GET
   {status:res.status||503});
  return x as T;
 }
-export function NativeCsrFunding({token,canManage,onExpired}:{
- token:string;canManage:boolean;onExpired:()=>void}){
+export function NativeCsrFunding({token,canManage,canReadAgreement,canUploadAgreement,onExpired}:{
+ token:string;canManage:boolean;canReadAgreement:boolean;canUploadAgreement:boolean;onExpired:()=>void}){
  const [options,setOptions]=useState<Options|null>(null);
  const [page,setPage]=useState<{items:Proposal[];hasMore:boolean;summary?:{requests:number;drafts:number;requestedMinor:string}}>({items:[],hasMore:false});
  const [scope,setScope]=useState("ALL"),[status,setStatus]=useState("ALL"),
@@ -270,6 +271,10 @@ export function NativeCsrFunding({token,canManage,onExpired}:{
      canManage&&(!selected||selected.status==="DRAFT")&&chooseItem("save","Save draft","",save)}
    </View>
   </View>}
+  {editing&&selected&&canReadAgreement&&<NativeCsrFundingAgreementPanel
+   key={selected.ref+":"+selected.version} token={token} proposalRef={selected.ref}
+   version={selected.version} canUpload={canManage&&canUploadAgreement&&selected.status==="DRAFT"}
+   onExpired={onExpired}/>}
   {!!pending&&<View style={styles.panel}>
    <Text accessibilityRole="alert" style={styles.error}>The original write may have succeeded.
     Retry the same key, not a new request.</Text>
