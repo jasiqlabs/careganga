@@ -153,6 +153,11 @@ BEGIN
    AND wallet.referrer_kind=NEW.relationship_kind
    AND wallet.referrer_relationship_ref=NEW.relationship_ref
    AND product.product_type=NEW.product_type
+   -- 3508 supplies this current CG19 delivery-method column before first
+   -- operational redemption. PL/pgSQL query planning occurs at execution.
+   -- Do not permit a database caller to hold points for future-only DIGITAL.
+   AND (NEW.product_type='PHYSICAL' OR
+    product.digital_fulfillment_method='ON_PLATFORM_RECOGNITION')
    AND product.status='ACTIVE' AND product.public_visible
    AND (programme.audience='BOTH' OR programme.audience=NEW.relationship_kind)
    AND (product.eligible_audience='BOTH' OR product.eligible_audience=NEW.relationship_kind)
