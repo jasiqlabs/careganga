@@ -646,7 +646,8 @@ export class ReferralCatalogService{
     "AND t.starts_on<=(now() AT TIME ZONE 'Asia/Kolkata')::date "+
     "AND (t.expires_on IS NULL OR t.expires_on>(now() AT TIME ZONE 'Asia/Kolkata')::date) "+
     "UNION SELECT 'VOLUNTEER' AS kind FROM volunteer v "+
-    "WHERE v.root_realm_id=$1 AND v.account_ref=$2 AND v.status='ACTIVE'",
+    "WHERE v.root_realm_id=$1 AND v.account_ref=$2 AND v.status='ACTIVE' "+
+    "AND cg04_current_volunteer(v.root_realm_id,v.id,v.account_ref,v.branch_ref)",
     [a.realmId,a.accountId]);
    const kinds=audiences.rows.map(v=>v.kind);
    const q=await tx.query(
