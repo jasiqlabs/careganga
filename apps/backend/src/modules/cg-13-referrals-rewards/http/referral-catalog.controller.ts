@@ -1,4 +1,4 @@
-import {Body,Controller,Get,Headers,Param,Patch,Post} from "@nestjs/common";
+import {Body,Controller,Get,Headers,Param,Patch,Post,Query} from "@nestjs/common";
 import {ReferralCatalogService} from "../application/referral-catalog.service";
 
 /** CG13 US001: original Foundation policy, rank and reward product actions.
@@ -8,8 +8,8 @@ import {ReferralCatalogService} from "../application/referral-catalog.service";
 export class ReferralCatalogController{
  constructor(private readonly catalog:ReferralCatalogService){}
  @Get("programmes")
- programmes(@Headers("authorization")auth:string){
-  return this.catalog.listProgrammes(auth);
+ programmes(@Headers("authorization")auth:string,@Query("page")page?:string){
+  return this.catalog.listProgrammes(auth,page);
  }
  @Post("programmes")
  createProgramme(@Headers("authorization")auth:string,@Body()body:unknown){
@@ -30,8 +30,9 @@ export class ReferralCatalogController{
   return this.catalog.changeProgrammeStatus(auth,ref,body);
  }
  @Get("programmes/:programmeRef/products")
- products(@Headers("authorization")auth:string,@Param("programmeRef")ref:string){
-  return this.catalog.listProducts(auth,ref);
+ products(@Headers("authorization")auth:string,@Param("programmeRef")ref:string,
+  @Query("page")page?:string){
+  return this.catalog.listProducts(auth,ref,page);
  }
  @Post("products")
  createProduct(@Headers("authorization")auth:string,@Body()body:unknown){
@@ -52,7 +53,7 @@ export class ReferralCatalogController{
   return this.catalog.stockPreview(auth,itemRef,storeRef);
  }
  @Get("my-catalog")
- ownCatalog(@Headers("authorization")auth:string){
-  return this.catalog.publicEligibleCatalog(auth);
+ ownCatalog(@Headers("authorization")auth:string,@Query("page")page?:string){
+  return this.catalog.publicEligibleCatalog(auth,page);
  }
 }
