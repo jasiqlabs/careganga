@@ -721,6 +721,9 @@ export class ReferralCatalogService{
     "SELECT 'MEMBER' AS kind FROM member m JOIN membership_term t "+
     "ON t.root_realm_id=m.root_realm_id AND t.member_id=m.id "+
     "WHERE m.root_realm_id=$1 AND m.account_ref=$2 AND m.status='ACTIVE' "+
+    "AND (m.branch_ref IS NULL OR EXISTS(SELECT 1 FROM branch b "+
+    "WHERE b.root_realm_id=m.root_realm_id AND b.id=m.branch_ref "+
+    "AND b.status='ACTIVE')) "+
     "AND t.starts_on<=(now() AT TIME ZONE 'Asia/Kolkata')::date "+
     "AND (t.expires_on IS NULL OR t.expires_on>(now() AT TIME ZONE 'Asia/Kolkata')::date) "+
     "UNION SELECT 'VOLUNTEER' AS kind FROM volunteer v "+
