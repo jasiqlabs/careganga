@@ -78,6 +78,15 @@ export class BranchSourceFacade{
   if(rows.rows.length>200)throw new ForbiddenException("Ask an administrator to narrow the assigned branches");
   return rows.rows;
  }
+ /** Only an already-authorized domain caller may use this projection. It
+  * cannot authorize root/global records, healthcare centers or an action.
+  */
+ async requireAssignedStaffBranch(tx:PoolClient,a:VerifiedFoundationActor,branchInput:string){
+  const branch=ensureId(branchInput);
+  const current=await this.permittedStaffBranches(tx,a.realmId,a.accountId);
+  if(!current.some(x=>x.id===branch))
+   throw new ForbiddenException("This active branch is not assigned to your account");
+ }
  /** Used for finance account reactivation, without CG-09 reading CG-02 tables. */
  async requireFinanceActiveBranch(client:PoolClient,actor:VerifiedFoundationActor,
   branchRef:string,action:"finance.accounts.manage"|"finance.journals.post"):Promise<void>{
