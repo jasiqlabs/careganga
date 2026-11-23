@@ -49,7 +49,7 @@ const csv=(value:unknown)=>{
  return '"'+safe.replace(/"/g,'""')+'"';
 };
 type SourceRow={ref:string;branchRef:string|null;branchName:string|null;
- partnerName:string|null;projectName:string|null;purpose:string;fundType:string;
+ partnerName:string|null;projectName:string|null;hasProject:boolean;purpose:string;fundType:string;
  status:string;updatedAt:string;requestedMinor:string;
  receivedMinor:string;allocatedMinor:string;utilizedMinor:string;invalidMinor:string};
 
@@ -71,6 +71,7 @@ export class CsrFundingReportsService{
  "LEFT JOIN branch b ON b.root_realm_id=f.root_realm_id AND b.id=f.branch_ref",
  "LEFT JOIN csr_partner p ON p.root_realm_id=f.root_realm_id AND p.id=f.csr_partner_id",
  "LEFT JOIN project pr ON pr.root_realm_id=f.root_realm_id AND pr.id=f.project_ref",
+ "AND pr.branch_ref IS NOT DISTINCT FROM f.branch_ref AND pr.status IN('PLANNED','ACTIVE')",
  "WHERE f.root_realm_id=$1 AND ($2::boolean OR f.branch_ref=ANY($3::uuid[]))",
  "AND ($4::boolean OR f.branch_ref IS NOT DISTINCT FROM $5::uuid)",
  "AND ($6::uuid IS NULL OR f.csr_partner_id=$6)",
@@ -82,7 +83,7 @@ export class CsrFundingReportsService{
  "AND ($12::timestamptz IS NULL OR (f.updated_at,f.id)<($12::timestamptz,$13::uuid))",
  "ORDER BY f.updated_at DESC,f.id DESC LIMIT $14)",
  "SELECT v.id AS ref,v.branch_ref AS \"branchRef\",v.branch_name AS \"branchName\",",
- "v.partner_name AS \"partnerName\",v.project_name AS \"projectName\",v.purpose,",
+ "v.partner_name AS \"partnerName\",v.project_name AS \"projectName\",v.project_ref IS NOT NULL AS \"hasProject\",v.purpose,",
  "v.fund_type AS \"fundType\",v.status,v.updated_at AS \"updatedAt\",",
  "v.requested_minor::text AS \"requestedMinor\",",
  "coalesce(bank.received,0)::text AS \"receivedMinor\",",
@@ -157,14 +158,14 @@ export class CsrFundingReportsService{
      utilized=BigInt(v.utilizedMinor),invalid=BigInt(v.invalidMinor);
     const recheck=invalid>0n||allocated>received||utilized>allocated;
     return {ref:v.ref,branchRef:v.branchRef,branchName:v.branchName,
-     partnerName:v.partnerName,projectName:projects?v.projectName:null,
+     partnerName:v.partnerName,projectName:projects?(v.projectName??(v.hasProject?"Project unavailable in current scope":null)):null,
      purpose:v.purpose,fundType:v.fundType,status:v.status,updatedAt:v.updatedAt,
      requestedMinor:v.requestedMinor,
      committedMinor:v.status==="APPROVED"?v.requestedMinor:"0",
      receivedMinor:v.receivedMinor,allocatedMinor:v.allocatedMinor,utilizedMinor:v.utilizedMinor,
      availableMinor:recheck?null:String(received-allocated),
      financeStatus:recheck?"REVALIDATION_REQUIRED":
-      v.status==="APPROVED"&&received===0n?"RECEIPT_PENDING":"VERIFIED_SOURCE"};
+      v.status==="APPROVED"?(received===0n?"RECEIPT_PENDING":"VERIFIED_SOURCE"):"NOT_APPROVED"};
    });
    const items=records.slice(0,max===26?25:1000),last=items.at(-1);
    return {items,hasMore:records.length>items.length,
