@@ -266,7 +266,8 @@ export class FinanceReportsService{
   // while the read-only PostgreSQL snapshot was being assembled.
   await this.actor(bearer);
   const latest=await this.branches.financeReportScope(bearer,"finance.reports.view");
-  if(!latest.all&&scope.branchRefs.some(ref=>!latest.branchRefs.includes(ref)))
+  if(scope.all&&!latest.all||
+   !latest.all&&scope.branchRefs.some(ref=>!latest.branchRefs.includes(ref)))
    throw new ForbiddenException("Your assigned branch reporting scope changed. Refresh the report.");
   return result;
  }
@@ -360,7 +361,8 @@ export class FinanceReportsService{
   const result=await this.readMonthlyMisTrend(actor.realmId,year,null,scope.branchRefs);
   await this.actor(bearer);
   const latest=await this.branches.financeReportScope(bearer,"finance.reports.view");
-  if(!latest.all&&scope.branchRefs.some(ref=>!latest.branchRefs.includes(ref)))
+  if(scope.all&&!latest.all||
+   !latest.all&&scope.branchRefs.some(ref=>!latest.branchRefs.includes(ref)))
    throw new ForbiddenException("Your assigned branch reporting scope changed. Refresh the report.");
   return result;
  }
