@@ -2,6 +2,7 @@
 import {useCallback,useEffect,useRef,useState} from "react";
 import type {CG04Application,CG04Member,CG04MemberHistory,CG19OwnMemberPacks,CG04MembershipFee,CG04PublicTier,CG04PublicTierPage} from "@careganga/api-contracts";
 import {CommunityAuth} from "./community-auth";
+import {PublicRewardsCatalogue} from "../referrals/public-rewards-catalogue";
 import {MemberApplicationForm} from "./member-application-form";
 import {MemberEvidencePanel} from "./member-evidence-panel";
 import {priceText} from "./tier-display";
