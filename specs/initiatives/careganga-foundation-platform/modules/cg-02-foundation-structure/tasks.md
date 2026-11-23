@@ -148,3 +148,10 @@ The current code-based review and fix evidence is [the six-owner formal source r
 ### 23-Nov-2026 — original US-002 CG-MB-001 senior manager / geographic access QA
 
 **SOURCE_FIX_AUTHORED_REVIEW_PENDING:** CG-02 `3320_cg02_delegated_staff_scope.sql` now owns `BRANCH`, `AREA`, `ALL_BRANCHES` current staff assignments. CG-01 owns action and protected role; CG-14 owns external healthcare center. Foundation root Admin sees Foundation legal/profile plus all branches. Non-root General Manager assigned ALL_BRANCHES can view every ACTIVE branch, including new ones, **but not any Foundation-null master**. District/state manager uses real ACTIVE geography descendants, and A+B assigned manager sees only those two. A-only manager cannot query B by ID, view B card, export B, approve B, or see Foundation root. Test paired current managers, independent restricted reviewer, stale session/role revoke and area reparent/branch close in two concurrent transactions; first read and subsequent write must recheck current source. New Web and Internal Android `ALL_BRANCHES` controls must show human labels, no UUID, reason and root current-password confirmation. DB uniqueness/trigger/FOREIGN KEY migration fresh and upgrade, original CG-02 business screenshots, executor/reviewer and receipts all NOT_RUN, not an original QA pass or main merge.
+
+
+### 23-Nov-2026 — source-owner closure check CG-MB-005 root-only manager/geography transfer
+
+CG02 BranchOperationsService.update now checks foundation.branches.admin for manager or geography changes; delegated manager may update other ACTIVE metadata only within current BRANCH/AREA/ALL_BRANCHES. Test A manager tries moving branch A into B area or selecting another manager -> 403; protected root correct version -> success; old manager cannot write after transfer. Original US-002 QA IDs stay unchanged.
+
+**Gate:** SOURCE_REVIEWED_RUNTIME_PENDING. Run original story QA/Web/Internal Android/backend/actual DB and private files. Capture executor/reviewer, command, before/after and evidence. Only local developer may mark executable PASS after actual testing; no CI/GitHub Actions, no BWC and no premature merge.
