@@ -1,6 +1,6 @@
 # CG-MB-001 — cg01 cg02 staff branch assignments
 
-**Priority:** P0 · **Owner:** CG-01 + CG-02 · **Status:** CONFIRMED_SOURCE_SCOPE_GAP · **Scope:** active CG-07 feature branch only · **Runtime:** NOT_RUN
+**Priority:** P0 · **Owner:** CG-01 + CG-02 · **Status:** SOURCE_FIX_AUTHORED_REVIEW_PENDING · **Scope:** active CG-07 feature branch only · **Runtime:** NOT_RUN
 
 ## Source evidence / observed limitation
 
@@ -32,3 +32,9 @@ Define least-privilege current CG-01/CG-02 branch assignment owner and validity/
 6. **Acceptance:** Ordinary authorized A-only accountant, A+B accountant, A-only inventory operator, unrelated B manager, protected root, revoked staff, inactive C and one area-level coordinator: exact positive/negative direct API, selector, PDF/CSV, current native Web state, current CG-09 journal and CG-12 transfer proof. All original owner QA IDs + MB-T01–T22. Independent security/DB review, source fix, re-review and local PostgreSQL/dual Android runtime qualification required. No historical migration rewrite, no CI, no main merge.
 
 **Status stays CONFIRMED_SOURCE_SCOPE_GAP; this section is a proposed minimal remediation, not an implemented table, policy approval or executable PASS.**
+
+## 23 November implementation checkpoint — source candidate, NOT certification
+
+**Implemented on current branch:** migration `3320_cg02_delegated_staff_scope.sql` and one CG-02 `BranchStaffAccessService`/controller with live BRANCH/AREA grants, immutable same-root records, protected root-password grant/end, replay/audit, target account access-version invalidation. CG-02 `BranchSourceFacade` now authoritatively derives ACTIVE current branches from manager or per-account branch/real ancestor-area assignment, without conferring CG-01 action and without touching CG-14 center rights. CG-02 operating branch list/details/CSV, CG-05/CG-04 project/roster consumers, CG-09 finance/MIS and CG-10/CG-12 original sources have been integrated or are in receiving-owner review. Protected Web and Internal Android admin screens use original CG-02 API.
+
+**Important limitations:** independent security/database/architecture source reviewer NOT_RUN; compile and migrated PostgreSQL (plus two-worker race, active geography recategorization) NOT_RUN; Web/Internal Android device visual QA NOT_RUN; full CG-10 and every consuming service may still have direct manager-only reads outside the updated paths. Keep parent bug review pending, no complete/PASS claim. New source-contract and disposable read-only PostgreSQL test files are authored, not executed. No BWC/legacy conversion (greenfield).
