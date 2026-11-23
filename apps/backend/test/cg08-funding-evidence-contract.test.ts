@@ -44,7 +44,8 @@ test("US002-QA02/04/19: CG19 checks original current CG01/02/05/08 and document 
   'await this.identity.assertCurrent(tx,a,"projects.view")',
   'await assertCsrFundingProject(tx,a,p.project_ref,p.branch_ref,p.project_source_version!)',
   'sponsor.status!=="APPROVED"',
-  'if(sourceVersion!==null&&p.version!==sourceVersion)throw changed()'
+  'if(sourceVersion!==null&&p.version!==sourceVersion)throw changed()',
+  'if(write&&p.status!=="DRAFT")throw changed()'
  ])assert.ok(proposalSource.includes(x),x);
 });
 test("US002-QA01/16/18: verified file not signature, CSR funding approval or CG09 cash",()=>{
