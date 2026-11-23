@@ -343,17 +343,17 @@ export class CsrFundingProposalsService{
   if(!raw||typeof raw!=="object"||Array.isArray(raw))
    throw new BadRequestException("Select one original CG09 verified bank receipt.");
   const v=raw as Record<string,unknown>;
-  if(Object.keys(v).some(x=>!["requestKey","expectedVersion","partyKind","reconciliationRef"].includes(x))||
+  if(Object.keys(v).some(x=>!["requestKey","expectedVersion","partyKind","reconciliationRef","remitterConfirmed"].includes(x))||
    typeof v.expectedVersion!=="number"||!Number.isSafeInteger(v.expectedVersion)||
    v.expectedVersion<1||v.expectedVersion>=2147483647||
-   !["CSR","FOUNDATION"].includes(String(v.partyKind)))
+   !["CSR","FOUNDATION"].includes(String(v.partyKind))||v.remitterConfirmed!==true)
    throw new BadRequestException("Refresh the approved funding source and bank match.");
   return this.run(bearer,"csr.partners.manage",async(tx,a)=>{
    const source=await this.approvedFinanceSource(tx,a,proposalRef,true);
    if(source.sourceVersion!==v.expectedVersion)throw changed();
    return this.receipts.linkReceipt(tx,a,source,{
     partyKind:v.partyKind as CsrParty,requestKey:ref(v.requestKey),
-    reconciliationRef:ref(v.reconciliationRef)});
+    reconciliationRef:ref(v.reconciliationRef),remitterConfirmed:true});
   });
  }
  /** Original B08 selectors from CG01/CG02/CG05/CG08 current sources only. */
