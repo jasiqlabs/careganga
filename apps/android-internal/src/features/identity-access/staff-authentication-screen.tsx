@@ -786,6 +786,8 @@ export function StaffAuthenticationScreen() {
          canManage={roleActions.includes("csr.partners.manage")}
          canReadAgreement={roleActions.includes("documents.files.view")}
          canUploadAgreement={roleActions.includes("documents.files.manage")&&roleActions.includes("documents.files.view")}
+         canReadFinance={roleActions.includes("finance.reports.view")}
+         canLinkFinance={roleActions.includes("finance.reconciliation.manage")}
          onExpired={expireSession}/>:
         canDrafts&&(!canReviews||csrTab==="DRAFTS")?
         <NativeCsrPartners key={token} token={token} canManage={roleActions.includes("csr.partners.manage")}
