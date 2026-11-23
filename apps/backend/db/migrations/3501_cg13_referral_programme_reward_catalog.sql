@@ -163,7 +163,7 @@ BEGIN
  ) THEN RAISE EXCEPTION 'Reward product identity/version cannot be rewritten'; END IF;
  IF TG_OP='INSERT' AND NEW.version<>1 THEN
   RAISE EXCEPTION 'Reward product starts at revision one'; END IF;
- IF NEW.product_type='PHYSICAL' AND NOT EXISTS(
+ IF NEW.product_type='PHYSICAL' AND NEW.status<>'ARCHIVED' AND NOT EXISTS(
   SELECT 1 FROM inventory_item item JOIN inventory_location loc
     ON loc.root_realm_id=item.root_realm_id
   LEFT JOIN branch b ON b.id=loc.branch_ref AND b.root_realm_id=loc.root_realm_id
