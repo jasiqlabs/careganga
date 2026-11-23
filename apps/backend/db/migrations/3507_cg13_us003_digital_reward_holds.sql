@@ -12,7 +12,7 @@ CREATE TABLE redemption (
  relationship_ref uuid NOT NULL,
  product_id uuid NOT NULL,
  product_revision integer NOT NULL CHECK(product_revision>0),
- product_type text NOT NULL CHECK(product_type='DIGITAL'),
+ product_type text NOT NULL CHECK(product_type IN('DIGITAL','PHYSICAL')),
  points_cost bigint NOT NULL CHECK(points_cost>0 AND points_cost<=1000000000000),
  request_key uuid NOT NULL,
  payload_digest char(64) NOT NULL CHECK(payload_digest ~ '^[0-9a-f]{64}$'),
@@ -90,9 +90,15 @@ BEGIN
     OR NEW.revision<>OLD.revision+1
     OR NOT (
      (OLD.state='HELD' AND NEW.state='CANCELLED'
-      AND NEW.cancelled_at IS NOT NULL AND NEW.fulfilled_at IS NULL)
+      AND NEW.cancelled_at IS NOT NULL AND NEW.fulfilled_at IS NULL
+      AND (NEW.product_type='DIGITAL' OR EXISTS(
+       SELECT 1 FROM stock_reward_hold h
+       WHERE h.root_realm_id=NEW.root_realm_id AND h.redemption_id=NEW.id
+        AND h.recipient_account_ref=NEW.recipient_account_ref
+        AND h.state='RELEASED')))
      OR
      (OLD.state='HELD' AND NEW.state='FULFILLED'
+      AND NEW.product_type='DIGITAL'
       AND NEW.cancelled_at IS NULL AND NEW.fulfilled_at IS NOT NULL
       AND EXISTS(
        SELECT 1 FROM cg19_reward_recognition proof
@@ -119,8 +125,9 @@ BEGIN
    AND wallet.referrer_account_ref=NEW.recipient_account_ref
    AND wallet.referrer_kind=NEW.relationship_kind
    AND wallet.referrer_relationship_ref=NEW.relationship_ref
-   AND product.product_type='DIGITAL'
+   AND product.product_type=NEW.product_type
    AND product.status='ACTIVE' AND product.public_visible
+   AND (programme.audience='BOTH' OR programme.audience=NEW.relationship_kind)
    AND (product.eligible_audience='BOTH' OR product.eligible_audience=NEW.relationship_kind)
    AND product.version=NEW.product_revision
    AND product.points_price=NEW.points_cost
@@ -188,6 +195,16 @@ BEGIN
    AND receipt.event_kind='RECOGNIZED'
    AND proof.recipient_account_ref=NEW.recipient_account_ref
  ) THEN RAISE EXCEPTION 'Delivered recognition requires exact spent points and immutable CG19 proof'; END IF;
+ IF NEW.product_type='PHYSICAL' AND NOT EXISTS(
+  SELECT 1 FROM stock_reward_hold h
+  JOIN reward_product_revision p ON p.root_realm_id=NEW.root_realm_id
+   AND p.product_id=NEW.product_id AND p.revision=NEW.product_revision
+  WHERE h.root_realm_id=NEW.root_realm_id AND h.redemption_id=NEW.id
+   AND h.recipient_account_ref=NEW.recipient_account_ref
+   AND h.item_id=p.cg12_item_ref AND h.location_id=p.cg12_location_ref
+   AND ((NEW.state='HELD' AND h.state='HELD')
+    OR (NEW.state='CANCELLED' AND h.state='RELEASED'))
+ ) THEN RAISE EXCEPTION 'Original CG12 one-unit reservation source required'; END IF;
  IF NEW.state='CANCELLED' AND NOT EXISTS(
   SELECT 1 FROM points_event e JOIN redemption_event receipt
    ON receipt.root_realm_id=e.root_realm_id
