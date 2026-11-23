@@ -16,6 +16,8 @@ function fixture(allowed=true){
   if(sql.includes('AS "activeReferrers"'))return {rows:[{
    activeReferrers:"2",successfulReferrals:"5",earnedPoints:"500",netPoints:"450"
   }]};
+  if(sql.includes("FROM referral_attribution att"))
+   return {rows:[{count:"2"}],rowCount:1};
   if(sql.includes('AS "spentPoints"'))return {rows:[{
    pending:"2",cancelled:"1",fulfilled:"0",total:"3",spentPoints:"0"
   }]};
@@ -46,6 +48,14 @@ describe("CG13 US002 B11 branch-scoped verified ledger aggregates source contrac
   assert.equal(result.redemptionMetrics.spentPoints,"0");
   assert.equal(result.redemptionMetrics.pending,"2");
   assert.equal(result.redemptionMetrics.fulfilled,"0");
+  assert.equal(result.heldForFraudReview,"2");
+  const fraud=f.seen.find(x=>x.sql.includes("FROM referral_attribution att"))!;
+  assert.ok(fraud);
+  assert.deepEqual(fraud.params,[ROOT,PROGRAMME,false,[BRANCH]]);
+  assert.match(fraud.sql,/att.state='HELD_FRAUD_REVIEW'/);
+  assert.match(fraud.sql,/COALESCE\(m.branch_ref,v.branch_ref\)=ANY\(\$4::uuid\[\]\)/);
+  assert.ok(!fraud.sql.includes("applicant_account_ref"));
+  assert.ok(!fraud.sql.includes("contact_phone"));
   const spent=f.seen.find(v=>v.sql.includes('AS "spentPoints"'))!;
   assert.ok(spent);
   assert.match(spent.sql,/spent.event_kind='POINTS_SPENT'/);
