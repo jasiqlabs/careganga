@@ -15,12 +15,20 @@ const actor={realmId:ROOT,accountId:"77777777-7777-4777-8777-777777777777",
  activeSessionId:"88888888-8888-4888-8888-888888888888"};
 type Seen={sql:string;params:unknown[]};
 function fixture(block=false,media:"ABSENT"|"APPROVED"|"WITHDRAWN"="ABSENT",
- eligible=true){
+ eligible=true,scheduled=false){
  const seen:Seen[]=[],actions:string[]=[],scopeCalls:string[]=[];
  let connections=0,released=0,storeCalls=0;
  const tx={
   query:async(sql:string,params:unknown[]=[])=>{
    seen.push({sql,params});
+   if(sql.includes("SELECT p.id AS ref,p.programme_code AS code"))
+    return {rows:[{ref:PROGRAMME,status:"ACTIVE",policyVersion:scheduled?2:1,
+     effectiveFrom:scheduled?"2026-12-01":"2026-11-23",ranks:[]}],rowCount:1};
+   if(sql.includes("SELECT version_no FROM referral_policy_version"))
+    return {rows:[{version_no:1}],rowCount:1};
+   if(sql.includes("FROM referral_rank_rule"))
+    return {rows:[{name:params[2]===1?"Current rank":"Scheduled rank",
+     verifiedReferrals:params[2]===1?0:2,minimumPoints:"0"}],rowCount:1};
    if(sql.includes("FROM referral_program")&&sql.includes("active_policy_version"))
     return {rows:[{id:PROGRAMME,status:"ACTIVE",audience:"BOTH",active_policy_version:1}],rowCount:1};
    if(sql.includes("SELECT 'MEMBER' AS kind"))
@@ -175,6 +183,28 @@ describe("CG13 US001 branch/permission owner boundary",()=>{
   assert.match(read.sql,/pr\.status='ACTIVE'/);
   assert.match(read.sql,/p\.status='ACTIVE'/);
   assert.equal(f.stats().released,1);
+ });
+ test("scheduled policy amendments do not replace currently effective public rewards or ranks",async()=>{
+  const f=fixture(false,"ABSENT",true,true);
+  const detail=await f.service.programmeDetail("admin",PROGRAMME);
+  assert.equal(detail.policyVersion,2);
+  assert.equal(detail.effectivePolicyVersion,1);
+  assert.equal(detail.effectiveFrom,"2026-12-01");
+  assert.deepEqual(detail.ranks.map((x:{name:string})=>x.name),["Scheduled rank"]);
+  assert.deepEqual(detail.effectiveRanks.map((x:{name:string})=>x.name),["Current rank"]);
+  const adminQuery=f.seen.find(x=>x.sql.includes("SELECT p.id AS ref,p.programme_code AS code"));
+  assert.ok(adminQuery);
+  assert.match(adminQuery.sql,/AT TIME ZONE 'Asia\/Kolkata'/);
+  const publicPage=await f.service.publicEligibleCatalog("member");
+  assert.equal(publicPage.eligibleRelationships[0],"MEMBER");
+  const publicSelect=f.seen.find(x=>x.sql.includes("LEFT JOIN stock_balance")&&
+   x.sql.includes("JOIN LATERAL"));
+  assert.ok(publicSelect);
+  assert.match(publicSelect.sql,/pv\.effective_from<=now\(\)/);
+  assert.match(publicSelect.sql,/ORDER BY pv\.effective_from DESC,pv\.version_no DESC LIMIT 1/);
+  const categories=f.seen.find(x=>x.sql.includes("SELECT DISTINCT p.category FROM reward_product p"));
+  assert.ok(categories);
+  assert.match(categories.sql,/JOIN LATERAL/);
  });
  test("rejected protected action stops before connecting to the database",async()=>{
   const f=fixture(true);
