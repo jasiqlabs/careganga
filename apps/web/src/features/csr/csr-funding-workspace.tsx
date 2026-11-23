@@ -83,8 +83,8 @@ export function CsrFundingWorkspace({canManage,canReadAgreement,canUploadAgreeme
   if(query.trim())p.set("q",query.trim());
   void api<{items:Proposal[];hasMore:boolean;summary:{requests:number;drafts:number;requestedMinor:string;
  verifiedFinance:null|{committedMinor:string;verifiedReceivedMinor:string;
- revalidationRequiredMinor:string;allocatedMinor:null;utilizedMinor:null;
- availableMinor:null;utilizationPercent:null;notice:string}}}>("?"+p.toString()).then(data=>{
+ revalidationRequiredMinor:string;allocatedMinor:string;utilizedMinor:string;
+ availableMinor:string|null;utilizationPercent:string|null;notice:string;needsRevalidation:boolean}}}>("?"+p.toString()).then(data=>{
    if(live)setPage(data);
   }).catch(e=>{if(live){setPage({items:[],hasMore:false});
    setListError(e instanceof Error?e.message:"Funding list unavailable.");}})
