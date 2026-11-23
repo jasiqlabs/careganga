@@ -73,6 +73,9 @@ BEGIN
      AND cg13_referral_code_current(code.root_realm_id,code.code_value)
  ) THEN RAISE EXCEPTION 'Current verified referral code source required'; END IF;
  IF NEW.applicant_kind='MEMBER' THEN
+  IF EXISTS(SELECT 1 FROM member m WHERE m.root_realm_id=NEW.root_realm_id
+   AND m.account_ref=NEW.applicant_account_ref)
+  THEN RAISE EXCEPTION 'Membership renewal is not a new referral qualification'; END IF;
   IF NOT EXISTS(SELECT 1 FROM membership_application app
    JOIN referral_code code ON code.root_realm_id=app.root_realm_id
     AND code.id=NEW.referral_code_ref
