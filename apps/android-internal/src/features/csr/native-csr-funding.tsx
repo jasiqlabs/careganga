@@ -91,7 +91,9 @@ export function NativeCsrFunding({token,canManage,canReadAgreement,canUploadAgre
   try{
    await api(token,command.path,command.method,command.body);
    setPending(null);clearDetail();
-   setNotice("Funding draft saved — not an approved commitment or bank receipt.");
+   setNotice(command.path.endsWith("/resume")?
+    "Returned funding request reopened as a draft. Correct it and add a new signed document.":
+    "Funding draft saved — not an approved commitment or bank receipt.");
    setOffset(0);setEpoch(v=>v+1);
   }catch(e){
    const code=e&&typeof e==="object"&&"status" in e?Number(e.status):503;
@@ -266,6 +268,10 @@ export function NativeCsrFunding({token,canManage,canReadAgreement,canUploadAgre
    </>}
    <View style={styles.actions}>
     {chooseItem("close","Close","",clearDetail)}
+    {selected?.status==="RETURNED"&&canManage&&chooseItem("resume","Revise returned funding request","",()=>{
+     void send({path:"/"+selected.ref+"/resume",method:"POST",
+      body:{requestKey:Crypto.randomUUID(),expectedVersion:selected.version}});
+    })}
     {step>0&&chooseItem("back","Previous","",()=>setStep(x=>Math.max(0,x-1)))}
     {step<3?chooseItem("forward","Next","",()=>setStep(x=>Math.min(3,x+1))):
      canManage&&(!selected||selected.status==="DRAFT")&&chooseItem("save","Save draft","",save)}
