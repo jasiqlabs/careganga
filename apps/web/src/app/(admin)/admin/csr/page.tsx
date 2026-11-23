@@ -6,6 +6,7 @@ import {CsrPartnersWorkspace} from "../../../../features/csr/csr-partners-worksp
 import {CsrReviewWorkspace} from "../../../../features/csr/csr-review-workspace";
 import {CsrFundingWorkspace} from "../../../../features/csr/csr-funding-workspace";
 import {CsrFundingReviewWorkspace} from "../../../../features/csr/csr-funding-review-workspace";
+import {CsrFundingReportsWorkspace} from "../../../../features/csr/csr-funding-reports-workspace";
 export const dynamic="force-dynamic";
 export const metadata={title:"CSR & Partnerships | CareGanga Foundation",robots:{index:false,follow:false}};
 export default async function CsrPage(){
@@ -41,6 +42,8 @@ export default async function CsrPage(){
     canReadFinance={actions.includes("finance.reports.view")}
     canLinkFinance={actions.includes("finance.reconciliation.manage")}
     canBudgetManage={actions.includes("finance.budgets.manage")}/>}
+   {actions.includes("csr.partners.view")&&actions.includes("finance.reports.view")&&
+    <CsrFundingReportsWorkspace/>}
    {canReview&&<CsrReviewWorkspace canConfigure={actions.includes("approvals.process.manage")}/>}
    {canReview&&<CsrFundingReviewWorkspace canConfigure={actions.includes("approvals.process.manage")}/>}
    </main></div>;
