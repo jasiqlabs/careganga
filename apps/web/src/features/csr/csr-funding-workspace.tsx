@@ -109,7 +109,9 @@ export function CsrFundingWorkspace({canManage,canReadAgreement,canUploadAgreeme
   try{
    await api<{ref:string;version:number;status:"DRAFT"}>(command.url,command.method,command.body);
    setPending(null);invalidateDetail();
-   setNotice("Funding draft saved. This is a request, not an approved commitment or received cash.");
+   setNotice(command.url.endsWith("/resume")?
+    "Returned proposal reopened as an unapproved draft. Correct the fields and attach a new signed agreement.":
+    "Funding draft saved. This is a request, not an approved commitment or received cash.");
    setOffset(0);refresh();
   }catch(e){
    const code=e&&typeof e==="object"&&"status" in e?Number(e.status):503;
@@ -301,6 +303,11 @@ export function CsrFundingWorkspace({canManage,canReadAgreement,canUploadAgreeme
    </div>}
    <div style={{display:"flex",gap:10,justifyContent:"end",flexWrap:"wrap",marginTop:17}}>
     <button type="button" style={btn} disabled={busy||!!pending} onClick={close}>Close</button>
+    {canManage&&selected?.status==="RETURNED"&&<button type="button" style={primary}
+     disabled={busy||!!pending} onClick={()=>void send({
+      url:"/"+selected.ref+"/resume",method:"POST",
+      body:{requestKey:crypto.randomUUID(),expectedVersion:selected.version}
+     })}>Revise returned funding request</button>}
     {step>0&&<button type="button" style={btn} disabled={busy||!!pending} onClick={()=>setStep(v=>Math.max(0,v-1))}>Previous step</button>}
     {step<3?<button type="button" style={primary} disabled={busy||!!pending} onClick={()=>setStep(v=>Math.min(3,v+1))}>Next step</button>:
      canManage&&(!selected||selected.status==="DRAFT")&&<button type="button" style={primary} disabled={busy||!!pending} onClick={submit}>{busy?"Saving…":"Save funding draft"}</button>}
