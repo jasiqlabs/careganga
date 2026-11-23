@@ -73,7 +73,8 @@ export class BranchSourceFacade{
      SELECT 1 FROM cg02_staff_scope_assignment grant_scope
      WHERE grant_scope.root_realm_id=b.root_realm_id
       AND grant_scope.account_ref=$2 AND grant_scope.ended_at IS NULL
-      AND ((grant_scope.scope_kind='BRANCH' AND grant_scope.branch_ref=b.id)
+      AND ((grant_scope.scope_kind='ALL_BRANCHES')
+       OR (grant_scope.scope_kind='BRANCH' AND grant_scope.branch_ref=b.id)
        OR (grant_scope.scope_kind='AREA' AND EXISTS(
         SELECT 1 FROM ancestors a WHERE a.branch_id=b.id AND a.area_id=grant_scope.area_ref)))
     ))
