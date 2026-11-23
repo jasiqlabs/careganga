@@ -9,6 +9,7 @@ import {HrEnrollmentSourceFacade,sourceHash} from "./hr-enrollment-source.facade
 import {HrEmployeeEvidenceService} from "../../cg-19-documents-notifications/application/hr-employee-evidence.service";
 import {HrEnrollmentApprovalService} from "../../cg-03-registration-approvals/application/hr-enrollment-approval.service";
 import {FoundationStructureIdentityFacade} from "../../cg-01-identity-access/application/foundation-structure-identity.facade";
+import {BranchSourceFacade} from "../../cg-02-foundation-structure/application/branch-source.facade";
 
 const ID=/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i;
 const TYPES=["FULL_TIME","PART_TIME","CONTRACT","VOLUNTEER_STAFF"] as const;
@@ -75,7 +76,8 @@ export class HrEnrollmentService{
   private readonly source:HrEnrollmentSourceFacade,
   private readonly files:HrEmployeeEvidenceService,
   private readonly approvals:HrEnrollmentApprovalService,
-  private readonly identity:FoundationStructureIdentityFacade){}
+  private readonly identity:FoundationStructureIdentityFacade,
+  private readonly branches:BranchSourceFacade){}
  private actor(token:string,action:"hr.applications.view"|"hr.applications.manage"){
   return this.sessions.requireAction(token,action);
  }
@@ -91,7 +93,7 @@ export class HrEnrollmentService{
    "FOR SHARE OF b",[ref,a.accountId,a.realmId]);
   if(!q.rows[0])throw new ForbiddenException("The selected Foundation branch is unavailable");
   if(!q.rows[0].full_access&&q.rows[0].manager_account_ref!==a.accountId)
-   throw new ForbiddenException("Your account cannot manage this branch's staff");
+   await this.branches.requireAssignedStaffBranch(tx,a,ref);
   return q.rows[0];
  }
  private async validSource(tx:PoolClient,a:VerifiedFoundationActor,x:Fields){
