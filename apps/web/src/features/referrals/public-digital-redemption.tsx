@@ -3,7 +3,7 @@ import {useCallback,useEffect,useRef,useState} from "react";
 type Kind="MEMBER"|"VOLUNTEER";
 export type RedeemableDigitalReward={
  ref:string;programmeRef:string;name:string;version:number;pointsPrice:string;
- type:"DIGITAL"|"PHYSICAL";availability:"NO_STOCK_REQUIRED"|"AVAILABLE"|"OUT_OF_STOCK";eligibleAudience:"MEMBER"|"VOLUNTEER"|"BOTH";
+ type:"DIGITAL"|"PHYSICAL";availability:"NO_STOCK_REQUIRED"|"AVAILABLE"|"OUT_OF_STOCK"|"DELIVERY_UNAVAILABLE";eligibleAudience:"MEMBER"|"VOLUNTEER"|"BOTH";
  programmeAudience:"MEMBER"|"VOLUNTEER"|"BOTH";
  digitalFulfillmentMethod:"PENDING_EXTERNAL_PROOF"|"ON_PLATFORM_RECOGNITION";
 };
@@ -45,6 +45,10 @@ export function PublicDigitalRedemption({selected,onClear,audiences}:{
   (selected.eligibleAudience==="BOTH"||selected.eligibleAudience===kind)&&
   (selected.programmeAudience==="BOTH"||selected.programmeAudience===kind)):[];
  const chosen=valid.includes(relationship)?relationship:valid[0];
+ const reservationReady=!!selected&&(
+  selected.type==="PHYSICAL"?selected.availability==="AVAILABLE":
+  selected.availability==="NO_STOCK_REQUIRED"&&
+   selected.digitalFulfillmentMethod==="ON_PLATFORM_RECOGNITION");
  const load=useCallback(async(page=1,append=false)=>{
   const key=++seq.current;setHistoryBusy(true);
   try{
@@ -70,8 +74,7 @@ export function PublicDigitalRedemption({selected,onClear,audiences}:{
  useEffect(()=>{setConfirmed(false);draft.current=null;setNotice("");setError("");},
   [selected?.ref,selected?.version,relationship]);
  const request=async()=>{
-  if(!selected||!chosen||busy||
-   (selected.type==="PHYSICAL"&&selected.availability!=="AVAILABLE"))return;
+  if(!selected||!chosen||busy||!reservationReady)return;
   if(!/^[1-9][0-9]{0,17}$/.test(selected.pointsPrice)){
    setError("Current verified reward price is unavailable.");return;
   }
@@ -135,7 +138,11 @@ export function PublicDigitalRedemption({selected,onClear,audiences}:{
    No gift code, stock, money, or automatic fulfillment is created.</p>
   {selected&&<div>
    <p><strong>{selected.name}</strong> · {selected.pointsPrice} points</p>
-   {!valid.length?<p>This reward is not eligible for your current relationship.</p>:<>
+   {!valid.length?<p>This reward is not eligible for your current relationship.</p>:
+    !reservationReady?<p role="status">No points have been reserved.
+     {selected.type==="DIGITAL"?
+      " This digital reward has no verified fulfillment source in the current release.":
+      " The original warehouse has no verified available item."}</p>:<>
     <label>Redeem from my eligible relationship
      <select value={chosen} onChange={e=>setRelationship(e.target.value as Kind)}>
       {valid.map(k=><option key={k} value={k}>{k==="MEMBER"?"Membership":"Volunteer"}</option>)}
