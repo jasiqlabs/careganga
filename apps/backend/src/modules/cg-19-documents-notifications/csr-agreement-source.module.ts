@@ -5,7 +5,8 @@ import {CsrFundingModule} from "../cg-08-csr-funding/csr-funding.module";
 import {PrivateObjectStorage} from "./infrastructure/private-object-storage";
 import {makePrivateStorageProvider} from "./infrastructure/private-storage-provider.factory";
 import {CsrAgreementEvidenceService} from "./application/csr-agreement-evidence.service";
+import {CsrFundingAgreementEvidenceService} from "./application/csr-funding-agreement-evidence.service";
 @Module({imports:[DatabaseModule,IdentityAccessModule,CsrFundingModule],
- providers:[CsrAgreementEvidenceService,{provide:PrivateObjectStorage,useFactory:makePrivateStorageProvider}],
- exports:[CsrAgreementEvidenceService]})
+ providers:[CsrAgreementEvidenceService,CsrFundingAgreementEvidenceService,{provide:PrivateObjectStorage,useFactory:makePrivateStorageProvider}],
+ exports:[CsrAgreementEvidenceService,CsrFundingAgreementEvidenceService]})
 export class CsrAgreementSourceModule{}
