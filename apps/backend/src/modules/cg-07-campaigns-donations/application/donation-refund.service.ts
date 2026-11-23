@@ -119,8 +119,8 @@ export class DonationRefundService{
     "r.settlement_method AS \"settlementMethod\",coalesce(p.state,'NOT_STARTED') AS \"providerState\","+
     "(r.requested_by<>$2) AS \"canReview\",r.requested_at AS \"requestedAt\" "+
     "FROM donation_refund_request r JOIN donation d ON d.root_realm_id=r.root_realm_id "+
-    "LEFT JOIN donation_provider_refund p ON p.root_realm_id=r.root_realm_id AND p.refund_request_id=r.id "+
-    "AND d.id=r.donation_id WHERE r.root_realm_id=$1 AND "+
+    "AND d.id=r.donation_id LEFT JOIN donation_provider_refund p ON p.root_realm_id=r.root_realm_id "+
+    "AND p.refund_request_id=r.id WHERE r.root_realm_id=$1 AND "+
     "($3::boolean OR d.branch_ref=ANY($4::uuid[])) "+
     "ORDER BY r.requested_at DESC,r.id DESC LIMIT 101",
     [a.realmId,a.accountId,scope.all,scope.branchRefs]);
