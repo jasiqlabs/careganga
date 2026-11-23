@@ -665,3 +665,22 @@ test("CG07 multi-branch scope: Foundation, assigned manager, branch-bound donati
  assert.match(web,/setCursorTrail\(\[\]\)/);
  assert.match(web,/x\.branchName\?\?"Foundation-wide"/);
 });
+
+
+test("US003-QA13 source reviewer: Razorpay UNKNOWN recovery stores verified refund ID, not request UUID",()=>{
+ const provider=source("application/donation-provider-refund.service.ts");
+ const refundSql=migration("3317_cg07_verified_provider_refund.sql");
+ const original=migration("3319_cg07_donation_branch_provenance.sql");
+ const report=source("application/donation-admin.service.ts");
+ assert.match(provider,/X-Refund-Idempotency/);
+ assert.match(provider,/reserved\.p\.request_key\)/);
+ assert.match(provider,/UPDATE donation_provider_refund SET provider_refund_id=\$4/);
+ assert.doesNotMatch(provider,/UPDATE donation_provider_refund SET provider_refund_id=\$3/);
+ assert.match(provider,/row\.provider_refund_id&&row\.provider_refund_id!==found\.id/);
+ assert.match(provider,/PROVIDER_PROCESSED","PROVIDER_FAILED","FINANCE_POSTED/);
+ assert.match(refundSql,/provider_refund_id text CHECK\(provider_refund_id/);
+ assert.match(original,/NEW\.donation_kind IS DISTINCT FROM OLD\.donation_kind/);
+ assert.match(original,/NEW\.campaign_id IS DISTINCT FROM OLD\.campaign_id/);
+ assert.match(report,/ensureReportScopeStillCurrent/);
+ assert.match(report,/this\.sessions\.requireAction\(bearer,"documents\.files\.view"\)/);
+});
