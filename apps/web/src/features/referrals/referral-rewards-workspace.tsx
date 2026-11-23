@@ -288,6 +288,9 @@ export function ReferralRewardsWorkspace({canViewPolicy,canViewRewards,canManage
   try{
    if(pending){void send(pending);return;}
    if(!selected)throw Error("Select an original referral programme first.");
+   if(rewardForm.type==="DIGITAL"&&rewardForm.status==="ACTIVE"&&
+    rewardForm.digitalFulfillmentMethod!=="ON_PLATFORM_RECOGNITION")
+    throw Error("Digital rewards must remain Draft until verified on-platform recognition is configured.");
    if(rewardForm.type==="PHYSICAL"&&rewardForm.status!=="ARCHIVED"&&!stock)
     throw Error("Check current available warehouse stock before saving.");
    const p=rewardForm;
@@ -702,8 +705,17 @@ export function ReferralRewardsWorkspace({canViewPolicy,canViewRewards,canManage
        <option value="BOTH">Members and Volunteers</option></select></label>
      <label style={css.field}>Product status<select style={css.control} value={rewardForm.status}
       onChange={e=>setRewardForm(p=>({...p,status:e.target.value as Reward["status"]}))}>
-      <option value="DRAFT">Draft</option><option value="ACTIVE">Active catalogue</option>
+      <option value="DRAFT">Draft</option><option value="ACTIVE"
+       disabled={rewardForm.type==="DIGITAL"&&
+        rewardForm.digitalFulfillmentMethod!=="ON_PLATFORM_RECOGNITION"}>
+       Active catalogue</option>
       <option value="ARCHIVED">Archived</option></select></label>
+     {rewardForm.type==="DIGITAL"&&
+      rewardForm.digitalFulfillmentMethod!=="ON_PLATFORM_RECOGNITION"&&
+      <p role="status" style={{fontSize:12,margin:0}}>
+       Keep this digital product in Draft: the current release has no approved
+       external-delivery source. No member points can be held for it.
+      </p>}
      <label style={css.field}>Description<textarea style={{...css.control,minHeight:85}}
       maxLength={1000} value={rewardForm.description}
       onChange={e=>setRewardForm(p=>({...p,description:e.target.value}))}/></label>
