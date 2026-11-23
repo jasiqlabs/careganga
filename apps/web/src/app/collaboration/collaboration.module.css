@@ -34,3 +34,11 @@
 a.primary:focus-visible,a.secondary:focus-visible,a.outline:focus-visible{outline:3px solid #f6a941;outline-offset:4px}
 @media(max-width:760px){.heroInner{padding:63px 20px 76px}.section,.partners{padding:54px 20px}.cards{grid-template-columns:1fr}.card{padding:23px}.secondaryCta{display:block;padding:40px 20px}.secondaryCta .outline{margin-top:12px;width:100%}.heroActions{flex-direction:column}.primary,.secondary{width:100%}.finalCta{padding:52px 20px}.hero:after{display:none}}
 @media(prefers-reduced-motion:reduce){.primary,.secondary,.outline{transition:none}.primary:hover,.secondary:hover,.outline:hover{transform:none}}
+
+.partnerCards{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:22px}
+.partnerCard{border:1px solid #dce6e2;border-radius:18px;padding:25px;background:#fff;box-shadow:0 10px 32px rgba(12,54,45,.05);min-width:0}
+.partnerCard h3{font-size:1.15rem;color:#154938;margin:18px 0 10px;overflow-wrap:anywhere}
+.partnerCard p{line-height:1.7;color:#526960;margin:0;overflow-wrap:anywhere}
+.partnerLogo{width:100%;height:124px;object-fit:contain;object-position:left center;display:block}
+@media(max-width:840px){.partnerCards{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:580px){.partnerCards{grid-template-columns:1fr}}

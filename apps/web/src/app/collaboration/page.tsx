@@ -2,6 +2,8 @@ import type {Metadata} from "next";
 import Link from "next/link";
 import {HealthcarePublicChrome} from "../../shared/healthcare-public-chrome";
 import styles from "./collaboration.module.css";
+import {publishedCmsPage} from "../../features/cms-public-content/cms-public-source";
+export const dynamic="force-dynamic";
 
 export const metadata:Metadata={
  title:"Corporate Partnerships | CareGanga Foundation",
@@ -9,12 +11,27 @@ export const metadata:Metadata={
  alternates:{canonical:"/collaboration"},robots:{index:true,follow:true}
 };
 
-/** Original CareGanga corporate-partner destination.
- * CG08 company approval alone never permits public attribution.
- * A future original CG18 editorial + CG19 rights projection will fill the
- * partner directory only after a real approved subject, logo and consent.
- * Until then the empty state is intentional, not a fake endorsement. */
-export default function Partnerships(){
+/** Original client-owned corporate-partner destination. All public names
+ * come exclusively from a currently EFFECTIVE CG18 publication with current
+ * CG08/C03/C19 checked rights, never screenshot sample brands. */
+export default async function Partnerships(){
+ const result=await publishedCmsPage("collaboration");
+ const section=result.state==="PUBLISHED"&&result.page.kind==="PARTNERS"?
+  result.page.sections.find(s=>s.kind==="PARTNER_CARDS"):undefined;
+ const safeCards=Array.isArray(section?.fields.cards)?section.fields.cards.flatMap(raw=>{
+  if(!raw||typeof raw!=="object"||Array.isArray(raw))return [];
+  const x=raw as Record<string,unknown>;
+  if(typeof x.name!=="string"||x.name.trim().length<2||x.name.length>200||
+   typeof x.summary!=="string"||x.summary.trim().length<10||x.summary.length>500||
+   !Number.isSafeInteger(x.originalIndex)||Number(x.originalIndex)<0||Number(x.originalIndex)>11)return [];
+  return [{name:x.name,summary:x.summary,originalIndex:x.originalIndex as number}];
+ }):[];
+ const approvedAssets=result.state==="PUBLISHED"&&result.page.kind==="PARTNERS"?result.page.assets:[];
+ const logoFor=(index:number)=>approvedAssets.find(a=>a.role==="FEATURE"&&a.order===index&&
+  /^\/api\/public\/content\/media\/[a-f0-9-]{36}$/i.test(a.src));
+ const partnerHeading=typeof section?.fields.heading==="string"?section.fields.heading:"Meet Our Partners";
+ const partnerIntro=typeof section?.fields.intro==="string"&&section.fields.intro.trim()?section.fields.intro:
+  "Only organizations with verified Foundation approval and current permission for public attribution appear here.";
  return <HealthcarePublicChrome>
   <main className={styles.shell}>
    <section className={styles.hero} aria-labelledby="corporate-heading">
@@ -63,15 +80,25 @@ export default function Partnerships(){
    <section id="corporate-partners" className={styles.partners} aria-labelledby="partners-heading">
     <div className={styles.sectionHeading}>
      <p className={styles.kicker}>TRUSTED COLLABORATION</p>
-     <h2 id="partners-heading">Meet Our Partners</h2>
-     <p>Only organizations with both verified Foundation approval and current
-      permission for public attribution may be shown here.</p>
+     <h2 id="partners-heading">{partnerHeading}</h2>
+     <p>{partnerIntro}</p>
     </div>
-    <div className={styles.emptyPartners} role="status">
-     <h3>Partner announcements will appear here</h3>
-     <p>We are not displaying unverified corporate names or logos.
-      Please contact the Foundation for current collaboration information.</p>
-    </div>
+    {safeCards.length>0?<div className={styles.partnerCards}>
+     {safeCards.map((partner,i)=>{
+      const logo=logoFor(partner.originalIndex);
+      return <article key={partner.name+String(i)} className={styles.partnerCard}>
+       {logo&&<img className={styles.partnerLogo} src={logo.src} alt={logo.altText} loading="lazy"/>}
+       <h3>{partner.name}</h3>
+       <p>{partner.summary}</p>
+      </article>;
+     })}
+    </div>:<div className={styles.emptyPartners} role="status">
+     <h3>{result.state==="UNAVAILABLE"?"Partner announcements are temporarily unavailable":
+      "Partner announcements will appear here"}</h3>
+     <p>{result.state==="UNAVAILABLE"?
+      "We cannot verify the current approved public partner information right now. Please try again later.":
+      "We are not displaying unverified corporate names or logos. Please contact the Foundation for current collaboration information."}</p>
+    </div>}
    </section>
    <section className={styles.secondaryCta} aria-labelledby="healthcare-heading">
     <div>

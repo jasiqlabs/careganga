@@ -253,3 +253,21 @@ test("US001-QA04/10: protected proof-list failure differs from loading and legit
  assert.ok(web.includes('disabled={busy||!!proofLoadError}'));
  assert.ok(native.includes('if(running.current||proofLoadError)return;'));
 });
+
+
+test("US001-QA11/16/19/20: public collaboration rejects fake brands and stale right releases",()=>{
+ const service=readFileSync(join(process.cwd(),"src/modules/cg-08-csr-funding/application/csr-partner-public-source.ts"),"utf8");
+ const editorial=readFileSync(join(process.cwd(),"src/modules/cg-18-cms-public-content/application/cms-editorial.service.ts"),"utf8");
+ const route=readFileSync(join(process.cwd(),"../web/src/app/collaboration/page.tsx"),"utf8");
+ assert.ok(service.includes("r.state=\\'AUTHORIZED\\'"));
+ assert.ok(service.includes('p.status=\\'APPROVED\\''));
+ assert.ok(service.includes("s.evidence_file_id=r.evidence_file_id"));
+ assert.ok(service.includes("x.rightsVersion===selection.rightsVersion"));
+ assert.ok(editorial.includes('this.partnerRevisionCurrent(tx,actor.realmId,page.kind,rev.id)'));
+ assert.ok(editorial.includes('publicPartnerLogoOrders.has(v.sort_order)'));
+ assert.ok(editorial.includes('currentPartnerCards.get(v.order_no)'));
+ assert.ok(route.includes('publishedCmsPage("collaboration")'));
+ assert.ok(route.includes('result.state==="UNAVAILABLE"'));
+ assert.ok(route.includes('safeCards.length>0'));
+ assert.ok(!route.includes('Milaap')&&!route.includes('Ketto'));
+});
