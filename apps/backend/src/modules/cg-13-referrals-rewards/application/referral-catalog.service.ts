@@ -451,7 +451,7 @@ export class ReferralCatalogService{
     highlighted:false,publicVisible:false,approvedImageUrl:null,itemRef,storeRef});
    if(!found)throw new ServiceUnavailableException("Original CG12 stock unavailable");
    return {itemName:found.label,availableQuantity:found.available,
-    stockStatus:found.available==="0"?"OUT_OF_STOCK":"AVAILABLE",
+    stockStatus:Number(found.available)>0?"AVAILABLE":"OUT_OF_STOCK",
     notice:"Read-only original CG12 available quantity. No warehouse stock is changed."};
   },true);
  }
