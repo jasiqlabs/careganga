@@ -232,6 +232,7 @@ export class ReferralSelfService{
     "LEFT JOIN reward_rank_event rank ON rank.root_realm_id=event.root_realm_id "+
     "AND rank.qualifying_points_event_id=event.id "+
     "WHERE event.root_realm_id=$1 AND event.points_account_id=$2 "+
+    "AND event.event_kind IN('QUALIFICATION','QUALIFICATION_REVERSAL') "+
     "ORDER BY event.source_recorded_at DESC,event.id DESC LIMIT 26 OFFSET $3",
     [ctx.realm,wallet.id,(page-1)*25]);
    return {items:events.rows.slice(0,25).map(e=>({
