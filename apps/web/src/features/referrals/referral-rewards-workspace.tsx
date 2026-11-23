@@ -3,7 +3,8 @@ import {useCallback,useEffect,useMemo,useRef,useState,type CSSProperties} from "
 
 type Rank={name:string;verifiedReferrals:number|string;minimumPoints:number|string;benefitsSummary:string;sortOrder?:number};
 type Programme={ref:string;code:string;name:string;audience:"MEMBER"|"VOLUNTEER"|"BOTH";
- status:"ACTIVE"|"INACTIVE";version:number;policyVersion:number;effectiveFrom:string;
+ status:"ACTIVE"|"INACTIVE";version:number;policyVersion:number;
+ effectivePolicyVersion:number|null;effectiveFrom:string;
  qualifyingEvent:"MEMBERSHIP_ACTIVATED_VERIFIED"|"VOLUNTEER_APPROVED_ACTIVE";
  awardPoints:string;minimumClaimPoints:string;displayInrRatio:string|null;
  autoRankUpgrade:boolean;ranks?:Rank[]};
@@ -346,6 +347,14 @@ export function ReferralRewardsWorkspace({canViewPolicy,canViewRewards,canManage
        <h3 style={{fontSize:16,margin:0}}>Referral Ranks ({availableRanks.length} Levels)</h3>
        
       </div>
+      <p role="status" style={{fontSize:12,margin:"0 0 4px",color:"var(--cg-text-muted,#64748B)"}}>
+       {detail.effectivePolicyVersion===null?
+        "Programme rules are scheduled to begin on "+detail.effectiveFrom+" (India time).":
+        detail.effectivePolicyVersion!==detail.policyVersion?
+        "Updated settings are scheduled for "+detail.effectiveFrom+
+         ". Existing effective rules continue until then.":
+        "Current policy effective since "+detail.effectiveFrom+" (India time)."}
+      </p>
       <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(140px,1fr))",gap:9}}>
        {availableRanks.map((rank,i)=><button type="button" key={i}
         aria-pressed={selectedRank===i} onClick={()=>setSelectedRank(i)}
