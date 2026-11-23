@@ -766,7 +766,7 @@ export function StaffAuthenticationScreen() {
   }
   if(csrOpen&&token&&actor){
     if(!roleActions.includes("csr.partners.view"))return <AccessDeniedScreen reason="Your current role cannot view CSR partners." onMyAccount={()=>setCsrOpen(false)}/>;
-    return renderInShell(<ScreenErrorBoundary onExit={()=>setCsrOpen(false)}><Suspense fallback={<ActivityIndicator style={{marginTop:40}}/>}><NativeCsrPartners key={token} token={token} canManage={roleActions.includes("csr.partners.manage")} onExpired={expireSession}/></Suspense></ScreenErrorBoundary>,"csr",()=>setCsrOpen(false));
+    return renderInShell(<ScreenErrorBoundary onExit={()=>setCsrOpen(false)}><Suspense fallback={<ActivityIndicator style={{marginTop:40}}/>}><NativeCsrPartners key={token} token={token} canManage={roleActions.includes("csr.partners.manage")} canReadAgreement={roleActions.includes("documents.files.view")} canUploadAgreement={roleActions.includes("documents.files.view")&&roleActions.includes("documents.files.manage")} onExpired={expireSession}/></Suspense></ScreenErrorBoundary>,"csr",()=>setCsrOpen(false));
   }
   if(campaignsOpen&&token&&actor){
     const canDrafts=roleActions.includes("campaigns.view");

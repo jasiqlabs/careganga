@@ -1,4 +1,5 @@
 import React,{useEffect,useRef,useState} from "react";
+import {NativeCsrAgreementPanel} from "./native-csr-agreement-panel";
 import {ActivityIndicator,Alert,Pressable,ScrollView,StyleSheet,Text,TextInput,View} from "react-native";
 import * as Crypto from "expo-crypto";
 import {identityRequest} from "../identity-access/http-client";
@@ -22,7 +23,7 @@ async function api<T>(token:string,path:string,method:"GET"|"POST"|"PATCH"="GET"
  if(!r.ok||parsed===null)throw Object.assign(Error(errorText(parsed)),{status:r.status||503});
  return parsed as T;
 }
-export function NativeCsrPartners({token,canManage,onExpired}:{token:string;canManage:boolean;onExpired:()=>void}){
+export function NativeCsrPartners({token,canManage,canReadAgreement,canUploadAgreement,onExpired}:{token:string;canManage:boolean;canReadAgreement:boolean;canUploadAgreement:boolean;onExpired:()=>void}){
  const [options,setOptions]=useState<Options|null>(null),[page,setPage]=useState<Page>({items:[],hasMore:false});
  const [query,setQuery]=useState(""),[filter,setFilter]=useState("ALL"),[offset,setOffset]=useState(0),[epoch,setEpoch]=useState(0);
  const [loading,setLoading]=useState(true),[error,setError]=useState(""),[notice,setNotice]=useState("");
@@ -131,6 +132,7 @@ export function NativeCsrPartners({token,canManage,onExpired}:{token:string;canM
    {field("Contact email","contactEmail")}
    {field("Indian contact mobile (+91…)","contactMobile")}
    {field("Proposed CSR support","supportSummary",true)}
+   {selected&&canReadAgreement&&<NativeCsrAgreementPanel token={token} partnerRef={selected.ref} version={selected.version} canUpload={canUploadAgreement&&canManage} onExpired={onExpired}/>}
    <View style={styles.actions}>
     <Pressable accessibilityRole="button" style={styles.primary} disabled={busy||!!pending} onPress={save}>
      <Text style={styles.primaryText}>{busy?"Saving…":"Save draft"}</Text></Pressable>
