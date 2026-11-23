@@ -23,7 +23,7 @@ type RealReferralSummary={
  rankCounts:{kind:"MEMBER"|"VOLUNTEER";rank:string|null;count:string;
   referrals:string;points:string;lastActivity:string|null}[];
  rankCountsTruncated:boolean;redemptionMetricsAvailable:boolean;
- redemptionMetrics?:{pending:string;cancelled:string;fulfilled:string;total:string};
+ redemptionMetrics?:{pending:string;cancelled:string;fulfilled:string;total:string;spentPoints:string};
  notice:string;
 };
 const pointsDisplay=(x:string|null|undefined)=>{
@@ -497,7 +497,7 @@ export function ReferralRewardsWorkspace({canViewPolicy,canViewRewards,canManage
     <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(180px,1fr))",gap:9}}>
      {([
       ["ACTIVE PRODUCTS (SHOWN)",String(activeProducts.length)],
-      ["POINTS REDEEMED",summary?.redemptionMetrics?.fulfilled??"—"],
+      ["POINTS REDEEMED",summary?.redemptionMetrics?.spentPoints??"—"],
       ["PENDING ORDERS",summary?.redemptionMetrics?.pending??"—"],
       ["FULFILLED ORDERS",summary?.redemptionMetrics?.fulfilled??"—"]
      ] as const).map(([label,value],i)=>
