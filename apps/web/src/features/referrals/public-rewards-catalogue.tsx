@@ -16,6 +16,7 @@ export function PublicRewardsCatalogue(){
  const [error,setError]=useState("");
  const [loading,setLoading]=useState(true),[more,setMore]=useState(false),[page,setPage]=useState(2);
  const [category,setCategory]=useState("All"),[search,setSearch]=useState("");
+ const [failedImages,setFailedImages]=useState<Record<string,true>>({});
  const latest=useRef(0);
  const load=useCallback(async (target:number,replace:boolean)=>{
   const serial=++latest.current;
@@ -30,6 +31,7 @@ export function PublicRewardsCatalogue(){
    if(!Array.isArray(data.items)||!Array.isArray(data.eligibleRelationships)||
     typeof data.hasMore!=="boolean")throw new Error("Reward information is unavailable.");
    if(serial!==latest.current)return;
+   if(replace)setFailedImages({});
    setAudiences(data.eligibleRelationships);
    setNotice(data.notice);
    setItems(old=>replace?data.items:[...old,...data.items.filter(x=>!old.some(p=>p.ref===x.ref))]);
@@ -77,8 +79,10 @@ export function PublicRewardsCatalogue(){
    </label>
    <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(min(100%,230px),1fr))",gap:12}}>
     {shown.map(p=><article key={p.ref} style={{border:"1px solid #d8e4df",borderRadius:12,padding:12}}>
-     {p.imageUrl&&<img src={p.imageUrl} loading="lazy" referrerPolicy="no-referrer"
-      alt={p.name} style={{width:"100%",maxHeight:160,objectFit:"contain"}}/>}
+     {p.imageUrl&&!failedImages[p.ref]&&<img src={p.imageUrl} loading="lazy"
+      referrerPolicy="no-referrer" alt={p.name}
+      onError={()=>setFailedImages(old=>({...old,[p.ref]:true}))}
+      style={{width:"100%",maxHeight:160,objectFit:"contain"}}/>}
      <h3 style={{margin:"8px 0"}}>{p.name}</h3>
      <p>{p.category} · {p.type==="DIGITAL"?"Digital":"Physical"} · {p.pointsPrice} points</p>
      <p>{p.type==="DIGITAL"?"No stock required":
