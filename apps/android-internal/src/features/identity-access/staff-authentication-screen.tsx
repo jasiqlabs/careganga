@@ -781,6 +781,7 @@ export function StaffAuthenticationScreen() {
         <NativeCsrPartners key={token} token={token} canManage={roleActions.includes("csr.partners.manage")}
          canReadAgreement={roleActions.includes("documents.files.view")}
          canUploadAgreement={roleActions.includes("documents.files.view")&&roleActions.includes("documents.files.manage")}
+         canManagePublic={roleActions.includes("csr.partners.manage")&&roleActions.includes("cms.content.manage")}
          onExpired={expireSession}/>:
         <NativeCsrReviews key={token} token={token}
          canConfigure={roleActions.includes("approvals.process.manage")} onExpired={expireSession}/>}

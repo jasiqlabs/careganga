@@ -1,5 +1,6 @@
 import React,{useEffect,useRef,useState} from "react";
 import {NativeCsrAgreementPanel} from "./native-csr-agreement-panel";
+import {NativeCsrPublicRightsPanel} from "./native-csr-public-rights-panel";
 import {ActivityIndicator,Alert,Pressable,ScrollView,StyleSheet,Text,TextInput,View} from "react-native";
 import * as Crypto from "expo-crypto";
 import {identityRequest} from "../identity-access/http-client";
@@ -27,7 +28,7 @@ async function api<T>(token:string,path:string,method:"GET"|"POST"|"PATCH"="GET"
  if(!r.ok||parsed===null)throw Object.assign(Error(errorText(parsed)),{status:r.status||503});
  return parsed as T;
 }
-export function NativeCsrPartners({token,canManage,canReadAgreement,canUploadAgreement,onExpired}:{token:string;canManage:boolean;canReadAgreement:boolean;canUploadAgreement:boolean;onExpired:()=>void}){
+export function NativeCsrPartners({token,canManage,canReadAgreement,canUploadAgreement,canManagePublic,onExpired}:{token:string;canManage:boolean;canReadAgreement:boolean;canUploadAgreement:boolean;canManagePublic:boolean;onExpired:()=>void}){
  const [options,setOptions]=useState<Options|null>(null),[page,setPage]=useState<Page>({items:[],hasMore:false});
  const [query,setQuery]=useState(""),[filter,setFilter]=useState("ALL"),[statusFilter,setStatusFilter]=useState<ReviewStatus>("ALL"),[offset,setOffset]=useState(0),[epoch,setEpoch]=useState(0);
  const [loading,setLoading]=useState(true),[listError,setListError]=useState(""),[error,setError]=useState(""),[notice,setNotice]=useState("");
@@ -155,6 +156,7 @@ export function NativeCsrPartners({token,canManage,canReadAgreement,canUploadAgr
    {field("Indian contact mobile (+91…)","contactMobile")}
    {field("Proposed CSR support","supportSummary",true)}
    {selected&&canReadAgreement&&<NativeCsrAgreementPanel token={token} partnerRef={selected.ref} version={selected.version} canUpload={canUploadAgreement&&canEditCurrent} canSubmit={canEditCurrent&&selected.status==="DRAFT"} onSubmitted={()=>{setEditing(false);setSelected(null);setNotice("Submitted for independent review.");refresh();}} onExpired={onExpired}/>}
+   {selected?.status==="APPROVED"&&<NativeCsrPublicRightsPanel key={selected.ref} token={token} partnerRef={selected.ref} canManage={canManagePublic} onExpired={onExpired}/>}
    {selected&&<View style={styles.panel}><Text style={styles.subheading}>Original review history</Text>
     {!!historyError&&<Text accessibilityRole="alert" style={styles.error}>{historyError}</Text>}
     {!history&&!historyError&&<ActivityIndicator accessibilityLabel="Loading protected review history"/>}

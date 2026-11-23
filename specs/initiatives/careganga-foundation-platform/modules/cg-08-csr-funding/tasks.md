@@ -359,3 +359,8 @@ Corrected 3404's first-draft transition guard: WITHDRAWN partner rights now perm
 ### 23-Nov-2026 — US001 original Admin Web public-rights workflow
 
 Existing CSR partner detail now embeds protected public naming rights state and the source-approved agreement selector, with an explicit signed-agreement naming permission confirmation and user-readable description. Authorized staff require existing current csr.partners.manage and cms.content.manage rights, while non-editor CSR viewers only see status. Existing Next BFF strictly allows exact read/authorize/withdraw paths and rejects cross-origin staff writes; replay uses original stable command key for unknown write. An approved partner is never displayed automatically. US001-QA07/10/11/12/13/15/16/17/18 source authored; native parity, CG18 eligible selection and actual public safe projection still SOURCE_GAP; runtime/independent review NOT_RUN.
+
+
+### 23-Nov-2026 — US001 Internal Android publicity consent parity
+
+Original Internal Android CSR partner detail now reads the same protected CG08 public-release source as Web and offers current CG01+CG02-scoped authorize/withdraw actions only for csr.partners.manage AND cms.content.manage. Actual CG03 approved decision/CLEAN_VERIFIED CG19 agreement and explicit public name/description attestation are required server-side; original unknown-write key is retained on native retry. All other staff see read-only status; no public Android private administration, no logo/PII publication, no new master. Existing US001-QA07/10/11/12/13/15/16/17/18 source authored; source review, native compile/device, CG18 editorial+public implementation and 2-branch runtime NOT_RUN.
