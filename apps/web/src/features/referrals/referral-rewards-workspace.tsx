@@ -585,6 +585,10 @@ export function ReferralRewardsWorkspace({canViewPolicy,canViewRewards,canManage
           {p.description||"No product description recorded"}</p>
         <strong style={{color:"#FDE68A",background:"#172338",padding:"4px 8px",borderRadius:16,justifySelf:"start"}}>{p.pointsPrice} Pts</strong>
         <span style={{fontSize:12}}>{p.highlighted?"Highlighted · ":""}{p.publicVisible?"Public eligible catalogue":"Staff only"}</span>
+        {p.type==="DIGITAL"&&p.digitalFulfillmentMethod!=="ON_PLATFORM_RECOGNITION"&&
+         <span role="status" style={{fontSize:12,color:"var(--cg-text-muted,#64748B)"}}>
+          Delivery source unavailable — must remain Draft; not redeemable.
+         </span>}
         {p.type==="PHYSICAL"&&<span style={{fontSize:12}}>Linked warehouse item and store — read-only</span>}
         {canManageRewards&&<button style={css.button} onClick={()=>openProduct(p)}>Edit product</button>}
        </div>
