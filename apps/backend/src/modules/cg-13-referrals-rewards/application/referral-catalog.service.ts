@@ -650,6 +650,100 @@ export class ReferralCatalogService{
     notice:"Verified referral points and source-recorded digital reward requests only; held rewards are not delivered."};
   },true);
  }
+ /** B11/B12: individual top referrers and immutable qualifying events are
+  * only available to staff with BOTH referral programme and the matching
+  * current CG04 roster-read capability. The original CG02 branch scope still
+  * applies to every row, including Foundation-wide reviewers.
+  * No referred applicant data, mobile number, CG03 case or CG09 fee is exposed.
+  */
+ async adminReferralRecords(bearer:string,programmeInput:string,
+  kindInput?:string,pageInput?:string,statusInput?:string,
+  fromInput?:string,toInput?:string,searchInput?:string){
+  const programme=ref(programmeInput),page=catalogPage(pageInput);
+  const kind=kindInput??"MEMBER",status=statusInput??"ALL";
+  if(kind!=="MEMBER"&&kind!=="VOLUNTEER")throw bad("kind");
+  if(!["ALL","ACTIVE","INACTIVE"].includes(status))throw bad("status");
+  const search=optional(searchInput,"search",80).toLowerCase();
+  const day=(value:string|undefined)=>{
+   if(!value)return null;
+   if(!/^\d{4}-\d{2}-\d{2}$/.test(value)||
+    Number.isNaN(Date.parse(value+"T00:00:00Z"))||
+    new Date(value+"T00:00:00Z").toISOString().slice(0,10)!==value)
+    throw bad("date");
+   return value;
+  };
+  const from=day(fromInput),to=day(toInput);
+  if(from&&to&&from>to)throw bad("date");
+  const rosterAction=kind==="MEMBER"?"membership.members.view":"volunteers.view";
+  await this.sessions.requireAction(bearer,rosterAction);
+  return this.run(bearer,"referrals.programmes.view",async(tx,a)=>{
+   await this.root(tx,a);await this.program(tx,a,programme);
+   await this.identity.assertCurrent(tx,a,rosterAction);
+   const scope=await this.inventory.rewardStoreScope(tx,a);
+   const fromWallet=" FROM points_account wallet "+
+    "LEFT JOIN member m ON m.root_realm_id=wallet.root_realm_id "+
+    "AND m.id=wallet.referrer_relationship_ref AND wallet.referrer_kind='MEMBER' "+
+    "LEFT JOIN volunteer v ON v.root_realm_id=wallet.root_realm_id "+
+    "AND v.id=wallet.referrer_relationship_ref AND wallet.referrer_kind='VOLUNTEER' "+
+    "WHERE wallet.root_realm_id=$1 AND wallet.programme_id=$2 "+
+    "AND wallet.referrer_kind=$3 AND COALESCE(m.id,v.id) IS NOT NULL "+
+    "AND ($4::boolean OR COALESCE(m.branch_ref,v.branch_ref)=ANY($5::uuid[]))";
+   const eligibility="CASE WHEN wallet.referrer_kind='MEMBER' "+
+    "AND m.status='ACTIVE' AND EXISTS(SELECT 1 FROM membership_term term "+
+    "WHERE term.root_realm_id=m.root_realm_id AND term.member_id=m.id "+
+    "AND term.starts_on<=(now() AT TIME ZONE 'Asia/Kolkata')::date "+
+    "AND (term.expires_on IS NULL OR term.expires_on>(now() AT TIME ZONE 'Asia/Kolkata')::date)) "+
+    "THEN 'ACTIVE' WHEN wallet.referrer_kind='VOLUNTEER' AND v.status='ACTIVE' "+
+    "AND cg04_current_volunteer(v.root_realm_id,v.id,v.account_ref,v.branch_ref) "+
+    "THEN 'ACTIVE' ELSE 'INACTIVE' END";
+   const args=[a.realmId,programme,kind,scope.full,scope.branches,
+    search,status,from,to];
+   const top=await tx.query<{name:string;participantNumber:string;
+    rank:string|null;referrals:string;points:string;lastActivity:string;
+    status:string}>(
+    "SELECT COALESCE(m.display_name,v.display_name) AS name,"+
+    "COALESCE(m.member_no,v.volunteer_no) AS \"participantNumber\","+
+    "wallet.current_rank_name AS rank,wallet.qualified_referrals::text AS referrals,"+
+    "(wallet.earned_points-wallet.reversed_points)::text AS points,"+
+    "wallet.updated_at AS \"lastActivity\","+eligibility+" AS status"+
+    fromWallet+
+    " AND ($6::text='' OR strpos(lower(COALESCE(m.display_name,v.display_name)||' '||"+
+    "COALESCE(m.member_no,v.volunteer_no)),$6)>0) "+
+    "AND ($7::text='ALL' OR "+eligibility+"=$7) "+
+    "ORDER BY wallet.qualified_referrals DESC,"+
+    "(wallet.earned_points-wallet.reversed_points) DESC,wallet.id DESC LIMIT 15",
+    args.slice(0,7));
+   const recent=await tx.query<{status:string;points:string;
+    recordedAt:string;name:string;participantNumber:string;rank:string|null}>(
+    "SELECT event.event_kind AS status,event.points_delta::text AS points,"+
+    "event.source_recorded_at AS \"recordedAt\","+
+    "COALESCE(m.display_name,v.display_name) AS name,"+
+    "COALESCE(m.member_no,v.volunteer_no) AS \"participantNumber\","+
+    "rank.resulting_rank_name AS rank "+
+    "FROM points_event event JOIN points_account wallet "+
+    "ON wallet.root_realm_id=event.root_realm_id AND wallet.id=event.points_account_id "+
+    "LEFT JOIN member m ON m.root_realm_id=wallet.root_realm_id "+
+    "AND m.id=wallet.referrer_relationship_ref AND wallet.referrer_kind='MEMBER' "+
+    "LEFT JOIN volunteer v ON v.root_realm_id=wallet.root_realm_id "+
+    "AND v.id=wallet.referrer_relationship_ref AND wallet.referrer_kind='VOLUNTEER' "+
+    "LEFT JOIN reward_rank_event rank ON rank.root_realm_id=event.root_realm_id "+
+    "AND rank.qualifying_points_event_id=event.id "+
+    "WHERE wallet.root_realm_id=$1 AND wallet.programme_id=$2 "+
+    "AND wallet.referrer_kind=$3 AND COALESCE(m.id,v.id) IS NOT NULL "+
+    "AND ($4::boolean OR COALESCE(m.branch_ref,v.branch_ref)=ANY($5::uuid[])) "+
+    "AND ($6::text='' OR strpos(lower(COALESCE(m.display_name,v.display_name)||' '||"+
+    "COALESCE(m.member_no,v.volunteer_no)),$6)>0) "+
+    "AND ($7::text='ALL' OR "+eligibility+"=$7) "+
+    "AND event.event_kind IN('QUALIFICATION','QUALIFICATION_REVERSAL') "+
+    "AND ($8::date IS NULL OR (event.source_recorded_at AT TIME ZONE 'Asia/Kolkata')::date >= $8::date) "+
+    "AND ($9::date IS NULL OR (event.source_recorded_at AT TIME ZONE 'Asia/Kolkata')::date <= $9::date) "+
+    "ORDER BY event.source_recorded_at DESC,event.id DESC LIMIT 26 OFFSET $10",
+    [...args,(page-1)*25]);
+   return {kind,topReferrers:top.rows,
+    recentEvents:recent.rows.slice(0,25),hasMore:recent.rows.length>25,page,
+    notice:"Top referrers are all-time current source balances; date range limits recent verified ledger events. Only authorized CG04 roster details are shown."};
+  },true);
+ }
  /** B14/B15: genuine source-backed redemption history, paged and scoped
   * by the CURRENT original CG02 branch access. No person contact, UUID, CG12
   * supplier/warehouse private data or fictitious fulfillment is returned.
