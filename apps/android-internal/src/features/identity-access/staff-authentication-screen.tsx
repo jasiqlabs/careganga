@@ -70,6 +70,7 @@ const NativeTasksWorkspace = lazy(() => import("../projects/native-tasks-workspa
 const NativeCsrPartners = lazy(() => import("../csr/native-csr-partners").then(m=>({default:m.NativeCsrPartners})));
 const NativeCsrFunding = lazy(() => import("../csr/native-csr-funding").then(m=>({default:m.NativeCsrFunding})));
 const NativeCsrReviews = lazy(() => import("../csr/native-csr-review-panel").then(m=>({default:m.NativeCsrReviews})));
+const NativeCsrFundingReviews = lazy(() => import("../csr/native-csr-funding-review-panel").then(m=>({default:m.NativeCsrFundingReviews})));
 const NativeProjectsWorkspace = lazy(() => import("../projects/native-projects-workspace").then(m=>({default:m.NativeProjectsWorkspace})));
 const NativeCampaignDrafts = lazy(() => import("../campaigns/native-campaign-drafts").then(m=>({default:m.NativeCampaignDrafts})));
 const NativeCampaignReviews = lazy(() => import("../campaigns/native-campaign-reviews").then(m=>({default:m.NativeCampaignReviews})));
@@ -201,7 +202,7 @@ export function StaffAuthenticationScreen() {
   const [projectsOpen,setProjectsOpen]=useState(false);
   const [campaignsOpen,setCampaignsOpen]=useState(false);
   const [csrOpen,setCsrOpen]=useState(false);
-  const [csrTab,setCsrTab]=useState<"DRAFTS"|"REVIEWS"|"FUNDING">("DRAFTS");
+  const [csrTab,setCsrTab]=useState<"DRAFTS"|"REVIEWS"|"FUNDING"|"FUNDING_REVIEWS">("DRAFTS");
   const [campaignsTab,setCampaignsTab]=useState<"DRAFTS"|"REVIEWS">("DRAFTS");
   const [inventoryOpen,setInventoryOpen]=useState(false);
   const [membershipOpen,setMembershipOpen]=useState(false);
@@ -777,6 +778,7 @@ export function StaffAuthenticationScreen() {
        <Pressable accessibilityRole="button" onPress={()=>setCsrTab("DRAFTS")} style={{padding:12,borderWidth:1,borderRadius:9,borderColor:"#B9C7E8"}}><Text>CSR partners</Text></Pressable>
        <Pressable accessibilityRole="button" onPress={()=>setCsrTab("FUNDING")} style={{padding:12,borderWidth:1,borderRadius:9,borderColor:"#B9C7E8"}}><Text>Funding requests</Text></Pressable>
        {canReviews&&<Pressable accessibilityRole="button" onPress={()=>setCsrTab("REVIEWS")} style={{padding:12,borderWidth:1,borderRadius:9,borderColor:"#B9C7E8"}}><Text>Independent reviews</Text></Pressable>}
+       {canReviews&&<Pressable accessibilityRole="button" onPress={()=>setCsrTab("FUNDING_REVIEWS")} style={{padding:12,borderWidth:1,borderRadius:9,borderColor:"#B9C7E8"}}><Text>Funding approvals</Text></Pressable>}
       </View>}
       <Suspense fallback={<ActivityIndicator style={{marginTop:40}}/>}>
        {canDrafts&&csrTab==="FUNDING"?
@@ -791,6 +793,9 @@ export function StaffAuthenticationScreen() {
          canUploadAgreement={roleActions.includes("documents.files.view")&&roleActions.includes("documents.files.manage")}
          canManagePublic={roleActions.includes("csr.partners.manage")&&roleActions.includes("cms.content.manage")&&roleActions.includes("documents.files.view")}
          onExpired={expireSession}/>:
+        canReviews&&csrTab==="FUNDING_REVIEWS"?
+        <NativeCsrFundingReviews key={token} token={token}
+         canConfigure={roleActions.includes("approvals.process.manage")} onExpired={expireSession}/>:
         <NativeCsrReviews key={token} token={token}
          canConfigure={roleActions.includes("approvals.process.manage")} onExpired={expireSession}/>}
       </Suspense>
