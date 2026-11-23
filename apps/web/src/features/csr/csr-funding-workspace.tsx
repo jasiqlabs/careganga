@@ -163,7 +163,7 @@ export function CsrFundingWorkspace({canManage}:{canManage:boolean}){
     <div><h3 style={{margin:0}}>Funding proposals</h3><p style={{fontSize:13,color:"var(--cg-muted)"}}>
      No unverified receipt or allocation totals are shown here.</p></div>
     <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
-     <button type="button" style={btn} onClick={refresh} disabled={busy||!!pending}>Refresh</button>
+     <button type="button" style={btn} onClick={()=>{invalidateDetail();refresh();}} disabled={busy||!!pending}>Refresh</button>
      {canManage&&<button type="button" style={primary} onClick={begin} disabled={busy||!!pending||!options}>New funding request</button>}
     </div>
    </div>
@@ -205,9 +205,9 @@ export function CsrFundingWorkspace({canManage}:{canManage:boolean}){
      </tr>)}</tbody>
     </table></div>}
    <div style={{display:"flex",justifyContent:"end",gap:10,alignItems:"center"}}>
-    <button style={btn} type="button" disabled={offset===0||loading} onClick={()=>setOffset(v=>Math.max(0,v-25))}>Previous</button>
+    <button style={btn} type="button" disabled={offset===0||loading||busy||!!pending} onClick={()=>{invalidateDetail();setOffset(v=>Math.max(0,v-25));}}>Previous</button>
     <span>Page {Math.floor(offset/25)+1}</span>
-    <button style={btn} type="button" disabled={!page.hasMore||loading} onClick={()=>setOffset(v=>v+25)}>Next</button>
+    <button style={btn} type="button" disabled={!page.hasMore||loading||busy||!!pending} onClick={()=>{invalidateDetail();setOffset(v=>v+25);}}>Next</button>
    </div>
   </div>
   {editing&&<div style={box} aria-label="Original CSR funding request details">
@@ -246,9 +246,9 @@ export function CsrFundingWorkspace({canManage}:{canManage:boolean}){
       onChange={e=>set("rupees",e.target.value)}/>
     </label>
     <label style={field}>Proposed start date<input style={control} type="date" value={draft.proposedFrom}
-     readOnly={!canManage} onChange={e=>set("proposedFrom",e.target.value)}/></label>
+     disabled={!canManage||busy||!!pending||!!selected&&selected.status!=="DRAFT"} onChange={e=>set("proposedFrom",e.target.value)}/></label>
     <label style={field}>Proposed end date<input style={control} type="date" value={draft.proposedUntil}
-     readOnly={!canManage} onChange={e=>set("proposedUntil",e.target.value)}/></label>
+     disabled={!canManage||busy||!!pending||!!selected&&selected.status!=="DRAFT"} onChange={e=>set("proposedUntil",e.target.value)}/></label>
    </div>}
    {step===1&&<div style={{display:"grid",gap:13}}>
     {draft.fundType!=="FOUNDATION"&&<label style={field}>Approved CSR sponsor
@@ -258,7 +258,7 @@ export function CsrFundingWorkspace({canManage}:{canManage:boolean}){
      </select>
     </label>}
     <label style={field}>Eligible project (optional)
-     <select style={control} value={draft.projectRef} disabled={busy||!canManage}
+     <select style={control} value={draft.projectRef} disabled={busy||!!pending||!canManage||!!selected&&selected.status!=="DRAFT"}
       onChange={e=>set("projectRef",e.target.value)}>
       <option value="">General Foundation / branch purpose — no project</option>
       {matchingProjects.map(x=><option key={x.value} value={x.value}>{x.label}</option>)}
@@ -266,7 +266,7 @@ export function CsrFundingWorkspace({canManage}:{canManage:boolean}){
     </label>
     <label style={field}>CSR share (%) — Foundation receives the remainder
      <input style={control} type="number" min={draft.fundType==="MIXED"?1:0} max={draft.fundType==="MIXED"?99:100}
-      step="1" disabled={draft.fundType!=="MIXED"||busy||!canManage}
+      step="1" disabled={draft.fundType!=="MIXED"||busy||!!pending||!canManage||!!selected&&selected.status!=="DRAFT"}
       value={draft.csrPercent} onChange={e=>set("csrPercent",Number(e.target.value))}/>
     </label>
     <p>Requested split: <strong>{draft.csrPercent}% CSR / {100-draft.csrPercent}% Foundation.</strong> The request does not make either share spendable cash.</p>
@@ -274,7 +274,7 @@ export function CsrFundingWorkspace({canManage}:{canManage:boolean}){
    {step===2&&<div style={{display:"grid",gap:12}}>
     <label style={field}>Agreement scope and supporting notes
      <textarea style={{...control,minHeight:130}} maxLength={1000} value={draft.agreementSummary}
-      readOnly={!canManage} onChange={e=>set("agreementSummary",e.target.value)}/>
+      readOnly={!canManage||busy||!!pending||!!selected&&selected.status!=="DRAFT"} onChange={e=>set("agreementSummary",e.target.value)}/>
     </label>
     <p role="note">Saving here does not upload, verify or sign an agreement. The protected original CG19 agreement and CG03 funding approval workflows must be completed before this can become an approved commitment.</p>
    </div>}
