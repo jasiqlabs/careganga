@@ -5,6 +5,7 @@ import {identityRequest} from "../identity-access/http-client";
 import {NativeCsrFundingAgreementPanel} from "./native-csr-funding-agreement-panel";
 import {NativeCsrFundingReceiptsPanel} from "./native-csr-funding-receipts-panel";
 import {NativeCsrFundingBudgetPanel} from "./native-csr-funding-budget-panel";
+import {NativeCsrFundingProjectContext} from "./native-csr-funding-project-context";
 type Choice={value:string;label:string;branchRef?:string|null;projectVersion?:number};
 type Options={foundation:boolean;branches:Choice[];partners:Choice[];projects:Choice[]};
 type Proposal={ref:string;branchRef:string|null;partnerRef:string|null;projectRef:string|null;
@@ -265,6 +266,8 @@ export function NativeCsrFunding({token,canManage,canReadAgreement,canUploadAgre
     {draft.fundType==="MIXED"&&field("CSR percentage (1–99)","csrPercent")}
     <Text style={styles.note}>CSR: {draft.csrPercent}% · Foundation: {100-draft.csrPercent}%.
      This is a planned split only, not cash.</Text>
+    {selected&&<NativeCsrFundingProjectContext token={token} proposalRef={selected.ref}
+     mode="PROJECT" onExpired={onExpired}/>}
    </View>
    <View style={styles.panel}>
     <Text style={styles.heading}>3. Budget Details & agreement terms</Text>
@@ -291,11 +294,10 @@ export function NativeCsrFunding({token,canManage,canReadAgreement,canUploadAgre
     </View>
   </View>}
   {editing&&<View style={styles.panel}>
-    <Text style={styles.heading}>4. Team & Members</Text>
-    <Text style={styles.note}>Actual team and task assignees remain in original CG05 Projects.
-     No unverified CSR roster is generated.</Text>
-    <Text style={styles.note}>Project: {projects.find(x=>x.value===draft.projectRef)?.label
-     ??"General Foundation purpose"}</Text>
+    {selected?<NativeCsrFundingProjectContext token={token} proposalRef={selected.ref}
+     mode="TEAM" onExpired={onExpired}/>:
+     <Text style={styles.note}>4. Team & Members: Save a funding draft before
+      reading actual CG05 project assignments.</Text>}
    </View>}
    {editing&&<Text style={styles.heading}>5. Documents & Agreement</Text>}
    {editing&&!selected&&<Text style={styles.note}>Save draft before the CG19 agreement upload.</Text>}
