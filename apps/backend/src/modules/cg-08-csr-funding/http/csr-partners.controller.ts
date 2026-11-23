@@ -1,0 +1,15 @@
+import {Body,Controller,Get,Header,Headers,Param,Patch,Post,Query} from "@nestjs/common";
+import {CsrPartnersService} from "../application/csr-partners.service";
+@Controller("api/v1/csr/partners")
+export class CsrPartnersController{
+ constructor(private readonly partners:CsrPartnersService){}
+ @Get("options") options(@Headers("authorization")token:string){return this.partners.options(token);}
+ @Get() list(@Headers("authorization")token:string,@Query()query:Record<string,unknown>){return this.partners.list(token,query);}
+ @Get(":ref") detail(@Headers("authorization")token:string,@Param("ref")ref:string){return this.partners.detail(token,ref);}
+ @Post() create(@Headers("authorization")token:string,@Body()body:unknown){return this.partners.create(token,body);}
+ @Patch(":ref") edit(@Headers("authorization")token:string,@Param("ref")ref:string,@Body()body:unknown){return this.partners.edit(token,ref,body);}
+ @Get(":ref/public-release") publicRelease(@Headers("authorization")token:string,@Param("ref")ref:string){return this.partners.publicRelease(token,ref);}
+ @Post(":ref/public-release") authorizePublic(@Headers("authorization")token:string,@Param("ref")ref:string,@Body()body:unknown){return this.partners.authorizePublic(token,ref,body);}
+ @Post(":ref/public-release/withdraw") withdrawPublic(@Headers("authorization")token:string,@Param("ref")ref:string,@Body()body:unknown){return this.partners.withdrawPublic(token,ref,body);}
+ @Post(":ref/cancel") cancel(@Headers("authorization")token:string,@Param("ref")ref:string,@Body()body:unknown){return this.partners.cancel(token,ref,body);}
+}

@@ -27,7 +27,16 @@
     "test:cg02-staff-scope": "tsx --test test/cg02-staff-scope-contract.test.ts",
     "test:cg02-staff-scope-db": "node --env-file=.env ../../node_modules/tsx/dist/cli.mjs --test test/cg02-staff-scope-db-integrity.test.ts",
     "test:cg20-multibranch-manager": "tsx --test test/cg20-multibranch-manager-contract.test.ts",
-    "test:cg20-multibranch-scope-db": "node --env-file=.env ../../node_modules/tsx/dist/cli.mjs --test test/cg20-multibranch-scope-db-integrity.test.ts"
+    "test:cg20-multibranch-scope-db": "node --env-file=.env ../../node_modules/tsx/dist/cli.mjs --test test/cg20-multibranch-scope-db-integrity.test.ts",
+    "test:cg08-partner": "tsx --test test/cg08-partner-contract.test.ts",
+    "test:cg08-db-integrity": "node --env-file=.env ../../node_modules/tsx/dist/cli.mjs --test test/cg08-db-integrity.test.ts",
+    "test:cg08-funding": "tsx --test test/cg08-funding-contract.test.ts",
+    "test:cg08-funding-evidence": "tsx --test test/cg08-funding-evidence-contract.test.ts",
+    "test:cg08-funding-review": "tsx --test test/cg08-funding-review-contract.test.ts",
+    "test:cg08-funding-receipt": "tsx --test test/cg08-funding-receipt-contract.test.ts",
+    "test:cg08-funding-budget": "tsx --test test/cg08-funding-budget-contract.test.ts",
+    "test:cg08-funding-report": "tsx --test test/cg08-funding-report-contract.test.ts",
+    "test:cg08-funding-evidence-db": "node --env-file=.env ../../node_modules/tsx/dist/cli.mjs --test test/cg08-funding-evidence-db-integrity.test.ts"
   },
   "dependencies": {
     "@nestjs/common": "12.5.0",

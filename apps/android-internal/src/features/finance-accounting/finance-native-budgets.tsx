@@ -15,12 +15,14 @@ type Detail={budgetRef:string;budgetNumber:string;name:string;status:string;vers
  category:string;ceilingMinor:string;financialYearRef:string;branchRef:string|null;projectRef?:string|null;projectLabel?:string|null;
  start:string;end:string;allocatedMinor:string;committedOutstandingMinor:string;
  utilizedMinor:string;releasedMinor:string;availableMinor:string;overBudgetMinor:string;
+ items:{description:string;quantityMilli:string;unitRateMinor:string;totalMinor:string}[];
  events:{kind:string;amountMinor:string;recordedAt:string}[]};
 type Expense={journalRef:string;voucherNumber:string;postedDate:string;amountMinor:string};
 type Form={budgetName:string;financialYearRef:string;branchRef:string;branchVersion:number|null;projectRef:string;
- category:string;periodStart:string;periodEnd:string;fundingNote:string;ceiling:string};
+ category:string;periodStart:string;periodEnd:string;fundingNote:string;ceiling:string;
+ items:{description:string;quantity:string;unitRate:string}[]};
 const clear=():Form=>({budgetName:"",financialYearRef:"",branchRef:"",branchVersion:null,projectRef:"",
- category:"",periodStart:"",periodEnd:"",fundingNote:"Foundation budget authorization",ceiling:""});
+ category:"",periodStart:"",periodEnd:"",fundingNote:"Foundation budget authorization",ceiling:"",items:[]});
 type Pending={key:string;path:string;method:"POST"|"PATCH";body:Record<string,unknown>};
 const key=()=>Crypto.randomUUID();
 export function FinanceNativeBudgets({token,canManage,onExit,onExpired}:{
@@ -80,7 +82,12 @@ export function FinanceNativeBudgets({token,canManage,onExit,onExpired}:{
      branchRef:x.branchRef??"",branchVersion:branch?.version??null,projectRef:x.projectRef??"",
      category:x.category,periodStart:x.start,periodEnd:x.end,
      fundingNote:"Foundation budget authorization",
-     ceiling:minorToRupees(x.ceilingMinor)});
+     ceiling:minorToRupees(x.ceilingMinor),
+     items:(x.items??[]).map(line=>({description:line.description,
+      quantity:(BigInt(line.quantityMilli)/1000n).toString()+
+       (BigInt(line.quantityMilli)%1000n===0n?"":"."+
+        (BigInt(line.quantityMilli)%1000n).toString().padStart(3,"0").replace(/0+$/,"")),
+      unitRate:minorToRupees(line.unitRateMinor)}))});
    }
    if(x.status==="APPROVED"){
     const v=await request<{expenses:Expense[]}>(token,
@@ -205,6 +212,24 @@ export function FinanceNativeBudgets({token,canManage,onExit,onExpired}:{
      <Field label="Period ends (YYYY-MM-DD)" value={form.periodEnd} onChange={v=>change("periodEnd",v)}/>
      <Field label="Approved ceiling requested (₹)" value={form.ceiling} keyboardType="decimal-pad"
       onChange={v=>change("ceiling",v)}/>
+     <Text style={s.heading}>Original CG09 budget items</Text>
+     <Action label="Add budget item" secondary disabled={form.items.length>=30}
+      onPress={()=>setForm(v=>({...v,items:[...v.items,{description:"",quantity:"1",unitRate:""}]}))}/>
+     {form.items.map((line,i)=><Card key={i}>
+      <Field label={"Item "+(i+1)+" description"} value={line.description}
+       onChange={v=>setForm(old=>({...old,items:old.items.map((x,j)=>
+        i===j?{...x,description:v}:x)}))}/>
+      <Field label="Quantity (up to 3 decimals)" value={line.quantity}
+       keyboardType="decimal-pad" onChange={v=>setForm(old=>({...old,items:old.items.map((x,j)=>
+        i===j?{...x,quantity:v}:x)}))}/>
+      <Field label="Unit rate (INR)" value={line.unitRate}
+       keyboardType="decimal-pad" onChange={v=>setForm(old=>({...old,items:old.items.map((x,j)=>
+        i===j?{...x,unitRate:v}:x)}))}/>
+      <Action label="Remove this line" secondary onPress={()=>
+       setForm(old=>({...old,items:old.items.filter((_,j)=>j!==i)}))}/>
+     </Card>)}
+     <Text style={s.text}>Itemized quantity × unit-rate totals must equal
+      the requested approved ceiling. Finance verifies the exact calculation.</Text>
      <Field label="Funding note (not cash evidence)" value={form.fundingNote}
       onChange={v=>change("fundingNote",v)}/>
      <Action label="Save original budget draft" disabled={busy||Boolean(pending)} onPress={save}/>
@@ -216,6 +241,13 @@ export function FinanceNativeBudgets({token,canManage,onExit,onExpired}:{
     {selected?.status==="SUBMITTED"&&<Action label="Check original protected review result"
      disabled={busy||Boolean(pending)} onPress={()=>submit(
       "/api/finance-accounting/budgets/"+selected.budgetRef+"/reconcile","POST",{})}/>}
+    {selected&&<Card>
+     <Text style={s.heading}>Original Finance item breakdown</Text>
+     {selected.items?.length?selected.items.map((item,i)=><Text key={i} style={s.text}>
+      {item.description}: {(Number(item.quantityMilli)/1000).toFixed(3)} ×
+      {money(item.unitRateMinor)} = {money(item.totalMinor)}
+     </Text>):<Text style={s.muted}>No original item breakdown recorded for this budget.</Text>}
+    </Card>}
     {selected?.status==="APPROVED"&&<>
      <Options label="Budget event" value={kind} options={[
       {ref:"ALLOCATE",label:"Allocate / earmark"},{ref:"COMMIT",label:"Commit"},

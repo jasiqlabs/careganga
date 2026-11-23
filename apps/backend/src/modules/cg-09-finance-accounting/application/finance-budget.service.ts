@@ -54,6 +54,35 @@ const minor=(v:unknown,positive=true):string=>{
   throw new BadRequestException({code:"FINANCE_BUDGET_AMOUNT_INVALID",field:"amount"});
  return m.toString();
 };
+type BudgetItem={description:string;quantityMilli:string;unitRateMinor:string;totalMinor:string};
+const budgetItems=(v:unknown,ceiling:string):BudgetItem[]=>{
+ if(v===undefined||v===null)return [];
+ if(!Array.isArray(v)||v.length>30)
+  throw new BadRequestException({code:"FINANCE_BUDGET_FORM_INVALID",field:"items"});
+ const items=v.map((item,i)=>{
+  if(!item||typeof item!=="object"||Array.isArray(item)||
+   Object.keys(item).some(k=>!["description","quantity","unitRate"].includes(k)))
+   throw new BadRequestException({code:"FINANCE_BUDGET_FORM_INVALID",field:"items["+i+"]"});
+  const row=item as Record<string,unknown>;
+  const desc=label(row.description,"items["+i+"].description",200);
+  if(typeof row.quantity!=="string"||
+   !/^(0|[1-9][0-9]{0,9})(\.[0-9]{1,3})?$/.test(row.quantity))
+   throw new BadRequestException({code:"FINANCE_BUDGET_FORM_INVALID",field:"items["+i+"].quantity"});
+  const parts=row.quantity.split(".");
+  const qty=BigInt(parts[0])*1000n+BigInt((parts[1]??"").padEnd(3,"0"));
+  const rate=BigInt(minor(row.unitRate));
+  const product=qty*rate;
+  if(qty<1n||qty>9999999999999n||product%1000n!==0n||
+   product/1000n>99999999999999n)
+   throw new BadRequestException({code:"FINANCE_BUDGET_FORM_INVALID",field:"items["+i+"].amount"});
+  return {description:desc,quantityMilli:qty.toString(),
+   unitRateMinor:rate.toString(),totalMinor:(product/1000n).toString()};
+ });
+ if(items.length&&items.reduce((total,row)=>total+BigInt(row.totalMinor),0n)!==BigInt(ceiling))
+  throw new BadRequestException({code:"FINANCE_BUDGET_AMOUNT_INVALID",field:"items",
+   message:"Budget item totals must equal the requested approved ceiling."});
+ return items;
+};
 type Budget={id:string;budget_number:string;version:number;status:string;
  current_digest:string;approval_case_id:string|null;financial_year_id:string;
  branch_id:string|null;created_by:string;category_label:string;budget_name:string;
@@ -61,7 +90,7 @@ type Budget={id:string;budget_number:string;version:number;status:string;
 type Command={digest:string;budget_id:string;version:number;result_status:string};
 type Input={budgetName:string;financialYearRef:string;branchRef:string|null;
  branchVersion:number|null;category:string;periodStart:string;periodEnd:string;
- fundingNote:string;ceilingMinor:string;projectRef?:string};
+ fundingNote:string;ceilingMinor:string;items:BudgetItem[];projectRef?:string};
 @Injectable()
 export class FinanceBudgetService{
  constructor(@Inject(DATABASE)private readonly db:Pool,
@@ -83,7 +112,8 @@ export class FinanceBudgetService{
    branchRef:branch,branchVersion:bv,
    category:expenseGroupCode(v.category),periodStart,periodEnd,
    fundingNote:label(v.fundingNote??"Foundation budget authorization","fundingNote",250),
-   ceilingMinor:minor(v.ceiling),...(v.projectRef?{projectRef:id(v.projectRef,"projectRef")}:{})};
+   ceilingMinor:minor(v.ceiling),items:budgetItems(v.items,minor(v.ceiling)),
+   ...(v.projectRef?{projectRef:id(v.projectRef,"projectRef")}:{})};
  }
  private async validScope(tx:PoolClient,actor:VerifiedFoundationActor,p:Input){
   await this.identity.assertCurrent(tx,actor,"finance.budgets.manage");
@@ -142,7 +172,7 @@ export class FinanceBudgetService{
  async save(bearer:string,raw:unknown,budgetInput?:string){
   const actor=await this.actor(bearer,true);
   const value=body(raw,["budgetName","financialYearRef","branchRef","branchVersion",
-   "category","periodStart","periodEnd","fundingNote","ceiling","projectRef","expectedVersion","requestKey"]);
+   "category","periodStart","periodEnd","fundingNote","ceiling","items","projectRef","expectedVersion","requestKey"]);
   const p=this.parse(value),key=id(value.requestKey,"requestKey"),
    budgetRef=budgetInput?id(budgetInput):randomUUID();
   const expected=budgetInput?version(value.expectedVersion):null;
@@ -184,6 +214,11 @@ export class FinanceBudgetService{
     [actor.realmId,budgetRef,next,sourceDigest,p.budgetName,p.category,
      p.financialYearRef,p.branchRef,p.periodStart,p.periodEnd,p.fundingNote,
      p.ceilingMinor,actor.accountId,p.projectRef??null,projectLabel]);
+   for(const [i,item] of p.items.entries())
+    await tx.query(
+     "INSERT INTO finance_budget_item_revision(root_realm_id,budget_id,version,"+
+     "line_no,description,quantity_milli,unit_rate_minor) VALUES($1,$2,$3,$4,$5,$6,$7)",
+     [actor.realmId,budgetRef,next,i+1,item.description,item.quantityMilli,item.unitRateMinor]);
    if(oldBudget)await tx.query(
     "UPDATE finance_budget SET budget_name=$3,financial_year_id=$4,"+
     "branch_id=$5,category_label=$6,period_start=$7,period_end=$8,"+
@@ -384,20 +419,35 @@ export class FinanceBudgetService{
   const b=found.rows[0];
   if(!b)throw new ConflictException({code:"FINANCE_BUDGET_SOURCE_INVALID"});
   const totals=await this.db.query<{allocated:string;committed:string;released:string;utilized:string;applied:string}>(
-   "SELECT COALESCE(SUM(amount_minor) FILTER(WHERE kind='ALLOCATE'),0)::text AS allocated,"+
+   "SELECT (COALESCE(SUM(amount_minor) FILTER(WHERE kind='ALLOCATE'),0)-"+
+   "COALESCE(SUM(amount_minor) FILTER(WHERE kind='DEALLOCATE'),0))::text AS allocated,"+
    "COALESCE(SUM(amount_minor) FILTER(WHERE kind='COMMIT'),0)::text AS committed,"+
    "COALESCE(SUM(amount_minor) FILTER(WHERE kind='RELEASE'),0)::text AS released,"+
-   "COALESCE(SUM(amount_minor) FILTER(WHERE kind='UTILIZE'),0)::text AS utilized,"+
-   "COALESCE(SUM(commitment_applied_minor),0)::text AS applied "+
-   "FROM finance_budget_event WHERE root_realm_id=$1 AND budget_id=$2",
+   "COALESCE(SUM(CASE WHEN ev.kind='UTILIZE' AND "+ 
+   "NOT EXISTS(SELECT 1 FROM journal reversal WHERE reversal.root_realm_id=ev.root_realm_id "+
+   "AND reversal.reversal_of_id=ev.source_journal_id "+
+   "AND reversal.posting_kind='REVERSAL' AND reversal.status='POSTED') THEN ev.amount_minor ELSE 0 END),0)::text AS utilized,"+
+   "COALESCE(SUM(CASE WHEN ev.kind='UTILIZE' AND "+
+   "NOT EXISTS(SELECT 1 FROM journal reversal WHERE reversal.root_realm_id=ev.root_realm_id "+
+   "AND reversal.reversal_of_id=ev.source_journal_id "+
+   "AND reversal.posting_kind='REVERSAL' AND reversal.status='POSTED') THEN ev.commitment_applied_minor ELSE 0 END),0)::text AS applied "+
+   "FROM finance_budget_event ev WHERE ev.root_realm_id=$1 AND ev.budget_id=$2",
    [actor.realmId,budgetRef]);
+  const items=await this.db.query<{description:string;quantityMilli:string;
+   unitRateMinor:string;totalMinor:string}>(
+   'SELECT description,quantity_milli::text AS "quantityMilli",'+
+   'unit_rate_minor::text AS "unitRateMinor",'+
+   'line_total_minor::text AS "totalMinor" '+
+   "FROM finance_budget_item_revision "+
+   "WHERE root_realm_id=$1 AND budget_id=$2 AND version=$3 "+
+   "ORDER BY line_no LIMIT 30",[actor.realmId,budgetRef,b.version]);
   const t=totals.rows[0],outstanding=BigInt(t.committed)-BigInt(t.released)-BigInt(t.applied);
   const available=BigInt(b.ceilingMinor)-outstanding-BigInt(t.utilized);
   const events=await this.db.query<{kind:string;amountMinor:string;recordedAt:Date}>(
    "SELECT kind,amount_minor::text AS \"amountMinor\",recorded_at AS \"recordedAt\" "+
    "FROM finance_budget_event WHERE root_realm_id=$1 AND budget_id=$2 "+
    "ORDER BY recorded_at DESC,id DESC LIMIT 30",[actor.realmId,budgetRef]);
-  return {budgetRef,...b,allocatedMinor:t.allocated,
+  return {budgetRef,...b,items:items.rows,allocatedMinor:t.allocated,
    committedOutstandingMinor:outstanding.toString(),utilizedMinor:t.utilized,
    releasedMinor:t.released,commitmentFulfilledMinor:t.applied,availableMinor:available.toString(),
    overBudgetMinor:available<0n?(-available).toString():"0",events:events.rows,
@@ -433,12 +483,19 @@ export class FinanceBudgetService{
    allocatedMinor:string;committedOutstandingMinor:string;utilizedMinor:string;
    availableMinor:string;overBudgetMinor:string}>(
    "WITH movement AS(SELECT root_realm_id,budget_id,"+
-   "COALESCE(SUM(amount_minor) FILTER(WHERE kind='ALLOCATE'),0) AS allocated,"+
+   "(COALESCE(SUM(amount_minor) FILTER(WHERE kind='ALLOCATE'),0)-"+
+   "COALESCE(SUM(amount_minor) FILTER(WHERE kind='DEALLOCATE'),0)) AS allocated,"+
    "COALESCE(SUM(amount_minor) FILTER(WHERE kind='COMMIT'),0) AS committed,"+
    "COALESCE(SUM(amount_minor) FILTER(WHERE kind='RELEASE'),0) AS released,"+
-   "COALESCE(SUM(amount_minor) FILTER(WHERE kind='UTILIZE'),0) AS utilized,"+
-   "COALESCE(SUM(commitment_applied_minor),0) AS applied "+
-   "FROM finance_budget_event WHERE root_realm_id=$1 GROUP BY root_realm_id,budget_id),"+
+   "COALESCE(SUM(CASE WHEN ev.kind='UTILIZE' AND "+
+   "NOT EXISTS(SELECT 1 FROM journal reversal WHERE reversal.root_realm_id=ev.root_realm_id "+
+   "AND reversal.reversal_of_id=ev.source_journal_id "+
+   "AND reversal.posting_kind='REVERSAL' AND reversal.status='POSTED') THEN ev.amount_minor ELSE 0 END),0) AS utilized,"+
+   "COALESCE(SUM(CASE WHEN ev.kind='UTILIZE' AND "+
+   "NOT EXISTS(SELECT 1 FROM journal reversal WHERE reversal.root_realm_id=ev.root_realm_id "+
+   "AND reversal.reversal_of_id=ev.source_journal_id "+
+   "AND reversal.posting_kind='REVERSAL' AND reversal.status='POSTED') THEN ev.commitment_applied_minor ELSE 0 END),0) AS applied "+
+   "FROM finance_budget_event ev WHERE ev.root_realm_id=$1 GROUP BY ev.root_realm_id,ev.budget_id),"+
    "fact AS(SELECT b.status,b.approved_ceiling_minor,"+
    "COALESCE(m.allocated,0) AS allocated,"+
    "GREATEST(0,COALESCE(m.committed,0)-COALESCE(m.released,0)-COALESCE(m.applied,0)) AS outstanding,"+

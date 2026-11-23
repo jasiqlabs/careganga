@@ -67,6 +67,11 @@ const NativeOperationsSummary = lazy(() => import("../projects/native-operations
 const NativeFieldVisitsWorkspace = lazy(() => import("../projects/native-field-visits-workspace").then(m=>({default:m.NativeFieldVisitsWorkspace})));
 const NativeActivitiesWorkspace = lazy(() => import("../projects/native-activities-workspace").then(m=>({default:m.NativeActivitiesWorkspace})));
 const NativeTasksWorkspace = lazy(() => import("../projects/native-tasks-workspace").then(m=>({default:m.NativeTasksWorkspace})));
+const NativeCsrPartners = lazy(() => import("../csr/native-csr-partners").then(m=>({default:m.NativeCsrPartners})));
+const NativeCsrFunding = lazy(() => import("../csr/native-csr-funding").then(m=>({default:m.NativeCsrFunding})));
+const NativeCsrReviews = lazy(() => import("../csr/native-csr-review-panel").then(m=>({default:m.NativeCsrReviews})));
+const NativeCsrFundingReviews = lazy(() => import("../csr/native-csr-funding-review-panel").then(m=>({default:m.NativeCsrFundingReviews})));
+const NativeCsrFundingReports = lazy(() => import("../csr/native-csr-funding-reports-panel").then(m=>({default:m.NativeCsrFundingReportsPanel})));
 const NativeProjectsWorkspace = lazy(() => import("../projects/native-projects-workspace").then(m=>({default:m.NativeProjectsWorkspace})));
 const NativeCampaignDrafts = lazy(() => import("../campaigns/native-campaign-drafts").then(m=>({default:m.NativeCampaignDrafts})));
 const NativeCampaignReviews = lazy(() => import("../campaigns/native-campaign-reviews").then(m=>({default:m.NativeCampaignReviews})));
@@ -197,6 +202,8 @@ export function StaffAuthenticationScreen() {
   const [tasksOpen,setTasksOpen]=useState(false);
   const [projectsOpen,setProjectsOpen]=useState(false);
   const [campaignsOpen,setCampaignsOpen]=useState(false);
+  const [csrOpen,setCsrOpen]=useState(false);
+  const [csrTab,setCsrTab]=useState<"DRAFTS"|"REVIEWS"|"FUNDING"|"FUNDING_REVIEWS"|"REPORTS">("DRAFTS");
   const [campaignsTab,setCampaignsTab]=useState<"DRAFTS"|"REVIEWS">("DRAFTS");
   const [inventoryOpen,setInventoryOpen]=useState(false);
   const [membershipOpen,setMembershipOpen]=useState(false);
@@ -247,7 +254,7 @@ export function StaffAuthenticationScreen() {
     hideToast();
     setMessage("");
     setActor(null); setToken(null); setRoleActions([]); setAccountOpen(false); setRolesOpen(false); setAccountsOpen(false); setPolicyOpen(false); setApprovalsOpen(false); setOwnCenterOpen(false); setWebsiteCmsOpen(false); setPlatformConfigOpen(false); setHealthDoctorOpen(false); setCenterPublisherOpen(false); setHealthProviderOpen(false); setHealthReviewsOpen(false); setDoctorLeaveReviewsOpen(false); setPatientAdminOpen(false); setPatientQueueOpen(false); setLabOrdersOpen(false); setLabEquipmentOpen(false); setHealthcarePoliciesOpen(false); setCenterMerchantOpen(false); setFoundationLiabilitiesOpen(false); setMonthlyProviderSettlementsOpen(false); setPartnerSettlementsOpen(false); setLabTestMasterOpen(false); setMyLabPricingOpen(false); setPatientBookingOpen(false); setDocumentsOpen(false); setCommunicationsOpen(false); setNotificationsOpen(false); setSupportOpen(false); setNoticeAdminOpen(false); setBranchesOpen(false); setFinanceOpen(false); setVoucherOnlyOpen(false); setFinanceReviewOpen(false); setFinanceClaimsOpen(false); setFinanceClaimReviewsOpen(false); setInvoiceOpen(false); setInvoiceReviewOpen(false);
-    setBudgetOpen(false); setBudgetReviewOpen(false); setReportsOpen(false); setMisOpen(false); setHrOpen(false); setInventoryOpen(false); setMembershipOpen(false); setVolunteersOpen(false); setProjectsOpen(false); setCampaignsOpen(false); setTasksOpen(false); setActivitiesOpen(false); setFieldVisitsOpen(false); setOperationsSummaryOpen(false);
+    setBudgetOpen(false); setBudgetReviewOpen(false); setReportsOpen(false); setMisOpen(false); setHrOpen(false); setInventoryOpen(false); setMembershipOpen(false); setVolunteersOpen(false); setProjectsOpen(false); setCampaignsOpen(false); setCsrOpen(false); setTasksOpen(false); setActivitiesOpen(false); setFieldVisitsOpen(false); setOperationsSummaryOpen(false);
     void SecureStore.deleteItemAsync(STORE_KEY).catch(() => undefined);
   }, [hideToast]);
 
@@ -713,6 +720,7 @@ export function StaffAuthenticationScreen() {
       openHr: () => openOnly(setHrOpen),
       openProjects: () => openOnly(setProjectsOpen),
       openCampaigns: () => openOnly(setCampaignsOpen),
+      openCsr: () => openOnly(setCsrOpen),
       openActivities: () => openOnly(setActivitiesOpen),
       openFieldVisits: () => openOnly(setFieldVisitsOpen),
       openOperationsSummary: () => openOnly(setOperationsSummaryOpen),
@@ -760,6 +768,47 @@ export function StaffAuthenticationScreen() {
   if(tasksOpen&&token&&actor){
     if(!roleActions.includes("projects.tasks.view"))return <AccessDeniedScreen reason="You cannot view tasks." onMyAccount={()=>setTasksOpen(false)}/>;
     return renderInShell(<ScreenErrorBoundary onExit={()=>setTasksOpen(false)}><Suspense fallback={<ActivityIndicator style={{marginTop:40}}/>}><NativeTasksWorkspace key={token} token={token} canManage={roleActions.includes("projects.tasks.manage")} canExport={roleActions.includes("projects.tasks.export")} onExpired={expireSession}/></Suspense></ScreenErrorBoundary>,"tasks",()=>setTasksOpen(false));
+  }
+  if(csrOpen&&token&&actor){
+    const canDrafts=roleActions.includes("csr.partners.view");
+    const canReviews=roleActions.includes("csr.partners.review")&&roleActions.includes("approvals.review");
+    const canReports=canDrafts&&roleActions.includes("finance.reports.view");
+    if(!canDrafts&&!canReviews)return <AccessDeniedScreen reason="Your current role cannot access CSR partners." onMyAccount={()=>setCsrOpen(false)}/>;
+    return renderInShell(<ScreenErrorBoundary onExit={()=>setCsrOpen(false)}>
+     <View style={{flex:1}}>
+      <View style={{flexDirection:"row",gap:9,padding:9,flexWrap:"wrap"}}>
+       {canDrafts&&<Pressable accessibilityRole="button" onPress={()=>setCsrTab("DRAFTS")} style={{padding:12,borderWidth:1,borderRadius:9,borderColor:"#B9C7E8"}}><Text>CSR partners</Text></Pressable>}
+       {canDrafts&&<Pressable accessibilityRole="button" onPress={()=>setCsrTab("FUNDING")} style={{padding:12,borderWidth:1,borderRadius:9,borderColor:"#B9C7E8"}}><Text>Funding requests</Text></Pressable>}
+       {canReports&&<Pressable accessibilityRole="button" onPress={()=>setCsrTab("REPORTS")} style={{padding:12,borderWidth:1,borderRadius:9,borderColor:"#B9C7E8"}}><Text>Funding reports</Text></Pressable>}
+       {canReviews&&<Pressable accessibilityRole="button" onPress={()=>setCsrTab("REVIEWS")} style={{padding:12,borderWidth:1,borderRadius:9,borderColor:"#B9C7E8"}}><Text>Independent reviews</Text></Pressable>}
+       {canReviews&&<Pressable accessibilityRole="button" onPress={()=>setCsrTab("FUNDING_REVIEWS")} style={{padding:12,borderWidth:1,borderRadius:9,borderColor:"#B9C7E8"}}><Text>Funding approvals</Text></Pressable>}
+      </View>
+      <Suspense fallback={<ActivityIndicator style={{marginTop:40}}/>}>
+       {canReports&&csrTab==="REPORTS"?
+        <NativeCsrFundingReports key={token} token={token} onExpired={expireSession}/>:
+        canDrafts&&csrTab==="FUNDING"?
+        <NativeCsrFunding key={token} token={token}
+         canManage={roleActions.includes("csr.partners.manage")}
+         canReadAgreement={roleActions.includes("documents.files.view")}
+         canUploadAgreement={roleActions.includes("documents.files.manage")&&roleActions.includes("documents.files.view")}
+         canReadFinance={roleActions.includes("finance.reports.view")}
+         canLinkFinance={roleActions.includes("finance.reconciliation.manage")}
+         canBudgetManage={roleActions.includes("finance.budgets.manage")}
+         onExpired={expireSession}/>:
+        canDrafts&&(!canReviews||csrTab==="DRAFTS")?
+        <NativeCsrPartners key={token} token={token} canManage={roleActions.includes("csr.partners.manage")}
+         canReadAgreement={roleActions.includes("documents.files.view")}
+         canUploadAgreement={roleActions.includes("documents.files.view")&&roleActions.includes("documents.files.manage")}
+         canManagePublic={roleActions.includes("csr.partners.manage")&&roleActions.includes("cms.content.manage")&&roleActions.includes("documents.files.view")}
+         onExpired={expireSession}/>:
+        canReviews&&csrTab==="FUNDING_REVIEWS"?
+        <NativeCsrFundingReviews key={token} token={token}
+         canConfigure={roleActions.includes("approvals.process.manage")} onExpired={expireSession}/>:
+        <NativeCsrReviews key={token} token={token}
+         canConfigure={roleActions.includes("approvals.process.manage")} onExpired={expireSession}/>}
+      </Suspense>
+     </View>
+    </ScreenErrorBoundary>,"csr",()=>setCsrOpen(false));
   }
   if(campaignsOpen&&token&&actor){
     const canDrafts=roleActions.includes("campaigns.view");

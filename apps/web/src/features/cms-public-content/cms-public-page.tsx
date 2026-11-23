@@ -230,6 +230,28 @@ export function CmsPublicPage({page,navigation,siteFooter,children,mediaScope,si
       section={section} assets={assets}/>;
      if(section.kind==="HEALTHCARE_CATEGORIES")return <CmsHealthcare key={key}
       section={section}/>;
+     if(section.kind==="PARTNER_CARDS"){
+      const cards=Array.isArray(section.fields.cards)?section.fields.cards.flatMap((value,index)=>{
+       if(!value||typeof value!=="object"||Array.isArray(value))return [];
+       const x=value as Record<string,unknown>;
+       if(typeof x.name!=="string"||typeof x.summary!=="string"||!Number.isSafeInteger(x.originalIndex))return [];
+       return [{name:x.name,summary:x.summary,originalIndex:x.originalIndex as number,index}];
+      }):[];
+      return <section key={key} className="cg-site-content" aria-label="Original approved partner selections">
+       <h2>{text(section.fields.heading)||"Corporate Partners"}</h2>
+       {text(section.fields.intro)&&<p>{text(section.fields.intro)}</p>}
+       {cards.length===0?<p>No currently verified partner names to preview or publish.</p>:
+        <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(230px,1fr))",gap:16}}>
+         {cards.map(card=>{
+          const logo=assets.find(v=>v.role==="FEATURE"&&v.order===card.originalIndex);
+          return <article key={card.index} style={{border:"1px solid var(--cg-border,#dce6e2)",borderRadius:12,padding:20}}>
+           {logo&&<Photo asset={logo} className="cg-site-about-img"/>}
+           <h3>{card.name}</h3><p>{card.summary}</p>
+          </article>;
+         })}
+        </div>}
+      </section>;
+     }
      if(section.kind==="CONTACT_INFO")return <CmsContactInfo key={key} section={section} assets={assets}/>;
      if(section.kind==="CAMPAIGN_TEASER"){
       const cards=Array.isArray(section.fields.cards)?

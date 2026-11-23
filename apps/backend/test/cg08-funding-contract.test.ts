@@ -1,0 +1,118 @@
+import test from "node:test";
+import assert from "node:assert/strict";
+import {readFileSync} from "node:fs";
+import {join} from "node:path";
+import {parseFundingProposal} from "../src/modules/cg-08-csr-funding/domain/funding-proposal-input";
+
+const uid="11111111-1111-4111-8111-111111111111";
+const branch="22222222-2222-4222-8222-222222222222";
+const partner="33333333-3333-4333-8333-333333333333";
+const base={
+ requestKey:uid,branchRef:branch,partnerRef:partner,projectRef:null,
+ projectVersion:null,purpose:"Support a real Foundation activity",fundType:"MIXED",
+ amountMinor:"10001",csrShareBps:7000,foundationShareBps:3000,
+ proposedFrom:"2026-11-23",proposedUntil:"2027-02-23",
+ agreementSummary:"Terms require independent review"
+};
+test("US002-QA01/03/04: proposed 70/30 split is exact integer paise, never posted cash",()=>{
+ const v=parseFundingProposal(base);
+ assert.equal(v.csrRequestedMinor,"7000");
+ assert.equal(v.foundationRequestedMinor,"3001");
+ assert.equal(BigInt(v.csrRequestedMinor)+BigInt(v.foundationRequestedMinor),BigInt(v.amountMinor));
+ assert.equal(v.projectRef,null);
+});
+test("US002-QA01/09: Foundation purpose needs neither CSR partner nor CG05 project",()=>{
+ const v=parseFundingProposal({...base,branchRef:null,partnerRef:null,fundType:"FOUNDATION",
+  csrShareBps:0,foundationShareBps:10000});
+ assert.equal(v.partnerRef,null);assert.equal(v.projectRef,null);
+ assert.equal(v.csrRequestedMinor,"0");
+});
+test("US002-QA04/12/14: prevent forged approval, finance posting, split errors and stale CG05 pointers",()=>{
+ for(const extra of [
+  {status:"APPROVED"},{receivedMinor:"10001"},{committedMinor:"10001"},
+  {rootRealmId:uid},{currency:"USD"},{cashReceived:true},
+  {csrShareBps:7000,foundationShareBps:2900},
+  {projectRef:uid,projectVersion:null},{projectRef:null,projectVersion:1},
+  {fundType:"FOUNDATION",csrShareBps:7000},
+  {fundType:"CSR_PARTNER",csrShareBps:7000},
+  {fundType:"MIXED",csrShareBps:10000,foundationShareBps:0},
+  {amountMinor:"1.50"},{amountMinor:"0"},{amountMinor:"1000000000000000"},
+  {proposedFrom:"2027-02-23",proposedUntil:"2026-11-23"},
+  {requestKey:"not-a-uuid"},{purpose:"<script>"}
+ ])assert.throws(()=>parseFundingProposal({...base,...extra}),JSON.stringify(extra));
+});
+test("US002-QA02/12/17: current CG02 role/branch and actual CG05 project source enforce scope",()=>{
+ const s=readFileSync(join(process.cwd(),"src/modules/cg-08-csr-funding/application/csr-funding-proposals.service.ts"),"utf8");
+ assert.ok(s.includes('await this.branches.projectBranch(tx,a,v.branchRef)'));
+ assert.ok(s.includes('await assertCsrFundingProject(tx,a,v.projectRef,v.branchRef,v.projectVersion!)'));
+ assert.ok(s.includes('await this.original(tx,a,id,true)'));
+ assert.ok(s.includes('await this.branches.projectBranchScope(tx,a)'));
+ assert.ok(s.includes('WHERE f.root_realm_id=$1 AND ($2::boolean OR f.branch_ref=ANY($3::uuid[]))'));
+ assert.ok(!s.includes('INSERT INTO finance_journal'));
+});
+test("US002-QA05/06/18: B07/B08 Web uses original four steps, not synthetic available cash",()=>{
+ const s=readFileSync(join(process.cwd(),"../web/src/features/csr/csr-funding-workspace.tsx"),"utf8");
+ for(const token of ['aria-label="1. Funder, contact & period"',
+   'aria-label="2. Project Details & funding parties"',
+   'aria-label="3. Budget Details & agreement terms"',
+   'aria-label="5. Documents & Agreement"',
+   'const detailEpoch=useRef(0)',
+   'const request=++detailEpoch.current',
+   'if(request!==detailEpoch.current)return;',
+   'invalidateDetail();setFilter(e.target.value)',
+   'invalidateDetail();setStatus(e.target.value)',
+   'setPending(command)','setPending(null)'])
+  assert.ok(s.includes(token),token);
+ assert.ok(s.includes('This is a request, not an approved commitment or received cash.'));
+ assert.ok(s.includes('disabled={busy||!!pending||!canManage||!!selected&&selected.status!=="DRAFT"}'));
+});
+
+
+test("US002-QA02/04/06/17/18: Internal Android separates list failure and invalidates private details on pagination",()=>{
+ const s=readFileSync(join(process.cwd(),"../android-internal/src/features/csr/native-csr-funding.tsx"),"utf8");
+ assert.ok(s.includes('[listError,setListError]=useState("")'));
+ assert.ok(s.includes('setPage(v);setListError("")'));
+ assert.ok(s.includes('setPage({items:[],hasMore:false});setListError('));
+ assert.ok(s.includes('listError?null:'));
+ assert.ok(s.includes('const seq=++generation.current'));
+ assert.ok(s.includes('if(seq!==generation.current)return;'));
+ assert.ok(s.includes('()=>{clearDetail();setOffset(x=>x+25);'));
+ assert.ok(s.includes('!!selected&&selected.status!=="DRAFT"'));
+ assert.ok(s.includes('Save outcome unknown. Retry the same original funding request only.'));
+});
+
+
+test("US002-QA02/10/13: CG05 project selectors, read labels and linked writes require project-view",()=>{
+ const source=readFileSync(join(process.cwd(),"src/modules/cg-08-csr-funding/application/csr-funding-proposals.service.ts"),"utf8");
+ const option=source.slice(source.indexOf("async options("),source.indexOf("async detail("));
+ const detail=source.slice(source.indexOf("async detail("),source.indexOf("async list("));
+ const list=source.slice(source.indexOf("async list("));
+ assert.ok(source.includes('await this.identity.assertCurrent(tx,a,"projects.view");'));
+ assert.ok(option.includes("await this.canSeeProjects(tx,a)?"));
+ assert.ok(option.includes("csrFundingProjectOptions(tx,a.realmId,scope):[]"));
+ assert.ok(detail.includes("projectRef:null,projectVersion:null,projectName:null"));
+ assert.ok(list.includes("projectRef:null,projectVersion:null,projectName:null"));
+ assert.ok(source.includes('if(e instanceof ForbiddenException)return false'));
+});
+test("US002-QA14: native funding split remains a numeric value",()=>{
+ const native=readFileSync(join(process.cwd(),"../android-internal/src/features/csr/native-csr-funding.tsx"),"utf8");
+ assert.ok(native.includes('key==="csrPercent"?Number(v):v'));
+});
+
+
+test("US002-QA05/06/16/18: B07 requested totals and real CG09 finance metrics use independent branch-scoped source",()=>{
+ const backend=readFileSync(join(process.cwd(),"src/modules/cg-08-csr-funding/application/csr-funding-proposals.service.ts"),"utf8");
+ const web=readFileSync(join(process.cwd(),"../web/src/features/csr/csr-funding-workspace.tsx"),"utf8");
+ const native=readFileSync(join(process.cwd(),"../android-internal/src/features/csr/native-csr-funding.tsx"),"utf8");
+ assert.ok(backend.includes("coalesce(sum(f.requested_minor),0)::text"));
+ assert.ok(backend.includes("count(*) FILTER (WHERE f.status='DRAFT')"));
+ assert.ok(backend.includes("AND ($2::boolean OR f.branch_ref=ANY($3::uuid[]))"));
+ assert.ok(backend.includes("hasMore:rows.rows.length>25,summary"));
+ assert.ok(!backend.includes("FROM finance_journal"),"CG08 requested totals are not bank cash");
+ assert.ok(web.includes('aria-label="Original B07 requested, committed and verified finance figures"'));
+ assert.ok(native.includes('accessibilityLabel="Original B07 scoped requested and independently verified money"'));
+ assert.ok(web.includes("Total Fund / CSR requested"));
+ assert.ok(native.includes("Total Fund / CSR requested"));
+ assert.ok(web.includes("Received · CG09 verified"));
+ assert.ok(native.includes("Utilization %"));
+});
