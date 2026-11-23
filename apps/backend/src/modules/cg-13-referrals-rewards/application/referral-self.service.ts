@@ -192,6 +192,14 @@ export class ReferralSelfService{
     "WHERE attr.root_realm_id=$1 AND attr.programme_id=$2 "+
     "AND attr.referrer_account_ref=$3 AND attr.referrer_kind=$4 "+
     "AND attr.referrer_relationship_ref=$5 AND attr.state='PENDING' "+
+    "AND ((attr.applicant_kind='MEMBER' AND EXISTS("+
+    "SELECT 1 FROM membership_application app WHERE app.root_realm_id=attr.root_realm_id "+
+    "AND app.id=attr.member_application_ref AND app.applicant_account_ref=attr.applicant_account_ref "+
+    "AND app.status='SUBMITTED')) OR "+
+    "(attr.applicant_kind='VOLUNTEER' AND EXISTS("+
+    "SELECT 1 FROM volunteer_application app WHERE app.root_realm_id=attr.root_realm_id "+
+    "AND app.id=attr.volunteer_application_ref AND app.applicant_account_ref=attr.applicant_account_ref "+
+    "AND app.status='SUBMITTED'))) "+
     "AND NOT EXISTS(SELECT 1 FROM points_event e WHERE e.root_realm_id=attr.root_realm_id "+
     "AND e.attribution_id=attr.id AND e.event_kind='QUALIFICATION')",
     [ctx.realm,ctx.programme,ctx.account,ctx.kind,ctx.relationship]);
