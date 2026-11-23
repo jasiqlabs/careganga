@@ -9,10 +9,12 @@ const PROGRAMME="33333333-3333-4333-8333-333333333333";
 const BRANCH_A="44444444-4444-4444-8444-444444444444";
 const STORE_A="55555555-5555-4555-8555-555555555555";
 const ITEM="66666666-6666-4666-8666-666666666666";
+const MEDIA="99999999-9999-4999-8999-999999999999";
+const MEDIA_URL="https://foundation.careganga.example/api/public/content/media/"+MEDIA;
 const actor={realmId:ROOT,accountId:"77777777-7777-4777-8777-777777777777",
  activeSessionId:"88888888-8888-4888-8888-888888888888"};
 type Seen={sql:string;params:unknown[]};
-function fixture(block=false){
+function fixture(block=false,media:"ABSENT"|"APPROVED"|"WITHDRAWN"="ABSENT"){
  const seen:Seen[]=[],actions:string[]=[],scopeCalls:string[]=[];
  let connections=0,released=0,storeCalls=0;
  const tx={
@@ -20,6 +22,11 @@ function fixture(block=false){
    seen.push({sql,params});
    if(sql.includes("FROM referral_program")&&sql.includes("active_policy_version"))
     return {rows:[{id:PROGRAMME,status:"ACTIVE",audience:"BOTH",active_policy_version:1}],rowCount:1};
+   if(sql.includes("FROM reward_product p LEFT JOIN inventory_location"))
+    return {rows:media==="ABSENT"?[]:[{ref:ITEM,programmeRef:PROGRAMME,
+     name:"Recognition",type:"DIGITAL",imageUrl:MEDIA_URL}],rowCount:media==="ABSENT"?0:1};
+   if(sql.includes("SELECT f.id FROM cg19_cms_media_file"))
+    return {rows:media==="APPROVED"?[{id:MEDIA}]:[],rowCount:media==="APPROVED"?1:0};
    if(sql.includes("FROM stock_balance"))
     return {rows:[{available:"7",onHand:"10",reserved:"3"}],rowCount:1};
    if(sql.includes("FROM inventory_item")&&sql.includes("FOR SHARE"))
@@ -98,6 +105,31 @@ describe("CG13 US001 branch/permission owner boundary",()=>{
   assert.deepEqual(f.actions,["rewards.catalog.view"]);
   assert.ok(f.scopeCalls.includes("inventory.catalog.view"));
   assert.equal(f.stats().storeCalls,1);
+ });
+ test("published CG19 photo passes only when same-root current rights/scan proof exists",async()=>{
+  const original=process.env.CG13_PUBLIC_MEDIA_ORIGIN;
+  process.env.CG13_PUBLIC_MEDIA_ORIGIN="https://foundation.careganga.example";
+  try{
+   const approved=fixture(false,"APPROVED");
+   const page=await approved.service.listProducts("actor",PROGRAMME);
+   assert.equal(page.items[0]?.imageUrl,MEDIA_URL);
+   const proof=approved.seen.find(x=>x.sql.includes("SELECT f.id FROM cg19_cms_media_file"));
+   assert.ok(proof);
+   assert.deepEqual(proof.params,[ROOT,[MEDIA]]);
+   assert.match(proof.sql,/f\.realm_id=\$1/);
+   assert.match(proof.sql,/f\.revoked_at IS NULL/);
+   assert.match(proof.sql,/scan_status='CLEAN_VERIFIED'/);
+   assert.match(proof.sql,/cms_page_effective/);
+   assert.match(proof.sql,/public_rights_confirmed=true/);
+   assert.match(proof.sql,/f\.original_mime IN\('image\/png','image\/jpeg','image\/webp'\)/);
+   const revoked=fixture(false,"WITHDRAWN");
+   const hidden=await revoked.service.listProducts("actor",PROGRAMME);
+   assert.equal(hidden.items[0]?.imageUrl,null);
+   assert.equal(hidden.items[0]?.name,"Recognition");
+  }finally{
+   if(original===undefined)delete process.env.CG13_PUBLIC_MEDIA_ORIGIN;
+   else process.env.CG13_PUBLIC_MEDIA_ORIGIN=original;
+  }
  });
  test("rejected protected action stops before connecting to the database",async()=>{
   const f=fixture(true);
