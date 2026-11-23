@@ -3,6 +3,7 @@ import {useCallback,useEffect,useRef,useState} from "react";
 import type {CG04Application,CG04Member,CG04MemberHistory,CG19OwnMemberPacks,CG04MembershipFee,CG04PublicTier,CG04PublicTierPage} from "@careganga/api-contracts";
 import {CommunityAuth} from "./community-auth";
 import {PublicRewardsCatalogue} from "../referrals/public-rewards-catalogue";
+import {PublicReferralCode} from "../referrals/public-referral-code";
 import {MemberApplicationForm} from "./member-application-form";
 import {MemberEvidencePanel} from "./member-evidence-panel";
 import {priceText} from "./tier-display";
@@ -99,6 +100,7 @@ export function MemberSelfService(){
  </section>}
  {pending.current&&<section role="status" className="cg04-panel"><p>Outcome uncertain. Refresh the current record first, then retry the original request. Do not create a second transaction.</p><div className="cg04-buttons"><button disabled={busy} onClick={()=>void act(refresh)}>Refresh</button><button disabled={busy} onClick={()=>send(pending.current!)}>Retry same request</button></div></section>}
  <PublicRewardsCatalogue/>
+ <PublicReferralCode/>
  <div className="cg04-buttons"><button disabled={busy} onClick={()=>void act(refresh)}>Refresh membership status</button><a href="/membership">Back to plans</a></div>
  </>}
  </>}</section>;
