@@ -275,7 +275,26 @@ export class DonationOnlineService{
     [d.root_realm_id,d.id,next]);
   });
  }
-  /** No browser redirect ever verifies money. Exactly signed *raw* bytes and
+  /** The signed payment-link event is not a refundable source until the
+  * original captured payment ID independently resolves on the same merchant.
+  * Do not accept a caller-provided payment ID as finance/refund proof. */
+ private async verifiedCapturedPayment(paymentId:string,amountMinor:string){
+  if(!/^pay_[A-Za-z0-9]{8,}$/.test(paymentId))throw fail();
+  const c=config();
+  const response=await fetch("https://api.razorpay.com/v1/payments/"+paymentId,{
+   method:"GET",headers:{Authorization:"Basic "+Buffer.from(c.key+":"+c.secret).toString("base64")},
+   cache:"no-store",signal:AbortSignal.timeout(9000)
+  });
+  if(!response.ok)throw new ServiceUnavailableException("Captured payment proof cannot be verified.");
+  const payment:unknown=await response.json();
+  if(!payment||typeof payment!=="object"||Array.isArray(payment))throw fail();
+  const p=payment as Record<string,unknown>;
+  if(p.id!==paymentId||p.status!=="captured"||p.captured!==true||
+   p.currency!=="INR"||p.amount!==Number(amountMinor))
+   throw new ConflictException("Original payment is not an independently verified capture.");
+  return paymentId;
+ }
+ /** No browser redirect ever verifies money. Exactly signed *raw* bytes and
   * authenticated merchant API facts establish VERIFIED_EXTERNAL, not POSTED. */
  async webhook(req:object){
   const x=req as {rawBody?:Buffer;headers?:Record<string,string|undefined>};
@@ -304,6 +323,17 @@ export class DonationOnlineService{
   // A signed event alone is insufficient. Read the link back from the exact
   // configured merchant and compare status, amount, currency and reference.
   const remote=await this.provider("/"+id,"GET");
+  // For an actual paid event, preserve the ORIGINAL captured payment reference
+  // which Razorpay requires for an eventual authenticated partial/full refund.
+  const paymentEntity=(payload?.payment as Record<string,unknown>|undefined)?.entity as Record<string,unknown>|undefined;
+  const signedPaymentId=eventKind==="payment_link.paid"?paymentEntity?.id:null;
+  if(eventKind==="payment_link.paid"){
+   if(typeof signedPaymentId!=="string"||!/^pay_[A-Za-z0-9]{8,}$/.test(signedPaymentId)||
+    paymentEntity?.status!=="captured"||paymentEntity.captured!==true||
+    paymentEntity.amount!==remote.amount||paymentEntity.currency!=="INR")
+    throw new ConflictException("Original signed captured payment is not an exact match.");
+   await this.verifiedCapturedPayment(signedPaymentId,String(remote.amount));
+  }
   return this.tx(async tx=>{
    // Read merchant reference without a row lock; lock donation BEFORE attempt.
    const matches=(await tx.query<Attempt & {root_realm_id:string}>(
@@ -341,11 +371,22 @@ export class DonationOnlineService{
     if(previous.immutable_digest!==eventDigest)throw fail();
     return {accepted:true,status:d.source_status,replayed:true};
    }
+   if(!terminal){
+    const captured=(await tx.query<{donation_id:string;attempt_id:string}>(
+     "SELECT donation_id,attempt_id FROM donation_payment_event WHERE "+
+     "root_realm_id=$1 AND provider='razorpay' AND provider_payment_id=$2 "+
+     "AND outcome='SUCCESS' FOR SHARE",[a.root_realm_id,signedPaymentId])).rows[0];
+    if(captured){
+     if(captured.donation_id!==d.id||captured.attempt_id!==a.id)
+      throw new ConflictException("Captured payment is bound to a different original donation.");
+     return {accepted:true,status:d.source_status,replayed:true};
+    }
+   }
    await tx.query("INSERT INTO donation_payment_event(root_realm_id,donation_id,attempt_id,"+
     "provider,merchant_reference,external_event_id,immutable_digest,amount_minor,currency,"+
-    "outcome,signed_verified_at) VALUES($1,$2,$3,'razorpay',$4,$5,$6,$7,'INR',$8,now())",
+    "outcome,signed_verified_at,provider_payment_id) VALUES($1,$2,$3,'razorpay',$4,$5,$6,$7,'INR',$8,now(),$9)",
     [a.root_realm_id,d.id,a.id,configReady.key,eventId,eventDigest,d.amount_minor,
-     terminal?"FAILED":"SUCCESS"]);
+     terminal?"FAILED":"SUCCESS",terminal?null:signedPaymentId]);
    if(terminal){
     const next=eventKind==="payment_link.expired"?"EXPIRED":"FAILED";
     if(d.source_status!==next){

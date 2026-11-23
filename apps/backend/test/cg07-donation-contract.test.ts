@@ -454,3 +454,18 @@ test("US003-QA18: genuine CG19 receipt sends no false delivered message on missi
  assert.match(native,/requestReceiptMessage/);
  assert.match(native,/checkReceiptMessage/);
 });
+
+test("US003-QA13 prerequisite: signed merchant captured payment ID is unique and refund-targetable",()=>{
+ const online=source("application/donation-online.service.ts");
+ const migrationSql=migration("3314_cg07_signed_captured_payment.sql");
+ assert.match(migrationSql,/ADD COLUMN provider_payment_id text/);
+ assert.match(migrationSql,/outcome<>'SUCCESS'/);
+ assert.match(migrationSql,/uq_cg07_signed_captured_payment_id/);
+ assert.match(online,/paymentEntity=\(payload\?\.payment/);
+ assert.match(online,/verifiedCapturedPayment\(signedPaymentId/);
+ assert.match(online,/p\.status!=="captured"/);
+ assert.match(online,/p\.captured!==true/);
+ assert.match(online,/provider_payment_id=\$2/);
+ assert.match(online,/provider_payment_id\) VALUES/);
+ assert.doesNotMatch(online,/raw\.paymentId/);
+});
