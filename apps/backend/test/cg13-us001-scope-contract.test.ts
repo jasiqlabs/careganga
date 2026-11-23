@@ -22,6 +22,11 @@ function fixture(block=false,media:"ABSENT"|"APPROVED"|"WITHDRAWN"="ABSENT"){
    seen.push({sql,params});
    if(sql.includes("FROM referral_program")&&sql.includes("active_policy_version"))
     return {rows:[{id:PROGRAMME,status:"ACTIVE",audience:"BOTH",active_policy_version:1}],rowCount:1};
+   if(sql.includes("SELECT 'MEMBER' AS kind"))
+    return {rows:[{kind:"MEMBER"}],rowCount:1};
+   if(sql.includes("FROM reward_product p JOIN referral_program pr")&&
+    sql.includes("LEFT JOIN stock_balance"))
+    return {rows:[],rowCount:0};
    if(sql.includes("FROM reward_product p LEFT JOIN inventory_location"))
     return {rows:media==="ABSENT"?[]:[{ref:ITEM,programmeRef:PROGRAMME,
      name:"Recognition",type:"DIGITAL",imageUrl:MEDIA_URL}],rowCount:media==="ABSENT"?0:1};
@@ -40,7 +45,9 @@ function fixture(block=false,media:"ABSENT"|"APPROVED"|"WITHDRAWN"="ABSENT"){
   release:()=>{released++;}
  };
  const db={connect:async()=>{connections++;return tx;}};
- const sessions={requireAction:async(_bearer:string,action:string)=>{
+ const sessions={
+  verifySession:async()=>actor,
+  requireAction:async(_bearer:string,action:string)=>{
   actions.push(action);
   if(block)throw new ForbiddenException("Denied");
   return actor;
@@ -130,6 +137,26 @@ describe("CG13 US001 branch/permission owner boundary",()=>{
    if(original===undefined)delete process.env.CG13_PUBLIC_MEDIA_ORIGIN;
    else process.env.CG13_PUBLIC_MEDIA_ORIGIN=original;
   }
+ });
+ test("member-only public catalogue filters search and category inside current root eligibility SQL",async()=>{
+  const f=fixture();
+  const page=await f.service.publicEligibleCatalog("own-token","2","  RECOGNITION ","Recognition");
+  assert.deepEqual(page.eligibleRelationships,["MEMBER"]);
+  assert.deepEqual(page.categories,["Recognition"]);
+  assert.equal(page.categoriesTruncated,false);
+  const read=f.seen.find(x=>x.sql.includes("LEFT JOIN stock_balance")&&
+   x.sql.includes("FROM reward_product p JOIN referral_program pr"));
+  assert.ok(read);
+  assert.deepEqual(read.params,[ROOT,["MEMBER"],41,40,"recognition","Recognition"]);
+  assert.match(read.sql,/p\.eligible_audience=ANY\(\$2::text\[\]\)/);
+  assert.match(read.sql,/p\.category=\$6/);
+  const category=f.seen.find(x=>x.sql.includes("SELECT DISTINCT p.category FROM reward_product p"));
+  assert.ok(category);
+  assert.deepEqual(category.params,[ROOT,["MEMBER"]]);
+  assert.match(category.sql,/pr\.status='ACTIVE'/);
+  assert.match(category.sql,/policy\.effective_from<=now\(\)/);
+  assert.equal(f.stats().connections,1);
+  assert.equal(f.stats().released,1);
  });
  test("rejected protected action stops before connecting to the database",async()=>{
   const f=fixture(true);
