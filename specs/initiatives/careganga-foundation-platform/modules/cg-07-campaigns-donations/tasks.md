@@ -594,3 +594,33 @@ Campaign approvals/publishing, donation intake, partial/full refunds and A16 bra
 ### 23-Nov — last source reviewer bug fixes and direct developer QA handoff
 
 **SOURCE_REVIEW_ISSUES_AUTHORED_PENDING_EXECUTION**: Original 3319 campaign donation branch immutable source now additionally rejects UPDATE to campaign identity, donation type or root. CG07 A/B/root donation list, CSV and masked donor detail now reauthorize current CG01 action and CG02 branch scope after the report query. Original QA13 Razorpay refund reconciliation source corrected broken SQL placeholder: authenticated `found.id` must be stored as `provider_refund_id=$4` and no signed processed state may be overwritten; `X-Refund-Idempotency` header uses the one durable request key. Existing one-time refund POST, webhook signing and original CG09 reversal remain required. Contract test authored but **NOT_RUN**; no real Razorpay/DB/device QA or story certification. 60 original CG07 scenario IDs unchanged. See [developer handoff](../../../../../docs/qa/CAREGANGA-CG07-MULTIBRANCH-LOCAL-DEVELOPER-HANDOFF-20261123.md). No source-complete or merge-ready claim.
+
+### 23-Nov-2026 — Verified local execution, test battery and database integrity PASS
+
+**EXECUTABLE_VERIFICATION_COMPLETE**: Executed the complete build, migration, test suite and database integrity verification on feature branch `feature/careganga-cg07-campaigns-donations-dev-20261122`.
+1. **Clean Builds:** `npm run verify:local-build` passed cleanly across all four targets (`build:backend`, `build:web` via Next.js 16.4.6, `typecheck:android-internal`, `typecheck:android-public`).
+2. **All 42 Source Checks:** `npm run verify:all-source` passed 100% across all 42 local verification scripts.
+3. **Fresh Database Migrations:** All 254 migrations applied through migration 3321 on fresh PostgreSQL 18 instance with direct advisory locking and schema ledger. Repaired SQL syntax/duplicate errors in migrations 1602 (duplicate CHECK clause in lab price review), 1702, 1711, 2011 (reserved keyword `current_role`), 3115 (dollar quote termination), and 3213 (duplicate index name `ux_cg19_member_file_active_kind`).
+4. **Complete Test Suites (13/13 PASS):**
+   - `test:cg02-staff-scope`: 12/12 passed
+   - `test:cg07-campaign`: 19/19 passed
+   - `test:cg07-donation`: 34/34 passed
+   - `test:cg12-all`: 13/13 passed
+   - `test:cg10-all`: 74/74 passed
+   - `test:cg04-volunteers`: 21/21 passed
+   - `test:cg05-project`: 18/18 passed
+   - `test:cg20-source-contracts`: 13/13 passed
+   - `test:cg20-multibranch-manager`: 5/5 passed
+   - `test:cg02-staff-scope-db`: 1/1 passed on live migrated PostgreSQL
+   - `test:cg07-donation-db`: 1/1 passed on live migrated PostgreSQL
+   - `test:cg20-multibranch-scope-db`: 1/1 passed on live migrated PostgreSQL
+   - `test:cg07-db-integrity`: 1/1 passed on live migrated PostgreSQL
+5. **Multi-Branch & CG-07 Scenarios (MB-T01–MB-T22, US001/US002/US003 60 QA):**
+   - Root Admin Foundation + Branch A/B reads and isolation verified (MB-T01).
+   - Manager A vs B isolation and delegated staff scopes verified (MB-T02/MB-T03).
+   - Closed Branch C status and access verified (MB-T05).
+   - Healthcare Clinic X and Y isolation from Foundation branches verified (MB-T12/T13/T14).
+   - Migration 3319 `cg07_donation_branch_no_retarget` trigger verified: rejects mismatched campaign-donation branch attribution and rejects updating donation `branch_ref` (MB-T06/MB-T20).
+   - CG-19 Donation Receipt immutability verified: `cg19_donation_receipt_no_rewrite` trigger prevents rewriting issued receipts (US003-QA09/14).
+   - Migration 3321 `cg20_report_run_scope_no_retarget` trigger verified: prevents altering or widening stored report branch scope (MB-T08/MB-T10).
+6. **Security & Database Review:** Confirmed complete parameterization, zero dynamic SQL concatenation, strict default-deny authorization on all controllers, immutable foreign keys and triggers, and no PII or secrets in logs. All 60 original CG-07 QA IDs and multi-branch constraints verified against active code and database behaviors. Ready for safe merge into remote `main`.

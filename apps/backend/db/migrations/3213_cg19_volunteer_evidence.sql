@@ -29,7 +29,7 @@ CREATE TABLE cg19_volunteer_private_file(
  PRIMARY KEY(realm_id,id),UNIQUE(realm_id,intent_id),UNIQUE(realm_id,id,application_id,application_version),
  FOREIGN KEY(realm_id,intent_id,application_id,application_version) REFERENCES cg19_volunteer_file_intent(realm_id,id,application_id,application_version) ON DELETE RESTRICT
 );
-CREATE UNIQUE INDEX ux_cg19_member_file_active_kind ON cg19_volunteer_private_file(realm_id,application_id,classification) WHERE revoked_at IS NULL;
+CREATE UNIQUE INDEX ux_cg19_volunteer_file_active_kind ON cg19_volunteer_private_file(realm_id,application_id,classification) WHERE revoked_at IS NULL;
 CREATE TABLE cg19_volunteer_file_event(
  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),realm_id uuid NOT NULL,application_id uuid NOT NULL,
  intent_id uuid NOT NULL,file_id uuid,actor_ref uuid NOT NULL,

@@ -24,8 +24,8 @@ export default async function DonationsPage(){
    !("roleName" in actor)||typeof actor.displayName!=="string"||typeof actor.roleName!=="string"||
    !grant||typeof grant!=="object"||!("actions" in grant)||!Array.isArray(grant.actions))
    throw Error();
-  const actions=(grant.actions as unknown[]).filter((v):v is {key:string}=>Boolean(v)&&
-   typeof v==="object"&&"key" in v&&typeof v.key==="string").map(v=>v.key);
+  const actions=(grant.actions as unknown[]).filter((v):v is {key:string}=>v!==null&&
+   typeof v==="object"&&"key" in v&&typeof (v as {key:unknown}).key==="string").map(v=>v.key);
   const canView=actions.includes("finance.reports.view");
   const canRecord=actions.includes("finance.journals.post");
   if(!canView&&!canRecord)return <UnavailablePage title="Donations unavailable"

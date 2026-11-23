@@ -276,7 +276,7 @@ export function PublicCmsContent({onContact,onPartnerApplication,onMembershipApp
    ] as const).map(([scope,label])=><CmsButton key={scope} title={label}
     secondary={slug!=="gallery"||mediaScope!==scope}
     onPress={()=>{setMediaScope(scope);setSlug("gallery");}}/>)}
-   {publishedPaths.includes("/campaigns")&&<CmsButton title="Campaigns" secondary={slug!=="campaigns"} onPress={()=>setSlug("campaigns")}/>
+   {publishedPaths.includes("/campaigns")&&<CmsButton title="Campaigns" secondary={slug!=="campaigns"} onPress={()=>setSlug("campaigns")}/>}
    <CmsButton title="Notices" secondary={slug!=="notices"} onPress={()=>setSlug("notices")}/>
    {publishedPaths.some(p=>p.startsWith("/blog/"))&&
     <CmsButton title="News" secondary={slug!=="articles"}

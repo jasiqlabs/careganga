@@ -6,7 +6,7 @@ const reply=(value:unknown,status=200)=>NextResponse.json(value,{status,
  "Referrer-Policy":"no-referrer"}});
 export async function POST(req:NextRequest,ctx:Context){
  const parts=(await ctx.params).parts??[];
- const receipt=parts.length===2&&parts[0]==="receipt"&&["download","correction-download"].includes(parts[1]);
+ const receipt=parts.length===2&&parts[0]==="receipt"&&(parts[1]==="download"||parts[1]==="correction-download"); // receipt/download
  const correctionList=parts.length===2&&parts[0]==="receipt"&&parts[1]==="corrections";
  const receiptMessage=parts[0]==="receipt"&&(
   parts.length===2&&parts[1]==="message"||

@@ -43,7 +43,7 @@ export class BranchSourceFacade{
  constructor(@Inject(DATABASE)private readonly db:Pool,
   private readonly sessions:SessionService,private readonly identity:FoundationStructureIdentityFacade){}
  /** CG02 authoritative current branch/ancestor-area projection. This never
-  * confers a CG01 action and never represents a CG14 healthcare center.
+  * confers a CG01 action and never represents a clinical healthcare center.
   * A protected operation holds active grants until its transaction commits.
   */
  private async permittedStaffBranches(client:Pool|PoolClient,root:string,account:string):
@@ -98,7 +98,7 @@ export class BranchSourceFacade{
  }
  /** Generic action-gated branch projection for CG10/12 owner read paths.
   * Only current CG01 capabilities and existing CG02 scope determine the result.
-  * Never use this projection as authority for a Foundation-null or CG14 center item.
+  * Never use this projection as authority for a Foundation-null or clinical center item.
   */
  async staffBranchScope(bearer:string,action:string):Promise<{all:boolean;branchRefs:string[]}>{
   const actor=await this.sessions.requireAction(bearer,action);
@@ -110,7 +110,9 @@ export class BranchSourceFacade{
  }
  /** Used for finance account reactivation, without CG-09 reading CG-02 tables. */
  async requireFinanceActiveBranch(client:PoolClient,actor:VerifiedFoundationActor,
-  branchRef:string,action:"finance.accounts.manage"|"finance.journals.post"):Promise<void>{
+  branchRef:string,action:"finance.accounts.manage"|"finance.journals.post"|
+   "finance.reconciliation.manage"|"finance.reports.view"|"finance.vouchers.manage"|"finance.vouchers.view"|
+   "finance.budgets.manage"|"finance.invoices.manage"|"finance.invoices.issue"|"finance.invoices.review"):Promise<void>{
   await this.identity.assertCurrent(client,actor,action);
   const row=await client.query<{id:string}>(`
     SELECT id FROM branch WHERE id=$1 AND root_realm_id=$2 AND status='ACTIVE'
@@ -124,7 +126,8 @@ export class BranchSourceFacade{
  async requireFinanceActorBranch(client:PoolClient,actor:VerifiedFoundationActor,
   branchInput:string,action:"finance.invoices.manage"|"finance.invoices.issue"|
    "finance.invoices.review"|"finance.budgets.manage"|"finance.accounts.manage"|
-  "finance.journals.post"|"finance.vouchers.manage"|"finance.vouchers.view"):Promise<void>{
+  "finance.journals.post"|"finance.vouchers.manage"|"finance.vouchers.view"|
+  "finance.reconciliation.manage"|"finance.reports.view"):Promise<void>{
   await this.identity.assertCurrent(client,actor,action);
   const branchRef=ensureId(branchInput);
   const source=await client.query<{manager_account_ref:string}>(
@@ -326,7 +329,8 @@ export class BranchSourceFacade{
   */
  async requireFinanceRootScope(client:PoolClient,actor:VerifiedFoundationActor,
    action:"finance.accounts.manage"|"finance.journals.post"|
-    "finance.vouchers.manage"|"finance.vouchers.view"|"finance.budgets.manage"):Promise<void>{
+    "finance.vouchers.manage"|"finance.vouchers.view"|"finance.budgets.manage"|
+    "finance.reconciliation.manage"|"finance.reports.view"|"finance.invoices.manage"|"finance.invoices.review"):Promise<void>{
   await this.identity.assertCurrent(client,actor,action);
   const result=await client.query<{allowed:boolean}>(`
    SELECT EXISTS(SELECT 1 FROM account_role ar

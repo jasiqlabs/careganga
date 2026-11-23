@@ -156,7 +156,7 @@ export class DonationIntentsService{
    row.provider_refund_state==="PROVIDER_FAILED"?"REFUND_FAILED_REVIEW_REQUIRED":
    pendingRefund>0n?"REFUND_REQUESTED":
    refunded>0n?"REFUND_FINANCE_POSTED":"NO_REFUND";
-  return {status:(uncertain||awaitingFinance)?"RECONCILIATION_PENDING":!posted?row.source_status:refunded===0n?row.source_status:
+  return {status:uncertain?"RECONCILIATION_PENDING":awaitingFinance?"RECONCILIATION_PENDING":!posted?row.source_status:refunded===0n?row.source_status:
     net===0n?"REFUNDED_FULL":"REFUNDED_PARTIAL",
    amountMinor:row.amount_minor,refundedMinor:row.refunded_minor,
    refundPendingMinor:pendingRefund.toString(),refundPending:pendingRefund>0n,

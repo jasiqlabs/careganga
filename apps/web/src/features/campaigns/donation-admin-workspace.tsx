@@ -229,10 +229,10 @@ export function DonationAdminWorkspace({canView,canRecord,canReview,canIssue,can
     ["Failed / expired",data?.summary.failed??null],
     ["Gross verified",data?.summary.receivedMinor?rupees(data.summary.receivedMinor):null],
     ["Confirmed refunds",data?.summary.verifiedRefundMinor?rupees(data.summary.verifiedRefundMinor):null],
-    ["Net verified",data?.summary.netReceivedMinor?rupees(data.summary.netReceivedMinor):null]]
-    as const).map(([name,value])=><div className={styles.statCard} key={name}>
-     <div><div className={styles.statNumber}>{value??"—"}</div>
-     <div className={styles.statLabel}>{name}</div></div></div>)}
+    ["Net verified",data?.summary.netReceivedMinor?rupees(data.summary.netReceivedMinor):null]] as Array<[string, unknown]>).map(([name,value])=>(
+     <div className={styles.statCard} key={name}>
+      <div><div className={styles.statNumber}>{String(value??"—")}</div>
+      <div className={styles.statLabel}>{name}</div></div></div>))}
   </div>
   {canView&&!!data?.monthlyTrend?.length&&<section style={panel} aria-label="Verified monthly donations">
    <h2>Verified monthly donation trend</h2>

@@ -77,7 +77,7 @@ test("CG07 US002/003: 3306–3319 installed and finance/receipt evidence guards 
    assert.ok(originalProvider.some(x=>x.definition.includes("provider_receipt")),
     "Original provider refund unique merchant receipt is mandatory");
    const providerTrigger=map.get("cg07_provider_refund_no_retarget");
-   assert.ok(providerTrigger&&providerTrigger.definition.includes("BEFORE INSERT OR UPDATE OR DELETE"),
+   assert.ok(providerTrigger&&/BEFORE (INSERT OR UPDATE OR DELETE|INSERT OR DELETE OR UPDATE)/.test(providerTrigger.definition),
     "Immutable merchant refund evidence trigger must protect all modifications");
    const donationBranchGuard=map.get("cg07_donation_branch_no_retarget");
    assert.ok(donationBranchGuard&&donationBranchGuard.definition.includes("BEFORE INSERT OR UPDATE"),
