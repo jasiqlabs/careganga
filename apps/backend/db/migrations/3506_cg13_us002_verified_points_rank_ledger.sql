@@ -104,20 +104,36 @@ BEGIN
    SELECT 1 FROM redemption r
    JOIN points_account wallet ON wallet.root_realm_id=r.root_realm_id
     AND wallet.id=r.points_account_id
-   JOIN cg19_reward_recognition proof ON proof.realm_id=r.root_realm_id
-    AND proof.redemption_id=r.id
-   JOIN reward_product_revision product ON product.root_realm_id=r.root_realm_id
-    AND product.product_id=r.product_id AND product.revision=r.product_revision
    WHERE r.root_realm_id=NEW.root_realm_id AND r.id=NEW.redemption_id
-    AND r.state='FULFILLED' AND r.product_type='DIGITAL'
+    AND r.state='FULFILLED'
     AND r.points_account_id=NEW.points_account_id
+    AND wallet.referrer_account_ref=r.recipient_account_ref
     AND r.policy_version=NEW.policy_version
     AND r.payload_digest=NEW.qualifying_source_digest
     AND r.points_cost=NEW.points_delta
-    AND proof.recipient_account_ref=r.recipient_account_ref
-    AND proof.source_key=r.request_key
-    AND product.digital_fulfillment_method='ON_PLATFORM_RECOGNITION'
-  ) THEN RAISE EXCEPTION 'Original acknowledged CG19 recognition is required to spend points'; END IF;
+    AND (
+     (r.product_type='DIGITAL' AND EXISTS(
+      SELECT 1 FROM cg19_reward_recognition proof
+      JOIN reward_product_revision product ON product.root_realm_id=r.root_realm_id
+       AND product.product_id=r.product_id AND product.revision=r.product_revision
+      WHERE proof.realm_id=r.root_realm_id AND proof.redemption_id=r.id
+       AND proof.recipient_account_ref=r.recipient_account_ref
+       AND proof.source_key=r.request_key
+       AND product.digital_fulfillment_method='ON_PLATFORM_RECOGNITION'))
+     OR
+     (r.product_type='PHYSICAL' AND EXISTS(
+      SELECT 1 FROM cg19_reward_handover proof
+      JOIN stock_reward_hold hold ON hold.root_realm_id=r.root_realm_id
+       AND hold.redemption_id=r.id AND hold.state='ISSUED'
+      JOIN stock_reward_hold_event issued ON issued.root_realm_id=hold.root_realm_id
+       AND issued.hold_id=hold.id AND issued.event_kind='ISSUED'
+       AND issued.source_key=hold.issue_key
+      WHERE proof.realm_id=r.root_realm_id AND proof.redemption_id=r.id
+       AND proof.recipient_account_ref=r.recipient_account_ref
+       AND proof.source_key=r.request_key
+       AND proof.stock_issue_event_id=issued.original_stock_event_id))
+    )
+  ) THEN RAISE EXCEPTION 'Original CG19 acknowledged reward proof and genuine CG12 ISSUE required to spend points'; END IF;
   RETURN NEW;
  END IF;
  IF NEW.event_kind IN('POINTS_HOLD','POINTS_RELEASE') THEN
