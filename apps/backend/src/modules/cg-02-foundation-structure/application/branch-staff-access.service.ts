@@ -13,7 +13,7 @@ const id=(v:unknown)=>{
 };
 type Scope="BRANCH"|"AREA";
 type Grant={id:string;account_ref:string;scope_kind:Scope;branch_ref:string|null;area_ref:string|null;
- reason:string;granted_by:string;granted_at:Date;ended_at:Date|null;end_request_key:string|null;
+ reason:string;granted_by:string;granted_at:Date;ended_at:Date|null;ended_by:string|null;end_request_key:string|null;
  request_digest:string;source_version:number};
 function object(value:unknown,keys:readonly string[]):Record<string,unknown>{
  if(!value||typeof value!=="object"||Array.isArray(value))throw new BadRequestException("Check the access assignment");
