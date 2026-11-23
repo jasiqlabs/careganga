@@ -207,10 +207,9 @@ export class RedemptionService {
    const effect=await tx.query<{id:string}>(
     "INSERT INTO points_event(root_realm_id,points_account_id,redemption_id,"+
     "event_kind,policy_version,points_delta,qualifying_source_digest) "+
-    "SELECT $1,$2,$3,'POINTS_RELEASE',r.policy_version,-$4::bigint,$5 "+
+    "SELECT $1,$2,$3,'POINTS_RELEASE',r.policy_version,-$4::bigint,r.payload_digest "+
     "FROM redemption r WHERE r.root_realm_id=$1 AND r.id=$3 RETURNING id",
-    [a.realmId,redemption.wallet,redemptionRef,redemption.price,
-     createHash("sha256").update("cancel:"+redemptionRef).digest("hex")]);
+    [a.realmId,redemption.wallet,redemptionRef,redemption.price]);
    if(!effect.rows[0])throw new ConflictException("Release source is unavailable.");
    const wallet=await tx.query(
     "UPDATE points_account SET held_points=held_points-$3,revision=revision+1,"+
