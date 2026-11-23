@@ -26,11 +26,12 @@ export function NativeEligibleRewardsCatalogue({token,onExpired}:{
  const [detail,setDetail]=useState<string|null>(null),sequence=useRef(0);
  const load=useCallback(async(target:number,replace:boolean)=>{
   const request=++sequence.current;setBusy(true);setError("");
+  if(replace){setItems([]);setMore(false);}
   try{
-   const params=new URLSearchParams({page:String(target)});
-   if(appliedSearch)params.set("q",appliedSearch);
-   if(category!=="All")params.set("category",category);
-   const result=await memberInvoke<Page>("/api/v1/referrals/my-catalog?"+params.toString(),
+   const query="page="+target+
+    (appliedSearch?"&q="+encodeURIComponent(appliedSearch):"")+
+    (category!=="All"?"&category="+encodeURIComponent(category):"");
+   const result=await memberInvoke<Page>("/api/v1/referrals/my-catalog?"+query,
     "GET",undefined,token);
    if(!Array.isArray(result.items)||!Array.isArray(result.eligibleRelationships)||
     !Array.isArray(result.categories)||!result.categories.every(c=>typeof c==="string")||
