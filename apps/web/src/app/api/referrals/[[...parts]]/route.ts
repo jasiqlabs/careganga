@@ -4,6 +4,28 @@ export const dynamic="force-dynamic";
 type Context={params:Promise<{parts?:string[]}>};
 type Method="GET"|"POST"|"PATCH";
 const UUID=/^[a-f0-9]{8}-(?:[a-f0-9]{4}-){3}[a-f0-9]{12}$/i;
+const safeCodes:Record<string,string>={
+ CG13_INVALID_INPUT:"Check the selected programme or reward field.",
+ CG13_SOURCE_ALREADY_EXISTS:"This code or reward already exists. Refresh the catalogue.",
+ CG13_CURRENT_SOURCE_UNAVAILABLE:"A required source has changed. Refresh before continuing.",
+ CG13_REQUEST_KEY_CONFLICT:"This request was already used for different changes. Refresh first.",
+ CG13_POLICY_STALE:"These referral settings changed. Reload the current policy.",
+ CG13_PROGRAMME_STALE:"This programme has changed. Refresh before saving.",
+ CG13_PHYSICAL_ITEM_UNAVAILABLE:"Select a permitted active whole-piece warehouse item.",
+ CG13_PROGRAMME_INACTIVE:"The selected programme is inactive.",
+ CG13_PRODUCT_STALE:"The product has changed. Reload its current details."
+};
+const safeFields:Record<string,string>={
+ programmeCode:"Programme code",name:"Name",audience:"Eligible audience",
+ qualifyingEvent:"Qualification event",awardPoints:"Award points",
+ minimumClaimPoints:"Minimum claim points",displayInrRatio:"Points reference rate",
+ ranks:"Rank thresholds",effectiveFrom:"Effective date",pointsPrice:"Reward points",
+ imageUrl:"Approved image URL",itemRef:"Warehouse item",storeRef:"Warehouse",
+ programmeRef:"Programme",type:"Product type",category:"Category",
+ eligibleAudience:"Reward audience",physicalStock:"Linked warehouse stock",
+ request:"Request fields",page:"Page number",status:"Status",expectedVersion:"Record version"
+};
+
 const response=(body:unknown,status:number)=>NextResponse.json(body,{status,headers:{
  "Cache-Control":"private, no-store","X-Content-Type-Options":"nosniff"}});
 function route(parts:string[],method:Method):{target:string;isSelf:boolean}|null{
@@ -69,6 +91,15 @@ async function proxy(req:NextRequest,ctx:Context,method:Method){
   const decoded:unknown=await result.json().catch(()=>null);
   if(result.ok&&decoded!==null)return response(decoded,result.status);
   const status=[400,401,403,404,409,429].includes(result.status)?result.status:503;
+  const parsed=decoded&&typeof decoded==="object"&&!Array.isArray(decoded)?
+   decoded as Record<string,unknown>:{};
+  const safeCode=typeof parsed.code==="string"&&Object.hasOwn(safeCodes,parsed.code)?
+   parsed.code:null;
+  const label=typeof parsed.field==="string"?safeFields[parsed.field]:undefined;
+  if((status===400||status===409)&&safeCode){
+   return response({message:(label?label+": ":"")+safeCodes[safeCode],
+    code:safeCode,...(label?{field:parsed.field}:{})},status);
+  }
   return response({message:status===401?"Sign in again.":status===403?
    "Your current role or membership cannot access that reward source.":status===404?
    "Original programme or reward unavailable.":status===409?
