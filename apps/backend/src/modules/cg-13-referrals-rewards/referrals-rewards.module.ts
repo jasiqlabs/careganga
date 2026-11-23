@@ -9,11 +9,13 @@ import {ReferralResolveService} from "./application/referral-resolve.service";
 import {ReferralResolveController} from "./http/referral-resolve.controller";
 import {RedemptionService} from "./application/redemption.service";
 import {RedemptionController} from "./http/redemption.controller";
+import {RewardStaffService} from "./application/reward-staff.service";
+import {RewardStaffController} from "./http/reward-staff.controller";
 
 @Module({
  imports:[IdentityAccessModule,InventorySourceModule],
- providers:[ReferralCatalogService,ReferralSelfService,ReferralResolveService,RedemptionService],
- controllers:[ReferralCatalogController,ReferralSelfController,ReferralResolveController,RedemptionController],
+ providers:[ReferralCatalogService,ReferralSelfService,ReferralResolveService,RedemptionService,RewardStaffService],
+ controllers:[ReferralCatalogController,ReferralSelfController,ReferralResolveController,RedemptionController,RewardStaffController],
  exports:[ReferralCatalogService,ReferralSelfService]
 })
 export class ReferralsRewardsModule {}
