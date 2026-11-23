@@ -3,6 +3,8 @@ import {IdentityAccessModule} from "../cg-01-identity-access/identity-access.mod
 import {FoundationStructureModule} from "../cg-02-foundation-structure/foundation-structure.module";
 import {ProjectsSourceModule} from "../cg-05-projects-field-operations/projects-source.module";
 import {FinanceSourceModule} from "../cg-09-finance-accounting/finance-source.module";
+import {DonationBankService} from "./application/donation-bank.service";
+import {DonationBankController} from "./http/donation-bank.controller";
 import {DonationAdminService} from "./application/donation-admin.service";
 import {DonationAdminController} from "./http/donation-admin.controller";
 import {DonationManualService} from "./application/donation-manual.service";
@@ -19,5 +21,5 @@ import {DonationOnlineController} from "./http/donation-online.controller";
 import {PublicDonationIntentsController} from "./http/public-donation-intents.controller";
 import {CampaignDraftsController} from "./http/campaign-drafts.controller";
 @Module({imports:[IdentityAccessModule,FoundationStructureModule,ProjectsSourceModule,FinanceSourceModule],
- providers:[DonationRefundService,DonationReceiptSourceFacade,CampaignDraftsService,DonationIntentsService,DonationManualService,DonationAdminService,DonationOnlineService,DonationOnlineFinanceService],controllers:[DonationRefundController,CampaignDraftsController,PublicDonationIntentsController,DonationManualController,DonationAdminController,DonationOnlineController,DonationOnlineFinanceController],exports:[CampaignDraftsService,DonationReceiptSourceFacade,DonationIntentsService]})
+ providers:[DonationBankService,DonationRefundService,DonationReceiptSourceFacade,CampaignDraftsService,DonationIntentsService,DonationManualService,DonationAdminService,DonationOnlineService,DonationOnlineFinanceService],controllers:[DonationBankController,DonationRefundController,CampaignDraftsController,PublicDonationIntentsController,DonationManualController,DonationAdminController,DonationOnlineController,DonationOnlineFinanceController],exports:[CampaignDraftsService,DonationReceiptSourceFacade,DonationIntentsService]})
 export class CampaignsDonationsModule{}
