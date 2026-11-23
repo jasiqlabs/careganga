@@ -3,7 +3,7 @@ import {ActivityIndicator,Pressable,ScrollView,StyleSheet,Text,TextInput,View} f
 import {identityRequest} from "../identity-access/http-client";
 type Item={ref:string;partnerName:string|null;projectName:string|null;branchName:string|null;
  purpose:string;status:string;financeStatus:string;requestedMinor:string;
- committedMinor:string;receivedMinor:string;allocatedMinor:string;utilizedMinor:string;
+ committedMinor:string;receivedMinor:string;allocatedMinor:string;releasedMinor:string;utilizedMinor:string;
  availableMinor:string|null;updatedAt:string};
 type Report={items:Item[];hasMore:boolean;nextCursor:string|null;notice:string};
 type Choices={branches:{value:string;label:string}[]};
@@ -93,6 +93,7 @@ export function NativeCsrFundingReportsPanel({token,onExpired}:{
      {([
       ["Requested",v.requestedMinor],["Committed",v.committedMinor],
       ["Received · CG09",v.receivedMinor],["Allocated · CG09",v.allocatedMinor],
+      ["Released unused · CG09",v.releasedMinor],
       ["Utilized · CG09",v.utilizedMinor],["Available",v.availableMinor]
      ] as const).map(([label,val])=><Text key={label} style={styles.note}>
       {label}: <Text style={styles.strong}>{money(val)}</Text></Text>)}
