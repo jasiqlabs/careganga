@@ -161,3 +161,9 @@ Receiving tests within original **US-001/002/003** QA: real partnered state, app
 
 - **Committed source paths:** protected `/admin/csr` and `/api/csr/partners` Next BFF; same current CG01 action-derived navigation link; CSR draft list/search/branch filter/pagination, edit/create/discard, current source version, and stable lost-response retry key; original action and authenticated backend enforcement unchanged. Web theme reuses CSS tokens and existing Foundation shell. `apps/backend/test/cg08-partner-contract.test.ts` contains parser/negative-input checks, and backend package exposes `test:cg08-partner`. **Authored, not executed**.
 - **Source trace update:** US001-QA05/06/09/14/17/18/20 now include a real Web authored route/source but remain **PARTIAL_SOURCE_CANDIDATE** until CG03/CG19/native/independent review and actual screenshot tests. Missing approval/proof is a genuine US001 source gap; do not claim success or publish CSR logos. Existing QA IDs, 3 stories, 60 cases preserved. Runtime, provider and visual QA NOT_RUN.
+
+
+### 23-Nov-2026 — US001 native Staff Android authored, same guarded CSR draft operations
+
+- **Real source:** Internal Android `NativeCsrPartners` calls the same `/api/v1/csr/partners` backend with current CG01 roles, same CG02 branch selector, original create/edit/discard and source retry key. Staff module directory is role-filtered, route sign-out clears CSR view, and the screen uses the existing shared native shell. Public Android has no private CSR Admin module. No fake document upload, approval button, bank receipt or verified/public logo.
+- **Case-by-case intent:** US001-QA05/06/14/17/18/20 have both Web and native draft paths, still **SOURCE_REVIEW_PENDING** until error states, native TS build and client B02 screenshots are checked; US001-QA01/08/10/11/13/16 remain **SOURCE_GAP** for real CG03/CG19/approval. The original 60 QA IDs are unchanged. Native/device/runtime proof NOT_RUN; no story completion claimed.

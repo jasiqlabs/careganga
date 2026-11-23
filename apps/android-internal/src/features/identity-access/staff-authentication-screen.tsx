@@ -67,6 +67,7 @@ const NativeOperationsSummary = lazy(() => import("../projects/native-operations
 const NativeFieldVisitsWorkspace = lazy(() => import("../projects/native-field-visits-workspace").then(m=>({default:m.NativeFieldVisitsWorkspace})));
 const NativeActivitiesWorkspace = lazy(() => import("../projects/native-activities-workspace").then(m=>({default:m.NativeActivitiesWorkspace})));
 const NativeTasksWorkspace = lazy(() => import("../projects/native-tasks-workspace").then(m=>({default:m.NativeTasksWorkspace})));
+const NativeCsrPartners = lazy(() => import("../csr/native-csr-partners").then(m=>({default:m.NativeCsrPartners})));
 const NativeProjectsWorkspace = lazy(() => import("../projects/native-projects-workspace").then(m=>({default:m.NativeProjectsWorkspace})));
 const NativeCampaignDrafts = lazy(() => import("../campaigns/native-campaign-drafts").then(m=>({default:m.NativeCampaignDrafts})));
 const NativeCampaignReviews = lazy(() => import("../campaigns/native-campaign-reviews").then(m=>({default:m.NativeCampaignReviews})));
@@ -197,6 +198,7 @@ export function StaffAuthenticationScreen() {
   const [tasksOpen,setTasksOpen]=useState(false);
   const [projectsOpen,setProjectsOpen]=useState(false);
   const [campaignsOpen,setCampaignsOpen]=useState(false);
+  const [csrOpen,setCsrOpen]=useState(false);
   const [campaignsTab,setCampaignsTab]=useState<"DRAFTS"|"REVIEWS">("DRAFTS");
   const [inventoryOpen,setInventoryOpen]=useState(false);
   const [membershipOpen,setMembershipOpen]=useState(false);
@@ -247,7 +249,7 @@ export function StaffAuthenticationScreen() {
     hideToast();
     setMessage("");
     setActor(null); setToken(null); setRoleActions([]); setAccountOpen(false); setRolesOpen(false); setAccountsOpen(false); setPolicyOpen(false); setApprovalsOpen(false); setOwnCenterOpen(false); setWebsiteCmsOpen(false); setPlatformConfigOpen(false); setHealthDoctorOpen(false); setCenterPublisherOpen(false); setHealthProviderOpen(false); setHealthReviewsOpen(false); setDoctorLeaveReviewsOpen(false); setPatientAdminOpen(false); setPatientQueueOpen(false); setLabOrdersOpen(false); setLabEquipmentOpen(false); setHealthcarePoliciesOpen(false); setCenterMerchantOpen(false); setFoundationLiabilitiesOpen(false); setMonthlyProviderSettlementsOpen(false); setPartnerSettlementsOpen(false); setLabTestMasterOpen(false); setMyLabPricingOpen(false); setPatientBookingOpen(false); setDocumentsOpen(false); setCommunicationsOpen(false); setNotificationsOpen(false); setSupportOpen(false); setNoticeAdminOpen(false); setBranchesOpen(false); setFinanceOpen(false); setVoucherOnlyOpen(false); setFinanceReviewOpen(false); setFinanceClaimsOpen(false); setFinanceClaimReviewsOpen(false); setInvoiceOpen(false); setInvoiceReviewOpen(false);
-    setBudgetOpen(false); setBudgetReviewOpen(false); setReportsOpen(false); setMisOpen(false); setHrOpen(false); setInventoryOpen(false); setMembershipOpen(false); setVolunteersOpen(false); setProjectsOpen(false); setCampaignsOpen(false); setTasksOpen(false); setActivitiesOpen(false); setFieldVisitsOpen(false); setOperationsSummaryOpen(false);
+    setBudgetOpen(false); setBudgetReviewOpen(false); setReportsOpen(false); setMisOpen(false); setHrOpen(false); setInventoryOpen(false); setMembershipOpen(false); setVolunteersOpen(false); setProjectsOpen(false); setCampaignsOpen(false); setCsrOpen(false); setTasksOpen(false); setActivitiesOpen(false); setFieldVisitsOpen(false); setOperationsSummaryOpen(false);
     void SecureStore.deleteItemAsync(STORE_KEY).catch(() => undefined);
   }, [hideToast]);
 
@@ -713,6 +715,7 @@ export function StaffAuthenticationScreen() {
       openHr: () => openOnly(setHrOpen),
       openProjects: () => openOnly(setProjectsOpen),
       openCampaigns: () => openOnly(setCampaignsOpen),
+      openCsr: () => openOnly(setCsrOpen),
       openActivities: () => openOnly(setActivitiesOpen),
       openFieldVisits: () => openOnly(setFieldVisitsOpen),
       openOperationsSummary: () => openOnly(setOperationsSummaryOpen),
@@ -760,6 +763,10 @@ export function StaffAuthenticationScreen() {
   if(tasksOpen&&token&&actor){
     if(!roleActions.includes("projects.tasks.view"))return <AccessDeniedScreen reason="You cannot view tasks." onMyAccount={()=>setTasksOpen(false)}/>;
     return renderInShell(<ScreenErrorBoundary onExit={()=>setTasksOpen(false)}><Suspense fallback={<ActivityIndicator style={{marginTop:40}}/>}><NativeTasksWorkspace key={token} token={token} canManage={roleActions.includes("projects.tasks.manage")} canExport={roleActions.includes("projects.tasks.export")} onExpired={expireSession}/></Suspense></ScreenErrorBoundary>,"tasks",()=>setTasksOpen(false));
+  }
+  if(csrOpen&&token&&actor){
+    if(!roleActions.includes("csr.partners.view"))return <AccessDeniedScreen reason="Your current role cannot view CSR partners." onMyAccount={()=>setCsrOpen(false)}/>;
+    return renderInShell(<ScreenErrorBoundary onExit={()=>setCsrOpen(false)}><Suspense fallback={<ActivityIndicator style={{marginTop:40}}/>}><NativeCsrPartners key={token} token={token} canManage={roleActions.includes("csr.partners.manage")} onExpired={expireSession}/></Suspense></ScreenErrorBoundary>,"csr",()=>setCsrOpen(false));
   }
   if(campaignsOpen&&token&&actor){
     const canDrafts=roleActions.includes("campaigns.view");
