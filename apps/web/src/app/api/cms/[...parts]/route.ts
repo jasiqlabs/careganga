@@ -1,6 +1,6 @@
 import {cookies} from "next/headers";
 import {NextRequest,NextResponse} from "next/server";
-import {isAllowedOrigin} from "../../../shared/request-origin";
+import {isAllowedOrigin} from "../../../../shared/request-origin";
 export const dynamic="force-dynamic";
 type Ctx={params:Promise<{parts:string[]}>};
 type Method="GET"|"POST"|"PUT";
