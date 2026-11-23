@@ -37,8 +37,8 @@ export class ReferralCatalogController{
  redemptions(@Headers("authorization")auth:string,@Param("programmeRef")ref:string,
   @Query("page")page?:string,@Query("status")status?:string,
   @Query("q")search?:string,@Query("from")from?:string,@Query("to")to?:string,
-  @Query("category")category?:string){
-  return this.catalog.adminRedemptions(auth,ref,page,status,search,from,to,category);
+  @Query("category")category?:string,@Query("branchRef")branchRef?:string){
+  return this.catalog.adminRedemptions(auth,ref,page,status,search,from,to,category,branchRef);
  }
  @Get("programmes/:programmeRef")
  programme(@Headers("authorization")auth:string,@Param("programmeRef")ref:string){
