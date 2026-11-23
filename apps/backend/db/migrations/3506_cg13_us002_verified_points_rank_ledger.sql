@@ -156,3 +156,39 @@ CREATE TRIGGER cg13_points_event_immutable
  BEFORE UPDATE OR DELETE ON points_event FOR EACH ROW EXECUTE FUNCTION cg13_immutable_source();
 CREATE TRIGGER cg13_rank_event_immutable
  BEFORE UPDATE OR DELETE ON reward_rank_event FOR EACH ROW EXECUTE FUNCTION cg13_immutable_source();
+
+
+-- Prevent direct writes to the materialized account projection without a
+-- corresponding validated immutable source event. Check at COMMIT, allowing
+-- one short trusted transaction to insert event, update wallet and rank.
+CREATE FUNCTION cg13_points_projection_at_commit()
+ RETURNS trigger LANGUAGE plpgsql AS $cg13$
+DECLARE wallet uuid; realm uuid; current_account record; totals record;
+BEGIN
+ wallet:=CASE WHEN TG_TABLE_NAME='points_event' THEN NEW.points_account_id ELSE NEW.id END;
+ realm:=NEW.root_realm_id;
+ SELECT * INTO current_account FROM points_account
+  WHERE root_realm_id=realm AND id=wallet;
+ IF NOT FOUND THEN RAISE EXCEPTION 'Original points wallet is required'; END IF;
+ SELECT COALESCE(SUM(points_delta) FILTER(WHERE event_kind='QUALIFICATION'),0)::bigint AS earned,
+  COALESCE(-SUM(points_delta) FILTER(WHERE event_kind='QUALIFICATION_REVERSAL'),0)::bigint AS reversed,
+  COUNT(*) FILTER(WHERE event_kind='QUALIFICATION')::integer-
+   COUNT(*) FILTER(WHERE event_kind='QUALIFICATION_REVERSAL')::integer AS qualifying_count
+  INTO totals FROM points_event WHERE root_realm_id=realm AND points_account_id=wallet;
+ IF (current_account.earned_points,current_account.reversed_points,
+    current_account.qualified_referrals)
+   IS DISTINCT FROM (totals.earned,totals.reversed,totals.qualifying_count)
+ THEN RAISE EXCEPTION 'Points account must match original immutable events'; END IF;
+ IF TG_TABLE_NAME='points_event' AND NEW.event_kind='QUALIFICATION' AND NOT EXISTS(
+  SELECT 1 FROM reward_rank_event rank
+   WHERE rank.root_realm_id=realm AND rank.points_account_id=wallet
+    AND rank.qualifying_points_event_id=NEW.id
+ ) THEN RAISE EXCEPTION 'Verified points award requires frozen rank snapshot'; END IF;
+ RETURN NULL;
+END; $cg13$;
+CREATE CONSTRAINT TRIGGER cg13_points_account_projection_commit
+ AFTER INSERT OR UPDATE ON points_account DEFERRABLE INITIALLY DEFERRED
+ FOR EACH ROW EXECUTE FUNCTION cg13_points_projection_at_commit();
+CREATE CONSTRAINT TRIGGER cg13_points_event_projection_commit
+ AFTER INSERT ON points_event DEFERRABLE INITIALLY DEFERRED
+ FOR EACH ROW EXECUTE FUNCTION cg13_points_projection_at_commit();
