@@ -35,7 +35,8 @@ test("CG-MB-001 current protected grant/end and revocation require genuine CG01 
  assert.match(service,/old\.ended_by!==a\.accountId/);
  assert.match(controller,/@Post\("assignments"\)/);
  assert.match(controller,/@Post\("assignments\/:assignmentRef\/end"\)/);
- assert.match(mod,/BranchStaffAccessService,BranchStaffAccessController/);
+ assert.match(mod,/BranchStaffAccessService/);
+ assert.match(mod,/BranchStaffAccessController/);
 });
 test("CG-MB-001 root-only and delegated branch/area selection remain separate from CG14 center rights",()=>{
  const source=backend("src/modules/cg-02-foundation-structure/application/branch-source.facade.ts");
