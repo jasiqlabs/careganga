@@ -9,7 +9,7 @@ export type RedeemableDigitalReward={
 };
 type Redemption={ref:string;state:string;type:"DIGITAL"|"PHYSICAL";productName:string;pointsCost:string;revision:number;
  requestedAt:string;digitalFulfillmentMethod:string;recognitionTitle:string|null;
- recognitionDescription:string|null;recognizedAt:string|null};
+ recognitionDescription:string|null;recognizedAt:string|null;handedOverAt:string|null};
 type Page={items:Redemption[];hasMore:boolean;page:number};
 type Created={ref:string;state:string;pointsCost:string;replayed:boolean;notice:string};
 async function call<T>(path:string,method:"GET"|"POST"="GET",body?:Record<string,unknown>){
@@ -116,6 +116,18 @@ export function PublicDigitalRedemption({selected,onClear,audiences}:{
     "Recognition status uncertain. Refresh your original request history.");
   }finally{setBusy(false);}
  };
+ const acknowledgeHandover=async(item:Redemption)=>{
+  if(busy||item.type!=="PHYSICAL"||item.state!=="ISSUED_AWAITING_HANDOVER")return;
+  if(!window.confirm("Confirm only if you have actually received this physical reward from the warehouse staff. This permanently spends your held points."))return;
+  setBusy(true);setError("");setNotice("");
+  try{
+   const result=await call<{state:string;notice:string}>(
+    "redemptions/"+item.ref+"/acknowledge-handover","POST",{});
+   setNotice(result.notice);await load();
+  }catch(e){setError(e instanceof Error?e.message:
+   "Handover result uncertain. Refresh original history before retrying.");}
+  finally{setBusy(false);}
+ };
  return <section className="cg04-panel" aria-label="Verified reward requests">
   <h3>Reward requests</h3>
   <p>Only genuinely earned referral points can be reserved. Digital delivery is
@@ -130,7 +142,7 @@ export function PublicDigitalRedemption({selected,onClear,audiences}:{
      </select>
     </label>
     {!confirmed?<button type="button" disabled={busy}
-     onClick={()=>setConfirmed(true)}>Review digital reward reservation</button>:
+     onClick={()=>setConfirmed(true)}>Review reward reservation</button>:
      <div role="group" aria-label="Confirm current digital price">
       <p>Confirm reservation of <strong>{selected.pointsPrice} verified points</strong>.
        {selected.type==="PHYSICAL"?
@@ -157,13 +169,25 @@ export function PublicDigitalRedemption({selected,onClear,audiences}:{
    <p>{x.pointsCost} points · {x.state==="HELD"?
     (x.type==="PHYSICAL"?"Points and warehouse unit held — issue pending":
      "Points held — delivery pending"):
-    x.state==="CANCELLED"?"Cancelled — points released":x.state}</p>
+    x.state==="ISSUED_AWAITING_HANDOVER"?
+     "Warehouse issued — your actual handover confirmation is pending":
+    x.state==="FULFILLED"?"Delivered and confirmed":x.state==="CANCELLED"?
+     "Cancelled — points released":x.state}</p>
    <p>{new Date(x.requestedAt).toLocaleDateString("en-IN",{timeZone:"Asia/Kolkata"})}</p>
-   {x.state==="HELD"&&x.digitalFulfillmentMethod==="ON_PLATFORM_RECOGNITION"&&
+   {x.state==="ISSUED_AWAITING_HANDOVER"&&x.type==="PHYSICAL"&&
+    <button type="button" disabled={busy}
+     onClick={()=>void acknowledgeHandover(x)}>
+     I received this physical reward — confirm handover
+    </button>}
+   {x.state==="HELD"&&x.type==="DIGITAL"&&x.digitalFulfillmentMethod==="ON_PLATFORM_RECOGNITION"&&
     <button type="button" disabled={busy}
      onClick={()=>void acknowledge(x)}>
      Open and acknowledge my on-platform recognition
     </button>}
+   {x.state==="FULFILLED"&&x.type==="PHYSICAL"&&x.handedOverAt&&
+    <p role="status">Original warehouse issue and your receipt confirmed on {
+     new Date(x.handedOverAt).toLocaleDateString("en-IN",{timeZone:"Asia/Kolkata"})}.
+     Points spent only after your confirmation.</p>}
    {x.state==="FULFILLED"&&x.recognitionTitle&&
     <div role="status" aria-label="Acknowledged on-platform recognition">
      <strong>{x.recognitionTitle}</strong>
