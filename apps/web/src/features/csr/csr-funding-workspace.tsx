@@ -1,5 +1,5 @@
 "use client";
-import {useCallback,useEffect,useState,type CSSProperties} from "react";
+import {useCallback,useEffect,useRef,useState,type CSSProperties} from "react";
 type Choice={value:string;label:string;branchRef?:string|null;projectVersion?:number};
 type Options={foundation:boolean;branches:Choice[];partners:Choice[];projects:Choice[]};
 type Proposal={ref:string;branchRef:string|null;branch:string|null;partnerRef:string|null;
@@ -59,6 +59,8 @@ export function CsrFundingWorkspace({canManage}:{canManage:boolean}){
  const [editing,setEditing]=useState(false),[step,setStep]=useState(0),
   [selected,setSelected]=useState<Proposal|null>(null),[draft,setDraft]=useState<Draft>(fresh);
  const [busy,setBusy]=useState(false),[pending,setPending]=useState<Command|null>(null);
+ const detailEpoch=useRef(0);
+ const invalidateDetail=()=>{detailEpoch.current+=1;setSelected(null);setEditing(false);setStep(0);};
  const refresh=useCallback(()=>setEpoch(v=>v+1),[]);
  useEffect(()=>{
   let live=true;
@@ -79,16 +81,23 @@ export function CsrFundingWorkspace({canManage}:{canManage:boolean}){
    .finally(()=>{if(live)setLoading(false);});
   return()=>{live=false;};
  },[offset,epoch,filter,status,query]);
- const close=()=>{if(busy||pending)return;setSelected(null);setEditing(false);setStep(0);};
+ const close=()=>{if(busy||pending)return;invalidateDetail();};
  const begin=()=>{if(!options||busy||pending)return;
   setDraft(fresh(options.foundation?"":options.branches[0]?.value??""));
-  setSelected(null);setEditing(true);setStep(0);setError("");setNotice("");
+  invalidateDetail();setEditing(true);setError("");setNotice("");
  };
- const choose=async(p:Proposal)=>{if(pending||busy)return;setBusy(true);setError("");
-  try{const current=await api<Proposal>("/"+p.ref);setSelected(current);
-   setDraft(from(current));setEditing(true);setStep(0);}
-  catch(e){setError(e instanceof Error?e.message:"Funding proposal no longer available.");}
-  finally{setBusy(false);}
+ const choose=async(p:Proposal)=>{
+  if(pending||busy)return;
+  const request=++detailEpoch.current;
+  setSelected(null);setEditing(false);setBusy(true);setError("");
+  try{
+   const current=await api<Proposal>("/"+p.ref);
+   if(request!==detailEpoch.current)return;
+   setSelected(current);setDraft(from(current));setEditing(true);setStep(0);
+  }catch(e){
+   if(request!==detailEpoch.current)return;
+   invalidateDetail();setError(e instanceof Error?e.message:"Funding proposal no longer available.");
+  }finally{setBusy(false);}
  };
  const set=(name:keyof Draft,value:string|number)=>setDraft(v=>({...v,[name]:value}));
  const kind=(next:Draft["fundType"])=>setDraft(v=>({...v,fundType:next,
@@ -98,7 +107,7 @@ export function CsrFundingWorkspace({canManage}:{canManage:boolean}){
   if(busy)return;setBusy(true);setPending(command);setError("");setNotice("");
   try{
    await api<{ref:string;version:number;status:"DRAFT"}>(command.url,command.method,command.body);
-   setPending(null);setEditing(false);setSelected(null);setStep(0);
+   setPending(null);invalidateDetail();
    setNotice("Funding draft saved. This is a request, not an approved commitment or received cash.");
    setOffset(0);refresh();
   }catch(e){
@@ -160,23 +169,23 @@ export function CsrFundingWorkspace({canManage}:{canManage:boolean}){
    </div>
    <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(170px,1fr))",gap:10}}>
     <label style={field}>Funding status
-     <select style={control} value={status} disabled={!!pending} onChange={e=>{
-      close();setStatus(e.target.value);setOffset(0);}}>
+     <select style={control} value={status} disabled={!!pending||busy} onChange={e=>{
+      invalidateDetail();setStatus(e.target.value);setOffset(0);}}>
       <option value="ALL">All requests</option><option value="DRAFT">Draft</option>
       <option value="SUBMITTED">Pending approval</option><option value="APPROVED">Approved</option>
       <option value="RETURNED">Returned</option><option value="REJECTED">Rejected</option>
      </select>
     </label>
     <label style={field}>Foundation branch
-     <select style={control} value={filter} disabled={!!pending} onChange={e=>{
-      close();setFilter(e.target.value);setOffset(0);}}>
+     <select style={control} value={filter} disabled={!!pending||busy} onChange={e=>{
+      invalidateDetail();setFilter(e.target.value);setOffset(0);}}>
       <option value="ALL">All permitted branches</option>
       {options?.foundation&&<option value="FOUNDATION">Foundation-wide</option>}
       {options?.branches.map(x=><option value={x.value} key={x.value}>{x.label}</option>)}
      </select>
     </label>
     <label style={field}>Find funding purpose<input style={control} value={query} maxLength={80}
-     onChange={e=>{close();setQuery(e.target.value);setOffset(0);}}/></label>
+     disabled={!!pending||busy} onChange={e=>{invalidateDetail();setQuery(e.target.value);setOffset(0);}}/></label>
    </div>
    {!!listError&&<p role="alert">{listError}</p>}
    {loading?<p role="status">Checking original funding proposals…</p>:listError?null:
