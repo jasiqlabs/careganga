@@ -324,14 +324,17 @@ export function CsrFundingWorkspace({canManage,canReadAgreement,canUploadAgreeme
    <section aria-label="Review & Save" style={{marginBottom:16}}>
     <h4 style={{margin:"0 0 12px"}}>Review & Save</h4>
     <div style={{display:"grid",gap:9}}>
-    <h4 style={{margin:0}}>Review unapproved funding request</h4>
+    <h4 style={{margin:0}}>{selected?.status==="APPROVED"?
+     "Approved funding source — read-only":"Review funding request"}</h4>
     <p><strong>Purpose:</strong> {draft.purpose||"Not entered"}</p>
     <p><strong>Requested:</strong> {toMinor(draft.rupees)?INR(toMinor(draft.rupees)!):"Invalid amount"}</p>
     <p><strong>Source:</strong> {draft.fundType.replaceAll("_"," ")}</p>
     <p><strong>Split:</strong> {draft.csrPercent}% CSR / {100-draft.csrPercent}% Foundation</p>
     <p><strong>Branch:</strong> {options?.branches.find(x=>x.value===draft.branchRef)?.label??"Foundation-wide"}</p>
     <p><strong>Project:</strong> {matchingProjects.find(x=>x.value===draft.projectRef)?.label??"No project linked"}</p>
-    <p><strong>Status after save:</strong> Draft only — no CG03 approval, CG09 bank receipt, allocation or utilization.</p>
+    <p><strong>Status:</strong> {selected?
+     selected.status==="APPROVED"?"Approved commitment; received cash and budgets are independently verified by CG09.":selected.status:
+     "Draft only — not an approved commitment or received cash."}</p>
    </div></section>
    <div style={{display:"flex",gap:10,justifyContent:"end",flexWrap:"wrap",marginTop:17}}>
     <button type="button" style={btn} disabled={busy||!!pending} onClick={close}>Close</button>
