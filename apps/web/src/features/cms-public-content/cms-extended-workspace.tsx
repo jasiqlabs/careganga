@@ -2,7 +2,8 @@
 import {useCallback,useEffect,useRef,useState} from "react";
 import {CmsPublicPage,type PublicCmsPage} from "./cms-public-page";
 
-type Kind="IMPACT"|"COMPLIANCE"|"GALLERY"|"ARTICLE"|"CONTACT"|"HEALTHCARE"|"POLICY";
+type Kind="IMPACT"|"COMPLIANCE"|"GALLERY"|"ARTICLE"|"CONTACT"|"HEALTHCARE"|"POLICY"|"PARTNERS";
+type PartnerOption={sourceRef:string;rightsVersion:number;name:string;summary:string};
 type Section={kind:string;order:number;fields:Record<string,unknown>};
 type Asset={fileRef:string;version:number;role:string;altText:string;order:number};
 type Draft={kind:Kind;slug:string;title:string;seoTitle:string;seoDescription:string;
@@ -16,7 +17,7 @@ type Detail={pageRef:string;kind:Kind;slug:string;version:number;revisionRef:str
  seoDescription:string;sections:Section[];assets:Asset[];
  publicationStatus:string;scheduledAt:string|null};
 type Command={path:string;method:"POST"|"PUT";body:Record<string,unknown>};
-const kinds:Kind[]=["IMPACT","COMPLIANCE","GALLERY","ARTICLE","CONTACT","HEALTHCARE","POLICY"];
+const kinds:Kind[]=["IMPACT","COMPLIANCE","GALLERY","ARTICLE","CONTACT","HEALTHCARE","POLICY","PARTNERS"];
 const legalPages=[
  ["terms-and-conditions","Terms & Conditions"],["privacy-policy","Privacy Policy"],
  ["cookie-policy","Cookie Policy"],["disclaimer","Disclaimer"],
@@ -31,7 +32,7 @@ const str=(v:unknown)=>typeof v==="string"?v:"";
 const items=(v:unknown)=>Array.isArray(v)?v as Record<string,unknown>[]:[];
 const pathFor=(kind:Kind,slug:string)=>kind==="COMPLIANCE"?"/ngo-information":
  kind==="ARTICLE"?"/blog/"+slug:kind==="POLICY"?"/policies/"+slug:"/"+slug;
-const slugFor=(kind:Kind)=>kind==="COMPLIANCE"?"80g":
+const slugFor=(kind:Kind)=>kind==="PARTNERS"?"collaboration":kind==="COMPLIANCE"?"80g":
  kind==="IMPACT"?"our-impact":
  kind==="POLICY"?legalPages[0][0]:kind.toLowerCase();
 const group=(key:string,i:number):Section=>({kind:"IMPACT_GROUP",order:i,
@@ -61,6 +62,8 @@ function initial(kind:Kind):Draft{
    {kind:"RICH_TEXT",order:1,fields:{
     heading:"Contact the Foundation",body:"Send a private message to CareGanga Foundation for general information.",
     eyebrow:"",variant:"STANDARD",highlights:[]}}]:
+  kind==="PARTNERS"?[{kind:"PARTNER_CARDS",order:0,fields:{
+   heading:"Meet Our Partners",intro:"Only currently verified partnerships are listed.",partners:[]}}]:
   kind==="POLICY"?[{kind:"RICH_TEXT",order:0,fields:{
    heading:legalPages[0][1],body:"",eyebrow:"",variant:"STANDARD",highlights:[]}}]:
   [{kind:"HERO",order:0,fields:{heading:"Healthcare Assistance",subtitle:"",description:"",eyebrow:"",
@@ -128,6 +131,7 @@ export function CmsExtendedWorkspace({canManage,canPublish,canViewNoticeSources}
  const [eventSources,setEventSources]=useState<EventSource[]>([]),[eventSourceError,setEventSourceError]=useState("");
  const [noticeSources,setNoticeSources]=useState<NoticeSource[]>([]);
  const [noticeSourceError,setNoticeSourceError]=useState("");
+ const [partnerSources,setPartnerSources]=useState<PartnerOption[]>([]),[partnerSourceError,setPartnerSourceError]=useState("");
  const [uploadRole,setUploadRole]=useState("IMPACT"),[uploadOrder,setUploadOrder]=useState(0);
  const [uploadAlt,setUploadAlt]=useState(""),[rights,setRights]=useState(false);
  const [withdrawReason,setWithdrawReason]=useState("");
@@ -149,7 +153,7 @@ export function CmsExtendedWorkspace({canManage,canPublish,canViewNoticeSources}
    setSelected(detail);setKind(detail.kind);
    setEditorOpen(true);setClosePrompt(false);
    setPreviewMediaScope("PHOTO");setGalleryCategory("ALL");setGalleryVisibility("ALL");
-   setUploadRole(detail.kind==="IMPACT"?"IMPACT":detail.kind==="GALLERY"?"GALLERY":
+   setUploadRole(detail.kind==="PARTNERS"?"FEATURE":detail.kind==="IMPACT"?"IMPACT":detail.kind==="GALLERY"?"GALLERY":
     detail.kind==="COMPLIANCE"?"DOCUMENT":detail.kind==="ARTICLE"?"ARTICLE":
     detail.kind==="CONTACT"?"CONTACT":"HERO");
    setUploadOrder(0);setRights(false);setUploadAlt("");
@@ -169,7 +173,7 @@ export function CmsExtendedWorkspace({canManage,canPublish,canViewNoticeSources}
   setPreviewMediaScope("PHOTO");
   setEditorOpen(true);setClosePrompt(false);
   setPending(null);setError("");setNotice("");
-  setUploadRole(k==="IMPACT"?"IMPACT":k==="GALLERY"?"GALLERY":
+  setUploadRole(k==="PARTNERS"?"FEATURE":k==="IMPACT"?"IMPACT":k==="GALLERY"?"GALLERY":
    k==="COMPLIANCE"?"DOCUMENT":k==="ARTICLE"?"ARTICLE":
    k==="CONTACT"?"CONTACT":"HERO");
  };
@@ -773,6 +777,43 @@ export function CmsExtendedWorkspace({canManage,canPublish,canViewNoticeSources}
        <Field name="Tags (comma-separated)" value={Array.isArray(f.tags)?f.tags.join(", "):""}
         onChange={v=>change("tags",v.split(",").map(x=>x.trim()).filter(Boolean).slice(0,8))}/></>}
       </>}
+      {section.kind==="PARTNER_CARDS"&&<>
+       <Field name="Original partner section introduction" value={f.intro} large
+        onChange={v=>change("intro",v)}/>
+       <p>Only original CG08 partners with active publicity consent and clean
+        independent CG03/CG19 evidence are offered. CG18 must approve this
+        exact selection separately; revoking rights hides it even after publication.</p>
+       <button type="button" disabled={busy||!!pending} onClick={()=>{
+        setPartnerSourceError("");
+        void api<{partners:PartnerOption[]}>("partner-sources")
+         .then(v=>setPartnerSources(v.partners))
+         .catch(()=>{setPartnerSources([]);setPartnerSourceError(
+          "Current approved CSR partner choices are unavailable. Do not submit.");});
+       }}>Refresh currently authorized partners</button>
+       {!!partnerSourceError&&<p role="alert">{partnerSourceError}</p>}
+       {items(f.partners).map((entry,j)=>{
+        const option=partnerSources.find(x=>x.sourceRef===entry.sourceRef&&
+         x.rightsVersion===entry.rightsVersion);
+        return <div className="cg-cms-team" key={String(entry.sourceRef)+String(j)}>
+         <strong>{option?.name??"Previously selected partner — refresh and verify"}</strong>
+         <p>{option?.summary??"The original public rights version must still be current."}</p>
+         {canManage&&<button type="button" disabled={busy||!!pending}
+          onClick={()=>removeItem(index,"partners",j,"FEATURE")}>Remove partner</button>}
+        </div>;
+       })}
+       {canManage&&items(f.partners).length<12&&<label>Choose an original verified partner
+        <select value="" disabled={busy||!!pending||!!mediaAttempt.current||!!partnerSourceError}
+         onChange={e=>{
+          const source=partnerSources.find(x=>x.sourceRef===e.target.value);
+          if(!source||items(f.partners).some(v=>v.sourceRef===source.sourceRef))return;
+          addItem(index,"partners",{sourceRef:source.sourceRef,rightsVersion:source.rightsVersion});
+         }}>
+         <option value="">Select current approved partner (no samples)</option>
+         {partnerSources.filter(x=>!items(f.partners).some(v=>v.sourceRef===x.sourceRef))
+          .map(v=><option value={v.sourceRef} key={v.sourceRef}>{v.name}</option>)}
+        </select>
+       </label>}
+      </>}
       {section.kind==="HEALTHCARE_CATEGORIES"&&<>
        <Field name="General healthcare explanation" large value={f.intro}
         onChange={v=>change("intro",v)}/>
@@ -856,20 +897,22 @@ export function CmsExtendedWorkspace({canManage,canPublish,canViewNoticeSources}
      <fieldset><legend>Verified original media</legend>
       <p>Only original CG-19 scanned, consented media. Attach one per matching section or item.</p>
       <label>Placement<select value={uploadRole} onChange={e=>setUploadRole(e.target.value)}>
-       {draft.kind==="IMPACT"?<option value="IMPACT">Impact group photo</option>:
+       {draft.kind==="PARTNERS"?<option value="FEATURE">Verified corporate partner logo (optional)</option>:
+        draft.kind==="IMPACT"?<option value="IMPACT">Impact group photo</option>:
         draft.kind==="GALLERY"?<option value="GALLERY">Gallery item</option>:
         draft.kind==="COMPLIANCE"?<option value="DOCUMENT">Official proof scan or PDF</option>:
         draft.kind==="CONTACT"?<option value="CONTACT">Contact photo strip</option>:
         draft.kind==="HEALTHCARE"?<option value="HERO">Healthcare hero photograph</option>:
         <option value="ARTICLE">Article cover photo</option>}
       </select></label>
-      {["IMPACT","GALLERY","DOCUMENT","CONTACT"].includes(uploadRole)&&<label>Placement position<select
+      {["IMPACT","GALLERY","DOCUMENT","CONTACT","FEATURE"].includes(uploadRole)&&<label>Placement position<select
        value={String(uploadOrder)} onChange={e=>setUploadOrder(Number(e.target.value))}>
-       {(draft.kind==="CONTACT"?[{title:"Original photo 1"},{title:"Original photo 2"},
+       {(draft.kind==="PARTNERS"?items(draft.sections.find(v=>v.kind==="PARTNER_CARDS")?.fields.partners).map(v=>({title:partnerSources.find(p=>p.sourceRef===v.sourceRef)?.name??"Verified partner"})):
+        draft.kind==="CONTACT"?[{title:"Original photo 1"},{title:"Original photo 2"},
           {title:"Original photo 3"}]:
         draft.kind==="IMPACT"?draft.sections:draft.kind==="COMPLIANCE"?
          items(draft.sections[0]?.fields.documents):items(draft.sections[0]?.fields.items))
-        .map((value,i)=><option value={i} key={i}>{draft.kind==="CONTACT"?"Original photo "+(i+1):draft.kind==="IMPACT"?
+        .map((value,i)=><option value={i} key={i}>{draft.kind==="PARTNERS"?str((value as Record<string,unknown>).title):draft.kind==="CONTACT"?"Original photo "+(i+1):draft.kind==="IMPACT"?
          str((value as Section).fields.group):str((value as Record<string,unknown>).title)||"Item "+(i+1)}</option>)}
       </select></label>}
       <Field name="Accessible image/document description" value={uploadAlt}
@@ -879,6 +922,7 @@ export function CmsExtendedWorkspace({canManage,canPublish,canViewNoticeSources}
       <input type="file" disabled={busy||!rights||uploadAlt.trim().length<3||
          allowedForCurrentPlacement().length===0||
          (uploadRole==="DOCUMENT"&&items(draft.sections[0]?.fields.documents).length===0)||
+         (uploadRole==="FEATURE"&&items(draft.sections.find(x=>x.kind==="PARTNER_CARDS")?.fields.partners).length===0)||
          (uploadRole==="GALLERY"&&items(draft.sections[0]?.fields.items).length===0)} accept={
        allowedForCurrentPlacement().join(",")}
        onChange={e=>{const file=e.target.files?.[0];if(file)void upload(file);
