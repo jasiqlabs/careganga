@@ -1,6 +1,6 @@
 # CG-MB-007 — cg07 donation report root and branch filters
 
-**Priority:** P1 · **Owner:** CG-07 reporting · **Status:** SOURCE_FIX_AUTHORED_NOT_VERIFIED · **Scope:** active CG-07 feature branch only · **Runtime:** NOT_RUN
+**Priority:** P1 · **Owner:** CG-07 reporting · **Status:** SOURCE_FIX_REVIEWED_RUNTIME_PENDING · **Scope:** active CG-07 feature branch only · **Runtime:** NOT_RUN
 
 ## Source evidence / observed limitation
 
@@ -24,3 +24,12 @@ Execute backend typecheck/postgres, browser exports, Web/Internal Android parity
 ### 23-Nov — Independent source reviewer correction (source-only; open)
 
 `DonationAdminService.list/exportCsv/donorDetail` now rechecks live CG01 `finance.reports.view`, private export capability, CG02 branch grant/root status and selected filter **after** reading source, before release, rejecting A→B revoke/manager transfer/suspension mid-request. Access to Foundation-null donations remains protected. Updated `cg07-donation-contract.test.ts`. Source authoring only: simultaneous list/KPI/trend/CSV snapshots and Web/Internal Android remains NOT_RUN; code-review and local QA required. See [developer handoff](../../qa/CAREGANGA-CG07-MULTIBRANCH-LOCAL-DEVELOPER-HANDOFF-20261123.md).
+
+
+### 23-Nov-2026 — final source-owner review disposition
+
+**Reviewed original owner source:** CG07 DonationAdminService list/KPI/monthly verified refund, export CSV and masked donor detail use CG02 live branch scope, separate FOUNDATION from ALL, and post-query CG01/CG02 reauthorization before response.
+
+**Executable evidence pending:** A+B, A-only forged B, branch revoke while streaming, source POSTED journal reconciliation, Web/native and CSV QA NOT_RUN.
+
+**Gate:** source authored/reviewed; NOT_RUNTIME_PASS; no CI/GitHub Actions, no merge until local QA verified.
