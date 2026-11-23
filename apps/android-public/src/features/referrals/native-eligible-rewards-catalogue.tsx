@@ -18,6 +18,7 @@ export function NativeEligibleRewardsCatalogue({token,onExpired}:{
  const [category,setCategory]=useState("All"),[search,setSearch]=useState("");
  const [appliedSearch,setAppliedSearch]=useState("");
  const [availableCategories,setAvailableCategories]=useState<string[]>([]);
+ const [failedImages,setFailedImages]=useState<Record<string,true>>({});
  const [categoriesTruncated,setCategoriesTruncated]=useState(false);
  useEffect(()=>{
   const handle=setTimeout(()=>setAppliedSearch(search.trim()),300);
@@ -41,13 +42,14 @@ export function NativeEligibleRewardsCatalogue({token,onExpired}:{
    setAudiences(result.eligibleRelationships);setNotice(result.notice);
    setAvailableCategories(result.categories);
    setCategoriesTruncated(result.categoriesTruncated);
+   if(replace)setFailedImages({});
    setItems(old=>replace?result.items:
     [...old,...result.items.filter(x=>!old.some(v=>v.ref===x.ref))]);
    setMore(result.hasMore);setPage(target+1);
   }catch(e){
    if(request!==sequence.current)return;
    if(replace){setItems([]);setAudiences([]);setMore(false);setDetail(null);
-    setAvailableCategories([]);setCategoriesTruncated(false);}
+    setAvailableCategories([]);setCategoriesTruncated(false);setFailedImages({});}
    if(e&&typeof e==="object"&&"status" in e&&e.status===401){onExpired();return;}
    setError(e instanceof Error?e.message:"Rewards are temporarily unavailable.");
   }finally{if(request===sequence.current)setBusy(false);}
@@ -89,8 +91,10 @@ export function NativeEligibleRewardsCatalogue({token,onExpired}:{
    <TextInput style={s.input} value={search} onChangeText={setSearch}
     placeholder="Search rewards" maxLength={100} accessibilityLabel="Search rewards by name or category"/>
    {filtered.map(p=><View key={p.ref} style={s.product}>
-    {!!p.imageUrl&&<Image source={{uri:p.imageUrl}} style={s.image}
-     accessibilityLabel={p.name} resizeMode="contain"/>}
+    {!!p.imageUrl&&!failedImages[p.ref]&&<Image source={{uri:p.imageUrl}} style={s.image}
+     accessibilityLabel={p.name} resizeMode="contain"
+     onError={()=>setFailedImages(old=>({...old,[p.ref]:true}))}/>}
+   {!p.imageUrl||failedImages[p.ref]?<Text style={s.muted}>Image unavailable</Text>:null}
     <Text style={s.productName}>{p.name}</Text>
     <Text>{p.category} · {p.type==="DIGITAL"?"Digital":"Physical"} · {p.pointsPrice} points</Text>
     <Text style={s.muted}>{p.type==="DIGITAL"?"No stock needed":
