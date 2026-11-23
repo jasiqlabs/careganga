@@ -87,6 +87,9 @@ test("CG-MB-001 current Web and native Internal Android protected operations use
  assert.match(android,/scopeKind:kind/);
  assert.match(android,/setBlocked\(true\)/);
  assert.match(screen,/<BranchStaffAccessNative token=\{token\}/);
+ assert.match(screen,/canAdmin&&/);
+ const shell=native("features/identity-access/staff-authentication-screen.tsx");
+ assert.match(shell,/canAdmin=\{roleActions\.includes\("foundation\.branches\.admin"\)\}/);
 });
 
 
