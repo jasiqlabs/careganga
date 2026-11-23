@@ -2,6 +2,8 @@
 import {useCallback,useEffect,useRef,useState,type CSSProperties} from "react";
 import {CsrFundingAgreementPanel} from "./csr-funding-agreement-panel";
 import {CsrFundingReceiptsPanel} from "./csr-funding-receipts-panel";
+import {CsrFundingBudgetPanel} from "./csr-funding-budget-panel";
+import {CsrFundingProjectContext} from "./csr-funding-project-context";
 type Choice={value:string;label:string;branchRef?:string|null;projectVersion?:number};
 type Options={foundation:boolean;branches:Choice[];partners:Choice[];projects:Choice[]};
 type Proposal={ref:string;branchRef:string|null;branch:string|null;partnerRef:string|null;
@@ -52,7 +54,7 @@ async function api<T>(path:string,method:"GET"|"POST"|"PATCH"="GET",body?:Record
  }
  return x as T;
 }
-export function CsrFundingWorkspace({canManage,canReadAgreement,canUploadAgreement,canReadFinance,canLinkFinance}:{canManage:boolean;canReadAgreement:boolean;canUploadAgreement:boolean;canReadFinance:boolean;canLinkFinance:boolean}){
+export function CsrFundingWorkspace({canManage,canReadAgreement,canUploadAgreement,canReadFinance,canLinkFinance,canBudgetManage}:{canManage:boolean;canReadAgreement:boolean;canUploadAgreement:boolean;canReadFinance:boolean;canLinkFinance:boolean;canBudgetManage:boolean}){
  const [page,setPage]=useState<{items:Proposal[];hasMore:boolean;summary?:{requests:number;drafts:number;requestedMinor:string;verifiedFinance:null|{
   committedMinor:string;verifiedReceivedMinor:string;revalidationRequiredMinor:string;
   allocatedMinor:string;utilizedMinor:string;availableMinor:string|null;utilizationPercent:string|null;notice:string;needsRevalidation:boolean
@@ -61,11 +63,11 @@ export function CsrFundingWorkspace({canManage,canReadAgreement,canUploadAgreeme
  const [offset,setOffset]=useState(0),[epoch,setEpoch]=useState(0),[loading,setLoading]=useState(true);
  const [filter,setFilter]=useState("ALL"),[status,setStatus]=useState("ALL"),[query,setQuery]=useState("");
  const [error,setError]=useState(""),[listError,setListError]=useState(""),[notice,setNotice]=useState("");
- const [editing,setEditing]=useState(false),[step,setStep]=useState(0),
+ const [editing,setEditing]=useState(false),
   [selected,setSelected]=useState<Proposal|null>(null),[draft,setDraft]=useState<Draft>(fresh);
  const [busy,setBusy]=useState(false),[pending,setPending]=useState<Command|null>(null);
  const detailEpoch=useRef(0);
- const invalidateDetail=()=>{detailEpoch.current+=1;setSelected(null);setEditing(false);setStep(0);};
+ const invalidateDetail=()=>{detailEpoch.current+=1;setSelected(null);setEditing(false);};
  const refresh=useCallback(()=>setEpoch(v=>v+1),[]);
  useEffect(()=>{
   let live=true;
@@ -101,7 +103,7 @@ export function CsrFundingWorkspace({canManage,canReadAgreement,canUploadAgreeme
   try{
    const current=await api<Proposal>("/"+p.ref);
    if(request!==detailEpoch.current)return;
-   setSelected(current);setDraft(from(current));setEditing(true);setStep(0);
+   setSelected(current);setDraft(from(current));setEditing(true);
   }catch(e){
    if(request!==detailEpoch.current)return;
    invalidateDetail();setError(e instanceof Error?e.message:"Funding proposal no longer available.");
@@ -249,12 +251,9 @@ export function CsrFundingWorkspace({canManage,canReadAgreement,canUploadAgreeme
   {editing&&<div style={box} aria-label="Original CSR funding request details">
    <h3>{selected?"Funding request details":"Create funding request"}</h3>
    <p style={{fontSize:13,color:"var(--cg-muted)"}}>B08 funding request · Save an unapproved draft only. Signed agreements use original CG19, approval uses CG03 and actual cash uses CG09.</p>
-   <nav aria-label="Funding request steps" style={{display:"flex",gap:8,flexWrap:"wrap",marginBottom:16}}>
-    {["Fund information","Project & split","Agreement notes","Review & save"].map((v,i)=>
-     <button key={v} type="button" style={step===i?primary:btn} aria-current={step===i?"step":undefined}
-      onClick={()=>setStep(i)} disabled={busy||!!pending}>{i+1}. {v}</button>)}
-   </nav>
-   {step===0&&<div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(220px,1fr))",gap:12}}>
+<section aria-label="1. Funder, contact & period" style={{marginBottom:16}}>
+    <h4 style={{margin:"0 0 12px"}}>1. Funder, contact & period</h4>
+    <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(220px,1fr))",gap:12}}>
     <label style={field}>Foundation scope
      <select style={control} value={draft.branchRef} disabled={!!selected||busy||!!pending||!canManage}
       onChange={e=>setDraft(x=>({...x,branchRef:e.target.value,partnerRef:"",projectRef:""}))}>
@@ -285,8 +284,10 @@ export function CsrFundingWorkspace({canManage,canReadAgreement,canUploadAgreeme
      disabled={!canManage||busy||!!pending||!!selected&&selected.status!=="DRAFT"} onChange={e=>set("proposedFrom",e.target.value)}/></label>
     <label style={field}>Proposed end date<input style={control} type="date" value={draft.proposedUntil}
      disabled={!canManage||busy||!!pending||!!selected&&selected.status!=="DRAFT"} onChange={e=>set("proposedUntil",e.target.value)}/></label>
-   </div>}
-   {step===1&&<div style={{display:"grid",gap:13}}>
+   </div></section>
+   <section aria-label="2. Project Details & funding parties" style={{marginBottom:16}}>
+    <h4 style={{margin:"0 0 12px"}}>2. Project Details & funding parties</h4>
+    <div style={{display:"grid",gap:13}}>
     {draft.fundType!=="FOUNDATION"&&<label style={field}>Approved CSR sponsor
      <select style={control} value={draft.partnerRef} disabled={!!selected||busy||!canManage} onChange={e=>set("partnerRef",e.target.value)}>
       <option value="">Select approved original partner</option>
@@ -306,15 +307,22 @@ export function CsrFundingWorkspace({canManage,canReadAgreement,canUploadAgreeme
       value={draft.csrPercent} onChange={e=>set("csrPercent",Number(e.target.value))}/>
     </label>
     <p>Requested split: <strong>{draft.csrPercent}% CSR / {100-draft.csrPercent}% Foundation.</strong> The request does not make either share spendable cash.</p>
-   </div>}
-   {step===2&&<div style={{display:"grid",gap:12}}>
+   </div></section>
+   <section aria-label="3. Budget Details & agreement terms" style={{marginBottom:16}}>
+    <h4 style={{margin:"0 0 12px"}}>3. Budget Details & agreement terms</h4>
+    <div style={{display:"grid",gap:12}}>
     <label style={field}>Agreement scope and supporting notes
      <textarea style={{...control,minHeight:130}} maxLength={1000} value={draft.agreementSummary}
       readOnly={!canManage||busy||!!pending||!!selected&&selected.status!=="DRAFT"} onChange={e=>set("agreementSummary",e.target.value)}/>
     </label>
     <p role="note">Saving here does not upload, verify or sign an agreement. The protected original CG19 agreement and CG03 funding approval workflows must be completed before this can become an approved commitment.</p>
-   </div>}
-   {step===3&&<div style={{display:"grid",gap:9}}>
+   </div></section>
+   {editing&&selected?.status==="APPROVED"&&canBudgetManage&&
+    <CsrFundingBudgetPanel proposalRef={selected.ref} version={selected.version}
+     canManage={canManage&&canBudgetManage}/>}
+   <section aria-label="Review & Save" style={{marginBottom:16}}>
+    <h4 style={{margin:"0 0 12px"}}>Review & Save</h4>
+    <div style={{display:"grid",gap:9}}>
     <h4 style={{margin:0}}>Review unapproved funding request</h4>
     <p><strong>Purpose:</strong> {draft.purpose||"Not entered"}</p>
     <p><strong>Requested:</strong> {toMinor(draft.rupees)?INR(toMinor(draft.rupees)!):"Invalid amount"}</p>
@@ -323,7 +331,7 @@ export function CsrFundingWorkspace({canManage,canReadAgreement,canUploadAgreeme
     <p><strong>Branch:</strong> {options?.branches.find(x=>x.value===draft.branchRef)?.label??"Foundation-wide"}</p>
     <p><strong>Project:</strong> {matchingProjects.find(x=>x.value===draft.projectRef)?.label??"No project linked"}</p>
     <p><strong>Status after save:</strong> Draft only — no CG03 approval, CG09 bank receipt, allocation or utilization.</p>
-   </div>}
+   </div></section>
    <div style={{display:"flex",gap:10,justifyContent:"end",flexWrap:"wrap",marginTop:17}}>
     <button type="button" style={btn} disabled={busy||!!pending} onClick={close}>Close</button>
     {canManage&&selected?.status==="RETURNED"&&<button type="button" style={primary}
@@ -331,15 +339,20 @@ export function CsrFundingWorkspace({canManage,canReadAgreement,canUploadAgreeme
       url:"/"+selected.ref+"/resume",method:"POST",
       body:{requestKey:crypto.randomUUID(),expectedVersion:selected.version}
      })}>Revise returned funding request</button>}
-    {step>0&&<button type="button" style={btn} disabled={busy||!!pending} onClick={()=>setStep(v=>Math.max(0,v-1))}>Previous step</button>}
-    {step<3?<button type="button" style={primary} disabled={busy||!!pending} onClick={()=>setStep(v=>Math.min(3,v+1))}>Next step</button>:
-     canManage&&(!selected||selected.status==="DRAFT")&&<button type="button" style={primary} disabled={busy||!!pending} onClick={submit}>{busy?"Saving…":"Save funding draft"}</button>}
+    {canManage&&(!selected||selected.status==="DRAFT")&&<button type="button"
+     style={primary} disabled={busy||!!pending} onClick={submit}>
+     {busy?"Saving…":"Save funding draft"}</button>}
    </div>
   </div>}
-  {editing&&selected&&canReadAgreement&&<CsrFundingAgreementPanel
+  {editing&&selected&&<div style={box}><CsrFundingProjectContext proposalRef={selected.ref}/></div>}
+  {editing&&<section aria-label="5. Documents & Agreement" style={box}>
+   <h4>5. Documents & Agreement</h4>
+   {!selected&&<p>Save the funding draft before attaching a private agreement.</p>}
+   {selected&&canReadAgreement&&<CsrFundingAgreementPanel
    key={selected.ref+":"+selected.version} proposalRef={selected.ref}
    version={selected.version} canUpload={canUploadAgreement&&canManage&&selected.status==="DRAFT"}
    canSubmit={canManage&&selected.status==="DRAFT"} onSubmitted={()=>{invalidateDetail();refresh();}}/>}
+  </section>}
   {editing&&selected?.status==="APPROVED"&&canReadFinance&&<CsrFundingReceiptsPanel
     key={selected.ref+":"+selected.version} proposalRef={selected.ref}
     version={selected.version} canLink={canManage&&canLinkFinance}/>}
