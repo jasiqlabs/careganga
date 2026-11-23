@@ -419,7 +419,7 @@ export async function eligiblePublishedRewardImageRefs(
  if(fileRefs.length>40||fileRefs.some(x=>!UUID.test(x)))
   throw new BadRequestException("Invalid public media selection");
  const rows=await tx.query<{id:string}>(
-  "SELECT DISTINCT f.id FROM cg19_cms_media_file f "+
+  "SELECT f.id FROM cg19_cms_media_file f "+
   "JOIN cg19_cms_upload_intent i ON i.id=f.upload_intent_id AND i.realm_id=f.realm_id "+
   "JOIN cms_asset_placement a ON a.cg19_file_ref=f.id "+
   "AND a.foundation_root_id=f.realm_id "+
