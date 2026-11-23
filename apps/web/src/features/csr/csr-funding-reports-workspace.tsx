@@ -114,7 +114,9 @@ export function CsrFundingReportsWorkspace(){
        <td style={{padding:9}}>{x.branchName??"Foundation"}<div>{x.projectName??"General purpose"}</div></td>
        <td style={{padding:9}}>{x.status}
         {x.financeStatus!=="VERIFIED_SOURCE"&&<div style={{color:"#B45309"}}>
-         {x.financeStatus==="RECEIPT_PENDING"?"Bank receipt pending":"Finance revalidation required"}</div>}</td>
+         {x.financeStatus==="RECEIPT_PENDING"?"Bank receipt pending":
+          x.financeStatus==="NOT_APPROVED"?"Not yet approved as a commitment":
+          "Finance revalidation required"}</div>}</td>
        {[x.requestedMinor,x.committedMinor,x.receivedMinor,x.allocatedMinor,
         x.utilizedMinor,x.availableMinor].map((v,i)=>
          <td key={i} style={{padding:9,whiteSpace:"nowrap"}}>{amount(v)}</td>)}
