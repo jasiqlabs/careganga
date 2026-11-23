@@ -1,6 +1,7 @@
 import {describe,test} from "node:test";
 import assert from "node:assert/strict";
-import {ForbiddenException} from "@nestjs/common";
+import {BadRequestException,ForbiddenException} from "@nestjs/common";
+import {readFileSync} from "node:fs";
 import {ReferralCatalogService} from "../src/modules/cg-13-referrals-rewards/application/referral-catalog.service";
 
 const ROOT="11111111-1111-4111-8111-111111111111";
@@ -228,5 +229,49 @@ describe("CG13 US001 branch/permission owner boundary",()=>{
   const f=fixture(true);
   await assert.rejects(()=>f.service.listProducts("revoked",PROGRAMME),ForbiddenException);
   assert.equal(f.stats().connections,0);
+ });
+});
+
+describe("CG13 original US001/US003 usable DIGITAL source boundary (source, NOT runtime)",()=>{
+ test("ACTIVE DIGITAL cannot claim an unimplemented future external delivery provider",async()=>{
+  const f=fixture();
+  const request={
+   requestKey:OTHER_ROOT,programmeRef:PROGRAMME,type:"DIGITAL",
+   name:"Not-yet-deliverable digital voucher",category:"Recognition",
+   description:"Future provider only",pointsPrice:100,
+   eligibleAudience:"BOTH",status:"ACTIVE",highlighted:false,publicVisible:true,
+   imageUrl:null,itemRef:null,storeRef:null,
+   digitalFulfillmentMethod:"PENDING_EXTERNAL_PROOF"
+  };
+  await assert.rejects(()=>f.service.createProduct("staff",request),BadRequestException);
+  assert.equal(f.stats().connections,0);
+ });
+ test("eligible catalogue distinguishes genuine CG19 recognition from undeliverable future provider",async()=>{
+  const f=fixture();
+  await f.service.publicEligibleCatalog("own");
+  const query=f.seen.find(v=>v.sql.includes("CASE WHEN p.product_type='DIGITAL'"));
+  assert.ok(query);
+  assert.match(query.sql,/p.digital_fulfillment_method='ON_PLATFORM_RECOGNITION'/);
+  assert.match(query.sql,/THEN 'NO_STOCK_REQUIRED'/);
+  assert.match(query.sql,/THEN 'DELIVERY_UNAVAILABLE'/);
+  assert.deepEqual(query.params[0],ROOT);
+ });
+ test("both public channels and recipient forms hide unsupported redeem actions",()=>{
+  const files=[
+   "../web/src/features/referrals/public-rewards-catalogue.tsx",
+   "../android-public/src/features/referrals/native-eligible-rewards-catalogue.tsx",
+   "../web/src/features/referrals/public-digital-redemption.tsx",
+   "../android-public/src/features/referrals/native-digital-redemption.tsx"
+  ];
+  for(const path of files){
+   const src=readFileSync(path,"utf8");
+   assert.match(src,/DELIVERY_UNAVAILABLE/);
+   assert.match(src,/NO_STOCK_REQUIRED/);
+  }
+  for(const path of files.slice(2)){
+   const src=readFileSync(path,"utf8");
+   assert.match(src,/reservationReady/);
+   assert.match(src,/ON_PLATFORM_RECOGNITION/);
+  }
  });
 });
