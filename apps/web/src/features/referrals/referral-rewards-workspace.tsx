@@ -70,6 +70,10 @@ export function ReferralRewardsWorkspace({canManagePolicy,canManageRewards}:{
  const [programmes,setProgrammes]=useState<Programme[]>([]);
  const [selected,setSelected]=useState(""),[detail,setDetail]=useState<Programme|null>(null);
  const [products,setProducts]=useState<Reward[]>([]),[edition,setEdition]=useState<Reward|null>(null);
+ const [moreProgrammes,setMoreProgrammes]=useState(false),[moreProducts,setMoreProducts]=useState(false);
+ const [programmePage,setProgrammePage]=useState(2),[productPage,setProductPage]=useState(2);
+ const [pagingBusy,setPagingBusy]=useState(false);
+ const pagingLock=useRef(false),programmeGeneration=useRef(0),productGeneration=useRef(0);
  const [section,setSection]=useState<"PROGRAMMES"|"REWARDS">("PROGRAMMES");
  const [rankTab,setRankTab]=useState<"MEMBER"|"VOLUNTEER">("MEMBER");
  const [selectedRank,setSelectedRank]=useState(0);
@@ -89,21 +93,23 @@ export function ReferralRewardsWorkspace({canManagePolicy,canManageRewards}:{
  const lock=useRef(false);
  const refresh=useCallback(()=>setEpoch(v=>v+1),[]);
  useEffect(()=>{
-  let live=true;setLoading(true);setError("");
-  void api<{items:Programme[]}>("/programmes").then(v=>{
+  let live=true;programmeGeneration.current++;
+  setLoading(true);setError("");setMoreProgrammes(false);setProgrammePage(2);
+  void api<{items:Programme[];hasMore:boolean}>("/programmes?page=1").then(v=>{
    if(!live)return;
-   setProgrammes(v.items);setSelected(current=>
+   setProgrammes(v.items);setMoreProgrammes(v.hasMore);setSelected(current=>
     v.items.some(x=>x.ref===current)?current:v.items[0]?.ref??"");
   }).catch(e=>{if(live){setProgrammes([]);setError(e instanceof Error?e.message:"Programmes unavailable.");}})
    .finally(()=>{if(live)setLoading(false);});
   return()=>{live=false;};
  },[epoch]);
  useEffect(()=>{
-  let live=true;setDetail(null);setProducts([]);
+  let live=true;productGeneration.current++;
+  setDetail(null);setProducts([]);setMoreProducts(false);setProductPage(2);
   if(!selected)return;
   void Promise.all([api<Programme>("/programmes/"+selected),
-   api<{items:Reward[]}>("/programmes/"+selected+"/products")])
-   .then(([p,v])=>{if(live){setDetail(p);setProducts(v.items);}})
+   api<{items:Reward[];hasMore:boolean}>("/programmes/"+selected+"/products?page=1")])
+   .then(([p,v])=>{if(live){setDetail(p);setProducts(v.items);setMoreProducts(v.hasMore);}})
    .catch(e=>{if(live)setError(e instanceof Error?e.message:"Current programme unavailable.");});
   return()=>{live=false;};
  },[selected,epoch]);
@@ -204,6 +210,29 @@ export function ReferralRewardsWorkspace({canManagePolicy,canManageRewards}:{
   (p.name+" "+p.category+" "+p.description).toLowerCase().includes(searchProduct.trim().toLowerCase()))
   .sort((a,b)=>Number(b.highlighted)-Number(a.highlighted)||a.name.localeCompare(b.name)),
   [products,categoryFilter,searchProduct]);
+ const loadMore=async(kind:"PROGRAMMES"|"PRODUCTS")=>{
+  if(pagingLock.current)return;
+  pagingLock.current=true;setPagingBusy(true);setError("");
+  const generation=kind==="PROGRAMMES"?programmeGeneration.current:productGeneration.current;
+  const chosen=selected, page=kind==="PROGRAMMES"?programmePage:productPage;
+  try{
+   if(kind==="PROGRAMMES"){
+    const next=await api<{items:Programme[];hasMore:boolean}>("/programmes?page="+page);
+    if(generation!==programmeGeneration.current)return;
+    setProgrammes(old=>[...old,...next.items.filter(item=>!old.some(p=>p.ref===item.ref))]);
+    setMoreProgrammes(next.hasMore);setProgrammePage(page+1);
+   }else{
+    if(!chosen)return;
+    const next=await api<{items:Reward[];hasMore:boolean}>(
+     "/programmes/"+chosen+"/products?page="+page);
+    if(generation!==productGeneration.current)return;
+    setProducts(old=>[...old,...next.items.filter(item=>!old.some(p=>p.ref===item.ref))]);
+    setMoreProducts(next.hasMore);setProductPage(page+1);
+   }
+  }catch(e){if((kind==="PROGRAMMES"?programmeGeneration.current:productGeneration.current)===generation)
+   setError(e instanceof Error?e.message:"Cannot retrieve the next original catalogue page.");}
+  finally{pagingLock.current=false;setPagingBusy(false);}
+ };
  const rowInput=(title:string,value:string,fn:(v:string)=>void,type="text")=><label style={css.field}>{title}
   <input style={css.control} type={type} value={value}
    onChange={e=>fn(e.target.value)} autoComplete="off"/></label>;
@@ -239,6 +268,8 @@ export function ReferralRewardsWorkspace({canManagePolicy,canManageRewards}:{
        {!programmes.length&&<option value="">No recorded programmes</option>}
        {programmes.map(p=><option key={p.ref} value={p.ref}>{p.name} · {p.status}</option>)}
       </select></label>
+     {moreProgrammes&&<button type="button" style={css.button} disabled={loading||pagingBusy||busy}
+      onClick={()=>void loadMore("PROGRAMMES")}>Load more programmes</button>}
      {!!detail?<>
       <div style={{display:"flex",justifyContent:"space-between",gap:10,flexWrap:"wrap"}}>
        <h3 style={{fontSize:16,margin:0}}>Referral Ranks ({availableRanks.length} Levels)</h3>
@@ -352,6 +383,8 @@ export function ReferralRewardsWorkspace({canManagePolicy,canManageRewards}:{
        {!programmes.length&&<option value="">No programme configured</option>}
        {programmes.map(p=><option key={p.ref} value={p.ref}>{p.name} · {p.status}</option>)}
       </select></label>
+     {moreProgrammes&&<button type="button" style={css.button} disabled={loading||pagingBusy||busy}
+      onClick={()=>void loadMore("PROGRAMMES")}>Load more programmes</button>}
      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:8,
       flexWrap:"wrap",borderBottom:"1px solid var(--cg-border,#DCE4ED)",paddingBottom:9}}>
       <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
@@ -391,6 +424,8 @@ export function ReferralRewardsWorkspace({canManagePolicy,canManageRewards}:{
        </div>
       </article>)}
      </div>
+     {moreProducts&&<button type="button" style={css.button} disabled={loading||pagingBusy||busy}
+      onClick={()=>void loadMore("PRODUCTS")}>Load more reward products</button>}
      {!orderedProducts.length&&<p>{products.length?
        "No recorded product matches this search or category.":
        "No authentic product yet. Digital rewards require no warehouse."}</p>}
