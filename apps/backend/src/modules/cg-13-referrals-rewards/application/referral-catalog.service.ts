@@ -652,6 +652,8 @@ export class ReferralCatalogService{
    const q=await tx.query(
     "SELECT p.id AS ref,p.programme_id AS \"programmeRef\",p.product_type AS type,"+
     "p.category,p.name,p.description,p.points_price::text AS \"pointsPrice\","+
+    "p.version,p.eligible_audience AS \"eligibleAudience\","+
+    "pr.audience AS \"programmeAudience\","+
     "p.approved_image_url AS \"imageUrl\",p.highlighted,"+
     "CASE WHEN p.product_type='DIGITAL' THEN 'NO_STOCK_REQUIRED' "+
     "WHEN item.status='ACTIVE' AND item.unit_code='PIECE' AND item.qty_scale=0 "+
