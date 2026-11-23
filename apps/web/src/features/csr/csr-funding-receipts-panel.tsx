@@ -7,7 +7,7 @@ type Summary={proposalStatus:string;sourceVersion:number;
  allocationStatus:string};
 type Candidate={reconciliationRef:string;verifiedDate:string;amountMinor:string;
  bankName:string;bankItemMasked:string};
-type Command={requestKey:string;expectedVersion:number;partyKind:"CSR"|"FOUNDATION";reconciliationRef:string};
+type Command={requestKey:string;expectedVersion:number;partyKind:"CSR"|"FOUNDATION";reconciliationRef:string;remitterConfirmed:true};
 const currency=(raw:string)=>{try{const n=BigInt(raw);
  return "₹"+(n/100n).toLocaleString("en-IN")+"."+(n%100n).toString().padStart(2,"0");}
  catch{return "Amount unavailable";}};
@@ -29,6 +29,7 @@ export function CsrFundingReceiptsPanel({proposalRef,version,canLink}:{
  const [loading,setLoading]=useState(true),[error,setError]=useState(""),
   [notice,setNotice]=useState(""),[busy,setBusy]=useState(false);
  const [candidate,setCandidate]=useState(""),[party,setParty]=useState<"CSR"|"FOUNDATION">("CSR");
+ const [remitterConfirmed,setRemitterConfirmed]=useState(false);
  const [command,setCommand]=useState<Command|null>(null),[epoch,setEpoch]=useState(0);
  const seq=useRef(0),lock=useRef(false);
  useEffect(()=>{
@@ -39,7 +40,7 @@ export function CsrFundingReceiptsPanel({proposalRef,version,canLink}:{
   ]).then(([v,eligible])=>{
    if(id!==seq.current)return;
    if(v.sourceVersion!==version)throw Error("Approved funding source changed. Refresh.");
-   setSummary(v);setItems(eligible.items);setCandidate("");
+   setSummary(v);setItems(eligible.items);setCandidate("");setRemitterConfirmed(false);
    setParty(BigInt(v.csrCommittedMinor)>0n?"CSR":"FOUNDATION");
   }).catch(e=>{if(id===seq.current){
    setSummary(null);setItems([]);
@@ -48,14 +49,14 @@ export function CsrFundingReceiptsPanel({proposalRef,version,canLink}:{
   return()=>{seq.current++;};
  },[proposalRef,version,epoch]);
  const submit=async()=>{
-  if(lock.current||!canLink||loading||!summary||!candidate&&!command)return;
+  if(lock.current||!canLink||loading||!summary||!candidate&&!command||!remitterConfirmed&&!command)return;
   if(!command&&!items.some(v=>v.reconciliationRef===candidate))return;
   const input=command??{requestKey:crypto.randomUUID(),expectedVersion:version,
-   partyKind:party,reconciliationRef:candidate};
+   partyKind:party,reconciliationRef:candidate,remitterConfirmed:true as const};
   lock.current=true;setBusy(true);setCommand(input);setError("");setNotice("");
   try{
    await fetchOriginal(proposalRef,"/receipts",input);
-   setCommand(null);setCandidate("");
+   setCommand(null);setCandidate("");setRemitterConfirmed(false);
    setNotice("Linked independently verified original CG09 bank money. This is not an allocation.");
    setEpoch(v=>v+1);
   }catch(e){
@@ -103,7 +104,14 @@ export function CsrFundingReceiptsPanel({proposalRef,version,canLink}:{
      {BigInt(summary.foundationCommittedMinor)>0n&&<option value="FOUNDATION">Foundation portion</option>}
     </select>
    </label>
-   <button type="button" disabled={busy||!candidate&&!command} onClick={()=>void submit()}>
+   <label style={{display:"flex",gap:9,alignItems:"flex-start",fontSize:13}}>
+    <input type="checkbox" checked={remitterConfirmed} disabled={busy||!!command}
+     onChange={e=>setRemitterConfirmed(e.target.checked)}/>
+    I checked the actual CG09 bank statement and confirmed the remitter belongs to
+    the selected CSR partner or Foundation funding share. The bank match alone
+    does not independently establish who paid.
+   </label>
+   <button type="button" disabled={busy||(!candidate||!remitterConfirmed)&&!command} onClick={()=>void submit()}>
     {command?"Retry the exact original receipt link":"Link verified bank receipt"}</button>
   </>}
   <button type="button" disabled={busy} onClick={()=>setEpoch(x=>x+1)}>
