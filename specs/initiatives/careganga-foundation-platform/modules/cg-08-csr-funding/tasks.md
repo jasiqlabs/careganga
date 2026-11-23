@@ -464,3 +464,8 @@ Added `CsrFundingProposalsService` and protected `api/v1/csr/funding-proposals` 
 ### US002 targeted independent source review — corrected TS type-only Pool imports and added genuine B08 selector
 
 Fixed type-only PG imports to avoid TypeScript verbatim-module runtime import errors. Added `GET /api/v1/csr/funding-proposals/options`, returning readable current CG02 Foundation/branch labels, APPROVED original CG08 sponsor identity and only CG05 original PLANNED/ACTIVE actual project refs+current source versions. The option readers share exactly the original current root/branch scope; no technical IDs displayed, no arbitrary project typed/created, and unavailable/closed project will still be rejected atomically at save time. The CG05 project options function remains in the original CG05 owning source file. Original US002-QA02/05/10/12/13/15/19 source path authored; Web/native implementation still pending, no source-complete claim.
+
+
+### US002 protected Next BFF for B07/B08 source drafts
+
+Added origin-checked authenticated no-store Next `api/csr/funding-proposals` proxy to the actual Nest CG08 draft controller. Only GET collection/options/detail, POST create, PATCH exact proposal ref are allowed; no `submit`/`approve`/`received`/`allocate` or undocumented endpoint can be invoked from this route. It does not forward arbitrary query parameters or return private backend error internals. Response timeouts retain an unknown outcome and original request replay is the caller's responsibility. Existing US002-QA02/04/17/20 source added; runtime NOT_RUN.
