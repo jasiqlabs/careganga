@@ -56,6 +56,10 @@ export class CsrFundingProposalsService{
    throw e;
   }finally{tx.release();}
  }
+ private async canSeeProjects(tx:PoolClient,a:VerifiedFoundationActor){
+  try{await this.identity.assertCurrent(tx,a,"projects.view");return true;}
+  catch(e){if(e instanceof ForbiddenException)return false;throw e;}
+ }
  private async sourceScope(tx:PoolClient,a:VerifiedFoundationActor,v:ReturnType<typeof parseFundingProposal>){
   await this.branches.projectBranch(tx,a,v.branchRef);
   if(v.partnerRef!==null){
@@ -64,8 +68,10 @@ export class CsrFundingProposalsService{
    if(p.status!=="APPROVED"||p.branch_ref!==null&&p.branch_ref!==v.branchRef)
     throw new ConflictException("The CSR sponsor is not approved for this Foundation branch.");
   }
-  if(v.projectRef!==null)
+  if(v.projectRef!==null){
+   await this.identity.assertCurrent(tx,a,"projects.view");
    await assertCsrFundingProject(tx,a,v.projectRef,v.branchRef,v.projectVersion!);
+  }
  }
  private async original(tx:PoolClient,a:VerifiedFoundationActor,id:string,update=false){
   const p=(await tx.query<ProposalRow>(
@@ -155,9 +161,10 @@ export class CsrFundingProposalsService{
     [a.realmId,scope.all,scope.branches.map(x=>x.value)]);
    if(partners.rows.length>100)
     throw new ConflictException("Narrow the authorized CSR partner catalogue.");
+   const projects=await this.canSeeProjects(tx,a)?
+    await csrFundingProjectOptions(tx,a.realmId,scope):[];
    return {foundation:scope.all,branches:scope.branches.map(x=>({value:x.value,label:x.label})),
-    partners:partners.rows,
-    projects:await csrFundingProjectOptions(tx,a.realmId,scope)};
+    partners:partners.rows,projects};
   },true);
  }
  async detail(bearer:string,proposalRef:string){
@@ -167,7 +174,8 @@ export class CsrFundingProposalsService{
    const row=(await tx.query("SELECT "+projection+joins+
     " WHERE f.root_realm_id=$1 AND f.id=$2",[a.realmId,id])).rows[0];
    if(!row)throw missing();
-   return row;
+   return await this.canSeeProjects(tx,a)?row:{...row,
+    projectRef:null,projectVersion:null,projectName:null};
   },true);
  }
  async list(bearer:string,raw:Record<string,unknown>){
@@ -201,7 +209,11 @@ export class CsrFundingProposalsService{
     "ORDER BY f.updated_at DESC,f.id DESC LIMIT 26 OFFSET $8",
     [a.realmId,scope.all,scope.branches.map(x=>x.value),branch===undefined,
      branch??null,q,status,offset]);
-   return {items:rows.rows.slice(0,25),hasMore:rows.rows.length>25};
+   const permittedProjects=await this.canSeeProjects(tx,a);
+   const records=rows.rows.slice(0,25) as Record<string,unknown>[];
+   return {items:permittedProjects?records:records.map(v=>({...v,
+    projectRef:null,projectVersion:null,projectName:null})),
+    hasMore:rows.rows.length>25};
   },true);
  }
 }
