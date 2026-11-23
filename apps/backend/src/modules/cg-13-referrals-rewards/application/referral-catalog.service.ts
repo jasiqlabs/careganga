@@ -13,6 +13,12 @@ import type {VerifiedFoundationActor} from "../../cg-01-identity-access/public-a
 const UUID=/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const MONEY=/^(0|[1-9][0-9]{0,9})(\.[0-9]{1,6})?$/;
 const bad=(field:string)=>new BadRequestException({code:"CG13_INVALID_INPUT",field});
+const CATALOG_PAGE_SIZE=40;
+const catalogPage=(value:unknown):number=>{
+ if(value===undefined||value===null||value==="")return 1;
+ if(typeof value!=="string"||!(/^[1-9][0-9]{0,3}$/).test(value))throw bad("page");
+ return Number(value);
+};
 const ref=(v:unknown,field="ref"):string=>{
  if(typeof v!=="string"||!UUID.test(v))throw bad(field);return v.toLowerCase();
 };
@@ -369,7 +375,8 @@ export class ReferralCatalogService{
    return {ref:productRef,version:expected+1,replayed:false};
   });
  }
- async listProgrammes(bearer:string){
+ async listProgrammes(bearer:string,pageInput?:string){
+  const page=catalogPage(pageInput);
   return this.run(bearer,"referrals.programmes.view",async(tx,a)=>{
    await this.root(tx,a);
    const q=await tx.query(
@@ -380,8 +387,9 @@ export class ReferralCatalogService{
     "v.auto_rank_upgrade AS \"autoRankUpgrade\" "+
     "FROM referral_program p JOIN referral_policy_version v ON v.root_realm_id=p.root_realm_id "+
     "AND v.programme_id=p.id AND v.version_no=p.active_policy_version "+
-    "WHERE p.root_realm_id=$1 ORDER BY p.display_name,p.id LIMIT 101",[a.realmId]);
-   return {items:q.rows.slice(0,100),hasMore:q.rows.length>100};
+    "WHERE p.root_realm_id=$1 ORDER BY p.display_name,p.id LIMIT $2 OFFSET $3",
+    [a.realmId,CATALOG_PAGE_SIZE+1,(page-1)*CATALOG_PAGE_SIZE]);
+   return {items:q.rows.slice(0,CATALOG_PAGE_SIZE),hasMore:q.rows.length>CATALOG_PAGE_SIZE,page};
   },true);
  }
  async programmeDetail(bearer:string,programInput:string){
@@ -409,8 +417,8 @@ export class ReferralCatalogService{
    return {...q.rows[0],ranks:tiers.rows};
   },true);
  }
- async listProducts(bearer:string,programInput:string){
-  const programId=ref(programInput);
+ async listProducts(bearer:string,programInput:string,pageInput?:string){
+  const programId=ref(programInput),page=catalogPage(pageInput);
   return this.run(bearer,"rewards.catalog.view",async(tx,a)=>{
    await this.root(tx,a);
    await this.program(tx,a,programId);
@@ -420,8 +428,9 @@ export class ReferralCatalogService{
     "status,highlighted,public_visible AS \"publicVisible\",approved_image_url AS \"imageUrl\","+
     "cg12_item_ref AS \"itemRef\",cg12_location_ref AS \"storeRef\",version "+
     "FROM reward_product WHERE root_realm_id=$1 AND programme_id=$2 "+
-    "ORDER BY created_at DESC,id DESC LIMIT 101",[a.realmId,programId]);
-   return {items:q.rows.slice(0,100),hasMore:q.rows.length>100};
+    "ORDER BY created_at DESC,id DESC LIMIT $3 OFFSET $4",
+    [a.realmId,programId,CATALOG_PAGE_SIZE+1,(page-1)*CATALOG_PAGE_SIZE]);
+   return {items:q.rows.slice(0,CATALOG_PAGE_SIZE),hasMore:q.rows.length>CATALOG_PAGE_SIZE,page};
   },true);
  }
  async stockOptions(bearer:string){
@@ -455,7 +464,8 @@ export class ReferralCatalogService{
     notice:"Read-only original CG12 available quantity. No warehouse stock is changed."};
   },true);
  }
- async publicEligibleCatalog(bearer:string){
+ async publicEligibleCatalog(bearer:string,pageInput?:string){
+  const page=catalogPage(pageInput);
   const a=await this.sessions.verifySession(bearer),tx=await this.db.connect();
   try{
    await tx.query("BEGIN ISOLATION LEVEL REPEATABLE READ");
@@ -493,10 +503,10 @@ export class ReferralCatalogService{
     "AND (p.eligible_audience='BOTH' AND cardinality($2::text[])>0 "+
     "OR p.eligible_audience=ANY($2::text[])) "+
     "AND (pr.audience='BOTH' OR pr.audience=ANY($2::text[])) "+
-    "ORDER BY p.highlighted DESC,p.created_at DESC,p.id DESC LIMIT 101",
-    [a.realmId,kinds]);
+    "ORDER BY p.highlighted DESC,p.created_at DESC,p.id DESC LIMIT $3 OFFSET $4",
+    [a.realmId,kinds,CATALOG_PAGE_SIZE+1,(page-1)*CATALOG_PAGE_SIZE]);
    await tx.query("COMMIT");
-   return {eligibleRelationships:kinds,items:q.rows.slice(0,100),hasMore:q.rows.length>100,
+   return {eligibleRelationships:kinds,items:q.rows.slice(0,CATALOG_PAGE_SIZE),hasMore:q.rows.length>CATALOG_PAGE_SIZE,page,
     notice:kinds.length?"Points are not cash. Products require genuine earned CG13 points before redemption.":
      "An active original CG04 membership or volunteer relationship is required."};
   }catch(e){
