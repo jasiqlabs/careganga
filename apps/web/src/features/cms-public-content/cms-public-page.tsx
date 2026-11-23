@@ -132,8 +132,10 @@ export function SiteFooter({data,navigation}:{data:Record<string,unknown>;
     </div>
     <div><h3>QUICK LINKS</h3>
      {isPublished("/about")?<Link href="/about">About Us</Link>:<span>About Us</span>}
-     <span aria-disabled="true" className="cg-site-unavailable">Campaigns</span>
-     <span aria-disabled="true" className="cg-site-unavailable">Donate</span>
+     {isPublished("/campaigns")?<Link href="/campaigns">Campaigns</Link>:
+      <span aria-disabled="true" className="cg-site-unavailable">Campaigns</span>}
+     {isPublished("/donate")?<Link href="/donate">Donate</Link>:
+      <span aria-disabled="true" className="cg-site-unavailable">Donate</span>}
      {isPublished("/our-impact")&&<Link href="/our-impact">Our Impact</Link>}
      {isPublished("/gallery")&&<Link href="/gallery">Media Gallery</Link>}
      {isPublished("/healthcare")&&<Link href="/healthcare">Healthcare Assistance</Link>}
@@ -159,8 +161,12 @@ export function SiteFooter({data,navigation}:{data:Record<string,unknown>;
     <span>Community care and development</span></div>
   </footer>
   <div className="cg-site-floating">
-   <span className="cg-site-float-donate" aria-label="Donation service is not available yet"
-    title="Donation service will be available when published">♥ &nbsp; DONATE NOW</span>
+   {isPublished("/donate")?
+    <Link className="cg-site-float-donate" href="/donate"
+     aria-label="Donate to CareGanga Foundation">♥ &nbsp; DONATE NOW</Link>:
+    <span className="cg-site-float-donate" aria-disabled="true"
+     aria-label="Donation service is not available yet"
+     title="Donation service will be available when verified">♥ &nbsp; DONATE NOW</span>}
    {number.length>=10&&number.length<=15&&
     <a className="cg-site-float-whatsapp" href={"https://wa.me/"+number}
      target="_blank" rel="noopener noreferrer" aria-label="Contact CareGanga on WhatsApp">
