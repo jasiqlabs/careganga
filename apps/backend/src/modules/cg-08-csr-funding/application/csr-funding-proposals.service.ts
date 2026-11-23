@@ -401,6 +401,9 @@ export class CsrFundingProposalsService{
    throw new BadRequestException("Narrow your proposal results.");
   const branch=raw.branchRef===undefined?undefined:
    raw.branchRef==="FOUNDATION"?null:ref(raw.branchRef);
+  let financeScope:{all:boolean;branchRefs:string[]}|null=null;
+  try{financeScope=await this.branches.financeReportScope(bearer,"finance.reports.view");}
+  catch(e){if(!(e instanceof ForbiddenException))throw e;}
   return this.run(bearer,"csr.partners.view",async(tx,a)=>{
    const scope=await this.branches.projectBranchScope(tx,a);
    if(branch===null&&!scope.all)
@@ -434,9 +437,20 @@ export class CsrFundingProposalsService{
     drafts:Number(totals?.drafts??0),requestedMinor:totals?.requestedMinor??"0"};
    const permittedProjects=await this.canSeeProjects(tx,a);
    const records=rows.rows.slice(0,25) as Record<string,unknown>[];
+   let verifiedFinance:null|Awaited<ReturnType<FinanceCsrReceiptSourceFacade["dashboardSummary"]>>=null;
+   if(financeScope){
+    const csrBranches=scope.branches.map(x=>x.value);
+    const all=scope.all&&financeScope.all;
+    const branchRefs=all?[]:financeScope.all?csrBranches:
+     scope.all?financeScope.branchRefs:
+      csrBranches.filter(x=>financeScope!.branchRefs.includes(x));
+    try{verifiedFinance=await this.receipts.dashboardSummary(tx,a,{
+     all,branchRefs,branchFilter:branch,query:q});
+    }catch(e){if(!(e instanceof ForbiddenException))throw e;}
+   }
    return {items:permittedProjects?records:records.map(v=>({...v,
     projectRef:null,projectVersion:null,projectName:null})),
-    hasMore:rows.rows.length>25,summary};
+    hasMore:rows.rows.length>25,summary:{...summary,verifiedFinance}};
   },true);
  }
 }
