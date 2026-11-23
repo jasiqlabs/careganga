@@ -300,6 +300,30 @@ export class ReferralCatalogService{
    return {ref:refId,version:expected+1,replayed:false};
   });
  }
+ /** Accept only a same-root published, currently rights-cleared CG19 image.
+  * This SELECT uses the caller's transaction and CG19's own publication proof.
+  */
+ private async requireApprovedImage(tx:PoolClient,a:VerifiedFoundationActor,
+  url:string|null):Promise<void>{
+  if(!url)return;
+  const ref=rewardImageFileRef(url);
+  const verified=await eligiblePublishedRewardImageRefs(tx,a.realmId,ref?[ref]:[]);
+  if(!ref||!verified.has(ref))
+   throw new ConflictException({code:"CG13_MEDIA_UNAVAILABLE"});
+ }
+ /** Hide withdrawn/unpublished photos before exposing a catalogue page.
+  * The CG19 same-origin public bytes endpoint rechecks proof upon image fetch.
+  */
+ private async approvedPageImages<T extends {imageUrl:unknown}>(
+  tx:PoolClient,a:VerifiedFoundationActor,rows:T[]):Promise<(T&{imageUrl:string|null})[]>{
+  const checked=rows.map(row=>safePublicRewardImage(row.imageUrl));
+  const refs=checked.map(rewardImageFileRef).filter((x):x is string=>!!x);
+  const allowed=await eligiblePublishedRewardImageRefs(tx,a.realmId,[...new Set(refs)]);
+  return rows.map((row,i)=>{
+   const ref=rewardImageFileRef(checked[i]);
+   return {...row,imageUrl:ref&&allowed.has(ref)?checked[i]:null};
+  });
+ }
  private async stockSource(tx:PoolClient,a:VerifiedFoundationActor,p:Product){
   if(p.type!=="PHYSICAL"||p.status==="ARCHIVED")return null;
   await this.identity.assertCurrent(tx,a,"inventory.catalog.view");
@@ -341,6 +365,7 @@ export class ReferralCatalogService{
       source.audience!==p.eligibleAudience)throw bad("eligibleAudience");
    if(source.audience!=="BOTH"&&p.eligibleAudience==="BOTH")throw bad("eligibleAudience");
    await this.stockSource(tx,a,p);
+   await this.requireApprovedImage(tx,a,p.approvedImageUrl);
    const x=await tx.query<{id:string}>(
     "INSERT INTO reward_product(root_realm_id,programme_id,product_type,category,name,"+
     "description,points_price,eligible_audience,status,highlighted,public_visible,"+
@@ -388,6 +413,7 @@ export class ReferralCatalogService{
    if(source.audience!=="BOTH"&&p.eligibleAudience!==source.audience)
     throw bad("eligibleAudience");
    await this.stockSource(tx,a,p);
+   await this.requireApprovedImage(tx,a,p.approvedImageUrl);
    const changed=await tx.query(
     "UPDATE reward_product SET product_type=$3,category=$4,name=$5,description=$6,"+
     "points_price=$7,eligible_audience=$8,status=$9,highlighted=$10,public_visible=$11,"+
@@ -487,8 +513,8 @@ export class ReferralCatalogService{
     "ORDER BY p.created_at DESC,p.id DESC LIMIT $3 OFFSET $4",
     [a.realmId,programId,CATALOG_PAGE_SIZE+1,(page-1)*CATALOG_PAGE_SIZE,
      scope.full,scope.branches,search,category]);
-   return {items:q.rows.slice(0,CATALOG_PAGE_SIZE).map(x=>({
-    ...x,imageUrl:safePublicRewardImage((x as {imageUrl:unknown}).imageUrl)})),
+   return {items:await this.approvedPageImages(tx,a,
+     q.rows.slice(0,CATALOG_PAGE_SIZE) as {imageUrl:unknown}[]),
     hasMore:q.rows.length>CATALOG_PAGE_SIZE,page};
   },true);
  }
@@ -584,9 +610,10 @@ export class ReferralCatalogService{
     "AND (pr.audience='BOTH' OR pr.audience=ANY($2::text[])) "+
     "ORDER BY p.highlighted DESC,p.created_at DESC,p.id DESC LIMIT $3 OFFSET $4",
     [a.realmId,kinds,CATALOG_PAGE_SIZE+1,(page-1)*CATALOG_PAGE_SIZE]);
+   const safeItems=await this.approvedPageImages(tx,a,
+     q.rows.slice(0,CATALOG_PAGE_SIZE) as {imageUrl:unknown}[]);
    await tx.query("COMMIT");
-   return {eligibleRelationships:kinds,items:q.rows.slice(0,CATALOG_PAGE_SIZE).map(x=>({
-    ...x,imageUrl:safePublicRewardImage((x as {imageUrl:unknown}).imageUrl)})),
+   return {eligibleRelationships:kinds,items:safeItems,
     hasMore:q.rows.length>CATALOG_PAGE_SIZE,page,
     notice:kinds.length?"Points are not cash. Products require genuine earned CG13 points before redemption.":
      "An active original CG04 membership or volunteer relationship is required."};
