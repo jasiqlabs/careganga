@@ -8,7 +8,7 @@ import type {VerifiedFoundationActor} from "../../cg-01-identity-access/public-a
 const ID=/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 export type CsrParty="CSR"|"FOUNDATION";
 export type ApprovedFundingSource=Readonly<{
- proposalRef:string;sourceVersion:number;branchRef:string|null;
+ proposalRef:string;sourceVersion:number;branchRef:string|null;projectRef:string|null;
  csrMinor:string;foundationMinor:string;status:"APPROVED";
 }>;
 const digest=(v:unknown)=>createHash("sha256").update(JSON.stringify(v)).digest("hex");
@@ -25,7 +25,7 @@ export class FinanceCsrReceiptSourceFacade{
  constructor(private readonly identity:FoundationStructureIdentityFacade,
   private readonly branches:BranchSourceFacade){}
  private async scope(tx:PoolClient,a:VerifiedFoundationActor,p:ApprovedFundingSource,
-  action:"finance.reports.view"|"finance.reconciliation.manage"){
+  action:"finance.reports.view"|"finance.reconciliation.manage"|"finance.budgets.manage"){
   await this.identity.assertCurrent(tx,a,action);
   if(p.branchRef===null)await this.branches.requireFinanceRootScope(tx,a,action);
   else await this.branches.requireFinanceActiveBranch(tx,a,p.branchRef,action);
@@ -127,6 +127,126 @@ export class FinanceCsrReceiptSourceFacade{
    [a.realmId,p.proposalRef,p.sourceVersion,input.partyKind,ref,key,hash,a.accountId,true]);
   if(!saved.rowCount)throw stale();
   return {linked:true,replayed:false};
+ }
+
+ /** Budget options are real CG09 approved category/project/branch budgets.
+  * Current finance permission is checked inside the same original transaction. */
+ async eligibleBudgets(tx:PoolClient,a:VerifiedFoundationActor,p:ApprovedFundingSource){
+  await this.scope(tx,a,p,"finance.budgets.manage");
+  const rows=await tx.query<{budgetRef:string;name:string;category:string;
+   ceilingMinor:string;periodStart:string;periodEnd:string}>(
+   'SELECT b.id AS "budgetRef",b.budget_name AS name,b.category_label AS category,'+
+   'b.approved_ceiling_minor::text AS "ceilingMinor",'+
+   'b.period_start::text AS "periodStart",b.period_end::text AS "periodEnd" '+
+   "FROM finance_budget b JOIN financial_year fy ON fy.id=b.financial_year_id "+
+   "AND fy.root_realm_id=b.root_realm_id AND fy.status='OPEN' "+
+   "WHERE b.root_realm_id=$1 AND b.status='APPROVED' "+
+   "AND b.branch_id IS NOT DISTINCT FROM $2::uuid "+
+   "AND b.project_ref IS NOT DISTINCT FROM $3::uuid "+
+   "ORDER BY b.created_at DESC,b.id DESC LIMIT 26",
+   [a.realmId,p.branchRef,p.projectRef]);
+  return {items:rows.rows.slice(0,25),hasMore:rows.rows.length>25};
+ }
+ async eligibleBudgetExpenses(tx:PoolClient,a:VerifiedFoundationActor,
+  p:ApprovedFundingSource,budgetInput:string){
+  await this.scope(tx,a,p,"finance.budgets.manage");
+  const budget=uid(budgetInput);
+  const rows=await tx.query<{journalRef:string;voucherNumber:string;amountMinor:string;postedDate:string}>(
+   'SELECT j.id AS "journalRef",v.voucher_number AS "voucherNumber",'+
+   'v.total_minor::text AS "amountMinor",j.posting_date::text AS "postedDate" '+
+   "FROM finance_budget b JOIN journal j ON j.root_realm_id=b.root_realm_id "+
+   "AND j.financial_year_id=b.financial_year_id "+
+   "AND j.posting_date BETWEEN b.period_start AND b.period_end "+
+   "AND j.posting_kind='VOUCHER' AND j.status='POSTED' "+
+   "JOIN finance_voucher v ON v.id=j.source_ref AND v.root_realm_id=j.root_realm_id "+
+   "AND v.voucher_type='EXPENSE' AND v.status IN('POSTED','PAYMENT_REQUESTED','PAID_VERIFIED') "+
+   "AND v.branch_id IS NOT DISTINCT FROM b.branch_id "+
+   "AND ($4::uuid IS NULL OR v.project_ref=$4) "+
+   "JOIN finance_account account ON account.id=v.debit_account_id "+
+   "AND account.root_realm_id=v.root_realm_id "+
+   "JOIN account_group g ON g.id=account.group_id AND g.root_realm_id=account.root_realm_id "+
+   "AND g.category='EXPENSE' AND g.code=b.category_label "+
+   "WHERE b.id=$1 AND b.root_realm_id=$2 AND b.status='APPROVED' "+
+   "AND b.branch_id IS NOT DISTINCT FROM $3::uuid "+
+   "AND b.project_ref IS NOT DISTINCT FROM $4::uuid "+
+   "AND NOT EXISTS(SELECT 1 FROM finance_budget_event e "+
+   "WHERE e.root_realm_id=j.root_realm_id AND e.source_journal_id=j.id) "+
+   "AND NOT EXISTS(SELECT 1 FROM journal reversal "+
+   "WHERE reversal.root_realm_id=j.root_realm_id AND reversal.reversal_of_id=j.id "+
+   "AND reversal.posting_kind='REVERSAL') "+
+   "ORDER BY j.posting_date DESC,j.id DESC LIMIT 26",
+   [budget,a.realmId,p.branchRef,p.projectRef]);
+  return {items:rows.rows.slice(0,25),hasMore:rows.rows.length>25};
+ }
+ /** One original CG09 ALLOCATE/UTILIZE event and one immutable attribution
+  * are committed in the same transaction; failed review rolls both back.
+  * Original finance_budget_event capacity and posted voucher guards remain
+  * authoritative, independently of our CG08 receipt-capacity guard. */
+ async recordBudgetEffect(tx:PoolClient,a:VerifiedFoundationActor,p:ApprovedFundingSource,
+  raw:{partyKind:CsrParty;kind:"ALLOCATE"|"UTILIZE";budgetRef:string;
+   amountMinor:string;journalRef:string|null;requestKey:string}){
+  await this.scope(tx,a,p,"finance.budgets.manage");
+  if(!["CSR","FOUNDATION"].includes(raw.partyKind)||
+   !["ALLOCATE","UTILIZE"].includes(raw.kind)||
+   !/^[1-9][0-9]{0,13}$/.test(raw.amountMinor)||
+   BigInt(raw.amountMinor)>99999999999999n||
+   raw.kind==="UTILIZE"&&!raw.journalRef||
+   raw.kind==="ALLOCATE"&&raw.journalRef!==null)
+   throw new BadRequestException("Check the approved allocation or original posted expense.");
+  const budget=uid(raw.budgetRef),key=uid(raw.requestKey),
+   journal=raw.journalRef===null?null:uid(raw.journalRef);
+  const hash=digest(["CG09_CSR_BUDGET_EFFECT_V1",p.proposalRef,p.sourceVersion,
+   raw.partyKind,raw.kind,budget,raw.amountMinor,journal]);
+  await tx.query("SELECT pg_advisory_xact_lock(hashtextextended($1,0))",
+   ["CG09:CSR:BUDGET:"+a.realmId+":"+a.accountId+":"+key]);
+  const prior=(await tx.query<{funding_proposal_id:string;approved_source_version:number;
+   party_kind:string;request_digest:string}>(
+   "SELECT funding_proposal_id,approved_source_version,party_kind,request_digest "+
+   "FROM finance_csr_budget_effect WHERE root_realm_id=$1 AND actor_ref=$2 AND request_key=$3",
+   [a.realmId,a.accountId,key])).rows[0];
+  if(prior){
+   if(prior.funding_proposal_id!==p.proposalRef||
+    prior.approved_source_version!==p.sourceVersion||
+    prior.party_kind!==raw.partyKind||prior.request_digest!==hash)throw stale();
+   return {confirmed:true,replayed:true};
+  }
+  const matches=await this.eligibleBudgets(tx,a,p);
+  if(!matches.items.some(x=>x.budgetRef===budget))
+   throw new ConflictException("This original approved budget is unavailable in your project/branch.");
+  if(raw.kind==="UTILIZE"){
+   const eligible=await this.eligibleBudgetExpenses(tx,a,p,budget);
+   if(!eligible.items.some(x=>x.journalRef===journal&&x.amountMinor===raw.amountMinor))
+    throw new ConflictException("Choose the exact current posted Finance expense.");
+  }
+  const ev=(await tx.query<{id:string}>(
+   "INSERT INTO finance_budget_event(root_realm_id,budget_id,kind,amount_minor,"+
+   "event_key,source_digest,source_journal_id,actor_ref) "+
+   "VALUES($1,$2,$3,$4,$5,$6,$7,$8) RETURNING id",
+   [a.realmId,budget,raw.kind,raw.amountMinor,key,hash,journal,a.accountId])).rows[0];
+  if(!ev)throw stale();
+  await tx.query(
+   "INSERT INTO finance_csr_budget_effect(root_realm_id,funding_proposal_id,"+
+   "approved_source_version,party_kind,budget_event_id,request_key,request_digest,actor_ref) "+
+   "VALUES($1,$2,$3,$4,$5,$6,$7,$8)",
+   [a.realmId,p.proposalRef,p.sourceVersion,raw.partyKind,ev.id,key,hash,a.accountId]);
+  return {confirmed:true,replayed:false};
+ }
+ /** A receipt is not an allocation; allocations and actual utilization
+  * derive only from original CG09 budget events, never proposal estimates. */
+ async currentBudgetEffects(tx:PoolClient,a:VerifiedFoundationActor,p:ApprovedFundingSource){
+  await this.scope(tx,a,p,"finance.reports.view");
+  const q=await tx.query<{kind:string;amountMinor:string}>(
+   'SELECT e.kind,COALESCE(sum(e.amount_minor),0)::text AS "amountMinor" '+
+   "FROM finance_csr_budget_effect link JOIN finance_budget_event e "+
+   "ON e.id=link.budget_event_id AND e.root_realm_id=link.root_realm_id "+
+   "WHERE link.root_realm_id=$1 AND link.funding_proposal_id=$2 "+
+   "AND (e.kind='ALLOCATE' OR NOT EXISTS(SELECT 1 FROM journal reversal "+
+   "WHERE reversal.root_realm_id=e.root_realm_id "+
+   "AND reversal.reversal_of_id=e.source_journal_id AND reversal.posting_kind='REVERSAL')) "+
+   "GROUP BY e.kind",[a.realmId,p.proposalRef]);
+  const amount=(kind:string)=>q.rows.find(x=>x.kind===kind)?.amountMinor??"0";
+  return {allocatedMinor:amount("ALLOCATE"),utilizedMinor:amount("UTILIZE"),
+   source:"CG09_APPROVED_BUDGET_EVENTS" as const};
  }
  /** Single bounded B07 finance projection from original posted sources.
   * Caller intersects CG08 and CG09 permitted current CG02 scopes; no
