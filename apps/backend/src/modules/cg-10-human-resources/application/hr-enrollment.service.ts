@@ -792,6 +792,7 @@ export class HrEnrollmentService{
   try{
    await tx.query("BEGIN");
    await this.identity.assertCurrent(tx,actor,"hr.employees.view");
+   const scope=await this.branches.projectBranchScope(tx,actor);
    let attendanceVisible=true;
    try{await this.identity.assertCurrent(tx,actor,"hr.attendance.view");}catch(e){
     if(!(e instanceof ForbiddenException))throw e;
@@ -810,13 +811,7 @@ export class HrEnrollmentService{
        THEN 0 ELSE 1 END,a.valid_from DESC,a.id DESC LIMIT 1) assignment ON true
      JOIN branch b ON b.id=assignment.branch_ref AND b.root_realm_id=e.root_realm_id
      LEFT JOIN department dep ON dep.id=assignment.department_ref AND dep.root_realm_id=e.root_realm_id
-     WHERE e.root_realm_id=$1 AND (b.manager_account_ref=$2 OR EXISTS(
-      SELECT 1 FROM account_role ar JOIN role role_now ON role_now.id=ar.role_id
-      AND role_now.realm_id=ar.realm_id AND role_now.active
-      LEFT JOIN role_grant grant_row ON grant_row.role_id=role_now.id
-      AND grant_row.capability_key='foundation.branches.admin'
-      WHERE ar.account_id=$2 AND ar.realm_id=$1 AND ar.revoked_at IS NULL
-      AND (role_now.is_protected OR grant_row.capability_key IS NOT NULL)))
+     WHERE e.root_realm_id=$1 AND ($2::boolean OR b.id=ANY($4::uuid[]))
     ), current_staff AS (
      SELECT * FROM scoped WHERE current_assignment AND status IN('ACTIVE','PROBATION')
     ), daily_attendance AS (
@@ -890,7 +885,7 @@ export class HrEnrollmentService{
       'recordedAttendanceRate',CASE WHEN working>0 THEN ROUND(100*present/working,1) ELSE NULL END) FROM month_attendance_counts WHERE $3::boolean) AS monthly,
      (SELECT COALESCE(jsonb_agg(jsonb_build_object('name',name,'date',date,'years',years) ORDER BY date,name),'[]'::jsonb) FROM upcoming_anniversaries) AS anniversaries
     FROM stats`,
-    [actor.realmId,actor.accountId,attendanceVisible]);
+    [actor.realmId,scope.all,attendanceVisible,scope.branches.map(x=>x.value)]);
    const statuses=["ACTIVE","PROBATION","PENDING_ACCESS","ON_HOLD","EXITED"] as const;
    const counts=Object.fromEntries(statuses.map(k=>[k,0])) as Record<typeof statuses[number],number>;
    let newJoinersThisMonth=0,onApprovedLeaveToday=0,employeesWithPendingLeave=0;
