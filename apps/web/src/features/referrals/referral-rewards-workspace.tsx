@@ -103,6 +103,7 @@ export function ReferralRewardsWorkspace({canViewPolicy,canViewRewards,canManage
  const [programmes,setProgrammes]=useState<ProgrammeSummary[]>([]);
  const [selected,setSelected]=useState(""),[detail,setDetail]=useState<Programme|null>(null);
  const [products,setProducts]=useState<Reward[]>([]),[edition,setEdition]=useState<Reward|null>(null);
+ const [activeTotal,setActiveTotal]=useState<string|null>(null);
  const [moreProgrammes,setMoreProgrammes]=useState(false),[moreProducts,setMoreProducts]=useState(false);
  const [programmePage,setProgrammePage]=useState(2),[productPage,setProductPage]=useState(2);
  const [pagingBusy,setPagingBusy]=useState(false);
@@ -170,13 +171,13 @@ export function ReferralRewardsWorkspace({canViewPolicy,canViewRewards,canManage
  },[epoch,canViewPolicy]);
  useEffect(()=>{
   let live=true;productGeneration.current++;
-  setProductsLoading(true);setDetail(null);setProducts([]);
+  setProductsLoading(true);setDetail(null);setProducts([]);setActiveTotal(null);
   setMoreProducts(false);setProductPage(2);
   if(!selected){setProductsLoading(false);return;}
   void Promise.all([canViewPolicy?api<Programme>("/programmes/"+selected):Promise.resolve(null),
-   canViewRewards?api<{items:Reward[];hasMore:boolean}>(
-    productsPath(selected,1,appliedSearch,categoryFilter)):Promise.resolve({items:[],hasMore:false})])
-   .then(([p,v])=>{if(live){setDetail(p);setProducts(v.items);setMoreProducts(v.hasMore);}})
+   canViewRewards?api<{items:Reward[];hasMore:boolean;activeTotal:string}>(
+    productsPath(selected,1,appliedSearch,categoryFilter)):Promise.resolve({items:[],hasMore:false,activeTotal:null})])
+   .then(([p,v])=>{if(live){setDetail(p);setProducts(v.items);setMoreProducts(v.hasMore);setActiveTotal(v.activeTotal);}})
    .catch(e=>{if(live)setError(e instanceof Error?e.message:"Current programme unavailable.");})
    .finally(()=>{if(live)setProductsLoading(false);});
   return()=>{live=false;};
@@ -305,7 +306,6 @@ export function ReferralRewardsWorkspace({canViewPolicy,canViewRewards,canManage
  const setRank=(i:number,field:keyof Rank,v:string)=>{
   setProgrammeForm(p=>({...p,ranks:p.ranks.map((x,k)=>k===i?{...x,[field]:v}:x)}));
  };
- const activeProducts=products.filter(p=>p.status==="ACTIVE");
  const availableRanks=detail?.effectiveRanks??detail?.ranks??[];
  const programmeTitle=programmes.find(p=>p.ref===selected)?.name??"No active programme selected";
  const categories=useMemo(()=>["All",...new Set(availableCategories)],[availableCategories]);
@@ -503,7 +503,7 @@ export function ReferralRewardsWorkspace({canViewPolicy,canViewRewards,canManage
     </section>
     <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(180px,1fr))",gap:9}}>
      {([
-      ["ACTIVE PRODUCTS (SHOWN)",String(activeProducts.length)],
+      ["ACTIVE PRODUCTS",activeTotal??"—"],
       ["POINTS REDEEMED",summary?.redemptionMetrics?.spentPoints??"—"],
       ["PENDING ORDERS",summary?.redemptionMetrics?.pending??"—"],
       ["FULFILLED ORDERS",summary?.redemptionMetrics?.fulfilled??"—"]
@@ -525,7 +525,7 @@ export function ReferralRewardsWorkspace({canViewPolicy,canViewRewards,canManage
     {rewardView==="CATALOG"?<section style={css.panel}>
      <div style={{display:"flex",justifyContent:"space-between",flexWrap:"wrap",gap:10}}>
       <div><h3 style={{margin:0}}>Reward Products Catalogue</h3>
-       <p style={{fontSize:13,margin:"5px 0"}}>{activeProducts.length} active recorded products for {programmeTitle}</p></div>
+       <p style={{fontSize:13,margin:"5px 0"}}>{activeTotal??"—"} active recorded products for {programmeTitle}</p></div>
       {canManageRewards&&<button style={css.primary} onClick={()=>openProduct()}>Add New Product</button>}
      </div>
      <label style={css.field}>Selected programme
