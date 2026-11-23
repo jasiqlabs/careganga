@@ -90,7 +90,7 @@ export class CsrFundingProposalsService{
   await this.identity.assertCurrent(tx,a,write?"csr.partners.manage":"csr.partners.view");
   const p=await this.original(tx,a,ref(proposalRef),write);
   if(sourceVersion!==null&&p.version!==sourceVersion)throw changed();
-  if(write&&p.status!=="DRAFT"&&p.status!=="RETURNED")throw changed();
+  if(write&&p.status!=="DRAFT")throw changed();
   if(p.csr_partner_id!==null){
    const sponsor=await this.partners.guardAgreement(tx,a,p.csr_partner_id,null,false);
    if(sponsor.status!=="APPROVED"||
