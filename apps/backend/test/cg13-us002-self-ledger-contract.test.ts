@@ -23,6 +23,8 @@ function fixture({member=true,wallet=true,programme=true}={}){
     return {rows:[],rowCount:0};
    if(sql.startsWith("SELECT 1 FROM referral_program p"))
     return {rows:programme?[{exists:1}]:[],rowCount:programme?1:0};
+   if(sql.includes("FROM referral_attribution attr"))
+    return {rows:[{count:"2"}],rowCount:1};
    if(sql.includes("FROM points_account WHERE root_realm_id="))
     return {rows:wallet?[{id:WALLET,earnedPoints:"125",reversedPoints:"50",
      heldPoints:"5",spentPoints:"20",qualifiedReferrals:2,
@@ -50,6 +52,11 @@ describe("CG13 US002 current CG04 self points/rank API source contracts (not exe
    res.reversedPoints,res.spentPoints,res.adjustmentDuePoints],
    ["125","50","5","50","20","0"]);
   assert.equal(res.currentRankName,"Champion");
+  assert.equal(res.pendingReferrals,"2");
+  const pending=f.seen.find(x=>x.sql.includes("FROM referral_attribution attr"));
+  assert.ok(pending);
+  assert.deepEqual(pending.params,[ROOT,PROGRAMME,PERSON,"MEMBER",MEMBER]);
+  assert.match(pending.sql,/AND NOT EXISTS\(SELECT 1 FROM points_event/);
   assert.deepEqual(f.stats(),{began:1,committed:1});
  });
  test("zero balance only when genuine eligible source has no credit",async()=>{
