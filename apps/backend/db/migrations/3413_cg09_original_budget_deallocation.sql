@@ -75,3 +75,25 @@ BEGIN
  END IF;
  RETURN NEW;
 END; $$;
+
+-- A deallocation is only valid when the same transaction records its original
+-- CG08/CG09 immutable correction reference. This deferred check covers direct
+-- SQL and prevents generic Finance budget actions from erasing CSR earmarks.
+CREATE FUNCTION cg09_deallocation_has_csr_provenance()
+ RETURNS trigger LANGUAGE plpgsql AS $cg09dealloc$
+BEGIN
+ IF NOT EXISTS(
+  SELECT 1 FROM finance_csr_budget_effect link
+  WHERE link.root_realm_id=NEW.root_realm_id
+   AND link.budget_event_id=NEW.id
+   AND link.correction_of_event_id IS NOT NULL
+ ) THEN
+  RAISE EXCEPTION 'A deallocation requires same-transaction original CSR provenance'
+   USING ERRCODE='P3410';
+ END IF;
+ RETURN NULL;
+END; $cg09dealloc$;
+CREATE CONSTRAINT TRIGGER cg09_deallocation_source_commit
+ AFTER INSERT ON finance_budget_event DEFERRABLE INITIALLY DEFERRED
+ FOR EACH ROW WHEN (NEW.kind='DEALLOCATE')
+ EXECUTE FUNCTION cg09_deallocation_has_csr_provenance();
