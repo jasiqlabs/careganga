@@ -125,6 +125,55 @@ export class FinanceCsrReceiptSourceFacade{
   if(!saved.rowCount)throw stale();
   return {linked:true,replayed:false};
  }
+ /** Single bounded B07 finance projection from original posted sources.
+  * Caller intersects CG08 and CG09 permitted current CG02 scopes; no
+  * paginated-row sum, no copy of received amounts into CG08. */
+ async dashboardSummary(tx:PoolClient,a:VerifiedFoundationActor,scope:{
+  all:boolean;branchRefs:string[];branchFilter:string|null|undefined;query:string
+ }){
+  await this.identity.assertCurrent(tx,a,"finance.reports.view");
+  const x=await tx.query<{committed_minor:string;received_minor:string;invalid_minor:string}>(
+   "WITH selected AS MATERIALIZED (SELECT f.id,f.root_realm_id,f.requested_minor "+
+   "FROM csr_funding_proposal f WHERE f.root_realm_id=$1 "+
+   "AND f.status='APPROVED' "+
+   "AND (($2::boolean AND f.branch_ref IS NULL) "+
+   "OR f.branch_ref=ANY($3::uuid[])) "+
+   "AND ($4::boolean OR f.branch_ref IS NOT DISTINCT FROM $5::uuid) "+
+   "AND ($6='' OR strpos(lower(f.purpose),$6)>0)), "+
+   "commitments AS (SELECT coalesce(sum(requested_minor),0)::text AS amount FROM selected), "+
+   "money AS (SELECT "+
+   "coalesce(sum(CASE WHEN file.id IS NOT NULL AND intent.id IS NOT NULL "+
+   "AND reversal.id IS NULL THEN rec.posted_amount_minor ELSE 0 END),0)::text AS received,"+
+   "coalesce(sum(CASE WHEN file.id IS NULL OR intent.id IS NULL "+
+   "OR reversal.id IS NOT NULL THEN rec.posted_amount_minor ELSE 0 END),0)::text AS invalid "+
+   "FROM selected s JOIN finance_csr_verified_receipt_link link "+
+   "ON link.root_realm_id=s.root_realm_id AND link.funding_proposal_id=s.id "+
+   "JOIN finance_bank_reconciliation rec ON rec.root_realm_id=link.root_realm_id "+
+   "AND rec.id=link.reconciliation_id AND rec.status='VERIFIED' AND rec.variance_minor=0 "+
+   "JOIN journal j ON j.root_realm_id=rec.root_realm_id AND j.id=rec.journal_id "+
+   "LEFT JOIN finance_reconciliation_decision d ON d.root_realm_id=rec.root_realm_id "+
+   "AND d.reconciliation_id=rec.id AND d.action='VERIFY' "+
+   "LEFT JOIN cg19_stored_file file ON file.realm_id=d.root_realm_id "+
+   "AND file.id=d.statement_file_id AND file.reconciliation_id=d.reconciliation_id "+
+   "AND file.revision=d.statement_file_version "+
+   "AND file.owner_kind='CG09_BANK_STATEMENT' "+
+   "AND file.scan_status='CLEAN_VERIFIED' AND file.revoked_at IS NULL "+
+   "LEFT JOIN cg19_upload_intent intent ON intent.realm_id=file.realm_id "+
+   "AND intent.id=file.upload_intent_id AND intent.reconciliation_id=rec.id "+
+   "AND intent.owner_kind='CG09_BANK_STATEMENT' AND intent.status='VALIDATED' "+
+   "LEFT JOIN journal reversal ON reversal.root_realm_id=j.root_realm_id "+
+   "AND reversal.reversal_of_id=j.id AND reversal.posting_kind='REVERSAL') "+
+   "SELECT c.amount AS committed_minor,m.received AS received_minor,"+
+   "m.invalid AS invalid_minor FROM commitments c CROSS JOIN money m",
+   [a.realmId,scope.all,scope.branchRefs,scope.branchFilter===undefined,
+    scope.branchFilter??null,scope.query]);
+  const v=x.rows[0];
+  return {committedMinor:v?.committed_minor??"0",
+   verifiedReceivedMinor:v?.received_minor??"0",
+   revalidationRequiredMinor:v?.invalid_minor??"0",
+   allocatedMinor:null,utilizedMinor:null,availableMinor:null,utilizationPercent:null,
+   notice:"Allocations and utilization are not available until actual CG09 budget effects are linked."};
+ }
  /** Invalidated statement proof or reversed general journal cannot fund a
   * NEW allocation; prior immutable financial history is retained. */
  async currentReceived(tx:PoolClient,a:VerifiedFoundationActor,p:ApprovedFundingSource){
