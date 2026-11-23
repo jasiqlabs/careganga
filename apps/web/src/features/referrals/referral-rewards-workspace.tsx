@@ -608,10 +608,10 @@ export function ReferralRewardsWorkspace({canViewPolicy,canViewRewards,canManage
      <label style={css.field}>Description<textarea style={{...css.control,minHeight:85}}
       maxLength={1000} value={rewardForm.description}
       onChange={e=>setRewardForm(p=>({...p,description:e.target.value}))}/></label>
-     {rowInput("Approved Foundation image HTTPS URL (optional)",rewardForm.imageUrl,
+     {rowInput("Published CareGanga image link (optional)",rewardForm.imageUrl,
       v=>setRewardForm(p=>({...p,imageUrl:v})),"url")}
-     <p style={{fontSize:12,margin:0}}>Images must already be approved for public use
-      and hosted on a Foundation-approved image domain. Leave this blank if not configured.</p>
+     <p style={{fontSize:12,margin:0}}>Use a currently published image from CareGanga's approved media library.
+      Images without current scan/rights approval cannot be saved. Blank is allowed.</p>
      <label style={css.field}><input type="checkbox" checked={rewardForm.highlighted}
       onChange={e=>setRewardForm(p=>({...p,highlighted:e.target.checked}))}/>
       Highlight on reward card</label>
