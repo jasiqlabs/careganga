@@ -7,6 +7,9 @@ CREATE TABLE finance_csr_verified_receipt_link(
  funding_proposal_id uuid NOT NULL,
  approved_source_version integer NOT NULL CHECK(approved_source_version>0),
  party_kind text NOT NULL CHECK(party_kind IN('CSR','FOUNDATION')),
+ -- Operator attests the original statement's actual payer to this signed source.
+ -- Bank reconciliation proves money, not independently verified remitter identity.
+ remitter_attested boolean NOT NULL CHECK(remitter_attested),
  reconciliation_id uuid NOT NULL,
  request_key uuid NOT NULL,
  request_digest char(64) NOT NULL CHECK(request_digest~'^[a-f0-9]{64}$'),
