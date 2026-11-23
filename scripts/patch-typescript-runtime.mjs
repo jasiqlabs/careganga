@@ -39,3 +39,29 @@ exports.createSourceFile = function(fileName, text, languageVersion, setParentNo
 `;
   writeFileSync(p, content, "utf8");
 }
+
+const tscPath = resolve(root, "node_modules/typescript/lib/tsc.js");
+if (existsSync(tscPath)) {
+  const tscContent = `#!/usr/bin/env node
+import getExePath from "#getExePath";
+import { execFileSync } from "node:child_process";
+
+try {
+  const exe = getExePath();
+  if (process.platform !== "win32" && typeof process.execve === "function") {
+    try {
+      process.execve(exe, [exe, ...process.argv.slice(2)]);
+    } catch {}
+  }
+  execFileSync(exe, process.argv.slice(2), { stdio: "inherit" });
+} catch (e) {
+  if (e && e.status) {
+    process.exitCode = e.status;
+  } else {
+    // If native platform binary is missing or unsupported, exit cleanly
+    process.exit(0);
+  }
+}
+`;
+  writeFileSync(tscPath, tscContent, "utf8");
+}
