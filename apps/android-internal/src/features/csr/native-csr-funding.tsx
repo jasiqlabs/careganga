@@ -274,6 +274,8 @@ export function NativeCsrFunding({token,canManage,canReadAgreement,canUploadAgre
   {editing&&selected&&canReadAgreement&&<NativeCsrFundingAgreementPanel
    key={selected.ref+":"+selected.version} token={token} proposalRef={selected.ref}
    version={selected.version} canUpload={canManage&&canUploadAgreement&&selected.status==="DRAFT"}
+   canSubmit={canManage&&selected.status==="DRAFT"}
+   onSubmitted={()=>{clearDetail();setEpoch(x=>x+1);setNotice("Funding review submitted. No cash posted.");}}
    onExpired={onExpired}/>}
   {!!pending&&<View style={styles.panel}>
    <Text accessibilityRole="alert" style={styles.error}>The original write may have succeeded.
