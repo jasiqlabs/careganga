@@ -2,6 +2,7 @@
 import {useEffect,useRef,useState,type FormEvent} from "react";
 import type {CG04Application,CG04ApplicantOptions,CG04PublicTier} from "@careganga/api-contracts";
 import {priceText,durationLabel} from "./tier-display";
+import {ReferralCodeCheck} from "../referrals/referral-code-check";
 type Draft={address:string;city:string;pinCode:string;stateRef:string;districtRef:string;branchRef:string;referral:string;consent:boolean};
 const blank=():Draft=>({address:"",city:"",pinCode:"",stateRef:"",districtRef:"",branchRef:"",referral:"",consent:false});
 type Command={path:string;method:"POST"|"PATCH";body:Record<string,unknown>};
@@ -40,6 +41,7 @@ export function MemberApplicationForm({application,plans,onSaved}:{application:C
  <label>District<select value={draft.districtRef} required onChange={e=>update("districtRef",e.target.value)}><option value="">Select district</option>{options?.districts.map(x=><option value={x.value} key={x.value}>{x.label}</option>)}</select></label>
  <label>Branch preference<select value={draft.branchRef} onChange={e=>update("branchRef",e.target.value)}><option value="">None</option>{options?.branches.map(x=><option value={x.value} key={x.value}>{x.label}</option>)}</select></label>
  <label>Referral (optional)<input value={draft.referral} maxLength={100} onChange={e=>update("referral",e.target.value)}/></label>
+  <ReferralCodeCheck code={draft.referral}/>
  <label><input type="checkbox" checked={draft.consent} onChange={e=>update("consent",e.target.checked)}/> I agree to processing of my membership application and protected evidence.</label>
  <button className="cg04-primary" disabled={busy||!options||!offer||!draft.consent||!!pending.current}>Save application</button>
  {pending.current&&<div role="status"><p>Save result uncertain. Refresh your applications before retrying the same request.</p><button type="button" disabled={busy} onClick={()=>void onSaved()}>Refresh applications</button><button type="button" disabled={busy} onClick={()=>void send(pending.current!)}>Retry the original request</button></div>}
