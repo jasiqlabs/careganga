@@ -566,8 +566,10 @@ export function ReferralRewardsWorkspace({canManagePolicy,canManageRewards}:{
      <label style={css.field}>Description<textarea style={{...css.control,minHeight:85}}
       maxLength={1000} value={rewardForm.description}
       onChange={e=>setRewardForm(p=>({...p,description:e.target.value}))}/></label>
-     {rowInput("Approved public HTTPS image URL (optional)",rewardForm.imageUrl,
+     {rowInput("Approved Foundation image HTTPS URL (optional)",rewardForm.imageUrl,
       v=>setRewardForm(p=>({...p,imageUrl:v})),"url")}
+     <p style={{fontSize:12,margin:0}}>Images must already be approved for public use
+      and hosted on a Foundation-approved image domain. Leave this blank if not configured.</p>
      <label style={css.field}><input type="checkbox" checked={rewardForm.highlighted}
       onChange={e=>setRewardForm(p=>({...p,highlighted:e.target.checked}))}/>
       Highlight on reward card</label>
