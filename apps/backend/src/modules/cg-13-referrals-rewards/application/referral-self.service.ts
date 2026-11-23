@@ -51,6 +51,12 @@ export class ReferralSelfService{
  private async currentRelationships(tx:PoolClient,actor:VerifiedFoundationActor):Promise<Relationship[]>{
   const member=await tx.query<{ref:string}>(
    "SELECT m.id AS ref FROM member m "+
+   "JOIN membership_application_effect effect ON effect.root_realm_id=m.root_realm_id "+
+   "AND effect.member_id=m.id AND effect.application_id=m.original_application_id "+
+   "JOIN membership_application app ON app.root_realm_id=m.root_realm_id "+
+   "AND app.id=m.original_application_id AND app.status='APPROVED' "+
+   "JOIN cg03_case review ON review.realm_id=effect.root_realm_id "+
+   "AND review.id=effect.case_id AND review.status='OWNER_COMPLETED' "+
    "JOIN membership_term term ON term.root_realm_id=m.root_realm_id AND term.member_id=m.id "+
    "LEFT JOIN branch b ON b.root_realm_id=m.root_realm_id AND b.id=m.branch_ref "+
    "WHERE m.root_realm_id=$1 AND m.account_ref=$2 AND m.status='ACTIVE' "+
