@@ -461,7 +461,6 @@ export class HrEmploymentChangeSourceFacade{
  async staffHistory(tx:PoolClient,actor:VerifiedFoundationActor,offset:number,status="ALL",family="ALL"){
   await this.identity.assertCurrent(tx,actor,"hr.changes.manage");
   const scope=await this.branches.projectBranchScope(tx,actor);
-  const scope=await this.branches.projectBranchScope(tx,actor);
   const sql=`WITH permitted AS (
    SELECT e.id FROM hr_employee e JOIN LATERAL(
     SELECT a.* FROM hr_employment_assignment a WHERE a.root_realm_id=e.root_realm_id AND a.employee_id=e.id
@@ -476,6 +475,7 @@ export class HrEmploymentChangeSourceFacade{
  async staffDetail(tx:PoolClient,actor:VerifiedFoundationActor,ref:string){
   await this.identity.assertCurrent(tx,actor,"hr.changes.manage");
   if(!REF.test(ref))throw new BadRequestException({code:"CG10_CHANGE_INVALID"});
+  const scope=await this.branches.projectBranchScope(tx,actor);
   const sql=`WITH permitted AS (
    SELECT e.id FROM hr_employee e JOIN LATERAL(
     SELECT a.* FROM hr_employment_assignment a WHERE a.root_realm_id=e.root_realm_id AND a.employee_id=e.id
