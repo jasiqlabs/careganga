@@ -1,5 +1,6 @@
 import {describe,test} from "node:test";
 import assert from "node:assert/strict";
+import {readFileSync} from "node:fs";
 import {ForbiddenException} from "@nestjs/common";
 import {ReferralSelfService} from "../src/modules/cg-13-referrals-rewards/application/referral-self.service";
 const ROOT="11111111-1111-4111-8111-111111111111";
@@ -103,5 +104,17 @@ describe("CG13 US002 current CG04 self points/rank API source contracts (not exe
   const h=f.seen.find(x=>x.sql.includes("FROM reward_rank_event"))!;
   assert.deepEqual(h.params,[ROOT,WALLET,25]);
   assert.match(h.sql,/root_realm_id=\$1 AND points_account_id=\$2/);
+ }); 
+ test("original US003 QA16 Public Web/Android show source spent points without cash conversion",()=>{
+  const web=readFileSync("../web/src/features/referrals/public-referral-points.tsx","utf8");
+  const android=readFileSync("../android-public/src/features/referrals/native-referral-points.tsx","utf8");
+  for(const body of [web,android]){
+   assert.match(body,/Redeemed \(verified spent\)/);
+   assert.match(body,/balance\.spentPoints/);
+   assert.match(body,/balance\.heldPoints/);
+   assert.match(body,/balance\.availablePoints/);
+   assert.ok(!body.includes("Convert to cash"));
+  }
  });
+
 });
