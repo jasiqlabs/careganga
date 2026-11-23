@@ -191,7 +191,7 @@ export class CsrFundingProposalsService{
   return {status,version:row.version+1};
  }
  private async replay(tx:PoolClient,a:VerifiedFoundationActor,key:string,digest:string,
-  action:"CREATE"|"EDIT",target?:string){
+  action:"CREATE"|"EDIT"|"RESUME",target?:string){
   await tx.query("SELECT pg_advisory_xact_lock(hashtextextended($1,0))",
    ["CG08_FUNDING:"+a.realmId+":"+key]);
   const q=(await tx.query<{actor_ref:string;proposal_id:string;action:string;
@@ -206,7 +206,7 @@ export class CsrFundingProposalsService{
   return {ref:q.proposal_id,version:q.result_version,status:"DRAFT",replayed:true};
  }
  private async event(tx:PoolClient,a:VerifiedFoundationActor,id:string,key:string,
-  digest:string,action:"CREATE"|"EDIT",revision:number){
+  digest:string,action:"CREATE"|"EDIT"|"RESUME",revision:number){
   await tx.query(
    "INSERT INTO csr_funding_command(root_realm_id,request_key,proposal_id,actor_ref,"+
    "action,payload_digest,result_version) VALUES($1,$2,$3,$4,$5,$6,$7)",
@@ -255,6 +255,35 @@ export class CsrFundingProposalsService{
      v.agreementSummary,a.accountId,v.expectedVersion])).rows[0];
    if(!updated)throw changed();
    return this.event(tx,a,id,v.requestKey,digest,"EDIT",updated.version);
+  });
+ }
+ /** Explicit correction of a RETURNED review: no edit to historical terms,
+  * no reuse of the previous signed file, and never reopen an APPROVED pledge.
+  * The existing CG08 immutable command ledger protects unknown results. */
+ async resumeReturned(bearer:string,proposalRef:string,raw:unknown){
+  const id=ref(proposalRef);
+  if(!raw||typeof raw!=="object"||Array.isArray(raw))
+   throw new BadRequestException("Refresh the returned funding proposal.");
+  const v=raw as Record<string,unknown>;
+  if(Object.keys(v).some(k=>!["requestKey","expectedVersion"].includes(k)))
+   throw new BadRequestException("Use the original funding correction form.");
+  const key=ref(v.requestKey),expected=v.expectedVersion;
+  if(typeof expected!=="number"||!Number.isSafeInteger(expected)||
+   expected<1||expected>=2147483646)
+   throw new BadRequestException("Refresh the original source revision.");
+  const hash=csrDigest(["CG08_FUNDING_RESUME",id,expected]);
+  return this.run(bearer,"csr.partners.manage",async(tx,a)=>{
+   const prior=await this.replay(tx,a,key,hash,"RESUME",id);
+   if(prior)return prior;
+   const row=await this.original(tx,a,id,true);
+   if(row.status!=="RETURNED"||row.version!==expected)throw changed();
+   const updated=(await tx.query<{version:number}>(
+    "UPDATE csr_funding_proposal SET status='DRAFT',version=version+1,"+
+    "updated_by=$3,updated_at=now() WHERE root_realm_id=$1 AND id=$2 "+
+    "AND status='RETURNED' AND version=$4 RETURNING version",
+    [a.realmId,id,a.accountId,expected])).rows[0];
+   if(!updated)throw changed();
+   return this.event(tx,a,id,key,hash,"RESUME",updated.version);
   });
  }
  /** Original B08 selectors from CG01/CG02/CG05/CG08 current sources only. */
