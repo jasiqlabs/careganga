@@ -10,6 +10,7 @@ export const SAFE_MESSAGE_CATALOG:Readonly<Record<string,string>>=Object.freeze(
       CG13_PHYSICAL_ITEM_UNAVAILABLE:"Choose an active whole-piece warehouse item that is available to your role.",
       CG13_PROGRAMME_INACTIVE:"This programme is inactive. Choose an active programme before adding rewards.",
       CG13_PRODUCT_STALE:"This reward product has changed. Refresh its latest details before saving.",
+      CG13_MEDIA_UNAVAILABLE:"Choose a currently published, rights-approved CareGanga image, or leave the image blank.",
 
       CG05_INVALID:"Check the project or activity details and try again.",
       CG05_SOURCE_CHANGED:"The original record changed. Refresh its current version before continuing.",
