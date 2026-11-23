@@ -40,7 +40,9 @@ export default async function DonationsPage(){
     <DonationAdminWorkspace canView={canView} canRecord={canRecord}
      canReview={canRecord&&actions.includes("approvals.review")}
      canIssue={canRecord&&actions.includes("documents.files.manage")}
-     canExport={canView&&actions.includes("documents.files.view")}/>
+     canExport={canView&&actions.includes("documents.files.view")}
+     canAttachProof={canRecord&&actions.includes("documents.files.manage")}
+     canViewProof={canView&&actions.includes("documents.files.view")}/>
    </main></div>;
  }catch(e){
   if(e&&typeof e==="object"&&"digest" in e&&typeof e.digest==="string"&&
