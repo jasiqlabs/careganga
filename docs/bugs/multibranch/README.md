@@ -4,10 +4,10 @@
 
 | ID | Severity | Owner | Evidence state | Finding / QA dependency |
 | --- | --- | --- | --- | --- |
-| [CG-MB-001](CG-MB-001-cg01-cg02-staff-branch-assignments.md) | P0 | CG-01/02 | `CONFIRMED_SOURCE_SCOPE_GAP` | Dedicated non-manager staff branch grants missing |
-| [CG-MB-002](CG-MB-002-cg09-finance-delegated-branch-operators.md) | P0 | CG-09 | `CONFIRMED_SOURCE_DEPENDENCY` | Delegated accountants/cashiers blocked without explicit assignment |
-| [CG-MB-003](CG-MB-003-cg12-warehouse-operator-multibranch.md) | P1 | CG-12 | `CONFIRMED_SOURCE_DEPENDENCY` | Ordinary storekeepers and multi-branch stock rights |
-| [CG-MB-004](CG-MB-004-cg04-cg05-cg10-delegated-branch-roles.md) | P1 | CG-04/05/10 | `CONFIRMED_SOURCE_DEPENDENCY` | Membership, project and HR coordinators inherit manager-only scope |
+| [CG-MB-001](CG-MB-001-cg01-cg02-staff-branch-assignments.md) | P0 | CG-01/02 | `SOURCE_FIX_AUTHORED_REVIEW_PENDING` | Dedicated non-manager staff branch grants missing |
+| [CG-MB-002](CG-MB-002-cg09-finance-delegated-branch-operators.md) | P0 | CG-09 | `SOURCE_INTEGRATION_AUTHORED_REVIEW_PENDING` | Delegated accountants/cashiers blocked without explicit assignment |
+| [CG-MB-003](CG-MB-003-cg12-warehouse-operator-multibranch.md) | P1 | CG-12 | `SOURCE_INTEGRATION_AUTHORED_REVIEW_PENDING` | Ordinary storekeepers and multi-branch stock rights |
+| [CG-MB-004](CG-MB-004-cg04-cg05-cg10-delegated-branch-roles.md) | P1 | CG-04/05/10 | `SOURCE_IN_PROGRESS_OWNER_PATHS_PENDING` | Membership, project and HR coordinators inherit manager-only scope |
 | [CG-MB-005](CG-MB-005-cg02-branch-manager-transfer-and-close.md) | P1 | CG-02 | `VERIFICATION_GAP` | Branch manager reassignment/closure cascades |
 | [CG-MB-006](CG-MB-006-cg07-original-donation-branch-provenance.md) | P0 | CG-07 | `SOURCE_FIX_AUTHORED_NOT_VERIFIED` | Original donation branch immutable proof in migration 3319 |
 | [CG-MB-007](CG-MB-007-cg07-donation-report-root-and-branch-filters.md) | P1 | CG-07 | `SOURCE_FIX_AUTHORED_NOT_VERIFIED` | Same filtered list/KPI/trends/CSV branch report |
@@ -30,3 +30,8 @@
 ## Test evidence protocol
 
 Use the [two-branch and two-center test matrix](../../qa/CAREGANGA-MULTIBRANCH-SOURCE-AND-RUNTIME-TEST-PLAN-20261123.md) and [source comparison](../../research/CAREGANGA-MULTIBRANCH-MAIN-VS-CG07-SOURCE-AUDIT-20261123.md). Each issue must record `owner_file:function`, `source_before/after`, `commit_sha`, `reviewer`, `US/QA original IDs`, `test_runner + command`, `real DB/APIs/UI screenshots`, result `SOURCE_ONLY | RUNTIME_PASS | FAIL | BLOCKED`, and a closure date. No invented test result, no technical IDs in end-user UI, no fabricated pass. Never merge to `main` until authorization and local developer gates completed.
+
+
+## 23 November source implementation checkpoint (no runtime certification)
+
+The approved greenfield **CG-MB-001** CG-02 assignment model (migration 3320, real Foundation branch/area records, protected independent staff grant/end, current account session invalidation) and CG-02 source facade are **AUTHORED**, with source-only receiving owner changes for CG-MB-002 finance, CG-MB-003 inventory and CG-MB-004 HR/project/membership. No historic BWC/production-data compatibility paths were added. The mutable statuses above are **not closed**: independent owner review, security/database review, TypeScript/Next/Android build, PostgreSQL migration/restore and real A/B/closed-C/scoped CG-14 center QA remain NOT_RUN. CG-MB-004 has further owner paths to inspect and fix. Keep all 15 unique issue IDs and original 24-module QA overlays; do not merge.
