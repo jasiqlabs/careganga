@@ -77,6 +77,7 @@ async function proxy(req:NextRequest,ctx:Context,method:Method){
  const status=params.get("status"),from=params.get("from"),to=params.get("to");
  const kind=params.get("kind");
  const location=params.get("location"),rank=params.get("rank"),sort=params.get("sort");
+ const branchRef=params.get("branchRef");
  const codePath=path.target==="my-code",codeOptions=path.target==="my-code/options";
  const walletPath=["points/my-balance","my-history","rewards/my-rank"].includes(path.target);
  const selector=codePath||walletPath;
@@ -87,8 +88,8 @@ async function proxy(req:NextRequest,ctx:Context,method:Method){
  const paged=method==="GET"&&(path.target==="programmes"||path.target==="catalogue-programmes"||
   path.target==="my-catalog"||products||codeOptions||
   path.target==="my-history"||path.target==="rewards/my-rank"||redemptionAdmin||referralAdmin);
- if([...params.keys()].some(k=>!["page","q","category","programmeRef","relationship","status","from","to","kind","location","rank","sort"].includes(k))||
-    ["page","q","category","programmeRef","relationship","status","from","to","kind","location","rank","sort"].some(k=>params.getAll(k).length>1)||
+ if([...params.keys()].some(k=>!["page","q","category","programmeRef","relationship","status","from","to","kind","location","rank","sort","branchRef"].includes(k))||
+    ["page","q","category","programmeRef","relationship","status","from","to","kind","location","rank","sort","branchRef"].some(k=>params.getAll(k).length>1)||
     ((programme!==null||relationship!==null)&&!selector)||
     (selector&&(!programme||!UUID.test(programme)||!["MEMBER","VOLUNTEER"].includes(relationship??"")))||
     ((codePath||path.target==="points/my-balance")&&page!==null)||
@@ -99,6 +100,7 @@ async function proxy(req:NextRequest,ctx:Context,method:Method){
     ((status!==null||from!==null||to!==null)&&!redemptionAdmin&&!referralAdmin)||
     (kind!==null&&(!referralAdmin||!["MEMBER","VOLUNTEER"].includes(kind)))||
     ([location,rank,sort].some(v=>v!==null)&&!referralAdmin)||
+    (branchRef!==null&&(!referralAdmin||!UUID.test(branchRef)))||
     (sort!==null&&!["REFERRALS","RECENT"].includes(sort))||
     (location!==null&&(location.length>120||/[\u0000-\u001f\u007f]/.test(location)))||
     (rank!==null&&(rank.length>120||/[\u0000-\u001f\u007f]/.test(rank)))||
@@ -138,6 +140,7 @@ async function proxy(req:NextRequest,ctx:Context,method:Method){
    if(location!==null)url.searchParams.set("location",location);
    if(rank!==null)url.searchParams.set("rank",rank);
    if(sort!==null)url.searchParams.set("sort",sort);
+   if(branchRef!==null)url.searchParams.set("branchRef",branchRef);
   if(from!==null)url.searchParams.set("from",from);
   if(to!==null)url.searchParams.set("to",to);
   if(programme!==null)url.searchParams.set("programmeRef",programme);
