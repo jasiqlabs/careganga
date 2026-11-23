@@ -112,7 +112,7 @@ describe("CG13 US002 B12 individual records require existing current CG04 roster
  test("member top and immutable event records bind current root, programme, branch, dates and page",async()=>{
   const f=recordsFixture();
   const rows=await f.svc.adminReferralRecords("staff",PROGRAMME,"MEMBER","2","ACTIVE",
-   "2026-11-01","2026-11-23","Eligible");
+   "2026-11-01","2026-11-23","Eligible","Pune","Gold","RECENT");
   assert.equal(rows.topReferrers[0]?.name,"Eligible Referrer");
   assert.equal(rows.recentEvents[0]?.status,"QUALIFICATION");
   assert.equal(rows.page,2);
@@ -120,16 +120,22 @@ describe("CG13 US002 B12 individual records require existing current CG04 roster
   assert.ok(f.checks.includes("membership.members.view"));
   const top=f.seen.find(x=>x.sql.includes("wallet.current_rank_name AS rank")&&x.sql.includes("LIMIT 15"))!;
   assert.ok(top);
-  assert.deepEqual(top.params,[ROOT,PROGRAMME,"MEMBER",false,[BRANCH],"eligible","ACTIVE"]);
+  assert.deepEqual(top.params,[ROOT,PROGRAMME,"MEMBER",false,[BRANCH],"eligible","ACTIVE","pune","Gold"]);
   assert.match(top.sql,/wallet.referrer_kind=\$3/);
   assert.match(top.sql,/COALESCE\(m.branch_ref,v.branch_ref\)=ANY\(\$5::uuid\[\]\)/);
   assert.match(top.sql,/cg04_current_volunteer/);
+  assert.match(top.sql,/memberApp.city/);
+  assert.match(top.sql,/memberDistrict.display_name/);
+  assert.match(top.sql,/wallet.current_rank_name=\$9/);
+  assert.match(top.sql,/ORDER BY wallet.updated_at DESC/);
   const event=f.seen.find(x=>x.sql.includes("FROM points_event event JOIN points_account wallet"))!;
   assert.ok(event);
   assert.deepEqual(event.params,
-   [ROOT,PROGRAMME,"MEMBER",false,[BRANCH],"eligible","ACTIVE","2026-11-01","2026-11-23",25]);
+   [ROOT,PROGRAMME,"MEMBER",false,[BRANCH],"eligible","ACTIVE","2026-11-01","2026-11-23","pune","Gold",25]);
   assert.match(event.sql,/event.event_kind IN\('QUALIFICATION','QUALIFICATION_REVERSAL'\)/);
   assert.match(event.sql,/event.source_recorded_at AT TIME ZONE 'Asia\/Kolkata'/);
+  assert.match(event.sql,/memberApp.city/);
+  assert.match(event.sql,/wallet.current_rank_name=\$11/);
   for(const query of [top,event]){
    assert.ok(!query.sql.includes("applicant_account_ref"));
    assert.ok(!query.sql.includes("contact_phone"));
@@ -156,6 +162,8 @@ describe("CG13 US002 B12 individual records require existing current CG04 roster
   await assert.rejects(()=>f.svc.adminReferralRecords("staff",PROGRAMME,"MEMBER","10000"));
   await assert.rejects(()=>f.svc.adminReferralRecords(
    "staff",PROGRAMME,"MEMBER","1","ALL","2026-02-30"));
+  await assert.rejects(()=>f.svc.adminReferralRecords(
+   "staff",PROGRAMME,"MEMBER","1","ALL",undefined,undefined,undefined,undefined,"UNSAFE"));
   assert.deepEqual(f.actions,[]);
   assert.equal(f.seen.length,0);
  });
