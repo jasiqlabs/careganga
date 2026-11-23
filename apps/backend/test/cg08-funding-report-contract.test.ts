@@ -58,6 +58,7 @@ test("US003-QA06/15/17: private reports have bounded cursor, guarded CSV, no CG2
   "LIMIT $14","ORDER BY f.updated_at DESC,f.id DESC",
   "f.updated_at,f.id)<($12::timestamptz,$13::uuid)",
   "max===26?25:1000","records.length>items.length",
+  "AT TIME ZONE 'Asia/Kolkata'",
   "if(result.hasMore)throw new ConflictException",
  ].filter(Boolean))assert.ok(s.includes(x),x);
  assert.ok(s.includes("^[=+\\-@]"));
