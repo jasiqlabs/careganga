@@ -198,10 +198,10 @@ export class DonationAdminService{
   const args=[actor.realmId,scope.all,scope.branchRefs,f.status,f.q,0,f.method,
    f.minMinor,f.maxMinor,f.from,f.to,f.campaign,f.branchRef,selected(f.branchRef)];
   const records=await this.db.query<{donation_number:string;amount_minor:string;
-    currency:string;source_status:string;method:string|null;title:string|null;
+    currency:string;source_status:string;method:string|null;title:string|null;branch_name:string|null;
     receipt_number:string|null;correction_number:string|null;created_on:string;refund_minor:string}>(`
     SELECT d.donation_number,d.amount_minor::text,d.currency,d.source_status,m.method,
-     c.title,r.receipt_number,d.created_at::date::text AS created_on,
+     c.title,b.name AS branch_name,r.receipt_number,d.created_at::date::text AS created_on,
       coalesce((SELECT sum(x.amount_minor) FROM donation_refund_request x
        JOIN journal j ON j.root_realm_id=x.root_realm_id AND j.id=x.reversal_journal_ref
        WHERE x.root_realm_id=d.root_realm_id AND x.donation_id=d.id
@@ -209,7 +209,8 @@ export class DonationAdminService{
     (SELECT corr.correction_number FROM cg19_donation_receipt_correction corr
      WHERE corr.root_realm_id=d.root_realm_id AND corr.donation_id=d.id AND corr.status='ISSUED'
      ORDER BY corr.issued_at DESC,corr.id DESC LIMIT 1) AS correction_number
-    FROM donation d LEFT JOIN campaign c ON c.root_realm_id=d.root_realm_id AND c.id=d.campaign_id
+    FROM donation d LEFT JOIN branch b ON b.root_realm_id=d.root_realm_id AND b.id=d.branch_ref
+     LEFT JOIN campaign c ON c.root_realm_id=d.root_realm_id AND c.id=d.campaign_id
     LEFT JOIN LATERAL (SELECT a.method FROM donation_payment_attempt a
       WHERE a.root_realm_id=d.root_realm_id AND a.donation_id=d.id
       ORDER BY a.created_at DESC,a.id DESC LIMIT 1) m ON true
@@ -218,13 +219,13 @@ export class DonationAdminService{
   `+where+branchSql(13)+" AND $6::integer=0 ORDER BY d.created_at DESC,d.id DESC LIMIT 501",args);
   if(records.rows.length>500)throw new BadRequestException(
    "Narrow the dates or campaign to export up to 500 records per report.");
-  const lines=[["Donation number","Campaign","Requested amount INR","Verified gross INR",
+  const lines=[["Donation number","Branch","Campaign","Requested amount INR","Verified gross INR",
    "Verified refund INR","Verified net INR","Status","Method","Date","Original receipt","Latest correction"].map(csvCell).join(",")];
   for(const r of records.rows){
    const money=(v:bigint)=>(v/100n).toString()+"."+(v%100n).toString().padStart(2,"0");
    const requested=BigInt(r.amount_minor),posted=r.source_status==="RECEIVED_POSTED";
    const gross=posted?requested:0n,refunded=posted?BigInt(r.refund_minor):0n;
-   lines.push([r.donation_number,r.title??"General donation",money(requested),
+   lines.push([r.donation_number,r.branch_name??"Foundation-wide",r.title??"General donation",money(requested),
     money(gross),money(refunded),money(gross-refunded),
     r.source_status,r.method??"Not selected",r.created_on,
     r.receipt_number??"",r.correction_number??""].map(csvCell).join(","));
