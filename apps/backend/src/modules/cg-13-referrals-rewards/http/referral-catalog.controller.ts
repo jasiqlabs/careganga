@@ -11,6 +11,10 @@ export class ReferralCatalogController{
  programmes(@Headers("authorization")auth:string,@Query("page")page?:string){
   return this.catalog.listProgrammes(auth,page);
  }
+ @Get("catalogue-programmes")
+ catalogueProgrammes(@Headers("authorization")auth:string,@Query("page")page?:string){
+  return this.catalog.catalogueProgrammes(auth,page);
+ }
  @Post("programmes")
  createProgramme(@Headers("authorization")auth:string,@Body()body:unknown){
   return this.catalog.createProgramme(auth,body);
