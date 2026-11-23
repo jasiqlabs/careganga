@@ -87,7 +87,8 @@ export function NativeCsrFundingReportsPanel({token,onExpired}:{
     <Text style={styles.note}>{v.branchName??"Foundation"} · {v.projectName??"General purpose"}</Text>
     <Text style={styles.note}>Funding {v.status} · {v.financeStatus==="RECEIPT_PENDING"?
      "Bank verification pending":v.financeStatus==="REVALIDATION_REQUIRED"?
-     "Finance revalidation required":"Verified finance source"}</Text>
+     "Finance revalidation required":v.financeStatus==="NOT_APPROVED"?
+     "Not yet an approved commitment":"Verified finance source"}</Text>
     <View style={styles.numbers}>
      {([
       ["Requested",v.requestedMinor],["Committed",v.committedMinor],
