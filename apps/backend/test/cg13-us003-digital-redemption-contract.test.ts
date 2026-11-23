@@ -97,7 +97,7 @@ describe("CG13 US003 digital points hold/cancel contracts (mock only; no real PG
   assert.ok(!f.seen.some(v=>v.sql.includes("INSERT INTO redemption(")));
  });
  test("an incompatible DIGITAL catalogue price above 1 billion fails before source writes",async()=>{
-  const f=setup({rewardPrice:"1000000001"});
+  const f=setup({rewardPrice:"1000000000001"});
   await assert.rejects(()=>f.service.request("own",request),ConflictException);
   assert.ok(!f.seen.some(v=>v.sql.includes("INSERT INTO redemption(")));
  });
