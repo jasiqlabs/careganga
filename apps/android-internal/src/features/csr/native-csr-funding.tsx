@@ -45,7 +45,7 @@ export function NativeCsrFunding({token,canManage,canReadAgreement,canUploadAgre
  token:string;canManage:boolean;canReadAgreement:boolean;canUploadAgreement:boolean;
  canReadFinance:boolean;canLinkFinance:boolean;onExpired:()=>void}){
  const [options,setOptions]=useState<Options|null>(null);
- const [page,setPage]=useState<{items:Proposal[];hasMore:boolean;summary?:{requests:number;drafts:number;requestedMinor:string;verifiedFinance:null|{committedMinor:string;verifiedReceivedMinor:string;revalidationRequiredMinor:string}}}>({items:[],hasMore:false});
+ const [page,setPage]=useState<{items:Proposal[];hasMore:boolean;summary?:{requests:number;drafts:number;requestedMinor:string;verifiedFinance:null|{committedMinor:string;verifiedReceivedMinor:string;revalidationRequiredMinor:string;allocatedMinor:string;utilizedMinor:string;availableMinor:string|null;utilizationPercent:string|null;needsRevalidation:boolean}}}>({items:[],hasMore:false});
  const [scope,setScope]=useState("ALL"),[status,setStatus]=useState("ALL"),
   [offset,setOffset]=useState(0),[epoch,setEpoch]=useState(0);
  const [loading,setLoading]=useState(true),[listError,setListError]=useState(""),[error,setError]=useState(""),[notice,setNotice]=useState("");
@@ -68,7 +68,7 @@ export function NativeCsrFunding({token,canManage,canReadAgreement,canUploadAgre
   const query=new URLSearchParams({offset:String(offset)});
   if(scope!=="ALL")query.set("branchRef",scope);
   if(status!=="ALL")query.set("status",status);
-  void api<{items:Proposal[];hasMore:boolean;summary:{requests:number;drafts:number;requestedMinor:string;verifiedFinance:null|{committedMinor:string;verifiedReceivedMinor:string;revalidationRequiredMinor:string}}}>(token,"?"+query).then(v=>{
+  void api<{items:Proposal[];hasMore:boolean;summary:{requests:number;drafts:number;requestedMinor:string;verifiedFinance:null|{committedMinor:string;verifiedReceivedMinor:string;revalidationRequiredMinor:string;allocatedMinor:string;utilizedMinor:string;availableMinor:string|null;utilizationPercent:string|null;needsRevalidation:boolean}}}>(token,"?"+query).then(v=>{
    if(live){setPage(v);setListError("");}
   }).catch(e=>{
    if(live){setPage({items:[],hasMore:false});setListError(e instanceof Error?e.message:"Funding list unavailable.");}
@@ -169,15 +169,15 @@ export function NativeCsrFunding({token,canManage,canReadAgreement,canUploadAgre
      money(page.summary.verifiedFinance.verifiedReceivedMinor):"Finance restricted"],
     ["committed","Committed · CG03 approved",page.summary.verifiedFinance?
      money(page.summary.verifiedFinance.committedMinor):"Finance restricted"],
-    ["utilized","Utilized · CG09","Pending budget integration"],
-    ["available","Available · CG09","Pending budget integration"],
-    ["percentage","Utilization %","Pending budget integration"]
+    ["utilized","Utilized · CG09",page.summary.verifiedFinance?money(page.summary.verifiedFinance.utilizedMinor):"Finance restricted"],
+    ["available","Available · CG09",page.summary.verifiedFinance?.availableMinor!==null&&page.summary.verifiedFinance?.availableMinor!==undefined?money(page.summary.verifiedFinance.availableMinor):"Finance check required"],
+    ["percentage","Utilization %",page.summary.verifiedFinance?.utilizationPercent!==null&&page.summary.verifiedFinance?.utilizationPercent!==undefined?page.summary.verifiedFinance.utilizationPercent+"%":"Finance check required"]
    ] as const).map(([id,label,value])=><View key={id} style={[styles.panel,{minWidth:145,flexGrow:1}]}>
     <Text style={styles.heading}>{value}</Text><Text style={styles.note}>{label}</Text>
    </View>)}
    <Text style={styles.note}>{page.summary.requests} original requests ·
     {page.summary.drafts} unapproved drafts. A signed pledge is not cash.</Text>
-   {page.summary.verifiedFinance&&BigInt(page.summary.verifiedFinance.revalidationRequiredMinor)>0n&&
+   {page.summary.verifiedFinance&&page.summary.verifiedFinance.needsRevalidation&&
     <Text accessibilityRole="alert" style={styles.error}>
      Prior bank evidence revoked or reversed; excluded from current received.</Text>}
   </View>}
