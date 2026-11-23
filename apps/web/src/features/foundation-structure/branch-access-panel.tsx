@@ -2,7 +2,7 @@
 import {useCallback,useEffect,useRef,useState} from "react";
 
 type Option={value:string;label:string};
-type Assignment={assignmentRef:string;accountRef:string;staffName:string;scopeKind:"BRANCH"|"AREA";
+type Assignment={assignmentRef:string;accountRef:string;staffName:string;scopeKind:"BRANCH"|"AREA"|"ALL_BRANCHES";
  scopeName:string;scopeRef:string;reason:string;sourceVersion:number;grantedAt:string;endedAt:string|null};
 type Listing={canGrant:boolean;items:Assignment[]};
 type Options={accounts:Option[];branches:Option[];areas:Option[]};
@@ -22,7 +22,7 @@ async function request<T>(route:string,method:"GET"|"POST"="GET",payload?:Record
 /** Current protected role/operator access scope; never a client-side permission grant. */
 export function BranchAccessPanel(){
  const [data,setData]=useState<Listing|null>(null),[choices,setChoices]=useState<Options|null>(null);
- const [account,setAccount]=useState(""),[kind,setKind]=useState<"BRANCH"|"AREA">("BRANCH");
+ const [account,setAccount]=useState(""),[kind,setKind]=useState<"BRANCH"|"AREA"|"ALL_BRANCHES">("BRANCH");
  const [selectedScope,setSelectedScope]=useState(""),[reason,setReason]=useState("");
  const [password,setPassword]=useState(""),[search,setSearch]=useState("");
  const [busy,setBusy]=useState(false),[error,setError]=useState(""),[notice,setNotice]=useState("");
@@ -38,13 +38,15 @@ export function BranchAccessPanel(){
   return()=>{active=false;};},[refresh]);
  const choose=kind==="BRANCH"?choices?.branches:choices?.areas;
  async function submit(){
-  if(!data?.canGrant||busy||unknown||!account||!selectedScope||reason.trim().length<6||password.length<8)return;
+  if(!data?.canGrant||busy||unknown||!account||
+    (kind!=="ALL_BRANCHES"&&!selectedScope)||reason.trim().length<6||password.length<8)return;
   if(!actionKey.current)actionKey.current=crypto.randomUUID();
   setBusy(true);setError("");setNotice("");
   try{
    const result=await request<{message:string}>("/assignments","POST",{
     requestKey:actionKey.current,accountRef:account,scopeKind:kind,
-    ...(kind==="BRANCH"?{branchRef:selectedScope}:{areaRef:selectedScope}),
+    ...(kind==="BRANCH"?{branchRef:selectedScope}:
+       kind==="AREA"?{areaRef:selectedScope}:{}),
     reason:reason.trim(),currentPassword:password});
    setNotice(result.message);actionKey.current=null;setPassword("");setReason("");setSelectedScope("");
    await refresh(search);
@@ -90,16 +92,18 @@ export function BranchAccessPanel(){
       {choices?.accounts.map(x=><option key={x.value} value={x.value}>{x.label}</option>)}
      </select></label>
     <label className="field">Access applies to
-     <select value={kind} onChange={e=>{setKind(e.target.value as "BRANCH"|"AREA");
+     <select value={kind} onChange={e=>{setKind(e.target.value as "BRANCH"|"AREA"|"ALL_BRANCHES");
       setSelectedScope("");actionKey.current=null;}}>
       <option value="BRANCH">Specific Foundation branch</option>
       <option value="AREA">State, district, subdivision or block</option>
+       <option value="ALL_BRANCHES">All active Foundation branches (not Foundation master)</option>
      </select></label>
-    <label className="field">Current permitted {kind==="BRANCH"?"branch":"geographic area"}
+    {kind!=="ALL_BRANCHES"&&<label className="field">Current permitted {kind==="BRANCH"?"branch":"geographic area"}
      <select value={selectedScope} onChange={e=>{setSelectedScope(e.target.value);actionKey.current=null;}}>
       <option value="">Choose {kind==="BRANCH"?"active branch":"active area"}</option>
       {choose?.map(x=><option key={x.value} value={x.value}>{x.label}</option>)}
-     </select></label>
+     </select></label>}
+    {kind==="ALL_BRANCHES"&&<p role="note">Organization-wide staff branch access covers all active branches, including newly activated ones. Foundation-only legal and financial records remain restricted to protected administrators.</p>}
     <label className="field">Reason for assignment
      <textarea value={reason} maxLength={500} onChange={e=>{setReason(e.target.value);
       actionKey.current=null;}} placeholder="Why does this staff member need this area or branch?"/></label>
@@ -107,7 +111,7 @@ export function BranchAccessPanel(){
      <input type="password" value={password} autoComplete="current-password"
       onChange={e=>setPassword(e.target.value)}/></label>
     <button type="button" className="primary" disabled={busy||unknown||!account||
-     !selectedScope||reason.trim().length<6||password.length<8} onClick={()=>void submit()}>
+     (kind!=="ALL_BRANCHES"&&!selectedScope)||reason.trim().length<6||password.length<8} onClick={()=>void submit()>
       Grant restricted staff access</button>
     <p>Granting or ending access signs out the affected staff member. They must sign in again.</p>
    </div>}
@@ -116,7 +120,8 @@ export function BranchAccessPanel(){
     <div className="branch-directory-scroll"><table className="role-table">
      <thead><tr><th>Staff</th><th>Authorized area or branch</th><th>Status</th><th>Reason</th><th>Action</th></tr></thead>
      <tbody>{data.items.map(x=><tr key={x.assignmentRef}>
-      <td>{x.staffName}</td><td>{x.scopeKind==="BRANCH"?"Branch":"Geographic area"}: {x.scopeName}</td>
+      <td>{x.staffName}</td><td>{x.scopeKind==="ALL_BRANCHES"?"Organization-wide branch access":
+        x.scopeKind==="BRANCH"?"Branch":"Geographic area"}: {x.scopeName}</td>
       <td>{x.endedAt?"Ended":"Current"}</td><td>{x.reason}</td>
       <td>{data.canGrant&&!x.endedAt?
        <button type="button" disabled={busy||unknown||password.length<8}
