@@ -145,12 +145,33 @@ export async function prepareRewardIssueDraft(tx:PoolClient,
   "r.relationship_kind AS \"recipientKind\" "+
   "FROM stock_reward_hold h JOIN redemption r "+
   "ON r.root_realm_id=h.root_realm_id AND r.id=h.redemption_id "+
-  "WHERE h.root_realm_id=$1 AND h.redemption_id=$2 AND r.state='HELD' "+
-  "AND r.product_type='PHYSICAL' FOR SHARE OF r",
+  "WHERE h.root_realm_id=$1 AND h.redemption_id=$2 "+
+  "AND r.product_type='PHYSICAL' "+
+  "AND ((r.state='HELD' AND h.state='HELD') OR "+
+  "(r.state IN('ISSUED_AWAITING_HANDOVER','FULFILLED') AND h.state='ISSUED')) "+
+  "FOR SHARE OF r,h",
   [actor.realmId,redemptionRef]);
  const h=found.rows[0];
- if(!h||h.state!=="HELD")throw new ConflictException("The real physical reward hold is unavailable.");
+ if(!h)throw new ConflictException("The real physical reward hold is unavailable.");
+ // Current authorized CG12 warehouse scope is required even for a replay.
  const store=await catalog.store(tx,actor,h.location);
+ const original=await tx.query<{ref:string;actor:string;status:string}>(
+  "SELECT id AS ref,actor_ref AS actor,status FROM stock_operation_draft "+
+  "WHERE root_realm_id=$1 AND reward_hold_id=$2",
+  [actor.realmId,h.holdId]);
+ if(h.state==="ISSUED"){
+  // The genuine CG12 confirm transaction has already advanced the original
+  // redemption from HELD. Retrieve the same issued operation, NEVER prepare
+  // another ISSUE or revalidate an expired recipient merely to read its receipt.
+  if(!original.rows[0]||original.rows[0].status!=="CONFIRMED")
+   throw new ConflictException("The original confirmed warehouse ISSUE is unavailable.");
+  if(original.rows[0].actor!==actor.accountId)
+   throw new ForbiddenException("Only the original issuing staff may retrieve this receipt.");
+  return {operationRef:original.rows[0].ref,status:"CONFIRMED",
+   proofRequired:store.delivery_proof_required,replayed:true};
+ }
+ // A not-yet-issued reward still requires its genuinely current CG04
+ // member/volunteer and matching branch before a staff ISSUE can be prepared.
  const activeRecipient=await eligibleBranch(tx,{
   root:actor.realmId,redemption:redemptionRef,recipient:h.recipient,
   relationship:h.recipientKind,relationshipRef:h.relationshipRef,
@@ -158,13 +179,11 @@ export async function prepareRewardIssueDraft(tx:PoolClient,
  });
  if(store.branch_ref!==null&&store.branch_ref!==activeRecipient)
   throw new ForbiddenException("The original reward recipient no longer belongs to this warehouse branch.");
- const original=await tx.query<{ref:string;actor:string;status:string}>(
-  "SELECT id AS ref,actor_ref AS actor,status FROM stock_operation_draft "+
-  "WHERE root_realm_id=$1 AND reward_hold_id=$2",
-  [actor.realmId,h.holdId]);
  if(original.rows[0]){
   if(original.rows[0].actor!==actor.accountId)
    throw new ForbiddenException("Only the original warehouse issuing staff may complete this draft.");
+  if(original.rows[0].status==="CONFIRMED")
+   throw new ConflictException("The warehouse confirmed a stale original request; refresh its true reward status.");
   return {operationRef:original.rows[0].ref,status:original.rows[0].status,
    proofRequired:store.delivery_proof_required,replayed:true};
  }
