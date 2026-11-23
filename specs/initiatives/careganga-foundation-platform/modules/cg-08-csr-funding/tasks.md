@@ -222,3 +222,8 @@ CG08 now exposes typed, current CG01/02-scoped `freezeForReview`, `reviewSource`
 ### 23 Nov 2026 — CG03 original protected CSR review backend source
 
 An introducing CG03 source service now creates actual protected CSR_PARTNER_REVIEW process/cases/immutable proposal snapshots against current CG08 partner + CG19 CLEAN_VERIFIED agreement, with strict current CG01/02 scope. A distinct protected reviewer uses original CG03 approval grant, fresh current-password proof and one transaction to record approval/return/rejection and apply original CG08 source status. The proposal cannot create finance cash, public partner cards, or another approval master. All related Web/Internal Android reviewer actions and actual runtime SQL/migration/provider/independent review remain to implement/verify. US001 IN_PROGRESS; 60 original QA IDs preserved, no main or CG07 parent merge.
+
+
+### 23 Nov 2026 — focused CG03/CG19 revision verification fix
+
+A targeted review of the newly wired CG03 decision path exposed that a verified CG19 agreement is bound to the **submitted draft's old source revision**, while CG08 increments the partner version on SUBMIT. Original CG19 `requireCurrentProof` now accepts only matching current DRAFT/RETURNED revision or exact SUBMITTED version+1 with unrevoked scanner evidence; mismatched version, later changed or rejected source remains forbidden. No new requirements or issue IDs. US001-QA10/11/13/19 source fix authored, independently reviewed real Postgres race and browser/device execution still NOT_RUN.

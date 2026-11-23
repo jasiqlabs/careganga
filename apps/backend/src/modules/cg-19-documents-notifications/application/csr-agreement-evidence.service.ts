@@ -143,7 +143,11 @@ export class CsrAgreementEvidenceService{
  /** Approved review owner may only treat scanner-CLEAN, same current revision
   * as proof. A reserved upload URL is not evidence. */
  async requireCurrentProof(tx:PoolClient,a:VerifiedFoundationActor,partnerId:string,version:number,fileId:string){
-  await this.partners.guardAgreement(tx,a,partnerId,version,false);
+  const owner=await this.partners.guardAgreement(tx,a,partnerId,null,false);
+  // Submit increments the source version once, while the signed proof is
+  // deliberately pinned to its immutable prior draft revision.
+  if(!(owner.version===version&&["DRAFT","RETURNED"].includes(owner.status)||
+    owner.version===version+1&&owner.status==="SUBMITTED"))throw changed();
   const q=await tx.query("SELECT f.id FROM cg19_stored_file f JOIN cg19_upload_intent i ON i.id=f.upload_intent_id AND i.realm_id=f.realm_id WHERE f.realm_id=$1 AND f.csr_partner_id=$2 AND f.id=$3 AND f.proposal_revision=$4 AND f.owner_kind='CG08_CSR_AGREEMENT' AND f.scan_status='CLEAN_VERIFIED' AND f.revoked_at IS NULL AND i.owner_kind='CG08_CSR_AGREEMENT' AND i.csr_partner_id=f.csr_partner_id AND i.classification='CSR_AGREEMENT' AND i.status='VALIDATED' FOR SHARE OF f,i",
    [a.realmId,uid(partnerId),uid(fileId),version]);
   if(!q.rowCount)throw changed();
