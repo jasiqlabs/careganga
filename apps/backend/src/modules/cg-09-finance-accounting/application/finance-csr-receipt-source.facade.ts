@@ -295,7 +295,7 @@ export class FinanceCsrReceiptSourceFacade{
    "AND intent.id=file.upload_intent_id AND intent.reconciliation_id=rec.id "+
    "AND intent.owner_kind='CG09_BANK_STATEMENT' AND intent.status='VALIDATED' "+
    "LEFT JOIN journal reversal ON reversal.root_realm_id=j.root_realm_id "+
-   "AND reversal.reversal_of_id=j.id AND reversal.posting_kind='REVERSAL') "+
+   "AND reversal.reversal_of_id=j.id AND reversal.posting_kind='REVERSAL'), "+
    "budget AS (SELECT coalesce(sum(ev.amount_minor) "+
    "FILTER(WHERE ev.kind='ALLOCATE'),0)::text AS allocated,"+
    "coalesce(sum(CASE WHEN ev.kind='UTILIZE' AND NOT EXISTS "+
