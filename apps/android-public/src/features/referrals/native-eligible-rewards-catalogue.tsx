@@ -113,9 +113,12 @@ export function NativeEligibleRewardsCatalogue({token,onExpired}:{
      {"\n"}{p.type==="DIGITAL"?
      "Confirm a real points hold. Delivery requires independent verified evidence.":
      "Physical stock reservation is not available until CG12 source verification."}</Text>}
-    {p.type==="DIGITAL"&&<Pressable style={s.button} accessibilityRole="button"
-     onPress={()=>setSelectedDigital(p)}>
-     <Text style={s.buttonText}>Request with earned points</Text></Pressable>}
+    {(p.type==="DIGITAL"||p.availability==="AVAILABLE")&&
+     <Pressable style={s.button} accessibilityRole="button"
+      onPress={()=>setSelectedDigital(p)}>
+      <Text style={s.buttonText}>{p.type==="PHYSICAL"?
+       "Reserve available physical reward":"Request with earned points"}</Text>
+     </Pressable>}
    </View>)}
    <NativeDigitalRedemption token={token} onExpired={onExpired}
     selected={selectedDigital} audiences={audiences}
