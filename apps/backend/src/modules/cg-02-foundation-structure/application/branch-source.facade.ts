@@ -87,6 +87,10 @@ export class BranchSourceFacade{
   if(!current.some(x=>x.id===branch))
    throw new ForbiddenException("This active branch is not assigned to your account");
  }
+ /** Read-only scoped labels for CG02's own permitted operating directory. */
+ async currentStaffBranchRefs(client:Pool|PoolClient,root:string,account:string):Promise<string[]>{
+  return (await this.permittedStaffBranches(client,root,account)).map(row=>row.id);
+ }
  /** Used for finance account reactivation, without CG-09 reading CG-02 tables. */
  async requireFinanceActiveBranch(client:PoolClient,actor:VerifiedFoundationActor,
   branchRef:string,action:"finance.accounts.manage"|"finance.journals.post"):Promise<void>{
