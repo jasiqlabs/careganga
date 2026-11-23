@@ -53,7 +53,7 @@ export class CsrFundingProposalsService{
   }catch(e){
    try{await tx.query("ROLLBACK");}catch{}
    if(e&&typeof e==="object"&&"code" in e&&
-    ["23505","23503","23514","40001","40P01","55P03","P0001","P3409"].includes(String(e.code)))
+    ["23505","23503","23514","40001","40P01","55P03","P0001","P3409","P3410","P0924"].includes(String(e.code)))
     throw changed();
    throw e;
   }finally{tx.release();}
@@ -319,18 +319,22 @@ export class CsrFundingProposalsService{
    [a.realmId,current.id])).rows[0];
   if(!value)throw changed();
   return {proposalRef:current.id,sourceVersion:current.version,
-   branchRef:current.branch_ref,csrMinor:value.csr_requested_minor,
+   branchRef:current.branch_ref,projectRef:current.project_ref,csrMinor:value.csr_requested_minor,
    foundationMinor:value.foundation_requested_minor,status:"APPROVED"};
  }
  async verifiedFinance(bearer:string,proposalRef:string){
   return this.run(bearer,"csr.partners.view",async(tx,a)=>{
    const source=await this.approvedFinanceSource(tx,a,proposalRef);
    const amounts=await this.receipts.currentReceived(tx,a,source);
+   const movements=await this.receipts.currentBudgetEffects(tx,a,source);
+   const received=BigInt(amounts.csrReceivedMinor)+BigInt(amounts.foundationReceivedMinor);
+   const allocated=BigInt(movements.allocatedMinor);
    return {proposalStatus:source.status,sourceVersion:source.sourceVersion,
     csrCommittedMinor:source.csrMinor,foundationCommittedMinor:source.foundationMinor,
-    ...amounts,
-    allocationStatus:"NOT_LINKED",
-    notice:"CG09 verified receipts are real bank transactions. Approved budget allocation and utilization remain separate."};
+    ...amounts,...movements,
+    availableMinor:allocated<=received?(received-allocated).toString():null,
+    needsFinanceRevalidation:allocated>received,
+    notice:"Only verified bank receipts support CG09-approved allocation. Utilization requires a posted expense."};
   },true);
  }
  async eligibleVerifiedReceipts(bearer:string,proposalRef:string){
@@ -354,6 +358,41 @@ export class CsrFundingProposalsService{
    return this.receipts.linkReceipt(tx,a,source,{
     partyKind:v.partyKind as CsrParty,requestKey:ref(v.requestKey),
     reconciliationRef:ref(v.reconciliationRef),remitterConfirmed:true});
+  });
+ }
+ /** Real original CG09 approved budget selectors; no new category master. */
+ async eligibleFinanceBudgets(bearer:string,proposalRef:string){
+  return this.run(bearer,"csr.partners.view",async(tx,a)=>{
+   const source=await this.approvedFinanceSource(tx,a,proposalRef);
+   return this.receipts.eligibleBudgets(tx,a,source);
+  },true);
+ }
+ async eligibleFinanceExpenses(bearer:string,proposalRef:string,budgetRef:string){
+  return this.run(bearer,"csr.partners.view",async(tx,a)=>{
+   const source=await this.approvedFinanceSource(tx,a,proposalRef);
+   return this.receipts.eligibleBudgetExpenses(tx,a,source,ref(budgetRef));
+  },true);
+ }
+ async applyFinanceBudgetEffect(bearer:string,proposalRef:string,raw:unknown){
+  if(!raw||typeof raw!=="object"||Array.isArray(raw))
+   throw new BadRequestException("Select the original approved budget effect.");
+  const v=raw as Record<string,unknown>;
+  if(Object.keys(v).some(k=>!["requestKey","expectedVersion","budgetRef","partyKind",
+   "kind","amountMinor","journalRef"].includes(k))||
+   !Number.isSafeInteger(v.expectedVersion)||Number(v.expectedVersion)<1||
+   !["CSR","FOUNDATION"].includes(String(v.partyKind))||
+   !["ALLOCATE","UTILIZE"].includes(String(v.kind))||
+   typeof v.amountMinor!=="string"||!/^[1-9][0-9]{0,13}$/.test(v.amountMinor))
+   throw new BadRequestException("The approved budget or amount is invalid.");
+  const journal=v.journalRef===null||v.journalRef===undefined?null:ref(v.journalRef);
+  if((v.kind==="UTILIZE"&&!journal)||(v.kind==="ALLOCATE"&&journal))
+   throw new BadRequestException("Only actual posted expenses can be utilized.");
+  return this.run(bearer,"csr.partners.manage",async(tx,a)=>{
+   const source=await this.approvedFinanceSource(tx,a,proposalRef,true);
+   if(source.sourceVersion!==v.expectedVersion)throw changed();
+   return this.receipts.recordBudgetEffect(tx,a,source,{
+    requestKey:ref(v.requestKey),budgetRef:ref(v.budgetRef),kind:v.kind as "ALLOCATE"|"UTILIZE",
+    partyKind:v.partyKind as CsrParty,amountMinor:v.amountMinor as string,journalRef:journal});
   });
  }
  /** Original B08 selectors from CG01/CG02/CG05/CG08 current sources only. */
