@@ -240,3 +240,16 @@ test("US001-QA08/10/13: old scanner proof stays historical and cannot re-submit 
  }
  assert.match(android,/p\.sourceVersion===version&&<Pressable/);
 });
+
+test("US001-QA04/10: protected proof-list failure differs from loading and legitimately empty",()=>{
+ const web=readFileSync(join(process.cwd(),"../web/src/features/csr/csr-agreement-panel.tsx"),"utf8");
+ const native=readFileSync(join(process.cwd(),"../android-internal/src/features/csr/native-csr-agreement-panel.tsx"),"utf8");
+ for(const source of [web,native]){
+  assert.match(source,/setProofLoadError\(""\)/);
+  assert.match(source,/proofLoadError\?/);
+  assert.match(source,/setProofLoadError\(e instanceof Error\?/);
+  assert.match(source,/proofLoadError\)/);
+ }
+ assert.ok(web.includes('disabled={busy||!!proofLoadError}'));
+ assert.ok(native.includes('if(running.current||proofLoadError)return;'));
+});

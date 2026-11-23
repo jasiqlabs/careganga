@@ -19,7 +19,7 @@ export function NativeCsrAgreementPanel({token,partnerRef,version,canUpload,canS
  const [files,setFiles]=useState<Proof[]|null>(null),[chosen,setChosen]=useState<Picked|null>(null),
   [consent,setConsent]=useState(false),[busy,setBusy]=useState(false),
   [error,setError]=useState(""),[message,setMessage]=useState(""),
-  [intent,setIntent]=useState(""),[epoch,setEpoch]=useState(0);
+  [intent,setIntent]=useState(""),[epoch,setEpoch]=useState(0),[proofLoadError,setProofLoadError]=useState("");
  const command=useRef<Command|null>(null),running=useRef(false),cache=useRef<string|null>(null),mounted=useRef(true);
  const [selectedProof,setSelectedProof]=useState(""),[pendingReview,setPendingReview]=useState<ReviewSubmit|null>(null);
  const clear=()=>{if(cache.current){try{new File(cache.current).delete();}catch{}cache.current=null;}};
@@ -35,12 +35,12 @@ export function NativeCsrAgreementPanel({token,partnerRef,version,canUpload,canS
    "Original private agreement status is unavailable.");
   return v as T;
  };
- useEffect(()=>{let live=true;setFiles(null);
+ useEffect(()=>{let live=true;setFiles(null);setProofLoadError("");
   void api<{files:Proof[];currentVersion:number}>("partners/"+partnerRef).then(v=>{
    if(!live)return;
-   if(v.currentVersion!==version){setError("CSR draft changed. Refresh before uploading.");return;}
+   if(v.currentVersion!==version){setProofLoadError("CSR draft changed. Refresh before uploading.");return;}
    setFiles(v.files);
-  }).catch(e=>{if(live)setError(e instanceof Error?e.message:"Private agreement proof is unavailable.");});
+  }).catch(e=>{if(live)setProofLoadError(e instanceof Error?e.message:"Private agreement proof is unavailable.");});
   return()=>{live=false;};
  },[token,partnerRef,version,epoch]);
  const submitForReview=async()=>{
@@ -65,7 +65,7 @@ export function NativeCsrAgreementPanel({token,partnerRef,version,canUpload,canS
   }finally{setBusy(false);}
  };
  const pick=async()=>{
-  if(running.current)return;
+  if(running.current||proofLoadError)return;
   try{const r=await Picker.getDocumentAsync({type:allowed,multiple:false,copyToCacheDirectory:true});
    if(r.canceled)return;const f=r.assets[0];
    if(!f||!f.size||f.size>10485760||!f.mimeType||!allowed.includes(f.mimeType)){
@@ -90,7 +90,7 @@ export function NativeCsrAgreementPanel({token,partnerRef,version,canUpload,canS
   finally{running.current=false;setBusy(false);}
  };
  const upload=async()=>{
-  if(!chosen||!canUpload||!consent||running.current)return;
+  if(!chosen||!canUpload||!consent||running.current||proofLoadError)return;
   running.current=true;setBusy(true);setError("");setMessage("");
   try{
    const file=new File(chosen.uri),sha=await file.digest("SHA-256");
@@ -135,7 +135,7 @@ export function NativeCsrAgreementPanel({token,partnerRef,version,canUpload,canS
  return <View style={styles.section}>
   <Text style={styles.title}>Private CSR agreement</Text>
   <Text style={styles.muted}>Signed PDF or image, maximum 10 MB. Private storage and malware scan required. Never an approval or payment.</Text>
-  {files===null?<ActivityIndicator accessibilityLabel="Checking original scanned files"/>:
+  {!!proofLoadError?<Text accessibilityRole="alert" style={styles.error}>{proofLoadError}</Text>:files===null?<ActivityIndicator accessibilityLabel="Checking original scanned files"/>:
    files.length===0?<Text style={styles.muted}>No verified private agreement yet.</Text>:
    files.map((p,i)=><View key={p.fileRef} style={styles.row}><Text style={styles.muted}>Scanner-verified agreement {i+1} · {p.sourceVersion===version?"Current draft":"Earlier draft: upload a new signed agreement"}</Text>
     {canSubmit&&p.sourceVersion===version&&<Pressable accessibilityRole="radio" accessibilityState={{checked:selectedProof===p.fileRef}} disabled={busy||!!pendingReview} onPress={()=>setSelectedProof(p.fileRef)}><Text style={styles.actionText}>{selectedProof===p.fileRef?"◉ Selected for review":"○ Select for review"}</Text></Pressable>}
@@ -148,12 +148,12 @@ export function NativeCsrAgreementPanel({token,partnerRef,version,canUpload,canS
    {!!pendingReview&&action("Retry exact review submission",()=>void submitForReview())}
   </View>}
   {canUpload&&<>
-   {action(chosen?"Selected: "+chosen.name:"Choose agreement",()=>void pick())}
+   {action(chosen?"Selected: "+chosen.name:"Choose agreement",()=>void pick(),!!proofLoadError)}
    <Pressable accessibilityRole="checkbox" accessibilityState={{checked:consent}} style={styles.row}
     onPress={()=>setConsent(v=>!v)}>
     <Text style={styles.muted}>{consent?"☑":"☐"} I confirm the Foundation may securely retain this private CSR agreement.</Text>
    </Pressable>
-   {action(busy?"Checking scan…":"Upload and verify agreement",()=>void upload(),!chosen||!consent)}
+   {action(busy?"Checking scan…":"Upload and verify agreement",()=>void upload(),!chosen||!consent||!!proofLoadError)}
    {!!intent&&action("Check original scan result",()=>void confirm())}
   </>}
   {action("Refresh verified agreements",()=>setEpoch(n=>n+1))}

@@ -329,3 +329,8 @@ Extended **existing** `test:cg08-partner` service-level tests using only the act
 ### 23-Nov-2026 — US001 returned-review document source revision guard
 
 Focused review found the existing CG19 history list lacked the proof's source draft revision. For an application RETURNED by CG03 and then edited to a new DRAFT version, an earlier CLEAN_VERIFIED agreement was still selectable on Web/Android even though real CG19 `requireCurrentProof` would correctly reject it on submit. The original scoped CG19 file list now returns **sourceVersion**; both staff UIs distinguish historical scan proof from a current-version file, permit current revision only in selection/submission, and keep older private evidence visible for authorized history. Existing US001-QA08/10/13/14/20 source contract regression appended, not executed; no new API/table/approval owner. Real returned-case end-to-end and device QA remain NOT_RUN.
+
+
+### 23-Nov-2026 — US001 CG19 proof unavailable vs valid empty UI error-state fix
+
+Focused exception review: Web and Internal Android CG19 agreement panels previously left `files=null` and displayed infinite `Checking…` when the original private proof list returned 401/403/503 or the partner's version changed. Both now keep a separate `proofLoadError` from local upload/submission failures and render a truthful unavailable/stale-source message; a genuine successful empty list remains distinct. File picker/upload is disabled while current proof access cannot be verified; Refresh can re-check original CG19 permission/version. Existing original US001-QA04/05/10/12/13/20 regression definitions appended (source only); provider timeout, revoked document/session and UI runtime QA NOT_RUN. No new state machine, endpoint or requirement.

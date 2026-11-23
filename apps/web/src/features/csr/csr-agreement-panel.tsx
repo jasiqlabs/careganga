@@ -18,15 +18,16 @@ export function CsrAgreementPanel({partnerRef,version,canUpload,canSubmit,onSubm
  const [files,setFiles]=useState<Evidence[]|null>(null),[chosen,setChosen]=useState<File|null>(null),
   [consent,setConsent]=useState(false),[busy,setBusy]=useState(false),[error,setError]=useState(""),[message,setMessage]=useState(""),
   [epoch,setEpoch]=useState(0),[intent,setIntent]=useState("");
+ const [proofLoadError,setProofLoadError]=useState("");
  const command=useRef<Command|null>(null),running=useRef(false),mounted=useRef(true);
  const [selectedProof,setSelectedProof]=useState(""),[submission,setSubmission]=useState<Submit|null>(null),[submitError,setSubmitError]=useState("");
  useEffect(()=>{mounted.current=true;return()=>{mounted.current=false;};},[]);
- useEffect(()=>{let live=true;setFiles(null);
+ useEffect(()=>{let live=true;setFiles(null);setProofLoadError("");
   void api<{files:Evidence[];currentVersion:number}>("partners/"+partnerRef).then(v=>{
    if(!live)return;
-   if(v.currentVersion!==version){setError("CSR draft changed. Refresh before uploading the agreement.");return;}
+   if(v.currentVersion!==version){setProofLoadError("CSR draft changed. Refresh before uploading the agreement.");return;}
    setFiles(v.files);
-  }).catch(e=>{if(live)setError(e instanceof Error?e.message:"Cannot inspect verified CSR agreements.");});
+  }).catch(e=>{if(live)setProofLoadError(e instanceof Error?e.message:"Cannot inspect verified CSR agreements.");});
   return()=>{live=false;};
  },[partnerRef,version,epoch]);
  const accepted=(v:Upload)=>{
@@ -91,7 +92,7 @@ export function CsrAgreementPanel({partnerRef,version,canUpload,canSubmit,onSubm
  return <section aria-label="Private CSR agreement" style={{display:"grid",gap:9,border:"1px dashed var(--cg-border)",borderRadius:12,padding:14}}>
   <h3 style={{margin:0}}>Protected CSR agreement</h3>
   <p style={{fontSize:13,margin:0}}>PDF, JPG, PNG or WebP up to 10 MB. Retained privately by CareGanga and malware-scanned. Neither file upload nor scan verification is partner approval.</p>
-  {files===null?<p role="status">Checking verified documents…</p>:files.length===0?<p>No scanner-verified agreement yet.</p>:
+  {proofLoadError?<p role="alert">{proofLoadError}</p>:files===null?<p role="status">Checking verified documents…</p>:files.length===0?<p>No scanner-verified agreement yet.</p>:
    <ul>{files.map((f,i)=><li key={f.fileRef}>
     Verified private document {i+1} ({f.mime==="application/pdf"?"PDF":"image"}) {f.sourceVersion===version?"· Current draft":"· Earlier draft; not eligible for a new submission"} · <a href={"/api/csr/agreements/files/"+f.fileRef}>Download privately</a>
    </li>)}</ul>}
@@ -108,14 +109,14 @@ export function CsrAgreementPanel({partnerRef,version,canUpload,canSubmit,onSubm
    </div>}
   {canUpload&&<>
    <label>Select signed CSR agreement
-    <input type="file" accept={allowed.join(",")} disabled={busy} onChange={e=>{setChosen(e.target.files?.[0]??null);setConsent(false);command.current=null;setIntent("");setError("");}}/>
+    <input type="file" accept={allowed.join(",")} disabled={busy||!!proofLoadError} onChange={e=>{setChosen(e.target.files?.[0]??null);setConsent(false);command.current=null;setIntent("");setError("");}}/>
    </label>
    <label style={{display:"flex",alignItems:"start",gap:6,fontSize:13}}>
     <input type="checkbox" checked={consent} disabled={busy} onChange={e=>setConsent(e.target.checked)}/>
     I confirm the Foundation is authorized to retain this private agreement.
    </label>
    <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
-    <button type="button" disabled={!chosen||!consent||busy} onClick={()=>void upload()}>{busy?"Checking verified proof…":"Upload and verify agreement"}</button>
+    <button type="button" disabled={!chosen||!consent||busy||!!proofLoadError} onClick={()=>void upload()}>{busy?"Checking verified proof…":"Upload and verify agreement"}</button>
     {intent&&<button type="button" disabled={busy} onClick={()=>void confirm()}>Check original scan result</button>}
    </div>
   </>}
