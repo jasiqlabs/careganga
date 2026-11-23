@@ -335,3 +335,8 @@ Independent source review executed under pinned JASIQ Harness standard for all 1
 
 
 **CG-MB-009 senior-manager reporting hierarchy (NOT_RUN):** CG20 high-level `ALL_BRANCHES` actor sees filtered branch A/B/C and authorized combined A+B+C posted metrics, never Foundation-null unless protected root. State/District `AREA` manager sees only active geographic descendants, A+B explicitly assigned manager sees only A+B, A-only manager sees A. User role label alone cannot widen. Both MIS Web and Internal Android must show distinct `Foundation and all branches` vs `All assigned branches` labels, and matching authorized chart/data/CSV/PDF, with no sensitive health-center leakage. Test real 100+200+400+300 amounts and revocation/races, original US-001–005 QA ID proof. Source-only check not runtime PASS.
+
+
+### 23-Nov-2026 — saved/export and scheduled ALL_ASSIGNED source parity
+
+Original CG20 saved preview, export and scheduled posted finance report now use original CG09 `assignedMisSummary`, `assignedMisMonthlyTrend` and real `scheduledSummary` with current CG02 `scheduledFinanceScope`. Explicit selected branch never broadens; no-branch regional manager means *all currently authorized branches only* (not Foundation legal/money). Test Web/Internal Android chosen A/B/all assigned preview, saved definition edit, report run, export and scheduled execution after B grant revoke, A→B manager transfer, branch close, new State child, cross-root forged UUID, CG19 recipient changed and time-limited download. Verify sums A=100 B=200 C=400 Foundation=300 and eligible actual source versions; old artifact denial, no clinical center X/Y leak. Existing original US001–005 QA IDs retained. Executable tests and independent reviewer NOT_RUN; no main merge.
