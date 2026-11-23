@@ -34,7 +34,9 @@ function route(parts:string[],method:Method):{target:string;isSelf:boolean}|null
  const segment=parts.join("/");
  if(segment==="resolve"&&method==="POST")return {target:segment,isSelf:false};
  if(segment==="my-catalog"&&method==="GET")return {target:"my-catalog",isSelf:true};
- if((segment==="my-code"||segment==="my-code/options")&&method==="GET")
+ if((segment==="my-code"||segment==="my-code/options"||
+  segment==="points/my-balance"||segment==="my-history"||
+  segment==="rewards/my-rank")&&method==="GET")
   return {target:segment,isSelf:true};
  if(segment==="catalogue-programmes"&&method==="GET")
   return {target:segment,isSelf:false};
@@ -66,15 +68,19 @@ async function proxy(req:NextRequest,ctx:Context,method:Method){
  const page=params.get("page"),search=params.get("q"),category=params.get("category");
  const programme=params.get("programmeRef"),relationship=params.get("relationship");
  const codePath=path.target==="my-code",codeOptions=path.target==="my-code/options";
+ const walletPath=["points/my-balance","my-history","rewards/my-rank"].includes(path.target);
+ const selector=codePath||walletPath;
  const products=method==="GET"&&
   (path.target.endsWith("/products")||path.target==="my-catalog");
  const paged=method==="GET"&&(path.target==="programmes"||path.target==="catalogue-programmes"||
-  path.target==="my-catalog"||products||codeOptions);
+  path.target==="my-catalog"||products||codeOptions||
+  path.target==="my-history"||path.target==="rewards/my-rank");
  if([...params.keys()].some(k=>!["page","q","category","programmeRef","relationship"].includes(k))||
     ["page","q","category","programmeRef","relationship"].some(k=>params.getAll(k).length>1)||
-    ((programme!==null||relationship!==null)&&!codePath)||
-    (codePath&&(!programme||!UUID.test(programme)||!["MEMBER","VOLUNTEER"].includes(relationship??"")))||
-    (codePath&&(page!==null||search!==null||category!==null))||
+    ((programme!==null||relationship!==null)&&!selector)||
+    (selector&&(!programme||!UUID.test(programme)||!["MEMBER","VOLUNTEER"].includes(relationship??"")))||
+    ((codePath||path.target==="points/my-balance")&&page!==null)||
+    (selector&&(search!==null||category!==null))||
     (page!==null&&(!paged||!(/^[1-9][0-9]{0,3}$/).test(page)))||
     ((search!==null||category!==null)&&!products)||
     (search!==null&&(search.length>100||/[\u0000-\u001f\u007f]/.test(search)))||
