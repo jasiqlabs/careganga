@@ -34,6 +34,8 @@ export function NativePublicDonation({campaignSlug=null}:{campaignSlug?:string|n
   [corrections,setCorrections]=useState<CorrectionRow[]>([]),
   [correctionProof,setCorrectionProof]=useState("");
  const key=useRef<string|null>(null),paymentKey=useRef<string|null>(null);
+ const messageKeys=useRef<{EMAIL:string|null;WHATSAPP:string|null}>({EMAIL:null,WHATSAPP:null});
+ const [messageNotice,setMessageNotice]=useState("");
  useEffect(()=>{let active=true;(async()=>{try{
   if(!base||!/^https?:\/\//.test(base)||(process.env.NODE_ENV==="production"&&!base.startsWith("https://")))return;
   const r=await fetch(new URL("/api/public/content/donations/readiness",base),{
@@ -80,6 +82,22 @@ export function NativePublicDonation({campaignSlug=null}:{campaignSlug?:string|n
   });
   return()=>sub.remove();
  },[token,busy]);
+ const requestReceiptMessage=(channel:"EMAIL"|"WHATSAPP")=>call(async()=>{
+  if(!token||receiptStatus!=="ISSUED")return;
+  if(!messageKeys.current[channel])messageKeys.current[channel]=Crypto.randomUUID();
+  const r=await request<{downloadAvailable:boolean;delivered:boolean;notice:string}>(
+   "/receipt/message",{statusToken:token,channel,requestKey:messageKeys.current[channel]});
+  if(r.delivered||!r.downloadAvailable)throw Error("Original receipt proof unavailable.");
+  setMessageNotice(channel==="WHATSAPP"?
+   "WhatsApp is unavailable. Your private receipt remains downloadable.":r.notice);
+ });
+ const checkReceiptMessage=()=>call(async()=>{
+  if(!token)return;
+  const r=await request<{downloadAvailable:boolean;delivered:boolean;notice:string}>(
+   "/receipt/message/status",{statusToken:token});
+  if(r.delivered||!r.downloadAvailable)throw Error("Original receipt proof unavailable.");
+  setMessageNotice(r.notice);
+ });
  const listCorrections=(proof=token)=>call(async()=>{
   if(!proof)return;
   const r=await request<{items:CorrectionRow[]}>("/receipt/corrections",{statusToken:proof});
@@ -179,6 +197,13 @@ export function NativePublicDonation({campaignSlug=null}:{campaignSlug?:string|n
    {refundedMinor!=="0"&&<Text>Confirmed refund has reduced verified net donations.</Text>}
    {refundPending&&<Text accessibilityRole="alert">Refund requested; actual payout has not been verified.</Text>}
    {receiptStatus==="ISSUED"&&button("Open/share your verified private PDF receipt",download)}
+   {receiptStatus==="ISSUED"&&<>
+    <Text>Optional receipt notice. No donor PAN, amount, PDF or private proof is emailed.</Text>
+    {button("Request one receipt email notice",()=>void requestReceiptMessage("EMAIL"))}
+    {button("Check WhatsApp notice availability",()=>void requestReceiptMessage("WHATSAPP"))}
+    {button("Check receipt message status",checkReceiptMessage)}
+    {!!messageNotice&&<Text accessibilityRole="alert">Download available. {messageNotice}</Text>}
+   </>}
    {refundedMinor!=="0"&&button("View my issued refund corrections",()=>void listCorrections())}
    {corrections.map(item=><View key={item.correctionNumber} style={{gap:8,padding:10,
     borderWidth:1,borderColor:t.border,borderRadius:8}}>

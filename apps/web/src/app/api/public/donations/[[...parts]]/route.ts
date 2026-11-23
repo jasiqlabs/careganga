@@ -8,8 +8,13 @@ export async function POST(req:NextRequest,ctx:Context){
  const parts=(await ctx.params).parts??[];
  const receipt=parts.length===2&&parts[0]==="receipt"&&["download","correction-download"].includes(parts[1]);
  const correctionList=parts.length===2&&parts[0]==="receipt"&&parts[1]==="corrections";
+ const receiptMessage=parts[0]==="receipt"&&(
+  parts.length===2&&parts[1]==="message"||
+  parts.length===3&&parts[1]==="message"&&parts[2]==="status");
  const path=receipt?"/api/public/donations/receipt/"+parts[1]:
   correctionList?"/api/public/donations/receipt/corrections":
+  receiptMessage?"/api/public/donations/receipt/message"+
+   (parts[2]==="status"?"/status":""):
   parts.length===0?"/api/public/donations":
   parts.length===1&&["status","history","payment-link"].includes(parts[0])?
   "/api/public/donations/"+parts[0]:null;

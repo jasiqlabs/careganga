@@ -38,6 +38,8 @@ export function PublicDonationForm({campaignSlug=null}:{campaignSlug?:string|nul
   [corrections,setCorrections]=useState<CorrectionRow[]>([]),
   [correctionProof,setCorrectionProof]=useState("");
  const intentKey=useRef<string|null>(null),linkKey=useRef<string|null>(null);
+ const receiptMessageKeys=useRef<{EMAIL:string|null;WHATSAPP:string|null}>({EMAIL:null,WHATSAPP:null});
+ const [receiptMessage,setReceiptMessage]=useState("");
  const create=async(event:FormEvent)=>{
   event.preventDefault();if(busy||!consent||!amount.trim())return;
   if(!intentKey.current)intentKey.current=crypto.randomUUID();
@@ -87,6 +89,31 @@ export function PublicDonationForm({campaignSlug=null}:{campaignSlug?:string|nul
    const result=await api<{items:HistoricalDonation[]}>("/history",{statusTokens:tokens});
    setHistoryTokens(tokens);setHistory(result.items);
   }catch(e){setError(e instanceof Error?e.message:"Private history unavailable.");}
+  finally{setBusy(false);}
+ };
+ const requestReceiptMessage=async(channel:"EMAIL"|"WHATSAPP")=>{
+  if(!proof||busy||receiptStatus!=="ISSUED")return;
+  if(!receiptMessageKeys.current[channel])receiptMessageKeys.current[channel]=crypto.randomUUID();
+  setBusy(true);setError("");
+  try{
+   const result=await api<{downloadAvailable:boolean;messageStatus:string;delivered:boolean;notice:string}>(
+    "/receipt/message",{statusToken:proof,channel,requestKey:receiptMessageKeys.current[channel]});
+   if(result.delivered||!result.downloadAvailable)throw Error("Receipt status cannot be verified.");
+   setReceiptMessage(channel==="WHATSAPP"?
+    "WhatsApp delivery is unavailable. Your private receipt remains downloadable.":
+    result.notice);
+  }catch(e){setError(e instanceof Error?e.message:"Receipt message outcome uncertain; do not change the request key.");}
+  finally{setBusy(false);}
+ };
+ const refreshReceiptMessage=async()=>{
+  if(!proof||busy)return;
+  setBusy(true);setError("");
+  try{
+   const r=await api<{downloadAvailable:boolean;delivered:boolean;notice:string}>(
+    "/receipt/message/status",{statusToken:proof});
+   if(r.delivered||!r.downloadAvailable)throw Error("Receipt message proof cannot be confirmed.");
+   setReceiptMessage(r.notice);
+  }catch(e){setError(e instanceof Error?e.message:"Receipt message status unavailable.");}
   finally{setBusy(false);}
  };
  const listCorrections=async(historyToken=proof)=>{
@@ -196,6 +223,17 @@ export function PublicDonationForm({campaignSlug=null}:{campaignSlug?:string|nul
     {" "}Receipt: {receiptStatus.replaceAll("_"," ").toLowerCase()}.</p>}
    {receiptStatus==="ISSUED"&&<button type="button" style={button} disabled={busy}
     onClick={()=>void download()}>Download your original verified receipt (PDF)</button>}
+   {receiptStatus==="ISSUED"&&<div style={{display:"grid",gap:7}}>
+    <strong>Optional receipt availability notice</strong>
+    <p>No private PDF, amount, PAN or status proof is included in email. Provider acceptance is not delivery.</p>
+    <button type="button" style={button} disabled={busy}
+     onClick={()=>void requestReceiptMessage("EMAIL")}>Request one receipt email notice</button>
+    <button type="button" style={button} disabled={busy}
+     onClick={()=>void requestReceiptMessage("WHATSAPP")}>Check WhatsApp notice availability</button>
+    <button type="button" style={button} disabled={busy}
+     onClick={()=>void refreshReceiptMessage()}>Check receipt message status</button>
+    {receiptMessage&&<p role="status">Download available. {receiptMessage}</p>}
+   </div>}
    {received&&refundMinor!=="0"&&<button type="button" style={button} disabled={busy}
     onClick={()=>void listCorrections()}>View issued refund corrections</button>}
    {corrections.map(item=><div key={item.correctionNumber} style={{display:"grid",gap:6,
