@@ -28,7 +28,8 @@ export function NativePublicDonation({campaignSlug=null}:{campaignSlug?:string|n
  const [token,setToken]=useState(""),[status,setStatus]=useState(""),
   [paymentUrl,setPaymentUrl]=useState(""),[error,setError]=useState(""),[busy,setBusy]=useState(false);
  const [received,setReceived]=useState(false),[receiptStatus,setReceiptStatus]=useState("NOT_ISSUED"),
-  [refundedMinor,setRefundedMinor]=useState("0"),[refundPending,setRefundPending]=useState(false);
+  [refundedMinor,setRefundedMinor]=useState("0"),[refundPending,setRefundPending]=useState(false),
+   [refundStatus,setRefundStatus]=useState("NO_REFUND");
  const [extraProofs,setExtraProofs]=useState(""),[history,setHistory]=useState<HistoryRow[]>([]),
   [historyTokens,setHistoryTokens]=useState<string[]>([]),
   [corrections,setCorrections]=useState<CorrectionRow[]>([]),
@@ -64,10 +65,10 @@ export function NativePublicDonation({campaignSlug=null}:{campaignSlug?:string|n
   setPaymentUrl(u.toString());await Linking.openURL(u.toString());
  });
  const refresh=()=>call(async()=>{
-  const v=await request<{status:string;received:boolean;receiptStatus:string;refundedMinor:string;refundPending:boolean}>(
+  const v=await request<{status:string;received:boolean;receiptStatus:string;refundedMinor:string;refundPending:boolean;refundStatus:string}>(
    "/status",{statusToken:token});
   setStatus(v.status);setReceived(v.received);setReceiptStatus(v.receiptStatus);
-  setRefundedMinor(v.refundedMinor);setRefundPending(v.refundPending);
+  setRefundedMinor(v.refundedMinor);setRefundPending(v.refundPending);setRefundStatus(v.refundStatus);
  });
  const loadHistory=()=>call(async()=>{
   if(!token)return;
@@ -198,6 +199,10 @@ export function NativePublicDonation({campaignSlug=null}:{campaignSlug?:string|n
     <Text accessibilityRole="alert">Original payment verification is pending or failed. Do not initiate another method for this donation.</Text>)}
    {refundedMinor!=="0"&&<Text>Confirmed refund has reduced verified net donations.</Text>}
    {refundPending&&<Text accessibilityRole="alert">Refund requested; actual payout has not been verified.</Text>}
+    {refundStatus==="REFUND_RECONCILIATION_PENDING"&&
+     <Text accessibilityRole="alert">Gateway refund reconciliation pending. No CG09 confirmed reversal. Do not repeat the refund.</Text>}
+    {refundStatus==="REFUND_FAILED_REVIEW_REQUIRED"&&
+     <Text accessibilityRole="alert">Merchant refund failed; Foundation review required. Verified net remains unchanged.</Text>}
    {receiptStatus==="ISSUED"&&button("Open/share your verified private PDF receipt",download)}
    {receiptStatus==="ISSUED"&&<>
     <Text>Optional receipt notice. No donor PAN, amount, PDF or private proof is emailed.</Text>
