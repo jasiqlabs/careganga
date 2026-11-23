@@ -102,25 +102,27 @@ async function publishedNotices():Promise<{available:boolean;notices:Notice[]}>{
   return {available:true,notices:data.notices};
  }catch{return {available:false,notices:[]};}
 }
-async function publishedNavigation():Promise<{login:boolean;paths:string[];volunteer:boolean}>{
+async function publishedNavigation():Promise<{login:boolean;paths:string[];member:boolean;volunteer:boolean}>{
  if(!base||!/^https?:\/\//.test(base)||
   (process.env.NODE_ENV==="production"&&!base.startsWith("https://")))
-  return {login:false,paths:[],volunteer:false};
+  return {login:false,paths:[],member:false,volunteer:false};
  try{
   const r=await fetch(new URL("/api/public/content/navigation",base).toString(),
    {cache:"no-store",signal:AbortSignal.timeout(9000)});
   if(!r.ok)throw Error();
   const result:unknown=await r.json();
   if(!result||typeof result!=="object"||!("schemaVersion" in result)||
-    result.schemaVersion!==1)return {login:false,paths:[],volunteer:false};
-  const data=result as {login?:{visible?:boolean};volunteerJoin?:{visible?:boolean;path?:string};publishedRoutes?:{path:string}[]};
+    result.schemaVersion!==1)return {login:false,paths:[],member:false,volunteer:false};
+  const data=result as {login?:{visible?:boolean};memberJoin?:{visible?:boolean;path?:string};volunteerJoin?:{visible?:boolean;path?:string};publishedRoutes?:{path:string}[]};
   const valid=new Set(["/about","/our-impact","/ngo-information","/gallery","/contact","/healthcare","/our-work","/upcoming-projects","/collaboration","/campaigns",
    ...legalPages.map(([slug])=>"/policies/"+slug)]);
   const paths=Array.isArray(data.publishedRoutes)?data.publishedRoutes
    .map(p=>p.path).filter(p=>typeof p==="string"&&
     (valid.has(p)||/^\/blog\/[a-z0-9-]{1,70}$/.test(p))).slice(0,100):[];
-  return {login:data.login?.visible===true,volunteer:data.volunteerJoin?.visible===true&&data.volunteerJoin?.path==="/volunteer",paths};
- }catch{return {login:false,paths:[],volunteer:false};}
+  return {login:data.login?.visible===true,
+   member:data.memberJoin?.visible===true&&data.memberJoin?.path==="/membership",
+   volunteer:data.volunteerJoin?.visible===true&&data.volunteerJoin?.path==="/volunteer",paths};
+ }catch{return {login:false,paths:[],member:false,volunteer:false};}
 }
 function CmsButton({title,onPress,secondary=false}:{
  title:string;onPress:()=>void;secondary?:boolean}){
@@ -142,6 +144,7 @@ export function PublicCmsContent({onContact,onPartnerApplication,onMembershipApp
  const [policiesExpanded,setPoliciesExpanded]=useState(false);
  const [publishedPaths,setPublishedPaths]=useState<string[]>([]);
  const [volunteerJoin,setVolunteerJoin]=useState(false);
+ const [memberJoin,setMemberJoin]=useState(false);
  const [articleFeed,setArticleFeed]=useState<{available:boolean;posts:Article[]}>({
   available:false,posts:[]});
  const [noticeFeed,setNoticeFeed]=useState<{available:boolean;notices:Notice[]}>({
@@ -157,10 +160,11 @@ export function PublicCmsContent({onContact,onPartnerApplication,onMembershipApp
  const latestNavRequest=useRef(0);
  const refreshNavigation=useCallback(async()=>{
   const request=++latestNavRequest.current;
-  onLoginVisibility(false);setVolunteerJoin(false);
+  onLoginVisibility(false);setVolunteerJoin(false);setMemberJoin(false);
   const nav=await publishedNavigation();
   if(request===latestNavRequest.current){
-   onLoginVisibility(nav.login);setPublishedPaths(nav.paths);setVolunteerJoin(nav.volunteer);
+   onLoginVisibility(nav.login);setPublishedPaths(nav.paths);
+   setVolunteerJoin(nav.volunteer);setMemberJoin(nav.member);
   }
  },[onLoginVisibility]);
  const load=useCallback(async(target:string)=>{
@@ -213,6 +217,8 @@ export function PublicCmsContent({onContact,onPartnerApplication,onMembershipApp
  const navigate=(href:unknown)=>{
   const route=local(href);
   if(route==="/")setSlug("home");
+  else if(route==="/membership"&&memberJoin)setSlug("membership");
+  else if(route==="/volunteer"&&volunteerJoin)onVolunteerApply();
   else if(route==="/contact"){
    if(publishedPaths.includes("/contact"))setSlug("contact");else onContact();
   }
@@ -440,6 +446,7 @@ export function PublicCmsContent({onContact,onPartnerApplication,onMembershipApp
      <Text style={styles.body}>{text(fields.memberBody)}</Text>
      {(Array.isArray(fields.memberBenefits)?fields.memberBenefits:[]).map((v,j)=>
       <Text style={styles.highlight} key={j}>✓ {text(v)}</Text>)}
+     {memberJoin&&<CmsButton title="Become a Member" onPress={()=>setSlug("membership")}/>}
     </View>;
     if(section.kind==="CTA"){
      const image=page.assets.find(x=>x.role==="PROMO"&&x.order===section.order);
