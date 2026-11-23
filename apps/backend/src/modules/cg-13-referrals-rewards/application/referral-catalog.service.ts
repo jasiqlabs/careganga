@@ -269,7 +269,7 @@ export class ReferralCatalogService{
   });
  }
  private async stockSource(tx:PoolClient,a:VerifiedFoundationActor,p:Product){
-  if(p.type!=="PHYSICAL")return null;
+  if(p.type!=="PHYSICAL"||p.status==="ARCHIVED")return null;
   await this.identity.assertCurrent(tx,a,"inventory.catalog.view");
   // Original CG12 owner checks live store, location branch and current staff scope.
   await this.inventory.store(tx,a,p.storeRef!,true,false);
