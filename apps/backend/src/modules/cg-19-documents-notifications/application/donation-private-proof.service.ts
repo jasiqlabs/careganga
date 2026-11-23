@@ -62,6 +62,8 @@ export class DonationPrivateProofService{
   try{
    await tx.query("BEGIN");
    const d=await this.original(tx,a,v.donationNumber);
+   await tx.query("SELECT pg_advisory_xact_lock(hashtextextended($1,0))",
+    ["CG19:A17:DONOR_PROOF:"+a.realmId+":"+d.id]);
    if(d.source_status!=="REQUESTED")
     throw new ConflictException("Original A17 donation is no longer awaiting verification.");
    const existing=(await tx.query<{count:string}>(
@@ -164,6 +166,40 @@ export class DonationPrivateProofService{
    return {status:clean?"VALIDATED":"REJECTED",cleanVerified:clean};
   }catch(e){await client.query("ROLLBACK");throw e;}finally{client.release();}
  }
+ /** Read only the original clean-verified private file, never a storage URL.
+  * Re-check actor, branch, version and checksum after the file read. */
+ async download(token:string,proofRef:string){
+  if(!UUID.test(proofRef))throw new NotFoundException("Private proof unavailable.");
+  const actor=await this.sessions.requireAction(token,"finance.reports.view");
+  await this.sessions.requireAction(token,"documents.files.view");
+  const verify=async()=>{
+   const tx=await this.db.connect();
+   try{
+    await tx.query("BEGIN");await this.identity.assertCurrent(tx,actor,"documents.files.view");
+    const row=(await tx.query<Row & {branch_ref:string|null}>(
+     "SELECT p.*,d.branch_ref FROM cg19_donation_private_proof p "+
+     "JOIN donation d ON d.root_realm_id=p.root_realm_id AND d.id=p.donation_id "+
+     "WHERE p.root_realm_id=$1 AND p.id=$2 AND p.state='VALIDATED' "+
+     "AND p.object_version IS NOT NULL AND p.scan_proof_ref IS NOT NULL FOR SHARE OF p,d",
+     [actor.realmId,proofRef])).rows[0];
+    if(!row)throw new NotFoundException("Clean-verified donor document is unavailable.");
+    if(row.branch_ref===null)await this.branches.requireFinanceRootScope(tx,actor,"finance.reports.view");
+    else await this.branches.requireFinanceActiveBranch(tx,actor,row.branch_ref,"finance.reports.view");
+    await tx.query("COMMIT");return row;
+   }catch(e){await tx.query("ROLLBACK");throw e;}finally{tx.release();}
+  };
+  const first=await verify();
+  if(!first.object_version)throw new NotFoundException("Private document version unavailable.");
+  const bytes=await this.storage.readVerifiedPrivateObject({
+   objectKey:first.object_key,objectVersion:first.object_version,maxBytes:Number(first.size_bytes)});
+  if(bytes.length!==Number(first.size_bytes)||
+   createHash("sha256").update(bytes).digest("hex")!==first.expected_sha256)
+   throw new ConflictException("Original CG19 verified document checksum changed.");
+  const last=await verify();
+  if(last.object_version!==first.object_version||last.expected_sha256!==first.expected_sha256)
+   throw new NotFoundException("Private document access was revoked or changed.");
+  return {bytes,mime:first.mime};
+ }
  async list(token:string,number:string){
   if(!NUMBER.test(number))throw new BadRequestException("Choose a donation.");
   const actor=await this.sessions.requireAction(token,"finance.reports.view");
@@ -177,8 +213,8 @@ export class DonationPrivateProofService{
    if(!d)throw new NotFoundException("Current donation not available.");
    if(d.branch_ref===null)await this.branches.requireFinanceRootScope(tx,actor,"finance.reports.view");
    else await this.branches.requireFinanceActiveBranch(tx,actor,d.branch_ref,"finance.reports.view");
-   const files=await tx.query<{mime:string;status:string;verifiedAt:Date|null}>(
-    "SELECT mime,state AS status,scanned_at AS \"verifiedAt\" "+
+   const files=await tx.query<{proofRef:string;mime:string;status:string;verifiedAt:Date|null}>(
+    "SELECT id AS \"proofRef\",mime,state AS status,scanned_at AS \"verifiedAt\" "+
     "FROM cg19_donation_private_proof WHERE root_realm_id=$1 AND donation_id=$2 "+
     "ORDER BY created_at DESC,id DESC LIMIT 6",[actor.realmId,d.id]);
    await tx.query("COMMIT");
