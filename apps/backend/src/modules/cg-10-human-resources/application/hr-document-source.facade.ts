@@ -32,7 +32,7 @@ const scope=(parameter:number)=>`(b.manager_account_ref=$2 OR b.id=ANY(${paramet
 @Injectable()
 export class HrDocumentSourceFacade{
  constructor(private readonly identity:FoundationStructureIdentityFacade,
-  private readonly branches:BranchSourceFacade){
+  private readonly branches:BranchSourceFacade){}
  async subject(tx:PoolClient,actor:VerifiedFoundationActor,kind:HrDocumentKind,ref:string){
   await this.identity.assertCurrent(tx,actor,"hr.documents.manage");
   const permitted=await this.branches.currentStaffBranchRefs(tx,actor.realmId,actor.accountId);
