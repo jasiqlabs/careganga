@@ -691,3 +691,43 @@ After direct inspection of client B03/B04/B05 and B07 original PNGs (2400×1440)
 
 **Source status unchanged from previous re-trace:** 14 SOURCE_AUTHORED, 6 PARTIAL_SOURCE, all 20 runtime NOT_RUN, zero live PASS. Source-authored is never equivalent to build-green/QA-closed. Developer local handoff remains the **only** execution gate: branch checkout, migrated disposable PostgreSQL through 3410, original scoped/role adversarial tests, all existing CG08 source contract tests, backend TS build, Web Next build, Internal Android build and actual client PNG comparison. Fix discovered issues on this SAME feature branch and update QA evidence. **Do not merge or run GitHub Actions.**
 
+### 23-Nov-2026 — US003 US01 developed after US002 source integration review
+
+**Authorization:** user explicitly approved starting US003 after continuing US002 closure. No merge, no GitHub Actions, no new user story or finance master. Existing branch `feature/careganga-cg08-csr-funding-from-cg07-20261123`.
+
+**Develop → review → focused fixes → source QA trace (no runtime claims):**
+- Original `CsrFundingReportsService` queries exactly CG08 partner/funding proposal, CG03-approved status already captured in CG08, CG05 current same-branch project label and **actual** CG09 attributed reconciled bank receipt + original budget-event allocation/utilization, without CG20 prerequisite. No CG07 donation/CG17 patient payment, no CG19 private agreement/registration/contact, no public CMS branding or second journal.
+- Current **both** `csr.partners.view` **and** `finance.reports.view`; intersect CG02 Finance and CG08 permitted branches and reauthorize every branch or protected Foundation root **inside** repeatable-read transaction. Same-root WHERE is mandatory. Current `projects.view` required to report real project data, moved/closed/foreign CG05 project names suppressed. Strict filters for branch, sponsor, project, status, date, purpose/partner search and opaque ordered cursor. No IDs shown to staff; internal source refs are keys only.
+- LATERAL aggregates compute actual receipt against independently verified CG09 reconciliation and CLEAN/non-revoked CG19 bank statement, excluding posted reversals; CG09 budget ALLOCATE and non-reversed UTILIZE summed only from immutable attribution. Signed APPROVED commitment is NOT paid; not approved returns `NOT_APPROVED`, unpaid approved returns `RECEIPT_PENDING`, reversed/unsafe/over-allocated sources return `REVALIDATION_REQUIRED` with available amount **null**. CG09 unavailable returns ServiceUnavailable, never zero.
+- Authorized no-store Web BFF for JSON and CSV; report export limited 1,000 source rows, escaping formula-like CSV cells and omitting private fields; no long-running or scheduled MIS. Admin Web and Internal Android added report screen under current CSR+Finance permissions, original filters/pagination and truthful financial states. Reporting cursor indexed by new original-proposal-only migration `3411_cg08_funding_report_scope_index.sql`; existing 3406 branch/partner/project indexes reused.
+- Independent source pass corrected potential cross-branch CG05 project-name exposure, misleading unapproved `VERIFIED_SOURCE` status, incorrect status text on Web/Android. `cg08-funding-report-contract.test.ts` authored with five original QA groups; `test:cg08-funding-report` registered. Review parsed the 59-part SQL string, verified all 14 positional parameters contiguous, plus 16/16 targeted source assertions across eight committed files. **Those are static checks only; no tests, PostgreSQL migration, EXPLAIN, browser or native build executed.**
+
+**US003 original QA re-trace (do not change existing 20 case IDs):**
+
+| Original QA | Source state | Runtime | Specific proof or outstanding owner |
+|---|---|---|---|
+| US-003-QA01 | SOURCE_AUTHORED | NOT_RUN | Original CG08 proposals and real CG09 finance values; multi-sponsor runtime NOT_RUN |
+| US-003-QA02 | SOURCE_AUTHORED | NOT_RUN | CSR+Finance grants, current CG02 branch intersection, no private document fields |
+| US-003-QA03 | SOURCE_AUTHORED | NOT_RUN | CG09 verified-only receipts and not-yet-approved/pending status |
+| US-003-QA04 | PARTIAL_SOURCE | NOT_RUN | Invalid period/scope and finance-unavailable guard; CG18 editorial changes not part of report |
+| US-003-QA05 | PARTIAL_SOURCE | NOT_RUN | Original CG09 source and CG05 safe label; actual reconciliation and public CG18 not executed |
+| US-003-QA06 | PARTIAL_SOURCE | NOT_RUN | Source-backed Web/native screens, original client pixel comparison NOT_RUN |
+| US-003-QA07 | SOURCE_AUTHORED | NOT_RUN | Posted reversals/CG19 revoked proof excluded from current CG09 receipt |
+| US-003-QA08 | SOURCE_AUTHORED | NOT_RUN | Private bounded CSV of funding columns; runtime export and bank comparison NOT_RUN |
+| US-003-QA09 | SOURCE_AUTHORED | NOT_RUN | One row per original proposal, two sponsors on same project without join fanout |
+| US-003-QA10 | SOURCE_AUTHORED | NOT_RUN | General Foundation projectRef=null reporting; no invented project |
+| US-003-QA11 | SOURCE_AUTHORED | NOT_RUN | Unpaid APPROVED pledge has committed but receipt pending, not bank money |
+| US-003-QA12 | SOURCE_AUTHORED | NOT_RUN | Revoked scope rechecked inside SQL transaction; no CG19 bytes/contact in output |
+| US-003-QA13 | SOURCE_GAP | NOT_RUN | CG18 public editorial owner integration/revocation not verified here |
+| US-003-QA14 | PARTIAL_SOURCE | NOT_RUN | Current reversal-aware original CG09 totals; posted refund/correction execution NOT_RUN |
+| US-003-QA15 | SOURCE_AUTHORED | NOT_RUN | Root-scoped keyset, bounded CSV, 3411 index, date/status/partner/project filters |
+| US-003-QA16 | SOURCE_AUTHORED | NOT_RUN | Backend reports unavailable instead of fabricated numbers; two staff UIs handle errors |
+| US-003-QA17 | SOURCE_AUTHORED | NOT_RUN | Report is first-party CG08 source, does not require CG20 |
+| US-003-QA18 | SOURCE_AUTHORED | NOT_RUN | No CG07/CG17 donation or patient money joins; only CG09 CSR links |
+| US-003-QA19 | PARTIAL_SOURCE | NOT_RUN | Indexes and exact scoped queries authored; EXPLAIN/concurrency/public privacy QA NOT_RUN |
+| US-003-QA20 | PARTIAL_SOURCE | NOT_RUN | US003 source trace authored; end-to-end runtime/device/visual QA NOT_RUN |
+
+**Counts:** {"SOURCE_AUTHORED":13,"PARTIAL_SOURCE":6,"SOURCE_GAP":1}; 20/20 runtime NOT_RUN; 0 executable PASS. Original US002 remains **NOT closed**: client B08 itemized quantity/unit-rate evidence is not in current original CG09 approved budget source, and original CG09 `RELEASE` only releases COMMIT, not ALLOCATE—do not fake an allocation reversal. US002 independent runtime, migration 3406–3411, Web/mobile pixel QA, refund/reversal and provider tests remain mandatory. This is source progress, not approval to merge.
+
+**Developer test handoff:** checkout this branch, migrate disposable PostgreSQL through 3411, run `npm run build` in `apps/backend`, `npm run test:cg08-funding`, `npm run test:cg08-funding-evidence`, `npm run test:cg08-funding-review`, `npm run test:cg08-funding-receipt`, `npm run test:cg08-funding-budget`, `npm run test:cg08-funding-report` and disposable CG08 DB integrity; Web `npm run build`; Internal Android `npm run typecheck`. Trace original QA01–20 on at least 2 branches and 2 sponsors with active and revoked actors, signed-but-unpaid, partial receipts, CG19 revocation, finance reversal, exact saved CSV and actual screenshots; fix failures on same branch, do not create a new spec/test scope. **Do not merge without runtime success and separate approval.**
+
