@@ -1,7 +1,8 @@
 "use client";
 import {useEffect,useRef,useState} from "react";
 type Budget={budgetRef:string;name:string;category:string;ceilingMinor:string;
- periodStart:string;periodEnd:string};
+ periodStart:string;periodEnd:string;
+ items:{description:string;quantityMilli:string;unitRateMinor:string;totalMinor:string}[]};
 type Expense={journalRef:string;voucherNumber:string;amountMinor:string;postedDate:string};
 type Kind="ALLOCATE"|"UTILIZE";
 type Party="CSR"|"FOUNDATION";
@@ -91,6 +92,18 @@ export function CsrFundingBudgetPanel({proposalRef,version,canManage}:{
      {v.name} · {v.category} · Ceiling {money(v.ceilingMinor)}
     </option>)}
    </select></label>
+   <div aria-label="Original CG09 budget itemization">
+    <h4 style={{margin:"0 0 8px"}}>Approved budget lines</h4>
+    {budgets.find(x=>x.budgetRef===budget)?.items?.length?
+     <table style={{width:"100%",fontSize:13}}><thead><tr>
+      <th>Description</th><th>Quantity</th><th>Unit rate</th><th>Amount</th>
+     </tr></thead><tbody>{budgets.find(x=>x.budgetRef===budget)!.items.map((item,i)=>
+      <tr key={i}><td>{item.description}</td>
+       <td>{(Number(item.quantityMilli)/1000).toFixed(3)}</td>
+       <td>{money(item.unitRateMinor)}</td><td>{money(item.totalMinor)}</td></tr>)}
+     </tbody></table>:
+     <p>No item breakdown recorded in this approved original CG09 budget.</p>}
+   </div>
    <label>Original party<select style={control} value={party} disabled={busy||!!pending}
     onChange={e=>setParty(e.target.value as Party)}>
     <option value="CSR">CSR portion</option><option value="FOUNDATION">Foundation portion</option>
