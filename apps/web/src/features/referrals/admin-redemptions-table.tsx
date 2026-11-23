@@ -25,6 +25,9 @@ export function AdminRedemptionsTable({programme,programmes,onProgrammeChange,re
  const [status,setStatus]=useState("ALL"),[search,setSearch]=useState("");
  const [appliedSearch,setAppliedSearch]=useState("");
  const [from,setFrom]=useState(""),[to,setTo]=useState("");
+ const [category,setCategory]=useState("");
+ const [categories,setCategories]=useState<string[]>([]);
+ const [categoryError,setCategoryError]=useState("");
  const [page,setPage]=useState(2),[more,setMore]=useState(false);
  const [busy,setBusy]=useState(false),[error,setError]=useState("");
  const [notice,setNotice]=useState("");
@@ -44,6 +47,7 @@ export function AdminRedemptionsTable({programme,programmes,onProgrammeChange,re
   try{
    const params=new URLSearchParams({page:String(target),status});
    if(appliedSearch)params.set("q",appliedSearch);
+   if(category)params.set("category",category);
    if(from)params.set("from",from);
    if(to)params.set("to",to);
    const response=await fetch("/api/referrals/programmes/"+
@@ -63,7 +67,28 @@ export function AdminRedemptionsTable({programme,programmes,onProgrammeChange,re
    if(seq===sequence.current)setError(e instanceof Error?e.message:
     "Cannot confirm the current reward history.");
   }finally{if(seq===sequence.current)setBusy(false);}
- },[programme,status,appliedSearch,from,to]);
+ },[programme,status,appliedSearch,category,from,to]);
+ useEffect(()=>{
+  const current=new AbortController();
+  // Category choices are original reward_product values under the same
+  // CG02 permitted-store visibility as the B15 redemption results.
+  setCategory("");setCategories([]);setCategoryError("");
+  if(programme){
+   void fetch("/api/referrals/programmes/"+encodeURIComponent(programme)+
+    "/categories",{cache:"no-store",credentials:"same-origin",signal:current.signal})
+    .then(async response=>{
+     if(!response.ok)throw Error("Current permitted reward categories are unavailable.");
+     return response.json() as Promise<{items:string[];hasMore:boolean}>;
+    }).then(result=>{
+     if(!current.signal.aborted&&Array.isArray(result.items))
+      setCategories(result.items.filter(x=>typeof x==="string"&&x.length<=80));
+    }).catch(error=>{
+     if(!current.signal.aborted)setCategoryError(error instanceof Error?
+      error.message:"Current reward categories are unavailable.");
+    });
+  }
+  return()=>current.abort();
+ },[programme]);
  useEffect(()=>{
   void load(1,false);
   const hidden=()=>{
@@ -118,6 +143,12 @@ export function AdminRedemptionsTable({programme,programmes,onProgrammeChange,re
      <option value="FULFILLED">Verified fulfilled</option>
     </select>
    </label>
+   <label style={{display:"grid",gap:5}}>Reward category
+    <select style={styles.control} value={category} onChange={e=>setCategory(e.target.value)}>
+     <option value="">All recorded categories</option>
+     {categories.map(name=><option key={name} value={name}>{name}</option>)}
+    </select>
+   </label>
    <label style={{display:"grid",gap:5}}>Search member or reward
     <input type="search" value={search} maxLength={80}
      style={styles.control} onChange={e=>setSearch(e.target.value)}/>
@@ -133,6 +164,7 @@ export function AdminRedemptionsTable({programme,programmes,onProgrammeChange,re
   </div>
   {busy&&<p role="status">Checking original reward requests…</p>}
   {error&&<p role="alert">{error}</p>}
+  {categoryError&&<p role="status">{categoryError} Category filter is unavailable; the unfiltered original records remain visible.</p>
   {notice&&<p role="status">{notice}{" "}
    <a href="/admin/inventory">Open existing Stock Operations</a>
    to upload required CG19 proof and confirm the real warehouse ISSUE. An issue is
