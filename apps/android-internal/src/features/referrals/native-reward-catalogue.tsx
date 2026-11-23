@@ -18,7 +18,9 @@ export function NativeRewardCatalogue({token,onExpired,canViewStock}:{
  const [items,setItems]=useState<Reward[]>([]);
  const [nextProgramme,setNextProgramme]=useState(2),[nextProduct,setNextProduct]=useState(2);
  const [moreProgrammes,setMoreProgrammes]=useState(false),[moreProducts,setMoreProducts]=useState(false);
- const [loading,setLoading]=useState(false),[error,setError]=useState("");
+ const [programmesLoading,setProgrammesLoading]=useState(false);
+ const [productsLoading,setProductsLoading]=useState(false),[error,setError]=useState("");
+ const loading=programmesLoading||productsLoading;
  const [expanded,setExpanded]=useState<string|null>(null);
  const [stock,setStock]=useState<Stock|null>(null),[stockError,setStockError]=useState("");
  const [stockBusy,setStockBusy]=useState(false);
@@ -33,7 +35,7 @@ export function NativeRewardCatalogue({token,onExpired,canViewStock}:{
   return response.json() as Promise<T>;
  },[token,onExpired]);
  const loadProgrammes=useCallback(async(page:number,append:boolean)=>{
-  const serial=++programmeSeq.current;setLoading(true);setError("");
+  const serial=++programmeSeq.current;setProgrammesLoading(true);setError("");
   if(!append){stockSeq.current++;setStock(null);setStockBusy(false);setStockError("");
    setProgrammes([]);setItems([]);setChosen("");setExpanded(null);}
   try{
@@ -44,10 +46,10 @@ export function NativeRewardCatalogue({token,onExpired,canViewStock}:{
    setMoreProgrammes(data.hasMore);setNextProgramme(page+1);
    if(!append)setChosen(data.items[0]?.ref??"");
   }catch(e){if(serial===programmeSeq.current)setError(e instanceof Error?e.message:"Catalogue unavailable.");}
-  finally{if(serial===programmeSeq.current)setLoading(false);}
+  finally{if(serial===programmeSeq.current)setProgrammesLoading(false);}
  },[call]);
  const loadProducts=useCallback(async(programme:string,page:number,append:boolean)=>{
-  const serial=++productSeq.current;setLoading(true);setError("");
+  const serial=++productSeq.current;setProductsLoading(true);setError("");
   if(!append){stockSeq.current++;setStock(null);setStockError("");
    setItems([]);setExpanded(null);setMoreProducts(false);}
   try{
@@ -57,13 +59,14 @@ export function NativeRewardCatalogue({token,onExpired,canViewStock}:{
    setItems(old=>append?[...old,...data.items.filter(p=>!old.some(x=>x.ref===p.ref))]:data.items);
    setMoreProducts(data.hasMore);setNextProduct(page+1);
   }catch(e){if(serial===productSeq.current)setError(e instanceof Error?e.message:"Catalogue unavailable.");}
-  finally{if(serial===productSeq.current)setLoading(false);}
+  finally{if(serial===productSeq.current)setProductsLoading(false);}
  },[call]);
  useEffect(()=>{
   void loadProgrammes(1,false);
   const sub=AppState.addEventListener("change",state=>{
    if(state!=="active"){programmeSeq.current++;productSeq.current++;stockSeq.current++;
-    setItems([]);setProgrammes([]);setChosen("");setStock(null);setStockBusy(false);setExpanded(null);}
+    setItems([]);setProgrammes([]);setChosen("");setStock(null);setStockBusy(false);
+    setProgrammesLoading(false);setProductsLoading(false);setExpanded(null);}
    else void loadProgrammes(1,false);
   });
   return()=>{programmeSeq.current++;productSeq.current++;stockSeq.current++;sub.remove();};
