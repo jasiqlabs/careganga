@@ -66,6 +66,7 @@ export function NativeReferralPoints({token,onExpired,programmeRef,relationship}
    <Text style={s.text}>Earned: {display(balance.earnedPoints)}</Text>
    <Text style={s.text}>Available: {display(balance.availablePoints)}</Text>
    <Text style={s.text}>Held: {display(balance.heldPoints)}</Text>
+   <Text style={s.text}>Redeemed (verified spent): {display(balance.spentPoints)}</Text>
    <Text style={s.text}>Reversed: {display(balance.reversedPoints)}</Text>
    <Text style={s.text}>Verified referrals: {balance.qualifiedReferrals}</Text>
    <Text style={s.text}>Qualification pending: {display(balance.pendingReferrals)}</Text>
