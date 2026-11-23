@@ -25,6 +25,11 @@ async function proxy(req:NextRequest,ctx:Context,method:"GET"|"POST"){
     "/api/v1/donations/manual/"+parts[1]+"/confirm":
   parts.length===3&&parts[0]==="refunds"&&UUID.test(parts[1])&&parts[2]==="options"&&method==="GET"?
     "/api/v1/donations/refunds/"+parts[1]+"/options":
+  parts.length===3&&parts[0]==="refunds"&&UUID.test(parts[1])&&
+   ["authorize-provider","post-provider"].includes(parts[2])&&method==="POST"?
+    "/api/v1/donations/refunds/"+parts[1]+"/"+parts[2]:
+  parts.length===3&&parts[0]==="refunds"&&UUID.test(parts[1])&&parts[2]==="reconcile-provider"&&method==="GET"?
+    "/api/v1/donations/refunds/"+parts[1]+"/reconcile-provider":
   parts.length===3&&parts[0]==="refunds"&&UUID.test(parts[1])&&parts[2]==="confirm-cash"&&method==="POST"?
     "/api/v1/donations/refunds/"+parts[1]+"/confirm-cash":null;
  if(!path)return respond({message:"Donation action unavailable."},404);
@@ -78,7 +83,7 @@ async function proxy(req:NextRequest,ctx:Context,method:"GET"|"POST"){
   return respond({message:code===400?"Check the donation amount, cash voucher and account selections.":
    code===401?"Sign in again.":code===403?"Your current role or Foundation branch cannot perform this donation action.":
    code===404?"Donation or private status proof unavailable.":code===409?
-    "Donation changed or cash voucher was already used. Refresh before continuing.":
+    "Original donation or refund changed. Check existing merchant refund before retrying; never issue a second payout.":
    code===429?"Too many requests. Try again shortly.":
     "Donation verification result cannot be confirmed. Retry with the same request."},code);
  }catch{return respond({message:"The donation outcome is uncertain. Check the original voucher before retrying."},503);}
