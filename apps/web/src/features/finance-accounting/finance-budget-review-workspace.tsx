@@ -2,7 +2,8 @@
 import {useEffect,useState} from "react";
 type Case={caseRef:string;caseNumber:string;budgetNumber:string;status:string;revision:number};
 type Detail={caseRef:string;caseNumber:string;status:string;revision:number;
- source:{budgetNumber:string;name:string;projectLabel?:string|null;category:string;amountMinor:string;periodStart:string;periodEnd:string;status:string}};
+ source:{budgetNumber:string;name:string;projectLabel?:string|null;category:string;amountMinor:string;periodStart:string;periodEnd:string;status:string;
+ items?:{description:string;quantityMilli:string;unitRateMinor:string;totalMinor:string}[]}};
 const message=async(r:Response)=>{
  const d:unknown=await r.json().catch(()=>null);
  return d&&typeof d==="object"&&"message" in d&&typeof d.message==="string"?
@@ -115,6 +116,15 @@ export function FinanceBudgetReviewWorkspace({canConfigure}:{canConfigure:boolea
      <button type="button" onClick={()=>setCurrent(null)} aria-label="Close">×</button></div>
     <p>Original case: {current.caseNumber} · {current.status}</p>
     <p>Budget: {current.source.name}</p>
+    <h4>Original requested category items</h4>
+    {current.source.items?.length?<table className="cg-fin-table">
+     <thead><tr><th>Description</th><th>Quantity</th><th>Unit rate</th><th>Amount</th></tr></thead>
+     <tbody>{current.source.items.map((v,i)=><tr key={i}>
+      <td>{v.description}</td>
+      <td>{(Number(v.quantityMilli)/1000).toFixed(3)}</td>
+      <td>{rupees(v.unitRateMinor)}</td><td>{rupees(v.totalMinor)}</td>
+     </tr>)}</tbody></table>:
+     <p>No itemized quantities or unit costs are recorded for this revision.</p>}
     <p>Category: {current.source.category}</p><p>Project: {current.source.projectLabel??"Not linked"}</p>
     <p>Period: {current.source.periodStart} – {current.source.periodEnd}</p>
     <p>Original approval ceiling: {rupees(current.source.amountMinor)}</p>
