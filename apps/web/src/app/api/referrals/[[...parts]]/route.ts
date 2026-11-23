@@ -66,8 +66,8 @@ async function proxy(req:NextRequest,ctx:Context,method:Method){
     ["page","q","category"].some(k=>params.getAll(k).length>1)||
     (page!==null&&(!paged||!(/^[1-9][0-9]{0,3}$/).test(page)))||
     ((search!==null||category!==null)&&!products)||
-    (search!==null&&(search.length>100||/[\\u0000-\\u001f\\u007f]/.test(search)))||
-    (category!==null&&(category.length>80||/[\\u0000-\\u001f\\u007f]/.test(category))))
+    (search!==null&&(search.length>100||/[\u0000-\u001f\u007f]/.test(search)))||
+    (category!==null&&(category.length>80||/[\u0000-\u001f\u007f]/.test(category))))
   return response({message:"Invalid catalogue filters."},400);
  if(method!=="GET"&&req.headers.get("origin")!==req.nextUrl.origin)
   return response({message:"Use the authenticated CareGanga form."},403);
