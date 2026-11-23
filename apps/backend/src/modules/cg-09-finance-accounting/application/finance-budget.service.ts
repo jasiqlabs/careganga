@@ -333,7 +333,7 @@ export class FinanceBudgetService{
   const v=body(raw,["kind","amount","journalRef","requestKey"]),
    key=id(v.requestKey,"requestKey");
   const kind=v.kind;
-  if(!["ALLOCATE","COMMIT","RELEASE","UTILIZE"].includes(String(kind)))
+  if(!["ALLOCATE","DEALLOCATE","COMMIT","RELEASE","UTILIZE"].includes(String(kind)))
    throw new BadRequestException({code:"FINANCE_BUDGET_EVENT_INVALID",field:"kind"});
   const amount=minor(v.amount);
   const journal=kind==="UTILIZE"?id(v.journalRef,"journalRef"):null;
@@ -419,7 +419,8 @@ export class FinanceBudgetService{
   const b=found.rows[0];
   if(!b)throw new ConflictException({code:"FINANCE_BUDGET_SOURCE_INVALID"});
   const totals=await this.db.query<{allocated:string;committed:string;released:string;utilized:string;applied:string}>(
-   "SELECT COALESCE(SUM(amount_minor) FILTER(WHERE kind='ALLOCATE'),0)::text AS allocated,"+
+   "SELECT (COALESCE(SUM(amount_minor) FILTER(WHERE kind='ALLOCATE'),0)-"+
+   "COALESCE(SUM(amount_minor) FILTER(WHERE kind='DEALLOCATE'),0))::text AS allocated,"+
    "COALESCE(SUM(amount_minor) FILTER(WHERE kind='COMMIT'),0)::text AS committed,"+
    "COALESCE(SUM(amount_minor) FILTER(WHERE kind='RELEASE'),0)::text AS released,"+
    "COALESCE(SUM(amount_minor) FILTER(WHERE kind='UTILIZE'),0)::text AS utilized,"+
@@ -476,7 +477,8 @@ export class FinanceBudgetService{
    allocatedMinor:string;committedOutstandingMinor:string;utilizedMinor:string;
    availableMinor:string;overBudgetMinor:string}>(
    "WITH movement AS(SELECT root_realm_id,budget_id,"+
-   "COALESCE(SUM(amount_minor) FILTER(WHERE kind='ALLOCATE'),0) AS allocated,"+
+   "(COALESCE(SUM(amount_minor) FILTER(WHERE kind='ALLOCATE'),0)-"+
+   "COALESCE(SUM(amount_minor) FILTER(WHERE kind='DEALLOCATE'),0)) AS allocated,"+
    "COALESCE(SUM(amount_minor) FILTER(WHERE kind='COMMIT'),0) AS committed,"+
    "COALESCE(SUM(amount_minor) FILTER(WHERE kind='RELEASE'),0) AS released,"+
    "COALESCE(SUM(amount_minor) FILTER(WHERE kind='UTILIZE'),0) AS utilized,"+
