@@ -91,6 +91,18 @@ export class BranchSourceFacade{
  async currentStaffBranchRefs(client:Pool|PoolClient,root:string,account:string):Promise<string[]>{
   return (await this.permittedStaffBranches(client,root,account)).map(row=>row.id);
  }
+ /** Generic action-gated branch projection for CG10/12 owner read paths.
+  * Only current CG01 capabilities and existing CG02 scope determine the result.
+  * Never use this projection as authority for a Foundation-null or CG14 center item.
+  */
+ async staffBranchScope(bearer:string,action:string):Promise<{all:boolean;branchRefs:string[]}>{
+  const actor=await this.sessions.requireAction(bearer,action);
+  let all=false;
+  try{await this.sessions.requireAction(bearer,"foundation.branches.admin");all=true;}
+  catch(e){if(!(e instanceof ForbiddenException))throw e;}
+  if(all)return {all:true,branchRefs:[]};
+  return {all:false,branchRefs:await this.currentStaffBranchRefs(this.db,actor.realmId,actor.accountId)};
+ }
  /** Used for finance account reactivation, without CG-09 reading CG-02 tables. */
  async requireFinanceActiveBranch(client:PoolClient,actor:VerifiedFoundationActor,
   branchRef:string,action:"finance.accounts.manage"|"finance.journals.post"):Promise<void>{
