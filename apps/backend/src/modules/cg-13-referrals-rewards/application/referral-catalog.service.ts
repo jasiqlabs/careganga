@@ -587,9 +587,12 @@ export class ReferralCatalogService{
     "COALESCE(SUM(wallet.earned_points),0)::text AS \"earnedPoints\","+
     "COALESCE(SUM(wallet.earned_points-wallet.reversed_points),0)::text AS \"netPoints\""+
     from,args);
-   const ranks=await tx.query<{kind:string;rank:string|null;count:string;referrals:string}>(
+   const ranks=await tx.query<{kind:string;rank:string|null;count:string;
+    referrals:string;points:string;lastActivity:string|null}>(
     "SELECT wallet.referrer_kind AS kind,wallet.current_rank_name AS rank,"+
-    "COUNT(*)::text AS count,COALESCE(SUM(wallet.qualified_referrals),0)::text AS referrals"+
+    "COUNT(*)::text AS count,COALESCE(SUM(wallet.qualified_referrals),0)::text AS referrals,"+
+    "COALESCE(SUM(wallet.earned_points-wallet.reversed_points),0)::text AS points,"+
+    "MAX(wallet.updated_at) AS \"lastActivity\""+
     from+" GROUP BY wallet.referrer_kind,wallet.current_rank_name "+
     "ORDER BY wallet.referrer_kind,wallet.current_rank_name LIMIT 61",args);
    return {metrics:totals.rows[0]??{activeReferrers:"0",successfulReferrals:"0",
