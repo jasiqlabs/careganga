@@ -84,7 +84,8 @@ test("US003-QA05/06/20: original Foundation Admin and Internal Android screen bo
 });
 
 test("US003-QA13/18: public partner attribution stays under original CG08 rights plus independent CG18 editorial approval",()=>{
- const partners=src("src/modules/cg-08-csr-funding/application/csr-partner-public-source.ts");
+ const partners=src("src/modules/cg-08-csr-funding/application/csr-partner-public-source.ts")
+  .replace(/\\'/g,"'");
  const cms=src("src/modules/cg-18-cms-public-content/application/cms-editorial.service.ts");
  const publicPage=src("../web/src/app/collaboration/page.tsx");
  const publicSource=src("../web/src/features/cms-public-content/cms-public-source.ts");
