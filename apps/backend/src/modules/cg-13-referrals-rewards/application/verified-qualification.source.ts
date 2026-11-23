@@ -52,6 +52,16 @@ export async function creditVerifiedCG04Qualification(tx:PoolClient,src:Committe
   "SELECT cg13_referral_code_current($1,$2) AS current",
   [src.root,att.codeValue]);
  if(!stillValid.rows[0]?.current)return "INELIGIBLE";
+ // A returned/corrected CG04 application may have a NEW submitted digest.
+ // Preserve the FIRST immutable referrer and policy, but freeze the CURRENT
+ // independently approved source and reject a changed/removed referral code.
+ const owner=src.applicantKind==="MEMBER"?"membership_application":"volunteer_application";
+ const latest=await tx.query<{digest:string;referral:string}>(
+  "SELECT submitted_digest AS digest,referral_input AS referral FROM "+owner+
+  " WHERE root_realm_id=$1 AND id=$2 AND applicant_account_ref=$3 "+
+  "AND status='APPROVED' AND submitted_digest IS NOT NULL",
+  [src.root,src.application,src.applicantAccount]);
+ if(!latest.rows[0]?.digest||latest.rows[0].referral!==att.codeValue)return "INELIGIBLE";
  // A wallet must belong to the ORIGINAL referrer relationship, not the
  // applicant. This is independent of a future US003 redemption/stock hold.
  await tx.query(
@@ -84,7 +94,7 @@ export async function creditVerifiedCG04Qualification(tx:PoolClient,src:Committe
   "event_kind,policy_version,points_delta,qualifying_source_digest) "+
   "VALUES($1,$2,$3,'QUALIFICATION',$4,$5,$6) "+
   "ON CONFLICT(root_realm_id,attribution_id,event_kind) DO NOTHING RETURNING id",
-  [src.root,wallet.id,att.id,att.policyVersion,att.awardPoints,att.submittedDigest]);
+  [src.root,wallet.id,att.id,att.policyVersion,att.awardPoints,latest.rows[0].digest]);
  if(!event.rows[0])return "PREVIOUS";
  const ranked=await tx.query<{name:string;sort:number}>(
   "SELECT rank_name AS name,sort_order AS sort FROM referral_rank_rule "+
