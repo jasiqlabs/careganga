@@ -19,3 +19,8 @@ A/B with distinct posted money and a partial refund; compare totals to actual CG
 Execute backend typecheck/postgres, browser exports, Web/Internal Android parity and original A16 screenshots; independent review; no main merge.
 
 **Receiving modules:** CG-07,CG-02,CG-09,CG-20. **Common QA:** [Two-branch and center scenario matrix](../../qa/CAREGANGA-MULTIBRANCH-SOURCE-AND-RUNTIME-TEST-PLAN-20261123.md). Verify original story QA IDs and do not replace them. **Gate:** Implement → independent Review → Fix → Re-review → source trace → local PostgreSQL/Web/Android/device/provider QA. Document real test fixtures, exact file:function and result. No CI/GitHub Actions or merge.
+
+
+### 23-Nov — Independent source reviewer correction (source-only; open)
+
+`DonationAdminService.list/exportCsv/donorDetail` now rechecks live CG01 `finance.reports.view`, private export capability, CG02 branch grant/root status and selected filter **after** reading source, before release, rejecting A→B revoke/manager transfer/suspension mid-request. Access to Foundation-null donations remains protected. Updated `cg07-donation-contract.test.ts`. Source authoring only: simultaneous list/KPI/trend/CSV snapshots and Web/Internal Android remains NOT_RUN; code-review and local QA required. See [developer handoff](../../qa/CAREGANGA-CG07-MULTIBRANCH-LOCAL-DEVELOPER-HANDOFF-20261123.md).
