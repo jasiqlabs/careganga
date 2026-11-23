@@ -157,12 +157,15 @@ test("US002-QA06: B08 original CG09 itemized category quantity/rate belongs to b
   "PRIMARY KEY(root_realm_id,budget_id,version,line_no)",
   "REFERENCES finance_budget_revision(root_realm_id,budget_id,version)",
   "line_total_minor bigint GENERATED ALWAYS",
-  "cg09_budget_item_revision_immutable",
+  "cg09_budget_item_revision_immutable"
+ ])assert.ok(schema.includes(x),x);
+ const freeze=read("db/migrations/3414_cg09_budget_item_revision_freeze.sql");
+ for(const x of [
   "cg09_budget_item_revision_insert_guard",
   "cg09_budget_itemized_submit_guard",
   "source.status='RETURNED' AND NEW.version=source.version+1",
   "line_count>0 AND item_total<>NEW.approved_ceiling_minor"
- ])assert.ok(schema.includes(x),x);
+ ])assert.ok(freeze.includes(x),x);
  for(const x of ["budgetItems(v.items,minor(v.ceiling))",
   "product%1000n!==0n","finance_budget_item_revision",
   "p.items.entries()","items:items.rows"])
