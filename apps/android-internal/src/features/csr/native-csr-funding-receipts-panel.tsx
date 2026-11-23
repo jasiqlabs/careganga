@@ -5,7 +5,7 @@ import {identityRequest} from "../identity-access/http-client";
 type Summary={sourceVersion:number;csrCommittedMinor:string;foundationCommittedMinor:string;
  csrReceivedMinor:string;foundationReceivedMinor:string;
  csrNeedsRevalidationMinor:string;foundationNeedsRevalidationMinor:string;
- allocatedMinor:string;utilizedMinor:string;availableMinor:string|null;needsFinanceRevalidation:boolean};
+ allocatedMinor:string;releasedMinor:string;utilizedMinor:string;availableMinor:string|null;needsFinanceRevalidation:boolean};
 type Candidate={reconciliationRef:string;verifiedDate:string;amountMinor:string;
  bankName:string;bankItemMasked:string};
 type Command={requestKey:string;expectedVersion:number;partyKind:"CSR"|"FOUNDATION";reconciliationRef:string;remitterConfirmed:true};
@@ -80,6 +80,7 @@ export function NativeCsrFundingReceiptsPanel({token,proposalRef,version,canLink
    <Text>Foundation committed {money(summary.foundationCommittedMinor)}</Text>
    <Text>Foundation bank received {money(summary.foundationReceivedMinor)}</Text>
    <Text>CG09 approved allocation {money(summary.allocatedMinor)}</Text>
+   <Text>Released unused CG09 allocation {money(summary.releasedMinor)}</Text>
    <Text>CG09 posted utilization {money(summary.utilizedMinor)}</Text>
    <Text>Available verified balance {summary.availableMinor!==null?
     money(summary.availableMinor):"Finance revalidation required"}</Text>
