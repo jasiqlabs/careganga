@@ -35,14 +35,14 @@ export function NativeCsrPartners({token,canManage,canReadAgreement,canUploadAgr
  const [busy,setBusy]=useState(false),[pending,setPending]=useState<Command|null>(null),seq=useRef(0);
  const [history,setHistory]=useState<ReviewHistory|null>(null),[historyError,setHistoryError]=useState("");
  const canEditCurrent=canManage&&(!selected||["DRAFT","RETURNED"].includes(selected.status));
- const refresh=()=>setEpoch(n=>n+1);
+ const refresh=()=>{if(pending)return;setSelected(null);setEditing(false);setEpoch(n=>n+1);};
  useEffect(()=>{
   let live=true;const n=++seq.current;setLoading(true);setListError("");
   const p=new URLSearchParams({offset:String(offset)});
   if(query.trim())p.set("q",query.trim().slice(0,80));
   if(filter!=="ALL")p.set("branchRef",filter);
   if(statusFilter!=="ALL")p.set("status",statusFilter);
-  void api<Page>(token,"?"+p.toString()).then(v=>{if(live&&n===seq.current){setPage(v);setError("");}})
+  void api<Page>(token,"?"+p.toString()).then(v=>{if(live&&n===seq.current){setPage(v);setListError("");}})
    .catch(e=>{if(live&&n===seq.current){setListError(e instanceof Error?e.message:"CSR list unavailable.");setPage({items:[],hasMore:false});if(e&&typeof e==="object"&&"status" in e&&e.status===401)onExpired();}})
    .finally(()=>{if(live&&n===seq.current)setLoading(false);});
   return()=>{live=false;};
@@ -66,7 +66,8 @@ export function NativeCsrPartners({token,canManage,canReadAgreement,canUploadAgr
  const loadPartner=async(p:Partner)=>{
   if(pending||busy)return;
   try{const full=await api<Partner>(token,"/"+p.ref);setSelected(full);setDraft(from(full));setEditing(true);setError("");}
-  catch(e){setError(e instanceof Error?e.message:"CSR partner unavailable.");}
+  catch(e){setSelected(null);setEditing(false);setError(e instanceof Error?e.message:"CSR partner unavailable.");
+   if(e&&typeof e==="object"&&"status" in e&&e.status===401)onExpired();}
  };
  const send=async(cmd:Command)=>{
   setBusy(true);setPending(cmd);setError("");
@@ -112,15 +113,15 @@ export function NativeCsrPartners({token,canManage,canReadAgreement,canUploadAgr
   <View style={styles.panel}>
    <Text style={styles.label}>CSR review status</Text>
    <ScrollView horizontal contentContainerStyle={styles.choices}>
-    {reviewTabs.map(tab=>choice(tab.value,tab.label,statusFilter,v=>{setOffset(0);setStatusFilter(v as ReviewStatus);}))}
+    {reviewTabs.map(tab=>choice(tab.value,tab.label,statusFilter,v=>{setSelected(null);setEditing(false);setOffset(0);setStatusFilter(v as ReviewStatus);},!!pending))}
    </ScrollView>
    <Text style={styles.label}>Search organization</Text>
    <TextInput style={styles.input} value={query} placeholder="Organization name" onChangeText={v=>{setOffset(0);setQuery(v);}} autoCapitalize="none"/>
    <Text style={styles.label}>Current permitted branch</Text>
    <ScrollView horizontal contentContainerStyle={styles.choices}>
-    {choice("ALL","All assigned",filter,v=>{setOffset(0);setFilter(v);})}
-    {options?.foundation&&choice("FOUNDATION","Foundation",filter,v=>{setOffset(0);setFilter(v);})}
-    {options?.branches.map(b=>choice(b.value,b.label,filter,v=>{setOffset(0);setFilter(v);}))}
+    {choice("ALL","All assigned",filter,v=>{setSelected(null);setEditing(false);setOffset(0);setFilter(v);},!!pending)}
+    {options?.foundation&&choice("FOUNDATION","Foundation",filter,v=>{setSelected(null);setEditing(false);setOffset(0);setFilter(v);},!!pending)}
+    {options?.branches.map(b=>choice(b.value,b.label,filter,v=>{setSelected(null);setEditing(false);setOffset(0);setFilter(v);},!!pending))}
    </ScrollView>
    <View style={styles.actions}>
     <Pressable accessibilityRole="button" style={styles.btn} onPress={refresh}><Text>Refresh</Text></Pressable>

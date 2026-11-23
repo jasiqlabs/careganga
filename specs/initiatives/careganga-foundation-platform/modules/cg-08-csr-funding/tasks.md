@@ -309,3 +309,8 @@ US001/QA05/06/16/18/20 original public corporate-partner layout receives dark-gr
 ### 23-Nov-2026 — US001 Web scoped-view source re-review/fix
 
 Fixed original US001-QA02/04/12/17/18: switching CSR review status, Foundation branch filter, or reloading the directory clears the previously cached private partner detail. The current unknown-write command blocks switching scope so the stable original replay key is not abandoned. A successful directory read no longer erases an unrelated save failure; list fetch failure remains a distinct visible state from an authorized empty result. No new API/permission or QA case. **Source fix authored, Web compile and two-manager runtime tests NOT_RUN.** Native corresponding fix remains next in this same user story.
+
+
+### 23-Nov-2026 — US001 Internal Android scoped-view source review/fix
+
+Closed Android companion of US001-QA02/04/12/17/18: current partner private detail is discarded when the operator changes a CG02 branch filter or B03–B06 status tab, and on permitted manual refresh; original uncertain write blocks scope change until its idempotent request is resolved. A successful list fetch no longer suppresses an unrelated draft-save/approval error, and an expired credential on partner detail calls the existing session-expired flow. Existing CG01/02 backend revocation gates unchanged. **Source fix authored, native compile/device A/B multi-branch QA NOT_RUN.** No new issue or new QA ID, no main/CG07 change.
