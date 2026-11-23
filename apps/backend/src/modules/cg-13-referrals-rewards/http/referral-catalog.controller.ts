@@ -29,9 +29,9 @@ export class ReferralCatalogController{
   @Query("status")status?:string,@Query("from")from?:string,
   @Query("to")to?:string,@Query("q")search?:string,
   @Query("location")location?:string,@Query("rank")rank?:string,
-  @Query("sort")sort?:string){
+  @Query("sort")sort?:string,@Query("branchRef")branchRef?:string){
   return this.catalog.adminReferralRecords(auth,ref,kind,page,status,from,to,search,
-   location,rank,sort);
+   location,rank,sort,branchRef);
  }
  @Get("programmes/:programmeRef/redemptions")
  redemptions(@Headers("authorization")auth:string,@Param("programmeRef")ref:string,
