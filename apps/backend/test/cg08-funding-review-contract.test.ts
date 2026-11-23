@@ -86,6 +86,17 @@ test("US002-QA04/19: returned draft correction is current-version and immutable-
   "OLD.status='RETURNED' AND NEW.status='DRAFT'"
  ])assert.ok((cg08+"\n"+sql).includes(token),token);
 });
+test("US002-QA04/07/19: invalid file or closed branch can be returned/rejected but never approved",()=>{
+ const cg03=source("src/modules/cg-03-registration-approvals/application/csr-funding-review.service.ts");
+ const cg08=source("src/modules/cg-08-csr-funding/application/csr-funding-proposals.service.ts");
+ const sql=source("db/migrations/3408_cg03_csr_funding_review.sql");
+ assert.ok(cg03.includes('await this.snapshot(tx,a,c,true,action==="APPROVE")'));
+ assert.ok(cg03.includes('if(requireEvidence)await this.proof.requireCurrentProof'));
+ assert.ok(cg08.includes('Only original CG03\'s protected-root reviewer'));
+ assert.ok(sql.includes("NEW.status IN('DRAFT','SUBMITTED','APPROVED')"));
+ assert.ok(sql.includes("NEW.status IN('APPROVED','RETURNED','REJECTED')"));
+ assert.ok(sql.includes("NEW.status='SUBMITTED'"));
+});
 test("US002-QA05/06/16/20: Web/native B08 source and protected approval screens are integrated",()=>{
  const bff=source("../web/src/app/api/csr/funding-proposals/[[...parts]]/route.ts");
  const reviewer=source("../web/src/app/api/csr/funding-reviews/[[...parts]]/route.ts");
