@@ -136,7 +136,7 @@ export class MisDashboardService{
     if(error instanceof UnauthorizedException)throw error;
     if(error instanceof ForbiddenException){
      // Never convert a rejected requested branch into an apparently valid total.
-     if(filters.branchRef)throw error;
+     if(filters.branchRef||view==="FINANCE")throw error;
      return null;
     }
     if(error instanceof BadRequestException)throw error;
