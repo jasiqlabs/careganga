@@ -37,6 +37,8 @@ export default async function ReferralsAdminPage(){
    <main className="workspace"><ReferralRewardsWorkspace
     canViewPolicy={actions.includes("referrals.programmes.view")}
     canViewRewards={actions.includes("rewards.catalog.view")}
+    canViewMemberRoster={actions.includes("membership.members.view")}
+    canViewVolunteerRoster={actions.includes("volunteers.view")}
     canManagePolicy={actions.includes("referrals.programmes.manage")}
     canManageRewards={actions.includes("rewards.catalog.manage")}
     canIssueStock={actions.includes("inventory.stock.issue")&&
