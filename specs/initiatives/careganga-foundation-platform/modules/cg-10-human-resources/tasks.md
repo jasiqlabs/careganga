@@ -252,3 +252,10 @@ Existing CG-10 QA must verify one unique approved offer/appointment/confirmation
 HR enrollment, branch selector, applications, private record, directory/headcount, shift/attendance, employment transfer/approval and payroll future integration: ALL_BRANCHES staff manager with real HR domain permissions sees current A/B/C employee cohorts, AREA manager descendants, A+B manager just A/B, branch A manager A, self worker only own permitted data. Foundation legal HR policy and protected approvals remain root-only; old original/current assignment privacy and role revoke tested.
 
 **Evidence state NOT_RUN:** original QA IDs unchanged. Test protected root (Foundation-null plus A/B/C), organization-wide non-protected `ALL_BRANCHES` (active A/B/C only), state/district AREA (descendant active branches only), explicit A+B BRANCH grants, A-only manager, ordinary restricted operator, revoked actor, cross-root guess and CG14 Center X/Y independence. Each selected story must verify current CG01 action + CG02 scope, database, backend API, Web and Internal Android, CSV/PDF and queued recipient; no BWC (greenfield), no runtime PASS, no main merge.
+
+
+### 23-Nov-2026 — source-owner closure check CG-MB-004 HR private document / attendance corrective scope
+
+HrDocumentSourceFacade subject/list/history now uses exact current CG02 delegated branch IDs (with $4/$5 parameterized SQL, not client UUID); HrAttendanceCorrectionSourceFacade named employee correction checks current CG01 hr.attendance.correct plus CG02 A/B scope, self mode remains own account. HR appraisal retains separate current human reviewer/manager employee proof. Test private offer/experience letters, scoped history, named and self corrections, A-only guessed B, account/branch revocation and exported original PDF. Existing case IDs stay unchanged.
+
+**Gate:** SOURCE_REVIEWED_RUNTIME_PENDING. Run original story QA/Web/Internal Android/backend/actual DB and private files. Capture executor/reviewer, command, before/after and evidence. Only local developer may mark executable PASS after actual testing; no CI/GitHub Actions, no BWC and no premature merge.
