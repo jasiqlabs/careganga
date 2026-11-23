@@ -120,10 +120,12 @@ export class RedemptionService {
      notice:"Your original digital reward request has been retrieved."};
    }
    const product=await tx.query<{price:string;version:number;name:string;policyVersion:number;
-    minimumClaimPoints:string;type:"DIGITAL"|"PHYSICAL";itemRef:string|null;storeRef:string|null}>(
+    minimumClaimPoints:string;type:"DIGITAL"|"PHYSICAL";itemRef:string|null;storeRef:string|null;
+    digitalFulfillmentMethod:"PENDING_EXTERNAL_PROOF"|"ON_PLATFORM_RECOGNITION"}>(
     "SELECT p.points_price::text AS price,p.version,p.name,"+
     "p.product_type AS type,p.cg12_item_ref AS \"itemRef\","+
     "p.cg12_location_ref AS \"storeRef\","+
+    "p.digital_fulfillment_method AS \"digitalFulfillmentMethod\","+
     "policy.version_no AS \"policyVersion\","+
     "policy.minimum_claim_points::text AS \"minimumClaimPoints\" FROM reward_product p "+
     "JOIN referral_program programme ON programme.root_realm_id=p.root_realm_id "+
@@ -144,6 +146,13 @@ export class RedemptionService {
     [a.realmId,source.productRef,source.programmeRef,source.relationship]);
    if(!product.rows[0]||product.rows[0].version!==source.expectedProductVersion)
     throw new ConflictException("The reward changed. Refresh its current price.");
+   // Current CG19 only has an immutable recipient-acknowledged ON_PLATFORM
+   // recognition. Other configured DIGITAL providers have no genuine delivery
+   // source: never hold actual points for an undeliverable future entitlement.
+   if(product.rows[0].type==="DIGITAL"&&
+    product.rows[0].digitalFulfillmentMethod!=="ON_PLATFORM_RECOGNITION")
+    throw new ConflictException(
+     "This digital reward is not yet redeemable: verified delivery is unavailable.");
    const price=BigInt(product.rows[0].price);
    const claimMinimum=BigInt(product.rows[0].minimumClaimPoints);
    // The actual original catalogue supports up to 1 trillion reward points.
