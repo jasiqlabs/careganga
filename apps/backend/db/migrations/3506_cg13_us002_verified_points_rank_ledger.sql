@@ -163,6 +163,33 @@ CREATE TRIGGER cg13_rank_event_immutable
  BEFORE UPDATE OR DELETE ON reward_rank_event FOR EACH ROW EXECUTE FUNCTION cg13_immutable_source();
 
 
+-- A rank receipt is not an arbitrary editable badge. At the instant of the
+-- genuine qualifying award it must match that SAME immutable points event,
+-- its original wallet, pinned policy and committed projection. The historical
+-- receipt can then remain unchanged when later activity changes the wallet.
+CREATE FUNCTION cg13_rank_event_source_guard()
+ RETURNS trigger LANGUAGE plpgsql AS $cg13$
+BEGIN
+ IF NOT EXISTS(
+  SELECT 1 FROM points_event e JOIN points_account wallet
+   ON wallet.root_realm_id=e.root_realm_id AND wallet.id=e.points_account_id
+  WHERE e.root_realm_id=NEW.root_realm_id
+   AND e.id=NEW.qualifying_points_event_id
+   AND e.points_account_id=NEW.points_account_id
+   AND e.event_kind='QUALIFICATION'
+   AND e.policy_version=NEW.policy_version
+   AND wallet.current_rank_name IS NOT DISTINCT FROM NEW.resulting_rank_name
+   AND wallet.current_rank_sort IS NOT DISTINCT FROM NEW.resulting_rank_sort
+   AND wallet.qualified_referrals=NEW.qualified_referrals_snapshot
+   AND GREATEST(wallet.earned_points-wallet.reversed_points-
+    wallet.held_points-wallet.spent_points,0)=NEW.eligible_points_snapshot
+ ) THEN RAISE EXCEPTION 'Frozen rank requires exact genuine wallet award and projection'; END IF;
+ RETURN NEW;
+END; $cg13$;
+CREATE TRIGGER cg13_rank_event_insert_guard
+ BEFORE INSERT ON reward_rank_event FOR EACH ROW
+ EXECUTE FUNCTION cg13_rank_event_source_guard();
+
 -- Prevent direct writes to the materialized account projection without a
 -- corresponding validated immutable source event. Check at COMMIT, allowing
 -- one short trusted transaction to insert event, update wallet and rank.
