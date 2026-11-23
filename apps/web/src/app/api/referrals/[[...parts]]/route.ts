@@ -91,7 +91,7 @@ async function proxy(req:NextRequest,ctx:Context,method:Method){
     (search!==null&&!products&&!redemptionAdmin)||
     (category!==null&&!products)||
     ((status!==null||from!==null||to!==null)&&!redemptionAdmin)||
-    (status!==null&&!["ALL","HELD","CANCELLED","FULFILLMENT_PENDING","FULFILLED"].includes(status))||
+    (status!==null&&!["ALL","HELD","CANCELLED","ISSUED_AWAITING_HANDOVER","FULFILLED"].includes(status))||
     ([from,to].some(v=>v!==null&&!/^\d{4}-\d{2}-\d{2}$/.test(v)))||
     (search!==null&&(search.length>100||/[\u0000-\u001f\u007f]/.test(search)))||
     (category!==null&&(category.length>80||/[\u0000-\u001f\u007f]/.test(category))))
