@@ -7,7 +7,7 @@ type Programme={ref:string;code:string;name:string;audience:"MEMBER"|"VOLUNTEER"
  effectivePolicyVersion:number|null;effectiveFrom:string;
  qualifyingEvent:"MEMBERSHIP_ACTIVATED_VERIFIED"|"VOLUNTEER_APPROVED_ACTIVE";
  awardPoints:string;minimumClaimPoints:string;displayInrRatio:string|null;
- autoRankUpgrade:boolean;ranks?:Rank[]};
+ autoRankUpgrade:boolean;ranks?:Rank[];effectiveRanks?:Rank[]};
 type ProgrammeSummary=Pick<Programme,"ref"|"name"|"status">;
 type Reward={ref:string;programmeRef:string;type:"DIGITAL"|"PHYSICAL";category:string;
  name:string;description:string;pointsPrice:string;eligibleAudience:"MEMBER"|"VOLUNTEER"|"BOTH";
@@ -273,7 +273,7 @@ export function ReferralRewardsWorkspace({canViewPolicy,canViewRewards,canManage
   setProgrammeForm(p=>({...p,ranks:p.ranks.map((x,k)=>k===i?{...x,[field]:v}:x)}));
  };
  const activeProducts=products.filter(p=>p.status==="ACTIVE");
- const availableRanks=detail?.ranks??[];
+ const availableRanks=detail?.effectiveRanks??detail?.ranks??[];
  const programmeTitle=programmes.find(p=>p.ref===selected)?.name??"No active programme selected";
  const categories=useMemo(()=>["All",...new Set(availableCategories)],[availableCategories]);
  const orderedProducts=useMemo(()=>[...products].filter(p=>
@@ -365,7 +365,9 @@ export function ReferralRewardsWorkspace({canViewPolicy,canViewRewards,canManage
         <div style={{fontSize:11}}>{rank.verifiedReferrals} verified referrals required</div>
         <div style={{fontSize:11}}>{rank.minimumPoints} minimum eligible points</div>
        </button>)}
-       {!availableRanks.length&&<p>No rank policy recorded.</p>}
+       {!availableRanks.length&&<p>{detail.effectivePolicyVersion===null?
+        "No rank policy is effective yet. The programme is scheduled.":
+        "No rank policy recorded."}</p>}
       </div>
       <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(170px,1fr))",gap:9}}>
        {["TOTAL ACTIVE REFERRERS","TOTAL SUCCESSFUL REFERRALS","TOTAL REFERRAL POINTS",
