@@ -6,7 +6,7 @@ import {memberInvoke} from "../membership/member-native-api";
 type Kind="MEMBER"|"VOLUNTEER";
 export type NativeRedeemableReward={
  ref:string;programmeRef:string;name:string;type:"DIGITAL"|"PHYSICAL";
- availability:"NO_STOCK_REQUIRED"|"AVAILABLE"|"OUT_OF_STOCK";
+ availability:"NO_STOCK_REQUIRED"|"AVAILABLE"|"OUT_OF_STOCK"|"DELIVERY_UNAVAILABLE";
  pointsPrice:string;version:number;eligibleAudience:Kind|"BOTH";
  programmeAudience:Kind|"BOTH";digitalFulfillmentMethod:
   "PENDING_EXTERNAL_PROOF"|"ON_PLATFORM_RECOGNITION";
@@ -29,6 +29,10 @@ export function NativeDigitalRedemption({token,onExpired,selected,onClose,audien
   (selected.eligibleAudience==="BOTH"||selected.eligibleAudience===v)&&
   (selected.programmeAudience==="BOTH"||selected.programmeAudience===v)):[];
  const chosen=eligible.includes(kind)?kind:eligible[0];
+ const reservationReady=!!selected&&(
+  selected.type==="PHYSICAL"?selected.availability==="AVAILABLE":
+  selected.availability==="NO_STOCK_REQUIRED"&&
+   selected.digitalFulfillmentMethod==="ON_PLATFORM_RECOGNITION");
  const api=useCallback(async<T,>(path:string,method:"GET"|"POST"="GET",
   body?:Record<string,unknown>)=>{
   try{return await memberInvoke<T>("/api/v1/rewards/"+path,method,body,token);}
@@ -57,8 +61,7 @@ export function NativeDigitalRedemption({token,onExpired,selected,onClose,audien
  useEffect(()=>{setConfirm(false);setNotice("");setError("");key.current=null;},
   [selected?.ref,selected?.version,kind]);
  const request=async()=>{
-  if(!selected||!chosen||busy||locked.current||
-   (selected.type==="PHYSICAL"&&selected.availability!=="AVAILABLE"))return;
+  if(!selected||!chosen||busy||locked.current||!reservationReady)return;
   if(!/^[1-9][0-9]{0,17}$/.test(selected.pointsPrice)){
    setError("Current points price is unavailable.");return;}
   const signature=selected.ref+":"+selected.version+":"+chosen;
@@ -125,6 +128,10 @@ export function NativeDigitalRedemption({token,onExpired,selected,onClose,audien
   {selected&&<>
    <Text style={s.title}>{selected.name} · {selected.pointsPrice} points</Text>
    {!eligible.length?<Text style={s.note}>Current relationship is not eligible.</Text>:
+    !reservationReady?<Text style={s.note}>No points have been reserved.
+     {selected.type==="DIGITAL"?
+      " Verified digital delivery is not configured for this reward.":
+      " Original warehouse stock is not available."}</Text>:
     <>
      <View style={s.row}>{eligible.map(k=><Pressable key={k}
       accessibilityRole="button" accessibilityState={{selected:k===chosen}}
