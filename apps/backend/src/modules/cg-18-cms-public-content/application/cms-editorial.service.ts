@@ -13,13 +13,14 @@ import {extendedKinds,parseDraftExtendedSection,parseExtendedSection,validateExt
 import {eligibleProjectSources,projectTeaserRefs,validateProjectTeaser,projectTeaserRevisionEligible,publicProjectTeaser} from "../../cg-05-projects-field-operations/application/project-public-source";
 import {eligibleEventSources,validateEventArticle,eventArticleRevisionEligible,publicEventArticle,EVENT_CURRENT_SQL} from "../../cg-05-projects-field-operations/application/event-public-source";
 import {complianceEligible} from "./cms-compliance-eligibility";
+import {eligibleCampaignSources,campaignTeaserRefs,validateCampaignTeaser,publicCampaignSources,onlineDonationReady} from "../../cg-07-campaigns-donations/application/campaign-public-source";
 const UUID=/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i;
 const HASH=/^[a-f0-9]{64}$/;
 const KINDS=new Set(["HOME","ABOUT","IMPACT","COMPLIANCE","GALLERY","ARTICLE","CONTACT","HEALTHCARE","POLICY"]);
 const POLICY_SLUGS=new Set(["terms-and-conditions","privacy-policy","cookie-policy",
  "disclaimer","refund-and-cancellation","grievance-redressal",
  "copyright-and-intellectual-property"]);
-const SECTION=new Set(["HERO","RICH_TEXT","TEAM","CTA","PROJECT_TEASER",
+const SECTION=new Set(["HERO","RICH_TEXT","TEAM","CTA","PROJECT_TEASER","CAMPAIGN_TEASER",
  "FEATURE_CARDS","JOIN_CARDS","SITE_FOOTER","IMPACT_GROUP","COMPLIANCE_FACTS",
  "GALLERY_GRID","ARTICLE_BODY","HEALTHCARE_CATEGORIES","CONTACT_INFO"]);
 const assetRoles=new Set(["HERO","MOBILE_HERO","TEAM","ABOUT","PROMO","FEATURE",
@@ -67,7 +68,7 @@ function path(v:unknown,field:string){
   throw new BadRequestException({code:"CMS_UNAVAILABLE_ROUTE",field});
  return x;
 }
-type Section={kind:"HERO"|"RICH_TEXT"|"TEAM"|"CTA"|"PROJECT_TEASER"|
+type Section={kind:"HERO"|"RICH_TEXT"|"TEAM"|"CTA"|"PROJECT_TEASER"|"CAMPAIGN_TEASER"|
  "FEATURE_CARDS"|"JOIN_CARDS"|"SITE_FOOTER"|"IMPACT_GROUP"|
  "COMPLIANCE_FACTS"|"GALLERY_GRID"|"ARTICLE_BODY"|"HEALTHCARE_CATEGORIES"|"CONTACT_INFO";order:number;
  fields:Record<string,unknown>};
@@ -163,7 +164,7 @@ function parseContent(raw:unknown):Content{
     "memberTitle","memberBody","memberBenefits"]:
    sec.kind==="SITE_FOOTER"?["mission","address","email","phone","whatsappNumber","newsletterText"]:
    sec.kind==="RICH_TEXT"?["heading","body","eyebrow","variant","highlights"]:
-   sec.kind==="PROJECT_TEASER"?["heading","sourceRefs"]:["heading"]);
+   sec.kind==="PROJECT_TEASER"||sec.kind==="CAMPAIGN_TEASER"?["heading","sourceRefs"]:["heading"]);
   const out:Record<string,unknown>={};
   const array=(raw:unknown,field:string,limit:number,max:number)=>{
    if(!Array.isArray(raw)||raw.length>limit)
@@ -265,7 +266,9 @@ function parseContent(raw:unknown):Content{
     throw new BadRequestException({code:"CMS_INPUT_INVALID",field:"whatsappNumber"});
    if(out.email&&!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(out.email)))
     throw new BadRequestException({code:"CMS_INPUT_INVALID",field:"email"});
-  }else if(sec.kind==="PROJECT_TEASER"){out.heading=text(fields.heading??"Projects","heading",160,2);out.sourceRefs=projectTeaserRefs(fields.sourceRefs??[]);}else out.heading=text(fields.heading??"","heading",160);
+  }else if(sec.kind==="PROJECT_TEASER"){out.heading=text(fields.heading??"Projects","heading",160,2);out.sourceRefs=projectTeaserRefs(fields.sourceRefs??[]);}
+  else if(sec.kind==="CAMPAIGN_TEASER"){out.heading=text(fields.heading??"Campaigns","heading",160,2);out.sourceRefs=campaignTeaserRefs(fields.sourceRefs??[]);}
+  else out.heading=text(fields.heading??"","heading",160);
   if(JSON.stringify(out).length>8192)
    throw new BadRequestException({code:"CMS_INPUT_INVALID",field:"sections"});
   return {kind:sec.kind as Section["kind"],order:Number(sec.order),fields:out};
@@ -348,6 +351,10 @@ export class CmsEditorialService{
   const a=await this.sessions.requireAction(bearer,"cms.content.manage");
   return this.withTx(async tx=>{await this.identity.assertCurrent(tx,a,"cms.content.manage");return {sources:await eligibleEventSources(tx,a.realmId)};});
  }
+ async campaignSources(bearer:string){
+  const a=await this.sessions.requireAction(bearer,"cms.content.manage");
+  return this.withTx(async tx=>{await this.identity.assertCurrent(tx,a,"cms.content.manage");return {sources:await eligibleCampaignSources(tx,a.realmId)};});
+ }
  async projectSources(bearer:string){
   const a=await this.sessions.requireAction(bearer,"cms.content.manage");
   return this.withTx(async tx=>{await this.identity.assertCurrent(tx,a,"cms.content.manage");return {sources:await eligibleProjectSources(tx,a.realmId)};});
@@ -427,6 +434,7 @@ export class CmsEditorialService{
     if(sec.fields.sourceEventRef!==undefined&&(value.title!==sec.fields.heading||value.assets.length))throw new BadRequestException({code:"CMS_PROJECT_SOURCE_INVALID",field:"sourceEventRef"});
    }
    if(sec.kind==="PROJECT_TEASER")await validateProjectTeaser(tx,actor.realmId,sec.fields);
+   if(sec.kind==="CAMPAIGN_TEASER")await validateCampaignTeaser(tx,actor.realmId,sec.fields);
    await tx.query("INSERT INTO cms_section_revision(foundation_root_id,page_revision_id,"+
     "section_kind,order_no,structured_fields) VALUES($1,$2,$3,$4,$5::jsonb)",
     [actor.realmId,rev,sec.kind,sec.order,JSON.stringify(sec.fields)]);
@@ -1012,6 +1020,11 @@ export class CmsEditorialService{
    const placement=await this.db.query("SELECT 1 FROM cms_page p JOIN access_realm r ON r.id=p.foundation_root_id AND r.realm_key='FOUNDATION_ROOT' JOIN cms_page_effective e ON e.page_id=p.id AND e.foundation_root_id=p.foundation_root_id JOIN cms_publication pub ON pub.id=e.publication_id AND pub.foundation_root_id=e.foundation_root_id JOIN cms_section_revision s ON s.foundation_root_id=pub.foundation_root_id AND s.page_revision_id=pub.page_revision_id WHERE p.kind IN('HOME','ABOUT') AND p.archived_at IS NULL AND pub.state='EFFECTIVE' AND pub.effective_at<=now() AND (pub.expires_at IS NULL OR pub.expires_at>now()) AND s.section_kind='PROJECT_TEASER' LIMIT 1");
    if(placement.rowCount)publishedRoutes.push({kind:"PROJECTS",slug:"our-work",path:"/our-work"},{kind:"PROJECTS",slug:"upcoming-projects",path:"/upcoming-projects"});
   }
+  // A Campaigns link appears only when a current original CG07 + CG03 +
+  // CG18 effective publication + CG19 media proof produces a real public card.
+  if((await publicCampaignSources(this.db)).length>0)
+   publishedRoutes.push({kind:"CAMPAIGNS",slug:"campaigns",path:"/campaigns"});
+  if(await onlineDonationReady(this.db))publishedRoutes.push({kind:"DONATE",slug:"donate",path:"/donate"});
   return {schemaVersion:1,effectiveGeneration:x?.effective_generation??null,
    publishedRoutes,
    login:{visible:x?.login_desired===true,label:"Staff login",
@@ -1019,6 +1032,16 @@ export class CmsEditorialService{
    memberJoin:{visible:false,label:"Member registration",path:null},
    volunteerJoin:{visible:false,label:"Volunteer registration",path:null}};
  }
+ async publicCampaignCatalogue(slug?:string){
+  const cards=await publicCampaignSources(this.db,slug);
+  return {schemaVersion:1,kind:"CAMPAIGNS" as const,slug:"campaigns",title:"Campaigns",
+   seoTitle:"Campaigns | CareGanga Foundation",
+   seoDescription:"Current independently approved CareGanga Foundation fundraising campaigns.",
+   canonicalPath:"/campaigns",effectiveGeneration:sha(cards),
+   cards,donationsEnabled:await onlineDonationReady(this.db)};
+ }
+ async publicDonationReadiness(){return {schemaVersion:1,onlineAvailable:await onlineDonationReady(this.db)};}
+
  async publicProjectCatalogue(slug:"our-work"|"upcoming-projects"){
   const pages=await Promise.all(["home","about"].map(async name=>{try{return await this.publicPage(name);}catch(e){if(e instanceof NotFoundException)return null;throw e;}}));
   const approved=pages.filter((p):p is NonNullable<typeof p>=>p!==null);
@@ -1101,6 +1124,14 @@ export class CmsEditorialService{
   if(!card)throw new NotFoundException({code:"CMS_NOT_PUBLISHED"});
   eventCards.set(section.order_no,card);
  }
+ const campaignCards=new Map<number,Record<string,unknown>>();
+ for(const section of sections.rows)if(section.section_kind==="CAMPAIGN_TEASER"){
+  const refs=campaignTeaserRefs(section.structured_fields.sourceRefs??[]);
+  const sources=await eligibleCampaignSources(this.db,x.foundation_root_id,refs);
+  const matches=new Set(refs);
+  campaignCards.set(section.order_no,{heading:section.structured_fields.heading,
+   cards:sources.filter(v=>matches.has(v.sourceRef)).map(({sourceRef,...safe})=>safe)});
+ }
  const projectCards=new Map<number,Record<string,unknown>>();
  for(const section of sections.rows)if(section.section_kind==="PROJECT_TEASER")projectCards.set(section.order_no,await publicProjectTeaser(this.db,x.foundation_root_id,section.structured_fields));
  const hiddenHeroOrders=new Set(sections.rows.filter(sec=>
@@ -1112,7 +1143,7 @@ export class CmsEditorialService{
    lastPublishedAt:x.changed_at.toISOString(),
    sections:sections.rows.filter(v=>v.section_kind!=="HERO"||
      !hiddenHeroOrders.has(v.order_no)).map(v=>({kind:v.section_kind,order:v.order_no,
-    fields:v.section_kind==="PROJECT_TEASER"?(projectCards.get(v.order_no)??{heading:"Projects",cards:[]}):v.section_kind==="ARTICLE_BODY"?
+    fields:v.section_kind==="PROJECT_TEASER"?(projectCards.get(v.order_no)??{heading:"Projects",cards:[]}):v.section_kind==="CAMPAIGN_TEASER"?(campaignCards.get(v.order_no)??{heading:"Campaigns",cards:[]}):v.section_kind==="ARTICLE_BODY"?
       (eventCards.get(v.order_no)??Object.fromEntries(Object.entries(v.structured_fields).filter(([k])=>
        !["sourceNoticeRef","sourceEventRef","publicReleaseConfirmed"].includes(k)))):
      v.section_kind==="TEAM"?{heading:v.structured_fields.heading,members:[]}:

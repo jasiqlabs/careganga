@@ -7,6 +7,7 @@ import {careGangaTheme as theme} from "../../../../../packages/design-tokens/src
 import {identityRequest} from "../identity-access/http-client";
 import {BranchNativeUploader} from "./branch-native-uploader";
 import {BranchNativeEvidenceHistory} from "./branch-native-evidence-history";
+import {BranchStaffAccessNative} from "./branch-staff-access-native";
 
 type Draft={recordRef:string;branchName:string;branchType:string;version:number;
   status:string;currentStep:number;updatedAt:string};
@@ -18,7 +19,7 @@ type Status={status:string;branch:{branchCode:string;status:string}|null;
   approval:{reference:string;status:string;revision:number;
     history:{action:string;remarks:string;at:string}[]}|null;
   submissions:{revision:number;status:string}[]};
-type Props={token:string;canManage:boolean;onExit:()=>void;onExpired:()=>void};
+type Props={token:string;canManage:boolean;canAdmin:boolean;onExit:()=>void;onExpired:()=>void};
 const titles=["Branch details","Location","Registration documents","Agreement & photos",
   "Branch manager","Foundation departments","Review"];
 async function api<T>(token:string,path:string,method:"GET"|"POST"|"PATCH"="GET",body?:object):Promise<T>{
@@ -49,7 +50,7 @@ function friendly(error:unknown):string{
 }
 const value=(x:unknown)=>typeof x==="string"?x:"";
 const list=(x:unknown):string[]=>Array.isArray(x)?x.filter((v):v is string=>typeof v==="string"):[];
-export function BranchRegistrationScreen({token,canManage,onExit,onExpired}:Props){
+export function BranchRegistrationScreen({token,canManage,canAdmin,onExit,onExpired}:Props){
   const [drafts,setDrafts]=useState<Draft[]>([]);
   const [nextDraftOffset,setNextDraftOffset]=useState<number|null>(null);
   const [selected,setSelected]=useState<Detail|null>(null),[step,setStep]=useState(1);
@@ -232,6 +233,8 @@ export function BranchRegistrationScreen({token,canManage,onExit,onExpired}:Prop
           },busy||!!pending)}
           {canManage&&button("New branch draft",()=>{setCreating(true);setName("");setBranchType("");setOpeningDate("");},busy||!!pending,true)}
         </View>}
+        {!selected&&!creating&&canAdmin&&
+         <BranchStaffAccessNative token={token} onExpired={onExpired}/>}
         {creating&&<View style={styles.card}>
           <Text style={styles.heading}>Start branch</Text>
           {input("Branch name",name,setName)}

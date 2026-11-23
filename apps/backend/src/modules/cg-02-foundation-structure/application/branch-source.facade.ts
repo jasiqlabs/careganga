@@ -42,9 +42,77 @@ type SubmittedRow={
 export class BranchSourceFacade{
  constructor(@Inject(DATABASE)private readonly db:Pool,
   private readonly sessions:SessionService,private readonly identity:FoundationStructureIdentityFacade){}
+ /** CG02 authoritative current branch/ancestor-area projection. This never
+  * confers a CG01 action and never represents a clinical healthcare center.
+  * A protected operation holds active grants until its transaction commits.
+  */
+ private async permittedStaffBranches(client:Pool|PoolClient,root:string,account:string):
+  Promise<{id:string;name:string;manager_account_ref:string}[]>{
+  // The root read fence orders an in-transaction decision against CG02
+  // geography reparent/deactivation; the branch row share lock orders manager
+  // reassignment/closure. Pool-backed read-only projections recheck per request.
+  await client.query("SELECT id FROM access_realm WHERE id=$1 FOR SHARE",[root]);
+  await client.query("SELECT id FROM cg02_staff_scope_assignment "+
+   "WHERE root_realm_id=$1 AND account_ref=$2 AND ended_at IS NULL FOR SHARE",
+   [root,account]);
+  const rows=await client.query<{id:string;name:string;manager_account_ref:string}>(`
+   WITH RECURSIVE ancestors AS(
+    SELECT b.id AS branch_id,g.id AS area_id,g.parent_area_id,1 AS depth
+    FROM branch b JOIN geography_area g
+     ON g.root_realm_id=b.root_realm_id AND g.id=b.geography_area_id
+    WHERE b.root_realm_id=$1 AND b.status='ACTIVE' AND g.status='ACTIVE'
+    UNION ALL
+    SELECT a.branch_id,p.id,p.parent_area_id,a.depth+1
+    FROM ancestors a JOIN geography_area p
+     ON p.root_realm_id=$1 AND p.id=a.parent_area_id AND p.status='ACTIVE'
+    WHERE a.depth<8
+   )
+   SELECT b.id,b.name,b.manager_account_ref FROM branch b
+   WHERE b.root_realm_id=$1 AND b.status='ACTIVE' AND
+    (b.manager_account_ref=$2 OR EXISTS(
+     SELECT 1 FROM cg02_staff_scope_assignment grant_scope
+     WHERE grant_scope.root_realm_id=b.root_realm_id
+      AND grant_scope.account_ref=$2 AND grant_scope.ended_at IS NULL
+      AND ((grant_scope.scope_kind='ALL_BRANCHES')
+       OR (grant_scope.scope_kind='BRANCH' AND grant_scope.branch_ref=b.id)
+       OR (grant_scope.scope_kind='AREA' AND EXISTS(
+        SELECT 1 FROM ancestors a WHERE a.branch_id=b.id AND a.area_id=grant_scope.area_ref)))
+    ))
+   ORDER BY b.name,b.id LIMIT 201 FOR SHARE OF b
+  `,[root,account]);
+  if(rows.rows.length>200)throw new ForbiddenException("Ask an administrator to narrow the assigned branches");
+  return rows.rows;
+ }
+ /** Only an already-authorized domain caller may use this projection. It
+  * cannot authorize root/global records, healthcare centers or an action.
+  */
+ async requireAssignedStaffBranch(tx:PoolClient,a:VerifiedFoundationActor,branchInput:string){
+  const branch=ensureId(branchInput);
+  const current=await this.permittedStaffBranches(tx,a.realmId,a.accountId);
+  if(!current.some(x=>x.id===branch))
+   throw new ForbiddenException("This active branch is not assigned to your account");
+ }
+ /** Read-only scoped labels for CG02's own permitted operating directory. */
+ async currentStaffBranchRefs(client:Pool|PoolClient,root:string,account:string):Promise<string[]>{
+  return (await this.permittedStaffBranches(client,root,account)).map(row=>row.id);
+ }
+ /** Generic action-gated branch projection for CG10/12 owner read paths.
+  * Only current CG01 capabilities and existing CG02 scope determine the result.
+  * Never use this projection as authority for a Foundation-null or clinical center item.
+  */
+ async staffBranchScope(bearer:string,action:string):Promise<{all:boolean;branchRefs:string[]}>{
+  const actor=await this.sessions.requireAction(bearer,action);
+  let all=false;
+  try{await this.sessions.requireAction(bearer,"foundation.branches.admin");all=true;}
+  catch(e){if(!(e instanceof ForbiddenException))throw e;}
+  if(all)return {all:true,branchRefs:[]};
+  return {all:false,branchRefs:await this.currentStaffBranchRefs(this.db,actor.realmId,actor.accountId)};
+ }
  /** Used for finance account reactivation, without CG-09 reading CG-02 tables. */
  async requireFinanceActiveBranch(client:PoolClient,actor:VerifiedFoundationActor,
-  branchRef:string,action:"finance.accounts.manage"|"finance.journals.post"):Promise<void>{
+  branchRef:string,action:"finance.accounts.manage"|"finance.journals.post"|
+   "finance.reconciliation.manage"|"finance.reports.view"|"finance.vouchers.manage"|"finance.vouchers.view"|
+   "finance.budgets.manage"|"finance.invoices.manage"|"finance.invoices.issue"|"finance.invoices.review"):Promise<void>{
   await this.identity.assertCurrent(client,actor,action);
   const row=await client.query<{id:string}>(`
     SELECT id FROM branch WHERE id=$1 AND root_realm_id=$2 AND status='ACTIVE'
@@ -58,7 +126,8 @@ export class BranchSourceFacade{
  async requireFinanceActorBranch(client:PoolClient,actor:VerifiedFoundationActor,
   branchInput:string,action:"finance.invoices.manage"|"finance.invoices.issue"|
    "finance.invoices.review"|"finance.budgets.manage"|"finance.accounts.manage"|
-  "finance.journals.post"|"finance.vouchers.manage"|"finance.vouchers.view"):Promise<void>{
+  "finance.journals.post"|"finance.vouchers.manage"|"finance.vouchers.view"|
+  "finance.reconciliation.manage"|"finance.reports.view"):Promise<void>{
   await this.identity.assertCurrent(client,actor,action);
   const branchRef=ensureId(branchInput);
   const source=await client.query<{manager_account_ref:string}>(
@@ -75,8 +144,11 @@ export class BranchSourceFacade{
     WHERE ar.account_id=$1 AND ar.realm_id=$2 AND ar.revoked_at IS NULL
       AND (r.is_protected=true OR g.capability_key IS NOT NULL)
    ) AS allowed`,[actor.accountId,actor.realmId]);
-  if(!privileged.rows[0]?.allowed)
-   throw new ForbiddenException("This finance branch is not assigned to your account");
+  if(!privileged.rows[0]?.allowed){
+   const allowed=await this.permittedStaffBranches(client,actor.realmId,actor.accountId);
+   if(!allowed.some(x=>x.id===branchRef))
+    throw new ForbiddenException("This finance branch is not assigned to your account");
+  }
  }
  /** CG-02 owner check for actual Finance invoice branch selection. */
  async requireFinanceBranchVersion(client:PoolClient,actor:VerifiedFoundationActor,
@@ -127,12 +199,8 @@ export class BranchSourceFacade{
      catch(e){if(!(e instanceof ForbiddenException))throw e;}
    }
    if(full)return {all:true,branchRefs:[]};
-   const branches=await this.db.query<{id:string}>(`
-     SELECT id FROM branch WHERE root_realm_id=$1 AND manager_account_ref=$2
-       AND status='ACTIVE' ORDER BY id LIMIT 101`,[actor.realmId,actor.accountId]);
-   if(branches.rows.length>100)
-     throw new ForbiddenException("Choose a narrower authorized branch list");
-   return {all:false,branchRefs:branches.rows.map(x=>x.id)};
+   const branches=await this.permittedStaffBranches(this.db,actor.realmId,actor.accountId);
+   return {all:false,branchRefs:branches.map(x=>x.id)};
  }
  /** Current CG-02 branch scope for trusted CG-20 scheduled finance jobs.
   * CG-01 checks the stored account's live roles without a bearer; CG-02 alone
@@ -168,14 +236,28 @@ export class BranchSourceFacade{
    }
    if(!requested)
     throw new ForbiddenException("Select a currently assigned branch");
-   const branch=await this.db.query(
-    "SELECT 1 FROM branch WHERE id=$1 AND root_realm_id=$2 "+
-    "AND manager_account_ref=$3 AND status='ACTIVE' LIMIT 1",
-    [ensureId(requested),root,account]);
-   if(!branch.rowCount)
+   const branches=await this.permittedStaffBranches(this.db,root,account);
+   if(!branches.some(x=>x.id===ensureId(requested)))
     throw new ForbiddenException("The assigned report branch has changed");
  }
 
+ /** Trusted CG20 due worker only. A protected administrator receives
+  * Foundation+branches; a senior delegated staff role receives the union
+  * of CURRENT ACTIVE branch assignments without any Foundation-null money.
+  * Sessionless background execution still checks CG01's current role.
+  */
+ async scheduledFinanceScope(root:string,account:string):
+  Promise<{all:boolean;branchRefs:string[]}>{
+  await this.sessions.requireScheduledMisAction(root,account,"finance.reports.view");
+  let all=false;
+  try{await this.sessions.requireScheduledMisAction(root,account,"foundation.branches.admin");all=true;}
+  catch(e){if(!(e instanceof ForbiddenException))throw e;}
+  if(all)return {all:true,branchRefs:[]};
+  const refs=(await this.permittedStaffBranches(this.db,root,account)).map(x=>x.id);
+  if(!refs.length)
+   throw new ForbiddenException("No current branch is assigned to this scheduled report");
+  return {all:false,branchRefs:refs};
+ }
  async requireFinanceReportBranch(bearer:string,requested:string|null|undefined):Promise<void>{
    const allowed=await this.financeReportScope(bearer);
    if(!allowed.all&&(!requested||!allowed.branchRefs.includes(requested)))
@@ -247,7 +329,8 @@ export class BranchSourceFacade{
   */
  async requireFinanceRootScope(client:PoolClient,actor:VerifiedFoundationActor,
    action:"finance.accounts.manage"|"finance.journals.post"|
-    "finance.vouchers.manage"|"finance.vouchers.view"|"finance.budgets.manage"):Promise<void>{
+    "finance.vouchers.manage"|"finance.vouchers.view"|"finance.budgets.manage"|
+    "finance.reconciliation.manage"|"finance.reports.view"|"finance.invoices.manage"|"finance.invoices.review"):Promise<void>{
   await this.identity.assertCurrent(client,actor,action);
   const result=await client.query<{allowed:boolean}>(`
    SELECT EXISTS(SELECT 1 FROM account_role ar
@@ -338,7 +421,17 @@ export class BranchSourceFacade{
      (expectedVersion!==undefined&&row.version!==expectedVersion))
      throw new ConflictException("The operating branch changed or is unavailable");
    if(row.manager_account_ref!==actor.accountId){
-     await this.sessions.requireAction(bearer,"foundation.branches.admin");
+    let rootAdmin=false;
+    try{await this.sessions.requireAction(bearer,"foundation.branches.admin");rootAdmin=true;}
+    catch(e){if(!(e instanceof ForbiddenException))throw e;}
+    if(!rootAdmin){
+     // A senior delegated manager may edit only ACTIVE assigned branches.
+     // This does not grant control of pending registrations or Foundation masters.
+     if(row.status!=="ACTIVE"||
+       !(await this.permittedStaffBranches(this.db,actor.realmId,actor.accountId))
+        .some(x=>x.id===reference))
+      throw new ForbiddenException("The operating branch is not assigned to your account");
+    }
    }
    return {branchRef:row.id,version:row.version,root:actor.realmId,name:row.name};
  }
@@ -353,8 +446,16 @@ export class BranchSourceFacade{
    const row=rows.rows[0];
    if(!row||(write&&row.status!=="ACTIVE")||row.version!==expectedVersion)
      throw new ConflictException("The current branch evidence source changed");
-   if(row.manager_account_ref!==actor.accountId)
-     await this.identity.assertCurrent(client,actor,"foundation.branches.admin");
+   if(row.manager_account_ref!==actor.accountId){
+    let rootAdmin=false;
+    try{await this.identity.assertCurrent(client,actor,"foundation.branches.admin");rootAdmin=true;}
+    catch(e){if(!(e instanceof ForbiddenException))throw e;}
+    if(!rootAdmin){
+     if(row.status!=="ACTIVE")
+      throw new ForbiddenException("The operating branch is not active");
+     await this.requireAssignedStaffBranch(client,actor,branchRef);
+    }
+   }
  }
  /** Historical evidence revocation cannot retarget a submitted snapshot.
   * Check CG-01 current grants and CG-02 scope in the same transaction.
@@ -461,19 +562,26 @@ export class BranchSourceFacade{
   let all=false;
   try{await this.identity.assertCurrent(tx,a,"foundation.branches.admin");all=true;}
   catch(e){if(!(e instanceof ForbiddenException))throw e;}
-  const rows=await tx.query<{id:string;name:string;manager_account_ref:string}>(
-   "SELECT id,name,manager_account_ref FROM branch WHERE root_realm_id=$1 AND status='ACTIVE' AND ($2::boolean OR manager_account_ref=$3) ORDER BY name,id LIMIT 201 FOR SHARE",
-   [a.realmId,all,a.accountId]);
-  if(rows.rows.length>200)throw new ForbiddenException("Choose a narrower branch scope");
-  return {all,branches:rows.rows.map(v=>({value:v.id,label:v.name,managerRef:v.manager_account_ref}))};
+  const rows=all?(await tx.query<{id:string;name:string;manager_account_ref:string}>(
+   "SELECT id,name,manager_account_ref FROM branch WHERE root_realm_id=$1 "+
+   "AND status='ACTIVE' ORDER BY name,id LIMIT 201 FOR SHARE",[a.realmId])).rows:
+   await this.permittedStaffBranches(tx,a.realmId,a.accountId);
+  if(rows.length>200)throw new ForbiddenException("Choose a narrower branch scope");
+  return {all,branches:rows.map(v=>({value:v.id,label:v.name,managerRef:v.manager_account_ref}))};
  }
  async projectBranch(tx:PoolClient,a:VerifiedFoundationActor,ref:string|null):Promise<{managerRef:string|null}>{
   let all=false;
   try{await this.identity.assertCurrent(tx,a,"foundation.branches.admin");all=true;}
   catch(e){if(!(e instanceof ForbiddenException))throw e;}
   if(ref===null){if(!all)throw new ForbiddenException("Foundation-wide project management is not permitted");return {managerRef:null};}
-  const q=await tx.query<{manager_account_ref:string}>("SELECT manager_account_ref FROM branch WHERE id=$1 AND root_realm_id=$2 AND status='ACTIVE' AND ($3::boolean OR manager_account_ref=$4) FOR SHARE",[ensureId(ref),a.realmId,all,a.accountId]);
+  const q=await tx.query<{manager_account_ref:string}>(
+   "SELECT manager_account_ref FROM branch WHERE id=$1 AND root_realm_id=$2 "+
+   "AND status='ACTIVE' FOR SHARE",[ensureId(ref),a.realmId]);
   if(!q.rowCount)throw new ForbiddenException("Choose a permitted active branch");
+  if(!all){
+   const allowed=await this.permittedStaffBranches(tx,a.realmId,a.accountId);
+   if(!allowed.some(x=>x.id===ref))throw new ForbiddenException("Choose a permitted active branch");
+  }
   return {managerRef:q.rows[0].manager_account_ref};
  }
  async projectGeography(tx:PoolClient,a:VerifiedFoundationActor,state:string|null,district:string|null){

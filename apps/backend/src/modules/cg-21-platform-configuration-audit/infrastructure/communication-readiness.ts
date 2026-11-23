@@ -1,6 +1,6 @@
 type ChannelCheck=Readonly<{
   result:"CHECK_ACCEPTED"|"CHECK_FAILED"|"ADAPTER_UNAVAILABLE";
-  reason:"SENDER_CONFIRMED"|"SERVICE_CONFIRMED"|
+  reason:"SENDER_CONFIRMED"|"SERVICE_CONFIRMED"|"MERCHANT_CONFIRMED"|
     "NO_MATCHING_SECRET"|"UNAVAILABLE"|"UNSUPPORTED"
 }>;
 const disabled:ChannelCheck={result:"ADAPTER_UNAVAILABLE",reason:"UNAVAILABLE"};
@@ -65,6 +65,29 @@ export async function checkCommunicationReadiness(
       // Existence of a Messaging Service is not carrier/recipient delivery proof.
       // Registration approval is an explicitly configured deployment gate.
       return {result:"CHECK_ACCEPTED",reason:"SERVICE_CONFIRMED"};
+    }catch{return {result:"CHECK_FAILED",reason:"UNAVAILABLE"};}
+  }
+  if(provider==="razorpay"&&purpose==="donations"){
+    // CG21 checks actual merchant credentials, not a local checkbox.
+    // The secret store pointer must match the deployment's protected key pair.
+    const ref=process.env.CG07_RAZORPAY_SECRET_REF?.trim()??"";
+    const id=process.env.CG07_RAZORPAY_KEY_ID?.trim()??"";
+    const key=process.env.CG07_RAZORPAY_KEY_SECRET?.trim()??"";
+    const webhook=process.env.CG07_RAZORPAY_WEBHOOK_SECRET?.trim()??"";
+    if(!ref||reference!==ref||!/^rzp_(live|test)_[A-Za-z0-9]{8,}$/.test(id)||
+      key.length<16||webhook.length<16||
+      (process.env.NODE_ENV==="production"&&!id.startsWith("rzp_live_")))
+      return {result:"ADAPTER_UNAVAILABLE",reason:"NO_MATCHING_SECRET"};
+    try{
+      const result=await fetch("https://api.razorpay.com/v1/payment_links?count=1",{
+       headers:{Authorization:"Basic "+Buffer.from(id+":"+key).toString("base64")},
+       cache:"no-store",signal:AbortSignal.timeout(8000)});
+      if(!result.ok)return {result:"CHECK_FAILED",reason:"UNAVAILABLE"};
+      const body:unknown=await result.json();
+      if(!body||typeof body!=="object"||!("items" in body)||
+        !Array.isArray(body.items))
+       return {result:"CHECK_FAILED",reason:"UNAVAILABLE"};
+      return {result:"CHECK_ACCEPTED",reason:"MERCHANT_CONFIRMED"};
     }catch{return {result:"CHECK_FAILED",reason:"UNAVAILABLE"};}
   }
   return {result:"ADAPTER_UNAVAILABLE",reason:"UNSUPPORTED"};

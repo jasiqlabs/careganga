@@ -87,11 +87,10 @@ export class MisDashboardService{
   if(Boolean(healthFilter.fromDay)!==Boolean(healthFilter.untilDay))
    throw new BadRequestException({code:"MIS_HEALTH_DATE_RANGE_INVALID",
     message:"Enter both start and end dates for the appointment report."});
-  // A branch-restricted finance manager must not receive root-wide totals,
-  // but a single currently assigned branch can be shown on Overview without
-  // asking the user to enter an internal ID. Multi-branch limited actors must
-  // choose their current branch in the Finance view instead of a fabricated
-  // union or a silently widened data scope.
+  // CG09 now owns one explicit source-scoped aggregation of all CURRENT
+  // delegated branches, distinct from Foundation-wide admin totals.
+  // A manager may view A, B, or their permitted A+B; never unrelated branches,
+  // a Foundation-null journal, or a CG14 healthcare center.
   if(view==="OVERVIEW"&&!filters.branchRef){
    try{
     const choices=await this.finance.options(bearer);
@@ -100,15 +99,17 @@ export class MisDashboardService{
    }catch(error){if(error instanceof UnauthorizedException)throw error;}
   }
   let failures=0;
-  const financeSource:Promise<Source|null>=view==="HEALTH"?Promise.resolve(null):this.finance
-   .summary(bearer,filters.yearRef,filters.branchRef)
+  const financeSource:Promise<Source|null>=view==="HEALTH"?Promise.resolve(null):
+   (filters.branchRef?this.finance.summary(bearer,filters.yearRef,filters.branchRef):
+    this.finance.assignedMisSummary(bearer,filters.yearRef))
    .then(async source=>{
     let trend:FinanceTrend={type:"MONTHLY_FINANCE",
      windowLabel:"Last six calendar months",state:"EMPTY",points:[]};
     if(source.sourceRecordState!=="NO_ROWS"){
      try{
-      const projection=await this.finance.monthlyMisTrend(
-       bearer,filters.yearRef,filters.branchRef);
+      const projection=filters.branchRef?
+       await this.finance.monthlyMisTrend(bearer,filters.yearRef,filters.branchRef):
+       await this.finance.assignedMisMonthlyTrend(bearer,filters.yearRef);
       trend={type:"MONTHLY_FINANCE",windowLabel:projection.windowLabel,
        state:projection.months.length?"AVAILABLE":"EMPTY",points:projection.months};
      }catch(error){
@@ -135,7 +136,7 @@ export class MisDashboardService{
     if(error instanceof UnauthorizedException)throw error;
     if(error instanceof ForbiddenException){
      // Never convert a rejected requested branch into an apparently valid total.
-     if(filters.branchRef)throw error;
+     if(filters.branchRef||view==="FINANCE")throw error;
      return null;
     }
     if(error instanceof BadRequestException)throw error;
@@ -214,7 +215,8 @@ export class MisDashboardService{
    suppressed?(failures?"PARTIAL":"SUPPRESSED"):
    failures?"FAILED":"NO_AUTHORIZED_SOURCES",readAt:new Date().toISOString(),
    scopeLabel:healthFilter.centerRef?"Selected verified healthcare center":
-    filters.branchRef?"Permitted selected branch":"Current original-owner scope",
+    filters.branchRef?"Permitted selected branch":
+    "Current authorized Foundation/branch reporting scope",
    periodLabel:view==="HEALTH"?(healthFilter.fromDay?
     "Appointments "+healthFilter.fromDay+" to "+healthFilter.untilDay:
     "Current appointment records"):

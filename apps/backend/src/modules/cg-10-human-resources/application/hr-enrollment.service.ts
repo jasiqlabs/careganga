@@ -9,6 +9,7 @@ import {HrEnrollmentSourceFacade,sourceHash} from "./hr-enrollment-source.facade
 import {HrEmployeeEvidenceService} from "../../cg-19-documents-notifications/application/hr-employee-evidence.service";
 import {HrEnrollmentApprovalService} from "../../cg-03-registration-approvals/application/hr-enrollment-approval.service";
 import {FoundationStructureIdentityFacade} from "../../cg-01-identity-access/application/foundation-structure-identity.facade";
+import {BranchSourceFacade} from "../../cg-02-foundation-structure/application/branch-source.facade";
 
 const ID=/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i;
 const TYPES=["FULL_TIME","PART_TIME","CONTRACT","VOLUNTEER_STAFF"] as const;
@@ -75,7 +76,8 @@ export class HrEnrollmentService{
   private readonly source:HrEnrollmentSourceFacade,
   private readonly files:HrEmployeeEvidenceService,
   private readonly approvals:HrEnrollmentApprovalService,
-  private readonly identity:FoundationStructureIdentityFacade){}
+  private readonly identity:FoundationStructureIdentityFacade,
+  private readonly branches:BranchSourceFacade){}
  private actor(token:string,action:"hr.applications.view"|"hr.applications.manage"){
   return this.sessions.requireAction(token,action);
  }
@@ -91,7 +93,7 @@ export class HrEnrollmentService{
    "FOR SHARE OF b",[ref,a.accountId,a.realmId]);
   if(!q.rows[0])throw new ForbiddenException("The selected Foundation branch is unavailable");
   if(!q.rows[0].full_access&&q.rows[0].manager_account_ref!==a.accountId)
-   throw new ForbiddenException("Your account cannot manage this branch's staff");
+   await this.branches.requireAssignedStaffBranch(tx,a,ref);
   return q.rows[0];
  }
  private async validSource(tx:PoolClient,a:VerifiedFoundationActor,x:Fields){
@@ -138,13 +140,14 @@ export class HrEnrollmentService{
  }
  async branchOptions(token:string){
   const a=await this.actor(token,"hr.applications.view");
-  return this.availableBranches(a);
+  return this.availableBranches(a,token,"hr.applications.view");
  }
  async employeeBranchOptions(token:string){
   const a=await this.sessions.requireAction(token,"hr.employees.view");
-  return this.availableBranches(a);
+  return this.availableBranches(a,token,"hr.employees.view");
  }
- private async availableBranches(a:VerifiedFoundationActor){
+ private async availableBranches(a:VerifiedFoundationActor,token:string,action:string){
+  const scope=await this.branches.staffBranchScope(token,action);
   const q=await this.db.query<{id:string;name:string;pin_code:string|null;
     state:string|null;district:string|null;subdivision:string|null;block:string|null}>(
    "SELECT b.id,b.name,b.pin_code,geo.state,geo.district,geo.subdivision,geo.block "+
@@ -161,13 +164,8 @@ export class HrEnrollmentService{
    "MAX(display_name) FILTER(WHERE level='BLOCK') AS block FROM path"+
    ") geo ON true "+
    "WHERE b.root_realm_id=$1 AND b.status='ACTIVE' "+
-   "AND (b.manager_account_ref=$2 OR EXISTS("+
-   "SELECT 1 FROM account_role ar JOIN role r ON r.id=ar.role_id "+
-   "AND r.realm_id=ar.realm_id AND r.active "+
-   "LEFT JOIN role_grant g ON g.role_id=r.id AND g.capability_key='foundation.branches.admin' "+
-   "WHERE ar.account_id=$2 AND ar.realm_id=$1 AND ar.revoked_at IS NULL "+
-   "AND (r.is_protected OR g.capability_key IS NOT NULL))) "+
-   "ORDER BY b.name,b.id LIMIT 101",[a.realmId,a.accountId]);
+   "AND ($2::boolean OR b.id=ANY($3::uuid[])) "+
+   "ORDER BY b.name,b.id LIMIT 101",[a.realmId,scope.all,scope.branchRefs]);
   if(q.rows.length>100)throw new ConflictException("Contact your administrator to narrow branch access");
   return {items:q.rows.map(b=>({branchRef:b.id,label:b.name,
     geography:[b.state,b.district,b.subdivision,b.block,b.pin_code].filter(Boolean).join(", "),
@@ -384,18 +382,14 @@ export class HrEnrollmentService{
   if(!Number.isSafeInteger(offset)||offset<0||offset>10000)
    throw new BadRequestException("Choose a valid employee list page");
   const branch=branchInput===undefined?null:uuid(branchInput,"branch");
+  const scope=await this.branches.staffBranchScope(token,"hr.applications.view");
   const q=await this.db.query<Row>(
    "SELECT h.* FROM hr_employee_application h "+
    "JOIN branch b ON b.id=h.proposed_branch_ref AND b.root_realm_id=h.root_realm_id "+
    "WHERE h.root_realm_id=$1 AND ($3::uuid IS NULL OR h.proposed_branch_ref=$3) "+
-   "AND (b.manager_account_ref=$2 OR EXISTS("+
-   "SELECT 1 FROM account_role ar JOIN role r ON r.id=ar.role_id "+
-   "AND r.realm_id=ar.realm_id AND r.active "+
-   "LEFT JOIN role_grant g ON g.role_id=r.id AND g.capability_key='foundation.branches.admin' "+
-   "WHERE ar.account_id=$2 AND ar.realm_id=$1 AND ar.revoked_at IS NULL "+
-   "AND (r.is_protected OR g.capability_key IS NOT NULL))) "+
+   "AND ($2::boolean OR b.id=ANY($5::uuid[])) "+
    "ORDER BY h.created_at DESC,h.id DESC LIMIT 26 OFFSET $4",
-   [a.realmId,a.accountId,branch,offset]);
+   [a.realmId,scope.all,branch,offset,scope.branchRefs]);
   return {items:q.rows.slice(0,25).map(view),hasMore:q.rows.length>25,offset};
  }
  async detail(token:string,applicationInput:string){
@@ -751,6 +745,7 @@ export class HrEnrollmentService{
   const actor=await this.sessions.requireAction(token,"hr.employees.view");
   if(!/^CG-HR-EMP-[0-9]{6,}$/.test(referenceInput))
    throw new BadRequestException("Choose an employee from the current directory");
+  const scope=await this.branches.staffBranchScope(token,"hr.employees.view");
   const q=await this.db.query<{employee_code:string;status:string;legal_name:string;
    designation:string;employment_type:string;branch_name:string;department_name:string|null;
    manager_name:string|null;valid_from:Date|string;valid_to:Date|string|null;
@@ -775,14 +770,8 @@ export class HrEnrollmentService{
    "ON manager_source.id=manager.application_id "+
    "AND manager_source.root_realm_id=e.root_realm_id "+
    "WHERE e.root_realm_id=$1 AND e.employee_code=$3 "+
-   "AND (b.manager_account_ref=$2 OR EXISTS("+
-   "SELECT 1 FROM account_role ar JOIN role role_now ON role_now.id=ar.role_id "+
-   "AND role_now.realm_id=ar.realm_id AND role_now.active "+
-   "LEFT JOIN role_grant g ON g.role_id=role_now.id "+
-   "AND g.capability_key='foundation.branches.admin' "+
-   "WHERE ar.account_id=$2 AND ar.realm_id=$1 AND ar.revoked_at IS NULL "+
-   "AND (role_now.is_protected OR g.capability_key IS NOT NULL))) LIMIT 1",
-   [actor.realmId,actor.accountId,referenceInput]);
+   "AND ($2::boolean OR b.id=ANY($4::uuid[])) LIMIT 1",
+   [actor.realmId,scope.all,referenceInput,scope.branchRefs]);
   const person=q.rows[0];
   if(!person)throw new NotFoundException("This employee is not in your permitted branches");
   return {reference:person.employee_code,name:person.legal_name,
@@ -803,6 +792,7 @@ export class HrEnrollmentService{
   try{
    await tx.query("BEGIN");
    await this.identity.assertCurrent(tx,actor,"hr.employees.view");
+   const scope=await this.branches.projectBranchScope(tx,actor);
    let attendanceVisible=true;
    try{await this.identity.assertCurrent(tx,actor,"hr.attendance.view");}catch(e){
     if(!(e instanceof ForbiddenException))throw e;
@@ -821,13 +811,7 @@ export class HrEnrollmentService{
        THEN 0 ELSE 1 END,a.valid_from DESC,a.id DESC LIMIT 1) assignment ON true
      JOIN branch b ON b.id=assignment.branch_ref AND b.root_realm_id=e.root_realm_id
      LEFT JOIN department dep ON dep.id=assignment.department_ref AND dep.root_realm_id=e.root_realm_id
-     WHERE e.root_realm_id=$1 AND (b.manager_account_ref=$2 OR EXISTS(
-      SELECT 1 FROM account_role ar JOIN role role_now ON role_now.id=ar.role_id
-      AND role_now.realm_id=ar.realm_id AND role_now.active
-      LEFT JOIN role_grant grant_row ON grant_row.role_id=role_now.id
-      AND grant_row.capability_key='foundation.branches.admin'
-      WHERE ar.account_id=$2 AND ar.realm_id=$1 AND ar.revoked_at IS NULL
-      AND (role_now.is_protected OR grant_row.capability_key IS NOT NULL)))
+     WHERE e.root_realm_id=$1 AND ($2::boolean OR b.id=ANY($4::uuid[]))
     ), current_staff AS (
      SELECT * FROM scoped WHERE current_assignment AND status IN('ACTIVE','PROBATION')
     ), daily_attendance AS (
@@ -901,7 +885,7 @@ export class HrEnrollmentService{
       'recordedAttendanceRate',CASE WHEN working>0 THEN ROUND(100*present/working,1) ELSE NULL END) FROM month_attendance_counts WHERE $3::boolean) AS monthly,
      (SELECT COALESCE(jsonb_agg(jsonb_build_object('name',name,'date',date,'years',years) ORDER BY date,name),'[]'::jsonb) FROM upcoming_anniversaries) AS anniversaries
     FROM stats`,
-    [actor.realmId,actor.accountId,attendanceVisible]);
+    [actor.realmId,scope.all,attendanceVisible,scope.branches.map(x=>x.value)]);
    const statuses=["ACTIVE","PROBATION","PENDING_ACCESS","ON_HOLD","EXITED"] as const;
    const counts=Object.fromEntries(statuses.map(k=>[k,0])) as Record<typeof statuses[number],number>;
    let newJoinersThisMonth=0,onApprovedLeaveToday=0,employeesWithPendingLeave=0;
@@ -920,6 +904,7 @@ export class HrEnrollmentService{
  async employeeDirectory(token:string,offsetInput:unknown,branchInput?:unknown,
   statusInput?:unknown,queryInput?:unknown,departmentInput?:unknown,stateInput?:unknown,districtInput?:unknown,roleInput?:unknown){
   const actor=await this.sessions.requireAction(token,"hr.employees.view");
+  const scope=await this.branches.staffBranchScope(token,"hr.employees.view");
   const offset=Number(offsetInput??0);
   if(!Number.isSafeInteger(offset)||offset<0||offset>10000)
    throw new BadRequestException("Check the staff directory page");
@@ -956,24 +941,20 @@ export class HrEnrollmentService{
    "AND manager.root_realm_id=e.root_realm_id "+
    "LEFT JOIN hr_employee_application manager_app ON manager_app.id=manager.application_id "+
    "AND manager_app.root_realm_id=e.root_realm_id "+
-   "WHERE e.root_realm_id=$1 AND ($3::uuid IS NULL OR b.id=$3) "+
-   "AND ($5::text='ALL' OR e.status=$5) "+
-   "AND ($6::text='' OR lower(a.legal_name) LIKE $6 ESCAPE '\\' OR "+
-   "lower(asg.designation) LIKE $6 ESCAPE '\\' OR lower(e.employee_code) LIKE $6 ESCAPE '\\') "+
-   "AND ($7::uuid IS NULL OR asg.department_ref=$7) "+
-   "AND (($8='' AND $9='') OR EXISTS(WITH RECURSIVE path(level,display_name,parent_area_id,root_realm_id,depth) AS ("+
+   "WHERE e.root_realm_id=$1 AND ($2::uuid IS NULL OR b.id=$2) "+
+   "AND ($4::text='ALL' OR e.status=$4) "+
+   "AND ($5::text='' OR lower(a.legal_name) LIKE $5 ESCAPE '\\' OR "+
+   "lower(asg.designation) LIKE $5 ESCAPE '\\' OR lower(e.employee_code) LIKE $5 ESCAPE '\\') "+
+   "AND ($6::uuid IS NULL OR asg.department_ref=$6) "+
+   "AND (($7='' AND $8='') OR EXISTS(WITH RECURSIVE path(level,display_name,parent_area_id,root_realm_id,depth) AS ("+
    "SELECT g.level,g.display_name,g.parent_area_id,g.root_realm_id,0 FROM geography_area g WHERE g.id=b.geography_area_id AND g.root_realm_id=b.root_realm_id "+
    "UNION ALL SELECT g.level,g.display_name,g.parent_area_id,g.root_realm_id,p.depth+1 FROM path p JOIN geography_area g ON g.id=p.parent_area_id AND g.root_realm_id=p.root_realm_id WHERE p.depth<6) "+
-   "SELECT 1 FROM path HAVING ($8='' OR bool_or(level='STATE' AND lower(display_name)=$8)) AND ($9='' OR bool_or(level='DISTRICT' AND lower(display_name)=$9)))) "+
-   "AND ($10='' OR EXISTS(SELECT 1 FROM account_role assigned JOIN role rr ON rr.id=assigned.role_id AND rr.realm_id=assigned.realm_id AND rr.active WHERE assigned.realm_id=e.root_realm_id AND assigned.account_id=e.account_ref AND assigned.revoked_at IS NULL AND strpos(lower(rr.name),$10)>0)) "+
-   "AND (b.manager_account_ref=$2 OR EXISTS("+
-   "SELECT 1 FROM account_role ar JOIN role r ON r.id=ar.role_id "+
-   "AND r.realm_id=ar.realm_id AND r.active "+
-   "LEFT JOIN role_grant g ON g.role_id=r.id AND g.capability_key='foundation.branches.admin' "+
-   "WHERE ar.account_id=$2 AND ar.realm_id=$1 AND ar.revoked_at IS NULL "+
-   "AND (r.is_protected OR g.capability_key IS NOT NULL))) "+
-   "ORDER BY a.legal_name,e.id LIMIT 26 OFFSET $4",
-   [actor.realmId,actor.accountId,branch,offset,status,pattern,department,state,district,role]);
+   "SELECT 1 FROM path HAVING ($7='' OR bool_or(level='STATE' AND lower(display_name)=$7)) AND ($8='' OR bool_or(level='DISTRICT' AND lower(display_name)=$8)))) "+
+   "AND ($9='' OR EXISTS(SELECT 1 FROM account_role assigned JOIN role rr ON rr.id=assigned.role_id AND rr.realm_id=assigned.realm_id AND rr.active WHERE assigned.realm_id=e.root_realm_id AND assigned.account_id=e.account_ref AND assigned.revoked_at IS NULL AND strpos(lower(rr.name),$9)>0)) "+
+   "AND ($10::boolean OR b.id=ANY($11::uuid[])) "+
+   "ORDER BY a.legal_name,e.id LIMIT 26 OFFSET $3",
+   [actor.realmId,branch,offset,status,pattern,department,state,district,role,
+    scope.all,scope.branchRefs]);
   await tx.query("COMMIT");
   return {items:q.rows.slice(0,25).map(x=>({
    reference:x.employee_code,name:x.legal_name,

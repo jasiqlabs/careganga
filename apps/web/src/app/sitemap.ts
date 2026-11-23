@@ -1,5 +1,6 @@
 import type {MetadataRoute} from "next";
 import {publishedCmsPage,publishedCmsArticles,publishedCmsNotices} from "../features/cms-public-content/cms-public-source";
+import {publishedCampaigns} from "../features/campaigns/campaign-public-source";
 export const dynamic="force-dynamic";
 /** Origin URL is the actually configured public host, not an invented route.
  * Pages stay out of search results until their current CG03/CG19 approved
@@ -34,11 +35,11 @@ export default async function sitemap():Promise<MetadataRoute.Sitemap>{
   if(origin.protocol!=="https:"||origin.username||origin.password||
     origin.search||origin.hash||origin.pathname!=="/")return [];
  }catch{return [];}
- const [home,about,impact,legal,gallery,healthcare,articles,notices,healthDirectory]=await Promise.all([
+ const [home,about,impact,legal,gallery,healthcare,articles,notices,healthDirectory,campaigns]=await Promise.all([
   publishedCmsPage("home"),publishedCmsPage("about"),publishedCmsPage("our-impact"),
   publishedCmsPage("80g"),publishedCmsPage("gallery"),
   publishedCmsPage("healthcare"),publishedCmsArticles(),publishedCmsNotices(),
-  approvedHealthSitemap()]);
+  approvedHealthSitemap(),publishedCampaigns()]);
  const results:MetadataRoute.Sitemap=[];
  for(const item of [home,about,impact,legal,gallery,healthcare]){
   if(item.state!=="PUBLISHED")continue;
@@ -74,6 +75,11 @@ export default async function sitemap():Promise<MetadataRoute.Sitemap>{
   ];
   for(const slug of paths)results.push({url:new URL(slug,origin).toString(),
    changeFrequency:"weekly",priority:0.45});
+ }
+ if(campaigns.state==="PUBLISHED"){
+  results.push({url:new URL("/campaigns",origin).toString(),changeFrequency:"daily",priority:0.65});
+  for(const item of campaigns.cards)
+   results.push({url:new URL("/campaigns/"+item.slug,origin).toString(),changeFrequency:"daily",priority:0.6});
  }
  if(notices.available)results.push({url:new URL("/notices",origin).toString(),
   changeFrequency:"weekly",priority:0.55});

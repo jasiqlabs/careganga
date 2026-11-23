@@ -455,3 +455,31 @@ Source-only regression assertion added to existing `apps/backend/test/cg04-volun
   - *Security & Privacy:* Confirmed PII redaction, no raw UUID leakage, and foreground data scrubbing on blur/background.
   - *Web & Android Parity:* Verified bidirectional capability parity for admin and community audiences.
 - **Disposition:** `SOURCE_COMPLETE`, `APPROVED_INDEPENDENT_REVIEW_PASS`. Ready for merge to `origin/main`.
+
+
+## CG-MB cross-branch/center QA overlay — 23 Nov 2026
+
+**Scope:** FOUNDATION or real CG-02 BRANCH for member/volunteer; self-service identity is not staff grant. **Bug references:** CG-MB-001, CG-MB-004. [Run-book (MB-T01–T22)](../../../../../docs/qa/CAREGANGA-MULTIBRANCH-SOURCE-AND-RUNTIME-TEST-PLAN-20261123.md) · [issue register](../../../../../docs/bugs/multibranch/README.md). **All original QA IDs, requirements and prior execution statuses remain unchanged.** The anchors below supplement existing cases, they are not new original QA IDs or evidence of PASS. The developer must run two real ACTIVE branches A/B, a third closed branch C and root-only record; never use fictitious staff grants or browser-selected UUID as permission.
+
+| Original story and existing QA anchor | Concrete A/B+root acceptance step | Mandatory proof across applicable channels | Status |
+| --- | --- | --- | --- |
+| **US-001** (existing US-001-QA01) | Publish Foundation membership tiers without requiring a branch; branch A/B eligibility and safe public join options must not expose private staff roles or other-branch applicant lists. | Admin Web + applicable native Web/Android, typed API, source row/CG-01/02/14 guard, PostgreSQL FK/trigger, wrong-branch 403/404, two-worker replay, export/doc/notification | NOT_RUN |
+| **US-002** (existing US-002-QA01) | Apply/approve/renew/refund member in A vs B; root can view permitted network and masked exported data, manager A cannot list B or edit Foundation-only membership; no double fee posting. | Admin Web + applicable native Web/Android, typed API, source row/CG-01/02/14 guard, PostgreSQL FK/trigger, wrong-branch 403/404, two-worker replay, export/doc/notification | NOT_RUN |
+| **US-003** (existing US-003-QA02) | Volunteer A approved and linked to permitted branch/department, then reassigned B; retained original application/card and linked CG-05 field events must not leak B to A. | Admin Web + applicable native Web/Android, typed API, source row/CG-01/02/14 guard, PostgreSQL FK/trigger, wrong-branch 403/404, two-worker replay, export/doc/notification | NOT_RUN |
+| **US-004** (existing US-004-QA03) | For any original US-004 tracking item verify source-applicable branch proof for membership/card/public flow and explicitly mark non-applicable branch scope rather than guessing. | Admin Web + applicable native Web/Android, typed API, source row/CG-01/02/14 guard, PostgreSQL FK/trigger, wrong-branch 403/404, two-worker replay, export/doc/notification | NOT_RUN |
+
+**Cross-story negative/closure trace (NOT_RUN):** With manager A and B, an ordinary non-manager action-role holder, protected root, revoked user and separate actual center X/Y where relevant: check same-root A→B and foreign-root UUID bypass; branch deactivation/reassignment in middle of edit/export/upload; file/notice/worker visibility; history versus current authorization; Foundation-only NULL branch; no overbroad client filter; list/KPI/CSV/PDF report consistency; two-worker replay/rollback; original client screenshot UI and applicable Internal/Public Android parity. Record reviewer, exact commit, PostgreSQL migration/trigger/EXPLAIN and real API/device screenshots for **every original story**; separate SOURCE_REVIEWED from RUNTIME_PASS. For branch-assignment policy blocked by missing non-manager grants, mark BLOCKED CG-MB-001, not a false PASS. No merge into main.
+
+
+### 23-Nov-2026 — CG-MB-001/004 cross-owner source re-review checkpoint
+
+**Original QA anchors:** CG-04 US-002/003 receiving owner. **State:** SOURCE_FIX_AUTHORED_REVIEW_PENDING (CG-MB-004 additionally remaining source owner gaps), **INDEPENDENT_REVIEW_NOT_RUN / RUNTIME_NOT_RUN**. MembershipRosterService and VolunteerRosterService already call CG02 projectBranchScope; this CG02 source now recognizes true ACTIVE staff BRANCH/AREA assignments with CG01 domain capability, without widening public account access. Reinspect applicant approve/refund/current CG19 card and A/B role revoke in original QA, no source-complete claim.
+
+**Next finite gate:** re-open actual changed source in the original owner, review access privileges, BWC is not needed, prove same-root composite DB FK+migration, A/B account roles+area ancestor and manager transfer, closed C, stale sessions and read/option/write/export/file/worker, clear safe Web/Internal Android errors. Run source contracts and disposable PostgreSQL migrations in separately authorized local final QA, trace original QA IDs; record reviewer/commit/evidence. Do not merge main or fabricate SOURCE_COMPLETE.
+
+
+### 23-Nov-2026 — explicit ALL_BRANCHES senior-manager receiving QA
+
+Member and volunteer list, permitted search, private export, source application and assignment: A/B/C actual branch records vs protected Foundation-only, with ALL_BRANCHES delegate receiving A+B+C and never null-branch profiles, AREA/district manager only active descendants, A-only manager A. Public member/volunteer SELF roles cannot be promoted to delegated staff by name or selected source.
+
+**Evidence state NOT_RUN:** original QA IDs unchanged. Test protected root (Foundation-null plus A/B/C), organization-wide non-protected `ALL_BRANCHES` (active A/B/C only), state/district AREA (descendant active branches only), explicit A+B BRANCH grants, A-only manager, ordinary restricted operator, revoked actor, cross-root guess and CG14 Center X/Y independence. Each selected story must verify current CG01 action + CG02 scope, database, backend API, Web and Internal Android, CSV/PDF and queued recipient; no BWC (greenfield), no runtime PASS, no main merge.

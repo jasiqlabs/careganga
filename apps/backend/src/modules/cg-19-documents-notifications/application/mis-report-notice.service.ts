@@ -28,8 +28,10 @@ export class MisReportNoticeService{
    await tx.query("BEGIN");active=true;
    await tx.query("SET LOCAL statement_timeout='8s'");
    await tx.query("SET LOCAL lock_timeout='3s'");
-   const actual=await tx.query<{id:string;expires_at:Date;safe_request:unknown}>(
-    "SELECT r.id,r.expires_at,r.safe_request FROM cg20_report_run r "+
+   const actual=await tx.query<{id:string;expires_at:Date;safe_request:unknown;
+    original_scope_all:boolean|null;original_scope_branch_refs:string[]|null}>(
+    "SELECT r.id,r.expires_at,r.safe_request,r.original_scope_all,"+
+    "r.original_scope_branch_refs FROM cg20_report_run r "+
     "JOIN cg20_report_schedule schedule ON schedule.root_realm_id=r.root_realm_id "+
     "AND schedule.id=r.schedule_ref AND schedule.owner_account_ref=r.requester_ref "+
     "AND schedule.recipient_account_ref=r.requester_ref "+
@@ -54,8 +56,20 @@ export class MisReportNoticeService{
      code:"MIS_SCHEDULE_REPORT_UNAVAILABLE",
      message:"The protected scheduled report is unavailable for delivery."});
    const request=actual.rows[0].safe_request as {branchRef?:unknown};
-   await this.branches.requireScheduledFinanceReportBranch(root,account,
-    typeof request?.branchRef==="string"?request.branchRef:null);
+   const original=actual.rows[0];
+   if(original.original_scope_all===null||original.original_scope_branch_refs===null)
+    throw new ForbiddenException("The original report scope cannot be verified");
+   const chosen=typeof request?.branchRef==="string"?request.branchRef:null;
+   if(chosen)await this.branches.requireScheduledFinanceReportBranch(root,account,chosen);
+   // A null selection means the originally authorized branch union for a
+   // limited manager, never implicit Foundation-null financial access.
+   const current=await this.branches.scheduledFinanceScope(root,account);
+   if(original.original_scope_all&&!current.all||
+     !current.all&&original.original_scope_branch_refs.some(ref=>
+       !current.branchRefs.includes(ref)))
+    throw new ForbiddenException("Report branch access changed before delivery");
+   if(chosen&&!current.all&&!current.branchRefs.includes(chosen))
+    throw new ForbiddenException("This report branch is no longer assigned");
    const text={
     subject:"Your CareGanga Foundation report is ready",
     body:"A scheduled Foundation report is available. Sign in to your private account to check current permissions and download it."

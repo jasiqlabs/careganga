@@ -3,6 +3,7 @@ import {BadRequestException,ConflictException,ForbiddenException,Injectable,Serv
 import {createCipheriv,createDecipheriv,createHash,randomBytes,randomUUID} from "node:crypto";
 import type {PoolClient} from "pg";
 import {FoundationStructureIdentityFacade} from "../../cg-01-identity-access/application/foundation-structure-identity.facade";
+import {BranchSourceFacade} from "../../cg-02-foundation-structure/application/branch-source.facade";
 import type {VerifiedFoundationActor} from "../../cg-01-identity-access/public-api";
 import {shiftCheckInAt,verifiedWorkedMinutes} from "./hr-attendance.service";
 import {leaveDate,leaveId} from "./hr-leave-source.facade";
@@ -62,7 +63,8 @@ export type CorrectionRow={id:string;employee_id:string;attendance_day_id:string
 export type CorrectionSubmission={requestRef:string;sourceDigest:string;requestKey:string;employeeName:string;expectedVersion:number};
 @Injectable()
 export class HrAttendanceCorrectionSourceFacade{
- constructor(private readonly identity:FoundationStructureIdentityFacade){}
+ constructor(private readonly identity:FoundationStructureIdentityFacade,
+  private readonly branches:BranchSourceFacade){}
  /** A named target requires a current HR grant and either current Foundation-root,
   * delegated branch, or actual current reporting-manager scope. */
  private async employee(tx:PoolClient,actor:VerifiedFoundationActor,reference:string|undefined,write=false){
@@ -70,6 +72,10 @@ export class HrAttendanceCorrectionSourceFacade{
    if(!EMP.test(reference))throw new BadRequestException({code:"CG10_CORRECTION_INVALID"});
    await this.identity.assertCurrent(tx,actor,"hr.attendance.correct");
   }else await this.identity.assertPatientSessionCurrent(tx,actor);
+  // Named correction requires both CG01 action and live CG02 assignment.
+  // Own attendance continues to match only the current actor account.
+  const permitted=reference===undefined?[]:
+   await this.branches.currentStaffBranchRefs(tx,actor.realmId,actor.accountId);
   const q=await tx.query<Employee>(`SELECT e.id,e.account_ref,app.legal_name AS name,a.branch_ref
    FROM hr_employee e JOIN hr_employee_application app ON app.id=e.application_id AND app.root_realm_id=e.root_realm_id
    JOIN hr_employment_assignment a ON a.employee_id=e.id AND a.root_realm_id=e.root_realm_id
@@ -77,12 +83,13 @@ export class HrAttendanceCorrectionSourceFacade{
    WHERE e.root_realm_id=$1 AND e.status IN('ACTIVE','PROBATION')
     AND a.valid_from<=CURRENT_DATE AND (a.valid_to IS NULL OR a.valid_to>CURRENT_DATE)
     AND (($3::text IS NULL AND e.account_ref=$2) OR ($3::text IS NOT NULL AND e.employee_code=$3 AND
-      (b.manager_account_ref=$2 OR EXISTS(SELECT 1 FROM hr_employee manager WHERE manager.id=a.manager_employee_ref
+      (b.manager_account_ref=$2 OR b.id=ANY($4::uuid[]) OR
+        EXISTS(SELECT 1 FROM hr_employee manager WHERE manager.id=a.manager_employee_ref
         AND manager.root_realm_id=e.root_realm_id AND manager.account_ref=$2 AND manager.status IN('ACTIVE','PROBATION'))
        OR EXISTS(SELECT 1 FROM account_role ar JOIN role r ON r.id=ar.role_id AND r.realm_id=ar.realm_id
         AND r.active AND r.is_protected WHERE ar.account_id=$2 AND ar.realm_id=$1 AND ar.revoked_at IS NULL))))
    `+(write?"FOR UPDATE OF e FOR SHARE OF a,b":"FOR SHARE OF e,a,b"),
-   [actor.realmId,actor.accountId,reference??null]);
+   [actor.realmId,actor.accountId,reference??null,permitted]);
   if(q.rows.length!==1)return null;
   return q.rows[0];
  }

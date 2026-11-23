@@ -1,3 +1,6 @@
+import {DonationBankCollectionFacade} from "./application/donation-bank-collection.facade";
+import {DonationRefundPostingFacade} from "./application/donation-refund-posting.facade";
+import {DonationFinancePostingFacade} from "./application/donation-finance-posting.facade";
 import {MembershipFeesService} from "./application/membership-fees.service";
 import {Module} from "@nestjs/common";
 import {IdentityAccessModule} from "../cg-01-identity-access/identity-access.module";
@@ -16,7 +19,7 @@ import {HealthcareProviderPayoutProofFacade} from "./application/healthcare-prov
  */
 @Module({
  imports:[IdentityAccessModule,FoundationStructureModule],
- providers:[MembershipFeesService,FinanceJournalPostingService,HealthcareProviderPayoutProofFacade,HealthcareFoundationPostingFacade,FinanceVoucherSourceFacade,FinanceExpenseClaimSourceFacade,FinanceInvoiceSourceFacade,FinanceBudgetSourceFacade,FinanceReceiptSourceFacade,FinanceBankStatementSourceFacade],
- exports:[MembershipFeesService,HealthcareProviderPayoutProofFacade,HealthcareFoundationPostingFacade,FinanceVoucherSourceFacade,FinanceExpenseClaimSourceFacade,FinanceInvoiceSourceFacade,FinanceBudgetSourceFacade,FinanceReceiptSourceFacade,FinanceBankStatementSourceFacade]
+ providers:[DonationBankCollectionFacade,DonationRefundPostingFacade,DonationFinancePostingFacade,MembershipFeesService,FinanceJournalPostingService,HealthcareProviderPayoutProofFacade,HealthcareFoundationPostingFacade,FinanceVoucherSourceFacade,FinanceExpenseClaimSourceFacade,FinanceInvoiceSourceFacade,FinanceBudgetSourceFacade,FinanceReceiptSourceFacade,FinanceBankStatementSourceFacade],
+ exports:[DonationBankCollectionFacade,DonationRefundPostingFacade,DonationFinancePostingFacade,MembershipFeesService,HealthcareProviderPayoutProofFacade,HealthcareFoundationPostingFacade,FinanceVoucherSourceFacade,FinanceExpenseClaimSourceFacade,FinanceInvoiceSourceFacade,FinanceBudgetSourceFacade,FinanceReceiptSourceFacade,FinanceBankStatementSourceFacade]
 })
 export class FinanceSourceModule{}

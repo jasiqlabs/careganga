@@ -23,7 +23,8 @@ type ReadyRun={
  root_realm_id:string;id:string;requester_ref:string;
  saved_ref:string;definition_revision:number;safe_request:unknown;
  occurrence_due_utc:Date;state:string;retry_count:number;format:"PDF"|"XLSX"|"CSV";
- artifact_ref:string|null
+ artifact_ref:string|null;
+ original_scope_all:boolean|null;original_scope_branch_refs:string[]|null
 };
 type Delivery={
  root_realm_id:string;id:string;run_ref:string;recipient_account_ref:string;
@@ -197,6 +198,8 @@ export class MisReportScheduleWorker implements OnModuleInit,OnModuleDestroy{
    }
    // The exact original CG09 posted SQL is shared with the interactive
    // report. No future-owner or protected audit feed is run unattended.
+   const originalScope=await this.sources.originalScheduledFinanceScope(
+    row.root_realm_id,row.requester_ref,parseSafeReport(row.safe_request));
    const report=await this.sources.previewScheduledFinance(
     row.root_realm_id,row.requester_ref,row.safe_request);
    if(report.state==="EMPTY"){
@@ -228,6 +231,13 @@ export class MisReportScheduleWorker implements OnModuleInit,OnModuleDestroy{
     await this.finish(row,"REVOKED",{errorClass:"CURRENT_SCOPE_CHANGED"});
     return;
    }
+   const latestScope=await this.sources.originalScheduledFinanceScope(
+    row.root_realm_id,row.requester_ref,parseSafeReport(row.safe_request));
+   if(originalScope.all&&!latestScope.all||
+      !latestScope.all&&originalScope.branchRefs.some(ref=>!latestScope.branchRefs.includes(ref))){
+    await this.finish(row,"REVOKED",{errorClass:"SOURCE_SCOPE_REVOKED_DURING_EXPORT"});
+    return;
+   }
    const post=await this.sources.previewScheduledFinance(
     row.root_realm_id,row.requester_ref,row.safe_request);
    const digestRows=(value:typeof report)=>createHash("sha256")
@@ -244,7 +254,8 @@ export class MisReportScheduleWorker implements OnModuleInit,OnModuleDestroy{
     await tx.query("SET LOCAL statement_timeout='7s'");
     const confirmed=await tx.query(
      "UPDATE cg20_report_run r SET state='READY',artifact_ref=$3,"+
-     "source_as_of=$4,result_row_count=$5,updated_at=now() "+
+     "source_as_of=$4,result_row_count=$5,original_scope_all=$6,"+
+     "original_scope_branch_refs=$7::uuid[],updated_at=now() "+
      "WHERE r.root_realm_id=$1 AND r.id=$2 AND r.state='RUNNING' "+
      "AND EXISTS(SELECT 1 FROM cg20_report_schedule sch "+
      "JOIN cg20_saved_report saved ON saved.root_realm_id=sch.root_realm_id "+
@@ -255,7 +266,8 @@ export class MisReportScheduleWorker implements OnModuleInit,OnModuleDestroy{
      "AND saved.state='ACTIVE' AND saved.current_revision=r.definition_revision) "+
      "RETURNING r.id",
      [row.root_realm_id,row.id,artifact.artifactRef,
-      report.sourceAsOf??null,report.rows.length]);
+      report.sourceAsOf??null,report.rows.length,
+      originalScope.all,originalScope.branchRefs]);
     if(confirmed.rowCount){
      await tx.query(
       "INSERT INTO cg20_report_delivery_attempt(root_realm_id,run_ref,"+
@@ -316,6 +328,13 @@ export class MisReportScheduleWorker implements OnModuleInit,OnModuleDestroy{
    if(!run)throw new Error("Scheduled private file no longer valid");
    await this.sessions.requireScheduledMisAction(
     row.root_realm_id,row.recipient_account_ref,"communications.notifications.view");
+   if(run.original_scope_all===null||run.original_scope_branch_refs===null)
+    throw new ForbiddenException("Original report branch scope cannot be verified");
+   const latest=await this.sources.originalScheduledFinanceScope(
+    row.root_realm_id,row.recipient_account_ref,parseSafeReport(run.safe_request));
+   if(run.original_scope_all&&!latest.all||
+     !latest.all&&run.original_scope_branch_refs.some(ref=>!latest.branchRefs.includes(ref)))
+    throw new ForbiddenException("An old report contains branches no longer assigned");
    await this.sources.previewScheduledFinance(
     row.root_realm_id,row.recipient_account_ref,run.safe_request);
    await this.notices.publishReady(row.root_realm_id,

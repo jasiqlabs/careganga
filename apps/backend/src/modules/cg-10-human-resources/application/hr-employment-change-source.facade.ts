@@ -3,6 +3,7 @@ import {createCipheriv,createDecipheriv,createHash,randomBytes,randomUUID} from 
 import type {PoolClient} from "pg";
 import type {VerifiedFoundationActor} from "../../cg-01-identity-access/public-api";
 import {FoundationStructureIdentityFacade} from "../../cg-01-identity-access/application/foundation-structure-identity.facade";
+import {BranchSourceFacade} from "../../cg-02-foundation-structure/application/branch-source.facade";
 import {HrEmploymentAccessOwnerService} from "../../cg-01-identity-access/application/hr-employment-access-owner.service";
 import {leaveDate,leaveId} from "./hr-leave-source.facade";
 const EMP=/^CG-HR-EMP-[0-9]{6,}$/;
@@ -83,7 +84,7 @@ const currentSql=`SELECT e.id,e.employee_code,app.legal_name AS employee_name,e.
  LEFT JOIN hr_employee manager ON manager.id=a.manager_employee_ref AND manager.root_realm_id=e.root_realm_id
  LEFT JOIN hr_employee_application mp ON mp.id=manager.application_id AND mp.root_realm_id=e.root_realm_id
  WHERE e.root_realm_id=$1 AND e.status IN('ACTIVE','PROBATION') AND a.valid_from<=CURRENT_DATE AND a.valid_to IS NULL`;
-const actorScope=`(b.manager_account_ref=$2 OR EXISTS(SELECT 1 FROM hr_employee supervisor
+const actorScope=(branchParam:number)=>`(b.manager_account_ref=$2 OR b.id=ANY($${branchParam}::uuid[]) OR EXISTS(SELECT 1 FROM hr_employee supervisor
  JOIN hr_employment_assignment sa ON sa.employee_id=supervisor.id AND sa.root_realm_id=supervisor.root_realm_id
  WHERE supervisor.id=a.manager_employee_ref AND supervisor.root_realm_id=e.root_realm_id AND supervisor.account_ref=$2
  AND supervisor.status IN('ACTIVE','PROBATION') AND sa.branch_ref=a.branch_ref AND sa.valid_from<=CURRENT_DATE AND sa.valid_to IS NULL)
@@ -132,15 +133,18 @@ function unseal(realm:string,row:ChangeRow){
 }
 @Injectable()
 export class HrEmploymentChangeSourceFacade{
- constructor(private readonly identity:FoundationStructureIdentityFacade,private readonly access:HrEmploymentAccessOwnerService){}
+ constructor(private readonly identity:FoundationStructureIdentityFacade,
+  private readonly access:HrEmploymentAccessOwnerService,
+  private readonly branches:BranchSourceFacade){}
  async target(tx:PoolClient,actor:VerifiedFoundationActor,reference:string|null,write=false){
   if(reference!==null){
    if(!EMP.test(reference))throw new BadRequestException({code:"CG10_CHANGE_INVALID"});
    await this.identity.assertCurrent(tx,actor,"hr.changes.manage");
   }else await this.identity.assertPatientSessionCurrent(tx,actor);
   const lock=write?" FOR UPDATE OF e,a FOR SHARE OF b":" FOR SHARE OF e,a,b";
-  const q=await tx.query<Target>(currentSql+" AND (($3::text IS NULL AND e.account_ref=$2) OR ($3::text IS NOT NULL AND e.employee_code=$3 AND "+actorScope+"))"+lock,
-   [actor.realmId,actor.accountId,reference]);
+  const scope=reference?await this.branches.projectBranchScope(tx,actor):null;
+  const q=await tx.query<Target>(currentSql+" AND (($3::text IS NULL AND e.account_ref=$2) OR ($3::text IS NOT NULL AND e.employee_code=$3 AND "+actorScope(4)+"))"+lock,
+   [actor.realmId,actor.accountId,reference,scope?.branches.map(x=>x.value)??[]]);
   if(q.rows.length!==1)throw new ForbiddenException("The employee is not available for your current HR scope");
   return q.rows[0];
  }
@@ -151,11 +155,12 @@ export class HrEmploymentChangeSourceFacade{
  }
  private async currentProposer(tx:PoolClient,realm:string,row:ChangeRow,target:Target){
   if(row.kind==="RESIGNATION"&&row.created_by===target.account_ref)return;
-  const q=await tx.query(currentSql+" AND e.id=$3 AND "+actorScope+
+  const assigned=await this.branches.currentStaffBranchRefs(tx,realm,row.created_by);
+  const q=await tx.query(currentSql+" AND e.id=$3 AND "+actorScope(4)+
    " AND EXISTS(SELECT 1 FROM account ac JOIN account_role ar ON ar.account_id=ac.id AND ar.realm_id=ac.realm_id AND ar.revoked_at IS NULL"+
    " JOIN role rr ON rr.id=ar.role_id AND rr.realm_id=ar.realm_id AND rr.active WHERE ac.realm_id=$1 AND ac.id=$2 AND ac.status='ACTIVE'"+
    " AND (rr.is_protected OR EXISTS(SELECT 1 FROM role_grant g WHERE g.role_id=rr.id AND g.capability_key='hr.changes.manage'))) FOR SHARE OF e,a,b",
-   [realm,row.created_by,row.employee_id]);
+   [realm,row.created_by,row.employee_id,assigned]);
   if(!q.rowCount)throw new ConflictException({code:"CG10_CHANGE_STALE"});
  }
  private async validatePlan(tx:PoolClient,realm:string,target:Target,x:Pick<Plan,"kind"|"effectiveDate"|"lastWorkingDate"|"branchRef"|"departmentRef"|"managerRef"|"roleRef">,due=false){
@@ -243,6 +248,7 @@ export class HrEmploymentChangeSourceFacade{
    return {...this.summary(old),replayed:true};
   }
   if(x.roleRef)await this.identity.assertCurrent(tx,actor,"roles.select");
+  if(x.branchRef!==null)await this.branches.projectBranch(tx,actor,x.branchRef);
   const access=await this.validatePlan(tx,actor.realmId,target,x),id=randomUUID();
   const secret=seal(actor.realmId,id,{reason:x.reason,proposedSalaryMinor:x.proposedSalaryMinor});
   const source=this.digest(target,x,access,secret,1);
@@ -267,6 +273,7 @@ export class HrEmploymentChangeSourceFacade{
   }
   if(row.status!=="DRAFT"||row.revision!==x.expectedRevision)throw new ConflictException({code:"CG10_CHANGE_STALE"});
   if(x.roleRef)await this.identity.assertCurrent(tx,actor,"roles.select");
+  if(x.branchRef!==null)await this.branches.projectBranch(tx,actor,x.branchRef);
   const access=await this.validatePlan(tx,actor.realmId,target,x),secret=seal(actor.realmId,row.id,{reason:x.reason,proposedSalaryMinor:x.proposedSalaryMinor});
   const source=this.digest(target,x,access,secret,row.revision+1);
   const q=await tx.query(`UPDATE hr_employment_change SET prior_assignment_id=$3,prior_assignment_version=$4,prior_employee_version=$5,
@@ -287,6 +294,20 @@ export class HrEmploymentChangeSourceFacade{
    target.status_version!==row.prior_employee_version||target.account_ref!==row.target_account_ref)
    throw new ConflictException({code:"CG10_CHANGE_STALE"});
   await this.currentProposer(tx,realm,row,target);
+  if(row.proposed_branch_ref!==null){
+   const assigned=await this.branches.currentStaffBranchRefs(tx,realm,row.created_by);
+   if(!assigned.includes(row.proposed_branch_ref)){
+    const root=await tx.query(
+     "SELECT 1 FROM account_role ar JOIN role r ON r.id=ar.role_id "+
+     "AND r.realm_id=ar.realm_id AND r.active=true "+
+     "LEFT JOIN role_grant g ON g.role_id=r.id "+
+     "AND g.capability_key='foundation.branches.admin' "+
+     "WHERE ar.realm_id=$1 AND ar.account_id=$2 AND ar.revoked_at IS NULL "+
+     "AND (r.is_protected OR g.capability_key IS NOT NULL) LIMIT 1 FOR SHARE OF ar,r",
+     [realm,row.created_by]);
+    if(!root.rowCount)throw new ConflictException({code:"CG10_CHANGE_DESTINATION_ACCESS_CHANGED"});
+   }
+  }
   const pin=await this.validatePlan(tx,realm,target,this.fields(row),due);
   if(pin.accessVersion!==row.expected_access_version||pin.roleRevision!==row.expected_role_revision)
    throw new ConflictException({code:"CG10_CHANGE_ACCESS_CHANGED"});
@@ -455,29 +476,31 @@ export class HrEmploymentChangeSourceFacade{
  }
  async staffHistory(tx:PoolClient,actor:VerifiedFoundationActor,offset:number,status="ALL",family="ALL"){
   await this.identity.assertCurrent(tx,actor,"hr.changes.manage");
+  const scope=await this.branches.projectBranchScope(tx,actor);
   const sql=`WITH permitted AS (
    SELECT e.id FROM hr_employee e JOIN LATERAL(
     SELECT a.* FROM hr_employment_assignment a WHERE a.root_realm_id=e.root_realm_id AND a.employee_id=e.id
     ORDER BY CASE WHEN a.valid_from<=CURRENT_DATE AND a.valid_to IS NULL THEN 0 ELSE 1 END,a.valid_from DESC,a.id DESC LIMIT 1
    ) a ON true JOIN branch b ON b.id=a.branch_ref AND b.root_realm_id=a.root_realm_id
-   WHERE e.root_realm_id=$1 AND ${actorScope}
+   WHERE e.root_realm_id=$1 AND ${actorScope(6)}
   ) `;
   const q=await tx.query<ChangeRow>(sql+originalSql+" WHERE h.root_realm_id=$1 AND EXISTS(SELECT 1 FROM permitted p WHERE p.id=h.employee_id) AND (h.status<>'DRAFT' OR h.created_by=$2) AND ($4='ALL' OR h.status=$4) AND ($5='ALL' OR ($5='EXIT' AND h.kind IN('RESIGNATION','EXIT')) OR ($5='TRANSFER' AND h.kind IN('TRANSFER','PROMOTION','DEPUTATION'))) ORDER BY h.created_at DESC,h.id DESC LIMIT 26 OFFSET $3",
-   [actor.realmId,actor.accountId,offset,status,family]);
+   [actor.realmId,actor.accountId,offset,status,family,scope.branches.map(x=>x.value)]);
   return {items:q.rows.slice(0,25).map(row=>({...this.summary(row),canEdit:row.created_by===actor.accountId&&row.status==="DRAFT",canWithdraw:row.created_by===actor.accountId&&row.status==="SUBMITTED"})),hasMore:q.rows.length>25,offset};
  }
  async staffDetail(tx:PoolClient,actor:VerifiedFoundationActor,ref:string){
   await this.identity.assertCurrent(tx,actor,"hr.changes.manage");
   if(!REF.test(ref))throw new BadRequestException({code:"CG10_CHANGE_INVALID"});
+  const scope=await this.branches.projectBranchScope(tx,actor);
   const sql=`WITH permitted AS (
    SELECT e.id FROM hr_employee e JOIN LATERAL(
     SELECT a.* FROM hr_employment_assignment a WHERE a.root_realm_id=e.root_realm_id AND a.employee_id=e.id
     ORDER BY CASE WHEN a.valid_from<=CURRENT_DATE AND a.valid_to IS NULL THEN 0 ELSE 1 END,a.valid_from DESC,a.id DESC LIMIT 1
    ) a ON true JOIN branch b ON b.id=a.branch_ref AND b.root_realm_id=a.root_realm_id
-   WHERE e.root_realm_id=$1 AND ${actorScope}
+   WHERE e.root_realm_id=$1 AND ${actorScope(4)}
   ) `;
   const row=(await tx.query<ChangeRow>(sql+originalSql+" WHERE h.root_realm_id=$1 AND h.reference=$3 AND EXISTS(SELECT 1 FROM permitted p WHERE p.id=h.employee_id) AND (h.status<>'DRAFT' OR h.created_by=$2)",
-   [actor.realmId,actor.accountId,ref])).rows[0];
+   [actor.realmId,actor.accountId,ref,scope.branches.map(x=>x.value)])).rows[0];
   if(!row)throw new NotFoundException("The original employment request is unavailable");
   const detail=row.created_by===actor.accountId?await this.privateDetail(tx,actor.realmId,row,actor.accountId):this.summary(row);
   return {...detail,employeeReference:row.employee_code,canEdit:row.created_by===actor.accountId&&row.status==="DRAFT",
@@ -488,20 +511,27 @@ export class HrEmploymentChangeSourceFacade{
  }
  async employeeOptions(tx:PoolClient,actor:VerifiedFoundationActor,search:string){
   await this.identity.assertCurrent(tx,actor,"hr.changes.manage");
-  const q=await tx.query<Target>(currentSql+" AND "+actorScope+" AND ($3='' OR strpos(lower(app.legal_name),$3)>0) ORDER BY app.legal_name,e.id LIMIT 51",
-   [actor.realmId,actor.accountId,search]);
+  const scope=await this.branches.projectBranchScope(tx,actor);
+  const q=await tx.query<Target>(currentSql+" AND "+actorScope(4)+" AND ($3='' OR strpos(lower(app.legal_name),$3)>0) ORDER BY app.legal_name,e.id LIMIT 51",
+   [actor.realmId,actor.accountId,search,scope.branches.map(x=>x.value)]);
   return {items:q.rows.slice(0,50).map(row=>({employeeReference:row.employee_code,name:row.employee_name,current:{branch:row.branch_name,department:row.department_name,designation:row.designation,manager:row.manager_name},hasStaffAccount:row.account_ref!==null})),hasMore:q.rows.length>50};
  }
  async branchOptions(tx:PoolClient,actor:VerifiedFoundationActor){
   await this.identity.assertCurrent(tx,actor,"hr.changes.manage");
-  const q=await tx.query<{id:string;name:string}>(`SELECT id,name FROM branch WHERE root_realm_id=$1 AND status='ACTIVE' ORDER BY name,id LIMIT 101`,[actor.realmId]);
+  const scope=await this.branches.projectBranchScope(tx,actor);
+  const q=await tx.query<{id:string;name:string}>(`
+   SELECT id,name FROM branch WHERE root_realm_id=$1 AND status='ACTIVE'
+    AND ($2::boolean OR id=ANY($3::uuid[]))
+   ORDER BY name,id LIMIT 101`,
+   [actor.realmId,scope.all,scope.branches.map(x=>x.value)]);
   if(q.rows.length>100)throw new ConflictException("Select a smaller authorized destination region");
   return {items:q.rows.map(x=>({branchRef:x.id,label:x.name}))};
  }
  async destinationOptions(tx:PoolClient,actor:VerifiedFoundationActor,branch:string){
   await this.identity.assertCurrent(tx,actor,"hr.changes.manage");
-  if(!(await tx.query("SELECT 1 FROM branch WHERE root_realm_id=$1 AND id=$2 AND status='ACTIVE' FOR SHARE",[actor.realmId,leaveId(branch)])).rowCount)
-   throw new ConflictException({code:"CG10_CHANGE_DESTINATION"});
+  // Do not offer another branch's employees or departments as valid transfer
+  // destinations just because the branch UUID belongs to this Foundation.
+  await this.branches.projectBranch(tx,actor,leaveId(branch));
   const dept=await tx.query<{id:string;name:string}>(`SELECT d.id,d.name FROM department d WHERE d.root_realm_id=$1 AND d.active
    AND (d.branch_id=$2 OR (d.branch_id IS NULL AND EXISTS(SELECT 1 FROM branch_department_link l
     WHERE l.root_realm_id=d.root_realm_id AND l.foundation_department_id=d.id AND l.branch_id=$2 AND l.ended_at IS NULL)))

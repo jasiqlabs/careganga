@@ -4,6 +4,7 @@ import type {Pool,PoolClient} from "pg";
 import {DATABASE} from "../../../core/infrastructure/database.module";
 import {SessionService} from "../../cg-01-identity-access/application/session.service";
 import {FoundationStructureIdentityFacade} from "../../cg-01-identity-access/application/foundation-structure-identity.facade";
+import {BranchSourceFacade} from "../../cg-02-foundation-structure/application/branch-source.facade";
 import type {VerifiedFoundationActor} from "../../cg-01-identity-access/public-api";
 
 const UUID=/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -51,7 +52,8 @@ const stale=()=>new ConflictException({code:"CG12_STALE"});
 
 @Injectable()
 export class InventoryCatalogService {
- constructor(@Inject(DATABASE) private readonly db:Pool,private readonly sessions:SessionService,private readonly identity:FoundationStructureIdentityFacade){}
+ constructor(@Inject(DATABASE) private readonly db:Pool,private readonly sessions:SessionService,
+ private readonly identity:FoundationStructureIdentityFacade,private readonly branches:BranchSourceFacade){}
  async run<T>(token:string,action:string,work:(tx:PoolClient,a:VerifiedFoundationActor)=>Promise<T>,consistentRead=false){
   const a=await this.sessions.requireAction(token,action),tx=await this.db.connect();
   try{await tx.query(consistentRead?"BEGIN ISOLATION LEVEL REPEATABLE READ":"BEGIN");await this.identity.assertCurrent(tx,a,action);const result=await work(tx,a);await tx.query("COMMIT");return result;}
@@ -63,8 +65,12 @@ export class InventoryCatalogService {
  private async requireScope(tx:PoolClient,a:VerifiedFoundationActor,branch:string|null){
   const full=await this.rootAdmin(tx,a);
   if(branch===null){if(!full)throw new ForbiddenException("Your role cannot manage the Foundation store");return;}
-  const q=await tx.query("SELECT id FROM branch WHERE id=$1 AND root_realm_id=$2 AND status='ACTIVE' AND ($3::boolean OR manager_account_ref=$4) FOR SHARE",[branch,a.realmId,full,a.accountId]);
-  if(!q.rowCount)throw new ForbiddenException("The selected branch is not permitted or active");
+  const q=await tx.query<{manager_account_ref:string}>(
+   "SELECT manager_account_ref FROM branch WHERE id=$1 AND root_realm_id=$2 "+
+   "AND status='ACTIVE' FOR SHARE",[branch,a.realmId]);
+  if(!q.rowCount)throw new ForbiddenException("The selected branch is unavailable");
+  if(!full&&q.rows[0].manager_account_ref!==a.accountId)
+   await this.branches.requireAssignedStaffBranch(tx,a,branch);
  }
  private async command(tx:PoolClient,a:VerifiedFoundationActor,kind:string,key:string,digest:string){
   await tx.query("SELECT pg_advisory_xact_lock(hashtextextended($1,0))",[a.realmId+":"+key]);
@@ -154,16 +160,18 @@ export class InventoryCatalogService {
  async options(token:string){
   return this.run(token,"inventory.catalog.view",async(tx,a)=>{
    const full=await this.rootAdmin(tx,a);
-   const branches=await tx.query<{id:string;name:string}>("SELECT id,name FROM branch WHERE root_realm_id=$1 AND status='ACTIVE' AND ($2::boolean OR manager_account_ref=$3) ORDER BY name,id LIMIT 100",[a.realmId,full,a.accountId]);
-   const stores=await tx.query<{id:string;label:string;location_code_norm:string;scope_kind:string}>("SELECT l.id,l.label,l.location_code_norm,l.scope_kind FROM inventory_location l LEFT JOIN branch b ON b.id=l.branch_ref AND b.root_realm_id=l.root_realm_id WHERE l.root_realm_id=$1 AND l.status='ACTIVE' AND (l.scope_kind='FOUNDATION' AND $2::boolean OR l.scope_kind='BRANCH' AND b.status='ACTIVE' AND ($2::boolean OR b.manager_account_ref=$3)) ORDER BY l.label,l.id LIMIT 100",[a.realmId,full,a.accountId]);
+   const permittedBranches=full?[]:await this.branches.currentStaffBranchRefs(
+    tx,a.realmId,a.accountId);
+   const branches=await tx.query<{id:string;name:string}>("SELECT id,name FROM branch WHERE root_realm_id=$1 AND status='ACTIVE' AND ($2::boolean OR id=ANY($3::uuid[])) ORDER BY name,id LIMIT 100",[a.realmId,full,permittedBranches]);
+   const stores=await tx.query<{id:string;label:string;location_code_norm:string;scope_kind:string}>("SELECT l.id,l.label,l.location_code_norm,l.scope_kind FROM inventory_location l LEFT JOIN branch b ON b.id=l.branch_ref AND b.root_realm_id=l.root_realm_id WHERE l.root_realm_id=$1 AND l.status='ACTIVE' AND (l.scope_kind='FOUNDATION' AND $2::boolean OR l.scope_kind='BRANCH' AND b.status='ACTIVE' AND ($2::boolean OR b.id=ANY($3::uuid[]))) ORDER BY l.label,l.id LIMIT 100",[a.realmId,full,permittedBranches]);
    // Shared Foundation catalog is readable only when root-admin or at least one eligible warehouse is present.
    const permitted=full||stores.rows.length>0;
-   const locationRows=await tx.query<{id:string;label:string;location_code_norm:string;scope_kind:string;status:string}>("SELECT l.id,l.label,l.location_code_norm,l.scope_kind,l.status FROM inventory_location l LEFT JOIN branch b ON b.id=l.branch_ref AND b.root_realm_id=l.root_realm_id WHERE l.root_realm_id=$1 AND (l.scope_kind='FOUNDATION' AND $2::boolean OR l.scope_kind='BRANCH' AND b.status='ACTIVE' AND ($2::boolean OR b.manager_account_ref=$3)) ORDER BY l.label,l.id LIMIT 100",[a.realmId,full,a.accountId]);
+   const locationRows=await tx.query<{id:string;label:string;location_code_norm:string;scope_kind:string;status:string}>("SELECT l.id,l.label,l.location_code_norm,l.scope_kind,l.status FROM inventory_location l LEFT JOIN branch b ON b.id=l.branch_ref AND b.root_realm_id=l.root_realm_id WHERE l.root_realm_id=$1 AND (l.scope_kind='FOUNDATION' AND $2::boolean OR l.scope_kind='BRANCH' AND b.status='ACTIVE' AND ($2::boolean OR b.id=ANY($3::uuid[]))) ORDER BY l.label,l.id LIMIT 100",[a.realmId,full,permittedBranches]);
    const totals=permitted?await tx.query<{items:number;suppliers:number;warehouses:number}>(`
     SELECT (SELECT COUNT(*)::integer FROM inventory_item WHERE root_realm_id=$1) AS items,
      (SELECT COUNT(*)::integer FROM inventory_supplier WHERE root_realm_id=$1) AS suppliers,
      (SELECT COUNT(*)::integer FROM inventory_location l LEFT JOIN branch b ON b.id=l.branch_ref AND b.root_realm_id=l.root_realm_id
-      WHERE l.root_realm_id=$1 AND l.status='ACTIVE' AND (l.scope_kind='FOUNDATION' AND $2::boolean OR l.scope_kind='BRANCH' AND b.status='ACTIVE' AND ($2::boolean OR b.manager_account_ref=$3))) AS warehouses`,[a.realmId,full,a.accountId]):null;
+      WHERE l.root_realm_id=$1 AND l.status='ACTIVE' AND (l.scope_kind='FOUNDATION' AND $2::boolean OR l.scope_kind='BRANCH' AND b.status='ACTIVE' AND ($2::boolean OR b.id=ANY($3::uuid[])))) AS warehouses`,[a.realmId,full,permittedBranches]):null;
    const categories=permitted?await tx.query<{label:string;count:number}>("SELECT category AS label,COUNT(*)::integer AS count FROM inventory_item WHERE root_realm_id=$1 GROUP BY category ORDER BY COUNT(*) DESC,category LIMIT 10",[a.realmId]):null;
    return {canManageFoundation:full,branches:branches.rows.map(x=>({ref:x.id,label:x.name})),stores:stores.rows.map(x=>({ref:x.id,label:x.label,code:x.location_code_norm,scope:x.scope_kind})),locations:locationRows.rows.map(x=>({ref:x.id,label:x.label,code:x.location_code_norm,scope:x.scope_kind,status:x.status})),summary:totals?.rows[0]??null,categories:categories?.rows??[]};
   });

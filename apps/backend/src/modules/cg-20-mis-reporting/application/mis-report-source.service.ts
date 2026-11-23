@@ -3,6 +3,7 @@ import {
 } from "@nestjs/common";
 import {SessionService} from "../../cg-01-identity-access/application/session.service";
 import {FinanceReportsService} from "../../cg-09-finance-accounting/application/finance-reports.service";
+import {BranchSourceFacade} from "../../cg-02-foundation-structure/application/branch-source.facade";
 import {PatientAdminOverviewService} from "../../cg-15-patients-appointments/application/patient-admin-overview.service";
 import {PlatformAuditService} from "../../cg-21-platform-configuration-audit/application/platform-audit.service";
 import {DiagnosticsCatalogService} from "../../cg-16-healthcare-diagnostics/application/diagnostics-catalog.service";
@@ -145,7 +146,33 @@ export class MisReportSourceService{
   private readonly finance:FinanceReportsService,
   private readonly patients:PatientAdminOverviewService,
   private readonly audit:PlatformAuditService,
-  private readonly diagnostics:DiagnosticsCatalogService){}
+  private readonly diagnostics:DiagnosticsCatalogService,
+  private readonly branches:BranchSourceFacade){}
+ /** CG02 is the sole source of current permitted branch scope, never a report-provided UUID. */
+ async originalFinanceScope(token:string,request:SafeReportRequest){
+  if(!request.kind.startsWith("FINANCE_"))return null;
+  await this.sessions.requireAction(token,"mis.reports.view");
+  const scope=await this.branches.financeReportScope(token,"finance.reports.view");
+  if(!scope.all&&scope.branchRefs.length===0)
+   throw new ForbiddenException("No current branch is assigned for this report");
+  if(request.branchRef){
+   if(!scope.all&&!scope.branchRefs.includes(request.branchRef))
+    throw new ForbiddenException("The requested report branch is not assigned");
+   // Only that source branch entered the bytes, never the actor's unrelated
+   // B/C grants. A later B revoke must not revoke a still-authorized A report.
+   return {all:false,branchRefs:[request.branchRef]};
+  }
+  return {all:scope.all,branchRefs:[...scope.branchRefs].sort()};
+ }
+ async originalScheduledFinanceScope(root:string,account:string,request?:SafeReportRequest){
+  const scope=await this.branches.scheduledFinanceScope(root,account);
+  if(request?.branchRef){
+   if(!scope.all&&!scope.branchRefs.includes(request.branchRef))
+    throw new ForbiddenException("Scheduled report branch is no longer assigned");
+   return {all:false,branchRefs:[request.branchRef]};
+  }
+  return {all:scope.all,branchRefs:[...scope.branchRefs].sort()};
+ }
  async catalog(token:string){
   await this.sessions.requireAction(token,"mis.reports.view");
   const [finance,appointments]=await Promise.all([
@@ -324,7 +351,9 @@ export class MisReportSourceService{
      scopeLabel:"Current permitted posted finance scope"};
    }
    if(q.kind==="FINANCE_POSTED_SUMMARY"){
-    const x=await this.finance.summary(token,q.yearRef,q.branchRef);
+    const x=q.branchRef?
+    await this.finance.summary(token,q.yearRef,q.branchRef):
+    await this.finance.assignedMisSummary(token,q.yearRef);
     return {kind:q.kind,view:q.view,label:"Posted finance summary",
      state:x.sourceRecordState==="NO_ROWS"?"EMPTY":"READY",
      columns:[
@@ -339,7 +368,9 @@ export class MisReportSourceService{
      sourceCutoffKind:x.sourceCutoffKind,explanation:x.explanation,
      scopeLabel:"Current permitted finance source scope"};
    }
-   const x=await this.finance.monthlyMisTrend(token,q.yearRef,q.branchRef);
+   const x=q.branchRef?
+   await this.finance.monthlyMisTrend(token,q.yearRef,q.branchRef):
+   await this.finance.assignedMisMonthlyTrend(token,q.yearRef);
    return {kind:q.kind,view:q.view,label:"Posted finance monthly trend",
     state:x.months.length?"READY":"EMPTY",
     columns:[{key:"month",label:"Month",unit:"TEXT"},

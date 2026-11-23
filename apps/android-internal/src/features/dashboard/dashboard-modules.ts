@@ -94,6 +94,7 @@ export interface ModuleActionHandlers {
   openBranches: () => void;
   openHr: () => void;
   openProjects: () => void;
+  openCampaigns: () => void;
   openTasks: () => void;
   openActivities: () => void;
   openFieldVisits: () => void;
@@ -223,6 +224,7 @@ export function getAuthorizedModules(
   if(roleActions.includes("projects.visits.view"))list.push({key:"fieldVisits",title:roleActions.includes("projects.visits.manage")?"Field Visits":"My Field Visits",shortLabel:"Visits",description:"Private permitted visit records, check-in and review.",category:"ORGANIZATION MANAGEMENT",iconName:"approvals",iconBg:"#E0F2FE",iconColor:"#0369A1",onOpen:handlers.openFieldVisits});
   if(roleActions.includes("projects.activities.view"))list.push({key:"activities",title:roleActions.includes("projects.activities.manage")?"Activities & Events":"My Activities",shortLabel:"Activities",description:"Current permitted activities, events and recorded progress.",category:"ORGANIZATION MANAGEMENT",iconName:"approvals",iconBg:"#E0F2FE",iconColor:"#0369A1",onOpen:handlers.openActivities});
   if(roleActions.includes("projects.tasks.view"))list.push({key:"tasks",title:roleActions.includes("projects.tasks.manage")?"Tasks & Assignments":"My Assigned Tasks",shortLabel:"Tasks",description:"Current permitted project tasks and recorded progress.",category:"ORGANIZATION MANAGEMENT",iconName:"approvals",iconBg:"#E0F2FE",iconColor:"#0369A1",onOpen:handlers.openTasks});
+  if(roleActions.includes("campaigns.view")||(roleActions.includes("campaigns.review")&&roleActions.includes("approvals.review")))list.push({key:"campaigns",title:"Campaigns",shortLabel:"Campaigns",description:"Original Foundation campaigns and versioned private drafts.",category:"ORGANIZATION MANAGEMENT",iconName:"building",iconBg:"#E0F2FE",iconColor:"#0369A1",onOpen:handlers.openCampaigns});
   if(roleActions.includes("projects.view"))list.push({key:"projects",title:"Projects",shortLabel:"Projects",description:"View and manage current permitted Foundation projects.",category:"ORGANIZATION MANAGEMENT",iconName:"building",iconBg:"#E0F2FE",iconColor:"#0369A1",onOpen:handlers.openProjects});
   if(roleActions.includes("inventory.catalog.view"))list.push({key:"inventory",title:"Requests & Inventory",shortLabel:"Inventory",description:"View permitted inventory catalog and warehouses.",category:"ORGANIZATION MANAGEMENT",iconName:"building",iconBg:"#E0F2FE",iconColor:"#0369A1",onOpen:handlers.openInventory});
   if(roleActions.includes("membership.members.view")||roleActions.includes("membership.documents.issue")||(roleActions.includes("approvals.review")&&roleActions.includes("membership.applications.review")&&roleActions.includes("documents.files.view")))list.push({key:"membership",title:"Membership Program",shortLabel:"Members",description:"Authorized member directory and protected application reviews.",category:"ORGANIZATION MANAGEMENT",iconName:"users",iconBg:"#E0F2FE",iconColor:"#0369A1",onOpen:handlers.openMembership});

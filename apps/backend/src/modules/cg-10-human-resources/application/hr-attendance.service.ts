@@ -5,6 +5,7 @@ import type {Pool,PoolClient} from "pg";
 import {DATABASE} from "../../../core/infrastructure/database.module";
 import {SessionService} from "../../cg-01-identity-access/application/session.service";
 import {FoundationStructureIdentityFacade} from "../../cg-01-identity-access/application/foundation-structure-identity.facade";
+import {BranchSourceFacade} from "../../cg-02-foundation-structure/application/branch-source.facade";
 import type {VerifiedFoundationActor} from "../../cg-01-identity-access/public-api";
 
 const UUID=/^[0-9a-f]{8}-(?:[0-9a-f]{4}-){3}[0-9a-f]{12}$/i;
@@ -76,7 +77,8 @@ type Shift=Rule&{shift_id:string;assignment_id:string;employee_id:string};
 export class HrAttendanceService{
  constructor(@Inject(DATABASE)private readonly db:Pool,
   private readonly sessions:SessionService,
-  private readonly identity:FoundationStructureIdentityFacade){}
+  private readonly identity:FoundationStructureIdentityFacade,
+  private readonly branches:BranchSourceFacade){}
  async leavePolicies(token:string){
   const actor=await this.sessions.requireAction(token,"hr.leave.policies.manage");
   const tx=await this.db.connect();
@@ -129,16 +131,16 @@ export class HrAttendanceService{
   }catch(e){await tx.query("ROLLBACK");throw e;}finally{tx.release();}
  }
  private async allowedBranch(tx:PoolClient,actor:VerifiedFoundationActor,branchRef:string){
-  const q=await tx.query<{id:string}>(`SELECT b.id FROM branch b WHERE b.id=$1
-   AND b.root_realm_id=$2 AND b.status='ACTIVE'
-   AND (b.manager_account_ref=$3 OR EXISTS(
-    SELECT 1 FROM account_role ar
-    JOIN role r ON r.id=ar.role_id AND r.realm_id=ar.realm_id AND r.active
-    LEFT JOIN role_grant g ON g.role_id=r.id AND g.capability_key='foundation.branches.admin'
-    WHERE ar.account_id=$3 AND ar.realm_id=$2 AND ar.revoked_at IS NULL
-    AND (r.is_protected OR g.capability_key IS NOT NULL))) FOR SHARE OF b`,
-   [branchRef,actor.realmId,actor.accountId]);
-  if(!q.rowCount)throw new ForbiddenException("This branch is not available for your staff action");
+  const q=await tx.query<{manager_account_ref:string}>(
+   "SELECT manager_account_ref FROM branch WHERE id=$1 AND root_realm_id=$2 "+
+   "AND status='ACTIVE' FOR SHARE",[branchRef,actor.realmId]);
+  if(!q.rows[0])throw new ForbiddenException("This branch is not available for your staff action");
+  if(q.rows[0].manager_account_ref===actor.accountId)return;
+  // One protected Foundation Admin or an explicitly assigned current area/branch
+  // may operate this real branch; a domain action is checked by its caller.
+  const scope=await this.branches.projectBranchScope(tx,actor);
+  if(!scope.all&&!scope.branches.some(v=>v.value===branchRef))
+   throw new ForbiddenException("This branch is not assigned to your staff account");
  }
  async policies(token:string,branchInput:string){
   const actor=await this.sessions.requireAction(token,"hr.attendance.view");
@@ -309,18 +311,20 @@ export class HrAttendanceService{
   const actor=await this.sessions.requireAction(token,"hr.attendance.view"),tx=await this.db.connect();
   try{
    await tx.query("BEGIN");await this.identity.assertCurrent(tx,actor,"hr.attendance.view");
-   const q=await tx.query<{id:string;name:string;broad:boolean}>(`SELECT b.id,b.name,(b.manager_account_ref=$2 OR EXISTS(SELECT 1 FROM account_role ar JOIN role r ON r.id=ar.role_id
+   const available=await this.branches.projectBranchScope(tx,actor);
+   const allowed=available.branches.map(x=>x.value);
+   const q=await tx.query<{id:string;name:string;broad:boolean}>(`SELECT b.id,b.name,(b.manager_account_ref=$2 OR b.id=ANY($3::uuid[]) OR EXISTS(SELECT 1 FROM account_role ar JOIN role r ON r.id=ar.role_id
  AND r.realm_id=ar.realm_id AND r.active
  LEFT JOIN role_grant g ON g.role_id=r.id AND g.capability_key='foundation.branches.admin'
  WHERE ar.account_id=$2 AND ar.realm_id=$1 AND ar.revoked_at IS NULL AND (r.is_protected OR g.capability_key IS NOT NULL))) AS broad
-    FROM branch b WHERE b.root_realm_id=$1 AND b.status='ACTIVE' AND ((b.manager_account_ref=$2 OR EXISTS(SELECT 1 FROM account_role ar JOIN role r ON r.id=ar.role_id
+    FROM branch b WHERE b.root_realm_id=$1 AND b.status='ACTIVE' AND ((b.manager_account_ref=$2 OR b.id=ANY($3::uuid[]) OR EXISTS(SELECT 1 FROM account_role ar JOIN role r ON r.id=ar.role_id
  AND r.realm_id=ar.realm_id AND r.active
  LEFT JOIN role_grant g ON g.role_id=r.id AND g.capability_key='foundation.branches.admin'
  WHERE ar.account_id=$2 AND ar.realm_id=$1 AND ar.revoked_at IS NULL AND (r.is_protected OR g.capability_key IS NOT NULL))) OR EXISTS(SELECT 1 FROM hr_employment_assignment a JOIN hr_employee e ON e.id=a.employee_id AND e.root_realm_id=a.root_realm_id
  JOIN hr_employee m ON m.id=a.manager_employee_ref AND m.root_realm_id=a.root_realm_id
  WHERE a.root_realm_id=$1 AND a.branch_ref=b.id AND a.valid_from<=CURRENT_DATE AND (a.valid_to IS NULL OR a.valid_to>CURRENT_DATE)
  AND e.status IN('ACTIVE','PROBATION','ON_HOLD','PENDING_ACCESS') AND m.account_ref=$2 AND m.status IN('ACTIVE','PROBATION')))
-    ORDER BY b.name,b.id LIMIT 100`,[actor.realmId,actor.accountId]);
+    ORDER BY b.name,b.id LIMIT 100`,[actor.realmId,actor.accountId,allowed]);
    await tx.query("COMMIT");return {items:q.rows.map(x=>({branchRef:x.id,label:x.name,manageShifts:x.broad}))};
   }catch(e){await tx.query("ROLLBACK");throw e;}finally{tx.release();}
  }
@@ -336,16 +340,18 @@ export class HrAttendanceService{
   try{
    await tx.query("BEGIN");
    await this.identity.assertCurrent(tx,actor,"hr.attendance.view");
-   const scope=await tx.query<{broad:boolean}>(`SELECT (b.manager_account_ref=$2 OR EXISTS(SELECT 1 FROM account_role ar JOIN role r ON r.id=ar.role_id
+   const available=await this.branches.projectBranchScope(tx,actor);
+   const allowed=available.branches.map(x=>x.value);
+   const scope=await tx.query<{broad:boolean}>(`SELECT (b.manager_account_ref=$2 OR b.id=ANY($4::uuid[]) OR EXISTS(SELECT 1 FROM account_role ar JOIN role r ON r.id=ar.role_id
  AND r.realm_id=ar.realm_id AND r.active
  LEFT JOIN role_grant g ON g.role_id=r.id AND g.capability_key='foundation.branches.admin'
- WHERE ar.account_id=$2 AND ar.realm_id=$1 AND ar.revoked_at IS NULL AND (r.is_protected OR g.capability_key IS NOT NULL))) AS broad FROM branch b WHERE b.root_realm_id=$1 AND b.id=$3 AND b.status='ACTIVE' AND ((b.manager_account_ref=$2 OR EXISTS(SELECT 1 FROM account_role ar JOIN role r ON r.id=ar.role_id
+ WHERE ar.account_id=$2 AND ar.realm_id=$1 AND ar.revoked_at IS NULL AND (r.is_protected OR g.capability_key IS NOT NULL))) AS broad FROM branch b WHERE b.root_realm_id=$1 AND b.id=$3 AND b.status='ACTIVE' AND ((b.manager_account_ref=$2 OR b.id=ANY($4::uuid[]) OR EXISTS(SELECT 1 FROM account_role ar JOIN role r ON r.id=ar.role_id
  AND r.realm_id=ar.realm_id AND r.active
  LEFT JOIN role_grant g ON g.role_id=r.id AND g.capability_key='foundation.branches.admin'
  WHERE ar.account_id=$2 AND ar.realm_id=$1 AND ar.revoked_at IS NULL AND (r.is_protected OR g.capability_key IS NOT NULL))) OR EXISTS(SELECT 1 FROM hr_employment_assignment a JOIN hr_employee e ON e.id=a.employee_id AND e.root_realm_id=a.root_realm_id
  JOIN hr_employee m ON m.id=a.manager_employee_ref AND m.root_realm_id=a.root_realm_id
  WHERE a.root_realm_id=$1 AND a.branch_ref=b.id AND a.valid_from<=CURRENT_DATE AND (a.valid_to IS NULL OR a.valid_to>CURRENT_DATE)
- AND e.status IN('ACTIVE','PROBATION','ON_HOLD','PENDING_ACCESS') AND m.account_ref=$2 AND m.status IN('ACTIVE','PROBATION'))) FOR SHARE OF b`,[actor.realmId,actor.accountId,branch]);
+ AND e.status IN('ACTIVE','PROBATION','ON_HOLD','PENDING_ACCESS') AND m.account_ref=$2 AND m.status IN('ACTIVE','PROBATION'))) FOR SHARE OF b`,[actor.realmId,actor.accountId,branch,allowed]);
    if(!scope.rows[0])throw new ForbiddenException("This branch is not available for your attendance view");
    const rows=await tx.query<{employee_code:string;legal_name:string;designation:string;
     days:Array<{date:string;status:string;version:number;timeZone:string;checkInLocal:string|null;checkOutLocal:string|null}>}>(`WITH staff AS (

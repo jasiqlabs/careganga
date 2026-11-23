@@ -76,7 +76,8 @@ export function NativeMisDashboard({token,onExpired,onOpenFinance,onOpenPatientA
     setAllBranches(opts.allBranches===true);
     setCentersComplete(opts.centersComplete!==false);
     setHealthAvailable(opts.healthAvailable===true);
-    setBranch(opts.allBranches===true?"":opts.branches[0]?.ref??"");
+    setBranch(opts.allBranches===true||opts.branches.length>1?
+       "":opts.branches[0]?.ref??"");
    }catch{
     if(live)setOptionsError("Some report filters are unavailable. The overview may still work.");
    }finally{if(live)setReady(true);}
@@ -174,7 +175,8 @@ export function NativeMisDashboard({token,onExpired,onOpenFinance,onOpenPatientA
      options={[{ref:"",label:"All permitted years"},
       ...years.map(y=>({ref:y.ref,label:y.name}))]} onChange={setYear}/>
     {!!branches.length&&<NativeFinanceOptions label="Branch" value={branch}
-     options={[...(allBranches?[{ref:"",label:"All permitted branches"}]:[]),
+     options={[...(allBranches||branches.length>1?
+        [{ref:"",label:allBranches?"Foundation and all branches":"All assigned branches"}]:[]),
       ...branches.map(b=>({ref:b.ref,label:b.name}))]} onChange={setBranch}/>}
    </>}
    {mode==="HEALTH"&&<>

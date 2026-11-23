@@ -343,9 +343,9 @@ BEGIN
       AND reviewer.realm_id=d.realm_id AND reviewer.status='ACTIVE'
      JOIN account_role ar ON ar.account_id=reviewer.id AND
       ar.realm_id=reviewer.realm_id AND ar.revoked_at IS NULL
-     JOIN role current_role ON current_role.realm_id=ar.realm_id
-      AND current_role.id=ar.role_id
-      AND current_role.is_protected AND current_role.active
+     JOIN role cr ON cr.realm_id=ar.realm_id
+      AND cr.id=ar.role_id
+      AND cr.is_protected AND cr.active
      WHERE c.realm_id=NEW.root_realm_id AND c.id=NEW.approved_case_ref
       AND c.case_kind='CG17_POLICY_EXCEPTION'
       AND c.cg17_policy_revision_id=NEW.id

@@ -1,4 +1,4 @@
-import {Body,Controller,Get,Header,Headers,Param,Post,Put,Query,Res} from "@nestjs/common";
+import {Body,Controller,Get,Header,Headers,NotFoundException,Param,Post,Put,Query,Res} from "@nestjs/common";
 import type {Response} from "express";
 import {createHash} from "node:crypto";
 import {CmsEditorialService} from "../application/cms-editorial.service";
@@ -7,6 +7,8 @@ export class CmsEditorialController{
  constructor(private readonly cms:CmsEditorialService){}
  @Get("event-sources") @Header("Cache-Control","private, no-store")
  eventSources(@Headers("authorization")auth:string){return this.cms.eventSources(auth);}
+ @Get("campaign-sources") @Header("Cache-Control","private, no-store")
+ campaignSources(@Headers("authorization")auth:string){return this.cms.campaignSources(auth);}
  @Get("project-sources") @Header("Cache-Control","private, no-store")
  projectSources(@Headers("authorization")auth:string){return this.cms.projectSources(auth);}
  @Get("pages")
@@ -55,6 +57,16 @@ export class CmsPublicPagesController{
  @Header("Cache-Control","no-store")
  @Header("X-Content-Type-Options","nosniff")
  notices(){return this.cms.publicNotices();}
+ @Get("donations/readiness") @Header("Cache-Control","no-store")
+ donationReadiness(){return this.cms.publicDonationReadiness();}
+ @Get("campaigns") @Header("Cache-Control","no-store")
+ campaigns(){return this.cms.publicCampaignCatalogue();}
+ @Get("campaigns/:slug") @Header("Cache-Control","no-store")
+ async campaign(@Param("slug")slug:string){
+  const result=await this.cms.publicCampaignCatalogue(slug);
+  if(result.cards.length!==1)throw new NotFoundException("Campaign is not currently available.");
+  return result.cards[0];
+ }
  @Get("pages/:slug")
  @Header("Cache-Control","no-store")
  async publicPage(@Param("slug")slug:string,

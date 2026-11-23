@@ -3,6 +3,7 @@ import {createHash} from "node:crypto";
 import type {PoolClient} from "pg";
 import type {VerifiedFoundationActor} from "../../cg-01-identity-access/public-api";
 import {FoundationStructureIdentityFacade} from "../../cg-01-identity-access/application/foundation-structure-identity.facade";
+import {BranchSourceFacade} from "../../cg-02-foundation-structure/application/branch-source.facade";
 import {leaveDate,leaveId} from "./hr-leave-source.facade";
 const KINDS=["APPOINTMENT","OFFER","JOINING","EXPERIENCE","RELIEVING","MEMO","EMPLOYEE_ID"] as const;
 export type HrDocumentKind=typeof KINDS[number];
@@ -25,14 +26,16 @@ type Input=ReturnType<typeof parseHrDocumentDraft>;
 type Subject={employee_id:string|null;application_id:string|null;application_revision_id:string|null;application_revision_no:number|null;application_source_digest:string|null;assignment_id:string|null;assignment_version:number|null;employee_version:number|null;exit_change_id:string|null;branch_ref:string;recipient:string;designation:string;branch:string;department:string|null;hire_date:string;last_working_date:string|null;account_ref:string|null;today:string};
 type Template={id:string;version:number;title:string;body:string;content_sha256:string};
 export type HrDocumentRow={id:string;root_realm_id:string;reference:string;kind:HrDocumentKind;employee_id:string|null;application_id:string|null;source_branch_ref:string;created_by:string;status:string;revision:number;case_ref:string|null;source_digest:string;request_digest:string;template_id:string;template_version:number;source_snapshot:Record<string,unknown>;decision_ref:string|null;issue_date:string;expiry_date:string|null};
-const scope=`(b.manager_account_ref=$2 OR EXISTS(SELECT 1 FROM account_role ar JOIN role r ON r.id=ar.role_id AND r.realm_id=ar.realm_id AND r.active
+const scope=(parameter:number)=>`(b.manager_account_ref=$2 OR b.id=ANY($${parameter}::uuid[]) OR EXISTS(SELECT 1 FROM account_role ar JOIN role r ON r.id=ar.role_id AND r.realm_id=ar.realm_id AND r.active
  LEFT JOIN role_grant g ON g.role_id=r.id AND g.capability_key='foundation.branches.admin'
  WHERE ar.realm_id=$1 AND ar.account_id=$2 AND ar.revoked_at IS NULL AND (r.is_protected OR g.role_id IS NOT NULL)))`;
 @Injectable()
 export class HrDocumentSourceFacade{
- constructor(private readonly identity:FoundationStructureIdentityFacade){}
+ constructor(private readonly identity:FoundationStructureIdentityFacade,
+  private readonly branches:BranchSourceFacade){}
  async subject(tx:PoolClient,actor:VerifiedFoundationActor,kind:HrDocumentKind,ref:string){
   await this.identity.assertCurrent(tx,actor,"hr.documents.manage");
+  const permitted=await this.branches.currentStaffBranchRefs(tx,actor.realmId,actor.accountId);
   const q=kind==="OFFER"?await tx.query<Subject>(`SELECT NULL::uuid AS employee_id,a.id AS application_id,v.id AS application_revision_id,v.revision_no AS application_revision_no,v.source_digest AS application_source_digest,
     NULL::uuid AS assignment_id,NULL::int AS assignment_version,NULL::int AS employee_version,NULL::uuid AS exit_change_id,
     b.id AS branch_ref,a.legal_name AS recipient,a.designation,b.name AS branch,d.name AS department,to_char(a.hire_date,'YYYY-MM-DD') AS hire_date,
@@ -42,8 +45,8 @@ export class HrDocumentSourceFacade{
    JOIN branch b ON b.id=a.proposed_branch_ref AND b.root_realm_id=a.root_realm_id AND b.status='ACTIVE'
    LEFT JOIN department d ON d.id=a.department_ref AND d.root_realm_id=a.root_realm_id
    WHERE a.root_realm_id=$1 AND a.application_no=$3 AND a.state IN('SUBMITTED','IN_REVIEW') AND c.status IN('SUBMITTED','IN_REVIEW')
-    AND NOT EXISTS(SELECT 1 FROM hr_employee e WHERE e.root_realm_id=a.root_realm_id AND e.application_id=a.id) AND ${scope}
-   FOR SHARE OF a,v,c,b`,[actor.realmId,actor.accountId,ref]):
+    AND NOT EXISTS(SELECT 1 FROM hr_employee e WHERE e.root_realm_id=a.root_realm_id AND e.application_id=a.id) AND ${scope(4)}
+   FOR SHARE OF a,v,c,b`,[actor.realmId,actor.accountId,ref,permitted]):
    await tx.query<Subject>(`SELECT e.id AS employee_id,NULL::uuid AS application_id,NULL::uuid AS application_revision_id,NULL::int AS application_revision_no,NULL::text AS application_source_digest,
     a.id AS assignment_id,a.assignment_version,e.status_version AS employee_version,h.id AS exit_change_id,
     b.id AS branch_ref,app.legal_name AS recipient,a.designation,b.name AS branch,d.name AS department,to_char(app.hire_date,'YYYY-MM-DD') AS hire_date,
@@ -54,10 +57,10 @@ export class HrDocumentSourceFacade{
    LEFT JOIN department d ON d.id=a.department_ref AND d.root_realm_id=e.root_realm_id
    LEFT JOIN hr_employment_change h ON $4='RELIEVING' AND h.root_realm_id=e.root_realm_id AND h.employee_id=e.id AND h.prior_assignment_id=a.id
     AND h.kind IN('RESIGNATION','EXIT') AND h.status='APPLIED' AND h.decision_ref IS NOT NULL
-   WHERE e.root_realm_id=$1 AND e.employee_code=$3 AND ${scope}
+   WHERE e.root_realm_id=$1 AND e.employee_code=$3 AND ${scope(5)}
    AND (($4='RELIEVING' AND e.status='EXITED' AND h.id IS NOT NULL AND a.valid_to=h.effective_date)
      OR ($4<>'RELIEVING' AND e.status IN('ACTIVE','PROBATION') AND a.valid_from<=CURRENT_DATE AND a.valid_to IS NULL AND b.status='ACTIVE'))
-   FOR SHARE OF e,a,b`,[actor.realmId,actor.accountId,ref,kind]);
+   FOR SHARE OF e,a,b`,[actor.realmId,actor.accountId,ref,kind,permitted]);
   if(q.rows.length!==1)throw new ForbiddenException("The original eligible subject is unavailable for your current branch");
   return q.rows[0];
  }
@@ -65,25 +68,26 @@ export class HrDocumentSourceFacade{
   await this.identity.assertCurrent(tx,actor,"hr.documents.manage");
   if(typeof kindInput!=="string"||!KINDS.some(k=>k===kindInput)||typeof searchInput!=="string"||searchInput.length>80)throw new BadRequestException("Choose a supported document kind and employee search");
   const kind=kindInput as HrDocumentKind,search=searchInput.trim().toLowerCase();
+  const permitted=await this.branches.currentStaffBranchRefs(tx,actor.realmId,actor.accountId);
   const q=kind==="OFFER"?await tx.query<{reference:string;label:string;designation:string;branch:string}>(`
    SELECT a.application_no AS reference,a.legal_name AS label,a.designation,b.name AS branch
    FROM hr_employee_application a JOIN hr_application_revision v ON v.root_realm_id=a.root_realm_id AND v.application_id=a.id AND v.revision_no=a.revision_no AND v.source_digest=a.submitted_digest
    JOIN cg03_case c ON c.realm_id=a.root_realm_id AND c.id=a.cg03_case_ref AND c.hr_application_id=a.id AND c.hr_revision_id=v.id
    JOIN branch b ON b.id=a.proposed_branch_ref AND b.root_realm_id=a.root_realm_id AND b.status='ACTIVE'
    WHERE a.root_realm_id=$1 AND a.state IN('SUBMITTED','IN_REVIEW') AND c.status IN('SUBMITTED','IN_REVIEW')
-   AND NOT EXISTS(SELECT 1 FROM hr_employee e WHERE e.root_realm_id=a.root_realm_id AND e.application_id=a.id) AND ${scope}
+   AND NOT EXISTS(SELECT 1 FROM hr_employee e WHERE e.root_realm_id=a.root_realm_id AND e.application_id=a.id) AND ${scope(4)}
    AND ($3='' OR strpos(lower(a.legal_name),$3)>0 OR strpos(lower(a.application_no),$3)>0)
-   ORDER BY a.legal_name,a.id LIMIT 51`,[actor.realmId,actor.accountId,search]):
+   ORDER BY a.legal_name,a.id LIMIT 51`,[actor.realmId,actor.accountId,search,permitted]):
    await tx.query<{reference:string;label:string;designation:string;branch:string}>(`
    SELECT e.employee_code AS reference,app.legal_name AS label,a.designation,b.name AS branch
    FROM hr_employee e JOIN hr_employee_application app ON app.id=e.application_id AND app.root_realm_id=e.root_realm_id
    JOIN hr_employment_assignment a ON a.employee_id=e.id AND a.root_realm_id=e.root_realm_id
    JOIN branch b ON b.id=a.branch_ref AND b.root_realm_id=e.root_realm_id
-   WHERE e.root_realm_id=$1 AND ${scope}
+   WHERE e.root_realm_id=$1 AND ${scope(5)}
     AND (($4='RELIEVING' AND e.status='EXITED' AND EXISTS(SELECT 1 FROM hr_employment_change h WHERE h.root_realm_id=e.root_realm_id AND h.employee_id=e.id AND h.prior_assignment_id=a.id AND h.kind IN('RESIGNATION','EXIT') AND h.status='APPLIED' AND h.decision_ref IS NOT NULL AND h.effective_date=a.valid_to))
     OR ($4<>'RELIEVING' AND e.status IN('ACTIVE','PROBATION') AND a.valid_from<=CURRENT_DATE AND a.valid_to IS NULL AND b.status='ACTIVE'))
     AND ($3='' OR strpos(lower(app.legal_name),$3)>0 OR strpos(lower(e.employee_code),$3)>0)
-   ORDER BY app.legal_name,e.id LIMIT 51`,[actor.realmId,actor.accountId,search,kind]);
+   ORDER BY app.legal_name,e.id LIMIT 51`,[actor.realmId,actor.accountId,search,kind,permitted]);
   return {items:q.rows.slice(0,50),hasMore:q.rows.length>50};
  }
  /** Only the immutable portrait selected in the actually approved enrollment revision.
@@ -148,16 +152,18 @@ export class HrDocumentSourceFacade{
  async history(tx:PoolClient,actor:VerifiedFoundationActor,own:boolean,offset:number,reference:string|null=null){
   if(own)await this.identity.assertPatientSessionCurrent(tx,actor);
   else await this.identity.assertCurrent(tx,actor,"hr.documents.manage");
+  const permitted=own?[]:await this.branches.currentStaffBranchRefs(
+   tx,actor.realmId,actor.accountId);
   const q=await tx.query<HrDocumentRow>(`SELECT h.* FROM hr_document_request h JOIN branch b ON b.id=h.source_branch_ref AND b.root_realm_id=h.root_realm_id
    LEFT JOIN hr_employee e ON e.id=h.employee_id AND e.root_realm_id=h.root_realm_id
    WHERE h.root_realm_id=$1 AND ($3::text IS NULL OR h.reference=$3)
     AND (${own?`e.account_ref=$2 AND e.status IN('ACTIVE','PROBATION') AND h.status='APPROVED' AND EXISTS(SELECT 1 FROM hr_employment_assignment current_assignment JOIN branch current_branch ON current_branch.id=current_assignment.branch_ref AND current_branch.root_realm_id=current_assignment.root_realm_id AND current_branch.status='ACTIVE' WHERE current_assignment.root_realm_id=e.root_realm_id AND current_assignment.employee_id=e.id AND current_assignment.valid_from<=CURRENT_DATE AND current_assignment.valid_to IS NULL) AND EXISTS(
-     SELECT 1 FROM cg19_generated_document d WHERE d.realm_id=h.root_realm_id AND d.case_id=h.case_ref AND d.state IN('ISSUED','REVOKED'))`:`${scope} AND (
+     SELECT 1 FROM cg19_generated_document d WHERE d.realm_id=h.root_realm_id AND d.case_id=h.case_ref AND d.state IN('ISSUED','REVOKED'))`:`${scope(5)} AND (
      (h.employee_id IS NULL AND EXISTS(SELECT 1 FROM hr_employee_application ap WHERE ap.root_realm_id=h.root_realm_id AND ap.id=h.application_id AND ap.proposed_branch_ref=h.source_branch_ref)) OR EXISTS(SELECT 1 FROM hr_employment_assignment a WHERE a.root_realm_id=h.root_realm_id AND a.employee_id=h.employee_id
       AND a.branch_ref=h.source_branch_ref AND a.valid_from<=CURRENT_DATE AND (a.valid_to IS NULL OR (e.status='EXITED' AND a.id=h.assignment_id)))
      OR EXISTS(SELECT 1 FROM account_role ar JOIN role r ON r.id=ar.role_id AND r.realm_id=ar.realm_id AND r.active AND r.is_protected WHERE ar.realm_id=$1 AND ar.account_id=$2 AND ar.revoked_at IS NULL))
      AND (h.status<>'DRAFT' OR h.created_by=$2)`})
-   ORDER BY h.created_at DESC,h.id DESC LIMIT 26 OFFSET $4`,[actor.realmId,actor.accountId,reference,offset]);
+   ORDER BY h.created_at DESC,h.id DESC LIMIT 26 OFFSET $4`,[actor.realmId,actor.accountId,reference,offset,...(own?[]:[permitted])]);
   return q.rows;
  }
  async verifyCurrent(tx:PoolClient,actor:VerifiedFoundationActor,row:HrDocumentRow){

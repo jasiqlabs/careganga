@@ -1,0 +1,209 @@
+import test from "node:test";
+import assert from "node:assert/strict";
+import {readFileSync} from "node:fs";
+
+const backend=(path:string)=>readFileSync(new URL("../"+path,import.meta.url),"utf8");
+const web=(path:string)=>readFileSync(new URL("../../web/src/"+path,import.meta.url),"utf8");
+const native=(path:string)=>readFileSync(new URL("../../android-internal/src/"+path,import.meta.url),"utf8");
+
+test("CG-MB-001 original scoped staff assignment keeps immutable same-root source and one current permission",()=>{
+ const sql=backend("db/migrations/3320_cg02_delegated_staff_scope.sql");
+ assert.match(sql,/CREATE TABLE cg02_staff_scope_assignment/);
+ assert.match(sql,/scope_kind IN\('BRANCH','AREA','ALL_BRANCHES'\)/);
+ assert.match(sql,/ux_cg02_active_staff_all_branches/);
+ assert.match(sql,/scope_kind='ALL_BRANCHES' AND branch_ref IS NULL AND area_ref IS NULL/);
+ assert.match(sql,/FOREIGN KEY\(account_ref,root_realm_id\) REFERENCES account\(id,realm_id\)/);
+ assert.match(sql,/FOREIGN KEY\(branch_ref,root_realm_id\) REFERENCES branch\(id,root_realm_id\)/);
+ assert.match(sql,/FOREIGN KEY\(area_ref,root_realm_id\) REFERENCES geography_area\(id,root_realm_id\)/);
+ assert.match(sql,/ux_cg02_active_staff_scope/);
+ assert.match(sql,/CREATE TRIGGER cg02_staff_scope_no_retarget/);
+ assert.match(sql,/OLD\.ended_at IS NOT NULL/);
+ assert.match(sql,/NEW\.source_version<>2/);
+ assert.doesNotMatch(sql,/health_center/);
+});
+test("CG-MB-001 current protected grant/end and revocation require genuine CG01 action and password",()=>{
+ const service=backend("src/modules/cg-02-foundation-structure/application/branch-staff-access.service.ts");
+ const mod=backend("src/modules/cg-02-foundation-structure/foundation-structure.module.ts");
+ const controller=backend("src/modules/cg-02-foundation-structure/http/branch-staff-access.controller.ts");
+ assert.match(service,/requireAction\(bearer,"foundation\.branches\.admin"\)/);
+ assert.match(service,/limitFoundationRootProof/);
+ assert.match(service,/requireFreshFoundationRootProof/);
+ assert.match(service,/eligibleDelegatedStaff\(tx,a,account\)/);
+ assert.match(service,/eligibleDelegatedStaffOptions/);
+ assert.match(service,/kind!=="BRANCH"&&kind!=="AREA"&&kind!=="ALL_BRANCHES"/);
+ assert.match(service,/else if\(area\)/);
+ assert.match(service,/SELECT id FROM account WHERE realm_id=\$1 AND id=\$2 FOR UPDATE/);
+ const identity=backend("src/modules/cg-01-identity-access/application/foundation-structure-identity.facade.ts");
+ assert.match(identity,/async eligibleDelegatedStaff\(/);
+ assert.match(identity,/FOR UPDATE OF a/);
+ assert.match(identity,/careganga patient/);
+ assert.match(identity,/careganga community applicant/);
+ assert.match(identity,/r\.normalized_name NOT IN/);
+ assert.match(identity,/async eligibleDelegatedStaffOptions\(/);
+ assert.match(service,/status='ACTIVE' FOR SHARE/);
+ assert.match(service,/request_digest/);
+ assert.match(service,/access_version=access_version\+1/g);
+ assert.match(service,/cg02\.staff\.scope\.grant/);
+ assert.match(service,/cg02\.staff\.scope\.end/);
+ assert.match(service,/old\.ended_by!==a\.accountId/);
+ assert.match(controller,/@Post\("assignments"\)/);
+ assert.match(controller,/@Post\("assignments\/:assignmentRef\/end"\)/);
+ assert.match(mod,/BranchStaffAccessService/);
+ assert.match(mod,/BranchStaffAccessController/);
+});
+test("CG-MB-001 root-only and delegated branch/area selection remain separate from CG14 center rights",()=>{
+ const source=backend("src/modules/cg-02-foundation-structure/application/branch-source.facade.ts");
+ assert.match(source,/WITH RECURSIVE ancestors AS/);
+ assert.match(source,/grant_scope\.scope_kind='BRANCH'/);
+ assert.match(source,/grant_scope\.scope_kind='AREA'/);
+ assert.match(source,/grant_scope\.scope_kind='ALL_BRANCHES'/);
+ assert.match(source,/SELECT id FROM access_realm WHERE id=\$1 FOR SHARE/);
+ assert.match(source,/LIMIT 201 FOR SHARE OF b/);
+ assert.match(source,/p\.status='ACTIVE'/);
+ assert.match(source,/b\.status='ACTIVE'/);
+ assert.match(source,/grant_scope\.ended_at IS NULL/);
+ assert.match(source,/FOR SHARE/);
+ assert.match(source,/requireAssignedStaffBranch/);
+ assert.match(source,/currentStaffBranchRefs/);
+ assert.match(source,/permittedStaffBranches\(this\.db,actor\.realmId,actor\.accountId\)/);
+ assert.match(source,/requireScheduledFinanceReportBranch/);
+ assert.match(source,/requireFinanceRootScope/);
+ assert.doesNotMatch(source,/CG14.*grant_scope\.scope_kind/s);
+});
+test("CG-MB-001/002/003/004 consumers reuse original CG02 source, without new shadow finance/stock grants",()=>{
+ const inventory=backend("src/modules/cg-12-inventory-suppliers/application/inventory-catalog.service.ts");
+ const inventoryModule=backend("src/modules/cg-12-inventory-suppliers/inventory-source.module.ts");
+ const human=backend("src/modules/cg-10-human-resources/application/hr-enrollment.service.ts");
+ const humanModule=backend("src/modules/cg-10-human-resources/hr-enrollment.module.ts");
+ const branches=backend("src/modules/cg-02-foundation-structure/application/branch-operations.service.ts");
+ assert.match(inventory,/this\.branches\.requireAssignedStaffBranch\(tx,a,branch\)/);
+ assert.match(inventory,/if\(branch===null\)\{if\(!full\)/);
+ assert.match(inventoryModule,/FoundationStructureModule/);
+ assert.match(human,/this\.branches\.requireAssignedStaffBranch\(tx,a,ref\)/);
+ assert.match(humanModule,/FoundationStructureModule/);
+ assert.match(branches,/this\.branches\.currentStaffBranchRefs/);
+ assert.match(branches,/this\.branches\.requireAssignedStaffBranch/);
+});
+test("CG-MB-001 current Web and native Internal Android protected operations use the same original API",()=>{
+ const panel=web("features/foundation-structure/branch-access-panel.tsx");
+ const source=web("features/foundation-structure/operating-branches-panel.tsx");
+ const bff=web("app/api/foundation/[...parts]/route.ts");
+ const android=native("features/foundation-structure/branch-staff-access-native.tsx");
+ const screen=native("features/foundation-structure/branch-registration-screen.tsx");
+ assert.match(panel,/canGrant/);
+ assert.match(panel,/Current staff account/);
+ assert.match(panel,/currentPassword/);
+ assert.match(panel,/setUnknown\(true\)/);
+ assert.match(panel,/scopeKind:kind/);
+ assert.match(panel,/ALL_BRANCHES/);
+ assert.match(panel,/End staff access/);
+ assert.match(source,/<BranchAccessPanel\/>/);
+ assert.match(bff,/parts\[0\]==="branch-access"/);
+ assert.match(bff,/parts\[3\]==="end"/);
+ assert.match(android,/currentPassword/);
+ assert.match(android,/scopeKind:kind/);
+ assert.match(android,/ALL_BRANCHES/);
+ assert.match(android,/setBlocked\(true\)/);
+ assert.match(screen,/<BranchStaffAccessNative token=\{token\}/);
+ assert.match(screen,/canAdmin&&/);
+ const shell=native("features/identity-access/staff-authentication-screen.tsx");
+ assert.match(shell,/canAdmin=\{roleActions\.includes\("foundation\.branches\.admin"\)\}/);
+});
+
+
+test("CG-MB-004 HR employee/app roster, summary and private original/current branch never use manager-only list",()=>{
+ const hr=backend("src/modules/cg-10-human-resources/application/hr-enrollment.service.ts");
+ const source=backend("src/modules/cg-10-human-resources/application/hr-enrollment-source.facade.ts");
+ const module=backend("src/modules/cg-10-human-resources/hr-source.module.ts");
+ const attendance=backend("src/modules/cg-10-human-resources/application/hr-attendance.service.ts");
+ const privateData=backend("src/modules/cg-10-human-resources/application/hr-private-detail.service.ts");
+ assert.match(hr,/availableBranches\(a,token,"hr\.applications\.view"\)/);
+ assert.match(hr,/availableBranches\(a,token,"hr\.employees\.view"\)/);
+ assert.match(hr,/this\.branches\.staffBranchScope\(token,"hr\.applications\.view"\)/);
+ assert.match(hr,/this\.branches\.staffBranchScope\(token,"hr\.employees\.view"\)/);
+ assert.match(hr,/const scope=await this\.branches\.projectBranchScope\(tx,actor\)/);
+ assert.match(hr,/b\.id=ANY\(\$11::uuid\[\]\)/);
+ assert.match(hr,/scope\.branches\.map\(x=>x\.value\)/);
+ assert.match(source,/this\.branches\.requireAssignedStaffBranch\(tx,actor,app\.proposed_branch_ref\)/);
+ assert.match(module,/FoundationStructureModule/);
+ assert.match(attendance,/this\.branches\.projectBranchScope\(tx,actor\)/);
+ assert.match(attendance,/b\.id=ANY\(\$4::uuid\[\]\)/);
+ assert.match(privateData,/current_branch\.id=ANY\(\$4::uuid\[\]\)/);
+ assert.match(privateData,/origin_branch\.id=ANY\(\$4::uuid\[\]\)/);
+});
+test("CG-MB-003 warehouse selectors, real availability and KPI counts all use current source",()=>{
+ const catalog=backend("src/modules/cg-12-inventory-suppliers/application/inventory-catalog.service.ts");
+ assert.match(catalog,/permittedBranches=full\?\[\]:await this\.branches\.currentStaffBranchRefs/);
+ assert.match(catalog,/id=ANY\(\$3::uuid\[\]\)/);
+ assert.match(catalog,/b\.id=ANY\(\$3::uuid\[\]\)/);
+ assert.doesNotMatch(catalog.slice(catalog.indexOf(" async options(token:string){"),
+  catalog.indexOf(" async list(token:string,")),/manager_account_ref/);
+});
+
+
+test("CG-MB-004 employment change source keeps self and manager exceptions but narrows staff options, history and destination",()=>{
+ const source=backend("src/modules/cg-10-human-resources/application/hr-employment-change-source.facade.ts");
+ assert.match(source,/actorScope=\(branchParam:number\)/);
+ assert.match(source,/b\.id=ANY\(\$\$\{branchParam\}::uuid\[\]\)/);
+ assert.match(source,/actorScope\(4\)/);
+ assert.match(source,/actorScope\(6\)/);
+ assert.match(source,/const assigned=await this\.branches\.currentStaffBranchRefs/);
+ assert.match(source,/this\.branches\.projectBranch\(tx,actor,leaveId\(branch\)\)/);
+ assert.match(source,/SELECT id,name FROM branch WHERE root_realm_id=\$1 AND status='ACTIVE'/);
+ assert.match(source,/scope\.branches\.map\(x=>x\.value\)/);
+ assert.match(source,/supervisor\.account_ref=\$2/);
+});
+
+
+test("CG-MB-004 named HR official document and attendance corrections use current CG02 assigned A/B branch",()=>{
+ const documents=backend("src/modules/cg-10-human-resources/application/hr-document-source.facade.ts");
+ const attendance=backend("src/modules/cg-10-human-resources/application/hr-attendance-correction-source.facade.ts");
+ const module=backend("src/modules/cg-10-human-resources/hr-source.module.ts");
+ assert.match(documents,/private readonly branches:BranchSourceFacade/);
+ assert.match(documents,/const scope=\(parameter:number\)=>/);
+ assert.match(documents,/b\.id=ANY\(\$\$\{parameter\}::uuid\[\]\)/);
+ assert.match(documents,/this\.branches\.currentStaffBranchRefs\(tx,actor\.realmId,actor\.accountId\)/);
+ assert.match(documents,/scope\(4\)/);
+ assert.match(documents,/scope\(5\)/);
+ assert.match(attendance,/this\.branches\.currentStaffBranchRefs\(tx,actor\.realmId,actor\.accountId\)/);
+ assert.match(attendance,/reference===undefined\?\[\]/);
+ assert.match(attendance,/b\.id=ANY\(\$4::uuid\[\]\)/);
+ assert.match(attendance,/assertPatientSessionCurrent\(tx,actor\)/);
+ assert.match(module,/FoundationStructureModule/);
+});
+test("CG-MB-005 manager or location transfer is protected, without broadening delegated maintenance",()=>{
+ const operations=backend("src/modules/cg-02-foundation-structure/application/branch-operations.service.ts");
+ assert.match(operations,/manager!==branch\.manager_account_ref\|\|/);
+ assert.match(operations,/location!==branch\.geography_area_id/);
+ assert.match(operations,/this\.identity\.assertCurrent\(client,actor,"foundation\.branches\.admin"\)/);
+ assert.match(operations,/this\.branches\.requireAssignedStaffBranch\(client,actor,branchRef\)/);
+ assert.match(operations,/this\.ensureActive\(branch\)/);
+});
+test("CG-MB-010/011 public health centers never derive clinical access from CG02 branch or unapproved public sources",()=>{
+ const center=backend("src/modules/cg-14-healthcare-network/application/health-center-support-scope.facade.ts");
+ const clinic=backend("src/modules/cg-14-healthcare-network/application/health-public-center.service.ts");
+ const campaigns=backend("src/modules/cg-07-campaigns-donations/application/campaign-public-source.ts");
+ const projects=backend("src/modules/cg-05-projects-field-operations/application/project-public-source.ts");
+ const events=backend("src/modules/cg-05-projects-field-operations/application/event-public-source.ts");
+ assert.match(center,/health_center_account_affiliation/);
+ assert.match(center,/affiliation\.status='ACTIVE'/);
+ assert.match(center,/center\.access_state='ENABLED'/);
+ assert.doesNotMatch(center,/cg02_staff_scope_assignment/);
+ assert.match(clinic,/health_center_publication/);
+ assert.match(clinic,/publication_generation/);
+ assert.match(campaigns,/b\.status='ACTIVE'/);
+ assert.match(projects,/b\.status='ACTIVE'/);
+ assert.match(events,/b\.status='ACTIVE'/);
+});
+test("CG-MB-014 stock transfer locks destination and source and never invents another ledger",()=>{
+ const src=backend("src/modules/cg-12-inventory-suppliers/application/inventory-operation-source.ts");
+ const op=backend("src/modules/cg-12-inventory-suppliers/application/inventory-operation.service.ts");
+ const stock=backend("src/modules/cg-12-inventory-suppliers/application/inventory-stock-command.ts");
+ assert.match(src,/r\.location_id,\.\.\.\(r\.destination_id/);
+ assert.match(src,/await this\.catalog\.store\(tx,a,loc,active\)/);
+ assert.match(op,/await lockStockBalances\(tx,a\.realmId,deltas\)/);
+ assert.match(op,/await applyStockMovements\(tx,a\.realmId,e\.id,r\.kind,deltas\)/);
+ assert.match(stock,/keys=\[\.\.\.new Map/);
+ assert.match(stock,/FOR UPDATE/);
+ assert.match(stock,/on_hand_qty\+\$4::numeric>=reserved_qty\+\$5::numeric/);
+});

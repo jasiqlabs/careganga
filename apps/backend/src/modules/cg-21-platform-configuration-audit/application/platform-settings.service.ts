@@ -322,7 +322,7 @@ export class PlatformSettingsService {
     return {status,provider,purpose,verified:status==="VERIFIED",
       credentialRevision:item.credential_revision,
       message:status==="VERIFIED"?
-        "The sending identity or provider service was confirmed. No message was sent.":
+        "The configured service credentials were confirmed. No message or payment was initiated.":
         "The configured channel could not be verified. No sending permission was granted."};
   }
   async lookup(bearer:string,actionInput:unknown,requestKeyInput:unknown){

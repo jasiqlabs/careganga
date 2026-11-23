@@ -493,8 +493,11 @@ export class NotificationService{
               AND saved.current_revision=report.definition_revision
               AND artifact.state='READY' AND artifact.revoked_at IS NULL
               AND artifact.object_version IS NOT NULL
-              AND ($5::boolean OR
-                report.safe_request->>'branchRef'=ANY($6::text[]))
+              AND report.original_scope_all IS NOT NULL
+              AND report.original_scope_branch_refs IS NOT NULL
+              AND ((report.original_scope_all AND $5::boolean)
+               OR (NOT report.original_scope_all AND
+                 ($5::boolean OR report.original_scope_branch_refs <@ $6::uuid[])))
           )))
       ORDER BY n.created_at DESC,n.id DESC LIMIT $3
     `,[actor.realmId,actor.accountId,limit,
@@ -597,8 +600,11 @@ export class NotificationService{
               AND saved.current_revision=report.definition_revision
               AND artifact.state='READY' AND artifact.revoked_at IS NULL
               AND artifact.object_version IS NOT NULL
-              AND ($5::boolean OR
-                report.safe_request->>'branchRef'=ANY($6::text[]))
+              AND report.original_scope_all IS NOT NULL
+              AND report.original_scope_branch_refs IS NOT NULL
+              AND ((report.original_scope_all AND $5::boolean)
+               OR (NOT report.original_scope_all AND
+                 ($5::boolean OR report.original_scope_branch_refs <@ $6::uuid[])))
           )))
         FOR SHARE OF n,a
       `,[ref,actor.realmId,actor.accountId,

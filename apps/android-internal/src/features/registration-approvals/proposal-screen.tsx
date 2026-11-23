@@ -20,6 +20,7 @@ import type {
   CG03OwnerOutcome
 } from "@careganga/api-contracts";
 import { identityRequest } from "../identity-access/http-client";
+import { careGangaTheme as t } from "../../../../../packages/design-tokens/src/index";
 
 // Modular Registration & Approval components
 import {
@@ -703,7 +704,7 @@ export function ProposalScreen({
   const detailChipTheme = detail ? getStatusChipTheme(detail.status) : null;
 
   return (
-    <SafeAreaView style={styles.pageRoot} edges={["left", "right"]}>
+    <SafeAreaView style={styles.pageRoot} edges={["left","right"]}>
       <KeyboardAvoidingView
         style={styles.pageRoot}
         behavior={Platform.OS === "ios" ? "padding" : undefined}
@@ -1001,7 +1002,7 @@ export function ProposalScreen({
 const styles = StyleSheet.create({
   pageRoot: {
     flex: 1,
-    backgroundColor: "#F8FAFC"
+    backgroundColor: t.adminCanvas
   },
   homeContent: {
     padding: 16,
@@ -1009,7 +1010,7 @@ const styles = StyleSheet.create({
     maxWidth: 750,
     width: "100%",
     alignSelf: "center",
-    paddingBottom: 96
+    paddingBottom:96
   },
   topSection: {
     gap: 12
@@ -1046,11 +1047,24 @@ const styles = StyleSheet.create({
   listWrap: {
     gap: 10
   },
-  emptyListCard: {
+  card: {
     backgroundColor: "#FFFFFF",
-    borderRadius: 16,
+    borderRadius:14,
     borderWidth: 1,
     borderColor: "#E2E8F0",
+    shadowColor: "#0F172A",
+    shadowOpacity:0.045,
+    shadowOffset: { width: 0, height: 2 },
+    shadowRadius: 8,
+    elevation: 1
+  },
+  emptyListCard: {
+    backgroundColor: "#FFFFFF",
+    borderRadius:14,
+    borderWidth: 1,
+    borderColor: "#E2E8F0",
+    shadowColor: "#0F172A",
+    shadowOpacity:0.045,
     padding: 32,
     alignItems: "center",
     gap: 10,

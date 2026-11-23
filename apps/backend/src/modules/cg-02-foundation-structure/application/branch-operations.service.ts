@@ -6,6 +6,7 @@ import type {Pool,PoolClient} from "pg";
 import {DATABASE} from "../../../core/infrastructure/database.module";
 import {SessionService} from "../../cg-01-identity-access/application/session.service";
 import {FoundationStructureIdentityFacade} from "../../cg-01-identity-access/application/foundation-structure-identity.facade";
+import {BranchSourceFacade} from "./branch-source.facade";
 import type {VerifiedFoundationActor} from "../../cg-01-identity-access/public-api";
 import type {BranchFileVersion,ReadProof} from "./branch-lifecycle.service";
 
@@ -68,7 +69,8 @@ type Action="UPDATE_BRANCH"|"CHANGE_BRANCH_STATUS"|
 export class BranchOperationsService{
  constructor(@Inject(DATABASE)private readonly db:Pool,
    private readonly sessions:SessionService,
-   private readonly identity:FoundationStructureIdentityFacade){}
+   private readonly identity:FoundationStructureIdentityFacade,
+   private readonly branches:BranchSourceFacade){}
  private async root(bearer:string){
    try{await this.sessions.requireAction(bearer,"foundation.branches.admin");return true;}
    catch(e){if(e instanceof ForbiddenException)return false;throw e;}
@@ -85,10 +87,11 @@ export class BranchOperationsService{
      branchRef:string,admin:boolean,write=false):Promise<Branch>{
    const row=await client.query<Branch>(`
      SELECT * FROM branch WHERE id=$1 AND root_realm_id=$2
-       AND ($3::boolean OR manager_account_ref=$4)
      ${write?"FOR UPDATE":"FOR SHARE"}
-   `,[id(branchRef),actor.realmId,admin,actor.accountId]);
+   `,[id(branchRef),actor.realmId]);
    if(!row.rows[0])throw new NotFoundException("Operating branch unavailable");
+   if(!admin&&row.rows[0].manager_account_ref!==actor.accountId)
+    await this.branches.requireAssignedStaffBranch(client,actor,branchRef);
    return row.rows[0];
  }
  private async command(client:PoolClient,actor:VerifiedFoundationActor,action:Action,
@@ -208,6 +211,8 @@ export class BranchOperationsService{
      typeof search!=="string"||search.length>80)
      throw new BadRequestException("Check branch list filters");
    const query=search.trim();
+   const allowed=admin?[]:await this.branches.currentStaffBranchRefs(
+    this.db,actor.realmId,actor.accountId);
    const [rows,count,byType]=await Promise.all([
      this.db.query<Branch & {area_name:string;manager_name:string}>(`
        SELECT b.*,geo.display_name AS area_name,person.display_name AS manager_name
@@ -217,27 +222,30 @@ export class BranchOperationsService{
        JOIN account person ON person.id=b.manager_account_ref
          AND person.realm_id=b.root_realm_id
        WHERE b.root_realm_id=$1
-         AND ($2::boolean OR b.manager_account_ref=$3)
+         AND ($2::boolean OR b.manager_account_ref=$3 OR
+          (b.status='ACTIVE' AND b.id=ANY($7::uuid[])))
          AND ($4::text IS NULL OR b.status=$4)
          AND ($5::text='' OR b.name ILIKE '%'||$5||'%'
             OR b.branch_code ILIKE '%'||$5||'%'
             OR b.branch_type ILIKE '%'||$5||'%')
        ORDER BY b.name,b.id LIMIT 50 OFFSET $6
-     `,[actor.realmId,admin,actor.accountId,status??null,query,offset]),
+     `,[actor.realmId,admin,actor.accountId,status??null,query,offset,allowed]),
      this.db.query<{total:number;active:number;inactive:number;closed:number}>(`
        SELECT count(*)::integer AS total,
          count(*) FILTER (WHERE status='ACTIVE')::integer AS active,
          count(*) FILTER (WHERE status='INACTIVE')::integer AS inactive,
          count(*) FILTER (WHERE status='CLOSED')::integer AS closed
        FROM branch WHERE root_realm_id=$1
-         AND ($2::boolean OR manager_account_ref=$3)
-     `,[actor.realmId,admin,actor.accountId]),
+         AND ($2::boolean OR manager_account_ref=$3 OR
+          (status='ACTIVE' AND id=ANY($4::uuid[])))
+     `,[actor.realmId,admin,actor.accountId,allowed]),
      this.db.query<{branch_type:string;total:number}>(`
        SELECT branch_type,count(*)::integer AS total
        FROM branch WHERE root_realm_id=$1
-         AND ($2::boolean OR manager_account_ref=$3)
+         AND ($2::boolean OR manager_account_ref=$3 OR
+          (status='ACTIVE' AND id=ANY($4::uuid[])))
        GROUP BY branch_type ORDER BY total DESC,branch_type LIMIT 8
-     `,[actor.realmId,admin,actor.accountId])
+     `,[actor.realmId,admin,actor.accountId,allowed])
    ]);
    return {branches:rows.rows.map(x=>({branchRef:x.id,branchName:x.name,
        branchCode:x.branch_code,status:x.status,version:x.version,
@@ -253,6 +261,8 @@ export class BranchOperationsService{
    const admin=await this.root(bearer);
    if(!Number.isSafeInteger(offset)||offset<0||offset>50000)
      throw new BadRequestException("Check approved branch export page");
+   const allowed=admin?[]:await this.branches.currentStaffBranchRefs(
+    this.db,actor.realmId,actor.accountId);
    const data=await this.db.query<{name:string;branch_code:string;branch_type:string;
      status:string;manager:string|null;geography:string;official_phone:string;
      official_email:string}>(`
@@ -264,9 +274,11 @@ export class BranchOperationsService{
          AND manager.realm_id=b.root_realm_id
        JOIN geography_area geo ON geo.id=b.geography_area_id
          AND geo.root_realm_id=b.root_realm_id
-     WHERE b.root_realm_id=$1 AND ($2::boolean OR b.manager_account_ref=$3)
+     WHERE b.root_realm_id=$1 AND
+       ($2::boolean OR b.manager_account_ref=$3 OR
+        (b.status='ACTIVE' AND b.id=ANY($5::uuid[])))
      ORDER BY b.name,b.id LIMIT 200 OFFSET $4
-   `,[actor.realmId,admin,actor.accountId,offset]);
+   `,[actor.realmId,admin,actor.accountId,offset,allowed]);
    const cell=(value:string|null)=>{
      const safe=String(value??"");
      const formula=/^[=+@-]/.test(safe)||[9,13].includes(safe.charCodeAt(0))?"'"+safe:safe;
@@ -361,6 +373,12 @@ export class BranchOperationsService{
        `,[location,actor.realmId,branch.id]);
        if(stranded.rowCount)
          throw new ConflictException("Move existing branch departments before changing its location");
+       // Local and delegated managers may maintain branch metadata, but a
+       // manager transfer needs the independent protected Foundation action.
+       // Existing source checks revoke the former manager's access at commit.
+       if(manager!==branch.manager_account_ref||
+          location!==branch.geography_area_id)
+        await this.identity.assertCurrent(client,actor,"foundation.branches.admin");
        await this.identity.eligibleOfficeholder(client,actor,manager);
        // Versioned, verified replacements never silently remove unrelated
        // originals; exactly each replaced file category changes.

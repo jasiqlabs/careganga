@@ -7,6 +7,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import * as SecureStore from "expo-secure-store";
 import { careGangaTheme as theme } from "../../../packages/design-tokens/src/index";
 import { PublicCmsContent } from "../src/features/cms/public-cms-screen";
+import {NativePublicDonation} from "../src/features/cms/native-public-donation";
 import {PublicPartnerApplication} from "../src/features/health-network/public-partner-application";
 
 const RecipientNotifications = lazy(() => import("../../../packages/native-communications/src/recipient-notifications").then(m => ({ default: m.RecipientNotifications })));
@@ -325,6 +326,7 @@ export default function PublicHome(){
             onVolunteerApply={()=>setVolunteerOpen(true)}
             onMembershipApply={setMembershipPlan}
             onLoginVisibility={setPublicLoginVisible}/>
+           <NativePublicDonation/>
           <View style={[styles.card,styles.healthFeatureCard]}>
             <Text style={styles.heading}>Become a CareGanga Volunteer</Text>
             <Text>Four-step enrollment using your verified CareGanga account, protected identity proof and the Foundation's independent review.</Text>
