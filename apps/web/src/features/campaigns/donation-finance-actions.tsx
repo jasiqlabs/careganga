@@ -8,8 +8,8 @@ type Reconciliation={donationNumber:string;amountMinor:string;providerStatus:str
 type Online={donationNumber:string;amountMinor:string;clearingAccounts:Choice[];
  incomeAccounts:Choice[];years:Choice[]};
 type Refund={refundRef:string;donationNumber:string;amountMinor:string;reason:string;
- status:string;canReview:boolean};
-type RefundChoices={years:Choice[];amountMinor:string;complete:boolean};
+ status:string;canReview:boolean;settlementMethod:"CASH"|"ONLINE";providerState:string};
+type RefundChoices={years:Choice[];amountMinor:string;complete:boolean;settlementMethod:"CASH"|"ONLINE"};
 const control={minHeight:44,padding:10,width:"100%",border:"1px solid #c7cbd1",
  borderRadius:8,background:"var(--cg-surface)",color:"inherit"} as const;
 const box={padding:18,border:"1px solid var(--cg-border)",borderRadius:12,
@@ -100,6 +100,38 @@ export function DonationFinanceActions({items,canRecord,canReview,canIssue,onCha
   setRefundDate("");setRefundVoucher("");setRefundPassword("");setPaidOut(false);
   refundConfirmKey.current=null;
  });
+ const initiateProviderRefund=(event:FormEvent)=>{event.preventDefault();void run(async()=>{
+  if(!refundReview||refundReview.settlementMethod!=="ONLINE"||!refundPassword||!paidOut)
+   throw Error("An independent reviewer must authorize the actual merchant refund.");
+  if(!refundConfirmKey.current)refundConfirmKey.current=crypto.randomUUID();
+  const result=await request<{status:string;message?:string}>(
+   "/refunds/"+refundReview.refundRef+"/authorize-provider",{
+    requestKey:refundConfirmKey.current,currentPassword:refundPassword});
+  setNotice(result.message??"Merchant refund initiated; finance totals remain unchanged.");
+  setRefundReview(null);setRefundPassword("");setPaidOut(false);
+  const list=await request<{items:Refund[]}>("/refunds/queue");setRefunds(list.items);onChange();
+ });};
+ const reconcileProviderRefund=(row:Refund)=>run(async()=>{
+  const result=await request<{status:string;message?:string;merchantStatus?:string}>(
+   "/refunds/"+row.refundRef+"/reconcile-provider");
+  setNotice(result.message??"Original merchant status verified. No second payout was sent.");
+  const list=await request<{items:Refund[]}>("/refunds/queue");setRefunds(list.items);onChange();
+ });
+ const postProviderRefund=(event:FormEvent)=>{event.preventDefault();void run(async()=>{
+  if(!refundReview||refundReview.settlementMethod!=="ONLINE"||
+   refundReview.providerState!=="PROVIDER_PROCESSED"||
+   !refundOptions?.complete||!refundYear||!refundDate||!refundPassword)
+   throw Error("Only a signed processed gateway refund can be posted.");
+  if(!refundConfirmKey.current)refundConfirmKey.current=crypto.randomUUID();
+  const result=await request<{status:string}>(
+   "/refunds/"+refundReview.refundRef+"/post-provider",{
+    requestKey:refundConfirmKey.current,currentPassword:refundPassword,
+    yearRef:refundYear,postingDate:refundDate});
+  if(result.status!=="FINANCE_REVERSED")throw Error("Original CG09 reversal not confirmed.");
+  setNotice("Razorpay processed refund and original CG09 correction posted. CG19 correction can now be issued.");
+  setRefundReview(null);setRefundPassword("");refundConfirmKey.current=null;onChange();
+  const list=await request<{items:Refund[]}>("/refunds/queue");setRefunds(list.items);
+ });};
  const confirmRefund=(event:FormEvent)=>{event.preventDefault();void run(async()=>{
   if(!refundReview||!paidOut||!refundOptions?.complete||!refundYear||!refundDate||!refundPassword)
    throw Error("Review the original cash payout before confirming.");
@@ -186,19 +218,30 @@ export function DonationFinanceActions({items,canRecord,canReview,canIssue,onCha
     <button type="submit" style={button} disabled={busy}>Save refund request (not paid out)</button>
    </form>
   </section>}
-  {canSettle&&<section style={box}><h2>Independent cash refund verification</h2>
-   <p>Only attest actual cash already handed back. Bank, NEFT and gateway refunds are not verified by this action.</p>
+  {canSettle&&<section style={box}><h2>Independent refund verification</h2>
+   <p>Cash uses an actual physical payout voucher. Razorpay requires one merchant refund, a signed processed event and a separate CG09 correction. Bank refunds cannot use either shortcut.</p>
    <button style={button} type="button" disabled={busy} onClick={()=>void refreshRefunds()}>
     Refresh refund requests</button>
    {refunds.map(x=><div key={x.refundRef} style={{display:"grid",gap:5,padding:10,
     border:"1px solid var(--cg-border)",borderRadius:8}}>
     <strong>{x.donationNumber} · {money(x.amountMinor)}</strong>
-    <span>{x.reason} — {x.status.replaceAll("_"," ").toLowerCase()}</span>
+    <span>{x.reason} — {x.status.replaceAll("_"," ").toLowerCase()}
+     {" · "}{x.settlementMethod==="ONLINE"?"Razorpay":"Physical cash"}
+     {x.settlementMethod==="ONLINE"?" · "+x.providerState.replaceAll("_"," ").toLowerCase():""}</span>
     {x.canReview&&x.status==="REQUESTED"&&
+     (x.settlementMethod==="CASH"||
+      ["NOT_STARTED","PROVIDER_PROCESSED"].includes(x.providerState))&&
      <button type="button" style={button} disabled={busy} onClick={()=>void beginRefund(x)}>
-      Independently review actual cash payout</button>}
+      {x.settlementMethod==="CASH"?"Independently review physical cash payout":
+       x.providerState==="PROVIDER_PROCESSED"?"Post signed processed gateway refund to CG09":
+       "Authorize one original merchant refund"}</button>}
+    {x.settlementMethod==="ONLINE"&&x.status==="REQUESTED"&&
+     !["NOT_STARTED","PROVIDER_FAILED","FINANCE_POSTED"].includes(x.providerState)&&
+     <button type="button" style={button} disabled={busy}
+      onClick={()=>void reconcileProviderRefund(x)}>Check original merchant outcome (never reissue refund)</button>}
    </div>)}
-   {refundReview&&refundOptions&&<form onSubmit={confirmRefund} style={{display:"grid",gap:10}}>
+   {refundReview&&refundOptions&&refundReview.settlementMethod==="CASH"&&
+    <form onSubmit={confirmRefund} style={{display:"grid",gap:10}}>
     <strong>Cash refund {refundReview.donationNumber} · {money(refundReview.amountMinor)}</strong>
     {field("Open financial year",choices(refundOptions.years,refundYear,v=>{
      if(!refundConfirmKey.current)setRefundYear(v);} ))}
@@ -214,6 +257,33 @@ export function DonationFinanceActions({items,canRecord,canReview,canIssue,onCha
     <button type="submit" style={button} disabled={busy||!paidOut||!refundOptions.complete}>
      Confirm physical cash refund in CG-09</button>
    </form>}
+   {refundReview&&refundOptions&&refundReview.settlementMethod==="ONLINE"&&
+    <form onSubmit={refundReview.providerState==="PROVIDER_PROCESSED"?
+      postProviderRefund:initiateProviderRefund} style={{display:"grid",gap:10}}>
+     <strong>{refundReview.donationNumber} · {money(refundReview.amountMinor)}</strong>
+     <p>{refundReview.providerState==="PROVIDER_PROCESSED"?
+       "The merchant confirms a signed processed refund. Correct the original CG09 journal once.":
+       "This sends one real-money refund instruction to Razorpay. An unknown response must never be retried."}</p>
+     {refundReview.providerState==="PROVIDER_PROCESSED"&&<>
+      {field("Open financial year",choices(refundOptions.years,refundYear,v=>{
+       if(!refundConfirmKey.current)setRefundYear(v);}))}
+      {field("Posting date",<input type="date" style={control} required value={refundDate}
+       onChange={e=>{if(!refundConfirmKey.current)setRefundDate(e.target.value);}}/>)}
+     </>}
+     {field("Independent current reviewer password",
+      <input type="password" style={control} autoComplete="current-password" required minLength={8}
+       value={refundPassword} onChange={e=>setRefundPassword(e.target.value)}/>)}
+     {refundReview.providerState==="NOT_STARTED"&&
+      <label><input type="checkbox" checked={paidOut} onChange={e=>{
+       if(!refundConfirmKey.current)setPaidOut(e.target.checked);}}/>
+       I authorize this exact original merchant refund. It has not been paid yet.</label>}
+     <button type="submit" style={button} disabled={busy||
+      (refundReview.providerState==="NOT_STARTED"&&!paidOut)||
+      (refundReview.providerState==="PROVIDER_PROCESSED"&&!refundOptions.complete)}>
+      {refundReview.providerState==="PROVIDER_PROCESSED"?
+       "Post signed refund in CG09 once":"Initiate one Razorpay refund"}
+     </button>
+    </form>}
   </section>}
   {canIssue&&<section style={box}><h2>Issue a private donation receipt</h2>
    <p>CG-19 issues only against a real CG-09 posted donation. No automatic 80G claims.</p>
