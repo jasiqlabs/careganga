@@ -48,7 +48,7 @@ test("US002-QA04/13/15: one verified deposit only, root+party total capped with 
    if(v==="US002_SOURCE_IMMUTABLE_NEVER")assert.ok(!sql.includes(v));
    else assert.ok(sql.includes(v),v);
  }
- for(const v of ["pg_advisory_xact_lock","CG09_CSR_RECEIPT_LINK_V1",
+ for(const v of ["pg_advisory_xact_lock","CG09_CSR_RECEIPT_LINK_V2",
   "request_digest!==hash","replayed:true","replayed:false"])
   assert.ok(src.includes(v),v);
 });
@@ -94,6 +94,20 @@ test("US002-QA16/18/19: invalidated proof/reversal is NOT current bank receipt o
  assert.doesNotMatch(src,/INSERT INTO finance_budget_event/);
 });
 
+test("US002-QA04/07/08: real payer must be attested by operator before immutable CG09 receipt attribution",()=>{
+ const sql=migration(),src=finance(),owner=funding();
+ const web=read("../web/src/features/csr/csr-funding-receipts-panel.tsx");
+ const native=read("../android-internal/src/features/csr/native-csr-funding-receipts-panel.tsx");
+ assert.ok(sql.includes("remitter_attested boolean NOT NULL CHECK(remitter_attested)"));
+ assert.ok(src.includes("if(input.remitterConfirmed!==true)"));
+ assert.ok(src.includes("CG09_CSR_RECEIPT_LINK_V2"));
+ assert.ok(src.includes("actor_ref,remitter_attested"));
+ assert.ok(owner.includes("v.remitterConfirmed!==true"));
+ assert.ok(web.includes("I checked the actual CG09 bank statement"));
+ assert.ok(web.includes("remitterConfirmed:true as const"));
+ assert.ok(native.includes("remitterConfirmed:true as const"));
+ assert.ok(native.includes("Bank reconciliation alone does not prove"));
+});
 test("US002-QA05/06/08/11/18: six B07 tiles separate actual CG09 money from unavailable allocations",()=>{
  const sourceOwner=funding(),financeOwner=finance();
  const web=read("../web/src/features/csr/csr-funding-workspace.tsx");
