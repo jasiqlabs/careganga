@@ -1,7 +1,6 @@
 import {Body,Controller,Get,Header,Headers,Param,Patch,Post,Query} from "@nestjs/common";
 import {CsrPartnersService} from "../application/csr-partners.service";
 @Controller("api/v1/csr/partners")
-@Header("Cache-Control","private, no-store")
 export class CsrPartnersController{
  constructor(private readonly partners:CsrPartnersService){}
  @Get("options") options(@Headers("authorization")token:string){return this.partners.options(token);}

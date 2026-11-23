@@ -39,7 +39,7 @@ export type PartnerDraft=Readonly<{branchRef:string|null;legalName:string;regist
 export function parsePartner(raw:unknown):PartnerDraft&{requestKey:string;expectedVersion:number|null}{
  const v=body(raw,["requestKey","expectedVersion","branchRef","legalName","registrationReference","contactName","contactEmail","contactMobile","supportSummary"]);
  const branch=v.branchRef===undefined||v.branchRef===null||v.branchRef===""?null:ref(v.branchRef);
- const email=optional(v.contactEmail,"contact email",5,254)?.toLowerCase();
+ const email=optional(v.contactEmail,"contact email",5,254)?.toLowerCase()??null;
  if(email&&!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))throw new BadRequestException("Enter a valid contact email.");
  const mobile=optional(v.contactMobile,"contact mobile",13,13);
  if(mobile&&!/^\+91[6-9][0-9]{9}$/.test(mobile))throw new BadRequestException("Enter a valid Indian contact mobile.");

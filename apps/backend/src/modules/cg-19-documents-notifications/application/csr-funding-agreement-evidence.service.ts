@@ -11,7 +11,7 @@ import {PrivateObjectStorage} from "../infrastructure/private-object-storage";
 /** CG19 keeps scanner-verified PRIVATE bytes for one original CG08 funding
  * proposal and immutable source version. CG03, not CG19, decides whether the
  * scanned document is genuinely signed and authorizes the commitment. */
-const UUID=/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i;
+const UUID=/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i;
 const MIME=["application/pdf","image/jpeg","image/png","image/webp"];
 const changed=()=>new ConflictException({
  code:"CG08_FUNDING_EVIDENCE_CHANGED",

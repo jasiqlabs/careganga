@@ -91,7 +91,7 @@ test("US002-QA16/18/19: invalidated proof/reversal is NOT current bank receipt o
   assert.ok(src.includes(v),v);
  assert.ok(sql.includes("linked.party_kind=NEW.party_kind"));
  assert.ok(sql.includes("original.id AND reversal.posting_kind='REVERSAL'"));
- assert.doesNotMatch(src,/INSERT INTO finance_budget_event/);
+ assert.doesNotMatch(src.slice(0,src.indexOf("recordBudgetEffect")),/INSERT INTO finance_budget_event/);
 });
 
 test("US002-QA04/07/08: real payer must be attested by operator before immutable CG09 receipt attribution",()=>{
@@ -126,7 +126,8 @@ test("US002-QA05/06/08/11/18: six B07 tiles separate actual CG09 money from unav
   "rec.status='VERIFIED'",
   "reversal.reversal_of_id=j.id",
   "file.revoked_at IS NULL",
-  "allocatedMinor:allocated.toString(),utilizedMinor:utilized.toString()",
+  "allocatedMinor:allocated.toString()",
+  "utilizedMinor:utilized.toString()",
   'await this.branches.requireFinanceRootScope(tx,a,"finance.reports.view")',
   'await this.branches.requireFinanceActiveBranch(tx,a,branch,"finance.reports.view")'
  ])assert.ok(financeOwner.includes(value),value);

@@ -2,7 +2,7 @@ import {cookies} from "next/headers";
 import {NextRequest,NextResponse} from "next/server";
 export const dynamic="force-dynamic";
 type Context={params:Promise<{parts?:string[]}>};
-const UUID=/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i;
+const UUID=/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i;
 const reply=(v:unknown,status=200)=>NextResponse.json(v,{status,headers:{
  "Cache-Control":"private, no-store","X-Content-Type-Options":"nosniff"}});
 async function proxy(req:NextRequest,ctx:Context,method:"GET"|"POST"|"PATCH"){
@@ -12,13 +12,13 @@ async function proxy(req:NextRequest,ctx:Context,method:"GET"|"POST"|"PATCH"){
    method==="PATCH"&&UUID.test(parts[0])))||
   (parts.length===2&&UUID.test(parts[0])&&(
    method==="POST"&&["submit","resume"].includes(parts[1])||
-   method==="GET"&&["review-history","finance","project-context"].includes(parts[1])))||
+   method==="GET"&&(parts[1]==="review-history"||["finance","project-context"].includes(parts[1]))))||
   (parts.length===3&&UUID.test(parts[0])&&parts[1]==="finance"&&(
-   method==="GET"&&["eligible-receipts","budgets"].includes(parts[2])||
-   method==="POST"&&["receipts","budget-effects"].includes(parts[2])))||
+   method==="GET"&&(parts[2]==="eligible-receipts"||parts[2]==="budgets")||
+   method==="POST"&&(parts[2]==="receipts"||parts[2]==="budget-effects")))||
   (parts.length===5&&UUID.test(parts[0])&&parts[1]==="finance"&&
    parts[2]==="budgets"&&UUID.test(parts[3])&&
-   ["expenses","allocations"].includes(parts[4])&&method==="GET");
+   (parts[4]==="expenses"||parts[4]==="allocations")&&method==="GET");
  if(!allowed)return reply({message:"The original CSR funding action is unavailable."},404);
  if(method!=="GET"&&req.headers.get("origin")!==req.nextUrl.origin)
   return reply({message:"Save funding through the authenticated Foundation panel."},403);

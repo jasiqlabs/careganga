@@ -1,7 +1,6 @@
 import {Body,Controller,Get,Headers,Param,Post,StreamableFile,Header} from "@nestjs/common";
 import {CsrAgreementEvidenceService} from "../application/csr-agreement-evidence.service";
 @Controller("api/v1/csr-agreements")
-@Header("Cache-Control","private, no-store")
 export class CsrAgreementEvidenceController{
  constructor(private readonly evidence:CsrAgreementEvidenceService){}
  @Post("intents") initiate(@Headers("authorization")token:string,@Body()body:unknown){return this.evidence.initiate(token,body);}
