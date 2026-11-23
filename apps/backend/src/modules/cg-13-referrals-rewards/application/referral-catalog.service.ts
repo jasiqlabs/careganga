@@ -568,8 +568,11 @@ export class ReferralCatalogService{
     notice:"Read-only original CG12 available quantity. No warehouse stock is changed."};
   },true);
  }
- async publicEligibleCatalog(bearer:string,pageInput?:string){
+ async publicEligibleCatalog(bearer:string,pageInput?:string,
+  searchInput?:string,categoryInput?:string){
   const page=catalogPage(pageInput);
+  const search=optional(searchInput,"search",100).toLowerCase();
+  const category=optional(categoryInput,"category",80);
   const a=await this.sessions.verifySession(bearer),tx=await this.db.connect();
   try{
    await tx.query("BEGIN ISOLATION LEVEL REPEATABLE READ");
@@ -608,12 +611,27 @@ export class ReferralCatalogService{
     "AND (p.eligible_audience='BOTH' AND cardinality($2::text[])>0 "+
     "OR p.eligible_audience=ANY($2::text[])) "+
     "AND (pr.audience='BOTH' OR pr.audience=ANY($2::text[])) "+
+    "AND ($5::text='' OR strpos(lower(p.name || ' ' || p.category || ' ' || p.description),$5)>0) "+
+    "AND ($6::text='' OR p.category=$6) "+
     "ORDER BY p.highlighted DESC,p.created_at DESC,p.id DESC LIMIT $3 OFFSET $4",
-    [a.realmId,kinds,CATALOG_PAGE_SIZE+1,(page-1)*CATALOG_PAGE_SIZE]);
+    [a.realmId,kinds,CATALOG_PAGE_SIZE+1,(page-1)*CATALOG_PAGE_SIZE,search,category]);
+   const categories=await tx.query<{category:string}>(
+    "SELECT DISTINCT p.category FROM reward_product p "+
+    "JOIN referral_program pr ON pr.root_realm_id=p.root_realm_id AND pr.id=p.programme_id "+
+    "JOIN referral_policy_version policy ON policy.root_realm_id=pr.root_realm_id "+
+    "AND policy.programme_id=pr.id AND policy.version_no=pr.active_policy_version "+
+    "WHERE p.root_realm_id=$1 AND p.status='ACTIVE' AND p.public_visible "+
+    "AND pr.status='ACTIVE' AND policy.effective_from<=now() "+
+    "AND ((p.eligible_audience='BOTH' AND cardinality($2::text[])>0) "+
+    "OR p.eligible_audience=ANY($2::text[])) "+
+    "AND (pr.audience='BOTH' OR pr.audience=ANY($2::text[])) "+
+    "ORDER BY p.category LIMIT 201",[a.realmId,kinds]);
    const safeItems=await this.approvedPageImages(tx,a,
      q.rows.slice(0,CATALOG_PAGE_SIZE) as {imageUrl:unknown}[]);
    await tx.query("COMMIT");
    return {eligibleRelationships:kinds,items:safeItems,
+    categories:categories.rows.slice(0,200).map(v=>v.category),
+    categoriesTruncated:categories.rows.length>200,
     hasMore:q.rows.length>CATALOG_PAGE_SIZE,page,
     notice:kinds.length?"Points are not cash. Products require genuine earned CG13 points before redemption.":
      "An active original CG04 membership or volunteer relationship is required."};
