@@ -102,7 +102,8 @@ BEGIN
    AND wallet.id=NEW.points_account_id AND att.state='PENDING'
    AND att.policy_version=NEW.policy_version
    AND att.award_points=NEW.points_delta
-   AND att.submitted_digest=NEW.qualifying_source_digest
+   -- The first attribution remains immutable across a returned/corrected
+   -- application; the credit must instead match the CURRENT approved digest.
    AND cg13_referral_code_current(att.root_realm_id,
        (SELECT code_value FROM referral_code WHERE root_realm_id=att.root_realm_id
         AND id=att.referral_code_ref))
@@ -120,7 +121,9 @@ BEGIN
       JOIN cg03_case review ON review.realm_id=effect.root_realm_id
        AND review.id=effect.case_id AND review.status='OWNER_COMPLETED'
       WHERE app.root_realm_id=att.root_realm_id AND app.id=att.member_application_ref
-       AND app.status='APPROVED' AND app.submitted_digest=att.submitted_digest
+       AND app.status='APPROVED' AND app.submitted_digest=NEW.qualifying_source_digest
+       AND app.referral_input=(SELECT code_value FROM referral_code code
+        WHERE code.root_realm_id=att.root_realm_id AND code.id=att.referral_code_ref)
        AND app.applicant_account_ref=att.applicant_account_ref
        AND (app.accepted_fee_minor=0 OR EXISTS(
         SELECT 1 FROM finance_membership_verified_collection paid
@@ -141,7 +144,9 @@ BEGIN
        AND review.id=effect.case_id AND review.status='OWNER_COMPLETED'
       WHERE app.root_realm_id=att.root_realm_id
        AND app.id=att.volunteer_application_ref AND app.status='APPROVED'
-       AND app.submitted_digest=att.submitted_digest
+       AND app.submitted_digest=NEW.qualifying_source_digest
+       AND app.referral_input=(SELECT code_value FROM referral_code code
+        WHERE code.root_realm_id=att.root_realm_id AND code.id=att.referral_code_ref)
        AND app.applicant_account_ref=att.applicant_account_ref
        AND cg04_current_volunteer(v.root_realm_id,v.id,v.account_ref,v.branch_ref)
     ))
