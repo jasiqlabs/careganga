@@ -44,11 +44,18 @@ async function api<T>(path:string,cmd?:Command):Promise<T>{
   signal:AbortSignal.timeout(16000),method:cmd?.method??"GET",
   ...(cmd?{headers:{"Content-Type":"application/json"},body:JSON.stringify(cmd.body)}:{})});
  const body:unknown=await response.json().catch(()=>null);
- if(!response.ok||!body)throw Object.assign(Error(response.status===409?
-  "The source was changed or the request was already applied. Refresh before retrying.":
-  response.status===403?"Your current Foundation permissions do not allow this action.":
-  response.status===400?"Check the eligible programme, rank and product fields.":
-  "The outcome is uncertain. Refresh the original record or retry the same request."),{status:response.status||503});
+ if(!response.ok||!body){
+  const failure=body&&typeof body==="object"&&!Array.isArray(body)?
+   body as {message?:unknown;code?:unknown}:{};
+  const trusted=typeof failure.code==="string"&&failure.code.startsWith("CG13_")&&
+   typeof failure.message==="string"&&failure.message.length<=220;
+  const message=trusted?failure.message:
+   response.status===409?"This record changed. Refresh its latest version before retrying.":
+   response.status===403?"Your current Foundation permissions do not allow this action.":
+   response.status===400?"Check the programme, rank or product fields.":
+   "The result is uncertain. Refresh this record before retrying the same request.";
+  throw Object.assign(Error(message),{status:response.status||503});
+ }
  return body as T;
 }
 const num=(v:string,field:string):number=>{
