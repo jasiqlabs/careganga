@@ -5,6 +5,7 @@ import type {Pool,PoolClient} from "pg";
 import {DATABASE} from "../../../core/infrastructure/database.module";
 import {donationUuid} from "../domain/donation-input";
 import {publicCampaignSources} from "./campaign-public-source";
+import {DonationProviderRefundService} from "./donation-provider-refund.service";
 const ID=/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i;
 const fail=()=>new ConflictException("This payment request changed. Keep the same reference and check status.");
 const hash=(v:unknown)=>createHash("sha256").update(JSON.stringify(v)).digest("hex");
@@ -32,7 +33,7 @@ function config():Settings{
 }
 @Injectable()
 export class DonationOnlineService{
- constructor(@Inject(DATABASE)private readonly db:Pool){}
+ constructor(@Inject(DATABASE)private readonly db:Pool,private readonly refunds:DonationProviderRefundService){}
  private async tx<T>(fn:(tx:PoolClient)=>Promise<T>){
   const tx=await this.db.connect();
   try{await tx.query("BEGIN");const x=await fn(tx);await tx.query("COMMIT");return x;}
@@ -312,6 +313,10 @@ export class DonationOnlineService{
   if(!event||typeof event!=="object"||Array.isArray(event))throw fail();
   const body=event as Record<string,unknown>;
   const eventKind=body.event;
+  // One original configured Foundation Razorpay endpoint handles both payments
+  // and refunds; a second provider webhook subscription is never required.
+  if(["refund.processed","refund.failed"].includes(String(eventKind)))
+   return this.refunds.webhook(req);
   if(!["payment_link.paid","payment_link.expired","payment_link.cancelled"].includes(String(eventKind)))
    return {accepted:true,ignored:true};
   const terminal=eventKind==="payment_link.expired"||eventKind==="payment_link.cancelled";
