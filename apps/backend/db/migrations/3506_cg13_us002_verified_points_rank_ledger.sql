@@ -46,7 +46,7 @@ CREATE TABLE points_event (
  event_kind text NOT NULL CHECK(event_kind IN(
   'QUALIFICATION','QUALIFICATION_REVERSAL','POINTS_HOLD','POINTS_RELEASE','POINTS_SPENT')),
  policy_version integer NOT NULL CHECK(policy_version>0),
- points_delta bigint NOT NULL CHECK(points_delta<>0 AND abs(points_delta)<=1000000000),
+ points_delta bigint NOT NULL CHECK(points_delta<>0 AND abs(points_delta)<=1000000000000),
  qualifying_source_digest char(64) NOT NULL CHECK(qualifying_source_digest ~ '^[0-9a-f]{64}$'),
  source_recorded_at timestamptz NOT NULL DEFAULT now(),
  PRIMARY KEY(root_realm_id,id),
