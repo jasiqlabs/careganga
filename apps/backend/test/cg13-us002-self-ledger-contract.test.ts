@@ -85,6 +85,9 @@ describe("CG13 US002 current CG04 self points/rank API source contracts (not exe
   assert.equal(history.items[0].status,"QUALIFIED");
   const e=f.seen.find(x=>x.sql.includes("FROM points_event event"))!;
   assert.deepEqual(e.params,[ROOT,WALLET,25]);
+  // CG13 US003 introduced other points_event kinds. They must never appear
+  // as a false "REVERSED" referral in US002 qualification history.
+  assert.match(e.sql,/event\.event_kind IN\('QUALIFICATION','QUALIFICATION_REVERSAL'\)/);
   const rank=await f.svc.myRank("own",PROGRAMME,"MEMBER","2");
   assert.equal(rank.rank,"Champion");
   assert.equal(rank.history[0].current,"Champion");
