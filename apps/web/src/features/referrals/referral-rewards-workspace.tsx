@@ -367,14 +367,23 @@ export function ReferralRewardsWorkspace({canManagePolicy,canManageRewards}:{
      </div>
      <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(206px,1fr))",gap:12}}>
       {orderedProducts.map(p=><article key={p.ref} style={{border:"1px solid var(--cg-border,#CBD5E1)",borderRadius:13,overflow:"hidden"}}>
-       <div style={{height:148,background:"#E8FBF2",display:"grid",placeItems:"center"}}>
+       <div style={{height:148,background:"#E8FBF2",display:"grid",placeItems:"center",position:"relative"}}>
         {p.imageUrl?<img src={p.imageUrl} alt="" loading="lazy" referrerPolicy="no-referrer"
          style={{maxWidth:"100%",height:"100%",objectFit:"cover"}}/>:
-         <span style={{fontSize:12,opacity:.7}}>Product image not provided</span>}
+         <span aria-label="Product image not provided" style={{fontSize:32,color:"#0FBA78"}}>▢</span>}
+         <span style={{position:"absolute",top:7,left:7,padding:"3px 7px",borderRadius:14,
+          fontSize:10,fontWeight:650,background:"#F5A20B",color:"#1A293E"}}>
+          {p.highlighted?"Highlighted":p.category}</span>
+         <span style={{position:"absolute",top:7,right:7,padding:"3px 7px",borderRadius:14,
+          fontSize:10,fontWeight:650,background:p.status==="ACTIVE"?"#10B981":"#64748B",
+          color:"#fff"}}>{p.status}</span>
        </div>
        <div style={{padding:12,display:"grid",gap:6}}>
-        <strong>{p.name}</strong>
-        <span style={{fontSize:12}}>{p.category} · {p.type} · {p.status}</span>
+        <strong style={{fontSize:13,lineHeight:1.3}}>{p.name}</strong>
+        <span style={{fontSize:11,color:"var(--cg-text-muted,#64748B)"}}>{p.category} · {p.type}</span>
+         <p style={{fontSize:11,color:"var(--cg-text-muted,#64748B)",margin:0,
+          display:"-webkit-box",WebkitLineClamp:2,WebkitBoxOrient:"vertical",overflow:"hidden"}}>
+          {p.description||"No product description recorded"}</p>
         <strong style={{color:"#FDE68A",background:"#172338",padding:"4px 8px",borderRadius:16,justifySelf:"start"}}>{p.pointsPrice} Pts</strong>
         <span style={{fontSize:12}}>{p.highlighted?"Highlighted · ":""}{p.publicVisible?"Public eligible catalogue":"Staff only"}</span>
         {p.type==="PHYSICAL"&&<span style={{fontSize:12}}>Original CG12 item/store — read-only</span>}
@@ -407,6 +416,9 @@ export function ReferralRewardsWorkspace({canManagePolicy,canManageRewards}:{
       aria-label="Close editor">Close</button>
     </div>
     {drawer==="POLICY"?<>
+     <div style={{fontSize:11,fontWeight:700,color:"var(--cg-text-muted,#64748B)",
+      borderBottom:"1px solid var(--cg-border,#DCE4ED)",paddingBottom:8}}>
+      POINTS &amp; VALUES · original B13</div>
      <label style={css.field}>Programme code (immutable after creation)
       <input style={css.control} disabled={editingPolicy} autoComplete="off"
        value={programmeForm.programmeCode}
@@ -431,10 +443,16 @@ export function ReferralRewardsWorkspace({canManagePolicy,canManageRewards}:{
       v=>setProgrammeForm(p=>({...p,effectiveFrom:v})),"date")}
      {rowInput("Points to INR display rate (optional; NOT cash)",programmeForm.displayInrRatio,
       v=>setProgrammeForm(p=>({...p,displayInrRatio:v})),"text")}
+     <div style={{fontSize:11,fontWeight:700,color:"var(--cg-text-muted,#64748B)",
+      borderBottom:"1px solid var(--cg-border,#DCE4ED)",paddingBottom:8}}>
+      AUTOMATION &amp; PERMISSIONS · only source-backed options enabled</div>
      <label style={css.field}><input type="checkbox" checked={programmeForm.autoRankUpgrade}
       onChange={e=>setProgrammeForm(p=>({...p,autoRankUpgrade:e.target.checked}))}/>
       Automatic rank upgrade on a genuinely verified event</label>
-     <p style={{fontSize:12}}>Points never expire by default. INR conversion is an informational
+     <p style={{fontSize:12}}>Digital certificate auto-issue, public leaderboard and
+      interview gates in the screenshot are not editable here until their verified
+      CG04/CG19/CG13 source workflows are implemented. Points never expire by default.
+      INR conversion is an informational
       reference and does not issue money or a guaranteed reward.</p>
      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
       <strong>Rank thresholds</strong>
