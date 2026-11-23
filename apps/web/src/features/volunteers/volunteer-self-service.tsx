@@ -4,6 +4,7 @@ import type {CG04VolunteerApplication,CG04VolunteerOptions,CG04VolunteerProfile}
 import {CommunityAuth} from "../membership/community-auth";
 import {PublicRewardsCatalogue} from "../referrals/public-rewards-catalogue";
 import {PublicReferralCode} from "../referrals/public-referral-code";
+import {ReferralCodeCheck} from "../referrals/referral-code-check";
 import {VolunteerEvidencePanel} from "./volunteer-evidence-panel";
 import {PublicVolunteerVerification} from "./public-volunteer-verification";
 import {VolunteerOwnCard} from "./volunteer-own-card";
@@ -175,6 +176,7 @@ export function VolunteerSelfService(){
      {field("Skills and interests (comma-separated)","skills","text",1500)}
      <label className="cg04-volunteer-span">Relevant experience<textarea maxLength={1000} value={form.experience} onChange={e=>fill("experience",e.target.value)}/></label></div>}
     {step===3&&<div className="cg04-document-grid">{field("Referral (optional)","referral","text",100)}
+  <ReferralCodeCheck code={form.referral}/>
      <label className="cg04-volunteer-span"><input type="checkbox" checked={form.consent} onChange={e=>fill("consent",e.target.checked)}/>
       I consent to the Foundation processing my submitted volunteer application and secure identity evidence for enrollment review.</label>
      <p className="cg04-muted cg04-volunteer-span">Check your original application details, save the draft, then verify an identity document. A reviewer must approve the submitted version before any volunteer number is created.</p></div>}
