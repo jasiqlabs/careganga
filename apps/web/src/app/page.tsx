@@ -1,6 +1,6 @@
 import Link from "next/link";
 import type {Metadata} from "next";
-import {CmsPublicPage} from "../features/cms-public-content/cms-public-page";
+import {CmsPublicPage,CmsPublicShell} from "../features/cms-public-content/cms-public-page";
 import {publishedCmsPage,publishedCmsNavigation} from "../features/cms-public-content/cms-public-source";
 export const dynamic="force-dynamic";
 export async function generateMetadata():Promise<Metadata>{
@@ -13,15 +13,17 @@ export async function generateMetadata():Promise<Metadata>{
 export default async function PublicHome(){
  const [result,navigation]=await Promise.all([publishedCmsPage("home"),publishedCmsNavigation()]);
  if(result.state==="PUBLISHED")return <CmsPublicPage page={result.page} navigation={navigation}/>;
- return <main className="page main">
-  <header className="topbar"><span className="cg-brandline"><img src="/careganga-mark.png"
-   width="40" height="40" alt=""/><strong>CareGanga Foundation</strong></span>
-{navigation?.login?.visible&&navigation.login.path==="/admin/login"&&
-    <Link href="/admin/login">Foundation staff login</Link>}</header>
-  <h1>CareGanga Foundation</h1>
-  <p>{result.state==="NOT_PUBLISHED"?
-   "Our public homepage has not yet been published.":
-   "Our public website content is temporarily unavailable."}</p>
-  <Link href="/contact">Contact the Foundation</Link>
- </main>;
+ // A missing or withdrawn Home must NEVER display draft or unapproved
+ // screenshot content. Reuse the original public site shell so independently
+ // published pages and verified operational links remain navigable.
+ return <CmsPublicShell navigation={navigation}>
+  <section className="cg-site-content" aria-label="CareGanga website publication status">
+   <h1>CareGanga Foundation</h1>
+   <p role="status">{result.state==="NOT_PUBLISHED"?
+    "Our public homepage has not yet been published.":
+    "Our public website content is temporarily unavailable."}</p>
+   <p>Other available CareGanga services can be accessed through the website navigation.</p>
+   <p><Link href="/contact">Contact the Foundation</Link></p>
+  </section>
+ </CmsPublicShell>;
 }
