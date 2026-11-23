@@ -111,12 +111,13 @@ export class RedemptionService {
      pointsCost:existing.rows[0].pointsCost,replayed:true,
      notice:"Your original digital reward request has been retrieved."};
    }
-   const product=await tx.query<{price:string;version:number;name:string;policyVersion:number}>(
+   const product=await tx.query<{price:string;version:number;name:string;policyVersion:number;minimumClaimPoints:string}>(
     "SELECT p.points_price::text AS price,p.version,p.name,"+
-    "policy.version_no AS \"policyVersion\" FROM reward_product p "+
+    "policy.version_no AS \"policyVersion\","+
+    "policy.minimum_claim_points::text AS \"minimumClaimPoints\" FROM reward_product p "+
     "JOIN referral_program programme ON programme.root_realm_id=p.root_realm_id "+
     "AND programme.id=p.programme_id "+
-    "JOIN LATERAL (SELECT pv.version_no FROM referral_policy_version pv "+
+    "JOIN LATERAL (SELECT pv.version_no,pv.minimum_claim_points FROM referral_policy_version pv "+
     "WHERE pv.root_realm_id=programme.root_realm_id AND pv.programme_id=programme.id "+
     "AND pv.effective_from<=now() ORDER BY pv.effective_from DESC,pv.version_no DESC "+
     "LIMIT 1) policy ON true "+
@@ -132,6 +133,11 @@ export class RedemptionService {
    if(!product.rows[0]||product.rows[0].version!==source.expectedProductVersion)
     throw new ConflictException("The reward changed. Refresh its current price.");
    const price=BigInt(product.rows[0].price);
+   const claimMinimum=BigInt(product.rows[0].minimumClaimPoints);
+   // The current migration supports one DIGITAl hold of at most 1 billion
+   // points. Reject an incompatible catalog price before DB transition.
+   if(price<=0n||price>1000000000n||claimMinimum>1000000000n)
+    throw new ConflictException("This reward is not available for points redemption.");
    const account=await tx.query<Wallet>(
     "SELECT id,earned_points::text AS earned,reversed_points::text AS reversed,"+
     "held_points::text AS held,spent_points::text AS spent FROM points_account "+
@@ -139,9 +145,10 @@ export class RedemptionService {
     "AND referrer_relationship_ref=$4 AND referrer_account_ref=$5 FOR UPDATE",
     [a.realmId,source.programmeRef,source.relationship,relationship,a.accountId]);
    const wallet=account.rows[0];
-   if(!wallet||BigInt(wallet.earned)-BigInt(wallet.reversed)-
-    BigInt(wallet.held)-BigInt(wallet.spent)<price)
-    throw new ConflictException("Not enough verified available points for this reward.");
+   const available=wallet?BigInt(wallet.earned)-BigInt(wallet.reversed)-
+    BigInt(wallet.held)-BigInt(wallet.spent):0n;
+   if(!wallet||available<price||available<claimMinimum)
+    throw new ConflictException("Not enough verified available points for the current minimum claim.");
    const created=await tx.query<{ref:string}>(
     "INSERT INTO redemption(root_realm_id,programme_id,policy_version,points_account_id,"+
     "recipient_account_ref,relationship_kind,relationship_ref,product_id,"+
