@@ -5,9 +5,11 @@ export type RedeemableDigitalReward={
  ref:string;programmeRef:string;name:string;version:number;pointsPrice:string;
  type:"DIGITAL"|"PHYSICAL";eligibleAudience:"MEMBER"|"VOLUNTEER"|"BOTH";
  programmeAudience:"MEMBER"|"VOLUNTEER"|"BOTH";
+ digitalFulfillmentMethod:"PENDING_EXTERNAL_PROOF"|"ON_PLATFORM_RECOGNITION";
 };
 type Redemption={ref:string;state:string;productName:string;pointsCost:string;revision:number;
- requestedAt:string};
+ requestedAt:string;digitalFulfillmentMethod:string;recognitionTitle:string|null;
+ recognitionDescription:string|null;recognizedAt:string|null};
 type Page={items:Redemption[];hasMore:boolean;page:number};
 type Created={ref:string;state:string;pointsCost:string;replayed:boolean;notice:string};
 async function call<T>(path:string,method:"GET"|"POST"="GET",body?:Record<string,unknown>){
@@ -99,6 +101,20 @@ export function PublicDigitalRedemption({selected,onClear,audiences}:{
   }catch(e){setError(e instanceof Error?e.message:"Cancellation result uncertain. Refresh history.");}
   finally{setBusy(false);}
  };
+ const acknowledge=async(item:Redemption)=>{
+  if(busy||item.state!=="HELD"||
+   item.digitalFulfillmentMethod!=="ON_PLATFORM_RECOGNITION")return;
+  setBusy(true);setError("");setNotice("");
+  try{
+   const result=await call<{state:string;notice:string}>(
+    "redemptions/"+item.ref+"/claim-recognition","POST",{});
+   setNotice(result.notice);
+   await load();
+  }catch(e){
+   setError(e instanceof Error?e.message:
+    "Recognition status uncertain. Refresh your original request history.");
+  }finally{setBusy(false);}
+ };
  return <section className="cg04-panel" aria-label="Verified digital reward requests">
   <h3>Digital reward requests</h3>
   <p>Only genuinely earned referral points can be reserved. Digital delivery is
@@ -138,6 +154,19 @@ export function PublicDigitalRedemption({selected,onClear,audiences}:{
    <p>{x.pointsCost} points · {x.state==="HELD"?"Points held — delivery pending":
     x.state==="CANCELLED"?"Cancelled — points released":x.state}</p>
    <p>{new Date(x.requestedAt).toLocaleDateString("en-IN",{timeZone:"Asia/Kolkata"})}</p>
+   {x.state==="HELD"&&x.digitalFulfillmentMethod==="ON_PLATFORM_RECOGNITION"&&
+    <button type="button" disabled={busy}
+     onClick={()=>void acknowledge(x)}>
+     Open and acknowledge my on-platform recognition
+    </button>}
+   {x.state==="FULFILLED"&&x.recognitionTitle&&
+    <div role="status" aria-label="Acknowledged on-platform recognition">
+     <strong>{x.recognitionTitle}</strong>
+     <p>{x.recognitionDescription}</p>
+     <p>Actually acknowledged {x.recognizedAt?
+      new Date(x.recognizedAt).toLocaleDateString("en-IN",{timeZone:"Asia/Kolkata"}):
+      ""}</p>
+    </div>}
    {x.state==="HELD"&&<button type="button" disabled={busy}
     onClick={()=>void cancel(x)}>Cancel pending request</button>}
   </div>)}
