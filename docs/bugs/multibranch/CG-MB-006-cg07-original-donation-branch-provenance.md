@@ -1,6 +1,6 @@
 # CG-MB-006 — cg07 original donation branch provenance
 
-**Priority:** P0 · **Owner:** CG-07 + CG-09 + CG-19 · **Status:** SOURCE_FIX_AUTHORED_NOT_VERIFIED · **Scope:** active CG-07 feature branch only · **Runtime:** NOT_RUN
+**Priority:** P0 · **Owner:** CG-07 + CG-09 + CG-19 · **Status:** SOURCE_FIX_REVIEWED_RUNTIME_PENDING · **Scope:** active CG-07 feature branch only · **Runtime:** NOT_RUN
 
 ## Source evidence / observed limitation
 
@@ -24,3 +24,12 @@ Run disposable SQL trigger and migration rollback/restore; independent review, t
 ### 23-Nov — Independent source reviewer correction (source-only; open)
 
 Original `3319_cg07_donation_branch_provenance.sql` has been tightened: UPDATE cannot retarget branch, source kind (`GENERAL` vs `CAMPAIGN`), source campaign ID or Foundation root. Original 3306 finance proof already binds the posted journal's branch to the original donation branch. Regression source assertion added in `cg07-donation-contract.test.ts`. **No disposable PostgreSQL execution/SQL tamper proof yet.** Merge BLOCKED until negative insert, update, financial posting, receipt/refund and stale-session tests all pass and independent DB reviewer accepts. See [developer handoff](../../qa/CAREGANGA-CG07-MULTIBRANCH-LOCAL-DEVELOPER-HANDOFF-20261123.md).
+
+
+### 23-Nov-2026 — final source-owner review disposition
+
+**Reviewed original owner source:** CG07 migration 3319 validates campaign same-root branch on insertion; prevents retarget of branch, root, donation kind and campaign identity on update. CG09 posted journal and CG19 receipts remain original owner.
+
+**Executable evidence pending:** Real PostgreSQL wrong-branch insert/update, migration and CG09/CG19 money audit NOT_RUN.
+
+**Gate:** source authored/reviewed; NOT_RUNTIME_PASS; no CI/GitHub Actions, no merge until local QA verified.
