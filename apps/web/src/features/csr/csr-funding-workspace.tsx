@@ -57,7 +57,7 @@ async function api<T>(path:string,method:"GET"|"POST"|"PATCH"="GET",body?:Record
 export function CsrFundingWorkspace({canManage,canReadAgreement,canUploadAgreement,canReadFinance,canLinkFinance,canBudgetManage}:{canManage:boolean;canReadAgreement:boolean;canUploadAgreement:boolean;canReadFinance:boolean;canLinkFinance:boolean;canBudgetManage:boolean}){
  const [page,setPage]=useState<{items:Proposal[];hasMore:boolean;summary?:{requests:number;drafts:number;requestedMinor:string;verifiedFinance:null|{
   committedMinor:string;verifiedReceivedMinor:string;revalidationRequiredMinor:string;
-  allocatedMinor:string;utilizedMinor:string;availableMinor:string|null;utilizationPercent:string|null;notice:string;needsRevalidation:boolean
+  allocatedMinor:string;releasedMinor:string;utilizedMinor:string;availableMinor:string|null;utilizationPercent:string|null;notice:string;needsRevalidation:boolean
  }}}>({items:[],hasMore:false});
  const [options,setOptions]=useState<Options|null>(null);
  const [offset,setOffset]=useState(0),[epoch,setEpoch]=useState(0),[loading,setLoading]=useState(true);
@@ -179,6 +179,7 @@ export function CsrFundingWorkspace({canManage,canReadAgreement,canUploadAgreeme
        INR(page.summary.verifiedFinance.verifiedReceivedMinor):"Finance access restricted"],
       ["committed","Committed · CG03 approved",page.summary.verifiedFinance?
        INR(page.summary.verifiedFinance.committedMinor):"Finance access restricted"],
+      ["released","Released unspent · CG09",page.summary.verifiedFinance?INR(page.summary.verifiedFinance.releasedMinor):"Finance access restricted"],
       ["utilized","Utilized · CG09",page.summary.verifiedFinance?INR(page.summary.verifiedFinance.utilizedMinor):"Finance access restricted"],
       ["available","Available · CG09",page.summary.verifiedFinance?.availableMinor!==null&&page.summary.verifiedFinance?.availableMinor!==undefined?INR(page.summary.verifiedFinance.availableMinor):"Finance revalidation / access restricted"],
       ["percent","Utilization %",page.summary.verifiedFinance?.utilizationPercent!==null&&page.summary.verifiedFinance?.utilizationPercent!==undefined?page.summary.verifiedFinance.utilizationPercent+"%":"Finance revalidation / access restricted"]
