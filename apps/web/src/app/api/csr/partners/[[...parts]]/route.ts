@@ -8,7 +8,8 @@ async function proxy(req:NextRequest,ctx:Context,method:"GET"|"POST"|"PATCH"){
  const p=(await ctx.params).parts??[];
  const valid=p.length===0&&(method==="GET"||method==="POST")
   ||p.length===1&&(method==="GET"&&(p[0]==="options"||id.test(p[0]))||method==="PATCH"&&id.test(p[0]))
-  ||p.length===2&&id.test(p[0])&&((p[1]==="cancel"||p[1]==="submit")&&method==="POST"||p[1]==="review-history"&&method==="GET");
+  ||p.length===2&&id.test(p[0])&&((p[1]==="cancel"||p[1]==="submit"||p[1]==="public-release")&&method==="POST"||(p[1]==="review-history"||p[1]==="public-release")&&method==="GET")
+  ||p.length===3&&id.test(p[0])&&p[1]==="public-release"&&p[2]==="withdraw"&&method==="POST";
  if(!valid)return reply({message:"CSR action unavailable."},404);
  if(method!=="GET"&&req.headers.get("origin")!==req.nextUrl.origin)
   return reply({message:"CSR changes must originate from the staff panel."},403);

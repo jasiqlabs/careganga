@@ -354,3 +354,8 @@ Added authenticated partner-linked read, original approval-proof/public-right at
 ### 23-Nov-2026 — US001 independent source review: publicity reauthorization revision
 
 Corrected 3404's first-draft transition guard: WITHDRAWN partner rights now permit a **new** approved-evidence authorization at release version+1, while preventing edits to the old authorized grant and retaining immutable original partner/root identity. Old CG18 editorial approval will be pinned to the earlier authorization version and must not become public again after new consent. This follows the original US001-QA11/16/19 withdrawal-and-restoration acceptance; still requires CG18 projection and DB QA, NOT_RUN.
+
+
+### 23-Nov-2026 — US001 original Admin Web public-rights workflow
+
+Existing CSR partner detail now embeds protected public naming rights state and the source-approved agreement selector, with an explicit signed-agreement naming permission confirmation and user-readable description. Authorized staff require existing current csr.partners.manage and cms.content.manage rights, while non-editor CSR viewers only see status. Existing Next BFF strictly allows exact read/authorize/withdraw paths and rejects cross-origin staff writes; replay uses original stable command key for unknown write. An approved partner is never displayed automatically. US001-QA07/10/11/12/13/15/16/17/18 source authored; native parity, CG18 eligible selection and actual public safe projection still SOURCE_GAP; runtime/independent review NOT_RUN.

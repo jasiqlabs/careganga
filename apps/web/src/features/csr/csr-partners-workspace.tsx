@@ -1,5 +1,6 @@
 "use client";
 import {CsrAgreementPanel} from "./csr-agreement-panel";
+import {CsrPublicRightsPanel} from "./csr-public-rights-panel";
 import {useCallback,useEffect,useRef,useState,type CSSProperties,type FormEvent} from "react";
 type Choice={value:string;label:string};
 type Options={foundation:boolean;branches:Choice[]};
@@ -29,7 +30,7 @@ async function api<T>(path:string,method:"GET"|"POST"|"PATCH"="GET",payload?:Rec
  if(!r.ok||v===null)throw Object.assign(Error(v&&typeof v==="object"&&"message" in v&&typeof v.message==="string"?v.message:"CSR result could not be confirmed."),{status:r.status||503});
  return v as T;
 }
-export function CsrPartnersWorkspace({canManage,canReadAgreement,canUploadAgreement}:{canManage:boolean;canReadAgreement:boolean;canUploadAgreement:boolean}){
+export function CsrPartnersWorkspace({canManage,canReadAgreement,canUploadAgreement,canManagePublic}:{canManage:boolean;canReadAgreement:boolean;canUploadAgreement:boolean;canManagePublic:boolean}){
  const [data,setData]=useState<Page>({items:[],hasMore:false}),[choices,setChoices]=useState<Options|null>(null);
  const [search,setSearch]=useState(""),[branchFilter,setBranchFilter]=useState("ALL"),[statusFilter,setStatusFilter]=useState<ReviewStatus>("ALL"),[offset,setOffset]=useState(0),[epoch,setEpoch]=useState(0);
  const [loading,setLoading]=useState(true),[listError,setListError]=useState(""),[message,setMessage]=useState(""),[error,setError]=useState("");
@@ -156,6 +157,7 @@ export function CsrPartnersWorkspace({canManage,canReadAgreement,canUploadAgreem
    {selected&&canReadAgreement&&<CsrAgreementPanel partnerRef={selected.ref} version={selected.version}
     canUpload={canUploadAgreement&&canEditCurrent} canSubmit={canEditCurrent&&selected.status==="DRAFT"}
     onSubmitted={()=>{setEditing(false);setSelected(null);setMessage("CSR application submitted for independent review. It is not approved or public.");refresh();}}/>}
+   {selected?.status==="APPROVED"&&<CsrPublicRightsPanel key={selected.ref} partnerRef={selected.ref} canManage={canManagePublic}/>}
    {selected&&<section aria-label="CSR approval history" style={{display:"grid",gap:6,marginTop:12}}>
     <h3>Review history</h3>
     {historyError&&<p role="alert">{historyError}</p>}

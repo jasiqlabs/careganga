@@ -31,7 +31,8 @@ export default async function CsrPage(){
    canViewBranches={actions.includes("foundation.branches.view")} canViewFoundation={actions.includes("foundation.profile.view")}/>
    <main className="workspace" style={{display:"grid",gap:22}}>{actions.includes("csr.partners.view")&&<CsrPartnersWorkspace canManage={actions.includes("csr.partners.manage")}
     canReadAgreement={actions.includes("documents.files.view")}
-    canUploadAgreement={actions.includes("documents.files.manage")&&actions.includes("documents.files.view")}/>}
+    canUploadAgreement={actions.includes("documents.files.manage")&&actions.includes("documents.files.view")}
+    canManagePublic={actions.includes("cms.content.manage")&&actions.includes("csr.partners.manage")}/>}
    {canReview&&<CsrReviewWorkspace canConfigure={actions.includes("approvals.process.manage")}/>}
    </main></div>;
  }catch(e){
