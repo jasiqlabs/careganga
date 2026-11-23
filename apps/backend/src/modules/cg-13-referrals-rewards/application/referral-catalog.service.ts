@@ -14,7 +14,7 @@ const UUID=/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const MONEY=/^(0|[1-9][0-9]{0,9})(\.[0-9]{1,6})?$/;
 const bad=(field:string)=>new BadRequestException({code:"CG13_INVALID_INPUT",field});
 const CATALOG_PAGE_SIZE=40;
-const catalogPage=(value:unknown):number=>{
+export const catalogPage=(value:unknown):number=>{
  if(value===undefined||value===null||value==="")return 1;
  if(typeof value!=="string"||!(/^[1-9][0-9]{0,3}$/).test(value))throw bad("page");
  return Number(value);
@@ -63,7 +63,7 @@ const day=(v:unknown):string=>{
   throw bad("effectiveFrom");
  return dt.toISOString();
 };
-const imageUrl=(v:unknown):string|null=>{
+export const imageUrl=(v:unknown):string|null=>{
  if(v===undefined||v===null||v==="")return null;
  if(typeof v!=="string"||v.length>500)throw bad("imageUrl");
  try{
