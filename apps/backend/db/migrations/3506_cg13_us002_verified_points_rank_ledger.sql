@@ -225,7 +225,13 @@ CREATE FUNCTION cg13_points_projection_at_commit()
  RETURNS trigger LANGUAGE plpgsql AS $cg13$
 DECLARE wallet uuid; realm uuid; current_account record; totals record;
 BEGIN
- wallet:=CASE WHEN TG_TABLE_NAME='points_event' THEN NEW.points_account_id ELSE NEW.id END;
+ -- Each trigger's NEW row has a DIFFERENT record type. Do not evaluate
+ -- nonexistent fields in a shared CASE expression on the other table.
+ IF TG_TABLE_NAME='points_event' THEN
+  wallet:=NEW.points_account_id;
+ ELSE
+  wallet:=NEW.id;
+ END IF;
  realm:=NEW.root_realm_id;
  SELECT * INTO current_account FROM points_account
   WHERE root_realm_id=realm AND id=wallet;
