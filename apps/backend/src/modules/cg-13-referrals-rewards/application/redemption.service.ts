@@ -72,6 +72,9 @@ export class RedemptionService {
     "SELECT m.id AS ref FROM member m JOIN membership_term term "+
     "ON term.root_realm_id=m.root_realm_id AND term.member_id=m.id "+
     "WHERE m.root_realm_id=$1 AND m.account_ref=$2 AND m.status='ACTIVE' "+
+    "AND (m.branch_ref IS NULL OR EXISTS(SELECT 1 FROM branch br "+
+    "WHERE br.root_realm_id=m.root_realm_id AND br.id=m.branch_ref "+
+    "AND br.status='ACTIVE')) "+
     "AND term.starts_on<=(now() AT TIME ZONE 'Asia/Kolkata')::date "+
     "AND (term.expires_on IS NULL OR term.expires_on>(now() AT TIME ZONE 'Asia/Kolkata')::date) "+
     "ORDER BY term.starts_on DESC LIMIT 1 FOR SHARE OF m,term",
@@ -233,6 +236,18 @@ export class RedemptionService {
     "r.requested_at AS \"requestedAt\" FROM redemption r "+
     "JOIN reward_product p ON p.root_realm_id=r.root_realm_id AND p.id=r.product_id "+
     "WHERE r.root_realm_id=$1 AND r.recipient_account_ref=$2 "+
+    "AND ((r.relationship_kind='MEMBER' AND EXISTS("+
+    "SELECT 1 FROM member m JOIN membership_term term "+
+    "ON term.root_realm_id=m.root_realm_id AND term.member_id=m.id "+
+    "WHERE m.root_realm_id=r.root_realm_id AND m.id=r.relationship_ref "+
+    "AND m.account_ref=r.recipient_account_ref AND m.status='ACTIVE' "+
+    "AND term.starts_on<=(now() AT TIME ZONE 'Asia/Kolkata')::date "+
+    "AND (term.expires_on IS NULL OR term.expires_on>(now() AT TIME ZONE 'Asia/Kolkata')::date))) "+
+    "OR (r.relationship_kind='VOLUNTEER' AND EXISTS("+
+    "SELECT 1 FROM volunteer v WHERE v.root_realm_id=r.root_realm_id "+
+    "AND v.id=r.relationship_ref AND v.account_ref=r.recipient_account_ref "+
+    "AND v.status='ACTIVE' "+
+    "AND cg04_current_volunteer(v.root_realm_id,v.id,v.account_ref,v.branch_ref)))) "+
     "ORDER BY r.requested_at DESC,r.id DESC LIMIT 26 OFFSET $3",
     [a.realmId,a.accountId,(page-1)*25]);
    return {items:records.rows.slice(0,25),hasMore:records.rows.length>25,page};
