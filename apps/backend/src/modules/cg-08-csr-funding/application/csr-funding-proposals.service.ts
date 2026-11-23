@@ -419,9 +419,10 @@ export class CsrFundingProposalsService{
     "ORDER BY f.updated_at DESC,f.id DESC LIMIT 26 OFFSET $8",
     [a.realmId,scope.all,scope.branches.map(x=>x.value),branch===undefined,
      branch??null,q,status,offset]);
-   // Original B07 requested-only summary. Same CG02 root/branch/search scope
-   // as the source rows, independent of page size and selected status tab.
-   // Does NOT compute committed, bank-received, allocated or utilized cash.
+   // CG08 requested-only summary is separate from original CG09's
+   // finance-authorized committed and verified-received projection below.
+   // Both retain CG02 root/branch/search scope independent of page size;
+   // neither infers any allocation or utilization before CG09 budget proof.
    const sum=await tx.query<{requests:string;drafts:string;requestedMinor:string}>(
     "SELECT count(*)::text AS requests,"+
     "count(*) FILTER (WHERE f.status='DRAFT')::text AS drafts,"+
