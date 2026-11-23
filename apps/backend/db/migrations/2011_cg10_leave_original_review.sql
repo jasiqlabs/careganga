@@ -158,7 +158,7 @@ BEGIN
     SELECT 1 FROM cg03_case c JOIN cg03_case_decision d ON d.case_id=c.id AND d.realm_id=c.realm_id
     JOIN account reviewer ON reviewer.id=d.actor_id AND reviewer.realm_id=d.realm_id AND reviewer.status='ACTIVE'
     JOIN account_role ar ON ar.account_id=reviewer.id AND ar.realm_id=reviewer.realm_id AND ar.revoked_at IS NULL
-    JOIN role current_role ON current_role.id=ar.role_id AND current_role.realm_id=ar.realm_id AND current_role.active AND current_role.is_protected
+    JOIN role cr ON cr.id=ar.role_id AND cr.realm_id=ar.realm_id AND cr.active AND cr.is_protected
     WHERE c.realm_id=NEW.root_realm_id AND c.id=NEW.case_ref
      AND c.case_kind='LEAVE_REQUEST' AND c.hr_leave_request_id=NEW.id
      AND c.hr_leave_source_digest=NEW.source_digest AND d.id=NEW.decision_ref

@@ -48,12 +48,14 @@ export function NativePublicCampaigns(){
     cache:"no-store",signal:AbortSignal.timeout(9000)});
    if(!response.ok)throw Error("Campaign publication unavailable");
    const data:unknown=await response.json();
-   if(!data||typeof data!=="object"||Array.isArray(data)||
-    !("cards" in data)||!Array.isArray(data.cards)||data.cards.length>100||
-    !data.cards.every(clean))throw Error("Campaign publication source invalid");
+   const payload=data as {cards?:unknown;donationsEnabled?:unknown};
+   if(!payload||typeof payload!=="object"||Array.isArray(payload)||
+    !Array.isArray(payload.cards)||payload.cards.length>100||
+    !payload.cards.every(clean))throw Error("Campaign publication source invalid");
+   const cards:Campaign[]=payload.cards;
    if(nonce===latest.current){
-    setItems(data.cards);setDonationsEnabled(data.donationsEnabled===true);
-    setSelected(old=>old&&data.cards.some(c=>c.slug===old)?old:null);
+    setItems(cards);setDonationsEnabled(payload.donationsEnabled===true);
+    setSelected(old=>old&&cards.some(c=>c.slug===old)?old:null);
    }
   }catch{if(nonce===latest.current){setItems([]);setSelected(null);setUnavailable(true);setDonationsEnabled(false);}}
   finally{if(nonce===latest.current)setLoading(false);}

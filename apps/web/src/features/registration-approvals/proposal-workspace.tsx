@@ -810,7 +810,10 @@ export function ProposalWorkspace({
         <>
           {/* Summary KPI Cards (5 Cards) */}
           {loading ? (
-            <ApprovalStatsCardsSkeleton />
+            <>
+              <p role="status" className="cg-module-loading">Checking verified applications…</p>
+              <ApprovalStatsCardsSkeleton />
+            </>
           ) : (
             <ApprovalStatsCards
               stats={stats}

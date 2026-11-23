@@ -1,4 +1,3 @@
-import "server-only";
 export type PublicCampaign={slug:string;title:string;category:string;summary:string;description:string;
  goalMinor:string|null;raisedMinor:string;startAt:string|null;endAt:string|null;area:string;
  coverSrc:string|null;heroSrc:string|null;heroAlt:string};

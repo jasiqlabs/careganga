@@ -30,8 +30,8 @@ const filters=(v:Record<string,unknown>):Filter=>{
  if(Object.keys(v).some(k=>!["status","q","offset","method","minAmount","maxAmount",
   "dateFrom","dateTo","campaign","cursor","branchRef"].includes(k)))
   throw new BadRequestException("Unknown donation filter.");
- const status=v.status??"ALL",q=v.q??"",offset=Number(v.offset??0),
-  method=v.method??"ALL",campaign=v.campaign??"ALL",branchRef=v.branchRef??"ALL";
+ const status=typeof v.status==="string"?v.status:"ALL",q=typeof v.q==="string"?v.q:"",offset=Number(v.offset??0),
+  method=typeof v.method==="string"?v.method:"ALL",campaign=typeof v.campaign==="string"?v.campaign:"ALL",branchRef=typeof v.branchRef==="string"?v.branchRef:"ALL";
  if((!validate(status)&&status!=="REFUNDED")||typeof q!=="string"||q.length>80||
   /[<>\u0000-\u001f\u007f]/.test(q)||!Number.isSafeInteger(offset)||offset<0||offset>5000||
   typeof method!=="string"||!["ALL","CASH","BANK","CHEQUE","NEFT","ONLINE"].includes(method)||

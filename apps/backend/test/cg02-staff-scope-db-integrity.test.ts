@@ -42,7 +42,7 @@ test("CG-MB-001 new CG02 source: real composite FKs, immutable history and activ
       AND NOT t.tgisinternal`);
   const immutable=triggers.rows.find(x=>x.tgname==="cg02_staff_scope_no_retarget");
   assert.ok(immutable&&["O","A"].includes(immutable.enabled));
-  assert.match(immutable?.definition??"",/BEFORE UPDATE OR DELETE/);
+  assert.match(immutable?.definition??"",/BEFORE (UPDATE OR DELETE|DELETE OR UPDATE)/);
   const checks=await db.query<{definition:string}>(`
     SELECT pg_get_constraintdef(oid) AS definition FROM pg_constraint
     WHERE conrelid='cg02_staff_scope_assignment'::regclass AND contype='c'`);

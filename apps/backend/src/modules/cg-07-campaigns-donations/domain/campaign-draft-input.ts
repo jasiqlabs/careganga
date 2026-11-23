@@ -74,7 +74,7 @@ export function parseCampaignDraft(raw:unknown,editing=false):CampaignDraft{
  const start=day(budget.startAt,"start"),end=day(budget.endAt,"end");
  if(start&&end&&start>end)return fail("Campaign end date must not precede its start date.");
  const version=input.expectedVersion;
- if(editing&&(!Number.isSafeInteger(version)||Number(version)<1))return fail("Refresh the campaign before saving.");
+ if(editing&&(!Number.isSafeInteger(version)||Number(version)<1||Number(version)>2147483647))return fail("Refresh the campaign before saving.");
  if(!editing&&version!==undefined)return fail("This campaign draft already exists. Refresh the list.");
  return {
   key:campaignRef(input.requestKey),expected:editing?Number(version):null,

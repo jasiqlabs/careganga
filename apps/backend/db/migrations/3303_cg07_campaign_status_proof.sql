@@ -42,8 +42,8 @@ BEGIN
      AND c.campaign_source_revision=s.source_revision AND c.campaign_source_digest=s.source_digest)
   THEN RAISE EXCEPTION 'Campaign submission requires original CG03 source case'; END IF;
  ELSIF OLD.source_status='SUBMITTED' AND NEW.source_status IN('APPROVED','RETURNED','REJECTED') THEN
-  expected_action:='REVIEW_'||(CASE NEW.source_status WHEN 'APPROVED' THEN 'APPROVE'
-   WHEN 'RETURNED' THEN 'RETURN' ELSE 'REJECT' END);
+  expected_action:=CASE NEW.source_status WHEN 'APPROVED' THEN 'REVIEW_APPROVE'
+   WHEN 'RETURNED' THEN 'REVIEW_RETURN' ELSE 'REVIEW_REJECT' END;
   IF NEW.current_revision<>OLD.current_revision OR
    NOT EXISTS(SELECT 1 FROM cg03_case c JOIN cg03_case_decision d
       ON d.realm_id=c.realm_id AND d.case_id=c.id

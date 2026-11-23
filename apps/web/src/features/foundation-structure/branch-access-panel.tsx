@@ -111,7 +111,7 @@ export function BranchAccessPanel(){
      <input type="password" value={password} autoComplete="current-password"
       onChange={e=>setPassword(e.target.value)}/></label>
     <button type="button" className="primary" disabled={busy||unknown||!account||
-     (kind!=="ALL_BRANCHES"&&!selectedScope)||reason.trim().length<6||password.length<8} onClick={()=>void submit()>
+     (kind!=="ALL_BRANCHES"&&!selectedScope)||reason.trim().length<6||password.length<8} onClick={()=>void submit()}>
       Grant restricted staff access</button>
     <p>Granting or ending access signs out the affected staff member. They must sign in again.</p>
    </div>}

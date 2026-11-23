@@ -167,7 +167,8 @@ for(const path of cg01LoadingPages){
  check(content.includes('className="cg-module-loading"'),
   path+" lost CG-01 accessible loading presentation");
 }
-check(read("apps/web/src/features/registration-approvals/proposal-workspace.tsx").includes("<tbody aria-busy={loading}>"),
+check(read("apps/web/src/features/registration-approvals/proposal-workspace.tsx").includes("<tbody aria-busy={loading}>")||
+ read("apps/web/src/features/registration-approvals/approval-table-view.tsx").includes("<tbody aria-busy={loading}>"),
  "CG-03 approvals table must expose its loading state");
 check(css.includes(".cg-module-loading::before")&&css.includes("prefers-reduced-motion"),
  "shared module loading indicator must be reduced-motion accessible");
@@ -310,7 +311,7 @@ const financePageTitles=[
 ];
 for(const [path,title] of financePageTitles){
  const code=read("apps/web/src/features/finance-accounting/"+path);
- check(code.includes("<h1>"+title+"</h1>"),
+ check(code.includes("<h1>"+title+"</h1>")||code.includes('<h1>{allowanceMode?"My Allowance Requests":"'+title+'"}</h1>'),
   path+" lost the CG-01 standalone Finance page heading");
 }
 const mainStateOwners=[
@@ -352,7 +353,10 @@ const mainStateOwners=[
  ]
 ];
 for(const [path,marker] of mainStateOwners){
- check(read("apps/web/src/features/"+path).includes(marker),
+ const code = path === "registration-approvals/proposal-workspace.tsx"
+  ? read("apps/web/src/features/"+path) + read("apps/web/src/features/registration-approvals/approval-table-view.tsx")
+  : read("apps/web/src/features/"+path);
+ check(code.includes(marker),
   path+" lost the CG-01 operational state presentation");
 }
 

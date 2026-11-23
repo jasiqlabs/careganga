@@ -123,7 +123,7 @@ export function ApprovalTableView({
               {cases.length === 0 ? (
                 <tr>
                   <td colSpan={8}>
-                    <div className="cg-ra-empty-state">
+                    <div className="cg-ra-empty-state cg-module-empty">
                       <p className="cg-ra-empty-title">No protected access applications found</p>
                       <p className="cg-ra-empty-desc">
                         Try adjusting your filters or search terms to locate specific records.
