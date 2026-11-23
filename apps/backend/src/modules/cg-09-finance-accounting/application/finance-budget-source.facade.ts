@@ -80,10 +80,18 @@ export class FinanceBudgetSourceFacade{
    const x=rows.rows[0];
    if(!x||x.created_by===actor.accountId)
     throw new ConflictException({code:"FINANCE_BUDGET_REVIEW_UNAVAILABLE"});
+   const lines=await tx.query<{description:string;quantityMilli:string;
+    unitRateMinor:string;totalMinor:string}>(
+    'SELECT description,quantity_milli::text AS "quantityMilli",'+
+    'unit_rate_minor::text AS "unitRateMinor",line_total_minor::text AS "totalMinor" '+
+    "FROM finance_budget_item_revision "+
+    "WHERE root_realm_id=$1 AND budget_id=$2 AND version=$3 "+
+    "ORDER BY line_no LIMIT 30",[actor.realmId,ref,version]);
    await tx.query("COMMIT");
    return {budgetNumber:x.budget_number,name:x.budget_name,category:x.category_label,
     amountMinor:x.approved_ceiling_minor,periodStart:x.period_start,
-    periodEnd:x.period_end,status:x.status,projectLabel:x.project_label};
+    periodEnd:x.period_end,status:x.status,projectLabel:x.project_label,
+    items:lines.rows};
   }catch(e){await tx.query("ROLLBACK");throw e;}finally{tx.release();}
  }
 }
