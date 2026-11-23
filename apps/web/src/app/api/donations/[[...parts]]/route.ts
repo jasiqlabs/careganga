@@ -19,7 +19,7 @@ async function proxy(req:NextRequest,ctx:Context,method:"GET"|"POST"){
     "/api/v1/donations/proofs/"+parts[1]+"/download":
   parts.length===3&&parts[0]==="proofs"&&UUID.test(parts[1])&&parts[2]==="confirm"&&method==="POST"?
     "/api/v1/donations/proofs/"+parts[1]+"/confirm":
-  ["donor-detail","manual/options","manual/prepare","online/options","online/post","refunds/request"].includes(route)&&method==="POST"?
+  ["donor-detail","manual/options","manual/prepare","bank/options","bank/prepare","online/options","online/post","refunds/request"].includes(route)&&method==="POST"?
     "/api/v1/donations/"+route:
   parts.length===3&&parts[0]==="manual"&&UUID.test(parts[1])&&parts[2]==="confirm"&&method==="POST"?
     "/api/v1/donations/manual/"+parts[1]+"/confirm":

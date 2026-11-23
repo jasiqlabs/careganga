@@ -1,6 +1,7 @@
 "use client";
 import {useCallback,useEffect,useRef,useState,type FormEvent} from "react";
 import styles from "./campaigns-reference-ui.module.css";
+import {DonationBankPanel} from "./donation-bank-panel";
 import {DonationFinanceActions} from "./donation-finance-actions";
 type Choice={value:string;label:string};
 type Options={donationNumber:string;amountMinor:string;cashAccounts:Choice[];incomeAccounts:Choice[];
@@ -35,9 +36,9 @@ const panel={border:"1px solid var(--cg-border)",borderRadius:12,
  padding:18,background:"var(--cg-surface)",display:"grid",gap:12} as const;
 const button={padding:"10px 14px",background:"#0a9f69",color:"white",
  border:0,borderRadius:8,minHeight:44,cursor:"pointer"} as const;
-export function DonationAdminWorkspace({canView,canRecord,canReview,canIssue,canExport,canAttachProof,canViewProof}:{
+export function DonationAdminWorkspace({canView,canRecord,canReview,canIssue,canExport,canBank,canAttachProof,canViewProof}:{
  canView:boolean;canRecord:boolean;canReview:boolean;canIssue:boolean;canExport:boolean;
- canAttachProof:boolean;canViewProof:boolean}){
+ canAttachProof:boolean;canViewProof:boolean;canBank:boolean}){
  const [data,setData]=useState<Report|null>(null),[queue,setQueue]=useState<QueueItem[]>([]);
  const [donor,setDonor]=useState<MaskedDonor|null>(null);
  const [filter,setFilter]=useState("ALL"),[search,setSearch]=useState(""),[offset,setOffset]=useState(0);
@@ -372,6 +373,7 @@ export function DonationAdminWorkspace({canView,canRecord,canReview,canIssue,can
      <button type="button" disabled={busy} onClick={()=>{setReview(null);setPassword("");confirmPending.current=null;}}>Cancel</button>
     </div></form>}
   </div>}
+  {canBank&&<DonationBankPanel onRecorded={()=>void refresh()}/>}
   <DonationFinanceActions items={data?.items??[]} canRecord={canRecord} canReview={canReview}
    canIssue={canIssue} onChange={()=>void refresh()}/>
   <p className={styles.note}>Cash and verified Razorpay collections post into the original CG-09 journal. Bank/NEFT/cheque and provider refunds remain unavailable without genuine payment evidence.</p>

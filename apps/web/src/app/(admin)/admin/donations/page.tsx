@@ -41,6 +41,7 @@ export default async function DonationsPage(){
      canReview={canRecord&&actions.includes("approvals.review")}
      canIssue={canRecord&&actions.includes("documents.files.manage")}
      canExport={canView&&actions.includes("documents.files.view")}
+     canBank={canRecord&&actions.includes("finance.reconciliation.manage")&&actions.includes("documents.files.manage")}
      canAttachProof={canRecord&&actions.includes("documents.files.manage")}
      canViewProof={canView&&actions.includes("documents.files.view")}/>
    </main></div>;
