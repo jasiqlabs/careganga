@@ -7,9 +7,9 @@ type Budget={budgetRef:string;name:string;category:string;ceilingMinor:string;
  items:{description:string;quantityMilli:string;unitRateMinor:string;totalMinor:string}[]};
 type Expense={journalRef:string;voucherNumber:string;amountMinor:string;postedDate:string};
 type Party="CSR"|"FOUNDATION";
-type Kind="ALLOCATE"|"UTILIZE";
+type Kind="ALLOCATE"|"UTILIZE"|"DEALLOCATE";
 type Command={requestKey:string;expectedVersion:number;budgetRef:string;
- partyKind:Party;kind:Kind;amountMinor:string;journalRef:string|null};
+ partyKind:Party;kind:Kind;amountMinor:string;journalRef:string|null;correctionOfEventRef:string|null};
 const minor=(v:string)=>{const m=/^(0|[1-9][0-9]{0,11})(?:\.([0-9]{1,2}))?$/.exec(v.trim());
  if(!m)return null;const n=BigInt(m[1])*100n+BigInt((m[2]??"").padEnd(2,"0"));
  return n>0n&&n<=99999999999999n?n.toString():null;};
@@ -20,6 +20,8 @@ export function NativeCsrFundingBudgetPanel({token,proposalRef,version,onExpired
  const [budgets,setBudgets]=useState<Budget[]>([]);
  const [budget,setBudget]=useState("");
  const [expenses,setExpenses]=useState<Expense[]>([]),[expense,setExpense]=useState("");
+ const [allocations,setAllocations]=useState<{allocationRef:string;remainingMinor:string}[]>([]),
+  [original,setOriginal]=useState("");
  const [party,setParty]=useState<Party>("CSR"),[kind,setKind]=useState<Kind>("ALLOCATE");
  const [rupees,setRupees]=useState(""),[pending,setPending]=useState<Command|null>(null);
  const [loading,setLoading]=useState(true),[busy,setBusy]=useState(false);
@@ -58,18 +60,30 @@ export function NativeCsrFundingBudgetPanel({token,proposalRef,version,onExpired
   }
   return()=>{active=false;expensesEpoch.current++;};
  },[token,proposalRef,budget,kind,epoch]);
+ useEffect(()=>{
+  let active=true;setAllocations([]);setOriginal("");
+  if(kind==="DEALLOCATE"&&budget){
+   void api<{items:{allocationRef:string;remainingMinor:string}[]}>(
+    "/budgets/"+budget+"/allocations?partyKind="+party)
+    .then(v=>{if(active)setAllocations(v.items);})
+    .catch(e=>{if(active)setError(e instanceof Error?e.message:"Original allocations unavailable.");});
+  }
+  return()=>{active=false;};
+ },[token,proposalRef,budget,party,kind,epoch]);
  const submit=async()=>{
   if(lock.current||loading||busy||(!budget&&!pending))return;
-  const value=kind==="ALLOCATE"?minor(rupees):
+  const value=kind!=="UTILIZE"?minor(rupees):
    expenses.find(x=>x.journalRef===expense)?.amountMinor??null;
-  if(!pending&&!value){setError("Choose an exact amount or original unutilized expense.");return;}
+  if(!pending&&(!value||kind==="DEALLOCATE"&&!original)){
+   setError("Choose the original unspent allocation or posted Finance expense.");return;}
   const command=pending??{requestKey:Crypto.randomUUID(),expectedVersion:version,
    budgetRef:budget,partyKind:party,kind,amountMinor:value!,
-   journalRef:kind==="UTILIZE"?expense:null};
+   journalRef:kind==="UTILIZE"?expense:null,
+   correctionOfEventRef:kind==="DEALLOCATE"?original:null};
   lock.current=true;setBusy(true);setPending(command);setError("");setNotice("");
   try{
    await api("/budget-effects",command);
-   setPending(null);setRupees("");setExpense("");setEpoch(x=>x+1);
+   setPending(null);setRupees("");setExpense("");setOriginal("");setEpoch(x=>x+1);
    setNotice("Original CG09 approved budget effect recorded. No new bank money was created.");
   }catch(e){
    const code=e&&typeof e==="object"&&"status" in e?Number(e.status):503;
@@ -108,8 +122,9 @@ export function NativeCsrFundingBudgetPanel({token,proposalRef,version,onExpired
      {pick("Foundation share",party==="FOUNDATION",()=>setParty("FOUNDATION"),!!pending)}
      <Text style={styles.title}>Financial effect</Text>
      {pick("Allocate verified bank funds",kind==="ALLOCATE",()=>setKind("ALLOCATE"),!!pending)}
+     {pick("Correct unused original allocation",kind==="DEALLOCATE",()=>setKind("DEALLOCATE"),!!pending)}
      {pick("Utilize existing posted expense",kind==="UTILIZE",()=>setKind("UTILIZE"),!!pending)}
-     {kind==="ALLOCATE"?<TextInput style={styles.input} value={rupees}
+     {kind!=="UTILIZE"?<TextInput style={styles.input} value={rupees}
       editable={!busy&&!pending} inputMode="decimal" placeholder="Amount in INR"
       onChangeText={setRupees}/>:
       <View>
@@ -118,10 +133,16 @@ export function NativeCsrFundingBudgetPanel({token,proposalRef,version,onExpired
         expenses.map(v=>pick(v.voucherNumber+" · "+v.postedDate+" · "+money(v.amountMinor),
          expense===v.journalRef,()=>setExpense(v.journalRef),!!pending))}
       </View>}
+     {kind==="DEALLOCATE"&&<View style={styles.panel}>
+      <Text style={styles.title}>Original allocation being corrected</Text>
+      {allocations.map(a=>pick("Unspent "+money(a.remainingMinor),
+       original===a.allocationRef,()=>setOriginal(a.allocationRef),!!pending))}
+      {!allocations.length&&<Text style={styles.note}>No unspent original allocation available.</Text>}
+     </View>}
      <Pressable accessibilityRole="button"
-      accessibilityState={{disabled:busy||!pending&&(!budget||kind==="ALLOCATE"&&!minor(rupees)||
-       kind==="UTILIZE"&&!expense)}} disabled={busy||!pending&&(!budget||
-        kind==="ALLOCATE"&&!minor(rupees)||kind==="UTILIZE"&&!expense)}
+      accessibilityState={{disabled:busy||!pending&&(!budget||kind!=="UTILIZE"&&!minor(rupees)||
+       kind==="UTILIZE"&&!expense||kind==="DEALLOCATE"&&!original)}} disabled={busy||!pending&&(!budget||
+        kind!=="UTILIZE"&&!minor(rupees)||kind==="UTILIZE"&&!expense||kind==="DEALLOCATE"&&!original)}
       onPress={()=>void submit()} style={styles.choice}>
       <Text style={styles.action}>{pending?"Retry exact original CG09 command":
        "Record original CG09 budget effect"}</Text>
