@@ -8,6 +8,17 @@ export class CsrFundingProposalsController{
   return this.source.list(auth,query);
  }
  @Get("options") options(@Headers("authorization")auth:string){return this.source.options(auth);}
+ @Get(":ref/finance")
+ verifiedFinance(@Headers("authorization")auth:string,@Param("ref")ref:string){
+  return this.source.verifiedFinance(auth,ref);
+ }
+ @Get(":ref/finance/eligible-receipts")
+ eligibleReceipts(@Headers("authorization")auth:string,@Param("ref")ref:string){
+  return this.source.eligibleVerifiedReceipts(auth,ref);
+ }
+ @Post(":ref/finance/receipts")
+ linkVerifiedReceipt(@Headers("authorization")auth:string,@Param("ref")ref:string,
+  @Body()body:unknown){return this.source.linkVerifiedReceipt(auth,ref,body);}
  @Get(":ref") detail(@Headers("authorization")auth:string,@Param("ref")ref:string){
   return this.source.detail(auth,ref);
  }
