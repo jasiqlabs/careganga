@@ -51,7 +51,7 @@ export function CsrPartnersWorkspace({canManage,canReadAgreement,canUploadAgreem
   if(search.trim())params.set("q",search.trim().slice(0,80));
   if(branchFilter!=="ALL")params.set("branchRef",branchFilter);
   if(statusFilter!=="ALL")params.set("status",statusFilter);
-  void api<Page>("?"+params.toString()).then(v=>{if(live&&n===seq.current){setData(v);setError("");}})
+  void api<Page>("?"+params.toString()).then(v=>{if(live&&n===seq.current){setData(v);setListError("");}})
    .catch(e=>{if(live&&n===seq.current){setData({items:[],hasMore:false});setListError(e instanceof Error?e.message:"CSR records unavailable.");}})
    .finally(()=>{if(live&&n===seq.current)setLoading(false);});
   return()=>{live=false;};
@@ -64,7 +64,7 @@ export function CsrPartnersWorkspace({canManage,canReadAgreement,canUploadAgreem
  const choose=async(item:Partner)=>{
   if(pending)return;
   setError("");try{const full=await api<Partner>("/"+item.ref);setSelected(full);setDraft(from(full));setEditing(true);}
-  catch(e){setError(e instanceof Error?e.message:"This CSR record is unavailable.");}
+  catch(e){setSelected(null);setEditing(false);setError(e instanceof Error?e.message:"This CSR record is unavailable.");}
  };
  const send=async(cmd:Command)=>{
   setBusy(true);setPending(cmd);setError("");
@@ -96,18 +96,18 @@ export function CsrPartnersWorkspace({canManage,canReadAgreement,canUploadAgreem
   <section style={panel} aria-label="CSR partner directory">
    <div role="group" aria-label="CSR partner review status" style={{display:"flex",gap:8,flexWrap:"wrap",marginBottom:15}}>
     {reviewTabs.map(tab=><button key={tab.value} type="button" style={{...button,background:statusFilter===tab.value?"var(--cg-accent)":"var(--cg-surface,#fff)",color:statusFilter===tab.value?"#fff":"inherit"}}
-     aria-pressed={statusFilter===tab.value} onClick={()=>{setOffset(0);setStatusFilter(tab.value);}}>{tab.label}</button>)}
+     aria-pressed={statusFilter===tab.value} disabled={!!pending} onClick={()=>{setSelected(null);setEditing(false);setOffset(0);setStatusFilter(tab.value);}}>{tab.label}</button>)}
    </div>
    <div style={{display:"flex",gap:12,alignItems:"end",flexWrap:"wrap",justifyContent:"space-between"}}>
     <label style={{...field,flex:"1 1 190px"}}>Search organizations<input style={control} value={search} maxLength={80} placeholder="Registered organization" onChange={e=>{setOffset(0);setSearch(e.target.value);}}/></label>
     <label style={{...field,flex:"1 1 180px"}}>Branch
-     <select style={control} value={branchFilter} onChange={e=>{setOffset(0);setBranchFilter(e.target.value);}}>
+     <select style={control} value={branchFilter} disabled={!!pending} onChange={e=>{setSelected(null);setEditing(false);setOffset(0);setBranchFilter(e.target.value);}}>
       <option value="ALL">All permitted branches</option>
       {choices?.foundation&&<option value="FOUNDATION">Foundation-wide</option>}
       {choices?.branches.map(b=><option key={b.value} value={b.value}>{b.label}</option>)}
      </select>
     </label>
-    <button style={button} type="button" onClick={refresh}>Refresh</button>
+    <button style={button} type="button" onClick={()=>{setSelected(null);setEditing(false);refresh();}}>Refresh</button>
     {canManage&&<button style={primary} type="button" disabled={!!pending} onClick={begin}>New CSR partner</button>}
    </div>
    {listError&&<p role="alert">{listError}</p>}
