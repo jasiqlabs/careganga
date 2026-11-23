@@ -448,8 +448,11 @@ export class ReferralCatalogService{
    return {...q.rows[0],ranks:tiers.rows};
   },true);
  }
- async listProducts(bearer:string,programInput:string,pageInput?:string){
+ async listProducts(bearer:string,programInput:string,pageInput?:string,
+  searchInput?:string,categoryInput?:string){
   const programId=ref(programInput),page=catalogPage(pageInput);
+  const search=optional(searchInput,"search",100).toLowerCase();
+  const category=optional(categoryInput,"category",80);
   return this.run(bearer,"rewards.catalog.view",async(tx,a)=>{
    await this.root(tx,a);
    await this.program(tx,a,programId);
@@ -469,12 +472,36 @@ export class ReferralCatalogService{
     "(loc.scope_kind='FOUNDATION' AND $5::boolean OR "+
     "loc.scope_kind='BRANCH' AND branch.status='ACTIVE' AND "+
     "($5::boolean OR branch.id=ANY($6::uuid[]))))) "+
+    "AND ($7::text='' OR strpos(lower(p.name || ' ' || p.category || ' ' || p.description),$7)>0) "+
+    "AND ($8::text='' OR p.category=$8) "+
     "ORDER BY p.created_at DESC,p.id DESC LIMIT $3 OFFSET $4",
     [a.realmId,programId,CATALOG_PAGE_SIZE+1,(page-1)*CATALOG_PAGE_SIZE,
-     scope.full,scope.branches]);
+     scope.full,scope.branches,search,category]);
    return {items:q.rows.slice(0,CATALOG_PAGE_SIZE).map(x=>({
     ...x,imageUrl:safePublicRewardImage((x as {imageUrl:unknown}).imageUrl)})),
     hasMore:q.rows.length>CATALOG_PAGE_SIZE,page};
+  },true);
+ }
+ /** Distinct current categories from the SAME permitted product source as listProducts. */
+ async productCategories(bearer:string,programInput:string){
+  const programId=ref(programInput);
+  return this.run(bearer,"rewards.catalog.view",async(tx,a)=>{
+   await this.root(tx,a);await this.program(tx,a,programId);
+   const scope=await this.inventory.rewardStoreScope(tx,a);
+   const q=await tx.query<{category:string}>(
+    "SELECT DISTINCT p.category FROM reward_product p "+
+    "LEFT JOIN inventory_location loc ON loc.root_realm_id=p.root_realm_id "+
+    "AND loc.id=p.cg12_location_ref "+
+    "LEFT JOIN branch br ON br.root_realm_id=loc.root_realm_id AND br.id=loc.branch_ref "+
+    "WHERE p.root_realm_id=$1 AND p.programme_id=$2 AND "+
+    "(p.product_type='DIGITAL' OR (loc.status='ACTIVE' AND "+
+    "(loc.scope_kind='FOUNDATION' AND $3::boolean OR "+
+    "loc.scope_kind='BRANCH' AND br.status='ACTIVE' AND "+
+    "($3::boolean OR br.id=ANY($4::uuid[]))))) "+
+    "ORDER BY p.category LIMIT 201",
+    [a.realmId,programId,scope.full,scope.branches]);
+   return {items:q.rows.slice(0,200).map(v=>v.category),
+    hasMore:q.rows.length>200};
   },true);
  }
  async stockOptions(bearer:string){
