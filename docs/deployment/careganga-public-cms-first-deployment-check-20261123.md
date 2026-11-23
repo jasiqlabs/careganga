@@ -50,4 +50,4 @@ CMS source merged into main means its migrations/routes exist in source; it does
 - Public Home fallback now uses existing `CmsPublicShell` with published-only navigation and safe independent operational links, while remaining non-indexable and refusing unapproved screenshot content.
 - `scripts/verify-cg18-us001-source.mjs`: non-executing source guards for these changes.
 
-**Verification boundary:** GitHub source commits are verified; Render workspace/list-logs connection and direct live endpoint access were unavailable in this session. No deployed-service or database-state claim, no local build/API/device PASS, no merge or production deployment.
+**Verification boundary:** GitHub source commits are verified. The connected Render workspace was accessible but lists only unrelated Anjuman services; **neither CareGanga frontend nor backend appears in that workspace**, so no CareGanga deployment, request logs or database were accessible. Direct live endpoint fetches were also unavailable in this session. No deployed-service or database-state claim, no local build/API/device PASS, no merge or production deployment.
