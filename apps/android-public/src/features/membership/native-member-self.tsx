@@ -138,6 +138,7 @@ export function NativeMemberSelf({onExit,initialPlan}:{onExit:()=>void;initialPl
  {selected.status==="SUBMITTED"&&selected.reviewStatus==="PENDING_OWNER"&&fee&&["NOT_DUE","VERIFIED"].includes(fee.paymentStatus)&&button("Complete approved membership",()=>action("activate"))}
  </View>}
  {pending.current&&<View style={s.card}><Text>Outcome uncertain. Refresh, then retry the exact same request if needed.</Text>{button("Refresh original status",()=>void act(()=>refresh(token)))}{button("Retry original request",()=>command(pending.current!))}</View>}
+ <NativeEligibleRewardsCatalogue token={token} onExpired={clear}/>
  {button("Refresh membership",()=>void act(()=>refresh(token)))}
  </>}
  </>}
