@@ -59,6 +59,10 @@ async function api<T>(path:string,cmd?:Command):Promise<T>{
  }
  return body as T;
 }
+const productsPath=(programme:string,page:number,search:string,category:string)=>
+ "/programmes/"+programme+"/products?"+new URLSearchParams({
+  page:String(page),...(search?{q:search}:{}),...(category!=="All"?{category}:{})
+ }).toString();
 const num=(v:string,field:string):number=>{
  const n=Number(v);
  if(!/^\d+$/.test(v)||!Number.isSafeInteger(n))throw Error("Enter a whole number for "+field);
@@ -87,7 +91,10 @@ export function ReferralRewardsWorkspace({canViewPolicy,canViewRewards,canManage
  const [rankTab,setRankTab]=useState<"MEMBER"|"VOLUNTEER">("MEMBER");
  const [selectedRank,setSelectedRank]=useState(0);
  const [categoryFilter,setCategoryFilter]=useState("All");
- const [searchProduct,setSearchProduct]=useState("");
+ const [searchProduct,setSearchProduct]=useState(""),[appliedSearch,setAppliedSearch]=useState("");
+ const [availableCategories,setAvailableCategories]=useState<string[]>([]);
+ const [categoriesTruncated,setCategoriesTruncated]=useState(false);
+ const [productsLoading,setProductsLoading]=useState(false);
  const [rewardView,setRewardView]=useState<"CATALOG"|"REDEMPTIONS">("CATALOG");
  const [drawer,setDrawer]=useState<"POLICY"|"PRODUCT"|null>(null);
  const [editingPolicy,setEditingPolicy]=useState(false);
@@ -100,6 +107,18 @@ export function ReferralRewardsWorkspace({canViewPolicy,canViewRewards,canManage
  const [failedImages,setFailedImages]=useState<Record<string,true>>({});
  const [pending,setPending]=useState<Command|null>(null);
  useEffect(()=>{setSelectedRank(0);setCategoryFilter("All");},[selected]);
+ useEffect(()=>{
+  const handle=setTimeout(()=>setAppliedSearch(searchProduct.trim()),300);
+  return()=>clearTimeout(handle);
+ },[searchProduct]);
+ useEffect(()=>{
+  let live=true;setAvailableCategories([]);setCategoriesTruncated(false);
+  if(!selected||!canViewRewards)return;
+  void api<{items:string[];hasMore:boolean}>("/programmes/"+selected+"/categories")
+   .then(v=>{if(live){setAvailableCategories(v.items);setCategoriesTruncated(v.hasMore);}})
+   .catch(e=>{if(live)setError(e instanceof Error?e.message:"Reward categories unavailable.");});
+  return()=>{live=false;};
+ },[selected,epoch,canViewRewards]);
  useEffect(()=>setFailedImages({}),[selected,epoch]);
  const lock=useRef(false);
  const dialogRef=useRef<HTMLElement|null>(null);
@@ -129,15 +148,17 @@ export function ReferralRewardsWorkspace({canViewPolicy,canViewRewards,canManage
  },[epoch,canViewPolicy]);
  useEffect(()=>{
   let live=true;productGeneration.current++;
-  setDetail(null);setProducts([]);setMoreProducts(false);setProductPage(2);
-  if(!selected)return;
+  setProductsLoading(true);setDetail(null);setProducts([]);
+  setMoreProducts(false);setProductPage(2);
+  if(!selected){setProductsLoading(false);return;}
   void Promise.all([canViewPolicy?api<Programme>("/programmes/"+selected):Promise.resolve(null),
    canViewRewards?api<{items:Reward[];hasMore:boolean}>(
-    "/programmes/"+selected+"/products?page=1"):Promise.resolve({items:[],hasMore:false})])
+    productsPath(selected,1,appliedSearch,categoryFilter)):Promise.resolve({items:[],hasMore:false})])
    .then(([p,v])=>{if(live){setDetail(p);setProducts(v.items);setMoreProducts(v.hasMore);}})
-   .catch(e=>{if(live)setError(e instanceof Error?e.message:"Current programme unavailable.");});
+   .catch(e=>{if(live)setError(e instanceof Error?e.message:"Current programme unavailable.");})
+   .finally(()=>{if(live)setProductsLoading(false);});
   return()=>{live=false;};
- },[selected,epoch,canViewPolicy,canViewRewards]);
+ },[selected,epoch,canViewPolicy,canViewRewards,appliedSearch,categoryFilter]);
  useEffect(()=>{
   let live=true;setStockOptions(null);
   if(drawer!=="PRODUCT"||rewardForm.type!=="PHYSICAL")return;
@@ -253,12 +274,12 @@ export function ReferralRewardsWorkspace({canViewPolicy,canViewRewards,canManage
  const activeProducts=products.filter(p=>p.status==="ACTIVE");
  const availableRanks=detail?.ranks??[];
  const programmeTitle=programmes.find(p=>p.ref===selected)?.name??"No active programme selected";
- const categories=useMemo(()=>["All",...new Set(products.map(x=>x.category))],[products]);
+ const categories=useMemo(()=>["All",...new Set(availableCategories)],[availableCategories]);
  const orderedProducts=useMemo(()=>[...products].filter(p=>
   (categoryFilter==="All"||p.category===categoryFilter)&&
-  (p.name+" "+p.category+" "+p.description).toLowerCase().includes(searchProduct.trim().toLowerCase()))
+  (p.name+" "+p.category+" "+p.description).toLowerCase().includes(appliedSearch.toLowerCase()))
   .sort((a,b)=>Number(b.highlighted)-Number(a.highlighted)||a.name.localeCompare(b.name)),
-  [products,categoryFilter,searchProduct]);
+  [products,categoryFilter,appliedSearch]);
  const loadMore=async(kind:"PROGRAMMES"|"PRODUCTS")=>{
   if(pagingLock.current)return;
   pagingLock.current=true;setPagingBusy(true);setError("");
@@ -274,7 +295,7 @@ export function ReferralRewardsWorkspace({canViewPolicy,canViewRewards,canManage
    }else{
     if(!chosen)return;
     const next=await api<{items:Reward[];hasMore:boolean}>(
-     "/programmes/"+chosen+"/products?page="+page);
+     productsPath(chosen,page,appliedSearch,categoryFilter));
     if(generation!==productGeneration.current)return;
     setProducts(old=>[...old,...next.items.filter(item=>!old.some(p=>p.ref===item.ref))]);
     setMoreProducts(next.hasMore);setProductPage(page+1);
@@ -479,7 +500,10 @@ export function ReferralRewardsWorkspace({canViewPolicy,canViewRewards,canManage
      </div>
      {moreProducts&&<button type="button" style={css.button} disabled={loading||pagingBusy||busy}
       onClick={()=>void loadMore("PRODUCTS")}>Load more reward products</button>}
-     {!orderedProducts.length&&<p>{products.length?
+     {productsLoading&&<p role="status">Loading current reward products…</p>}
+     {categoriesTruncated&&<p style={{fontSize:12}}>More categories exist. Search
+      the full catalogue to find products outside the displayed category choices.</p>}
+     {!productsLoading&&!orderedProducts.length&&<p>{products.length?
        "No recorded product matches this search or category.":
        "No authentic product yet. Digital rewards require no warehouse."}</p>}
     </section>:<section style={css.panel}>
