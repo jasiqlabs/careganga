@@ -1,6 +1,6 @@
 # CG-MB-001 — cg01 cg02 staff branch assignments
 
-**Priority:** P0 · **Owner:** CG-01 + CG-02 · **Status:** SOURCE_FIX_AUTHORED_REVIEW_PENDING · **Scope:** active CG-07 feature branch only · **Runtime:** NOT_RUN
+**Priority:** P0 · **Owner:** CG-01 + CG-02 · **Status:** SOURCE_FIX_REVIEWED_RUNTIME_PENDING · **Scope:** active CG-07 feature branch only · **Runtime:** NOT_RUN
 
 ## Source evidence / observed limitation
 
@@ -52,3 +52,12 @@ Define least-privilege current CG-01/CG-02 branch assignment owner and validity/
 CG-01-BR05 specifically requires organization-wide, state, district, subdivision, block and branch geographic authorization. Existing two CG-02 assignment kinds were insufficient to express a non-protected high-level manager overseeing **all current and future ACTIVE branches without granting protected Foundation master privileges**. Greenfield migration `3320` now supports a third explicit `ALL_BRANCHES` staff scope, with one active per actor, no branch/area ref and preserved audited end/regrant. CG-02 `permittedStaffBranches` returns every ACTIVE branch for this grant, while `projectBranchScope.all`, `financeReportScope.all` and all original Foundation-null sensitive sources stay **false** unless the user independently holds protected Foundation admin authority. Original CG-01 finance/HR/project/MIS capabilities are still required before the branch source is considered. Senior manager gets A/B/C branch list and permitted branch totals, NOT root-only legal profile, donations, general journal or patient health center X/Y rights.
 
 **Original manager hierarchy QA, NOT_RUN:** protected root = A+B+C+Foundation; high-level manager with ALL_BRANCHES = A+B+C only and all newly activated eligible branches; AREA manager = only ACTIVE children of approved state/district/block, including newly activated eligible descendants; A+B explicit manager = A+B; A branch manager = A only; ordinary staff = only scopes and role actions assigned. Verify all combinations against real current CG-01 capability/CG-02 status, wrong-root, parent reparent, manager transfer, protected-role revoke, concurrent last scope revoke and Web/Internal Android branch selector. Senior role TITLE without `ALL_BRANCHES` or matching AREA/BRANCH grant must not widen data. The new 13 targeted static source checks were performed by direct source inspection, **not** compiled tests or a PostgreSQL runtime PASS. No BWC/legacy handling (greenfield).
+
+
+### 23-Nov-2026 — final source-owner review disposition
+
+**Source evidence:** CG01 protected action and verified staff; CG02 3320 BRANCH/AREA/ALL_BRANCHES grant, immutable ledger, session version, Web/native selection; BranchSourceFacade branch/area projection, manager and area changes reserved to root.
+
+**Remaining evidence gate:** Account role revoke, concurrent grant/end, branch move, 10k records and PG 3320 migration still require runtime execution.
+
+**Tracking:** Owner/source stage is not RUNTIME_PASS, no CI/GitHub Actions, no main merge. Evidence and approved original QA IDs must be reconciled with `docs/qa/CAREGANGA-MULTIBRANCH-SOURCE-AND-RUNTIME-TEST-PLAN-20261123.md` and `docs/qa/CAREGANGA-CG07-MULTIBRANCH-LOCAL-DEVELOPER-HANDOFF-20261123.md`.
