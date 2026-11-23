@@ -61,7 +61,8 @@ export class ReferralCatalogController{
   return this.catalog.stockPreview(auth,itemRef,storeRef);
  }
  @Get("my-catalog")
- ownCatalog(@Headers("authorization")auth:string,@Query("page")page?:string){
-  return this.catalog.publicEligibleCatalog(auth,page);
+ ownCatalog(@Headers("authorization")auth:string,@Query("page")page?:string,
+  @Query("q")search?:string,@Query("category")category?:string){
+  return this.catalog.publicEligibleCatalog(auth,page,search,category);
  }
 }
