@@ -324,7 +324,9 @@ export class MisReportSourceService{
      scopeLabel:"Current permitted posted finance scope"};
    }
    if(q.kind==="FINANCE_POSTED_SUMMARY"){
-    const x=await this.finance.summary(token,q.yearRef,q.branchRef);
+    const x=q.branchRef?
+    await this.finance.summary(token,q.yearRef,q.branchRef):
+    await this.finance.assignedMisSummary(token,q.yearRef);
     return {kind:q.kind,view:q.view,label:"Posted finance summary",
      state:x.sourceRecordState==="NO_ROWS"?"EMPTY":"READY",
      columns:[
@@ -339,7 +341,9 @@ export class MisReportSourceService{
      sourceCutoffKind:x.sourceCutoffKind,explanation:x.explanation,
      scopeLabel:"Current permitted finance source scope"};
    }
-   const x=await this.finance.monthlyMisTrend(token,q.yearRef,q.branchRef);
+   const x=q.branchRef?
+   await this.finance.monthlyMisTrend(token,q.yearRef,q.branchRef):
+   await this.finance.assignedMisMonthlyTrend(token,q.yearRef);
    return {kind:q.kind,view:q.view,label:"Posted finance monthly trend",
     state:x.months.length?"READY":"EMPTY",
     columns:[{key:"month",label:"Month",unit:"TEXT"},
