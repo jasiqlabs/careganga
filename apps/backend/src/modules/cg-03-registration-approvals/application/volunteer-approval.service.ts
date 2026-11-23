@@ -8,6 +8,7 @@ import {FoundationStructureIdentityFacade} from "../../cg-01-identity-access/app
 import {ProtectedAccessOwnerService} from "../../cg-01-identity-access/application/protected-access-owner.service";
 import type {VerifiedFoundationActor as Actor} from "../../cg-01-identity-access/public-api";
 import {VolunteerEvidenceService} from "../../cg-19-documents-notifications/application/volunteer-evidence.service";
+import {recordCommittedReferralAttribution} from "../../cg-13-referrals-rewards/application/committed-referral.source";
 import {int,object,pick,plain,uuid} from "../../cg-04-membership-volunteers/domain/tier-input";
 type Case={id:string;case_number:string;proposer_id:string;volunteer_review_ref:string;volunteer_application_id:string;volunteer_application_version:number;volunteer_review_digest:string;status:string;revision:number;process_id:string;current_step:number};
 type Snapshot={id:string;source_digest:string;source_snapshot:Record<string,unknown>;application_version:number;submitted_by:string;request_key:string};
@@ -56,7 +57,17 @@ export class VolunteerApprovalService{
    const previous=(await tx.query<{id:string;status:string}>("SELECT id,status FROM cg03_case WHERE realm_id=$1 AND case_kind='VOLUNTEER_APPLICATION' AND volunteer_application_id=$2 ORDER BY volunteer_application_version DESC LIMIT 1",[a.realmId,id])).rows[0];
    if(previous&&previous.status!=="RETURNED")throw changed();
    const c=(await tx.query<Case>("INSERT INTO cg03_case(realm_id,case_number,process_id,process_version,proposer_id,target_account_id,target_role_id,account_name_snapshot,role_name_snapshot,expected_access_version,expected_role_revision,proposal_revision,proposal_digest,request_digest,request_key,case_kind,volunteer_review_ref,volunteer_application_id,volunteer_application_version,volunteer_review_digest,previous_case_id) VALUES($1,'CG-AP-'||lpad(nextval('cg03_public_case_sequence')::text,6,'0'),$2,$3,$4,NULL,NULL,$5,'Volunteer application',NULL,NULL,$6,$7,$8,$9,'VOLUNTEER_APPLICATION',$10,$11,$6,$7,$12) RETURNING *",[a.realmId,process.id,process.version,a.accountId,row.display_name,next,digest,requestDigest,key,s.id,id,previous?.id??null])).rows[0];
-   await this.event(tx,a,c.id,"SUBMITTED");return {reference:c.case_number,status:c.status,replayed:false};
+   await this.event(tx,a,c.id,"SUBMITTED");
+   // CG13 source-only: freeze one verified referrer from the original CG04
+   // submitted snapshot, inside THIS already-authorized CG03 transaction.
+   // No credit is issued here; ordinary applications without a valid code work.
+   await recordCommittedReferralAttribution(tx,{
+    root:a.realmId,applicantAccount:a.accountId,application:id,
+    kind:"VOLUNTEER",applicationRevision:next,submittedDigest:digest,
+    originalSubmitKey:key,
+    code:typeof row.source.referral_input==="string"?row.source.referral_input:null
+   });
+   return {reference:c.case_number,status:c.status,replayed:false};
   });
  }
  private async case(tx:PoolClient,a:Actor,id:string,write=false){const v=(await tx.query<Case>("SELECT * FROM cg03_case WHERE realm_id=$1 AND id=$2 AND case_kind='VOLUNTEER_APPLICATION'"+(write?" FOR UPDATE":" FOR SHARE"),[a.realmId,id])).rows[0];if(!v)throw unavailable();return v;}
