@@ -1,6 +1,7 @@
 "use client";
 import {useCallback,useEffect,useRef,useState} from "react";
 import {ActiveBranchEvidenceUploader} from "./active-branch-evidence-uploader";
+import {BranchAccessPanel} from "./branch-access-panel";
 
 type Branch={branchRef:string;branchName:string;branchCode:string;status:string;
  version:number;branchType:string;openingDate:string|null;areaName:string;managerName:string};
@@ -223,6 +224,7 @@ export function OperatingBranchesPanel({canManage,canAdmin}:{canManage:boolean;c
        setSelected(null);setSearchInput("");setSearchApplied("");setStatusFilter("ALL");
      }}>Reset</button>
    </div>
+   {canAdmin&&<BranchAccessPanel/>}
    {!!message&&<p role="status" className="notice">{message}</p>}
    {!!error&&<p role="alert" className="notice">{error}</p>}
    {unknown&&<div role="alert" className="notice">The original write is uncertain.
