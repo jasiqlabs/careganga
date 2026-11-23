@@ -4,20 +4,20 @@
 
 | ID | Severity | Owner | Evidence state | Finding / QA dependency |
 | --- | --- | --- | --- | --- |
-| [CG-MB-001](CG-MB-001-cg01-cg02-staff-branch-assignments.md) | P0 | CG-01/02 | `SOURCE_FIX_AUTHORED_REVIEW_PENDING` | Dedicated non-manager staff branch grants missing |
-| [CG-MB-002](CG-MB-002-cg09-finance-delegated-branch-operators.md) | P0 | CG-09 | `SOURCE_INTEGRATION_AUTHORED_REVIEW_PENDING` | Delegated accountants/cashiers blocked without explicit assignment |
-| [CG-MB-003](CG-MB-003-cg12-warehouse-operator-multibranch.md) | P1 | CG-12 | `SOURCE_INTEGRATION_AUTHORED_REVIEW_PENDING` | Ordinary storekeepers and multi-branch stock rights |
-| [CG-MB-004](CG-MB-004-cg04-cg05-cg10-delegated-branch-roles.md) | P1 | CG-04/05/10 | `SOURCE_IN_PROGRESS_OWNER_PATHS_PENDING` | Membership, project and HR coordinators inherit manager-only scope |
-| [CG-MB-005](CG-MB-005-cg02-branch-manager-transfer-and-close.md) | P1 | CG-02 | `VERIFICATION_GAP` | Branch manager reassignment/closure cascades |
-| [CG-MB-006](CG-MB-006-cg07-original-donation-branch-provenance.md) | P0 | CG-07 | `SOURCE_FIX_AUTHORED_NOT_VERIFIED` | Original donation branch immutable proof in migration 3319 |
-| [CG-MB-007](CG-MB-007-cg07-donation-report-root-and-branch-filters.md) | P1 | CG-07 | `SOURCE_FIX_AUTHORED_NOT_VERIFIED` | Same filtered list/KPI/trends/CSV branch report |
-| [CG-MB-008](CG-MB-008-cg19-private-files-notice-current-branch.md) | P1 | CG-19 | `VERIFICATION_GAP` | Private document/recipient scope after source change |
-| [CG-MB-009](CG-MB-009-cg20-mis-scheduled-cached-scope.md) | P0 | CG-20 | `SOURCE_FIX_AUTHORED_REVIEW_PENDING` | Scheduled MIS, cached artifacts and scope revalidation |
-| [CG-MB-010](CG-MB-010-cg14-to-cg17-clinical-center-vs-foundation-branch.md) | P0 | CG-14–17 | `VERIFICATION_GAP` | External healthcare center is not Foundation branch |
-| [CG-MB-011](CG-MB-011-cg18-approved-public-branch-deactivation.md) | P1 | CG-18 | `VERIFICATION_GAP` | Public CMS branch source after deactivation |
+| [CG-MB-001](CG-MB-001-cg01-cg02-staff-branch-assignments.md) | P0 | CG-01/02 | `SOURCE_FIX_REVIEWED_RUNTIME_PENDING` | Dedicated non-manager staff branch grants missing |
+| [CG-MB-002](CG-MB-002-cg09-finance-delegated-branch-operators.md) | P0 | CG-09 | `SOURCE_INTEGRATION_REVIEWED_RUNTIME_PENDING` | Delegated accountants/cashiers blocked without explicit assignment |
+| [CG-MB-003](CG-MB-003-cg12-warehouse-operator-multibranch.md) | P1 | CG-12 | `SOURCE_INTEGRATION_REVIEWED_RUNTIME_PENDING` | Ordinary storekeepers and multi-branch stock rights |
+| [CG-MB-004](CG-MB-004-cg04-cg05-cg10-delegated-branch-roles.md) | P1 | CG-04/05/10 | `SOURCE_FIX_REVIEWED_RUNTIME_PENDING` | Membership, project and HR coordinators inherit manager-only scope |
+| [CG-MB-005](CG-MB-005-cg02-branch-manager-transfer-and-close.md) | P1 | CG-02 | `SOURCE_FIX_REVIEWED_RUNTIME_PENDING` | Branch manager reassignment/closure cascades |
+| [CG-MB-006](CG-MB-006-cg07-original-donation-branch-provenance.md) | P0 | CG-07 | `SOURCE_FIX_REVIEWED_RUNTIME_PENDING` | Original donation branch immutable proof in migration 3319 |
+| [CG-MB-007](CG-MB-007-cg07-donation-report-root-and-branch-filters.md) | P1 | CG-07 | `SOURCE_FIX_REVIEWED_RUNTIME_PENDING` | Same filtered list/KPI/trends/CSV branch report |
+| [CG-MB-008](CG-MB-008-cg19-private-files-notice-current-branch.md) | P1 | CG-19 | `SOURCE_FIX_REVIEWED_RUNTIME_PENDING` | Private document/recipient scope after source change |
+| [CG-MB-009](CG-MB-009-cg20-mis-scheduled-cached-scope.md) | P0 | CG-20 | `SOURCE_FIX_REVIEWED_RUNTIME_PENDING` | Scheduled MIS, cached artifacts and scope revalidation |
+| [CG-MB-010](CG-MB-010-cg14-to-cg17-clinical-center-vs-foundation-branch.md) | P0 | CG-14–17 | `SOURCE_OWNER_REVIEWED_RUNTIME_PENDING` | External healthcare center is not Foundation branch |
+| [CG-MB-011](CG-MB-011-cg18-approved-public-branch-deactivation.md) | P1 | CG-18 | `SOURCE_OWNER_REVIEWED_RUNTIME_PENDING` | Public CMS branch source after deactivation |
 | [CG-MB-012](CG-MB-012-cg11-payroll-branch-allowance-and-original-payments.md) | P1 | CG-11 | `FUTURE_IMPLEMENTATION_GATE` | Payroll branch assignment and original CG-09 posting |
 | [CG-MB-013](CG-MB-013-future-owner-root-branch-center-qa-contracts.md) | P1 | CG-06/08/13/22–24 | `FUTURE_IMPLEMENTATION_GATE` | Original future owner branch/center explicit QA |
-| [CG-MB-014](CG-MB-014-cg12-cross-warehouse-transfer-both-sides.md) | P1 | CG-12 | `VERIFICATION_GAP` | Cross-warehouse rights and last-unit races |
+| [CG-MB-014](CG-MB-014-cg12-cross-warehouse-transfer-both-sides.md) | P1 | CG-12 | `SOURCE_OWNER_REVIEWED_RUNTIME_PENDING` | Cross-warehouse rights and last-unit races |
 | [CG-MB-015](CG-MB-015-global-app-selected-branch-ux-policy.md) | P2 | Shared UI | `SCOPE_DECISION_REQUIRED` | Whether one synchronized app-wide branch switcher is in approved scope |
 
 ## Triage and closure order
@@ -47,3 +47,12 @@ Implemented source candidate: protected root sees Foundation and branches; CG02 
 ### 23 November — final source reviewer checkpoint and actual execution handoff
 
 [**Current local developer handoff / no-merge gates**](../../qa/CAREGANGA-CG07-MULTIBRANCH-LOCAL-DEVELOPER-HANDOFF-20261123.md). New source corrections: CG-MB-001 active-branch evidence guards for authorized delegated managers; CG-MB-006 `3319` rejects original branch, kind and campaign retarget; CG-MB-007 report/CSV/private donor post-read revocation checks; CG-MB-009 original CG09 root→manager mid-report downgrade no longer discloses a root-wide result; CG07 US003-QA13 Razorpay reconciliation fixes parameter order and prevents processing-state rollback with official refund idempotency key. Tests added, NOT_RUN. **15 records remain, 0/15 independently closed**, including explicit future/UX entries; do NOT present these as 15 confirmed runtime bugs or as 15 source passes. No local DB, Next, Nest, Android or Razorpay execution was performed. Merge strictly only after the developer's independent review, current owner source fixes, executable QA and approved PR to remote `main`.
+
+
+## Source-owner closure inventory and developer execution gate — 23 Nov 2026
+
+**12 implemented-owner source candidates (001–011 and 014):** Original owner code reviewed and targeted fixes/test contracts committed. Includes CG19/20 original A+B report scope migration **3321**, CG02 protected manager/geography transfer and CG10 HR document/attendance correction. Their source status is **REVIEWED_RUNTIME_PENDING** and must not be confused with runnable PASS.
+
+**Two future gates (012/013):** Remain part of future module requirements and original story QA. **One UX decision (015):** No unapproved app-wide branch switcher. These three are not implemented-module defects that should block current acceptance.
+
+**Developer-only execution:** Clean local checkout, fresh+upgrade PostgreSQL migration through **3321**, Nest and Next production builds, both Android TS/device QA, source and DB tests, all 60 original CG07 IDs, cross-branch A/B/C/D and Center X/Y scenarios, security/DB reviewer, fix any local failures, push and merge reviewed remote `main` only when all applicable execution gates PASS. No CI/GitHub Actions, no BWC (greenfield). See [execution handoff](../../qa/CAREGANGA-CG07-MULTIBRANCH-LOCAL-DEVELOPER-HANDOFF-20261123.md).
