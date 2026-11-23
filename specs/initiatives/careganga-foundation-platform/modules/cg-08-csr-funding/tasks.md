@@ -207,3 +207,8 @@ Impact-scoped review caught a SQL string-substitution defect in the initial `340
 
 - \`NativeCsrAgreementPanel\` now mirrors Admin Web: actual document picker, source-version-bound original CG19 upload intent, local SHA-256, authenticated HTTPS PUT reservation, CLEAN_VERIFIED confirm/status, current private list, download/share by deliberate staff action with temporary local file deletion. Staff route passes the same existing CG01 \`documents.files.view/manage\` controls; CG08 branch scope and CG19 private file guards remain authoritative backend checks.
 - **QA proof states:** US001-QA05/06/10/17/18/20 now have both staff channel **source paths only**. Expo/device/CORS, actual scanner, signed URLs, native share permissions, source integrity, and B02 animation/pixel checks are NOT_RUN; CG03 protected approval and real public attribution remain SOURCE_GAP. Original cases unchanged. No independent or runtime PASS.
+
+
+### 23-Nov-2026 — CG08 original CG03 decision source and guarded PostgreSQL path
+
+The greenfield `3403_cg03_csr_partner_review.sql` introduces only the existing CG03 process/case/decision types for CSR_PARTNER_REVIEW; original CG19 CLEAN_VERIFIED agreement is part of immutable review snapshot and source revision. The original CSR partner DRAFT→SUBMITTED→(APPROVED/RETURNED/REJECTED) transition now requires an actual CG03 case, distinct password-verified reviewer and deferred original-source proof; no client can flip statuses from request JSON. This is migration SOURCE_AUTHORED_NOT_RUN until the typed CG03 service/controllers and browser/native review UI are committed. Original US001-QA01/08/10/11/13/19/20 remain partial; no new user stories/issues, no main merge.
