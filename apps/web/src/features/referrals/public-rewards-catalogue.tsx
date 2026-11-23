@@ -1,9 +1,12 @@
 "use client";
 import {useCallback,useEffect,useMemo,useRef,useState} from "react";
+import {PublicDigitalRedemption} from "./public-digital-redemption";
 
 type Reward={
  ref:string;programmeRef:string;type:"DIGITAL"|"PHYSICAL";category:string;
- name:string;description:string;pointsPrice:string;imageUrl:string|null;
+ name:string;description:string;pointsPrice:string;version:number;
+ eligibleAudience:"MEMBER"|"VOLUNTEER"|"BOTH";
+ programmeAudience:"MEMBER"|"VOLUNTEER"|"BOTH";imageUrl:string|null;
  availability:"NO_STOCK_REQUIRED"|"AVAILABLE"|"OUT_OF_STOCK";highlighted:boolean;
 };
 type Page={eligibleRelationships:string[];items:Reward[];hasMore:boolean;page:number;notice:string;
@@ -25,6 +28,7 @@ export function PublicRewardsCatalogue(){
   return()=>clearTimeout(handle);
  },[search]);
  const [failedImages,setFailedImages]=useState<Record<string,true>>({});
+ const [selectedDigital,setSelectedDigital]=useState<Reward|null>(null);
  const latest=useRef(0);
  const load=useCallback(async (target:number,replace:boolean)=>{
   const serial=++latest.current;
@@ -79,7 +83,7 @@ export function PublicRewardsCatalogue(){
   <div className="cg04-buttons" style={{justifyContent:"space-between",alignItems:"center"}}>
    <div><h2 style={{margin:"0 0 5px"}}>Rewards catalogue</h2>
     <p style={{margin:0}}>Browse rewards offered to eligible members and volunteers.
-     Points are not money; redemption is not available yet.</p></div>
+     Points are not money. Verified DIGITAL point reservations can be requested; fulfillment awaits real delivery evidence.</p></div>
    <button type="button" disabled={loading} onClick={()=>void load(1,true)}>Refresh rewards</button>
   </div>
   {loading&&<p role="status">Checking the current rewards catalogue…</p>}
@@ -107,10 +111,16 @@ export function PublicRewardsCatalogue(){
      <p>{p.type==="DIGITAL"?"No stock required":
       p.availability==="AVAILABLE"?"In stock":"Currently unavailable"}</p>
      <details><summary>Product details</summary><p>{p.description||"No description provided."}</p>
-      <p>Reward requests will be available after verified referral points and fulfilment are enabled.</p>
+      <p>{p.type==="DIGITAL"?
+       "You can request a verified points hold; fulfillment requires actual delivery evidence.":
+       "Original warehouse reservation and issue confirmation are not yet available."}</p>
      </details>
+     {p.type==="DIGITAL"&&<button type="button"
+      onClick={()=>setSelectedDigital(p)}>Request with earned points</button>}
     </article>)}
    </div>
+   <PublicDigitalRedemption selected={selectedDigital}
+    onClear={()=>setSelectedDigital(null)} audiences={audiences}/>
    {!shown.length&&!loading&&<p>No rewards match this filter.</p>}
    {more&&<button type="button" disabled={loading} onClick={()=>void load(page,false)}>Load more rewards</button>}
   </>}
