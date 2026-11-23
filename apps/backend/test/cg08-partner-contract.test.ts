@@ -138,3 +138,13 @@ test("US001-QA08/10/11: CSR reviewer evidence download is original-case and scan
  assert.match(evidence,/createHash\("sha256"\)\.update\(bytes\)\.digest\("hex"\)/);
  assert.match(controller,/@Get\(":ref\/agreement"\)/);
 });
+
+
+test("US001-QA05/08/10: Native reviewer only reads exact case-scoped protected agreement",()=>{
+ const native=readFileSync(join(process.cwd(),"../android-internal/src/features/csr/native-csr-review-panel.tsx"),"utf8");
+ assert.match(native,/identityRequest\(origin\+"\/"\+detail\.caseRef\+"\/agreement"/);
+ assert.match(native,/detail\.status!=="SUBMITTED"/);
+ assert.match(native,/await Sharing\.shareAsync\(local\.uri/);
+ assert.match(native,/local\.delete\(\)/);
+ assert.ok(!native.includes("uploadUrl"),"Reviewer does not receive a storage upload URL");
+});

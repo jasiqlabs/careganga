@@ -1,6 +1,9 @@
 import React,{useEffect,useRef,useState} from "react";
 import {ActivityIndicator,Pressable,ScrollView,StyleSheet,Text,TextInput,View} from "react-native";
 import * as Crypto from "expo-crypto";
+import * as Sharing from "expo-sharing";
+import {File,Paths} from "expo-file-system";
+
 import {identityRequest} from "../identity-access/http-client";
 type Review={caseRef:string;reference:string;status:string;revision:number;title:string;canDecide:boolean};
 type Detail={caseRef:string;reference:string;status:string;revision:number;canDecide:boolean;
@@ -60,6 +63,29 @@ export function NativeCsrReviews({token,canConfigure,onExpired}:{token:string;ca
    setError(e instanceof Error?e.message:"CSR review outcome uncertain. Check original case before retrying.");
   }finally{setBusy(false);}
  };
+ const inspectAgreement=async()=>{
+  if(!detail||detail.status!=="SUBMITTED"||busy)return;
+  let local:File|null=null;
+  setBusy(true);setError("");
+  try{
+   if(!await Sharing.isAvailableAsync())throw Error("Private document viewer is not available on this device.");
+   const r=await identityRequest(origin+"/"+detail.caseRef+"/agreement",{
+    method:"GET",cache:"no-store",headers:{Authorization:"Bearer "+token}});
+   if(r.status===401){onExpired();throw Error("Sign in again to review the agreement.");}
+   if(!r.ok)throw Error(r.status===403?"This protected agreement is no longer permitted.":
+     "The verified agreement is unavailable. Refresh the current case.");
+   const mime=r.headers.get("content-type")?.split(";")[0]??"";
+   const suffix=mime==="application/pdf"?".pdf":mime==="image/jpeg"?".jpg":
+    mime==="image/png"?".png":mime==="image/webp"?".webp":"";
+   if(!suffix)throw Error("The protected agreement type could not be verified.");
+   const bytes=new Uint8Array(await r.arrayBuffer());
+   if(!bytes.length||bytes.length>10485760)throw Error("The private document size is invalid.");
+   local=new File(Paths.cache,"cg08-review-"+Crypto.randomUUID()+suffix);
+   local.create();local.write(bytes);
+   await Sharing.shareAsync(local.uri,{mimeType:mime,dialogTitle:"Open protected CSR agreement"});
+  }catch(e){setError(e instanceof Error?e.message:"The original agreement cannot be viewed.");}
+  finally{if(local)try{local.delete();}catch{}setBusy(false);}
+ };
  const button=(title:string,click:()=>void,disabled=false)=><Pressable accessibilityRole="button" disabled={busy||disabled} accessibilityState={{disabled:busy||disabled}}
   style={[styles.button,(busy||disabled)&&{opacity:.5}]} onPress={click}><Text style={styles.buttonText}>{title}</Text></Pressable>;
  return <ScrollView contentContainerStyle={styles.body} keyboardShouldPersistTaps="handled">
@@ -89,6 +115,7 @@ export function NativeCsrReviews({token,canConfigure,onExpired}:{token:string;ca
    <Text>Proposed CSR support: {detail.source.supportSummary}</Text>
    <Text style={styles.muted}>Contact: {detail.source.contactName} {detail.source.contactEmail??detail.source.contactMobile??""}</Text>
    <Text style={styles.muted}>Status: {detail.status.replaceAll("_"," ")}</Text>
+   {detail.status==="SUBMITTED"&&button("Open protected verified agreement",()=>void inspectAgreement())}
    {detail.history.map((h,i)=><Text key={i} style={styles.muted}>{h.actor}: {h.action} {h.remarks}</Text>)}
    {detail.canDecide&&<View style={styles.card}>
     <Text style={styles.itemTitle}>Original independent decision</Text>

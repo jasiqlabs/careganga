@@ -257,3 +257,8 @@ Source closure for blind-approval risk: a current Foundation-root CG03 independe
 ### 23-Nov-2026 — US001 actual migrated PostgreSQL QA suite authored
 
 Added `test:cg08-db-integrity` per the existing **disposable/read-only** test convention. Source asserts migration ledger 3401–3403, original same-root FKs, normalized identity uniqueness, current CG03 kinds, CG19 verified agreement source constraints, enabled deferred proof/immutable triggers and protected reviewer case owner. This test **has not been executed**, nor does it simulate source races, provider scanning or B02 screenshots. Existing US001-QA03/07/10/11/12/19 QA IDs retained.
+
+
+### 23-Nov-2026 — US001 Android protected reviewer proof parity
+
+The existing authorized Internal Android reviewer can explicitly open the **same original CG03 case-scoped CG19 scanner-verified** agreement before deciding. It enforces current submitted case, current role/token, verified response MIME and bounded 10 MB, writes to a temporary private cache only after user action, opens the system sharing/viewer sheet and removes the temp copy afterward. No direct object/CDN URL or public Android module. Existing US001-QA05/08/10/11/20 source path now authored; device/runtime checks NOT_RUN.
