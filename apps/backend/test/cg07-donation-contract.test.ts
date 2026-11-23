@@ -578,6 +578,12 @@ test("US003-QA13: original one-time merchant refund uses signed Razorpay event a
  assert.match(provider,/r\.requested_by===a\.accountId/);
  assert.match(provider,/this\.finance\.postProvider/);
  assert.match(provider,/state='FINANCE_POSTED'/);
+ assert.match(provider,/root_realm_id=\$1 AND refund_request_id=\$2 AND request_key=\$3/);
+ assert.match(provider,/const original=\(await tx\.query/);
+ assert.match(provider,/FOR UPDATE/);
+ assert.match(provider,/state='PROVIDER_PENDING'/);
+ assert.match(provider,/remote\.status!==\(event\.event/);
+ assert.match(provider,/Math\.MAX_SAFE_INTEGER/);
  assert.match(refund,/r\.settlement_method!=="CASH"/);
  assert.match(refund,/method=online\?"ONLINE":"CASH"/);
  assert.match(refund,/AND d\.id=r\.donation_id LEFT JOIN/);
