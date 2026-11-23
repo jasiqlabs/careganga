@@ -406,3 +406,41 @@ export class CmsDraftMediaService{
   return {mime:x.original_mime,bytes};
  }
 }
+
+
+/** CG19 source-owned proof for reuse of an ALREADY PUBLIC, currently effective
+ * CMS photo in another Foundation module. This is not a new upload permission.
+ * The public CG19 byte route independently re-verifies all proofs and the
+ * SHA-256 after private-object retrieval on each image request.
+ */
+export async function eligiblePublishedRewardImageRefs(
+ tx:PoolClient,realm:string,fileRefs:readonly string[]):Promise<Set<string>>{
+ if(!fileRefs.length)return new Set<string>();
+ if(fileRefs.length>40||fileRefs.some(x=>!UUID.test(x)))
+  throw new BadRequestException("Invalid public media selection");
+ const rows=await tx.query<{id:string}>(
+  "SELECT DISTINCT f.id FROM cg19_cms_media_file f "+
+  "JOIN cg19_cms_upload_intent i ON i.id=f.upload_intent_id AND i.realm_id=f.realm_id "+
+  "JOIN cms_asset_placement a ON a.cg19_file_ref=f.id "+
+  "AND a.foundation_root_id=f.realm_id "+
+  "JOIN cms_page_revision rev ON rev.id=a.page_revision_id "+
+  "AND rev.foundation_root_id=a.foundation_root_id AND rev.page_id=f.page_id "+
+  "JOIN cms_publication pub ON pub.page_revision_id=a.page_revision_id "+
+  "AND pub.foundation_root_id=a.foundation_root_id "+
+  "JOIN cms_page_effective effective ON effective.publication_id=pub.id "+
+  "AND effective.foundation_root_id=pub.foundation_root_id "+
+  "AND effective.page_id=pub.page_id "+
+  "WHERE f.realm_id=$1 AND f.id=ANY($2::uuid[]) "+
+  "AND f.revoked_at IS NULL AND f.scan_status='CLEAN_VERIFIED' "+
+  "AND f.public_rights_confirmed=true AND i.status='VALIDATED' "+
+  "AND i.rights_confirmed=true AND a.public_rights_status='VALIDATED' "+
+  "AND a.cg19_validated_version=f.revision "+
+  "AND f.original_mime IN('image/png','image/jpeg','image/webp') "+
+  "AND f.verified_size_bytes BETWEEN 1 AND 10485760 "+
+  "AND pub.state='EFFECTIVE' AND pub.effective_at<=now() "+
+  "AND (pub.expires_at IS NULL OR pub.expires_at>now()) "+
+  PUBLIC_MEDIA_SECTION_ALLOWED+PUBLIC_MEDIA_MIME_ALLOWED+
+  "ORDER BY f.id FOR SHARE OF f,i",
+  [realm,[...new Set(fileRefs.map(x=>x.toLowerCase()))]]);
+ return new Set(rows.rows.map(row=>row.id.toLowerCase()));
+}
