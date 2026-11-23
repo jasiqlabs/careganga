@@ -16,6 +16,9 @@ function fixture(allowed=true){
   if(sql.includes('AS "activeReferrers"'))return {rows:[{
    activeReferrers:"2",successfulReferrals:"5",earnedPoints:"500",netPoints:"450"
   }]};
+  if(sql.includes('AS "spentPoints"'))return {rows:[{
+   pending:"2",cancelled:"1",fulfilled:"0",total:"3",spentPoints:"0"
+  }]};
   if(sql.includes("wallet.current_rank_name AS rank"))return {rows:[
    {kind:"MEMBER",rank:"Gold",count:"2",referrals:"5",points:"450",lastActivity:"2026-11-23T10:00:00Z"}
   ]};
@@ -40,6 +43,13 @@ describe("CG13 US002 B11 branch-scoped verified ledger aggregates source contrac
   assert.equal(result.metrics.successfulReferrals,"5");
   assert.equal(result.metrics.netPoints,"450");
   assert.equal(result.rankCounts[0].rank,"Gold");
+  assert.equal(result.redemptionMetrics.spentPoints,"0");
+  assert.equal(result.redemptionMetrics.pending,"2");
+  assert.equal(result.redemptionMetrics.fulfilled,"0");
+  const spent=f.seen.find(v=>v.sql.includes('AS "spentPoints"'))!;
+  assert.ok(spent);
+  assert.match(spent.sql,/spent.event_kind='POINTS_SPENT'/);
+  assert.deepEqual(spent.params,[ROOT,PROGRAMME,false,[BRANCH]]);
   assert.ok(!JSON.stringify(result).includes(ACCOUNT));
   const walletReads=f.seen.filter(x=>x.sql.includes("FROM points_account wallet"));
   assert.equal(walletReads.length,2);
