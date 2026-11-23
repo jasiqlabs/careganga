@@ -671,12 +671,17 @@ export class ReferralCatalogService{
   */
  async adminReferralRecords(bearer:string,programmeInput:string,
   kindInput?:string,pageInput?:string,statusInput?:string,
-  fromInput?:string,toInput?:string,searchInput?:string){
+  fromInput?:string,toInput?:string,searchInput?:string,
+  locationInput?:string,rankInput?:string,sortInput?:string){
   const programme=ref(programmeInput),page=catalogPage(pageInput);
   const kind=kindInput??"MEMBER",status=statusInput??"ALL";
   if(kind!=="MEMBER"&&kind!=="VOLUNTEER")throw bad("kind");
   if(!["ALL","ACTIVE","INACTIVE"].includes(status))throw bad("status");
   const search=optional(searchInput,"search",80).toLowerCase();
+  const location=optional(locationInput,"location",120).toLowerCase();
+  const selectedRank=optional(rankInput,"rank",120);
+  const sort=sortInput??"REFERRALS";
+  if(!["REFERRALS","RECENT"].includes(sort))throw bad("sort");
   const day=(value:string|undefined)=>{
    if(!value)return null;
    if(!/^\d{4}-\d{2}-\d{2}$/.test(value)||
@@ -698,6 +703,14 @@ export class ReferralCatalogService{
     "AND m.id=wallet.referrer_relationship_ref AND wallet.referrer_kind='MEMBER' "+
     "LEFT JOIN volunteer v ON v.root_realm_id=wallet.root_realm_id "+
     "AND v.id=wallet.referrer_relationship_ref AND wallet.referrer_kind='VOLUNTEER' "+
+    "LEFT JOIN membership_application memberApp ON memberApp.root_realm_id=m.root_realm_id "+
+    "AND memberApp.id=m.original_application_id "+
+    "LEFT JOIN volunteer_application volunteerApp ON volunteerApp.root_realm_id=v.root_realm_id "+
+    "AND volunteerApp.id=v.original_application_id "+
+    "LEFT JOIN geography_area memberDistrict ON memberDistrict.root_realm_id=memberApp.root_realm_id "+
+    "AND memberDistrict.id=memberApp.district_ref "+
+    "LEFT JOIN geography_area volunteerDistrict ON volunteerDistrict.root_realm_id=volunteerApp.root_realm_id "+
+    "AND volunteerDistrict.id=volunteerApp.district_ref "+
     "WHERE wallet.root_realm_id=$1 AND wallet.programme_id=$2 "+
     "AND wallet.referrer_kind=$3 AND COALESCE(m.id,v.id) IS NOT NULL "+
     "AND ($4::boolean OR COALESCE(m.branch_ref,v.branch_ref)=ANY($5::uuid[]))";
@@ -710,7 +723,9 @@ export class ReferralCatalogService{
     "AND cg04_current_volunteer(v.root_realm_id,v.id,v.account_ref,v.branch_ref) "+
     "THEN 'ACTIVE' ELSE 'INACTIVE' END";
    const args=[a.realmId,programme,kind,scope.full,scope.branches,
-    search,status,from,to];
+    search,status,from,to,location,selectedRank];
+   const locationSql="lower(COALESCE(memberApp.city,volunteerApp.city,'')||' '||"+
+    "COALESCE(memberDistrict.display_name,volunteerDistrict.display_name,''))";
    const top=await tx.query<{name:string;participantNumber:string;
     rank:string|null;referrals:string;points:string;lastActivity:string;
     status:string}>(
@@ -723,9 +738,12 @@ export class ReferralCatalogService{
     " AND ($6::text='' OR strpos(lower(COALESCE(m.display_name,v.display_name)||' '||"+
     "COALESCE(m.member_no,v.volunteer_no)),$6)>0) "+
     "AND ($7::text='ALL' OR "+eligibility+"=$7) "+
-    "ORDER BY wallet.qualified_referrals DESC,"+
-    "(wallet.earned_points-wallet.reversed_points) DESC,wallet.id DESC LIMIT 15",
-    args.slice(0,7));
+    "AND ($8::text='' OR strpos("+locationSql+",$8)>0) "+
+    "AND ($9::text='' OR wallet.current_rank_name=$9) "+
+    (sort==="RECENT"?"ORDER BY wallet.updated_at DESC,wallet.id DESC LIMIT 15":
+     "ORDER BY wallet.qualified_referrals DESC,"+
+     "(wallet.earned_points-wallet.reversed_points) DESC,wallet.id DESC LIMIT 15"),
+    [a.realmId,programme,kind,scope.full,scope.branches,search,status,location,selectedRank]);
    const recent=await tx.query<{status:string;points:string;
     recordedAt:string;name:string;participantNumber:string;rank:string|null}>(
     "SELECT event.event_kind AS status,event.points_delta::text AS points,"+
@@ -739,6 +757,14 @@ export class ReferralCatalogService{
     "AND m.id=wallet.referrer_relationship_ref AND wallet.referrer_kind='MEMBER' "+
     "LEFT JOIN volunteer v ON v.root_realm_id=wallet.root_realm_id "+
     "AND v.id=wallet.referrer_relationship_ref AND wallet.referrer_kind='VOLUNTEER' "+
+    "LEFT JOIN membership_application memberApp ON memberApp.root_realm_id=m.root_realm_id "+
+    "AND memberApp.id=m.original_application_id "+
+    "LEFT JOIN volunteer_application volunteerApp ON volunteerApp.root_realm_id=v.root_realm_id "+
+    "AND volunteerApp.id=v.original_application_id "+
+    "LEFT JOIN geography_area memberDistrict ON memberDistrict.root_realm_id=memberApp.root_realm_id "+
+    "AND memberDistrict.id=memberApp.district_ref "+
+    "LEFT JOIN geography_area volunteerDistrict ON volunteerDistrict.root_realm_id=volunteerApp.root_realm_id "+
+    "AND volunteerDistrict.id=volunteerApp.district_ref "+
     "LEFT JOIN reward_rank_event rank ON rank.root_realm_id=event.root_realm_id "+
     "AND rank.qualifying_points_event_id=event.id "+
     "WHERE wallet.root_realm_id=$1 AND wallet.programme_id=$2 "+
@@ -750,11 +776,13 @@ export class ReferralCatalogService{
     "AND event.event_kind IN('QUALIFICATION','QUALIFICATION_REVERSAL') "+
     "AND ($8::date IS NULL OR (event.source_recorded_at AT TIME ZONE 'Asia/Kolkata')::date >= $8::date) "+
     "AND ($9::date IS NULL OR (event.source_recorded_at AT TIME ZONE 'Asia/Kolkata')::date <= $9::date) "+
-    "ORDER BY event.source_recorded_at DESC,event.id DESC LIMIT 26 OFFSET $10",
+    "AND ($10::text='' OR strpos("+locationSql+",$10)>0) "+
+    "AND ($11::text='' OR wallet.current_rank_name=$11) "+
+    "ORDER BY event.source_recorded_at DESC,event.id DESC LIMIT 26 OFFSET $12",
     [...args,(page-1)*25]);
    return {kind,topReferrers:top.rows,
     recentEvents:recent.rows.slice(0,25),hasMore:recent.rows.length>25,page,
-    notice:"Top referrers are all-time current source balances; date range limits recent verified ledger events. Only authorized CG04 roster details are shown."};
+    notice:"The selected-rank top referrers use current all-time points; date range filters only recent source events. City/district, current eligibility and original authorized CG02 branch scope apply to both."};
   },true);
  }
  /** B14/B15: genuine source-backed redemption history, paged and scoped
