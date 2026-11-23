@@ -1371,6 +1371,7 @@ export function StaffAuthenticationScreen() {
         <Suspense fallback={<ActivityIndicator style={{ marginTop: 40 }} />}>
           <BranchRegistrationScreen token={token}
             canManage={roleActions.includes("foundation.branches.manage")}
+            canAdmin={roleActions.includes("foundation.branches.admin")}
             onExit={() => setBranchesOpen(false)} onExpired={expireSession} />
         </Suspense>
       </ScreenErrorBoundary>, "branches", () => setBranchesOpen(false))
