@@ -7,11 +7,13 @@ import {ReferralSelfService} from "./application/referral-self.service";
 import {ReferralSelfController} from "./http/referral-self.controller";
 import {ReferralResolveService} from "./application/referral-resolve.service";
 import {ReferralResolveController} from "./http/referral-resolve.controller";
+import {RedemptionService} from "./application/redemption.service";
+import {RedemptionController} from "./http/redemption.controller";
 
 @Module({
  imports:[IdentityAccessModule,InventorySourceModule],
- providers:[ReferralCatalogService,ReferralSelfService,ReferralResolveService],
- controllers:[ReferralCatalogController,ReferralSelfController,ReferralResolveController],
+ providers:[ReferralCatalogService,ReferralSelfService,ReferralResolveService,RedemptionService],
+ controllers:[ReferralCatalogController,ReferralSelfController,ReferralResolveController,RedemptionController],
  exports:[ReferralCatalogService,ReferralSelfService]
 })
 export class ReferralsRewardsModule {}
