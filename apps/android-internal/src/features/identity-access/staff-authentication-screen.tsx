@@ -844,7 +844,8 @@ export function StaffAuthenticationScreen() {
       onMyAccount={()=>setRewardsOpen(false)}/>;
     return renderInShell(<ScreenErrorBoundary onExit={()=>setRewardsOpen(false)}>
      <Suspense fallback={<ActivityIndicator style={{marginTop:40}}/>}>
-      <NativeRewardCatalogue token={token} onExpired={expireSession}/>
+      <NativeRewardCatalogue token={token} canViewStock={roleActions.includes("inventory.catalog.view")}
+       onExpired={expireSession}/>
      </Suspense>
     </ScreenErrorBoundary>,"rewards",()=>setRewardsOpen(false));
   }
