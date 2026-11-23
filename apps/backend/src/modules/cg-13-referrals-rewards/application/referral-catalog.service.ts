@@ -148,17 +148,24 @@ const product=(o:Record<string,unknown>):Product=>{
   storeRef=o.storeRef===null||o.storeRef===undefined?null:ref(o.storeRef,"storeRef");
  if((type==="DIGITAL"&&(itemRef||storeRef))||
   (type==="PHYSICAL"&&(!itemRef||!storeRef)))throw bad("physicalStock");
+ const status=choice(o.status??"DRAFT","status",["DRAFT","ACTIVE","ARCHIVED"] as const);
+ const fulfillment=type==="PHYSICAL"?"PENDING_EXTERNAL_PROOF":
+  choice(o.digitalFulfillmentMethod??"PENDING_EXTERNAL_PROOF","digitalFulfillmentMethod",
+   ["PENDING_EXTERNAL_PROOF","ON_PLATFORM_RECOGNITION"] as const);
+ // Only CG19 on-platform recognition currently supplies genuine DIGITAL
+ // delivery proof. Keep future-external products as DRAFT, never ACTIVE
+ // and seemingly redeemable without the source owner being implemented.
+ if(type==="DIGITAL"&&status==="ACTIVE"&&fulfillment!=="ON_PLATFORM_RECOGNITION")
+  throw bad("digitalFulfillmentMethod");
  return {programmeRef:ref(o.programmeRef,"programmeRef"),type,
   category:word(o.category,"category",2,80),name:word(o.name,"name",3,160),
   description:optional(o.description,"description",1000),
   pointsPrice:integer(o.pointsPrice,"pointsPrice",1,1000000000000),
   eligibleAudience:choice(o.eligibleAudience,"eligibleAudience",["MEMBER","VOLUNTEER","BOTH"] as const),
-  status:choice(o.status??"DRAFT","status",["DRAFT","ACTIVE","ARCHIVED"] as const),
+  status,
   highlighted:bool(o.highlighted,"highlighted"),publicVisible:bool(o.publicVisible,"publicVisible",true),
   approvedImageUrl:imageUrl(o.imageUrl),itemRef,storeRef,
-  digitalFulfillmentMethod:type==="PHYSICAL"?"PENDING_EXTERNAL_PROOF":
-   choice(o.digitalFulfillmentMethod??"PENDING_EXTERNAL_PROOF","digitalFulfillmentMethod",
-    ["PENDING_EXTERNAL_PROOF","ON_PLATFORM_RECOGNITION"] as const)};
+  digitalFulfillmentMethod:fulfillment};
 };
 type ProgramRow={id:string;version:number;active_policy_version:number;
  effective_from:string;audience:string;status:string};
