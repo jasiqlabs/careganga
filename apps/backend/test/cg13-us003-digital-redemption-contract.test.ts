@@ -20,7 +20,7 @@ const request={programmeRef:P,productRef:PRODUCT,relationship:"MEMBER" as const,
 const DIGEST=createHash("sha256").update(JSON.stringify([P,PRODUCT,"MEMBER",2])).digest("hex");
 type Seen={sql:string;params:unknown[]};
 function setup({available="900",product=true,existing=false,
- cancelled=false,account=true,failAfterWrite=false}={}){
+ cancelled=false,account=true,minimumClaim="700",rewardPrice="600"}={}){
  const seen:Seen[]=[],issued:{value:boolean}={value:false};
  let commits=0,rollbacks=0;
  const tx={query:async(sql:string,params:unknown[]=[])=>{
@@ -33,7 +33,7 @@ function setup({available="900",product=true,existing=false,
    return {rows:existing?[{ref:REDEMPTION,state:"HELD",pointsCost:"600",
     payloadDigest:DIGEST}]:[],rowCount:existing?1:0};
   if(sql.includes("p.points_price::text AS price"))
-   return {rows:product?[{price:"600",version:2,name:"Verified digital badge",policyVersion:1}]:[],rowCount:product?1:0};
+   return {rows:product?[{price:rewardPrice,version:2,name:"Verified digital badge",policyVersion:1,minimumClaimPoints:minimumClaim}]:[],rowCount:product?1:0};
   if(sql.includes('earned_points::text AS earned'))
    return {rows:[{id:WALLET,earned:available,reversed:"0",held:"0",spent:"0"}],rowCount:1};
   if(sql.includes("INSERT INTO redemption("))
@@ -90,6 +90,16 @@ describe("CG13 US003 digital points hold/cancel contracts (mock only; no real PG
   await assert.rejects(()=>f.service.request("own",request),ConflictException);
   assert.equal(f.stats().rollbacks,1);
   assert.ok(!f.seen.some(v=>v.sql.includes("INSERT INTO points_event(")));
+ });
+ test("a real programme minimum claim of 700 rejects 650 points even for a 600-point gift",async()=>{
+  const f=setup({available:"650",minimumClaim:"700"});
+  await assert.rejects(()=>f.service.request("own",request),ConflictException);
+  assert.ok(!f.seen.some(v=>v.sql.includes("INSERT INTO redemption(")));
+ });
+ test("an incompatible DIGITAL catalogue price above 1 billion fails before source writes",async()=>{
+  const f=setup({rewardPrice:"1000000001"});
+  await assert.rejects(()=>f.service.request("own",request),ConflictException);
+  assert.ok(!f.seen.some(v=>v.sql.includes("INSERT INTO redemption(")));
  });
  test("stale reward version and unverified member fail before wallet/hold",async()=>{
   const stale=setup({product:false});
