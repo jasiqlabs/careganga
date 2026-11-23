@@ -1,0 +1,21 @@
+# CG-MB-003 — cg12 warehouse operator multibranch
+
+**Priority:** P1 · **Owner:** CG-12 inventory · **Status:** CONFIRMED_SOURCE_DEPENDENCY · **Scope:** active CG-07 feature branch only · **Runtime:** NOT_RUN
+
+## Source evidence / observed limitation
+
+InventoryCatalogService.requireScope checks b.manager_account_ref/root admin; InventoryOperationSource.guard checks two transfer locations but uses the same source store authorization.
+
+## Required business behavior
+
+Authorized storekeeper may operate explicitly assigned store(s) in branch A/B without being the branch manager or managing all Foundation stores.
+
+## Reproduce and record
+
+Try create/receive/issue/transfer/return/adjust/review/export from store A to B with ordinary stockkeeper; inspect both source and destination access, refund/hold balance, and concurrent transfers.
+
+## Expected closure fix, cross-owner dependencies
+
+Implement only after CG-MB-001 approved genuine branch grant; both destination+source current checks, historical immutable movement, signed proof and no negative stock.
+
+**Receiving modules:** CG-01,CG-02,CG-12,CG-06,CG-13. **Common QA:** [Two-branch and center scenario matrix](../../qa/CAREGANGA-MULTIBRANCH-SOURCE-AND-RUNTIME-TEST-PLAN-20261123.md). Verify original story QA IDs and do not replace them. **Gate:** Implement → independent Review → Fix → Re-review → source trace → local PostgreSQL/Web/Android/device/provider QA. Document real test fixtures, exact file:function and result. No CI/GitHub Actions or merge.
