@@ -374,3 +374,8 @@ Added CsrPartnerPublicSource in original CG08, exporting only eligible sourceRef
 ### 23-Nov-2026 — CG18 original PARTNERS editorial kind/section contract
 
 Added original CG18 PARTNERS type for the client /collaboration page (single page per Foundation), and strict PARTNER_CARDS section containing at most 12 original CG08 source references with exact public rights versions. No partner names/logos can be authored as arbitrary editorial rows; CG08 remains the legal identity and public-rights source. Existing CG18 editorial review/approval and CG19 media validation must remain mandatory. Partial editorial draft fields allowed only before strict submit; original US001-QA11/16/18/19/20. Source-dependent CG18 picker, approval-time gate and dynamic public display still SOURCE_GAP; no runnable DB/TS/visual evidence, NOT_RUN.
+
+
+### 23-Nov-2026 — US001 actual CG18 reviewer/editorial partner gate
+
+The existing original CG18 CMS now recognizes a fixed collaboration PARTNERS page, uses CG08's strict partner-sources selector (current staff CG01/CG02 scope, no arbitrary third-party brand), and allows the original CG19 FEATURE logo placement only at a real selected PARTNER_CARDS index. Existing CG18 submit and publish paths revalidate every selected CG08 sourceRef+rightsVersion against current CG03 final approval, CG19 clean private rights file, and CG08 ACTIVE release before creating its own independent CG03 editorial review/publication. No parallel CMS review engine. US001-QA11/16/17/18/19/20. Actual client route and public projection still SOURCE_GAP. Runtime and independent review NOT_RUN; no main merge.
