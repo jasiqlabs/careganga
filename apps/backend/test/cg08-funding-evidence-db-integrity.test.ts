@@ -84,7 +84,7 @@ test("CG08 US002/US003 3406–3413 original CG09/CG03/CG19 funding/report proof 
      "cg19_funding_evidence_event","csr_funding_review_snapshot",
      "cg03_case","cg03_case_decision",
      "finance_csr_verified_receipt_link","finance_csr_budget_effect",
-     "finance_budget_event","finance_budget_item_revision"]]);
+     "finance_budget_event","finance_budget_item_revision","finance_budget"]]);
   const triggers=new Map(trigger.rows.map(v=>[v.name,v]));
   for(const name of ["cg08_funding_source_guard",
     "cg19_funding_intent_owner_immutable","cg19_funding_file_owner_immutable",
@@ -93,7 +93,10 @@ test("CG08 US002/US003 3406–3413 original CG09/CG03/CG19 funding/report proof 
     "cg03_funding_decision_insert","cg08_funding_status_proof_after",
     "cg09_csr_receipt_link_immutable","cg09_csr_receipt_link_source_guard",
     "cg09_csr_budget_effect_immutable","cg09_csr_budget_effect_source_guard",
-    "cg09_budget_item_revision_immutable","cg09_deallocation_source_commit"]){
+    "cg09_budget_item_revision_immutable",
+    "cg09_budget_item_revision_insert_guard",
+    "cg09_budget_itemized_submit_guard",
+    "cg09_deallocation_source_commit"]){
    const v=triggers.get(name);assert.ok(v,name+" missing");
    assert.ok(["O","A"].includes(v.enabled),name+" disabled");
   }
