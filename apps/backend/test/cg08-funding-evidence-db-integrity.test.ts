@@ -110,6 +110,21 @@ test("CG08 US002/US003 3406–3413 original CG09/CG03/CG19 funding/report proof 
    "Budget line total must be computed from real quantity and unit rate");
   assert.equal(triggers.get("cg08_funding_status_proof_after")?.deferred,true,
    "Commitment status proof must be checked at COMMIT");
+  const budgetFunction=await pg.query<{definition:string}>(
+   "SELECT pg_get_functiondef('cg09_budget_event_guard()'::regprocedure) AS definition");
+  assert.match(budgetFunction.rows[0]?.definition??"",/DEALLOCATE/,
+   "Original CG09 budget must enforce unused allocation reversal capacity");
+  assert.match(budgetFunction.rows[0]?.definition??"",/reversal_of_id/,
+   "Original CG09 budget utilization must exclude a reversed posted expense");
+  const budgetKind=constraints.rows.some(v=>v.rel==="finance_budget_event"&&
+   v.def.includes("DEALLOCATE"));
+  // The original event CHECK must permit only the authenticated correction path.
+  const kindGuard=await pg.query<{def:string}>(
+   "SELECT pg_get_constraintdef(c.oid) AS def FROM pg_constraint c "+
+   "WHERE c.conrelid='finance_budget_event'::regclass "+
+   "AND c.conname='finance_budget_event_kind_check'");
+  assert.equal(kindGuard.rows.length,1);
+  assert.match(kindGuard.rows[0].def,/DEALLOCATE/);
   const reportIndex=await pg.query<{name:string}>(
    "SELECT indexname AS name FROM pg_indexes WHERE schemaname=current_schema() "+
    "AND tablename='csr_funding_proposal' "+
