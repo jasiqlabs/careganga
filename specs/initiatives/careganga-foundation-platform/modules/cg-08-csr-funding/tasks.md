@@ -252,3 +252,8 @@ Scoped fix: the CSR agreement panel’s required `canSubmit` and `onSubmitted` p
 ### 23-Nov-2026 — US001 protected reviewer agreement inspection
 
 Source closure for blind-approval risk: a current Foundation-root CG03 independent reviewer can retrieve the **specific** original CG19 CLEAN_VERIFIED CSR agreement from the original SUBMITTED review case, with same-root exact file ID/partner/source revision, current reviewer+branch checks, row locks, private object version and raw SHA-256 byte verification. The original CG03 controller and Admin Web review BFF stream a no-store private attachment; the route has a strict allowlist, no public storage link or CSR-view grant shortcut. Approved/returned/old cases cannot use this pending-decision download route; revoked evidence is denied. US001-QA01/08/10/11/20 regression assertions authored. **Runtime DB, private object provider, build and visual tests NOT_RUN.** No new owner/issue/QA ID.
+
+
+### 23-Nov-2026 — US001 actual migrated PostgreSQL QA suite authored
+
+Added `test:cg08-db-integrity` per the existing **disposable/read-only** test convention. Source asserts migration ledger 3401–3403, original same-root FKs, normalized identity uniqueness, current CG03 kinds, CG19 verified agreement source constraints, enabled deferred proof/immutable triggers and protected reviewer case owner. This test **has not been executed**, nor does it simulate source races, provider scanning or B02 screenshots. Existing US001-QA03/07/10/11/12/19 QA IDs retained.
