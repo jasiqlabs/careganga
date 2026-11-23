@@ -58,6 +58,8 @@ export class FinanceCsrReceiptSourceFacade{
    "AND command.command_kind='GENERAL_POST' "+
    "AND command.request_key=j.immutable_source_event_key "+
    "AND command.entity_ref=j.id AND j.source_ref=command.request_key "+
+   "JOIN financial_year fy ON fy.id=j.financial_year_id "+
+   "AND fy.root_realm_id=j.root_realm_id AND fy.status='OPEN' "+
    "JOIN journal_line debit ON debit.root_realm_id=rec.root_realm_id "+
    "AND debit.journal_id=j.id AND debit.account_id=rec.bank_account_id "+
    "AND debit.branch_id IS NOT DISTINCT FROM $2::uuid "+
