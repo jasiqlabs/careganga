@@ -19,3 +19,12 @@ Switch A→B in Admin Web and Internal Android while drafts, reports and uploads
 Do not invent global storage, implicit per-module automatic switching or override server permission; treat a shared switcher as explicit product decision, not security control.
 
 **Receiving modules:** CG-01,CG-02,CG-05,CG-07,CG-09,CG-10,CG-12,CG-20. **Common QA:** [Two-branch and center scenario matrix](../../qa/CAREGANGA-MULTIBRANCH-SOURCE-AND-RUNTIME-TEST-PLAN-20261123.md). Verify original story QA IDs and do not replace them. **Gate:** Implement → independent Review → Fix → Re-review → source trace → local PostgreSQL/Web/Android/device/provider QA. Document real test fixtures, exact file:function and result. No CI/GitHub Actions or merge.
+
+
+### 23-Nov-2026 — final source-owner review disposition
+
+**Reviewed source / ownership:** Do not implement an unapproved synchronized application-wide branch switcher. CG02, Finance, MIS Web/Internal Android already have role/scoped original selectors; source permission never trusts UI selected branch.
+
+**Remaining:** Keep future product-wide UX approval gate; this is not a current mandatory code defect and must not block verified CG07 scope functionality.
+
+**Gate:** Future decisions are not current source defects, and static source review is not executable QA PASS.
