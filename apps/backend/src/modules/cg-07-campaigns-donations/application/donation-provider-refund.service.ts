@@ -18,7 +18,7 @@ const conflict=()=>new ConflictException("Original gateway refund changed. Check
 type Source={id:string;donation_id:string;amount_minor:string;requested_by:string;
  status:string;settlement_method:string;branch_ref:string|null;donation_number:string};
 type Captured={id:string;provider_payment_id:string;merchant_reference:string;amount_minor:string};
-type ProviderRow={refund_request_id:string;donation_id:string;captured_payment_id:string;
+type ProviderRow={root_realm_id:string;refund_request_id:string;donation_id:string;captured_payment_id:string;
  provider_receipt:string;request_key:string;request_digest:string;authorized_by:string;
  amount_minor:string;state:string;provider_refund_id:string|null;signed_event_id:string|null;
  signed_digest:string|null;finance_digest:string|null;approval_request_key:string|null};
@@ -163,8 +163,8 @@ export class DonationProviderRefundService{
   // Durable UNKNOWN transition BEFORE the single external POST.
   await this.tx(async tx=>tx.query(
    "UPDATE donation_provider_refund SET state='OUTCOME_UNKNOWN',updated_at=now() "+
-   "WHERE refund_request_id=$1 AND request_key=$2 AND state='RESERVED'",
-   [refundRef,input.requestKey]));
+   "WHERE root_realm_id=$1 AND refund_request_id=$2 AND request_key=$3 AND state='RESERVED'",
+   [reserved.p.root_realm_id,refundRef,input.requestKey]));
   let result:Record<string,unknown>;
   try{
    result=await this.provider("payments/"+reserved.p.captured_payment_id+"/refund","POST",{
@@ -175,15 +175,15 @@ export class DonationProviderRefundService{
   }
   await this.tx(async tx=>{
    const row=(await tx.query<ProviderRow>(
-    "SELECT * FROM donation_provider_refund WHERE refund_request_id=$1 AND request_key=$2 FOR UPDATE",
-    [refundRef,input.requestKey])).rows[0];
+    "SELECT * FROM donation_provider_refund WHERE root_realm_id=$1 AND refund_request_id=$2 AND request_key=$3 FOR UPDATE",
+    [reserved.p.root_realm_id,refundRef,input.requestKey])).rows[0];
    if(!row||row.request_digest!==reserved.p.request_digest||
     (row.provider_refund_id&&row.provider_refund_id!==result.id))throw conflict();
    if(["RESERVED","OUTCOME_UNKNOWN"].includes(row.state))
     await tx.query("UPDATE donation_provider_refund SET state='PROVIDER_PENDING',"+
-     "provider_refund_id=$3,updated_at=now() WHERE refund_request_id=$1 "+
-     "AND request_key=$2 AND state IN('RESERVED','OUTCOME_UNKNOWN')",
-     [refundRef,input.requestKey,result.id]);
+     "provider_refund_id=$4,updated_at=now() WHERE root_realm_id=$1 AND refund_request_id=$2 "+
+     "AND request_key=$3 AND state IN('RESERVED','OUTCOME_UNKNOWN')",
+     [reserved.p.root_realm_id,refundRef,input.requestKey,result.id]);
   });
   return {status:"REFUND_RECONCILIATION_PENDING",
    message:"Refund requested at merchant. Only signed processed confirmation followed by CG09 posting changes verified net."};
@@ -221,9 +221,10 @@ export class DonationProviderRefundService{
   const found=matches[0] as Record<string,unknown>;
   await this.tx(async tx=>tx.query(
    "UPDATE donation_provider_refund SET provider_refund_id=$3,state='PROVIDER_PENDING',updated_at=now() "+
-   "WHERE refund_request_id=$1 AND request_key=$2 AND state IN('RESERVED','OUTCOME_UNKNOWN') "+
-   "AND (provider_refund_id IS NULL OR provider_refund_id=$3)",
-   [refundRef,p.request_key,found.id]));
+   "WHERE root_realm_id=$1 AND refund_request_id=$2 AND request_key=$3 "+
+   "AND state IN('RESERVED','OUTCOME_UNKNOWN') "+
+   "AND (provider_refund_id IS NULL OR provider_refund_id=$4)",
+   [p.root_realm_id,refundRef,p.request_key,found.id]));
   return {status:"REFUND_RECONCILIATION_PENDING",merchantStatus:found.status,
    message:"Found original merchant refund. Signed processed webhook and CG09 posting are still required."};
  }
