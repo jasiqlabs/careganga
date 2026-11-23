@@ -5,6 +5,7 @@ CREATE TABLE redemption (
  root_realm_id uuid NOT NULL,
  id uuid NOT NULL DEFAULT gen_random_uuid(),
  programme_id uuid NOT NULL,
+ policy_version integer NOT NULL CHECK(policy_version>0),
  points_account_id uuid NOT NULL,
  recipient_account_ref uuid NOT NULL,
  relationship_kind text NOT NULL CHECK(relationship_kind IN('MEMBER','VOLUNTEER')),
@@ -25,6 +26,8 @@ CREATE TABLE redemption (
  UNIQUE(root_realm_id,recipient_account_ref,request_key),
  FOREIGN KEY(root_realm_id,programme_id)
   REFERENCES referral_program(root_realm_id,id) ON DELETE RESTRICT,
+ FOREIGN KEY(root_realm_id,programme_id,policy_version)
+  REFERENCES referral_policy_version(root_realm_id,programme_id,version_no) ON DELETE RESTRICT,
  FOREIGN KEY(root_realm_id,points_account_id)
   REFERENCES points_account(root_realm_id,id) ON DELETE RESTRICT,
  FOREIGN KEY(root_realm_id,product_id)
@@ -74,11 +77,11 @@ BEGIN
  IF TG_OP='DELETE' THEN
   RAISE EXCEPTION 'Original redemptions must never be deleted'; END IF;
  IF TG_OP='UPDATE' THEN
-  IF (OLD.root_realm_id,OLD.id,OLD.programme_id,OLD.points_account_id,
+  IF (OLD.root_realm_id,OLD.id,OLD.programme_id,OLD.policy_version,OLD.points_account_id,
       OLD.recipient_account_ref,OLD.relationship_kind,OLD.relationship_ref,
       OLD.product_id,OLD.product_revision,OLD.product_type,OLD.points_cost,
       OLD.request_key,OLD.payload_digest,OLD.requested_at) IS DISTINCT FROM
-     (NEW.root_realm_id,NEW.id,NEW.programme_id,NEW.points_account_id,
+     (NEW.root_realm_id,NEW.id,NEW.programme_id,NEW.policy_version,NEW.points_account_id,
       NEW.recipient_account_ref,NEW.relationship_kind,NEW.relationship_ref,
       NEW.product_id,NEW.product_revision,NEW.product_type,NEW.points_cost,
       NEW.request_key,NEW.payload_digest,NEW.requested_at)
@@ -107,6 +110,11 @@ BEGIN
    AND (product.eligible_audience='BOTH' OR product.eligible_audience=NEW.relationship_kind)
    AND product.version=NEW.product_revision
    AND product.points_price=NEW.points_cost
+   AND NEW.policy_version=(
+    SELECT pv.version_no FROM referral_policy_version pv
+     WHERE pv.root_realm_id=programme.root_realm_id
+      AND pv.programme_id=programme.id AND pv.effective_from<=now()
+     ORDER BY pv.effective_from DESC,pv.version_no DESC LIMIT 1)
    AND wallet.earned_points-wallet.reversed_points-wallet.held_points-wallet.spent_points>=NEW.points_cost
    AND (
      (NEW.relationship_kind='MEMBER' AND EXISTS(
