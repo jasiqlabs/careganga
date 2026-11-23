@@ -25,7 +25,7 @@ export function NativeCsrFundingReviews({token,canConfigure,onExpired}:{token:st
  const [detail,setDetail]=useState<Detail|null>(null),[query,setQuery]=useState(""),[offset,setOffset]=useState(0),[epoch,setEpoch]=useState(0);
  const [loading,setLoading]=useState(true),[busy,setBusy]=useState(false),[error,setError]=useState(""),[notice,setNotice]=useState("");
  const [choice,setChoice]=useState<Choice>("APPROVE"),[remarks,setRemarks]=useState(""),[password,setPassword]=useState("");
- const [pending,setPending]=useState<{ref:string;body:Decision}|null>(null),seq=useRef(0);
+ const [pending,setPending]=useState<{ref:string;body:Decision}|null>(null),seq=useRef(0),detailSeq=useRef(0);
  const refresh=()=>setEpoch(n=>n+1);
  const request=async<T,>(path:string,payload?:Record<string,unknown>):Promise<T>=>{
   const r=await identityRequest(origin+path,{cache:"no-store",headers:{Authorization:"Bearer "+token,...(payload?{"Content-Type":"application/json"}:{})},
@@ -46,8 +46,8 @@ export function NativeCsrFundingReviews({token,canConfigure,onExpired}:{token:st
   return()=>{live=false;};
  },[token,query,offset,epoch]);
  const inspect=async(id:string)=>{
-  if(busy||pending)return;const current=++seq.current;setError("");setDetail(null);
-  try{const value=await request<Detail>("/"+id);if(seq.current!==current)return;
+  if(busy||pending)return;const current=++detailSeq.current;setError("");setDetail(null);
+  try{const value=await request<Detail>("/"+id);if(detailSeq.current!==current)return;
    setDetail(value);setPassword("");setRemarks("");setChoice("APPROVE");setPending(null);}
   catch(e){setError(e instanceof Error?e.message:"Current funding review unavailable.");}
  };
@@ -107,15 +107,15 @@ export function NativeCsrFundingReviews({token,canConfigure,onExpired}:{token:st
   </View>}
   <View style={styles.card}>
    <Text>Search funding proposals</Text>
-   <TextInput style={styles.input} placeholder="Organization or review reference" value={query} onChangeText={v=>{seq.current++;setDetail(null);setQuery(v);setOffset(0);}}/>
+   <TextInput style={styles.input} placeholder="Organization or review reference" value={query} onChangeText={v=>{detailSeq.current++;setDetail(null);setQuery(v);setOffset(0);}}/>
    {button("Refresh list",refresh)}
    {loading?<ActivityIndicator/>:rows.items.length===0?<Text style={styles.muted}>No matching funding reviews.</Text>:
     rows.items.map(x=><View key={x.caseRef} style={styles.item}>
      <Text style={styles.itemTitle}>{x.title}</Text><Text style={styles.muted}>{x.reference} · {x.status.replaceAll("_"," ")}</Text>
      {button("Open protected review",()=>void inspect(x.caseRef))}
     </View>)}
-   <View style={styles.row}>{button("Previous",()=>{seq.current++;setDetail(null);setOffset(n=>Math.max(0,n-25));},loading||offset===0)}
-    <Text>Page {1+Math.floor(offset/25)}</Text>{button("Next",()=>{seq.current++;setDetail(null);setOffset(n=>n+25);},loading||!rows.hasMore)}</View>
+   <View style={styles.row}>{button("Previous",()=>{detailSeq.current++;setDetail(null);setOffset(n=>Math.max(0,n-25));},loading||offset===0)}
+    <Text>Page {1+Math.floor(offset/25)}</Text>{button("Next",()=>{detailSeq.current++;setDetail(null);setOffset(n=>n+25);},loading||!rows.hasMore)}</View>
   </View>
   {detail&&<View style={styles.card}>
    <Text style={styles.itemTitle}>{detail.source.purpose} — {detail.reference}</Text>
