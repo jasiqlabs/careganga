@@ -402,6 +402,19 @@ export class ReferralCatalogService{
    return {items:q.rows.slice(0,CATALOG_PAGE_SIZE),hasMore:q.rows.length>CATALOG_PAGE_SIZE,page};
   },true);
  }
+ /** A catalogue-only role may select programmes without seeing policy settings. */
+ async catalogueProgrammes(bearer:string,pageInput?:string){
+  const page=catalogPage(pageInput);
+  return this.run(bearer,"rewards.catalog.view",async(tx,a)=>{
+   await this.root(tx,a);
+   const q=await tx.query(
+    "SELECT id AS ref,display_name AS name,status FROM referral_program "+
+    "WHERE root_realm_id=$1 ORDER BY display_name,id LIMIT $2 OFFSET $3",
+    [a.realmId,CATALOG_PAGE_SIZE+1,(page-1)*CATALOG_PAGE_SIZE]);
+   return {items:q.rows.slice(0,CATALOG_PAGE_SIZE),
+    hasMore:q.rows.length>CATALOG_PAGE_SIZE,page};
+  },true);
+ }
  async programmeDetail(bearer:string,programInput:string){
   const id=ref(programInput);
   return this.run(bearer,"referrals.programmes.view",async(tx,a)=>{
