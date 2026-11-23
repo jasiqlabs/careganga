@@ -3,6 +3,7 @@ import {Pressable,ScrollView,StyleSheet,Text,TextInput,View} from "react-native"
 import * as Crypto from "expo-crypto";
 import type {CG04Application,CG04ApplicantOptions,CG04PublicTier} from "@careganga/api-contracts";
 import {memberInvoke} from "./member-native-api";
+import {NativeReferralCodeCheck} from "../referrals/native-referral-code-check";
 type Draft={address:string;city:string;pinCode:string;stateRef:string;districtRef:string;branchRef:string;referral:string;consent:boolean};
 type Command={path:string;method:"POST"|"PATCH";body:Record<string,unknown>};
 const blank=():Draft=>({address:"",city:"",pinCode:"",stateRef:"",districtRef:"",branchRef:"",referral:"",consent:false});
@@ -39,6 +40,7 @@ export function NativeMemberApplication({token,application,plans,initialPlan,onS
  {selector("District",draft.districtRef,options?.districts??[],v=>setDraft(d=>({...d,districtRef:v})))}
  {selector("Optional branch preference",draft.branchRef,[{value:"",label:"None"},...(options?.branches??[])],v=>setDraft(d=>({...d,branchRef:v})))}
  {field("Referral (optional)","referral")}
+  <NativeReferralCodeCheck code={draft.referral}/>
  <Pressable accessibilityRole="checkbox" accessibilityState={{checked:draft.consent}} onPress={()=>setDraft(d=>({...d,consent:!d.consent}))} style={s.choice}><Text>{draft.consent?"☑":"☐"} I consent to processing of this membership application and its protected evidence.</Text></Pressable>
  <Pressable accessibilityRole="button" disabled={busy||!draft.consent||!options||!offer||!!pending.current} onPress={save} style={[s.primary,busy&&{opacity:.5}]}><Text style={s.white}>Save application</Text></Pressable>
  {pending.current&&<View style={s.field}><Text>Save result uncertain. Refresh your current applications before retrying the original request.</Text><Pressable onPress={()=>void onSaved()}><Text>Refresh current status</Text></Pressable><Pressable onPress={()=>void send(pending.current!)}><Text>Retry original save</Text></Pressable></View>}
