@@ -59,7 +59,6 @@ CREATE TABLE redemption_event (
  recorded_at timestamptz NOT NULL DEFAULT now(),
  PRIMARY KEY(root_realm_id,id),
  UNIQUE(root_realm_id,redemption_id,event_kind),
- UNIQUE(root_realm_id,source_key),
  FOREIGN KEY(root_realm_id,redemption_id)
   REFERENCES redemption(root_realm_id,id) ON DELETE RESTRICT,
  FOREIGN KEY(root_realm_id,original_points_event_id)
@@ -115,6 +114,9 @@ BEGIN
        ON term.root_realm_id=m.root_realm_id AND term.member_id=m.id
       WHERE m.root_realm_id=wallet.root_realm_id AND m.id=NEW.relationship_ref
        AND m.account_ref=NEW.recipient_account_ref AND m.status='ACTIVE'
+       AND (m.branch_ref IS NULL OR EXISTS(
+        SELECT 1 FROM branch br WHERE br.root_realm_id=m.root_realm_id
+         AND br.id=m.branch_ref AND br.status='ACTIVE'))
        AND term.starts_on<=(now() AT TIME ZONE 'Asia/Kolkata')::date
        AND (term.expires_on IS NULL
          OR term.expires_on>(now() AT TIME ZONE 'Asia/Kolkata')::date)
