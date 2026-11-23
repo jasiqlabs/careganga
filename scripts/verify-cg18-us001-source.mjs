@@ -514,6 +514,24 @@ checks.push(["Existing CG18 typed parser proves native first-item schema",
  files.extended.includes('kind==="HEALTHCARE_CATEGORIES"')&&
  files.extended.includes('kind==="GALLERY_GRID"')&&
  files.extended.includes('kind==="CONTACT_INFO"')]);
+// Source-only deployment follow-up: a build never creates a published Home.
+// Approved joins are visible only through effective CG03-approved Home navigation.
+checks.push(["Published Home-approved join intent reaches genuine Public Web routes",
+ files.backend.includes("n.member_join_desired,n.volunteer_join_desired")&&
+ files.backend.includes('path:memberJoin?"/membership":null')&&
+ files.backend.includes('path:volunteerJoin?"/volunteer":null')&&
+ files.backend.includes("c.status='OWNER_COMPLETED'")&&
+ files.backend.includes("publication.state='EFFECTIVE'")]);
+checks.push(["Campaigns and Donate footer/floating link only on operational source readiness",
+ files.web.includes('isPublished("/campaigns")?<Link href="/campaigns">Campaigns</Link>')&&
+ files.web.includes('isPublished("/donate")?<Link href="/donate">Donate</Link>')&&
+ files.web.includes('isPublished("/donate")?')&&
+ files.web.includes('aria-disabled="true"')]);
+checks.push(["Unpublished Home never activates membership/volunteer public CTAs",
+ files.backend.includes("memberJoin=x?.member_join_desired===true")&&
+ files.backend.includes("volunteerJoin=x?.volunteer_join_desired===true")&&
+ files.backend.includes("n.status='APPROVED'")&&
+ files.backend.includes("publication.state='EFFECTIVE'")]);
 let errors=0;
 for(const [label,ok] of checks){
  console.log((ok?"SOURCE-PRESENT":"SOURCE-FAIL")+": "+label);
