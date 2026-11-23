@@ -608,6 +608,9 @@ export class ReferralCatalogService{
    }>(
     "SELECT COUNT(*) FILTER(WHERE "+
     "(wallet.referrer_kind='MEMBER' AND m.status='ACTIVE' "+
+    "AND EXISTS(SELECT 1 FROM account person "+
+    "WHERE person.realm_id=m.root_realm_id AND person.id=m.account_ref "+
+    "AND person.status='ACTIVE' AND person.contact_phone_verified_at IS NOT NULL) "+
     "AND (m.branch_ref IS NULL OR EXISTS(SELECT 1 FROM branch currentBranch "+
     "WHERE currentBranch.root_realm_id=m.root_realm_id "+
     "AND currentBranch.id=m.branch_ref AND currentBranch.status='ACTIVE')) "+
@@ -741,6 +744,9 @@ export class ReferralCatalogService{
     "AND ($4::boolean OR COALESCE(m.branch_ref,v.branch_ref)=ANY($5::uuid[]))";
    const eligibility="CASE WHEN wallet.referrer_kind='MEMBER' "+
     "AND m.status='ACTIVE' "+
+    "AND EXISTS(SELECT 1 FROM account person "+
+    "WHERE person.realm_id=m.root_realm_id AND person.id=m.account_ref "+
+    "AND person.status='ACTIVE' AND person.contact_phone_verified_at IS NOT NULL) "+
     "AND (m.branch_ref IS NULL OR EXISTS(SELECT 1 FROM branch currentBranch "+
     "WHERE currentBranch.root_realm_id=m.root_realm_id "+
     "AND currentBranch.id=m.branch_ref AND currentBranch.status='ACTIVE')) "+
