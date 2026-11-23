@@ -13,7 +13,9 @@ const actor={realmId:ROOT,accountId:ACCOUNT,
  activeSessionId:"77777777-7777-4777-8777-777777777777"};
 type Trace={sql:string;params:unknown[]};
 function setup({member=true,volunteer=false,programActive=true,
- audience="BOTH" as "BOTH"|"MEMBER"|"VOLUNTEER"}={}){
+ audience="BOTH" as "BOTH"|"MEMBER"|"VOLUNTEER",
+ qualifyingEvent="MEMBERSHIP_ACTIVATED_VERIFIED" as
+  "MEMBERSHIP_ACTIVATED_VERIFIED"|"VOLUNTEER_APPROVED_ACTIVE"}={}){
  const traces:Trace[]=[];
  let code="",connected=0,commits=0,rollbacks=0;
  const client={
@@ -26,7 +28,7 @@ function setup({member=true,volunteer=false,programActive=true,
    if(sql.includes("ORDER BY p.display_name,p.id LIMIT"))
     return {rows:programActive?[{ref:PROGRAMME,name:"Community invitations",audience}]:[]};
    if(sql.includes("SELECT p.id AS ref,p.display_name AS name FROM referral_program p"))
-    return {rows:programActive?[{ref:PROGRAMME,name:"Community invitations"}]:[]};
+    return {rows:programActive?[{ref:PROGRAMME,name:"Community invitations",qualifyingEvent}]:[]};
    if(sql.startsWith("INSERT INTO referral_code(")){
     if(!code)code=params[5] as string;
     return {rowCount:code?1:0,rows:[]};
@@ -86,6 +88,19 @@ describe("CG13 US002 active CG04 own opaque referral code contracts (NOT live DB
   assert.deepEqual(insertion.params.slice(0,5),[ROOT,PROGRAMME,"MEMBER",MEMBER,ACCOUNT]);
   assert.match(insertion.sql,/ON CONFLICT\(root_realm_id,programme_id,referrer_kind,referrer_relationship_ref\) DO NOTHING/);
   assert.equal(f.stats().commits,2);
+ });
+ test("a volunteer referrer for MEMBER-event programme shares MEMBER applicant link",async()=>{
+  const f=setup({member:false,volunteer:true,audience:"BOTH",
+   qualifyingEvent:"MEMBERSHIP_ACTIVATED_VERIFIED"});
+  const code=await f.service.myCode("own",PROGRAMME,"VOLUNTEER");
+  assert.equal(code.relationship,"VOLUNTEER");
+  assert.equal(code.sharePath,"/membership?ref="+code.code);
+ });
+ test("member referrer for VOLUNTEER-event programme shares volunteer intake",async()=>{
+  const f=setup({member:true,volunteer:false,audience:"BOTH",
+   qualifyingEvent:"VOLUNTEER_APPROVED_ACTIVE"});
+  const code=await f.service.myCode("own",PROGRAMME,"MEMBER");
+  assert.equal(code.sharePath,"/volunteer?ref="+code.code);
  });
  test("inactive/unapproved member cannot create a code even with a guessed programme UUID",async()=>{
   const f=setup({member:false,volunteer:false});
