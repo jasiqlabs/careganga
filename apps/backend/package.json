@@ -21,6 +21,7 @@
     "test:cg12-all": "tsx --test test/cg12-catalog-contract.test.ts test/cg12-stock-contract.test.ts",
     "test:cg13-us001": "tsx --test test/cg13-us001-catalogue-validation.test.ts test/cg13-us001-scope-contract.test.ts",
     "test:cg13-us002": "tsx --test test/cg13-us002-referral-code-contract.test.ts test/cg13-us002-resolve-contract.test.ts test/cg13-us002-qualified-credit-contract.test.ts test/cg13-us002-self-ledger-contract.test.ts test/cg13-us002-committed-source-contract.test.ts test/cg13-us002-admin-summary-contract.test.ts",
+    "test:cg13-us003": "tsx --test test/cg13-us003-digital-redemption-contract.test.ts",
     "test:cg10-all": "tsx --test test/cg10-enrollment-contract.test.ts test/cg10-attendance-contract.test.ts test/cg10-appraisal-contract.test.ts test/cg10-employment-change-contract.test.ts test/cg10-document-allowance-contract.test.ts test/cg19-migration-compatibility.test.ts",
     "test:cg10-document-allowance": "tsx --test test/cg10-document-allowance-contract.test.ts",
     "test:cg19-migration-compatibility": "tsx --test test/cg19-migration-compatibility.test.ts",
