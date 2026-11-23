@@ -212,3 +212,8 @@ Impact-scoped review caught a SQL string-substitution defect in the initial `340
 ### 23-Nov-2026 — CG08 original CG03 decision source and guarded PostgreSQL path
 
 The greenfield `3403_cg03_csr_partner_review.sql` introduces only the existing CG03 process/case/decision types for CSR_PARTNER_REVIEW; original CG19 CLEAN_VERIFIED agreement is part of immutable review snapshot and source revision. The original CSR partner DRAFT→SUBMITTED→(APPROVED/RETURNED/REJECTED) transition now requires an actual CG03 case, distinct password-verified reviewer and deferred original-source proof; no client can flip statuses from request JSON. This is migration SOURCE_AUTHORED_NOT_RUN until the typed CG03 service/controllers and browser/native review UI are committed. Original US001-QA01/08/10/11/13/19/20 remain partial; no new user stories/issues, no main merge.
+
+
+### 23 Nov 2026 — CG08 source owner shared transaction and CG19 proof DI boundary
+
+CG08 now exposes typed, current CG01/02-scoped `freezeForReview`, `reviewSource` and `acceptReviewEffect` for the original CG03 reviewer. Same-root source snapshot includes immutable reviewed private file ref and digest; only DRAFT can submit; only a password-verifiable CG03 decision can change a SUBMITTED partner. The original CG19 scanner service is factored through `CsrAgreementSourceModule` so CG03 can consume the existing proof adapter **without importing the entire CG19/Cg03 cyclic feature module**. CG19 HTTP controller uses the exported original service. US001 approval API/UI next; no verified approval or public attribution yet. No runtime/independent QA or branch merge.

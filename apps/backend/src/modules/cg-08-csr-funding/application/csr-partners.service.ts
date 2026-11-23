@@ -92,6 +92,59 @@ export class CsrPartnersService{
   return p;
  }
 
+
+ /** Freeze only current CG08 data. CG03 owns the original case and CG19 proof.
+  * This method must run in CG03's own atomic transaction. */
+ async freezeForReview(tx:PoolClient,a:VerifiedFoundationActor,partnerRef:string,expectedVersion:number,fileRef:string){
+  await this.identity.assertCurrent(tx,a,"csr.partners.manage");
+  await this.identity.assertCurrent(tx,a,"csr.partners.view");
+  const row=await this.guardAgreement(tx,a,partnerRef,expectedVersion,true);
+  if(row.status!=="DRAFT")throw changed();
+  const current=(await tx.query<{
+   branch_ref:string|null;legal_name:string;registration_reference:string|null;contact_name:string;
+   contact_email:string|null;contact_mobile:string|null;support_summary:string;
+  }>("SELECT branch_ref,legal_name,registration_reference,contact_name,contact_email,contact_mobile,support_summary FROM csr_partner WHERE root_realm_id=$1 AND id=$2",
+   [a.realmId,row.id])).rows[0];
+  if(!current)throw changed();
+  const snapshot={partnerRef:row.id,branchRef:current.branch_ref,legalName:current.legal_name,
+   registrationReference:current.registration_reference,contactName:current.contact_name,
+   contactEmail:current.contact_email,contactMobile:current.contact_mobile,
+   supportSummary:current.support_summary,evidenceFileRef:fileRef};
+  const sourceDigest=digest(["CG08_REVIEW_SOURCE_V1",snapshot]);
+  const q=await tx.query("UPDATE csr_partner SET status='SUBMITTED',version=version+1,updated_by=$3,updated_at=now() WHERE root_realm_id=$1 AND id=$2 AND version=$4 AND status='DRAFT' RETURNING id",
+   [a.realmId,row.id,a.accountId,row.version]);
+  if(!q.rowCount)throw changed();
+  return {partnerRef:row.id,sourceVersion:row.version,sourceDigest,title:current.legal_name,
+   snapshot};
+ }
+ /** Actual current source for protected CG03 re-review. No second partner table. */
+ async reviewSource(tx:PoolClient,a:VerifiedFoundationActor,partnerRef:string){
+  await this.identity.assertCurrent(tx,a,"csr.partners.review");
+  const p=await this.row(tx,a,partnerRef);
+  const c=(await tx.query<{
+   branch_ref:string|null;legal_name:string;registration_reference:string|null;contact_name:string;
+   contact_email:string|null;contact_mobile:string|null;support_summary:string;
+  }>("SELECT branch_ref,legal_name,registration_reference,contact_name,contact_email,contact_mobile,support_summary FROM csr_partner WHERE root_realm_id=$1 AND id=$2",
+   [a.realmId,p.id])).rows[0];
+  if(!c)throw changed();
+  return {ref:p.id,version:p.version,status:p.status,branchRef:c.branch_ref,legalName:c.legal_name,
+   registrationReference:c.registration_reference,contactName:c.contact_name,
+   contactEmail:c.contact_email,contactMobile:c.contact_mobile,supportSummary:c.support_summary};
+ }
+ /** Called only after CG03 has inserted an original password-verified decision
+  * in the SAME transaction. PostgreSQL deferred guard re-verifies provenance. */
+ async acceptReviewEffect(tx:PoolClient,root:string,partnerRef:string,sourceVersion:number,
+  action:"APPROVE"|"RETURN"|"REJECT",reviewer:string){
+  const id=ref(partnerRef);
+  const c=(await tx.query<PartnerRow>("SELECT id,branch_ref,status,version,created_by FROM csr_partner WHERE root_realm_id=$1 AND id=$2 FOR UPDATE",[root,id])).rows[0];
+  if(!c||c.status!=="SUBMITTED"||c.version!==sourceVersion+1)throw changed();
+  const next=action==="APPROVE"?"APPROVED":action==="RETURN"?"RETURNED":"REJECTED";
+  const q=await tx.query("UPDATE csr_partner SET status=$3,version=version+1,updated_by=$4,updated_at=now() WHERE root_realm_id=$1 AND id=$2 AND status='SUBMITTED' AND version=$5 RETURNING version",
+   [root,id,next,reviewer,c.version]);
+  if(!q.rowCount)throw changed();
+  return {status:next,version:c.version+1};
+ }
+
  private async replay(tx:PoolClient,a:VerifiedFoundationActor,key:string,hash:string,action:string,target?:string){
   await tx.query("SELECT pg_advisory_xact_lock(hashtextextended($1,0))",["CG08:"+a.realmId+":"+key]);
   const c=(await tx.query<{partner_id:string;actor_ref:string;action:string;payload_digest:string;result_version:number}>(
