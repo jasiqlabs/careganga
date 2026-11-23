@@ -68,3 +68,85 @@ describe("CG13 US002 B11 branch-scoped verified ledger aggregates source contrac
   assert.equal(f.seen.some(x=>x.sql.includes("FROM points_account")),false);
  });
 });
+
+/** Source-contract only: do not call this a real PostgreSQL/CG02 or privacy PASS. */
+function recordsFixture({roster=true,kind="MEMBER"}:{roster?:boolean;kind?:"MEMBER"|"VOLUNTEER"}={}){
+ const seen:{sql:string;params:unknown[]}[]=[],actions:string[]=[],checks:string[]=[];
+ const tx={query:async(sql:string,params:unknown[]=[])=>{
+  seen.push({sql,params});
+  if(sql.includes("SELECT id,status,audience,active_policy_version FROM referral_program"))
+   return {rows:[{id:PROGRAMME,status:"ACTIVE",audience:"BOTH",active_policy_version:1}]};
+  if(sql.includes("wallet.current_rank_name AS rank")&&sql.includes("LIMIT 15"))
+   return {rows:[{name:"Eligible Referrer",participantNumber:"CG/MEM/01",
+    rank:"Gold",referrals:"5",points:"450",lastActivity:"2026-11-23T10:00:00Z",
+    status:"ACTIVE"}],rowCount:1};
+  if(sql.includes("FROM points_event event JOIN points_account wallet"))
+   return {rows:[{name:"Eligible Referrer",participantNumber:"CG/MEM/01",
+    status:"QUALIFICATION",points:"100",recordedAt:"2026-11-23T10:00:00Z",
+    rank:"Gold"}],rowCount:1};
+  return {rows:[],rowCount:1};
+ },release:()=>{}};
+ const svc=new ReferralCatalogService({connect:async()=>tx} as never,
+  {requireAction:async(_token:string,action:string)=>{
+   actions.push(action);
+   if(!roster&&action!=="referrals.programmes.view")throw Error("Roster grant revoked");
+   return actor;
+  }} as never,
+  {assertCurrent:async(_tx:unknown,_actor:unknown,action:string)=>{
+   checks.push(action);
+  },assertRootSelfSessionCurrent:async()=>{}} as never,
+  {rewardStoreScope:async()=>({full:false,branches:[BRANCH]})} as never);
+ return {svc,seen,actions,checks,kind};
+}
+describe("CG13 US002 B12 individual records require existing current CG04 roster grants",()=>{
+ test("member top and immutable event records bind current root, programme, branch, dates and page",async()=>{
+  const f=recordsFixture();
+  const rows=await f.svc.adminReferralRecords("staff",PROGRAMME,"MEMBER","2","ACTIVE",
+   "2026-11-01","2026-11-23","Eligible");
+  assert.equal(rows.topReferrers[0]?.name,"Eligible Referrer");
+  assert.equal(rows.recentEvents[0]?.status,"QUALIFICATION");
+  assert.equal(rows.page,2);
+  assert.deepEqual(f.actions,["membership.members.view","referrals.programmes.view"]);
+  assert.ok(f.checks.includes("membership.members.view"));
+  const top=f.seen.find(x=>x.sql.includes("wallet.current_rank_name AS rank")&&x.sql.includes("LIMIT 15"))!;
+  assert.ok(top);
+  assert.deepEqual(top.params,[ROOT,PROGRAMME,"MEMBER",false,[BRANCH],"eligible","ACTIVE"]);
+  assert.match(top.sql,/wallet.referrer_kind=\$3/);
+  assert.match(top.sql,/COALESCE\(m.branch_ref,v.branch_ref\)=ANY\(\$5::uuid\[\]\)/);
+  assert.match(top.sql,/cg04_current_volunteer/);
+  const event=f.seen.find(x=>x.sql.includes("FROM points_event event JOIN points_account wallet"))!;
+  assert.ok(event);
+  assert.deepEqual(event.params,
+   [ROOT,PROGRAMME,"MEMBER",false,[BRANCH],"eligible","ACTIVE","2026-11-01","2026-11-23",25]);
+  assert.match(event.sql,/event.event_kind IN\('QUALIFICATION','QUALIFICATION_REVERSAL'\)/);
+  assert.match(event.sql,/event.source_recorded_at AT TIME ZONE 'Asia\/Kolkata'/);
+  for(const query of [top,event]){
+   assert.ok(!query.sql.includes("applicant_account_ref"));
+   assert.ok(!query.sql.includes("contact_phone"));
+   assert.ok(!query.sql.includes("finance_membership_collection"));
+  }
+ });
+ test("volunteer history demands volunteer roster grant instead of member grant",async()=>{
+  const f=recordsFixture({kind:"VOLUNTEER"});
+  const rows=await f.svc.adminReferralRecords("staff",PROGRAMME,"VOLUNTEER");
+  assert.equal(rows.kind,"VOLUNTEER");
+  assert.deepEqual(f.actions,["volunteers.view","referrals.programmes.view"]);
+  const top=f.seen.find(x=>x.sql.includes("LIMIT 15"))!;
+  assert.equal(top.params[2],"VOLUNTEER");
+ });
+ test("revoked CG04 roster grant never enumerates programme or private ledger",async()=>{
+  const f=recordsFixture({roster:false});
+  await assert.rejects(()=>f.svc.adminReferralRecords("staff",PROGRAMME,"MEMBER"));
+  assert.deepEqual(f.actions,["membership.members.view"]);
+  assert.equal(f.seen.length,0);
+ });
+ test("bad kind/date/page rejects before authorization and private SQL",async()=>{
+  const f=recordsFixture();
+  await assert.rejects(()=>f.svc.adminReferralRecords("staff",PROGRAMME,"STAFF"));
+  await assert.rejects(()=>f.svc.adminReferralRecords("staff",PROGRAMME,"MEMBER","10000"));
+  await assert.rejects(()=>f.svc.adminReferralRecords(
+   "staff",PROGRAMME,"MEMBER","1","ALL","2026-02-30"));
+  assert.deepEqual(f.actions,[]);
+  assert.equal(f.seen.length,0);
+ });
+});
