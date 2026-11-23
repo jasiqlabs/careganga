@@ -100,6 +100,18 @@ export class DonationAdminService{
    throw new ForbiddenException("Choose an accessible active branch.");
   return {scope,active};
  }
+ /** Recheck live roles and original CG02 source before disclosing data.
+  * Grant end or account revoke cannot return a stale authorized A+B page.
+  */
+ private async ensureReportScopeStillCurrent(bearer:string,filter:string,
+  original:{all:boolean;branchRefs:string[]},privateExport=false){
+  await this.sessions.requireAction(bearer,"finance.reports.view");
+  if(privateExport)await this.sessions.requireAction(bearer,"documents.files.view");
+  const latest=(await this.reportScope(bearer,filter)).scope;
+  if(original.all&&!latest.all||!latest.all&&original.branchRefs.some(ref=>
+      !latest.branchRefs.includes(ref)))
+   throw new ForbiddenException("Your current branch reporting access changed. Refresh this report.");
+ }
  async list(bearer:string,input:Record<string,unknown>){
   const actor=await this.sessions.requireAction(bearer,"finance.reports.view");
   const f=filters(input);
@@ -176,6 +188,7 @@ export class DonationAdminService{
     [actor.realmId,scope.all,scope.branchRefs,f.branchRef,selected(f.branchRef)]);
    const refunded=BigInt(verifiedRefunds.rows[0]?.minor??"0");
    const gross=BigInt(summary.rows[0]?.receivedMinor??"0");
+   await this.ensureReportScopeStillCurrent(bearer,f.branchRef,scope);
    const last=rows.rows.slice(0,25).at(-1);
    const nextCursor=rows.rows.length>25&&last?
     Buffer.from(JSON.stringify({t:last.createdAt.toISOString(),id:last.donationRef})).toString("base64url"):null;
@@ -230,6 +243,7 @@ export class DonationAdminService{
     r.source_status,r.method??"Not selected",r.created_on,
     r.receipt_number??"",r.correction_number??""].map(csvCell).join(","));
   }
+  await this.ensureReportScopeStillCurrent(bearer,f.branchRef,scope,true);
   return Buffer.from(lines.join("\r\n")+"\r\n","utf8");
  }
  async donorDetail(bearer:string,raw:unknown){
@@ -253,6 +267,12 @@ export class DonationAdminService{
   const email=donor.email.includes("@")?donor.email.slice(0,1)+"***"+
    donor.email.slice(donor.email.indexOf("@")):"";
   const pan=donor.pan?donor.pan.slice(0,2)+"*******"+donor.pan.slice(-1):"";
+  await this.sessions.requireAction(bearer,"finance.reports.view");
+  await this.sessions.requireAction(bearer,"documents.files.view");
+  const latest=await this.branches.financeReportScope(bearer,"finance.reports.view");
+  if(scope.all&&!latest.all||!latest.all&&
+    scope.branchRefs.some(ref=>!latest.branchRefs.includes(ref)))
+   throw new ForbiddenException("Your donation access changed. Refresh this record.");
   return {donationNumber:row.donation_number,name:donor.name||"Anonymous",
    mobileMasked:mobile,emailMasked:email,panMasked:pan,location:donor.geography||"Not provided"};
  }
