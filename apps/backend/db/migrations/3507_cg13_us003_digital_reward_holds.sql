@@ -115,7 +115,11 @@ BEGIN
      WHERE pv.root_realm_id=programme.root_realm_id
       AND pv.programme_id=programme.id AND pv.effective_from<=now()
      ORDER BY pv.effective_from DESC,pv.version_no DESC LIMIT 1)
-   AND wallet.earned_points-wallet.reversed_points-wallet.held_points-wallet.spent_points>=NEW.points_cost
+   AND wallet.earned_points-wallet.reversed_points-wallet.held_points-wallet.spent_points>=GREATEST(
+    NEW.points_cost,
+    (SELECT pv.minimum_claim_points FROM referral_policy_version pv
+     WHERE pv.root_realm_id=NEW.root_realm_id AND pv.programme_id=NEW.programme_id
+      AND pv.version_no=NEW.policy_version))
    AND (
      (NEW.relationship_kind='MEMBER' AND EXISTS(
       SELECT 1 FROM member m JOIN membership_term term
