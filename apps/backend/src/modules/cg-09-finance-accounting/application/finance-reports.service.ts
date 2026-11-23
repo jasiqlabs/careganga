@@ -202,7 +202,8 @@ export class FinanceReportsService{
  /** Same original posted-metric formula for both interactive and current-role
   * CG20 scheduled readers. Never a second CG20 finance SQL/projection.
   */
- private async readPostedSummary(realm:string,year:string|null,branch:string|null){
+ private async readPostedSummary(realm:string,year:string|null,branch:string|null,
+  permittedBranches:readonly string[]|null=null){
   // Keep both source totals in the same actual PostgreSQL read snapshot.
   // Snapshot time is per CG-09; it is NOT a cross-owner/global watermark.
   const tx=await this.db.connect();let open=false;
@@ -219,8 +220,9 @@ export class FinanceReportsService{
     "JOIN account_group g ON g.id=a.group_id AND g.root_realm_id=a.root_realm_id "+
     "WHERE j.root_realm_id=$1 AND j.status='POSTED' "+
     "AND ($2::uuid IS NULL OR j.financial_year_id=$2) "+
-    "AND ($3::uuid IS NULL OR l.branch_id=$3) GROUP BY g.category",
-    [realm,year,branch]);
+    "AND ($3::uuid IS NULL OR l.branch_id=$3) "+
+    "AND ($4::uuid[] IS NULL OR l.branch_id=ANY($4::uuid[])) GROUP BY g.category",
+    [realm,year,branch,permittedBranches]);
    const k=Object.fromEntries(result.rows.map(x=>[x.category,x]));
    const get=(cat:string,side:"amountDebit"|"amountCredit")=>BigInt(k[cat]?.[side]??"0");
    const income=get("INCOME","amountCredit")-get("INCOME","amountDebit");
@@ -234,7 +236,9 @@ export class FinanceReportsService{
     "WHERE j.root_realm_id=$1 AND j.status='POSTED' "+
     "AND ($2::uuid IS NULL OR j.financial_year_id=$2) "+
     "AND a.account_kind IN('CASH','BANK') "+
-    "AND ($3::uuid IS NULL OR l.branch_id=$3)",[realm,year,branch]);
+    "AND ($3::uuid IS NULL OR l.branch_id=$3) "+
+    "AND ($4::uuid[] IS NULL OR l.branch_id=ANY($4::uuid[]))",
+    [realm,year,branch,permittedBranches]);
    await tx.query("COMMIT");open=false;
    return {incomeMinor:income.toString(),expenseMinor:expense.toString(),
     surplusMinor:(income-expense).toString(),fundsMinor:funds.toString(),
@@ -244,6 +248,26 @@ export class FinanceReportsService{
     explanation:"Recognized income/expense from posted GL only. Cash/bank is not approved claims or invoices."};
   }catch(e){if(open)await tx.query("ROLLBACK").catch(()=>undefined);throw e;}
   finally{tx.release();}
+ }
+ /** MIS-only regional and delegated manager aggregate: all currently allowed
+  * branch lines, never Foundation-null money or unrelated branches.
+  */
+ async assignedMisSummary(bearer:string,yearInput?:string){
+  const actor=await this.actor(bearer);
+  const year=yearInput?uuid(yearInput,"yearRef"):null;
+  const scope=await this.branches.financeReportScope(bearer,"finance.reports.view");
+  if(scope.all)return this.summary(bearer,yearInput);
+  if(scope.branchRefs.length===0)
+   throw new ForbiddenException("No active reporting branch is assigned to your account");
+  if(year)await this.verifyAssignedMisYear(actor.realmId,year);
+  return this.readPostedSummary(actor.realmId,year,null,scope.branchRefs);
+ }
+ private async verifyAssignedMisYear(root:string,year:string){
+  const row=await this.db.query(
+   "SELECT 1 FROM financial_year WHERE root_realm_id=$1 AND id=$2",
+   [root,year]);
+  if(!row.rowCount)throw new BadRequestException({
+   code:"FINANCE_REPORT_FILTER_INVALID",field:"yearRef"});
  }
  /** The due worker has no user bearer. Its stored CG01 account is checked
   * live and CG02 enforces the same assigned-branch/Finance-Admin boundary.
@@ -273,6 +297,10 @@ export class FinanceReportsService{
   const year=yearInput?uuid(yearInput,"yearRef"):null;
   const branch=branchInput?uuid(branchInput,"branchRef"):null;
   await this.verifyFilterScope(bearer,actor.realmId,{fy:year,branch,account:null});
+  return this.readMonthlyMisTrend(actor.realmId,year,branch,null);
+ }
+ private async readMonthlyMisTrend(root:string,year:string|null,branch:string|null,
+  permittedBranches:readonly string[]|null){
   const rows=await this.db.query<{month:string;incomeMinor:string;expenseMinor:string}>(
    "SELECT to_char(date_trunc('month',j.posting_date),'YYYY-MM') AS month,"+
    "COALESCE(SUM(CASE WHEN g.category='INCOME' "+
@@ -286,14 +314,26 @@ export class FinanceReportsService{
    "WHERE j.root_realm_id=$1 AND j.status='POSTED' "+
    "AND ($2::uuid IS NULL OR j.financial_year_id=$2) "+
    "AND ($3::uuid IS NULL OR l.branch_id=$3) "+
+   "AND ($4::uuid[] IS NULL OR l.branch_id=ANY($4::uuid[])) "+
    "AND j.posting_date >= (date_trunc('month',CURRENT_DATE) - interval '5 months')::date "+
    "AND j.posting_date < (date_trunc('month',CURRENT_DATE) + interval '1 month')::date "+
    "AND g.category IN ('INCOME','EXPENSE') "+
    "GROUP BY date_trunc('month',j.posting_date) "+
    "ORDER BY date_trunc('month',j.posting_date) LIMIT 6",
-   [actor.realmId,year,branch]);
+   [root,year,branch,permittedBranches]);
   return {months:rows.rows,windowLabel:"Last six calendar months",
    explanation:"Net posted finance income and expenses by posting month. Missing months have no original qualifying journal lines."};
+ }
+ /** Restricted MIS aggregate trend. Source CG09 posted journals only. */
+ async assignedMisMonthlyTrend(bearer:string,yearInput?:string){
+  const actor=await this.actor(bearer);
+  const year=yearInput?uuid(yearInput,"yearRef"):null;
+  const scope=await this.branches.financeReportScope(bearer,"finance.reports.view");
+  if(scope.all)return this.monthlyMisTrend(bearer,yearInput);
+  if(scope.branchRefs.length===0)
+   throw new ForbiddenException("No active reporting branch is assigned to your account");
+  if(year)await this.verifyAssignedMisYear(actor.realmId,year);
+  return this.readMonthlyMisTrend(actor.realmId,year,null,scope.branchRefs);
  }
  /** Typed CG20 C49 grouping is computed ONLY by the original CG09
   * posted-ledger owner. No CG20 SQL, arbitrary columns or client-side totals
