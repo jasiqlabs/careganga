@@ -15,14 +15,22 @@ BEGIN
  IF NOT FOUND OR b.status<>'APPROVED' THEN
   RAISE EXCEPTION 'Budget must have protected approval' USING ERRCODE='P0924';
  END IF;
- SELECT COALESCE(SUM(amount_minor) FILTER(WHERE kind='UTILIZE'),0),
+ SELECT COALESCE(SUM(CASE WHEN e.kind='UTILIZE' AND NOT EXISTS(
+  SELECT 1 FROM journal reversal WHERE reversal.root_realm_id=e.root_realm_id
+   AND reversal.reversal_of_id=e.source_journal_id
+   AND reversal.posting_kind='REVERSAL' AND reversal.status='POSTED'
+ ) THEN e.amount_minor ELSE 0 END),0),
   COALESCE(SUM(amount_minor) FILTER(WHERE kind='COMMIT'),0),
   COALESCE(SUM(amount_minor) FILTER(WHERE kind='RELEASE'),0),
   COALESCE(SUM(amount_minor) FILTER(WHERE kind='ALLOCATE'),0),
   COALESCE(SUM(amount_minor) FILTER(WHERE kind='DEALLOCATE'),0),
-  COALESCE(SUM(commitment_applied_minor),0)
+  COALESCE(SUM(CASE WHEN e.kind='UTILIZE' AND NOT EXISTS(
+   SELECT 1 FROM journal reversal WHERE reversal.root_realm_id=e.root_realm_id
+    AND reversal.reversal_of_id=e.source_journal_id
+    AND reversal.posting_kind='REVERSAL' AND reversal.status='POSTED'
+  ) THEN e.commitment_applied_minor ELSE 0 END),0)
  INTO used,committed,released,allocated,deallocated,applied
- FROM finance_budget_event WHERE root_realm_id=NEW.root_realm_id AND budget_id=NEW.budget_id;
+ FROM finance_budget_event e WHERE e.root_realm_id=NEW.root_realm_id AND e.budget_id=NEW.budget_id;
  IF NEW.kind='UTILIZE' THEN
   PERFORM 1 FROM journal j JOIN finance_voucher v
      ON v.id=j.source_ref AND v.root_realm_id=j.root_realm_id
