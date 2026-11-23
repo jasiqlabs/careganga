@@ -15,17 +15,20 @@ const button:CSSProperties={minHeight:38,padding:"6px 12px",borderRadius:8,
  color:"inherit",cursor:"pointer"};
 const date=(v:string)=>new Date(v).toLocaleDateString("en-IN",{timeZone:"Asia/Kolkata"});
 const points=(v:string)=>/^-?[0-9]{1,18}$/.test(v)?BigInt(v).toLocaleString("en-IN"):"—";
-export function AdminReferralRecords({programme,kind,canViewMember,canViewVolunteer,refreshEpoch}:{
- programme:string;kind:Kind;canViewMember:boolean;canViewVolunteer:boolean;refreshEpoch:number;
+export function AdminReferralRecords({programme,kind,selectedRank,canViewMember,canViewVolunteer,refreshEpoch}:{
+ programme:string;kind:Kind;selectedRank:string;canViewMember:boolean;canViewVolunteer:boolean;refreshEpoch:number;
 }){
  const allowed=kind==="MEMBER"?canViewMember:canViewVolunteer;
  const [search,setSearch]=useState(""),[query,setQuery]=useState("");
  const [status,setStatus]=useState("ALL"),[from,setFrom]=useState(""),[to,setTo]=useState("");
+ const [location,setLocation]=useState(""),[locationFilter,setLocationFilter]=useState("");
+ const [sort,setSort]=useState("REFERRALS");
  const [source,setSource]=useState<Source|null>(null);
  const [loading,setLoading]=useState(false),[error,setError]=useState("");
  const [older,setOlder]=useState(false);
  const seq=useRef(0);
  useEffect(()=>{const t=setTimeout(()=>setQuery(search.trim()),300);return()=>clearTimeout(t);},[search]);
+ useEffect(()=>{const t=setTimeout(()=>setLocationFilter(location.trim()),300);return()=>clearTimeout(t);},[location]);
  const load=useCallback(async(page:number,append=false)=>{
   const request=++seq.current;
   if(!programme||!allowed){setSource(null);setLoading(false);setOlder(false);return;}
@@ -35,6 +38,9 @@ export function AdminReferralRecords({programme,kind,canViewMember,canViewVolunt
   try{
    const params=new URLSearchParams({kind,page:String(page),status});
    if(query)params.set("q",query);
+   if(locationFilter)params.set("location",locationFilter);
+   if(selectedRank)params.set("rank",selectedRank);
+   params.set("sort",sort);
    if(from)params.set("from",from);
    if(to)params.set("to",to);
    const response=await fetch("/api/referrals/programmes/"+encodeURIComponent(programme)+
@@ -50,7 +56,7 @@ export function AdminReferralRecords({programme,kind,canViewMember,canViewVolunt
   }catch(e){if(request===seq.current)setError(e instanceof Error?e.message:
    "Referral status uncertain. Refresh the original records.");}
   finally{if(request===seq.current){setLoading(false);setOlder(false);}}
- },[programme,kind,allowed,query,status,from,to]);
+ },[programme,kind,allowed,query,status,from,to,locationFilter,selectedRank,sort]);
  useEffect(()=>{void load(1);return()=>{seq.current++;};},[load,refreshEpoch]);
  if(!programme)return null;
  return <section aria-label="Original B12 authorized referral records"
@@ -74,12 +80,20 @@ export function AdminReferralRecords({programme,kind,canViewMember,canViewVolunt
      <select style={control} value={status} onChange={e=>setStatus(e.target.value)}>
       <option value="ALL">All</option><option value="ACTIVE">Active</option>
       <option value="INACTIVE">Inactive / expired</option></select></label>
+    <label style={{display:"grid",gap:3,fontSize:12}}>City or district
+     <input style={control} type="search" maxLength={120} value={location}
+      onChange={e=>setLocation(e.target.value)} placeholder="Current verified location"/></label>
+    <label style={{display:"grid",gap:3,fontSize:12}}>Sort top referrers
+     <select style={control} value={sort} onChange={e=>setSort(e.target.value)}>
+      <option value="REFERRALS">Most verified referrals</option>
+      <option value="RECENT">Most recent activity</option></select></label>
     <label style={{display:"grid",gap:3,fontSize:12}}>Recent events from
      <input style={control} type="date" value={from} onChange={e=>setFrom(e.target.value)}/></label>
     <label style={{display:"grid",gap:3,fontSize:12}}>To
      <input style={control} type="date" value={to} onChange={e=>setTo(e.target.value)}/></label>
     <button style={button} type="button" disabled={loading||older}
-     onClick={()=>{setSearch("");setQuery("");setStatus("ALL");setFrom("");setTo("");}}>
+     onClick={()=>{setSearch("");setQuery("");setLocation("");setLocationFilter("");
+      setSort("REFERRALS");setStatus("ALL");setFrom("");setTo("");}}>
      Clear filters</button>
    </div>
    {!!error&&<p role="alert" style={{fontSize:13,color:"#B91C1C"}}>{error}</p>}
@@ -87,7 +101,7 @@ export function AdminReferralRecords({programme,kind,canViewMember,canViewVolunt
    {source&&<><p style={{fontSize:12,margin:0}}>{source.notice}</p>
     <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(min(100%,410px),1fr))",gap:12}}>
      <div style={{minWidth:0}}>
-      <h4 style={{fontSize:15,margin:"0 0 8px"}}>Top Referrers (all-time)</h4>
+      <h4 style={{fontSize:15,margin:"0 0 8px"}}>Top Referrers — {selectedRank||"all ranks"}</h4>
       <div style={{overflowX:"auto"}}>
        <table style={{width:"100%",borderCollapse:"collapse",fontSize:12,minWidth:410}}>
         <thead><tr>{["Member / Volunteer","Rank","Verified","Net points","Status"].map(k=>
