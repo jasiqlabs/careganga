@@ -49,6 +49,9 @@ describe("CG13 US002 B11 branch-scoped verified ledger aggregates source contrac
   const spent=f.seen.find(v=>v.sql.includes('AS "spentPoints"'))!;
   assert.ok(spent);
   assert.match(spent.sql,/spent.event_kind='POINTS_SPENT'/);
+  // B14 unfulfilled includes physically issued but not recipient-acknowledged rewards.
+  assert.match(spent.sql,/r\.state IN\('HELD','ISSUED_AWAITING_HANDOVER'\)/);
+  assert.match(spent.sql,/r\.state='FULFILLED'/);
   assert.deepEqual(spent.params,[ROOT,PROGRAMME,false,[BRANCH]]);
   assert.ok(!JSON.stringify(result).includes(ACCOUNT));
   const walletReads=f.seen.filter(x=>x.sql.includes("FROM points_account wallet"));
