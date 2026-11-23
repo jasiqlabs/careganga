@@ -418,8 +418,27 @@ export class CsrFundingProposalsService{
     "FOR SHARE OF p,owner",
     [a.realmId,p.project_ref,p.branch_ref,p.project_source_version]);
    if(!rows.rows[0])throw changed();
-   return {kind:"PROJECT",project:rows.rows[0],
-    note:"CG05 project owner/manager are original source. Task-assigned employees, members and volunteers remain in CG05; no roster is invented here."};
+   let assigned:{name:string;kind:string}[]=[];
+   let teamStatus:"SOURCE"|"RESTRICTED"="SOURCE";
+   try{
+    await this.identity.assertCurrent(tx,a,"projects.tasks.view");
+    const members=await tx.query<{name:string;kind:string}>(
+     "SELECT DISTINCT account.display_name AS name, "+
+     "CASE WHEN task.assignee_volunteer_ref IS NOT NULL THEN 'VOLUNTEER' "+
+     "ELSE task.assignee_kind END AS kind "+
+     "FROM project_task task JOIN account ON account.id=task.assignee_account_ref "+
+     "AND account.realm_id=task.root_realm_id AND account.status='ACTIVE' "+
+     "WHERE task.root_realm_id=$1 AND task.project_id=$2 "+
+     "AND task.assignee_account_ref IS NOT NULL "+
+     "AND task.status IN('ASSIGNED','IN_PROGRESS') "+
+     "ORDER BY name,kind LIMIT 26",
+     [a.realmId,p.project_ref]);
+    assigned=members.rows.slice(0,25);
+   }catch(e){if(e instanceof ForbiddenException)teamStatus="RESTRICTED";else throw e;}
+   return {kind:"PROJECT",project:rows.rows[0],teamStatus,assigned,
+    note:teamStatus==="RESTRICTED"?
+     "Project tasks are restricted for your current role.":
+     "Current CG05 task assignments only; the original CG05 Tasks module owns changes."};
   },true);
  }
  /** Original B08 selectors from CG01/CG02/CG05/CG08 current sources only. */
