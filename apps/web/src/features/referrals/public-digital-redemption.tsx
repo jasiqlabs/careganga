@@ -3,11 +3,11 @@ import {useCallback,useEffect,useRef,useState} from "react";
 type Kind="MEMBER"|"VOLUNTEER";
 export type RedeemableDigitalReward={
  ref:string;programmeRef:string;name:string;version:number;pointsPrice:string;
- type:"DIGITAL"|"PHYSICAL";eligibleAudience:"MEMBER"|"VOLUNTEER"|"BOTH";
+ type:"DIGITAL"|"PHYSICAL";availability:"NO_STOCK_REQUIRED"|"AVAILABLE"|"OUT_OF_STOCK";eligibleAudience:"MEMBER"|"VOLUNTEER"|"BOTH";
  programmeAudience:"MEMBER"|"VOLUNTEER"|"BOTH";
  digitalFulfillmentMethod:"PENDING_EXTERNAL_PROOF"|"ON_PLATFORM_RECOGNITION";
 };
-type Redemption={ref:string;state:string;productName:string;pointsCost:string;revision:number;
+type Redemption={ref:string;state:string;type:"DIGITAL"|"PHYSICAL";productName:string;pointsCost:string;revision:number;
  requestedAt:string;digitalFulfillmentMethod:string;recognitionTitle:string|null;
  recognitionDescription:string|null;recognizedAt:string|null};
 type Page={items:Redemption[];hasMore:boolean;page:number};
@@ -70,7 +70,8 @@ export function PublicDigitalRedemption({selected,onClear,audiences}:{
  useEffect(()=>{setConfirmed(false);draft.current=null;setNotice("");setError("");},
   [selected?.ref,selected?.version,relationship]);
  const request=async()=>{
-  if(!selected||selected.type!=="DIGITAL"||!chosen||busy)return;
+  if(!selected||!chosen||busy||
+   (selected.type==="PHYSICAL"&&selected.availability!=="AVAILABLE"))return;
   if(!/^[1-9][0-9]{0,17}$/.test(selected.pointsPrice)){
    setError("Current verified reward price is unavailable.");return;
   }
@@ -96,7 +97,7 @@ export function PublicDigitalRedemption({selected,onClear,audiences}:{
   setBusy(true);setError("");setNotice("");
   try{
    await call("redemptions/"+item.ref+"/cancel","POST",{});
-   setNotice("Original pending digital points hold cancelled and released.");
+   setNotice("The original pending reward request was cancelled; held points and any CG12 reservation were released.");
    await load();
   }catch(e){setError(e instanceof Error?e.message:"Cancellation result uncertain. Refresh history.");}
   finally{setBusy(false);}
@@ -115,12 +116,12 @@ export function PublicDigitalRedemption({selected,onClear,audiences}:{
     "Recognition status uncertain. Refresh your original request history.");
   }finally{setBusy(false);}
  };
- return <section className="cg04-panel" aria-label="Verified digital reward requests">
-  <h3>Digital reward requests</h3>
+ return <section className="cg04-panel" aria-label="Verified reward requests">
+  <h3>Reward requests</h3>
   <p>Only genuinely earned referral points can be reserved. Digital delivery is
    pending until an independently verified entitlement is actually delivered.
    No gift code, stock, money, or automatic fulfillment is created.</p>
-  {selected&&selected.type==="DIGITAL"&&<div>
+  {selected&&<div>
    <p><strong>{selected.name}</strong> · {selected.pointsPrice} points</p>
    {!valid.length?<p>This reward is not eligible for your current relationship.</p>:<>
     <label>Redeem from my eligible relationship
@@ -132,7 +133,9 @@ export function PublicDigitalRedemption({selected,onClear,audiences}:{
      onClick={()=>setConfirmed(true)}>Review digital reward reservation</button>:
      <div role="group" aria-label="Confirm current digital price">
       <p>Confirm reservation of <strong>{selected.pointsPrice} verified points</strong>.
-       Your points will be held until the request is cancelled or supported delivery completes.</p>
+       {selected.type==="PHYSICAL"?
+        " One actual available warehouse unit will also be reserved. A staff issue and verified recipient handover are still required.":
+        " Your points remain held until cancellation or genuine digital recognition/delivery."}</p>
       <div className="cg04-buttons">
        <button type="button" disabled={busy} onClick={()=>void request()}>
         Confirm points hold</button>
@@ -142,16 +145,18 @@ export function PublicDigitalRedemption({selected,onClear,audiences}:{
    </>}
    <button type="button" disabled={busy} onClick={onClear}>Close selection</button>
   </div>}
-  {selected?.type==="PHYSICAL"&&<p>Physical stock reservation is unavailable until
-   the original CG12 issue and return workflow is verified.</p>}
+  {selected?.type==="PHYSICAL"&&selected.availability!=="AVAILABLE"&&
+   <p>The actual warehouse source is not available. No stock or points have been reserved.</p>}
   {error&&<p role="alert">{error}</p>}
   {notice&&<p role="status">{notice}</p>}
   {(busy||historyBusy)&&<p role="status">Checking original reward status…</p>}
   <h4>My request history</h4>
-  {!entries.length&&!historyBusy&&<p>No confirmed digital reward requests are recorded.</p>}
+  {!entries.length&&!historyBusy&&<p>No confirmed reward requests are recorded.</p>}
   {entries.map(x=><div key={x.ref} className="cg04-panel">
    <strong>{x.productName}</strong>
-   <p>{x.pointsCost} points · {x.state==="HELD"?"Points held — delivery pending":
+   <p>{x.pointsCost} points · {x.state==="HELD"?
+    (x.type==="PHYSICAL"?"Points and warehouse unit held — issue pending":
+     "Points held — delivery pending"):
     x.state==="CANCELLED"?"Cancelled — points released":x.state}</p>
    <p>{new Date(x.requestedAt).toLocaleDateString("en-IN",{timeZone:"Asia/Kolkata"})}</p>
    {x.state==="HELD"&&x.digitalFulfillmentMethod==="ON_PLATFORM_RECOGNITION"&&
