@@ -21,7 +21,9 @@ type RealReferralSummary={
  metrics:{activeReferrers:string;successfulReferrals:string;earnedPoints:string;netPoints:string};
  rankCounts:{kind:"MEMBER"|"VOLUNTEER";rank:string|null;count:string;
   referrals:string;points:string;lastActivity:string|null}[];
- rankCountsTruncated:boolean;redemptionMetricsAvailable:boolean;notice:string;
+ rankCountsTruncated:boolean;redemptionMetricsAvailable:boolean;
+ redemptionMetrics?:{pending:string;cancelled:string;fulfilled:string;total:string};
+ notice:string;
 };
 const pointsDisplay=(x:string|null|undefined)=>{
  try{return x&&/^[0-9]{1,18}$/.test(x)?BigInt(x).toLocaleString("en-IN"):"—";}
@@ -401,15 +403,15 @@ export function ReferralRewardsWorkspace({canViewPolicy,canViewRewards,canManage
         ["TOTAL ACTIVE REFERRERS",summary?.metrics.activeReferrers],
         ["TOTAL SUCCESSFUL REFERRALS",summary?.metrics.successfulReferrals],
         ["TOTAL REFERRAL POINTS",summary?.metrics.netPoints],
-        ["TOTAL REWARDS REDEEMED",null],
-        ["PENDING REWARDS",null]
+        ["TOTAL REWARDS REDEEMED",summary?.redemptionMetrics?.fulfilled],
+        ["PENDING REWARDS",summary?.redemptionMetrics?.pending]
        ] as const).map(([label,value])=><div key={label}
         style={{...css.panel,padding:12,gap:3}}>
         <span style={{fontSize:10,fontWeight:700}}>{label}</span>
         <strong style={{fontSize:23}}>{pointsDisplay(value)}</strong>
         <span style={{fontSize:11,color:"var(--cg-text-muted,#64748B)"}}>
          {value!==null&&value!==undefined?
-          "Verified original ledger":"Unavailable until real recorded redemptions"}
+          "Verified source-recorded activity":"Unavailable until real recorded source"}
         </span>
        </div>)}
        {summaryLoading&&<p role="status">Checking verified referral activity…</p>}
