@@ -33,7 +33,7 @@ function setup({available="900",product=true,existing=false,
    return {rows:existing?[{ref:REDEMPTION,state:"HELD",pointsCost:"600",
     payloadDigest:DIGEST}]:[],rowCount:existing?1:0};
   if(sql.includes("p.points_price::text AS price"))
-   return {rows:product?[{price:"600",version:2,name:"Verified digital badge"}]:[],rowCount:product?1:0};
+   return {rows:product?[{price:"600",version:2,name:"Verified digital badge",policyVersion:1}]:[],rowCount:product?1:0};
   if(sql.includes('earned_points::text AS earned'))
    return {rows:[{id:WALLET,earned:available,reversed:"0",held:"0",spent:"0"}],rowCount:1};
   if(sql.includes("INSERT INTO redemption("))
@@ -71,6 +71,8 @@ describe("CG13 US003 digital points hold/cancel contracts (mock only; no real PG
    x.sql.includes("FOR UPDATE"));
   assert.ok(lock);
   assert.deepEqual(lock.params,[R,P,"MEMBER",MEMBER,ACCOUNT]);
+  const frozen=f.seen.find(x=>x.sql.includes("INSERT INTO redemption("));
+  assert.ok(frozen);assert.deepEqual(frozen.params.slice(0,4),[R,P,1,WALLET]);
   const event=f.seen.find(x=>x.sql.includes("INSERT INTO points_event("));
   assert.ok(event);assert.match(event.sql,/POINTS_HOLD/);
   assert.equal(event.params[0],R);assert.equal(event.params[2],REDEMPTION);
