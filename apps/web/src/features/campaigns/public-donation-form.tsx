@@ -31,7 +31,7 @@ export function PublicDonationForm({campaignSlug=null}:{campaignSlug?:string|nul
   [checkout,setCheckout]=useState(""),[linkState,setLinkState]=useState(""),[received,setReceived]=useState(false);
  const [receiptStatus,setReceiptStatus]=useState("NOT_ISSUED"),
   [netMinor,setNetMinor]=useState("0"),[refundMinor,setRefundMinor]=useState("0"),
-  [refundPending,setRefundPending]=useState(false);
+  [refundPending,setRefundPending]=useState(false),[refundStatus,setRefundStatus]=useState("NO_REFUND");
  const [additionalProofs,setAdditionalProofs]=useState(""),
   [history,setHistory]=useState<HistoricalDonation[]>([]),
   [historyTokens,setHistoryTokens]=useState<string[]>([]),
@@ -72,10 +72,10 @@ export function PublicDonationForm({campaignSlug=null}:{campaignSlug?:string|nul
   if(!proof||busy)return;
   setBusy(true);setError("");
   try{const x=await api<{status:string;received:boolean;receiptStatus:string;
-    netReceivedMinor:string;refundedMinor:string;refundPending:boolean}>("/status",{statusToken:proof});
+    netReceivedMinor:string;refundedMinor:string;refundPending:boolean;refundStatus:string}>("/status",{statusToken:proof});
    setStatus(x.status);setReceived(x.received);setReceiptStatus(x.receiptStatus);
    setNetMinor(x.netReceivedMinor);setRefundMinor(x.refundedMinor);
-   setRefundPending(x.refundPending);
+   setRefundPending(x.refundPending);setRefundStatus(x.refundStatus);
   }catch(e){setError(e instanceof Error?e.message:"Donation status currently unavailable.");}
   finally{setBusy(false);}
  };
@@ -222,6 +222,10 @@ export function PublicDonationForm({campaignSlug=null}:{campaignSlug?:string|nul
     {refundMinor!=="0"?" Confirmed refund(s) have been applied.":""}
     {refundPending?" Refund requested — payout not yet verified.":""}
     {" "}Receipt: {receiptStatus.replaceAll("_"," ").toLowerCase()}.</p>}
+    {refundStatus==="REFUND_RECONCILIATION_PENDING"&&
+     <p role="status">Gateway refund reconciliation is pending. The original CG09 ledger has not yet confirmed a reversal. Never repeat the payout.</p>}
+    {refundStatus==="REFUND_FAILED_REVIEW_REQUIRED"&&
+     <p role="alert">Gateway reported a failed refund. Foundation review is required; verified net has not changed.</p>}
    {receiptStatus==="ISSUED"&&<button type="button" style={button} disabled={busy}
     onClick={()=>void download()}>Download your original verified receipt (PDF)</button>}
    {receiptStatus==="ISSUED"&&<div style={{display:"grid",gap:7}}>
