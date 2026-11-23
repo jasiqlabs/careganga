@@ -616,5 +616,5 @@ test("US003-QA04: donor Web and Android expose refund uncertainty without fake n
  assert.match(web,/refundStatus==="REFUND_RECONCILIATION_PENDING"/);
  assert.match(android,/refundStatus==="REFUND_RECONCILIATION_PENDING"/);
  assert.match(cg19,/This document is NOT a tax deduction or 80G certificate/);
- assert.match(cg19,/one distinct/);
+ assert.match(cg19,/separate neutral correction/);
 });
