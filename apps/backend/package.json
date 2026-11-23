@@ -33,6 +33,7 @@
     "test:cg08-funding": "tsx --test test/cg08-funding-contract.test.ts",
     "test:cg08-funding-evidence": "tsx --test test/cg08-funding-evidence-contract.test.ts",
     "test:cg08-funding-review": "tsx --test test/cg08-funding-review-contract.test.ts",
+    "test:cg08-funding-receipt": "tsx --test test/cg08-funding-receipt-contract.test.ts",
     "test:cg08-funding-evidence-db": "node --env-file=.env ../../node_modules/tsx/dist/cli.mjs --test test/cg08-funding-evidence-db-integrity.test.ts"
   },
   "dependencies": {
