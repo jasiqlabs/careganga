@@ -1,6 +1,6 @@
 # CG-MB-002 — cg09 finance delegated branch operators
 
-**Priority:** P0 · **Owner:** CG-09 finance + CG-02 · **Status:** SOURCE_INTEGRATION_AUTHORED_REVIEW_PENDING · **Scope:** active CG-07 feature branch only · **Runtime:** NOT_RUN
+**Priority:** P0 · **Owner:** CG-09 finance + CG-02 · **Status:** SOURCE_INTEGRATION_REVIEWED_RUNTIME_PENDING · **Scope:** active CG-07 feature branch only · **Runtime:** NOT_RUN
 
 ## Source evidence / observed limitation
 
@@ -23,3 +23,11 @@ Resolve CG-MB-001 in owner, then trace every CG-09 list/selector/post/approve/ex
 ## Source integration update — 23 November
 
 CG-02 shared `requireFinanceActorBranch`, `financeReportScope`, `financeBranches`, and scheduled report checks now resolve current delegated A/B/AREA assignment with the existing CG-01 finance action. Source review of CG-09 FinanceAccounts, Budget, Invoice, Voucher, Reports found their owner services call the CG-02 facade rather than a second finance branch-grant table. Original CG-09 ledger/journal unchanged; protected Foundation-null scope preserved. **Still open:** direct account/voucher/claim/payment report API, actual private PDF/CSV, cash/bank/CG07 refund, role revoke, 2-worker race and Web/Internal Android PostgreSQL proof NOT_RUN; independent reviewer NOT_RUN.
+
+### 23-Nov-2026 — final source-owner review disposition
+
+**Source evidence:** CG09 finance actor scope and reports consume CG02 current branch projection; non-protected A+B accountant sees only A+B posted records and role-specific actions.
+
+**Remaining evidence gate:** Exact separate action, voucher post, totals, root-null denial, current signed artifact and 2-device QA NOT_RUN.
+
+**Tracking:** Owner/source stage is not RUNTIME_PASS, no CI/GitHub Actions, no main merge. Evidence and approved original QA IDs must be reconciled with `docs/qa/CAREGANGA-MULTIBRANCH-SOURCE-AND-RUNTIME-TEST-PLAN-20261123.md` and `docs/qa/CAREGANGA-CG07-MULTIBRANCH-LOCAL-DEVELOPER-HANDOFF-20261123.md`.
