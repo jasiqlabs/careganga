@@ -140,13 +140,14 @@ export class HrEnrollmentService{
  }
  async branchOptions(token:string){
   const a=await this.actor(token,"hr.applications.view");
-  return this.availableBranches(a);
+  return this.availableBranches(a,token,"hr.applications.view");
  }
  async employeeBranchOptions(token:string){
   const a=await this.sessions.requireAction(token,"hr.employees.view");
-  return this.availableBranches(a);
+  return this.availableBranches(a,token,"hr.employees.view");
  }
- private async availableBranches(a:VerifiedFoundationActor){
+ private async availableBranches(a:VerifiedFoundationActor,token:string,action:string){
+  const scope=await this.branches.staffBranchScope(token,action);
   const q=await this.db.query<{id:string;name:string;pin_code:string|null;
     state:string|null;district:string|null;subdivision:string|null;block:string|null}>(
    "SELECT b.id,b.name,b.pin_code,geo.state,geo.district,geo.subdivision,geo.block "+
@@ -163,13 +164,8 @@ export class HrEnrollmentService{
    "MAX(display_name) FILTER(WHERE level='BLOCK') AS block FROM path"+
    ") geo ON true "+
    "WHERE b.root_realm_id=$1 AND b.status='ACTIVE' "+
-   "AND (b.manager_account_ref=$2 OR EXISTS("+
-   "SELECT 1 FROM account_role ar JOIN role r ON r.id=ar.role_id "+
-   "AND r.realm_id=ar.realm_id AND r.active "+
-   "LEFT JOIN role_grant g ON g.role_id=r.id AND g.capability_key='foundation.branches.admin' "+
-   "WHERE ar.account_id=$2 AND ar.realm_id=$1 AND ar.revoked_at IS NULL "+
-   "AND (r.is_protected OR g.capability_key IS NOT NULL))) "+
-   "ORDER BY b.name,b.id LIMIT 101",[a.realmId,a.accountId]);
+   "AND ($2::boolean OR b.id=ANY($3::uuid[])) "+
+   "ORDER BY b.name,b.id LIMIT 101",[a.realmId,scope.all,scope.branchRefs]);
   if(q.rows.length>100)throw new ConflictException("Contact your administrator to narrow branch access");
   return {items:q.rows.map(b=>({branchRef:b.id,label:b.name,
     geography:[b.state,b.district,b.subdivision,b.block,b.pin_code].filter(Boolean).join(", "),
@@ -386,18 +382,14 @@ export class HrEnrollmentService{
   if(!Number.isSafeInteger(offset)||offset<0||offset>10000)
    throw new BadRequestException("Choose a valid employee list page");
   const branch=branchInput===undefined?null:uuid(branchInput,"branch");
+  const scope=await this.branches.staffBranchScope(token,"hr.applications.view");
   const q=await this.db.query<Row>(
    "SELECT h.* FROM hr_employee_application h "+
    "JOIN branch b ON b.id=h.proposed_branch_ref AND b.root_realm_id=h.root_realm_id "+
    "WHERE h.root_realm_id=$1 AND ($3::uuid IS NULL OR h.proposed_branch_ref=$3) "+
-   "AND (b.manager_account_ref=$2 OR EXISTS("+
-   "SELECT 1 FROM account_role ar JOIN role r ON r.id=ar.role_id "+
-   "AND r.realm_id=ar.realm_id AND r.active "+
-   "LEFT JOIN role_grant g ON g.role_id=r.id AND g.capability_key='foundation.branches.admin' "+
-   "WHERE ar.account_id=$2 AND ar.realm_id=$1 AND ar.revoked_at IS NULL "+
-   "AND (r.is_protected OR g.capability_key IS NOT NULL))) "+
+   "AND ($2::boolean OR b.id=ANY($5::uuid[])) "+
    "ORDER BY h.created_at DESC,h.id DESC LIMIT 26 OFFSET $4",
-   [a.realmId,a.accountId,branch,offset]);
+   [a.realmId,scope.all,branch,offset,scope.branchRefs]);
   return {items:q.rows.slice(0,25).map(view),hasMore:q.rows.length>25,offset};
  }
  async detail(token:string,applicationInput:string){
@@ -753,6 +745,7 @@ export class HrEnrollmentService{
   const actor=await this.sessions.requireAction(token,"hr.employees.view");
   if(!/^CG-HR-EMP-[0-9]{6,}$/.test(referenceInput))
    throw new BadRequestException("Choose an employee from the current directory");
+  const scope=await this.branches.staffBranchScope(token,"hr.employees.view");
   const q=await this.db.query<{employee_code:string;status:string;legal_name:string;
    designation:string;employment_type:string;branch_name:string;department_name:string|null;
    manager_name:string|null;valid_from:Date|string;valid_to:Date|string|null;
@@ -777,14 +770,8 @@ export class HrEnrollmentService{
    "ON manager_source.id=manager.application_id "+
    "AND manager_source.root_realm_id=e.root_realm_id "+
    "WHERE e.root_realm_id=$1 AND e.employee_code=$3 "+
-   "AND (b.manager_account_ref=$2 OR EXISTS("+
-   "SELECT 1 FROM account_role ar JOIN role role_now ON role_now.id=ar.role_id "+
-   "AND role_now.realm_id=ar.realm_id AND role_now.active "+
-   "LEFT JOIN role_grant g ON g.role_id=role_now.id "+
-   "AND g.capability_key='foundation.branches.admin' "+
-   "WHERE ar.account_id=$2 AND ar.realm_id=$1 AND ar.revoked_at IS NULL "+
-   "AND (role_now.is_protected OR g.capability_key IS NOT NULL))) LIMIT 1",
-   [actor.realmId,actor.accountId,referenceInput]);
+   "AND ($2::boolean OR b.id=ANY($4::uuid[])) LIMIT 1",
+   [actor.realmId,scope.all,referenceInput,scope.branchRefs]);
   const person=q.rows[0];
   if(!person)throw new NotFoundException("This employee is not in your permitted branches");
   return {reference:person.employee_code,name:person.legal_name,
