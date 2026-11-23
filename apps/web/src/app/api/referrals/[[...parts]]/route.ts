@@ -22,6 +22,10 @@ function route(parts:string[],method:Method):{target:string;isSelf:boolean}|null
  if(parts.length===2&&parts[0]==="products"&&UUID.test(parts[1])&&method==="PATCH")
   return {target:segment,isSelf:false};
  if(segment==="stock-options"&&method==="GET")return {target:segment,isSelf:false};
+ if(parts.length===3&&parts[0]==="stock-preview"&&
+  UUID.test(parts[1])&&UUID.test(parts[2])&&method==="GET")
+  return {target:segment,isSelf:false};
+
  return null;
 }
 async function proxy(req:NextRequest,ctx:Context,method:Method){
