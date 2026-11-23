@@ -11,7 +11,7 @@ const id=(v:unknown)=>{
  if(typeof v!=="string"||!UUID.test(v))throw new BadRequestException("Select a current Foundation record");
  return v;
 };
-type Scope="BRANCH"|"AREA";
+type Scope="BRANCH"|"AREA"|"ALL_BRANCHES";
 type Grant={id:string;account_ref:string;scope_kind:Scope;branch_ref:string|null;area_ref:string|null;
  reason:string;granted_by:string;granted_at:Date;ended_at:Date|null;ended_by:string|null;end_request_key:string|null;
  request_digest:string;source_version:number};
@@ -37,7 +37,7 @@ export class BranchStaffAccessService{
   const actor=await this.administrator(bearer);
   const account=accountInput?id(accountInput):null;
   const rows=await this.db.query<Grant&{display_name:string;scope_name:string}>(`
-   SELECT s.*,a.display_name,COALESCE(b.name,g.display_name) AS scope_name
+   SELECT s.*,a.display_name,COALESCE(b.name,g.display_name,'All active Foundation branches') AS scope_name
    FROM cg02_staff_scope_assignment s
    JOIN account a ON a.id=s.account_ref AND a.realm_id=s.root_realm_id
    LEFT JOIN branch b ON b.id=s.branch_ref AND b.root_realm_id=s.root_realm_id
@@ -91,10 +91,13 @@ export class BranchStaffAccessService{
   const x=object(raw,["requestKey","accountRef","scopeKind","branchRef","areaRef","reason","currentPassword"]);
   if(typeof x.currentPassword!=="string")throw new BadRequestException("Confirm your administrator password");
   const account=id(x.accountRef),key=id(x.requestKey),kind=x.scopeKind;
-  if(kind!=="BRANCH"&&kind!=="AREA")throw new BadRequestException("Select branch or geographic area access");
+  if(kind!=="BRANCH"&&kind!=="AREA"&&kind!=="ALL_BRANCHES")
+   throw new BadRequestException("Select branch, area or all-branch staff access");
   const branch=kind==="BRANCH"?id(x.branchRef):null,area=kind==="AREA"?id(x.areaRef):null;
   if(kind==="BRANCH"&&x.areaRef!==undefined&&x.areaRef!==null||
-    kind==="AREA"&&x.branchRef!==undefined&&x.branchRef!==null)
+    kind==="AREA"&&x.branchRef!==undefined&&x.branchRef!==null||
+    kind==="ALL_BRANCHES"&&(x.branchRef!==undefined&&x.branchRef!==null||
+      x.areaRef!==undefined&&x.areaRef!==null))
     throw new BadRequestException("Choose only one kind of staff access");
   if(typeof x.reason!=="string"||x.reason.trim().length<6||x.reason.trim().length>500)
    throw new BadRequestException("Explain why the staff member needs this branch or area");
@@ -113,7 +116,7 @@ export class BranchStaffAccessService{
     const permitted=await tx.query("SELECT 1 FROM branch WHERE root_realm_id=$1 AND id=$2 "+
      "AND status='ACTIVE' FOR SHARE",[a.realmId,branch]);
     if(!permitted.rowCount)throw new BadRequestException("Choose an active Foundation branch");
-   }else{
+   }else if(area){
     const permitted=await tx.query("SELECT 1 FROM geography_area WHERE root_realm_id=$1 "+
      "AND id=$2 AND status='ACTIVE' FOR SHARE",[a.realmId,area]);
     if(!permitted.rowCount)throw new BadRequestException("Choose a current geographic area");
