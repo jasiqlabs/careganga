@@ -154,7 +154,7 @@ export function CsrFundingWorkspace({canManage}:{canManage:boolean}){
   (p.branchRef??null)===(draft.branchRef||null))??[];
  const cashNote="Committed, received, allocated and utilized money must be checked in the original Finance module. These records are funding proposals only.";
  return <section aria-label="CSR fund management" style={{display:"grid",gap:16}}>
-  <header><h2>CSR Fund Management</h2><p style={{color:"var(--cg-muted)"}}>
+  <header><h2>Fund Management</h2><p style={{color:"var(--cg-muted)"}}>
    Original B07–B08 funding requests · {cashNote}</p></header>
   {!!notice&&<p role="status" style={{color:"#166534"}}>{notice}</p>}
   {!!error&&<p role="alert" style={{color:"#B91C1C"}}>{error}</p>}

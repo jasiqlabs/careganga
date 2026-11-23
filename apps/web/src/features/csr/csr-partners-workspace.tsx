@@ -99,7 +99,7 @@ export function CsrPartnersWorkspace({canManage,canReadAgreement,canUploadAgreem
  };
  const set=(key:keyof Draft,value:string)=>setDraft(d=>({...d,[key]:value}));
  return <div style={{display:"grid",gap:16,maxWidth:1300}}>
-  <header><h1>CSR & Partnerships</h1><p style={{color:"var(--cg-muted)"}}>Register and maintain corporate partnership drafts. Approval, documents and financial commitments are separate verified steps.</p></header>
+  <header><p style={{fontSize:11,fontWeight:800,letterSpacing:".14em",color:"var(--cg-muted)",marginBottom:6}}>CORPORATE PARTNERSHIPS</p><h1>CSR Partner Network</h1><p style={{color:"var(--cg-muted)"}}>Corporate partnership applications, independent approval and separate CSR funding requests. Only verified records can become public.</p></header>
   {message&&<p role="status" style={{color:"#166534"}}>{message}</p>}
   {error&&<p role="alert" style={{color:"#b91c1c"}}>{error}</p>}
   <section style={panel} aria-label="CSR partner directory">

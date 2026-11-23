@@ -150,7 +150,7 @@ export function NativeCsrFunding({token,canManage,onExpired}:{
  const sponsors=options?.partners.filter(x=>x.branchRef===null||x.branchRef===branch)??[];
  const projects=options?.projects.filter(x=>(x.branchRef??null)===branch)??[];
  return <ScrollView contentContainerStyle={styles.body} keyboardShouldPersistTaps="handled">
-  <Text style={styles.title}>CSR Fund Management</Text>
+  <Text style={styles.title}>Fund Management</Text>
   <Text style={styles.note}>B07–B08 original funding requests. No pledge is received,
    allocated or utilized money until original CG03/CG09 validation.</Text>
   {!!error&&<Text accessibilityRole="alert" style={styles.error}>{error}</Text>}
