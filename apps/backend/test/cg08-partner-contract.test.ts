@@ -115,3 +115,13 @@ test("US001-QA11: CG19 re-exports its source module rather than an undeclared cl
  assert.match(code,/exports:\[CsrAgreementSourceModule,/);
  assert.ok(!code.includes("exports:[CsrAgreementEvidenceService,"));
 });
+
+
+test("US001-QA05/13: approved partner view preserves read-only UX and original review history",()=>{
+ const ui=readFileSync(join(process.cwd(),"../web/src/features/csr/csr-partners-workspace.tsx"),"utf8");
+ assert.match(ui,/canSubmit=\{canEditCurrent&&selected\.status==="DRAFT"\}/);
+ assert.match(ui,/onSubmitted=\{\(\)=>/);
+ assert.match(ui,/readOnly=\{!canEditCurrent\}/);
+ assert.match(ui,/\/review-history/);
+ assert.match(ui,/p\.status\)\?"Edit":"View"/);
+});

@@ -6,6 +6,7 @@ type Options={foundation:boolean;branches:Choice[]};
 type Partner={ref:string;branchRef:string|null;branch:string|null;legalName:string;registrationReference:string|null;
  contactName:string;contactEmail:string|null;contactMobile:string|null;supportSummary:string;status:string;version:number;updatedAt:string};
 type Page={items:Partner[];hasMore:boolean};
+type ReviewHistory={items:{reference:string;status:string;revision:number;submittedAt:string}[]};
 type Draft={branchRef:string;legalName:string;registrationReference:string;contactName:string;contactEmail:string;contactMobile:string;supportSummary:string};
 type Command={path:string;method:"POST"|"PATCH";body:Record<string,unknown>};
 const empty=():Draft=>({branchRef:"",legalName:"",registrationReference:"",contactName:"",contactEmail:"",contactMobile:"",supportSummary:""});
@@ -30,8 +31,16 @@ export function CsrPartnersWorkspace({canManage,canReadAgreement,canUploadAgreem
  const [loading,setLoading]=useState(true),[message,setMessage]=useState(""),[error,setError]=useState("");
  const [draft,setDraft]=useState<Draft>(empty),[selected,setSelected]=useState<Partner|null>(null);
  const [editing,setEditing]=useState(false),[busy,setBusy]=useState(false),[pending,setPending]=useState<Command|null>(null);
+ const [history,setHistory]=useState<ReviewHistory|null>(null),[historyError,setHistoryError]=useState("");
  const seq=useRef(0);
  const refresh=useCallback(()=>setEpoch(n=>n+1),[]);
+ const canEditCurrent=canManage&&(!selected||["DRAFT","RETURNED"].includes(selected.status));
+ useEffect(()=>{
+  let active=true;setHistory(null);setHistoryError("");
+  if(selected)void api<ReviewHistory>("/"+selected.ref+"/review-history").then(v=>{if(active)setHistory(v);})
+   .catch(()=>{if(active)setHistoryError("Review history is temporarily unavailable.");});
+  return()=>{active=false;};
+ },[selected?.ref,epoch]);
  useEffect(()=>{
   let live=true;const n=++seq.current;setLoading(true);
   const params=new URLSearchParams({offset:String(offset)});
@@ -62,7 +71,7 @@ export function CsrPartnersWorkspace({canManage,canReadAgreement,canUploadAgreem
    else{setPending(null);setError(e instanceof Error?e.message:"CSR draft could not be saved.");}
   }finally{setBusy(false);}
  };
- const submit=(e:FormEvent)=>{e.preventDefault();if(!canManage||busy||pending)return;
+ const submit=(e:FormEvent)=>{e.preventDefault();if(!canEditCurrent||busy||pending)return;
   const body:Record<string,unknown>={requestKey:crypto.randomUUID(),branchRef:draft.branchRef||null,
    legalName:draft.legalName.trim(),registrationReference:draft.registrationReference.trim()||null,
    contactName:draft.contactName.trim(),contactEmail:draft.contactEmail.trim()||null,
@@ -100,8 +109,7 @@ export function CsrPartnersWorkspace({canManage,canReadAgreement,canUploadAgreem
       <td style={{padding:10,borderBottom:"1px solid var(--cg-border)"}}>{p.branch??"Foundation"}</td>
       <td style={{padding:10,borderBottom:"1px solid var(--cg-border)"}}>{p.status}</td>
       <td style={{padding:10,borderBottom:"1px solid var(--cg-border)"}}>{new Date(p.updatedAt).toLocaleDateString("en-IN")}</td>
-      <td style={{padding:10,borderBottom:"1px solid var(--cg-border)"}}>{canManage&&["DRAFT","RETURNED"].includes(p.status)?
-       <button style={button} disabled={!!pending} type="button" onClick={()=>void choose(p)}>Edit</button>:"Read only"}</td>
+      <td style={{padding:10,borderBottom:"1px solid var(--cg-border)"}}><button style={button} disabled={!!pending} type="button" onClick={()=>void choose(p)}>{canManage&&["DRAFT","RETURNED"].includes(p.status)?"Edit":"View"}</button></td>
      </tr>)}</tbody>
     </table></div>}
    <div style={{display:"flex",justifyContent:"end",alignItems:"center",gap:10,marginTop:12}}>
@@ -111,31 +119,40 @@ export function CsrPartnersWorkspace({canManage,canReadAgreement,canUploadAgreem
    </div>
   </section>
   {editing&&<section style={panel} aria-label="CSR partner draft editor">
-   <h2>{selected?"Edit CSR partner draft":"New CSR partner draft"}</h2>
-   <p style={{color:"var(--cg-muted)"}}>Draft only. This screen does not verify registration, accept agreements or publish partnership claims.</p>
+   <h2>{selected?(canEditCurrent?"Edit CSR partner draft":"CSR partner details"):"New CSR partner draft"}</h2>
+   <p style={{color:"var(--cg-muted)"}}>{canEditCurrent?"Drafts require a separate independent approval.":`Current source status: ${selected?.status??"DRAFT"}. Private details are read-only.`} No public brand claim or financial transaction is created here.</p>
    <form onSubmit={submit} style={{display:"grid",gap:14}}>
     <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(230px,1fr))",gap:12}}>
      <label style={field}>Foundation branch
-      <select style={control} value={draft.branchRef} disabled={!!selected||busy||!!pending} onChange={e=>set("branchRef",e.target.value)} required={!choices?.foundation}>
+      <select style={control} value={draft.branchRef} disabled={!canEditCurrent||!!selected||busy||!!pending} onChange={e=>set("branchRef",e.target.value)} required={!choices?.foundation}>
        {choices?.foundation&&<option value="">Foundation-wide</option>}
        {!choices?.foundation&&<option value="">Select assigned branch</option>}
        {choices?.branches.map(b=><option key={b.value} value={b.value}>{b.label}</option>)}
       </select>
      </label>
-     <label style={field}>Registered organization name<input style={control} required minLength={2} maxLength={200} value={draft.legalName} onChange={e=>set("legalName",e.target.value)} /></label>
-     <label style={field}>Registration reference (if available)<input style={control} maxLength={100} value={draft.registrationReference} onChange={e=>set("registrationReference",e.target.value)} /></label>
-     <label style={field}>Contact name<input style={control} required minLength={2} maxLength={160} value={draft.contactName} onChange={e=>set("contactName",e.target.value)} /></label>
-     <label style={field}>Contact email<input style={control} type="email" maxLength={254} value={draft.contactEmail} onChange={e=>set("contactEmail",e.target.value)} /></label>
-     <label style={field}>Contact mobile (India, +91…)<input style={control} type="tel" maxLength={13} placeholder="+919876543210" value={draft.contactMobile} onChange={e=>set("contactMobile",e.target.value)} /></label>
+     <label style={field}>Registered organization name<input style={control} required minLength={2} maxLength={200} value={draft.legalName} readOnly={!canEditCurrent} onChange={e=>set("legalName",e.target.value)} /></label>
+     <label style={field}>Registration reference (if available)<input style={control} maxLength={100} value={draft.registrationReference} readOnly={!canEditCurrent} onChange={e=>set("registrationReference",e.target.value)} /></label>
+     <label style={field}>Contact name<input style={control} required minLength={2} maxLength={160} value={draft.contactName} readOnly={!canEditCurrent} onChange={e=>set("contactName",e.target.value)} /></label>
+     <label style={field}>Contact email<input style={control} type="email" maxLength={254} value={draft.contactEmail} readOnly={!canEditCurrent} onChange={e=>set("contactEmail",e.target.value)} /></label>
+     <label style={field}>Contact mobile (India, +91…)<input style={control} type="tel" maxLength={13} placeholder="+919876543210" value={draft.contactMobile} readOnly={!canEditCurrent} onChange={e=>set("contactMobile",e.target.value)} /></label>
     </div>
-    <label style={field}>Proposed CSR support<textarea style={{...control,minHeight:90}} required minLength={5} maxLength={1000} value={draft.supportSummary} onChange={e=>set("supportSummary",e.target.value)}/></label>
+    <label style={field}>Proposed CSR support<textarea style={{...control,minHeight:90}} required minLength={5} maxLength={1000} value={draft.supportSummary} readOnly={!canEditCurrent} onChange={e=>set("supportSummary",e.target.value)}/></label>
     <div style={{display:"flex",gap:10,flexWrap:"wrap"}}>
-     <button type="submit" style={primary} disabled={!canManage||busy||!!pending}>{busy?"Saving…":"Save draft"}</button>
+     {canEditCurrent&&<button type="submit" style={primary} disabled={busy||!!pending}>{busy?"Saving…":"Save draft"}</button>}
      <button type="button" style={button} disabled={busy||!!pending} onClick={cancel}>Close</button>
-     {selected&&canManage&&<button type="button" style={button} disabled={busy||!!pending} onClick={archive}>Discard draft</button>}
+     {selected&&canEditCurrent&&<button type="button" style={button} disabled={busy||!!pending} onClick={archive}>Discard draft</button>}
     </div>
    </form>
-   {selected&&canReadAgreement&&<CsrAgreementPanel partnerRef={selected.ref} version={selected.version} canUpload={canUploadAgreement&&canManage}/>}
+   {selected&&canReadAgreement&&<CsrAgreementPanel partnerRef={selected.ref} version={selected.version}
+    canUpload={canUploadAgreement&&canEditCurrent} canSubmit={canEditCurrent&&selected.status==="DRAFT"}
+    onSubmitted={()=>{setEditing(false);setSelected(null);setMessage("CSR application submitted for independent review. It is not approved or public.");refresh();}}/>}
+   {selected&&<section aria-label="CSR approval history" style={{display:"grid",gap:6,marginTop:12}}>
+    <h3>Review history</h3>
+    {historyError&&<p role="alert">{historyError}</p>}
+    {!history&&!historyError&&<p role="status">Checking original reviews…</p>}
+    {history?.items.length===0&&<p>No review submissions yet.</p>}
+    {history?.items.map((item,i)=><p key={item.reference+String(i)} style={{margin:0}}>{item.reference} · {item.status.replaceAll("_"," ")} · {new Date(item.submittedAt).toLocaleDateString("en-IN")}</p>)}
+   </section>}
   </section>}
   {pending&&<section style={panel} role="status">
    <p>The last write may have succeeded. Do not start a different request before checking the current directory.</p>
