@@ -133,7 +133,11 @@ describe("CG13 US002 genuine CG04 qualification adapter source-contract, NOT liv
    "JOIN membership_application_effect effect","JOIN volunteer_approval_effect effect",
    "finance_membership_verified_collection","finance_membership_verified_refund",
    "CREATE CONSTRAINT TRIGGER cg13_points_account_projection_commit",
-   "CREATE CONSTRAINT TRIGGER cg13_points_event_projection_commit"])
+   "CREATE CONSTRAINT TRIGGER cg13_points_event_projection_commit",
+   "CREATE TRIGGER cg13_rank_event_insert_guard",
+   "e.points_account_id=NEW.points_account_id",
+   "wallet.qualified_referrals=NEW.qualified_referrals_snapshot",
+   "wallet.current_rank_sort IS NOT DISTINCT FROM NEW.resulting_rank_sort"])
    assert.ok(migration.includes(signature),signature);
   assert.ok(!migration.includes("CREATE TABLE reward_stock"));
  });
