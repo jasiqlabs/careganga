@@ -595,6 +595,8 @@ test("US003-QA13: original one-time merchant refund uses signed Razorpay event a
  assert.match(controller,/@Post\(":ref\/authorize-provider"\)/);
  assert.match(controller,/@Get\(":ref\/reconcile-provider"\)/);
  assert.match(controller,/@Post\(":ref\/post-provider"\)/);
+ assert.doesNotMatch(controller,/api\/public\/donations/);
+ assert.match(online,/this\.refunds\.webhook\(req\)/);
  assert.match(staff,/authorize-provider/);
  assert.match(staff,/reconcile-provider/);
  assert.match(web,/Initiate one Razorpay refund/);
