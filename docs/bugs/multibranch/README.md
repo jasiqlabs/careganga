@@ -12,7 +12,7 @@
 | [CG-MB-006](CG-MB-006-cg07-original-donation-branch-provenance.md) | P0 | CG-07 | `SOURCE_FIX_AUTHORED_NOT_VERIFIED` | Original donation branch immutable proof in migration 3319 |
 | [CG-MB-007](CG-MB-007-cg07-donation-report-root-and-branch-filters.md) | P1 | CG-07 | `SOURCE_FIX_AUTHORED_NOT_VERIFIED` | Same filtered list/KPI/trends/CSV branch report |
 | [CG-MB-008](CG-MB-008-cg19-private-files-notice-current-branch.md) | P1 | CG-19 | `VERIFICATION_GAP` | Private document/recipient scope after source change |
-| [CG-MB-009](CG-MB-009-cg20-mis-scheduled-cached-scope.md) | P0 | CG-20 | `VERIFICATION_GAP` | Scheduled MIS, cached artifacts and scope revalidation |
+| [CG-MB-009](CG-MB-009-cg20-mis-scheduled-cached-scope.md) | P0 | CG-20 | `SOURCE_FIX_AUTHORED_REVIEW_PENDING` | Scheduled MIS, cached artifacts and scope revalidation |
 | [CG-MB-010](CG-MB-010-cg14-to-cg17-clinical-center-vs-foundation-branch.md) | P0 | CG-14–17 | `VERIFICATION_GAP` | External healthcare center is not Foundation branch |
 | [CG-MB-011](CG-MB-011-cg18-approved-public-branch-deactivation.md) | P1 | CG-18 | `VERIFICATION_GAP` | Public CMS branch source after deactivation |
 | [CG-MB-012](CG-MB-012-cg11-payroll-branch-allowance-and-original-payments.md) | P1 | CG-11 | `FUTURE_IMPLEMENTATION_GATE` | Payroll branch assignment and original CG-09 posting |
@@ -35,3 +35,5 @@ Use the [two-branch and two-center test matrix](../../qa/CAREGANGA-MULTIBRANCH-S
 ## 23 November source implementation checkpoint (no runtime certification)
 
 The approved greenfield **CG-MB-001** CG-02 assignment model (migration 3320, real Foundation branch/area records, protected independent staff grant/end, current account session invalidation) and CG-02 source facade are **AUTHORED**, with source-only receiving owner changes for CG-MB-002 finance, CG-MB-003 inventory and CG-MB-004 HR/project/membership. No historic BWC/production-data compatibility paths were added. The mutable statuses above are **not closed**: independent owner review, security/database review, TypeScript/Next/Android build, PostgreSQL migration/restore and real A/B/closed-C/scoped CG-14 center QA remain NOT_RUN. CG-MB-004 has further owner paths to inspect and fix. Keep all 15 unique issue IDs and original 24-module QA overlays; do not merge.
+
+**Current manager reporting source candidate (23 Nov):** CG09 CG20 posted A+B aggregate across ONLY live current CG02 branch/area grants plus protected Foundation admin full scope, Web and Internal Android parity; tracked in CG-MB-009. Runtime test still NOT_RUN. Original root Foundation money excluded from restricted manager aggregate. One issue remains open and is not duplicated.
