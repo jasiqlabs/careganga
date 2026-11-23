@@ -3,7 +3,7 @@ import {AppState,Pressable,StyleSheet,Text,View} from "react-native";
 import {careGangaTheme as t} from "../../../../../packages/design-tokens/src/index";
 import {memberInvoke} from "../membership/member-native-api";
 type Kind="MEMBER"|"VOLUNTEER";
-type Balance={earnedPoints:string;reversedPoints:string;heldPoints:string;
+type Balance={earnedPoints:string;reversedPoints:string;heldPoints:string;spentPoints:string;
  availablePoints:string;qualifiedReferrals:number;pendingReferrals:string;heldForReviewReferrals:string;
   notQualifiedReferrals:string;awaitingVerificationReferrals:string;currentRankName:string|null;
  adjustmentDuePoints:string};
