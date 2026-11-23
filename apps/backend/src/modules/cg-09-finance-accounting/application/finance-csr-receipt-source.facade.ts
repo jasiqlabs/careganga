@@ -136,8 +136,7 @@ export class FinanceCsrReceiptSourceFacade{
    "WITH selected AS MATERIALIZED (SELECT f.id,f.root_realm_id,f.requested_minor "+
    "FROM csr_funding_proposal f WHERE f.root_realm_id=$1 "+
    "AND f.status='APPROVED' "+
-   "AND (($2::boolean AND f.branch_ref IS NULL) "+
-   "OR f.branch_ref=ANY($3::uuid[])) "+
+   "AND ($2::boolean OR f.branch_ref=ANY($3::uuid[])) "+
    "AND ($4::boolean OR f.branch_ref IS NOT DISTINCT FROM $5::uuid) "+
    "AND ($6='' OR strpos(lower(f.purpose),$6)>0)), "+
    "commitments AS (SELECT coalesce(sum(requested_minor),0)::text AS amount FROM selected), "+
