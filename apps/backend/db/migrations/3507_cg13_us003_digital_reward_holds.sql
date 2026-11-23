@@ -17,7 +17,7 @@ CREATE TABLE redemption (
  request_key uuid NOT NULL,
  payload_digest char(64) NOT NULL CHECK(payload_digest ~ '^[0-9a-f]{64}$'),
  state text NOT NULL DEFAULT 'HELD'
-  CHECK(state IN('HELD','CANCELLED','FULFILLMENT_PENDING','FULFILLED')),
+  CHECK(state IN('HELD','CANCELLED','ISSUED_AWAITING_HANDOVER','FULFILLED')),
  revision integer NOT NULL DEFAULT 1 CHECK(revision>0),
  requested_at timestamptz NOT NULL DEFAULT now(),
  cancelled_at timestamptz,
@@ -89,6 +89,23 @@ BEGIN
       NEW.request_key,NEW.payload_digest,NEW.requested_at)
     OR NEW.revision<>OLD.revision+1
     OR NOT (
+     (OLD.state='HELD' AND NEW.state='ISSUED_AWAITING_HANDOVER'
+      AND NEW.product_type='PHYSICAL'
+      AND NEW.cancelled_at IS NULL AND NEW.fulfilled_at IS NULL
+      AND EXISTS(
+       SELECT 1 FROM stock_reward_hold h
+       JOIN stock_reward_hold_event issued
+        ON issued.root_realm_id=h.root_realm_id AND issued.hold_id=h.id
+        AND issued.event_kind='ISSUED'
+       JOIN stock_event stock ON stock.root_realm_id=issued.root_realm_id
+        AND stock.id=issued.original_stock_event_id
+       JOIN stock_operation_draft op ON op.root_realm_id=stock.root_realm_id
+        AND op.id=stock.operation_id
+       WHERE h.root_realm_id=NEW.root_realm_id AND h.redemption_id=NEW.id
+        AND h.state='ISSUED' AND issued.source_key=h.issue_key
+        AND stock.event_kind='ISSUE' AND stock.source_event_key=h.issue_key
+        AND op.reward_hold_id=h.id AND op.status='CONFIRMED'))
+     OR
      (OLD.state='HELD' AND NEW.state='CANCELLED'
       AND NEW.cancelled_at IS NOT NULL AND NEW.fulfilled_at IS NULL
       AND (NEW.product_type='DIGITAL' OR EXISTS(
@@ -203,7 +220,8 @@ BEGIN
    AND h.recipient_account_ref=NEW.recipient_account_ref
    AND h.item_id=p.cg12_item_ref AND h.location_id=p.cg12_location_ref
    AND ((NEW.state='HELD' AND h.state='HELD')
-    OR (NEW.state='CANCELLED' AND h.state='RELEASED'))
+    OR (NEW.state='CANCELLED' AND h.state='RELEASED')
+    OR (NEW.state='ISSUED_AWAITING_HANDOVER' AND h.state='ISSUED'))
  ) THEN RAISE EXCEPTION 'Original CG12 one-unit reservation source required'; END IF;
  IF NEW.state='CANCELLED' AND NOT EXISTS(
   SELECT 1 FROM points_event e JOIN redemption_event receipt
