@@ -13,7 +13,7 @@ CREATE TABLE redemption (
  product_id uuid NOT NULL,
  product_revision integer NOT NULL CHECK(product_revision>0),
  product_type text NOT NULL CHECK(product_type='DIGITAL'),
- points_cost bigint NOT NULL CHECK(points_cost>0 AND points_cost<=1000000000),
+ points_cost bigint NOT NULL CHECK(points_cost>0 AND points_cost<=1000000000000),
  request_key uuid NOT NULL,
  payload_digest char(64) NOT NULL CHECK(payload_digest ~ '^[0-9a-f]{64}$'),
  state text NOT NULL DEFAULT 'HELD'
