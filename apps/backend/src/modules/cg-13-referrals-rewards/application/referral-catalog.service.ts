@@ -300,11 +300,13 @@ export class ReferralCatalogService{
    "AND status='ACTIVE' AND unit_code='PIECE' AND qty_scale=0 FOR SHARE",
    [a.realmId,p.itemRef]);
   if(!item.rows[0])throw new ConflictException({code:"CG13_PHYSICAL_ITEM_UNAVAILABLE"});
-  const stock=await tx.query<{available:string}>(
-   'SELECT COALESCE(on_hand_qty-reserved_qty,0)::text AS available '+
+  const stock=await tx.query<{available:string;onHand:string;reserved:string}>(
+   "SELECT GREATEST(on_hand_qty-reserved_qty,0)::text AS available,"+
+   "on_hand_qty::text AS \"onHand\",reserved_qty::text AS reserved "+
    "FROM stock_balance WHERE root_realm_id=$1 AND item_id=$2 AND location_id=$3",
    [a.realmId,p.itemRef,p.storeRef]);
-  return {label:item.rows[0].name,available:stock.rows[0]?.available??"0"};
+  return {label:item.rows[0].name,available:stock.rows[0]?.available??"0",
+   onHand:stock.rows[0]?.onHand??"0",reserved:stock.rows[0]?.reserved??"0"};
  }
  private async program(tx:PoolClient,a:VerifiedFoundationActor,id:string,lock=false){
   const q=await tx.query<{id:string;status:string;audience:string;active_policy_version:number}>(
@@ -490,7 +492,7 @@ export class ReferralCatalogService{
  }
  async stockPreview(bearer:string,itemInput:string,storeInput:string){
   const itemRef=ref(itemInput,"itemRef"),storeRef=ref(storeInput,"storeRef");
-  return this.run(bearer,"rewards.catalog.manage",async(tx,a)=>{
+  return this.run(bearer,"rewards.catalog.view",async(tx,a)=>{
    await this.root(tx,a);
    const found=await this.stockSource(tx,a,{
     programmeRef:"",type:"PHYSICAL",category:"",name:"",description:"",
@@ -498,6 +500,7 @@ export class ReferralCatalogService{
     highlighted:false,publicVisible:false,approvedImageUrl:null,itemRef,storeRef});
    if(!found)throw new ServiceUnavailableException("Original CG12 stock unavailable");
    return {itemName:found.label,availableQuantity:found.available,
+    onHandQuantity:found.onHand,reservedQuantity:found.reserved,
     stockStatus:Number(found.available)>0?"AVAILABLE":"OUT_OF_STOCK",
     notice:"Read-only original CG12 available quantity. No warehouse stock is changed."};
   },true);
