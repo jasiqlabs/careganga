@@ -631,3 +631,48 @@ After direct inspection of client B03/B04/B05 and B07 original PNGs (2400×1440)
 
 **Open US002 source/QA ownership, no closure claim:** CG09 approved **finance_budget** and existing `finance_budget_event` ALLOCATE/RELEASE/UTILIZE amounts still need exact proposal/sponsor/source association, finance capacity/excess-spend and posted-voucher reversal protections; B08 still lacks original five vertically numbered complete groups with genuine CG05 team, approved CG09 category/unit-cost and verified document/status panels. The B07 Utilized/Available/Utilization % tiles must not display made-up money. US003 remains NOT_STARTED; do not merge, do not start CI.
 
+### 23-Nov-2026 — US002 rapid dependency closure and honest remaining gates
+
+**Cause of excessive churn:** original US002 was repeatedly split into narrow source-only subpaths, creating many commits before original CG09 budget integration and original B08 page closure. Source needle checks were sometimes described as QA progress although executable tests have not run. Future changes MUST fix a confirmed failing original QA path rather than create more requirements or reopen completed subsystems. Commit source in coherent owner units; one independent source pass followed by focused corrections; then hand to developer for compiled execution and visual QA. No further US003 work, no merge or GitHub Actions from this branch.
+
+**Implemented since the 27af893 starting commit:**
+- Original CG09 `3410_cg09_csr_budget_effect_links.sql`: one immutable budget-to-CSR proposal event attribution (not an amount/balance), exact same CG02 branch/CG05 project and current CG03 independently approved proposal revision. Original `finance_budget_event` ALLOCATE/UTILIZE in the **same transaction** as the association, with serializable single-proposal source lock, idempotent request-key/digest and existing original CG09 approved-budget/posted-expense constraints. ALLOCATE amount cannot exceed **currently** verified CG09 bank receipts for that signed party; UTILIZE cannot exceed the original same-budget allocation. Reversed expenses and revoked original CG19 bank proof excluded from source-backed current totals. Historical rows remain immutable; bank reversals may require operator reconciliation.
+- Original CG09 source facade now offers active approved budget category selectors, genuine unutilized Finance expense vouchers, one atomic budget effect and unpaginated B07 commitment/received/allocated/utilized/available/percentage projection. CG08 exposes only scoped original finance routes and current approved source; one authenticated no-store Web BFF whitelist, two modules' permissions and original CG02 branch restrictions preserved.
+- Original B07 six client headings now use real requested, CG03-approved commitment and CG09 verified finance totals; available/percentage withheld as **Finance revalidation required** when source bank proof reverses/invalidates or allocation exceeds current receipt. No fake zero, promise as cash or duplicated journal.
+- Original Web B08 four-step wizard removed in favor of vertical funder, project, budget, team and document groups; original project title/category/location/owner/manager and current role-authorized CG05 task assignees read from CG05, not a new team master. CG09 budget category and posted voucher selectors, original CG19 evidence/CG03 submit, saved draft, current finance status and protected action states remain. Native CSR funding also changed from four-step tabs to five vertical grouping; original finance budget writes are currently implemented on authenticated Foundation Admin Web (the client B08 target), native finance reads still use CG09 source.
+- Fixes from self-review: correct CG09 finance CTE SQL separator; prevent cross-project/general-purpose posted expense selection; correct B07 Web data contract types and stale reviewed test literals; remove old "not linked" finance UI; verify exact BFF routes and no arbitrary journal posting; 16 targeted read-only structural source checks matched expected files. Added six `test:cg08-funding-budget` source-contract tests, extended disposable PostgreSQL integrity coverage through 3410, retained other original tests.
+
+**US002 original QA source re-trace (authored is NOT tested or passed):**
+
+| Original scenario | Source state | Runtime state | Relevant current owner/proof |
+|---|---|---|---|
+| US-002-QA01 | SOURCE_AUTHORED | NOT_RUN | Original CG08 request → CG19 document → CG03 approval → CG09 cash/budget link |
+| US-002-QA02 | SOURCE_AUTHORED | NOT_RUN | CG01 role/current CG02 branch scope, original CG05, protected CG09 |
+| US-002-QA03 | SOURCE_AUTHORED | NOT_RUN | Exact minor-unit split, idempotent command and one receipt |
+| US-002-QA04 | PARTIAL_SOURCE | NOT_RUN | Validation/replay authored; real provider/timeout/error matrix not executable here |
+| US-002-QA05 | PARTIAL_SOURCE | NOT_RUN | B07 original finance numbers source-backed; rendered client visual comparison pending |
+| US-002-QA06 | PARTIAL_SOURCE | NOT_RUN | Five vertical B08 blocks authored; original itemized quantity/unit-rate parity pending |
+| US-002-QA07 | SOURCE_AUTHORED | NOT_RUN | One proposal lock, original budget ceiling, attributed receipt cap, dual-sponsor safety |
+| US-002-QA08 | SOURCE_AUTHORED | NOT_RUN | CG03 pledge and CG09 receipt/allocation are distinct authoritative states |
+| US-002-QA09 | SOURCE_AUTHORED | NOT_RUN | 70/30 CSR/Foundation, partial verified cash restricts allocation |
+| US-002-QA10 | SOURCE_AUTHORED | NOT_RUN | CG05 same-root/same-branch/version and CG09 same-project budget |
+| US-002-QA11 | SOURCE_AUTHORED | NOT_RUN | Original posted expense utilization and B07 source-backed metrics |
+| US-002-QA12 | SOURCE_AUTHORED | NOT_RUN | General Foundation purpose without project requires matching root-budget source |
+| US-002-QA13 | SOURCE_AUTHORED | NOT_RUN | Current project source and exact revision/branch checked |
+| US-002-QA14 | SOURCE_AUTHORED | NOT_RUN | Protected CG19 signed proof and original independent CG03 reviewer |
+| US-002-QA15 | SOURCE_AUTHORED | NOT_RUN | Two sponsors, one actual CG09 budget event capacity and unique attribution |
+| US-002-QA16 | SOURCE_AUTHORED | NOT_RUN | Original approved pledge versus bank receipt versus utilized expense |
+| US-002-QA17 | PARTIAL_SOURCE | NOT_RUN | Independent manual bank reconciliation and replay authored; external provider callback not verified |
+| US-002-QA18 | SOURCE_AUTHORED | NOT_RUN | Original CG09 allocated/available and verified utilization source guards |
+| US-002-QA19 | PARTIAL_SOURCE | NOT_RUN | Original CG09 reversals and revalidation warnings; finance allocation correction not fully source-covered |
+| US-002-QA20 | PARTIAL_SOURCE | NOT_RUN | Complete route authored but independent executable trace and screenshot parity not verified |
+
+**Count from this authoring review:** 14 SOURCE_AUTHORED (still uncompiled/unexecuted), 6 PARTIAL_SOURCE, 20 NOT_RUN, **0 live PASS**. No test was executed in this GitHub-only context; direct Git checkout is unavailable from the runtime. Exact screenshot pixel comparison, Android device build, PostgreSQL migration/transaction triggers and CG19 provider tests are NOT_RUN; do not certify source or functional completeness from the table.
+
+**Remaining narrowly scoped blockers, no expansion:**
+1. QA06: if B08 itemized `quantity × unit cost` is truly persisted/required by client screenshot, CG09 approved budget currently stores category and ceiling but not that itemization. Do not invent quantities or add a shadow ledger; resolve through original finance budget owner and update QA only when genuine source exists.
+2. QA19: an original reversed bank deposit is excluded from received and flags revalidation; original CG09 `RELEASE` releases a COMMIT, not a CSR ALLOCATE. Do not falsely use that as an allocation correction. Confirm correction policy and source-fix where the original QA demands it.
+3. QA04/05/17/20: only executable local/provider/browser/mobile test evidence can close timeouts, external callback expectation, actual screenshot parity and full user-flow.
+
+**Developer execution handoff (NO merge):** checkout latest `feature/careganga-cg08-csr-funding-from-cg07-20261123`. On a disposable *migrated* PostgreSQL database first run migrations 3406–3410 in the repo's normal migration sequence; inspect original CG03/CG19/CG09 FK and trigger behavior, rollback on failure and avoid any production fixture. Run `apps/backend` build and `test:cg08-partner`, `test:cg08-funding`, `test:cg08-funding-evidence`, `test:cg08-funding-review`, `test:cg08-funding-receipt`, `test:cg08-funding-budget` plus disposable `test:cg08-funding-evidence-db`; build `apps/web` and Internal Android. Trace original 20 QA scenarios with actual two-branch supervisor/manager/root roles; deliberately test stale/foreign project, revoked CG19 proof, 70/30 partial receipt, duplicate request keys, concurrent double allocation, original posted voucher reversal, lost response, protected reviewer, proper source-backed B07 and B08 at client screenshot dimensions. Fix real findings on this SAME feature branch, update each original QA row with test evidence, independent re-review; merge ONLY after developer's local build/test gate and separate approval.
+
