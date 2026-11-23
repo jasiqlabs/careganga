@@ -625,7 +625,7 @@ export class ReferralCatalogService{
    const redemptions=await tx.query<{
     pending:string;cancelled:string;fulfilled:string;total:string;spentPoints:string
    }>(
-    "SELECT COUNT(*) FILTER(WHERE r.state='HELD')::text AS pending,"+
+    "SELECT COUNT(*) FILTER(WHERE r.state IN('HELD','ISSUED_AWAITING_HANDOVER'))::text AS pending,"+
     "COUNT(*) FILTER(WHERE r.state='CANCELLED')::text AS cancelled,"+
     "COUNT(*) FILTER(WHERE r.state='FULFILLED')::text AS fulfilled,"+
     "COUNT(*)::text AS total,"+
