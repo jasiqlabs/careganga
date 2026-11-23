@@ -38,29 +38,29 @@ export function CsrFundingReviewWorkspace({canConfigure}:{canConfigure:boolean})
  const [password,setPassword]=useState(""),[remarks,setRemarks]=useState("");
  const [action,setAction]=useState<Action>("APPROVE");
  const [pending,setPending]=useState<{caseRef:string;data:Decision}|null>(null);
- const seq=useRef(0);
- const clear=()=>{seq.current++;setDetail(null);setPassword("");setRemarks("");setPending(null);};
+ const listSeq=useRef(0),detailSeq=useRef(0);
+ const clear=()=>{detailSeq.current++;setDetail(null);setPassword("");setRemarks("");setPending(null);};
  const refresh=()=>{clear();setEpoch(n=>n+1);};
  useEffect(()=>{
-  let live=true;const current=++seq.current;setLoading(true);
+  let live=true;const current=++listSeq.current;setLoading(true);
   const query=new URLSearchParams({q:q.trim().slice(0,80),offset:String(offset)});
   void Promise.all([request<List>("?"+query),request<Policy>("/policy")])
-   .then(([list,p])=>{if(live&&seq.current===current){
+   .then(([list,p])=>{if(live&&listSeq.current===current){
     setItems(list);setPolicy(p);setError("");}})
-   .catch(e=>{if(live&&seq.current===current){
+   .catch(e=>{if(live&&listSeq.current===current){
     setItems({items:[],hasMore:false});
     setError(e instanceof Error?e.message:"Protected funding reviews unavailable.");}})
-   .finally(()=>{if(live&&seq.current===current)setLoading(false);});
+   .finally(()=>{if(live&&listSeq.current===current)setLoading(false);});
   return()=>{live=false;};
  },[q,offset,epoch]);
  const inspect=async(id:string)=>{
   if(busy||pending)return;
-  const current=++seq.current;setDetail(null);setBusy(true);setError("");
+  const current=++detailSeq.current;setDetail(null);setBusy(true);setError("");
   try{
    const value=await request<Detail>("/"+id);
-   if(current!==seq.current)return;
+   if(current!==detailSeq.current)return;
    setDetail(value);setRemarks("");setAction("APPROVE");setPassword("");
-  }catch(e){if(current===seq.current)setError(
+  }catch(e){if(current===detailSeq.current)setError(
     e instanceof Error?e.message:"Funding case is no longer available.");}
   finally{setBusy(false);}
  };
