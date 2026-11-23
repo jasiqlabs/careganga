@@ -637,7 +637,7 @@ export class ReferralCatalogService{
   const search=optional(searchInput,"search",80).toLowerCase();
   const day=(v:string|undefined)=>{
    if(!v)return null;
-   if(!/^\\d{4}-\\d{2}-\\d{2}$/.test(v)||
+   if(!/^\d{4}-\d{2}-\d{2}$/.test(v)||
     Number.isNaN(Date.parse(v+"T00:00:00Z"))||
     new Date(v+"T00:00:00Z").toISOString().slice(0,10)!==v)
     throw bad("date");
