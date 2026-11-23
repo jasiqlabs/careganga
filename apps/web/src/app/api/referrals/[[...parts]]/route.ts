@@ -41,6 +41,8 @@ function route(parts:string[],method:Method):{target:string;isSelf:boolean}|null
  if(parts.length===3&&parts[0]==="programmes"&&UUID.test(parts[1])&&
   parts[2]==="status"&&method==="POST")return {target:segment,isSelf:false};
  if(parts.length===3&&parts[0]==="programmes"&&UUID.test(parts[1])&&
+  parts[2]==="categories"&&method==="GET")return {target:segment,isSelf:false};
+ if(parts.length===3&&parts[0]==="programmes"&&UUID.test(parts[1])&&
   parts[2]==="products"&&method==="GET")return {target:segment,isSelf:false};
  if(segment==="products"&&method==="POST")return {target:segment,isSelf:false};
  if(parts.length===2&&parts[0]==="products"&&UUID.test(parts[1])&&method==="PATCH")
@@ -56,13 +58,17 @@ async function proxy(req:NextRequest,ctx:Context,method:Method){
  const path=route((await ctx.params).parts??[],method);
  if(!path)return response({message:"That referral or reward action is unavailable."},404);
  const params=req.nextUrl.searchParams;
- const page=params.get("page");
+ const page=params.get("page"),search=params.get("q"),category=params.get("category");
+ const products=method==="GET"&&path.target.endsWith("/products");
  const paged=method==="GET"&&(path.target==="programmes"||path.target==="catalogue-programmes"||
-  path.target==="my-catalog"||path.target.endsWith("/products"));
- if([...params.keys()].some(k=>k!=="page")||
-    params.getAll("page").length>1||
-    (page!==null&&(!paged||!(/^[1-9][0-9]{0,3}$/).test(page))))
-  return response({message:"Invalid catalogue page."},400);
+  path.target==="my-catalog"||products);
+ if([...params.keys()].some(k=>!["page","q","category"].includes(k))||
+    ["page","q","category"].some(k=>params.getAll(k).length>1)||
+    (page!==null&&(!paged||!(/^[1-9][0-9]{0,3}$/).test(page)))||
+    ((search!==null||category!==null)&&!products)||
+    (search!==null&&(search.length>100||/[\\u0000-\\u001f\\u007f]/.test(search)))||
+    (category!==null&&(category.length>80||/[\\u0000-\\u001f\\u007f]/.test(category))))
+  return response({message:"Invalid catalogue filters."},400);
  if(method!=="GET"&&req.headers.get("origin")!==req.nextUrl.origin)
   return response({message:"Use the authenticated CareGanga form."},403);
  const cookieName=path.isSelf?"cg_community_session":"cg_staff_session";
@@ -85,6 +91,8 @@ async function proxy(req:NextRequest,ctx:Context,method:Method){
  try{
   const url=new URL("/api/v1/referrals/"+path.target,backend);
   if(page!==null)url.searchParams.set("page",page);
+  if(search!==null)url.searchParams.set("q",search);
+  if(category!==null)url.searchParams.set("category",category);
   const result=await fetch(url,{method,body,cache:"no-store",
    signal:AbortSignal.timeout(15000),
    headers:{Authorization:"Bearer "+token,...(body?{"Content-Type":"application/json"}:{})}});
