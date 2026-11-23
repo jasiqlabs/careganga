@@ -150,7 +150,7 @@ export class ReferralSelfService{
   fn:(tx:PoolClient,wallet:{id:string;earnedPoints:string;reversedPoints:string;
    heldPoints:string;spentPoints:string;qualifiedReferrals:number;
    currentRankName:string|null;currentRankSort:number|null;
-   currentRankPolicyVersion:number|null;revision:number}|null)=>
+   currentRankPolicyVersion:number|null;revision:number}|null,realm:string)=>
    Promise<Record<string,unknown>>){
   const programme=programmeRef(programmeInput),kind=relationshipKind(kindInput);
   return this.inCurrentSelf(token,true,async(tx,actor)=>{
@@ -178,7 +178,7 @@ export class ReferralSelfService{
     "AND referrer_kind=$3 AND referrer_relationship_ref=$4 "+
     "AND referrer_account_ref=$5",
     [actor.realmId,programme,kind,relationship.ref,actor.accountId]);
-   return fn(tx,result.rows[0]??null);
+   return fn(tx,result.rows[0]??null,actor.realmId);
   });
  }
  async myBalance(token:string,programmeInput:unknown,kindInput:unknown){
@@ -200,7 +200,7 @@ export class ReferralSelfService{
  }
  async myHistory(token:string,programmeInput:unknown,kindInput:unknown,pageInput?:string){
   const page=catalogPage(pageInput);
-  return this.ownWallet(token,programmeInput,kindInput,async(tx,wallet)=>{
+  return this.ownWallet(token,programmeInput,kindInput,async(tx,wallet,realm)=>{
    if(!wallet)return {items:[],hasMore:false,page};
    const events=await tx.query<{
     kind:string;points:string;recordedAt:string;rank:string|null
@@ -212,9 +212,7 @@ export class ReferralSelfService{
     "AND rank.qualifying_points_event_id=event.id "+
     "WHERE event.root_realm_id=$1 AND event.points_account_id=$2 "+
     "ORDER BY event.source_recorded_at DESC,event.id DESC LIMIT 26 OFFSET $3",
-    [(await tx.query<{realm:string}>(
-      "SELECT root_realm_id AS realm FROM points_account WHERE id=$1",
-      [wallet.id])).rows[0]?.realm,wallet.id,(page-1)*25]);
+    [realm,wallet.id,(page-1)*25]);
    return {items:events.rows.slice(0,25).map(e=>({
     status:e.kind==="QUALIFICATION"?"QUALIFIED":"REVERSED",
     points:e.points,recordedAt:e.recordedAt,rank:e.rank
@@ -223,7 +221,7 @@ export class ReferralSelfService{
  }
  async myRank(token:string,programmeInput:unknown,kindInput:unknown,pageInput?:string){
   const page=catalogPage(pageInput);
-  return this.ownWallet(token,programmeInput,kindInput,async(tx,wallet)=>{
+  return this.ownWallet(token,programmeInput,kindInput,async(tx,wallet,realm)=>{
    if(!wallet)return {rank:null,qualifiedReferrals:0,history:[],
     hasMore:false,page};
    const events=await tx.query<{
@@ -234,9 +232,9 @@ export class ReferralSelfService{
     "qualified_referrals_snapshot AS \"qualifiedReferrals\","+
     "eligible_points_snapshot::text AS \"eligiblePoints\","+
     "created_at AS \"recordedAt\" FROM reward_rank_event "+
-    "WHERE root_realm_id=(SELECT root_realm_id FROM points_account WHERE id=$1) "+
-    "AND points_account_id=$1 ORDER BY created_at DESC,id DESC LIMIT 26 OFFSET $2",
-    [wallet.id,(page-1)*25]);
+    "WHERE root_realm_id=$1 AND points_account_id=$2 "+
+    "ORDER BY created_at DESC,id DESC LIMIT 26 OFFSET $3",
+    [realm,wallet.id,(page-1)*25]);
    return {rank:wallet.currentRankName,qualifiedReferrals:wallet.qualifiedReferrals,
     history:events.rows.slice(0,25),hasMore:events.rows.length>25,page};
   });
