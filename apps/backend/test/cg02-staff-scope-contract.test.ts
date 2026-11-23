@@ -9,7 +9,9 @@ const native=(path:string)=>readFileSync(new URL("../../android-internal/src/"+p
 test("CG-MB-001 original scoped staff assignment keeps immutable same-root source and one current permission",()=>{
  const sql=backend("db/migrations/3320_cg02_delegated_staff_scope.sql");
  assert.match(sql,/CREATE TABLE cg02_staff_scope_assignment/);
- assert.match(sql,/scope_kind IN\('BRANCH','AREA'\)/);
+ assert.match(sql,/scope_kind IN\('BRANCH','AREA','ALL_BRANCHES'\)/);
+ assert.match(sql,/ux_cg02_active_staff_all_branches/);
+ assert.match(sql,/scope_kind='ALL_BRANCHES' AND branch_ref IS NULL AND area_ref IS NULL/);
  assert.match(sql,/FOREIGN KEY\(account_ref,root_realm_id\) REFERENCES account\(id,realm_id\)/);
  assert.match(sql,/FOREIGN KEY\(branch_ref,root_realm_id\) REFERENCES branch\(id,root_realm_id\)/);
  assert.match(sql,/FOREIGN KEY\(area_ref,root_realm_id\) REFERENCES geography_area\(id,root_realm_id\)/);
@@ -28,6 +30,9 @@ test("CG-MB-001 current protected grant/end and revocation require genuine CG01 
  assert.match(service,/requireFreshFoundationRootProof/);
  assert.match(service,/eligibleDelegatedStaff\(tx,a,account\)/);
  assert.match(service,/eligibleDelegatedStaffOptions/);
+ assert.match(service,/kind!=="BRANCH"&&kind!=="AREA"&&kind!=="ALL_BRANCHES"/);
+ assert.match(service,/else if\(area\)/);
+ assert.match(service,/SELECT id FROM account WHERE realm_id=\$1 AND id=\$2 FOR UPDATE/);
  const identity=backend("src/modules/cg-01-identity-access/application/foundation-structure-identity.facade.ts");
  assert.match(identity,/async eligibleDelegatedStaff\(/);
  assert.match(identity,/FOR UPDATE OF a/);
@@ -51,6 +56,9 @@ test("CG-MB-001 root-only and delegated branch/area selection remain separate fr
  assert.match(source,/WITH RECURSIVE ancestors AS/);
  assert.match(source,/grant_scope\.scope_kind='BRANCH'/);
  assert.match(source,/grant_scope\.scope_kind='AREA'/);
+ assert.match(source,/grant_scope\.scope_kind='ALL_BRANCHES'/);
+ assert.match(source,/SELECT id FROM access_realm WHERE id=\$1 FOR SHARE/);
+ assert.match(source,/LIMIT 201 FOR SHARE OF b/);
  assert.match(source,/p\.status='ACTIVE'/);
  assert.match(source,/b\.status='ACTIVE'/);
  assert.match(source,/grant_scope\.ended_at IS NULL/);
@@ -87,12 +95,14 @@ test("CG-MB-001 current Web and native Internal Android protected operations use
  assert.match(panel,/currentPassword/);
  assert.match(panel,/setUnknown\(true\)/);
  assert.match(panel,/scopeKind:kind/);
+ assert.match(panel,/ALL_BRANCHES/);
  assert.match(panel,/End staff access/);
  assert.match(source,/<BranchAccessPanel\/>/);
  assert.match(bff,/parts\[0\]==="branch-access"/);
  assert.match(bff,/parts\[3\]==="end"/);
  assert.match(android,/currentPassword/);
  assert.match(android,/scopeKind:kind/);
+ assert.match(android,/ALL_BRANCHES/);
  assert.match(android,/setBlocked\(true\)/);
  assert.match(screen,/<BranchStaffAccessNative token=\{token\}/);
  assert.match(screen,/canAdmin&&/);
