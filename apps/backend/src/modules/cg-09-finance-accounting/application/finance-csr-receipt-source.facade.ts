@@ -161,7 +161,7 @@ export class FinanceCsrReceiptSourceFacade{
    "JOIN finance_voucher v ON v.id=j.source_ref AND v.root_realm_id=j.root_realm_id "+
    "AND v.voucher_type='EXPENSE' AND v.status IN('POSTED','PAYMENT_REQUESTED','PAID_VERIFIED') "+
    "AND v.branch_id IS NOT DISTINCT FROM b.branch_id "+
-   "AND ($4::uuid IS NULL OR v.project_ref=$4) "+
+   "AND v.project_ref IS NOT DISTINCT FROM b.project_ref "+
    "JOIN finance_account account ON account.id=v.debit_account_id "+
    "AND account.root_realm_id=v.root_realm_id "+
    "JOIN account_group g ON g.id=account.group_id AND g.root_realm_id=account.root_realm_id "+
