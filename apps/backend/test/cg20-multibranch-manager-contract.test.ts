@@ -48,3 +48,24 @@ test("CG-MB-009 Web and Internal Android show all assigned vs Foundation+all bra
   assert.match(screen,/branchRef/);
  }
 });
+
+
+test("CG-MB-009 saved/export and due-worker A+B scope use original CG09 and recheck after source read",()=>{
+ const cg02=read("src/modules/cg-02-foundation-structure/application/branch-source.facade.ts");
+ const finance=read("src/modules/cg-09-finance-accounting/application/finance-reports.service.ts");
+ const source=read("src/modules/cg-20-mis-reporting/application/mis-report-source.service.ts");
+ const schedule=read("src/modules/cg-20-mis-reporting/application/mis-report-schedule.service.ts");
+ assert.match(cg02,/async scheduledFinanceScope\(root:string,account:string\)/);
+ assert.match(cg02,/requireScheduledMisAction\(root,account,"finance\.reports\.view"\)/);
+ assert.match(cg02,/await this\.permittedStaffBranches\(this\.db,root,account\)/);
+ assert.match(finance,/assigned=branch\?null:await this\.branches\.scheduledFinanceScope\(root,account\)/);
+ assert.match(finance,/assigned&&!assigned\.all\?assigned\.branchRefs:null/);
+ assert.match(finance,/const current=await this\.branches\.scheduledFinanceScope\(root,account\)/);
+ assert.match(finance,/Scheduled report scope changed/);
+ assert.match(source,/this\.finance\.assignedMisSummary\(token,q\.yearRef\)/);
+ assert.match(source,/this\.finance\.assignedMisMonthlyTrend\(token,q\.yearRef\)/);
+ assert.match(source,/this\.finance\.scheduledSummary\(root,account,q\.yearRef,q\.branchRef\)/);
+ assert.match(schedule,/this\.sources\.preview\(token,saved\.request\)/);
+ // No second shadow finance/posting source is added to MIS.
+ assert.doesNotMatch(source,/FROM journal_line/);
+});
