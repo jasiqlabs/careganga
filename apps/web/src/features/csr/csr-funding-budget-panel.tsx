@@ -137,12 +137,12 @@ export function CsrFundingBudgetPanel({proposalRef,version,canManage}:{
       {v.voucherNumber} · {v.postedDate} · {money(v.amountMinor)}
      </option>)}
     </select></label>}
-   {kind==="DEALLOCATE"&&<label>Original unspent allocation to correct
+   {kind==="DEALLOCATE"&&<label>Original allocation to correct (unused balance is checked by Finance)
     <select style={control} value={original} disabled={busy||!!pending}
      onChange={e=>setOriginal(e.target.value)}>
      <option value="">Choose original allocation</option>
      {allocations.map(a=><option key={a.allocationRef} value={a.allocationRef}>
-      Remaining unspent authorization {money(a.remainingMinor)}
+      Uncorrected original amount {money(a.remainingMinor)}
      </option>)}
     </select>
    </label>}
