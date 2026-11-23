@@ -19,7 +19,8 @@ test("US002-QA07/10/15: one CG09 budget event attributed once in exact same root
   "CREATE TRIGGER cg09_csr_budget_effect_immutable",
   "CREATE TRIGGER cg09_csr_budget_effect_source_guard",
   "p.status<>'APPROVED'",
-  "e.status<>'APPROVED'",
+  "e.budget_status<>'APPROVED'",
+  "bud.status AS budget_status INTO e",
   "e.branch_id IS DISTINCT FROM p.branch_ref",
   "e.project_ref IS DISTINCT FROM p.project_ref",
   "FOR UPDATE"
@@ -54,6 +55,8 @@ test("US002-QA11/16/19: utilization requires original posted expense and cannot 
   "reversal_of_id=e.source_journal_id",
   "finance_budget_event(root_realm_id,budget_id,kind,amount_minor,",
   "finance_csr_budget_effect(root_realm_id,funding_proposal_id,",
+  "INSERT INTO finance_budget_command(",
+  "INSERT INTO finance_event(",
   "CG09_CSR_BUDGET_EFFECT_V1",
   "this.eligibleBudgetExpenses(tx,a,p,budget)",
   "this.eligibleBudgets(tx,a,p)"
@@ -90,6 +93,9 @@ test("US002-QA05/06/20: five original B08 Web blocks use actual CG05, CG09 and C
   'aria-label="3. Budget Details & agreement terms"',
   'aria-label="5. Documents & Agreement"',
   "CsrFundingProjectContext",
+  'mode="PROJECT"',
+  'mode="TEAM"',
+  'aria-label="4. Team & Members"',
   "CsrFundingBudgetPanel",
   "CsrFundingAgreementPanel"
  ])assert.ok(web.includes(v),v);
@@ -124,4 +130,16 @@ test("US002-QA05/11/16/18: B07 shows source-backed six numbers or true finance r
   assert.ok(code.includes("Available · CG09"));
   assert.ok(code.includes("verifiedFinance"));
  }
+});
+
+test("US002-QA07/11: CG09 original event has no status; protected budget does",()=>{
+ const original=read("db/migrations/0919_cg09_original_foundation_budgets.sql");
+ const guard=sql();
+ const start=original.indexOf("CREATE TABLE finance_budget_event(");
+ const end=original.indexOf(");",start);
+ assert.ok(start>=0&&end>start);
+ assert.ok(!/\bstatus\s+text\b/.test(original.slice(start,end)));
+ assert.ok(guard.includes("bud.status AS budget_status INTO e"));
+ assert.ok(guard.includes("e.budget_status<>'APPROVED'"));
+ assert.ok(!guard.includes("e.status<>'APPROVED'"));
 });
