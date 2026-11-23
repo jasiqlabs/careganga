@@ -74,26 +74,30 @@ async function proxy(req:NextRequest,ctx:Context,method:Method){
  const page=params.get("page"),search=params.get("q"),category=params.get("category");
  const programme=params.get("programmeRef"),relationship=params.get("relationship");
  const status=params.get("status"),from=params.get("from"),to=params.get("to");
+ const kind=params.get("kind");
  const codePath=path.target==="my-code",codeOptions=path.target==="my-code/options";
  const walletPath=["points/my-balance","my-history","rewards/my-rank"].includes(path.target);
  const selector=codePath||walletPath;
  const redemptionAdmin=method==="GET"&&path.target.endsWith("/redemptions");
+ const referralAdmin=method==="GET"&&path.target.endsWith("/referral-records");
  const products=method==="GET"&&
   (path.target.endsWith("/products")||path.target==="my-catalog");
  const paged=method==="GET"&&(path.target==="programmes"||path.target==="catalogue-programmes"||
   path.target==="my-catalog"||products||codeOptions||
-  path.target==="my-history"||path.target==="rewards/my-rank"||redemptionAdmin);
- if([...params.keys()].some(k=>!["page","q","category","programmeRef","relationship","status","from","to"].includes(k))||
-    ["page","q","category","programmeRef","relationship"].some(k=>params.getAll(k).length>1)||
+  path.target==="my-history"||path.target==="rewards/my-rank"||redemptionAdmin||referralAdmin);
+ if([...params.keys()].some(k=>!["page","q","category","programmeRef","relationship","status","from","to","kind"].includes(k))||
+    ["page","q","category","programmeRef","relationship","status","from","to","kind"].some(k=>params.getAll(k).length>1)||
     ((programme!==null||relationship!==null)&&!selector)||
     (selector&&(!programme||!UUID.test(programme)||!["MEMBER","VOLUNTEER"].includes(relationship??"")))||
     ((codePath||path.target==="points/my-balance")&&page!==null)||
     (selector&&(search!==null||category!==null))||
     (page!==null&&(!paged||!(/^[1-9][0-9]{0,3}$/).test(page)))||
-    (search!==null&&!products&&!redemptionAdmin)||
+    (search!==null&&!products&&!redemptionAdmin&&!referralAdmin)||
     (category!==null&&!products)||
-    ((status!==null||from!==null||to!==null)&&!redemptionAdmin)||
-    (status!==null&&!["ALL","HELD","CANCELLED","ISSUED_AWAITING_HANDOVER","FULFILLED"].includes(status))||
+    ((status!==null||from!==null||to!==null)&&!redemptionAdmin&&!referralAdmin)||
+    (kind!==null&&(!referralAdmin||!["MEMBER","VOLUNTEER"].includes(kind)))||
+    (status!==null&&!((redemptionAdmin&&["ALL","HELD","CANCELLED","ISSUED_AWAITING_HANDOVER","FULFILLED"].includes(status))||
+      (referralAdmin&&["ALL","ACTIVE","INACTIVE"].includes(status))))||
     ([from,to].some(v=>v!==null&&!/^\d{4}-\d{2}-\d{2}$/.test(v)))||
     (search!==null&&(search.length>100||/[\u0000-\u001f\u007f]/.test(search)))||
     (category!==null&&(category.length>80||/[\u0000-\u001f\u007f]/.test(category))))
@@ -124,6 +128,7 @@ async function proxy(req:NextRequest,ctx:Context,method:Method){
   if(search!==null)url.searchParams.set("q",search);
   if(category!==null)url.searchParams.set("category",category);
   if(status!==null)url.searchParams.set("status",status);
+  if(kind!==null)url.searchParams.set("kind",kind);
   if(from!==null)url.searchParams.set("from",from);
   if(to!==null)url.searchParams.set("to",to);
   if(programme!==null)url.searchParams.set("programmeRef",programme);
