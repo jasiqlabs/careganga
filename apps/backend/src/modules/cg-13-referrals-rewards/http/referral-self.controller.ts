@@ -18,4 +18,22 @@ export class ReferralSelfController{
   @Query("relationship")relationship:string){
   return this.self.myCode(auth,programme,relationship);
  }
+ @Get("points/my-balance")
+ @Header("Cache-Control","private, no-store")
+ balance(@Headers("authorization")auth:string,@Query("programmeRef")programme:string,
+  @Query("relationship")relationship:string){
+  return this.self.myBalance(auth,programme,relationship);
+ }
+ @Get("my-history")
+ @Header("Cache-Control","private, no-store")
+ history(@Headers("authorization")auth:string,@Query("programmeRef")programme:string,
+  @Query("relationship")relationship:string,@Query("page")page?:string){
+  return this.self.myHistory(auth,programme,relationship,page);
+ }
+ @Get("rewards/my-rank")
+ @Header("Cache-Control","private, no-store")
+ rank(@Headers("authorization")auth:string,@Query("programmeRef")programme:string,
+  @Query("relationship")relationship:string,@Query("page")page?:string){
+  return this.self.myRank(auth,programme,relationship,page);
+ }
 }
