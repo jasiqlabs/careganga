@@ -238,6 +238,23 @@ export class BranchSourceFacade{
     throw new ForbiddenException("The assigned report branch has changed");
  }
 
+ /** Trusted CG20 due worker only. A protected administrator receives
+  * Foundation+branches; a senior delegated staff role receives the union
+  * of CURRENT ACTIVE branch assignments without any Foundation-null money.
+  * Sessionless background execution still checks CG01's current role.
+  */
+ async scheduledFinanceScope(root:string,account:string):
+  Promise<{all:boolean;branchRefs:string[]}>{
+  await this.sessions.requireScheduledMisAction(root,account,"finance.reports.view");
+  let all=false;
+  try{await this.sessions.requireScheduledMisAction(root,account,"foundation.branches.admin");all=true;}
+  catch(e){if(!(e instanceof ForbiddenException))throw e;}
+  if(all)return {all:true,branchRefs:[]};
+  const refs=(await this.permittedStaffBranches(this.db,root,account)).map(x=>x.id);
+  if(!refs.length)
+   throw new ForbiddenException("No current branch is assigned to this scheduled report");
+  return {all:false,branchRefs:refs};
+ }
  async requireFinanceReportBranch(bearer:string,requested:string|null|undefined):Promise<void>{
    const allowed=await this.financeReportScope(bearer);
    if(!allowed.all&&(!requested||!allowed.branchRefs.includes(requested)))
