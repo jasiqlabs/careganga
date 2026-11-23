@@ -107,10 +107,15 @@ export class RedemptionService {
      pointsCost:existing.rows[0].pointsCost,replayed:true,
      notice:"Your original digital reward request has been retrieved."};
    }
-   const product=await tx.query<{price:string;version:number;name:string}>(
-    "SELECT p.points_price::text AS price,p.version,p.name FROM reward_product p "+
+   const product=await tx.query<{price:string;version:number;name:string;policyVersion:number}>(
+    "SELECT p.points_price::text AS price,p.version,p.name,"+
+    "policy.version_no AS \"policyVersion\" FROM reward_product p "+
     "JOIN referral_program programme ON programme.root_realm_id=p.root_realm_id "+
     "AND programme.id=p.programme_id "+
+    "JOIN LATERAL (SELECT pv.version_no FROM referral_policy_version pv "+
+    "WHERE pv.root_realm_id=programme.root_realm_id AND pv.programme_id=programme.id "+
+    "AND pv.effective_from<=now() ORDER BY pv.effective_from DESC,pv.version_no DESC "+
+    "LIMIT 1) policy ON true "+
     "WHERE p.root_realm_id=$1 AND p.id=$2 AND p.programme_id=$3 "+
     "AND p.product_type='DIGITAL' AND p.status='ACTIVE' AND p.public_visible "+
     "AND programme.status='ACTIVE' AND "+
@@ -134,20 +139,21 @@ export class RedemptionService {
     BigInt(wallet.held)-BigInt(wallet.spent)<price)
     throw new ConflictException("Not enough verified available points for this reward.");
    const created=await tx.query<{ref:string}>(
-    "INSERT INTO redemption(root_realm_id,programme_id,points_account_id,"+
+    "INSERT INTO redemption(root_realm_id,programme_id,policy_version,points_account_id,"+
     "recipient_account_ref,relationship_kind,relationship_ref,product_id,"+
     "product_revision,product_type,points_cost,request_key,payload_digest) "+
-    "VALUES($1,$2,$3,$4,$5,$6,$7,$8,'DIGITAL',$9,$10,$11) RETURNING id AS ref",
-    [a.realmId,source.programmeRef,wallet.id,a.accountId,source.relationship,
-     relationship,source.productRef,source.expectedProductVersion,
-     price.toString(),source.requestKey,hash]);
+    "VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,'DIGITAL',$10,$11,$12) RETURNING id AS ref",
+    [a.realmId,source.programmeRef,product.rows[0].policyVersion,wallet.id,
+     a.accountId,source.relationship,relationship,source.productRef,
+     source.expectedProductVersion,price.toString(),source.requestKey,hash]);
    const redemption=created.rows[0];
    if(!redemption)throw new ConflictException("Reward request outcome uncertain.");
    const held=await tx.query<{ref:string}>(
     "INSERT INTO points_event(root_realm_id,points_account_id,redemption_id,"+
     "event_kind,policy_version,points_delta,qualifying_source_digest) "+
-    "SELECT $1,$2,$3,'POINTS_HOLD',pr.active_policy_version,$4,$5 "+
-    "FROM referral_program pr WHERE pr.root_realm_id=$1 AND pr.id=$6 "+
+    "SELECT $1,$2,$3,'POINTS_HOLD',r.policy_version,$4,$5 "+
+    "FROM redemption r WHERE r.root_realm_id=$1 AND r.id=$3 "+
+    "AND r.programme_id=$6 "+
     "RETURNING id AS ref",
     [a.realmId,wallet.id,redemption.ref,price.toString(),hash,source.programmeRef]);
    if(!held.rows[0])throw new ConflictException("Reward reservation not confirmed.");
@@ -197,10 +203,8 @@ export class RedemptionService {
    const effect=await tx.query<{id:string}>(
     "INSERT INTO points_event(root_realm_id,points_account_id,redemption_id,"+
     "event_kind,policy_version,points_delta,qualifying_source_digest) "+
-    "SELECT $1,$2,$3,'POINTS_RELEASE',p.active_policy_version,-$4::bigint,$5 "+
-    "FROM redemption r JOIN referral_program p "+
-    "ON p.root_realm_id=r.root_realm_id AND p.id=r.programme_id "+
-    "WHERE r.root_realm_id=$1 AND r.id=$3 RETURNING id",
+    "SELECT $1,$2,$3,'POINTS_RELEASE',r.policy_version,-$4::bigint,$5 "+
+    "FROM redemption r WHERE r.root_realm_id=$1 AND r.id=$3 RETURNING id",
     [a.realmId,redemption.wallet,redemptionRef,redemption.price,
      createHash("sha256").update("cancel:"+redemptionRef).digest("hex")]);
    if(!effect.rows[0])throw new ConflictException("Release source is unavailable.");
