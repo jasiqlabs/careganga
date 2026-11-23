@@ -6,11 +6,12 @@ import {memberInvoke} from "../membership/member-native-api";
 type Kind="MEMBER"|"VOLUNTEER";
 export type NativeRedeemableReward={
  ref:string;programmeRef:string;name:string;type:"DIGITAL"|"PHYSICAL";
+ availability:"NO_STOCK_REQUIRED"|"AVAILABLE"|"OUT_OF_STOCK";
  pointsPrice:string;version:number;eligibleAudience:Kind|"BOTH";
  programmeAudience:Kind|"BOTH";digitalFulfillmentMethod:
   "PENDING_EXTERNAL_PROOF"|"ON_PLATFORM_RECOGNITION";
 };
-type Receipt={ref:string;state:string;productName:string;pointsCost:string;requestedAt:string;
+type Receipt={ref:string;state:string;type:"DIGITAL"|"PHYSICAL";productName:string;pointsCost:string;requestedAt:string;
  digitalFulfillmentMethod:string;recognitionTitle:string|null;
  recognitionDescription:string|null;recognizedAt:string|null};
 type Page={items:Receipt[];hasMore:boolean;page:number};
@@ -56,7 +57,8 @@ export function NativeDigitalRedemption({token,onExpired,selected,onClose,audien
  useEffect(()=>{setConfirm(false);setNotice("");setError("");key.current=null;},
   [selected?.ref,selected?.version,kind]);
  const request=async()=>{
-  if(!selected||selected.type!=="DIGITAL"||!chosen||busy||locked.current)return;
+  if(!selected||!chosen||busy||locked.current||
+   (selected.type==="PHYSICAL"&&selected.availability!=="AVAILABLE"))return;
   if(!/^[1-9][0-9]{0,17}$/.test(selected.pointsPrice)){
    setError("Current points price is unavailable.");return;}
   const signature=selected.ref+":"+selected.version+":"+chosen;
@@ -77,7 +79,7 @@ export function NativeDigitalRedemption({token,onExpired,selected,onClose,audien
   if(busy||locked.current||x.state!=="HELD")return;
   locked.current=true;setBusy(true);setError("");setNotice("");
   try{await api("redemptions/"+x.ref+"/cancel","POST",{});
-   setNotice("Original digital points hold cancelled and released.");await refresh();}
+   setNotice("The original points hold and any actual warehouse reservation were released.");await refresh();}
   catch(e){setError(e instanceof Error?e.message:
    "Cancellation uncertain. Refresh original history first.");}
   finally{locked.current=false;setBusy(false);}
@@ -98,11 +100,11 @@ export function NativeDigitalRedemption({token,onExpired,selected,onClose,audien
   return <Pressable style={s.button} accessibilityRole="button" disabled={disabled}
    accessibilityState={{disabled}} onPress={fn}><Text style={s.action}>{title}</Text></Pressable>;
  };
- return <View style={s.card} accessibilityLabel="Your verified digital reward requests">
-  <Text style={s.title}>Digital reward requests</Text>
+ return <View style={s.card} accessibilityLabel="Your verified reward requests">
+  <Text style={s.title}>Reward requests</Text>
   <Text style={s.note}>Only verified points can be reserved. Digital delivery remains
    pending real fulfillment evidence; no fake gift code, CG12 stock or cash is issued.</Text>
-  {selected?.type==="DIGITAL"&&<>
+  {selected&&<>
    <Text style={s.title}>{selected.name} · {selected.pointsPrice} points</Text>
    {!eligible.length?<Text style={s.note}>Current relationship is not eligible.</Text>:
     <>
@@ -114,7 +116,9 @@ export function NativeDigitalRedemption({token,onExpired,selected,onClose,audien
      {!confirm?button("Review points reservation",()=>setConfirm(true),busy):
       <View style={s.card}>
        <Text style={s.note}>Confirm holding {selected.pointsPrice} verified points.
-        The request stays pending until genuine digital delivery is recorded.</Text>
+        {selected.type==="PHYSICAL"?
+         " One actual CG12 warehouse unit will also be reserved. Staff issue and recipient handover still require real proof.":
+         " The request stays pending until genuine digital recognition or delivery is recorded."}</Text>
        <View style={s.row}>{button("Confirm points hold",()=>void request(),busy)}
         {button("Back",()=>setConfirm(false),busy)}</View>
       </View>}
@@ -128,7 +132,8 @@ export function NativeDigitalRedemption({token,onExpired,selected,onClose,audien
   {items.map(x=><View key={x.ref} style={s.item}>
    <Text style={s.title}>{x.productName}</Text>
    <Text style={s.note}>{x.pointsCost} points · {x.state==="HELD"?
-    "Points held — delivery pending":x.state==="CANCELLED"?"Cancelled — points released":x.state}</Text>
+    (x.type==="PHYSICAL"?"Points and real stock held — issue pending":
+     "Points held — delivery pending"):x.state==="CANCELLED"?"Cancelled — points released":x.state}</Text>
    <Text style={s.note}>{new Date(x.requestedAt).toLocaleDateString("en-IN",
     {timeZone:"Asia/Kolkata"})}</Text>
    {x.state==="HELD"&&x.digitalFulfillmentMethod==="ON_PLATFORM_RECOGNITION"&&
