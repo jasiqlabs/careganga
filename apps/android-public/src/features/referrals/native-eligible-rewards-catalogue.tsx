@@ -8,6 +8,7 @@ type Reward={
  ref:string;programmeRef:string;type:"DIGITAL"|"PHYSICAL";category:string;name:string;description:string;
  pointsPrice:string;version:number;eligibleAudience:"MEMBER"|"VOLUNTEER"|"BOTH";
  programmeAudience:"MEMBER"|"VOLUNTEER"|"BOTH";imageUrl:string|null;
+ digitalFulfillmentMethod:"PENDING_EXTERNAL_PROOF"|"ON_PLATFORM_RECOGNITION";
  availability:"NO_STOCK_REQUIRED"|"AVAILABLE"|"OUT_OF_STOCK";
 };
 type Page={eligibleRelationships:string[];items:Reward[];hasMore:boolean;notice:string;
