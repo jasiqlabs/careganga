@@ -338,6 +338,77 @@ export class RedemptionService {
     notice:"Your on-platform recognition was acknowledged and issued. Original held points were spent."};
   });
  }
+ /** Actual signed-in recipient acknowledgment after original confirmed CG12 ISSUE.
+  * CG19 independently validates warehouse staff/proof in its guarded table.
+  */
+ async acknowledgeHandover(token:string,redemptionInput:unknown){
+  const id=ref(redemptionInput);
+  return this.run(token,async(tx,a)=>{
+   const found=await tx.query<{
+    state:string;type:string;wallet:string;relationship:Kind;
+    relationshipRef:string;price:string;requestKey:string
+   }>(
+    "SELECT state,product_type AS type,points_account_id AS wallet,"+
+    "relationship_kind AS relationship,relationship_ref AS \"relationshipRef\","+
+    "points_cost::text AS price,request_key AS \"requestKey\" "+
+    "FROM redemption WHERE root_realm_id=$1 AND id=$2 "+
+    "AND recipient_account_ref=$3 FOR UPDATE",
+    [a.realmId,id,a.accountId]);
+   const row=found.rows[0];
+   if(!row||row.type!=="PHYSICAL")
+    throw new NotFoundException("Your original physical reward request is unavailable.");
+   if(await this.current(tx,a,row.relationship)!==row.relationshipRef)
+    throw new ForbiddenException("The current verified recipient relationship has changed.");
+   if(row.state==="FULFILLED"){
+    const prior=await tx.query<{id:string}>(
+     "SELECT id FROM cg19_reward_handover WHERE realm_id=$1 "+
+     "AND redemption_id=$2 AND recipient_account_ref=$3 AND source_key=$4",
+     [a.realmId,id,a.accountId,row.requestKey]);
+    if(!prior.rows[0])
+     throw new ConflictException("Original physical recipient handover proof unavailable.");
+    return {state:"FULFILLED",replayed:true,
+     notice:"The original physical reward handover was already acknowledged."};
+   }
+   if(row.state!=="ISSUED_AWAITING_HANDOVER")
+    throw new ConflictException("Original warehouse issue must be confirmed before handover.");
+   const locked=await tx.query<{id:string}>(
+    "SELECT id FROM points_account WHERE root_realm_id=$1 AND id=$2 "+
+    "AND referrer_account_ref=$3 AND held_points>=$4::bigint FOR UPDATE",
+    [a.realmId,row.wallet,a.accountId,row.price]);
+   if(!locked.rows[0])
+    throw new ConflictException("Original held points are unavailable.");
+   await recordAcknowledgedPhysicalRewardHandover(tx,{
+    root:a.realmId,redemption:id,recipient:a.accountId,requestKey:row.requestKey
+   });
+   const changed=await tx.query(
+    "UPDATE redemption SET state='FULFILLED',revision=revision+1,fulfilled_at=now() "+
+    "WHERE root_realm_id=$1 AND id=$2 AND recipient_account_ref=$3 "+
+    "AND state='ISSUED_AWAITING_HANDOVER' AND product_type='PHYSICAL'",
+    [a.realmId,id,a.accountId]);
+   if(changed.rowCount!==1)
+    throw new ConflictException("Original reward handover state changed.");
+   const spent=await tx.query<{id:string}>(
+    "INSERT INTO points_event(root_realm_id,points_account_id,redemption_id,"+
+    "event_kind,policy_version,points_delta,qualifying_source_digest) "+
+    "SELECT $1,$2,$3,'POINTS_SPENT',r.policy_version,r.points_cost,r.payload_digest "+
+    "FROM redemption r WHERE r.root_realm_id=$1 AND r.id=$3 "+
+    "AND r.recipient_account_ref=$4 AND r.product_type='PHYSICAL' RETURNING id",
+    [a.realmId,row.wallet,id,a.accountId]);
+   if(!spent.rows[0])throw new ConflictException("Original points spend source unavailable.");
+   const wallet=await tx.query(
+    "UPDATE points_account SET held_points=held_points-$3::bigint,"+
+    "spent_points=spent_points+$3::bigint,revision=revision+1,updated_at=now() "+
+    "WHERE root_realm_id=$1 AND id=$2 AND held_points>=$3::bigint",
+    [a.realmId,row.wallet,row.price]);
+   if(wallet.rowCount!==1)throw new ConflictException("Original points projection changed.");
+   await tx.query(
+    "INSERT INTO redemption_event(root_realm_id,redemption_id,event_kind,"+
+    "original_points_event_id,source_key) VALUES($1,$2,'HANDED_OVER',$3,$4)",
+    [a.realmId,id,spent.rows[0].id,row.requestKey]);
+   return {state:"FULFILLED",replayed:false,
+    notice:"Actual receipt acknowledged. Original held points have been spent once; the confirmed warehouse issue remains recorded."};
+  });
+ }
  async myHistory(token:string,pageInput?:string){
   const page=catalogPage(pageInput);
   return this.run(token,async(tx,a)=>{
