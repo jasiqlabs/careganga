@@ -7,6 +7,7 @@ type Programme={ref:string;code:string;name:string;audience:"MEMBER"|"VOLUNTEER"
  qualifyingEvent:"MEMBERSHIP_ACTIVATED_VERIFIED"|"VOLUNTEER_APPROVED_ACTIVE";
  awardPoints:string;minimumClaimPoints:string;displayInrRatio:string|null;
  autoRankUpgrade:boolean;ranks?:Rank[]};
+type ProgrammeSummary=Pick<Programme,"ref"|"name"|"status">;
 type Reward={ref:string;programmeRef:string;type:"DIGITAL"|"PHYSICAL";category:string;
  name:string;description:string;pointsPrice:string;eligibleAudience:"MEMBER"|"VOLUNTEER"|"BOTH";
  status:"DRAFT"|"ACTIVE"|"ARCHIVED";highlighted:boolean;publicVisible:boolean;
@@ -65,16 +66,16 @@ const fromProduct=(v:Reward):RewardDraft=>({type:v.type,name:v.name,category:v.c
  description:v.description,pointsPrice:v.pointsPrice,eligibleAudience:v.eligibleAudience,
  status:v.status,highlighted:v.highlighted,publicVisible:v.publicVisible,
  imageUrl:v.imageUrl??"",itemRef:v.itemRef??"",storeRef:v.storeRef??""});
-export function ReferralRewardsWorkspace({canManagePolicy,canManageRewards}:{
- canManagePolicy:boolean;canManageRewards:boolean}){
- const [programmes,setProgrammes]=useState<Programme[]>([]);
+export function ReferralRewardsWorkspace({canViewPolicy,canViewRewards,canManagePolicy,canManageRewards}:{
+ canViewPolicy:boolean;canViewRewards:boolean;canManagePolicy:boolean;canManageRewards:boolean}){
+ const [programmes,setProgrammes]=useState<ProgrammeSummary[]>([]);
  const [selected,setSelected]=useState(""),[detail,setDetail]=useState<Programme|null>(null);
  const [products,setProducts]=useState<Reward[]>([]),[edition,setEdition]=useState<Reward|null>(null);
  const [moreProgrammes,setMoreProgrammes]=useState(false),[moreProducts,setMoreProducts]=useState(false);
  const [programmePage,setProgrammePage]=useState(2),[productPage,setProductPage]=useState(2);
  const [pagingBusy,setPagingBusy]=useState(false);
  const pagingLock=useRef(false),programmeGeneration=useRef(0),productGeneration=useRef(0);
- const [section,setSection]=useState<"PROGRAMMES"|"REWARDS">("PROGRAMMES");
+ const [section,setSection]=useState<"PROGRAMMES"|"REWARDS">(canViewPolicy?"PROGRAMMES":"REWARDS");
  const [rankTab,setRankTab]=useState<"MEMBER"|"VOLUNTEER">("MEMBER");
  const [selectedRank,setSelectedRank]=useState(0);
  const [categoryFilter,setCategoryFilter]=useState("All");
@@ -107,24 +108,26 @@ export function ReferralRewardsWorkspace({canManagePolicy,canManageRewards}:{
  useEffect(()=>{
   let live=true;programmeGeneration.current++;
   setLoading(true);setError("");setMoreProgrammes(false);setProgrammePage(2);
-  void api<{items:Programme[];hasMore:boolean}>("/programmes?page=1").then(v=>{
+  void api<{items:ProgrammeSummary[];hasMore:boolean}>(
+   canViewPolicy?"/programmes?page=1":"/catalogue-programmes?page=1").then(v=>{
    if(!live)return;
    setProgrammes(v.items);setMoreProgrammes(v.hasMore);setSelected(current=>
     v.items.some(x=>x.ref===current)?current:v.items[0]?.ref??"");
   }).catch(e=>{if(live){setProgrammes([]);setError(e instanceof Error?e.message:"Programmes unavailable.");}})
    .finally(()=>{if(live)setLoading(false);});
   return()=>{live=false;};
- },[epoch]);
+ },[epoch,canViewPolicy]);
  useEffect(()=>{
   let live=true;productGeneration.current++;
   setDetail(null);setProducts([]);setMoreProducts(false);setProductPage(2);
   if(!selected)return;
-  void Promise.all([api<Programme>("/programmes/"+selected),
-   api<{items:Reward[];hasMore:boolean}>("/programmes/"+selected+"/products?page=1")])
+  void Promise.all([canViewPolicy?api<Programme>("/programmes/"+selected):Promise.resolve(null),
+   canViewRewards?api<{items:Reward[];hasMore:boolean}>(
+    "/programmes/"+selected+"/products?page=1"):Promise.resolve({items:[],hasMore:false})])
    .then(([p,v])=>{if(live){setDetail(p);setProducts(v.items);setMoreProducts(v.hasMore);}})
    .catch(e=>{if(live)setError(e instanceof Error?e.message:"Current programme unavailable.");});
   return()=>{live=false;};
- },[selected,epoch]);
+ },[selected,epoch,canViewPolicy,canViewRewards]);
  useEffect(()=>{
   let live=true;setStockOptions(null);
   if(drawer!=="PRODUCT"||rewardForm.type!=="PHYSICAL")return;
@@ -253,7 +256,8 @@ export function ReferralRewardsWorkspace({canManagePolicy,canManageRewards}:{
   const chosen=selected, page=kind==="PROGRAMMES"?programmePage:productPage;
   try{
    if(kind==="PROGRAMMES"){
-    const next=await api<{items:Programme[];hasMore:boolean}>("/programmes?page="+page);
+    const next=await api<{items:ProgrammeSummary[];hasMore:boolean}>(
+     (canViewPolicy?"/programmes?page=":"/catalogue-programmes?page=")+page);
     if(generation!==programmeGeneration.current)return;
     setProgrammes(old=>[...old,...next.items.filter(item=>!old.some(p=>p.ref===item.ref))]);
     setMoreProgrammes(next.hasMore);setProgrammePage(page+1);
@@ -280,10 +284,10 @@ export function ReferralRewardsWorkspace({canManagePolicy,canManageRewards}:{
    <button type="button" style={css.button} onClick={refresh} disabled={busy}>Refresh current sources</button>
   </header>
   <nav aria-label="Referral workspace sections" style={{display:"flex",gap:8,flexWrap:"wrap"}}>
-   <button type="button" style={section==="PROGRAMMES"?css.primary:css.button}
-    onClick={()=>setSection("PROGRAMMES")}>Referral Programme & Ranks</button>
-   <button type="button" style={section==="REWARDS"?css.primary:css.button}
-    onClick={()=>setSection("REWARDS")}>Rewards Store</button>
+   {canViewPolicy&&<button type="button" style={section==="PROGRAMMES"?css.primary:css.button}
+    onClick={()=>setSection("PROGRAMMES")}>Referral Programme & Ranks</button>}
+   {canViewRewards&&<button type="button" style={section==="REWARDS"?css.primary:css.button}
+    onClick={()=>setSection("REWARDS")}>Rewards Store</button>}
   </nav>
   {!!notice&&<p role="status" style={{padding:12,border:"1px solid #86EFAC",borderRadius:8}}>{notice}</p>}
   {!!error&&<p role="alert" style={{padding:12,border:"1px solid #FCA5A5",borderRadius:8,color:"#B91C1C"}}>{error}</p>}
@@ -364,7 +368,8 @@ export function ReferralRewardsWorkspace({canManagePolicy,canManageRewards}:{
         <div style={{...css.panel,padding:13}}>
          <h3 style={{margin:0,fontSize:15}}>Reward / Gift</h3>
          <p style={{fontSize:12,margin:0}}>Only actual eligible catalog products are shown; no invented certificates or vouchers.</p>
-         <button type="button" style={css.button} onClick={()=>setSection("REWARDS")}>View recorded rewards</button>
+         {canViewRewards&&<button type="button" style={css.button}
+          onClick={()=>setSection("REWARDS")}>View recorded rewards</button>}
         </div>
        </aside>
       </div>
