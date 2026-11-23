@@ -83,6 +83,12 @@ export const imageUrl=(v:unknown):string|null=>{
   return url.href;
  }catch{throw bad("imageUrl");}
 };
+/** Re-evaluate approved hosts on every read, including historical records.
+ * Revoked image hosts must never reach member browsers or Android clients.
+ */
+export const safePublicRewardImage=(value:unknown):string|null=>{
+ try{return imageUrl(value);}catch{return null;}
+};
 type Rank={name:string;verifiedReferrals:number;minimumPoints:number;benefitsSummary:string};
 const ranks=(v:unknown):Rank[]=>{
  if(!Array.isArray(v)||v.length<1||v.length>30)throw bad("ranks");
@@ -453,7 +459,9 @@ export class ReferralCatalogService{
     "FROM reward_product WHERE root_realm_id=$1 AND programme_id=$2 "+
     "ORDER BY created_at DESC,id DESC LIMIT $3 OFFSET $4",
     [a.realmId,programId,CATALOG_PAGE_SIZE+1,(page-1)*CATALOG_PAGE_SIZE]);
-   return {items:q.rows.slice(0,CATALOG_PAGE_SIZE),hasMore:q.rows.length>CATALOG_PAGE_SIZE,page};
+   return {items:q.rows.slice(0,CATALOG_PAGE_SIZE).map(x=>({
+    ...x,imageUrl:safePublicRewardImage((x as {imageUrl:unknown}).imageUrl)})),
+    hasMore:q.rows.length>CATALOG_PAGE_SIZE,page};
   },true);
  }
  async stockOptions(bearer:string){
@@ -525,7 +533,9 @@ export class ReferralCatalogService{
     "ORDER BY p.highlighted DESC,p.created_at DESC,p.id DESC LIMIT $3 OFFSET $4",
     [a.realmId,kinds,CATALOG_PAGE_SIZE+1,(page-1)*CATALOG_PAGE_SIZE]);
    await tx.query("COMMIT");
-   return {eligibleRelationships:kinds,items:q.rows.slice(0,CATALOG_PAGE_SIZE),hasMore:q.rows.length>CATALOG_PAGE_SIZE,page,
+   return {eligibleRelationships:kinds,items:q.rows.slice(0,CATALOG_PAGE_SIZE).map(x=>({
+    ...x,imageUrl:safePublicRewardImage((x as {imageUrl:unknown}).imageUrl)})),
+    hasMore:q.rows.length>CATALOG_PAGE_SIZE,page,
     notice:kinds.length?"Points are not cash. Products require genuine earned CG13 points before redemption.":
      "An active original CG04 membership or volunteer relationship is required."};
   }catch(e){
