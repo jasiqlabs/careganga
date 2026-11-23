@@ -71,6 +71,7 @@ const NativeCsrPartners = lazy(() => import("../csr/native-csr-partners").then(m
 const NativeCsrFunding = lazy(() => import("../csr/native-csr-funding").then(m=>({default:m.NativeCsrFunding})));
 const NativeCsrReviews = lazy(() => import("../csr/native-csr-review-panel").then(m=>({default:m.NativeCsrReviews})));
 const NativeCsrFundingReviews = lazy(() => import("../csr/native-csr-funding-review-panel").then(m=>({default:m.NativeCsrFundingReviews})));
+const NativeCsrFundingReports = lazy(() => import("../csr/native-csr-funding-reports-panel").then(m=>({default:m.NativeCsrFundingReportsPanel})));
 const NativeProjectsWorkspace = lazy(() => import("../projects/native-projects-workspace").then(m=>({default:m.NativeProjectsWorkspace})));
 const NativeCampaignDrafts = lazy(() => import("../campaigns/native-campaign-drafts").then(m=>({default:m.NativeCampaignDrafts})));
 const NativeCampaignReviews = lazy(() => import("../campaigns/native-campaign-reviews").then(m=>({default:m.NativeCampaignReviews})));
@@ -202,7 +203,7 @@ export function StaffAuthenticationScreen() {
   const [projectsOpen,setProjectsOpen]=useState(false);
   const [campaignsOpen,setCampaignsOpen]=useState(false);
   const [csrOpen,setCsrOpen]=useState(false);
-  const [csrTab,setCsrTab]=useState<"DRAFTS"|"REVIEWS"|"FUNDING"|"FUNDING_REVIEWS">("DRAFTS");
+  const [csrTab,setCsrTab]=useState<"DRAFTS"|"REVIEWS"|"FUNDING"|"FUNDING_REVIEWS"|"REPORTS">("DRAFTS");
   const [campaignsTab,setCampaignsTab]=useState<"DRAFTS"|"REVIEWS">("DRAFTS");
   const [inventoryOpen,setInventoryOpen]=useState(false);
   const [membershipOpen,setMembershipOpen]=useState(false);
@@ -771,17 +772,21 @@ export function StaffAuthenticationScreen() {
   if(csrOpen&&token&&actor){
     const canDrafts=roleActions.includes("csr.partners.view");
     const canReviews=roleActions.includes("csr.partners.review")&&roleActions.includes("approvals.review");
+    const canReports=canDrafts&&roleActions.includes("finance.reports.view");
     if(!canDrafts&&!canReviews)return <AccessDeniedScreen reason="Your current role cannot access CSR partners." onMyAccount={()=>setCsrOpen(false)}/>;
     return renderInShell(<ScreenErrorBoundary onExit={()=>setCsrOpen(false)}>
      <View style={{flex:1}}>
       <View style={{flexDirection:"row",gap:9,padding:9,flexWrap:"wrap"}}>
        {canDrafts&&<Pressable accessibilityRole="button" onPress={()=>setCsrTab("DRAFTS")} style={{padding:12,borderWidth:1,borderRadius:9,borderColor:"#B9C7E8"}}><Text>CSR partners</Text></Pressable>}
        {canDrafts&&<Pressable accessibilityRole="button" onPress={()=>setCsrTab("FUNDING")} style={{padding:12,borderWidth:1,borderRadius:9,borderColor:"#B9C7E8"}}><Text>Funding requests</Text></Pressable>}
+       {canReports&&<Pressable accessibilityRole="button" onPress={()=>setCsrTab("REPORTS")} style={{padding:12,borderWidth:1,borderRadius:9,borderColor:"#B9C7E8"}}><Text>Funding reports</Text></Pressable>}
        {canReviews&&<Pressable accessibilityRole="button" onPress={()=>setCsrTab("REVIEWS")} style={{padding:12,borderWidth:1,borderRadius:9,borderColor:"#B9C7E8"}}><Text>Independent reviews</Text></Pressable>}
        {canReviews&&<Pressable accessibilityRole="button" onPress={()=>setCsrTab("FUNDING_REVIEWS")} style={{padding:12,borderWidth:1,borderRadius:9,borderColor:"#B9C7E8"}}><Text>Funding approvals</Text></Pressable>}
       </View>
       <Suspense fallback={<ActivityIndicator style={{marginTop:40}}/>}>
-       {canDrafts&&csrTab==="FUNDING"?
+       {canReports&&csrTab==="REPORTS"?
+        <NativeCsrFundingReports key={token} token={token} onExpired={expireSession}/>:
+        canDrafts&&csrTab==="FUNDING"?
         <NativeCsrFunding key={token} token={token}
          canManage={roleActions.includes("csr.partners.manage")}
          canReadAgreement={roleActions.includes("documents.files.view")}
