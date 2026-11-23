@@ -96,8 +96,27 @@ CREATE INDEX ix_cg13_rank_history
 CREATE FUNCTION cg13_points_event_source_guard()
  RETURNS trigger LANGUAGE plpgsql AS $cg13$
 BEGIN
+ -- US003 uses this SAME immutable points_event table. Digital requests are
+ -- checked against the original eligible reward and locked wallet via the
+ -- independently guarded redemption table created in forward migration 3507.
+ IF NEW.event_kind IN('POINTS_HOLD','POINTS_RELEASE') THEN
+  IF NOT EXISTS(
+   SELECT 1 FROM redemption r JOIN points_account wallet
+    ON wallet.root_realm_id=r.root_realm_id AND wallet.id=r.points_account_id
+   WHERE r.root_realm_id=NEW.root_realm_id AND r.id=NEW.redemption_id
+    AND wallet.id=NEW.points_account_id
+    AND wallet.referrer_account_ref=r.recipient_account_ref
+    AND ((NEW.event_kind='POINTS_HOLD' AND r.state='HELD'
+      AND NEW.points_delta=r.points_cost)
+     OR (NEW.event_kind='POINTS_RELEASE' AND r.state='CANCELLED'
+      AND NEW.points_delta=-r.points_cost))
+  ) THEN RAISE EXCEPTION 'Verified original redemption points source required'; END IF;
+  RETURN NEW;
+ END IF;
+ -- No DIGITAL entitlement/CG19 issued proof or CG12 physical issue owner
+ -- is yet available; refuse fabricated spend and post-activation reversal.
  IF NEW.event_kind<>'QUALIFICATION' THEN
-  RAISE EXCEPTION 'A verified original reversal adapter is required';
+  RAISE EXCEPTION 'An original verified reward or reversal effect is required';
  END IF;
  IF NOT EXISTS(
   SELECT 1 FROM referral_attribution att
