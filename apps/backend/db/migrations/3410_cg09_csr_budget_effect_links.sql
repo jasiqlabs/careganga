@@ -39,12 +39,12 @@ BEGIN
   RAISE EXCEPTION 'Current approved original funding commitment required' USING ERRCODE='P3410';
  END IF;
  SELECT ev.id,ev.kind,ev.amount_minor,ev.budget_id,ev.source_journal_id,
-   bud.branch_id,bud.project_ref,bud.status INTO e
+   bud.branch_id,bud.project_ref,bud.status AS budget_status INTO e
  FROM finance_budget_event ev JOIN finance_budget bud
   ON bud.id=ev.budget_id AND bud.root_realm_id=ev.root_realm_id
  WHERE ev.id=NEW.budget_event_id AND ev.root_realm_id=NEW.root_realm_id
  FOR SHARE OF ev,bud;
- IF NOT FOUND OR e.kind NOT IN('ALLOCATE','UTILIZE') OR e.status<>'APPROVED'
+ IF NOT FOUND OR e.kind NOT IN('ALLOCATE','UTILIZE') OR e.budget_status<>'APPROVED'
   OR e.branch_id IS DISTINCT FROM p.branch_ref
   OR e.project_ref IS DISTINCT FROM p.project_ref THEN
   RAISE EXCEPTION 'Original approved project/category budget effect required' USING ERRCODE='P3410';
