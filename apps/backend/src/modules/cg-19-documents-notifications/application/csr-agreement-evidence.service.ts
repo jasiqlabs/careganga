@@ -18,7 +18,7 @@ const uid=(x:unknown)=>{if(typeof x!=="string"||!UUID.test(x))throw new BadReque
 type Input={partnerRef:string;sourceVersion:number;requestKey:string;mime:string;sizeBytes:number;sha256:string};
 type Intent={id:string;realm_id:string;csr_partner_id:string;proposal_revision:number;requested_by:string;request_key:string;mime:string;size_bytes:string;expected_sha256:string;request_digest:string;object_key:string;status:string;reserved_until:Date};
 type FileRow={id:string;csr_partner_id:string;proposal_revision:number;revision:number;original_mime:string;verified_size_bytes:string;verified_sha256:string;object_key:string;object_version:string};
-function parse(value:unknown):Input{
+export function parseCsrAgreementUpload(value:unknown):Input{
  if(!value||typeof value!=="object"||Array.isArray(value))throw new BadRequestException("Choose an agreement document.");
  const x=value as Record<string,unknown>;
  if(Object.keys(x).some(k=>!["partnerRef","sourceVersion","requestKey","mime","sizeBytes","sha256"].includes(k))
@@ -61,7 +61,7 @@ export class CsrAgreementEvidenceService{
   return current;
  }
  async initiate(bearer:string,input:unknown){
-  const x=parse(input),h=digest(["CG08_AGREEMENT_V1",x]);
+  const x=parseCsrAgreementUpload(input),h=digest(["CG08_AGREEMENT_V1",x]);
   const row=await this.run(bearer,true,async(tx,a)=>{
    await this.partners.guardAgreement(tx,a,x.partnerRef,x.sourceVersion,true);
    const q=await tx.query<Intent>("INSERT INTO cg19_upload_intent(realm_id,case_id,proposal_revision,requested_by,request_key,mime,size_bytes,expected_sha256,request_digest,classification,object_key,reserved_until,owner_kind,csr_partner_id) VALUES($1,NULL,$2,$3,$4,$5,$6,$7,$8,'CSR_AGREEMENT',$9,now()+interval '15 minutes','CG08_CSR_AGREEMENT',$10) ON CONFLICT(realm_id,requested_by,request_key) DO NOTHING RETURNING *",
@@ -164,7 +164,7 @@ export class CsrAgreementEvidenceService{
   const f=await this.run(bearer,false,(tx,a)=>this.file(tx,a,fileRef));
   let bytes:Buffer;try{bytes=await this.objects.readVerifiedPrivateObject({objectKey:f.object_key,objectVersion:f.object_version,maxBytes:10485760});}
   catch{throw unavailable();}
-  if(bytes.length!==Number(f.verified_size_bytes)||digest(bytes)!==f.verified_sha256||!MIME.includes(f.original_mime))throw changed();
+  if(bytes.length!==Number(f.verified_size_bytes)||createHash("sha256").update(bytes).digest("hex")!==f.verified_sha256||!MIME.includes(f.original_mime))throw changed();
   const latest=await this.run(bearer,false,(tx,a)=>this.file(tx,a,fileRef));
   if(latest.revision!==f.revision||latest.object_version!==f.object_version)throw changed();
   return {bytes,mime:f.original_mime};

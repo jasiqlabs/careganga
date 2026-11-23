@@ -70,3 +70,19 @@ test("US001-QA14: CG08 direct-SQL email constraint is single and syntactically c
  assert.equal(ddl.split("contact_mobile text").length,2);
  assert.equal(ddl.split("CREATE TABLE csr_partner (").length,2);
 });
+
+import {parseCsrAgreementUpload} from "../src/modules/cg-19-documents-notifications/application/csr-agreement-evidence.service";
+test("US001-QA10: only exact private PDF/image agreement bytes and current source revision accepted",()=>{
+ const v={partnerRef:key,sourceVersion:1,requestKey:key,mime:"application/pdf",sizeBytes:1032,sha256:"a".repeat(64)};
+ assert.equal(parseCsrAgreementUpload(v).sourceVersion,1);
+ for(const add of [{ownerKind:"PUBLIC"},{status:"VALIDATED"},{mime:"text/html"},{sourceVersion:0},
+  {sourceVersion:1.5},{sizeBytes:0},{sizeBytes:10485761},{sha256:"invalid"},{partnerRef:"other"}])
+  assert.throws(()=>parseCsrAgreementUpload({...v,...add}),JSON.stringify(add));
+});
+test("US001-QA10: private agreement download re-hashes raw bytes, not serialized buffer",()=>{
+ const code=readFileSync(join(process.cwd(),"src/modules/cg-19-documents-notifications/application/csr-agreement-evidence.service.ts"),"utf8");
+ assert.ok(code.includes('createHash("sha256").update(bytes).digest("hex")!==f.verified_sha256'));
+ assert.ok(code.includes("readVerifiedPrivateObject"),"Never use a public file URL");
+ assert.ok(code.includes("verifyPrivateObject"),"Scanner must verify the uploaded bytes");
+ assert.ok(code.includes("requireCurrentProof"),"Review uses exact current verified evidence");
+});

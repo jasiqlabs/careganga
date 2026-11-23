@@ -1,4 +1,5 @@
 "use client";
+import {CsrAgreementPanel} from "./csr-agreement-panel";
 import {useCallback,useEffect,useRef,useState,type CSSProperties,type FormEvent} from "react";
 type Choice={value:string;label:string};
 type Options={foundation:boolean;branches:Choice[]};
@@ -23,7 +24,7 @@ async function api<T>(path:string,method:"GET"|"POST"|"PATCH"="GET",payload?:Rec
  if(!r.ok||v===null)throw Object.assign(Error(v&&typeof v==="object"&&"message" in v&&typeof v.message==="string"?v.message:"CSR result could not be confirmed."),{status:r.status||503});
  return v as T;
 }
-export function CsrPartnersWorkspace({canManage}:{canManage:boolean}){
+export function CsrPartnersWorkspace({canManage,canReadAgreement,canUploadAgreement}:{canManage:boolean;canReadAgreement:boolean;canUploadAgreement:boolean}){
  const [data,setData]=useState<Page>({items:[],hasMore:false}),[choices,setChoices]=useState<Options|null>(null);
  const [search,setSearch]=useState(""),[branchFilter,setBranchFilter]=useState("ALL"),[offset,setOffset]=useState(0),[epoch,setEpoch]=useState(0);
  const [loading,setLoading]=useState(true),[message,setMessage]=useState(""),[error,setError]=useState("");
@@ -134,6 +135,7 @@ export function CsrPartnersWorkspace({canManage}:{canManage:boolean}){
      {selected&&canManage&&<button type="button" style={button} disabled={busy||!!pending} onClick={archive}>Discard draft</button>}
     </div>
    </form>
+   {selected&&canReadAgreement&&<CsrAgreementPanel partnerRef={selected.ref} version={selected.version} canUpload={canUploadAgreement&&canManage}/>}
   </section>}
   {pending&&<section style={panel} role="status">
    <p>The last write may have succeeded. Do not start a different request before checking the current directory.</p>

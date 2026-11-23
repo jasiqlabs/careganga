@@ -27,7 +27,9 @@ export default async function CsrPage(){
    displayName={actor.displayName} roleName={actor.roleName}
    canViewRoles={actions.includes("roles.view")} canViewAccounts={actions.includes("accounts.view")}
    canViewBranches={actions.includes("foundation.branches.view")} canViewFoundation={actions.includes("foundation.profile.view")}/>
-   <main className="workspace"><CsrPartnersWorkspace canManage={actions.includes("csr.partners.manage")}/></main></div>;
+   <main className="workspace"><CsrPartnersWorkspace canManage={actions.includes("csr.partners.manage")}
+    canReadAgreement={actions.includes("documents.files.view")}
+    canUploadAgreement={actions.includes("documents.files.manage")&&actions.includes("documents.files.view")}/></main></div>;
  }catch(e){
   if(e&&typeof e==="object"&&"digest" in e&&typeof e.digest==="string"&&e.digest.startsWith("NEXT_REDIRECT"))throw e;
   return <UnavailablePage title="CSR service unavailable" description="Your current CSR access could not be verified." linkLabel="Return to dashboard"/>;
