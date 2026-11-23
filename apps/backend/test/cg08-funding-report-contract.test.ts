@@ -59,9 +59,8 @@ test("US003-QA06/15/17: private reports have bounded cursor, guarded CSV, no CG2
   "f.updated_at,f.id)<($12::timestamptz,$13::uuid)",
   "max===26?25:1000","records.length>items.length",
   "if(result.hasMore)throw new ConflictException",
-  "function"=== "never"?"":'"' // harmless fallthrough
  ].filter(Boolean))assert.ok(s.includes(x),x);
- assert.ok(s.includes("^[=+\\-@]")||s.includes("^[=+\\-@]"));
+ assert.ok(s.includes("^[=+\\-@]"));
  assert.ok(controller.includes('@Get("export/csv")'));
  assert.ok(controller.includes('@Header("Cache-Control","private, no-store")'));
  assert.ok(proxy.includes('cookies()')&&proxy.includes('cg_staff_session'));
