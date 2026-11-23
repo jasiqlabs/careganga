@@ -91,7 +91,7 @@ export class MisReportRunService{
     !scope.all&&row.original_scope_branch_refs.some(ref=>!scope.branchRefs.includes(ref)))
    throw new ForbiddenException("Report branch access changed. Create a current report.");
  }
- private async validateSource(token:string,row:Row){
+ private async validateSource(token:string,row:Row,originalReady=true){
   if(row.saved_ref){
    const q=await this.db.query<{state:string;current_revision:number}>(
     "SELECT state,current_revision FROM cg20_saved_report WHERE root_realm_id=$1 "+
@@ -101,11 +101,11 @@ export class MisReportRunService{
     throw new NotFoundException({code:"MIS_RUN_STALE",
      message:"Saved report changed or was retired. Create a fresh report."});
   }
-  await this.validateOriginalScope(token,row);
+  if(originalReady)await this.validateOriginalScope(token,row);
   // Current original CG-09/CG-15 row, field, branch, center and purpose grants,
   // including sensitive small population suppression.
   const preview=await this.sources.preview(token,row.safe_request);
-  await this.validateOriginalScope(token,row);
+  if(originalReady)await this.validateOriginalScope(token,row);
   if(preview.state==="PARTIAL")
    throw new BadRequestException({code:"MIS_RUN_PARTIAL",
     message:"This source is incomplete. Narrow filters before exporting."});
@@ -184,7 +184,7 @@ export class MisReportRunService{
   }
   try{
    // Revalidate scope after durable acceptance, before generating bytes.
-   const fresh=await this.validateSource(token,claimed.rows[0]);
+   const fresh=await this.validateSource(token,claimed.rows[0],false);
    if(fresh.state==="PARTIAL")
     throw new BadRequestException({code:"MIS_RUN_PARTIAL",
      message:"A report source was unavailable or results were truncated. Narrow the filters."});
