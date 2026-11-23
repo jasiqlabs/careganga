@@ -4,6 +4,7 @@ import type {Pool} from "pg";
 import {DATABASE} from "../../../core/infrastructure/database.module";
 import {SessionService} from "../../cg-01-identity-access/application/session.service";
 import {FoundationStructureIdentityFacade} from "../../cg-01-identity-access/application/foundation-structure-identity.facade";
+import {BranchSourceFacade} from "../../cg-02-foundation-structure/application/branch-source.facade";
 import {HrEnrollmentSourceFacade} from "./hr-enrollment-source.facade";
 type PrivateFields={contactPhone:string|null;postalAddress:string|null;
  emergencyName:string|null;emergencyPhone:string|null;pan:string|null;
@@ -101,7 +102,8 @@ export class HrPrivateDetailService{
  constructor(@Inject(DATABASE)private readonly db:Pool,
   private readonly sessions:SessionService,
   private readonly identity:FoundationStructureIdentityFacade,
-  private readonly source:HrEnrollmentSourceFacade){}
+  private readonly source:HrEnrollmentSourceFacade,
+  private readonly branches:BranchSourceFacade){}
  private async compensationAllowed(tx:import("pg").PoolClient,actor:Awaited<ReturnType<SessionService["requireAction"]>>){
   try{await this.identity.assertCurrent(tx,actor,"hr.changes.manage");return true;}
   catch(e){if(e instanceof ForbiddenException)return false;throw e;}
@@ -118,7 +120,9 @@ export class HrPrivateDetailService{
   const tx=await this.db.connect();
   try{
    await tx.query("BEGIN");
-   for(const action of ["hr.employees.private.view","hr.employees.view","hr.applications.view"] as const)await this.identity.assertCurrent(tx,actor,action);
+   for(const action of ["hr.employees.private.view","hr.employees.view","hr.applications.view"] as const)
+    await this.identity.assertCurrent(tx,actor,action);
+   const scope=await this.branches.projectBranchScope(tx,actor);
    const q=await tx.query<Row&{application_id:string;legal_name:string;today:string}>(`
     WITH rights AS (SELECT EXISTS(
      SELECT 1 FROM account_role ar JOIN role r ON r.id=ar.role_id AND r.realm_id=ar.realm_id AND r.active
@@ -133,9 +137,10 @@ export class HrPrivateDetailService{
     JOIN branch origin_branch ON origin_branch.id=app.proposed_branch_ref AND origin_branch.root_realm_id=app.root_realm_id AND origin_branch.status='ACTIVE'
     CROSS JOIN rights
     WHERE e.root_realm_id=$1 AND e.status IN('ACTIVE','PROBATION')
-      AND (rights.full_access OR current_branch.manager_account_ref=$2)
-      AND (rights.full_access OR origin_branch.manager_account_ref=$2)
-    ORDER BY e.id LIMIT 251 OFFSET $3 FOR SHARE OF app,p`,[actor.realmId,actor.accountId,offset]);
+      AND (rights.full_access OR current_branch.manager_account_ref=$2 OR current_branch.id=ANY($4::uuid[]))
+      AND (rights.full_access OR origin_branch.manager_account_ref=$2 OR origin_branch.id=ANY($4::uuid[]))
+    ORDER BY e.id LIMIT 251 OFFSET $3 FOR SHARE OF app,p`,
+    [actor.realmId,actor.accountId,offset,scope.branches.map(x=>x.value)]);
    const page=q.rows.slice(0,250);
    const items:{name:string;date:string}[]=[];
    for(const row of page){
