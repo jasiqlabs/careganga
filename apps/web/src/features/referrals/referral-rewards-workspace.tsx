@@ -130,7 +130,7 @@ export function ReferralRewardsWorkspace({canManagePolicy,canManageRewards}:{
   if(drawer!=="PRODUCT"||rewardForm.type!=="PHYSICAL")return;
   void api<{items:Option[];stores:Option[]}>("/stock-options")
    .then(v=>{if(live)setStockOptions(v);})
-   .catch(e=>{if(live)setError(e instanceof Error?e.message:"CG12 stock options unavailable.");});
+   .catch(e=>{if(live)setError(e instanceof Error?e.message:"Warehouse item and store options are unavailable.");});
   return()=>{live=false;};
  },[drawer,rewardForm.type,epoch]);
  useEffect(()=>{
@@ -173,7 +173,7 @@ export function ReferralRewardsWorkspace({canManagePolicy,canManageRewards}:{
    const result=await api<{ref:string;version:number;replayed:boolean}>(request.path,request);
    setPending(null);setDrawer(null);setEdition(null);
    if(request.path==="/programmes"||request.path.startsWith("/programmes/"))setSelected(result.ref);
-   setNotice(result.replayed?"Original request found; no duplicate was created.":"Saved to original CG13 source.");
+   setNotice(result.replayed?"Original request found; no duplicate was created.":"Saved successfully.");
    refresh();
   }catch(e){
    const status=e&&typeof e==="object"&&"status" in e?Number(e.status):503;
@@ -219,7 +219,7 @@ export function ReferralRewardsWorkspace({canManagePolicy,canManageRewards}:{
    if(pending){void send(pending);return;}
    if(!selected)throw Error("Select an original referral programme first.");
    if(rewardForm.type==="PHYSICAL"&&rewardForm.status!=="ARCHIVED"&&!stock)
-    throw Error("Check current original CG12 available stock before saving.");
+    throw Error("Check current available warehouse stock before saving.");
    const p=rewardForm;
    const body:Record<string,unknown>={requestKey:crypto.randomUUID(),
     programmeRef:selected,type:p.type,name:p.name,description:p.description,
@@ -276,7 +276,7 @@ export function ReferralRewardsWorkspace({canManagePolicy,canManageRewards}:{
   <header style={{display:"flex",alignItems:"flex-start",justifyContent:"space-between",gap:12,flexWrap:"wrap"}}>
    <div><h1 style={{margin:0,fontSize:27}}>{section==="PROGRAMMES"?"Referral Programme":"Rewards Store"}</h1>
     <p style={{margin:"6px 0 0",color:"var(--cg-text-muted,#64748B)",fontSize:13}}>
-     Original B11–B16 · verified referral points, rank policy and real reward catalogue</p></div>
+     Verified referral points, rank policy and rewards catalogue</p></div>
    <button type="button" style={css.button} onClick={refresh} disabled={busy}>Refresh current sources</button>
   </header>
   <nav aria-label="Referral workspace sections" style={{display:"flex",gap:8,flexWrap:"wrap"}}>
@@ -289,10 +289,10 @@ export function ReferralRewardsWorkspace({canManagePolicy,canManageRewards}:{
   {!!error&&<p role="alert" style={{padding:12,border:"1px solid #FCA5A5",borderRadius:8,color:"#B91C1C"}}>{error}</p>}
   {loading?<p role="status">Loading authorized Foundation source…</p>:<>
    {section==="PROGRAMMES"?<>
-    <section style={css.panel} aria-label="B11 original rank and policy overview">
+    <section style={css.panel} aria-label="Referral ranks and policy overview">
      <div style={{display:"flex",justifyContent:"space-between",gap:10,flexWrap:"wrap",alignItems:"center"}}>
       <div><h2 style={{margin:0,fontSize:21}}>Referral Programme</h2>
-       <p style={{margin:"5px 0",fontSize:13}}>Only independently recorded CG04 outcomes will earn points.
+       <p style={{margin:"5px 0",fontSize:13}}>Only verified member or volunteer activations will earn points.
         A click or application submission is not a verified referral.</p></div>
       {canManagePolicy&&<div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
        <button style={css.button} onClick={()=>openPolicy(false)}>New Programme</button>
@@ -350,7 +350,7 @@ export function ReferralRewardsWorkspace({canManagePolicy,canManageRewards}:{
            style={{padding:10,textAlign:"left",borderBottom:"1px solid var(--cg-border,#CBD5E1)"}}>{t}</th>)}</tr></thead>
           <tbody><tr><td colSpan={7} style={{textAlign:"center",padding:24}}>
            No verified {rankTab==="MEMBER"?"member":"volunteer"} referrals available.
-           US-002 will use genuine CG04 qualification and original points history.</td></tr></tbody>
+           Referral counts and points will appear after verified referral activity is recorded.</td></tr></tbody>
          </table>
         </div>
        </section>
@@ -389,7 +389,7 @@ export function ReferralRewardsWorkspace({canManagePolicy,canManageRewards}:{
       </div>
      </div>
      <p style={{margin:0,fontSize:13}}>Current approved reward catalogue. Physical stock is read-only
-      from CG12; points represent programme eligibility, never withdrawable rupees.</p>
+      from warehouse inventory; points represent programme eligibility, never withdrawable rupees.</p>
     </section>
     <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(180px,1fr))",gap:9}}>
      {[["ACTIVE PRODUCTS (SHOWN)",String(activeProducts.length)],["POINTS REDEEMED","—"],
@@ -398,7 +398,7 @@ export function ReferralRewardsWorkspace({canManagePolicy,canManageRewards}:{
        <span style={{fontSize:11,color:"var(--cg-text-muted,#64748B)"}}>
         <span style={{color:["#0B9D67","#D38A07","#2C60CC","#8A45C3"][i]}}>◈ </span>{label}</span>
        <strong style={{fontSize:22}}>{value}</strong>
-       {i>0&&<span style={{fontSize:11}}>Awaiting verified CG13 events</span>}
+       {i>0&&<span style={{fontSize:11}}>Awaiting verified redemptions</span>}
       </div>)}
     </div>
     <nav aria-label="Rewards Store sections" style={{display:"flex",gap:8,flexWrap:"wrap"}}>
@@ -455,7 +455,7 @@ export function ReferralRewardsWorkspace({canManagePolicy,canManageRewards}:{
           {p.description||"No product description recorded"}</p>
         <strong style={{color:"#FDE68A",background:"#172338",padding:"4px 8px",borderRadius:16,justifySelf:"start"}}>{p.pointsPrice} Pts</strong>
         <span style={{fontSize:12}}>{p.highlighted?"Highlighted · ":""}{p.publicVisible?"Public eligible catalogue":"Staff only"}</span>
-        {p.type==="PHYSICAL"&&<span style={{fontSize:12}}>Original CG12 item/store — read-only</span>}
+        {p.type==="PHYSICAL"&&<span style={{fontSize:12}}>Linked warehouse item and store — read-only</span>}
         {canManageRewards&&<button style={css.button} onClick={()=>openProduct(p)}>Edit product</button>}
        </div>
       </article>)}
@@ -467,9 +467,9 @@ export function ReferralRewardsWorkspace({canManagePolicy,canManageRewards}:{
        "No authentic product yet. Digital rewards require no warehouse."}</p>}
     </section>:<section style={css.panel}>
      <h3 style={{margin:0}}>Volunteer & Member Redemptions</h3>
-     <p style={{fontSize:13}}>Genuine redemptions are not available until US-002
-      credits verified CG04 referrals and US-003 implements fulfillment.
-      No invented points, pending orders or delivered gifts.</p>
+     <p style={{fontSize:13}}>Redemption history will appear when eligible members and volunteers have
+      earned verified points and the redemption service is available.
+      No redemptions have been recorded here.</p>
     </section>}
    </>}
   </>}
@@ -489,7 +489,7 @@ export function ReferralRewardsWorkspace({canManagePolicy,canManageRewards}:{
     {drawer==="POLICY"?<>
      <div style={{fontSize:11,fontWeight:700,color:"var(--cg-text-muted,#64748B)",
       borderBottom:"1px solid var(--cg-border,#DCE4ED)",paddingBottom:8}}>
-      POINTS &amp; VALUES · original B13</div>
+      POINTS &amp; VALUES</div>
      <label style={css.field}>Programme code (immutable after creation)
       <input style={css.control} disabled={editingPolicy} autoComplete="off"
        value={programmeForm.programmeCode}
@@ -522,7 +522,7 @@ export function ReferralRewardsWorkspace({canManagePolicy,canManageRewards}:{
       Automatic rank upgrade on a genuinely verified event</label>
      <p style={{fontSize:12}}>Digital certificate auto-issue, public leaderboard and
       interview gates in the screenshot are not editable here until their verified
-      CG04/CG19/CG13 source workflows are implemented. Points never expire by default.
+      the required verification and reward fulfilment workflows are available. Points never expire by default.
       INR conversion is an informational
       reference and does not issue money or a guaranteed reward.</p>
      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
@@ -551,7 +551,7 @@ export function ReferralRewardsWorkspace({canManagePolicy,canManageRewards}:{
       <select style={css.control} value={rewardForm.type}
        onChange={e=>setRewardForm(p=>({...p,type:e.target.value as Reward["type"],itemRef:"",storeRef:""}))}>
        <option value="DIGITAL">Digital recognition (no stock)</option>
-       <option value="PHYSICAL">Physical item (real CG12 stock)</option></select></label>
+       <option value="PHYSICAL">Physical item (warehouse stock)</option></select></label>
      {rowInput("Redemption points (not rupees)",rewardForm.pointsPrice,
       v=>setRewardForm(p=>({...p,pointsPrice:v})),"text")}
      <label style={css.field}>Eligible marketplace
@@ -577,20 +577,20 @@ export function ReferralRewardsWorkspace({canManagePolicy,canManageRewards}:{
       onChange={e=>setRewardForm(p=>({...p,publicVisible:e.target.checked}))}/>
       Visible to eligible members and volunteers</label>
      {rewardForm.type==="PHYSICAL"&&<>
-      <label style={css.field}>Real CG12 item
+      <label style={css.field}>Warehouse item
        <select style={css.control} value={rewardForm.itemRef}
         onChange={e=>setRewardForm(p=>({...p,itemRef:e.target.value}))}>
         <option value="">Choose an active whole-piece item</option>
         {(stockOptions?.items??[]).map(x=><option key={x.ref} value={x.ref}>{x.name}</option>)}
        </select></label>
-      <label style={css.field}>Authorized CG12 store
+      <label style={css.field}>Authorized warehouse store
        <select style={css.control} value={rewardForm.storeRef}
         onChange={e=>setRewardForm(p=>({...p,storeRef:e.target.value}))}>
         <option value="">Choose an active store</option>
         {(stockOptions?.stores??[]).map(x=><option key={x.ref} value={x.ref}>{x.name}</option>)}
        </select></label>
       <p style={{fontSize:13}}>Stock units — <strong>{stock?
-       stock.availableQuantity+" available (original CG12)": "Source not yet verified"}</strong>.
+       stock.availableQuantity+" available (warehouse)": "Source not yet verified"}</strong>.
        Read-only; changing reward details never creates stock.</p>
       {!stockOptions&&<p role="status">Checking current warehouse options…</p>}
      </>}
@@ -601,7 +601,7 @@ export function ReferralRewardsWorkspace({canManagePolicy,canManageRewards}:{
       onClick={closeDrawer}>Cancel</button>
      <button type="button" style={css.primary} disabled={busy}
       onClick={drawer==="POLICY"?saveProgramme:saveProduct}>
-      {pending?"Retry same request":busy?"Saving…":"Save to original CG13 source"}</button>
+      {pending?"Retry same request":busy?"Saving…":"Save changes"}</button>
     </div>
    </aside>
   </div>}
