@@ -4,6 +4,7 @@ import * as Crypto from "expo-crypto";
 import {File,Paths} from "expo-file-system";
 import * as Sharing from "expo-sharing";
 import {careGangaTheme as t} from "../../../../../packages/design-tokens/src/index";
+type CorrectionRow={correctionNumber:string;originalNumber:string;amountMinor:string;issuedAt:string};
 type HistoryRow={donationNumber:string;proofIndex:number;status:string;netReceivedMinor:string;
  receiptStatus:string;receiptNumber:string|null};
 const base=process.env.EXPO_PUBLIC_API_URL;
@@ -29,7 +30,9 @@ export function NativePublicDonation({campaignSlug=null}:{campaignSlug?:string|n
  const [received,setReceived]=useState(false),[receiptStatus,setReceiptStatus]=useState("NOT_ISSUED"),
   [refundedMinor,setRefundedMinor]=useState("0"),[refundPending,setRefundPending]=useState(false);
  const [extraProofs,setExtraProofs]=useState(""),[history,setHistory]=useState<HistoryRow[]>([]),
-  [historyTokens,setHistoryTokens]=useState<string[]>([]);
+  [historyTokens,setHistoryTokens]=useState<string[]>([]),
+  [corrections,setCorrections]=useState<CorrectionRow[]>([]),
+  [correctionProof,setCorrectionProof]=useState("");
  const key=useRef<string|null>(null),paymentKey=useRef<string|null>(null);
  useEffect(()=>{let active=true;(async()=>{try{
   if(!base||!/^https?:\/\//.test(base)||(process.env.NODE_ENV==="production"&&!base.startsWith("https://")))return;
@@ -77,6 +80,29 @@ export function NativePublicDonation({campaignSlug=null}:{campaignSlug?:string|n
   });
   return()=>sub.remove();
  },[token,busy]);
+ const listCorrections=(proof=token)=>call(async()=>{
+  if(!proof)return;
+  const r=await request<{items:CorrectionRow[]}>("/receipt/corrections",{statusToken:proof});
+  setCorrections(r.items);setCorrectionProof(proof);
+ });
+ const downloadCorrection=(number:string)=>call(async()=>{
+  if(!correctionProof||!base)throw Error("Private correction proof unavailable.");
+  const r=await fetch(new URL("/api/public/donations/receipt/correction-download",base),{
+   method:"POST",headers:{"Content-Type":"application/json"},
+   body:JSON.stringify({statusToken:correctionProof,correctionNumber:number}),
+   cache:"no-store",signal:AbortSignal.timeout(20000)});
+  if(!r.ok||r.headers.get("content-type")?.split(";")[0]!=="application/pdf")
+   throw Error("Private correction PDF unavailable.");
+  const bytes=new Uint8Array(await r.arrayBuffer());
+  if(bytes.length<100||bytes.length>10485760)throw Error("Private correction was not verified.");
+  const file=new File(Paths.cache,"CareGanga-Donation-Correction-"+Crypto.randomUUID()+".pdf");
+  try{
+   await file.write(bytes);
+   if(!(await Sharing.isAvailableAsync()))throw Error("Private PDF sharing not supported on this device.");
+   await Sharing.shareAsync(file.uri,{mimeType:"application/pdf",
+    dialogTitle:"CareGanga separate donation refund correction"});
+  }finally{try{file.delete();}catch{}}
+ });
  const download=(proofToken=token)=>call(async()=>{
   if(!proofToken||!base)throw Error("Private receipt proof unavailable.");
   const r=await fetch(new URL("/api/public/donations/receipt/download",base),{
@@ -153,6 +179,12 @@ export function NativePublicDonation({campaignSlug=null}:{campaignSlug?:string|n
    {refundedMinor!=="0"&&<Text>Confirmed refund has reduced verified net donations.</Text>}
    {refundPending&&<Text accessibilityRole="alert">Refund requested; actual payout has not been verified.</Text>}
    {receiptStatus==="ISSUED"&&button("Open/share your verified private PDF receipt",download)}
+   {refundedMinor!=="0"&&button("View my issued refund corrections",()=>void listCorrections())}
+   {corrections.map(item=><View key={item.correctionNumber} style={{gap:8,padding:10,
+    borderWidth:1,borderColor:t.border,borderRadius:8}}>
+    <Text>{item.correctionNumber} · linked to {item.originalNumber} · verified refund ₹{(BigInt(item.amountMinor)/100n).toString()}</Text>
+    {button("Open/share this private refund correction",()=>void downloadCorrection(item.correctionNumber))}
+   </View>)}
    <Text accessibilityRole="header">My proven donation history</Text>
    <Text>Enter any other original private status proofs, one per line. Only transactions you can prove are shown.</Text>
    <TextInput accessibilityLabel="Additional private donor proofs" multiline maxLength={1600}
@@ -166,6 +198,8 @@ export function NativePublicDonation({campaignSlug=null}:{campaignSlug?:string|n
      <Text>Receipt: {item.receiptNumber??item.receiptStatus.replaceAll("_"," ")}</Text>
      {item.receiptStatus==="ISSUED"&&!!historyTokens[item.proofIndex]&&
       button("Open this proven private receipt",()=>void download(historyTokens[item.proofIndex]))}
+     {item.status.startsWith("REFUNDED")&&!!historyTokens[item.proofIndex]&&
+      button("View this donation's corrections",()=>void listCorrections(historyTokens[item.proofIndex]))}
     </View>)}
    {button("Check donation status",refresh)}</>}
   {!!error&&<Text accessibilityRole="alert" style={{color:"#a12c3b"}}>{error}</Text>}
