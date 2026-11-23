@@ -3,6 +3,7 @@ import {
 } from "@nestjs/common";
 import {SessionService} from "../../cg-01-identity-access/application/session.service";
 import {FinanceReportsService} from "../../cg-09-finance-accounting/application/finance-reports.service";
+import {BranchSourceFacade} from "../../cg-02-foundation-structure/application/branch-source.facade";
 import {PatientAdminOverviewService} from "../../cg-15-patients-appointments/application/patient-admin-overview.service";
 import {PlatformAuditService} from "../../cg-21-platform-configuration-audit/application/platform-audit.service";
 import {DiagnosticsCatalogService} from "../../cg-16-healthcare-diagnostics/application/diagnostics-catalog.service";
@@ -145,7 +146,23 @@ export class MisReportSourceService{
   private readonly finance:FinanceReportsService,
   private readonly patients:PatientAdminOverviewService,
   private readonly audit:PlatformAuditService,
-  private readonly diagnostics:DiagnosticsCatalogService){}
+  private readonly diagnostics:DiagnosticsCatalogService,
+  private readonly branches:BranchSourceFacade){}
+ /** CG02 is the sole source of current permitted branch scope, never a report-provided UUID. */
+ async originalFinanceScope(token:string,request:SafeReportRequest){
+  if(!request.kind.startsWith("FINANCE_"))return null;
+  await this.sessions.requireAction(token,"mis.reports.view");
+  const scope=await this.branches.financeReportScope(token,"finance.reports.view");
+  if(!scope.all&&scope.branchRefs.length===0)
+   throw new ForbiddenException("No current branch is assigned for this report");
+  if(request.branchRef&&!scope.all&&!scope.branchRefs.includes(request.branchRef))
+   throw new ForbiddenException("The requested report branch is not assigned");
+  return {all:scope.all,branchRefs:[...scope.branchRefs].sort()};
+ }
+ async originalScheduledFinanceScope(root:string,account:string){
+  const scope=await this.branches.scheduledFinanceScope(root,account);
+  return {all:scope.all,branchRefs:[...scope.branchRefs].sort()};
+ }
  async catalog(token:string){
   await this.sessions.requireAction(token,"mis.reports.view");
   const [finance,appointments]=await Promise.all([
