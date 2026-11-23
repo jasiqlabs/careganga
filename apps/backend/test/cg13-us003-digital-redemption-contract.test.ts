@@ -33,7 +33,8 @@ function setup({available="900",product=true,existing=false,
    return {rows:existing?[{ref:REDEMPTION,state:"HELD",pointsCost:"600",
     payloadDigest:DIGEST}]:[],rowCount:existing?1:0};
   if(sql.includes("p.points_price::text AS price"))
-   return {rows:product?[{price:rewardPrice,version:2,name:"Verified digital badge",policyVersion:1,minimumClaimPoints:minimumClaim}]:[],rowCount:product?1:0};
+   return {rows:product?[{price:rewardPrice,version:2,name:"Verified digital badge",policyVersion:1,
+    minimumClaimPoints:minimumClaim,type:"DIGITAL",itemRef:null,storeRef:null}]:[],rowCount:product?1:0};
   if(sql.includes('earned_points::text AS earned'))
    return {rows:[{id:WALLET,earned:available,reversed:"0",held:"0",spent:"0"}],rowCount:1};
   if(sql.includes("INSERT INTO redemption("))
@@ -46,7 +47,8 @@ function setup({available="900",product=true,existing=false,
    return {rows:[],rowCount:1};
   if(sql.includes("FROM redemption WHERE root_realm_id=$1 AND id=$2"))
    return {rows:account?[{ref:REDEMPTION,state:cancelled?"CANCELLED":"HELD",
-    price:"600",wallet:WALLET,relationship:"MEMBER"}]:[],rowCount:account?1:0};
+    price:"600",wallet:WALLET,relationship:"MEMBER",
+    relationshipRef:MEMBER,type:"DIGITAL"}]:[],rowCount:account?1:0};
   if(sql.includes("FROM points_account WHERE root_realm_id=$1 AND id=$2"))
    return {rows:[{exists:true}],rowCount:1};
   if(sql.includes("UPDATE redemption SET state='CANCELLED'"))
