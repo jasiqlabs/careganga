@@ -8,7 +8,7 @@ type Reward={
  eligibleAudience:"MEMBER"|"VOLUNTEER"|"BOTH";
  programmeAudience:"MEMBER"|"VOLUNTEER"|"BOTH";imageUrl:string|null;
  digitalFulfillmentMethod:"PENDING_EXTERNAL_PROOF"|"ON_PLATFORM_RECOGNITION";
- availability:"NO_STOCK_REQUIRED"|"AVAILABLE"|"OUT_OF_STOCK";highlighted:boolean;
+ availability:"NO_STOCK_REQUIRED"|"AVAILABLE"|"OUT_OF_STOCK"|"DELIVERY_UNAVAILABLE";highlighted:boolean;
 };
 type Page={eligibleRelationships:string[];items:Reward[];hasMore:boolean;page:number;notice:string;
  categories:string[];categoriesTruncated:boolean};
@@ -111,14 +111,17 @@ export function PublicRewardsCatalogue(){
       style={{width:"100%",maxHeight:160,objectFit:"contain"}}/>}
      <h3 style={{margin:"8px 0"}}>{p.name}</h3>
      <p>{p.category} · {p.type==="DIGITAL"?"Digital":"Physical"} · {p.pointsPrice} points</p>
-     <p>{p.type==="DIGITAL"?"No stock required":
+     <p>{p.type==="DIGITAL"?
+       p.availability==="NO_STOCK_REQUIRED"?"Verified on-platform recognition available":
+       "Not yet redeemable — verified digital delivery unavailable":
       p.availability==="AVAILABLE"?"In stock":"Currently unavailable"}</p>
      <details><summary>Product details</summary><p>{p.description||"No description provided."}</p>
       <p>{p.type==="DIGITAL"?
-       "You can request a verified points hold; fulfillment requires actual delivery evidence.":
+       "Only verified on-platform recognition can currently reserve points; unconfigured external delivery remains unavailable.":
        "Original warehouse reservation and issue confirmation are not yet available."}</p>
      </details>
-     {(p.type==="DIGITAL"||p.availability==="AVAILABLE")&&<button type="button"
+     {((p.type==="DIGITAL"&&p.availability==="NO_STOCK_REQUIRED")||
+      (p.type==="PHYSICAL"&&p.availability==="AVAILABLE"))&&<button type="button"
       onClick={()=>setSelectedDigital(p)}>
        {p.type==="PHYSICAL"?"Reserve available physical reward":"Request with earned points"}
       </button>}
