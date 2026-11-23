@@ -373,6 +373,11 @@ export class BranchOperationsService{
        `,[location,actor.realmId,branch.id]);
        if(stranded.rowCount)
          throw new ConflictException("Move existing branch departments before changing its location");
+       // Local and delegated managers may maintain branch metadata, but a
+       // manager transfer needs the independent protected Foundation action.
+       // Existing source checks revoke the former manager's access at commit.
+       if(manager!==branch.manager_account_ref)
+        await this.identity.assertCurrent(client,actor,"foundation.branches.admin");
        await this.identity.eligibleOfficeholder(client,actor,manager);
        // Versioned, verified replacements never silently remove unrelated
        // originals; exactly each replaced file category changes.
