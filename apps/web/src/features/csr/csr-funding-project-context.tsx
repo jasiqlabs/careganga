@@ -2,7 +2,8 @@
 import {useEffect,useState} from "react";
 type Project={title:string;category:string;summary:string;description:string;
  location:string;owner:string;manager:string|null;branch:string|null;status:string};
-type Result={kind:"PROJECT"|"GENERAL_FOUNDATION";project:Project|null;note:string};
+type Result={kind:"PROJECT"|"GENERAL_FOUNDATION";project:Project|null;note:string;
+ teamStatus?:"SOURCE"|"RESTRICTED";assigned?:{name:string;kind:string}[]};
 export function CsrFundingProjectContext({proposalRef}:{proposalRef:string}){
  const [value,setValue]=useState<Result|null>(null),[error,setError]=useState("");
  useEffect(()=>{
@@ -29,6 +30,10 @@ export function CsrFundingProjectContext({proposalRef}:{proposalRef:string}){
    <p>Project head: <strong>{value.project.owner}</strong></p>
    <p>Branch manager: <strong>{value.project.manager??"No branch manager recorded"}</strong></p>
    <p>{value.note}</p>
+   {value.assigned?.length?<ul>{value.assigned.map((m,i)=>
+    <li key={m.name+":"+m.kind+":"+i}>{m.name} — recorded {m.kind.toLowerCase()} task assignee</li>)}</ul>:
+    <p>{value.teamStatus==="RESTRICTED"?"Task roster restricted.":
+     "No current CG05 task assignees recorded for this project."}</p>}
   </div>:value&&<p>No project team is attached to this general Foundation funding request.</p>}
   {!!error&&<p role="alert">{error}</p>}
  </section>;
