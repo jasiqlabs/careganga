@@ -49,7 +49,7 @@ test("US002-QA08/09/18: funded budget allocation requires live CG09 bank verific
 test("US002-QA11/16/19: utilization requires original posted expense and cannot overrun assigned allocation",()=>{
  const v=sql(),f=finance();
  for(const x of [
-  "e.kind NOT IN('ALLOCATE','UTILIZE')",
+  "e.kind NOT IN('ALLOCATE','UTILIZE','DEALLOCATE')",
   "utilized+e.amount_minor>allocated",
   "e.source_journal_id",
   "reversal_of_id=e.source_journal_id",
@@ -142,4 +142,52 @@ test("US002-QA07/11: CG09 original event has no status; protected budget does",(
  assert.ok(guard.includes("bud.status AS budget_status INTO e"));
  assert.ok(guard.includes("e.budget_status<>'APPROVED'"));
  assert.ok(!guard.includes("e.status<>'APPROVED'"));
+});
+
+test("US002-QA06: B08 original CG09 itemized category quantity/rate belongs to budget revision",()=>{
+ const schema=read("db/migrations/3412_cg09_budget_itemized_revision.sql");
+ const owner=read("src/modules/cg-09-finance-accounting/application/finance-budget.service.ts");
+ const reviewer=read("src/modules/cg-09-finance-accounting/application/finance-budget-source.facade.ts");
+ const financeWeb=read("../web/src/features/finance-accounting/finance-budget-workspace.tsx");
+ const web=read("../web/src/features/csr/csr-funding-budget-panel.tsx");
+ const native=read("../android-internal/src/features/csr/native-csr-funding-budget-panel.tsx");
+ for(const x of [
+  "CREATE TABLE finance_budget_item_revision",
+  "PRIMARY KEY(root_realm_id,budget_id,version,line_no)",
+  "REFERENCES finance_budget_revision(root_realm_id,budget_id,version)",
+  "line_total_minor bigint GENERATED ALWAYS",
+  "cg09_budget_item_revision_immutable"
+ ])assert.ok(schema.includes(x),x);
+ for(const x of ["budgetItems(v.items,minor(v.ceiling))",
+  "product%1000n!==0n","finance_budget_item_revision",
+  "p.items.entries()","items:items.rows"])
+  assert.ok(owner.includes(x),x);
+ assert.ok(reviewer.includes("items:lines.rows"));
+ assert.ok(financeWeb.includes("Original CG09 itemized budget"));
+ assert.ok(web.includes("Original CG09 budget itemization"));
+ assert.ok(native.includes("Original category / quantity / rate"));
+});
+test("US002-QA07/19: CG09 immutable deallocation cannot reverse spent cash or outlive original source",()=>{
+ const correction=read("db/migrations/3413_cg09_original_budget_deallocation.sql");
+ const link=sql(),financeOwner=finance(),csrOwner=csr();
+ const web=read("../web/src/features/csr/csr-funding-budget-panel.tsx");
+ const native=read("../android-internal/src/features/csr/native-csr-funding-budget-panel.tsx");
+ for(const x of [
+  "DEALLOCATE","allocated-deallocated-used",
+  "cg09_deallocation_source_commit",
+  "DEFERRABLE INITIALLY DEFERRED",
+  "cg09_deallocation_has_csr_provenance"
+ ])assert.ok(correction.includes(x),x);
+ for(const x of [
+  "correction_of_event_id","correction.correction_of_event_id",
+  "original_link.party_kind=NEW.party_kind",
+  "net_allocated-e.amount_minor<net_utilized",
+  "corrected+e.amount_minor>original_allocation.amount_minor"
+ ])assert.ok(link.includes(x),x);
+ assert.ok(financeOwner.includes("eligibleBudgetAllocations"));
+ assert.ok(financeOwner.includes("kind:\"ALLOCATE\"|\"UTILIZE\"|\"DEALLOCATE\""));
+ assert.ok(financeOwner.includes("correctionOfEventRef:"));
+ assert.ok(csrOwner.includes("eligibleFinanceAllocations"));
+ assert.ok(csrOwner.includes('v.kind==="DEALLOCATE"'));
+ for(const s of [web,native])assert.ok(s.includes("DEALLOCATE"));
 });
