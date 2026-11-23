@@ -187,26 +187,36 @@ export class ReferralSelfService{
   return this.ownWallet(token,programmeInput,kindInput,async(tx,wallet,ctx)=>{
    // Pending is the owner's own nonidentifying source count. Applicant identity,
    // account/branch/contact and case state are NEVER returned from this query.
-   const pending=await tx.query<{count:string}>(
-    "SELECT COUNT(*)::text AS count FROM referral_attribution attr "+
+   const activity=await tx.query<{pending:string;heldForReview:string;notQualified:string;
+    awaitingVerification:string}>(
+    "SELECT COUNT(*) FILTER(WHERE attr.state='PENDING' "+
+    "AND COALESCE(m.status,v.status)='SUBMITTED')::text AS pending,"+
+    "COUNT(*) FILTER(WHERE attr.state='HELD_FRAUD_REVIEW')::text AS \"heldForReview\","+
+    "COUNT(*) FILTER(WHERE attr.state='PENDING' "+
+    "AND COALESCE(m.status,v.status) IN('REJECTED','CANCELLED','RETURNED'))::text AS \"notQualified\","+
+    "COUNT(*) FILTER(WHERE attr.state='PENDING' "+
+    "AND COALESCE(m.status,v.status)='APPROVED')::text AS \"awaitingVerification\" "+
+    "FROM referral_attribution attr "+
+    "LEFT JOIN membership_application m ON m.root_realm_id=attr.root_realm_id "+
+    "AND m.id=attr.member_application_ref AND m.applicant_account_ref=attr.applicant_account_ref "+
+    "LEFT JOIN volunteer_application v ON v.root_realm_id=attr.root_realm_id "+
+    "AND v.id=attr.volunteer_application_ref AND v.applicant_account_ref=attr.applicant_account_ref "+
     "WHERE attr.root_realm_id=$1 AND attr.programme_id=$2 "+
     "AND attr.referrer_account_ref=$3 AND attr.referrer_kind=$4 "+
-    "AND attr.referrer_relationship_ref=$5 AND attr.state='PENDING' "+
-    "AND ((attr.applicant_kind='MEMBER' AND EXISTS("+
-    "SELECT 1 FROM membership_application app WHERE app.root_realm_id=attr.root_realm_id "+
-    "AND app.id=attr.member_application_ref AND app.applicant_account_ref=attr.applicant_account_ref "+
-    "AND app.status='SUBMITTED')) OR "+
-    "(attr.applicant_kind='VOLUNTEER' AND EXISTS("+
-    "SELECT 1 FROM volunteer_application app WHERE app.root_realm_id=attr.root_realm_id "+
-    "AND app.id=attr.volunteer_application_ref AND app.applicant_account_ref=attr.applicant_account_ref "+
-    "AND app.status='SUBMITTED'))) "+
+    "AND attr.referrer_relationship_ref=$5 "+
     "AND NOT EXISTS(SELECT 1 FROM points_event e WHERE e.root_realm_id=attr.root_realm_id "+
     "AND e.attribution_id=attr.id AND e.event_kind='QUALIFICATION')",
     [ctx.realm,ctx.programme,ctx.account,ctx.kind,ctx.relationship]);
-   const pendingReferrals=pending.rows[0]?.count??"0";
+   // Only own, non-identifying aggregates. No application IDs, names, contacts
+   // or private rejection reasons reach the public member/volunteer UI.
+   const states=activity.rows[0]??{
+    pending:"0",heldForReview:"0",notQualified:"0",awaitingVerification:"0"};
+   const pendingReferrals=states.pending??"0";
    if(!wallet)return {earnedPoints:"0",reversedPoints:"0",heldPoints:"0",
     spentPoints:"0",availablePoints:"0",adjustmentDuePoints:"0",
     qualifiedReferrals:0,currentRankName:null,revision:0,pendingReferrals,
+    heldForReviewReferrals:states.heldForReview,notQualifiedReferrals:states.notQualified,
+    awaitingVerificationReferrals:states.awaitingVerification,
     notice:"No verified qualifying referral has been credited yet. Points are not money."};
    const remainder=BigInt(wallet.earnedPoints)-BigInt(wallet.reversedPoints)-
     BigInt(wallet.heldPoints)-BigInt(wallet.spentPoints);
@@ -215,6 +225,8 @@ export class ReferralSelfService{
     availablePoints:(remainder>0n?remainder:0n).toString(),
     adjustmentDuePoints:(remainder<0n?-remainder:0n).toString(),
     qualifiedReferrals:wallet.qualifiedReferrals,pendingReferrals,
+    heldForReviewReferrals:states.heldForReview,notQualifiedReferrals:states.notQualified,
+    awaitingVerificationReferrals:states.awaitingVerification,
     currentRankName:wallet.currentRankName,revision:wallet.revision,
     notice:"Verified referral points cannot be withdrawn as cash."};
   });
