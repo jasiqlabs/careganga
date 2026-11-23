@@ -394,3 +394,8 @@ The original public Corporate Partners layout now reads only the currently indep
 ### 23-Nov-2026 — US001 original Foundation CMS partner-picker UI
 
 Existing CG18 extended website editor now supports the original single PARTNERS collaboration page: Foundation editor loads only CG08 current eligible rights/partner names from the protected existing CMS partner-sources route and selects exact sourceRef+rightsVersion; no arbitrary branded card entry. Removing a selected partner also shifts/removes its original matching CG19 verified logo placement. Optional partner logo uses existing FEATURE media scan/public-rights workflow; no direct S3 URLs, no duplicate partner master. Existing original CG18 draft/save/submit/independent approval/publish/withdraw operations reused unchanged. US001-QA11/16/17/18/19/20 source authored; re-review and actual TS/PG/Web/Android/visual QA NOT_RUN, source closure pending.
+
+
+### 23-Nov-2026 — US001 CG18 source-re-review fix: section typing and safe live preview
+
+Targeted self-review of the newly added Partner CMS kind identified the missing PARTNER_CARDS member in the backend section type union and a blank private preview because the generic CMS renderer only handled earlier section kinds. Fixed union and original preview: it now resolves only current sourceRef+rightsVersion matching eligible CG08 partner options, shows current names/descriptions with approved CG19 original logo media and a clear no-current-proof empty state. It cannot preview fabricated screenshot brands or source UUIDs. Original US001-QA18/20 existing test runner augmented; no executable Web/TS or independent specialist evidence, NOT_RUN.

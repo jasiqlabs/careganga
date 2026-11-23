@@ -271,3 +271,15 @@ test("US001-QA11/16/19/20: public collaboration rejects fake brands and stale ri
  assert.ok(route.includes('safeCards.length>0'));
  assert.ok(!route.includes('Milaap')&&!route.includes('Ketto'));
 });
+
+
+test("US001-QA18/20: original CMS private partner preview includes only matching current rights",()=>{
+ const editor=readFileSync(join(process.cwd(),"../web/src/features/cms-public-content/cms-extended-workspace.tsx"),"utf8");
+ const publicPreview=readFileSync(join(process.cwd(),"../web/src/features/cms-public-content/cms-public-page.tsx"),"utf8");
+ const backend=readFileSync(join(process.cwd(),"src/modules/cg-18-cms-public-content/application/cms-editorial.service.ts"),"utf8");
+ assert.ok(editor.includes('kind==="PARTNER_CARDS"'));
+ assert.ok(editor.includes('p.sourceRef===source.sourceRef&&p.rightsVersion===source.rightsVersion'));
+ assert.ok(publicPreview.includes('section.kind==="PARTNER_CARDS"'));
+ assert.ok(!publicPreview.includes("Milaap")&&!publicPreview.includes("Ketto"));
+ assert.ok(backend.includes('"CONTACT_INFO"|"PARTNER_CARDS";order:number'));
+});

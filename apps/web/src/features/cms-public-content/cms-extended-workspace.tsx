@@ -347,7 +347,12 @@ export function CmsExtendedWorkspace({canManage,canPublish,canViewNoticeSources}
  const previewPage:PublicCmsPage={schemaVersion:1,effectiveGeneration:"PRIVATE_DRAFT",
   kind:draft.kind,slug:draft.slug,title:draft.title,seoTitle:draft.seoTitle,
   seoDescription:draft.seoDescription,canonicalPath:pathFor(draft.kind,draft.slug),
-  lastPublishedAt:"",sections:draft.sections.map(section=>section.kind==="GALLERY_GRID"?
+  lastPublishedAt:"",sections:draft.sections.map(section=>section.kind==="PARTNER_CARDS"?
+   {...section,fields:{heading:section.fields.heading,intro:section.fields.intro,
+    cards:items(section.fields.partners).flatMap((source,index)=>{
+     const partner=partnerSources.find(p=>p.sourceRef===source.sourceRef&&p.rightsVersion===source.rightsVersion);
+     return partner?[{name:partner.name,summary:partner.summary,originalIndex:index}]:[];
+    })}}:section.kind==="GALLERY_GRID"?
    {...section,fields:{...section.fields,items:items(section.fields.items)
      .flatMap((entry,index)=>entry.visible===false?[]:[{...entry,originalIndex:index}])}}:
    section),
