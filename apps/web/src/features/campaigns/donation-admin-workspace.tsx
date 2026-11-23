@@ -11,8 +11,9 @@ type QueueItem={evidenceRef:string;voucher:string;status:string;amountMinor:stri
 type MaskedDonor={donationNumber:string;name:string;mobileMasked:string;emailMasked:string;panMasked:string;location:string};
 type DonationItem={donationNumber:string;donationRef:string;refundMinor:string;receiptStatus:string;latestCorrectionNumber:string|null;
  amountMinor:string;status:string;method:string|null;
- campaignTitle:string|null;voucher:string|null;createdAt:string};
+ campaignTitle:string|null;branchName:string|null;voucher:string|null;createdAt:string};
 type Report={items:DonationItem[];offset:number;hasMore:boolean;nextCursor:string|null;
+ branchSelection:string;branchOptions:Choice[];
  summary:{total:number;received:number;pending:number;failed:number;receivedMinor:string;
  netReceivedMinor:string;verifiedRefundMinor:string;verifiedRefundCount:number};
  monthlyTrend:{month:string;grossMinor:string;refundMinor:string;netMinor:string}[];message:string};
@@ -42,6 +43,7 @@ export function DonationAdminWorkspace({canView,canRecord,canReview,canIssue,can
  const [data,setData]=useState<Report|null>(null),[queue,setQueue]=useState<QueueItem[]>([]);
  const [donor,setDonor]=useState<MaskedDonor|null>(null);
  const [filter,setFilter]=useState("ALL"),[search,setSearch]=useState(""),[offset,setOffset]=useState(0);
+ const [branchRef,setBranchRef]=useState("ALL");
  const [cursor,setCursor]=useState(""),[cursorTrail,setCursorTrail]=useState<string[]>([]);
  const [method,setMethod]=useState("ALL"),[minAmount,setMinAmount]=useState(""),[maxAmount,setMaxAmount]=useState(""),
   [dateFrom,setDateFrom]=useState(""),[dateTo,setDateTo]=useState(""),[campaign,setCampaign]=useState("");
@@ -62,14 +64,14 @@ export function DonationAdminWorkspace({canView,canRecord,canReview,canIssue,can
   try{
    const [report,work]=await Promise.all([
     canView?api<Report>("?"+new URLSearchParams({status:filter,q:search,offset:String(offset),cursor,
-     method,minAmount,maxAmount,dateFrom,dateTo,campaign:campaign||"ALL"})):Promise.resolve(null),
+     method,minAmount,maxAmount,dateFrom,dateTo,campaign:campaign||"ALL",branchRef})):Promise.resolve(null),
     canRecord?api<{items:QueueItem[]}>("/manual/queue"):Promise.resolve(null)]);
    if(id!==seq.current||!mounted.current)return;
    if(report)setData(report);
    if(work)setQueue(work.items);
    setError("");
   }catch(e){if(id===seq.current&&mounted.current){setError(e instanceof Error?e.message:"Donations unavailable.");setData(null);setQueue([]);}}
- },[canView,canRecord,filter,search,offset,cursor,method,minAmount,maxAmount,dateFrom,dateTo,campaign]);
+ },[canView,canRecord,filter,search,offset,cursor,method,minAmount,maxAmount,dateFrom,dateTo,campaign,branchRef]);
  useEffect(()=>{mounted.current=true;void refresh();return()=>{mounted.current=false;seq.current++;};},[refresh]);
  const resetPage=()=>{setOffset(0);setCursor("");setCursorTrail([]);};
  const exportReport=async()=>{
@@ -77,7 +79,7 @@ export function DonationAdminWorkspace({canView,canRecord,canReview,canIssue,can
   setBusy(true);setError("");setNotice("");
   try{
    const params=new URLSearchParams({status:filter,q:search,method,minAmount,maxAmount,
-    dateFrom,dateTo,campaign:campaign||"ALL"});
+    dateFrom,dateTo,campaign:campaign||"ALL",branchRef});
    const r=await fetch("/api/donations/export?"+params,{cache:"no-store",signal:AbortSignal.timeout(19000)});
    if(!r.ok)throw new Error("Current protected donation export is unavailable.");
    const blob=await r.blob();
@@ -251,6 +253,12 @@ export function DonationAdminWorkspace({canView,canRecord,canReview,canIssue,can
       Export protected CSV</button>}
     </div>
    <div className={styles.filterGrid}>
+    <label style={label}>Foundation / branch reporting scope
+     <select style={input} value={branchRef} onChange={e=>{
+      resetPage();setDonor(null);setPrivateProofHistory([]);setBranchRef(e.target.value);}}>
+      {(data?.branchOptions??[{value:"ALL",label:"All permitted branches"}]).map(b=>
+       <option key={b.value} value={b.value}>{b.label}</option>)}
+     </select></label>
     <label style={label}>Search donation or campaign
      <input style={input} value={search} onChange={e=>{resetPage();setSearch(e.target.value);}} maxLength={80}/></label>
     <label style={label}>Payment state
@@ -277,12 +285,13 @@ export function DonationAdminWorkspace({canView,canRecord,canReview,canIssue,can
    </div>
    {data?.items.length===0?<p>No matching donation records.</p>:
     <div style={{overflowX:"auto"}}><table style={{width:"100%",borderCollapse:"collapse",fontSize:13}}>
-     <thead><tr>{["Donation","Campaign","Amount","Method","Status","Receipt / correction","Date"].map(t=>
+     <thead><tr>{["Donation","Branch","Campaign","Amount","Method","Status","Receipt / correction","Date"].map(t=>
       <th key={t} scope="col" style={{textAlign:"left",padding:10,borderBottom:"1px solid var(--cg-border)"}}>{t}</th>)}</tr></thead>
      <tbody>{data?.items.map(x=><tr key={x.donationNumber}>
       <td style={{padding:10}}>{x.donationNumber}
        {canExport&&<button type="button" disabled={busy}
         onClick={()=>void viewDonor(x.donationNumber)}>View donor</button>}</td>
+       <td style={{padding:10}}>{x.branchName??"Foundation-wide"}</td>
        <td style={{padding:10}}>{x.campaignTitle??"General donation"}</td>
       <td style={{padding:10}}>{rupees(x.amountMinor)}</td><td style={{padding:10}}>{x.method??"Not selected"}</td>
       <td style={{padding:10}}>{x.status.replaceAll("_"," ").toLowerCase()}</td>
