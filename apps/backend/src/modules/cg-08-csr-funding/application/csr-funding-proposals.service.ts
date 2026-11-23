@@ -395,6 +395,33 @@ export class CsrFundingProposalsService{
     partyKind:v.partyKind as CsrParty,amountMinor:v.amountMinor as string,journalRef:journal});
   });
  }
+ /** Original CG05 owner, project geography and scope for B08.
+  * No fabricated team/beneficiary/quantity master. */
+ async fundingProjectContext(bearer:string,proposalRef:string){
+  return this.run(bearer,"csr.partners.view",async(tx,a)=>{
+   const p=await this.original(tx,a,ref(proposalRef));
+   if(!p.project_ref)return {kind:"GENERAL_FOUNDATION",project:null,
+    note:"This funding purpose is not linked to a CG05 project."};
+   await this.identity.assertCurrent(tx,a,"projects.view");
+   const rows=await tx.query<{title:string;category:string;summary:string;
+    description:string;location:string;owner:string;manager:string|null;
+    branch:string|null;status:string}>(
+    "SELECT p.title,p.category,p.summary,p.description,p.location_label AS location,"+
+    "owner.display_name AS owner,manager.display_name AS manager,"+
+    "branch.name AS branch,p.status FROM project p "+
+    "JOIN account owner ON owner.id=p.owner_account_ref AND owner.realm_id=p.root_realm_id "+
+    "LEFT JOIN branch ON branch.id=p.branch_ref AND branch.root_realm_id=p.root_realm_id "+
+    "LEFT JOIN account manager ON manager.id=branch.manager_account_ref "+
+    "AND manager.realm_id=branch.root_realm_id "+
+    "WHERE p.root_realm_id=$1 AND p.id=$2 "+
+    "AND p.branch_ref IS NOT DISTINCT FROM $3::uuid AND p.version=$4 "+
+    "FOR SHARE OF p,owner",
+    [a.realmId,p.project_ref,p.branch_ref,p.project_source_version]);
+   if(!rows.rows[0])throw changed();
+   return {kind:"PROJECT",project:rows.rows[0],
+    note:"CG05 project owner/manager are original source. Task-assigned employees, members and volunteers remain in CG05; no roster is invented here."};
+  },true);
+ }
  /** Original B08 selectors from CG01/CG02/CG05/CG08 current sources only. */
  async options(bearer:string){
   return this.run(bearer,"csr.partners.view",async(tx,a)=>{
