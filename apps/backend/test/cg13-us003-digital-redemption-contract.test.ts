@@ -116,6 +116,13 @@ describe("CG13 US003 digital points hold/cancel contracts (mock only; no real PG
   assert.ok(!f.seen.some(v=>v.sql.includes("'POINTS_HOLD'")));
   assert.equal(f.stats().rollbacks,1);
  });
+ test("database guard also refuses unsupported DIGITAL fulfillment before points hold",()=>{
+  const migration=readFileSync("db/migrations/3507_cg13_us003_digital_reward_holds.sql","utf8");
+  const recognized=readFileSync("db/migrations/3508_cg19_original_on_platform_recognition.sql","utf8");
+  assert.match(migration,/NEW.product_type='PHYSICAL' OR/);
+  assert.match(migration,/product.digital_fulfillment_method='ON_PLATFORM_RECOGNITION'/);
+  assert.match(recognized,/ALTER TABLE reward_product ADD COLUMN digital_fulfillment_method/);
+ });
  test("stale reward version and unverified member fail before wallet/hold",async()=>{
   const stale=setup({product:false});
   await assert.rejects(()=>stale.service.request("own",request),ConflictException);
