@@ -28,6 +28,11 @@ export class CsrFundingProposalsController{
   @Param("budgetRef")budgetRef:string){
   return this.source.eligibleFinanceExpenses(auth,ref,budgetRef);
  }
+ @Get(":ref/finance/budgets/:budgetRef/allocations")
+ allocations(@Headers("authorization")auth:string,@Param("ref")ref:string,
+  @Param("budgetRef")budgetRef:string,@Query("partyKind")partyKind:string){
+  return this.source.eligibleFinanceAllocations(auth,ref,budgetRef,partyKind as "CSR"|"FOUNDATION");
+ }
  @Post(":ref/finance/budget-effects")
  effect(@Headers("authorization")auth:string,@Param("ref")ref:string,
   @Body()body:unknown){return this.source.applyFinanceBudgetEffect(auth,ref,body);}
