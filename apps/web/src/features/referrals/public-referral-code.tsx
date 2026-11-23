@@ -35,13 +35,13 @@ export function PublicReferralCode(){
     x.programmeRef===i.programmeRef&&x.relationship===i.relationship))]:data.items);
    setHasMore(data.hasMore);setPage(target+1);
   }catch(e){if(seq===epoch.current)setError(e instanceof Error?e.message:"Referral programmes are unavailable.");}
-  finally{lock.current=false;if(seq===epoch.current)setBusy(false);}
+  finally{if(seq===epoch.current){lock.current=false;setBusy(false);}}
  },[]);
  useEffect(()=>{
   void refresh(1,false);
   const visibility=()=>{
    if(document.visibilityState!=="visible"){
-    epoch.current++;setIssued(null);setChoices([]);setChosen("");setCopied(false);
+    epoch.current++;lock.current=false;setIssued(null);setChoices([]);setChosen("");setCopied(false);
    }else void refresh(1,false);
   };
   document.addEventListener("visibilitychange",visibility);
