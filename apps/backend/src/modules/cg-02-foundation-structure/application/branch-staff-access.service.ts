@@ -62,7 +62,7 @@ export class BranchStaffAccessService{
    throw new BadRequestException("Narrow the staff search");
   const client=await this.db.connect();
   try{
-   const accounts=await this.identity.eligibleOfficeholderOptions(client,actor,query.trim());
+   const accounts=await this.identity.eligibleDelegatedStaffOptions(client,actor,query.trim());
    const branches=await client.query<{id:string;name:string}>(
     "SELECT id,name FROM branch WHERE root_realm_id=$1 AND status='ACTIVE' ORDER BY name,id LIMIT 100",
     [actor.realmId]);
@@ -100,7 +100,7 @@ export class BranchStaffAccessService{
    throw new BadRequestException("Explain why the staff member needs this branch or area");
   const reason=x.reason.trim(),digest=fingerprint([account,kind,branch,area,reason]);
   return this.protectedWrite(bearer,x.currentPassword,async(tx,a)=>{
-   const target=await this.identity.eligibleOfficeholder(tx,a,account);
+   const target=await this.identity.eligibleDelegatedStaff(tx,a,account);
    const existing=await tx.query<Grant>(
     "SELECT * FROM cg02_staff_scope_assignment WHERE root_realm_id=$1 AND granted_by=$2 "+
     "AND request_key=$3 FOR SHARE",[a.realmId,a.accountId,key]);
