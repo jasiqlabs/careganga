@@ -9,7 +9,7 @@ type Reward={
  pointsPrice:string;version:number;eligibleAudience:"MEMBER"|"VOLUNTEER"|"BOTH";
  programmeAudience:"MEMBER"|"VOLUNTEER"|"BOTH";imageUrl:string|null;
  digitalFulfillmentMethod:"PENDING_EXTERNAL_PROOF"|"ON_PLATFORM_RECOGNITION";
- availability:"NO_STOCK_REQUIRED"|"AVAILABLE"|"OUT_OF_STOCK";
+ availability:"NO_STOCK_REQUIRED"|"AVAILABLE"|"OUT_OF_STOCK"|"DELIVERY_UNAVAILABLE";
 };
 type Page={eligibleRelationships:string[];items:Reward[];hasMore:boolean;notice:string;
  categories:string[];categoriesTruncated:boolean};
@@ -102,7 +102,9 @@ export function NativeEligibleRewardsCatalogue({token,onExpired}:{
    {!p.imageUrl||failedImages[p.ref]?<Text style={s.muted}>Image unavailable</Text>:null}
     <Text style={s.productName}>{p.name}</Text>
     <Text>{p.category} · {p.type==="DIGITAL"?"Digital":"Physical"} · {p.pointsPrice} points</Text>
-    <Text style={s.muted}>{p.type==="DIGITAL"?"No stock needed":
+    <Text style={s.muted}>{p.type==="DIGITAL"?
+     p.availability==="NO_STOCK_REQUIRED"?"Verified on-platform recognition available":
+     "Not yet redeemable — verified delivery unavailable":
      p.availability==="AVAILABLE"?"In stock":"Currently unavailable"}</Text>
     <Pressable style={s.button} accessibilityRole="button"
      accessibilityState={{expanded:detail===p.ref}}
@@ -111,9 +113,10 @@ export function NativeEligibleRewardsCatalogue({token,onExpired}:{
     </Pressable>
     {detail===p.ref&&<Text>{p.description||"No description provided."}
      {"\n"}{p.type==="DIGITAL"?
-     "Confirm a real points hold. Delivery requires independent verified evidence.":
+     "Only verified on-platform recognition currently supports a real points hold. External digital delivery is unavailable.":
      "Physical stock reservation is not available until CG12 source verification."}</Text>}
-    {(p.type==="DIGITAL"||p.availability==="AVAILABLE")&&
+    {((p.type==="DIGITAL"&&p.availability==="NO_STOCK_REQUIRED")||
+      (p.type==="PHYSICAL"&&p.availability==="AVAILABLE"))&&
      <Pressable style={s.button} accessibilityRole="button"
       onPress={()=>setSelectedDigital(p)}>
       <Text style={s.buttonText}>{p.type==="PHYSICAL"?
