@@ -340,3 +340,10 @@ Independent source review executed under pinned JASIQ Harness standard for all 1
 ### 23-Nov-2026 — saved/export and scheduled ALL_ASSIGNED source parity
 
 Original CG20 saved preview, export and scheduled posted finance report now use original CG09 `assignedMisSummary`, `assignedMisMonthlyTrend` and real `scheduledSummary` with current CG02 `scheduledFinanceScope`. Explicit selected branch never broadens; no-branch regional manager means *all currently authorized branches only* (not Foundation legal/money). Test Web/Internal Android chosen A/B/all assigned preview, saved definition edit, report run, export and scheduled execution after B grant revoke, A→B manager transfer, branch close, new State child, cross-root forged UUID, CG19 recipient changed and time-limited download. Verify sums A=100 B=200 C=400 Foundation=300 and eligible actual source versions; old artifact denial, no clinical center X/Y leak. Existing original US001–005 QA IDs retained. Executable tests and independent reviewer NOT_RUN; no main merge.
+
+
+### 23-Nov-2026 — source-owner closure check CG-MB-009 original CG09/CG02 manager scope persisted for report artifacts
+
+CG20 MisReportRunService and ScheduleWorker now capture exact originally authorized A/B/ALL_BRANCHES/root scope and persist it with ready file under migration 3321, with current CG01/CG02 scope checks before issuance, download and in-app notice. CG19 inbox/read checks immutable scope. Grouped finance, selected A and A+B aggregates still come from CG09 original source. New contract and read-only DB tests authored, NOT_RUN. Verify old A+B denied after B revoke; A-only still allowed; root downgrade denies Foundation-null. Existing CG20 US QA numbers unchanged.
+
+**Gate:** SOURCE_REVIEWED_RUNTIME_PENDING. Run original story QA/Web/Internal Android/backend/actual DB and private files. Capture executor/reviewer, command, before/after and evidence. Only local developer may mark executable PASS after actual testing; no CI/GitHub Actions, no BWC and no premature merge.
