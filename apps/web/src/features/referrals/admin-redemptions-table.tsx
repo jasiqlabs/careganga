@@ -1,7 +1,8 @@
 "use client";
 import {useCallback,useEffect,useRef,useState} from "react";
 type Programme={ref:string;name:string;status:string};
-type RewardEvent={kind:"MEMBER"|"VOLUNTEER";name:string;productName:string;
+type RewardEvent={ref:string;type:"DIGITAL"|"PHYSICAL";
+ kind:"MEMBER"|"VOLUNTEER";name:string;productName:string;
  pointsCost:string;status:string;requestedAt:string};
 type Result={items:RewardEvent[];hasMore:boolean;page:number;notice:string};
 const styles={
@@ -13,10 +14,12 @@ const styles={
 const niceStatus=(state:string)=>state==="HELD"?"Points reserved — pending delivery":
  state==="CANCELLED"?"Cancelled — points released":
  state==="FULFILLED"?"Delivered and verified":
+ state==="ISSUED_AWAITING_HANDOVER"?"Warehouse issued — recipient handover pending":
  state==="FULFILLMENT_PENDING"?"Awaiting genuine fulfillment":"Unavailable";
-export function AdminRedemptionsTable({programme,programmes,onProgrammeChange,refreshEpoch}:{
+export function AdminRedemptionsTable({programme,programmes,onProgrammeChange,refreshEpoch,
+ canIssueStock}:{
  programme:string;programmes:Programme[];onProgrammeChange:(value:string)=>void;
- refreshEpoch:number
+ refreshEpoch:number;canIssueStock:boolean
 }){
  const [items,setItems]=useState<RewardEvent[]>([]);
  const [status,setStatus]=useState("ALL"),[search,setSearch]=useState("");
@@ -24,6 +27,7 @@ export function AdminRedemptionsTable({programme,programmes,onProgrammeChange,re
  const [from,setFrom]=useState(""),[to,setTo]=useState("");
  const [page,setPage]=useState(2),[more,setMore]=useState(false);
  const [busy,setBusy]=useState(false),[error,setError]=useState("");
+ const [notice,setNotice]=useState("");
  const sequence=useRef(0);
  useEffect(()=>{
   const task=setTimeout(()=>setAppliedSearch(search.trim()),350);
@@ -69,6 +73,27 @@ export function AdminRedemptionsTable({programme,programmes,onProgrammeChange,re
   document.addEventListener("visibilitychange",hidden);
   return()=>{sequence.current++;document.removeEventListener("visibilitychange",hidden);};
  },[load,refreshEpoch]);
+ const prepareIssue=async(record:RewardEvent)=>{
+  if(!canIssueStock||busy||record.type!=="PHYSICAL"||record.status!=="HELD")return;
+  setBusy(true);setError("");setNotice("");
+  try{
+   const response=await fetch("/api/rewards-staff/redemptions/"+
+    encodeURIComponent(record.ref)+"/prepare-issue",{
+    method:"POST",credentials:"same-origin",cache:"no-store",
+    signal:AbortSignal.timeout(15000)
+   });
+   const result:unknown=await response.json().catch(()=>null);
+   if(!response.ok)throw Error(response.status===403?
+    "Your current warehouse/stock permissions do not allow this operation.":
+    "The real physical reward or warehouse status has changed. Check Stock Operations.");
+   const data=result&&typeof result==="object"?
+    result as {status?:string;notice?:string}:{};
+   setNotice(data.notice??"Original warehouse issue draft prepared.");
+   await load(1,false);
+  }catch(e){setError(e instanceof Error?e.message:
+   "Issue preparation status is uncertain. Check original Stock Operations.");}
+  finally{setBusy(false);}
+ };
  return <section aria-label="Verified member and volunteer reward redemptions"
   style={{display:"grid",gap:12}}>
   <h3 style={{margin:0}}>Volunteer &amp; Member Redemptions</h3>
@@ -89,7 +114,7 @@ export function AdminRedemptionsTable({programme,programmes,onProgrammeChange,re
      <option value="ALL">All recorded statuses</option>
      <option value="HELD">Points held</option>
      <option value="CANCELLED">Cancelled</option>
-     <option value="FULFILLMENT_PENDING">Fulfillment pending</option>
+     <option value="ISSUED_AWAITING_HANDOVER">Issued, awaiting handover</option>
      <option value="FULFILLED">Verified fulfilled</option>
     </select>
    </label>
@@ -108,11 +133,16 @@ export function AdminRedemptionsTable({programme,programmes,onProgrammeChange,re
   </div>
   {busy&&<p role="status">Checking original reward requests…</p>}
   {error&&<p role="alert">{error}</p>}
+  {notice&&<p role="status">{notice}{" "}
+   <a href="/admin/inventory">Open existing Stock Operations</a>
+   to upload required CG19 proof and confirm the real warehouse ISSUE. An issue is
+   not yet a recipient handover.
+  </p>}
   <div role="region" tabIndex={0} aria-label="Actual reward request records"
    style={{overflowX:"auto"}}>
    <table style={{width:"100%",minWidth:580,borderCollapse:"collapse",fontSize:13}}>
     <thead><tr>{["Relationship","Member / volunteer","Reward",
-     "Points","Source status","Requested"].map(x=>
+     "Points","Source status","Requested",...(canIssueStock?["Warehouse action"]:[])].map(x=>
       <th key={x} scope="col" style={{padding:10,textAlign:"left",
        borderBottom:"1px solid var(--cg-border,#CBD5E1)"}}>{x}</th>)}</tr></thead>
     <tbody>
@@ -124,8 +154,12 @@ export function AdminRedemptionsTable({programme,programmes,onProgrammeChange,re
       <td style={{padding:9}}>{niceStatus(event.status)}</td>
       <td style={{padding:9}}>{new Date(event.requestedAt).toLocaleDateString("en-IN",
        {timeZone:"Asia/Kolkata"})}</td>
+      {canIssueStock&&<td style={{padding:9}}>{event.type==="PHYSICAL"&&event.status==="HELD"?
+       <button type="button" disabled={busy} style={styles.button}
+        onClick={()=>void prepareIssue(event)}>Prepare real warehouse ISSUE</button>:
+       "Not applicable"}</td>}
      </tr>)}
-     {!busy&&!items.length&&<tr><td colSpan={6} style={{padding:24,textAlign:"center"}}>
+     {!busy&&!items.length&&<tr><td colSpan={canIssueStock?7:6} style={{padding:24,textAlign:"center"}}>
       No source-confirmed reward requests match the current filters.</td></tr>}
     </tbody>
    </table>
