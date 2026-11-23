@@ -520,6 +520,7 @@ export class ReferralCatalogService{
     "SELECT p.id AS ref,p.programme_id AS \"programmeRef\",p.product_type AS type,p.category,p.name,"+
     "p.description,p.points_price::text AS \"pointsPrice\",p.eligible_audience AS \"eligibleAudience\","+
     "p.status,p.highlighted,p.public_visible AS \"publicVisible\",p.approved_image_url AS \"imageUrl\","+
+    "p.digital_fulfillment_method AS \"digitalFulfillmentMethod\","+
     "p.cg12_item_ref AS \"itemRef\",p.cg12_location_ref AS \"storeRef\",p.version "+
     "FROM reward_product p LEFT JOIN inventory_location loc ON "+
     "loc.root_realm_id=p.root_realm_id AND loc.id=p.cg12_location_ref "+
@@ -743,6 +744,7 @@ export class ReferralCatalogService{
     "SELECT p.id AS ref,p.programme_id AS \"programmeRef\",p.product_type AS type,"+
     "p.category,p.name,p.description,p.points_price::text AS \"pointsPrice\","+
     "p.version,p.eligible_audience AS \"eligibleAudience\","+
+    "p.digital_fulfillment_method AS \"digitalFulfillmentMethod\","+
     "pr.audience AS \"programmeAudience\","+
     "p.approved_image_url AS \"imageUrl\",p.highlighted,"+
     "CASE WHEN p.product_type='DIGITAL' THEN 'NO_STOCK_REQUIRED' "+
