@@ -71,6 +71,11 @@ export function ReferralRewardsWorkspace({canManagePolicy,canManageRewards}:{
  const [selected,setSelected]=useState(""),[detail,setDetail]=useState<Programme|null>(null);
  const [products,setProducts]=useState<Reward[]>([]),[edition,setEdition]=useState<Reward|null>(null);
  const [section,setSection]=useState<"PROGRAMMES"|"REWARDS">("PROGRAMMES");
+ const [rankTab,setRankTab]=useState<"MEMBER"|"VOLUNTEER">("MEMBER");
+ const [selectedRank,setSelectedRank]=useState(0);
+ const [categoryFilter,setCategoryFilter]=useState("All");
+ const [searchProduct,setSearchProduct]=useState("");
+ const [rewardView,setRewardView]=useState<"CATALOG"|"REDEMPTIONS">("CATALOG");
  const [drawer,setDrawer]=useState<"POLICY"|"PRODUCT"|null>(null);
  const [programmeForm,setProgrammeForm]=useState<ProgrammeDraft>(blankProgramme);
  const [rewardForm,setRewardForm]=useState<RewardDraft>(blankReward);
@@ -191,14 +196,18 @@ export function ReferralRewardsWorkspace({canManagePolicy,canManageRewards}:{
  const activeProducts=products.filter(p=>p.status==="ACTIVE");
  const availableRanks=detail?.ranks??[];
  const programmeTitle=programmes.find(p=>p.ref===selected)?.name??"No active programme selected";
- const orderedProducts=useMemo(()=>[...products].sort((a,b)=>
-  Number(b.highlighted)-Number(a.highlighted)||a.name.localeCompare(b.name)),[products]);
+ const categories=useMemo(()=>["All",...new Set(products.map(x=>x.category))],[products]);
+ const orderedProducts=useMemo(()=>[...products].filter(p=>
+  (categoryFilter==="All"||p.category===categoryFilter)&&
+  (p.name+" "+p.category+" "+p.description).toLowerCase().includes(searchProduct.trim().toLowerCase()))
+  .sort((a,b)=>Number(b.highlighted)-Number(a.highlighted)||a.name.localeCompare(b.name)),
+  [products,categoryFilter,searchProduct]);
  const rowInput=(title:string,value:string,fn:(v:string)=>void,type="text")=><label style={css.field}>{title}
   <input style={css.control} type={type} value={value}
    onChange={e=>fn(e.target.value)} autoComplete="off"/></label>;
- return <div style={{display:"grid",gap:18}}>
+ return <div style={{display:"grid",gap:16,maxWidth:1280,width:"100%",margin:"0 auto"}}>
   <header style={{display:"flex",alignItems:"flex-start",justifyContent:"space-between",gap:12,flexWrap:"wrap"}}>
-   <div><h1 style={{margin:0,fontSize:27}}>Referral Programme & Rewards</h1>
+   <div><h1 style={{margin:0,fontSize:27}}>{section==="PROGRAMMES"?"Referral Programme":"Rewards Store"}</h1>
     <p style={{margin:"6px 0 0",color:"var(--cg-text-muted,#64748B)",fontSize:13}}>
      Original B11–B16 · verified referral points, rank policy and real reward catalogue</p></div>
    <button type="button" style={css.button} onClick={refresh} disabled={busy}>Refresh current sources</button>
@@ -228,33 +237,75 @@ export function ReferralRewardsWorkspace({canManagePolicy,canManageRewards}:{
        {!programmes.length&&<option value="">No recorded programmes</option>}
        {programmes.map(p=><option key={p.ref} value={p.ref}>{p.name} · {p.status}</option>)}
       </select></label>
-     {!!detail?<><div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(160px,1fr))",gap:10}}>
-      {[
-       ["Recorded programme status",detail.status],
-       ["Verified referral award",detail.awardPoints+" points"],
-       ["Minimum claim policy",detail.minimumClaimPoints+" points"],
-       ["Effective policy",detail.effectiveFrom.slice(0,10)],
-      ].map(([k,v])=><div key={k} style={{padding:13,borderRadius:10,background:"var(--cg-surface-alt,#F1F5F9)"}}>
-       <div style={{fontSize:12,opacity:.8}}>{k}</div><strong>{v}</strong></div>)}
-     </div>
-     <h3 style={{fontSize:16,margin:"12px 0 0"}}>Rank Wise Details</h3>
-     <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(155px,1fr))",gap:10}}>
-      {availableRanks.map((rank,i)=><div key={rank.name+i} style={{border:"1px solid var(--cg-border,#CBD5E1)",borderRadius:12,padding:12}}>
-       <strong>{rank.name}</strong>
-       <p style={{margin:"6px 0",fontSize:13}}>{rank.verifiedReferrals} verified referrals</p>
-       <p style={{margin:0,fontSize:12}}>{rank.minimumPoints} eligible points</p>
-       {!!rank.benefitsSummary&&<p style={{margin:"8px 0 0",fontSize:12}}>{rank.benefitsSummary}</p>}
-      </div>)}
-      {!availableRanks.length&&<p>No original rank policy has been recorded.</p>}
-     </div>
-     <p style={{fontSize:12}}>Member/Volunteer rank counts and Top Referrers become available
-      only after genuine CG04-qualified events in US-002. No demonstration figures are displayed.</p>
-     {canManagePolicy&&<button style={css.button} disabled={busy}
-      onClick={()=>void send({method:"POST",path:"/programmes/"+detail.ref+"/status",
-       body:{requestKey:crypto.randomUUID(),expectedVersion:detail.version,
-        status:detail.status==="ACTIVE"?"INACTIVE":"ACTIVE"}})}>
-      {detail.status==="ACTIVE"?"Deactivate future programme":"Reactivate current programme"}</button>}
-    </>:<p>No programme has been recorded. Create a policy to begin; no member account,
+     {!!detail?<>
+      <div style={{display:"flex",justifyContent:"space-between",gap:10,flexWrap:"wrap"}}>
+       <h3 style={{fontSize:16,margin:0}}>Referral Ranks ({availableRanks.length} Levels)</h3>
+       {canManagePolicy&&<button type="button" style={css.primary}
+        onClick={()=>openPolicy(true)}>+ Configure Referral Settings</button>}
+      </div>
+      <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(140px,1fr))",gap:9}}>
+       {availableRanks.map((rank,i)=><button type="button" key={i}
+        aria-pressed={selectedRank===i} onClick={()=>setSelectedRank(i)}
+        style={{textAlign:"left",cursor:"pointer",padding:12,minHeight:101,
+         background:"var(--cg-surface,#fff)",color:"inherit",borderRadius:10,
+         border:selectedRank===i?"2px solid var(--cg-accent,#244CA4)":"1px solid var(--cg-border,#CBD5E1)"}}>
+        <strong>🏅 {rank.name}</strong><div style={{fontSize:11}}>Rank {i+1}</div>
+        <div style={{fontSize:11}}>{rank.verifiedReferrals} verified referrals required</div>
+        <div style={{fontSize:11}}>{rank.minimumPoints} minimum eligible points</div>
+       </button>)}
+       {!availableRanks.length&&<p>No rank policy recorded.</p>}
+      </div>
+      <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(170px,1fr))",gap:9}}>
+       {["TOTAL ACTIVE REFERRERS","TOTAL SUCCESSFUL REFERRALS","TOTAL REFERRAL POINTS",
+        "TOTAL REWARDS REDEEMED","PENDING REWARDS"].map(label=><div key={label}
+        style={{...css.panel,padding:12,gap:3}}>
+        <span style={{fontSize:10,fontWeight:700}}>{label}</span>
+        <strong style={{fontSize:23}}>—</strong>
+        <span style={{fontSize:11,color:"var(--cg-text-muted,#64748B)"}}>Awaiting verified events</span>
+       </div>)}
+      </div>
+      <div style={{display:"grid",gridTemplateColumns:"minmax(0,2fr) minmax(230px,1fr)",
+       gap:12,alignItems:"start"}}>
+       <section style={{...css.panel,padding:13}}>
+        <h3 style={{margin:0,fontSize:16}}>Rank Wise Details — {availableRanks[selectedRank]?.name??"Not configured"}</h3>
+        <div role="tablist" aria-label="Member and Volunteer rank records"
+         style={{display:"flex",gap:7}}>
+         {(["MEMBER","VOLUNTEER"] as const).map(t=><button key={t}
+          type="button" role="tab" aria-selected={rankTab===t}
+          style={rankTab===t?css.primary:css.button}
+          onClick={()=>setRankTab(t)}>{t==="MEMBER"?"Members":"Volunteers"}</button>)}
+        </div>
+        <div style={{overflowX:"auto"}}>
+         <table style={{width:"100%",minWidth:600,borderCollapse:"collapse",fontSize:12}}>
+          <thead><tr>{["MEMBER / VOLUNTEER","NAME","REFERRAL COUNT","TOTAL POINTS",
+           "RANK","STATUS","LAST ACTIVITY"].map(t=><th scope="col" key={t}
+           style={{padding:10,textAlign:"left",borderBottom:"1px solid var(--cg-border,#CBD5E1)"}}>{t}</th>)}</tr></thead>
+          <tbody><tr><td colSpan={7} style={{textAlign:"center",padding:24}}>
+           No verified {rankTab==="MEMBER"?"member":"volunteer"} referrals available.
+           US-002 will use genuine CG04 qualification and original points history.</td></tr></tbody>
+         </table>
+        </div>
+       </section>
+       <aside style={{display:"grid",gap:12}}>
+        <div style={{...css.panel,padding:13}}>
+         <h3 style={{margin:0,fontSize:15}}>Rank {Math.min(selectedRank+1,availableRanks.length)} — {availableRanks[selectedRank]?.name??"Unconfigured"}</h3>
+         <p style={{fontSize:12,margin:0}}>Minimum referrals: {availableRanks[selectedRank]?.verifiedReferrals??"—"}</p>
+         <p style={{fontSize:12,margin:0}}>Minimum points: {availableRanks[selectedRank]?.minimumPoints??"—"}</p>
+         <p style={{fontSize:12,margin:0}}>Benefits: {availableRanks[selectedRank]?.benefitsSummary||"No recorded benefits"}</p>
+        </div>
+        <div style={{...css.panel,padding:13}}>
+         <h3 style={{margin:0,fontSize:15}}>Reward / Gift</h3>
+         <p style={{fontSize:12,margin:0}}>Only actual eligible catalog products are shown; no invented certificates or vouchers.</p>
+         <button type="button" style={css.button} onClick={()=>setSection("REWARDS")}>View recorded rewards</button>
+        </div>
+       </aside>
+      </div>
+      {canManagePolicy&&<button style={{...css.button,justifySelf:"start"}} disabled={busy}
+       onClick={()=>void send({method:"POST",path:"/programmes/"+detail.ref+"/status",
+        body:{requestKey:crypto.randomUUID(),expectedVersion:detail.version,
+         status:detail.status==="ACTIVE"?"INACTIVE":"ACTIVE"}})}>
+       {detail.status==="ACTIVE"?"Deactivate future programme":"Reactivate current programme"}</button>}
+     </>:<p>No programme has been recorded. Create a policy to begin; no member account,
       stock inventory or cash provider is required for a digital reward.</p>}
     </section>
    </>:<>
@@ -303,8 +354,8 @@ export function ReferralRewardsWorkspace({canManagePolicy,canManageRewards}:{
     if(e.target===e.currentTarget&&!pending&&!busy)setDrawer(null);
    }}>
    <aside role="dialog" aria-modal="true" aria-label={drawer==="POLICY"?"Configure Referral Settings":"Add or Edit Reward Product"}
-    style={{background:"var(--cg-surface,#fff)",color:"inherit",width:"min(100%,520px)",height:"100%",
-     overflowY:"auto",padding:22,display:"grid",alignContent:"start",gap:13,
+    style={{background:"var(--cg-surface,#fff)",color:"inherit",width:"min(100%,410px)",height:"100%",
+     overflowY:"auto",padding:18,display:"grid",alignContent:"start",gap:13,
      boxShadow:"-8px 0 35px rgba(8,20,40,.15)"}}>
     <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
      <h2 style={{margin:0,fontSize:21}}>{drawer==="POLICY"?"Configure Referral Settings":"Add Reward Product"}</h2>
