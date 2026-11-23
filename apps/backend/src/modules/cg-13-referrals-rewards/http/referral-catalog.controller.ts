@@ -23,6 +23,12 @@ export class ReferralCatalogController{
  summary(@Headers("authorization")auth:string,@Param("programmeRef")ref:string){
   return this.catalog.adminSummary(auth,ref);
  }
+ @Get("programmes/:programmeRef/redemptions")
+ redemptions(@Headers("authorization")auth:string,@Param("programmeRef")ref:string,
+  @Query("page")page?:string,@Query("status")status?:string,
+  @Query("q")search?:string,@Query("from")from?:string,@Query("to")to?:string){
+  return this.catalog.adminRedemptions(auth,ref,page,status,search,from,to);
+ }
  @Get("programmes/:programmeRef")
  programme(@Headers("authorization")auth:string,@Param("programmeRef")ref:string){
   return this.catalog.programmeDetail(auth,ref);
