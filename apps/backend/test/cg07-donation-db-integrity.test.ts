@@ -5,7 +5,7 @@ import {Client} from "pg";
 /** Read-only verification of actual CG07 US002/003 database changes.
  * Run against a disposable migrated PostgreSQL QA DB. This test never
  * claims to have performed donor payments, external webhooks or a backup. */
-test("CG07 US002/003: 3306–3318 installed and finance/receipt evidence guards enabled",
+test("CG07 US002/003: 3306–3319 installed and finance/receipt evidence guards enabled",
  {timeout:20000},async()=>{
   const url=process.env.DATABASE_URL;
   assert.ok(url,"Set DATABASE_URL for an isolated migrated CareGanga QA PostgreSQL DB");
@@ -40,7 +40,7 @@ test("CG07 US002/003: 3306–3318 installed and finance/receipt evidence guards 
     "cg19_donation_message_guard","cg19_donation_proof_guard",
     "cg07_bank_collection_immutable","cg07_bank_collection_posted_proof",
     "cg07_provider_refund_no_retarget","cg07_refund_channel_no_retarget",
-    "cg07_provider_refund_requires_channel"];
+    "cg07_provider_refund_requires_channel","cg07_donation_branch_no_retarget"];
    for(const name of essential){
     const t=map.get(name);
     assert.ok(t,"Missing critical source protection trigger: "+name);
@@ -79,7 +79,10 @@ test("CG07 US002/003: 3306–3318 installed and finance/receipt evidence guards 
    const providerTrigger=map.get("cg07_provider_refund_no_retarget");
    assert.ok(providerTrigger&&providerTrigger.definition.includes("BEFORE INSERT OR UPDATE OR DELETE"),
     "Immutable merchant refund evidence trigger must protect all modifications");
-   const channel=map.get("cg07_refund_channel_no_retarget");
+   const donationBranchGuard=map.get("cg07_donation_branch_no_retarget");
+   assert.ok(donationBranchGuard&&donationBranchGuard.definition.includes("BEFORE INSERT OR UPDATE"),
+    "Original campaign donation branch must be checked on creation and immutable thereafter");
+      const channel=map.get("cg07_refund_channel_no_retarget");
    assert.ok(channel&&channel.definition.includes("BEFORE UPDATE"),
     "Refund cash versus online settlement method must remain immutable");
       const payment=await db.query<{indexdef:string}>(`
