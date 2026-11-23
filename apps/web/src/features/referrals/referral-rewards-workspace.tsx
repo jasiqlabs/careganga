@@ -13,7 +13,8 @@ type ProgrammeSummary=Pick<Programme,"ref"|"name"|"status">;
 type Reward={ref:string;programmeRef:string;type:"DIGITAL"|"PHYSICAL";category:string;
  name:string;description:string;pointsPrice:string;eligibleAudience:"MEMBER"|"VOLUNTEER"|"BOTH";
  status:"DRAFT"|"ACTIVE"|"ARCHIVED";highlighted:boolean;publicVisible:boolean;
- imageUrl:string|null;itemRef:string|null;storeRef:string|null;version:number};
+ imageUrl:string|null;itemRef:string|null;storeRef:string|null;version:number;
+ digitalFulfillmentMethod:"PENDING_EXTERNAL_PROOF"|"ON_PLATFORM_RECOGNITION";};
 type Option={ref:string;name:string};
 type Stock={availableQuantity:string;onHandQuantity:string;reservedQuantity:string;
  itemName:string;stockStatus:string;notice:string};
@@ -35,14 +36,16 @@ type ProgrammeDraft={programmeCode:string;name:string;audience:Programme["audien
  minimumClaimPoints:string;displayInrRatio:string;autoRankUpgrade:boolean;ranks:Rank[]};
 type RewardDraft={type:Reward["type"];category:string;name:string;description:string;
  pointsPrice:string;eligibleAudience:Reward["eligibleAudience"];status:Reward["status"];
- highlighted:boolean;publicVisible:boolean;imageUrl:string;itemRef:string;storeRef:string};
+ highlighted:boolean;publicVisible:boolean;imageUrl:string;itemRef:string;storeRef:string;
+ digitalFulfillmentMethod:"PENDING_EXTERNAL_PROOF"|"ON_PLATFORM_RECOGNITION";};
 const today=()=>new Date(Date.now()+19800000).toISOString().slice(0,10);
 const blankProgramme=():ProgrammeDraft=>({programmeCode:"",name:"",audience:"BOTH",
  effectiveFrom:today(),qualifyingEvent:"MEMBERSHIP_ACTIVATED_VERIFIED",
  awardPoints:"",minimumClaimPoints:"0",displayInrRatio:"",autoRankUpgrade:true,ranks:[]});
 const blankReward=():RewardDraft=>({type:"DIGITAL",category:"",name:"",description:"",
  pointsPrice:"",eligibleAudience:"BOTH",status:"DRAFT",highlighted:false,
- publicVisible:true,imageUrl:"",itemRef:"",storeRef:""});
+ publicVisible:true,imageUrl:"",itemRef:"",storeRef:"",
+ digitalFulfillmentMethod:"PENDING_EXTERNAL_PROOF"});
 const css:Record<string,CSSProperties>={
  panel:{background:"var(--cg-surface,#fff)",border:"1px solid var(--cg-border,#DCE4ED)",
   padding:18,borderRadius:14,display:"grid",gap:12,minWidth:0},
@@ -91,7 +94,8 @@ const fromProgramme=(v:Programme):ProgrammeDraft=>({programmeCode:v.code,name:v.
 const fromProduct=(v:Reward):RewardDraft=>({type:v.type,name:v.name,category:v.category,
  description:v.description,pointsPrice:v.pointsPrice,eligibleAudience:v.eligibleAudience,
  status:v.status,highlighted:v.highlighted,publicVisible:v.publicVisible,
- imageUrl:v.imageUrl??"",itemRef:v.itemRef??"",storeRef:v.storeRef??""});
+ imageUrl:v.imageUrl??"",itemRef:v.itemRef??"",storeRef:v.storeRef??"",
+ digitalFulfillmentMethod:v.digitalFulfillmentMethod??"PENDING_EXTERNAL_PROOF"});
 export function ReferralRewardsWorkspace({canViewPolicy,canViewRewards,canManagePolicy,canManageRewards}:{
  canViewPolicy:boolean;canViewRewards:boolean;canManagePolicy:boolean;canManageRewards:boolean}){
  const [programmes,setProgrammes]=useState<ProgrammeSummary[]>([]);
@@ -287,6 +291,7 @@ export function ReferralRewardsWorkspace({canViewPolicy,canViewRewards,canManage
     category:p.category,pointsPrice:num(p.pointsPrice,"product points"),
     eligibleAudience:p.eligibleAudience,status:p.status,highlighted:p.highlighted,
     publicVisible:p.publicVisible,imageUrl:p.imageUrl||null,
+    digitalFulfillmentMethod:p.type==="DIGITAL"?p.digitalFulfillmentMethod:"PENDING_EXTERNAL_PROOF",
     itemRef:p.type==="PHYSICAL"?p.itemRef:null,
     storeRef:p.type==="PHYSICAL"?p.storeRef:null};
    if(edition){
@@ -663,6 +668,17 @@ export function ReferralRewardsWorkspace({canViewPolicy,canViewRewards,canManage
        onChange={e=>setRewardForm(p=>({...p,type:e.target.value as Reward["type"],itemRef:"",storeRef:""}))}>
        <option value="DIGITAL">Digital recognition (no stock)</option>
        <option value="PHYSICAL">Physical item (warehouse stock)</option></select></label>
+     {rewardForm.type==="DIGITAL"&&<label style={css.field}>
+      Real digital fulfillment source
+      <select style={css.control} value={rewardForm.digitalFulfillmentMethod}
+       onChange={e=>setRewardForm(p=>({...p,
+        digitalFulfillmentMethod:e.target.value as RewardDraft["digitalFulfillmentMethod"]}))}>
+       <option value="PENDING_EXTERNAL_PROOF">Await verified delivery — no automatic fulfillment</option>
+       <option value="ON_PLATFORM_RECOGNITION">Recipient-acknowledged on-platform recognition only</option>
+      </select>
+      <span style={{fontSize:12,fontWeight:400}}>The recognition option delivers only the
+       configured in-app recognition, not a gift code, cash or PDF certificate.</span>
+     </label>}
      {rowInput("Redemption points (not rupees)",rewardForm.pointsPrice,
       v=>setRewardForm(p=>({...p,pointsPrice:v})),"text")}
      <label style={css.field}>Eligible marketplace
