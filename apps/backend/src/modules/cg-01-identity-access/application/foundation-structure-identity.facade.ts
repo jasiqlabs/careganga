@@ -59,6 +59,45 @@ export class FoundationStructureIdentityFacade {
     if(!found.rowCount)throw new ForbiddenException("Select an eligible current Foundation account");
     return {accountRef:found.rows[0].id,displayName:found.rows[0].display_name};
   }
+  /** One CG01-owned staff-only selector for CG02 delegated branch/area access.
+   * Public patient/community roles are not Foundation staff. Lock the account
+   * exclusively before CG02 grant updates access_version, serializing competing
+   * administrators and preventing SELECT FOR SHARE -> UPDATE upgrade deadlocks.
+   */
+  async eligibleDelegatedStaff(client:PoolClient,actor:VerifiedFoundationActor,accountRef:string):
+   Promise<{accountRef:string;displayName:string}>{
+    const q=await client.query<{id:string;display_name:string}>(`
+      SELECT a.id,a.display_name FROM account a
+      WHERE a.id=$1 AND a.realm_id=$2 AND a.status='ACTIVE'
+       AND EXISTS(
+        SELECT 1 FROM account_role ar JOIN role r
+          ON r.id=ar.role_id AND r.realm_id=ar.realm_id
+        WHERE ar.realm_id=a.realm_id AND ar.account_id=a.id
+          AND ar.revoked_at IS NULL AND r.active
+          AND r.normalized_name NOT IN ('careganga patient','careganga community applicant')
+       ) FOR UPDATE OF a`,[accountRef,actor.realmId]);
+    if(!q.rows[0])throw new ForbiddenException("Choose an active Foundation staff account");
+    return {accountRef:q.rows[0].id,displayName:q.rows[0].display_name};
+  }
+  /** Staff search is intentionally distinct from the public-applicant
+   * and general-officeholder lookups reused by other Foundation forms.
+   */
+  async eligibleDelegatedStaffOptions(client:PoolClient,actor:VerifiedFoundationActor,search:string){
+    const q=await client.query<{id:string;display_name:string}>(`
+      SELECT a.id,a.display_name FROM account a
+      WHERE a.realm_id=$1 AND a.status='ACTIVE'
+       AND ($2='' OR lower(a.display_name) LIKE $2 ESCAPE '\\')
+       AND EXISTS(
+        SELECT 1 FROM account_role ar JOIN role r
+          ON r.id=ar.role_id AND r.realm_id=ar.realm_id
+        WHERE ar.realm_id=a.realm_id AND ar.account_id=a.id
+          AND ar.revoked_at IS NULL AND r.active
+          AND r.normalized_name NOT IN ('careganga patient','careganga community applicant')
+       )
+      ORDER BY a.display_name,a.id LIMIT 30`,[actor.realmId,
+       search?"%"+search.toLowerCase().replace(/[\\%_]/g,"\\  async assertPatientSessionCurrent(client:PoolClient,actor:VerifiedFoundationActor){")+"%":""]);
+    return q.rows.map(x=>({value:x.id,label:x.display_name}));
+  }
   async assertPatientSessionCurrent(client:PoolClient,actor:VerifiedFoundationActor){
     return this.assertRootSelfSessionCurrent(client,actor);
   }
