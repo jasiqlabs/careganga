@@ -479,3 +479,8 @@ Existing authorized Foundation CSR Admin Web now contains original funding propo
 ### US002 independent Web source review — no stale cross-branch funding detail after scope change
 
 Found/fixed real source regression in new B07/B08 workflow: an outstanding protected `GET funding-proposals/:ref` could complete after operator changed status, branch or purpose filters and reopen a previous authorized branch's proposal. Added generation-bound detail requests; scope/search refresh, new draft, close and confirmed write invalidate pending results. Filter controls are disabled during active writes and uncertain original-command outcomes. No new data table/permission; current CG01/02 backend filters remain authoritative. Original US002-QA02/04/05/19/20 Web source race fixed; runnable delayed-response Web/device tests NOT_RUN.
+
+
+### US002 original Internal Android B07/B08 source draft parity
+
+The original staff CSR module now includes an authorized Funding Requests tab with the same original CG08 backend as Admin Web. Native list/filter/current CG02 branch, exact approved sponsor/project pickers, requested-only INR and 70/30 split, 4-step draft form, read-only non-draft review and replay-stable unknown writes are authored in `native-csr-funding.tsx`; no public CSR Admin screen or mobile-only finance ledger. Native values are rendered as names, amounts and status, not internal IDs. Existing CG01/02 action/branch authorization remains backend enforced and slow private detail requests are invalidated when context changes. User original US002-QA01/02/04/05/06/09/12/13/14/16/20 source authored, compile/real device/manual QA NOT_RUN. CG03/19 proof/review and CG09 actual finance posting remain SOURCE_GAP.
