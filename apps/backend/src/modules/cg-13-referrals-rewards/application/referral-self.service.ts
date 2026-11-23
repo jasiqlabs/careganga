@@ -65,12 +65,12 @@ export class ReferralSelfService{
    "AND (m.branch_ref IS NULL OR b.status='ACTIVE') "+
    "AND term.starts_on<=(now() AT TIME ZONE 'Asia/Kolkata')::date "+
    "AND (term.expires_on IS NULL OR term.expires_on>(now() AT TIME ZONE 'Asia/Kolkata')::date) "+
-   "ORDER BY term.starts_on DESC,m.id LIMIT 2",[actor.realmId,actor.accountId]);
+   "ORDER BY term.starts_on DESC,m.id LIMIT 2 FOR SHARE OF m,term",[actor.realmId,actor.accountId]);
   const volunteer=await tx.query<{ref:string}>(
    "SELECT v.id AS ref FROM volunteer v "+
    "WHERE v.root_realm_id=$1 AND v.account_ref=$2 AND v.status='ACTIVE' "+
    "AND cg04_current_volunteer(v.root_realm_id,v.id,v.account_ref,v.branch_ref) "+
-   "ORDER BY v.id LIMIT 2",[actor.realmId,actor.accountId]);
+   "ORDER BY v.id LIMIT 2 FOR SHARE OF v",[actor.realmId,actor.accountId]);
   return [
    ...member.rows.slice(0,1).map(row=>({kind:"MEMBER" as const,ref:row.ref})),
    ...volunteer.rows.slice(0,1).map(row=>({kind:"VOLUNTEER" as const,ref:row.ref}))
