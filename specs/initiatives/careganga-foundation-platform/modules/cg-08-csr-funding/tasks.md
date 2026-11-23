@@ -521,3 +521,36 @@ Actual B03–B08 original 2400×1440 PNGs from the authorized CareGanga admin sc
 ### 23-Nov-2026 — US001/US002 screenshot-backed exact heading and information hierarchy correction
 
 After direct inspection of client B03/B04/B05 and B07 original PNGs (2400×1440), aligned staff Web CSR directory display to the original **CORPORATE PARTNERSHIPS / CSR Partner Network** and B07 Web/Internal Android title to **Fund Management**. Kept CG01 shared shell/navigation and existing original real status data, CG02 root/branch isolation, CG03 approval, and CG09 cash separation; no fake Finance KPI, sponsor logo, sample projected budget or dummy B08 upload. This closes only heading/source hierarchy mismatch, NOT B03/B06/B07/B08 pixel-equivalence or missing US002/003 backend owner integration. Original QA US001-QA06/18 and US002-QA05/06; rendered screenshots/devices NOT_RUN.
+
+## CG08/US-002 — canonical 20 original QA source trace, 23-Nov-2026
+
+**Source inspected:** current CG08 US002 3406 draft migration, CsrFundingProposalsService, CG02 current branch grants, CG05 original source, B07/B08 Web and Internal Android screens, test:cg08-funding. The actual B03–B08 client PNGs were reviewed at 2400×1440. The original 20 QA IDs and acceptance text above are unchanged.
+
+**Legend:** PARTIAL_SOURCE = one or more source stages authored, with required downstream owning-module integration still missing; SOURCE_GAP = major scenario path not implemented; NOT_RUN = no real compile, PostgreSQL, CG03/19/09 provider, two-manager role, Web/native or pixel QA. None is PASS.
+
+| Original QA | Verified source stage and remaining actual gap | Source classification | Runtime |
+|---|---|---|---|
+| US-002-QA01 | CG08 Foundation/CSR/MIXED draft with optional true CG05 project; CG03 signed commitment and CG09 ledger not yet wired | PARTIAL_SOURCE | NOT_RUN |
+| US-002-QA02 | CG01 and current CG02 root/branch grants checked, original CG05 project guarded; private CG19 funding proof and CG09 allocation API not yet wired | PARTIAL_SOURCE | NOT_RUN |
+| US-002-QA03 | Integer paise 70/30 and immutable CG08 draft replay; actual CG09 receipt/duplicate callback absent | PARTIAL_SOURCE | NOT_RUN |
+| US-002-QA04 | Bad split/currency/foreign project and unknown draft write states guarded; CG03/19/09 independent outage handling absent | PARTIAL_SOURCE | NOT_RUN |
+| US-002-QA05 | B07 source-based funding draft list, B08 Web/native labels and real optional CG05 project present; verified finance/status reconciliation absent | PARTIAL_SOURCE | NOT_RUN |
+| US-002-QA06 | Actual B08 PNG has FIVE numbered vertical groups, CG05 team, CG09 itemized budget, CG19 upload, CG03 submit; replacement has FOUR draft tabs | SOURCE_GAP | NOT_RUN |
+| US-002-QA07 | Concurrent independent review/CG09 over-allocation source tests not implemented | SOURCE_GAP | NOT_RUN |
+| US-002-QA08 | No CG03 signed commitment and CG09 verified receipt vs spendable allocation binding | SOURCE_GAP | NOT_RUN |
+| US-002-QA09 | CSR/Foundation source-only 70/30 present, actual partial bank receipt/blocked Foundation spendable money missing | PARTIAL_SOURCE | NOT_RUN |
+| US-002-QA10 | Real same-root/branch CG05 project and source-version verified; CG09 original budget allocation missing | PARTIAL_SOURCE | NOT_RUN |
+| US-002-QA11 | No fake CG08 journal inserted, but actual CG09 utilized/available journal projection not connected | SOURCE_GAP | NOT_RUN |
+| US-002-QA12 | Foundation-purpose without CG05 project works in source draft; not signed/approved commitment | PARTIAL_SOURCE | NOT_RUN |
+| US-002-QA13 | Optional current CG05 PLANNED/ACTIVE project selection and exact version; CG09 allocation absent | PARTIAL_SOURCE | NOT_RUN |
+| US-002-QA14 | Exact INR paise and 100% basis-point split; CG19 signed proof/CG03 review absent | PARTIAL_SOURCE | NOT_RUN |
+| US-002-QA15 | Two real approved sponsor commitments to one CG05 project with single CG09 budget authority not wired | SOURCE_GAP | NOT_RUN |
+| US-002-QA16 | Approved signed CG08 commitment versus CG09 bank receipt status contract not wired | SOURCE_GAP | NOT_RUN |
+| US-002-QA17 | Real CG09 one-posted bank/merchant receipt callback and replay not integrated with this proposal | SOURCE_GAP | NOT_RUN |
+| US-002-QA18 | CG08 allocation request and original CG09 available cash budget/utilization authority not wired | SOURCE_GAP | NOT_RUN |
+| US-002-QA19 | Closed/foreign/stale original CG05 project guard present; approved finance-linked correction/reversal missing | PARTIAL_SOURCE | NOT_RUN |
+| US-002-QA20 | Full CG08→CG19 signed agreement→CG03 funding approval→CG05 project→CG09 verified money→Admin B07/B08 route absent | SOURCE_GAP | NOT_RUN |
+
+**Count:** 11/20 partial source, 9/20 source gaps, 0/20 runtime QA, 0 original live PASS. No shadow finance balance/master; requested-only drafts are not approved money.
+
+**Next story-order gate:** original CG19 signed funding document → original CG03 funding approval and commitment → original CG09 cash/allocations with immutable receipt proof → true CG05/CG09/CG19 backed five-section B08 and source-backed B07 finance values → independent review/fixes → all 20 QA actual trace. US003 remains NOT_STARTED. Screenshot audit docs/qa/CAREGANGA-CG08-B03-B08-CLIENT-PNG-INDEPENDENT-UIUX-SOURCE-REVIEW-20261123.md is mandatory for visual QA. No main merge, CI/GitHub Actions or local runtime PASS.
