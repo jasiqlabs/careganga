@@ -148,3 +148,21 @@ test("US001-QA05/08/10: Native reviewer only reads exact case-scoped protected a
  assert.match(native,/local\.delete\(\)/);
  assert.ok(!native.includes("uploadUrl"),"Reviewer does not receive a storage upload URL");
 });
+
+
+test("US001-QA05/06/08/13/17/18: real B03-B06 review tabs and branch-limited read-only parity",()=>{
+ const web=readFileSync(join(process.cwd(),"../web/src/features/csr/csr-partners-workspace.tsx"),"utf8");
+ const android=readFileSync(join(process.cwd(),"../android-internal/src/features/csr/native-csr-partners.tsx"),"utf8");
+ for(const src of [web,android]){
+  for(const label of ["All Partners","Pending Review","Approved Partners","Rejected"])
+   assert.ok(src.includes(label),"Missing original status tab: "+label);
+  assert.ok(src.includes('params.set("status",statusFilter)')||
+   src.includes('p.set("status",statusFilter)'),"Backend-owned status filter required");
+  assert.ok(src.includes('setOffset(0);setStatusFilter('),"Status changes must reset paging");
+  assert.ok(src.includes('branchRef'),"Must retain current CG02 branch selection");
+  assert.ok(src.includes('canEditCurrent'),"Approved/other private records must be read-only");
+  assert.ok(src.includes('review-history'),"Original CG03 review status must be preserved");
+ }
+ assert.ok(web.includes('aria-pressed={statusFilter===tab.value}'),"Web active-state a11y");
+ assert.ok(android.includes('editable={canEditCurrent&&!busy&&!pending}'),"Native readonly input guard");
+});

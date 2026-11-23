@@ -297,3 +297,10 @@ The existing authorized Internal Android reviewer can explicitly open the **same
 ### 23-Nov-2026 — CG18 original `/collaboration` receiving-page structure (safe source only)
 
 US001/QA05/06/16/18/20 original public corporate-partner layout receives dark-green hero, Why Partner cards, Meet Our Partners section, healthcare service partner separation, Partner With Us/Let's Collaborate CTAs and mobile-responsive styles on existing `apps/web/src/app/collaboration/page.tsx`; no logos, fake Milaap/Ketto endorsement, proof-free claims or private contact. This **does not yet fulfill dynamic CG08→CG18 approved partner/right/media CMS projection**, which remains SOURCE_GAP. Actual original screenshots/PNG QA NOT_RUN. No new module/issue or CSR Admin native/public identity.
+
+
+### 23-Nov-2026 — US001 B03–B06 original status tabs, branch and exception parity
+
+**Developed:** Updated existing CG08 staff Web and Internal Android partner directory only: same original `GET /api/v1/csr/partners` status query now drives B03 Pending Review (`SUBMITTED`), Approved (`APPROVED`), Rejected (`REJECTED`), All; retains CG02 permitted-branch filter on every request, resets pagination when scope/status changes, and displays list-fetch failure **separately** from a legitimate zero-result page. No new DB/status/API/provider. Android existing authorized partner detail now offers read-only access to approved/submitted/rejected and original CG03 history, hides editable fields/save/cancel/CG19 upload after final status; draft and returned remain editable. Web uses existing equivalent protected fields and original history.
+
+**Targeted QA source trace:** Original US001-QA02/04/05/06/08/12/13/17/18/20; current source contract checks appended to `test:cg08-partner`. Need actual TypeScript builds, original B03–B06 rendered comparison, revoked branch switching and two-role device checks (**NOT_RUN**). SOURCE_CHANGE_AUTHORED_REVIEW_PENDING, not original QA PASS. No added story, issue, endpoint, test ID, or change to CG07 or main.

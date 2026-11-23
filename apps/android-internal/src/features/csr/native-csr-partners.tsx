@@ -9,6 +9,10 @@ type Options={foundation:boolean;branches:Option[]};
 type Partner={ref:string;branchRef:string|null;branch:string|null;legalName:string;registrationReference:string|null;
  contactName:string;contactEmail:string|null;contactMobile:string|null;supportSummary:string;status:string;version:number};
 type Page={items:Partner[];hasMore:boolean};
+const reviewTabs=[{value:"ALL",label:"All Partners"},{value:"SUBMITTED",label:"Pending Review"},
+ {value:"APPROVED",label:"Approved Partners"},{value:"REJECTED",label:"Rejected"}] as const;
+type ReviewStatus=(typeof reviewTabs)[number]["value"];
+type ReviewHistory={items:{reference:string;status:string;submittedAt:string}[]};
 type Draft={branchRef:string;legalName:string;registrationReference:string;contactName:string;contactEmail:string;contactMobile:string;supportSummary:string};
 type Command={path:string;method:"POST"|"PATCH";body:Record<string,unknown>};
 const blank=():Draft=>({branchRef:"",legalName:"",registrationReference:"",contactName:"",contactEmail:"",contactMobile:"",supportSummary:""});
@@ -25,25 +29,38 @@ async function api<T>(token:string,path:string,method:"GET"|"POST"|"PATCH"="GET"
 }
 export function NativeCsrPartners({token,canManage,canReadAgreement,canUploadAgreement,onExpired}:{token:string;canManage:boolean;canReadAgreement:boolean;canUploadAgreement:boolean;onExpired:()=>void}){
  const [options,setOptions]=useState<Options|null>(null),[page,setPage]=useState<Page>({items:[],hasMore:false});
- const [query,setQuery]=useState(""),[filter,setFilter]=useState("ALL"),[offset,setOffset]=useState(0),[epoch,setEpoch]=useState(0);
- const [loading,setLoading]=useState(true),[error,setError]=useState(""),[notice,setNotice]=useState("");
+ const [query,setQuery]=useState(""),[filter,setFilter]=useState("ALL"),[statusFilter,setStatusFilter]=useState<ReviewStatus>("ALL"),[offset,setOffset]=useState(0),[epoch,setEpoch]=useState(0);
+ const [loading,setLoading]=useState(true),[listError,setListError]=useState(""),[error,setError]=useState(""),[notice,setNotice]=useState("");
  const [draft,setDraft]=useState<Draft>(blank),[selected,setSelected]=useState<Partner|null>(null),[editing,setEditing]=useState(false);
  const [busy,setBusy]=useState(false),[pending,setPending]=useState<Command|null>(null),seq=useRef(0);
+ const [history,setHistory]=useState<ReviewHistory|null>(null),[historyError,setHistoryError]=useState("");
+ const canEditCurrent=canManage&&(!selected||["DRAFT","RETURNED"].includes(selected.status));
  const refresh=()=>setEpoch(n=>n+1);
  useEffect(()=>{
-  let live=true;const n=++seq.current;setLoading(true);
+  let live=true;const n=++seq.current;setLoading(true);setListError("");
   const p=new URLSearchParams({offset:String(offset)});
   if(query.trim())p.set("q",query.trim().slice(0,80));
   if(filter!=="ALL")p.set("branchRef",filter);
+  if(statusFilter!=="ALL")p.set("status",statusFilter);
   void api<Page>(token,"?"+p.toString()).then(v=>{if(live&&n===seq.current){setPage(v);setError("");}})
-   .catch(e=>{if(live&&n===seq.current){setError(e instanceof Error?e.message:"CSR list unavailable.");setPage({items:[],hasMore:false});if(e&&typeof e==="object"&&"status" in e&&e.status===401)onExpired();}})
+   .catch(e=>{if(live&&n===seq.current){setListError(e instanceof Error?e.message:"CSR list unavailable.");setPage({items:[],hasMore:false});if(e&&typeof e==="object"&&"status" in e&&e.status===401)onExpired();}})
    .finally(()=>{if(live&&n===seq.current)setLoading(false);});
   return()=>{live=false;};
- },[token,query,filter,offset,epoch,onExpired]);
+ },[token,query,filter,statusFilter,offset,epoch,onExpired]);
  useEffect(()=>{
   let live=true;void api<Options>(token,"/options").then(v=>{if(live)setOptions(v);}).catch(()=>{if(live)setError("Current CSR branch choices unavailable.");});
   return()=>{live=false;};
  },[token,epoch]);
+ useEffect(()=>{
+  let live=true;setHistory(null);setHistoryError("");
+  if(selected)void api<ReviewHistory>(token,"/"+selected.ref+"/review-history")
+   .then(v=>{if(live)setHistory(v);}).catch(e=>{
+    if(!live)return;
+    setHistoryError("Current CSR review history is unavailable.");
+    if(e&&typeof e==="object"&&"status" in e&&e.status===401)onExpired();
+   });
+  return()=>{live=false;};
+ },[token,selected?.ref,epoch,onExpired]);
  const set=(k:keyof Draft,v:string)=>setDraft(x=>({...x,[k]:v}));
  const start=()=>{if(pending||busy)return;setSelected(null);setDraft({...blank(),branchRef:options?.foundation?"":options?.branches[0]?.value??""});setEditing(true);setError("");};
  const loadPartner=async(p:Partner)=>{
@@ -53,7 +70,7 @@ export function NativeCsrPartners({token,canManage,canReadAgreement,canUploadAgr
  };
  const send=async(cmd:Command)=>{
   setBusy(true);setPending(cmd);setError("");
-  try{await api(token,cmd.path,cmd.method,cmd.body);setPending(null);setEditing(false);setSelected(null);setDraft(blank());setNotice("CSR draft saved. It is not approved or publicly listed.");setOffset(0);refresh();}
+  try{await api(token,cmd.path,cmd.method,cmd.body);setPending(null);setEditing(false);setSelected(null);setDraft(blank());setNotice("CSR draft saved. It is not approved or publicly listed.");setOffset(0);setStatusFilter("ALL");refresh();}
   catch(e){const status=e&&typeof e==="object"&&"status" in e?Number(e.status):503;
    if(status===401){onExpired();return;}
    if(status<500&&status!==0){setPending(null);setError(e instanceof Error?e.message:"CSR draft not saved.");}
@@ -61,7 +78,7 @@ export function NativeCsrPartners({token,canManage,canReadAgreement,canUploadAgr
   }finally{setBusy(false);}
  };
  const save=()=>{
-  if(!canManage||busy||pending)return;
+  if(!canEditCurrent||busy||pending)return;
   if(!draft.legalName.trim()||!draft.contactName.trim()||!draft.supportSummary.trim()||
    !draft.contactEmail.trim()&&!draft.contactMobile.trim()||!draft.branchRef&&!options?.foundation){setError("Complete the organization, contact, support and permitted branch fields.");return;}
   const payload:Record<string,unknown>={requestKey:Crypto.randomUUID(),branchRef:draft.branchRef||null,
@@ -72,7 +89,7 @@ export function NativeCsrPartners({token,canManage,canReadAgreement,canUploadAgr
   void send({path:selected?"/"+selected.ref:"",method:selected?"PATCH":"POST",body:payload});
  };
  const discard=()=>{
-  if(!selected||!canManage||busy||pending)return;
+  if(!selected||!canEditCurrent||busy||pending)return;
   Alert.alert("Discard CSR draft?","This draft cannot be restored.",[
    {text:"Keep draft",style:"cancel"},{text:"Discard",style:"destructive",
     onPress:()=>{void send({path:"/"+selected.ref+"/cancel",method:"POST",body:{requestKey:Crypto.randomUUID(),expectedVersion:selected.version}});}}]);
@@ -80,7 +97,7 @@ export function NativeCsrPartners({token,canManage,canReadAgreement,canUploadAgr
  const field=(label:string,key:keyof Draft,multiline=false)=><View style={styles.field} key={key}>
   <Text style={styles.label}>{label}</Text>
   <TextInput style={[styles.input,multiline?styles.multi:null]} placeholder={label} placeholderTextColor="#64748B"
-   value={draft[key]} onChangeText={v=>set(key,v)} editable={!busy&&!pending} multiline={multiline}
+   value={draft[key]} onChangeText={v=>set(key,v)} editable={canEditCurrent&&!busy&&!pending} multiline={multiline}
    autoCapitalize={key==="contactEmail"?"none":"sentences"} maxLength={key==="supportSummary"?1000:key==="contactEmail"?254:200}/>
  </View>;
  const choice=(value:string,name:string,current:string,change:(v:string)=>void,disabled=false)=>
@@ -93,6 +110,10 @@ export function NativeCsrPartners({token,canManage,canReadAgreement,canUploadAgr
   {!!error&&<Text accessibilityRole="alert" style={styles.error}>{error}</Text>}
   {!!notice&&<Text style={styles.notice}>{notice}</Text>}
   <View style={styles.panel}>
+   <Text style={styles.label}>CSR review status</Text>
+   <ScrollView horizontal contentContainerStyle={styles.choices}>
+    {reviewTabs.map(tab=>choice(tab.value,tab.label,statusFilter,v=>{setOffset(0);setStatusFilter(v as ReviewStatus);}))}
+   </ScrollView>
    <Text style={styles.label}>Search organization</Text>
    <TextInput style={styles.input} value={query} placeholder="Organization name" onChangeText={v=>{setOffset(0);setQuery(v);}} autoCapitalize="none"/>
    <Text style={styles.label}>Current permitted branch</Text>
@@ -105,12 +126,12 @@ export function NativeCsrPartners({token,canManage,canReadAgreement,canUploadAgr
     <Pressable accessibilityRole="button" style={styles.btn} onPress={refresh}><Text>Refresh</Text></Pressable>
     {canManage&&<Pressable accessibilityRole="button" style={styles.primary} disabled={!!pending} onPress={start}><Text style={styles.primaryText}>New draft</Text></Pressable>}
    </View>
-   {loading?<ActivityIndicator/>:page.items.length===0?<Text style={styles.description}>No matching CSR drafts.</Text>:
+   {!!listError&&<Text accessibilityRole="alert" style={styles.error}>{listError}</Text>}
+   {loading?<ActivityIndicator/>:listError?null:page.items.length===0?<Text style={styles.description}>No CSR partners match the current status, search and permitted branches.</Text>:
     page.items.map(p=><View key={p.ref} style={styles.record}>
      <Text style={styles.recordTitle}>{p.legalName}</Text>
      <Text style={styles.description}>{p.branch??"Foundation"} · {p.status}</Text>
-     {canManage&&["DRAFT","RETURNED"].includes(p.status)&&
-      <Pressable accessibilityRole="button" style={styles.btn} disabled={!!pending} onPress={()=>void loadPartner(p)}><Text>Edit draft</Text></Pressable>}
+     <Pressable accessibilityRole="button" style={styles.btn} disabled={!!pending} onPress={()=>void loadPartner(p)}><Text>{canManage&&["DRAFT","RETURNED"].includes(p.status)?"Edit draft":"View details"}</Text></Pressable>
     </View>)}
    <View style={styles.actions}>
     <Pressable style={styles.btn} disabled={offset===0||loading} onPress={()=>setOffset(n=>Math.max(0,n-25))}><Text>Previous</Text></Pressable>
@@ -119,12 +140,12 @@ export function NativeCsrPartners({token,canManage,canReadAgreement,canUploadAgr
    </View>
   </View>
   {editing&&<View style={styles.panel}>
-   <Text style={styles.subheading}>{selected?"Edit CSR partner":"Register CSR partner draft"}</Text>
+   <Text style={styles.subheading}>{selected?(canEditCurrent?"Edit CSR partner":"CSR partner details"):"Register CSR partner draft"}</Text>
    <Text style={styles.description}>No partner verification or financial posting takes place here.</Text>
    <Text style={styles.label}>Foundation branch</Text>
    <ScrollView horizontal contentContainerStyle={styles.choices}>
-    {options?.foundation&&choice("","Foundation",draft.branchRef,v=>set("branchRef",v),!!selected||busy||!!pending)}
-    {options?.branches.map(b=>choice(b.value,b.label,draft.branchRef,v=>set("branchRef",v),!!selected||busy||!!pending))}
+    {options?.foundation&&choice("","Foundation",draft.branchRef,v=>set("branchRef",v),!!selected||!canEditCurrent||busy||!!pending)}
+    {options?.branches.map(b=>choice(b.value,b.label,draft.branchRef,v=>set("branchRef",v),!!selected||!canEditCurrent||busy||!!pending))}
    </ScrollView>
    {field("Registered organization", "legalName")}
    {field("Registration reference (optional)","registrationReference")}
@@ -132,12 +153,18 @@ export function NativeCsrPartners({token,canManage,canReadAgreement,canUploadAgr
    {field("Contact email","contactEmail")}
    {field("Indian contact mobile (+91…)","contactMobile")}
    {field("Proposed CSR support","supportSummary",true)}
-   {selected&&canReadAgreement&&<NativeCsrAgreementPanel token={token} partnerRef={selected.ref} version={selected.version} canUpload={canUploadAgreement&&canManage} canSubmit={canManage&&selected.status==="DRAFT"} onSubmitted={()=>{setEditing(false);setSelected(null);setNotice("Submitted for independent review.");refresh();}} onExpired={onExpired}/>}
+   {selected&&canReadAgreement&&<NativeCsrAgreementPanel token={token} partnerRef={selected.ref} version={selected.version} canUpload={canUploadAgreement&&canEditCurrent} canSubmit={canEditCurrent&&selected.status==="DRAFT"} onSubmitted={()=>{setEditing(false);setSelected(null);setNotice("Submitted for independent review.");refresh();}} onExpired={onExpired}/>}
+   {selected&&<View style={styles.panel}><Text style={styles.subheading}>Original review history</Text>
+    {!!historyError&&<Text accessibilityRole="alert" style={styles.error}>{historyError}</Text>}
+    {!history&&!historyError&&<ActivityIndicator accessibilityLabel="Loading protected review history"/>}
+    {history?.items.length===0&&<Text style={styles.description}>No review submissions yet.</Text>}
+    {history?.items.map((item,i)=><Text key={item.reference+String(i)} style={styles.description}>{item.reference} · {item.status.replaceAll("_"," ")}</Text>)}
+   </View>}
    <View style={styles.actions}>
-    <Pressable accessibilityRole="button" style={styles.primary} disabled={busy||!!pending} onPress={save}>
-     <Text style={styles.primaryText}>{busy?"Saving…":"Save draft"}</Text></Pressable>
+    {canEditCurrent&&<Pressable accessibilityRole="button" style={styles.primary} disabled={busy||!!pending} onPress={save}>
+     <Text style={styles.primaryText}>{busy?"Saving…":"Save draft"}</Text></Pressable>}
     <Pressable accessibilityRole="button" style={styles.btn} disabled={busy||!!pending} onPress={()=>{setEditing(false);setSelected(null);}}><Text>Close</Text></Pressable>
-    {selected&&<Pressable accessibilityRole="button" style={styles.btn} disabled={busy||!!pending} onPress={discard}><Text>Discard draft</Text></Pressable>}
+    {selected&&canEditCurrent&&<Pressable accessibilityRole="button" style={styles.btn} disabled={busy||!!pending} onPress={discard}><Text>Discard draft</Text></Pressable>}
    </View>
   </View>}
   {pending&&<View style={styles.panel}>

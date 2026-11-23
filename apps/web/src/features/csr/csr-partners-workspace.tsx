@@ -6,6 +6,10 @@ type Options={foundation:boolean;branches:Choice[]};
 type Partner={ref:string;branchRef:string|null;branch:string|null;legalName:string;registrationReference:string|null;
  contactName:string;contactEmail:string|null;contactMobile:string|null;supportSummary:string;status:string;version:number;updatedAt:string};
 type Page={items:Partner[];hasMore:boolean};
+const reviewTabs=[{value:"ALL",label:"All Partners"},{value:"SUBMITTED",label:"Pending Review"},
+ {value:"APPROVED",label:"Approved Partners"},{value:"REJECTED",label:"Rejected"}] as const;
+type ReviewStatus=(typeof reviewTabs)[number]["value"];
+
 type ReviewHistory={items:{reference:string;status:string;revision:number;submittedAt:string}[]};
 type Draft={branchRef:string;legalName:string;registrationReference:string;contactName:string;contactEmail:string;contactMobile:string;supportSummary:string};
 type Command={path:string;method:"POST"|"PATCH";body:Record<string,unknown>};
@@ -27,8 +31,8 @@ async function api<T>(path:string,method:"GET"|"POST"|"PATCH"="GET",payload?:Rec
 }
 export function CsrPartnersWorkspace({canManage,canReadAgreement,canUploadAgreement}:{canManage:boolean;canReadAgreement:boolean;canUploadAgreement:boolean}){
  const [data,setData]=useState<Page>({items:[],hasMore:false}),[choices,setChoices]=useState<Options|null>(null);
- const [search,setSearch]=useState(""),[branchFilter,setBranchFilter]=useState("ALL"),[offset,setOffset]=useState(0),[epoch,setEpoch]=useState(0);
- const [loading,setLoading]=useState(true),[message,setMessage]=useState(""),[error,setError]=useState("");
+ const [search,setSearch]=useState(""),[branchFilter,setBranchFilter]=useState("ALL"),[statusFilter,setStatusFilter]=useState<ReviewStatus>("ALL"),[offset,setOffset]=useState(0),[epoch,setEpoch]=useState(0);
+ const [loading,setLoading]=useState(true),[listError,setListError]=useState(""),[message,setMessage]=useState(""),[error,setError]=useState("");
  const [draft,setDraft]=useState<Draft>(empty),[selected,setSelected]=useState<Partner|null>(null);
  const [editing,setEditing]=useState(false),[busy,setBusy]=useState(false),[pending,setPending]=useState<Command|null>(null);
  const [history,setHistory]=useState<ReviewHistory|null>(null),[historyError,setHistoryError]=useState("");
@@ -42,15 +46,16 @@ export function CsrPartnersWorkspace({canManage,canReadAgreement,canUploadAgreem
   return()=>{active=false;};
  },[selected?.ref,epoch]);
  useEffect(()=>{
-  let live=true;const n=++seq.current;setLoading(true);
+  let live=true;const n=++seq.current;setLoading(true);setListError("");
   const params=new URLSearchParams({offset:String(offset)});
   if(search.trim())params.set("q",search.trim().slice(0,80));
   if(branchFilter!=="ALL")params.set("branchRef",branchFilter);
+  if(statusFilter!=="ALL")params.set("status",statusFilter);
   void api<Page>("?"+params.toString()).then(v=>{if(live&&n===seq.current){setData(v);setError("");}})
-   .catch(e=>{if(live&&n===seq.current){setData({items:[],hasMore:false});setError(e instanceof Error?e.message:"CSR records unavailable.");}})
+   .catch(e=>{if(live&&n===seq.current){setData({items:[],hasMore:false});setListError(e instanceof Error?e.message:"CSR records unavailable.");}})
    .finally(()=>{if(live&&n===seq.current)setLoading(false);});
   return()=>{live=false;};
- },[offset,search,branchFilter,epoch]);
+ },[offset,search,branchFilter,statusFilter,epoch]);
  useEffect(()=>{
   let live=true;void api<Options>("/options").then(v=>{if(live)setChoices(v);}).catch(()=>{if(live)setError("Current CSR branch choices cannot be confirmed.");});
   return()=>{live=false;};
@@ -64,7 +69,7 @@ export function CsrPartnersWorkspace({canManage,canReadAgreement,canUploadAgreem
  const send=async(cmd:Command)=>{
   setBusy(true);setPending(cmd);setError("");
   try{await api<{ref:string;version:number}>(cmd.path,cmd.method,cmd.body);
-   setPending(null);setEditing(false);setSelected(null);setDraft(empty());setMessage("CSR draft saved. It is not approved or publicly listed.");setOffset(0);refresh();}
+   setPending(null);setEditing(false);setSelected(null);setDraft(empty());setMessage("CSR draft saved. It is not approved or publicly listed.");setOffset(0);setStatusFilter("ALL");refresh();}
   catch(e){
    const code=e&&typeof e==="object"&&"status" in e?Number(e.status):503;
    if(code>=500||code===0){setError("The result is uncertain. Refresh the list to check it, or retry the exact original request.");}
@@ -89,6 +94,10 @@ export function CsrPartnersWorkspace({canManage,canReadAgreement,canUploadAgreem
   {message&&<p role="status" style={{color:"#166534"}}>{message}</p>}
   {error&&<p role="alert" style={{color:"#b91c1c"}}>{error}</p>}
   <section style={panel} aria-label="CSR partner directory">
+   <div role="group" aria-label="CSR partner review status" style={{display:"flex",gap:8,flexWrap:"wrap",marginBottom:15}}>
+    {reviewTabs.map(tab=><button key={tab.value} type="button" style={{...button,background:statusFilter===tab.value?"var(--cg-accent)":"var(--cg-surface,#fff)",color:statusFilter===tab.value?"#fff":"inherit"}}
+     aria-pressed={statusFilter===tab.value} onClick={()=>{setOffset(0);setStatusFilter(tab.value);}}>{tab.label}</button>)}
+   </div>
    <div style={{display:"flex",gap:12,alignItems:"end",flexWrap:"wrap",justifyContent:"space-between"}}>
     <label style={{...field,flex:"1 1 190px"}}>Search organizations<input style={control} value={search} maxLength={80} placeholder="Registered organization" onChange={e=>{setOffset(0);setSearch(e.target.value);}}/></label>
     <label style={{...field,flex:"1 1 180px"}}>Branch
@@ -101,9 +110,10 @@ export function CsrPartnersWorkspace({canManage,canReadAgreement,canUploadAgreem
     <button style={button} type="button" onClick={refresh}>Refresh</button>
     {canManage&&<button style={primary} type="button" disabled={!!pending} onClick={begin}>New CSR partner</button>}
    </div>
-   {loading?<p role="status">Loading authorized records…</p>:data.items.length===0?<p>No matching CSR partner drafts.</p>:
+   {listError&&<p role="alert">{listError}</p>}
+   {loading?<p role="status">Loading authorized records…</p>:listError?null:data.items.length===0?<p>No CSR partners match the selected status, search and permitted branches.</p>:
     <div style={{overflowX:"auto",marginTop:16}}><table style={{width:"100%",borderCollapse:"collapse",textAlign:"left",fontSize:14}}>
-     <thead><tr>{["Organization","Branch","Draft status","Last updated","Action"].map(v=><th key={v} style={{padding:10,borderBottom:"1px solid var(--cg-border)"}}>{v}</th>)}</tr></thead>
+     <thead><tr>{["Organization","Branch","Review status","Last updated","Action"].map(v=><th key={v} style={{padding:10,borderBottom:"1px solid var(--cg-border)"}}>{v}</th>)}</tr></thead>
      <tbody>{data.items.map(p=><tr key={p.ref}>
       <td style={{padding:10,borderBottom:"1px solid var(--cg-border)"}}>{p.legalName}</td>
       <td style={{padding:10,borderBottom:"1px solid var(--cg-border)"}}>{p.branch??"Foundation"}</td>
