@@ -9,6 +9,7 @@ type Detail={budgetRef:string;budgetNumber:string;name:string;status:string;vers
  category:string;ceilingMinor:string;financialYearRef:string;branchRef:string|null;projectRef?:string|null;projectLabel?:string|null;
  start:string;end:string;allocatedMinor:string;committedOutstandingMinor:string;
  utilizedMinor:string;availableMinor:string;overBudgetMinor:string;releasedMinor:string;
+ items:{description:string;quantityMilli:string;unitRateMinor:string;totalMinor:string}[];
  events:{kind:string;amountMinor:string;recordedAt:string}[]};
 type Dashboard={cards:{total:number;drafts:number;submitted:number;approved:number;
  returned:number;rejected:number;archived:number;totalCeilingMinor:string;
@@ -16,10 +17,11 @@ type Dashboard={cards:{total:number;drafts:number;submitted:number;approved:numb
  availableMinor:string;overBudgetMinor:string};explanation:string};
 type Expense={journalRef:string;voucherNumber:string;postedDate:string;amountMinor:string};
 type Form={budgetName:string;financialYearRef:string;branchRef:string;branchVersion:number|null;projectRef:string;
- category:string;periodStart:string;periodEnd:string;fundingNote:string;ceiling:string};
+ category:string;periodStart:string;periodEnd:string;fundingNote:string;ceiling:string;
+ items:{description:string;quantity:string;unitRate:string}[]};
 const clean=():Form=>({budgetName:"",financialYearRef:"",branchRef:"",
  branchVersion:null,projectRef:"",category:"",periodStart:"",periodEnd:"",
- fundingNote:"Foundation budget authorization",ceiling:""});
+ fundingNote:"Foundation budget authorization",ceiling:"",items:[]});
 const currency=(value:string)=>{try{
  const n=BigInt(value);return "₹"+(n/100n).toLocaleString("en-IN")+
  "."+(n%100n).toString().padStart(2,"0");
@@ -107,7 +109,11 @@ export function FinanceBudgetWorkspace({canManage}:{canManage:boolean}){
     setForm({budgetName:info.name,financialYearRef:info.financialYearRef,
      branchRef:info.branchRef??"",branchVersion:branch?.version??null,projectRef:info.projectRef??"",
      category:info.category,periodStart:info.start,periodEnd:info.end,
-     fundingNote:"Foundation budget authorization",ceiling:rupees(info.ceilingMinor)});
+     fundingNote:"Foundation budget authorization",ceiling:rupees(info.ceilingMinor),
+     items:(info.items??[]).map(x=>({
+      description:x.description,quantity:(BigInt(x.quantityMilli)/1000n).toString()+
+       (BigInt(x.quantityMilli)%1000n===0n?"":"."+String(BigInt(x.quantityMilli)%1000n).padStart(3,"0").replace(/0+$/,"")),
+      unitRate:rupees(x.unitRateMinor)}))});
    }
   }catch(e){setError(e instanceof Error?e.message:"Budget details unavailable.");}
   finally{setBusy(false);}
@@ -243,6 +249,28 @@ export function FinanceBudgetWorkspace({canManage}:{canManage:boolean}){
       <input inputMode="decimal" value={form.ceiling} onChange={e=>update("ceiling",e.target.value)}/></label>
      <p className="cg-fin-help">Ceiling is the requested authorization amount.
       Allocated, committed and utilized amounts are recorded separately only after protected approval.</p>
+     <div className="cg-fin-toolbar"><h4>Original CG09 itemized budget</h4>
+      <button type="button" disabled={form.items.length>=30}
+       onClick={()=>setForm(v=>({...v,items:[...v.items,{description:"",quantity:"1",unitRate:""}]}))}>Add budget line</button>
+     </div>
+     {form.items.map((line,i)=><div key={i} className="cg-fin-form">
+      <label className="cg-fin-field">Item description
+       <input maxLength={200} value={line.description}
+        onChange={e=>setForm(v=>({...v,items:v.items.map((x,j)=>
+         j===i?{...x,description:e.target.value}:x)}))}/></label>
+      <label className="cg-fin-field">Quantity (up to 3 decimals)
+       <input inputMode="decimal" value={line.quantity}
+        onChange={e=>setForm(v=>({...v,items:v.items.map((x,j)=>
+         j===i?{...x,quantity:e.target.value}:x)}))}/></label>
+      <label className="cg-fin-field">Unit rate in INR
+       <input inputMode="decimal" value={line.unitRate}
+        onChange={e=>setForm(v=>({...v,items:v.items.map((x,j)=>
+         j===i?{...x,unitRate:e.target.value}:x)}))}/></label>
+      <button type="button" onClick={()=>setForm(v=>({...v,
+       items:v.items.filter((_,j)=>j!==i)}))}>Remove line</button>
+     </div>)}
+     <p className="cg-fin-help">When itemized, the sum of quantity × unit rate
+      must equal the approved ceiling. Unrecorded quantities are never inferred.</p>
     </div>}
     {stage===2&&<div className="cg-fin-form">
      <label className="cg-fin-field">Funding note (not proof of received cash)
@@ -298,6 +326,15 @@ export function FinanceBudgetWorkspace({canManage}:{canManage:boolean}){
     <button type="button" disabled={busy||Boolean(pending)}
      onClick={()=>void execute(selected.budgetRef+"/archive","POST",
       {expectedVersion:selected.version})}>Archive approved budget (retain history)</button>
+   </div>}
+   {selected&&<div className="cg-fin-table-wrap"><h4>Original Finance budget items</h4>
+    {selected.items?.length?<table className="cg-fin-table">
+     <thead><tr><th>Description</th><th>Quantity</th><th>Unit rate</th><th>Amount</th></tr></thead>
+     <tbody>{selected.items.map((line,i)=><tr key={i}><td>{line.description}</td>
+      <td>{(BigInt(line.quantityMilli)/1000n).toString()+
+       "."+String(BigInt(line.quantityMilli)%1000n).padStart(3,"0")}</td>
+      <td>{currency(line.unitRateMinor)}</td><td>{currency(line.totalMinor)}</td></tr>)}</tbody></table>:
+     <p>No item breakdown is recorded in this original approved budget.</p>}
    </div>}
    {selected&&<div className="cg-fin-table-wrap"><h4>Immutable budget history</h4>
     <table className="cg-fin-table"><thead><tr><th>Date</th><th>Event</th><th>Amount</th></tr></thead>
