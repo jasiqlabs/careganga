@@ -40,6 +40,8 @@ export default async function ReferralsAdminPage(){
     canManagePolicy={actions.includes("referrals.programmes.manage")}
     canManageRewards={actions.includes("rewards.catalog.manage")}
     canIssueStock={actions.includes("inventory.stock.issue")&&
+     actions.includes("inventory.catalog.view")&&
+     actions.includes("inventory.stock.view")&&
      actions.includes("rewards.catalog.view")}/></main>
   </div>;
  }catch(e){
