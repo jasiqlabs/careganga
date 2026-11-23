@@ -42,7 +42,7 @@ async function api<T,>(token:string,path:string,method:"GET"|"POST"|"PATCH"="GET
 export function NativeCsrFunding({token,canManage,onExpired}:{
  token:string;canManage:boolean;onExpired:()=>void}){
  const [options,setOptions]=useState<Options|null>(null);
- const [page,setPage]=useState<{items:Proposal[];hasMore:boolean}>({items:[],hasMore:false});
+ const [page,setPage]=useState<{items:Proposal[];hasMore:boolean;summary?:{requests:number;drafts:number;requestedMinor:string}}>({items:[],hasMore:false});
  const [scope,setScope]=useState("ALL"),[status,setStatus]=useState("ALL"),
   [offset,setOffset]=useState(0),[epoch,setEpoch]=useState(0);
  const [loading,setLoading]=useState(true),[listError,setListError]=useState(""),[error,setError]=useState(""),[notice,setNotice]=useState("");
@@ -65,7 +65,7 @@ export function NativeCsrFunding({token,canManage,onExpired}:{
   const query=new URLSearchParams({offset:String(offset)});
   if(scope!=="ALL")query.set("branchRef",scope);
   if(status!=="ALL")query.set("status",status);
-  void api<{items:Proposal[];hasMore:boolean}>(token,"?"+query).then(v=>{
+  void api<{items:Proposal[];hasMore:boolean;summary:{requests:number;drafts:number;requestedMinor:string}}>(token,"?"+query).then(v=>{
    if(live){setPage(v);setListError("");}
   }).catch(e=>{
    if(live){setPage({items:[],hasMore:false});setListError(e instanceof Error?e.message:"Funding list unavailable.");}
@@ -156,6 +156,15 @@ export function NativeCsrFunding({token,canManage,onExpired}:{
   {!!error&&<Text accessibilityRole="alert" style={styles.error}>{error}</Text>}
   {!!listError&&<Text accessibilityRole="alert" style={styles.error}>{listError}</Text>}
   {!!notice&&<Text style={styles.success}>{notice}</Text>}
+  {page.summary&&!listError&&<View accessibilityLabel="Scoped requested-only funding totals"
+   style={{flexDirection:"row",flexWrap:"wrap",gap:8}}>
+   {([["requests","Requests",String(page.summary.requests)],
+     ["drafts","Drafts",String(page.summary.drafts)],
+     ["requested","Requested (not cash)",money(page.summary.requestedMinor)]] as const)
+    .map(([id,label,value])=><View key={id} style={[styles.panel,{minWidth:96,flexGrow:1}]}>
+     <Text style={styles.heading}>{value}</Text><Text style={styles.note}>{label}</Text>
+    </View>)}
+  </View>}
   <View style={styles.panel}>
    <Text style={styles.heading}>Funding requests</Text>
    <Text style={styles.label}>Current status</Text>
