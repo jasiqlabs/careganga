@@ -84,7 +84,9 @@ export function PublicRewardsCatalogue(){
   <div className="cg04-buttons" style={{justifyContent:"space-between",alignItems:"center"}}>
    <div><h2 style={{margin:"0 0 5px"}}>Rewards catalogue</h2>
     <p style={{margin:0}}>Browse rewards offered to eligible members and volunteers.
-     Points are not money. Verified DIGITAL point reservations can be requested; fulfillment awaits real delivery evidence.</p></div>
+     Points are not money. Genuine DIGITAL rewards can reserve verified points;
+      a PHYSICAL reward also needs real available warehouse stock. Issuing or
+      delivering a reward requires separate verified evidence.</p></div>
    <button type="button" disabled={loading} onClick={()=>void load(1,true)}>Refresh rewards</button>
   </div>
   {loading&&<p role="status">Checking the current rewards catalogue…</p>}
@@ -116,8 +118,10 @@ export function PublicRewardsCatalogue(){
        "You can request a verified points hold; fulfillment requires actual delivery evidence.":
        "Original warehouse reservation and issue confirmation are not yet available."}</p>
      </details>
-     {p.type==="DIGITAL"&&<button type="button"
-      onClick={()=>setSelectedDigital(p)}>Request with earned points</button>}
+     {(p.type==="DIGITAL"||p.availability==="AVAILABLE")&&<button type="button"
+      onClick={()=>setSelectedDigital(p)}>
+       {p.type==="PHYSICAL"?"Reserve available physical reward":"Request with earned points"}
+      </button>}
     </article>)}
    </div>
    <PublicDigitalRedemption selected={selectedDigital}
