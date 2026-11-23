@@ -5,6 +5,7 @@ import {SessionService} from "../../cg-01-identity-access/application/session.se
 import {FoundationStructureIdentityFacade} from "../../cg-01-identity-access/application/foundation-structure-identity.facade";
 import type {VerifiedFoundationActor as Actor} from "../../cg-01-identity-access/public-api";
 import {VolunteerApprovalService} from "../../cg-03-registration-approvals/application/volunteer-approval.service";
+import {creditVerifiedCG04Qualification} from "../../cg-13-referrals-rewards/application/verified-qualification.source";
 import {object,uuid} from "../domain/tier-input";
 const changed=()=>new ConflictException("Volunteer activation is not confirmed. Check the original independent approval and current verified details.");
 @Injectable()
@@ -74,6 +75,9 @@ export class VolunteerActivationService{
    if(!updated.rowCount)throw changed();
    await this.approvals.completeVolunteer(tx,a,reviewed.caseRef,id);
    const volunteer=await this.own(tx,a);if(!volunteer)throw changed();
+   // CG13: original CG03/CG04 verified volunteer source only; same transaction.
+   await creditVerifiedCG04Qualification(tx,{root:a.realmId,applicantKind:"VOLUNTEER",
+    application:id,applicantAccount:a.accountId});
    return {volunteer,replayed:false};
   });
  }
