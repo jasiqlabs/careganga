@@ -50,6 +50,8 @@ function route(parts:string[],method:Method):{target:string;isSelf:boolean}|null
  if(parts.length===3&&parts[0]==="programmes"&&UUID.test(parts[1])&&
   parts[2]==="summary"&&method==="GET")return {target:segment,isSelf:false};
  if(parts.length===3&&parts[0]==="programmes"&&UUID.test(parts[1])&&
+  parts[2]==="redemptions"&&method==="GET")return {target:segment,isSelf:false};
+ if(parts.length===3&&parts[0]==="programmes"&&UUID.test(parts[1])&&
   parts[2]==="categories"&&method==="GET")return {target:segment,isSelf:false};
  if(parts.length===3&&parts[0]==="programmes"&&UUID.test(parts[1])&&
   parts[2]==="products"&&method==="GET")return {target:segment,isSelf:false};
@@ -69,22 +71,28 @@ async function proxy(req:NextRequest,ctx:Context,method:Method){
  const params=req.nextUrl.searchParams;
  const page=params.get("page"),search=params.get("q"),category=params.get("category");
  const programme=params.get("programmeRef"),relationship=params.get("relationship");
+ const status=params.get("status"),from=params.get("from"),to=params.get("to");
  const codePath=path.target==="my-code",codeOptions=path.target==="my-code/options";
  const walletPath=["points/my-balance","my-history","rewards/my-rank"].includes(path.target);
  const selector=codePath||walletPath;
+ const redemptionAdmin=method==="GET"&&path.target.endsWith("/redemptions");
  const products=method==="GET"&&
   (path.target.endsWith("/products")||path.target==="my-catalog");
  const paged=method==="GET"&&(path.target==="programmes"||path.target==="catalogue-programmes"||
   path.target==="my-catalog"||products||codeOptions||
-  path.target==="my-history"||path.target==="rewards/my-rank");
- if([...params.keys()].some(k=>!["page","q","category","programmeRef","relationship"].includes(k))||
+  path.target==="my-history"||path.target==="rewards/my-rank"||redemptionAdmin);
+ if([...params.keys()].some(k=>!["page","q","category","programmeRef","relationship","status","from","to"].includes(k))||
     ["page","q","category","programmeRef","relationship"].some(k=>params.getAll(k).length>1)||
     ((programme!==null||relationship!==null)&&!selector)||
     (selector&&(!programme||!UUID.test(programme)||!["MEMBER","VOLUNTEER"].includes(relationship??"")))||
     ((codePath||path.target==="points/my-balance")&&page!==null)||
     (selector&&(search!==null||category!==null))||
     (page!==null&&(!paged||!(/^[1-9][0-9]{0,3}$/).test(page)))||
-    ((search!==null||category!==null)&&!products)||
+    (search!==null&&!products&&!redemptionAdmin)||
+    (category!==null&&!products)||
+    ((status!==null||from!==null||to!==null)&&!redemptionAdmin)||
+    (status!==null&&!["ALL","HELD","CANCELLED","FULFILLMENT_PENDING","FULFILLED"].includes(status))||
+    ([from,to].some(v=>v!==null&&!/^\d{4}-\d{2}-\d{2}$/.test(v)))||
     (search!==null&&(search.length>100||/[\u0000-\u001f\u007f]/.test(search)))||
     (category!==null&&(category.length>80||/[\u0000-\u001f\u007f]/.test(category))))
   return response({message:"Invalid catalogue filters."},400);
@@ -113,6 +121,9 @@ async function proxy(req:NextRequest,ctx:Context,method:Method){
   if(page!==null)url.searchParams.set("page",page);
   if(search!==null)url.searchParams.set("q",search);
   if(category!==null)url.searchParams.set("category",category);
+  if(status!==null)url.searchParams.set("status",status);
+  if(from!==null)url.searchParams.set("from",from);
+  if(to!==null)url.searchParams.set("to",to);
   if(programme!==null)url.searchParams.set("programmeRef",programme);
   if(relationship!==null)url.searchParams.set("relationship",relationship);
   const result=await fetch(url,{method,body,cache:"no-store",
