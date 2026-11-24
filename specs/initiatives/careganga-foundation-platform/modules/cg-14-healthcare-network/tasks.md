@@ -588,3 +588,7 @@ CG14 HealthVerifiedCenterDoctorFacade.eligibleService now uses the existing veri
 - Native parity source cde025b1e9881c48f4d3e31efeff8a1142f568ad: list response generation and reset, selected provider identity, guarded finance and proof callback, clear stale representative/bank values, disable conflicting selection during unknown/busy/loading. CG14 US-001-QA01/03/07/09/11/13/16/17/18. Runtime and independent review NOT_RUN.
 
 - HUX-04.02/04.03/12.01: source review confirmed bounded root-scoped doctor search, deterministic pagination and Web/native grouped forms; Web detail lacked native response identity validation. Corrected in 597d569df17f84d0075c0f15ad047f08845d7f28. CG14 US-003-QA12/14/15/16/18; check mismatched detail response, delayed licence and authorized actions. Runtime/independent review NOT_RUN.
+
+
+### 24 November — HUX-02.01/15.01 provider and professional visual/copy source
+- Source review confirmed staff native screens use original CareGanga admin tokens; public partner entry uses public palette. Removed local hardcoded error colors in provider/doctor/center/application and user-facing CG03/CG19 implementation names in provider evidence. CG14 US-001-QA01/03/07/09/11/13/16/17/18 and US-003-QA12/14/15/16/18; commits 0361bbeebd7e68072eb64549b97483df0d37990e, 4409bb70859921d44cccd3306c53db71c662b548, b4ed2fcfafc56352bd6259353cd097140b5b0f3e, 2d679fab39d550da5432c3af8611e62fadff461b, bb6282fa9d973bee9f86969af82c605be5ed2bbd. No change to permission, finance, evidence or review rules. Runtime, screenshot and independent review NOT_RUN.
