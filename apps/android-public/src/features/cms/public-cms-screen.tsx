@@ -624,7 +624,7 @@ export function PublicCmsContent({onContact,onPartnerApplication,onMembershipApp
   </View>}
  </View>;
 }
-const publicColors={green:"#194a3a",gold:"#ecc65b",amber:"#ffa337"};
+const publicColors={green:t.primary,gold:t.gold,amber:t.amber};
 const styles=StyleSheet.create({
  container:{gap:12,width:"100%"},
  nav:{flexDirection:"row",flexWrap:"wrap",alignItems:"center",gap:7,
@@ -642,7 +642,7 @@ const styles=StyleSheet.create({
  counter:{color:publicColors.gold,fontWeight:"700"},
  highlight:{fontSize:15,color:publicColors.green,fontWeight:"700",lineHeight:25},
  featureSection:{backgroundColor:publicColors.green,borderRadius:12,padding:18,gap:12},
- featureHeading:{fontSize:27,fontWeight:"700",color:"#fff"},
+ featureHeading:{fontSize:27,fontWeight:"700",color:t.primaryText},
  muted:{color:t.mutedText,fontSize:14},
  body:{fontSize:16,lineHeight:25,color:t.text},
  image:{width:"100%",height:225,borderRadius:9},
