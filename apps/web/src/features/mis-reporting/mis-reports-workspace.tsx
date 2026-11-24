@@ -8,7 +8,7 @@ import {MisFinanceTrend,MisAppointmentDistribution,MisAppointmentGroupBars} from
 import {MisGroupedFinanceChart} from "./mis-grouped-finance-chart";
 type Kind="FINANCE_POSTED_LEDGER"|"FINANCE_POSTED_SUMMARY"|
  "FINANCE_POSTED_TREND"|"FINANCE_POSTED_GROUPED"|
- "APPOINTMENT_STATUS"|"APPOINTMENT_STATUS_GROUPED"|"APPOINTMENT_DOCTOR_SUMMARY"|"PLATFORM_AUDIT_ACTIVITY"|"DIAGNOSTICS_CATALOG_SUMMARY"|"BENEFICIARY_ASSISTANCE_SUMMARY"|"MEMBERSHIP_ROSTER_SUMMARY"|"VOLUNTEER_ROSTER_SUMMARY"|"PAYROLL_STATUS_SUMMARY"|"DONATION_RECEIPT_SUMMARY"|"CSR_FUNDING_SUMMARY";
+ "APPOINTMENT_STATUS"|"APPOINTMENT_STATUS_GROUPED"|"APPOINTMENT_DOCTOR_SUMMARY"|"PLATFORM_AUDIT_ACTIVITY"|"DIAGNOSTICS_CATALOG_SUMMARY"|"BENEFICIARY_ASSISTANCE_SUMMARY"|"MEMBERSHIP_ROSTER_SUMMARY"|"VOLUNTEER_ROSTER_SUMMARY"|"PAYROLL_STATUS_SUMMARY"|"DONATION_RECEIPT_SUMMARY"|"CSR_FUNDING_SUMMARY"|"PROJECT_STATUS_REPORT"|"PROJECT_BUDGET_SUMMARY";
 type View="TABLE"|"SUMMARY"|"CHART"|"PIVOT";
 type Option={ref:string;name:string};
 type AreaOption=Option&{level:string};
@@ -16,12 +16,12 @@ type Template={kind:Kind;label:string;views:View[];description:string};
 type Catalog={
  templates:Template[];
  payroll?:{ready:boolean;branches:Option[];month:string};
- membership?:{ready:boolean;branches:Option[]};volunteers?:{ready:boolean;branches:Option[]};beneficiary?:{ready:boolean;branches:Option[]};
+ membership?:{ready:boolean;branches:Option[]};volunteers?:{ready:boolean;branches:Option[]};beneficiary?:{ready:boolean;branches:Option[]};projects?:{ready:boolean;branches:Option[];projects:(Option&{branchRef:string|null})[];complete:boolean;export:boolean};
  finance:{ready:boolean;state?:"AVAILABLE"|"ACCESS_RESTRICTED"|"SOURCE_UNAVAILABLE";years:Option[];branches:Option[];areas?:AreaOption[];allBranches:boolean};
  appointments:{ready:boolean;state?:"AVAILABLE"|"ACCESS_RESTRICTED"|"SOURCE_UNAVAILABLE";centers:Option[];complete:boolean};
  capabilities:{manage:boolean;export:boolean;schedule:boolean;share?:boolean}
 };
-export type ReportRequest={kind:Kind;view:View;payrollMonth?:string;yearRef?:string;branchRef?:string;areaRef?:string;
+export type ReportRequest={kind:Kind;view:View;payrollMonth?:string;projectRef?:string;yearRef?:string;branchRef?:string;areaRef?:string;
  centerRef?:string;fromDay?:string;untilDay?:string;status?:string;
  groupBy?:"CATEGORY"|"POSTING_KIND"|"ACCOUNT_NAME";
  sortBy?:"NAME"|"DEBIT"|"CREDIT";sortDirection?:"ASC"|"DESC";offset:number};
@@ -79,6 +79,7 @@ export function MisReportsWorkspace(){
  const [view,setView]=useState<View>("TABLE");
  const [year,setYear]=useState(""),[branch,setBranch]=useState("");
  const [rosterBranch,setRosterBranch]=useState("");
+ const [projectRef,setProjectRef]=useState("");
  const [payrollMonth,setPayrollMonth]=useState(""),[payrollBranch,setPayrollBranch]=useState("");
  const [area,setArea]=useState("");
  const [center,setCenter]=useState(""),[from,setFrom]=useState("");
@@ -97,7 +98,7 @@ export function MisReportsWorkspace(){
   try{
    const c=await request<Catalog>("templates");
    if(!Array.isArray(c.templates))throw Error("Current report catalog could not be verified.");
-   if(i===seq.current){setCatalog(c);setPayrollMonth(c.payroll?.month??"");setPayrollBranch("");setRosterBranch("");
+   if(i===seq.current){setCatalog(c);setPayrollMonth(c.payroll?.month??"");setPayrollBranch("");setRosterBranch("");setProjectRef("");
     setBranch(c.finance.allBranches?"":c.finance.branches[0]?.ref??"");
     setArea("");
     setKind(c.templates[0]?.kind??null);
@@ -108,7 +109,7 @@ export function MisReportsWorkspace(){
  },[]);
  useEffect(()=>{void load();return()=>{seq.current++;previewSeq.current++};},[load]);
  useEffect(()=>{previewSeq.current++;setResult(null);setNotice("");},
-  [kind,view,year,branch,area,center,from,until,status,groupBy,sortBy,sortDirection,payrollMonth,payrollBranch,rosterBranch]);
+  [kind,view,year,branch,area,center,from,until,status,groupBy,sortBy,sortDirection,payrollMonth,payrollBranch,rosterBranch,projectRef]);
  useEffect(()=>{
   const recheck=()=>{
    seq.current++;previewSeq.current++;setCatalog(null);setResult(null);setKind(null);
@@ -130,7 +131,9 @@ export function MisReportsWorkspace(){
  const geography=ledger||grouped;
  const roster=kind==="MEMBERSHIP_ROSTER_SUMMARY"?catalog?.membership:kind==="VOLUNTEER_ROSTER_SUMMARY"?catalog?.volunteers:undefined;
  const beneficiary=kind==="BENEFICIARY_ASSISTANCE_SUMMARY"?catalog?.beneficiary:undefined;
- const scoped=roster??beneficiary;
+ const projectStatus=kind==="PROJECT_STATUS_REPORT",projectBudget=kind==="PROJECT_BUDGET_SUMMARY";
+ const project=projectStatus||projectBudget?catalog?.projects:undefined;
+ const scoped=roster??beneficiary??(projectStatus?project:undefined);
  const dated=ledger||grouped||health||kind==="PLATFORM_AUDIT_ACTIVITY"||kind==="CSR_FUNDING_SUMMARY"||!!scoped;
  function setPreset(next:Period){
   setPeriod(next);setResult(null);
@@ -148,6 +151,7 @@ export function MisReportsWorkspace(){
    }),
    ...(kind==="PAYROLL_STATUS_SUMMARY"?{...(payrollMonth?{payrollMonth}:{}),...(payrollBranch?{branchRef:payrollBranch}:{})}:{}),
    ...(scoped&&rosterBranch?{branchRef:rosterBranch}:{}),
+   ...(project&&projectRef?{projectRef}:{}),
    ...(dated&&(from||until)?{fromDay:from,untilDay:until}:{}),
    ...(grouped?{groupBy,sortBy,sortDirection}:{}),
    offset};
@@ -190,7 +194,7 @@ export function MisReportsWorkspace(){
     style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(14rem,1fr))",gap:10}}>
     {catalog.templates.map(t=><button type="button" key={t.kind}
      aria-pressed={kind===t.kind} onClick={()=>{
-      setKind(t.kind);setRosterBranch("");setPeriod("CUSTOM");setView(t.views[0]);setResult(null);setProblem("");setNotice("");
+      setKind(t.kind);setRosterBranch("");setProjectRef("");setPeriod("CUSTOM");setView(t.views[0]);setResult(null);setProblem("");setNotice("");
       setYear("");setBranch(catalog.finance.allBranches?"":catalog.finance.branches[0]?.ref??"");setArea("");setCenter("");setFrom("");setUntil("");setStatus("");
      }} style={{textAlign:"left",border:"1px solid var(--cg-border)",borderRadius:10,
       padding:14,minHeight:84,background:kind===t.kind?"var(--cg-canvas)":"var(--cg-surface)"}}>
@@ -207,7 +211,8 @@ export function MisReportsWorkspace(){
       {v==="SUMMARY"?"Summary":v==="CHART"?"Chart":v==="PIVOT"?"Pivot":"Table"}</option>)}
     </select></label>}
     <div style={{display:"flex",flexWrap:"wrap",gap:12}}>
-     {scoped?.ready&&<label>{beneficiary?"Beneficiary branch":"Roster branch"} <select value={rosterBranch} onChange={e=>setRosterBranch(e.target.value)}><option value="">All permitted branches</option>{scoped.branches.map(b=><option key={b.ref} value={b.ref}>{b.name}</option>)}</select></label>}
+     {scoped?.ready&&<label>{beneficiary?"Beneficiary branch":projectStatus?"Project branch":"Roster branch"} <select value={rosterBranch} onChange={e=>{setRosterBranch(e.target.value);setProjectRef("");}}><option value="">All permitted branches</option>{scoped.branches.map(b=><option key={b.ref} value={b.ref}>{b.name}</option>)}</select></label>}
+     {project?.ready&&<label>Project <select value={projectRef} onChange={e=>setProjectRef(e.target.value)}><option value="">{projectBudget?"Choose a project":"All permitted projects"}</option>{project.projects.filter(p=>!projectStatus||!rosterBranch||p.branchRef===rosterBranch).map(p=><option key={p.ref} value={p.ref}>{p.name}</option>)}</select>{!project.complete&&<small> First 100 projects shown; branch and dates can narrow the status report.</small>}</label>}
      {kind==="PAYROLL_STATUS_SUMMARY"&&catalog.payroll?.ready&&<>
       <label>Payroll month <input type="month" min="2000-01" value={payrollMonth} onChange={e=>setPayrollMonth(e.target.value)}/></label>
       <label>Payroll branch <select value={payrollBranch} onChange={e=>setPayrollBranch(e.target.value)}><option value="">All permitted payroll branches</option>{catalog.payroll.branches.map(b=><option key={b.ref} value={b.ref}>{b.name}</option>)}</select></label>
@@ -339,13 +344,13 @@ export function MisReportsWorkspace(){
     The result contains too few people to display safely.</p>}
   </div>}
   {catalog?.capabilities?.export===true&&
-   <MisReportExports allowed request={(["BENEFICIARY_ASSISTANCE_SUMMARY","MEMBERSHIP_ROSTER_SUMMARY","VOLUNTEER_ROSTER_SUMMARY","PAYROLL_STATUS_SUMMARY","DONATION_RECEIPT_SUMMARY","CSR_FUNDING_SUMMARY"] as readonly string[]).includes(kind??"")?null:input(0)}/>}
+   <MisReportExports allowed request={projectStatus&&!project?.export?null:(["BENEFICIARY_ASSISTANCE_SUMMARY","MEMBERSHIP_ROSTER_SUMMARY","VOLUNTEER_ROSTER_SUMMARY","PAYROLL_STATUS_SUMMARY","DONATION_RECEIPT_SUMMARY","CSR_FUNDING_SUMMARY","PROJECT_BUDGET_SUMMARY"] as readonly string[]).includes(kind??"")?null:input(0)}/>}
   {catalog?.capabilities?.schedule===true&&<MisReportSchedules/>}
   {catalog&&<MisSavedReports canManage={catalog.capabilities?.manage===true}
     canShare={catalog.capabilities?.share===true}
-   currentRequest={(["BENEFICIARY_ASSISTANCE_SUMMARY","MEMBERSHIP_ROSTER_SUMMARY","VOLUNTEER_ROSTER_SUMMARY","PAYROLL_STATUS_SUMMARY","DONATION_RECEIPT_SUMMARY","CSR_FUNDING_SUMMARY"] as readonly string[]).includes(kind??"")?null:input(0)}
+   currentRequest={(["BENEFICIARY_ASSISTANCE_SUMMARY","MEMBERSHIP_ROSTER_SUMMARY","VOLUNTEER_ROSTER_SUMMARY","PAYROLL_STATUS_SUMMARY","DONATION_RECEIPT_SUMMARY","CSR_FUNDING_SUMMARY","PROJECT_BUDGET_SUMMARY"] as readonly string[]).includes(kind??"")?null:input(0)}
    onRestore={q=>{
-    setKind(q.kind);setView(q.view);setYear(q.yearRef??"");setBranch(q.branchRef??"");
+    setKind(q.kind);setProjectRef(q.projectRef??"");setRosterBranch(q.kind==="PROJECT_STATUS_REPORT"?q.branchRef??"":"");setView(q.view);setYear(q.yearRef??"");setBranch(q.branchRef??"");
     setArea(q.areaRef??"");
     setGroupBy(q.groupBy??"CATEGORY");setSortBy(q.sortBy??"NAME");
     setSortDirection(q.sortDirection??"ASC");
