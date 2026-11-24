@@ -7,8 +7,8 @@ import {publishedCmsNavigation,publishedCmsPage,publishedPublicIntro} from "./cm
 import {CmsNgoAnnualReports,type ApprovedAnnualReport} from "./cms-ngo-annual-client";
 import {UnavailablePage} from "../../shared/unavailable-page";
 
-type Child="pan-details"|"registration-certificate"|"annual-reports";
-const allowed=new Set<Child>(["pan-details","registration-certificate","annual-reports"]);
+type Child="pan-details"|"registration-certificate"|"annual-reports"|"financial-reports";
+const allowed=new Set<Child>(["pan-details","registration-certificate","annual-reports","financial-reports"]);
 const words=(v:unknown)=>typeof v==="string"?v:"";
 type DocItem={type?:string;title?:string;asOfDate?:string;[key:string]:unknown};
 type ComplianceDoc=DocItem&{file?:PublicCmsPage["assets"][number]};
@@ -19,7 +19,7 @@ const safeMediaPath=(v:unknown)=>typeof v==="string"&&
 const chapter:Record<Child,string>={
  "pan-details":"PAN Details",
  "registration-certificate":"Registration Certificate",
- "annual-reports":"Annual Reports"
+ "annual-reports":"Annual Reports","financial-reports":"Financial Reports"
 };
 const scope=(page:PublicCmsPage)=>{
  const fact=page.sections.find(s=>s.kind==="COMPLIANCE_FACTS")?.fields??{};
@@ -32,7 +32,7 @@ const reports=(page:PublicCmsPage,type:"REGISTRATION"|"ANNUAL_REPORT")=>
  scope(page).docs.filter(d=>d.type===type&&d.file?.src);
 const canShow=(page:PublicCmsPage,key:Child)=>{
  const {fact}=scope(page);
- if(key==="annual-reports")return true; // an approved disclosure page may legitimately contain zero reports
+ if(key==="annual-reports"||key==="financial-reports")return true; // an approved disclosure page may legitimately contain zero reports
  return key==="pan-details"?/^[A-Z]{5}[0-9]{4}[A-Z]$/.test(words(fact.pan)):
   reports(page,"REGISTRATION").length>0;
 };
@@ -50,7 +50,7 @@ export function CmsNgoSidebar({page,selected="80g"}:{
    href:"/ngo-information/registration-certificate"},
   {key:"annual-reports",label:"Annual Reports",
    href:"/ngo-information/annual-reports"},
-  {key:"financial-reports",label:"Financial Reports"},
+  {key:"financial-reports",label:"Financial Reports",href:"/ngo-information/financial-reports"},
   {key:"transparency",label:"Transparency & Compliance"},
   {key:"policies",label:"Policies & Documents"}
  ];
@@ -88,8 +88,8 @@ export async function cmsNgoChildMetadata(section:string):Promise<Metadata>{
 export async function CmsNgoChildRoute({section}:{section:string}){
  if(!allowed.has(section as Child))notFound();
  const key=section as Child;
- const [result,navigation,home,intro]=await Promise.all([
-  publishedCmsPage("80g"),publishedCmsNavigation(),publishedCmsPage("home"),key==="annual-reports"?publishedPublicIntro("ANNUAL_REPORTS"):Promise.resolve(null)]);
+ const [result,navigation,home,intro,publications]=await Promise.all([
+  publishedCmsPage("80g"),publishedCmsNavigation(),publishedCmsPage("home"),key==="annual-reports"?publishedPublicIntro("ANNUAL_REPORTS"):key==="financial-reports"?publishedPublicIntro("FINANCIAL_REPORTS"):Promise.resolve(null),key==="financial-reports"?publishedCmsPage("gallery"):Promise.resolve(null)]);
  if(result.state==="NOT_PUBLISHED")notFound();
  if(result.state!=="PUBLISHED"||result.page.kind!=="COMPLIANCE")
   return <UnavailablePage title="Foundation disclosure unavailable" description="The current approved information cannot be verified." linkHref="/ngo-information" linkLabel="NGO Information" />;
@@ -100,6 +100,13 @@ export async function CmsNgoChildRoute({section}:{section:string}){
  const annual:ApprovedAnnualReport[]=matches.map(item=>({
   title:words(item.title),date:words(item.asOfDate),href:item.file!.src
  }));
+ // Actual financial report files must be independently published CG19 media in
+ // the Financial Reports publication category. Never read private CG09/CG20 reports.
+ const financial:ApprovedAnnualReport[]=publications?.state==="PUBLISHED"?publications.page.sections.filter(s=>s.kind==="GALLERY_GRID").flatMap(s=>items(s.fields.items).flatMap(item=>{
+  if(item.mediaType!=="PUBLICATION"||words(item.category).toLocaleLowerCase()!=="financial reports"||item.visible===false||!Number.isSafeInteger(item.originalIndex))return [];
+  const file=publications.page.assets.find(a=>a.role==="GALLERY"&&a.order===item.originalIndex&&safeMediaPath(a.src));
+  return file&&words(item.title)&&words(item.asOfDate)?[{title:words(item.title),date:words(item.asOfDate),href:file.src}]:[];
+ })):[];
  const info=<section className="cg-site-content cg-site-legal cg-site-ngo-child">
   <p className="cg-site-eyebrow">Foundation official information</p>
   <h1>{intro?.heading??chapter[key]}</h1>
@@ -122,6 +129,7 @@ export async function CmsNgoChildRoute({section}:{section:string}){
    </article>)}
   </div>}
   {key==="annual-reports"&&<><CmsNgoAnnualReports reports={annual}/>{intro?.eyebrow&&<h2>{intro.eyebrow}</h2>}</>}
+  {key==="financial-reports"&&<>{publications?.state==="UNAVAILABLE"?<p role="alert">Published financial reports cannot currently be verified.</p>:<CmsNgoAnnualReports reports={financial} kind="financial"/>}{intro?.eyebrow&&<h2>{intro.eyebrow}</h2>}</>}
   <p className="cg-site-legal-notice">{words(fact.disclaimer)||
    "Confirm current official information with the Foundation."}</p>
  </section>;
