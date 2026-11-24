@@ -51,7 +51,7 @@ BEGIN
  ) THEN RAISE EXCEPTION 'Original independent payroll run decision required' USING ERRCODE='23514'; END IF;
  IF NEW.status='APPROVED_FROZEN' AND (
  (SELECT count(*) FROM payroll_line WHERE root_realm_id=NEW.root_realm_id AND run_id=NEW.id) IS DISTINCT FROM
- (SELECT (v.snapshot->'totals'->>'calculated')::bigint FROM payroll_run_revision v JOIN payroll_run_review_snapshot s ON s.root_realm_id=v.root_realm_id AND s.run_id=v.run_id AND s.source_revision=v.revision AND s.source_digest=v.source_digest JOIN cg03_case c ON c.realm_id=s.root_realm_id AND c.payroll_run_review_ref=s.id WHERE c.realm_id=NEW.root_realm_id AND c.id=NEW.approval_case_ref)
+ (SELECT (v.snapshot->'totals'->>'calculated')::bigint+(v.snapshot->'totals'->>'held')::bigint FROM payroll_run_revision v JOIN payroll_run_review_snapshot s ON s.root_realm_id=v.root_realm_id AND s.run_id=v.run_id AND s.source_revision=v.revision AND s.source_digest=v.source_digest JOIN cg03_case c ON c.realm_id=s.root_realm_id AND c.payroll_run_review_ref=s.id WHERE c.realm_id=NEW.root_realm_id AND c.id=NEW.approval_case_ref)
  OR NOT EXISTS(SELECT 1 FROM payroll_line WHERE root_realm_id=NEW.root_realm_id AND run_id=NEW.id)) THEN RAISE EXCEPTION 'Incomplete frozen payroll entitlement'; END IF;
  RETURN NEW;
 END; $cg11$;
@@ -64,7 +64,7 @@ BEGIN
  JOIN payroll_run_revision v ON v.root_realm_id=s.root_realm_id AND v.run_id=s.run_id AND v.revision=s.source_revision AND v.source_digest=s.source_digest
  CROSS JOIN LATERAL jsonb_array_elements(v.snapshot->'lines') l
  WHERE r.root_realm_id=NEW.root_realm_id AND r.id=NEW.run_id AND r.status='SUBMITTED' AND r.period_key=NEW.period_key
- AND l->>'employeeRef'=NEW.employee_ref::text AND l->>'branchRef'=NEW.branch_ref::text AND l->>'status'='CALCULATED'
+ AND l->>'employeeRef'=NEW.employee_ref::text AND l->>'branchRef'=NEW.branch_ref::text AND ((l->>'status'='CALCULATED' AND NEW.entitlement_state='RELEASE_ELIGIBLE') OR (l->>'status'='HELD' AND NEW.entitlement_state='HELD'))
  AND l=NEW.source_snapshot AND (l->'amounts'->>'baseMinor')::bigint=NEW.base_minor
  AND (l->'amounts'->>'allowanceMinor')::bigint=NEW.allowance_minor AND (l->'amounts'->>'bonusMinor')::bigint=NEW.bonus_minor AND (l->'amounts'->>'arrearsMinor')::bigint=NEW.arrears_minor
  AND (l->'amounts'->>'deductionMinor')::bigint=NEW.deduction_minor AND (l->'amounts'->>'grossMinor')::bigint=NEW.gross_minor
