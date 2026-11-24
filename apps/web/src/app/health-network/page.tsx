@@ -181,10 +181,12 @@ export default async function HealthcareDirectory({searchParams}:Props){
      {tab==="centers"?
       (result.items as PublicCenter[]).map(c=><article key={c.slug}
         className={styles.card}>
-       <div className={styles.identity}><span className={styles.avatar} aria-hidden="true">+</span>
+       {c.photo&&<div className={styles.photoFrame}>{/* eslint-disable-next-line @next/next/no-img-element */}<img className={styles.photo} loading="lazy" decoding="async" alt={c.photo.altText} src={"/healthcare/centers/"+encodeURIComponent(c.slug)+"/photos/"+encodeURIComponent(c.photo.fileRef)}/></div>}
+        <div className={styles.identity}>{!c.photo&&<span className={styles.avatar} aria-hidden="true">+</span>}
         <p className="cg-eyebrow">{nice(c.type)} · Verified center</p></div>
        <h3><Link href={"/healthcare/centers/"+encodeURIComponent(c.slug)}>{c.centerName}</Link></h3>
        <p>{c.providerName}</p><p>{c.address}, {c.pinCode}</p>
+        {!!c.declaredServices.length&&<div className={styles.tags} aria-label="Declared center services">{c.declaredServices.map(s=><span key={s}>{s.replaceAll("_"," ").toLowerCase()}</span>)}</div>
        <div className={styles.actions}>
         <Link className="cg-health-link-action primary" href={"/healthcare/centers/"+encodeURIComponent(c.slug)}>View center details</Link>
         {typeof c.latitude==="number"&&Number.isFinite(c.latitude)&&Math.abs(c.latitude)<=90&&
