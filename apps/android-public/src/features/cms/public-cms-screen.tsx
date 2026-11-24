@@ -465,6 +465,7 @@ export function PublicCmsContent({onContact,onPartnerApplication,onMembershipApp
      </View>;
     }
     if(section.kind==="RICH_TEXT"){
+     if(fields.placement)return null;
      const aboutImage=page.assets.find(v=>v.role==="ABOUT"&&v.order===section.order);
      const aboutSrc=safeImage(aboutImage);
      const highlights=Array.isArray(fields.highlights)?fields.highlights.slice(0,4):[];
