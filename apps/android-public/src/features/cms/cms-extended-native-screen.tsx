@@ -98,7 +98,7 @@ export function CmsPublicExtendedSection({section,assets,mediaUrl,onContact,
      <Text style={styles.value}>{publishedPan}</Text>:
      <Text style={styles.source}>No current approved PAN is published.</Text>}
     {!!text(f.issuer)&&<Text style={styles.body}>Issuer: {text(f.issuer)}</Text>}
-    {!!text(f.verifiedAsOf)&&<Text style={styles.source}>
+    {!!text(f.source)&&!!text(f.verifiedAsOf)&&<Text style={styles.source}>
      Source reviewed: {text(f.verifiedAsOf)}</Text>}
     <Text style={styles.source}>{text(f.disclaimer)}</Text>
    </View>;
