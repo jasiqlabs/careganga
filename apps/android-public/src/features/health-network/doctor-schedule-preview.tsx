@@ -50,6 +50,7 @@ export function DoctorSchedulePreview({doctorRef,reschedule,preferredCenterSlug}
  const [choices,setChoices]=useState<Choices|null>(null);
  const [searchTime,setSearchTime]=useState(""),[timeInput,setTimeInput]=useState("");
  const [refresh,setRefresh]=useState(0);
+ const [selectionLocked,setSelectionLocked]=useState(false);
  const [chosen,setChosen]=useState<{centerRef:string;centerName:string;doctorName:string;startAt:string;endAt:string;timeZone:string;feeMinor:string;feeVersion:number}|null>(null);
  const [loading,setLoading]=useState(false);
  const [error,setError]=useState("");
@@ -171,7 +172,7 @@ export function DoctorSchedulePreview({doctorRef,reschedule,preferredCenterSlug}
     </View>)}
   </View>}
   </>}
-  {chosen&&<View style={style.summary}><Text accessibilityRole="header" style={style.subheading}>Appointment summary</Text><NativeConsultationAction key={[doctorRef,chosen.centerRef,chosen.startAt,chosen.endAt,chosen.feeMinor,chosen.feeVersion].join("|")} doctorRef={doctorRef} {...chosen} reschedule={reschedule}/>{button("Change selected time",()=>setChosen(null))}<Text style={style.help}>If a previous request is uncertain, check My Consultations before reserving again.</Text></View>}
+  {chosen&&<View style={style.summary}><Text accessibilityRole="header" style={style.subheading}>Appointment summary</Text><NativeConsultationAction key={[doctorRef,chosen.centerRef,chosen.startAt,chosen.endAt,chosen.feeMinor,chosen.feeVersion].join("|")} doctorRef={doctorRef} {...chosen} reschedule={reschedule} onSelectionLock={setSelectionLocked}/>{button("Change selected time",()=>setChosen(null),false,selectionLocked)}<Text style={style.help}>{selectionLocked?"Finish the current reservation or recheck its original status before changing time.":"If a previous request is uncertain, check My Consultations before reserving again."}</Text></View>}
   <Text style={style.help}>Use My Patient Profile to sign in before booking.
    Only doctor consultations are booked here. Center payment options are verified separately.</Text>
  </View>;

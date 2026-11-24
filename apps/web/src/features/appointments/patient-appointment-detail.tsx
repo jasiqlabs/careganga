@@ -14,6 +14,10 @@ export function PatientAppointmentDetail({bookingRef}:{bookingRef:string}){
  const [busy,setBusy]=useState(false),[unknown,setUnknown]=useState(false);
  const [downloadBusy,setDownloadBusy]=useState(false);
  const issueKey=useRef<string|null>(null);
+ const [preview,setPreview]=useState<string|null>(null);
+ const previewUrl=useRef<string|null>(null),previewGeneration=useRef(0);
+ function clearPreview(){previewGeneration.current++;if(previewUrl.current)URL.revokeObjectURL(previewUrl.current);previewUrl.current=null;setPreview(null);}
+ useEffect(()=>()=>{previewGeneration.current++;if(previewUrl.current)URL.revokeObjectURL(previewUrl.current);previewUrl.current=null;},[bookingRef]);
  const refresh=useCallback(async()=>{
   if(!ID.test(bookingRef))throw Error("This appointment link is invalid.");
   const response=await fetch("/api/consultations/me/"+bookingRef,{
@@ -55,8 +59,9 @@ export function PatientAppointmentDetail({bookingRef}:{bookingRef:string}){
   }catch(e){setUnknown(true);setError(e instanceof Error?e.message:"Slip issue status is uncertain.");}
   finally{setBusy(false);}
  }
- async function downloadPrivateSlip(){
+ async function downloadPrivateSlip(mode:"download"|"preview"="download"){
   if(downloadBusy||busy||unknown||!slip?.canDownload||!ID.test(bookingRef))return;
+  clearPreview();const generation=previewGeneration.current;
   setDownloadBusy(true);setError("");
   try{
    const issued=await fetch("/api/appointments/slips/me/"+
@@ -78,7 +83,9 @@ export function PatientAppointmentDetail({bookingRef}:{bookingRef:string}){
    if(view.length<100||view.length>10485760||
     view[0]!==37||view[1]!==80||view[2]!==68||view[3]!==70)
     throw Error("The verified appointment PDF could not be read.");
+   if(generation!==previewGeneration.current)return;
    const privateUrl=URL.createObjectURL(new Blob([bytes],{type:"application/pdf"}));
+   if(mode==="preview"){previewUrl.current=privateUrl;setPreview(privateUrl);return;}
    const a=document.createElement("a");
    a.href=privateUrl;a.download="careganga-consultation.pdf";
    a.rel="noopener noreferrer";a.click();
@@ -114,15 +121,16 @@ export function PatientAppointmentDetail({bookingRef}:{bookingRef:string}){
     <p>Original CG-19 private PDF · one patient copy for pay-at-center
      · status-only QR, no clinical record access.</p>
     {slip?.status==="ISSUED"&&slip.canDownload?
-     <p><button type="button" disabled={busy||unknown||downloadBusy}
+     <div><p><button className="primary" type="button" disabled={busy||unknown||downloadBusy} onClick={()=>void downloadPrivateSlip("preview")}>Preview private appointment slip</button></p><p><button type="button" disabled={busy||unknown||downloadBusy}
        onClick={()=>void downloadPrivateSlip()}>
        {downloadBusy?"Verifying private download…":"Download my private PDF & QR slip"}
-      </button></p>:
+      </button></p></div>:
      booking.bookingStatus==="CANCELLED"?<p>A cancelled appointment has no current slip.</p>:
      <button type="button" disabled={busy||unknown} onClick={()=>void issue()}>
       {busy?"Issuing…":"Issue my secure appointment slip"}</button>}
-    {unknown&&<button type="button" disabled={busy} onClick={()=>void refresh()
-     .then(()=>setUnknown(false)).catch(e=>setError(String(e)))}>
+    {preview&&slip?.canDownload&&<div><iframe title="Private appointment slip PDF" src={preview} style={{width:"100%",height:500,border:"1px solid #bccfc6",borderRadius:8}}/><p><a href={preview} target="_blank" rel="noopener noreferrer">Open PDF in viewer to print</a></p><button type="button" onClick={clearPreview}>Close preview</button></div>}
+    {unknown&&<button type="button" disabled={busy} onClick={()=>{clearPreview();void refresh()
+     .then(()=>setUnknown(false)).catch(e=>setError(String(e)));}}>
      Check original document status</button>}
     <p>The QR reveals only whether this booking is currently valid.
      It does not identify the patient publicly.</p>

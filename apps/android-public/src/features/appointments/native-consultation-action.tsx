@@ -14,7 +14,7 @@ type AppliedReschedule={applied:boolean;bookingId:string;doctorRef:string|null;
  centerRef:string|null;startAt:string|null;currentBooking:Booking};
 type Props={doctorRef:string;centerRef:string;doctorName:string;centerName:string;
  startAt:string;endAt:string;feeMinor:string;feeVersion:number;timeZone:string;
- reschedule?:{bookingRef:string;expectedVersion:number}};
+ reschedule?:{bookingRef:string;expectedVersion:number};onSelectionLock?:(locked:boolean)=>void};
 async function post<T>(path:string,data:Record<string,unknown>,token:string):Promise<T>{
  if(!base||!/^https?:\/\//.test(base)||
   (process.env.NODE_ENV==="production"&&!base.startsWith("https://")))
@@ -56,6 +56,7 @@ export function NativeConsultationAction(p:Props){
  const [staffMessage,setStaffMessage]=useState("");
  const holdKey=useRef<string|null>(null),confirmKey=useRef<string|null>(null);
  const slipKey=useRef<string|null>(null);
+ useEffect(()=>{p.onSelectionLock?.(busy||uncertain||!!hold&&!booking);},[busy,uncertain,hold,booking,p.onSelectionLock]);
  // Hardware Back follows the same review-to-edit path as Public Web.
  // While a remote write is pending or uncertain, never silently leave and
  // invite a second reservation with a different idempotency key.

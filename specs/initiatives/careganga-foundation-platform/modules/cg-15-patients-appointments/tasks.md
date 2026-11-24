@@ -264,6 +264,10 @@ Dependencies: US-003
 
 ## Execution progress
 
+### Public reference re-review
+HUX-11.02/11.03/13.02/15.02: Web patient registration offers a safe local return link to the selected doctor schedule, validates route and allowed query fields, always re-fetches current slots on return. UI11 user-initiated authenticated PDF preview uses existing restricted download grant, verified PDF bytes and revocable local blob; no public link/identity lookup. Native selected-time action prevents changing selection during held/pending/unknown booking request, retains original idempotency recovery. Verify sign-in/profile/consent return, revoked/expired slip, preview close/route change and native unknown hold; local build and rendered QA NOT_RUN. Native booking-to-registration continuity and full paid document copy format remain follow-up source/contract gaps.
+
+
 ### Original healthcare public references — alignment checkpoint (24 Nov 2026)
 HUX-09.01/10.02/10.03/13.01/13.02/11.03/08.03: CMS category titles/descriptions remain published-source content, now include real search and canonical category links. Live approved CG17 policy cards replace screenshot sample percentages; public native adds category quick filters and verified same-center doctor actions (no fake booking). Native payable amount highlight; private Web consultation grouped detail and document actions, response identity guard; Web history earlier in profile. Source-only; no screenshot parity/runtime certification. Existing CMS category image schema is text-only; illustrated tiles/hero assets require CMS media mapping and actual approved content. Patient profile registration remains verified/consent-gated; full booking-linked navigation/preview and real online document copy contract still pending.
 Reference-led directory/profile, UI06 selected slot summary, UI08/09 payment and private document presentation on separate hardening branch. Original QA definitions retained, actual render/build/device/provider/independent acceptance NOT_RUN. See [tracker](../../HEALTHCARE_UIUX_HARDENING_TRACKER.md).

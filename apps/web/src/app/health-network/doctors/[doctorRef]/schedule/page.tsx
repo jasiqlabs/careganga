@@ -72,6 +72,8 @@ export default async function DoctorSchedulePreview({params,searchParams}:Props)
  const activeSlot=selected?.slots.find(s=>s.bookable&&s.startAt===chosenStart);
  const activeChoice=alternatives?.centerChoices.find(c=>c.bookable&&c.centerRef===chosenCenter&&c.startAt===chosenStart);
  const active=activeSlot&&selected&&selected.consultationFeeMinor!==null&&selected.consultationFeeVersion!==null&&selected.consultationFeeVersion!==undefined?{doctorRef,centerRef,doctorName:selected.doctorName,centerName:selected.centerName,startAt:activeSlot.startAt,endAt:activeSlot.endAt,timeZone:selected.timeZone,feeMinor:selected.consultationFeeMinor,feeVersion:selected.consultationFeeVersion}:activeChoice&&activeChoice.consultationFeeMinor!==null&&activeChoice.consultationFeeVersion!==null?{doctorRef,centerRef:activeChoice.centerRef,doctorName:doctor.doctorName,centerName:activeChoice.centerName,startAt:activeChoice.startAt,endAt:activeChoice.endAt,timeZone:activeChoice.timeZone,feeMinor:activeChoice.consultationFeeMinor,feeVersion:activeChoice.consultationFeeVersion}:null;
+ const returnPath="/health-network/doctors/"+encodeURIComponent(doctorRef)+"/schedule"+choose(active?.startAt??"",activeChoice?.centerRef??"");
+ const patientHref="/patients/me?returnTo="+encodeURIComponent(returnPath);
  return <HealthcarePublicChrome><main className="cg-public-shell">
   <header className="cg-public-header"><nav aria-label="Breadcrumb">
    <Link href="/health-network">Healthcare</Link>{" / "}
@@ -154,6 +156,6 @@ export default async function DoctorSchedulePreview({params,searchParams}:Props)
   </section></div>
   <aside id="booking-summary" className={"cg-public-section "+styles.panel}><h2>Appointment summary</h2><p><strong>{doctor.doctorName}</strong></p><p>{date||"Choose appointment date"}</p>
    {active?<>{validReschedule?<PatientRescheduleAction key={[rescheduleRef,active.centerRef,active.startAt,active.feeVersion].join("|")} bookingRef={rescheduleRef} expectedVersion={version} {...active}/>:<PatientBookingAction key={[active.centerRef,active.startAt,active.feeVersion].join("|")} {...active}/>}</>:<p>Select an available time and center to review the actual fee before reserving.</p>}
-   <p><Link href="/patients/me">Sign in to my private patient profile</Link> before reserving. Center payment options are verified separately. Availability may change until the reservation is accepted.</p></aside></div>
+   <p><Link href={patientHref}>Sign in or register as a patient</Link> before reserving. Center payment options are verified separately. Availability may change until the reservation is accepted.</p></aside></div>
  </main></HealthcarePublicChrome>;
 }
