@@ -1,16 +1,18 @@
 -- Original CG03 approval for CG11 effective payroll sources, not a second approvals engine.
 CREATE TABLE payroll_review_snapshot(
  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),root_realm_id uuid NOT NULL REFERENCES access_realm(id),
- source_kind text NOT NULL CHECK(source_kind IN('POLICY','COMPENSATION')),
- policy_ref uuid,compensation_ref uuid,source_revision integer NOT NULL CHECK(source_revision=1),
+ source_kind text NOT NULL CHECK(source_kind IN('POLICY','COMPENSATION','PAYOUT')),
+ policy_ref uuid,compensation_ref uuid,payout_ref uuid,source_revision integer NOT NULL CHECK(source_revision=1),
  source_digest char(64) NOT NULL CHECK(source_digest~'^[a-f0-9]{64}$'),
  submitted_by uuid NOT NULL,created_at timestamptz NOT NULL DEFAULT now(),
- UNIQUE(root_realm_id,id,source_revision,source_digest),UNIQUE(root_realm_id,policy_ref),UNIQUE(root_realm_id,compensation_ref),
+ UNIQUE(root_realm_id,id,source_revision,source_digest),UNIQUE(root_realm_id,policy_ref),UNIQUE(root_realm_id,compensation_ref),UNIQUE(root_realm_id,payout_ref),
  FOREIGN KEY(root_realm_id,policy_ref) REFERENCES payroll_policy(root_realm_id,id),
  FOREIGN KEY(root_realm_id,compensation_ref) REFERENCES employee_compensation(root_realm_id,id),
+ FOREIGN KEY(root_realm_id,payout_ref) REFERENCES employee_payout_instruction(root_realm_id,id),
  FOREIGN KEY(submitted_by,root_realm_id) REFERENCES account(id,realm_id),
- CHECK(((source_kind='POLICY' AND policy_ref IS NOT NULL AND compensation_ref IS NULL)
- OR (source_kind='COMPENSATION' AND compensation_ref IS NOT NULL AND policy_ref IS NULL)) IS TRUE)
+ CHECK(((source_kind='POLICY' AND policy_ref IS NOT NULL AND compensation_ref IS NULL AND payout_ref IS NULL)
+ OR (source_kind='COMPENSATION' AND compensation_ref IS NOT NULL AND policy_ref IS NULL AND payout_ref IS NULL)
+ OR (source_kind='PAYOUT' AND payout_ref IS NOT NULL AND policy_ref IS NULL AND compensation_ref IS NULL)) IS TRUE)
 );
 CREATE TRIGGER cg11_review_snapshot_immutable BEFORE UPDATE OR DELETE ON payroll_review_snapshot FOR EACH ROW EXECUTE FUNCTION cg11_audit_immutable();
 ALTER TABLE cg03_case ADD COLUMN payroll_review_ref uuid,ADD COLUMN payroll_source_revision integer,ADD COLUMN payroll_source_digest char(64),
@@ -51,7 +53,7 @@ BEGIN
  IF NEW.status IN('SUBMITTED','APPROVED','RETURNED','REJECTED') AND NOT EXISTS(
  SELECT 1 FROM cg03_case c JOIN payroll_review_snapshot s ON s.root_realm_id=c.realm_id AND s.id=c.payroll_review_ref
  WHERE c.realm_id=NEW.root_realm_id AND c.id=NEW.approval_case_ref AND c.case_kind='PAYROLL_COMPENSATION_REVIEW' AND c.proposal_revision=1
- AND ((TG_TABLE_NAME='payroll_policy' AND s.policy_ref=NEW.id) OR (TG_TABLE_NAME='employee_compensation' AND s.compensation_ref=NEW.id))
+ AND ((TG_TABLE_NAME='payroll_policy' AND s.policy_ref=NEW.id) OR (TG_TABLE_NAME='employee_compensation' AND s.compensation_ref=NEW.id) OR (TG_TABLE_NAME='employee_payout_instruction' AND s.payout_ref=NEW.id))
  AND s.submitted_by=c.proposer_id
  AND ((NEW.status='SUBMITTED' AND c.status='SUBMITTED') OR (NEW.status='APPROVED' AND c.status='PENDING_OWNER') OR (NEW.status='RETURNED' AND c.status='RETURNED') OR (NEW.status='REJECTED' AND c.status='REJECTED'))
  AND (NEW.status='SUBMITTED' OR EXISTS(SELECT 1 FROM cg03_case_decision d WHERE d.realm_id=c.realm_id AND d.case_id=c.id AND d.actor_id<>c.proposer_id AND d.actor_id<>NEW.created_by AND d.fresh_password_verified_at IS NOT NULL AND d.action=CASE NEW.status WHEN 'APPROVED' THEN 'APPROVE' WHEN 'RETURNED' THEN 'RETURN' ELSE 'REJECT' END))
@@ -60,3 +62,4 @@ BEGIN
 END; $cg11$;
 CREATE TRIGGER cg11_policy_original_review BEFORE UPDATE ON payroll_policy FOR EACH ROW EXECUTE FUNCTION cg11_require_original_review();
 CREATE TRIGGER cg11_compensation_original_review BEFORE UPDATE ON employee_compensation FOR EACH ROW EXECUTE FUNCTION cg11_require_original_review();
+CREATE TRIGGER cg11_payout_original_review BEFORE UPDATE ON employee_payout_instruction FOR EACH ROW EXECUTE FUNCTION cg11_require_original_review();
