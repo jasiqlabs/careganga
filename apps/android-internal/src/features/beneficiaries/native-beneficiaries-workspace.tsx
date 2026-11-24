@@ -60,6 +60,8 @@ export function NativeBeneficiariesWorkspace({token,onExpired,canManage,canLinkP
  const [page,setPage]=useState<Page|null>(null),[selected,setSelected]=useState<Item|null>(null);
  const [opts,setOpts]=useState<Options|null>(null),[districts,setDistricts]=useState<Option[]>([]);
  const [q,setQ]=useState(""),[search,setSearch]=useState(""),[tab,setTab]=useState("ALL"),[branch,setBranch]=useState("");
+ const [genderFilter,setGenderFilter]=useState(""),[ageFilter,setAgeFilter]=useState(""),[typeFilter,setTypeFilter]=useState("");
+ const [appliedFilters,setAppliedFilters]=useState({gender:"",ageGroup:"",type:""});
  const [cursor,setCursor]=useState(""),[history,setHistory]=useState<string[]>([]);
  const [auditHistory,setAuditHistory]=useState<ActionHistory[]>([]),[verificationHistory,setVerificationHistory]=useState<VerificationHistory[]>([]);
  const [review,setReview]=useState<ReviewInfo|null>(null),[reviewAction,setReviewAction]=useState("APPROVE");
@@ -98,12 +100,13 @@ export function NativeBeneficiariesWorkspace({token,onExpired,canManage,canLinkP
   if(search)p.set("q",search);if(branch)p.set("branchRef",branch);if(tab==="ACTIVE"||tab==="INACTIVE")p.set("lifecycle",tab);
   if(tab==="VERIFIED")p.set("verification","VERIFIED");
   if(tab==="PENDING")p.set("verification","PENDING");
-  if(cursor)p.set("cursor",cursor);
+  for(const [k,v] of Object.entries(appliedFilters))if(v.trim())p.set(k,v.trim());
+   if(cursor)p.set("cursor",cursor);
   void api<Page>("?"+p).then(x=>{if(live)setPage(x);})
    .catch(e=>{if(live){setPage(null);setError(e.message);}})
    .finally(()=>{if(live)setLoading(false);});
   return()=>{live=false;};
- },[search,tab,branch,cursor,refreshKey,api]);
+ },[search,tab,branch,cursor,refreshKey,api,appliedFilters]);
  const select=async(id:string)=>{setBusy(true);setError("");
   try{
    const [x,audit,verification,reviewInfo]=await Promise.all([
@@ -208,7 +211,12 @@ export function NativeBeneficiariesWorkspace({token,onExpired,canManage,canLinkP
    <TextInput accessibilityLabel="Search beneficiary" value={q} onChangeText={setQ}
     style={{backgroundColor:"white",borderWidth:1,borderColor:"#CBD5E1",padding:12,borderRadius:10}}
     placeholder="Name or beneficiary reference"/>
-   <Button label="Search current scope" outline onPress={()=>{setSearch(q.trim());setCursor("");setHistory([]);}}/>
+   <Text style={labelStyle}>Beneficiary type</Text>
+   <TextInput accessibilityLabel="Beneficiary type" value={typeFilter} maxLength={60} onChangeText={setTypeFilter} style={{backgroundColor:"white",borderWidth:1,borderColor:"#CBD5E1",padding:12,borderRadius:10}}/>
+   <Select title="Gender" selected={genderFilter} items={[{value:"",label:"All"},...enumOptions(["MALE","FEMALE","OTHER","NOT_SPECIFIED"])]} onSelect={setGenderFilter}/>
+   <Select title="Age group" selected={ageFilter} items={[{value:"",label:"All"},...enumOptions(["CHILD","ADULT","SENIOR","NOT_SPECIFIED"])]} onSelect={setAgeFilter}/>
+   <Button label="Apply Filters" outline onPress={()=>{setSearch(q.trim());setAppliedFilters({gender:genderFilter,ageGroup:ageFilter,type:typeFilter});setCursor("");setHistory([]);}}/>
+   <Button label="Reset filters" outline onPress={()=>{setQ("");setSearch("");setBranch("");setTab("ALL");setGenderFilter("");setAgeFilter("");setTypeFilter("");setAppliedFilters({gender:"",ageGroup:"",type:""});setCursor("");setHistory([]);}}/>
    <Select title="Operating branch" selected={branch}
     items={[{value:"",label:"All permitted branches"},...(opts?.branches??[])]}
     onSelect={x=>{setBranch(x);setCursor("");setHistory([]);}}/>
@@ -216,7 +224,7 @@ export function NativeBeneficiariesWorkspace({token,onExpired,canManage,canLinkP
     items={enumOptions(["ALL","ACTIVE","INACTIVE","VERIFIED","PENDING"])}/>
    {!!notice&&<Text accessibilityRole="alert" style={{color:"#166534"}}>{notice}</Text>}
    {!!error&&<Text accessibilityRole="alert" style={{color:"#B91C1C"}}>{error}</Text>}
-   {loading?<ActivityIndicator/>:!page?.items.length?<Text style={textStyle}>No beneficiaries found for your current access.</Text>:
+   {loading?<ActivityIndicator/>:!page?<View><Text style={textStyle}>Beneficiary records unavailable.</Text><Button label="Retry" outline onPress={reload}/></View>:!page.items.length?<Text style={textStyle}>No beneficiaries found for your current access.</Text>:
     page.items.map(x=><Pressable key={x.ref} accessibilityRole="button" onPress={()=>void select(x.ref)}
      style={{padding:14,borderWidth:1,borderColor:"#E2E8F0",borderRadius:12,backgroundColor:"white"}}>
      <Text style={{fontWeight:"700",color:"#0F172A"}}>{x.name}</Text>
