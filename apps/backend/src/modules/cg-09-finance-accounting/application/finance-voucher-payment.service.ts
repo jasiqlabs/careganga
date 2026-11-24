@@ -40,6 +40,8 @@ const safePaymentFailure=(failure:unknown):never=>{
   throw new ConflictException({code:"FINANCE_VOUCHER_PAYMENT_PROOF_CONFLICT"});
  if(code==="P0917"||code==="23503"||code==="23514")
   throw new ConflictException({code:"FINANCE_VOUCHER_PAYMENT_VERIFICATION_INVALID"});
+ if(code==="P0938")throw new ForbiddenException("Current independent bank payment signing authority is required");
+ if(code==="P0939")throw new ConflictException("Insufficient independently reconciled bank funds for this payment request");
  if(code==="P0916")
   throw new ConflictException({code:"FINANCE_VOUCHER_ACCOUNT_SIDES_INVALID"});
  if(code==="P0913")
@@ -135,6 +137,8 @@ export class FinanceVoucherPaymentService{
    if(v.version!==expected||v.status!=="APPROVED"||
     !["PAYMENT","CONTRA"].includes(v.voucher_type))
     throw new ConflictException({code:"FINANCE_VOUCHER_PAYMENT_PROOF_NOT_READY"});
+   // Original bank requests reserve only existing reconciled source capacity.
+   // No provider transfer or paid confirmation is implied by this transition.
    const updated=await client.query(`
     UPDATE finance_voucher SET status='PAYMENT_REQUESTED',updated_at=now()
     WHERE root_realm_id=$1 AND id=$2 AND status='APPROVED' RETURNING id`,
