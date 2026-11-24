@@ -26,6 +26,7 @@ function Select({label,value,change,items,disabled=false,optional=false}:{label:
 export function NativeAssistancePanel({beneficiary,canManage,canReview,canDeliver,canStock,canFinance,canEvidence,token,onExpired}:Props&{token:string;onExpired:()=>void}){
  const api=async<T,>(path:string,body?:Record<string,unknown>):Promise<T>=>{const r=await identityRequest("/api/v1"+path,{method:body?"POST":"GET",cache:"no-store",headers:{Authorization:"Bearer "+token,...(body?{"Content-Type":"application/json"}:{})},...(body?{body:JSON.stringify(body)}:{})});if(r.status===401)onExpired();const x=await r.json().catch(()=>null);if(!r.ok||x===null)throw Object.assign(Error(r.status===403?"Current role or branch cannot perform this action.":r.status===409?"Original source or approval changed. Refresh and retry.":r.status===400?"Check assistance fields.":"Original assistance outcome unavailable."),{status:r.status||503});return x as T;};
  const [cases,setCases]=useState<Case[]|null>(null),[selected,setSelected]=useState<Case|null>(null),[review,setReview]=useState<Review|null>(null),[delivery,setDelivery]=useState<Delivery|null>(null);
+ const [caseEvents,setCaseEvents]=useState<{action:string;revision:number;at:string}[]|null>(null);
  const [choices,setChoices]=useState<Choices|null>(null),[payments,setPayments]=useState<PaymentChoices|null>(null),[form,setForm]=useState(initial);
  const [showForm,setShowForm]=useState(false),[busy,setBusy]=useState(false),[error,setError]=useState(""),[notice,setNotice]=useState(""),[uncertain,setUncertain]=useState(false);
  const [remarks,setRemarks]=useState(""),[password,setPassword]=useState(""),[decision,setDecision]=useState("APPROVE");
@@ -38,14 +39,14 @@ export function NativeAssistancePanel({beneficiary,canManage,canReview,canDelive
   const n=++sequence.current;
   try{const v=await api<{items:Case[]}>("/assistance?beneficiaryRef="+encodeURIComponent(beneficiary.ref));if(n!==sequence.current)return;setCases(v.items);
    const c=v.items.find(x=>x.ref===(focus??selected?.ref));setSelected(c??null);
-   if(!c){setReview(null);setDelivery(null);return;}
-   const [r,d]=await Promise.all([api<Review>("/assistance/"+c.ref+"/review").catch(()=>null),api<Delivery>("/assistance/"+c.ref+"/fulfillment").catch(()=>null)]);
-   if(n!==sequence.current)return;setReview(r);setDelivery(d);
-   if(!r||!d)setError("Some original source information is unavailable. Refresh before acting.");
+   if(!c){setReview(null);setDelivery(null);setCaseEvents(null);return;}
+   const [r,d,h]=await Promise.all([api<Review>("/assistance/"+c.ref+"/review").catch(()=>null),api<Delivery>("/assistance/"+c.ref+"/fulfillment").catch(()=>null),api<{events:{action:string;revision:number;at:string}[]}>("/assistance/"+c.ref+"/history").catch(()=>null)]);
+   if(n!==sequence.current)return;setReview(r);setDelivery(d);setCaseEvents(h?.events??null);
+   if(!r||!d||!h)setError("Some original source information is unavailable. Refresh before acting.");
   }catch(e){if(n===sequence.current){setCases(null);setSelected(null);setDelivery(null);setReview(null);setError(e instanceof Error?e.message:"Assistance information unavailable.");}}
  };
  useEffect(()=>{void refresh();return()=>{sequence.current++;};},[beneficiary.ref,beneficiary.revision]);
- const choose=async(c:Case)=>{setSelected(c);setReview(null);setDelivery(null);setAllocation(null);setPayments(null);setProofs([]);setProofRef("");setReturnOf("");setAttested(false);setPassword("");setRemarks("");setQty("");setAmount("");await refresh(c.ref);};
+ const choose=async(c:Case)=>{setSelected(c);setReview(null);setDelivery(null);setCaseEvents(null);setAllocation(null);setPayments(null);setProofs([]);setProofRef("");setReturnOf("");setAttested(false);setPassword("");setRemarks("");setQty("");setAmount("");await refresh(c.ref);};
  const open=async()=>{setError("");setShowForm(true);setChoices(null);setForm(initial());try{const v=await api<Choices>("/assistance/options?beneficiaryRef="+beneficiary.ref);setChoices(v);setForm(f=>({...f,responsible:v.selfRef,kind:v.stores.length&&v.items.length?"MATERIAL":"FINANCIAL"}));}catch(e){setError(e instanceof Error?e.message:"Request choices unavailable.");}};
  const submitCommand=async(next?:Command)=>{
   if(running.current)return;const c=command.current??next;if(!c)return;command.current=c;running.current=true;setBusy(true);setError("");
@@ -94,6 +95,7 @@ export function NativeAssistancePanel({beneficiary,canManage,canReview,canDelive
    <Button label="Save request" click={create} disabled={locked}/></>}<Button label="Cancel" click={()=>setShowForm(false)} disabled={locked}/></View>}
   {cases===null?<Text>Assistance records unavailable or loading.</Text>:cases.length===0?<Text>No assistance requests yet.</Text>:cases.map(c=><Pressable key={c.ref} disabled={locked} accessibilityRole="button" accessibilityState={{selected:selected?.ref===c.ref,disabled:locked}} onPress={()=>void choose(c)} style={{...panel,borderColor:selected?.ref===c.ref?"#1D4ED8":"#CBD5E1"}}><Text style={{fontWeight:"700"}}>{c.reference} · {c.category}</Text><Text>{c.kind==="MATERIAL"?c.quantity+" "+c.unit:money(c.amountMinor)} · {pretty(c.state)}</Text></Pressable>)}
   {selected&&<View style={panel}><Text style={{fontWeight:"700"}}>{selected.reference}</Text><Text>{pretty(selected.state)}{review?.caseNumber?" · "+review.caseNumber:""}</Text>
+   <Text style={{fontWeight:"700"}}>Request history</Text>{caseEvents===null?<Text>History unavailable.</Text>:caseEvents.map(e=><Text key={e.revision}>{pretty(e.action)} · {new Date(e.at).toLocaleString()}</Text>)}
    {selected.state==="DRAFT"&&canRequest&&<Button label="Submit for independent approval" click={submit} disabled={locked}/>}
    {review?.canReview&&canReview&&eligible&&<View style={panel}><Select label="Review decision" value={decision} change={setDecision} items={["APPROVE","RETURN","REJECT"].map(value=>({value,label:pretty(value)}))} disabled={locked}/><Field label="Remarks" value={remarks} change={setRemarks} disabled={locked}/><Field label="Current Foundation password" type="password" value={password} change={setPassword} disabled={locked}/><Button label="Confirm independent decision" click={decide} disabled={locked||password.length<8||(decision!=="APPROVE"&&remarks.trim().length<3)}/></View>}
    {delivery?<><Text style={{fontWeight:"700"}}>{pretty(delivery.totals.status)}</Text>{selected.kind==="MATERIAL"?<Text>Handed over: {delivery.totals.grossQuantity} {selected.unit} · Returned: {delivery.totals.returnedQuantity} · Net: {delivery.totals.netQuantity}</Text>:<Text>Paid: {money(delivery.totals.paidMinor)} · Recovered: {money(delivery.totals.reversedMinor)} · Net: {money(delivery.totals.netMinor)}</Text>}
