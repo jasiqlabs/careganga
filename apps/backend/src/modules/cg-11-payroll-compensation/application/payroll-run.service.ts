@@ -17,11 +17,11 @@ type InputLine={employee:Candidate;attendance:Attendance;salary:FrozenSalary[];i
 type Adjustment={employeeRef:string;kind:"BONUS"|"DEDUCTION"|"HOLD"|"LATE_ARREARS"|"LATE_RECOVERY";minor:string;reason:string;sourceRef?:string;sourceDigest?:string};
 type Calculation=Extract<ReturnType<typeof calculatePayroll>,{status:"CALCULATED"}>;
 type ResultLine={employeeRef:string;reference:string;name:string;branchRef:string;status:"CALCULATED"|"PENDING_VALIDATION"|"HELD";issues:string[];adjustments:Adjustment[];amounts?:Calculation&{bonusMinor:string;arrearsMinor:string;extraDeductionMinor:string}};
-type Snapshot={inputs:InputLine[];inputDigest:string;adjustments:Adjustment[];lines:ResultLine[];totals:{employees:number;calculated:number;pending:number;held:number;grossMinor:string;deductionMinor:string;netMinor:string;employerMinor:string}};
+type Snapshot={inputs:InputLine[];inputDigest:string;adjustments:Adjustment[];lines:ResultLine[];totals:{employees:number;calculated:number;pending:number;held:number;heldNetMinor:string;grossMinor:string;deductionMinor:string;netMinor:string;employerMinor:string}};
 const stable=(v:unknown):unknown=>Array.isArray(v)?v.map(stable):v!==null&&typeof v==="object"?Object.fromEntries(Object.entries(v).sort(([a],[b])=>a.localeCompare(b)).map(([k,x])=>[k,stable(x)])):v;
 const digestOf=(v:unknown)=>createHash("sha256").update(JSON.stringify(stable(v))).digest("hex");
 const conflict=()=>new ConflictException("Payroll source or revision changed. Refresh and retry the original operation.");
-const emptyTotals=()=>({employees:0,calculated:0,pending:0,held:0,grossMinor:"0",deductionMinor:"0",netMinor:"0",employerMinor:"0"});
+const emptyTotals=()=>({employees:0,calculated:0,pending:0,held:0,heldNetMinor:"0",grossMinor:"0",deductionMinor:"0",netMinor:"0",employerMinor:"0"});
 const projection="id,branch_ref,run_number,period_key,period_from::text,period_until::text,fiscal_year_label,tentative_payment_date::text,status,revision,request_digest,creator,snapshot_digest,approval_case_ref,approved_decision_ref";
 function draftInput(raw:unknown){
  const x=fields(raw,["requestKey","branchRef","fiscalYear","period","tentativePaymentDate"]);
@@ -78,7 +78,7 @@ export class PayrollRunService{
  }
  private async safeSnapshot(tx:PoolClient,a:Actor,r:Run){
   const s=await this.snapshot(tx,a,r);
-  return {lines:s?.lines??[],totals:s?.totals??null,sourceDigest:r.snapshot_digest};
+  return {lines:s?.lines??[],totals:s?.totals??null,sourceDigest:r.snapshot_digest,calculationStatus:s&&s.totals.pending>0?"PENDING_VALIDATION":this.view(r).calculationStatus};
  }
  private async gather(tx:PoolClient,a:Actor,r:Run):Promise<InputLine[]>{
   const today=(await tx.query<{today:string}>("SELECT (now() AT TIME ZONE 'Asia/Kolkata')::date::text AS today")).rows[0].today;
@@ -113,20 +113,20 @@ export class PayrollRunService{
  }
  private evaluate(r:Run,inputs:InputLine[],adjustments:Adjustment[],calculate:boolean):Snapshot{
   const lines:ResultLine[]=inputs.map(i=>{
-   const e=i.employee,adj=adjustments.filter(x=>x.employeeRef===e.id);
+   const e=i.employee,adj=adjustments.filter(x=>x.employeeRef===e.id),hold=adj.some(x=>x.kind==="HOLD");
    const line={employeeRef:e.id,reference:e.reference,name:e.name,branchRef:e.branchRef,adjustments:adj};
-   if(adj.some(x=>x.kind==="HOLD"))return {...line,status:"HELD",issues:["EXPLICIT_HOLD"]};
-   if(i.issues.length)return {...line,status:"PENDING_VALIDATION",issues:i.issues};
+   const issues=i.issues.filter(x=>!(hold&&x==="EMPLOYMENT_STATUS_REQUIRES_REVIEW"));
+   if(issues.length)return {...line,status:"PENDING_VALIDATION",issues};
    const value=calculatePayroll(r.period_from,r.period_until,i.attendance.days,i.salary);
    if(value.status==="PENDING_VALIDATION")return {...line,status:"PENDING_VALIDATION",issues:value.issues.length?value.issues:["NO_APPROVED_COMPENSATION"]};
    if(!calculate)return {...line,status:"PENDING_VALIDATION",issues:["READY_TO_CALCULATE"]};
    const bonus=adj.filter(x=>x.kind==="BONUS").reduce((n,x)=>n+BigInt(x.minor),0n),arrears=adj.filter(x=>x.kind==="LATE_ARREARS").reduce((n,x)=>n+BigInt(x.minor),0n),extra=adj.filter(x=>x.kind==="DEDUCTION"||x.kind==="LATE_RECOVERY").reduce((n,x)=>n+BigInt(x.minor),0n);
    const gross=BigInt(value.grossMinor)+bonus+arrears,deductions=BigInt(value.deductionMinor)+extra;
    if(deductions>gross)return {...line,status:"PENDING_VALIDATION",issues:["DEDUCTIONS_EXCEED_GROSS"]};
-   return {...line,status:"CALCULATED",issues:[],amounts:{...value,bonusMinor:bonus.toString(),arrearsMinor:arrears.toString(),extraDeductionMinor:extra.toString(),grossMinor:gross.toString(),deductionMinor:deductions.toString(),netMinor:(gross-deductions).toString()}};
+   return {...line,status:hold?"HELD":"CALCULATED",issues:hold?["EXPLICIT_HOLD"]:[],amounts:{...value,bonusMinor:bonus.toString(),arrearsMinor:arrears.toString(),extraDeductionMinor:extra.toString(),grossMinor:gross.toString(),deductionMinor:deductions.toString(),netMinor:(gross-deductions).toString()}};
   });
   const totals=emptyTotals();totals.employees=lines.length;for(const l of lines){
-   if(l.status==="HELD")totals.held++;else if(l.status==="PENDING_VALIDATION")totals.pending++;else if(l.amounts){totals.calculated++;for(const k of ["grossMinor","deductionMinor","netMinor","employerMinor"] as const)totals[k]=(BigInt(totals[k])+BigInt(l.amounts[k])).toString();}
+   if(l.status==="HELD"){totals.held++;if(l.amounts)totals.heldNetMinor=(BigInt(totals.heldNetMinor)+BigInt(l.amounts.netMinor)).toString();}else if(l.status==="PENDING_VALIDATION")totals.pending++;else if(l.amounts){totals.calculated++;for(const k of ["grossMinor","deductionMinor","netMinor","employerMinor"] as const)totals[k]=(BigInt(totals[k])+BigInt(l.amounts[k])).toString();}
   }
   return {inputs,inputDigest:digestOf(inputs),adjustments,lines,totals};
  }
@@ -164,7 +164,7 @@ export class PayrollRunService{
    await tx.query("INSERT INTO payroll_run_command(root_realm_id,actor_ref,request_key,run_id,request_digest,accepted_revision) VALUES($1,$2,$3,$4,$5,$6)",[a.realmId,a.accountId,key,r.id,requestDigest,revision]);
    const updated=(await tx.query<Run>("UPDATE payroll_run SET status=$3,revision=$4,snapshot_digest=$5,approval_case_ref=NULL,approved_decision_ref=NULL WHERE root_realm_id=$1 AND id=$2 AND revision=$6 RETURNING "+projection,[a.realmId,r.id,status,revision,digest,expected])).rows[0];
    if(!updated)throw conflict();await recordPayrollAudit(tx,a,"RUN",action==="import-current-attendance"?"IMPORTED":"CALCULATED");
-   return {...this.view(updated),lines:next.lines,totals:next.totals,sourceDigest:digest,replayed:false};
+   return {...this.view(updated),lines:next.lines,totals:next.totals,calculationStatus:next.totals.pending>0?"PENDING_VALIDATION":this.view(updated).calculationStatus,sourceDigest:digest,replayed:false};
   });
  }
  /** Only original frozen approved lines in an earlier period and this employee's current target scope. */
@@ -225,10 +225,17 @@ export class PayrollRunService{
   const rows=(await tx.query<{revision:number;created_at:string}>("SELECT revision,created_at::text FROM payroll_run_revision WHERE root_realm_id=$1 AND run_id=$2 ORDER BY revision DESC LIMIT 100",[a.realmId,r.id])).rows;
   await recordPayrollAudit(tx,a,"RUN","READ");return {items:rows.map(x=>({revision:x.revision,at:x.created_at}))};
  });}
+ async frozenReview(tx:PoolClient,a:Actor,ref:string,revision:number,digest:string){
+  const r=await this.row(tx,a,ref);
+  const record=(await tx.query<{snapshot:Snapshot}>("SELECT snapshot FROM payroll_run_revision WHERE root_realm_id=$1 AND run_id=$2 AND revision=$3 AND source_digest=$4",[a.realmId,r.id,revision,digest])).rows[0];
+  if(!record||digestOf(record.snapshot)!==digest)throw conflict();
+  const s=record.snapshot;
+  return {row:r,digest,preview:{label:r.run_number,period:r.period_key,fiscalYear:r.fiscal_year_label,totals:s.totals,lines:s.lines,status:r.status}};
+ }
  async reviewSource(tx:PoolClient,a:Actor,ref:string,lock=false,verifyFresh=false){
   if(lock)await tx.query("SELECT pg_advisory_xact_lock(hashtextextended($1,0))",["CG11-RUN-WRITE:"+a.realmId]);
   const r=await this.row(tx,a,ref,lock),s=await this.snapshot(tx,a,r);
-  if(!s||!r.snapshot_digest||s.totals.pending!==0||s.totals.calculated===0||s.adjustments.some(x=>x.sourceRef&&!s.lines.some(l=>l.employeeRef===x.employeeRef&&l.status==="CALCULATED")))throw conflict();
+  if(!s||!r.snapshot_digest||s.totals.pending!==0||s.totals.calculated+s.totals.held===0||s.adjustments.some(x=>x.sourceRef&&!s.lines.some(l=>l.employeeRef===x.employeeRef&&l.status==="CALCULATED")))throw conflict();
   if(verifyFresh){if(digestOf(await this.gather(tx,a,r))!==s.inputDigest)throw conflict();const late=await this.lateAdjustments(tx,a,r);if(digestOf(late)!==digestOf(s.adjustments.filter(v=>v.sourceRef)))throw conflict();}
   return {row:r,snapshot:s,digest:r.snapshot_digest,preview:{label:r.run_number,period:r.period_key,fiscalYear:r.fiscal_year_label,totals:s.totals,lines:s.lines,status:r.status}};
  }
@@ -238,8 +245,8 @@ export class PayrollRunService{
   if(status==="APPROVED_FROZEN"){
    const sourceRevision=(await tx.query<{revision:number}>("SELECT revision FROM payroll_run_revision WHERE root_realm_id=$1 AND run_id=$2 AND source_digest=$3 ORDER BY revision DESC LIMIT 1",[a.realmId,r.id,src.digest])).rows[0].revision;
    for(const adj of src.snapshot.adjustments.filter(x=>x.sourceRef))await tx.query("INSERT INTO payroll_adjustment_consumption(root_realm_id,adjustment_ref,original_line_ref,correction_digest,target_run_ref,decision_ref) SELECT root_realm_id,id,original_line_ref,correction_digest,target_run_ref,$4 FROM payroll_adjustment WHERE root_realm_id=$1 AND id=$2 AND target_run_ref=$3",[a.realmId,adj.sourceRef,r.id,decisionRef]);
-   for(const l of src.snapshot.lines){if(l.status!=="CALCULATED"||!l.amounts)continue;const m=l.amounts;
-    await tx.query("INSERT INTO payroll_line(root_realm_id,run_id,source_revision,employee_ref,period_key,branch_ref,base_minor,allowance_minor,bonus_minor,arrears_minor,deduction_minor,gross_minor,net_minor,employer_minor,statutory_minor,source_snapshot) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16::jsonb)",[a.realmId,r.id,sourceRevision,l.employeeRef,r.period_key,l.branchRef,m.baseMinor,m.allowanceMinor,m.bonusMinor,m.arrearsMinor,m.deductionMinor,m.grossMinor,m.netMinor,m.employerMinor,m.statutoryMinor,JSON.stringify(l)]);
+   for(const l of src.snapshot.lines){if(!["CALCULATED","HELD"].includes(l.status)||!l.amounts)continue;const m=l.amounts;
+    await tx.query("INSERT INTO payroll_line(root_realm_id,run_id,source_revision,employee_ref,period_key,branch_ref,entitlement_state,base_minor,allowance_minor,bonus_minor,arrears_minor,deduction_minor,gross_minor,net_minor,employer_minor,statutory_minor,source_snapshot) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17::jsonb)",[a.realmId,r.id,sourceRevision,l.employeeRef,r.period_key,l.branchRef,l.status==="HELD"?"HELD":"RELEASE_ELIGIBLE",m.baseMinor,m.allowanceMinor,m.bonusMinor,m.arrearsMinor,m.deductionMinor,m.grossMinor,m.netMinor,m.employerMinor,m.statutoryMinor,JSON.stringify(l)]);
    }
   }
   const result=await tx.query("UPDATE payroll_run SET status=$3,revision=revision+1,approval_case_ref=$4,approved_decision_ref=$5 WHERE root_realm_id=$1 AND id=$2 AND revision=$6",[a.realmId,r.id,status,caseRef,decisionRef,expected]);
