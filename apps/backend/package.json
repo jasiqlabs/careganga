@@ -41,7 +41,7 @@
     "test:cg08-funding-budget": "tsx --test test/cg08-funding-budget-contract.test.ts",
     "test:cg08-funding-report": "tsx --test test/cg08-funding-report-contract.test.ts",
     "test:cg08-funding-evidence-db": "node --env-file=.env ../../node_modules/tsx/dist/cli.mjs --test test/cg08-funding-evidence-db-integrity.test.ts",
-    "test:cg06-us001": "tsx --test test/cg06-us001-beneficiary-contract.test.ts"
+    "test:cg06-us001": "tsx --test test/cg06-us001-beneficiary-contract.test.ts test/cg06-us001-source-integrity.test.ts"
   },
   "dependencies": {
     "@nestjs/common": "12.5.0",
