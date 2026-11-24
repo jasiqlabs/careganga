@@ -7,7 +7,7 @@ const uuid=(v:string)=>/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9
 const reply=(body:unknown,status=200)=>NextResponse.json(body,{status,headers:{"Cache-Control":"private, no-store"}});
 function allowed(parts:string[],method:Method){
  if(parts.length===0)return method==="GET"||method==="POST";
- if(parts.length===1)return method==="GET"&&["options","eligible-projects","duplicate-suggestions"].includes(parts[0])
+ if(parts.length===1)return method==="GET"&&["options","eligible-projects","duplicate-suggestions","project-filter-options"].includes(parts[0])
    ||uuid(parts[0])&&(method==="GET"||method==="PATCH");
  if(parts.length===3&&parts[0]==="verification-cases"&&uuid(parts[1])&&parts[2]==="decide")return method==="POST";
  if(parts.length===2&&uuid(parts[0])){
