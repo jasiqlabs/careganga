@@ -25,7 +25,7 @@ const POLICY_SLUGS=new Set(["terms-and-conditions","privacy-policy","cookie-poli
  "copyright-and-intellectual-property"]);
 const SECTION=new Set(["HERO","RICH_TEXT","TEAM","CTA","PROJECT_TEASER","CAMPAIGN_TEASER",
  "FEATURE_CARDS","JOIN_CARDS","SITE_FOOTER","IMPACT_GROUP","COMPLIANCE_FACTS",
- "GALLERY_GRID","ARTICLE_BODY","HEALTHCARE_CATEGORIES","CONTACT_INFO"]);
+ "GALLERY_GRID","ARTICLE_BODY","HEALTHCARE_CATEGORIES","CONTACT_INFO","PARTNER_CARDS"]);
 const assetRoles=new Set(["HERO","MOBILE_HERO","TEAM","ABOUT","PROMO","FEATURE",
  "GALLERY","ARTICLE","DOCUMENT","IMPACT","CONTACT"]);
 const reserved=new Set(["admin","api","login","join","volunteer","auth","internal","_next"]);
@@ -416,7 +416,8 @@ export class CmsEditorialService{
   const a=await this.sessions.requireAction(bearer,"cms.content.manage");
   return this.withTx(async tx=>{await this.identity.assertCurrent(tx,a,"cms.content.manage");return {sources:await eligibleProjectSources(tx,a.realmId)};});
  }
- async list(bearer:string){
+ async list(bearer:string,scope?:string){
+  if(scope!==undefined&&scope!=="baseline")throw new BadRequestException({code:"CMS_INPUT_INVALID",field:"scope"});
   const a=await this.sessions.requireAction(bearer,"cms.content.view");
   const result=await this.db.query<{pageRef:string;kind:string;slug:string;title:string;
    version:string;draftStatus:string;publicStatus:string|null}>(
@@ -429,7 +430,8 @@ export class CmsEditorialService{
    'AND e.foundation_root_id=p.foundation_root_id '+
    'LEFT JOIN cms_publication pub ON pub.id=e.publication_id '+
    "WHERE p.foundation_root_id=$1 AND p.archived_at IS NULL "+
-   "ORDER BY p.created_at DESC,p.id DESC LIMIT 100",[a.realmId]);
+   "AND (NOT $2::boolean OR p.kind<>\'ARTICLE\') "+
+   "ORDER BY p.created_at DESC,p.id DESC LIMIT 100",[a.realmId,scope==="baseline"]);
   return {pages:result.rows};
  }
  async detail(bearer:string,ref:string){
