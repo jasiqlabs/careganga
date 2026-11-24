@@ -1,4 +1,4 @@
-import {ConflictException,Inject,Injectable,NotFoundException} from "@nestjs/common";
+import {BadRequestException,ConflictException,Inject,Injectable,NotFoundException} from "@nestjs/common";
 import {createHash,randomUUID} from "node:crypto";
 import type {Pool,PoolClient} from "pg";
 import {DATABASE} from "../../../core/infrastructure/database.module";
@@ -8,7 +8,7 @@ import type {VerifiedFoundationActor as Actor} from "../../cg-01-identity-access
 import {BranchSourceFacade} from "../../cg-02-foundation-structure/application/branch-source.facade";
 import {FinanceVoucherDraftService} from "../../cg-09-finance-accounting/application/finance-voucher-draft.service";
 import {HrEmploymentChangeSourceFacade} from "../../cg-10-human-resources/application/hr-employment-change-source.facade";
-import {HrPayrollEmployeeSourceFacade} from "../../cg-10-human-resources/application/hr-payroll-employee-source.facade";
+import {HrPayrollEmployeeSourceFacade,payrollEmployeeDirectorySql} from "../../cg-10-human-resources/application/hr-payroll-employee-source.facade";
 import {parsePayout,protectPayout} from "../domain/payout-instruction";
 import {id,parsePolicy,parseSalary,componentMinor,fiscalYearFor} from "../domain/payroll-input";
 const hash=(x:unknown)=>createHash("sha256").update(JSON.stringify(x)).digest("hex");
@@ -29,19 +29,33 @@ export class PayrollCompensationService{
  private policyView(p:Policy){return {ref:p.id,branchRef:p.branch_ref,label:p.label,fiscalYear:fiscalYearFor(p.effective_from).label,effectiveFrom:p.effective_from,effectiveTo:p.effective_to,supersedesRef:p.supersedes_ref,status:p.status,revision:p.revision};}
  private salaryView(p:Salary){return {ref:p.id,employeeRef:p.employee_ref,branchRef:p.branch_ref,policyRef:p.policy_id,effectiveFrom:p.effective_from,effectiveTo:p.effective_to,supersedesRef:p.supersedes_ref,baseMinor:p.base_salary_minor,status:p.status,revision:p.revision};}
  async employee(tx:PoolClient,a:Actor,employee:string,forDate:string|null=null){return this.hr.employee(tx,a,employee,forDate);}
- async options(token:string,branchInput:unknown,qInput:unknown,offsetInput:unknown=0){return this.run(token,"payroll.compensation.view",async(tx,a)=>{
-   const result=await this.hr.options(tx,a,branchInput,qInput,offsetInput);
-   const rows=(await tx.query<{employee_ref:string;branch_ref:string;base:string;gross:string;deductions:string;net:string}>(
-    `SELECT c.employee_ref,c.branch_ref,c.base_salary_minor::text AS base,(c.base_salary_minor+COALESCE(x.allowance,0))::text AS gross,COALESCE(x.deduction,0)::text AS deductions,
-    (c.base_salary_minor+COALESCE(x.allowance,0)-COALESCE(x.deduction,0))::text AS net
-    FROM employee_compensation_effective c LEFT JOIN LATERAL(
-     SELECT sum(CASE WHEN p.calc_mode='FIXED' THEN p.amount_minor ELSE round(c.base_salary_minor::numeric*p.rate_bp/10000) END) FILTER(WHERE p.kind='ALLOWANCE') AS allowance,
-     sum(CASE WHEN p.calc_mode='FIXED' THEN p.amount_minor ELSE round(c.base_salary_minor::numeric*p.rate_bp/10000) END) FILTER(WHERE p.kind='DEDUCTION') AS deduction
-     FROM payroll_component p WHERE p.root_realm_id=c.root_realm_id AND p.policy_id=c.policy_id
-    )x ON true WHERE c.root_realm_id=$1 AND c.employee_ref=ANY($2::uuid[]) AND c.branch_ref=ANY($3::uuid[]) AND c.status='APPROVED'
-    AND c.effective_from<=(now() AT TIME ZONE 'Asia/Kolkata')::date AND (c.effective_until IS NULL OR c.effective_until>(now() AT TIME ZONE 'Asia/Kolkata')::date)`,[a.realmId,result.items.map(x=>x.ref),result.branches.map(x=>x.value)])).rows;
-   const byEmployee=new Map(rows.map(r=>[r.employee_ref+":"+r.branch_ref,r]));
-   return {...result,canManageFoundationPolicy:(await this.branches.projectBranchScope(tx,a)).all,items:result.items.map(e=>({...e,salary:byEmployee.get(e.ref+":"+e.branchRef)??null}))};
+ async options(token:string,branchInput:unknown,qInput:unknown,offsetInput:unknown=0,filters:{department?:unknown;employmentType?:unknown;employmentStatus?:unknown;salaryStatus?:unknown}={}){return this.run(token,"payroll.compensation.view",async(tx,a)=>{
+   const offset=Number(offsetInput),salaryStatus=filters.salaryStatus??"";
+   if(!Number.isSafeInteger(offset)||offset<0||offset>100000||typeof salaryStatus!=="string"||!["","CONFIGURED","NOT_CONFIGURED","PENDING"].includes(salaryStatus))throw new BadRequestException("Invalid payroll filter");
+   const scope=await this.hr.directoryScope(tx,a,branchInput,qInput,filters);
+   const result=(await tx.query<{items:unknown[];total:number;active:number;configured:number;gross:string;pending:number}>(
+    `WITH employees AS (${payrollEmployeeDirectorySql}), enriched AS (
+      SELECT e.*,c.salary,COALESCE(p.pending,0)::int AS pending
+      FROM employees e LEFT JOIN LATERAL (
+       SELECT jsonb_build_object('base',c.base_salary_minor::text,'gross',(c.base_salary_minor+COALESCE(x.allowance,0))::text,'deductions',COALESCE(x.deduction,0)::text,'net',(c.base_salary_minor+COALESCE(x.allowance,0)-COALESCE(x.deduction,0))::text) AS salary
+       FROM employee_compensation_effective c LEFT JOIN LATERAL(
+        SELECT sum(CASE WHEN p.calc_mode='FIXED' THEN p.amount_minor ELSE round(c.base_salary_minor::numeric*p.rate_bp/10000) END) FILTER(WHERE p.kind='ALLOWANCE') AS allowance,
+        sum(CASE WHEN p.calc_mode='FIXED' THEN p.amount_minor ELSE round(c.base_salary_minor::numeric*p.rate_bp/10000) END) FILTER(WHERE p.kind='DEDUCTION') AS deduction
+        FROM payroll_component p WHERE p.root_realm_id=c.root_realm_id AND p.policy_id=c.policy_id
+       )x ON true WHERE c.root_realm_id=$1 AND c.employee_ref=e.ref AND c.branch_ref=e."branchRef" AND c.status='APPROVED'
+       AND c.effective_from<=(now() AT TIME ZONE 'Asia/Kolkata')::date AND (c.effective_until IS NULL OR c.effective_until>(now() AT TIME ZONE 'Asia/Kolkata')::date)
+       AND e.status IN('ACTIVE','PROBATION','ON_HOLD') LIMIT 1
+      )c ON true LEFT JOIN LATERAL (
+       SELECT (SELECT count(*) FROM employee_compensation s WHERE s.root_realm_id=$1 AND s.employee_ref=e.ref AND s.branch_ref=e."branchRef" AND s.status='SUBMITTED')+
+       (SELECT count(*) FROM employee_payout_instruction s WHERE s.root_realm_id=$1 AND s.employee_ref=e.ref AND s.branch_ref=e."branchRef" AND s.status='SUBMITTED') AS pending
+      )p ON true
+    ), filtered AS (SELECT * FROM enriched WHERE $8='' OR ($8='CONFIGURED' AND salary IS NOT NULL) OR ($8='NOT_CONFIGURED' AND salary IS NULL) OR ($8='PENDING' AND pending>0)),
+    page AS (SELECT * FROM filtered ORDER BY name,ref LIMIT 30 OFFSET $9)
+    SELECT COALESCE((SELECT jsonb_agg(to_jsonb(p) ORDER BY p.name,p.ref) FROM page p),'[]'::jsonb) AS items,
+    count(*)::int AS total,count(*) FILTER(WHERE status IN('ACTIVE','PROBATION'))::int AS active,
+    count(*) FILTER(WHERE salary IS NOT NULL)::int AS configured,COALESCE(sum((salary->>'gross')::numeric),0)::text AS gross,COALESCE(sum(pending),0)::int AS pending FROM filtered`,[...scope.params,salaryStatus,offset])).rows[0];
+   const {params,...options}=scope;
+   return {...options,items:result.items,hasMore:offset+30<result.total,offset,summary:{total:result.total,active:result.active,configured:result.configured,gross:result.gross,pending:result.pending,documentsPending:null}};
   });}
  async bankOptions(token:string,branchInput:unknown){
   const branch=branchInput==="FOUNDATION"?null:id(branchInput);
@@ -51,7 +65,7 @@ export class PayrollCompensationService{
   });
  }
  async policies(token:string,branchInput:unknown){
-  const branch=id(branchInput);
+  const branch=branchInput==="FOUNDATION"?null:id(branchInput);
   return this.run(token,"payroll.compensation.view",async(tx,a)=>{
    await this.branches.projectBranch(tx,a,branch);
    const rows=(await tx.query<Policy>("SELECT id,branch_ref,label,effective_from::text,effective_until::text AS effective_to,supersedes_ref,status,revision,request_digest FROM payroll_policy_effective WHERE root_realm_id=$1 AND (branch_ref IS NOT DISTINCT FROM $2::uuid OR ($2::uuid IS NOT NULL AND branch_ref IS NULL AND status='APPROVED')) ORDER BY effective_from DESC,id DESC LIMIT 100",[a.realmId,branch])).rows;
