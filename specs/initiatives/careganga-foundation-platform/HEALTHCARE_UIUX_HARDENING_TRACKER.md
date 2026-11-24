@@ -10,7 +10,7 @@ This user-requested cross-module subtracker supplements (does not replace) origi
 
 ## Summary
 
-37 subitems: 17 source-confirmed presentation gaps, 19 runtime/reproduction candidates, 1 reference evidence blocker. Initial baseline: all OPEN. Current progress: 10 rows IN_PROGRESS (including partial cross-cutting work); 27 rows OPEN; zero independently cleared or runtime passes. P0 = release visual evidence gate; P1 = primary journey or substantial usability; P2 = secondary usability. Source status and runtime status stay separate.
+37 subitems: 17 source-confirmed presentation gaps, 19 runtime/reproduction candidates, 1 reference evidence blocker. Initial baseline: all OPEN. Current progress: 13 rows IN_PROGRESS (including partial cross-cutting work); 24 rows OPEN; zero independently cleared or runtime passes. P0 = release visual evidence gate; P1 = primary journey or substantial usability; P2 = secondary usability. Source status and runtime status stay separate.
 
 | ID | Priority | Evidence | Owner/surface | Issue | State |
 |---|---|---|---|---|---|
@@ -18,14 +18,14 @@ This user-requested cross-module subtracker supplements (does not replace) origi
 | HUX-02.01 | P1 | SOURCE | CG14–17 all | Shared design consistency | IN_PROGRESS |
 | HUX-02.02 | P1 | CHECK | CG14–17 admin/center | Role-specific healthcare navigation | OPEN |
 | HUX-03.01 | P1 | CHECK | CG14/15/17/20 admin/center | Operational dashboard journey | OPEN |
-| HUX-04.01 | P1 | SOURCE | CG14 US-001 admin | Provider registration form density | OPEN |
+| HUX-04.01 | P1 | SOURCE | CG14 US-001 admin | Provider registration form density | IN_PROGRESS |
 | HUX-04.02 | P1 | SOURCE | CG14 US-003 admin | Doctor list lacks in-screen search/filter | IN_PROGRESS |
 | HUX-04.03 | P1 | SOURCE | CG14 US-003 admin | Doctor registration/detail hierarchy | IN_PROGRESS |
 | HUX-04.04 | P1 | CHECK | CG14 US-002/003 admin/center | Verification and evidence clarity | OPEN |
 | HUX-04.05 | P1 | CHECK | CG14 US-005 center/admin | Center profile and content editing | OPEN |
 | HUX-05.01 | P1 | CHECK | CG15 US-001 admin/center | Scheduling calendar and availability | OPEN |
 | HUX-06.01 | P1 | CHECK | CG15 US-003/008 admin | Patient and booking management | OPEN |
-| HUX-06.02 | P1 | SOURCE | CG15 US-006 center web | Consultation queue action overload | OPEN |
+| HUX-06.02 | P1 | SOURCE | CG15 US-006 center web | Consultation queue action overload | IN_PROGRESS |
 | HUX-06.03 | P1 | CHECK | CG15 US-003/006 center | Patient intake and consent | OPEN |
 | HUX-07.01 | P1 | SOURCE | CG16 US-001 admin | Lab catalogue search limited to loaded records | OPEN |
 | HUX-07.02 | P2 | SOURCE | CG16 US-001 admin/center | H09 filter coverage | OPEN |
@@ -43,7 +43,7 @@ This user-requested cross-module subtracker supplements (does not replace) origi
 | HUX-11.02 | P1 | CHECK | CG15 US-002/003 public web/app | Appointment calendar and patient verification | OPEN |
 | HUX-11.03 | P1 | CHECK | CG15 US-005/007/008 public web/app | Booking confirmation and patient history | OPEN |
 | HUX-12.01 | P1 | SOURCE | CG14 US-003 internal Android | Doctor management long scrolling forms | IN_PROGRESS |
-| HUX-12.02 | P1 | SOURCE | CG15 US-006 internal Android | Queue summary and action readability | OPEN |
+| HUX-12.02 | P1 | SOURCE | CG15 US-006 internal Android | Queue summary and action readability | IN_PROGRESS |
 | HUX-12.03 | P1 | CHECK | CG14/16/17 internal Android | Operational parity | OPEN |
 | HUX-13.01 | P1 | SOURCE | CG14 US-004 public Android | Public result list and filter density | IN_PROGRESS |
 | HUX-13.02 | P1 | CHECK | CG15/17 public Android | Patient home and healthcare journey | OPEN |
@@ -64,6 +64,12 @@ This user-requested cross-module subtracker supplements (does not replace) origi
 - HUX-04.02 / 04.03 / 12.01: existing authenticated doctor list extended with bounded name, registration number, specialty and status query, original root/permission guard and parameterized SQL preserved. Web and Internal Android use explicit applied filters/pagination, grouped details and safe selection handling. Web uses existing responsive split layout; native form sections, confirmation before discarding and accessible filter buttons. No public/private permission expansion. Source commits cc183162, 647441a1, 39145780, 7a59b73a, 098ac8c6.
 - Discovered and corrected selected-doctor race: detail/evidence responses and late upload callbacks guarded by selection generation; Web action keys tied to doctor identity; row selection disabled during pending detail/write. Source readback only; verify rapid doctor selection, paging and filter beyond first 50, invalid status rejection, independent approval, source scope and delayed proof with actual database/devices.
 - Original CG14 US-003-QA12/14/15/16/18: partial source trace; original QA dispositions preserved. Remaining visual and actual runtime verification, grouped forms and native screen layout quality review pending. Independent reviewer not available; no formal source closure or runtime pass.
+
+## Development checkpoint — provider and consultation queue
+
+- HUX-04.01: provider registration Web/Internal Android grouped organization/contact and named multiple operating center cards; confirmation for remove/discard; block mutation while write outcome unknown, refresh dependent Web geography options. Commits 18815664, fe0cde40, a2bf3ace. CG14 US-001-QA01/03/07/09/11/13/16/17/18 partial source trace; no changed DTO or permission.
+- HUX-06.02 / 12.02: Web and native queue uses compact true daily totals, prominent next-action button and one expanded appointment detail; clinical/file/history components stay under existing role/consent and selected row; slip on native opens in that row. Clear stale history/details on reload, hide queue during checking, clear old Web items on refresh error. Commits 21680199, 5b9ecb3c, 7c1c9df4, 5fc226fa. CG15 US-006-QA01–05/07/08/11/13/16 partially source-traced. Verify simultaneous check-in, failed refresh, revoked consent, invalid QR, multiple pages and proper Back. Native camera parity still a separate verification candidate; no unsupported camera permission added.
+- Source re-read only; runtime and independent review NOT_RUN, no source closure. No existing clinical or financial API/state semantics changed.
 
 ## Subtracker details and expected user scenarios
 
