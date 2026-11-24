@@ -1,7 +1,7 @@
 import {test} from "node:test";
 import assert from "node:assert/strict";
 import {createDecipheriv,randomBytes} from "node:crypto";
-import {componentMinor,date,minor,parsePolicy,parseSalary} from "../src/modules/cg-11-payroll-compensation/domain/payroll-input";
+import {componentMinor,date,minor,parsePolicy,parseSalary,fiscalYearFor,payrollMonth} from "../src/modules/cg-11-payroll-compensation/domain/payroll-input";
 import {parsePayout,protectPayout} from "../src/modules/cg-11-payroll-compensation/domain/payout-instruction";
 const key="00000000-0000-4000-8000-000000000001";
 const branch="00000000-0000-4000-8000-000000000002";
@@ -39,4 +39,16 @@ test("employee bank instructions encrypt, mask, and bind to original source",()=
   const open=(employee:string)=>{const cipher=createDecipheriv("aes-256-gcm",secret,Buffer.from(one.nonce,"base64url"));cipher.setAAD(Buffer.from(JSON.stringify(["CG11_PAYOUT_V1",branch,employee,key])));cipher.setAuthTag(Buffer.from(one.tag,"base64url"));return JSON.parse(Buffer.concat([cipher.update(Buffer.from(one.ciphertext,"base64url")),cipher.final()]).toString());};
   assert.equal(open(key).account,v.account);assert.throws(()=>open(branch));
  }finally{if(previous===undefined)delete process.env.CG11_PAYOUT_ENCRYPTION_KEY;else process.env.CG11_PAYOUT_ENCRYPTION_KEY=previous;}
+});
+
+test("Foundation scope and policy-derived financial years",()=>{
+ assert.equal(parsePolicy({...policy,branchRef:"FOUNDATION"}).branch,null);
+ assert.equal(parsePolicy({...policy,branchRef:null}).branch,null);
+ assert.equal(parsePolicy(policy).branch,branch);
+ assert.deepEqual(fiscalYearFor("2027-03-31"),{label:"2026-2027",from:"2026-04-01",until:"2027-04-01"});
+ assert.equal(fiscalYearFor("2027-04-01").label,"2027-2028");
+ assert.equal(payrollMonth("2026-2027","2027-03").periodUntil,"2027-04-01");
+ assert.equal(payrollMonth("2026-2027","2026-12").periodUntil,"2027-01-01");
+ assert.throws(()=>payrollMonth("2026-2027","2027-04"));
+ assert.throws(()=>payrollMonth("2026-2027","2026-13"));
 });
