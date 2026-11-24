@@ -11,4 +11,4 @@
 .cardGrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,220px),1fr));gap:.75rem}
 .dataCard{border:1px solid var(--cg-health-border);padding:1rem;border-radius:10px;background:var(--cg-health-surface)}
 .dataCard p{margin:.6rem 0}
-@media(max-width:800px){.profileHero,.detailGrid{grid-template-columns:1fr}.sectionNav{flex-wrap:nowrap;overflow-x:auto}.sectionNav a{var(--cg-health-surface)-space:nowrap}}
+@media(max-width:800px){.profileHero,.detailGrid{grid-template-columns:1fr}.sectionNav{flex-wrap:nowrap;overflow-x:auto}.sectionNav a{white-space:nowrap}}
