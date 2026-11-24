@@ -349,16 +349,19 @@ export class FinanceVoucherPaymentService{
     await this.evidence.guardPaymentProof(client,actor,voucherRef,v.version,
      payment.rows[0].proof_file_id,payment.rows[0].proof_file_version);
    }
+   const payrollBound=!!(await client.query("SELECT 1 FROM payroll_payout_attempt WHERE root_realm_id=$1 AND voucher_ref=$2",[actor.realmId,voucherRef])).rowCount;
+   const payrollLines=payrollBound?(await client.query<{accountRef:string;branchRef:string;debitMinor:string;creditMinor:string}>(`SELECT account_ref AS "accountRef",branch_ref AS "branchRef",dr::text AS "debitMinor",cr::text AS "creditMinor" FROM cg11_payroll_posting_lines($1,$2)`,[actor.realmId,voucherRef])).rows:null;
+   if(payrollBound&&(!payrollLines?.length||v.status!=="PAID_VERIFIED"))throw new ConflictException({code:"FINANCE_VOUCHER_POSTING_NOT_READY"});
    const signature=digest(["CG09_APPROVED_VOUCHER_POST_V1",voucherRef,v.version,
     sourceDigest,v.approval_case_id,v.proof_file_id,v.proof_file_revision,
     v.debit_account_id,v.credit_account_id,v.total_minor,
-    v.status==="PAID_VERIFIED"?"INDEPENDENT_PAYMENT_VERIFIED":"ACCRUED_NOT_PAID"]);
+    v.status==="PAID_VERIFIED"?"INDEPENDENT_PAYMENT_VERIFIED":"ACCRUED_NOT_PAID",...(payrollLines?[payrollLines]:[])]);
    // The CG-03 final owner-effect key is an immutable unique UUID source event.
    const journalRef=await this.posting.postBalanced(client,actor,{
     financialYearRef:v.financial_year_id,postingDate:v.posting_date,
     sourceRef:v.id,eventKey:caseEffect.effect_key,immutableDigest:signature,
-    kind:"VOUCHER",description:"Verified Finance voucher "+v.voucher_number,
-    lines:[
+    kind:"VOUCHER",description:"Verified Finance voucher "+v.voucher_number,payrollAllocation:payrollBound,
+    lines:payrollLines??[
       {accountRef:v.debit_account_id,branchRef:v.branch_id,
        debitMinor:v.total_minor,creditMinor:"0"},
       {accountRef:v.credit_account_id,branchRef:v.branch_id,

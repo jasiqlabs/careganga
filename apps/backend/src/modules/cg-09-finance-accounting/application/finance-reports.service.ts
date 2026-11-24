@@ -487,16 +487,18 @@ export class FinanceReportsService{
    description:string;amountMinor:string}>(
    "SELECT j.id AS \"journalRef\",j.financial_year_id AS \"financialYearRef\","+
    "j.posting_date::text AS \"postingDate\",j.description,"+
-   "(l.debit_minor-l.credit_minor)::text AS \"amountMinor\" "+
+   "sum(l.debit_minor-l.credit_minor)::text AS \"amountMinor\" "+
    "FROM journal_line l JOIN journal j ON j.id=l.journal_id AND j.root_realm_id=l.root_realm_id "+
    "JOIN finance_account a ON a.id=l.account_id AND a.root_realm_id=l.root_realm_id "+
    "WHERE j.root_realm_id=$1 AND l.account_id=$2 AND a.account_kind='BANK' "+
    "AND j.status='POSTED' "+
+   "AND ($3::boolean OR NOT cg11_root_payroll_journal(j.root_realm_id,j.id)) "+
    "AND ($3::boolean OR ((a.branch_id IS NULL OR a.branch_id=ANY($4::uuid[])) "+
    "AND l.branch_id=ANY($4::uuid[]))) "+
    "AND NOT EXISTS(SELECT 1 FROM finance_bank_reconciliation r "+
    "WHERE r.root_realm_id=l.root_realm_id AND r.bank_account_id=l.account_id "+
-   "AND r.journal_id=j.id) ORDER BY j.posting_date DESC,j.id DESC LIMIT 51",
+   "AND r.journal_id=j.id) GROUP BY j.id,j.root_realm_id,j.financial_year_id,j.posting_date,j.description "+
+   "HAVING count(*)=1 OR cg11_root_payroll_journal(j.root_realm_id,j.id) ORDER BY j.posting_date DESC,j.id DESC LIMIT 51",
    [actor.realmId,bank,scope.all,scope.branchRefs]);
   return {lines:rows.rows.slice(0,50),hasMore:rows.rows.length>50};
  }
@@ -533,19 +535,21 @@ export class FinanceReportsService{
      throw new ConflictException({code:"FINANCE_RECONCILIATION_CONFLICT"});
     await tx.query("COMMIT");return {confirmed:true,status:previous.rows[0].status,replayed:true};
    }
-   const line=await tx.query<{amount_minor:string}>(
-    "SELECT (l.debit_minor-l.credit_minor)::text AS amount_minor "+
+   const line=await tx.query<{amount_minor:string;root_payroll:boolean}>(
+    "SELECT (l.debit_minor-l.credit_minor)::text AS amount_minor,cg11_root_payroll_journal(j.root_realm_id,j.id) AS root_payroll "+
     "FROM journal_line l JOIN journal j ON j.id=l.journal_id "+
     "AND j.root_realm_id=l.root_realm_id JOIN finance_account a "+
     "ON a.id=l.account_id AND a.root_realm_id=l.root_realm_id "+
     "WHERE j.id=$1 AND j.root_realm_id=$2 AND j.financial_year_id=$3 "+
     "AND l.account_id=$4 AND a.account_kind='BANK' AND j.status='POSTED' "+
+    "AND ($5::boolean OR NOT cg11_root_payroll_journal(j.root_realm_id,j.id)) "+
     "AND ($5::boolean OR ((a.branch_id IS NULL OR a.branch_id=ANY($6::uuid[])) "+
     "AND l.branch_id=ANY($6::uuid[]))) FOR SHARE OF j,l,a",
     [journalRef,actor.realmId,financialYearRef,bankRef,scope.all,scope.branchRefs]);
-   if(line.rows.length!==1)
+   if(!line.rows.length||(line.rows.length!==1&&!line.rows.every(x=>x.root_payroll)))
     throw new ConflictException({code:"FINANCE_RECONCILIATION_INVALID"});
-   const posted=BigInt(line.rows[0].amount_minor),variance=BigInt(amount)-posted;
+   if(line.rows.some(x=>x.root_payroll))await this.branches.requireFinanceRootScope(tx,actor,"finance.reconciliation.manage");
+   const posted=line.rows.reduce((n,x)=>n+BigInt(x.amount_minor),0n),variance=BigInt(amount)-posted;
    await tx.query(
     "INSERT INTO finance_bank_reconciliation(root_realm_id,bank_account_id,journal_id,"+
     "financial_year_id,statement_date,bank_item_ref,statement_amount_minor,"+
@@ -572,10 +576,8 @@ export class FinanceReportsService{
    "(r.recorded_by=$2::uuid) AS \"canUpload\" "+
    "FROM finance_bank_reconciliation r JOIN finance_account a "+
    "ON a.id=r.bank_account_id AND a.root_realm_id=r.root_realm_id "+
-   "JOIN journal_line bl ON bl.journal_id=r.journal_id AND bl.root_realm_id=r.root_realm_id "+
-   "AND bl.account_id=r.bank_account_id "+
-   "WHERE r.root_realm_id=$1 "+
-   "AND ($4::boolean OR bl.branch_id=ANY($5::uuid[])) "+
+   "WHERE r.root_realm_id=$1 AND ($4::boolean OR NOT cg11_root_payroll_journal(r.root_realm_id,r.journal_id)) "+
+   "AND EXISTS(SELECT 1 FROM journal_line bl WHERE bl.journal_id=r.journal_id AND bl.root_realm_id=r.root_realm_id AND bl.account_id=r.bank_account_id AND ($4::boolean OR bl.branch_id=ANY($5::uuid[]))) "+
    "ORDER BY r.recorded_at DESC,r.id DESC LIMIT 51 OFFSET $3",
    [actor.realmId,actor.accountId,offset,scope.all,scope.branchRefs]);
   return {items:rows.rows.slice(0,50),nextOffset:rows.rows.length>50?offset+50:null};
@@ -628,10 +630,8 @@ export class FinanceReportsService{
     "SELECT r.status,r.recorded_by,r.content_digest,r.variance_minor::text "+
     "FROM finance_bank_reconciliation r JOIN finance_account a "+
     "ON a.id=r.bank_account_id AND a.root_realm_id=r.root_realm_id "+
-    "JOIN journal_line bl ON bl.journal_id=r.journal_id AND bl.root_realm_id=r.root_realm_id "+
-    "AND bl.account_id=r.bank_account_id "+
-    "WHERE r.id=$1 AND r.root_realm_id=$2 "+
-    "AND ($3::boolean OR bl.branch_id=ANY($4::uuid[])) "+
+    "WHERE r.id=$1 AND r.root_realm_id=$2 AND ($3::boolean OR NOT cg11_root_payroll_journal(r.root_realm_id,r.journal_id)) "+
+    "AND EXISTS(SELECT 1 FROM journal_line bl WHERE bl.journal_id=r.journal_id AND bl.root_realm_id=r.root_realm_id AND bl.account_id=r.bank_account_id AND ($3::boolean OR bl.branch_id=ANY($4::uuid[]))) "+
     "FOR UPDATE OF r",
     [ref,actor.realmId,scope.all,scope.branchRefs]);
    const rec=row.rows[0];
