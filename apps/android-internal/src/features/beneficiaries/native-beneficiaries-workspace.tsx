@@ -1,5 +1,5 @@
 import {NativeProjectCoverPanel} from "../projects/native-project-cover-panel";
-import React,{useCallback,useEffect,useState} from "react";
+import React,{useCallback,useEffect,useRef,useState} from "react";
 import {ActivityIndicator,Modal,Pressable,ScrollView,Text,TextInput,View} from "react-native";
 import * as Crypto from "expo-crypto";
 import {identityRequest} from "../identity-access/http-client";
@@ -116,20 +116,22 @@ export function NativeBeneficiariesWorkspace({token,onExpired,canManage,canLinkP
  useEffect(()=>{let live=true;setFilterDistricts([]);if(stateFilter)void api<Options>("/options?"+new URLSearchParams({stateRef:stateFilter})).then(v=>{if(live)setFilterDistricts(v.districts);}).catch(e=>{if(live)setError(e.message);});return()=>{live=false;};},[stateFilter,api]);
  useEffect(()=>{let live=true;setFilterBlocks([]);if(stateFilter&&districtFilter)void api<Options>("/options?"+new URLSearchParams({stateRef:stateFilter,districtRef:districtFilter})).then(v=>{if(live)setFilterBlocks(v.blocks);}).catch(e=>{if(live)setError(e.message);});return()=>{live=false;};},[stateFilter,districtFilter,api]);
  useEffect(()=>{let live=true;setBlocks([]);if(draft.stateRef&&draft.districtRef)void api<Options>("/options?"+new URLSearchParams({stateRef:draft.stateRef,districtRef:draft.districtRef})).then(v=>{if(live)setBlocks(v.blocks);}).catch(e=>{if(live)setError(e.message);});return()=>{live=false;};},[draft.stateRef,draft.districtRef,api]);
- const select=async(id:string)=>{setBusy(true);setError("");
+ const detailSeq=useRef(0),detailTarget=useRef("");
+ const select=async(id:string)=>{const n=++detailSeq.current;if(detailTarget.current!==id){detailTarget.current=id;setSubmitKey(Crypto.randomUUID());setDecisionKey(Crypto.randomUUID());}setBusy(true);setSelected(null);setReview(null);setError("");
   try{
    const [x,audit,verification,reviewInfo]=await Promise.all([
     api<Item>("/"+id),api<{items:ActionHistory[]}>("/"+id+"/history"),
     api<{items:VerificationHistory[]}>("/"+id+"/verification-history"),
     api<ReviewInfo>("/"+id+"/verification-review")
    ]);
+   if(n!==detailSeq.current)return;
    setSelected(x);setAuditHistory(audit.items);setVerificationHistory(verification.items);
    setReview(reviewInfo);setReviewPassword("");setReviewRemarks("");
    setLinkKey(Crypto.randomUUID());setProjectRef("");
    if(canLinkProjects){const p=new URLSearchParams({branchRef:x.branchRef??""});
-    setProjects(await api<Option[]>("/eligible-projects?"+p).catch(()=>[]));}
-  }catch(e){setSelected(null);setError(e instanceof Error?e.message:"Cannot open beneficiary");}
-  finally{setBusy(false);}
+    const options=await api<Option[]>("/eligible-projects?"+p).catch(()=>[]);if(n===detailSeq.current)setProjects(options);}
+  }catch(e){if(n===detailSeq.current){setSelected(null);setError(e instanceof Error?e.message:"Cannot open beneficiary");}}
+  finally{if(n===detailSeq.current)setBusy(false);}
  };
  const reload=()=>setRefreshKey(x=>x+1);
  const loadProjectFilters=async()=>{try{setFilterProjects(await api<Option[]>("/project-filter-options?"+new URLSearchParams({branchRef:branch,q:projectSearch.trim()})));}catch(e){setFilterProjects([]);setError(e instanceof Error?e.message:"Projects unavailable");}};
@@ -238,7 +240,7 @@ export function NativeBeneficiariesWorkspace({token,onExpired,canManage,canLinkP
    <Button label="Reset filters" outline onPress={()=>{setQ("");setSearch("");setBranch("");setTab("ALL");setGenderFilter("");setAgeFilter("");setTypeFilter("");setStateFilter("");setDistrictFilter("");setBlockFilter("");setCategoryFilter("");setFromFilter("");setToFilter("");setProjectFilter("");setProjectSearch("");setFilterProjects([]);setAppliedFilters({gender:"",ageGroup:"",type:"",stateRef:"",districtRef:"",blockRef:"",category:"",registeredFrom:"",registeredTo:"",projectRef:""});setCursor("");setHistory([]);}}/>
    <Select title="Operating branch" selected={branch}
     items={[{value:"",label:"All permitted branches"},...(opts?.branches??[])]}
-    onSelect={x=>{setBranch(x);setProjectFilter("");setFilterProjects([]);setAppliedFilters(f=>({...f,projectRef:""}));setCursor("");setHistory([]);}}/>
+    onSelect={x=>{detailSeq.current++;setBusy(false);setSelected(null);setReview(null);setBranch(x);setProjectFilter("");setFilterProjects([]);setAppliedFilters(f=>({...f,projectRef:""}));setCursor("");setHistory([]);}}/>
    <Select title="Status" selected={tab} onSelect={x=>{setTab(x);setCursor("");setHistory([]);}}
     items={enumOptions(["ALL","ACTIVE","INACTIVE","VERIFIED","PENDING"])}/>
    {!!notice&&<Text accessibilityRole="alert" style={{color:"#166534"}}>{notice}</Text>}
@@ -257,7 +259,7 @@ export function NativeBeneficiariesWorkspace({token,onExpired,canManage,canLinkP
    </View>
    {selected&&<View style={{padding:16,borderRadius:12,backgroundColor:"white",gap:7,borderColor:"#DBEAFE",borderWidth:1}}>
     <Text style={{fontSize:18,fontWeight:"700"}}>{selected.name}</Text>
-    <Text>{selected.reference} · Revision {selected.revision}</Text>
+    <Text>{selected.reference}</Text>
     <Text>Verification: {capitalize(selected.verification)}</Text>
     <Text>Lifecycle: {capitalize(selected.lifecycle)}</Text>
     <Text>Contact: {selected.contactMobile??"Not recorded / restricted"}</Text>
