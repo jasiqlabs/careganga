@@ -106,7 +106,7 @@ export class PayrollCompensationService{
  }
  async history(token:string,employee:string){
   return this.run(token,"payroll.compensation.view",async(tx,a)=>{
-   const e=await this.employee(tx,a,employee);
+   const e=await this.hr.employeeForHistory(tx,a,employee);
    const scope=await this.branches.projectBranchScope(tx,a);
    const rows=(await tx.query<Salary>("SELECT *,effective_from::text,effective_until::text AS effective_to,base_salary_minor::text FROM employee_compensation_effective WHERE root_realm_id=$1 AND employee_ref=$2 AND branch_ref=ANY($3::uuid[]) ORDER BY effective_from DESC,id DESC LIMIT 100",[a.realmId,e.id,scope.branches.map(b=>b.value)])).rows;
    await this.audit(tx,a,"COMPENSATION",e.id,"READ");return {employee:{ref:e.id,reference:e.employee_code,name:e.name,designation:e.designation,status:e.status,branchRef:e.branch_ref},items:rows.map(r=>this.salaryView(r))};
@@ -203,7 +203,7 @@ export class PayrollCompensationService{
    preview={...this.policyView(row),components};digest=hash([kind,row.id,row.branch_ref,row.label,row.effective_from,row.effective_to,row.supersedes_ref,components,row.request_digest]);
   }else{
    if(row.branch_ref===null)throw conflict();
-   const current=await this.employee(tx,a,row.employee_ref),effective=write?await this.employee(tx,a,row.employee_ref,row.effective_from):null;
+   const current=write?await this.employee(tx,a,row.employee_ref):await this.hr.employeeForHistory(tx,a,row.employee_ref),effective=write?await this.employee(tx,a,row.employee_ref,row.effective_from):null;
    if(write&&(!effective||current.branch_ref!==row.branch_ref||effective.assignment_ref!==row.assignment_ref||effective.assignment_version!==row.assignment_version||effective.status_version!==row.employee_status_version||!["ACTIVE","PROBATION"].includes(current.status)))throw conflict();
    if(kind==="PAYOUT"){
     preview={ref:row.id,employeeName:current.name,employeeReference:current.employee_code,effectiveFrom:row.effective_from,effectiveTo:row.effective_to,status:row.status,revision:row.revision,maskedAccount:"•••• "+row.masked_digits,maskedIfsc:row.masked_ifsc};
