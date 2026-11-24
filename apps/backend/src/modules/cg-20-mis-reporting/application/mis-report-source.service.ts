@@ -2,6 +2,9 @@ import {
  BadRequestException,ForbiddenException,Injectable,UnauthorizedException
 } from "@nestjs/common";
 import {BeneficiaryReportService} from "../../cg-06-beneficiaries-assistance/application/beneficiary-report.service";
+import {MembershipRosterService} from "../../cg-04-membership-volunteers/application/membership-roster.service";
+import {VolunteerRosterService} from "../../cg-04-membership-volunteers/application/volunteer-roster.service";
+import {PayrollRunService} from "../../cg-11-payroll-compensation/application/payroll-run.service";
 import {SessionService} from "../../cg-01-identity-access/application/session.service";
 import {FinanceReportsService} from "../../cg-09-finance-accounting/application/finance-reports.service";
 import {BranchSourceFacade} from "../../cg-02-foundation-structure/application/branch-source.facade";
@@ -13,9 +16,10 @@ export const REPORT_KINDS=[
  "FINANCE_POSTED_LEDGER","FINANCE_POSTED_SUMMARY",
  "FINANCE_POSTED_TREND","FINANCE_POSTED_GROUPED",
  "APPOINTMENT_STATUS","APPOINTMENT_STATUS_GROUPED","APPOINTMENT_DOCTOR_SUMMARY",
- "PLATFORM_AUDIT_ACTIVITY","DIAGNOSTICS_CATALOG_SUMMARY","BENEFICIARY_ASSISTANCE_SUMMARY"
+ "PLATFORM_AUDIT_ACTIVITY","DIAGNOSTICS_CATALOG_SUMMARY","BENEFICIARY_ASSISTANCE_SUMMARY","MEMBERSHIP_ROSTER_SUMMARY","VOLUNTEER_ROSTER_SUMMARY","PAYROLL_STATUS_SUMMARY"
 ] as const;
 export type ReportKind=typeof REPORT_KINDS[number];
+export const LIVE_PREVIEW_KINDS:readonly ReportKind[]=["BENEFICIARY_ASSISTANCE_SUMMARY","MEMBERSHIP_ROSTER_SUMMARY","VOLUNTEER_ROSTER_SUMMARY","PAYROLL_STATUS_SUMMARY"];
 export type ReportView="TABLE"|"SUMMARY"|"CHART"|"PIVOT";
 export type SafeReportRequest={
  kind:ReportKind;view:ReportView;yearRef?:string;branchRef?:string;
@@ -60,7 +64,10 @@ export function parseSafeReport(raw:unknown):SafeReportRequest{
   APPOINTMENT_DOCTOR_SUMMARY:["TABLE","CHART"],
   PLATFORM_AUDIT_ACTIVITY:["TABLE"],
   DIAGNOSTICS_CATALOG_SUMMARY:["SUMMARY"],
-  BENEFICIARY_ASSISTANCE_SUMMARY:["SUMMARY"]
+  BENEFICIARY_ASSISTANCE_SUMMARY:["SUMMARY"],
+  MEMBERSHIP_ROSTER_SUMMARY:["SUMMARY"],
+  VOLUNTEER_ROSTER_SUMMARY:["SUMMARY"],
+  PAYROLL_STATUS_SUMMARY:["SUMMARY"]
  };
  if(!legalViews[kind as ReportKind].includes(view))
   throw new BadRequestException({code:"MIS_REPORT_VIEW_INVALID",
@@ -80,7 +87,7 @@ export function parseSafeReport(raw:unknown):SafeReportRequest{
  if([yearRef,branchRef,centerRef,areaRef].some(v=>v!==""&&!UUID.test(v))||
   areaRef!==""&&!["FINANCE_POSTED_LEDGER","FINANCE_POSTED_GROUPED"].includes(kind)||
   isFinance&&(centerRef!==""||status!=="")||
-  (kind==="PLATFORM_AUDIT_ACTIVITY"||kind==="DIAGNOSTICS_CATALOG_SUMMARY"||kind==="BENEFICIARY_ASSISTANCE_SUMMARY")&&
+  (kind==="PLATFORM_AUDIT_ACTIVITY"||kind==="DIAGNOSTICS_CATALOG_SUMMARY"||LIVE_PREVIEW_KINDS.includes(kind as ReportKind))&&
    (centerRef!==""||status!=="")||
   kind==="DIAGNOSTICS_CATALOG_SUMMARY"&&fromDay!==""||
   kind!=="FINANCE_POSTED_GROUPED"&&(groupBy!==""||sortBy!==""||sortDirection!=="")||
@@ -150,7 +157,10 @@ export class MisReportSourceService{
   private readonly audit:PlatformAuditService,
   private readonly diagnostics:DiagnosticsCatalogService,
   private readonly branches:BranchSourceFacade,
-  private readonly beneficiaries:BeneficiaryReportService){}
+  private readonly beneficiaries:BeneficiaryReportService,
+  private readonly members:MembershipRosterService,
+  private readonly volunteers:VolunteerRosterService,
+  private readonly payroll:PayrollRunService){}
  /** CG02 is the sole source of current permitted branch scope, never a report-provided UUID. */
  async originalFinanceScope(token:string,request:SafeReportRequest){
   if(!request.kind.startsWith("FINANCE_"))return null;
@@ -236,6 +246,9 @@ export class MisReportSourceService{
    permission("diagnostics.catalog.view")]);
   if(await permission("beneficiaries.view")&&await permission("beneficiaries.assistance.view"))templates.push({
    kind:"BENEFICIARY_ASSISTANCE_SUMMARY",label:"Beneficiary and assistance summary",views:["SUMMARY"],description:"Current permitted consented aggregate; small groups hidden. Live preview only."});
+  if(await permission("membership.members.view"))templates.push({kind:"MEMBERSHIP_ROSTER_SUMMARY",label:"Membership status",views:["SUMMARY"],description:"Current authorized membership counts, live preview only."});
+  if(await permission("volunteers.view"))templates.push({kind:"VOLUNTEER_ROSTER_SUMMARY",label:"Volunteer status",views:["SUMMARY"],description:"Current authorized volunteer counts, live preview only."});
+  if(await permission("payroll.runs.view")&&await permission("payroll.compensation.view"))templates.push({kind:"PAYROLL_STATUS_SUMMARY",label:"Payroll status",views:["SUMMARY"],description:"Current month payroll run and payment status counts, live preview only."});
   if(diagnosticsAccess)templates.push({
    kind:"DIAGNOSTICS_CATALOG_SUMMARY",label:"Diagnostics services summary",
    views:["SUMMARY"],description:"Current approved service catalog counts from CG-16."});
@@ -384,6 +397,40 @@ export class MisReportSourceService{
     rows:x.months,nextOffset:null,sourceReadAt,
     sourceCutoffKind:"OWNER_READ_COMPLETED_NOT_SNAPSHOT",
     explanation:x.explanation,scopeLabel:"Current permitted finance source scope"};
+  }
+  if(q.kind==="MEMBERSHIP_ROSTER_SUMMARY"||q.kind==="VOLUNTEER_ROSTER_SUMMARY"){
+   const member=q.kind==="MEMBERSHIP_ROSTER_SUMMARY";
+   const x=member?await this.members.misCounts(token):await this.volunteers.misCounts(token);
+   const columns=[{key:"total",label:"Total",unit:"COUNT" as const},{key:"active",label:"Active",unit:"COUNT" as const},
+    {key:"suspended",label:"Suspended",unit:"COUNT" as const},...(member?
+    [{key:"expired",label:"Expired",unit:"COUNT" as const},{key:"cancelled",label:"Cancelled",unit:"COUNT" as const}]:
+    [{key:"inactive",label:"Inactive",unit:"COUNT" as const}])];
+   const counts=columns.map(c=>x[c.key as keyof typeof x]??(x as unknown as Record<string,unknown>)[c.key]);
+   if(counts.some(v=>typeof v!=="number"||!Number.isSafeInteger(v)||Number(v)<0)||
+      counts.slice(1).reduce<number>((n,v)=>n+Number(v),0)!==x.total)throw Error("Roster aggregate unavailable");
+   const suppressed=counts.some(v=>Number(v)>0&&Number(v)<5);
+   return {kind:q.kind,view:q.view,label:member?"Membership status":"Volunteer status",
+    state:suppressed?"SUPPRESSED":x.total===0?"EMPTY":"READY",columns,
+    rows:suppressed||x.total===0?[]:[Object.fromEntries(columns.map((c,i)=>[c.key,String(counts[i])]))],
+    nextOffset:null,sourceReadAt:new Date().toISOString(),sourceAsOf:x.sourceAsOf,
+    sourceCutoffKind:"OWNER_TRANSACTION_SNAPSHOT",explanation:suppressed?"Small groups are hidden to protect privacy.":
+     "Current owner-scoped status counts only; no contact, identity or address fields. Live preview only.",
+    scopeLabel:"Current permitted roster scope"};
+  }
+  if(q.kind==="PAYROLL_STATUS_SUMMARY"){
+   const x=await this.payroll.dashboard(token);
+   const columns=[{key:"period",label:"Payroll month",unit:"TEXT" as const},
+    {key:"runs",label:"Runs",unit:"COUNT" as const},{key:"approvedRuns",label:"Approved runs",unit:"COUNT" as const},
+    {key:"pendingApprovals",label:"Pending approvals",unit:"COUNT" as const},{key:"employees",label:"Approved payroll lines",unit:"COUNT" as const},
+    {key:"paidEmployees",label:"Verified paid lines",unit:"COUNT" as const},{key:"pendingEmployees",label:"Outstanding lines",unit:"COUNT" as const},
+    {key:"unresolvedEmployees",label:"Unresolved lines",unit:"COUNT" as const},{key:"failedEmployees",label:"Verified failed lines",unit:"COUNT" as const}];
+   const row=x.selected;
+   if(row&&columns.slice(1).some(c=>!Number.isSafeInteger(row[c.key as keyof typeof row])||Number(row[c.key as keyof typeof row])<0))throw Error("Payroll aggregate unavailable");
+   return {kind:q.kind,view:q.view,label:"Payroll status",state:row?"READY":"EMPTY",columns,
+    rows:row?[Object.fromEntries(columns.map(c=>[c.key,String(row[c.key as keyof typeof row])]))]:[],
+    nextOffset:null,sourceReadAt:new Date().toISOString(),sourceCutoffKind:"OWNER_READ_COMPLETED_NOT_SNAPSHOT",
+    explanation:"Current month, original authorized payroll run and payment outcome counts. No salary or bank fields. Live preview only.",
+    scopeLabel:"Current permitted payroll scope"};
   }
   if(q.kind==="BENEFICIARY_ASSISTANCE_SUMMARY"){
    const x=await this.beneficiaries.misSummary(token);
