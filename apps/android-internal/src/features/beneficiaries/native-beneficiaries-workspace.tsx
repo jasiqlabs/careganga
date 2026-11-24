@@ -12,6 +12,19 @@ type Item={ref:string;reference:string;name:string;contactMobile:string|null;rep
  verification:string;lifecycle:string;revision:number;projectLinks?:{ref:string;projectRef:string;projectName:string}[]};
 type Summary={total:number;male:number;female:number;children:number;active:number;verified:number};
 const metrics:[keyof Summary,string][]=[["total","Total Beneficiaries"],["male","Male"],["female","Female"],["children","Children"],["active","Active"],["verified","Verified"]];
+function validateIntake(v:Form):string{
+ if(v.name.trim().length<2)return "Enter the beneficiary name (at least 2 characters).";
+ if(v.beneficiaryType.trim().length<2)return "Enter the beneficiary type.";
+ if(!v.stateRef)return "Select the beneficiary state.";
+ if(v.blockRef&&!v.districtRef)return "Select a district before choosing a block.";
+ if(v.contactMobile.trim()&&!/^\+[1-9][0-9]{7,14}$/.test(v.contactMobile.trim()))return "Enter the contact mobile with country code, or leave it blank.";
+ if(v.representativeContact.trim()&&!/^\+[1-9][0-9]{7,14}$/.test(v.representativeContact.trim()))return "Enter the representative mobile with country code, or leave it blank.";
+ if(v.ageGroup==="CHILD"&&v.consentKind!=="GUARDIAN")return "A child requires guardian consent.";
+ if(v.consentKind!=="SELF"&&!v.representativeName.trim())return "Enter the guardian or representative name.";
+ if(v.consentPurpose.trim().length<5)return "Enter the consent purpose (at least 5 characters).";
+ if(!v.consentAcknowledged)return "Confirm consent acknowledgement.";
+ return "";
+}
 type Page={summary:Summary;items:Item[];nextCursor:string|null;hasMore:boolean};
 type DuplicateSuggestion={reference:string;maskedName:string;beneficiaryType:string;contactMatches:boolean};
 type DuplicateResponse={advisory:boolean;items:DuplicateSuggestion[];hasMore:boolean};
@@ -124,11 +137,12 @@ export function NativeBeneficiariesWorkspace({token,onExpired,canManage,canLinkP
    const [x,audit,verification,reviewInfo]=await Promise.all([
     api<Item>("/"+id),api<{items:ActionHistory[]}>("/"+id+"/history"),
     api<{items:VerificationHistory[]}>("/"+id+"/verification-history"),
-    api<ReviewInfo>("/"+id+"/verification-review")
+    api<ReviewInfo>("/"+id+"/verification-review").catch(()=>null)
    ]);
    if(n!==detailSeq.current)return;
    setSelected(x);setAuditHistory(audit.items);setVerificationHistory(verification.items);
    setReview(reviewInfo);setReviewPassword("");setReviewRemarks("");
+   if(!reviewInfo)setError("Independent verification unavailable. Review actions are disabled until refresh.");
    setLinkKey(Crypto.randomUUID());setProjectRef("");
    if(canLinkProjects){const p=new URLSearchParams({branchRef:x.branchRef??""});
     const options=await api<Option[]>("/eligible-projects?"+p).catch(()=>[]);if(n===detailSeq.current)setProjects(options);}
@@ -176,6 +190,7 @@ export function NativeBeneficiariesWorkspace({token,onExpired,canManage,canLinkP
   finally{setCheckingDuplicates(false);}
  };
  const save=async()=>{if(busy||!mode||!draft.consentAcknowledged)return;setBusy(true);setError("");
+  const fieldIssue=validateIntake(draft);if(fieldIssue){setError(fieldIssue);setBusy(false);return;}
   const body:Record<string,unknown>={...draft,requestKey:commandKey,branchRef:draft.branchRef||null,
    contactMobile:draft.contactMobile||null,representativeName:draft.representativeName||null,
    representativeContact:draft.representativeContact||null,districtRef:draft.districtRef||null};
@@ -276,6 +291,7 @@ export function NativeBeneficiariesWorkspace({token,onExpired,canManage,canLinkP
     <Text>Consent: {selected.consentRevoked?"Withdrawn":capitalize(selected.consentKind)}</Text>
     {canReadEvidence&&!selected.consentRevoked&&selected.lifecycle==="ACTIVE"&&<NativeProjectCoverPanel key={selected.ref+":"+selected.revision} projectRef={selected.ref} version={selected.revision} sourceKind="beneficiary" token={token} onExpired={onExpired} canUpload={canUploadEvidence&&canManage}/>}
     <Text style={{fontSize:12,color:"#64748B"}}>Verified status requires independent CG-03 review. This screen cannot approve it.</Text>
+    {!review&&<View><Text>Independent verification unavailable.</Text><Button label="Refresh details" outline onPress={()=>void select(selected.ref)}/></View>}
     {review&&<View style={{borderWidth:1,borderColor:"#E0E5ED",borderRadius:10,padding:12,gap:8}}>
      <Text style={{fontWeight:"700"}}>CG-03 independent verification & approval</Text>
      <Text>Case: {review.caseNumber??"Not submitted"} · {capitalize(review.status)}</Text>
