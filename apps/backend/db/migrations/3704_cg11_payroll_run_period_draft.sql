@@ -45,6 +45,7 @@ CREATE TABLE payroll_run_command(
 CREATE TABLE payroll_line(
  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),root_realm_id uuid NOT NULL,run_id uuid NOT NULL,source_revision integer NOT NULL,
  employee_ref uuid NOT NULL,period_key text NOT NULL,branch_ref uuid NOT NULL,
+ entitlement_state text NOT NULL CHECK(entitlement_state IN('RELEASE_ELIGIBLE','HELD')),
  base_minor bigint NOT NULL CHECK(base_minor>=0),allowance_minor bigint NOT NULL CHECK(allowance_minor>=0),
  bonus_minor bigint NOT NULL CHECK(bonus_minor>=0),arrears_minor bigint NOT NULL CHECK(arrears_minor>=0),
  deduction_minor bigint NOT NULL CHECK(deduction_minor>=0),gross_minor bigint NOT NULL CHECK(gross_minor=base_minor+allowance_minor+bonus_minor+arrears_minor),
