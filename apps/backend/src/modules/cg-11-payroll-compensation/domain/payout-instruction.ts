@@ -2,12 +2,12 @@ import {BadRequestException,ServiceUnavailableException} from "@nestjs/common";
 import {createCipheriv,createHmac,randomBytes} from "node:crypto";
 import {date,fields,id,label} from "./payroll-input";
 export function parsePayout(raw:unknown){
- const x=fields(raw,["requestKey","effectiveFrom","effectiveTo","accountHolder","accountNumber","ifsc"]);
+ const x=fields(raw,["requestKey","effectiveFrom","effectiveTo","supersedesRef","accountHolder","accountNumber","ifsc"]);
  const from=date(x.effectiveFrom),to=x.effectiveTo==null||x.effectiveTo===""?null:date(x.effectiveTo);
  if(to&&to<=from)throw new BadRequestException("End date must be after start date");
  const holder=label(x.accountHolder),account=x.accountNumber,ifsc=typeof x.ifsc==="string"?x.ifsc.trim().toUpperCase():"";
  if(typeof account!=="string"||!/^[0-9]{6,22}$/.test(account)||!/^[A-Z]{4}0[A-Z0-9]{6}$/.test(ifsc))throw new BadRequestException("Check the bank account number and IFSC");
- return {key:id(x.requestKey),from,to,holder,account,ifsc};
+ return {key:id(x.requestKey),supersedes:x.supersedesRef==null||x.supersedesRef===""?null:id(x.supersedesRef),from,to,holder,account,ifsc};
 }
 function encryptionKey(){
  const raw=process.env.CG11_PAYOUT_ENCRYPTION_KEY??"";
