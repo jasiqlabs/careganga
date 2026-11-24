@@ -1,0 +1,28 @@
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 280px), 1fr));
+  gap: 1rem;
+}
+.card {
+  display: flex;
+  flex-direction: column;
+  gap: .5rem;
+  min-width: 0;
+  padding: 1.1rem;
+  border: 1px solid var(--cg-border, #d7dfdb);
+  border-radius: .9rem;
+  background: var(--cg-surface, #fff);
+  overflow-wrap: anywhere;
+}
+.card p, .card h3 { margin: 0; }
+.identity { display: flex; align-items: center; gap: .65rem; }
+.avatar {
+  display: grid; place-items: center; flex: 0 0 2.4rem;
+  height: 2.4rem; border: 1px solid currentColor; border-radius: .6rem;
+  color: inherit; font-size: 1.25rem; font-weight: 700;
+}
+.actions { display: flex; flex-wrap: wrap; align-items: center; gap: .65rem; margin-top: auto; padding-top: .5rem; }
+.actions a { display: inline-flex; min-height: 2.8rem; align-items: center; justify-content: center; padding: .5rem .7rem; text-align: center; }
+.actions a:global(.primary) { text-decoration: none; }
+.filters { border: 1px solid var(--cg-border, #d7dfdb); border-radius: .75rem; padding: .75rem; }
+@media (max-width: 480px) { .actions a { flex: 1 1 100%; } }
