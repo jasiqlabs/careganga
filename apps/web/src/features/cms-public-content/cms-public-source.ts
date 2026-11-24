@@ -61,12 +61,12 @@ export async function publishedCmsNavigation():Promise<PublicCmsNavigation|null>
 
 export type CmsArticleSummary={slug:string;title:string;category:string;
  excerpt:string;asOfDate:string;path:string};
-export async function publishedCmsArticles(category="",cursor=""):
+export async function publishedCmsArticles(category="",cursor="",eventsOnly=false):
  Promise<{posts:CmsArticleSummary[];nextCursor:string|null;available:boolean}>{
  const backend=process.env.BACKEND_URL;
  if(!backend)return {posts:[],nextCursor:null,available:false};
  try{
-  const url=new URL("/api/public/content/articles",backend);
+  const url=new URL(eventsOnly?"/api/public/content/events":"/api/public/content/articles",backend);
   if(category)url.searchParams.set("category",category);
   if(cursor)url.searchParams.set("cursor",cursor);
   const res=await fetch(url,{cache:"no-store",signal:AbortSignal.timeout(7000)});
