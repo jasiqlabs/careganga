@@ -110,7 +110,7 @@ export function LabTestMasterWorkspace({canManage,canViewPricing,
   void reloadCenter(centerRef).catch(e=>setError(e instanceof Error?e.message:
    "Center test mappings cannot be confirmed."));
  },[centerRef,canViewPricing,reloadCenter]);
- const selected=tests.find(t=>t.testRef===selectedRef)??null;
+ const selected=testLoading?null:tests.find(t=>t.testRef===selectedRef)??null;
  const visible=testLoading?[]:tests;
  function searchTests(reset=false,offset=0,paging=false){
   if(busy||uncertain||showForm||testLoading)return;
@@ -256,7 +256,7 @@ export function LabTestMasterWorkspace({canManage,canViewPricing,
     sampleType:string;status:string
    }[];exportedCount:number}>("tests/export","POST",
     {testRefs:visible.map(t=>t.testRef)});
-   if(!Array.isArray(response.tests)||response.tests.length!==visible.length)
+   if(!Array.isArray(response.tests)||response.tests.length!==visible.length||response.exportedCount!==visible.length||new Set(response.tests.map(t=>t.testRef)).size!==visible.length||response.tests.some(t=>!visible.some(v=>v.testRef===t.testRef)))
     throw Error("Refresh this page before exporting the currently permitted tests.");
    const rows=[["Test code","Test name","Category","Sample type","Status"],
     ...response.tests.map(t=>[t.code,t.name,t.category,label(t.sampleType),t.status])];
@@ -359,9 +359,9 @@ export function LabTestMasterWorkspace({canManage,canViewPricing,
      {tab==="Lab Mapping"&&<p>Each verified lab independently maps the active tests it offers. Historical mappings remain preserved.</p>}
      {tab==="Report & Settings"&&<p>A test definition is not a patient clinical report. Sample processing and professional report release require separate approved Lab ERP readiness.</p>}
      {canManage&&<div className="toolbar">
-      <button type="button" onClick={()=>openForm(selected)}>Edit details</button>
-      <button type="button" onClick={()=>openForm(selected,true)}>Duplicate test</button>
-      {selected.status==="ACTIVE"&&<button type="button" disabled={busy||uncertain}
+      <button type="button" disabled={busy||uncertain||testLoading||showForm} onClick={()=>openForm(selected)}>Edit details</button>
+      <button type="button" disabled={busy||uncertain||testLoading||showForm} onClick={()=>openForm(selected,true)}>Duplicate test</button>
+      {selected.status==="ACTIVE"&&<button type="button" disabled={busy||uncertain||testLoading||showForm}
        onClick={deactivate}>Deactivate</button>}
      </div>}</>:<p className="cg-module-empty">Choose a test to review its source-backed details.</p>}
    </section>
