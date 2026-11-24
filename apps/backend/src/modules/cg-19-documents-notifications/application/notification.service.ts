@@ -384,16 +384,17 @@ export class NotificationService{
    * are both currently valid. Other CG19 notification families are unchanged.
    */
   private async currentMisNoticeScope(bearer:string){
+    const denied={allowed:false,all:false,branches:[] as string[]};
     try{
       await this.sessions.requireAction(bearer,"mis.reports.view");
       await this.sessions.requireAction(bearer,"mis.reports.export");
-      const scope=await this.branches.financeReportScope(bearer);
-      return {allowed:true,all:scope.all,branches:scope.branchRefs};
-    }catch(error){
-      if(error instanceof ForbiddenException)
-       return {allowed:false,all:false,branches:[] as string[]};
-      throw error;
-    }
+    }catch(error){if(error instanceof ForbiddenException)return {finance:denied,project:denied};throw error;}
+    const read=async(source:()=>Promise<{all:boolean;branchRefs:string[]}>)=>{
+      try{const s=await source();return {allowed:true,all:s.all,branches:s.branchRefs};}
+      catch(error){if(error instanceof ForbiddenException)return denied;throw error;}
+    };
+    return {finance:await read(()=>this.branches.financeReportScope(bearer)),
+      project:await read(()=>this.branches.projectReportScope(bearer))};
   }
   async inbox(bearer:string,limitInput:unknown=20){
     const actor=await this.sessions.requireAction(bearer,"communications.notifications.view");
@@ -474,8 +475,7 @@ export class NotificationService{
                 AND consent.purpose='PATIENT_CARE'
               ORDER BY consent.revision_no DESC LIMIT 1)=true
         ))
-        AND (n.source_kind<>'CG20_MIS_REPORT' OR
-          ($4::boolean AND EXISTS(
+        AND (n.source_kind<>'CG20_MIS_REPORT' OR EXISTS(
             SELECT 1 FROM cg20_report_run report
             JOIN cg19_mis_report_artifact artifact
               ON artifact.root_realm_id=report.root_realm_id
@@ -489,7 +489,6 @@ export class NotificationService{
               AND report.id=n.cg20_mis_run_ref
               AND report.requester_ref=n.recipient_id
               AND report.run_origin='SCHEDULED'
-              AND report.source_key='FINANCE_POSTED_SUMMARY'
               AND report.state='READY' AND report.expires_at>now()
               AND saved.state='ACTIVE'
               AND saved.current_revision=report.definition_revision
@@ -497,13 +496,16 @@ export class NotificationService{
               AND artifact.object_version IS NOT NULL
               AND report.original_scope_all IS NOT NULL
               AND report.original_scope_branch_refs IS NOT NULL
-              AND ((report.original_scope_all AND $5::boolean)
-               OR (NOT report.original_scope_all AND
-                 ($5::boolean OR report.original_scope_branch_refs <@ $6::uuid[])))
-          )))
+              AND ((report.source_key='FINANCE_POSTED_SUMMARY' AND $4::boolean
+                AND ((report.original_scope_all AND $5::boolean)
+                  OR (NOT report.original_scope_all AND ($5::boolean OR report.original_scope_branch_refs <@ $6::uuid[]))))
+               OR (report.source_key='PROJECT_STATUS_REPORT' AND $7::boolean AND report.original_project_digest IS NOT NULL
+                AND ((report.original_scope_all AND $8::boolean)
+                  OR (NOT report.original_scope_all AND ($8::boolean OR report.original_scope_branch_refs <@ $9::uuid[])))))
+          ))
       ORDER BY n.created_at DESC,n.id DESC LIMIT $3
     `,[actor.realmId,actor.accountId,limit,
-      scope.allowed,scope.all,scope.branches]);
+      scope.finance.allowed,scope.finance.all,scope.finance.branches,scope.project.allowed,scope.project.all,scope.project.branches]);
     return {items:rows.rows.map(row=>({
       notificationRef:row.id,title:row.subject_snapshot,
       body:row.body_snapshot,channel:row.channel,status:row.state,
@@ -583,8 +585,7 @@ export class NotificationService{
                 AND consent.purpose='PATIENT_CARE'
               ORDER BY consent.revision_no DESC LIMIT 1)=true
         ))
-        AND (n.source_kind<>'CG20_MIS_REPORT' OR
-          ($4::boolean AND EXISTS(
+        AND (n.source_kind<>'CG20_MIS_REPORT' OR EXISTS(
             SELECT 1 FROM cg20_report_run report
             JOIN cg19_mis_report_artifact artifact
               ON artifact.root_realm_id=report.root_realm_id
@@ -598,7 +599,6 @@ export class NotificationService{
               AND report.id=n.cg20_mis_run_ref
               AND report.requester_ref=n.recipient_id
               AND report.run_origin='SCHEDULED'
-              AND report.source_key='FINANCE_POSTED_SUMMARY'
               AND report.state='READY' AND report.expires_at>now()
               AND saved.state='ACTIVE'
               AND saved.current_revision=report.definition_revision
@@ -606,13 +606,16 @@ export class NotificationService{
               AND artifact.object_version IS NOT NULL
               AND report.original_scope_all IS NOT NULL
               AND report.original_scope_branch_refs IS NOT NULL
-              AND ((report.original_scope_all AND $5::boolean)
-               OR (NOT report.original_scope_all AND
-                 ($5::boolean OR report.original_scope_branch_refs <@ $6::uuid[])))
-          )))
+              AND ((report.source_key='FINANCE_POSTED_SUMMARY' AND $4::boolean
+                AND ((report.original_scope_all AND $5::boolean)
+                  OR (NOT report.original_scope_all AND ($5::boolean OR report.original_scope_branch_refs <@ $6::uuid[]))))
+               OR (report.source_key='PROJECT_STATUS_REPORT' AND $7::boolean AND report.original_project_digest IS NOT NULL
+                AND ((report.original_scope_all AND $8::boolean)
+                  OR (NOT report.original_scope_all AND ($8::boolean OR report.original_scope_branch_refs <@ $9::uuid[])))))
+          ))
         FOR SHARE OF n,a
       `,[ref,actor.realmId,actor.accountId,
-       scope.allowed,scope.all,scope.branches]);
+       scope.finance.allowed,scope.finance.all,scope.finance.branches,scope.project.allowed,scope.project.all,scope.project.branches]);
       if(!exists.rowCount)throw new ForbiddenException("Notification unavailable");
       const applied=await client.query(`
         INSERT INTO cg19_notification_read(realm_id,recipient_id,notification_id)
