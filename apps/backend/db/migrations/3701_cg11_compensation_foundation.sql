@@ -183,3 +183,6 @@ CREATE VIEW employee_compensation_effective AS SELECT x.*,LEAST(x.effective_to,n
 
 CREATE UNIQUE INDEX ux_cg11_employee_payout_instruction_successor ON employee_payout_instruction(root_realm_id,supersedes_ref) WHERE status='APPROVED' AND supersedes_ref IS NOT NULL;
 CREATE VIEW employee_payout_instruction_effective AS SELECT x.*,LEAST(x.effective_to,n.effective_from) AS effective_until FROM employee_payout_instruction x LEFT JOIN employee_payout_instruction n ON n.root_realm_id=x.root_realm_id AND n.supersedes_ref=x.id AND n.status='APPROVED';
+
+-- No statutory rate may be represented as an ordinary component until the approved statutory rule source exists.
+ALTER TABLE payroll_component ADD CONSTRAINT cg11_component_no_unconfigured_statutory CHECK (code <> 'BASIC' AND code !~ '^(PF|EPF|ESI|ESIC|PT|TDS)(_|$)' AND regexp_replace(upper(label),'[^A-Z0-9]','','g') !~ '^(PF|EPF|ESI|ESIC|PT|TDS|PROVIDENTFUND|EMPLOYEE(S)?STATEINSURANCE|PROFESSIONALTAX|INCOMETAX|GRATUITY)$');
