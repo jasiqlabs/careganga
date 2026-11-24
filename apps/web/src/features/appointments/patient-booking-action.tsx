@@ -199,12 +199,12 @@ export function PatientBookingAction(p:Props){
    setMessage(e instanceof Error?e.message:"The original booking request is still uncertain.");
   }finally{setBusy(false);}
  }
- return <div style={{border:"1px solid #d7dfdb",padding:12,borderRadius:12,marginTop:8}}>
+ return <div className="cg-health-booking-summary">
   <h3 style={{margin:"0 0 8px"}}>{p.doctorName}</h3>
   <p style={{margin:"0 0 8px"}}>{p.centerName}</p>
   <p style={{margin:"0 0 8px"}}>{new Date(p.startAt).toLocaleString("en-IN",{
    timeZone:p.timeZone,dateStyle:"medium",timeStyle:"short"})} ({p.timeZone})</p>
-  <p style={{margin:"0 0 8px"}}>Consultation fee: <strong>{currency(p.feeMinor)}</strong> · Pay at center.</p>
+  <div className="cg-health-amount">Consultation fee <strong>{currency(p.feeMinor)}</strong></div><p>Pay at center. Online payment is checked after the original booking and contribution are accepted.</p>
   {!!message&&<p role="status" aria-live="polite">{message}</p>}
    {!confirmed&&!uncertain&&!review&&<label style={{display:"grid",gap:4,marginBlock:8}}>
     Reason for consultation (optional, private)
@@ -227,7 +227,7 @@ export function PatientBookingAction(p:Props){
     <Link href="/patients/me">My patient profile</Link>
    </div>:hold?(review?
     <div className="form-section" aria-label="Review actual consultation before confirming">
-     <h3>Review consultation before booking</h3>
+     <h3>Booking summary &amp; payment</h3>
      <p>Doctor: <strong>{p.doctorName}</strong></p>
      <p>Healthcare center: <strong>{p.centerName}</strong></p>
      <p>Consultation time: {new Date(p.startAt).toLocaleString("en-IN",{

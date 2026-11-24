@@ -122,11 +122,11 @@ export function ConsultationContribution({holdRef,bookingRef,centerRef,canAccept
   {quote&&quote.state==="NOT_COLLECTIBLE"?
    <p>This consultation is not eligible for a new payable contribution.</p>:
    quote&&valid(quote)&&<>
-    <dl className="cg-diagnostics-summary">
+    <dl className="cg-diagnostics-summary cg-health-quote">
      <div><dt>Actual consultation fee</dt><dd>{pretty(quote.grossMinor!)}</dd></div>
      <div><dt>Applicable Foundation share</dt>
       <dd>{pretty(quote.foundationSupportMinor!)}</dd></div>
-     <div><dt>Amount due from patient</dt>
+     <div className="cg-health-amount"><dt>Amount due from patient</dt>
       <dd>{pretty(quote.patientPayableMinor!)}</dd></div>
     </dl>
     <p>{quote.state==="NO_EFFECTIVE_ASSISTANCE"?

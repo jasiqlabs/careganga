@@ -143,6 +143,10 @@ HUX-10.02/10.03/10.04/02.01: reference-led green listing banner, real category s
 
 Web: four-stage step navigation, verified doctor sidebar, responsive center cards, morning/afternoon/evening live-slot grouping, selected appointment summary. A chosen slot/center is re-resolved from the current response; Web validates date/center/time and bounded result sizes. Native: adaptive step badges, time groups and one selected booking action rather than mounting an action component for every slot. Original hold, identity, fee version, payment and reschedule contracts retained. CG15 US-002/004/007, CG17 US-002/003 source trace only. Verify stale date/slot, unique/multiple time-first matches, unavailable slots, hold expiry and unknown original result before switching; live QA NOT_RUN.
 
+## Original UI08/UI09/UI11 — payment and document presentation
+
+CG19 appointment slip newly issued bytes use green/gold grouped booking, doctor/center, consultation fee and QR/instructions panels. Removed false blanket no-aid/no-payment assertion: immutable CG15 terms only; current CG17 aid and verified collection remain separate. Center cash receipt uses the same theme and actual verified cash amount. No expansion of private source fields, QR scope, immutable digest or historical stored bytes. The reference online two-copy receipt is not the same as the current separately authorized pay-at-center slip; online copy format and actual provider-verified financial document contract require owner reconciliation, not a fake PAID document. Web selected summary/quote and verified Razorpay checkout adopt public gold/green hierarchy. CG15 US-005/008, CG17 US-002/003/004, CG19 original issue/download/revocation QA source trace; PDF rendering/long Unicode names/address and real provider/receipt QA NOT_RUN.
+
 ## Subtracker details and expected user scenarios
 
 ### HUX-01.01 — Recover separate healthcare reference originals
