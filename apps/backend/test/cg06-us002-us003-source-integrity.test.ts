@@ -32,7 +32,8 @@ test("CG06 migration has one complete definition of each original fulfillment ob
 });
 test("CG06 current visit summary, report filters and editorial source parity",()=>{
  assert.ok(report.includes("campaignScope(tx,a,raw,params)"));
- assert.ok(report.includes("a.campaign_ref=$20"));
+ assert.ok(read("src/modules/cg-06-beneficiaries-assistance/application/beneficiaries.service.ts").includes("ac.campaign_ref=$18"));
+ assert.ok(report.includes("a.campaign_ref=$21"));
  assert.ok(read("src/modules/cg-18-cms-public-content/application/cms-editorial.service.ts").includes("approvedBeneficiaryImpact"));
  for(const p of ["apps/web/src/features/projects/field-visits-workspace.tsx","apps/android-internal/src/features/projects/native-field-visits-workspace.tsx"])
   assert.ok(read("../../"+p).includes("detail.beneficiarySummary"));
