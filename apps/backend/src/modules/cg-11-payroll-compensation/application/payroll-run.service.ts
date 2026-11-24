@@ -201,7 +201,8 @@ export class PayrollRunService{
   if(actual.reason||digestOf(periodMap(actual.assignments))!==digestOf(periodMap(input.attendance.assignments)))throw new ConflictException("Original assignment or attendance remains unresolved");
   const before=new Map(input.attendance.days.map(d=>[d.date,d]));
   const changed=actual.days.filter(d=>digestOf(d)!==digestOf(before.get(d.date)??null));
-  if(!changed.length||changed.some(d=>!d.correctionDecisionRef&&!d.leaveDecisionRef)||input.attendance.days.some(d=>!actual.days.some(n=>n.date===d.date)))throw new ConflictException("No new original approved attendance or leave correction");
+  const newApproved=(d:Attendance["days"][number])=>{const old=before.get(d.date);return !!(d.correctionDecisionRef&&d.correctionDecisionRef!==old?.correctionDecisionRef||d.leaveDecisionRef&&d.leaveDecisionRef!==old?.leaveDecisionRef)&&(!old||d.revision>old.revision);};
+  if(!changed.length||changed.some(d=>!newApproved(d))||input.attendance.days.some(d=>!actual.days.some(n=>n.date===d.date)))throw new ConflictException("No new original approved attendance or leave correction");
   const corrected=calculatePayroll(original.period_from,original.period_until,actual.days,input.salary);
   const originalCalc=calculatePayroll(original.period_from,original.period_until,input.attendance.days,input.salary);
   if(corrected.status!=="CALCULATED"||originalCalc.status!=="CALCULATED")throw new ConflictException("The original attendance correction is not fully validated");
