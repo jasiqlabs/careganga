@@ -56,6 +56,23 @@ export class BeneficiaryReportService{
    return report;
   },true);
  }
+ /** Current actor scope only. Never pass the detailed owner report or rare cells to MIS. */
+ async misSummary(token:string){
+  const x=await this.report(token,{});
+  const {total,male,female,other_or_unknown,children,active,verified}=x.summary;
+  const recipients=x.recipients;
+  const counts=[total,male,female,other_or_unknown,children,active,verified,recipients];
+  if(counts.some(v=>typeof v!=="number"||!Number.isSafeInteger(v)||v<0||v>total)||
+     male+female+other_or_unknown!==total)throw Error("Beneficiary aggregate unavailable");
+  // Suppress the whole report, including totals, if a complement reveals a rare group.
+  const sensitive=[...counts,total-children,total-active,total-verified,total-recipients];
+  const suppressed=sensitive.some(v=>v>0&&v<5);
+  return {state:suppressed?"SUPPRESSED" as const:total===0?"EMPTY" as const:"READY" as const,
+   rows:suppressed||total===0?[]:[{total:String(total),male:String(male),female:String(female),
+    other:String(other_or_unknown),children:String(children),active:String(active),
+    verified:String(verified),recipients:String(recipients)}],
+   sourceAsOf:new Date(x.asOf).toISOString()};
+ }
  async export(token:string,raw:Record<string,unknown>){
   return this.source.run(token,"beneficiaries.reports.export",async(tx,a)=>{
    const q=parseListQuery(raw),{where,params}=await this.beneficiaries.reportScope(tx,a,q);
