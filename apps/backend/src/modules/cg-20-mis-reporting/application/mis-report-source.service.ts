@@ -19,13 +19,13 @@ export const REPORT_KINDS=[
  "FINANCE_POSTED_LEDGER","FINANCE_POSTED_SUMMARY",
  "FINANCE_POSTED_TREND","FINANCE_POSTED_GROUPED",
  "APPOINTMENT_STATUS","APPOINTMENT_STATUS_GROUPED","APPOINTMENT_DOCTOR_SUMMARY",
- "PLATFORM_AUDIT_ACTIVITY","DIAGNOSTICS_CATALOG_SUMMARY","BENEFICIARY_ASSISTANCE_SUMMARY","MEMBERSHIP_ROSTER_SUMMARY","VOLUNTEER_ROSTER_SUMMARY","PAYROLL_STATUS_SUMMARY","DONATION_RECEIPT_SUMMARY","CSR_FUNDING_SUMMARY","PROJECT_STATUS_REPORT","PROJECT_BUDGET_SUMMARY"
+ "PLATFORM_AUDIT_ACTIVITY","DIAGNOSTICS_CATALOG_SUMMARY","BENEFICIARY_ASSISTANCE_SUMMARY","MEMBERSHIP_ROSTER_SUMMARY","VOLUNTEER_ROSTER_SUMMARY","PAYROLL_STATUS_SUMMARY","DONATION_RECEIPT_SUMMARY","DONATION_RECEIPT_LEDGER","CSR_FUNDING_SUMMARY","PROJECT_STATUS_REPORT","PROJECT_BUDGET_SUMMARY"
 ] as const;
 export type ReportKind=typeof REPORT_KINDS[number];
-export const LIVE_PREVIEW_KINDS:readonly ReportKind[]=["BENEFICIARY_ASSISTANCE_SUMMARY","MEMBERSHIP_ROSTER_SUMMARY","VOLUNTEER_ROSTER_SUMMARY","PAYROLL_STATUS_SUMMARY","DONATION_RECEIPT_SUMMARY","CSR_FUNDING_SUMMARY","PROJECT_BUDGET_SUMMARY"];
+export const LIVE_PREVIEW_KINDS:readonly ReportKind[]=["BENEFICIARY_ASSISTANCE_SUMMARY","MEMBERSHIP_ROSTER_SUMMARY","VOLUNTEER_ROSTER_SUMMARY","PAYROLL_STATUS_SUMMARY","DONATION_RECEIPT_SUMMARY","DONATION_RECEIPT_LEDGER","CSR_FUNDING_SUMMARY","PROJECT_BUDGET_SUMMARY"];
 export type ReportView="TABLE"|"SUMMARY"|"CHART"|"PIVOT";
 export type SafeReportRequest={
- kind:ReportKind;view:ReportView;yearRef?:string;branchRef?:string;payrollMonth?:string;projectRef?:string;
+ kind:ReportKind;view:ReportView;yearRef?:string;branchRef?:string;payrollMonth?:string;projectRef?:string;campaignCode?:string;
  centerRef?:string;areaRef?:string;fromDay?:string;untilDay?:string;status?:string;
  groupBy?:"CATEGORY"|"POSTING_KIND"|"ACCOUNT_NAME";
  sortBy?:"NAME"|"DEBIT"|"CREDIT";sortDirection?:"ASC"|"DESC";
@@ -42,7 +42,7 @@ const day=(v:string)=>{
  return !Number.isNaN(d.getTime())&&d.toISOString().slice(0,10)===v;
 };
 const allowedFields=new Set(["kind","view","yearRef","branchRef",
- "centerRef","areaRef","fromDay","untilDay","status","groupBy","sortBy","sortDirection","offset","payrollMonth","projectRef"]);
+ "centerRef","areaRef","fromDay","untilDay","status","groupBy","sortBy","sortDirection","offset","payrollMonth","projectRef","campaignCode"]);
 const text=(v:unknown)=>typeof v==="string"?v.trim():"";
 export const FINANCE_KINDS:readonly ReportKind[]=[
  "FINANCE_POSTED_LEDGER","FINANCE_POSTED_SUMMARY","FINANCE_POSTED_TREND",
@@ -71,7 +71,7 @@ export function parseSafeReport(raw:unknown):SafeReportRequest{
   MEMBERSHIP_ROSTER_SUMMARY:["SUMMARY"],
   VOLUNTEER_ROSTER_SUMMARY:["SUMMARY"],
   PAYROLL_STATUS_SUMMARY:["SUMMARY"],
-  DONATION_RECEIPT_SUMMARY:["SUMMARY"],
+  DONATION_RECEIPT_SUMMARY:["SUMMARY"],DONATION_RECEIPT_LEDGER:["TABLE"],
   CSR_FUNDING_SUMMARY:["SUMMARY"],
   PROJECT_STATUS_REPORT:["TABLE"],PROJECT_BUDGET_SUMMARY:["SUMMARY"]
  };
@@ -93,11 +93,13 @@ export function parseSafeReport(raw:unknown):SafeReportRequest{
  const isPayroll=kind==="PAYROLL_STATUS_SUMMARY",payrollMonth=text(o.payrollMonth);
  const isRoster=kind==="MEMBERSHIP_ROSTER_SUMMARY"||kind==="VOLUNTEER_ROSTER_SUMMARY";
  const isBeneficiary=kind==="BENEFICIARY_ASSISTANCE_SUMMARY";
+ const isDonation=kind==="DONATION_RECEIPT_SUMMARY"||kind==="DONATION_RECEIPT_LEDGER",campaignCode=text(o.campaignCode);
+ if(o.campaignCode!==undefined&&(typeof o.campaignCode!=="string"||!isDonation||!/^cg-camp-[0-9]{8}$/.test(campaignCode)))throw new BadRequestException({code:"MIS_REPORT_FILTER_INVALID",message:"Choose a valid donation campaign."});
  const isProjectStatus=kind==="PROJECT_STATUS_REPORT",isProjectBudget=kind==="PROJECT_BUDGET_SUMMARY",projectRef=text(o.projectRef);
  if((o.projectRef!==undefined&&(typeof o.projectRef!=="string"||!UUID.test(projectRef)||!isProjectStatus&&!isProjectBudget))||(isProjectBudget&&!projectRef)||(isProjectStatus&&(centerRef||status)))throw new BadRequestException({code:"MIS_REPORT_FILTER_INVALID",message:"Choose a valid project report scope."});
  if(o.payrollMonth!==undefined&&(typeof o.payrollMonth!=="string"||!isPayroll||!/^\d{4}-(0[1-9]|1[0-2])$/.test(payrollMonth)||payrollMonth.slice(0,4)<"2000"))throw new BadRequestException({code:"MIS_REPORT_FILTER_INVALID",message:"Choose a valid payroll month."});
  if([yearRef,centerRef,areaRef].some(v=>v!==""&&!UUID.test(v))||
-  branchRef!==""&&!UUID.test(branchRef)&&!(isPayroll&&branchRef==="FOUNDATION")||
+  branchRef!==""&&!UUID.test(branchRef)&&!((isPayroll||isDonation)&&branchRef==="FOUNDATION")||
   areaRef!==""&&!["FINANCE_POSTED_LEDGER","FINANCE_POSTED_GROUPED"].includes(kind)||
   isFinance&&(centerRef!==""||status!=="")||
   (kind==="PLATFORM_AUDIT_ACTIVITY"||kind==="DIAGNOSTICS_CATALOG_SUMMARY"||LIVE_PREVIEW_KINDS.includes(kind as ReportKind))&&
@@ -110,7 +112,7 @@ export function parseSafeReport(raw:unknown):SafeReportRequest{
    sortDirection!==""&&!["ASC","DESC"].includes(sortDirection)
   )||
   !isFinance&&yearRef!==""||
-  !isFinance&&!isPayroll&&!isRoster&&!isBeneficiary&&!isProjectStatus&&branchRef!==""||
+  !isFinance&&!isPayroll&&!isRoster&&!isBeneficiary&&!isProjectStatus&&!isDonation&&branchRef!==""||
   status!==""&&!statusSet.has(status)||
   Boolean(fromDay)!==Boolean(untilDay)||
   fromDay!==""&&(!day(fromDay)||!day(untilDay)||fromDay>untilDay||
@@ -120,7 +122,7 @@ export function parseSafeReport(raw:unknown):SafeReportRequest{
   fromDay!==""&&kind!=="FINANCE_POSTED_LEDGER"&&
    kind!=="FINANCE_POSTED_GROUPED"&&kind!=="APPOINTMENT_STATUS"&&
    kind!=="APPOINTMENT_STATUS_GROUPED"&&kind!=="APPOINTMENT_DOCTOR_SUMMARY"&&
-   kind!=="PLATFORM_AUDIT_ACTIVITY"&&kind!=="CSR_FUNDING_SUMMARY"&&!isRoster&&!isBeneficiary&&!isProjectStatus)
+   kind!=="PLATFORM_AUDIT_ACTIVITY"&&kind!=="CSR_FUNDING_SUMMARY"&&!isRoster&&!isBeneficiary&&!isProjectStatus&&!isDonation)
   throw new BadRequestException({code:"MIS_REPORT_FILTER_INVALID",
    message:"Choose an allowed center, year, status and date range for this report."});
  const offset=o.offset===undefined?0:o.offset;
@@ -130,7 +132,7 @@ export function parseSafeReport(raw:unknown):SafeReportRequest{
   throw new BadRequestException({code:"MIS_REPORT_PAGE_INVALID",
    message:"This page is unavailable. Select an earlier page."});
  return {kind:kind as ReportKind,view:view as ReportView,
-  ...(yearRef?{yearRef}:{}),...(branchRef?{branchRef}:{}),...(payrollMonth?{payrollMonth}:{}),...(projectRef?{projectRef}:{}),
+  ...(yearRef?{yearRef}:{}),...(branchRef?{branchRef}:{}),...(payrollMonth?{payrollMonth}:{}),...(projectRef?{projectRef}:{}),...(campaignCode?{campaignCode}:{}),
   ...(centerRef?{centerRef}:{}),...(areaRef?{areaRef}:{}),
   ...(fromDay?{fromDay,untilDay}:{}),
   ...(status?{status}:{}),
@@ -283,7 +285,8 @@ export class MisReportSourceService{
   if(projects.ready){projects.export=await permission("projects.export");templates.push({kind:"PROJECT_STATUS_REPORT",label:"Project status",views:["TABLE"],description:"Current authorized project revisions, status and planned period."});
    if(await permission("finance.budgets.view")&&await permission("finance.reports.view"))templates.push({kind:"PROJECT_BUDGET_SUMMARY",label:"Project budget and utilization",views:["SUMMARY"],description:"Original approved budget, net allocation, outstanding commitment and verified posted utilization."});
   }
-  if(finance.ready)templates.push({kind:"DONATION_RECEIPT_SUMMARY",label:"Donation and receipt reconciliation",views:["SUMMARY"],description:"Current verified donation and receipt totals, live preview only."});
+  const donation=await permission("finance.reports.view")?await this.donations.misOptions(token).then(x=>({ready:true,...x})).catch((e:unknown)=>{if(e instanceof UnauthorizedException)throw e;return {ready:false,branches:[],campaigns:[],complete:false};}):{ready:false,branches:[],campaigns:[],complete:false};
+  if(donation.ready)templates.push({kind:"DONATION_RECEIPT_SUMMARY",label:"Donation and receipt reconciliation",views:["SUMMARY"],description:"Verified donation and receipt totals by original request cohort, live preview only."},{kind:"DONATION_RECEIPT_LEDGER",label:"Donations and tax receipt ledger",views:["TABLE"],description:"Original donation, verified journal, issued receipt and refund status, no donor identity."});
   if(finance.ready&&await permission("csr.partners.view"))templates.push({kind:"CSR_FUNDING_SUMMARY",label:"CSR funding and utilization",views:["SUMMARY"],description:"Approved commitments versus verified receipts, allocation and utilization. Current authorized scope; optional proposal update dates."});
   if(diagnosticsAccess)templates.push({
    kind:"DIAGNOSTICS_CATALOG_SUMMARY",label:"Diagnostics services summary",
@@ -291,7 +294,7 @@ export class MisReportSourceService{
   if(auditAccess)templates.push({kind:"PLATFORM_AUDIT_ACTIVITY",
    label:"Protected audit activity",views:["TABLE"],
    description:"Current original platform and access audit events; limited to 50 rows."});
-  return {templates,finance,appointments,payroll,membership,volunteers,beneficiary,projects,capabilities:{
+  return {templates,finance,appointments,payroll,membership,volunteers,beneficiary,projects,donation,capabilities:{
    manage,export:exportAllowed,schedule,share},sourceReadAt:new Date().toISOString()};
  }
  /** Dedicated current-principal scheduled projection. Never passes a synthetic
@@ -478,8 +481,12 @@ export class MisReportSourceService{
     explanation:x.explanation+(q.fromDay?" Dates filter proposal updates, not bank posting dates.":""),
     scopeLabel:x.scope==="FOUNDATION"?"Current authorized Foundation CSR scope":"Current intersected CSR and finance branch scope"};
   }
+  if(q.kind==="DONATION_RECEIPT_LEDGER"){
+   const x=await this.donations.misLedger(token,q.branchRef,q.fromDay,q.untilDay,q.campaignCode);
+   return {kind:q.kind,view:q.view,label:"Donations and tax receipt ledger",state:x.partial?"PARTIAL":x.rows.length?"READY":"EMPTY",columns:[{key:"number",label:"Donation number"},{key:"campaign",label:"Campaign"},{key:"branch",label:"Branch"},{key:"date",label:"Request date"},{key:"status",label:"Original status"},{key:"receipt",label:"Verified receipt status"},{key:"requestedMinor",label:"Requested",unit:"INR_MINOR"},{key:"receivedMinor",label:"Verified posted gross",unit:"INR_MINOR"},{key:"refundMinor",label:"Verified refunds",unit:"INR_MINOR"},{key:"netMinor",label:"Verified net",unit:"INR_MINOR"}],rows:x.rows,nextOffset:null,sourceReadAt,sourceAsOf:x.sourceAsOf,sourceCutoffKind:"OWNER_STATEMENT_SNAPSHOT",explanation:x.partial?"Narrow to 50 donations or reconcile the original financial/receipt source before using this report.":"Dates filter donation request creation; amounts are currently verified. No donor contact or identity fields. Live preview only.",scopeLabel:"Current permitted donation finance scope"};
+  }
   if(q.kind==="DONATION_RECEIPT_SUMMARY"){
-   const x=await this.donations.misSummary(token);
+   const x=await this.donations.misSummary(token,q.branchRef,q.fromDay,q.untilDay,q.campaignCode);
    const columns=[{key:"total",label:"Donation records",unit:"COUNT" as const},{key:"received",label:"Verified posted donations",unit:"COUNT" as const},
     {key:"pending",label:"Pending donations",unit:"COUNT" as const},{key:"failed",label:"Failed or expired",unit:"COUNT" as const},
     {key:"receiptsIssued",label:"Issued receipts",unit:"COUNT" as const},{key:"receivedMinor",label:"Verified gross donations",unit:"INR_MINOR" as const},
