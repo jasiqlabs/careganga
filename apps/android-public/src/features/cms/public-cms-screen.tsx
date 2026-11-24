@@ -154,7 +154,7 @@ export function PublicCmsContent({onContact,onPartnerApplication,onMembershipApp
  const [noticeSearch,setNoticeSearch]=useState("");
  const [noticeCategory,setNoticeCategory]=useState("ALL");
  const [noticePriority,setNoticePriority]=useState("ALL");
- const [articleBackTarget,setArticleBackTarget]=useState<"articles"|"notices"|"events">("articles");
+ const [articleBackTarget,setArticleBackTarget]=useState<"articles"|"notices"|"@events">("articles");
  const [activeSlide,setActiveSlide]=useState(0);
  const [result,setResult]=useState<Result>({state:"UNAVAILABLE",page:null});
  const [loading,setLoading]=useState(true);
@@ -174,8 +174,8 @@ export function PublicCmsContent({onContact,onPartnerApplication,onMembershipApp
   const request=++latestPageRequest.current;
   setLoading(true);setActiveSlide(0);
   if(target==="membership"){setResult({state:"UNAVAILABLE",page:null});setLoading(false);return;}
-  if(target==="articles"||target==="events"){
-   const feed=await publishedArticles(target==="events",cursor);
+  if(target==="articles"||target==="@events"){
+   const feed=await publishedArticles(target==="@events",cursor);
    if(request!==latestPageRequest.current)return;
    setArticleFeed(feed);setLoadedTarget(target);
    setResult({state:feed.available?"PUBLISHED":"UNAVAILABLE",page:null});
@@ -211,7 +211,7 @@ export function PublicCmsContent({onContact,onPartnerApplication,onMembershipApp
    if(slug!=="home"){
     // Article detail returns to News. A published legal policy must
     // return to Home; it is not part of the article reader.
-    setSlug(!["about","our-impact","80g","gallery","contact","healthcare","articles","notices","events","our-work","upcoming-projects","collaboration","membership","campaigns"].includes(slug)&&
+    setSlug(!["about","our-impact","80g","gallery","contact","healthcare","articles","notices","@events","our-work","upcoming-projects","collaboration","membership","campaigns"].includes(slug)&&
      !isPolicySlug(slug)?articleBackTarget:"home");return true;
    }return false;
   });
@@ -222,7 +222,7 @@ export function PublicCmsContent({onContact,onPartnerApplication,onMembershipApp
   if(!route)return false;
   if(route==="/membership")return memberJoin;
   if(route==="/volunteer")return volunteerJoin;
-  if(route==="/"||route==="/contact")return true;
+  if(route==="/"||route==="/contact"||route==="/collaboration")return true;
   if(route==="/videos"||route==="/publications")return publishedPaths.includes("/gallery");
   return publishedPaths.includes(route);
  };
@@ -230,6 +230,7 @@ export function PublicCmsContent({onContact,onPartnerApplication,onMembershipApp
   if(!canNavigate(href))return;
   const route=local(href);
   if(route==="/")setSlug("home");
+  else if(route==="/collaboration")setSlug("collaboration");
   else if(route==="/membership"&&memberJoin)setSlug("membership");
   else if(route==="/volunteer"&&volunteerJoin)onVolunteerApply();
   else if(route==="/contact"){
@@ -296,14 +297,13 @@ export function PublicCmsContent({onContact,onPartnerApplication,onMembershipApp
     secondary={slug!=="gallery"||mediaScope!==scope}
     onPress={()=>{setMediaScope(scope);setSlug("gallery");}}/>)}
    {publishedPaths.includes("/campaigns")&&<CmsButton title="Campaigns" secondary={slug!=="campaigns"} onPress={()=>setSlug("campaigns")}/>}
-   <CmsButton title="Events" secondary={slug!=="events"} onPress={()=>setSlug("events")}/>
+   <CmsButton title="Events" secondary={slug!=="@events"} onPress={()=>setSlug("@events")}/>
    <CmsButton title="Notices" secondary={slug!=="notices"} onPress={()=>setSlug("notices")}/>
    {publishedPaths.some(p=>p.startsWith("/blog/"))&&
     <CmsButton title="News" secondary={slug!=="articles"}
      onPress={()=>setSlug("articles")}/>}
    <CmsButton title="Membership Plans" secondary={slug!=="membership"} onPress={()=>setSlug("membership")}/>
-   {publishedPaths.includes("/collaboration")&&<CmsButton title="Corporate Partners"
-    secondary={slug!=="collaboration"} onPress={()=>setSlug("collaboration")}/>}
+   <CmsButton title="Corporate Partners" secondary={slug!=="collaboration"} onPress={()=>setSlug("collaboration")}/>
    <CmsButton title="Healthcare Partner Application" secondary onPress={onPartnerApplication}/>
    <CmsButton title="Contact" onPress={()=>navigate("/contact")}
     secondary={slug!=="contact"}/>
@@ -316,19 +316,19 @@ export function PublicCmsContent({onContact,onPartnerApplication,onMembershipApp
       onPress={()=>setSlug(name)}/>)}
   </View>
   {slug==="campaigns"?<NativePublicCampaigns/>:slug==="membership"?<NativeMembershipPlans onApply={onMembershipApply}/>:loading||loadedTarget!==slug?<ActivityIndicator accessibilityLabel="Checking current published website content"/>:
-   (slug==="articles"||slug==="events")?<View style={styles.card}>
-    <Text accessibilityRole="header" style={styles.heading}>{slug==="events"?"Foundation Events":"Approved News & Articles"}</Text>
+   (slug==="articles"||slug==="@events")?<View style={styles.card}>
+    <Text accessibilityRole="header" style={styles.heading}>{slug==="@events"?"Foundation Events":"Approved News & Articles"}</Text>
     {!articleFeed.available?<Text accessibilityRole="alert" style={styles.muted}>
-     {slug==="events"?"Current events could not be verified.":"Current news could not be verified."}</Text>:articleFeed.posts.length===0?
-     <Text style={styles.muted}>{slug==="events"?"No currently approved events.":"No currently approved articles."}</Text>:
+     {slug==="@events"?"Current events could not be verified.":"Current news could not be verified."}</Text>:articleFeed.posts.length===0?
+     <Text style={styles.muted}>{slug==="@events"?"No currently approved events.":"No currently approved articles."}</Text>:
      articleFeed.posts.map(item=><View key={item.slug} style={styles.person}>
       <Text style={styles.eyebrow}>{item.category}</Text>
       <Text style={styles.heading}>{item.title}</Text>
       <Text style={styles.body}>{item.excerpt}</Text>
-      <CmsButton title={slug==="events"?"View event details":"Read full article"} onPress={()=>{setArticleBackTarget(slug==="events"?"events":"articles");setSlug(item.slug);}}/>
+      <CmsButton title={slug==="@events"?"View event details":"Read full article"} onPress={()=>{setArticleBackTarget(slug==="@events"?"@events":"articles");setSlug(item.slug);}}/>
      </View>)}
     {articleFeed.nextCursor&&<CmsButton title="Next page" secondary onPress={()=>void load(slug,articleFeed.nextCursor??"")}/>}
-    <CmsButton title={slug==="events"?"Refresh events":"Refresh approved news"} secondary onPress={()=>void load(slug)}/>
+    <CmsButton title={slug==="@events"?"Refresh events":"Refresh approved news"} secondary onPress={()=>void load(slug)}/>
    </View>:slug==="notices"?<View style={styles.card}>
      <Text accessibilityRole="header" style={styles.heading}>
       Notice &amp; Announcement Board</Text>
@@ -369,7 +369,14 @@ export function PublicCmsContent({onContact,onPartnerApplication,onMembershipApp
      </>}
      <CmsButton title="Refresh approved notices" secondary
       onPress={()=>void load("notices")}/>
-    </View>:result.state==="NOT_PUBLISHED"?<View style={styles.card}>
+    </View>:slug==="collaboration"&&result.state!=="PUBLISHED"?<View style={styles.card}>
+    <Text accessibilityRole="header" style={styles.heading}>Corporate Partners</Text>
+    <Text style={styles.body}>Contact the Foundation to discuss corporate social responsibility and service collaborations.</Text>
+    <Text style={styles.muted}>{result.state==="UNAVAILABLE"?"Current partner announcements cannot be verified.":"No partner identities are currently approved for public display."}</Text>
+    <CmsButton title="Get in touch" onPress={onContact}/>
+    <CmsButton title="Apply as a healthcare partner" onPress={onPartnerApplication} secondary/>
+    <CmsButton title="Refresh partner announcements" onPress={()=>void load("collaboration")} secondary/>
+   </View>:result.state==="NOT_PUBLISHED"?<View style={styles.card}>
     <Text style={styles.heading}>{slug==="home"?"Foundation homepage":"About the Foundation"}</Text>
     <Text style={styles.muted}>This page has not yet been published.</Text>
    </View>:result.state==="UNAVAILABLE"?<View style={styles.card}>
@@ -513,7 +520,7 @@ export function PublicCmsContent({onContact,onPartnerApplication,onMembershipApp
       mediaScope={section.kind==="GALLERY_GRID"?mediaScope:undefined}
        ngoScope={section.kind==="COMPLIANCE_FACTS"?ngoScope:undefined}
       onBackToNews={()=>setSlug(articleBackTarget)}
-       backLabel={articleBackTarget==="notices"?"Back to notices":articleBackTarget==="events"?"Back to events":"Back to approved articles"}/>;
+       backLabel={articleBackTarget==="notices"?"Back to notices":articleBackTarget==="@events"?"Back to events":"Back to approved articles"}/>;
     if(section.kind==="CAMPAIGN_TEASER"){
      const approved=(Array.isArray(fields.cards)?fields.cards:[])
       .filter(c=>c&&typeof c==="object"&&/^cg-camp-[0-9]{8}$/.test(text(c.slug)));
@@ -555,6 +562,8 @@ export function PublicCmsContent({onContact,onPartnerApplication,onMembershipApp
         <Text style={styles.body}>{entry.summary}</Text>
        </View>;
       })}
+      <CmsButton title="Get in touch" onPress={onContact}/>
+      <CmsButton title="Apply as a healthcare partner" onPress={onPartnerApplication} secondary/>
      </View>;
     }
     if(section.kind==="PROJECT_TEASER"){const categories=["All Projects","Education","Healthcare","Livelihood","Social Welfare","Community Development"];const cards=(Array.isArray(fields.cards)?fields.cards:[]).filter(p=>page.kind!=="PROJECTS"||projectCategory==="All Projects"||p&&typeof p==="object"&&text(p.category).toLowerCase()===projectCategory.toLowerCase());return <View key={i} style={styles.card}><Text accessibilityRole="header" style={styles.heading}>{text(fields.heading)||"Projects"}</Text>{page.kind==="PROJECTS"&&<View style={styles.nav}>{categories.map(c=><CmsButton key={c} title={c} secondary={c!==projectCategory} onPress={()=>setProjectCategory(c)}/>)}</View>}{!cards.length?<Text>No currently approved projects to display.</Text>:cards.map((item,j)=>{if(!item||typeof item!=="object")return null;const p=item as Fields;const cover=/^\/api\/public\/content\/media\/[a-f0-9-]{36}$/i.test(text(p.coverSrc))?safeImage({src:text(p.coverSrc),role:"PROJECT",altText:text(p.title),order:0}):null;return <View key={j} style={styles.card}>{!!cover&&<Image source={{uri:cover}} accessibilityLabel={text(p.title)} style={styles.image} resizeMode="cover"/>}<Text style={styles.eyebrow}>{text(p.category)} · {text(p.status)==="PLANNED"?"Planned":"Active"}</Text><Text style={styles.heading}>{text(p.title)}</Text><Text>{text(p.area)}</Text><Text style={styles.body}>{text(p.summary)}</Text>{!!text(p.launch)&&<Text>Planned start: {text(p.launch)}</Text>}</View>;})}</View>;}
