@@ -12,6 +12,8 @@ CREATE TABLE beneficiary (
  representative_contact text CHECK(representative_contact IS NULL OR representative_contact ~ '^[+][1-9][0-9]{7,14}$'),
  state_ref uuid NOT NULL,
  district_ref uuid,
+ block_ref uuid,
+ beneficiary_category text CHECK(beneficiary_category IS NULL OR char_length(btrim(beneficiary_category)) BETWEEN 2 AND 60),
  beneficiary_type text NOT NULL CHECK(char_length(btrim(beneficiary_type)) BETWEEN 2 AND 60),
  gender text NOT NULL DEFAULT 'NOT_SPECIFIED'
     CHECK(gender IN('FEMALE','MALE','OTHER','NOT_SPECIFIED')),
@@ -37,6 +39,8 @@ CREATE TABLE beneficiary (
  FOREIGN KEY(branch_scope_id,root_realm_id) REFERENCES branch(id,root_realm_id) ON DELETE RESTRICT,
  FOREIGN KEY(state_ref,root_realm_id) REFERENCES geography_area(id,root_realm_id) ON DELETE RESTRICT,
  FOREIGN KEY(district_ref,root_realm_id) REFERENCES geography_area(id,root_realm_id) ON DELETE RESTRICT,
+ FOREIGN KEY(block_ref,root_realm_id) REFERENCES geography_area(id,root_realm_id) ON DELETE RESTRICT,
+ CHECK(block_ref IS NULL OR district_ref IS NOT NULL),
  FOREIGN KEY(created_by,root_realm_id) REFERENCES account(id,realm_id) ON DELETE RESTRICT,
  FOREIGN KEY(updated_by,root_realm_id) REFERENCES account(id,realm_id) ON DELETE RESTRICT,
  FOREIGN KEY(verification_case_ref,root_realm_id) REFERENCES cg03_case(id,realm_id) ON DELETE RESTRICT,
@@ -48,7 +52,7 @@ CREATE TABLE beneficiary (
 CREATE INDEX ix_cg06_beneficiary_scope
  ON beneficiary(root_realm_id,branch_scope_id,verification_state,lifecycle_state,created_at DESC,id DESC);
 CREATE INDEX ix_cg06_beneficiary_geography
- ON beneficiary(root_realm_id,state_ref,district_ref,created_at DESC,id DESC);
+ ON beneficiary(root_realm_id,state_ref,district_ref,block_ref,created_at DESC,id DESC);
 CREATE INDEX ix_cg06_beneficiary_contact
  ON beneficiary(root_realm_id,contact_mobile) WHERE contact_mobile IS NOT NULL;
 
