@@ -1,4 +1,5 @@
 "use client";
+import {ProjectCoverPanel} from "../projects/project-cover-panel";
 import {useEffect,useRef,useState,type CSSProperties,type FormEvent} from "react";
 
 type Item={ref:string;reference:string;name:string;contactMobile:string|null;representativeName:string|null;
@@ -43,9 +44,9 @@ function fromItem(x:Item):Form{
   consentPurpose:x.consentPurpose??"",consentAcknowledged:true};
 }
 const tabs=[["ALL","All"],["ACTIVE","Active"],["INACTIVE","Inactive"],["VERIFIED","Verified"],["PENDING","Pending verification"]] as const;
-export function BeneficiariesWorkspace({canManage,canLinkProjects,canManageLifecycle,canRevoke,canSubmitVerification,canReviewVerification}:{
+export function BeneficiariesWorkspace({canManage,canLinkProjects,canManageLifecycle,canRevoke,canSubmitVerification,canReviewVerification,canReadEvidence,canUploadEvidence}:{
  canManage:boolean;canLinkProjects:boolean;canManageLifecycle:boolean;canRevoke:boolean;
- canSubmitVerification:boolean;canReviewVerification:boolean;
+ canSubmitVerification:boolean;canReviewVerification:boolean;canReadEvidence:boolean;canUploadEvidence:boolean;
 }){
  const [page,setPage]=useState<Page|null>(null),[busyList,setBusyList]=useState(true),[error,setError]=useState(""),[notice,setNotice]=useState("");
  const [q,setQ]=useState(""),[search,setSearch]=useState(""),[tab,setTab]=useState("ALL"),
@@ -276,6 +277,7 @@ export function BeneficiariesWorkspace({canManage,canLinkProjects,canManageLifec
       <div>Contact: {selected.contactMobile??"Not recorded / restricted"}</div>
       <div>Category: {selected.beneficiaryType}</div>
       <div>Consent: {selected.consentRevoked?"Withdrawn":nice(selected.consentKind)}</div>
+      {canReadEvidence&&!selected.consentRevoked&&selected.lifecycle==="ACTIVE"&&<ProjectCoverPanel key={selected.ref+":"+selected.revision} projectRef={selected.ref} version={selected.revision} sourceKind="beneficiary" canUpload={canUploadEvidence&&canManage}/>}
       {selected.verification!=="VERIFIED"&&<p style={{fontSize:12,color:"var(--cg-muted)"}}>
        Independent verification requires the CG-03 reviewer workflow. This screen never self-approves.</p>}
       {review&&<div style={{...card,display:"grid",gap:8}}>
