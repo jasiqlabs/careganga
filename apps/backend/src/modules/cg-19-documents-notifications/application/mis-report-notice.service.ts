@@ -65,7 +65,7 @@ export class MisReportNoticeService{
    if(!project&&chosen)await this.branches.requireScheduledFinanceReportBranch(root,account,chosen);
    // A null selection means the originally authorized branch union for a
    // limited manager, never implicit Foundation-null financial access.
-   const current=project?await this.branches.scheduledProjectScope(root,account):await this.branches.scheduledFinanceScope(root,account);
+   const current=project?await this.branches.scheduledProjectScope(root,account,tx):await this.branches.scheduledFinanceScope(root,account);
    if(original.original_scope_all&&!current.all||
      !current.all&&original.original_scope_branch_refs.some(ref=>
        !current.branchRefs.includes(ref)))
