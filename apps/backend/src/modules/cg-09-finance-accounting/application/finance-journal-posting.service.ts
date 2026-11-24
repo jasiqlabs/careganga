@@ -8,7 +8,7 @@ type AccountingLine=Readonly<{
 type FinancePosting=Readonly<{
  financialYearRef:string;postingDate:string;sourceRef:string;eventKey:string;
  immutableDigest:string;kind:"OPENING"|"GENERAL"|"VOUCHER"|"REVERSAL"|"INVOICE"|"CREDIT_NOTE"|"REFUND";
- description?:string;
+ description?:string;payrollAllocation?:boolean;
  reversalOfRef?:string|null;lines:readonly AccountingLine[];
 }>;
 const UUID=/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -31,7 +31,7 @@ export class FinanceJournalPostingService{
   event:FinancePosting):Promise<string>{
   if(!UUID.test(event.financialYearRef)||!UUID.test(event.sourceRef)||
      !UUID.test(event.eventKey)||!event.lines||
-     event.lines.length<2||event.lines.length>40)
+     event.lines.length<2||event.lines.length>(event.payrollAllocation?2500:40))
    throw new BadRequestException({code:"FINANCE_DEBITS_CREDITS",field:"debitAccountRef"});
   const description=event.description??"Opening balance";
   if(typeof description!=="string"||description.trim().length<3||

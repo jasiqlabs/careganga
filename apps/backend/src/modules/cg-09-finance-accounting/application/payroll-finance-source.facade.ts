@@ -31,6 +31,8 @@ export class PayrollFinanceSourceFacade{
   if(entries.some(x=>x.ref&&!eligible.some(y=>y.id===x.ref&&y.category===x.category)))throw new ConflictException("Selected payroll account is no longer eligible");
   const years=(await tx.query<{id:string;posting_date:string}>(`SELECT id,($2::date-1)::text posting_date FROM financial_year WHERE root_realm_id=$1 AND status='OPEN' AND ($2::date-1) BETWEEN start_on AND end_on FOR SHARE`,[a.realmId,r.period_until])).rows;
   if(years.length!==1)throw new ConflictException("A unique open finance period is required for the payroll month end");
-  return this.posting.postBalanced(tx,a,{financialYearRef:years[0].id,postingDate:years[0].posting_date,sourceRef:r.id,eventKey:r.approved_decision_ref,immutableDigest:digest,kind:"GENERAL",description:"Approved payroll accrual",lines:entries.filter(x=>x.ref&&(x.dr>0n||x.cr>0n)).map(x=>({accountRef:x.ref!,branchRef:r.branch_ref,debitMinor:String(x.dr),creditMinor:String(x.cr)}))});
+  const lines=(await tx.query<{accountRef:string;branchRef:string;debitMinor:string;creditMinor:string}>(`SELECT account_ref AS "accountRef",branch_ref AS "branchRef",dr::text AS "debitMinor",cr::text AS "creditMinor" FROM cg11_accrual_expected($1,$2,$3,$4,$5,$6,$7)`,[a.realmId,r.id,accounts.expense,accounts.payable,accounts.deduction,accounts.employer,accounts.statutory])).rows;
+  if(!lines.length)throw new ConflictException("Frozen branch allocation unavailable");
+  return this.posting.postBalanced(tx,a,{payrollAllocation:true,financialYearRef:years[0].id,postingDate:years[0].posting_date,sourceRef:r.id,eventKey:r.approved_decision_ref,immutableDigest:digest,kind:"GENERAL",description:"Approved payroll accrual",lines});
  }
 }
