@@ -232,6 +232,20 @@ export class SupportService{
     }catch(e){if(begun)try{await client.query("ROLLBACK");}catch{};throw e;}
     finally{client.release();}
   }
+  /** Original private support receipt and identity-owned verified email are both
+   * required; only the source case reference is passed to CG19 payroll capture. */
+  async payrollResendTicket(tx:PoolClient,a:VerifiedFoundationActor,receipt:unknown){
+    await this.throttle(a.realmId+":"+a.accountId,"payroll-resend-receipt",10,900);
+    if(typeof receipt!=="string"||!TOKEN.test(receipt))throw new NotFoundException("Verified support receipt unavailable");
+    const candidate=sha(receipt);
+    const found=(await tx.query<CaseRow>(`SELECT * FROM cg19_support_case
+     WHERE realm_id=$1 AND source_channel='FOUNDATION_PUBLIC' AND receipt_digest=$2 AND receipt_expires_at>now() AND status<>'CLOSED' FOR SHARE`,[a.realmId,candidate])).rows[0];
+    const person=await this.people.get(tx,a.realmId,a.accountId);
+    if(!found||!person?.active||!person.emailVerified||!person.email||!timingSafeEqual(Buffer.from(candidate,"hex"),Buffer.from(found.receipt_digest,"hex"))||
+     open(found.request_encrypted).contact.trim().toLocaleLowerCase("en-US")!==person.email.trim().toLocaleLowerCase("en-US"))
+      throw new NotFoundException("Verified support receipt unavailable");
+    return found.id;
+  }
   async receipt(address:string,payload:unknown){
     await this.throttle(address,"receipt",30,900);
     const x=input(payload,["receipt"]);

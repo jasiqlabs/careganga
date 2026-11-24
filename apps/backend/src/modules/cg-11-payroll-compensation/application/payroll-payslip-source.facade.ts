@@ -30,12 +30,12 @@ export class PayrollPayslipSourceFacade{
    await recordPayrollAudit(tx,a,"RUN","READ");await tx.query("COMMIT");return {items:rows.map(x=>this.view(x))};
   }catch(e){await tx.query("ROLLBACK");throw e;}finally{tx.release();}
  }
- private async readSource(tx:PoolClient,a:Actor,lineInput:string,email=false){
+ private async readSource(tx:PoolClient,a:Actor,lineInput:string,email=false,ownOnly=false){
   await this.identity.assertRootSelfSessionCurrent(tx,a);
   const line=id(lineInput),r=(await tx.query<Row>(projection+" AND l.id=$2",[a.realmId,line])).rows[0];
   if(!r)throw new NotFoundException("Payslip unavailable");
   const own=await this.employee(tx,a);
-  if(own!==r.employeeRef){await this.runs.row(tx,a,r.runRef);if(email)await this.identity.assertCurrent(tx,a,"payroll.runs.manage");}
+  if(own!==r.employeeRef){if(ownOnly)throw new NotFoundException("Payslip unavailable");await this.runs.row(tx,a,r.runRef);if(email)await this.identity.assertCurrent(tx,a,"payroll.runs.manage");}
   if(BigInt(r.paidMinor)>BigInt(r.netMinor))throw new ConflictException("Original payroll settlement requires reconciliation");
   await recordPayrollAudit(tx,a,"RUN","READ");return {actor:a,data:this.view(r)};
  }
@@ -47,13 +47,16 @@ export class PayrollPayslipSourceFacade{
     JOIN payroll_line l ON l.root_realm_id=o.realm_id AND l.id=o.line_ref
     JOIN payroll_run r ON r.root_realm_id=l.root_realm_id AND r.id=l.run_id
     JOIN cg03_case_decision d ON d.realm_id=r.root_realm_id AND d.id=r.approved_decision_ref
-    WHERE o.realm_id=$1 AND o.id=$2 AND o.event_kind='GENERATED' AND o.state='PENDING' AND o.claim_token=$3 AND o.claimed_until>now()
+    WHERE o.realm_id=$1 AND o.id=$2 AND o.event_kind IN('GENERATED','RESEND') AND o.state='PENDING' AND o.claim_token=$3 AND o.claimed_until>now()
     AND cg19_payroll_event_matches(o.realm_id,o.id,o.recipient_ref) FOR SHARE OF o,d`,[root,event,claim])).rows[0];
    if(!row)throw new NotFoundException("Original payroll event unavailable");
    const data=(await tx.query<Row>(projection+" AND l.id=$2",[root,row.line_ref])).rows[0];
    if(!data||BigInt(data.paidMinor)>BigInt(data.netMinor))throw new ConflictException("Original payroll settlement requires reconciliation");
    await tx.query("COMMIT");return {actor:{realmId:root,accountId:row.issuer_ref},data:this.view(data)};
   }catch(e){await tx.query("ROLLBACK");throw e;}finally{tx.release();}
+ }
+ async resendSource(tx:PoolClient,token:string,lineInput:string){
+  const a=await this.sessions.verifySession(token);return this.readSource(tx,a,lineInput,false,true);
  }
  async emailSource(tx:PoolClient,token:string,lineInput:string){
   const a=await this.sessions.verifySession(token);return this.readSource(tx,a,lineInput,true);

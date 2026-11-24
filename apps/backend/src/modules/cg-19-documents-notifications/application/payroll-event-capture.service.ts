@@ -4,7 +4,7 @@ import {DATABASE} from "../../../core/infrastructure/database.module";
 import {CommunicationRecipientSource} from "../../cg-01-identity-access/application/communication-recipient-source.service";
 import {NotificationService} from "./notification.service";
 import {PayrollPayslipService} from "./payroll-payslip.service";
-type Event={id:string;realm_id:string;recipient_ref:string|null;line_ref:string;event_kind:"GENERATED"|"PAID"|"FAILED"|"DELAYED";claim_token:string;attempt_count:number};
+type Event={id:string;realm_id:string;recipient_ref:string|null;line_ref:string;event_kind:"GENERATED"|"PAID"|"FAILED"|"DELAYED"|"RESEND";claim_token:string;attempt_count:number};
 @Injectable()
 export class PayrollEventCaptureService{
  constructor(@Inject(DATABASE)private readonly db:Pool,private readonly people:CommunicationRecipientSource,private readonly notifications:NotificationService,private readonly slips:PayrollPayslipService){}
@@ -31,7 +31,7 @@ export class PayrollEventCaptureService{
     await tx.query("UPDATE cg19_payroll_event_outbox SET state='SUPPRESSED',claim_token=NULL,claimed_until=NULL WHERE realm_id=$1 AND id=$2",[e.realm_id,e.id]);
     await tx.query("COMMIT");return;
    }
-   if(e.event_kind==="GENERATED"&&!doc)throw new ConflictException("Original private salary statement unavailable");
+   if((e.event_kind==="GENERATED"||e.event_kind==="RESEND")&&!doc)throw new ConflictException("Original private salary statement unavailable");
    await tx.query("UPDATE cg19_payroll_event_outbox SET state='CAPTURED',doc_ref=$3,claim_token=NULL,claimed_until=NULL WHERE realm_id=$1 AND id=$2",[e.realm_id,e.id,doc]);
    const channels:("IN_APP"|"EMAIL")[]=["IN_APP"];
    if(person.emailVerified&&person.email&&await this.notifications.hasConsent(tx,e.realm_id,person.accountRef,"EMAIL","TRANSACTIONAL"))channels.push("EMAIL");
@@ -57,7 +57,7 @@ export class PayrollEventCaptureService{
    const e=await this.claim();if(!e)break;
    try{
     let doc:string|null=null;
-    if(e.event_kind==="GENERATED"&&await this.eligible(this.db,e)){
+    if((e.event_kind==="GENERATED"||e.event_kind==="RESEND")&&await this.eligible(this.db,e)){
      const issued=await this.slips.issueApprovedEvent(e.realm_id,e.id,e.claim_token);
      if(!issued.confirmed)throw new ConflictException("Original private document unavailable");
      doc=issued.documentRef;

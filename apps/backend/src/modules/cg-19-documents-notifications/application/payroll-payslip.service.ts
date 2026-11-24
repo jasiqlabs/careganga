@@ -10,6 +10,7 @@ import {PrivateObjectStorage} from "../infrastructure/private-object-storage";
 import {id} from "../../cg-11-payroll-compensation/domain/payroll-input";
 import {CommunicationRecipientSource} from "../../cg-01-identity-access/application/communication-recipient-source.service";
 import {NotificationService} from "./notification.service";
+import {SupportService} from "./support.service";
 type Source=Awaited<ReturnType<PayrollPayslipSourceFacade["source"]>>["data"];
 type Document={id:string;line_ref:string;source_digest:string;status:string;object_key:string;object_version:string|null;content_sha256:string|null;content_length:number|null;created_at:Date};
 const hash=(b:Buffer)=>createHash("sha256").update(b).digest("hex");
@@ -29,7 +30,7 @@ async function render(s:Source,at:Date){
 }
 @Injectable()
 export class PayrollPayslipService{
- constructor(@Inject(DATABASE)private readonly db:Pool,private readonly source:PayrollPayslipSourceFacade,private readonly storage:PrivateObjectStorage,private readonly recipients:CommunicationRecipientSource,private readonly notifications:NotificationService){}
+ constructor(@Inject(DATABASE)private readonly db:Pool,private readonly source:PayrollPayslipSourceFacade,private readonly storage:PrivateObjectStorage,private readonly recipients:CommunicationRecipientSource,private readonly notifications:NotificationService,private readonly support:SupportService){}
  async own(token:string){return this.source.own(token);}
  async issue(token:string,line:string){
   return this.issueFrom(await this.source.source(token,line),()=>this.source.source(token,line));
@@ -103,6 +104,24 @@ export class PayrollPayslipService{
    if(!row)throw new ConflictException("Email outcome unconfirmed");
    if(result.rowCount)await tx.query("INSERT INTO cg19_communication_event(realm_id,notification_id,actor_id,kind) VALUES($1,$2,$3,'SOURCE_CAPTURED')",[actor.realmId,row.id,actor.accountId]);
    await tx.query("COMMIT");return {status:row.state};
+  }catch(e){await tx.query("ROLLBACK");throw e;}finally{tx.release();}
+ }
+ /** A genuine own-employee support receipt authorizes one fresh private resend,
+  * never an attachment to arbitrary contact data. The original receipt stays transient. */
+ async resend(token:string,line:string,raw:unknown){
+  if(!raw||typeof raw!=="object"||Array.isArray(raw)||Object.keys(raw).some(k=>k!=="receipt"))throw new NotFoundException("Verified support receipt unavailable");
+  const tx=await this.db.connect();
+  try{
+   await tx.query("BEGIN");
+   const {actor,data}=await this.source.resendSource(tx,token,line);
+   const ticket=await this.support.payrollResendTicket(tx,actor,(raw as {receipt?:unknown}).receipt);
+   const saved=await tx.query<{id:string;state:string}>(`INSERT INTO cg19_payroll_event_outbox(realm_id,line_ref,recipient_ref,event_kind,source_key,support_case_ref)
+     VALUES($1,$2,$3,'RESEND',$4,$4) ON CONFLICT DO NOTHING RETURNING id,state`,[actor.realmId,data.lineRef,actor.accountId,ticket]);
+   const prior=saved.rows[0]??(await tx.query<{id:string;state:string}>(`SELECT id,state FROM cg19_payroll_event_outbox WHERE realm_id=$1 AND event_kind='RESEND' AND source_key=$2 AND line_ref=$3 AND recipient_ref=$4`,[actor.realmId,ticket,data.lineRef,actor.accountId])).rows[0];
+   if(!prior)throw new ConflictException("Original support request already used for another statement");
+   const status=(await tx.query<{state:string}>(`SELECT state FROM cg19_notification WHERE realm_id=$1 AND payroll_event_ref=$2 AND recipient_id=$3 AND channel='EMAIL'`,[actor.realmId,prior.id,actor.accountId])).rows[0]?.state??(prior.state==="CAPTURED"?"IN_APP":prior.state==="PENDING"?"SEND_PENDING":prior.state);
+   if(saved.rowCount)await tx.query("SELECT pg_notify('cg19_payroll_committed',$1)",[actor.realmId]);
+   await tx.query("COMMIT");return {status};
   }catch(e){await tx.query("ROLLBACK");throw e;}finally{tx.release();}
  }
  async download(token:string,line:string,ref:string){
