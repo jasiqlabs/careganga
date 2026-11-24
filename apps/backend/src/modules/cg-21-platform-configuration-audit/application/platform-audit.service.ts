@@ -23,6 +23,7 @@ type PlatformAuditRow={id:string;occurred_at:Date;exact_at:string;action_key:str
   outcome:string;actor_display:string|null;safe_context:unknown};
 const UUID=/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i;
 const ACTION_LABELS:Readonly<Record<string,string>>={
+  "payroll.source.operation":"Payroll protected operation",
   "platform.setting.save":"Platform setting updated",
   "platform.integration.configure":"Integration reference changed",
   "platform.integration.check":"Integration readiness checked",
@@ -71,6 +72,7 @@ function parseTime(value:unknown,name:string):Date{
 function displayResource(safeContext:unknown):string{
   if(safeContext&&typeof safeContext==="object"&&!Array.isArray(safeContext)){
     const info=safeContext as Record<string,unknown>;
+    if(["POLICY","COMPENSATION","PAYOUT","ACCESS"].includes(String(info.payrollKind))&&["DRAFT_CREATED","SUBMITTED","APPROVED","RETURNED","REJECTED","READ","DENIED","CONFLICT","INVALID"].includes(String(info.payrollResult)))return "Payroll "+String(info.payrollKind).toLowerCase()+" · "+String(info.payrollResult).toLowerCase().replaceAll("_"," ");
     if(info.setting==="audit.default_page_size")return "Audit page-size setting";
     if(typeof info.provider==="string"&&typeof info.purpose==="string"&&
        info.provider.length<=65&&info.purpose.length<=65)
