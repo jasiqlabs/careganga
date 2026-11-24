@@ -17,11 +17,26 @@ function period(raw:Record<string,unknown>){
 @Injectable()
 export class BeneficiaryReportService{
  constructor(private readonly source:AssistanceService,private readonly beneficiaries:BeneficiariesService,private readonly identity:FoundationStructureIdentityFacade){}
+ private async campaignScope(tx:PoolClient,a:Actor,raw:Record<string,unknown>,params:unknown[]){
+  const campaign=optionalRef(raw.campaignRef);
+  if(campaign){
+   await this.identity.assertCurrent(tx,a,"campaigns.view");
+   if(!(await tx.query("SELECT 1 FROM campaign WHERE root_realm_id=$1 AND id=$2 AND ((branch_ref IS NULL AND $3::boolean) OR branch_ref=ANY($4::uuid[])) AND ($5::uuid IS NULL OR branch_ref=$5) AND ($6::uuid IS NULL OR project_source_ref=$6) AND source_status IN('APPROVED','PUBLISHED','PAUSED','CLOSED')",[a.realmId,campaign,params[1],params[2],params[3],params[10]])).rowCount)throw new ForbiddenException("Campaign unavailable");
+  }
+  return campaign;
+ }
+ async campaignOptions(token:string,raw:Record<string,unknown>){
+  return this.source.run(token,"beneficiaries.assistance.view",async(tx,a)=>{
+   const {params}=await this.beneficiaries.reportScope(tx,a,parseListQuery(raw));
+   try{await this.identity.assertCurrent(tx,a,"campaigns.view");}catch(e){if(e instanceof ForbiddenException)return {items:[]};throw e;}
+   const items=(await tx.query("SELECT id AS value,code_norm||' · '||title AS label FROM campaign WHERE root_realm_id=$1 AND ((branch_ref IS NULL AND $2::boolean) OR branch_ref=ANY($3::uuid[])) AND ($4::uuid IS NULL OR branch_ref=$4) AND ($5::uuid IS NULL OR project_source_ref=$5) AND source_status IN('APPROVED','PUBLISHED','PAUSED','CLOSED') ORDER BY title,id LIMIT 100",[a.realmId,params[1],params[2],params[3],params[10]])).rows;
+   return {items};
+  },true);
+ }
  async readBeneficiaryImpactForMIS(tx:PoolClient,a:Actor,raw:Record<string,unknown>){
   await this.identity.assertCurrent(tx,a,"beneficiaries.assistance.view");
   const q=parseListQuery(raw),{where,params}=await this.beneficiaries.reportScope(tx,a,q);
-  const [from,to]=period(raw),campaign=optionalRef(raw.campaignRef);
-  if(campaign){await this.identity.assertCurrent(tx,a,"campaigns.view");if(!(await tx.query("SELECT 1 FROM campaign WHERE root_realm_id=$1 AND id=$2 AND ((branch_ref IS NULL AND $3::boolean) OR branch_ref=ANY($4::uuid[]))",[a.realmId,campaign,params[1],params[2]])).rowCount)throw new ForbiddenException("Campaign unavailable");}
+  const [from,to]=period(raw),campaign=await this.campaignScope(tx,a,raw,params);
   const eligible="WITH eligible AS (SELECT b.id,b.display_ref,b.branch_scope_id,b.gender,b.age_group,b.verification_state,b.lifecycle_state,b.beneficiary_category,b.beneficiary_type"+where+" AND b.consent_revoked_at IS NULL)";
   const events=eligible+", effects AS (SELECT d.action,d.at,a.item_ref,a.unit_code,f.quantity,f.amount_minor,a.beneficiary_id,a.reference FROM assistance_delivery_event d JOIN assistance_case a ON a.root_realm_id=d.root_realm_id AND a.id=d.assistance_id JOIN assistance_fulfillment f ON f.root_realm_id=d.root_realm_id AND f.id=d.fulfillment_id JOIN eligible b ON b.id=a.beneficiary_id AND b.branch_scope_id IS NOT DISTINCT FROM a.branch_ref WHERE d.root_realm_id=$1 AND ($18::date IS NULL OR d.at>=($18::date::timestamp AT TIME ZONE 'Asia/Kolkata')) AND ($19::date IS NULL OR d.at<(($19::date+1)::timestamp AT TIME ZONE 'Asia/Kolkata')) AND ($20::uuid IS NULL OR a.campaign_ref=$20) AND ($11::uuid IS NULL OR a.project_ref=$11))";
   const ep=[...params,from,to,campaign];
@@ -31,7 +46,7 @@ export class BeneficiaryReportService{
   const recipients=(await tx.query(events+" SELECT count(DISTINCT beneficiary_id) FILTER(WHERE action IN('DELIVERED','PAID'))::int AS recipients FROM effects",ep)).rows[0];
   const recent=(await tx.query(events+" SELECT reference,action,at,unit_code AS unit,quantity::text,amount_minor::text FROM effects ORDER BY at DESC,reference DESC LIMIT 20",ep)).rows;
   let projects:unknown[]|null=null;
-  try{await this.identity.assertCurrent(tx,a,"projects.view");projects=(await tx.query(eligible+" SELECT p.title AS project,count(DISTINCT b.id)::int AS beneficiaries FROM eligible b JOIN beneficiary_project_link l ON l.root_realm_id=$1 AND l.beneficiary_id=b.id AND l.ended_at IS NULL AND l.branch_scope_id IS NOT DISTINCT FROM b.branch_scope_id JOIN project p ON p.root_realm_id=l.root_realm_id AND p.id=l.project_ref WHERE ($11::uuid IS NULL OR l.project_ref=$11) GROUP BY p.id,p.title ORDER BY p.title,p.id LIMIT 101",params)).rows;}catch(e){if(!(e instanceof ForbiddenException))throw e;}
+  try{await this.identity.assertCurrent(tx,a,"projects.view");projects=(await tx.query(eligible+" SELECT p.id AS \"projectRef\",p.title AS project,count(DISTINCT b.id)::int AS beneficiaries FROM eligible b JOIN beneficiary_project_link l ON l.root_realm_id=$1 AND l.beneficiary_id=b.id AND l.ended_at IS NULL AND l.branch_scope_id IS NOT DISTINCT FROM b.branch_scope_id JOIN project p ON p.root_realm_id=l.root_realm_id AND p.id=l.project_ref WHERE p.status='ACTIVE' AND p.branch_ref IS NOT DISTINCT FROM b.branch_scope_id AND ($11::uuid IS NULL OR l.project_ref=$11) GROUP BY p.id,p.title ORDER BY p.title,p.id LIMIT 101",params)).rows;}catch(e){if(!(e instanceof ForbiddenException))throw e;}
   return {summary,financial:{...financial,currency:"INR"},materials:materials.slice(0,500),materialsTruncated:materials.length>500,recipients:recipients.recipients,recent,projects:projects?.slice(0,100)??null,projectsTruncated:(projects?.length??0)>100,asOf:(await tx.query("SELECT transaction_timestamp() AS at")).rows[0].at,from,to};
  }
  async report(token:string,raw:Record<string,unknown>){
@@ -47,8 +62,8 @@ export class BeneficiaryReportService{
    const aid=raw.exportKind==="AID_HISTORY";
    if(raw.exportKind!==undefined&&raw.exportKind!=="AID_HISTORY"&&raw.exportKind!=="REGISTER")throw new BadRequestException("Unknown report type");
    if(aid)await this.identity.assertCurrent(tx,a,"beneficiaries.assistance.view");
-   const [from,to]=period(raw);
-   const rows=aid?(await tx.query("WITH eligible AS (SELECT b.id,b.branch_scope_id,b.display_ref"+where+" AND b.consent_revoked_at IS NULL) SELECT b.display_ref,a.reference,d.action,d.at::text AS occurred_at,i.sku_norm AS item_code,a.unit_code,f.quantity::text,f.amount_minor::text FROM assistance_delivery_event d JOIN assistance_case a ON a.root_realm_id=d.root_realm_id AND a.id=d.assistance_id JOIN assistance_fulfillment f ON f.root_realm_id=d.root_realm_id AND f.id=d.fulfillment_id JOIN eligible b ON b.id=a.beneficiary_id AND b.branch_scope_id IS NOT DISTINCT FROM a.branch_ref LEFT JOIN inventory_item i ON i.root_realm_id=a.root_realm_id AND i.id=a.item_ref WHERE d.root_realm_id=$1 AND ($18::date IS NULL OR d.at>=($18::date::timestamp AT TIME ZONE 'Asia/Kolkata')) AND ($19::date IS NULL OR d.at<(($19::date+1)::timestamp AT TIME ZONE 'Asia/Kolkata')) AND ($11::uuid IS NULL OR a.project_ref=$11) ORDER BY d.at DESC,d.id DESC LIMIT 501",[...params,from,to])).rows:
+   const [from,to]=period(raw),campaign=aid?await this.campaignScope(tx,a,raw,params):null;
+   const rows=aid?(await tx.query("WITH eligible AS (SELECT b.id,b.branch_scope_id,b.display_ref"+where+" AND b.consent_revoked_at IS NULL) SELECT b.display_ref,a.reference,d.action,d.at::text AS occurred_at,i.sku_norm AS item_code,a.unit_code,f.quantity::text,f.amount_minor::text FROM assistance_delivery_event d JOIN assistance_case a ON a.root_realm_id=d.root_realm_id AND a.id=d.assistance_id JOIN assistance_fulfillment f ON f.root_realm_id=d.root_realm_id AND f.id=d.fulfillment_id JOIN eligible b ON b.id=a.beneficiary_id AND b.branch_scope_id IS NOT DISTINCT FROM a.branch_ref LEFT JOIN inventory_item i ON i.root_realm_id=a.root_realm_id AND i.id=a.item_ref WHERE d.root_realm_id=$1 AND ($18::date IS NULL OR d.at>=($18::date::timestamp AT TIME ZONE 'Asia/Kolkata')) AND ($19::date IS NULL OR d.at<(($19::date+1)::timestamp AT TIME ZONE 'Asia/Kolkata')) AND ($11::uuid IS NULL OR a.project_ref=$11) AND ($20::uuid IS NULL OR a.campaign_ref=$20) ORDER BY d.at DESC,d.id DESC LIMIT 501",[...params,from,to,campaign])).rows:
     (await tx.query("SELECT b.display_ref,b.beneficiary_type,b.verification_state,b.lifecycle_state,b.created_at::text"+where+" AND b.consent_revoked_at IS NULL ORDER BY b.created_at DESC,b.id DESC LIMIT 501",params)).rows;
    // Export minimal references; no precise geography, name, contact, child/gender
    // fields or rare category cells unless a future explicit policy allows it.
