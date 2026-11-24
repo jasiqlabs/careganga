@@ -24,7 +24,7 @@ type Summary={month:string;state:string;settlementRef?:string;revision?:number;
  collectionsScope?:"VERIFIED_TO_DATE_FOR_COMPLETED_SERVICES"};
 const ID=/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i;
 const MONTH=/^20[2-9]\d-(0[1-9]|1[0-2])$/;
-const money=(minor:string)=>"₹"+(Number(minor)/100).toFixed(2);
+const money=(minor:string|undefined)=>typeof minor==="string"&&/^-?\d+$/.test(minor)&&Number.isSafeInteger(Number(minor))?"₹"+(Number(minor)/100).toFixed(2):"Not available";
 const base="/api/v1/healthcare-assistance/provider-settlements/";
 async function api(token:string,path:string,body?:object){
  const response=await identityRequest(base+path,{
@@ -72,7 +72,7 @@ export function NativeMonthlyProviderSettlement({token,canPropose,canReview,canP
   if(!ID.test(c)||!MONTH.test(m))
    throw Error("Select a verified center and month (YYYY-MM).");
   const raw=await api(token,"centers/"+c+"/months/"+m);
-  if(!valid(raw))throw Error("Original monthly status cannot be verified.");
+  if(!valid(raw)||raw.month!==m)throw Error("Original monthly status cannot be verified.");
   return raw;
  },[token]);
  useEffect(()=>{
@@ -95,7 +95,7 @@ export function NativeMonthlyProviderSettlement({token,canPropose,canReview,canP
   const rev=++serial.current;
   setSource(null);setError("");setNotice("");setUncertain(false);
   attempt.current=null;
-  if(!ID.test(center)||!MONTH.test(month))return;
+  if(!ID.test(center)||!MONTH.test(month)){setLoading(false);return;}
   setLoading(true);
   void load(center,month).then(v=>{if(serial.current===rev)setSource(v)})
    .catch(e=>{if(serial.current===rev)report(e)})
@@ -107,7 +107,7 @@ export function NativeMonthlyProviderSettlement({token,canPropose,canReview,canP
   setBusy(true);setError("");setNotice("");
   try{const next=await load(center,month);setSource(next);setUncertain(false);
    if(next.state!=="NOT_PREPARED")attempt.current=null;
-  }catch(e){report(e)}finally{setBusy(false);}
+  }catch(e){setUncertain(true);report(e)}finally{setBusy(false);}
  }
  async function write(kind:"propose"|"review"){
   const prev=source;
@@ -160,14 +160,17 @@ export function NativeMonthlyProviderSettlement({token,canPropose,canReview,canP
    {!!notice&&<Text accessibilityRole="alert" style={styles.note}>{notice}</Text>}
    <Text style={styles.heading}>Verified healthcare center</Text>
    <View style={styles.centerRow}>{centers.map(x=><View key={x.centerRef}>
-    {button(x.name,()=>setCenter(x.centerRef),busy||loading)}
+    {button(x.name,()=>setCenter(x.centerRef),busy||loading||uncertain)}
    </View>)}</View>
    <Text style={styles.heading}>Original liability month (YYYY-MM)</Text>
    <TextInput accessibilityLabel="Original monthly period" style={styles.input}
-    placeholder="2026-11" value={month} editable={!busy} maxLength={7}
+    placeholder="2026-11" value={month} editable={!busy&&!uncertain} maxLength={7}
     autoCapitalize="none" onChangeText={setMonth}/>
    {source&&<View style={styles.card}>
-    <Text style={styles.heading}>Month {source.month}</Text>
+    <Text accessibilityRole="header" style={styles.heading}>Settlement overview — {source.month}</Text>
+    <View style={styles.centerRow}>
+     {[["Verified patient collections",source.collectionsScope==="VERIFIED_TO_DATE_FOR_COMPLETED_SERVICES"?money(source.patientCollectedVerifiedMinor):"Not available"],["Foundation claim status",(source.effectiveState??source.state).replaceAll("_"," ")],["Verified provider payout",money(source.actualPaidMinor)],["Outstanding approved claim",["APPROVED","PARTIALLY_SETTLED","SETTLED"].includes(source.state)?money(source.outstandingMinor):"Not yet approved"]].map(([label,value])=><View key={label} style={[styles.card,{flexGrow:1,flexBasis:"45%"}]}><Text style={styles.note}>{label}</Text><Text style={styles.amount}>{value}</Text></View>)}
+    </View>
     <Text style={styles.note}>Original claim: {source.state.replaceAll("_"," ")}</Text>
     {source.effectiveState&&source.effectiveState!==source.state&&
      <Text style={styles.note}>Current verified payable status: {
@@ -175,18 +178,18 @@ export function NativeMonthlyProviderSettlement({token,canPropose,canReview,canP
     <Text style={styles.amount}>{source.state==="NOT_PREPARED"?
      "Eligible posted Foundation liabilities":source.state==="PROPOSED"?
      "Prepared claim awaiting approval":"Approved monthly Foundation claim"}: {
-     money(source.state==="NOT_PREPARED"?source.eligibleAccruedMinor??"0":
-      source.state==="PROPOSED"?source.proposedClaimMinor??"0":
+     money(source.state==="NOT_PREPARED"?source.eligibleAccruedMinor:
+      source.state==="PROPOSED"?source.proposedClaimMinor:
       source.approvedFoundationMinor)}</Text>
     {source.adjustedFoundationMinor&&BigInt(source.adjustedFoundationMinor)>0n&&<>
      <Text style={styles.note}>Original approved claim: {
-      money(source.originalApprovedFoundationMinor??"0")}</Text>
+      money(source.originalApprovedFoundationMinor)}</Text>
      <Text style={styles.note}>Verified liability correction: {
       money(source.adjustedFoundationMinor)}</Text>
      <Text style={styles.note}>Original gross bank payout: {
-      money(source.grossFoundationPaidMinor??"0")}</Text>
+      money(source.grossFoundationPaidMinor)}</Text>
      <Text style={styles.note}>Actually recovered incoming bank money: {
-      money(source.verifiedProviderRecoveryMinor??"0")}</Text>
+      money(source.verifiedProviderRecoveryMinor)}</Text>
     </>}
     <Text style={styles.amount}>Actual verified provider payout: {
      money(source.actualPaidMinor)}</Text>
@@ -199,15 +202,15 @@ export function NativeMonthlyProviderSettlement({token,canPropose,canReview,canP
      <Text style={styles.amount}>Gross service value: {
       money(source.centerGrossServicesMinor)}</Text>
      <Text style={styles.note}>Patient payable: {
-      money(source.patientPayableMinor??"0")}</Text>
+      money(source.patientPayableMinor)}</Text>
      <Text style={styles.note}>Center collections verified to date: {
-      money(source.patientCollectedVerifiedMinor??"0")}</Text>
+      money(source.patientCollectedVerifiedMinor)}</Text>
      <Text style={styles.note}>Partner-attested patient collections for approved
-      pharmacy/nursing/OT: {money(source.partnerPatientCollectedAttestedMinor??"0")}</Text>
+      pharmacy/nursing/OT: {money(source.partnerPatientCollectedAttestedMinor)}</Text>
      <Text style={styles.note}>Center refunds/corrections to date: {
-      money(source.patientRefundedMinor??"0")}</Text>
+      money(source.patientRefundedMinor)}</Text>
      <Text style={styles.amount}>Original Foundation obligation: {
-      money(source.foundationApprovedLiabilityMinor??"0")}</Text>
+      money(source.foundationApprovedLiabilityMinor)}</Text>
      <Text style={styles.note}>These are separate source amounts. Patient
       receipts and refunds may occur after the service month and are never
       Foundation bank income.</Text>
@@ -231,7 +234,7 @@ export function NativeMonthlyProviderSettlement({token,canPropose,canReview,canP
        ]),busy||uncertain)}
     {uncertain&&<Text accessibilityRole="alert" style={styles.note}>
      Last outcome uncertain. Check this original claim before another action.</Text>}
-    {canPay&&["APPROVED","PARTIALLY_SETTLED"].includes(source.state)&&
+    {canPay&&!uncertain&&["APPROVED","PARTIALLY_SETTLED"].includes(source.state)&&
      <NativeVerifiedProviderPayout key={source.settlementRef}
       token={token} centerRef={center} month={month}
       onExpired={onExpired} onApplied={refresh}/>}
