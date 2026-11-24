@@ -13,5 +13,7 @@ export class AssistanceController{
  @Post(":ref/deliver-material") @Header("Cache-Control","private, no-store") material(@Headers("authorization")token:string,@Param("ref")ref:string,@Body()raw:unknown){return this.fulfillment.prepareStock(token,ref,raw);}
  @Post(":ref/deliver-financial") @Header("Cache-Control","private, no-store") financial(@Headers("authorization")token:string,@Param("ref")ref:string,@Body()raw:unknown){return this.fulfillment.preparePayment(token,ref,raw);}
  @Post(":ref/return") @Header("Cache-Control","private, no-store") returnStock(@Headers("authorization")token:string,@Param("ref")ref:string,@Body()raw:unknown){return this.fulfillment.prepareStock(token,ref,raw,true);}
+ @Post(":ref/prepare-recovery") @Header("Cache-Control","private, no-store") recovery(@Headers("authorization")token:string,@Param("ref")ref:string,@Body()raw:unknown){return this.fulfillment.prepareRecovery(token,ref,raw);}
+ @Post(":ref/confirm-recovery") @Header("Cache-Control","private, no-store") recovered(@Headers("authorization")token:string,@Param("ref")ref:string,@Body()raw:unknown){return this.fulfillment.confirmRecovery(token,ref,raw);}
  @Post(":ref/confirm-handover") @Header("Cache-Control","private, no-store") handover(@Headers("authorization")token:string,@Param("ref")ref:string,@Body()raw:unknown){return this.fulfillment.confirm(token,ref,raw);}
 }
