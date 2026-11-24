@@ -10,46 +10,46 @@ This user-requested cross-module subtracker supplements (does not replace) origi
 
 ## Summary
 
-37 subitems: 17 source-confirmed presentation gaps, 19 runtime/reproduction candidates, 1 reference evidence blocker. Initial baseline: all OPEN. Current progress: 35 rows IN_PROGRESS (17 source implementation candidates + 18 source-inspected acceptance items); 1 row EVIDENCE_RECOVERED (final public original image set); 1 row BLOCKED (integrated runtime/visual gate); zero independently cleared or runtime passes. No unreviewed OPEN rows, but IN_PROGRESS and BLOCKED are not closure. P0 = release visual evidence gate; P1 = primary journey or substantial usability; P2 = secondary usability. Source status and runtime status stay separate.
+37 subitems: 17 source implementation candidates, 19 runtime/reproduction candidates, 1 reference evidence item. Latest disposition: **13 SOURCE_PRESENT_REVIEW_PENDING** (targeted source evidence of intended changes, not independent clearance), **4 SOURCE_REVIEW_REMAINS** (explicit remaining review scope below), **18 MANUAL_ACCEPTANCE_PENDING** (existing CHECK rows, actual acceptance not executed), **1 EVIDENCE_RECOVERED** (final public originals), **1 BLOCKED** (integrated runtime/visual gate). No generic IN_PROGRESS summary rows remain; zero independently cleared or runtime passes. P0 = release visual evidence gate; P1 = primary journey or substantial usability; P2 = secondary usability. Source presence does not mean source-complete. Acceptance candidates are not confirmed defects. Original QA IDs remain unchanged.
 
 | ID | Priority | Evidence | Owner/surface | Issue | State |
 |---|---|---|---|---|---|
 | HUX-01.01 | P0 | EVIDENCE | CG14–17 all | Recover separate healthcare reference originals | EVIDENCE_RECOVERED |
-| HUX-02.01 | P1 | SOURCE | CG14–17 all | Shared design consistency | IN_PROGRESS |
-| HUX-02.02 | P1 | CHECK | CG14–17 admin/center | Role-specific healthcare navigation | IN_PROGRESS |
-| HUX-03.01 | P1 | CHECK | CG14/15/17/20 admin/center | Operational dashboard journey | IN_PROGRESS |
-| HUX-04.01 | P1 | SOURCE | CG14 US-001 admin | Provider registration form density | IN_PROGRESS |
-| HUX-04.02 | P1 | SOURCE | CG14 US-003 admin | Doctor list lacks in-screen search/filter | IN_PROGRESS |
-| HUX-04.03 | P1 | SOURCE | CG14 US-003 admin | Doctor registration/detail hierarchy | IN_PROGRESS |
-| HUX-04.04 | P1 | CHECK | CG14 US-002/003 admin/center | Verification and evidence clarity | IN_PROGRESS |
-| HUX-04.05 | P1 | CHECK | CG14 US-005 center/admin | Center profile and content editing | IN_PROGRESS |
-| HUX-05.01 | P1 | CHECK | CG15 US-001 admin/center | Scheduling calendar and availability | IN_PROGRESS |
-| HUX-06.01 | P1 | CHECK | CG15 US-003/008 admin | Patient and booking management | IN_PROGRESS |
-| HUX-06.02 | P1 | SOURCE | CG15 US-006 center web | Consultation queue action overload | IN_PROGRESS |
-| HUX-06.03 | P1 | CHECK | CG15 US-003/006 center | Patient intake and consent | IN_PROGRESS |
-| HUX-07.01 | P1 | SOURCE | CG16 US-001 admin | Lab catalogue search limited to loaded records | IN_PROGRESS |
-| HUX-07.02 | P2 | SOURCE | CG16 US-001 admin/center | H09 filter coverage | IN_PROGRESS |
-| HUX-07.03 | P1 | SOURCE | CG16 US-002 lab web (ERP ON only) | Lab sample/report workflow structure | IN_PROGRESS |
-| HUX-07.04 | P1 | CHECK | CG16 US-003/004 public | Public lab test and enquiry | IN_PROGRESS |
-| HUX-08.01 | P1 | SOURCE | CG17 US-001 admin | Assistance policy form hierarchy | IN_PROGRESS |
-| HUX-08.02 | P1 | SOURCE | CG17 US-005/006 admin/center | Settlement screen is mostly stacked definitions | IN_PROGRESS |
-| HUX-08.03 | P1 | CHECK | CG17 US-003/004 center/public | Payment and collection status | IN_PROGRESS |
-| HUX-09.01 | P1 | CHECK | CG14/18 public web/app | Healthcare landing and discovery navigation | IN_PROGRESS |
-| HUX-10.01 | P1 | SOURCE | CG14 US-004 public web | Doctor result cards omit key discovery information | IN_PROGRESS |
-| HUX-10.02 | P1 | SOURCE | CG14 US-004 public web | Center result cards are text-only | IN_PROGRESS |
-| HUX-10.03 | P1 | CHECK | CG14 US-004 public web/app | Directory advanced filter and result modes | IN_PROGRESS |
-| HUX-10.04 | P1 | CHECK | CG14/15/17 public web/app | Doctor profile and center-specific choice | IN_PROGRESS |
-| HUX-11.01 | P1 | SOURCE | CG15 US-004 / CG17 US-002 public web/app | Booking review text/action hierarchy | IN_PROGRESS |
-| HUX-11.02 | P1 | CHECK | CG15 US-002/003 public web/app | Appointment calendar and patient verification | IN_PROGRESS |
-| HUX-11.03 | P1 | CHECK | CG15 US-005/007/008 public web/app | Booking confirmation and patient history | IN_PROGRESS |
-| HUX-12.01 | P1 | SOURCE | CG14 US-003 internal Android | Doctor management long scrolling forms | IN_PROGRESS |
-| HUX-12.02 | P1 | SOURCE | CG15 US-006 internal Android | Queue summary and action readability | IN_PROGRESS |
-| HUX-12.03 | P1 | CHECK | CG14/16/17 internal Android | Operational parity | IN_PROGRESS |
-| HUX-13.01 | P1 | SOURCE | CG14 US-004 public Android | Public result list and filter density | IN_PROGRESS |
-| HUX-13.02 | P1 | CHECK | CG15/17 public Android | Patient home and healthcare journey | IN_PROGRESS |
-| HUX-14.01 | P1 | CHECK | CG14–17 all | Responsive and accessibility acceptance | IN_PROGRESS |
-| HUX-15.01 | P1 | SOURCE | CG14–17 all | Technical copy and excessive explanations | IN_PROGRESS |
-| HUX-15.02 | P1 | CHECK | CG14–17 all | Loading, empty, error and uncertain state | IN_PROGRESS |
+| HUX-02.01 | P1 | SOURCE | CG14–17 all | Shared design consistency | SOURCE_REVIEW_REMAINS |
+| HUX-02.02 | P1 | CHECK | CG14–17 admin/center | Role-specific healthcare navigation | MANUAL_ACCEPTANCE_PENDING |
+| HUX-03.01 | P1 | CHECK | CG14/15/17/20 admin/center | Operational dashboard journey | MANUAL_ACCEPTANCE_PENDING |
+| HUX-04.01 | P1 | SOURCE | CG14 US-001 admin | Provider registration form density | SOURCE_PRESENT_REVIEW_PENDING |
+| HUX-04.02 | P1 | SOURCE | CG14 US-003 admin | Doctor list lacks in-screen search/filter | SOURCE_PRESENT_REVIEW_PENDING |
+| HUX-04.03 | P1 | SOURCE | CG14 US-003 admin | Doctor registration/detail hierarchy | SOURCE_PRESENT_REVIEW_PENDING |
+| HUX-04.04 | P1 | CHECK | CG14 US-002/003 admin/center | Verification and evidence clarity | MANUAL_ACCEPTANCE_PENDING |
+| HUX-04.05 | P1 | CHECK | CG14 US-005 center/admin | Center profile and content editing | MANUAL_ACCEPTANCE_PENDING |
+| HUX-05.01 | P1 | CHECK | CG15 US-001 admin/center | Scheduling calendar and availability | MANUAL_ACCEPTANCE_PENDING |
+| HUX-06.01 | P1 | CHECK | CG15 US-003/008 admin | Patient and booking management | MANUAL_ACCEPTANCE_PENDING |
+| HUX-06.02 | P1 | SOURCE | CG15 US-006 center web | Consultation queue action overload | SOURCE_PRESENT_REVIEW_PENDING |
+| HUX-06.03 | P1 | CHECK | CG15 US-003/006 center | Patient intake and consent | MANUAL_ACCEPTANCE_PENDING |
+| HUX-07.01 | P1 | SOURCE | CG16 US-001 admin | Lab catalogue search limited to loaded records | SOURCE_PRESENT_REVIEW_PENDING |
+| HUX-07.02 | P2 | SOURCE | CG16 US-001 admin/center | H09 filter coverage | SOURCE_REVIEW_REMAINS |
+| HUX-07.03 | P1 | SOURCE | CG16 US-002 lab web (ERP ON only) | Lab sample/report workflow structure | SOURCE_REVIEW_REMAINS |
+| HUX-07.04 | P1 | CHECK | CG16 US-003/004 public | Public lab test and enquiry | MANUAL_ACCEPTANCE_PENDING |
+| HUX-08.01 | P1 | SOURCE | CG17 US-001 admin | Assistance policy form hierarchy | SOURCE_PRESENT_REVIEW_PENDING |
+| HUX-08.02 | P1 | SOURCE | CG17 US-005/006 admin/center | Settlement screen is mostly stacked definitions | SOURCE_PRESENT_REVIEW_PENDING |
+| HUX-08.03 | P1 | CHECK | CG17 US-003/004 center/public | Payment and collection status | MANUAL_ACCEPTANCE_PENDING |
+| HUX-09.01 | P1 | CHECK | CG14/18 public web/app | Healthcare landing and discovery navigation | MANUAL_ACCEPTANCE_PENDING |
+| HUX-10.01 | P1 | SOURCE | CG14 US-004 public web | Doctor result cards omit key discovery information | SOURCE_PRESENT_REVIEW_PENDING |
+| HUX-10.02 | P1 | SOURCE | CG14 US-004 public web | Center result cards are text-only | SOURCE_PRESENT_REVIEW_PENDING |
+| HUX-10.03 | P1 | CHECK | CG14 US-004 public web/app | Directory advanced filter and result modes | MANUAL_ACCEPTANCE_PENDING |
+| HUX-10.04 | P1 | CHECK | CG14/15/17 public web/app | Doctor profile and center-specific choice | MANUAL_ACCEPTANCE_PENDING |
+| HUX-11.01 | P1 | SOURCE | CG15 US-004 / CG17 US-002 public web/app | Booking review text/action hierarchy | SOURCE_PRESENT_REVIEW_PENDING |
+| HUX-11.02 | P1 | CHECK | CG15 US-002/003 public web/app | Appointment calendar and patient verification | MANUAL_ACCEPTANCE_PENDING |
+| HUX-11.03 | P1 | CHECK | CG15 US-005/007/008 public web/app | Booking confirmation and patient history | MANUAL_ACCEPTANCE_PENDING |
+| HUX-12.01 | P1 | SOURCE | CG14 US-003 internal Android | Doctor management long scrolling forms | SOURCE_PRESENT_REVIEW_PENDING |
+| HUX-12.02 | P1 | SOURCE | CG15 US-006 internal Android | Queue summary and action readability | SOURCE_PRESENT_REVIEW_PENDING |
+| HUX-12.03 | P1 | CHECK | CG14/16/17 internal Android | Operational parity | MANUAL_ACCEPTANCE_PENDING |
+| HUX-13.01 | P1 | SOURCE | CG14 US-004 public Android | Public result list and filter density | SOURCE_PRESENT_REVIEW_PENDING |
+| HUX-13.02 | P1 | CHECK | CG15/17 public Android | Patient home and healthcare journey | MANUAL_ACCEPTANCE_PENDING |
+| HUX-14.01 | P1 | CHECK | CG14–17 all | Responsive and accessibility acceptance | MANUAL_ACCEPTANCE_PENDING |
+| HUX-15.01 | P1 | SOURCE | CG14–17 all | Technical copy and excessive explanations | SOURCE_REVIEW_REMAINS |
+| HUX-15.02 | P1 | CHECK | CG14–17 all | Loading, empty, error and uncertain state | MANUAL_ACCEPTANCE_PENDING |
 | HUX-16.01 | P0 | CHECK | CG14–17 all | Integrated real-user and visual acceptance | BLOCKED |
 
 ## Development checkpoint — public directory, 24 November 2026
@@ -190,6 +190,18 @@ Two-copy confirmation now uses authorized patient display name, original booking
 - HUX-08.03 / 15.02: fixed stale Web/native balance and receipt actions on failed refresh/booking switch; request-generation scope, native late PDF preview protection and cache cleanup (`5c1be7d8`, `b8c6cea9`). CG17 owner tracker updated. Verify failed refresh, A→B slow response, expired session, concurrent taps and leaving screen during PDF fetch. No payment state or access expansion.
 - Remote read-back literal contract checks: 10/10 matched. No local source gate, compile, runtime or independent re-review executed. These targeted fixes are authored and read back; all 35 rows remain IN_PROGRESS pending remaining source/independent disposition, not 35 confirmed defects. No merge or new business scope.
 
+## 24 November — remaining source-candidate disposition and finite review scope
+
+- Latest inspected source baseline `a192177ae0a7b1b9c978170514ba97e3a0a77ec3`; main comparison before these fixes 89 ahead/0 behind. New corrections: Web provider detail/finance selection scope `4d1a3b0d`, native provider list/detail/finance scope `cde025b1`, Web policy local datetime round-trip `c79b615e`, Web doctor response identity validation `597d569d`; original CG14 and CG17 owner tracker updates committed. Preflight expanded at `a192177a`; 12/12 targeted remote literal assertions matched; local TS parse/build, database/device and actual independent review NOT_RUN. No authorization or business scope expansion.
+- HUX-04.01/04.02/04.03/12.01: read current provider/doctor Web/native sections and doctor API: grouped registration, applied bounded root-scoped search, deterministic pagination, detail identity checks, no fake credentials. Prior QA trace plus new selection fixes; formal independent clearance pending.
+- HUX-06.02/12.02: Web/native queue daily summary, selected details and guarded current center/day list present; source observation only; action/QR/concurrency/device acceptance pending.
+- HUX-07.01: read CG16 catalogue query and both clients; actual bounded search, category/sample/status filters, paging, export path and existing root/grant source present. Independent clearance pending.
+- HUX-08.01/08.02: assistance and monthly settlement source includes grouped policy form and current verified collections/payout/approved outstanding summaries; Web local date fix follows native semantics. Actual fee/expiry/settlement/replay and DB acceptance pending.
+- HUX-10.01/10.02/13.01: Web/native directory source has genuine approved center photos/services, doctor credentials/fees, selected center route, bounded coordinates/filters and neutral Web fallback. Native no-photo text cards are honest, no fabricated portrait. Reference visual acceptance pending.
+- HUX-11.01: Web/native selected fee/hold/assistance summary, private reason and reception disclosure, original booking recovery present. Source observation only; actual reservation/fee/expiry/payment QA pending.
+- Remaining HUX-02.01: review consistent tokens/components and all authorized staff/public screens, not just sampled healthcare surfaces; actual appearance is manual acceptance. HUX-07.02: reconcile H09 subcategory/price filters with approved category/tariff source; do not invent master-price or subcategory data. HUX-07.03: latest orders search is limited to loaded records; assess approved scoped order/status lookup contract and native workflow coverage, not speculative ERP additions. HUX-15.01: remaining cross-screen human-readable copy review; new safe error fixes already logged. These four retain explicit review scope rather than falsely declaring closure.
+- 18 CHECK rows classified MANUAL_ACCEPTANCE_PENDING: reproduction/acceptance still required, no individual source clearance asserted. If local review/QA reveals a current-owner source defect, fix on the same branch and update original owner QA + this tracker. `INDEPENDENT_REVIEW_UNAVAILABLE`: no separate reviewer invocation exists in this connector session. Actual build, PDF, CMS publication, references and integrated QA remain NOT_RUN. No merge.
+
 ## Subtracker details and expected user scenarios
 
 ### HUX-01.01 — Recover separate healthcare reference originals
@@ -202,7 +214,7 @@ Two-copy confirmation now uses authorized patient display name, original booking
 
 ### HUX-02.01 — Shared design consistency
 
-- **Priority/evidence/owner:** P1 / SOURCE / CG14–17 all. IN_PROGRESS; runtime NOT_RUN.
+- **Priority/evidence/owner:** P1 / SOURCE / CG14–17 all. SOURCE_REVIEW_REMAINS; runtime NOT_RUN.
 - **Observation:** Public directory uses inline colors/grid while registration, settlement and diagnostics use different workspace structures.
 - **Expected experience:** Reuse existing design tokens and shared components; navy admin shell, active navigation, readable labels, semantic status, consistent focus and buttons; public brand stays distinct.
 - **Manual scenario / acceptance:** Open each module and both apps; compare typography, spacing, buttons, feedback and contrast; no new theme or duplicated token system.
@@ -210,7 +222,7 @@ Two-copy confirmation now uses authorized patient display name, original booking
 
 ### HUX-02.02 — Role-specific healthcare navigation
 
-- **Priority/evidence/owner:** P1 / CHECK / CG14–17 admin/center. IN_PROGRESS; runtime NOT_RUN.
+- **Priority/evidence/owner:** P1 / CHECK / CG14–17 admin/center. MANUAL_ACCEPTANCE_PENDING; runtime NOT_RUN.
 - **Observation:** Center portal and Foundation Admin must have different contexts; runtime navigation not inspected.
 - **Expected experience:** Group existing healthcare routes by task, show current role/location, hide unauthorized and ERP-off actions; no dead links.
 - **Manual scenario / acceptance:** Root, branch manager, receptionist, doctor and revoked user each navigate; switch X/Y only if permitted; deep links remain denied.
@@ -218,7 +230,7 @@ Two-copy confirmation now uses authorized patient display name, original booking
 
 ### HUX-03.01 — Operational dashboard journey
 
-- **Priority/evidence/owner:** P1 / CHECK / CG14/15/17/20 admin/center. IN_PROGRESS; runtime NOT_RUN.
+- **Priority/evidence/owner:** P1 / CHECK / CG14/15/17/20 admin/center. MANUAL_ACCEPTANCE_PENDING; runtime NOT_RUN.
 - **Observation:** UI-06 recovered dashboard reference; actual dashboard composition not verified.
 - **Expected experience:** Real authorized current counts, appointment queue and financial summary with date and center context; drilldowns to existing sources only.
 - **Manual scenario / acceptance:** With no data and two centers, cards show accurate zero/empty and scoped totals; click each available action; no invented charts.
@@ -226,7 +238,7 @@ Two-copy confirmation now uses authorized patient display name, original booking
 
 ### HUX-04.01 — Provider registration form density
 
-- **Priority/evidence/owner:** P1 / SOURCE / CG14 US-001 admin. IN_PROGRESS; runtime NOT_RUN.
+- **Priority/evidence/owner:** P1 / SOURCE / CG14 US-001 admin. SOURCE_PRESENT_REVIEW_PENDING; runtime NOT_RUN.
 - **Observation:** provider-onboarding.tsx:429–444 renders provider and multiple center forms inline.
 - **Expected experience:** Group legal/contact/location details and multi-center cards; consistent error placement, save/cancel, avoid excessive scrolling; keep original fields.
 - **Manual scenario / acceptance:** Register one provider and two centers; invalid PIN/contact highlights field; remove second draft; cancel dirty form and retry lost response without duplicate.
@@ -234,7 +246,7 @@ Two-copy confirmation now uses authorized patient display name, original booking
 
 ### HUX-04.02 — Doctor list lacks in-screen search/filter
 
-- **Priority/evidence/owner:** P1 / SOURCE / CG14 US-003 admin. IN_PROGRESS; runtime NOT_RUN.
+- **Priority/evidence/owner:** P1 / SOURCE / CG14 US-003 admin. SOURCE_PRESENT_REVIEW_PENDING; runtime NOT_RUN.
 - **Observation:** doctor-onboarding.tsx:251–271 four-column table, load more, no search/filter in inspected list.
 - **Expected experience:** Search and filter the actual authorized doctor collection, show useful verification and specialty; paginated results; existing owner API reused/extended only if necessary.
 - **Manual scenario / acceptance:** Find a doctor beyond first page by name/registration where permitted, filter specialty and status, reset, verify no out-of-scope result.
@@ -242,7 +254,7 @@ Two-copy confirmation now uses authorized patient display name, original booking
 
 ### HUX-04.03 — Doctor registration/detail hierarchy
 
-- **Priority/evidence/owner:** P1 / SOURCE / CG14 US-003 admin. IN_PROGRESS; runtime NOT_RUN.
+- **Priority/evidence/owner:** P1 / SOURCE / CG14 US-003 admin. SOURCE_PRESENT_REVIEW_PENDING; runtime NOT_RUN.
 - **Observation:** doctor-onboarding.tsx:188–250 inline form; 273–331 selected profile and review controls stacked below list.
 - **Expected experience:** Use responsive table + details/drawer, group qualifications, specialties, credentials, mapped centers and fee history; verified and pending clearly distinct.
 - **Manual scenario / acceptance:** Create draft, upload proof, return correction, independent approval, select another doctor, retain list filters; mobile drawer back works.
@@ -250,7 +262,7 @@ Two-copy confirmation now uses authorized patient display name, original booking
 
 ### HUX-04.04 — Verification and evidence clarity
 
-- **Priority/evidence/owner:** P1 / CHECK / CG14 US-002/003 admin/center. IN_PROGRESS; runtime NOT_RUN.
+- **Priority/evidence/owner:** P1 / CHECK / CG14 US-002/003 admin/center. MANUAL_ACCEPTANCE_PENDING; runtime NOT_RUN.
 - **Observation:** health-review-inbox.tsx, doctor-proof-uploader.tsx, center-doctor-fees.tsx require rendered review.
 - **Expected experience:** Show document scan, pending/returned/verified, separate activation/publication and center fee history; make next allowed action obvious.
 - **Manual scenario / acceptance:** Separate reviewer and publisher; rejected document, returned draft, suspended doctor and two center fees; never imply verified means bookable.
@@ -258,7 +270,7 @@ Two-copy confirmation now uses authorized patient display name, original booking
 
 ### HUX-04.05 — Center profile and content editing
 
-- **Priority/evidence/owner:** P1 / CHECK / CG14 US-005 center/admin. IN_PROGRESS; runtime NOT_RUN.
+- **Priority/evidence/owner:** P1 / CHECK / CG14 US-005 center/admin. MANUAL_ACCEPTANCE_PENDING; runtime NOT_RUN.
 - **Observation:** center-draft-portal.tsx:123–205 center selection and form; content/support files exist.
 - **Expected experience:** Visible own-center context, logical profile sections, preview and review status; upload progress, retry, unsaved changes, own support.
 - **Manual scenario / acceptance:** Center X edits hours and approved photo, previews, submits, returns, publishes; center Y cannot edit; public only reflects approved revision.
@@ -266,7 +278,7 @@ Two-copy confirmation now uses authorized patient display name, original booking
 
 ### HUX-05.01 — Scheduling calendar and availability
 
-- **Priority/evidence/owner:** P1 / CHECK / CG15 US-001 admin/center. IN_PROGRESS; runtime NOT_RUN.
+- **Priority/evidence/owner:** P1 / CHECK / CG15 US-001 admin/center. MANUAL_ACCEPTANCE_PENDING; runtime NOT_RUN.
 - **Observation:** doctor-schedule-workspace.tsx:478+ contains six KPIs and roster/filter layout; actual calendar, responsiveness and action ordering unverified.
 - **Expected experience:** Preserve H07 weekly grid, availability/leave/holiday/slot tabs; clear local date/time, overlap/conflict and save feedback.
 - **Manual scenario / acceptance:** Create split shifts, block time, leave and conflicting X/Y windows; view narrow and desktop, stale save; public never shows conflicting slots.
@@ -274,7 +286,7 @@ Two-copy confirmation now uses authorized patient display name, original booking
 
 ### HUX-06.01 — Patient and booking management
 
-- **Priority/evidence/owner:** P1 / CHECK / CG15 US-003/008 admin. IN_PROGRESS; runtime NOT_RUN.
+- **Priority/evidence/owner:** P1 / CHECK / CG15 US-003/008 admin. MANUAL_ACCEPTANCE_PENDING; runtime NOT_RUN.
 - **Observation:** foundation-patient-bookings.tsx:253–365 already has H15 heading, six KPIs and filters; detail panel runtime not verified.
 - **Expected experience:** Retain H15 table and permitted detail tabs, search by human booking/virtual patient ID; correct status and protected documents; no future EMR controls.
 - **Manual scenario / acceptance:** Find booking by patient ID, filter date/center, view history and permitted print, switch records; wrong patient/root and revoked actor denied.
@@ -282,7 +294,7 @@ Two-copy confirmation now uses authorized patient display name, original booking
 
 ### HUX-06.02 — Consultation queue action overload
 
-- **Priority/evidence/owner:** P1 / SOURCE / CG15 US-006 center web. IN_PROGRESS; runtime NOT_RUN.
+- **Priority/evidence/owner:** P1 / SOURCE / CG15 US-006 center web. SOURCE_PRESENT_REVIEW_PENDING; runtime NOT_RUN.
 - **Observation:** center-visit-queue.tsx:329–384 maps each visit to card with inline history, cancellation and multiple actions.
 - **Expected experience:** Compact daily queue, visible status tabs/summary and one context-appropriate primary action; secondary actions in details, confirmation for destructive action.
 - **Manual scenario / acceptance:** Receptionist checks in, doctor begins/completes, cancel with reason, scan QR and handle no-show; correct states after reload and concurrent update.
@@ -290,7 +302,7 @@ Two-copy confirmation now uses authorized patient display name, original booking
 
 ### HUX-06.03 — Patient intake and consent
 
-- **Priority/evidence/owner:** P1 / CHECK / CG15 US-003/006 center. IN_PROGRESS; runtime NOT_RUN.
+- **Priority/evidence/owner:** P1 / CHECK / CG15 US-003/006 center. MANUAL_ACCEPTANCE_PENDING; runtime NOT_RUN.
 - **Observation:** center-patient-intake.tsx and center-assisted-consultation-booking.tsx require runtime walkthrough.
 - **Expected experience:** Explain patient identity, consent, required vs optional fields and duplicate handling; preserve patient privacy and no repeated unnecessary entry.
 - **Manual scenario / acceptance:** Existing and new patient, missing consent, duplicate ID, invalid phone, staff-assisted booking; clear field errors and scoped history.
@@ -298,7 +310,7 @@ Two-copy confirmation now uses authorized patient display name, original booking
 
 ### HUX-07.01 — Lab catalogue search limited to loaded records
 
-- **Priority/evidence/owner:** P1 / SOURCE / CG16 US-001 admin. IN_PROGRESS; runtime NOT_RUN.
+- **Priority/evidence/owner:** P1 / SOURCE / CG16 US-001 admin. SOURCE_PRESENT_REVIEW_PENDING; runtime NOT_RUN.
 - **Observation:** lab-test-master-workspace.tsx:287–293 explicitly searches loaded tests and shows up to 100 source records.
 - **Expected experience:** Server-backed scoped search/filter/pagination for existing catalogue if owner contract supports; show result count/scope and export semantics; no hidden records.
 - **Manual scenario / acceptance:** Seed >100 legitimate QA test records; find record beyond initial page, reset, export correct scope; no cross-center private tariff.
@@ -306,7 +318,7 @@ Two-copy confirmation now uses authorized patient display name, original booking
 
 ### HUX-07.02 — H09 filter coverage
 
-- **Priority/evidence/owner:** P2 / SOURCE / CG16 US-001 admin/center. IN_PROGRESS; runtime NOT_RUN.
+- **Priority/evidence/owner:** P2 / SOURCE / CG16 US-001 admin/center. SOURCE_REVIEW_REMAINS; runtime NOT_RUN.
 - **Observation:** lab-test-master-workspace.tsx:284–335 shows loaded search, table, details/tabs; H09 specifies category/subcategory/sample/price/status filters.
 - **Expected experience:** Use current source-backed filters and readable effective pricing/status with responsive selected detail; retain existing master/duplicate/deactivate semantics.
 - **Manual scenario / acceptance:** Filter categories/sample/status, compare two center tariffs and effective dates; no unsupported bulk import or accreditation.
@@ -314,7 +326,7 @@ Two-copy confirmation now uses authorized patient display name, original booking
 
 ### HUX-07.03 — Lab sample/report workflow structure
 
-- **Priority/evidence/owner:** P1 / SOURCE / CG16 US-002 lab web (ERP ON only). IN_PROGRESS; runtime NOT_RUN.
+- **Priority/evidence/owner:** P1 / SOURCE / CG16 US-002 lab web (ERP ON only). SOURCE_REVIEW_REMAINS; runtime NOT_RUN.
 - **Observation:** clinical-lab-order-workspace.tsx:225–314 inline creation, Latest Clinical Orders table then selected detail; H10 describes status filters and selected tabs.
 - **Expected experience:** Use clear specimen lifecycle/status, scoped order search, role-specific next action and selected detail tabs; private report states and reviewer separate.
 - **Manual scenario / acceptance:** ERP ON with real grant: create order, collect, process, approve, release; verify rejected scan and wrong patient; ERP OFF no clinical controls.
@@ -322,7 +334,7 @@ Two-copy confirmation now uses authorized patient display name, original booking
 
 ### HUX-07.04 — Public lab test and enquiry
 
-- **Priority/evidence/owner:** P1 / CHECK / CG16 US-003/004 public. IN_PROGRESS; runtime NOT_RUN.
+- **Priority/evidence/owner:** P1 / CHECK / CG16 US-003/004 public. MANUAL_ACCEPTANCE_PENDING; runtime NOT_RUN.
 - **Observation:** public-lab-offers.ts and native public-lab-offer-directory.tsx require runtime review.
 - **Expected experience:** Discover test, actual center and approved price; clear enquiry vs booking; no public lab checkout when ERP OFF.
 - **Manual scenario / acceptance:** Find test by name/category, compare real prices, contact/enquire, no result, withdrawn offer; no patient report leak.
@@ -330,7 +342,7 @@ Two-copy confirmation now uses authorized patient display name, original booking
 
 ### HUX-08.01 — Assistance policy form hierarchy
 
-- **Priority/evidence/owner:** P1 / SOURCE / CG17 US-001 admin. IN_PROGRESS; runtime NOT_RUN.
+- **Priority/evidence/owner:** P1 / SOURCE / CG17 US-001 admin. SOURCE_PRESENT_REVIEW_PENDING; runtime NOT_RUN.
 - **Observation:** healthcare-policy-workspace.tsx:212–313 stacked center, service, estimate, type, cap fields.
 - **Expected experience:** Group eligibility, policy amount/cap/effective dates and review; show preview and status; explain fixed vs percentage and exceptional approval.
 - **Manual scenario / acceptance:** Create eligible consultation policy, expired/overlap/capped/100% exceptional policy; preview exact amount; independent approval only.
@@ -338,7 +350,7 @@ Two-copy confirmation now uses authorized patient display name, original booking
 
 ### HUX-08.02 — Settlement screen is mostly stacked definitions
 
-- **Priority/evidence/owner:** P1 / SOURCE / CG17 US-005/006 admin/center. IN_PROGRESS; runtime NOT_RUN.
+- **Priority/evidence/owner:** P1 / SOURCE / CG17 US-005/006 admin/center. SOURCE_PRESENT_REVIEW_PENDING; runtime NOT_RUN.
 - **Observation:** monthly-provider-settlement-workspace.tsx:137–226 select center/month then dl blocks and actions; H17 specifies structured summary.
 - **Expected experience:** Use KPI summary for patient collections, Foundation liability, verified paid and outstanding; organized breakdown and actual permitted claim state/actions; no new ledger.
 - **Manual scenario / acceptance:** Select center/month, no claims, prepared, approved, partial, reconciled and correction; values match CG09, center money never Foundation income.
@@ -346,7 +358,7 @@ Two-copy confirmation now uses authorized patient display name, original booking
 
 ### HUX-08.03 — Payment and collection status
 
-- **Priority/evidence/owner:** P1 / CHECK / CG17 US-003/004 center/public. IN_PROGRESS; runtime NOT_RUN.
+- **Priority/evidence/owner:** P1 / CHECK / CG17 US-003/004 center/public. MANUAL_ACCEPTANCE_PENDING; runtime NOT_RUN.
 - **Observation:** center-collection-workspace.tsx, center-merchant-checkout.tsx, native patient collection summary need runtime review.
 - **Expected experience:** Separate patient due, pending/failed/verified/partial/refund, receipt and provider payment; show center-owned method only when enabled.
 - **Manual scenario / acceptance:** Pay at center, enabled sandbox online, pending callback, failed/retry, part-pay and refund; booking does not imply paid.
@@ -354,7 +366,7 @@ Two-copy confirmation now uses authorized patient display name, original booking
 
 ### HUX-09.01 — Healthcare landing and discovery navigation
 
-- **Priority/evidence/owner:** P1 / CHECK / CG14/18 public web/app. IN_PROGRESS; runtime NOT_RUN.
+- **Priority/evidence/owner:** P1 / CHECK / CG14/18 public web/app. MANUAL_ACCEPTANCE_PENDING; runtime NOT_RUN.
 - **Observation:** Current directory route exists; CMS landing and native owner-route parity must be checked after handoff E2E-002/010.
 - **Expected experience:** CMS-published general healthcare intro, prominent Find doctor/center and approved service discovery; operational cards only genuine approved source.
 - **Manual scenario / acceptance:** Anonymous fresh deployment, no approved providers, then approved providers; CMS edit/publish reflected; route links functional, no dummy doctors/fees.
@@ -362,7 +374,7 @@ Two-copy confirmation now uses authorized patient display name, original booking
 
 ### HUX-10.01 — Doctor result cards omit key discovery information
 
-- **Priority/evidence/owner:** P1 / SOURCE / CG14 US-004 public web. IN_PROGRESS; runtime NOT_RUN.
+- **Priority/evidence/owner:** P1 / SOURCE / CG14 US-004 public web. SOURCE_PRESENT_REVIEW_PENDING; runtime NOT_RUN.
 - **Observation:** health-network/page.tsx:187–205 cards show name/specialty/address/fee but no portrait, qualification, experience or primary book action.
 - **Expected experience:** Show approved portrait or neutral fallback, actual qualifications/experience, center and fee; clear View profile and book/check availability only if real booking route permits.
 - **Manual scenario / acceptance:** Search doctors with/without consented portrait, fee, mapped schedule; verify no false availability/discount; click both actions.
@@ -370,7 +382,7 @@ Two-copy confirmation now uses authorized patient display name, original booking
 
 ### HUX-10.02 — Center result cards are text-only
 
-- **Priority/evidence/owner:** P1 / SOURCE / CG14 US-004 public web. IN_PROGRESS; runtime NOT_RUN.
+- **Priority/evidence/owner:** P1 / SOURCE / CG14 US-004 public web. SOURCE_PRESENT_REVIEW_PENDING; runtime NOT_RUN.
 - **Observation:** health-network/page.tsx:180–187 cards show type/name/provider/address and detail link; no approved photo/service summary/directions.
 - **Expected experience:** Use approved photos or neutral fallback, current services/location and directions if valid source; show accessible details and consistent primary action.
 - **Manual scenario / acceptance:** Find X/Y, no photo, withdrawn listing, missing coordinates; real source cards and contact/directions link; responsive results.
@@ -378,7 +390,7 @@ Two-copy confirmation now uses authorized patient display name, original booking
 
 ### HUX-10.03 — Directory advanced filter and result modes
 
-- **Priority/evidence/owner:** P1 / CHECK / CG14 US-004 public web/app. IN_PROGRESS; runtime NOT_RUN.
+- **Priority/evidence/owner:** P1 / CHECK / CG14 US-004 public web/app. MANUAL_ACCEPTANCE_PENDING; runtime NOT_RUN.
 - **Observation:** Web GET filter form and native filter controls exist; sort/list/grid/map and back-state need runtime verification against original scope.
 - **Expected experience:** Progressive filters, meaningful selected chips, clear reset/empty, preserve query on back; requested sort/list/grid/map use real approved data or record gap.
 - **Manual scenario / acceptance:** Apply PIN/specialty/fee filters, clear, paginate, return from profile, browser/mobile keyboard; map only valid published coordinates.
@@ -386,7 +398,7 @@ Two-copy confirmation now uses authorized patient display name, original booking
 
 ### HUX-10.04 — Doctor profile and center-specific choice
 
-- **Priority/evidence/owner:** P1 / CHECK / CG14/15/17 public web/app. IN_PROGRESS; runtime NOT_RUN.
+- **Priority/evidence/owner:** P1 / CHECK / CG14/15/17 public web/app. MANUAL_ACCEPTANCE_PENDING; runtime NOT_RUN.
 - **Observation:** Doctor detail and schedule routes exist; multi-center patient navigation not visually tested.
 - **Expected experience:** Verified doctor details, actual center-specific fees/hours and available slots; distinguish verified from available, no rating unless real.
 - **Manual scenario / acceptance:** One doctor at two centers with differing fee/date, no current slot and suspended center; choose explicit center then book.
@@ -394,7 +406,7 @@ Two-copy confirmation now uses authorized patient display name, original booking
 
 ### HUX-11.01 — Booking review text/action hierarchy
 
-- **Priority/evidence/owner:** P1 / SOURCE / CG15 US-004 / CG17 US-002 public web/app. IN_PROGRESS; runtime NOT_RUN.
+- **Priority/evidence/owner:** P1 / SOURCE / CG15 US-004 / CG17 US-002 public web/app. SOURCE_PRESENT_REVIEW_PENDING; runtime NOT_RUN.
 - **Observation:** patient-booking-action.tsx:209–255 and native-consultation-action.tsx:260–322 include optional reason, hold, review, confirm and staff authorization in same surface.
 - **Expected experience:** Present clear steps and primary next action, optional reason and staff authorization secondary, visible center/date/time/fee and approved assistance, accurate hold expiry/retry.
 - **Manual scenario / acceptance:** Both center-first and doctor-first; hold last slot, expire, back, edit, stale quote, duplicate submit and confirmation; no duplicated charge/booking.
@@ -402,7 +414,7 @@ Two-copy confirmation now uses authorized patient display name, original booking
 
 ### HUX-11.02 — Appointment calendar and patient verification
 
-- **Priority/evidence/owner:** P1 / CHECK / CG15 US-002/003 public web/app. IN_PROGRESS; runtime NOT_RUN.
+- **Priority/evidence/owner:** P1 / CHECK / CG15 US-002/003 public web/app. MANUAL_ACCEPTANCE_PENDING; runtime NOT_RUN.
 - **Observation:** doctor-schedule-preview.tsx and patient routes need actual screen walkthrough.
 - **Expected experience:** Readable date/slot selector, no unavailable slots selectable, OTP/account/consent flow preserves valid booking context without leaking patient details.
 - **Manual scenario / acceptance:** New/existing patient, wrong/expired OTP, unavailable slot, change center, back from sign-in and keyboard small screen.
@@ -410,7 +422,7 @@ Two-copy confirmation now uses authorized patient display name, original booking
 
 ### HUX-11.03 — Booking confirmation and patient history
 
-- **Priority/evidence/owner:** P1 / CHECK / CG15 US-005/007/008 public web/app. IN_PROGRESS; runtime NOT_RUN.
+- **Priority/evidence/owner:** P1 / CHECK / CG15 US-005/007/008 public web/app. MANUAL_ACCEPTANCE_PENDING; runtime NOT_RUN.
 - **Observation:** native-appointment-documents.tsx, native-consultation-history.tsx and patient appointment detail exist.
 - **Expected experience:** Clear appointment ID, status, doctor/date/center, payment/assistance, slip download/share, allowed cancel/reschedule and useful history.
 - **Manual scenario / acceptance:** Confirmed, canceled, rescheduled, pending payment, PDF/QR/calendar and unauthorized booking access; patient sees only own documents.
@@ -418,7 +430,7 @@ Two-copy confirmation now uses authorized patient display name, original booking
 
 ### HUX-12.01 — Doctor management long scrolling forms
 
-- **Priority/evidence/owner:** P1 / SOURCE / CG14 US-003 internal Android. IN_PROGRESS; runtime NOT_RUN.
+- **Priority/evidence/owner:** P1 / SOURCE / CG14 US-003 internal Android. SOURCE_PRESENT_REVIEW_PENDING; runtime NOT_RUN.
 - **Observation:** native-doctor-management.tsx:165–229 uses ScrollView with registration/editor and selected doctor sections.
 - **Expected experience:** Mobile-native grouping, searchable roster where supported, accessible fields, clear save and proof/approval actions; preserve own-role grants.
 - **Manual scenario / acceptance:** Small/large device, keyboard, long names, pending correction, authorized verification, back/dirty form, network retry.
@@ -426,7 +438,7 @@ Two-copy confirmation now uses authorized patient display name, original booking
 
 ### HUX-12.02 — Queue summary and action readability
 
-- **Priority/evidence/owner:** P1 / SOURCE / CG15 US-006 internal Android. IN_PROGRESS; runtime NOT_RUN.
+- **Priority/evidence/owner:** P1 / SOURCE / CG15 US-006 internal Android. SOURCE_PRESENT_REVIEW_PENDING; runtime NOT_RUN.
 - **Observation:** native-center-visit-queue.tsx:252–324 uses multiline summary, manual QR input, horizontal doctor/status controls.
 - **Expected experience:** Compact mobile queue summary, visible date/center and status filter, prominent permitted next action; assess camera scan parity only where approved.
 - **Manual scenario / acceptance:** Receptionist/doctor with many visits; filter and act, manually enter valid/invalid QR, verify device usability, slow network and correct center.
@@ -434,7 +446,7 @@ Two-copy confirmation now uses authorized patient display name, original booking
 
 ### HUX-12.03 — Operational parity
 
-- **Priority/evidence/owner:** P1 / CHECK / CG14/16/17 internal Android. IN_PROGRESS; runtime NOT_RUN.
+- **Priority/evidence/owner:** P1 / CHECK / CG14/16/17 internal Android. MANUAL_ACCEPTANCE_PENDING; runtime NOT_RUN.
 - **Observation:** Native healthcare feature directories exist; exact role/action/device coverage not proven.
 - **Expected experience:** Compare applicable authorized existing actions with web; do not require full admin scheduling on Android where design marks N/A.
 - **Manual scenario / acceptance:** Provider review, approved lab tariff, collection/settlement where authorized; same backend state, denied action hidden, no WebView substitution.
@@ -442,7 +454,7 @@ Two-copy confirmation now uses authorized patient display name, original booking
 
 ### HUX-13.01 — Public result list and filter density
 
-- **Priority/evidence/owner:** P1 / SOURCE / CG14 US-004 public Android. IN_PROGRESS; runtime NOT_RUN.
+- **Priority/evidence/owner:** P1 / SOURCE / CG14 US-004 public Android. SOURCE_PRESENT_REVIEW_PENDING; runtime NOT_RUN.
 - **Observation:** public-healthcare-directory.tsx:213–325 uses ScrollView and text-first center/doctor cards, many filter fields.
 - **Expected experience:** Compact mobile filter panel, approved doctor/center imagery, actual fee/specialty/experience where available, clearly labeled actions; preserve query/back.
 - **Manual scenario / acceptance:** Search on small phone, apply/reset filters, return from details, paginate, missing image and offline/retry; no mock profiles.
@@ -450,7 +462,7 @@ Two-copy confirmation now uses authorized patient display name, original booking
 
 ### HUX-13.02 — Patient home and healthcare journey
 
-- **Priority/evidence/owner:** P1 / CHECK / CG15/17 public Android. IN_PROGRESS; runtime NOT_RUN.
+- **Priority/evidence/owner:** P1 / CHECK / CG15/17 public Android. MANUAL_ACCEPTANCE_PENDING; runtime NOT_RUN.
 - **Observation:** Native history, consultation and collection screens exist; patient navigation and rendered consistency unverified.
 - **Expected experience:** Prominent upcoming appointment and existing history/slip actions; accessible native navigation and consistent public branding.
 - **Manual scenario / acceptance:** Guest searches, signs in, books, returns to own appointment, downloads slip, reschedules; reboot/reopen state remains truthful.
@@ -458,7 +470,7 @@ Two-copy confirmation now uses authorized patient display name, original booking
 
 ### HUX-14.01 — Responsive and accessibility acceptance
 
-- **Priority/evidence/owner:** P1 / CHECK / CG14–17 all. IN_PROGRESS; runtime NOT_RUN.
+- **Priority/evidence/owner:** P1 / CHECK / CG14–17 all. MANUAL_ACCEPTANCE_PENDING; runtime NOT_RUN.
 - **Observation:** Exact rendered dimensions, screen readers and device behavior not run.
 - **Expected experience:** Web 390/768/1440 px and Android small/large: no clipping, keyboard-safe, semantic heading/labels/focus, readable contrast, scalable text, reduced motion.
 - **Manual scenario / acceptance:** Navigate keyboard-only and TalkBack; zoom/large text, long name, table scroll/drawer and orientation; test primary tasks.
@@ -466,7 +478,7 @@ Two-copy confirmation now uses authorized patient display name, original booking
 
 ### HUX-15.01 — Technical copy and excessive explanations
 
-- **Priority/evidence/owner:** P1 / SOURCE / CG14–17 all. IN_PROGRESS; runtime NOT_RUN.
+- **Priority/evidence/owner:** P1 / SOURCE / CG14–17 all. SOURCE_REVIEW_REMAINS; runtime NOT_RUN.
 - **Observation:** Examples: public directory 'Only currently approved, published...', settlement 'original posted Foundation obligations in CG-09', repeated source terminology.
 - **Expected experience:** Use plain English and short actionable errors; retain necessary privacy, eligibility and money caveats, move detailed internal explanations to appropriate help.
 - **Manual scenario / acceptance:** Normal first-time patient/receptionist understands each step; no raw UUIDs/enums/module IDs or secret errors; public booking IDs allowed.
@@ -474,7 +486,7 @@ Two-copy confirmation now uses authorized patient display name, original booking
 
 ### HUX-15.02 — Loading, empty, error and uncertain state
 
-- **Priority/evidence/owner:** P1 / CHECK / CG14–17 all. IN_PROGRESS; runtime NOT_RUN.
+- **Priority/evidence/owner:** P1 / CHECK / CG14–17 all. MANUAL_ACCEPTANCE_PENDING; runtime NOT_RUN.
 - **Observation:** Source includes notices, loading, uncertain-write paths, but actual channel consistency not verified.
 - **Expected experience:** Shared accessible feedback with skeleton/progress where useful; distinguish no records, denied, unavailable and unknown outcome; safe refresh/retry.
 - **Manual scenario / acceptance:** Throttle, offline, 401/403, 500, expired session, double tap and lost response; no stale private data or false success.
