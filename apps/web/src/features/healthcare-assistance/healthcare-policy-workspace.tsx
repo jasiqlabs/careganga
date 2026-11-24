@@ -60,12 +60,16 @@ function rupees(v:string){
 const money=(v:string|null)=>v&&/^\d{1,11}$/.test(v)?
  "₹"+(Number(v)/100).toLocaleString("en-IN",{
   minimumFractionDigits:2,maximumFractionDigits:2}):"—";
+const dateInput=(value:string)=>{
+ const d=new Date(value);if(!Number.isFinite(d.getTime()))return "";
+ const two=(n:number)=>String(n).padStart(2,"0");
+ return String(d.getFullYear())+"-"+two(d.getMonth()+1)+"-"+two(d.getDate())+"T"+two(d.getHours())+":"+two(d.getMinutes());
+};
 const when=(value:string)=>{
- const d=new Date(value);if(!value||!Number.isFinite(d.getTime()))
-  throw Error("Select valid starting and ending dates.");
+ const d=new Date(value);if(!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(value)||!Number.isFinite(d.getTime())||dateInput(d.toISOString())!==value)
+  throw Error("Select valid starting and ending local dates.");
  return d.toISOString();
 };
-const dateInput=(v:string)=>new Date(v).toISOString().slice(0,16);
 const pct=(value:string)=>{
  if(!/^(?:[0-9]{1,2}(?:\.[0-9]{1,2})?|100(?:\.0{1,2})?)$/.test(value))
   throw Error("Percentage must be between 0.01 and 100 with two decimals.");
