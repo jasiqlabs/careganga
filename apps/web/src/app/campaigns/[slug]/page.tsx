@@ -1,3 +1,4 @@
+import {HealthcarePublicChrome} from "../../../shared/healthcare-public-chrome";
 import Link from "next/link";
 import {notFound} from "next/navigation";
 import type {Metadata} from "next";
@@ -15,10 +16,9 @@ export default async function CampaignDetail({params}:P){
  if(r.state==="NOT_PUBLISHED")notFound();
  const donationsEnabled=await onlineDonationAvailability();
  const c=r.cards[0];
- if(!c)return <main className="page main"><h1>Campaign unavailable</h1><p>Current independently approved campaign information could not be confirmed. Please check again.</p><Link href="/campaigns">Return to campaigns</Link></main>;
- return <main className="page main" id="main-content">
-  <header className="topbar"><Link href="/" className="cg-brandline"><img src="/careganga-mark.png" alt="" width={40} height={40}/><strong>CareGanga Foundation</strong></Link>
-   <Link href="/campaigns">All campaigns</Link></header>
+ if(!c)return <HealthcarePublicChrome><main className="page main" id="main-content"><h1>Campaign unavailable</h1><p>Current independently approved campaign information could not be confirmed. Please check again.</p><Link href="/campaigns">Return to campaigns</Link></main></HealthcarePublicChrome>;
+ return <HealthcarePublicChrome><main className="page main" id="main-content">
+
   <article className="cg-site-content">
    <p className="cg-site-eyebrow">{c.category}</p>
    <h1>{c.title}</h1>
@@ -32,5 +32,5 @@ export default async function CampaignDetail({params}:P){
    {donationsEnabled?<p><Link href={"/donate?campaign="+encodeURIComponent(c.slug)}>Support this campaign</Link></p>:<p>Online donations are unavailable. Contact the Foundation.</p>}
    <Link href="/contact">Contact CareGanga Foundation</Link>
   </article>
- </main>;
+ </main></HealthcarePublicChrome>;
 }
