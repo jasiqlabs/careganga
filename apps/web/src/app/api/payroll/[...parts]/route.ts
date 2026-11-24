@@ -13,7 +13,7 @@ async function proxy(req:NextRequest,ctx:Context,method:"GET"|"POST"){
  const base=process.env.BACKEND_URL;if(!base)return reply({message:"Payroll unavailable"},503);
  try{
   const url=new URL("/api/v1/payroll/"+p.join("/"),base);
-  for(const k of ["branchRef","q","offset"]){const v=req.nextUrl.searchParams.get(k);if(v!==null&&v.length<=100)url.searchParams.set(k,v);}
+  for(const k of ["branchRef","q","offset","department","employmentType","employmentStatus","salaryStatus"]){const v=req.nextUrl.searchParams.get(k);if(v!==null&&v.length<=100)url.searchParams.set(k,v);}
   const body=method==="POST"?await req.text():undefined;if(body&&body.length>32000)return reply({message:"Check payroll fields"},400);
   const r=await fetch(url,{method,body,headers:{Authorization:"Bearer "+token,"Content-Type":"application/json"},cache:"no-store",signal:AbortSignal.timeout(12000)});
   const data=await r.json().catch(()=>null);if(r.ok&&data!==null)return reply(data,r.status);
