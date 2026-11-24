@@ -65,7 +65,7 @@ export function parseListQuery(v:Record<string,unknown>){
  const clean=(x:unknown,max:number)=>x===undefined||x===null||x===""?"":text(x,1,max);
  const branch=optionalRef(v.branchRef),state=optionalRef(v.stateRef),district=optionalRef(v.districtRef),project=optionalRef(v.projectRef);
  const status=clean(v.verification,24),lifecycle=clean(v.lifecycle,24),type=clean(v.type,60),q=clean(v.q,80);
- if(status&&!["DRAFT","SUBMITTED","UNDER_REVIEW","VERIFIED","RETURNED","REJECTED"].includes(status)
+ if(status&&!["DRAFT","SUBMITTED","UNDER_REVIEW","VERIFIED","RETURNED","REJECTED","PENDING"].includes(status)
  ||lifecycle&&!["ACTIVE","INACTIVE"].includes(lifecycle))throw invalid();
  const cursor=clean(v.cursor,240);
  let before:{date:string;id:string}|null=null;
