@@ -15,7 +15,7 @@ async function proxy(req:NextRequest,ctx:Context,method:"GET"|"POST"){
  const base=process.env.BACKEND_URL;if(!base)return reply({message:"Payroll unavailable"},503);
  try{
   const url=new URL("/api/v1/payroll/"+p.join("/"),base);
-  for(const k of ["branchRef","q","offset","department","employmentType","employmentStatus","salaryStatus"]){const v=req.nextUrl.searchParams.get(k);if(v!==null&&v.length<=100)url.searchParams.set(k,v);}
+  for(const k of ["branchRef","period","afterPeriod","afterRun","q","offset","department","employmentType","employmentStatus","salaryStatus"]){const v=req.nextUrl.searchParams.get(k);if(v!==null&&v.length<=100)url.searchParams.set(k,v);}
   const body=method==="POST"?await req.text():undefined;if(body&&body.length>32000)return reply({message:"Check payroll fields"},400);
   const r=await fetch(url,{method,body,headers:{Authorization:"Bearer "+token,"Content-Type":"application/json"},cache:"no-store",signal:AbortSignal.timeout(p[0]==="runs"&&method==="POST"?60000:12000)});
   if(pdf&&r.ok&&r.headers.get("content-type")?.split(";")[0]==="application/pdf"){const bytes=await r.arrayBuffer();if(bytes.byteLength>10485760)return reply({message:"Document unavailable"},503);return new NextResponse(bytes,{headers:{"Content-Type":"application/pdf","Content-Disposition":'attachment; filename="CareGanga-Salary-Statement.pdf"',"Cache-Control":"private, no-store","X-Content-Type-Options":"nosniff"}});}

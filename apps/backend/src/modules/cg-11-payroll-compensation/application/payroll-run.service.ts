@@ -38,18 +38,37 @@ export class PayrollRunService{
   const today=(await tx.query<{today:string}>("SELECT (now() AT TIME ZONE 'Asia/Kolkata')::date::text AS today")).rows[0].today;
   return {branches:[...(scope.all?[{value:"FOUNDATION",label:"Foundation-wide"}]:[]),...scope.branches.map(({value,label})=>({value,label}))],today,cycle:"MONTHLY"};
  });}
- async list(token:string){return this.compensation.run(token,"payroll.runs.view",async(tx,a)=>{
+ private async paymentStates(tx:PoolClient,realm:string,rows:Run[]){
+  const ids=rows.filter(r=>r.status==="APPROVED_FROZEN").map(r=>r.id);
+  if(!ids.length)return new Map<string,string>();
+  const totals=(await tx.query<{run:string;due:string;paid:string;invalid:boolean;pending:boolean}>(`
+    SELECT l.run_id run,sum(l.net_minor)::text due,sum(coalesce(p.paid,0))::text paid,
+      bool_or(coalesce(p.invalid,false)) invalid,bool_or(coalesce(p.pending,false)) pending
+    FROM payroll_line l LEFT JOIN payroll_batch_item i ON i.root_realm_id=l.root_realm_id AND i.line_ref=l.id
+    LEFT JOIN LATERAL (SELECT sum(o.paid_minor) paid,bool_or(o.reversed OR (o.voucher_status='POSTED' AND o.paid_minor<>o.amount_minor)) invalid,
+      bool_or(o.voucher_status NOT IN('POSTED','REJECTED')) pending FROM payroll_attempt_outcome o WHERE o.root_realm_id=i.root_realm_id AND o.item_ref=i.id)p ON true
+    WHERE l.root_realm_id=$1 AND l.run_id=ANY($2::uuid[]) GROUP BY l.run_id`,[realm,ids])).rows;
+  const result=new Map<string,string>();
+  for(const x of totals){const due=BigInt(x.due),paid=BigInt(x.paid);result.set(x.run,x.invalid||paid>due?"RECONCILIATION_REQUIRED":due===0n?"NO_PAYMENT_DUE":paid===due?"PAID_VERIFIED":paid>0n?"PARTIALLY_PAID":x.pending?"PAYMENT_PENDING":"APPROVED_NOT_PAID");}
+  return result;
+ }
+ async list(token:string,filters:{period?:string;branchRef?:string;afterPeriod?:string;afterRun?:string}={}){return this.compensation.run(token,"payroll.runs.view",async(tx,a)=>{
   await this.identity.assertCurrent(tx,a,"payroll.compensation.view");
   const scope=await this.branches.projectBranchScope(tx,a);
-  const rows=(await tx.query<Run>("SELECT "+projection+" FROM payroll_run WHERE root_realm_id=$1 AND ((branch_ref IS NULL AND $2::boolean) OR branch_ref=ANY($3::uuid[])) ORDER BY period_from DESC,run_number DESC LIMIT 100",[a.realmId,scope.all,scope.branches.map(b=>b.value)])).rows;
-  await recordPayrollAudit(tx,a,"RUN","READ");return {items:rows.map(r=>this.view(r))};
+  const {period="",branchRef="",afterPeriod="",afterRun=""}=filters;
+  if((period&&!/^\d{4}-(0[1-9]|1[0-2])$/.test(period))||(afterPeriod&&!/^\d{4}-(0[1-9]|1[0-2])$/.test(afterPeriod))||!!afterPeriod!==!!afterRun||(afterRun&&!/^CG-PAY-\d{6,20}$/.test(afterRun)))throw new BadRequestException("Invalid payroll history filter");
+  const branch=branchRef&&branchRef!=="FOUNDATION"?id(branchRef):null;
+  if(branchRef)await this.branches.projectBranch(tx,a,branch);
+  const rows=(await tx.query<Run>("SELECT "+projection+" FROM payroll_run WHERE root_realm_id=$1 AND ((branch_ref IS NULL AND $2::boolean) OR branch_ref=ANY($3::uuid[])) AND ($4='' OR period_key=$4) AND ($5='' OR branch_ref IS NOT DISTINCT FROM $6::uuid) AND ($7='' OR (period_key,run_number)<($7,$8)) ORDER BY period_key DESC,run_number DESC LIMIT 51",[a.realmId,scope.all,scope.branches.map(b=>b.value),period,branchRef,branch,afterPeriod,afterRun])).rows;
+  const visible=rows.slice(0,50),last=visible[visible.length-1],states=await this.paymentStates(tx,a.realmId,visible);
+  await recordPayrollAudit(tx,a,"RUN","READ");return {items:visible.map(r=>({...this.view(r),paymentStatus:r.status==="APPROVED_FROZEN"?states.get(r.id)??"RECONCILIATION_REQUIRED":"NOT_AUTHORIZED"})),next:rows.length>50?{period:last.period_key,reference:last.run_number}:null};
  });}
  async detail(token:string,ref:string){return this.compensation.run(token,"payroll.runs.view",async(tx,a)=>{
   await this.identity.assertCurrent(tx,a,"payroll.compensation.view");
   const scope=await this.branches.projectBranchScope(tx,a);
   const row=(await tx.query<Run>("SELECT "+projection+" FROM payroll_run WHERE root_realm_id=$1 AND id=$2 AND ((branch_ref IS NULL AND $3::boolean) OR branch_ref=ANY($4::uuid[]))",[a.realmId,id(ref),scope.all,scope.branches.map(b=>b.value)])).rows[0];
   if(!row)throw new NotFoundException("Payroll run unavailable");
-  await recordPayrollAudit(tx,a,"RUN","READ");return {...this.view(row),...await this.safeSnapshot(tx,a,row)};
+  const states=await this.paymentStates(tx,a.realmId,[row]);await recordPayrollAudit(tx,a,"RUN","READ");return {...this.view(row),...await this.safeSnapshot(tx,a,row),paymentStatus:row.status==="APPROVED_FROZEN"?states.get(row.id)??"RECONCILIATION_REQUIRED":"NOT_AUTHORIZED"};
  });}
  async createDraft(token:string,raw:unknown){return this.compensation.run(token,"payroll.runs.manage",async(tx,a)=>{
   const v=draftInput(raw);
