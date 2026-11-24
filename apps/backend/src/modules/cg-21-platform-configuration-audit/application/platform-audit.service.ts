@@ -14,7 +14,7 @@ type Scope="ALL"|AuditSource;
 type Position={at:string;id:string};
 type Cursor={
   kind:"cursor";v:1;realm:string;actor:string;from:string;to:string;
-  pageSize:number;source:Scope;cg01:Position|null;cg21:Position|null
+  pageSize:number;source:Scope;category?:"PAYROLL";cg01:Position|null;cg21:Position|null
 };
 type EventToken={kind:"event";v:1;realm:string;actor:string;source:AuditSource;id:string};
 type Event={source:AuditSource;ownerEventId:string;occurredAt:string;
@@ -102,7 +102,7 @@ export class PlatformAuditService{
     return rows.rows[0]?.typed_value??25;
   }
   private async platformSource(actor:VerifiedFoundationActor,start:Date,end:Date,
-    after:Position|null,limit:number):Promise<Event[]>{
+    after:Position|null,limit:number,payrollOnly=false):Promise<Event[]>{
     const rows=await this.db.query<PlatformAuditRow>(`
       SELECT au.id,au.occurred_at,au.action_key,au.outcome,au.safe_context,
         to_char(au.occurred_at AT TIME ZONE 'UTC',
@@ -111,10 +111,11 @@ export class PlatformAuditService{
       FROM platform_operation_audit au
       LEFT JOIN account a ON a.id=au.actor_account_id AND a.realm_id=au.foundation_realm_id
       WHERE au.foundation_realm_id=$1 AND au.occurred_at>=$2 AND au.occurred_at<=$3
+        AND (NOT $7::boolean OR au.action_key='payroll.source.operation')
         AND ($4::timestamptz IS NULL OR
           (au.occurred_at,au.id)<($4::timestamptz,$5::uuid))
       ORDER BY au.occurred_at DESC,au.id DESC LIMIT $6
-    `,[actor.realmId,start,end,after?.at??null,after?.id??null,limit]);
+    `,[actor.realmId,start,end,after?.at??null,after?.id??null,limit,payrollOnly]);
     return rows.rows.map(x=>({
       source:"CG-21" as const,ownerEventId:x.id,occurredAt:x.exact_at,
       actionLabel:ACTION_LABELS[x.action_key]??"Platform operation",
@@ -124,7 +125,7 @@ export class PlatformAuditService{
     }));
   }
   async list(bearer:string,query:{
-    cursor?:unknown;limit?:unknown;source?:unknown;from?:unknown;to?:unknown
+    cursor?:unknown;limit?:unknown;source?:unknown;from?:unknown;to?:unknown;category?:unknown
   }={}){
     const actor=await this.authorize(bearer);
     let source:Scope="ALL";
@@ -133,6 +134,8 @@ export class PlatformAuditService{
         throw new BadRequestException("Invalid audit source");
       source=query.source;
     }
+    if(query.category!==undefined&&query.category!=="PAYROLL")throw new BadRequestException("Invalid audit category");
+    if(query.category==="PAYROLL"&&source==="CG-01")throw new BadRequestException("Invalid payroll audit source");
     const defaultSize=await this.effectivePageSize(actor.realmId);
     const size=query.limit===undefined?defaultSize:Number(query.limit);
     if(query.limit!==undefined&&
@@ -143,7 +146,7 @@ export class PlatformAuditService{
     let cursor:Cursor|null=null;
     if(query.cursor!==undefined){
       if(query.from!==undefined||query.to!==undefined||query.source!==undefined||
-         query.limit!==undefined)throw new BadRequestException("Use the existing audit page");
+         query.limit!==undefined||query.category!==undefined)throw new BadRequestException("Use the existing audit page");
       const decoded=unseal(query.cursor);
       if(!decoded||typeof decoded!=="object"||Array.isArray(decoded))
         throw new BadRequestException("Invalid audit page");
@@ -151,6 +154,7 @@ export class PlatformAuditService{
       if(p.kind!=="cursor"||p.v!==1||p.realm!==actor.realmId||p.actor!==actor.accountId||
          !Number.isSafeInteger(p.pageSize)||Number(p.pageSize)<1||Number(p.pageSize)>100||
          !["ALL","CG-01","CG-21"].includes(String(p.source))||
+         (p.category!==undefined&&(p.category!=="PAYROLL"||p.source!=="CG-21"))||
          !(p.cg01===null||isPosition(p.cg01))||
          !(p.cg21===null||isPosition(p.cg21)))
         throw new BadRequestException("Invalid audit page");
@@ -164,7 +168,8 @@ export class PlatformAuditService{
     if(start>end||end.getTime()-start.getTime()>90*86400000||
        end.getTime()>Date.now()+60000)
       throw new BadRequestException("Invalid audit date range");
-    const pageSize=cursor?.pageSize??size,selection=cursor?.source??source;
+    const payrollOnly=(cursor?.category??query.category)==="PAYROLL";
+    const pageSize=cursor?.pageSize??size,selection=payrollOnly?"CG-21":cursor?.source??source;
     // Request at most 101 rows per owner, regardless of Foundation size.
     // Never scan future business-module audit feeds or schedule idle scans.
     const results=await Promise.allSettled([
@@ -173,7 +178,7 @@ export class PlatformAuditService{
           from:start,to:end,after:cursor?.cg01??null,limit:pageSize+1
         }),
       selection==="CG-01"?Promise.resolve([] as Event[]):
-        this.platformSource(actor,start,end,cursor?.cg21??null,pageSize+1)
+        this.platformSource(actor,start,end,cursor?.cg21??null,pageSize+1,payrollOnly)
     ]);
     const unavailable:AuditSource[]=[];
     if(results[0].status==="rejected"&&selection!=="CG-21")unavailable.push("CG-01");
@@ -205,7 +210,7 @@ export class PlatformAuditService{
     const nextCursor=coverage==="COMPLETE"&&hasMore&&page.length?
       seal({kind:"cursor",v:1,realm:actor.realmId,actor:actor.accountId,
         from:start.toISOString(),to:end.toISOString(),
-        pageSize,source:selection,cg01,cg21}):null;
+        pageSize,source:selection,...(payrollOnly?{category:"PAYROLL" as const}:{}),cg01,cg21}):null;
     return {events,nextCursor,coverage,unavailableSources:unavailable,
       limit:pageSize,source:selection,from:start.toISOString(),to:end.toISOString()};
   }
@@ -241,7 +246,7 @@ export class PlatformAuditService{
       targetDisplay:displayResource(row.safe_context),
       outcome:row.outcome==="SUCCESS"?"Confirmed":row.outcome==="UNAVAILABLE"?"Unavailable":"Pending"};
   }
-  async export(bearer:string,filters:{source?:unknown;from?:unknown;to?:unknown}={}){
+  async export(bearer:string,filters:{source?:unknown;from?:unknown;to?:unknown;category?:unknown}={}){
     await this.authorize(bearer,"platform.audit.export");
     const page=await this.list(bearer,{...filters,limit:"100"});
     if(page.coverage!=="COMPLETE")throw new ServiceUnavailableException(
