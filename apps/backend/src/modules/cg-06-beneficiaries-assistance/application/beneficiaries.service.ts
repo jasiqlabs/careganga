@@ -127,6 +127,37 @@ export class BeneficiariesService{
    return result.projects;
   });
  }
+ /** Advisory only: two people may share a phone, and there is never an auto-merge. */
+ async duplicateSuggestions(token:string,input:{branchRef?:unknown;name?:unknown;contactMobile?:unknown;excludeRef?:unknown}){
+  const branch=optionalRef(input.branchRef),exclude=optionalRef(input.excludeRef);
+  const name=input.name===undefined?"":input.name;
+  const mobile=input.contactMobile===undefined?"":input.contactMobile;
+  if(typeof name!=="string"||name.length>80||typeof mobile!=="string"||mobile.length>16)
+   throw new BadRequestException("Check beneficiary search details");
+  const q=name.trim().toLowerCase(),phone=mobile.trim();
+  if(q.length<3&&phone.length===0)return {items:[],advisory:true};
+  if(phone.length&& !/^[+][1-9][0-9]{7,14}$/.test(phone))
+   throw new BadRequestException("Check the contact including country code");
+  return this.run(token,"beneficiaries.manage",async(tx,a)=>{
+   await this.identity.assertCurrent(tx,a,"beneficiaries.view");
+   await this.branches.projectBranch(tx,a,branch);
+   const current=await this.scope(tx,a);
+   const rows=(await tx.query<{id:string;display_ref:string;private_name:string;beneficiary_type:string;contact_mobile:string|null}>(`
+    SELECT id,display_ref,private_name,beneficiary_type,contact_mobile
+    FROM beneficiary WHERE root_realm_id=$1
+      AND branch_scope_id IS NOT DISTINCT FROM $2::uuid
+      AND consent_revoked_at IS NULL
+      AND ($3::uuid IS NULL OR id<>$3)
+      AND ($4='' OR strpos(lower(private_name),$4)>0 OR contact_mobile=$5)
+    ORDER BY created_at DESC,id DESC LIMIT 6`,
+    [a.realmId,branch,exclude,q,phone])).rows;
+   const mask=(value:string)=>value.split(/\s+/).map(part=>part.slice(0,1)+"•••").join(" ");
+   return {advisory:true,items:rows.slice(0,5).map(row=>({
+    reference:row.display_ref,maskedName:mask(row.private_name),
+    beneficiaryType:row.beneficiary_type,contactMatches:phone.length>0&&row.contact_mobile===phone
+   })),hasMore:rows.length>5};
+  });
+ }
  async create(token:string,raw:unknown){
   const v=parseProfile(raw,true),hash=digest(v);
   return this.run(token,"beneficiaries.manage",async(tx,a)=>{
