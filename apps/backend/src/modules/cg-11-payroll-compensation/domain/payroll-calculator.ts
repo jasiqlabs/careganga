@@ -1,7 +1,7 @@
 import {BadRequestException} from "@nestjs/common";
 import {componentMinor,date,minor} from "./payroll-input";
 export type PayComponent={code:string;label:string;kind:string;mode:"FIXED"|"PERCENT";minor:string|null;bp:number|null;taxClass:string};
-export type Rule={absence:"UNCONFIGURED"|"UNPAID"|"PAID";leave:Record<string,"PAID"|"UNPAID">};
+export type Rule={absence:"UNCONFIGURED"|"UNPAID"|"PAID";leave:Record<string,"PAID"|"UNPAID">;lateDeductionMinor?:string};
 export type Day={date:string;status:string;checkIn:string|null;checkOut:string|null;leaveUnits:number;leaveRef:string|null;leavePolicyRef:string|null;leaveDecisionRef:string|null;pendingCorrection:boolean};
 export type SalaryDay={date:string;branchRef:string;compensationRef:string;baseMinor:string;components:PayComponent[];rules:Rule};
 const round=(n:bigint,d:bigint)=>(n+d/2n)/d;
@@ -25,20 +25,22 @@ export function paidUnits(d:Day,r:Rule):number|null{
 export function calculatePayroll(from:string,until:string,days:Day[],salary:SalaryDay[]){
  const calendar=periodDates(from,until),dateSet=new Set(calendar),byDate=new Map(days.map(d=>[d.date,d]));
  if(byDate.size!==days.length||days.some(d=>!dateSet.has(d.date))||new Set(salary.map(d=>d.date)).size!==salary.length||salary.some(d=>!dateSet.has(d.date)))throw new BadRequestException("Duplicate or out-of-period payroll day");
- const groups=new Map<string,{sample:SalaryDay;units:number}>(),issues:string[]=[];
+ const groups=new Map<string,{sample:SalaryDay;units:number;lateDays:number}>(),issues:string[]=[];
  let paid=0;for(const s of salary){const d=byDate.get(s.date),units=d?paidUnits(d,s.rules):null;if(units===null){issues.push(s.date);continue;}
-  paid+=units;const key=s.branchRef+":"+s.compensationRef;const g=groups.get(key);if(g)g.units+=units;else groups.set(key,{sample:s,units});}
+  paid+=units;const key=s.branchRef+":"+s.compensationRef;const g=groups.get(key);const late=d?.status==="LATE"&&units>0?1:0;if(g){g.units+=units;g.lateDays+=late;}else groups.set(key,{sample:s,units,lateDays:late});}
  if(issues.length||!salary.length)return {status:"PENDING_VALIDATION" as const,issues};
  const denominator=BigInt(calendar.length*2);
  let base=0n,allowance=0n,deduction=0n,employer=0n;
  const allocation=[];const components=[];
- for(const {sample:s,units} of groups.values()){
+ for(const {sample:s,units,lateDays} of groups.values()){
   const prorate=(n:bigint)=>round(n*BigInt(units),denominator);
   const b=prorate(BigInt(minor(s.baseMinor)));let a=0n,d=0n,e=0n;
   for(const c of s.components){const n=prorate(componentMinor(s.baseMinor,c));
    if(c.kind==="ALLOWANCE")a+=n;else if(c.kind==="DEDUCTION")d+=n;else if(c.kind==="EMPLOYER_CONTRIBUTION")e+=n;else throw new BadRequestException("Unsupported component");
    components.push({branchRef:s.branchRef,compensationRef:s.compensationRef,code:c.code,label:c.label,kind:c.kind,minor:n.toString(),taxClass:c.taxClass});
   }
+  const late=BigInt(minor(s.rules.lateDeductionMinor??"0",true))*BigInt(lateDays);
+  if(late>0n){d+=late;components.push({branchRef:s.branchRef,compensationRef:s.compensationRef,code:"RECORDED_LATE_DEDUCTION",label:"Approved recorded-late deduction",kind:"DEDUCTION",minor:late.toString(),taxClass:"NOT_CONFIGURED"});}
   if(d>b+a)return {status:"PENDING_VALIDATION" as const,issues:["DEDUCTIONS_EXCEED_GROSS"]};
   base+=b;allowance+=a;deduction+=d;employer+=e;allocation.push({branchRef:s.branchRef,compensationRef:s.compensationRef,paidHalfDays:units,baseMinor:b.toString(),allowanceMinor:a.toString(),deductionMinor:d.toString(),netMinor:(b+a-d).toString(),employerMinor:e.toString()});
  }
