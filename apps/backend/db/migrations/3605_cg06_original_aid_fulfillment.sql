@@ -61,11 +61,11 @@ BEGIN
  PERFORM 1 FROM assistance_case WHERE root_realm_id=NEW.root_realm_id AND id=NEW.assistance_id FOR UPDATE;
  IF EXISTS(SELECT 1 FROM assistance_recovery r JOIN finance_voucher v ON v.root_realm_id=r.root_realm_id AND v.id=r.voucher_ref WHERE r.root_realm_id=NEW.root_realm_id AND r.fulfillment_id=NEW.fulfillment_id AND v.status NOT IN('RETURNED','REJECTED')) THEN RAISE EXCEPTION 'Original recovery already exists' USING ERRCODE='23514'; END IF;
  IF NOT EXISTS(SELECT 1 FROM assistance_fulfillment f JOIN assistance_delivery_event d ON d.root_realm_id=f.root_realm_id AND d.fulfillment_id=f.id AND d.action='PAID'
- JOIN finance_voucher old ON old.root_realm_id=f.root_realm_id AND old.id=f.voucher_ref
+ JOIN finance_voucher vo ON vo.root_realm_id=f.root_realm_id AND vo.id=f.voucher_ref
  JOIN finance_voucher v ON v.root_realm_id=f.root_realm_id AND v.id=NEW.voucher_ref
  WHERE f.root_realm_id=NEW.root_realm_id AND f.id=NEW.fulfillment_id AND f.assistance_id=NEW.assistance_id AND f.action='PAYMENT'
- AND v.id<>old.id AND v.voucher_type='GENERAL' AND v.status='DRAFT' AND v.version=NEW.voucher_revision AND v.created_by=NEW.actor_ref
- AND v.total_minor=f.amount_minor AND v.branch_id IS NOT DISTINCT FROM old.branch_id AND v.debit_account_id=old.credit_account_id AND v.credit_account_id=old.debit_account_id
+ AND v.id<>vo.id AND v.voucher_type='GENERAL' AND v.status='DRAFT' AND v.version=NEW.voucher_revision AND v.created_by=NEW.actor_ref
+ AND v.total_minor=f.amount_minor AND v.branch_id IS NOT DISTINCT FROM vo.branch_id AND v.debit_account_id=vo.credit_account_id AND v.credit_account_id=vo.debit_account_id
  AND EXISTS(SELECT 1 FROM finance_voucher_draft_revision r WHERE r.root_realm_id=v.root_realm_id AND r.voucher_id=v.id AND r.version=v.version AND r.request_key=NEW.request_key AND r.actor_ref=NEW.actor_ref))
  THEN RAISE EXCEPTION 'Exact original paid allocation and opposite finance accounts required' USING ERRCODE='23514'; END IF;
  RETURN NEW;

@@ -1,6 +1,6 @@
 import {BadRequestException,ConflictException} from "@nestjs/common";
 
-const uuidRe=/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i;
+const uuidRe=/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i;
 const invalid=()=>new BadRequestException({code:"CG06_INVALID_INPUT",message:"Check the beneficiary details and try again."});
 export const conflict=()=>new ConflictException({code:"CG06_SOURCE_STALE",message:"This beneficiary changed. Refresh before saving again."});
 export function ref(value:unknown):string{if(typeof value!=="string"||!uuidRe.test(value))throw invalid();return value;}

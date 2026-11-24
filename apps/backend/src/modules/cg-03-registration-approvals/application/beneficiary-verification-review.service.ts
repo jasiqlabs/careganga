@@ -170,7 +170,7 @@ export class BeneficiaryVerificationReviewService{
   },true);
  }
  async decide(token:string,caseRef:string,body:unknown){
-  const target=ref(caseRef),x=fields(body,["requestKey","expectedRevision","action","remarks","currentPassword"]),
+  const target=ref(caseRef),x=fields(body,["requestKey","expectedRevision","action","remarks","currentPassword"]) as Record<string,string>,
    key=ref(x.requestKey),expected=revision(x.expectedRevision),
    action=option(x.action,["APPROVE","RETURN","REJECT"] as const),
    remarks=text(x.remarks??"",action==="APPROVE"?0:3,500);

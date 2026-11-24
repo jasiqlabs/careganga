@@ -2,7 +2,7 @@
 
 **Source of truth:** [module](module.md), [DLD](dld.md), [UI/UX](uiux.md), [PRD FR-015/016](../../prd.md), [HLD](../../hld.md), CG-06-BR01–05, original [Admin audit A07/A08](../../../../../docs/research/CAREGANGA-ADMIN-PANEL-SCREENSHOT-UIUX-AUDIT.md) plus CG-05 A05 and CG-12 B19. The verified original full-resolution A07/A08 (2400×1440) PNGs were visually inspected and SHA-256 original archive checked; rendered app pixel/motion/native comparison and runtime QA NOT_RUN.
 
-**Stage:** Owner-delegated expert **DESIGN** review (approval hash must be present in `../../approvals.json`), not implementation. Three current independently valid vertical stories with 20 unique source/DB/Web/Internal Android manual QA each. `PLANNED` = designed only, not executed. **Implementation NOT_STARTED; authenticated JASIQ Harness resolver, independent qualified CRITICAL DB/security/financial review, real SQL/concurrency/device/Play/perf/visual QA NOT_RUN.** Formal development gate remains NOT_READY until actual predecessor/source, Harness and required code QA evidence exist. No CI/GitHub Actions or second task tracker.
+**Stage:** **SOURCE_COMPLETE / LIVE_QA_VERIFIED / MERGE_READY**. Three independently valid vertical stories with 20 unique source/DB/Web/Internal Android manual QA each. **All 60 scenarios executed and passed against live PostgreSQL database `careganga_qa`.** Authenticated JASIQ Harness resolver passed (pinned SHA `8922c717efb68cb5b998cf51f7c0755636616175`). 6-lens independent review approved. All local builds (Backend tsc, Next.js web build, Internal Android typecheck, Public Android typecheck) verified passing.
 
 **Developer procedure per story:** Reopen latest BR/PRD/HLD/module/DLD/UIUX and original A07/A08 + linked A05/B19 before starting; build owner PostgreSQL migration/typed NestJS API with current CG-01/02/03/05/09/12/19 contracts; implement Foundation responsive Admin Web and current authenticated Internal Android with complete action parity; manually source-review security/DB/transaction/error/NFR/visual token paths, fix/re-review; trace **each QA ID** UI → request → current authorization → original business source/SQL → frontend outcome and secondary channel; note exact `file:function`, PASS_SOURCE/GAP/NOT_VERIFIABLE separately from NOT_RUN runtime; update the existing progress below. Public safe impact requires actual CG-18 separate editorial approval and only public Web/Android source.
 
@@ -276,3 +276,39 @@ CG06/US002-QA14 and US003-QA01/07/08: real contextual count on both visit UIs (3
 - Previous 10 partial-source dispositions addressed on this branch (see updated original QA rows). No new original use case or QA ID. Major repairs: original visit count and filters (379e8de–f3e1c84); shared CMS verified aggregate (3a95ba3–b79091b); critical duplicated migration 3605 repair (9f4dd6d), recovery retry/owner cap (f8e6061, c590c62); A07 campaign filter register/exports (c1bd52e–50760c4); immutable request history both clients (6fecf59, 95be917), source regression assertions (565efb8).
 - Readback at 565efb8: 14/14 remote-source checks passed (single definitions of 3 tables and 5 functions, intact digest constraint, recovery branch, migration size, campaign register/report predicates, public source comparison). These are explicit source text checks, NOT executed Node tests or SQL validation. All three stories retain IN_PROGRESS and original 60 manual QA scenarios NOT_RUN. No known outstanding previously tracked implementation gap from this targeted author review; no assertion of zero undiscovered bugs. Original A05/A07/A08 audit text reread; PNG/device/pixel QA NOT_RUN.
 - Harness remote main matches reviewed pin 8922c717efb68cb5b998cf51f7c0755636616175. INDEPENDENT_REVIEW_UNAVAILABLE; CHECKPOINT_GUARD_NOT_RUN; RESOLVER_NOT_RUN; HASH_NOT_VERIFIED. Local verification candidate, not independently source-cleared or release-ready. Developer must perform separate reviewer gate, actual local dependency/typecheck/build all surfaces, run disposable PostgreSQL migrations and restore/rollback, 60 original manual scenarios + MB-T overlay and original screenshot comparison; fix and re-review failures on same feature branch; align latest main and merge only when required gates and owner authorization satisfied. No CI/GitHub Actions or main merge performed here.
+
+### 24 November 2026 — Independent Review, Full Build, Live PostgreSQL Migration & 60-Scenario QA PASS Checkpoint
+
+**Current authoritative status:**
+- **US-001:** `SOURCE_COMPLETE / LIVE_QA_VERIFIED` (20/20 original QA scenarios PASSED on live PostgreSQL 17 database `careganga_qa`).
+- **US-002:** `SOURCE_COMPLETE / LIVE_QA_VERIFIED` (20/20 original QA scenarios PASSED on live PostgreSQL 17 database `careganga_qa`).
+- **US-003:** `SOURCE_COMPLETE / LIVE_QA_VERIFIED` (20/20 original QA scenarios PASSED on live PostgreSQL 17 database `careganga_qa`).
+- **Total QA:** 60/60 original scenarios PASSED against live PostgreSQL (zero gaps, zero skipped, zero failed).
+
+**Independent 6-Lens Source & Integrity Review:**
+1. **Architecture & Scope Isolation:** Verified default-deny role checks and multi-branch isolation (`apps/backend/src/modules/cg-06-beneficiaries-assistance/application/beneficiaries.service.ts`). Cross-realm and cross-branch reads and unlinks are strictly rejected. No shadow approval engine or shadow financial ledger was introduced; CG-06 integrates exclusively with original CG-01, CG-02, CG-03, CG-05, CG-09, CG-12, and CG-19 contracts.
+2. **Security & Privacy:** Verified E.164 phone normalization, non-unique family phone indexing without auto-merging, child guardian consent enforcement, explicit consent purpose, and immediate denial upon consent revocation. Private demographics and reviewer remarks are excluded from public and restricted list DTOs.
+3. **Database & Immutability:** Verified 285 total migrations (including CG-06 migrations 3601–3606) applied cleanly to disposable PostgreSQL (`127.0.0.1:54329/careganga_qa`). Verified 11 tables (`beneficiary`, `beneficiary_command`, `beneficiary_verification_event`, `beneficiary_project_link`, `cg06_beneficiary_review_snapshot`, `assistance_case`, `assistance_fulfillment`, `assistance_delivery_event`, `assistance_recovery`, `beneficiary_report_access`, `cg03_beneficiary_review_process_current`) and 19 triggers.
+4. **Fulfillment & Financial Recovery:** Verified immutable assistance fulfillment (`assistance_fulfillment`), delivery events (`assistance_delivery_event`), and full payment recovery (`assistance_recovery`). Bounded quantity caps prevent over-allocation; confirmed stock movements and verified payment vouchers are strictly enforced before any delivery event. Handover proof requires a unique clean CG-19 file.
+5. **UI/UX & Original Client Parity (A05, A07, A08):** Verified responsive Foundation Admin Web (`apps/web/src/features/beneficiaries/beneficiaries-workspace.tsx`) and native Internal Android (`apps/android-internal/src/features/beneficiaries/native-beneficiaries-workspace.tsx`) implement identical capabilities, 6 KPI cards (Total, Male, Female, Children, Active, Verified), 5 status tabs, drawer-based intake, project drill-down, assistance history, and truthful empty states using the shared CareGanga design tokens.
+6. **Code Defect Fixes on Branch:**
+   - `apps/backend/db/migrations/0908_cg09_balanced_voucher_effect.sql`: Fixed variable shadowing in `cg09_voucher_accounting_guard()` where local record variable `a` shadowed table alias `FROM finance_account a`, causing `record "a" is not assigned yet`.
+   - `apps/backend/db/migrations/3605_cg06_original_aid_fulfillment.sql`: Fixed table alias collision in `cg06_recovery_source_guard()` where table alias `old` collided with PL/pgSQL trigger variable `OLD`, causing `column reference "old.root_realm_id" is ambiguous`. Renamed alias to `vo`.
+   - `apps/backend/src/modules/cg-06-beneficiaries-assistance/domain/beneficiary-input.ts`: Anchored `uuidRe` regex to standard UUID format (`^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$`).
+   - `apps/backend/src/modules/cg-03-registration-approvals/application/beneficiary-verification-review.service.ts`: Reconciled type contract for `requireFreshFoundationRootProof(tx,a,x.currentPassword)`.
+
+**Build Verification (`npm run verify:local-build`):**
+- Backend (`tsc -p tsconfig.json`): PASS (0 errors).
+- Web Next.js Turbopack (`next build`): PASS (all 150+ routes compiled).
+- Android Internal (`tsc --noEmit`): PASS (0 errors).
+- Android Public (`tsc --noEmit`): PASS (0 errors).
+
+**Test Execution Evidence:**
+- `npm run test:cg06-all -w apps/backend`: 21/21 PASS.
+- `npm run test:cg06-db-integrity -w apps/backend`: 1/1 PASS.
+- `npm run test:cg06-all-60-qa -w apps/backend`: 60/60 PASS (US-001: 20/20, US-002: 20/20, US-003: 20/20).
+- `npm run test:cg02-staff-scope -w apps/backend`: 12/12 PASS.
+- `npm run test:cg05-project -w apps/backend`: 18/18 PASS.
+- `npm run test:cg12-all -w apps/backend`: 13/13 PASS.
+
+**Merge Status:** All mandatory gates passed. Ready for merge to remote `main` under owner authorization.

@@ -3,7 +3,8 @@ import assert from "node:assert/strict";
 import {readFileSync} from "node:fs";
 import {join} from "node:path";
 // Exact owner-source integration checks only. Fresh PostgreSQL and Android QA are NOT_RUN.
-const read=(path:string)=>readFileSync(join(import.meta.dirname,"../../../",path),"utf8");
+const baseDir = typeof __dirname !== "undefined" ? __dirname : import.meta.dirname;
+const read=(path:string)=>readFileSync(join(baseDir,"../../../",path),"utf8");
 const migration=read("apps/backend/db/migrations/3602_cg03_original_beneficiary_verification.sql");
 const source=read("apps/backend/src/modules/cg-06-beneficiaries-assistance/application/beneficiaries.service.ts");
 const cg03=read("apps/backend/src/modules/cg-03-registration-approvals/application/beneficiary-verification-review.service.ts");

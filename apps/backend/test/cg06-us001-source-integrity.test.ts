@@ -6,7 +6,8 @@ import {join} from "node:path";
 // Contract/source-integrity guards; execution against a real PostgreSQL database
 // remains a distinct QA gate. These assertions prevent malformed or repeated
 // migration contents being mistaken for a successful source checkpoint.
-const sql=readFileSync(join(import.meta.dirname,"../db/migrations/3601_cg06_beneficiary_private_intake.sql"),"utf8");
+const baseDir = typeof __dirname !== "undefined" ? __dirname : import.meta.dirname;
+const sql=readFileSync(join(baseDir,"../db/migrations/3601_cg06_beneficiary_private_intake.sql"),"utf8");
 test("US-001-QA19: 3601 migration is exactly one coherent additive source",()=>{
  for(const table of ["beneficiary","beneficiary_command","beneficiary_verification_event","beneficiary_project_link"]){
   assert.equal(sql.match(new RegExp("CREATE TABLE "+table+" \\(","g"))?.length,1,table+" must appear once");
@@ -36,9 +37,9 @@ test("US-001-QA11/12: unapproved profile cannot claim verified",()=>{
 });
 
 test("US-001-QA13/19: CG19 beneficiary evidence SQL and protected read contract",()=>{
- const evidence=readFileSync(join(import.meta.dirname,"../db/migrations/3603_cg19_private_beneficiary_evidence.sql"),"utf8");
- const service=readFileSync(join(import.meta.dirname,"../src/modules/cg-19-documents-notifications/application/beneficiary-evidence.service.ts"),"utf8");
- const source=readFileSync(join(import.meta.dirname,"../src/modules/cg-06-beneficiaries-assistance/application/beneficiaries.service.ts"),"utf8");
+ const evidence=readFileSync(join(baseDir,"../db/migrations/3603_cg19_private_beneficiary_evidence.sql"),"utf8");
+ const service=readFileSync(join(baseDir,"../src/modules/cg-19-documents-notifications/application/beneficiary-evidence.service.ts"),"utf8");
+ const source=readFileSync(join(baseDir,"../src/modules/cg-06-beneficiaries-assistance/application/beneficiaries.service.ts"),"utf8");
  assert.match(evidence,/cg19_beneficiary_consent_guard\(\) RETURNS trigger LANGUAGE plpgsql AS \$\$/);
  assert.doesNotMatch(evidence,/AS \$\n|END \$;/);
  assert.match(evidence,/FOREIGN KEY\(file_ref,realm_id,beneficiary_id,source_revision\)/);
@@ -51,8 +52,8 @@ test("US-001-QA13/19: CG19 beneficiary evidence SQL and protected read contract"
 });
 
 test("US-001-QA02/07/17: revoked profile private demographics and reviewer remarks are not exposed",()=>{
- const source=readFileSync(join(import.meta.dirname,"../src/modules/cg-06-beneficiaries-assistance/application/beneficiaries.service.ts"),"utf8");
- const approval=readFileSync(join(import.meta.dirname,"../src/modules/cg-03-registration-approvals/application/beneficiary-verification-review.service.ts"),"utf8");
+ const source=readFileSync(join(baseDir,"../src/modules/cg-06-beneficiaries-assistance/application/beneficiaries.service.ts"),"utf8");
+ const approval=readFileSync(join(baseDir,"../src/modules/cg-03-registration-approvals/application/beneficiary-verification-review.service.ts"),"utf8");
  assert.match(source,/name\.trim\(\)\.length>=3\?/);
  assert.match(source,/stateRef:revoked\?"":r\.state_ref/);
  assert.match(source,/b\.consent_revoked_at IS NULL AND b\.gender=/);
