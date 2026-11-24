@@ -112,6 +112,60 @@ export class DonationAdminService{
       !latest.branchRefs.includes(ref)))
    throw new ForbiddenException("Your current branch reporting access changed. Refresh this report.");
  }
+ /** Current reconciled owner totals, one SQL statement, no donor identity. */
+ private async verifiedSummary(root:string,scope:{all:boolean;branchRefs:string[]},branchRef:string){
+  const result=await this.db.query<{total:number;received:number;pending:number;failed:number;unverified:number;
+   receiptsIssued:number;receivedMinor:string;verifiedRefundMinor:string;verifiedRefundCount:number;invalidRefunds:number;sourceAsOf:Date}>(`
+   WITH scoped AS (
+    SELECT d.id,d.root_realm_id,d.source_status,d.amount_minor,d.currency FROM donation d
+    WHERE d.root_realm_id=$1 AND ($2::boolean OR d.branch_ref=ANY($3::uuid[]))
+     AND ($4::text='ALL' OR ($4::text='FOUNDATION' AND d.branch_ref IS NULL) OR d.branch_ref=$5::uuid)
+   ), verified AS (
+    SELECT s.*,EXISTS(SELECT 1 FROM donation_finance_effect e JOIN journal j
+     ON j.root_realm_id=e.root_realm_id AND j.id=e.journal_id
+     WHERE e.root_realm_id=s.root_realm_id AND e.donation_id=s.id AND e.status='POSTED'
+      AND j.status='POSTED' AND j.source_ref=s.id AND j.immutable_source_event_key=e.source_event_key
+      AND j.immutable_payload_digest=e.immutable_digest) AS posted
+    FROM scoped s
+   ), receipts AS (
+    SELECT v.id FROM verified v WHERE v.source_status='RECEIVED_POSTED' AND v.posted
+      AND EXISTS(SELECT 1 FROM cg19_donation_receipt_document rec JOIN donation_finance_effect e
+       ON e.root_realm_id=rec.root_realm_id AND e.donation_id=rec.donation_id
+       WHERE rec.root_realm_id=v.root_realm_id AND rec.donation_id=v.id AND rec.status='ISSUED'
+        AND rec.source_digest=e.immutable_digest AND e.status='POSTED')
+   ), refunds AS (
+    SELECT r.id,r.amount_minor,(v.posted AND v.source_status='RECEIVED_POSTED' AND EXISTS(
+     SELECT 1 FROM journal j WHERE j.root_realm_id=r.root_realm_id AND j.id=r.reversal_journal_ref
+      AND j.status='POSTED' AND j.source_ref=r.id AND j.immutable_source_event_key=r.approval_request_key)) AS valid
+    FROM donation_refund_request r JOIN verified v ON v.root_realm_id=r.root_realm_id AND v.id=r.donation_id
+    WHERE r.status='FINANCE_REVERSED'
+   )
+   SELECT count(*)::int total,
+    count(*) FILTER(WHERE source_status='RECEIVED_POSTED' AND posted)::int received,
+    count(*) FILTER(WHERE source_status IN('REQUESTED','LINK_READY','PAYMENT_PENDING','VERIFIED_EXTERNAL','RECONCILIATION_PENDING'))::int pending,
+    count(*) FILTER(WHERE source_status IN('FAILED','EXPIRED'))::int failed,
+    count(*) FILTER(WHERE source_status='RECEIVED_POSTED' AND NOT posted OR posted AND source_status<>'RECEIVED_POSTED' OR currency<>'INR')::int unverified,
+    (SELECT count(*)::int FROM receipts) AS "receiptsIssued",
+    coalesce(sum(amount_minor) FILTER(WHERE source_status='RECEIVED_POSTED' AND posted AND currency='INR'),0)::text AS "receivedMinor",
+    (SELECT coalesce(sum(amount_minor) FILTER(WHERE valid),0)::text FROM refunds) AS "verifiedRefundMinor",
+    (SELECT count(*) FILTER(WHERE valid)::int FROM refunds) AS "verifiedRefundCount",
+    (SELECT count(*) FILTER(WHERE NOT valid)::int FROM refunds) AS "invalidRefunds",
+    statement_timestamp() AS "sourceAsOf"
+   FROM verified`,[root,scope.all,scope.branchRefs,branchRef,selected(branchRef)]);
+  const x=result.rows[0];
+  if(!x)throw Error("Donation summary unavailable");
+  const gross=BigInt(x.receivedMinor),refund=BigInt(x.verifiedRefundMinor);
+  const requiresReview=x.unverified>0||x.invalidRefunds>0||refund>gross||
+    x.received+x.pending+x.failed!==x.total;
+  return {...x,netReceivedMinor:(gross-refund).toString(),requiresReview};
+ }
+ async misSummary(bearer:string){
+  const actor=await this.sessions.requireAction(bearer,"finance.reports.view");
+  const {scope}=await this.reportScope(bearer,"ALL");
+  const x=await this.verifiedSummary(actor.realmId,scope,"ALL");
+  await this.ensureReportScopeStillCurrent(bearer,"ALL",scope);
+  return x;
+ }
  async list(bearer:string,input:Record<string,unknown>){
   const actor=await this.sessions.requireAction(bearer,"finance.reports.view");
   const f=filters(input);
