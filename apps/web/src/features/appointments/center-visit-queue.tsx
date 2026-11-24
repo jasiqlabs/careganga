@@ -58,6 +58,7 @@ export function CenterVisitQueue(){
  const [canClinicalManage,setCanClinicalManage]=useState(false);
  const [clinicianAssignments,setClinicianAssignments]=useState<ClinicianAssignment[]>([]);
  const [cancelPending,setCancelPending]=useState<string|null>(null);
+ const [expanded,setExpanded]=useState("");
  const [historyRef,setHistoryRef]=useState("");
  const [history,setHistory]=useState<AuditHistory|null>(null);
  const [historyBusy,setHistoryBusy]=useState(false);
@@ -70,7 +71,7 @@ export function CenterVisitQueue(){
   const serial=++requestSerial.current;
   if(!c){setItems([]);setSummary(null);setQueueLoading(false);return;}
   setQueueLoading(true);
-  setSummary(null);
+  setSummary(null);setExpanded("");
   try{
    const rows=await get<Queue>("my-centers/"+encodeURIComponent(c)+"?date="+encodeURIComponent(d)+
     (after?"&after="+encodeURIComponent(after):""));
@@ -265,7 +266,7 @@ export function CenterVisitQueue(){
        {x.centerName}</option>)}
      </select></label>
     <label>Consultation date
-     <input type="date" value={day} onChange={e=>{requestSerial.current++;setItems([]);setSummary(null);setCursor("");setNextCursor(null);setPreviousCursors([]);setVerifiedSlip(null);setQrToken("");setDoctorFilter("");setStatusFilter("");
+     <input type="date" value={day} disabled={busy} onChange={e=>{requestSerial.current++;setItems([]);setSummary(null);setCursor("");setNextCursor(null);setPreviousCursors([]);setVerifiedSlip(null);setQrToken("");setDoctorFilter("");setStatusFilter("");
        setDay(e.target.value);setUncertain(false);setCancelPending(null);}}/>
     </label>
     <button type="button" disabled={busy||!center}
@@ -275,12 +276,12 @@ export function CenterVisitQueue(){
    {center&&summary&&summary.centerRef===center&&summary.day===day&&
     <section aria-label="Original center daily attendance totals" className="form-section">
      <h3>Consultations for {day}</h3>
-     <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(125px,1fr))",gap:10}}>
+     <div className="cg-health-kpi-grid">
       {([["Total",summary.total],["Confirmed",summary.confirmed],
         ["Checked in",summary.arrived],["Waiting",summary.waiting],
         ["With doctor",summary.inConsultation],["Completed",summary.completed],
         ["Missed",summary.noShow],["Cancelled",summary.cancelled]] as const)
-        .map(([label,value])=><div key={label}><strong>{value}</strong><p>{label}</p></div>)}
+        .map(([label,value])=><div key={label} className="card"><strong>{value}</strong><p>{label}</p></div>)}
      </div>
      <p>Verified totals cover all appointments at this assigned center on its local day,
       including records outside the currently displayed 100-row page.</p>
@@ -332,7 +333,26 @@ export function CenterVisitQueue(){
     <p>Doctor: {item.doctorName}</p>
     <p>Booking: {item.bookingId} · {new Date(item.startAt).toLocaleString("en-IN",{
      timeZone:item.timeZone,dateStyle:"medium",timeStyle:"short"})}</p>
-    <p>Status: {item.bookingStatus} · Queue: {item.queueToken??"Not checked in"}</p>
+    <p><strong>{item.bookingStatus.replaceAll("_"," ")}</strong> · Queue: {item.queueToken??"Not checked in"}</p>
+    <div className="toolbar">
+     {item.consentGranted&&item.bookingStatus==="CONFIRMED"&&<button className="primary" type="button" disabled={busy||uncertain||queueLoading}
+       onClick={()=>void command(item,"CHECK_IN")}>Check in</button>}
+     {item.visitStatus==="ARRIVED"&&<button className="primary" type="button" disabled={busy||uncertain||queueLoading}
+       onClick={()=>void command(item,"WAITING")}>Move to waiting</button>}
+     {canClinicalManage&&clinicianAssignments.some(a=>a.centerRef===center&&a.doctorRef===item.doctorRef)&&item.visitStatus==="WAITING"&&<button className="primary" type="button" disabled={busy||uncertain||queueLoading}
+       onClick={()=>void command(item,"IN_CONSULTATION")}>Start consultation</button>}
+     {canClinicalManage&&clinicianAssignments.some(a=>a.centerRef===center&&a.doctorRef===item.doctorRef)&&item.visitStatus==="IN_CONSULTATION"&&<button className="primary" type="button" disabled={busy||uncertain||queueLoading}
+       onClick={()=>void command(item,"COMPLETED")}>Complete visit</button>}
+     {item.bookingStatus==="CONFIRMED"&&!item.visitRef&&
+      Number.isFinite(Date.parse(item.endAt))&&Date.parse(item.endAt)<=Date.now()&&
+      <button type="button" disabled={busy||uncertain||queueLoading}
+       onClick={()=>void command(item,"NO_SHOW")}>Mark missed appointment</button>}
+    </div>
+    <button type="button" aria-expanded={expanded===item.appointmentRef} disabled={busy||queueLoading}
+     onClick={()=>{setExpanded(expanded===item.appointmentRef?"":item.appointmentRef);setCancelPending(null);
+      auditSerial.current++;setHistoryRef("");setHistory(null);setHistoryError("");setHistoryBusy(false);}}>
+     {expanded===item.appointmentRef?"Hide appointment details":"Appointment details & documents"}</button>
+    {expanded===item.appointmentRef&&<>
     {item.consentGranted&&item.visitRef&&canClinicalManage&&
      clinicianAssignments.some(a=>a.centerRef===center&&a.doctorRef===item.doctorRef)&&
      <ClinicianVisitHistory key={center+":"+item.appointmentRef}
@@ -374,20 +394,8 @@ export function CenterVisitQueue(){
       </div>:
       <button type="button" disabled={busy||uncertain}
        onClick={()=>setCancelPending(item.appointmentRef)}>Cancel center booking</button>)}
-    <div className="toolbar">
-     {item.consentGranted&&item.bookingStatus==="CONFIRMED"&&<button type="button" disabled={busy||uncertain}
-       onClick={()=>void command(item,"CHECK_IN")}>Check in</button>}
-     {item.visitStatus==="ARRIVED"&&<button type="button" disabled={busy||uncertain}
-       onClick={()=>void command(item,"WAITING")}>Move to waiting</button>}
-     {canClinicalManage&&clinicianAssignments.some(a=>a.centerRef===center&&a.doctorRef===item.doctorRef)&&item.visitStatus==="WAITING"&&<button type="button" disabled={busy||uncertain}
-       onClick={()=>void command(item,"IN_CONSULTATION")}>In consultation</button>}
-     {canClinicalManage&&clinicianAssignments.some(a=>a.centerRef===center&&a.doctorRef===item.doctorRef)&&item.visitStatus==="IN_CONSULTATION"&&<button type="button" disabled={busy||uncertain}
-       onClick={()=>void command(item,"COMPLETED")}>Complete visit</button>}
-     {item.bookingStatus==="CONFIRMED"&&!item.visitRef&&
-      Number.isFinite(Date.parse(item.endAt))&&Date.parse(item.endAt)<=Date.now()&&
-      <button type="button" disabled={busy||uncertain}
-       onClick={()=>void command(item,"NO_SHOW")}>Mark missed appointment</button>}
-    </div>
+
+    </>}
    </article>)}
    {center&&items.length>0&&<nav aria-label="Queue pages" className="toolbar">
     <button type="button" disabled={busy||queueLoading||!previousCursors.length}
