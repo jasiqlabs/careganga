@@ -10,6 +10,8 @@
     "packages/*"
   ],
   "scripts": {
+    "db:generate-baseline": "node scripts/db-baseline.mjs generate",
+    "db:init": "node scripts/db-baseline.mjs install",
     "dev:backend": "npm run dev -w apps/backend",
     "dev:web": "npm run dev -w apps/web",
     "start:android-public": "npm run start -w apps/android-public",
