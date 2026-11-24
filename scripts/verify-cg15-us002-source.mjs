@@ -93,8 +93,13 @@ const checks=[
   s.publicAndroid.includes("EXPO_PUBLIC_API_URL")],
  ["source: native 30-day center and cross-center preview",s.publicAndroid.includes("dateAt(offset)")&&
   s.publicAndroid.includes("/center-options?date=")&&
-  s.publicAndroid.includes("slot-first?doctorRef=")],
- ["source: native client uses actual shared brand tokens",s.publicAndroid.includes("careGangaTheme")&&
+  s.publicAndroid.includes("slot-first?doctorRef=")&&
+  s.publicAndroid.includes("MAX_CENTERS=40,MAX_SLOTS=144")&&
+  s.publicAndroid.includes("result.centers.length>MAX_CENTERS")&&
+  s.publicAndroid.includes("result.centerChoices.length>MAX_CENTERS")&&
+  s.publicAndroid.includes("result.slots.length>MAX_SLOTS")&&
+  s.publicAndroid.includes("result.day!==day||result.time!==time")],
+ ["source: native client uses actual shared brand tokens",s.publicAndroid.includes("careGangaPublicTheme")&&
   s.publicAndroid.includes("theme.primary")&&
   !s.publicAndroid.includes("theme.textPrimary")],
  ["source: clear editable invalid/unavailable errors",s.catalog.includes("CG15_AVAILABILITY_INVALID")&&

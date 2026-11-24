@@ -4,19 +4,21 @@ import {careGangaPublicTheme as theme} from "../../../../../packages/design-toke
 import {NativeConsultationAction} from "../appointments/native-consultation-action";
 
 const base=process.env.EXPO_PUBLIC_API_URL;
+// Keep bounds aligned with CG15 doctor-availability.service.ts.
+const MAX_CENTERS=40,MAX_SLOTS=144;
 type Center={centerRef:string;centerName:string;centerSlug:string;timeZone:string;
  hasWorkingSchedule:boolean;consultationFeeMinor:string|null;consultationFeeVersion:number|null};
 type Options={day:string;doctorName:string;centers:Center[];bookingEnabled:boolean;
  status:string;message:string};
 type Slot={startAt:string;endAt:string;startLocal:string;endLocal:string;
  bookable:boolean};
-type Detail={status:string;centerName:string;timeZone:string;slots:Slot[];
+type Detail={status:string;day:string;centerName:string;timeZone:string;slots:Slot[];
  bookingEnabled:boolean;message:string;consultationFeeMinor:string|null;
  consultationFeeVersion:number|null;doctorName:string;centerRef:string};
 type Match={centerRef:string;centerName:string;centerSlug:string;timeZone:string;
  startAt:string;endAt:string;bookable:boolean;consultationFeeVersion:number|null;
  address:string;pinCode:string;consultationFeeMinor:string|null};
-type Choices={centerChoices:Match[];message:string;bookingEnabled:boolean};
+type Choices={day:string;time:string;centerChoices:Match[];message:string;bookingEnabled:boolean};
 const dateAt=(offset:number)=>{
  const now=new Date();
  const value=new Date(now.getFullYear(),now.getMonth(),now.getDate()+offset);
@@ -60,7 +62,7 @@ export function DoctorSchedulePreview({doctorRef,reschedule,preferredCenterSlug}
   void get<Options>("doctor/"+encodeURIComponent(doctorRef)+
    "/center-options?date="+encodeURIComponent(day))
    .then(result=>{if(id===sequence.current){
-    if(result.day!==day||!Array.isArray(result.centers)||result.centers.length>25)throw Error("The current center list could not be verified.");
+    if(result.day!==day||!Array.isArray(result.centers)||result.centers.length>MAX_CENTERS)throw Error("The current center list could not be verified.");
     setOptions(result);setLoading(false);
    }})
    .catch(e=>{if(id===sequence.current){setError(e instanceof Error?
@@ -75,7 +77,7 @@ export function DoctorSchedulePreview({doctorRef,reschedule,preferredCenterSlug}
    const result=await get<Detail>("center-first?doctorRef="+
     encodeURIComponent(doctorRef)+"&centerRef="+
     encodeURIComponent(value.centerRef)+"&date="+encodeURIComponent(day));
-   if(id===sequence.current){if(result.centerRef!==value.centerRef||!Array.isArray(result.slots))throw Error("The current center schedule could not be verified.");setDetail(result);setLoading(false);}
+   if(id===sequence.current){if(result.day!==day||result.centerRef!==value.centerRef||!Array.isArray(result.slots)||result.slots.length>MAX_SLOTS)throw Error("The current center schedule could not be verified.");setDetail(result);setLoading(false);}
   }catch(e){if(id===sequence.current){
    setError(e instanceof Error?e.message:"Working hours could not be checked.");
    setLoading(false);
@@ -89,7 +91,7 @@ export function DoctorSchedulePreview({doctorRef,reschedule,preferredCenterSlug}
    const result=await get<Choices>("slot-first?doctorRef="+
     encodeURIComponent(doctorRef)+"&date="+encodeURIComponent(day)+
     "&time="+encodeURIComponent(time));
-   if(id===sequence.current){if(!Array.isArray(result.centerChoices)||result.centerChoices.length>25)throw Error("The current center choices could not be verified.");setChoices(result);setLoading(false);}
+   if(id===sequence.current){if(result.day!==day||result.time!==time||!Array.isArray(result.centerChoices)||result.centerChoices.length>MAX_CENTERS)throw Error("The current center choices could not be verified.");setChoices(result);setLoading(false);}
   }catch(e){if(id===sequence.current){
    setError(e instanceof Error?e.message:"Center choices could not be checked.");
    setLoading(false);

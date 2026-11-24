@@ -264,6 +264,10 @@ Dependencies: US-003
 
 ## Execution progress
 
+### Healthcare source contract re-review
+HUX-10.04/11.02/13.02: re-review found native preview used a 25-center client cap although the original CG15 API admits 40. Align native cap to 40 and 144 slots; reject a different requested date/time/center rather than rendering a mismatched appointment. Updated existing CG14 US004 and CG15 US002 source verifiers to assert live schedule navigation, correct public semantic theme, and bounded response identity instead of obsolete pre-booking wording/blue theme. Original QA US-002-QA01/02/05/07/12/13/14, CG14 US-004-QA12/17. Test 26–40 verified centers, no schedule, late response/date and changed center, 41 invalid entries, >144 slots; source script execution and real QA NOT_RUN.
+
+
 ### 24 November 2026 — protected patient intake, cancellation, lab and CMS discovery
 Commit `676e320a410cf79bb2c5ec54adf40d851d26931c`: HUX-06.01/06.03/07.04/09.01. Web H15 cancellation override is now action-permission gated like Internal Android; both prevent changing filters/selection during an uncertain cancellation and require an original-source recheck. Web provisional registration retains the exact original request and disables edits during uncertainty; clinic identity proof is bound to the selected center, patient ID, code and original request key, and a successful response must identify the original verified patient. Public Web lab listings show published sample/description where available; native pagination deduplicates offer references and clear filters retains the initial center. The native published healthcare CMS page now directly opens the existing directory/patient profile; Web offers matching discovery links. Editorial content remains CMS-owned; operational listings remain CG14/16-owned. These are source changes, not executed QA.
 
