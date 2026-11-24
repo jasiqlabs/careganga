@@ -4,7 +4,7 @@ import {
 import {createHash,randomBytes,randomUUID} from "node:crypto";
 import type {Pool,PoolClient} from "pg";
 import {DATABASE} from "../../../core/infrastructure/database.module";
-import {ClinicalLabAdmissionService,type CareSource}
+import {ClinicalLabAdmissionService,CURRENT_LAB_ORDER_CARE_PREDICATE,type CareSource}
  from "./clinical-lab-admission.service";
 
 const ID=/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i;
@@ -45,19 +45,6 @@ function selections(v:unknown):Pick[]{
   return {mappingRef,quantity:Number(x.quantity)};
  });
 }
-// Restrict operational list/detail to the current verified care relationship.
-const currentCarePredicate=
- "AND EXISTS(SELECT 1 FROM cg15_patient p WHERE p.root_realm_id=o.root_realm_id "+
- "AND p.id=o.patient_ref AND p.profile_status='VERIFIED' "+
- "AND EXISTS(SELECT 1 FROM cg15_patient_identity_event proof WHERE proof.root_realm_id=p.root_realm_id AND proof.patient_id=p.id) "+
- "AND EXISTS(SELECT 1 FROM cg15_patient_consent consent WHERE consent.root_realm_id=p.root_realm_id AND consent.patient_id=p.id "+
- "AND consent.purpose='PATIENT_CARE' AND consent.granted=true AND consent.revision_no=(SELECT MAX(latest.revision_no) FROM cg15_patient_consent latest "+
- "WHERE latest.root_realm_id=p.root_realm_id AND latest.patient_id=p.id AND latest.purpose='PATIENT_CARE'))) "+
- "AND ((o.care_source_kind='CENTER_INTAKE' AND EXISTS(SELECT 1 FROM cg15_patient_center_intake i "+
- "WHERE i.root_realm_id=o.root_realm_id AND i.center_id=o.center_ref AND i.patient_id=o.patient_ref AND i.id=o.center_intake_ref AND i.assisted_consent_attested=true)) "+
- "OR (o.care_source_kind='CONSULTATION' AND EXISTS(SELECT 1 FROM cg15_consultation_appointment a "+
- "WHERE a.root_realm_id=o.root_realm_id AND a.center_id=o.center_ref AND a.patient_id=o.patient_ref AND a.id=o.consultation_ref "+
- "AND a.booking_state IN('ARRIVED','WAITING','IN_CONSULTATION','COMPLETED')))) ";
 const MAX=9999999999n;
 const unitPrice=(v:string)=>{const amount=BigInt(v);
  if(amount<0n||amount>MAX)throw new ConflictException({code:"LAB_QUOTE_UNAVAILABLE"});
@@ -281,7 +268,7 @@ export class ClinicalLabOrderService{
  }
  async centerOrders(bearer:string,centerRef:string,search:unknown="",offsetRaw:unknown="0"){
   if(typeof search!=="string"||search.length>80||/[\u0000-\u001f\u007f]/.test(search)||
-   typeof offsetRaw!=="string"||!/^(0|[1-9]\d{0,4})$/.test(offsetRaw)||Number(offsetRaw)>9990)
+   typeof offsetRaw!=="string"||!/^(0|[1-9]\d{0,4})$/.test(offsetRaw)||Number(offsetRaw)>9990||Number(offsetRaw)%30!==0)
    throw new BadRequestException({code:"LAB_CLINICAL_INVALID"});
   const offset=Number(offsetRaw),q=search.trim().toLowerCase();
   return this.tx(async c=>{
@@ -289,7 +276,7 @@ export class ClinicalLabOrderService{
    const result=await c.query(
     "SELECT id AS \"orderRef\",display_order_ref AS \"displayOrderRef\","+
     "status,accepted_center_total_minor::text AS \"quotedTotalMinor\",created_at AS \"createdAt\" "+
-    "FROM lab_order o WHERE o.root_realm_id=$1 AND o.center_ref=$2 "+currentCarePredicate+
+    "FROM lab_order o WHERE o.root_realm_id=$1 AND o.center_ref=$2 "+CURRENT_LAB_ORDER_CARE_PREDICATE+
     "AND ($3::text='' OR position($3 in lower(display_order_ref))>0 OR position($3 in lower(replace(status::text,'_',' ')))>0) "+
     "ORDER BY created_at DESC,id DESC LIMIT 31 OFFSET $4",
     [actor.realmId,centerRef,q,offset]);
@@ -303,7 +290,7 @@ export class ClinicalLabOrderService{
    const r=await c.query(
     "SELECT id AS \"orderRef\",display_order_ref AS \"displayOrderRef\",status,"+
     "accepted_center_total_minor::text AS \"quotedTotalMinor\",created_at AS \"createdAt\" "+
-    "FROM lab_order o WHERE o.root_realm_id=$1 AND o.center_ref=$2 AND o.id=$3 "+currentCarePredicate,
+    "FROM lab_order o WHERE o.root_realm_id=$1 AND o.center_ref=$2 AND o.id=$3 "+CURRENT_LAB_ORDER_CARE_PREDICATE,
     [actor.realmId,centerRef,orderRef]);
    if(!r.rows[0])throw new NotFoundException({code:"LAB_CLINICAL_ORDER_UNAVAILABLE"});
    const [lines,samples,report]=await Promise.all([
