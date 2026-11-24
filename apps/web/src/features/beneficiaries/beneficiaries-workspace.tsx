@@ -7,6 +7,8 @@ type Item={ref:string;reference:string;name:string;contactMobile:string|null;rep
  consentRevoked:boolean;verification:string;lifecycle:string;revision:number;createdAt:string;
  projectLinks?:{ref:string;projectRef:string;projectName:string}[]};
 type Page={items:Item[];hasMore:boolean;nextCursor:string|null};
+type ActionHistory={action:string;revision:number;reason:string|null;at:string};
+type VerificationHistory={decision:string;sourceRevision:number;at:string};
 type Option={value:string;label:string};
 type Options={canManageFoundation:boolean;branches:Option[];states:Option[];districts:Option[]};
 type Form={branchRef:string;name:string;contactMobile:string;representativeName:string;representativeContact:string;
@@ -49,6 +51,7 @@ export function BeneficiariesWorkspace({canManage,canLinkProjects,canManageLifec
  const [projects,setProjects]=useState<Option[]>([]),[projectRef,setProjectRef]=useState(""),
   [linkKey,setLinkKey]=useState(""),[linking,setLinking]=useState(false);
  const [reason,setReason]=useState(""),[acting,setActing]=useState(false);
+ const [actionHistory,setActionHistory]=useState<ActionHistory[]>([]),[verificationHistory,setVerificationHistory]=useState<VerificationHistory[]>([]);
  const seq=useRef(0),drawer=useRef<HTMLElement|null>(null),focus=useRef<HTMLElement|null>(null);
  const update=(k:keyof Form,v:string|boolean)=>setForm(x=>({...x,[k]:v}));
  useEffect(()=>{let live=true;void api<Options>("/options").then(v=>{if(live)setOpts(v);}).catch(e=>{if(live)setError(e.message);});return()=>{live=false;};},[]);
@@ -86,7 +89,15 @@ export function BeneficiariesWorkspace({canManage,canLinkProjects,canManageLifec
  };
  const choose=async(id:string)=>{
   setDetailLoading(true);setSelected(null);setNotice("");
-  try{setSelected(await api<Item>("/"+id));setProjectRef("");setLinkKey(crypto.randomUUID());}
+  try{
+    const [detail,actions,verification]=await Promise.all([
+     api<Item>("/"+id),
+     api<{items:ActionHistory[]}>("/"+id+"/history"),
+     api<{items:VerificationHistory[]}>("/"+id+"/verification-history")
+    ]);
+    setSelected(detail);setActionHistory(actions.items);setVerificationHistory(verification.items);
+    setProjectRef("");setLinkKey(crypto.randomUUID());
+   }
   catch(e){setError(e instanceof Error?e.message:"Beneficiary unavailable");}
   finally{setDetailLoading(false);}
  };
@@ -212,7 +223,19 @@ export function BeneficiariesWorkspace({canManage,canLinkProjects,canManageLifec
           <option key={x.value} value={x.value}>{x.label}</option>)}</select>
         <button type="button" style={secondary} disabled={!projectRef||linking} onClick={()=>void link()}>Link</button>
        </div>}
-      {(canManageLifecycle||canRevoke)&&<div style={{borderTop:"1px solid var(--cg-border)",paddingTop:12,display:"grid",gap:8}}>
+      <h3 style={{fontSize:15,marginBottom:0}}>Source history</h3>
+       {actionHistory.length?<div style={{display:"grid",gap:6}}>
+        {actionHistory.map((entry,i)=><div key={i} style={{fontSize:12,padding:8,border:"1px solid var(--cg-border)",borderRadius:6}}>
+         <strong>{nice(entry.action)}</strong> · Revision {entry.revision} · {new Date(entry.at).toLocaleString("en-IN")}
+         {entry.reason&&<p style={{marginBottom:0}}>{entry.reason}</p>}
+        </div>)}
+       </div>:<p>No action history is available.</p>}
+       <h3 style={{fontSize:15,marginBottom:0}}>Verification history</h3>
+       {verificationHistory.length?<div style={{display:"grid",gap:5}}>
+        {verificationHistory.map((entry,i)=><div key={i} style={{fontSize:12}}>
+         {nice(entry.decision)} · Revision {entry.sourceRevision} · {new Date(entry.at).toLocaleString("en-IN")}
+        </div>)}</div>:<p>Not submitted for independent verification yet.</p>}
+       {(canManageLifecycle||canRevoke)&&<div style={{borderTop:"1px solid var(--cg-border)",paddingTop:12,display:"grid",gap:8}}>
        <label style={field}>Reason for a status or consent change
         <input style={input} value={reason} onChange={e=>setReason(e.target.value)} maxLength={300}/></label>
        {canManageLifecycle&&<button type="button" style={secondary} disabled={acting||reason.trim().length<3}
