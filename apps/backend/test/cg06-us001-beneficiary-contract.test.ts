@@ -65,3 +65,9 @@ test("US-001-QA15: bounded private search, honest pending-filter and opaque curs
  for(const bad of [{verification:"APPROVED"},{lifecycle:"VERIFIED"},{cursor:"invalid"},
   {q:"x".repeat(81)},{branchRef:"invalid"}])assert.throws(()=>parseListQuery(bad));
 });
+
+test("US-001-QA15: demographic filters use only approved enum values",()=>{
+ const f=parseListQuery({gender:"FEMALE",ageGroup:"CHILD"});
+ assert.equal(f.gender,"FEMALE");assert.equal(f.ageGroup,"CHILD");
+ for(const bad of [{gender:"unknown"},{ageGroup:"2"}])assert.throws(()=>parseListQuery(bad));
+});
