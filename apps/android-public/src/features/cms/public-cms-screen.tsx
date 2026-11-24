@@ -193,7 +193,7 @@ export function PublicCmsContent({onContact,onPartnerApplication,onMembershipApp
   setResult(response);setLoadedTarget(target);setLoading(false);
  },[]);
  useEffect(()=>{
-  if(slug!=="campaigns")void load(slug);
+  if(slug!=="campaigns"&&slug!=="@newsletter")void load(slug);
   return()=>{latestPageRequest.current++};
  },[slug,load]);
  useEffect(()=>{
@@ -212,7 +212,7 @@ export function PublicCmsContent({onContact,onPartnerApplication,onMembershipApp
    if(slug!=="home"){
     // Article detail returns to News. A published legal policy must
     // return to Home; it is not part of the article reader.
-    setSlug(!["about","our-impact","80g","gallery","contact","healthcare","articles","notices","@events","our-work","upcoming-projects","collaboration","membership","campaigns"].includes(slug)&&
+    setSlug(!["about","our-impact","80g","gallery","contact","healthcare","articles","notices","@events","@newsletter","our-work","upcoming-projects","collaboration","membership","campaigns"].includes(slug)&&
      !isPolicySlug(slug)?articleBackTarget:"home");return true;
    }return false;
   });
@@ -306,6 +306,7 @@ export function PublicCmsContent({onContact,onPartnerApplication,onMembershipApp
    <CmsButton title="Membership Plans" secondary={slug!=="membership"} onPress={()=>setSlug("membership")}/>
    <CmsButton title="Corporate Partners" secondary={slug!=="collaboration"} onPress={()=>setSlug("collaboration")}/>
    <CmsButton title="Healthcare Partner Application" secondary onPress={onPartnerApplication}/>
+   <CmsButton title="Newsletter" secondary={slug!=="@newsletter"} onPress={()=>setSlug("@newsletter")}/>
    <CmsButton title="Contact" onPress={()=>navigate("/contact")}
     secondary={slug!=="contact"}/>
    {legalPages.some(([name])=>publishedPaths.includes("/policies/"+name))&&
@@ -316,7 +317,7 @@ export function PublicCmsContent({onContact,onPartnerApplication,onMembershipApp
      <CmsButton key={name} title={title} secondary={slug!==name}
       onPress={()=>setSlug(name)}/>)}
   </View>
-  {slug==="campaigns"?<NativePublicCampaigns/>:slug==="membership"?<NativeMembershipPlans onApply={onMembershipApply}/>:loading||loadedTarget!==slug?<ActivityIndicator accessibilityLabel="Checking current published website content"/>:
+  {slug==="@newsletter"?<View style={styles.card}><NativeNewsletterForm/></View>:slug==="campaigns"?<NativePublicCampaigns/>:slug==="membership"?<NativeMembershipPlans onApply={onMembershipApply}/>:loading||loadedTarget!==slug?<ActivityIndicator accessibilityLabel="Checking current published website content"/>:
    (slug==="articles"||slug==="@events")?<View style={styles.card}>
     <Text accessibilityRole="header" style={styles.heading}>{slug==="@events"?"Foundation Events":"Approved News & Articles"}</Text>
     {!articleFeed.available?<Text accessibilityRole="alert" style={styles.muted}>
