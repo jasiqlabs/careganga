@@ -53,7 +53,7 @@ async function run(){
  if(url.username||url.password||url.search||url.hash||url.pathname!=="/"||
   !(url.protocol==="https:"||(url.protocol==="http:"&&["localhost","127.0.0.1","[::1]"].includes(url.hostname))))
   throw Error("Use an HTTPS backend origin or local loopback HTTP origin.");
- const request=(method,body)=>fetch(new URL("/api/cms/pages",url),{
+ const request=(method,body)=>fetch(new URL(method==="GET"?"/api/cms/pages?scope=baseline":"/api/cms/pages",url),{
   method,redirect:"error",cache:"no-store",signal:AbortSignal.timeout(15000),
   headers:{Authorization:"Bearer "+token,...(body?{"Content-Type":"application/json"}:{})},
   ...(body?{body:JSON.stringify(body)}:{})
