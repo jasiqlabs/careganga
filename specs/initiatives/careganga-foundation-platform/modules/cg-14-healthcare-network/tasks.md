@@ -161,6 +161,11 @@ Dependencies: US-002 (actual verified active CG-14 center/account, delivered bas
 
 ## Execution progress
 
+### 24 November 2026 — healthcare UX source checkpoint
+
+HUX-04.01 commits 18815664, fe0cde40, a2bf3ace. Web/native registration grouping and discard confirmation; prevent edits during uncertain save; Web dependent area list clears before fetch. US-001-QA01/03/07/09/11/13/16/17/18 partial source trace. Original QA definitions and dispositions unchanged. Runtime/device/build NOT_RUN; independent clearance unavailable; exact reference comparison pending.
+
+
 ### 24 Nov 2026 — HUX doctor directory and detail improvement
 
 Commits cc183162, 647441a1, 39145780, 7a59b73a, 098ac8c6. Existing staff doctor list permission and realm filter unchanged; parameterized bounded search/status, Web/Internal Android filtered pagination, details/form hierarchy and stale detail/proof guards. US-003-QA12/14/15/16/18 partially traced; other original scenarios unchanged; actual SQL query performance, build, device, and independent review NOT_RUN. No SOURCE_COMPLETE promotion. HUX-04.02/04.03/12.01 remain in progress pending acceptance.
