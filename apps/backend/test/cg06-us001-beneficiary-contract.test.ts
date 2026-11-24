@@ -71,3 +71,9 @@ test("US-001-QA15: demographic filters use only approved enum values",()=>{
  assert.equal(f.gender,"FEMALE");assert.equal(f.ageGroup,"CHILD");
  for(const bad of [{gender:"unknown"},{ageGroup:"2"}])assert.throws(()=>parseListQuery(bad));
 });
+
+test("US-001-QA15: current geography pair and valid inclusive registration date range",()=>{
+ const q=parseListQuery({stateRef:state,districtRef:district,registeredFrom:"2026-11-01",registeredTo:"2026-11-30"});
+ assert.equal(q.state,state);assert.equal(q.district,district);assert.equal(q.from,"2026-11-01");assert.equal(q.to,"2026-11-30");
+ for(const bad of [{districtRef:district},{registeredFrom:"2026-02-30"},{registeredTo:"2026-1-01"},{registeredFrom:"2026-12-01",registeredTo:"2026-11-01"},{registeredFrom:"0000-01-01"}])assert.throws(()=>parseListQuery(bad));
+});
