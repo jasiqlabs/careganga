@@ -420,6 +420,14 @@ export class FinanceVoucherDraftService{
   const safe=normalize({requestKey:v.key,financialYearRef:v.year,branchRef:v.branch,branchVersion,voucherType:"PAYMENT",postingDate:v.date,payeeName:"Protected Foundation beneficiary",purpose:"Approved assistance "+v.reference,paymentAccountRef:v.payment,debitAccountRef:v.debit,creditAccountRef:v.payment,lines:[{description:"Approved beneficiary assistance",quantity:1,unitRate:amount}],tax:"0",charges:"0"});
   return this.commitDraft(client,actor,v.key,safe,null,null);
  }
+ async prepareAidRecovery(client:PoolClient,actor:VerifiedFoundationActor,v:{key:string;originalVoucher:string;branch:string|null;year:string;date:string;minor:string;reference:string}){
+  const original=(await client.query<{debit_account_id:string;credit_account_id:string;total_minor:string}>("SELECT debit_account_id,credit_account_id,total_minor::text FROM finance_voucher WHERE root_realm_id=$1 AND id=$2 AND voucher_type='PAYMENT' AND status='POSTED' AND branch_id IS NOT DISTINCT FROM $3::uuid FOR SHARE",[actor.realmId,v.originalVoucher,v.branch])).rows[0];
+  if(!original||original.total_minor!==v.minor)throw new ConflictException({code:"CG06_SOURCE_STALE"});
+  const minor=BigInt(v.minor),amount=(minor/100n).toString()+"."+(minor%100n).toString().padStart(2,"0");
+  const branchVersion=v.branch?(await client.query<{version:number}>("SELECT version FROM branch WHERE root_realm_id=$1 AND id=$2 AND status='ACTIVE' FOR SHARE",[actor.realmId,v.branch])).rows[0]?.version:null;
+  const safe=normalize({requestKey:v.key,financialYearRef:v.year,branchRef:v.branch,branchVersion,voucherType:"GENERAL",postingDate:v.date,payeeName:"Protected Foundation beneficiary",purpose:"Actual recovery of approved assistance "+v.reference,debitAccountRef:original.credit_account_id,creditAccountRef:original.debit_account_id,lines:[{description:"Documented return of beneficiary assistance",quantity:1,unitRate:amount}],tax:"0",charges:"0"});
+  return this.commitDraft(client,actor,v.key,safe,null,null);
+ }
  async save(bearer:string,payload:unknown,voucherInput?:string){
   const capability="finance.vouchers.manage" as const;
   const actor=await this.actor(bearer,capability);
