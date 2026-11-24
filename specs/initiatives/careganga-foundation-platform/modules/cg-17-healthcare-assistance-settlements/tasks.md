@@ -156,6 +156,9 @@ Dependencies: US-001
 
 ## Execution progress
 
+CG17 re-review 1ec0ed98/c58221de: center-scoped doctor lookup generation and loading gate, US-001-QA02/04/05 source-only. Runtime NOT_RUN.
+
+
 ### Healthcare hardening — policy, quote and settlement
 HUX-08.01/08.02/11.01: grouped policy forms, real settlement totals with missing amount handling, month/source check and uncertain claim controls, and public review hierarchy. Commits 6dcf73c3/e634ae3a/bdaa1a64/481fde3f/eb11a8d2/f97bbac5. US-001-QA01–09, US-002-QA01–08, US-005-QA01–11, US-006-QA01–11 partial source trace; original QA dispositions unchanged. Verify actual scoped amounts and accepted snapshots, approved vs paid, partial payout, reversal, unknown outcome and both devices. Runtime and independent review NOT_RUN. See [tracker](../../HEALTHCARE_UIUX_HARDENING_TRACKER.md).
 
