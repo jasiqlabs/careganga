@@ -14,6 +14,9 @@ type DuplicateSuggestion={reference:string;maskedName:string;beneficiaryType:str
 type DuplicateResponse={advisory:boolean;items:DuplicateSuggestion[];hasMore:boolean};
 type ActionHistory={action:string;revision:number;reason:string|null;at:string};
 type VerificationHistory={decision:string;sourceRevision:number;at:string};
+type ReviewInfo={status:string;caseNumber:string|null;revision?:number;canReview:boolean;caseRef:string|null;
+ sourceRevision:number;sourceVerification:string;allowedDecisions?:string[];requiresCurrentPassword?:boolean;
+ decisions?:{action:string;remarks:string;at:string}[]};
 type Form={branchRef:string;name:string;contactMobile:string;representativeName:string;representativeContact:string;
  stateRef:string;districtRef:string;beneficiaryType:string;gender:string;ageGroup:string;consentKind:string;
  consentPurpose:string;consentAcknowledged:boolean};
@@ -50,14 +53,19 @@ function Select({title,selected,items,onSelect}:{title:string;selected:string;it
  </View>;
 }
 const enumOptions=(items:string[]):Option[]=>items.map(x=>({value:x,label:capitalize(x)}));
-export function NativeBeneficiariesWorkspace({token,onExpired,canManage,canLinkProjects,canManageLifecycle,canRevoke}:{
+export function NativeBeneficiariesWorkspace({token,onExpired,canManage,canLinkProjects,canManageLifecycle,canRevoke,canSubmitVerification,canReviewVerification}:{
  token:string;onExpired:()=>void;canManage:boolean;canLinkProjects:boolean;canManageLifecycle:boolean;canRevoke:boolean;
+ canSubmitVerification:boolean;canReviewVerification:boolean;
 }){
  const [page,setPage]=useState<Page|null>(null),[selected,setSelected]=useState<Item|null>(null);
  const [opts,setOpts]=useState<Options|null>(null),[districts,setDistricts]=useState<Option[]>([]);
  const [q,setQ]=useState(""),[search,setSearch]=useState(""),[tab,setTab]=useState("ALL"),[branch,setBranch]=useState("");
  const [cursor,setCursor]=useState(""),[history,setHistory]=useState<string[]>([]);
  const [auditHistory,setAuditHistory]=useState<ActionHistory[]>([]),[verificationHistory,setVerificationHistory]=useState<VerificationHistory[]>([]);
+ const [review,setReview]=useState<ReviewInfo|null>(null),[reviewAction,setReviewAction]=useState("APPROVE");
+ const [reviewRemarks,setReviewRemarks]=useState(""),[reviewPassword,setReviewPassword]=useState("");
+ const [verificationBusy,setVerificationBusy]=useState(false);
+ const [submitKey,setSubmitKey]=useState(Crypto.randomUUID),[decisionKey,setDecisionKey]=useState(Crypto.randomUUID);
  const [refreshKey,setRefreshKey]=useState(0),[loading,setLoading]=useState(false),[busy,setBusy]=useState(false);
  const [error,setError]=useState(""),[notice,setNotice]=useState("");
  const [mode,setMode]=useState<"create"|"edit"|null>(null),[draft,setDraft]=useState(blank);
@@ -98,11 +106,13 @@ export function NativeBeneficiariesWorkspace({token,onExpired,canManage,canLinkP
  },[search,tab,branch,cursor,refreshKey,api]);
  const select=async(id:string)=>{setBusy(true);setError("");
   try{
-   const [x,audit,verification]=await Promise.all([
+   const [x,audit,verification,reviewInfo]=await Promise.all([
     api<Item>("/"+id),api<{items:ActionHistory[]}>("/"+id+"/history"),
-    api<{items:VerificationHistory[]}>("/"+id+"/verification-history")
+    api<{items:VerificationHistory[]}>("/"+id+"/verification-history"),
+    api<ReviewInfo>("/"+id+"/verification-review")
    ]);
    setSelected(x);setAuditHistory(audit.items);setVerificationHistory(verification.items);
+   setReview(reviewInfo);setReviewPassword("");setReviewRemarks("");
    setLinkKey(Crypto.randomUUID());setProjectRef("");
    if(canLinkProjects){const p=new URLSearchParams({branchRef:x.branchRef??""});
     setProjects(await api<Option[]>("/eligible-projects?"+p).catch(()=>[]));}
@@ -111,6 +121,31 @@ export function NativeBeneficiariesWorkspace({token,onExpired,canManage,canLinkP
  };
  const reload=()=>setRefreshKey(x=>x+1);
  const open=(m:"create"|"edit")=>{setMode(m);setError("");setDuplicates(null);setDraft(m==="create"?{...blank(),branchRef:opts&&!opts.canManageFoundation?opts.branches[0]?.value??"":""}:selected?fromItem(selected):blank());setCommandKey(Crypto.randomUUID());};
+ const submitVerification=async()=>{
+  if(!selected||verificationBusy||!canSubmitVerification)return;
+  setVerificationBusy(true);setError("");
+  try{
+   const outcome=await api<{caseNumber:string;status:string}>("/"+selected.ref+"/submit-verification","POST",{
+    requestKey:submitKey,expectedRevision:selected.revision});
+   setSubmitKey(Crypto.randomUUID());
+   await select(selected.ref);reload();
+   setNotice("Submitted to independent CG-03 review: "+outcome.caseNumber);
+  }catch(e){setError(e instanceof Error?e.message:"Submission unknown. Retry using the same request.");}
+  finally{setVerificationBusy(false);}
+ };
+ const decideVerification=async()=>{
+  if(!selected||!review?.canReview||!review.caseRef||!review.revision||!canReviewVerification||verificationBusy)return;
+  setVerificationBusy(true);setError("");
+  try{
+   const outcome=await api<{status:string}>("/verification-cases/"+review.caseRef+"/decide","POST",{
+    requestKey:decisionKey,expectedRevision:review.revision,action:reviewAction,
+    remarks:reviewRemarks,currentPassword:reviewPassword});
+   setDecisionKey(Crypto.randomUUID());setReviewPassword("");setReviewRemarks("");
+   await select(selected.ref);reload();
+   setNotice("Original CG-03 review: "+capitalize(outcome.status));
+  }catch(e){setError(e instanceof Error?e.message:"Decision not confirmed. Refresh before retrying.");}
+  finally{setVerificationBusy(false);}
+ };
  const checkDuplicates=async()=>{
   if(checkingDuplicates)return;
   if(draft.name.trim().length<3&&!draft.contactMobile.trim())return;
@@ -202,6 +237,29 @@ export function NativeBeneficiariesWorkspace({token,onExpired,canManage,canLinkP
     <Text>Category: {selected.beneficiaryType}</Text>
     <Text>Consent: {selected.consentRevoked?"Withdrawn":capitalize(selected.consentKind)}</Text>
     <Text style={{fontSize:12,color:"#64748B"}}>Verified status requires independent CG-03 review. This screen cannot approve it.</Text>
+    {review&&<View style={{borderWidth:1,borderColor:"#E0E5ED",borderRadius:10,padding:12,gap:8}}>
+     <Text style={{fontWeight:"700"}}>CG-03 independent verification & approval</Text>
+     <Text>Case: {review.caseNumber??"Not submitted"} · {capitalize(review.status)}</Text>
+     {canSubmitVerification&&!selected.consentRevoked&&selected.lifecycle==="ACTIVE"&&
+       ["DRAFT","RETURNED","REJECTED"].includes(selected.verification)&&
+       <Button label={verificationBusy?"Submitting…":"Submit for independent verification"}
+        disabled={verificationBusy} onPress={()=>void submitVerification()}/>}
+     {canReviewVerification&&review.canReview&&review.caseRef&&<>
+      <Select title="Review decision" selected={reviewAction}
+       items={enumOptions(["APPROVE","RETURN","REJECT"])}
+       onSelect={x=>{setReviewAction(x);setDecisionKey(Crypto.randomUUID());}}/>
+      <Text style={labelStyle}>Review remarks</Text>
+      <TextInput value={reviewRemarks} onChangeText={setReviewRemarks} maxLength={500}
+       multiline style={{backgroundColor:"white",borderWidth:1,borderColor:"#CBD5E1",borderRadius:8,padding:10}}/>
+      <Text style={labelStyle}>Current Foundation password</Text>
+      <TextInput value={reviewPassword} onChangeText={setReviewPassword}
+       secureTextEntry autoCapitalize="none" autoCorrect={false}
+       style={{backgroundColor:"white",borderWidth:1,borderColor:"#CBD5E1",borderRadius:8,padding:10}}/>
+      <Button label="Confirm independent review" disabled={verificationBusy||reviewPassword.length<8||
+       (reviewAction!=="APPROVE"&&reviewRemarks.trim().length<3)}
+       onPress={()=>void decideVerification()}/>
+     </>}
+    </View>}
     {canManage&&!selected.consentRevoked&&selected.lifecycle==="ACTIVE"&&
      <Button label="Edit beneficiary" outline onPress={()=>open("edit")}/>}
     <Text style={{fontWeight:"700",marginTop:10}}>Linked projects</Text>
