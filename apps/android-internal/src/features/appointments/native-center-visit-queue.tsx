@@ -429,7 +429,7 @@ const styles=StyleSheet.create({
  button:{borderColor:t.border,borderWidth:1,borderRadius:10,minHeight:48,
   padding:12,justifyContent:"center"},
  selected:{borderColor:t.primary,backgroundColor:t.surface},
- primary:{backgroundColor:t.primary,borderColor:t.primary},primaryLabel:{color:"#FFFFFF"},
+ primary:{backgroundColor:t.primary,borderColor:t.primary},primaryLabel:{color:t.primaryText},
  metric:{flexGrow:1,flexBasis:"21%",minWidth:70,padding:8,borderColor:t.border,borderWidth:1,borderRadius:8},
  buttonLabel:{color:t.text,fontSize:13,fontWeight:"600"},
  disabled:{opacity:0.4}
