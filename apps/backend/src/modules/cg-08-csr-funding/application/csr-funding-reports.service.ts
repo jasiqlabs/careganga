@@ -158,21 +158,17 @@ export class CsrFundingReportsService{
      f.to??null,f.q??"",page?.[0]??null,page?.[1]??null,max]);
    const sourceAsOf=(await tx.query<{at:Date}>("SELECT transaction_timestamp() AS at")).rows[0].at.toISOString();
    await tx.query("COMMIT");
-   // Recheck both original source grants after the snapshot, before disclosing amounts.
-   await this.sessions.requireAction(bearer,"csr.partners.view");
-   const currentActor=await this.sessions.requireAction(bearer,"finance.reports.view");
-   if(currentActor.realmId!==actor.realmId||currentActor.accountId!==actor.accountId)throw new ForbiddenException("Reporting access changed. Refresh the report.");
-   const currentFinance=await this.branches.financeReportScope(bearer,"finance.reports.view");
+   // Fresh transaction on the existing connection: assertCurrent verifies
+   // the actual session and grants. Avoid acquiring a second pool connection.
    await tx.query("BEGIN ISOLATION LEVEL REPEATABLE READ");
-   await this.identity.assertCurrent(tx,currentActor,"csr.partners.view");
-   await this.identity.assertCurrent(tx,currentActor,"finance.reports.view");
-   const currentCsr=await this.branches.projectBranchScope(tx,currentActor);
-   if(all&&(!currentCsr.all||!currentFinance.all)||branches.some(id=>
-      (!currentCsr.all&&!currentCsr.branches.some(b=>b.value===id))||(!currentFinance.all&&!currentFinance.branchRefs.includes(id))))
+   await this.identity.assertCurrent(tx,actor,"csr.partners.view");
+   await this.identity.assertCurrent(tx,actor,"finance.reports.view");
+   const currentCsr=await this.branches.projectBranchScope(tx,actor);
+   if(all&&!currentCsr.all||branches.some(id=>!currentCsr.all&&!currentCsr.branches.some(b=>b.value===id)))
     throw new ForbiddenException("Reporting branch access changed. Refresh the report.");
-   if(all)await this.branches.requireFinanceRootScope(tx,currentActor,"finance.reports.view");
-   else for(const id of branches)await this.branches.requireFinanceActiveBranch(tx,currentActor,id,"finance.reports.view");
-   if(projects)await this.identity.assertCurrent(tx,currentActor,"projects.view");
+   if(all)await this.branches.requireFinanceRootScope(tx,actor,"finance.reports.view");
+   else for(const id of branches)await this.branches.requireFinanceActiveBranch(tx,actor,id,"finance.reports.view");
+   if(projects)await this.identity.assertCurrent(tx,actor,"projects.view");
    await tx.query("COMMIT");
    const records=rows.rows.map(v=>{
     const received=BigInt(v.receivedMinor),allocated=BigInt(v.allocatedMinor),
