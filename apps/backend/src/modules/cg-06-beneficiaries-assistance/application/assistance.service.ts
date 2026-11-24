@@ -17,9 +17,9 @@ export const aidDigest=(v:unknown)=>createHash("sha256").update(JSON.stringify(v
 @Injectable()
 export class AssistanceService{
  constructor(@Inject(DATABASE)private readonly db:Pool,private readonly sessions:SessionService,private readonly identity:FoundationStructureIdentityFacade,private readonly branches:BranchSourceFacade,private readonly beneficiaries:BeneficiariesService,private readonly projects:CampaignLinkSourceFacade,private readonly inventory:InventoryCatalogService){}
- async run<T>(token:string,action:string,fn:(tx:PoolClient,a:Actor)=>Promise<T>):Promise<T>{
+ async run<T>(token:string,action:string,fn:(tx:PoolClient,a:Actor)=>Promise<T>,snapshot=false):Promise<T>{
   const a=await this.sessions.requireAction(token,action),tx=await this.db.connect();
-  try{await tx.query("BEGIN");await this.identity.assertCurrent(tx,a,action);await this.identity.assertCurrent(tx,a,"beneficiaries.view");const result=await fn(tx,a);await tx.query("COMMIT");return result;}
+  try{await tx.query(snapshot?"BEGIN ISOLATION LEVEL REPEATABLE READ":"BEGIN");await this.identity.assertCurrent(tx,a,action);await this.identity.assertCurrent(tx,a,"beneficiaries.view");const result=await fn(tx,a);await tx.query("COMMIT");return result;}
   catch(e){try{await tx.query("ROLLBACK");}catch{}const code=e&&typeof e==="object"&&"code" in e?String(e.code):"";if(["23505","23503","23514","40001","40P01","55P03"].includes(code))throw conflict();throw e;}finally{tx.release();}
  }
  async guard(tx:PoolClient,a:Actor,id:string,write=false){
@@ -94,7 +94,13 @@ export class AssistanceService{
    }catch(e){if(!(e instanceof ForbiddenException))throw e;}
    const projectOptions=await this.projects.options(tx,a,b.branchRef,"");
    const officers=await this.identity.accountLabels(tx,a,[a.accountId,...(branch.managerRef?[branch.managerRef]:[])]);
-   return {stores:stores.map(x=>({value:x.ref,label:x.name})),items,projects:projectOptions.projects,responsible:Object.entries(officers).map(([value,label])=>({value,label})),selfRef:a.accountId};
+   type Choice={value:string;label:string;projectRef:string|null};
+   let activities:Choice[]=[],visits:Choice[]=[],campaigns:Choice[]=[];
+   const optional=async(action:string,sql:string)=>{try{await this.identity.assertCurrent(tx,a,action);return (await tx.query<Choice>(sql,[a.realmId,b.branchRef])).rows;}catch(e){if(!(e instanceof ForbiddenException))throw e;return [];}};
+   activities=await optional("projects.activities.view","SELECT id AS value,activity_code||' · '||title AS label,project_id AS \"projectRef\" FROM project_activity WHERE root_realm_id=$1 AND branch_ref IS NOT DISTINCT FROM $2::uuid AND status IN('SCHEDULED','ONGOING','COMPLETED') AND project_id IS NOT NULL ORDER BY scheduled_start DESC,id LIMIT 80");
+   visits=await optional("projects.visits.view","SELECT id AS value,visit_code AS label,project_id AS \"projectRef\" FROM field_visit WHERE root_realm_id=$1 AND branch_ref IS NOT DISTINCT FROM $2::uuid AND status='COMPLETED' ORDER BY completed_at DESC,id LIMIT 80");
+   campaigns=await optional("campaigns.view","SELECT id AS value,code_norm||' · '||title AS label,project_source_ref AS \"projectRef\" FROM campaign WHERE root_realm_id=$1 AND branch_ref IS NOT DISTINCT FROM $2::uuid AND source_status IN('APPROVED','PUBLISHED','PAUSED','CLOSED') ORDER BY title,id LIMIT 80");
+   return {stores:stores.map(x=>({value:x.ref,label:x.name})),items,projects:projectOptions.projects,activities,visits,campaigns,responsible:Object.entries(officers).map(([value,label])=>({value,label})),selfRef:a.accountId};
   });
  }
 }
