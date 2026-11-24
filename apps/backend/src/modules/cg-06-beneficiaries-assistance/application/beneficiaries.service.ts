@@ -114,6 +114,19 @@ export class BeneficiariesService{
     districts:state?await this.branches.projectGeographyOptions(tx,a,state):[]};
   });
  }
+ async projectOptions(token:string,branchInput:unknown,searchInput:unknown){
+  const branch=optionalRef(branchInput);
+  if(searchInput!==undefined&&typeof searchInput!=="string")
+   throw new BadRequestException("Check project search");
+  const q=(searchInput??"") as string;
+  if(q.length>80)throw new BadRequestException("Narrow project search");
+  return this.run(token,"beneficiaries.projects.manage",async(tx,a)=>{
+   await this.identity.assertCurrent(tx,a,"beneficiaries.view");
+   await this.identity.assertCurrent(tx,a,"projects.view");
+   const result=await this.projects.options(tx,a,branch,q);
+   return result.projects;
+  });
+ }
  async create(token:string,raw:unknown){
   const v=parseProfile(raw,true),hash=digest(v);
   return this.run(token,"beneficiaries.manage",async(tx,a)=>{
