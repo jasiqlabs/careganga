@@ -52,6 +52,13 @@ export class MisProtectedArtifactService{
   const bytes=await renderMisReport(format,data);
   return this.issueForAuthorizedActor(root,account,runRef,format,bytes);
  }
+ async issueScheduledProject(root:string,account:string,runRef:string,format:ReportFormat,data:ReportData){
+  await this.sessions.requireScheduledMisAction(root,account,"mis.reports.view");
+  await this.sessions.requireScheduledMisAction(root,account,"mis.reports.export");
+  await this.sessions.requireScheduledMisAction(root,account,"projects.view");
+  await this.sessions.requireScheduledMisAction(root,account,"projects.export");
+  return this.issueForAuthorizedActor(root,account,runRef,format,await renderMisReport(format,data));
+ }
  private async issueForAuthorizedActor(root:string,account:string,
   runInput:string,format:ReportFormat,bytes:Buffer){
   const actor={realmId:root,accountId:account};
