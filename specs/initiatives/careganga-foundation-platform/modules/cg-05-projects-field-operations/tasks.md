@@ -240,3 +240,6 @@ Project list, branch/owner selector, CRUD, task/visit and project_branch_history
 
 ### 24 November 2026 — CG06 integration source readback (existing owner)
 CG06 integration: A05 Beneficiaries contextual tab now renders real permitted distinct count in Web/Internal Android, typed summary, unavailable state; CG05 US004-QA13 / US005-QA07. 379e8de, 2ccf5d7, f0a77c3. Author source trace only, runtime and independent review NOT_RUN.
+
+### 24 November — E2E-005 public Events source integration
+- US003 QA03/08/10/11/12/13; original event source and distinct CG18 publication. Commits 58c78a05, 43c49405, 7daacbba1, 6ddffbe7, 01912eda, 7e7c31a7 and native stale-feed fix/verifier extension: existing publicArticles query filters only original sourceEventRef articles for /api/public/content/events; retains same effective CG18 publication, current CG05 EVENT_CURRENT_SQL, consent/revocation and bounded 20-item cursor. Web /events and native Events open original article detail, which already displays owner schedule/status/area, safe loading/empty/error and Back. No private attendance, no event clone/ticket/payment. Source author reviewed exact route/query/render; fixed prior feed flashing via loadedTarget check. Independent review, real SQL, Web/device and cancellation/revocation regression NOT_RUN. Existing canonical QA IDs unchanged, E2E-005 candidate.
