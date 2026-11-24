@@ -80,6 +80,7 @@ const ownerPaths=[
  "apps/backend/src/modules/cg-18-cms-public-content/application/cms-editorial.service.ts",
  "apps/backend/src/modules/cg-18-cms-public-content/application/cms-extended-sections.ts",
  "apps/backend/src/modules/cg-19-documents-notifications/application/center-collection-receipt-renderer.ts",
+ "apps/backend/src/modules/cg-19-documents-notifications/application/center-online-payment-confirmation-renderer.ts",
  "apps/backend/src/modules/cg-19-documents-notifications/application/delivery.service.ts",
  "apps/backend/src/modules/cg-19-documents-notifications/application/laboratory-report-renderer.ts",
  "apps/backend/src/modules/cg-19-documents-notifications/application/notification.service.ts",
