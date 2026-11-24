@@ -50,6 +50,8 @@ export function BeneficiariesWorkspace({canManage,canLinkProjects,canManageLifec
  const [page,setPage]=useState<Page|null>(null),[busyList,setBusyList]=useState(true),[error,setError]=useState(""),[notice,setNotice]=useState("");
  const [q,setQ]=useState(""),[search,setSearch]=useState(""),[tab,setTab]=useState("ALL"),
   [branch,setBranch]=useState(""),[cursor,setCursor]=useState(""),[seen,setSeen]=useState<string[]>([]);
+ const [genderFilter,setGenderFilter]=useState(""),[ageFilter,setAgeFilter]=useState(""),[typeFilter,setTypeFilter]=useState("");
+ const [appliedFilters,setAppliedFilters]=useState({gender:"",ageGroup:"",type:""});
  const [epoch,setEpoch]=useState(0),[selected,setSelected]=useState<Item|null>(null),[detailLoading,setDetailLoading]=useState(false);
  const [opts,setOpts]=useState<Options|null>(null),[districts,setDistricts]=useState<Option[]>([]),
   [form,setForm]=useState<Form>(empty),[mode,setMode]=useState<"create"|"edit"|null>(null),
@@ -72,12 +74,13 @@ export function BeneficiariesWorkspace({canManage,canLinkProjects,canManageLifec
   if(tab==="ACTIVE"||tab==="INACTIVE")params.set("lifecycle",tab);
   if(tab==="VERIFIED")params.set("verification","VERIFIED");
   if(tab==="PENDING")params.set("verification","PENDING");
+  for(const [k,v] of Object.entries(appliedFilters))if(v.trim())params.set(k,v.trim());
   if(cursor)params.set("cursor",cursor);
   void api<Page>("?"+params).then(v=>{if(seq.current===id)setPage(v);})
    .catch(e=>{if(seq.current===id){setPage(null);setError(e.message);}})
    .finally(()=>{if(seq.current===id)setBusyList(false);});
   return()=>{seq.current++;};
- },[search,tab,branch,cursor,epoch]);
+ },[search,tab,branch,cursor,epoch,appliedFilters]);
  useEffect(()=>{let live=true;setDistricts([]);if(!form.stateRef)return;
   void api<Options>("/options?"+new URLSearchParams({stateRef:form.stateRef}))
    .then(v=>{if(live)setDistricts(v.districts);}).catch(e=>{if(live)setFormError(e.message);});
@@ -228,15 +231,18 @@ export function BeneficiariesWorkspace({canManage,canLinkProjects,canManageLifec
    <label style={{...field,minWidth:180}}>Branch
     <select style={input} value={branch} onChange={e=>{setBranch(e.target.value);setCursor("");setSeen([]);}}>
      <option value="">Current authorized scope</option>{opts?.branches.map(x=><option key={x.value} value={x.value}>{x.label}</option>)}</select></label>
-   <button type="button" style={primary} onClick={()=>{setSearch(q.trim());setCursor("");setSeen([]);}}>Search</button>
-   <button type="button" style={secondary} onClick={()=>{setQ("");setSearch("");setBranch("");setTab("ALL");setCursor("");setSeen([]);}}>Reset</button>
+   <label style={field}>Beneficiary type<input style={input} maxLength={60} value={typeFilter} onChange={e=>setTypeFilter(e.target.value)}/></label>
+    <label style={field}>Gender<select style={input} value={genderFilter} onChange={e=>setGenderFilter(e.target.value)}><option value="">All</option>{["MALE","FEMALE","OTHER","NOT_SPECIFIED"].map(x=><option key={x} value={x}>{nice(x)}</option>)}</select></label>
+    <label style={field}>Age group<select style={input} value={ageFilter} onChange={e=>setAgeFilter(e.target.value)}><option value="">All</option>{["CHILD","ADULT","SENIOR","NOT_SPECIFIED"].map(x=><option key={x} value={x}>{nice(x)}</option>)}</select></label>
+    <button type="button" style={primary} onClick={()=>{setSearch(q.trim());setAppliedFilters({gender:genderFilter,ageGroup:ageFilter,type:typeFilter});setCursor("");setSeen([]);}}>Apply Filters</button>
+   <button type="button" style={secondary} onClick={()=>{setQ("");setSearch("");setBranch("");setTab("ALL");setGenderFilter("");setAgeFilter("");setTypeFilter("");setAppliedFilters({gender:"",ageGroup:"",type:""});setCursor("");setSeen([]);}}>Reset</button>
   </div>
   {notice&&<p role="status" style={{color:"var(--cg-success,#166534)"}}>{notice}</p>}
   {error&&<p role="alert" style={{color:"var(--cg-danger,#b91c1c)"}}>{error}</p>}
   <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(min(100%,330px),1fr))",gap:16,alignItems:"start"}}>
    <div style={card}>
     <h2 style={{fontSize:17,marginTop:0}}>Beneficiary records</h2>
-    {busyList?<p>Loading authorized beneficiaries…</p>:!page?.items.length?<p>No matching beneficiary records in your current scope.</p>:
+    {busyList?<p>Loading authorized beneficiaries…</p>:!page?<p>Beneficiary records unavailable. <button type="button" style={secondary} onClick={refresh}>Retry</button></p>:!page.items.length?<p>No matching beneficiary records in your current scope.</p>:
      <div style={{display:"grid",gap:8}}>{page.items.map(x=><button key={x.ref} type="button"
       onClick={()=>void choose(x.ref)} style={{...secondary,textAlign:"left",padding:12,
        borderColor:selected?.ref===x.ref?"var(--cg-accent)":"var(--cg-border)"}}>
