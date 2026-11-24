@@ -103,6 +103,15 @@ export class BeneficiaryEvidenceService{
   if(!current)throw changed();
   return f;
  }
+ /** Evidence remains under the CG19 owner. Exact, clean, current beneficiary proof only. */
+ async guardAssistanceProof(tx:PoolClient,a:VerifiedFoundationActor,beneficiary:string,fileRef:string,fileVersion:number,notBefore:Date){
+  await this.identity.assertCurrent(tx,a,"documents.files.view");
+  const f=await this.fileSource(tx,a,fileRef);
+  const current=await this.source.guardEvidence(tx,a,beneficiary,null,false);
+  if(f.beneficiary_id!==beneficiary||f.revision!==fileVersion||f.proposal_revision!==current.version)throw changed();
+  if(!(await tx.query("SELECT 1 FROM cg19_stored_file WHERE id=$1 AND realm_id=$2 AND created_at>=$3 AND revoked_at IS NULL",[f.id,a.realmId,notBefore])).rowCount)throw changed();
+  return {ref:f.id,revision:f.revision,sourceRevision:f.proposal_revision};
+ }
  async preview(token:string,fileRef:string){
   const f=await this.run(token,false,(tx,a)=>this.fileSource(tx,a,fileRef));
   const bytes=await this.objects.readVerifiedPrivateObject({objectKey:f.object_key,objectVersion:f.object_version,maxBytes:10485760});
