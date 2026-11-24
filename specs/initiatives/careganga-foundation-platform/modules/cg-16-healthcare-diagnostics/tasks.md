@@ -223,3 +223,5 @@ Previously unmapped literal CG16 clinical order, custody, equipment/calibration,
 
 ### 24 November — HUX-07.03 H10 current assigned-center order discovery
 - Original CG16 US-002-QA02/04/16: recent 30-only client lookup cannot retrieve older eligible orders. Extended the existing center-scoped `centerOrders` query with bounded literal order-number/status search, deterministic pagination and original lab.orders.view / ERP / licensed-center gate. Source 02394abe9dd1e2056ab618ef48b66ca6754d0ffe. No new public or clinical write capability. Next: wire existing controller/BFF and both staff clients, verify current consent at protected order reads and trace QA. Independent review/runtime NOT_RUN.
+
+- H10 operational list/detail originally checked lab grant but not current patient care consent; shared predicate now enforces verified patient, latest affirmative consent and exact original same-center intake/consultation. Source 5af7f0443d0938cd1af77a12109c3632bdc1814a. CG16 US-002-QA02/04/13/16; historic legally released patient report route unchanged. DB and independent review NOT_RUN.
