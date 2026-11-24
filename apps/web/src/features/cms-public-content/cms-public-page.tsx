@@ -73,8 +73,8 @@ function JoinCards({fields,navigation}:{fields:Record<string,unknown>;navigation
  const joinLink=(type:"memberJoin"|"volunteerJoin")=>{
   const target=navigation?.[type];
   // No fictional registration screen: only actual owner-published destinations.
-  return target?.visible&&target.path&&/^\/[a-z0-9/-]+$/.test(target.path)?
-   target.path:null;
+  const expected=type==="memberJoin"?"/membership":"/volunteer";
+  return target?.visible===true&&target.path===expected?expected:null;
  };
  return <section className="cg-site-join-grid cg-site-content" aria-label="Join CareGanga">
   {(["volunteer","member"] as const).map(kind=>{
@@ -138,7 +138,7 @@ export function SiteFooter({data,navigation}:{data:Record<string,unknown>;
       <span aria-disabled="true" className="cg-site-unavailable">Donate</span>}
      {isPublished("/our-impact")&&<Link href="/our-impact">Our Impact</Link>}
      {isPublished("/gallery")&&<Link href="/gallery">Media Gallery</Link>}
-     {isPublished("/healthcare")&&<Link href="/healthcare">Healthcare Assistance</Link>}
+     <Link href={isPublished("/healthcare")?"/healthcare":"/health-network"}>Healthcare Assistance</Link>
      <Link href="/contact">Contact</Link></div>
     <div><h3>POLICIES & LEGAL</h3>
      {legal.map(([label,slug])=>isPublished("/policies/"+slug)?
