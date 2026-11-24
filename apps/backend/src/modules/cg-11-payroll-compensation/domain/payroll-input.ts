@@ -8,7 +8,7 @@ export function option<T extends string>(v:unknown,values:readonly T[]):T{if(typ
 export function label(v:unknown){if(typeof v!=="string"||v.trim().length<2||v.trim().length>100||/[\u0000-\u001f\u007f]/.test(v))throw invalid("Enter a valid label");return v.trim();}
 function range(x:Record<string,unknown>){const from=date(x.effectiveFrom),to=x.effectiveTo==null||x.effectiveTo===""?null:date(x.effectiveTo);if(to&&to<=from)throw invalid("End date must be after start date");return {from,to};}
 export function parsePolicy(raw:unknown){
- const x=fields(raw,["requestKey","branchRef","label","effectiveFrom","effectiveTo","components"]);
+ const x=fields(raw,["requestKey","branchRef","label","effectiveFrom","effectiveTo","supersedesRef","components"]);
  if(!Array.isArray(x.components)||x.components.length>40)throw invalid("Choose up to 40 salary components");
  const components=x.components.map(raw=>{const c=fields(raw,["code","label","kind","mode","minor","basisPoints","taxClass"]);
   if(typeof c.code!=="string"||!/^[A-Z][A-Z0-9_]{1,29}$/.test(c.code))throw invalid("Enter a valid component code");
@@ -17,9 +17,9 @@ export function parsePolicy(raw:unknown){
   return {code:c.code,label:label(c.label),kind,mode,minor:mode==="FIXED"?minor(c.minor,true):null,bp:mode==="PERCENT"?Number(c.basisPoints):null,taxClass:option(c.taxClass,["TAXABLE","NON_TAXABLE","NOT_CONFIGURED"] as const)};
  });
  if(new Set(components.map(c=>c.code)).size!==components.length)throw invalid("Component codes must be unique");
- return {key:id(x.requestKey),branch:id(x.branchRef),label:label(x.label),...range(x),components};
+ return {key:id(x.requestKey),branch:id(x.branchRef),label:label(x.label),supersedes:x.supersedesRef==null||x.supersedesRef===""?null:id(x.supersedesRef),...range(x),components};
 }
-export function parseSalary(raw:unknown){const x=fields(raw,["requestKey","policyRef","policyRevision","effectiveFrom","effectiveTo","baseMinor"]);if(!Number.isSafeInteger(x.policyRevision)||Number(x.policyRevision)<1)throw invalid("Refresh the policy");return {key:id(x.requestKey),policy:id(x.policyRef),policyRevision:Number(x.policyRevision),...range(x),baseMinor:minor(x.baseMinor)};}
+export function parseSalary(raw:unknown){const x=fields(raw,["requestKey","policyRef","policyRevision","effectiveFrom","effectiveTo","supersedesRef","baseMinor"]);if(!Number.isSafeInteger(x.policyRevision)||Number(x.policyRevision)<1)throw invalid("Refresh the policy");return {key:id(x.requestKey),policy:id(x.policyRef),policyRevision:Number(x.policyRevision),supersedes:x.supersedesRef==null||x.supersedesRef===""?null:id(x.supersedesRef),...range(x),baseMinor:minor(x.baseMinor)};}
 /** Round half-up once per component, with integer arithmetic only. */
 export function componentMinor(base:string,c:{mode:"FIXED"|"PERCENT";minor:string|null;bp:number|null}):bigint{
  return c.mode==="FIXED"?BigInt(minor(c.minor,true)):(BigInt(minor(base))*BigInt(c.bp??0)+5000n)/10000n;
