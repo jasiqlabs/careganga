@@ -37,8 +37,11 @@ function requirePrefix(rows,current,baselineEntries){
 function direct(value){
  if(!value)throw Error("A direct database connection must be configured");
  let u;try{u=new URL(value);}catch{throw Error("Invalid database connection configuration");}
- if(!["postgres:","postgresql:"].includes(u.protocol)||!u.hostname||!u.pathname.slice(1)||u.hostname.includes("-pooler."))
+ if(!["postgres:","postgresql:"].includes(u.protocol)||!u.hostname||!u.username||!u.pathname.slice(1)||u.hash||u.hostname.includes("-pooler."))
   throw Error("A direct PostgreSQL connection is required");
+ const allowed=new Set(["sslmode","sslrootcert","sslcert","sslkey","channel_binding","connect_timeout","application_name"]);
+ if([...u.searchParams.keys()].some(k=>!allowed.has(k)))throw Error("Unsupported PostgreSQL connection option");
+ if(!u.port)u.port="5432";
  return u;
 }
 function disposable(value){
@@ -59,7 +62,7 @@ async function ledger(c){
  return (await c.query("SELECT filename,sha256 FROM public.schema_migration")).rows;
 }
 async function blank(c){
- const r=await c.query("SELECT EXISTS(SELECT 1 FROM pg_namespace WHERE nspname NOT IN ('public','information_schema') AND left(nspname,3)<>'pg_') OR EXISTS(SELECT 1 FROM pg_class x JOIN pg_namespace n ON n.oid=x.relnamespace WHERE n.nspname='public') OR EXISTS(SELECT 1 FROM pg_proc x JOIN pg_namespace n ON n.oid=x.pronamespace WHERE n.nspname='public') OR EXISTS(SELECT 1 FROM pg_type x JOIN pg_namespace n ON n.oid=x.typnamespace WHERE n.nspname='public') OR EXISTS(SELECT 1 FROM pg_extension WHERE extname<>'plpgsql') AS occupied");
+ const r=await c.query("SELECT EXISTS(SELECT 1 FROM pg_namespace WHERE nspname NOT IN ('public','information_schema') AND left(nspname,3)<>'pg_') OR EXISTS(SELECT 1 FROM pg_class x JOIN pg_namespace n ON n.oid=x.relnamespace WHERE n.nspname='public') OR EXISTS(SELECT 1 FROM pg_proc x JOIN pg_namespace n ON n.oid=x.pronamespace WHERE n.nspname='public') OR EXISTS(SELECT 1 FROM pg_type x JOIN pg_namespace n ON n.oid=x.typnamespace WHERE n.nspname='public') OR EXISTS(SELECT 1 FROM pg_extension WHERE extname<>'plpgsql') OR EXISTS(SELECT 1 FROM pg_event_trigger) OR EXISTS(SELECT 1 FROM pg_foreign_server) OR EXISTS(SELECT 1 FROM pg_publication) OR EXISTS(SELECT 1 FROM pg_largeobject_metadata) AS occupied");
  if(r.rows[0]?.occupied!==false)throw Error("Database is not empty; refusing initialization");
 }
 async function major(c){return Math.floor(Number((await c.query("SHOW server_version_num")).rows[0].server_version_num)/10000);}
@@ -93,7 +96,7 @@ function dump(u,mode=[]){
  // Prevent inherited libpq routing/service/options variables from overriding
  // the verified local disposable connection.
  const env=Object.fromEntries(Object.entries(process.env).filter(([key])=>!key.toUpperCase().startsWith("PG")));
- const result=spawnSync("pg_dump",["--format=plain","--no-owner","--no-privileges","--inserts",...mode],
+ const result=spawnSync("pg_dump",["--no-password","--format=plain","--no-owner","--no-privileges","--inserts",...mode],
   {env:{...env,PGHOST:host,PGPORT:u.port||"5432",PGUSER:decodeURIComponent(u.username),PGPASSWORD:decodeURIComponent(u.password),PGDATABASE:decodeURIComponent(u.pathname.slice(1)),PGSSLMODE:u.searchParams.get("sslmode")||"prefer",PGCONNECT_TIMEOUT:"15"},
    encoding:"utf8",maxBuffer:64*1024*1024,stdio:["ignore","pipe","pipe"]});
  if(result.error||result.status!==0)throw Error("PostgreSQL baseline export failed");
@@ -140,7 +143,7 @@ async function generate(){
  const v=spawnSync("pg_dump",["--version"],{encoding:"utf8"});
  if(v.error||v.status!==0||Number(v.stdout.match(/(\d+)\.\d+/)?.[1])!==pgMajor)throw Error("pg_dump major version must match the target PostgreSQL version");
  runMigration(source);
- await withDb(source,async c=>{const rows=await ledger(c);if(!rows)throw Error("Migration history missing");requireLedger(rows,expected);});
+ await withDb(source,async c=>{const rows=await ledger(c);if(!rows)throw Error("Migration history missing");requireLedger(rows,expected);const accounts=await c.query("SELECT EXISTS(SELECT 1 FROM public.account) AS present");if(accounts.rows[0]?.present!==false)throw Error("Scratch database contains accounts; baseline export refused");});
  // Both DBs must remain isolated: do not start the app, provision root, or add
  // test/operational records. Full dump includes only migration-produced defaults.
  const sql=dump(source);
@@ -194,6 +197,6 @@ if(process.argv[1]&&resolve(process.argv[1])===fileURLToPath(import.meta.url))tr
  }
 }catch(e){
  // Only allow reviewed operator messages, never connection strings or SQL errors.
- const message=e instanceof Error&&/^(?:A direct|Invalid database|Invalid migration|Database migration history|Baseline generation|Database is not empty|Another database|Migration execution|Unexpected PostgreSQL|Unsupported PostgreSQL|Matching PostgreSQL|PostgreSQL baseline export|Verified database baseline|Database baseline checksum|Baseline source history|New upgrades|Baseline restore|Explicit|Baseline already|Use two|PostgreSQL major|pg_dump major|Migration history|Migration sources|Target PostgreSQL|Existing database|Run explicit|Upgrade history|Release build schema contract|Use contract)/.test(e.message)?e.message:"Database release operation failed. Inspect protected local diagnostics.";
+ const message=e instanceof Error&&/^(?:A direct|Invalid database|Invalid migration|Database migration history|Baseline generation|Database is not empty|Another database|Migration execution|Unexpected PostgreSQL|Unsupported PostgreSQL|Matching PostgreSQL|PostgreSQL baseline export|Verified database baseline|Database baseline checksum|Baseline source history|New upgrades|Baseline restore|Explicit|Baseline already|Use two|PostgreSQL major|pg_dump major|Migration history|Migration sources|Target PostgreSQL|Existing database|Run explicit|Upgrade history|Release build schema contract|Scratch database contains accounts|Unsupported PostgreSQL connection option|Use contract)/.test(e.message)?e.message:"Database release operation failed. Inspect protected local diagnostics.";
  console.error(message);process.exitCode=1;
 }

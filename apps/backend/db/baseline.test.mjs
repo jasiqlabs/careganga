@@ -30,6 +30,8 @@ test("disposable generator rejects nonlocal or wrong-name DBs",()=>{
  assert.throws(()=>disposable("postgresql://u:p@localhost/careganga"));
  assert.throws(()=>disposable("postgresql://u:p@localhost/careganga_baseline_a?host=elsewhere"));
  assert.throws(()=>direct("postgresql://u:p@db-pooler.example.com/careganga"));
+ assert.throws(()=>direct("postgresql://u:p@localhost/careganga?host=elsewhere"));
+ assert.equal(direct("postgresql://u:p@localhost/careganga").port,"5432");
 });
 test("dump guard strips only the matching psql wrapper and rejects other meta commands",()=>{
  const sql="-- PostgreSQL database dump\nCREATE TABLE x(a int);\n";

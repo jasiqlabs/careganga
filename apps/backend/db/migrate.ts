@@ -27,9 +27,12 @@ const legacyDuplicate1438 = {
 async function migrate(): Promise<void> {
   const rawUrl = process.env.DATABASE_MIGRATION_URL;
   if (!rawUrl) throw new Error("DATABASE_MIGRATION_URL is required; use a direct database connection");
-  // Neon connection pooler (-pooler.) uses PgBouncer in transaction mode where session-level
-  // advisory locks can persist across pooled connections. Automatically normalize to direct host.
-  const url = rawUrl.replace("-pooler.", ".");
+  // Advisory locks must use the actual explicitly configured direct connection.
+  // Never silently rewrite a hostname, credentials or database target.
+  let parsed: URL;
+  try { parsed = new URL(rawUrl); } catch { throw new Error("Invalid direct migration connection"); }
+  if (parsed.hostname.includes("-pooler.")) throw new Error("Use a direct migration connection, not a pooler");
+  const url = rawUrl;
   const pool = new Pool({
     connectionString: url,
     max: 1,
