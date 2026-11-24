@@ -38,6 +38,7 @@ export function LabTestMasterWorkspace({canManage,canViewPricing,
  const keys=useRef<Record<string,string>>({});
  const centerEpoch=useRef(0);
  const [showForm,setShowForm]=useState(false),[editRef,setEditRef]=useState("");
+ const editVersion=useRef<number|null>(null);
  const [catCode,setCatCode]=useState(""),[catName,setCatName]=useState("");
  const [testCode,setTestCode]=useState(""),[testName,setTestName]=useState("");
  const [testFrom,setTestFrom]=useState(""),[testUntil,setTestUntil]=useState("");
@@ -76,12 +77,12 @@ export function LabTestMasterWorkspace({canManage,canViewPricing,
    diagnosticsCall<{categories:DiagnosticCategory[]}>("categories"),
    loadTests(),
    diagnosticsCall<{packages:DiagnosticPackage[]}>("packages"),
-   diagnosticsCall<{centers:DiagnosticCenter[]}>("centers/eligible")
+   canViewPricing?diagnosticsCall<{centers:DiagnosticCenter[]}>("centers/eligible"):Promise.resolve({centers:[]})
   ]);
   setSummary(overview);setCategories(cat.categories??[]);
   setPackages(p.packages??[]);
   setCenters(lab.centers??[]);
- },[loadTests]);
+ },[loadTests,canViewPricing]);
  const reloadCenter=useCallback(async(ref:string)=>{
   const epoch=++centerEpoch.current;
   if(!ref){setMappings([]);setPrices([]);return;}
@@ -126,6 +127,7 @@ export function LabTestMasterWorkspace({canManage,canViewPricing,
   try{
    await diagnosticsCall(path,method,{requestKey,...fields});
    delete keys.current[operation];
+   if(operation==="test-edit"||operation==="test-create"){setShowForm(false);setEditRef("");editVersion.current=null;}
    // A confirmed commit must not become an "uncertain write" just because
    // a later list refresh fails or the network goes offline.
    setNotice(success);
@@ -143,7 +145,7 @@ export function LabTestMasterWorkspace({canManage,canViewPricing,
   }finally{setBusy(false);}
  }
  function openForm(record?:DiagnosticTest,copy=false){
-  setEditRef(record&&!copy?record.testRef:"");
+  setEditRef(record&&!copy?record.testRef:"");editVersion.current=record&&!copy?record.revision:null;
   setTestCode(record&&!copy?record.code:"");
   setTestName(record?(copy?record.name+" copy":record.name):"");
   setCategoryRef(record?.categoryRef??"");
@@ -167,7 +169,7 @@ export function LabTestMasterWorkspace({canManage,canViewPricing,
    if(activeToUtc&&activeFromUtc&&activeToUtc<=activeFromUtc)
     throw Error("Test availability must end after it starts.");
    const record=tests.find(x=>x.testRef===editRef);
-   if(editRef&&!record)throw Error("The test being edited is no longer in this list. Reopen the record before saving.");
+   if(editRef&&(!record||record.revision!==editVersion.current))throw Error("The test has changed or is unavailable. Reopen the current record before saving.");
    const fields={testCode,name:testName,categoryRef,sampleType,
     clinicalDescription:description,parametersDescription:parameters,
     activeFromUtc,activeToUtc};
@@ -461,7 +463,7 @@ export function LabTestMasterWorkspace({canManage,canViewPricing,
     <div className="toolbar">
      <button className="primary" type="submit" disabled={busy||uncertain}>
       {busy?"Saving…":editRef?"Save test details":"Create test"}</button>
-     <button type="button" onClick={()=>setShowForm(false)}>Cancel</button>
+     <button type="button" disabled={busy||uncertain} onClick={()=>{if(window.confirm("Discard unsaved test changes?"))setShowForm(false);}}>Cancel</button>
     </div>
    </form>
   </section>}
