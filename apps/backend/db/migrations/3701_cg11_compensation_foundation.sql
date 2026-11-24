@@ -7,7 +7,7 @@ CREATE TABLE payroll_policy (
  period_timezone text NOT NULL DEFAULT 'Asia/Kolkata' CHECK(period_timezone='Asia/Kolkata'),
  fiscal_year_start_month integer NOT NULL DEFAULT 4 CHECK(fiscal_year_start_month=4),
  label text NOT NULL CHECK(length(btrim(label)) BETWEEN 2 AND 100),
- effective_from date NOT NULL, effective_to date,
+ effective_from date NOT NULL, effective_to date, supersedes_ref uuid,
  status text NOT NULL DEFAULT 'DRAFT' CHECK(status IN('DRAFT','SUBMITTED','APPROVED','RETURNED','REJECTED')),
  revision integer NOT NULL DEFAULT 1 CHECK(revision>0),
  created_by uuid NOT NULL, request_key uuid NOT NULL, request_digest char(64) NOT NULL CHECK(request_digest ~ '^[a-f0-9]{64}$'),
@@ -16,6 +16,8 @@ CREATE TABLE payroll_policy (
  FOREIGN KEY(branch_ref,root_realm_id) REFERENCES branch(id,root_realm_id),
  FOREIGN KEY(created_by,root_realm_id) REFERENCES account(id,realm_id),
  FOREIGN KEY(approval_case_ref,root_realm_id) REFERENCES cg03_case(id,realm_id),
+ FOREIGN KEY(root_realm_id,supersedes_ref) REFERENCES payroll_policy(root_realm_id,id),
+ CHECK(supersedes_ref IS NULL OR supersedes_ref<>id),
  CHECK(effective_to IS NULL OR effective_to>effective_from),
  CHECK(status NOT IN('SUBMITTED','APPROVED') OR approval_case_ref IS NOT NULL)
 );
@@ -38,7 +40,7 @@ CREATE TABLE employee_compensation (
  branch_ref uuid NOT NULL, assignment_ref uuid NOT NULL, assignment_version integer NOT NULL CHECK(assignment_version>0),
  employee_status_version integer NOT NULL CHECK(employee_status_version>0),
  policy_id uuid NOT NULL, policy_revision integer NOT NULL CHECK(policy_revision>0),
- effective_from date NOT NULL,effective_to date, base_salary_minor bigint NOT NULL CHECK(base_salary_minor BETWEEN 1 AND 99999999999999),
+ effective_from date NOT NULL,effective_to date, supersedes_ref uuid, base_salary_minor bigint NOT NULL CHECK(base_salary_minor BETWEEN 1 AND 99999999999999),
  status text NOT NULL DEFAULT 'DRAFT' CHECK(status IN('DRAFT','SUBMITTED','APPROVED','RETURNED','REJECTED')),
  revision integer NOT NULL DEFAULT 1 CHECK(revision>0),
  created_by uuid NOT NULL,request_key uuid NOT NULL,request_digest char(64) NOT NULL CHECK(request_digest ~ '^[a-f0-9]{64}$'),
@@ -49,6 +51,8 @@ CREATE TABLE employee_compensation (
  FOREIGN KEY(root_realm_id,policy_id,branch_ref) REFERENCES payroll_policy(root_realm_id,id,branch_ref),
  FOREIGN KEY(created_by,root_realm_id) REFERENCES account(id,realm_id),
  FOREIGN KEY(approval_case_ref,root_realm_id) REFERENCES cg03_case(id,realm_id),
+ FOREIGN KEY(root_realm_id,supersedes_ref) REFERENCES employee_compensation(root_realm_id,id),
+ CHECK(supersedes_ref IS NULL OR supersedes_ref<>id),
  CHECK(effective_to IS NULL OR effective_to>effective_from),
  CHECK(status NOT IN('SUBMITTED','APPROVED') OR approval_case_ref IS NOT NULL)
 );
@@ -65,7 +69,11 @@ BEGIN
  END IF;
  IF NEW.status='APPROVED' THEN
   PERFORM 1 FROM branch WHERE root_realm_id=NEW.root_realm_id AND id=NEW.branch_ref FOR UPDATE;
-  IF EXISTS(SELECT 1 FROM payroll_policy p WHERE p.root_realm_id=NEW.root_realm_id AND p.branch_ref=NEW.branch_ref AND p.cycle=NEW.cycle AND p.status='APPROVED' AND p.id<>NEW.id AND daterange(p.effective_from,p.effective_to,'[)') && daterange(NEW.effective_from,NEW.effective_to,'[)')) THEN
+ IF NEW.status='APPROVED' AND NEW.supersedes_ref IS NOT NULL THEN
+  IF NOT EXISTS(SELECT 1 FROM payroll_policy p WHERE p.root_realm_id=NEW.root_realm_id AND p.id=NEW.supersedes_ref AND p.branch_ref=NEW.branch_ref AND p.cycle=NEW.cycle AND p.status='APPROVED' AND p.effective_from<NEW.effective_from AND (p.effective_to IS NULL OR NEW.effective_from<=p.effective_to) AND NOT EXISTS(SELECT 1 FROM payroll_policy successor WHERE successor.root_realm_id=p.root_realm_id AND successor.supersedes_ref=p.id AND successor.status='APPROVED')) THEN
+   RAISE EXCEPTION 'Original approved predecessor changed' USING ERRCODE='23514'; END IF;
+ END IF;
+  IF EXISTS(SELECT 1 FROM payroll_policy p WHERE p.root_realm_id=NEW.root_realm_id AND p.branch_ref=NEW.branch_ref AND p.cycle=NEW.cycle AND p.status='APPROVED' AND p.id<>NEW.id AND p.id IS DISTINCT FROM NEW.supersedes_ref AND daterange(p.effective_from,LEAST(p.effective_to,(SELECT successor.effective_from FROM payroll_policy successor WHERE successor.root_realm_id=p.root_realm_id AND successor.supersedes_ref=p.id AND successor.status='APPROVED')),'[)') && daterange(NEW.effective_from,NEW.effective_to,'[)')) THEN
    RAISE EXCEPTION 'Overlapping payroll policy' USING ERRCODE='23514'; END IF;
  END IF;
  RETURN NEW;
@@ -87,7 +95,11 @@ BEGIN
  IF NOT EXISTS(SELECT 1 FROM payroll_policy p WHERE p.root_realm_id=NEW.root_realm_id AND p.id=NEW.policy_id AND p.branch_ref=NEW.branch_ref AND p.revision=NEW.policy_revision AND p.status='APPROVED' AND p.effective_from<=NEW.effective_from AND (p.effective_to IS NULL OR (NEW.effective_to IS NOT NULL AND NEW.effective_to<=p.effective_to))) THEN
   RAISE EXCEPTION 'Approved policy required' USING ERRCODE='23514'; END IF;
  END IF;
- IF NEW.status='APPROVED' AND EXISTS(SELECT 1 FROM employee_compensation c WHERE c.root_realm_id=NEW.root_realm_id AND c.employee_ref=NEW.employee_ref AND c.status='APPROVED' AND c.id<>NEW.id AND daterange(c.effective_from,c.effective_to,'[)') && daterange(NEW.effective_from,NEW.effective_to,'[)')) THEN
+ IF NEW.status='APPROVED' AND NEW.supersedes_ref IS NOT NULL THEN
+  IF NOT EXISTS(SELECT 1 FROM employee_compensation p WHERE p.root_realm_id=NEW.root_realm_id AND p.id=NEW.supersedes_ref AND p.employee_ref=NEW.employee_ref AND p.status='APPROVED' AND p.effective_from<NEW.effective_from AND (p.effective_to IS NULL OR NEW.effective_from<=p.effective_to) AND NOT EXISTS(SELECT 1 FROM employee_compensation successor WHERE successor.root_realm_id=p.root_realm_id AND successor.supersedes_ref=p.id AND successor.status='APPROVED')) THEN
+   RAISE EXCEPTION 'Original approved predecessor changed' USING ERRCODE='23514'; END IF;
+ END IF;
+ IF NEW.status='APPROVED' AND EXISTS(SELECT 1 FROM employee_compensation c WHERE c.root_realm_id=NEW.root_realm_id AND c.employee_ref=NEW.employee_ref AND c.status='APPROVED' AND c.id<>NEW.id AND c.id IS DISTINCT FROM NEW.supersedes_ref AND daterange(c.effective_from,LEAST(c.effective_to,(SELECT successor.effective_from FROM employee_compensation successor WHERE successor.root_realm_id=c.root_realm_id AND successor.supersedes_ref=c.id AND successor.status='APPROVED')),'[)') && daterange(NEW.effective_from,NEW.effective_to,'[)')) THEN
   RAISE EXCEPTION 'Overlapping approved salary' USING ERRCODE='23514'; END IF;
  RETURN NEW;
 END; $cg11$;
@@ -115,7 +127,7 @@ CREATE TABLE employee_payout_instruction(
  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),root_realm_id uuid NOT NULL REFERENCES access_realm(id),
  employee_ref uuid NOT NULL,branch_ref uuid NOT NULL,assignment_ref uuid NOT NULL,assignment_version integer NOT NULL CHECK(assignment_version>0),
  employee_status_version integer NOT NULL CHECK(employee_status_version>0),
- effective_from date NOT NULL,effective_to date,
+ effective_from date NOT NULL,effective_to date, supersedes_ref uuid,
  destination_ciphertext text NOT NULL CHECK(length(destination_ciphertext) BETWEEN 20 AND 4096),
  destination_nonce text NOT NULL CHECK(length(destination_nonce)=16),
  destination_tag text NOT NULL CHECK(length(destination_tag)=22),
@@ -131,6 +143,8 @@ CREATE TABLE employee_payout_instruction(
  FOREIGN KEY(branch_ref,root_realm_id) REFERENCES branch(id,root_realm_id),
  FOREIGN KEY(created_by,root_realm_id) REFERENCES account(id,realm_id),
  FOREIGN KEY(approval_case_ref,root_realm_id) REFERENCES cg03_case(id,realm_id),
+ FOREIGN KEY(root_realm_id,supersedes_ref) REFERENCES employee_payout_instruction(root_realm_id,id),
+ CHECK(supersedes_ref IS NULL OR supersedes_ref<>id),
  CHECK(effective_to IS NULL OR effective_to>effective_from),
  CHECK(status NOT IN('SUBMITTED','APPROVED') OR approval_case_ref IS NOT NULL)
 );
@@ -147,7 +161,20 @@ BEGIN
  JOIN branch b ON b.root_realm_id=a.root_realm_id AND b.id=a.branch_ref AND b.status='ACTIVE'
  WHERE a.root_realm_id=NEW.root_realm_id AND a.id=NEW.assignment_ref AND a.employee_id=NEW.employee_ref AND a.branch_ref=NEW.branch_ref AND a.assignment_version=NEW.assignment_version AND e.status_version=NEW.employee_status_version AND e.status IN('ACTIVE','PROBATION') AND a.valid_from<=NEW.effective_from AND (a.valid_to IS NULL OR a.valid_to>NEW.effective_from)) THEN RAISE EXCEPTION 'Original employee payout eligibility changed' USING ERRCODE='23514'; END IF;
  END IF;
+ IF NEW.status='APPROVED' AND NEW.supersedes_ref IS NOT NULL THEN
+  IF NOT EXISTS(SELECT 1 FROM employee_payout_instruction p WHERE p.root_realm_id=NEW.root_realm_id AND p.id=NEW.supersedes_ref AND p.employee_ref=NEW.employee_ref AND p.status='APPROVED' AND p.effective_from<NEW.effective_from AND (p.effective_to IS NULL OR NEW.effective_from<=p.effective_to) AND NOT EXISTS(SELECT 1 FROM employee_payout_instruction successor WHERE successor.root_realm_id=p.root_realm_id AND successor.supersedes_ref=p.id AND successor.status='APPROVED')) THEN
+   RAISE EXCEPTION 'Original approved predecessor changed' USING ERRCODE='23514'; END IF;
+ END IF;
  IF NEW.status='APPROVED' AND EXISTS(SELECT 1 FROM employee_payout_instruction p WHERE p.root_realm_id=NEW.root_realm_id AND p.employee_ref=NEW.employee_ref AND p.id<>NEW.id AND p.status='APPROVED' AND daterange(p.effective_from,p.effective_to,'[)') && daterange(NEW.effective_from,NEW.effective_to,'[)')) THEN RAISE EXCEPTION 'Overlapping approved payout destination' USING ERRCODE='23514'; END IF;
  RETURN NEW;
 END; $cg11$;
 CREATE TRIGGER cg11_payout_guard BEFORE INSERT OR UPDATE OR DELETE ON employee_payout_instruction FOR EACH ROW EXECUTE FUNCTION cg11_payout_guard();
+
+CREATE UNIQUE INDEX ux_cg11_payroll_policy_successor ON payroll_policy(root_realm_id,supersedes_ref) WHERE status='APPROVED' AND supersedes_ref IS NOT NULL;
+CREATE VIEW payroll_policy_effective AS SELECT x.*,LEAST(x.effective_to,n.effective_from) AS effective_until FROM payroll_policy x LEFT JOIN payroll_policy n ON n.root_realm_id=x.root_realm_id AND n.supersedes_ref=x.id AND n.status='APPROVED';
+
+CREATE UNIQUE INDEX ux_cg11_employee_compensation_successor ON employee_compensation(root_realm_id,supersedes_ref) WHERE status='APPROVED' AND supersedes_ref IS NOT NULL;
+CREATE VIEW employee_compensation_effective AS SELECT x.*,LEAST(x.effective_to,n.effective_from) AS effective_until FROM employee_compensation x LEFT JOIN employee_compensation n ON n.root_realm_id=x.root_realm_id AND n.supersedes_ref=x.id AND n.status='APPROVED';
+
+CREATE UNIQUE INDEX ux_cg11_employee_payout_instruction_successor ON employee_payout_instruction(root_realm_id,supersedes_ref) WHERE status='APPROVED' AND supersedes_ref IS NOT NULL;
+CREATE VIEW employee_payout_instruction_effective AS SELECT x.*,LEAST(x.effective_to,n.effective_from) AS effective_until FROM employee_payout_instruction x LEFT JOIN employee_payout_instruction n ON n.root_realm_id=x.root_realm_id AND n.supersedes_ref=x.id AND n.status='APPROVED';
