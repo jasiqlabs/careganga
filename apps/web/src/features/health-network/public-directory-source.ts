@@ -1,7 +1,7 @@
 /** Current anonymous CG-14 projection. Never cache revoked licenses or publication. */
 export type PublicCenter={slug:string;centerName:string;providerName:string;type:string;
  address:string;pinCode:string;publicPhone:string|null;
- latitude:number|null;longitude:number|null};
+ latitude:number|null;longitude:number|null;declaredServices:string[];photo:{fileRef:string;altText:string}|null};
 export type PublicFee={currency:"INR";amountMinor:number;kind:string;mode:string;
  effectiveFrom:string;effectiveTo:string|null};
 export type PublicDoctor={doctorRef:string;doctorName:string;qualifications:string[];
@@ -36,7 +36,8 @@ function center(x:unknown):x is PublicCenter{
  return typeof v.slug==="string"&&/^[a-z0-9][a-z0-9-]{2,79}$/.test(v.slug)&&
   typeof v.centerName==="string"&&typeof v.providerName==="string"&&
   typeof v.type==="string"&&typeof v.address==="string"&&
-  typeof v.pinCode==="string";
+  typeof v.pinCode==="string"&&Array.isArray(v.declaredServices)&&v.declaredServices.every(s=>typeof s==="string")&&
+  (v.photo===null||!!v.photo&&typeof v.photo.fileRef==="string"&&/^[a-f0-9]{8}-(?:[a-f0-9]{4}-){3}[a-f0-9]{12}$/i.test(v.photo.fileRef)&&typeof v.photo.altText==="string");
 }
 function doctor(x:unknown):x is PublicDoctor{
  if(!x||typeof x!=="object"||Array.isArray(x))return false;
@@ -44,7 +45,9 @@ function doctor(x:unknown):x is PublicDoctor{
  return typeof v.doctorRef==="string"&&/^[a-f0-9-]{36}$/i.test(v.doctorRef)&&
   typeof v.doctorName==="string"&&typeof v.centerName==="string"&&
   typeof v.centerSlug==="string"&&
-  Array.isArray(v.specialties)&&Array.isArray(v.qualifications);
+  typeof v.address==="string"&&typeof v.pinCode==="string"&&Number.isInteger(v.experienceYears)&&
+  Array.isArray(v.specialties)&&v.specialties.every(s=>typeof s==="string")&&Array.isArray(v.qualifications)&&v.qualifications.every(s=>typeof s==="string")&&
+  (v.fee===null||!!v.fee&&v.fee.currency==="INR"&&Number.isSafeInteger(v.fee.amountMinor)&&v.fee.amountMinor>=0);
 }
 export async function directory<T extends PublicDoctor|PublicCenter>(
  resource:"centers"|"doctors",search:URLSearchParams):Promise<DirectoryResult<T>>{
