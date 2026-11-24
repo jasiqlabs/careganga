@@ -54,20 +54,22 @@ async function published(slug:string):Promise<Result>{
  }catch{return {state:"UNAVAILABLE",page:null};}
 }
 type Article={slug:string;title:string;category:string;excerpt:string;asOfDate:string;path:string};
-async function publishedArticles():Promise<{available:boolean;posts:Article[]}>{
+async function publishedArticles(eventsOnly=false,cursor=""):Promise<{available:boolean;posts:Article[];nextCursor:string|null}>{
  if(!base||!/^https?:\/\//.test(base)||
   (process.env.NODE_ENV==="production"&&!base.startsWith("https://")))
-  return {available:false,posts:[]};
+  return {available:false,posts:[],nextCursor:null};
  try{
-  const r=await fetch(new URL("/api/public/content/articles",base).toString(),
+  const url=new URL(eventsOnly?"/api/public/content/events":"/api/public/content/articles",base);
+  if(cursor)url.searchParams.set("cursor",cursor);
+  const r=await fetch(url.toString(),
    {cache:"no-store",signal:AbortSignal.timeout(9000)});
   if(!r.ok)throw Error();
   const v:unknown=await r.json();
   if(!v||typeof v!=="object"||!("posts" in v)||!Array.isArray(v.posts))throw Error();
   return {available:true,posts:(v.posts as Article[]).filter(a=>a&&
    typeof a.slug==="string"&&/^[a-z0-9][a-z0-9-]{0,69}$/.test(a.slug)&&
-   a.path==="/blog/"+a.slug).slice(0,20)};
- }catch{return {available:false,posts:[]};}
+   a.path==="/blog/"+a.slug).slice(0,20),nextCursor:"nextCursor" in v&&typeof v.nextCursor==="string"&&/^[a-z0-9][a-z0-9-]{0,69}$/.test(v.nextCursor)?v.nextCursor:null};
+ }catch{return {available:false,posts:[],nextCursor:null};}
 }
 type Notice={title:string;body:string;category:string;
  priority:"NORMAL"|"IMPORTANT";publishedOn:string;expiresOn:string;path:string};
@@ -145,14 +147,14 @@ export function PublicCmsContent({onContact,onPartnerApplication,onMembershipApp
  const [publishedPaths,setPublishedPaths]=useState<string[]>([]);
  const [volunteerJoin,setVolunteerJoin]=useState(false);
  const [memberJoin,setMemberJoin]=useState(false);
- const [articleFeed,setArticleFeed]=useState<{available:boolean;posts:Article[]}>({
+ const [articleFeed,setArticleFeed]=useState<{available:boolean;posts:Article[];nextCursor?:string|null}>({
   available:false,posts:[]});
  const [noticeFeed,setNoticeFeed]=useState<{available:boolean;notices:Notice[]}>({
   available:false,notices:[]});
  const [noticeSearch,setNoticeSearch]=useState("");
  const [noticeCategory,setNoticeCategory]=useState("ALL");
  const [noticePriority,setNoticePriority]=useState("ALL");
- const [articleBackTarget,setArticleBackTarget]=useState<"articles"|"notices">("articles");
+ const [articleBackTarget,setArticleBackTarget]=useState<"articles"|"notices"|"events">("articles");
  const [activeSlide,setActiveSlide]=useState(0);
  const [result,setResult]=useState<Result>({state:"UNAVAILABLE",page:null});
  const [loading,setLoading]=useState(true);
@@ -167,12 +169,12 @@ export function PublicCmsContent({onContact,onPartnerApplication,onMembershipApp
    setVolunteerJoin(nav.volunteer);setMemberJoin(nav.member);
   }
  },[onLoginVisibility]);
- const load=useCallback(async(target:string)=>{
+ const load=useCallback(async(target:string,cursor="")=>{
   const request=++latestPageRequest.current;
   setLoading(true);setActiveSlide(0);
   if(target==="membership"){setResult({state:"UNAVAILABLE",page:null});setLoading(false);return;}
-  if(target==="articles"){
-   const feed=await publishedArticles();
+  if(target==="articles"||target==="events"){
+   const feed=await publishedArticles(target==="events",cursor);
    if(request!==latestPageRequest.current)return;
    setArticleFeed(feed);
    setResult({state:feed.available?"PUBLISHED":"UNAVAILABLE",page:null});
@@ -208,7 +210,7 @@ export function PublicCmsContent({onContact,onPartnerApplication,onMembershipApp
    if(slug!=="home"){
     // Article detail returns to News. A published legal policy must
     // return to Home; it is not part of the article reader.
-    setSlug(!["about","our-impact","80g","gallery","contact","healthcare","articles","notices","our-work","upcoming-projects","collaboration","membership","campaigns"].includes(slug)&&
+    setSlug(!["about","our-impact","80g","gallery","contact","healthcare","articles","notices","events","our-work","upcoming-projects","collaboration","membership","campaigns"].includes(slug)&&
      !isPolicySlug(slug)?articleBackTarget:"home");return true;
    }return false;
   });
@@ -293,6 +295,7 @@ export function PublicCmsContent({onContact,onPartnerApplication,onMembershipApp
     secondary={slug!=="gallery"||mediaScope!==scope}
     onPress={()=>{setMediaScope(scope);setSlug("gallery");}}/>)}
    {publishedPaths.includes("/campaigns")&&<CmsButton title="Campaigns" secondary={slug!=="campaigns"} onPress={()=>setSlug("campaigns")}/>}
+   <CmsButton title="Events" secondary={slug!=="events"} onPress={()=>setSlug("events")}/>
    <CmsButton title="Notices" secondary={slug!=="notices"} onPress={()=>setSlug("notices")}/>
    {publishedPaths.some(p=>p.startsWith("/blog/"))&&
     <CmsButton title="News" secondary={slug!=="articles"}
@@ -312,18 +315,19 @@ export function PublicCmsContent({onContact,onPartnerApplication,onMembershipApp
       onPress={()=>setSlug(name)}/>)}
   </View>
   {slug==="campaigns"?<NativePublicCampaigns/>:slug==="membership"?<NativeMembershipPlans onApply={onMembershipApply}/>:loading?<ActivityIndicator accessibilityLabel="Checking current published website content"/>:
-   slug==="articles"?<View style={styles.card}>
-    <Text accessibilityRole="header" style={styles.heading}>Approved News &amp; Articles</Text>
+   (slug==="articles"||slug==="events")?<View style={styles.card}>
+    <Text accessibilityRole="header" style={styles.heading}>{slug==="events"?"Foundation Events":"Approved News & Articles"}</Text>
     {!articleFeed.available?<Text accessibilityRole="alert" style={styles.muted}>
-     Current news could not be verified.</Text>:articleFeed.posts.length===0?
-     <Text style={styles.muted}>No currently approved articles.</Text>:
+     {slug==="events"?"Current events could not be verified.":"Current news could not be verified."}</Text>:articleFeed.posts.length===0?
+     <Text style={styles.muted}>{slug==="events"?"No currently approved events.":"No currently approved articles."}</Text>:
      articleFeed.posts.map(item=><View key={item.slug} style={styles.person}>
       <Text style={styles.eyebrow}>{item.category}</Text>
       <Text style={styles.heading}>{item.title}</Text>
       <Text style={styles.body}>{item.excerpt}</Text>
-      <CmsButton title="Read full article" onPress={()=>{setArticleBackTarget("articles");setSlug(item.slug);}}/>
+      <CmsButton title={slug==="events"?"View event details":"Read full article"} onPress={()=>{setArticleBackTarget(slug==="events"?"events":"articles");setSlug(item.slug);}}/>
      </View>)}
-    <CmsButton title="Refresh approved news" secondary onPress={()=>void load("articles")}/>
+    {articleFeed.nextCursor&&<CmsButton title="Next page" secondary onPress={()=>void load(slug,articleFeed.nextCursor??"")}/>}
+    <CmsButton title={slug==="events"?"Refresh events":"Refresh approved news"} secondary onPress={()=>void load(slug)}/>
    </View>:slug==="notices"?<View style={styles.card}>
      <Text accessibilityRole="header" style={styles.heading}>
       Notice &amp; Announcement Board</Text>
@@ -508,7 +512,7 @@ export function PublicCmsContent({onContact,onPartnerApplication,onMembershipApp
       mediaScope={section.kind==="GALLERY_GRID"?mediaScope:undefined}
        ngoScope={section.kind==="COMPLIANCE_FACTS"?ngoScope:undefined}
       onBackToNews={()=>setSlug(articleBackTarget)}
-       backLabel={articleBackTarget==="notices"?"Back to notices":"Back to approved articles"}/>;
+       backLabel={articleBackTarget==="notices"?"Back to notices":articleBackTarget==="events"?"Back to events":"Back to approved articles"}/>;
     if(section.kind==="CAMPAIGN_TEASER"){
      const approved=(Array.isArray(fields.cards)?fields.cards:[])
       .filter(c=>c&&typeof c==="object"&&/^cg-camp-[0-9]{8}$/.test(text(c.slug)));
