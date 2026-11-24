@@ -30,7 +30,7 @@ function placementChoices(sections:CmsSection[]):Choice[]{
  };
  for(const section of sections){
   const f=section.fields;
-  if(section.kind==="HERO"){
+  if(section.kind==="HERO"&&f.textOnly!==true){
    add("HERO",section.order);add("MOBILE_HERO",section.order);
   }else if(section.kind==="RICH_TEXT"&&f.variant==="SPLIT")
    add("ABOUT",section.order);

@@ -175,6 +175,10 @@ HUX-09.01/02.01/13.02: fresh-install CMS draft now contains the reference-led ni
 
 HUX-08.03/11.03: read-only two-copy A4 online payment confirmation added for patient-owned bookings, exact CG17 VERIFIED_PROVIDER capture, matching original attempt and VERIFIED_CAPTURE merchant event. Actual accepted gross/support/due, capture refund and net/outstanding rendered; source and patient scope rechecked after render. Not an immutable cash receipt, tax invoice, or Foundation settlement. Cash one-copy stored receipt unchanged. Web and public Android open the private PDF only for verified provider rows. Test pending/manual reference rejection, another patient/center, partial/refund/full collection, changed source during render and printable A4. Runtime and independent acceptance NOT_RUN.
 
+## Healthcare first-install illustration pack and release gate
+
+The 10-image original editorial asset pack is stored in private Library `/CareGanga/CareGanga-Healthcare-CMS-Editorial-Illustrations-20261124.zip`; checksums fixed in healthcare importer, archive SHA-256 `34e350d5ec1adcf32e44a0a6bcfca33e0fb220c5c73c3e9d7e2152adf275cf28`. Nine category pictograms and prior generic hero are illustrative, not provider photographs. First-publication gate now requires published nine categories and ten approved placements. Web title edits detach old illustration and text-only hero toggle controls media; native offers only valid hero placement. See [first publication assets](../../../docs/qa/CAREGANGA-HEALTHCARE-FIRST-PUBLICATION-ASSETS-20261124.md). Actual authorized upload/publication and tests NOT_RUN. No live content overwritten.
+
 ## Subtracker details and expected user scenarios
 
 ### HUX-01.01 — Recover separate healthcare reference originals

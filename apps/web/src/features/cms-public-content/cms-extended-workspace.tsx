@@ -198,6 +198,9 @@ export function CmsExtendedWorkspace({canManage,canPublish,canViewNoticeSources}
  const changeItem=(sectionIndex:number,itemIndex:number,patch:Record<string,unknown>,
   key="items")=>{
   const current=items(draft.sections[sectionIndex].fields[key]);
+  if(key==="categories"&&typeof patch.title==="string"&&patch.title!==current[itemIndex]?.title){
+   setDraft(d=>({...d,sections:d.sections.map((v,i)=>i===sectionIndex?{...v,fields:{...v.fields,[key]:current.map((row,j)=>j===itemIndex?{...row,...patch}:row)}}:v),assets:d.assets.filter(a=>a.role!=="FEATURE"||a.order!==itemIndex)}));return;
+  }
   edit(sectionIndex,{...draft.sections[sectionIndex].fields,
    [key]:current.map((v,i)=>i===itemIndex?{...v,...patch}:v)});
  };
@@ -558,6 +561,7 @@ export function CmsExtendedWorkspace({canManage,canPublish,canViewNoticeSources}
         onChange={v=>change("description",v)}/>
        <Field name="Section label" value={f.eyebrow}
         onChange={v=>change("eyebrow",v)}/>
+       {draft.kind==="HEALTHCARE"&&<label className="cg-cms-consent"><input type="checkbox" checked={f.textOnly===true} onChange={e=>{const value=e.target.checked;setDraft(d=>({...d,sections:d.sections.map((s,i)=>i===index?{...s,fields:{...s.fields,textOnly:value}}:s),assets:value?d.assets.filter(a=>!(["HERO","MOBILE_HERO"].includes(a.role)&&a.order===section.order)):d.assets}));}}/>Text-only hero (clear to attach an approved illustration)</label>}
        {draft.kind==="PARTNERS"&&<>
         <Field name="Hero contact button label" value={f.primaryLabel}
          onChange={v=>{change("primaryLabel",v);}}/>
@@ -955,6 +959,7 @@ export function CmsExtendedWorkspace({canManage,canPublish,canViewNoticeSources}
        onChange={e=>setRights(e.target.checked)}/>The Foundation owns the public-use rights</label>
       <input type="file" disabled={busy||!rights||uploadAlt.trim().length<3||
          allowedForCurrentPlacement().length===0||
+         (draft.kind==="HEALTHCARE"&&uploadRole==="HERO"&&draft.sections.find(x=>x.kind==="HERO"&&x.order===uploadOrder)?.fields.textOnly===true)||
          (uploadRole==="DOCUMENT"&&items(draft.sections[0]?.fields.documents).length===0)||
          (uploadRole==="FEATURE"&&items(draft.kind==="HEALTHCARE"?draft.sections.find(x=>x.kind==="HEALTHCARE_CATEGORIES")?.fields.categories:draft.sections.find(x=>x.kind==="PARTNER_CARDS")?.fields.partners).length===0)||
          (uploadRole==="GALLERY"&&items(draft.sections[0]?.fields.items).length===0)} accept={
