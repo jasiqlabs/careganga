@@ -49,14 +49,17 @@ CREATE TABLE assistance_recovery(
  voucher_ref uuid NOT NULL, voucher_revision integer NOT NULL CHECK(voucher_revision=1),
  actor_ref uuid NOT NULL, request_key uuid NOT NULL, request_digest char(64) NOT NULL CHECK(request_digest~'^[a-f0-9]{64}$'),
  created_at timestamptz NOT NULL DEFAULT now(),
- PRIMARY KEY(root_realm_id,fulfillment_id), UNIQUE(root_realm_id,voucher_ref), UNIQUE(root_realm_id,actor_ref,request_key),
+ PRIMARY KEY(root_realm_id,voucher_ref), UNIQUE(root_realm_id,actor_ref,request_key),
  FOREIGN KEY(root_realm_id,fulfillment_id,assistance_id) REFERENCES assistance_fulfillment(root_realm_id,id,assistance_id),
  FOREIGN KEY(voucher_ref,root_realm_id) REFERENCES finance_voucher(id,root_realm_id),
  FOREIGN KEY(actor_ref,root_realm_id) REFERENCES account(id,realm_id)
 );
+CREATE INDEX ix_cg06_recovery_allocation ON assistance_recovery(root_realm_id,fulfillment_id,created_at DESC,voucher_ref);
 CREATE TRIGGER cg06_recovery_immutable BEFORE UPDATE OR DELETE ON assistance_recovery FOR EACH ROW EXECUTE FUNCTION cg06_immutable_event();
 CREATE FUNCTION cg06_recovery_source_guard() RETURNS trigger LANGUAGE plpgsql AS $aid$
 BEGIN
+ PERFORM 1 FROM assistance_case WHERE root_realm_id=NEW.root_realm_id AND id=NEW.assistance_id FOR UPDATE;
+ IF EXISTS(SELECT 1 FROM assistance_recovery r JOIN finance_voucher v ON v.root_realm_id=r.root_realm_id AND v.id=r.voucher_ref WHERE r.root_realm_id=NEW.root_realm_id AND r.fulfillment_id=NEW.fulfillment_id AND v.status NOT IN('RETURNED','REJECTED')) THEN RAISE EXCEPTION 'Original recovery already exists' USING ERRCODE='23514'; END IF;
  IF NOT EXISTS(SELECT 1 FROM assistance_fulfillment f JOIN assistance_delivery_event d ON d.root_realm_id=f.root_realm_id AND d.fulfillment_id=f.id AND d.action='PAID'
  JOIN finance_voucher old ON old.root_realm_id=f.root_realm_id AND old.id=f.voucher_ref
  JOIN finance_voucher v ON v.root_realm_id=f.root_realm_id AND v.id=NEW.voucher_ref
@@ -124,7 +127,7 @@ BEGIN
  ELSE
   SELECT * INTO v FROM finance_voucher WHERE root_realm_id=NEW.root_realm_id AND id=NEW.voucher_ref;
   IF a.kind<>'FINANCIAL' OR NOT FOUND OR v.voucher_type<>'PAYMENT' OR v.status<>'DRAFT' OR v.version<>NEW.voucher_revision OR v.total_minor<>NEW.amount_minor OR v.branch_id IS DISTINCT FROM a.branch_ref OR v.created_by<>NEW.actor_ref THEN RAISE EXCEPTION 'Payment allocation differs from original aid' USING ERRCODE='23514'; END IF;
-  SELECT COALESCE(sum(amount_minor),0) INTO total FROM assistance_fulfillment WHERE root_realm_id=NEW.root_realm_id AND assistance_id=NEW.assistance_id AND action='PAYMENT';
+  SELECT COALESCE(sum(f.amount_minor),0) INTO total FROM assistance_fulfillment f JOIN finance_voucher prior ON prior.root_realm_id=f.root_realm_id AND prior.id=f.voucher_ref WHERE f.root_realm_id=NEW.root_realm_id AND f.assistance_id=NEW.assistance_id AND f.action='PAYMENT' AND prior.status NOT IN('RETURNED','REJECTED');
   IF total+NEW.amount_minor>a.requested_minor THEN RAISE EXCEPTION 'Aid amount exceeds approval' USING ERRCODE='23514'; END IF;
  END IF;
  RETURN NEW;
@@ -147,7 +150,7 @@ BEGIN
  ELSIF NEW.action='PAID' THEN
   IF f.action<>'PAYMENT' OR NOT EXISTS(SELECT 1 FROM finance_voucher v JOIN finance_voucher_posting p ON p.root_realm_id=v.root_realm_id AND p.voucher_id=v.id AND p.voucher_revision=v.version JOIN journal j ON j.root_realm_id=p.root_realm_id AND j.id=p.journal_id JOIN finance_voucher_payment_verification pay ON pay.root_realm_id=v.root_realm_id AND pay.voucher_id=v.id AND pay.voucher_revision=v.version WHERE v.root_realm_id=NEW.root_realm_id AND v.id=f.voucher_ref AND v.version=f.voucher_revision AND v.status='POSTED' AND v.total_minor=f.amount_minor AND j.id=NEW.journal_ref AND j.status='POSTED' AND j.posting_kind='VOUCHER' AND pay.status='VERIFIED' AND pay.amount_minor=f.amount_minor) THEN RAISE EXCEPTION 'Exact posted verified payment required' USING ERRCODE='23514'; END IF;
  ELSIF NEW.action='REVERSED' THEN
-  IF f.action<>'PAYMENT' OR cg06_recovery_journal(NEW.root_realm_id,f.id) IS DISTINCT FROM NEW.journal_ref OR NOT EXISTS(SELECT 1 FROM assistance_delivery_event d JOIN assistance_recovery r ON r.root_realm_id=d.root_realm_id AND r.fulfillment_id=d.fulfillment_id JOIN cg19_stored_file p ON p.realm_id=NEW.root_realm_id AND p.id=NEW.proof_ref WHERE d.root_realm_id=NEW.root_realm_id AND d.fulfillment_id=f.id AND d.action='PAID' AND p.created_at>=r.created_at) THEN RAISE EXCEPTION 'Exact verified CG09 recovery required' USING ERRCODE='23514'; END IF;
+  IF f.action<>'PAYMENT' OR cg06_recovery_journal(NEW.root_realm_id,f.id) IS DISTINCT FROM NEW.journal_ref OR NOT EXISTS(SELECT 1 FROM assistance_delivery_event d JOIN assistance_recovery r ON r.root_realm_id=d.root_realm_id AND r.fulfillment_id=d.fulfillment_id JOIN finance_voucher_posting rp ON rp.root_realm_id=r.root_realm_id AND rp.voucher_id=r.voucher_ref AND rp.journal_id=NEW.journal_ref JOIN cg19_stored_file p ON p.realm_id=NEW.root_realm_id AND p.id=NEW.proof_ref WHERE d.root_realm_id=NEW.root_realm_id AND d.fulfillment_id=f.id AND d.action='PAID' AND p.created_at>=r.created_at) THEN RAISE EXCEPTION 'Exact verified CG09 recovery required' USING ERRCODE='23514'; END IF;
  ELSE RAISE EXCEPTION 'Unsupported delivery event' USING ERRCODE='23514';
  END IF;
  RETURN NEW;
