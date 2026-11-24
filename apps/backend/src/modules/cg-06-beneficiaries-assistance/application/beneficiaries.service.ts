@@ -135,12 +135,12 @@ export class BeneficiariesService{
   if(typeof name!=="string"||name.length>80||typeof mobile!=="string"||mobile.length>16)
    throw new BadRequestException("Check beneficiary search details");
   const q=name.trim().toLowerCase(),phone=mobile.trim();
-  if(q.length<3&&phone.length===0)return {items:[],advisory:true};
   if(phone.length&& !/^[+][1-9][0-9]{7,14}$/.test(phone))
    throw new BadRequestException("Check the contact including country code");
   return this.run(token,"beneficiaries.manage",async(tx,a)=>{
    await this.identity.assertCurrent(tx,a,"beneficiaries.view");
    await this.branches.projectBranch(tx,a,branch);
+   if(q.length<3&&phone.length===0)return {items:[],advisory:true,hasMore:false};
    const rows=(await tx.query<{id:string;display_ref:string;private_name:string;beneficiary_type:string;contact_mobile:string|null}>(`
     SELECT id,display_ref,private_name,beneficiary_type,contact_mobile
     FROM beneficiary WHERE root_realm_id=$1
@@ -278,6 +278,7 @@ export class BeneficiariesService{
    const r=await this.row(tx,a,id);
    let links:{ref:string;projectRef:string;projectName:string}[]=[];
    try{
+    if(r.consent_revoked_at!==null)return {...this.view(r),projectLinks:[]};
     await this.identity.assertCurrent(tx,a,"projects.view");
     links=(await tx.query<{ref:string;projectRef:string;projectName:string}>(
      "SELECT l.id AS ref,l.project_ref AS \"projectRef\",p.title AS \"projectName\" "+
