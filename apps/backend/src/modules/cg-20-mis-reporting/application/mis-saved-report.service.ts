@@ -151,6 +151,7 @@ export class MisSavedReportService{
   if(Object.keys(b).some(k=>!["name","request","requestKey"].includes(k)))
    throw new BadRequestException({code:"MIS_SAVED_INVALID"});
   const title=name(b.name),key=ref(b.requestKey),request=parseSafeReport(b.request);
+  if(request.kind==="BENEFICIARY_ASSISTANCE_SUMMARY")throw new ForbiddenException({code:"MIS_SAVED_INVALID",message:"This beneficiary report is available as a current live preview only."});
   await this.sources.preview(token,request);
   const action=createdFrom?"COPY":"CREATE";
   const digest=hash({action,title,request,createdFrom:createdFrom??null});
@@ -214,6 +215,7 @@ export class MisSavedReportService{
    throw new BadRequestException({code:"MIS_SAVED_INVALID"});
   const title=name(b.name),key=ref(b.requestKey),expected=version(b.expectedVersion);
   const request=parseSafeReport(b.request);
+  if(request.kind==="BENEFICIARY_ASSISTANCE_SUMMARY")throw new ForbiddenException({code:"MIS_SAVED_INVALID",message:"This beneficiary report is available as a current live preview only."});
   await this.sources.preview(token,request);
   const digest=hash({action:"REVISE",id,title,expected,request});
   return this.tx(async tx=>{
@@ -374,6 +376,7 @@ export class MisSavedReportService{
    if(!q.rows[0])throw new NotFoundException({code:"MIS_SAVED_NOT_FOUND"});
    return this.definition(tx,q.rows[0]);
   });
+  if(request.kind==="BENEFICIARY_ASSISTANCE_SUMMARY")throw new ForbiddenException({code:"MIS_SAVED_INVALID",message:"This beneficiary report is available as a current live preview only."});
   await this.sources.preview(token,request);
   // The recipient's own current source grant and current root are always
   // rechecked. The new definition has a NEW ID and PRIVATE owner.
