@@ -153,7 +153,7 @@ export function NativeMonthlyProviderSettlement({token,canPropose,canReview,canP
    <Text accessibilityRole="header" style={styles.title}>
     Healthcare Provider Settlements</Text>
    <Text style={styles.note}>Only source-approved Foundation obligations
-    posted in CG09 are eligible. Patient center cash is separate.
+    recorded in Foundation accounts are eligible. Patient center cash is separate.
     Preparing or approving a claim does not pay the provider.</Text>
    {loading&&<ActivityIndicator accessibilityLabel="Checking original settlement"/>}
    {!!error&&<Text accessibilityRole="alert" style={styles.note}>{error}</Text>}
