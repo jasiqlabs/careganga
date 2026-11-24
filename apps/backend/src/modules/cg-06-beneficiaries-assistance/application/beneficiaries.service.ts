@@ -12,7 +12,7 @@ import {conflict,nextCursor,optionalRef,parseChange,parseLink,parseListQuery,par
 type Row={
  id:string;root_realm_id:string;branch_scope_id:string|null;display_ref:string;
  private_name:string;contact_mobile:string|null;representative_name:string|null;
- representative_contact:string|null;state_ref:string;district_ref:string|null;
+ representative_contact:string|null;state_ref:string;district_ref:string|null;block_ref:string|null;beneficiary_category:string|null;
  beneficiary_type:string;gender:string;age_group:string;consent_kind:string;
  consent_purpose:string;consent_acknowledged_at:Date;consent_revoked_at:Date|null;
  verification_state:string;lifecycle_state:string;profile_revision:number;
@@ -21,7 +21,7 @@ type Row={
 type Scope={all:boolean;branches:{value:string;label:string}[]};
 const digest=(value:unknown)=>createHash("sha256").update(JSON.stringify(value)).digest("hex");
 const columns="id,root_realm_id,branch_scope_id,display_ref,private_name,contact_mobile,representative_name,"+
- "representative_contact,state_ref,district_ref,beneficiary_type,gender,age_group,consent_kind,"+
+ "representative_contact,state_ref,district_ref,block_ref,beneficiary_category,beneficiary_type,gender,age_group,consent_kind,"+
  "consent_purpose,consent_acknowledged_at,consent_revoked_at,verification_state,lifecycle_state,"+
  "profile_revision,verification_case_ref,created_by,created_at,updated_at";
 @Injectable()
@@ -63,15 +63,15 @@ export class BeneficiariesService{
    contactMobile:revoked?null:r.contact_mobile,
    representativeName:revoked?null:r.representative_name,
    representativeContact:revoked?null:r.representative_contact,
-   branchRef:r.branch_scope_id,stateRef:r.state_ref,districtRef:r.district_ref,
+   branchRef:r.branch_scope_id,stateRef:r.state_ref,districtRef:r.district_ref,blockRef:revoked?null:r.block_ref,beneficiaryCategory:revoked?null:r.beneficiary_category,
    beneficiaryType:r.beneficiary_type,gender:r.gender,ageGroup:r.age_group,
    consentKind:r.consent_kind,consentPurpose:revoked?null:r.consent_purpose,
    consentAcknowledgedAt:r.consent_acknowledged_at,consentRevoked:revoked,
    verification:r.verification_state,lifecycle:r.lifecycle_state,
    revision:r.profile_revision,createdAt:r.created_at,updatedAt:r.updated_at};
  }
- private async area(tx:PoolClient,a:Actor,branch:string|null,state:string,district:string|null){
-  await this.branches.projectGeography(tx,a,state,district);
+ private async area(tx:PoolClient,a:Actor,branch:string|null,state:string,district:string|null,block:string|null){
+  await this.branches.beneficiaryBlock(tx,a,state,district,block);
   await this.branches.projectBranch(tx,a,branch);
   if(!branch)return;
   // A staff-assigned branch may not attach a person to an unrelated state/district.
@@ -83,7 +83,8 @@ export class BeneficiariesService{
    "JOIN geography_area g ON g.id=p.parent_area_id AND g.root_realm_id=$1 AND g.status='ACTIVE' "+
    "WHERE p.depth<8) SELECT id,level FROM path", [a.realmId,branch])).rows;
   if(!result.some(x=>x.id===state)||
-   result.some(x=>x.level==="DISTRICT")&&!!district&&!result.some(x=>x.id===district))
+   result.some(x=>x.level==="DISTRICT")&&!!district&&!result.some(x=>x.id===district)||
+   result.some(x=>x.level==="BLOCK")&&!!block&&!result.some(x=>x.id===block))
    throw new ForbiddenException("Choose a beneficiary area within the assigned branch");
  }
  private async original(tx:PoolClient,a:Actor,key:string,action:string,hash:string,target?:string){
@@ -105,15 +106,16 @@ export class BeneficiariesService{
    [a.realmId,a.accountId,key,action,hash,row.id,row.profile_revision,reason]);
   return {ref:row.id,reference:row.display_ref,revision:row.profile_revision,replayed:false,status:"CONFIRMED"};
  }
- async options(token:string,stateInput:unknown){
-  const state=optionalRef(stateInput);
+ async options(token:string,stateInput:unknown,districtInput?:unknown){
+  const state=optionalRef(stateInput),district=optionalRef(districtInput);
   return this.run(token,"beneficiaries.view",async(tx,a)=>{
    const scope=await this.scope(tx,a);
    let canFilterProjects=false;
    try{await this.identity.assertCurrent(tx,a,"projects.view");canFilterProjects=true;}catch(e){if(!(e instanceof ForbiddenException))throw e;}
    return {canManageFoundation:scope.all,canFilterProjects,branches:scope.branches.map(({value,label})=>({value,label})),
     states:await this.branches.projectGeographyOptions(tx,a,null),
-    districts:state?await this.branches.projectGeographyOptions(tx,a,state):[]};
+    districts:state?await this.branches.projectGeographyOptions(tx,a,state):[],
+    blocks:district?await this.branches.beneficiaryBlockOptions(tx,a,state,district):[]};
   });
  }
  async projectFilterOptions(token:string,branchInput:unknown,searchInput:unknown){
@@ -169,16 +171,16 @@ export class BeneficiariesService{
   return this.run(token,"beneficiaries.manage",async(tx,a)=>{
    await this.identity.assertCurrent(tx,a,"beneficiaries.view");
    const past=await this.original(tx,a,v.key,"CREATE",hash);if(past)return past;
-   await this.area(tx,a,v.branch,v.state,v.district);
+   await this.area(tx,a,v.branch,v.state,v.district,v.block);
    const display=(await tx.query<{code:string}>(
     "SELECT 'BEN-'||lpad(nextval('cg06_beneficiary_display_seq')::text,7,'0') AS code")).rows[0].code;
    const r=(await tx.query<Row>("INSERT INTO beneficiary "+
     "(root_realm_id,branch_scope_id,display_ref,private_name,contact_mobile,representative_name,"+
-    "representative_contact,state_ref,district_ref,beneficiary_type,gender,age_group,consent_kind,"+
+    "representative_contact,state_ref,district_ref,block_ref,beneficiary_category,beneficiary_type,gender,age_group,consent_kind,"+
     "consent_purpose,consent_acknowledged_at,created_by,updated_by) "+
-    "VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,clock_timestamp(),$15,$15) RETURNING "+columns,
+    "VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,clock_timestamp(),$17,$17) RETURNING "+columns,
     [a.realmId,v.branch,display,v.name,v.contact,v.representative,v.representativeContact,v.state,v.district,
-     v.beneficiaryType,v.gender,v.ageGroup,v.consentKind,v.purpose,a.accountId])).rows[0];
+     v.block,v.category,v.beneficiaryType,v.gender,v.ageGroup,v.consentKind,v.purpose,a.accountId])).rows[0];
    return this.recorded(tx,a,v.key,"CREATE",hash,r);
   });
  }
@@ -190,14 +192,14 @@ export class BeneficiariesService{
    const before=await this.row(tx,a,target,true);
    if(before.profile_revision!==v.expected||before.consent_revoked_at||before.lifecycle_state!=="ACTIVE")
     throw conflict();
-   await this.area(tx,a,before.branch_scope_id,v.state,v.district);
+   await this.area(tx,a,before.branch_scope_id,v.state,v.district,v.block);
    const r=(await tx.query<Row>("UPDATE beneficiary SET private_name=$3,contact_mobile=$4,representative_name=$5,"+
-    "representative_contact=$6,state_ref=$7,district_ref=$8,beneficiary_type=$9,gender=$10,age_group=$11,"+
+    "representative_contact=$6,state_ref=$7,district_ref=$8,beneficiary_type=$9,gender=$10,age_group=$11,block_ref=$16,beneficiary_category=$17,"+
     "consent_kind=$12,consent_purpose=$13,consent_acknowledged_at=clock_timestamp(),"+
     "verification_state='DRAFT',verification_case_ref=NULL,profile_revision=profile_revision+1,"+
     "updated_by=$14,updated_at=clock_timestamp() WHERE root_realm_id=$1 AND id=$2 AND profile_revision=$15 "+
     "RETURNING "+columns,[a.realmId,target,v.name,v.contact,v.representative,v.representativeContact,
-    v.state,v.district,v.beneficiaryType,v.gender,v.ageGroup,v.consentKind,v.purpose,a.accountId,v.expected])).rows[0];
+    v.state,v.district,v.beneficiaryType,v.gender,v.ageGroup,v.consentKind,v.purpose,a.accountId,v.expected,v.block,v.category])).rows[0];
    if(!r)throw conflict();
    return this.recorded(tx,a,v.key,"EDIT",hash,r);
   });
@@ -300,7 +302,7 @@ export class BeneficiariesService{
  /** CG-06 original source read/transition for CG-03. Never author an approval here. */
  private fingerprint(row:Row){
   return digest([row.id,row.profile_revision,row.branch_scope_id,row.private_name,row.contact_mobile,
-   row.representative_name,row.representative_contact,row.state_ref,row.district_ref,
+   row.representative_name,row.representative_contact,row.state_ref,row.district_ref,row.block_ref,row.beneficiary_category,
    row.beneficiary_type,row.gender,row.age_group,row.consent_kind,row.consent_purpose,
    row.consent_acknowledged_at.toISOString(),row.consent_revoked_at?.toISOString()??null]);
  }
@@ -392,7 +394,7 @@ export class BeneficiariesService{
   const q=parseListQuery(query);
   return this.run(token,"beneficiaries.view",async(tx,a)=>{
    if(q.project)await this.projects.requireCurrentProjectForFilter(tx,a,q.project);
-   if(q.state||q.district)await this.branches.projectGeography(tx,a,q.state,q.district);
+   if(q.state||q.district||q.block)await this.branches.beneficiaryBlock(tx,a,q.state,q.district,q.block);
    const scope=await this.scope(tx,a);
    if(q.branch&&!scope.all&&!scope.branches.some(x=>x.value===q.branch))
     throw new ForbiddenException("Branch unavailable");
@@ -413,9 +415,11 @@ export class BeneficiariesService{
     "AND ($14='' OR b.gender=$14) AND ($15='' OR b.age_group=$15) "+
     "AND ($16::date IS NULL OR b.created_at>=($16::date::timestamp AT TIME ZONE 'Asia/Kolkata')) "+
     "AND ($17::date IS NULL OR b.created_at<(($17::date+1)::timestamp AT TIME ZONE 'Asia/Kolkata')) "+
+    "AND ($18::uuid IS NULL OR (b.consent_revoked_at IS NULL AND b.block_ref=$18)) "+
+    "AND ($19='' OR (b.consent_revoked_at IS NULL AND lower(b.beneficiary_category)=lower($19))) "+
     "ORDER BY b.created_at DESC,b.id DESC LIMIT 31",
     [a.realmId,scope.all,allowed,q.branch,q.state,q.district,q.status,q.lifecycle,q.type,q.q,
-     q.project,q.before?.date??null,q.before?.id??null,q.gender,q.ageGroup,q.from,q.to])).rows;
+     q.project,q.before?.date??null,q.before?.id??null,q.gender,q.ageGroup,q.from,q.to,q.block,q.category])).rows;
    const items=rows.slice(0,30);
    return {items:items.map(r=>({...this.view(r),contactMobile:null,representativeName:null,representativeContact:null,consentPurpose:null})),hasMore:rows.length>30,
     nextCursor:rows.length>30&&items.length?nextCursor(items[items.length-1].created_at,items[items.length-1].id):null};
