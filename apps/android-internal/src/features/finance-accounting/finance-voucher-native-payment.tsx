@@ -3,6 +3,7 @@ import {ActivityIndicator,Pressable,StyleSheet,Text,TextInput,View} from "react-
 import * as DocumentPicker from "expo-document-picker";
 import {File,Paths,UploadType} from "expo-file-system";
 import * as Crypto from "expo-crypto";
+import * as Sharing from "expo-sharing";
 import {careGangaTheme as t} from "../../../../../packages/design-tokens/src/index";
 import {identityRequest} from "../identity-access/http-client";
 
@@ -201,7 +202,8 @@ export function FinanceVoucherNativePayment({token,voucher,canManage,canPost,
     mime==="image/png"?".png":".webp";
    temp=new File(Paths.cache,"careganga-private-finance-proof-"+Crypto.randomUUID()+ext);
    temp.create();await temp.write(bytes);
-   await temp.preview({title:"Private Finance payment proof"});
+   if(!await Sharing.isAvailableAsync())throw Error("UNKNOWN");
+   await Sharing.shareAsync(temp.uri,{mimeType:mime,dialogTitle:"Open private Finance payment proof"});
   }catch(e){setNotice(friendly(e));}
   finally{try{temp?.delete();}catch{}setBusy(false);}
  }
@@ -283,7 +285,7 @@ export function FinanceVoucherNativePayment({token,voucher,canManage,canPost,
       accessibilityState={{checked:action===k}} style={styles.button}
       onPress={()=>setAction(k)}><Text style={styles.buttonText}>
        {k==="VERIFY"?"Confirm funds moved":k==="REJECT"?"Reject proof":"Confirm actual failed transfer"}</Text></Pressable>)}</View>
-    {payment.requiresPayrollDestination&&(action!=="REJECT"||(pending?.body.action==="CONFIRM_FAILED_TRANSFER"||pending?.body.action!=="REJECT"))&&<><Text style={styles.hint}>Enter the exact beneficiary details from the original bank transfer advice. Stored bank details are not displayed.</Text>
+    {payment.requiresPayrollDestination&&(action!=="REJECT"||(pending?.body.action==="CONFIRM_FAILED_TRANSFER"||pending?.body.action==="VERIFY"))&&<><Text style={styles.hint}>Enter the exact beneficiary details from the original bank transfer advice. Stored bank details are not displayed.</Text>
     <TextInput accessibilityLabel="Beneficiary account holder" value={evidenceHolder} maxLength={100} autoComplete="off" onChangeText={setEvidenceHolder} style={styles.input}/>
     <TextInput accessibilityLabel="Beneficiary account number" value={evidenceAccount} maxLength={22} secureTextEntry keyboardType="number-pad" autoComplete="off" onChangeText={setEvidenceAccount} style={styles.input}/>
     <TextInput accessibilityLabel="Beneficiary IFSC" value={evidenceIfsc} maxLength={11} autoCapitalize="characters" autoComplete="off" onChangeText={v=>setEvidenceIfsc(v.toUpperCase())} style={styles.input}/></>}

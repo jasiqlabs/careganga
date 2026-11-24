@@ -48,7 +48,7 @@ export class PayrollRunService{
   const branch=branchInput&&branchInput!=="FOUNDATION"?id(branchInput):null;
   if(branchInput)await this.branches.projectBranch(tx,a,branch);
   const params=[a.realmId,scope.all,scope.branches.map(b=>b.value),period,branchInput,branch];
-  type Metric={period:string;runs:number;approvedRuns:number;pendingApprovals:number;employees:number;gross:string;deductions:string;net:string;paid:string;outstanding:string;paidEmployees:number;pendingEmployees:number;unresolvedEmployees:number;rejectedAttempts:number};
+  type Metric={period:string;runs:number;approvedRuns:number;pendingApprovals:number;employees:number;gross:string;deductions:string;net:string;paid:string;outstanding:string;paidEmployees:number;pendingEmployees:number;unresolvedEmployees:number;failedEmployees:number;unresolvedMinor:string;failedMinor:string;rejectedAttempts:number};
   const trend=(await tx.query<Metric>(`
    WITH scoped AS (
     SELECT id,period_key,status FROM payroll_run WHERE root_realm_id=$1 AND ((branch_ref IS NULL AND $2::boolean) OR branch_ref=ANY($3::uuid[]))
@@ -58,24 +58,27 @@ export class PayrollRunService{
     SELECT period_key,count(*)::int runs,count(*) FILTER(WHERE status='APPROVED_FROZEN')::int approved_runs,
       count(*) FILTER(WHERE status='SUBMITTED')::int pending_approvals FROM scoped GROUP BY period_key
    ), line_outcomes AS (
-    SELECT r.period_key,l.net_minor,l.gross_minor,l.deduction_minor,coalesce(p.paid,0) paid,coalesce(p.invalid,false) invalid,coalesce(p.pending,false) pending,coalesce(p.rejected,0) rejected
+    SELECT r.period_key,l.net_minor,l.gross_minor,l.deduction_minor,coalesce(p.paid,0) paid,coalesce(p.invalid,false) invalid,coalesce(p.pending,false) pending,coalesce(p.failed,false) failed,coalesce(p.rejected,0) rejected
     FROM scoped r JOIN payroll_line l ON l.root_realm_id=$1 AND l.run_id=r.id AND r.status='APPROVED_FROZEN'
     LEFT JOIN payroll_batch_item i ON i.root_realm_id=l.root_realm_id AND i.line_ref=l.id
     LEFT JOIN LATERAL(SELECT sum(o.paid_minor) paid,bool_or(o.reversed OR (o.voucher_status='POSTED' AND o.paid_minor<>o.amount_minor)) invalid,
-     bool_or(o.attempt_status NOT IN('POSTED','REJECTED','FAILED_VERIFIED')) pending,count(*) FILTER(WHERE o.attempt_status IN('REJECTED','FAILED_VERIFIED')) rejected
+     bool_or(o.attempt_status NOT IN('POSTED','REJECTED','FAILED_VERIFIED')) pending,bool_or(o.attempt_status='FAILED_VERIFIED') failed,count(*) FILTER(WHERE o.attempt_status='REJECTED') rejected
      FROM payroll_attempt_outcome o WHERE o.root_realm_id=i.root_realm_id AND o.item_ref=i.id)p ON true
    ), money AS (
     SELECT period_key,count(*)::int employees,sum(gross_minor)::text gross,sum(deduction_minor)::text deductions,sum(net_minor)::text net,sum(paid)::text paid,
      sum(greatest(net_minor-paid,0))::text outstanding,
      count(*) FILTER(WHERE net_minor>0 AND paid=net_minor AND NOT invalid)::int paid_employees,
-     count(*) FILTER(WHERE paid<net_minor AND NOT invalid)::int pending_employees,
+     count(*) FILTER(WHERE paid<net_minor AND NOT invalid AND NOT pending AND NOT failed)::int pending_employees,
+     count(*) FILTER(WHERE paid<net_minor AND NOT invalid AND NOT pending AND failed)::int failed_employees,
+     coalesce(sum(greatest(net_minor-paid,0)) FILTER(WHERE invalid OR paid>net_minor OR pending),0)::text unresolved_minor,
+     coalesce(sum(greatest(net_minor-paid,0)) FILTER(WHERE paid<net_minor AND NOT invalid AND NOT pending AND failed),0)::text failed_minor,
      count(*) FILTER(WHERE invalid OR paid>net_minor OR pending)::int unresolved_employees,
      sum(rejected)::int rejected_attempts FROM line_outcomes GROUP BY period_key
    ) SELECT rc.period_key period,rc.runs,rc.approved_runs AS "approvedRuns",rc.pending_approvals AS "pendingApprovals",
     coalesce(m.employees,0) employees,coalesce(m.gross,'0') gross,coalesce(m.deductions,'0') deductions,coalesce(m.net,'0') net,
     coalesce(m.paid,'0') paid,coalesce(m.outstanding,'0') outstanding,coalesce(m.paid_employees,0) AS "paidEmployees",
     coalesce(m.pending_employees,0) AS "pendingEmployees",coalesce(m.unresolved_employees,0) AS "unresolvedEmployees",
-    coalesce(m.rejected_attempts,0) AS "rejectedAttempts"
+    coalesce(m.failed_employees,0) AS "failedEmployees",coalesce(m.unresolved_minor,'0') AS "unresolvedMinor",coalesce(m.failed_minor,'0') AS "failedMinor",coalesce(m.rejected_attempts,0) AS "rejectedAttempts"
     FROM run_counts rc LEFT JOIN money m USING(period_key) ORDER BY rc.period_key`,params)).rows;
   const activeStaff=await this.hr.payrollActiveCount(tx,a,branch);
   await recordPayrollAudit(tx,a,"RUN","READ");
@@ -84,15 +87,15 @@ export class PayrollRunService{
  private async paymentStates(tx:PoolClient,realm:string,rows:Run[]){
   const ids=rows.filter(r=>r.status==="APPROVED_FROZEN").map(r=>r.id);
   if(!ids.length)return new Map<string,string>();
-  const totals=(await tx.query<{run:string;due:string;paid:string;invalid:boolean;pending:boolean}>(`
+  const totals=(await tx.query<{run:string;due:string;paid:string;invalid:boolean;pending:boolean;failed:boolean}>(`
     SELECT l.run_id run,sum(l.net_minor)::text due,sum(coalesce(p.paid,0))::text paid,
-      bool_or(coalesce(p.invalid,false)) invalid,bool_or(coalesce(p.pending,false)) pending
+      bool_or(coalesce(p.invalid,false)) invalid,bool_or(coalesce(p.pending,false)) pending,bool_or(coalesce(p.failed,false) AND coalesce(p.paid,0)<l.net_minor) failed
     FROM payroll_line l LEFT JOIN payroll_batch_item i ON i.root_realm_id=l.root_realm_id AND i.line_ref=l.id
     LEFT JOIN LATERAL (SELECT sum(o.paid_minor) paid,bool_or(o.reversed OR (o.voucher_status='POSTED' AND o.paid_minor<>o.amount_minor)) invalid,
-      bool_or(o.attempt_status NOT IN('POSTED','REJECTED','FAILED_VERIFIED')) pending FROM payroll_attempt_outcome o WHERE o.root_realm_id=i.root_realm_id AND o.item_ref=i.id)p ON true
+      bool_or(o.attempt_status NOT IN('POSTED','REJECTED','FAILED_VERIFIED')) pending,bool_or(o.attempt_status='FAILED_VERIFIED') failed FROM payroll_attempt_outcome o WHERE o.root_realm_id=i.root_realm_id AND o.item_ref=i.id)p ON true
     WHERE l.root_realm_id=$1 AND l.run_id=ANY($2::uuid[]) GROUP BY l.run_id`,[realm,ids])).rows;
   const result=new Map<string,string>();
-  for(const x of totals){const due=BigInt(x.due),paid=BigInt(x.paid);result.set(x.run,x.invalid||paid>due?"RECONCILIATION_REQUIRED":due===0n?"NO_PAYMENT_DUE":paid===due?"PAID_VERIFIED":paid>0n?"PARTIALLY_PAID":x.pending?"PAYMENT_PENDING":"APPROVED_NOT_PAID");}
+  for(const x of totals){const due=BigInt(x.due),paid=BigInt(x.paid);result.set(x.run,x.invalid||paid>due?"RECONCILIATION_REQUIRED":due===0n?"NO_PAYMENT_DUE":paid===due?"PAID_VERIFIED":paid>0n?"PARTIALLY_PAID":x.pending?"PAYMENT_PENDING":x.failed?"FAILED_TRANSFER_DUE":"APPROVED_NOT_PAID");}
   return result;
  }
  async list(token:string,filters:{period?:string;branchRef?:string;afterPeriod?:string;afterRun?:string}={}){return this.compensation.run(token,"payroll.runs.view",async(tx,a)=>{

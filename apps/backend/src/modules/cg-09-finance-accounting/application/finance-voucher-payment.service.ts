@@ -297,7 +297,7 @@ export class FinanceVoucherPaymentService{
     INSERT INTO finance_event(root_realm_id,actor_ref,entity_kind,entity_ref,action,request_key)
     VALUES($1,$2,'VOUCHER',$3,$4,$5)`,
     [actor.realmId,actor.accountId,voucherRef,
-     next==="VERIFIED"?"VOUCHER_PAYMENT_INDEPENDENTLY_VERIFIED":"VOUCHER_PAYMENT_PROOF_REJECTED",key]);
+     next==="VERIFIED"?"VOUCHER_PAYMENT_INDEPENDENTLY_VERIFIED":action==="CONFIRM_FAILED_TRANSFER"?"PAYROLL_BANK_TRANSFER_FAILURE_VERIFIED":"VOUCHER_PAYMENT_PROOF_REJECTED",key]);
    await client.query("COMMIT");return {confirmed:true,status:action==="CONFIRM_FAILED_TRANSFER"?"FAILED_VERIFIED":next,replayed:false};
   }catch(e){await client.query("ROLLBACK");safePaymentFailure(e);}finally{client.release();}
  }
