@@ -496,7 +496,7 @@ export function LabTestMasterWorkspace({canManage,canViewPricing,
       {" · Live source is rechecked on the public page."}</p>:
      <p className="cg-diagnostics-note">
       This lab is not currently published in the public directory.
-      Pricing here remains private until original CG-14 publication is current.</p>;
+      Pricing stays private until this lab is approved for public display.</p>;
    })()}
    {!centerRef&&<p className="cg-module-empty">Select a lab to review mappings and prices.</p>}
    {!!centerRef&&<div className="cg-diagnostics-layout">
@@ -559,7 +559,7 @@ export function LabTestMasterWorkspace({canManage,canViewPricing,
       <div className="form-section" aria-label="Protected Foundation price decision">
        <p>Approvals require a different authorized Foundation reviewer and
         fresh verification of your current password.
-        These are CG-03 reviewed commercial prices, not paid invoices.</p>
+        These are reviewed commercial prices, not paid invoices.</p>
        <label className="field">Your current Foundation password
         <input type="password" autoComplete="current-password"
          minLength={8} maxLength={1024}
