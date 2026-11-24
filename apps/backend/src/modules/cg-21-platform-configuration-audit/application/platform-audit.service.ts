@@ -72,7 +72,7 @@ function parseTime(value:unknown,name:string):Date{
 function displayResource(safeContext:unknown):string{
   if(safeContext&&typeof safeContext==="object"&&!Array.isArray(safeContext)){
     const info=safeContext as Record<string,unknown>;
-    if(["POLICY","COMPENSATION","PAYOUT","RUN","ACCESS"].includes(String(info.payrollKind))&&["DRAFT_CREATED","SUBMITTED","APPROVED","RETURNED","REJECTED","READ","DENIED","CONFLICT","INVALID"].includes(String(info.payrollResult)))return "Payroll "+String(info.payrollKind).toLowerCase()+" · "+String(info.payrollResult).toLowerCase().replaceAll("_"," ");
+    if(["POLICY","COMPENSATION","PAYOUT","RUN","ACCESS"].includes(String(info.payrollKind))&&["DRAFT_CREATED","IMPORTED","CALCULATED","SUBMITTED","APPROVED","RETURNED","REJECTED","READ","DENIED","CONFLICT","INVALID"].includes(String(info.payrollResult)))return "Payroll "+String(info.payrollKind).toLowerCase()+" · "+String(info.payrollResult).toLowerCase().replaceAll("_"," ");
     if(info.setting==="audit.default_page_size")return "Audit page-size setting";
     if(typeof info.provider==="string"&&typeof info.purpose==="string"&&
        info.provider.length<=65&&info.purpose.length<=65)
