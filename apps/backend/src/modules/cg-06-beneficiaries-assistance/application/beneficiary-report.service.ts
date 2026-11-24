@@ -56,22 +56,39 @@ export class BeneficiaryReportService{
    return report;
   },true);
  }
- /** Current actor scope only. Never pass the detailed owner report or rare cells to MIS. */
- async misSummary(token:string){
-  const x=await this.report(token,{});
-  const {total,male,female,other_or_unknown,children,active,verified}=x.summary;
-  const recipients=x.recipients;
-  const counts=[total,male,female,other_or_unknown,children,active,verified,recipients];
-  if(counts.some(v=>typeof v!=="number"||!Number.isSafeInteger(v)||v<0||v>total)||
-     male+female+other_or_unknown!==total)throw Error("Beneficiary aggregate unavailable");
-  // Suppress the whole report, including totals, if a complement reveals a rare group.
-  const sensitive=[...counts,total-children,total-active,total-verified,total-recipients];
-  const suppressed=sensitive.some(v=>v>0&&v<5);
-  return {state:suppressed?"SUPPRESSED" as const:total===0?"EMPTY" as const:"READY" as const,
-   rows:suppressed||total===0?[]:[{total:String(total),male:String(male),female:String(female),
-    other:String(other_or_unknown),children:String(children),active:String(active),
-    verified:String(verified),recipients:String(recipients)}],
-   sourceAsOf:new Date(x.asOf).toISOString()};
+ async misOptions(token:string){
+  return this.source.run(token,"beneficiaries.assistance.view",(tx,a)=>this.beneficiaries.reportBranchOptions(tx,a),true);
+ }
+ /** Read only the required consented aggregate and original delivery effects.
+  * This deliberately does not execute the detailed owner report or load references. */
+ async misSummary(token:string,branchRef?:string,fromDay?:string,untilDay?:string){
+  if(Boolean(fromDay)!==Boolean(untilDay))throw new BadRequestException("Choose both delivery dates.");
+  const raw={branchRef,from:fromDay,to:untilDay};
+  return this.source.run(token,"beneficiaries.assistance.view",async(tx,a)=>{
+   const {where,params}=await this.beneficiaries.reportScope(tx,a,parseListQuery(raw));
+   const [from,to]=period(raw);
+   const eligible="WITH eligible AS (SELECT b.id,b.branch_scope_id,b.gender,b.age_group,b.verification_state,b.lifecycle_state"+where+" AND b.consent_revoked_at IS NULL)";
+   const summary=(await tx.query<{total:number;male:number;female:number;other:number;children:number;active:number;verified:number}>(
+    eligible+" SELECT count(*)::int total,count(*) FILTER(WHERE gender='MALE')::int male,count(*) FILTER(WHERE gender='FEMALE')::int female,count(*) FILTER(WHERE gender IN('OTHER','NOT_SPECIFIED'))::int other,count(*) FILTER(WHERE age_group='CHILD')::int children,count(*) FILTER(WHERE lifecycle_state='ACTIVE')::int active,count(*) FILTER(WHERE verification_state='VERIFIED')::int verified FROM eligible",params)).rows[0];
+   const recipients=(await tx.query<{recipients:number;all_recipients:number}>(eligible+`
+    SELECT count(DISTINCT b.id) FILTER(WHERE ($19::date IS NULL OR d.at>=($19::date::timestamp AT TIME ZONE 'Asia/Kolkata'))
+      AND ($20::date IS NULL OR d.at<(($20::date+1)::timestamp AT TIME ZONE 'Asia/Kolkata')))::int recipients,
+     count(DISTINCT b.id)::int all_recipients
+    FROM assistance_delivery_event d JOIN assistance_case a ON a.root_realm_id=d.root_realm_id AND a.id=d.assistance_id
+    JOIN assistance_fulfillment f ON f.root_realm_id=d.root_realm_id AND f.id=d.fulfillment_id
+    JOIN eligible b ON b.id=a.beneficiary_id AND b.branch_scope_id IS NOT DISTINCT FROM a.branch_ref
+    WHERE d.root_realm_id=$1 AND d.action IN('DELIVERED','PAID')`,[...params,from,to])).rows[0];
+   const {total,male,female,other,children,active,verified}=summary;
+   const counts=[total,male,female,other,children,active,verified,recipients.recipients,recipients.all_recipients];
+   if(counts.some(v=>!Number.isSafeInteger(v)||v<0||v>total)||male+female+other!==total||recipients.recipients>recipients.all_recipients)
+    throw Error("Beneficiary aggregate unavailable");
+   const sensitive=[...counts,total-children,total-active,total-verified,total-recipients.recipients,total-recipients.all_recipients,recipients.all_recipients-recipients.recipients];
+   const suppressed=sensitive.some(v=>v>0&&v<5);
+   await tx.query("INSERT INTO beneficiary_report_access(root_realm_id,actor_ref,action,filter_digest,row_count) VALUES($1,$2,'READ',$3,$4)",[a.realmId,a.accountId,aidDigest(raw),suppressed?0:total]);
+   return {state:suppressed?"SUPPRESSED" as const:total===0?"EMPTY" as const:"READY" as const,
+    rows:suppressed||total===0?[]:[{total:String(total),male:String(male),female:String(female),other:String(other),children:String(children),active:String(active),verified:String(verified),recipients:String(recipients.recipients)}],
+    sourceAsOf:(await tx.query<{at:Date}>("SELECT transaction_timestamp() AS at")).rows[0].at.toISOString()};
+  },true);
  }
  async export(token:string,raw:Record<string,unknown>){
   return this.source.run(token,"beneficiaries.reports.export",async(tx,a)=>{
