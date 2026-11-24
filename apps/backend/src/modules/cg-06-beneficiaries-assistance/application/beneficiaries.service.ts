@@ -109,10 +109,17 @@ export class BeneficiariesService{
   const state=optionalRef(stateInput);
   return this.run(token,"beneficiaries.view",async(tx,a)=>{
    const scope=await this.scope(tx,a);
-   return {canManageFoundation:scope.all,branches:scope.branches,
+   let canFilterProjects=false;
+   try{await this.identity.assertCurrent(tx,a,"projects.view");canFilterProjects=true;}catch(e){if(!(e instanceof ForbiddenException))throw e;}
+   return {canManageFoundation:scope.all,canFilterProjects,branches:scope.branches.map(({value,label})=>({value,label})),
     states:await this.branches.projectGeographyOptions(tx,a,null),
     districts:state?await this.branches.projectGeographyOptions(tx,a,state):[]};
   });
+ }
+ async projectFilterOptions(token:string,branchInput:unknown,searchInput:unknown){
+  const branch=optionalRef(branchInput),q=searchInput??"";
+  if(typeof q!=="string"||q.length>80)throw new BadRequestException("Check project search");
+  return this.run(token,"beneficiaries.view",async(tx,a)=>this.projects.beneficiaryProjectFilterOptions(tx,a,branch,q.trim()));
  }
  async projectOptions(token:string,branchInput:unknown,searchInput:unknown){
   const branch=optionalRef(branchInput);
@@ -390,8 +397,8 @@ export class BeneficiariesService{
     "AND ($9='' OR b.beneficiary_type=$9) "+
     "AND ($10='' OR strpos(lower(b.display_ref),lower($10))>0 OR "+
     "(b.consent_revoked_at IS NULL AND (strpos(lower(b.private_name),lower($10))>0 OR b.contact_mobile=$10))) "+
-    "AND ($11::uuid IS NULL OR EXISTS (SELECT 1 FROM beneficiary_project_link l "+
-    "WHERE l.root_realm_id=b.root_realm_id AND l.beneficiary_id=b.id AND l.project_ref=$11 AND l.ended_at IS NULL)) "+
+    "AND ($11::uuid IS NULL OR (b.consent_revoked_at IS NULL AND EXISTS (SELECT 1 FROM beneficiary_project_link l "+
+    "WHERE l.root_realm_id=b.root_realm_id AND l.beneficiary_id=b.id AND l.project_ref=$11 AND l.ended_at IS NULL))) "+
     "AND ($12::timestamptz IS NULL OR (b.created_at,b.id)<($12::timestamptz,$13::uuid)) "+
     "AND ($14='' OR b.gender=$14) AND ($15='' OR b.age_group=$15) "+
     "AND ($16::date IS NULL OR b.created_at>=($16::date::timestamp AT TIME ZONE 'Asia/Kolkata')) "+
