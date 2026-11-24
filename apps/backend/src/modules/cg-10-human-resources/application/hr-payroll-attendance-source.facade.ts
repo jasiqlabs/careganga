@@ -31,10 +31,11 @@ export class HrPayrollAttendanceSourceFacade{
   const scope=await this.branches.projectBranchScope(tx,actor);
   // One employee belongs to the last effective assignment in the period. A branch
   // run cannot consume earlier-branch private records; Foundation scope handles transfers.
-  const rows=(await tx.query<{id:string;reference:string;name:string;status:string;statusVersion:number;branchRef:string;assignmentRef:string}>(
-    `SELECT e.id,e.employee_code AS reference,app.legal_name AS name,e.status,e.status_version AS "statusVersion",last.branch_ref AS "branchRef",last.id AS "assignmentRef"
+  const rows=(await tx.query<{id:string;reference:string;name:string;status:string;statusVersion:number;branchRef:string;assignmentRef:string;designation:string;department:string|null;employmentType:string}>(
+    `SELECT e.id,e.employee_code AS reference,app.legal_name AS name,e.status,e.status_version AS "statusVersion",last.branch_ref AS "branchRef",last.id AS "assignmentRef",last.designation,d.name AS department,last.employment_type AS "employmentType"
     FROM hr_employee e JOIN hr_employee_application app ON app.root_realm_id=e.root_realm_id AND app.id=e.application_id
-    JOIN LATERAL (SELECT a.id,a.branch_ref FROM hr_employment_assignment a WHERE a.root_realm_id=e.root_realm_id AND a.employee_id=e.id AND a.valid_from<$3::date AND (a.valid_to IS NULL OR a.valid_to>$2::date) ORDER BY a.valid_from DESC,a.id DESC LIMIT 1) last ON true
+    JOIN LATERAL (SELECT a.id,a.branch_ref,a.designation,a.department_ref,a.employment_type FROM hr_employment_assignment a WHERE a.root_realm_id=e.root_realm_id AND a.employee_id=e.id AND a.valid_from<$3::date AND (a.valid_to IS NULL OR a.valid_to>$2::date) ORDER BY a.valid_from DESC,a.id DESC LIMIT 1) last ON true
+    LEFT JOIN department d ON d.root_realm_id=e.root_realm_id AND d.id=last.department_ref
     WHERE e.root_realm_id=$1 AND ($4::uuid IS NULL OR last.branch_ref=$4) AND ($6::boolean OR last.branch_ref=ANY($5::uuid[])) ORDER BY e.id LIMIT 501 FOR SHARE OF e`,[actor.realmId,from,until,branch,scope.branches.map(b=>b.value),scope.all])).rows;
   if(rows.length>500)throw new BadRequestException("Payroll scope exceeds 500 employees; use branch runs");
   return rows;
