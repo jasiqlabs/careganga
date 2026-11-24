@@ -325,7 +325,8 @@ export default function PublicHome(){
             onPartnerApplication={()=>setPartnerOpen(true)}
             onVolunteerApply={()=>setVolunteerOpen(true)}
             onMembershipApply={setMembershipPlan}
-            onLoginVisibility={setPublicLoginVisible}/>
+            onLoginVisibility={setPublicLoginVisible} onHealthcareDirectory={()=>setDirectoryOpen(true)}
+            onPatientProfile={()=>setPatientOpen(true)}/>
            <NativePublicDonation/>
           <View style={[styles.card,styles.healthFeatureCard]}>
             <Text style={styles.heading}>Become a CareGanga Volunteer</Text>

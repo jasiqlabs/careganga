@@ -36,6 +36,7 @@ export async function CmsEditorialRoute({slug,extra}:{slug:string;extra?:ReactNo
     healthcare center, not through an online checkout.</p>
    <Link className="cg-site-action" href="/health-network?tab=doctors">
     View verified doctors &amp; book an appointment</Link>
+   <p><Link href="/health-network?tab=centers">Find verified healthcare centers</Link>{" · "}<Link href="/health-network/lab-tests">Browse current lab prices</Link>{" · "}<Link href="/patients/me">My patient profile &amp; consultations</Link></p>
    <p>Bookings depend on a current available slot and final confirmation.
     This is not an approval for financial assistance.</p>
   </section>}

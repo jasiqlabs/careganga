@@ -162,9 +162,9 @@ function NativeTeamDirectory(){
   {loading?<ActivityIndicator/>:filtered.length?filtered.map((p,i)=><View key={i} style={styles.person}><Text style={styles.heading}>{p.name}</Text><Text style={styles.role}>{p.designation}</Text></View>):<Text>No currently approved matching profiles.</Text>}
  </View>;
 }
-export function PublicCmsContent({onContact,onPartnerApplication,onMembershipApply,onVolunteerApply,onLoginVisibility}: {
+export function PublicCmsContent({onContact,onPartnerApplication,onMembershipApply,onVolunteerApply,onLoginVisibility,onHealthcareDirectory,onPatientProfile}: {
  onContact:()=>void;onPartnerApplication:()=>void;onMembershipApply:(planCode:string)=>void;onVolunteerApply:()=>void;
- onLoginVisibility:(visible:boolean)=>void}){
+ onLoginVisibility:(visible:boolean)=>void;onHealthcareDirectory:()=>void;onPatientProfile:()=>void}){
  const [slug,setSlug]=useState("home"),[projectCategory,setProjectCategory]=useState("All Projects");
  const [mediaScope,setMediaScope]=useState<"PHOTO"|"VIDEO"|"PUBLICATION">("PHOTO");
  const [ngoScope,setNgoScope]=useState<"80g"|"pan-details"|
@@ -607,6 +607,11 @@ export function PublicCmsContent({onContact,onPartnerApplication,onMembershipApp
     // Never infer operational projects from CMS-only text.
     return null;
    })}
+  </View>}
+  {slug==="healthcare"&&result.state==="PUBLISHED"&&<View style={styles.card}>
+   <Text accessibilityRole="header" style={styles.heading}>Find healthcare services</Text>
+   <CmsButton title="Find verified centers, doctors & lab prices" onPress={onHealthcareDirectory}/>
+   <CmsButton title="My patient profile & consultations" onPress={onPatientProfile} secondary/>
   </View>}
   {effectiveFooter&&<View style={styles.card}>
    <Text accessibilityRole="header" style={styles.heading}>{currentFooterHome?.title}</Text>

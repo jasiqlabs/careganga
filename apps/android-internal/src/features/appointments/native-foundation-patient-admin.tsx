@@ -124,7 +124,7 @@ export function NativeFoundationPatientAdmin({token,onExit,onExpired,canOverride
    .finally(()=>{if(historySerial.current===rev)setHistoryBusy(false);});
   return()=>{historySerial.current++};
  },[token,current?.bookingRef,current?.bookingId,fail]);
- const change=(partial:Partial<Filter>)=>setFilters(f=>({...f,...partial,after:""}));
+ const change=(partial:Partial<Filter>)=>{if(!busy&&!overrideUncertain)setFilters(f=>({...f,...partial,after:""}));};
  useEffect(()=>{setOverridePassword("");setOverrideConfirmed(false);
   setOverrideUncertain(false);overrideKey.current="";},[selected]);
  async function moreHistory(){
@@ -153,7 +153,7 @@ export function NativeFoundationPatientAdmin({token,onExit,onExpired,canOverride
      headers:{Authorization:"Bearer "+token,"Content-Type":"application/json"},
      body:JSON.stringify({requestKey:key,expectedVersion:current.bookingVersion,
       reason:"FOUNDATION_OVERRIDE",currentPassword:overridePassword})
-    });
+    }).catch(e=>{setOverrideUncertain(true);throw e;});
    const raw:unknown=await response.json().catch(()=>null);
    if(!response.ok){
     if([400,401,403,404,409,429].includes(response.status)){
@@ -178,7 +178,7 @@ export function NativeFoundationPatientAdmin({token,onExit,onExpired,canOverride
  }
  async function printHistory(){
   if(!current||!history||history.bookingId!==current.bookingId||
-   history.next||busy||historyBusy)return;
+   history.next||busy||historyBusy||overrideUncertain)return;
   setBusy(true);setNotice("");
   try{
    const proof=await request<{authorized:boolean;bookingId:string;bookingVersion:number}>(
@@ -213,7 +213,7 @@ export function NativeFoundationPatientAdmin({token,onExit,onExpired,canOverride
   (!filters.districtRef||c.districtRef===filters.districtRef)&&
   (!filters.centerType||c.centerType===filters.centerType))??[];
  const option=(caption:string,value:string,selectedValue:string,fn:()=>void)=>
-  button((value===selectedValue?"✓ ":"")+caption,fn,busy);
+  button((value===selectedValue?"✓ ":"")+caption,fn,busy||overrideUncertain);
  return <SafeAreaView style={styles.page}>
   <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
    <Text accessibilityRole="header" style={styles.title}>Foundation patient management</Text>
@@ -234,7 +234,7 @@ export function NativeFoundationPatientAdmin({token,onExit,onExpired,canOverride
      placeholder="Name, virtual patient ID or booking" style={styles.input}
      maxLength={80} value={searchDraft} onChangeText={setSearchDraft}/>
     {button("Search",()=>{if(searchDraft.trim().length===1){setError("Use at least two characters.");return}
-     change({search:searchDraft.trim()});})}
+     change({search:searchDraft.trim()});},busy||overrideUncertain)}
     <Text style={styles.text}>Status</Text>
     <View style={styles.row}>
      {option("All","",filters.status,()=>change({status:""}))}
@@ -263,7 +263,7 @@ export function NativeFoundationPatientAdmin({token,onExit,onExpired,canOverride
     <TextInput accessibilityLabel="Search healthcare centers" style={styles.input}
      placeholder="Healthcare center name" maxLength={60}
      value={centerSearchDraft} onChangeText={setCenterSearchDraft}/>
-    {button("Filter centers",()=>change({centerSearch:centerSearchDraft.trim(),centerRef:""}))}
+    {button("Filter centers",()=>change({centerSearch:centerSearchDraft.trim(),centerRef:""}),busy||overrideUncertain)}
     <Text style={styles.text}>Healthcare center</Text>
     <View style={styles.row}>
      {option("All centers","",filters.centerRef,()=>change({centerRef:""}))}
@@ -290,7 +290,7 @@ export function NativeFoundationPatientAdmin({token,onExit,onExpired,canOverride
      setError("");change({fromDay:fromDraft,untilDay:untilDraft});
     },busy)}
     {button("Reset all filters",()=>{setFilters(empty());setSearchDraft("");
-     setCenterSearchDraft("");setFromDraft("");setUntilDraft("");})}
+     setCenterSearchDraft("");setFromDraft("");setUntilDraft("");},busy||overrideUncertain)}
    </View>
    {busy&&<ActivityIndicator accessibilityLabel="Loading protected patient consultations"/>}
    <Text style={styles.heading}>Consultation records</Text>
@@ -298,11 +298,11 @@ export function NativeFoundationPatientAdmin({token,onExit,onExpired,canOverride
    {result?.items.map(x=><View key={x.bookingRef}>
     {button((selected===x.bookingRef?"✓ ":"")+x.bookingId+" · "+title(x.bookingStatus)+
      "\n"+x.patientName+" · "+x.centerName+"\n"+date(x.startAt,x.timeZone),
-     ()=>{setSelected(x.bookingRef);setError("");},busy)}
+     ()=>{setSelected(x.bookingRef);setError("");},busy||overrideUncertain)}
    </View>)}
    {!!result?.next&&button("Next 20 consultations",()=>setFilters(f=>({...f,
-    after:result.next??""})),busy)}
-   {!!filters.after&&button("First page",()=>setFilters(f=>({...f,after:""})),busy)}
+    after:result.next??""})),busy||overrideUncertain)}
+   {!!filters.after&&button("First page",()=>setFilters(f=>({...f,after:""})),busy||overrideUncertain)}
    {current&&<View style={styles.panel}>
     <Text style={styles.heading}>Selected patient and booking</Text>
     <Text style={styles.text}>Patient: {current.patientName}</Text>
@@ -352,10 +352,10 @@ export function NativeFoundationPatientAdmin({token,onExit,onExpired,canOverride
      "A printed or saved copy cannot be revoked. Print only for an authorized purpose.",[
       {text:"Cancel",style:"cancel"},
       {text:"Print",onPress:()=>void printHistory()}
-     ]),busy||historyBusy||!history||!!history.next)}
+     ]),busy||overrideUncertain||historyBusy||!history||!!history.next)}
    </View>}
    <NativeFoundationDuplicateReviews token={token} onExpired={onExpired}/>
-   {button("Refresh current records",()=>setFilters(f=>({...f})),busy)}
+   {button(overrideUncertain?"Recheck original cancellation":"Refresh current records",()=>setFilters(f=>({...f})),busy)}
   </ScrollView>
  </SafeAreaView>;
 }
