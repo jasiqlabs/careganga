@@ -68,12 +68,12 @@ export function NativePatientCenterCollectionSummary({bookingRef,onExpired}:Prop
   try{setData(await refresh())}catch(e){report(e)}finally{setLoading(false)}
  },[refresh,report]);
  useEffect(()=>{void check()},[check]);
- async function openReceipt(collectionRef:string){
+ async function openReceipt(collectionRef:string,online=false){
   if(loading||!ID.test(collectionRef))return;
   setLoading(true);setMessage("");
   try{
    const res=await expoFetch(target("center-receipts/me/appointments/"+bookingRef+
-    "/collections/"+collectionRef+"/pdf"),{
+    "/collections/"+collectionRef+(online?"/online-pdf":"/pdf")),{
     method:"GET",headers:{Authorization:"Bearer "+await token()},
     signal:AbortSignal.timeout(20000)});
    if(!res.ok)throw Object.assign(new Error(
@@ -89,7 +89,7 @@ export function NativePatientCenterCollectionSummary({bookingRef,onExpired}:Prop
    f.create();await f.write(bytes);preview.current=f;
    if(!await File.canPreview(f,{mimeType:"application/pdf"}))
     throw Error("A compatible private PDF viewer is not available.");
-   await File.preview(f,{title:"My healthcare center cash receipt",
+   await File.preview(f,{title:online?"Verified online payment confirmation":"My healthcare center cash receipt",
     mimeType:"application/pdf"});
   }catch(e){report(e)}finally{setLoading(false)}
  }
@@ -109,6 +109,7 @@ export function NativePatientCenterCollectionSummary({bookingRef,onExpired}:Prop
    {data.outstandingSince&&<Text style={styles.note}>
     Outstanding since accepted charge {new Date(data.outstandingSince)
      .toLocaleDateString("en-IN")}. No late fee is assumed.</Text>}
+   {!loading&&!message&&data.collections?.filter(x=>x.state==="VERIFIED_PROVIDER"&&["UPI","CARD","BANK"].includes(x.method)&&ID.test(x.collectionRef)).map((x,i)=><Pressable key={x.collectionRef} accessibilityRole="button" style={styles.button} onPress={()=>void openReceipt(x.collectionRef,true)}><Text style={styles.buttonText}>Open verified online payment confirmation {i+1} (two copies)</Text></Pressable>)}
    {data.collections?.filter(x=>x.method==="CASH"&&
      x.state==="VERIFIED_CASH"&&x.receiptPdfState==="ISSUED"&&
      ID.test(x.collectionRef)).map((x,i)=>

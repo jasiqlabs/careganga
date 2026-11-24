@@ -13,6 +13,7 @@ import {PrivateObjectStorage}
 import {renderCenterCashReceipt}
  from "../../cg-19-documents-notifications/application/center-collection-receipt-renderer";
 import {ConsultationPatientChargeService} from "./consultation-patient-charge.service";
+import {renderOnlineConfirmation,type VerifiedOnlineConfirmation} from "../../cg-19-documents-notifications/application/center-online-payment-confirmation-renderer";
 const ID=/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i;
 const id=(v:unknown)=>{
  if(typeof v!=="string"||!ID.test(v))
@@ -258,6 +259,45 @@ export class CenterPatientReceiptService{
   });
   const bytes=await this.read(original);
   await this.status(token,center,collection);
+  return bytes;
+ }
+ /** Read-only current provider confirmation. Preserve the separate immutable
+  * CASH receipt path and never expose a manual unverified payment reference.
+  */
+ private async onlineSource(token:string,booking:string,collection:string){
+  const scope=await this.ownPatient(token,booking,collection);
+  return this.tx(async c=>{
+   const result=await c.query<{booking_id:string;center_name:string;payment_ref:string;method:string;captured_at:Date;gross:string;support:string;due:string;captured:string;capture_refunded:string;net:string}>(
+    "SELECT a.booking_display_id AS booking_id,center.display_name AS center_name,"+
+    "collect.external_payment_ref AS payment_ref,collect.method,collect.created_at AS captured_at,"+
+    "charge.gross_minor::text AS gross,charge.support_minor::text AS support,charge.due_minor::text AS due,"+
+    "collect.amount_minor::text AS captured,"+
+    "COALESCE((SELECT SUM(x.refund_minor) FROM center_collection_adjustment x WHERE x.root_realm_id=collect.root_realm_id AND x.collection_ref=collect.id AND x.charge_ref=charge.id),0)::text AS capture_refunded,"+
+    "(COALESCE((SELECT SUM(y.amount_minor) FROM center_collection y WHERE y.root_realm_id=charge.root_realm_id AND y.charge_ref=charge.id AND y.verification_state IN('VERIFIED_CASH','VERIFIED_PROVIDER')),0)-"+
+    "COALESCE((SELECT SUM(z.refund_minor) FROM center_collection_adjustment z WHERE z.root_realm_id=charge.root_realm_id AND z.charge_ref=charge.id),0))::text AS net "+
+    "FROM center_collection collect JOIN patient_charge charge ON charge.root_realm_id=collect.root_realm_id AND charge.id=collect.charge_ref AND charge.center_ref=collect.center_ref "+
+    "JOIN cg15_consultation_appointment a ON a.root_realm_id=charge.root_realm_id AND a.id=charge.source_ref AND a.center_id=charge.center_ref "+
+    "JOIN health_center center ON center.root_realm_id=collect.root_realm_id AND center.id=collect.center_ref "+
+    "JOIN center_payment_attempt attempt ON attempt.root_realm_id=collect.root_realm_id AND attempt.id=collect.attempt_ref AND attempt.charge_ref=charge.id AND attempt.center_ref=collect.center_ref AND attempt.provider_payment_ref=collect.external_payment_ref AND attempt.amount_minor=collect.amount_minor "+
+    "WHERE collect.root_realm_id=$1 AND collect.center_ref=$2 AND collect.id=$3 AND charge.id=$4 AND charge.source_ref=$5 "+
+    "AND charge.source_kind='CG15_CONSULTATION' AND charge.charge_state='ACCEPTED' AND charge.currency='INR' "+
+    "AND collect.verification_state='VERIFIED_PROVIDER' AND collect.method IN('UPI','CARD','BANK') "+
+    "AND EXISTS(SELECT 1 FROM cg17_merchant_event event WHERE event.root_realm_id=collect.root_realm_id AND event.attempt_ref=attempt.id AND event.binding_ref=attempt.binding_ref AND event.result='VERIFIED_CAPTURE')",
+    [scope.root,scope.center,collection,scope.charge,booking]);
+   const row=result.rows[0];
+   if(!row||!row.payment_ref||BigInt(row.captured)<=0n||BigInt(row.capture_refunded)<0n||BigInt(row.capture_refunded)>BigInt(row.captured)||BigInt(row.net)<0n||BigInt(row.net)>BigInt(row.due)||BigInt(row.gross)!==BigInt(row.support)+BigInt(row.due))
+    throw new NotFoundException({code:"CENTER_ONLINE_CONFIRMATION_UNAVAILABLE"});
+   const data:Omit<VerifiedOnlineConfirmation,"checkedAt">={bookingId:row.booking_id,centerName:row.center_name,paymentReference:row.payment_ref,method:row.method,capturedAt:row.captured_at.toISOString(),grossMinor:row.gross,supportMinor:row.support,dueMinor:row.due,capturedMinor:row.captured,captureRefundMinor:row.capture_refunded,collectedMinor:row.net,outstandingMinor:(BigInt(row.due)-BigInt(row.net)).toString()};
+   return data;
+  });
+ }
+ async patientOnlineConfirmation(token:string,bookingRaw:string,collectionRaw:string){
+  const booking=id(bookingRaw),collection=id(collectionRaw);
+  const original=await this.onlineSource(token,booking,collection);
+  const bytes=await renderOnlineConfirmation({...original,checkedAt:new Date().toISOString()});
+  const current=await this.onlineSource(token,booking,collection);
+  if(sha(JSON.stringify(original))!==sha(JSON.stringify(current)))
+   throw new ConflictException({code:"CENTER_ONLINE_CONFIRMATION_SOURCE_CHANGED"});
   return bytes;
  }
  async patientDownload(token:string,bookingRaw:string,collectionRaw:string){

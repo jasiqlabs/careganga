@@ -109,6 +109,10 @@ Dependencies: Within CG-19 **none** for plain text/public Foundation ticket core
 
 ## Execution progress
 
+### Reference-led two-copy online confirmation
+HUX-08.03/11.03: read-only two-copy A4 online payment confirmation added for patient-owned bookings, exact CG17 VERIFIED_PROVIDER capture, matching original attempt and VERIFIED_CAPTURE merchant event. Actual accepted gross/support/due, capture refund and net/outstanding rendered; source and patient scope rechecked after render. Not an immutable cash receipt, tax invoice, or Foundation settlement. Cash one-copy stored receipt unchanged. Web and public Android open the private PDF only for verified provider rows. Test pending/manual reference rejection, another patient/center, partial/refund/full collection, changed source during render and printable A4. Runtime and independent acceptance NOT_RUN.
+
+
 ### Public reference parity re-review
 HUX-09.01/13.01/13.02: published native CMS healthcare categories now have working category-specific directory actions with validated existing CG14 category codes and shared public theme. Selected category survives initial native directory load, generic home entry resets it; unknown editorial labels open full directory. HUX-11.03/15.01: consultation slip measures and wraps authorized names/address before drawing, fits at readable 8.5–10pt without truncating, reserves non-overlapping financial/footer space and calculates QR quiet-zone from matrix size. Source checks only; extreme valid source lengths and scanner/printed output must be tested locally. Original approved one-copy pay-at-center slip remains separate from actual collection receipt; no fake payment or sample data.
 

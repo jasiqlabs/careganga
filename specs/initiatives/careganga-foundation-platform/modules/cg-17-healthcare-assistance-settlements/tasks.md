@@ -156,6 +156,10 @@ Dependencies: US-001
 
 ## Execution progress
 
+### Reference-led two-copy online confirmation
+HUX-08.03/11.03: read-only two-copy A4 online payment confirmation added for patient-owned bookings, exact CG17 VERIFIED_PROVIDER capture, matching original attempt and VERIFIED_CAPTURE merchant event. Actual accepted gross/support/due, capture refund and net/outstanding rendered; source and patient scope rechecked after render. Not an immutable cash receipt, tax invoice, or Foundation settlement. Cash one-copy stored receipt unchanged. Web and public Android open the private PDF only for verified provider rows. Test pending/manual reference rejection, another patient/center, partial/refund/full collection, changed source during render and printable A4. Runtime and independent acceptance NOT_RUN.
+
+
 ### Original healthcare public references — alignment checkpoint (24 Nov 2026)
 HUX-09.01/10.02/10.03/13.01/13.02/11.03/08.03: CMS category titles/descriptions remain published-source content, now include real search and canonical category links. Live approved CG17 policy cards replace screenshot sample percentages; public native adds category quick filters and verified same-center doctor actions (no fake booking). Native payable amount highlight; private Web consultation grouped detail and document actions, response identity guard; Web history earlier in profile. Source-only; no screenshot parity/runtime certification. Existing CMS category image schema is text-only; illustrated tiles/hero assets require CMS media mapping and actual approved content. Patient profile registration remains verified/consent-gated; full booking-linked navigation/preview and real online document copy contract still pending.
 Reference-led directory/profile, UI06 selected slot summary, UI08/09 payment and private document presentation on separate hardening branch. Original QA definitions retained, actual render/build/device/provider/independent acceptance NOT_RUN. See [tracker](../../HEALTHCARE_UIUX_HARDENING_TRACKER.md).

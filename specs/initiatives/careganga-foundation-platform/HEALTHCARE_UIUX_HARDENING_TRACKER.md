@@ -171,6 +171,10 @@ Seven grouped contract assertions were executed against remote source at 9e975a6
 
 HUX-09.01/02.01/13.02: fresh-install CMS draft now contains the reference-led nine editable healthcare categories, green/gold hero editorial copy, and no invented clinical/financial data. Existing FEATURE placement reused for indexed healthcare illustrations; server validates category existence and existing clean rights-approved media controls; Web and internal Android editors can attach image, public Web/native render same approved placement, removal shifts Web index or safely detaches native illustrations after category identity changes. First-install draft content is not automatically approved or published by this commit. Actual original/illustrative image files need approved uploads and publication; no sample screenshot portraits or patient data. Source/runtime acceptance pending.
 
+## Two-copy verified online payment confirmation
+
+HUX-08.03/11.03: read-only two-copy A4 online payment confirmation added for patient-owned bookings, exact CG17 VERIFIED_PROVIDER capture, matching original attempt and VERIFIED_CAPTURE merchant event. Actual accepted gross/support/due, capture refund and net/outstanding rendered; source and patient scope rechecked after render. Not an immutable cash receipt, tax invoice, or Foundation settlement. Cash one-copy stored receipt unchanged. Web and public Android open the private PDF only for verified provider rows. Test pending/manual reference rejection, another patient/center, partial/refund/full collection, changed source during render and printable A4. Runtime and independent acceptance NOT_RUN.
+
 ## Subtracker details and expected user scenarios
 
 ### HUX-01.01 — Recover separate healthcare reference originals

@@ -58,7 +58,7 @@ export function PatientCenterCollectionSummary({bookingRef}:{bookingRef:string})
    <dl className="cg-diagnostics-summary">
     <div><dt>Patient amount</dt><dd>{money(data.patientDueMinor!)}</dd></div>
     <div><dt>Verified center received</dt><dd>{money(data.collectedMinor!)}</dd></div>
-    <div><dt>Still due</dt><dd>{money(data.outstandingMinor!)}</dd></div>
+    <div className="cg-health-amount"><dt>Still due</dt><dd>{money(data.outstandingMinor!)}</dd></div>
     <div><dt>Electronic verification pending (not paid)</dt>
      <dd>{money(data.pendingElectronicMinor!)}</dd></div>
    </dl>}
@@ -72,6 +72,7 @@ export function PatientCenterCollectionSummary({bookingRef}:{bookingRef:string})
      bookingRef+"/collections/"+c.collectionRef+"/pdf"}>
      Download cash receipt {i+1}</a></p>)}
   </section>}
+  {!checking&&!error&&data?.collections?.filter(c=>c.state==="VERIFIED_PROVIDER"&&["UPI","CARD","BANK"].includes(c.method)&&/^[a-f0-9]{8}(?:-[a-f0-9]{4}){3}-[a-f0-9]{12}$/i.test(c.collectionRef)).map((c,i)=><p key={c.collectionRef}><a href={"/api/healthcare-assistance/center-receipts/me/appointments/"+bookingRef+"/collections/"+c.collectionRef+"/online-pdf"}>Download verified online payment confirmation {i+1} (two copies)</a></p>)}
   {data?.outstandingSince&&<p>Outstanding since accepted charge on {
    new Date(data.outstandingSince).toLocaleDateString("en-IN")}.
    No late charge is assumed.</p>}
