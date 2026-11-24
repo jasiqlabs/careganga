@@ -161,6 +161,10 @@ Dependencies: US-002 (actual verified active CG-14 center/account, delivered bas
 
 ## Execution progress
 
+### Healthcare hardening — protected review and assigned center
+HUX-04.04/04.05: Web review case and own-center selection now validate returned identity, prevent stale response/form/evidence callbacks, suppress switching during uncertain actions, and require original-source recheck before retry. Both Web/native center registration confirm discard; native centre editor blocks switching during unknown original result and keeps proof tied to selected version. Web apply button respects original owner-management grant. CG14 US-002/005 and applicable US-001 review/own-center scenarios source-traced; verify delayed A/B response, uncertain save, upload completion after changing selection, reviewer-only action and approved publication. Runtime/independent review NOT_RUN.
+
+
 ### Healthcare hardening — center and time-first navigation
 HUX-10.04/11.02: Web doctor cards/profile pass the chosen public center slug into schedule, resolved only against current verified options after date selection; native retains selected center hint, highlights it without automatic booking, adds direct time-first search, retry and stale-day/center response guards. CG15 US-002-QA01/02/04/05/06/07/09/12/13 and CG14 US-004-QA11/12/17 partial source trace. Verify center A/B distinct fees, withdrawn selected center, both search modes, date change and error retry, no slot/price assumptions. Runtime NOT_RUN; independent review pending.
 

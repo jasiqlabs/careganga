@@ -10,7 +10,7 @@ This user-requested cross-module subtracker supplements (does not replace) origi
 
 ## Summary
 
-37 subitems: 17 source-confirmed presentation gaps, 19 runtime/reproduction candidates, 1 reference evidence blocker. Initial baseline: all OPEN. Current progress: 24 rows IN_PROGRESS (including partial cross-cutting work); 13 rows OPEN; zero independently cleared or runtime passes. P0 = release visual evidence gate; P1 = primary journey or substantial usability; P2 = secondary usability. Source status and runtime status stay separate.
+37 subitems: 17 source-confirmed presentation gaps, 19 runtime/reproduction candidates, 1 reference evidence blocker. Initial baseline: all OPEN. Current progress: 26 rows IN_PROGRESS (including partial cross-cutting work); 11 rows OPEN; zero independently cleared or runtime passes. P0 = release visual evidence gate; P1 = primary journey or substantial usability; P2 = secondary usability. Source status and runtime status stay separate.
 
 | ID | Priority | Evidence | Owner/surface | Issue | State |
 |---|---|---|---|---|---|
@@ -21,8 +21,8 @@ This user-requested cross-module subtracker supplements (does not replace) origi
 | HUX-04.01 | P1 | SOURCE | CG14 US-001 admin | Provider registration form density | IN_PROGRESS |
 | HUX-04.02 | P1 | SOURCE | CG14 US-003 admin | Doctor list lacks in-screen search/filter | IN_PROGRESS |
 | HUX-04.03 | P1 | SOURCE | CG14 US-003 admin | Doctor registration/detail hierarchy | IN_PROGRESS |
-| HUX-04.04 | P1 | CHECK | CG14 US-002/003 admin/center | Verification and evidence clarity | OPEN |
-| HUX-04.05 | P1 | CHECK | CG14 US-005 center/admin | Center profile and content editing | OPEN |
+| HUX-04.04 | P1 | CHECK | CG14 US-002/003 admin/center | Verification and evidence clarity | IN_PROGRESS |
+| HUX-04.05 | P1 | CHECK | CG14 US-005 center/admin | Center profile and content editing | IN_PROGRESS |
 | HUX-05.01 | P1 | CHECK | CG15 US-001 admin/center | Scheduling calendar and availability | OPEN |
 | HUX-06.01 | P1 | CHECK | CG15 US-003/008 admin | Patient and booking management | OPEN |
 | HUX-06.02 | P1 | SOURCE | CG15 US-006 center web | Consultation queue action overload | IN_PROGRESS |
@@ -103,6 +103,10 @@ Main `781276ab68a29ef866ecf927f41b88d68f6753f5` is one commit ahead of the manda
 ## Patient history, payment truth and native theme parity
 
 - HUX-11.03/13.02/08.03/15.02: patient Web/native appointment history clears stale rows and selected protected details on fresh query, guards pagination by list generation, differentiates failed lookup and empty state, and shows actual doctor/center and payment status; removes obsolete unconditional unpaid/receipt wording now that CG17 collection source exists. Native patient profile gives consultations earlier priority and all patient subviews use shared public palette. Time-first comparison no longer duplicates old center actions. CG15 US-007/008 original history, cancellation, slip and reschedule scenarios and CG17 US-003/004 collection scenarios require actual source-backed regression with paid, pending, cancelled, refunded, slow query and expired session. Runtime NOT_RUN.
+
+## Protected review and assigned-center UX
+
+- HUX-04.04/04.05: Web review case and own-center selection now validate returned identity, prevent stale response/form/evidence callbacks, suppress switching during uncertain actions, and require original-source recheck before retry. Both Web/native center registration confirm discard; native centre editor blocks switching during unknown original result and keeps proof tied to selected version. Web apply button respects original owner-management grant. CG14 US-002/005 and applicable US-001 review/own-center scenarios source-traced; verify delayed A/B response, uncertain save, upload completion after changing selection, reviewer-only action and approved publication. Runtime/independent review NOT_RUN.
 
 ## Subtracker details and expected user scenarios
 
