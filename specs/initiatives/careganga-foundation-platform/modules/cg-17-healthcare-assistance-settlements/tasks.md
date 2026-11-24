@@ -355,3 +355,5 @@ Source bypass found and corrected in existing `PatientClinicalFileSharingService
 
 ### 24 November — HUX-08.03/15.02 patient collection summary stale-state repair
 - CG17 US-004-QA01/08/09: Web manual refresh previously retained old payment amounts and issued cash links on failed refresh; a late manual response could overwrite a new booking's state. Scope the component by booking identity; all refresh paths clear old data and use a request generation with cleanup. Source commit 5c1be7d888c444634f4d935709504dc8ad6bb5fa. No payment or permission contract changes. Next: mirror native behavior and verify denied/failed refresh and slow A→B selection. Independent review unavailable; runtime NOT_RUN.
+
+- Native parity source commit b8c6cea9cf737c8d137673c54da14cdcaa450277: same booking-keyed component and generation-guarded clearing/refresh; suppress old cash links when pending/error, reject stale PDF result before write/preview and remove temporary file on abandoned preview. CG17 US-004-QA01/08/09, HUX-08.03/15.02. Verify switch/unmount during download, 401/403/timeout, retry and private preview cleanup. Independent review unavailable; runtime NOT_RUN.
