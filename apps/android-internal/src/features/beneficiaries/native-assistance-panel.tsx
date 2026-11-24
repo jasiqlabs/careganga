@@ -12,7 +12,7 @@ type Choices={stores:Choice[];items:Choice[];projects:Choice[];activities:Choice
 type PaymentChoices={years:Choice[];accounts:Choice[];paymentAccounts:Choice[]};
 type Props={beneficiary:{ref:string;revision:number;verification:string;lifecycle:string;consentRevoked:boolean};canManage:boolean;canReview:boolean;canDeliver:boolean;canStock:boolean;canFinance:boolean;canEvidence:boolean};
 const pretty=(s:string)=>s.toLowerCase().replaceAll("_"," ").replace(/^./,c=>c.toUpperCase());
-const day=()=>{const d=new Date();return new Intl.DateTimeFormat("en-CA",{timeZone:"Asia/Kolkata",year:"numeric",month:"2-digit",day:"2-digit"}).format(d);};
+const day=()=>new Date(Date.now()+330*60000).toISOString().slice(0,10);
 const money=(minor:string|null|undefined)=>{const n=BigInt(minor??"0");return "₹"+(n/100n).toString()+"."+(n%100n).toString().padStart(2,"0");};
 function toMinor(v:string){if(!/^[0-9]{1,12}(?:\.[0-9]{1,2})?$/.test(v))throw Error("Enter a positive rupee amount with at most two decimal places.");const [a,b=""]=v.split(".");const n=BigInt(a)*100n+BigInt((b+"00").slice(0,2));if(n<1n||n>99999999999999n)throw Error("Enter a valid positive rupee amount.");return n.toString();}
 const initial=()=>({category:"",kind:"MATERIAL" as "MATERIAL"|"FINANCIAL",location:"",item:"",quantity:"",amount:"",date:day(),responsible:"",project:"",activity:"",visit:"",campaign:""});
