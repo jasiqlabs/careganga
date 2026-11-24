@@ -11,6 +11,9 @@ type DuplicateSuggestion={reference:string;maskedName:string;beneficiaryType:str
 type DuplicateResponse={advisory:boolean;items:DuplicateSuggestion[];hasMore:boolean};
 type ActionHistory={action:string;revision:number;reason:string|null;at:string};
 type VerificationHistory={decision:string;sourceRevision:number;at:string};
+type ReviewInfo={status:string;caseNumber:string|null;revision?:number;canReview:boolean;caseRef:string|null;
+ sourceRevision:number;sourceVerification:string;allowedDecisions?:string[];requiresCurrentPassword?:boolean;
+ decisions?:{action:string;remarks:string;at:string}[]};
 type Option={value:string;label:string};
 type Options={canManageFoundation:boolean;branches:Option[];states:Option[];districts:Option[]};
 type Form={branchRef:string;name:string;contactMobile:string;representativeName:string;representativeContact:string;
@@ -40,8 +43,9 @@ function fromItem(x:Item):Form{
   consentPurpose:x.consentPurpose??"",consentAcknowledged:true};
 }
 const tabs=[["ALL","All"],["ACTIVE","Active"],["INACTIVE","Inactive"],["VERIFIED","Verified"],["PENDING","Pending verification"]] as const;
-export function BeneficiariesWorkspace({canManage,canLinkProjects,canManageLifecycle,canRevoke}:{
+export function BeneficiariesWorkspace({canManage,canLinkProjects,canManageLifecycle,canRevoke,canSubmitVerification,canReviewVerification}:{
  canManage:boolean;canLinkProjects:boolean;canManageLifecycle:boolean;canRevoke:boolean;
+ canSubmitVerification:boolean;canReviewVerification:boolean;
 }){
  const [page,setPage]=useState<Page|null>(null),[busyList,setBusyList]=useState(true),[error,setError]=useState(""),[notice,setNotice]=useState("");
  const [q,setQ]=useState(""),[search,setSearch]=useState(""),[tab,setTab]=useState("ALL"),
@@ -56,6 +60,10 @@ export function BeneficiariesWorkspace({canManage,canLinkProjects,canManageLifec
  const [duplicates,setDuplicates]=useState<DuplicateResponse|null>(null),
   [checkingDuplicates,setCheckingDuplicates]=useState(false);
  const [actionHistory,setActionHistory]=useState<ActionHistory[]>([]),[verificationHistory,setVerificationHistory]=useState<VerificationHistory[]>([]);
+ const [review,setReview]=useState<ReviewInfo|null>(null),[reviewAction,setReviewAction]=useState("APPROVE");
+ const [reviewRemarks,setReviewRemarks]=useState(""),[reviewPassword,setReviewPassword]=useState("");
+ const [verificationBusy,setVerificationBusy]=useState(false);
+ const submitKey=useRef(crypto.randomUUID()),decisionKey=useRef(crypto.randomUUID());
  const seq=useRef(0),drawer=useRef<HTMLElement|null>(null),focus=useRef<HTMLElement|null>(null);
  const update=(k:keyof Form,v:string|boolean)=>{setForm(x=>({...x,[k]:v}));setDuplicates(null);};
  useEffect(()=>{let live=true;void api<Options>("/options").then(v=>{if(live)setOpts(v);}).catch(e=>{if(live)setError(e.message);});return()=>{live=false;};},[]);
@@ -94,16 +102,45 @@ export function BeneficiariesWorkspace({canManage,canLinkProjects,canManageLifec
  const choose=async(id:string)=>{
   setDetailLoading(true);setSelected(null);setNotice("");
   try{
-    const [detail,actions,verification]=await Promise.all([
+    const [detail,actions,verification,reviewState]=await Promise.all([
      api<Item>("/"+id),
      api<{items:ActionHistory[]}>("/"+id+"/history"),
-     api<{items:VerificationHistory[]}>("/"+id+"/verification-history")
+     api<{items:VerificationHistory[]}>("/"+id+"/verification-history"),
+      api<ReviewInfo>("/"+id+"/verification-review")
     ]);
     setSelected(detail);setActionHistory(actions.items);setVerificationHistory(verification.items);
+     setReview(reviewState);setReviewPassword("");setReviewRemarks("");
     setProjectRef("");setLinkKey(crypto.randomUUID());
    }
   catch(e){setError(e instanceof Error?e.message:"Beneficiary unavailable");}
   finally{setDetailLoading(false);}
+ };
+ const submitVerification=async()=>{
+  if(!selected||verificationBusy||!canSubmitVerification)return;
+  setVerificationBusy(true);setError("");
+  try{
+   const outcome=await api<{caseNumber:string;status:string}>("/"+selected.ref+"/submit-verification","POST",{
+    requestKey:submitKey.current,expectedRevision:selected.revision});
+   submitKey.current=crypto.randomUUID();
+   await choose(selected.ref);refresh();
+   setNotice("Submitted to independent CG-03 review: "+outcome.caseNumber);
+  }catch(e){setError(e instanceof Error?e.message:"Cannot confirm verification submission. Reuse this request to retry.");}
+  finally{setVerificationBusy(false);}
+ };
+ const decideVerification=async()=>{
+  if(!selected||!review?.canReview||!review.caseRef||!review.revision||
+    !canReviewVerification||verificationBusy)return;
+  setVerificationBusy(true);setError("");
+  try{
+   const outcome=await api<{status:string}>("/verification-cases/"+review.caseRef+"/decide","POST",{
+    requestKey:decisionKey.current,expectedRevision:review.revision,
+    action:reviewAction,remarks:reviewRemarks,currentPassword:reviewPassword});
+   decisionKey.current=crypto.randomUUID();
+   setReviewPassword("");setReviewRemarks("");
+   await choose(selected.ref);refresh();
+   setNotice("Original CG-03 review outcome: "+nice(outcome.status));
+  }catch(e){setError(e instanceof Error?e.message:"Review not confirmed. Check the current case before retrying.");}
+  finally{setVerificationBusy(false);}
  };
  const checkDuplicates=async()=>{
   if(checkingDuplicates)return;
@@ -224,7 +261,32 @@ export function BeneficiariesWorkspace({canManage,canLinkProjects,canManageLifec
       <div>Consent: {selected.consentRevoked?"Withdrawn":nice(selected.consentKind)}</div>
       {selected.verification!=="VERIFIED"&&<p style={{fontSize:12,color:"var(--cg-muted)"}}>
        Independent verification requires the CG-03 reviewer workflow. This screen never self-approves.</p>}
-      {canManage&&!selected.consentRevoked&&selected.lifecycle==="ACTIVE"&&
+      {review&&<div style={{...card,display:"grid",gap:8}}>
+        <strong>CG-03 independent verification &amp; approval</strong>
+        <div>Case: {review.caseNumber??"Not submitted"} · {nice(review.status)}</div>
+        {canSubmitVerification&&!selected.consentRevoked&&selected.lifecycle==="ACTIVE"&&
+         ["DRAFT","RETURNED","REJECTED"].includes(selected.verification)&&
+         <button type="button" style={primary} disabled={verificationBusy}
+          onClick={()=>void submitVerification()}>
+          {verificationBusy?"Submitting…":"Submit for independent verification"}</button>}
+        {canReviewVerification&&review.canReview&&review.caseRef&&
+         <div style={{display:"grid",gap:8}}>
+          <label style={field}>Review decision
+           <select style={input} value={reviewAction} onChange={e=>{
+            setReviewAction(e.target.value);decisionKey.current=crypto.randomUUID();}}>
+            {["APPROVE","RETURN","REJECT"].map(x=><option key={x} value={x}>{nice(x)}</option>)}</select></label>
+          <label style={field}>Review remarks
+           <textarea style={input} rows={2} maxLength={500} value={reviewRemarks}
+            onChange={e=>setReviewRemarks(e.target.value)}/></label>
+          <label style={field}>Current Foundation password
+           <input type="password" autoComplete="off" style={input} value={reviewPassword}
+            onChange={e=>setReviewPassword(e.target.value)}/></label>
+          <button type="button" style={primary} disabled={verificationBusy||reviewPassword.length<8||
+           (reviewAction!=="APPROVE"&&reviewRemarks.trim().length<3)}
+           onClick={()=>void decideVerification()}>Confirm independent decision</button>
+         </div>}
+       </div>}
+       {canManage&&!selected.consentRevoked&&selected.lifecycle==="ACTIVE"&&
        <button type="button" style={secondary} onClick={()=>open("edit")}>Edit beneficiary</button>}
       <h3 style={{fontSize:15,marginBottom:0}}>Linked projects</h3>
       {selected.projectLinks?.length?selected.projectLinks.map(x=><div key={x.ref} style={{display:"flex",gap:8,justifyContent:"space-between",alignItems:"center"}}>
