@@ -1,0 +1,24 @@
+import {cookies} from "next/headers";
+import {NextRequest,NextResponse} from "next/server";
+export const dynamic="force-dynamic";
+type Context={params:Promise<{parts?:string[]}>};
+const uuid=(x:string)=>/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i.test(x);
+const reply=(body:unknown,status=200)=>NextResponse.json(body,{status,headers:{"Cache-Control":"private, no-store"}});
+async function proxy(req:NextRequest,ctx:Context,method:"GET"|"POST"){
+ const p=(await ctx.params).parts??[];
+ const valid=method==="GET"&&(p.length===1&&["employee-options","policies","review-cases"].includes(p[0])||p.length===2&&p[0]==="review-cases"&&uuid(p[1])||p.length===3&&p[0]==="employees"&&uuid(p[1])&&["compensation","salary-history"].includes(p[2]))||method==="POST"&&(p.length===1&&p[0]==="policies"||p.length===3&&p[0]==="employees"&&uuid(p[1])&&p[2]==="compensation"||p.length===4&&p[0]==="sources"&&["POLICY","COMPENSATION"].includes(p[1])&&uuid(p[2])&&p[3]==="submit"||p.length===3&&p[0]==="review-cases"&&uuid(p[1])&&p[2]==="decide");
+ if(!valid)return reply({message:"Payroll action unavailable"},404);
+ if(method==="POST"&&req.headers.get("origin")!==req.nextUrl.origin)return reply({message:"Request origin not allowed"},403);
+ const token=(await cookies()).get("cg_staff_session")?.value;if(!token)return reply({message:"Sign in again"},401);
+ const base=process.env.BACKEND_URL;if(!base)return reply({message:"Payroll unavailable"},503);
+ try{
+  const url=new URL("/api/v1/payroll/"+p.join("/"),base);
+  for(const k of ["branchRef","q"]){const v=req.nextUrl.searchParams.get(k);if(v!==null&&v.length<=100)url.searchParams.set(k,v);}
+  const body=method==="POST"?await req.text():undefined;if(body&&body.length>32000)return reply({message:"Check payroll fields"},400);
+  const r=await fetch(url,{method,body,headers:{Authorization:"Bearer "+token,"Content-Type":"application/json"},cache:"no-store",signal:AbortSignal.timeout(12000)});
+  const data=await r.json().catch(()=>null);if(r.ok&&data!==null)return reply(data,r.status);
+  return reply({message:r.status===401?"Sign in again":r.status===403?"Current payroll authority denied":r.status===404?"Payroll source unavailable":r.status===400?"Check the payroll fields and dates":r.status===409?"Original source or approval changed. Refresh and check the effective period.":"Outcome not confirmed. Refresh and retry the same request."},r.ok?503:r.status);
+ }catch{return reply({message:"Outcome not confirmed. Refresh and retry the same request."},503);}
+}
+export const GET=(req:NextRequest,ctx:Context)=>proxy(req,ctx,"GET");
+export const POST=(req:NextRequest,ctx:Context)=>proxy(req,ctx,"POST");
