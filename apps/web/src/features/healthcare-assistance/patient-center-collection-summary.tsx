@@ -1,5 +1,5 @@
 "use client";
-import {useCallback,useEffect,useState} from "react";
+import {useCallback,useEffect,useRef,useState} from "react";
 type Actual={state:string;patientDueMinor?:string;collectedMinor?:string;
  outstandingMinor?:string;pendingElectronicMinor?:string;
  refundedOrCorrectedMinor?:string;currency?:string;
@@ -26,6 +26,10 @@ const money=(v:string)=>new Intl.NumberFormat("en-IN",{
  * collection or Foundation account source. Never implies pending=received.
  */
 export function PatientCenterCollectionSummary({bookingRef}:{bookingRef:string}){
+ return <ScopedPatientCenterCollectionSummary key={bookingRef} bookingRef={bookingRef}/>;
+}
+function ScopedPatientCenterCollectionSummary({bookingRef}:{bookingRef:string}){
+ const generation=useRef(0);
  const [data,setData]=useState<Actual|null>(null),[error,setError]=useState("");
  const [checking,setChecking]=useState(true);
  const refresh=useCallback(async()=>{
@@ -38,13 +42,14 @@ export function PatientCenterCollectionSummary({bookingRef}:{bookingRef:string})
   if(!valid(original))throw Error("Actual patient balance is unavailable.");
   return original;
  },[bookingRef]);
- useEffect(()=>{
-  let active=true;setChecking(true);setData(null);setError("");
-  void refresh().then(v=>{if(active)setData(v)}).catch(e=>{
-   if(active)setError(e instanceof Error?e.message:"Payment status unavailable");
-  }).finally(()=>{if(active)setChecking(false)});
-  return()=>{active=false};
+ const check=useCallback(async()=>{
+  const request=++generation.current;
+  setChecking(true);setData(null);setError("");
+  try{const value=await refresh();if(request===generation.current)setData(value);}
+  catch(e){if(request===generation.current)setError(e instanceof Error?e.message:"Payment status unavailable");}
+  finally{if(request===generation.current)setChecking(false);}
  },[refresh]);
+ useEffect(()=>{void check();return()=>{generation.current++;};},[check]);
  if(!/^[a-f0-9]{8}(?:-[a-f0-9]{4}){3}-[a-f0-9]{12}$/i.test(bookingRef))
   return null;
  return <section className="cg-diagnostics-card"
@@ -79,9 +84,7 @@ export function PatientCenterCollectionSummary({bookingRef}:{bookingRef:string})
   <p>Only verified center collections are counted. An entered UPI/card
    reference does not confirm payment; Foundation assistance is separate.</p>
   <button type="button" disabled={checking}
-   onClick={()=>{setChecking(true);setError("");void refresh().then(setData)
-    .catch(e=>setError(e instanceof Error?e.message:"Status unavailable."))
-    .finally(()=>setChecking(false));}}>
+   onClick={()=>void check()}>
    {checking?"Checking original…":"Refresh my payment status"}</button>
  </section>;
 }
