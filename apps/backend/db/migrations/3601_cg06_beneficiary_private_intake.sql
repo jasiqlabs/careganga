@@ -73,7 +73,7 @@ CREATE TABLE beneficiary_command (
 );
 CREATE INDEX ix_cg06_beneficiary_history ON beneficiary_command(root_realm_id,beneficiary_id,occurred_at DESC,id DESC);
 CREATE FUNCTION cg06_immutable_event() RETURNS trigger LANGUAGE plpgsql AS $$
-BEGIN RAISE EXCEPTION 'Beneficiary history is immutable'; END $$;
+BEGIN RAISE EXCEPTION 'Beneficiary history is immutable'; END; $$;
 CREATE TRIGGER cg06_command_immutable BEFORE UPDATE OR DELETE ON beneficiary_command
  FOR EACH ROW EXECUTE FUNCTION cg06_immutable_event();
 
