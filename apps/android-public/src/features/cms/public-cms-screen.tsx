@@ -202,7 +202,7 @@ export function PublicCmsContent({onContact,onPartnerApplication,onMembershipApp
  },[refreshNavigation]);
  useEffect(()=>{
   const sub=AppState.addEventListener("change",state=>{
-   if(state==="active"){if(slug!=="campaigns")void load(slug);void refreshNavigation();}
+   if(state==="active"){if(slug!=="campaigns"&&slug!=="@newsletter")void load(slug);void refreshNavigation();}
   });
   return()=>sub.remove();
  },[slug,load,refreshNavigation]);
