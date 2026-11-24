@@ -57,6 +57,9 @@ export class CmsPublicPagesController{
  articles(@Query("category")category?:string,@Query("cursor")cursor?:string){
   return this.cms.publicArticles(category,cursor);
  }
+ @Get("events")
+ @Header("Cache-Control","no-store")
+ events(@Query("cursor")cursor?:string){return this.cms.publicArticles(undefined,cursor,true);}
  @Get("notices")
  @Header("Cache-Control","no-store")
  @Header("X-Content-Type-Options","nosniff")
