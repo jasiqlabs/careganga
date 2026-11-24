@@ -304,6 +304,16 @@ export class BeneficiariesService{
    row.beneficiary_type,row.gender,row.age_group,row.consent_kind,row.consent_purpose,
    row.consent_acknowledged_at.toISOString(),row.consent_revoked_at?.toISOString()??null]);
  }
+ /** Original CG06 access check for CG19, including fresh consent and active branch. */
+ async guardEvidence(tx:PoolClient,a:Actor,id:string,expected:number|null,write:boolean){
+  await this.identity.assertCurrent(tx,a,"beneficiaries.view");
+  if(write)await this.identity.assertCurrent(tx,a,"beneficiaries.manage");
+  const row=await this.row(tx,a,id,write);
+  await this.branches.projectBranch(tx,a,row.branch_scope_id);
+  if(row.consent_revoked_at||row.lifecycle_state!=="ACTIVE")throw new NotFoundException("Beneficiary evidence unavailable");
+  if(expected!==null&&expected!==row.profile_revision)throw conflict();
+  return {id:row.id,version:row.profile_revision};
+ }
  async guardVerificationSource(tx:PoolClient,a:Actor,id:string,write:boolean){
   await this.identity.assertCurrent(tx,a,"beneficiaries.view");
   const row=await this.row(tx,a,id,write);
