@@ -24,6 +24,8 @@ export function LabTestMasterWorkspace({canManage,canViewPricing,
  const [centers,setCenters]=useState<DiagnosticCenter[]>([]);
  const [mappings,setMappings]=useState<DiagnosticMapping[]>([]);
  const [prices,setPrices]=useState<DiagnosticPrice[]>([]);
+ const priceFilter=useRef({status:"",offset:0});
+ const [nextPriceOffset,setNextPriceOffset]=useState<number|null>(null),[priceLoading,setPriceLoading]=useState(false);
  const [centerRef,setCenterRef]=useState("");
  const [selectedRef,setSelectedRef]=useState("");
  const [tab,setTab]=useState("Test Information");
@@ -85,16 +87,19 @@ export function LabTestMasterWorkspace({canManage,canViewPricing,
  },[loadTests,canViewPricing]);
  const reloadCenter=useCallback(async(ref:string)=>{
   const epoch=++centerEpoch.current;
-  if(!ref){setMappings([]);setPrices([]);return;}
-  const [a,p]=await Promise.all([
+  setPrices([]);setNextPriceOffset(null);
+  if(!ref){setMappings([]);setPriceLoading(false);return;}
+  setPriceLoading(true);
+  const filter=priceFilter.current;
+  try{const [a,p]=await Promise.all([
    diagnosticsCall<{mappings:DiagnosticMapping[]}>(
     "centers/"+encodeURIComponent(ref)+"/tests"),
-   diagnosticsCall<{prices:DiagnosticPrice[]}>(
-    "centers/"+encodeURIComponent(ref)+"/test-prices")
+   diagnosticsCall<{prices:DiagnosticPrice[];nextOffset:number|null}>(
+    "centers/"+encodeURIComponent(ref)+"/test-prices?"+new URLSearchParams({priceStatus:filter.status,offset:String(filter.offset)}).toString())
   ]);
   if(epoch===centerEpoch.current){
-   setMappings(a.mappings??[]);setPrices(p.prices??[]);
-  }
+   setMappings(a.mappings??[]);setPrices(p.prices??[]);setNextPriceOffset(p.nextOffset??null);
+  }}finally{if(epoch===centerEpoch.current)setPriceLoading(false);}
  },[]);
  useEffect(()=>{
   let mounted=true;
@@ -106,10 +111,15 @@ export function LabTestMasterWorkspace({canManage,canViewPricing,
  },[reload]);
  useEffect(()=>{
   if(!canViewPricing)return;
-  setMappings([]);setPrices([]);setItemRef("");setMappingRef("");
+  priceFilter.current={status:"",offset:0};setNextPriceOffset(null);setMappings([]);setPrices([]);setItemRef("");setMappingRef("");
   void reloadCenter(centerRef).catch(e=>setError(e instanceof Error?e.message:
    "Center test mappings cannot be confirmed."));
  },[centerRef,canViewPricing,reloadCenter]);
+ function filterPrices(status:string,offset=0){
+  if(!centerRef||busy||uncertain||priceLoading)return;
+  priceFilter.current={status,offset};setReviewPassword("");setRejectReviewRef("");setError("");
+  void reloadCenter(centerRef).catch(e=>setError(e instanceof Error?e.message:"The current prices are unavailable."));
+ }
  const selected=testLoading?null:tests.find(t=>t.testRef===selectedRef)??null;
  const visible=testLoading?[]:tests;
  function searchTests(reset=false,offset=0,paging=false){
@@ -540,7 +550,11 @@ export function LabTestMasterWorkspace({canManage,canViewPricing,
        Propose price</button>
      </form>}
     </div>
-    <div><h3>Actual Price Proposals</h3>
+    <div><h3>Price proposals and history</h3>
+     <label className="field">Price status<select value={priceFilter.current.status} disabled={busy||uncertain||priceLoading} onChange={e=>filterPrices(e.target.value)}>
+      <option value="">All statuses</option><option value="PROPOSED">Pending review</option><option value="APPROVED">Approved (all dates)</option><option value="CURRENT">Approved, currently effective</option><option value="UPCOMING">Approved, upcoming</option><option value="EXPIRED">Approved, expired</option><option value="REJECTED">Rejected</option>
+     </select></label>
+     {priceLoading&&<p role="status">Checking this lab’s prices…</p>}
      {canApprovePricing&&prices.some(p=>p.status==="PROPOSED")&&
       <div className="form-section" aria-label="Protected Foundation price decision">
        <p>Approvals require a different authorized Foundation reviewer and
@@ -553,7 +567,7 @@ export function LabTestMasterWorkspace({canManage,canViewPricing,
          aria-label="Current password for independent price approval"/>
        </label>
       </div>}
-     {!prices.length?<p className="cg-module-empty">No price proposals for this lab yet.</p>:
+     {priceLoading?null:!prices.length?<p className="cg-module-empty">No prices match the current filter.</p>:
       <div className="table-wrap"><table><thead><tr><th>Item</th><th>Price</th>
        <th>Period</th><th>Status</th><th>Review</th></tr></thead>
        <tbody>{prices.map(p=><tr key={p.priceRef}>
@@ -579,6 +593,7 @@ export function LabTestMasterWorkspace({canManage,canViewPricing,
             onClick={()=>setRejectReviewRef(p.priceRef)}>Reject proposal…</button>}
           </div>:"—"}</td>
        </tr>)}</tbody></table></div>}
+     <div className="toolbar"><button type="button" disabled={busy||uncertain||priceLoading||priceFilter.current.offset===0} onClick={()=>filterPrices(priceFilter.current.status,Math.max(0,priceFilter.current.offset-100))}>Previous prices</button><button type="button" disabled={busy||uncertain||priceLoading||nextPriceOffset===null} onClick={()=>{if(nextPriceOffset!==null)filterPrices(priceFilter.current.status,nextPriceOffset);}}>Next prices</button></div>
     </div>
    </div>}
   </section>}
