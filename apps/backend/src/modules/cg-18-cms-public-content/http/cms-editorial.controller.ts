@@ -11,6 +11,8 @@ export class CmsEditorialController{
  eventSources(@Headers("authorization")auth:string){return this.cms.eventSources(auth);}
  @Get("campaign-sources") @Header("Cache-Control","private, no-store")
  campaignSources(@Headers("authorization")auth:string){return this.cms.campaignSources(auth);}
+ @Get("team-sources") @Header("Cache-Control","private, no-store")
+ teamSources(@Headers("authorization")auth:string){return this.cms.teamSources(auth);}
  @Get("partner-sources") @Header("Cache-Control","private, no-store")
  partnerSources(@Headers("authorization")auth:string){return this.cms.partnerSources(auth);}
  @Get("project-sources") @Header("Cache-Control","private, no-store")
