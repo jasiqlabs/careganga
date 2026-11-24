@@ -12,7 +12,6 @@ type Page={pageRef:string;kind:string;slug:string;title:string;
 type Section={kind:string;order:number;fields:Record<string,unknown>};
 type EventSource={sourceRef:string;slug:string;title:string;category:string;summary:string;area:string;scheduledStart:string;scheduledEnd:string;status:string};
 type TeamSource={sourceRef:string;proof:string;name:string;designation:string};
-type TeamSource={sourceRef:string;proof:string;name:string;designation:string};
 type ProjectSource={sourceRef:string;title:string;category:string;area:string};
 type CampaignSource={sourceRef:string;title:string;category:string;area:string};
 type Asset={fileRef:string;version:number;role:string;altText:string;order:number};
@@ -227,16 +226,6 @@ function TeamSelection({sections,choices,error,locked,refresh,onChange}:{section
  {people.filter(p=>!choices.some(x=>x.sourceRef===p.sourceRef&&x.proof===p.proof)).map((p,i)=><Pressable key={i} disabled={locked} accessibilityRole="button" onPress={()=>set(people.filter(x=>x!==p))}><Text>Remove unavailable or historical profile</Text></Pressable>)}
  </View>;
 }
-function TeamSelection({sections,choices,error,locked,refresh,onChange}:{sections:Section[];choices:TeamSource[];error:string;locked:boolean;refresh:()=>void;onChange:(s:Section[])=>void}){
- const current=sections.find(s=>s.kind==="TEAM");
- const members=Array.isArray(current?.fields.members)?current.fields.members as TeamSource[]:[];
- const set=(next:TeamSource[])=>onChange([...sections.filter(s=>s.kind!=="TEAM"),...(next.length?[{kind:"TEAM",order:70,fields:{heading:current?.fields.heading??"Our team",members:next}}]:[])]);
- return <View style={styles.panel}><Text accessibilityRole="header" style={styles.heading}>Public team directory</Text>
- <Text style={styles.note}>Only self-consented staff name and designation. Separate CMS approval is required.</Text>
- {button("Refresh consented staff",refresh,locked)}{!!error&&<Text accessibilityRole="alert">{error}</Text>}
- {members.map((p,i)=><View key={i}><Text>{p.name} · {p.designation}</Text>{button("Remove profile",()=>set(members.filter((_,j)=>i!==j)),locked)}</View>)}
- {choices.filter(p=>!members.some(x=>x.sourceRef===p.sourceRef)).map(p=><Pressable key={p.sourceRef} accessibilityRole="button" disabled={locked||members.length>=15} onPress={()=>set([...members,p])}><Text>Add {p.name} · {p.designation}</Text></Pressable>)}</View>;
-}
 function ProjectSelection({sections,choices,error,locked,refresh,onChange}:{sections:Section[];choices:ProjectSource[];error:string;locked:boolean;refresh:()=>void;onChange:(s:Section[])=>void}){
  const current=sections.find(s=>s.kind==="PROJECT_TEASER"),refs=Array.isArray(current?.fields.sourceRefs)?current.fields.sourceRefs as string[]:[];
  const set=(next:string[])=>onChange([...sections.filter(s=>s.kind!=="PROJECT_TEASER"),...(next.length?[{kind:"PROJECT_TEASER",order:60,fields:{heading:typeof current?.fields.heading==="string"?current.fields.heading:"Our Projects",sourceRefs:next}}]:[])]);
@@ -279,8 +268,6 @@ export function NativeCmsEditorial({token,canManage,canPublish,canReview,onExit,
  const [campaignChoices,setCampaignChoices]=useState<CampaignSource[]>([]),[campaignError,setCampaignError]=useState("");
  const [eventChoices,setEventChoices]=useState<EventSource[]>([]),[eventError,setEventError]=useState("");
  const refreshEvents=()=>{setEventError("");void api<{sources:EventSource[]}>(token,"event-sources").then(v=>setEventChoices(v.sources)).catch(e=>{setEventChoices([]);setEventError("Approved event sources unavailable.");if(e?.status===401)onExpired();});};
- const [teamChoices,setTeamChoices]=useState<TeamSource[]>([]),[teamError,setTeamError]=useState("");
- const refreshTeam=()=>{setTeamChoices([]);setTeamError("");void api<{sources:TeamSource[]}>(token,"team-sources").then(v=>setTeamChoices(v.sources)).catch(e=>{setTeamError("Current consented staff profiles unavailable.");if(e?.status===401)onExpired();});};
  const refreshProjects=()=>{setProjectError("");void api<{sources:ProjectSource[]}>(token,"project-sources").then(v=>setProjectChoices(v.sources)).catch(e=>{setProjectError("Current approved project sources unavailable.");if(e?.status===401)onExpired();});};
  const refreshCampaigns=()=>{setCampaignError("");void api<{sources:CampaignSource[]}>(token,"campaign-sources")
   .then(v=>setCampaignChoices(v.sources)).catch(e=>{setCampaignError("Approved campaign sources unavailable.");if(e?.status===401)onExpired();});};
