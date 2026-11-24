@@ -4,7 +4,7 @@ import type {VoucherWorkflowRow} from "./finance-voucher-submission-tools";
 
 type ProofFile={fileRef:string;fileVersion:number;mime:string;sizeBytes:string};
 type Payment={paymentProofRef:string;fileRef:string;fileVersion:number;
- method:"BANK_STATEMENT"|"CASH_RECEIPT";bankReference:string|null;requiresPayrollDestination?:boolean;
+ method:"BANK_STATEMENT"|"CASH_RECEIPT";bankReference:string|null;requiresPayrollDestination?:boolean;failedTransfer?:boolean;
  amountMinor:string;status:"PENDING_REVIEW"|"VERIFIED"|"REJECTED"};
 type Uncertain={path:string;body:Record<string,unknown>;key:string;
  kind:"REQUEST"|"PROOF"|"VERIFY"|"POST"};
@@ -48,7 +48,7 @@ export function FinanceVoucherPaymentTools({voucher,canManage,canUploadProof,can
  const [evidenceHolder,setEvidenceHolder]=useState(""),[evidenceAccount,setEvidenceAccount]=useState(""),[evidenceIfsc,setEvidenceIfsc]=useState("");
  const clearEvidence=()=>{setEvidenceHolder("");setEvidenceAccount("");setEvidenceIfsc("");};
  const evidenceReady=()=>!!evidenceHolder.trim()&&/^[0-9]{6,22}$/.test(evidenceAccount)&&/^[A-Z]{4}0[A-Z0-9]{6}$/.test(evidenceIfsc);
- const [reviewAction,setReviewAction]=useState<"VERIFY"|"REJECT">("VERIFY");
+ const [reviewAction,setReviewAction]=useState<"VERIFY"|"REJECT"|"CONFIRM_FAILED_TRANSFER">("VERIFY");
  const [pending,setPending]=useState<Uncertain|null>(null);
  const [retryReady,setRetryReady]=useState(false);
  useEffect(()=>{setPayment(null);setFiles([]);setChosen("");setPicked(null);
@@ -150,7 +150,7 @@ export function FinanceVoucherPaymentTools({voucher,canManage,canUploadProof,can
  async function execute(request:Uncertain){
   if(busy)return;setBusy(true);setNotice("");setRetryReady(false);
   try{
-   const destination=request.kind==="VERIFY"&&request.body.action==="VERIFY"&&payment?.requiresPayrollDestination?{payrollDestinationEvidence:{accountHolder:evidenceHolder,accountNumber:evidenceAccount,ifsc:evidenceIfsc}}:{};
+   const destination=request.kind==="VERIFY"&&request.body.action!=="REJECT"&&payment?.requiresPayrollDestination?{payrollDestinationEvidence:{accountHolder:evidenceHolder,accountNumber:evidenceAccount,ifsc:evidenceIfsc}}:{};
    const result=await jsonPost(request.path,{...request.body,...destination,requestKey:request.key});
    if(result.confirmed!==true||typeof result.status!=="string")
     throw Error("Original result is uncertain");
@@ -206,7 +206,7 @@ export function FinanceVoucherPaymentTools({voucher,canManage,canUploadProof,can
   })}>Request payment verification</button>}
   {readyForProof&&<button type="button" disabled={busy} onClick={()=>void refresh()}>
    Check independent payment review</button>}
-  {readyForProof&&canManage&&canUploadProof&&<>
+  {readyForProof&&canManage&&canUploadProof&&!payment?.failedTransfer&&<>
    <label className="cg-fin-voucher-attach">Original {method==="BANK_STATEMENT"?
     "bank statement":"cash receipt"} (privately scanned)
     <input type="file" accept=".pdf,.jpg,.jpeg,.png,.webp" disabled={busy}
@@ -236,7 +236,7 @@ export function FinanceVoucherPaymentTools({voucher,canManage,canUploadProof,can
      Submit actual payment proof for independent verification</button>}
   </>}
   {payment&&<div className="cg-fin-review-summary">
-   <p><strong>Payment proof:</strong> {payment.status==="PENDING_REVIEW"?
+   <p><strong>Payment proof:</strong> {payment.failedTransfer?"Verified failed transfer — salary remains due":payment.status==="PENDING_REVIEW"?
     "Waiting for different authorized reviewer":payment.status==="VERIFIED"?
     "Independently verified": "Rejected — upload a corrected proof"}</p>
    <p><strong>Amount:</strong> {money(payment.amountMinor)}</p>
@@ -247,20 +247,20 @@ export function FinanceVoucherPaymentTools({voucher,canManage,canUploadProof,can
     target="_blank" rel="noopener noreferrer">Open original protected payment evidence</a>
    {canVerify&&payment.status==="PENDING_REVIEW"&&<>
     <p>Confirm this transaction against the original bank statement or signed cash receipt.
-     You cannot verify a payment you initiated.</p>
+     You cannot verify a payment you initiated. Confirm a failed transfer only when the original bank advice definitively proves no funds moved; a rejected document or pending/unknown result is not failure.</p>
     <label className="cg-fin-voucher-attach">Independent verification decision
      <select value={reviewAction} onChange={e=>setReviewAction(e.target.value as typeof reviewAction)}>
       <option value="VERIFY">Confirm funds moved</option>
-      <option value="REJECT">Reject proof</option>
+      <option value="REJECT">Reject proof</option>{payment.requiresPayrollDestination&&<option value="CONFIRM_FAILED_TRANSFER">Confirm actual failed bank transfer (no funds moved)</option>}
      </select></label>
-    {payment.requiresPayrollDestination&&(reviewAction==="VERIFY"||pending?.body.action==="VERIFY")&&<div className="cg-fin-review-summary"><p>Compare the original bank transfer advice with the approved payroll recipient. Enter the exact beneficiary details from the original evidence. Stored destination details are never displayed.</p>
+    {payment.requiresPayrollDestination&&(reviewAction!=="REJECT"||(pending?.body.action==="CONFIRM_FAILED_TRANSFER"||pending?.body.action==="VERIFY"))&&<div className="cg-fin-review-summary"><p>Compare the original bank transfer advice with the approved payroll recipient. Enter the exact beneficiary details from the original evidence. Stored destination details are never displayed.</p>
     <label>Beneficiary account holder<input autoComplete="off" maxLength={100} value={evidenceHolder} onChange={e=>setEvidenceHolder(e.target.value)}/></label>
     <label>Beneficiary account number<input type="password" inputMode="numeric" autoComplete="off" maxLength={22} value={evidenceAccount} onChange={e=>setEvidenceAccount(e.target.value)}/></label>
     <label>Beneficiary IFSC<input autoComplete="off" maxLength={11} value={evidenceIfsc} onChange={e=>setEvidenceIfsc(e.target.value.toUpperCase())}/></label></div>}
     <label className="cg-fin-voucher-attach">Current password *
      <input type="password" autoComplete="current-password" value={currentPassword}
       onChange={e=>setCurrentPassword(e.target.value)}/></label>
-    <button type="button" disabled={busy||!!pending||currentPassword.length<8||Boolean(payment.requiresPayrollDestination&&reviewAction==="VERIFY"&&!evidenceReady())}
+    <button type="button" disabled={busy||!!pending||currentPassword.length<8||Boolean(payment.requiresPayrollDestination&&reviewAction!=="REJECT"&&!evidenceReady())}
      onClick={()=>void execute({path:base+"/payment-proofs/"+
       payment.paymentProofRef+"/verify",kind:"VERIFY",
       key:crypto.randomUUID(),body:{action:reviewAction,currentPassword}})}>
@@ -275,7 +275,7 @@ export function FinanceVoucherPaymentTools({voucher,canManage,canUploadProof,can
    <p>The original action result is uncertain. Check it before attempting again.</p>
    <button type="button" disabled={busy} onClick={()=>void checkOriginal()}>
     Check original action</button>
-   {retryReady&&<button type="button" disabled={busy||Boolean(pending.kind==="VERIFY"&&pending.body.action==="VERIFY"&&payment?.requiresPayrollDestination&&!evidenceReady())}
+   {retryReady&&<button type="button" disabled={busy||Boolean(pending.kind==="VERIFY"&&pending.body.action!=="REJECT"&&payment?.requiresPayrollDestination&&!evidenceReady())}
     onClick={()=>void execute(pending)}>Retry exact original request</button>}
   </div>}
   {notice&&<p role="status" className="cg-fin-help">{notice}</p>}

@@ -62,7 +62,7 @@ export class PayrollRunService{
     FROM scoped r JOIN payroll_line l ON l.root_realm_id=$1 AND l.run_id=r.id AND r.status='APPROVED_FROZEN'
     LEFT JOIN payroll_batch_item i ON i.root_realm_id=l.root_realm_id AND i.line_ref=l.id
     LEFT JOIN LATERAL(SELECT sum(o.paid_minor) paid,bool_or(o.reversed OR (o.voucher_status='POSTED' AND o.paid_minor<>o.amount_minor)) invalid,
-     bool_or(o.voucher_status NOT IN('POSTED','REJECTED')) pending,count(*) FILTER(WHERE o.voucher_status='REJECTED') rejected
+     bool_or(o.attempt_status NOT IN('POSTED','REJECTED','FAILED_VERIFIED')) pending,count(*) FILTER(WHERE o.attempt_status IN('REJECTED','FAILED_VERIFIED')) rejected
      FROM payroll_attempt_outcome o WHERE o.root_realm_id=i.root_realm_id AND o.item_ref=i.id)p ON true
    ), money AS (
     SELECT period_key,count(*)::int employees,sum(gross_minor)::text gross,sum(deduction_minor)::text deductions,sum(net_minor)::text net,sum(paid)::text paid,
@@ -89,7 +89,7 @@ export class PayrollRunService{
       bool_or(coalesce(p.invalid,false)) invalid,bool_or(coalesce(p.pending,false)) pending
     FROM payroll_line l LEFT JOIN payroll_batch_item i ON i.root_realm_id=l.root_realm_id AND i.line_ref=l.id
     LEFT JOIN LATERAL (SELECT sum(o.paid_minor) paid,bool_or(o.reversed OR (o.voucher_status='POSTED' AND o.paid_minor<>o.amount_minor)) invalid,
-      bool_or(o.voucher_status NOT IN('POSTED','REJECTED')) pending FROM payroll_attempt_outcome o WHERE o.root_realm_id=i.root_realm_id AND o.item_ref=i.id)p ON true
+      bool_or(o.attempt_status NOT IN('POSTED','REJECTED','FAILED_VERIFIED')) pending FROM payroll_attempt_outcome o WHERE o.root_realm_id=i.root_realm_id AND o.item_ref=i.id)p ON true
     WHERE l.root_realm_id=$1 AND l.run_id=ANY($2::uuid[]) GROUP BY l.run_id`,[realm,ids])).rows;
   const result=new Map<string,string>();
   for(const x of totals){const due=BigInt(x.due),paid=BigInt(x.paid);result.set(x.run,x.invalid||paid>due?"RECONCILIATION_REQUIRED":due===0n?"NO_PAYMENT_DUE":paid===due?"PAID_VERIFIED":paid>0n?"PARTIALLY_PAID":x.pending?"PAYMENT_PENDING":"APPROVED_NOT_PAID");}

@@ -57,7 +57,7 @@ type Voucher={id:string;root_realm_id:string;version:number;status:string;
 type Proof={id:string;voucher_revision:number;method:"BANK_STATEMENT"|"CASH_RECEIPT";
  bank_reference:string|null;status:string;amount_minor:string;requested_by:string;
  proof_file_id:string;proof_file_version:number;request_key:string;request_digest:string;
- verified_by:string|null;review_request_key:string|null;review_digest:string|null};
+ verified_by:string|null;review_request_key:string|null;review_digest:string|null;payroll_failure_verified:boolean};
 type Cmd={action:string;request_digest:string;case_id:string;result_status:string;
  voucher_version:number};
 @Injectable()
@@ -185,7 +185,7 @@ export class FinanceVoucherPaymentService{
    const active=await client.query<{id:string}>(`
     SELECT id FROM finance_voucher_payment_verification
     WHERE root_realm_id=$1 AND voucher_id=$2
-     AND status IN('PENDING_REVIEW','VERIFIED') FOR SHARE`,[actor.realmId,voucherRef]);
+     AND (status IN('PENDING_REVIEW','VERIFIED') OR payroll_failure_verified) FOR SHARE`,[actor.realmId,voucherRef]);
    if(active.rows[0])
     throw new ConflictException({code:"FINANCE_VOUCHER_PAYMENT_PROOF_CONFLICT"});
    await this.evidence.guardPaymentProof(client,actor,voucherRef,expected,fileRef,fileVersion);
@@ -213,11 +213,11 @@ export class FinanceVoucherPaymentService{
   try{await client.query("BEGIN");await this.voucher(client,actor,voucherRef);
   const rows=await client.query<{paymentProofRef:string;fileRef:string;fileVersion:number;
    method:string;bankReference:string|null;amountMinor:string;status:string;
-   requestedAt:Date;verifiedAt:Date|null;requiresPayrollDestination:boolean}>(`
+   requestedAt:Date;verifiedAt:Date|null;requiresPayrollDestination:boolean;failedTransfer:boolean}>(`
    SELECT p.id AS "paymentProofRef",p.proof_file_id AS "fileRef",
     p.proof_file_version AS "fileVersion",p.method,
     p.bank_reference AS "bankReference",p.amount_minor::text AS "amountMinor",
-    p.status,p.created_at AS "requestedAt",p.verified_at AS "verifiedAt",
+    p.status,p.created_at AS "requestedAt",p.verified_at AS "verifiedAt",p.payroll_failure_verified AS "failedTransfer",
     EXISTS(SELECT 1 FROM payroll_payout_attempt t JOIN payroll_batch_item i ON i.root_realm_id=t.root_realm_id AND i.id=t.item_ref JOIN payroll_batch b ON b.root_realm_id=i.root_realm_id AND b.id=i.batch_ref WHERE t.root_realm_id=p.root_realm_id AND t.voucher_ref=p.voucher_id AND b.method='BANK') AS "requiresPayrollDestination"
    FROM finance_voucher_payment_verification p
    WHERE p.root_realm_id=$1 AND p.voucher_id=$2
@@ -232,7 +232,7 @@ export class FinanceVoucherPaymentService{
   const voucherRef=reference(refInput),proofRef=reference(proofInput);
   const body=form(value,["requestKey","action","currentPassword","payrollDestinationEvidence"]);
   const key=reference(body.requestKey),action=body.action;
-  if(!["VERIFY","REJECT"].includes(String(action))||
+  if(!["VERIFY","REJECT","CONFIRM_FAILED_TRANSFER"].includes(String(action))||
     typeof body.currentPassword!=="string"||body.currentPassword.length<8||
     Buffer.byteLength(body.currentPassword,"utf8")>1024)
    throw new BadRequestException({code:"FINANCE_VOUCHER_PAYMENT_VERIFICATION_INVALID"});
@@ -255,7 +255,7 @@ export class FinanceVoucherPaymentService{
     if(p.review_request_key!==key||p.review_digest!==decisionHash||
       p.verified_by!==actor.accountId)
      throw new ConflictException({code:"FINANCE_VOUCHER_PAYMENT_PROOF_CONFLICT"});
-    await client.query("COMMIT");return {confirmed:true,status:p.status,replayed:true};
+    await client.query("COMMIT");return {confirmed:true,status:p.payroll_failure_verified?"FAILED_VERIFIED":p.status,replayed:true};
    }
    if(v.status!=="PAYMENT_REQUESTED")
     throw new ConflictException({code:"FINANCE_VOUCHER_PAYMENT_PROOF_NOT_READY"});
@@ -273,7 +273,8 @@ export class FinanceVoucherPaymentService{
      JOIN payroll_line l ON l.root_realm_id=i.root_realm_id AND l.id=i.line_ref
      WHERE t.root_realm_id=$1 AND t.voucher_ref=$2 FOR SHARE OF t,i,b,l`,[actor.realmId,voucherRef])).rows[0];
    let matched:string|null=null;
-   if(action==="VERIFY"&&pinned){
+   if(action==="CONFIRM_FAILED_TRANSFER"&&(!pinned||p.method!=="BANK_STATEMENT"))throw new BadRequestException({code:"FINANCE_VOUCHER_PAYMENT_VERIFICATION_INVALID"});
+   if((action==="VERIFY"||action==="CONFIRM_FAILED_TRANSFER")&&pinned){
     if(!matchesPayoutEvidence(actor.realmId,pinned.employee_ref,pinned.destination_fingerprint,body.payrollDestinationEvidence))
      throw new ConflictException({code:"FINANCE_VOUCHER_PAYMENT_VERIFICATION_INVALID"});
     matched=pinned.destination_fingerprint;
@@ -282,9 +283,9 @@ export class FinanceVoucherPaymentService{
    await client.query(`
     UPDATE finance_voucher_payment_verification
      SET status=$4,verified_by=$5,verified_at=now(),verifier_proof_at=now(),
-      review_request_key=$6,review_digest=$7,payroll_destination_fingerprint=$8,updated_at=now()
+      review_request_key=$6,review_digest=$7,payroll_destination_fingerprint=$8,payroll_failure_verified=$9,updated_at=now()
     WHERE id=$1 AND root_realm_id=$2 AND voucher_id=$3 AND status='PENDING_REVIEW'`,
-    [proofRef,actor.realmId,voucherRef,next,actor.accountId,key,decisionHash,matched]);
+    [proofRef,actor.realmId,voucherRef,next,actor.accountId,key,decisionHash,matched,action==="CONFIRM_FAILED_TRANSFER"]);
    if(next==="VERIFIED"){
     const changed=await client.query(`
      UPDATE finance_voucher SET status='PAID_VERIFIED',updated_at=now()
@@ -297,7 +298,7 @@ export class FinanceVoucherPaymentService{
     VALUES($1,$2,'VOUCHER',$3,$4,$5)`,
     [actor.realmId,actor.accountId,voucherRef,
      next==="VERIFIED"?"VOUCHER_PAYMENT_INDEPENDENTLY_VERIFIED":"VOUCHER_PAYMENT_PROOF_REJECTED",key]);
-   await client.query("COMMIT");return {confirmed:true,status:next,replayed:false};
+   await client.query("COMMIT");return {confirmed:true,status:action==="CONFIRM_FAILED_TRANSFER"?"FAILED_VERIFIED":next,replayed:false};
   }catch(e){await client.query("ROLLBACK");safePaymentFailure(e);}finally{client.release();}
  }
  /** One immutable double-entry journal, never a second voucher balance. */
