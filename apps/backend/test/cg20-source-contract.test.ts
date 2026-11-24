@@ -48,11 +48,11 @@ describe("CG-20 — guarded server report request contracts",()=>{
    assert.throws(()=>parseSafeReport(options),BadRequestException);
   }
  });
- test("CG06 live beneficiary report rejects unrelated filters and unsupported views",()=>{
-  const kind="BENEFICIARY_ASSISTANCE_SUMMARY";
-  assert.equal(parseSafeReport({kind,view:"SUMMARY"}).kind,kind);
-  for(const filter of [{branchRef:"22222222-2222-4222-8222-222222222222"},{centerRef:"22222222-2222-4222-8222-222222222222"},{fromDay:"2026-10-01",untilDay:"2026-10-31"},{status:"COMPLETED"},{view:"TABLE"},{offset:50}])
-   assert.throws(()=>parseSafeReport({kind,view:"SUMMARY",...filter}),BadRequestException);
+ test("CG06 live beneficiary report accepts owner branch and delivery range only",()=>{
+  const kind="BENEFICIARY_ASSISTANCE_SUMMARY",view="SUMMARY",branchRef="22222222-2222-4222-8222-222222222222";
+  assert.equal(parseSafeReport({kind,view,branchRef,fromDay:"2026-10-01",untilDay:"2026-10-31"}).branchRef,branchRef);
+  for(const filter of [{branchRef:"FOUNDATION"},{branchRef:"wrong"},{centerRef:branchRef},{fromDay:"2026-10-01"},{fromDay:"2025-01-01",untilDay:"2026-10-31"},{status:"COMPLETED"},{view:"TABLE"},{offset:50}])
+   assert.throws(()=>parseSafeReport({kind,view,...filter}),BadRequestException);
  });
  test("CG04, CG07 and CG11 live reports accept only current summary scope",()=>{
   for(const kind of ["DONATION_RECEIPT_SUMMARY"]){
