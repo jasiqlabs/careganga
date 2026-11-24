@@ -59,6 +59,8 @@ contains(backend+"modules/cg-06-beneficiaries-assistance/application/beneficiary
 assert.ok(source.includes("this.beneficiaries.misSummary(token)")&&source.includes("BENEFICIARY_ASSISTANCE_SUMMARY"),"Live beneficiary report must consume only the original scoped aggregate");
 contains(backend+"modules/cg-04-membership-volunteers/application/membership-roster.service.ts",["async misCounts(token:string)","this.overview(tx,a)","membership.members.view"]);
 contains(backend+"modules/cg-04-membership-volunteers/application/volunteer-roster.service.ts",["async misCounts(token:string)","this.overview(tx,a)","volunteers.view"]);
+contains(backend+"modules/cg-07-campaigns-donations/application/donation-admin.service.ts",["private async verifiedSummary","j.immutable_payload_digest=e.immutable_digest","rec.source_digest=e.immutable_digest","j.immutable_source_event_key=r.approval_request_key",'this.ensureReportScopeStillCurrent(bearer,"ALL",scope)',"this.verifiedSummary(actor.realmId,scope,f.branchRef)"]);
+assert.ok(source.includes("this.donations.misSummary(token)")&&source.includes("rows:x.requiresReview||x.total===0?[]")&&dashboard.includes("this.donations.misSummary(bearer)")&&dashboard.includes("if(x.requiresReview)throw Error"),"Donation reports must withhold unverified totals and use original reconciled source");
 assert.ok(source.includes("this.members.misCounts(token)")&&source.includes("this.volunteers.misCounts(token)")&&source.includes("this.payroll.dashboard(token)")&&source.includes('permission("payroll.runs.view")&&await permission("payroll.compensation.view")'),"MIS must retain original owner status scope");
 
 contains(mis+"application/mis-report-run.service.ts",['LIVE_PREVIEW_KINDS.includes(request.kind)','MIS_LIVE_PREVIEW_ONLY']);
