@@ -264,6 +264,10 @@ Dependencies: US-003
 
 ## Execution progress
 
+### Native registration and hold recovery
+UI06/07 re-review: Web/native known held reservations now have an explicit original-status recovery button; consumed hold without verified confirmation remains uncertain; failed recovery stays uncertain. Native selected review survives return from external provider and a patient registration/profile modal, keeps the same selected slot and request keys; visible and hardware Back do not leave a locked original reservation. The source API still rechecks availability, permission, patient identity, fee and consent. Verify hold expiry/release, unknown confirmation/recovery, Android modal/back/resume, login/consent then reserve and merchant callback; runtime NOT_RUN.
+
+
 ### Public reference re-review
 HUX-11.02/11.03/13.02/15.02: Web patient registration offers a safe local return link to the selected doctor schedule, validates route and allowed query fields, always re-fetches current slots on return. UI11 user-initiated authenticated PDF preview uses existing restricted download grant, verified PDF bytes and revocable local blob; no public link/identity lookup. Native selected-time action prevents changing selection during held/pending/unknown booking request, retains original idempotency recovery. Verify sign-in/profile/consent return, revoked/expired slip, preview close/route change and native unknown hold; local build and rendered QA NOT_RUN. Native booking-to-registration continuity and full paid document copy format remain follow-up source/contract gaps.
 

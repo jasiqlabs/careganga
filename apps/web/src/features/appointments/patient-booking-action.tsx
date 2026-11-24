@@ -180,7 +180,7 @@ export function PatientBookingAction(p:Props){
      return;
     }
     if(original?.status==="CONSUMED"){
-     setMessage("This hold was used but its booking was not confirmed by the request lookup. Recheck the same request or contact the center.");
+     setUncertain(true);setMessage("This hold was used but its booking was not confirmed by the request lookup. Recheck the same request or contact the center.");
      return;
     }
     if(original?.status==="EXPIRED"||original?.status==="CANCELLED"){
@@ -196,7 +196,7 @@ export function PatientBookingAction(p:Props){
    }
    setMessage("No original request key is available. Refresh your selected time.");
   }catch(e){
-   setMessage(e instanceof Error?e.message:"The original booking request is still uncertain.");
+   setUncertain(true);setMessage(e instanceof Error?e.message:"The original booking request is still uncertain.");
   }finally{setBusy(false);}
  }
  return <div className="cg-health-booking-summary">
@@ -249,6 +249,7 @@ export function PatientBookingAction(p:Props){
      onClick={()=>setReview(true)}>Review appointment &amp; fee</button>):
    <button type="button" className="primary" disabled={busy} onClick={()=>void makeHold()}>
     {busy?"Checking…":"Reserve this appointment time"}</button>}
+  {hold&&!confirmed&&!uncertain&&<button type="button" disabled={busy} onClick={()=>void checkOriginal()}>Check current reservation status</button>}
   {!confirmed&&!uncertain&&!hold&&<details>
    <summary>Need help booking at reception?</summary>
    <section aria-label="Authorize reception staff to book">

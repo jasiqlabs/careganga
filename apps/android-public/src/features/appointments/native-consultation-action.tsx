@@ -14,7 +14,7 @@ type AppliedReschedule={applied:boolean;bookingId:string;doctorRef:string|null;
  centerRef:string|null;startAt:string|null;currentBooking:Booking};
 type Props={doctorRef:string;centerRef:string;doctorName:string;centerName:string;
  startAt:string;endAt:string;feeMinor:string;feeVersion:number;timeZone:string;
- reschedule?:{bookingRef:string;expectedVersion:number};onSelectionLock?:(locked:boolean)=>void};
+ reschedule?:{bookingRef:string;expectedVersion:number};onSelectionLock?:(locked:boolean)=>void;onPatientProfile?:()=>void};
 async function post<T>(path:string,data:Record<string,unknown>,token:string):Promise<T>{
  if(!base||!/^https?:\/\//.test(base)||
   (process.env.NODE_ENV==="production"&&!base.startsWith("https://")))
@@ -226,7 +226,7 @@ export function NativeConsultationAction(p:Props){
      setMessage("The original time is still reserved. Confirm using the same request.");return;
     }
     if(found?.status==="CONSUMED"){
-     setMessage("The original hold was used. Check the same booking again before any action.");return;
+     setUncertain(true);setMessage("The original hold was used. Check the same booking again before any action.");return;
     }
     if(found?.status==="EXPIRED"||found?.status==="CANCELLED"){
      holdKey.current=null;confirmKey.current=null;setHold(null);setReview(false);setUncertain(false);
@@ -255,7 +255,7 @@ export function NativeConsultationAction(p:Props){
     return;
    }
    setMessage("The original booking reference is unavailable. Refresh the selected time.");
-  }catch(e){setMessage(e instanceof Error?e.message:"Original appointment status is uncertain.");}
+  }catch(e){setUncertain(true);setMessage(e instanceof Error?e.message:"Original appointment status is uncertain.");}
   finally{setBusy(false);}
  }
  return <View style={style.box}>
@@ -310,7 +310,9 @@ export function NativeConsultationAction(p:Props){
 
    </View>:label("Review appointment & fee",()=>setReview(true))):
    label(busy?"Checking…":"Reserve consultation time",()=>void reserve())}
-  {!booking&&!uncertain&&!hold&&!p.reschedule&&<>
+  {hold&&!booking&&!uncertain&&label("Check current reservation status",()=>void recover())}
+  {!booking&&!uncertain&&!hold&&!p.reschedule&&<> 
+  {p.onPatientProfile&&label("Sign in or complete patient registration",p.onPatientProfile)}
   <Pressable accessibilityRole="button" accessibilityState={{expanded:staffExpanded}} onPress={()=>setStaffExpanded(v=>!v)} style={style.secondary}>
    <Text style={style.heading}>{staffExpanded?"Hide reception booking help":"Need help booking at reception?"}</Text>
   </Pressable>

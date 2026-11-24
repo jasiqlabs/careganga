@@ -1,6 +1,6 @@
 import React, { Component, Suspense, lazy, useCallback, useEffect, useState } from "react";
 import {
-  ActivityIndicator, AppState, Image, KeyboardAvoidingView, Platform,
+  ActivityIndicator, AppState, Image, KeyboardAvoidingView, Modal, Platform,
   Pressable, ScrollView, StyleSheet, Text, TextInput, View
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -278,7 +278,8 @@ export default function PublicHome(){
   if(directoryOpen)
     return <PublicScreenErrorBoundary onExit={()=>setDirectoryOpen(false)}>
       <Suspense fallback={<ActivityIndicator style={{marginTop:40}}/>}>
-        <PublicHealthcareDirectory onExit={()=>setDirectoryOpen(false)}/>
+        <PublicHealthcareDirectory onExit={()=>{setPatientOpen(false);setDirectoryOpen(false);}} onPatientProfile={()=>setPatientOpen(true)}/>
+        <Modal visible={patientOpen} animationType="slide" onRequestClose={()=>setPatientOpen(false)}><PublicScreenErrorBoundary onExit={()=>setPatientOpen(false)}><Suspense fallback={<ActivityIndicator style={{marginTop:40}}/>}>{patientOpen&&<PatientProfileNative onExit={()=>setPatientOpen(false)}/>}</Suspense></PublicScreenErrorBoundary></Modal>
       </Suspense>
     </PublicScreenErrorBoundary>;
   if(partnerOpen)

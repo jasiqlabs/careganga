@@ -41,7 +41,7 @@ async function get<T>(path:string):Promise<T>{
 const money=(minor:string|null)=>minor!==null&&/^\d+$/.test(minor)?
  "₹"+(Number(minor)/100).toLocaleString("en-IN",{maximumFractionDigits:2}):
  "Fee not confirmed";
-export function DoctorSchedulePreview({doctorRef,reschedule,preferredCenterSlug}:{doctorRef:string;preferredCenterSlug?:string;
+export function DoctorSchedulePreview({doctorRef,reschedule,preferredCenterSlug,onPatientProfile,onReviewActive,onBookingLock}:{doctorRef:string;preferredCenterSlug?:string;onPatientProfile?:()=>void;onReviewActive?:(active:boolean)=>void;onBookingLock?:(locked:boolean)=>void;
  reschedule?:{bookingRef:string;expectedVersion:number}}){
  const [week,setWeek]=useState(0),[day,setDay]=useState(dateAt(0));
  const [options,setOptions]=useState<Options|null>(null);
@@ -55,6 +55,8 @@ export function DoctorSchedulePreview({doctorRef,reschedule,preferredCenterSlug}
  const [loading,setLoading]=useState(false);
  const [error,setError]=useState("");
  const sequence=useRef(0);
+ useEffect(()=>{onReviewActive?.(!!chosen);return()=>onReviewActive?.(false);},[chosen,onReviewActive]);
+ useEffect(()=>{onBookingLock?.(selectionLocked);return()=>onBookingLock?.(false);},[selectionLocked,onBookingLock]);
  const days=useMemo(()=>Array.from({length:7},(_,i)=>week*7+i)
   .filter(offset=>offset<=30).map(offset=>({offset,date:dateAt(offset)})),[week]);
  useEffect(()=>{
@@ -172,7 +174,7 @@ export function DoctorSchedulePreview({doctorRef,reschedule,preferredCenterSlug}
     </View>)}
   </View>}
   </>}
-  {chosen&&<View style={style.summary}><Text accessibilityRole="header" style={style.subheading}>Appointment summary</Text><NativeConsultationAction key={[doctorRef,chosen.centerRef,chosen.startAt,chosen.endAt,chosen.feeMinor,chosen.feeVersion].join("|")} doctorRef={doctorRef} {...chosen} reschedule={reschedule} onSelectionLock={setSelectionLocked}/>{button("Change selected time",()=>setChosen(null),false,selectionLocked)}<Text style={style.help}>{selectionLocked?"Finish the current reservation or recheck its original status before changing time.":"If a previous request is uncertain, check My Consultations before reserving again."}</Text></View>}
+  {chosen&&<View style={style.summary}><Text accessibilityRole="header" style={style.subheading}>Appointment summary</Text><NativeConsultationAction key={[doctorRef,chosen.centerRef,chosen.startAt,chosen.endAt,chosen.feeMinor,chosen.feeVersion].join("|")} doctorRef={doctorRef} {...chosen} reschedule={reschedule} onSelectionLock={setSelectionLocked} onPatientProfile={onPatientProfile}/>{button("Change selected time",()=>setChosen(null),false,selectionLocked)}<Text style={style.help}>{selectionLocked?"Finish the current reservation or recheck its original status before changing time.":"If a previous request is uncertain, check My Consultations before reserving again."}</Text></View>}
   <Text style={style.help}>Use My Patient Profile to sign in before booking.
    Only doctor consultations are booked here. Center payment options are verified separately.</Text>
  </View>;

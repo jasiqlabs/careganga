@@ -67,7 +67,7 @@ const label=(title:string,onPress:()=>void,active=false)=>(
   onPress={onPress} style={[styles.button,active&&styles.selected]}>
   <Text style={styles.buttonLabel}>{title}</Text>
  </Pressable>);
-export function PublicHealthcareDirectory({onExit,reschedule}:{onExit:()=>void;
+export function PublicHealthcareDirectory({onExit,reschedule,onPatientProfile}:{onExit:()=>void;onPatientProfile?:()=>void;
  reschedule?:{bookingRef:string;expectedVersion:number}}){
  const [mode,setMode]=useState<Mode>(reschedule?"doctors":"centers"),[search,setSearch]=useState("");
  const [labMenu,setLabMenu]=useState(false),[labCenterSlug,setLabCenterSlug]=useState("");
@@ -81,6 +81,7 @@ export function PublicHealthcareDirectory({onExit,reschedule}:{onExit:()=>void;
  const [minFee,setMinFee]=useState("");
  const [maxFee,setMaxFee]=useState("");
  const [selection,setSelection]=useState<Selection|null>(null);
+ const [reviewActive,setReviewActive]=useState(false),[bookingLocked,setBookingLocked]=useState(false);
  const [areas,setAreas]=useState<Area[]>([]);
  const [areaQuery,setAreaQuery]=useState("");
  const [region,setRegion]=useState<{state:Area|null;district:Area|null;block:Area|null}>({
@@ -176,12 +177,15 @@ export function PublicHealthcareDirectory({onExit,reschedule}:{onExit:()=>void;
  useEffect(()=>{
   const sub=AppState.addEventListener("change",status=>{
    if(status==="active"){
+    // Keep the selected request and its original recovery key on return from
+    // patient registration/provider checkout. Reservation/collection APIs recheck authority.
+    if(reviewActive)return;
     if(selection)void show(selection,false);
     else void load("",false,true);
    }
   });
   return()=>sub.remove();
- },[selection,show,load]);
+ },[selection,show,load,reviewActive]);
  function reset(){
   seq.current++;selectionRef.current=null;detailHistory.current=[];
   setFiltersExpanded(false);setSelection(null);setSearch("");setPin("");setCategory("");
@@ -194,6 +198,7 @@ export function PublicHealthcareDirectory({onExit,reschedule}:{onExit:()=>void;
   setResetVersion(v=>v+1);
  }
  function back(){
+  if(bookingLocked){setLinkNotice("Finish or recheck the original reservation before leaving.");return;}
   if(labMenu){setLabMenu(false);return;}
   seq.current++;
   const previous=detailHistory.current.pop();
@@ -211,7 +216,7 @@ export function PublicHealthcareDirectory({onExit,reschedule}:{onExit:()=>void;
    back();return true;
   });
   return()=>listener.remove();
- },[selection,load,show,onExit,labMenu]);
+ },[selection,load,show,onExit,labMenu,bookingLocked]);
  useEffect(()=>{
   let active=true;
   setHasCenterLabOffer(false);setCenterDoctors(null);
@@ -429,7 +434,7 @@ export function PublicHealthcareDirectory({onExit,reschedule}:{onExit:()=>void;
      <Text>{c.address}, {c.pinCode}</Text>
      <Text>{c.fee?"Current approved consultation: "+money(c.fee.amountMinor):
       "No current approved consultation fee"}</Text>
-     {label("View center",()=>void show({kind:"center",slug:c.centerSlug}))}
+     {!bookingLocked&&label("View center",()=>void show({kind:"center",slug:c.centerSlug}))}
     </View>)}
     <Text style={styles.helper}>{doctorDetails.notice}</Text>
     {selection?.kind==="doctor"&&
@@ -437,7 +442,7 @@ export function PublicHealthcareDirectory({onExit,reschedule}:{onExit:()=>void;
       doctorRef={selection.ref}/>}
     {selection?.kind==="doctor"&&
      <DoctorSchedulePreview key={selection.ref+":"+(selection.centerSlug??"")} doctorRef={selection.ref}
-      preferredCenterSlug={selection.centerSlug} reschedule={reschedule}/>}
+      preferredCenterSlug={selection.centerSlug} reschedule={reschedule} onPatientProfile={onPatientProfile} onReviewActive={setReviewActive} onBookingLock={setBookingLocked}/>}
    </View>:null}
    {state.status==="LOADING"&&<ActivityIndicator accessibilityLabel="Checking current verified listings"/>}
    {state.status==="ERROR"&&<View style={styles.card}>
