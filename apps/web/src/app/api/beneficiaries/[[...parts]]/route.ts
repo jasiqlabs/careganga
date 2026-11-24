@@ -10,6 +10,7 @@ function allowed(parts:string[],method:Method){
  if(parts.length===1)return method==="GET"&&["options","eligible-projects"].includes(parts[0])
    ||uuid(parts[0])&&(method==="GET"||method==="PATCH");
  if(parts.length===2&&uuid(parts[0])){
+  if(["history","verification-history"].includes(parts[1]))return method==="GET";
   if(parts[1]==="project-links")return method==="POST"||method==="DELETE";
   if(parts[1]==="lifecycle")return method==="PATCH";
   if(parts[1]==="revoke-consent")return method==="POST";
