@@ -57,6 +57,12 @@ export class AssistanceFulfillmentService{
    return {...await this.allocationView(tx,a,allocation),proofRequired:draft.proofRequired,replayed:false};
   });
  }
+ async paymentOptions(token:string,id:string){
+  return this.source.run(token,"beneficiaries.assistance.deliver",async(tx,a)=>{
+   const row=await this.approved(tx,a,id,3);if(row.kind!=="FINANCIAL")throw conflict();
+   return this.finance.aidPaymentOptions(tx,a,row.branch_ref);
+  });
+ }
  async preparePayment(token:string,id:string,raw:unknown){
   const x=fields(raw,["requestKey","expectedRevision","amountMinor","financialYearRef","postingDate","debitAccountRef","paymentAccountRef"]),key=ref(x.requestKey),expected=revision(x.expectedRevision),amount=moneyMinor(x.amountMinor),year=ref(x.financialYearRef),date=inventoryDate(x.postingDate),debit=ref(x.debitAccountRef),payment=ref(x.paymentAccountRef),target=ref(id),hash=aidDigest([target,"PAYMENT",expected,amount,year,date,debit,payment]);
   return this.source.run(token,"beneficiaries.assistance.deliver",async(tx,a)=>{
