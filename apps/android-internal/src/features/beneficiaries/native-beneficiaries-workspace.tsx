@@ -10,6 +10,8 @@ type Item={ref:string;reference:string;name:string;contactMobile:string|null;rep
  gender:string;ageGroup:string;consentKind:string;consentPurpose:string|null;consentRevoked:boolean;
  verification:string;lifecycle:string;revision:number;projectLinks?:{ref:string;projectRef:string;projectName:string}[]};
 type Page={items:Item[];nextCursor:string|null;hasMore:boolean};
+type DuplicateSuggestion={reference:string;maskedName:string;beneficiaryType:string;contactMatches:boolean};
+type DuplicateResponse={advisory:boolean;items:DuplicateSuggestion[];hasMore:boolean};
 type ActionHistory={action:string;revision:number;reason:string|null;at:string};
 type VerificationHistory={decision:string;sourceRevision:number;at:string};
 type Form={branchRef:string;name:string;contactMobile:string;representativeName:string;representativeContact:string;
@@ -61,7 +63,9 @@ export function NativeBeneficiariesWorkspace({token,onExpired,canManage,canLinkP
  const [mode,setMode]=useState<"create"|"edit"|null>(null),[draft,setDraft]=useState(blank);
  const [commandKey,setCommandKey]=useState(""),[projects,setProjects]=useState<Option[]>([]);
  const [projectRef,setProjectRef]=useState(""),[linkKey,setLinkKey]=useState(""),[reason,setReason]=useState("");
- const change=(key:keyof Form,value:string|boolean)=>setDraft(f=>({...f,[key]:value}));
+ const [duplicates,setDuplicates]=useState<DuplicateResponse|null>(null),
+  [checkingDuplicates,setCheckingDuplicates]=useState(false);
+ const change=(key:keyof Form,value:string|boolean)=>{setDraft(f=>({...f,[key]:value}));setDuplicates(null);};
  const api=useCallback(async<T,>(path:string,method="GET",body?:Record<string,unknown>):Promise<T>=>{
   const r=await identityRequest("/api/v1/beneficiaries"+path,{cache:"no-store",method,
    headers:{Authorization:"Bearer "+token,...(body?{"Content-Type":"application/json"}:{})},
@@ -106,7 +110,19 @@ export function NativeBeneficiariesWorkspace({token,onExpired,canManage,canLinkP
   finally{setBusy(false);}
  };
  const reload=()=>setRefreshKey(x=>x+1);
- const open=(m:"create"|"edit")=>{setMode(m);setError("");setDraft(m==="create"?{...blank(),branchRef:opts&&!opts.canManageFoundation?opts.branches[0]?.value??"":""}:selected?fromItem(selected):blank());setCommandKey(Crypto.randomUUID());};
+ const open=(m:"create"|"edit")=>{setMode(m);setError("");setDuplicates(null);setDraft(m==="create"?{...blank(),branchRef:opts&&!opts.canManageFoundation?opts.branches[0]?.value??"":""}:selected?fromItem(selected):blank());setCommandKey(Crypto.randomUUID());};
+ const checkDuplicates=async()=>{
+  if(checkingDuplicates)return;
+  if(draft.name.trim().length<3&&!draft.contactMobile.trim())return;
+  setCheckingDuplicates(true);setError("");
+  try{
+   const p=new URLSearchParams({branchRef:draft.branchRef,name:draft.name.trim(),
+    contactMobile:draft.contactMobile.trim()});
+   if(mode==="edit"&&selected)p.set("excludeRef",selected.ref);
+   setDuplicates(await api<DuplicateResponse>("/duplicate-suggestions?"+p));
+  }catch(e){setError(e instanceof Error?e.message:"Could not check possible matches");}
+  finally{setCheckingDuplicates(false);}
+ };
  const save=async()=>{if(busy||!mode||!draft.consentAcknowledged)return;setBusy(true);setError("");
   const body:Record<string,unknown>={...draft,requestKey:commandKey,branchRef:draft.branchRef||null,
    contactMobile:draft.contactMobile||null,representativeName:draft.representativeName||null,
@@ -230,6 +246,17 @@ export function NativeBeneficiariesWorkspace({token,onExpired,canManage,canLinkP
      <View key={k}><Text style={labelStyle}>{title}</Text>
       <TextInput value={draft[k]} onChangeText={x=>change(k,x)} style={{...textStyle,backgroundColor:"#F8FAFC",borderWidth:1,
        borderColor:"#CBD5E1",borderRadius:8,padding:12}}/></View>)}
+    <View style={{borderWidth:1,borderColor:"#E0E5ED",padding:12,borderRadius:10,backgroundColor:"white",gap:5}}>
+     <Text style={{fontWeight:"700"}}>Possible existing records</Text>
+     <Text style={{fontSize:12,color:"#64748B"}}>Suggestions only; family members may share a phone. Never merge records automatically.</Text>
+     <Button outline label={checkingDuplicates?"Checking…":"Check possible matches"}
+      disabled={checkingDuplicates} onPress={()=>void checkDuplicates()}/>
+     {duplicates&&(duplicates.items.length===0?<Text>No matches in the selected branch.</Text>:
+      duplicates.items.map(x=><Text key={x.reference} style={{fontSize:12}}>
+       {x.maskedName} · {x.beneficiaryType} · {x.reference}{x.contactMatches?" · Shared contact":""}
+      </Text>))}
+     {duplicates?.hasMore&&<Text>Other possible matches exist.</Text>}
+    </View>
     <Select title="State" selected={draft.stateRef} items={opts?.states??[]}
      onSelect={x=>setDraft(v=>({...v,stateRef:x,districtRef:""}))}/>
     <Select title="District (optional)" selected={draft.districtRef}
