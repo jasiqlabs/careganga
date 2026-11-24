@@ -344,7 +344,7 @@ export function NativeCenterVisitQueue({token,canCancel,canClinicalManage,onExit
     {expanded===a.appointmentRef&&<>
      {a.consentGranted&&!["CANCELLED","NO_SHOW"].includes(a.bookingStatus)&&
       button("Consultation slip",()=>setSelectedSlip(a),busy||uncertain)}
-   {selectedSlip?.appointmentRef===a.appointmentRef&&a.consentGranted&&<View style={styles.card}>
+   {selectedSlip?.appointmentRef===a.appointmentRef&&a.consentGranted&&items.some(row=>row.appointmentRef===a.appointmentRef&&row.consentGranted)&&<View style={styles.card}>
     {button("Close current consultation slip",()=>setSelectedSlip(null),busy)}
     <Text style={styles.title}>{selectedSlip.bookingId} — current private PDF</Text>
     <NativeCenterConsultationSlip key={selectedSlip.appointmentRef} token={token}

@@ -345,7 +345,7 @@ export function PublicHealthcareDirectory({onExit,reschedule,onPatientProfile,in
        <Text accessibilityRole="header" style={styles.cardTitle}>{item.centerName}</Text>
       <Text style={styles.helper}>Verified center · {nice((item as Center).type)}</Text>
       <Text style={styles.label}>{(item as Center).providerName}</Text>
-       {!!(item as Center).declaredServices.length&&<View style={styles.row}>{(item as Center).declaredServices.map(s=><Text key={s} style={styles.tag}>{nice(s)}</Text>)}</View>
+       {!!(item as Center).declaredServices.length&&<View style={styles.row}>{(item as Center).declaredServices.map(s=><Text key={s} style={styles.tag}>{nice(s)}</Text>)}</View>}
       <Text>{item.address}, {item.pinCode}</Text>
       <View style={styles.row}>
        {label("View center details",()=>void show({kind:"center",slug:(item as Center).slug}))}

@@ -161,7 +161,7 @@ export function DoctorSchedulePreview({doctorRef,reschedule,preferredCenterSlug,
    <Text style={style.help}>Times in {detail.timeZone}. A time is confirmed only after final review.</Text>
    {detail.slots.length===0?
     <Text style={style.help}>No current working-time window is shown for this day.</Text>:
-    <View>{[["Morning",0,12],["Afternoon",12,16],["Evening",16,24]].map(([name,from,to])=>{const slots=detail.slots.filter(s=>Number(s.startLocal.slice(0,2))>=Number(from)&&Number(s.startLocal.slice(0,2))<Number(to));return slots.length?<View key={name} style={style.group}><Text style={style.subheading}>{name}</Text><View style={style.actions}>{slots.map(slot=><View key={slot.startAt} style={style.window}>{button(slot.startLocal+"–"+slot.endLocal,()=>{if(slot.bookable&&detail.consultationFeeMinor!==null&&detail.consultationFeeVersion!==null)setChosen({centerRef:center.centerRef,centerName:center.centerName,doctorName:detail.doctorName,startAt:slot.startAt,endAt:slot.endAt,timeZone:detail.timeZone,feeMinor:detail.consultationFeeMinor,feeVersion:detail.consultationFeeVersion});},false,!slot.bookable||detail.consultationFeeMinor==null||detail.consultationFeeVersion==null)}</View>)}</View></View>:null;})}</View>}
+    <View>{[["Morning",0,12],["Afternoon",12,16],["Evening",16,24]].map(([name,from,to])=>{const slots=detail.slots.filter(s=>Number(s.startLocal.slice(0,2))>=Number(from)&&Number(s.startLocal.slice(0,2))<Number(to));return slots.length?<View key={name} style={style.group}><Text style={style.subheading}>{name}</Text><View style={style.actions}>{slots.map(slot=><View key={slot.startAt} style={style.window}>{button(slot.startLocal+"–"+slot.endLocal,()=>{if(slot.bookable&&detail.consultationFeeMinor!==null&&detail.consultationFeeVersion!==null){const _fee:[string,number]=[detail.consultationFeeMinor,detail.consultationFeeVersion];setChosen({centerRef:center.centerRef,centerName:center.centerName,doctorName:detail.doctorName,startAt:slot.startAt,endAt:slot.endAt,timeZone:detail.timeZone,feeMinor:_fee[0],feeVersion:_fee[1]});}},false,!slot.bookable||detail.consultationFeeMinor==null||detail.consultationFeeVersion==null)}</View>)}</View></View>:null;})}</View>}
   </View>}
   {choices&&!loading&&<View>
    <Text style={style.subheading}>Verified centers at {searchTime}</Text>
@@ -170,7 +170,7 @@ export function DoctorSchedulePreview({doctorRef,reschedule,preferredCenterSlug,
     choices.centerChoices.map(c=><View key={c.centerRef} style={style.center}>
      <Text style={style.help}>{c.centerName}, {c.address}, {c.pinCode}.
       {money(c.consultationFeeMinor)}. {c.timeZone}.</Text>
-     {c.bookable&&c.consultationFeeMinor!==null&&c.consultationFeeVersion!==null&&button("Select center & time",()=>{if(c.consultationFeeMinor!==null&&c.consultationFeeVersion!==null)setChosen({centerRef:c.centerRef,centerName:c.centerName,doctorName:options?.doctorName??"Doctor",startAt:c.startAt,endAt:c.endAt,timeZone:c.timeZone,feeMinor:c.consultationFeeMinor,feeVersion:c.consultationFeeVersion});})}
+     {c.bookable&&c.consultationFeeMinor!==null&&c.consultationFeeVersion!==null&&button("Select center & time",()=>{if(c.consultationFeeMinor!==null&&c.consultationFeeVersion!==null){const _fee:[string,number]=[c.consultationFeeMinor,c.consultationFeeVersion];setChosen({centerRef:c.centerRef,centerName:c.centerName,doctorName:options?.doctorName??"Doctor",startAt:c.startAt,endAt:c.endAt,timeZone:c.timeZone,feeMinor:_fee[0],feeVersion:_fee[1]});}})}
     </View>)}
   </View>}
   </>}
