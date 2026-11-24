@@ -7,7 +7,7 @@ const uuid=(v:string)=>/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9
 const reply=(body:unknown,status=200)=>NextResponse.json(body,{status,headers:{"Cache-Control":"private, no-store"}});
 function allowed(parts:string[],method:Method){
  if(parts.length===0)return method==="GET"||method==="POST";
- if(parts.length===1)return method==="GET"&&["options","eligible-projects"].includes(parts[0])
+ if(parts.length===1)return method==="GET"&&["options","eligible-projects","duplicate-suggestions"].includes(parts[0])
    ||uuid(parts[0])&&(method==="GET"||method==="PATCH");
  if(parts.length===2&&uuid(parts[0])){
   if(["history","verification-history"].includes(parts[1]))return method==="GET";
@@ -28,7 +28,7 @@ async function proxy(req:NextRequest,ctx:Context,method:Method){
  if(!backend)return reply({message:"Beneficiary service unavailable"},503);
  try{
   const url=new URL("/api/v1/beneficiaries"+(p.length?"/"+p.join("/"):""),backend);
-  for(const k of ["q","branchRef","stateRef","districtRef","projectRef","verification","lifecycle","type","cursor"]){
+  for(const k of ["q","branchRef","stateRef","districtRef","projectRef","verification","lifecycle","type","cursor","name","contactMobile","excludeRef"]){
    const v=req.nextUrl.searchParams.get(k);if(v!==null&&v.length<=240)url.searchParams.set(k,v);
   }
   let body:string|undefined;
