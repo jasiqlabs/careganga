@@ -301,5 +301,5 @@ const styles=StyleSheet.create({
   borderWidth:1,borderRadius:9,minHeight:45,padding:10},
  button:{borderColor:t.border,borderWidth:1,borderRadius:9,
   minHeight:45,padding:11,justifyContent:"center"},
- disabled:{opacity:.4},error:{color:"#A52626",fontSize:13}
+ disabled:{opacity:.4},error:{color:t.error,fontSize:13}
 });
