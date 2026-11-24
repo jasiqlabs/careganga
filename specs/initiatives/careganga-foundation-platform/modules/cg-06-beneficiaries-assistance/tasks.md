@@ -238,21 +238,21 @@ All 60 original QA definitions are retained. Author-performed source review only
 | US-002-QA11 | SOURCE_AUTHORED_PENDING_REVIEW_RUNTIME | Same-key replay and original outcome lookup; restart/unknown-response test pending |
 | US-002-QA12 | SOURCE_AUTHORED_PENDING_REVIEW_RUNTIME | Approved amount/quantity cap, partial actual delivery, original stock return, preserved gross/net |
 | US-002-QA13 | SOURCE_AUTHORED_PENDING_REVIEW_RUNTIME | Owner guard and root/branch links; original inventory distribution output and privacy review pending |
-| US-002-QA14 | PARTIAL_SOURCE_GAP | Backend actual completed visit/project link and minimal scoped count; A05 Web/native tab integration not verified |
+| US-002-QA14 | SOURCE_AUTHORED_PENDING_REVIEW_RUNTIME | Scoped real visit count and contextual tab or project register drill-down / permitted campaign selector and exact export filter as applicable; Web and native authored; actual review/build/runtime not run |
 | US-002-QA15 | SOURCE_AUTHORED_PENDING_REVIEW_RUNTIME | Original CG03 assistance decision, distinct reviewer, frozen revision/digest and password check |
 | US-002-QA16 | SOURCE_AUTHORED_PENDING_REVIEW_RUNTIME | Real CG09 PAYMENT voucher with approval, verified payment proof, posting, separate recipient handover |
 | US-002-QA17 | PARTIAL_SOURCE_GAP | Exact original full-payment recovery via CG09 opposite-account GENERAL voucher, clean frozen receipt and bank reconciliation when applicable, unique recovery event; actual workflow/partial correction and rejection recovery not verified |
 | US-002-QA18 | SOURCE_AUTHORED_PENDING_REVIEW_RUNTIME | CG19 existing clean revision-bound beneficiary evidence and mandatory separate handover |
 | US-002-QA19 | SOURCE_AUTHORED_PENDING_REVIEW_RUNTIME | Separate real cases and original allocation; no confirmed effect before handover |
 | US-002-QA20 | PARTIAL_SOURCE_GAP | Web/native core actions and histories; full original integrated QA, recovery/restart and due-only reconciliation still pending |
-| US-003-QA01 | PARTIAL_SOURCE_GAP | Distinct scoped original beneficiary count and separate project association totals; project click-through not verified |
+| US-003-QA01 | SOURCE_AUTHORED_PENDING_REVIEW_RUNTIME | Scoped real visit count and contextual tab or project register drill-down / permitted campaign selector and exact export filter as applicable; Web and native authored; actual review/build/runtime not run |
 | US-003-QA02 | SOURCE_AUTHORED_PENDING_REVIEW_RUNTIME | Independent current lifecycle/verification axes and shared scoped list/count |
 | US-003-QA03 | SOURCE_AUTHORED_PENDING_REVIEW_RUNTIME | Explicit collected demographics, unknown separate; minimal CSV excludes age/gender and precise private fields |
 | US-003-QA04 | SOURCE_AUTHORED_PENDING_REVIEW_RUNTIME | Gross/returned/reversed/net from immutable confirmed owner-backed events |
 | US-003-QA05 | SOURCE_AUTHORED_PENDING_REVIEW_RUNTIME | Exact original signed issue/return and per-item/unit report; no shadow stock |
 | US-003-QA06 | SOURCE_AUTHORED_PENDING_REVIEW_RUNTIME | Actual CG09 payment and linked full recovery events, verified posted proof; recovery runtime pending |
-| US-003-QA07 | PARTIAL_SOURCE_GAP | CG05 field-visit detail now includes minimal permitted count; A05 Web/native tab rendering not verified |
-| US-003-QA08 | PARTIAL_SOURCE_GAP | Current category/project/age/date/verification/type/branch filters; actual campaign API filter authored, report selector/export parity still open |
+| US-003-QA07 | SOURCE_AUTHORED_PENDING_REVIEW_RUNTIME | Scoped real visit count and contextual tab or project register drill-down / permitted campaign selector and exact export filter as applicable; Web and native authored; actual review/build/runtime not run |
+| US-003-QA08 | SOURCE_AUTHORED_PENDING_REVIEW_RUNTIME | Scoped real visit count and contextual tab or project register drill-down / permitted campaign selector and exact export filter as applicable; Web and native authored; actual review/build/runtime not run |
 | US-003-QA09 | SOURCE_AUTHORED_PENDING_REVIEW_RUNTIME | Current grant, bounded register and aid-history CSV, immutable report access audit; native preview/security execution pending |
 | US-003-QA10 | SOURCE_AUTHORED_PENDING_REVIEW_RUNTIME | Original cursor list and shared filter scope, bounded 500-row export, indexes; EXPLAIN/load not measured |
 | US-003-QA11 | PARTIAL_SOURCE_GAP | CG18 effective editorial publication, reserved source label, fixed closed year and coarse verified source count; editor selection workflow not verified |
@@ -267,3 +267,6 @@ All 60 original QA definitions are retained. Author-performed source review only
 | US-003-QA20 | PARTIAL_SOURCE_GAP | Source-author regression contract authored; complete independent source/runtime/security/device review pending |
 
 **Committed evidence:** 3604 assistance and approval source; 3605 allocation/delivery/recovery guard; 3606 report audit; original CG03/CG09/CG12/CG19 adapters; Admin and native assistance/report panels; CG05 restricted summary; CG18 current source suppression; `cg06-us002-us003-source-integrity.test.ts` authored (not executed). No CI/GitHub Actions, deployment, or merge. Source gaps are listed in the table, not hidden by provisional coverage. Financial corrections deliberately preserve the original payment and require genuine CG09 recovery, not an invented balance.
+
+### 24 November — targeted closure of visit/report parity
+CG06/US002-QA14 and US003-QA01/07/08: real contextual count on both visit UIs (379e8de, 2ccf5d7, f0a77c3); scoped active project drill-down and authorized campaign selector/export matching (2b10ba9, f1627cd, 2628f66, 14efa92, d457579, d699f86, f3e1c84). Native uses existing expo-sharing instead of unsupported file preview. Current source author review only. No independent or runtime PASS. Remaining gap rows are unchanged.
