@@ -161,6 +161,11 @@ Dependencies: US-002 (actual verified active CG-14 center/account, delivered bas
 
 ## Execution progress
 
+### 24 Nov 2026 — HUX public directory partial source fix
+
+Source commits e0a6ad7, c425a9f, 5004e0a, fa4a961, 57a8986 on dedicated hardening branch. Public Web and Public Android current approved credentials, fee, provider/location and safe directions; native stale result clearing, applied query pagination/retry, reschedule mode guard and result validation. US-004-QA01/03/04/05/06/09/10/11/12/16/17/18 partially source-traced by direct readback; no change to prior canonical disposition. PUBLIC_WEB_SOURCE / PUBLIC_ANDROID_SOURCE in progress; staff channels not affected. Missing approved media/service list projection and exact visual QA pending. Build/runtime/device NOT_RUN; independent review unavailable. Next: finish affected directory QA, no invented public data.
+
+
 ### 24 November 2026 — dedicated healthcare UI/UX review checkpoint (review-only)
 
 User-authorized [Healthcare UI/UX Hardening subtracker](../../HEALTHCARE_UIUX_HARDENING_TRACKER.md) on `feature/careganga-healthcare-uiux-hardening-20261124`, source baseline `473728cc0d842ad64ba34f3bc14f5b555c835581`. Owner-specific candidates: HUX-04.01–04.05, 09.01, 10.01–10.04, 12.01, 13.01; shared reference, navigation, dashboard, feedback, accessibility and visual acceptance rows apply where authorized. Original story coverage US-001–005; exact original QA IDs and runtime evidence must be recorded on execution. This checkpoint does not alter approved QA definitions or earlier dispositions. Source markup observations are not runtime failures; CHECK candidates need reproduction. No application code changed, independent review/re-review, build and device/visual QA NOT_RUN. Next: synchronize with main after mandatory handoff, reproduce one item, fix only real gap, re-review and trace affected original QA here. No future ERP scope or duplicate owner tracker.
