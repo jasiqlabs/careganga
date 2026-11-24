@@ -16,7 +16,7 @@ type FrozenSalary=SalaryDay&{policyRef:string;policyRevision:number;compensation
 type InputLine={employee:Candidate;attendance:Attendance;salary:FrozenSalary[];issues:string[]};
 type Adjustment={employeeRef:string;kind:"BONUS"|"DEDUCTION"|"HOLD"|"LATE_ARREARS"|"LATE_RECOVERY";minor:string;reason:string;sourceRef?:string;sourceDigest?:string};
 type Calculation=Extract<ReturnType<typeof calculatePayroll>,{status:"CALCULATED"}>;
-type ResultLine={employeeRef:string;reference:string;name:string;branchRef:string;status:"CALCULATED"|"PENDING_VALIDATION"|"HELD";issues:string[];adjustments:Adjustment[];amounts?:Calculation&{bonusMinor:string;arrearsMinor:string;extraDeductionMinor:string}};
+type ResultLine={employeeRef:string;reference:string;name:string;branchRef:string;designation:string;department:string|null;employmentType:string;attendance:{presentDays:number;leaveDays:number;absentDays:number;recordedDays:number};status:"CALCULATED"|"PENDING_VALIDATION"|"HELD";issues:string[];adjustments:Adjustment[];amounts?:Calculation&{bonusMinor:string;arrearsMinor:string;extraDeductionMinor:string}};
 type Snapshot={inputs:InputLine[];inputDigest:string;adjustments:Adjustment[];lines:ResultLine[];totals:{employees:number;calculated:number;pending:number;held:number;heldNetMinor:string;grossMinor:string;deductionMinor:string;netMinor:string;employerMinor:string}};
 const stable=(v:unknown):unknown=>Array.isArray(v)?v.map(stable):v!==null&&typeof v==="object"?Object.fromEntries(Object.entries(v).sort(([a],[b])=>a.localeCompare(b)).map(([k,x])=>[k,stable(x)])):v;
 const digestOf=(v:unknown)=>createHash("sha256").update(JSON.stringify(stable(v))).digest("hex");
@@ -114,7 +114,8 @@ export class PayrollRunService{
  private evaluate(r:Run,inputs:InputLine[],adjustments:Adjustment[],calculate:boolean):Snapshot{
   const lines:ResultLine[]=inputs.map(i=>{
    const e=i.employee,adj=adjustments.filter(x=>x.employeeRef===e.id),hold=adj.some(x=>x.kind==="HOLD");
-   const line={employeeRef:e.id,reference:e.reference,name:e.name,branchRef:e.branchRef,adjustments:adj};
+   const days=i.attendance.days;
+   const line={employeeRef:e.id,reference:e.reference,name:e.name,branchRef:e.branchRef,designation:e.designation,department:e.department,employmentType:e.employmentType,attendance:{presentDays:days.filter(d=>["PRESENT","LATE"].includes(d.status)&&d.checkOut).reduce((n,d)=>n+1-d.leaveUnits/2,0),leaveDays:days.filter(d=>d.leaveDecisionRef).reduce((n,d)=>n+d.leaveUnits/2,0),absentDays:days.filter(d=>d.status==="ABSENT").length,recordedDays:days.length},adjustments:adj};
    const issues=i.issues.filter(x=>!(hold&&x==="EMPLOYMENT_STATUS_REQUIRES_REVIEW"));
    if(issues.length)return {...line,status:"PENDING_VALIDATION",issues};
    const value=calculatePayroll(r.period_from,r.period_until,i.attendance.days,i.salary);
@@ -230,7 +231,7 @@ export class PayrollRunService{
   const r=await this.row(tx,a,ref);
   const record=(await tx.query<{snapshot:Snapshot}>("SELECT snapshot FROM payroll_run_revision WHERE root_realm_id=$1 AND run_id=$2 AND revision=$3 AND source_digest=$4",[a.realmId,r.id,revision,digest])).rows[0];
   if(!record||digestOf(record.snapshot)!==digest)throw conflict();
-  const s=record.snapshot;
+  const s=record.snapshot;await recordPayrollAudit(tx,a,"RUN","READ");
   return {row:r,digest,preview:{label:r.run_number,period:r.period_key,fiscalYear:r.fiscal_year_label,totals:s.totals,lines:s.lines,status:r.status}};
  }
  async reviewSource(tx:PoolClient,a:Actor,ref:string,lock=false,verifyFresh=false){
