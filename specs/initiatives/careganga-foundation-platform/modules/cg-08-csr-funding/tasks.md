@@ -926,3 +926,6 @@ Independent developer build, fix, migration validation, full test execution, and
 - **Test Results:** 84/84 CG-08 tests PASSED; all regression suites (CG-02, CG-07, CG-20) PASSED.
 - **Database Status:** All 268 migrations applied through 3414 with checksum integrity intact on disposable test database.
 - **Merge State:** Feature branch `feature/careganga-cg08-csr-funding-from-cg07-20261123` is unmerged and ready for merge authorization.
+
+### 24 November — E2E-009 partnership entry parity
+- US001 QA05/08/10/12; public branding only after separate editorial approval: commits 56024651, ff152c1b, 1d06d6f0. Native Corporate Partners entry now exists even if no editorial page published, displays no unverified partner identities/logos, distinguishes unavailable source, offers actual existing Contact and healthcare partner application screens; published cards continue to use current CG08/CG18 verified projection. Web and native generic CTA route availability matches independent /collaboration. Events native list internal sentinel @events now avoids collision with editorial article slug events; existing detail route/Back preserved. Seven targeted source readback checks matched, regression assertions extended. Actual rendered original client comparison, device/browser, independent review, API and DB NOT_RUN. E2E009 candidate, no canonical story status promotion.
