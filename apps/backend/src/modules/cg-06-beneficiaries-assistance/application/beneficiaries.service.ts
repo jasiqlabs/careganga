@@ -282,6 +282,64 @@ export class BeneficiariesService{
    return {...this.view(r),projectLinks:links};
   });
  }
+ /** CG-06 original source read/transition for CG-03. Never author an approval here. */
+ private fingerprint(row:Row){
+  return digest([row.id,row.profile_revision,row.branch_scope_id,row.private_name,row.contact_mobile,
+   row.representative_name,row.representative_contact,row.state_ref,row.district_ref,
+   row.beneficiary_type,row.gender,row.age_group,row.consent_kind,row.consent_purpose,
+   row.consent_acknowledged_at.toISOString(),row.consent_revoked_at?.toISOString()??null]);
+ }
+ async guardVerificationSource(tx:PoolClient,a:Actor,id:string,write:boolean){
+  await this.identity.assertCurrent(tx,a,"beneficiaries.view");
+  const row=await this.row(tx,a,id,write);
+  return {ref:row.id,reference:row.display_ref,branchRef:row.branch_scope_id,
+   revision:row.profile_revision,verification:row.verification_state,
+   lifecycle:row.lifecycle_state,consentRevoked:row.consent_revoked_at!==null,
+   digest:this.fingerprint(row),updatedAt:row.updated_at};
+ }
+ async submitVerificationSource(tx:PoolClient,a:Actor,id:string,key:string,expected:number){
+  await this.identity.assertCurrent(tx,a,"beneficiaries.manage");
+  const before=await this.row(tx,a,id,true);
+  if(before.profile_revision!==expected||before.lifecycle_state!=="ACTIVE"||
+    before.consent_revoked_at||!["DRAFT","RETURNED","REJECTED"].includes(before.verification_state))
+   throw conflict();
+  const row=(await tx.query<Row>(
+   "UPDATE beneficiary SET verification_state='SUBMITTED',verification_case_ref=NULL,"+
+   "profile_revision=profile_revision+1,updated_by=$3,updated_at=clock_timestamp() "+
+   "WHERE root_realm_id=$1 AND id=$2 AND profile_revision=$4 RETURNING "+columns,
+   [a.realmId,before.id,a.accountId,expected])).rows[0];
+  if(!row)throw conflict();
+  const hash=digest(["SUBMIT_VERIFICATION",before.id,expected]);
+  await this.recorded(tx,a,key,"SUBMIT_VERIFICATION",hash,row);
+  const proof=this.fingerprint(row);
+  await tx.query("INSERT INTO beneficiary_verification_event("+
+   "root_realm_id,beneficiary_id,source_revision,decision,source_digest,actor_ref) "+
+   "VALUES($1,$2,$3,'SUBMITTED',$4,$5)",
+   [a.realmId,row.id,row.profile_revision,proof,a.accountId]);
+  return {ref:row.id,reference:row.display_ref,branchRef:row.branch_scope_id,
+   revision:row.profile_revision,sourceDigest:proof};
+ }
+ async applyVerificationDecision(tx:PoolClient,a:Actor,id:string,expected:number,
+  sourceDigest:string,caseRef:string,decision:"APPROVED"|"RETURNED"|"REJECTED"){
+  await this.identity.assertCurrent(tx,a,"beneficiaries.view");
+  const current=await this.row(tx,a,id,true);
+  if(current.profile_revision!==expected||current.verification_state!=="SUBMITTED"||
+    current.consent_revoked_at||current.lifecycle_state!=="ACTIVE"||
+    this.fingerprint(current)!==sourceDigest)
+   throw conflict();
+  const next=decision==="APPROVED"?"VERIFIED":decision;
+  const row=(await tx.query<Row>("UPDATE beneficiary SET verification_state=$3,"+
+   "verification_case_ref=$4,profile_revision=profile_revision+1,"+
+   "updated_by=$5,updated_at=clock_timestamp() "+
+   "WHERE root_realm_id=$1 AND id=$2 AND profile_revision=$6 RETURNING "+columns,
+   [a.realmId,current.id,next,caseRef,a.accountId,expected])).rows[0];
+  if(!row)throw conflict();
+  await tx.query("INSERT INTO beneficiary_verification_event("+
+   "root_realm_id,beneficiary_id,source_revision,decision,case_ref,source_digest,actor_ref) "+
+   "VALUES($1,$2,$3,$4,$5,$6,$7)",
+   [a.realmId,current.id,expected,decision,caseRef,sourceDigest,a.accountId]);
+  return {revision:row.profile_revision,verification:row.verification_state};
+ }
  async history(token:string,id:string){
   return this.run(token,"beneficiaries.view",async(tx,a)=>{
    const b=await this.row(tx,a,id);
