@@ -22,11 +22,11 @@ export class PayrollCompensationService{
  private async auditFailure(a:Actor,e:unknown){
   const code=e&&typeof e==="object"&&"code" in e?String(e.code):"";
   const result=e instanceof ForbiddenException||e instanceof NotFoundException?"DENIED":e instanceof BadRequestException?"INVALID":e instanceof ConflictException||["23503","23505","23514","23P01","40001","40P01","55P03"].includes(code)?"CONFLICT":null;
-  if(result)await recordPayrollAudit(this.db,a,"ACCESS",result);
+  if(result){try{await recordPayrollAudit(this.db,a,"ACCESS",result);}catch{ /* Preserve the denial even if the audit store is unavailable. No private fields in telemetry. */ console.warn("CG11 protected audit unavailable");}}
  }
- async run<T>(token:string,action:string,fn:(tx:PoolClient,a:Actor)=>Promise<T>):Promise<T>{
-  const verified=await this.sessions.verifySession(token);let a:Actor;
-  try{a=await this.sessions.requireAction(token,action);}catch(e){await this.auditFailure(verified,e);throw e;}
+ async run<T>(token:string,action:string,fn:(tx:PoolClient,a:Actor)=>Promise<T>,before?:(a:Actor)=>Promise<void>):Promise<T>{
+  let a:Actor;
+  try{a=await this.sessions.requireAction(token,action);if(before)await before(a);}catch(e){try{const verified=await this.sessions.verifySession(token);await this.auditFailure(verified,e);}catch{/* Unauthenticated or expired sessions have no verified actor to audit. */}throw e;}
   const tx=await this.db.connect();let released=false;
   try{await tx.query("BEGIN");await this.identity.assertCurrent(tx,a,action);const v=await fn(tx,a);await tx.query("COMMIT");return v;}
   catch(e){try{await tx.query("ROLLBACK");}finally{tx.release();released=true;}await this.auditFailure(a,e);const code=e&&typeof e==="object"&&"code" in e?String(e.code):"";if(["23503","23505","23514","23P01","40001","40P01","55P03"].includes(code))throw conflict();throw e;}finally{if(!released)tx.release();}
