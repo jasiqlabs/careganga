@@ -124,6 +124,7 @@ export class MisReportRunService{
    const item=await this.saved.authorizedRequest(token,input.savedRef);
    request=parseSafeReport(item.request);savedRef=item.ref;revision=item.revision;
   }else request=parseSafeReport(input.request);
+  if(request.kind==="BENEFICIARY_ASSISTANCE_SUMMARY")throw new ForbiddenException({code:"MIS_RUN_SOURCE_UNSUPPORTED",message:"This beneficiary report is available as a current live preview only."});
   const preview=await this.sources.preview(token,request);
   if(preview.state==="PARTIAL")
    throw new BadRequestException({code:"MIS_RUN_PARTIAL",
