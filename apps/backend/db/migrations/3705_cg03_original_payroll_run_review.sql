@@ -74,3 +74,20 @@ BEGIN
  RETURN NEW;
 END; $cg11$;
 CREATE TRIGGER cg11_line_original_review BEFORE INSERT ON payroll_line FOR EACH ROW EXECUTE FUNCTION cg11_line_original_review();
+
+CREATE FUNCTION cg11_adjustment_original_approval() RETURNS trigger LANGUAGE plpgsql AS $cg11$
+BEGIN
+ IF NOT EXISTS(SELECT 1 FROM payroll_adjustment x JOIN payroll_run r ON r.root_realm_id=x.root_realm_id AND r.id=x.target_run_ref
+ JOIN cg03_case c ON c.realm_id=r.root_realm_id AND c.id=r.approval_case_ref AND c.status='PENDING_OWNER' AND c.case_kind='PAYROLL_RUN_RELEASE'
+ JOIN cg03_case_decision d ON d.realm_id=c.realm_id AND d.case_id=c.id AND d.id=NEW.decision_ref AND d.action='APPROVE' AND d.actor_id<>c.proposer_id AND d.fresh_password_verified_at IS NOT NULL
+ JOIN payroll_run_review_snapshot s ON s.root_realm_id=c.realm_id AND s.id=c.payroll_run_review_ref
+ JOIN payroll_run_revision v ON v.root_realm_id=s.root_realm_id AND v.run_id=s.run_id AND v.revision=s.source_revision AND v.source_digest=s.source_digest
+ CROSS JOIN LATERAL jsonb_array_elements(v.snapshot->'adjustments') adj
+ WHERE x.root_realm_id=NEW.root_realm_id AND x.id=NEW.adjustment_ref AND x.target_run_ref=NEW.target_run_ref AND x.original_line_ref=NEW.original_line_ref AND x.correction_digest=NEW.correction_digest
+ AND r.status='SUBMITTED' AND adj->>'sourceRef'=x.id::text AND adj->>'sourceDigest'=x.correction_digest
+ AND (adj->>'minor')::bigint=abs(x.delta_minor)
+ AND adj->>'kind'=CASE WHEN x.delta_minor>0 THEN 'LATE_ARREARS' ELSE 'LATE_RECOVERY' END
+ ) THEN RAISE EXCEPTION 'Original late adjustment review required' USING ERRCODE='23514'; END IF;
+ RETURN NEW;
+END; $cg11$;
+CREATE TRIGGER cg11_adjustment_original_approval BEFORE INSERT ON payroll_adjustment_consumption FOR EACH ROW EXECUTE FUNCTION cg11_adjustment_original_approval();
