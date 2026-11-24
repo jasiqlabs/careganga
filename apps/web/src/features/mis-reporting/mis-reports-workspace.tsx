@@ -15,11 +15,12 @@ type AreaOption=Option&{level:string};
 type Template={kind:Kind;label:string;views:View[];description:string};
 type Catalog={
  templates:Template[];
+ payroll?:{ready:boolean;branches:Option[];month:string};
  finance:{ready:boolean;state?:"AVAILABLE"|"ACCESS_RESTRICTED"|"SOURCE_UNAVAILABLE";years:Option[];branches:Option[];areas?:AreaOption[];allBranches:boolean};
  appointments:{ready:boolean;state?:"AVAILABLE"|"ACCESS_RESTRICTED"|"SOURCE_UNAVAILABLE";centers:Option[];complete:boolean};
  capabilities:{manage:boolean;export:boolean;schedule:boolean;share?:boolean}
 };
-export type ReportRequest={kind:Kind;view:View;yearRef?:string;branchRef?:string;areaRef?:string;
+export type ReportRequest={kind:Kind;view:View;payrollMonth?:string;yearRef?:string;branchRef?:string;areaRef?:string;
  centerRef?:string;fromDay?:string;untilDay?:string;status?:string;
  groupBy?:"CATEGORY"|"POSTING_KIND"|"ACCOUNT_NAME";
  sortBy?:"NAME"|"DEBIT"|"CREDIT";sortDirection?:"ASC"|"DESC";offset:number};
@@ -76,6 +77,7 @@ export function MisReportsWorkspace(){
  const [kind,setKind]=useState<Kind|null>(null);
  const [view,setView]=useState<View>("TABLE");
  const [year,setYear]=useState(""),[branch,setBranch]=useState("");
+ const [payrollMonth,setPayrollMonth]=useState(""),[payrollBranch,setPayrollBranch]=useState("");
  const [area,setArea]=useState("");
  const [center,setCenter]=useState(""),[from,setFrom]=useState("");
  const [until,setUntil]=useState(""),[status,setStatus]=useState("");
@@ -93,7 +95,7 @@ export function MisReportsWorkspace(){
   try{
    const c=await request<Catalog>("templates");
    if(!Array.isArray(c.templates))throw Error("Current report catalog could not be verified.");
-   if(i===seq.current){setCatalog(c);
+   if(i===seq.current){setCatalog(c);setPayrollMonth(c.payroll?.month??"");setPayrollBranch("");
     setBranch(c.finance.allBranches?"":c.finance.branches[0]?.ref??"");
     setArea("");
     setKind(c.templates[0]?.kind??null);
@@ -104,7 +106,7 @@ export function MisReportsWorkspace(){
  },[]);
  useEffect(()=>{void load();return()=>{seq.current++;previewSeq.current++};},[load]);
  useEffect(()=>{previewSeq.current++;setResult(null);setNotice("");},
-  [kind,view,year,branch,area,center,from,until,status,groupBy,sortBy,sortDirection]);
+  [kind,view,year,branch,area,center,from,until,status,groupBy,sortBy,sortDirection,payrollMonth,payrollBranch]);
  useEffect(()=>{
   const recheck=()=>{
    seq.current++;previewSeq.current++;setCatalog(null);setResult(null);setKind(null);
@@ -139,6 +141,7 @@ export function MisReportsWorkspace(){
     ...(center?{centerRef:center}:{}),
     ...(status?{status}:{}),
    }),
+   ...(kind==="PAYROLL_STATUS_SUMMARY"?{...(payrollMonth?{payrollMonth}:{}),...(payrollBranch?{branchRef:payrollBranch}:{})}:{}),
    ...(dated&&from?{fromDay:from,untilDay:until}:{}),
    ...(grouped?{groupBy,sortBy,sortDirection}:{}),
    offset};
@@ -198,6 +201,10 @@ export function MisReportsWorkspace(){
       {v==="SUMMARY"?"Summary":v==="CHART"?"Chart":v==="PIVOT"?"Pivot":"Table"}</option>)}
     </select></label>}
     <div style={{display:"flex",flexWrap:"wrap",gap:12}}>
+     {kind==="PAYROLL_STATUS_SUMMARY"&&catalog.payroll?.ready&&<>
+      <label>Payroll month <input type="month" min="2000-01" value={payrollMonth} onChange={e=>setPayrollMonth(e.target.value)}/></label>
+      <label>Payroll branch <select value={payrollBranch} onChange={e=>setPayrollBranch(e.target.value)}><option value="">All permitted payroll branches</option>{catalog.payroll.branches.map(b=><option key={b.ref} value={b.ref}>{b.name}</option>)}</select></label>
+     </>}
      {finance&&<>
       <label>Financial year <select value={year} onChange={e=>setYear(e.target.value)}>
        <option value="">All permitted years</option>
