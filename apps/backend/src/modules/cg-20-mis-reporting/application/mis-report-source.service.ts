@@ -302,6 +302,26 @@ export class MisReportSourceService{
   * is eligible for automatic execution until each other original source has
   * a separate delegated current-scope reader.
   */
+ private projectStatusPreview(q:SafeReportRequest,x:Awaited<ReturnType<ProjectsService["misStatus"]>>,sourceReadAt:string):ReportPreview{
+   return {kind:q.kind,view:q.view,label:"Project status",state:x.partial?"PARTIAL":x.rows.length?"READY":"EMPTY",columns:[{key:"code",label:"Project code"},{key:"title",label:"Project"},{key:"status",label:"Current status"},{key:"branch",label:"Current branch"},{key:"revision",label:"Revision"},{key:"plannedStart",label:"Planned start"},{key:"plannedEnd",label:"Planned end"}],rows:x.rows,nextOffset:null,sourceReadAt,sourceAsOf:x.sourceAsOf,sourceCutoffKind:"OWNER_TRANSACTION_SNAPSHOT",explanation:x.partial?"More than 50 projects match. Narrow the filters before export.":"Current source revision; dates filter planned start and end. No personal or location fields.",scopeLabel:"Current permitted project scope"};
+ }
+ async originalScheduledScope(root:string,account:string,request:SafeReportRequest){
+  if(request.kind==="PROJECT_STATUS_REPORT"){
+   const s=await this.branches.scheduledProjectScope(root,account);
+   if(request.branchRef&&!s.branchRefs.includes(request.branchRef))throw new ForbiddenException("Project branch unavailable");
+   return request.branchRef?{all:false,branchRefs:[request.branchRef]}:s;
+  }
+  if(request.kind!=="FINANCE_POSTED_SUMMARY")throw new ForbiddenException("Scheduled report source unavailable");
+  return this.originalScheduledFinanceScope(root,account,request);
+ }
+ async previewScheduledReport(root:string,account:string,raw:unknown,exporting=false):Promise<ReportPreview>{
+  const q=parseSafeReport(raw);
+  if(q.kind==="PROJECT_STATUS_REPORT"&&q.view==="TABLE"&&q.offset===0){
+   const x=await this.projects.scheduledMisStatus(root,account,q.branchRef,q.projectRef,q.fromDay,q.untilDay,exporting);
+   return this.projectStatusPreview(q,x,new Date().toISOString());
+  }
+  return this.previewScheduledFinance(root,account,q);
+ }
  async previewScheduledFinance(root:string,account:string,raw:unknown):
   Promise<ReportPreview>{
   const q=parseSafeReport(raw);
@@ -439,7 +459,7 @@ export class MisReportSourceService{
   }
   if(q.kind==="PROJECT_STATUS_REPORT"){
    const x=await this.projects.misStatus(token,q.branchRef,q.projectRef,q.fromDay,q.untilDay,exporting);
-   return {kind:q.kind,view:q.view,label:"Project status",state:x.partial?"PARTIAL":x.rows.length?"READY":"EMPTY",columns:[{key:"code",label:"Project code"},{key:"title",label:"Project"},{key:"status",label:"Current status"},{key:"branch",label:"Current branch"},{key:"revision",label:"Revision"},{key:"plannedStart",label:"Planned start"},{key:"plannedEnd",label:"Planned end"}],rows:x.rows,nextOffset:null,sourceReadAt,sourceAsOf:x.sourceAsOf,sourceCutoffKind:"OWNER_TRANSACTION_SNAPSHOT",explanation:x.partial?"More than 50 projects match. Narrow the filters before export.":"Current source revision; dates filter planned start and end. No personal or location fields.",scopeLabel:"Current permitted project scope"};
+   return this.projectStatusPreview(q,x,sourceReadAt);
   }
   if(q.kind==="PROJECT_BUDGET_SUMMARY"){
    const x=await this.projects.misBudget(token,q.projectRef!);
