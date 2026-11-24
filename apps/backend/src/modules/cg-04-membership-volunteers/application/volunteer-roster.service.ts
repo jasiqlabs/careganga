@@ -70,12 +70,40 @@ export class VolunteerRosterService{
      [a.realmId,scope.all,scope.branches.map(x=>x.value)])).rows[0];
    return {total:Number(overview?.total??0),active:Number(overview?.active??0),inactive:Number(overview?.inactive??0),suspended:Number(overview?.suspended??0)};
  }
- /** Same owner aggregate, without loading private roster identities. */
- async misCounts(token:string){
-  return this.run(token,"volunteers.view",async(tx,a)=>({
-   ...await this.overview(tx,a),
-   sourceAsOf:(await tx.query<{at:Date}>("SELECT transaction_timestamp() AS at")).rows[0].at.toISOString()
-  }));
+ async misOptions(token:string){
+  return this.run(token,"volunteers.view",async(tx,a)=>{
+   const scope=await this.branches.projectBranchScope(tx,a);
+   return {branches:scope.branches.map(({value,label})=>({ref:value,name:label}))};
+  });
+ }
+ /** Approved enrollment and consent, current actor scope, no private roster fields. */
+ async misCounts(token:string,branch?:string,from?:string,to?:string){
+  const f=parse({branch});
+  const date=(v?:string)=>{
+   if(v===undefined)return null;
+   const d=new Date(v+"T00:00:00Z");
+   if(!/^\d{4}-\d{2}-\d{2}$/.test(v)||!Number.isFinite(d.getTime())||d.toISOString().slice(0,10)!==v)throw new BadRequestException("Choose a valid enrollment date.");
+   return v;
+  };
+  const start=date(from),end=date(to);
+  if(Boolean(start)!==Boolean(end)||start&&end&&(start>end||Date.parse(end)-Date.parse(start)>366*86400000))throw new BadRequestException("Choose a bounded enrollment date range.");
+  return this.run(token,"volunteers.view",async(tx,a)=>{
+   const scope=await this.branches.projectBranchScope(tx,a);
+   if(f.branch)await this.branches.projectBranch(tx,a,f.branch);
+   const row=(await tx.query<{total:number;active:number;inactive:number;suspended:number}>(`
+    SELECT count(*)::int total,count(*) FILTER(WHERE v.status='ACTIVE')::int active,
+     count(*) FILTER(WHERE v.status='INACTIVE')::int inactive,count(*) FILTER(WHERE v.status='SUSPENDED')::int suspended
+    FROM volunteer v JOIN volunteer_application app ON app.root_realm_id=v.root_realm_id AND app.id=v.original_application_id
+     AND app.applicant_account_ref=v.account_ref AND app.status='APPROVED'
+     AND app.consent_version='VOLUNTEER_V1' AND app.consented_at IS NOT NULL
+    WHERE v.root_realm_id=$1 AND (($2::boolean AND v.branch_ref IS NULL) OR v.branch_ref=ANY($3::uuid[]))
+     AND ($4::uuid IS NULL OR v.branch_ref=$4)
+     AND ($5::date IS NULL OR v.created_at>=($5::date::timestamp AT TIME ZONE 'Asia/Kolkata'))
+     AND ($6::date IS NULL OR v.created_at<(($6::date+1)::timestamp AT TIME ZONE 'Asia/Kolkata'))`,
+    [a.realmId,scope.all,scope.branches.map(x=>x.value),f.branch,start,end])).rows[0];
+   if(!row)throw Error("Volunteer summary unavailable");
+   return {...row,sourceAsOf:(await tx.query<{at:Date}>("SELECT transaction_timestamp() AS at")).rows[0].at.toISOString()};
+  });
  }
  async list(token:string,raw:unknown){
   const x=object(raw,["q","status","availability","branch","department","offset"]);
