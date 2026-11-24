@@ -57,8 +57,12 @@ const source=contains(mis+"application/mis-report-source.service.ts",[
 assert.ok(!/SELECT\s+.*FROM/i.test(source),"Report templates may not run arbitrary SQL");
 contains(backend+"modules/cg-06-beneficiaries-assistance/application/beneficiary-report.service.ts",["async misSummary(token:string)","this.report(token,{})","total-recipients","sensitive.some(v=>v>0&&v<5)"]);
 assert.ok(source.includes("this.beneficiaries.misSummary(token)")&&source.includes("BENEFICIARY_ASSISTANCE_SUMMARY"),"Live beneficiary report must consume only the original scoped aggregate");
-contains(mis+"application/mis-report-run.service.ts",['request.kind==="BENEFICIARY_ASSISTANCE_SUMMARY"','MIS_LIVE_PREVIEW_ONLY']);
-contains(mis+"application/mis-saved-report.service.ts",['request.kind==="BENEFICIARY_ASSISTANCE_SUMMARY"','MIS_LIVE_PREVIEW_ONLY']);
+contains(backend+"modules/cg-04-membership-volunteers/application/membership-roster.service.ts",["async misCounts(token:string)","this.overview(tx,a)","membership.members.view"]);
+contains(backend+"modules/cg-04-membership-volunteers/application/volunteer-roster.service.ts",["async misCounts(token:string)","this.overview(tx,a)","volunteers.view"]);
+assert.ok(source.includes("this.members.misCounts(token)")&&source.includes("this.volunteers.misCounts(token)")&&source.includes("this.payroll.dashboard(token)")&&source.includes('permission("payroll.runs.view")&&await permission("payroll.compensation.view")'),"MIS must retain original owner status scope");
+
+contains(mis+"application/mis-report-run.service.ts",['LIVE_PREVIEW_KINDS.includes(request.kind)','MIS_LIVE_PREVIEW_ONLY']);
+contains(mis+"application/mis-saved-report.service.ts",['LIVE_PREVIEW_KINDS.includes(request.kind)','MIS_LIVE_PREVIEW_ONLY']);
 const originals=contains(
  backend+"modules/cg-09-finance-accounting/application/finance-reports.service.ts",[
  "requireFinanceReportBranch","j.status='POSTED'","sourceCutoffKind",
