@@ -4,7 +4,7 @@ import * as Crypto from "expo-crypto";
 import {identityRequest} from "../identity-access/http-client";
 import {careGangaTheme as theme} from "../../../../../packages/design-tokens/src/index";
 type Option={value:string;label:string};
-type Options={canManageFoundation:boolean;branches:Option[];states:Option[];districts:Option[]};
+type Options={canManageFoundation:boolean;canFilterProjects:boolean;branches:Option[];states:Option[];districts:Option[]};
 type Item={ref:string;reference:string;name:string;contactMobile:string|null;representativeName:string|null;
  representativeContact:string|null;branchRef:string|null;stateRef:string;districtRef:string|null;beneficiaryType:string;
  gender:string;ageGroup:string;consentKind:string;consentPurpose:string|null;consentRevoked:boolean;
@@ -61,10 +61,11 @@ export function NativeBeneficiariesWorkspace({token,onExpired,canManage,canLinkP
  const [opts,setOpts]=useState<Options|null>(null),[districts,setDistricts]=useState<Option[]>([]);
  const [q,setQ]=useState(""),[search,setSearch]=useState(""),[tab,setTab]=useState("ALL"),[branch,setBranch]=useState("");
  const [genderFilter,setGenderFilter]=useState(""),[ageFilter,setAgeFilter]=useState(""),[typeFilter,setTypeFilter]=useState("");
+ const [projectFilter,setProjectFilter]=useState(""),[projectSearch,setProjectSearch]=useState(""),[filterProjects,setFilterProjects]=useState<Option[]>([]);
  const [stateFilter,setStateFilter]=useState(""),[districtFilter,setDistrictFilter]=useState("");
  const [fromFilter,setFromFilter]=useState(""),[toFilter,setToFilter]=useState("");
  const [filterDistricts,setFilterDistricts]=useState<Option[]>([]);
- const [appliedFilters,setAppliedFilters]=useState({gender:"",ageGroup:"",type:"",stateRef:"",districtRef:"",registeredFrom:"",registeredTo:""});
+ const [appliedFilters,setAppliedFilters]=useState({gender:"",ageGroup:"",type:"",stateRef:"",districtRef:"",registeredFrom:"",registeredTo:"",projectRef:""});
  const [cursor,setCursor]=useState(""),[history,setHistory]=useState<string[]>([]);
  const [auditHistory,setAuditHistory]=useState<ActionHistory[]>([]),[verificationHistory,setVerificationHistory]=useState<VerificationHistory[]>([]);
  const [review,setReview]=useState<ReviewInfo|null>(null),[reviewAction,setReviewAction]=useState("APPROVE");
@@ -127,6 +128,7 @@ export function NativeBeneficiariesWorkspace({token,onExpired,canManage,canLinkP
   finally{setBusy(false);}
  };
  const reload=()=>setRefreshKey(x=>x+1);
+ const loadProjectFilters=async()=>{try{setFilterProjects(await api<Option[]>("/project-filter-options?"+new URLSearchParams({branchRef:branch,q:projectSearch.trim()})));}catch(e){setFilterProjects([]);setError(e instanceof Error?e.message:"Projects unavailable");}};
  const open=(m:"create"|"edit")=>{setMode(m);setError("");setDuplicates(null);setDraft(m==="create"?{...blank(),branchRef:opts&&!opts.canManageFoundation?opts.branches[0]?.value??"":""}:selected?fromItem(selected):blank());setCommandKey(Crypto.randomUUID());};
  const submitVerification=async()=>{
   if(!selected||verificationBusy||!canSubmitVerification)return;
@@ -219,17 +221,18 @@ export function NativeBeneficiariesWorkspace({token,onExpired,canManage,canLinkP
    <TextInput accessibilityLabel="Beneficiary type" value={typeFilter} maxLength={60} onChangeText={setTypeFilter} style={{backgroundColor:"white",borderWidth:1,borderColor:"#CBD5E1",padding:12,borderRadius:10}}/>
    <Select title="Gender" selected={genderFilter} items={[{value:"",label:"All"},...enumOptions(["MALE","FEMALE","OTHER","NOT_SPECIFIED"])]} onSelect={setGenderFilter}/>
    <Select title="Age group" selected={ageFilter} items={[{value:"",label:"All"},...enumOptions(["CHILD","ADULT","SENIOR","NOT_SPECIFIED"])]} onSelect={setAgeFilter}/>
+   {opts?.canFilterProjects&&<View><Text style={labelStyle}>Find project</Text><TextInput accessibilityLabel="Find project" maxLength={80} value={projectSearch} onChangeText={setProjectSearch} placeholder="Project name or code" style={{backgroundColor:"white",borderWidth:1,borderColor:"#CBD5E1",padding:12,borderRadius:10}}/><Button label="Find projects" outline onPress={()=>void loadProjectFilters()}/><Select title="Project" selected={projectFilter} items={[{value:"",label:"All projects"},...filterProjects]} onSelect={setProjectFilter}/></View>}
    <Select title="State" selected={stateFilter} items={[{value:"",label:"All states"},...(opts?.states??[])]} onSelect={x=>{setStateFilter(x);setDistrictFilter("");}}/>
    {stateFilter!==""&&<Select title="District" selected={districtFilter} items={[{value:"",label:"All districts"},...filterDistricts]} onSelect={setDistrictFilter}/>}
    <Text style={labelStyle}>Registered from (YYYY-MM-DD)</Text>
    <TextInput accessibilityLabel="Registered from" value={fromFilter} onChangeText={setFromFilter} maxLength={10} placeholder="YYYY-MM-DD" style={{backgroundColor:"white",borderWidth:1,borderColor:"#CBD5E1",padding:12,borderRadius:10}}/>
    <Text style={labelStyle}>Registered to (YYYY-MM-DD)</Text>
    <TextInput accessibilityLabel="Registered to" value={toFilter} onChangeText={setToFilter} maxLength={10} placeholder="YYYY-MM-DD" style={{backgroundColor:"white",borderWidth:1,borderColor:"#CBD5E1",padding:12,borderRadius:10}}/>
-   <Button label="Apply Filters" outline onPress={()=>{setSearch(q.trim());setAppliedFilters({gender:genderFilter,ageGroup:ageFilter,type:typeFilter,stateRef:stateFilter,districtRef:districtFilter,registeredFrom:fromFilter,registeredTo:toFilter});setCursor("");setHistory([]);}}/>
-   <Button label="Reset filters" outline onPress={()=>{setQ("");setSearch("");setBranch("");setTab("ALL");setGenderFilter("");setAgeFilter("");setTypeFilter("");setStateFilter("");setDistrictFilter("");setFromFilter("");setToFilter("");setAppliedFilters({gender:"",ageGroup:"",type:"",stateRef:"",districtRef:"",registeredFrom:"",registeredTo:""});setCursor("");setHistory([]);}}/>
+   <Button label="Apply Filters" outline onPress={()=>{setSearch(q.trim());setAppliedFilters({gender:genderFilter,ageGroup:ageFilter,type:typeFilter,stateRef:stateFilter,districtRef:districtFilter,registeredFrom:fromFilter,registeredTo:toFilter,projectRef:projectFilter});setCursor("");setHistory([]);}}/>
+   <Button label="Reset filters" outline onPress={()=>{setQ("");setSearch("");setBranch("");setTab("ALL");setGenderFilter("");setAgeFilter("");setTypeFilter("");setStateFilter("");setDistrictFilter("");setFromFilter("");setToFilter("");setProjectFilter("");setProjectSearch("");setFilterProjects([]);setAppliedFilters({gender:"",ageGroup:"",type:"",stateRef:"",districtRef:"",registeredFrom:"",registeredTo:"",projectRef:""});setCursor("");setHistory([]);}}/>
    <Select title="Operating branch" selected={branch}
     items={[{value:"",label:"All permitted branches"},...(opts?.branches??[])]}
-    onSelect={x=>{setBranch(x);setCursor("");setHistory([]);}}/>
+    onSelect={x=>{setBranch(x);setProjectFilter("");setFilterProjects([]);setAppliedFilters(f=>({...f,projectRef:""}));setCursor("");setHistory([]);}}/>
    <Select title="Status" selected={tab} onSelect={x=>{setTab(x);setCursor("");setHistory([]);}}
     items={enumOptions(["ALL","ACTIVE","INACTIVE","VERIFIED","PENDING"])}/>
    {!!notice&&<Text accessibilityRole="alert" style={{color:"#166534"}}>{notice}</Text>}
