@@ -46,7 +46,8 @@ CREATE TABLE payroll_line(
  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),root_realm_id uuid NOT NULL,run_id uuid NOT NULL,source_revision integer NOT NULL,
  employee_ref uuid NOT NULL,period_key text NOT NULL,branch_ref uuid NOT NULL,
  base_minor bigint NOT NULL CHECK(base_minor>=0),allowance_minor bigint NOT NULL CHECK(allowance_minor>=0),
- deduction_minor bigint NOT NULL CHECK(deduction_minor>=0),gross_minor bigint NOT NULL CHECK(gross_minor=base_minor+allowance_minor),
+ bonus_minor bigint NOT NULL CHECK(bonus_minor>=0),arrears_minor bigint NOT NULL CHECK(arrears_minor>=0),
+ deduction_minor bigint NOT NULL CHECK(deduction_minor>=0),gross_minor bigint NOT NULL CHECK(gross_minor=base_minor+allowance_minor+bonus_minor+arrears_minor),
  net_minor bigint NOT NULL CHECK(net_minor=gross_minor-deduction_minor AND net_minor>=0),
  employer_minor bigint NOT NULL CHECK(employer_minor>=0),statutory_minor bigint NOT NULL CHECK(statutory_minor BETWEEN 0 AND deduction_minor),
  source_snapshot jsonb NOT NULL CHECK(jsonb_typeof(source_snapshot)='object'),
@@ -78,3 +79,22 @@ BEGIN
 END; $cg11$;
 CREATE TRIGGER cg11_run_transition BEFORE INSERT OR UPDATE OR DELETE ON payroll_run FOR EACH ROW EXECUTE FUNCTION cg11_run_transition();
 
+
+-- Late attendance is a separate reviewed source adjustment for a later run.
+CREATE TABLE payroll_adjustment(
+ id uuid PRIMARY KEY DEFAULT gen_random_uuid(),root_realm_id uuid NOT NULL,
+ original_line_ref uuid NOT NULL,target_run_ref uuid NOT NULL,employee_ref uuid NOT NULL,
+ correction_digest char(64) NOT NULL CHECK(correction_digest~'^[a-f0-9]{64}$'),
+ source_key char(64) NOT NULL CHECK(source_key~'^[a-f0-9]{64}$'),
+ delta_minor bigint NOT NULL CHECK(delta_minor<>0),source_snapshot jsonb NOT NULL CHECK(jsonb_typeof(source_snapshot)='object'),
+ reason text NOT NULL CHECK(length(btrim(reason)) BETWEEN 2 AND 100),created_by uuid NOT NULL,
+ created_at timestamptz NOT NULL DEFAULT now(),
+ UNIQUE(root_realm_id,id),UNIQUE(root_realm_id,source_key),
+ FOREIGN KEY(root_realm_id,original_line_ref) REFERENCES payroll_line(root_realm_id,id),
+ FOREIGN KEY(root_realm_id,target_run_ref) REFERENCES payroll_run(root_realm_id,id),
+ FOREIGN KEY(root_realm_id,employee_ref) REFERENCES hr_employee(root_realm_id,id),
+ FOREIGN KEY(created_by,root_realm_id) REFERENCES account(id,realm_id)
+);
+CREATE INDEX ix_cg11_adjustment_original ON payroll_adjustment(root_realm_id,original_line_ref,created_at,id);
+CREATE INDEX ix_cg11_adjustment_target ON payroll_adjustment(root_realm_id,target_run_ref,employee_ref,id);
+CREATE TRIGGER cg11_late_adjustment_immutable BEFORE UPDATE OR DELETE ON payroll_adjustment FOR EACH ROW EXECUTE FUNCTION cg11_audit_immutable();
