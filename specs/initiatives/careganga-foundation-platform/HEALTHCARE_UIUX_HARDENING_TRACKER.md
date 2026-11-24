@@ -147,6 +147,10 @@ Web: four-stage step navigation, verified doctor sidebar, responsive center card
 
 CG19 appointment slip newly issued bytes use green/gold grouped booking, doctor/center, consultation fee and QR/instructions panels. Removed false blanket no-aid/no-payment assertion: immutable CG15 terms only; current CG17 aid and verified collection remain separate. Center cash receipt uses the same theme and actual verified cash amount. No expansion of private source fields, QR scope, immutable digest or historical stored bytes. The reference online two-copy receipt is not the same as the current separately authorized pay-at-center slip; online copy format and actual provider-verified financial document contract require owner reconciliation, not a fake PAID document. Web selected summary/quote and verified Razorpay checkout adopt public gold/green hierarchy. CG15 US-005/008, CG17 US-002/003/004, CG19 original issue/download/revocation QA source trace; PDF rendering/long Unicode names/address and real provider/receipt QA NOT_RUN.
 
+## Original healthcare landing and mobile parity
+
+HUX-09.01/10.02/10.03/13.01/13.02/11.03/08.03: CMS category titles/descriptions remain published-source content, now include real search and canonical category links. Live approved CG17 policy cards replace screenshot sample percentages; public native adds category quick filters and verified same-center doctor actions (no fake booking). Native payable amount highlight; private Web consultation grouped detail and document actions, response identity guard; Web history earlier in profile. Source-only; no screenshot parity/runtime certification. Existing CMS category image schema is text-only; illustrated tiles/hero assets require CMS media mapping and actual approved content. Patient profile registration remains verified/consent-gated; full booking-linked navigation/preview and real online document copy contract still pending.
+
 ## Subtracker details and expected user scenarios
 
 ### HUX-01.01 — Recover separate healthcare reference originals

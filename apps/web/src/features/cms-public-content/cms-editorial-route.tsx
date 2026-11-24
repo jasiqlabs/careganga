@@ -7,6 +7,7 @@ import {CmsPublicPage} from "./cms-public-page";
 import {CmsNgoSidebar} from "./cms-ngo-pages";
 import {publishedCmsPage,publishedCmsNavigation} from "./cms-public-source";
 import {publicLabOffers,rupees} from "../diagnostics/public-lab-offers";
+import {currentConsultationBenefits,formatRupees} from "../healthcare-assistance/public-consultation-benefits";
 
 /** One SSR source for each approved Foundation editorial route.
  * The Home publication supplies only shared original CMS footer content.
@@ -19,9 +20,10 @@ export async function editorialMetadata(slug:string):Promise<Metadata>{
   robots:{index:true,follow:true}};
 }
 export async function CmsEditorialRoute({slug,extra}:{slug:string;extra?:ReactNode}){
- const [page,navigation,home,labOffers]=await Promise.all([
+ const [page,navigation,home,labOffers,benefits]=await Promise.all([
   publishedCmsPage(slug),publishedCmsNavigation(),publishedCmsPage("home"),
-  slug==="healthcare"?publicLabOffers(new URLSearchParams()):Promise.resolve(null)]);
+  slug==="healthcare"?publicLabOffers(new URLSearchParams()):Promise.resolve(null),
+  slug==="healthcare"?currentConsultationBenefits():Promise.resolve(null)]);
  if(page.state==="NOT_PUBLISHED")notFound();
  if(page.state!=="PUBLISHED")return <UnavailablePage title="Foundation content temporarily unavailable" description="We could not verify the currently approved public information." linkHref="/" linkLabel="Return to the homepage" />;
  return <CmsPublicPage page={page.page} navigation={navigation}
@@ -29,11 +31,11 @@ export async function CmsEditorialRoute({slug,extra}:{slug:string;extra?:ReactNo
    home.page.sections.find(section=>section.kind==="SITE_FOOTER")?.fields:null}>
   {slug==="healthcare"&&<section className="cg-site-content"
    aria-label="Verified healthcare consultation booking">
-   <h2>Find an approved doctor and request a consultation</h2>
+   <h2>Find &amp; book healthcare services</h2>
+   {benefits?.state==="READY"&&benefits.items.length>0&&<div className="cg-health-benefit-strip"><h3>Current Foundation consultation support</h3><p>{benefits.disclaimer}</p><div>{benefits.items.slice(0,4).map((item,i)=><article key={item.centerSlug+":"+i}><strong>{item.centerName}</strong><p>{item.doctorName||"Approved center policy"}</p><b>{item.mode==="PERCENT"&&item.percentBasisPoints!==null?(item.percentBasisPoints/100)+"% possible support":formatRupees(item.fixedSupportMinor??"0")+" possible support"}</b><p>Maximum {formatRupees(item.maximumSupportMinor)}</p><Link href={"/healthcare/centers/"+encodeURIComponent(item.centerSlug)}>View center</Link></article>)}</div></div>}
    <p>CareGanga lists only currently verified healthcare providers and doctors.
     Where live working hours and consultation fees are available, an eligible
-    patient can request an in-person appointment. Payment is due at the
-    healthcare center, not through an online checkout.</p>
+    patient can request an in-person appointment. Center payment methods and assistance are checked against the actual booking.</p>
    <Link className="cg-site-action" href="/health-network?tab=doctors">
     View verified doctors &amp; book an appointment</Link>
    <p><Link href="/health-network?tab=centers">Find verified healthcare centers</Link>{" · "}<Link href="/health-network/lab-tests">Browse current lab prices</Link>{" · "}<Link href="/patients/me">My patient profile &amp; consultations</Link></p>

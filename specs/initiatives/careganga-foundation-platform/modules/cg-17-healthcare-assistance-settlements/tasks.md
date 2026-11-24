@@ -156,6 +156,11 @@ Dependencies: US-001
 
 ## Execution progress
 
+### Original healthcare public references — alignment checkpoint (24 Nov 2026)
+HUX-09.01/10.02/10.03/13.01/13.02/11.03/08.03: CMS category titles/descriptions remain published-source content, now include real search and canonical category links. Live approved CG17 policy cards replace screenshot sample percentages; public native adds category quick filters and verified same-center doctor actions (no fake booking). Native payable amount highlight; private Web consultation grouped detail and document actions, response identity guard; Web history earlier in profile. Source-only; no screenshot parity/runtime certification. Existing CMS category image schema is text-only; illustrated tiles/hero assets require CMS media mapping and actual approved content. Patient profile registration remains verified/consent-gated; full booking-linked navigation/preview and real online document copy contract still pending.
+Reference-led directory/profile, UI06 selected slot summary, UI08/09 payment and private document presentation on separate hardening branch. Original QA definitions retained, actual render/build/device/provider/independent acceptance NOT_RUN. See [tracker](../../HEALTHCARE_UIUX_HARDENING_TRACKER.md).
+
+
 ### Healthcare hardening — patient history and payment presentation
 HUX-11.03/13.02/08.03/15.02: patient Web/native appointment history clears stale rows and selected protected details on fresh query, guards pagination by list generation, differentiates failed lookup and empty state, and shows actual doctor/center and payment status; removes obsolete unconditional unpaid/receipt wording now that CG17 collection source exists. Native patient profile gives consultations earlier priority and all patient subviews use shared public palette. Time-first comparison no longer duplicates old center actions. CG15 US-007/008 original history, cancellation, slip and reschedule scenarios and CG17 US-003/004 collection scenarios require actual source-backed regression with paid, pending, cancelled, refunded, slow query and expired session. Runtime NOT_RUN.
 

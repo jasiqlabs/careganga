@@ -21,10 +21,11 @@ export function PatientAppointmentDetail({bookingRef}:{bookingRef:string}){
   const data:unknown=await response.json().catch(()=>null);
   if(!response.ok)throw Error(data&&typeof data==="object"&&"message" in data&&
    typeof data.message==="string"?data.message:"The appointment cannot be checked.");
+  if(!data||typeof data!=="object"||!("bookingRef" in data)||data.bookingRef!==bookingRef)throw Error("The selected appointment cannot be verified.");
   setBooking(data as Booking);
   const status=await fetch("/api/appointments/slips/me/"+bookingRef+"/status",{
    cache:"no-store",credentials:"same-origin"});
-  if(status.ok)setSlip(await status.json() as {status:string;canDownload:boolean});
+  if(status.ok)setSlip(await status.json() as {status:string;canDownload:boolean});else setSlip(null);
  },[bookingRef]);
  useEffect(()=>{
   let active=true;
@@ -92,7 +93,7 @@ export function PatientAppointmentDetail({bookingRef}:{bookingRef:string}){
   <h1>My consultation</h1>
   {loading&&<p role="status">Checking this appointment…</p>}
   {!!error&&<p role="alert">{error}</p>}
-  {booking&&<div style={{border:"1px solid #d7dfdb",padding:18,borderRadius:12}}>
+  {booking&&<div className="cg-health-patient-layout"><div className="cg-health-document-panel">
    <h2>Booking ID: {booking.bookingId}</h2>
    <p><strong>Status:</strong> {booking.bookingStatus.replaceAll("_"," ")}</p>
    <p><strong>Doctor:</strong> {booking.doctorName}</p>
@@ -108,7 +109,7 @@ export function PatientAppointmentDetail({bookingRef}:{bookingRef:string}){
    {["CONFIRMED","ARRIVED","WAITING","IN_CONSULTATION"].includes(booking.bookingStatus)&&
     <p><a href={"/api/consultations/me/"+encodeURIComponent(bookingRef)+"/calendar.ics"}>
      Add appointment to my calendar</a></p>}
-   <section aria-label="Private appointment slip">
+   </div><section className="cg-health-document-panel" aria-label="Private appointment slip">
     <h3>My appointment slip</h3>
     <p>Original CG-19 private PDF · one patient copy for pay-at-center
      · status-only QR, no clinical record access.</p>
@@ -125,8 +126,8 @@ export function PatientAppointmentDetail({bookingRef}:{bookingRef:string}){
      Check original document status</button>}
     <p>The QR reveals only whether this booking is currently valid.
      It does not identify the patient publicly.</p>
+   <p><Link href="/patients/me">Back to my consultations</Link></p>
    </section>
-   <Link href="/patients/me">Back to my consultations</Link>
   </div>}
  </section>;
 }

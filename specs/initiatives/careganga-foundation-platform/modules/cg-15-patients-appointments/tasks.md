@@ -264,6 +264,11 @@ Dependencies: US-003
 
 ## Execution progress
 
+### Original healthcare public references — alignment checkpoint (24 Nov 2026)
+HUX-09.01/10.02/10.03/13.01/13.02/11.03/08.03: CMS category titles/descriptions remain published-source content, now include real search and canonical category links. Live approved CG17 policy cards replace screenshot sample percentages; public native adds category quick filters and verified same-center doctor actions (no fake booking). Native payable amount highlight; private Web consultation grouped detail and document actions, response identity guard; Web history earlier in profile. Source-only; no screenshot parity/runtime certification. Existing CMS category image schema is text-only; illustrated tiles/hero assets require CMS media mapping and actual approved content. Patient profile registration remains verified/consent-gated; full booking-linked navigation/preview and real online document copy contract still pending.
+Reference-led directory/profile, UI06 selected slot summary, UI08/09 payment and private document presentation on separate hardening branch. Original QA definitions retained, actual render/build/device/provider/independent acceptance NOT_RUN. See [tracker](../../HEALTHCARE_UIUX_HARDENING_TRACKER.md).
+
+
 ### Healthcare source contract re-review
 HUX-10.04/11.02/13.02: re-review found native preview used a 25-center client cap although the original CG15 API admits 40. Align native cap to 40 and 144 slots; reject a different requested date/time/center rather than rendering a mismatched appointment. Updated existing CG14 US004 and CG15 US002 source verifiers to assert live schedule navigation, correct public semantic theme, and bounded response identity instead of obsolete pre-booking wording/blue theme. Original QA US-002-QA01/02/05/07/12/13/14, CG14 US-004-QA12/17. Test 26–40 verified centers, no schedule, late response/date and changed center, 41 invalid entries, >144 slots; source script execution and real QA NOT_RUN.
 

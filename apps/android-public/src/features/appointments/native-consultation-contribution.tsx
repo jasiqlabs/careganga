@@ -157,7 +157,7 @@ export function NativeConsultationContribution({holdRef,bookingRef,
    <Text style={s.amount}>Actual consultation fee: {money(value.grossMinor!)}</Text>
    <Text style={s.amount}>Applicable Foundation share: {
     money(value.foundationSupportMinor!)}</Text>
-   <Text style={s.amount}>Patient due at center: {money(value.patientPayableMinor!)}</Text>
+   <View style={s.total}><Text style={s.amount}>Patient payable amount</Text><Text style={s.totalValue}>{money(value.patientPayableMinor!)}</Text></View>
    <Text style={s.note}>{value.state==="NO_EFFECTIVE_ASSISTANCE"?
     "No active approved assistance; full fee is patient due.":
     value.state==="SERVICE_NO_SHOW_REVIEW_REQUIRED"?
@@ -191,7 +191,7 @@ const s=StyleSheet.create({
  panel:{padding:12,gap:10,borderWidth:1,borderColor:t.border,
   borderRadius:12,backgroundColor:t.surface},
  title:{fontSize:16,fontWeight:"700",color:t.text},
- rows:{gap:9},
+ rows:{gap:9},total:{padding:12,borderRadius:10,backgroundColor:t.gold,gap:5},totalValue:{fontSize:21,fontWeight:"800",color:t.sidebar},
  amount:{fontSize:14,fontWeight:"600",color:t.text,lineHeight:20},
  note:{fontSize:13,lineHeight:20,color:t.mutedText},
  button:{minHeight:48,padding:12,justifyContent:"center",

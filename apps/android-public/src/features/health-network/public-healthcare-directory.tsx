@@ -73,6 +73,7 @@ export function PublicHealthcareDirectory({onExit,reschedule}:{onExit:()=>void;
  const [labMenu,setLabMenu]=useState(false),[labCenterSlug,setLabCenterSlug]=useState("");
  const [linkNotice,setLinkNotice]=useState("");
  const [hasCenterLabOffer,setHasCenterLabOffer]=useState(false);
+ const [centerDoctors,setCenterDoctors]=useState<{slug:string;items:Doctor[];failed:boolean}|null>(null);
  const [pin,setPin]=useState(""),[specialty,setSpecialty]=useState("");
  const [category,setCategory]=useState(""),[facility,setFacility]=useState("");
  const [service,setService]=useState(""),[day,setDay]=useState("");
@@ -92,7 +93,7 @@ export function PublicHealthcareDirectory({onExit,reschedule}:{onExit:()=>void;
  const applied=useRef<{mode:Mode;query:string}|null>(null);
  const selectionRef=useRef<Selection|null>(null);
  const detailHistory=useRef<Selection[]>([]);
- const load=useCallback(async(nextCursor="",append=false,reuseApplied=false)=>{
+ const load=useCallback(async(nextCursor="",append=false,reuseApplied=false,categoryOverride?:string)=>{
   const request=++seq.current;
   setState(s=>({...s,status:"LOADING",items:append?s.items:[],next:null,details:null}));
   try{
@@ -102,7 +103,8 @@ export function PublicHealthcareDirectory({onExit,reschedule}:{onExit:()=>void;
    if(region.state)query.set("state",region.state.value);
    if(region.district)query.set("district",region.district.value);
    if(region.block)query.set("block",region.block.value);
-   if(category)query.set("category",category);
+   const activeCategory=categoryOverride??category;
+   if(activeCategory)query.set("category",activeCategory);
    if(service)query.set("service",service);
    if(day)query.set("day",day);
    if(facility.trim())query.set("facility",facility.trim().slice(0,80));
@@ -212,8 +214,10 @@ export function PublicHealthcareDirectory({onExit,reschedule}:{onExit:()=>void;
  },[selection,load,show,onExit,labMenu]);
  useEffect(()=>{
   let active=true;
-  setHasCenterLabOffer(false);
+  setHasCenterLabOffer(false);setCenterDoctors(null);
   if(selection?.kind==="center"&&state.details){
+   const slug=selection.slug;
+   void read("doctors?"+new URLSearchParams({center:slug}).toString()).then(raw=>{const v=raw as {items?:unknown};if(!v||!Array.isArray(v.items)||!v.items.every(x=>validListing(x,"doctors")&&(x as Doctor).centerSlug===slug))throw Error("Unavailable");if(active)setCenterDoctors({slug,items:v.items.slice(0,20) as Doctor[],failed:false});}).catch(()=>{if(active)setCenterDoctors({slug,items:[],failed:true});});
    void hasCurrentLabOffers(selection.slug).then(v=>{
     if(active)setHasCenterLabOffer(v);
    });
@@ -234,7 +238,7 @@ export function PublicHealthcareDirectory({onExit,reschedule}:{onExit:()=>void;
    <View style={styles.headingRow}>{label("‹ Back",back)}
     <Text accessibilityRole="header" style={styles.heading}>Healthcare Network</Text></View>
    {!!linkNotice&&<Text accessibilityRole="alert" onPress={()=>setLinkNotice("")}>{linkNotice}</Text>}
-   {!selection?<><Text style={styles.helper}>Search only current verified centers and doctors.
+   {!selection?<><View style={styles.hero}><Text style={styles.heroTitle}>Healthcare assistance</Text><Text style={styles.heroText}>Find verified doctors and partner centers.</Text></View><Text style={styles.helper}>Search only current verified centers and doctors.
     Check appointment times before booking. Assistance is confirmed separately.</Text>
     <View style={styles.row}>
      {!reschedule&&label("Centers",()=>{if(mode!=="centers"){seq.current++;setState({status:"LOADING",items:[],next:null,details:null});setMode("centers");}},mode==="centers")}
@@ -242,6 +246,7 @@ export function PublicHealthcareDirectory({onExit,reschedule}:{onExit:()=>void;
      {!reschedule&&label("Lab tests & prices",()=>{
       setLabCenterSlug("");setLabMenu(true);})}
     </View>
+    {mode==="centers"&&<ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.categoryRow}>{["","POLYCLINIC","DIAGNOSTIC_CENTER","DENTAL_CLINIC","MEDICAL_LABORATORY","HOSPITAL","NURSING_HOME","PHARMACY","ORTHOPEDIC_CLINIC","HOMEOPATHY_CLINIC","AYURVEDIC_CLINIC"].map(v=><View key={v||"all"}>{label(v?nice(v):"All centers",()=>{setCategory(v);void load("",false,false,v);},category===v)}</View>)}</ScrollView>}
     <Text style={styles.label}>Search name or qualification</Text>
     <TextInput accessibilityLabel="Search current verified directory" style={styles.input}
      value={search} onChangeText={setSearch} maxLength={80} placeholder="Name or qualification"/>
@@ -360,6 +365,7 @@ export function PublicHealthcareDirectory({onExit,reschedule}:{onExit:()=>void;
     {state.status==="READY"&&state.next&&
      label("More verified results",()=>void load(state.next!,true))}
    </>:centerDetails?<View style={styles.card}>
+    {!!base&&selection?.kind==="center"&&centerDetails.approvedPresentation?.media[0]&&<Image accessibilityLabel={centerDetails.approvedPresentation.media[0].altText} style={styles.photo} source={{uri:new URL("/api/documents/health-center-content/public/"+encodeURIComponent(selection.slug)+"/"+encodeURIComponent(centerDetails.approvedPresentation.media[0].fileRef),base).toString()}}/>}
     <Text accessibilityRole="header" style={styles.cardTitle}>{centerDetails.centerName}</Text>
     <Text>{centerDetails.providerName} · {nice(centerDetails.type)}</Text>
     <Text>{centerDetails.address}, {centerDetails.pinCode}</Text>
@@ -379,7 +385,7 @@ export function PublicHealthcareDirectory({onExit,reschedule}:{onExit:()=>void;
     {centerDetails.approvedPresentation&&<>
      <Text style={styles.cardTitle}>About this center</Text>
      <Text>{centerDetails.approvedPresentation.description}</Text>
-     {!!base&&selection?.kind==="center"&&centerDetails.approvedPresentation.media.map(m=>
+     {!!base&&selection?.kind==="center"&&centerDetails.approvedPresentation.media.slice(1).map(m=>
       <View key={m.fileRef} style={styles.subcard}>
        <Image accessibilityLabel={m.altText} style={styles.photo}
         source={{uri:new URL("/api/documents/health-center-content/public/"+
@@ -401,6 +407,7 @@ export function PublicHealthcareDirectory({onExit,reschedule}:{onExit:()=>void;
       <Text style={styles.label}>{f.question}</Text><Text>{f.answer}</Text>
      </View>)}
     </>}
+    {selection?.kind==="center"&&centerDoctors?.slug===selection.slug&&<View style={styles.subcard}><Text accessibilityRole="header" style={styles.cardTitle}>Verified doctors at this center</Text>{centerDoctors.failed?<Text style={styles.helper}>Doctor listings could not be checked.</Text>:centerDoctors.items.length===0?<Text style={styles.helper}>No current verified doctor listing.</Text>:centerDoctors.items.map(d=><View key={d.doctorRef} style={styles.subcard}><Text style={styles.label}>{d.doctorName}</Text><Text>{d.specialties.join(", ")}</Text><Text>{d.fee?money(d.fee.amountMinor):"Fee not listed"}</Text>{label("View doctor & check times",()=>void show({kind:"doctor",ref:d.doctorRef,centerSlug:d.centerSlug}))}</View>)}</View>}
     {selection?.kind==="center"&&
      <NativePublicPartnerOffers key={"partner-offers:"+selection.slug}
       centerSlug={selection.slug}/>}
@@ -453,7 +460,8 @@ const styles=StyleSheet.create({
  row:{flexDirection:"row",flexWrap:"wrap",gap:8,alignItems:"center"},
  button:{minHeight:48,minWidth:72,borderWidth:1,borderColor:theme.border,
   borderRadius:10,paddingHorizontal:12,paddingVertical:10,justifyContent:"center"},
- selected:{backgroundColor:theme.surface,borderColor:theme.primary},
+ selected:{backgroundColor:theme.selectedSurface,borderColor:theme.primary},
+ hero:{backgroundColor:theme.primary,borderRadius:14,padding:18,gap:8},heroTitle:{color:theme.primaryText,fontSize:22,fontWeight:"800"},heroText:{color:theme.primaryText,fontSize:14,lineHeight:20},categoryRow:{gap:8,paddingVertical:4},
  buttonLabel:{color:theme.text,fontWeight:"600"},
  card:{backgroundColor:theme.surface,borderRadius:16,borderWidth:1,
   borderColor:theme.border,padding:18,gap:12},
