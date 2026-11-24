@@ -41,6 +41,8 @@ const dashboard=contains(mis+"application/mis-dashboard.service.ts",[
  "sourceAsOf","SUPPRESSED","PARTIAL","FAILED","NO_AUTHORIZED_SOURCES"
 ]);
 assert.ok(!/\bSELECT\s+.*FROM\b/i.test(dashboard),"CG20 dashboard should use owning source facade");
+assert.ok(dashboard.includes('this.operations.read(bearer,"PERMITTED")')&&dashboard.includes('sourceAsOf:x.asOf')&&dashboard.includes('CG05_PROJECT_OPERATIONS'),"CG20 overview must use current scoped CG05 operational counts");
+
 contains(mis+"http/mis-dashboard.controller.ts",[
  '@Get("dashboard")','@Get("options")'
 ]);
