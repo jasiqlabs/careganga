@@ -1,0 +1,241 @@
+import React,{useCallback,useEffect,useState} from "react";
+import {ActivityIndicator,Modal,Pressable,ScrollView,Text,TextInput,View} from "react-native";
+import * as Crypto from "expo-crypto";
+import {identityRequest} from "../identity-access/http-client";
+import {careGangaTheme as theme} from "../../../../../packages/design-tokens/src/index";
+type Option={value:string;label:string};
+type Options={canManageFoundation:boolean;branches:Option[];states:Option[];districts:Option[]};
+type Item={ref:string;reference:string;name:string;contactMobile:string|null;representativeName:string|null;
+ representativeContact:string|null;branchRef:string|null;stateRef:string;districtRef:string|null;beneficiaryType:string;
+ gender:string;ageGroup:string;consentKind:string;consentPurpose:string|null;consentRevoked:boolean;
+ verification:string;lifecycle:string;revision:number;projectLinks?:{ref:string;projectRef:string;projectName:string}[]};
+type Page={items:Item[];nextCursor:string|null;hasMore:boolean};
+type Form={branchRef:string;name:string;contactMobile:string;representativeName:string;representativeContact:string;
+ stateRef:string;districtRef:string;beneficiaryType:string;gender:string;ageGroup:string;consentKind:string;
+ consentPurpose:string;consentAcknowledged:boolean};
+const blank=():Form=>({branchRef:"",name:"",contactMobile:"",representativeName:"",representativeContact:"",
+ stateRef:"",districtRef:"",beneficiaryType:"",gender:"NOT_SPECIFIED",ageGroup:"NOT_SPECIFIED",consentKind:"SELF",
+ consentPurpose:"Foundation beneficiary assistance",consentAcknowledged:false});
+const fromItem=(x:Item):Form=>({...blank(),branchRef:x.branchRef??"",name:x.name,contactMobile:x.contactMobile??"",
+ representativeName:x.representativeName??"",representativeContact:x.representativeContact??"",stateRef:x.stateRef,
+ districtRef:x.districtRef??"",beneficiaryType:x.beneficiaryType,gender:x.gender,ageGroup:x.ageGroup,
+ consentKind:x.consentKind,consentPurpose:x.consentPurpose??"",consentAcknowledged:true});
+const capitalize=(s:string)=>s.toLowerCase().replaceAll("_"," ").replace(/^./,x=>x.toUpperCase());
+const actionStyle={padding:12,borderRadius:10,backgroundColor:"#1D4ED8",marginTop:8} as const;
+const textStyle={fontSize:14,color:"#0F172A"} as const;
+const labelStyle={fontSize:12,fontWeight:"600",color:"#334155",marginBottom:4} as const;
+function Button({label,onPress,disabled=false,outline=false}:{label:string;onPress:()=>void;disabled?:boolean;outline?:boolean}){
+ return <Pressable accessibilityRole="button" accessibilityState={{disabled}} disabled={disabled}
+  onPress={onPress} style={{...actionStyle,backgroundColor:outline?"#EFF6FF":disabled?"#94A3B8":"#1D4ED8",
+   borderColor:"#BFDBFE",borderWidth:outline?1:0}}>
+  <Text style={{color:outline?"#1D4ED8":"white",fontWeight:"700",textAlign:"center"}}>{label}</Text>
+ </Pressable>;
+}
+function Select({title,selected,items,onSelect}:{title:string;selected:string;items:Option[];onSelect:(x:string)=>void}){
+ return <View style={{marginBottom:10}}>
+  <Text style={labelStyle}>{title}</Text>
+  <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{maxHeight:46}}
+   contentContainerStyle={{gap:7}}>
+   {items.map(x=><Pressable key={x.value} onPress={()=>onSelect(x.value)} accessibilityRole="button"
+    accessibilityState={{selected:selected===x.value}}
+    style={{padding:10,borderRadius:9,borderWidth:1,
+     borderColor:selected===x.value?"#1D4ED8":"#CBD5E1",
+     backgroundColor:selected===x.value?"#DBEAFE":"white"}}>
+    <Text style={{fontSize:12,color:"#0F172A"}}>{x.label}</Text></Pressable>)}
+  </ScrollView>
+ </View>;
+}
+const enumOptions=(items:string[]):Option[]=>items.map(x=>({value:x,label:capitalize(x)}));
+export function NativeBeneficiariesWorkspace({token,onExpired,canManage,canLinkProjects,canManageLifecycle,canRevoke}:{
+ token:string;onExpired:()=>void;canManage:boolean;canLinkProjects:boolean;canManageLifecycle:boolean;canRevoke:boolean;
+}){
+ const [page,setPage]=useState<Page|null>(null),[selected,setSelected]=useState<Item|null>(null);
+ const [opts,setOpts]=useState<Options|null>(null),[districts,setDistricts]=useState<Option[]>([]);
+ const [q,setQ]=useState(""),[search,setSearch]=useState(""),[tab,setTab]=useState("ALL");
+ const [cursor,setCursor]=useState(""),[history,setHistory]=useState<string[]>([]);
+ const [refreshKey,setRefreshKey]=useState(0),[loading,setLoading]=useState(false),[busy,setBusy]=useState(false);
+ const [error,setError]=useState(""),[notice,setNotice]=useState("");
+ const [mode,setMode]=useState<"create"|"edit"|null>(null),[draft,setDraft]=useState(blank);
+ const [commandKey,setCommandKey]=useState(""),[projects,setProjects]=useState<Option[]>([]);
+ const [projectRef,setProjectRef]=useState(""),[linkKey,setLinkKey]=useState(""),[reason,setReason]=useState("");
+ const change=(key:keyof Form,value:string|boolean)=>setDraft(f=>({...f,[key]:value}));
+ const api=useCallback(async<T,>(path:string,method="GET",body?:Record<string,unknown>):Promise<T>=>{
+  const r=await identityRequest("/api/v1/beneficiaries"+path,{cache:"no-store",method,
+   headers:{Authorization:"Bearer "+token,...(body?{"Content-Type":"application/json"}:{})},
+   ...(body?{body:JSON.stringify(body)}:{})});
+  if(r.status===401){onExpired();throw Error("Sign in again.");}
+  const v=await r.json().catch(()=>null);
+  if(!r.ok||v===null)throw Error(r.status===403?"Your current role or branch cannot perform this action.":
+   r.status===404?"Beneficiary unavailable.":r.status===409?"The record changed. Refresh to continue.":
+   r.status===400?"Check the beneficiary details.":"Outcome unavailable. Refresh before retrying.");
+  return v as T;
+ },[token,onExpired]);
+ useEffect(()=>{let active=true;void api<Options>("/options")
+  .then(x=>{if(active)setOpts(x);}).catch(e=>{if(active)setError(String(e.message));});
+  return()=>{active=false;};},[api]);
+ useEffect(()=>{let active=true;setDistricts([]);
+  if(draft.stateRef)void api<Options>("/options?"+new URLSearchParams({stateRef:draft.stateRef}))
+   .then(x=>{if(active)setDistricts(x.districts);})
+   .catch(e=>{if(active)setError(String(e.message));});
+  return()=>{active=false;};},[draft.stateRef,api]);
+ useEffect(()=>{let live=true;setLoading(true);
+  const p=new URLSearchParams();
+  if(search)p.set("q",search);if(tab==="ACTIVE"||tab==="INACTIVE")p.set("lifecycle",tab);
+  if(tab==="VERIFIED")p.set("verification","VERIFIED");
+  if(tab==="PENDING")p.set("verification","DRAFT");
+  if(cursor)p.set("cursor",cursor);
+  void api<Page>("?"+p).then(x=>{if(live)setPage(x);})
+   .catch(e=>{if(live){setPage(null);setError(e.message);}})
+   .finally(()=>{if(live)setLoading(false);});
+  return()=>{live=false;};
+ },[search,tab,cursor,refreshKey,api]);
+ const select=async(id:string)=>{setBusy(true);setError("");
+  try{const x=await api<Item>("/"+id);setSelected(x);setLinkKey(Crypto.randomUUID());setProjectRef("");
+   if(canLinkProjects){const p=new URLSearchParams({branchRef:x.branchRef??""});
+    setProjects(await api<Option[]>("/eligible-projects?"+p).catch(()=>[]));}
+  }catch(e){setSelected(null);setError(e instanceof Error?e.message:"Cannot open beneficiary");}
+  finally{setBusy(false);}
+ };
+ const reload=()=>setRefreshKey(x=>x+1);
+ const open=(m:"create"|"edit")=>{setMode(m);setError("");setDraft(m==="create"?blank():selected?fromItem(selected):blank());setCommandKey(Crypto.randomUUID());};
+ const save=async()=>{if(busy||!mode||!draft.consentAcknowledged)return;setBusy(true);setError("");
+  const body:Record<string,unknown>={...draft,requestKey:commandKey,branchRef:draft.branchRef||null,
+   contactMobile:draft.contactMobile||null,representativeName:draft.representativeName||null,
+   representativeContact:draft.representativeContact||null,districtRef:draft.districtRef||null};
+  if(mode==="edit"){delete body.branchRef;body.expectedRevision=selected?.revision;}
+  try{
+   const x=await api<{ref:string}>(mode==="edit"?"/"+selected?.ref:"",mode==="edit"?"PATCH":"POST",body);
+   setMode(null);reload();await select(x.ref);setNotice("Saved privately. Independent verification is separate.");
+  }catch(e){setError(e instanceof Error?e.message:"Could not confirm save. Recheck before retrying.");}
+  finally{setBusy(false);}
+ };
+ const link=async()=>{
+  if(!selected||!projectRef||busy)return;setBusy(true);setError("");
+  try{await api("/"+selected.ref+"/project-links","POST",{requestKey:linkKey,
+   expectedRevision:selected.revision,projectRef});reload();await select(selected.ref);setNotice("Project linked.");}
+  catch(e){setError(e instanceof Error?e.message:"Could not confirm project link");}
+  finally{setBusy(false);}
+ };
+ const unlink=async(id:string)=>{
+  if(!selected||busy)return;setBusy(true);setError("");
+  try{await api("/"+selected.ref+"/project-links","DELETE",
+   {requestKey:Crypto.randomUUID(),expectedRevision:selected.revision,linkRef:id});
+   reload();await select(selected.ref);setNotice("Project unlinked. History retained.");}
+  catch(e){setError(e instanceof Error?e.message:"Could not unlink project");}
+  finally{setBusy(false);}
+ };
+ const lifecycle=async()=>{
+  if(!selected||busy||reason.trim().length<3)return;setBusy(true);setError("");
+  try{await api("/"+selected.ref+"/lifecycle","PATCH",{requestKey:Crypto.randomUUID(),
+   expectedRevision:selected.revision,lifecycle:selected.lifecycle==="ACTIVE"?"INACTIVE":"ACTIVE",reason});
+   await select(selected.ref);reload();setReason("");setNotice("Lifecycle updated.");}
+  catch(e){setError(e instanceof Error?e.message:"Change not confirmed");}
+  finally{setBusy(false);}
+ };
+ const revoke=async()=>{
+  if(!selected||busy||reason.trim().length<3)return;setBusy(true);setError("");
+  try{await api("/"+selected.ref+"/revoke-consent","POST",{requestKey:Crypto.randomUUID(),
+   expectedRevision:selected.revision,reason});await select(selected.ref);reload();setReason("");
+   setNotice("Consent withdrawal recorded. Private details restricted.");}
+  catch(e){setError(e instanceof Error?e.message:"Withdrawal not confirmed");}
+  finally{setBusy(false);}
+ };
+ return <View style={{flex:1,backgroundColor:"#F8FAFC"}}>
+  <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={{padding:18,paddingBottom:100,gap:12}}>
+   <Text style={{fontSize:23,fontWeight:"800",color:theme.colors?.primary??"#0F172A"}}>Beneficiaries</Text>
+   <Text style={{color:"#64748B"}}>Private Foundation records · current branch and role only</Text>
+   {canManage&&<Button label="Add Beneficiary" onPress={()=>open("create")}/>}
+   <TextInput accessibilityLabel="Search beneficiary" value={q} onChangeText={setQ}
+    style={{backgroundColor:"white",borderWidth:1,borderColor:"#CBD5E1",padding:12,borderRadius:10}}
+    placeholder="Name or beneficiary reference"/>
+   <Button label="Search current scope" outline onPress={()=>{setSearch(q.trim());setCursor("");setHistory([]);}}/>
+   <Select title="Status" selected={tab} onSelect={x=>{setTab(x);setCursor("");setHistory([]);}}
+    items={enumOptions(["ALL","ACTIVE","INACTIVE","VERIFIED","PENDING"])}/>
+   {!!notice&&<Text accessibilityRole="alert" style={{color:"#166534"}}>{notice}</Text>}
+   {!!error&&<Text accessibilityRole="alert" style={{color:"#B91C1C"}}>{error}</Text>}
+   {loading?<ActivityIndicator/>:!page?.items.length?<Text style={textStyle}>No beneficiaries found for your current access.</Text>:
+    page.items.map(x=><Pressable key={x.ref} accessibilityRole="button" onPress={()=>void select(x.ref)}
+     style={{padding:14,borderWidth:1,borderColor:"#E2E8F0",borderRadius:12,backgroundColor:"white"}}>
+     <Text style={{fontWeight:"700",color:"#0F172A"}}>{x.name}</Text>
+     <Text style={{fontSize:12,color:"#64748B"}}>{x.reference} · {capitalize(x.verification)} · {capitalize(x.lifecycle)}</Text>
+     <Text style={{fontSize:12,color:"#64748B"}}>{x.beneficiaryType}</Text></Pressable>)}
+   <View style={{flexDirection:"row",gap:8}}>
+    {history.length>0&&<Button label="Previous" outline onPress={()=>{
+     setCursor(history[history.length-1]);setHistory(x=>x.slice(0,-1));}}/>}
+    {page?.hasMore&&page.nextCursor&&<Button label="Next" outline onPress={()=>{
+     setHistory(x=>[...x,cursor]);setCursor(page.nextCursor!);}}/>}
+   </View>
+   {selected&&<View style={{padding:16,borderRadius:12,backgroundColor:"white",gap:7,borderColor:"#DBEAFE",borderWidth:1}}>
+    <Text style={{fontSize:18,fontWeight:"700"}}>{selected.name}</Text>
+    <Text>{selected.reference} · Revision {selected.revision}</Text>
+    <Text>Verification: {capitalize(selected.verification)}</Text>
+    <Text>Lifecycle: {capitalize(selected.lifecycle)}</Text>
+    <Text>Contact: {selected.contactMobile??"Not recorded / restricted"}</Text>
+    <Text>Category: {selected.beneficiaryType}</Text>
+    <Text>Consent: {selected.consentRevoked?"Withdrawn":capitalize(selected.consentKind)}</Text>
+    <Text style={{fontSize:12,color:"#64748B"}}>Verified status requires independent CG-03 review. This screen cannot approve it.</Text>
+    {canManage&&!selected.consentRevoked&&selected.lifecycle==="ACTIVE"&&
+     <Button label="Edit beneficiary" outline onPress={()=>open("edit")}/>}
+    <Text style={{fontWeight:"700",marginTop:10}}>Linked projects</Text>
+    {!selected.projectLinks?.length&&<Text>No project linked. Optional for intake.</Text>}
+    {selected.projectLinks?.map(x=><View key={x.ref} style={{marginBottom:6}}>
+     <Text>{x.projectName}</Text>
+     {canLinkProjects&&!selected.consentRevoked&&<Button label="Unlink project" outline onPress={()=>void unlink(x.ref)} disabled={busy}/>}</View>)}
+    {canLinkProjects&&!selected.consentRevoked&&selected.lifecycle==="ACTIVE"&&<>
+     <Select title="Eligible active project" selected={projectRef}
+      items={[{value:"",label:"Not selected"},...projects.filter(x=>!selected.projectLinks?.some(y=>y.projectRef===x.value))]}
+      onSelect={x=>{setProjectRef(x);setLinkKey(Crypto.randomUUID());}}/>
+     <Button label="Link project" onPress={()=>void link()} disabled={busy||!projectRef}/>
+    </>}
+    {(canManageLifecycle||canRevoke)&&<>
+     <Text style={labelStyle}>Reason for status or consent change</Text>
+     <TextInput value={reason} onChangeText={setReason} maxLength={300}
+      style={{backgroundColor:"#F8FAFC",borderColor:"#CBD5E1",borderWidth:1,borderRadius:8,padding:12}}/>
+     {canManageLifecycle&&<Button label={selected.lifecycle==="ACTIVE"?"Mark inactive":"Reactivate"}
+      disabled={busy||reason.trim().length<3} outline onPress={()=>void lifecycle()}/>}
+     {canRevoke&&!selected.consentRevoked&&<Button label="Record consent withdrawal"
+      disabled={busy||reason.trim().length<3} outline onPress={()=>void revoke()}/>}
+    </>}
+   </View>}
+  </ScrollView>
+  <Modal visible={mode!==null} animationType="slide" onRequestClose={()=>setMode(null)}>
+   <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={{padding:20,gap:11,paddingBottom:70}}>
+    <Text style={{fontSize:21,fontWeight:"800",color:"#0F172A"}}>{mode==="edit"?"Edit Beneficiary":"Add Beneficiary"}</Text>
+    <Button outline label="Close" onPress={()=>setMode(null)}/>
+    {mode==="create"&&<Select title="Operating branch" selected={draft.branchRef}
+     items={[...(opts?.canManageFoundation?[{value:"",label:"Foundation wide"}]:[]),...(opts?.branches??[])]}
+     onSelect={x=>change("branchRef",x)}/>}
+    {([["name","Full name"],["beneficiaryType","Beneficiary category"],["contactMobile","Phone (optional, with +country code)"]] as const).map(([k,title])=>
+     <View key={k}><Text style={labelStyle}>{title}</Text>
+      <TextInput value={draft[k]} onChangeText={x=>change(k,x)} style={{...textStyle,backgroundColor:"#F8FAFC",borderWidth:1,
+       borderColor:"#CBD5E1",borderRadius:8,padding:12}}/></View>)}
+    <Select title="State" selected={draft.stateRef} items={opts?.states??[]}
+     onSelect={x=>setDraft(v=>({...v,stateRef:x,districtRef:""}))}/>
+    <Select title="District (optional)" selected={draft.districtRef}
+     items={[{value:"",label:"Not selected"},...districts]} onSelect={x=>change("districtRef",x)}/>
+    <Select title="Gender (optional)" selected={draft.gender}
+     items={enumOptions(["NOT_SPECIFIED","FEMALE","MALE","OTHER"])} onSelect={x=>change("gender",x)}/>
+    <Select title="Age group (optional)" selected={draft.ageGroup}
+     items={enumOptions(["NOT_SPECIFIED","CHILD","ADULT","SENIOR"])} onSelect={x=>change("ageGroup",x)}/>
+    <Select title="Consent given by" selected={draft.consentKind}
+     items={enumOptions(["SELF","GUARDIAN","REPRESENTATIVE"])} onSelect={x=>change("consentKind",x)}/>
+    {draft.consentKind!=="SELF"&&<>
+     {([["representativeName","Guardian or representative name"],["representativeContact","Representative contact"]] as const).map(([k,title])=>
+      <View key={k}><Text style={labelStyle}>{title}</Text><TextInput value={draft[k]} onChangeText={x=>change(k,x)}
+       style={{...textStyle,borderWidth:1,borderColor:"#CBD5E1",borderRadius:8,padding:12}}/></View>)}
+    </>}
+    <Text style={labelStyle}>Purpose of registration</Text>
+    <TextInput value={draft.consentPurpose} onChangeText={x=>change("consentPurpose",x)}
+     style={{...textStyle,borderWidth:1,borderColor:"#CBD5E1",borderRadius:8,padding:12}}/>
+    <Pressable accessibilityRole="checkbox" accessibilityState={{checked:draft.consentAcknowledged}}
+     onPress={()=>change("consentAcknowledged",!draft.consentAcknowledged)}
+     style={{padding:12,borderWidth:1,borderColor:"#CBD5E1",borderRadius:8,backgroundColor:draft.consentAcknowledged?"#DBEAFE":"white"}}>
+     <Text>{draft.consentAcknowledged?"☑":"☐"} Beneficiary or authorized guardian acknowledged the stated purpose.</Text>
+    </Pressable>
+    {!!error&&<Text style={{color:"#B91C1C"}}>{error}</Text>}
+    {busy?<ActivityIndicator/>:<Button label="Save beneficiary" disabled={!draft.consentAcknowledged||!draft.stateRef||!draft.name}
+     onPress={()=>void save()}/>}
+   </ScrollView>
+  </Modal>
+ </View>;
+}
