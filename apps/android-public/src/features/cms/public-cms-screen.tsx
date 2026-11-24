@@ -446,6 +446,7 @@ export function PublicCmsContent({onContact,onPartnerApplication,onMembershipApp
       {!!text(fields.description)&&<Text style={styles.heroBody}>{text(fields.description)}</Text>}
       {!!src&&<Image source={{uri:src}} accessibilityLabel={media?.altText||"Foundation initiative"}
        resizeMode="cover" style={styles.image}/>}
+      {src&&media?.altText.startsWith("AI-generated illustration")&&<Text style={styles.heroBody}>AI-generated illustration; not a photograph of Foundation activities.</Text>}
       {tags.length>0&&<View style={styles.actions}>{tags.map((tag,j)=>
        <Text key={j} style={styles.tag}>{String(tag)}</Text>)}</View>}
       <View style={styles.actions}>
@@ -474,6 +475,7 @@ export function PublicCmsContent({onContact,onPartnerApplication,onMembershipApp
       <Text accessibilityRole="header" style={styles.heading}>{text(fields.heading)}</Text>
       {fields.variant==="SPLIT"&&aboutSrc&&<Image source={{uri:aboutSrc}}
        style={styles.image} accessibilityLabel={aboutImage?.altText||"Foundation story"}/>}
+      {aboutSrc&&aboutImage?.altText.startsWith("AI-generated illustration")&&<Text style={styles.muted}>AI-generated illustration.</Text>}
       <Text style={styles.body}>{text(fields.body)}</Text>
       {highlights.map((line,j)=><Text style={styles.highlight} key={j}>
        ✓ {text(line)}</Text>)}
