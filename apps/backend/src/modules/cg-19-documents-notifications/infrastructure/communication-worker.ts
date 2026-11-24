@@ -5,6 +5,7 @@ import type {Pool,PoolClient,Notification} from "pg";
 import {DATABASE} from "../../../core/infrastructure/database.module";
 import {NotificationService} from "../application/notification.service";
 import {DeliveryService} from "../application/delivery.service";
+import {PayrollEventCaptureService} from "../application/payroll-event-capture.service";
 
 const UUID=/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i;
 @Injectable()
@@ -17,7 +18,7 @@ export class CommunicationWorker implements OnModuleInit,OnModuleDestroy{
   constructor(
     @Inject(DATABASE)private readonly db:Pool,
     private readonly source:NotificationService,
-    private readonly delivery:DeliveryService){}
+    private readonly delivery:DeliveryService,private readonly payroll:PayrollEventCaptureService){}
   async onModuleInit(){
     this.stopped=false;
     // One LISTEN connection and one bounded due-index sweep per process.
@@ -45,8 +46,10 @@ export class CommunicationWorker implements OnModuleInit,OnModuleDestroy{
       await sub.query("LISTEN cg19_decision_committed");
       await sub.query("LISTEN cg19_appointment_committed");
       await sub.query("LISTEN cg19_lab_release_committed");
+      await sub.query("LISTEN cg19_payroll_committed");
       this.subscription=sub;
       sub.on("notification",(event:Notification)=>{
+        if(event.channel==="cg19_payroll_committed"){void this.periodic();return;}
         if((event.channel==="cg19_decision_committed"||
             event.channel==="cg19_appointment_committed"||
             event.channel==="cg19_lab_release_committed")&&
@@ -127,6 +130,7 @@ export class CommunicationWorker implements OnModuleInit,OnModuleDestroy{
       }
       await this.reconcilePendingAppointments();
       await this.reconcilePendingLabReleases();
+      await this.payroll.tick();
       await this.delivery.tick();
     }
     catch{/* Fail closed: no fabricated delivered state or hidden queue success. */}
@@ -140,6 +144,7 @@ export class CommunicationWorker implements OnModuleInit,OnModuleDestroy{
       try{await sub.query("UNLISTEN cg19_decision_committed");}catch{}
       try{await sub.query("UNLISTEN cg19_appointment_committed");}catch{}
       try{await sub.query("UNLISTEN cg19_lab_release_committed");}catch{}
+      try{await sub.query("UNLISTEN cg19_payroll_committed");}catch{}
       sub.release();
     }
   }

@@ -202,6 +202,10 @@ export class DeliveryService{
         row.realm_id,row.recipient_id,row.channel,row.purpose);
       // Appointment notices have a SECOND consent check immediately before
       // any external provider attempt, not just at original outbox capture.
+      if(row.source_kind==="CG11_PAYROLL_EVENT"){
+        const own=await client.query("SELECT 1 FROM cg19_notification n WHERE n.realm_id=$1 AND n.id=$2 AND n.recipient_id=$3 AND cg19_payroll_event_matches(n.realm_id,n.payroll_event_ref,n.recipient_id)",[row.realm_id,row.id,row.recipient_id]);
+        if(!own.rowCount)permitted=false;
+      }
       if(row.source_kind==="CG11_PAYSLIP_READY"){
         const own=await client.query("SELECT 1 FROM cg19_notification n WHERE n.realm_id=$1 AND n.id=$2 AND n.recipient_id=$3 AND cg19_payroll_notice_matches(n.realm_id,n.payroll_payslip_ref,n.recipient_id)",[row.realm_id,row.id,row.recipient_id]);
         if(!own.rowCount)permitted=false;
