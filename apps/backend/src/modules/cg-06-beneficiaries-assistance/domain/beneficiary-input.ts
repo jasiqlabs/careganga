@@ -69,6 +69,11 @@ export function parseListQuery(v:Record<string,unknown>){
  ||lifecycle&&!["ACTIVE","INACTIVE"].includes(lifecycle))throw invalid();
  const gender=clean(v.gender,24),ageGroup=clean(v.ageGroup,24);
  if(gender)option(gender,genders);if(ageGroup)option(ageGroup,ageGroups);
+ const date=(x:unknown)=>{const s=clean(x,10);if(!s)return null;
+  if(!/^\d{4}-\d{2}-\d{2}$/.test(s)||s.startsWith("0000"))throw invalid();
+  const d=new Date(s+"T00:00:00.000Z");if(!Number.isFinite(d.getTime())||d.toISOString().slice(0,10)!==s)throw invalid();return s;};
+ const from=date(v.registeredFrom),to=date(v.registeredTo);
+ if(from&&to&&from>to||district&&!state)throw invalid();
  const cursor=clean(v.cursor,240);
  let before:{date:string;id:string}|null=null;
  if(cursor){
@@ -77,7 +82,7 @@ export function parseListQuery(v:Record<string,unknown>){
    before={date,id};
   }catch{throw invalid();}
  }
- return {branch,state,district,project,status,lifecycle,type,q,before,gender,ageGroup};
+ return {branch,state,district,project,status,lifecycle,type,q,before,gender,ageGroup,from,to};
 }
 export function nextCursor(date:string|Date,id:string):string{
  return Buffer.from((date instanceof Date?date.toISOString():new Date(date).toISOString())+"|"+id).toString("base64url");
