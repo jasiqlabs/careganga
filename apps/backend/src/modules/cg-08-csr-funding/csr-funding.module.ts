@@ -11,5 +11,5 @@ import {CsrFundingProposalsController} from "./http/csr-funding-proposals.contro
 import {CsrFundingReportsService} from "./application/csr-funding-reports.service";
 import {CsrFundingReportsController} from "./http/csr-funding-reports.controller";
 @Module({imports:[DatabaseModule,IdentityAccessModule,FoundationStructureModule,FinanceSourceModule],
- providers:[CsrPartnersService,CsrPartnerPublicSource,CsrFundingProposalsService,CsrFundingReportsService],controllers:[CsrPartnersController,CsrFundingProposalsController,CsrFundingReportsController],exports:[CsrPartnersService,CsrPartnerPublicSource,CsrFundingProposalsService]})
+ providers:[CsrPartnersService,CsrPartnerPublicSource,CsrFundingProposalsService,CsrFundingReportsService],controllers:[CsrPartnersController,CsrFundingProposalsController,CsrFundingReportsController],exports:[CsrFundingReportsService,CsrPartnersService,CsrPartnerPublicSource,CsrFundingProposalsService]})
 export class CsrFundingModule{}

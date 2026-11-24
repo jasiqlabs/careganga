@@ -23,6 +23,11 @@ export class FinanceVoucherSourceFacade{
   private readonly sessions:SessionService,
   private readonly identity:FoundationStructureIdentityFacade,
   private readonly branches:BranchSourceFacade){}
+ async guardPaymentScope(client:PoolClient,actor:VerifiedFoundationActor,branch:string|null,write=false){
+  const capability=write?"finance.vouchers.manage":"finance.vouchers.view";
+  if(branch)await this.branches.requireFinanceActorBranch(client,actor,branch,capability);
+  else await this.branches.requireFinanceRootScope(client,actor,capability);
+ }
  private async load(client:PoolClient,actor:VerifiedFoundationActor,reference:string,
   revision:number,capability:"finance.vouchers.manage"|"finance.vouchers.view"){
   await this.identity.assertCurrent(client,actor,capability);

@@ -39,7 +39,7 @@ async function api<T>(token:string,path:string,method:"GET"|"POST"|"PATCH"="GET"
   try{return await response.json() as T;}
   catch{throw Object.assign(new Error("The original response could not be verified."),{status:503});}
 }
-const allowedSource=["ALL","CG-01","CG-21"] as const;
+const allowedSource=["ALL","CG-01","CG-21","PAYROLL"] as const;
 export function NativePlatformConfiguration({token,roleActions,onExit,onExpired}:Props){
   const can=(name:string)=>roleActions.includes(name);
   const hasSettings=can("platform.settings.view")||can("platform.integrations.view");
@@ -60,7 +60,7 @@ export function NativePlatformConfiguration({token,roleActions,onExit,onExpired}
   const [selectedCopy,setSelectedCopy]=useState<SafeMessage|null>(null);
   const [copyText,setCopyText]=useState("");
   const [password,setPassword]=useState("");
-  const [auditSource,setAuditSource]=useState<"ALL"|"CG-01"|"CG-21">("ALL");
+  const [auditSource,setAuditSource]=useState<"ALL"|"CG-01"|"CG-21"|"PAYROLL">("ALL");
   const [auditFrom,setAuditFrom]=useState("");
   const [auditTo,setAuditTo]=useState("");
   const [appliedFrom,setAppliedFrom]=useState("");
@@ -99,7 +99,7 @@ export function NativePlatformConfiguration({token,roleActions,onExit,onExpired}
       }else if(tab==="audit"&&hasAudit){
         const range=(appliedFrom?"&from="+encodeURIComponent(appliedFrom):"")+
           (appliedTo?"&to="+encodeURIComponent(appliedTo):"");
-        const a=await api<CG21AuditPage>(token,"/audit?source="+encodeURIComponent(auditSource)+range);
+        const a=await api<CG21AuditPage>(token,"/audit?source="+encodeURIComponent(auditSource==="PAYROLL"?"CG-21":auditSource)+(auditSource==="PAYROLL"?"&category=PAYROLL":"")+range);
         if(requestVersion!==refreshVersion.current)return false;
         setAudit(a);setAuditRows(a.events);setAuditDetail(null);
       }else if(tab==="recovery"&&hasRecovery){
@@ -251,7 +251,7 @@ export function NativePlatformConfiguration({token,roleActions,onExit,onExpired}
   async function exportAudit(){
     if(!can("platform.audit.export")||busy)return;setBusy(true);setError("");
     let temporary:File|null=null;
-    try{const x=await api<CG21AuditCsv>(token,"/audit/export?source="+encodeURIComponent(auditSource)+
+    try{const x=await api<CG21AuditCsv>(token,"/audit/export?source="+encodeURIComponent(auditSource==="PAYROLL"?"CG-21":auditSource)+(auditSource==="PAYROLL"?"&category=PAYROLL":"")+
         (appliedFrom?"&from="+encodeURIComponent(appliedFrom):"")+
         (appliedTo?"&to="+encodeURIComponent(appliedTo):""));
       if(x.coverage!=="COMPLETE"){setError("Audit coverage is incomplete; export is unavailable.");return;}
@@ -369,7 +369,7 @@ export function NativePlatformConfiguration({token,roleActions,onExit,onExpired}
           <Text style={styles.section}>Foundation audit records</Text>
           {field("From (optional ISO-8601 UTC)",auditFrom,setAuditFrom,false,"2026-11-01T00:00:00Z")}
           {field("To (optional ISO-8601 UTC)",auditTo,setAuditTo,false,"2026-11-21T23:59:59Z")}
-          <View style={styles.tabs}>{allowedSource.map(x=>button(x==="ALL"?"All":x==="CG-01"?"Identity":"Platform",
+          <View style={styles.tabs}>{allowedSource.map(x=>button(x==="ALL"?"All":x==="CG-01"?"Identity":x==="PAYROLL"?"Payroll":"Platform",
             ()=>{setAuditSource(x);setAudit(null);setAuditRows([]);},busy||x===auditSource))}</View>
           {button("Apply audit dates",()=>{
             setAppliedFrom(auditFrom.trim());setAppliedTo(auditTo.trim());

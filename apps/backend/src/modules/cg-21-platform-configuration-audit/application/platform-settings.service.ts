@@ -291,7 +291,7 @@ export class PlatformSettingsService {
     // This is a real, bounded provider-side read, not a fabricated test send.
     // A successful sender/service lookup proves readiness, not a delivery.
     const proof=await checkCommunicationReadiness(
-      provider,purpose,item.secret_reference);
+      provider,purpose,item.secret_reference,actor.realmId);
     const status=proof.result==="CHECK_ACCEPTED"?"VERIFIED":
       proof.result==="CHECK_FAILED"?"FAILED":"UNAVAILABLE";
     const client=await this.db.connect();let open=false;

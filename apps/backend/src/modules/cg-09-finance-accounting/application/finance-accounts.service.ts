@@ -443,7 +443,7 @@ export class FinanceAccountsService{
    SELECT j.id AS "journalRef",j.description,j.posting_date::text AS "postingDate",
      fy.name AS "yearName",SUM(l.debit_minor)::text AS "debitMinor",
      (r.reversal_journal_id IS NOT NULL) AS reversed,
-     (j.created_by<>$2::uuid) AS "differentCreator"
+     (j.created_by<>$2::uuid) AS "differentCreator", (j.posting_kind='VOUCHER') AS "payrollBankReturn"
    FROM journal j
    JOIN financial_year fy ON fy.id=j.financial_year_id
     AND fy.root_realm_id=j.root_realm_id
@@ -451,8 +451,7 @@ export class FinanceAccountsService{
      AND ($3::boolean OR l.branch_id=ANY($4::uuid[]))
    LEFT JOIN finance_manual_journal_reversal r
     ON r.original_journal_id=j.id AND r.root_realm_id=j.root_realm_id
-   WHERE j.root_realm_id=$1 AND j.posting_kind='GENERAL'
-    AND j.source_ref=j.immutable_source_event_key
+   WHERE j.root_realm_id=$1 AND ((j.posting_kind='GENERAL' AND j.source_ref=j.immutable_source_event_key) OR ($3::boolean AND j.posting_kind='VOUCHER' AND cg11_original_settled_bank_journal(j.root_realm_id,j.id)))
    GROUP BY j.id,fy.name,r.reversal_journal_id
    ORDER BY j.posting_date DESC,j.id DESC LIMIT 25`,
    [actor.realmId,actor.accountId,scope.all,scope.branchRefs]);

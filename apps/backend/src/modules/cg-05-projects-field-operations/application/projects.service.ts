@@ -133,8 +133,74 @@ export class ProjectsService{
    if(!next)throw stale();return this.audit(tx,a,next,v.key,hash,"BRANCH_MOVE",r.status,v.reason);
   });
  }
+ async misOptions(token:string){
+  return this.run(token,"projects.view",async(tx,a)=>{
+   const scope=await this.branches.projectBranchScope(tx,a);
+   const items=await tx.query<{ref:string;name:string;branchRef:string|null}>(
+    "SELECT p.id AS ref,p.code_norm||' · '||p.title AS name,p.branch_ref AS \"branchRef\""+joins+" WHERE "+this.whereScope+" ORDER BY p.code_norm,p.id LIMIT 101",this.scopeParams(a,scope));
+   return {branches:scope.branches.map(b=>({ref:b.value,name:b.label})),projects:items.rows.slice(0,100),complete:items.rows.length<=100};
+  },true);
+ }
+ private async misStatusRows(tx:PoolClient,root:string,account:string,scope:{all:boolean;branchRefs:string[]},branchRef?:string,projectRef?:string,from?:string,to?:string){
+   if(branchRef&&!scope.branchRefs.includes(ref(branchRef)))throw new ForbiddenException("Project branch unavailable in current scope");
+   if(projectRef){
+    const p=await tx.query("SELECT p.id"+joins+" WHERE "+this.whereScope+" AND p.id=$5 FOR SHARE OF p",[root,scope.all,scope.branchRefs,account,ref(projectRef)]);
+    if(!p.rowCount)throw new ForbiddenException("Project unavailable in current scope");
+   }
+   const q=await tx.query<{code:string;title:string;status:string;branch:string;revision:string;plannedStart:string;plannedEnd:string}>(
+    "SELECT p.code_norm AS code,p.title,p.status,COALESCE(b.name,'Foundation') AS branch,p.version::text AS revision,COALESCE(p.planned_start::text,'') AS \"plannedStart\",COALESCE(p.planned_end::text,'') AS \"plannedEnd\""+joins+" WHERE "+this.whereScope+
+    " AND ($5::uuid IS NULL OR p.branch_ref=$5) AND ($6::uuid IS NULL OR p.id=$6) AND ($7::date IS NULL OR p.planned_start >= $7) AND ($8::date IS NULL OR p.planned_end <= $8) ORDER BY p.code_norm,p.id LIMIT 51",
+    [root,scope.all,scope.branchRefs,account,branchRef??null,projectRef??null,from??null,to??null]);
+   const at=await tx.query<{at:Date}>("SELECT transaction_timestamp() AS at");
+   return {rows:q.rows.slice(0,50),partial:q.rows.length>50,sourceAsOf:at.rows[0].at.toISOString()};
+ }
+ async misStatus(token:string,branchRef?:string,projectRef?:string,from?:string,to?:string,exporting=false){
+  return this.run(token,exporting?"projects.export":"projects.view",async(tx,a)=>{
+   await this.identity.assertCurrent(tx,a,"projects.view");
+   const s=await this.branches.projectBranchScope(tx,a);
+   const x=await this.misStatusRows(tx,a.realmId,a.accountId,{all:s.all,branchRefs:s.branches.map(b=>b.value)},branchRef,projectRef,from,to);
+   if(exporting&&x.partial)throw new ConflictException("Narrow project filters to 50 records");
+   if(exporting)await this.auditExport(tx,a,"PROJECTS",false,x.rows.length,{branchRef,projectRef,from,to,source:"MIS"});
+   return x;
+  },true);
+ }
+ /** Internal scheduled read, no stored or fabricated bearer. Both owner actions
+  * and current CG02 assignments are rechecked; same bounded row reader as interactive. */
+ async scheduledMisStatus(root:string,account:string,branchRef?:string,projectRef?:string,from?:string,to?:string,exporting=false){
+  const tx=await this.db.connect();
+  try{
+   await tx.query("BEGIN ISOLATION LEVEL REPEATABLE READ");
+   await tx.query("SET LOCAL statement_timeout='8s'");
+   const scope=await this.branches.scheduledProjectScope(root,account,tx);
+   const x=await this.misStatusRows(tx,root,account,scope,branchRef,projectRef,from,to);
+   if(exporting&&x.partial)throw new ConflictException("Narrow project filters to 50 records");
+   if(exporting)await this.auditExport(tx,{realmId:root,accountId:account},"PROJECTS",false,x.rows.length,{branchRef,projectRef,from,to,source:"MIS_SCHEDULED"});
+   const current=await this.branches.scheduledProjectScope(root,account,tx);
+   if(scope.all!==current.all||scope.branchRefs.join(",")!==current.branchRefs.join(","))throw new ForbiddenException("Project scope changed during report");
+   await tx.query("COMMIT");
+   return x;
+  }catch(e){await tx.query("ROLLBACK");throw e;}finally{tx.release();}
+ }
+ async misArtifactScope(token:string,branchRef?:string){
+  return this.run(token,"projects.export",async(tx,a)=>{
+   await this.identity.assertCurrent(tx,a,"projects.view");
+   const s=await this.branches.projectBranchScope(tx,a);
+   if(branchRef&&!s.branches.some(b=>b.value===ref(branchRef)))throw new ForbiddenException("Project branch unavailable in current scope");
+   return {all:branchRef?false:s.all,branchRefs:branchRef?[branchRef]:s.branches.map(b=>b.value).sort()};
+  },true);
+ }
+ async misBudget(token:string,projectRef:string){
+  return this.run(token,"projects.view",async(tx,a)=>{
+   await this.identity.assertCurrent(tx,a,"finance.budgets.view");
+   await this.identity.assertCurrent(tx,a,"finance.reports.view");
+   const p=await this.row(tx,a,ref(projectRef)),s=await this.branches.projectBranchScope(tx,a);
+   if(!p.branch_ref&&!s.all)throw new ForbiddenException("Foundation budget unavailable in current scope");
+   const x=await projectBudgetProjection(tx,a,{all:s.all,branchRefs:s.branches.map(b=>b.value)},false,p.id);
+   return {revision:String(p.version),status:p.status,...x,sourceAsOf:new Date().toISOString()};
+  },true);
+ }
  private whereScope="p.root_realm_id=$1 AND ((p.branch_ref IS NULL AND ($2::boolean OR p.owner_account_ref=$4)) OR (b.status='ACTIVE' AND p.branch_ref=ANY($3::uuid[])))";
- async auditExport(tx:PoolClient,a:VerifiedFoundationActor,kind:"PROJECTS"|"TASKS"|"ACTIVITIES"|"VISITS"|"OPERATIONS",mine:boolean,rows:number,filters:unknown){await tx.query("INSERT INTO cg05_export_audit(root_realm_id,actor_account_ref,report_kind,scope_kind,row_count,filter_digest) VALUES($1,$2,$3,$4,$5,$6)",[a.realmId,a.accountId,kind,mine?"MINE":"PERMITTED",rows,digest(filters)]);}
+ async auditExport(tx:PoolClient,a:Pick<VerifiedFoundationActor,"realmId"|"accountId">,kind:"PROJECTS"|"TASKS"|"ACTIVITIES"|"VISITS"|"OPERATIONS",mine:boolean,rows:number,filters:unknown){await tx.query("INSERT INTO cg05_export_audit(root_realm_id,actor_account_ref,report_kind,scope_kind,row_count,filter_digest) VALUES($1,$2,$3,$4,$5,$6)",[a.realmId,a.accountId,kind,mine?"MINE":"PERMITTED",rows,digest(filters)]);}
  async list(token:string,query:Record<string,unknown>,mine=false,exporting=false){
   return this.run(token,exporting?"projects.export":"projects.view",(tx,a)=>this.listInTx(tx,a,query,mine,exporting),true);
  }

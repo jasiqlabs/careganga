@@ -11,13 +11,15 @@ export class CmsEditorialController{
  eventSources(@Headers("authorization")auth:string){return this.cms.eventSources(auth);}
  @Get("campaign-sources") @Header("Cache-Control","private, no-store")
  campaignSources(@Headers("authorization")auth:string){return this.cms.campaignSources(auth);}
+ @Get("team-sources") @Header("Cache-Control","private, no-store")
+ teamSources(@Headers("authorization")auth:string){return this.cms.teamSources(auth);}
  @Get("partner-sources") @Header("Cache-Control","private, no-store")
  partnerSources(@Headers("authorization")auth:string){return this.cms.partnerSources(auth);}
  @Get("project-sources") @Header("Cache-Control","private, no-store")
  projectSources(@Headers("authorization")auth:string){return this.cms.projectSources(auth);}
  @Get("pages")
  @Header("Cache-Control","private, no-store")
- pages(@Headers("authorization")auth:string){return this.cms.list(auth);}
+ pages(@Headers("authorization")auth:string,@Query("scope")scope?:string){return this.cms.list(auth,scope);}
  @Post("pages")
  create(@Headers("authorization")auth:string,@Body()body:unknown){
   return this.cms.create(auth,body);
@@ -57,6 +59,9 @@ export class CmsPublicPagesController{
  articles(@Query("category")category?:string,@Query("cursor")cursor?:string){
   return this.cms.publicArticles(category,cursor);
  }
+ @Get("events")
+ @Header("Cache-Control","no-store")
+ events(@Query("cursor")cursor?:string){return this.cms.publicArticles(undefined,cursor,true);}
  @Get("notices")
  @Header("Cache-Control","no-store")
  @Header("X-Content-Type-Options","nosniff")

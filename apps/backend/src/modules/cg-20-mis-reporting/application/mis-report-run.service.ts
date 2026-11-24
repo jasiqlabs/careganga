@@ -10,7 +10,7 @@ import {MisProtectedArtifactService}
  from "../../cg-19-documents-notifications/application/mis-protected-artifact.service";
 import type {ReportFormat}
  from "../../cg-19-documents-notifications/application/mis-report-renderer";
-import {MisReportSourceService,parseSafeReport,type SafeReportRequest}
+import {MisReportSourceService,parseSafeReport,LIVE_PREVIEW_KINDS,type SafeReportRequest}
  from "./mis-report-source.service";
 import {MisSavedReportService} from "./mis-saved-report.service";
 
@@ -26,7 +26,7 @@ type Row={
  safe_request:SafeReportRequest;state:string;artifact_ref:string|null;
  format:ReportFormat|null;saved_ref:string|null;definition_revision:number|null;
  source_as_of:Date|null;result_row_count:number|null;
- original_scope_all:boolean|null;original_scope_branch_refs:string[]|null;
+ original_project_digest:string|null;original_scope_all:boolean|null;original_scope_branch_refs:string[]|null;
  created_at:Date;updated_at:Date;expires_at:Date;
 };
 type NewRun={
@@ -83,7 +83,7 @@ export class MisReportRunService{
   return {row,actor};
  }
  private async validateOriginalScope(token:string,row:Row){
-  if(!row.source_key.startsWith("FINANCE_"))return;
+  if(!row.source_key.startsWith("FINANCE_")&&row.source_key!=="PROJECT_STATUS_REPORT")return;
   if(row.original_scope_all===null||row.original_scope_branch_refs===null)
    throw new ForbiddenException("The original report scope is not verified. Create a current report.");
   const scope=await this.sources.originalFinanceScope(token,row.safe_request);
@@ -104,7 +104,8 @@ export class MisReportRunService{
   if(originalReady)await this.validateOriginalScope(token,row);
   // Current original CG-09/CG-15 row, field, branch, center and purpose grants,
   // including sensitive small population suppression.
-  const preview=await this.sources.preview(token,row.safe_request);
+  const preview=await this.sources.preview(token,row.safe_request,!originalReady&&row.source_key==="PROJECT_STATUS_REPORT");
+  if(originalReady&&row.source_key==="PROJECT_STATUS_REPORT"&&(!row.original_project_digest||row.original_project_digest!==digest({kind:preview.kind,view:preview.view,columns:preview.columns,rows:preview.rows,scopeLabel:preview.scopeLabel})))throw new ForbiddenException("Project records or visibility changed. Create a fresh report.");
   if(originalReady)await this.validateOriginalScope(token,row);
   if(preview.state==="PARTIAL")
    throw new BadRequestException({code:"MIS_RUN_PARTIAL",
@@ -124,6 +125,7 @@ export class MisReportRunService{
    const item=await this.saved.authorizedRequest(token,input.savedRef);
    request=parseSafeReport(item.request);savedRef=item.ref;revision=item.revision;
   }else request=parseSafeReport(input.request);
+  if(LIVE_PREVIEW_KINDS.includes(request.kind))throw new ForbiddenException({code:"MIS_LIVE_PREVIEW_ONLY",message:"This report is available as a current live preview only."});
   const preview=await this.sources.preview(token,request);
   if(preview.state==="PARTIAL")
    throw new BadRequestException({code:"MIS_RUN_PARTIAL",
@@ -231,16 +233,16 @@ export class MisReportRunService{
     columns:post.columns,rows:post.rows,scopeLabel:post.scopeLabel});
    const previousDigest=digest({kind:fresh.kind,view:fresh.view,
     columns:fresh.columns,rows:fresh.rows,scopeLabel:fresh.scopeLabel});
-   if(postDigest!==previousDigest)
+   if(post.state!=="READY"||post.nextOffset!==null||postDigest!==previousDigest)
     throw new ConflictException({code:"MIS_RUN_CHANGED",
      message:"The source changed during export. Create a fresh report."});
    const done=await this.db.query<Row>(
     "UPDATE cg20_report_run SET state='READY',artifact_ref=$3,"+
     "source_as_of=$4,result_row_count=$5,original_scope_all=$6,"+
-    "original_scope_branch_refs=$7::uuid[],updated_at=now() "+
+    "original_scope_branch_refs=$7::uuid[],original_project_digest=$8,updated_at=now() "+
     "WHERE root_realm_id=$1 AND id=$2 AND state='RUNNING' RETURNING *",
     [actor.realmId,row.id,artifact.artifactRef,fresh.sourceAsOf??null,
-     fresh.rows.length,originalScope?.all??null,originalScope?.branchRefs??null]);
+     fresh.rows.length,originalScope?.all??null,originalScope?.branchRefs??null,request.kind==="PROJECT_STATUS_REPORT"?previousDigest:null]);
    if(!done.rows[0])throw new ConflictException({code:"MIS_RUN_CHANGED"});
    return {...this.summary(done.rows[0]),replayed:!isNew};
   }catch(error){

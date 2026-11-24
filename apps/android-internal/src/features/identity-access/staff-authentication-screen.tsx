@@ -80,6 +80,7 @@ const NativeInventoryCatalog = lazy(() => import("../inventory/native-inventory-
 const NativeRewardCatalogue = lazy(() => import("../referrals/native-reward-catalogue").then(m=>({default:m.NativeRewardCatalogue})));
 const NativeMembershipDesk = lazy(() => import("../membership/native-membership-desk").then(m=>({default:m.NativeMembershipDesk})));
 const NativeVolunteerStaff = lazy(() => import("../volunteers/native-volunteer-staff").then(m=>({default:m.NativeVolunteerStaff})));
+const NativePayroll = lazy(() => import("../payroll/native-payroll").then(m=>({default:m.NativePayroll})));
 const NativeHrEnrollment = lazy(() => import("../human-resources/native-hr-enrollment").then(m => ({default:m.NativeHrEnrollment})));
 const FinanceNativeProtectedReview = lazy(() => import("../finance-accounting/finance-native-protected-review").then(m => ({ default: m.FinanceNativeProtectedReview })));
 
@@ -198,6 +199,7 @@ export function StaffAuthenticationScreen() {
   const [reportsOpen, setReportsOpen] = useState(false);
   const [misOpen, setMisOpen] = useState(false);
   const [hrOpen, setHrOpen] = useState(false);
+  const [payrollOpen,setPayrollOpen]=useState(false);
   const [fieldVisitsOpen,setFieldVisitsOpen]=useState(false);
   const [operationsSummaryOpen,setOperationsSummaryOpen]=useState(false);
   const [activitiesOpen,setActivitiesOpen]=useState(false);
@@ -258,7 +260,7 @@ export function StaffAuthenticationScreen() {
     hideToast();
     setMessage("");
     setActor(null); setToken(null); setRoleActions([]); setAccountOpen(false); setRolesOpen(false); setAccountsOpen(false); setPolicyOpen(false); setApprovalsOpen(false); setOwnCenterOpen(false); setWebsiteCmsOpen(false); setPlatformConfigOpen(false); setHealthDoctorOpen(false); setCenterPublisherOpen(false); setHealthProviderOpen(false); setHealthReviewsOpen(false); setDoctorLeaveReviewsOpen(false); setPatientAdminOpen(false); setPatientQueueOpen(false); setLabOrdersOpen(false); setLabEquipmentOpen(false); setHealthcarePoliciesOpen(false); setCenterMerchantOpen(false); setFoundationLiabilitiesOpen(false); setMonthlyProviderSettlementsOpen(false); setPartnerSettlementsOpen(false); setLabTestMasterOpen(false); setMyLabPricingOpen(false); setPatientBookingOpen(false); setDocumentsOpen(false); setCommunicationsOpen(false); setNotificationsOpen(false); setSupportOpen(false); setNoticeAdminOpen(false); setBranchesOpen(false); setFinanceOpen(false); setVoucherOnlyOpen(false); setFinanceReviewOpen(false); setFinanceClaimsOpen(false); setFinanceClaimReviewsOpen(false); setInvoiceOpen(false); setInvoiceReviewOpen(false);
-    setBudgetOpen(false); setBudgetReviewOpen(false); setReportsOpen(false); setMisOpen(false); setHrOpen(false); setInventoryOpen(false); setRewardsOpen(false); setMembershipOpen(false); setVolunteersOpen(false); setProjectsOpen(false); setBeneficiariesOpen(false); setCampaignsOpen(false); setCsrOpen(false); setTasksOpen(false); setActivitiesOpen(false); setFieldVisitsOpen(false); setOperationsSummaryOpen(false);
+    setBudgetOpen(false); setBudgetReviewOpen(false); setReportsOpen(false); setMisOpen(false); setHrOpen(false); setPayrollOpen(false); setInventoryOpen(false); setRewardsOpen(false); setMembershipOpen(false); setVolunteersOpen(false); setProjectsOpen(false); setBeneficiariesOpen(false); setCampaignsOpen(false); setCsrOpen(false); setTasksOpen(false); setActivitiesOpen(false); setFieldVisitsOpen(false); setOperationsSummaryOpen(false);
     void SecureStore.deleteItemAsync(STORE_KEY).catch(() => undefined);
   }, [hideToast]);
 
@@ -306,7 +308,7 @@ export function StaffAuthenticationScreen() {
       misOpen ||
       operationsSummaryOpen || fieldVisitsOpen || activitiesOpen || tasksOpen || projectsOpen || beneficiariesOpen || campaignsOpen ||
       inventoryOpen || rewardsOpen || membershipOpen || volunteersOpen ||
-      hrOpen ||
+      hrOpen || payrollOpen ||
       financeOpen ||
       branchesOpen ||
       changePasswordOpen;
@@ -336,7 +338,7 @@ export function StaffAuthenticationScreen() {
       setInvoiceReviewOpen(false);
       setBudgetOpen(false);
       setBudgetReviewOpen(false);
-      setReportsOpen(false); setMisOpen(false); setHrOpen(false); setInventoryOpen(false); setRewardsOpen(false); setMembershipOpen(false); setProjectsOpen(false); setBeneficiariesOpen(false); setCampaignsOpen(false); setTasksOpen(false); setActivitiesOpen(false); setFieldVisitsOpen(false); setOperationsSummaryOpen(false);
+      setReportsOpen(false); setMisOpen(false); setHrOpen(false); setPayrollOpen(false); setInventoryOpen(false); setRewardsOpen(false); setMembershipOpen(false); setProjectsOpen(false); setBeneficiariesOpen(false); setCampaignsOpen(false); setTasksOpen(false); setActivitiesOpen(false); setFieldVisitsOpen(false); setOperationsSummaryOpen(false);
       setFinanceOpen(false);
       setBranchesOpen(false);
       setChangePasswordOpen(false);
@@ -390,7 +392,7 @@ export function StaffAuthenticationScreen() {
     rewardsOpen,
     membershipOpen,
     volunteersOpen,
-    hrOpen,
+    hrOpen, payrollOpen,
     financeOpen,
     branchesOpen,
     changePasswordOpen
@@ -633,7 +635,7 @@ export function StaffAuthenticationScreen() {
       // Backend revocation is authoritative. The UI must not continue showing an
       // authenticated actor if on-device deletion fails afterward.
       setActor(null); setToken(null); setRoleActions([]); setRolesOpen(false); setAccountsOpen(false); setPolicyOpen(false); setApprovalsOpen(false); setOwnCenterOpen(false); setWebsiteCmsOpen(false); setPlatformConfigOpen(false); setHealthDoctorOpen(false); setCenterPublisherOpen(false); setHealthProviderOpen(false); setHealthReviewsOpen(false); setDoctorLeaveReviewsOpen(false); setPatientAdminOpen(false); setPatientQueueOpen(false); setLabOrdersOpen(false); setLabEquipmentOpen(false); setHealthcarePoliciesOpen(false); setCenterMerchantOpen(false); setFoundationLiabilitiesOpen(false); setMonthlyProviderSettlementsOpen(false); setLabTestMasterOpen(false); setMyLabPricingOpen(false); setPatientBookingOpen(false); setDocumentsOpen(false); setCommunicationsOpen(false); setNotificationsOpen(false); setSupportOpen(false); setNoticeAdminOpen(false); setBranchesOpen(false); setFinanceOpen(false); setVoucherOnlyOpen(false);
-      setFinanceReviewOpen(false); setFinanceClaimsOpen(false); setFinanceClaimReviewsOpen(false); setInvoiceOpen(false); setInvoiceReviewOpen(false); setBudgetOpen(false); setBudgetReviewOpen(false); setReportsOpen(false); setMisOpen(false); setHrOpen(false); setInventoryOpen(false); setRewardsOpen(false); setMembershipOpen(false); setProjectsOpen(false); setBeneficiariesOpen(false); setCampaignsOpen(false); setTasksOpen(false); setActivitiesOpen(false); setFieldVisitsOpen(false); setOperationsSummaryOpen(false);
+      setFinanceReviewOpen(false); setFinanceClaimsOpen(false); setFinanceClaimReviewsOpen(false); setInvoiceOpen(false); setInvoiceReviewOpen(false); setBudgetOpen(false); setBudgetReviewOpen(false); setReportsOpen(false); setMisOpen(false); setHrOpen(false); setPayrollOpen(false); setInventoryOpen(false); setRewardsOpen(false); setMembershipOpen(false); setProjectsOpen(false); setBeneficiariesOpen(false); setCampaignsOpen(false); setTasksOpen(false); setActivitiesOpen(false); setFieldVisitsOpen(false); setOperationsSummaryOpen(false);
       try {
         await SecureStore.deleteItemAsync(STORE_KEY);
       } catch {
@@ -669,7 +671,7 @@ export function StaffAuthenticationScreen() {
         setInvoiceReviewOpen(false);
         setBudgetOpen(false);
         setBudgetReviewOpen(false);
-        setReportsOpen(false); setMisOpen(false); setHrOpen(false); setInventoryOpen(false); setMembershipOpen(false); setVolunteersOpen(false); setProjectsOpen(false); setBeneficiariesOpen(false); setCampaignsOpen(false); setTasksOpen(false); setActivitiesOpen(false); setFieldVisitsOpen(false); setOperationsSummaryOpen(false);
+        setReportsOpen(false); setMisOpen(false); setHrOpen(false); setPayrollOpen(false); setInventoryOpen(false); setMembershipOpen(false); setVolunteersOpen(false); setProjectsOpen(false); setBeneficiariesOpen(false); setCampaignsOpen(false); setTasksOpen(false); setActivitiesOpen(false); setFieldVisitsOpen(false); setOperationsSummaryOpen(false);
         setFinanceOpen(false);
         setBranchesOpen(false);
         setChangePasswordOpen(false);
@@ -723,6 +725,7 @@ export function StaffAuthenticationScreen() {
       openReports: () => openOnly(setReportsOpen),
       openMis: () => openOnly(setMisOpen),
       openHr: () => openOnly(setHrOpen),
+      openPayroll: () => openOnly(setPayrollOpen),
       openProjects: () => openOnly(setProjectsOpen),
       openBeneficiaries: () => openOnly(setBeneficiariesOpen),
       openCampaigns: () => openOnly(setCampaignsOpen),
@@ -906,6 +909,9 @@ export function StaffAuthenticationScreen() {
     const canReview=roleActions.includes("approvals.review")&&roleActions.includes("membership.applications.review")&&roleActions.includes("documents.files.view");
     if(!canMembers&&!canReview&&!canIssueDocs)return <AccessDeniedScreen reason="You cannot view membership records." onMyAccount={()=>setMembershipOpen(false)}/>;
     return renderInShell(<ScreenErrorBoundary onExit={()=>setMembershipOpen(false)}><Suspense fallback={<ActivityIndicator style={{marginTop:40}}/>}><NativeMembershipDesk key={token} token={token} canViewMembers={canMembers} canExportMembers={canMembers&&roleActions.includes("membership.members.export")} canReview={canReview} canConfigure={canReview&&roleActions.includes("approvals.process.manage")} canIssueDocs={canIssueDocs} onExpired={expireSession}/></Suspense></ScreenErrorBoundary>,"membership",()=>setMembershipOpen(false));
+  }
+  if(payrollOpen&&token&&actor){
+    return renderInShell(<ScreenErrorBoundary onExit={()=>setPayrollOpen(false)}><Suspense fallback={<ActivityIndicator style={{marginTop:40}}/>}><NativePayroll key={token} token={token} onExpired={expireSession} canReview={roleActions.includes("payroll.sensitive.approve")&&roleActions.includes("approvals.review")}/></Suspense></ScreenErrorBoundary>,"payroll",()=>setPayrollOpen(false));
   }
   if (hrOpen && token && actor) {
     // Same actor self profile is open to every signed-in Foundation employee.

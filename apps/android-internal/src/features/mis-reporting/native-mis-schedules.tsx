@@ -61,7 +61,7 @@ export function NativeMisSchedules({token,onExpired}:{token:string;onExpired:()=
     throw Error("Current schedule and saved report information is unavailable.");
    if(rev===seq.current){
     setSaved(savedReports.items.filter(x=>x.state==="ACTIVE"&&
-     x.sourceKey==="FINANCE_POSTED_SUMMARY"));
+     (x.sourceKey==="FINANCE_POSTED_SUMMARY"||x.sourceKey==="PROJECT_STATUS_REPORT")));
     setRows(schedules.schedules);
    }
   }catch(e){if(rev===seq.current){setSaved([]);setRows([]);fail(e);}}
@@ -137,7 +137,7 @@ export function NativeMisSchedules({token,onExpired}:{token:string;onExpired:()=
  }
  return <View style={s.root}>
   <Text accessibilityRole="header" style={s.title}>My report schedules</Text>
-  <Text style={s.text}>Your authorized posted-finance summaries can run
+  <Text style={s.text}>Your authorized posted-finance summaries and project status reports can run
    automatically at a selected local time. CareGanga stores the protected PDF
    with CG-19 and records a private in-app notice only after confirmation.
    The recipient is your current account. Other report sources, email and SMS
@@ -148,8 +148,8 @@ export function NativeMisSchedules({token,onExpired}:{token:string;onExpired:()=
    disabled={loading} secondary onPress={()=>void load()}/>
   {(!!saved.length||editing!==null)&&<>
    {editing?<Text style={s.title}>Editing: {editing.savedReportName}</Text>:
-    <NativeFinanceOptions label="My saved finance summary" value={selected}
-     options={[{ref:"",label:"Choose a private finance summary"},...saved.map(x=>({
+    <NativeFinanceOptions label="My saved finance or project report" value={selected}
+     options={[{ref:"",label:"Choose a private finance or project report"},...saved.map(x=>({
       ref:x.ref,label:x.name}))]} onChange={setSelected}/>}
    <NativeFinanceOptions label="Recurrence" value={cadence}
     options={["DAILY","WEEKLY","MONTHLY","YEARLY"].map(value=>({
@@ -169,7 +169,7 @@ export function NativeMisSchedules({token,onExpired}:{token:string;onExpired:()=
     disabled={loading} onPress={reset}/>}
   </>}
   {!saved.length&&!editing&&<Text style={s.text}>
-   No eligible private posted-finance summary is available for new schedules.</Text>}
+   No eligible private report is available for new schedules.</Text>}
   {rows.map(item=><View key={item.ref} style={s.card}>
    <Text style={s.title}>{item.savedReportName} · {item.cadence[0]+
     item.cadence.slice(1).toLowerCase()}</Text>

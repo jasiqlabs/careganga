@@ -113,6 +113,13 @@ const capabilities:readonly Capability[]=Object.freeze([
   {key:"foundation.branches.manage",businessLabel:"Create and edit permitted branch drafts",group:"Foundation structure",assignable:true,sensitive:true},
   {key:"foundation.branches.admin",businessLabel:"Administrate all Foundation branch drafts",group:"Foundation structure",assignable:false,sensitive:true},
   // CG-10 US-001: a protected HR draft is not an approved employee or login.
+  {key:"payroll.compensation.view",businessLabel:"View permitted private payroll compensation",group:"Payroll",assignable:true,sensitive:true},
+  {key:"payroll.compensation.edit",businessLabel:"Propose effective employee compensation",group:"Payroll",assignable:true,sensitive:true},
+  {key:"payroll.bank.edit",businessLabel:"Propose and view masked employee payout instructions",group:"Payroll",assignable:true,sensitive:true},
+  {key:"payroll.sensitive.approve",businessLabel:"Independently review protected payroll compensation",group:"Payroll",assignable:false,sensitive:true},
+  {key:"payroll.runs.view",businessLabel:"View permitted payroll period runs",group:"Payroll",assignable:true,sensitive:true},
+  {key:"payroll.runs.manage",businessLabel:"Prepare permitted payroll period drafts",group:"Payroll",assignable:true,sensitive:true},
+  {key:"payroll.policy.manage",businessLabel:"Maintain permitted effective payroll policy drafts",group:"Payroll",assignable:true,sensitive:true},
   {key:"hr.applications.view",businessLabel:"View permitted employee applications",group:"Human resources",assignable:true,sensitive:true},
   {key:"hr.applications.manage",businessLabel:"Create and correct permitted employee drafts",group:"Human resources",assignable:true,sensitive:true},
   {key:"hr.employees.view",businessLabel:"View permitted active staff directory",group:"Human resources",assignable:true,sensitive:true},

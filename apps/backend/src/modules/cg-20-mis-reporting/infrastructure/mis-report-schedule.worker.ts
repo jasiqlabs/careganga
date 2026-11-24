@@ -23,7 +23,7 @@ type ReadyRun={
  root_realm_id:string;id:string;requester_ref:string;
  saved_ref:string;definition_revision:number;safe_request:unknown;
  occurrence_due_utc:Date;state:string;retry_count:number;format:"PDF"|"XLSX"|"CSV";
- artifact_ref:string|null;
+ artifact_ref:string|null;source_key:string;original_project_digest:string|null;
  original_scope_all:boolean|null;original_scope_branch_refs:string[]|null
 };
 type Delivery={
@@ -84,8 +84,7 @@ export class MisReportScheduleWorker implements OnModuleInit,OnModuleDestroy{
    const item=def.rows[0];
    // Only own-authority, approved posted summary can run unattended.
    if(!item||item.state!=="ACTIVE"||
-      item.source_key!=="FINANCE_POSTED_SUMMARY"||
-      item.view_kind!=="SUMMARY"||
+      !(item.source_key==="FINANCE_POSTED_SUMMARY"&&item.view_kind==="SUMMARY"||item.source_key==="PROJECT_STATUS_REPORT"&&item.view_kind==="TABLE")||
       item.current_revision!==schedule.saved_revision||
       schedule.owner_account_ref!==schedule.recipient_account_ref){
     await tx.query(
@@ -95,7 +94,7 @@ export class MisReportScheduleWorker implements OnModuleInit,OnModuleDestroy{
     await tx.query("COMMIT");open=false;return true;
    }
    const request=parseSafeReport(item.safe_request);
-   if(request.kind!=="FINANCE_POSTED_SUMMARY"||request.view!=="SUMMARY"){
+   if(request.kind!==item.source_key||request.view!==item.view_kind||request.offset!==0){
     await tx.query(
      "UPDATE cg20_report_schedule SET state='PAUSED',revision=revision+1,"+
      "updated_at=now() WHERE root_realm_id=$1 AND id=$2",
@@ -114,11 +113,11 @@ export class MisReportScheduleWorker implements OnModuleInit,OnModuleDestroy{
     "request_key,payload_digest,source_key,safe_request,saved_ref,"+
     "definition_revision,format,run_origin,schedule_ref,"+
     "occurrence_due_utc,state) "+
-    "VALUES($1,$2,$3,$4,'FINANCE_POSTED_SUMMARY',$5::jsonb,$6,"+
+    "VALUES($1,$2,$3,$4,$10,$5::jsonb,$6,"+
     "$7,'PDF','SCHEDULED',$8,$9,'QUEUED') "+
     "ON CONFLICT DO NOTHING",
     [schedule.root_realm_id,schedule.owner_account_ref,key,digest,
-     safeJson,schedule.saved_ref,item.current_revision,schedule.id,due]);
+     safeJson,schedule.saved_ref,item.current_revision,schedule.id,due,request.kind]);
    await tx.query(
     "UPDATE cg20_report_schedule SET next_due_utc=$3,updated_at=now() "+
     "WHERE root_realm_id=$1 AND id=$2 AND state='ACTIVE'",
@@ -160,8 +159,11 @@ export class MisReportScheduleWorker implements OnModuleInit,OnModuleDestroy{
    row.root_realm_id,row.requester_ref,"mis.reports.export");
   await this.sessions.requireScheduledMisAction(
    row.root_realm_id,row.requester_ref,"mis.reports.schedule");
-  await this.sessions.requireScheduledMisAction(
-   row.root_realm_id,row.requester_ref,"finance.reports.view");
+  if(row.source_key==="PROJECT_STATUS_REPORT"){
+   await this.sessions.requireScheduledMisAction(row.root_realm_id,row.requester_ref,"projects.view");
+   await this.sessions.requireScheduledMisAction(row.root_realm_id,row.requester_ref,"projects.export");
+  }else if(row.source_key==="FINANCE_POSTED_SUMMARY")await this.sessions.requireScheduledMisAction(row.root_realm_id,row.requester_ref,"finance.reports.view");
+  else throw new ForbiddenException("Scheduled source unavailable");
   await this.sessions.requireScheduledMisAction(
    row.root_realm_id,row.requester_ref,"communications.notifications.view");
   const a=await this.db.query(
@@ -198,10 +200,10 @@ export class MisReportScheduleWorker implements OnModuleInit,OnModuleDestroy{
    }
    // The exact original CG09 posted SQL is shared with the interactive
    // report. No future-owner or protected audit feed is run unattended.
-   const originalScope=await this.sources.originalScheduledFinanceScope(
+   const originalScope=await this.sources.originalScheduledScope(
     row.root_realm_id,row.requester_ref,parseSafeReport(row.safe_request));
-   const report=await this.sources.previewScheduledFinance(
-    row.root_realm_id,row.requester_ref,row.safe_request);
+   const report=await this.sources.previewScheduledReport(
+    row.root_realm_id,row.requester_ref,row.safe_request,true);
    if(report.state==="EMPTY"){
     await this.finish(row,"EMPTY",{asOf:report.sourceAsOf,rows:0});
     return;
@@ -220,8 +222,9 @@ export class MisReportScheduleWorker implements OnModuleInit,OnModuleDestroy{
    };
    // Original CG19 owns actual server-side bytes, object key, scanner,
    // verified checksum and version; UNKNOWN cannot be a completed export.
-   const artifact=await this.files.issueScheduledFinance(
-    row.root_realm_id,row.requester_ref,row.id,"PDF",data);
+   const artifact=report.kind==="PROJECT_STATUS_REPORT"?
+    await this.files.issueScheduledProject(row.root_realm_id,row.requester_ref,row.id,"PDF",data):
+    await this.files.issueScheduledFinance(row.root_realm_id,row.requester_ref,row.id,"PDF",data);
    if(!artifact.confirmed){
     await this.finish(row,"UNKNOWN",{errorClass:"FILE_CONFIRMATION_UNKNOWN"});
     return;
@@ -231,20 +234,20 @@ export class MisReportScheduleWorker implements OnModuleInit,OnModuleDestroy{
     await this.finish(row,"REVOKED",{errorClass:"CURRENT_SCOPE_CHANGED"});
     return;
    }
-   const latestScope=await this.sources.originalScheduledFinanceScope(
+   const latestScope=await this.sources.originalScheduledScope(
     row.root_realm_id,row.requester_ref,parseSafeReport(row.safe_request));
    if(originalScope.all&&!latestScope.all||
       !latestScope.all&&originalScope.branchRefs.some(ref=>!latestScope.branchRefs.includes(ref))){
     await this.finish(row,"REVOKED",{errorClass:"SOURCE_SCOPE_REVOKED_DURING_EXPORT"});
     return;
    }
-   const post=await this.sources.previewScheduledFinance(
+   const post=await this.sources.previewScheduledReport(
     row.root_realm_id,row.requester_ref,row.safe_request);
    const digestRows=(value:typeof report)=>createHash("sha256")
     .update(JSON.stringify({kind:value.kind,view:value.view,
      columns:value.columns,rows:value.rows,scopeLabel:value.scopeLabel}))
     .digest("hex");
-   if(digestRows(post)!==digestRows(report)){
+   if(post.state!=="READY"||post.nextOffset!==null||digestRows(post)!==digestRows(report)){
     await this.finish(row,"REVOKED",{errorClass:"SOURCE_CHANGED_DURING_EXPORT"});
     return;
    }
@@ -255,7 +258,7 @@ export class MisReportScheduleWorker implements OnModuleInit,OnModuleDestroy{
     const confirmed=await tx.query(
      "UPDATE cg20_report_run r SET state='READY',artifact_ref=$3,"+
      "source_as_of=$4,result_row_count=$5,original_scope_all=$6,"+
-     "original_scope_branch_refs=$7::uuid[],updated_at=now() "+
+     "original_scope_branch_refs=$7::uuid[],original_project_digest=$8,updated_at=now() "+
      "WHERE r.root_realm_id=$1 AND r.id=$2 AND r.state='RUNNING' "+
      "AND EXISTS(SELECT 1 FROM cg20_report_schedule sch "+
      "JOIN cg20_saved_report saved ON saved.root_realm_id=sch.root_realm_id "+
@@ -267,7 +270,7 @@ export class MisReportScheduleWorker implements OnModuleInit,OnModuleDestroy{
      "RETURNING r.id",
      [row.root_realm_id,row.id,artifact.artifactRef,
       report.sourceAsOf??null,report.rows.length,
-      originalScope.all,originalScope.branchRefs]);
+      originalScope.all,originalScope.branchRefs,report.kind==="PROJECT_STATUS_REPORT"?digestRows(report):null]);
     if(confirmed.rowCount){
      await tx.query(
       "INSERT INTO cg20_report_delivery_attempt(root_realm_id,run_ref,"+
@@ -330,13 +333,17 @@ export class MisReportScheduleWorker implements OnModuleInit,OnModuleDestroy{
     row.root_realm_id,row.recipient_account_ref,"communications.notifications.view");
    if(run.original_scope_all===null||run.original_scope_branch_refs===null)
     throw new ForbiddenException("Original report branch scope cannot be verified");
-   const latest=await this.sources.originalScheduledFinanceScope(
+   const latest=await this.sources.originalScheduledScope(
     row.root_realm_id,row.recipient_account_ref,parseSafeReport(run.safe_request));
    if(run.original_scope_all&&!latest.all||
      !latest.all&&run.original_scope_branch_refs.some(ref=>!latest.branchRefs.includes(ref)))
     throw new ForbiddenException("An old report contains branches no longer assigned");
-   await this.sources.previewScheduledFinance(
+   const fresh=await this.sources.previewScheduledReport(
     row.root_realm_id,row.recipient_account_ref,run.safe_request);
+   if(run.source_key==="PROJECT_STATUS_REPORT"){
+    const digest=createHash("sha256").update(JSON.stringify({kind:fresh.kind,view:fresh.view,columns:fresh.columns,rows:fresh.rows,scopeLabel:fresh.scopeLabel})).digest("hex");
+    if(fresh.state!=="READY"||digest!==run.original_project_digest)throw new ForbiddenException("Project report changed before delivery");
+   }
    await this.notices.publishReady(row.root_realm_id,
     row.recipient_account_ref,row.run_ref);
    // CG19 records confirmed in-app notice and original delivery row in one

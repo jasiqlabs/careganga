@@ -141,6 +141,7 @@ export class CsrFundingReportsService{
    const branches=all?[]:finances.all?csr.branches.map(x=>x.value):
     csr.all?finances.branchRefs:
     csr.branches.map(x=>x.value).filter(x=>finances.branchRefs.includes(x));
+   if(!all&&branches.length===0)throw new ForbiddenException("No current CSR and finance branch scope is assigned.");
    if(branches.length>100)throw new ConflictException("Narrow the permitted branch scope.");
    if(f.branchRef&&!all&&!branches.includes(f.branchRef))
     throw new ForbiddenException("This report branch is restricted.");
@@ -155,6 +156,19 @@ export class CsrFundingReportsService{
     [actor.realmId,all,branches,f.branchRef!==undefined,f.branchRef??null,
      f.partnerRef??null,f.projectRef??null,f.status??"ALL",f.from??null,
      f.to??null,f.q??"",page?.[0]??null,page?.[1]??null,max]);
+   const sourceAsOf=(await tx.query<{at:Date}>("SELECT transaction_timestamp() AS at")).rows[0].at.toISOString();
+   await tx.query("COMMIT");
+   // Fresh transaction on the existing connection: assertCurrent verifies
+   // the actual session and grants. Avoid acquiring a second pool connection.
+   await tx.query("BEGIN ISOLATION LEVEL REPEATABLE READ");
+   await this.identity.assertCurrent(tx,actor,"csr.partners.view");
+   await this.identity.assertCurrent(tx,actor,"finance.reports.view");
+   const currentCsr=await this.branches.projectBranchScope(tx,actor);
+   if(all&&!currentCsr.all||branches.some(id=>!currentCsr.all&&!currentCsr.branches.some(b=>b.value===id)))
+    throw new ForbiddenException("Reporting branch access changed. Refresh the report.");
+   if(all)await this.branches.requireFinanceRootScope(tx,actor,"finance.reports.view");
+   else for(const id of branches)await this.branches.requireFinanceActiveBranch(tx,actor,id,"finance.reports.view");
+   if(projects)await this.identity.assertCurrent(tx,actor,"projects.view");
    await tx.query("COMMIT");
    const records=rows.rows.map(v=>{
     const received=BigInt(v.receivedMinor),allocated=BigInt(v.allocatedMinor),
@@ -175,13 +189,26 @@ export class CsrFundingReportsService{
    return {items,hasMore:records.length>items.length,
     nextCursor:records.length>items.length&&last?
      Buffer.from(JSON.stringify([new Date(last.updatedAt).toISOString(),last.ref]),"utf8").toString("base64url"):null,
-    currency:"INR",source:"CG08_APPROVED_CG09_VERIFIED",scope:all?"FOUNDATION":"ASSIGNED_BRANCHES",
+    sourceAsOf,currency:"INR",source:"CG08_APPROVED_CG09_VERIFIED",scope:all?"FOUNDATION":"ASSIGNED_BRANCHES",
     notice:"Committed means approved pledge, not received bank cash. Reversed/invalid proof requires CG09 revalidation."};
   }catch(e){
    try{await tx.query("ROLLBACK");}catch{}
    if(e instanceof BadRequestException||e instanceof ForbiddenException||e instanceof ConflictException)throw e;
    throw new ServiceUnavailableException("Original CG09 report unavailable. Finance verification pending.");
   }finally{tx.release();}
+ }
+ /** Bounded owner snapshot, never present an incomplete page as a total. */
+ async misSummary(bearer:string,raw:Record<string,unknown>={}){
+  const report=await this.report(bearer,raw,1001);
+  const keys=["committedMinor","receivedMinor","allocatedMinor","releasedMinor","utilizedMinor","availableMinor"] as const;
+  const unsafe=report.hasMore||report.items.some(v=>v.financeStatus==="REVALIDATION_REQUIRED"||
+   (v.status!=="APPROVED"&&[v.receivedMinor,v.allocatedMinor,v.utilizedMinor].some(n=>BigInt(n)!==0n))||
+   keys.some(k=>v[k]===null||BigInt(v[k]??"0")<0n));
+  const totals=unsafe?null:Object.fromEntries(keys.map(k=>[k,report.items.reduce((sum,v)=>sum+BigInt(v[k]??"0"),0n).toString()]));
+  return {state:unsafe?"PARTIAL" as const:report.items.length?"READY" as const:"EMPTY" as const,
+   totals,sourceAsOf:report.sourceAsOf,scope:report.scope,count:unsafe?null:report.items.length,
+   explanation:report.hasMore?"More than 1,000 proposals match. Narrow the proposal update dates.":unsafe?
+    "Original CSR funding or finance proof requires revalidation. Totals withheld.":report.notice};
  }
  async list(bearer:string,raw:Record<string,unknown>){return this.report(bearer,raw,26);}
  async exportCsv(bearer:string,raw:Record<string,unknown>){

@@ -1,3 +1,4 @@
+import {verifyPayrollReadback} from "../../cg-09-finance-accounting/infrastructure/payroll-razorpayx-readback";
 type ChannelCheck=Readonly<{
   result:"CHECK_ACCEPTED"|"CHECK_FAILED"|"ADAPTER_UNAVAILABLE";
   reason:"SENDER_CONFIRMED"|"SERVICE_CONFIRMED"|"MERCHANT_CONFIRMED"|
@@ -10,7 +11,8 @@ const disabled:ChannelCheck={result:"ADAPTER_UNAVAILABLE",reason:"UNAVAILABLE"};
  * Never send a test message or assert a successful delivery.
  */
 export async function checkCommunicationReadiness(
-  provider:string,purpose:string,reference:string):Promise<ChannelCheck>{
+  provider:string,purpose:string,reference:string,root?:string):Promise<ChannelCheck>{
+  if(provider==="razorpayx"&&purpose==="payroll")return root&&await verifyPayrollReadback(reference,root)?{result:"CHECK_ACCEPTED",reason:"MERCHANT_CONFIRMED"}:{result:"ADAPTER_UNAVAILABLE",reason:"UNAVAILABLE"};
   if(provider==="sendgrid"&&purpose==="email"){
     const configured=process.env.CG19_SENDGRID_SECRET_REF?.trim()??"";
     const key=process.env.CG19_SENDGRID_API_KEY?.trim()??"";

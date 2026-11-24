@@ -192,15 +192,15 @@ export class SessionService implements IdentityAuthorization {
    * branch/purpose/center scopes before generation and sending.
    * Never expose this method through an HTTP controller.
    */
-  async requireScheduledMisAction(rootInput:string,accountInput:string,action:string):
+  async requireScheduledMisAction(rootInput:string,accountInput:string,action:string,client:Pool|PoolClient=this.db):
    Promise<{realmId:string;accountId:string;accessVersion:string}>{
     if(!["mis.reports.view","mis.reports.manage","mis.reports.export","mis.reports.schedule",
-      "finance.reports.view","foundation.branches.admin",
+      "finance.reports.view","foundation.branches.admin","projects.view","projects.export",
       "communications.notifications.view",
       "platform.audit.view"].includes(action)||
       !implementedCapability(action))
       throw new ForbiddenException("This scheduled reporting action is unavailable");
-    const result=await this.db.query<{
+    const result=await client.query<{
       access_version:string;is_protected:boolean;
       capability_key:string|null;approved_sensitive:boolean
     }>(`

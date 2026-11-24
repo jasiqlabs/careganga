@@ -114,7 +114,7 @@ export class SupportService{
       "INSERT INTO cg19_support_guest_throttle(bucket_digest,window_started_at,attempt_count) "+
       "VALUES($1,now(),1) ON CONFLICT(bucket_digest) DO UPDATE SET "+
       "attempt_count=CASE WHEN cg19_support_guest_throttle.window_started_at<"+
-      "now()-make_interval(secs=>$2) THEN 1 ELSE cg19_support_guest_throttle.attempt_count+1 END,"+
+      "now()-make_interval(secs=>$2) THEN 1 ELSE LEAST(cg19_support_guest_throttle.attempt_count::bigint+1,2147483647)::integer END,"+
       "window_started_at=CASE WHEN cg19_support_guest_throttle.window_started_at<"+
       "now()-make_interval(secs=>$2) THEN now() ELSE cg19_support_guest_throttle.window_started_at END "+
       "RETURNING attempt_count",[digest,seconds]);
@@ -172,6 +172,11 @@ export class SupportService{
       "INSERT INTO cg19_support_event(realm_id,case_id,actor_id,kind,metadata) "+
       "VALUES($1,$2,$3,$4,$5::jsonb)",
       [realm,caseId,actor,kind,JSON.stringify(metadata)]);
+  }
+  /** Same original guest throttle storage, independently keyed newsletter limits. */
+  async newsletterThrottle(address:string,emailDigest:string,phase:"start"|"confirm"){
+    await this.throttle(address,"newsletter-"+phase,phase==="start"?12:50,3600);
+    await this.throttle(emailDigest,"newsletter-email-"+phase,phase==="start"?3:20,3600);
   }
   async contact(address:string,payload:unknown){
     await this.throttle(address,"contact",12,3600);
@@ -231,6 +236,20 @@ export class SupportService{
         status:"SUBMITTED",result:"CONFIRMED"};
     }catch(e){if(begun)try{await client.query("ROLLBACK");}catch{};throw e;}
     finally{client.release();}
+  }
+  /** Original private support receipt and identity-owned verified email are both
+   * required; only the source case reference is passed to CG19 payroll capture. */
+  async payrollResendTicket(tx:PoolClient,a:VerifiedFoundationActor,receipt:unknown){
+    await this.throttle(a.realmId+":"+a.accountId,"payroll-resend-receipt",10,900);
+    if(typeof receipt!=="string"||!TOKEN.test(receipt))throw new NotFoundException("Verified support receipt unavailable");
+    const candidate=sha(receipt);
+    const found=(await tx.query<CaseRow>(`SELECT * FROM cg19_support_case
+     WHERE realm_id=$1 AND source_channel='FOUNDATION_PUBLIC' AND receipt_digest=$2 AND receipt_expires_at>now() AND status<>'CLOSED' FOR SHARE`,[a.realmId,candidate])).rows[0];
+    const person=await this.people.get(tx,a.realmId,a.accountId);
+    if(!found||!person?.active||!person.emailVerified||!person.email||!timingSafeEqual(Buffer.from(candidate,"hex"),Buffer.from(found.receipt_digest,"hex"))||
+     open(found.request_encrypted).contact.trim().toLocaleLowerCase("en-US")!==person.email.trim().toLocaleLowerCase("en-US"))
+      throw new NotFoundException("Verified support receipt unavailable");
+    return found.id;
   }
   async receipt(address:string,payload:unknown){
     await this.throttle(address,"receipt",30,900);

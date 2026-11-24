@@ -1,0 +1,26 @@
+import {PayrollPaymentService} from "../application/payroll-payment.service";
+import {Body,Controller,Get,Header,Headers,Param,Post,Query} from "@nestjs/common";
+import {PayrollRunService} from "../application/payroll-run.service";
+@Controller("api/v1/payroll/runs")
+export class PayrollRunController{
+ constructor(private readonly runs:PayrollRunService,private readonly payments:PayrollPaymentService){}
+ @Get("dashboard") @Header("Cache-Control","private, no-store") dashboard(@Headers("authorization")token:string,@Query("period")period?:string,@Query("branchRef")branchRef?:string){return this.runs.dashboard(token,period,branchRef);}
+ @Get("options") @Header("Cache-Control","private, no-store") options(@Headers("authorization")token:string){return this.runs.options(token);}
+ @Get() @Header("Cache-Control","private, no-store") list(@Headers("authorization")token:string,@Query("period")period?:string,@Query("branchRef")branchRef?:string,@Query("afterPeriod")afterPeriod?:string,@Query("afterRun")afterRun?:string){return this.runs.list(token,{period,branchRef,afterPeriod,afterRun});}
+ @Post("draft") @Header("Cache-Control","private, no-store") create(@Headers("authorization")token:string,@Body()body:unknown){return this.runs.createDraft(token,body);}
+ @Post(":ref/import-current-attendance") @Header("Cache-Control","private, no-store") import(@Headers("authorization")token:string,@Param("ref")ref:string,@Body()raw:unknown){return this.runs.command(token,ref,"import-current-attendance",raw);}
+ @Post(":ref/calculate") @Header("Cache-Control","private, no-store") calculate(@Headers("authorization")token:string,@Param("ref")ref:string,@Body()raw:unknown){return this.runs.command(token,ref,"calculate",raw);}
+ @Post(":ref/adjust") @Header("Cache-Control","private, no-store") adjust(@Headers("authorization")token:string,@Param("ref")ref:string,@Body()raw:unknown){return this.runs.command(token,ref,"adjust",raw);}
+ @Get(":ref/late-options") @Header("Cache-Control","private, no-store") lateOptions(@Headers("authorization")token:string,@Param("ref")ref:string){return this.runs.lateOptions(token,ref);}
+ @Post(":ref/late-adjustment") @Header("Cache-Control","private, no-store") lateAdjustment(@Headers("authorization")token:string,@Param("ref")ref:string,@Body()raw:unknown){return this.runs.command(token,ref,"late-adjustment",raw);}
+ @Get(":ref/validation") @Header("Cache-Control","private, no-store") validation(@Headers("authorization")token:string,@Param("ref")ref:string){return this.runs.detail(token,ref);}
+ @Get(":ref/history") @Header("Cache-Control","private, no-store") history(@Headers("authorization")token:string,@Param("ref")ref:string){return this.runs.history(token,ref);}
+ @Get(":ref/accrual-options") @Header("Cache-Control","private, no-store") accrualOptions(@Headers("authorization")token:string,@Param("ref")ref:string){return this.payments.options(token,ref);}
+ @Post(":ref/request-release") @Header("Cache-Control","private, no-store") accrue(@Headers("authorization")token:string,@Param("ref")ref:string,@Body()raw:unknown){return this.payments.accrue(token,ref,raw);}
+ @Get(":ref/batch-options") @Header("Cache-Control","private, no-store") batchOptions(@Headers("authorization")token:string,@Param("ref")ref:string){return this.payments.batchOptions(token,ref);}
+ @Post(":ref/prepare-batch") @Header("Cache-Control","private, no-store") prepareBatch(@Headers("authorization")token:string,@Param("ref")ref:string,@Body()raw:unknown){return this.payments.prepare(token,ref,raw);}
+ @Post(":ref/request-payout") @Header("Cache-Control","private, no-store") requestPayout(@Headers("authorization")token:string,@Param("ref")ref:string,@Body()raw:unknown){return this.payments.requestAttempt(token,ref,raw);}
+ @Get(":ref/payment-outcomes") @Header("Cache-Control","private, no-store") paymentOutcomes(@Headers("authorization")token:string,@Param("ref")ref:string){return this.payments.outcomes(token,ref);}
+ @Get(":ref/payment-report") @Header("Cache-Control","private, no-store") paymentReport(@Headers("authorization")token:string,@Param("ref")ref:string,@Query("q")q?:string,@Query("state")state?:string){return this.payments.report(token,ref,q,state);}
+ @Get(":ref") @Header("Cache-Control","private, no-store") detail(@Headers("authorization")token:string,@Param("ref")ref:string){return this.runs.detail(token,ref);}
+}

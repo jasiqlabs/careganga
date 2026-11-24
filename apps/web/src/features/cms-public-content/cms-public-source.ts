@@ -61,12 +61,12 @@ export async function publishedCmsNavigation():Promise<PublicCmsNavigation|null>
 
 export type CmsArticleSummary={slug:string;title:string;category:string;
  excerpt:string;asOfDate:string;path:string};
-export async function publishedCmsArticles(category="",cursor=""):
+export async function publishedCmsArticles(category="",cursor="",eventsOnly=false):
  Promise<{posts:CmsArticleSummary[];nextCursor:string|null;available:boolean}>{
  const backend=process.env.BACKEND_URL;
  if(!backend)return {posts:[],nextCursor:null,available:false};
  try{
-  const url=new URL("/api/public/content/articles",backend);
+  const url=new URL(eventsOnly?"/api/public/content/events":"/api/public/content/articles",backend);
   if(category)url.searchParams.set("category",category);
   if(cursor)url.searchParams.set("cursor",cursor);
   const res=await fetch(url,{cache:"no-store",signal:AbortSignal.timeout(7000)});
@@ -115,3 +115,14 @@ export async function publishedCmsNotices():Promise<{available:boolean;notices:C
   return {available:true,notices:source.notices};
  }catch{return {available:false,notices:[]};}
 }
+
+/** Public editorial intros read the same effective About revision. No owner availability or private record is inferred. */
+export type PublicIntroPlacement="TEAM"|"MEMBERSHIP"|"VOLUNTEER"|"NOTICES"|"UPCOMING_PROJECTS"|"ANNUAL_REPORTS"|"FINANCIAL_REPORTS";
+export type PublicIntro={heading:string;body:string;eyebrow:string;highlights:string[]};
+export function selectPublicIntro(result:CmsPageResult,placement:PublicIntroPlacement):PublicIntro|null{
+ if(result.state!=="PUBLISHED")return null;
+ const fields=result.page.sections.find(s=>s.kind==="RICH_TEXT"&&s.fields.placement===placement)?.fields;
+ if(!fields||typeof fields.heading!=="string"||typeof fields.body!=="string")return null;
+ return {heading:fields.heading,body:fields.body,eyebrow:typeof fields.eyebrow==="string"?fields.eyebrow:"",highlights:Array.isArray(fields.highlights)?fields.highlights.filter((x):x is string=>typeof x==="string").slice(0,4):[]};
+}
+export async function publishedPublicIntro(placement:PublicIntroPlacement){return selectPublicIntro(await publishedCmsPage("about"),placement);}

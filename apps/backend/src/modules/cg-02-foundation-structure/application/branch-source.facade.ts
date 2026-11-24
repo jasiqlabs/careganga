@@ -110,7 +110,7 @@ export class BranchSourceFacade{
  }
  /** Used for finance account reactivation, without CG-09 reading CG-02 tables. */
  async requireFinanceActiveBranch(client:PoolClient,actor:VerifiedFoundationActor,
-  branchRef:string,action:"finance.accounts.manage"|"finance.journals.post"|
+  branchRef:string,action:"finance.accounts.manage"|"finance.accounts.view"|"finance.journals.post"|
    "finance.reconciliation.manage"|"finance.reports.view"|"finance.vouchers.manage"|"finance.vouchers.view"|
    "finance.budgets.manage"|"finance.invoices.manage"|"finance.invoices.issue"|"finance.invoices.review"):Promise<void>{
   await this.identity.assertCurrent(client,actor,action);
@@ -126,7 +126,7 @@ export class BranchSourceFacade{
  async requireFinanceActorBranch(client:PoolClient,actor:VerifiedFoundationActor,
   branchInput:string,action:"finance.invoices.manage"|"finance.invoices.issue"|
    "finance.invoices.review"|"finance.budgets.manage"|"finance.accounts.manage"|
-  "finance.journals.post"|"finance.vouchers.manage"|"finance.vouchers.view"|
+  "finance.accounts.view"|"finance.journals.post"|"finance.vouchers.manage"|"finance.vouchers.view"|
   "finance.reconciliation.manage"|"finance.reports.view"):Promise<void>{
   await this.identity.assertCurrent(client,actor,action);
   const branchRef=ensureId(branchInput);
@@ -246,6 +246,30 @@ export class BranchSourceFacade{
   * of CURRENT ACTIVE branch assignments without any Foundation-null money.
   * Sessionless background execution still checks CG01's current role.
   */
+ async scheduledProjectScope(root:string,account:string,client:Pool|PoolClient=this.db):
+  Promise<{all:boolean;branchRefs:string[]}>{
+  await this.sessions.requireScheduledMisAction(root,account,"projects.view",client);
+  await this.sessions.requireScheduledMisAction(root,account,"projects.export",client);
+  let all=false;
+  try{await this.sessions.requireScheduledMisAction(root,account,"foundation.branches.admin",client);all=true;}
+  catch(e){if(!(e instanceof ForbiddenException))throw e;}
+  const rows=all?(await client.query<{id:string}>(
+   "SELECT id FROM branch WHERE root_realm_id=$1 AND status='ACTIVE' ORDER BY id LIMIT 201 FOR SHARE",[root])).rows:
+   await this.permittedStaffBranches(client,root,account);
+  if(rows.length>200)throw new ForbiddenException("Choose a narrower branch scope");
+  return {all,branchRefs:rows.map(b=>b.id).sort()};
+ }
+ async projectReportScope(bearer:string){
+  const a=await this.sessions.requireAction(bearer,"projects.export"),tx=await this.db.connect();
+  try{
+   await tx.query("BEGIN ISOLATION LEVEL REPEATABLE READ");
+   await this.identity.assertCurrent(tx,a,"projects.export");
+   await this.identity.assertCurrent(tx,a,"projects.view");
+   const scope=await this.projectBranchScope(tx,a);
+   await tx.query("COMMIT");
+   return {all:scope.all,branchRefs:scope.branches.map(b=>b.value).sort()};
+  }catch(e){await tx.query("ROLLBACK");throw e;}finally{tx.release();}
+ }
  async scheduledFinanceScope(root:string,account:string):
   Promise<{all:boolean;branchRefs:string[]}>{
   await this.sessions.requireScheduledMisAction(root,account,"finance.reports.view");
@@ -328,7 +352,7 @@ export class BranchSourceFacade{
   * A manager's finance.accounts.manage/journals.post grant is NOT root authority.
   */
  async requireFinanceRootScope(client:PoolClient,actor:VerifiedFoundationActor,
-   action:"finance.accounts.manage"|"finance.journals.post"|
+   action:"finance.accounts.manage"|"finance.accounts.view"|"finance.journals.post"|
     "finance.vouchers.manage"|"finance.vouchers.view"|"finance.budgets.manage"|
     "finance.reconciliation.manage"|"finance.reports.view"|"finance.invoices.manage"|"finance.invoices.review"):Promise<void>{
   await this.identity.assertCurrent(client,actor,action);

@@ -5,7 +5,8 @@ import {PlatformAuditPanel} from "../../../../features/platform-configuration/pl
 import {AccessDeniedView} from "../../../../shared/access-denied-view";
 import {UnavailablePage} from "../../../../shared/unavailable-page";
 export const dynamic="force-dynamic";
-export default async function ProtectedPlatformPage(){
+export default async function ProtectedPlatformPage({searchParams}:{searchParams:Promise<{category?:string}>}){
+  const initialPayroll=(await searchParams).category==="PAYROLL";
   const token=(await cookies()).get("cg_staff_session")?.value;
   if(!token)redirect("/admin/login");
   const backend=process.env.BACKEND_URL;
@@ -48,7 +49,7 @@ export default async function ProtectedPlatformPage(){
           keys.includes("communications.notices.manage")||
           keys.includes("communications.delivery.view")}
         canViewSupport={keys.includes("support.cases.view")||keys.includes("support.faq.manage")}/>
-      <main className="workspace"><PlatformAuditPanel canManageSettings={keys.includes("platform.settings.manage")}/></main>
+      <main className="workspace"><PlatformAuditPanel initialPayroll={initialPayroll} canManageSettings={keys.includes("platform.settings.manage")}/></main>
     </div>;
   }catch(error){
     if(error&&typeof error==="object"&&"digest" in error&&

@@ -328,8 +328,10 @@ const checks=[
 
  ["CG21 administrator can edit original team-consent failure copy",
   files.cg21Copy.includes("CMS_TEAM_CONSENT_REQUIRED:")],
- ["Original newsletter cannot fake subscriber success before CG19 opt-in",
-  files.web.includes('disabled className="cg-site-newsletter-button"')&&
+ ["Original newsletter uses real CG19 verification and withdrawal, not a fake success",
+  files.web.includes('<Cg19NewsletterForm/>')&&
+  files.android.includes('<NativeNewsletterForm/>')&&
+  files.android.includes('slug==="@newsletter"?<View')&&
   files.originalNav.includes("CG-19 owns any real opt-in receipt")]
 ];
 // Same original editorial business source; public mobile CMS viewer does not
@@ -537,6 +539,114 @@ checks.push(["Public Android accepts only an approved canonical membership/volun
  files.android.includes('data.memberJoin?.visible===true&&data.memberJoin?.path==="/membership"')&&
  files.android.includes('data.volunteerJoin?.visible===true&&data.volunteerJoin?.path==="/volunteer"')&&
  files.android.includes('memberJoin&&<CmsButton title="Become a Member"')]);
+checks.push(["Public Android CMS CTA navigation matches current canonical join visibility",
+ files.android.includes('"/collaboration","/membership","/volunteer","/campaigns"].includes(route)')&&
+ files.android.includes('if(route==="/membership")return memberJoin;')&&
+ files.android.includes('if(route==="/volunteer")return volunteerJoin;')&&
+ files.android.includes('if(!canNavigate(href))return;')&&
+ files.android.includes('canNavigate(fields.primaryPath)')&&
+ files.android.includes('canNavigate(fields.secondaryPath)')&&
+ files.android.includes('canNavigate(fields.path)')&&
+ files.android.includes('setMemberJoin(false);setPublishedPaths([]);')]);
+checks.push(["Public Web joins use only exact owner destinations",
+ files.header.includes('navigation.memberJoin.path==="/membership"')&&
+ files.header.includes('navigation.volunteerJoin.path==="/volunteer"')&&
+ files.web.includes('const expected=type==="memberJoin"?"/membership":"/volunteer";')&&
+ files.web.includes('target?.visible===true&&target.path===expected')]);
+checks.push(["Healthcare directory remains discoverable without editorial publication",
+ files.header.includes('href={isPublished("/healthcare")?"/healthcare":"/health-network"}')&&
+ files.web.includes('href={isPublished("/healthcare")?"/healthcare":"/health-network"}')]);
+const ctaRoute=read("apps/web/src/features/cms-public-content/cms-cta-route.ts");
+const nativeExtendedCta=read("apps/android-public/src/features/cms/cms-extended-native-screen.tsx");
+const canonicalCtaList='["/","/about","/contact","/our-impact","/ngo-information","/gallery","/videos","/publications","/healthcare","/our-work","/upcoming-projects","/collaboration","/membership","/volunteer","/campaigns"]';
+checks.push(["CMS hero and promo routes use same fixed cross-channel allowlist",
+ [files.backend,ctaRoute,files.android].every(s=>s.includes(canonicalCtaList))&&
+ files.backend.includes('path(fields.primaryPath,"primaryPath",kind)')&&
+ files.backend.includes('path(fields.secondaryPath,"secondaryPath",kind)')&&
+ files.backend.includes('path(fields.path,"path",kind)')&&
+ files.admin.includes("isCmsCtaRoute(draft.promoPath.trim())")]);
+checks.push(["CMS effective CTA gating preserves join flags, media scope and approved page visibility",
+ ctaRoute.includes('navigation.memberJoin.path===value')&&
+ ctaRoute.includes('navigation.volunteerJoin.path===value')&&
+ ctaRoute.includes('navigation?.publishedRoutes?.some(p=>p.path===required)===true')&&
+ files.web.includes('effectiveCmsCtaRoute(href,navigation)')&&
+ files.carousel.includes('effectiveCmsCtaRoute(href,navigation)')&&
+ files.android.includes('canNavigate={canNavigate}')&&nativeExtendedCta.includes('canNavigate(f.ctaPath)&&')]);
+checks.push(["Neutral healthcare editorial CTA still excludes unapproved operational routes",
+ files.backend.includes('kind==="HEALTHCARE"&&!["/","/about","/contact"].includes(x)')]);
+const initDrafts=read("scripts/initialize-cms-drafts.mjs");
+checks.push(["Default CMS onboarding is explicit and uses original draft creation only",
+ initDrafts.includes('if(!apply)')&&initDrafts.includes('/api/cms/pages?scope=baseline')&&files.backend.includes('scope==="baseline"')&&files.backend.includes('"CONTACT_INFO","PARTNER_CARDS"]);')&&
+ initDrafts.includes('if(existing.has(content.slug))')&&initDrafts.includes('if(r.status===409)')&&
+ initDrafts.includes('result.status!=="DRAFT"')&&!initDrafts.includes('/api/cms/pages/submit')&&
+ !initDrafts.includes('/api/cms/pages/publish')]);
+checks.push(["Reference-derived CMS starter copy remains editable and operational collections stay empty",
+ ["Get In Touch","Our Social Partners","Real People. Real Stories. Real Change.","Moments of Hope & Action","Stories in Motion","Publications & Reports","No photos published yet."].every(value=>initDrafts.includes(value))&&
+ initDrafts.includes("partners:[]")&&initDrafts.includes("items:[]")&&initDrafts.includes("assets:[]")]);
+const firstPublication=read("scripts/verify-cms-first-publication.mjs"),baselinePublisher=read("scripts/publish-cms-baseline.mjs");
+checks.push(["First-install approved baseline uses only existing revision/approval publication contract",
+ initDrafts.includes("textOnly:true")&&initDrafts.includes('sourceRefs:[]')&&
+ files.backend.includes("!slide.text_only")&&files.backend.includes("s.fields.textOnly!==true")&&
+ files.admin.includes("projectEnabled")&&internalCms.includes("Keep project directory available")&&
+ firstPublication.includes("requiredRoutes")&&firstPublication.includes("publishedRoutes")&&
+ baselinePublisher.includes('d.revisionRef!==e.revisionRef')&&baselinePublisher.includes('d.approvalCaseRef!==e.caseRef')&&
+ baselinePublisher.includes('d.publicationStatus==="EFFECTIVE"')&&baselinePublisher.includes('"/publish"')&&
+ baselinePublisher.includes("d.hasPublicationHistory!==false")&&baselinePublisher.includes("firstPublicationOnly:true")&&
+ files.backend.includes("if(v.firstPublicationOnly===true)")&&files.backend.includes("hasPublicationHistory:!!history.rowCount")&&
+ !baselinePublisher.includes("/submit")]);
+checks.push(["Empty media/impact has no synthetic records and nonempty impact retains required provenance",
+ files.extended.includes('source:str(x.source??"","source",180,items.length?3:0)')&&
+ files.extended.includes('if(!Array.isArray(x.items)||x.items.length>12)')&&
+ files.extended.includes('entry.visible!==false&&!assets.some')&&
+ files.extended.includes('if(x.consentConfirmed!==true)')&&
+ files.androidExtended.includes("No approved information has been published yet.")]);
+const illustrationImporter=read("scripts/import-cms-baseline-illustrations.mjs");
+checks.push(["Original screenshot default editorial copy and route placements are independently editable",
+ ["TEAM","MEMBERSHIP","VOLUNTEER","NOTICES","UPCOMING_PROJECTS","ANNUAL_REPORTS","FINANCIAL_REPORTS"].every(v=>initDrafts.includes(v)&&firstPublication.includes(v))&&
+ files.backend.includes('out.placement=fields.placement')&&files.admin.includes('extraText:p.sections.filter')&&
+ files.web.includes('x.kind==="RICH_TEXT"&&x.fields.placement')&&files.android.includes('if(fields.placement)return null')&&
+ files.publicSource.includes('selectPublicIntro')&&files.ngoChildren.includes('item.mediaType!=="PUBLICATION"')&&files.ngoChildren.includes('financial reports')]);
+checks.push(["Generated artwork uses only authorized original CG19 uploads and initial revision, not hard-coded public assets",
+ illustrationImporter.includes('d.hasPublicationHistory!==false')&&illustrationImporter.includes('d.assets.length!==0')&&
+ illustrationImporter.includes('hash(bytes)!==digest')&&illustrationImporter.includes('/api/cms/media/initiate')&&
+ illustrationImporter.includes('proof.cleanVerified')&&illustrationImporter.includes('pagePath+"/draft"')&&
+ !illustrationImporter.includes('"/publish"')&&firstPublication.includes('home-editorial-media')&&
+ files.carousel.includes("AI-generated illustration; not a photograph")&&files.android.includes("AI-generated illustration; not a photograph")]);
+const partnershipPage=read("apps/web/src/app/collaboration/page.tsx");
+checks.push(["Corporate partnership general narrative uses current CMS content in both public channels",
+ initDrafts.includes('heading:"Why Partner With Us?"')&&partnershipPage.includes('approved.filter(s=>s.kind==="RICH_TEXT")')&&
+ partnershipPage.includes("narrative.map")&&!partnershipPage.includes("<h3>Community Impact</h3>")&&
+ files.android.includes('section.kind==="RICH_TEXT"')&&files.adminExtended.includes("Add partnership text section")]);
+const eventsRoute=read("apps/web/src/app/events/page.tsx");
+checks.push(["Events reuse the effective CMS article and current CG05 eligibility source",
+ files.backend.includes("NOT $3::boolean OR body.structured_fields ? 'sourceEventRef'")&&
+ files.backend.includes("NOTICE_CURRENT_SQL+EVENT_CURRENT_SQL")&&
+ eventsRoute.includes('publishedCmsArticles("",cursor,true)')&&
+ files.header.includes('href="/events"')&&
+ files.android.includes('publishedArticles(target==="@events",cursor)')&&
+ files.android.includes('loadedTarget!==slug')&&
+ files.android.includes('title="Events"')]);
+checks.push(["Standalone collaboration enquiry is available without fabricated published partners",
+ files.android.includes('slug==="collaboration"&&result.state!=="PUBLISHED"')&&
+ files.android.includes('title="Get in touch" onPress={onContact}')&&
+ files.android.includes('title="Apply as a healthcare partner" onPress={onPartnerApplication}')&&
+ ctaRoute.includes('value==="/collaboration"')&&
+ files.android.includes('route==="/collaboration"')]);
+const teamOwner=read("apps/backend/src/modules/cg-10-human-resources/application/hr-public-bio-editorial-source.ts");
+const teamRoute=read("apps/web/src/app/about/team/page.tsx");
+checks.push(["E2E-006 team source and publication revalidation",
+ teamOwner.includes("c.consent_status='GRANTED'")&&teamOwner.includes("acc.status='ACTIVE'")&&
+ teamOwner.includes('this.identity.assertCurrent(tx,actor,"hr.employees.view")')&&
+ files.backend.includes("this.hrPublicBio.currentCards")&&
+ files.backend.includes("await this.teamRevisionCurrent")&&
+ files.due.includes("await this.teamRevisionEligible")&&
+ files.due.split("private async teamRevisionEligible(").length===2&&
+ internalCms.split("function TeamSelection(").length===2&&
+ internalCms.split("type TeamSource=").length===2&&
+ files.admin.includes('"team-sources"')&&internalCms.includes('"team-sources"')&&
+ teamRoute.includes('p.consentConfirmed!==true')&&teamRoute.includes('publishedCmsPage("about")')&&
+ files.header.includes('href:"/about/team"')&&files.android.includes('slug==="@team"?<NativeTeamDirectory/>')&&
+ files.backend.includes('assets:visibleAssets.filter(v=>v.role!=="TEAM")')]);
 let errors=0;
 for(const [label,ok] of checks){
  console.log((ok?"SOURCE-PRESENT":"SOURCE-FAIL")+": "+label);
@@ -544,3 +654,11 @@ for(const [label,ok] of checks){
 }
 assert.equal(errors,0,"Source wiring assertions failed");
 console.log("CG-18 US-001–004 original website/navigation static source-presence checks are green ONLY if all checks above pass; 76 original runtime QA, live Web/Android/DB, full original URLs, About dropdown and pixel fidelity remain NOT EXECUTED/NOT VERIFIED.");
+
+// E2E-006 current HR name/designation only
+const hrPublicBio=read("apps/backend/src/modules/cg-10-human-resources/application/hr-public-bio-editorial-source.ts");
+
+for(const needle of ["c.consent_status='GRANTED'","acc.status='ACTIVE'","b.status='ACTIVE'","c.consent_version","this.branches.projectBranchScope(tx,actor)","c.proof===x.proof"])assert.ok(hrPublicBio.includes(needle),needle);
+for(const needle of ["teamSelections(fields.members)","this.hrPublicBio.choices(tx,actor,chosen.map","cards.map(({name,designation})",'a.role==="TEAM"||!placementFits'])assert.ok(files.backend.includes(needle),needle);
+assert.ok(files.due.includes("this.teamRevisionEligible(tx,item.foundation_root_id,item.page_revision_id)"));
+assert.ok(teamRoute.includes("p.consentConfirmed!==true")&&files.android.includes("function NativeTeamDirectory")&&internalCms.includes("TeamSelection sections="));

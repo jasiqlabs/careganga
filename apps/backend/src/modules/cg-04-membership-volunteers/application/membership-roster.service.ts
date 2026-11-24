@@ -104,6 +104,43 @@ export class MembershipRosterService{
   }
   return {total,active,expired,cancelled,suspended,byCategory};
  }
+ /** MIS scope comes from the owner, not finance or an arbitrary request UUID. */
+ async misOptions(token:string){
+  return this.run(token,"membership.members.view",async(tx,a)=>{
+   const scope=await this.branches.projectBranchScope(tx,a);
+   return {branches:scope.branches.map(({value,label})=>({ref:value,name:label}))};
+  },true);
+ }
+ /** Aggregate only; original approved enrollment and consent, no private roster rows. */
+ async misCounts(token:string,branch?:string,from?:string,to?:string){
+  const f=read({branch,joinedFrom:from,joinedTo:to});
+  if(Boolean(f.joinedFrom)!==Boolean(f.joinedTo)||f.joinedFrom&&f.joinedTo&&Date.parse(f.joinedTo)-Date.parse(f.joinedFrom)>366*86400000)throw new BadRequestException("Choose a bounded enrollment date range.");
+  return this.run(token,"membership.members.view",async(tx,a)=>{
+   const scope=await this.branches.projectBranchScope(tx,a);
+   if(f.branch)await this.branches.projectBranch(tx,a,f.branch);
+   const rows=(await tx.query<{status:string;total:number}>(`
+    SELECT CASE WHEN m.status<>'ACTIVE' THEN m.status
+     WHEN term.expires_on<=(now() AT TIME ZONE 'Asia/Kolkata')::date THEN 'EXPIRED' ELSE 'ACTIVE' END status,count(*)::int total
+    FROM member m
+    JOIN membership_application app ON app.root_realm_id=m.root_realm_id AND app.id=m.original_application_id
+     AND app.applicant_account_ref=m.account_ref AND app.status='APPROVED'
+     AND app.consent_version='MEMBERSHIP_V1' AND app.consented_at IS NOT NULL
+    JOIN LATERAL (SELECT t.expires_on FROM membership_term t WHERE t.root_realm_id=m.root_realm_id AND t.member_id=m.id
+     AND t.starts_on<=(now() AT TIME ZONE 'Asia/Kolkata')::date ORDER BY t.starts_on DESC,t.id DESC LIMIT 1) term ON true
+    WHERE m.root_realm_id=$1 AND (($2::boolean AND m.branch_ref IS NULL) OR m.branch_ref=ANY($3::uuid[]))
+     AND ($4::uuid IS NULL OR m.branch_ref=$4)
+     AND ($5::date IS NULL OR m.created_at>=($5::date::timestamp AT TIME ZONE 'Asia/Kolkata'))
+     AND ($6::date IS NULL OR m.created_at<(($6::date+1)::timestamp AT TIME ZONE 'Asia/Kolkata'))
+    GROUP BY 1`,[a.realmId,scope.all,scope.branches.map(x=>x.value),f.branch,f.joinedFrom,f.joinedTo])).rows;
+   const result={total:0,active:0,expired:0,cancelled:0,suspended:0};
+   for(const row of rows){
+    const key=row.status.toLowerCase();
+    if(!["active","expired","cancelled","suspended"].includes(key)||!Number.isSafeInteger(row.total)||row.total<0)throw Error("Invalid roster count");
+    result[key as "active"|"expired"|"cancelled"|"suspended"]+=row.total;result.total+=row.total;
+   }
+   return {...result,sourceAsOf:(await tx.query<{at:Date}>("SELECT transaction_timestamp() AS at")).rows[0].at.toISOString()};
+  },true);
+ }
  async list(token:string,raw:unknown){
   const filter=read(raw);
   return this.run(token,"membership.members.view",async(tx,a)=>{

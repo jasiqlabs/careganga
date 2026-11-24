@@ -34,7 +34,8 @@ function toForm(a:CG04VolunteerApplication):Form{
   branchRef:a.branchRef??"",departmentRef:a.departmentRef,availability:a.availability,
   skills:a.skills.join(", "),experience:a.experience,referral:a.referral,consent:true};
 }
-export function VolunteerSelfService(){
+import type {PublicIntro} from "../cms-public-content/cms-public-source";
+export function VolunteerSelfService({intro}:{intro?:PublicIntro|null}={}){
  const [tab,setTab]=useState<"APPLICATION"|"VERIFY">("APPLICATION");
  const [signed,setSigned]=useState<boolean|null>(null),[verified,setVerified]=useState(false),[loading,setLoading]=useState(true);
  const [apps,setApps]=useState<CG04VolunteerApplication[]>([]),[selected,setSelected]=useState<CG04VolunteerApplication|null>(null);
@@ -129,8 +130,8 @@ export function VolunteerSelfService(){
   disabled={busy||!!selected&&!["DRAFT","RETURNED"].includes(selected.status)} onChange={e=>fill(name,e.target.value)}/></label>;
  const canEdit=!selected||["DRAFT","RETURNED"].includes(selected.status);
  return <section className="cg04-public cg04-volunteer" aria-label="Original Foundation volunteer enrolment">
-  <div className="cg04-volunteer-hero"><small>VOLUNTEER WITH US</small><h1>Make a difference with CareGanga</h1>
-   <p>Join the Foundation's approved volunteer opportunities. Your application and evidence remain private until independently reviewed.</p></div>
+  <div className="cg04-volunteer-hero">{intro?.eyebrow&&<small>{intro.eyebrow}</small>}<h1>{intro?.heading??"Volunteer registration"}</h1>
+   {intro?.body&&<p>{intro.body}</p>}{intro?.highlights.length? <ol>{intro.highlights.map((line,i)=><li key={i}>{line}</li>)}</ol>:null}<p>Your application and evidence remain private until independently reviewed.</p></div>
   <div className="cg04-public-tabs" role="tablist" aria-label="Volunteer application and original issued-card verification">
    <button type="button" role="tab" aria-selected={tab==="APPLICATION"} onClick={()=>setTab("APPLICATION")}>Application Form</button>
    <button type="button" role="tab" aria-selected={tab==="VERIFY"} onClick={()=>setTab("VERIFY")}>Verify Volunteer</button>

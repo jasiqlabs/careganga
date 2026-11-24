@@ -8,7 +8,7 @@ import {NativeFinanceAction,NativeFinanceOptions}
  from "../finance-accounting/finance-native-source-kit";
 import {careGangaTheme as t} from "../../../../../packages/design-tokens/src/index";
 type Format="PDF"|"XLSX"|"CSV";
-type Request={kind:string;view:string;yearRef?:string;branchRef?:string;
+type Request={kind:string;view:string;yearRef?:string;branchRef?:string;projectRef?:string;
  centerRef?:string;fromDay?:string;untilDay?:string;status?:string;
  groupBy?:"CATEGORY"|"POSTING_KIND"|"ACCOUNT_NAME";sortBy?:"NAME"|"DEBIT"|"CREDIT";sortDirection?:"ASC"|"DESC";offset:number};
 type Run={ref:string;state:string;format:Format;canDownload:boolean;

@@ -19,7 +19,7 @@ if(!scripts.includes("verify:design-approvals")||
 for(const name of scripts){
  process.stdout.write("\n[CareGanga source] "+name+"\n");
  const run=spawnSync(process.platform==="win32"?"npm.cmd":"npm",
-  ["run",name],{cwd:root,stdio:"inherit",shell:false});
+  ["run",name],{cwd:root,stdio:"inherit",shell:process.platform==="win32"});
  if(run.error||run.status!==0){
   process.stderr.write("Source gate failed: "+name+"\n");
   process.exit(run.status??1);

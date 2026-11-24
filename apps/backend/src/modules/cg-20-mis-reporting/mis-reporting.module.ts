@@ -1,4 +1,10 @@
 import {Module} from "@nestjs/common";
+import {CsrFundingModule} from "../cg-08-csr-funding/csr-funding.module";
+import {CampaignsDonationsModule} from "../cg-07-campaigns-donations/campaigns-donations.module";
+import {MembershipVolunteersModule} from "../cg-04-membership-volunteers/membership-volunteers.module";
+import {PayrollCompensationModule} from "../cg-11-payroll-compensation/payroll-compensation.module";
+import {BeneficiariesSourceModule} from "../cg-06-beneficiaries-assistance/beneficiaries-source.module";
+import {ProjectsSourceModule} from "../cg-05-projects-field-operations/projects-source.module";
 import {IdentityAccessModule} from "../cg-01-identity-access/identity-access.module";
 import {FinanceAccountingModule} from "../cg-09-finance-accounting/finance-accounting.module";
 import {FoundationStructureModule} from "../cg-02-foundation-structure/foundation-structure.module";
@@ -17,7 +23,7 @@ import {MisReportScheduleWorker} from "./infrastructure/mis-report-schedule.work
 
 /** CG-20 is a read-only consumer of verified source-owned projections. */
 @Module({
- imports:[IdentityAccessModule,FoundationStructureModule,FinanceAccountingModule,DiagnosticsModule,PatientsAppointmentsModule,
+ imports:[CsrFundingModule,CampaignsDonationsModule,MembershipVolunteersModule,PayrollCompensationModule,BeneficiariesSourceModule,ProjectsSourceModule,IdentityAccessModule,FoundationStructureModule,FinanceAccountingModule,DiagnosticsModule,PatientsAppointmentsModule,
   DocumentsNotificationsModule,PlatformConfigurationModule],
  providers:[MisDashboardService,MisReportSourceService,MisSavedReportService,MisReportRunService,MisReportScheduleService,MisReportScheduleWorker],
  controllers:[MisDashboardController,MisReportsController]

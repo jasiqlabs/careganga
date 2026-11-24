@@ -241,7 +241,7 @@ function getFeedCoverage(page: CG21AuditPage | null, loading: boolean): FeedCove
     tone: "red"
   };
 }
-type Scope="ALL"|"CG-01"|"CG-21";
+type Scope="ALL"|"CG-01"|"CG-21"|"PAYROLL";
 type Feedback={kind:"error"|"info"|"success";message:string};
 function dateRange(value:string,endOfDay:boolean):string|undefined{
   if(!value)return undefined;
@@ -341,19 +341,20 @@ function AuditMobileCardSkeleton({ count = 3 }: { count?: number }) {
 
 export type PlatformAuditPanelProps = {
   canManageSettings?: boolean;
+  initialPayroll?: boolean;
 };
 
-export function PlatformAuditPanel({ canManageSettings = false }: PlatformAuditPanelProps){
+export function PlatformAuditPanel({ canManageSettings = false, initialPayroll=false }: PlatformAuditPanelProps){
   const [page,setPage]=useState<CG21AuditPage|null>(null);
   const [loading,setLoading]=useState(true);
-  const [source,setSource]=useState<Scope>("ALL");
+  const [source,setSource]=useState<Scope>(initialPayroll?"PAYROLL":"ALL");
   const [from,setFrom]=useState("");
   const [to,setTo]=useState("");
   const [searchQuery,setSearchQuery]=useState("");
   const [appliedSearch,setAppliedSearch]=useState("");
   const [customLimit,setCustomLimit]=useState<number|undefined>(undefined);
   const [applied,setApplied]=useState<{source:Scope;from:string;to:string}>({
-    source:"ALL",from:"",to:""
+    source:initialPayroll?"PAYROLL":"ALL",from:"",to:""
   });
   const [tokens,setTokens]=useState<Array<string|null>>([null]);
   const [position,setPosition]=useState(0);
@@ -373,7 +374,8 @@ export function PlatformAuditPanel({ canManageSettings = false }: PlatformAuditP
       if(cursor){
         params.set("cursor",cursor);
       }else{
-        params.set("source",applied.source);
+        params.set("source",applied.source==="PAYROLL"?"CG-21":applied.source);
+        if(applied.source==="PAYROLL")params.set("category","PAYROLL");
         const fromIso=dateRange(applied.from,false),toIso=dateRange(applied.to,true);
         if(fromIso)params.set("from",fromIso);
         if(toIso)params.set("to",toIso);
@@ -475,7 +477,8 @@ export function PlatformAuditPanel({ canManageSettings = false }: PlatformAuditP
     if(exporting||loading)return;
     setExporting(true);setNotice(null);
     try{
-      const params=new URLSearchParams({source:applied.source});
+      const params=new URLSearchParams({source:applied.source==="PAYROLL"?"CG-21":applied.source});
+      if(applied.source==="PAYROLL")params.set("category","PAYROLL");
       const a=dateRange(applied.from,false),z=dateRange(applied.to,true);
       if(a)params.set("from",a);
       if(z)params.set("to",z);
@@ -688,6 +691,7 @@ export function PlatformAuditPanel({ canManageSettings = false }: PlatformAuditP
               <option value="ALL">Both delivered sources</option>
               <option value="CG-01">Access &amp; roles</option>
               <option value="CG-21">Platform operations</option>
+              <option value="PAYROLL">Payroll audit trail</option>
             </select>
             <span className="cg-audit-select-arrow" aria-hidden="true">
               <ChevronDownIcon size={16} />

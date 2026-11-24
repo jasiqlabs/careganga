@@ -6,7 +6,7 @@ import {createHash,randomUUID} from "node:crypto";
 import type {Pool,PoolClient} from "pg";
 import {DATABASE} from "../../../core/infrastructure/database.module";
 import {SessionService} from "../../cg-01-identity-access/application/session.service";
-import {MisReportSourceService,parseSafeReport,type SafeReportRequest}
+import {MisReportSourceService,parseSafeReport,LIVE_PREVIEW_KINDS,type SafeReportRequest}
  from "./mis-report-source.service";
 
 const ID=/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -151,6 +151,7 @@ export class MisSavedReportService{
   if(Object.keys(b).some(k=>!["name","request","requestKey"].includes(k)))
    throw new BadRequestException({code:"MIS_SAVED_INVALID"});
   const title=name(b.name),key=ref(b.requestKey),request=parseSafeReport(b.request);
+  if(LIVE_PREVIEW_KINDS.includes(request.kind))throw new ForbiddenException({code:"MIS_LIVE_PREVIEW_ONLY",message:"This report is available as a current live preview only."});
   await this.sources.preview(token,request);
   const action=createdFrom?"COPY":"CREATE";
   const digest=hash({action,title,request,createdFrom:createdFrom??null});
@@ -214,6 +215,7 @@ export class MisSavedReportService{
    throw new BadRequestException({code:"MIS_SAVED_INVALID"});
   const title=name(b.name),key=ref(b.requestKey),expected=version(b.expectedVersion);
   const request=parseSafeReport(b.request);
+  if(LIVE_PREVIEW_KINDS.includes(request.kind))throw new ForbiddenException({code:"MIS_LIVE_PREVIEW_ONLY",message:"This report is available as a current live preview only."});
   await this.sources.preview(token,request);
   const digest=hash({action:"REVISE",id,title,expected,request});
   return this.tx(async tx=>{
@@ -374,6 +376,7 @@ export class MisSavedReportService{
    if(!q.rows[0])throw new NotFoundException({code:"MIS_SAVED_NOT_FOUND"});
    return this.definition(tx,q.rows[0]);
   });
+  if(LIVE_PREVIEW_KINDS.includes(request.kind))throw new ForbiddenException({code:"MIS_LIVE_PREVIEW_ONLY",message:"This report is available as a current live preview only."});
   await this.sources.preview(token,request);
   // The recipient's own current source grant and current root are always
   // rechecked. The new definition has a NEW ID and PRIVATE owner.

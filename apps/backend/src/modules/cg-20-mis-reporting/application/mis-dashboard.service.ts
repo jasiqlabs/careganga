@@ -1,4 +1,6 @@
 import {BadRequestException, ForbiddenException, Injectable, NotFoundException, UnauthorizedException} from "@nestjs/common";
+import {OperationsSummaryService} from "../../cg-05-projects-field-operations/application/operations-summary.service";
+import {DonationAdminService} from "../../cg-07-campaigns-donations/application/donation-admin.service";
 import {SessionService} from "../../cg-01-identity-access/application/session.service";
 import {FinanceReportsService} from "../../cg-09-finance-accounting/application/finance-reports.service";
 import {DiagnosticsCatalogService} from "../../cg-16-healthcare-diagnostics/application/diagnostics-catalog.service";
@@ -25,7 +27,9 @@ export class MisDashboardService{
  constructor(private readonly sessions:SessionService,
   private readonly finance:FinanceReportsService,
   private readonly diagnostics:DiagnosticsCatalogService,
-  private readonly patients:PatientAdminOverviewService){}
+  private readonly patients:PatientAdminOverviewService,
+  private readonly operations:OperationsSummaryService,
+  private readonly donations:DonationAdminService){}
 
  async options(bearer:string){
   await this.sessions.requireAction(bearer,"mis.dashboard.view");
@@ -205,7 +209,47 @@ export class MisDashboardService{
     return {sourceKey:"CG15_APPOINTMENT_STATES",state:"FAILED" as const,
      sourceLabel:"Foundation Appointments",metrics:[]};
    });
-  const results=await Promise.all([financeSource,diagnosticSource,patientSource]);
+  // Operational counts use CG05's current actor scope and one owner snapshot.
+  // Never attach finance-year or healthcare-center filters to these metrics.
+  const projectSource:Promise<Source|null>=view!=="OVERVIEW"?Promise.resolve(null):
+   this.operations.read(bearer,"PERMITTED").then(x=>{
+    if(!("sections" in x)||!x.sections)throw Error("Operational source unavailable");
+    const metrics=x.sections.flatMap((section,index)=>section.metrics.map((metric,i)=>({
+     key:"operations-"+index+"-"+i,label:section.source+" · "+metric.label,
+     unit:"COUNT" as const,value:String(metric.value)
+    })));
+    if(metrics.some(m=>!/^\d+$/.test(m.value)))throw Error("Operational metric unavailable");
+    const hasData=metrics.some(m=>BigInt(m.value)>0n);
+    return {sourceKey:"CG05_PROJECT_OPERATIONS",sourceLabel:"Foundation Projects · Current operations",
+     state:hasData?"AVAILABLE" as const:"EMPTY" as const,
+     metrics:hasData?metrics:[],readAt:new Date().toISOString(),
+     sourceAsOf:x.asOf,cutoffKind:"OWNER_TRANSACTION_SNAPSHOT",
+     explanation:"Current permitted project, task, activity and visit counts; independent of financial-year filters."+
+      (x.restricted.length?" Some operational sources are restricted by your current permissions.":"")};
+   }).catch((error:unknown)=>{
+    if(error instanceof UnauthorizedException||error instanceof BadRequestException)throw error;
+    if(error instanceof ForbiddenException)return null;
+    failures++;
+    return {sourceKey:"CG05_PROJECT_OPERATIONS",sourceLabel:"Foundation Projects",state:"FAILED" as const,metrics:[]};
+   });
+  const donationSource:Promise<Source|null>=view!=="OVERVIEW"?Promise.resolve(null):
+   this.donations.misSummary(bearer).then(x=>{
+    if(x.requiresReview)throw Error("Donation reconciliation required");
+    return {sourceKey:"CG07_DONATION_RECONCILIATION",sourceLabel:"Foundation Donations · Verified receipts",
+     state:x.total?"AVAILABLE" as const:"EMPTY" as const,readAt:new Date().toISOString(),sourceAsOf:x.sourceAsOf.toISOString(),
+     cutoffKind:"OWNER_STATEMENT_SNAPSHOT",metrics:x.total?[
+      {key:"received",label:"Verified posted donations",unit:"COUNT" as const,value:String(x.received)},
+      {key:"pending",label:"Pending donations",unit:"COUNT" as const,value:String(x.pending)},
+      {key:"net",label:"Verified net donations",unit:"INR_MINOR" as const,value:x.netReceivedMinor}]:[],
+     explanation:"Current permitted donation scope, independent of financial-year filters."};
+   }).catch((error:unknown)=>{
+    if(error instanceof UnauthorizedException||error instanceof BadRequestException)throw error;
+    if(error instanceof ForbiddenException)return null;
+    failures++;
+    return {sourceKey:"CG07_DONATION_RECONCILIATION",sourceLabel:"Foundation Donations",state:"FAILED" as const,metrics:[],
+     explanation:"Donation source unavailable or requires reconciliation. No unverified amounts displayed."};
+   });
+  const results=await Promise.all([financeSource,diagnosticSource,patientSource,projectSource,donationSource]);
   const sources:Source[]=results.filter((x):x is Source=>x!==null);
   const available=sources.filter(s=>s.state==="AVAILABLE").length;
   const empty=sources.filter(s=>s.state==="EMPTY").length;

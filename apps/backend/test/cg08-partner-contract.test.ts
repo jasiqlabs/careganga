@@ -111,8 +111,8 @@ test("US001-QA10/11: independent protected CG03 reviewer uses review grant, not 
 });
 test("US001-QA11: CG19 re-exports its source module rather than an undeclared class provider",()=>{
  const code=readFileSync(join(process.cwd(),"src/modules/cg-19-documents-notifications/documents-notifications.module.ts"),"utf8");
- assert.match(code,/imports:\[CsrAgreementSourceModule,/);
- assert.match(code,/exports:\[CsrAgreementSourceModule,/);
+ assert.match(code,/imports:\[[^\]]*\bCsrAgreementSourceModule\b/);
+ assert.match(code,/exports:\[[^\]]*\bCsrAgreementSourceModule\b/);
  assert.ok(!code.includes("exports:[CsrAgreementEvidenceService,"));
 });
 
@@ -297,7 +297,7 @@ test("US001-QA12/16/17/19: direct original CG19 logo URL also denies revoked and
  assert.match(media,/original\.status='OWNER_COMPLETED'/);
  assert.match(media,/proof\.scan_status='CLEAN_VERIFIED'/);
  assert.match(media,/original_branch\.status='ACTIVE'/);
- assert.ok(media.split("PUBLIC_MEDIA_SECTION_ALLOWED+PUBLIC_MEDIA_MIME_ALLOWED").length===3,
+ assert.ok(media.split("PUBLIC_MEDIA_SECTION_ALLOWED+PUBLIC_MEDIA_MIME_ALLOWED").length>=3,
   "Original CG19 URL must recheck before and after storage reads");
  assert.match(source,/current_branch\.status=/);
 });

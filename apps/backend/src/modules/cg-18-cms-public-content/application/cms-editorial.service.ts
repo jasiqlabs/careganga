@@ -15,6 +15,7 @@ import {eligibleEventSources,validateEventArticle,eventArticleRevisionEligible,p
 import {approvedBeneficiaryImpact,beneficiaryImpactFields,beneficiaryImpactSource} from "../../cg-06-beneficiaries-assistance/application/beneficiary-impact-public-source";
 import {complianceEligible} from "./cms-compliance-eligibility";
 import {eligibleCampaignSources,campaignTeaserRefs,validateCampaignTeaser,publicCampaignSources,onlineDonationReady} from "../../cg-07-campaigns-donations/application/campaign-public-source";
+import {HrPublicBioEditorialSource,type HrEditorialPerson} from "../../cg-10-human-resources/application/hr-public-bio-editorial-source";
 import {CsrPartnerPublicSource,type CsrEditorialSelection} from "../../cg-08-csr-funding/application/csr-partner-public-source";
 const UUID=/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i;
 const HASH=/^[a-f0-9]{64}$/;
@@ -24,7 +25,7 @@ const POLICY_SLUGS=new Set(["terms-and-conditions","privacy-policy","cookie-poli
  "copyright-and-intellectual-property"]);
 const SECTION=new Set(["HERO","RICH_TEXT","TEAM","CTA","PROJECT_TEASER","CAMPAIGN_TEASER",
  "FEATURE_CARDS","JOIN_CARDS","SITE_FOOTER","IMPACT_GROUP","COMPLIANCE_FACTS",
- "GALLERY_GRID","ARTICLE_BODY","HEALTHCARE_CATEGORIES","CONTACT_INFO"]);
+ "GALLERY_GRID","ARTICLE_BODY","HEALTHCARE_CATEGORIES","CONTACT_INFO","PARTNER_CARDS"]);
 const assetRoles=new Set(["HERO","MOBILE_HERO","TEAM","ABOUT","PROMO","FEATURE",
  "GALLERY","ARTICLE","DOCUMENT","IMPACT","CONTACT"]);
 const reserved=new Set(["admin","api","login","join","volunteer","auth","internal","_next"]);
@@ -60,13 +61,24 @@ function input(v:unknown,keys:string[]){
   throw new BadRequestException({code:"CMS_INPUT_INVALID"});
  return v as Record<string,unknown>;
 }
-function path(v:unknown,field:string){
+export function teamSelections(raw:unknown):HrEditorialPerson[]{
+ if(!Array.isArray(raw)||raw.length>15)throw new BadRequestException({code:"CMS_TEAM_SOURCE_NOT_READY",field:"members"});
+ const people=raw.map(v=>{
+  const x=input(v,["sourceRef","proof","name","designation"]);
+  if(typeof x.proof!=="string"||!HASH.test(x.proof))throw new BadRequestException({code:"CMS_TEAM_SOURCE_NOT_READY",field:"members"});
+  return {sourceRef:uuid(x.sourceRef,"sourceRef"),proof:x.proof,name:text(x.name,"name",160,1),designation:text(x.designation,"designation",120,1)};
+ });
+ if(new Set(people.map(p=>p.sourceRef)).size!==people.length)throw new BadRequestException({code:"CMS_TEAM_SOURCE_NOT_READY",field:"members"});
+ return people;
+}
+function path(v:unknown,field:string,kind?:string){
  const x=text(v,field,140,1);
- if(!["/","/about","/contact"].includes(x))
+ if(kind==="HEALTHCARE"&&!["/","/about","/contact"].includes(x))throw new BadRequestException({code:"CMS_UNAVAILABLE_ROUTE",field});
+ if(!["/","/about","/contact","/our-impact","/ngo-information","/gallery","/videos","/publications","/healthcare","/our-work","/upcoming-projects","/collaboration","/membership","/volunteer","/campaigns"].includes(x))
   throw new BadRequestException({code:"CMS_UNAVAILABLE_ROUTE",field});
  if(!/^\/(?:[a-z0-9-]+\/?)*$/.test(x)||x.startsWith("//")||
   /(^|\/)(admin|api|auth|internal|_next)(\/|$)/.test(x)||
-  /^\/(join|volunteer|book)(\/|$)/.test(x))
+  /^\/(join|book)(\/|$)/.test(x))
   throw new BadRequestException({code:"CMS_UNAVAILABLE_ROUTE",field});
  return x;
 }
@@ -93,7 +105,7 @@ function placementMimeAllowed(asset:Placement,sections:readonly Section[],mime:s
 }
 function placementFits(sections:readonly Section[],a:{role:string;order:number}){
  return sections.some(s=>{
-  if(a.role==="HERO"||a.role==="MOBILE_HERO")return s.kind==="HERO"&&s.order===a.order;
+  if(a.role==="HERO"||a.role==="MOBILE_HERO")return s.kind==="HERO"&&s.order===a.order&&s.fields.textOnly!==true;
   if(a.role==="ABOUT")return s.kind==="RICH_TEXT"&&s.order===a.order&&s.fields.variant==="SPLIT";
   if(a.role==="PROMO")return s.kind==="CTA"&&s.order===a.order;
   if(a.role==="TEAM")return s.kind==="TEAM"&&
@@ -157,7 +169,7 @@ function parseContent(raw:unknown):Content{
    return {kind:sec.kind as Section["kind"],order:Number(sec.order),fields:parsed};
   }
   const fields=input(sec.fields,sec.kind==="HERO"?
-   ["heading","subtitle","description","eyebrow","tags","visible",
+   ["heading","subtitle","description","eyebrow","tags","visible","textOnly",
     "headingFont","headingWeight","headingSize","headingColor","subtitleColor",
     "primaryLabel","primaryPath","secondaryLabel","secondaryPath"]:
    sec.kind==="TEAM"?["heading","members"]:
@@ -166,7 +178,7 @@ function parseContent(raw:unknown):Content{
    sec.kind==="JOIN_CARDS"?["volunteerTitle","volunteerBody","volunteerBenefits",
     "memberTitle","memberBody","memberBenefits"]:
    sec.kind==="SITE_FOOTER"?["mission","address","email","phone","whatsappNumber","newsletterText"]:
-   sec.kind==="RICH_TEXT"?["heading","body","eyebrow","variant","highlights"]:
+   sec.kind==="RICH_TEXT"?["heading","body","eyebrow","variant","highlights","placement"]:
    sec.kind==="PROJECT_TEASER"||sec.kind==="CAMPAIGN_TEASER"?["heading","sourceRefs"]:["heading"]);
   const out:Record<string,unknown>={};
   const array=(raw:unknown,field:string,limit:number,max:number)=>{
@@ -183,6 +195,8 @@ function parseContent(raw:unknown):Content{
    if(fields.visible!==undefined&&typeof fields.visible!=="boolean")
     throw new BadRequestException({code:"CMS_INPUT_INVALID",field:"visible"});
    out.visible=fields.visible!==false;
+   if(fields.textOnly!==undefined&&typeof fields.textOnly!=="boolean")throw new BadRequestException({code:"CMS_INPUT_INVALID",field:"textOnly"});
+   if(fields.textOnly===true)out.textOnly=true;
    const heroStyle=(field:string,raw:unknown,allowed:string[],fallback:string)=>{
     if(raw===undefined)return fallback;
     const candidate=text(raw,field,30,1);
@@ -202,11 +216,11 @@ function parseContent(raw:unknown):Content{
    out.headingColor=heroColor("headingColor",fields.headingColor,"#FFE34A");
    out.subtitleColor=heroColor("subtitleColor",fields.subtitleColor,"#8CF442");
    if(fields.primaryLabel!==undefined)out.primaryLabel=text(fields.primaryLabel,"primaryLabel",60,2);
-   if(fields.primaryPath!==undefined)out.primaryPath=path(fields.primaryPath,"primaryPath");
+   if(fields.primaryPath!==undefined)out.primaryPath=path(fields.primaryPath,"primaryPath",kind);
    if(Boolean(fields.primaryLabel)!==Boolean(fields.primaryPath))
     throw new BadRequestException({code:"CMS_INPUT_INVALID",field:"primaryPath"});
    if(fields.secondaryLabel!==undefined)out.secondaryLabel=text(fields.secondaryLabel,"secondaryLabel",60,2);
-   if(fields.secondaryPath!==undefined)out.secondaryPath=path(fields.secondaryPath,"secondaryPath");
+   if(fields.secondaryPath!==undefined)out.secondaryPath=path(fields.secondaryPath,"secondaryPath",kind);
    if(Boolean(fields.secondaryLabel)!==Boolean(fields.secondaryPath))
     throw new BadRequestException({code:"CMS_INPUT_INVALID",field:"secondaryPath"});
   }else if(sec.kind==="RICH_TEXT"){
@@ -219,24 +233,27 @@ function parseContent(raw:unknown):Content{
     out.variant=fields.variant;
    }
    out.highlights=array(fields.highlights??[],"highlights",4,200);
+   // Approved About revision can also own neutral introductory text for existing public owner routes.
+   // No new operational master, URLs, personal information or permission/availability override.
+   if(fields.placement!==undefined){
+    if(kind!=="ABOUT"||typeof fields.placement!=="string"||!["TEAM","MEMBERSHIP","VOLUNTEER","NOTICES","UPCOMING_PROJECTS","ANNUAL_REPORTS","FINANCIAL_REPORTS"].includes(fields.placement)||fields.variant==="SPLIT")
+     throw new BadRequestException({code:"CMS_INPUT_INVALID",field:"placement"});
+    out.placement=fields.placement;
+   }
   }else if(sec.kind==="CTA"){
    out.heading=text(fields.heading??"","heading",160);
    out.eyebrow=text(fields.eyebrow??"","eyebrow",80);
    out.body=text(fields.body??"","body",400);
    if(fields.label!==undefined)out.label=text(fields.label,"label",80,2);
-   if(fields.path!==undefined)out.path=path(fields.path,"path");
+   if(fields.path!==undefined)out.path=path(fields.path,"path",kind);
    if(Boolean(fields.label)!==Boolean(fields.path))
     throw new BadRequestException({code:"CMS_INPUT_INVALID",field:"path"});
   }else if(sec.kind==="TEAM"){
    out.heading=text(fields.heading??"Our team","heading",160,3);
    if(!Array.isArray(fields.members)||fields.members.length>15)
     throw new BadRequestException({code:"CMS_INPUT_INVALID",field:"members"});
-   // CG-18 owns page layout, not permission to release a person's HR/member
-   // identity. CG-10/CG-04 verified active status and revocable consent do not
-   // yet have a delivered public projection. A CMS checkbox is not that source.
-   if(fields.members.length>0)
-    throw new BadRequestException({code:"CMS_TEAM_SOURCE_NOT_READY",field:"members"});
-   out.members=[];
+   if(kind!=="HOME"&&kind!=="ABOUT")throw new BadRequestException({code:"CMS_TEAM_SOURCE_NOT_READY",field:"members"});
+   out.members=teamSelections(fields.members);
   }else if(sec.kind==="FEATURE_CARDS"){
    out.eyebrow=text(fields.eyebrow??"","eyebrow",80);
    out.heading=text(fields.heading,"heading",160,3);
@@ -276,6 +293,9 @@ function parseContent(raw:unknown):Content{
    throw new BadRequestException({code:"CMS_INPUT_INVALID",field:"sections"});
   return {kind:sec.kind as Section["kind"],order:Number(sec.order),fields:out};
  });
+ const placed=sections.filter(s=>s.kind==="RICH_TEXT"&&typeof s.fields.placement==="string");
+ if(new Set(placed.map(s=>s.fields.placement)).size!==placed.length)
+  throw new BadRequestException({code:"CMS_INPUT_INVALID",field:"placement"});
  if(new Set(sections.map(s=>s.kind+":"+s.order)).size!==sections.length)
   throw new BadRequestException({code:"CMS_INPUT_INVALID",field:"sections"});
  if(sections.filter(s=>s.kind==="HERO").length>6)
@@ -311,7 +331,8 @@ function parseContent(raw:unknown):Content{
  // authorized but unused media could be exposed in the public page payload.
  for(let i=0;i<assets.length;i++){
   const a=assets[i];
-  if(!placementFits(sections,a))throw new BadRequestException({code:"CMS_INPUT_INVALID",field:"assets["+i+"].role"});
+  if(a.role==="TEAM"||!placementFits(sections,a))throw new BadRequestException({code:"CMS_INPUT_INVALID",field:"assets["+i+"].role"});
+   if(!placementFits(sections,a))throw new BadRequestException({code:"CMS_INPUT_INVALID",field:"assets["+i+"].role"});
  }
  if(kind!=="HOME"&&kind!=="ABOUT")validateExtendedPage(kind,sections,assets);
  if(kind==="HEALTHCARE"&&!healthcareEditorialClaimsSafe(sections,[title,seoTitle,seoDescription]))
@@ -331,7 +352,8 @@ export class CmsEditorialService{
   private readonly approvals:CmsPublicationApprovalService,
   private readonly media:CmsDraftMediaService,
   private readonly notices:CmsPublicNoticeSource,
-  private readonly csrPartners:CsrPartnerPublicSource){}
+  private readonly csrPartners:CsrPartnerPublicSource,
+  private readonly hrPublicBio:HrPublicBioEditorialSource){}
  private async withTx<T>(cb:(tx:PoolClient)=>Promise<T>):Promise<T>{
   const tx=await this.db.connect();
   try{await tx.query("BEGIN");const result=await cb(tx);await tx.query("COMMIT");return result;}
@@ -371,6 +393,22 @@ export class CmsEditorialService{
   if(eligible.length!==chosen.length)
    throw new ConflictException({code:"CMS_PARTNER_SOURCE_UNAVAILABLE"});
  }
+ async teamSources(bearer:string){
+  const actor=await this.sessions.requireAction(bearer,"cms.content.manage");
+  return this.withTx(async tx=>{
+   await this.identity.assertCurrent(tx,actor,"cms.content.manage");
+   return {sources:await this.hrPublicBio.choices(tx,actor)};
+  });
+ }
+ private async teamRevisionCurrent(tx:PoolClient,root:string,revisionRef:string){
+  const sections=await tx.query<{structured_fields:Record<string,unknown>}>(
+   "SELECT structured_fields FROM cms_section_revision WHERE foundation_root_id=$1 AND page_revision_id=$2 AND section_kind='TEAM'",[root,revisionRef]);
+  for(const row of sections.rows){
+   const chosen=teamSelections(row.structured_fields.members);
+   if((await this.hrPublicBio.currentCards(tx,root,chosen,true)).length!==chosen.length)
+    throw new ConflictException({code:"CMS_TEAM_SOURCE_NOT_READY"});
+  }
+ }
  async beneficiaryImpact(bearer:string){
   const a=await this.sessions.requireAction(bearer,"cms.content.manage");
   return this.withTx(async tx=>{
@@ -391,7 +429,8 @@ export class CmsEditorialService{
   const a=await this.sessions.requireAction(bearer,"cms.content.manage");
   return this.withTx(async tx=>{await this.identity.assertCurrent(tx,a,"cms.content.manage");return {sources:await eligibleProjectSources(tx,a.realmId)};});
  }
- async list(bearer:string){
+ async list(bearer:string,scope?:string){
+  if(scope!==undefined&&scope!=="baseline")throw new BadRequestException({code:"CMS_INPUT_INVALID",field:"scope"});
   const a=await this.sessions.requireAction(bearer,"cms.content.view");
   const result=await this.db.query<{pageRef:string;kind:string;slug:string;title:string;
    version:string;draftStatus:string;publicStatus:string|null}>(
@@ -404,7 +443,8 @@ export class CmsEditorialService{
    'AND e.foundation_root_id=p.foundation_root_id '+
    'LEFT JOIN cms_publication pub ON pub.id=e.publication_id '+
    "WHERE p.foundation_root_id=$1 AND p.archived_at IS NULL "+
-   "ORDER BY p.created_at DESC,p.id DESC LIMIT 100",[a.realmId]);
+   "AND (NOT $2::boolean OR p.kind<>\'ARTICLE\') "+
+   "ORDER BY p.created_at DESC,p.id DESC LIMIT 100",[a.realmId,scope==="baseline"]);
   return {pages:result.rows};
  }
  async detail(bearer:string,ref:string){
@@ -412,7 +452,7 @@ export class CmsEditorialService{
   return this.withTx(async tx=>{
    const page=await this.row(tx,a,ref);
    const rev=await this.revision(tx,a,page);
-   const [sections,assets,published,navigation,scheduled]=await Promise.all([
+   const [sections,assets,published,navigation,scheduled,history]=await Promise.all([
     tx.query<{section_kind:string;order_no:number;structured_fields:Record<string,unknown>}>(
      "SELECT section_kind,order_no,structured_fields FROM cms_section_revision "+
      "WHERE foundation_root_id=$1 AND page_revision_id=$2 ORDER BY order_no,id",
@@ -436,7 +476,8 @@ export class CmsEditorialService{
      "SELECT effective_at FROM cms_publication WHERE "+
      "foundation_root_id=$1 AND page_id=$2 AND state='SCHEDULED' "+
      "ORDER BY effective_at DESC,id DESC LIMIT 1",
-     [a.realmId,page.id])
+     [a.realmId,page.id]),
+    tx.query("SELECT 1 FROM cms_publication WHERE foundation_root_id=$1 AND page_id=$2 LIMIT 1",[a.realmId,page.id])
    ]);
    return {pageRef:page.id,kind:page.kind,slug:page.slug,version:Number(page.version),
     revisionRef:rev.id,revisionNo:rev.revision_no,status:rev.status,
@@ -450,6 +491,7 @@ export class CmsEditorialService{
      memberJoinDesired:navigation.rows[0]?.member_join_desired??false,
      volunteerJoinDesired:navigation.rows[0]?.volunteer_join_desired??false}:null,
     scheduledAt:scheduled.rows[0]?.effective_at?.toISOString()??null,
+    hasPublicationHistory:!!history.rowCount,
     publicationStatus:published.rows[0]?.state??"NOT_PUBLISHED"};
   });
  }
@@ -467,6 +509,14 @@ export class CmsEditorialService{
    }
    if(sec.kind==="PROJECT_TEASER")await validateProjectTeaser(tx,actor.realmId,sec.fields);
    if(sec.kind==="CAMPAIGN_TEASER")await validateCampaignTeaser(tx,actor.realmId,sec.fields);
+   if(sec.kind==="TEAM"){
+    const chosen=teamSelections(sec.fields.members);
+    if(chosen.length){
+     const current=await this.hrPublicBio.choices(tx,actor,chosen.map(p=>p.sourceRef));
+     if(chosen.some(p=>!current.some(c=>c.sourceRef===p.sourceRef&&c.proof===p.proof&&c.name===p.name&&c.designation===p.designation)))
+      throw new ConflictException({code:"CMS_TEAM_SOURCE_NOT_READY"});
+    }
+   }
    await tx.query("INSERT INTO cms_section_revision(foundation_root_id,page_revision_id,"+
     "section_kind,order_no,structured_fields) VALUES($1,$2,$3,$4,$5::jsonb)",
     [actor.realmId,rev,sec.kind,sec.order,JSON.stringify(sec.fields)]);
@@ -660,12 +710,12 @@ export class CmsEditorialService{
     "FROM cms_asset_placement WHERE foundation_root_id=$1 AND page_revision_id=$2",
     [actor.realmId,rev.id]);
    if(page.kind==="HOME"){
-    const slides=await tx.query<{order_no:number}>(
-     "SELECT order_no FROM cms_section_revision "+
+    const slides=await tx.query<{order_no:number;text_only:boolean}>(
+     "SELECT order_no, (structured_fields->>'textOnly' IS NOT DISTINCT FROM 'true') AS text_only FROM cms_section_revision "+
      "WHERE foundation_root_id=$1 AND page_revision_id=$2 AND section_kind='HERO' "+
      "AND structured_fields->>'visible' IS DISTINCT FROM 'false' "+
      "ORDER BY order_no",[actor.realmId,rev.id]);
-    if(!slides.rows.length||slides.rows.some(slide=>!assets.rows.some(asset=>
+    if(!slides.rows.length||slides.rows.some(slide=>!slide.text_only&&!assets.rows.some(asset=>
       asset.role==="HERO"&&asset.sort_order===slide.order_no)))
      throw new BadRequestException({code:"CMS_HERO_IMAGE_REQUIRED",field:"heroImage"});
    }
@@ -704,6 +754,7 @@ export class CmsEditorialService{
    if(!(await this.notices.revisionEligible(tx,actor.realmId,rev.id)))
     throw new ConflictException({code:"CMS_ORIGINAL_NOTICE_UNAVAILABLE"});
    await this.partnerRevisionCurrent(tx,actor.realmId,page.kind,rev.id);
+   await this.teamRevisionCurrent(tx,actor.realmId,rev.id);
    for(const asset of assets.rows)
     await this.media.validatePlacement(tx,actor,rev.id,asset.file_ref,asset.version);
    const original=await this.approvals.createCase(tx,actor,{
@@ -733,7 +784,8 @@ export class CmsEditorialService{
  }
  async publish(bearer:string,pageRef:string,raw:unknown){
   const actor=await this.sessions.requireAction(bearer,"cms.content.publish");
-  const v=input(raw,["expectedVersion","requestKey","caseRef","publishAt"]);
+  const v=input(raw,["expectedVersion","requestKey","caseRef","publishAt","firstPublicationOnly"]);
+  if(v.firstPublicationOnly!==undefined&&typeof v.firstPublicationOnly!=="boolean")throw new BadRequestException({code:"CMS_INPUT_INVALID",field:"firstPublicationOnly"});
   const key=uuid(v.requestKey,"requestKey"),caseRef=uuid(v.caseRef,"caseRef");
   let future:Date|null=null;
   if(v.publishAt!==undefined&&v.publishAt!==null&&v.publishAt!==""){
@@ -746,6 +798,7 @@ export class CmsEditorialService{
     throw new BadRequestException({code:"CMS_INPUT_INVALID",field:"publishAt"});
    future=due;
   }
+  if(v.firstPublicationOnly===true&&future)throw new BadRequestException({code:"CMS_INPUT_INVALID",field:"publishAt"});
   if(!Number.isSafeInteger(v.expectedVersion)||Number(v.expectedVersion)<1)
    throw new BadRequestException({code:"CMS_INPUT_INVALID"});
   return this.withTx(async tx=>{
@@ -767,6 +820,12 @@ export class CmsEditorialService{
      "PUBLISHED":old.rows[0].state==="SCHEDULED"?"SCHEDULED":
      old.rows[0].state==="WITHDRAWN"?"HIDDEN":"SUPERSEDED",replayed:true};
    }
+   // Under the same page lock used by publish and withdraw, the first-install
+   // command cannot resurrect a page with any prior publication history.
+   if(v.firstPublicationOnly===true){
+    const history=await tx.query("SELECT 1 FROM cms_publication WHERE foundation_root_id=$1 AND page_id=$2 LIMIT 1",[actor.realmId,page.id]);
+    if(history.rowCount)throw new ConflictException({code:"CMS_SOURCE_CHANGED"});
+   }
    if(Number(page.version)!==v.expectedVersion)
     throw new ConflictException({code:"CMS_SOURCE_CHANGED"});
    const rev=await this.revision(tx,actor,page);
@@ -778,6 +837,7 @@ export class CmsEditorialService{
    if(!(await this.notices.revisionEligible(tx,actor.realmId,rev.id)))
     throw new ConflictException({code:"CMS_ORIGINAL_NOTICE_UNAVAILABLE"});
    await this.partnerRevisionCurrent(tx,actor.realmId,page.kind,rev.id);
+   await this.teamRevisionCurrent(tx,actor.realmId,rev.id);
    const final=await this.approvals.approved(tx,actor,{
     caseRef,pageRef:page.id,revisionRef:rev.id,
     revisionNo:rev.revision_no,digest:rev.content_digest});
@@ -909,7 +969,7 @@ export class CmsEditorialService{
  /** Only current effective, original-reviewed article source; bounded cursor,
   * no CMS draft, patient, notice recipients or CG19 object credentials.
   */
- async publicArticles(categoryInput?:string,cursorInput?:string){
+ async publicArticles(categoryInput?:string,cursorInput?:string,eventsOnly=false){
   const category=categoryInput?.trim()??"";
   const cursor=cursorInput?.trim()??"";
   if(category.length>80||!/^[\p{L}0-9 &-]*$/u.test(category)||
@@ -934,6 +994,7 @@ export class CmsEditorialService{
    "AND pub.effective_at<=now() AND (pub.expires_at IS NULL OR pub.expires_at>now()) "+
    "AND ($1::text='' OR lower(body.structured_fields->>'category')=lower($1)) "+
    "AND ($2::text='' OR p.slug>$2) "+
+   "AND (NOT $3::boolean OR body.structured_fields ? 'sourceEventRef') "+
    "AND NOT EXISTS(SELECT 1 FROM cms_asset_placement a "+
    "LEFT JOIN cg19_cms_media_file f ON f.id=a.cg19_file_ref "+
    "AND f.realm_id=a.foundation_root_id AND f.page_id=v.page_id "+
@@ -943,7 +1004,7 @@ export class CmsEditorialService{
    "f.scan_status<>'CLEAN_VERIFIED' OR f.public_rights_confirmed=false "+
    "OR f.revision<>a.cg19_validated_version)) "+
    NOTICE_CURRENT_SQL+EVENT_CURRENT_SQL+
-   "ORDER BY p.slug LIMIT 21",[category,cursor]);
+   "ORDER BY p.slug LIMIT 21",[category,cursor,eventsOnly]);
   return {schemaVersion:1,posts:rows.rows.slice(0,20).map(x=>({
    slug:x.slug,title:x.title,category:x.category,excerpt:x.excerpt,
    asOfDate:x.as_of_date,path:"/blog/"+x.slug})),
@@ -1094,8 +1155,11 @@ export class CmsEditorialService{
   if(!sections.length)throw new NotFoundException({code:"CMS_NOT_PUBLISHED"});
   const selected=new Map<string,Record<string,unknown>>();
   for(const section of sections){const cards=(section.fields as Record<string,unknown>).cards;if(!Array.isArray(cards))continue;for(const row of cards){if(!row||typeof row!=="object"||typeof row.slug!=="string")continue;if(slug==="upcoming-projects"&&row.status!=="PLANNED")continue;selected.set(row.slug,row);}}
-  const cards=[...selected.values()],title=slug==="upcoming-projects"?"Upcoming Projects":"Our Work";
-  return {schemaVersion:1,effectiveGeneration:sha([approved.map(p=>p.effectiveGeneration),cards]),kind:"PROJECTS",slug,title,seoTitle:title+" | CareGanga Foundation",seoDescription:"Current approved CareGanga Foundation projects.",canonicalPath:"/"+slug,lastPublishedAt:approved.map(p=>p.lastPublishedAt).sort().reverse()[0],sections:[{kind:"PROJECT_TEASER",order:0,fields:{heading:title,cards}}],assets:[]};
+  const intro=slug==="upcoming-projects"?approved.find(p=>p.kind==="ABOUT")?.sections.find(s=>s.kind==="RICH_TEXT"&&s.fields.placement==="UPCOMING_PROJECTS")?.fields:undefined;
+  const cards=[...selected.values()],title=typeof intro?.heading==="string"?intro.heading:slug==="upcoming-projects"?"Upcoming Projects":"Our Work";
+  const description=typeof intro?.body==="string"?intro.body:"Current approved CareGanga Foundation projects.";
+  const introSections=intro?[{kind:"RICH_TEXT",order:0,fields:{heading:title,body:description,eyebrow:intro.eyebrow,highlights:intro.highlights,variant:"STANDARD"}}]:[];
+  return {schemaVersion:1,effectiveGeneration:sha([approved.map(p=>p.effectiveGeneration),cards]),kind:"PROJECTS",slug,title,seoTitle:title+" | CareGanga Foundation",seoDescription:description.slice(0,300),canonicalPath:"/"+slug,lastPublishedAt:approved.map(p=>p.lastPublishedAt).sort().reverse()[0],sections:[...introSections,{kind:"PROJECT_TEASER",order:1,fields:{heading:slug==="upcoming-projects"?"Planned projects":"Our Projects",cards}}],assets:[]};
  }
  async publicPage(slugInput:string){
   const slug=text(slugInput,"slug",70,1);
@@ -1211,6 +1275,14 @@ export class CmsEditorialService{
    cards
   });
  }
+ const teamCards=new Map<number,Record<string,unknown>>();
+ for(const section of sections.rows)if(section.section_kind==="TEAM"){
+  let chosen:HrEditorialPerson[]=[];
+  try{chosen=teamSelections(section.structured_fields.members);}catch{/* historical manually entered identity is not a valid selection */}
+  const cards=await this.hrPublicBio.currentCards(this.db,x.foundation_root_id,chosen);
+  teamCards.set(section.order_no,{heading:section.structured_fields.heading,
+   members:cards.map(({name,designation})=>({name,designation,consentConfirmed:true}))});
+ }
  const hiddenHeroOrders=new Set(sections.rows.filter(sec=>
    sec.section_kind==="HERO"&&sec.structured_fields?.visible===false)
    .map(sec=>sec.order_no));
@@ -1223,7 +1295,7 @@ export class CmsEditorialService{
     fields:v.section_kind==="PARTNER_CARDS"?(currentPartnerCards.get(v.order_no)??{heading:"Partners",cards:[]}):v.section_kind==="PROJECT_TEASER"?(projectCards.get(v.order_no)??{heading:"Projects",cards:[]}):v.section_kind==="CAMPAIGN_TEASER"?(campaignCards.get(v.order_no)??{heading:"Campaigns",cards:[]}):v.section_kind==="ARTICLE_BODY"?
       (eventCards.get(v.order_no)??Object.fromEntries(Object.entries(v.structured_fields).filter(([k])=>
        !["sourceNoticeRef","sourceEventRef","publicReleaseConfirmed"].includes(k)))):
-     v.section_kind==="TEAM"?{heading:v.structured_fields.heading,members:[]}:
+     v.section_kind==="TEAM"?(teamCards.get(v.order_no)??{heading:v.structured_fields.heading,members:[]}):
      v.section_kind==="GALLERY_GRID"?{...v.structured_fields,
       items:Array.isArray(v.structured_fields.items)?
        (v.structured_fields.items as Record<string,unknown>[]).flatMap((item,index)=>

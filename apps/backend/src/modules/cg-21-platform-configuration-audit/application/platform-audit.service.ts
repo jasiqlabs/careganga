@@ -14,7 +14,7 @@ type Scope="ALL"|AuditSource;
 type Position={at:string;id:string};
 type Cursor={
   kind:"cursor";v:1;realm:string;actor:string;from:string;to:string;
-  pageSize:number;source:Scope;cg01:Position|null;cg21:Position|null
+  pageSize:number;source:Scope;category?:"PAYROLL";cg01:Position|null;cg21:Position|null
 };
 type EventToken={kind:"event";v:1;realm:string;actor:string;source:AuditSource;id:string};
 type Event={source:AuditSource;ownerEventId:string;occurredAt:string;
@@ -23,6 +23,7 @@ type PlatformAuditRow={id:string;occurred_at:Date;exact_at:string;action_key:str
   outcome:string;actor_display:string|null;safe_context:unknown};
 const UUID=/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i;
 const ACTION_LABELS:Readonly<Record<string,string>>={
+  "payroll.source.operation":"Payroll protected operation",
   "platform.setting.save":"Platform setting updated",
   "platform.integration.configure":"Integration reference changed",
   "platform.integration.check":"Integration readiness checked",
@@ -71,6 +72,14 @@ function parseTime(value:unknown,name:string):Date{
 function displayResource(safeContext:unknown):string{
   if(safeContext&&typeof safeContext==="object"&&!Array.isArray(safeContext)){
     const info=safeContext as Record<string,unknown>;
+    if(info.payrollKind==="RUN"){
+      switch(info.payrollResult){
+       case "ACCRUED":return "Approved payroll → salary expense and payable posted (not paid)";
+       case "BATCH_PREPARED":return "Accrued payroll → original payment batch prepared (not paid)";
+       case "ATTEMPT_CREATED":return "Outstanding salary → original finance voucher created (not paid)";
+      }
+    }
+    if(["POLICY","COMPENSATION","PAYOUT","RUN","ACCESS"].includes(String(info.payrollKind))&&["DRAFT_CREATED","IMPORTED","CALCULATED","SUBMITTED","APPROVED","RETURNED","REJECTED","READ","DENIED","CONFLICT","INVALID"].includes(String(info.payrollResult)))return "Payroll "+String(info.payrollKind).toLowerCase()+" · "+String(info.payrollResult).toLowerCase().replaceAll("_"," ");
     if(info.setting==="audit.default_page_size")return "Audit page-size setting";
     if(typeof info.provider==="string"&&typeof info.purpose==="string"&&
        info.provider.length<=65&&info.purpose.length<=65)
@@ -100,7 +109,7 @@ export class PlatformAuditService{
     return rows.rows[0]?.typed_value??25;
   }
   private async platformSource(actor:VerifiedFoundationActor,start:Date,end:Date,
-    after:Position|null,limit:number):Promise<Event[]>{
+    after:Position|null,limit:number,payrollOnly=false):Promise<Event[]>{
     const rows=await this.db.query<PlatformAuditRow>(`
       SELECT au.id,au.occurred_at,au.action_key,au.outcome,au.safe_context,
         to_char(au.occurred_at AT TIME ZONE 'UTC',
@@ -109,6 +118,7 @@ export class PlatformAuditService{
       FROM platform_operation_audit au
       LEFT JOIN account a ON a.id=au.actor_account_id AND a.realm_id=au.foundation_realm_id
       WHERE au.foundation_realm_id=$1 AND au.occurred_at>=$2 AND au.occurred_at<=$3
+        ${payrollOnly?"AND au.action_key='payroll.source.operation'":""}
         AND ($4::timestamptz IS NULL OR
           (au.occurred_at,au.id)<($4::timestamptz,$5::uuid))
       ORDER BY au.occurred_at DESC,au.id DESC LIMIT $6
@@ -122,7 +132,7 @@ export class PlatformAuditService{
     }));
   }
   async list(bearer:string,query:{
-    cursor?:unknown;limit?:unknown;source?:unknown;from?:unknown;to?:unknown
+    cursor?:unknown;limit?:unknown;source?:unknown;from?:unknown;to?:unknown;category?:unknown
   }={}){
     const actor=await this.authorize(bearer);
     let source:Scope="ALL";
@@ -131,6 +141,8 @@ export class PlatformAuditService{
         throw new BadRequestException("Invalid audit source");
       source=query.source;
     }
+    if(query.category!==undefined&&query.category!=="PAYROLL")throw new BadRequestException("Invalid audit category");
+    if(query.category==="PAYROLL"&&source==="CG-01")throw new BadRequestException("Invalid payroll audit source");
     const defaultSize=await this.effectivePageSize(actor.realmId);
     const size=query.limit===undefined?defaultSize:Number(query.limit);
     if(query.limit!==undefined&&
@@ -141,7 +153,7 @@ export class PlatformAuditService{
     let cursor:Cursor|null=null;
     if(query.cursor!==undefined){
       if(query.from!==undefined||query.to!==undefined||query.source!==undefined||
-         query.limit!==undefined)throw new BadRequestException("Use the existing audit page");
+         query.limit!==undefined||query.category!==undefined)throw new BadRequestException("Use the existing audit page");
       const decoded=unseal(query.cursor);
       if(!decoded||typeof decoded!=="object"||Array.isArray(decoded))
         throw new BadRequestException("Invalid audit page");
@@ -149,6 +161,7 @@ export class PlatformAuditService{
       if(p.kind!=="cursor"||p.v!==1||p.realm!==actor.realmId||p.actor!==actor.accountId||
          !Number.isSafeInteger(p.pageSize)||Number(p.pageSize)<1||Number(p.pageSize)>100||
          !["ALL","CG-01","CG-21"].includes(String(p.source))||
+         (p.category!==undefined&&(p.category!=="PAYROLL"||p.source!=="CG-21"))||
          !(p.cg01===null||isPosition(p.cg01))||
          !(p.cg21===null||isPosition(p.cg21)))
         throw new BadRequestException("Invalid audit page");
@@ -162,7 +175,8 @@ export class PlatformAuditService{
     if(start>end||end.getTime()-start.getTime()>90*86400000||
        end.getTime()>Date.now()+60000)
       throw new BadRequestException("Invalid audit date range");
-    const pageSize=cursor?.pageSize??size,selection=cursor?.source??source;
+    const payrollOnly=(cursor?.category??query.category)==="PAYROLL";
+    const pageSize=cursor?.pageSize??size,selection=payrollOnly?"CG-21":cursor?.source??source;
     // Request at most 101 rows per owner, regardless of Foundation size.
     // Never scan future business-module audit feeds or schedule idle scans.
     const results=await Promise.allSettled([
@@ -171,7 +185,7 @@ export class PlatformAuditService{
           from:start,to:end,after:cursor?.cg01??null,limit:pageSize+1
         }),
       selection==="CG-01"?Promise.resolve([] as Event[]):
-        this.platformSource(actor,start,end,cursor?.cg21??null,pageSize+1)
+        this.platformSource(actor,start,end,cursor?.cg21??null,pageSize+1,payrollOnly)
     ]);
     const unavailable:AuditSource[]=[];
     if(results[0].status==="rejected"&&selection!=="CG-21")unavailable.push("CG-01");
@@ -203,7 +217,7 @@ export class PlatformAuditService{
     const nextCursor=coverage==="COMPLETE"&&hasMore&&page.length?
       seal({kind:"cursor",v:1,realm:actor.realmId,actor:actor.accountId,
         from:start.toISOString(),to:end.toISOString(),
-        pageSize,source:selection,cg01,cg21}):null;
+        pageSize,source:selection,...(payrollOnly?{category:"PAYROLL" as const}:{}),cg01,cg21}):null;
     return {events,nextCursor,coverage,unavailableSources:unavailable,
       limit:pageSize,source:selection,from:start.toISOString(),to:end.toISOString()};
   }
@@ -239,7 +253,7 @@ export class PlatformAuditService{
       targetDisplay:displayResource(row.safe_context),
       outcome:row.outcome==="SUCCESS"?"Confirmed":row.outcome==="UNAVAILABLE"?"Unavailable":"Pending"};
   }
-  async export(bearer:string,filters:{source?:unknown;from?:unknown;to?:unknown}={}){
+  async export(bearer:string,filters:{source?:unknown;from?:unknown;to?:unknown;category?:unknown}={}){
     await this.authorize(bearer,"platform.audit.export");
     const page=await this.list(bearer,{...filters,limit:"100"});
     if(page.coverage!=="COMPLETE")throw new ServiceUnavailableException(

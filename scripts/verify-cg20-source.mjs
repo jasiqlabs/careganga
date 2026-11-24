@@ -41,6 +41,8 @@ const dashboard=contains(mis+"application/mis-dashboard.service.ts",[
  "sourceAsOf","SUPPRESSED","PARTIAL","FAILED","NO_AUTHORIZED_SOURCES"
 ]);
 assert.ok(!/\bSELECT\s+.*FROM\b/i.test(dashboard),"CG20 dashboard should use owning source facade");
+assert.ok(dashboard.includes('this.operations.read(bearer,"PERMITTED")')&&dashboard.includes('sourceAsOf:x.asOf')&&dashboard.includes('CG05_PROJECT_OPERATIONS'),"CG20 overview must use current scoped CG05 operational counts");
+
 contains(mis+"http/mis-dashboard.controller.ts",[
  '@Get("dashboard")','@Get("options")'
 ]);
@@ -53,6 +55,24 @@ const source=contains(mis+"application/mis-report-source.service.ts",[
  '"mis.reports.view"',"this.finance","this.patients"
 ]);
 assert.ok(!/SELECT\s+.*FROM/i.test(source),"Report templates may not run arbitrary SQL");
+contains(backend+"modules/cg-06-beneficiaries-assistance/application/beneficiary-report.service.ts",["async misSummary(token:string,branchRef?:string","this.beneficiaries.reportScope(tx,a,parseListQuery(raw))","total-recipients.recipients","sensitive.some(v=>v>0&&v<5)"]);
+assert.ok(source.includes("this.beneficiaries.misSummary(token,q.branchRef,q.fromDay,q.untilDay)")&&source.includes("BENEFICIARY_ASSISTANCE_SUMMARY"),"Live beneficiary report must consume only the original scoped aggregate");
+contains(backend+"modules/cg-04-membership-volunteers/application/membership-roster.service.ts",["async misCounts(token:string,branch?:string","app.consent_version=\'MEMBERSHIP_V1\'","membership.members.view","this.branches.projectBranch(tx,a,f.branch)"]);
+contains(backend+"modules/cg-04-membership-volunteers/application/volunteer-roster.service.ts",["async misCounts(token:string,branch?:string","app.consent_version=\'VOLUNTEER_V1\'","volunteers.view","this.branches.projectBranch(tx,a,f.branch)"]);
+contains(backend+"modules/cg-07-campaigns-donations/application/donation-admin.service.ts",["private async verifiedSummary","j.immutable_payload_digest=e.immutable_digest","rec.source_digest=e.immutable_digest","immutable_source_event_key=${r}.approval_request_key",'this.ensureReportScopeStillCurrent(bearer,"ALL",scope)',"this.verifiedSummary(actor.realmId,scope,f.branchRef)"]);
+assert.ok(source.includes("this.donations.misSummary(token,q.branchRef,q.fromDay,q.untilDay,q.campaignCode)")&&source.includes("this.donations.misLedger(token,q.branchRef,q.fromDay,q.untilDay,q.campaignCode)")&&source.includes("rows:x.requiresReview||x.total===0?[]")&&dashboard.includes("this.donations.misSummary(bearer)")&&dashboard.includes("if(x.requiresReview)throw Error"),"Donation reports must withhold unverified totals and use original reconciled source");
+contains(backend+"modules/cg-08-csr-funding/application/csr-funding-reports.service.ts",["csr.all&&finances.all","currentCsr.all","requireFinanceActiveBranch(tx,actor,id","transaction_timestamp() AS at","this.report(bearer,raw,1001)","report.hasMore||report.items.some","REVALIDATION_REQUIRED"]);
+contains(backend+"modules/cg-05-projects-field-operations/application/projects.service.ts",["async misStatus","async misBudget","async misArtifactScope","projects.export","LIMIT 51","await this.auditExport"]);
+contains(backend+"modules/cg-09-finance-accounting/application/finance-project-budget-projection.ts",["commitment_applied_minor","NOT reversed","journal_line","invalid"]);
+contains(mis+"application/mis-report-run.service.ts",["original_project_digest","Project records or visibility changed","post.state"]);
+contains("apps/backend/db/migrations/9999_cg20_project_report_sources.sql",["PROJECT_STATUS_REPORT","cg20_project_ready_proof_check"]);
+assert.ok(source.includes("this.projects.misStatus(token,q.branchRef,q.projectRef,q.fromDay,q.untilDay,exporting)")&&source.includes("this.projects.misBudget(token,q.projectRef!)"),"Project reports must use CG05/09 owner sources");
+contains(backend+"modules/cg-07-campaigns-donations/application/donation-admin.service.ts",["const postedProof","const receiptProof","const refundProof","async misLedger","async misOptions","ownerCohort","invalidReceipts","r.posted"]);
+assert.ok(source.includes("this.csr.misSummary(token")&&source.includes("CSR_FUNDING_SUMMARY")&&source.includes('finance.ready&&await permission("csr.partners.view")')&&source.includes('rows:x.state==="READY"&&x.totals?'),"CSR MIS must retain verified owner scope and withhold incomplete funding totals");
+assert.ok(source.includes("this.members.misCounts(token,q.branchRef,q.fromDay,q.untilDay)")&&source.includes("this.volunteers.misCounts(token,q.branchRef,q.fromDay,q.untilDay)")&&source.includes('this.payroll.dashboard(token,q.payrollMonth??"",q.branchRef??"")')&&source.includes('permission("payroll.runs.view")&&await permission("payroll.compensation.view")'),"MIS must retain original owner status scope");
+
+contains(mis+"application/mis-report-run.service.ts",['LIVE_PREVIEW_KINDS.includes(request.kind)','MIS_LIVE_PREVIEW_ONLY']);
+contains(mis+"application/mis-saved-report.service.ts",['LIVE_PREVIEW_KINDS.includes(request.kind)','MIS_LIVE_PREVIEW_ONLY']);
 const originals=contains(
  backend+"modules/cg-09-finance-accounting/application/finance-reports.service.ts",[
  "requireFinanceReportBranch","j.status='POSTED'","sourceCutoffKind",
@@ -156,8 +176,8 @@ const schedules=contains(mis+"application/mis-report-schedule.service.ts",[
  "async edit(","async resume(","async pause(","next_due_utc"
 ]);
 contains(mis+"infrastructure/mis-report-schedule.worker.ts",[
- "OnModuleInit","SKIP LOCKED","previewScheduledFinance",
- "issueScheduledFinance","publishReady","saved_revision","CURRENT_SCOPE_CHANGED",
+ "OnModuleInit","SKIP LOCKED","previewScheduledReport","originalScheduledScope","PROJECT_STATUS_REPORT","original_project_digest",
+ "issueScheduledFinance","issueScheduledProject","publishReady","saved_revision","CURRENT_SCOPE_CHANGED",
  "run.root_realm_id=stale.root_realm_id","state='SENT_PENDING'",
  "retry_count=retry_count+1","retry_count<3","UNKNOWN"
 ]);
@@ -166,7 +186,7 @@ contains(cg19+"application/mis-report-notice.service.ts",[
  "requireScheduledFinanceReportBranch","CONFIRMED"
 ]);
 contains(cg19+"application/notification.service.ts",[
- "currentMisNoticeScope","n.source_kind<>'CG20_MIS_REPORT'","scope.branches"
+ "currentMisNoticeScope","n.source_kind<>'CG20_MIS_REPORT'","scope.finance.branches","scope.project.branches","report.original_project_digest"
 ]);
 contains(web+"features/mis-reporting/mis-report-schedules.tsx",[
  "Create active in-app schedule","Resume with current permissions","Edit",

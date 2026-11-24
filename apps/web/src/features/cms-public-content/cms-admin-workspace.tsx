@@ -1,11 +1,12 @@
 "use client";
 import {useCallback,useEffect,useRef,useState} from "react";
 import {CmsPublicPage,type PublicCmsPage} from "./cms-public-page";
+import {isCmsCtaRoute} from "./cms-cta-route";
 import {clientScreenshotHome} from "./cms-client-screenshot-reference";
 type Kind="HOME"|"ABOUT";
 type ProjectSource={sourceRef:string;title:string;category:string;summary:string;area:string;launch:string|null;status:string};
 type CampaignSource={sourceRef:string;title:string;category:string;summary:string;area:string;status?:string};
-type Team={name:string;designation:string;bio:string;consentConfirmed:boolean};
+type Team={sourceRef:string;proof:string;name:string;designation:string};
 type Asset={fileRef:string;version:number;role:"HERO"|"MOBILE_HERO"|"TEAM"|"ABOUT"|"PROMO"|"FEATURE";altText:string;order:number};
 type NavDesired={loginDesired:boolean;memberJoinDesired:boolean;volunteerJoinDesired:boolean};
 type PageItem={pageRef:string;kind:Kind;slug:string;title:string;version:string;draftStatus:string;publicStatus:string|null};
@@ -20,33 +21,35 @@ type ReviewDetail={caseNumber:string;caseRef:string;status:string;revision:numbe
  seoDescription:string;navigation:NavDesired|null;sections:{kind:string;order:number;fields:Record<string,unknown>}[];
  assets:{fileRef:string;role:string;altText:string;order:number;current:boolean;mime:string|null}[]}};
 type Command={label:string;path:string;method:"POST"|"PUT";body:Record<string,unknown>};
-type Slide={heading:string;subtitle:string;description:string;eyebrow:string;tags:string;visible:boolean;
+type Slide={heading:string;subtitle:string;description:string;eyebrow:string;tags:string;visible:boolean;textOnly?:boolean;
  headingFont:"SERIF"|"SANS";headingWeight:"REGULAR"|"BOLD";headingSize:"STANDARD"|"LARGE";
  headingColor:string;subtitleColor:string;
  primaryLabel:string;primaryPath:string;secondaryLabel:string;secondaryPath:string};
 type FeatureCard={label:string;title:string;body:string};
+type ExtraText={order:number;heading:string;body:string;eyebrow:string;highlights:string;placement:string;variant:"STANDARD"|"SPLIT"};
+const placements=[["TEAM","Team Directory"],["MEMBERSHIP","Membership"],["VOLUNTEER","Volunteer"],["NOTICES","Notices"],["UPCOMING_PROJECTS","Upcoming Projects"],["ANNUAL_REPORTS","Annual Reports"],["FINANCIAL_REPORTS","Financial Reports"]] as const;
 type Draft={kind:Kind;title:string;seoTitle:string;seoDescription:string;
  slides:Slide[];bodyHeading:string;body:string;bodyEyebrow:string;
- bodyVariant:"STANDARD"|"SPLIT";highlights:string;
+ bodyVariant:"STANDARD"|"SPLIT";highlights:string;extraText:ExtraText[];
  promoEyebrow:string;promoHeading:string;promoBody:string;promoLabel:string;promoPath:string;
  featuresEyebrow:string;featuresHeading:string;featuresBody:string;featureCards:FeatureCard[];
  volunteerTitle:string;volunteerBody:string;volunteerBenefits:string;
  memberTitle:string;memberBody:string;memberBenefits:string;
  footerMission:string;footerAddress:string;footerPhone:string;footerWhatsappNumber:string;footerEmail:string;
- footerNewsletterText:string;teamHeading:string;team:Team[];assets:Asset[];projectSources:string[];projectHeading:string;campaignSources:string[];campaignHeading:string;
+ footerNewsletterText:string;teamHeading:string;team:Team[];assets:Asset[];projectSources:string[];projectHeading:string;projectEnabled:boolean;campaignSources:string[];campaignHeading:string;
  loginDesired:boolean;memberJoinDesired:boolean;volunteerJoinDesired:boolean};
 const blankSlide=():Slide=>({heading:"",subtitle:"",description:"",eyebrow:"",tags:"",visible:true,
  headingFont:"SERIF",headingWeight:"BOLD",headingSize:"LARGE",
  headingColor:"#FFE34A",subtitleColor:"#8CF442",primaryLabel:"",primaryPath:"",secondaryLabel:"",secondaryPath:""});
 const blank=(kind:Kind):Draft=>({kind,title:"",seoTitle:"",seoDescription:"",
  slides:kind==="HOME"?[blankSlide()]:[],bodyHeading:"",body:"",bodyEyebrow:"",
- bodyVariant:kind==="HOME"?"SPLIT":"STANDARD",highlights:"",
+ bodyVariant:kind==="HOME"?"SPLIT":"STANDARD",highlights:"",extraText:[],
  promoEyebrow:"",promoHeading:"",promoBody:"",promoLabel:"",promoPath:"",
  featuresEyebrow:"",featuresHeading:"",featuresBody:"",featureCards:[],
  volunteerTitle:"",volunteerBody:"",volunteerBenefits:"",
  memberTitle:"",memberBody:"",memberBenefits:"",
  footerMission:"",footerAddress:"",footerPhone:"",footerWhatsappNumber:"",footerEmail:"",footerNewsletterText:"",
- teamHeading:"Our team",team:[],assets:[],projectSources:[],projectHeading:"Our Projects",campaignSources:[],campaignHeading:"Campaigns",loginDesired:true,
+ teamHeading:"Our team",team:[],assets:[],projectSources:[],projectHeading:"Our Projects",projectEnabled:false,campaignSources:[],campaignHeading:"Campaigns",loginDesired:true,
  memberJoinDesired:false,volunteerJoinDesired:false});
 function val(v:unknown):string{return typeof v==="string"?v:"";}
 function words(v:unknown){return Array.isArray(v)?v.filter(x=>typeof x==="string").join("\n"):"";}
@@ -54,13 +57,13 @@ function section(d:PageDetail,kind:string){
  return d.sections.find(x=>x.kind===kind)?.fields??{};
 }
 function fromPage(p:PageDetail):Draft{
- const draft=blank(p.kind),body=section(p,"RICH_TEXT"),team=section(p,"TEAM");
+ const draft=blank(p.kind),primary=p.sections.filter(x=>x.kind==="RICH_TEXT"&&!x.fields.placement).sort((a,b)=>a.order-b.order)[0],body=primary?.fields??{},team=section(p,"TEAM");
  const promo=section(p,"CTA"),features=section(p,"FEATURE_CARDS");
  const join=section(p,"JOIN_CARDS"),footer=section(p,"SITE_FOOTER");
  return {...draft,title:p.title,seoTitle:p.seoTitle,seoDescription:p.seoDescription,
   slides:p.sections.filter(x=>x.kind==="HERO").sort((a,b)=>a.order-b.order)
    .map(x=>({heading:val(x.fields.heading),subtitle:val(x.fields.subtitle),
-    description:val(x.fields.description),eyebrow:val(x.fields.eyebrow),visible:x.fields.visible!==false,
+    description:val(x.fields.description),eyebrow:val(x.fields.eyebrow),visible:x.fields.visible!==false,textOnly:x.fields.textOnly===true,
     tags:Array.isArray(x.fields.tags)?x.fields.tags.filter(y=>typeof y==="string").join(", "):"",
     headingFont:(x.fields.headingFont==="SANS"?"SANS":"SERIF") as Slide["headingFont"],
     headingWeight:(x.fields.headingWeight==="REGULAR"?"REGULAR":"BOLD") as Slide["headingWeight"],
@@ -71,7 +74,7 @@ function fromPage(p:PageDetail):Draft{
     secondaryLabel:val(x.fields.secondaryLabel),secondaryPath:val(x.fields.secondaryPath)})),
   bodyHeading:val(body.heading),body:val(body.body),
   bodyEyebrow:val(body.eyebrow),bodyVariant:body.variant==="SPLIT"?"SPLIT":"STANDARD",
-  highlights:words(body.highlights),
+  highlights:words(body.highlights),extraText:p.sections.filter(x=>x.kind==="RICH_TEXT"&&x!==primary).map(x=>({order:x.order,heading:val(x.fields.heading),body:val(x.fields.body),eyebrow:val(x.fields.eyebrow),highlights:words(x.fields.highlights),placement:val(x.fields.placement),variant:x.fields.variant==="SPLIT"?"SPLIT":"STANDARD"})),
   promoEyebrow:val(promo.eyebrow),promoHeading:val(promo.heading),
   promoBody:val(promo.body),promoLabel:val(promo.label),promoPath:val(promo.path),
   featuresEyebrow:val(features.eyebrow),featuresHeading:val(features.heading),
@@ -88,9 +91,8 @@ function fromPage(p:PageDetail):Draft{
   teamHeading:val(team.heading)||"Our team",
   team:Array.isArray(team.members)?team.members.filter(v=>v&&typeof v==="object")
    .map(v=>{const person=v as Record<string,unknown>;return {
-    name:val(person.name),designation:val(person.designation),bio:val(person.bio),
-    consentConfirmed:person.consentConfirmed===true};}):[],
-  assets:p.assets,projectSources:Array.isArray(section(p,"PROJECT_TEASER").sourceRefs)?(section(p,"PROJECT_TEASER").sourceRefs as unknown[]).filter((x):x is string=>typeof x==="string"):[],projectHeading:val(section(p,"PROJECT_TEASER").heading)||"Our Projects",campaignSources:Array.isArray(section(p,"CAMPAIGN_TEASER").sourceRefs)?(section(p,"CAMPAIGN_TEASER").sourceRefs as unknown[]).filter((x):x is string=>typeof x==="string"):[],campaignHeading:val(section(p,"CAMPAIGN_TEASER").heading)||"Campaigns",loginDesired:p.navigation?.loginDesired??true,
+    sourceRef:val(person.sourceRef),proof:val(person.proof),name:val(person.name),designation:val(person.designation)};}):[],
+  assets:p.assets,projectEnabled:p.sections.some(s=>s.kind==="PROJECT_TEASER"),projectSources:Array.isArray(section(p,"PROJECT_TEASER").sourceRefs)?(section(p,"PROJECT_TEASER").sourceRefs as unknown[]).filter((x):x is string=>typeof x==="string"):[],projectHeading:val(section(p,"PROJECT_TEASER").heading)||"Our Projects",campaignSources:Array.isArray(section(p,"CAMPAIGN_TEASER").sourceRefs)?(section(p,"CAMPAIGN_TEASER").sourceRefs as unknown[]).filter((x):x is string=>typeof x==="string"):[],campaignHeading:val(section(p,"CAMPAIGN_TEASER").heading)||"Campaigns",loginDesired:p.navigation?.loginDesired??true,
   memberJoinDesired:p.navigation?.memberJoinDesired??false,
   volunteerJoinDesired:p.navigation?.volunteerJoinDesired??false};
 }
@@ -99,7 +101,7 @@ function payload(d:Draft){
  const sections:{kind:string;order:number;fields:Record<string,unknown>}[]=[];
  d.slides.forEach((slide,index)=>{
   const fields:Record<string,unknown>={heading:slide.heading,subtitle:slide.subtitle,
-   description:slide.description,eyebrow:slide.eyebrow,visible:slide.visible,
+   description:slide.description,eyebrow:slide.eyebrow,visible:slide.visible,...(slide.textOnly?{textOnly:true}:{}),
    headingFont:slide.headingFont,headingWeight:slide.headingWeight,
    headingSize:slide.headingSize,headingColor:slide.headingColor,
    subtitleColor:slide.subtitleColor,
@@ -115,6 +117,7 @@ function payload(d:Draft){
  if(d.body.trim())sections.push({kind:"RICH_TEXT",order:20,
   fields:{heading:d.bodyHeading||"About the Foundation",body:d.body,
    eyebrow:d.bodyEyebrow,variant:d.bodyVariant,highlights:lines(d.highlights)}});
+ for(const block of d.extraText)sections.push({kind:"RICH_TEXT",order:block.order,fields:{heading:block.heading,body:block.body,eyebrow:block.eyebrow,highlights:lines(block.highlights),variant:block.placement?"STANDARD":block.variant,...(block.placement?{placement:block.placement}:{})}});
  if(d.promoHeading.trim())sections.push({kind:"CTA",order:30,
   fields:{heading:d.promoHeading,eyebrow:d.promoEyebrow,body:d.promoBody,
    ...(d.promoLabel.trim()?{label:d.promoLabel}:{}),
@@ -129,7 +132,7 @@ function payload(d:Draft){
    volunteerBenefits:lines(d.volunteerBenefits),
    memberTitle:d.memberTitle,memberBody:d.memberBody,
    memberBenefits:lines(d.memberBenefits)}});
- if(d.projectSources.length)sections.push({kind:"PROJECT_TEASER",order:60,fields:{heading:d.projectHeading,sourceRefs:d.projectSources}});
+ if(d.projectEnabled||d.projectSources.length)sections.push({kind:"PROJECT_TEASER",order:60,fields:{heading:d.projectHeading,sourceRefs:d.projectSources}});
  if(d.campaignSources.length)sections.push({kind:"CAMPAIGN_TEASER",order:61,fields:{heading:d.campaignHeading,sourceRefs:d.campaignSources}});
  if(d.team.length)sections.push({kind:"TEAM",order:70,
   fields:{heading:d.teamHeading||"Our team",members:d.team}});
@@ -141,7 +144,7 @@ function payload(d:Draft){
   fields:{heading:d.title||"About the Foundation",body:d.body,variant:"STANDARD"}});
  return {kind:d.kind,slug:d.kind==="HOME"?"home":"about",title:d.title,
   seoTitle:d.seoTitle||d.title,seoDescription:d.seoDescription,
-  canonicalPath:d.kind==="HOME"?"/":"/about",sections,assets:d.assets,
+  canonicalPath:d.kind==="HOME"?"/":"/about",sections,assets:d.assets.filter(a=>a.role!=="TEAM"),
   ...(d.kind==="HOME"?{navigation:{loginDesired:d.loginDesired,
    memberJoinDesired:d.memberJoinDesired,volunteerJoinDesired:d.volunteerJoinDesired}}:{})};
 }
@@ -215,7 +218,9 @@ export function CmsAdminWorkspace({canManage,canPublish,canReview}:{
  const [publishWhen,setPublishWhen]=useState("");
  const [heroEditorTab,setHeroEditorTab]=useState<"BASIC"|"IMAGES"|"BUTTONS"|"PREVIEW">("BASIC");
  const [activeHeroIndex,setActiveHeroIndex]=useState(0);
- const [teamEditorTab,setTeamEditorTab]=useState<"BASIC"|"DETAILS"|"PREVIEW">("BASIC");
+ const [teamChoices,setTeamChoices]=useState<Team[]>([]),[teamError,setTeamError]=useState("");
+ const refreshTeam=()=>{setTeamError("");void read<{sources:Team[]}>("team-sources").then(v=>setTeamChoices(v.sources)).catch(()=>{setTeamChoices([]);setTeamError("Current consented staff sources require HR viewing permission.");});};
+ useEffect(()=>{if(canManage)refreshTeam();},[canManage]);
  const [uploadRole,setUploadRole]=useState<Asset["role"]>("HERO");
  const [uploadOrder,setUploadOrder]=useState(0);
  const [uploadAlt,setUploadAlt]=useState(""),[rights,setRights]=useState(false);
@@ -280,7 +285,7 @@ export function CmsAdminWorkspace({canManage,canPublish,canReview}:{
   JSON.stringify(payload(draft))!==JSON.stringify(payload(fromPage(selected)));
  const heroPhotoMissing=draft.kind==="HOME"&&(
   !draft.slides.some(slide=>slide.visible)||draft.slides.some((slide,index)=>
-  slide.visible&&
+  slide.visible&&!slide.textOnly&&
   !draft.assets.some(asset=>asset.role==="HERO"&&asset.order===index)));
  const okay=draft.title.trim().length>=3&&
   (draft.kind!=="HOME"||draft.slides.length>0)&&
@@ -288,9 +293,9 @@ export function CmsAdminWorkspace({canManage,canPublish,canReview}:{
   draft.slides.every(x=>
    Boolean(x.primaryLabel.trim())===Boolean(x.primaryPath.trim())&&
    Boolean(x.secondaryLabel.trim())===Boolean(x.secondaryPath.trim())&&
-   (!x.primaryPath.trim()||["/","/about","/contact"].includes(x.primaryPath.trim()))&&
-   (!x.secondaryPath.trim()||["/","/about","/contact"].includes(x.secondaryPath.trim())))&&
-  (!draft.promoHeading||Boolean(draft.promoLabel)===Boolean(draft.promoPath))&&
+   (!x.primaryPath.trim()||isCmsCtaRoute(x.primaryPath.trim()))&&
+   (!x.secondaryPath.trim()||isCmsCtaRoute(x.secondaryPath.trim())))&&
+  (!draft.promoHeading||Boolean(draft.promoLabel.trim())===Boolean(draft.promoPath.trim())&&(!draft.promoPath.trim()||isCmsCtaRoute(draft.promoPath.trim())))&&
   (!draft.featureCards.length||draft.featuresHeading.trim().length>=3)&&
   (!draft.featuresHeading||draft.featureCards.length>0&&draft.featureCards.every(x=>
     x.label.trim().length>=2&&x.title.trim().length>=3&&x.body.trim().length>=5))&&
@@ -298,8 +303,8 @@ export function CmsAdminWorkspace({canManage,canPublish,canReview}:{
     draft.memberBody].some(Boolean))||
     [draft.volunteerTitle,draft.volunteerBody,draft.memberTitle,
      draft.memberBody].every(x=>x.trim().length>=3))&&
-  draft.body.trim().length>=5&&
-  draft.team.length===0;
+  draft.body.trim().length>=5&&draft.extraText.every(x=>x.heading.trim().length>=3&&x.body.trim().length>=5)&&new Set(draft.extraText.filter(x=>x.placement).map(x=>x.placement)).size===draft.extraText.filter(x=>x.placement).length&&
+  draft.team.every(p=>!!p.sourceRef&&/^[a-f0-9]{64}$/.test(p.proof))&&!draft.assets.some(a=>a.role==="TEAM");
  const draftIssue=draft.title.trim().length<3?
   "Enter a website page title of at least 3 characters.":
   draft.body.trim().length<5?
@@ -312,17 +317,17 @@ export function CmsAdminWorkspace({canManage,canPublish,canReview}:{
     Boolean(slide.primaryLabel.trim())!==Boolean(slide.primaryPath.trim())||
     Boolean(slide.secondaryLabel.trim())!==Boolean(slide.secondaryPath.trim())||
     [slide.primaryPath,slide.secondaryPath].some(v=>v.trim()&&
-      !["/","/about","/contact"].includes(v.trim())))?
-  "Every banner button needs a label and an existing Home, About or Contact destination.":
-  Boolean(draft.promoLabel.trim())!==Boolean(draft.promoPath.trim())?
+      !isCmsCtaRoute(v.trim())))?
+  "Every banner button needs a label and a supported public page destination.":
+  Boolean(draft.promoLabel.trim())!==Boolean(draft.promoPath.trim())||(!!draft.promoPath.trim()&&!isCmsCtaRoute(draft.promoPath.trim()))?
   "Enter both a promotional button label and a working page destination.":
   draft.featuresHeading.trim()&&!draft.featureCards.length?
   "Add a solution card or clear the unused section heading.":
   draft.featureCards.some(card=>card.label.trim().length<2||
     card.title.trim().length<3||card.body.trim().length<5)?
   "Complete each solution card's category, title and description.":
-  draft.team.length>0?
-  "Remove manually entered team profiles. Public profiles need verified CG-10/CG-04 source and revocable consent before publication.":
+  draft.team.some(p=>!p.sourceRef||!/^[a-f0-9]{64}$/.test(p.proof))||draft.assets.some(a=>a.role==="TEAM")?
+  "Remove historical manual profiles and portrait assets; select current consented staff.":
   !okay?"Complete the remaining website content before saving.":null;
  async function send(c:Command){
   if(busy)return;
@@ -619,6 +624,7 @@ export function CmsAdminWorkspace({canManage,canPublish,canReview}:{
        Request volunteer registration link when available</label>
      </fieldset>}
      <fieldset><legend>Approved operational projects</legend><p>Select current CG-05 reviewed sources. Saving or submitting does not publish them.</p>
+      <label className="cg-cms-consent"><input type="checkbox" disabled={!canManage||busy||!!pending||draft.projectSources.length>0} checked={draft.projectEnabled||draft.projectSources.length>0} onChange={e=>edit("projectEnabled",e.target.checked)}/>Keep project directory available, including when empty</label>
       <label>Heading<input maxLength={160} value={draft.projectHeading} disabled={!canManage||busy||!!pending} onChange={e=>edit("projectHeading",e.target.value)}/></label>
       <button type="button" disabled={!canManage||busy||!!pending} onClick={refreshProjects}>Refresh approved projects</button>
       {projectError&&<p role="alert">{projectError}</p>}{!projectChoices.length&&!projectError&&<p>No current eligible projects.</p>}
@@ -682,6 +688,7 @@ export function CmsAdminWorkspace({canManage,canPublish,canReview}:{
           onChange={e=>edit("slides",draft.slides.map((x,i)=>
            i===index?{...x,visible:e.target.checked}:x))}/>
           Show this banner on the public website and Android app</label>
+         <label className="cg-cms-consent"><input type="checkbox" disabled={!canManage} checked={slide.textOnly===true} onChange={e=>edit("slides",draft.slides.map((x,i)=>i===index?{...x,textOnly:e.target.checked}:x))}/>Text-only banner (remove image placements before saving; add approved media when available)</label>
          <label>Eyebrow<input disabled={!canManage} maxLength={100} value={slide.eyebrow}
           onChange={e=>edit("slides",draft.slides.map((x,i)=>i===index?{...x,eyebrow:e.target.value}:x))}/></label>
          <label>Heading<input disabled={!canManage} maxLength={180} value={slide.heading}
@@ -770,6 +777,19 @@ export function CmsAdminWorkspace({canManage,canPublish,canReview}:{
         onChange={e=>edit("bodyVariant",e.target.value as Draft["bodyVariant"])}>
         <option value="SPLIT">Original photo / text split</option>
         <option value="STANDARD">Plain text</option></select></label>
+       <div className="cg-cms-team"><h4>Additional editorial sections</h4>
+       <p>General public-page introductions are stored in the approved About revision. They never replace operational records.</p>
+       {draft.extraText.map((block,i)=><fieldset key={block.order}>
+        <legend>{block.placement?placements.find(x=>x[0]===block.placement)?.[1]??"Public page":"Additional page text"}</legend>
+        {draft.kind==="ABOUT"&&<label>Display on<select value={block.placement} disabled={!canManage} onChange={e=>edit("extraText",draft.extraText.map((x,j)=>i===j?{...x,placement:e.target.value}:x))}><option value="">About page</option>{placements.map(([key,label])=><option key={key} value={key}>{label}</option>)}</select></label>}
+        <label>Section label<input value={block.eyebrow} maxLength={100} disabled={!canManage} onChange={e=>edit("extraText",draft.extraText.map((x,j)=>i===j?{...x,eyebrow:e.target.value}:x))}/></label>
+        <label>Heading<input value={block.heading} maxLength={160} disabled={!canManage} onChange={e=>edit("extraText",draft.extraText.map((x,j)=>i===j?{...x,heading:e.target.value}:x))}/></label>
+        <label>Body<textarea value={block.body} maxLength={4000} disabled={!canManage} onChange={e=>edit("extraText",draft.extraText.map((x,j)=>i===j?{...x,body:e.target.value}:x))}/></label>
+        <label>Highlights (up to four, one per line)<textarea value={block.highlights} maxLength={800} disabled={!canManage} onChange={e=>edit("extraText",draft.extraText.map((x,j)=>i===j?{...x,highlights:e.target.value}:x))}/></label>
+        {canManage&&!draft.assets.some(a=>a.role==="ABOUT"&&a.order===block.order)&&<button type="button" disabled={busy||!!pending} onClick={()=>edit("extraText",draft.extraText.filter((_,j)=>i!==j))}>Remove section</button>}
+       </fieldset>)}
+       {canManage&&draft.extraText.length<10&&<button type="button" disabled={busy||!!pending} onClick={()=>{const order=Array.from({length:80},(_,i)=>i+21).find(n=>!draft.extraText.some(x=>x.order===n));if(order!==undefined)edit("extraText",[...draft.extraText,{order,heading:"",body:"",eyebrow:"",highlights:"",placement:"",variant:"STANDARD"}]);}}>Add editorial section</button>}
+       </div>
        <label>Foundation information<textarea disabled={!canManage} rows={9}
         value={draft.body} maxLength={4000}
         onChange={e=>edit("body",e.target.value)}/></label>
@@ -847,93 +867,23 @@ export function CmsAdminWorkspace({canManage,canPublish,canReview}:{
        onChange={e=>edit("footerNewsletterText",e.target.value)}/></label>
      </fieldset>
     </>}
-    <fieldset><legend>Public team directory — pending verified people source</legend>
-      <p role="status">Team names, photos and biographies will become publishable only through approved CG-10 staff or CG-04 volunteer/member records with revocable display consent. Existing manually entered profiles can be removed; a checkbox alone does not grant publication permission.</p>
-      <label>Section heading<input disabled={!canManage} value={draft.teamHeading}
+    <fieldset><legend>Public team directory</legend>
+      <p>Only the current CG-10 self-consented name and designation may be selected. Photos, biography and location are not covered by that consent.</p>
+      <label>Section heading<input disabled={!canManage||busy||!!pending} value={draft.teamHeading}
        onChange={e=>edit("teamHeading",e.target.value)}/></label>
-      <p>{draft.team.length} public profile{draft.team.length===1?"":"s"} in this draft</p>
-      <div className="cg-cms-tabs" role="tablist" aria-label="Team profile editor">
-       {([["BASIC","Basic Information"],["DETAILS","Additional Details"],
-         ["PREVIEW","Preview"]] as const).map(([value,label])=>
-        <button type="button" key={value} role="tab"
-         className={teamEditorTab===value?"is-active":""}
-         aria-selected={teamEditorTab===value}
-         onClick={()=>setTeamEditorTab(value)}>{label}</button>)}
-      </div>
-      {draft.team.map((member,index)=><div className="cg-cms-team" key={index}>
-       <h4>{member.name||"Team profile "+(index+1)}</h4>
-       {teamEditorTab==="BASIC"&&<>
-        <label>Public name<input disabled={!canManage} maxLength={100} value={member.name}
-         onChange={e=>edit("team",draft.team.map((v,i)=>i===index?{...v,name:e.target.value}:v))}/></label>
-        <label>Designation<input disabled={!canManage} maxLength={100} value={member.designation}
-         onChange={e=>edit("team",draft.team.map((v,i)=>i===index?{...v,designation:e.target.value}:v))}/></label>
-       </>}
-       {teamEditorTab==="DETAILS"&&<>
-        <label>Public biography<textarea disabled={!canManage} maxLength={600} value={member.bio}
-         onChange={e=>edit("team",draft.team.map((v,i)=>i===index?{...v,bio:e.target.value}:v))}/></label>
-        <label className="cg-cms-consent"><input type="checkbox" disabled={!canManage}
-         checked={member.consentConfirmed} onChange={e=>
-          edit("team",draft.team.map((v,i)=>i===index?{...v,consentConfirmed:e.target.checked}:v))}/>
-         The Foundation confirms this person's permission for public display</label>
-       </>}
-       {teamEditorTab==="PREVIEW"&&<div className="cg-cms-team-preview">
-        {draft.assets.filter(asset=>asset.role==="TEAM"&&asset.order===index)
-         .map(asset=><img key={asset.fileRef} className="cg-cms-review-image"
-          alt={asset.altText} src={"/api/cms-image-preview/"+asset.fileRef} loading="lazy"/>)}
-        <strong>{member.name||"Name not entered"}</strong>
-        <span>{member.designation||"Designation not entered"}</span>
-        {!!member.bio&&<p>{member.bio}</p>}
-        <small>{member.consentConfirmed?"Editor consent claim (not source-verified)":
-         "Permission required before publication"}</small>
-       </div>}
-       {canManage&&<button type="button" onClick={()=>removeIndexedContent("TEAM",index)}>
-        Remove profile</button>}
-      </div>)}
+      <button type="button" disabled={!canManage||busy||!!pending} onClick={refreshTeam}>Refresh consented staff profiles</button>
+      {teamError&&<p role="alert">{teamError}</p>}
+      {draft.team.map((p,i)=><div className="cg-cms-team" key={i}><strong>{p.name}</strong><span>{p.designation}</span>
+       <button type="button" disabled={!canManage||busy||!!pending} onClick={()=>removeIndexedContent("TEAM",i)}>Remove profile</button></div>)}
+      {teamChoices.filter(p=>!draft.team.some(x=>x.sourceRef===p.sourceRef)).map(p=><button type="button" key={p.sourceRef}
+       disabled={!canManage||busy||!!pending||draft.team.length>=15} onClick={()=>edit("team",[...draft.team,p])}>Add {p.name} · {p.designation}</button>)}
      </fieldset>
-     {!!selected&&selected.status==="DRAFT"&&canManage&&<fieldset>
-      <legend>Page photographs</legend>
-      <p>Upload only an original image the Foundation is authorized to publish.
-       It must pass the private file scan before saving the draft.</p>
-      <label>Placement<select value={uploadRole}
-        onChange={e=>{setUploadRole(e.target.value as Asset["role"]);setUploadOrder(0)}}>
-        <option value="HERO">Desktop hero slide photo</option>
-        <option value="MOBILE_HERO">Mobile hero slide photo</option>
-        <option value="ABOUT">About / story photograph</option>
-        <option value="PROMO">Volunteer promotional photograph</option>
-        <option value="FEATURE">How We Help card photograph</option>
-        </select></label>
-       {(["HERO","MOBILE_HERO","TEAM","FEATURE"] as string[]).includes(uploadRole)&&
-        <label>{uploadRole==="TEAM"?"Team member":uploadRole==="FEATURE"?"Solution card":"Hero slide"}
-         <select value={String(uploadOrder)} onChange={e=>setUploadOrder(Number(e.target.value))}>
-          {(uploadRole==="TEAM"?draft.team:
-            uploadRole==="FEATURE"?draft.featureCards:draft.slides).map((value,index)=>
-            <option key={index} value={index}>{uploadRole==="TEAM"?
-             (value as Team).name||"Member "+(index+1):uploadRole==="FEATURE"?
-             (value as FeatureCard).title||"Card "+(index+1):
-             (value as Slide).heading||"Slide "+(index+1)}</option>)}
-         </select></label>}
-       <label>Describe the image<input value={uploadAlt} maxLength={300}
-       onChange={e=>setUploadAlt(e.target.value)}/></label>
-      <label className="cg-cms-consent"><input type="checkbox" checked={rights}
-       onChange={e=>setRights(e.target.checked)}/>I confirm public image rights and consent</label>
-      <label>Select original image<input type="file" accept="image/png,image/jpeg,image/webp"
-       disabled={busy||!rights||uploadAlt.trim().length<3||
-         (uploadRole==="TEAM"&&draft.team.length===0)||
-         (uploadRole==="FEATURE"&&draft.featureCards.length===0)||
-         (["HERO","MOBILE_HERO"].includes(uploadRole)&&draft.slides.length===0)}
-       onChange={e=>{const file=e.target.files?.[0];if(file)void upload(file);e.currentTarget.value="";}}/></label>
-      {draft.assets.map(x=><div className="cg-cms-asset" key={x.fileRef}>
-       <span>{x.role==="TEAM"?(draft.team[x.order]?.name||"Team member "+(x.order+1)):
-        x.role.replaceAll("_"," ")} · {x.altText}</span>
-       <button type="button" onClick={()=>edit("assets",draft.assets.filter(v=>v!==x))}>
-        Remove from draft</button></div>)}
-     </fieldset>}
     </div>}
     {canManage&&draftIssue&&<p className="cg-cms-error" role="status">{draftIssue}</p>}
     {selected?.status==="DRAFT"&&unsaved&&<p role="status">
      Save your changes before sending this page for approval.</p>}
     {selected?.status==="DRAFT"&&heroPhotoMissing&&<p role="status">
-     Add and save a verified desktop image for each homepage banner before review.</p>}
+     Add a verified desktop image or explicitly select a text-only banner before review.</p>}
     <div className="cg-cms-actions">
      {!selected&&canManage&&<button disabled={busy||!okay||!!pending} type="button"
       onClick={()=>command("Draft created","pages","POST",{content:payload(draft)})}>Create draft</button>}

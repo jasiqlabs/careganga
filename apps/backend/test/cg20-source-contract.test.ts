@@ -48,6 +48,48 @@ describe("CG-20 — guarded server report request contracts",()=>{
    assert.throws(()=>parseSafeReport(options),BadRequestException);
   }
  });
+ test("CG06 live beneficiary report accepts owner branch and delivery range only",()=>{
+  const kind="BENEFICIARY_ASSISTANCE_SUMMARY",view="SUMMARY",branchRef="22222222-2222-4222-8222-222222222222";
+  assert.equal(parseSafeReport({kind,view,branchRef,fromDay:"2026-10-01",untilDay:"2026-10-31"}).branchRef,branchRef);
+  for(const filter of [{branchRef:"FOUNDATION"},{branchRef:"wrong"},{centerRef:branchRef},{fromDay:"2026-10-01"},{fromDay:"2025-01-01",untilDay:"2026-10-31"},{status:"COMPLETED"},{view:"TABLE"},{offset:50}])
+   assert.throws(()=>parseSafeReport({kind,view,...filter}),BadRequestException);
+ });
+ test("CG07 donation summary and ledger accept only bounded owner filters",()=>{
+  for(const kind of ["DONATION_RECEIPT_SUMMARY","DONATION_RECEIPT_LEDGER"]){
+   const view=kind==="DONATION_RECEIPT_SUMMARY"?"SUMMARY":"TABLE";
+   assert.equal(parseSafeReport({kind,view,branchRef:"FOUNDATION",campaignCode:"cg-camp-00000001",fromDay:"2026-10-01",untilDay:"2026-10-31"}).campaignCode,"cg-camp-00000001");
+   for(const filter of [{campaignCode:"arbitrary"},{centerRef:"22222222-2222-4222-8222-222222222222"},{fromDay:"2026-10-01"},{status:"COMPLETED"},{view:"CHART"},{offset:50}])assert.throws(()=>parseSafeReport({kind,view,...filter}),BadRequestException);
+  }
+ });
+ test("CG05 project status and budget use typed filters, not arbitrary finance or patient joins",()=>{
+  const projectRef="22222222-2222-4222-8222-222222222222";
+  assert.equal(parseSafeReport({kind:"PROJECT_STATUS_REPORT",view:"TABLE",projectRef,fromDay:"2026-10-01",untilDay:"2026-10-31"}).projectRef,projectRef);
+  assert.equal(parseSafeReport({kind:"PROJECT_BUDGET_SUMMARY",view:"SUMMARY",projectRef}).projectRef,projectRef);
+  assert.throws(()=>parseSafeReport({kind:"PROJECT_BUDGET_SUMMARY",view:"SUMMARY"}),BadRequestException);
+  for(const filter of [{projectRef:"wrong"},{centerRef:projectRef},{campaignCode:"cg-camp-00000001"},{status:"COMPLETED"},{offset:50}])assert.throws(()=>parseSafeReport({kind:"PROJECT_STATUS_REPORT",view:"TABLE",...filter}),BadRequestException);
+ });
+ test("CG04 consented roster allows owner branch and bounded enrollment dates only",()=>{
+  for(const kind of ["MEMBERSHIP_ROSTER_SUMMARY","VOLUNTEER_ROSTER_SUMMARY"]){
+   const branchRef="22222222-2222-4222-8222-222222222222";
+   assert.equal(parseSafeReport({kind,view:"SUMMARY",branchRef,fromDay:"2026-10-01",untilDay:"2026-10-31"}).branchRef,branchRef);
+   for(const filter of [{branchRef:"FOUNDATION"},{branchRef:"wrong"},{centerRef:branchRef},{fromDay:"2026-10-01"},{fromDay:"2025-01-01",untilDay:"2026-10-31"},{status:"COMPLETED"},{view:"TABLE"},{offset:50}])
+    assert.throws(()=>parseSafeReport({kind,view:"SUMMARY",...filter}),BadRequestException);
+  }
+ });
+ test("CG11 payroll accepts only original month and branch filters",()=>{
+  const kind="PAYROLL_STATUS_SUMMARY",view="SUMMARY",branchRef="22222222-2222-4222-8222-222222222222";
+  assert.equal(parseSafeReport({kind,view,payrollMonth:"2026-10",branchRef}).branchRef,branchRef);
+  assert.equal(parseSafeReport({kind,view,payrollMonth:"2026-10",branchRef:"FOUNDATION"}).payrollMonth,"2026-10");
+  for(const filter of [{payrollMonth:"2026-13"},{payrollMonth:"1999-01"},{branchRef:"other"},{centerRef:branchRef},{yearRef:branchRef},{fromDay:"2026-10-01",untilDay:"2026-10-31"}])assert.throws(()=>parseSafeReport({kind,view,...filter}),BadRequestException);
+  assert.throws(()=>parseSafeReport({kind:"BENEFICIARY_ASSISTANCE_SUMMARY",view,payrollMonth:"2026-10"}),BadRequestException);
+ });
+ test("CG08 CSR summary accepts bounded proposal update dates only",()=>{
+  const kind="CSR_FUNDING_SUMMARY",view="SUMMARY";
+  const q=parseSafeReport({kind,view,fromDay:"2026-10-01",untilDay:"2026-10-31"});
+  assert.equal(q.fromDay,"2026-10-01");assert.equal(q.untilDay,"2026-10-31");
+  for(const filter of [{branchRef:"22222222-2222-4222-8222-222222222222"},{centerRef:"22222222-2222-4222-8222-222222222222"},{fromDay:"2026-10-01"},{fromDay:"2025-01-01",untilDay:"2026-10-31"},{status:"COMPLETED"},{view:"TABLE"},{offset:50}])
+   assert.throws(()=>parseSafeReport({kind,view,...filter}),BadRequestException);
+ });
  test("CG21 original audit accepts 90-day bounded original safe window only",()=>{
   const value=parseSafeReport({
    kind:"PLATFORM_AUDIT_ACTIVITY",view:"TABLE",

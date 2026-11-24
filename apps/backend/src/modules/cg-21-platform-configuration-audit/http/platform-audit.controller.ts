@@ -9,17 +9,17 @@ export class PlatformAuditController{
   }
   @Get()
   list(@Headers("authorization") bearer:string,@Query() query:Record<string,unknown>={}){
-    this.validateQuery(query,["cursor","limit","source","from","to"]);
+    this.validateQuery(query,["cursor","limit","source","from","to","category"]);
     return this.audit.list(bearer,{
       cursor:query.cursor,limit:query.limit,source:query.source,
-      from:query.from,to:query.to
+      from:query.from,to:query.to,category:query.category
     });
   }
   @Get("export")
   export(@Headers("authorization") bearer:string,@Query() query:Record<string,unknown>={}){
-    this.validateQuery(query,["source","from","to"]);
+    this.validateQuery(query,["source","from","to","category"]);
     return this.audit.export(bearer,{
-      source:query.source,from:query.from,to:query.to
+      source:query.source,from:query.from,to:query.to,category:query.category
     });
   }
   @Get("detail/:eventRef")

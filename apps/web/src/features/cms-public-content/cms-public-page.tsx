@@ -1,8 +1,10 @@
+import {Cg19NewsletterForm} from "./cg19-newsletter-form";
 import Link from "next/link";
 import type {ReactNode} from "react";
 import type {PublicCmsNavigation} from "./cms-public-source";
 import {CmsSiteHeader} from "./cms-site-header";
 import type {CmsMediaType} from "./cms-gallery-grid-client";
+import {effectiveCmsCtaRoute} from "./cms-cta-route";
 import {CmsHeroCarousel} from "./cms-hero-carousel";
 import {CampaignPublicCards} from "../campaigns/campaign-public-cards";
 import type {PublicCampaign} from "../campaigns/campaign-public-source";
@@ -15,10 +17,9 @@ export type PublicCmsPage={schemaVersion:number;effectiveGeneration:string;
  sections:PublicCmsSection[];assets:{role:string;altText:string;src:string;order:number}[]};
 type Asset=PublicCmsPage["assets"][number];
 const text=(v:unknown)=>typeof v==="string"?v:"";
-const safeLocal=(v:unknown)=>["/","/about","/contact"].includes(text(v))?text(v):null;
 const list=(v:unknown)=>Array.isArray(v)?v.filter(x=>typeof x==="string").slice(0,5) as string[]:[];
-function CmsAction({label,href,variant}:{label:unknown;href:unknown;variant?:string}){
- const dest=safeLocal(href);
+function CmsAction({label,href,variant,navigation}:{label:unknown;href:unknown;variant?:string;navigation?:PublicCmsNavigation|null}){
+ const dest=effectiveCmsCtaRoute(href,navigation);
  return dest&&text(label)?<Link className={"cg-site-action "+(variant??"")} href={dest}>
   {text(label)}</Link>:null;
 }
@@ -32,6 +33,7 @@ function RichText({fields,asset}:{fields:Record<string,unknown>;asset?:Asset}){
   <div className="cg-site-copy">
    {text(fields.eyebrow)&&<p className="cg-site-eyebrow">{text(fields.eyebrow)}</p>}
    <h2>{text(fields.heading)}</h2>
+   {asset?.altText.startsWith("AI-generated illustration")&&<p className="cg-site-provenance">AI-generated illustration.</p>}
    {text(fields.body)&&<p className="cg-site-body">{text(fields.body)}</p>}
    {list(fields.highlights).length>0&&<ul className="cg-site-highlights">
     {list(fields.highlights).map((line,i)=><li key={i}>{line}</li>)}
@@ -39,14 +41,15 @@ function RichText({fields,asset}:{fields:Record<string,unknown>;asset?:Asset}){
   </div>
  </section>;
 }
-function Promo({fields,asset}:{fields:Record<string,unknown>;asset?:Asset}){
+function Promo({fields,asset,navigation}:{fields:Record<string,unknown>;asset?:Asset;navigation?:PublicCmsNavigation|null}){
  return <section className="cg-site-promo">
   <Photo asset={asset} className="cg-site-promo-img"/>
   <div className="cg-site-promo-inner">
    {!!text(fields.eyebrow)&&<p className="cg-site-eyebrow">{text(fields.eyebrow)}</p>}
    {!!text(fields.heading)&&<h2>{text(fields.heading)}</h2>}
    {!!text(fields.body)&&<p>{text(fields.body)}</p>}
-   <CmsAction label={fields.label} href={fields.path}/>
+   {asset?.altText.startsWith("AI-generated illustration")&&<p>AI-generated illustration.</p>}
+   <CmsAction label={fields.label} href={fields.path} navigation={navigation}/>
   </div>
  </section>;
 }
@@ -65,6 +68,7 @@ function Features({fields,assets}:{fields:Record<string,unknown>;assets:Asset[]}
      {!!text(card.label)&&<span className="cg-site-card-tag">{text(card.label)}</span>}
     </div>
     <h3>{text(card.title)}</h3><p>{text(card.body)}</p>
+    {assets.find(x=>x.role==="FEATURE"&&x.order===i)?.altText.startsWith("AI-generated illustration")&&<p className="cg-site-provenance">AI-generated illustration.</p>}
    </article>;
   })}</div>
  </section>;
@@ -73,8 +77,8 @@ function JoinCards({fields,navigation}:{fields:Record<string,unknown>;navigation
  const joinLink=(type:"memberJoin"|"volunteerJoin")=>{
   const target=navigation?.[type];
   // No fictional registration screen: only actual owner-published destinations.
-  return target?.visible&&target.path&&/^\/[a-z0-9/-]+$/.test(target.path)?
-   target.path:null;
+  const expected=type==="memberJoin"?"/membership":"/volunteer";
+  return target?.visible===true&&target.path===expected?expected:null;
  };
  return <section className="cg-site-join-grid cg-site-content" aria-label="Join CareGanga">
   {(["volunteer","member"] as const).map(kind=>{
@@ -138,7 +142,7 @@ export function SiteFooter({data,navigation}:{data:Record<string,unknown>;
       <span aria-disabled="true" className="cg-site-unavailable">Donate</span>}
      {isPublished("/our-impact")&&<Link href="/our-impact">Our Impact</Link>}
      {isPublished("/gallery")&&<Link href="/gallery">Media Gallery</Link>}
-     {isPublished("/healthcare")&&<Link href="/healthcare">Healthcare Assistance</Link>}
+     <Link href={isPublished("/healthcare")?"/healthcare":"/health-network"}>Healthcare Assistance</Link>
      <Link href="/contact">Contact</Link></div>
     <div><h3>POLICIES & LEGAL</h3>
      {legal.map(([label,slug])=>isPublished("/policies/"+slug)?
@@ -147,14 +151,7 @@ export function SiteFooter({data,navigation}:{data:Record<string,unknown>;
      {isPublished("/ngo-information")&&<Link href="/ngo-information">NGO Information &amp; 80G</Link>}</div>
     <div><h3>SUBSCRIBE TO NEWSLETTER</h3>
      {!!text(data.newsletterText)&&<p>{text(data.newsletterText)}</p>}
-     <label className="cg-site-newsletter-field">
-      <span className="cg-site-sr-only">Email address for Foundation newsletter</span>
-      <input type="email" autoComplete="email" placeholder="Enter your email" disabled
-       aria-label="Newsletter subscription is not available yet"/>
-     </label>
-     <button type="button" disabled className="cg-site-newsletter-button">
-      Subscribe</button>
-     <p className="cg-site-muted">Newsletter registration is not yet available.</p>
+     <Cg19NewsletterForm/>
     </div>
    </div>
    <div className="cg-site-footer-bottom"><span>© CareGanga Foundation. All rights reserved.</span>
@@ -212,13 +209,13 @@ export function CmsPublicPage({page,navigation,siteFooter,children,mediaScope,si
    {page.kind==="POLICY"&&<header className="cg-site-content cg-site-policy-title">
     <p className="cg-site-eyebrow">Policies &amp; Legal</p><h1>{page.title}</h1>
    </header>}
-   {heroes.length>0&&<CmsHeroCarousel slides={heroes}/>}
-   {sections.filter(x=>x.kind!=="HERO"&&x.kind!=="SITE_FOOTER")
+   {heroes.length>0&&<CmsHeroCarousel slides={heroes} navigation={navigation}/>}
+   {sections.filter(x=>x.kind!=="HERO"&&x.kind!=="SITE_FOOTER"&&!(x.kind==="RICH_TEXT"&&x.fields.placement))
     .map((section,i)=>{
      const key=section.kind+"-"+section.order+"-"+i;
      if(section.kind==="RICH_TEXT")return <RichText key={key} fields={section.fields}
       asset={assets.find(x=>x.role==="ABOUT"&&x.order===section.order)}/>;
-     if(section.kind==="CTA")return <Promo key={key} fields={section.fields}
+     if(section.kind==="CTA")return <Promo key={key} fields={section.fields} navigation={navigation}
       asset={assets.find(x=>x.role==="PROMO"&&x.order===section.order)}/>;
      if(section.kind==="FEATURE_CARDS")return <Features key={key}
       fields={section.fields} assets={assets}/>;

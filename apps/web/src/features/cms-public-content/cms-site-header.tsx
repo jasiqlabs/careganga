@@ -23,8 +23,8 @@ export function CmsSiteHeader({navigation,contact}:{
  navigation?:PublicCmsNavigation|null;contact?:Contact}){
  const [expanded,setExpanded]=useState(false);
  const pathname=usePathname();
- const member=navigation?.memberJoin?.visible&&navigation.memberJoin.path?
-  navigation.memberJoin.path:undefined;
+ const member=navigation?.memberJoin?.visible===true&&navigation.memberJoin.path==="/membership"?
+  "/membership":undefined;
  // The same exact original route check as Public Android; never render a guessed CMS CTA.
  const volunteer=navigation?.volunteerJoin?.visible===true&&navigation.volunteerJoin.path==="/volunteer"?
   "/volunteer":undefined;
@@ -54,9 +54,7 @@ export function CmsSiteHeader({navigation,contact}:{
    <nav id="cg-site-navigation" aria-label="CareGanga public website"
     className={expanded?"cg-site-nav cg-site-nav-open":"cg-site-nav"}>
     <Link href="/" className={pathname==="/"? "cg-site-active":undefined}>Home</Link>
-    {isPublished("/about")?<Link href="/about"
-     className={pathname==="/about"?"cg-site-active":undefined}>About Us</Link>:
-     <span className="cg-site-unavailable">About Us</span>}
+    <Menu label="About Us" items={[{text:"About the Foundation",href:isPublished("/about")?"/about":undefined},{text:"Team Directory",href:"/about/team"}]}/>
     <Menu label="Our Work" items={work.map(text=>({text,href:isPublished("/our-work")?"/our-work"+(text==="All Projects"?"":"?category="+encodeURIComponent(text)):undefined}))}/>
     {isPublished("/ngo-information")?<Link href="/ngo-information"
      className={pathname==="/ngo-information"?"cg-site-active":undefined}>NGO Information</Link>:
@@ -67,7 +65,7 @@ export function CmsSiteHeader({navigation,contact}:{
      <span className="cg-site-unavailable" aria-disabled="true">Campaigns</span>}
     {isPublished("/upcoming-projects")?<Link href="/upcoming-projects" className={pathname==="/upcoming-projects"?"cg-site-active":undefined}>Upcoming Projects</Link>:<span className="cg-site-unavailable">Upcoming Projects</span>}
     <Link href="/collaboration" className={pathname.startsWith("/collaboration")?"cg-site-active":undefined}>Partnerships</Link>
-    <span className="cg-site-unavailable">Events</span>
+    <Link href="/events" className={pathname==="/events"?"cg-site-active":undefined}>Events</Link>
     <Menu label="Media & Resources" items={media.map(text=>({text,
      href:text==="Gallery"&&isPublished("/gallery")?"/gallery":
       text==="Videos"&&isPublished("/gallery")?"/videos":
@@ -77,10 +75,9 @@ export function CmsSiteHeader({navigation,contact}:{
       text==="Blog"&&anyArticles?"/blog":undefined}))}/>
     <Menu label="Join Now" items={[{text:"Become a Member",href:member},
      {text:"Become a Volunteer",href:volunteer}]}/>
-    {isPublished("/healthcare")?<Link href="/healthcare"
-     className={pathname==="/healthcare"?"cg-site-active":undefined}>
-     Healthcare Assistance</Link>:
-     <span className="cg-site-unavailable">Healthcare Assistance</span>}
+    <Link href={isPublished("/healthcare")?"/healthcare":"/health-network"}
+     className={pathname==="/healthcare"||pathname.startsWith("/health-network")?"cg-site-active":undefined}>
+     Healthcare Assistance</Link>
     <Link href="/contact">Contact Us</Link>
     {navigation?.login?.visible&&navigation.login.path==="/admin/login"&&
      <Link className="cg-site-staff" href="/admin/login">Staff login</Link>}

@@ -52,7 +52,7 @@ export function MisReportSchedules(){
     throw Error("Current schedules could not be verified.");
    if(current===rev.current){
     setReports(saved.items.filter(x=>x.state==="ACTIVE"&&
-     x.sourceKey==="FINANCE_POSTED_SUMMARY"));
+     (x.sourceKey==="FINANCE_POSTED_SUMMARY"||x.sourceKey==="PROJECT_STATUS_REPORT")));
     setSchedules(scheduled.schedules);
    }
   }catch(e){if(current===rev.current){setReports([]);setSchedules([]);
@@ -144,7 +144,7 @@ export function MisReportSchedules(){
   marginTop:20,paddingTop:16,borderTop:"1px solid var(--cg-border)"}}>
   <h3 id="mis-schedules">My report delivery schedules</h3>
   <p role="status" style={{fontSize:".83rem"}}>
-   Authorized posted-finance summaries can run automatically at the chosen
+   Authorized posted-finance summaries and project status reports can run automatically at the chosen
    local date and time. A verified private PDF is stored by CareGanga and
    a neutral in-app notice is recorded only after confirmation. The recipient
    is your current account. Email, SMS and other sources are not enabled.
@@ -155,9 +155,9 @@ export function MisReportSchedules(){
    Refresh schedule status</button>
   {canEdit&&<div style={{display:"grid",gap:10,marginTop:12}}>
    {editing?<strong>Editing: {editing.savedReportName}</strong>:
-    <label>My saved posted-finance summary <select value={report}
+    <label>My saved report <select value={report}
      onChange={e=>setReport(e.target.value)}>
-     <option value="">Choose a private finance summary</option>
+     <option value="">Choose a private finance or project report</option>
      {reports.map(x=><option key={x.ref} value={x.ref}>{x.name}</option>)}
     </select></label>}
    <label>Recurrence <select value={cadence} onChange={e=>setCadence(e.target.value)}>
@@ -176,7 +176,7 @@ export function MisReportSchedules(){
    {!!editing&&<button type="button" disabled={busy} onClick={reset}>
     Cancel schedule edit</button>}
   </div>}
-  {!canEdit&&<p>No eligible saved posted-finance summary is available for new schedules.</p>}
+  {!canEdit&&<p>No eligible saved report is available for new schedules.</p>}
   <div style={{display:"grid",gap:8,marginTop:12}}>
    {schedules.map(item=><div key={item.ref} style={{
     border:"1px solid var(--cg-border)",borderRadius:10,padding:12}}>

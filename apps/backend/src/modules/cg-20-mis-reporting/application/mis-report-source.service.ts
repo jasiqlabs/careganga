@@ -1,6 +1,13 @@
 import {
  BadRequestException,ForbiddenException,Injectable,UnauthorizedException
 } from "@nestjs/common";
+import {ProjectsService} from "../../cg-05-projects-field-operations/application/projects.service";
+import {BeneficiaryReportService} from "../../cg-06-beneficiaries-assistance/application/beneficiary-report.service";
+import {MembershipRosterService} from "../../cg-04-membership-volunteers/application/membership-roster.service";
+import {VolunteerRosterService} from "../../cg-04-membership-volunteers/application/volunteer-roster.service";
+import {PayrollRunService} from "../../cg-11-payroll-compensation/application/payroll-run.service";
+import {DonationAdminService} from "../../cg-07-campaigns-donations/application/donation-admin.service";
+import {CsrFundingReportsService} from "../../cg-08-csr-funding/application/csr-funding-reports.service";
 import {SessionService} from "../../cg-01-identity-access/application/session.service";
 import {FinanceReportsService} from "../../cg-09-finance-accounting/application/finance-reports.service";
 import {BranchSourceFacade} from "../../cg-02-foundation-structure/application/branch-source.facade";
@@ -12,12 +19,13 @@ export const REPORT_KINDS=[
  "FINANCE_POSTED_LEDGER","FINANCE_POSTED_SUMMARY",
  "FINANCE_POSTED_TREND","FINANCE_POSTED_GROUPED",
  "APPOINTMENT_STATUS","APPOINTMENT_STATUS_GROUPED","APPOINTMENT_DOCTOR_SUMMARY",
- "PLATFORM_AUDIT_ACTIVITY","DIAGNOSTICS_CATALOG_SUMMARY"
+ "PLATFORM_AUDIT_ACTIVITY","DIAGNOSTICS_CATALOG_SUMMARY","BENEFICIARY_ASSISTANCE_SUMMARY","MEMBERSHIP_ROSTER_SUMMARY","VOLUNTEER_ROSTER_SUMMARY","PAYROLL_STATUS_SUMMARY","DONATION_RECEIPT_SUMMARY","DONATION_RECEIPT_LEDGER","CSR_FUNDING_SUMMARY","PROJECT_STATUS_REPORT","PROJECT_BUDGET_SUMMARY"
 ] as const;
 export type ReportKind=typeof REPORT_KINDS[number];
+export const LIVE_PREVIEW_KINDS:readonly ReportKind[]=["BENEFICIARY_ASSISTANCE_SUMMARY","MEMBERSHIP_ROSTER_SUMMARY","VOLUNTEER_ROSTER_SUMMARY","PAYROLL_STATUS_SUMMARY","DONATION_RECEIPT_SUMMARY","DONATION_RECEIPT_LEDGER","CSR_FUNDING_SUMMARY","PROJECT_BUDGET_SUMMARY"];
 export type ReportView="TABLE"|"SUMMARY"|"CHART"|"PIVOT";
 export type SafeReportRequest={
- kind:ReportKind;view:ReportView;yearRef?:string;branchRef?:string;
+ kind:ReportKind;view:ReportView;yearRef?:string;branchRef?:string;payrollMonth?:string;projectRef?:string;campaignCode?:string;
  centerRef?:string;areaRef?:string;fromDay?:string;untilDay?:string;status?:string;
  groupBy?:"CATEGORY"|"POSTING_KIND"|"ACCOUNT_NAME";
  sortBy?:"NAME"|"DEBIT"|"CREDIT";sortDirection?:"ASC"|"DESC";
@@ -34,7 +42,7 @@ const day=(v:string)=>{
  return !Number.isNaN(d.getTime())&&d.toISOString().slice(0,10)===v;
 };
 const allowedFields=new Set(["kind","view","yearRef","branchRef",
- "centerRef","areaRef","fromDay","untilDay","status","groupBy","sortBy","sortDirection","offset"]);
+ "centerRef","areaRef","fromDay","untilDay","status","groupBy","sortBy","sortDirection","offset","payrollMonth","projectRef","campaignCode"]);
 const text=(v:unknown)=>typeof v==="string"?v.trim():"";
 export const FINANCE_KINDS:readonly ReportKind[]=[
  "FINANCE_POSTED_LEDGER","FINANCE_POSTED_SUMMARY","FINANCE_POSTED_TREND",
@@ -58,7 +66,14 @@ export function parseSafeReport(raw:unknown):SafeReportRequest{
   APPOINTMENT_STATUS_GROUPED:["TABLE","CHART"],
   APPOINTMENT_DOCTOR_SUMMARY:["TABLE","CHART"],
   PLATFORM_AUDIT_ACTIVITY:["TABLE"],
-  DIAGNOSTICS_CATALOG_SUMMARY:["SUMMARY"]
+  DIAGNOSTICS_CATALOG_SUMMARY:["SUMMARY"],
+  BENEFICIARY_ASSISTANCE_SUMMARY:["SUMMARY"],
+  MEMBERSHIP_ROSTER_SUMMARY:["SUMMARY"],
+  VOLUNTEER_ROSTER_SUMMARY:["SUMMARY"],
+  PAYROLL_STATUS_SUMMARY:["SUMMARY"],
+  DONATION_RECEIPT_SUMMARY:["SUMMARY"],DONATION_RECEIPT_LEDGER:["TABLE"],
+  CSR_FUNDING_SUMMARY:["SUMMARY"],
+  PROJECT_STATUS_REPORT:["TABLE"],PROJECT_BUDGET_SUMMARY:["SUMMARY"]
  };
  if(!legalViews[kind as ReportKind].includes(view))
   throw new BadRequestException({code:"MIS_REPORT_VIEW_INVALID",
@@ -75,10 +90,19 @@ export function parseSafeReport(raw:unknown):SafeReportRequest{
   centerRef=text(o.centerRef),areaRef=text(o.areaRef),fromDay=text(o.fromDay),
   untilDay=text(o.untilDay),status=text(o.status);
  const isFinance=FINANCE_KINDS.includes(kind as ReportKind);
- if([yearRef,branchRef,centerRef,areaRef].some(v=>v!==""&&!UUID.test(v))||
+ const isPayroll=kind==="PAYROLL_STATUS_SUMMARY",payrollMonth=text(o.payrollMonth);
+ const isRoster=kind==="MEMBERSHIP_ROSTER_SUMMARY"||kind==="VOLUNTEER_ROSTER_SUMMARY";
+ const isBeneficiary=kind==="BENEFICIARY_ASSISTANCE_SUMMARY";
+ const isDonation=kind==="DONATION_RECEIPT_SUMMARY"||kind==="DONATION_RECEIPT_LEDGER",campaignCode=text(o.campaignCode);
+ if(o.campaignCode!==undefined&&(typeof o.campaignCode!=="string"||!isDonation||!/^cg-camp-[0-9]{8}$/.test(campaignCode)))throw new BadRequestException({code:"MIS_REPORT_FILTER_INVALID",message:"Choose a valid donation campaign."});
+ const isProjectStatus=kind==="PROJECT_STATUS_REPORT",isProjectBudget=kind==="PROJECT_BUDGET_SUMMARY",projectRef=text(o.projectRef);
+ if((o.projectRef!==undefined&&(typeof o.projectRef!=="string"||!UUID.test(projectRef)||!isProjectStatus&&!isProjectBudget))||(isProjectBudget&&!projectRef)||(isProjectStatus&&(centerRef||status)))throw new BadRequestException({code:"MIS_REPORT_FILTER_INVALID",message:"Choose a valid project report scope."});
+ if(o.payrollMonth!==undefined&&(typeof o.payrollMonth!=="string"||!isPayroll||!/^\d{4}-(0[1-9]|1[0-2])$/.test(payrollMonth)||payrollMonth.slice(0,4)<"2000"))throw new BadRequestException({code:"MIS_REPORT_FILTER_INVALID",message:"Choose a valid payroll month."});
+ if([yearRef,centerRef,areaRef].some(v=>v!==""&&!UUID.test(v))||
+  branchRef!==""&&!UUID.test(branchRef)&&!((isPayroll||isDonation)&&branchRef==="FOUNDATION")||
   areaRef!==""&&!["FINANCE_POSTED_LEDGER","FINANCE_POSTED_GROUPED"].includes(kind)||
   isFinance&&(centerRef!==""||status!=="")||
-  (kind==="PLATFORM_AUDIT_ACTIVITY"||kind==="DIAGNOSTICS_CATALOG_SUMMARY")&&
+  (kind==="PLATFORM_AUDIT_ACTIVITY"||kind==="DIAGNOSTICS_CATALOG_SUMMARY"||LIVE_PREVIEW_KINDS.includes(kind as ReportKind))&&
    (centerRef!==""||status!=="")||
   kind==="DIAGNOSTICS_CATALOG_SUMMARY"&&fromDay!==""||
   kind!=="FINANCE_POSTED_GROUPED"&&(groupBy!==""||sortBy!==""||sortDirection!=="")||
@@ -87,7 +111,8 @@ export function parseSafeReport(raw:unknown):SafeReportRequest{
    sortBy!==""&&!["NAME","DEBIT","CREDIT"].includes(sortBy)||
    sortDirection!==""&&!["ASC","DESC"].includes(sortDirection)
   )||
-  !isFinance&&(yearRef!==""||branchRef!=="")||
+  !isFinance&&yearRef!==""||
+  !isFinance&&!isPayroll&&!isRoster&&!isBeneficiary&&!isProjectStatus&&!isDonation&&branchRef!==""||
   status!==""&&!statusSet.has(status)||
   Boolean(fromDay)!==Boolean(untilDay)||
   fromDay!==""&&(!day(fromDay)||!day(untilDay)||fromDay>untilDay||
@@ -97,7 +122,7 @@ export function parseSafeReport(raw:unknown):SafeReportRequest{
   fromDay!==""&&kind!=="FINANCE_POSTED_LEDGER"&&
    kind!=="FINANCE_POSTED_GROUPED"&&kind!=="APPOINTMENT_STATUS"&&
    kind!=="APPOINTMENT_STATUS_GROUPED"&&kind!=="APPOINTMENT_DOCTOR_SUMMARY"&&
-   kind!=="PLATFORM_AUDIT_ACTIVITY")
+   kind!=="PLATFORM_AUDIT_ACTIVITY"&&kind!=="CSR_FUNDING_SUMMARY"&&!isRoster&&!isBeneficiary&&!isProjectStatus&&!isDonation)
   throw new BadRequestException({code:"MIS_REPORT_FILTER_INVALID",
    message:"Choose an allowed center, year, status and date range for this report."});
  const offset=o.offset===undefined?0:o.offset;
@@ -107,7 +132,7 @@ export function parseSafeReport(raw:unknown):SafeReportRequest{
   throw new BadRequestException({code:"MIS_REPORT_PAGE_INVALID",
    message:"This page is unavailable. Select an earlier page."});
  return {kind:kind as ReportKind,view:view as ReportView,
-  ...(yearRef?{yearRef}:{}),...(branchRef?{branchRef}:{}),
+  ...(yearRef?{yearRef}:{}),...(branchRef?{branchRef}:{}),...(payrollMonth?{payrollMonth}:{}),...(projectRef?{projectRef}:{}),...(campaignCode?{campaignCode}:{}),
   ...(centerRef?{centerRef}:{}),...(areaRef?{areaRef}:{}),
   ...(fromDay?{fromDay,untilDay}:{}),
   ...(status?{status}:{}),
@@ -147,9 +172,16 @@ export class MisReportSourceService{
   private readonly patients:PatientAdminOverviewService,
   private readonly audit:PlatformAuditService,
   private readonly diagnostics:DiagnosticsCatalogService,
-  private readonly branches:BranchSourceFacade){}
+  private readonly branches:BranchSourceFacade,
+  private readonly beneficiaries:BeneficiaryReportService,
+  private readonly members:MembershipRosterService,
+  private readonly volunteers:VolunteerRosterService,
+  private readonly payroll:PayrollRunService,
+  private readonly donations:DonationAdminService,
+  private readonly csr:CsrFundingReportsService,private readonly projects:ProjectsService){}
  /** CG02 is the sole source of current permitted branch scope, never a report-provided UUID. */
  async originalFinanceScope(token:string,request:SafeReportRequest){
+  if(request.kind==="PROJECT_STATUS_REPORT")return this.projects.misArtifactScope(token,request.branchRef);
   if(!request.kind.startsWith("FINANCE_"))return null;
   await this.sessions.requireAction(token,"mis.reports.view");
   const scope=await this.branches.financeReportScope(token,"finance.reports.view");
@@ -231,13 +263,38 @@ export class MisReportSourceService{
    permission("mis.reports.manage"),permission("mis.reports.export"),
    permission("mis.reports.schedule"),permission("mis.reports.share"),permission("platform.audit.view"),
    permission("diagnostics.catalog.view")]);
+
+  const rosterOptions=async(action:string,load:()=>Promise<{branches:{ref:string;name:string}[]}>)=>{
+   if(!await permission(action))return {ready:false,branches:[]};
+   try{return {ready:true,...await load()};}
+   catch(e){if(e instanceof UnauthorizedException)throw e;return {ready:false,branches:[]};}
+  };
+  const [membership,volunteers,beneficiary]=await Promise.all([
+   rosterOptions("membership.members.view",()=>this.members.misOptions(token)),
+   rosterOptions("volunteers.view",()=>this.volunteers.misOptions(token)),
+   rosterOptions("beneficiaries.assistance.view",()=>this.beneficiaries.misOptions(token))
+  ]);
+  if(beneficiary.ready)templates.push({kind:"BENEFICIARY_ASSISTANCE_SUMMARY",label:"Beneficiary and assistance summary",views:["SUMMARY"],description:"Current permitted consented aggregate and bounded delivery dates; small groups hidden. Live preview only."});
+  if(membership.ready)templates.push({kind:"MEMBERSHIP_ROSTER_SUMMARY",label:"Membership status",views:["SUMMARY"],description:"Current authorized membership counts by enrollment cohort, live preview only."});
+  if(volunteers.ready)templates.push({kind:"VOLUNTEER_ROSTER_SUMMARY",label:"Volunteer status",views:["SUMMARY"],description:"Current authorized volunteer counts by enrollment cohort, live preview only."});
+  const payroll=await permission("payroll.runs.view")&&await permission("payroll.compensation.view")?
+   await this.payroll.options(token).then(x=>({ready:true,branches:x.branches.map(b=>({ref:b.value,name:b.label})),month:x.today.slice(0,7)})).catch((e:unknown)=>{if(e instanceof UnauthorizedException)throw e;return {ready:false,branches:[],month:""};}):
+   {ready:false,branches:[],month:""};
+  if(payroll.ready)templates.push({kind:"PAYROLL_STATUS_SUMMARY",label:"Payroll status",views:["SUMMARY"],description:"Authorized monthly payroll run and payment status counts, live preview only."});
+  const projects=await permission("projects.view")?await this.projects.misOptions(token).then(x=>({ready:true,...x,export: false})).catch((e:unknown)=>{if(e instanceof UnauthorizedException)throw e;return {ready:false,branches:[],projects:[],complete:false,export:false};}):{ready:false,branches:[],projects:[],complete:false,export:false};
+  if(projects.ready){projects.export=await permission("projects.export");templates.push({kind:"PROJECT_STATUS_REPORT",label:"Project status",views:["TABLE"],description:"Current authorized project revisions, status and planned period."});
+   if(await permission("finance.budgets.view")&&await permission("finance.reports.view"))templates.push({kind:"PROJECT_BUDGET_SUMMARY",label:"Project budget and utilization",views:["SUMMARY"],description:"Original approved budget, net allocation, outstanding commitment and verified posted utilization."});
+  }
+  const donation=await permission("finance.reports.view")?await this.donations.misOptions(token).then(x=>({ready:true,...x})).catch((e:unknown)=>{if(e instanceof UnauthorizedException)throw e;return {ready:false,branches:[],campaigns:[],complete:false};}):{ready:false,branches:[],campaigns:[],complete:false};
+  if(donation.ready)templates.push({kind:"DONATION_RECEIPT_SUMMARY",label:"Donation and receipt reconciliation",views:["SUMMARY"],description:"Verified donation and receipt totals by original request cohort, live preview only."},{kind:"DONATION_RECEIPT_LEDGER",label:"Donations and tax receipt ledger",views:["TABLE"],description:"Original donation, verified journal, issued receipt and refund status, no donor identity."});
+  if(finance.ready&&await permission("csr.partners.view"))templates.push({kind:"CSR_FUNDING_SUMMARY",label:"CSR funding and utilization",views:["SUMMARY"],description:"Approved commitments versus verified receipts, allocation and utilization. Current authorized scope; optional proposal update dates."});
   if(diagnosticsAccess)templates.push({
    kind:"DIAGNOSTICS_CATALOG_SUMMARY",label:"Diagnostics services summary",
    views:["SUMMARY"],description:"Current approved service catalog counts from CG-16."});
   if(auditAccess)templates.push({kind:"PLATFORM_AUDIT_ACTIVITY",
    label:"Protected audit activity",views:["TABLE"],
    description:"Current original platform and access audit events; limited to 50 rows."});
-  return {templates,finance,appointments,capabilities:{
+  return {templates,finance,appointments,payroll,membership,volunteers,beneficiary,projects,donation,capabilities:{
    manage,export:exportAllowed,schedule,share},sourceReadAt:new Date().toISOString()};
  }
  /** Dedicated current-principal scheduled projection. Never passes a synthetic
@@ -245,6 +302,26 @@ export class MisReportSourceService{
   * is eligible for automatic execution until each other original source has
   * a separate delegated current-scope reader.
   */
+ private projectStatusPreview(q:SafeReportRequest,x:Awaited<ReturnType<ProjectsService["misStatus"]>>,sourceReadAt:string):ReportPreview{
+   return {kind:q.kind,view:q.view,label:"Project status",state:x.partial?"PARTIAL":x.rows.length?"READY":"EMPTY",columns:[{key:"code",label:"Project code"},{key:"title",label:"Project"},{key:"status",label:"Current status"},{key:"branch",label:"Current branch"},{key:"revision",label:"Revision"},{key:"plannedStart",label:"Planned start"},{key:"plannedEnd",label:"Planned end"}],rows:x.rows,nextOffset:null,sourceReadAt,sourceAsOf:x.sourceAsOf,sourceCutoffKind:"OWNER_TRANSACTION_SNAPSHOT",explanation:x.partial?"More than 50 projects match. Narrow the filters before export.":"Current source revision; dates filter planned start and end. No personal or location fields.",scopeLabel:"Current permitted project scope"};
+ }
+ async originalScheduledScope(root:string,account:string,request:SafeReportRequest){
+  if(request.kind==="PROJECT_STATUS_REPORT"){
+   const s=await this.branches.scheduledProjectScope(root,account);
+   if(request.branchRef&&!s.branchRefs.includes(request.branchRef))throw new ForbiddenException("Project branch unavailable");
+   return request.branchRef?{all:false,branchRefs:[request.branchRef]}:s;
+  }
+  if(request.kind!=="FINANCE_POSTED_SUMMARY")throw new ForbiddenException("Scheduled report source unavailable");
+  return this.originalScheduledFinanceScope(root,account,request);
+ }
+ async previewScheduledReport(root:string,account:string,raw:unknown,exporting=false):Promise<ReportPreview>{
+  const q=parseSafeReport(raw);
+  if(q.kind==="PROJECT_STATUS_REPORT"&&q.view==="TABLE"&&q.offset===0){
+   const x=await this.projects.scheduledMisStatus(root,account,q.branchRef,q.projectRef,q.fromDay,q.untilDay,exporting);
+   return this.projectStatusPreview(q,x,new Date().toISOString());
+  }
+  return this.previewScheduledFinance(root,account,q);
+ }
  async previewScheduledFinance(root:string,account:string,raw:unknown):
   Promise<ReportPreview>{
   const q=parseSafeReport(raw);
@@ -269,7 +346,7 @@ export class MisReportSourceService{
    explanation:x.explanation,
    scopeLabel:"Current authorized posted finance scope"};
  }
- async preview(token:string,raw:unknown):Promise<ReportPreview>{
+ async preview(token:string,raw:unknown,exporting=false):Promise<ReportPreview>{
   await this.sessions.requireAction(token,"mis.reports.view");
   const q=parseSafeReport(raw);
   const sourceReadAt=new Date().toISOString();
@@ -379,6 +456,99 @@ export class MisReportSourceService{
     rows:x.months,nextOffset:null,sourceReadAt,
     sourceCutoffKind:"OWNER_READ_COMPLETED_NOT_SNAPSHOT",
     explanation:x.explanation,scopeLabel:"Current permitted finance source scope"};
+  }
+  if(q.kind==="PROJECT_STATUS_REPORT"){
+   const x=await this.projects.misStatus(token,q.branchRef,q.projectRef,q.fromDay,q.untilDay,exporting);
+   return this.projectStatusPreview(q,x,sourceReadAt);
+  }
+  if(q.kind==="PROJECT_BUDGET_SUMMARY"){
+   const x=await this.projects.misBudget(token,q.projectRef!);
+   const columns=[{key:"revision",label:"Project revision",unit:"TEXT" as const},{key:"status",label:"Project status",unit:"TEXT" as const},{key:"linked",label:"Linked budgets",unit:"COUNT" as const},{key:"approved",label:"Approved budgets",unit:"COUNT" as const},{key:"ceilingMinor",label:"Approved ceiling",unit:"INR_MINOR" as const},{key:"allocatedMinor",label:"Net allocation",unit:"INR_MINOR" as const},{key:"committedOutstandingMinor",label:"Outstanding commitment",unit:"INR_MINOR" as const},{key:"utilizedMinor",label:"Verified posted utilization",unit:"INR_MINOR" as const}];
+   return {kind:q.kind,view:q.view,label:"Project budget and utilization",state:x.linked?"READY":"EMPTY",columns,rows:x.linked?[Object.fromEntries(columns.map(c=>[c.key,String(x[c.key as keyof typeof x])]))]:[],nextOffset:null,sourceReadAt,sourceAsOf:x.sourceAsOf,sourceCutoffKind:"OWNER_TRANSACTION_SNAPSHOT",explanation:"Original current-branch budget events; excludes reversed expenses, planning estimates and duplicate commitment consumption. Live preview only.",scopeLabel:"Selected authorized project and finance scope"};
+  }
+  if(q.kind==="MEMBERSHIP_ROSTER_SUMMARY"||q.kind==="VOLUNTEER_ROSTER_SUMMARY"){
+   const member=q.kind==="MEMBERSHIP_ROSTER_SUMMARY";
+   const x=member?await this.members.misCounts(token,q.branchRef,q.fromDay,q.untilDay):await this.volunteers.misCounts(token,q.branchRef,q.fromDay,q.untilDay);
+   const columns=[{key:"total",label:"Total",unit:"COUNT" as const},{key:"active",label:"Active",unit:"COUNT" as const},
+    {key:"suspended",label:"Suspended",unit:"COUNT" as const},...(member?
+    [{key:"expired",label:"Expired",unit:"COUNT" as const},{key:"cancelled",label:"Cancelled",unit:"COUNT" as const}]:
+    [{key:"inactive",label:"Inactive",unit:"COUNT" as const}])];
+   const counts=columns.map(c=>(x as unknown as Record<string,unknown>)[c.key]);
+   if(counts.some(v=>typeof v!=="number"||!Number.isSafeInteger(v)||Number(v)<0)||
+      counts.slice(1).reduce<number>((n,v)=>n+Number(v),0)!==x.total)throw Error("Roster aggregate unavailable");
+   const suppressed=counts.some(v=>Number(v)>0&&Number(v)<5);
+   return {kind:q.kind,view:q.view,label:member?"Membership status":"Volunteer status",
+    state:suppressed?"SUPPRESSED":x.total===0?"EMPTY":"READY",columns,
+    rows:suppressed||x.total===0?[]:[Object.fromEntries(columns.map((c,i)=>[c.key,String(counts[i])]))],
+    nextOffset:null,sourceReadAt:new Date().toISOString(),sourceAsOf:x.sourceAsOf,
+    sourceCutoffKind:"OWNER_TRANSACTION_SNAPSHOT",explanation:suppressed?"Small groups are hidden to protect privacy.":
+     "Current owner-scoped approved enrollment status counts only; dates filter original enrollment, not historical status. No contact, identity or address fields. Live preview only.",
+    scopeLabel:q.branchRef?"Selected authorized roster branch":"Current permitted roster scope"};
+  }
+  if(q.kind==="CSR_FUNDING_SUMMARY"){
+   const x=await this.csr.misSummary(token,{...(q.fromDay?{from:q.fromDay,to:q.untilDay}:{})});
+   const columns=[{key:"count",label:"Matching proposals",unit:"COUNT" as const},
+    {key:"committedMinor",label:"Approved commitments (not cash)",unit:"INR_MINOR" as const},
+    {key:"receivedMinor",label:"Verified receipts",unit:"INR_MINOR" as const},
+    {key:"allocatedMinor",label:"Net allocated funding",unit:"INR_MINOR" as const},
+    {key:"releasedMinor",label:"Released unused allocation",unit:"INR_MINOR" as const},
+    {key:"utilizedMinor",label:"Verified utilized funding",unit:"INR_MINOR" as const},
+    {key:"availableMinor",label:"Unallocated verified funding",unit:"INR_MINOR" as const}];
+   return {kind:q.kind,view:q.view,label:"CSR funding and utilization",state:x.state,columns,
+    rows:x.state==="READY"&&x.totals?[{count:String(x.count),...x.totals}]:[],
+    nextOffset:null,sourceReadAt:new Date().toISOString(),sourceAsOf:x.sourceAsOf,
+    sourceCutoffKind:"OWNER_TRANSACTION_SNAPSHOT",
+    explanation:x.explanation+(q.fromDay?" Dates filter proposal updates, not bank posting dates.":""),
+    scopeLabel:x.scope==="FOUNDATION"?"Current authorized Foundation CSR scope":"Current intersected CSR and finance branch scope"};
+  }
+  if(q.kind==="DONATION_RECEIPT_LEDGER"){
+   const x=await this.donations.misLedger(token,q.branchRef,q.fromDay,q.untilDay,q.campaignCode);
+   return {kind:q.kind,view:q.view,label:"Donations and tax receipt ledger",state:x.partial?"PARTIAL":x.rows.length?"READY":"EMPTY",columns:[{key:"number",label:"Donation number"},{key:"campaign",label:"Campaign"},{key:"branch",label:"Branch"},{key:"date",label:"Request date"},{key:"status",label:"Original status"},{key:"receipt",label:"Verified receipt status"},{key:"requestedMinor",label:"Requested",unit:"INR_MINOR"},{key:"receivedMinor",label:"Verified posted gross",unit:"INR_MINOR"},{key:"refundMinor",label:"Verified refunds",unit:"INR_MINOR"},{key:"netMinor",label:"Verified net",unit:"INR_MINOR"}],rows:x.rows,nextOffset:null,sourceReadAt,sourceAsOf:x.sourceAsOf,sourceCutoffKind:"OWNER_STATEMENT_SNAPSHOT",explanation:x.partial?"Narrow to 50 donations or reconcile the original financial/receipt source before using this report.":"Dates filter donation request creation; amounts are currently verified. No donor contact or identity fields. Live preview only.",scopeLabel:"Current permitted donation finance scope"};
+  }
+  if(q.kind==="DONATION_RECEIPT_SUMMARY"){
+   const x=await this.donations.misSummary(token,q.branchRef,q.fromDay,q.untilDay,q.campaignCode);
+   const columns=[{key:"total",label:"Donation records",unit:"COUNT" as const},{key:"received",label:"Verified posted donations",unit:"COUNT" as const},
+    {key:"pending",label:"Pending donations",unit:"COUNT" as const},{key:"failed",label:"Failed or expired",unit:"COUNT" as const},
+    {key:"receiptsIssued",label:"Issued receipts",unit:"COUNT" as const},{key:"receivedMinor",label:"Verified gross donations",unit:"INR_MINOR" as const},
+    {key:"verifiedRefundMinor",label:"Verified refunds",unit:"INR_MINOR" as const},{key:"netReceivedMinor",label:"Verified net donations",unit:"INR_MINOR" as const}];
+   return {kind:q.kind,view:q.view,label:"Donation and receipt reconciliation",
+    state:x.requiresReview?"PARTIAL":x.total===0?"EMPTY":"READY",columns,
+    rows:x.requiresReview||x.total===0?[]:[Object.fromEntries(columns.map(c=>[c.key,String(x[c.key as keyof typeof x])]))],
+    nextOffset:null,sourceReadAt:new Date().toISOString(),sourceAsOf:x.sourceAsOf.toISOString(),
+    sourceCutoffKind:"OWNER_STATEMENT_SNAPSHOT",
+    explanation:x.requiresReview?"Original donation or refund records require finance reconciliation. Totals withheld.":"Verified original CG07/CG09/CG19 totals; pending requests excluded from received amounts. Live preview only.",
+    scopeLabel:"Current permitted donation finance scope"};
+  }
+  if(q.kind==="PAYROLL_STATUS_SUMMARY"){
+   const x=await this.payroll.dashboard(token,q.payrollMonth??"",q.branchRef??"");
+   const columns=[{key:"period",label:"Payroll month",unit:"TEXT" as const},
+    {key:"runs",label:"Runs",unit:"COUNT" as const},{key:"approvedRuns",label:"Approved runs",unit:"COUNT" as const},
+    {key:"pendingApprovals",label:"Pending approvals",unit:"COUNT" as const},{key:"employees",label:"Approved payroll lines",unit:"COUNT" as const},
+    {key:"paidEmployees",label:"Verified paid lines",unit:"COUNT" as const},{key:"pendingEmployees",label:"Outstanding lines without unresolved or failed status",unit:"COUNT" as const},
+    {key:"unresolvedEmployees",label:"Unresolved lines",unit:"COUNT" as const},{key:"failedEmployees",label:"Verified failed lines",unit:"COUNT" as const}];
+   const row=x.selected;
+   if(row&&columns.slice(1).some(c=>typeof row[c.key as keyof typeof row]!=="number"||!Number.isSafeInteger(row[c.key as keyof typeof row])||Number(row[c.key as keyof typeof row])<0))throw Error("Payroll aggregate unavailable");
+   return {kind:q.kind,view:q.view,label:"Payroll status",state:row?"READY":"EMPTY",columns,
+    rows:row?[Object.fromEntries(columns.map(c=>[c.key,String(row[c.key as keyof typeof row])]))]:[],
+    nextOffset:null,sourceReadAt:new Date().toISOString(),sourceCutoffKind:"OWNER_READ_COMPLETED_NOT_SNAPSHOT",
+    explanation:"Selected month, original authorized payroll run and payment outcome counts. No salary or bank fields. Live preview only.",
+    scopeLabel:q.branchRef?"Selected authorized payroll branch scope":"All current permitted payroll scope"};
+  }
+  if(q.kind==="BENEFICIARY_ASSISTANCE_SUMMARY"){
+   const x=await this.beneficiaries.misSummary(token,q.branchRef,q.fromDay,q.untilDay);
+   return {kind:q.kind,view:q.view,label:"Beneficiary and assistance summary",
+    state:x.state,columns:[
+     {key:"total",label:"Consented beneficiaries",unit:"COUNT"},
+     {key:"male",label:"Male",unit:"COUNT"},{key:"female",label:"Female",unit:"COUNT"},
+     {key:"other",label:"Other or not specified",unit:"COUNT"},
+     {key:"children",label:"Children",unit:"COUNT"},
+     {key:"active",label:"Active",unit:"COUNT"},{key:"verified",label:"Verified",unit:"COUNT"},
+     {key:"recipients",label:"Recipients of delivered assistance",unit:"COUNT"}
+    ],rows:x.rows,nextOffset:null,sourceReadAt:new Date().toISOString(),sourceAsOf:x.sourceAsOf,
+    sourceCutoffKind:"OWNER_TRANSACTION_SNAPSHOT",
+    explanation:x.state==="SUPPRESSED"?"Small groups or complements are hidden to protect privacy.":
+     "Current authorized consented records and recipients of delivered assistance. Dates filter deliveries only, not demographic counts. Live preview only; no personal details or amounts.",
+    scopeLabel:q.branchRef?"Selected authorized beneficiary branch":"Current permitted beneficiary and assistance scope"};
   }
   if(q.kind==="DIAGNOSTICS_CATALOG_SUMMARY"){
    const x=await this.diagnostics.summary(token);

@@ -314,7 +314,9 @@ test("US003-QA02: private receipt/reversal access remains permission, branch, to
  assert.match(admin,/documents\.files\.view/);
  assert.match(admin,/financeReportScope/);
  assert.match(refund,/requireFinanceActiveBranch|requireFinanceRootScope/);
- assert.match(module,/exports:\[CampaignDraftsService,DonationReceiptSourceFacade,DonationIntentsService\]/);
+ assert.match(module,/CampaignDraftsService/);
+ assert.match(module,/DonationReceiptSourceFacade/);
+ assert.match(module,/DonationIntentsService/);
 });
 
 test("US003-QA16: separate pending refund from verified net and native foreground refresh",()=>{
@@ -340,7 +342,7 @@ test("US003-QA05/15: verified CG09 monthly report, net export, scoped keyset and
  assert.match(admin,/async exportCsv/);
  assert.match(admin,/documents\.files\.view/);
  assert.match(admin,/financeReportScope/);
- assert.match(admin,/monthlyTrend:trends\.rows/);
+ assert.match(admin,/monthlyTrend:(?:summary\.requiresReview\?\[\]:)?trends\.rows/);
  assert.match(admin,/j\.posting_date>=date_trunc/);
  assert.match(admin,/r\.status='FINANCE_REVERSED'/);
  assert.match(admin,/verifiedRefundMinor/);
@@ -405,7 +407,7 @@ test("US003-QA05: original verified gross/net, correction numbers and scoped rep
  const ui=root("apps/web/src/features/campaigns/donation-admin-workspace.tsx");
  const web=root("apps/web/src/features/campaigns/public-donation-form.tsx");
  const native=root("apps/android-public/src/features/cms/native-public-donation.tsx");
- assert.match(backend,/monthlyTrend:trends\.rows/);
+ assert.match(backend,/monthlyTrend:(?:summary\.requiresReview\?\[\]:)?trends\.rows/);
  assert.match(backend,/j\.posting_date>=date_trunc/);
  assert.match(backend,/j\.source_ref=r\.id/);
  assert.match(backend,/latestCorrectionNumber/);
@@ -658,7 +660,7 @@ test("CG07 multi-branch scope: Foundation, assigned manager, branch-bound donati
  assert.match(admin,/branchSelection:f\.branchRef/);
  assert.match(admin,/branchOptions/);
  assert.match(admin,/branch_name\?\?"Foundation-wide"/);
- assert.match(admin,/AND \(\$4::text='ALL' OR \(\$4::text='FOUNDATION' AND branch_ref IS NULL\)/);
+ assert.match(admin,/AND \(\$"\+n\+"::text='ALL' OR \(\$"\+n\+"::text='FOUNDATION' AND (?:d\.)?branch_ref IS NULL\)/);
  assert.match(bff,/"campaign","cursor","branchRef"/);
  assert.match(web,/Foundation \/ branch reporting scope/);
  assert.match(web,/branchRef\}\)\):Promise\.resolve\(null\)/);

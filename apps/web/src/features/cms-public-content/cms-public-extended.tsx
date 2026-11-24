@@ -33,7 +33,8 @@ export function CmsImpactGroup({section,assets,navigation}:{
    {group==="HERO"&&!!text(f.quote)&&
     <blockquote className="cg-site-impact-quote">{text(f.quote)}</blockquote>}
    {text(f.intro)&&<p>{text(f.intro)}</p>}
-   {label(f.source,f.asOfDate)}
+   {rows.length>0&&label(f.source,f.asOfDate)}
+   {!rows.length&&!["HERO","CTA"].includes(group)&&!text(f.intro)&&<p role="status">No approved information has been published yet.</p>}
   </div>
   {photo(pic,"cg-site-impact-photo")}
   {tabular&&rows.length>0?<div className="cg-site-table-wrap">
@@ -99,7 +100,7 @@ export function CmsCompliance({section,assets}:{
    {([["Issuing authority",f.issuer],["PAN",f.pan],["Registration",f.registrationNumber],
     ["Approval reference",f.approvalNumber],["Valid from",f.validFrom],
     ["Valid until",f.validUntil],["Source",f.source],
-    ["Reviewed on",f.verifiedAsOf]] as [string,unknown][])
+    ["Reviewed on",text(f.source)?f.verifiedAsOf:""]] as [string,unknown][])
     .filter(([,v])=>!!text(v)).map(([key,value])=><div key={key}>
      <dt>{key}</dt><dd>{text(value)}</dd></div>)}
   </dl>

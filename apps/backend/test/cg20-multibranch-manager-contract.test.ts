@@ -65,7 +65,7 @@ test("CG-MB-009 saved/export and due-worker A+B scope use original CG09 and rech
  assert.match(source,/this\.finance\.assignedMisSummary\(token,q\.yearRef\)/);
  assert.match(source,/this\.finance\.assignedMisMonthlyTrend\(token,q\.yearRef\)/);
  assert.match(source,/this\.finance\.scheduledSummary\(root,account,q\.yearRef,q\.branchRef\)/);
- assert.match(schedule,/this\.sources\.preview\(token,saved\.request\)/);
+ assert.match(schedule,/this\.sources\.preview\(token,(?:saved\.request|q)\)/);
  // No second shadow finance/posting source is added to MIS.
  assert.doesNotMatch(source,/FROM journal_line/);
 });

@@ -73,13 +73,33 @@ const where=String.raw`
  AND ($7='ALL' OR m.method=$7)
  AND ($8::bigint IS NULL OR d.amount_minor>=$8::bigint)
  AND ($9::bigint IS NULL OR d.amount_minor<=$9::bigint)
- AND ($10::date IS NULL OR d.created_at>=$10::date)
- AND ($11::date IS NULL OR d.created_at<($11::date+interval '1 day'))
+ AND ($10::date IS NULL OR d.created_at>=($10::date::timestamp AT TIME ZONE 'Asia/Kolkata'))
+ AND ($11::date IS NULL OR d.created_at<(($11::date+1)::timestamp AT TIME ZONE 'Asia/Kolkata'))
  AND ($12='ALL' OR lower(c.code_norm)=$12)
 `;
 // The branch selector can only narrow the current CG02 actor permission.
 const branchSql=(n:number)=>" AND ($"+n+"::text='ALL' OR ($"+n+"::text='FOUNDATION' AND d.branch_ref IS NULL) OR d.branch_ref=$"+(n+1)+"::uuid)";
 const selected=(v:string)=>v==="ALL"||v==="FOUNDATION"?null:v;
+// Fixed, code-owned aliases only. Original CG07/CG09 immutable posted evidence.
+const postedProof=(d:string)=>`EXISTS(SELECT 1 FROM donation_finance_effect pe JOIN journal pj ON pj.root_realm_id=pe.root_realm_id AND pj.id=pe.journal_id
+ WHERE pe.root_realm_id=${d}.root_realm_id AND pe.donation_id=${d}.id AND pe.status='POSTED' AND pj.status='POSTED'
+ AND pj.source_ref=${d}.id AND pj.immutable_source_event_key=pe.source_event_key AND pj.immutable_payload_digest=pe.immutable_digest)`;
+const receiptProof=(d:string,r:string)=>`(${r}.status='ISSUED' AND EXISTS(SELECT 1 FROM donation_finance_effect pe JOIN journal pj ON pj.root_realm_id=pe.root_realm_id AND pj.id=pe.journal_id
+ WHERE pe.root_realm_id=${d}.root_realm_id AND pe.donation_id=${d}.id AND pe.status='POSTED' AND pj.status='POSTED'
+ AND ${r}.source_digest=pe.immutable_digest AND pj.source_ref=${d}.id AND pj.immutable_source_event_key=pe.source_event_key AND pj.immutable_payload_digest=pe.immutable_digest))`;
+const refundProof=(d:string,r:string,j:string)=>`(${d}.source_status='RECEIVED_POSTED' AND ${postedProof(d)} AND ${j}.status='POSTED' AND ${j}.source_ref=${r}.id AND ${j}.posting_kind='GENERAL'
+ AND ${j}.immutable_source_event_key=${r}.approval_request_key AND ${j}.financial_year_id=${r}.financial_year_ref AND ${j}.posting_date=${r}.posting_date
+ AND ${j}.created_by=${r}.approved_by
+ AND EXISTS(SELECT 1 FROM journal_line ln WHERE ln.root_realm_id=${j}.root_realm_id AND ln.journal_id=${j}.id AND ln.account_id=${r}.income_account_ref AND ln.debit_minor=${r}.amount_minor AND ln.credit_minor=0)
+ AND EXISTS(SELECT 1 FROM journal_line ln WHERE ln.root_realm_id=${j}.root_realm_id AND ln.journal_id=${j}.id AND ln.account_id=${r}.cash_account_ref AND ln.credit_minor=${r}.amount_minor AND ln.debit_minor=0)
+ AND (SELECT count(*) FROM journal_line ln WHERE ln.root_realm_id=${j}.root_realm_id AND ln.journal_id=${j}.id)=2)`;
+const refundAmount=(d:string)=>`coalesce((SELECT sum(rr.amount_minor) FROM donation_refund_request rr JOIN journal rj ON rj.root_realm_id=rr.root_realm_id AND rj.id=rr.reversal_journal_ref
+ WHERE rr.root_realm_id=${d}.root_realm_id AND rr.donation_id=${d}.id AND rr.status='FINANCE_REVERSED' AND ${refundProof(d,"rr","rj")}),0)`;
+const invalidRefund=(d:string)=>`EXISTS(SELECT 1 FROM donation_refund_request rr LEFT JOIN journal rj ON rj.root_realm_id=rr.root_realm_id AND rj.id=rr.reversal_journal_ref
+ WHERE rr.root_realm_id=${d}.root_realm_id AND rr.donation_id=${d}.id AND rr.status='FINANCE_REVERSED' AND ${refundProof(d,"rr","rj")} IS DISTINCT FROM true)`;
+const ownerCohort=` AND ($6::date IS NULL OR d.created_at>=($6::date::timestamp AT TIME ZONE 'Asia/Kolkata'))
+ AND ($7::date IS NULL OR d.created_at<(($7::date+1)::timestamp AT TIME ZONE 'Asia/Kolkata'))
+ AND ($8::text='ALL' OR lower(c.code_norm)=$8)`;
 const csvCell=(raw:unknown)=>{
  const clean=String(raw??"").slice(0,256).replace(/[\u0000-\u001f\u007f]/g," ");
  const safe=/^[=+\-@]/.test(clean.trimStart())?"'"+clean:clean;
@@ -112,6 +132,93 @@ export class DonationAdminService{
       !latest.branchRefs.includes(ref)))
    throw new ForbiddenException("Your current branch reporting access changed. Refresh this report.");
  }
+ /** Current reconciled owner totals, one SQL statement, no donor identity. */
+ private async verifiedSummary(root:string,scope:{all:boolean;branchRefs:string[]},branchRef:string,from:string|null=null,to:string|null=null,campaign="ALL"){
+  const result=await this.db.query<{total:number;received:number;pending:number;failed:number;unverified:number;
+   receiptsIssued:number;receivedMinor:string;verifiedRefundMinor:string;verifiedRefundCount:number;invalidRefunds:number;invalidReceipts:number;sourceAsOf:Date}>(`
+   WITH scoped AS (
+    SELECT d.id,d.root_realm_id,d.source_status,d.amount_minor,d.currency FROM donation d
+    LEFT JOIN campaign c ON c.root_realm_id=d.root_realm_id AND c.id=d.campaign_id
+    WHERE d.root_realm_id=$1 AND ($2::boolean OR d.branch_ref=ANY($3::uuid[]))
+     AND ($4::text='ALL' OR ($4::text='FOUNDATION' AND d.branch_ref IS NULL) OR d.branch_ref=$5::uuid)
+    ${ownerCohort}
+   ), verified AS (
+    SELECT s.*,EXISTS(SELECT 1 FROM donation_finance_effect e JOIN journal j
+     ON j.root_realm_id=e.root_realm_id AND j.id=e.journal_id
+     WHERE e.root_realm_id=s.root_realm_id AND e.donation_id=s.id AND e.status='POSTED'
+      AND j.status='POSTED' AND j.source_ref=s.id AND j.immutable_source_event_key=e.source_event_key
+      AND j.immutable_payload_digest=e.immutable_digest) AS posted
+    FROM scoped s
+   ), receipts AS (
+    SELECT v.id FROM verified v WHERE v.source_status='RECEIVED_POSTED' AND v.posted
+      AND EXISTS(SELECT 1 FROM cg19_donation_receipt_document rec JOIN donation_finance_effect e
+       ON e.root_realm_id=rec.root_realm_id AND e.donation_id=rec.donation_id
+       JOIN journal j ON j.root_realm_id=e.root_realm_id AND j.id=e.journal_id
+       WHERE rec.root_realm_id=v.root_realm_id AND rec.donation_id=v.id AND rec.status='ISSUED'
+        AND rec.source_digest=e.immutable_digest AND e.status='POSTED'
+        AND j.status='POSTED' AND j.source_ref=v.id AND j.immutable_source_event_key=e.source_event_key
+        AND j.immutable_payload_digest=e.immutable_digest)
+   ), refunds AS (
+    SELECT r.id,r.amount_minor,r.donation_id,coalesce(${refundProof('v','r','j')},false) AS valid
+    FROM donation_refund_request r JOIN verified v ON v.root_realm_id=r.root_realm_id AND v.id=r.donation_id
+    LEFT JOIN journal j ON j.root_realm_id=r.root_realm_id AND j.id=r.reversal_journal_ref
+    WHERE r.status='FINANCE_REVERSED'
+   )
+   SELECT count(*)::int total,
+    count(*) FILTER(WHERE source_status='RECEIVED_POSTED' AND posted)::int received,
+    count(*) FILTER(WHERE source_status IN('REQUESTED','LINK_READY','PAYMENT_PENDING','VERIFIED_EXTERNAL','RECONCILIATION_PENDING'))::int pending,
+    count(*) FILTER(WHERE source_status IN('FAILED','EXPIRED'))::int failed,
+    count(*) FILTER(WHERE source_status='RECEIVED_POSTED' AND NOT posted OR posted AND source_status<>'RECEIVED_POSTED' OR currency<>'INR')::int unverified,
+    (SELECT count(*)::int FROM receipts) AS "receiptsIssued",
+    coalesce(sum(amount_minor) FILTER(WHERE source_status='RECEIVED_POSTED' AND posted AND currency='INR'),0)::text AS "receivedMinor",
+    (SELECT coalesce(sum(amount_minor) FILTER(WHERE valid),0)::text FROM refunds) AS "verifiedRefundMinor",
+    (SELECT count(*) FILTER(WHERE valid)::int FROM refunds) AS "verifiedRefundCount",
+    (SELECT count(*) FILTER(WHERE NOT valid)::int FROM refunds)+(SELECT count(*)::int FROM (SELECT r.donation_id FROM refunds r JOIN verified v ON v.id=r.donation_id WHERE r.valid GROUP BY r.donation_id,v.amount_minor HAVING sum(r.amount_minor)>v.amount_minor) invalid) AS "invalidRefunds",
+    (SELECT count(*)::int FROM verified v JOIN cg19_donation_receipt_document rec ON rec.root_realm_id=v.root_realm_id AND rec.donation_id=v.id WHERE rec.status='ISSUED' AND (v.source_status<>'RECEIVED_POSTED' OR NOT ${receiptProof("v","rec")})) AS "invalidReceipts",
+    statement_timestamp() AS "sourceAsOf"
+   FROM verified`,[root,scope.all,scope.branchRefs,branchRef,selected(branchRef),from,to,campaign]);
+  const x=result.rows[0];
+  if(!x)throw Error("Donation summary unavailable");
+  const gross=BigInt(x.receivedMinor),refund=BigInt(x.verifiedRefundMinor);
+  const requiresReview=x.unverified>0||x.invalidRefunds>0||x.invalidReceipts>0||refund>gross||
+    x.received+x.pending+x.failed!==x.total;
+  return {...x,netReceivedMinor:(gross-refund).toString(),requiresReview};
+ }
+ async misOptions(bearer:string){
+  const actor=await this.sessions.requireAction(bearer,"finance.reports.view");
+  const {scope,active}=await this.reportScope(bearer,"ALL");
+  const campaigns=await this.db.query<{ref:string;name:string}>("SELECT DISTINCT lower(c.code_norm) AS ref,c.title AS name FROM donation d JOIN campaign c ON c.root_realm_id=d.root_realm_id AND c.id=d.campaign_id WHERE d.root_realm_id=$1 AND ($2::boolean OR d.branch_ref=ANY($3::uuid[])) ORDER BY name,ref LIMIT 101",[actor.realmId,scope.all,scope.branchRefs]);
+  await this.ensureReportScopeStillCurrent(bearer,"ALL",scope);
+  return {branches:[...(scope.all?[{ref:"FOUNDATION",name:"Foundation-wide only"}]:[]),...active.map(x=>({ref:x.branchRef,name:x.name}))],campaigns:campaigns.rows.slice(0,100),complete:campaigns.rows.length<=100};
+ }
+ async misSummary(bearer:string,branchRef?:string,fromDay?:string,untilDay?:string,campaignCode?:string){
+  const actor=await this.sessions.requireAction(bearer,"finance.reports.view");
+  const f=filters({branchRef:branchRef??"ALL",dateFrom:fromDay,dateTo:untilDay,campaign:campaignCode??"ALL"});
+  const {scope}=await this.reportScope(bearer,f.branchRef);
+  const x=await this.verifiedSummary(actor.realmId,scope,f.branchRef,f.from,f.to,f.campaign);
+  await this.ensureReportScopeStillCurrent(bearer,f.branchRef,scope);
+  return x;
+ }
+ async misLedger(bearer:string,branchRef?:string,fromDay?:string,untilDay?:string,campaignCode?:string){
+  const actor=await this.sessions.requireAction(bearer,"finance.reports.view");
+  const f=filters({branchRef:branchRef??"ALL",dateFrom:fromDay,dateTo:untilDay,campaign:campaignCode??"ALL"});
+  const {scope}=await this.reportScope(bearer,f.branchRef);
+  const result=await this.db.query<{number:string;campaign:string;branch:string;date:string;status:string;currency:string;requestedMinor:string;posted:boolean;receiptIssued:boolean;receiptExists:boolean;refundMinor:string;invalidRefund:boolean}>(`
+   SELECT d.donation_number AS number,coalesce(c.title,'General donation') AS campaign,coalesce(b.name,'Foundation-wide') AS branch,
+    (d.created_at AT TIME ZONE 'Asia/Kolkata')::date::text AS date,d.source_status AS status,d.currency,d.amount_minor::text AS "requestedMinor",
+    ${postedProof("d")} AS posted,coalesce(${receiptProof("d","rec")},false) AS "receiptIssued",coalesce(rec.status='ISSUED',false) AS "receiptExists",
+    ${refundAmount("d")}::text AS "refundMinor",${invalidRefund("d")} AS "invalidRefund"
+   FROM donation d LEFT JOIN campaign c ON c.root_realm_id=d.root_realm_id AND c.id=d.campaign_id
+   LEFT JOIN branch b ON b.root_realm_id=d.root_realm_id AND b.id=d.branch_ref
+   LEFT JOIN cg19_donation_receipt_document rec ON rec.root_realm_id=d.root_realm_id AND rec.donation_id=d.id
+   WHERE d.root_realm_id=$1 AND ($2::boolean OR d.branch_ref=ANY($3::uuid[]))
+   AND ($4::text='ALL' OR ($4::text='FOUNDATION' AND d.branch_ref IS NULL) OR d.branch_ref=$5::uuid)
+   ${ownerCohort} ORDER BY d.created_at DESC,d.id DESC LIMIT 51`,
+   [actor.realmId,scope.all,scope.branchRefs,f.branchRef,selected(f.branchRef),f.from,f.to,f.campaign]);
+  const partial=result.rows.length>50||result.rows.some(r=>r.currency!=="INR"||r.posted!==(r.status==="RECEIVED_POSTED")||r.receiptExists&&!r.receiptIssued||r.receiptIssued&&!r.posted||r.invalidRefund||BigInt(r.refundMinor)>BigInt(r.requestedMinor));
+  await this.ensureReportScopeStillCurrent(bearer,f.branchRef,scope);
+  return {partial,sourceAsOf:new Date().toISOString(),rows:partial?[]:result.rows.map(r=>({number:r.number,campaign:r.campaign,branch:r.branch,date:r.date,status:r.status,receipt:r.receiptIssued?"ISSUED":"NOT_ISSUED",requestedMinor:r.requestedMinor,receivedMinor:r.posted?r.requestedMinor:"0",refundMinor:r.refundMinor,netMinor:r.posted?(BigInt(r.requestedMinor)-BigInt(r.refundMinor)).toString():"0"}))};
+ }
  async list(bearer:string,input:Record<string,unknown>){
   const actor=await this.sessions.requireAction(bearer,"finance.reports.view");
   const f=filters(input);
@@ -121,17 +228,11 @@ export class DonationAdminService{
   const rows=await this.db.query<{
    donationNumber:string;amountMinor:string;currency:string;status:string;
    method:string|null;campaignTitle:string|null;branchName:string|null;voucher:string|null;createdAt:Date;
-   donationRef:string;refundMinor:string;receiptStatus:string;latestCorrectionNumber:string|null}>(
+   donationRef:string;refundMinor:string;receiptStatus:string;latestCorrectionNumber:string|null;posted:boolean;invalidRefund:boolean}>(
     "SELECT d.id AS \"donationRef\",d.donation_number AS \"donationNumber\",d.amount_minor::text AS \"amountMinor\","+
     "d.currency,d.source_status AS status,m.method,c.title AS \"campaignTitle\","+
     "b.name AS \"branchName\",e.voucher_reference AS voucher,d.created_at AS \"createdAt\","+
-    "coalesce((SELECT sum(r.amount_minor) FROM donation_refund_request r "+
-    "JOIN journal j ON j.root_realm_id=r.root_realm_id AND j.id=r.reversal_journal_ref "+
-    "WHERE r.root_realm_id=d.root_realm_id AND r.donation_id=d.id "+
-    "AND r.status='FINANCE_REVERSED' AND j.status='POSTED' AND j.source_ref=r.id),0)::text "+
-    "AS \"refundMinor\",coalesce((SELECT rec.status FROM cg19_donation_receipt_document rec "+
-    "WHERE rec.root_realm_id=d.root_realm_id AND rec.donation_id=d.id),'NOT_ISSUED') "+
-    "AS \"receiptStatus\","+
+    `${postedProof("d")} AS posted,${refundAmount("d")}::text AS "refundMinor",${invalidRefund("d")} AS "invalidRefund",coalesce((SELECT CASE WHEN rec.status='ISSUED' AND NOT ${receiptProof("d","rec")} THEN 'RECONCILIATION_REQUIRED' ELSE rec.status END FROM cg19_donation_receipt_document rec WHERE rec.root_realm_id=d.root_realm_id AND rec.donation_id=d.id),'NOT_ISSUED') AS "receiptStatus",`+
     "(SELECT corr.correction_number FROM cg19_donation_receipt_correction corr "+
     "WHERE corr.root_realm_id=d.root_realm_id AND corr.donation_id=d.id "+
     "AND corr.status='ISSUED' ORDER BY corr.issued_at DESC,corr.id DESC LIMIT 1) "+
@@ -141,24 +242,7 @@ export class DonationAdminService{
     "LEFT JOIN donation_manual_evidence e ON e.root_realm_id=d.root_realm_id AND e.donation_id=d.id "+
     "LEFT JOIN LATERAL (SELECT a.method FROM donation_payment_attempt a WHERE a.root_realm_id=d.root_realm_id AND a.donation_id=d.id ORDER BY a.created_at DESC,a.id DESC LIMIT 1) m ON true "+
     where+branchSql(15)+" AND ($13::timestamptz IS NULL OR (d.created_at,d.id)<($13::timestamptz,$14::uuid)) ORDER BY d.created_at DESC,d.id DESC LIMIT 26 OFFSET $6",args);
-  const summary=await this.db.query<{total:number;received:number;pending:number;failed:number;
-   receivedMinor:string}>(
-    "SELECT count(*)::int AS total,count(*) FILTER(WHERE source_status='RECEIVED_POSTED')::int AS received,"+
-    "count(*) FILTER(WHERE source_status IN('REQUESTED','LINK_READY','PAYMENT_PENDING','VERIFIED_EXTERNAL','RECONCILIATION_PENDING'))::int AS pending,"+
-    "count(*) FILTER(WHERE source_status IN('FAILED','EXPIRED'))::int AS failed,"+
-    "coalesce(sum(amount_minor) FILTER(WHERE source_status='RECEIVED_POSTED'),0)::text AS \"receivedMinor\" "+
-    "FROM donation WHERE root_realm_id=$1 AND ($2::boolean OR branch_ref=ANY($3::uuid[])) "+
-    "AND ($4::text='ALL' OR ($4::text='FOUNDATION' AND branch_ref IS NULL) OR branch_ref=$5::uuid)",
-    [actor.realmId,scope.all,scope.branchRefs,f.branchRef,selected(f.branchRef)]);
-  const verifiedRefunds=await this.db.query<{minor:string;total:number}>(
-    "SELECT coalesce(sum(r.amount_minor),0)::text AS minor,count(*)::int AS total "+
-    "FROM donation_refund_request r "+
-    "JOIN donation d ON d.root_realm_id=r.root_realm_id AND d.id=r.donation_id "+
-    "JOIN journal j ON j.root_realm_id=r.root_realm_id AND j.id=r.reversal_journal_ref "+
-    "WHERE r.root_realm_id=$1 AND ($2::boolean OR d.branch_ref=ANY($3::uuid[])) "+
-    "AND ($4::text='ALL' OR ($4::text='FOUNDATION' AND d.branch_ref IS NULL) OR d.branch_ref=$5::uuid) "+
-    "AND r.status='FINANCE_REVERSED' AND j.status='POSTED' AND j.source_ref=r.id",
-    [actor.realmId,scope.all,scope.branchRefs,f.branchRef,selected(f.branchRef)]);
+  const summary=await this.verifiedSummary(actor.realmId,scope,f.branchRef);
    const trends=await this.db.query<{month:string;grossMinor:string;refundMinor:string;netMinor:string}>(`
     WITH entries AS (
      SELECT j.posting_date AS day,d.amount_minor::numeric AS gross,0::numeric AS refund
@@ -178,7 +262,7 @@ export class DonationAdminService{
      JOIN journal j ON j.root_realm_id=r.root_realm_id AND j.id=r.reversal_journal_ref
      WHERE r.root_realm_id=$1 AND ($2::boolean OR d.branch_ref=ANY($3::uuid[]))
       AND ($4::text='ALL' OR ($4::text='FOUNDATION' AND d.branch_ref IS NULL) OR d.branch_ref=$5::uuid)
-      AND r.status='FINANCE_REVERSED' AND j.status='POSTED' AND j.source_ref=r.id
+      AND r.status='FINANCE_REVERSED' AND ${refundProof('d','r','j')}
       AND j.posting_date>=date_trunc('month',current_date)-interval '11 months'
     )
     SELECT to_char(date_trunc('month',day),'YYYY-MM') AS month,
@@ -186,20 +270,16 @@ export class DonationAdminService{
      (sum(gross)-sum(refund))::text AS "netMinor"
     FROM entries GROUP BY date_trunc('month',day) ORDER BY month ASC`,
     [actor.realmId,scope.all,scope.branchRefs,f.branchRef,selected(f.branchRef)]);
-   const refunded=BigInt(verifiedRefunds.rows[0]?.minor??"0");
-   const gross=BigInt(summary.rows[0]?.receivedMinor??"0");
    await this.ensureReportScopeStillCurrent(bearer,f.branchRef,scope);
    const last=rows.rows.slice(0,25).at(-1);
    const nextCursor=rows.rows.length>25&&last?
     Buffer.from(JSON.stringify({t:last.createdAt.toISOString(),id:last.donationRef})).toString("base64url"):null;
-   return {items:rows.rows.slice(0,25),hasMore:rows.rows.length>25,offset:f.offset,nextCursor,
+   return {items:rows.rows.slice(0,25).map(r=>{const invalid=r.currency!=="INR"||r.posted!==(r.status==="RECEIVED_POSTED")||r.invalidRefund||BigInt(r.refundMinor)>BigInt(r.amountMinor);return {...r,status:invalid?"RECONCILIATION_PENDING":r.status,refundMinor:invalid?"0":r.refundMinor,receiptStatus:invalid?"RECONCILIATION_REQUIRED":r.receiptStatus,latestCorrectionNumber:invalid?null:r.latestCorrectionNumber};}),hasMore:rows.rows.length>25,offset:f.offset,nextCursor,
    branchSelection:f.branchRef,branchOptions:[
       {value:"ALL",label:scope.all?"Foundation and all branches":"All permitted branches"},
       ...(scope.all?[{value:"FOUNDATION",label:"Foundation-wide only"}]:[]),
       ...active.map(x=>({value:x.branchRef,label:x.name}))],
-    summary:{...summary.rows[0],verifiedRefundMinor:refunded.toString(),
-     verifiedRefundCount:verifiedRefunds.rows[0]?.total??0,
-     netReceivedMinor:(gross-refunded).toString()},monthlyTrend:trends.rows,message:"Only original CG09-confirmed posted receipts count as received. Pending requests are excluded."};
+    summary:summary.requiresReview?{...summary,received:null,receivedMinor:null,verifiedRefundMinor:null,netReceivedMinor:null,verifiedRefundCount:null,receiptsIssued:null}:summary,monthlyTrend:summary.requiresReview?[]:trends.rows,message:summary.requiresReview?"Some original donations or refunds require finance reconciliation. Verified totals and trend withheld.":"Totals and monthly posting trend cover the selected branch scope. List and CSV filters narrow request records; only original CG09-confirmed money counts as received."};
  }
  /** Role-checked, branch-scoped, bounded original report export.
   * No unmasked donor identity, PAN, bank credentials or technical UUIDs. */
@@ -212,13 +292,11 @@ export class DonationAdminService{
    f.minMinor,f.maxMinor,f.from,f.to,f.campaign,f.branchRef,selected(f.branchRef)];
   const records=await this.db.query<{donation_number:string;amount_minor:string;
     currency:string;source_status:string;method:string|null;title:string|null;branch_name:string|null;
-    receipt_number:string|null;correction_number:string|null;created_on:string;refund_minor:string}>(`
+    receipt_number:string|null;correction_number:string|null;created_on:string;refund_minor:string;posted:boolean;invalid_refund:boolean;receipt_invalid:boolean}>(`
     SELECT d.donation_number,d.amount_minor::text,d.currency,d.source_status,m.method,
-     c.title,b.name AS branch_name,r.receipt_number,d.created_at::date::text AS created_on,
-      coalesce((SELECT sum(x.amount_minor) FROM donation_refund_request x
-       JOIN journal j ON j.root_realm_id=x.root_realm_id AND j.id=x.reversal_journal_ref
-       WHERE x.root_realm_id=d.root_realm_id AND x.donation_id=d.id
-        AND x.status='FINANCE_REVERSED' AND j.status='POSTED' AND j.source_ref=x.id),0)::text AS refund_minor,
+     c.title,b.name AS branch_name,CASE WHEN ${receiptProof("d","r")} THEN r.receipt_number ELSE NULL END AS receipt_number,(d.created_at AT TIME ZONE 'Asia/Kolkata')::date::text AS created_on,
+     ${postedProof("d")} AS posted,${refundAmount("d")}::text AS refund_minor,${invalidRefund("d")} AS invalid_refund,
+     (r.status='ISSUED' AND NOT ${receiptProof("d","r")}) IS TRUE AS receipt_invalid,
     (SELECT corr.correction_number FROM cg19_donation_receipt_correction corr
      WHERE corr.root_realm_id=d.root_realm_id AND corr.donation_id=d.id AND corr.status='ISSUED'
      ORDER BY corr.issued_at DESC,corr.id DESC LIMIT 1) AS correction_number
@@ -236,7 +314,8 @@ export class DonationAdminService{
    "Verified refund INR","Verified net INR","Status","Method","Date","Original receipt","Latest correction"].map(csvCell).join(",")];
   for(const r of records.rows){
    const money=(v:bigint)=>(v/100n).toString()+"."+(v%100n).toString().padStart(2,"0");
-   const requested=BigInt(r.amount_minor),posted=r.source_status==="RECEIVED_POSTED";
+   const requested=BigInt(r.amount_minor),posted=r.posted;
+   if(r.currency!=="INR"||posted!==(r.source_status==="RECEIVED_POSTED")||r.invalid_refund||r.receipt_invalid||BigInt(r.refund_minor)>requested)throw new BadRequestException("Donation or receipt source requires finance reconciliation before export.");
    const gross=posted?requested:0n,refunded=posted?BigInt(r.refund_minor):0n;
    lines.push([r.donation_number,r.branch_name??"Foundation-wide",r.title??"General donation",money(requested),
     money(gross),money(refunded),money(gross-refunded),

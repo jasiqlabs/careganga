@@ -12,8 +12,12 @@ export async function HealthcarePublicChrome({children}:{children:ReactNode}){
  const footer=home.state==="PUBLISHED"?
   home.page.sections.find(section=>section.kind==="SITE_FOOTER")?.fields:null;
  return <div className="cg-site cg-health-public-chrome">
-  <CmsSiteHeader navigation={navigation}/>
+  <CmsSiteHeader navigation={navigation} contact={{
+   address:typeof footer?.address==="string"?footer.address:undefined,
+   phone:typeof footer?.phone==="string"?footer.phone:undefined,
+   email:typeof footer?.email==="string"?footer.email:undefined
+  }}/>
   {children}
-  {footer&&<SiteFooter data={footer} navigation={navigation}/>}
+  <SiteFooter data={footer??{}} navigation={navigation}/>
  </div>;
 }

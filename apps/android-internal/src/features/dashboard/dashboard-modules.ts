@@ -93,6 +93,7 @@ export interface ModuleActionHandlers {
   openFinance: () => void;
   openBranches: () => void;
   openHr: () => void;
+  openPayroll: () => void;
   openProjects: () => void;
   openBeneficiaries: () => void;
   openCampaigns: () => void;
@@ -253,6 +254,7 @@ export function getAuthorizedModules(
     onOpen:handlers.openHr
   });
 
+  list.push({key:"payroll",title:"My Pay",shortLabel:"Pay",description:"View your approved salary and permitted payroll reviews.",category:"DASHBOARD",iconName:"user",iconBg:"#E0F2FE",iconColor:"#0369A1",onOpen:handlers.openPayroll});
   // CG-10 — real employee drafts, not CG-01 login provisioning or CG-11 payroll.
   if (roleActions.includes("hr.applications.view")||roleActions.includes("hr.employees.view")) {
     list.push({

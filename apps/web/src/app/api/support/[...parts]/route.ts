@@ -33,6 +33,7 @@ function permitted(parts:string[],method:Method){
     parts[2]==="cases"&&UUID.test(parts[3])&&parts[4]==="reply"&&
     method==="POST")return "STAFF";
   if(parts.join("/")==="public/contact"&&method==="POST")return "PUBLIC";
+  if(parts.length===3&&parts[0]==="public"&&parts[1]==="newsletter"&&["start","confirm","withdraw"].includes(parts[2])&&method==="POST")return "PUBLIC";
   if(parts.join("/")==="receipt/status"&&method==="POST")return "PUBLIC";
   if(parts.join("/")==="public/faqs"&&method==="GET")return "PUBLIC";
   if(parts.length===1&&parts[0]==="agents"&&method==="GET")return "STAFF";
@@ -84,7 +85,7 @@ async function handler(request:NextRequest,ctx:Ctx,method:Method){
   }
   let proxyHeaders:Record<string,string>={};
   if(access==="PUBLIC"&&method==="POST"&&
-    (parts.join("/")==="public/contact"||parts.join("/")==="receipt/status")){
+    (parts.join("/")==="public/contact"||parts.join("/")==="receipt/status"||parts[1]==="newsletter")){
     const secret=Buffer.from(process.env.CG19_GUEST_PROXY_KEY??"","base64");
     const trustedHeader=process.env.CG19_TRUSTED_CLIENT_IP_HEADER;
     if(process.env.NODE_ENV==="production"&&secret.length!==32)
@@ -98,7 +99,7 @@ async function handler(request:NextRequest,ctx:Ctx,method:Method){
       if(!client||!/^[0-9a-fA-F:.]{3,45}$/.test(client))
         return fail(503,"Trusted client address is unavailable.");
       const timestamp=String(Date.now());
-      const route=parts.join("/")==="public/contact"?"contact":"status";
+      const route=parts.join("/")==="public/contact"?"contact":parts[1]==="newsletter"?"newsletter-"+parts[2]:"status";
       const proof=createHmac("sha256",secret)
         .update(route+":"+timestamp+":"+client).digest("hex");
       proxyHeaders={"x-cg19-proxy-client":client,
@@ -109,7 +110,7 @@ async function handler(request:NextRequest,ctx:Ctx,method:Method){
     const url=new URL("/api/support/"+parts.join("/"),backend);
     if(method==="GET"&&access==="STAFF")url.search=request.nextUrl.search;
     const result=await fetch(url,{method,body,cache:"no-store",
-      signal:AbortSignal.timeout(12000),
+      signal:AbortSignal.timeout(parts[1]==="newsletter"?20000:12000),
       headers:{...proxyHeaders,...(token?{Authorization:"Bearer "+token}:{}),
         ...(body?{"Content-Type":"application/json"}:{})}
     });

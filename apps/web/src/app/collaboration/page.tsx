@@ -43,15 +43,17 @@ export default async function Partnerships(){
  const final=approved.find(s=>s.kind==="CTA")?.fields;
  const copy=(value:unknown,fallback:string,max=700)=>
   typeof value==="string"&&value.trim().length>0&&value.length<=max?value:fallback;
+ const published=result.state==="PUBLISHED"&&result.page.kind==="PARTNERS";
+ const narrative=approved.filter(s=>s.kind==="RICH_TEXT").sort((a,b)=>a.order-b.order);
  const heroTitle=copy(hero?.heading,"Corporate Partners",180);
- const heroEyebrow=copy(hero?.eyebrow,"CareGanga Foundation · Collaboration",100);
- const heroSubtitle=copy(hero?.subtitle,"Make a meaningful difference through responsible partnerships.",700);
- const heroIntro=copy(hero?.description,"We welcome genuine corporate social responsibility discussions, service collaborations and long-term support. Every partnership is verified before we describe it publicly.",400);
- const heroCta=copy(hero?.primaryLabel,"Partner With Us",60);
- const finalTitle=copy(final?.heading,"Let's Collaborate",160);
- const finalEyebrow=copy(final?.eyebrow,"WORK WITH CAREGANGA",80);
- const finalBody=copy(final?.body,"Share your organization's interest and we will help direct the enquiry to the relevant Foundation team. An enquiry is not a registered or verified partnership.",400);
- const finalLabel=copy(final?.label,"Get in Touch",80);
+ const heroEyebrow=copy(hero?.eyebrow,"",100);
+ const heroSubtitle=copy(hero?.subtitle,"",700);
+ const heroIntro=copy(hero?.description,"",400);
+ const heroCta=published&&hero?.primaryPath==="/contact"?copy(hero.primaryLabel,"",60):"";
+ const finalTitle=copy(final?.heading,"",160);
+ const finalEyebrow=copy(final?.eyebrow,"",80);
+ const finalBody=copy(final?.body,"",400);
+ const finalLabel=final?.path==="/contact"?copy(final.label,"",80):"";
  const partnerHeading=typeof section?.fields.heading==="string"?section.fields.heading:"Meet Our Partners";
  const partnerIntro=typeof section?.fields.intro==="string"&&section.fields.intro.trim()?section.fields.intro:
   "Only organizations with verified Foundation approval and current permission for public attribution appear here.";
@@ -64,39 +66,23 @@ export default async function Partnerships(){
      <p className={styles.lead}>{heroSubtitle}</p>
      <p className={styles.intro}>{heroIntro}</p>
      <div className={styles.heroActions}>
-      <Link className={styles.primary} href="/contact">{heroCta}</Link>
+      {heroCta&&<Link className={styles.primary} href="/contact">{heroCta}</Link>}
+      {!published&&<Link className={styles.primary} href="/contact">Partner With Us</Link>}
       <a className={styles.secondary} href="#corporate-partners">Meet Our Partners</a>
      </div>
     </div>
    </section>
-   <section className={styles.section} aria-labelledby="why-partner">
-    <div className={styles.sectionHeading}>
-     <p className={styles.kicker}>COLLABORATION WITH PURPOSE</p>
-     <h2 id="why-partner">Why Partner With Us?</h2>
-     <p>Build a transparent working relationship around agreed Foundation
-      programmes and the communities they are intended to serve.</p>
-    </div>
-    <div className={styles.cards}>
-     <article className={styles.card}>
-      <div className={styles.cardMark} aria-hidden="true">01</div>
-      <h3>Community Impact</h3>
-      <p>Support meaningful programmes and access initiatives grounded in genuine
-       community needs.</p>
-     </article>
-     <article className={styles.card}>
-      <div className={styles.cardMark} aria-hidden="true">02</div>
-      <h3>Responsible Partnerships</h3>
-      <p>Agree on scope, documents, responsibilities and measurable goals before
-       any partnership is announced.</p>
-     </article>
-     <article className={styles.card}>
-      <div className={styles.cardMark} aria-hidden="true">03</div>
-      <h3>Clear Communication</h3>
-      <p>Discuss activities and progress with the Foundation through the agreed
-       collaboration process.</p>
-     </article>
-    </div>
-   </section>
+   {narrative.map((item,i)=>{
+    const f=item.fields,highlights=Array.isArray(f.highlights)?f.highlights.filter((v):v is string=>typeof v==="string").slice(0,4):[];
+    return <section key={item.order} className={styles.section} aria-labelledby={"partner-copy-"+i}>
+     <div className={styles.sectionHeading}>
+      {copy(f.eyebrow,"",100)&&<p className={styles.kicker}>{copy(f.eyebrow,"",100)}</p>}
+      <h2 id={"partner-copy-"+i}>{copy(f.heading,"",160)}</h2>
+      <p>{copy(f.body,"",4000)}</p>
+     </div>
+     {highlights.length>0&&<div className={styles.cards}>{highlights.map((v,j)=><article className={styles.card} key={j}><div className={styles.cardMark} aria-hidden="true">{String(j+1).padStart(2,"0")}</div><h3>{v}</h3></article>)}</div>}
+    </section>;
+   })}
    <section id="corporate-partners" className={styles.partners} aria-labelledby="partners-heading">
     <div className={styles.sectionHeading}>
      <p className={styles.kicker}>TRUSTED COLLABORATION</p>
@@ -130,12 +116,12 @@ export default async function Partnerships(){
     </div>
     <Link className={styles.outline} href="/collaboration/healthcare-partner">Apply as a Healthcare Partner</Link>
    </section>
-   <section className={styles.finalCta} aria-labelledby="collaborate-heading">
+   {finalTitle&&<section className={styles.finalCta} aria-labelledby="collaborate-heading">
     <p className={styles.kicker}>{finalEyebrow}</p>
     <h2 id="collaborate-heading">{finalTitle}</h2>
     <p>{finalBody}</p>
-    <Link className={styles.primary} href="/contact">{finalLabel}</Link>
-   </section>
+    {finalLabel&&<Link className={styles.primary} href="/contact">{finalLabel}</Link>}
+   </section>}
   </main>
  </HealthcarePublicChrome>;
 }
