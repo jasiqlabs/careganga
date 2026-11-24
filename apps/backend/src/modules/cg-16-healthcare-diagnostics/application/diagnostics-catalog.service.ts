@@ -192,10 +192,15 @@ export class DiagnosticsCatalogService{
  }
  async tests(bearer:string,filter:unknown){
   const actor=await this.sessions.requireAction(bearer,"diagnostics.catalog.view");
-  const x=obj(filter,["q","status","categoryRef"]);
+  const x=obj(filter,["q","status","categoryRef","sampleType","offset"]);
   const q=x.q===undefined?"":string(x.q,"q",0,80);
   const desired=x.status===undefined?"":status(x.status);
   const category=x.categoryRef===undefined?"":uuid(x.categoryRef,"categoryRef");
+  const sample=x.sampleType===undefined?"":string(x.sampleType,"sampleType",1,32);
+  if(sample&&!SAMPLES.includes(sample as typeof SAMPLES[number]))throw new BadRequestException({code:"LAB_CATALOG_FIELD_INVALID",field:"sampleType"});
+  if(x.offset!==undefined&&(typeof x.offset!=="string"||!/^(0|[1-9][0-9]{0,4})$/.test(x.offset)))
+   throw new BadRequestException({code:"LAB_CATALOG_FIELD_INVALID",field:"offset"});
+  const offset=integer(Number(x.offset??0),"offset",0,10000);
   return this.run(async tx=>{
    await this.current(tx,actor,"diagnostics.catalog.view");
    const r=await tx.query(
@@ -208,9 +213,9 @@ export class DiagnosticsCatalogService{
     "AND c.id=t.category_ref WHERE t.root_realm_id=$1 "+
     "AND ($2='' OR t.name ILIKE $2 ESCAPE '\\' OR t.unique_test_code ILIKE $2 ESCAPE '\\') "+
     "AND ($3='' OR t.status=$3) AND ($4='' OR t.category_ref::text=$4) "+
-    "ORDER BY t.name,t.id LIMIT 100",
-    [actor.realmId,q?"%"+q.replace(/[\\%_]/g,"\\$&")+"%":"",desired,category]);
-   return {tests:r.rows};
+    "AND ($5='' OR t.sample_type=$5) ORDER BY t.name,t.id LIMIT 101 OFFSET $6",
+    [actor.realmId,q?"%"+q.replace(/[\\%_]/g,"\\$&")+"%":"",desired,category,sample,offset]);
+   return {tests:r.rows.slice(0,100),nextOffset:r.rows.length>100&&offset<10000?offset+100:null};
   });
  }
  async exportSelected(bearer:string,raw:unknown){
