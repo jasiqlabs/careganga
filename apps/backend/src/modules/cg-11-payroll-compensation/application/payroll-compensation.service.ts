@@ -87,6 +87,29 @@ export class PayrollCompensationService{
    await this.audit(tx,a,"COMPENSATION",row.id,"DRAFT_CREATED");return {...this.salaryView(row),replayed:false};
   });
  }
+ /** Self-only read. No employee selector, no draft, no payout destination. */
+ async ownPay(token:string){
+  const a=await this.sessions.verifySession(token),tx=await this.db.connect();
+  try{
+   await tx.query("BEGIN");await this.identity.assertRootSelfSessionCurrent(tx,a);
+   const row=(await tx.query<{id:string;employee_code:string;name:string;designation:string;branch_ref:string}>(
+    `SELECT e.id,e.employee_code,app.legal_name AS name,h.designation,h.branch_ref FROM hr_employee e
+     JOIN hr_employee_application app ON app.root_realm_id=e.root_realm_id AND app.id=e.application_id
+     JOIN hr_employment_assignment h ON h.root_realm_id=e.root_realm_id AND h.employee_id=e.id
+     JOIN branch b ON b.root_realm_id=h.root_realm_id AND b.id=h.branch_ref AND b.status='ACTIVE'
+     WHERE e.root_realm_id=$1 AND e.account_ref=$2 AND e.status IN('ACTIVE','PROBATION') AND h.valid_from<=(now() AT TIME ZONE 'Asia/Kolkata')::date AND (h.valid_to IS NULL OR h.valid_to>(now() AT TIME ZONE 'Asia/Kolkata')::date) FOR SHARE OF e,h,b`,[a.realmId,a.accountId])).rows[0];
+   if(!row){await tx.query("COMMIT");return {employee:null,salary:null};}
+   const c=(await tx.query<Salary>("SELECT *,base_salary_minor::text,effective_from::text,effective_to::text FROM employee_compensation WHERE root_realm_id=$1 AND employee_ref=$2 AND branch_ref=$3 AND status='APPROVED' AND effective_from<=(now() AT TIME ZONE 'Asia/Kolkata')::date AND (effective_to IS NULL OR effective_to>(now() AT TIME ZONE 'Asia/Kolkata')::date) FOR SHARE",[a.realmId,row.id,row.branch_ref])).rows[0];
+   let salary=null;
+   if(c){
+    const cs=(await tx.query<{kind:string;mode:"FIXED"|"PERCENT";minor:string|null;bp:number|null}>("SELECT kind,calc_mode AS mode,amount_minor::text AS minor,rate_bp AS bp FROM payroll_component WHERE root_realm_id=$1 AND policy_id=$2",[a.realmId,c.policy_id])).rows;
+    let gross=BigInt(c.base_salary_minor),deductions=0n;for(const x of cs){const value=componentMinor(c.base_salary_minor,x);if(x.kind==="ALLOWANCE")gross+=value;if(x.kind==="DEDUCTION")deductions+=value;}
+    salary={effectiveFrom:c.effective_from,effectiveTo:c.effective_to,baseMinor:c.base_salary_minor,grossMinor:gross.toString(),deductionMinor:deductions.toString(),netMinor:(gross-deductions).toString(),status:"APPROVED_STRUCTURE"};
+    await this.audit(tx,a,"COMPENSATION",c.id,"READ");
+   }
+   await tx.query("COMMIT");return {employee:{reference:row.employee_code,name:row.name,designation:row.designation},salary};
+  }catch(e){try{await tx.query("ROLLBACK");}catch{}throw e;}finally{tx.release();}
+ }
  /** Re-read the exact authorized source for CG03; no private banking fields or arbitrary table input. */
  async reviewSource(tx:PoolClient,a:Actor,kind:"POLICY"|"COMPENSATION",ref:string,write=false){
   await this.identity.assertCurrent(tx,a,"payroll.compensation.view");
