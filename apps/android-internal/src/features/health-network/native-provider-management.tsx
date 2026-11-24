@@ -254,7 +254,7 @@ export function NativeProviderManagement({token,onExpired,onExit,canManage,
  const review=(kind:"providers"|"centers",ref:string,version:number,proof:string)=>{
   if(!canManage||!proof||busy||uncertain)return;
   Alert.alert("Submit verified proof for review?",
-   "This requests independent original CG03 verification. It does not activate or publish.",[
+   "This requests independent verification. It does not activate or publish.",[
     {text:"Cancel",style:"cancel"},
     {text:"Submit",onPress:()=>void write("submit:"+kind+ref,
      kind+"/"+encodeURIComponent(ref)+"/submit","POST",
@@ -525,5 +525,5 @@ const styles=StyleSheet.create({
   color:t.text,borderRadius:9,padding:10,minHeight:45},
  button:{borderColor:t.border,borderWidth:1,borderRadius:9,
   padding:11,minHeight:46,justifyContent:"center"},
- disabled:{opacity:.4},error:{color:"#A52626",fontSize:13,lineHeight:19}
+ disabled:{opacity:.4},error:{color:t.error,fontSize:13,lineHeight:19}
 });
