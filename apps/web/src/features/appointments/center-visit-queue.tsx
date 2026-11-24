@@ -71,7 +71,8 @@ export function CenterVisitQueue(){
   const serial=++requestSerial.current;
   if(!c){setItems([]);setSummary(null);setQueueLoading(false);return;}
   setQueueLoading(true);
-  setSummary(null);setExpanded("");
+  setSummary(null);setExpanded("");setCancelPending(null);
+  auditSerial.current++;setHistoryRef("");setHistory(null);setHistoryError("");setHistoryBusy(false);
   try{
    const rows=await get<Queue>("my-centers/"+encodeURIComponent(c)+"?date="+encodeURIComponent(d)+
     (after?"&after="+encodeURIComponent(after):""));
@@ -84,6 +85,9 @@ export function CenterVisitQueue(){
      if(serial===requestSerial.current&&c===selectedCenterRef.current&&
       data.centerRef===c&&data.day===d)setSummary(data);
     }).catch(()=>{if(serial===requestSerial.current)setSummary(null);});
+  }catch(e){
+   if(serial===requestSerial.current&&c===selectedCenterRef.current){setItems([]);setNextCursor(null);setSummary(null);}
+   throw e;
   }finally{
    if(serial===requestSerial.current)setQueueLoading(false);
   }
@@ -323,11 +327,11 @@ export function CenterVisitQueue(){
      </select></label>
    </div>}
    {queueLoading&&<p role="status">Checking current center appointments…</p>}
-   {center&&!queueLoading&&items.length===0&&
+   {center&&!queueLoading&&items.length===0&&!message&&
     <p>No booked consultations for this center and date.</p>}
    {center&&!queueLoading&&items.length>0&&visible.length===0&&
     <p>No consultations match these filters.</p>}
-   {visible.map(item=><article className="card" key={item.appointmentRef}
+   {!queueLoading&&visible.map(item=><article className="card" key={item.appointmentRef}
     style={{border:"1px solid #d7dfdb",padding:14,marginBlock:8,borderRadius:12}}>
     <h3>{item.patientName}</h3>
     <p>Doctor: {item.doctorName}</p>
