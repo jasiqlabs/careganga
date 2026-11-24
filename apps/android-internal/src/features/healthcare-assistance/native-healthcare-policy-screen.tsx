@@ -105,7 +105,7 @@ export function NativeHealthcarePolicyScreen({token,canView,canManage,canReview,
  const [percent,setPercent]=useState("50"),[fixed,setFixed]=useState("");
  const [cap,setCap]=useState("500");
  const [from,setFrom]=useState(""),[until,setUntil]=useState("");
- const last=useRef<Attempt|null>(null),seq=useRef(0);
+ const last=useRef<Attempt|null>(null),seq=useRef(0),centerSeq=useRef(0);
  useEffect(()=>{setEstimate(null)},[center,doctor]);
  useEffect(()=>{setServiceEstimate(null)},[center,service,quotedGross]);
  const error=useCallback((e:unknown)=>{
@@ -130,18 +130,19 @@ export function NativeHealthcarePolicyScreen({token,canView,canManage,canReview,
    setCenters(v.centers);
    if(v.centers.length===1)setCenter(v.centers[0].centerRef);
   }).catch(e=>{if(active)error(e)}).finally(()=>{if(active)setLoading(false)});
-  return()=>{active=false;++seq.current};
+  return()=>{active=false;++seq.current;++centerSeq.current};
  },[token,error,canView]);
  useEffect(()=>{
-  ++seq.current;setPolicies([]);setDoctors([]);setDoctor("");
+  const scope=++centerSeq.current;++seq.current;setPolicies([]);setDoctors([]);setDoctor("");
   setRevision(null);setUncertain(false);last.current=null;setMessage("");
-  if(!center)return;
+  if(!center){setLoading(false);return;}
   setLoading(true);
   void Promise.all([
    refresh(center),
    api<{doctors:Doctor[]}>(token,"centers/"+center+"/doctors")
-    .then(x=>setDoctors(x.doctors))
-  ]).catch(error).finally(()=>setLoading(false));
+    .then(x=>{if(scope===centerSeq.current)setDoctors(x.doctors);})
+  ]).catch(e=>{if(scope===centerSeq.current)error(e);}).finally(()=>{if(scope===centerSeq.current)setLoading(false);});
+  return()=>{++centerSeq.current;++seq.current;};
  },[center,token,refresh,error]);
  const button=(label:string,press:()=>void,disabled=false,active=false)=>
   <Pressable accessibilityRole="button" accessibilityState={{disabled,selected:active}}
@@ -257,7 +258,7 @@ export function NativeHealthcarePolicyScreen({token,canView,canManage,canReview,
     },busy||!last.current)}
     {button("Check existing policy history",()=>void refresh(center).catch(error),busy||!center)}
    </View>}
-   {canManage&&canView&&!!center&&!uncertain&&<View style={s.panel}>
+   {canManage&&canView&&!!center&&!uncertain&&!loading&&<View style={s.panel}>
     <Text style={s.heading}>{revision?"Revise approved support":"Configure support"}</Text>
     <Text accessibilityRole="header" style={s.heading}>1. Service &amp; eligibility scope</Text>
     <Text style={s.note}>Service type</Text>
@@ -331,7 +332,7 @@ export function NativeHealthcarePolicyScreen({token,canView,canManage,canReview,
    </View>}
    {canView&&!!center&&<View style={s.panel}>
     <Text style={s.heading}>Actual policy revisions</Text>
-    {button("Refresh history",()=>void refresh(center).catch(error),busy||uncertain)}
+    {button("Refresh history",()=>void refresh(center).catch(error),busy||uncertain||loading)}
     {policies.length===0&&!loading&&<Text style={s.note}>
      No assistance policy is configured for this center.</Text>}
     {policies.map(p=><View key={p.revisionRef} style={s.row}>
