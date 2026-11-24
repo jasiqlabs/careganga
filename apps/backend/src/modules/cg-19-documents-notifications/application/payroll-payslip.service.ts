@@ -32,14 +32,29 @@ export class PayrollPayslipService{
  constructor(@Inject(DATABASE)private readonly db:Pool,private readonly source:PayrollPayslipSourceFacade,private readonly storage:PrivateObjectStorage,private readonly recipients:CommunicationRecipientSource,private readonly notifications:NotificationService){}
  async own(token:string){return this.source.own(token);}
  async issue(token:string,line:string){
-  const {actor,data}=await this.source.source(token,line);
+  return this.issueFrom(await this.source.source(token,line),()=>this.source.source(token,line));
+ }
+ async issueApprovedEvent(root:string,event:string,claim:string){
+  const current=()=>this.source.approvedEventSource(root,event,claim);
+  const result=await this.issueFrom(await current(),current);
+  if(result.confirmed){
+   const original=await current();
+   const d=(await this.db.query<Document>("SELECT * FROM cg19_payroll_payslip WHERE root_realm_id=$1 AND id=$2 AND line_ref=$3 AND source_digest=$4 AND status='ISSUED'",[root,result.documentRef,original.data.lineRef,original.data.sourceDigest])).rows[0];
+   if(!d?.object_version||!d.content_length||!d.content_sha256)throw new ConflictException("Original payslip unavailable");
+   const bytes=await this.storage.readVerifiedPrivateObject({objectKey:d.object_key,objectVersion:d.object_version,maxBytes:d.content_length});
+   if(bytes.length!==d.content_length||hash(bytes)!==d.content_sha256)throw new ConflictException("Original payslip unavailable");
+   const live=await current();if(live.data.sourceDigest!==original.data.sourceDigest)throw new ConflictException("Original payslip changed");
+  }
+  return result;
+ }
+ private async issueFrom({actor,data}:{actor:{realmId:string;accountId:string};data:Source},currentSource:()=>Promise<{data:Source}>){
   const tx=await this.db.connect();let d:Document;
   try{await tx.query("BEGIN");await tx.query("SELECT pg_advisory_xact_lock(hashtextextended($1,0))",[actor.realmId+":payslip:"+data.lineRef+":"+data.sourceDigest]);
    const existing=(await tx.query<Document>("SELECT * FROM cg19_payroll_payslip WHERE root_realm_id=$1 AND line_ref=$2 AND source_digest=$3 FOR UPDATE",[actor.realmId,data.lineRef,data.sourceDigest])).rows[0];
    d=existing??(await tx.query<Document>("INSERT INTO cg19_payroll_payslip(root_realm_id,line_ref,source_digest,issued_by,object_key) VALUES($1,$2,$3,$4,$5) RETURNING *",[actor.realmId,data.lineRef,data.sourceDigest,actor.accountId,"careganga/private/cg19/"+actor.realmId+"/payslips/"+randomUUID()])).rows[0];
    await tx.query("COMMIT");
   }catch(e){await tx.query("ROLLBACK");throw e;}finally{tx.release();}
-  if(d.status==="ISSUED"){const live=await this.source.source(token,line);if(live.data.sourceDigest!==data.sourceDigest)throw new ConflictException("Payroll source changed; regenerate current payslip");return {documentRef:d.id,status:"ISSUED",confirmed:true};}
+  if(d.status==="ISSUED"){const live=await currentSource();if(live.data.sourceDigest!==data.sourceDigest)throw new ConflictException("Payroll source changed; regenerate current payslip");return {documentRef:d.id,status:"ISSUED",confirmed:true};}
   try{
    let bytes:Buffer,version:string,digest:string;
    try{
@@ -52,7 +67,7 @@ export class PayrollPayslipService{
     const written=await this.storage.writeVerifiedPrivateDocument({objectKey:d.object_key,bytes,sha256:digest});
     if(written.sha256!==digest||!written.objectVersion)throw new Error("Private write not confirmed");version=written.objectVersion;
    }
-   const current=await this.source.source(token,line);if(current.data.sourceDigest!==data.sourceDigest)throw new ConflictException("Payroll source changed; regenerate current payslip");
+   const current=await currentSource();if(current.data.sourceDigest!==data.sourceDigest)throw new ConflictException("Payroll source changed; regenerate current payslip");
    const done=await this.db.query("UPDATE cg19_payroll_payslip SET status='ISSUED',object_version=$3,content_sha256=$4,content_length=$5,issued_at=now(),updated_at=now() WHERE root_realm_id=$1 AND id=$2 AND status IN('PENDING','UNKNOWN') RETURNING id",[actor.realmId,d.id,version,digest,bytes.length]);
    if(!done.rowCount){const latest=await this.db.query("SELECT id FROM cg19_payroll_payslip WHERE root_realm_id=$1 AND id=$2 AND status='ISSUED' AND content_sha256=$3 AND object_version=$4",[actor.realmId,d.id,digest,version]);if(!latest.rowCount)throw new ConflictException("Original issuance outcome unconfirmed");}
    return {documentRef:d.id,status:"ISSUED",confirmed:true};
