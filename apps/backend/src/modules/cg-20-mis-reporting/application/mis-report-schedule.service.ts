@@ -1,5 +1,5 @@
 import {
- BadRequestException,ConflictException,Inject,Injectable,
+ BadRequestException,ForbiddenException,ConflictException,Inject,Injectable,
  NotFoundException
 } from "@nestjs/common";
 import {createHash} from "node:crypto";
@@ -155,15 +155,20 @@ export class MisReportScheduleService{
   return this.sessions.requireAction(token,"mis.reports.schedule");
  }
  private async eligible(token:string,savedRef:string){
-  await this.sessions.requireAction(token,"mis.reports.export");
-  await this.sessions.requireAction(token,"finance.reports.view");
+  const actor=await this.sessions.requireAction(token,"mis.reports.export");
   await this.sessions.requireAction(token,"communications.notifications.view");
   const saved=await this.saved.authorizedRequest(token,savedRef);
-  if(saved.request.kind!=="FINANCE_POSTED_SUMMARY"||
-     saved.request.view!=="SUMMARY"||saved.request.offset!==0)
-   throw new BadRequestException({code:"MIS_SCHEDULE_SOURCE_UNSUPPORTED",
-    message:"Scheduled delivery currently supports only your posted finance summary."});
-  await this.sources.preview(token,saved.request);
+  const own=await this.db.query("SELECT id FROM cg20_saved_report WHERE root_realm_id=$1 AND id=$2 AND owner_account_ref=$3 AND state='ACTIVE'",[actor.realmId,savedRef,actor.accountId]);
+  if(!own.rowCount)throw new ForbiddenException("Schedule your own saved report");
+  const q=saved.request;
+  if(q.offset!==0||!(q.kind==="FINANCE_POSTED_SUMMARY"&&q.view==="SUMMARY"||q.kind==="PROJECT_STATUS_REPORT"&&q.view==="TABLE"))
+   throw new BadRequestException({code:"MIS_SCHEDULE_SOURCE_UNSUPPORTED",message:"Choose your saved posted finance summary or project status report."});
+  if(q.kind==="PROJECT_STATUS_REPORT"){
+   await this.sessions.requireAction(token,"projects.view");
+   await this.sessions.requireAction(token,"projects.export");
+  }else await this.sessions.requireAction(token,"finance.reports.view");
+  await this.sources.preview(token,q);
+  await this.sources.originalScheduledScope(actor.realmId,actor.accountId,q);
   return saved;
  }
  async list(token:string){
@@ -178,7 +183,7 @@ export class MisReportScheduleService{
    hasMore:q.rows.length>50,
    activationAvailable:true,
    channel:"IN_APP",
-   message:"Schedules for your authorized posted-finance summary send a private in-app notice after the original report file is confirmed."};
+   message:"Schedules for your authorized posted-finance summary or project status report send a private in-app notice after the original report file is confirmed."};
  }
  async create(token:string,raw:unknown){
   const actor=await this.actor(token),input=parse(raw);
@@ -294,7 +299,7 @@ export class MisReportScheduleService{
    throw new ConflictException({code:"MIS_SCHEDULE_CHANGED",
     message:"The schedule changed. Refresh before resuming."});
   return {...summary(changed.rows[0]),
-   message:"Your scheduled finance report is active for private in-app notices."};
+   message:"Your scheduled report is active for private in-app notices."};
  }
  async edit(token:string,refInput:string,raw:unknown){
   const actor=await this.actor(token),ref=parseId(refInput);
