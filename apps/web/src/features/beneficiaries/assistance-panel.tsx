@@ -1,0 +1,111 @@
+"use client";
+import {useEffect,useRef,useState,type CSSProperties} from "react";
+type Choice={value:string;label:string;projectRef?:string|null;unit?:string;scale?:number};
+type Case={ref:string;reference:string;category:string;kind:"MATERIAL"|"FINANCIAL";quantity:string|null;unit:string|null;amountMinor:string|null;requestedOn:string;state:string;revision:number};
+type Review={status:string;caseNumber?:string;canReview:boolean;caseRef:string|null;revision?:number};
+type Allocation={ref:string;action:"ISSUE"|"RETURN"|"PAYMENT";quantity:string|null;amountMinor:string|null;stockOperationRef:string|null;voucherRef:string|null;ownerReference:string|null;status:string;createdAt:string;own:boolean;proofRequired?:boolean};
+type Delivery={items:Allocation[];totals:{status:string;grossQuantity:string;returnedQuantity:string;netQuantity:string;paidMinor:string;reversedMinor:string;netMinor:string};hasMore:boolean};
+type Proof={fileRef:string;fileVersion:number;sourceVersion?:number;mime:string;createdAt:string};
+type Choices={stores:Choice[];items:Choice[];projects:Choice[];activities:Choice[];visits:Choice[];campaigns:Choice[];responsible:Choice[];selfRef:string};
+type PaymentChoices={years:Choice[];accounts:Choice[];paymentAccounts:Choice[]};
+type Props={beneficiary:{ref:string;revision:number;verification:string;lifecycle:string;consentRevoked:boolean};canManage:boolean;canReview:boolean;canDeliver:boolean;canStock:boolean;canFinance:boolean;canEvidence:boolean};
+const pretty=(s:string)=>s.toLowerCase().replaceAll("_"," ").replace(/^./,c=>c.toUpperCase());
+const day=()=>{const d=new Date();return new Intl.DateTimeFormat("en-CA",{timeZone:"Asia/Kolkata",year:"numeric",month:"2-digit",day:"2-digit"}).format(d);};
+const money=(minor:string|null|undefined)=>{const n=BigInt(minor??"0");return "₹"+(n/100n).toString()+"."+(n%100n).toString().padStart(2,"0");};
+function toMinor(v:string){if(!/^[0-9]{1,12}(?:\.[0-9]{1,2})?$/.test(v))throw Error("Enter a positive rupee amount with at most two decimal places.");const [a,b=""]=v.split(".");const n=BigInt(a)*100n+BigInt((b+"00").slice(0,2));if(n<1n||n>99999999999999n)throw Error("Enter a valid positive rupee amount.");return n.toString();}
+const initial=()=>({category:"",kind:"MATERIAL" as "MATERIAL"|"FINANCIAL",location:"",item:"",quantity:"",amount:"",date:day(),responsible:"",project:"",activity:"",visit:"",campaign:""});
+type Command={path:string;body:Record<string,unknown>;requiresPassword?:boolean;kind:string};
+
+async function api<T>(path:string,body?:Record<string,unknown>):Promise<T>{const r=await fetch("/api"+path,{method:body?"POST":"GET",cache:"no-store",...(body?{headers:{"Content-Type":"application/json"},body:JSON.stringify(body)}:{})});const x=await r.json().catch(()=>null);if(!r.ok||x===null)throw Object.assign(Error(x?.message??"Original assistance source unavailable."),{status:r.status||503});return x as T;}
+const uuid=()=>crypto.randomUUID();
+const card:CSSProperties={border:"1px solid var(--cg-border)",borderRadius:12,padding:12,display:"grid",gap:8};
+const control:CSSProperties={border:"1px solid var(--cg-border)",borderRadius:8,padding:"9px 10px",width:"100%",minWidth:0,font:"inherit",background:"var(--cg-surface,#fff)"};
+function Button({label,click,disabled=false}:{label:string;click:()=>void;disabled?:boolean}){return <button type="button" disabled={disabled} onClick={click} style={{...control,width:"auto",color:"#fff",background:disabled?"#94A3B8":"var(--cg-accent,#2563eb)",fontWeight:650,cursor:disabled?"default":"pointer"}}>{label}</button>;}
+function Field({label,value,change,type="text",disabled=false}:{label:string;value:string;change:(v:string)=>void;type?:string;disabled?:boolean}){return <label style={{display:"grid",gap:4,fontSize:13}}>{label}<input type={type} value={value} disabled={disabled} onChange={e=>change(e.target.value)} style={control} autoComplete={type==="password"?"off":undefined}/></label>;}
+function Select({label,value,change,items,disabled=false,optional=false}:{label:string;value:string;change:(v:string)=>void;items:Choice[];disabled?:boolean;optional?:boolean}){return <label style={{display:"grid",gap:4,fontSize:13}}>{label}<select style={control} value={value} disabled={disabled} onChange={e=>change(e.target.value)}><option value="">{optional?"Not selected":"Choose an option"}</option>{items.map(x=><option key={x.value} value={x.value}>{x.label}</option>)}</select></label>;}
+export function AssistancePanel({beneficiary,canManage,canReview,canDeliver,canStock,canFinance,canEvidence}:Props){
+ const [cases,setCases]=useState<Case[]|null>(null),[selected,setSelected]=useState<Case|null>(null),[review,setReview]=useState<Review|null>(null),[delivery,setDelivery]=useState<Delivery|null>(null);
+ const [choices,setChoices]=useState<Choices|null>(null),[payments,setPayments]=useState<PaymentChoices|null>(null),[form,setForm]=useState(initial);
+ const [showForm,setShowForm]=useState(false),[busy,setBusy]=useState(false),[error,setError]=useState(""),[notice,setNotice]=useState(""),[uncertain,setUncertain]=useState(false);
+ const [remarks,setRemarks]=useState(""),[password,setPassword]=useState(""),[decision,setDecision]=useState("APPROVE");
+ const [qty,setQty]=useState(""),[amount,setAmount]=useState(""),[year,setYear]=useState(""),[posting,setPosting]=useState(day),[debit,setDebit]=useState(""),[payment,setPayment]=useState("");
+ const [returnOf,setReturnOf]=useState(""),[allocation,setAllocation]=useState<Allocation|null>(null),[proofs,setProofs]=useState<Proof[]>([]),[proofRef,setProofRef]=useState(""),[movementProofs,setMovementProofs]=useState<Proof[]>([]),[movementProofRef,setMovementProofRef]=useState(""),[attested,setAttested]=useState(false);
+ const command=useRef<Command|null>(null),running=useRef(false),sequence=useRef(0);
+ const eligible=beneficiary.verification==="VERIFIED"&&beneficiary.lifecycle==="ACTIVE"&&!beneficiary.consentRevoked;
+ const change=(k:keyof ReturnType<typeof initial>,v:string)=>setForm(f=>({...f,[k]:v,...(k==="project"?{activity:"",visit:"",campaign:""}:{})}));
+ const refresh=async(focus?:string)=>{
+  const n=++sequence.current;
+  try{const v=await api<{items:Case[]}>("/assistance?beneficiaryRef="+encodeURIComponent(beneficiary.ref));if(n!==sequence.current)return;setCases(v.items);
+   const c=v.items.find(x=>x.ref===(focus??selected?.ref));setSelected(c??null);
+   if(!c){setReview(null);setDelivery(null);return;}
+   const [r,d]=await Promise.all([api<Review>("/assistance/"+c.ref+"/review").catch(()=>null),api<Delivery>("/assistance/"+c.ref+"/fulfillment").catch(()=>null)]);
+   if(n!==sequence.current)return;setReview(r);setDelivery(d);
+   if(!r||!d)setError("Some original source information is unavailable. Refresh before acting.");
+  }catch(e){if(n===sequence.current){setCases(null);setSelected(null);setDelivery(null);setReview(null);setError(e instanceof Error?e.message:"Assistance information unavailable.");}}
+ };
+ useEffect(()=>{void refresh();return()=>{sequence.current++;};},[beneficiary.ref,beneficiary.revision]);
+ const choose=async(c:Case)=>{setSelected(c);setReview(null);setDelivery(null);setAllocation(null);setPayments(null);setProofs([]);setProofRef("");setReturnOf("");setAttested(false);setPassword("");setRemarks("");setQty("");setAmount("");await refresh(c.ref);};
+ const open=async()=>{setError("");setShowForm(true);setChoices(null);setForm(initial());try{const v=await api<Choices>("/assistance/options?beneficiaryRef="+beneficiary.ref);setChoices(v);setForm(f=>({...f,responsible:v.selfRef,kind:v.stores.length&&v.items.length?"MATERIAL":"FINANCIAL"}));}catch(e){setError(e instanceof Error?e.message:"Request choices unavailable.");}};
+ const submitCommand=async(next?:Command)=>{
+  if(running.current)return;const c=command.current??next;if(!c)return;command.current=c;running.current=true;setBusy(true);setError("");
+  try{const result=await api<{ref?:string;status?:string;state?:string}>(c.path,{...c.body,...(c.requiresPassword?{currentPassword:password}:{})});
+   command.current=null;setUncertain(false);setPassword("");setNotice("Original source confirmed: "+pretty(result.status??result.state??(c.kind==="CREATE"?"REQUESTED":"ACCEPTED")));
+   if(c.kind==="CREATE"){setShowForm(false);setForm(initial());await refresh(result.ref);}else{setAllocation(null);setProofRef("");setAttested(false);await refresh(selected?.ref);}
+  }catch(e){const status=(e as {status?:number}).status;setPassword("");if(!uncertain&&[400,401,403,404,409,422].includes(status??0)){command.current=null;setUncertain(false);}else setUncertain(true);setError(e instanceof Error?e.message:"Outcome unknown. Retry the original request.");}
+  finally{running.current=false;setBusy(false);}
+ };
+ const send=(path:string,body:Record<string,unknown>,kind:string,requiresPassword=false)=>{if(uncertain||busy)return;void submitCommand({path,body,kind,requiresPassword});};
+ const locked=busy||uncertain;
+ const create=()=>{try{if(!choices||!form.category.trim()||!form.date)throw Error("Enter the assistance category and date.");if(form.kind==="MATERIAL"&&(!form.item||!form.location||!form.quantity))throw Error("Choose an item, warehouse and quantity.");
+ send("/assistance",{requestKey:uuid(),beneficiaryRef:beneficiary.ref,expectedRevision:beneficiary.revision,category:form.category,kind:form.kind,requestedOn:form.date,responsibleRef:form.responsible||null,projectRef:form.project||null,activityRef:form.activity||null,visitRef:form.visit||null,campaignRef:form.campaign||null,...(form.kind==="MATERIAL"?{itemRef:form.item,locationRef:form.location,quantity:form.quantity}:{amountMinor:toMinor(form.amount)})},"CREATE");
+ }catch(e){setError(e instanceof Error?e.message:"Check assistance details.");}};
+ const submit=()=>{if(selected)send("/assistance/"+selected.ref+"/submit",{requestKey:uuid(),expectedRevision:selected.revision},"SUBMIT");};
+ const decide=()=>{if(review?.caseRef&&review.revision)send("/assistance/review-cases/"+review.caseRef+"/decide",{requestKey:uuid(),expectedRevision:review.revision,action:decision,remarks},"REVIEW",true);};
+ const prepareStock=()=>{if(selected&&qty)send("/assistance/"+selected.ref+(returnOf?"/return":"/deliver-material"),{requestKey:uuid(),expectedRevision:selected.revision,quantity:qty,...(returnOf?{returnOfRef:returnOf}:{})},"STOCK");};
+ const paymentOptions=async()=>{if(!selected)return;setError("");try{setPayments(await api<PaymentChoices>("/assistance/"+selected.ref+"/payment-options"));}catch(e){setError(e instanceof Error?e.message:"Finance choices unavailable.");}};
+ const preparePayment=()=>{if(!selected)return;try{send("/assistance/"+selected.ref+"/deliver-financial",{requestKey:uuid(),expectedRevision:selected.revision,amountMinor:toMinor(amount),financialYearRef:year,postingDate:posting,debitAccountRef:debit,paymentAccountRef:payment},"PAYMENT");}catch(e){setError(e instanceof Error?e.message:"Check the amount.");}};
+ const chooseAllocation=async(x:Allocation)=>{setAllocation(x);setProofRef("");setProofs([]);setMovementProofRef("");setMovementProofs([]);setAttested(false);setError("");
+  try{if(x.status==="PENDING_STOCK"&&x.stockOperationRef&&canEvidence&&canStock&&x.own){const v=await api<{files:Proof[]}>("/inventory/movement-evidence/operations/"+x.stockOperationRef);setMovementProofs(v.files);}
+   if(["ISSUED_AWAITING_HANDOVER","RETURN_AWAITING_CONFIRMATION","PAID_AWAITING_HANDOVER"].includes(x.status)&&canEvidence){const v=await api<{files:Proof[]}>("/beneficiary-evidence/beneficiaries/"+beneficiary.ref);setProofs(v.files.filter(p=>p.sourceVersion===beneficiary.revision&&Date.parse(p.createdAt)>=Date.parse(x.createdAt)));}
+  }catch(e){setError(e instanceof Error?e.message:"Verified evidence unavailable.");}};
+ const confirmStock=()=>{if(!allocation?.stockOperationRef)return;const p=movementProofs.find(x=>x.fileRef===movementProofRef);send("/inventory/operations/"+allocation.stockOperationRef+"/confirm",{proofRef:p?.fileRef??null,proofVersion:p?.fileVersion??null},"CONFIRM_STOCK");};
+ const handover=()=>{if(!selected||!allocation||!attested)return;const p=proofs.find(x=>x.fileRef===proofRef);if(!p)return;send("/assistance/"+selected.ref+"/confirm-handover",{requestKey:uuid(),expectedRevision:selected.revision,fulfillmentRef:allocation.ref,proofRef:p.fileRef,proofVersion:p.fileVersion,handoverConfirmed:true},"HANDOVER");};
+ const allocationLabel=(x:Allocation)=>pretty(x.action)+" · "+(x.amountMinor?money(x.amountMinor):(x.quantity??"")+" "+(selected?.unit??""))+(x.ownerReference?" · "+x.ownerReference:"");
+ const proofChoices=(xs:Proof[])=>xs.map((x,i)=>({value:x.fileRef,label:(x.mime==="application/pdf"?"PDF":"Image")+" "+(i+1)+" · "+new Date(x.createdAt).toLocaleString()}));
+ const canRequest=canManage&&eligible;
+
+ return <section aria-label="Beneficiary assistance" style={card}>
+  <h3 style={{margin:0}}>Assistance &amp; delivery history</h3><p style={{margin:0,fontSize:12,color:"var(--cg-muted)"}}>Approval, warehouse issue, verified payment and actual recipient handover are distinct steps.</p>
+  {error&&<p role="alert" style={{color:"#B91C1C",margin:0}}>{error}</p>}{notice&&<p role="status" style={{color:"#166534",margin:0}}>{notice}</p>}
+  {uncertain&&<div role="alert" style={card}>Outcome not confirmed. Do not create another request.{command.current?.requiresPassword&&<Field label="Current Foundation password" value={password} change={setPassword} type="password"/>}<Button label="Retry original command" click={()=>void submitCommand()} disabled={busy||!!command.current?.requiresPassword&&password.length<8}/></div>}
+  <div style={{display:"flex",gap:8,flexWrap:"wrap"}}><Button label="Refresh status" click={()=>void refresh()} disabled={busy}/>{canRequest&&<Button label="Request assistance" click={()=>void open()} disabled={locked}/>}</div>
+  {showForm&&<div style={card}><strong>New assistance request</strong>{!choices?<p>Loading genuine source choices or unavailable. Refresh to retry.</p>:<>
+   <Field label="Assistance category" value={form.category} change={v=>change("category",v)} disabled={locked}/>
+   <Select label="Assistance type" value={form.kind} change={v=>change("kind",v)} items={[...(choices.items.length&&choices.stores.length?[{value:"MATERIAL",label:"Material assistance"}]:[]),{value:"FINANCIAL",label:"Financial assistance"}]} disabled={locked}/>
+   {form.kind==="MATERIAL"?<><Select label="Warehouse" value={form.location} change={v=>change("location",v)} items={choices.stores} disabled={locked}/><Select label="Item" value={form.item} change={v=>change("item",v)} items={choices.items} disabled={locked}/><Field label={"Requested quantity "+(choices.items.find(x=>x.value===form.item)?.unit??"")} value={form.quantity} change={v=>change("quantity",v)} disabled={locked}/></>:<Field label="Requested amount (INR)" value={form.amount} change={v=>change("amount",v)} disabled={locked}/>}
+   <Field label="Requested date" value={form.date} change={v=>change("date",v)} type="date" disabled={locked}/>
+   <Select label="Responsible officer" value={form.responsible} change={v=>change("responsible",v)} items={choices.responsible} disabled={locked}/>
+   {!!choices.projects.length&&<Select label="Project (optional)" value={form.project} change={v=>change("project",v)} items={choices.projects} optional disabled={locked}/>}
+   {!!form.project&&!!choices.activities.filter(x=>x.projectRef===form.project).length&&<Select label="Activity (optional)" value={form.activity} change={v=>change("activity",v)} items={choices.activities.filter(x=>x.projectRef===form.project)} optional disabled={locked}/>}
+   {!!form.project&&!!choices.visits.filter(x=>x.projectRef===form.project).length&&<Select label="Completed field visit (optional)" value={form.visit} change={v=>change("visit",v)} items={choices.visits.filter(x=>x.projectRef===form.project)} optional disabled={locked}/>}
+   {!!choices.campaigns.filter(x=>!x.projectRef||x.projectRef===form.project).length&&<Select label="Campaign (optional)" value={form.campaign} change={v=>change("campaign",v)} items={choices.campaigns.filter(x=>!x.projectRef||x.projectRef===form.project)} optional disabled={locked}/>}
+   <Button label="Save request" click={create} disabled={locked}/></>}<Button label="Cancel" click={()=>setShowForm(false)} disabled={locked}/></div>}
+  {cases===null?<p>Assistance records unavailable or loading.</p>:cases.length===0?<p>No assistance requests yet.</p>:<div style={{display:"grid",gap:6}}>{cases.map(c=><button type="button" key={c.ref} disabled={locked} onClick={()=>void choose(c)} style={{...control,textAlign:"left",borderColor:selected?.ref===c.ref?"var(--cg-accent)":"var(--cg-border)"}}><strong>{c.reference} · {c.category}</strong><div>{c.kind==="MATERIAL"?c.quantity+" "+c.unit:money(c.amountMinor)} · {pretty(c.state)}</div></button>)}</div>}
+  {selected&&<div style={card}><strong>{selected.reference}</strong>
+   <div>{pretty(selected.state)}{review?.caseNumber?" · "+review.caseNumber:""}</div>
+   {selected.state==="DRAFT"&&canRequest&&<Button label="Submit for independent approval" click={submit} disabled={locked}/>}
+   {review?.canReview&&canReview&&eligible&&<div style={card}><Select label="Review decision" value={decision} change={setDecision} items={["APPROVE","RETURN","REJECT"].map(value=>({value,label:pretty(value)}))} disabled={locked}/><Field label="Remarks" value={remarks} change={setRemarks} disabled={locked}/><Field label="Current Foundation password" type="password" value={password} change={setPassword} disabled={locked}/><Button label="Confirm independent decision" click={decide} disabled={locked||password.length<8||(decision!=="APPROVE"&&remarks.trim().length<3)}/></div>}
+   {delivery?<><strong>{pretty(delivery.totals.status)}</strong>{selected.kind==="MATERIAL"?<div>Handed over: {delivery.totals.grossQuantity} {selected.unit} · Returned: {delivery.totals.returnedQuantity} · Net: {delivery.totals.netQuantity}</div>:<div>Paid: {money(delivery.totals.paidMinor)} · Recovered: {money(delivery.totals.reversedMinor)} · Net: {money(delivery.totals.netMinor)}</div>}
+   {selected.state==="APPROVED"&&eligible&&canDeliver&&selected.kind==="MATERIAL"&&canStock&&<div style={card}><Select label="Stock action" value={returnOf} change={setReturnOf} items={delivery.items.filter(x=>x.status==="DELIVERED").map(x=>({value:x.ref,label:"Return "+allocationLabel(x)}))} optional disabled={locked}/><Field label={(returnOf?"Return":"Issue")+" quantity ("+selected.unit+")"} value={qty} change={setQty} disabled={locked}/><Button label={returnOf?"Prepare original warehouse return":"Prepare original warehouse issue"} click={prepareStock} disabled={locked||!qty}/></div>}
+   {selected.state==="APPROVED"&&eligible&&canDeliver&&selected.kind==="FINANCIAL"&&canFinance&&<div style={card}><Button label="Choose original finance accounts" click={()=>void paymentOptions()} disabled={locked}/>{payments&&<><Field label="Amount (INR)" value={amount} change={setAmount} disabled={locked}/><Select label="Open financial year" value={year} change={setYear} items={payments.years} disabled={locked}/><Field label="Posting date" type="date" value={posting} change={setPosting} disabled={locked}/><Select label="Expense account" value={debit} change={setDebit} items={payments.accounts} disabled={locked}/><Select label="Cash / bank payment account" value={payment} change={setPayment} items={payments.paymentAccounts} disabled={locked}/><Button label="Prepare original payment voucher" click={preparePayment} disabled={locked||!year||!debit||!payment||!amount}/></>}</div>}
+   {delivery.items.map(x=><button type="button" key={x.ref} style={{...control,textAlign:"left"}} disabled={locked} onClick={()=>void chooseAllocation(x)}>{allocationLabel(x)}<div>{pretty(x.status)}</div></button>)}
+   {delivery.hasMore&&<p>Showing most recent 100 allocations. Totals include all confirmed source events.</p>}
+   </>:<p>Fulfillment status unavailable. Do not infer delivery from approval.</p>}
+   {allocation&&<div style={card}><strong>{allocationLabel(allocation)}</strong><div>{pretty(allocation.status)}</div>
+    {allocation.status==="PENDING_STOCK"&&allocation.own&&canStock&&canDeliver&&eligible&&<>{allocation.proofRequired&&<><p>Upload the original movement proof in <a href="/admin/inventory">Inventory → Stock operations</a>, then refresh the proof choices.</p><Select label="Verified warehouse proof" value={movementProofRef} change={setMovementProofRef} items={proofChoices(movementProofs)} disabled={locked}/><Button label="Refresh movement proofs" click={()=>void chooseAllocation(allocation)} disabled={locked}/></>}<Button label="Confirm warehouse operation" click={confirmStock} disabled={locked||!!allocation.proofRequired&&!movementProofRef}/></>}
+    {allocation.status==="PENDING_PAYMENT"&&<p>Complete approval, verified disbursement and posting of the original voucher in <a href="/admin/finance">Finance</a>. Refresh to check the actual outcome.</p>}
+    {["ISSUED_AWAITING_HANDOVER","RETURN_AWAITING_CONFIRMATION","PAID_AWAITING_HANDOVER"].includes(allocation.status)&&canDeliver&&canEvidence&&eligible&&<><p>Upload a separate, current private handover or return document in the beneficiary evidence section above.</p><Button label="Refresh verified handover proofs" click={()=>void chooseAllocation(allocation)} disabled={locked}/><Select label="Verified handover evidence" value={proofRef} change={setProofRef} items={proofChoices(proofs)} disabled={locked}/><label><input type="checkbox" checked={attested} disabled={locked} onChange={e=>setAttested(e.target.checked)}/> Confirm actual recipient handover or return, not just an issued item or payment request.</label><Button label="Confirm actual outcome" click={handover} disabled={locked||!proofRef||!attested}/></>}
+   </div>}
+  </div>}
+ </section>;
+}
