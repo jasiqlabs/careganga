@@ -7,7 +7,7 @@ import type {VerifiedFoundationActor} from "../../cg-01-identity-access/public-a
 export async function projectBudgetProjection(tx:PoolClient,a:VerifiedFoundationActor,scope:{all:boolean;branchRefs:string[]},mine:boolean,target:string|null){
  const q=await tx.query<{linked:number;approved:number;ceilingMinor:string;allocatedMinor:string;committedOutstandingMinor:string;utilizedMinor:string;invalid:number}>(`
   WITH selected AS(
-   SELECT b.id,b.root_realm_id,b.status,b.approved_ceiling_minor,b.branch_id,b.project_ref,b.financial_year_id
+   SELECT b.id,b.root_realm_id,b.status,b.approved_ceiling_minor,b.branch_id,b.project_ref,b.financial_year_id,b.period_start,b.period_end,b.category_label
    FROM finance_budget b JOIN project p ON p.id=b.project_ref AND p.root_realm_id=b.root_realm_id
    WHERE b.root_realm_id=$1 AND p.branch_ref IS NOT DISTINCT FROM b.branch_id
     AND ((b.branch_id IS NULL AND $2::boolean) OR b.branch_id=ANY($3::uuid[]))
@@ -18,11 +18,14 @@ export async function projectBudgetProjection(tx:PoolClient,a:VerifiedFoundation
    SELECT e.*,CASE WHEN e.kind<>'UTILIZE' THEN true ELSE EXISTS(
     SELECT 1 FROM journal j JOIN finance_voucher v ON v.root_realm_id=j.root_realm_id AND v.id=j.source_ref
      JOIN finance_voucher_posting vp ON vp.root_realm_id=j.root_realm_id AND vp.journal_id=j.id
+     JOIN finance_account fa ON fa.root_realm_id=v.root_realm_id AND fa.id=v.debit_account_id
+     JOIN account_group ag ON ag.root_realm_id=fa.root_realm_id AND ag.id=fa.group_id
     WHERE j.root_realm_id=e.root_realm_id AND j.id=e.source_journal_id
      AND j.status='POSTED' AND j.posting_kind='VOUCHER'
      AND j.financial_year_id=b.financial_year_id AND v.voucher_type='EXPENSE'
      AND v.branch_id IS NOT DISTINCT FROM b.branch_id AND v.project_ref=b.project_ref
-     AND v.total_minor=e.amount_minor
+     AND j.posting_date BETWEEN b.period_start AND b.period_end AND ag.category='EXPENSE' AND ag.code=b.category_label
+     AND e.amount_minor=(SELECT COALESCE(sum(l.debit_minor),0) FROM journal_line l JOIN finance_account la ON la.root_realm_id=l.root_realm_id AND la.id=l.account_id JOIN account_group lg ON lg.root_realm_id=la.root_realm_id AND lg.id=la.group_id WHERE l.root_realm_id=j.root_realm_id AND l.journal_id=j.id AND (b.branch_id IS NULL OR l.branch_id=b.branch_id) AND lg.category='EXPENSE')
    ) END AS proven,
    CASE WHEN e.kind='UTILIZE' THEN EXISTS(SELECT 1 FROM journal reversal
     WHERE reversal.root_realm_id=e.root_realm_id AND reversal.reversal_of_id=e.source_journal_id
