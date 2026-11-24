@@ -4,6 +4,7 @@ import type {Pool} from "pg";
 import {DATABASE} from "./core/infrastructure/database.module";
 import { NestFactory } from "@nestjs/core";
 import { AppModule } from "./app.module";
+import {CmsEditorialService} from "./modules/cg-18-cms-public-content/application/cms-editorial.service";
 import { readConfig } from "./core/config/config";
 import { SafeErrorsFilter } from "./core/http/safe-errors.filter";
 import { correlateRequest } from "./core/observability/request-correlation";
@@ -44,6 +45,9 @@ async function bootstrap(): Promise<void> {
     throw new Error(`Database readiness check failed: ${lastDbError instanceof Error ? lastDbError.message : String(lastDbError)}`);
   }
 
+  // Once per database: publish the immutable source-owned first-install baseline
+  // before serving requests. Later boots do not touch existing editorial pages.
+  await app.get(CmsEditorialService).initializeReleaseBaseline();
   await app.listen(cfg.port, "0.0.0.0");
 }
 void bootstrap().catch((error: unknown) => {
