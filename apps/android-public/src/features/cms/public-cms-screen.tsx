@@ -494,6 +494,7 @@ export function PublicCmsContent({onContact,onPartnerApplication,onMembershipApp
        return <View style={styles.card} key={j}>
         {!!uri&&<Image source={{uri}} style={styles.image}
          accessibilityLabel={asset?.altText||"Foundation program"}/>}
+        {!!uri&&asset?.altText.startsWith("AI-generated illustration")&&<Text style={styles.muted}>AI-generated illustration.</Text>}
         <Text style={styles.eyebrow}>{text(item.label)}</Text>
         <Text style={styles.heading}>{text(item.title)}</Text>
         <Text style={styles.body}>{text(item.body)}</Text>
@@ -522,6 +523,7 @@ export function PublicCmsContent({onContact,onPartnerApplication,onMembershipApp
       {!!text(fields.body)&&<Text style={styles.heroBody}>{text(fields.body)}</Text>}
       {!!uri&&<Image style={styles.image} source={{uri}}
        accessibilityLabel={image?.altText||"Foundation volunteers"}/>}
+      {!!uri&&image?.altText.startsWith("AI-generated illustration")&&<Text style={styles.heroBody}>AI-generated illustration.</Text>}
       {text(fields.path)==="/volunteer"?volunteerJoin&&text(fields.label)?
        <CmsButton title={text(fields.label)} onPress={onVolunteerApply}/>:null:
        canNavigate(fields.path)&&text(fields.label)&&<CmsButton title={text(fields.label)} onPress={()=>navigate(fields.path)}/>}
