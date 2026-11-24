@@ -44,7 +44,7 @@ BEGIN
  ELSE
   IF TG_OP='INSERT' THEN ref:=NEW.page_revision_id; root:=NEW.foundation_root_id;
   ELSE ref:=OLD.page_revision_id; root:=OLD.foundation_root_id; END IF;
-  IF EXISTS(SELECT 1 FROM cms_publication WHERE foundation_root_id=root AND page_revision_id=ref AND release_baseline)
+  IF EXISTS(SELECT 1 FROM cms_page_revision v WHERE v.foundation_root_id=root AND v.id=ref AND v.release_baseline AND (EXISTS(SELECT 1 FROM cms_publication pub WHERE pub.foundation_root_id=root AND pub.page_revision_id=ref AND pub.release_baseline) OR EXISTS(SELECT 1 FROM cms_release_install i WHERE i.foundation_root_id=root)))
   THEN RAISE EXCEPTION 'Release content is immutable' USING ERRCODE='P1831'; END IF;
  END IF;
  IF TG_OP='DELETE' THEN RETURN OLD; END IF; RETURN NEW;
@@ -82,3 +82,32 @@ BEGIN
 END; $$;
 CREATE TRIGGER cg18_release_publication_guard BEFORE INSERT OR UPDATE ON cms_publication
  FOR EACH ROW EXECUTE FUNCTION cg18_release_publication_guard();
+
+-- Fixed build-bundled illustrations are not CG19 uploads. Do not counterfeit
+-- an object-store generation, malware-scan proof, or human media approval.
+CREATE TABLE cms_release_asset(
+ foundation_root_id uuid NOT NULL,
+ page_revision_id uuid NOT NULL,
+ asset_key text NOT NULL,
+ role text NOT NULL,
+ sort_order smallint NOT NULL,
+ PRIMARY KEY(foundation_root_id,page_revision_id,role,sort_order),
+ FOREIGN KEY(foundation_root_id,page_revision_id) REFERENCES cms_page_revision(foundation_root_id,id) ON DELETE RESTRICT,
+ CHECK((asset_key,role,sort_order) IN (
+ ('community-illustration-hero','HERO',0),('riverbank-community','ABOUT',20),
+ ('community-planning','PROMO',30),('flood-relief','FEATURE',0),
+ ('community-education','FEATURE',1),('community-healthcare','FEATURE',2)))
+);
+CREATE TRIGGER cg18_release_asset_freeze BEFORE INSERT OR UPDATE OR DELETE ON cms_release_asset
+ FOR EACH ROW EXECUTE FUNCTION cg18_release_frozen_guard();
+CREATE TRIGGER cg18_release_asset_draft_guard BEFORE INSERT OR UPDATE OR DELETE ON cms_release_asset
+ FOR EACH ROW EXECUTE FUNCTION cg18_guard_revision_mutation();
+CREATE FUNCTION cg18_release_asset_scope() RETURNS trigger LANGUAGE plpgsql AS $$
+BEGIN
+ IF NOT EXISTS(SELECT 1 FROM cms_page_revision v JOIN cms_page p ON p.id=v.page_id AND p.foundation_root_id=v.foundation_root_id
+  WHERE v.id=NEW.page_revision_id AND v.foundation_root_id=NEW.foundation_root_id AND p.slug='home' AND p.release_baseline)
+ THEN RAISE EXCEPTION 'Bundled asset must belong to original Home'; END IF;
+ RETURN NEW;
+END; $$;
+CREATE TRIGGER cg18_release_asset_scope_guard BEFORE INSERT OR UPDATE ON cms_release_asset
+ FOR EACH ROW EXECUTE FUNCTION cg18_release_asset_scope();
