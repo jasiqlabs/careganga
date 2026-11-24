@@ -3,7 +3,7 @@ import {ProjectCoverPanel} from "../projects/project-cover-panel";
 import {useEffect,useRef,useState,type CSSProperties,type FormEvent} from "react";
 
 type Item={ref:string;reference:string;name:string;contactMobile:string|null;representativeName:string|null;
- representativeContact:string|null;branchRef:string|null;stateRef:string;districtRef:string|null;
+ representativeContact:string|null;branchRef:string|null;stateRef:string;districtRef:string|null;blockRef:string|null;beneficiaryCategory:string|null;
  beneficiaryType:string;gender:string;ageGroup:string;consentKind:string;consentPurpose:string|null;
  consentRevoked:boolean;verification:string;lifecycle:string;revision:number;createdAt:string;
  projectLinks?:{ref:string;projectRef:string;projectName:string}[]};
@@ -16,12 +16,12 @@ type ReviewInfo={status:string;caseNumber:string|null;revision?:number;canReview
  sourceRevision:number;sourceVerification:string;allowedDecisions?:string[];requiresCurrentPassword?:boolean;
  decisions?:{action:string;remarks:string;at:string}[]};
 type Option={value:string;label:string};
-type Options={canManageFoundation:boolean;canFilterProjects:boolean;branches:Option[];states:Option[];districts:Option[]};
+type Options={canManageFoundation:boolean;canFilterProjects:boolean;branches:Option[];states:Option[];districts:Option[];blocks:Option[]};
 type Form={branchRef:string;name:string;contactMobile:string;representativeName:string;representativeContact:string;
- stateRef:string;districtRef:string;beneficiaryType:string;gender:string;ageGroup:string;
+ stateRef:string;districtRef:string;blockRef:string;beneficiaryCategory:string;beneficiaryType:string;gender:string;ageGroup:string;
  consentKind:string;consentPurpose:string;consentAcknowledged:boolean};
 const empty=():Form=>({branchRef:"",name:"",contactMobile:"",representativeName:"",representativeContact:"",
- stateRef:"",districtRef:"",beneficiaryType:"",gender:"NOT_SPECIFIED",ageGroup:"NOT_SPECIFIED",
+ stateRef:"",districtRef:"",blockRef:"",beneficiaryCategory:"",beneficiaryType:"",gender:"NOT_SPECIFIED",ageGroup:"NOT_SPECIFIED",
  consentKind:"SELF",consentPurpose:"Foundation beneficiary assistance",consentAcknowledged:false});
 const card:CSSProperties={background:"var(--cg-surface,#fff)",border:"1px solid var(--cg-border)",borderRadius:12,padding:16};
 const field:CSSProperties={display:"grid",gap:5,fontSize:13};
@@ -39,7 +39,7 @@ async function api<T>(p:string,method="GET",body?:Record<string,unknown>):Promis
 function fromItem(x:Item):Form{
  return {branchRef:x.branchRef??"",name:x.name,contactMobile:x.contactMobile??"",
   representativeName:x.representativeName??"",representativeContact:x.representativeContact??"",
-  stateRef:x.stateRef,districtRef:x.districtRef??"",beneficiaryType:x.beneficiaryType,
+  stateRef:x.stateRef,districtRef:x.districtRef??"",blockRef:x.blockRef??"",beneficiaryCategory:x.beneficiaryCategory??"",beneficiaryType:x.beneficiaryType,
   gender:x.gender,ageGroup:x.ageGroup,consentKind:x.consentKind,
   consentPurpose:x.consentPurpose??"",consentAcknowledged:true};
 }
@@ -55,8 +55,9 @@ export function BeneficiariesWorkspace({canManage,canLinkProjects,canManageLifec
  const [projectFilter,setProjectFilter]=useState(""),[projectSearch,setProjectSearch]=useState(""),[filterProjects,setFilterProjects]=useState<Option[]>([]);
  const [stateFilter,setStateFilter]=useState(""),[districtFilter,setDistrictFilter]=useState("");
  const [fromFilter,setFromFilter]=useState(""),[toFilter,setToFilter]=useState("");
- const [filterDistricts,setFilterDistricts]=useState<Option[]>([]);
- const [appliedFilters,setAppliedFilters]=useState({gender:"",ageGroup:"",type:"",stateRef:"",districtRef:"",registeredFrom:"",registeredTo:"",projectRef:""});
+ const [filterDistricts,setFilterDistricts]=useState<Option[]>([]),[filterBlocks,setFilterBlocks]=useState<Option[]>([]),[blocks,setBlocks]=useState<Option[]>([]);
+ const [blockFilter,setBlockFilter]=useState(""),[categoryFilter,setCategoryFilter]=useState("");
+ const [appliedFilters,setAppliedFilters]=useState({gender:"",ageGroup:"",type:"",stateRef:"",districtRef:"",blockRef:"",category:"",registeredFrom:"",registeredTo:"",projectRef:""});
  const [epoch,setEpoch]=useState(0),[selected,setSelected]=useState<Item|null>(null),[detailLoading,setDetailLoading]=useState(false);
  const [opts,setOpts]=useState<Options|null>(null),[districts,setDistricts]=useState<Option[]>([]),
   [form,setForm]=useState<Form>(empty),[mode,setMode]=useState<"create"|"edit"|null>(null),
@@ -87,6 +88,8 @@ export function BeneficiariesWorkspace({canManage,canLinkProjects,canManageLifec
   return()=>{seq.current++;};
  },[search,tab,branch,cursor,epoch,appliedFilters]);
  useEffect(()=>{let live=true;setFilterDistricts([]);if(stateFilter)void api<Options>("/options?"+new URLSearchParams({stateRef:stateFilter})).then(v=>{if(live)setFilterDistricts(v.districts);}).catch(e=>{if(live)setError(e.message);});return()=>{live=false;};},[stateFilter]);
+ useEffect(()=>{let live=true;setFilterBlocks([]);if(stateFilter&&districtFilter)void api<Options>("/options?"+new URLSearchParams({stateRef:stateFilter,districtRef:districtFilter})).then(v=>{if(live)setFilterBlocks(v.blocks);}).catch(e=>{if(live)setError(e.message);});return()=>{live=false;};},[stateFilter,districtFilter]);
+ useEffect(()=>{let live=true;setBlocks([]);if(form.stateRef&&form.districtRef)void api<Options>("/options?"+new URLSearchParams({stateRef:form.stateRef,districtRef:form.districtRef})).then(v=>{if(live)setBlocks(v.blocks);}).catch(e=>{if(live)setFormError(e.message);});return()=>{live=false;};},[form.stateRef,form.districtRef]);
  useEffect(()=>{let live=true;setDistricts([]);if(!form.stateRef)return;
   void api<Options>("/options?"+new URLSearchParams({stateRef:form.stateRef}))
    .then(v=>{if(live)setDistricts(v.districts);}).catch(e=>{if(live)setFormError(e.message);});
@@ -242,12 +245,14 @@ export function BeneficiariesWorkspace({canManage,canLinkProjects,canManageLifec
     <label style={field}>Gender<select style={input} value={genderFilter} onChange={e=>setGenderFilter(e.target.value)}><option value="">All</option>{["MALE","FEMALE","OTHER","NOT_SPECIFIED"].map(x=><option key={x} value={x}>{nice(x)}</option>)}</select></label>
     <label style={field}>Age group<select style={input} value={ageFilter} onChange={e=>setAgeFilter(e.target.value)}><option value="">All</option>{["CHILD","ADULT","SENIOR","NOT_SPECIFIED"].map(x=><option key={x} value={x}>{nice(x)}</option>)}</select></label>
     {opts?.canFilterProjects&&<div style={{...field,flex:"1 1 220px"}}><label style={field}>Find project<input style={input} maxLength={80} value={projectSearch} onChange={e=>setProjectSearch(e.target.value)} placeholder="Project name or code"/></label><button type="button" style={secondary} onClick={()=>void loadProjectFilters()}>Find projects</button><label style={field}>Project<select style={input} value={projectFilter} onChange={e=>setProjectFilter(e.target.value)}><option value="">All projects</option>{filterProjects.map(x=><option key={x.value} value={x.value}>{x.label}</option>)}</select></label></div>}
-    <label style={field}>State<select style={input} value={stateFilter} onChange={e=>{setStateFilter(e.target.value);setDistrictFilter("");}}><option value="">All states</option>{opts?.states.map(x=><option key={x.value} value={x.value}>{x.label}</option>)}</select></label>
-    <label style={field}>District<select style={input} disabled={!stateFilter} value={districtFilter} onChange={e=>setDistrictFilter(e.target.value)}><option value="">All districts</option>{filterDistricts.map(x=><option key={x.value} value={x.value}>{x.label}</option>)}</select></label>
+    <label style={field}>State<select style={input} value={stateFilter} onChange={e=>{setStateFilter(e.target.value);setDistrictFilter("");setBlockFilter("");}}><option value="">All states</option>{opts?.states.map(x=><option key={x.value} value={x.value}>{x.label}</option>)}</select></label>
+    <label style={field}>District<select style={input} disabled={!stateFilter} value={districtFilter} onChange={e=>{setDistrictFilter(e.target.value);setBlockFilter("");}}><option value="">All districts</option>{filterDistricts.map(x=><option key={x.value} value={x.value}>{x.label}</option>)}</select></label>
+    <label style={field}>Block / location<select style={input} disabled={!districtFilter} value={blockFilter} onChange={e=>setBlockFilter(e.target.value)}><option value="">All blocks</option>{filterBlocks.map(x=><option key={x.value} value={x.value}>{x.label}</option>)}</select></label>
+    <label style={field}>Category<input style={input} maxLength={60} value={categoryFilter} onChange={e=>setCategoryFilter(e.target.value)}/></label>
     <label style={field}>Registered from<input type="date" style={input} value={fromFilter} max={toFilter||undefined} onChange={e=>setFromFilter(e.target.value)}/></label>
     <label style={field}>Registered to<input type="date" style={input} value={toFilter} min={fromFilter||undefined} onChange={e=>setToFilter(e.target.value)}/></label>
-    <button type="button" style={primary} onClick={()=>{setSearch(q.trim());setAppliedFilters({gender:genderFilter,ageGroup:ageFilter,type:typeFilter,stateRef:stateFilter,districtRef:districtFilter,registeredFrom:fromFilter,registeredTo:toFilter,projectRef:projectFilter});setCursor("");setSeen([]);}}>Apply Filters</button>
-   <button type="button" style={secondary} onClick={()=>{setQ("");setSearch("");setBranch("");setTab("ALL");setGenderFilter("");setAgeFilter("");setTypeFilter("");setStateFilter("");setDistrictFilter("");setFromFilter("");setToFilter("");setProjectFilter("");setProjectSearch("");setFilterProjects([]);setAppliedFilters({gender:"",ageGroup:"",type:"",stateRef:"",districtRef:"",registeredFrom:"",registeredTo:"",projectRef:""});setCursor("");setSeen([]);}}>Reset</button>
+    <button type="button" style={primary} onClick={()=>{setSearch(q.trim());setAppliedFilters({gender:genderFilter,ageGroup:ageFilter,type:typeFilter,stateRef:stateFilter,districtRef:districtFilter,blockRef:blockFilter,category:categoryFilter,registeredFrom:fromFilter,registeredTo:toFilter,projectRef:projectFilter});setCursor("");setSeen([]);}}>Apply Filters</button>
+   <button type="button" style={secondary} onClick={()=>{setQ("");setSearch("");setBranch("");setTab("ALL");setGenderFilter("");setAgeFilter("");setTypeFilter("");setStateFilter("");setDistrictFilter("");setBlockFilter("");setCategoryFilter("");setFromFilter("");setToFilter("");setProjectFilter("");setProjectSearch("");setFilterProjects([]);setAppliedFilters({gender:"",ageGroup:"",type:"",stateRef:"",districtRef:"",blockRef:"",category:"",registeredFrom:"",registeredTo:"",projectRef:""});setCursor("");setSeen([]);}}>Reset</button>
   </div>
   {notice&&<p role="status" style={{color:"var(--cg-success,#166534)"}}>{notice}</p>}
   {error&&<p role="alert" style={{color:"var(--cg-danger,#b91c1c)"}}>{error}</p>}
@@ -275,7 +280,7 @@ export function BeneficiariesWorkspace({canManage,canLinkProjects,canManageLifec
       <div>Verification: <strong>{nice(selected.verification)}</strong></div>
       <div>Lifecycle: <strong>{nice(selected.lifecycle)}</strong></div>
       <div>Contact: {selected.contactMobile??"Not recorded / restricted"}</div>
-      <div>Category: {selected.beneficiaryType}</div>
+      <div>Beneficiary type: {selected.beneficiaryType}</div><div>Category: {selected.beneficiaryCategory??"Not specified"}</div>
       <div>Consent: {selected.consentRevoked?"Withdrawn":nice(selected.consentKind)}</div>
       {canReadEvidence&&!selected.consentRevoked&&selected.lifecycle==="ACTIVE"&&<ProjectCoverPanel key={selected.ref+":"+selected.revision} projectRef={selected.ref} version={selected.revision} sourceKind="beneficiary" canUpload={canUploadEvidence&&canManage}/>}
       {selected.verification!=="VERIFIED"&&<p style={{fontSize:12,color:"var(--cg-muted)"}}>
@@ -357,9 +362,10 @@ export function BeneficiariesWorkspace({canManage,canLinkProjects,canManageLifec
      <label style={field}>Full name<input required style={input} value={form.name} maxLength={160}
       onChange={e=>update("name",e.target.value)}/></label>
      <label style={field}>Beneficiary type<input required style={input} value={form.beneficiaryType} maxLength={60}
-      placeholder="Use the approved Foundation beneficiary category"
+      placeholder="Enter the approved Foundation beneficiary type"
       onChange={e=>update("beneficiaryType",e.target.value)}/></label>
-     <label style={field}>Contact (optional, with country code)
+     <label style={field}>Category (optional)<input style={input} value={form.beneficiaryCategory} maxLength={60} onChange={e=>update("beneficiaryCategory",e.target.value)}/></label>
+      <label style={field}>Contact (optional, with country code)
       <input style={input} inputMode="tel" value={form.contactMobile} maxLength={16}
        placeholder="+919876543210" onChange={e=>update("contactMobile",e.target.value)}/></label>
      <div style={{...card,display:"grid",gap:8}}>
@@ -378,11 +384,12 @@ export function BeneficiariesWorkspace({canManage,canLinkProjects,canManageLifec
         <p>Do not merge or overwrite records automatically.</p></div>}
       </div>
       <label style={field}>State<select required style={input} value={form.stateRef}
-      onChange={e=>setForm(x=>({...x,stateRef:e.target.value,districtRef:""}))}>
+      onChange={e=>setForm(x=>({...x,stateRef:e.target.value,districtRef:"",blockRef:""}))}>
       <option value="">Select a current state</option>{opts?.states.map(x=><option key={x.value} value={x.value}>{x.label}</option>)}</select></label>
      <label style={field}>District (optional)<select style={input} value={form.districtRef}
-      onChange={e=>update("districtRef",e.target.value)}>
+      onChange={e=>setForm(x=>({...x,districtRef:e.target.value,blockRef:""}))}>
       <option value="">Not selected</option>{districts.map(x=><option key={x.value} value={x.value}>{x.label}</option>)}</select></label>
+      <label style={field}>Block / location (optional)<select style={input} value={form.blockRef} disabled={!form.districtRef} onChange={e=>update("blockRef",e.target.value)}><option value="">Not selected</option>{blocks.map(x=><option key={x.value} value={x.value}>{x.label}</option>)}</select></label>
      <label style={field}>Gender (optional)
       <select style={input} value={form.gender} onChange={e=>update("gender",e.target.value)}>
        {["NOT_SPECIFIED","FEMALE","MALE","OTHER"].map(x=><option key={x} value={x}>{nice(x)}</option>)}</select></label>
