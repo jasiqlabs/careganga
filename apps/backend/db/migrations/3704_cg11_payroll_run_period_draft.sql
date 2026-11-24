@@ -89,7 +89,7 @@ CREATE TABLE payroll_adjustment(
  delta_minor bigint NOT NULL CHECK(delta_minor<>0),source_snapshot jsonb NOT NULL CHECK(jsonb_typeof(source_snapshot)='object'),
  reason text NOT NULL CHECK(length(btrim(reason)) BETWEEN 2 AND 100),created_by uuid NOT NULL,
  created_at timestamptz NOT NULL DEFAULT now(),
- UNIQUE(root_realm_id,id),UNIQUE(root_realm_id,source_key),
+ UNIQUE(root_realm_id,id),UNIQUE(root_realm_id,source_key),UNIQUE(root_realm_id,id,original_line_ref,correction_digest),
  FOREIGN KEY(root_realm_id,original_line_ref) REFERENCES payroll_line(root_realm_id,id),
  FOREIGN KEY(root_realm_id,target_run_ref) REFERENCES payroll_run(root_realm_id,id),
  FOREIGN KEY(root_realm_id,employee_ref) REFERENCES hr_employee(root_realm_id,id),
@@ -98,3 +98,12 @@ CREATE TABLE payroll_adjustment(
 CREATE INDEX ix_cg11_adjustment_original ON payroll_adjustment(root_realm_id,original_line_ref,created_at,id);
 CREATE INDEX ix_cg11_adjustment_target ON payroll_adjustment(root_realm_id,target_run_ref,employee_ref,id);
 CREATE TRIGGER cg11_late_adjustment_immutable BEFORE UPDATE OR DELETE ON payroll_adjustment FOR EACH ROW EXECUTE FUNCTION cg11_audit_immutable();
+
+CREATE TABLE payroll_adjustment_consumption(
+ root_realm_id uuid NOT NULL,adjustment_ref uuid NOT NULL,original_line_ref uuid NOT NULL,correction_digest char(64) NOT NULL,
+ target_run_ref uuid NOT NULL,decision_ref uuid NOT NULL,created_at timestamptz NOT NULL DEFAULT now(),
+ PRIMARY KEY(root_realm_id,adjustment_ref),UNIQUE(root_realm_id,original_line_ref,correction_digest),
+ FOREIGN KEY(root_realm_id,adjustment_ref,original_line_ref,correction_digest) REFERENCES payroll_adjustment(root_realm_id,id,original_line_ref,correction_digest),
+ FOREIGN KEY(root_realm_id,target_run_ref) REFERENCES payroll_run(root_realm_id,id)
+);
+CREATE TRIGGER cg11_adjustment_consumption_immutable BEFORE UPDATE OR DELETE ON payroll_adjustment_consumption FOR EACH ROW EXECUTE FUNCTION cg11_audit_immutable();
