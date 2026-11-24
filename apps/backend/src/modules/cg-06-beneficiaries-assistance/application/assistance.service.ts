@@ -33,7 +33,7 @@ export class AssistanceService{
   if(b.consentRevoked||b.branchRef!==initial.branch_ref)throw new NotFoundException("Assistance unavailable");
   if(write&&(b.lifecycle!=="ACTIVE"||b.verification!=="VERIFIED"))throw conflict();
   const current=(await tx.query<Aid>("SELECT * FROM assistance_case WHERE root_realm_id=$1 AND id=$2 "+(write?"FOR UPDATE":"FOR SHARE"),[a.realmId,initial.id])).rows[0];
-  if(!current)throw conflict();
+  if(!current||write&&['DRAFT','SUBMITTED'].includes(current.state)&&b.revision!==current.beneficiary_revision)throw conflict();
   return current;
  }
  async context(tx:PoolClient,a:Actor,branch:string|null,project:string|null,activity:string|null,visit:string|null,campaign:string|null){
