@@ -151,6 +151,9 @@ Dependencies: None
 
 ## Execution progress
 
+CG16 re-review d81c2d95: exact distinct authorized export refs and stale action guard, US-001-QA03/13/14/16 source-only. Runtime NOT_RUN.
+
+
 ### Healthcare hardening checkpoint — 24 Nov 2026
 HUX-07.01/07.02/07.03: source candidates fdfd2c33, 1b771eb3, a3b63ca0, 57455aea, 45e0c1af, 46e543e6, 9ba8786e on the separate hardening branch. US-001-QA01/03/05/06/07/09/13/14/15/16 and US-002-QA01–16 partially traced. Actual database, Web/device, visual and independent review NOT_RUN; original dispositions unchanged. Test beyond first 100, scoped page export, stale edit, stable patient/visit selection, rapid center/order switch and specimen/review/release journey. See [cross-module tracker](../../HEALTHCARE_UIUX_HARDENING_TRACKER.md).
 
