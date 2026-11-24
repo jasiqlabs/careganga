@@ -183,6 +183,13 @@ The 10-image original editorial asset pack is stored in private Library `/CareGa
 
 Two-copy confirmation now uses authorized patient display name, original booking doctor/center, appointment date/time and verified financial amounts in separate green-header panels with measured fit. No sample portrait, barcode, QR or contact details are copied from the reference; the separately authorized consultation-slip QR remains the status verification source. Existing cash one-copy document and historic immutable bytes remain unchanged. This is a read-only current verified online confirmation, not a stored issued online tax receipt. Actual long-name/Unicode, refunds, provider, print and device acceptance NOT_RUN.
 
+## 24 November — targeted fresh source review and corrections
+
+- Reviewed prior source HEAD `698b5baa5567deaf7975af1a8c7702e104c12998` for online confirmation backend, error catalog/filter, local gate and both patient payment summaries. Pinned Harness `8922c717efb68cb5b998cf51f7c0755636616175` matches authenticated main; resolver NOT_RUN. Separate independent reviewer invocation not available (`INDEPENDENT_REVIEW_UNAVAILABLE`); this is a fresh source review, not independent clearance.
+- HUX-15.01 / 11.03: missing online confirmation safe error copy and missing PDF renderer from safe-error regression path fixed (`312908e4`, `b15f8ff8`). Existing 5xx redaction preserved. CG01 and CG19 owner trackers updated. CG17 US-004-QA01/08/09 receiving source trace.
+- HUX-08.03 / 15.02: fixed stale Web/native balance and receipt actions on failed refresh/booking switch; request-generation scope, native late PDF preview protection and cache cleanup (`5c1be7d8`, `b8c6cea9`). CG17 owner tracker updated. Verify failed refresh, A→B slow response, expired session, concurrent taps and leaving screen during PDF fetch. No payment state or access expansion.
+- Remote read-back literal contract checks: 10/10 matched. No local source gate, compile, runtime or independent re-review executed. These targeted fixes are authored and read back; all 35 rows remain IN_PROGRESS pending remaining source/independent disposition, not 35 confirmed defects. No merge or new business scope.
+
 ## Subtracker details and expected user scenarios
 
 ### HUX-01.01 — Recover separate healthcare reference originals
