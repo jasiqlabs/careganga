@@ -180,7 +180,7 @@ export class PayrollRunService{
   return {items:rows};
  });}
  private async lateAdjustments(tx:PoolClient,a:Actor,r:Run):Promise<Adjustment[]>{
-  const rows=(await tx.query<{id:string;employee_ref:string;delta:string;reason:string;correction_digest:string;original_line_ref:string}>("SELECT id,employee_ref,delta_minor::text AS delta,reason,correction_digest,original_line_ref FROM payroll_adjustment WHERE root_realm_id=$1 AND target_run_ref=$2 ORDER BY id",[a.realmId,r.id])).rows;
+  const rows=(await tx.query<{id:string;employee_ref:string;delta:string;reason:string;correction_digest:string;original_line_ref:string}>("SELECT id,employee_ref,delta,reason,correction_digest,original_line_ref FROM (SELECT DISTINCT ON(original_line_ref) id,employee_ref,delta_minor::text AS delta,reason,correction_digest,original_line_ref FROM payroll_adjustment WHERE root_realm_id=$1 AND target_run_ref=$2 ORDER BY original_line_ref,created_at DESC,id DESC) current ORDER BY id",[a.realmId,r.id])).rows;
   const result:Adjustment[]=[];
   for(const x of rows){
    const fresh=await this.correctedOriginal(tx,a,r,x.original_line_ref);
@@ -197,7 +197,8 @@ export class PayrollRunService{
   const old=await this.snapshot(tx,a,original),input=old?.inputs.find(x=>x.employee.id===line.employee_ref);
   if(!old||!input||!line.source_snapshot.amounts)throw conflict();
   const actual=await this.hr.payrollPeriod(tx,a,line.employee_ref,original.period_from,original.period_until,original.branch_ref);
-  if(actual.reason||digestOf(actual.assignments)!==digestOf(input.attendance.assignments))throw new ConflictException("Original assignment or attendance remains unresolved");
+  const periodMap=(xs:Attendance["assignments"])=>periodDates(original.period_from,original.period_until).map(date=>xs.filter(a=>a.from<=date&&(!a.until||a.until>date)).map(a=>[a.id,a.branchRef]));
+  if(actual.reason||digestOf(periodMap(actual.assignments))!==digestOf(periodMap(input.attendance.assignments)))throw new ConflictException("Original assignment or attendance remains unresolved");
   const before=new Map(input.attendance.days.map(d=>[d.date,d]));
   const changed=actual.days.filter(d=>digestOf(d)!==digestOf(before.get(d.date)??null));
   if(!changed.length||changed.some(d=>!d.correctionDecisionRef&&!d.leaveDecisionRef)||input.attendance.days.some(d=>!actual.days.some(n=>n.date===d.date)))throw new ConflictException("No new original approved attendance or leave correction");
@@ -205,18 +206,18 @@ export class PayrollRunService{
   const originalCalc=calculatePayroll(original.period_from,original.period_until,input.attendance.days,input.salary);
   if(corrected.status!=="CALCULATED"||originalCalc.status!=="CALCULATED")throw new ConflictException("The original attendance correction is not fully validated");
   if(corrected.employerMinor!==originalCalc.employerMinor||corrected.statutoryMinor!==originalCalc.statutoryMinor)throw new ConflictException("Employer or statutory correction requires its reviewed accounting treatment");
-  const correctionDigest=digestOf([original.id,line.id,actual.assignments,actual.days,input.salary]);
+  const correctionDigest=digestOf([original.id,line.id,periodMap(actual.assignments),actual.days,input.salary]);
   return {line,correctionDigest,delta:BigInt(corrected.netMinor)-BigInt(originalCalc.netMinor),evidence:changed.map(d=>({date:d.date,attendanceRef:d.ref,revision:d.revision,decisionRef:d.correctionDecisionRef??d.leaveDecisionRef}))};
  }
  private async createLateAdjustment(tx:PoolClient,a:Actor,target:Run,originalLine:string,reason:string){
   const original=await this.correctedOriginal(tx,a,target,originalLine);
   const targetSnap=await this.snapshot(tx,a,target);
   if(!targetSnap?.inputs.some(i=>i.employee.id===original.line.employee_ref))throw new ConflictException("Original employee is not in this later run scope");
-  const prior=(await tx.query<{delta:string;target_run_ref:string;status:string}>("SELECT x.delta_minor::text AS delta,x.target_run_ref,r.status FROM payroll_adjustment x JOIN payroll_run r ON r.root_realm_id=x.root_realm_id AND r.id=x.target_run_ref WHERE x.root_realm_id=$1 AND x.original_line_ref=$2 AND r.status<>'REJECTED' ORDER BY x.id FOR SHARE OF x,r",[a.realmId,originalLine])).rows;
-  if(prior.some(x=>x.status!=="APPROVED_FROZEN"))throw new ConflictException("An original correction is already under review");
-  const applied=prior.reduce((n,v)=>n+BigInt(v.delta),0n),delta=original.delta-applied;
+  const prior=(await tx.query<{delta:string;target_run_ref:string;status:string;consumed:boolean}>("SELECT x.delta_minor::text AS delta,x.target_run_ref,r.status,EXISTS(SELECT 1 FROM payroll_adjustment_consumption c WHERE c.root_realm_id=x.root_realm_id AND c.adjustment_ref=x.id) AS consumed FROM payroll_adjustment x JOIN payroll_run r ON r.root_realm_id=x.root_realm_id AND r.id=x.target_run_ref WHERE x.root_realm_id=$1 AND x.original_line_ref=$2 AND r.status<>'REJECTED' ORDER BY x.id FOR SHARE OF x,r",[a.realmId,originalLine])).rows;
+  if(prior.some(x=>x.status!=="APPROVED_FROZEN"&&x.target_run_ref!==target.id))throw new ConflictException("An original correction is already under review");
+  const applied=prior.filter(v=>v.consumed).reduce((n,v)=>n+BigInt(v.delta),0n),delta=original.delta-applied;
   if(delta===0n)throw new ConflictException("The corrected payroll difference has already been accounted for");
-  const key=digestOf([original.line.id,original.correctionDigest]);
+  const key=digestOf([target.id,original.line.id,original.correctionDigest]);
   await tx.query("INSERT INTO payroll_adjustment(root_realm_id,original_line_ref,target_run_ref,employee_ref,correction_digest,source_key,delta_minor,source_snapshot,reason,created_by) VALUES($1,$2,$3,$4,$5,$6,$7,$8::jsonb,$9,$10)",[a.realmId,original.line.id,target.id,original.line.employee_ref,original.correctionDigest,key,delta.toString(),JSON.stringify({evidence:original.evidence,originalLine:original.line.id,previousDelta:applied.toString()}),reason,a.accountId]);
  }
  async history(token:string,ref:string){return this.compensation.run(token,"payroll.runs.view",async(tx,a)=>{
@@ -227,7 +228,7 @@ export class PayrollRunService{
  async reviewSource(tx:PoolClient,a:Actor,ref:string,lock=false,verifyFresh=false){
   if(lock)await tx.query("SELECT pg_advisory_xact_lock(hashtextextended($1,0))",["CG11-RUN-WRITE:"+a.realmId]);
   const r=await this.row(tx,a,ref,lock),s=await this.snapshot(tx,a,r);
-  if(!s||!r.snapshot_digest||s.totals.pending!==0||s.totals.calculated===0)throw conflict();
+  if(!s||!r.snapshot_digest||s.totals.pending!==0||s.totals.calculated===0||s.adjustments.some(x=>x.sourceRef&&!s.lines.some(l=>l.employeeRef===x.employeeRef&&l.status==="CALCULATED")))throw conflict();
   if(verifyFresh){if(digestOf(await this.gather(tx,a,r))!==s.inputDigest)throw conflict();const late=await this.lateAdjustments(tx,a,r);if(digestOf(late)!==digestOf(s.adjustments.filter(v=>v.sourceRef)))throw conflict();}
   return {row:r,snapshot:s,digest:r.snapshot_digest,preview:{label:r.run_number,period:r.period_key,fiscalYear:r.fiscal_year_label,totals:s.totals,lines:s.lines,status:r.status}};
  }
@@ -236,6 +237,7 @@ export class PayrollRunService{
   if(r.revision!==expected||(status==="SUBMITTED"?r.status!=="CALCULATED":r.status!=="SUBMITTED"||r.approval_case_ref!==caseRef))throw conflict();
   if(status==="APPROVED_FROZEN"){
    const sourceRevision=(await tx.query<{revision:number}>("SELECT revision FROM payroll_run_revision WHERE root_realm_id=$1 AND run_id=$2 AND source_digest=$3 ORDER BY revision DESC LIMIT 1",[a.realmId,r.id,src.digest])).rows[0].revision;
+   for(const adj of src.snapshot.adjustments.filter(x=>x.sourceRef))await tx.query("INSERT INTO payroll_adjustment_consumption(root_realm_id,adjustment_ref,original_line_ref,correction_digest,target_run_ref,decision_ref) SELECT root_realm_id,id,original_line_ref,correction_digest,target_run_ref,$4 FROM payroll_adjustment WHERE root_realm_id=$1 AND id=$2 AND target_run_ref=$3",[a.realmId,adj.sourceRef,r.id,decisionRef]);
    for(const l of src.snapshot.lines){if(l.status!=="CALCULATED"||!l.amounts)continue;const m=l.amounts;
     await tx.query("INSERT INTO payroll_line(root_realm_id,run_id,source_revision,employee_ref,period_key,branch_ref,base_minor,allowance_minor,bonus_minor,arrears_minor,deduction_minor,gross_minor,net_minor,employer_minor,statutory_minor,source_snapshot) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16::jsonb)",[a.realmId,r.id,sourceRevision,l.employeeRef,r.period_key,l.branchRef,m.baseMinor,m.allowanceMinor,m.bonusMinor,m.arrearsMinor,m.deductionMinor,m.grossMinor,m.netMinor,m.employerMinor,m.statutoryMinor,JSON.stringify(l)]);
    }
