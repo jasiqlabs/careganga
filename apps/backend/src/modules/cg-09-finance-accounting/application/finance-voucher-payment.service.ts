@@ -1,3 +1,4 @@
+import {guardAssistanceOwner} from "../../cg-06-beneficiaries-assistance/application/assistance-owner-guard";
 import {
  BadRequestException,ConflictException,ForbiddenException,Inject,Injectable,
  NotFoundException
@@ -127,6 +128,7 @@ export class FinanceVoucherPaymentService{
     await client.query("COMMIT");
     return {confirmed:true,status:earlier.result_status,replayed:true};
    }
+   await guardAssistanceOwner(client,actor.realmId,"PAYMENT",voucherRef);
    const v=await this.voucher(client,actor,voucherRef);
    if(v.version!==expected||v.status!=="APPROVED"||
     !["PAYMENT","CONTRA"].includes(v.voucher_type))
