@@ -26,7 +26,20 @@ export class PayrollCompensationService{
  private policyView(p:Policy){return {ref:p.id,branchRef:p.branch_ref,label:p.label,effectiveFrom:p.effective_from,effectiveTo:p.effective_to,status:p.status,revision:p.revision};}
  private salaryView(p:Salary){return {ref:p.id,employeeRef:p.employee_ref,branchRef:p.branch_ref,policyRef:p.policy_id,effectiveFrom:p.effective_from,effectiveTo:p.effective_to,baseMinor:p.base_salary_minor,status:p.status,revision:p.revision};}
  async employee(tx:PoolClient,a:Actor,employee:string,forDate:string|null=null){return this.hr.employee(tx,a,employee,forDate);}
- async options(token:string,branchInput:unknown,qInput:unknown){return this.run(token,"payroll.compensation.view",(tx,a)=>this.hr.options(tx,a,branchInput,qInput));}
+ async options(token:string,branchInput:unknown,qInput:unknown){return this.run(token,"payroll.compensation.view",async(tx,a)=>{
+   const result=await this.hr.options(tx,a,branchInput,qInput);
+   const rows=(await tx.query<{employee_ref:string;base:string;gross:string;deductions:string;net:string}>(
+    `SELECT c.employee_ref,c.base_salary_minor::text AS base,(c.base_salary_minor+COALESCE(x.allowance,0))::text AS gross,COALESCE(x.deduction,0)::text AS deductions,
+    (c.base_salary_minor+COALESCE(x.allowance,0)-COALESCE(x.deduction,0))::text AS net
+    FROM employee_compensation c LEFT JOIN LATERAL(
+     SELECT sum(CASE WHEN p.calc_mode='FIXED' THEN p.amount_minor ELSE round(c.base_salary_minor::numeric*p.rate_bp/10000) END) FILTER(WHERE p.kind='ALLOWANCE') AS allowance,
+     sum(CASE WHEN p.calc_mode='FIXED' THEN p.amount_minor ELSE round(c.base_salary_minor::numeric*p.rate_bp/10000) END) FILTER(WHERE p.kind='DEDUCTION') AS deduction
+     FROM payroll_component p WHERE p.root_realm_id=c.root_realm_id AND p.policy_id=c.policy_id
+    )x ON true WHERE c.root_realm_id=$1 AND c.employee_ref=ANY($2::uuid[]) AND c.branch_ref=ANY($3::uuid[]) AND c.status='APPROVED'
+    AND c.effective_from<=(now() AT TIME ZONE 'Asia/Kolkata')::date AND (c.effective_to IS NULL OR c.effective_to>(now() AT TIME ZONE 'Asia/Kolkata')::date)`,[a.realmId,result.items.map(x=>x.ref),result.branches.map(x=>x.value)])).rows;
+   const byEmployee=new Map(rows.map(r=>[r.employee_ref,r]));
+   return {...result,items:result.items.map(e=>({...e,salary:byEmployee.get(e.ref)??null}))};
+  });}
  async policies(token:string,branchInput:unknown){
   const branch=id(branchInput);
   return this.run(token,"payroll.compensation.view",async(tx,a)=>{
