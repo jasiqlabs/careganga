@@ -17,9 +17,9 @@ const open=(uri:string)=>void Linking.openURL(uri).catch(()=>undefined);
  * DTO as Next.js. No offline cache of revoked claims or private media.
  */
 export function CmsPublicExtendedSection({section,assets,mediaUrl,onContact,
- onNavigate,onBackToNews,mediaScope,ngoScope="80g",backLabel="Back to approved articles"}:{section:Section;assets:Asset[];
+ onNavigate,canNavigate,onBackToNews,mediaScope,ngoScope="80g",backLabel="Back to approved articles"}:{section:Section;assets:Asset[];
  mediaUrl:(asset:Asset|undefined)=>string|null;
- onContact:()=>void;onNavigate:(path:unknown)=>void;
+ onContact:()=>void;onNavigate:(path:unknown)=>void;canNavigate:(path:unknown)=>boolean;
  onBackToNews:()=>void;mediaScope?:"PHOTO"|"VIDEO"|"PUBLICATION";
  ngoScope?:"80g"|"pan-details"|"registration-certificate"|"annual-reports";backLabel?:string}){
  const f=section.fields;
@@ -82,7 +82,7 @@ export function CmsPublicExtendedSection({section,assets,mediaUrl,onContact,
    <Text style={styles.body}>{text(v.description)}</Text>
   </View>)}
   {(f.group==="CTA"||f.group==="HERO")&&!!text(f.ctaLabel)&&
-   ["/","/about","/contact","/our-impact","/gallery","/healthcare","/ngo-information"].includes(text(f.ctaPath))&&
+   canNavigate(f.ctaPath)&&
    <Action title={text(f.ctaLabel)} onPress={()=>onNavigate(f.ctaPath)}/>}
  </View>;
  if(section.kind==="COMPLIANCE_FACTS"&&ngoScope!=="80g"){
