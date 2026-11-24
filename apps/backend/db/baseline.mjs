@@ -4,21 +4,58 @@ import {readFileSync,readdirSync,mkdirSync,writeFileSync,existsSync,renameSync} 
 import {spawnSync} from "node:child_process";
 import {dirname,join,resolve} from "node:path";
 import {fileURLToPath} from "node:url";
-import {Pool} from "pg";
 
 const dbDir=dirname(fileURLToPath(import.meta.url));
 const backend=resolve(dbDir,"..");
 const baseline=join(dbDir,"baseline");
+const history=join(dbDir,"migrations"); // Frozen historical source; never packaged for deployment.
+const upgradeDir=join(dbDir,"upgrades");
 const contractFile=join(backend,"dist/db/schema-contract.json");
 const sha=s=>createHash("sha256").update(s).digest("hex");
 const filenamePattern=/^\d+_cg\d+_[a-z0-9_-]+\.sql$/;
 const digestPattern=/^[a-f0-9]{64}$/;
 const order=(a,b)=>Number(a.split("_")[0])-Number(b.split("_")[0])||(a<b?-1:a>b?1:0);
-function sourceContract(){
- const names=readdirSync(join(dbDir,"migrations")).filter(n=>n.endsWith(".sql")).sort(order);
- if(!names.length||names.some(n=>!filenamePattern.test(n)||!Number.isSafeInteger(Number(n.split("_")[0]))))
+function sqlFiles(folder,{allowEmpty=false}={}){
+ const names=readdirSync(folder).filter(n=>n.endsWith(".sql")).sort(order);
+ if((!allowEmpty&&!names.length)||names.some(n=>!filenamePattern.test(n)||!Number.isSafeInteger(Number(n.split("_")[0]))))
   throw Error("Invalid migration source names");
- return names.map(filename=>({filename,sha256:sha(readFileSync(join(dbDir,"migrations",filename),"utf8"))}));
+ return names.map(filename=>{const sql=readFileSync(join(folder,filename),"utf8");return {filename,sha256:sha(sql),sql};});
+}
+const entry=({filename,sha256})=>({filename,sha256});
+const sourceContract=()=>sqlFiles(history).map(entry);
+function validateUpgrades(baselineEntries,upgrades){
+ const highest=Number(baselineEntries.at(-1).filename.split("_")[0]);
+ const numbers=upgrades.map(e=>Number(e.filename.split("_")[0]));
+ if(numbers.some((n,i)=>!Number.isSafeInteger(n)||n<=highest||(i>0&&n<=numbers[i-1])))
+  throw Error("New upgrades must use unique increasing migration prefixes");
+ for(const e of upgrades)assertAtomicUpgrade(e.sql);
+}
+// Only release-authored SQL is accepted. Reject explicit transaction control
+// and psql commands outside quotes/comments so a file cannot commit the outer
+// release transaction. Use dollar-quoted function bodies.
+function assertAtomicUpgrade(sql){
+ if(typeof sql!=="string"||!sql.trim())throw Error("Invalid migration SQL");
+ let i=0,words=[];
+ const check=()=>{
+  const first=words[0],second=words[1];
+  if(["BEGIN","END","COMMIT","ROLLBACK","ABORT","SAVEPOINT","RELEASE","COPY"].includes(first)||
+     (["START","PREPARE","SET"].includes(first)&&second==="TRANSACTION")||
+     (first==="SET"&&second==="SESSION"))
+   throw Error("New upgrades must not contain transaction control or COPY");
+  words=[];
+ };
+ while(i<sql.length){
+  const c=sql[i],n=sql[i+1];
+  if(c==="-"&&n==="-"){const end=sql.indexOf("\n",i+2);i=end<0?sql.length:end+1;continue;}
+  if(c==="/"&&n==="*"){let depth=1;i+=2;while(i<sql.length&&depth){if(sql.slice(i,i+2)==="/*"){depth++;i+=2;}else if(sql.slice(i,i+2)==="*/"){depth--;i+=2;}else i++;}if(depth)throw Error("Invalid migration SQL");continue;}
+  if(c==="'"||c==='"'){const quote=c;const escaped=quote==="'"&&i>0&&/[eE]/.test(sql[i-1])&&(i===1||!/[A-Za-z0-9_]/.test(sql[i-2]));i++;let closed=false;while(i<sql.length){if(escaped&&sql[i]==="\\"){i+=2;continue;}if(sql[i]===quote){if(sql[i+1]===quote){i+=2;continue;}i++;closed=true;break;}i++;}if(!closed)throw Error("Invalid migration SQL");continue;}
+  if(c==="$"){const tag=sql.slice(i).match(/^\$(?:[A-Za-z_][A-Za-z0-9_]*)?\$/)?.[0];if(tag){const end=sql.indexOf(tag,i+tag.length);if(end<0)throw Error("Invalid migration SQL");i=end+tag.length;continue;}}
+  if(c===";"){check();i++;continue;}
+  if(c==="\\")throw Error("New upgrades must not contain psql commands");
+  if(/[A-Za-z_]/.test(c)){let end=i+1;while(end<sql.length&&/[A-Za-z0-9_$]/.test(sql[end]))end++;if(words.length<2)words.push(sql.slice(i,end).toUpperCase());i=end;continue;}
+  i++;
+ }
+ check();
 }
 function equal(a,b){return JSON.stringify(a)===JSON.stringify(b);}
 function requireLedger(actual,expected,{exact=true}={}){
@@ -53,6 +90,7 @@ function disposable(value){
  return u;
 }
 async function withDb(url,fn){
+ const {Pool}=await import("pg");
  const p=new Pool({connectionString:url.toString(),max:1,connectionTimeoutMillis:15000,application_name:"careganga-db-release"});
  try{const c=await p.connect();try{return await fn(c);}finally{c.release();}}finally{await p.end();}
 }
@@ -71,8 +109,8 @@ async function locked(c,fn){
  if(!r.rows[0]?.locked)throw Error("Another database release is running; retry after it completes");
  try{return await fn();}finally{await c.query("SELECT pg_advisory_unlock(16041115,1)").catch(()=>{});}
 }
-function runMigration(u,existing=false){
- const result=spawnSync(process.execPath,[join(backend,"dist/db/migrate.js"),...(existing?["--existing-only"]:[])],
+function runHistoricalReplay(u){
+ const result=spawnSync(process.execPath,[join(backend,"dist/db/migrate.js")],
   {cwd:backend,env:{...process.env,DATABASE_MIGRATION_URL:u.toString()},stdio:"ignore"});
  if(result.error||result.status!==0)throw Error("Migration execution failed; run the existing migration diagnostic privately on the isolated target");
 }
@@ -102,33 +140,53 @@ function dump(u,mode=[]){
  if(result.error||result.status!==0)throw Error("PostgreSQL baseline export failed");
  return cleanDump(result.stdout);
 }
-function loadBundle(){
+function readRelease({verifyArchive=false}={}){
  if(!existsSync(join(baseline,"schema.sql"))||!existsSync(join(baseline,"manifest.json")))
-  throw Error("Verified database baseline missing. Generate and validate it before packaging the first release");
+  throw Error("Verified database baseline missing. Include the committed schema and manifest");
  const sql=readFileSync(join(baseline,"schema.sql"),"utf8");
  const manifest=JSON.parse(readFileSync(join(baseline,"manifest.json"),"utf8"));
- if(manifest.format!==1||!Number.isInteger(manifest.postgresMajor)||!Array.isArray(manifest.migrations)||!manifest.migrations.length||
+ if(manifest.format!==1||manifest.postgresMajor!==17||!Array.isArray(manifest.migrations)||!manifest.migrations.length||
     manifest.migrations.some(e=>!e||!filenamePattern.test(e.filename)||!digestPattern.test(e.sha256))||
     new Set(manifest.migrations.map(e=>e.filename)).size!==manifest.migrations.length||
+    manifest.migrations.some((e,i)=>i>0&&order(manifest.migrations[i-1].filename,e.filename)>=0)||
     manifest.sqlSha256!==sha(sql))throw Error("Database baseline checksum or manifest invalid");
- const current=sourceContract();
- if(!existsSync(contractFile)||!equal(JSON.parse(readFileSync(contractFile,"utf8")),current))throw Error("Release build schema contract missing or stale; rebuild the backend");
- if(!equal(current.slice(0,manifest.migrations.length),manifest.migrations))throw Error("Baseline source history changed; regenerate before first release or reconcile explicitly");
- const highest=Number(manifest.migrations.at(-1).filename.split("_")[0]);
- const pending=current.slice(manifest.migrations.length).map(e=>Number(e.filename.split("_")[0]));
- if(pending.some(n=>n<=highest)||new Set(pending).size!==pending.length)throw Error("New upgrades must use unique increasing migration prefixes");
- return {sql,manifest,current};
+ if(verifyArchive&&!equal(sourceContract(),manifest.migrations))
+  throw Error("Baseline source history changed; historical SQL is frozen");
+ const upgrades=sqlFiles(upgradeDir,{allowEmpty:true});
+ validateUpgrades(manifest.migrations,upgrades);
+ const current=[...manifest.migrations,...upgrades.map(entry)];
+ return {sql,manifest,current,upgrades};
 }
-async function restore(c,sql,expected){
+function loadBundle(){
+ const release=readRelease();
+ if(!existsSync(contractFile)||!equal(JSON.parse(readFileSync(contractFile,"utf8")),release.current))
+  throw Error("Release build schema contract missing or stale; rebuild the backend");
+ return release;
+}
+async function transaction(c,fn){
  await c.query("BEGIN");
- try{
+ try{await fn();await c.query("COMMIT");}
+ catch(e){await c.query("ROLLBACK").catch(()=>{});throw e;}
+}
+async function applyUpgrades(c,upgrades){
+ // Restore SQL may disable validation locally; future SQL is always validated
+ // with the normal built-in-first search path and function checks enabled.
+ await c.query("SET LOCAL search_path TO public");
+ await c.query("SET LOCAL check_function_bodies TO true");
+ for(const u of upgrades){
+  await c.query(u.sql);
+  await c.query("INSERT INTO public.schema_migration(filename,sha256) VALUES ($1,$2)",[u.filename,u.sha256]);
+ }
+}
+async function restore(c,sql,expected,upgrades=[]){
+ await transaction(c,async()=>{
   await c.query(sql);
-  await c.query("SET LOCAL search_path TO public, pg_catalog");
   const rows=await ledger(c);
   if(!rows)throw Error("Baseline restore did not produce a schema ledger");
   requireLedger(rows,expected);
-  await c.query("COMMIT");
- }catch(e){await c.query("ROLLBACK").catch(()=>{});throw e;}
+  await applyUpgrades(c,upgrades);
+  requireLedger(await ledger(c),[...expected,...upgrades.map(entry)]);
+ });
 }
 async function generate(){
  if(!process.argv.includes("--confirm-disposable"))throw Error("Explicit disposable database confirmation required");
@@ -142,7 +200,7 @@ async function generate(){
  await withDb(verify,async c=>{await blank(c);if(await major(c)!==pgMajor)throw Error("PostgreSQL major versions differ");});
  const v=spawnSync("pg_dump",["--version"],{encoding:"utf8"});
  if(v.error||v.status!==0||Number(v.stdout.match(/(\d+)\.\d+/)?.[1])!==pgMajor)throw Error("pg_dump major version must match the target PostgreSQL version");
- runMigration(source);
+ runHistoricalReplay(source);
  await withDb(source,async c=>{const rows=await ledger(c);if(!rows)throw Error("Migration history missing");requireLedger(rows,expected);const accounts=await c.query("SELECT EXISTS(SELECT 1 FROM public.account) AS present");if(accounts.rows[0]?.present!==false)throw Error("Scratch database contains accounts; baseline export refused");});
  // Both DBs must remain isolated: do not start the app, provision root, or add
  // test/operational records. Full dump includes only migration-produced defaults.
@@ -161,38 +219,38 @@ async function generate(){
 }
 async function init(){
  if(!process.argv.includes("--confirm-new-db"))throw Error("Explicit --confirm-new-db required");
- const {sql,manifest,current}=loadBundle(),u=direct(process.env.DATABASE_MIGRATION_URL);
+ const {sql,manifest,current,upgrades}=loadBundle(),u=direct(process.env.DATABASE_MIGRATION_URL);
  await withDb(u,async c=>locked(c,async()=>{
   if(await major(c)!==manifest.postgresMajor)throw Error("Target PostgreSQL major version differs from baseline");
   const rows=await ledger(c);
   if(rows){
-   requirePrefix(rows,current,manifest.migrations);
+   if(!requirePrefix(rows,current,manifest.migrations))
+    throw Error("Existing database release is older; run db:upgrade");
    console.log("Database already initialized; no SQL applied.");return;
   }
-  await blank(c);await restore(c,sql,manifest.migrations);
+  await blank(c);await restore(c,sql,manifest.migrations,upgrades);
   console.log("CareGanga database initialized from the verified baseline.");
  }));
 }
 async function upgrade(){
- const {manifest,current}=loadBundle(),u=direct(process.env.DATABASE_MIGRATION_URL);
- const currentAlreadyApplied=await withDb(u,async c=>{
+ const {manifest,current,upgrades}=loadBundle(),u=direct(process.env.DATABASE_MIGRATION_URL);
+ await withDb(u,async c=>locked(c,async()=>{
   if(await major(c)!==manifest.postgresMajor)throw Error("Target PostgreSQL major version differs from baseline");
   const rows=await ledger(c);if(!rows)throw Error("Run explicit first installation before upgrading");
-  return requirePrefix(rows,current,manifest.migrations);
- });
- if(currentAlreadyApplied){console.log("Database release already current; no SQL applied.");return;}
- runMigration(u,true);
- await withDb(u,async c=>{const rows=await ledger(c);if(!rows)throw Error("Upgrade history missing");requireLedger(rows,current);});
- console.log("Database release version verified.");
+  if(requirePrefix(rows,current,manifest.migrations)){console.log("Database release already current; no SQL applied.");return;}
+  const pending=upgrades.slice(rows.length-manifest.migrations.length);
+  await transaction(c,async()=>{await applyUpgrades(c,pending);requireLedger(await ledger(c),current);});
+  console.log("Database release upgraded and verified.");
+ }));
 }
-export {cleanDump,requireLedger,requirePrefix,disposable,direct,order};
+export {cleanDump,requireLedger,requirePrefix,disposable,direct,order,assertAtomicUpgrade,validateUpgrades,readRelease,loadBundle};
 if(process.argv[1]&&resolve(process.argv[1])===fileURLToPath(import.meta.url))try{
  switch(process.argv[2]){
-  case "contract": mkdirSync(dirname(contractFile),{recursive:true});writeFileSync(contractFile,JSON.stringify(sourceContract())+"\n");break;
+  case "contract": {const {current}=readRelease({verifyArchive:true});mkdirSync(dirname(contractFile),{recursive:true});writeFileSync(contractFile,JSON.stringify(current)+"\n");break;}
   case "generate": await generate();break;
   case "init": await init();break;
   case "upgrade": await upgrade();break;
-  case "check": loadBundle();console.log("Database release bundle checksum and source history verified.");break;
+  case "check": loadBundle();console.log("Database release bundle checksum and compiled schema contract verified.");break;
   default: throw Error("Use contract, generate, init, upgrade or check");
  }
 }catch(e){

@@ -47,7 +47,7 @@
     "test:cg06-all": "tsx --test test/cg06-us001-beneficiary-contract.test.ts test/cg06-us001-source-integrity.test.ts test/cg06-us001-verification-source-contract.test.ts test/cg06-us002-us003-source-integrity.test.ts",
     "test:cg06-db-integrity": "node --env-file=.env ../../node_modules/tsx/dist/cli.mjs --test test/cg06-db-integrity.test.ts",
     "test:cg06-all-60-qa": "node --env-file=.env ../../node_modules/tsx/dist/cli.mjs --test test/cg06-all-60-qa-scenarios.test.ts",
-    "db:baseline:generate": "npm run build && node db/baseline.mjs generate --confirm-disposable",
+    "db:baseline:generate": "tsc -p tsconfig.json && node db/baseline.mjs generate --confirm-disposable",
     "db:init": "node --env-file-if-exists=.env db/baseline.mjs init",
     "db:upgrade": "node --env-file-if-exists=.env db/baseline.mjs upgrade",
     "db:release:check": "node db/baseline.mjs check",
