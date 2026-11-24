@@ -9,8 +9,9 @@ const types=["All","General","Announcements","Events","Updates","Emergency","Pol
 /** Public-safe, already independently approved CG19 notice read projection.
  * No staff notices or recipient lists and no copy of CG19 mutable state.
  */
-export function CmsPublicNoticeBoard({notices,available}:{
- notices:CmsPublicNotice[];available:boolean}){
+import type {PublicIntro} from "./cms-public-source";
+export function CmsPublicNoticeBoard({notices,available,intro}:{
+ notices:CmsPublicNotice[];available:boolean;intro?:PublicIntro|null}){
  const [search,setSearch]=useState("");
  const [category,setCategory]=useState("All");
  const [priority,setPriority]=useState("ALL");
@@ -26,9 +27,9 @@ export function CmsPublicNoticeBoard({notices,available}:{
  const reset=()=>{setCategory("All");setPriority("ALL");setSearch("");};
  return <section className="cg-site-content cg-site-notices" aria-labelledby="notices-title">
   <div className="cg-site-notice-hero">
-   <p className="cg-site-eyebrow">Foundation announcements</p>
-   <h1 id="notices-title">Notice &amp; Announcement Board</h1>
-   <p>Read current Foundation announcements approved for public sharing.</p>
+   {intro?.eyebrow&&<p className="cg-site-eyebrow">{intro.eyebrow}</p>}
+   <h1 id="notices-title">{intro?.heading??"Notice & Announcement Board"}</h1>
+   {intro?.body&&<p>{intro.body}</p>}
   </div>
   <div className="cg-site-gallery-filters">
    <label>Search notices
