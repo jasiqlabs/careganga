@@ -19,7 +19,7 @@ export function parsePolicy(raw:unknown){
  if(new Set(components.map(c=>c.code)).size!==components.length)throw invalid("Component codes must be unique");
  return {key:id(x.requestKey),branch:id(x.branchRef),label:label(x.label),supersedes:x.supersedesRef==null||x.supersedesRef===""?null:id(x.supersedesRef),...range(x),components};
 }
-export function parseSalary(raw:unknown){const x=fields(raw,["requestKey","policyRef","policyRevision","effectiveFrom","effectiveTo","supersedesRef","baseMinor"]);if(!Number.isSafeInteger(x.policyRevision)||Number(x.policyRevision)<1)throw invalid("Refresh the policy");return {key:id(x.requestKey),policy:id(x.policyRef),policyRevision:Number(x.policyRevision),supersedes:x.supersedesRef==null||x.supersedesRef===""?null:id(x.supersedesRef),...range(x),baseMinor:minor(x.baseMinor)};}
+export function parseSalary(raw:unknown){const x=fields(raw,["requestKey","policyRef","policyRevision","effectiveFrom","effectiveTo","supersedesRef","hrProposalRef","baseMinor"]);if(!Number.isSafeInteger(x.policyRevision)||Number(x.policyRevision)<1)throw invalid("Refresh the policy");return {key:id(x.requestKey),policy:id(x.policyRef),policyRevision:Number(x.policyRevision),hrProposal:x.hrProposalRef==null||x.hrProposalRef===""?null:id(x.hrProposalRef),supersedes:x.supersedesRef==null||x.supersedesRef===""?null:id(x.supersedesRef),...range(x),baseMinor:minor(x.baseMinor)};}
 /** Round half-up once per component, with integer arithmetic only. */
 export function componentMinor(base:string,c:{mode:"FIXED"|"PERCENT";minor:string|null;bp:number|null}):bigint{
  return c.mode==="FIXED"?BigInt(minor(c.minor,true)):(BigInt(minor(base))*BigInt(c.bp??0)+5000n)/10000n;
