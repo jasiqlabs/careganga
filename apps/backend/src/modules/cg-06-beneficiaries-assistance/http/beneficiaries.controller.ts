@@ -15,6 +15,9 @@ export class BeneficiariesController{
   @Query("contactMobile")contactMobile?:string,@Query("excludeRef")excludeRef?:string){
   return this.beneficiaries.duplicateSuggestions(token,{branchRef,name,contactMobile,excludeRef});
  }
+ @Get("project-filter-options") filterProjects(@Headers("authorization")token:string,@Query("branchRef")branch?:string,@Query("q")q?:string){
+  return this.beneficiaries.projectFilterOptions(token,branch,q);
+ }
  @Get("eligible-projects") projects(@Headers("authorization")token:string,
   @Query("branchRef")branch?:string,@Query("q")q?:string){
   return this.beneficiaries.projectOptions(token,branch,q);
