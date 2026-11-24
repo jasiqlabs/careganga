@@ -195,24 +195,7 @@ export class DonationAdminService{
     "LEFT JOIN donation_manual_evidence e ON e.root_realm_id=d.root_realm_id AND e.donation_id=d.id "+
     "LEFT JOIN LATERAL (SELECT a.method FROM donation_payment_attempt a WHERE a.root_realm_id=d.root_realm_id AND a.donation_id=d.id ORDER BY a.created_at DESC,a.id DESC LIMIT 1) m ON true "+
     where+branchSql(15)+" AND ($13::timestamptz IS NULL OR (d.created_at,d.id)<($13::timestamptz,$14::uuid)) ORDER BY d.created_at DESC,d.id DESC LIMIT 26 OFFSET $6",args);
-  const summary=await this.db.query<{total:number;received:number;pending:number;failed:number;
-   receivedMinor:string}>(
-    "SELECT count(*)::int AS total,count(*) FILTER(WHERE source_status='RECEIVED_POSTED')::int AS received,"+
-    "count(*) FILTER(WHERE source_status IN('REQUESTED','LINK_READY','PAYMENT_PENDING','VERIFIED_EXTERNAL','RECONCILIATION_PENDING'))::int AS pending,"+
-    "count(*) FILTER(WHERE source_status IN('FAILED','EXPIRED'))::int AS failed,"+
-    "coalesce(sum(amount_minor) FILTER(WHERE source_status='RECEIVED_POSTED'),0)::text AS \"receivedMinor\" "+
-    "FROM donation WHERE root_realm_id=$1 AND ($2::boolean OR branch_ref=ANY($3::uuid[])) "+
-    "AND ($4::text='ALL' OR ($4::text='FOUNDATION' AND branch_ref IS NULL) OR branch_ref=$5::uuid)",
-    [actor.realmId,scope.all,scope.branchRefs,f.branchRef,selected(f.branchRef)]);
-  const verifiedRefunds=await this.db.query<{minor:string;total:number}>(
-    "SELECT coalesce(sum(r.amount_minor),0)::text AS minor,count(*)::int AS total "+
-    "FROM donation_refund_request r "+
-    "JOIN donation d ON d.root_realm_id=r.root_realm_id AND d.id=r.donation_id "+
-    "JOIN journal j ON j.root_realm_id=r.root_realm_id AND j.id=r.reversal_journal_ref "+
-    "WHERE r.root_realm_id=$1 AND ($2::boolean OR d.branch_ref=ANY($3::uuid[])) "+
-    "AND ($4::text='ALL' OR ($4::text='FOUNDATION' AND d.branch_ref IS NULL) OR d.branch_ref=$5::uuid) "+
-    "AND r.status='FINANCE_REVERSED' AND j.status='POSTED' AND j.source_ref=r.id",
-    [actor.realmId,scope.all,scope.branchRefs,f.branchRef,selected(f.branchRef)]);
+  const summary=await this.verifiedSummary(actor.realmId,scope,f.branchRef);
    const trends=await this.db.query<{month:string;grossMinor:string;refundMinor:string;netMinor:string}>(`
     WITH entries AS (
      SELECT j.posting_date AS day,d.amount_minor::numeric AS gross,0::numeric AS refund
@@ -240,8 +223,6 @@ export class DonationAdminService{
      (sum(gross)-sum(refund))::text AS "netMinor"
     FROM entries GROUP BY date_trunc('month',day) ORDER BY month ASC`,
     [actor.realmId,scope.all,scope.branchRefs,f.branchRef,selected(f.branchRef)]);
-   const refunded=BigInt(verifiedRefunds.rows[0]?.minor??"0");
-   const gross=BigInt(summary.rows[0]?.receivedMinor??"0");
    await this.ensureReportScopeStillCurrent(bearer,f.branchRef,scope);
    const last=rows.rows.slice(0,25).at(-1);
    const nextCursor=rows.rows.length>25&&last?
@@ -251,9 +232,7 @@ export class DonationAdminService{
       {value:"ALL",label:scope.all?"Foundation and all branches":"All permitted branches"},
       ...(scope.all?[{value:"FOUNDATION",label:"Foundation-wide only"}]:[]),
       ...active.map(x=>({value:x.branchRef,label:x.name}))],
-    summary:{...summary.rows[0],verifiedRefundMinor:refunded.toString(),
-     verifiedRefundCount:verifiedRefunds.rows[0]?.total??0,
-     netReceivedMinor:(gross-refunded).toString()},monthlyTrend:trends.rows,message:"Only original CG09-confirmed posted receipts count as received. Pending requests are excluded."};
+    summary,monthlyTrend:trends.rows,message:summary.requiresReview?"Some original donations or refunds require finance reconciliation. Verified totals may be incomplete.":"Only original CG09-confirmed posted receipts count as received. Pending requests are excluded."};
  }
  /** Role-checked, branch-scoped, bounded original report export.
   * No unmasked donor identity, PAN, bank credentials or technical UUIDs. */
