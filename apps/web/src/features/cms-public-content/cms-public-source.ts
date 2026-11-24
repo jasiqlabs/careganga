@@ -117,7 +117,7 @@ export async function publishedCmsNotices():Promise<{available:boolean;notices:C
 }
 
 /** Public editorial intros read the same effective About revision. No owner availability or private record is inferred. */
-export type PublicIntroPlacement="TEAM"|"MEMBERSHIP"|"VOLUNTEER"|"NOTICES"|"UPCOMING_PROJECTS"|"ANNUAL_REPORTS";
+export type PublicIntroPlacement="TEAM"|"MEMBERSHIP"|"VOLUNTEER"|"NOTICES"|"UPCOMING_PROJECTS"|"ANNUAL_REPORTS"|"FINANCIAL_REPORTS";
 export type PublicIntro={heading:string;body:string;eyebrow:string;highlights:string[]};
 export function selectPublicIntro(result:CmsPageResult,placement:PublicIntroPlacement):PublicIntro|null{
  if(result.state!=="PUBLISHED")return null;
