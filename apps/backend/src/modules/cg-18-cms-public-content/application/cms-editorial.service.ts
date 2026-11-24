@@ -16,6 +16,7 @@ import {approvedBeneficiaryImpact,beneficiaryImpactFields,beneficiaryImpactSourc
 import {complianceEligible} from "./cms-compliance-eligibility";
 import {eligibleCampaignSources,campaignTeaserRefs,validateCampaignTeaser,publicCampaignSources,onlineDonationReady} from "../../cg-07-campaigns-donations/application/campaign-public-source";
 import {HrPublicBioEditorialSource,type HrEditorialPerson} from "../../cg-10-human-resources/application/hr-public-bio-editorial-source";
+import {initialEditorialRelease} from "./cms-initial-editorial-release";
 import {CsrPartnerPublicSource,type CsrEditorialSelection} from "../../cg-08-csr-funding/application/csr-partner-public-source";
 const UUID=/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i;
 const HASH=/^[a-f0-9]{64}$/;
@@ -343,7 +344,7 @@ function parseContent(raw:unknown):Content{
 type Page={id:string;kind:string;slug:string;version:string;created_by:string;
  draft_revision_no:number;archived_at:Date|null};
 type Revision={id:string;revision_no:number;status:string;content_digest:string;
- approval_case_ref:string|null;title:string;seo_title:string;seo_description:string;
+ release_baseline:boolean;approval_case_ref:string|null;title:string;seo_title:string;seo_description:string;
  seo_canonical_path:string;created_by:string};
 @Injectable()
 export class CmsEditorialService{
@@ -430,13 +431,49 @@ export class CmsEditorialService{
   const a=await this.sessions.requireAction(bearer,"cms.content.manage");
   return this.withTx(async tx=>{await this.identity.assertCurrent(tx,a,"cms.content.manage");return {sources:await eligibleProjectSources(tx,a.realmId)};});
  }
+ /**
+  * Deployment-only, fixed source baseline. No HTTP controller, staff session,
+  * fake CG03 decision, external manifest or request-provided content.
+  * Root lock serializes normal create and concurrent server startups.
+  */
+ async initializeReleaseBaseline():Promise<void>{
+  await this.withTx(async tx=>{
+   await tx.query("INSERT INTO access_realm(realm_key) VALUES('FOUNDATION_ROOT') ON CONFLICT(realm_key) DO NOTHING");
+   const root=(await tx.query<{id:string}>("SELECT id FROM access_realm WHERE realm_key='FOUNDATION_ROOT' FOR UPDATE")).rows[0]?.id;
+   if(!root)throw Error("CMS Foundation root unavailable");
+   if((await tx.query("SELECT 1 FROM cms_release_install WHERE foundation_root_id=$1",[root])).rowCount)return;
+   // Validate every fixed entry before writing the first page.
+   const entries=initialEditorialRelease.map(parseContent);
+   for(const value of entries){
+    if((await tx.query("SELECT 1 FROM cms_page WHERE foundation_root_id=$1 AND slug=$2",[root,value.slug])).rowCount)continue;
+    // Only fixed editorial copy, no private/operational data or uploaded asset
+    // can be admitted to this release authorization.
+    if(value.assets.length||value.sections.some(sec=>sec.kind==="TEAM"||sec.kind==="ARTICLE_BODY"||sec.kind==="CAMPAIGN_TEASER"||
+     (sec.kind==="PROJECT_TEASER"&&Array.isArray(sec.fields.sourceRefs)&&sec.fields.sourceRefs.length>0)))throw Error("Invalid release baseline");
+    const digest=sha(value);
+    const page=(await tx.query<{id:string}>("INSERT INTO cms_page(foundation_root_id,slug,kind,draft_revision_no,release_baseline) VALUES($1,$2,$3,1,true) RETURNING id",[root,value.slug,value.kind])).rows[0].id;
+    const rev=(await tx.query<{id:string}>("INSERT INTO cms_page_revision(foundation_root_id,page_id,revision_no,title,seo_title,seo_description,seo_canonical_path,content_digest,release_baseline) VALUES($1,$2,1,$3,$4,$5,$6,$7,true) RETURNING id",[root,page,value.title,value.seoTitle,value.seoDescription,value.canonicalPath,digest])).rows[0].id;
+    for(const sec of value.sections)await tx.query("INSERT INTO cms_section_revision(foundation_root_id,page_revision_id,section_kind,order_no,structured_fields) VALUES($1,$2,$3,$4,$5::jsonb)",[root,rev,sec.kind,sec.order,JSON.stringify(sec.fields)]);
+    // Legal shells require genuine client text and the normal CG03 workflow.
+    if(value.kind==="POLICY")continue;
+    const publication=(await tx.query<{id:string}>("INSERT INTO cms_publication(foundation_root_id,page_id,page_revision_id,source_content_digest,publication_key,state,effective_at,release_baseline) VALUES($1,$2,$3,$4,$5,'EFFECTIVE',now(),true) RETURNING id",[root,page,rev,digest,randomUUID()])).rows[0].id;
+    await tx.query("INSERT INTO cms_page_effective(foundation_root_id,page_id,publication_id) VALUES($1,$2,$3)",[root,page,publication]);
+    if(value.navigation){
+     const seq=(await tx.query<{revision_no:number}>("SELECT COALESCE(MAX(revision_no),0)+1 AS revision_no FROM cms_navigation_revision WHERE foundation_root_id=$1",[root])).rows[0].revision_no;
+     const nav=(await tx.query<{id:string}>("INSERT INTO cms_navigation_revision(foundation_root_id,revision_no,login_desired,member_join_desired,volunteer_join_desired,source_digest,status,home_revision_id,release_baseline) VALUES($1,$2,$3,$4,$5,$6,'DRAFT',$7,true) RETURNING id",[root,seq,value.navigation.loginDesired,value.navigation.memberJoinDesired,value.navigation.volunteerJoinDesired,digest,rev])).rows[0].id;
+     await tx.query("INSERT INTO cms_navigation_effective(foundation_root_id,revision_id) VALUES($1,$2) ON CONFLICT(foundation_root_id) DO NOTHING",[root,nav]);
+    }
+   }
+   await tx.query("INSERT INTO cms_release_install(foundation_root_id,release_key) VALUES($1,'CAREGANGA_INITIAL_EDITORIAL_V1')",[root]);
+  });
+ }
  async list(bearer:string,scope?:string){
   if(scope!==undefined&&scope!=="baseline")throw new BadRequestException({code:"CMS_INPUT_INVALID",field:"scope"});
   const a=await this.sessions.requireAction(bearer,"cms.content.view");
   const result=await this.db.query<{pageRef:string;kind:string;slug:string;title:string;
    version:string;draftStatus:string;publicStatus:string|null}>(
    'SELECT p.id AS "pageRef",p.kind,p.slug,v.title,p.version,'+
-   'v.status AS "draftStatus",pub.state AS "publicStatus" '+
+   'CASE WHEN v.release_baseline THEN \'RELEASE_BASELINE\' ELSE v.status END AS "draftStatus",pub.state AS "publicStatus" '+
    'FROM cms_page p JOIN cms_page_revision v ON v.page_id=p.id '+
    'AND v.foundation_root_id=p.foundation_root_id '+
    'AND v.revision_no=p.draft_revision_no '+
@@ -481,7 +518,7 @@ export class CmsEditorialService{
     tx.query("SELECT 1 FROM cms_publication WHERE foundation_root_id=$1 AND page_id=$2 LIMIT 1",[a.realmId,page.id])
    ]);
    return {pageRef:page.id,kind:page.kind,slug:page.slug,version:Number(page.version),
-    revisionRef:rev.id,revisionNo:rev.revision_no,status:rev.status,
+    revisionRef:rev.id,revisionNo:rev.revision_no,status:rev.release_baseline?"RELEASE_BASELINE":rev.status,
     approvalCaseRef:rev.approval_case_ref,title:rev.title,
     seoTitle:rev.seo_title,seoDescription:rev.seo_description,
     canonicalPath:rev.seo_canonical_path,
@@ -646,7 +683,7 @@ export class CmsEditorialService{
      if(typeof next!=="string"||!(await tx.query("SELECT 1 FROM event_public_eligibility WHERE root_realm_id=$1 AND id::text=$2 AND activity_id=$3",[actor.realmId,next,priorEvent.rows[0].activity_id])).rowCount)throw new ConflictException({code:"CMS_PROJECT_SOURCE_UNAVAILABLE"});
     }
    }
-   if(current.status!=="DRAFT"){
+   if(current.status!=="DRAFT"||current.release_baseline){
     revisionNo++;
     const rev=await tx.query<{id:string}>(
      "INSERT INTO cms_page_revision(foundation_root_id,page_id,revision_no,title,"+
@@ -704,7 +741,7 @@ export class CmsEditorialService{
      version:Number(accepted.rows[0].version),replayed:true};
    }
    const page=await this.row(tx,actor,pageRef,true),rev=await this.revision(tx,actor,page);
-   if(Number(page.version)!==v.expectedVersion||rev.status!=="DRAFT")
+   if(Number(page.version)!==v.expectedVersion||rev.status!=="DRAFT"||rev.release_baseline)
     throw new ConflictException({code:"CMS_SOURCE_CHANGED"});
    const assets=await tx.query<{file_ref:string;version:number;role:string;sort_order:number}>(
     "SELECT cg19_file_ref AS file_ref,cg19_validated_version AS version,role,sort_order "+
@@ -1069,21 +1106,21 @@ export class CmsEditorialService{
    'ON n.id=e.revision_id AND n.foundation_root_id=e.foundation_root_id '+
    'JOIN cms_page_revision v ON v.id=n.home_revision_id '+
    'AND v.foundation_root_id=n.foundation_root_id '+
-   'JOIN cg03_case c ON c.id=v.approval_case_ref '+
+   'LEFT JOIN cg03_case c ON c.id=v.approval_case_ref '+
    'AND c.realm_id=v.foundation_root_id AND c.cms_page_revision_id=v.id '+
-   'JOIN cg03_case_decision d ON d.id=n.cg03_decision_ref AND d.case_id=c.id '+
+   'LEFT JOIN cg03_case_decision d ON d.id=n.cg03_decision_ref AND d.case_id=c.id '+
    'AND d.realm_id=c.realm_id '+
    'JOIN cms_page_effective active ON active.foundation_root_id=n.foundation_root_id '+
    'JOIN cms_publication publication ON publication.id=active.publication_id '+
    'AND publication.foundation_root_id=active.foundation_root_id '+
    'AND publication.page_revision_id=n.home_revision_id '+
    'JOIN access_realm realm ON realm.id=n.foundation_root_id '+
-   "WHERE realm.realm_key='FOUNDATION_ROOT' AND n.status='APPROVED' "+
+   "WHERE realm.realm_key='FOUNDATION_ROOT' "+
    "AND publication.state='EFFECTIVE' AND publication.effective_at<=now() "+
    "AND (publication.expires_at IS NULL OR publication.expires_at>now()) "+
-   "AND c.status='OWNER_COMPLETED' AND d.action='APPROVE' "+
-   'AND d.fresh_password_verified_at IS NOT NULL '+
-   'AND n.source_digest=v.content_digest AND n.effective_at<=now() LIMIT 1');
+   "AND ((n.release_baseline AND v.release_baseline AND publication.release_baseline AND n.status='DRAFT') "+
+   "OR (NOT n.release_baseline AND NOT publication.release_baseline AND n.status='APPROVED' AND c.status='OWNER_COMPLETED' AND d.action='APPROVE' AND d.fresh_password_verified_at IS NOT NULL AND n.effective_at<=now())) "+
+   'AND n.source_digest=v.content_digest LIMIT 1');
   const x=response.rows[0];
   const routes=await this.db.query<{kind:string;slug:string}>(
    "SELECT p.kind,p.slug FROM cms_page p JOIN cms_page_effective e "+
