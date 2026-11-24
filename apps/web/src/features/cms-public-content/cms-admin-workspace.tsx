@@ -27,7 +27,7 @@ type Slide={heading:string;subtitle:string;description:string;eyebrow:string;tag
  primaryLabel:string;primaryPath:string;secondaryLabel:string;secondaryPath:string};
 type FeatureCard={label:string;title:string;body:string};
 type ExtraText={order:number;heading:string;body:string;eyebrow:string;highlights:string;placement:string;variant:"STANDARD"|"SPLIT"};
-const placements=[["TEAM","Team Directory"],["MEMBERSHIP","Membership"],["VOLUNTEER","Volunteer"],["NOTICES","Notices"],["UPCOMING_PROJECTS","Upcoming Projects"],["ANNUAL_REPORTS","Annual Reports"]] as const;
+const placements=[["TEAM","Team Directory"],["MEMBERSHIP","Membership"],["VOLUNTEER","Volunteer"],["NOTICES","Notices"],["UPCOMING_PROJECTS","Upcoming Projects"],["ANNUAL_REPORTS","Annual Reports"],["FINANCIAL_REPORTS","Financial Reports"]] as const;
 type Draft={kind:Kind;title:string;seoTitle:string;seoDescription:string;
  slides:Slide[];bodyHeading:string;body:string;bodyEyebrow:string;
  bodyVariant:"STANDARD"|"SPLIT";highlights:string;extraText:ExtraText[];
