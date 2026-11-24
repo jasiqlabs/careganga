@@ -137,6 +137,7 @@ export class BeneficiaryVerificationReviewService{
   const target=ref(id);
   return this.run(token,"beneficiaries.view",async(tx,a)=>{
    const src=await this.source.guardVerificationSource(tx,a,target,false);
+   if(src.consentRevoked)return {status:"RESTRICTED",caseNumber:null,canReview:false,caseRef:null,sourceRevision:src.revision,sourceVerification:src.verification,decisions:[]};
    const c=(await tx.query<Case>(`
     SELECT * FROM cg03_case WHERE realm_id=$1 AND beneficiary_id=$2
       AND case_kind='BENEFICIARY_VERIFICATION'
