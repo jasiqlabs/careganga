@@ -10,7 +10,7 @@ This user-requested cross-module subtracker supplements (does not replace) origi
 
 ## Summary
 
-37 subitems: 17 source-confirmed presentation gaps, 19 runtime/reproduction candidates, 1 reference evidence blocker. Initial baseline: all OPEN. Current progress: 7 rows IN_PROGRESS (including partial cross-cutting work); 30 rows OPEN; zero independently cleared or runtime passes. P0 = release visual evidence gate; P1 = primary journey or substantial usability; P2 = secondary usability. Source status and runtime status stay separate.
+37 subitems: 17 source-confirmed presentation gaps, 19 runtime/reproduction candidates, 1 reference evidence blocker. Initial baseline: all OPEN. Current progress: 10 rows IN_PROGRESS (including partial cross-cutting work); 27 rows OPEN; zero independently cleared or runtime passes. P0 = release visual evidence gate; P1 = primary journey or substantial usability; P2 = secondary usability. Source status and runtime status stay separate.
 
 | ID | Priority | Evidence | Owner/surface | Issue | State |
 |---|---|---|---|---|---|
@@ -19,8 +19,8 @@ This user-requested cross-module subtracker supplements (does not replace) origi
 | HUX-02.02 | P1 | CHECK | CG14–17 admin/center | Role-specific healthcare navigation | OPEN |
 | HUX-03.01 | P1 | CHECK | CG14/15/17/20 admin/center | Operational dashboard journey | OPEN |
 | HUX-04.01 | P1 | SOURCE | CG14 US-001 admin | Provider registration form density | OPEN |
-| HUX-04.02 | P1 | SOURCE | CG14 US-003 admin | Doctor list lacks in-screen search/filter | OPEN |
-| HUX-04.03 | P1 | SOURCE | CG14 US-003 admin | Doctor registration/detail hierarchy | OPEN |
+| HUX-04.02 | P1 | SOURCE | CG14 US-003 admin | Doctor list lacks in-screen search/filter | IN_PROGRESS |
+| HUX-04.03 | P1 | SOURCE | CG14 US-003 admin | Doctor registration/detail hierarchy | IN_PROGRESS |
 | HUX-04.04 | P1 | CHECK | CG14 US-002/003 admin/center | Verification and evidence clarity | OPEN |
 | HUX-04.05 | P1 | CHECK | CG14 US-005 center/admin | Center profile and content editing | OPEN |
 | HUX-05.01 | P1 | CHECK | CG15 US-001 admin/center | Scheduling calendar and availability | OPEN |
@@ -42,7 +42,7 @@ This user-requested cross-module subtracker supplements (does not replace) origi
 | HUX-11.01 | P1 | SOURCE | CG15 US-004 / CG17 US-002 public web/app | Booking review text/action hierarchy | OPEN |
 | HUX-11.02 | P1 | CHECK | CG15 US-002/003 public web/app | Appointment calendar and patient verification | OPEN |
 | HUX-11.03 | P1 | CHECK | CG15 US-005/007/008 public web/app | Booking confirmation and patient history | OPEN |
-| HUX-12.01 | P1 | SOURCE | CG14 US-003 internal Android | Doctor management long scrolling forms | OPEN |
+| HUX-12.01 | P1 | SOURCE | CG14 US-003 internal Android | Doctor management long scrolling forms | IN_PROGRESS |
 | HUX-12.02 | P1 | SOURCE | CG15 US-006 internal Android | Queue summary and action readability | OPEN |
 | HUX-12.03 | P1 | CHECK | CG14/16/17 internal Android | Operational parity | OPEN |
 | HUX-13.01 | P1 | SOURCE | CG14 US-004 public Android | Public result list and filter density | IN_PROGRESS |
@@ -58,6 +58,12 @@ This user-requested cross-module subtracker supplements (does not replace) origi
 - HUX-10.03 / 15.02: discovered native stale-result defect and query/pagination mismatch. Clear rows on failed lookup and non-append refresh; render only READY rows; retry first page using applied filter state; prevent old mode results and hide center tab during rescheduling; validate list fields. Source re-read confirmed intended guards and no obsolete cursor references. No executable test yet. HUX-02.01 / 15.01: directory-only shared presentation and shorter public copy, other screens pending.
 - Original CG14 US-004-QA01/03/04/05/06/09/10/11/12/16/17/18: partial source trace, no runtime or independent clearance. Staff interfaces not affected by these public presentation changes. Required QA: search/filters, edited-but-unapplied filters then load more, switching tabs during slow request, failed resume/refresh hides old records, approved vs withdrawn listings, malformed coordinates and fees, profile/schedule path, reschedule context, responsive and TalkBack. Photo projection and full visual reference acceptance remain open.
 - Harness pin checked identical to authenticated main 8922c717efb68cb5b998cf51f7c0755636616175 in prior execution; local resolver/build/device/visual QA NOT_RUN; independent review unavailable in current connector execution. Current changes are source candidates, not SOURCE_COMPLETE. Latest main comparison ahead/behind 7/1 before the new fixes; reconcile main after handoff.
+
+## Development checkpoint — professional registration and search
+
+- HUX-04.02 / 04.03 / 12.01: existing authenticated doctor list extended with bounded name, registration number, specialty and status query, original root/permission guard and parameterized SQL preserved. Web and Internal Android use explicit applied filters/pagination, grouped details and safe selection handling. Web uses existing responsive split layout; native form sections, confirmation before discarding and accessible filter buttons. No public/private permission expansion. Source commits cc183162, 647441a1, 39145780, 7a59b73a, 098ac8c6.
+- Discovered and corrected selected-doctor race: detail/evidence responses and late upload callbacks guarded by selection generation; Web action keys tied to doctor identity; row selection disabled during pending detail/write. Source readback only; verify rapid doctor selection, paging and filter beyond first 50, invalid status rejection, independent approval, source scope and delayed proof with actual database/devices.
+- Original CG14 US-003-QA12/14/15/16/18: partial source trace; original QA dispositions preserved. Remaining visual and actual runtime verification, grouped forms and native screen layout quality review pending. Independent reviewer not available; no formal source closure or runtime pass.
 
 ## Subtracker details and expected user scenarios
 
