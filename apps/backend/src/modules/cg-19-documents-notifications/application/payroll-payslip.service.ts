@@ -63,11 +63,14 @@ export class PayrollPayslipService{
  }
  /** Explicit employee/admin request to the current linked employee only. No salary amounts, attachments or bearer links in ordinary email. */
  async email(token:string,line:string){
+  await this.source.source(token,line,true);
   const issued=await this.issue(token,line);
   if(!issued.confirmed)return {status:"UNAVAILABLE"};
-  const {actor,data}=await this.source.source(token,line),tx=await this.db.connect();
+  await this.download(token,line,issued.documentRef);
+  const tx=await this.db.connect();
   try{
    await tx.query("BEGIN");
+   const {actor,data}=await this.source.emailSource(tx,token,line);
    const recipient=(await tx.query<{account_ref:string}>(`SELECT e.account_ref FROM hr_employee e JOIN cg19_payroll_payslip d ON d.root_realm_id=e.root_realm_id
     WHERE e.root_realm_id=$1 AND e.id=$2 AND d.id=$3 AND d.source_digest=$4
     AND cg19_payroll_notice_matches($1,d.id,e.account_ref) FOR SHARE OF e`,[actor.realmId,data.employeeRef,issued.documentRef,data.sourceDigest])).rows[0]?.account_ref;

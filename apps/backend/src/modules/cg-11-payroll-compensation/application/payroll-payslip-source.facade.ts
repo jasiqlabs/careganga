@@ -30,15 +30,21 @@ export class PayrollPayslipSourceFacade{
    await recordPayrollAudit(tx,a,"RUN","READ");await tx.query("COMMIT");return {items:rows.map(x=>this.view(x))};
   }catch(e){await tx.query("ROLLBACK");throw e;}finally{tx.release();}
  }
- async source(token:string,lineInput:string){
+ private async readSource(tx:PoolClient,a:Actor,lineInput:string,email=false){
+  await this.identity.assertRootSelfSessionCurrent(tx,a);
+  const line=id(lineInput),r=(await tx.query<Row>(projection+" AND l.id=$2",[a.realmId,line])).rows[0];
+  if(!r)throw new NotFoundException("Payslip unavailable");
+  const own=await this.employee(tx,a);
+  if(own!==r.employeeRef){await this.runs.row(tx,a,r.runRef);if(email)await this.identity.assertCurrent(tx,a,"payroll.runs.manage");}
+  if(BigInt(r.paidMinor)>BigInt(r.netMinor))throw new ConflictException("Original payroll settlement requires reconciliation");
+  await recordPayrollAudit(tx,a,"RUN","READ");return {actor:a,data:this.view(r)};
+ }
+ async emailSource(tx:PoolClient,token:string,lineInput:string){
+  const a=await this.sessions.verifySession(token);return this.readSource(tx,a,lineInput,true);
+ }
+ async source(token:string,lineInput:string,email=false){
   const a=await this.sessions.verifySession(token),tx=await this.db.connect();
-  try{await tx.query("BEGIN");await this.identity.assertRootSelfSessionCurrent(tx,a);
-   const line=id(lineInput),r=(await tx.query<Row>(projection+" AND l.id=$2",[a.realmId,line])).rows[0];
-   if(!r)throw new NotFoundException("Payslip unavailable");
-   const own=await this.employee(tx,a);
-   if(own!==r.employeeRef){await this.runs.row(tx,a,r.runRef);}
-   if(BigInt(r.paidMinor)>BigInt(r.netMinor))throw new ConflictException("Original payroll settlement requires reconciliation");
-   await recordPayrollAudit(tx,a,"RUN","READ");await tx.query("COMMIT");return {actor:a,data:this.view(r)};
-  }catch(e){await tx.query("ROLLBACK");throw e;}finally{tx.release();}
+  try{await tx.query("BEGIN");const value=await this.readSource(tx,a,lineInput,email);await tx.query("COMMIT");return value;}
+  catch(e){await tx.query("ROLLBACK");throw e;}finally{tx.release();}
  }
 }

@@ -42,6 +42,7 @@ export class PayrollRunService{
  async dashboard(token:string,periodInput="",branchInput=""){return this.compensation.run(token,"payroll.runs.view",async(tx,a)=>{
   await this.identity.assertCurrent(tx,a,"payroll.compensation.view");
   const scope=await this.branches.projectBranchScope(tx,a);
+  if(typeof periodInput!=="string"||typeof branchInput!=="string")throw new BadRequestException("Invalid payroll dashboard filter");
   const period=periodInput|| (await tx.query<{period:string}>("SELECT to_char(now() AT TIME ZONE 'Asia/Kolkata','YYYY-MM') period")).rows[0].period;
   if(!/^\d{4}-(0[1-9]|1[0-2])$/.test(period)||period.slice(0,4)<"2000"||period.slice(0,4)>"9999")throw new BadRequestException("Invalid payroll dashboard period");
   const branch=branchInput&&branchInput!=="FOUNDATION"?id(branchInput):null;
