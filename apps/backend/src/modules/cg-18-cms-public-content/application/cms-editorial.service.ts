@@ -105,7 +105,7 @@ function placementMimeAllowed(asset:Placement,sections:readonly Section[],mime:s
 }
 function placementFits(sections:readonly Section[],a:{role:string;order:number}){
  return sections.some(s=>{
-  if(a.role==="HERO"||a.role==="MOBILE_HERO")return s.kind==="HERO"&&s.order===a.order;
+  if(a.role==="HERO"||a.role==="MOBILE_HERO")return s.kind==="HERO"&&s.order===a.order&&s.fields.textOnly!==true;
   if(a.role==="ABOUT")return s.kind==="RICH_TEXT"&&s.order===a.order&&s.fields.variant==="SPLIT";
   if(a.role==="PROMO")return s.kind==="CTA"&&s.order===a.order;
   if(a.role==="TEAM")return s.kind==="TEAM"&&
@@ -169,7 +169,7 @@ function parseContent(raw:unknown):Content{
    return {kind:sec.kind as Section["kind"],order:Number(sec.order),fields:parsed};
   }
   const fields=input(sec.fields,sec.kind==="HERO"?
-   ["heading","subtitle","description","eyebrow","tags","visible",
+   ["heading","subtitle","description","eyebrow","tags","visible","textOnly",
     "headingFont","headingWeight","headingSize","headingColor","subtitleColor",
     "primaryLabel","primaryPath","secondaryLabel","secondaryPath"]:
    sec.kind==="TEAM"?["heading","members"]:
@@ -195,6 +195,8 @@ function parseContent(raw:unknown):Content{
    if(fields.visible!==undefined&&typeof fields.visible!=="boolean")
     throw new BadRequestException({code:"CMS_INPUT_INVALID",field:"visible"});
    out.visible=fields.visible!==false;
+   if(fields.textOnly!==undefined&&typeof fields.textOnly!=="boolean")throw new BadRequestException({code:"CMS_INPUT_INVALID",field:"textOnly"});
+   if(fields.textOnly===true)out.textOnly=true;
    const heroStyle=(field:string,raw:unknown,allowed:string[],fallback:string)=>{
     if(raw===undefined)return fallback;
     const candidate=text(raw,field,30,1);
@@ -695,12 +697,12 @@ export class CmsEditorialService{
     "FROM cms_asset_placement WHERE foundation_root_id=$1 AND page_revision_id=$2",
     [actor.realmId,rev.id]);
    if(page.kind==="HOME"){
-    const slides=await tx.query<{order_no:number}>(
-     "SELECT order_no FROM cms_section_revision "+
+    const slides=await tx.query<{order_no:number;text_only:boolean}>(
+     "SELECT order_no, (structured_fields->>'textOnly' IS NOT DISTINCT FROM 'true') AS text_only FROM cms_section_revision "+
      "WHERE foundation_root_id=$1 AND page_revision_id=$2 AND section_kind='HERO' "+
      "AND structured_fields->>'visible' IS DISTINCT FROM 'false' "+
      "ORDER BY order_no",[actor.realmId,rev.id]);
-    if(!slides.rows.length||slides.rows.some(slide=>!assets.rows.some(asset=>
+    if(!slides.rows.length||slides.rows.some(slide=>!slide.text_only&&!assets.rows.some(asset=>
       asset.role==="HERO"&&asset.sort_order===slide.order_no)))
      throw new BadRequestException({code:"CMS_HERO_IMAGE_REQUIRED",field:"heroImage"});
    }
