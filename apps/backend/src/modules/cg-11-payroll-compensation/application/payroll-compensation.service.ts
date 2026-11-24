@@ -10,10 +10,10 @@ import {FinanceVoucherDraftService} from "../../cg-09-finance-accounting/applica
 import {HrEmploymentChangeSourceFacade} from "../../cg-10-human-resources/application/hr-employment-change-source.facade";
 import {HrPayrollEmployeeSourceFacade} from "../../cg-10-human-resources/application/hr-payroll-employee-source.facade";
 import {parsePayout,protectPayout} from "../domain/payout-instruction";
-import {id,parsePolicy,parseSalary,componentMinor} from "../domain/payroll-input";
+import {id,parsePolicy,parseSalary,componentMinor,fiscalYearFor} from "../domain/payroll-input";
 const hash=(x:unknown)=>createHash("sha256").update(JSON.stringify(x)).digest("hex");
 const conflict=()=>new ConflictException("Payroll source changed. Refresh and review the current version.");
-type Policy={id:string;branch_ref:string;label:string;effective_from:string;effective_to:string|null;supersedes_ref:string|null;status:string;revision:number;request_digest:string};
+type Policy={id:string;branch_ref:string|null;label:string;effective_from:string;effective_to:string|null;supersedes_ref:string|null;status:string;revision:number;request_digest:string};
 type Salary={id:string;employee_ref:string;branch_ref:string;policy_id:string;effective_from:string;effective_to:string|null;supersedes_ref:string|null;base_salary_minor:string;status:string;revision:number;request_digest:string};
 @Injectable()
 export class PayrollCompensationService{
@@ -26,7 +26,7 @@ export class PayrollCompensationService{
  async audit(tx:PoolClient,a:Actor,kind:"POLICY"|"COMPENSATION"|"PAYOUT",ref:string,result:string){
   await tx.query("INSERT INTO payroll_source_audit(root_realm_id,actor_ref,source_kind,source_ref,event_key,result_class) VALUES($1,$2,$3,$4,$5,$6)",[a.realmId,a.accountId,kind,ref,randomUUID(),result]);
  }
- private policyView(p:Policy){return {ref:p.id,branchRef:p.branch_ref,label:p.label,effectiveFrom:p.effective_from,effectiveTo:p.effective_to,supersedesRef:p.supersedes_ref,status:p.status,revision:p.revision};}
+ private policyView(p:Policy){return {ref:p.id,branchRef:p.branch_ref,label:p.label,fiscalYear:fiscalYearFor(p.effective_from).label,effectiveFrom:p.effective_from,effectiveTo:p.effective_to,supersedesRef:p.supersedes_ref,status:p.status,revision:p.revision};}
  private salaryView(p:Salary){return {ref:p.id,employeeRef:p.employee_ref,branchRef:p.branch_ref,policyRef:p.policy_id,effectiveFrom:p.effective_from,effectiveTo:p.effective_to,supersedesRef:p.supersedes_ref,baseMinor:p.base_salary_minor,status:p.status,revision:p.revision};}
  async employee(tx:PoolClient,a:Actor,employee:string,forDate:string|null=null){return this.hr.employee(tx,a,employee,forDate);}
  async options(token:string,branchInput:unknown,qInput:unknown,offsetInput:unknown=0){return this.run(token,"payroll.compensation.view",async(tx,a)=>{
@@ -41,10 +41,10 @@ export class PayrollCompensationService{
     )x ON true WHERE c.root_realm_id=$1 AND c.employee_ref=ANY($2::uuid[]) AND c.branch_ref=ANY($3::uuid[]) AND c.status='APPROVED'
     AND c.effective_from<=(now() AT TIME ZONE 'Asia/Kolkata')::date AND (c.effective_until IS NULL OR c.effective_until>(now() AT TIME ZONE 'Asia/Kolkata')::date)`,[a.realmId,result.items.map(x=>x.ref),result.branches.map(x=>x.value)])).rows;
    const byEmployee=new Map(rows.map(r=>[r.employee_ref+":"+r.branch_ref,r]));
-   return {...result,items:result.items.map(e=>({...e,salary:byEmployee.get(e.ref+":"+e.branchRef)??null}))};
+   return {...result,canManageFoundationPolicy:(await this.branches.projectBranchScope(tx,a)).all,items:result.items.map(e=>({...e,salary:byEmployee.get(e.ref+":"+e.branchRef)??null}))};
   });}
  async bankOptions(token:string,branchInput:unknown){
-  const branch=id(branchInput);
+  const branch=branchInput==="FOUNDATION"?null:id(branchInput);
   return this.run(token,"payroll.compensation.view",async(tx,a)=>{
    await this.branches.projectBranch(tx,a,branch);
    return this.finance.payrollBankOptions(tx,a,branch);
@@ -54,7 +54,7 @@ export class PayrollCompensationService{
   const branch=id(branchInput);
   return this.run(token,"payroll.compensation.view",async(tx,a)=>{
    await this.branches.projectBranch(tx,a,branch);
-   const rows=(await tx.query<Policy>("SELECT id,branch_ref,label,effective_from::text,effective_until::text AS effective_to,supersedes_ref,status,revision,request_digest FROM payroll_policy_effective WHERE root_realm_id=$1 AND branch_ref=$2 ORDER BY effective_from DESC,id DESC LIMIT 100",[a.realmId,branch])).rows;
+   const rows=(await tx.query<Policy>("SELECT id,branch_ref,label,effective_from::text,effective_until::text AS effective_to,supersedes_ref,status,revision,request_digest FROM payroll_policy_effective WHERE root_realm_id=$1 AND (branch_ref IS NOT DISTINCT FROM $2::uuid OR ($2::uuid IS NOT NULL AND branch_ref IS NULL AND status='APPROVED')) ORDER BY effective_from DESC,id DESC LIMIT 100",[a.realmId,branch])).rows;
    const components=(await tx.query("SELECT policy_id,code,label,kind,calc_mode,amount_minor::text,rate_bp,tax_class FROM payroll_component WHERE root_realm_id=$1 AND policy_id=ANY($2::uuid[]) ORDER BY code",[a.realmId,rows.map(r=>r.id)])).rows;
    return {items:rows.map(p=>({...this.policyView(p),components:components.filter(c=>c.policy_id===p.id).map(({policy_id,...c})=>c)})),statutoryStatus:"NOT_CONFIGURED"};
   });
@@ -93,7 +93,7 @@ export class PayrollCompensationService{
    await tx.query("SELECT pg_advisory_xact_lock(hashtextextended($1,0))",["CG11-SALARY:"+a.realmId+":"+a.accountId+":"+v.key]);
    const previous=(await tx.query<Salary>("SELECT *,effective_from::text,effective_to::text,base_salary_minor::text FROM employee_compensation WHERE root_realm_id=$1 AND created_by=$2 AND request_key=$3",[a.realmId,a.accountId,v.key])).rows[0];
    if(previous){if(previous.request_digest!==digest||previous.branch_ref!==e.branch_ref)throw conflict();return {...this.salaryView(previous),replayed:true};}
-   const p=(await tx.query<Policy>("SELECT * FROM payroll_policy WHERE root_realm_id=$1 AND id=$2 AND branch_ref=$3 AND revision=$4 AND status='APPROVED' AND effective_from<=$5::date AND (LEAST(effective_to,(SELECT n.effective_from FROM payroll_policy n WHERE n.root_realm_id=payroll_policy.root_realm_id AND n.supersedes_ref=payroll_policy.id AND n.status='APPROVED')) IS NULL OR ($6::date IS NOT NULL AND LEAST(effective_to,(SELECT n.effective_from FROM payroll_policy n WHERE n.root_realm_id=payroll_policy.root_realm_id AND n.supersedes_ref=payroll_policy.id AND n.status='APPROVED'))>=$6::date)) FOR SHARE",[a.realmId,v.policy,e.branch_ref,v.policyRevision,v.from,v.to])).rows[0];
+   const p=(await tx.query<Policy>("SELECT * FROM payroll_policy WHERE root_realm_id=$1 AND id=$2 AND (branch_ref=$3 OR branch_ref IS NULL) AND revision=$4 AND status='APPROVED' AND effective_from<=$5::date AND (LEAST(effective_to,(SELECT n.effective_from FROM payroll_policy n WHERE n.root_realm_id=payroll_policy.root_realm_id AND n.supersedes_ref=payroll_policy.id AND n.status='APPROVED')) IS NULL OR ($6::date IS NOT NULL AND LEAST(effective_to,(SELECT n.effective_from FROM payroll_policy n WHERE n.root_realm_id=payroll_policy.root_realm_id AND n.supersedes_ref=payroll_policy.id AND n.status='APPROVED'))>=$6::date)) FOR SHARE",[a.realmId,v.policy,e.branch_ref,v.policyRevision,v.from,v.to])).rows[0];
    if(!p)throw new ConflictException("Choose an approved effective payroll policy");
    const hrProposal=v.hrProposal?await this.hrChange.payrollProposal(tx,a,e.id,v.hrProposal,e.branch_ref,e.assignment_ref):null;
    if(hrProposal&&(hrProposal.baseMinor!==v.baseMinor||hrProposal.effectiveFrom!==v.from))throw new ConflictException("HR proposal amount or effective date changed");
@@ -154,10 +154,10 @@ export class PayrollCompensationService{
  async reviewSource(tx:PoolClient,a:Actor,kind:"POLICY"|"COMPENSATION"|"PAYOUT",ref:string,write=false){
   await this.identity.assertCurrent(tx,a,"payroll.compensation.view");
   const table=kind==="POLICY"?"payroll_policy":kind==="PAYOUT"?"employee_payout_instruction":"employee_compensation";
-  const initial=(await tx.query<{branch_ref:string}>("SELECT branch_ref FROM "+table+" WHERE root_realm_id=$1 AND id=$2",[a.realmId,id(ref)])).rows[0];
+  const initial=(await tx.query<{branch_ref:string|null}>("SELECT branch_ref FROM "+table+" WHERE root_realm_id=$1 AND id=$2",[a.realmId,id(ref)])).rows[0];
   if(!initial)throw new NotFoundException("Payroll source unavailable");
   const scope=await this.branches.projectBranchScope(tx,a);
-  if(!scope.branches.some(b=>b.value===initial.branch_ref))throw new NotFoundException("Payroll source unavailable");
+  if(initial.branch_ref===null?!scope.all:!scope.branches.some(b=>b.value===initial.branch_ref))throw new NotFoundException("Payroll source unavailable");
   await this.branches.projectBranch(tx,a,initial.branch_ref);
   type Source=Policy&Salary&{created_by:string;approval_case_ref:string|null;assignment_ref:string;assignment_version:number;employee_status_version:number;policy_revision:number;source_hr_proposal_ref:string|null;source_hr_proposal_revision:number|null;source_hr_proposal_digest:string|null;destination_ciphertext:string;destination_nonce:string;destination_tag:string;destination_fingerprint:string;masked_digits:string;masked_ifsc:string};
   const row=(await tx.query<Source>("SELECT *,effective_from::text,effective_to::text"+(kind==="COMPENSATION"?",base_salary_minor::text":"")+" FROM "+table+" WHERE root_realm_id=$1 AND id=$2 "+(write?"FOR UPDATE":"FOR SHARE"),[a.realmId,ref])).rows[0];
@@ -165,7 +165,7 @@ export class PayrollCompensationService{
   let previous:Record<string,unknown>|null=null;
   if(row.supersedes_ref){
    const prior=(await tx.query<Source>("SELECT *,effective_from::text,effective_to::text"+(kind==="COMPENSATION"?",base_salary_minor::text":"")+" FROM "+table+" WHERE root_realm_id=$1 AND id=$2 AND status='APPROVED' FOR SHARE",[a.realmId,row.supersedes_ref])).rows[0];
-   if(prior&&scope.branches.some(b=>b.value===prior.branch_ref)&&(kind==="POLICY"?prior.branch_ref===row.branch_ref:prior.employee_ref===row.employee_ref)){
+   if(prior&&(prior.branch_ref===null?scope.all:scope.branches.some(b=>b.value===prior.branch_ref))&&(kind==="POLICY"?prior.branch_ref===row.branch_ref:prior.employee_ref===row.employee_ref)){
     previous={effectiveFrom:prior.effective_from,effectiveTo:prior.effective_to,...(kind==="POLICY"?{label:prior.label}:kind==="PAYOUT"?{maskedAccount:"•••• "+prior.masked_digits,maskedIfsc:prior.masked_ifsc}:{baseMinor:prior.base_salary_minor})};
    }
   }
@@ -181,7 +181,7 @@ export class PayrollCompensationService{
     digest=hash([kind,row.id,row.employee_ref,row.branch_ref,row.assignment_ref,row.assignment_version,row.employee_status_version,row.effective_from,row.effective_to,row.supersedes_ref,row.destination_ciphertext,row.destination_nonce,row.destination_tag,row.destination_fingerprint,row.masked_digits,row.masked_ifsc,row.request_digest]);
     return {row,preview:{...preview,previous},digest};
    }
-   const policy=(await tx.query("SELECT revision,status FROM payroll_policy WHERE root_realm_id=$1 AND id=$2 AND branch_ref=$3 FOR SHARE",[a.realmId,row.policy_id,row.branch_ref])).rows[0];
+   const policy=(await tx.query("SELECT revision,status FROM payroll_policy WHERE root_realm_id=$1 AND id=$2 AND (branch_ref=$3 OR branch_ref IS NULL) FOR SHARE",[a.realmId,row.policy_id,row.branch_ref])).rows[0];
    if(write&&(!policy||policy.status!=="APPROVED"||policy.revision!==row.policy_revision))throw conflict();
    if(write&&row.source_hr_proposal_ref){
     const original=await this.hrChange.payrollProposal(tx,a,row.employee_ref,row.source_hr_proposal_ref,row.branch_ref,row.assignment_ref);
