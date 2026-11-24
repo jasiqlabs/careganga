@@ -65,6 +65,8 @@ export function ClinicalLabOrderWorkspace({canCreate,canView,canManageSamples,ca
  const [custodyBusy,setCustodyBusy]=useState(false);
  const epoch=useRef(0),detailEpoch=useRef(0);
  const [orderQuery,setOrderQuery]=useState("");
+ const orderFilter=useRef({q:"",offset:0});
+ const [nextOrderOffset,setNextOrderOffset]=useState<number|null>(null);
  const [detailLoading,setDetailLoading]=useState(false);
  const reloadCenters=useCallback(async()=>{
   const result=await api<{centers:Center[]}>("centers/eligible");
@@ -78,13 +80,13 @@ export function ClinicalLabOrderWorkspace({canCreate,canView,canManageSamples,ca
     Promise.resolve({patients:[]}),
    canCreate?api<{items:Item[]}>("centers/"+ref+"/catalog/eligible"):
     Promise.resolve({items:[]}),
-   canView?api<{orders:Order[]}>("centers/"+ref+"/orders"):
-    Promise.resolve({orders:[]})
+   canView?api<{orders:Order[];nextOffset:number|null}>("centers/"+ref+"/orders?"+new URLSearchParams({q:orderFilter.current.q,offset:String(orderFilter.current.offset)})):
+    Promise.resolve({orders:[],nextOffset:null})
   ]);
   if(n===epoch.current){
    setPatients(patientsResult.patients??[]);
    setCatalog(catalogResult.items??[]);
-   setOrders(orderResult.orders??[]);
+   setOrders(orderResult.orders??[]);setNextOrderOffset(orderResult.nextOffset??null);
   }
  },[canCreate,canView]);
  useEffect(()=>{
@@ -96,7 +98,7 @@ export function ClinicalLabOrderWorkspace({canCreate,canView,canManageSamples,ca
   return()=>{active=false;++epoch.current;++detailEpoch.current;};
  },[reloadCenters]);
  useEffect(()=>{
-  ++detailEpoch.current;setDetailLoading(false);setOrderQuery("");
+  ++detailEpoch.current;setDetailLoading(false);setOrderQuery("");orderFilter.current={q:"",offset:0};setNextOrderOffset(null);
   setPatients([]);setCatalog([]);setOrders([]);setSelected(null);
   custodyReplay.current=null;setCustodyUncertain(false);setRejectSampleRef("");
   setPatientKey("");setCart([]);setItemKey("");
@@ -105,6 +107,12 @@ export function ClinicalLabOrderWorkspace({canCreate,canView,canManageSamples,ca
   void reloadCenter(center).catch(e=>setError(e instanceof Error?e.message:
    "Current lab orders are unavailable.")).finally(()=>setLoading(false));
  },[center,reloadCenter]);
+ async function searchOrders(q:string,offset=0){
+  if(!center||busy||loading||custodyBusy||custodyUncertain||uncertain||detailLoading)return;
+  orderFilter.current={q:q.trim(),offset};setOrders([]);setNextOrderOffset(null);setSelected(null);setSelectedCenter("");++detailEpoch.current;
+  setLoading(true);setError("");
+  try{await reloadCenter(center);}catch(e){setError(e instanceof Error?e.message:"Orders could not be checked.");}finally{setLoading(false);}
+ }
  const patientOptions=patients.map(p=>({key:p.patientRef+"|"+p.careSourceKind+"|"+p.careSourceRef,value:p}));
  const availableItems=catalog.filter(x=>!cart.some(c=>c.mappingRef===x.mappingRef));
  function addItem(){
@@ -151,6 +159,7 @@ export function ClinicalLabOrderWorkspace({canCreate,canView,canManageSamples,ca
    // The UI cannot reuse a previous center's patient/clinical data after
    // the user switches the selected lab while a private request is pending.
    if(request!==detailEpoch.current)return;
+   if(detail?.order?.orderRef!==orderRef)throw Error("The selected order is unavailable.");
    setSelectedCenter(requestedCenter);
    setSelected(detail);
   }catch(e){if(request===detailEpoch.current)setError(e instanceof Error?e.message:"This order cannot be viewed.");}
@@ -290,21 +299,28 @@ export function ClinicalLabOrderWorkspace({canCreate,canView,canManageSamples,ca
    </form>
   </section>}
   {canView&&center&&<section className="form-section">
-   <h2>Latest Clinical Orders</h2>
-   <label className="field">Find in recent orders<input value={orderQuery} onChange={e=>setOrderQuery(e.target.value)} placeholder="Order number or clinical status"/></label>
+   <h2>Clinical Orders</h2>
+   <form className="toolbar" onSubmit={e=>{e.preventDefault();void searchOrders(orderQuery);}}>
+    <label className="field">Find orders<input maxLength={80} value={orderQuery} onChange={e=>setOrderQuery(e.target.value)} placeholder="Order number or clinical status"/></label>
+    <button type="submit" disabled={busy||loading||custodyBusy||custodyUncertain||uncertain||detailLoading}>Search</button>
+    <button type="button" disabled={busy||loading||custodyBusy||custodyUncertain||uncertain||detailLoading} onClick={()=>{setOrderQuery("");void searchOrders("");}}>Reset</button>
+   </form>
    {detailLoading&&<p role="status">Checking order details…</p>}
-   {!orders.length?<p className="cg-module-empty">
+   {loading?<p role="status">Checking orders…</p>:!orders.length?<p className="cg-module-empty">
     No clinical lab orders are available for this verified center.</p>:
     <div className="table-wrap"><table className="role-table">
      <thead><tr><th>Order</th><th>Quoted total</th><th>Clinical status</th><th>Details</th></tr></thead>
-     <tbody>{orders.filter(o=>(o.displayOrderRef+" "+o.status.replaceAll("_"," ")).toLowerCase().includes(orderQuery.trim().toLowerCase())).map(o=><tr key={o.orderRef}>
+     <tbody>{orders.map(o=><tr key={o.orderRef}>
       <td>{o.displayOrderRef}</td><td>{money(o.quotedTotalMinor)}</td>
       <td>{o.status.replaceAll("_"," ").toLowerCase()}</td>
       <td><button type="button" disabled={busy||custodyBusy||custodyUncertain||uncertain} onClick={()=>void show(o.orderRef)}>View</button></td>
      </tr>)}</tbody>
     </table></div>}
-   <p className="cg-diagnostics-note">Showing at most 30 current-source orders.
-    This screen does not mark payment collected or medical reports delivered.</p>
+   <div className="toolbar">
+    <button type="button" disabled={loading||busy||custodyBusy||custodyUncertain||uncertain||detailLoading||orderFilter.current.offset===0} onClick={()=>void searchOrders(orderFilter.current.q,Math.max(0,orderFilter.current.offset-30))}>Previous page</button>
+    <button type="button" disabled={loading||busy||custodyBusy||custodyUncertain||uncertain||detailLoading||nextOrderOffset===null} onClick={()=>{if(nextOrderOffset!==null)void searchOrders(orderFilter.current.q,nextOrderOffset);}}>Next page</button>
+   </div>
+   <p className="cg-diagnostics-note">Up to 30 authorized orders per page. Payment and report delivery are verified separately.</p>
   </section>}
   {custodyUncertain&&<div className="notice" role="alert">
    The specimen action may already be saved. Avoid another action until
