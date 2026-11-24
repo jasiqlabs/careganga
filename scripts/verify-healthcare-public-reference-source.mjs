@@ -26,7 +26,14 @@ const files={
   "receipt": "apps/backend/src/modules/cg-19-documents-notifications/application/center-collection-receipt-renderer.ts",
   "onlineReceipt": "apps/backend/src/modules/cg-19-documents-notifications/application/center-online-payment-confirmation-renderer.ts",
   "receiptSource": "apps/backend/src/modules/cg-17-healthcare-assistance-settlements/application/center-patient-receipt.service.ts",
-  "cmsEditorial": "apps/backend/src/modules/cg-18-cms-public-content/application/cms-editorial.service.ts"
+  "cmsEditorial": "apps/backend/src/modules/cg-18-cms-public-content/application/cms-editorial.service.ts",
+  "webProvider": "apps/web/src/features/health-network/provider-onboarding.tsx",
+  "nativeProvider": "apps/android-internal/src/features/health-network/native-provider-management.tsx",
+  "webDoctor": "apps/web/src/features/health-network/doctor-onboarding.tsx",
+  "webPolicy": "apps/web/src/features/healthcare-assistance/healthcare-policy-workspace.tsx",
+  "nativePolicy": "apps/android-internal/src/features/healthcare-assistance/native-healthcare-policy-screen.tsx",
+  "webBalance": "apps/web/src/features/healthcare-assistance/patient-center-collection-summary.tsx",
+  "nativeBalance": "apps/android-public/src/features/appointments/native-patient-center-collection-summary.tsx"
 };
 const s={};
 for(const [key,path] of Object.entries(files)){
@@ -36,6 +43,10 @@ for(const [key,path] of Object.entries(files)){
  assert.doesNotMatch(s[key],/^(<{7}|={7}|>{7})/m,path+" merge conflict");
 }
 const rules=[
+ ["Provider detail identity and finance scope",["webProvider","details?.provider?.providerRef!==ref"],["webProvider","turn!==detailRequest.current"],["nativeProvider","response?.provider?.providerRef!==ref"],["nativeProvider","request!==detailTurn.current||activeProvider.current!==ref"]],
+ ["Doctor detail identity",["webDoctor","item?.doctorRef!==ref"]],
+ ["Local policy validity round trip",["webPolicy","dateInput(d.toISOString())!==value"],["nativePolicy","localInput(d.toISOString())!==v"]],
+ ["Booking scoped balance and private PDF",["webBalance","key={bookingRef}"],["webBalance","setChecking(true);setData(null);"],["nativeBalance","key={bookingRef}"],["nativeBalance","setLoading(true);setData(null);"],["nativeBalance","request!==generation.current"]],
  ["Verified two-copy online confirmation",["receiptSource","collect.verification_state='VERIFIED_PROVIDER'"],["receiptSource","event.result='VERIFIED_CAPTURE'"],["receiptSource","const current=await this.onlineSource"],["onlineReceipt","copy(818,\"Patient copy\")"],["onlineReceipt","copy(405,\"Center copy (patient-carried)\")"]],
  ["Healthcare CMS approved image placement",["cmsEditorial","Array.isArray(s.fields.categories)"],["webCms","cg-health-category-photo"],["nativeCms",'picture("FEATURE",i)']],
   [
