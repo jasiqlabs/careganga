@@ -1,6 +1,7 @@
 "use client";
 import {useCallback,useEffect,useRef,useState} from "react";
 import {CmsPublicPage,type PublicCmsPage} from "./cms-public-page";
+import {isCmsCtaRoute} from "./cms-cta-route";
 import {clientScreenshotHome} from "./cms-client-screenshot-reference";
 type Kind="HOME"|"ABOUT";
 type ProjectSource={sourceRef:string;title:string;category:string;summary:string;area:string;launch:string|null;status:string};
@@ -288,9 +289,9 @@ export function CmsAdminWorkspace({canManage,canPublish,canReview}:{
   draft.slides.every(x=>
    Boolean(x.primaryLabel.trim())===Boolean(x.primaryPath.trim())&&
    Boolean(x.secondaryLabel.trim())===Boolean(x.secondaryPath.trim())&&
-   (!x.primaryPath.trim()||["/","/about","/contact"].includes(x.primaryPath.trim()))&&
-   (!x.secondaryPath.trim()||["/","/about","/contact"].includes(x.secondaryPath.trim())))&&
-  (!draft.promoHeading||Boolean(draft.promoLabel)===Boolean(draft.promoPath))&&
+   (!x.primaryPath.trim()||isCmsCtaRoute(x.primaryPath.trim()))&&
+   (!x.secondaryPath.trim()||isCmsCtaRoute(x.secondaryPath.trim())))&&
+  (!draft.promoHeading||Boolean(draft.promoLabel.trim())===Boolean(draft.promoPath.trim())&&(!draft.promoPath.trim()||isCmsCtaRoute(draft.promoPath.trim())))&&
   (!draft.featureCards.length||draft.featuresHeading.trim().length>=3)&&
   (!draft.featuresHeading||draft.featureCards.length>0&&draft.featureCards.every(x=>
     x.label.trim().length>=2&&x.title.trim().length>=3&&x.body.trim().length>=5))&&
@@ -312,9 +313,9 @@ export function CmsAdminWorkspace({canManage,canPublish,canReview}:{
     Boolean(slide.primaryLabel.trim())!==Boolean(slide.primaryPath.trim())||
     Boolean(slide.secondaryLabel.trim())!==Boolean(slide.secondaryPath.trim())||
     [slide.primaryPath,slide.secondaryPath].some(v=>v.trim()&&
-      !["/","/about","/contact"].includes(v.trim())))?
-  "Every banner button needs a label and an existing Home, About or Contact destination.":
-  Boolean(draft.promoLabel.trim())!==Boolean(draft.promoPath.trim())?
+      !isCmsCtaRoute(v.trim())))?
+  "Every banner button needs a label and a supported public page destination.":
+  Boolean(draft.promoLabel.trim())!==Boolean(draft.promoPath.trim())||(!!draft.promoPath.trim()&&!isCmsCtaRoute(draft.promoPath.trim()))?
   "Enter both a promotional button label and a working page destination.":
   draft.featuresHeading.trim()&&!draft.featureCards.length?
   "Add a solution card or clear the unused section heading.":
