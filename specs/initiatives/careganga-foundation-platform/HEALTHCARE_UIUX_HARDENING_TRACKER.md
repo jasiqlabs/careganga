@@ -163,6 +163,10 @@ UI06/07 re-review: Web/native known held reservations now have an explicit origi
 
 HUX-09.01/13.01/13.02: published native CMS healthcare categories now have working category-specific directory actions with validated existing CG14 category codes and shared public theme. Selected category survives initial native directory load, generic home entry resets it; unknown editorial labels open full directory. HUX-11.03/15.01: consultation slip measures and wraps authorized names/address before drawing, fits at readable 8.5–10pt without truncating, reserves non-overlapping financial/footer space and calculates QR quiet-zone from matrix size. Source checks only; extreme valid source lengths and scanner/printed output must be tested locally. Original approved one-copy pay-at-center slip remains separate from actual collection receipt; no fake payment or sample data.
 
+## Repeatable reference source preflight
+
+Seven grouped contract assertions were executed against remote source at 9e975a6122193be13276de097bc76ed1e9be414f; all seven passed (CMS routing, approved photo scope, availability bounds, original booking recovery, patient registration continuity, private document/receipt semantics, slip layout/QR). Added `npm run verify:healthcare-public-reference-source` to local preflight for TypeScript/TSX parsing and these contract assertions. The Node script, full compilation and rendered/device/database/PDF QA remain NOT_RUN in this connector session. No source disposition promoted to runtime PASS.
+
 ## Subtracker details and expected user scenarios
 
 ### HUX-01.01 — Recover separate healthcare reference originals

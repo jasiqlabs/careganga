@@ -41,6 +41,7 @@
     "verify:cg16-us001-source": "node scripts/verify-cg16-us001-source.mjs",
     "verify:cg16-us002-source": "node scripts/verify-cg16-us002-source.mjs",
     "verify:healthcare-journeys-source": "node scripts/verify-healthcare-journeys-source.mjs",
+    "verify:healthcare-public-reference-source": "node scripts/verify-healthcare-public-reference-source.mjs",
     "verify:cg16-us005-source": "node scripts/verify-cg16-us005-source.mjs",
     "verify:cg17-us007-source": "node scripts/verify-cg17-us007-source.mjs",
     "verify:cg17-us003-source": "node scripts/verify-cg17-us003-source.mjs",
