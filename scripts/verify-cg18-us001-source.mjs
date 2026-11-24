@@ -595,6 +595,21 @@ checks.push(["Standalone collaboration enquiry is available without fabricated p
  files.android.includes('title="Apply as a healthcare partner" onPress={onPartnerApplication}')&&
  ctaRoute.includes('value==="/collaboration"')&&
  files.android.includes('route==="/collaboration"')]);
+const teamOwner=read("apps/backend/src/modules/cg-10-human-resources/application/hr-public-bio-editorial-source.ts");
+const teamRoute=read("apps/web/src/app/about/team/page.tsx");
+checks.push(["E2E-006 team source and publication revalidation",
+ teamOwner.includes("c.consent_status='GRANTED'")&&teamOwner.includes("acc.status='ACTIVE'")&&
+ teamOwner.includes('this.identity.assertCurrent(tx,actor,"hr.employees.view")')&&
+ files.backend.includes("this.hrPublicBio.currentCards")&&
+ files.backend.includes("await this.teamRevisionCurrent")&&
+ files.due.includes("await this.teamRevisionEligible")&&
+ files.due.split("private async teamRevisionEligible(").length===2&&
+ internalCms.split("function TeamSelection(").length===2&&
+ internalCms.split("type TeamSource=").length===2&&
+ files.admin.includes('"team-sources"')&&internalCms.includes('"team-sources"')&&
+ teamRoute.includes('p.consentConfirmed!==true')&&teamRoute.includes('publishedCmsPage("about")')&&
+ files.header.includes('href:"/about/team"')&&files.android.includes('slug==="@team"?<NativeTeamDirectory/>')&&
+ files.backend.includes('assets:visibleAssets.filter(v=>v.role!=="TEAM")')]);
 let errors=0;
 for(const [label,ok] of checks){
  console.log((ok?"SOURCE-PRESENT":"SOURCE-FAIL")+": "+label);
