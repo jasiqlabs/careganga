@@ -911,7 +911,7 @@ export function StaffAuthenticationScreen() {
     return renderInShell(<ScreenErrorBoundary onExit={()=>setMembershipOpen(false)}><Suspense fallback={<ActivityIndicator style={{marginTop:40}}/>}><NativeMembershipDesk key={token} token={token} canViewMembers={canMembers} canExportMembers={canMembers&&roleActions.includes("membership.members.export")} canReview={canReview} canConfigure={canReview&&roleActions.includes("approvals.process.manage")} canIssueDocs={canIssueDocs} onExpired={expireSession}/></Suspense></ScreenErrorBoundary>,"membership",()=>setMembershipOpen(false));
   }
   if(payrollOpen&&token&&actor){
-    return renderInShell(<ScreenErrorBoundary onExit={()=>setPayrollOpen(false)}><Suspense fallback={<ActivityIndicator style={{marginTop:40}}/>}><NativePayroll key={token} token={token} onExpired={expireSession} canReview={roleActions.includes("payroll.compensation.review")&&roleActions.includes("approvals.review")}/></Suspense></ScreenErrorBoundary>,"payroll",()=>setPayrollOpen(false));
+    return renderInShell(<ScreenErrorBoundary onExit={()=>setPayrollOpen(false)}><Suspense fallback={<ActivityIndicator style={{marginTop:40}}/>}><NativePayroll key={token} token={token} onExpired={expireSession} canReview={roleActions.includes("payroll.sensitive.approve")&&roleActions.includes("approvals.review")}/></Suspense></ScreenErrorBoundary>,"payroll",()=>setPayrollOpen(false));
   }
   if (hrOpen && token && actor) {
     // Same actor self profile is open to every signed-in Foundation employee.
