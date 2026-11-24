@@ -16,5 +16,9 @@ export class PayrollRunController{
  @Get(":ref/history") @Header("Cache-Control","private, no-store") history(@Headers("authorization")token:string,@Param("ref")ref:string){return this.runs.history(token,ref);}
  @Get(":ref/accrual-options") @Header("Cache-Control","private, no-store") accrualOptions(@Headers("authorization")token:string,@Param("ref")ref:string){return this.payments.options(token,ref);}
  @Post(":ref/request-release") @Header("Cache-Control","private, no-store") accrue(@Headers("authorization")token:string,@Param("ref")ref:string,@Body()raw:unknown){return this.payments.accrue(token,ref,raw);}
+ @Get(":ref/batch-options") @Header("Cache-Control","private, no-store") batchOptions(@Headers("authorization")token:string,@Param("ref")ref:string){return this.payments.batchOptions(token,ref);}
+ @Post(":ref/prepare-batch") @Header("Cache-Control","private, no-store") prepareBatch(@Headers("authorization")token:string,@Param("ref")ref:string,@Body()raw:unknown){return this.payments.prepare(token,ref,raw);}
+ @Post(":ref/request-payout") @Header("Cache-Control","private, no-store") requestPayout(@Headers("authorization")token:string,@Param("ref")ref:string,@Body()raw:unknown){return this.payments.requestAttempt(token,ref,raw);}
+ @Get(":ref/payment-outcomes") @Header("Cache-Control","private, no-store") paymentOutcomes(@Headers("authorization")token:string,@Param("ref")ref:string){return this.payments.outcomes(token,ref);}
  @Get(":ref") @Header("Cache-Control","private, no-store") detail(@Headers("authorization")token:string,@Param("ref")ref:string){return this.runs.detail(token,ref);}
 }
