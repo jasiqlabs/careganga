@@ -37,7 +37,7 @@ export function NativeRewardRequests({token,onExpired,programme,canIssueStock,
     "Original reward requests unavailable. Refresh before issuing.");
    const data=await res.json() as Page;
    if(id!==serial.current)return;
-   if(!Array.isArray(data.items)||typeof data.hasMore!=="boolean)
+   if(!Array.isArray(data.items)||typeof data.hasMore!=="boolean")
     throw Error("Verified reward queue unavailable.");
    setItems(old=>append?[...old,...data.items.filter(v=>!old.some(x=>x.ref===v.ref))]:data.items);
    setPage(pageNumber);setMore(data.hasMore);

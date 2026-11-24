@@ -188,9 +188,9 @@ export function AdminRedemptionsTable({programme,programmes,onProgrammeChange,re
   </div>
   {branchesTruncated&&<p role="status">The first 200 current permitted
    branches are available for selection.</p>}
-  {busy&&<p role="status">Checking original reward requests…</p>
+  {busy&&<p role="status">Checking original reward requests…</p>}
   {error&&<p role="alert">{error}</p>}
-  {categoryError&&<p role="status">{categoryError} Category filter is unavailable; the unfiltered original records remain visible.</p>
+  {categoryError&&<p role="status">{categoryError} Category filter is unavailable; the unfiltered original records remain visible.</p>}
   {notice&&<p role="status">{notice}{" "}
    <a href="/admin/inventory">Open existing Stock Operations</a>
    to upload required CG19 proof and confirm the real warehouse ISSUE. An issue is

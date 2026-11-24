@@ -27,7 +27,7 @@ function setup({member=true,volunteer=false,programActive=true,
     return {rows:volunteer?[{ref:VOLUNTEER}]:[]};
    if(sql.includes("ORDER BY p.display_name,p.id LIMIT"))
     return {rows:programActive?[{ref:PROGRAMME,name:"Community invitations",audience}]:[]};
-   if(sql.includes("SELECT p.id AS ref,p.display_name AS name FROM referral_program p"))
+   if(sql.includes("FROM referral_program p")&&sql.includes('rules.qualifying_event AS "qualifyingEvent"'))
     return {rows:programActive?[{ref:PROGRAMME,name:"Community invitations",qualifyingEvent}]:[]};
    if(sql.startsWith("INSERT INTO referral_code(")){
     if(!code)code=params[5] as string;

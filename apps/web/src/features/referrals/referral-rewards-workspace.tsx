@@ -432,7 +432,7 @@ export function ReferralRewardsWorkspace({canViewPolicy,canViewRewards,canManage
         {pointsDisplay(summary.heldForFraudReview)} attempted circular referrals are held
         for protected review. They have not received points or rank credit.
        </p>}
-       {summaryLoading&&<p role="status">Checking verified referral activity…</p>
+       {summaryLoading&&<p role="status">Checking verified referral activity…</p>}
       </div>
       <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(min(100%,330px),1fr))",
        gap:12,alignItems:"start"}}>

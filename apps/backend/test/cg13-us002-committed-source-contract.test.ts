@@ -27,11 +27,11 @@ function fixture(options:{renewal?:boolean;valid?:boolean;prior?:boolean;
     policyVersion:2,qualifyingEvent:params[3],awardPoints:"75"
    }],rowCount:options.valid===false?0:1};
   if(sql.startsWith("SELECT id FROM referral_attribution")&&
-   sql.includes("AND applicant_account_ref=$3"))
-   return {rows:options.prior?[{id:CODE_REF}]:[],rowCount:options.prior?1:0};
-  if(sql.startsWith("SELECT id FROM referral_attribution")&&
    sql.includes("referrer_account_ref=$4"))
    return {rows:options.circular?[{id:CODE_REF}]:[],rowCount:options.circular?1:0};
+  if(sql.startsWith("SELECT id FROM referral_attribution")&&
+   sql.includes("AND applicant_account_ref=$3"))
+   return {rows:options.prior?[{id:CODE_REF}]:[],rowCount:options.prior?1:0};
   if(sql.includes("INSERT INTO referral_attribution("))
    return {rows:[{id:CODE_REF}],rowCount:1};
   return {rows:[],rowCount:0};

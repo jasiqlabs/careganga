@@ -38,6 +38,10 @@ function fixture(block=false,media:"ABSENT"|"APPROVED"|"WITHDRAWN"="ABSENT",
     sql.includes("LEFT JOIN stock_balance"))
     return {rows:[],rowCount:0};
    if(sql.includes('AS "activeTotal"'))return {rows:[{activeTotal:"85"}],rowCount:1};
+   if(sql.includes("SELECT DISTINCT p.category")){
+    const categories=sql.includes("FROM reward_product p")&&!eligible?[]:[{category:"Recognition"}];
+    return {rows:categories,rowCount:categories.length};
+   }
    if(sql.includes("FROM reward_product p LEFT JOIN inventory_location"))
     return {rows:media==="ABSENT"?[]:[{ref:ITEM,programmeRef:PROGRAMME,
      name:"Recognition",type:"DIGITAL",imageUrl:MEDIA_URL}],rowCount:media==="ABSENT"?0:1};
@@ -49,10 +53,6 @@ function fixture(block=false,media:"ABSENT"|"APPROVED"|"WITHDRAWN"="ABSENT",
     return {rows:[{name:"Eligible boxed items",unit_code:"PIECE"}],rowCount:1};
    if(sql.includes("FROM inventory_item"))
     return {rows:[{ref:ITEM,name:"Eligible boxed items"}],rowCount:1};
-   if(sql.includes("SELECT DISTINCT p.category")){
-    const categories=sql.includes("FROM reward_product p")&&!eligible?[]:[{category:"Recognition"}];
-    return {rows:categories,rowCount:categories.length};
-   }
    return {rows:[],rowCount:0};
   },
   release:()=>{released++;}

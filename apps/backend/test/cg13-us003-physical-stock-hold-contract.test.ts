@@ -74,7 +74,7 @@ describe("CG13-US003-QA06/07/12 original CG12 same-ledger one-unit source contra
   assert.equal(result.status,"RELEASED");assert.equal(result.replayed,false);
   const released=x.queries.find(q=>q.sql.includes("reserved_qty=reserved_qty-1"));
   assert.ok(released);assert.deepEqual(released.args,[ROOT,ITEM,LOCATION]);
-  const event=x.queries.find(q=>q.sql.includes("'RELEASED'"));
+  const event=x.queries.find(q=>q.sql.includes("INSERT INTO stock_reward_hold_event")&&q.sql.includes("'RELEASED'"));
   assert.ok(event);assert.deepEqual(event.args,[ROOT,HOLD,KEY,ACCOUNT]);
   assert.ok(!x.queries.some(q=>q.sql.includes("INSERT INTO stock_movement")));
  });

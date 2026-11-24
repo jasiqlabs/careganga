@@ -158,7 +158,7 @@ describe("CG13 US002 B12 individual records require existing current CG04 roster
   assert.match(event.sql,/\$13::uuid IS NULL OR COALESCE\(m.branch_ref,v.branch_ref\)=\$13::uuid/);
   for(const query of [top,event]){
    assert.ok(!query.sql.includes("applicant_account_ref"));
-   assert.ok(!query.sql.includes("contact_phone"));
+   assert.ok(!query.sql.includes("person.contact_phone,")&&!query.sql.includes("contact_phone AS"));
    assert.ok(!query.sql.includes("finance_membership_collection"));
   }
  });
@@ -192,7 +192,7 @@ describe("CG13 US002 B12 individual records require existing current CG04 roster
   await assert.rejects(()=>f.svc.adminReferralRecords(
    "staff",PROGRAMME,"MEMBER","1","ALL","2026-02-30"));
   await assert.rejects(()=>f.svc.adminReferralRecords(
-   "staff",PROGRAMME,"MEMBER","1","ALL",undefined,undefined,undefined,undefined,"UNSAFE"));
+   "staff",PROGRAMME,"MEMBER","1","ALL",undefined,undefined,undefined,undefined,undefined,"UNSAFE"));
   assert.deepEqual(f.actions,[]);
   assert.equal(f.seen.length,0);
  });

@@ -172,7 +172,7 @@ describe("CG13 US003 digital points hold/cancel contracts (mock only; no real PG
    assert.ok(ledger.includes(x),x);
   for(const x of ["CREATE TRIGGER cg13_digital_redemption_source_guard",
    "CREATE CONSTRAINT TRIGGER cg13_redemption_commit",
-   "AND product.product_type='DIGITAL'","wallet.earned_points-wallet.reversed_points",
+   "AND product.product_type=NEW.product_type","wallet.earned_points-wallet.reversed_points",
    "CREATE UNIQUE INDEX ux_cg13_points_redemption_effect",
    "CREATE TRIGGER cg13_redemption_event_immutable"])
    assert.ok(digital.includes(x),x);
