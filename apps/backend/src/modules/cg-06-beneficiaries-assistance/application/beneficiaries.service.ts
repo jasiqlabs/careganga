@@ -16,14 +16,14 @@ type Row={
  beneficiary_type:string;gender:string;age_group:string;consent_kind:string;
  consent_purpose:string;consent_acknowledged_at:Date;consent_revoked_at:Date|null;
  verification_state:string;lifecycle_state:string;profile_revision:number;
- verification_case_ref:string|null;created_at:Date;updated_at:Date;
+ verification_case_ref:string|null;created_by:string;created_at:Date;updated_at:Date;
 };
 type Scope={all:boolean;branches:{value:string;label:string}[]};
 const digest=(value:unknown)=>createHash("sha256").update(JSON.stringify(value)).digest("hex");
 const columns="id,root_realm_id,branch_scope_id,display_ref,private_name,contact_mobile,representative_name,"+
  "representative_contact,state_ref,district_ref,beneficiary_type,gender,age_group,consent_kind,"+
  "consent_purpose,consent_acknowledged_at,consent_revoked_at,verification_state,lifecycle_state,"+
- "profile_revision,verification_case_ref,created_at,updated_at";
+ "profile_revision,verification_case_ref,created_by,created_at,updated_at";
 @Injectable()
 export class BeneficiariesService{
  constructor(@Inject(DATABASE)private readonly db:Pool,private readonly sessions:SessionService,
@@ -301,7 +301,7 @@ export class BeneficiariesService{
   await this.identity.assertCurrent(tx,a,"beneficiaries.view");
   const row=await this.row(tx,a,id,write);
   return {ref:row.id,reference:row.display_ref,branchRef:row.branch_scope_id,
-   revision:row.profile_revision,verification:row.verification_state,
+   creatorRef:row.created_by,revision:row.profile_revision,verification:row.verification_state,
    lifecycle:row.lifecycle_state,consentRevoked:row.consent_revoked_at!==null,
    digest:this.fingerprint(row),updatedAt:row.updated_at};
  }
