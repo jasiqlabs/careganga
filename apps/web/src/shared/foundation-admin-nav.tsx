@@ -764,7 +764,7 @@ export function FoundationAdminNav({
     ...((allowed("csr.partners.view",false)||(allowed("csr.partners.review",false)&&allowed("approvals.review",false)))?[{key:"csr" as const,label:"CSR & Partnerships",href:"/admin/csr"}]:[]),
     ...((allowed("referrals.programmes.view",false)||allowed("rewards.catalog.view",false))?[{key:"referrals" as const,label:"Referral Programme & Rewards",href:"/admin/referrals"}]:[]),
     ...(allowed("projects.view",false)?[{key:"projects" as const,label:"Projects",href:"/admin/projects"}]:[]),
-    ...(allowed("payroll.compensation.view",false)?[{key:"payroll" as const,label:"Payroll & Salary",href:"/admin/payroll"}]:[]),
+    {key:"payroll" as const,label:allowed("payroll.compensation.view",false)?"Payroll & Salary":"My Pay",href:"/admin/payroll"},
     ...(allowed("beneficiaries.view",false)?[{key:"beneficiaries" as const,label:"Beneficiaries",href:"/admin/beneficiaries"}]:[]),
     ...(allowed("projects.visits.view",false)?[{key:"fieldVisits" as const,label:"Field Visits",href:"/admin/field-visits"}]:[]),
     ...(allowed("projects.activities.view",false)?[{key:"activities" as const,label:"Activities & Events",href:"/admin/activities"}]:[]),
