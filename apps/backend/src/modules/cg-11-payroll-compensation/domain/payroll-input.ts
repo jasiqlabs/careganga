@@ -8,7 +8,7 @@ export function option<T extends string>(v:unknown,values:readonly T[]):T{if(typ
 export function label(v:unknown){if(typeof v!=="string"||v.trim().length<2||v.trim().length>100||/[\u0000-\u001f\u007f]/.test(v))throw invalid("Enter a valid label");return v.trim();}
 function range(x:Record<string,unknown>){const from=date(x.effectiveFrom),to=x.effectiveTo==null||x.effectiveTo===""?null:date(x.effectiveTo);if(to&&to<=from)throw invalid("End date must be after start date");return {from,to};}
 export function parsePolicy(raw:unknown){
- const x=fields(raw,["requestKey","branchRef","label","effectiveFrom","effectiveTo","supersedesRef","components"]);
+ const x=fields(raw,["requestKey","branchRef","label","effectiveFrom","effectiveTo","supersedesRef","components","attendanceRules"]);
  if(!Array.isArray(x.components)||x.components.length>40)throw invalid("Choose up to 40 salary components");
  const components=x.components.map(raw=>{const c=fields(raw,["code","label","kind","mode","minor","basisPoints","taxClass"]);
   if(typeof c.code!=="string"||!/^[A-Z][A-Z0-9_]{1,29}$/.test(c.code))throw invalid("Enter a valid component code");
@@ -19,7 +19,11 @@ export function parsePolicy(raw:unknown){
   return {code:c.code,label:label(c.label),kind,mode,minor:mode==="FIXED"?minor(c.minor,true):null,bp:mode==="PERCENT"?Number(c.basisPoints):null,taxClass:option(c.taxClass,["TAXABLE","NON_TAXABLE","NOT_CONFIGURED"] as const)};
  });
  if(new Set(components.map(c=>c.code)).size!==components.length)throw invalid("Component codes must be unique");
- return {key:id(x.requestKey),branch:x.branchRef===null||x.branchRef==="FOUNDATION"?null:id(x.branchRef),label:label(x.label),supersedes:x.supersedesRef==null||x.supersedesRef===""?null:id(x.supersedesRef),...range(x),components};
+ const rules=x.attendanceRules===undefined?{absence:"UNCONFIGURED",leave:{}}:fields(x.attendanceRules,["absence","leave"]);
+ const absence=option(rules.absence,["UNCONFIGURED","PAID","UNPAID"] as const);
+ if(!rules.leave||typeof rules.leave!=="object"||Array.isArray(rules.leave)||Object.keys(rules.leave).length>40)throw invalid("Check approved leave rules");
+ const leave=Object.fromEntries(Object.entries(rules.leave).map(([k,v])=>[id(k),option(v,["PAID","UNPAID"] as const)]));
+ return {attendanceRules:{absence,leave},key:id(x.requestKey),branch:x.branchRef===null||x.branchRef==="FOUNDATION"?null:id(x.branchRef),label:label(x.label),supersedes:x.supersedesRef==null||x.supersedesRef===""?null:id(x.supersedesRef),...range(x),components};
 }
 export function parseSalary(raw:unknown){const x=fields(raw,["requestKey","policyRef","policyRevision","effectiveFrom","effectiveTo","supersedesRef","hrProposalRef","baseMinor"]);if(!Number.isSafeInteger(x.policyRevision)||Number(x.policyRevision)<1)throw invalid("Refresh the policy");return {key:id(x.requestKey),policy:id(x.policyRef),policyRevision:Number(x.policyRevision),hrProposal:x.hrProposalRef==null||x.hrProposalRef===""?null:id(x.hrProposalRef),supersedes:x.supersedesRef==null||x.supersedesRef===""?null:id(x.supersedesRef),...range(x),baseMinor:minor(x.baseMinor)};}
 /** Round half-up once per component, with integer arithmetic only. */
