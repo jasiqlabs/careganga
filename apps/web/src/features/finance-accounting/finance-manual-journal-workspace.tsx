@@ -162,11 +162,13 @@ export function FinanceManualJournalWorkspace({years,canPost,canReverse,onUpdate
   body:Record<string,unknown>}){
   if(busy)return;
   setBusy(true);setError("");setInfo("");
-  setCorrectionPending(command);
+  const {currentPassword,...retryBody}=command.body;
+  setCorrectionPending({...command,body:retryBody});
+  setCorrectionPassword("");
   try{
    const res=await fetch(endpoint+"/manual-journals/"+command.journalRef+"/reverse",{
     method:"POST",headers:{"Content-Type":"application/json"},
-    body:JSON.stringify({...command.body,requestKey:command.requestKey})});
+    body:JSON.stringify({...retryBody,currentPassword:typeof currentPassword==="string"?currentPassword:correctionPassword,requestKey:command.requestKey})});
    if(!res.ok)throw Error((await issueText(res)).message);
    const data=await res.json() as {confirmed?:boolean;status?:string};
    if(data.confirmed!==true||data.status!=="REVERSED")
@@ -287,7 +289,7 @@ export function FinanceManualJournalWorkspace({years,canPost,canReverse,onUpdate
      <button type="button" disabled={busy} onClick={()=>void checkCorrection()}>
       Check original correction</button>
      <button type="button" disabled={busy}
-      onClick={()=>void applyCorrection(correctionPending)}>Retry SAME request</button>
+      onClick={()=>void applyCorrection(correctionPending)}>Retry SAME request with current password</button>
     </div>}
    </section>
   </div>}
