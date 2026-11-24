@@ -131,10 +131,48 @@ Dependencies: US-001
 - **QA tracking:** US-001-QA01–20 = NOT_EXECUTED; backend source trace to be recorded case-by-case as files are actually committed; Web, native, SQL, multibranch, visual and independent review NOT_RUN. No CI/GitHub Actions, merge or production QA claimed.
 
 
-- US-001: BLOCKED | planning=OWNER_DELEGATED_DESIGN_APPROVED_CURRENT_ARTIFACT; formal_harness_and_critical_DB_QA_NOT_RUN; prerequisite CG-01/02 real code NOT_VERIFIED, implementation NOT_STARTED, 20 source QA NOT_RUN, live SQL/Web/Android/visual NOT_RUN.
-- US-002: BLOCKED | planning=OWNER_DELEGATED_DESIGN_APPROVED_CURRENT_ARTIFACT; formal_harness_and_critical_DB_QA_NOT_RUN; prerequisite US-001 and real CG-12/09 source NOT_VERIFIED, implementation NOT_STARTED, 20 source QA NOT_RUN, live SQL/Web/Android/financial/visual NOT_RUN.
-- US-003: BLOCKED | planning=OWNER_DELEGATED_DESIGN_APPROVED_CURRENT_ARTIFACT; formal_harness_and_critical_DB_QA_NOT_RUN; prerequisite US-001 real code NOT_VERIFIED, real CG-12/09 totals conditional, implementation NOT_STARTED, 20 source QA NOT_RUN, live SQL/Web/Android/public/render NOT_RUN.
+- US-001: IN_PROGRESS | OWNER_AUTHORIZED_SOURCE_ONLY; private SQL/CG01/CG02/CG05/NestJS/role-checked Web and native source AUTHORED_PENDING_INDEPENDENT_REVIEW; CG03 protected verification and CG19 evidence SOURCE_GAP; 20 original QA NOT_EXECUTED; SQL/DB/stock/security/multibranch/Web/native visual NOT_RUN.
+- US-002: NOT_STARTED | 20 original QA PLANNED / NOT_EXECUTED; source work must wait for actual US-001 and CG12/CG09 owner integration as applicable. No payment or stock effects implemented.
+- US-003: NOT_STARTED | 20 original QA PLANNED / NOT_EXECUTED; protected beneficiary assistance history/report source still future owner; no public recipient details or fabricated impact.
 
+
+
+### 24 November 2026 — US-001 actual committed-source checkpoint (supersedes historical 21-Nov design-only status)
+
+**Source authored on this feature branch; independent acceptance NOT_RUN:**
+- PostgreSQL: `apps/backend/db/migrations/3601_cg06_beneficiary_private_intake.sql` — private root/branch/geography references, immutable command/verification event owner, nonunique family phone, unique human-facing BEN reference, linked actual CG05 projects, consent and lifecycle.
+- CG01: `apps/backend/src/modules/cg-01-identity-access/domain/capability-catalog.ts` — implemented beneficiary view/manage, project link, lifecycle and consent-withdrawal actions; **no beneficiary verification-submit permission** until CG03 source is actually available.
+- Backend: `apps/backend/src/modules/cg-06-beneficiaries-assistance/{domain/beneficiary-input.ts,application/beneficiaries.service.ts,http/beneficiaries.controller.ts,beneficiaries-assistance.module.ts}`, registered in original `app.module.ts`. `BeneficiariesService.run/row/area/original/create/edit/list/detail/link/unlink/changeLifecycle/revokeConsent/history/verificationHistory` and `CG05 CampaignLinkSourceFacade` enforce current source permissions and real branch/project eligibility. Source review found and fixed native theme mismatch, ambiguous PG phone regex, withdrawn private-name search inference, cross-scope unlink, incomplete PENDING tabs, phantom verification grant and recorded lifecycle audit reasons.
+- Admin Web: `apps/web/src/app/(admin)/admin/beneficiaries/page.tsx`, existing `foundation-admin-nav.tsx`, `apps/web/src/app/api/beneficiaries/[[...parts]]/route.ts`, and `apps/web/src/features/beneficiaries/beneficiaries-workspace.tsx`. Server session/grants, no-store CSRF proxy, actual permitted list/intake/edit, current branch, real optional CG05 projects, current restricted audit and verification history.
+- Native Internal Android: `apps/android-internal/src/features/beneficiaries/native-beneficiaries-workspace.tsx`, existing authenticated staff shell / `dashboard-modules.ts`; real authorized native form/list/branch filter, consent, project actions, audit history. Public Website/Public Android **private beneficiary directory remains NOT_APPLICABLE / absent** by privacy.
+- Authored pure domain-validation contract tests `apps/backend/test/cg06-us001-beneficiary-contract.test.ts` and local package script `npm run test:cg06-us001 -w apps/backend`. **Tests NOT RUN; no claim of PASS.**
+
+**Original 20-case source trace — author inspection only; none independently QA-passed or actually executed:**
+
+| Original QA | Current honest source disposition | Exact remaining gap / verification |
+| --- | --- | --- |
+| US-001-QA01 | SOURCE_AUTHORED_PENDING_RUNTIME | `BeneficiariesService.create/detail`, Admin workspace, fresh SQL/real root session not executed |
+| US-001-QA02 | PARTIAL_SOURCE_GAP | `run/row/scope`, Web/native denies authored; original CG19 proof, file and export denial need actual owner adapter/tests |
+| US-001-QA03 | SOURCE_AUTHORED_PENDING_CONCURRENCY | `original/recorded/edit` advisory lock and revision; real concurrent PG and unknown-response QA NOT_RUN |
+| US-001-QA04 | PARTIAL_SOURCE_GAP | `parseProfile/area` validation authored; missing approval-backend error/field-level UX and executed invalid-input QA |
+| US-001-QA05 | SOURCE_AUTHORED_PENDING_DEVICE | Web/Admin and `NativeBeneficiariesWorkspace` use same original API; real two-device/denied-public QA NOT_RUN |
+| US-001-QA06 | SOURCE_AUTHORED_VISUAL_NOT_VERIFIED | Original A07/A08 pixel hierarchy, KPI/filter/sidebar/table/motion/Android screenshot comparison NOT_RUN |
+| US-001-QA07 | SOURCE_GAP | Family phone deliberately nonunique, but permitted masked duplicate-suggestion UI/source not implemented |
+| US-001-QA08 | SOURCE_AUTHORED_PENDING_REVIEW | `BeneficiariesService.link/unlink/detail` original CG05 project scopes; two active projects and differential permission QA NOT_RUN |
+| US-001-QA09 | SOURCE_AUTHORED_PENDING_REVIEW | `CampaignLinkSourceFacade.requireCurrent`, current link unique index/history; real branch revoke/inactive/race QA NOT_RUN |
+| US-001-QA10 | SOURCE_AUTHORED_PENDING_PRIVACY_REVIEW | Explicit purpose, age/guardian, optional name/contact and true CG02 area; qualified private PII review NOT_RUN |
+| US-001-QA11 | PARTIAL_SOURCE_GAP | Separate `verification_state` and `lifecycle_state` exist, but real CG03 review states unavailable |
+| US-001-QA12 | SOURCE_GAP | Frozen CG03 beneficiary-verification process, protected distinct reviewer and real result callback not implemented |
+| US-001-QA13 | SOURCE_GAP | Genuine CG19 scanned beneficiary evidence ownership/protected download not implemented |
+| US-001-QA14 | SOURCE_GAP | Actual CG03 competing reviewer decision/source-digest approval finalization not implemented |
+| US-001-QA15 | PARTIAL_SOURCE_GAP | Backend bounded search/status/state/district/project; original Admin/native category, block, project and registration-date filters not fully wired |
+| US-001-QA16 | PARTIAL_SOURCE_GAP | Native create/edit/link/search/branch authored; independent CG03 submit/review and Android device/Back verification NOT_RUN |
+| US-001-QA17 | PARTIAL_SOURCE_GAP | `revokeConsent`/private search/current actor guard/audit authored; CG19 file/export and source transfer revocation QA missing |
+| US-001-QA18 | SOURCE_AUTHORED_PENDING_SECURITY_REVIEW | `SessionService.requireAction` and `FoundationStructureIdentityFacade.assertCurrent` inside tx; revoked-session/foreground device NOT_RUN |
+| US-001-QA19 | SOURCE_AUTHORED_PENDING_SQL | `3601` unique/FK/index/history source; actual Postgres migrate/restore/races/EXPLAIN NOT_RUN |
+| US-001-QA20 | SOURCE_GAP | Complete `CG01/02/03/05/19` integrated manual trace not possible until CG03/CG19, exact visual and runtime QA |
+
+**Release/merge gate:** NOT_SOURCE_COMPLETE; NOT_INDEPENDENTLY_REVIEWED; SQL/TS/backend/Web/Internal Android builds, Postgres 17 migrations, two-branch isolation, browser/client screenshots, device/security/privileged access, actual 20-case QA and complete CG03/19 ownership NOT_RUN. Continue **US-001** and fix source gaps before advancing to US-002. Do NOT merge main or assert local QA, no CI/GH Actions.
 
 ### 21 November 2026 — Owner-approved Web ↔ Android same-capability contract
 
