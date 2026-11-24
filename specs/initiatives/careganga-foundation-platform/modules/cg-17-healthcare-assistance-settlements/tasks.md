@@ -156,6 +156,10 @@ Dependencies: US-001
 
 ## Execution progress
 
+### Healthcare hardening — policy, quote and settlement
+HUX-08.01/08.02/11.01: grouped policy forms, real settlement totals with missing amount handling, month/source check and uncertain claim controls, and public review hierarchy. Commits 6dcf73c3/e634ae3a/bdaa1a64/481fde3f/eb11a8d2/f97bbac5. US-001-QA01–09, US-002-QA01–08, US-005-QA01–11, US-006-QA01–11 partial source trace; original QA dispositions unchanged. Verify actual scoped amounts and accepted snapshots, approved vs paid, partial payout, reversal, unknown outcome and both devices. Runtime and independent review NOT_RUN. See [tracker](../../HEALTHCARE_UIUX_HARDENING_TRACKER.md).
+
+
 ### 24 November 2026 — dedicated healthcare UI/UX review checkpoint (review-only)
 
 User-authorized [Healthcare UI/UX Hardening subtracker](../../HEALTHCARE_UIUX_HARDENING_TRACKER.md) on `feature/careganga-healthcare-uiux-hardening-20261124`, source baseline `473728cc0d842ad64ba34f3bc14f5b555c835581`. Owner-specific candidates: HUX-08.01–08.03, 10.04, 11.01, 13.02; shared reference, navigation, dashboard, feedback, accessibility and visual acceptance rows apply where authorized. Original story coverage US-001–007; exact original QA IDs and runtime evidence must be recorded on execution. This checkpoint does not alter approved QA definitions or earlier dispositions. Source markup observations are not runtime failures; CHECK candidates need reproduction. No application code changed, independent review/re-review, build and device/visual QA NOT_RUN. Next: synchronize with main after mandatory handoff, reproduce one item, fix only real gap, re-review and trace affected original QA here. No future ERP scope or duplicate owner tracker.
