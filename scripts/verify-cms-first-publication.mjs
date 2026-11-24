@@ -20,6 +20,7 @@ export async function readiness(base,request=fetch){
   return response.json();
  };
  const failures=[];
+ const requiredIntroPlacements=["TEAM","MEMBERSHIP","VOLUNTEER","NOTICES","UPCOMING_PROJECTS","ANNUAL_REPORTS"];
  const requiredRoutes=[...baseline,["our-work","PROJECTS","/our-work"],["upcoming-projects","PROJECTS","/upcoming-projects"]];
  for(const [slug,kind,path] of requiredRoutes){
   try{
@@ -27,7 +28,10 @@ export async function readiness(base,request=fetch){
    if(!p||p.schemaVersion!==1||p.slug!==slug||p.kind!==kind||p.canonicalPath!==path||
     typeof p.effectiveGeneration!=="string"||!p.effectiveGeneration||
     typeof p.title!=="string"||!p.title.trim()||!Array.isArray(p.sections)||!p.sections.length||
-    !Array.isArray(p.assets))failures.push(slug);
+    !Array.isArray(p.assets)){failures.push(slug);continue;}
+   if(slug==="about"&&requiredIntroPlacements.some(placement=>!p.sections.some(s=>s.kind==="RICH_TEXT"&&s.fields?.placement===placement&&typeof s.fields.heading==="string"&&s.fields.heading.trim()&&typeof s.fields.body==="string"&&s.fields.body.trim())))failures.push("about-editorial-intros");
+   if(slug==="home"&&(!["HERO","RICH_TEXT","CTA","FEATURE_CARDS","JOIN_CARDS","PROJECT_TEASER","SITE_FOOTER"].every(kind=>p.sections.some(s=>s.kind===kind))||!p.sections.some(s=>s.kind==="HERO"&&s.fields?.visible!==false)))failures.push("home-editorial-sections");
+   if(slug==="contact"&&!p.sections.some(s=>s.kind==="CONTACT_INFO"&&Array.isArray(s.fields?.faqs)&&s.fields.faqs.length>=4))failures.push("contact-faqs");
   }catch{failures.push(slug);}
  }
  try{
