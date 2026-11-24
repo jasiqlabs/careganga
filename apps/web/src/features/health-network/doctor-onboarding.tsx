@@ -47,6 +47,7 @@ export function DoctorOnboarding({canManage,canVerify}:{canManage:boolean;canVer
   const [proofFileRef,setProofFileRef]=useState("");
   const submitKey=useRef("");
   const suspendKey=useRef("");
+  const actionDoctor=useRef("");
   const [suspendConfirm,setSuspendConfirm]=useState(false);
   const [suspendPassword,setSuspendPassword]=useState("");
   const [loading,setLoading]=useState(true),[busy,setBusy]=useState(false);
@@ -73,6 +74,7 @@ export function DoctorOnboarding({canManage,canVerify}:{canManage:boolean;canVer
   },[load]);
   async function show(ref:string){
     const turn=++detailTurn.current;
+    if(actionDoctor.current!==ref){submitKey.current="";suspendKey.current="";actionDoctor.current=ref;}
     setDetailLoading(true);setError("");setNotice("");setEditing("none");
     setSelected(null);setFileStatus("");setProofFileRef("");
     setSuspendConfirm(false);setSuspendPassword("");
@@ -179,6 +181,7 @@ export function DoctorOnboarding({canManage,canVerify}:{canManage:boolean;canVer
     void load().catch(e=>setError(e instanceof Error?e.message:"Doctor list unavailable."))
       .finally(()=>setLoading(false));
   }
+  const displayedTurn=detailTurn.current;
   return <div className="role-workspace">
     <header className="topbar"><div><h1>Doctors and professional registrations</h1>
       <p>One professional identity can be associated with multiple independently approved centers.</p>
@@ -258,7 +261,7 @@ export function DoctorOnboarding({canManage,canVerify}:{canManage:boolean;canVer
         <button className="primary" type="submit" disabled={busy||unknown}>
           {busy?"Saving pending draft…":"Save pending registration"}</button>
         <button type="button" disabled={busy}
-          onClick={()=>setEditing("none")}>Cancel</button>
+          onClick={()=>{if(window.confirm("Discard unsaved registration changes?"))setEditing("none");}}>Cancel</button>
       </div>
     </form>}
     <div className="cg-diagnostics-layout">
@@ -306,8 +309,8 @@ export function DoctorOnboarding({canManage,canVerify}:{canManage:boolean;canVer
         </div>
         <DoctorProofUploader key={selected.doctorRef+":"+selected.version}
           doctorRef={selected.doctorRef} version={selected.version}
-          onVerified={(ref)=>{setProofFileRef(ref);
-            setFileStatus("Original clean scanned licence is recorded");}}/>
+          onVerified={(ref)=>{if(displayedTurn===detailTurn.current){setProofFileRef(ref);
+            setFileStatus("Scanned licence verified");}}}/>
         {selected.doctor.portraitRightsStatus==="CONSENT_PENDING"&&
           <DoctorProofUploader key={selected.doctorRef+":"+selected.version+":portrait"}
             classification="HEALTH_DOCTOR_PORTRAIT"
