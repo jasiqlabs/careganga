@@ -26,9 +26,11 @@ type Slide={heading:string;subtitle:string;description:string;eyebrow:string;tag
  headingColor:string;subtitleColor:string;
  primaryLabel:string;primaryPath:string;secondaryLabel:string;secondaryPath:string};
 type FeatureCard={label:string;title:string;body:string};
+type ExtraText={order:number;heading:string;body:string;eyebrow:string;highlights:string;placement:string;variant:"STANDARD"|"SPLIT"};
+const placements=[["TEAM","Team Directory"],["MEMBERSHIP","Membership"],["VOLUNTEER","Volunteer"],["NOTICES","Notices"],["UPCOMING_PROJECTS","Upcoming Projects"],["ANNUAL_REPORTS","Annual Reports"]] as const;
 type Draft={kind:Kind;title:string;seoTitle:string;seoDescription:string;
  slides:Slide[];bodyHeading:string;body:string;bodyEyebrow:string;
- bodyVariant:"STANDARD"|"SPLIT";highlights:string;
+ bodyVariant:"STANDARD"|"SPLIT";highlights:string;extraText:ExtraText[];
  promoEyebrow:string;promoHeading:string;promoBody:string;promoLabel:string;promoPath:string;
  featuresEyebrow:string;featuresHeading:string;featuresBody:string;featureCards:FeatureCard[];
  volunteerTitle:string;volunteerBody:string;volunteerBenefits:string;
@@ -41,7 +43,7 @@ const blankSlide=():Slide=>({heading:"",subtitle:"",description:"",eyebrow:"",ta
  headingColor:"#FFE34A",subtitleColor:"#8CF442",primaryLabel:"",primaryPath:"",secondaryLabel:"",secondaryPath:""});
 const blank=(kind:Kind):Draft=>({kind,title:"",seoTitle:"",seoDescription:"",
  slides:kind==="HOME"?[blankSlide()]:[],bodyHeading:"",body:"",bodyEyebrow:"",
- bodyVariant:kind==="HOME"?"SPLIT":"STANDARD",highlights:"",
+ bodyVariant:kind==="HOME"?"SPLIT":"STANDARD",highlights:"",extraText:[],
  promoEyebrow:"",promoHeading:"",promoBody:"",promoLabel:"",promoPath:"",
  featuresEyebrow:"",featuresHeading:"",featuresBody:"",featureCards:[],
  volunteerTitle:"",volunteerBody:"",volunteerBenefits:"",
@@ -55,7 +57,7 @@ function section(d:PageDetail,kind:string){
  return d.sections.find(x=>x.kind===kind)?.fields??{};
 }
 function fromPage(p:PageDetail):Draft{
- const draft=blank(p.kind),body=section(p,"RICH_TEXT"),team=section(p,"TEAM");
+ const draft=blank(p.kind),primary=p.sections.filter(x=>x.kind==="RICH_TEXT"&&!x.fields.placement).sort((a,b)=>a.order-b.order)[0],body=primary?.fields??{},team=section(p,"TEAM");
  const promo=section(p,"CTA"),features=section(p,"FEATURE_CARDS");
  const join=section(p,"JOIN_CARDS"),footer=section(p,"SITE_FOOTER");
  return {...draft,title:p.title,seoTitle:p.seoTitle,seoDescription:p.seoDescription,
@@ -72,7 +74,7 @@ function fromPage(p:PageDetail):Draft{
     secondaryLabel:val(x.fields.secondaryLabel),secondaryPath:val(x.fields.secondaryPath)})),
   bodyHeading:val(body.heading),body:val(body.body),
   bodyEyebrow:val(body.eyebrow),bodyVariant:body.variant==="SPLIT"?"SPLIT":"STANDARD",
-  highlights:words(body.highlights),
+  highlights:words(body.highlights),extraText:p.sections.filter(x=>x.kind==="RICH_TEXT"&&x!==primary).map(x=>({order:x.order,heading:val(x.fields.heading),body:val(x.fields.body),eyebrow:val(x.fields.eyebrow),highlights:words(x.fields.highlights),placement:val(x.fields.placement),variant:x.fields.variant==="SPLIT"?"SPLIT":"STANDARD"})),
   promoEyebrow:val(promo.eyebrow),promoHeading:val(promo.heading),
   promoBody:val(promo.body),promoLabel:val(promo.label),promoPath:val(promo.path),
   featuresEyebrow:val(features.eyebrow),featuresHeading:val(features.heading),
@@ -115,6 +117,7 @@ function payload(d:Draft){
  if(d.body.trim())sections.push({kind:"RICH_TEXT",order:20,
   fields:{heading:d.bodyHeading||"About the Foundation",body:d.body,
    eyebrow:d.bodyEyebrow,variant:d.bodyVariant,highlights:lines(d.highlights)}});
+ for(const block of d.extraText)sections.push({kind:"RICH_TEXT",order:block.order,fields:{heading:block.heading,body:block.body,eyebrow:block.eyebrow,highlights:lines(block.highlights),variant:block.placement?"STANDARD":block.variant,...(block.placement?{placement:block.placement}:{})}});
  if(d.promoHeading.trim())sections.push({kind:"CTA",order:30,
   fields:{heading:d.promoHeading,eyebrow:d.promoEyebrow,body:d.promoBody,
    ...(d.promoLabel.trim()?{label:d.promoLabel}:{}),
@@ -300,7 +303,7 @@ export function CmsAdminWorkspace({canManage,canPublish,canReview}:{
     draft.memberBody].some(Boolean))||
     [draft.volunteerTitle,draft.volunteerBody,draft.memberTitle,
      draft.memberBody].every(x=>x.trim().length>=3))&&
-  draft.body.trim().length>=5&&
+  draft.body.trim().length>=5&&draft.extraText.every(x=>x.heading.trim().length>=3&&x.body.trim().length>=5)&&new Set(draft.extraText.filter(x=>x.placement).map(x=>x.placement)).size===draft.extraText.filter(x=>x.placement).length&&
   draft.team.every(p=>!!p.sourceRef&&/^[a-f0-9]{64}$/.test(p.proof))&&!draft.assets.some(a=>a.role==="TEAM");
  const draftIssue=draft.title.trim().length<3?
   "Enter a website page title of at least 3 characters.":
@@ -774,6 +777,19 @@ export function CmsAdminWorkspace({canManage,canPublish,canReview}:{
         onChange={e=>edit("bodyVariant",e.target.value as Draft["bodyVariant"])}>
         <option value="SPLIT">Original photo / text split</option>
         <option value="STANDARD">Plain text</option></select></label>
+       <div className="cg-cms-team"><h4>Additional editorial sections</h4>
+       <p>General public-page introductions are stored in the approved About revision. They never replace operational records.</p>
+       {draft.extraText.map((block,i)=><fieldset key={block.order}>
+        <legend>{block.placement?placements.find(x=>x[0]===block.placement)?.[1]??"Public page":"Additional page text"}</legend>
+        {draft.kind==="ABOUT"&&<label>Display on<select value={block.placement} disabled={!canManage} onChange={e=>edit("extraText",draft.extraText.map((x,j)=>i===j?{...x,placement:e.target.value}:x))}><option value="">About page</option>{placements.map(([key,label])=><option key={key} value={key}>{label}</option>)}</select></label>}
+        <label>Section label<input value={block.eyebrow} maxLength={100} disabled={!canManage} onChange={e=>edit("extraText",draft.extraText.map((x,j)=>i===j?{...x,eyebrow:e.target.value}:x))}/></label>
+        <label>Heading<input value={block.heading} maxLength={160} disabled={!canManage} onChange={e=>edit("extraText",draft.extraText.map((x,j)=>i===j?{...x,heading:e.target.value}:x))}/></label>
+        <label>Body<textarea value={block.body} maxLength={4000} disabled={!canManage} onChange={e=>edit("extraText",draft.extraText.map((x,j)=>i===j?{...x,body:e.target.value}:x))}/></label>
+        <label>Highlights (up to four, one per line)<textarea value={block.highlights} maxLength={800} disabled={!canManage} onChange={e=>edit("extraText",draft.extraText.map((x,j)=>i===j?{...x,highlights:e.target.value}:x))}/></label>
+        {canManage&&!draft.assets.some(a=>a.role==="ABOUT"&&a.order===block.order)&&<button type="button" disabled={busy||!!pending} onClick={()=>edit("extraText",draft.extraText.filter((_,j)=>i!==j))}>Remove section</button>}
+       </fieldset>)}
+       {canManage&&draft.extraText.length<10&&<button type="button" disabled={busy||!!pending} onClick={()=>{const order=Array.from({length:80},(_,i)=>i+21).find(n=>!draft.extraText.some(x=>x.order===n));if(order!==undefined)edit("extraText",[...draft.extraText,{order,heading:"",body:"",eyebrow:"",highlights:"",placement:"",variant:"STANDARD"}]);}}>Add editorial section</button>}
+       </div>
        <label>Foundation information<textarea disabled={!canManage} rows={9}
         value={draft.body} maxLength={4000}
         onChange={e=>edit("body",e.target.value)}/></label>
