@@ -12,6 +12,7 @@ import type {VerifiedFoundationActor} from "../../cg-01-identity-access/public-a
 import {extendedKinds,parseDraftExtendedSection,parseExtendedSection,validateExtendedPage,healthcareEditorialClaimsSafe} from "./cms-extended-sections";
 import {eligibleProjectSources,projectTeaserRefs,validateProjectTeaser,projectTeaserRevisionEligible,publicProjectTeaser} from "../../cg-05-projects-field-operations/application/project-public-source";
 import {eligibleEventSources,validateEventArticle,eventArticleRevisionEligible,publicEventArticle,EVENT_CURRENT_SQL} from "../../cg-05-projects-field-operations/application/event-public-source";
+import {approvedBeneficiaryImpact,beneficiaryImpactFields,beneficiaryImpactSource} from "../../cg-06-beneficiaries-assistance/application/beneficiary-impact-public-source";
 import {complianceEligible} from "./cms-compliance-eligibility";
 import {eligibleCampaignSources,campaignTeaserRefs,validateCampaignTeaser,publicCampaignSources,onlineDonationReady} from "../../cg-07-campaigns-donations/application/campaign-public-source";
 import {CsrPartnerPublicSource,type CsrEditorialSelection} from "../../cg-08-csr-funding/application/csr-partner-public-source";
@@ -370,6 +371,14 @@ export class CmsEditorialService{
   if(eligible.length!==chosen.length)
    throw new ConflictException({code:"CMS_PARTNER_SOURCE_UNAVAILABLE"});
  }
+ async beneficiaryImpact(bearer:string){
+  const a=await this.sessions.requireAction(bearer,"cms.content.manage");
+  return this.withTx(async tx=>{
+   await this.identity.assertCurrent(tx,a,"cms.content.manage");await this.identity.assertCurrent(tx,a,"foundation.branches.admin");await this.identity.assertCurrent(tx,a,"beneficiaries.assistance.view");
+   const fields=await beneficiaryImpactFields(tx,a.realmId,String(new Date().getUTCFullYear()-1));
+   return {fields:fields?.items.length?fields:null};
+  });
+ }
  async eventSources(bearer:string){
   const a=await this.sessions.requireAction(bearer,"cms.content.manage");
   return this.withTx(async tx=>{await this.identity.assertCurrent(tx,a,"cms.content.manage");return {sources:await eligibleEventSources(tx,a.realmId)};});
@@ -683,6 +692,9 @@ export class CmsEditorialService{
      fields:extendedKinds.has(row.section_kind)?
       parseExtendedSection(row.section_kind,row.structured_fields):row.structured_fields
     }));
+    for(const sec of submitted)if(sec.kind==="IMPACT_GROUP"&&sec.fields.source===beneficiaryImpactSource){
+     if(!(await approvedBeneficiaryImpact(tx,actor.realmId,sec.fields)).valid||assets.rows.some(a=>a.role==="IMPACT"&&a.sort_order===sec.order))throw new ConflictException({code:"CMS_SOURCE_CHANGED"});
+    }
     validateExtendedPage(page.kind,submitted,
      assets.rows.map(a=>({role:a.role,order:a.sort_order})),true);
    }
@@ -1140,17 +1152,13 @@ export class CmsEditorialService{
    [x.foundation_root_id,x.revision_id]);
   if(Number(inventory.rows[0]?.count??0)!==assets.rows.length)
    throw new NotFoundException({code:"CMS_NOT_PUBLISHED"});
-  // CG06 is never a public directory. An explicitly editorial-approved STATS
- // item with the reserved source label may expose only a coarse foundation-wide
- // recipient count for the approved calendar year. Stale/small results disappear.
+  // Recheck approved coarse aggregate at every public read; never expose attached beneficiary media.
+ const beneficiaryImpactOrders=new Set<number>();
  for(const sec of sections.rows){
-  if(sec.section_kind!=="IMPACT_GROUP"||sec.structured_fields.source!=="CG06 verified beneficiary impact")continue;
-  const fields=sec.structured_fields,year=typeof fields.asOfDate==="string"?fields.asOfDate.slice(0,4):"";
-  const item=Array.isArray(fields.items)&&fields.items.length===1?fields.items[0] as Record<string,unknown>:null;
-  const safe=fields.group==="STATS"&&/^\d{4}$/.test(year)&&fields.asOfDate===year+"-12-31"&&Number(year)<new Date().getUTCFullYear()&&item?.title==="Beneficiaries supported"&&typeof item.value==="number"&&Number.isInteger(item.value)&&item.value>=10&&item.value%10===0;
-  let count=0;
-  if(safe){const q=await this.db.query<{n:number}>("SELECT count(DISTINCT b.id)::int AS n FROM assistance_delivery_event d JOIN assistance_case a ON a.root_realm_id=d.root_realm_id AND a.id=d.assistance_id JOIN beneficiary b ON b.root_realm_id=a.root_realm_id AND b.id=a.beneficiary_id AND b.branch_scope_id IS NOT DISTINCT FROM a.branch_ref WHERE d.root_realm_id=$1 AND b.consent_revoked_at IS NULL AND b.lifecycle_state='ACTIVE' AND d.action IN('DELIVERED','PAID') AND d.at>=($2::date::timestamp AT TIME ZONE 'Asia/Kolkata') AND d.at<(($3::date+1)::timestamp AT TIME ZONE 'Asia/Kolkata')",[x.foundation_root_id,year+"-01-01",year+"-12-31"]);count=Math.floor(q.rows[0].n/10)*10;}
-  sec.structured_fields={group:"STATS",heading:"Beneficiary impact",intro:safe&&count>=10&&count===item?.value?"Approved aggregate, rounded down to tens.":"Verified beneficiary impact is currently unavailable.",source:"CG06 verified beneficiary impact",asOfDate:fields.asOfDate,items:safe&&count>=10&&count===item?.value?[{title:"Beneficiaries supported",value:count,description:"Foundation-wide, rounded down to tens",unit:"people"}]:[]};
+  if(sec.section_kind!=="IMPACT_GROUP"||sec.structured_fields.source!==beneficiaryImpactSource)continue;
+  beneficiaryImpactOrders.add(sec.order_no);
+  const current=await approvedBeneficiaryImpact(this.db,x.foundation_root_id,sec.structured_fields);
+  sec.structured_fields=current.fields!;
  }
  const authoredSections:Section[]=sections.rows.map(sec=>({
   kind:sec.section_kind as Section["kind"],order:sec.order_no,
@@ -1160,7 +1168,7 @@ export class CmsEditorialService{
  const gallerySource=authoredSections.find(x=>x.kind==="GALLERY_GRID");
  const authoredGallery=Array.isArray(gallerySource?.fields.items)?
   gallerySource.fields.items as Record<string,unknown>[]:[];
- const visibleAssets=assets.rows.filter(asset=>placementFits(authoredSections,
+ const visibleAssets=assets.rows.filter(asset=>!(asset.role==="IMPACT"&&beneficiaryImpactOrders.has(asset.sort_order))).filter(asset=>placementFits(authoredSections,
   {role:asset.role,order:asset.sort_order})&&
   (asset.role!=="GALLERY"||authoredGallery[asset.sort_order]?.visible!==false));
  const eventCards=new Map<number,Record<string,unknown>>();
