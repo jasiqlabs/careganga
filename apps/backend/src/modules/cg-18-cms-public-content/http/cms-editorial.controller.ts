@@ -19,7 +19,7 @@ export class CmsEditorialController{
  projectSources(@Headers("authorization")auth:string){return this.cms.projectSources(auth);}
  @Get("pages")
  @Header("Cache-Control","private, no-store")
- pages(@Headers("authorization")auth:string){return this.cms.list(auth);}
+ pages(@Headers("authorization")auth:string,@Query("scope")scope?:string){return this.cms.list(auth,scope);}
  @Post("pages")
  create(@Headers("authorization")auth:string,@Body()body:unknown){
   return this.cms.create(auth,body);
