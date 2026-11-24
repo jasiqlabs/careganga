@@ -50,6 +50,7 @@ export function DoctorSchedulePreview({doctorRef,reschedule,preferredCenterSlug}
  const [choices,setChoices]=useState<Choices|null>(null);
  const [searchTime,setSearchTime]=useState(""),[timeInput,setTimeInput]=useState("");
  const [refresh,setRefresh]=useState(0);
+ const [chosen,setChosen]=useState<{centerRef:string;centerName:string;doctorName:string;startAt:string;endAt:string;timeZone:string;feeMinor:string;feeVersion:number}|null>(null);
  const [loading,setLoading]=useState(false);
  const [error,setError]=useState("");
  const sequence=useRef(0);
@@ -57,7 +58,7 @@ export function DoctorSchedulePreview({doctorRef,reschedule,preferredCenterSlug}
   .filter(offset=>offset<=30).map(offset=>({offset,date:dateAt(offset)})),[week]);
  useEffect(()=>{
   const id=++sequence.current;
-  setCenter(null);setDetail(null);setChoices(null);setSearchTime("");
+  setCenter(null);setDetail(null);setChoices(null);setSearchTime("");setChosen(null);
   setOptions(null);setError("");setLoading(true);
   void get<Options>("doctor/"+encodeURIComponent(doctorRef)+
    "/center-options?date="+encodeURIComponent(day))
@@ -71,7 +72,7 @@ export function DoctorSchedulePreview({doctorRef,reschedule,preferredCenterSlug}
  },[doctorRef,day,refresh]);
  const chooseCenter=useCallback(async(value:Center)=>{
   const id=++sequence.current;
-  setCenter(value);setDetail(null);setChoices(null);setSearchTime("");
+  setCenter(value);setDetail(null);setChoices(null);setSearchTime("");setChosen(null);
   setError("");setLoading(true);
   try{
    const result=await get<Detail>("center-first?doctorRef="+
@@ -85,7 +86,7 @@ export function DoctorSchedulePreview({doctorRef,reschedule,preferredCenterSlug}
  },[doctorRef,day]);
  const compare=useCallback(async(time:string)=>{
   if(!/^([01]\d|2[0-3]):[0-5]\d$/.test(time))return;
-  const id=++sequence.current;setSearchTime(time);setChoices(null);setDetail(null);setCenter(null);
+  const id=++sequence.current;setSearchTime(time);setChoices(null);setDetail(null);setCenter(null);setChosen(null);
   setError("");setLoading(true);
   try{
    const result=await get<Choices>("slot-first?doctorRef="+
@@ -97,8 +98,8 @@ export function DoctorSchedulePreview({doctorRef,reschedule,preferredCenterSlug}
    setLoading(false);
   }}
  },[doctorRef,day]);
- const changeDay=(value:string)=>{if(value===day)return;sequence.current++;setOptions(null);setDetail(null);setChoices(null);setCenter(null);setError("");setLoading(true);setDay(value);};
- const changeWeek=(delta:number)=>{
+ const changeDay=(value:string)=>{if(value===day||chosen)return;sequence.current++;setOptions(null);setDetail(null);setChoices(null);setCenter(null);setError("");setLoading(true);setDay(value);};
+ const changeWeek=(delta:number)=>{if(chosen)return;
   const target=Math.max(0,Math.min(4,week+delta));
   setWeek(target);
   // Changing the displayed week also changes the queried day; never
@@ -114,9 +115,11 @@ export function DoctorSchedulePreview({doctorRef,reschedule,preferredCenterSlug}
  );
  return <View style={style.panel} accessibilityLabel="Verified doctor working hours">
   <Text style={style.heading} accessibilityRole="header">Doctor Schedule &amp; Availability</Text>
+  <View style={style.actions}>{["1. Doctor selected","2. Choose time","3. Review","4. Confirmation"].map((v,i)=><Text key={v} style={[style.step,(chosen?i===2:i===1)&&style.activeStep]}>{v}</Text>)}</View>
   {reschedule&&<Text style={style.help}>Select a new time. Your original booking remains intact until the change succeeds.</Text>}
   <Text style={style.help}>Times are advisory until a genuine reservation succeeds.
    Consultation payment is due directly at the healthcare center.</Text>
+  {!chosen&&<>
   <View style={style.actions}>
    {button("‹ Previous week",()=>changeWeek(-1),false,week===0)}
    {button("Next week ›",()=>changeWeek(1),false,week===4)}
@@ -155,21 +158,7 @@ export function DoctorSchedulePreview({doctorRef,reschedule,preferredCenterSlug}
    <Text style={style.help}>Times in {detail.timeZone}. A time is confirmed only after final review.</Text>
    {detail.slots.length===0?
     <Text style={style.help}>No current working-time window is shown for this day.</Text>:
-    <View style={style.actions}>{detail.slots.map(slot=>
-     <View key={slot.startAt} style={style.window}>
-      {button(slot.startLocal+"–"+slot.endLocal+
-       " · compare centers",()=>void compare(slot.startLocal),
-       searchTime===slot.startLocal)}
-      {slot.bookable&&detail.consultationFeeMinor!==null&&
-       detail.consultationFeeVersion!==null&&
-       <NativeConsultationAction key={[doctorRef,center.centerRef,slot.startAt,slot.endAt,
-                detail.consultationFeeMinor,detail.consultationFeeVersion].join("|")}
-        doctorRef={doctorRef} centerRef={center.centerRef}
-        doctorName={detail.doctorName} centerName={center.centerName}
-        startAt={slot.startAt} endAt={slot.endAt} timeZone={detail.timeZone}
-        feeMinor={detail.consultationFeeMinor}
-        feeVersion={detail.consultationFeeVersion} reschedule={reschedule}/>}
-     </View>)}</View>}
+    <View>{[["Morning",0,12],["Afternoon",12,16],["Evening",16,24]].map(([name,from,to])=>{const slots=detail.slots.filter(s=>Number(s.startLocal.slice(0,2))>=Number(from)&&Number(s.startLocal.slice(0,2))<Number(to));return slots.length?<View key={name} style={style.group}><Text style={style.subheading}>{name}</Text><View style={style.actions}>{slots.map(slot=><View key={slot.startAt} style={style.window}>{button(slot.startLocal+"–"+slot.endLocal,()=>{if(slot.bookable&&detail.consultationFeeMinor!==null&&detail.consultationFeeVersion!==null)setChosen({centerRef:center.centerRef,centerName:center.centerName,doctorName:detail.doctorName,startAt:slot.startAt,endAt:slot.endAt,timeZone:detail.timeZone,feeMinor:detail.consultationFeeMinor,feeVersion:detail.consultationFeeVersion});},false,!slot.bookable||detail.consultationFeeMinor==null||detail.consultationFeeVersion==null)}</View>)}</View></View>:null;})}</View>}
   </View>}
   {choices&&!loading&&<View>
    <Text style={style.subheading}>Verified centers at {searchTime}</Text>
@@ -178,17 +167,13 @@ export function DoctorSchedulePreview({doctorRef,reschedule,preferredCenterSlug}
     choices.centerChoices.map(c=><View key={c.centerRef} style={style.center}>
      <Text style={style.help}>{c.centerName}, {c.address}, {c.pinCode}.
       {money(c.consultationFeeMinor)}. {c.timeZone}.</Text>
-     {c.bookable&&c.consultationFeeMinor!==null&&c.consultationFeeVersion!==null&&
-      <NativeConsultationAction key={[doctorRef,c.centerRef,c.startAt,c.endAt,
-                c.consultationFeeMinor,c.consultationFeeVersion].join("|")}
-                 doctorRef={doctorRef} centerRef={c.centerRef}
-       doctorName={options?.doctorName??"Doctor"} centerName={c.centerName}
-       startAt={c.startAt} endAt={c.endAt} timeZone={c.timeZone}
-       feeMinor={c.consultationFeeMinor} feeVersion={c.consultationFeeVersion} reschedule={reschedule}/>}
+     {c.bookable&&c.consultationFeeMinor!==null&&c.consultationFeeVersion!==null&&button("Select center & time",()=>{if(c.consultationFeeMinor!==null&&c.consultationFeeVersion!==null)setChosen({centerRef:c.centerRef,centerName:c.centerName,doctorName:options?.doctorName??"Doctor",startAt:c.startAt,endAt:c.endAt,timeZone:c.timeZone,feeMinor:c.consultationFeeMinor,feeVersion:c.consultationFeeVersion});})}
     </View>)}
   </View>}
+  </>}
+  {chosen&&<View style={style.summary}><Text accessibilityRole="header" style={style.subheading}>Appointment summary</Text><NativeConsultationAction key={[doctorRef,chosen.centerRef,chosen.startAt,chosen.endAt,chosen.feeMinor,chosen.feeVersion].join("|")} doctorRef={doctorRef} {...chosen} reschedule={reschedule}/>{button("Change selected time",()=>setChosen(null))}<Text style={style.help}>If a previous request is uncertain, check My Consultations before reserving again.</Text></View>}
   <Text style={style.help}>Use My Patient Profile to sign in before booking.
-   Only doctor consultations are offered; no ERP booking or online payment.</Text>
+   Only doctor consultations are booked here. Center payment options are verified separately.</Text>
  </View>;
 }
 const style=StyleSheet.create({
@@ -208,5 +193,6 @@ const style=StyleSheet.create({
  centerName:{fontSize:15,fontWeight:"700",color:theme.text},
  input:{borderWidth:1,borderColor:theme.border,borderRadius:8,padding:12,minHeight:48,color:theme.text},
  window:{minWidth:140,maxWidth:"100%"},
+ group:{gap:6,marginBottom:10},step:{backgroundColor:theme.surface,borderRadius:12,padding:8,color:theme.text,fontSize:12,fontWeight:"600"},activeStep:{backgroundColor:theme.gold,color:theme.sidebar},summary:{borderColor:theme.border,borderWidth:1,borderRadius:12,padding:12,gap:10,backgroundColor:theme.surface},
  error:{color:theme.error,fontSize:13}
 });

@@ -139,6 +139,10 @@ HUX-01.01: EVIDENCE_RECOVERED for the user-confirmed final public set; remove sc
 
 HUX-10.02/10.03/10.04/02.01: reference-led green listing banner, real category shortcuts preserving query, desktop filter/result layout, actual page counts, grid/list toggles, responsive stacked layout; center UI04 primary approved photograph, section links, doctor schedule actions, quick actions and compact panels; doctor UI05 two-column credentials/center-specific price and availability actions. No fabricated ratings, global counts, map or unapproved service actions. CG14 US-004-QA03/04/05/11/12/16/17, US-005 public publication/revocation; CG15 US-002 center selection. Source review only; actual screenshots/device comparison NOT_RUN.
 
+## Original UI06 implementation — booking selection
+
+Web: four-stage step navigation, verified doctor sidebar, responsive center cards, morning/afternoon/evening live-slot grouping, selected appointment summary. A chosen slot/center is re-resolved from the current response; Web validates date/center/time and bounded result sizes. Native: adaptive step badges, time groups and one selected booking action rather than mounting an action component for every slot. Original hold, identity, fee version, payment and reschedule contracts retained. CG15 US-002/004/007, CG17 US-002/003 source trace only. Verify stale date/slot, unique/multiple time-first matches, unavailable slots, hold expiry and unknown original result before switching; live QA NOT_RUN.
+
 ## Subtracker details and expected user scenarios
 
 ### HUX-01.01 — Recover separate healthcare reference originals
