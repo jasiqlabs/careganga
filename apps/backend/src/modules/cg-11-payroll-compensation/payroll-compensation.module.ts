@@ -7,5 +7,5 @@ import {PayrollRunService} from "./application/payroll-run.service";
 import {PayrollRunController} from "./http/payroll-run.controller";
 import {PayrollCompensationService} from "./application/payroll-compensation.service";
 import {PayrollCompensationController} from "./http/payroll-compensation.controller";
-@Module({imports:[IdentityAccessModule,FoundationStructureModule,HrSourceModule,FinanceSourceModule],providers:[PayrollCompensationService,PayrollRunService],controllers:[PayrollCompensationController,PayrollRunController],exports:[PayrollCompensationService]})
+@Module({imports:[IdentityAccessModule,FoundationStructureModule,HrSourceModule,FinanceSourceModule],providers:[PayrollCompensationService,PayrollRunService],controllers:[PayrollCompensationController,PayrollRunController],exports:[PayrollCompensationService,PayrollRunService]})
 export class PayrollCompensationModule{}
