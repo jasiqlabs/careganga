@@ -412,7 +412,7 @@ export function ProviderOnboarding({canManage,canSelectAccounts,canViewFinance,c
       <p>Register organizations and centers, review private evidence and publish only independently verified services.</p></div>
       <div className="toolbar cg-module-header-actions">
       {canVerify&&<Link href="/admin/health-network/reviews">Review submitted registrations</Link>}
-      {canManage&&<button className="primary" type="button" onClick={()=>{
+      {canManage&&<button className="primary" type="button" disabled={busy||uncertain||mode==="create"} onClick={()=>{
         setMode("create");setSelected(null);setCenterEditor(null);
         setProvider(emptyProvider());setCenters([blankCenter()]);
         setError("");setNotice("");setUncertain(false);key.current="";
@@ -428,20 +428,25 @@ export function ProviderOnboarding({canManage,canSelectAccounts,canViewFinance,c
     </div>}
     {mode==="create"&&canManage&&<form onSubmit={event=>void submitCreate(event)} className="form">
       <h2>Provider registration</h2>
-      <ProviderFields value={provider} onChange={setProvider}/>
+      <p className="muted">Enter the organization details, then add each operating center. Verification is a separate step.</p>
+      <fieldset className="form-section" disabled={busy||uncertain}>
+        <legend>1. Organization and contact details</legend>
+        <ProviderFields value={provider} onChange={setProvider}/>
+      </fieldset>
+      <h3>2. Operating centers ({centers.length})</h3>
       {centers.map((center,index)=><section key={index} className="form-section">
-        <h3>Operating center {index+1}</h3>
-        <CenterEditor value={center} disabled={busy} onChange={value=>
+        <h3>{index+1}. {center.displayName.trim()||"New operating center"}</h3>
+        <CenterEditor value={center} disabled={busy||uncertain} onChange={value=>
           setCenters(prev=>prev.map((x,i)=>i===index?value:x))}/>
-        {centers.length>1&&<button type="button" disabled={busy}
-          onClick={()=>setCenters(prev=>prev.filter((_,i)=>i!==index))}>Remove center</button>}
+        {centers.length>1&&<button type="button" disabled={busy||uncertain}
+          onClick={()=>{if(window.confirm("Remove this unsaved center?"))setCenters(prev=>prev.filter((_,i)=>i!==index));}}>Remove center</button>}
       </section>)}
       <div className="toolbar">
-        <button type="button" disabled={busy||centers.length>=10}
+        <button type="button" disabled={busy||uncertain||centers.length>=10}
           onClick={()=>setCenters(prev=>[...prev,blankCenter()])}>Add another center</button>
         <button type="submit" className="primary" disabled={busy||uncertain}>
           {busy?"Saving…":"Save pending provider"}</button>
-        <button type="button" disabled={busy} onClick={()=>setMode("list")}>Cancel</button>
+        <button type="button" disabled={busy||uncertain} onClick={()=>{if(window.confirm("Discard this unsaved provider registration?"))setMode("list");}}>Cancel</button>
       </div>
     </form>}
     {mode==="list"&&<>
