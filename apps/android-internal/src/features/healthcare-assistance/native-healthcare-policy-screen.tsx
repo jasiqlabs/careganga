@@ -259,6 +259,7 @@ export function NativeHealthcarePolicyScreen({token,canView,canManage,canReview,
    </View>}
    {canManage&&canView&&!!center&&!uncertain&&<View style={s.panel}>
     <Text style={s.heading}>{revision?"Revise approved support":"Configure support"}</Text>
+    <Text accessibilityRole="header" style={s.heading}>1. Service &amp; eligibility scope</Text>
     <Text style={s.note}>Service type</Text>
     {KINDS.map(k=><View key={k}>{button(k,()=>{
        setService(k);if(k!=="CONSULTATION")setDoctor("");},
@@ -309,12 +310,14 @@ export function NativeHealthcarePolicyScreen({token,canView,canManage,canReview,
       {" "}{serviceEstimate.caution}
      </Text>}
     </View>}
+    <Text accessibilityRole="header" style={s.heading}>2. Contribution &amp; maximum support</Text>
     <Text style={s.note}>Assistance type</Text>
     {button("Percentage",()=>setMode("PERCENT"),busy,mode==="PERCENT")}
     {button("Fixed rupee support",()=>setMode("FIXED"),busy,mode==="FIXED")}
     {mode==="PERCENT"?input("Foundation support percentage (e.g. 50.00)",
      percent,setPercent):input("Foundation fixed support in rupees",fixed,setFixed)}
     {input("Support cap in rupees",cap,setCap)}
+    <Text accessibilityRole="header" style={s.heading}>3. Effective dates</Text>
     <Text style={s.note}>Dates in your local time (YYYY-MM-DDTHH:mm), end exclusive.</Text>
     {input("Valid from (local)",from,setFrom)}
     {input("Valid until (local)",until,setUntil)}
@@ -323,7 +326,7 @@ export function NativeHealthcarePolicyScreen({token,canView,canManage,canReview,
      genuine independent CG03 review and Foundation finalization.
      No unverified service discount
      becomes active from this screen.</Text>
-    {button(busy?"Checking original…":"Save policy revision",submit,busy)}
+    {button(busy?"Checking original…":revision?"Save policy revision":"Create policy",submit,busy)}
     {revision&&button("Cancel revision",reset,busy)}
    </View>}
    {canView&&!!center&&<View style={s.panel}>
