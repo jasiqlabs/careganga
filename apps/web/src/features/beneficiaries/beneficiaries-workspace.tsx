@@ -9,6 +9,19 @@ type Item={ref:string;reference:string;name:string;contactMobile:string|null;rep
  projectLinks?:{ref:string;projectRef:string;projectName:string}[]};
 type Summary={total:number;male:number;female:number;children:number;active:number;verified:number};
 const metrics:[keyof Summary,string][]=[["total","Total Beneficiaries"],["male","Male"],["female","Female"],["children","Children"],["active","Active"],["verified","Verified"]];
+function validateIntake(v:Form):string{
+ if(v.name.trim().length<2)return "Enter the beneficiary name (at least 2 characters).";
+ if(v.beneficiaryType.trim().length<2)return "Enter the beneficiary type.";
+ if(!v.stateRef)return "Select the beneficiary state.";
+ if(v.blockRef&&!v.districtRef)return "Select a district before choosing a block.";
+ if(v.contactMobile.trim()&&!/^\+[1-9][0-9]{7,14}$/.test(v.contactMobile.trim()))return "Enter the contact mobile with country code, or leave it blank.";
+ if(v.representativeContact.trim()&&!/^\+[1-9][0-9]{7,14}$/.test(v.representativeContact.trim()))return "Enter the representative mobile with country code, or leave it blank.";
+ if(v.ageGroup==="CHILD"&&v.consentKind!=="GUARDIAN")return "A child requires guardian consent.";
+ if(v.consentKind!=="SELF"&&!v.representativeName.trim())return "Enter the guardian or representative name.";
+ if(v.consentPurpose.trim().length<5)return "Enter the consent purpose (at least 5 characters).";
+ if(!v.consentAcknowledged)return "Confirm consent acknowledgement.";
+ return "";
+}
 type Page={summary:Summary;items:Item[];hasMore:boolean;nextCursor:string|null};
 type DuplicateSuggestion={reference:string;maskedName:string;beneficiaryType:string;contactMatches:boolean};
 type DuplicateResponse={advisory:boolean;items:DuplicateSuggestion[];hasMore:boolean};
@@ -123,11 +136,12 @@ export function BeneficiariesWorkspace({canManage,canLinkProjects,canManageLifec
      api<Item>("/"+id),
      api<{items:ActionHistory[]}>("/"+id+"/history"),
      api<{items:VerificationHistory[]}>("/"+id+"/verification-history"),
-      api<ReviewInfo>("/"+id+"/verification-review")
+      api<ReviewInfo>("/"+id+"/verification-review").catch(()=>null)
     ]);
     if(n!==detailSeq.current)return;
     setSelected(detail);setActionHistory(actions.items);setVerificationHistory(verification.items);
      setReview(reviewState);setReviewPassword("");setReviewRemarks("");
+     if(!reviewState)setError("Independent verification service unavailable. Private intake is available; review actions are disabled until refresh.");
     setProjectRef("");setLinkKey(crypto.randomUUID());
    }
   catch(e){if(n===detailSeq.current)setError(e instanceof Error?e.message:"Beneficiary unavailable");}
@@ -175,6 +189,7 @@ export function BeneficiariesWorkspace({canManage,canLinkProjects,canManageLifec
  const save=async(e:FormEvent)=>{
   e.preventDefault();if(!canManage||saving)return;setSaving(true);setFormError("");
   if(!form.consentAcknowledged){setFormError("Confirm that the person or guardian acknowledged this purpose.");setSaving(false);return;}
+  const fieldIssue=validateIntake(form);if(fieldIssue){setFormError(fieldIssue);setSaving(false);return;}
   const body:Record<string,unknown>={...form,requestKey,
    branchRef:form.branchRef||null,stateRef:form.stateRef,districtRef:form.districtRef||null,
    contactMobile:form.contactMobile||null,representativeName:form.representativeName||null,
@@ -293,7 +308,8 @@ export function BeneficiariesWorkspace({canManage,canLinkProjects,canManageLifec
       {canReadEvidence&&!selected.consentRevoked&&selected.lifecycle==="ACTIVE"&&<ProjectCoverPanel key={selected.ref+":"+selected.revision} projectRef={selected.ref} version={selected.revision} sourceKind="beneficiary" canUpload={canUploadEvidence&&canManage}/>}
       {selected.verification!=="VERIFIED"&&<p style={{fontSize:12,color:"var(--cg-muted)"}}>
        Independent verification requires the CG-03 reviewer workflow. This screen never self-approves.</p>}
-      {review&&<div style={{...card,display:"grid",gap:8}}>
+      {!review&&<div role="status">Independent verification unavailable. <button type="button" style={secondary} onClick={()=>void choose(selected.ref)}>Refresh details</button></div>}
+       {review&&<div style={{...card,display:"grid",gap:8}}>
         <strong>CG-03 independent verification &amp; approval</strong>
         <div>Case: {review.caseNumber??"Not submitted"} · {nice(review.status)}</div>
         {canSubmitVerification&&!selected.consentRevoked&&selected.lifecycle==="ACTIVE"&&
