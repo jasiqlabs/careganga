@@ -55,11 +55,18 @@ describe("CG-20 — guarded server report request contracts",()=>{
    assert.throws(()=>parseSafeReport({kind,view:"SUMMARY",...filter}),BadRequestException);
  });
  test("CG04, CG07 and CG11 live reports accept only current summary scope",()=>{
-  for(const kind of ["MEMBERSHIP_ROSTER_SUMMARY","VOLUNTEER_ROSTER_SUMMARY","PAYROLL_STATUS_SUMMARY","DONATION_RECEIPT_SUMMARY"]){
+  for(const kind of ["MEMBERSHIP_ROSTER_SUMMARY","VOLUNTEER_ROSTER_SUMMARY","DONATION_RECEIPT_SUMMARY"]){
    assert.equal(parseSafeReport({kind,view:"SUMMARY"}).kind,kind);
    for(const filter of [{branchRef:"22222222-2222-4222-8222-222222222222"},{centerRef:"22222222-2222-4222-8222-222222222222"},{fromDay:"2026-10-01",untilDay:"2026-10-31"},{status:"COMPLETED"},{view:"TABLE"},{offset:50}])
     assert.throws(()=>parseSafeReport({kind,view:"SUMMARY",...filter}),BadRequestException);
   }
+ });
+ test("CG11 payroll accepts only original month and branch filters",()=>{
+  const kind="PAYROLL_STATUS_SUMMARY",view="SUMMARY",branchRef="22222222-2222-4222-8222-222222222222";
+  assert.equal(parseSafeReport({kind,view,payrollMonth:"2026-10",branchRef}).branchRef,branchRef);
+  assert.equal(parseSafeReport({kind,view,payrollMonth:"2026-10",branchRef:"FOUNDATION"}).payrollMonth,"2026-10");
+  for(const filter of [{payrollMonth:"2026-13"},{payrollMonth:"1999-01"},{branchRef:"other"},{centerRef:branchRef},{yearRef:branchRef},{fromDay:"2026-10-01",untilDay:"2026-10-31"}])assert.throws(()=>parseSafeReport({kind,view,...filter}),BadRequestException);
+  assert.throws(()=>parseSafeReport({kind:"BENEFICIARY_ASSISTANCE_SUMMARY",view,payrollMonth:"2026-10"}),BadRequestException);
  });
  test("CG08 CSR summary accepts bounded proposal update dates only",()=>{
   const kind="CSR_FUNDING_SUMMARY",view="SUMMARY";
