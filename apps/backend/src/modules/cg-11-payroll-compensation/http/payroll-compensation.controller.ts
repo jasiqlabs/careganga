@@ -3,6 +3,7 @@ import {PayrollCompensationService} from "../application/payroll-compensation.se
 @Controller("api/v1/payroll")
 export class PayrollCompensationController{
  constructor(private readonly source:PayrollCompensationService){}
+ @Get("me") @Header("Cache-Control","private, no-store") ownPay(@Headers("authorization")token:string){return this.source.ownPay(token);}
  @Get("employee-options") @Header("Cache-Control","private, no-store") options(@Headers("authorization")token:string,@Query("branchRef")branch?:string,@Query("q")q?:string){return this.source.options(token,branch,q);}
  @Get("policies") @Header("Cache-Control","private, no-store") policies(@Headers("authorization")token:string,@Query("branchRef")branch:string){return this.source.policies(token,branch);}
  @Post("policies") @Header("Cache-Control","private, no-store") createPolicy(@Headers("authorization")token:string,@Body()raw:unknown){return this.source.createPolicy(token,raw);}
