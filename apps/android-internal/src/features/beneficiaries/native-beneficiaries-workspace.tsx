@@ -82,7 +82,7 @@ export function NativeBeneficiariesWorkspace({token,onExpired,canManage,canLinkP
   const p=new URLSearchParams();
   if(search)p.set("q",search);if(tab==="ACTIVE"||tab==="INACTIVE")p.set("lifecycle",tab);
   if(tab==="VERIFIED")p.set("verification","VERIFIED");
-  if(tab==="PENDING")p.set("verification","DRAFT");
+  if(tab==="PENDING")p.set("verification","PENDING");
   if(cursor)p.set("cursor",cursor);
   void api<Page>("?"+p).then(x=>{if(live)setPage(x);})
    .catch(e=>{if(live){setPage(null);setError(e.message);}})
@@ -97,7 +97,7 @@ export function NativeBeneficiariesWorkspace({token,onExpired,canManage,canLinkP
   finally{setBusy(false);}
  };
  const reload=()=>setRefreshKey(x=>x+1);
- const open=(m:"create"|"edit")=>{setMode(m);setError("");setDraft(m==="create"?blank():selected?fromItem(selected):blank());setCommandKey(Crypto.randomUUID());};
+ const open=(m:"create"|"edit")=>{setMode(m);setError("");setDraft(m==="create"?{...blank(),branchRef:opts&&!opts.canManageFoundation?opts.branches[0]?.value??"":""}:selected?fromItem(selected):blank());setCommandKey(Crypto.randomUUID());};
  const save=async()=>{if(busy||!mode||!draft.consentAcknowledged)return;setBusy(true);setError("");
   const body:Record<string,unknown>={...draft,requestKey:commandKey,branchRef:draft.branchRef||null,
    contactMobile:draft.contactMobile||null,representativeName:draft.representativeName||null,
