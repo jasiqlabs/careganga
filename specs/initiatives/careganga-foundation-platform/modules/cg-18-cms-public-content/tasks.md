@@ -170,6 +170,10 @@ Dependencies: US-001
 
 ## Execution progress
 
+### Public reference parity re-review
+HUX-09.01/13.01/13.02: published native CMS healthcare categories now have working category-specific directory actions with validated existing CG14 category codes and shared public theme. Selected category survives initial native directory load, generic home entry resets it; unknown editorial labels open full directory. HUX-11.03/15.01: consultation slip measures and wraps authorized names/address before drawing, fits at readable 8.5–10pt without truncating, reserves non-overlapping financial/footer space and calculates QR quiet-zone from matrix size. Source checks only; extreme valid source lengths and scanner/printed output must be tested locally. Original approved one-copy pay-at-center slip remains separate from actual collection receipt; no fake payment or sample data.
+
+
 ### Original healthcare public references — alignment checkpoint (24 Nov 2026)
 HUX-09.01/10.02/10.03/13.01/13.02/11.03/08.03: CMS category titles/descriptions remain published-source content, now include real search and canonical category links. Live approved CG17 policy cards replace screenshot sample percentages; public native adds category quick filters and verified same-center doctor actions (no fake booking). Native payable amount highlight; private Web consultation grouped detail and document actions, response identity guard; Web history earlier in profile. Source-only; no screenshot parity/runtime certification. Existing CMS category image schema is text-only; illustrated tiles/hero assets require CMS media mapping and actual approved content. Patient profile registration remains verified/consent-gated; full booking-linked navigation/preview and real online document copy contract still pending.
 Reference-led directory/profile, UI06 selected slot summary, UI08/09 payment and private document presentation on separate hardening branch. Original QA definitions retained, actual render/build/device/provider/independent acceptance NOT_RUN. See [tracker](../../HEALTHCARE_UIUX_HARDENING_TRACKER.md).

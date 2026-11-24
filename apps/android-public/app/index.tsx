@@ -124,6 +124,7 @@ export default function PublicHome(){
   const [noticeOpen,setNoticeOpen]=useState(false);
   const [contactOpen,setContactOpen]=useState(false);
   const [directoryOpen,setDirectoryOpen]=useState(false);
+  const [directoryCategory,setDirectoryCategory]=useState("");
   const [patientOpen,setPatientOpen]=useState(false);
   const [membershipPlan,setMembershipPlan]=useState<string|null>(null);
   const [partnerOpen,setPartnerOpen]=useState(false);
@@ -278,7 +279,7 @@ export default function PublicHome(){
   if(directoryOpen)
     return <PublicScreenErrorBoundary onExit={()=>setDirectoryOpen(false)}>
       <Suspense fallback={<ActivityIndicator style={{marginTop:40}}/>}>
-        <PublicHealthcareDirectory onExit={()=>{setPatientOpen(false);setDirectoryOpen(false);}} onPatientProfile={()=>setPatientOpen(true)}/>
+        <PublicHealthcareDirectory initialCategory={directoryCategory} onExit={()=>{setPatientOpen(false);setDirectoryOpen(false);setDirectoryCategory("");}} onPatientProfile={()=>setPatientOpen(true)}/>
         <Modal visible={patientOpen} animationType="slide" onRequestClose={()=>setPatientOpen(false)}><PublicScreenErrorBoundary onExit={()=>setPatientOpen(false)}><Suspense fallback={<ActivityIndicator style={{marginTop:40}}/>}>{patientOpen&&<PatientProfileNative onExit={()=>setPatientOpen(false)}/>}</Suspense></PublicScreenErrorBoundary></Modal>
       </Suspense>
     </PublicScreenErrorBoundary>;
@@ -326,7 +327,7 @@ export default function PublicHome(){
             onPartnerApplication={()=>setPartnerOpen(true)}
             onVolunteerApply={()=>setVolunteerOpen(true)}
             onMembershipApply={setMembershipPlan}
-            onLoginVisibility={setPublicLoginVisible} onHealthcareDirectory={()=>setDirectoryOpen(true)}
+            onLoginVisibility={setPublicLoginVisible} onHealthcareDirectory={category=>{setDirectoryCategory(category??"");setDirectoryOpen(true);}}
             onPatientProfile={()=>setPatientOpen(true)}/>
            <NativePublicDonation/>
           <View style={[styles.card,styles.healthFeatureCard]}>
@@ -341,7 +342,7 @@ export default function PublicHome(){
             <Text style={styles.heading}>Healthcare Network</Text>
             <Text>Search current verified CareGanga healthcare centers and doctors.</Text>
             <Pressable accessibilityRole="button" style={styles.primary}
-              onPress={()=>setDirectoryOpen(true)}>
+              onPress={()=>{setDirectoryCategory("");setDirectoryOpen(true);}}>
               <Text style={styles.primaryText}>Find healthcare centers & doctors</Text>
             </Pressable>
           </View>

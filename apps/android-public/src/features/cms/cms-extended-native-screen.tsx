@@ -1,6 +1,6 @@
 import {useState} from "react";
 import {Image,Linking,Pressable,StyleSheet,Text,TextInput,View} from "react-native";
-import {careGangaTheme as t} from "../../../../../packages/design-tokens/src/index";
+import {careGangaPublicTheme as t} from "../../../../../packages/design-tokens/src/index";
 type Fields=Record<string,unknown>;
 type Section={kind:string;order:number;fields:Fields};
 type Asset={role:string;altText:string;src:string;order:number};
@@ -12,15 +12,17 @@ function Action({title,onPress}:{title:string;onPress:()=>void}){
   <Text style={styles.buttonText}>{title}</Text>
  </Pressable>;
 }
+const healthcareCodes:Record<string,string>={"poly clinic":"POLYCLINIC","polyclinic":"POLYCLINIC","diagnostic centre":"DIAGNOSTIC_CENTER","diagnostic center":"DIAGNOSTIC_CENTER","dental clinic":"DENTAL_CLINIC","medical laboratories":"MEDICAL_LABORATORY","medical laboratory":"MEDICAL_LABORATORY","hospital & nursing home":"HOSPITAL","hospital and nursing home":"HOSPITAL","retail pharmacy":"PHARMACY","orthopedic centre":"ORTHOPEDIC_CLINIC","orthopedic center":"ORTHOPEDIC_CLINIC","homoeopathy centre":"HOMEOPATHY_CLINIC","homeopathy centre":"HOMEOPATHY_CLINIC","homeopathy center":"HOMEOPATHY_CLINIC","ayurvedic centre":"AYURVEDIC_CLINIC","ayurvedic center":"AYURVEDIC_CLINIC"};
+const healthcareCode=(title:unknown)=>healthcareCodes[text(title).trim().toLowerCase()]??"";
 const open=(uri:string)=>void Linking.openURL(uri).catch(()=>undefined);
 /** Plain-text, screen-reader accessible rendering of the SAME published CMS
  * DTO as Next.js. No offline cache of revoked claims or private media.
  */
 export function CmsPublicExtendedSection({section,assets,mediaUrl,onContact,
- onNavigate,canNavigate,onBackToNews,mediaScope,ngoScope="80g",backLabel="Back to approved articles"}:{section:Section;assets:Asset[];
+ onNavigate,canNavigate,onBackToNews,onHealthcareDirectory,mediaScope,ngoScope="80g",backLabel="Back to approved articles"}:{section:Section;assets:Asset[];
  mediaUrl:(asset:Asset|undefined)=>string|null;
  onContact:()=>void;onNavigate:(path:unknown)=>void;canNavigate:(path:unknown)=>boolean;
- onBackToNews:()=>void;mediaScope?:"PHOTO"|"VIDEO"|"PUBLICATION";
+ onBackToNews:()=>void;onHealthcareDirectory?:(category?:string)=>void;mediaScope?:"PHOTO"|"VIDEO"|"PUBLICATION";
  ngoScope?:"80g"|"pan-details"|"registration-certificate"|"annual-reports";backLabel?:string}){
  const f=section.fields;
  const impactItems=rows(f.items);
@@ -289,9 +291,11 @@ export function CmsPublicExtendedSection({section,assets,mediaUrl,onContact,
   <Text style={styles.eyebrow}>Healthcare Assistance</Text>
   <Text accessibilityRole="header" style={styles.title}>{text(f.heading)}</Text>
   <Text style={styles.body}>{text(f.intro)}</Text>
+  {onHealthcareDirectory&&<Action title="Find verified healthcare services" onPress={()=>onHealthcareDirectory()}/>}
   {rows(f.categories).map((item,i)=><View style={styles.item} key={i}>
    <Text style={styles.itemTitle}>{text(item.title)}</Text>
    <Text style={styles.body}>{text(item.description)}</Text>
+   {onHealthcareDirectory&&<Action title={"Find centers — "+text(item.title)} onPress={()=>onHealthcareDirectory(healthcareCode(item.title))}/>}
   </View>)}
   {f.ctaPath==="/contact"&&!!text(f.ctaLabel)&&
    <Action title={text(f.ctaLabel)} onPress={onContact}/>}
@@ -317,7 +321,7 @@ const styles=StyleSheet.create({
  itemTitle:{fontSize:18,fontWeight:"700",color:"#1c4a3a"},
  value:{fontSize:21,fontWeight:"700",color:"#17694a"},
  photo:{width:"100%",height:220,borderRadius:10},
- button:{minHeight:46,borderRadius:9,alignItems:"center",justifyContent:"center",
+ button:{minHeight:48,borderRadius:9,alignItems:"center",justifyContent:"center",
   backgroundColor:"#efa747",padding:12},
  buttonText:{fontSize:15,fontWeight:"700",color:"#193729"},
  filterRow:{flexDirection:"row",flexWrap:"wrap",gap:7},

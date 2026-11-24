@@ -48,18 +48,25 @@ export async function renderConsultationSlip(
    }
    if(line)lines.push(line);return lines.length?lines:["—"];
   };
-  const panel=(title:string,fields:[string,string][],x:number,top:number,width:number)=>{
-   const rows=fields.map(([label,value])=>({label,lines:wrap(value,width-24,10)}));
-   const height=25+rows.reduce((n,row)=>n+17+row.lines.length*13,0)+9;
-   if(top-height<125)throw Error("Slip fields exceed printable page");
+  const panel=(title:string,fields:[string,string][],x:number,top:number,width:number,minBottom:number)=>{
+   // Fit the complete authorized text before drawing. Do not truncate patient,
+   // doctor or address values, and keep a readable minimum 8.5pt type size.
+   const options=[10,9.5,9,8.5].map(size=>{const lineHeight=size+2.5;
+    const rows=fields.map(([label,value])=>({label,lines:wrap(value,width-24,size)}));
+    const height=36+rows.reduce((n,row)=>n+14+row.lines.length*lineHeight,0)+5;
+    return {size,lineHeight,rows,height};});
+   const layout=options.find(v=>top-v.height>=minBottom);
+   if(!layout)throw Error("Slip fields exceed printable page");
+   const {size,lineHeight,rows,height}=layout;
+
    page.drawRectangle({x,y:top-height,width,height,color:cream,borderColor:border,borderWidth:.7});
    page.drawRectangle({x,y:top-22,width,height:22,color:green});
    page.drawText(title,{x:x+10,y:top-15,font,size:11,color:white});
    let y=top-36;
    for(const row of rows){
-    page.drawText(row.label,{x:x+10,y,font,size:9,color:gray});y-=13;
-    for(const line of row.lines){page.drawText(line,{x:x+10,y,font,size:10,color:black});y-=13;}
-    y-=4;
+    page.drawText(row.label,{x:x+10,y,font,size:8.5,color:gray});y-=11;
+    for(const line of row.lines){page.drawText(line,{x:x+10,y,font,size,color:black});y-=lineHeight;}
+    y-=3;
    }
    return top-height-10;
   };
@@ -67,20 +74,20 @@ export async function renderConsultationSlip(
   try{localDate=new Date(source.startAt).toLocaleString("en-IN",{timeZone:source.timeZone,dateStyle:"medium",timeStyle:"short"});}catch{/* UTC original retained */}
   const bookingBottom=panel("Booking details",[
    ["Booking ID",source.bookingId],["Patient",source.patientName],
-   ["Issued (UTC)",issuedAt]],28,707,365);
+   ["Issued (UTC)",issuedAt]],28,707,365,420);
   const matrix=opaqueAppointmentQr(token);
   const module=3.2,left=432,top=672;
   // Four-module quiet zone, opaque token and status-only verification.
-  page.drawRectangle({x:left-module*4,y:top-module*33,width:module*37,height:module*37,color:white});
+  page.drawRectangle({x:left-module*4,y:top-(matrix.length+3)*module,width:module*(matrix.length+8),height:module*(matrix.length+8),color:white});
   matrix.forEach((row,yi)=>row.forEach((dark,xi)=>{if(dark)page.drawRectangle({x:left+xi*module,y:top-yi*module,width:module,height:module,color:black});}));
   page.drawText("Scan to verify booking",{x:421,y:550,font,size:9,color:green});
   page.drawText(token,{x:418,y:534,font,size:8,color:gray});
   const topDetails=Math.min(bookingBottom,519);
   const leftBottom=panel("Doctor and appointment",[
    ["Doctor",source.doctorName],["Appointment date & time",localDate+" ("+source.timeZone+")"],
-   ["Original UTC time",source.startAt]],28,topDetails,263);
+   ["Original UTC time",source.startAt]],28,topDetails,263,245);
   const rightBottom=panel("Healthcare center",[
-   ["Center",source.centerName],["Address",source.centerAddress]],301,topDetails,266);
+   ["Center",source.centerName],["Address",source.centerAddress]],301,topDetails,266,245);
   const financialTop=Math.min(leftBottom,rightBottom);
   if(financialTop<235)throw Error("Slip fields exceed printable page");
   page.drawRectangle({x:28,y:financialTop-75,width:539,height:75,color:gold,borderColor:border,borderWidth:.7});

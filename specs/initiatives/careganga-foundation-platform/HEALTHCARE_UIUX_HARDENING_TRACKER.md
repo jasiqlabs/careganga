@@ -159,6 +159,10 @@ HUX-11.02/11.03/13.02/15.02: Web patient registration offers a safe local return
 
 UI06/07 re-review: Web/native known held reservations now have an explicit original-status recovery button; consumed hold without verified confirmation remains uncertain; failed recovery stays uncertain. Native selected review survives return from external provider and a patient registration/profile modal, keeps the same selected slot and request keys; visible and hardware Back do not leave a locked original reservation. The source API still rechecks availability, permission, patient identity, fee and consent. Verify hold expiry/release, unknown confirmation/recovery, Android modal/back/resume, login/consent then reserve and merchant callback; runtime NOT_RUN.
 
+## Native published landing parity and document layout re-review
+
+HUX-09.01/13.01/13.02: published native CMS healthcare categories now have working category-specific directory actions with validated existing CG14 category codes and shared public theme. Selected category survives initial native directory load, generic home entry resets it; unknown editorial labels open full directory. HUX-11.03/15.01: consultation slip measures and wraps authorized names/address before drawing, fits at readable 8.5–10pt without truncating, reserves non-overlapping financial/footer space and calculates QR quiet-zone from matrix size. Source checks only; extreme valid source lengths and scanner/printed output must be tested locally. Original approved one-copy pay-at-center slip remains separate from actual collection receipt; no fake payment or sample data.
+
 ## Subtracker details and expected user scenarios
 
 ### HUX-01.01 — Recover separate healthcare reference originals

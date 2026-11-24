@@ -67,7 +67,7 @@ const label=(title:string,onPress:()=>void,active=false)=>(
   onPress={onPress} style={[styles.button,active&&styles.selected]}>
   <Text style={styles.buttonLabel}>{title}</Text>
  </Pressable>);
-export function PublicHealthcareDirectory({onExit,reschedule,onPatientProfile}:{onExit:()=>void;onPatientProfile?:()=>void;
+export function PublicHealthcareDirectory({onExit,reschedule,onPatientProfile,initialCategory=""}:{onExit:()=>void;initialCategory?:string;onPatientProfile?:()=>void;
  reschedule?:{bookingRef:string;expectedVersion:number}}){
  const [mode,setMode]=useState<Mode>(reschedule?"doctors":"centers"),[search,setSearch]=useState("");
  const [labMenu,setLabMenu]=useState(false),[labCenterSlug,setLabCenterSlug]=useState("");
@@ -75,7 +75,7 @@ export function PublicHealthcareDirectory({onExit,reschedule,onPatientProfile}:{
  const [hasCenterLabOffer,setHasCenterLabOffer]=useState(false);
  const [centerDoctors,setCenterDoctors]=useState<{slug:string;items:Doctor[];failed:boolean}|null>(null);
  const [pin,setPin]=useState(""),[specialty,setSpecialty]=useState("");
- const [category,setCategory]=useState(""),[facility,setFacility]=useState("");
+ const [category,setCategory]=useState(reschedule?"":initialCategory),[facility,setFacility]=useState("");
  const [service,setService]=useState(""),[day,setDay]=useState("");
  const [minExperience,setMinExperience]=useState(""),[maxExperience,setMaxExperience]=useState("");
  const [minFee,setMinFee]=useState("");

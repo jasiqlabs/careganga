@@ -1,7 +1,7 @@
 import {useCallback,useEffect,useRef,useState} from "react";
 import {ActivityIndicator,AppState,BackHandler,Image,Pressable,
  StyleSheet,Text,TextInput,View} from "react-native";
-import {careGangaTheme as t} from "../../../../../packages/design-tokens/src/index";
+import {careGangaPublicTheme as t} from "../../../../../packages/design-tokens/src/index";
 import {CmsPublicExtendedSection} from "./cms-extended-native-screen";
 import {NativeMembershipPlans} from "../membership/native-membership-plans";
 import {NativeNewsletterForm} from "./native-newsletter-form";
@@ -164,7 +164,7 @@ function NativeTeamDirectory(){
 }
 export function PublicCmsContent({onContact,onPartnerApplication,onMembershipApply,onVolunteerApply,onLoginVisibility,onHealthcareDirectory,onPatientProfile}: {
  onContact:()=>void;onPartnerApplication:()=>void;onMembershipApply:(planCode:string)=>void;onVolunteerApply:()=>void;
- onLoginVisibility:(visible:boolean)=>void;onHealthcareDirectory:()=>void;onPatientProfile:()=>void}){
+ onLoginVisibility:(visible:boolean)=>void;onHealthcareDirectory:(category?:string)=>void;onPatientProfile:()=>void}){
  const [slug,setSlug]=useState("home"),[projectCategory,setProjectCategory]=useState("All Projects");
  const [mediaScope,setMediaScope]=useState<"PHOTO"|"VIDEO"|"PUBLICATION">("PHOTO");
  const [ngoScope,setNgoScope]=useState<"80g"|"pan-details"|
@@ -553,7 +553,7 @@ export function PublicCmsContent({onContact,onPartnerApplication,onMembershipApp
     if(["IMPACT_GROUP","COMPLIANCE_FACTS","GALLERY_GRID","ARTICLE_BODY",
        "HEALTHCARE_CATEGORIES","CONTACT_INFO"].includes(section.kind))
      return <CmsPublicExtendedSection key={i} section={section} assets={page.assets}
-      mediaUrl={safeImage} onContact={onContact} onNavigate={navigate} canNavigate={canNavigate}
+      mediaUrl={safeImage} onContact={onContact} onNavigate={navigate} canNavigate={canNavigate} onHealthcareDirectory={onHealthcareDirectory}
       mediaScope={section.kind==="GALLERY_GRID"?mediaScope:undefined}
        ngoScope={section.kind==="COMPLIANCE_FACTS"?ngoScope:undefined}
       onBackToNews={()=>setSlug(articleBackTarget)}
@@ -610,7 +610,7 @@ export function PublicCmsContent({onContact,onPartnerApplication,onMembershipApp
   </View>}
   {slug==="healthcare"&&result.state==="PUBLISHED"&&<View style={styles.card}>
    <Text accessibilityRole="header" style={styles.heading}>Find healthcare services</Text>
-   <CmsButton title="Find verified centers, doctors & lab prices" onPress={onHealthcareDirectory}/>
+   <CmsButton title="Find verified centers, doctors & lab prices" onPress={()=>onHealthcareDirectory()}/>
    <CmsButton title="My patient profile & consultations" onPress={onPatientProfile} secondary/>
   </View>}
   {effectiveFooter&&<View style={styles.card}>

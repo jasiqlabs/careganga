@@ -109,6 +109,10 @@ Dependencies: Within CG-19 **none** for plain text/public Foundation ticket core
 
 ## Execution progress
 
+### Public reference parity re-review
+HUX-09.01/13.01/13.02: published native CMS healthcare categories now have working category-specific directory actions with validated existing CG14 category codes and shared public theme. Selected category survives initial native directory load, generic home entry resets it; unknown editorial labels open full directory. HUX-11.03/15.01: consultation slip measures and wraps authorized names/address before drawing, fits at readable 8.5–10pt without truncating, reserves non-overlapping financial/footer space and calculates QR quiet-zone from matrix size. Source checks only; extreme valid source lengths and scanner/printed output must be tested locally. Original approved one-copy pay-at-center slip remains separate from actual collection receipt; no fake payment or sample data.
+
+
 ### Public reference re-review
 HUX-11.02/11.03/13.02/15.02: Web patient registration offers a safe local return link to the selected doctor schedule, validates route and allowed query fields, always re-fetches current slots on return. UI11 user-initiated authenticated PDF preview uses existing restricted download grant, verified PDF bytes and revocable local blob; no public link/identity lookup. Native selected-time action prevents changing selection during held/pending/unknown booking request, retains original idempotency recovery. Verify sign-in/profile/consent return, revoked/expired slip, preview close/route change and native unknown hold; local build and rendered QA NOT_RUN. Native booking-to-registration continuity and full paid document copy format remain follow-up source/contract gaps.
 
