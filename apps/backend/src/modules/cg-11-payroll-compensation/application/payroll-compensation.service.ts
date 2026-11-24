@@ -133,7 +133,7 @@ export class PayrollCompensationService{
    const p=(await tx.query<Policy>("SELECT * FROM payroll_policy WHERE root_realm_id=$1 AND id=$2 AND (branch_ref=$3 OR branch_ref IS NULL) AND revision=$4 AND status='APPROVED' AND effective_from<=$5::date AND (LEAST(effective_to,(SELECT n.effective_from FROM payroll_policy n WHERE n.root_realm_id=payroll_policy.root_realm_id AND n.supersedes_ref=payroll_policy.id AND n.status='APPROVED')) IS NULL OR ($6::date IS NOT NULL AND LEAST(effective_to,(SELECT n.effective_from FROM payroll_policy n WHERE n.root_realm_id=payroll_policy.root_realm_id AND n.supersedes_ref=payroll_policy.id AND n.status='APPROVED'))>=$6::date)) FOR SHARE",[a.realmId,v.policy,e.branch_ref,v.policyRevision,v.from,v.to])).rows[0];
    if(!p)throw new ConflictException("Choose an approved effective payroll policy");
    const hrProposal=v.hrProposal?await this.hrChange.payrollProposal(tx,a,e.id,v.hrProposal,e.branch_ref,e.assignment_ref):null;
-   if(hrProposal&&(hrProposal.baseMinor!==v.baseMinor||hrProposal.effectiveFrom!==v.from))throw new ConflictException("HR proposal amount or effective date changed");
+   if(hrProposal&&(String(hrProposal.baseMinor)!==v.baseMinor||hrProposal.effectiveFrom!==v.from))throw new ConflictException("HR proposal amount or effective date changed");
    const components=(await tx.query<{kind:string;mode:"FIXED"|"PERCENT";minor:string|null;bp:number|null}>("SELECT kind,calc_mode AS mode,amount_minor::text AS minor,rate_bp AS bp FROM payroll_component WHERE root_realm_id=$1 AND policy_id=$2",[a.realmId,p.id])).rows;
    let gross=BigInt(v.baseMinor),deduct=0n;for(const c of components){const amount=componentMinor(v.baseMinor,c);if(c.kind==="ALLOWANCE")gross+=amount;if(c.kind==="DEDUCTION")deduct+=amount;}
    if(gross<deduct||gross>99999999999999n)throw new ConflictException("Deductions or allowances exceed valid salary limits");
@@ -225,7 +225,7 @@ export class PayrollCompensationService{
    if(write&&(!policy||policy.status!=="APPROVED"||policy.revision!==row.policy_revision))throw conflict();
    if(write&&row.source_hr_proposal_ref){
     const original=await this.hrChange.payrollProposal(tx,a,row.employee_ref,row.source_hr_proposal_ref,row.branch_ref!,row.assignment_ref);
-    if(original.revision!==row.source_hr_proposal_revision||original.digest!==row.source_hr_proposal_digest||original.baseMinor!==row.base_salary_minor||original.effectiveFrom!==row.effective_from)throw conflict();
+    if(original.revision!==row.source_hr_proposal_revision||original.digest!==row.source_hr_proposal_digest||String(original.baseMinor)!==row.base_salary_minor||original.effectiveFrom!==row.effective_from)throw conflict();
    }
    preview={...this.salaryView({...row,branch_ref:row.branch_ref}),employeeName:current.name,employeeReference:current.employee_code,hasOriginalHrProposal:!!row.source_hr_proposal_ref};digest=hash([kind,row.id,row.employee_ref,row.branch_ref,row.assignment_ref,row.assignment_version,row.employee_status_version,row.policy_id,row.policy_revision,row.source_hr_proposal_ref,row.source_hr_proposal_revision,row.source_hr_proposal_digest,row.effective_from,row.effective_to,row.supersedes_ref,row.base_salary_minor,row.request_digest]);
   }

@@ -877,7 +877,7 @@ export function CmsAdminWorkspace({canManage,canPublish,canReview}:{
        <button type="button" disabled={!canManage||busy||!!pending} onClick={()=>removeIndexedContent("TEAM",i)}>Remove profile</button></div>)}
       {teamChoices.filter(p=>!draft.team.some(x=>x.sourceRef===p.sourceRef)).map(p=><button type="button" key={p.sourceRef}
        disabled={!canManage||busy||!!pending||draft.team.length>=15} onClick={()=>edit("team",[...draft.team,p])}>Add {p.name} · {p.designation}</button>)}
-     </fieldset>}
+     </fieldset>
     </div>}
     {canManage&&draftIssue&&<p className="cg-cms-error" role="status">{draftIssue}</p>}
     {selected?.status==="DRAFT"&&unsaved&&<p role="status">

@@ -352,7 +352,7 @@ export class BranchSourceFacade{
   * A manager's finance.accounts.manage/journals.post grant is NOT root authority.
   */
  async requireFinanceRootScope(client:PoolClient,actor:VerifiedFoundationActor,
-   action:"finance.accounts.manage"|"finance.journals.post"|
+   action:"finance.accounts.manage"|"finance.accounts.view"|"finance.journals.post"|
     "finance.vouchers.manage"|"finance.vouchers.view"|"finance.budgets.manage"|
     "finance.reconciliation.manage"|"finance.reports.view"|"finance.invoices.manage"|"finance.invoices.review"):Promise<void>{
   await this.identity.assertCurrent(client,actor,action);

@@ -258,7 +258,7 @@ export function PublicCmsContent({onContact,onPartnerApplication,onMembershipApp
   if(!route)return false;
   if(route==="/membership")return memberJoin;
   if(route==="/volunteer")return volunteerJoin;
-  if(route==="/"||route==="/contact"||route==="/collaboration")return true;
+  if(route==="/"||route==="/contact"||route==="/collaboration"||publishedPaths.includes("/collaboration"))return true;
   if(route==="/videos"||route==="/publications")return publishedPaths.includes("/gallery");
   return publishedPaths.includes(route);
  };
@@ -341,7 +341,7 @@ export function PublicCmsContent({onContact,onPartnerApplication,onMembershipApp
     <CmsButton title="News" secondary={slug!=="articles"}
      onPress={()=>setSlug("articles")}/>}
    <CmsButton title="Membership Plans" secondary={slug!=="membership"} onPress={()=>setSlug("membership")}/>
-   <CmsButton title="Corporate Partners" secondary={slug!=="collaboration"} onPress={()=>setSlug("collaboration")}/>
+   <CmsButton title="Partnerships" secondary={slug!=="collaboration"} onPress={()=>setSlug("collaboration")}/>
    <CmsButton title="Healthcare Partner Application" secondary onPress={onPartnerApplication}/>
    <CmsButton title="Team Directory" secondary={slug!=="@team"} onPress={()=>setSlug("@team")}/>
    <CmsButton title="Newsletter" secondary={slug!=="@newsletter"} onPress={()=>setSlug("@newsletter")}/>

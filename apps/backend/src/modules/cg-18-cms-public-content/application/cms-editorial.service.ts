@@ -332,6 +332,7 @@ function parseContent(raw:unknown):Content{
  for(let i=0;i<assets.length;i++){
   const a=assets[i];
   if(a.role==="TEAM"||!placementFits(sections,a))throw new BadRequestException({code:"CMS_INPUT_INVALID",field:"assets["+i+"].role"});
+   if(!placementFits(sections,a))throw new BadRequestException({code:"CMS_INPUT_INVALID",field:"assets["+i+"].role"});
  }
  if(kind!=="HOME"&&kind!=="ABOUT")validateExtendedPage(kind,sections,assets);
  if(kind==="HEALTHCARE"&&!healthcareEditorialClaimsSafe(sections,[title,seoTitle,seoDescription]))

@@ -67,7 +67,7 @@ export default async function Partnerships(){
      <p className={styles.intro}>{heroIntro}</p>
      <div className={styles.heroActions}>
       {heroCta&&<Link className={styles.primary} href="/contact">{heroCta}</Link>}
-      {!published&&<Link className={styles.primary} href="/contact">Contact the Foundation</Link>}
+      {!published&&<Link className={styles.primary} href="/contact">Partner With Us</Link>}
       <a className={styles.secondary} href="#corporate-partners">Meet Our Partners</a>
      </div>
     </div>

@@ -20,6 +20,7 @@ export const SAFE_MESSAGE_CATALOG:Readonly<Record<string,string>>=Object.freeze(
       CG05_COVER_INVALID:"Choose an eligible verified cover image and confirm public consent.",
       CMS_PROJECT_SOURCE_INVALID:"Choose a current approved project or event source.",
       CMS_PROJECT_SOURCE_UNAVAILABLE:"The original project or event is no longer eligible for public release. Refresh the source.",
+      CMS_PARTNER_SOURCE_UNAVAILABLE:"The original partner or collaboration is no longer eligible for public release. Refresh the source.",
       CG05_ACTIVITY_FIELD_INVALID:"Check the indicated activity field and enter a valid value.",
       CG05_ACTIVITY_DATES_INVALID:"Enter valid start and end times, with the end at or after the start.",
       CG05_ACTIVITY_PROJECT_INVALID:"Choose an available project that matches the selected branch.",
