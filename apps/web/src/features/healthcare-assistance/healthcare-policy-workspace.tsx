@@ -93,7 +93,7 @@ export function HealthcarePolicyWorkspace({canView,canManage,canReview}:Props){
  const last=useRef<{parts:string;body:Payload;label:string}|null>(null);
  useEffect(()=>setEstimate(null),[center,doctor]);
  useEffect(()=>setServiceEstimate(null),[center,service,quotedGross]);
- const request=useRef(0);
+ const request=useRef(0),centerSeq=useRef(0);
  const refresh=useCallback(async(c:string)=>{
   const id=++request.current;
   const result=await api<{policies:Policy[]}>("centers/"+c);
@@ -109,18 +109,19 @@ export function HealthcarePolicyWorkspace({canView,canManage,canReview}:Props){
   }).catch(e=>{if(active)setError(e instanceof Error?e.message:
    "Approved healthcare centers are unavailable.");})
    .finally(()=>{if(active)setLoading(false)});
-  return()=>{active=false;++request.current};
+  return()=>{active=false;++request.current;++centerSeq.current};
  },[canView]);
  useEffect(()=>{
-  ++request.current;setPolicies([]);setDoctors([]);setDoctor("");
+  const scope=++centerSeq.current;++request.current;setPolicies([]);setDoctors([]);setDoctor("");
   setRevision(null);setUncertain(false);last.current=null;
-  if(!center)return;
+  if(!center){setLoading(false);return;}
   setLoading(true);setError("");
   void Promise.all([
    refresh(center),
-   api<{doctors:Doctor[]}>("centers/"+center+"/doctors").then(x=>setDoctors(x.doctors))
-  ]).catch(e=>setError(e instanceof Error?e.message:"Current center policy unavailable."))
-   .finally(()=>setLoading(false));
+   api<{doctors:Doctor[]}>("centers/"+center+"/doctors").then(x=>{if(scope===centerSeq.current)setDoctors(x.doctors);})
+  ]).catch(e=>{if(scope===centerSeq.current)setError(e instanceof Error?e.message:"Current center policy unavailable.");})
+   .finally(()=>{if(scope===centerSeq.current)setLoading(false);});
+  return()=>{++centerSeq.current;++request.current;};
  },[center,refresh]);
  async function preview(){
   if(!center||!doctor||busy||uncertain)return;
@@ -238,7 +239,7 @@ export function HealthcarePolicyWorkspace({canView,canManage,canReview}:Props){
       "Cannot check original policy state."))}>Check existing policy history</button>
    </div>
   </section>}
-  {canManage&&canView&&!!center&&!uncertain&&<form className="cg-diagnostics-card"
+  {canManage&&canView&&!!center&&!uncertain&&!loading&&<form className="cg-diagnostics-card"
    onSubmit={submit} aria-label="Original assistance policy">
    <h2>{revision?"Revise approved policy":"Configure healthcare support"}</h2>
    <h3>1. Service &amp; eligibility scope</h3>
@@ -344,7 +345,7 @@ export function HealthcarePolicyWorkspace({canView,canManage,canReview}:Props){
   </form>}
   {canView&&!!center&&<section className="form-section">
    <h2>Actual policy revisions</h2>
-   <button type="button" disabled={busy||uncertain} onClick={()=>
+   <button type="button" disabled={busy||uncertain||loading} onClick={()=>
     void refresh(center).catch(e=>setError(e instanceof Error?e.message:
      "Original policy history is unavailable."))}>Refresh history</button>
    {policies.length===0&&!loading?<p className="cg-module-empty">
