@@ -305,8 +305,7 @@ export function PublicCmsContent({onContact,onPartnerApplication,onMembershipApp
  const slides=page?.sections.filter(s=>s.kind==="HERO"&&s.fields.visible!==false)
   .sort((a,b)=>a.order-b.order)??[];
  const safeImage=(asset:Asset|undefined)=>{
-  if(!asset||!base||!asset.src.startsWith("/api/public/content/media/")||
-    !/^\/api\/public\/content\/media\/[0-9a-f-]{36}$/i.test(asset.src))return null;
+  if(!asset||!base||!(/^\/api\/public\/content\/media\/[0-9a-f-]{36}$/i.test(asset.src)||/^\/api\/public\/content\/release-media\/[a-z-]{1,45}$/.test(asset.src)))return null;
   return new URL(asset.src,base).toString();
  };
  return <View style={styles.container}>
