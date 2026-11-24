@@ -39,6 +39,7 @@ CREATE TABLE employee_compensation (
  id uuid PRIMARY KEY DEFAULT gen_random_uuid(), root_realm_id uuid NOT NULL, employee_ref uuid NOT NULL,
  branch_ref uuid NOT NULL, assignment_ref uuid NOT NULL, assignment_version integer NOT NULL CHECK(assignment_version>0),
  employee_status_version integer NOT NULL CHECK(employee_status_version>0),
+ source_hr_proposal_ref uuid,source_hr_proposal_revision integer,source_hr_proposal_digest char(64),
  policy_id uuid NOT NULL, policy_revision integer NOT NULL CHECK(policy_revision>0),
  effective_from date NOT NULL,effective_to date, supersedes_ref uuid, base_salary_minor bigint NOT NULL CHECK(base_salary_minor BETWEEN 1 AND 99999999999999),
  status text NOT NULL DEFAULT 'DRAFT' CHECK(status IN('DRAFT','SUBMITTED','APPROVED','RETURNED','REJECTED')),
@@ -48,6 +49,8 @@ CREATE TABLE employee_compensation (
  UNIQUE(root_realm_id,id), UNIQUE(root_realm_id,created_by,request_key),
  FOREIGN KEY(root_realm_id,employee_ref) REFERENCES hr_employee(root_realm_id,id),
  FOREIGN KEY(root_realm_id,assignment_ref) REFERENCES hr_employment_assignment(root_realm_id,id),
+ FOREIGN KEY(root_realm_id,source_hr_proposal_ref,source_hr_proposal_digest,source_hr_proposal_revision) REFERENCES hr_employment_change(root_realm_id,id,source_digest,revision),
+ CHECK(num_nonnulls(source_hr_proposal_ref,source_hr_proposal_revision,source_hr_proposal_digest) IN(0,3)),
  FOREIGN KEY(root_realm_id,policy_id,branch_ref) REFERENCES payroll_policy(root_realm_id,id,branch_ref),
  FOREIGN KEY(created_by,root_realm_id) REFERENCES account(id,realm_id),
  FOREIGN KEY(approval_case_ref,root_realm_id) REFERENCES cg03_case(id,realm_id),
@@ -56,6 +59,7 @@ CREATE TABLE employee_compensation (
  CHECK(effective_to IS NULL OR effective_to>effective_from),
  CHECK(status NOT IN('SUBMITTED','APPROVED') OR approval_case_ref IS NOT NULL)
 );
+CREATE UNIQUE INDEX ux_cg11_applied_hr_proposal ON employee_compensation(root_realm_id,source_hr_proposal_ref) WHERE status='APPROVED' AND source_hr_proposal_ref IS NOT NULL;
 CREATE INDEX ix_cg11_salary_history ON employee_compensation(root_realm_id,employee_ref,effective_from DESC,id);
 -- Serialize approval on the actual employee/policy scope. Approved historical versions never mutate.
 CREATE FUNCTION cg11_policy_guard() RETURNS trigger LANGUAGE plpgsql AS $cg11$
@@ -92,6 +96,7 @@ BEGIN
  PERFORM 1 FROM hr_employee WHERE root_realm_id=NEW.root_realm_id AND id=NEW.employee_ref FOR UPDATE;
  IF NOT EXISTS(SELECT 1 FROM hr_employment_assignment a JOIN hr_employee e ON e.root_realm_id=a.root_realm_id AND e.id=a.employee_id WHERE a.root_realm_id=NEW.root_realm_id AND a.id=NEW.assignment_ref AND a.employee_id=NEW.employee_ref AND a.branch_ref=NEW.branch_ref AND a.assignment_version=NEW.assignment_version AND e.status_version=NEW.employee_status_version AND e.status IN('ACTIVE','PROBATION') AND a.valid_from<=NEW.effective_from AND (a.valid_to IS NULL OR a.valid_to>NEW.effective_from)) THEN
   RAISE EXCEPTION 'Original HR eligibility changed' USING ERRCODE='23514'; END IF;
+ IF NEW.source_hr_proposal_ref IS NOT NULL AND NOT EXISTS(SELECT 1 FROM hr_employment_change h JOIN cg03_case c ON c.realm_id=h.root_realm_id AND c.id=h.case_ref AND c.hr_employment_change_id=h.id AND c.hr_employment_change_digest=h.source_digest AND c.status='OWNER_COMPLETED' JOIN cg03_case_decision d ON d.realm_id=c.realm_id AND d.case_id=c.id AND d.id=h.decision_ref AND d.action='APPROVE' WHERE h.root_realm_id=NEW.root_realm_id AND h.id=NEW.source_hr_proposal_ref AND h.employee_id=NEW.employee_ref AND h.new_assignment_ref=NEW.assignment_ref AND h.proposed_branch_ref=NEW.branch_ref AND h.status='APPLIED' AND h.effective_date=NEW.effective_from) THEN RAISE EXCEPTION 'Original HR proposal no longer applies' USING ERRCODE='23514'; END IF;
  IF NOT EXISTS(SELECT 1 FROM payroll_policy p WHERE p.root_realm_id=NEW.root_realm_id AND p.id=NEW.policy_id AND p.branch_ref=NEW.branch_ref AND p.revision=NEW.policy_revision AND p.status='APPROVED' AND p.effective_from<=NEW.effective_from AND (LEAST(p.effective_to,(SELECT successor.effective_from FROM payroll_policy successor WHERE successor.root_realm_id=p.root_realm_id AND successor.supersedes_ref=p.id AND successor.status='APPROVED')) IS NULL OR (NEW.effective_to IS NOT NULL AND NEW.effective_to<=LEAST(p.effective_to,(SELECT successor.effective_from FROM payroll_policy successor WHERE successor.root_realm_id=p.root_realm_id AND successor.supersedes_ref=p.id AND successor.status='APPROVED'))))) THEN
   RAISE EXCEPTION 'Approved policy required' USING ERRCODE='23514'; END IF;
  END IF;
