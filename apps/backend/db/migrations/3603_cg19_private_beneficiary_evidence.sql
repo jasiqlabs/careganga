@@ -60,7 +60,7 @@ BEGIN
   RAISE EXCEPTION 'CG19 beneficiary evidence owner is immutable';
  END IF;
  RETURN NEW;
-END $$;
+END; $$;
 CREATE TRIGGER cg19_beneficiary_intent_identity BEFORE UPDATE ON cg19_upload_intent
  FOR EACH ROW EXECUTE FUNCTION cg19_beneficiary_evidence_identity_guard();
 CREATE TRIGGER cg19_beneficiary_file_identity BEFORE UPDATE ON cg19_stored_file
@@ -69,13 +69,13 @@ CREATE TRIGGER cg19_beneficiary_file_identity BEFORE UPDATE ON cg19_stored_file
 ALTER TABLE cg19_stored_file ADD CONSTRAINT uq_cg19_beneficiary_file_revision UNIQUE(id,realm_id,beneficiary_id,proposal_revision);
 ALTER TABLE cg19_upload_intent ADD COLUMN beneficiary_consent_confirmed boolean NOT NULL DEFAULT false,
  ADD CONSTRAINT ck_cg19_beneficiary_consent CHECK((owner_kind='CG06_BENEFICIARY')=beneficiary_consent_confirmed);
-CREATE FUNCTION cg19_beneficiary_consent_guard() RETURNS trigger LANGUAGE plpgsql AS $
+CREATE FUNCTION cg19_beneficiary_consent_guard() RETURNS trigger LANGUAGE plpgsql AS $$
 BEGIN
  IF NEW.beneficiary_consent_confirmed IS DISTINCT FROM OLD.beneficiary_consent_confirmed THEN
   RAISE EXCEPTION 'Beneficiary evidence consent is immutable';
  END IF;
  RETURN NEW;
-END $;
+END; $$;
 CREATE TRIGGER cg19_beneficiary_intent_consent BEFORE UPDATE ON cg19_upload_intent FOR EACH ROW EXECUTE FUNCTION cg19_beneficiary_consent_guard();
 CREATE TABLE cg19_beneficiary_evidence_event(
  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
