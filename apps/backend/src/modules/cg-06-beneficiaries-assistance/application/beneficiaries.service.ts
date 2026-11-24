@@ -201,7 +201,10 @@ export class BeneficiariesService{
    const past=await this.original(tx,a,v.key,"LIFECYCLE",hash,target);if(past)return past;
    const before=await this.row(tx,a,target,true);
    if(before.profile_revision!==v.expected||before.lifecycle_state===v.lifecycle||before.consent_revoked_at)throw conflict();
-   const r=(await tx.query<Row>("UPDATE beneficiary SET lifecycle_state=$3,profile_revision=profile_revision+1,"+
+   const r=(await tx.query<Row>("UPDATE beneficiary SET lifecycle_state=$3,"+
+    "verification_state=CASE WHEN verification_state='SUBMITTED' THEN 'DRAFT' ELSE verification_state END,"+
+    "verification_case_ref=CASE WHEN verification_state='SUBMITTED' THEN NULL ELSE verification_case_ref END,"+
+    "profile_revision=profile_revision+1,"+
     "updated_by=$4,updated_at=clock_timestamp() WHERE root_realm_id=$1 AND id=$2 "+
     "RETURNING "+columns,[a.realmId,target,v.lifecycle,a.accountId])).rows[0];
    return this.recorded(tx,a,v.key,"LIFECYCLE",hash,r,v.reason);
@@ -236,7 +239,9 @@ export class BeneficiariesService{
    await tx.query("INSERT INTO beneficiary_project_link(root_realm_id,beneficiary_id,project_ref,"+
     "branch_scope_id,linked_by,source_revision) VALUES($1,$2,$3,$4,$5,$6)",
     [a.realmId,b.id,v.project,b.branch_scope_id,a.accountId,b.profile_revision+1]);
-   const updated=(await tx.query<Row>("UPDATE beneficiary SET profile_revision=profile_revision+1,"+
+   const updated=(await tx.query<Row>("UPDATE beneficiary SET verification_state=CASE WHEN verification_state='SUBMITTED' THEN 'DRAFT' ELSE verification_state END,"+
+    "verification_case_ref=CASE WHEN verification_state='SUBMITTED' THEN NULL ELSE verification_case_ref END,"+
+    "profile_revision=profile_revision+1,"+
     "updated_at=clock_timestamp(),updated_by=$3 WHERE root_realm_id=$1 AND id=$2 RETURNING "+columns,
     [a.realmId,b.id,a.accountId])).rows[0];
    return this.recorded(tx,a,v.key,"LINK_PROJECT",hash,updated);
@@ -260,7 +265,9 @@ export class BeneficiariesService{
     "WHERE root_realm_id=$1 AND beneficiary_id=$2 AND id=$3 AND ended_at IS NULL RETURNING id",
     [a.realmId,b.id,v.link,a.accountId]);
    if(!link.rowCount)throw new NotFoundException("Active project link unavailable");
-   const updated=(await tx.query<Row>("UPDATE beneficiary SET profile_revision=profile_revision+1,"+
+   const updated=(await tx.query<Row>("UPDATE beneficiary SET verification_state=CASE WHEN verification_state='SUBMITTED' THEN 'DRAFT' ELSE verification_state END,"+
+    "verification_case_ref=CASE WHEN verification_state='SUBMITTED' THEN NULL ELSE verification_case_ref END,"+
+    "profile_revision=profile_revision+1,"+
     "updated_at=clock_timestamp(),updated_by=$3 WHERE root_realm_id=$1 AND id=$2 RETURNING "+columns,
     [a.realmId,b.id,a.accountId])).rows[0];
    return this.recorded(tx,a,v.key,"UNLINK_PROJECT",hash,updated);
