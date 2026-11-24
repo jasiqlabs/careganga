@@ -8,6 +8,8 @@ export class PayrollCompensationController{
  @Get("policies") @Header("Cache-Control","private, no-store") policies(@Headers("authorization")token:string,@Query("branchRef")branch:string){return this.source.policies(token,branch);}
  @Post("policies") @Header("Cache-Control","private, no-store") createPolicy(@Headers("authorization")token:string,@Body()raw:unknown){return this.source.createPolicy(token,raw);}
  @Get("employees/:ref/compensation") @Header("Cache-Control","private, no-store") history(@Headers("authorization")token:string,@Param("ref")ref:string){return this.source.history(token,ref);}
+ @Get("employees/:ref/payout-instruction") @Header("Cache-Control","private, no-store") payout(@Headers("authorization")token:string,@Param("ref")ref:string){return this.source.payoutHistory(token,ref);}
+ @Post("employees/:ref/payout-instruction") @Header("Cache-Control","private, no-store") createPayout(@Headers("authorization")token:string,@Param("ref")ref:string,@Body()raw:unknown){return this.source.createPayout(token,ref,raw);}
  @Get("employees/:ref/salary-history") @Header("Cache-Control","private, no-store") salaryHistory(@Headers("authorization")token:string,@Param("ref")ref:string){return this.source.history(token,ref);}
  @Post("employees/:ref/compensation") @Header("Cache-Control","private, no-store") createSalary(@Headers("authorization")token:string,@Param("ref")ref:string,@Body()raw:unknown){return this.source.createSalary(token,ref,raw);}
 }
