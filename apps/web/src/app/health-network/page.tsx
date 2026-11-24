@@ -1,6 +1,7 @@
 import {HealthcarePublicChrome} from "../../shared/healthcare-public-chrome";
 import type {Metadata} from "next";
 import Link from "next/link";
+import styles from "./directory.module.css";
 import {
   directory,directorySearch,publicAreas,type PublicCenter,type PublicDoctor
 } from "../../features/health-network/public-directory-source";
@@ -70,7 +71,7 @@ export default async function HealthcareDirectory({searchParams}:Props){
      (canReschedule?"&reschedule="+encodeURIComponent(rescheduleRef)+
       "&version="+rescheduleVersion:"")} aria-current={tab==="doctors"?"page":undefined}>Doctors</Link>
    </nav>
-   <p><Link href="/patients/me">My private patient profile and consent</Link></p>
+   <p><Link href="/patients/me">My patient profile</Link></p>
   </section>
   <section className="cg-public-section" aria-label="Search the directory">
    <form action="/health-network" method="get" style={{display:"grid",gap:12,maxWidth:720}}>
@@ -83,8 +84,7 @@ export default async function HealthcareDirectory({searchParams}:Props){
      <input name="q" defaultValue={typeof raw.q==="string"?raw.q:""}
       type="search" maxLength={80} placeholder="Search verified records"/>
     </label>
-    <details open={showAdvanced} style={{border:"1px solid #d7dfdb",
-       borderRadius:12,padding:12}}>
+    <details open={showAdvanced} className={styles.filters}>
      <summary style={{cursor:"pointer",fontWeight:600,padding:"8px 0"}}>
       More filters — location, center type, services and fees</summary>
      <div style={{display:"grid",gap:12,marginTop:12}}>
@@ -177,19 +177,27 @@ export default async function HealthcareDirectory({searchParams}:Props){
    {result.state==="UNAVAILABLE"?<p role="alert">Current verified directory results
      could not be checked. Please try again. No outdated listing is shown.</p>:
     result.items.length===0?<p>No currently approved listings match your search.</p>:
-    <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(min(100%,280px),1fr))",gap:16}}>
+    <div className={styles.grid}>
      {tab==="centers"?
       (result.items as PublicCenter[]).map(c=><article key={c.slug}
-        style={{border:"1px solid #d7dfdb",borderRadius:12,padding:18}}>
-       <p className="cg-eyebrow">{nice(c.type)} · Verified center</p>
+        className={styles.card}>
+       <div className={styles.identity}><span className={styles.avatar} aria-hidden="true">+</span>
+        <p className="cg-eyebrow">{nice(c.type)} · Verified center</p></div>
        <h3><Link href={"/healthcare/centers/"+encodeURIComponent(c.slug)}>{c.centerName}</Link></h3>
        <p>{c.providerName}</p><p>{c.address}, {c.pinCode}</p>
-       <Link href={"/healthcare/centers/"+encodeURIComponent(c.slug)}>View center details</Link>
+       <div className={styles.actions}>
+        <Link className="cg-health-link-action primary" href={"/healthcare/centers/"+encodeURIComponent(c.slug)}>View center details</Link>
+        {typeof c.latitude==="number"&&Number.isFinite(c.latitude)&&Math.abs(c.latitude)<=90&&
+         typeof c.longitude==="number"&&Number.isFinite(c.longitude)&&Math.abs(c.longitude)<=180&&
+         <a href={"https://www.google.com/maps/search/?api=1&query="+encodeURIComponent(c.latitude+","+c.longitude)}
+          target="_blank" rel="noopener noreferrer">Directions</a>}
+       </div>
       </article>):
       (result.items as PublicDoctor[]).map(d=><article
         key={d.doctorRef+":"+d.centerSlug}
-        style={{border:"1px solid #d7dfdb",borderRadius:12,padding:18}}>
-       <p className="cg-eyebrow">Verified doctor · {d.centerName}</p>
+        className={styles.card}>
+       <div className={styles.identity}><span className={styles.avatar} aria-hidden="true">+</span>
+        <p className="cg-eyebrow">Verified doctor · {d.centerName}</p></div>
        <h3><Link href={"/health-network/doctors/"+encodeURIComponent(d.doctorRef)}>
         {d.doctorName}</Link></h3>
        <p>{d.specialties.join(", ")||"Specialty not listed"}</p>
@@ -199,7 +207,7 @@ export default async function HealthcareDirectory({searchParams}:Props){
        <p>{d.address}, {d.pinCode}</p>
        <p><strong>{d.fee?rupee(d.fee.amountMinor):"Fee not listed"}</strong>
         {d.fee?" · In-person consultation":""}</p>
-       <div className="cg-health-directory-actions">
+       <div className={styles.actions}>
         <Link href={"/health-network/doctors/"+encodeURIComponent(d.doctorRef)}>
          View doctor profile</Link>
         {!canReschedule&&d.fee&&<Link className="cg-health-link-action primary"
