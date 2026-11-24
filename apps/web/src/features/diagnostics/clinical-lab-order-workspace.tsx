@@ -63,7 +63,9 @@ export function ClinicalLabOrderWorkspace({canCreate,canView,canManageSamples,ca
  const [custodyUncertain,setCustodyUncertain]=useState(false);
  const [rejectSampleRef,setRejectSampleRef]=useState("");
  const [custodyBusy,setCustodyBusy]=useState(false);
- const epoch=useRef(0);
+ const epoch=useRef(0),detailEpoch=useRef(0);
+ const [orderQuery,setOrderQuery]=useState("");
+ const [detailLoading,setDetailLoading]=useState(false);
  const reloadCenters=useCallback(async()=>{
   const result=await api<{centers:Center[]}>("centers/eligible");
   setCenters(result.centers??[]);
@@ -91,9 +93,10 @@ export function ClinicalLabOrderWorkspace({canCreate,canView,canManageSamples,ca
    "Your assigned laboratory cannot be checked.");}).finally(()=>{
     if(active)setLoading(false);
    });
-  return()=>{active=false;++epoch.current;};
+  return()=>{active=false;++epoch.current;++detailEpoch.current;};
  },[reloadCenters]);
  useEffect(()=>{
+  ++detailEpoch.current;setDetailLoading(false);setOrderQuery("");
   setPatients([]);setCatalog([]);setOrders([]);setSelected(null);
   custodyReplay.current=null;setCustodyUncertain(false);setRejectSampleRef("");
   setPatientKey("");setCart([]);setItemKey("");
@@ -102,7 +105,7 @@ export function ClinicalLabOrderWorkspace({canCreate,canView,canManageSamples,ca
   void reloadCenter(center).catch(e=>setError(e instanceof Error?e.message:
    "Current lab orders are unavailable.")).finally(()=>setLoading(false));
  },[center,reloadCenter]);
- const patientOptions=patients.map((p,i)=>({key:String(i),value:p}));
+ const patientOptions=patients.map(p=>({key:p.patientRef+"|"+p.careSourceKind+"|"+p.careSourceRef,value:p}));
  const availableItems=catalog.filter(x=>!cart.some(c=>c.mappingRef===x.mappingRef));
  function addItem(){
   if(!itemKey||!Number.isSafeInteger(quantity)||quantity<1||quantity>20)return;
@@ -131,7 +134,8 @@ export function ClinicalLabOrderWorkspace({canCreate,canView,canManageSamples,ca
  }
  function submit(e:FormEvent<HTMLFormElement>){
   e.preventDefault();
-  if(!canCreate||uncertain||!center||!cart.length)return;
+  if(!canCreate||busy||loading||uncertain||!center||!cart.length)return;
+  if(cart.some(c=>!catalog.some(o=>o.mappingRef===c.mappingRef))){setError("A selected test is no longer available. Remove it and choose a current test.");return;}
   const p=patientOptions.find(x=>x.key===patientKey)?.value;
   if(!p){setError("Select a currently authorized patient and care visit.");return;}
   const payload:Submission={requestKey:crypto.randomUUID(),patientRef:p.patientRef,
@@ -140,15 +144,17 @@ export function ClinicalLabOrderWorkspace({canCreate,canView,canManageSamples,ca
   void send(payload);
  }
  async function show(orderRef:string){
-  const requestedCenter=center;
-  setError("");setSelected(null);setSelectedCenter("");
+  const requestedCenter=center,request=++detailEpoch.current;
+  setDetailLoading(true);setError("");setSelected(null);setSelectedCenter("");setRejectSampleRef("");
   try{
    const detail=await api<Detail>("centers/"+requestedCenter+"/orders/"+orderRef);
    // The UI cannot reuse a previous center's patient/clinical data after
    // the user switches the selected lab while a private request is pending.
+   if(request!==detailEpoch.current)return;
    setSelectedCenter(requestedCenter);
    setSelected(detail);
-  }catch(e){setError(e instanceof Error?e.message:"This order cannot be viewed.");}
+  }catch(e){if(request===detailEpoch.current)setError(e instanceof Error?e.message:"This order cannot be viewed.");}
+  finally{if(request===detailEpoch.current)setDetailLoading(false);}
  }
  async function custodySend(original:CustodyRequest){
   if(!canManageSamples||!canView||custodyBusy||original.centerRef!==center)return;
@@ -285,14 +291,16 @@ export function ClinicalLabOrderWorkspace({canCreate,canView,canManageSamples,ca
   </section>}
   {canView&&center&&<section className="form-section">
    <h2>Latest Clinical Orders</h2>
+   <label className="field">Find in recent orders<input value={orderQuery} onChange={e=>setOrderQuery(e.target.value)} placeholder="Order number or clinical status"/></label>
+   {detailLoading&&<p role="status">Checking order details…</p>}
    {!orders.length?<p className="cg-module-empty">
     No clinical lab orders are available for this verified center.</p>:
     <div className="table-wrap"><table className="role-table">
      <thead><tr><th>Order</th><th>Quoted total</th><th>Clinical status</th><th>Details</th></tr></thead>
-     <tbody>{orders.map(o=><tr key={o.orderRef}>
+     <tbody>{orders.filter(o=>(o.displayOrderRef+" "+o.status.replaceAll("_"," ")).toLowerCase().includes(orderQuery.trim().toLowerCase())).map(o=><tr key={o.orderRef}>
       <td>{o.displayOrderRef}</td><td>{money(o.quotedTotalMinor)}</td>
       <td>{o.status.replaceAll("_"," ").toLowerCase()}</td>
-      <td><button type="button" onClick={()=>void show(o.orderRef)}>View</button></td>
+      <td><button type="button" disabled={busy||custodyBusy||custodyUncertain||uncertain} onClick={()=>void show(o.orderRef)}>View</button></td>
      </tr>)}</tbody>
     </table></div>}
    <p className="cg-diagnostics-note">Showing at most 30 current-source orders.
@@ -311,13 +319,15 @@ export function ClinicalLabOrderWorkspace({canCreate,canView,canManageSamples,ca
    </div>
   </div>}
   {selected&&selectedCenter===center&&<section className="form-section">
-   <h2>{selected.order.displayOrderRef}</h2>
+   <div className="toolbar"><h2>{selected.order.displayOrderRef}</h2><button type="button" disabled={custodyBusy||custodyUncertain} onClick={()=>{++detailEpoch.current;setSelected(null);}}>Close details</button></div>
+   <p>Clinical status: {selected.order.status.replaceAll("_"," ")}</p>
    <p>Accepted lab total: {money(selected.order.quotedTotalMinor)}.
     No verified payment or report delivery has been recorded.</p>
+   <h3>1. Accepted tests</h3>
    {selected.lines.map((line,i)=><p key={i}>
     {line.name} ({line.code}) · Qty {line.quantity} ·
     {" "+money(line.quotedLineTotalMinor)}</p>)}
-   <h3>Original Sample Labels</h3>
+   <h3>2. Specimen collection & custody</h3>
    {!selected.samples.length?<p role="status">No approved specimen custody
     path exists for these tests. The order cannot be advanced until
     the required clinical handling policy has been reviewed.</p>:
@@ -343,6 +353,7 @@ export function ClinicalLabOrderWorkspace({canCreate,canView,canManageSamples,ca
    <p>Each custody action requires current assigned-center access. Rejected
     specimens need new collection labels. A collected sample does not mean
     a medical report is reviewed or released.</p>
+   <h3>3. Result entry, review & release</h3>
    {canRelease&&selected.report?.state==="RESULT_READY"&&
     <ClinicalLabReleasePanel key={"release:"+center+":"+selected.order.orderRef}
      centerRef={center} orderRef={selected.order.orderRef}/>}
