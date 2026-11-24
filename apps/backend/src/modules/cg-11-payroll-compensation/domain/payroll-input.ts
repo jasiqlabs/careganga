@@ -13,17 +13,18 @@ export function parsePolicy(raw:unknown){
  const components=x.components.map(raw=>{const c=fields(raw,["code","label","kind","mode","minor","basisPoints","taxClass"]);
   if(typeof c.code!=="string"||!/^[A-Z][A-Z0-9_]{1,29}$/.test(c.code))throw invalid("Enter a valid component code");
   const normalized=label(c.label).toUpperCase().replace(/[^A-Z0-9]/g,"");
-  if(/^(PF|EPF|ESI|ESIC|PT|TDS)(_|$)/.test(c.code)||/^(PF|EPF|ESI|ESIC|PT|TDS|PROVIDENTFUND|EMPLOYEE(S)?STATEINSURANCE|PROFESSIONALTAX|INCOMETAX|GRATUITY)$/.test(normalized)||c.code==="BASIC")throw invalid("Statutory configuration requires an approved rule; basic salary is entered separately");
+  if(/^(PF|EPF|ESI|ESIC|PT|TDS)(_|$)/.test(c.code)||/^(PF|EPF|ESI|ESIC|PT|TDS|PROVIDENTFUND|EMPLOYEE(S)?STATEINSURANCE|PROFESSIONALTAX|INCOMETAX|GRATUITY)$/.test(normalized)||["BASIC","RECORDED_LATE_DEDUCTION"].includes(c.code))throw invalid("Statutory configuration requires an approved rule; basic salary is entered separately");
   const mode=option(c.mode,["FIXED","PERCENT"] as const),kind=option(c.kind,["ALLOWANCE","DEDUCTION","EMPLOYER_CONTRIBUTION"] as const);
   if(mode==="FIXED"?c.basisPoints!=null:c.minor!=null||!Number.isInteger(c.basisPoints)||Number(c.basisPoints)<0||Number(c.basisPoints)>10000)throw invalid("Check amount or percentage");
   return {code:c.code,label:label(c.label),kind,mode,minor:mode==="FIXED"?minor(c.minor,true):null,bp:mode==="PERCENT"?Number(c.basisPoints):null,taxClass:option(c.taxClass,["TAXABLE","NON_TAXABLE","NOT_CONFIGURED"] as const)};
  });
  if(new Set(components.map(c=>c.code)).size!==components.length)throw invalid("Component codes must be unique");
- const rules=x.attendanceRules===undefined?{absence:"UNCONFIGURED",leave:{}}:fields(x.attendanceRules,["absence","leave"]);
+ const rules=x.attendanceRules===undefined?{absence:"UNCONFIGURED",leave:{}}:fields(x.attendanceRules,["absence","leave","lateDeductionMinor"]);
  const absence=option(rules.absence,["UNCONFIGURED","PAID","UNPAID"] as const);
  if(!rules.leave||typeof rules.leave!=="object"||Array.isArray(rules.leave)||Object.keys(rules.leave).length>40)throw invalid("Check approved leave rules");
  const leave=Object.fromEntries(Object.entries(rules.leave).map(([k,v])=>[id(k),option(v,["PAID","UNPAID"] as const)]));
- return {attendanceRules:{absence,leave},key:id(x.requestKey),branch:x.branchRef===null||x.branchRef==="FOUNDATION"?null:id(x.branchRef),label:label(x.label),supersedes:x.supersedesRef==null||x.supersedesRef===""?null:id(x.supersedesRef),...range(x),components};
+ const lateDeductionMinor=minor("lateDeductionMinor" in rules?rules.lateDeductionMinor??"0":"0",true);
+ return {attendanceRules:{absence,leave,lateDeductionMinor},key:id(x.requestKey),branch:x.branchRef===null||x.branchRef==="FOUNDATION"?null:id(x.branchRef),label:label(x.label),supersedes:x.supersedesRef==null||x.supersedesRef===""?null:id(x.supersedesRef),...range(x),components};
 }
 export function parseSalary(raw:unknown){const x=fields(raw,["requestKey","policyRef","policyRevision","effectiveFrom","effectiveTo","supersedesRef","hrProposalRef","baseMinor"]);if(!Number.isSafeInteger(x.policyRevision)||Number(x.policyRevision)<1)throw invalid("Refresh the policy");return {key:id(x.requestKey),policy:id(x.policyRef),policyRevision:Number(x.policyRevision),hrProposal:x.hrProposalRef==null||x.hrProposalRef===""?null:id(x.hrProposalRef),supersedes:x.supersedesRef==null||x.supersedesRef===""?null:id(x.supersedesRef),...range(x),baseMinor:minor(x.baseMinor)};}
 /** Round half-up once per component, with integer arithmetic only. */
