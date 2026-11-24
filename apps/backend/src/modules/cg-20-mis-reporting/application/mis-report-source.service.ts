@@ -5,6 +5,7 @@ import {BeneficiaryReportService} from "../../cg-06-beneficiaries-assistance/app
 import {MembershipRosterService} from "../../cg-04-membership-volunteers/application/membership-roster.service";
 import {VolunteerRosterService} from "../../cg-04-membership-volunteers/application/volunteer-roster.service";
 import {PayrollRunService} from "../../cg-11-payroll-compensation/application/payroll-run.service";
+import {DonationAdminService} from "../../cg-07-campaigns-donations/application/donation-admin.service";
 import {SessionService} from "../../cg-01-identity-access/application/session.service";
 import {FinanceReportsService} from "../../cg-09-finance-accounting/application/finance-reports.service";
 import {BranchSourceFacade} from "../../cg-02-foundation-structure/application/branch-source.facade";
@@ -16,10 +17,10 @@ export const REPORT_KINDS=[
  "FINANCE_POSTED_LEDGER","FINANCE_POSTED_SUMMARY",
  "FINANCE_POSTED_TREND","FINANCE_POSTED_GROUPED",
  "APPOINTMENT_STATUS","APPOINTMENT_STATUS_GROUPED","APPOINTMENT_DOCTOR_SUMMARY",
- "PLATFORM_AUDIT_ACTIVITY","DIAGNOSTICS_CATALOG_SUMMARY","BENEFICIARY_ASSISTANCE_SUMMARY","MEMBERSHIP_ROSTER_SUMMARY","VOLUNTEER_ROSTER_SUMMARY","PAYROLL_STATUS_SUMMARY"
+ "PLATFORM_AUDIT_ACTIVITY","DIAGNOSTICS_CATALOG_SUMMARY","BENEFICIARY_ASSISTANCE_SUMMARY","MEMBERSHIP_ROSTER_SUMMARY","VOLUNTEER_ROSTER_SUMMARY","PAYROLL_STATUS_SUMMARY","DONATION_RECEIPT_SUMMARY"
 ] as const;
 export type ReportKind=typeof REPORT_KINDS[number];
-export const LIVE_PREVIEW_KINDS:readonly ReportKind[]=["BENEFICIARY_ASSISTANCE_SUMMARY","MEMBERSHIP_ROSTER_SUMMARY","VOLUNTEER_ROSTER_SUMMARY","PAYROLL_STATUS_SUMMARY"];
+export const LIVE_PREVIEW_KINDS:readonly ReportKind[]=["BENEFICIARY_ASSISTANCE_SUMMARY","MEMBERSHIP_ROSTER_SUMMARY","VOLUNTEER_ROSTER_SUMMARY","PAYROLL_STATUS_SUMMARY","DONATION_RECEIPT_SUMMARY"];
 export type ReportView="TABLE"|"SUMMARY"|"CHART"|"PIVOT";
 export type SafeReportRequest={
  kind:ReportKind;view:ReportView;yearRef?:string;branchRef?:string;
@@ -67,7 +68,8 @@ export function parseSafeReport(raw:unknown):SafeReportRequest{
   BENEFICIARY_ASSISTANCE_SUMMARY:["SUMMARY"],
   MEMBERSHIP_ROSTER_SUMMARY:["SUMMARY"],
   VOLUNTEER_ROSTER_SUMMARY:["SUMMARY"],
-  PAYROLL_STATUS_SUMMARY:["SUMMARY"]
+  PAYROLL_STATUS_SUMMARY:["SUMMARY"],
+  DONATION_RECEIPT_SUMMARY:["SUMMARY"]
  };
  if(!legalViews[kind as ReportKind].includes(view))
   throw new BadRequestException({code:"MIS_REPORT_VIEW_INVALID",
@@ -160,7 +162,8 @@ export class MisReportSourceService{
   private readonly beneficiaries:BeneficiaryReportService,
   private readonly members:MembershipRosterService,
   private readonly volunteers:VolunteerRosterService,
-  private readonly payroll:PayrollRunService){}
+  private readonly payroll:PayrollRunService,
+  private readonly donations:DonationAdminService){}
  /** CG02 is the sole source of current permitted branch scope, never a report-provided UUID. */
  async originalFinanceScope(token:string,request:SafeReportRequest){
   if(!request.kind.startsWith("FINANCE_"))return null;
@@ -249,6 +252,7 @@ export class MisReportSourceService{
   if(await permission("membership.members.view"))templates.push({kind:"MEMBERSHIP_ROSTER_SUMMARY",label:"Membership status",views:["SUMMARY"],description:"Current authorized membership counts, live preview only."});
   if(await permission("volunteers.view"))templates.push({kind:"VOLUNTEER_ROSTER_SUMMARY",label:"Volunteer status",views:["SUMMARY"],description:"Current authorized volunteer counts, live preview only."});
   if(await permission("payroll.runs.view")&&await permission("payroll.compensation.view"))templates.push({kind:"PAYROLL_STATUS_SUMMARY",label:"Payroll status",views:["SUMMARY"],description:"Current month payroll run and payment status counts, live preview only."});
+  if(finance.ready)templates.push({kind:"DONATION_RECEIPT_SUMMARY",label:"Donation and receipt reconciliation",views:["SUMMARY"],description:"Current verified donation and receipt totals, live preview only."});
   if(diagnosticsAccess)templates.push({
    kind:"DIAGNOSTICS_CATALOG_SUMMARY",label:"Diagnostics services summary",
    views:["SUMMARY"],description:"Current approved service catalog counts from CG-16."});
@@ -416,6 +420,20 @@ export class MisReportSourceService{
     sourceCutoffKind:"OWNER_TRANSACTION_SNAPSHOT",explanation:suppressed?"Small groups are hidden to protect privacy.":
      "Current owner-scoped status counts only; no contact, identity or address fields. Live preview only.",
     scopeLabel:"Current permitted roster scope"};
+  }
+  if(q.kind==="DONATION_RECEIPT_SUMMARY"){
+   const x=await this.donations.misSummary(token);
+   const columns=[{key:"total",label:"Donation records",unit:"COUNT" as const},{key:"received",label:"Verified posted donations",unit:"COUNT" as const},
+    {key:"pending",label:"Pending donations",unit:"COUNT" as const},{key:"failed",label:"Failed or expired",unit:"COUNT" as const},
+    {key:"receiptsIssued",label:"Issued receipts",unit:"COUNT" as const},{key:"receivedMinor",label:"Verified gross donations",unit:"INR_MINOR" as const},
+    {key:"verifiedRefundMinor",label:"Verified refunds",unit:"INR_MINOR" as const},{key:"netReceivedMinor",label:"Verified net donations",unit:"INR_MINOR" as const}];
+   return {kind:q.kind,view:q.view,label:"Donation and receipt reconciliation",
+    state:x.requiresReview?"PARTIAL":x.total===0?"EMPTY":"READY",columns,
+    rows:x.requiresReview||x.total===0?[]:[Object.fromEntries(columns.map(c=>[c.key,String(x[c.key as keyof typeof x])]))],
+    nextOffset:null,sourceReadAt:new Date().toISOString(),sourceAsOf:x.sourceAsOf.toISOString(),
+    sourceCutoffKind:"OWNER_STATEMENT_SNAPSHOT",
+    explanation:x.requiresReview?"Original donation or refund records require finance reconciliation. Totals withheld.":"Verified original CG07/CG09/CG19 totals; pending requests excluded from received amounts. Live preview only.",
+    scopeLabel:"Current permitted donation finance scope"};
   }
   if(q.kind==="PAYROLL_STATUS_SUMMARY"){
    const x=await this.payroll.dashboard(token);
