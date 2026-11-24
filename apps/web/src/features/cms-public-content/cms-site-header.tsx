@@ -23,8 +23,8 @@ export function CmsSiteHeader({navigation,contact}:{
  navigation?:PublicCmsNavigation|null;contact?:Contact}){
  const [expanded,setExpanded]=useState(false);
  const pathname=usePathname();
- const member=navigation?.memberJoin?.visible&&navigation.memberJoin.path?
-  navigation.memberJoin.path:undefined;
+ const member=navigation?.memberJoin?.visible===true&&navigation.memberJoin.path==="/membership"?
+  "/membership":undefined;
  // The same exact original route check as Public Android; never render a guessed CMS CTA.
  const volunteer=navigation?.volunteerJoin?.visible===true&&navigation.volunteerJoin.path==="/volunteer"?
   "/volunteer":undefined;
@@ -77,10 +77,9 @@ export function CmsSiteHeader({navigation,contact}:{
       text==="Blog"&&anyArticles?"/blog":undefined}))}/>
     <Menu label="Join Now" items={[{text:"Become a Member",href:member},
      {text:"Become a Volunteer",href:volunteer}]}/>
-    {isPublished("/healthcare")?<Link href="/healthcare"
-     className={pathname==="/healthcare"?"cg-site-active":undefined}>
-     Healthcare Assistance</Link>:
-     <span className="cg-site-unavailable">Healthcare Assistance</span>}
+    <Link href={isPublished("/healthcare")?"/healthcare":"/health-network"}
+     className={pathname==="/healthcare"||pathname.startsWith("/health-network")?"cg-site-active":undefined}>
+     Healthcare Assistance</Link>
     <Link href="/contact">Contact Us</Link>
     {navigation?.login?.visible&&navigation.login.path==="/admin/login"&&
      <Link className="cg-site-staff" href="/admin/login">Staff login</Link>}
