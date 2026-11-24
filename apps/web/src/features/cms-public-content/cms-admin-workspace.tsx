@@ -14,7 +14,7 @@ type PageDetail={pageRef:string;kind:Kind;slug:string;version:number;revisionRef
  revisionNo:number;status:string;approvalCaseRef:string|null;
  title:string;seoTitle:string;seoDescription:string;canonicalPath:string;
  sections:{kind:string;order:number;fields:Record<string,unknown>}[];
- assets:Asset[];navigation:NavDesired|null;publicationStatus:string;scheduledAt:string|null};
+ assets:Asset[];bundledAssets?:{key:string;role:string;order:number;altText:string}[];navigation:NavDesired|null;publicationStatus:string;scheduledAt:string|null};
 type Review={caseRef:string;number:string;title:string;status:string;revision:number};
 type ReviewDetail={caseNumber:string;caseRef:string;status:string;revision:number;
  source:{title:string;slug:string;kind:string;seoTitle:string;
@@ -286,7 +286,7 @@ export function CmsAdminWorkspace({canManage,canPublish,canReview}:{
  const heroPhotoMissing=draft.kind==="HOME"&&(
   !draft.slides.some(slide=>slide.visible)||draft.slides.some((slide,index)=>
   slide.visible&&!slide.textOnly&&
-  !draft.assets.some(asset=>asset.role==="HERO"&&asset.order===index)));
+  !draft.assets.some(asset=>asset.role==="HERO"&&asset.order===index)&&!selected?.bundledAssets?.some(asset=>asset.role==="HERO"&&asset.order===index)));
  const okay=draft.title.trim().length>=3&&
   (draft.kind!=="HOME"||draft.slides.length>0)&&
   draft.slides.length<=6&&draft.slides.every(x=>x.heading.trim().length>=3)&&
@@ -499,9 +499,7 @@ export function CmsAdminWorkspace({canManage,canPublish,canReview}:{
   kind:draft.kind,slug:previewData.slug,title:draft.title,
   seoTitle:draft.seoTitle||draft.title,seoDescription:draft.seoDescription,
   canonicalPath:previewData.canonicalPath,lastPublishedAt:"",
-  sections:previewData.sections,assets:selected?draft.assets.map(a=>({
-   role:a.role,order:a.order,altText:a.altText,
-   src:"/api/cms-image-preview/"+a.fileRef})):[]};
+  sections:previewData.sections,assets:selected?[...draft.assets.map(a=>({role:a.role,order:a.order,altText:a.altText,src:"/api/cms-image-preview/"+a.fileRef})),...(selected.bundledAssets??[]).filter(a=>!draft.assets.some(x=>x.role===a.role&&x.order===a.order)&&!(a.role==="HERO"&&draft.slides[a.order]?.textOnly)&&!(a.role==="ABOUT"&&draft.bodyVariant!=="SPLIT")).map(a=>({role:a.role,order:a.order,altText:a.altText,src:"/api/public/content/release-media/"+a.key}))]:[]};
  return <div className="cg-cms-workspace">
   <header className="cg-cms-toolbar"><div>
    <h1>Website content</h1><p>Draft → independent approval → publish. Public visitors see only approved pages.</p>
@@ -921,6 +919,7 @@ export function CmsAdminWorkspace({canManage,canPublish,canReview}:{
        {selected.scheduledAt?"Cancel scheduled publication / hide page":"Hide from public website"}</button>
      </>}
     </div>
+    {selected?.bundledAssets?.length? <p className="cg-cms-muted">Default release illustrations are preserved when you edit text. Upload a replacement in a new draft to override a placement.</p>:null}
     {selected&&<p className="cg-cms-muted">Current draft: {selected.status.replaceAll("_"," ")}.
      Public page: {selected.publicationStatus.replaceAll("_"," ")}.
      {selected.scheduledAt&&" Scheduled for "+new Date(selected.scheduledAt).toLocaleString()+"."}
