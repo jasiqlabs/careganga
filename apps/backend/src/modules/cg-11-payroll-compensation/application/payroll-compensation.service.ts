@@ -162,6 +162,13 @@ export class PayrollCompensationService{
   type Source=Policy&Salary&{created_by:string;approval_case_ref:string|null;assignment_ref:string;assignment_version:number;employee_status_version:number;policy_revision:number;source_hr_proposal_ref:string|null;source_hr_proposal_revision:number|null;source_hr_proposal_digest:string|null;destination_ciphertext:string;destination_nonce:string;destination_tag:string;destination_fingerprint:string;masked_digits:string;masked_ifsc:string};
   const row=(await tx.query<Source>("SELECT *,effective_from::text,effective_to::text"+(kind==="COMPENSATION"?",base_salary_minor::text":"")+" FROM "+table+" WHERE root_realm_id=$1 AND id=$2 "+(write?"FOR UPDATE":"FOR SHARE"),[a.realmId,ref])).rows[0];
   if(!row||row.branch_ref!==initial.branch_ref)throw conflict();
+  let previous:Record<string,unknown>|null=null;
+  if(row.supersedes_ref){
+   const prior=(await tx.query<Source>("SELECT *,effective_from::text,effective_to::text"+(kind==="COMPENSATION"?",base_salary_minor::text":"")+" FROM "+table+" WHERE root_realm_id=$1 AND id=$2 AND status='APPROVED' FOR SHARE",[a.realmId,row.supersedes_ref])).rows[0];
+   if(prior&&scope.branches.some(b=>b.value===prior.branch_ref)&&(kind==="POLICY"?prior.branch_ref===row.branch_ref:prior.employee_ref===row.employee_ref)){
+    previous={effectiveFrom:prior.effective_from,effectiveTo:prior.effective_to,...(kind==="POLICY"?{label:prior.label}:kind==="PAYOUT"?{maskedAccount:"•••• "+prior.masked_digits,maskedIfsc:prior.masked_ifsc}:{baseMinor:prior.base_salary_minor})};
+   }
+  }
   let preview:Record<string,unknown>,digest:string;
   if(kind==="POLICY"){
    const components=(await tx.query("SELECT code,label,kind,calc_mode,amount_minor::text,rate_bp,percent_basis,tax_class FROM payroll_component WHERE root_realm_id=$1 AND policy_id=$2 ORDER BY code",[a.realmId,row.id])).rows;
@@ -172,7 +179,7 @@ export class PayrollCompensationService{
    if(kind==="PAYOUT"){
     preview={ref:row.id,employeeName:current.name,employeeReference:current.employee_code,effectiveFrom:row.effective_from,effectiveTo:row.effective_to,status:row.status,revision:row.revision,maskedAccount:"•••• "+row.masked_digits,maskedIfsc:row.masked_ifsc};
     digest=hash([kind,row.id,row.employee_ref,row.branch_ref,row.assignment_ref,row.assignment_version,row.employee_status_version,row.effective_from,row.effective_to,row.supersedes_ref,row.destination_ciphertext,row.destination_nonce,row.destination_tag,row.destination_fingerprint,row.masked_digits,row.masked_ifsc,row.request_digest]);
-    return {row,preview,digest};
+    return {row,preview:{...preview,previous},digest};
    }
    const policy=(await tx.query("SELECT revision,status FROM payroll_policy WHERE root_realm_id=$1 AND id=$2 AND branch_ref=$3 FOR SHARE",[a.realmId,row.policy_id,row.branch_ref])).rows[0];
    if(write&&(!policy||policy.status!=="APPROVED"||policy.revision!==row.policy_revision))throw conflict();
@@ -182,7 +189,7 @@ export class PayrollCompensationService{
    }
    preview={...this.salaryView(row),employeeName:current.name,employeeReference:current.employee_code,hasOriginalHrProposal:!!row.source_hr_proposal_ref};digest=hash([kind,row.id,row.employee_ref,row.branch_ref,row.assignment_ref,row.assignment_version,row.employee_status_version,row.policy_id,row.policy_revision,row.source_hr_proposal_ref,row.source_hr_proposal_revision,row.source_hr_proposal_digest,row.effective_from,row.effective_to,row.supersedes_ref,row.base_salary_minor,row.request_digest]);
   }
-  return {row,preview,digest};
+  return {row,preview:{...preview,previous},digest};
  }
  async applyReview(tx:PoolClient,a:Actor,kind:"POLICY"|"COMPENSATION"|"PAYOUT",ref:string,status:"SUBMITTED"|"APPROVED"|"RETURNED"|"REJECTED",expected:number,caseRef:string){
   const table=kind==="POLICY"?"payroll_policy":kind==="PAYOUT"?"employee_payout_instruction":"employee_compensation";
