@@ -104,6 +104,14 @@ export class MembershipRosterService{
   }
   return {total,active,expired,cancelled,suspended,byCategory};
  }
+ /** MIS consumes aggregate only, not private roster rows or contact fields. */
+ async misCounts(token:string){
+  return this.run(token,"membership.members.view",async(tx,a)=>{
+   const {total,active,expired,cancelled,suspended}=await this.overview(tx,a);
+   return {total,active,expired,cancelled,suspended,
+    sourceAsOf:(await tx.query<{at:Date}>("SELECT transaction_timestamp() AS at")).rows[0].at.toISOString()};
+  },true);
+ }
  async list(token:string,raw:unknown){
   const filter=read(raw);
   return this.run(token,"membership.members.view",async(tx,a)=>{
