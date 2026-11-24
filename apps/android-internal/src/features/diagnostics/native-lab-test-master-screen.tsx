@@ -36,6 +36,7 @@ export function NativeLabTestMasterScreen({token,canManage,canViewPricing,
  const [centers,setCenters]=useState<Center[]>([]);
  const [summary,setSummary]=useState<Summary|null>(null),[center,setCenter]=useState("");
  const [selected,setSelected]=useState<Test|null>(null),[editing,setEditing]=useState(false);
+ const [editOriginal,setEditOriginal]=useState<Test|null>(null);
  const [catCode,setCatCode]=useState(""),[catName,setCatName]=useState("");
  const [testCode,setTestCode]=useState(""),[testName,setTestName]=useState("");
  const [categoryRef,setCategoryRef]=useState(""),[sample,setSample]=useState("BLOOD");
@@ -90,12 +91,12 @@ export function NativeLabTestMasterScreen({token,canManage,canViewPricing,
  },[refresh,error]);
  useEffect(()=>{
   const back=BackHandler.addEventListener("hardwareBackPress",()=>{
-   if(editing){setEditing(false);return true;}
+   if(editing){if(busy||uncertain)return true;Alert.alert("Discard unsaved test changes?","The saved test will not change.",[{text:"Keep editing",style:"cancel"},{text:"Discard",style:"destructive",onPress:()=>setEditing(false)}]);return true;}
    if(uncertain)return true;
    onExit();return true;
   });
   return()=>back.remove();
- },[onExit,editing,uncertain]);
+ },[onExit,editing,uncertain,busy]);
  const button=(text:string,fn:()=>void,disabled=false,active=false)=>
   <Pressable accessibilityRole="button" accessibilityLabel={text}
    accessibilityState={{disabled,selected:active}} disabled={disabled}
@@ -137,7 +138,7 @@ export function NativeLabTestMasterScreen({token,canManage,canViewPricing,
   command.current=attempt;void save(attempt);
  }
  function openTest(test?:Test,duplicate=false){
-  setEditing(true);setTab("TESTS");setSelected(test&&!duplicate?test:null);
+  setEditing(true);setTab("TESTS");setSelected(test&&!duplicate?test:null);setEditOriginal(test&&!duplicate?test:null);
   setTestCode(test&&!duplicate?test.code:"");
   setTestName(test?(duplicate?test.name+" copy":test.name):"");
   setCategoryRef(test?.categoryRef??"");setSample(test?.sampleType??"BLOOD");
@@ -146,12 +147,13 @@ export function NativeLabTestMasterScreen({token,canManage,canViewPricing,
   setTo(test&&!duplicate?test.activeToUtc??"":"");
  }
  function saveTest(){
-  if(!canManage||!testName.trim()||!testCode.trim()||!categoryRef)return;
+  if(!canManage||!editing||!testName.trim()||!testCode.trim()||!categoryRef)return;
   try{
    const window=validateWindow(from,to);
    const fields={testCode,name:testName,categoryRef,sampleType:sample,
     clinicalDescription:description,parametersDescription:parameters,...window};
-   const existing=selected&&!editing?null:selected?.code===testCode?selected:null;
+   const existing=editOriginal;
+   if(existing&&(!selected||selected.testRef!==existing.testRef||selected.revision!==existing.revision||testCode!==existing.code))throw Error("The test has changed or is unavailable. Reopen the current record before saving.");
    if(existing){
     commit("tests/"+existing.testRef,"PATCH",{...fields,expectedVersion:existing.revision,
      status:existing.status},
@@ -237,7 +239,7 @@ export function NativeLabTestMasterScreen({token,canManage,canViewPricing,
       x!=="PRICING"||canViewPricing).map(x=>button(
       x==="TESTS"?"Tests":x==="CATEGORIES"?"Categories":
       x==="PACKAGES"?"Packages":"Center pricing",
-      ()=>{setTab(x);setEditing(false)},busy||uncertain,tab===x))}
+      ()=>{setTab(x);setEditing(false)},busy||uncertain||editing,tab===x))}
    </View>
    {summary&&<View style={s.card}>
     <Text style={s.heading}>Current diagnostic catalogue</Text>
@@ -287,7 +289,7 @@ export function NativeLabTestMasterScreen({token,canManage,canViewPricing,
     {canManage&&!editing&&button("Add new diagnostic test",()=>openTest(),busy||uncertain)}
     {canManage&&editing&&<View style={s.item}>
      <Text style={s.heading}>Diagnostic test details</Text>
-     {selected&&selected.code===testCode?
+     {editOriginal?
       <View style={s.field}>
        <Text style={s.label}>Original test code (cannot be changed)</Text>
        <Text style={s.note}>{testCode}</Text>
