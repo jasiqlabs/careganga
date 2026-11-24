@@ -254,6 +254,6 @@ const styles=StyleSheet.create({
   minHeight:46,padding:12,color:theme.text},
  receipt:{fontFamily:Platform.select({ios:"Menlo",android:"monospace"})??"monospace",
   color:theme.text,flexWrap:"wrap"},
- error:{color:"#a33434",fontWeight:"600"},
+ error:{color:theme.error,fontWeight:"600"},
  muted:{fontSize:13,color:theme.mutedText}
 });
