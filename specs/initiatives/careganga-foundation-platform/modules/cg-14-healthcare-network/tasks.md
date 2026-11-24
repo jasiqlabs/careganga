@@ -161,6 +161,10 @@ Dependencies: US-002 (actual verified active CG-14 center/account, delivered bas
 
 ## Execution progress
 
+### Healthcare hardening — approved directory media and public theme
+HUX-10.02/13.01/02.01: commits b6de5d2e, 9c8a1c65, 4204231f, 87840ad5, 1e231f8e; current rights-approved center photo, declared service capabilities, Web/native public projection, and shared green/cream public native theme. Original US-004-QA04/05/06/09/10/14/15/17/18 partial source trace. Original Admin and public archives recovered from private /CareGanga/ Library; separate healthcare UI-06–24 originals remain unavailable; no invented portrait or data. SQL/live media revocation and device visual tests NOT_RUN; independent review pending.
+
+
 ### 24 November 2026 — healthcare UX source checkpoint
 
 HUX-04.01 commits 18815664, fe0cde40, a2bf3ace. Web/native registration grouping and discard confirmation; prevent edits during uncertain save; Web dependent area list clears before fetch. US-001-QA01/03/07/09/11/13/16/17/18 partial source trace. Original QA definitions and dispositions unchanged. Runtime/device/build NOT_RUN; independent clearance unavailable; exact reference comparison pending.

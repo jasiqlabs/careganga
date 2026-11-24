@@ -3,7 +3,7 @@ import {BackHandler,Pressable,StyleSheet,Text,TextInput,View} from "react-native
 import * as SecureStore from "expo-secure-store";
 import * as Crypto from "expo-crypto";
 import {NativeConsultationContribution} from "./native-consultation-contribution";
-import {careGangaTheme as theme} from "../../../../../packages/design-tokens/src/index";
+import {careGangaPublicTheme as theme} from "../../../../../packages/design-tokens/src/index";
 const base=process.env.EXPO_PUBLIC_API_URL;
 const KEY="cg_public_patient_only_session";
 type Hold={holdRef:string;status:string;expiresAt:string;

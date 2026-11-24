@@ -4,7 +4,7 @@ import {
  Text,TextInput,View
 } from "react-native";
 import {SafeAreaView} from "react-native-safe-area-context";
-import {careGangaTheme as theme} from "../../../../../packages/design-tokens/src/index";
+import {careGangaPublicTheme as theme} from "../../../../../packages/design-tokens/src/index";
 import {DoctorSchedulePreview} from "./doctor-schedule-preview";
 import {PublicLabOfferDirectory,hasCurrentLabOffers} from "./public-lab-offer-directory";
 import {NativeApprovedConsultationBenefits} from "./native-approved-consultation-benefits";

@@ -1,6 +1,6 @@
 # CareGanga — Healthcare UI/UX Hardening Tracker
 
-**Date:** 24 November 2026. **Branch:** `feature/careganga-healthcare-uiux-hardening-20261124`. **Parent:** `feature/careganga-cg11-payroll-compensation-from-main-20261124` at `473728cc0d842ad64ba34f3bc14f5b555c835581`. Review-only checkpoint; no application implementation, build, browser/device tests, or merge performed. The separate healthcare QA branch is not the parent; reconcile its legitimate changes after mandatory V1 merges into main. Do not interrupt the existing handoff.
+**Date:** 24 November 2026. **Branch:** `feature/careganga-healthcare-uiux-hardening-20261124`. **Parent:** `feature/careganga-cg11-payroll-compensation-from-main-20261124` at `473728cc0d842ad64ba34f3bc14f5b555c835581`. Initial review baseline; subsequent application source commits are logged below. Build, browser/device tests and merge have not been performed. The separate healthcare QA branch is not the parent; reconcile its legitimate changes after mandatory V1 merges into main. Do not interrupt the existing handoff.
 
 ## Evidence and rules
 
@@ -85,6 +85,12 @@ This user-requested cross-module subtracker supplements (does not replace) origi
 - No independently cleared source closure, executable build or runtime/device/visual pass. Remaining CHECK items require reproduction; approved media/list projections and raw healthcare reference originals remain unresolved. No merge.
 
 - Additional source re-review: CG17 Web/native center doctor lookup now rejects late center responses and hides the policy form while new scope loads (1ec0ed98/c58221de). CG16 Web verifies exact distinct exported test references and blocks old detail actions while refreshing/editing (d81c2d95). Regress rapid X→Y center switch, response reorder, mismatched/duplicate export refs and refresh during edit; runtime NOT_RUN.
+
+## Reference recovery and public presentation checkpoint — 24 November 2026
+
+- HUX-01.01 / HUX-16.01: verified private ChatGPT Library folder `/CareGanga/`, original Admin 167-screen ZIP and Golden Reference Pack manifest (A01–A19, B01–B51, C01–C55, U01–U42), and four public archives (10+12+18+7 = 47). Opened Admin contact sheet and public contact sheet; navy/blue/white staff shell and green/gold/cream public brand confirmed. Golden pack is a preview index, not the separate healthcare UI-06–24 batch. Prior Nov 15 and Nov 18 conversation recovered titles but no original filenames/bytes for that separate batch. Exact healthcare screen comparison remains BLOCKED; no generated replacements used.
+- HUX-10.02 / 13.01: center card service capabilities and one currently published, rights-approved, clean verified center photo now projected from original CG14/03/19 sources and rendered on Web/native using existing protected public media endpoint. Commits b6de5d2e, 9c8a1c65, 4204231f, 87840ad5, 1e231f8e. Doctor portrait upload/publication is not supported by existing doctor source (NONE/CONSENT_PENDING only); keep neutral fallback rather than fabricate identity/media. Original CG14 US-004-QA04/05/06/09/10/14/15/17/18 source trace only. Verify SQL bind count, current rights/revocation, no private photo or service claims.
+- HUX-02.01 / 13.01 / 13.02: public native healthcare, booking, assistance and root shell now consume one shared public semantic theme derived from existing public Web and CMS colors; internal staff retains original Admin tokens. No business behavior changes; visual/contrast/touch QA still NOT_RUN.
 
 ## Subtracker details and expected user scenarios
 

@@ -6,7 +6,7 @@ import {NativeCenterMerchantCheckout}
  from "../../../../../packages/native-checkout/src/native-center-merchant-checkout";
 import {NativePatientCenterCollectionSummary}
  from "./native-patient-center-collection-summary";
-import {careGangaTheme as t}
+import {careGangaPublicTheme as t}
  from "../../../../../packages/design-tokens/src/index";
 type Split={state:string;accepted?:boolean;replayed?:boolean;
  grossMinor?:string;foundationSupportMinor?:string;

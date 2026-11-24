@@ -4,7 +4,7 @@ import * as SecureStore from "expo-secure-store";
 import * as Crypto from "expo-crypto";
 import {File,Paths} from "expo-file-system";
 import {fetch as expoFetch} from "expo/fetch";
-import {careGangaTheme as t} from "../../../../../packages/design-tokens/src/index";
+import {careGangaPublicTheme as t} from "../../../../../packages/design-tokens/src/index";
 
 type Collection={collectionRef:string;method:string;state:string;
  receiptPdfState:string};

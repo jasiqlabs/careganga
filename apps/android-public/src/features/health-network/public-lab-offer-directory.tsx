@@ -4,7 +4,7 @@ import {
  TextInput,View
 } from "react-native";
 import {SafeAreaView} from "react-native-safe-area-context";
-import {careGangaTheme as theme} from "../../../../../packages/design-tokens/src/index";
+import {careGangaPublicTheme as theme} from "../../../../../packages/design-tokens/src/index";
 
 /** Native equivalent of the CURRENT CG-16 published lab-offers projection.
  * It is anonymous, uses no cached private/medical state, and never performs

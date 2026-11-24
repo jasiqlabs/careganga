@@ -5,7 +5,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import * as SecureStore from "expo-secure-store";
-import { careGangaTheme as theme } from "../../../packages/design-tokens/src/index";
+import { careGangaPublicTheme as theme } from "../../../packages/design-tokens/src/index";
 import { PublicCmsContent } from "../src/features/cms/public-cms-screen";
 import {NativePublicDonation} from "../src/features/cms/native-public-donation";
 import {PublicPartnerApplication} from "../src/features/health-network/public-partner-application";

@@ -1,6 +1,6 @@
 import {useCallback,useEffect,useMemo,useRef,useState} from "react";
 import {ActivityIndicator,Pressable,StyleSheet,Text,View} from "react-native";
-import {careGangaTheme as theme} from "../../../../../packages/design-tokens/src/index";
+import {careGangaPublicTheme as theme} from "../../../../../packages/design-tokens/src/index";
 import {NativeConsultationAction} from "../appointments/native-consultation-action";
 
 const base=process.env.EXPO_PUBLIC_API_URL;

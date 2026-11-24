@@ -1,6 +1,6 @@
 import {useCallback,useEffect,useState} from "react";
 import {ActivityIndicator,AppState,Pressable,StyleSheet,Text,View} from "react-native";
-import {careGangaTheme as theme}
+import {careGangaPublicTheme as theme}
  from "../../../../../packages/design-tokens/src/index";
 const url=process.env.EXPO_PUBLIC_API_URL;
 const ID=/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;

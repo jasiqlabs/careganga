@@ -6,7 +6,7 @@ import * as SecureStore from "expo-secure-store";
 import * as Crypto from "expo-crypto";
 import * as Sharing from "expo-sharing";
 import * as Print from "expo-print";
-import {careGangaTheme as t} from "../../../../../packages/design-tokens/src/index";
+import {careGangaPublicTheme as t} from "../../../../../packages/design-tokens/src/index";
 
 const base=process.env.EXPO_PUBLIC_API_URL;
 const KEY="cg_public_patient_only_session";
