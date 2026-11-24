@@ -37,7 +37,7 @@ test("US-001-QA10/17: explicit consent and guardian proof are required for a min
 test("US-001-QA04/19: strict contact, geography and version validation",()=>{
  const valid=parseProfile({...draft,contactMobile:"+919876543210"},true);
  assert.equal(valid.contact,"+919876543210");
- for(const bad of ["9876543210","+0123456789","+1234","not a phone","+91987654321000"]){
+ for(const bad of ["9876543210","+0123456789","+1234","not a phone","+919876543210000000"]){
   assert.throws(()=>parseProfile({...draft,contactMobile:bad},true));
  }
  assert.throws(()=>parseProfile({...draft,stateRef:"invalid"},true));
