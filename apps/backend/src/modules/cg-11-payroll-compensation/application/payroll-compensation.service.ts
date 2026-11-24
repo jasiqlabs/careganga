@@ -14,7 +14,7 @@ import {parsePayout,protectPayout} from "../domain/payout-instruction";
 import {id,parsePolicy,parseSalary,componentMinor,fiscalYearFor} from "../domain/payroll-input";
 const hash=(x:unknown)=>createHash("sha256").update(JSON.stringify(x)).digest("hex");
 const conflict=()=>new ConflictException("Payroll source changed. Refresh and review the current version.");
-type Policy={id:string;branch_ref:string|null;label:string;effective_from:string;effective_to:string|null;supersedes_ref:string|null;status:string;revision:number;request_digest:string};
+type Policy={attendance_rules:import('../domain/payroll-calculator').Rule;id:string;branch_ref:string|null;label:string;effective_from:string;effective_to:string|null;supersedes_ref:string|null;status:string;revision:number;request_digest:string};
 type Salary={id:string;employee_ref:string;branch_ref:string;policy_id:string;effective_from:string;effective_to:string|null;supersedes_ref:string|null;base_salary_minor:string;status:string;revision:number;request_digest:string};
 @Injectable()
 export class PayrollCompensationService{
@@ -36,7 +36,7 @@ export class PayrollCompensationService{
   await tx.query("INSERT INTO payroll_source_audit(root_realm_id,actor_ref,source_kind,source_ref,event_key,result_class) VALUES($1,$2,$3,$4,$5,$6)",[a.realmId,a.accountId,kind,ref,correlation,result]);
   await recordPayrollAudit(tx,a,kind,result,correlation);
  }
- private policyView(p:Policy){return {ref:p.id,branchRef:p.branch_ref,label:p.label,fiscalYear:fiscalYearFor(p.effective_from).label,effectiveFrom:p.effective_from,effectiveTo:p.effective_to,supersedesRef:p.supersedes_ref,status:p.status,revision:p.revision};}
+ private policyView(p:Policy){return {ref:p.id,branchRef:p.branch_ref,label:p.label,attendanceRules:p.attendance_rules,fiscalYear:fiscalYearFor(p.effective_from).label,effectiveFrom:p.effective_from,effectiveTo:p.effective_to,supersedesRef:p.supersedes_ref,status:p.status,revision:p.revision};}
  private salaryView(p:Salary){return {ref:p.id,employeeRef:p.employee_ref,branchRef:p.branch_ref,policyRef:p.policy_id,effectiveFrom:p.effective_from,effectiveTo:p.effective_to,supersedesRef:p.supersedes_ref,baseMinor:p.base_salary_minor,status:p.status,revision:p.revision};}
  async employee(tx:PoolClient,a:Actor,employee:string,forDate:string|null=null){return this.hr.employee(tx,a,employee,forDate);}
  async options(token:string,branchInput:unknown,qInput:unknown,offsetInput:unknown=0,filters:{department?:unknown;employmentType?:unknown;employmentStatus?:unknown;salaryStatus?:unknown}={}){return this.run(token,"payroll.compensation.view",async(tx,a)=>{
@@ -80,7 +80,7 @@ export class PayrollCompensationService{
   const branch=branchInput==="FOUNDATION"?null:id(branchInput);
   return this.run(token,"payroll.compensation.view",async(tx,a)=>{
    await this.branches.projectBranch(tx,a,branch);
-   const rows=(await tx.query<Policy>("SELECT id,branch_ref,label,effective_from::text,effective_until::text AS effective_to,supersedes_ref,status,revision,request_digest FROM payroll_policy_effective WHERE root_realm_id=$1 AND (branch_ref IS NOT DISTINCT FROM $2::uuid OR ($2::uuid IS NOT NULL AND branch_ref IS NULL AND status='APPROVED')) ORDER BY effective_from DESC,id DESC LIMIT 100",[a.realmId,branch])).rows;
+   const rows=(await tx.query<Policy>("SELECT id,branch_ref,label,attendance_rules,effective_from::text,effective_until::text AS effective_to,supersedes_ref,status,revision,request_digest FROM payroll_policy_effective WHERE root_realm_id=$1 AND (branch_ref IS NOT DISTINCT FROM $2::uuid OR ($2::uuid IS NOT NULL AND branch_ref IS NULL AND status='APPROVED')) ORDER BY effective_from DESC,id DESC LIMIT 100",[a.realmId,branch])).rows;
    const components=(await tx.query("SELECT policy_id,code,label,kind,calc_mode,amount_minor::text,rate_bp,tax_class FROM payroll_component WHERE root_realm_id=$1 AND policy_id=ANY($2::uuid[]) ORDER BY code",[a.realmId,rows.map(r=>r.id)])).rows;
    await recordPayrollAudit(tx,a,"POLICY","READ");
    return {items:rows.map(p=>({...this.policyView(p),components:components.filter(c=>c.policy_id===p.id).map(({policy_id,...c})=>c)})),statutoryStatus:"NOT_CONFIGURED"};
@@ -93,7 +93,9 @@ export class PayrollCompensationService{
    await tx.query("SELECT pg_advisory_xact_lock(hashtextextended($1,0))",["CG11-POLICY:"+a.realmId+":"+a.accountId+":"+v.key]);
    const previous=(await tx.query<Policy>("SELECT *,effective_from::text,effective_to::text FROM payroll_policy WHERE root_realm_id=$1 AND created_by=$2 AND request_key=$3",[a.realmId,a.accountId,v.key])).rows[0];
    if(previous){if(previous.request_digest!==digest||previous.branch_ref!==v.branch)throw conflict();return {...this.policyView(previous),replayed:true};}
-   const p=(await tx.query<Policy>("INSERT INTO payroll_policy(root_realm_id,branch_ref,cycle,label,effective_from,effective_to,created_by,request_key,request_digest,supersedes_ref) VALUES($1,$2,'MONTHLY',$3,$4,$5,$6,$7,$8,$9) RETURNING *,effective_from::text,effective_to::text",[a.realmId,v.branch,v.label,v.from,v.to,a.accountId,v.key,digest,v.supersedes])).rows[0];
+   const leaveRefs=Object.keys(v.attendanceRules.leave);
+   if(leaveRefs.length){const q=await tx.query("SELECT id FROM hr_leave_policy WHERE root_realm_id=$1 AND id=ANY($2::uuid[]) FOR SHARE",[a.realmId,leaveRefs]);if(q.rowCount!==leaveRefs.length)throw new BadRequestException("Choose original Foundation leave policies");}
+   const p=(await tx.query<Policy>("INSERT INTO payroll_policy(root_realm_id,branch_ref,cycle,label,effective_from,effective_to,created_by,request_key,request_digest,supersedes_ref,attendance_rules) VALUES($1,$2,'MONTHLY',$3,$4,$5,$6,$7,$8,$9,$10::jsonb) RETURNING *,effective_from::text,effective_to::text",[a.realmId,v.branch,v.label,v.from,v.to,a.accountId,v.key,digest,v.supersedes,JSON.stringify(v.attendanceRules)])).rows[0];
    for(const c of v.components)await tx.query("INSERT INTO payroll_component(root_realm_id,policy_id,code,label,kind,calc_mode,amount_minor,rate_bp,percent_basis,tax_class) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)",[a.realmId,p.id,c.code,c.label,c.kind,c.mode,c.minor,c.bp,c.mode==="PERCENT"?"BASIC":null,c.taxClass]);
    await this.audit(tx,a,"POLICY",p.id,"DRAFT_CREATED");return {...this.policyView(p),replayed:false};
   });
@@ -200,7 +202,7 @@ export class PayrollCompensationService{
   let preview:Record<string,unknown>,digest:string;
   if(kind==="POLICY"){
    const components=(await tx.query("SELECT code,label,kind,calc_mode,amount_minor::text,rate_bp,percent_basis,tax_class FROM payroll_component WHERE root_realm_id=$1 AND policy_id=$2 ORDER BY code",[a.realmId,row.id])).rows;
-   preview={...this.policyView(row),components};digest=hash([kind,row.id,row.branch_ref,row.label,row.effective_from,row.effective_to,row.supersedes_ref,components,row.request_digest]);
+   preview={...this.policyView(row),components};digest=hash([kind,row.id,row.branch_ref,row.label,row.effective_from,row.effective_to,row.supersedes_ref,row.attendance_rules,components,row.request_digest]);
   }else{
    if(row.branch_ref===null)throw conflict();
    const current=write?await this.employee(tx,a,row.employee_ref):await this.hr.employeeForHistory(tx,a,row.employee_ref),effective=write?await this.employee(tx,a,row.employee_ref,row.effective_from):null;
