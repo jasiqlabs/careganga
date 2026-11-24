@@ -207,7 +207,7 @@ export function CmsPublicPage({page,navigation,siteFooter,children,mediaScope,si
     <p className="cg-site-eyebrow">Policies &amp; Legal</p><h1>{page.title}</h1>
    </header>}
    {heroes.length>0&&<CmsHeroCarousel slides={heroes} navigation={navigation}/>}
-   {sections.filter(x=>x.kind!=="HERO"&&x.kind!=="SITE_FOOTER")
+   {sections.filter(x=>x.kind!=="HERO"&&x.kind!=="SITE_FOOTER"&&!(x.kind==="RICH_TEXT"&&x.fields.placement))
     .map((section,i)=>{
      const key=section.kind+"-"+section.order+"-"+i;
      if(section.kind==="RICH_TEXT")return <RichText key={key} fields={section.fields}
