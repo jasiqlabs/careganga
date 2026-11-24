@@ -37,6 +37,7 @@ export default async function BeneficiariesPage(){
      canLinkProjects={actions.includes("beneficiaries.projects.manage")&&actions.includes("projects.view")}
      canManageLifecycle={actions.includes("beneficiaries.lifecycle.manage")}
      canRevoke={actions.includes("beneficiaries.consent.revoke")}
+     canReadEvidence={actions.includes("documents.files.view")} canUploadEvidence={actions.includes("documents.files.view")&&actions.includes("documents.files.manage")}
      canSubmitVerification={actions.includes("beneficiaries.manage")}
      canReviewVerification={actions.includes("beneficiaries.verification.review")&&actions.includes("approvals.review")}/>
    </main>
