@@ -419,6 +419,7 @@ export class NotificationService{
           (notice.state='ACTIVE' AND
            (notice.scheduled_at IS NULL OR notice.scheduled_at<=now())))
         AND (n.source_kind<>'CG10_DOCUMENT_READY' OR cg19_hr_document_notice_matches(n.realm_id,n.hr_document_ref,n.recipient_id))
+        AND (n.source_kind<>'CG11_PAYSLIP_READY' OR cg19_payroll_notice_matches(n.realm_id,n.payroll_payslip_ref,n.recipient_id))
         AND (n.source_kind<>'CG15_APPOINTMENT' OR EXISTS(
           SELECT 1 FROM cg15_appointment_event appointment_event
           JOIN cg15_consultation_appointment appointment
@@ -526,6 +527,7 @@ export class NotificationService{
             (notice.state='ACTIVE' AND
              (notice.scheduled_at IS NULL OR notice.scheduled_at<=now())))
         AND (n.source_kind<>'CG10_DOCUMENT_READY' OR cg19_hr_document_notice_matches(n.realm_id,n.hr_document_ref,n.recipient_id))
+        AND (n.source_kind<>'CG11_PAYSLIP_READY' OR cg19_payroll_notice_matches(n.realm_id,n.payroll_payslip_ref,n.recipient_id))
         AND (n.source_kind<>'CG15_APPOINTMENT' OR EXISTS(
           SELECT 1 FROM cg15_appointment_event appointment_event
           JOIN cg15_consultation_appointment appointment

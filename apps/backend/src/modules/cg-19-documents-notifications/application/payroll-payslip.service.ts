@@ -8,6 +8,8 @@ import {DATABASE} from "../../../core/infrastructure/database.module";
 import {PayrollPayslipSourceFacade} from "../../cg-11-payroll-compensation/application/payroll-payslip-source.facade";
 import {PrivateObjectStorage} from "../infrastructure/private-object-storage";
 import {id} from "../../cg-11-payroll-compensation/domain/payroll-input";
+import {CommunicationRecipientSource} from "../../cg-01-identity-access/application/communication-recipient-source.service";
+import {NotificationService} from "./notification.service";
 type Source=Awaited<ReturnType<PayrollPayslipSourceFacade["source"]>>["data"];
 type Document={id:string;line_ref:string;source_digest:string;status:string;object_key:string;object_version:string|null;content_sha256:string|null;content_length:number|null;created_at:Date};
 const hash=(b:Buffer)=>createHash("sha256").update(b).digest("hex");
@@ -27,7 +29,7 @@ async function render(s:Source,at:Date){
 }
 @Injectable()
 export class PayrollPayslipService{
- constructor(@Inject(DATABASE)private readonly db:Pool,private readonly source:PayrollPayslipSourceFacade,private readonly storage:PrivateObjectStorage){}
+ constructor(@Inject(DATABASE)private readonly db:Pool,private readonly source:PayrollPayslipSourceFacade,private readonly storage:PrivateObjectStorage,private readonly recipients:CommunicationRecipientSource,private readonly notifications:NotificationService){}
  async own(token:string){return this.source.own(token);}
  async issue(token:string,line:string){
   const {actor,data}=await this.source.source(token,line);
@@ -58,6 +60,32 @@ export class PayrollPayslipService{
    await this.db.query("UPDATE cg19_payroll_payslip SET status='UNKNOWN',updated_at=now() WHERE root_realm_id=$1 AND id=$2 AND status='PENDING'",[actor.realmId,d.id]).catch(()=>undefined);
    return {documentRef:d.id,status:"UNAVAILABLE",confirmed:false};
   }
+ }
+ /** Explicit employee/admin request to the current linked employee only. No salary amounts, attachments or bearer links in ordinary email. */
+ async email(token:string,line:string){
+  const issued=await this.issue(token,line);
+  if(!issued.confirmed)return {status:"UNAVAILABLE"};
+  const {actor,data}=await this.source.source(token,line),tx=await this.db.connect();
+  try{
+   await tx.query("BEGIN");
+   const recipient=(await tx.query<{account_ref:string}>(`SELECT e.account_ref FROM hr_employee e JOIN cg19_payroll_payslip d ON d.root_realm_id=e.root_realm_id
+    WHERE e.root_realm_id=$1 AND e.id=$2 AND d.id=$3 AND d.source_digest=$4
+    AND cg19_payroll_notice_matches($1,d.id,e.account_ref) FOR SHARE OF e`,[actor.realmId,data.employeeRef,issued.documentRef,data.sourceDigest])).rows[0]?.account_ref;
+   if(!recipient)throw new ConflictException("Current employee recipient unavailable");
+   const person=await this.recipients.get(tx,actor.realmId,recipient);
+   if(!person?.active||!person.email||!await this.notifications.hasConsent(tx,actor.realmId,recipient,"EMAIL","TRANSACTIONAL"))throw new ConflictException("Verified employee email or consent unavailable");
+   const subject="Your private CareGanga document is available",body="Sign in to the CareGanga employee portal or Internal Android app and open My Pay to view the current confidential salary statement. This notice does not confirm payment.";
+   await tx.query(`INSERT INTO cg19_message_template(realm_id,kind,channel,version,subject,body,status,origin)
+    VALUES($1,'CG11_PAYSLIP_READY','EMAIL',1,$2,$3,'APPROVED','SYSTEM') ON CONFLICT(realm_id,kind,channel,version) DO NOTHING`,[actor.realmId,subject,body]);
+   const template=(await tx.query<{id:string;version:number}>(`SELECT id,version FROM cg19_message_template WHERE realm_id=$1 AND kind='CG11_PAYSLIP_READY' AND channel='EMAIL' AND version=1 AND status='APPROVED' AND subject=$2 AND body=$3`,[actor.realmId,subject,body])).rows[0];
+   if(!template)throw new ConflictException("Private notification template unavailable");
+   const result=await tx.query<{id:string;state:string}>(`INSERT INTO cg19_notification(realm_id,source_kind,source_key,payroll_payslip_ref,recipient_id,template_id,template_version,channel,subject_snapshot,body_snapshot,purpose,state,due_at,expires_at)
+    VALUES($1,'CG11_PAYSLIP_READY',$2,$2,$3,$4,$5,'EMAIL',$6,$7,'TRANSACTIONAL','QUEUED',now(),now()+interval '30 days') ON CONFLICT DO NOTHING RETURNING id,state`,[actor.realmId,issued.documentRef,recipient,template.id,template.version,subject,body]);
+   const row=result.rows[0]??(await tx.query<{id:string;state:string}>(`SELECT id,state FROM cg19_notification WHERE realm_id=$1 AND payroll_payslip_ref=$2 AND recipient_id=$3 AND channel='EMAIL' AND source_kind='CG11_PAYSLIP_READY'`,[actor.realmId,issued.documentRef,recipient])).rows[0];
+   if(!row)throw new ConflictException("Email outcome unconfirmed");
+   if(result.rowCount)await tx.query("INSERT INTO cg19_communication_event(realm_id,notification_id,actor_id,kind) VALUES($1,$2,$3,'SOURCE_CAPTURED')",[actor.realmId,row.id,actor.accountId]);
+   await tx.query("COMMIT");return {status:row.state};
+  }catch(e){await tx.query("ROLLBACK");throw e;}finally{tx.release();}
  }
  async download(token:string,line:string,ref:string){
   const {actor,data}=await this.source.source(token,line);
