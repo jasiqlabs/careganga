@@ -37,7 +37,7 @@ export class PayrollPaymentService{
   if(prior){if(prior.request_digest!==digest)throw new ConflictException("Payroll has already accrued with different accounts");return {journalRef:prior.journal_ref,status:"ACCRUED_NOT_PAID",replayed:true};}
   const journal=await this.finance.accrue(tx,a,r,accounts,digest);
   await tx.query(`INSERT INTO payroll_accrual(root_realm_id,run_id,decision_ref,source_digest,request_digest,request_key,journal_ref,expense_ref,payable_ref,deduction_ref,employer_ref,statutory_ref,created_by) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)`,[a.realmId,r.id,r.approved_decision_ref,r.snapshot_digest,digest,key,journal,accounts.expense,accounts.payable,accounts.deduction,accounts.employer,accounts.statutory,a.accountId]);
-  await recordPayrollAudit(tx,a,"RUN","APPROVED",key);
+  await recordPayrollAudit(tx,a,"RUN","ACCRUED",key);
   return {journalRef:journal,status:"ACCRUED_NOT_PAID",replayed:false};
  });}
 
@@ -64,7 +64,7 @@ export class PayrollPaymentService{
    SELECT l.root_realm_id,$3,l.id,p.id,p.revision,p.destination_fingerprint FROM payroll_line l
    LEFT JOIN LATERAL(SELECT d.id,d.revision,d.destination_fingerprint FROM employee_payout_instruction_effective d WHERE $4='BANK' AND d.root_realm_id=l.root_realm_id AND d.employee_ref=l.employee_ref AND d.status='APPROVED' AND d.effective_from<=(now() AT TIME ZONE 'Asia/Kolkata')::date AND (d.effective_until IS NULL OR d.effective_until>(now() AT TIME ZONE 'Asia/Kolkata')::date) ORDER BY d.effective_from DESC LIMIT 1)p ON true
    WHERE l.root_realm_id=$1 AND l.run_id=$2 AND l.net_minor>0 AND l.entitlement_state='RELEASE_ELIGIBLE' AND ($4='CASH' OR p.id IS NOT NULL)`,[a.realmId,r.id,batch.id,method]);
-  await recordPayrollAudit(tx,a,"RUN","DRAFT_CREATED",key);
+  await recordPayrollAudit(tx,a,"RUN","BATCH_PREPARED",key);
   return {batchRef:batch.id,replayed:false};
  });}
  async outcomes(token:string,ref:string,forReport=false){return this.comp.run(token,forReport?"mis.reports.export":"payroll.runs.view",async(tx,a)=>{
@@ -109,7 +109,7 @@ export class PayrollPaymentService{
   if(years.length!==1)throw new ConflictException("Current settlement finance year unavailable");
   const voucher=await this.vouchers.preparePayrollPayment(tx,a,{key,branch:r.branch_ref,year:years[0].id,date:years[0].day,debit:pinned.payable_ref,payment:pinned.payment_account_ref,minor:amount,reference:r.run_number});
   await tx.query(`INSERT INTO payroll_payout_attempt(root_realm_id,item_ref,voucher_ref,amount_minor,request_key,created_by) VALUES($1,$2,$3,$4,$5,$6)`,[a.realmId,item,voucher.voucherRef,amount,key,a.accountId]);
-  await recordPayrollAudit(tx,a,"RUN","DRAFT_CREATED",key);
+  await recordPayrollAudit(tx,a,"RUN","ATTEMPT_CREATED",key);
   return {voucherRef:voucher.voucherRef,voucherNumber:voucher.voucherNumber,status:"FINANCE_SOURCE_CREATED",replayed:false};
  });}
 }

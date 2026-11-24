@@ -72,6 +72,13 @@ function parseTime(value:unknown,name:string):Date{
 function displayResource(safeContext:unknown):string{
   if(safeContext&&typeof safeContext==="object"&&!Array.isArray(safeContext)){
     const info=safeContext as Record<string,unknown>;
+    if(info.payrollKind==="RUN"){
+      switch(info.payrollResult){
+       case "ACCRUED":return "Approved payroll → salary expense and payable posted (not paid)";
+       case "BATCH_PREPARED":return "Accrued payroll → original payment batch prepared (not paid)";
+       case "ATTEMPT_CREATED":return "Outstanding salary → original finance voucher created (not paid)";
+      }
+    }
     if(["POLICY","COMPENSATION","PAYOUT","RUN","ACCESS"].includes(String(info.payrollKind))&&["DRAFT_CREATED","IMPORTED","CALCULATED","SUBMITTED","APPROVED","RETURNED","REJECTED","READ","DENIED","CONFLICT","INVALID"].includes(String(info.payrollResult)))return "Payroll "+String(info.payrollKind).toLowerCase()+" · "+String(info.payrollResult).toLowerCase().replaceAll("_"," ");
     if(info.setting==="audit.default_page_size")return "Audit page-size setting";
     if(typeof info.provider==="string"&&typeof info.purpose==="string"&&
@@ -111,11 +118,11 @@ export class PlatformAuditService{
       FROM platform_operation_audit au
       LEFT JOIN account a ON a.id=au.actor_account_id AND a.realm_id=au.foundation_realm_id
       WHERE au.foundation_realm_id=$1 AND au.occurred_at>=$2 AND au.occurred_at<=$3
-        AND (NOT $7::boolean OR au.action_key='payroll.source.operation')
+        ${payrollOnly?"AND au.action_key='payroll.source.operation'":""}
         AND ($4::timestamptz IS NULL OR
           (au.occurred_at,au.id)<($4::timestamptz,$5::uuid))
       ORDER BY au.occurred_at DESC,au.id DESC LIMIT $6
-    `,[actor.realmId,start,end,after?.at??null,after?.id??null,limit,payrollOnly]);
+    `,[actor.realmId,start,end,after?.at??null,after?.id??null,limit]);
     return rows.rows.map(x=>({
       source:"CG-21" as const,ownerEventId:x.id,occurredAt:x.exact_at,
       actionLabel:ACTION_LABELS[x.action_key]??"Platform operation",
