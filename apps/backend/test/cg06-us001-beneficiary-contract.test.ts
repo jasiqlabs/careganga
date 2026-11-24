@@ -77,3 +77,12 @@ test("US-001-QA15: current geography pair and valid inclusive registration date 
  assert.equal(q.state,state);assert.equal(q.district,district);assert.equal(q.from,"2026-11-01");assert.equal(q.to,"2026-11-30");
  for(const bad of [{districtRef:district},{registeredFrom:"2026-02-30"},{registeredTo:"2026-1-01"},{registeredFrom:"2026-12-01",registeredTo:"2026-11-01"},{registeredFrom:"0000-01-01"}])assert.throws(()=>parseListQuery(bad));
 });
+
+test("US-001-QA10/15: optional real block and beneficiary category are distinct from type",()=>{
+ const block="55555555-5555-4555-8555-555555555555";
+ const p=parseProfile({...draft,blockRef:block,beneficiaryCategory:"Education"},true);
+ assert.equal(p.block,block);assert.equal(p.category,"Education");assert.equal(p.beneficiaryType,draft.beneficiaryType);
+ assert.throws(()=>parseProfile({...draft,districtRef:null,blockRef:block},true));
+ assert.throws(()=>parseListQuery({stateRef:state,blockRef:block}));
+ assert.equal(parseListQuery({stateRef:state,districtRef:district,blockRef:block,category:"Education"}).block,block);
+});
