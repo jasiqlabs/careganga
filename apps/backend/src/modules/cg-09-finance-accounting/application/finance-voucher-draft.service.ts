@@ -396,6 +396,14 @@ export class FinanceVoucherDraftService{
     reference?"VOUCHER_DRAFT_REVISED":"VOUCHER_DRAFT_CREATED",key]);
   return {voucherRef,voucherNumber,version,confirmed:true as const,replayed:false};
  }
+ /** Current CG09-owned bank options only; payroll cannot create a cash/bank master. */
+ async payrollBankOptions(client:PoolClient,actor:VerifiedFoundationActor,branch:string){
+  await this.identity.assertCurrent(client,actor,"finance.accounts.view");
+  await this.branches.requireFinanceActorBranch(client,actor,branch,"finance.accounts.view");
+  const rows=(await client.query<{value:string;label:string;maskedDetails:string|null}>(
+   "SELECT a.id AS value,b.display_label AS label,b.masked_details AS \"maskedDetails\" FROM cash_bank_account b JOIN finance_account a ON a.root_realm_id=b.root_realm_id AND a.id=b.account_id WHERE a.root_realm_id=$1 AND a.status='ACTIVE' AND b.status='ACTIVE' AND b.kind='BANK' AND (a.branch_id IS NULL OR a.branch_id=$2) ORDER BY b.display_label,a.id LIMIT 101",[actor.realmId,branch])).rows;
+  return {items:rows.slice(0,100),hasMore:rows.length>100};
+ }
  async aidPaymentOptions(client:PoolClient,actor:VerifiedFoundationActor,branch:string|null){
   await this.identity.assertCurrent(client,actor,"finance.vouchers.manage");
   await this.identity.assertCurrent(client,actor,"finance.vouchers.view");
