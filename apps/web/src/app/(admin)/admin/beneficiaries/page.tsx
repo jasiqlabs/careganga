@@ -38,6 +38,13 @@ export default async function BeneficiariesPage(){
      canManageLifecycle={actions.includes("beneficiaries.lifecycle.manage")}
      canRevoke={actions.includes("beneficiaries.consent.revoke")}
      canReadEvidence={actions.includes("documents.files.view")} canUploadEvidence={actions.includes("documents.files.view")&&actions.includes("documents.files.manage")}
+     canViewAssistance={actions.includes("beneficiaries.assistance.view")}
+     canManageAssistance={actions.includes("beneficiaries.assistance.manage")}
+     canReviewAssistance={actions.includes("beneficiaries.assistance.review")&&actions.includes("approvals.review")}
+     canDeliverAssistance={actions.includes("beneficiaries.assistance.deliver")}
+     canIssueStock={actions.includes("inventory.stock.issue")&&actions.includes("inventory.stock.view")}
+     canPreparePayment={actions.includes("finance.vouchers.manage")&&actions.includes("finance.vouchers.view")}
+     canExportReports={actions.includes("beneficiaries.reports.export")}
      canSubmitVerification={actions.includes("beneficiaries.manage")}
      canReviewVerification={actions.includes("beneficiaries.verification.review")&&actions.includes("approvals.review")}/>
    </main>
