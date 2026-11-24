@@ -910,15 +910,17 @@ export function CmsExtendedWorkspace({canManage,canPublish,canViewNoticeSources}
         onClick={()=>addItem(index,"socialLinks",{network:"Facebook",url:""})}>
         Add approved social link</button>}
       </>}
-      {section.kind==="RICH_TEXT"&&<Field
-       name={draft.kind==="POLICY"?"Client-approved legal paragraph":"Introduction"}
-       value={f.body} large onChange={v=>change("body",v)}/>}
+      {section.kind==="RICH_TEXT"&&<>
+       <Field name={draft.kind==="POLICY"?"Client-approved legal paragraph":"Introduction"} value={f.body} large onChange={v=>change("body",v)}/>
+       {draft.kind==="PARTNERS"&&<><Field name="Section label" value={f.eyebrow} onChange={v=>change("eyebrow",v)}/><Field name="Highlights (one per line, up to four)" large value={Array.isArray(f.highlights)?f.highlights.join("\n"):""} onChange={v=>change("highlights",v.split("\n").map(x=>x.trim()).filter(Boolean).slice(0,4))}/></>}
+       </>}
       {section.kind==="RICH_TEXT"&&draft.kind==="POLICY"&&canManage&&
        draft.sections.length>1&&<button type="button" onClick={()=>setDraft(d=>({
         ...d,sections:d.sections.filter((_,j)=>j!==index).map((sec,j)=>({...sec,order:j}))
        }))}>Remove this policy section</button>}
      </fieldset>;
     })}
+    {draft.kind==="PARTNERS"&&canManage&&draft.sections.length<8&&<button type="button" onClick={()=>setDraft(d=>({...d,sections:[...d.sections,{kind:"RICH_TEXT",order:Math.max(0,...d.sections.map(sec=>sec.order))+1,fields:{heading:"",body:"",eyebrow:"",variant:"STANDARD",highlights:[]}}]}))}>Add partnership text section</button>}
     {draft.kind==="POLICY"&&canManage&&draft.sections.length<12&&
      <button type="button" onClick={()=>setDraft(d=>({...d,sections:[...d.sections,{
       kind:"RICH_TEXT",order:d.sections.length,fields:{heading:"",body:"",
