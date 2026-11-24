@@ -509,9 +509,12 @@ export class DiagnosticsCatalogService{
    return {mappingRef:m.rows[0].id,replayed:false};
   });
  }
- async prices(bearer:string,ref:string,mapping:unknown,own=false){
+ async prices(bearer:string,ref:string,mapping:unknown,own=false,priceStatus:unknown="",offsetRaw:unknown="0"){
   const centerRef=uuid(ref,"centerRef");
   const mapRef=mapping===undefined?"":uuid(mapping,"mappingRef");
+  if(typeof priceStatus!=="string"||!["","PROPOSED","APPROVED","REJECTED","CURRENT","EXPIRED","UPCOMING"].includes(priceStatus)||typeof offsetRaw!=="string"||!/^(0|[1-9]\d{0,4})$/.test(offsetRaw)||Number(offsetRaw)>10000||Number(offsetRaw)%100!==0)
+   throw new BadRequestException({code:"LAB_CATALOG_FIELD_INVALID",field:"status"});
+  const offset=Number(offsetRaw);
   const actor=await this.sessions.requireAction(bearer,"diagnostics.pricing.view");
   return this.run(async tx=>{
    await this.center(tx,actor,centerRef,own,"diagnostics.pricing.view");
@@ -529,9 +532,13 @@ export class DiagnosticsCatalogService{
     "AND review.cg16_price_id=pr.id AND review.case_kind='HEALTH_LAB_PRICE_REVIEW' "+
     "WHERE pr.root_realm_id=$1 AND m.center_ref=$2 "+
     "AND ($3='' OR pr.center_test_mapping_ref::text=$3) "+
-    "ORDER BY pr.created_at DESC,pr.id DESC LIMIT 100",
-    [actor.realmId,centerRef,mapRef]);
-   return {prices:r.rows};
+    "AND ($4::text='' OR pr.status::text=$4 "+
+    "OR ($4='CURRENT' AND pr.status='APPROVED' AND pr.effective_from<=now() AND (pr.effective_to IS NULL OR pr.effective_to>now())) "+
+    "OR ($4='EXPIRED' AND pr.status='APPROVED' AND pr.effective_to<=now()) "+
+    "OR ($4='UPCOMING' AND pr.status='APPROVED' AND pr.effective_from>now())) "+
+    "ORDER BY pr.created_at DESC,pr.id DESC LIMIT 101 OFFSET $5",
+    [actor.realmId,centerRef,mapRef,priceStatus,offset]);
+   return {prices:r.rows.slice(0,100),nextOffset:r.rows.length>100&&offset<10000?offset+100:null};
   });
  }
  private async assertPackagePriceWindow(tx:PoolClient,root:string,
