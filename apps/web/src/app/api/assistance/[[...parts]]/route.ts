@@ -6,7 +6,7 @@ const uid=(v:string)=>/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]
 const json=(body:unknown,status=200)=>NextResponse.json(body,{status,headers:{"Cache-Control":"private, no-store"}});
 async function proxy(req:NextRequest,ctx:Context,method:"GET"|"POST"){
  const p=(await ctx.params).parts??[];
- const valid=p.length===0||method==="GET"&&(p.length===1&&p[0]==="options"||p.length===2&&uid(p[0])&&["history","review","fulfillment","payment-options"].includes(p[1]))||method==="POST"&&(p.length===2&&uid(p[0])&&["submit","deliver-material","deliver-financial","return","confirm-handover"].includes(p[1])||p.length===3&&p[0]==="review-cases"&&uid(p[1])&&p[2]==="decide");
+ const valid=p.length===0||method==="GET"&&(p.length===1&&p[0]==="options"||p.length===2&&uid(p[0])&&["history","review","fulfillment","payment-options"].includes(p[1]))||method==="POST"&&(p.length===2&&uid(p[0])&&["submit","deliver-material","deliver-financial","return","confirm-handover","prepare-recovery","confirm-recovery"].includes(p[1])||p.length===3&&p[0]==="review-cases"&&uid(p[1])&&p[2]==="decide");
  if(!valid)return json({message:"Assistance action unavailable"},404);
  if(method==="POST"&&req.headers.get("origin")!==req.nextUrl.origin)return json({message:"Request origin not allowed"},403);
  const token=(await cookies()).get("cg_staff_session")?.value;if(!token)return json({message:"Sign in again"},401);
