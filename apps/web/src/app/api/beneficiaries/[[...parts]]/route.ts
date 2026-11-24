@@ -30,7 +30,7 @@ async function proxy(req:NextRequest,ctx:Context,method:Method){
  if(!backend)return reply({message:"Beneficiary service unavailable"},503);
  try{
   const url=new URL("/api/v1/beneficiaries"+(p.length?"/"+p.join("/"):""),backend);
-  for(const k of ["q","branchRef","stateRef","districtRef","projectRef","verification","lifecycle","type","cursor","name","contactMobile","excludeRef"]){
+  for(const k of ["q","branchRef","stateRef","districtRef","projectRef","verification","lifecycle","type","gender","ageGroup","registeredFrom","registeredTo","cursor","name","contactMobile","excludeRef"]){
    const v=req.nextUrl.searchParams.get(k);if(v!==null&&v.length<=240)url.searchParams.set(k,v);
   }
   let body:string|undefined;
