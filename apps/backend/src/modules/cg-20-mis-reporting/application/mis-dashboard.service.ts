@@ -1,5 +1,6 @@
 import {BadRequestException, ForbiddenException, Injectable, NotFoundException, UnauthorizedException} from "@nestjs/common";
 import {OperationsSummaryService} from "../../cg-05-projects-field-operations/application/operations-summary.service";
+import {DonationAdminService} from "../../cg-07-campaigns-donations/application/donation-admin.service";
 import {SessionService} from "../../cg-01-identity-access/application/session.service";
 import {FinanceReportsService} from "../../cg-09-finance-accounting/application/finance-reports.service";
 import {DiagnosticsCatalogService} from "../../cg-16-healthcare-diagnostics/application/diagnostics-catalog.service";
@@ -27,7 +28,8 @@ export class MisDashboardService{
   private readonly finance:FinanceReportsService,
   private readonly diagnostics:DiagnosticsCatalogService,
   private readonly patients:PatientAdminOverviewService,
-  private readonly operations:OperationsSummaryService){}
+  private readonly operations:OperationsSummaryService,
+  private readonly donations:DonationAdminService){}
 
  async options(bearer:string){
   await this.sessions.requireAction(bearer,"mis.dashboard.view");
@@ -230,7 +232,24 @@ export class MisDashboardService{
     failures++;
     return {sourceKey:"CG05_PROJECT_OPERATIONS",sourceLabel:"Foundation Projects",state:"FAILED" as const,metrics:[]};
    });
-  const results=await Promise.all([financeSource,diagnosticSource,patientSource,projectSource]);
+  const donationSource:Promise<Source|null>=view!=="OVERVIEW"?Promise.resolve(null):
+   this.donations.misSummary(bearer).then(x=>{
+    if(x.requiresReview)throw Error("Donation reconciliation required");
+    return {sourceKey:"CG07_DONATION_RECONCILIATION",sourceLabel:"Foundation Donations · Verified receipts",
+     state:x.total?"AVAILABLE" as const:"EMPTY" as const,readAt:new Date().toISOString(),sourceAsOf:x.sourceAsOf.toISOString(),
+     cutoffKind:"OWNER_STATEMENT_SNAPSHOT",metrics:x.total?[
+      {key:"received",label:"Verified posted donations",unit:"COUNT" as const,value:String(x.received)},
+      {key:"pending",label:"Pending donations",unit:"COUNT" as const,value:String(x.pending)},
+      {key:"net",label:"Verified net donations",unit:"INR_MINOR" as const,value:x.netReceivedMinor}]:[],
+     explanation:"Current permitted donation scope, independent of financial-year filters."};
+   }).catch((error:unknown)=>{
+    if(error instanceof UnauthorizedException||error instanceof BadRequestException)throw error;
+    if(error instanceof ForbiddenException)return null;
+    failures++;
+    return {sourceKey:"CG07_DONATION_RECONCILIATION",sourceLabel:"Foundation Donations",state:"FAILED" as const,metrics:[],
+     explanation:"Donation source unavailable or requires reconciliation. No unverified amounts displayed."};
+   });
+  const results=await Promise.all([financeSource,diagnosticSource,patientSource,projectSource,donationSource]);
   const sources:Source[]=results.filter((x):x is Source=>x!==null);
   const available=sources.filter(s=>s.state==="AVAILABLE").length;
   const empty=sources.filter(s=>s.state==="EMPTY").length;
