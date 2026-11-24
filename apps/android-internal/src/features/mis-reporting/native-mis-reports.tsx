@@ -172,7 +172,7 @@ export function NativeMisReports({token,onExpired,onDraftChange}:{token:string;o
      v==="SUMMARY"?"Summary":v==="PIVOT"?"Pivot":"Table"}))} onChange={v=>{setView(v as typeof view);
       setPreview(null);}}/>}
    {kind==="PAYROLL_STATUS_SUMMARY"&&catalog.payroll?.ready&&<>
-    <NativeFinanceOptions label="Payroll month" value={payrollMonth} options={Array.from({length:24},(_,i)=>{const [y,m]=catalog.payroll!.month.split("-").map(Number);const d=new Date(Date.UTC(y,m-1-i,1));const ref=d.toISOString().slice(0,7);return {ref,label:ref};})} onChange={setPayrollMonth}/>
+    <NativeFinanceField label="Payroll month (YYYY-MM)" value={payrollMonth} placeholder={catalog.payroll.month} onChange={setPayrollMonth}/>
     <NativeFinanceOptions label="Payroll branch" value={payrollBranch} options={[{ref:"",label:"All permitted payroll branches"},...catalog.payroll.branches.map(b=>({ref:b.ref,label:b.name}))]} onChange={setPayrollBranch}/>
    </>}
    {finance&&<>
