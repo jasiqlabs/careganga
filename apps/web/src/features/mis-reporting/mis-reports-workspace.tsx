@@ -16,6 +16,7 @@ type Template={kind:Kind;label:string;views:View[];description:string};
 type Catalog={
  templates:Template[];
  payroll?:{ready:boolean;branches:Option[];month:string};
+ membership?:{ready:boolean;branches:Option[]};volunteers?:{ready:boolean;branches:Option[]};
  finance:{ready:boolean;state?:"AVAILABLE"|"ACCESS_RESTRICTED"|"SOURCE_UNAVAILABLE";years:Option[];branches:Option[];areas?:AreaOption[];allBranches:boolean};
  appointments:{ready:boolean;state?:"AVAILABLE"|"ACCESS_RESTRICTED"|"SOURCE_UNAVAILABLE";centers:Option[];complete:boolean};
  capabilities:{manage:boolean;export:boolean;schedule:boolean;share?:boolean}
@@ -77,6 +78,7 @@ export function MisReportsWorkspace(){
  const [kind,setKind]=useState<Kind|null>(null);
  const [view,setView]=useState<View>("TABLE");
  const [year,setYear]=useState(""),[branch,setBranch]=useState("");
+ const [rosterBranch,setRosterBranch]=useState("");
  const [payrollMonth,setPayrollMonth]=useState(""),[payrollBranch,setPayrollBranch]=useState("");
  const [area,setArea]=useState("");
  const [center,setCenter]=useState(""),[from,setFrom]=useState("");
@@ -95,7 +97,7 @@ export function MisReportsWorkspace(){
   try{
    const c=await request<Catalog>("templates");
    if(!Array.isArray(c.templates))throw Error("Current report catalog could not be verified.");
-   if(i===seq.current){setCatalog(c);setPayrollMonth(c.payroll?.month??"");setPayrollBranch("");
+   if(i===seq.current){setCatalog(c);setPayrollMonth(c.payroll?.month??"");setPayrollBranch("");setRosterBranch("");
     setBranch(c.finance.allBranches?"":c.finance.branches[0]?.ref??"");
     setArea("");
     setKind(c.templates[0]?.kind??null);
@@ -106,7 +108,7 @@ export function MisReportsWorkspace(){
  },[]);
  useEffect(()=>{void load();return()=>{seq.current++;previewSeq.current++};},[load]);
  useEffect(()=>{previewSeq.current++;setResult(null);setNotice("");},
-  [kind,view,year,branch,area,center,from,until,status,groupBy,sortBy,sortDirection,payrollMonth,payrollBranch]);
+  [kind,view,year,branch,area,center,from,until,status,groupBy,sortBy,sortDirection,payrollMonth,payrollBranch,rosterBranch]);
  useEffect(()=>{
   const recheck=()=>{
    seq.current++;previewSeq.current++;setCatalog(null);setResult(null);setKind(null);
@@ -126,7 +128,8 @@ export function MisReportsWorkspace(){
  const ledger=kind==="FINANCE_POSTED_LEDGER";
  const grouped=kind==="FINANCE_POSTED_GROUPED";
  const geography=ledger||grouped;
- const dated=ledger||grouped||health||kind==="PLATFORM_AUDIT_ACTIVITY"||kind==="CSR_FUNDING_SUMMARY";
+ const roster=kind==="MEMBERSHIP_ROSTER_SUMMARY"?catalog?.membership:kind==="VOLUNTEER_ROSTER_SUMMARY"?catalog?.volunteers:undefined;
+ const dated=ledger||grouped||health||kind==="PLATFORM_AUDIT_ACTIVITY"||kind==="CSR_FUNDING_SUMMARY"||!!roster;
  function setPreset(next:Period){
   setPeriod(next);setResult(null);
   if(next==="CUSTOM"){setFrom("");setUntil("");return;}
@@ -142,7 +145,8 @@ export function MisReportsWorkspace(){
     ...(status?{status}:{}),
    }),
    ...(kind==="PAYROLL_STATUS_SUMMARY"?{...(payrollMonth?{payrollMonth}:{}),...(payrollBranch?{branchRef:payrollBranch}:{})}:{}),
-   ...(dated&&from?{fromDay:from,untilDay:until}:{}),
+   ...(roster&&rosterBranch?{branchRef:rosterBranch}:{}),
+   ...(dated&&(from||until)?{fromDay:from,untilDay:until}:{}),
    ...(grouped?{groupBy,sortBy,sortDirection}:{}),
    offset};
  }
@@ -184,7 +188,7 @@ export function MisReportsWorkspace(){
     style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(14rem,1fr))",gap:10}}>
     {catalog.templates.map(t=><button type="button" key={t.kind}
      aria-pressed={kind===t.kind} onClick={()=>{
-      setKind(t.kind);setView(t.views[0]);setResult(null);setProblem("");setNotice("");
+      setKind(t.kind);setRosterBranch("");setPeriod("CUSTOM");setView(t.views[0]);setResult(null);setProblem("");setNotice("");
       setYear("");setBranch(catalog.finance.allBranches?"":catalog.finance.branches[0]?.ref??"");setArea("");setCenter("");setFrom("");setUntil("");setStatus("");
      }} style={{textAlign:"left",border:"1px solid var(--cg-border)",borderRadius:10,
       padding:14,minHeight:84,background:kind===t.kind?"var(--cg-canvas)":"var(--cg-surface)"}}>
@@ -201,6 +205,7 @@ export function MisReportsWorkspace(){
       {v==="SUMMARY"?"Summary":v==="CHART"?"Chart":v==="PIVOT"?"Pivot":"Table"}</option>)}
     </select></label>}
     <div style={{display:"flex",flexWrap:"wrap",gap:12}}>
+     {roster?.ready&&<label>Roster branch <select value={rosterBranch} onChange={e=>setRosterBranch(e.target.value)}><option value="">All permitted branches</option>{roster.branches.map(b=><option key={b.ref} value={b.ref}>{b.name}</option>)}</select></label>}
      {kind==="PAYROLL_STATUS_SUMMARY"&&catalog.payroll?.ready&&<>
       <label>Payroll month <input type="month" min="2000-01" value={payrollMonth} onChange={e=>setPayrollMonth(e.target.value)}/></label>
       <label>Payroll branch <select value={payrollBranch} onChange={e=>setPayrollBranch(e.target.value)}><option value="">All permitted payroll branches</option>{catalog.payroll.branches.map(b=><option key={b.ref} value={b.ref}>{b.name}</option>)}</select></label>
@@ -249,6 +254,7 @@ export function MisReportsWorkspace(){
       </select></label>
      </>}
      {dated&&<>
+      {roster&&<p>Dates filter enrollment dates. Status is current, not historical.</p>}
       {kind==="CSR_FUNDING_SUMMARY"&&<p>Dates filter proposal updates, not bank posting dates.</p>}
       <label>Reporting period <select value={period}
        onChange={e=>setPreset(e.target.value as Period)}>
