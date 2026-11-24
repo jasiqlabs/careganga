@@ -1,9 +1,12 @@
 import {Body,Controller,Delete,Get,Headers,Param,Patch,Post,Query} from "@nestjs/common";
+import {BeneficiaryReportService} from "../application/beneficiary-report.service";
 import {BeneficiariesService} from "../application/beneficiaries.service";
 
 @Controller("api/v1/beneficiaries")
 export class BeneficiariesController{
- constructor(private readonly beneficiaries:BeneficiariesService){}
+ constructor(private readonly beneficiaries:BeneficiariesService,private readonly reports:BeneficiaryReportService){}
+ @Get("impact-report") report(@Headers("authorization")token:string,@Query()query:Record<string,unknown>){return this.reports.report(token,query);}
+ @Post("report-export") export(@Headers("authorization")token:string,@Body()body:Record<string,unknown>){return this.reports.export(token,body);}
  @Get() list(@Headers("authorization")token:string,@Query()query:Record<string,unknown>){
   return this.beneficiaries.list(token,query);
  }
