@@ -42,7 +42,7 @@ BEGIN
   EXECUTE format('ALTER TABLE %I ADD CONSTRAINT %I CHECK (((%s) OR (%s)) IS TRUE)',
     rec.table_name,rec.constraint_name,original,extra);
  END LOOP;
-END $cg06$;
+END; $cg06$;
 ALTER TABLE cg19_upload_intent ADD CONSTRAINT cg19_beneficiary_intent_disjoint CHECK(
  (owner_kind='CG06_BENEFICIARY' AND beneficiary_id IS NOT NULL AND case_id IS NULL)
  OR (owner_kind<>'CG06_BENEFICIARY' AND beneficiary_id IS NULL));
@@ -66,6 +66,17 @@ CREATE TRIGGER cg19_beneficiary_intent_identity BEFORE UPDATE ON cg19_upload_int
 CREATE TRIGGER cg19_beneficiary_file_identity BEFORE UPDATE ON cg19_stored_file
  FOR EACH ROW EXECUTE FUNCTION cg19_beneficiary_evidence_identity_guard();
 
+ALTER TABLE cg19_stored_file ADD CONSTRAINT uq_cg19_beneficiary_file_revision UNIQUE(id,realm_id,beneficiary_id,proposal_revision);
+ALTER TABLE cg19_upload_intent ADD COLUMN beneficiary_consent_confirmed boolean NOT NULL DEFAULT false,
+ ADD CONSTRAINT ck_cg19_beneficiary_consent CHECK((owner_kind='CG06_BENEFICIARY')=beneficiary_consent_confirmed);
+CREATE FUNCTION cg19_beneficiary_consent_guard() RETURNS trigger LANGUAGE plpgsql AS $
+BEGIN
+ IF NEW.beneficiary_consent_confirmed IS DISTINCT FROM OLD.beneficiary_consent_confirmed THEN
+  RAISE EXCEPTION 'Beneficiary evidence consent is immutable';
+ END IF;
+ RETURN NEW;
+END $;
+CREATE TRIGGER cg19_beneficiary_intent_consent BEFORE UPDATE ON cg19_upload_intent FOR EACH ROW EXECUTE FUNCTION cg19_beneficiary_consent_guard();
 CREATE TABLE cg19_beneficiary_evidence_event(
  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
  realm_id uuid NOT NULL,
@@ -75,13 +86,13 @@ CREATE TABLE cg19_beneficiary_evidence_event(
  file_ref uuid,
  source_revision integer NOT NULL CHECK(source_revision>0),
  action text NOT NULL CHECK(action IN(
-  'UPLOAD_INITIATED','UPLOAD_VERIFIED','UPLOAD_REJECTED','UPLOAD_UNKNOWN','FILE_REVOKED')),
+  'UPLOAD_INITIATED','UPLOAD_VERIFIED','UPLOAD_REJECTED','UPLOAD_UNKNOWN','FILE_REVOKED','FILE_READ')),
  occurred_at timestamptz NOT NULL DEFAULT now(),
  FOREIGN KEY(realm_id,beneficiary_id) REFERENCES beneficiary(root_realm_id,id) ON DELETE RESTRICT,
  FOREIGN KEY(actor_ref,realm_id) REFERENCES account(id,realm_id) ON DELETE RESTRICT,
  FOREIGN KEY(intent_ref,realm_id,beneficiary_id,source_revision)
  REFERENCES cg19_upload_intent(id,realm_id,beneficiary_id,proposal_revision) ON DELETE RESTRICT,
- FOREIGN KEY(file_ref,realm_id) REFERENCES cg19_stored_file(id,realm_id) ON DELETE RESTRICT
+ FOREIGN KEY(file_ref,realm_id,beneficiary_id,source_revision) REFERENCES cg19_stored_file(id,realm_id,beneficiary_id,proposal_revision) ON DELETE RESTRICT
 );
 CREATE INDEX ix_cg19_beneficiary_proof_events
  ON cg19_beneficiary_evidence_event(realm_id,beneficiary_id,occurred_at DESC,id DESC);
