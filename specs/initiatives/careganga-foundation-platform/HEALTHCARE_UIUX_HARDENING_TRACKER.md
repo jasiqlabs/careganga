@@ -10,7 +10,7 @@ This user-requested cross-module subtracker supplements (does not replace) origi
 
 ## Summary
 
-37 subitems: 17 source-confirmed presentation gaps, 19 runtime/reproduction candidates, 1 reference evidence blocker. Initial baseline: all OPEN. Current progress: 13 rows IN_PROGRESS (including partial cross-cutting work); 24 rows OPEN; zero independently cleared or runtime passes. P0 = release visual evidence gate; P1 = primary journey or substantial usability; P2 = secondary usability. Source status and runtime status stay separate.
+37 subitems: 17 source-confirmed presentation gaps, 19 runtime/reproduction candidates, 1 reference evidence blocker. Initial baseline: all OPEN. Current progress: 16 rows IN_PROGRESS (including partial cross-cutting work); 21 rows OPEN; zero independently cleared or runtime passes. P0 = release visual evidence gate; P1 = primary journey or substantial usability; P2 = secondary usability. Source status and runtime status stay separate.
 
 | ID | Priority | Evidence | Owner/surface | Issue | State |
 |---|---|---|---|---|---|
@@ -27,9 +27,9 @@ This user-requested cross-module subtracker supplements (does not replace) origi
 | HUX-06.01 | P1 | CHECK | CG15 US-003/008 admin | Patient and booking management | OPEN |
 | HUX-06.02 | P1 | SOURCE | CG15 US-006 center web | Consultation queue action overload | IN_PROGRESS |
 | HUX-06.03 | P1 | CHECK | CG15 US-003/006 center | Patient intake and consent | OPEN |
-| HUX-07.01 | P1 | SOURCE | CG16 US-001 admin | Lab catalogue search limited to loaded records | OPEN |
-| HUX-07.02 | P2 | SOURCE | CG16 US-001 admin/center | H09 filter coverage | OPEN |
-| HUX-07.03 | P1 | SOURCE | CG16 US-002 lab web (ERP ON only) | Lab sample/report workflow structure | OPEN |
+| HUX-07.01 | P1 | SOURCE | CG16 US-001 admin | Lab catalogue search limited to loaded records | IN_PROGRESS |
+| HUX-07.02 | P2 | SOURCE | CG16 US-001 admin/center | H09 filter coverage | IN_PROGRESS |
+| HUX-07.03 | P1 | SOURCE | CG16 US-002 lab web (ERP ON only) | Lab sample/report workflow structure | IN_PROGRESS |
 | HUX-07.04 | P1 | CHECK | CG16 US-003/004 public | Public lab test and enquiry | OPEN |
 | HUX-08.01 | P1 | SOURCE | CG17 US-001 admin | Assistance policy form hierarchy | OPEN |
 | HUX-08.02 | P1 | SOURCE | CG17 US-005/006 admin/center | Settlement screen is mostly stacked definitions | OPEN |
@@ -70,6 +70,12 @@ This user-requested cross-module subtracker supplements (does not replace) origi
 - HUX-04.01: provider registration Web/Internal Android grouped organization/contact and named multiple operating center cards; confirmation for remove/discard; block mutation while write outcome unknown, refresh dependent Web geography options. Commits 18815664, fe0cde40, a2bf3ace. CG14 US-001-QA01/03/07/09/11/13/16/17/18 partial source trace; no changed DTO or permission.
 - HUX-06.02 / 12.02: Web and native queue uses compact true daily totals, prominent next-action button and one expanded appointment detail; clinical/file/history components stay under existing role/consent and selected row; slip on native opens in that row. Clear stale history/details on reload, hide queue during checking, clear old Web items on refresh error. Commits 21680199, 5b9ecb3c, 7c1c9df4, 5fc226fa. CG15 US-006-QA01–05/07/08/11/13/16 partially source-traced. Verify simultaneous check-in, failed refresh, revoked consent, invalid QR, multiple pages and proper Back. Native camera parity still a separate verification candidate; no unsupported camera permission added.
 - Source re-read only; runtime and independent review NOT_RUN, no source closure. No existing clinical or financial API/state semantics changed.
+
+## Development checkpoint — diagnostics catalogue and clinical orders
+
+- HUX-07.01/07.02: bounded server-side test search and category/sample/status filters with deterministic 100-row paging, same authorized root, and page-scoped export; Foundation Web and Internal Android parity. Original edit identity/revision retained; a failed refresh cannot convert an edit into creation. Commits fdfd2c33, 1b771eb3, a3b63ca0, 57455aea, 45e0c1af. CG16 US-001-QA01/03/05/06/07/09/13/14/15/16 partial source trace. Package/mapping selectors and center-specific tariff journey require actual acceptance.
+- HUX-07.03: Web and native clinical orders distinguish accepted tests, specimen custody, result entry and professional review/release; recent-order lookup explicitly limited to loaded orders, guarded detail requests. Web patient selector now uses stable patient+care-source identity rather than array index; both reject unavailable cart choices. Commits 46e543e6, 9ba8786e. CG16 US-002-QA01–16 partial source trace; preserve enabled-lab and patient consent guards, retry identity, independent review and private release.
+- Regression scenarios: >100 tests, sample/status filtering, page export, expired selection, edit revision conflict, reorder patient options, rapid order/center switch, rejected specimen and recollection, unknown custody response/replay, ERP OFF. Runtime, independent review and original screenshot acceptance NOT_RUN. No new clinical/payment capability.
 
 ## Subtracker details and expected user scenarios
 
