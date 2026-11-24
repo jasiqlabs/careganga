@@ -141,14 +141,13 @@ export class BeneficiariesService{
   return this.run(token,"beneficiaries.manage",async(tx,a)=>{
    await this.identity.assertCurrent(tx,a,"beneficiaries.view");
    await this.branches.projectBranch(tx,a,branch);
-   const current=await this.scope(tx,a);
    const rows=(await tx.query<{id:string;display_ref:string;private_name:string;beneficiary_type:string;contact_mobile:string|null}>(`
     SELECT id,display_ref,private_name,beneficiary_type,contact_mobile
     FROM beneficiary WHERE root_realm_id=$1
       AND branch_scope_id IS NOT DISTINCT FROM $2::uuid
       AND consent_revoked_at IS NULL
       AND ($3::uuid IS NULL OR id<>$3)
-      AND ($4='' OR strpos(lower(private_name),$4)>0 OR contact_mobile=$5)
+      AND (($4<>'' AND strpos(lower(private_name),$4)>0) OR ($5<>'' AND contact_mobile=$5))
     ORDER BY created_at DESC,id DESC LIMIT 6`,
     [a.realmId,branch,exclude,q,phone])).rows;
    const mask=(value:string)=>value.split(/\s+/).map(part=>part.slice(0,1)+"•••").join(" ");
