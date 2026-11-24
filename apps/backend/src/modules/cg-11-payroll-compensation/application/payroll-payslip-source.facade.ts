@@ -1,0 +1,44 @@
+import {ConflictException,Inject,Injectable,NotFoundException} from "@nestjs/common";
+import {createHash} from "node:crypto";
+import type {Pool,PoolClient} from "pg";
+import {DATABASE} from "../../../core/infrastructure/database.module";
+import {SessionService} from "../../cg-01-identity-access/application/session.service";
+import {FoundationStructureIdentityFacade} from "../../cg-01-identity-access/application/foundation-structure-identity.facade";
+import type {VerifiedFoundationActor as Actor} from "../../cg-01-identity-access/public-api";
+import {PayrollRunService} from "./payroll-run.service";
+import {recordPayrollAudit} from "../../cg-21-platform-configuration-audit/application/payroll-audit-source";
+import {id} from "../domain/payroll-input";
+type Row={lineRef:string;runRef:string;reference:string;period:string;employeeRef:string;name:string;employeeCode:string;designation:string;entitlement:string;baseMinor:string;allowanceMinor:string;bonusMinor:string;arrearsMinor:string;grossMinor:string;deductionMinor:string;netMinor:string;paidMinor:string;employerMinor:string;statutoryMinor:string;components:unknown;reversed:boolean};
+const projection=`SELECT l.id AS "lineRef",r.id AS "runRef",r.run_number reference,l.period_key period,l.employee_ref AS "employeeRef",l.source_snapshot->>'name' name,l.source_snapshot->>'reference' AS "employeeCode",l.source_snapshot->>'designation' designation,l.entitlement_state entitlement,l.base_minor::text AS "baseMinor",l.allowance_minor::text AS "allowanceMinor",l.bonus_minor::text AS "bonusMinor",l.arrears_minor::text AS "arrearsMinor",l.gross_minor::text AS "grossMinor",l.deduction_minor::text AS "deductionMinor",l.net_minor::text AS "netMinor",l.employer_minor::text AS "employerMinor",l.statutory_minor::text AS "statutoryMinor",coalesce(p.paid,0)::text AS "paidMinor",coalesce(p.reversed,false) reversed,coalesce(l.source_snapshot->'amounts'->'components','[]'::jsonb) components
+ FROM payroll_line l JOIN payroll_run r ON r.root_realm_id=l.root_realm_id AND r.id=l.run_id AND r.status='APPROVED_FROZEN'
+ LEFT JOIN payroll_batch_item i ON i.root_realm_id=l.root_realm_id AND i.line_ref=l.id
+ LEFT JOIN LATERAL (SELECT sum(x.paid_minor) paid,bool_or(x.reversed) reversed FROM payroll_attempt_outcome x WHERE x.root_realm_id=i.root_realm_id AND x.item_ref=i.id)p ON true WHERE l.root_realm_id=$1`;
+const status=(x:Row)=>x.reversed?"RECONCILIATION_REQUIRED":x.netMinor==="0"?"NO_PAYMENT_DUE":x.netMinor===x.paidMinor?"PAID_VERIFIED":BigInt(x.paidMinor)>0n?"PARTIALLY_PAID":x.entitlement==="HELD"?"HELD":"PAYMENT_PENDING";
+@Injectable()
+export class PayrollPayslipSourceFacade{
+ constructor(@Inject(DATABASE)private readonly db:Pool,private readonly sessions:SessionService,private readonly identity:FoundationStructureIdentityFacade,private readonly runs:PayrollRunService){}
+ private async employee(tx:PoolClient,a:Actor){
+  const rows=await tx.query<{id:string}>(`SELECT e.id FROM hr_employee e JOIN hr_employment_assignment h ON h.root_realm_id=e.root_realm_id AND h.employee_id=e.id JOIN branch b ON b.root_realm_id=h.root_realm_id AND b.id=h.branch_ref AND b.status='ACTIVE'
+  WHERE e.root_realm_id=$1 AND e.account_ref=$2 AND e.status IN('ACTIVE','PROBATION') AND h.valid_from<=(now() AT TIME ZONE 'Asia/Kolkata')::date AND (h.valid_to IS NULL OR h.valid_to>(now() AT TIME ZONE 'Asia/Kolkata')::date) FOR SHARE OF e,h,b`,[a.realmId,a.accountId]);
+  return rows.rows.length===1?rows.rows[0].id:null;
+ }
+ private view(r:Row){const v={...r,paymentStatus:status(r)};return {...v,sourceDigest:createHash("sha256").update(JSON.stringify(v)).digest("hex")};}
+ async own(token:string){
+  const a=await this.sessions.verifySession(token),tx=await this.db.connect();
+  try{await tx.query("BEGIN");await this.identity.assertRootSelfSessionCurrent(tx,a);const employee=await this.employee(tx,a);
+   const rows=employee?(await tx.query<Row>(projection+" AND l.employee_ref=$2 ORDER BY l.period_key DESC,l.id LIMIT 100",[a.realmId,employee])).rows:[];
+   await recordPayrollAudit(tx,a,"RUN","READ");await tx.query("COMMIT");return {items:rows.map(x=>this.view(x))};
+  }catch(e){await tx.query("ROLLBACK");throw e;}finally{tx.release();}
+ }
+ async source(token:string,lineInput:string){
+  const a=await this.sessions.verifySession(token),tx=await this.db.connect();
+  try{await tx.query("BEGIN");await this.identity.assertRootSelfSessionCurrent(tx,a);
+   const line=id(lineInput),r=(await tx.query<Row>(projection+" AND l.id=$2",[a.realmId,line])).rows[0];
+   if(!r)throw new NotFoundException("Payslip unavailable");
+   const own=await this.employee(tx,a);
+   if(own!==r.employeeRef){await this.runs.row(tx,a,r.runRef);}
+   if(BigInt(r.paidMinor)>BigInt(r.netMinor))throw new ConflictException("Original payroll settlement requires reconciliation");
+   await recordPayrollAudit(tx,a,"RUN","READ");await tx.query("COMMIT");return {actor:a,data:this.view(r)};
+  }catch(e){await tx.query("ROLLBACK");throw e;}finally{tx.release();}
+ }
+}
