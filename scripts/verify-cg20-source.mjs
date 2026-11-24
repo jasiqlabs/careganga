@@ -176,8 +176,8 @@ const schedules=contains(mis+"application/mis-report-schedule.service.ts",[
  "async edit(","async resume(","async pause(","next_due_utc"
 ]);
 contains(mis+"infrastructure/mis-report-schedule.worker.ts",[
- "OnModuleInit","SKIP LOCKED","previewScheduledFinance",
- "issueScheduledFinance","publishReady","saved_revision","CURRENT_SCOPE_CHANGED",
+ "OnModuleInit","SKIP LOCKED","previewScheduledReport","originalScheduledScope","PROJECT_STATUS_REPORT","original_project_digest",
+ "issueScheduledFinance","issueScheduledProject","publishReady","saved_revision","CURRENT_SCOPE_CHANGED",
  "run.root_realm_id=stale.root_realm_id","state='SENT_PENDING'",
  "retry_count=retry_count+1","retry_count<3","UNKNOWN"
 ]);
@@ -186,7 +186,7 @@ contains(cg19+"application/mis-report-notice.service.ts",[
  "requireScheduledFinanceReportBranch","CONFIRMED"
 ]);
 contains(cg19+"application/notification.service.ts",[
- "currentMisNoticeScope","n.source_kind<>'CG20_MIS_REPORT'","scope.branches"
+ "currentMisNoticeScope","n.source_kind<>'CG20_MIS_REPORT'","scope.finance.branches","scope.project.branches","report.original_project_digest"
 ]);
 contains(web+"features/mis-reporting/mis-report-schedules.tsx",[
  "Create active in-app schedule","Resume with current permissions","Edit",
