@@ -54,7 +54,7 @@ BEGIN
  SELECT 1 FROM cg03_case c JOIN payroll_review_snapshot s ON s.root_realm_id=c.realm_id AND s.id=c.payroll_review_ref
  WHERE c.realm_id=NEW.root_realm_id AND c.id=NEW.approval_case_ref AND c.case_kind='PAYROLL_COMPENSATION_REVIEW' AND c.proposal_revision=1
  AND ((TG_TABLE_NAME='payroll_policy' AND s.policy_ref=NEW.id) OR (TG_TABLE_NAME='employee_compensation' AND s.compensation_ref=NEW.id) OR (TG_TABLE_NAME='employee_payout_instruction' AND s.payout_ref=NEW.id))
- AND s.submitted_by=c.proposer_id
+ AND s.submitted_by=c.proposer_id AND s.submitted_by=NEW.created_by
  AND ((NEW.status='SUBMITTED' AND c.status='SUBMITTED') OR (NEW.status='APPROVED' AND c.status='PENDING_OWNER') OR (NEW.status='RETURNED' AND c.status='RETURNED') OR (NEW.status='REJECTED' AND c.status='REJECTED'))
  AND (NEW.status='SUBMITTED' OR EXISTS(SELECT 1 FROM cg03_case_decision d WHERE d.realm_id=c.realm_id AND d.case_id=c.id AND d.actor_id<>c.proposer_id AND d.actor_id<>NEW.created_by AND d.fresh_password_verified_at IS NOT NULL AND d.action=CASE NEW.status WHEN 'APPROVED' THEN 'APPROVE' WHEN 'RETURNED' THEN 'RETURN' ELSE 'REJECT' END))
  ) THEN RAISE EXCEPTION 'Original independent payroll decision required' USING ERRCODE='23514'; END IF;
