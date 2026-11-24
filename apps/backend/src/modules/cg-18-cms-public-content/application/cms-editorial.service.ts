@@ -61,7 +61,7 @@ function input(v:unknown,keys:string[]){
   throw new BadRequestException({code:"CMS_INPUT_INVALID"});
  return v as Record<string,unknown>;
 }
-function teamSelections(raw:unknown):HrEditorialPerson[]{
+export function teamSelections(raw:unknown):HrEditorialPerson[]{
  if(!Array.isArray(raw)||raw.length>15)throw new BadRequestException({code:"CMS_TEAM_SOURCE_NOT_READY",field:"members"});
  const people=raw.map(v=>{
   const x=input(v,["sourceRef","proof","name","designation"]);
