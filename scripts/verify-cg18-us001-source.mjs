@@ -600,6 +600,18 @@ checks.push(["Empty media/impact has no synthetic records and nonempty impact re
  files.extended.includes('entry.visible!==false&&!assets.some')&&
  files.extended.includes('if(x.consentConfirmed!==true)')&&
  files.androidExtended.includes("No approved information has been published yet.")]);
+const illustrationImporter=read("scripts/import-cms-baseline-illustrations.mjs");
+checks.push(["Original screenshot default editorial copy and route placements are independently editable",
+ ["TEAM","MEMBERSHIP","VOLUNTEER","NOTICES","UPCOMING_PROJECTS","ANNUAL_REPORTS","FINANCIAL_REPORTS"].every(v=>initDrafts.includes(v)&&firstPublication.includes(v))&&
+ files.backend.includes('out.placement=fields.placement')&&files.admin.includes('extraText:p.sections.filter')&&
+ files.web.includes('x.kind==="RICH_TEXT"&&x.fields.placement')&&files.android.includes('if(fields.placement)return null')&&
+ files.publicSource.includes('selectPublicIntro')&&files.ngoChildren.includes('item.mediaType!=="PUBLICATION"')&&files.ngoChildren.includes('financial reports')]);
+checks.push(["Generated artwork uses only authorized original CG19 uploads and initial revision, not hard-coded public assets",
+ illustrationImporter.includes('d.hasPublicationHistory!==false')&&illustrationImporter.includes('d.assets.length!==0')&&
+ illustrationImporter.includes('hash(bytes)!==digest')&&illustrationImporter.includes('/api/cms/media/initiate')&&
+ illustrationImporter.includes('proof.cleanVerified')&&illustrationImporter.includes('pagePath+"/draft"')&&
+ !illustrationImporter.includes('"/publish"')&&firstPublication.includes('home-editorial-media')&&
+ files.carousel.includes("AI-generated illustration; not a photograph")&&files.android.includes("AI-generated illustration; not a photograph")]);
 const partnershipPage=read("apps/web/src/app/collaboration/page.tsx");
 checks.push(["Corporate partnership general narrative uses current CMS content in both public channels",
  initDrafts.includes('heading:"Why Partner With Us?"')&&partnershipPage.includes('approved.filter(s=>s.kind==="RICH_TEXT")')&&
