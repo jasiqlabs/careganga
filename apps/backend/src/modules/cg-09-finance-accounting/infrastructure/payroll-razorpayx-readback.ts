@@ -1,3 +1,4 @@
+import {createHash} from "node:crypto";
 import {matchesPayoutEvidence} from "../../cg-11-payroll-compensation/domain/payout-instruction";
 const uuid=/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i;
 const payout=/^pout_[A-Za-z0-9]{8,40}$/,fund=/^fa_[A-Za-z0-9]{8,40}$/;
@@ -25,7 +26,7 @@ export async function verifyPayrollReadback(reference:string,root:string):Promis
  try{const data=await get(c,"payouts?"+new URLSearchParams({account_number:c.account,count:"1"}));return data.entity==="collection"&&Array.isArray(data.items)&&data.items.length<=1;}catch{return false;}
 }
 export type ReadbackState="PROCESSING"|"UNKNOWN_WRITE_STATUS"|"PROCESSED_AWAITING_PROOF"|"FAILED_AWAITING_PROOF"|"REVIEW_REQUIRED";
-export type Readback={state:ReadbackState;providerRef:string|null};
+export type Readback={state:ReadbackState;providerRef:string|null;utrDigest?:string|null};
 export function classifyPayout(status:unknown):ReadbackState{
  if(["queued","pending","processing","initiated"].includes(String(status)))return "PROCESSING";
  if(status==="processed")return "PROCESSED_AWAITING_PROOF";
@@ -45,6 +46,37 @@ export async function readOriginalPayout(c:Config,input:{id:string;root:string;e
   const p=record(data.items[0]);if(!p||typeof p.id!=="string"||!payout.test(p.id)||input.priorRef&&input.priorRef!==p.id||p.reference_id!==input.id||p.currency!=="INR"||p.purpose!=="salary"||!Number.isSafeInteger(p.amount)||String(p.amount)!==input.amount||typeof p.fund_account_id!=="string"||!fund.test(p.fund_account_id))return {state:"REVIEW_REQUIRED",providerRef:input.priorRef};
   const a=await get(c,"fund_accounts/"+p.fund_account_id),b=record(a.bank_account);
   if(a.id!==p.fund_account_id||a.entity!=="fund_account"||a.account_type!=="bank_account"||!b||!matchesPayoutEvidence(input.root,input.employee,input.fingerprint,{accountHolder:b.name,accountNumber:b.account_number,ifsc:b.ifsc}))return {state:"REVIEW_REQUIRED",providerRef:input.priorRef};
-  return {state:classifyPayout(p.status),providerRef:p.id};
+  const state=classifyPayout(p.status);
+  // Reversed payments can have moved funds; never label them a failed/no-money transfer.
+  if(p.status==="reversed")return {state:"REVIEW_REQUIRED",providerRef:p.id};
+  if(state==="PROCESSED_AWAITING_PROOF"){
+   if(typeof p.utr!=="string"||!/^[A-Za-z0-9 /._-]{6,64}$/.test(p.utr.trim()))return {state:"PROCESSING",providerRef:p.id};
+   return {state,providerRef:p.id,utrDigest:createHash("sha256").update(input.id+":"+p.utr.trim().toUpperCase()).digest("hex")};
+  }
+  return {state,providerRef:p.id};
  }catch{return unknown;}
+}
+
+export function dispatchEnabled(){return readbackEnabled()&&process.env.CG09_PAYROLL_RAZORPAYX_DISPATCH==="1"&&process.env.CG09_PAYROLL_RAZORPAYX_SIGNING_APPROVED==="1";}
+export type Dispatch={id:string;employee:string;amount:string;destination:{holder:string;account:string;ifsc:string}};
+/** Query the actual selected merchant bank's current withdrawable funds. No
+ * balance or credential is returned to the browser. Reject missing/stale balance. */
+export async function checkDispatchBalance(c:Config,amount:string):Promise<boolean>{
+ const fee=process.env.CG09_PAYROLL_RAZORPAYX_FEE_RESERVE_MINOR??"";
+ if(!/^[0-9]{1,8}$/.test(fee)||!/^([1-9][0-9]{0,13})$/.test(amount))return false;
+ try{const data=await get(c,"banking_balances?count=100");if(data.entity!=="collection"||!Array.isArray(data.items)||data.items.length>100)return false;
+ const matches=data.items.map(record).filter(b=>b?.entity==="banking_balance"&&b.account_number===c.account&&b.currency==="INR");
+ if(matches.length!==1)return false;
+ const b=matches[0]!;
+ return typeof b.available_amount==="number"&&Number.isSafeInteger(b.available_amount)&&typeof b.refreshed_at==="number"&&Number.isSafeInteger(b.refreshed_at)&&b.refreshed_at<=Date.now()/1000+60&&Date.now()/1000-b.refreshed_at<=300&&BigInt(b.available_amount)>=BigInt(amount)+BigInt(fee);
+ }catch{return false;}
+}
+/** Sole write call. Same immutable attempt key is both merchant reference
+ * and documented X-Payout-Idempotency. No automated repeat POST; exact GET
+ * readback handles uncertain response and the service never claims payment. */
+export async function sendApprovedPayout(c:Config,x:Dispatch):Promise<void>{
+ if(!dispatchEnabled()||!uuid.test(x.id)||!uuid.test(x.employee)||!/^([1-9][0-9]{0,13})$/.test(x.amount)||BigInt(x.amount)<100n||x.destination.holder.length<4||x.destination.holder.length>50)throw Error("Approved payout unavailable");
+ const response=await fetch("https://api.razorpay.com/v1/payouts",{method:"POST",headers:{Authorization:c.authorization,"Content-Type":"application/json","X-Payout-Idempotency":x.id},cache:"no-store",redirect:"error",signal:AbortSignal.timeout(12000),body:JSON.stringify({account_number:c.account,amount:Number(x.amount),currency:"INR",mode:"NEFT",purpose:"salary",fund_account:{account_type:"bank_account",bank_account:{name:x.destination.holder,ifsc:x.destination.ifsc,account_number:x.destination.account},contact:{name:x.destination.holder,type:"employee",reference_id:x.employee}},queue_if_low_balance:false,reference_id:x.id,narration:"CareGanga Salary"})});
+ // Do not trust or log a create response, including errors containing bank data.
+ await response.body?.cancel().catch(()=>undefined);
 }

@@ -1,3 +1,4 @@
+import {payrollReadbackConfig,dispatchEnabled,type Dispatch} from "../infrastructure/payroll-razorpayx-readback";
 import {PayrollProviderReadbackService} from "./payroll-provider-readback.service";
 import {matchesPayoutEvidence} from "../../cg-11-payroll-compensation/domain/payout-instruction";
 import {guardAssistanceOwner} from "../../cg-06-beneficiaries-assistance/application/assistance-owner-guard";
@@ -41,6 +42,7 @@ const safePaymentFailure=(failure:unknown):never=>{
   throw new ConflictException({code:"FINANCE_VOUCHER_PAYMENT_PROOF_CONFLICT"});
  if(code==="P0917"||code==="23503"||code==="23514")
   throw new ConflictException({code:"FINANCE_VOUCHER_PAYMENT_VERIFICATION_INVALID"});
+ if(code==="P0940")throw new ConflictException({code:"FINANCE_PAYROLL_PROVIDER_PROOF_MISMATCH",message:"Bank provider status or reference does not match the independent payment proof."});
  if(code==="P0938")throw new ForbiddenException("Current independent bank payment signing authority is required");
  if(code==="P0939")throw new ConflictException("Insufficient independently reconciled bank funds for this payment request");
  if(code==="P0916")
@@ -118,10 +120,14 @@ export class FinanceVoucherPaymentService{
  }
  async requestPayment(bearer:string,refInput:string,value:unknown){
   const actor=await this.operator(bearer),voucherRef=reference(refInput);
-  const body=form(value,["requestKey","expectedVersion"]);
+  const body=form(value,["requestKey","expectedVersion","dispatchPayroll","currentPassword"]);
   const key=reference(body.requestKey),expected=number(body.expectedVersion);
-  const hash=digest(["REQUEST_PAYMENT",voucherRef,expected]);
-  const client=await this.db.connect();
+  const dispatch=body.dispatchPayroll===true;
+  if((body.dispatchPayroll!==undefined&&typeof body.dispatchPayroll!=="boolean")||(dispatch?(typeof body.currentPassword!=="string"||body.currentPassword.length<8||Buffer.byteLength(body.currentPassword,"utf8")>1024):body.currentPassword!==undefined))throw new BadRequestException({code:"FINANCE_VOUCHER_FORM_INVALID"});
+  const hash=digest(["REQUEST_PAYMENT",voucherRef,expected,...(dispatch?["PROTECTED_BANK_DISPATCH"]:[])]);
+  if(dispatch){await this.sessions.limitFoundationRootProof(actor);const prior=await this.db.query("SELECT 1 FROM finance_voucher_workflow_command WHERE root_realm_id=$1 AND actor_ref=$2 AND request_key=$3",[actor.realmId,actor.accountId,key]);if(!prior.rowCount)await this.payrollReadback.preflight(actor.realmId,voucherRef);}
+  let payload:Dispatch|null=null;
+  const client=await this.db.connect();let released=false,committed=false;
   try{
    await client.query("BEGIN");
    await this.identity.assertCurrent(client,actor,"finance.vouchers.manage");
@@ -139,6 +145,7 @@ export class FinanceVoucherPaymentService{
    if(v.version!==expected||v.status!=="APPROVED"||
     !["PAYMENT","CONTRA"].includes(v.voucher_type))
     throw new ConflictException({code:"FINANCE_VOUCHER_PAYMENT_PROOF_NOT_READY"});
+   if(dispatch){await this.protectedOwner.verifyReviewer(client,actor,"approvals.review",true);await this.sessions.requireFreshFoundationRootProof(client,actor,body.currentPassword as string);payload=await this.payrollReadback.prepareDispatch(client,actor.realmId,voucherRef);}
    // Original bank requests reserve only existing reconciled source capacity.
    // No provider transfer or paid confirmation is implied by this transition.
    const updated=await client.query(`
@@ -148,11 +155,16 @@ export class FinanceVoucherPaymentService{
    if(!updated.rowCount)throw new ConflictException({code:"FINANCE_VOUCHER_STALE"});
    await this.register(client,actor,v,{action:"PAYMENT_REQUEST",key,digest:hash,
     status:"PAYMENT_REQUESTED"});
-   const externalReference=await this.payrollReadback.enqueue(client,actor.realmId,voucherRef);
-   await client.query("COMMIT");
-   if(externalReference)void this.payrollReadback.tick();
-   return {confirmed:true,status:"PAYMENT_REQUESTED",externalReference,replayed:false};
-  }catch(e){await client.query("ROLLBACK");safePaymentFailure(e);}finally{client.release();}
+   const externalReference=await this.payrollReadback.enqueue(client,actor.realmId,voucherRef,dispatch?actor.accountId:null);
+   await client.query("COMMIT");committed=true;
+   if(payload){
+    // The authorization is durably recorded before the external write. Do not
+    // retain a borrowed database transaction across the provider network call.
+    client.release();released=true;
+    await this.payrollReadback.dispatchOnce(actor.realmId,payload);
+   }else if(externalReference)void this.payrollReadback.tick();
+   return {confirmed:true,status:"PAYMENT_REQUESTED",externalReference,providerState:dispatch?"UNKNOWN_WRITE_STATUS":externalReference?"AWAITING_BANK":null,replayed:false};
+  }catch(e){if(!committed)await client.query("ROLLBACK");safePaymentFailure(e);}finally{if(!released)client.release();}
  }
  async submitProof(bearer:string,refInput:string,value:unknown){
   const actor=await this.operator(bearer),voucherRef=reference(refInput);
@@ -218,7 +230,7 @@ export class FinanceVoucherPaymentService{
   const actor=await this.sessions.requireAction(bearer,"finance.vouchers.view");
   const voucherRef=reference(refInput);
   const client=await this.db.connect();
-  try{await client.query("BEGIN");await this.voucher(client,actor,voucherRef);
+  try{await client.query("BEGIN");const voucher=await this.voucher(client,actor,voucherRef);
   const rows=await client.query<{paymentProofRef:string;fileRef:string;fileVersion:number;
    method:string;bankReference:string|null;amountMinor:string;status:string;
    requestedAt:Date;verifiedAt:Date|null;requiresPayrollDestination:boolean;failedTransfer:boolean}>(`
@@ -230,8 +242,9 @@ export class FinanceVoucherPaymentService{
    FROM finance_voucher_payment_verification p
    WHERE p.root_realm_id=$1 AND p.voucher_id=$2
    ORDER BY p.created_at DESC,p.id DESC LIMIT 1`,[actor.realmId,voucherRef]);
-  const original=(await client.query<{externalReference:string;providerState:string}>(`SELECT id AS "externalReference",provider_state AS "providerState" FROM payroll_payout_attempt WHERE root_realm_id=$1 AND voucher_ref=$2 AND provider_state<>'NOT_ENABLED'`,[actor.realmId,voucherRef])).rows[0];
-  await client.query("COMMIT");return {payment:rows.rows[0]??null,providerReadback:original??null};
+  const original=(await client.query<{externalReference:string;providerState:string;automated:boolean}>(`SELECT id AS "externalReference",provider_state AS "providerState",(dispatch_actor_ref IS NOT NULL) AS automated FROM payroll_payout_attempt WHERE root_realm_id=$1 AND voucher_ref=$2 AND provider_state<>'NOT_ENABLED'`,[actor.realmId,voucherRef])).rows[0];
+  const config=payrollReadbackConfig();const dispatchAvailable=!!(dispatchEnabled()&&config&&config.root===actor.realmId&&voucher.payment_account_id===config.bank&&voucher.status==="APPROVED"&&(await client.query("SELECT 1 FROM payroll_payout_attempt WHERE root_realm_id=$1 AND voucher_ref=$2 AND provider_state='NOT_ENABLED'",[actor.realmId,voucherRef])).rowCount);
+  await client.query("COMMIT");return {payment:rows.rows[0]??null,providerReadback:original??null,dispatchAvailable};
   }catch(e){await client.query("ROLLBACK");throw e;}finally{client.release();}
  }
  async verifyProof(bearer:string,refInput:string,proofInput:string,value:unknown){

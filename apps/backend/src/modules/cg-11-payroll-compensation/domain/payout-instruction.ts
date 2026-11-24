@@ -1,5 +1,5 @@
 import {BadRequestException,ServiceUnavailableException} from "@nestjs/common";
-import {createCipheriv,createHmac,randomBytes,timingSafeEqual} from "node:crypto";
+import {createDecipheriv,createCipheriv,createHmac,randomBytes,timingSafeEqual} from "node:crypto";
 import {date,fields,id,label} from "./payroll-input";
 export function parsePayout(raw:unknown){
  const x=fields(raw,["requestKey","effectiveFrom","effectiveTo","supersedesRef","accountHolder","accountNumber","ifsc"]);
@@ -35,4 +35,15 @@ export function matchesPayoutEvidence(root:string,employee:string,pinned:string,
  if(typeof account!=="string"||!/^[0-9]{6,22}$/.test(account)||!/^[A-Z]{4}0[A-Z0-9]{6}$/.test(ifsc)||! /^[a-f0-9]{64}$/.test(pinned))return false;
  const actual=createHmac("sha256",encryptionKey()).update(JSON.stringify(["CG11_FINGERPRINT_V1",root,employee,JSON.stringify({holder,account,ifsc})])).digest();
  return timingSafeEqual(actual,Buffer.from(pinned,"hex"));
+}
+
+/** Only the original protected dispatch owner may call this after current scope
+ * and fresh approval; decrypted values remain transient and are never DTOs. */
+export function decryptPayoutForDispatch(root:string,employee:string,instruction:string,encrypted:{ciphertext:string;nonce:string;tag:string;fingerprint:string}){
+ const decipher=createDecipheriv("aes-256-gcm",encryptionKey(),Buffer.from(encrypted.nonce,"base64url"));
+ decipher.setAAD(Buffer.from(JSON.stringify(["CG11_PAYOUT_V1",root,employee,instruction])));
+ decipher.setAuthTag(Buffer.from(encrypted.tag,"base64url"));
+ const value=JSON.parse(Buffer.concat([decipher.update(Buffer.from(encrypted.ciphertext,"base64url")),decipher.final()]).toString("utf8")) as {holder:string;account:string;ifsc:string};
+ if(!matchesPayoutEvidence(root,employee,encrypted.fingerprint,{accountHolder:value.holder,accountNumber:value.account,ifsc:value.ifsc}))throw new ServiceUnavailableException("Approved bank destination unavailable");
+ return value;
 }
