@@ -37,7 +37,7 @@ const safePaymentFailure=(failure:unknown):never=>{
  const code=failure&&typeof failure==="object"&&"code" in failure?failure.code:null;
  if(code==="23505")
   throw new ConflictException({code:"FINANCE_VOUCHER_PAYMENT_PROOF_CONFLICT"});
- if(code==="P0917"||code==="23503")
+ if(code==="P0917"||code==="23503"||code==="23514")
   throw new ConflictException({code:"FINANCE_VOUCHER_PAYMENT_VERIFICATION_INVALID"});
  if(code==="P0916")
   throw new ConflictException({code:"FINANCE_VOUCHER_ACCOUNT_SIDES_INVALID"});
@@ -76,7 +76,7 @@ export class FinanceVoucherPaymentService{
   await this.sessions.requireAction(bearer,"documents.files.view");
   return actor;
  }
- private async voucher(client:PoolClient,actor:VerifiedFoundationActor,ref:string){
+ private async voucher(client:PoolClient,actor:VerifiedFoundationActor,ref:string,write=false){
   const found=await client.query<Voucher>(`
    SELECT id,root_realm_id,version,status,voucher_number,voucher_type,
     financial_year_id,posting_date::text,branch_id,debit_account_id,credit_account_id,
@@ -85,6 +85,7 @@ export class FinanceVoucherPaymentService{
    FROM finance_voucher WHERE root_realm_id=$1 AND id=$2 FOR UPDATE`,
    [actor.realmId,ref]);
   if(!found.rows[0])throw new NotFoundException({code:"FINANCE_VOUCHER_STALE"});
+  await this.source.guardPaymentScope(client,actor,found.rows[0].branch_id,write);
   return found.rows[0];
  }
  private async command(client:PoolClient,actor:VerifiedFoundationActor,key:string){
@@ -120,6 +121,7 @@ export class FinanceVoucherPaymentService{
   try{
    await client.query("BEGIN");
    await this.identity.assertCurrent(client,actor,"finance.vouchers.manage");
+   const v=await this.voucher(client,actor,voucherRef,true);
    const earlier=await this.command(client,actor,key);
    if(earlier){
     if(earlier.action!=="PAYMENT_REQUEST"||earlier.request_digest!==hash||
@@ -129,7 +131,6 @@ export class FinanceVoucherPaymentService{
     return {confirmed:true,status:earlier.result_status,replayed:true};
    }
    await guardAssistanceOwner(client,actor.realmId,"PAYMENT",voucherRef);
-   const v=await this.voucher(client,actor,voucherRef);
    if(v.version!==expected||v.status!=="APPROVED"||
     !["PAYMENT","CONTRA"].includes(v.voucher_type))
     throw new ConflictException({code:"FINANCE_VOUCHER_PAYMENT_PROOF_NOT_READY"});
@@ -166,9 +167,7 @@ export class FinanceVoucherPaymentService{
   try{
    await client.query("BEGIN");
    await this.identity.assertCurrent(client,actor,"finance.vouchers.manage");
-   const v=await this.voucher(client,actor,voucherRef);
-   if(v.version!==expected||v.status!=="PAYMENT_REQUESTED"||!v.approval_case_id)
-    throw new ConflictException({code:"FINANCE_VOUCHER_PAYMENT_PROOF_NOT_READY"});
+   const v=await this.voucher(client,actor,voucherRef,true);
    const prior=await client.query<Proof>(`
     SELECT * FROM finance_voucher_payment_verification
     WHERE root_realm_id=$1 AND voucher_id=$2 AND requested_by=$3 AND request_key=$4
@@ -180,6 +179,8 @@ export class FinanceVoucherPaymentService{
     return {confirmed:true,paymentProofRef:prior.rows[0].id,
      status:prior.rows[0].status,replayed:true};
    }
+   if(v.version!==expected||v.status!=="PAYMENT_REQUESTED"||!v.approval_case_id)
+    throw new ConflictException({code:"FINANCE_VOUCHER_PAYMENT_PROOF_NOT_READY"});
    const active=await client.query<{id:string}>(`
     SELECT id FROM finance_voucher_payment_verification
     WHERE root_realm_id=$1 AND voucher_id=$2
@@ -207,7 +208,9 @@ export class FinanceVoucherPaymentService{
  async paymentStatus(bearer:string,refInput:string){
   const actor=await this.sessions.requireAction(bearer,"finance.vouchers.view");
   const voucherRef=reference(refInput);
-  const rows=await this.db.query<{paymentProofRef:string;fileRef:string;fileVersion:number;
+  const client=await this.db.connect();
+  try{await client.query("BEGIN");await this.voucher(client,actor,voucherRef);
+  const rows=await client.query<{paymentProofRef:string;fileRef:string;fileVersion:number;
    method:string;bankReference:string|null;amountMinor:string;status:string;
    requestedAt:Date;verifiedAt:Date|null}>(`
    SELECT p.id AS "paymentProofRef",p.proof_file_id AS "fileRef",
@@ -217,7 +220,8 @@ export class FinanceVoucherPaymentService{
    FROM finance_voucher_payment_verification p
    WHERE p.root_realm_id=$1 AND p.voucher_id=$2
    ORDER BY p.created_at DESC,p.id DESC LIMIT 1`,[actor.realmId,voucherRef]);
-  return {payment:rows.rows[0]??null};
+  await client.query("COMMIT");return {payment:rows.rows[0]??null};
+  }catch(e){await client.query("ROLLBACK");throw e;}finally{client.release();}
  }
  async verifyProof(bearer:string,refInput:string,proofInput:string,value:unknown){
   const actor=await this.sessions.requireAction(bearer,"approvals.review");
@@ -294,6 +298,7 @@ export class FinanceVoucherPaymentService{
    await client.query("BEGIN");
    await this.identity.assertCurrent(client,actor,"finance.journals.post");
    await this.identity.assertCurrent(client,actor,"finance.vouchers.manage");
+   const v=await this.voucher(client,actor,voucherRef,true);
    const prior=await this.command(client,actor,key);
    if(prior){
     if(prior.action!=="POST"||prior.request_digest!==hash||
@@ -303,7 +308,6 @@ export class FinanceVoucherPaymentService{
     return {confirmed:true,status:"POSTED",replayed:true};
    }
    await guardAssistanceOwner(client,actor.realmId,"PAYMENT",voucherRef);
-   const v=await this.voucher(client,actor,voucherRef);
    if(v.version!==expected||!v.approval_case_id||!v.proof_file_id||!v.proof_file_revision||
     !(v.status==="APPROVED"&&!["PAYMENT","CONTRA"].includes(v.voucher_type)||
       v.status==="PAID_VERIFIED"&&["PAYMENT","CONTRA"].includes(v.voucher_type)))
