@@ -142,7 +142,7 @@ export function NativeBeneficiariesWorkspace({token,onExpired,canManage,canLinkP
  };
  return <View style={{flex:1,backgroundColor:"#F8FAFC"}}>
   <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={{padding:18,paddingBottom:100,gap:12}}>
-   <Text style={{fontSize:23,fontWeight:"800",color:theme.colors?.primary??"#0F172A"}}>Beneficiaries</Text>
+   <Text style={{fontSize:23,fontWeight:"800",color:theme.text}}>Beneficiaries</Text>
    <Text style={{color:"#64748B"}}>Private Foundation records · current branch and role only</Text>
    {canManage&&<Button label="Add Beneficiary" onPress={()=>open("create")}/>}
    <TextInput accessibilityLabel="Search beneficiary" value={q} onChangeText={setQ}
