@@ -69,9 +69,10 @@
     "verify:cg17-verified-partner-finance-source": "node scripts/verify-cg17-verified-partner-finance-source.mjs",
     "verify:cg14-erp-off-partner-catalog-source": "node scripts/verify-cg14-erp-off-partner-catalog-source.mjs",
     "db:baseline:generate": "npm run db:baseline:generate -w apps/backend",
-    "db:init": "npm run db:init -w apps/backend",
+    "db:init": "npm run db:init -w apps/backend --",
     "db:upgrade": "npm run db:upgrade -w apps/backend",
-    "db:release:check": "npm run db:release:check -w apps/backend"
+    "db:release:check": "npm run db:release:check -w apps/backend",
+    "verify:db:baseline": "npm run test:db:baseline -w apps/backend"
   },
   "devDependencies": {
     "typescript": "7.0.2",

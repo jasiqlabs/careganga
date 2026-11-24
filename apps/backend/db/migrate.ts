@@ -85,7 +85,7 @@ async function migrate(): Promise<void> {
         } catch {}
       }
       const files = (await readdir(directory)).filter(x => /^\d+_cg\d+_[a-z0-9_-]+\.sql$/.test(x))
-        .sort((a,b) => Number(a.split("_")[0])-Number(b.split("_")[0]) || a.localeCompare(b,"en"));
+        .sort((a,b) => Number(a.split("_")[0])-Number(b.split("_")[0]) || (a<b?-1:a>b?1:0));
       // Never accept a checkout that silently omits an already applied migration.
       // A hash match alone only detects edited files, not deleted historical files.
       const applied = await client.query<{ filename:string }>(

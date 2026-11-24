@@ -13,7 +13,7 @@ const contractFile=join(backend,"dist/db/schema-contract.json");
 const sha=s=>createHash("sha256").update(s).digest("hex");
 const filenamePattern=/^\d+_cg\d+_[a-z0-9_-]+\.sql$/;
 const digestPattern=/^[a-f0-9]{64}$/;
-const order=(a,b)=>Number(a.split("_")[0])-Number(b.split("_")[0])||a.localeCompare(b,"en");
+const order=(a,b)=>Number(a.split("_")[0])-Number(b.split("_")[0])||(a<b?-1:a>b?1:0);
 function sourceContract(){
  const names=readdirSync(join(dbDir,"migrations")).filter(n=>n.endsWith(".sql")).sort(order);
  if(!names.length||names.some(n=>!filenamePattern.test(n)||!Number.isSafeInteger(Number(n.split("_")[0]))))
@@ -25,6 +25,14 @@ function requireLedger(actual,expected,{exact=true}={}){
  const hashes=new Map(actual.map(e=>[e.filename,e.sha256]));
  if((exact&&hashes.size!==expected.length)||expected.some(e=>hashes.get(e.filename)!==e.sha256))
   throw Error("Database migration history is incompatible with the expected release");
+}
+function requirePrefix(rows,current,baselineEntries){
+ requireLedger(rows,baselineEntries,{exact:false});
+ // A valid existing ledger is an exact contiguous prefix of the current release.
+ // No applying a skipped earlier migration after a later migration.
+ requireLedger(rows,current.slice(0,rows.length));
+ if(rows.length>current.length)throw Error("Existing database release incompatible");
+ return rows.length===current.length;
 }
 function direct(value){
  if(!value)throw Error("A direct database connection must be configured");
@@ -51,7 +59,7 @@ async function ledger(c){
  return (await c.query("SELECT filename,sha256 FROM public.schema_migration")).rows;
 }
 async function blank(c){
- const r=await c.query("SELECT EXISTS(SELECT 1 FROM pg_namespace WHERE nspname NOT IN ('public','information_schema') AND nspname NOT LIKE 'pg_%') OR EXISTS(SELECT 1 FROM pg_class x JOIN pg_namespace n ON n.oid=x.relnamespace WHERE n.nspname='public') OR EXISTS(SELECT 1 FROM pg_proc x JOIN pg_namespace n ON n.oid=x.pronamespace WHERE n.nspname='public') OR EXISTS(SELECT 1 FROM pg_type x JOIN pg_namespace n ON n.oid=x.typnamespace WHERE n.nspname='public') OR EXISTS(SELECT 1 FROM pg_extension WHERE extname<>'plpgsql') AS occupied");
+ const r=await c.query("SELECT EXISTS(SELECT 1 FROM pg_namespace WHERE nspname NOT IN ('public','information_schema') AND left(nspname,3)<>'pg_') OR EXISTS(SELECT 1 FROM pg_class x JOIN pg_namespace n ON n.oid=x.relnamespace WHERE n.nspname='public') OR EXISTS(SELECT 1 FROM pg_proc x JOIN pg_namespace n ON n.oid=x.pronamespace WHERE n.nspname='public') OR EXISTS(SELECT 1 FROM pg_type x JOIN pg_namespace n ON n.oid=x.typnamespace WHERE n.nspname='public') OR EXISTS(SELECT 1 FROM pg_extension WHERE extname<>'plpgsql') AS occupied");
  if(r.rows[0]?.occupied!==false)throw Error("Database is not empty; refusing initialization");
 }
 async function major(c){return Math.floor(Number((await c.query("SHOW server_version_num")).rows[0].server_version_num)/10000);}
@@ -82,8 +90,11 @@ function dump(u,mode=[]){
  const host=u.hostname.replace(/^\[|\]$/g,"");
  const version=spawnSync("pg_dump",["--version"],{encoding:"utf8"});
  if(version.error||version.status!==0)throw Error("Matching PostgreSQL client tools are required on the developer machine");
+ // Prevent inherited libpq routing/service/options variables from overriding
+ // the verified local disposable connection.
+ const env=Object.fromEntries(Object.entries(process.env).filter(([key])=>!key.toUpperCase().startsWith("PG")));
  const result=spawnSync("pg_dump",["--format=plain","--no-owner","--no-privileges","--inserts",...mode],
-  {env:{...process.env,PGHOST:host,PGPORT:u.port||"5432",PGUSER:decodeURIComponent(u.username),PGPASSWORD:decodeURIComponent(u.password),PGDATABASE:decodeURIComponent(u.pathname.slice(1)),PGSSLMODE:u.searchParams.get("sslmode")||"prefer"},
+  {env:{...env,PGHOST:host,PGPORT:u.port||"5432",PGUSER:decodeURIComponent(u.username),PGPASSWORD:decodeURIComponent(u.password),PGDATABASE:decodeURIComponent(u.pathname.slice(1)),PGSSLMODE:u.searchParams.get("sslmode")||"prefer",PGCONNECT_TIMEOUT:"15"},
    encoding:"utf8",maxBuffer:64*1024*1024,stdio:["ignore","pipe","pipe"]});
  if(result.error||result.status!==0)throw Error("PostgreSQL baseline export failed");
  return cleanDump(result.stdout);
@@ -98,6 +109,7 @@ function loadBundle(){
     new Set(manifest.migrations.map(e=>e.filename)).size!==manifest.migrations.length||
     manifest.sqlSha256!==sha(sql))throw Error("Database baseline checksum or manifest invalid");
  const current=sourceContract();
+ if(!existsSync(contractFile)||!equal(JSON.parse(readFileSync(contractFile,"utf8")),current))throw Error("Release build schema contract missing or stale; rebuild the backend");
  if(!equal(current.slice(0,manifest.migrations.length),manifest.migrations))throw Error("Baseline source history changed; regenerate before first release or reconcile explicitly");
  const highest=Number(manifest.migrations.at(-1).filename.split("_")[0]);
  const pending=current.slice(manifest.migrations.length).map(e=>Number(e.filename.split("_")[0]));
@@ -151,9 +163,7 @@ async function init(){
   if(await major(c)!==manifest.postgresMajor)throw Error("Target PostgreSQL major version differs from baseline");
   const rows=await ledger(c);
   if(rows){
-   requireLedger(rows,manifest.migrations,{exact:false});
-   const known=new Map(current.map(e=>[e.filename,e.sha256]));
-   if(rows.some(e=>known.get(e.filename)!==e.sha256))throw Error("Existing database release incompatible");
+   requirePrefix(rows,current,manifest.migrations);
    console.log("Database already initialized; no SQL applied.");return;
   }
   await blank(c);await restore(c,sql,manifest.migrations);
@@ -162,18 +172,18 @@ async function init(){
 }
 async function upgrade(){
  const {manifest,current}=loadBundle(),u=direct(process.env.DATABASE_MIGRATION_URL);
- await withDb(u,async c=>{
+ const currentAlreadyApplied=await withDb(u,async c=>{
   if(await major(c)!==manifest.postgresMajor)throw Error("Target PostgreSQL major version differs from baseline");
   const rows=await ledger(c);if(!rows)throw Error("Run explicit first installation before upgrading");
-  requireLedger(rows,manifest.migrations,{exact:false});
-  const known=new Map(current.map(e=>[e.filename,e.sha256]));
-  if(rows.some(e=>known.get(e.filename)!==e.sha256))throw Error("Existing database release incompatible");
+  return requirePrefix(rows,current,manifest.migrations);
  });
+ if(currentAlreadyApplied){console.log("Database release already current; no SQL applied.");return;}
  runMigration(u,true);
  await withDb(u,async c=>{const rows=await ledger(c);if(!rows)throw Error("Upgrade history missing");requireLedger(rows,current);});
  console.log("Database release version verified.");
 }
-try{
+export {cleanDump,requireLedger,requirePrefix,disposable,direct,order};
+if(process.argv[1]&&resolve(process.argv[1])===fileURLToPath(import.meta.url))try{
  switch(process.argv[2]){
   case "contract": mkdirSync(dirname(contractFile),{recursive:true});writeFileSync(contractFile,JSON.stringify(sourceContract())+"\n");break;
   case "generate": await generate();break;
@@ -184,6 +194,6 @@ try{
  }
 }catch(e){
  // Only allow reviewed operator messages, never connection strings or SQL errors.
- const message=e instanceof Error&&/^(?:A direct|Invalid database|Invalid migration|Database migration history|Baseline generation|Database is not empty|Another database|Migration execution|Unexpected PostgreSQL|Unsupported PostgreSQL|Matching PostgreSQL|PostgreSQL baseline export|Verified database baseline|Database baseline checksum|Baseline source history|New upgrades|Baseline restore|Explicit|Baseline already|Use two|PostgreSQL major|pg_dump major|Migration history|Migration sources|Target PostgreSQL|Existing database|Run explicit|Upgrade history|Use contract)/.test(e.message)?e.message:"Database release operation failed. Inspect protected local diagnostics.";
+ const message=e instanceof Error&&/^(?:A direct|Invalid database|Invalid migration|Database migration history|Baseline generation|Database is not empty|Another database|Migration execution|Unexpected PostgreSQL|Unsupported PostgreSQL|Matching PostgreSQL|PostgreSQL baseline export|Verified database baseline|Database baseline checksum|Baseline source history|New upgrades|Baseline restore|Explicit|Baseline already|Use two|PostgreSQL major|pg_dump major|Migration history|Migration sources|Target PostgreSQL|Existing database|Run explicit|Upgrade history|Release build schema contract|Use contract)/.test(e.message)?e.message:"Database release operation failed. Inspect protected local diagnostics.";
  console.error(message);process.exitCode=1;
 }

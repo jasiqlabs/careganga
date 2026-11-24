@@ -50,7 +50,9 @@
     "db:baseline:generate": "npm run build && node db/baseline.mjs generate --confirm-disposable",
     "db:init": "node --env-file-if-exists=.env db/baseline.mjs init",
     "db:upgrade": "node --env-file-if-exists=.env db/baseline.mjs upgrade",
-    "db:release:check": "node db/baseline.mjs check"
+    "db:release:check": "node db/baseline.mjs check",
+    "bootstrap:root:release": "node --env-file-if-exists=.env dist/src/modules/cg-01-identity-access/infrastructure/bootstrap-root.js",
+    "test:db:baseline": "node --test db/baseline.test.mjs"
   },
   "dependencies": {
     "@nestjs/common": "12.5.0",
