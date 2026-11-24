@@ -323,7 +323,7 @@ export class MisReportSourceService{
    explanation:x.explanation,
    scopeLabel:"Current authorized posted finance scope"};
  }
- async preview(token:string,raw:unknown):Promise<ReportPreview>{
+ async preview(token:string,raw:unknown,exporting=false):Promise<ReportPreview>{
   await this.sessions.requireAction(token,"mis.reports.view");
   const q=parseSafeReport(raw);
   const sourceReadAt=new Date().toISOString();
@@ -435,7 +435,7 @@ export class MisReportSourceService{
     explanation:x.explanation,scopeLabel:"Current permitted finance source scope"};
   }
   if(q.kind==="PROJECT_STATUS_REPORT"){
-   const x=await this.projects.misStatus(token,q.branchRef,q.projectRef,q.fromDay,q.untilDay);
+   const x=await this.projects.misStatus(token,q.branchRef,q.projectRef,q.fromDay,q.untilDay,exporting);
    return {kind:q.kind,view:q.view,label:"Project status",state:x.partial?"PARTIAL":x.rows.length?"READY":"EMPTY",columns:[{key:"code",label:"Project code"},{key:"title",label:"Project"},{key:"status",label:"Current status"},{key:"branch",label:"Current branch"},{key:"revision",label:"Revision"},{key:"plannedStart",label:"Planned start"},{key:"plannedEnd",label:"Planned end"}],rows:x.rows,nextOffset:null,sourceReadAt,sourceAsOf:x.sourceAsOf,sourceCutoffKind:"OWNER_TRANSACTION_SNAPSHOT",explanation:x.partial?"More than 50 projects match. Narrow the filters before export.":"Current source revision; dates filter planned start and end. No personal or location fields.",scopeLabel:"Current permitted project scope"};
   }
   if(q.kind==="PROJECT_BUDGET_SUMMARY"){
