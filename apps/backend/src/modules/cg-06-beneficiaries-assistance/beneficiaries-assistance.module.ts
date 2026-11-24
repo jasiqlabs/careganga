@@ -1,14 +1,10 @@
 import {Module} from "@nestjs/common";
-import {IdentityAccessModule} from "../cg-01-identity-access/identity-access.module";
-import {FoundationStructureModule} from "../cg-02-foundation-structure/foundation-structure.module";
-import {ProjectsSourceModule} from "../cg-05-projects-field-operations/projects-source.module";
-import {BeneficiariesService} from "./application/beneficiaries.service";
+import {BeneficiariesSourceModule} from "./beneficiaries-source.module";
 import {BeneficiariesController} from "./http/beneficiaries.controller";
 
 @Module({
- imports:[IdentityAccessModule,FoundationStructureModule,ProjectsSourceModule],
- providers:[BeneficiariesService],
+ imports:[BeneficiariesSourceModule],
  controllers:[BeneficiariesController],
- exports:[BeneficiariesService]
+ exports:[BeneficiariesSourceModule]
 })
 export class BeneficiariesAssistanceModule{}
