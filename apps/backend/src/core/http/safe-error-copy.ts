@@ -12,6 +12,8 @@ export const SAFE_MESSAGE_CATALOG:Readonly<Record<string,string>>=Object.freeze(
       CG13_PRODUCT_STALE:"This reward product has changed. Refresh its latest details before saving.",
       CG13_MEDIA_UNAVAILABLE:"Choose a currently published, rights-approved CareGanga image, or leave the image blank.",
 
+      CG06_INVALID_INPUT:"Check the beneficiary details or selected evidence and try again.",
+      CG06_SOURCE_STALE:"The beneficiary or evidence changed. Refresh the current record before continuing.",
       CG05_INVALID:"Check the project or activity details and try again.",
       CG05_SOURCE_CHANGED:"The original record changed. Refresh its current version before continuing.",
       CG05_DUPLICATE:"This code or request already exists. Refresh the original record.",
