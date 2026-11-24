@@ -141,7 +141,7 @@ function payload(d:Draft){
   fields:{heading:d.title||"About the Foundation",body:d.body,variant:"STANDARD"}});
  return {kind:d.kind,slug:d.kind==="HOME"?"home":"about",title:d.title,
   seoTitle:d.seoTitle||d.title,seoDescription:d.seoDescription,
-  canonicalPath:d.kind==="HOME"?"/":"/about",sections,assets:d.assets,
+  canonicalPath:d.kind==="HOME"?"/":"/about",sections,assets:d.assets.filter(a=>a.role!=="TEAM"),
   ...(d.kind==="HOME"?{navigation:{loginDesired:d.loginDesired,
    memberJoinDesired:d.memberJoinDesired,volunteerJoinDesired:d.volunteerJoinDesired}}:{})};
 }
@@ -850,55 +850,15 @@ export function CmsAdminWorkspace({canManage,canPublish,canReview}:{
      </fieldset>
     </>}
     <fieldset><legend>Public team directory</legend>
-      <p>Only currently consented CG-10 name and designation may be selected. Portraits and biographies remain unavailable. Independent CMS approval is required.</p>
-      <label>Section heading<input disabled={!canManage} value={draft.teamHeading} onChange={e=>edit("teamHeading",e.target.value)}/></label>
-      {canManage&&<button type="button" onClick={refreshTeam} disabled={busy}>Refresh consented staff</button>}
+      <p>Only the current CG-10 self-consented name and designation may be selected. Photos, biography and location are not covered by that consent.</p>
+      <label>Section heading<input disabled={!canManage||busy||!!pending} value={draft.teamHeading}
+       onChange={e=>edit("teamHeading",e.target.value)}/></label>
+      <button type="button" disabled={!canManage||busy||!!pending} onClick={refreshTeam}>Refresh consented staff profiles</button>
       {teamError&&<p role="alert">{teamError}</p>}
-      {!teamChoices.length&&!teamError&&<p>No current consented staff sources.</p>}
-      {teamChoices.map(person=><label key={person.sourceRef} className="cg-cms-consent">
-       <input type="checkbox" checked={draft.team.some(x=>x.sourceRef===person.sourceRef&&x.proof===person.proof)} disabled={!canManage||busy||(!draft.team.some(x=>x.sourceRef===person.sourceRef)&&draft.team.length>=15)}
-        onChange={e=>edit("team",e.target.checked?[...draft.team.filter(x=>x.sourceRef!==person.sourceRef),person]:draft.team.filter(x=>x.sourceRef!==person.sourceRef))}/>
-       {person.name} · {person.designation}</label>)}
-      {draft.team.filter(x=>!teamChoices.some(y=>y.sourceRef===x.sourceRef&&y.proof===x.proof)).map((x,i)=><div key={i}><p>Unavailable or historical profile selection. Remove or reselect the current source.</p>
-       {canManage&&<button type="button" disabled={busy} onClick={()=>{edit("team",draft.team.filter(y=>y!==x));edit("assets",draft.assets.filter(a=>a.role!=="TEAM"));}}>Remove unavailable profile</button>}</div>)}
-    </fieldset>
-     {!!selected&&selected.status==="DRAFT"&&canManage&&<fieldset>
-      <legend>Page photographs</legend>
-      <p>Upload only an original image the Foundation is authorized to publish.
-       It must pass the private file scan before saving the draft.</p>
-      <label>Placement<select value={uploadRole}
-        onChange={e=>{setUploadRole(e.target.value as Asset["role"]);setUploadOrder(0)}}>
-        <option value="HERO">Desktop hero slide photo</option>
-        <option value="MOBILE_HERO">Mobile hero slide photo</option>
-        <option value="ABOUT">About / story photograph</option>
-        <option value="PROMO">Volunteer promotional photograph</option>
-        <option value="FEATURE">How We Help card photograph</option>
-        </select></label>
-       {(["HERO","MOBILE_HERO","TEAM","FEATURE"] as string[]).includes(uploadRole)&&
-        <label>{uploadRole==="TEAM"?"Team member":uploadRole==="FEATURE"?"Solution card":"Hero slide"}
-         <select value={String(uploadOrder)} onChange={e=>setUploadOrder(Number(e.target.value))}>
-          {(uploadRole==="TEAM"?draft.team:
-            uploadRole==="FEATURE"?draft.featureCards:draft.slides).map((value,index)=>
-            <option key={index} value={index}>{uploadRole==="TEAM"?
-             (value as Team).name||"Member "+(index+1):uploadRole==="FEATURE"?
-             (value as FeatureCard).title||"Card "+(index+1):
-             (value as Slide).heading||"Slide "+(index+1)}</option>)}
-         </select></label>}
-       <label>Describe the image<input value={uploadAlt} maxLength={300}
-       onChange={e=>setUploadAlt(e.target.value)}/></label>
-      <label className="cg-cms-consent"><input type="checkbox" checked={rights}
-       onChange={e=>setRights(e.target.checked)}/>I confirm public image rights and consent</label>
-      <label>Select original image<input type="file" accept="image/png,image/jpeg,image/webp"
-       disabled={busy||!rights||uploadAlt.trim().length<3||
-         uploadRole==="TEAM"||
-         (uploadRole==="FEATURE"&&draft.featureCards.length===0)||
-         (["HERO","MOBILE_HERO"].includes(uploadRole)&&draft.slides.length===0)}
-       onChange={e=>{const file=e.target.files?.[0];if(file)void upload(file);e.currentTarget.value="";}}/></label>
-      {draft.assets.map(x=><div className="cg-cms-asset" key={x.fileRef}>
-       <span>{x.role==="TEAM"?(draft.team[x.order]?.name||"Team member "+(x.order+1)):
-        x.role.replaceAll("_"," ")} · {x.altText}</span>
-       <button type="button" onClick={()=>edit("assets",draft.assets.filter(v=>v!==x))}>
-        Remove from draft</button></div>)}
+      {draft.team.map((p,i)=><div className="cg-cms-team" key={i}><strong>{p.name}</strong><span>{p.designation}</span>
+       <button type="button" disabled={!canManage||busy||!!pending} onClick={()=>removeIndexedContent("TEAM",i)}>Remove profile</button></div>)}
+      {teamChoices.filter(p=>!draft.team.some(x=>x.sourceRef===p.sourceRef)).map(p=><button type="button" key={p.sourceRef}
+       disabled={!canManage||busy||!!pending||draft.team.length>=15} onClick={()=>edit("team",[...draft.team,p])}>Add {p.name} · {p.designation}</button>)}
      </fieldset>}
     </div>}
     {canManage&&draftIssue&&<p className="cg-cms-error" role="status">{draftIssue}</p>}
