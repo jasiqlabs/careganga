@@ -2,7 +2,7 @@
 -- Approval activation is introduced by the real CG03 integration; drafts are never payable.
 CREATE TABLE payroll_policy (
  id uuid PRIMARY KEY DEFAULT gen_random_uuid(), root_realm_id uuid NOT NULL REFERENCES access_realm(id),
- branch_ref uuid NOT NULL, cycle text NOT NULL CHECK(cycle='MONTHLY'),
+ branch_ref uuid, cycle text NOT NULL CHECK(cycle='MONTHLY'),
  currency text NOT NULL DEFAULT 'INR' CHECK(currency='INR'),
  period_timezone text NOT NULL DEFAULT 'Asia/Kolkata' CHECK(period_timezone='Asia/Kolkata'),
  fiscal_year_start_month integer NOT NULL DEFAULT 4 CHECK(fiscal_year_start_month=4),
@@ -51,7 +51,7 @@ CREATE TABLE employee_compensation (
  FOREIGN KEY(root_realm_id,assignment_ref) REFERENCES hr_employment_assignment(root_realm_id,id),
  FOREIGN KEY(root_realm_id,source_hr_proposal_ref,source_hr_proposal_digest,source_hr_proposal_revision) REFERENCES hr_employment_change(root_realm_id,id,source_digest,revision),
  CHECK(num_nonnulls(source_hr_proposal_ref,source_hr_proposal_revision,source_hr_proposal_digest) IN(0,3)),
- FOREIGN KEY(root_realm_id,policy_id,branch_ref) REFERENCES payroll_policy(root_realm_id,id,branch_ref),
+ FOREIGN KEY(root_realm_id,policy_id) REFERENCES payroll_policy(root_realm_id,id),
  FOREIGN KEY(created_by,root_realm_id) REFERENCES account(id,realm_id),
  FOREIGN KEY(approval_case_ref,root_realm_id) REFERENCES cg03_case(id,realm_id),
  FOREIGN KEY(root_realm_id,supersedes_ref) REFERENCES employee_compensation(root_realm_id,id),
@@ -72,12 +72,13 @@ BEGIN
    RAISE EXCEPTION 'Payroll policy version is immutable'; END IF;
  END IF;
  IF NEW.status='APPROVED' THEN
-  PERFORM 1 FROM branch WHERE root_realm_id=NEW.root_realm_id AND id=NEW.branch_ref FOR UPDATE;
+  PERFORM 1 FROM access_realm WHERE id=NEW.root_realm_id FOR UPDATE;
+  IF NEW.branch_ref IS NOT NULL AND NOT EXISTS(SELECT 1 FROM branch WHERE root_realm_id=NEW.root_realm_id AND id=NEW.branch_ref AND status='ACTIVE') THEN RAISE EXCEPTION 'Inactive payroll branch' USING ERRCODE='23514'; END IF;
  IF NEW.status='APPROVED' AND NEW.supersedes_ref IS NOT NULL THEN
-  IF NOT EXISTS(SELECT 1 FROM payroll_policy p WHERE p.root_realm_id=NEW.root_realm_id AND p.id=NEW.supersedes_ref AND p.branch_ref=NEW.branch_ref AND p.cycle=NEW.cycle AND p.status='APPROVED' AND p.effective_from<NEW.effective_from AND (p.effective_to IS NULL OR NEW.effective_from<=p.effective_to) AND NOT EXISTS(SELECT 1 FROM payroll_policy successor WHERE successor.root_realm_id=p.root_realm_id AND successor.supersedes_ref=p.id AND successor.status='APPROVED')) THEN
+  IF NOT EXISTS(SELECT 1 FROM payroll_policy p WHERE p.root_realm_id=NEW.root_realm_id AND p.id=NEW.supersedes_ref AND p.branch_ref IS NOT DISTINCT FROM NEW.branch_ref AND p.cycle=NEW.cycle AND p.status='APPROVED' AND p.effective_from<NEW.effective_from AND (p.effective_to IS NULL OR NEW.effective_from<=p.effective_to) AND NOT EXISTS(SELECT 1 FROM payroll_policy successor WHERE successor.root_realm_id=p.root_realm_id AND successor.supersedes_ref=p.id AND successor.status='APPROVED')) THEN
    RAISE EXCEPTION 'Original approved predecessor changed' USING ERRCODE='23514'; END IF;
  END IF;
-  IF EXISTS(SELECT 1 FROM payroll_policy p WHERE p.root_realm_id=NEW.root_realm_id AND p.branch_ref=NEW.branch_ref AND p.cycle=NEW.cycle AND p.status='APPROVED' AND p.id<>NEW.id AND p.id IS DISTINCT FROM NEW.supersedes_ref AND daterange(p.effective_from,LEAST(p.effective_to,(SELECT successor.effective_from FROM payroll_policy successor WHERE successor.root_realm_id=p.root_realm_id AND successor.supersedes_ref=p.id AND successor.status='APPROVED')),'[)') && daterange(NEW.effective_from,NEW.effective_to,'[)')) THEN
+  IF EXISTS(SELECT 1 FROM payroll_policy p WHERE p.root_realm_id=NEW.root_realm_id AND p.branch_ref IS NOT DISTINCT FROM NEW.branch_ref AND p.cycle=NEW.cycle AND p.status='APPROVED' AND p.id<>NEW.id AND p.id IS DISTINCT FROM NEW.supersedes_ref AND daterange(p.effective_from,LEAST(p.effective_to,(SELECT successor.effective_from FROM payroll_policy successor WHERE successor.root_realm_id=p.root_realm_id AND successor.supersedes_ref=p.id AND successor.status='APPROVED')),'[)') && daterange(NEW.effective_from,NEW.effective_to,'[)')) THEN
    RAISE EXCEPTION 'Overlapping payroll policy' USING ERRCODE='23514'; END IF;
  END IF;
  RETURN NEW;
@@ -97,7 +98,7 @@ BEGIN
  IF NOT EXISTS(SELECT 1 FROM hr_employment_assignment a JOIN hr_employee e ON e.root_realm_id=a.root_realm_id AND e.id=a.employee_id WHERE a.root_realm_id=NEW.root_realm_id AND a.id=NEW.assignment_ref AND a.employee_id=NEW.employee_ref AND a.branch_ref=NEW.branch_ref AND a.assignment_version=NEW.assignment_version AND e.status_version=NEW.employee_status_version AND e.status IN('ACTIVE','PROBATION') AND a.valid_from<=NEW.effective_from AND (a.valid_to IS NULL OR a.valid_to>NEW.effective_from)) THEN
   RAISE EXCEPTION 'Original HR eligibility changed' USING ERRCODE='23514'; END IF;
  IF NEW.source_hr_proposal_ref IS NOT NULL AND NOT EXISTS(SELECT 1 FROM hr_employment_change h JOIN cg03_case c ON c.realm_id=h.root_realm_id AND c.id=h.case_ref AND c.hr_employment_change_id=h.id AND c.hr_employment_change_digest=h.source_digest AND c.status='OWNER_COMPLETED' JOIN cg03_case_decision d ON d.realm_id=c.realm_id AND d.case_id=c.id AND d.id=h.decision_ref AND d.action='APPROVE' WHERE h.root_realm_id=NEW.root_realm_id AND h.id=NEW.source_hr_proposal_ref AND h.employee_id=NEW.employee_ref AND h.new_assignment_ref=NEW.assignment_ref AND h.proposed_branch_ref=NEW.branch_ref AND h.status='APPLIED' AND h.effective_date=NEW.effective_from) THEN RAISE EXCEPTION 'Original HR proposal no longer applies' USING ERRCODE='23514'; END IF;
- IF NOT EXISTS(SELECT 1 FROM payroll_policy p WHERE p.root_realm_id=NEW.root_realm_id AND p.id=NEW.policy_id AND p.branch_ref=NEW.branch_ref AND p.revision=NEW.policy_revision AND p.status='APPROVED' AND p.effective_from<=NEW.effective_from AND (LEAST(p.effective_to,(SELECT successor.effective_from FROM payroll_policy successor WHERE successor.root_realm_id=p.root_realm_id AND successor.supersedes_ref=p.id AND successor.status='APPROVED')) IS NULL OR (NEW.effective_to IS NOT NULL AND NEW.effective_to<=LEAST(p.effective_to,(SELECT successor.effective_from FROM payroll_policy successor WHERE successor.root_realm_id=p.root_realm_id AND successor.supersedes_ref=p.id AND successor.status='APPROVED'))))) THEN
+ IF NOT EXISTS(SELECT 1 FROM payroll_policy p WHERE p.root_realm_id=NEW.root_realm_id AND p.id=NEW.policy_id AND (p.branch_ref=NEW.branch_ref OR p.branch_ref IS NULL) AND p.revision=NEW.policy_revision AND p.status='APPROVED' AND p.effective_from<=NEW.effective_from AND (LEAST(p.effective_to,(SELECT successor.effective_from FROM payroll_policy successor WHERE successor.root_realm_id=p.root_realm_id AND successor.supersedes_ref=p.id AND successor.status='APPROVED')) IS NULL OR (NEW.effective_to IS NOT NULL AND NEW.effective_to<=LEAST(p.effective_to,(SELECT successor.effective_from FROM payroll_policy successor WHERE successor.root_realm_id=p.root_realm_id AND successor.supersedes_ref=p.id AND successor.status='APPROVED'))))) THEN
   RAISE EXCEPTION 'Approved policy required' USING ERRCODE='23514'; END IF;
  END IF;
  IF NEW.status='APPROVED' AND NEW.supersedes_ref IS NOT NULL THEN
