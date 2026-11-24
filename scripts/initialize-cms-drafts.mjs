@@ -7,7 +7,8 @@ const args=process.argv.slice(2);
 const apply=args.includes("--apply");
 const manifestIndex=args.indexOf("--manifest");
 const external=manifestIndex>=0?args[manifestIndex+1]:null;
-if((manifestIndex>=0&&(!external||external.startsWith("--")))||args.some((a,i)=>a!=="--apply"&&a!=="--manifest"&&i!==manifestIndex+1)){
+if(args.filter(a=>a==="--manifest").length>1||args.filter(a=>a==="--apply").length>1){console.error("Specify each option at most once.");process.exit(1);}
+if((manifestIndex>=0&&(!external||external.startsWith("--")))||args.some((a,i)=>a!=="--apply"&&a!=="--manifest"&&!(manifestIndex>=0&&i===manifestIndex+1))){
  console.error("Usage: node scripts/initialize-cms-drafts.mjs [--manifest <private-json>] [--apply]");process.exit(1);
 }
 const section=(kind,order,fields)=>({kind,order,fields});
