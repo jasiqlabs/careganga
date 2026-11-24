@@ -5,9 +5,9 @@ import * as Crypto from "expo-crypto";
 import {identityRequest} from "../identity-access/http-client";
 import {careGangaTheme as theme} from "../../../../../packages/design-tokens/src/index";
 type Option={value:string;label:string};
-type Options={canManageFoundation:boolean;canFilterProjects:boolean;branches:Option[];states:Option[];districts:Option[]};
+type Options={canManageFoundation:boolean;canFilterProjects:boolean;branches:Option[];states:Option[];districts:Option[];blocks:Option[]};
 type Item={ref:string;reference:string;name:string;contactMobile:string|null;representativeName:string|null;
- representativeContact:string|null;branchRef:string|null;stateRef:string;districtRef:string|null;beneficiaryType:string;
+ representativeContact:string|null;branchRef:string|null;stateRef:string;districtRef:string|null;blockRef:string|null;beneficiaryCategory:string|null;beneficiaryType:string;
  gender:string;ageGroup:string;consentKind:string;consentPurpose:string|null;consentRevoked:boolean;
  verification:string;lifecycle:string;revision:number;projectLinks?:{ref:string;projectRef:string;projectName:string}[]};
 type Page={items:Item[];nextCursor:string|null;hasMore:boolean};
@@ -19,14 +19,14 @@ type ReviewInfo={status:string;caseNumber:string|null;revision?:number;canReview
  sourceRevision:number;sourceVerification:string;allowedDecisions?:string[];requiresCurrentPassword?:boolean;
  decisions?:{action:string;remarks:string;at:string}[]};
 type Form={branchRef:string;name:string;contactMobile:string;representativeName:string;representativeContact:string;
- stateRef:string;districtRef:string;beneficiaryType:string;gender:string;ageGroup:string;consentKind:string;
+ stateRef:string;districtRef:string;blockRef:string;beneficiaryCategory:string;beneficiaryType:string;gender:string;ageGroup:string;consentKind:string;
  consentPurpose:string;consentAcknowledged:boolean};
 const blank=():Form=>({branchRef:"",name:"",contactMobile:"",representativeName:"",representativeContact:"",
- stateRef:"",districtRef:"",beneficiaryType:"",gender:"NOT_SPECIFIED",ageGroup:"NOT_SPECIFIED",consentKind:"SELF",
+ stateRef:"",districtRef:"",blockRef:"",beneficiaryCategory:"",beneficiaryType:"",gender:"NOT_SPECIFIED",ageGroup:"NOT_SPECIFIED",consentKind:"SELF",
  consentPurpose:"Foundation beneficiary assistance",consentAcknowledged:false});
 const fromItem=(x:Item):Form=>({...blank(),branchRef:x.branchRef??"",name:x.name,contactMobile:x.contactMobile??"",
  representativeName:x.representativeName??"",representativeContact:x.representativeContact??"",stateRef:x.stateRef,
- districtRef:x.districtRef??"",beneficiaryType:x.beneficiaryType,gender:x.gender,ageGroup:x.ageGroup,
+ districtRef:x.districtRef??"",blockRef:x.blockRef??"",beneficiaryCategory:x.beneficiaryCategory??"",beneficiaryType:x.beneficiaryType,gender:x.gender,ageGroup:x.ageGroup,
  consentKind:x.consentKind,consentPurpose:x.consentPurpose??"",consentAcknowledged:true});
 const capitalize=(s:string)=>s.toLowerCase().replaceAll("_"," ").replace(/^./,x=>x.toUpperCase());
 const actionStyle={padding:12,borderRadius:10,backgroundColor:"#1D4ED8",marginTop:8} as const;
@@ -65,8 +65,9 @@ export function NativeBeneficiariesWorkspace({token,onExpired,canManage,canLinkP
  const [projectFilter,setProjectFilter]=useState(""),[projectSearch,setProjectSearch]=useState(""),[filterProjects,setFilterProjects]=useState<Option[]>([]);
  const [stateFilter,setStateFilter]=useState(""),[districtFilter,setDistrictFilter]=useState("");
  const [fromFilter,setFromFilter]=useState(""),[toFilter,setToFilter]=useState("");
- const [filterDistricts,setFilterDistricts]=useState<Option[]>([]);
- const [appliedFilters,setAppliedFilters]=useState({gender:"",ageGroup:"",type:"",stateRef:"",districtRef:"",registeredFrom:"",registeredTo:"",projectRef:""});
+ const [filterDistricts,setFilterDistricts]=useState<Option[]>([]),[filterBlocks,setFilterBlocks]=useState<Option[]>([]),[blocks,setBlocks]=useState<Option[]>([]);
+ const [blockFilter,setBlockFilter]=useState(""),[categoryFilter,setCategoryFilter]=useState("");
+ const [appliedFilters,setAppliedFilters]=useState({gender:"",ageGroup:"",type:"",stateRef:"",districtRef:"",blockRef:"",category:"",registeredFrom:"",registeredTo:"",projectRef:""});
  const [cursor,setCursor]=useState(""),[history,setHistory]=useState<string[]>([]);
  const [auditHistory,setAuditHistory]=useState<ActionHistory[]>([]),[verificationHistory,setVerificationHistory]=useState<VerificationHistory[]>([]);
  const [review,setReview]=useState<ReviewInfo|null>(null),[reviewAction,setReviewAction]=useState("APPROVE");
@@ -113,6 +114,8 @@ export function NativeBeneficiariesWorkspace({token,onExpired,canManage,canLinkP
   return()=>{live=false;};
  },[search,tab,branch,cursor,refreshKey,api,appliedFilters]);
  useEffect(()=>{let live=true;setFilterDistricts([]);if(stateFilter)void api<Options>("/options?"+new URLSearchParams({stateRef:stateFilter})).then(v=>{if(live)setFilterDistricts(v.districts);}).catch(e=>{if(live)setError(e.message);});return()=>{live=false;};},[stateFilter,api]);
+ useEffect(()=>{let live=true;setFilterBlocks([]);if(stateFilter&&districtFilter)void api<Options>("/options?"+new URLSearchParams({stateRef:stateFilter,districtRef:districtFilter})).then(v=>{if(live)setFilterBlocks(v.blocks);}).catch(e=>{if(live)setError(e.message);});return()=>{live=false;};},[stateFilter,districtFilter,api]);
+ useEffect(()=>{let live=true;setBlocks([]);if(draft.stateRef&&draft.districtRef)void api<Options>("/options?"+new URLSearchParams({stateRef:draft.stateRef,districtRef:draft.districtRef})).then(v=>{if(live)setBlocks(v.blocks);}).catch(e=>{if(live)setError(e.message);});return()=>{live=false;};},[draft.stateRef,draft.districtRef,api]);
  const select=async(id:string)=>{setBusy(true);setError("");
   try{
    const [x,audit,verification,reviewInfo]=await Promise.all([
@@ -223,14 +226,16 @@ export function NativeBeneficiariesWorkspace({token,onExpired,canManage,canLinkP
    <Select title="Gender" selected={genderFilter} items={[{value:"",label:"All"},...enumOptions(["MALE","FEMALE","OTHER","NOT_SPECIFIED"])]} onSelect={setGenderFilter}/>
    <Select title="Age group" selected={ageFilter} items={[{value:"",label:"All"},...enumOptions(["CHILD","ADULT","SENIOR","NOT_SPECIFIED"])]} onSelect={setAgeFilter}/>
    {opts?.canFilterProjects&&<View><Text style={labelStyle}>Find project</Text><TextInput accessibilityLabel="Find project" maxLength={80} value={projectSearch} onChangeText={setProjectSearch} placeholder="Project name or code" style={{backgroundColor:"white",borderWidth:1,borderColor:"#CBD5E1",padding:12,borderRadius:10}}/><Button label="Find projects" outline onPress={()=>void loadProjectFilters()}/><Select title="Project" selected={projectFilter} items={[{value:"",label:"All projects"},...filterProjects]} onSelect={setProjectFilter}/></View>}
-   <Select title="State" selected={stateFilter} items={[{value:"",label:"All states"},...(opts?.states??[])]} onSelect={x=>{setStateFilter(x);setDistrictFilter("");}}/>
-   {stateFilter!==""&&<Select title="District" selected={districtFilter} items={[{value:"",label:"All districts"},...filterDistricts]} onSelect={setDistrictFilter}/>}
+   <Select title="State" selected={stateFilter} items={[{value:"",label:"All states"},...(opts?.states??[])]} onSelect={x=>{setStateFilter(x);setDistrictFilter("");setBlockFilter("");}}/>
+   {stateFilter!==""&&<Select title="District" selected={districtFilter} items={[{value:"",label:"All districts"},...filterDistricts]} onSelect={x=>{setDistrictFilter(x);setBlockFilter("");}}/>}
+   {districtFilter!==""&&<Select title="Block / location" selected={blockFilter} items={[{value:"",label:"All blocks"},...filterBlocks]} onSelect={setBlockFilter}/>}
+   <Text style={labelStyle}>Category</Text><TextInput accessibilityLabel="Category" value={categoryFilter} maxLength={60} onChangeText={setCategoryFilter} style={{backgroundColor:"white",borderWidth:1,borderColor:"#CBD5E1",padding:12,borderRadius:10}}/>
    <Text style={labelStyle}>Registered from (YYYY-MM-DD)</Text>
    <TextInput accessibilityLabel="Registered from" value={fromFilter} onChangeText={setFromFilter} maxLength={10} placeholder="YYYY-MM-DD" style={{backgroundColor:"white",borderWidth:1,borderColor:"#CBD5E1",padding:12,borderRadius:10}}/>
    <Text style={labelStyle}>Registered to (YYYY-MM-DD)</Text>
    <TextInput accessibilityLabel="Registered to" value={toFilter} onChangeText={setToFilter} maxLength={10} placeholder="YYYY-MM-DD" style={{backgroundColor:"white",borderWidth:1,borderColor:"#CBD5E1",padding:12,borderRadius:10}}/>
-   <Button label="Apply Filters" outline onPress={()=>{setSearch(q.trim());setAppliedFilters({gender:genderFilter,ageGroup:ageFilter,type:typeFilter,stateRef:stateFilter,districtRef:districtFilter,registeredFrom:fromFilter,registeredTo:toFilter,projectRef:projectFilter});setCursor("");setHistory([]);}}/>
-   <Button label="Reset filters" outline onPress={()=>{setQ("");setSearch("");setBranch("");setTab("ALL");setGenderFilter("");setAgeFilter("");setTypeFilter("");setStateFilter("");setDistrictFilter("");setFromFilter("");setToFilter("");setProjectFilter("");setProjectSearch("");setFilterProjects([]);setAppliedFilters({gender:"",ageGroup:"",type:"",stateRef:"",districtRef:"",registeredFrom:"",registeredTo:"",projectRef:""});setCursor("");setHistory([]);}}/>
+   <Button label="Apply Filters" outline onPress={()=>{setSearch(q.trim());setAppliedFilters({gender:genderFilter,ageGroup:ageFilter,type:typeFilter,stateRef:stateFilter,districtRef:districtFilter,blockRef:blockFilter,category:categoryFilter,registeredFrom:fromFilter,registeredTo:toFilter,projectRef:projectFilter});setCursor("");setHistory([]);}}/>
+   <Button label="Reset filters" outline onPress={()=>{setQ("");setSearch("");setBranch("");setTab("ALL");setGenderFilter("");setAgeFilter("");setTypeFilter("");setStateFilter("");setDistrictFilter("");setBlockFilter("");setCategoryFilter("");setFromFilter("");setToFilter("");setProjectFilter("");setProjectSearch("");setFilterProjects([]);setAppliedFilters({gender:"",ageGroup:"",type:"",stateRef:"",districtRef:"",blockRef:"",category:"",registeredFrom:"",registeredTo:"",projectRef:""});setCursor("");setHistory([]);}}/>
    <Select title="Operating branch" selected={branch}
     items={[{value:"",label:"All permitted branches"},...(opts?.branches??[])]}
     onSelect={x=>{setBranch(x);setProjectFilter("");setFilterProjects([]);setAppliedFilters(f=>({...f,projectRef:""}));setCursor("");setHistory([]);}}/>
@@ -256,7 +261,7 @@ export function NativeBeneficiariesWorkspace({token,onExpired,canManage,canLinkP
     <Text>Verification: {capitalize(selected.verification)}</Text>
     <Text>Lifecycle: {capitalize(selected.lifecycle)}</Text>
     <Text>Contact: {selected.contactMobile??"Not recorded / restricted"}</Text>
-    <Text>Category: {selected.beneficiaryType}</Text>
+    <Text>Beneficiary type: {selected.beneficiaryType}</Text><Text>Category: {selected.beneficiaryCategory??"Not specified"}</Text>
     <Text>Consent: {selected.consentRevoked?"Withdrawn":capitalize(selected.consentKind)}</Text>
     {canReadEvidence&&!selected.consentRevoked&&selected.lifecycle==="ACTIVE"&&<NativeProjectCoverPanel key={selected.ref+":"+selected.revision} projectRef={selected.ref} version={selected.revision} sourceKind="beneficiary" token={token} onExpired={onExpired} canUpload={canUploadEvidence&&canManage}/>}
     <Text style={{fontSize:12,color:"#64748B"}}>Verified status requires independent CG-03 review. This screen cannot approve it.</Text>
@@ -323,7 +328,7 @@ export function NativeBeneficiariesWorkspace({token,onExpired,canManage,canLinkP
     {mode==="create"&&<Select title="Operating branch" selected={draft.branchRef}
      items={[...(opts?.canManageFoundation?[{value:"",label:"Foundation wide"}]:[]),...(opts?.branches??[])]}
      onSelect={x=>change("branchRef",x)}/>}
-    {([["name","Full name"],["beneficiaryType","Beneficiary category"],["contactMobile","Phone (optional, with +country code)"]] as const).map(([k,title])=>
+    {([["name","Full name"],["beneficiaryType","Beneficiary type"],["beneficiaryCategory","Category (optional)"],["contactMobile","Phone (optional, with +country code)"]] as const).map(([k,title])=>
      <View key={k}><Text style={labelStyle}>{title}</Text>
       <TextInput value={draft[k]} onChangeText={x=>change(k,x)} style={{...textStyle,backgroundColor:"#F8FAFC",borderWidth:1,
        borderColor:"#CBD5E1",borderRadius:8,padding:12}}/></View>)}
@@ -339,9 +344,10 @@ export function NativeBeneficiariesWorkspace({token,onExpired,canManage,canLinkP
      {duplicates?.hasMore&&<Text>Other possible matches exist.</Text>}
     </View>
     <Select title="State" selected={draft.stateRef} items={opts?.states??[]}
-     onSelect={x=>setDraft(v=>({...v,stateRef:x,districtRef:""}))}/>
+     onSelect={x=>setDraft(v=>({...v,stateRef:x,districtRef:"",blockRef:""}))}/>
     <Select title="District (optional)" selected={draft.districtRef}
-     items={[{value:"",label:"Not selected"},...districts]} onSelect={x=>change("districtRef",x)}/>
+     items={[{value:"",label:"Not selected"},...districts]} onSelect={x=>setDraft(v=>({...v,districtRef:x,blockRef:""}))}/>
+     {draft.districtRef!==""&&<Select title="Block / location (optional)" selected={draft.blockRef} items={[{value:"",label:"Not selected"},...blocks]} onSelect={x=>change("blockRef",x)}/>}
     <Select title="Gender (optional)" selected={draft.gender}
      items={enumOptions(["NOT_SPECIFIED","FEMALE","MALE","OTHER"])} onSelect={x=>change("gender",x)}/>
     <Select title="Age group (optional)" selected={draft.ageGroup}
