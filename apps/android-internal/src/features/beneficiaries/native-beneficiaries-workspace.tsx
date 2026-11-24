@@ -10,6 +10,8 @@ type Item={ref:string;reference:string;name:string;contactMobile:string|null;rep
  gender:string;ageGroup:string;consentKind:string;consentPurpose:string|null;consentRevoked:boolean;
  verification:string;lifecycle:string;revision:number;projectLinks?:{ref:string;projectRef:string;projectName:string}[]};
 type Page={items:Item[];nextCursor:string|null;hasMore:boolean};
+type ActionHistory={action:string;revision:number;reason:string|null;at:string};
+type VerificationHistory={decision:string;sourceRevision:number;at:string};
 type Form={branchRef:string;name:string;contactMobile:string;representativeName:string;representativeContact:string;
  stateRef:string;districtRef:string;beneficiaryType:string;gender:string;ageGroup:string;consentKind:string;
  consentPurpose:string;consentAcknowledged:boolean};
@@ -53,6 +55,7 @@ export function NativeBeneficiariesWorkspace({token,onExpired,canManage,canLinkP
  const [opts,setOpts]=useState<Options|null>(null),[districts,setDistricts]=useState<Option[]>([]);
  const [q,setQ]=useState(""),[search,setSearch]=useState(""),[tab,setTab]=useState("ALL");
  const [cursor,setCursor]=useState(""),[history,setHistory]=useState<string[]>([]);
+ const [auditHistory,setAuditHistory]=useState<ActionHistory[]>([]),[verificationHistory,setVerificationHistory]=useState<VerificationHistory[]>([]);
  const [refreshKey,setRefreshKey]=useState(0),[loading,setLoading]=useState(false),[busy,setBusy]=useState(false);
  const [error,setError]=useState(""),[notice,setNotice]=useState("");
  const [mode,setMode]=useState<"create"|"edit"|null>(null),[draft,setDraft]=useState(blank);
@@ -90,7 +93,13 @@ export function NativeBeneficiariesWorkspace({token,onExpired,canManage,canLinkP
   return()=>{live=false;};
  },[search,tab,cursor,refreshKey,api]);
  const select=async(id:string)=>{setBusy(true);setError("");
-  try{const x=await api<Item>("/"+id);setSelected(x);setLinkKey(Crypto.randomUUID());setProjectRef("");
+  try{
+   const [x,audit,verification]=await Promise.all([
+    api<Item>("/"+id),api<{items:ActionHistory[]}>("/"+id+"/history"),
+    api<{items:VerificationHistory[]}>("/"+id+"/verification-history")
+   ]);
+   setSelected(x);setAuditHistory(audit.items);setVerificationHistory(verification.items);
+   setLinkKey(Crypto.randomUUID());setProjectRef("");
    if(canLinkProjects){const p=new URLSearchParams({branchRef:x.branchRef??""});
     setProjects(await api<Option[]>("/eligible-projects?"+p).catch(()=>[]));}
   }catch(e){setSelected(null);setError(e instanceof Error?e.message:"Cannot open beneficiary");}
@@ -187,6 +196,15 @@ export function NativeBeneficiariesWorkspace({token,onExpired,canManage,canLinkP
       onSelect={x=>{setProjectRef(x);setLinkKey(Crypto.randomUUID());}}/>
      <Button label="Link project" onPress={()=>void link()} disabled={busy||!projectRef}/>
     </>}
+    <Text style={{fontWeight:"700",marginTop:10}}>Source history</Text>
+    {auditHistory.length?auditHistory.map((entry,i)=><Text key={i} style={{fontSize:12,color:"#475569"}}>
+     {capitalize(entry.action)} · Revision {entry.revision} · {new Date(entry.at).toLocaleString("en-IN")}
+     {entry.reason?" · "+entry.reason:""}
+    </Text>):<Text>No action history available.</Text>}
+    <Text style={{fontWeight:"700",marginTop:10}}>Verification history</Text>
+    {verificationHistory.length?verificationHistory.map((entry,i)=><Text key={i} style={{fontSize:12,color:"#475569"}}>
+     {capitalize(entry.decision)} · Revision {entry.sourceRevision} · {new Date(entry.at).toLocaleString("en-IN")}
+    </Text>):<Text>Not submitted for independent verification yet.</Text>}
     {(canManageLifecycle||canRevoke)&&<>
      <Text style={labelStyle}>Reason for status or consent change</Text>
      <TextInput value={reason} onChangeText={setReason} maxLength={300}
