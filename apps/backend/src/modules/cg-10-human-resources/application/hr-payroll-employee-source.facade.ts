@@ -22,20 +22,27 @@ export class HrPayrollEmployeeSourceFacade{
   await this.branches.projectBranch(tx,a,e[0].branch_ref);
   return e[0];
  }
- async options(tx:PoolClient,a:Actor,branchInput:unknown,qInput:unknown,offsetInput:unknown=0){
-  const offset=Number(offsetInput);if(!Number.isSafeInteger(offset)||offset<0||offset>100000)throw new BadRequestException("Invalid employee page");
+ /** Typed, reusable owner-side directory scope. No payroll data read by HR. */
+ async directoryScope(tx:PoolClient,a:Actor,branchInput:unknown,qInput:unknown,filters:{department?:unknown;employmentType?:unknown;employmentStatus?:unknown}={}){
   const branch=branchInput?id(branchInput):null,q=typeof qInput==="string"?qInput.trim().toLowerCase().slice(0,80):"";
-   await this.identity.assertCurrent(tx,a,"payroll.compensation.view");
-   const scope=await this.branches.projectBranchScope(tx,a);
-   if(branch&&!scope.branches.some(b=>b.value===branch))throw new ForbiddenException("Branch unavailable");
-   const rows=(await tx.query(`SELECT e.id AS ref,e.employee_code AS reference,app.legal_name AS name,h.designation,h.branch_ref AS "branchRef",e.status
-    FROM hr_employee e JOIN hr_employee_application app ON app.root_realm_id=e.root_realm_id AND app.id=e.application_id
-    JOIN hr_employment_assignment h ON h.root_realm_id=e.root_realm_id AND h.employee_id=e.id
-    WHERE e.root_realm_id=$1 AND e.status IN('ACTIVE','PROBATION') AND h.branch_ref=ANY($2::uuid[])
-    AND ($3::uuid IS NULL OR h.branch_ref=$3) AND h.valid_from<=(now() AT TIME ZONE 'Asia/Kolkata')::date
-    AND (h.valid_to IS NULL OR h.valid_to>(now() AT TIME ZONE 'Asia/Kolkata')::date)
-    AND ($4='' OR strpos(lower(app.legal_name),$4)>0 OR strpos(lower(e.employee_code),$4)>0)
-    ORDER BY app.legal_name,e.id LIMIT 31 OFFSET $5`,[a.realmId,scope.branches.map(b=>b.value),branch,q,offset])).rows;
-   return {branches:scope.branches.map(({value,label})=>({value,label})),items:rows.slice(0,30),hasMore:rows.length>30,offset};
+  await this.identity.assertCurrent(tx,a,"payroll.compensation.view");
+  const scope=await this.branches.projectBranchScope(tx,a);
+  if(branch&&!scope.branches.some(b=>b.value===branch))throw new ForbiddenException("Branch unavailable");
+  const department=filters.department?id(filters.department):null;
+  const type=filters.employmentType??"",status=filters.employmentStatus??"";
+  if(typeof type!=="string"||!["","FULL_TIME","PART_TIME","CONTRACT","VOLUNTEER_STAFF"].includes(type)||typeof status!=="string"||!["","ACTIVE","PROBATION","ON_HOLD","PENDING_ACCESS","EXITED"].includes(status))throw new BadRequestException("Invalid employment filter");
+  const refs=scope.branches.map(b=>b.value);
+  const departments=(await tx.query<{value:string;label:string}>(`SELECT DISTINCT d.id AS value,d.name AS label FROM hr_employment_assignment h JOIN department d ON d.root_realm_id=h.root_realm_id AND d.id=h.department_ref WHERE h.root_realm_id=$1 AND h.branch_ref=ANY($2::uuid[]) AND ($3::uuid IS NULL OR h.branch_ref=$3) ORDER BY label,value LIMIT 200`,[a.realmId,refs,branch])).rows;
+  if(department&&!departments.some(d=>d.value===department))throw new ForbiddenException("Department unavailable");
+  return {branches:scope.branches.map(({value,label})=>({value,label})),departments,canManageFoundationPolicy:scope.all,params:[a.realmId,refs,branch,q,department,type,status]};
  }
 }
+ /** Original CG10 scoped current or last employment projection; parameters are validated by directoryScope. */
+export const payrollEmployeeDirectorySql=`SELECT e.id AS ref,e.employee_code AS reference,app.legal_name AS name,h.designation,h.branch_ref AS "branchRef",e.status,h.employment_type AS "employmentType",d.name AS department,to_char(app.hire_date,'YYYY-MM-DD') AS "hireDate"
+ FROM hr_employee e JOIN hr_employee_application app ON app.root_realm_id=e.root_realm_id AND app.id=e.application_id
+ JOIN LATERAL (SELECT h.* FROM hr_employment_assignment h WHERE h.root_realm_id=e.root_realm_id AND h.employee_id=e.id AND h.valid_from<=(now() AT TIME ZONE 'Asia/Kolkata')::date ORDER BY h.valid_from DESC,h.id DESC LIMIT 1) h ON true
+ LEFT JOIN department d ON d.root_realm_id=h.root_realm_id AND d.id=h.department_ref
+ WHERE e.root_realm_id=$1 AND h.branch_ref=ANY($2::uuid[]) AND ($3::uuid IS NULL OR h.branch_ref=$3)
+ AND (e.status='EXITED' OR h.valid_to IS NULL OR h.valid_to>(now() AT TIME ZONE 'Asia/Kolkata')::date)
+ AND ($4='' OR strpos(lower(app.legal_name),$4)>0 OR strpos(lower(e.employee_code),$4)>0 OR strpos(lower(COALESCE(d.name,'')),$4)>0)
+ AND ($5::uuid IS NULL OR h.department_ref=$5) AND ($6='' OR h.employment_type=$6) AND ($7='' OR e.status=$7)`;
