@@ -31,6 +31,7 @@ export async function readiness(base,request=fetch){
     !Array.isArray(p.assets)){failures.push(slug);continue;}
    if(slug==="about"&&requiredIntroPlacements.some(placement=>!p.sections.some(s=>s.kind==="RICH_TEXT"&&s.fields?.placement===placement&&typeof s.fields.heading==="string"&&s.fields.heading.trim()&&typeof s.fields.body==="string"&&s.fields.body.trim())))failures.push("about-editorial-intros");
    if(slug==="home"&&(!["HERO","RICH_TEXT","CTA","FEATURE_CARDS","JOIN_CARDS","PROJECT_TEASER","SITE_FOOTER"].every(kind=>p.sections.some(s=>s.kind===kind))||!p.sections.some(s=>s.kind==="HERO"&&s.fields?.visible!==false)))failures.push("home-editorial-sections");
+   if(slug==="home"&&[["HERO",0],["ABOUT",20],["PROMO",30],["FEATURE",0],["FEATURE",1],["FEATURE",2]].some(([role,order])=>!p.assets.some(a=>a.role===role&&a.order===order&&typeof a.altText==="string"&&a.altText.trim()&&typeof a.src==="string"&&/^\\/api\\/public\\/content\\/media\\/[a-f0-9-]{36}$/i.test(a.src))))failures.push("home-editorial-media");
    if(slug==="contact"&&!p.sections.some(s=>s.kind==="CONTACT_INFO"&&Array.isArray(s.fields?.faqs)&&s.fields.faqs.length>=4))failures.push("contact-faqs");
   }catch{failures.push(slug);}
  }
@@ -48,6 +49,6 @@ if(process.argv[1]&&import.meta.url===pathToFileURL(process.argv[1]).href){
   if(process.argv.length!==2||!process.env.CG_CMS_BACKEND_ORIGIN)throw Error("Set CG_CMS_BACKEND_ORIGIN and invoke without arguments.");
   const failures=await readiness(process.env.CG_CMS_BACKEND_ORIGIN);
   if(failures.length){console.error("First publication NOT READY: "+failures.join(", "));process.exitCode=1;}
-  else console.log("First publication API READY: eight editorial pages, project directories and navigation. Browser/native QA still required.");
+  else console.log("First publication API READY: eight editorial pages, project directories, six Home media placements and navigation. Browser/native QA still required.");
  }catch{console.error("First publication verification could not run. Check backend origin and availability.");process.exitCode=1;}
 }
