@@ -4,6 +4,7 @@ import {PayrollRunService} from "../application/payroll-run.service";
 @Controller("api/v1/payroll/runs")
 export class PayrollRunController{
  constructor(private readonly runs:PayrollRunService,private readonly payments:PayrollPaymentService){}
+ @Get("dashboard") @Header("Cache-Control","private, no-store") dashboard(@Headers("authorization")token:string,@Query("period")period?:string,@Query("branchRef")branchRef?:string){return this.runs.dashboard(token,period,branchRef);}
  @Get("options") @Header("Cache-Control","private, no-store") options(@Headers("authorization")token:string){return this.runs.options(token);}
  @Get() @Header("Cache-Control","private, no-store") list(@Headers("authorization")token:string,@Query("period")period?:string,@Query("branchRef")branchRef?:string,@Query("afterPeriod")afterPeriod?:string,@Query("afterRun")afterRun?:string){return this.runs.list(token,{period,branchRef,afterPeriod,afterRun});}
  @Post("draft") @Header("Cache-Control","private, no-store") create(@Headers("authorization")token:string,@Body()body:unknown){return this.runs.createDraft(token,body);}

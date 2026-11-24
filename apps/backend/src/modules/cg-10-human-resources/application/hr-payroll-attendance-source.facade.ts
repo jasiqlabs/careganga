@@ -23,6 +23,19 @@ type AttendanceSnapshotRow={
 @Injectable()
 export class HrPayrollAttendanceSourceFacade{
  constructor(private readonly identity:FoundationStructureIdentityFacade,private readonly branches:BranchSourceFacade){}
+ /** Aggregate only; current effective branch, never employee records or contact data. */
+ async payrollActiveCount(tx:PoolClient,actor:VerifiedFoundationActor,branch:string|null){
+  await this.identity.assertCurrent(tx,actor,"payroll.runs.view");
+  const scope=await this.branches.projectBranchScope(tx,actor);
+  if(branch)await this.branches.projectBranch(tx,actor,branch);
+  const row=(await tx.query<{count:string}>(`SELECT count(DISTINCT e.id)::text count FROM hr_employee e
+   JOIN hr_employment_assignment h ON h.root_realm_id=e.root_realm_id AND h.employee_id=e.id
+   JOIN branch b ON b.root_realm_id=h.root_realm_id AND b.id=h.branch_ref AND b.status='ACTIVE'
+   WHERE e.root_realm_id=$1 AND e.status IN('ACTIVE','PROBATION')
+   AND h.valid_from<=(now() AT TIME ZONE 'Asia/Kolkata')::date AND (h.valid_to IS NULL OR h.valid_to>(now() AT TIME ZONE 'Asia/Kolkata')::date)
+   AND h.branch_ref=ANY($2::uuid[]) AND ($3::uuid IS NULL OR h.branch_ref=$3)`,[actor.realmId,scope.branches.map(b=>b.value),branch])).rows[0];
+  return Number(row.count);
+ }
  /** Actual period assignments, including historical transfers and exit; no private HR fields. */
  async payrollCandidates(tx:PoolClient,actor:VerifiedFoundationActor,branch:string|null,from:string,until:string){
   await this.identity.assertCurrent(tx,actor,"payroll.runs.view");
