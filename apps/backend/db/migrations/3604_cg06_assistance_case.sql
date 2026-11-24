@@ -33,7 +33,7 @@ CREATE TABLE assistance_case(
  FOREIGN KEY(root_realm_id,campaign_ref) REFERENCES campaign(root_realm_id,id),
  FOREIGN KEY(approval_case_ref,root_realm_id) REFERENCES cg03_case(id,realm_id),
  CHECK((kind='MATERIAL' AND num_nonnulls(item_ref,location_ref,unit_code,qty_scale,requested_qty)=5 AND requested_qty>0 AND requested_qty=round(requested_qty,qty_scale) AND requested_minor IS NULL)
- OR (kind='FINANCIAL' AND num_nonnulls(item_ref,location_ref,unit_code,qty_scale,requested_qty)=0 AND requested_minor BETWEEN 1 AND 99999999999999)),
+ OR (kind='FINANCIAL' AND num_nonnulls(item_ref,location_ref,unit_code,qty_scale,requested_qty)=0 AND requested_minor IS NOT NULL AND requested_minor BETWEEN 1 AND 99999999999999)),
  CHECK((state='DRAFT' AND revision=1 AND approval_case_ref IS NULL) OR (state='SUBMITTED' AND revision=2 AND approval_case_ref IS NOT NULL) OR (state IN('APPROVED','RETURNED','REJECTED') AND revision=3 AND approval_case_ref IS NOT NULL))
 );
 CREATE INDEX ix_cg06_aid_beneficiary ON assistance_case(root_realm_id,beneficiary_id,created_at DESC,id DESC);
