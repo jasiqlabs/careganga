@@ -584,3 +584,5 @@ CG14 HealthVerifiedCenterDoctorFacade.eligibleService now uses the existing veri
 
 ### 24 November — HUX-04.01/04.04 provider selection review
 - CG14 US-001-QA01/03/07/09/11/13/16/17/18: Web allowed provider selection while write/finance lookup was pending; late private finance/proof callbacks could bind to another selected provider. Added selected identity check, detail generation, loading/uncertain action gates, keyed detail and provider-scoped proof callbacks. Source 4d1a3b0da64bf1135ac3489a14b8ec055f4f0641. No backend grant expansion. Next native parity, then A→B delayed detail/bank proof and lost-response QA. Independent reviewer unavailable; runtime NOT_RUN.
+
+- Native parity source cde025b1e9881c48f4d3e31efeff8a1142f568ad: list response generation and reset, selected provider identity, guarded finance and proof callback, clear stale representative/bank values, disable conflicting selection during unknown/busy/loading. CG14 US-001-QA01/03/07/09/11/13/16/17/18. Runtime and independent review NOT_RUN.
