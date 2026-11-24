@@ -66,11 +66,10 @@ export class PayrollCompensationReviewService{
   });
  }
  async decide(token:string,refInput:string,raw:unknown){
-  const ref=id(refInput),x=fields(raw,["requestKey","expectedRevision","action","currentPassword"]),key=id(x.requestKey),expected=version(x.expectedRevision),action=option(x.action,["APPROVE","RETURN","REJECT"] as const);
-  if(typeof x.currentPassword!=="string"||x.currentPassword.length<8||Buffer.byteLength(x.currentPassword,"utf8")>1024)throw new BadRequestException("Enter the current Foundation password");
-  const password=x.currentPassword,requestDigest=hash([ref,expected,action]),auth=await this.sessions.requireAction(token,"approvals.review");
-  await this.sessions.limitFoundationRootProof(auth);
   return this.source.run(token,"payroll.sensitive.approve",async(tx,a)=>{
+   const ref=id(refInput),x=fields(raw,["requestKey","expectedRevision","action","currentPassword"]),key=id(x.requestKey),expected=version(x.expectedRevision),action=option(x.action,["APPROVE","RETURN","REJECT"] as const);
+   if(typeof x.currentPassword!=="string"||x.currentPassword.length<8||Buffer.byteLength(x.currentPassword,"utf8")>1024)throw new BadRequestException("Enter the current Foundation password");
+   const password=x.currentPassword,requestDigest=hash([ref,expected,action]);
    await this.identity.assertCurrent(tx,a,"approvals.review");await this.protectedOwner.verifyReviewer(tx,a,"approvals.review",true);
    const c=await this.original(tx,a,ref,true),src=await this.source.reviewSource(tx,a,c.source_kind,c.source_ref,action==="APPROVE");
    if(c.proposer_id===a.accountId||src.row.created_by===a.accountId)throw new ForbiddenException("Independent payroll reviewer required");
@@ -84,6 +83,6 @@ export class PayrollCompensationReviewService{
    await this.source.applyReview(tx,a,c.source_kind,c.source_ref,status,2,c.id);await this.event(tx,a,c.id,status==="APPROVED"?"FINAL_APPROVED":status);
    if(status==="APPROVED"){await tx.query("UPDATE cg03_case SET status='OWNER_COMPLETED',revision=revision+1,updated_at=now() WHERE realm_id=$1 AND id=$2",[a.realmId,c.id]);await this.event(tx,a,c.id,"OWNER_COMPLETED");}
    return {status,replayed:false};
-  });
+  },a=>this.sessions.limitFoundationRootProof(a));
  }
 }
