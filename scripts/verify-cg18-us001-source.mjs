@@ -584,9 +584,15 @@ checks.push(["Events reuse the effective CMS article and current CG05 eligibilit
  files.backend.includes("NOTICE_CURRENT_SQL+EVENT_CURRENT_SQL")&&
  eventsRoute.includes('publishedCmsArticles("",cursor,true)')&&
  files.header.includes('href="/events"')&&
- files.android.includes('publishedArticles(target==="events",cursor)')&&
+ files.android.includes('publishedArticles(target==="@events",cursor)')&&
  files.android.includes('loadedTarget!==slug')&&
  files.android.includes('title="Events"')]);
+checks.push(["Standalone collaboration enquiry is available without fabricated published partners",
+ files.android.includes('slug==="collaboration"&&result.state!=="PUBLISHED"')&&
+ files.android.includes('title="Get in touch" onPress={onContact}')&&
+ files.android.includes('title="Apply as a healthcare partner" onPress={onPartnerApplication}')&&
+ ctaRoute.includes('value==="/collaboration"')&&
+ files.android.includes('route==="/collaboration"')]);
 let errors=0;
 for(const [label,ok] of checks){
  console.log((ok?"SOURCE-PRESENT":"SOURCE-FAIL")+": "+label);
