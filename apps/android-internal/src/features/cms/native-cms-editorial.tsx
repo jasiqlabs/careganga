@@ -40,7 +40,7 @@ const impactGroups=["HERO","PILLARS","STATS","GROWTH","GEOGRAPHY",
 const day=()=>new Date().toISOString().slice(0,10);
 const initialKind=(kind:NewKind):NewPage=>{
  const sections:Section[]=kind==="HOME"?[{kind:"HERO",order:0,fields:{
-  heading:"",subtitle:"",description:"",eyebrow:"",visible:true,
+  heading:"",subtitle:"",description:"",eyebrow:"",visible:true,textOnly:false,
   headingFont:"SERIF",headingWeight:"BOLD",headingSize:"LARGE",
   headingColor:"#FFE34A",subtitleColor:"#8CF442",tags:[]}}]:
  kind==="ABOUT"?[{kind:"RICH_TEXT",order:20,fields:{
@@ -77,7 +77,7 @@ const initialKind=(kind:NewKind):NewPage=>{
    heading:legalPages[0][1],body:"",eyebrow:"",variant:"STANDARD",highlights:[]}}]:
  [{kind:"HERO",order:0,fields:{
    heading:"Healthcare Assistance",subtitle:"",description:"",eyebrow:"",
-   tags:[],visible:true,headingFont:"SERIF",headingWeight:"BOLD",
+   tags:[],visible:true,textOnly:false,headingFont:"SERIF",headingWeight:"BOLD",
    headingSize:"LARGE",headingColor:"#FFE34A",subtitleColor:"#8CF442"}},
   {kind:"HEALTHCARE_CATEGORIES",order:10,fields:{
    heading:"",intro:"",categories:[]}}];
