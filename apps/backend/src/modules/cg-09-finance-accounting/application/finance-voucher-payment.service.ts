@@ -302,6 +302,7 @@ export class FinanceVoucherPaymentService{
     await client.query("COMMIT");
     return {confirmed:true,status:"POSTED",replayed:true};
    }
+   await guardAssistanceOwner(client,actor.realmId,"PAYMENT",voucherRef);
    const v=await this.voucher(client,actor,voucherRef);
    if(v.version!==expected||!v.approval_case_id||!v.proof_file_id||!v.proof_file_revision||
     !(v.status==="APPROVED"&&!["PAYMENT","CONTRA"].includes(v.voucher_type)||
