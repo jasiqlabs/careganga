@@ -7,6 +7,7 @@ import {FoundationStructureIdentityFacade} from "../../cg-01-identity-access/app
 import type {VerifiedFoundationActor as Actor} from "../../cg-01-identity-access/public-api";
 import {BranchSourceFacade} from "../../cg-02-foundation-structure/application/branch-source.facade";
 import {HrPayrollEmployeeSourceFacade} from "../../cg-10-human-resources/application/hr-payroll-employee-source.facade";
+import {parsePayout,protectPayout} from "../domain/payout-instruction";
 import {id,parsePolicy,parseSalary,componentMinor} from "../domain/payroll-input";
 const hash=(x:unknown)=>createHash("sha256").update(JSON.stringify(x)).digest("hex");
 const conflict=()=>new ConflictException("Payroll source changed. Refresh and review the current version.");
@@ -20,7 +21,7 @@ export class PayrollCompensationService{
   try{await tx.query("BEGIN");await this.identity.assertCurrent(tx,a,action);const v=await fn(tx,a);await tx.query("COMMIT");return v;}
   catch(e){try{await tx.query("ROLLBACK");}catch{}const code=e&&typeof e==="object"&&"code" in e?String(e.code):"";if(["23503","23505","23514","23P01","40001","40P01","55P03"].includes(code))throw conflict();throw e;}finally{tx.release();}
  }
- async audit(tx:PoolClient,a:Actor,kind:"POLICY"|"COMPENSATION",ref:string,result:string){
+ async audit(tx:PoolClient,a:Actor,kind:"POLICY"|"COMPENSATION"|"PAYOUT",ref:string,result:string){
   await tx.query("INSERT INTO payroll_source_audit(root_realm_id,actor_ref,source_kind,source_ref,event_key,result_class) VALUES($1,$2,$3,$4,$5,$6)",[a.realmId,a.accountId,kind,ref,randomUUID(),result]);
  }
  private policyView(p:Policy){return {ref:p.id,branchRef:p.branch_ref,label:p.label,effectiveFrom:p.effective_from,effectiveTo:p.effective_to,status:p.status,revision:p.revision};}
@@ -87,6 +88,28 @@ export class PayrollCompensationService{
    await this.audit(tx,a,"COMPENSATION",row.id,"DRAFT_CREATED");return {...this.salaryView(row),replayed:false};
   });
  }
+ async payoutHistory(token:string,employee:string){
+  return this.run(token,"payroll.bank.edit",async(tx,a)=>{
+   const e=await this.employee(tx,a,employee);
+   const rows=(await tx.query<{id:string;effective_from:string;effective_to:string|null;masked_digits:string;masked_ifsc:string;status:string;revision:number}>("SELECT id,effective_from::text,effective_to::text,masked_digits,masked_ifsc,status,revision FROM employee_payout_instruction WHERE root_realm_id=$1 AND employee_ref=$2 AND branch_ref=$3 ORDER BY effective_from DESC,id DESC LIMIT 100",[a.realmId,e.id,e.branch_ref])).rows;
+   await this.audit(tx,a,"PAYOUT",e.id,"READ");
+   return {items:rows.map(r=>({ref:r.id,effectiveFrom:r.effective_from,effectiveTo:r.effective_to,maskedAccount:"•••• "+r.masked_digits,maskedIfsc:r.masked_ifsc,status:r.status,revision:r.revision}))};
+  });
+ }
+ async createPayout(token:string,employee:string,raw:unknown){
+  const v=parsePayout(raw);
+  return this.run(token,"payroll.bank.edit",async(tx,a)=>{
+   const e=await this.employee(tx,a,employee),effective=await this.employee(tx,a,employee,v.from);
+   if(e.branch_ref!==effective.branch_ref||!["ACTIVE","PROBATION"].includes(e.status))throw conflict();
+   const ref=randomUUID(),enc=protectPayout(a.realmId,e.id,ref,v);
+   await tx.query("SELECT pg_advisory_xact_lock(hashtextextended($1,0))",["CG11-PAYOUT:"+a.realmId+":"+a.accountId+":"+v.key]);
+   const prior=(await tx.query<{id:string;employee_ref:string;branch_ref:string;request_digest:string;status:string}>("SELECT id,employee_ref,branch_ref,request_digest,status FROM employee_payout_instruction WHERE root_realm_id=$1 AND created_by=$2 AND request_key=$3",[a.realmId,a.accountId,v.key])).rows[0];
+   if(prior){if(prior.employee_ref!==e.id||prior.branch_ref!==e.branch_ref||prior.request_digest!==enc.requestDigest)throw conflict();return {ref:prior.id,status:prior.status,replayed:true};}
+   await tx.query(`INSERT INTO employee_payout_instruction(id,root_realm_id,employee_ref,branch_ref,assignment_ref,assignment_version,employee_status_version,effective_from,effective_to,destination_ciphertext,destination_nonce,destination_tag,destination_fingerprint,masked_digits,masked_ifsc,created_by,request_key,request_digest)
+    VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18)`,[ref,a.realmId,e.id,e.branch_ref,effective.assignment_ref,effective.assignment_version,effective.status_version,v.from,v.to,enc.ciphertext,enc.nonce,enc.tag,enc.fingerprint,enc.maskedDigits,enc.maskedIfsc,a.accountId,v.key,enc.requestDigest]);
+   await this.audit(tx,a,"PAYOUT",ref,"DRAFT_CREATED");return {ref,status:"DRAFT",replayed:false};
+  });
+ }
  /** Self-only read. No employee selector, no draft, no payout destination. */
  async ownPay(token:string){
   const a=await this.sessions.verifySession(token),tx=await this.db.connect();
@@ -111,15 +134,15 @@ export class PayrollCompensationService{
   }catch(e){try{await tx.query("ROLLBACK");}catch{}throw e;}finally{tx.release();}
  }
  /** Re-read the exact authorized source for CG03; no private banking fields or arbitrary table input. */
- async reviewSource(tx:PoolClient,a:Actor,kind:"POLICY"|"COMPENSATION",ref:string,write=false){
+ async reviewSource(tx:PoolClient,a:Actor,kind:"POLICY"|"COMPENSATION"|"PAYOUT",ref:string,write=false){
   await this.identity.assertCurrent(tx,a,"payroll.compensation.view");
-  const table=kind==="POLICY"?"payroll_policy":"employee_compensation";
+  const table=kind==="POLICY"?"payroll_policy":kind==="PAYOUT"?"employee_payout_instruction":"employee_compensation";
   const initial=(await tx.query<{branch_ref:string}>("SELECT branch_ref FROM "+table+" WHERE root_realm_id=$1 AND id=$2",[a.realmId,id(ref)])).rows[0];
   if(!initial)throw new NotFoundException("Payroll source unavailable");
   const scope=await this.branches.projectBranchScope(tx,a);
   if(!scope.branches.some(b=>b.value===initial.branch_ref))throw new NotFoundException("Payroll source unavailable");
   await this.branches.projectBranch(tx,a,initial.branch_ref);
-  type Source=Policy&Salary&{created_by:string;approval_case_ref:string|null;assignment_ref:string;assignment_version:number;employee_status_version:number;policy_revision:number};
+  type Source=Policy&Salary&{created_by:string;approval_case_ref:string|null;assignment_ref:string;assignment_version:number;employee_status_version:number;policy_revision:number;destination_ciphertext:string;destination_nonce:string;destination_tag:string;destination_fingerprint:string;masked_digits:string;masked_ifsc:string};
   const row=(await tx.query<Source>("SELECT *,effective_from::text,effective_to::text"+(kind==="COMPENSATION"?",base_salary_minor::text":"")+" FROM "+table+" WHERE root_realm_id=$1 AND id=$2 "+(write?"FOR UPDATE":"FOR SHARE"),[a.realmId,ref])).rows[0];
   if(!row||row.branch_ref!==initial.branch_ref)throw conflict();
   let preview:Record<string,unknown>,digest:string;
@@ -129,14 +152,19 @@ export class PayrollCompensationService{
   }else{
    const current=await this.employee(tx,a,row.employee_ref),effective=await this.employee(tx,a,row.employee_ref,row.effective_from);
    if(write&&(current.branch_ref!==row.branch_ref||effective.assignment_ref!==row.assignment_ref||effective.assignment_version!==row.assignment_version||effective.status_version!==row.employee_status_version||!["ACTIVE","PROBATION"].includes(current.status)))throw conflict();
+   if(kind==="PAYOUT"){
+    preview={ref:row.id,employeeName:current.name,employeeReference:current.employee_code,effectiveFrom:row.effective_from,effectiveTo:row.effective_to,status:row.status,revision:row.revision,maskedAccount:"•••• "+row.masked_digits,maskedIfsc:row.masked_ifsc};
+    digest=hash([kind,row.id,row.employee_ref,row.branch_ref,row.assignment_ref,row.assignment_version,row.employee_status_version,row.effective_from,row.effective_to,row.destination_ciphertext,row.destination_nonce,row.destination_tag,row.destination_fingerprint,row.masked_digits,row.masked_ifsc,row.request_digest]);
+    return {row,preview,digest};
+   }
    const policy=(await tx.query("SELECT revision,status FROM payroll_policy WHERE root_realm_id=$1 AND id=$2 AND branch_ref=$3 FOR SHARE",[a.realmId,row.policy_id,row.branch_ref])).rows[0];
    if(write&&(!policy||policy.status!=="APPROVED"||policy.revision!==row.policy_revision))throw conflict();
    preview={...this.salaryView(row),employeeName:current.name,employeeReference:current.employee_code};digest=hash([kind,row.id,row.employee_ref,row.branch_ref,row.assignment_ref,row.assignment_version,row.employee_status_version,row.policy_id,row.policy_revision,row.effective_from,row.effective_to,row.base_salary_minor,row.request_digest]);
   }
   return {row,preview,digest};
  }
- async applyReview(tx:PoolClient,a:Actor,kind:"POLICY"|"COMPENSATION",ref:string,status:"SUBMITTED"|"APPROVED"|"RETURNED"|"REJECTED",expected:number,caseRef:string){
-  const table=kind==="POLICY"?"payroll_policy":"employee_compensation";
+ async applyReview(tx:PoolClient,a:Actor,kind:"POLICY"|"COMPENSATION"|"PAYOUT",ref:string,status:"SUBMITTED"|"APPROVED"|"RETURNED"|"REJECTED",expected:number,caseRef:string){
+  const table=kind==="POLICY"?"payroll_policy":kind==="PAYOUT"?"employee_payout_instruction":"employee_compensation";
   const result=await tx.query("UPDATE "+table+" SET status=$3,revision=revision+1,approval_case_ref=$4 WHERE root_realm_id=$1 AND id=$2 AND revision=$5 RETURNING id",[a.realmId,ref,status,caseRef,expected]);
   if(!result.rowCount)throw conflict();
   await this.audit(tx,a,kind,ref,status);
