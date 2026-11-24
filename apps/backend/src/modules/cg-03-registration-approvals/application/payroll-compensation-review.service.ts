@@ -7,12 +7,12 @@ import {FoundationStructureIdentityFacade} from "../../cg-01-identity-access/app
 import {ProtectedAccessOwnerService} from "../../cg-01-identity-access/application/protected-access-owner.service";
 import {PayrollCompensationService} from "../../cg-11-payroll-compensation/application/payroll-compensation.service";
 import {fields,id,option} from "../../cg-11-payroll-compensation/domain/payroll-input";
-type Kind="POLICY"|"COMPENSATION";
+type Kind="POLICY"|"COMPENSATION"|"PAYOUT";
 type Case={id:string;case_number:string;proposer_id:string;payroll_review_ref:string;payroll_source_digest:string;status:string;revision:number;source_kind:Kind;source_ref:string};
 const hash=(x:unknown)=>createHash("sha256").update(JSON.stringify(x)).digest("hex");
 const stale=()=>new ConflictException("Payroll approval source changed. Refresh and review the current record.");
 const version=(v:unknown)=>{if(!Number.isSafeInteger(v)||Number(v)<1)throw stale();return Number(v);};
-const kindOf=(v:unknown)=>option(v,["POLICY","COMPENSATION"] as const);
+const kindOf=(v:unknown)=>option(v,["POLICY","COMPENSATION","PAYOUT"] as const);
 @Injectable()
 export class PayrollCompensationReviewService{
  constructor(private readonly source:PayrollCompensationService,private readonly identity:FoundationStructureIdentityFacade,private readonly protectedOwner:ProtectedAccessOwnerService,private readonly sessions:SessionService){}
@@ -27,19 +27,19 @@ export class PayrollCompensationReviewService{
   await tx.query("INSERT INTO cg03_payroll_review_process_current(realm_id,process_id) VALUES($1,$2)",[a.realmId,p.id]);return p.id;
  }
  private async original(tx:PoolClient,a:Actor,ref:string,lock=false){
-  const c=(await tx.query<Case>("SELECT c.*,s.source_kind,COALESCE(s.policy_ref,s.compensation_ref) AS source_ref FROM cg03_case c JOIN payroll_review_snapshot s ON s.root_realm_id=c.realm_id AND s.id=c.payroll_review_ref WHERE c.realm_id=$1 AND c.id=$2 AND c.case_kind='PAYROLL_COMPENSATION_REVIEW' "+(lock?"FOR UPDATE OF c":"FOR SHARE OF c"),[a.realmId,id(ref)])).rows[0];
+  const c=(await tx.query<Case>("SELECT c.*,s.source_kind,COALESCE(s.policy_ref,s.compensation_ref,s.payout_ref) AS source_ref FROM cg03_case c JOIN payroll_review_snapshot s ON s.root_realm_id=c.realm_id AND s.id=c.payroll_review_ref WHERE c.realm_id=$1 AND c.id=$2 AND c.case_kind='PAYROLL_COMPENSATION_REVIEW' "+(lock?"FOR UPDATE OF c":"FOR SHARE OF c"),[a.realmId,id(ref)])).rows[0];
   if(!c)throw new NotFoundException("Payroll review unavailable");return c;
  }
  async submit(token:string,kindInput:string,refInput:string,raw:unknown){
   const kind=kindOf(kindInput),ref=id(refInput),x=fields(raw,["requestKey","expectedRevision"]),key=id(x.requestKey),expected=version(x.expectedRevision),requestDigest=hash([kind,ref,expected]);
-  return this.source.run(token,kind==="POLICY"?"payroll.policy.manage":"payroll.compensation.edit",async(tx,a)=>{
+  return this.source.run(token,kind==="POLICY"?"payroll.policy.manage":kind==="PAYOUT"?"payroll.bank.edit":"payroll.compensation.edit",async(tx,a)=>{
    await tx.query("SELECT id FROM access_realm WHERE id=$1 AND realm_key='FOUNDATION_ROOT' FOR UPDATE",[a.realmId]);
    const src=await this.source.reviewSource(tx,a,kind,ref,true);
    const prior=(await tx.query<{id:string;request_digest:string;case_number:string}>("SELECT id,request_digest,case_number FROM cg03_case WHERE realm_id=$1 AND proposer_id=$2 AND request_key=$3 AND case_kind='PAYROLL_COMPENSATION_REVIEW'",[a.realmId,a.accountId,key])).rows[0];
    if(prior){if(prior.request_digest!==requestDigest||src.row.approval_case_ref!==prior.id)throw stale();return {caseNumber:prior.case_number,status:src.row.status,replayed:true};}
    if(src.row.status!=="DRAFT"||src.row.revision!==expected||expected!==1||src.row.created_by!==a.accountId)throw stale();
    await this.protectedOwner.requireDistinctFinalReviewer(tx,a.realmId,a.accountId);
-   const snapshot=(await tx.query<{id:string}>("INSERT INTO payroll_review_snapshot(root_realm_id,source_kind,policy_ref,compensation_ref,source_revision,source_digest,submitted_by) VALUES($1,$2,$3,$4,1,$5,$6) RETURNING id",[a.realmId,kind,kind==="POLICY"?ref:null,kind==="COMPENSATION"?ref:null,src.digest,a.accountId])).rows[0];
+   const snapshot=(await tx.query<{id:string}>("INSERT INTO payroll_review_snapshot(root_realm_id,source_kind,policy_ref,compensation_ref,payout_ref,source_revision,source_digest,submitted_by) VALUES($1,$2,$3,$4,$5,1,$6,$7) RETURNING id",[a.realmId,kind,kind==="POLICY"?ref:null,kind==="COMPENSATION"?ref:null,kind==="PAYOUT"?ref:null,src.digest,a.accountId])).rows[0];
    const process=await this.process(tx,a);
    const c=(await tx.query<{id:string;case_number:string}>(`INSERT INTO cg03_case(realm_id,case_number,process_id,process_version,proposer_id,target_account_id,target_role_id,account_name_snapshot,role_name_snapshot,expected_access_version,expected_role_revision,proposal_revision,proposal_digest,request_digest,request_key,case_kind,payroll_review_ref,payroll_source_revision,payroll_source_digest)
     SELECT $1,'CG-AP-'||lpad(nextval('cg03_public_case_sequence')::text,6,'0'),p.id,p.version,$2,NULL,NULL,'Protected payroll source','Payroll compensation review',NULL,NULL,1,$3,$4,$5,'PAYROLL_COMPENSATION_REVIEW',$6,1,$3 FROM cg03_process p WHERE p.realm_id=$1 AND p.id=$7 RETURNING id,case_number`,[a.realmId,a.accountId,src.digest,requestDigest,key,snapshot.id,process])).rows[0];
@@ -51,7 +51,7 @@ export class PayrollCompensationReviewService{
  async list(token:string){
   return this.source.run(token,"payroll.compensation.review",async(tx,a)=>{
    await this.identity.assertCurrent(tx,a,"approvals.review");await this.protectedOwner.verifyReviewer(tx,a,"approvals.review",true);
-   const rows=(await tx.query<{id:string;case_number:string;source_kind:Kind;source_ref:string}>("SELECT c.id,c.case_number,s.source_kind,COALESCE(s.policy_ref,s.compensation_ref) AS source_ref FROM cg03_case c JOIN payroll_review_snapshot s ON s.root_realm_id=c.realm_id AND s.id=c.payroll_review_ref WHERE c.realm_id=$1 AND c.case_kind='PAYROLL_COMPENSATION_REVIEW' AND c.status='SUBMITTED' AND c.proposer_id<>$2 ORDER BY c.submitted_at DESC,c.id DESC LIMIT 100",[a.realmId,a.accountId])).rows;
+   const rows=(await tx.query<{id:string;case_number:string;source_kind:Kind;source_ref:string}>("SELECT c.id,c.case_number,s.source_kind,COALESCE(s.policy_ref,s.compensation_ref,s.payout_ref) AS source_ref FROM cg03_case c JOIN payroll_review_snapshot s ON s.root_realm_id=c.realm_id AND s.id=c.payroll_review_ref WHERE c.realm_id=$1 AND c.case_kind='PAYROLL_COMPENSATION_REVIEW' AND c.status='SUBMITTED' AND c.proposer_id<>$2 ORDER BY c.submitted_at DESC,c.id DESC LIMIT 100",[a.realmId,a.accountId])).rows;
    const items=[];for(const row of rows){try{const src=await this.source.reviewSource(tx,a,row.source_kind,row.source_ref);items.push({ref:row.id,caseNumber:row.case_number,kind:row.source_kind,preview:src.preview});}catch(e){if(!(e instanceof ForbiddenException)&&!(e instanceof NotFoundException))throw e;}}
    return {items};
   });
