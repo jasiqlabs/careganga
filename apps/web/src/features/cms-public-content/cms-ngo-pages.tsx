@@ -12,8 +12,8 @@ const allowed=new Set<Child>(["pan-details","registration-certificate","annual-r
 const words=(v:unknown)=>typeof v==="string"?v:"";
 type DocItem={type?:string;title?:string;asOfDate?:string;[key:string]:unknown};
 type ComplianceDoc=DocItem&{file?:PublicCmsPage["assets"][number]};
-const items=(raw:unknown):DocItem[]=>Array.isArray(raw)?
- raw.filter((x):x is DocItem=>x!==null&&typeof x==="object"&&!Array.isArray(x)).slice(0,6):[];
+const items=(raw:unknown,limit=6):DocItem[]=>Array.isArray(raw)?
+ raw.filter((x):x is DocItem=>x!==null&&typeof x==="object"&&!Array.isArray(x)).slice(0,limit):[];
 const safeMediaPath=(v:unknown)=>typeof v==="string"&&
  /^\/api\/public\/content\/media\/[a-f0-9-]{36}$/i.test(v);
 const chapter:Record<Child,string>={
@@ -39,7 +39,7 @@ const canShow=(page:PublicCmsPage,key:Child)=>{
 /** All three original visitor views are strictly read-only subsets of the
  * single independently approved/current CG18 COMPLIANCE revision. Their
  * scans are current vetted CG19 placements, not cloned master records.
- * Financial reports require a real CG09/CG20 published projection.
+ * Financial report files are separately reviewed public publications; private CG09/CG20 records never enter this page.
  */
 export function CmsNgoSidebar({page,selected="80g"}:{
  page:PublicCmsPage;selected?:Child|"80g"}){
@@ -102,7 +102,7 @@ export async function CmsNgoChildRoute({section}:{section:string}){
  }));
  // Actual financial report files must be independently published CG19 media in
  // the Financial Reports publication category. Never read private CG09/CG20 reports.
- const financial:ApprovedAnnualReport[]=publications?.state==="PUBLISHED"?publications.page.sections.filter(s=>s.kind==="GALLERY_GRID").flatMap(s=>items(s.fields.items).flatMap(item=>{
+ const financial:ApprovedAnnualReport[]=publications?.state==="PUBLISHED"?publications.page.sections.filter(s=>s.kind==="GALLERY_GRID").flatMap(s=>items(s.fields.items,12).flatMap(item=>{
   if(item.mediaType!=="PUBLICATION"||words(item.category).toLocaleLowerCase()!=="financial reports"||item.visible===false||!Number.isSafeInteger(item.originalIndex))return [];
   const file=publications.page.assets.find(a=>a.role==="GALLERY"&&a.order===item.originalIndex&&safeMediaPath(a.src));
   return file&&words(item.title)&&words(item.asOfDate)?[{title:words(item.title),date:words(item.asOfDate),href:file.src}]:[];
