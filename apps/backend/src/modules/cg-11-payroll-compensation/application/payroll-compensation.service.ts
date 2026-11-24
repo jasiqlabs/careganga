@@ -6,6 +6,7 @@ import {SessionService} from "../../cg-01-identity-access/application/session.se
 import {FoundationStructureIdentityFacade} from "../../cg-01-identity-access/application/foundation-structure-identity.facade";
 import type {VerifiedFoundationActor as Actor} from "../../cg-01-identity-access/public-api";
 import {BranchSourceFacade} from "../../cg-02-foundation-structure/application/branch-source.facade";
+import {FinanceVoucherDraftService} from "../../cg-09-finance-accounting/application/finance-voucher-draft.service";
 import {HrEmploymentChangeSourceFacade} from "../../cg-10-human-resources/application/hr-employment-change-source.facade";
 import {HrPayrollEmployeeSourceFacade} from "../../cg-10-human-resources/application/hr-payroll-employee-source.facade";
 import {parsePayout,protectPayout} from "../domain/payout-instruction";
@@ -16,7 +17,7 @@ type Policy={id:string;branch_ref:string;label:string;effective_from:string;effe
 type Salary={id:string;employee_ref:string;branch_ref:string;policy_id:string;effective_from:string;effective_to:string|null;supersedes_ref:string|null;base_salary_minor:string;status:string;revision:number;request_digest:string};
 @Injectable()
 export class PayrollCompensationService{
- constructor(@Inject(DATABASE)private readonly db:Pool,private readonly sessions:SessionService,private readonly identity:FoundationStructureIdentityFacade,private readonly branches:BranchSourceFacade,private readonly hr:HrPayrollEmployeeSourceFacade,private readonly hrChange:HrEmploymentChangeSourceFacade){}
+ constructor(@Inject(DATABASE)private readonly db:Pool,private readonly sessions:SessionService,private readonly identity:FoundationStructureIdentityFacade,private readonly branches:BranchSourceFacade,private readonly hr:HrPayrollEmployeeSourceFacade,private readonly hrChange:HrEmploymentChangeSourceFacade,private readonly finance:FinanceVoucherDraftService){}
  async run<T>(token:string,action:string,fn:(tx:PoolClient,a:Actor)=>Promise<T>):Promise<T>{
   const a=await this.sessions.requireAction(token,action),tx=await this.db.connect();
   try{await tx.query("BEGIN");await this.identity.assertCurrent(tx,a,action);const v=await fn(tx,a);await tx.query("COMMIT");return v;}
@@ -42,6 +43,13 @@ export class PayrollCompensationService{
    const byEmployee=new Map(rows.map(r=>[r.employee_ref,r]));
    return {...result,items:result.items.map(e=>({...e,salary:byEmployee.get(e.ref)??null}))};
   });}
+ async bankOptions(token:string,branchInput:unknown){
+  const branch=id(branchInput);
+  return this.run(token,"payroll.compensation.view",async(tx,a)=>{
+   await this.branches.projectBranch(tx,a,branch);
+   return this.finance.payrollBankOptions(tx,a,branch);
+  });
+ }
  async policies(token:string,branchInput:unknown){
   const branch=id(branchInput);
   return this.run(token,"payroll.compensation.view",async(tx,a)=>{
