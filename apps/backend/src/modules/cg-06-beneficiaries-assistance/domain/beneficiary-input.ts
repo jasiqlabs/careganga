@@ -64,7 +64,7 @@ export function parseRevoke(raw:unknown){
 }
 export function parseListQuery(v:Record<string,unknown>){
  const clean=(x:unknown,max:number)=>x===undefined||x===null||x===""?"":text(x,1,max);
- const branch=optionalRef(v.branchRef),state=optionalRef(v.stateRef),district=optionalRef(v.districtRef),block=optionalRef(v.blockRef),project=optionalRef(v.projectRef);
+ const branch=optionalRef(v.branchRef),state=optionalRef(v.stateRef),district=optionalRef(v.districtRef),block=optionalRef(v.blockRef),project=optionalRef(v.projectRef),campaign=optionalRef(v.campaignRef);
  const status=clean(v.verification,24),lifecycle=clean(v.lifecycle,24),type=clean(v.type,60),category=clean(v.category,60),q=clean(v.q,80);
  if(status&&!["DRAFT","SUBMITTED","UNDER_REVIEW","VERIFIED","RETURNED","REJECTED","PENDING"].includes(status)
  ||lifecycle&&!["ACTIVE","INACTIVE"].includes(lifecycle))throw invalid();
@@ -83,7 +83,7 @@ export function parseListQuery(v:Record<string,unknown>){
    before={date,id};
   }catch{throw invalid();}
  }
- return {branch,state,district,block,project,status,lifecycle,type,category,q,before,gender,ageGroup,from,to};
+ return {branch,state,district,block,project,campaign,status,lifecycle,type,category,q,before,gender,ageGroup,from,to};
 }
 export function nextCursor(date:string|Date,id:string):string{
  return Buffer.from((date instanceof Date?date.toISOString():new Date(date).toISOString())+"|"+id).toString("base64url");
