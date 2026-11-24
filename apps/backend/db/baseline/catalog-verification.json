@@ -1,0 +1,91 @@
+{
+  "sourceCommit": "6bfb3fbff7b145ca0cbba888068cd6087c030b1e",
+  "postgresMajor": 17,
+  "method": "Catalog-defined schema restored in batches; normalized pg_get_constraintdef pretty deparse accounts for equivalent flattened associative AND parentheses. Explicit pg_catalog UUID default binding preserved. Provider-specific owner/ACL/physical metadata excluded.",
+  "results": [
+    {
+      "kind": "tables",
+      "count": 477,
+      "restored": 477,
+      "sha256": "6626a96e158b8d5d2c6b39b633822d36c32b9cd4ff2a45875c91532cafba9315",
+      "match": true
+    },
+    {
+      "kind": "columns",
+      "count": 5660,
+      "restored": 5660,
+      "sha256": "89d43a7710d41c68d03daf271353f996158b95255d17fa2f9114d3ebbca83524",
+      "match": true
+    },
+    {
+      "kind": "functions",
+      "count": 429,
+      "restored": 429,
+      "sha256": "0af4a786932320eb193c19bbf79219b91a6fbbd53ea457bdc365870fa9714324",
+      "match": true
+    },
+    {
+      "kind": "constraints",
+      "count": 5229,
+      "restored": 5229,
+      "sha256": "37e2f9f621fefa486a0af0377d505d9eb67c0f4d91745903d5afd9db732d7e20",
+      "match": true
+    },
+    {
+      "kind": "indexes",
+      "count": 1883,
+      "restored": 1883,
+      "sha256": "d3083710288c1c5007b0ec38f3d2c8bb77917f5c1b4ab270164e92444a141277",
+      "match": true
+    },
+    {
+      "kind": "triggers",
+      "count": 590,
+      "restored": 590,
+      "sha256": "4c11c70b22561adc7091d7fe847d9888b5d2486a607081603c287c43f25f3ccf",
+      "match": true
+    },
+    {
+      "kind": "views",
+      "count": 6,
+      "restored": 6,
+      "sha256": "9e993de9ec762e3d4d3745e8f1b1ea2f7f422570c690dbb160dbc0505d685457",
+      "match": true
+    },
+    {
+      "kind": "sequences",
+      "count": 31,
+      "restored": 31,
+      "sha256": "8be6ad82cd217dc91091739b91e5787b28317b62b211df8a37f2302de64e9b84",
+      "match": true
+    },
+    {
+      "kind": "sequence_owners",
+      "count": 1,
+      "restored": 1,
+      "sha256": "19b75e18b1e2e4dfa839d0195a10d8232a50fddf945ba65dec2e283722f314ee",
+      "match": true
+    },
+    {
+      "kind": "comments",
+      "count": 18,
+      "restored": 18,
+      "sha256": "41e0bdbe300a0863871d47f10e2534d20c417b0e4e591c96b2ddfc98dd5f30ce",
+      "match": true
+    },
+    {
+      "kind": "extensions",
+      "count": 3,
+      "restored": 3,
+      "sha256": "588f0879bfdddae3efd13c0c4c47586f8b8effd8715becde7b1e4f9c1f15e6bc",
+      "match": true
+    },
+    {
+      "kind": "ledger",
+      "count": 311,
+      "restored": 311,
+      "sha256": "06588bd9ccc515970d627e2339fd51a8237b6d7da452ba31dbaec654f97533f6",
+      "match": true
+    }
+  ]
+}
