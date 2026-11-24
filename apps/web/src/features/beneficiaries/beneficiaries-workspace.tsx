@@ -15,7 +15,7 @@ type ReviewInfo={status:string;caseNumber:string|null;revision?:number;canReview
  sourceRevision:number;sourceVerification:string;allowedDecisions?:string[];requiresCurrentPassword?:boolean;
  decisions?:{action:string;remarks:string;at:string}[]};
 type Option={value:string;label:string};
-type Options={canManageFoundation:boolean;branches:Option[];states:Option[];districts:Option[]};
+type Options={canManageFoundation:boolean;canFilterProjects:boolean;branches:Option[];states:Option[];districts:Option[]};
 type Form={branchRef:string;name:string;contactMobile:string;representativeName:string;representativeContact:string;
  stateRef:string;districtRef:string;beneficiaryType:string;gender:string;ageGroup:string;
  consentKind:string;consentPurpose:string;consentAcknowledged:boolean};
@@ -51,10 +51,11 @@ export function BeneficiariesWorkspace({canManage,canLinkProjects,canManageLifec
  const [q,setQ]=useState(""),[search,setSearch]=useState(""),[tab,setTab]=useState("ALL"),
   [branch,setBranch]=useState(""),[cursor,setCursor]=useState(""),[seen,setSeen]=useState<string[]>([]);
  const [genderFilter,setGenderFilter]=useState(""),[ageFilter,setAgeFilter]=useState(""),[typeFilter,setTypeFilter]=useState("");
+ const [projectFilter,setProjectFilter]=useState(""),[projectSearch,setProjectSearch]=useState(""),[filterProjects,setFilterProjects]=useState<Option[]>([]);
  const [stateFilter,setStateFilter]=useState(""),[districtFilter,setDistrictFilter]=useState("");
  const [fromFilter,setFromFilter]=useState(""),[toFilter,setToFilter]=useState("");
  const [filterDistricts,setFilterDistricts]=useState<Option[]>([]);
- const [appliedFilters,setAppliedFilters]=useState({gender:"",ageGroup:"",type:"",stateRef:"",districtRef:"",registeredFrom:"",registeredTo:""});
+ const [appliedFilters,setAppliedFilters]=useState({gender:"",ageGroup:"",type:"",stateRef:"",districtRef:"",registeredFrom:"",registeredTo:"",projectRef:""});
  const [epoch,setEpoch]=useState(0),[selected,setSelected]=useState<Item|null>(null),[detailLoading,setDetailLoading]=useState(false);
  const [opts,setOpts]=useState<Options|null>(null),[districts,setDistricts]=useState<Option[]>([]),
   [form,setForm]=useState<Form>(empty),[mode,setMode]=useState<"create"|"edit"|null>(null),
@@ -102,6 +103,7 @@ export function BeneficiariesWorkspace({canManage,canLinkProjects,canManageLifec
   return()=>{live=false;};
  },[selected?.ref,selected?.branchRef,canLinkProjects,epoch]);
  const refresh=()=>{setEpoch(x=>x+1);};
+ const loadProjectFilters=async()=>{try{setFilterProjects(await api<Option[]>("/project-filter-options?"+new URLSearchParams({branchRef:branch,q:projectSearch.trim()})));}catch(e){setFilterProjects([]);setError(e instanceof Error?e.message:"Projects unavailable");}};
  const open= (kind:"create"|"edit")=>{
   setMode(kind);setFormError("");setNotice("");setDuplicates(null);setRequestKey(crypto.randomUUID());
   setForm(kind==="edit"&&selected?fromItem(selected):{...empty(),branchRef:opts&&!opts.canManageFoundation?opts.branches[0]?.value??"":""});
@@ -233,17 +235,18 @@ export function BeneficiariesWorkspace({canManage,canLinkProjects,canManageLifec
    <label style={{...field,flex:"2 1 220px"}}>Advanced search (name or reference)
     <input style={input} value={q} onChange={e=>setQ(e.target.value)} maxLength={80} placeholder="Search permitted records"/></label>
    <label style={{...field,minWidth:180}}>Branch
-    <select style={input} value={branch} onChange={e=>{setBranch(e.target.value);setCursor("");setSeen([]);}}>
+    <select style={input} value={branch} onChange={e=>{setBranch(e.target.value);setProjectFilter("");setFilterProjects([]);setAppliedFilters(f=>({...f,projectRef:""}));setCursor("");setSeen([]);}}>
      <option value="">Current authorized scope</option>{opts?.branches.map(x=><option key={x.value} value={x.value}>{x.label}</option>)}</select></label>
    <label style={field}>Beneficiary type<input style={input} maxLength={60} value={typeFilter} onChange={e=>setTypeFilter(e.target.value)}/></label>
     <label style={field}>Gender<select style={input} value={genderFilter} onChange={e=>setGenderFilter(e.target.value)}><option value="">All</option>{["MALE","FEMALE","OTHER","NOT_SPECIFIED"].map(x=><option key={x} value={x}>{nice(x)}</option>)}</select></label>
     <label style={field}>Age group<select style={input} value={ageFilter} onChange={e=>setAgeFilter(e.target.value)}><option value="">All</option>{["CHILD","ADULT","SENIOR","NOT_SPECIFIED"].map(x=><option key={x} value={x}>{nice(x)}</option>)}</select></label>
+    {opts?.canFilterProjects&&<div style={{...field,flex:"1 1 220px"}}><label style={field}>Find project<input style={input} maxLength={80} value={projectSearch} onChange={e=>setProjectSearch(e.target.value)} placeholder="Project name or code"/></label><button type="button" style={secondary} onClick={()=>void loadProjectFilters()}>Find projects</button><label style={field}>Project<select style={input} value={projectFilter} onChange={e=>setProjectFilter(e.target.value)}><option value="">All projects</option>{filterProjects.map(x=><option key={x.value} value={x.value}>{x.label}</option>)}</select></label></div>}
     <label style={field}>State<select style={input} value={stateFilter} onChange={e=>{setStateFilter(e.target.value);setDistrictFilter("");}}><option value="">All states</option>{opts?.states.map(x=><option key={x.value} value={x.value}>{x.label}</option>)}</select></label>
     <label style={field}>District<select style={input} disabled={!stateFilter} value={districtFilter} onChange={e=>setDistrictFilter(e.target.value)}><option value="">All districts</option>{filterDistricts.map(x=><option key={x.value} value={x.value}>{x.label}</option>)}</select></label>
     <label style={field}>Registered from<input type="date" style={input} value={fromFilter} max={toFilter||undefined} onChange={e=>setFromFilter(e.target.value)}/></label>
     <label style={field}>Registered to<input type="date" style={input} value={toFilter} min={fromFilter||undefined} onChange={e=>setToFilter(e.target.value)}/></label>
-    <button type="button" style={primary} onClick={()=>{setSearch(q.trim());setAppliedFilters({gender:genderFilter,ageGroup:ageFilter,type:typeFilter,stateRef:stateFilter,districtRef:districtFilter,registeredFrom:fromFilter,registeredTo:toFilter});setCursor("");setSeen([]);}}>Apply Filters</button>
-   <button type="button" style={secondary} onClick={()=>{setQ("");setSearch("");setBranch("");setTab("ALL");setGenderFilter("");setAgeFilter("");setTypeFilter("");setStateFilter("");setDistrictFilter("");setFromFilter("");setToFilter("");setAppliedFilters({gender:"",ageGroup:"",type:"",stateRef:"",districtRef:"",registeredFrom:"",registeredTo:""});setCursor("");setSeen([]);}}>Reset</button>
+    <button type="button" style={primary} onClick={()=>{setSearch(q.trim());setAppliedFilters({gender:genderFilter,ageGroup:ageFilter,type:typeFilter,stateRef:stateFilter,districtRef:districtFilter,registeredFrom:fromFilter,registeredTo:toFilter,projectRef:projectFilter});setCursor("");setSeen([]);}}>Apply Filters</button>
+   <button type="button" style={secondary} onClick={()=>{setQ("");setSearch("");setBranch("");setTab("ALL");setGenderFilter("");setAgeFilter("");setTypeFilter("");setStateFilter("");setDistrictFilter("");setFromFilter("");setToFilter("");setProjectFilter("");setProjectSearch("");setFilterProjects([]);setAppliedFilters({gender:"",ageGroup:"",type:"",stateRef:"",districtRef:"",registeredFrom:"",registeredTo:"",projectRef:""});setCursor("");setSeen([]);}}>Reset</button>
   </div>
   {notice&&<p role="status" style={{color:"var(--cg-success,#166534)"}}>{notice}</p>}
   {error&&<p role="alert" style={{color:"var(--cg-danger,#b91c1c)"}}>{error}</p>}
