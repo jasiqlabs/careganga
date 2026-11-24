@@ -11,8 +11,8 @@ import {parsePayout,protectPayout} from "../domain/payout-instruction";
 import {id,parsePolicy,parseSalary,componentMinor} from "../domain/payroll-input";
 const hash=(x:unknown)=>createHash("sha256").update(JSON.stringify(x)).digest("hex");
 const conflict=()=>new ConflictException("Payroll source changed. Refresh and review the current version.");
-type Policy={id:string;branch_ref:string;label:string;effective_from:string;effective_to:string|null;status:string;revision:number;request_digest:string};
-type Salary={id:string;employee_ref:string;branch_ref:string;policy_id:string;effective_from:string;effective_to:string|null;base_salary_minor:string;status:string;revision:number;request_digest:string};
+type Policy={id:string;branch_ref:string;label:string;effective_from:string;effective_to:string|null;supersedes_ref:string|null;status:string;revision:number;request_digest:string};
+type Salary={id:string;employee_ref:string;branch_ref:string;policy_id:string;effective_from:string;effective_to:string|null;supersedes_ref:string|null;base_salary_minor:string;status:string;revision:number;request_digest:string};
 @Injectable()
 export class PayrollCompensationService{
  constructor(@Inject(DATABASE)private readonly db:Pool,private readonly sessions:SessionService,private readonly identity:FoundationStructureIdentityFacade,private readonly branches:BranchSourceFacade,private readonly hr:HrPayrollEmployeeSourceFacade){}
@@ -24,20 +24,20 @@ export class PayrollCompensationService{
  async audit(tx:PoolClient,a:Actor,kind:"POLICY"|"COMPENSATION"|"PAYOUT",ref:string,result:string){
   await tx.query("INSERT INTO payroll_source_audit(root_realm_id,actor_ref,source_kind,source_ref,event_key,result_class) VALUES($1,$2,$3,$4,$5,$6)",[a.realmId,a.accountId,kind,ref,randomUUID(),result]);
  }
- private policyView(p:Policy){return {ref:p.id,branchRef:p.branch_ref,label:p.label,effectiveFrom:p.effective_from,effectiveTo:p.effective_to,status:p.status,revision:p.revision};}
- private salaryView(p:Salary){return {ref:p.id,employeeRef:p.employee_ref,branchRef:p.branch_ref,policyRef:p.policy_id,effectiveFrom:p.effective_from,effectiveTo:p.effective_to,baseMinor:p.base_salary_minor,status:p.status,revision:p.revision};}
+ private policyView(p:Policy){return {ref:p.id,branchRef:p.branch_ref,label:p.label,effectiveFrom:p.effective_from,effectiveTo:p.effective_to,supersedesRef:p.supersedes_ref,status:p.status,revision:p.revision};}
+ private salaryView(p:Salary){return {ref:p.id,employeeRef:p.employee_ref,branchRef:p.branch_ref,policyRef:p.policy_id,effectiveFrom:p.effective_from,effectiveTo:p.effective_to,supersedesRef:p.supersedes_ref,baseMinor:p.base_salary_minor,status:p.status,revision:p.revision};}
  async employee(tx:PoolClient,a:Actor,employee:string,forDate:string|null=null){return this.hr.employee(tx,a,employee,forDate);}
  async options(token:string,branchInput:unknown,qInput:unknown){return this.run(token,"payroll.compensation.view",async(tx,a)=>{
    const result=await this.hr.options(tx,a,branchInput,qInput);
    const rows=(await tx.query<{employee_ref:string;base:string;gross:string;deductions:string;net:string}>(
     `SELECT c.employee_ref,c.base_salary_minor::text AS base,(c.base_salary_minor+COALESCE(x.allowance,0))::text AS gross,COALESCE(x.deduction,0)::text AS deductions,
     (c.base_salary_minor+COALESCE(x.allowance,0)-COALESCE(x.deduction,0))::text AS net
-    FROM employee_compensation c LEFT JOIN LATERAL(
+    FROM employee_compensation_effective c LEFT JOIN LATERAL(
      SELECT sum(CASE WHEN p.calc_mode='FIXED' THEN p.amount_minor ELSE round(c.base_salary_minor::numeric*p.rate_bp/10000) END) FILTER(WHERE p.kind='ALLOWANCE') AS allowance,
      sum(CASE WHEN p.calc_mode='FIXED' THEN p.amount_minor ELSE round(c.base_salary_minor::numeric*p.rate_bp/10000) END) FILTER(WHERE p.kind='DEDUCTION') AS deduction
      FROM payroll_component p WHERE p.root_realm_id=c.root_realm_id AND p.policy_id=c.policy_id
     )x ON true WHERE c.root_realm_id=$1 AND c.employee_ref=ANY($2::uuid[]) AND c.branch_ref=ANY($3::uuid[]) AND c.status='APPROVED'
-    AND c.effective_from<=(now() AT TIME ZONE 'Asia/Kolkata')::date AND (c.effective_to IS NULL OR c.effective_to>(now() AT TIME ZONE 'Asia/Kolkata')::date)`,[a.realmId,result.items.map(x=>x.ref),result.branches.map(x=>x.value)])).rows;
+    AND c.effective_from<=(now() AT TIME ZONE 'Asia/Kolkata')::date AND (c.effective_until IS NULL OR c.effective_until>(now() AT TIME ZONE 'Asia/Kolkata')::date)`,[a.realmId,result.items.map(x=>x.ref),result.branches.map(x=>x.value)])).rows;
    const byEmployee=new Map(rows.map(r=>[r.employee_ref,r]));
    return {...result,items:result.items.map(e=>({...e,salary:byEmployee.get(e.ref)??null}))};
   });}
@@ -45,7 +45,7 @@ export class PayrollCompensationService{
   const branch=id(branchInput);
   return this.run(token,"payroll.compensation.view",async(tx,a)=>{
    await this.branches.projectBranch(tx,a,branch);
-   const rows=(await tx.query<Policy>("SELECT id,branch_ref,label,effective_from::text,effective_to::text,status,revision,request_digest FROM payroll_policy WHERE root_realm_id=$1 AND branch_ref=$2 ORDER BY effective_from DESC,id DESC LIMIT 100",[a.realmId,branch])).rows;
+   const rows=(await tx.query<Policy>("SELECT id,branch_ref,label,effective_from::text,effective_until::text AS effective_to,supersedes_ref,status,revision,request_digest FROM payroll_policy_effective WHERE root_realm_id=$1 AND branch_ref=$2 ORDER BY effective_from DESC,id DESC LIMIT 100",[a.realmId,branch])).rows;
    const components=(await tx.query("SELECT policy_id,code,label,kind,calc_mode,amount_minor::text,rate_bp,tax_class FROM payroll_component WHERE root_realm_id=$1 AND policy_id=ANY($2::uuid[]) ORDER BY code",[a.realmId,rows.map(r=>r.id)])).rows;
    return {items:rows.map(p=>({...this.policyView(p),components:components.filter(c=>c.policy_id===p.id).map(({policy_id,...c})=>c)})),statutoryStatus:"NOT_CONFIGURED"};
   });
@@ -57,7 +57,7 @@ export class PayrollCompensationService{
    await tx.query("SELECT pg_advisory_xact_lock(hashtextextended($1,0))",["CG11-POLICY:"+a.realmId+":"+a.accountId+":"+v.key]);
    const previous=(await tx.query<Policy>("SELECT *,effective_from::text,effective_to::text FROM payroll_policy WHERE root_realm_id=$1 AND created_by=$2 AND request_key=$3",[a.realmId,a.accountId,v.key])).rows[0];
    if(previous){if(previous.request_digest!==digest||previous.branch_ref!==v.branch)throw conflict();return {...this.policyView(previous),replayed:true};}
-   const p=(await tx.query<Policy>("INSERT INTO payroll_policy(root_realm_id,branch_ref,cycle,label,effective_from,effective_to,created_by,request_key,request_digest) VALUES($1,$2,'MONTHLY',$3,$4,$5,$6,$7,$8) RETURNING *,effective_from::text,effective_to::text",[a.realmId,v.branch,v.label,v.from,v.to,a.accountId,v.key,digest])).rows[0];
+   const p=(await tx.query<Policy>("INSERT INTO payroll_policy(root_realm_id,branch_ref,cycle,label,effective_from,effective_to,created_by,request_key,request_digest,supersedes_ref) VALUES($1,$2,'MONTHLY',$3,$4,$5,$6,$7,$8,$9) RETURNING *,effective_from::text,effective_to::text",[a.realmId,v.branch,v.label,v.from,v.to,a.accountId,v.key,digest,v.supersedes])).rows[0];
    for(const c of v.components)await tx.query("INSERT INTO payroll_component(root_realm_id,policy_id,code,label,kind,calc_mode,amount_minor,rate_bp,percent_basis,tax_class) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)",[a.realmId,p.id,c.code,c.label,c.kind,c.mode,c.minor,c.bp,c.mode==="PERCENT"?"BASIC":null,c.taxClass]);
    await this.audit(tx,a,"POLICY",p.id,"DRAFT_CREATED");return {...this.policyView(p),replayed:false};
   });
@@ -66,7 +66,7 @@ export class PayrollCompensationService{
   return this.run(token,"payroll.compensation.view",async(tx,a)=>{
    const e=await this.employee(tx,a,employee);
    const scope=await this.branches.projectBranchScope(tx,a);
-   const rows=(await tx.query<Salary>("SELECT *,effective_from::text,effective_to::text,base_salary_minor::text FROM employee_compensation WHERE root_realm_id=$1 AND employee_ref=$2 AND branch_ref=ANY($3::uuid[]) ORDER BY effective_from DESC,id DESC LIMIT 100",[a.realmId,e.id,scope.branches.map(b=>b.value)])).rows;
+   const rows=(await tx.query<Salary>("SELECT *,effective_from::text,effective_until::text AS effective_to,base_salary_minor::text FROM employee_compensation_effective WHERE root_realm_id=$1 AND employee_ref=$2 AND branch_ref=ANY($3::uuid[]) ORDER BY effective_from DESC,id DESC LIMIT 100",[a.realmId,e.id,scope.branches.map(b=>b.value)])).rows;
    await this.audit(tx,a,"COMPENSATION",e.id,"READ");return {employee:{ref:e.id,reference:e.employee_code,name:e.name,designation:e.designation,status:e.status,branchRef:e.branch_ref},items:rows.map(r=>this.salaryView(r))};
   });
  }
@@ -78,20 +78,20 @@ export class PayrollCompensationService{
    await tx.query("SELECT pg_advisory_xact_lock(hashtextextended($1,0))",["CG11-SALARY:"+a.realmId+":"+a.accountId+":"+v.key]);
    const previous=(await tx.query<Salary>("SELECT *,effective_from::text,effective_to::text,base_salary_minor::text FROM employee_compensation WHERE root_realm_id=$1 AND created_by=$2 AND request_key=$3",[a.realmId,a.accountId,v.key])).rows[0];
    if(previous){if(previous.request_digest!==digest||previous.branch_ref!==e.branch_ref)throw conflict();return {...this.salaryView(previous),replayed:true};}
-   const p=(await tx.query<Policy>("SELECT * FROM payroll_policy WHERE root_realm_id=$1 AND id=$2 AND branch_ref=$3 AND revision=$4 AND status='APPROVED' AND effective_from<=$5::date AND (effective_to IS NULL OR ($6::date IS NOT NULL AND effective_to>=$6::date)) FOR SHARE",[a.realmId,v.policy,e.branch_ref,v.policyRevision,v.from,v.to])).rows[0];
+   const p=(await tx.query<Policy>("SELECT * FROM payroll_policy WHERE root_realm_id=$1 AND id=$2 AND branch_ref=$3 AND revision=$4 AND status='APPROVED' AND effective_from<=$5::date AND (LEAST(effective_to,(SELECT n.effective_from FROM payroll_policy n WHERE n.root_realm_id=payroll_policy.root_realm_id AND n.supersedes_ref=payroll_policy.id AND n.status='APPROVED')) IS NULL OR ($6::date IS NOT NULL AND LEAST(effective_to,(SELECT n.effective_from FROM payroll_policy n WHERE n.root_realm_id=payroll_policy.root_realm_id AND n.supersedes_ref=payroll_policy.id AND n.status='APPROVED'))>=$6::date)) FOR SHARE",[a.realmId,v.policy,e.branch_ref,v.policyRevision,v.from,v.to])).rows[0];
    if(!p)throw new ConflictException("Choose an approved effective payroll policy");
    const components=(await tx.query<{kind:string;mode:"FIXED"|"PERCENT";minor:string|null;bp:number|null}>("SELECT kind,calc_mode AS mode,amount_minor::text AS minor,rate_bp AS bp FROM payroll_component WHERE root_realm_id=$1 AND policy_id=$2",[a.realmId,p.id])).rows;
    let gross=BigInt(v.baseMinor),deduct=0n;for(const c of components){const amount=componentMinor(v.baseMinor,c);if(c.kind==="ALLOWANCE")gross+=amount;if(c.kind==="DEDUCTION")deduct+=amount;}
    if(gross<deduct||gross>99999999999999n)throw new ConflictException("Deductions or allowances exceed valid salary limits");
-   const row=(await tx.query<Salary>(`INSERT INTO employee_compensation(root_realm_id,employee_ref,branch_ref,assignment_ref,assignment_version,employee_status_version,policy_id,policy_revision,effective_from,effective_to,base_salary_minor,created_by,request_key,request_digest)
-    VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14) RETURNING *,effective_from::text,effective_to::text,base_salary_minor::text`,[a.realmId,e.id,e.branch_ref,e.assignment_ref,e.assignment_version,e.status_version,p.id,v.policyRevision,v.from,v.to,v.baseMinor,a.accountId,v.key,digest])).rows[0];
+   const row=(await tx.query<Salary>(`INSERT INTO employee_compensation(root_realm_id,employee_ref,branch_ref,assignment_ref,assignment_version,employee_status_version,policy_id,policy_revision,effective_from,effective_to,base_salary_minor,created_by,request_key,request_digest,supersedes_ref)
+    VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15) RETURNING *,effective_from::text,effective_to::text,base_salary_minor::text`,[a.realmId,e.id,e.branch_ref,e.assignment_ref,e.assignment_version,e.status_version,p.id,v.policyRevision,v.from,v.to,v.baseMinor,a.accountId,v.key,digest,v.supersedes])).rows[0];
    await this.audit(tx,a,"COMPENSATION",row.id,"DRAFT_CREATED");return {...this.salaryView(row),replayed:false};
   });
  }
  async payoutHistory(token:string,employee:string){
   return this.run(token,"payroll.bank.edit",async(tx,a)=>{
    const e=await this.employee(tx,a,employee);
-   const rows=(await tx.query<{id:string;effective_from:string;effective_to:string|null;masked_digits:string;masked_ifsc:string;status:string;revision:number}>("SELECT id,effective_from::text,effective_to::text,masked_digits,masked_ifsc,status,revision FROM employee_payout_instruction WHERE root_realm_id=$1 AND employee_ref=$2 AND branch_ref=$3 ORDER BY effective_from DESC,id DESC LIMIT 100",[a.realmId,e.id,e.branch_ref])).rows;
+   const rows=(await tx.query<{id:string;effective_from:string;effective_to:string|null;masked_digits:string;masked_ifsc:string;status:string;revision:number}>("SELECT id,effective_from::text,effective_until::text AS effective_to,masked_digits,masked_ifsc,status,revision FROM employee_payout_instruction_effective WHERE root_realm_id=$1 AND employee_ref=$2 AND branch_ref=$3 ORDER BY effective_from DESC,id DESC LIMIT 100",[a.realmId,e.id,e.branch_ref])).rows;
    await this.audit(tx,a,"PAYOUT",e.id,"READ");
    return {items:rows.map(r=>({ref:r.id,effectiveFrom:r.effective_from,effectiveTo:r.effective_to,maskedAccount:"•••• "+r.masked_digits,maskedIfsc:r.masked_ifsc,status:r.status,revision:r.revision}))};
   });
@@ -105,8 +105,8 @@ export class PayrollCompensationService{
    await tx.query("SELECT pg_advisory_xact_lock(hashtextextended($1,0))",["CG11-PAYOUT:"+a.realmId+":"+a.accountId+":"+v.key]);
    const prior=(await tx.query<{id:string;employee_ref:string;branch_ref:string;request_digest:string;status:string}>("SELECT id,employee_ref,branch_ref,request_digest,status FROM employee_payout_instruction WHERE root_realm_id=$1 AND created_by=$2 AND request_key=$3",[a.realmId,a.accountId,v.key])).rows[0];
    if(prior){if(prior.employee_ref!==e.id||prior.branch_ref!==e.branch_ref||prior.request_digest!==enc.requestDigest)throw conflict();return {ref:prior.id,status:prior.status,replayed:true};}
-   await tx.query(`INSERT INTO employee_payout_instruction(id,root_realm_id,employee_ref,branch_ref,assignment_ref,assignment_version,employee_status_version,effective_from,effective_to,destination_ciphertext,destination_nonce,destination_tag,destination_fingerprint,masked_digits,masked_ifsc,created_by,request_key,request_digest)
-    VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18)`,[ref,a.realmId,e.id,e.branch_ref,effective.assignment_ref,effective.assignment_version,effective.status_version,v.from,v.to,enc.ciphertext,enc.nonce,enc.tag,enc.fingerprint,enc.maskedDigits,enc.maskedIfsc,a.accountId,v.key,enc.requestDigest]);
+   await tx.query(`INSERT INTO employee_payout_instruction(id,root_realm_id,employee_ref,branch_ref,assignment_ref,assignment_version,employee_status_version,effective_from,effective_to,destination_ciphertext,destination_nonce,destination_tag,destination_fingerprint,masked_digits,masked_ifsc,created_by,request_key,request_digest,supersedes_ref)
+    VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19)`,[ref,a.realmId,e.id,e.branch_ref,effective.assignment_ref,effective.assignment_version,effective.status_version,v.from,v.to,enc.ciphertext,enc.nonce,enc.tag,enc.fingerprint,enc.maskedDigits,enc.maskedIfsc,a.accountId,v.key,enc.requestDigest,v.supersedes]);
    await this.audit(tx,a,"PAYOUT",ref,"DRAFT_CREATED");return {ref,status:"DRAFT",replayed:false};
   });
  }
@@ -122,7 +122,7 @@ export class PayrollCompensationService{
      JOIN branch b ON b.root_realm_id=h.root_realm_id AND b.id=h.branch_ref AND b.status='ACTIVE'
      WHERE e.root_realm_id=$1 AND e.account_ref=$2 AND e.status IN('ACTIVE','PROBATION') AND h.valid_from<=(now() AT TIME ZONE 'Asia/Kolkata')::date AND (h.valid_to IS NULL OR h.valid_to>(now() AT TIME ZONE 'Asia/Kolkata')::date) FOR SHARE OF e,h,b`,[a.realmId,a.accountId])).rows[0];
    if(!row){await tx.query("COMMIT");return {employee:null,salary:null};}
-   const c=(await tx.query<Salary>("SELECT *,base_salary_minor::text,effective_from::text,effective_to::text FROM employee_compensation WHERE root_realm_id=$1 AND employee_ref=$2 AND branch_ref=$3 AND status='APPROVED' AND effective_from<=(now() AT TIME ZONE 'Asia/Kolkata')::date AND (effective_to IS NULL OR effective_to>(now() AT TIME ZONE 'Asia/Kolkata')::date) FOR SHARE",[a.realmId,row.id,row.branch_ref])).rows[0];
+   const c=(await tx.query<Salary>("SELECT *,base_salary_minor::text,effective_from::text,effective_until::text AS effective_to FROM employee_compensation_effective WHERE root_realm_id=$1 AND employee_ref=$2 AND branch_ref=$3 AND status='APPROVED' AND effective_from<=(now() AT TIME ZONE 'Asia/Kolkata')::date AND (effective_until IS NULL OR effective_until>(now() AT TIME ZONE 'Asia/Kolkata')::date)",[a.realmId,row.id,row.branch_ref])).rows[0];
    let salary=null;
    if(c){
     const cs=(await tx.query<{kind:string;mode:"FIXED"|"PERCENT";minor:string|null;bp:number|null}>("SELECT kind,calc_mode AS mode,amount_minor::text AS minor,rate_bp AS bp FROM payroll_component WHERE root_realm_id=$1 AND policy_id=$2",[a.realmId,c.policy_id])).rows;
@@ -148,18 +148,18 @@ export class PayrollCompensationService{
   let preview:Record<string,unknown>,digest:string;
   if(kind==="POLICY"){
    const components=(await tx.query("SELECT code,label,kind,calc_mode,amount_minor::text,rate_bp,percent_basis,tax_class FROM payroll_component WHERE root_realm_id=$1 AND policy_id=$2 ORDER BY code",[a.realmId,row.id])).rows;
-   preview={...this.policyView(row),components};digest=hash([kind,row.id,row.branch_ref,row.label,row.effective_from,row.effective_to,components,row.request_digest]);
+   preview={...this.policyView(row),components};digest=hash([kind,row.id,row.branch_ref,row.label,row.effective_from,row.effective_to,row.supersedes_ref,components,row.request_digest]);
   }else{
    const current=await this.employee(tx,a,row.employee_ref),effective=await this.employee(tx,a,row.employee_ref,row.effective_from);
    if(write&&(current.branch_ref!==row.branch_ref||effective.assignment_ref!==row.assignment_ref||effective.assignment_version!==row.assignment_version||effective.status_version!==row.employee_status_version||!["ACTIVE","PROBATION"].includes(current.status)))throw conflict();
    if(kind==="PAYOUT"){
     preview={ref:row.id,employeeName:current.name,employeeReference:current.employee_code,effectiveFrom:row.effective_from,effectiveTo:row.effective_to,status:row.status,revision:row.revision,maskedAccount:"•••• "+row.masked_digits,maskedIfsc:row.masked_ifsc};
-    digest=hash([kind,row.id,row.employee_ref,row.branch_ref,row.assignment_ref,row.assignment_version,row.employee_status_version,row.effective_from,row.effective_to,row.destination_ciphertext,row.destination_nonce,row.destination_tag,row.destination_fingerprint,row.masked_digits,row.masked_ifsc,row.request_digest]);
+    digest=hash([kind,row.id,row.employee_ref,row.branch_ref,row.assignment_ref,row.assignment_version,row.employee_status_version,row.effective_from,row.effective_to,row.supersedes_ref,row.destination_ciphertext,row.destination_nonce,row.destination_tag,row.destination_fingerprint,row.masked_digits,row.masked_ifsc,row.request_digest]);
     return {row,preview,digest};
    }
    const policy=(await tx.query("SELECT revision,status FROM payroll_policy WHERE root_realm_id=$1 AND id=$2 AND branch_ref=$3 FOR SHARE",[a.realmId,row.policy_id,row.branch_ref])).rows[0];
    if(write&&(!policy||policy.status!=="APPROVED"||policy.revision!==row.policy_revision))throw conflict();
-   preview={...this.salaryView(row),employeeName:current.name,employeeReference:current.employee_code};digest=hash([kind,row.id,row.employee_ref,row.branch_ref,row.assignment_ref,row.assignment_version,row.employee_status_version,row.policy_id,row.policy_revision,row.effective_from,row.effective_to,row.base_salary_minor,row.request_digest]);
+   preview={...this.salaryView(row),employeeName:current.name,employeeReference:current.employee_code};digest=hash([kind,row.id,row.employee_ref,row.branch_ref,row.assignment_ref,row.assignment_version,row.employee_status_version,row.policy_id,row.policy_revision,row.effective_from,row.effective_to,row.supersedes_ref,row.base_salary_minor,row.request_digest]);
   }
   return {row,preview,digest};
  }
