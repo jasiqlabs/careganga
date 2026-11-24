@@ -17,6 +17,8 @@
     "db:migrate": "npm run db:migrate -w apps/backend",
     "verify:auth-source": "node scripts/verify-greenfield-auth.mjs",
     "verify:design-approvals": "node scripts/verify-design-approvals.mjs",
+    "deploy:cms:first": "node scripts/deploy-cms-first-publication.mjs",
+    "verify:cms:first": "node --test scripts/verify-cms-first-publication.test.mjs scripts/deploy-cms-first-publication.test.mjs",
     "verify:cg18-source": "node scripts/verify-cg18-us001-source.mjs",
     "verify:core-source": "node scripts/verify-cg-core-source.mjs",
     "verify:cg14-source": "node scripts/verify-cg14-source.mjs",
