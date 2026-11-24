@@ -70,7 +70,7 @@ BEGIN
   EXECUTE format('ALTER TABLE %I ADD CONSTRAINT %I CHECK (((%s) OR (%s)) IS TRUE)',
     rec.table_name,rec.constraint_name,original,rec.owner_guard);
  END LOOP;
-END $cg06$;
+END; $cg06$;
 ALTER TABLE cg03_case ADD CONSTRAINT cg03_beneficiary_verification_disjoint CHECK(
  (case_kind='BENEFICIARY_VERIFICATION'
    AND num_nonnulls(beneficiary_review_ref,beneficiary_id,beneficiary_source_revision,beneficiary_source_digest)=4
@@ -87,7 +87,7 @@ BEGIN
   RAISE EXCEPTION 'Frozen beneficiary verification source cannot change';
  END IF;
  RETURN NEW;
-END $$;
+END; $$;
 CREATE TRIGGER cg06_beneficiary_case_frozen BEFORE UPDATE ON cg03_case
  FOR EACH ROW EXECUTE FUNCTION cg06_guard_beneficiary_case_frozen();
 CREATE TABLE cg03_beneficiary_review_process_current(
