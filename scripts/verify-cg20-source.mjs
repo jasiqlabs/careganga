@@ -55,8 +55,8 @@ const source=contains(mis+"application/mis-report-source.service.ts",[
  '"mis.reports.view"',"this.finance","this.patients"
 ]);
 assert.ok(!/SELECT\s+.*FROM/i.test(source),"Report templates may not run arbitrary SQL");
-contains(backend+"modules/cg-06-beneficiaries-assistance/application/beneficiary-report.service.ts",["async misSummary(token:string)","this.report(token,{})","total-recipients","sensitive.some(v=>v>0&&v<5)"]);
-assert.ok(source.includes("this.beneficiaries.misSummary(token)")&&source.includes("BENEFICIARY_ASSISTANCE_SUMMARY"),"Live beneficiary report must consume only the original scoped aggregate");
+contains(backend+"modules/cg-06-beneficiaries-assistance/application/beneficiary-report.service.ts",["async misSummary(token:string,branchRef?:string","this.beneficiaries.reportScope(tx,a,parseListQuery(raw))","total-recipients.recipients","sensitive.some(v=>v>0&&v<5)"]);
+assert.ok(source.includes("this.beneficiaries.misSummary(token,q.branchRef,q.fromDay,q.untilDay)")&&source.includes("BENEFICIARY_ASSISTANCE_SUMMARY"),"Live beneficiary report must consume only the original scoped aggregate");
 contains(backend+"modules/cg-04-membership-volunteers/application/membership-roster.service.ts",["async misCounts(token:string,branch?:string","app.consent_version=\'MEMBERSHIP_V1\'","membership.members.view","this.branches.projectBranch(tx,a,f.branch)"]);
 contains(backend+"modules/cg-04-membership-volunteers/application/volunteer-roster.service.ts",["async misCounts(token:string,branch?:string","app.consent_version=\'VOLUNTEER_V1\'","volunteers.view","this.branches.projectBranch(tx,a,f.branch)"]);
 contains(backend+"modules/cg-07-campaigns-donations/application/donation-admin.service.ts",["private async verifiedSummary","j.immutable_payload_digest=e.immutable_digest","rec.source_digest=e.immutable_digest","j.immutable_source_event_key=r.approval_request_key",'this.ensureReportScopeStillCurrent(bearer,"ALL",scope)',"this.verifiedSummary(actor.realmId,scope,f.branchRef)"]);
