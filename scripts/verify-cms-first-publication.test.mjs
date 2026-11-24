@@ -2,7 +2,7 @@ import {test} from "node:test";
 import assert from "node:assert/strict";
 import {baseline,origin,readiness} from "./verify-cms-first-publication.mjs";
 const routes=[...baseline,["our-work","PROJECTS","/our-work"],["upcoming-projects","PROJECTS","/upcoming-projects"]];
-const requiredIntros=["TEAM","MEMBERSHIP","VOLUNTEER","NOTICES","UPCOMING_PROJECTS","ANNUAL_REPORTS"];
+const requiredIntros=["TEAM","MEMBERSHIP","VOLUNTEER","NOTICES","UPCOMING_PROJECTS","ANNUAL_REPORTS","FINANCIAL_REPORTS"];
 function fixture({missing=[],badSlug="",navigation=true,omitNavSlug="",badNavGeneration=false,offlineSlug="",incompleteCopy=false}={}){
  const called=[];
  const request=async(url,init)=>{
