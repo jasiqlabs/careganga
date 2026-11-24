@@ -264,6 +264,11 @@ Dependencies: US-003
 
 ## Execution progress
 
+### 24 November 2026 — healthcare UX source checkpoint
+
+HUX-06.02/12.02 commits 21680199, 5b9ecb3c, 7c1c9df4, 5fc226fa. Web and native queue primary actions, protected detail on demand, compact totals, stale refresh/history guard, in-row slip. US-006-QA01–05/07/08/11/13/16 partial source trace. Original QA definitions and dispositions unchanged. Runtime/device/build NOT_RUN; independent clearance unavailable; exact reference comparison pending.
+
+
 ### 24 November 2026 — dedicated healthcare UI/UX review checkpoint (review-only)
 
 User-authorized [Healthcare UI/UX Hardening subtracker](../../HEALTHCARE_UIUX_HARDENING_TRACKER.md) on `feature/careganga-healthcare-uiux-hardening-20261124`, source baseline `473728cc0d842ad64ba34f3bc14f5b555c835581`. Owner-specific candidates: HUX-05.01, 06.01–06.03, 10.04, 11.01–11.03, 12.02, 13.02; shared reference, navigation, dashboard, feedback, accessibility and visual acceptance rows apply where authorized. Original story coverage US-001–008; exact original QA IDs and runtime evidence must be recorded on execution. This checkpoint does not alter approved QA definitions or earlier dispositions. Source markup observations are not runtime failures; CHECK candidates need reproduction. No application code changed, independent review/re-review, build and device/visual QA NOT_RUN. Next: synchronize with main after mandatory handoff, reproduce one item, fix only real gap, re-review and trace affected original QA here. No future ERP scope or duplicate owner tracker.
