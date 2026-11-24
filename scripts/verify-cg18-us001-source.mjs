@@ -580,6 +580,9 @@ checks.push(["Default CMS onboarding is explicit and uses original draft creatio
  initDrafts.includes('if(existing.has(content.slug))')&&initDrafts.includes('if(r.status===409)')&&
  initDrafts.includes('result.status!=="DRAFT"')&&!initDrafts.includes('/api/cms/pages/submit')&&
  !initDrafts.includes('/api/cms/pages/publish')]);
+checks.push(["Reference-derived CMS starter copy remains editable and operational collections stay empty",
+ ["Get In Touch","Our Social Partners","Real People. Real Stories. Real Change.","Moments of Hope & Action","Stories in Motion","Publications & Reports","No photos published yet."].every(value=>initDrafts.includes(value))&&
+ initDrafts.includes("partners:[]")&&initDrafts.includes("items:[]")&&initDrafts.includes("assets:[]")]);
 const eventsRoute=read("apps/web/src/app/events/page.tsx");
 checks.push(["Events reuse the effective CMS article and current CG05 eligibility source",
  files.backend.includes("NOT $3::boolean OR body.structured_fields ? 'sourceEventRef'")&&
@@ -620,7 +623,7 @@ console.log("CG-18 US-001–004 original website/navigation static source-presen
 
 // E2E-006 current HR name/designation only
 const hrPublicBio=read("apps/backend/src/modules/cg-10-human-resources/application/hr-public-bio-editorial-source.ts");
-const teamRoute=read("apps/web/src/app/about/team/page.tsx");
+
 for(const needle of ["c.consent_status='GRANTED'","acc.status='ACTIVE'","b.status='ACTIVE'","c.consent_version","this.branches.projectBranchScope(tx,actor)","c.proof===x.proof"])assert.ok(hrPublicBio.includes(needle),needle);
 for(const needle of ["teamSelections(fields.members)","this.hrPublicBio.choices(tx,actor,chosen.map","cards.map(({name,designation})",'a.role==="TEAM"||!placementFits'])assert.ok(files.backend.includes(needle),needle);
 assert.ok(files.due.includes("this.teamRevisionEligible(tx,item.foundation_root_id,item.page_revision_id)"));
