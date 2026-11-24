@@ -49,13 +49,13 @@ export class PayrollRunReviewService{
  async list(token:string){return this.compensation.run(token,"payroll.sensitive.approve",async(tx,a)=>{
   await this.identity.assertCurrent(tx,a,"approvals.review");await this.protectedOwner.verifyReviewer(tx,a,"approvals.review",true);
   const rows=(await tx.query<Case>("SELECT c.id,c.case_number,c.proposer_id,c.status,c.revision,s.run_id,s.source_revision,s.source_digest FROM cg03_case c JOIN payroll_run_review_snapshot s ON s.root_realm_id=c.realm_id AND s.id=c.payroll_run_review_ref WHERE c.realm_id=$1 AND c.case_kind='PAYROLL_RUN_RELEASE' AND c.status='SUBMITTED' AND c.proposer_id<>$2 ORDER BY c.submitted_at DESC,c.id DESC LIMIT 100",[a.realmId,a.accountId])).rows;
-  const items=[];for(const c of rows){try{const src=await this.runs.reviewSource(tx,a,c.run_id);if(src.row.creator===a.accountId)continue;items.push({ref:c.id,caseNumber:c.case_number,kind:"RUN",preview:src.preview});}catch(e){if(!(e instanceof ForbiddenException)&&!(e instanceof NotFoundException)&&!(e instanceof ConflictException))throw e;}}
+  const items=[];for(const c of rows){try{const src=await this.runs.frozenReview(tx,a,c.run_id,c.source_revision,c.source_digest);if(src.row.creator===a.accountId)continue;items.push({ref:c.id,caseNumber:c.case_number,kind:"RUN",preview:src.preview});}catch(e){if(!(e instanceof ForbiddenException)&&!(e instanceof NotFoundException)&&!(e instanceof ConflictException))throw e;}}
   return {items};
  });}
  async detail(token:string,ref:string){return this.compensation.run(token,"payroll.sensitive.approve",async(tx,a)=>{
   await this.identity.assertCurrent(tx,a,"approvals.review");await this.protectedOwner.verifyReviewer(tx,a,"approvals.review",true);
-  const c=await this.original(tx,a,ref),src=await this.runs.reviewSource(tx,a,c.run_id);
-  const canReview=c.status==="SUBMITTED"&&src.row.status==="SUBMITTED"&&src.row.revision===c.source_revision+1&&src.row.approval_case_ref===c.id&&src.digest===c.source_digest&&c.proposer_id!==a.accountId&&src.row.creator!==a.accountId;
+  const c=await this.original(tx,a,ref),src=await this.runs.frozenReview(tx,a,c.run_id,c.source_revision,c.source_digest);
+  const canReview=c.status==="SUBMITTED"&&src.row.status==="SUBMITTED"&&src.row.revision===c.source_revision+1&&src.row.approval_case_ref===c.id&&src.row.snapshot_digest===c.source_digest&&c.proposer_id!==a.accountId&&src.row.creator!==a.accountId;
   const history=(await tx.query("SELECT action,accepted_case_revision AS revision,created_at AS at FROM cg03_case_decision WHERE realm_id=$1 AND case_id=$2 ORDER BY accepted_case_revision",[a.realmId,c.id])).rows;
   return {caseNumber:c.case_number,status:c.status,revision:c.revision,kind:"RUN",preview:src.preview,canReview,history};
  });}
