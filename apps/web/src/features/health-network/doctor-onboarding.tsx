@@ -35,6 +35,9 @@ async function request<T>(path:string,method:"GET"|"POST"|"PATCH"="GET",
 }
 export function DoctorOnboarding({canManage,canVerify}:{canManage:boolean;canVerify:boolean}){
   const [rows,setRows]=useState<DoctorRow[]>([]);
+  const [search,setSearch]=useState(""),[statusFilter,setStatusFilter]=useState("");
+  const applied=useRef({q:"",status:""}),detailTurn=useRef(0);
+  const [detailLoading,setDetailLoading]=useState(false);
   const [selected,setSelected]=useState<Detail|null>(null);
   const [form,setForm]=useState<DoctorForm>(empty);
   const [qualifications,setQualifications]=useState("");
@@ -53,8 +56,8 @@ export function DoctorOnboarding({canManage,canVerify}:{canManage:boolean;canVer
   const current=useRef(0),key=useRef("");
   const load=useCallback(async(offset=0)=>{
     const turn=++current.current;
-    const data=await request<{doctors:DoctorRow[];nextOffset:number|null}>(
-      "?offset="+offset);
+    const query=new URLSearchParams({offset:String(offset),q:applied.current.q,status:applied.current.status});
+    const data=await request<{doctors:DoctorRow[];nextOffset:number|null}>("?"+query.toString());
     if(turn!==current.current)return;
     if(!Array.isArray(data.doctors))throw Error("Doctor list response is incomplete.");
     if(offset===0)setRows(data.doctors);
@@ -69,25 +72,29 @@ export function DoctorOnboarding({canManage,canVerify}:{canManage:boolean;canVer
       .finally(()=>setLoading(false));
   },[load]);
   async function show(ref:string){
-    setError("");setNotice("");setEditing("none");
+    const turn=++detailTurn.current;
+    setDetailLoading(true);setError("");setNotice("");setEditing("none");
     setSelected(null);setFileStatus("");setProofFileRef("");
     setSuspendConfirm(false);setSuspendPassword("");
     try{
       const item=await request<Detail>("/"+encodeURIComponent(ref));
+      if(turn!==detailTurn.current)return;
       setSelected(item);
       if(item.status==="PENDING"){
         const proof=await fetch("/api/documents/doctor-evidence/doctors/"+
           encodeURIComponent(ref),{credentials:"same-origin",cache:"no-store"});
         if(proof.ok){
           const result=await proof.json() as Files;
+          if(turn!==detailTurn.current)return;
           const latest=result.files?.find(f=>f.currentVersion&&f.cleanVerified&&
             f.classification==="HEALTH_DOCTOR_LICENSE");
           setProofFileRef(latest?.fileRef??"");
           setFileStatus(latest?"Original clean scanned licence is recorded":
             "No current verified private licence is recorded");
-        }else setFileStatus("Private licence status could not be verified");
+        }else if(turn===detailTurn.current)setFileStatus("Private licence status could not be verified");
       }
-    }catch(e){setError(e instanceof Error?e.message:"Doctor registration unavailable.");}
+    }catch(e){if(turn===detailTurn.current)setError(e instanceof Error?e.message:"Doctor registration unavailable.");}
+    finally{if(turn===detailTurn.current)setDetailLoading(false);}
   }
   async function submitForReview(){
     if(!selected||selected.status!=="PENDING"||!canManage||!proofFileRef||busy||unknown)return;
@@ -131,6 +138,7 @@ export function DoctorOnboarding({canManage,canVerify}:{canManage:boolean;canVer
     }finally{setBusy(false);}
   }
   function edit(existing?:Detail){
+    detailTurn.current++;setDetailLoading(false);
     key.current="";setUnknown(false);setError("");setNotice("");
     const d=existing?.doctor??empty();
     setForm({...d});
@@ -166,12 +174,17 @@ export function DoctorOnboarding({canManage,canVerify}:{canManage:boolean;canVer
         typeof err.status==="number"&&err.status<500))setUnknown(true);
     }finally{setBusy(false);}
   }
+  function applySearch(q:string,status:string){
+    applied.current={q:q.trim(),status};setRows([]);setMore(null);setLoading(true);setError("");
+    void load().catch(e=>setError(e instanceof Error?e.message:"Doctor list unavailable."))
+      .finally(()=>setLoading(false));
+  }
   return <div className="role-workspace">
     <header className="topbar"><div><h1>Doctors and professional registrations</h1>
       <p>One professional identity can be associated with multiple independently approved centers.</p>
     </div>
       <div className="toolbar cg-module-header-actions">
-      {canManage&&<button type="button" className="primary" onClick={()=>{
+      {canManage&&<button type="button" className="primary" disabled={busy||unknown||detailLoading||editing!=="none"} onClick={()=>{
         setSelected(null);edit();
       }}>Register doctor</button>}
       </div>
@@ -248,37 +261,45 @@ export function DoctorOnboarding({canManage,canVerify}:{canManage:boolean;canVer
           onClick={()=>setEditing("none")}>Cancel</button>
       </div>
     </form>}
+    <div className="cg-diagnostics-layout">
     <section className="form-section">
       <h2>Registered professionals</h2>
-      {!loading&&rows.length===0&&<p className="cg-module-empty" role="status">No doctor registrations have been entered yet.</p>}
+      <form className="form" onSubmit={e=>{e.preventDefault();applySearch(search,statusFilter);}}>
+        <label className="field">Find a doctor<input type="search" maxLength={80} value={search} onChange={e=>setSearch(e.target.value)} placeholder="Name, registration number or specialty"/></label>
+        <label className="field">Verification status<select value={statusFilter} onChange={e=>setStatusFilter(e.target.value)}><option value="">All statuses</option><option value="PENDING">Pending</option><option value="VERIFIED">Verified</option><option value="SUSPENDED">Suspended</option></select></label>
+        <div className="toolbar"><button type="submit" disabled={loading||paging||busy||unknown||editing!=="none"}>Search</button><button type="button" disabled={loading||paging||busy||unknown||editing!=="none"} onClick={()=>{setSearch("");setStatusFilter("");applySearch("","");}}>Reset</button></div>
+      </form>
+      {!loading&&rows.length===0&&!error&&<p className="cg-module-empty" role="status">No matching doctor registrations.</p>}
       <div className="table-wrap"><table><thead><tr>
         <th>Professional</th><th>Specialties</th><th>Verification</th><th>Action</th>
       </tr></thead><tbody>
         {rows.map(r=><tr key={r.doctorRef}>
           <td>{r.name}</td><td>{r.specialties.length?r.specialties.join(", "):"Not entered"}</td>
           <td>{label(r.status)}</td><td>
-            <button type="button" onClick={()=>void show(r.doctorRef)}>
+            <button type="button" aria-pressed={selected?.doctorRef===r.doctorRef} disabled={busy||unknown||detailLoading||editing!=="none"} onClick={()=>void show(r.doctorRef)}>
               View registration</button>
           </td>
         </tr>)}
       </tbody></table></div>
-      {more!==null&&<button type="button" disabled={paging||loading}
+      {more!==null&&<button type="button" disabled={paging||loading||busy||unknown||editing!=="none"}
         onClick={()=>{setPaging(true);void load(more).catch(err=>
           setError(err instanceof Error?err.message:"More records unavailable."))
           .finally(()=>setPaging(false));}}>
         {paging?"Loading more…":"Load more professionals"}</button>}
     </section>
-    {selected&&editing==="none"&&<section className="form-section">
+    {editing==="none"&&<section className="form-section cg-diagnostics-detail">
+      {detailLoading?<p role="status">Loading doctor profile…</p>:!selected?<p className="cg-module-empty">Select a doctor to view their registration.</p>:<>
       <h2>{selected.doctor.fullName}</h2>
       <p>Professional verification: <strong>{label(selected.status)}</strong>.
         Only an independently approved registration can become eligible for association.</p>
       <p>Public directory: <strong>Not published by this workflow</strong>.
         This professional registration and private portrait are not a public doctor listing.</p>
-      <p>Registration jurisdiction: {selected.doctor.registrationJurisdiction}</p>
-      <p>Registration number: {selected.doctor.registrationNumber}</p>
-      <p>Qualifications: {selected.doctor.qualifications.join(", ")||"Not entered"}</p>
-      <p>Specialties: {selected.doctor.specialties.join(", ")||"Not entered"}</p>
-      <p>Experience: {selected.doctor.experienceYears} years</p>
+      <h3>Professional profile</h3><dl className="cg-diagnostics-facts">
+      <dt>Registration jurisdiction</dt><dd>{selected.doctor.registrationJurisdiction}</dd>
+      <dt>Registration number</dt><dd>{selected.doctor.registrationNumber}</dd>
+      <dt>Qualifications</dt><dd>{selected.doctor.qualifications.join(", ")||"Not entered"}</dd>
+      <dt>Specialties</dt><dd>{selected.doctor.specialties.join(", ")||"Not entered"}</dd>
+      <dt>Experience</dt><dd>{selected.doctor.experienceYears} years</dd></dl>
       {canManage&&selected.status==="PENDING"&&<>
         <div className="toolbar">
           <button type="button" onClick={()=>edit(selected)}>Correct pending draft</button>
@@ -325,6 +346,8 @@ export function DoctorOnboarding({canManage,canVerify}:{canManage:boolean;canVer
       {canVerify&&selected.status==="VERIFIED"&&
        <ClinicianAccountLinkReviewer key={selected.doctorRef} doctorRef={selected.doctorRef}/>}
       <p className="muted">No appointment availability, patient payment or benefit is implied by a verified registration.</p>
+      </>}
     </section>}
+    </div>
   </div>;
 }
