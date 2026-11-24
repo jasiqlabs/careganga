@@ -10,7 +10,7 @@ This user-requested cross-module subtracker supplements (does not replace) origi
 
 ## Summary
 
-37 subitems: 17 source-confirmed presentation gaps, 19 runtime/reproduction candidates, 1 reference evidence blocker. Initial baseline: all OPEN. Current progress: 16 rows IN_PROGRESS (including partial cross-cutting work); 21 rows OPEN; zero independently cleared or runtime passes. P0 = release visual evidence gate; P1 = primary journey or substantial usability; P2 = secondary usability. Source status and runtime status stay separate.
+37 subitems: 17 source-confirmed presentation gaps, 19 runtime/reproduction candidates, 1 reference evidence blocker. Initial baseline: all OPEN. Current progress: 19 rows IN_PROGRESS (including partial cross-cutting work); 18 rows OPEN; zero independently cleared or runtime passes. P0 = release visual evidence gate; P1 = primary journey or substantial usability; P2 = secondary usability. Source status and runtime status stay separate.
 
 | ID | Priority | Evidence | Owner/surface | Issue | State |
 |---|---|---|---|---|---|
@@ -31,15 +31,15 @@ This user-requested cross-module subtracker supplements (does not replace) origi
 | HUX-07.02 | P2 | SOURCE | CG16 US-001 admin/center | H09 filter coverage | IN_PROGRESS |
 | HUX-07.03 | P1 | SOURCE | CG16 US-002 lab web (ERP ON only) | Lab sample/report workflow structure | IN_PROGRESS |
 | HUX-07.04 | P1 | CHECK | CG16 US-003/004 public | Public lab test and enquiry | OPEN |
-| HUX-08.01 | P1 | SOURCE | CG17 US-001 admin | Assistance policy form hierarchy | OPEN |
-| HUX-08.02 | P1 | SOURCE | CG17 US-005/006 admin/center | Settlement screen is mostly stacked definitions | OPEN |
+| HUX-08.01 | P1 | SOURCE | CG17 US-001 admin | Assistance policy form hierarchy | IN_PROGRESS |
+| HUX-08.02 | P1 | SOURCE | CG17 US-005/006 admin/center | Settlement screen is mostly stacked definitions | IN_PROGRESS |
 | HUX-08.03 | P1 | CHECK | CG17 US-003/004 center/public | Payment and collection status | OPEN |
 | HUX-09.01 | P1 | CHECK | CG14/18 public web/app | Healthcare landing and discovery navigation | OPEN |
 | HUX-10.01 | P1 | SOURCE | CG14 US-004 public web | Doctor result cards omit key discovery information | IN_PROGRESS |
 | HUX-10.02 | P1 | SOURCE | CG14 US-004 public web | Center result cards are text-only | IN_PROGRESS |
 | HUX-10.03 | P1 | CHECK | CG14 US-004 public web/app | Directory advanced filter and result modes | IN_PROGRESS |
 | HUX-10.04 | P1 | CHECK | CG14/15/17 public web/app | Doctor profile and center-specific choice | OPEN |
-| HUX-11.01 | P1 | SOURCE | CG15 US-004 / CG17 US-002 public web/app | Booking review text/action hierarchy | OPEN |
+| HUX-11.01 | P1 | SOURCE | CG15 US-004 / CG17 US-002 public web/app | Booking review text/action hierarchy | IN_PROGRESS |
 | HUX-11.02 | P1 | CHECK | CG15 US-002/003 public web/app | Appointment calendar and patient verification | OPEN |
 | HUX-11.03 | P1 | CHECK | CG15 US-005/007/008 public web/app | Booking confirmation and patient history | OPEN |
 | HUX-12.01 | P1 | SOURCE | CG14 US-003 internal Android | Doctor management long scrolling forms | IN_PROGRESS |
@@ -76,6 +76,13 @@ This user-requested cross-module subtracker supplements (does not replace) origi
 - HUX-07.01/07.02: bounded server-side test search and category/sample/status filters with deterministic 100-row paging, same authorized root, and page-scoped export; Foundation Web and Internal Android parity. Original edit identity/revision retained; a failed refresh cannot convert an edit into creation. Commits fdfd2c33, 1b771eb3, a3b63ca0, 57455aea, 45e0c1af. CG16 US-001-QA01/03/05/06/07/09/13/14/15/16 partial source trace. Package/mapping selectors and center-specific tariff journey require actual acceptance.
 - HUX-07.03: Web and native clinical orders distinguish accepted tests, specimen custody, result entry and professional review/release; recent-order lookup explicitly limited to loaded orders, guarded detail requests. Web patient selector now uses stable patient+care-source identity rather than array index; both reject unavailable cart choices. Commits 46e543e6, 9ba8786e. CG16 US-002-QA01–16 partial source trace; preserve enabled-lab and patient consent guards, retry identity, independent review and private release.
 - Regression scenarios: >100 tests, sample/status filtering, page export, expired selection, edit revision conflict, reorder patient options, rapid order/center switch, rejected specimen and recollection, unknown custody response/replay, ERP OFF. Runtime, independent review and original screenshot acceptance NOT_RUN. No new clinical/payment capability.
+
+## Development checkpoint — assistance, settlements and patient booking
+
+- HUX-08.01: Web and Internal Android policy forms group service/eligibility, contribution/cap and validity dates; distinguish create and revision. Commits 6dcf73c3, e634ae3a. CG17 US-001-QA01–09 partial source trace.
+- HUX-08.02: Web and Internal Android monthly claim overview uses real verified patient collections, claim state, verified payout and outstanding approved claim; absent values are unavailable rather than assumed zero; validates returned month, clears loading for invalid period, prevents switching claim context and payout during uncertain original operation. Commits bdaa1a64, 481fde3f. CG17 US-005-QA01–11/US-006-QA01–11 partial source trace. Verify proposed vs approved vs paid, partial payout, correction/recovery, partner own scope, missing totals and slow/failed refresh.
+- HUX-11.01: Public Web and Android appointment review emphasizes doctor, center, fee, verified assistance, hold expiry and primary confirmation; reception authorization remains a secondary disclosure before reservation. Commits eb11a8d2, f97bbac5. CG15 US-004-QA01/02/04–12/14 and CG17 US-002-QA01–08 partial source trace. Existing hold/replay, private reason, fee revision, slip issuance and pay-at-center boundary remain. Verify expired hold, unknown response, competing slots, real contribution/no policy, code expiry and Back.
+- No independently cleared source closure, executable build or runtime/device/visual pass. Remaining CHECK items require reproduction; approved media/list projections and raw healthcare reference originals remain unresolved. No merge.
 
 ## Subtracker details and expected user scenarios
 
