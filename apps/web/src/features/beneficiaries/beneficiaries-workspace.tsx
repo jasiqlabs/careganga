@@ -244,7 +244,7 @@ export function BeneficiariesWorkspace({canManage,canLinkProjects,canManageLifec
   finally{setActing(false);}
  };
  return <section aria-label="Private beneficiaries">
-  {(canViewAssistance||canExportReports)&&<BeneficiaryReportPanel key={JSON.stringify([search,branch,tab,appliedFilters])} filters={{...appliedFilters,q:search,branchRef:branch,lifecycle:tab==="ACTIVE"||tab==="INACTIVE"?tab:"",verification:tab==="VERIFIED"||tab==="PENDING"?tab:""}} canView={canViewAssistance} canExport={canExportReports}/>}
+  {(canViewAssistance||canExportReports)&&<BeneficiaryReportPanel key={JSON.stringify([search,branch,tab,appliedFilters])} filters={{...appliedFilters,q:search,branchRef:branch,lifecycle:tab==="ACTIVE"||tab==="INACTIVE"?tab:"",verification:tab==="VERIFIED"||tab==="PENDING"?tab:""}} canView={canViewAssistance} canExport={canExportReports} onProject={(ref,label)=>{setProjectFilter(ref);setFilterProjects(xs=>xs.some(x=>x.value===ref)?xs:[...xs,{value:ref,label}]);setAppliedFilters(f=>({...f,projectRef:ref}));setCursor("");setSeen([]);}}/>}
   <header style={{display:"flex",gap:12,alignItems:"center",justifyContent:"space-between",flexWrap:"wrap",marginBottom:18}}>
    <div><h1 style={{marginBottom:3}}>Beneficiaries</h1><p style={{color:"var(--cg-muted)",margin:0}}>Register and manage private Foundation beneficiary profiles</p></div>
    {canManage&&<button type="button" style={primary} onClick={()=>open("create")}>Add Beneficiary</button>}
