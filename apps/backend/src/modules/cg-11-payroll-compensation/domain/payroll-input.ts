@@ -19,7 +19,7 @@ export function parsePolicy(raw:unknown){
   return {code:c.code,label:label(c.label),kind,mode,minor:mode==="FIXED"?minor(c.minor,true):null,bp:mode==="PERCENT"?Number(c.basisPoints):null,taxClass:option(c.taxClass,["TAXABLE","NON_TAXABLE","NOT_CONFIGURED"] as const)};
  });
  if(new Set(components.map(c=>c.code)).size!==components.length)throw invalid("Component codes must be unique");
- return {key:id(x.requestKey),branch:id(x.branchRef),label:label(x.label),supersedes:x.supersedesRef==null||x.supersedesRef===""?null:id(x.supersedesRef),...range(x),components};
+ return {key:id(x.requestKey),branch:x.branchRef===null||x.branchRef==="FOUNDATION"?null:id(x.branchRef),label:label(x.label),supersedes:x.supersedesRef==null||x.supersedesRef===""?null:id(x.supersedesRef),...range(x),components};
 }
 export function parseSalary(raw:unknown){const x=fields(raw,["requestKey","policyRef","policyRevision","effectiveFrom","effectiveTo","supersedesRef","hrProposalRef","baseMinor"]);if(!Number.isSafeInteger(x.policyRevision)||Number(x.policyRevision)<1)throw invalid("Refresh the policy");return {key:id(x.requestKey),policy:id(x.policyRef),policyRevision:Number(x.policyRevision),hrProposal:x.hrProposalRef==null||x.hrProposalRef===""?null:id(x.hrProposalRef),supersedes:x.supersedesRef==null||x.supersedesRef===""?null:id(x.supersedesRef),...range(x),baseMinor:minor(x.baseMinor)};}
 /** Round half-up once per component, with integer arithmetic only. */
@@ -28,3 +28,7 @@ export function componentMinor(base:string,c:{mode:"FIXED"|"PERCENT";minor:strin
  if(c.mode!=="PERCENT"||!Number.isInteger(c.bp)||Number(c.bp)<0||Number(c.bp)>10000)throw invalid("Invalid component rate");
  return (BigInt(minor(base))*BigInt(c.bp!)+5000n)/10000n;
 }
+
+/** One policy-derived fiscal calendar; no finance-year master or client clock. */
+export function fiscalYearFor(value:unknown){const d=date(value),y=Number(d.slice(0,4))-(Number(d.slice(5,7))<4?1:0);return {label:String(y)+"-"+String(y+1),from:String(y)+"-04-01",until:String(y+1)+"-04-01"};}
+export function payrollMonth(yearInput:unknown,monthInput:unknown){if(typeof yearInput!=="string"||!/^\d{4}-\d{4}$/.test(yearInput)||typeof monthInput!=="string"||!/^\d{4}-\d{2}$/.test(monthInput))throw invalid("Choose a valid payroll financial year and month");const from=date(monthInput+"-01"),fy=fiscalYearFor(from);if(fy.label!==yearInput)throw invalid("Payroll month is outside the selected financial year");const y=Number(from.slice(0,4)),m=Number(from.slice(5,7));return {...fy,period:monthInput,periodFrom:from,periodUntil:String(y+(m===12?1:0))+"-"+String(m===12?1:m+1).padStart(2,"0")+"-01"};}
