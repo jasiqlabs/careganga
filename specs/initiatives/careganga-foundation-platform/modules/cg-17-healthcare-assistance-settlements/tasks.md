@@ -361,3 +361,7 @@ Source bypass found and corrected in existing `PatientClinicalFileSharingService
 
 ### 24 November — HUX-08.01 policy date revision parity
 - CG17 US-001-QA01–09: Web revision used UTC string sliced into a local datetime input, then interpreted it as local time when saving. This shifted effective instants (e.g. 5h30 in India). Replaced with the existing native local date conversion and strict round-trip validation. Source c79b615e45e0cc77e34476bb1fab1e4b78fe7664. Test unchanged revision in IST and UTC, invalid calendar/DST input, expiry boundaries and existing overlap safeguards. No financial policy change; runtime and independent review NOT_RUN.
+
+
+### 24 November — HUX-15.01 assistance and settlement copy
+- Replaced user-visible CG14/CG15/CG17/CG03/CG09 implementation labels and request-key terminology in five Web/native contribution, policy and settlement surfaces. Preserved fee, patient consent, independent approval and verified payment separation. CG17 US-001-QA01–09, US-002-QA01–08, US-004-QA01/08/09, US-006-QA01/08; source commits 9732890818e94ec524eb0fb70a21dfa53d318ac5, acdf070db975e8900bde39d90d08c978ea8ec8a6, 2ab3611f266a295fd83457a22bb374bd05eda0c3, f236e7a42879dcbe5dbf73625eda40757779e187, c9a85355792aa496d8dfb9d7f812bb8617e113d3. Plain-language source review only; independent review/runtime NOT_RUN.
