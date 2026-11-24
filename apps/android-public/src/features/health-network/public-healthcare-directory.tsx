@@ -38,6 +38,18 @@ const money=(minor:number)=>"₹"+(minor/100).toLocaleString("en-IN",{
  minimumFractionDigits:0,maximumFractionDigits:2});
 const nice=(x:string)=>x.replaceAll("_"," ").toLowerCase()
  .replace(/\b\w/g,s=>s.toUpperCase());
+const validCoordinates=(lat:unknown,lng:unknown)=>typeof lat==="number"&&Number.isFinite(lat)&&
+ Math.abs(lat)<=90&&typeof lng==="number"&&Number.isFinite(lng)&&Math.abs(lng)<=180;
+const stringList=(v:unknown):v is string[]=>Array.isArray(v)&&v.every(x=>typeof x==="string");
+function validListing(x:unknown,mode:Mode):boolean{
+ if(!x||typeof x!=="object")return false;
+ const v=x as Partial<Center & Doctor>;
+ if(typeof v.centerName!=="string"||typeof v.address!=="string"||typeof v.pinCode!=="string")return false;
+ if(mode==="centers")return typeof v.slug==="string"&&typeof v.providerName==="string"&&typeof v.type==="string";
+ return typeof v.doctorRef==="string"&&typeof v.doctorName==="string"&&typeof v.centerSlug==="string"&&
+  stringList(v.specialties)&&stringList(v.qualifications)&&Number.isInteger(v.experienceYears)&&
+  (v.fee===null||!!v.fee&&Number.isSafeInteger(v.fee.amountMinor)&&v.fee.amountMinor>=0);
+}
 async function read(path:string):Promise<unknown>{
  if(!base||!/^https?:\/\//.test(base)||
    (process.env.NODE_ENV==="production"&&!base.startsWith("https://")))
@@ -58,6 +70,7 @@ export function PublicHealthcareDirectory({onExit,reschedule}:{onExit:()=>void;
  reschedule?:{bookingRef:string;expectedVersion:number}}){
  const [mode,setMode]=useState<Mode>(reschedule?"doctors":"centers"),[search,setSearch]=useState("");
  const [labMenu,setLabMenu]=useState(false),[labCenterSlug,setLabCenterSlug]=useState("");
+ const [linkNotice,setLinkNotice]=useState("");
  const [hasCenterLabOffer,setHasCenterLabOffer]=useState(false);
  const [pin,setPin]=useState(""),[specialty,setSpecialty]=useState("");
  const [category,setCategory]=useState(""),[facility,setFacility]=useState("");
@@ -106,9 +119,7 @@ export function PublicHealthcareDirectory({onExit,reschedule}:{onExit:()=>void;
    const raw=await read(mode+"?"+query.toString());
    if(!raw||typeof raw!=="object"||Array.isArray(raw))throw Error("Invalid directory response");
    const r=raw as {items?:unknown;next?:unknown};
-   if(!Array.isArray(r.items)||!r.items.every(x=>
-    x!==null&&typeof x==="object"&&"centerName" in x&&
-    (mode==="centers"?"slug" in x:"doctorRef" in x))||
+   if(!Array.isArray(r.items)||!r.items.every(x=>validListing(x,mode))||
     !(r.next===null||typeof r.next==="string"))
     throw Error("Unable to verify the latest directory response.");
    if(request!==seq.current)return;
@@ -210,12 +221,18 @@ export function PublicHealthcareDirectory({onExit,reschedule}:{onExit:()=>void;
  },[selection,state.details]);
  if(labMenu)return <PublicLabOfferDirectory key={labCenterSlug||"all"}
    initialCenterSlug={labCenterSlug} onExit={()=>setLabMenu(false)}/>;
+ const openDirections=(lat:unknown,lng:unknown)=>{
+  if(!validCoordinates(lat,lng))return;
+  void Linking.openURL("https://www.google.com/maps/search/?api=1&query="+
+   encodeURIComponent(lat+","+lng)).catch(()=>{setLinkNotice("Directions could not open. Use the center address instead.");});
+ };
  const centerDetails=selection?.kind==="center"?state.details as Details|null:null;
  const doctorDetails=selection?.kind==="doctor"?state.details as DoctorDetails|null:null;
  return <SafeAreaView style={styles.page}>
   <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={styles.content}>
    <View style={styles.headingRow}>{label("‹ Back",back)}
     <Text accessibilityRole="header" style={styles.heading}>Healthcare Network</Text></View>
+   {!!linkNotice&&<Text accessibilityRole="alert" onPress={()=>setLinkNotice("")}>{linkNotice}</Text>}
    {!selection?<><Text style={styles.helper}>Search only current verified centers and doctors.
     Check appointment times before booking. Assistance is confirmed separately.</Text>
     <View style={styles.row}>
@@ -317,8 +334,11 @@ export function PublicHealthcareDirectory({onExit,reschedule}:{onExit:()=>void;
       <Text style={styles.helper}>Verified center · {nice((item as Center).type)}</Text>
       <Text>{(item as Center).providerName}</Text>
       <Text>{item.address}, {item.pinCode}</Text>
-      {label("View verified center",()=>void show({
-       kind:"center",slug:(item as Center).slug}))}
+      <View style={styles.row}>
+       {label("View center details",()=>void show({kind:"center",slug:(item as Center).slug}))}
+       {validCoordinates((item as Center).latitude,(item as Center).longitude)&&
+        label("Directions",()=>openDirections((item as Center).latitude,(item as Center).longitude))}
+      </View>
      </View>:
      <View key={"d-"+(item as Doctor).doctorRef+"-"+(item as Doctor).centerSlug+"-"+i}
       style={styles.card}>
@@ -351,10 +371,8 @@ export function PublicHealthcareDirectory({onExit,reschedule}:{onExit:()=>void;
     </>}
     {!!centerDetails.publicPhone&&label("Call center",()=>void Linking.openURL(
       "tel:"+centerDetails.publicPhone))}
-    {centerDetails.latitude!==null&&centerDetails.longitude!==null&&
-     label("View directions",()=>void Linking.openURL(
-      "https://www.google.com/maps/search/?api=1&query="+encodeURIComponent(
-       centerDetails.latitude+","+centerDetails.longitude)))}
+    {validCoordinates(centerDetails.latitude,centerDetails.longitude)&&
+     label("View directions",()=>openDirections(centerDetails.latitude,centerDetails.longitude))}
     {centerDetails.approvedPresentation&&<>
      <Text style={styles.cardTitle}>About this center</Text>
      <Text>{centerDetails.approvedPresentation.description}</Text>
