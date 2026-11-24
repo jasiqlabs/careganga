@@ -11,6 +11,17 @@ type Choice={value:string;label:string;projectRef?:string|null};
 export class CampaignLinkSourceFacade{
  constructor(private readonly branches:BranchSourceFacade,
   private readonly identity:FoundationStructureIdentityFacade){}
+ /** Current CG05 owner project filter guard; a CG06 list filter never makes
+  * project membership enumerable to a staff user without projects.view. */
+ async requireCurrentProjectForFilter(tx:PoolClient,a:Actor,projectRef:string){
+  await this.identity.assertCurrent(tx,a,"projects.view");
+  const source=(await tx.query<{branch_ref:string|null;status:string}>(
+   "SELECT branch_ref,status FROM project WHERE root_realm_id=$1 AND id=$2 FOR SHARE",
+   [a.realmId,projectRef])).rows[0];
+  if(!source||source.status!=="ACTIVE")
+   throw new ForbiddenException("Choose a current permitted Foundation project");
+  await this.branches.projectBranch(tx,a,source.branch_ref);
+ }
  /** CG05-owned original projects/events are eligibility references, not CG07 replicas. */
  async requireCurrent(tx:PoolClient,a:Actor,branch:string|null,project:string|null,event:string|null){
   await this.branches.projectBranch(tx,a,branch);
