@@ -583,6 +583,21 @@ checks.push(["Default CMS onboarding is explicit and uses original draft creatio
 checks.push(["Reference-derived CMS starter copy remains editable and operational collections stay empty",
  ["Get In Touch","Our Social Partners","Real People. Real Stories. Real Change.","Moments of Hope & Action","Stories in Motion","Publications & Reports","No photos published yet."].every(value=>initDrafts.includes(value))&&
  initDrafts.includes("partners:[]")&&initDrafts.includes("items:[]")&&initDrafts.includes("assets:[]")]);
+const firstPublication=read("scripts/verify-cms-first-publication.mjs"),baselinePublisher=read("scripts/publish-cms-baseline.mjs");
+checks.push(["First-install approved baseline uses only existing revision/approval publication contract",
+ initDrafts.includes("textOnly:true")&&initDrafts.includes('sourceRefs:[]')&&
+ files.backend.includes("!slide.text_only")&&files.backend.includes("s.fields.textOnly!==true")&&
+ files.admin.includes("projectEnabled")&&internalCms.includes("Keep project directory available")&&
+ firstPublication.includes("requiredRoutes")&&firstPublication.includes("publishedRoutes")&&
+ baselinePublisher.includes('d.revisionRef!==e.revisionRef')&&baselinePublisher.includes('d.approvalCaseRef!==e.caseRef')&&
+ baselinePublisher.includes('d.publicationStatus==="EFFECTIVE"')&&baselinePublisher.includes('"/publish"')&&
+ !baselinePublisher.includes("/submit")]);
+checks.push(["Empty media/impact has no synthetic records and nonempty impact retains required provenance",
+ files.extended.includes('source:str(x.source??"","source",180,items.length?3:0)')&&
+ files.extended.includes('if(!Array.isArray(x.items)||x.items.length>12)')&&
+ files.extended.includes('entry.visible!==false&&!assets.some')&&
+ files.extended.includes('if(x.consentConfirmed!==true)')&&
+ files.androidExtended.includes("No approved information has been published yet.")]);
 const eventsRoute=read("apps/web/src/app/events/page.tsx");
 checks.push(["Events reuse the effective CMS article and current CG05 eligibility source",
  files.backend.includes("NOT $3::boolean OR body.structured_fields ? 'sourceEventRef'")&&
