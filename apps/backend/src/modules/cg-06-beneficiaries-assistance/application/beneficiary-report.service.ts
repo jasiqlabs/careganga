@@ -1,0 +1,54 @@
+import {BadRequestException,ForbiddenException,Injectable} from "@nestjs/common";
+import type {PoolClient} from "pg";
+import type {VerifiedFoundationActor as Actor} from "../../cg-01-identity-access/public-api";
+import {FoundationStructureIdentityFacade} from "../../cg-01-identity-access/application/foundation-structure-identity.facade";
+import {BeneficiariesService} from "./beneficiaries.service";
+import {AssistanceService,aidDigest} from "./assistance.service";
+import {parseListQuery,optionalRef} from "../domain/beneficiary-input";
+export function reportCsvCell(v:unknown){
+ const raw=String(v??"").replace(/[\r\n\t]/g," ");
+ return '"'+(/^[\s]*[=+@-]/.test(raw)?"'"+raw:raw).replace(/"/g,'""')+'"';
+}
+function period(raw:Record<string,unknown>){
+ const q=parseListQuery({registeredFrom:raw.from,registeredTo:raw.to});
+ if(q.from&&q.to&&Date.parse(q.to)-Date.parse(q.from)>366*86400000)throw new BadRequestException("Choose a delivery period of at most 366 days");
+ return [q.from,q.to];
+}
+@Injectable()
+export class BeneficiaryReportService{
+ constructor(private readonly source:AssistanceService,private readonly beneficiaries:BeneficiariesService,private readonly identity:FoundationStructureIdentityFacade){}
+ async readBeneficiaryImpactForMIS(tx:PoolClient,a:Actor,raw:Record<string,unknown>){
+  await this.identity.assertCurrent(tx,a,"beneficiaries.assistance.view");
+  const q=parseListQuery(raw),{where,params}=await this.beneficiaries.reportScope(tx,a,q);
+  const [from,to]=period(raw),campaign=optionalRef(raw.campaignRef);
+  if(campaign){await this.identity.assertCurrent(tx,a,"campaigns.view");if(!(await tx.query("SELECT 1 FROM campaign WHERE root_realm_id=$1 AND id=$2 AND ((branch_ref IS NULL AND $3::boolean) OR branch_ref=ANY($4::uuid[]))",[a.realmId,campaign,params[1],params[2]])).rowCount)throw new ForbiddenException("Campaign unavailable");}
+  const eligible="WITH eligible AS (SELECT b.id,b.display_ref,b.branch_scope_id,b.gender,b.age_group,b.verification_state,b.lifecycle_state,b.beneficiary_category,b.beneficiary_type"+where+" AND b.consent_revoked_at IS NULL)";
+  const events=eligible+", effects AS (SELECT d.action,d.at,a.item_ref,a.unit_code,f.quantity,f.amount_minor,a.beneficiary_id,a.reference FROM assistance_delivery_event d JOIN assistance_case a ON a.root_realm_id=d.root_realm_id AND a.id=d.assistance_id JOIN assistance_fulfillment f ON f.root_realm_id=d.root_realm_id AND f.id=d.fulfillment_id JOIN eligible b ON b.id=a.beneficiary_id AND b.branch_scope_id IS NOT DISTINCT FROM a.branch_ref WHERE d.root_realm_id=$1 AND ($18::date IS NULL OR d.at>=($18::date::timestamp AT TIME ZONE 'Asia/Kolkata')) AND ($19::date IS NULL OR d.at<(($19::date+1)::timestamp AT TIME ZONE 'Asia/Kolkata')) AND ($20::uuid IS NULL OR a.campaign_ref=$20) AND ($11::uuid IS NULL OR a.project_ref=$11))";
+  const ep=[...params,from,to,campaign];
+  const summary=(await tx.query(eligible+" SELECT count(*)::int total,count(*) FILTER(WHERE gender='MALE')::int male,count(*) FILTER(WHERE gender='FEMALE')::int female,count(*) FILTER(WHERE gender IN('OTHER','NOT_SPECIFIED'))::int other_or_unknown,count(*) FILTER(WHERE age_group='CHILD')::int children,count(*) FILTER(WHERE lifecycle_state='ACTIVE')::int active,count(*) FILTER(WHERE verification_state='VERIFIED')::int verified FROM eligible",params)).rows[0];
+  const financial=(await tx.query(events+" SELECT count(DISTINCT beneficiary_id) FILTER(WHERE action='PAID')::int AS recipients,COALESCE(sum(amount_minor) FILTER(WHERE action='PAID'),0)::text AS paid_minor,COALESCE(sum(amount_minor) FILTER(WHERE action='REVERSED'),0)::text AS reversed_minor,(COALESCE(sum(amount_minor) FILTER(WHERE action='PAID'),0)-COALESCE(sum(amount_minor) FILTER(WHERE action='REVERSED'),0))::text AS net_minor FROM effects",ep)).rows[0];
+  const materials=(await tx.query(events+" SELECT i.sku_norm AS item_code,i.name AS item,e.unit_code AS unit,COALESCE(sum(e.quantity) FILTER(WHERE e.action='DELIVERED'),0)::text AS issued,COALESCE(sum(e.quantity) FILTER(WHERE e.action='RETURNED'),0)::text AS returned,(COALESCE(sum(e.quantity) FILTER(WHERE e.action='DELIVERED'),0)-COALESCE(sum(e.quantity) FILTER(WHERE e.action='RETURNED'),0))::text AS net FROM effects e JOIN inventory_item i ON i.root_realm_id=$1 AND i.id=e.item_ref WHERE e.action IN('DELIVERED','RETURNED') GROUP BY i.id,i.sku_norm,i.name,e.unit_code ORDER BY i.sku_norm,e.unit_code LIMIT 501",ep)).rows;
+  const recipients=(await tx.query(events+" SELECT count(DISTINCT beneficiary_id) FILTER(WHERE action IN('DELIVERED','PAID'))::int AS recipients FROM effects",ep)).rows[0];
+  const recent=(await tx.query(events+" SELECT reference,action,at,unit_code AS unit,quantity::text,amount_minor::text FROM effects ORDER BY at DESC,reference DESC LIMIT 20",ep)).rows;
+  let projects:unknown[]|null=null;
+  try{await this.identity.assertCurrent(tx,a,"projects.view");projects=(await tx.query(eligible+" SELECT p.title AS project,count(DISTINCT b.id)::int AS beneficiaries FROM eligible b JOIN beneficiary_project_link l ON l.root_realm_id=$1 AND l.beneficiary_id=b.id AND l.ended_at IS NULL AND l.branch_scope_id IS NOT DISTINCT FROM b.branch_scope_id JOIN project p ON p.root_realm_id=l.root_realm_id AND p.id=l.project_ref WHERE ($11::uuid IS NULL OR l.project_ref=$11) GROUP BY p.id,p.title ORDER BY p.title,p.id LIMIT 101",params)).rows;}catch(e){if(!(e instanceof ForbiddenException))throw e;}
+  return {summary,financial:{...financial,currency:"INR"},materials:materials.slice(0,500),materialsTruncated:materials.length>500,recipients:recipients.recipients,recent,projects:projects?.slice(0,100)??null,projectsTruncated:(projects?.length??0)>100,asOf:(await tx.query("SELECT transaction_timestamp() AS at")).rows[0].at,from,to};
+ }
+ async report(token:string,raw:Record<string,unknown>){
+  return this.source.run(token,"beneficiaries.assistance.view",async(tx,a)=>{
+   const report=await this.readBeneficiaryImpactForMIS(tx,a,raw);
+   await tx.query("INSERT INTO beneficiary_report_access(root_realm_id,actor_ref,action,filter_digest,row_count) VALUES($1,$2,'READ',$3,$4)",[a.realmId,a.accountId,aidDigest(raw),report.summary.total]);
+   return report;
+  },true);
+ }
+ async export(token:string,raw:Record<string,unknown>){
+  return this.source.run(token,"beneficiaries.reports.export",async(tx,a)=>{
+   const q=parseListQuery(raw),{where,params}=await this.beneficiaries.reportScope(tx,a,q);
+   const rows=(await tx.query("SELECT b.display_ref,b.beneficiary_type,b.beneficiary_category,b.gender,b.age_group,b.verification_state,b.lifecycle_state,b.created_at::text"+where+" AND b.consent_revoked_at IS NULL ORDER BY b.created_at DESC,b.id DESC LIMIT 501",params)).rows;
+   const items=rows.slice(0,500),columns=["display_ref","beneficiary_type","beneficiary_category","gender","age_group","verification_state","lifecycle_state","created_at"];
+   const csv=[columns.map(reportCsvCell).join(","),...items.map(r=>columns.map(k=>reportCsvCell(r[k])).join(","))].join("\r\n");
+   await tx.query("INSERT INTO beneficiary_report_access(root_realm_id,actor_ref,action,filter_digest,row_count) VALUES($1,$2,'EXPORT',$3,$4)",[a.realmId,a.accountId,aidDigest(raw),items.length]);
+   return {csv,rows:items.length,hasMore:rows.length>500};
+  },true);
+ }
+}
