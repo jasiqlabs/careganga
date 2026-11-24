@@ -10,6 +10,11 @@ export class BeneficiariesController{
  @Get("options") options(@Headers("authorization")token:string,@Query("stateRef")state?:string){
   return this.beneficiaries.options(token,state);
  }
+ @Get("duplicate-suggestions") duplicates(@Headers("authorization")token:string,
+  @Query("branchRef")branchRef?:string,@Query("name")name?:string,
+  @Query("contactMobile")contactMobile?:string,@Query("excludeRef")excludeRef?:string){
+  return this.beneficiaries.duplicateSuggestions(token,{branchRef,name,contactMobile,excludeRef});
+ }
  @Get("eligible-projects") projects(@Headers("authorization")token:string,
   @Query("branchRef")branch?:string,@Query("q")q?:string){
   return this.beneficiaries.projectOptions(token,branch,q);
