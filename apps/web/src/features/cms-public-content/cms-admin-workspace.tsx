@@ -21,7 +21,7 @@ type ReviewDetail={caseNumber:string;caseRef:string;status:string;revision:numbe
  seoDescription:string;navigation:NavDesired|null;sections:{kind:string;order:number;fields:Record<string,unknown>}[];
  assets:{fileRef:string;role:string;altText:string;order:number;current:boolean;mime:string|null}[]}};
 type Command={label:string;path:string;method:"POST"|"PUT";body:Record<string,unknown>};
-type Slide={heading:string;subtitle:string;description:string;eyebrow:string;tags:string;visible:boolean;
+type Slide={heading:string;subtitle:string;description:string;eyebrow:string;tags:string;visible:boolean;textOnly?:boolean;
  headingFont:"SERIF"|"SANS";headingWeight:"REGULAR"|"BOLD";headingSize:"STANDARD"|"LARGE";
  headingColor:string;subtitleColor:string;
  primaryLabel:string;primaryPath:string;secondaryLabel:string;secondaryPath:string};
@@ -61,7 +61,7 @@ function fromPage(p:PageDetail):Draft{
  return {...draft,title:p.title,seoTitle:p.seoTitle,seoDescription:p.seoDescription,
   slides:p.sections.filter(x=>x.kind==="HERO").sort((a,b)=>a.order-b.order)
    .map(x=>({heading:val(x.fields.heading),subtitle:val(x.fields.subtitle),
-    description:val(x.fields.description),eyebrow:val(x.fields.eyebrow),visible:x.fields.visible!==false,
+    description:val(x.fields.description),eyebrow:val(x.fields.eyebrow),visible:x.fields.visible!==false,textOnly:x.fields.textOnly===true,
     tags:Array.isArray(x.fields.tags)?x.fields.tags.filter(y=>typeof y==="string").join(", "):"",
     headingFont:(x.fields.headingFont==="SANS"?"SANS":"SERIF") as Slide["headingFont"],
     headingWeight:(x.fields.headingWeight==="REGULAR"?"REGULAR":"BOLD") as Slide["headingWeight"],
@@ -99,7 +99,7 @@ function payload(d:Draft){
  const sections:{kind:string;order:number;fields:Record<string,unknown>}[]=[];
  d.slides.forEach((slide,index)=>{
   const fields:Record<string,unknown>={heading:slide.heading,subtitle:slide.subtitle,
-   description:slide.description,eyebrow:slide.eyebrow,visible:slide.visible,
+   description:slide.description,eyebrow:slide.eyebrow,visible:slide.visible,...(slide.textOnly?{textOnly:true}:{}),
    headingFont:slide.headingFont,headingWeight:slide.headingWeight,
    headingSize:slide.headingSize,headingColor:slide.headingColor,
    subtitleColor:slide.subtitleColor,
@@ -282,7 +282,7 @@ export function CmsAdminWorkspace({canManage,canPublish,canReview}:{
   JSON.stringify(payload(draft))!==JSON.stringify(payload(fromPage(selected)));
  const heroPhotoMissing=draft.kind==="HOME"&&(
   !draft.slides.some(slide=>slide.visible)||draft.slides.some((slide,index)=>
-  slide.visible&&
+  slide.visible&&!slide.textOnly&&
   !draft.assets.some(asset=>asset.role==="HERO"&&asset.order===index)));
  const okay=draft.title.trim().length>=3&&
   (draft.kind!=="HOME"||draft.slides.length>0)&&
@@ -684,6 +684,7 @@ export function CmsAdminWorkspace({canManage,canPublish,canReview}:{
           onChange={e=>edit("slides",draft.slides.map((x,i)=>
            i===index?{...x,visible:e.target.checked}:x))}/>
           Show this banner on the public website and Android app</label>
+         <label className="cg-cms-consent"><input type="checkbox" disabled={!canManage} checked={slide.textOnly===true} onChange={e=>edit("slides",draft.slides.map((x,i)=>i===index?{...x,textOnly:e.target.checked}:x))}/>Text-only banner (remove image placements before saving; add approved media when available)</label>
          <label>Eyebrow<input disabled={!canManage} maxLength={100} value={slide.eyebrow}
           onChange={e=>edit("slides",draft.slides.map((x,i)=>i===index?{...x,eyebrow:e.target.value}:x))}/></label>
          <label>Heading<input disabled={!canManage} maxLength={180} value={slide.heading}
