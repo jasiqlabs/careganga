@@ -55,6 +55,10 @@ const source=contains(mis+"application/mis-report-source.service.ts",[
  '"mis.reports.view"',"this.finance","this.patients"
 ]);
 assert.ok(!/SELECT\s+.*FROM/i.test(source),"Report templates may not run arbitrary SQL");
+contains(backend+"modules/cg-06-beneficiaries-assistance/application/beneficiary-report.service.ts",["async misSummary(token:string)","this.report(token,{})","total-recipients","sensitive.some(v=>v>0&&v<5)"]);
+assert.ok(source.includes("this.beneficiaries.misSummary(token)")&&source.includes("BENEFICIARY_ASSISTANCE_SUMMARY"),"Live beneficiary report must consume only the original scoped aggregate");
+contains(mis+"application/mis-report-run.service.ts",['request.kind==="BENEFICIARY_ASSISTANCE_SUMMARY"','MIS_LIVE_PREVIEW_ONLY']);
+contains(mis+"application/mis-saved-report.service.ts",['request.kind==="BENEFICIARY_ASSISTANCE_SUMMARY"','MIS_LIVE_PREVIEW_ONLY']);
 const originals=contains(
  backend+"modules/cg-09-finance-accounting/application/finance-reports.service.ts",[
  "requireFinanceReportBranch","j.status='POSTED'","sourceCutoffKind",
