@@ -537,6 +537,23 @@ checks.push(["Public Android accepts only an approved canonical membership/volun
  files.android.includes('data.memberJoin?.visible===true&&data.memberJoin?.path==="/membership"')&&
  files.android.includes('data.volunteerJoin?.visible===true&&data.volunteerJoin?.path==="/volunteer"')&&
  files.android.includes('memberJoin&&<CmsButton title="Become a Member"')]);
+checks.push(["Public Android CMS CTA navigation matches current canonical join visibility",
+ files.android.includes('"/collaboration","/membership","/volunteer"].includes(route)')&&
+ files.android.includes('if(route==="/membership")return memberJoin;')&&
+ files.android.includes('if(route==="/volunteer")return volunteerJoin;')&&
+ files.android.includes('if(!canNavigate(href))return;')&&
+ files.android.includes('canNavigate(fields.primaryPath)')&&
+ files.android.includes('canNavigate(fields.secondaryPath)')&&
+ files.android.includes('canNavigate(fields.path)')&&
+ files.android.includes('setMemberJoin(false);setPublishedPaths([]);')]);
+checks.push(["Public Web joins use only exact owner destinations",
+ files.header.includes('navigation.memberJoin.path==="/membership"')&&
+ files.header.includes('navigation.volunteerJoin.path==="/volunteer"')&&
+ files.web.includes('const expected=type==="memberJoin"?"/membership":"/volunteer";')&&
+ files.web.includes('target?.visible===true&&target.path===expected')]);
+checks.push(["Healthcare directory remains discoverable without editorial publication",
+ files.header.includes('href={isPublished("/healthcare")?"/healthcare":"/health-network"}')&&
+ files.web.includes('href={isPublished("/healthcare")?"/healthcare":"/health-network"}')]);
 let errors=0;
 for(const [label,ok] of checks){
  console.log((ok?"SOURCE-PRESENT":"SOURCE-FAIL")+": "+label);
