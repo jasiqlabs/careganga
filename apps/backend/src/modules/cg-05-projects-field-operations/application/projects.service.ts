@@ -133,6 +133,47 @@ export class ProjectsService{
    if(!next)throw stale();return this.audit(tx,a,next,v.key,hash,"BRANCH_MOVE",r.status,v.reason);
   });
  }
+ async misOptions(token:string){
+  return this.run(token,"projects.view",async(tx,a)=>{
+   const scope=await this.branches.projectBranchScope(tx,a);
+   const items=await tx.query<{ref:string;name:string;branchRef:string|null}>(
+    "SELECT p.id AS ref,p.code_norm||' · '||p.title AS name,p.branch_ref AS \"branchRef\""+joins+" WHERE "+this.whereScope+" ORDER BY p.code_norm,p.id LIMIT 101",this.scopeParams(a,scope));
+   return {branches:scope.branches.map(b=>({ref:b.value,name:b.label})),projects:items.rows.slice(0,100),complete:items.rows.length<=100};
+  },true);
+ }
+ async misStatus(token:string,branchRef?:string,projectRef?:string,from?:string,to?:string,exporting=false){
+  return this.run(token,exporting?"projects.export":"projects.view",async(tx,a)=>{
+   await this.identity.assertCurrent(tx,a,"projects.view");
+   const scope=await this.branches.projectBranchScope(tx,a);
+   if(branchRef&&!scope.branches.some(b=>b.value===ref(branchRef)))throw new ForbiddenException("Project branch unavailable in current scope");
+   if(projectRef)await this.row(tx,a,ref(projectRef));
+   const q=await tx.query<{code:string;title:string;status:string;branch:string;revision:string;plannedStart:string;plannedEnd:string}>(
+    "SELECT p.code_norm AS code,p.title,p.status,COALESCE(b.name,'Foundation') AS branch,p.version::text AS revision,COALESCE(p.planned_start::text,'') AS \"plannedStart\",COALESCE(p.planned_end::text,'') AS \"plannedEnd\""+joins+" WHERE "+this.whereScope+
+    " AND ($5::uuid IS NULL OR p.branch_ref=$5) AND ($6::uuid IS NULL OR p.id=$6) AND ($7::date IS NULL OR p.planned_start >= $7) AND ($8::date IS NULL OR p.planned_end <= $8) ORDER BY p.code_norm,p.id LIMIT 51",
+    [...this.scopeParams(a,scope),branchRef??null,projectRef??null,from??null,to??null]);
+   if(exporting&&q.rows.length>50)throw new ConflictException("Narrow project filters to 50 records");
+   if(exporting)await this.auditExport(tx,a,"PROJECTS",false,q.rows.length,{branchRef,projectRef,from,to,source:"MIS"});
+   return {rows:q.rows.slice(0,50),partial:q.rows.length>50,sourceAsOf:new Date().toISOString()};
+  },true);
+ }
+ async misArtifactScope(token:string,branchRef?:string){
+  return this.run(token,"projects.export",async(tx,a)=>{
+   await this.identity.assertCurrent(tx,a,"projects.view");
+   const s=await this.branches.projectBranchScope(tx,a);
+   if(branchRef&&!s.branches.some(b=>b.value===ref(branchRef)))throw new ForbiddenException("Project branch unavailable in current scope");
+   return {all:branchRef?false:s.all,branchRefs:branchRef?[branchRef]:s.branches.map(b=>b.value).sort()};
+  },true);
+ }
+ async misBudget(token:string,projectRef:string){
+  return this.run(token,"projects.view",async(tx,a)=>{
+   await this.identity.assertCurrent(tx,a,"finance.budgets.view");
+   await this.identity.assertCurrent(tx,a,"finance.reports.view");
+   const p=await this.row(tx,a,ref(projectRef)),s=await this.branches.projectBranchScope(tx,a);
+   if(!p.branch_ref&&!s.all)throw new ForbiddenException("Foundation budget unavailable in current scope");
+   const x=await projectBudgetProjection(tx,a,{all:s.all,branchRefs:s.branches.map(b=>b.value)},false,p.id);
+   return {revision:String(p.version),status:p.status,...x,sourceAsOf:new Date().toISOString()};
+  },true);
+ }
  private whereScope="p.root_realm_id=$1 AND ((p.branch_ref IS NULL AND ($2::boolean OR p.owner_account_ref=$4)) OR (b.status='ACTIVE' AND p.branch_ref=ANY($3::uuid[])))";
  async auditExport(tx:PoolClient,a:VerifiedFoundationActor,kind:"PROJECTS"|"TASKS"|"ACTIVITIES"|"VISITS"|"OPERATIONS",mine:boolean,rows:number,filters:unknown){await tx.query("INSERT INTO cg05_export_audit(root_realm_id,actor_account_ref,report_kind,scope_kind,row_count,filter_digest) VALUES($1,$2,$3,$4,$5,$6)",[a.realmId,a.accountId,kind,mine?"MINE":"PERMITTED",rows,digest(filters)]);}
  async list(token:string,query:Record<string,unknown>,mine=false,exporting=false){
