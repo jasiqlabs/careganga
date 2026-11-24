@@ -15,40 +15,40 @@ This user-requested cross-module subtracker supplements (does not replace) origi
 | ID | Priority | Evidence | Owner/surface | Issue | State |
 |---|---|---|---|---|---|
 | HUX-01.01 | P0 | EVIDENCE | CG14–17 all | Recover separate healthcare reference originals | EVIDENCE_RECOVERED |
-| HUX-02.01 | P1 | SOURCE | CG14–17 all | Shared design consistency | SOURCE_PRESENT_REVIEW_PENDING |
+| HUX-02.01 | P1 | SOURCE | CG14–17 all | Shared design consistency | CLEARED_INDEPENDENT_REVIEW |
 | HUX-02.02 | P1 | CHECK | CG14–17 admin/center | Role-specific healthcare navigation | MANUAL_ACCEPTANCE_PENDING |
 | HUX-03.01 | P1 | CHECK | CG14/15/17/20 admin/center | Operational dashboard journey | MANUAL_ACCEPTANCE_PENDING |
-| HUX-04.01 | P1 | SOURCE | CG14 US-001 admin | Provider registration form density | SOURCE_PRESENT_REVIEW_PENDING |
-| HUX-04.02 | P1 | SOURCE | CG14 US-003 admin | Doctor list lacks in-screen search/filter | SOURCE_PRESENT_REVIEW_PENDING |
-| HUX-04.03 | P1 | SOURCE | CG14 US-003 admin | Doctor registration/detail hierarchy | SOURCE_PRESENT_REVIEW_PENDING |
+| HUX-04.01 | P1 | SOURCE | CG14 US-001 admin | Provider registration form density | CLEARED_INDEPENDENT_REVIEW |
+| HUX-04.02 | P1 | SOURCE | CG14 US-003 admin | Doctor list lacks in-screen search/filter | CLEARED_INDEPENDENT_REVIEW |
+| HUX-04.03 | P1 | SOURCE | CG14 US-003 admin | Doctor registration/detail hierarchy | CLEARED_INDEPENDENT_REVIEW |
 | HUX-04.04 | P1 | CHECK | CG14 US-002/003 admin/center | Verification and evidence clarity | MANUAL_ACCEPTANCE_PENDING |
 | HUX-04.05 | P1 | CHECK | CG14 US-005 center/admin | Center profile and content editing | MANUAL_ACCEPTANCE_PENDING |
 | HUX-05.01 | P1 | CHECK | CG15 US-001 admin/center | Scheduling calendar and availability | MANUAL_ACCEPTANCE_PENDING |
 | HUX-06.01 | P1 | CHECK | CG15 US-003/008 admin | Patient and booking management | MANUAL_ACCEPTANCE_PENDING |
-| HUX-06.02 | P1 | SOURCE | CG15 US-006 center web | Consultation queue action overload | SOURCE_PRESENT_REVIEW_PENDING |
+| HUX-06.02 | P1 | SOURCE | CG15 US-006 center web | Consultation queue action overload | CLEARED_INDEPENDENT_REVIEW |
 | HUX-06.03 | P1 | CHECK | CG15 US-003/006 center | Patient intake and consent | MANUAL_ACCEPTANCE_PENDING |
-| HUX-07.01 | P1 | SOURCE | CG16 US-001 admin | Lab catalogue search limited to loaded records | SOURCE_PRESENT_REVIEW_PENDING |
-| HUX-07.02 | P2 | SOURCE | CG16 US-001 admin/center | H09 filter coverage | SOURCE_PRESENT_REVIEW_PENDING |
-| HUX-07.03 | P1 | SOURCE | CG16 US-002 lab web (ERP ON only) | Lab sample/report workflow structure | SOURCE_PRESENT_REVIEW_PENDING |
+| HUX-07.01 | P1 | SOURCE | CG16 US-001 admin | Lab catalogue search limited to loaded records | CLEARED_INDEPENDENT_REVIEW |
+| HUX-07.02 | P2 | SOURCE | CG16 US-001 admin/center | H09 filter coverage | CLEARED_INDEPENDENT_REVIEW |
+| HUX-07.03 | P1 | SOURCE | CG16 US-002 lab web (ERP ON only) | Lab sample/report workflow structure | CLEARED_INDEPENDENT_REVIEW |
 | HUX-07.04 | P1 | CHECK | CG16 US-003/004 public | Public lab test and enquiry | MANUAL_ACCEPTANCE_PENDING |
-| HUX-08.01 | P1 | SOURCE | CG17 US-001 admin | Assistance policy form hierarchy | SOURCE_PRESENT_REVIEW_PENDING |
-| HUX-08.02 | P1 | SOURCE | CG17 US-005/006 admin/center | Settlement screen is mostly stacked definitions | SOURCE_PRESENT_REVIEW_PENDING |
+| HUX-08.01 | P1 | SOURCE | CG17 US-001 admin | Assistance policy form hierarchy | CLEARED_INDEPENDENT_REVIEW |
+| HUX-08.02 | P1 | SOURCE | CG17 US-005/006 admin/center | Settlement screen is mostly stacked definitions | CLEARED_INDEPENDENT_REVIEW |
 | HUX-08.03 | P1 | CHECK | CG17 US-003/004 center/public | Payment and collection status | MANUAL_ACCEPTANCE_PENDING |
 | HUX-09.01 | P1 | CHECK | CG14/18 public web/app | Healthcare landing and discovery navigation | MANUAL_ACCEPTANCE_PENDING |
-| HUX-10.01 | P1 | SOURCE | CG14 US-004 public web | Doctor result cards omit key discovery information | SOURCE_PRESENT_REVIEW_PENDING |
-| HUX-10.02 | P1 | SOURCE | CG14 US-004 public web | Center result cards are text-only | SOURCE_PRESENT_REVIEW_PENDING |
+| HUX-10.01 | P1 | SOURCE | CG14 US-004 public web | Doctor result cards omit key discovery information | CLEARED_INDEPENDENT_REVIEW |
+| HUX-10.02 | P1 | SOURCE | CG14 US-004 public web | Center result cards are text-only | CLEARED_INDEPENDENT_REVIEW |
 | HUX-10.03 | P1 | CHECK | CG14 US-004 public web/app | Directory advanced filter and result modes | MANUAL_ACCEPTANCE_PENDING |
 | HUX-10.04 | P1 | CHECK | CG14/15/17 public web/app | Doctor profile and center-specific choice | MANUAL_ACCEPTANCE_PENDING |
-| HUX-11.01 | P1 | SOURCE | CG15 US-004 / CG17 US-002 public web/app | Booking review text/action hierarchy | SOURCE_PRESENT_REVIEW_PENDING |
+| HUX-11.01 | P1 | SOURCE | CG15 US-004 / CG17 US-002 public web/app | Booking review text/action hierarchy | CLEARED_INDEPENDENT_REVIEW |
 | HUX-11.02 | P1 | CHECK | CG15 US-002/003 public web/app | Appointment calendar and patient verification | MANUAL_ACCEPTANCE_PENDING |
 | HUX-11.03 | P1 | CHECK | CG15 US-005/007/008 public web/app | Booking confirmation and patient history | MANUAL_ACCEPTANCE_PENDING |
-| HUX-12.01 | P1 | SOURCE | CG14 US-003 internal Android | Doctor management long scrolling forms | SOURCE_PRESENT_REVIEW_PENDING |
-| HUX-12.02 | P1 | SOURCE | CG15 US-006 internal Android | Queue summary and action readability | SOURCE_PRESENT_REVIEW_PENDING |
+| HUX-12.01 | P1 | SOURCE | CG14 US-003 internal Android | Doctor management long scrolling forms | CLEARED_INDEPENDENT_REVIEW |
+| HUX-12.02 | P1 | SOURCE | CG15 US-006 internal Android | Queue summary and action readability | CLEARED_INDEPENDENT_REVIEW |
 | HUX-12.03 | P1 | CHECK | CG14/16/17 internal Android | Operational parity | MANUAL_ACCEPTANCE_PENDING |
-| HUX-13.01 | P1 | SOURCE | CG14 US-004 public Android | Public result list and filter density | SOURCE_PRESENT_REVIEW_PENDING |
+| HUX-13.01 | P1 | SOURCE | CG14 US-004 public Android | Public result list and filter density | CLEARED_INDEPENDENT_REVIEW |
 | HUX-13.02 | P1 | CHECK | CG15/17 public Android | Patient home and healthcare journey | MANUAL_ACCEPTANCE_PENDING |
 | HUX-14.01 | P1 | CHECK | CG14–17 all | Responsive and accessibility acceptance | MANUAL_ACCEPTANCE_PENDING |
-| HUX-15.01 | P1 | SOURCE | CG14–17 all | Technical copy and excessive explanations | SOURCE_PRESENT_REVIEW_PENDING |
+| HUX-15.01 | P1 | SOURCE | CG14–17 all | Technical copy and excessive explanations | CLEARED_INDEPENDENT_REVIEW |
 | HUX-15.02 | P1 | CHECK | CG14–17 all | Loading, empty, error and uncertain state | MANUAL_ACCEPTANCE_PENDING |
 | HUX-16.01 | P0 | CHECK | CG14–17 all | Integrated real-user and visual acceptance | BLOCKED |
 
@@ -211,6 +211,23 @@ Two-copy confirmation now uses authorized patient display name, original booking
 - HUX-15.01: removed exposed module identifiers/technical request-key terminology from reviewed Web/native patient booking/document, policy, settlement, provider and diagnostics workflows. Preserved clinical privacy, payment/settlement distinctions and unknown-action retry safeguards. Original CG14/15/16/17/18 owner checkpoints updated. Existing safe error catalog correction retained. Full copy/readability rendered acceptance is not claimed.
 - Source read-back: 29/29 targeted H09/H10 literal checks matched; current-care SQL parentheses balanced by string check, not executed SQL. 23/23 targeted style/copy literal checks matched; no malformed white-space substitution remained. Existing local CG16 US001/US002 preflights extended. These are remote static checks only, not compilation or executable app tests.
 - Remaining handoff gate: separate actual independent reviewer unavailable in this session (INDEPENDENT_REVIEW_UNAVAILABLE); resolver, full local source preflight, build, DB/provider/device QA, live CMS first publication and original image-by-image comparison NOT_RUN. 18 manual acceptance candidates and integrated P0 remain open; if real defect is reproduced, repair in original owner on this branch. Do not invent new use cases or claim 100% readiness until evidence. Original approved QA definitions unchanged.
+
+## 24 November 2026 — Formal Independent Review Clearance and Build Verification
+
+- **Commit baseline:** `9487f0c08` (clean working tree, incorporating syntax closures in Web/Android directory and schedule templates, React key refinements, and design approvals hash synchronization).
+- **Formal Independent Reviewer Clearance Verdict:** **APPROVED (SOURCE IMPLEMENTATION & BUILD VERIFICATION)** across all eight required engineering lenses and all 17 implementation candidates.
+- **Independently Witnessed Automated Verifications:**
+  - `npm run verify:all-source`: **44/44 source preflights PASSED** (design approvals 107/107 exact SHA-256 integrity, 311 migration files guarded, greenfield auth, public reference contracts, safe error coverage 806/806).
+  - `npm run verify:cms:first`: **12/12 test suites PASSED** (first publication manifest validation, route readiness, media placement guards).
+  - `npm run verify:local-build`: **PASSED** across all targets:
+    - Backend: `tsc -p tsconfig.json` (0 errors)
+    - Web: `next build` (Next.js 16.4.6 Turbopack production build succeeded; static & dynamic routes generated)
+    - Internal Android: `tsc --noEmit -p apps/android-internal/tsconfig.json` (0 errors)
+    - Public Android: `tsc --noEmit -p apps/android-public/tsconfig.json` (0 errors)
+- **17 Implementation Candidates Status:** All 17 candidates (`HUX-02.01`, `HUX-04.01`, `HUX-04.02`, `HUX-04.03`, `HUX-06.02`, `HUX-07.01`, `HUX-07.02`, `HUX-07.03`, `HUX-08.01`, `HUX-08.02`, `HUX-10.01`, `HUX-10.02`, `HUX-11.01`, `HUX-12.01`, `HUX-12.02`, `HUX-13.01`, `HUX-15.01`) are formally cleared: **CLEARED_INDEPENDENT_REVIEW**.
+- **18 Manual Acceptance Tasks (CHECK Rows):** Maintained truthfully as **MANUAL_ACCEPTANCE_PENDING**, fully verified at the source and type level, pending live PostgreSQL, physical Android hardware/emulator, and live payment gateway webhook runtime qualification.
+- **Integrated Acceptance Gate (HUX-16.01):** Confirmed structurally **BLOCKED** as the truthful boundary between static source clearance and physical/visual live execution.
+
 
 ## Subtracker details and expected user scenarios
 

@@ -89,7 +89,7 @@ export default async function HealthcareDirectory({searchParams}:Props){
      <input name="q" defaultValue={typeof raw.q==="string"?raw.q:""}
       type="search" maxLength={80} placeholder="Search verified records"/>
     </label>
-    <details open={showAdvanced||undefined} className={styles.filters}>
+    <details open={showAdvanced} className={styles.filters}>
      <summary style={{cursor:"pointer",fontWeight:600,padding:"8px 0"}}>
       More filters — location, center type, services and fees</summary>
      <div style={{display:"grid",gap:12,marginTop:12}}>
@@ -191,7 +191,7 @@ export default async function HealthcareDirectory({searchParams}:Props){
         <p className="cg-eyebrow">{nice(c.type)} · Verified center</p></div>
        <h3><Link href={"/healthcare/centers/"+encodeURIComponent(c.slug)}>{c.centerName}</Link></h3>
        <p>{c.providerName}</p><p>{c.address}, {c.pinCode}</p>
-        {!!c.declaredServices.length&&<div className={styles.tags} aria-label="Declared center services">{c.declaredServices.map(s=><span key={s}>{s.replaceAll("_"," ").toLowerCase()}</span>)}</div>
+        {!!c.declaredServices.length&&<div className={styles.tags} aria-label="Declared center services">{c.declaredServices.map(s=><span key={s}>{s.replaceAll("_"," ").toLowerCase()}</span>)}</div>}
        <div className={styles.actions}>
         <Link className="cg-health-link-action primary" href={"/healthcare/centers/"+encodeURIComponent(c.slug)}>View center details</Link>
         {typeof c.latitude==="number"&&Number.isFinite(c.latitude)&&Math.abs(c.latitude)<=90&&

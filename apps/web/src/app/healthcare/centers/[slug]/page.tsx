@@ -194,7 +194,7 @@ export default async function VerifiedCenterPage({params}:Params){
    </section>}
    <section id="contact" className={"cg-public-section "+styles.panel}>
      <h2>Location &amp; contact</h2><p>{c.address}, {c.pinCode}</p>{c.publicPhone&&<p><a href={"tel:"+c.publicPhone}>{c.publicPhone}</a></p>}
-     <p>Confirm services and fees before visiting.</p>
+     <p>Online booking, clinical advice and online payment are not offered on this page. Confirm services and fees before visiting.</p>
      <Link href="/health-network">Browse verified centers and doctors</Link>
      <p><Link href="/contact">Contact CareGanga</Link></p>
    </section>
