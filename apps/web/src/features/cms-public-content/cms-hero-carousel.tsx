@@ -1,18 +1,20 @@
 "use client";
 import Link from "next/link";
 import {useState} from "react";
+import type {PublicCmsNavigation} from "./cms-public-source";
+import {effectiveCmsCtaRoute} from "./cms-cta-route";
 import type {PublicCmsSection,PublicCmsPage} from "./cms-public-page";
 type Asset=PublicCmsPage["assets"][number];
 type Slide={section:PublicCmsSection;hero?:Asset;mobile?:Asset};
 const text=(v:unknown)=>typeof v==="string"?v:"";
-const isSafeRoute=(v:unknown)=>["/","/about","/contact"].includes(text(v));
 const safeColor=(v:unknown)=>/^#[a-fA-F0-9]{6}$/.test(text(v))?text(v):undefined;
-function Button({label,href,secondary=false}:{label:unknown;href:unknown;secondary?:boolean}){
- return isSafeRoute(href)&&text(label)?
+function Button({label,href,secondary=false,navigation}:{label:unknown;href:unknown;secondary?:boolean;navigation?:PublicCmsNavigation|null}){
+ const target=effectiveCmsCtaRoute(href,navigation);
+ return target&&text(label)?
   <Link className={secondary?"cg-site-hero-cta is-secondary":"cg-site-hero-cta"}
-   href={text(href)}>{text(label)}</Link>:null;
+   href={target}>{text(label)}</Link>:null;
 }
-export function CmsHeroCarousel({slides}:{slides:Slide[]}){
+export function CmsHeroCarousel({slides,navigation}:{slides:Slide[];navigation?:PublicCmsNavigation|null}){
  const [active,setActive]=useState(0);
  if(slides.length===0)return null;
  const index=Math.min(active,slides.length-1),slide=slides[index],v=slide.section.fields;
@@ -37,8 +39,8 @@ export function CmsHeroCarousel({slides}:{slides:Slide[]}){
    {chips.length>0&&<div className="cg-site-hero-chips">{chips.map((chip,i)=>
     <span key={i}>{chip as string}</span>)}</div>}
    <div className="cg-site-hero-actions">
-    <Button label={v.primaryLabel} href={v.primaryPath}/>
-    <Button label={v.secondaryLabel} href={v.secondaryPath} secondary/>
+    <Button label={v.primaryLabel} href={v.primaryPath} navigation={navigation}/>
+    <Button label={v.secondaryLabel} href={v.secondaryPath} navigation={navigation} secondary/>
    </div>
   </div>
   {slides.length>1&&<div className="cg-site-slide-controls">
