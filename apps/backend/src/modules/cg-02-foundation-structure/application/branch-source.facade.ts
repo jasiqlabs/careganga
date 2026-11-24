@@ -248,10 +248,10 @@ export class BranchSourceFacade{
   */
  async scheduledProjectScope(root:string,account:string,client:Pool|PoolClient=this.db):
   Promise<{all:boolean;branchRefs:string[]}>{
-  await this.sessions.requireScheduledMisAction(root,account,"projects.view");
-  await this.sessions.requireScheduledMisAction(root,account,"projects.export");
+  await this.sessions.requireScheduledMisAction(root,account,"projects.view",client);
+  await this.sessions.requireScheduledMisAction(root,account,"projects.export",client);
   let all=false;
-  try{await this.sessions.requireScheduledMisAction(root,account,"foundation.branches.admin");all=true;}
+  try{await this.sessions.requireScheduledMisAction(root,account,"foundation.branches.admin",client);all=true;}
   catch(e){if(!(e instanceof ForbiddenException))throw e;}
   const rows=all?(await client.query<{id:string}>(
    "SELECT id FROM branch WHERE root_realm_id=$1 AND status='ACTIVE' ORDER BY id LIMIT 201 FOR SHARE",[root])).rows:
