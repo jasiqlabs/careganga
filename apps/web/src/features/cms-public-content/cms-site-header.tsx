@@ -54,9 +54,7 @@ export function CmsSiteHeader({navigation,contact}:{
    <nav id="cg-site-navigation" aria-label="CareGanga public website"
     className={expanded?"cg-site-nav cg-site-nav-open":"cg-site-nav"}>
     <Link href="/" className={pathname==="/"? "cg-site-active":undefined}>Home</Link>
-    {isPublished("/about")?<Link href="/about"
-     className={pathname==="/about"?"cg-site-active":undefined}>About Us</Link>:
-     <span className="cg-site-unavailable">About Us</span>}
+    <Menu label="About Us" items={[{text:"About the Foundation",href:isPublished("/about")?"/about":undefined},{text:"Team Directory",href:isPublished("/about")?"/about/team":undefined}]}/>
     <Menu label="Our Work" items={work.map(text=>({text,href:isPublished("/our-work")?"/our-work"+(text==="All Projects"?"":"?category="+encodeURIComponent(text)):undefined}))}/>
     {isPublished("/ngo-information")?<Link href="/ngo-information"
      className={pathname==="/ngo-information"?"cg-site-active":undefined}>NGO Information</Link>:
