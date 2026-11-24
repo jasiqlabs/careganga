@@ -6,6 +6,7 @@ import {MembershipRosterService} from "../../cg-04-membership-volunteers/applica
 import {VolunteerRosterService} from "../../cg-04-membership-volunteers/application/volunteer-roster.service";
 import {PayrollRunService} from "../../cg-11-payroll-compensation/application/payroll-run.service";
 import {DonationAdminService} from "../../cg-07-campaigns-donations/application/donation-admin.service";
+import {CsrFundingReportsService} from "../../cg-08-csr-funding/application/csr-funding-reports.service";
 import {SessionService} from "../../cg-01-identity-access/application/session.service";
 import {FinanceReportsService} from "../../cg-09-finance-accounting/application/finance-reports.service";
 import {BranchSourceFacade} from "../../cg-02-foundation-structure/application/branch-source.facade";
@@ -17,10 +18,10 @@ export const REPORT_KINDS=[
  "FINANCE_POSTED_LEDGER","FINANCE_POSTED_SUMMARY",
  "FINANCE_POSTED_TREND","FINANCE_POSTED_GROUPED",
  "APPOINTMENT_STATUS","APPOINTMENT_STATUS_GROUPED","APPOINTMENT_DOCTOR_SUMMARY",
- "PLATFORM_AUDIT_ACTIVITY","DIAGNOSTICS_CATALOG_SUMMARY","BENEFICIARY_ASSISTANCE_SUMMARY","MEMBERSHIP_ROSTER_SUMMARY","VOLUNTEER_ROSTER_SUMMARY","PAYROLL_STATUS_SUMMARY","DONATION_RECEIPT_SUMMARY"
+ "PLATFORM_AUDIT_ACTIVITY","DIAGNOSTICS_CATALOG_SUMMARY","BENEFICIARY_ASSISTANCE_SUMMARY","MEMBERSHIP_ROSTER_SUMMARY","VOLUNTEER_ROSTER_SUMMARY","PAYROLL_STATUS_SUMMARY","DONATION_RECEIPT_SUMMARY","CSR_FUNDING_SUMMARY"
 ] as const;
 export type ReportKind=typeof REPORT_KINDS[number];
-export const LIVE_PREVIEW_KINDS:readonly ReportKind[]=["BENEFICIARY_ASSISTANCE_SUMMARY","MEMBERSHIP_ROSTER_SUMMARY","VOLUNTEER_ROSTER_SUMMARY","PAYROLL_STATUS_SUMMARY","DONATION_RECEIPT_SUMMARY"];
+export const LIVE_PREVIEW_KINDS:readonly ReportKind[]=["BENEFICIARY_ASSISTANCE_SUMMARY","MEMBERSHIP_ROSTER_SUMMARY","VOLUNTEER_ROSTER_SUMMARY","PAYROLL_STATUS_SUMMARY","DONATION_RECEIPT_SUMMARY","CSR_FUNDING_SUMMARY"];
 export type ReportView="TABLE"|"SUMMARY"|"CHART"|"PIVOT";
 export type SafeReportRequest={
  kind:ReportKind;view:ReportView;yearRef?:string;branchRef?:string;
@@ -69,7 +70,8 @@ export function parseSafeReport(raw:unknown):SafeReportRequest{
   MEMBERSHIP_ROSTER_SUMMARY:["SUMMARY"],
   VOLUNTEER_ROSTER_SUMMARY:["SUMMARY"],
   PAYROLL_STATUS_SUMMARY:["SUMMARY"],
-  DONATION_RECEIPT_SUMMARY:["SUMMARY"]
+  DONATION_RECEIPT_SUMMARY:["SUMMARY"],
+  CSR_FUNDING_SUMMARY:["SUMMARY"]
  };
  if(!legalViews[kind as ReportKind].includes(view))
   throw new BadRequestException({code:"MIS_REPORT_VIEW_INVALID",
@@ -108,7 +110,7 @@ export function parseSafeReport(raw:unknown):SafeReportRequest{
   fromDay!==""&&kind!=="FINANCE_POSTED_LEDGER"&&
    kind!=="FINANCE_POSTED_GROUPED"&&kind!=="APPOINTMENT_STATUS"&&
    kind!=="APPOINTMENT_STATUS_GROUPED"&&kind!=="APPOINTMENT_DOCTOR_SUMMARY"&&
-   kind!=="PLATFORM_AUDIT_ACTIVITY")
+   kind!=="PLATFORM_AUDIT_ACTIVITY"&&kind!=="CSR_FUNDING_SUMMARY")
   throw new BadRequestException({code:"MIS_REPORT_FILTER_INVALID",
    message:"Choose an allowed center, year, status and date range for this report."});
  const offset=o.offset===undefined?0:o.offset;
@@ -163,7 +165,8 @@ export class MisReportSourceService{
   private readonly members:MembershipRosterService,
   private readonly volunteers:VolunteerRosterService,
   private readonly payroll:PayrollRunService,
-  private readonly donations:DonationAdminService){}
+  private readonly donations:DonationAdminService,
+  private readonly csr:CsrFundingReportsService){}
  /** CG02 is the sole source of current permitted branch scope, never a report-provided UUID. */
  async originalFinanceScope(token:string,request:SafeReportRequest){
   if(!request.kind.startsWith("FINANCE_"))return null;
@@ -253,6 +256,7 @@ export class MisReportSourceService{
   if(await permission("volunteers.view"))templates.push({kind:"VOLUNTEER_ROSTER_SUMMARY",label:"Volunteer status",views:["SUMMARY"],description:"Current authorized volunteer counts, live preview only."});
   if(await permission("payroll.runs.view")&&await permission("payroll.compensation.view"))templates.push({kind:"PAYROLL_STATUS_SUMMARY",label:"Payroll status",views:["SUMMARY"],description:"Current month payroll run and payment status counts, live preview only."});
   if(finance.ready)templates.push({kind:"DONATION_RECEIPT_SUMMARY",label:"Donation and receipt reconciliation",views:["SUMMARY"],description:"Current verified donation and receipt totals, live preview only."});
+  if(finance.ready&&await permission("csr.partners.view"))templates.push({kind:"CSR_FUNDING_SUMMARY",label:"CSR funding and utilization",views:["SUMMARY"],description:"Approved commitments versus verified receipts, allocation and utilization. Current authorized scope; optional proposal update dates."});
   if(diagnosticsAccess)templates.push({
    kind:"DIAGNOSTICS_CATALOG_SUMMARY",label:"Diagnostics services summary",
    views:["SUMMARY"],description:"Current approved service catalog counts from CG-16."});
@@ -420,6 +424,22 @@ export class MisReportSourceService{
     sourceCutoffKind:"OWNER_TRANSACTION_SNAPSHOT",explanation:suppressed?"Small groups are hidden to protect privacy.":
      "Current owner-scoped status counts only; no contact, identity or address fields. Live preview only.",
     scopeLabel:"Current permitted roster scope"};
+  }
+  if(q.kind==="CSR_FUNDING_SUMMARY"){
+   const x=await this.csr.misSummary(token,{...(q.fromDay?{from:q.fromDay,to:q.untilDay}:{})});
+   const columns=[{key:"count",label:"Matching proposals",unit:"COUNT" as const},
+    {key:"committedMinor",label:"Approved commitments (not cash)",unit:"INR_MINOR" as const},
+    {key:"receivedMinor",label:"Verified receipts",unit:"INR_MINOR" as const},
+    {key:"allocatedMinor",label:"Net allocated funding",unit:"INR_MINOR" as const},
+    {key:"releasedMinor",label:"Released unused allocation",unit:"INR_MINOR" as const},
+    {key:"utilizedMinor",label:"Verified utilized funding",unit:"INR_MINOR" as const},
+    {key:"availableMinor",label:"Unallocated verified funding",unit:"INR_MINOR" as const}];
+   return {kind:q.kind,view:q.view,label:"CSR funding and utilization",state:x.state,columns,
+    rows:x.state==="READY"&&x.totals?[{count:String(x.count),...x.totals}]:[],
+    nextOffset:null,sourceReadAt:new Date().toISOString(),sourceAsOf:x.sourceAsOf,
+    sourceCutoffKind:"OWNER_TRANSACTION_SNAPSHOT",
+    explanation:x.explanation+(q.fromDay?" Dates filter proposal updates, not bank posting dates.":""),
+    scopeLabel:x.scope==="FOUNDATION"?"Current authorized Foundation CSR scope":"Current intersected CSR and finance branch scope"};
   }
   if(q.kind==="DONATION_RECEIPT_SUMMARY"){
    const x=await this.donations.misSummary(token);
