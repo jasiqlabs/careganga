@@ -175,9 +175,9 @@ export class ProjectsService{
    const x=await this.misStatusRows(tx,root,account,scope,branchRef,projectRef,from,to);
    if(exporting&&x.partial)throw new ConflictException("Narrow project filters to 50 records");
    if(exporting)await this.auditExport(tx,{realmId:root,accountId:account},"PROJECTS",false,x.rows.length,{branchRef,projectRef,from,to,source:"MIS_SCHEDULED"});
-   await tx.query("COMMIT");
-   const current=await this.branches.scheduledProjectScope(root,account);
+   const current=await this.branches.scheduledProjectScope(root,account,tx);
    if(scope.all!==current.all||scope.branchRefs.join(",")!==current.branchRefs.join(","))throw new ForbiddenException("Project scope changed during report");
+   await tx.query("COMMIT");
    return x;
   }catch(e){await tx.query("ROLLBACK");throw e;}finally{tx.release();}
  }
