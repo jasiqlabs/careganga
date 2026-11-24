@@ -4,6 +4,7 @@ import {ActivityIndicator,AppState,BackHandler,Image,Pressable,
 import {careGangaTheme as t} from "../../../../../packages/design-tokens/src/index";
 import {CmsPublicExtendedSection} from "./cms-extended-native-screen";
 import {NativeMembershipPlans} from "../membership/native-membership-plans";
+import {NativeNewsletterForm} from "./native-newsletter-form";
 import {NativePublicCampaigns} from "./native-public-campaigns";
 type Fields=Record<string,unknown>;
 type Section={kind:string;order:number;fields:Fields};
@@ -491,6 +492,7 @@ export function PublicCmsContent({onContact,onPartnerApplication,onMembershipApp
      {!!text(fields.phone)&&<Text style={styles.muted}>Phone: {text(fields.phone)}</Text>}
      {!!text(fields.email)&&<Text style={styles.muted}>Email: {text(fields.email)}</Text>}
      {!!text(fields.newsletterText)&&<Text style={styles.body}>{text(fields.newsletterText)}</Text>}
+     <NativeNewsletterForm/>
      <CmsButton title="Contact CareGanga" secondary onPress={onContact}/>
     </View>;
     if(section.kind==="TEAM"){
