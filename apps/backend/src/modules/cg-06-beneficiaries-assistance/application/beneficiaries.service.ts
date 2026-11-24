@@ -392,11 +392,12 @@ export class BeneficiariesService{
     "AND ($11::uuid IS NULL OR EXISTS (SELECT 1 FROM beneficiary_project_link l "+
     "WHERE l.root_realm_id=b.root_realm_id AND l.beneficiary_id=b.id AND l.project_ref=$11 AND l.ended_at IS NULL)) "+
     "AND ($12::timestamptz IS NULL OR (b.created_at,b.id)<($12::timestamptz,$13::uuid)) "+
+    "AND ($14='' OR b.gender=$14) AND ($15='' OR b.age_group=$15) "+
     "ORDER BY b.created_at DESC,b.id DESC LIMIT 31",
     [a.realmId,scope.all,allowed,q.branch,q.state,q.district,q.status,q.lifecycle,q.type,q.q,
-     q.project,q.before?.date??null,q.before?.id??null])).rows;
+     q.project,q.before?.date??null,q.before?.id??null,q.gender,q.ageGroup])).rows;
    const items=rows.slice(0,30);
-   return {items:items.map(r=>this.view(r)),hasMore:rows.length>30,
+   return {items:items.map(r=>({...this.view(r),contactMobile:null,representativeName:null,representativeContact:null,consentPurpose:null})),hasMore:rows.length>30,
     nextCursor:rows.length>30&&items.length?nextCursor(items[items.length-1].created_at,items[items.length-1].id):null};
   });
  }
