@@ -25,7 +25,7 @@ const text=(v:unknown)=>typeof v==="string"?v:"";
 const safeColor=(v:unknown,fallback:string)=>/^#[a-fA-F0-9]{6}$/.test(text(v))?text(v):fallback;
 const local=(v:unknown)=>{
  const route=text(v);
- return ["/","/about","/contact","/our-impact","/ngo-information","/gallery","/videos","/publications","/healthcare","/our-work","/upcoming-projects","/collaboration","/membership","/volunteer"].includes(route)?route:null;
+ return ["/","/about","/contact","/our-impact","/ngo-information","/gallery","/videos","/publications","/healthcare","/our-work","/upcoming-projects","/collaboration","/membership","/volunteer","/campaigns"].includes(route)?route:null;
 };
 async function published(slug:string):Promise<Result>{
  if(!/^[a-z0-9][a-z0-9-]{0,69}$/.test(slug))return {state:"NOT_PUBLISHED",page:null};
@@ -235,9 +235,9 @@ export function PublicCmsContent({onContact,onPartnerApplication,onMembershipApp
   else if(route==="/ngo-information"&&publishedPaths.includes(route)){
    setNgoScope("80g");setSlug("80g");
   }
-  else if((route==="/videos"||route==="/publications")&&
+  else if((route==="/gallery"||route==="/videos"||route==="/publications")&&
    publishedPaths.includes("/gallery")){
-   setMediaScope(route==="/videos"?"VIDEO":"PUBLICATION");setSlug("gallery");
+   setMediaScope(route==="/videos"?"VIDEO":route==="/publications"?"PUBLICATION":"PHOTO");setSlug("gallery");
   }
   // A CMS editorial CTA must not activate a destination that has
   // not been independently approved/published in the current source.
@@ -504,7 +504,7 @@ export function PublicCmsContent({onContact,onPartnerApplication,onMembershipApp
     if(["IMPACT_GROUP","COMPLIANCE_FACTS","GALLERY_GRID","ARTICLE_BODY",
        "HEALTHCARE_CATEGORIES","CONTACT_INFO"].includes(section.kind))
      return <CmsPublicExtendedSection key={i} section={section} assets={page.assets}
-      mediaUrl={safeImage} onContact={onContact} onNavigate={navigate}
+      mediaUrl={safeImage} onContact={onContact} onNavigate={navigate} canNavigate={canNavigate}
       mediaScope={section.kind==="GALLERY_GRID"?mediaScope:undefined}
        ngoScope={section.kind==="COMPLIANCE_FACTS"?ngoScope:undefined}
       onBackToNews={()=>setSlug(articleBackTarget)}
