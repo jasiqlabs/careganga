@@ -121,6 +121,16 @@ Verification: Source-trace US-003-QA01–QA20 by exact real backend/API/DB/UI so
 Dependencies: US-001
 
 ## Execution progress
+
+### 24 November 2026 — CG-06 source-development branch start
+
+- **Branch:** `feature/careganga-cg06-beneficiaries-assistance-from-main-20261124`, created directly from exact `main` commit `681ee03d3bc83e4110d995a790470c3134d4737d`. Owner authorized CG-06 implementation; main remains unchanged.
+- **US-001:** IN_PROGRESS / SOURCE_AUTHORED_PENDING_REVIEW_AND_RUNTIME. Original A07/A08 and 20 QA definitions remain the acceptance authority. Author first root/branch-protected private profile/consent, genuine geography and optional CG-05 project links, then original CG-03 verification and CG-19 proof contracts, equivalent Admin Web/Internal Android. Source review, exact client screenshot comparison, runtime/PostgreSQL/device tests and independent security/privacy review remain NOT_RUN.
+- **US-002 and US-003:** NOT_STARTED; preserve their original 40 QA IDs. Do not claim implementation, review PASS or future-owner stock/payment integration until genuine code is authored and verified.
+- **Current blocking evidence:** original CG-03 BENEFICIARY_VERIFICATION adapter and protected CG-19 file relationship do not currently exist; adding editable UI cannot mark verification as approved without real reviewer case. Follow owner modules rather than silently marking Verified.
+- **QA tracking:** US-001-QA01–20 = NOT_EXECUTED; backend source trace to be recorded case-by-case as files are actually committed; Web, native, SQL, multibranch, visual and independent review NOT_RUN. No CI/GitHub Actions, merge or production QA claimed.
+
+
 - US-001: BLOCKED | planning=OWNER_DELEGATED_DESIGN_APPROVED_CURRENT_ARTIFACT; formal_harness_and_critical_DB_QA_NOT_RUN; prerequisite CG-01/02 real code NOT_VERIFIED, implementation NOT_STARTED, 20 source QA NOT_RUN, live SQL/Web/Android/visual NOT_RUN.
 - US-002: BLOCKED | planning=OWNER_DELEGATED_DESIGN_APPROVED_CURRENT_ARTIFACT; formal_harness_and_critical_DB_QA_NOT_RUN; prerequisite US-001 and real CG-12/09 source NOT_VERIFIED, implementation NOT_STARTED, 20 source QA NOT_RUN, live SQL/Web/Android/financial/visual NOT_RUN.
 - US-003: BLOCKED | planning=OWNER_DELEGATED_DESIGN_APPROVED_CURRENT_ARTIFACT; formal_harness_and_critical_DB_QA_NOT_RUN; prerequisite US-001 real code NOT_VERIFIED, real CG-12/09 totals conditional, implementation NOT_STARTED, 20 source QA NOT_RUN, live SQL/Web/Android/public/render NOT_RUN.
