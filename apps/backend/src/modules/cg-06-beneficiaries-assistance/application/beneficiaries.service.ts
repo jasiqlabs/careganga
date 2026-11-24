@@ -30,10 +30,10 @@ export class BeneficiariesService{
   private readonly identity:FoundationStructureIdentityFacade,
   private readonly branches:BranchSourceFacade,
   private readonly projects:CampaignLinkSourceFacade){}
- private async run<T>(token:string,action:string,work:(tx:PoolClient,a:Actor)=>Promise<T>):Promise<T>{
+ private async run<T>(token:string,action:string,work:(tx:PoolClient,a:Actor)=>Promise<T>,snapshot=false):Promise<T>{
   const a=await this.sessions.requireAction(token,action),tx=await this.db.connect();
   try{
-   await tx.query("BEGIN");await this.identity.assertCurrent(tx,a,action);
+   await tx.query(snapshot?"BEGIN ISOLATION LEVEL REPEATABLE READ":"BEGIN");await this.identity.assertCurrent(tx,a,action);
    const result=await work(tx,a);await tx.query("COMMIT");return result;
   }catch(e){
    try{await tx.query("ROLLBACK");}catch{/* Preserve first error. */}
@@ -401,8 +401,7 @@ export class BeneficiariesService{
    if(q.branch&&!scope.all&&!scope.branches.some(x=>x.value===q.branch))
     throw new ForbiddenException("Branch unavailable");
    const allowed=scope.branches.map(x=>x.value);
-   const rows=(await tx.query<Row>(
-    "SELECT "+columns+" FROM beneficiary b WHERE b.root_realm_id=$1 "+
+   const where=" FROM beneficiary b WHERE b.root_realm_id=$1 "+
     "AND ($2::boolean OR b.branch_scope_id=ANY($3::uuid[])) "+
     "AND ($4::uuid IS NULL OR b.branch_scope_id=$4) "+
     "AND ($5::uuid IS NULL OR (b.consent_revoked_at IS NULL AND b.state_ref=$5)) AND ($6::uuid IS NULL OR (b.consent_revoked_at IS NULL AND b.district_ref=$6)) "+
@@ -413,18 +412,26 @@ export class BeneficiariesService{
     "(b.consent_revoked_at IS NULL AND (strpos(lower(b.private_name),lower($10))>0 OR b.contact_mobile=$10))) "+
     "AND ($11::uuid IS NULL OR (b.consent_revoked_at IS NULL AND EXISTS (SELECT 1 FROM beneficiary_project_link l "+
     "WHERE l.root_realm_id=b.root_realm_id AND l.beneficiary_id=b.id AND l.project_ref=$11 AND l.ended_at IS NULL))) "+
-    "AND ($12::timestamptz IS NULL OR (b.created_at,b.id)<($12::timestamptz,$13::uuid)) "+
-    "AND ($14='' OR (b.consent_revoked_at IS NULL AND b.gender=$14)) AND ($15='' OR (b.consent_revoked_at IS NULL AND b.age_group=$15)) "+
-    "AND ($16::date IS NULL OR b.created_at>=($16::date::timestamp AT TIME ZONE 'Asia/Kolkata')) "+
-    "AND ($17::date IS NULL OR b.created_at<(($17::date+1)::timestamp AT TIME ZONE 'Asia/Kolkata')) "+
-    "AND ($18::uuid IS NULL OR (b.consent_revoked_at IS NULL AND b.block_ref=$18)) "+
-    "AND ($19='' OR (b.consent_revoked_at IS NULL AND lower(b.beneficiary_category)=lower($19))) "+
-    "ORDER BY b.created_at DESC,b.id DESC LIMIT 31",
-    [a.realmId,scope.all,allowed,q.branch,q.state,q.district,q.status,q.lifecycle,q.type,q.q,
-     q.project,q.before?.date??null,q.before?.id??null,q.gender,q.ageGroup,q.from,q.to,q.block,q.category])).rows;
+    "AND ($12='' OR (b.consent_revoked_at IS NULL AND b.gender=$12)) AND ($13='' OR (b.consent_revoked_at IS NULL AND b.age_group=$13)) "+
+    "AND ($14::date IS NULL OR b.created_at>=($14::date::timestamp AT TIME ZONE 'Asia/Kolkata')) "+
+    "AND ($15::date IS NULL OR b.created_at<(($15::date+1)::timestamp AT TIME ZONE 'Asia/Kolkata')) "+
+    "AND ($16::uuid IS NULL OR (b.consent_revoked_at IS NULL AND b.block_ref=$16)) "+
+    "AND ($17='' OR (b.consent_revoked_at IS NULL AND lower(b.beneficiary_category)=lower($17))) ";
+   const params=[a.realmId,scope.all,allowed,q.branch,q.state,q.district,q.status,q.lifecycle,q.type,q.q,
+    q.project,q.gender,q.ageGroup,q.from,q.to,q.block,q.category];
+   const counts=(await tx.query<{total:number;male:number;female:number;children:number;active:number;verified:number}>(
+    "SELECT count(*)::int AS total, "+
+    "count(*) FILTER (WHERE b.consent_revoked_at IS NULL AND b.gender='MALE')::int AS male, "+
+    "count(*) FILTER (WHERE b.consent_revoked_at IS NULL AND b.gender='FEMALE')::int AS female, "+
+    "count(*) FILTER (WHERE b.consent_revoked_at IS NULL AND b.age_group='CHILD')::int AS children, "+
+    "count(*) FILTER (WHERE b.consent_revoked_at IS NULL AND b.lifecycle_state='ACTIVE')::int AS active, "+
+    "count(*) FILTER (WHERE b.consent_revoked_at IS NULL AND b.verification_state='VERIFIED')::int AS verified"+where,params)).rows[0];
+   const rows=(await tx.query<Row>("SELECT "+columns+where+
+    "AND ($18::timestamptz IS NULL OR (b.created_at,b.id)<($18::timestamptz,$19::uuid)) "+
+    "ORDER BY b.created_at DESC,b.id DESC LIMIT 31",[...params,q.before?.date??null,q.before?.id??null])).rows;
    const items=rows.slice(0,30);
-   return {items:items.map(r=>({...this.view(r),contactMobile:null,representativeName:null,representativeContact:null,consentPurpose:null})),hasMore:rows.length>30,
+   return {summary:counts,items:items.map(r=>({...this.view(r),contactMobile:null,representativeName:null,representativeContact:null,consentPurpose:null})),hasMore:rows.length>30,
     nextCursor:rows.length>30&&items.length?nextCursor(items[items.length-1].created_at,items[items.length-1].id):null};
-  });
+  },true);
  }
 }
