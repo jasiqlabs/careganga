@@ -56,3 +56,11 @@ test("late correction changes new calculation but never mutates frozen original"
  assert.equal(JSON.stringify(old),before);assert.equal(old.status,"CALCULATED");assert.equal(next.status,"CALCULATED");
  if(old.status==="CALCULATED"&&next.status==="CALCULATED")assert.equal(BigInt(old.netMinor)-BigInt(next.netMinor),109000n);
 });
+
+test("approved late rule applies once to actual completed LATE day, off by default",()=>{
+ const d=all();d[0]={...d[0],status:"LATE"};
+ const normal=calculatePayroll(from,until,d,pay()),configured=calculatePayroll(from,until,d,pay().map(v=>({...v,rules:{...v.rules,lateDeductionMinor:"2500"}})));
+ assert.equal(normal.status,"CALCULATED");assert.equal(configured.status,"CALCULATED");
+ if(normal.status==="CALCULATED"&&configured.status==="CALCULATED"){assert.equal(BigInt(normal.netMinor)-BigInt(configured.netMinor),2500n);assert.equal(configured.components.filter(c=>c.code==="RECORDED_LATE_DEDUCTION").length,1);}
+ d[0].checkOut=null;assert.equal(calculatePayroll(from,until,d,pay()).status,"PENDING_VALIDATION");
+});
