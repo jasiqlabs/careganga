@@ -10,11 +10,11 @@ This user-requested cross-module subtracker supplements (does not replace) origi
 
 ## Summary
 
-37 subitems: 17 source-confirmed presentation gaps, 19 runtime/reproduction candidates, 1 reference evidence blocker. Initial baseline: all OPEN. Current progress: 35 rows IN_PROGRESS (17 source implementation candidates + 18 source-inspected acceptance items); 2 rows BLOCKED (original separate image evidence and integrated runtime/visual gate); zero independently cleared or runtime passes. No unreviewed OPEN rows, but IN_PROGRESS and BLOCKED are not closure. P0 = release visual evidence gate; P1 = primary journey or substantial usability; P2 = secondary usability. Source status and runtime status stay separate.
+37 subitems: 17 source-confirmed presentation gaps, 19 runtime/reproduction candidates, 1 reference evidence blocker. Initial baseline: all OPEN. Current progress: 35 rows IN_PROGRESS (17 source implementation candidates + 18 source-inspected acceptance items); 1 row EVIDENCE_RECOVERED (final public original image set); 1 row BLOCKED (integrated runtime/visual gate); zero independently cleared or runtime passes. No unreviewed OPEN rows, but IN_PROGRESS and BLOCKED are not closure. P0 = release visual evidence gate; P1 = primary journey or substantial usability; P2 = secondary usability. Source status and runtime status stay separate.
 
 | ID | Priority | Evidence | Owner/surface | Issue | State |
 |---|---|---|---|---|---|
-| HUX-01.01 | P0 | EVIDENCE | CG14–17 all | Recover separate healthcare reference originals | BLOCKED |
+| HUX-01.01 | P0 | EVIDENCE | CG14–17 all | Recover separate healthcare reference originals | EVIDENCE_RECOVERED |
 | HUX-02.01 | P1 | SOURCE | CG14–17 all | Shared design consistency | IN_PROGRESS |
 | HUX-02.02 | P1 | CHECK | CG14–17 admin/center | Role-specific healthcare navigation | IN_PROGRESS |
 | HUX-03.01 | P1 | CHECK | CG14/15/17/20 admin/center | Operational dashboard journey | IN_PROGRESS |
@@ -126,12 +126,21 @@ Commit `676e320a410cf79bb2c5ec54adf40d851d26931c`: HUX-06.01/06.03/07.04/09.01. 
 
 - HUX-10.04/11.02/13.02: re-review found native preview used a 25-center client cap although the original CG15 API admits 40. Align native cap to 40 and 144 slots; reject a different requested date/time/center rather than rendering a mismatched appointment. Updated existing CG14 US004 and CG15 US002 source verifiers to assert live schedule navigation, correct public semantic theme, and bounded response identity instead of obsolete pre-booking wording/blue theme. Original QA US-002-QA01/02/05/07/12/13/14, CG14 US-004-QA12/17. Test 26–40 verified centers, no schedule, late response/date and changed center, 41 invalid entries, >144 slots; source script execution and real QA NOT_RUN.
 
+## 24 November 2026 — newly supplied original public healthcare references (supersedes earlier evidence-blocked status)
+
+The user supplied the final public healthcare reference set, 13 original JPGs. All original archive entries were checked against their SHA-256 manifests. Both ZIPs are saved in the private ChatGPT Library under /CareGanga/:
+- CareGanga-Original-Healthcare-UIUX-Reference-20261124-Batch01.zip — 10 originals; SHA-256 5d544a83e5b5a5f392fb12d45a8055ba3c1f50d9cf88d13c822e5016f078e6bf.
+- CareGanga-Original-Healthcare-UIUX-Reference-20261124-Batch02.zip — 3 originals; SHA-256 6f82d5e95e2c3a630ba189d7a0c5e23413a5d380fd978820e3db5a0f617f3a79.
+
+HUX-01.01: EVIDENCE_RECOVERED for the user-confirmed final public set; remove screenshot-access blocker for this implementation. These public references carry UI04–11 numbering distinct from the older recovered internal healthcare title map. Do not conflate the two. The earlier internal raw images remain unverified; use original Admin reference archive and authorized existing internal flows rather than halt source work. HUX-16.01: integrated rendering, actual payment/booking/database/Android execution and independent review remain NOT_RUN. Source-based comparison found material presentation differences; no exact visual match claimed. See docs/research/CAREGANGA-HEALTHCARE-PUBLIC-VISUAL-REFERENCE-REVIEW-20261124.md for 13-image mapping, source evidence and remaining acceptance. No production use of sample names/portraits, rates, QR, contact details or transactions; approved data and current module boundaries remain controlling.
+
+
 ## Subtracker details and expected user scenarios
 
 ### HUX-01.01 — Recover separate healthcare reference originals
 
-- **Priority/evidence/owner:** P0 / EVIDENCE / CG14–17 all. BLOCKED; runtime NOT_RUN.
-- **Observation:** Reference map records UI-06–24 titles, no raw originals, UI-22 unknown.
+- **Priority/evidence/owner:** P0 / EVIDENCE / CG14–17 all. EVIDENCE_RECOVERED for final public set; runtime NOT_RUN.
+- **Observation:** Final public set of 13 JPGs now available in two verified private Library ZIPs. Historical internal healthcare title map is separate; do not conflate IDs.
 - **Expected experience:** Locate originals from authorized project/library/client source; record actual asset name, source, screen ID and owner; keep private; never substitute generated images as evidence.
 - **Manual scenario / acceptance:** Compare actual H07/H08/H09/H10/H15/H16/H17 and UI-06–24 against captured screens; missing originals remain BLOCKED, not PASS.
 - **Execution evidence:** original QA IDs, role, branch/center, viewport/device, before/after, API/DB where applicable, commit, independent review and PASS/FAIL/BLOCKED/NOT_RUN — pending.

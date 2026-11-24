@@ -67,3 +67,12 @@ Private ChatGPT Library folder `/CareGanga/` is the first lookup location. All s
 
 The Golden pack manifest indexes exactly 167 source previews (A/B/C/U); U01–U10 and B34 include original critical PNGs. Four public archives contain 47 original captures. Admin/public contact sheets were visually inspected: white compact KPI/table workspaces, navy/blue navigation, drawers and public green/gold/cream brand. These are shared design evidence, not UI-06–UI-24 healthcare-specific originals. Prior 15/18 Nov history recovered the distinct healthcare titles but no accessible original file/URI; do not relabel Admin images as healthcare originals. `HEALTHCARE_SCREEN_VISUAL_PARITY=PENDING_ORIGINAL_IMAGE_AND_RUNTIME_QA`. Keep originals private, never bundle client sample information or generate fake evidence.
 
+
+## 24 November 2026 — newly supplied original public healthcare references (supersedes earlier evidence-blocked status)
+
+The user supplied the final public healthcare reference set, 13 original JPGs. All original archive entries were checked against their SHA-256 manifests. Both ZIPs are saved in the private ChatGPT Library under /CareGanga/:
+- CareGanga-Original-Healthcare-UIUX-Reference-20261124-Batch01.zip — 10 originals; SHA-256 5d544a83e5b5a5f392fb12d45a8055ba3c1f50d9cf88d13c822e5016f078e6bf.
+- CareGanga-Original-Healthcare-UIUX-Reference-20261124-Batch02.zip — 3 originals; SHA-256 6f82d5e95e2c3a630ba189d7a0c5e23413a5d380fd978820e3db5a0f617f3a79.
+
+HUX-01.01: EVIDENCE_RECOVERED for the user-confirmed final public set; remove screenshot-access blocker for this implementation. These public references carry UI04–11 numbering distinct from the older recovered internal healthcare title map. Do not conflate the two. The earlier internal raw images remain unverified; use original Admin reference archive and authorized existing internal flows rather than halt source work. HUX-16.01: integrated rendering, actual payment/booking/database/Android execution and independent review remain NOT_RUN. Source-based comparison found material presentation differences; no exact visual match claimed. See docs/research/CAREGANGA-HEALTHCARE-PUBLIC-VISUAL-REFERENCE-REVIEW-20261124.md for 13-image mapping, source evidence and remaining acceptance. No production use of sample names/portraits, rates, QR, contact details or transactions; approved data and current module boundaries remain controlling.
+
