@@ -17,7 +17,7 @@ type Kind="FINANCE_POSTED_LEDGER"|"FINANCE_POSTED_SUMMARY"|
 type Template={kind:Kind;label:string;views:("TABLE"|"SUMMARY"|"CHART"|"PIVOT")[];description:string};
 type Option={ref:string;name:string};
 type AreaOption=Option&{level:string};
-type Catalog={templates:Template[];finance:{ready:boolean;state?:"AVAILABLE"|"ACCESS_RESTRICTED"|"SOURCE_UNAVAILABLE";years:Option[];branches:Option[];
+type Catalog={templates:Template[];payroll?:{ready:boolean;branches:Option[];month:string};finance:{ready:boolean;state?:"AVAILABLE"|"ACCESS_RESTRICTED"|"SOURCE_UNAVAILABLE";years:Option[];branches:Option[];
  allBranches:boolean;areas?:AreaOption[]};appointments:{ready:boolean;state?:"AVAILABLE"|"ACCESS_RESTRICTED"|"SOURCE_UNAVAILABLE";centers:Option[];complete:boolean};
  capabilities:{manage:boolean;export:boolean;schedule:boolean;share?:boolean}};
 type Preview={state:string;kind:Kind;view:"TABLE"|"SUMMARY"|"CHART"|"PIVOT";label:string;
@@ -65,6 +65,7 @@ export function NativeMisReports({token,onExpired,onDraftChange}:{token:string;o
  const [kind,setKind]=useState<Kind|null>(null);
  const [view,setView]=useState<"TABLE"|"SUMMARY"|"CHART"|"PIVOT">("TABLE");
  const [year,setYear]=useState(""),[branch,setBranch]=useState("");
+ const [payrollMonth,setPayrollMonth]=useState(""),[payrollBranch,setPayrollBranch]=useState("");
  const [area,setArea]=useState("");
  const [center,setCenter]=useState(""),[from,setFrom]=useState(""),[until,setUntil]=useState("");
  const [status,setStatus]=useState("");
@@ -80,7 +81,7 @@ export function NativeMisReports({token,onExpired,onDraftChange}:{token:string;o
   try{
    const result=await fetchSource<Catalog>(token,"templates");
    if(!Array.isArray(result.templates))throw Error("Report source options could not be verified.");
-   if(rev===seq.current){setCatalog(result);
+   if(rev===seq.current){setCatalog(result);setPayrollMonth(result.payroll?.month??"");setPayrollBranch("");
     setBranch(result.finance.allBranches?"":result.finance.branches[0]?.ref??"");
     setArea("");
     setKind(result.templates[0]?.kind??null);
@@ -94,7 +95,7 @@ export function NativeMisReports({token,onExpired,onDraftChange}:{token:string;o
  // Filter invalidation runs before initial catalog fetch on mount; otherwise
  // it could invalidate the initial in-flight catalog response.
  useEffect(()=>{seq.current++;setPreview(null);},
-  [kind,view,year,branch,area,center,from,until,status,groupBy,sortBy,sortDirection]);
+  [kind,view,year,branch,area,center,from,until,status,groupBy,sortBy,sortDirection,payrollMonth,payrollBranch]);
  useEffect(()=>{void load();return()=>{seq.current++};},[load]);
  useEffect(()=>{
   const sub=AppState.addEventListener("change",status=>{
@@ -125,6 +126,7 @@ export function NativeMisReports({token,onExpired,onDraftChange}:{token:string;o
    ...(finance?{...(year?{yearRef:year}:{}),...(branch?{branchRef:branch}:{}),
     ...(geography&&area?{areaRef:area}:{})}:{
     ...(center?{centerRef:center}:{}),...(status?{status}:{})}),
+   ...(kind==="PAYROLL_STATUS_SUMMARY"?{...(payrollMonth?{payrollMonth}:{}),...(payrollBranch?{branchRef:payrollBranch}:{})}:{}),
    ...(dated&&from?
     {fromDay:from,untilDay:until}:{}),
    ...(grouped?{groupBy,sortBy,sortDirection}:{}),offset};
@@ -169,6 +171,10 @@ export function NativeMisReports({token,onExpired,onDraftChange}:{token:string;o
     value={view} options={chosen.views.map(v=>({ref:v,label:v==="CHART"?"Chart":
      v==="SUMMARY"?"Summary":v==="PIVOT"?"Pivot":"Table"}))} onChange={v=>{setView(v as typeof view);
       setPreview(null);}}/>}
+   {kind==="PAYROLL_STATUS_SUMMARY"&&catalog.payroll?.ready&&<>
+    <NativeFinanceOptions label="Payroll month" value={payrollMonth} options={Array.from({length:24},(_,i)=>{const [y,m]=catalog.payroll!.month.split("-").map(Number);const d=new Date(Date.UTC(y,m-1-i,1));const ref=d.toISOString().slice(0,7);return {ref,label:ref};})} onChange={setPayrollMonth}/>
+    <NativeFinanceOptions label="Payroll branch" value={payrollBranch} options={[{ref:"",label:"All permitted payroll branches"},...catalog.payroll.branches.map(b=>({ref:b.ref,label:b.name}))]} onChange={setPayrollBranch}/>
+   </>}
    {finance&&<>
     <NativeFinanceOptions label="Financial year" value={year}
      options={[{ref:"",label:"All permitted years"},...catalog.finance.years.map(x=>({
