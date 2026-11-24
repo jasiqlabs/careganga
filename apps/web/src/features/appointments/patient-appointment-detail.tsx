@@ -118,8 +118,8 @@ export function PatientAppointmentDetail({bookingRef}:{bookingRef:string}){
      Add appointment to my calendar</a></p>}
    </div><section className="cg-health-document-panel" aria-label="Private appointment slip">
     <h3>My appointment slip</h3>
-    <p>Original CG-19 private PDF · one patient copy for pay-at-center
-     · status-only QR, no clinical record access.</p>
+    <p>Private appointment PDF · one patient copy for pay-at-center.
+     The QR code confirms booking status only.</p>
     {slip?.status==="ISSUED"&&slip.canDownload?
      <div><p><button className="primary" type="button" disabled={busy||unknown||downloadBusy} onClick={()=>void downloadPrivateSlip("preview")}>Preview private appointment slip</button></p><p><button type="button" disabled={busy||unknown||downloadBusy}
        onClick={()=>void downloadPrivateSlip()}>
