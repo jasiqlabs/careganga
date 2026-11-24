@@ -20,7 +20,7 @@ type Navigation={loginDesired:boolean;memberJoinDesired:boolean;
 type Detail={pageRef:string;kind:string;slug:string;version:number;
  revisionRef:string;status:string;approvalCaseRef:string|null;
  title:string;seoTitle:string;seoDescription:string;canonicalPath:string;
- sections:Section[];assets:Asset[];navigation:Navigation|null;
+ sections:Section[];assets:Asset[];bundledAssets?:{key:string;role:string;order:number;altText:string}[];navigation:Navigation|null;
  publicationStatus:string;scheduledAt:string|null};
 // Same existing CMS editorial page types, slugs and initial section shapes as
 // the original Web CmsExtendedWorkspace. These are draft defaults, not a
@@ -522,6 +522,7 @@ export function NativeCmsEditorial({token,canManage,canPublish,canReview,onExit,
        locked={locked}/>}
     </View>)}
     <Text style={styles.note}>Original scanner-verified placements: {draft.assets.length}</Text>
+    {!!selected.bundledAssets?.length&&<Text style={styles.note}>Default release illustrations: {selected.bundledAssets.length}. Editing text preserves them; upload a replacement in a new draft.</Text>}
     {canManage&&selected.status==="DRAFT"&&!draft.sections.some(s=>typeof s.fields.sourceEventRef==="string")&&
      <NativeCmsMediaUploader token={token} kind={selected.kind}
       onAttemptChange={setMediaActive}
