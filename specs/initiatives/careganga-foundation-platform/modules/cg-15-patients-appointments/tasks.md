@@ -264,6 +264,10 @@ Dependencies: US-003
 
 ## Execution progress
 
+### Healthcare hardening — patient booking review
+HUX-11.01: Web/native appointment review, hold expiry and secondary reception assistance, commits eb11a8d2/f97bbac5. US-004-QA01/02/04–12/14 partial source trace; actual competing slots, expired hold, unknown replay, fee revision, assistance quote, consent and device Back NOT_RUN. Existing QA dispositions unchanged. See [tracker](../../HEALTHCARE_UIUX_HARDENING_TRACKER.md).
+
+
 ### 24 November 2026 — healthcare UX source checkpoint
 
 HUX-06.02/12.02 commits 21680199, 5b9ecb3c, 7c1c9df4, 5fc226fa. Web and native queue primary actions, protected detail on demand, compact totals, stale refresh/history guard, in-row slip. US-006-QA01–05/07/08/11/13/16 partial source trace. Original QA definitions and dispositions unchanged. Runtime/device/build NOT_RUN; independent clearance unavailable; exact reference comparison pending.
