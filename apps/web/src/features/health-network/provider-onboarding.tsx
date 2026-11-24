@@ -680,7 +680,7 @@ export function ProviderOnboarding({canManage,canSelectAccounts,canViewFinance,c
             Submit provider for independent verification</button>
         </section>}
         {canManageFinance&&<section className="form-section"><h3>Protected settlement reference</h3>
-          <p>Enter only a masked display label. The full bank document stays in CG-19 private storage.</p>
+          <p>Enter only a masked display label. The full bank document stays in protected private storage.</p>
           {!!existingBankProof&&<p>
             <a href={"/api/documents/health-draft/files/"+encodeURIComponent(existingBankProof)+"/download"}>
               View current private bank proof</a></p>}
