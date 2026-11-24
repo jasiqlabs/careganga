@@ -910,7 +910,7 @@ export class CmsEditorialService{
  /** Only current effective, original-reviewed article source; bounded cursor,
   * no CMS draft, patient, notice recipients or CG19 object credentials.
   */
- async publicArticles(categoryInput?:string,cursorInput?:string){
+ async publicArticles(categoryInput?:string,cursorInput?:string,eventsOnly=false){
   const category=categoryInput?.trim()??"";
   const cursor=cursorInput?.trim()??"";
   if(category.length>80||!/^[\p{L}0-9 &-]*$/u.test(category)||
@@ -935,6 +935,7 @@ export class CmsEditorialService{
    "AND pub.effective_at<=now() AND (pub.expires_at IS NULL OR pub.expires_at>now()) "+
    "AND ($1::text='' OR lower(body.structured_fields->>'category')=lower($1)) "+
    "AND ($2::text='' OR p.slug>$2) "+
+   "AND (NOT $3::boolean OR body.structured_fields ? 'sourceEventRef') "+
    "AND NOT EXISTS(SELECT 1 FROM cms_asset_placement a "+
    "LEFT JOIN cg19_cms_media_file f ON f.id=a.cg19_file_ref "+
    "AND f.realm_id=a.foundation_root_id AND f.page_id=v.page_id "+
@@ -944,7 +945,7 @@ export class CmsEditorialService{
    "f.scan_status<>'CLEAN_VERIFIED' OR f.public_rights_confirmed=false "+
    "OR f.revision<>a.cg19_validated_version)) "+
    NOTICE_CURRENT_SQL+EVENT_CURRENT_SQL+
-   "ORDER BY p.slug LIMIT 21",[category,cursor]);
+   "ORDER BY p.slug LIMIT 21",[category,cursor,eventsOnly]);
   return {schemaVersion:1,posts:rows.rows.slice(0,20).map(x=>({
    slug:x.slug,title:x.title,category:x.category,excerpt:x.excerpt,
    asOfDate:x.as_of_date,path:"/blog/"+x.slug})),
