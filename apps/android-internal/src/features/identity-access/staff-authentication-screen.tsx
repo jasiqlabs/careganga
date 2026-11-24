@@ -843,7 +843,7 @@ export function StaffAuthenticationScreen() {
     return renderInShell(
       <ScreenErrorBoundary onExit={()=>setBeneficiariesOpen(false)}>
         <Suspense fallback={<ActivityIndicator style={{marginTop:40}}/>}>
-          <NativeBeneficiariesWorkspace key={token} token={token} onExpired={expireSession}
+          <NativeBeneficiariesWorkspace key={token} token={token} onExpired={expireSession} canReadEvidence={roleActions.includes("documents.files.view")} canUploadEvidence={roleActions.includes("documents.files.view")&&roleActions.includes("documents.files.manage")}
             canManage={roleActions.includes("beneficiaries.manage")}
             canLinkProjects={roleActions.includes("beneficiaries.projects.manage")&&roleActions.includes("projects.view")}
             canManageLifecycle={roleActions.includes("beneficiaries.lifecycle.manage")}
