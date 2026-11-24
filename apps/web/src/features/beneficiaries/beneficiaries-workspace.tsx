@@ -51,7 +51,10 @@ export function BeneficiariesWorkspace({canManage,canLinkProjects,canManageLifec
  const [q,setQ]=useState(""),[search,setSearch]=useState(""),[tab,setTab]=useState("ALL"),
   [branch,setBranch]=useState(""),[cursor,setCursor]=useState(""),[seen,setSeen]=useState<string[]>([]);
  const [genderFilter,setGenderFilter]=useState(""),[ageFilter,setAgeFilter]=useState(""),[typeFilter,setTypeFilter]=useState("");
- const [appliedFilters,setAppliedFilters]=useState({gender:"",ageGroup:"",type:""});
+ const [stateFilter,setStateFilter]=useState(""),[districtFilter,setDistrictFilter]=useState("");
+ const [fromFilter,setFromFilter]=useState(""),[toFilter,setToFilter]=useState("");
+ const [filterDistricts,setFilterDistricts]=useState<Option[]>([]);
+ const [appliedFilters,setAppliedFilters]=useState({gender:"",ageGroup:"",type:"",stateRef:"",districtRef:"",registeredFrom:"",registeredTo:""});
  const [epoch,setEpoch]=useState(0),[selected,setSelected]=useState<Item|null>(null),[detailLoading,setDetailLoading]=useState(false);
  const [opts,setOpts]=useState<Options|null>(null),[districts,setDistricts]=useState<Option[]>([]),
   [form,setForm]=useState<Form>(empty),[mode,setMode]=useState<"create"|"edit"|null>(null),
@@ -81,6 +84,7 @@ export function BeneficiariesWorkspace({canManage,canLinkProjects,canManageLifec
    .finally(()=>{if(seq.current===id)setBusyList(false);});
   return()=>{seq.current++;};
  },[search,tab,branch,cursor,epoch,appliedFilters]);
+ useEffect(()=>{let live=true;setFilterDistricts([]);if(stateFilter)void api<Options>("/options?"+new URLSearchParams({stateRef:stateFilter})).then(v=>{if(live)setFilterDistricts(v.districts);}).catch(e=>{if(live)setError(e.message);});return()=>{live=false;};},[stateFilter]);
  useEffect(()=>{let live=true;setDistricts([]);if(!form.stateRef)return;
   void api<Options>("/options?"+new URLSearchParams({stateRef:form.stateRef}))
    .then(v=>{if(live)setDistricts(v.districts);}).catch(e=>{if(live)setFormError(e.message);});
@@ -234,8 +238,12 @@ export function BeneficiariesWorkspace({canManage,canLinkProjects,canManageLifec
    <label style={field}>Beneficiary type<input style={input} maxLength={60} value={typeFilter} onChange={e=>setTypeFilter(e.target.value)}/></label>
     <label style={field}>Gender<select style={input} value={genderFilter} onChange={e=>setGenderFilter(e.target.value)}><option value="">All</option>{["MALE","FEMALE","OTHER","NOT_SPECIFIED"].map(x=><option key={x} value={x}>{nice(x)}</option>)}</select></label>
     <label style={field}>Age group<select style={input} value={ageFilter} onChange={e=>setAgeFilter(e.target.value)}><option value="">All</option>{["CHILD","ADULT","SENIOR","NOT_SPECIFIED"].map(x=><option key={x} value={x}>{nice(x)}</option>)}</select></label>
-    <button type="button" style={primary} onClick={()=>{setSearch(q.trim());setAppliedFilters({gender:genderFilter,ageGroup:ageFilter,type:typeFilter});setCursor("");setSeen([]);}}>Apply Filters</button>
-   <button type="button" style={secondary} onClick={()=>{setQ("");setSearch("");setBranch("");setTab("ALL");setGenderFilter("");setAgeFilter("");setTypeFilter("");setAppliedFilters({gender:"",ageGroup:"",type:""});setCursor("");setSeen([]);}}>Reset</button>
+    <label style={field}>State<select style={input} value={stateFilter} onChange={e=>{setStateFilter(e.target.value);setDistrictFilter("");}}><option value="">All states</option>{opts?.states.map(x=><option key={x.value} value={x.value}>{x.label}</option>)}</select></label>
+    <label style={field}>District<select style={input} disabled={!stateFilter} value={districtFilter} onChange={e=>setDistrictFilter(e.target.value)}><option value="">All districts</option>{filterDistricts.map(x=><option key={x.value} value={x.value}>{x.label}</option>)}</select></label>
+    <label style={field}>Registered from<input type="date" style={input} value={fromFilter} max={toFilter||undefined} onChange={e=>setFromFilter(e.target.value)}/></label>
+    <label style={field}>Registered to<input type="date" style={input} value={toFilter} min={fromFilter||undefined} onChange={e=>setToFilter(e.target.value)}/></label>
+    <button type="button" style={primary} onClick={()=>{setSearch(q.trim());setAppliedFilters({gender:genderFilter,ageGroup:ageFilter,type:typeFilter,stateRef:stateFilter,districtRef:districtFilter,registeredFrom:fromFilter,registeredTo:toFilter});setCursor("");setSeen([]);}}>Apply Filters</button>
+   <button type="button" style={secondary} onClick={()=>{setQ("");setSearch("");setBranch("");setTab("ALL");setGenderFilter("");setAgeFilter("");setTypeFilter("");setStateFilter("");setDistrictFilter("");setFromFilter("");setToFilter("");setAppliedFilters({gender:"",ageGroup:"",type:"",stateRef:"",districtRef:"",registeredFrom:"",registeredTo:""});setCursor("");setSeen([]);}}>Reset</button>
   </div>
   {notice&&<p role="status" style={{color:"var(--cg-success,#166534)"}}>{notice}</p>}
   {error&&<p role="alert" style={{color:"var(--cg-danger,#b91c1c)"}}>{error}</p>}
