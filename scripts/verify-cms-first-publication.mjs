@@ -31,7 +31,7 @@ export async function readiness(base,request=fetch){
     !Array.isArray(p.assets)){failures.push(slug);continue;}
    if(slug==="about"&&requiredIntroPlacements.some(placement=>!p.sections.some(s=>s.kind==="RICH_TEXT"&&s.fields?.placement===placement&&typeof s.fields.heading==="string"&&s.fields.heading.trim()&&typeof s.fields.body==="string"&&s.fields.body.trim())))failures.push("about-editorial-intros");
    if(slug==="home"&&(!["HERO","RICH_TEXT","CTA","FEATURE_CARDS","JOIN_CARDS","PROJECT_TEASER","SITE_FOOTER"].every(kind=>p.sections.some(s=>s.kind===kind))||!p.sections.some(s=>s.kind==="HERO"&&s.fields?.visible!==false)))failures.push("home-editorial-sections");
-   if(slug==="home"&&[["HERO",0],["ABOUT",20],["PROMO",30],["FEATURE",0],["FEATURE",1],["FEATURE",2]].some(([role,order])=>!p.assets.some(a=>a.role===role&&a.order===order&&typeof a.altText==="string"&&a.altText.trim()&&typeof a.src==="string"&&/^\\/api\\/public\\/content\\/media\\/[a-f0-9-]{36}$/i.test(a.src))))failures.push("home-editorial-media");
+   if(slug==="home"&&[["HERO",0],["ABOUT",20],["PROMO",30],["FEATURE",0],["FEATURE",1],["FEATURE",2]].some(([role,order])=>!p.assets.some(a=>a.role===role&&a.order===order&&typeof a.altText==="string"&&a.altText.trim()&&typeof a.src==="string"&&/^\/api\/public\/content\/media\/[a-f0-9-]{36}$/i.test(a.src))))failures.push("home-editorial-media");
    if(slug==="contact"&&!p.sections.some(s=>s.kind==="CONTACT_INFO"&&Array.isArray(s.fields?.faqs)&&s.fields.faqs.length>=4))failures.push("contact-faqs");
   }catch{failures.push(slug);}
  }
