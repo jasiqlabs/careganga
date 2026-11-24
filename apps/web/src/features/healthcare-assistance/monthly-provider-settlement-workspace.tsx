@@ -103,7 +103,7 @@ export function MonthlyProviderSettlementWorkspace({canPropose,canReview,canPay}
   const prompt=kind==="review"?
    "Independently approve this source-backed Foundation provider claim? "+
    "This does not send money or mark a bank transfer as paid.":
-   "Prepare an original monthly claim only from already posted CG09 "+
+   "Prepare an original monthly claim only from already recorded "+
    "Foundation obligations? No patient money will be collected.";
   if(!window.confirm(prompt))return;
   const expectedRevision=kind==="review"?data.revision!:1;
@@ -137,7 +137,7 @@ export function MonthlyProviderSettlementWorkspace({canPropose,canReview,canPay}
  return <section className="form-section" aria-label="Monthly Foundation provider settlements">
   <h1>Healthcare Provider Settlements</h1>
   <p>These claims use approved completed services and the original posted
-   Foundation obligations in CG-09. Center-collected patient money is never
+   Foundation accounting obligations. Center-collected patient money is never
    Foundation income. A reviewed claim does not prove provider payment.</p>
   {loading&&<p role="status">Checking original monthly sources…</p>}
   {!!error&&<p role="alert" className="notice error">{error}</p>}
@@ -210,7 +210,7 @@ export function MonthlyProviderSettlementWorkspace({canPropose,canReview,canPay}
      money(data.outstandingMinor):"Not yet approved"}</dd>
    </dl>
    <p>Patient collection is excluded. Provider payment remains unverified
-    unless a separate original CG09 bank reconciliation confirms it.</p>
+    unless a separate verified bank reconciliation confirms it.</p>
    {data.state==="NOT_PREPARED"&&canPropose&&
     <button type="button" className="primary" disabled={busy||uncertain||
      !data.postedLiabilities} onClick={()=>void execute("propose")}>
