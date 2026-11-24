@@ -538,7 +538,7 @@ checks.push(["Public Android accepts only an approved canonical membership/volun
  files.android.includes('data.volunteerJoin?.visible===true&&data.volunteerJoin?.path==="/volunteer"')&&
  files.android.includes('memberJoin&&<CmsButton title="Become a Member"')]);
 checks.push(["Public Android CMS CTA navigation matches current canonical join visibility",
- files.android.includes('"/collaboration","/membership","/volunteer"].includes(route)')&&
+ files.android.includes('"/collaboration","/membership","/volunteer","/campaigns"].includes(route)')&&
  files.android.includes('if(route==="/membership")return memberJoin;')&&
  files.android.includes('if(route==="/volunteer")return volunteerJoin;')&&
  files.android.includes('if(!canNavigate(href))return;')&&
@@ -554,6 +554,24 @@ checks.push(["Public Web joins use only exact owner destinations",
 checks.push(["Healthcare directory remains discoverable without editorial publication",
  files.header.includes('href={isPublished("/healthcare")?"/healthcare":"/health-network"}')&&
  files.web.includes('href={isPublished("/healthcare")?"/healthcare":"/health-network"}')]);
+const ctaRoute=read("apps/web/src/features/cms-public-content/cms-cta-route.ts");
+const nativeExtendedCta=read("apps/android-public/src/features/cms/cms-extended-native-screen.tsx");
+const canonicalCtaList='["/","/about","/contact","/our-impact","/ngo-information","/gallery","/videos","/publications","/healthcare","/our-work","/upcoming-projects","/collaboration","/membership","/volunteer","/campaigns"]';
+checks.push(["CMS hero and promo routes use same fixed cross-channel allowlist",
+ [files.backend,ctaRoute,files.android].every(s=>s.includes(canonicalCtaList))&&
+ files.backend.includes('path(fields.primaryPath,"primaryPath",kind)')&&
+ files.backend.includes('path(fields.secondaryPath,"secondaryPath",kind)')&&
+ files.backend.includes('path(fields.path,"path",kind)')&&
+ files.admin.includes("isCmsCtaRoute(draft.promoPath.trim())")]);
+checks.push(["CMS effective CTA gating preserves join flags, media scope and approved page visibility",
+ ctaRoute.includes('navigation.memberJoin.path===value')&&
+ ctaRoute.includes('navigation.volunteerJoin.path===value')&&
+ ctaRoute.includes('navigation?.publishedRoutes?.some(p=>p.path===required)===true')&&
+ files.web.includes('effectiveCmsCtaRoute(href,navigation)')&&
+ files.carousel.includes('effectiveCmsCtaRoute(href,navigation)')&&
+ files.android.includes('canNavigate={canNavigate}')&&nativeExtendedCta.includes('canNavigate(f.ctaPath)&&')]);
+checks.push(["Neutral healthcare editorial CTA still excludes unapproved operational routes",
+ files.backend.includes('kind==="HEALTHCARE"&&!["/","/about","/contact"].includes(x)')]);
 let errors=0;
 for(const [label,ok] of checks){
  console.log((ok?"SOURCE-PRESENT":"SOURCE-FAIL")+": "+label);
