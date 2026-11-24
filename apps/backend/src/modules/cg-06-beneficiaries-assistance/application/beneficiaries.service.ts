@@ -63,10 +63,10 @@ export class BeneficiariesService{
    contactMobile:revoked?null:r.contact_mobile,
    representativeName:revoked?null:r.representative_name,
    representativeContact:revoked?null:r.representative_contact,
-   branchRef:r.branch_scope_id,stateRef:r.state_ref,districtRef:r.district_ref,blockRef:revoked?null:r.block_ref,beneficiaryCategory:revoked?null:r.beneficiary_category,
-   beneficiaryType:r.beneficiary_type,gender:r.gender,ageGroup:r.age_group,
-   consentKind:r.consent_kind,consentPurpose:revoked?null:r.consent_purpose,
-   consentAcknowledgedAt:r.consent_acknowledged_at,consentRevoked:revoked,
+   branchRef:r.branch_scope_id,stateRef:revoked?"":r.state_ref,districtRef:revoked?null:r.district_ref,blockRef:revoked?null:r.block_ref,beneficiaryCategory:revoked?null:r.beneficiary_category,
+   beneficiaryType:revoked?"Restricted":r.beneficiary_type,gender:revoked?"NOT_SPECIFIED":r.gender,ageGroup:revoked?"NOT_SPECIFIED":r.age_group,
+   consentKind:revoked?"NOT_SPECIFIED":r.consent_kind,consentPurpose:revoked?null:r.consent_purpose,
+   consentAcknowledgedAt:revoked?null:r.consent_acknowledged_at,consentRevoked:revoked,
    verification:r.verification_state,lifecycle:r.lifecycle_state,
    revision:r.profile_revision,createdAt:r.created_at,updatedAt:r.updated_at};
  }
@@ -143,7 +143,7 @@ export class BeneficiariesService{
   const mobile=input.contactMobile===undefined?"":input.contactMobile;
   if(typeof name!=="string"||name.length>80||typeof mobile!=="string"||mobile.length>16)
    throw new BadRequestException("Check beneficiary search details");
-  const q=name.trim().toLowerCase(),phone=mobile.trim();
+  const q=name.trim().length>=3?name.trim().toLowerCase():"",phone=mobile.trim();
   if(phone.length&& !/^[+][1-9][0-9]{7,14}$/.test(phone))
    throw new BadRequestException("Check the contact including country code");
   return this.run(token,"beneficiaries.manage",async(tx,a)=>{
@@ -207,6 +207,7 @@ export class BeneficiariesService{
  async changeLifecycle(token:string,id:string,raw:unknown){
   const target=ref(id),v=parseChange(raw),hash=digest([target,v]);
   return this.run(token,"beneficiaries.lifecycle.manage",async(tx,a)=>{
+   await this.identity.assertCurrent(tx,a,"beneficiaries.view");
    const past=await this.original(tx,a,v.key,"LIFECYCLE",hash,target);if(past)return past;
    const before=await this.row(tx,a,target,true);
    if(before.profile_revision!==v.expected||before.lifecycle_state===v.lifecycle||before.consent_revoked_at)throw conflict();
@@ -222,6 +223,7 @@ export class BeneficiariesService{
  async revokeConsent(token:string,id:string,raw:unknown){
   const target=ref(id),v=parseRevoke(raw),hash=digest([target,v]);
   return this.run(token,"beneficiaries.consent.revoke",async(tx,a)=>{
+   await this.identity.assertCurrent(tx,a,"beneficiaries.view");
    const past=await this.original(tx,a,v.key,"REVOKE_CONSENT",hash,target);if(past)return past;
    const before=await this.row(tx,a,target,true);
    if(before.profile_revision!==v.expected||before.consent_revoked_at)throw conflict();
@@ -403,16 +405,16 @@ export class BeneficiariesService{
     "SELECT "+columns+" FROM beneficiary b WHERE b.root_realm_id=$1 "+
     "AND ($2::boolean OR b.branch_scope_id=ANY($3::uuid[])) "+
     "AND ($4::uuid IS NULL OR b.branch_scope_id=$4) "+
-    "AND ($5::uuid IS NULL OR b.state_ref=$5) AND ($6::uuid IS NULL OR b.district_ref=$6) "+
+    "AND ($5::uuid IS NULL OR (b.consent_revoked_at IS NULL AND b.state_ref=$5)) AND ($6::uuid IS NULL OR (b.consent_revoked_at IS NULL AND b.district_ref=$6)) "+
     "AND ($7='' OR ($7='PENDING' AND b.verification_state IN ('DRAFT','SUBMITTED','UNDER_REVIEW','RETURNED')) OR b.verification_state=$7) "+
      "AND ($8='' OR b.lifecycle_state=$8) "+
-    "AND ($9='' OR b.beneficiary_type=$9) "+
+    "AND ($9='' OR (b.consent_revoked_at IS NULL AND lower(b.beneficiary_type)=lower($9))) "+
     "AND ($10='' OR strpos(lower(b.display_ref),lower($10))>0 OR "+
     "(b.consent_revoked_at IS NULL AND (strpos(lower(b.private_name),lower($10))>0 OR b.contact_mobile=$10))) "+
     "AND ($11::uuid IS NULL OR (b.consent_revoked_at IS NULL AND EXISTS (SELECT 1 FROM beneficiary_project_link l "+
     "WHERE l.root_realm_id=b.root_realm_id AND l.beneficiary_id=b.id AND l.project_ref=$11 AND l.ended_at IS NULL))) "+
     "AND ($12::timestamptz IS NULL OR (b.created_at,b.id)<($12::timestamptz,$13::uuid)) "+
-    "AND ($14='' OR b.gender=$14) AND ($15='' OR b.age_group=$15) "+
+    "AND ($14='' OR (b.consent_revoked_at IS NULL AND b.gender=$14)) AND ($15='' OR (b.consent_revoked_at IS NULL AND b.age_group=$15)) "+
     "AND ($16::date IS NULL OR b.created_at>=($16::date::timestamp AT TIME ZONE 'Asia/Kolkata')) "+
     "AND ($17::date IS NULL OR b.created_at<(($17::date+1)::timestamp AT TIME ZONE 'Asia/Kolkata')) "+
     "AND ($18::uuid IS NULL OR (b.consent_revoked_at IS NULL AND b.block_ref=$18)) "+
