@@ -69,6 +69,14 @@ export class PayrollCompensationService{
    await recordPayrollAudit(tx,a,"COMPENSATION","READ");
    return {...options,items:result.items,hasMore:offset+30<result.total,offset,summary:{total:result.total,active:result.active,configured:result.configured,gross:result.gross,pending:result.pending,documentsPending:result.documents_pending}};
   });}
+ async leaveRuleOptions(token:string,branchInput:unknown){
+  const branch=branchInput==="FOUNDATION"?null:id(branchInput);
+  return this.run(token,"payroll.policy.manage",async(tx,a)=>{
+   await this.identity.assertCurrent(tx,a,"payroll.compensation.view");await this.branches.projectBranch(tx,a,branch);
+   const rows=(await tx.query<{value:string;label:string;from:string;until:string|null}>("SELECT id AS value,leave_type AS label,effective_from::text AS \"from\",effective_to::text AS until FROM hr_leave_policy WHERE root_realm_id=$1 ORDER BY leave_type,effective_from DESC,id LIMIT 101",[a.realmId])).rows;
+   return {items:rows.slice(0,100),hasMore:rows.length>100};
+  });
+ }
  async bankOptions(token:string,branchInput:unknown){
   const branch=branchInput==="FOUNDATION"?null:id(branchInput);
   return this.run(token,"payroll.compensation.view",async(tx,a)=>{
