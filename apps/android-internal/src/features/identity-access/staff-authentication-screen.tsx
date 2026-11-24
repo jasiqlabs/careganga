@@ -847,7 +847,9 @@ export function StaffAuthenticationScreen() {
             canManage={roleActions.includes("beneficiaries.manage")}
             canLinkProjects={roleActions.includes("beneficiaries.projects.manage")&&roleActions.includes("projects.view")}
             canManageLifecycle={roleActions.includes("beneficiaries.lifecycle.manage")}
-            canRevoke={roleActions.includes("beneficiaries.consent.revoke")}/>
+            canRevoke={roleActions.includes("beneficiaries.consent.revoke")}
+            canSubmitVerification={roleActions.includes("beneficiaries.manage")}
+            canReviewVerification={roleActions.includes("beneficiaries.verification.review")&&roleActions.includes("approvals.review")}/>
         </Suspense>
       </ScreenErrorBoundary>,"beneficiaries",()=>setBeneficiariesOpen(false));
   }
