@@ -228,8 +228,9 @@ function TeamSelection({sections,choices,error,locked,refresh,onChange}:{section
 }
 function ProjectSelection({sections,choices,error,locked,refresh,onChange}:{sections:Section[];choices:ProjectSource[];error:string;locked:boolean;refresh:()=>void;onChange:(s:Section[])=>void}){
  const current=sections.find(s=>s.kind==="PROJECT_TEASER"),refs=Array.isArray(current?.fields.sourceRefs)?current.fields.sourceRefs as string[]:[];
- const set=(next:string[])=>onChange([...sections.filter(s=>s.kind!=="PROJECT_TEASER"),...(next.length?[{kind:"PROJECT_TEASER",order:60,fields:{heading:typeof current?.fields.heading==="string"?current.fields.heading:"Our Projects",sourceRefs:next}}]:[])]);
+ const set=(next:string[],enabled=!!current||next.length>0)=>onChange([...sections.filter(s=>s.kind!=="PROJECT_TEASER"),...(enabled?[{kind:"PROJECT_TEASER",order:60,fields:{heading:typeof current?.fields.heading==="string"?current.fields.heading:"Our Projects",sourceRefs:next}}]:[])]);
  return <View style={styles.panel}><Text accessibilityRole="header" style={styles.heading}>Approved operational projects</Text><Text style={styles.note}>Select the reviewed CG-05 source. Only a separate CMS publication can show it publicly.</Text>
+ {button(current?"Keep project directory available ✓":"Keep project directory available",()=>set(refs,!current),locked||refs.length>0)}
  <Pressable accessibilityRole="button" disabled={locked} onPress={refresh}><Text style={styles.heading}>Refresh approved projects</Text></Pressable>
  {!!error&&<Text accessibilityRole="alert">{error}</Text>}{!choices.length&&!error&&<Text>No current eligible projects.</Text>}
  {choices.map(p=><Pressable key={p.sourceRef} accessibilityRole="checkbox" accessibilityState={{checked:refs.includes(p.sourceRef),disabled:locked||(!refs.includes(p.sourceRef)&&refs.length>=12)}} disabled={locked||(!refs.includes(p.sourceRef)&&refs.length>=12)} onPress={()=>set(refs.includes(p.sourceRef)?refs.filter(x=>x!==p.sourceRef):[...refs,p.sourceRef])}><Text style={styles.note}>{refs.includes(p.sourceRef)?"✓ ":"○ "}{p.title} · {p.category} · {p.area}</Text></Pressable>)}
