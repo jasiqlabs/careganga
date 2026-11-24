@@ -31,7 +31,11 @@ function parse(raw:unknown,allowed:string[]){
 function emailInput(raw:unknown){
  if(typeof raw!=="string"||raw.length>254||!/^[A-Za-z0-9.!#$%&'*+/=?^_`{|}~-]+@[A-Za-z0-9-]+(?:\.[A-Za-z0-9-]+)+$/.test(raw.trim()))
   throw new BadRequestException({code:"NEWSLETTER_INVALID"});
- return raw.trim().toLowerCase();
+ const email=raw.trim().toLowerCase(),[local,domain]=email.split("@");
+ if(local.length>64||local.startsWith(".")||local.endsWith(".")||local.includes("..")||
+    domain.split(".").some(label=>label.length>63||label.startsWith("-")||label.endsWith("-")))
+  throw new BadRequestException({code:"NEWSLETTER_INVALID"});
+ return email;
 }
 function actionInput(value:unknown):Action{
  if(value!=="SUBSCRIBE"&&value!=="WITHDRAW")throw new BadRequestException({code:"NEWSLETTER_INVALID"});
@@ -92,7 +96,7 @@ export class NewsletterConsentService{
     [root,mail,action,id,digest("challenge",id+":"+code),key?digest("withdrawal",key):null,CONSENT_VERSION]);
    // Bounded removal of expired challenge proof, not consent history.
    await tx.query(`DELETE FROM cg19_newsletter_challenge WHERE id IN
-    (SELECT id FROM cg19_newsletter_challenge WHERE expires_at<now()-interval '24 hours' ORDER BY expires_at LIMIT 50)`);
+    (SELECT id FROM cg19_newsletter_challenge WHERE expires_at<now()-interval '24 hours' ORDER BY expires_at LIMIT 50 FOR UPDATE SKIP LOCKED)`);
    return true;
   });
   if(!stored)return {state:"CHECK_EXISTING_CODE"};
