@@ -49,7 +49,7 @@ export class PayrollCompensationReviewService{
   });
  }
  async list(token:string){
-  return this.source.run(token,"payroll.compensation.review",async(tx,a)=>{
+  return this.source.run(token,"payroll.sensitive.approve",async(tx,a)=>{
    await this.identity.assertCurrent(tx,a,"approvals.review");await this.protectedOwner.verifyReviewer(tx,a,"approvals.review",true);
    const rows=(await tx.query<{id:string;case_number:string;source_kind:Kind;source_ref:string}>("SELECT c.id,c.case_number,s.source_kind,COALESCE(s.policy_ref,s.compensation_ref,s.payout_ref) AS source_ref FROM cg03_case c JOIN payroll_review_snapshot s ON s.root_realm_id=c.realm_id AND s.id=c.payroll_review_ref WHERE c.realm_id=$1 AND c.case_kind='PAYROLL_COMPENSATION_REVIEW' AND c.status='SUBMITTED' AND c.proposer_id<>$2 ORDER BY c.submitted_at DESC,c.id DESC LIMIT 100",[a.realmId,a.accountId])).rows;
    const items=[];for(const row of rows){try{const src=await this.source.reviewSource(tx,a,row.source_kind,row.source_ref);items.push({ref:row.id,caseNumber:row.case_number,kind:row.source_kind,preview:src.preview});}catch(e){if(!(e instanceof ForbiddenException)&&!(e instanceof NotFoundException))throw e;}}
@@ -57,7 +57,7 @@ export class PayrollCompensationReviewService{
   });
  }
  async detail(token:string,ref:string){
-  return this.source.run(token,"payroll.compensation.review",async(tx,a)=>{
+  return this.source.run(token,"payroll.sensitive.approve",async(tx,a)=>{
    await this.identity.assertCurrent(tx,a,"approvals.review");await this.protectedOwner.verifyReviewer(tx,a,"approvals.review",true);
    const c=await this.original(tx,a,ref),src=await this.source.reviewSource(tx,a,c.source_kind,c.source_ref);
    const canReview=c.status==="SUBMITTED"&&src.row.status==="SUBMITTED"&&src.row.revision===2&&src.row.approval_case_ref===c.id&&src.digest===c.payroll_source_digest&&c.proposer_id!==a.accountId&&src.row.created_by!==a.accountId;
@@ -70,7 +70,7 @@ export class PayrollCompensationReviewService{
   if(typeof x.currentPassword!=="string"||x.currentPassword.length<8||Buffer.byteLength(x.currentPassword,"utf8")>1024)throw new BadRequestException("Enter the current Foundation password");
   const password=x.currentPassword,requestDigest=hash([ref,expected,action]),auth=await this.sessions.requireAction(token,"approvals.review");
   await this.sessions.limitFoundationRootProof(auth);
-  return this.source.run(token,"payroll.compensation.review",async(tx,a)=>{
+  return this.source.run(token,"payroll.sensitive.approve",async(tx,a)=>{
    await this.identity.assertCurrent(tx,a,"approvals.review");await this.protectedOwner.verifyReviewer(tx,a,"approvals.review",true);
    const c=await this.original(tx,a,ref,true),src=await this.source.reviewSource(tx,a,c.source_kind,c.source_ref,action==="APPROVE");
    if(c.proposer_id===a.accountId||src.row.created_by===a.accountId)throw new ForbiddenException("Independent payroll reviewer required");
