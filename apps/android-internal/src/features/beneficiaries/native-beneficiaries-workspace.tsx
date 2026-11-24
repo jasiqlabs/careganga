@@ -10,7 +10,9 @@ type Item={ref:string;reference:string;name:string;contactMobile:string|null;rep
  representativeContact:string|null;branchRef:string|null;stateRef:string;districtRef:string|null;blockRef:string|null;beneficiaryCategory:string|null;beneficiaryType:string;
  gender:string;ageGroup:string;consentKind:string;consentPurpose:string|null;consentRevoked:boolean;
  verification:string;lifecycle:string;revision:number;projectLinks?:{ref:string;projectRef:string;projectName:string}[]};
-type Page={items:Item[];nextCursor:string|null;hasMore:boolean};
+type Summary={total:number;male:number;female:number;children:number;active:number;verified:number};
+const metrics:[keyof Summary,string][]=[["total","Total Beneficiaries"],["male","Male"],["female","Female"],["children","Children"],["active","Active"],["verified","Verified"]];
+type Page={summary:Summary;items:Item[];nextCursor:string|null;hasMore:boolean};
 type DuplicateSuggestion={reference:string;maskedName:string;beneficiaryType:string;contactMatches:boolean};
 type DuplicateResponse={advisory:boolean;items:DuplicateSuggestion[];hasMore:boolean};
 type ActionHistory={action:string;revision:number;reason:string|null;at:string};
@@ -219,6 +221,13 @@ export function NativeBeneficiariesWorkspace({token,onExpired,canManage,canLinkP
   <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={{padding:18,paddingBottom:100,gap:12}}>
    <Text style={{fontSize:23,fontWeight:"800",color:theme.text}}>Beneficiaries</Text>
    <Text style={{color:"#64748B"}}>Private Foundation records · current branch and role only</Text>
+   <View style={{flexDirection:"row",flexWrap:"wrap",gap:8}}>
+    {metrics.map(([key,label])=><View key={key} style={{flexBasis:"30%",flexGrow:1,backgroundColor:"white",padding:12,borderRadius:10,borderWidth:1,borderColor:"#E2E8F0"}}>
+     <Text style={{fontSize:12,color:"#64748B"}}>{label}</Text>
+     <Text style={{fontSize:22,fontWeight:"800",color:theme.text}}>{loading?"…":page?.summary?.[key]??"—"}</Text>
+    </View>)}
+   </View>
+   <Text style={{fontSize:12,color:"#64748B"}}>Current authorized scope and applied filters. Withdrawn consent is excluded from demographic, active and verified counts.</Text>
    {canManage&&<Button label="Add Beneficiary" onPress={()=>open("create")}/>}
    <TextInput accessibilityLabel="Search beneficiary" value={q} onChangeText={setQ}
     style={{backgroundColor:"white",borderWidth:1,borderColor:"#CBD5E1",padding:12,borderRadius:10}}
