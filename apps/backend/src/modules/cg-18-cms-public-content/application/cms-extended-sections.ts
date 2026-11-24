@@ -209,7 +209,7 @@ export function parseExtendedSection(kind:string,raw:unknown):Record<string,unkn
    approvalNumber:str(x.approvalNumber??"","approvalNumber",100),
    validFrom:start,validUntil:end,
    verifiedAsOf:date(x.verifiedAsOf,"verifiedAsOf"),
-   source:str(x.source??"","source",180,verification==="VERIFIED"?3:0),verification,
+   source:str(x.source??"","source",180,verification==="VERIFIED"||x.pan||x.registrationNumber||x.approvalNumber||(Array.isArray(x.documents)&&x.documents.length)?3:0),verification,
    disclaimer:str(x.disclaimer??"Check current official records before claiming a tax benefit.",
     "disclaimer",400,10),
    documents:(()=>{
@@ -228,7 +228,6 @@ export function parseExtendedSection(kind:string,raw:unknown):Record<string,unkn
   };
   if(out.verifiedAsOf>new Date().toISOString().slice(0,10))
    return error("verifiedAsOf");
-  if(verification==="NOT_VERIFIED"&&(out.pan||out.registrationNumber||out.approvalNumber||out.documents.length))return error("verification");
   if(verification==="VERIFIED"&&(!out.issuer||!out.approvalNumber||
      !start||!end||end<new Date().toISOString().slice(0,10)))
    return error("verification");
