@@ -1,7 +1,5 @@
 import {BadRequestException,ConflictException,Injectable,NotFoundException} from "@nestjs/common";
 import {createHash} from "node:crypto";
-import type {PoolClient} from "pg";
-import type {VerifiedFoundationActor as Actor} from "../../cg-01-identity-access/public-api";
 import {FoundationStructureIdentityFacade} from "../../cg-01-identity-access/application/foundation-structure-identity.facade";
 import {BranchSourceFacade} from "../../cg-02-foundation-structure/application/branch-source.facade";
 import {PayrollCompensationService} from "./payroll-compensation.service";
