@@ -617,3 +617,11 @@ for(const [label,ok] of checks){
 }
 assert.equal(errors,0,"Source wiring assertions failed");
 console.log("CG-18 US-001–004 original website/navigation static source-presence checks are green ONLY if all checks above pass; 76 original runtime QA, live Web/Android/DB, full original URLs, About dropdown and pixel fidelity remain NOT EXECUTED/NOT VERIFIED.");
+
+// E2E-006 current HR name/designation only
+const hrPublicBio=read("apps/backend/src/modules/cg-10-human-resources/application/hr-public-bio-editorial-source.ts");
+const teamRoute=read("apps/web/src/app/about/team/page.tsx");
+for(const needle of ["c.consent_status='GRANTED'","acc.status='ACTIVE'","b.status='ACTIVE'","c.consent_version","this.branches.projectBranchScope(tx,actor)","c.proof===x.proof"])assert.ok(hrPublicBio.includes(needle),needle);
+for(const needle of ["teamSelections(fields.members)","this.hrPublicBio.choices(tx,actor,chosen.map","cards.map(({name,designation})",'a.role==="TEAM"||!placementFits'])assert.ok(files.backend.includes(needle),needle);
+assert.ok(files.due.includes("this.teamRevisionEligible(tx,item.foundation_root_id,item.page_revision_id)"));
+assert.ok(teamRoute.includes("p.consentConfirmed!==true")&&files.android.includes("function NativeTeamDirectory")&&internalCms.includes("TeamSelection sections="));
