@@ -114,7 +114,7 @@ export class SupportService{
       "INSERT INTO cg19_support_guest_throttle(bucket_digest,window_started_at,attempt_count) "+
       "VALUES($1,now(),1) ON CONFLICT(bucket_digest) DO UPDATE SET "+
       "attempt_count=CASE WHEN cg19_support_guest_throttle.window_started_at<"+
-      "now()-make_interval(secs=>$2) THEN 1 ELSE cg19_support_guest_throttle.attempt_count+1 END,"+
+      "now()-make_interval(secs=>$2) THEN 1 ELSE LEAST(cg19_support_guest_throttle.attempt_count::bigint+1,2147483647)::integer END,"+
       "window_started_at=CASE WHEN cg19_support_guest_throttle.window_started_at<"+
       "now()-make_interval(secs=>$2) THEN now() ELSE cg19_support_guest_throttle.window_started_at END "+
       "RETURNING attempt_count",[digest,seconds]);
