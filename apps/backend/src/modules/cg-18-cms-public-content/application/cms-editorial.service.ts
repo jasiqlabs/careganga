@@ -60,13 +60,14 @@ function input(v:unknown,keys:string[]){
   throw new BadRequestException({code:"CMS_INPUT_INVALID"});
  return v as Record<string,unknown>;
 }
-function path(v:unknown,field:string){
+function path(v:unknown,field:string,kind?:string){
  const x=text(v,field,140,1);
- if(!["/","/about","/contact"].includes(x))
+ if(kind==="HEALTHCARE"&&!["/","/about","/contact"].includes(x))throw new BadRequestException({code:"CMS_UNAVAILABLE_ROUTE",field});
+ if(!["/","/about","/contact","/our-impact","/ngo-information","/gallery","/videos","/publications","/healthcare","/our-work","/upcoming-projects","/collaboration","/membership","/volunteer","/campaigns"].includes(x))
   throw new BadRequestException({code:"CMS_UNAVAILABLE_ROUTE",field});
  if(!/^\/(?:[a-z0-9-]+\/?)*$/.test(x)||x.startsWith("//")||
   /(^|\/)(admin|api|auth|internal|_next)(\/|$)/.test(x)||
-  /^\/(join|volunteer|book)(\/|$)/.test(x))
+  /^\/(join|book)(\/|$)/.test(x))
   throw new BadRequestException({code:"CMS_UNAVAILABLE_ROUTE",field});
  return x;
 }
@@ -202,11 +203,11 @@ function parseContent(raw:unknown):Content{
    out.headingColor=heroColor("headingColor",fields.headingColor,"#FFE34A");
    out.subtitleColor=heroColor("subtitleColor",fields.subtitleColor,"#8CF442");
    if(fields.primaryLabel!==undefined)out.primaryLabel=text(fields.primaryLabel,"primaryLabel",60,2);
-   if(fields.primaryPath!==undefined)out.primaryPath=path(fields.primaryPath,"primaryPath");
+   if(fields.primaryPath!==undefined)out.primaryPath=path(fields.primaryPath,"primaryPath",kind);
    if(Boolean(fields.primaryLabel)!==Boolean(fields.primaryPath))
     throw new BadRequestException({code:"CMS_INPUT_INVALID",field:"primaryPath"});
    if(fields.secondaryLabel!==undefined)out.secondaryLabel=text(fields.secondaryLabel,"secondaryLabel",60,2);
-   if(fields.secondaryPath!==undefined)out.secondaryPath=path(fields.secondaryPath,"secondaryPath");
+   if(fields.secondaryPath!==undefined)out.secondaryPath=path(fields.secondaryPath,"secondaryPath",kind);
    if(Boolean(fields.secondaryLabel)!==Boolean(fields.secondaryPath))
     throw new BadRequestException({code:"CMS_INPUT_INVALID",field:"secondaryPath"});
   }else if(sec.kind==="RICH_TEXT"){
@@ -224,7 +225,7 @@ function parseContent(raw:unknown):Content{
    out.eyebrow=text(fields.eyebrow??"","eyebrow",80);
    out.body=text(fields.body??"","body",400);
    if(fields.label!==undefined)out.label=text(fields.label,"label",80,2);
-   if(fields.path!==undefined)out.path=path(fields.path,"path");
+   if(fields.path!==undefined)out.path=path(fields.path,"path",kind);
    if(Boolean(fields.label)!==Boolean(fields.path))
     throw new BadRequestException({code:"CMS_INPUT_INVALID",field:"path"});
   }else if(sec.kind==="TEAM"){
