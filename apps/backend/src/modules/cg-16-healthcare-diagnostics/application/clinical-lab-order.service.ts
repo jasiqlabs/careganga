@@ -266,16 +266,21 @@ export class ClinicalLabOrderService{
    return {orderRef,displayOrderRef:display,status:"COLLECTION_PENDING",replayed:false};
   });
  }
- async centerOrders(bearer:string,centerRef:string){
+ async centerOrders(bearer:string,centerRef:string,search:unknown="",offsetRaw:unknown="0"){
+  if(typeof search!=="string"||search.length>80||/[\u0000-\u001f\u007f]/.test(search)||
+   typeof offsetRaw!=="string"||!/^(0|[1-9]\d{0,4})$/.test(offsetRaw)||Number(offsetRaw)>9990)
+   throw new BadRequestException({code:"LAB_CLINICAL_INVALID"});
+  const offset=Number(offsetRaw),q=search.trim().toLowerCase();
   return this.tx(async c=>{
    const actor=await this.admission.requireCurrent(c,bearer,centerRef,"lab.orders.view");
    const result=await c.query(
     "SELECT id AS \"orderRef\",display_order_ref AS \"displayOrderRef\","+
     "status,accepted_center_total_minor::text AS \"quotedTotalMinor\",created_at AS \"createdAt\" "+
     "FROM lab_order WHERE root_realm_id=$1 AND center_ref=$2 "+
-    "ORDER BY created_at DESC,id DESC LIMIT 30",
-    [actor.realmId,centerRef]);
-   return {orders:result.rows};
+    "AND ($3::text=\x27\x27 OR position($3 in lower(display_order_ref))>0 OR position($3 in lower(replace(status::text,\x27_\x27,\x27 \x27)))>0) "+
+    "ORDER BY created_at DESC,id DESC LIMIT 31 OFFSET $4",
+    [actor.realmId,centerRef,q,offset]);
+   return {orders:result.rows.slice(0,30),nextOffset:result.rows.length>30&&offset<9990?offset+30:null};
   });
  }
  async detail(bearer:string,centerRef:string,orderRef:string){
