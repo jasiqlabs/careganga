@@ -44,8 +44,15 @@ export class BeneficiaryReportService{
  async export(token:string,raw:Record<string,unknown>){
   return this.source.run(token,"beneficiaries.reports.export",async(tx,a)=>{
    const q=parseListQuery(raw),{where,params}=await this.beneficiaries.reportScope(tx,a,q);
-   const rows=(await tx.query("SELECT b.display_ref,b.beneficiary_type,b.beneficiary_category,b.gender,b.age_group,b.verification_state,b.lifecycle_state,b.created_at::text"+where+" AND b.consent_revoked_at IS NULL ORDER BY b.created_at DESC,b.id DESC LIMIT 501",params)).rows;
-   const items=rows.slice(0,500),columns=["display_ref","beneficiary_type","beneficiary_category","gender","age_group","verification_state","lifecycle_state","created_at"];
+   const aid=raw.exportKind==="AID_HISTORY";
+   if(raw.exportKind!==undefined&&raw.exportKind!=="AID_HISTORY"&&raw.exportKind!=="REGISTER")throw new BadRequestException("Unknown report type");
+   if(aid)await this.identity.assertCurrent(tx,a,"beneficiaries.assistance.view");
+   const [from,to]=period(raw);
+   const rows=aid?(await tx.query("WITH eligible AS (SELECT b.id,b.branch_scope_id,b.display_ref"+where+" AND b.consent_revoked_at IS NULL) SELECT b.display_ref,a.reference,d.action,d.at::text AS occurred_at,i.sku_norm AS item_code,a.unit_code,f.quantity::text,f.amount_minor::text FROM assistance_delivery_event d JOIN assistance_case a ON a.root_realm_id=d.root_realm_id AND a.id=d.assistance_id JOIN assistance_fulfillment f ON f.root_realm_id=d.root_realm_id AND f.id=d.fulfillment_id JOIN eligible b ON b.id=a.beneficiary_id AND b.branch_scope_id IS NOT DISTINCT FROM a.branch_ref LEFT JOIN inventory_item i ON i.root_realm_id=a.root_realm_id AND i.id=a.item_ref WHERE d.root_realm_id=$1 AND ($18::date IS NULL OR d.at>=($18::date::timestamp AT TIME ZONE 'Asia/Kolkata')) AND ($19::date IS NULL OR d.at<(($19::date+1)::timestamp AT TIME ZONE 'Asia/Kolkata')) AND ($11::uuid IS NULL OR a.project_ref=$11) ORDER BY d.at DESC,d.id DESC LIMIT 501",[...params,from,to])).rows:
+    (await tx.query("SELECT b.display_ref,b.beneficiary_type,b.verification_state,b.lifecycle_state,b.created_at::text"+where+" AND b.consent_revoked_at IS NULL ORDER BY b.created_at DESC,b.id DESC LIMIT 501",params)).rows;
+   // Export minimal references; no precise geography, name, contact, child/gender
+   // fields or rare category cells unless a future explicit policy allows it.
+   const items=rows.slice(0,500),columns=aid?["display_ref","reference","action","occurred_at","item_code","unit_code","quantity","amount_minor"]:["display_ref","beneficiary_type","verification_state","lifecycle_state","created_at"];
    const csv=[columns.map(reportCsvCell).join(","),...items.map(r=>columns.map(k=>reportCsvCell(r[k])).join(","))].join("\r\n");
    await tx.query("INSERT INTO beneficiary_report_access(root_realm_id,actor_ref,action,filter_digest,row_count) VALUES($1,$2,'EXPORT',$3,$4)",[a.realmId,a.accountId,aidDigest(raw),items.length]);
    return {csv,rows:items.length,hasMore:rows.length>500};
