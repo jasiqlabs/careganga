@@ -98,7 +98,7 @@ export function NativeFoundationPatientAdmin({token,onExit,onExpired,canOverride
   if(!data||!Array.isArray(data.items)||!Array.isArray(data.centerChoices)||
    !Array.isArray(data.states)||!Array.isArray(data.districts)||
    !Array.isArray(data.centerTypes)||!data.metrics)
-   throw Error("Original CG15 patient list is incomplete.");
+   throw Error("The patient list could not be verified. Refresh and try again.");
   return data;
  },[token]);
  useEffect(()=>{
@@ -366,7 +366,7 @@ const styles=StyleSheet.create({
  heading:{fontSize:17,fontWeight:"700",color:t.text,marginVertical:5},
  text:{fontSize:13,color:t.text,lineHeight:19},
  note:{fontSize:12,color:t.mutedText,lineHeight:18},
- error:{fontSize:13,color:"#A52626"},
+ error:{fontSize:13,color:t.error},
  input:{borderWidth:1,borderColor:t.border,backgroundColor:t.surface,
   color:t.text,padding:10,borderRadius:9,minHeight:45},
  panel:{backgroundColor:t.surface,padding:12,gap:8,borderWidth:1,
