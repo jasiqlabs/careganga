@@ -8,6 +8,8 @@ import {CmsPublicNoticeSource} from "../../cg-19-documents-notifications/applica
 import {projectTeaserRevisionEligible} from "../../cg-05-projects-field-operations/application/project-public-source";
 import {eventArticleRevisionEligible} from "../../cg-05-projects-field-operations/application/event-public-source";
 import {complianceEligible} from "../application/cms-compliance-eligibility";
+import {HrPublicBioEditorialSource} from "../../cg-10-human-resources/application/hr-public-bio-editorial-source";
+import {teamSelections} from "../application/cms-editorial.service";
 import {CsrPartnerPublicSource,type CsrEditorialSelection} from "../../cg-08-csr-funding/application/csr-partner-public-source";
 import {HrPublicBioEditorialSource,type HrEditorialPerson} from "../../cg-10-human-resources/application/hr-public-bio-editorial-source";
 import {parseExtendedSection} from "../application/cms-extended-sections";
@@ -77,6 +79,15 @@ export class CmsPublicationDueWorker implements OnModuleInit,OnModuleDestroy{
  /** Scheduled CG18 must recheck original CG08 consent at actual due time.
   * No second queue/reviewer; a withdrawn partner cannot be reactivated by
   * yesterday's approved editorial submission. */
+ private async teamRevisionEligible(tx:PoolClient,root:string,rev:string){
+  const q=await tx.query<{structured_fields:Record<string,unknown>}>(
+   "SELECT structured_fields FROM cms_section_revision WHERE foundation_root_id=$1 AND page_revision_id=$2 AND section_kind='TEAM'",[root,rev]);
+  for(const row of q.rows){
+   let selected;try{selected=teamSelections(row.structured_fields.members);}catch{return false;}
+   if((await this.hrPublicBio.currentCards(tx,root,selected,true)).length!==selected.length)return false;
+  }
+  return true;
+ }
  private async partnerRevisionEligible(tx:PoolClient,root:string,rev:string,kind:string){
   if(kind!=="PARTNERS")return true;
   const q=await tx.query<{structured_fields:Record<string,unknown>}>(
