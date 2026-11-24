@@ -2,7 +2,8 @@ import {test} from "node:test";
 import assert from "node:assert/strict";
 import {baseline,origin,readiness} from "./verify-cms-first-publication.mjs";
 const routes=[...baseline,["our-work","PROJECTS","/our-work"],["upcoming-projects","PROJECTS","/upcoming-projects"]];
-function fixture({missing=[],badSlug="",navigation=true,omitNavSlug="",badNavGeneration=false,offlineSlug=""}={}){
+const requiredIntros=["TEAM","MEMBERSHIP","VOLUNTEER","NOTICES","UPCOMING_PROJECTS","ANNUAL_REPORTS"];
+function fixture({missing=[],badSlug="",navigation=true,omitNavSlug="",badNavGeneration=false,offlineSlug="",incompleteCopy=false}={}){
  const called=[];
  const request=async(url,init)=>{
   assert.equal(url.origin,"http://127.0.0.1:8080");
@@ -16,7 +17,7 @@ function fixture({missing=[],badSlug="",navigation=true,omitNavSlug="",badNavGen
   const slug=url.pathname.split("/").at(-1),route=routes.find(([s])=>s===slug);
   if(slug===offlineSlug)throw Error("offline");
   if(!route||missing.includes(slug))return {ok:false};
-  return {ok:true,json:async()=>({schemaVersion:1,effectiveGeneration:"approved",slug:slug===badSlug?"wrong":slug,kind:route[1],canonicalPath:route[2],title:"Published editorial",sections:[{kind:"RICH_TEXT",fields:{heading:"Editorial"}}],assets:[]})};
+  return {ok:true,json:async()=>({schemaVersion:1,effectiveGeneration:"approved",slug:slug===badSlug?"wrong":slug,kind:route[1],canonicalPath:route[2],title:"Published editorial",sections:incompleteCopy?[{kind:"RICH_TEXT",fields:{heading:"Editorial"}}]:slug==="home"?["HERO","RICH_TEXT","CTA","FEATURE_CARDS","JOIN_CARDS","PROJECT_TEASER","SITE_FOOTER"].map(kind=>({kind,fields:{heading:"Editorial"}})):slug==="about"?requiredIntros.map(placement=>({kind:"RICH_TEXT",fields:{placement,heading:"Editorial",body:"Approved introduction"}})):slug==="contact"?[{kind:"CONTACT_INFO",fields:{faqs:[{},{},{},{}]}}]:[{kind:"RICH_TEXT",fields:{heading:"Editorial"}}],assets:[]})};
  };
  return {request,called};
 }
@@ -36,4 +37,9 @@ test("missing effective nav, absent required project route and transport error f
 test("credentials, alternate paths, query strings and nonlocal insecure origins are refused",()=>{
  for(const invalid of ["https://user:pass@example.com","https://example.com/api","https://example.com/?a=1","https://example.com/#x","http://example.com","file:///tmp/test"])assert.throws(()=>origin(invalid));
  assert.equal(origin("https://example.com").href,"https://example.com/");
+});
+
+test("initial installation refuses incomplete screenshot-derived editorial sections even with a published page response",async()=>{
+ const {request}=fixture({incompleteCopy:true});
+ assert.deepEqual(await readiness("http://127.0.0.1:8080",request),["home-editorial-sections","about-editorial-intros","contact-faqs"]);
 });
