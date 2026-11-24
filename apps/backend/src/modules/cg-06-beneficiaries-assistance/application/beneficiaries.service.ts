@@ -404,7 +404,7 @@ export class BeneficiariesService{
     "count(*) FILTER (WHERE b.consent_revoked_at IS NULL AND b.lifecycle_state='ACTIVE')::int AS active, "+
     "count(*) FILTER (WHERE b.consent_revoked_at IS NULL AND b.verification_state='VERIFIED')::int AS verified"+where,params)).rows[0];
    const rows=(await tx.query<Row>("SELECT "+columns+where+
-    "AND ($18::timestamptz IS NULL OR (b.created_at,b.id)<($18::timestamptz,$19::uuid)) "+
+    "AND ($19::timestamptz IS NULL OR (b.created_at,b.id)<($19::timestamptz,$20::uuid)) "+
     "ORDER BY b.created_at DESC,b.id DESC LIMIT 31",[...params,q.before?.date??null,q.before?.id??null])).rows;
    const items=rows.slice(0,30);
    return {summary:counts,items:items.map(r=>({...this.view(r),contactMobile:null,representativeName:null,representativeContact:null,consentPurpose:null})),hasMore:rows.length>30,
@@ -419,6 +419,10 @@ export class BeneficiariesService{
    if(q.branch&&!scope.branches.some(x=>x.value===q.branch))
     throw new ForbiddenException("Branch unavailable");
    const allowed=scope.branches.map(x=>x.value);
+   if(q.campaign){
+    await this.identity.assertCurrent(tx,a,"beneficiaries.assistance.view");await this.identity.assertCurrent(tx,a,"campaigns.view");
+    if(!(await tx.query("SELECT 1 FROM campaign WHERE root_realm_id=$1 AND id=$2 AND ((branch_ref IS NULL AND $3::boolean) OR branch_ref=ANY($4::uuid[])) AND ($5::uuid IS NULL OR branch_ref=$5) AND ($6::uuid IS NULL OR project_source_ref=$6) AND source_status IN('APPROVED','PUBLISHED','PAUSED','CLOSED')",[a.realmId,q.campaign,scope.all,allowed,q.branch,q.project])).rowCount)throw new ForbiddenException("Campaign unavailable");
+   }
    const where=" FROM beneficiary b WHERE b.root_realm_id=$1 "+
     "AND (($2::boolean AND b.branch_scope_id IS NULL) OR b.branch_scope_id=ANY($3::uuid[])) "+
     "AND ($4::uuid IS NULL OR b.branch_scope_id=$4) "+
@@ -434,9 +438,10 @@ export class BeneficiariesService{
     "AND ($14::date IS NULL OR b.created_at>=($14::date::timestamp AT TIME ZONE 'Asia/Kolkata')) "+
     "AND ($15::date IS NULL OR b.created_at<(($15::date+1)::timestamp AT TIME ZONE 'Asia/Kolkata')) "+
     "AND ($16::uuid IS NULL OR (b.consent_revoked_at IS NULL AND b.block_ref=$16)) "+
-    "AND ($17='' OR (b.consent_revoked_at IS NULL AND lower(b.beneficiary_category)=lower($17))) ";
+    "AND ($17='' OR (b.consent_revoked_at IS NULL AND lower(b.beneficiary_category)=lower($17))) "+
+    "AND ($18::uuid IS NULL OR (b.consent_revoked_at IS NULL AND EXISTS(SELECT 1 FROM assistance_case ac WHERE ac.root_realm_id=b.root_realm_id AND ac.beneficiary_id=b.id AND ac.branch_ref IS NOT DISTINCT FROM b.branch_scope_id AND ac.campaign_ref=$18))) ";
    const params=[a.realmId,scope.all,allowed,q.branch,q.state,q.district,q.status,q.lifecycle,q.type,q.q,
-    q.project,q.gender,q.ageGroup,q.from,q.to,q.block,q.category];
+    q.project,q.gender,q.ageGroup,q.from,q.to,q.block,q.category,q.campaign];
    return {where,params};
  }
 }
