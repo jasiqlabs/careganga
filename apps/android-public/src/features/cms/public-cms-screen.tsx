@@ -46,7 +46,7 @@ async function published(slug:string):Promise<Result>{
        "80g":"COMPLIANCE",gallery:"GALLERY",contact:"CONTACT",healthcare:"HEALTHCARE","our-work":"PROJECTS","upcoming-projects":"PROJECTS",collaboration:"PARTNERS"} as Record<string,string>)[slug]&&
        !(data.kind==="POLICY"&&isPolicySlug(slug))&&
        !(data.kind==="ARTICLE"&&
-         !["home","about","our-impact","80g","gallery","contact","healthcare","our-work","upcoming-projects"].includes(slug)&&
+         !["home","about","our-impact","80g","gallery","contact","healthcare","our-work","upcoming-projects","collaboration"].includes(slug)&&
          !isPolicySlug(slug))||
      typeof data.title!=="string"||!Array.isArray(data.sections)||
      !Array.isArray(data.assets)||typeof data.effectiveGeneration!=="string")
@@ -185,6 +185,14 @@ export function PublicCmsContent({onContact,onPartnerApplication,onMembershipApp
  const [result,setResult]=useState<Result>({state:"UNAVAILABLE",page:null});
  const [loading,setLoading]=useState(true);
  const [loadedTarget,setLoadedTarget]=useState("");
+ const [footerSource,setFooterSource]=useState<{target:string;page:CmsSource|null}>({target:"",page:null});
+ const latestFooterRequest=useRef(0);
+ const refreshFooter=useCallback(async(target:string)=>{
+  const request=++latestFooterRequest.current;
+  setFooterSource({target,page:null});
+  const home=await published("home");
+  if(request===latestFooterRequest.current)setFooterSource({target,page:home.state==="PUBLISHED"?home.page:null});
+ },[]);
  const latestPageRequest=useRef(0);
  const latestNavRequest=useRef(0);
  const refreshNavigation=useCallback(async()=>{
@@ -226,11 +234,13 @@ export function PublicCmsContent({onContact,onPartnerApplication,onMembershipApp
   return()=>{latestNavRequest.current++};
  },[refreshNavigation]);
  useEffect(()=>{
+  if(slug!=="home")void refreshFooter(slug);
+  else{latestFooterRequest.current++;setFooterSource({target:"",page:null});}
   const sub=AppState.addEventListener("change",state=>{
-   if(state==="active"){if(slug!=="campaigns"&&slug!=="@newsletter"&&slug!=="@team")void load(slug);void refreshNavigation();}
+   if(state==="active"){if(slug!=="campaigns"&&slug!=="@newsletter"&&slug!=="@team")void load(slug);void refreshNavigation();if(slug!=="home")void refreshFooter(slug);}
   });
-  return()=>sub.remove();
- },[slug,load,refreshNavigation]);
+  return()=>{latestFooterRequest.current++;sub.remove();};
+ },[slug,load,refreshNavigation,refreshFooter]);
  useEffect(()=>{
   const sub=BackHandler.addEventListener("hardwareBackPress",()=>{
    if(slug==="80g"&&ngoScope!=="80g"){setNgoScope("80g");return true;}
@@ -281,6 +291,8 @@ export function PublicCmsContent({onContact,onPartnerApplication,onMembershipApp
   (!noticeSearch.trim()||[n.title,n.body,n.category].some(v=>
    v.toLocaleLowerCase().includes(noticeSearch.trim().toLocaleLowerCase()))));
  const page=result.page;
+ const currentFooterHome=slug==="home"?(!loading&&loadedTarget==="home"&&result.state==="PUBLISHED"?page:null):footerSource.target===slug?footerSource.page:null;
+ const effectiveFooter=currentFooterHome?.sections.find(section=>section.kind==="SITE_FOOTER")?.fields;
  const ngoFields=page?.kind==="COMPLIANCE"?
   page.sections.find(s=>s.kind==="COMPLIANCE_FACTS")?.fields:undefined;
  const ngoDocuments=Array.isArray(ngoFields?.documents)?ngoFields.documents:[];
@@ -512,16 +524,7 @@ export function PublicCmsContent({onContact,onPartnerApplication,onMembershipApp
        canNavigate(fields.path)&&text(fields.label)&&<CmsButton title={text(fields.label)} onPress={()=>navigate(fields.path)}/>}
      </View>;
     }
-    if(section.kind==="SITE_FOOTER")return <View style={styles.card} key={i}>
-     <Text accessibilityRole="header" style={styles.heading}>CareGanga Foundation</Text>
-     {!!text(fields.mission)&&<Text style={styles.body}>{text(fields.mission)}</Text>}
-     {!!text(fields.address)&&<Text style={styles.muted}>Address: {text(fields.address)}</Text>}
-     {!!text(fields.phone)&&<Text style={styles.muted}>Phone: {text(fields.phone)}</Text>}
-     {!!text(fields.email)&&<Text style={styles.muted}>Email: {text(fields.email)}</Text>}
-     {!!text(fields.newsletterText)&&<Text style={styles.body}>{text(fields.newsletterText)}</Text>}
-     <NativeNewsletterForm/>
-     <CmsButton title="Contact CareGanga" secondary onPress={onContact}/>
-    </View>;
+    if(section.kind==="SITE_FOOTER")return null; // one shared effective Home footer below
     if(section.kind==="TEAM"){
      const members=Array.isArray(fields.members)?fields.members:[];
      return <View style={styles.card} key={i}>
@@ -599,6 +602,15 @@ export function PublicCmsContent({onContact,onPartnerApplication,onMembershipApp
     // Never infer operational projects from CMS-only text.
     return null;
    })}
+  </View>}
+  {effectiveFooter&&<View style={styles.card}>
+   <Text accessibilityRole="header" style={styles.heading}>{currentFooterHome?.title}</Text>
+   {!!text(effectiveFooter.mission)&&<Text style={styles.body}>{text(effectiveFooter.mission)}</Text>}
+   {!!text(effectiveFooter.address)&&<Text style={styles.muted}>Address: {text(effectiveFooter.address)}</Text>}
+   {!!text(effectiveFooter.phone)&&<Text style={styles.muted}>Phone: {text(effectiveFooter.phone)}</Text>}
+   {!!text(effectiveFooter.email)&&<Text style={styles.muted}>Email: {text(effectiveFooter.email)}</Text>}
+   {slug!=="@newsletter"&&<>{!!text(effectiveFooter.newsletterText)&&<Text style={styles.body}>{text(effectiveFooter.newsletterText)}</Text>}<NativeNewsletterForm/></>}
+   <CmsButton title="Contact the Foundation" secondary onPress={onContact}/>
   </View>}
  </View>;
 }
