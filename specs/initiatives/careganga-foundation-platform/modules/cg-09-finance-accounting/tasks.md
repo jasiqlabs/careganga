@@ -450,3 +450,7 @@ For original CG09 posted Finance and CG20 scheduled report integration, current 
 **Future-only owning source contract:** If a genuine CG04 separately approved post-activation invalidation with paid joining-fee reimbursement is introduced, use CG09's **original** financial authority to record one verified original bank refund after correct independent approval, matching original fee/branch/account and bank evidence with immutable event key, replay/unknown-write prevention and no duplicate finance journal. Publish a narrow same-root verified final effect to CG04/CG13; do not treat a requested, posted-but-unreconciled or rejected-application refund as completed. For zero-fee eligibility corrections there is no CG09 money flow. CG13 then performs original US-002-QA14/15 compensating points/rank/fulfilled-reward reconciliation only after this real source exists.
 
 **Disposition:** `FUTURE_OWNER_ONLY_NOT_IMPLEMENTED` / `CURRENT_CG13_RELEASE_NOT_BLOCKED_BY_ABSENT_FEATURE`. Runtime bank/SQL/independent testing NOT_RUN. Preserve current CG09 V1 fee/refund flows and original QA counts.
+
+
+### 24 November 2026 — CG06 integration source readback (existing owner)
+CG06 original payment and correction integration: immutable linked payment/recovery vouchers; exact verified posted recovery, rejection/return releases reserved cap, preserves original history; 9f4dd6d, f8e6061, c590c62. No new ledger; current author source trace, real payment/SQL/independent QA NOT_RUN.
