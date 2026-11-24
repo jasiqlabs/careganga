@@ -170,6 +170,10 @@ Dependencies: US-001
 
 ## Execution progress
 
+### Healthcare category media and default content
+HUX-09.01/02.01/13.02: fresh-install CMS draft now contains the reference-led nine editable healthcare categories, green/gold hero editorial copy, and no invented clinical/financial data. Existing FEATURE placement reused for indexed healthcare illustrations; server validates category existence and existing clean rights-approved media controls; Web and internal Android editors can attach image, public Web/native render same approved placement, removal shifts Web index or safely detaches native illustrations after category identity changes. First-install draft content is not automatically approved or published by this commit. Actual original/illustrative image files need approved uploads and publication; no sample screenshot portraits or patient data. Source/runtime acceptance pending.
+
+
 ### Public reference parity re-review
 HUX-09.01/13.01/13.02: published native CMS healthcare categories now have working category-specific directory actions with validated existing CG14 category codes and shared public theme. Selected category survives initial native directory load, generic home entry resets it; unknown editorial labels open full directory. HUX-11.03/15.01: consultation slip measures and wraps authorized names/address before drawing, fits at readable 8.5–10pt without truncating, reserves non-overlapping financial/footer space and calculates QR quiet-zone from matrix size. Source checks only; extreme valid source lengths and scanner/printed output must be tested locally. Original approved one-copy pay-at-center slip remains separate from actual collection receipt; no fake payment or sample data.
 

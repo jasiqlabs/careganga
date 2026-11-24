@@ -392,9 +392,14 @@ export function NativeCmsEditorial({token,canManage,canPublish,canReview,onExit,
  const changeNew=(patch:Partial<NewPage>)=>setNewPage(old=>old?{...old,...patch}:null);
  const change=<K extends keyof Detail,>(k:K,v:Detail[K])=>
   setDraft(current=>current?{...current,[k]:v}:null);
- const replaceSection=(i:number,fields:Record<string,unknown>)=>
+ const replaceSection=(i:number,fields:Record<string,unknown>)=>{
+  const old=draft?.sections[i];
+  const titles=(value:unknown)=>Array.isArray(value)?value.map(v=>v&&typeof v==="object"&&"title" in v?v.title:null):[];
+  const changed=old?.kind==="HEALTHCARE_CATEGORIES"&&JSON.stringify(titles(old.fields.categories))!==JSON.stringify(titles(fields.categories));
+  if(changed&&draft?.assets.some(a=>a.role==="FEATURE"))setNotice("Category labels or positions changed. Reattach the matching approved category illustrations before publishing.");
   setDraft(current=>current?{...current,sections:current.sections.map(
-   (x,j)=>j===i?{...x,fields}:x)}:null);
+   (x,j)=>j===i?{...x,fields}:x),assets:changed?current.assets.filter(a=>a.role!=="FEATURE"):current.assets}:null);
+ };
  const locked=!canManage||busy||uncertain;
  const original=selected?.pageRef??"";
  return <SafeAreaView style={styles.page}>

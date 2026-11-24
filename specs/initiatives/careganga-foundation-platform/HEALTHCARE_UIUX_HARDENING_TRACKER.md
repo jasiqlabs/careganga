@@ -167,6 +167,10 @@ HUX-09.01/13.01/13.02: published native CMS healthcare categories now have worki
 
 Seven grouped contract assertions were executed against remote source at 9e975a6122193be13276de097bc76ed1e9be414f; all seven passed (CMS routing, approved photo scope, availability bounds, original booking recovery, patient registration continuity, private document/receipt semantics, slip layout/QR). Added `npm run verify:healthcare-public-reference-source` to local preflight for TypeScript/TSX parsing and these contract assertions. The Node script, full compilation and rendered/device/database/PDF QA remain NOT_RUN in this connector session. No source disposition promoted to runtime PASS.
 
+## Healthcare CMS default content and illustration placement
+
+HUX-09.01/02.01/13.02: fresh-install CMS draft now contains the reference-led nine editable healthcare categories, green/gold hero editorial copy, and no invented clinical/financial data. Existing FEATURE placement reused for indexed healthcare illustrations; server validates category existence and existing clean rights-approved media controls; Web and internal Android editors can attach image, public Web/native render same approved placement, removal shifts Web index or safely detaches native illustrations after category identity changes. First-install draft content is not automatically approved or published by this commit. Actual original/illustrative image files need approved uploads and publication; no sample screenshot portraits or patient data. Source/runtime acceptance pending.
+
 ## Subtracker details and expected user scenarios
 
 ### HUX-01.01 — Recover separate healthcare reference originals

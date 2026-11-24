@@ -232,7 +232,7 @@ export function CmsPublicPage({page,navigation,siteFooter,children,mediaScope,si
      if(section.kind==="ARTICLE_BODY")return <CmsArticle key={key}
       section={section} assets={assets}/>;
      if(section.kind==="HEALTHCARE_CATEGORIES")return <CmsHealthcare key={key}
-      section={section}/>;
+      section={section} assets={assets}/>;
      if(section.kind==="PARTNER_CARDS"){
       const cards=Array.isArray(section.fields.cards)?section.fields.cards.flatMap((value,index)=>{
        if(!value||typeof value!=="object"||Array.isArray(value))return [];

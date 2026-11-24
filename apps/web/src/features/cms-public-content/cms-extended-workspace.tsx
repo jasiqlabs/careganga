@@ -855,7 +855,7 @@ export function CmsExtendedWorkspace({canManage,canPublish,canViewNoticeSources}
         <Field name="What this category means" large value={v.description}
          onChange={x=>changeItem(index,j,{description:x},"categories")}/>
         {canManage&&<button type="button"
-         onClick={()=>removeItem(index,"categories",j)}>Remove category</button>}
+         onClick={()=>removeItem(index,"categories",j,"FEATURE")}>Remove category</button>}
        </div>)}
        {canManage&&items(f.categories).length<12&&<button type="button"
         onClick={()=>addItem(index,"categories",{title:"",description:""})}>Add category</button>}
@@ -935,12 +935,13 @@ export function CmsExtendedWorkspace({canManage,canPublish,canViewNoticeSources}
         draft.kind==="GALLERY"?<option value="GALLERY">Gallery item</option>:
         draft.kind==="COMPLIANCE"?<option value="DOCUMENT">Official proof scan or PDF</option>:
         draft.kind==="CONTACT"?<option value="CONTACT">Contact photo strip</option>:
-        draft.kind==="HEALTHCARE"?<option value="HERO">Healthcare hero photograph</option>:
+        draft.kind==="HEALTHCARE"?<><option value="HERO">Healthcare hero photograph</option><option value="FEATURE">Healthcare category illustration</option></>:
         <option value="ARTICLE">Article cover photo</option>}
       </select></label>
       {["IMPACT","GALLERY","DOCUMENT","CONTACT","FEATURE"].includes(uploadRole)&&<label>Placement position<select
        value={String(uploadOrder)} onChange={e=>setUploadOrder(Number(e.target.value))}>
        {(draft.kind==="PARTNERS"?items(draft.sections.find(v=>v.kind==="PARTNER_CARDS")?.fields.partners).map(v=>({title:partnerSources.find(p=>p.sourceRef===v.sourceRef)?.name??"Verified partner"})):
+        draft.kind==="HEALTHCARE"?items(draft.sections.find(v=>v.kind==="HEALTHCARE_CATEGORIES")?.fields.categories):
         draft.kind==="CONTACT"?[{title:"Original photo 1"},{title:"Original photo 2"},
           {title:"Original photo 3"}]:
         draft.kind==="IMPACT"?draft.sections:draft.kind==="COMPLIANCE"?
@@ -955,7 +956,7 @@ export function CmsExtendedWorkspace({canManage,canPublish,canViewNoticeSources}
       <input type="file" disabled={busy||!rights||uploadAlt.trim().length<3||
          allowedForCurrentPlacement().length===0||
          (uploadRole==="DOCUMENT"&&items(draft.sections[0]?.fields.documents).length===0)||
-         (uploadRole==="FEATURE"&&items(draft.sections.find(x=>x.kind==="PARTNER_CARDS")?.fields.partners).length===0)||
+         (uploadRole==="FEATURE"&&items(draft.kind==="HEALTHCARE"?draft.sections.find(x=>x.kind==="HEALTHCARE_CATEGORIES")?.fields.categories:draft.sections.find(x=>x.kind==="PARTNER_CARDS")?.fields.partners).length===0)||
          (uploadRole==="GALLERY"&&items(draft.sections[0]?.fields.items).length===0)} accept={
        allowedForCurrentPlacement().join(",")}
        onChange={e=>{const file=e.target.files?.[0];if(file)void upload(file);

@@ -166,8 +166,8 @@ export function CmsArticle({section,assets}:{
    <span key={i}>{text(tag)}</span>)}</div>
  </article>;
 }
-export function CmsHealthcare({section}:{
- section:PublicCmsSection}){
+export function CmsHealthcare({section,assets}:{
+ section:PublicCmsSection;assets:Asset[]}){
  const f=section.fields,categories=records(f.categories);
  // Titles/descriptions stay CMS-owned. Known approved category labels resolve only
  // to canonical CG14 filters; unknown editorial labels use the full directory.
@@ -179,6 +179,8 @@ export function CmsHealthcare({section}:{
   <form className="cg-health-discovery" action="/health-network" method="get" aria-label="Find healthcare services"><input type="hidden" name="tab" value="centers"/><label>Center or provider<input type="search" name="q" maxLength={80} placeholder="Find a verified center"/></label><label>Service category<select name="category"><option value="">All centers</option>{categories.filter(v=>code(v)).map((v,i)=><option key={i} value={code(v)}>{text(v.title)}</option>)}</select></label><label>PIN code (optional)<input name="pin" inputMode="numeric" maxLength={6} pattern="[1-9][0-9]{5}" placeholder="Six-digit PIN"/></label><button className="cg-site-action" type="submit">Search centers</button></form>
   <div className="cg-site-healthcare-grid">{categories.map((v,i)=>
    <article key={i} className="cg-site-impact-card">
+    {photo(assets.find(a=>a.role==="FEATURE"&&a.order===i),"cg-health-category-photo")}
+    {assets.find(a=>a.role==="FEATURE"&&a.order===i)?.altText.startsWith("AI-generated illustration")&&<p className="cg-site-provenance">AI-generated illustration.</p>}
     <h2>{text(v.title)}</h2><p>{text(v.description)}</p>
     <Link className="cg-site-action" href={"/health-network?tab=centers"+(code(v)?"&category="+encodeURIComponent(code(v)):"")}>Find centers</Link>
    </article>)}</div>
