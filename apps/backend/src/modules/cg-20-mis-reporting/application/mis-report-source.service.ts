@@ -89,6 +89,7 @@ export function parseSafeReport(raw:unknown):SafeReportRequest{
   untilDay=text(o.untilDay),status=text(o.status);
  const isFinance=FINANCE_KINDS.includes(kind as ReportKind);
  const isPayroll=kind==="PAYROLL_STATUS_SUMMARY",payrollMonth=text(o.payrollMonth);
+ const isRoster=kind==="MEMBERSHIP_ROSTER_SUMMARY"||kind==="VOLUNTEER_ROSTER_SUMMARY";
  if(o.payrollMonth!==undefined&&(typeof o.payrollMonth!=="string"||!isPayroll||!/^\d{4}-(0[1-9]|1[0-2])$/.test(payrollMonth)||payrollMonth.slice(0,4)<"2000"))throw new BadRequestException({code:"MIS_REPORT_FILTER_INVALID",message:"Choose a valid payroll month."});
  if([yearRef,centerRef,areaRef].some(v=>v!==""&&!UUID.test(v))||
   branchRef!==""&&!UUID.test(branchRef)&&!(isPayroll&&branchRef==="FOUNDATION")||
@@ -104,7 +105,7 @@ export function parseSafeReport(raw:unknown):SafeReportRequest{
    sortDirection!==""&&!["ASC","DESC"].includes(sortDirection)
   )||
   !isFinance&&yearRef!==""||
-  !isFinance&&!isPayroll&&branchRef!==""||
+  !isFinance&&!isPayroll&&!isRoster&&branchRef!==""||
   status!==""&&!statusSet.has(status)||
   Boolean(fromDay)!==Boolean(untilDay)||
   fromDay!==""&&(!day(fromDay)||!day(untilDay)||fromDay>untilDay||
@@ -114,7 +115,7 @@ export function parseSafeReport(raw:unknown):SafeReportRequest{
   fromDay!==""&&kind!=="FINANCE_POSTED_LEDGER"&&
    kind!=="FINANCE_POSTED_GROUPED"&&kind!=="APPOINTMENT_STATUS"&&
    kind!=="APPOINTMENT_STATUS_GROUPED"&&kind!=="APPOINTMENT_DOCTOR_SUMMARY"&&
-   kind!=="PLATFORM_AUDIT_ACTIVITY"&&kind!=="CSR_FUNDING_SUMMARY")
+   kind!=="PLATFORM_AUDIT_ACTIVITY"&&kind!=="CSR_FUNDING_SUMMARY"&&!isRoster)
   throw new BadRequestException({code:"MIS_REPORT_FILTER_INVALID",
    message:"Choose an allowed center, year, status and date range for this report."});
  const offset=o.offset===undefined?0:o.offset;
@@ -256,8 +257,17 @@ export class MisReportSourceService{
    permission("diagnostics.catalog.view")]);
   if(await permission("beneficiaries.view")&&await permission("beneficiaries.assistance.view"))templates.push({
    kind:"BENEFICIARY_ASSISTANCE_SUMMARY",label:"Beneficiary and assistance summary",views:["SUMMARY"],description:"Current permitted consented aggregate; small groups hidden. Live preview only."});
-  if(await permission("membership.members.view"))templates.push({kind:"MEMBERSHIP_ROSTER_SUMMARY",label:"Membership status",views:["SUMMARY"],description:"Current authorized membership counts, live preview only."});
-  if(await permission("volunteers.view"))templates.push({kind:"VOLUNTEER_ROSTER_SUMMARY",label:"Volunteer status",views:["SUMMARY"],description:"Current authorized volunteer counts, live preview only."});
+  const rosterOptions=async(action:string,load:()=>Promise<{branches:{ref:string;name:string}[]}>)=>{
+   if(!await permission(action))return {ready:false,branches:[]};
+   try{return {ready:true,...await load()};}
+   catch(e){if(e instanceof UnauthorizedException)throw e;return {ready:false,branches:[]};}
+  };
+  const [membership,volunteers]=await Promise.all([
+   rosterOptions("membership.members.view",()=>this.members.misOptions(token)),
+   rosterOptions("volunteers.view",()=>this.volunteers.misOptions(token))
+  ]);
+  if(membership.ready)templates.push({kind:"MEMBERSHIP_ROSTER_SUMMARY",label:"Membership status",views:["SUMMARY"],description:"Current authorized membership counts by enrollment cohort, live preview only."});
+  if(volunteers.ready)templates.push({kind:"VOLUNTEER_ROSTER_SUMMARY",label:"Volunteer status",views:["SUMMARY"],description:"Current authorized volunteer counts by enrollment cohort, live preview only."});
   const payroll=await permission("payroll.runs.view")&&await permission("payroll.compensation.view")?
    await this.payroll.options(token).then(x=>({ready:true,branches:x.branches.map(b=>({ref:b.value,name:b.label})),month:x.today.slice(0,7)})).catch((e:unknown)=>{if(e instanceof UnauthorizedException)throw e;return {ready:false,branches:[],month:""};}):
    {ready:false,branches:[],month:""};
@@ -270,7 +280,7 @@ export class MisReportSourceService{
   if(auditAccess)templates.push({kind:"PLATFORM_AUDIT_ACTIVITY",
    label:"Protected audit activity",views:["TABLE"],
    description:"Current original platform and access audit events; limited to 50 rows."});
-  return {templates,finance,appointments,payroll,capabilities:{
+  return {templates,finance,appointments,payroll,membership,volunteers,capabilities:{
    manage,export:exportAllowed,schedule,share},sourceReadAt:new Date().toISOString()};
  }
  /** Dedicated current-principal scheduled projection. Never passes a synthetic
@@ -415,7 +425,7 @@ export class MisReportSourceService{
   }
   if(q.kind==="MEMBERSHIP_ROSTER_SUMMARY"||q.kind==="VOLUNTEER_ROSTER_SUMMARY"){
    const member=q.kind==="MEMBERSHIP_ROSTER_SUMMARY";
-   const x=member?await this.members.misCounts(token):await this.volunteers.misCounts(token);
+   const x=member?await this.members.misCounts(token,q.branchRef,q.fromDay,q.untilDay):await this.volunteers.misCounts(token,q.branchRef,q.fromDay,q.untilDay);
    const columns=[{key:"total",label:"Total",unit:"COUNT" as const},{key:"active",label:"Active",unit:"COUNT" as const},
     {key:"suspended",label:"Suspended",unit:"COUNT" as const},...(member?
     [{key:"expired",label:"Expired",unit:"COUNT" as const},{key:"cancelled",label:"Cancelled",unit:"COUNT" as const}]:
@@ -429,8 +439,8 @@ export class MisReportSourceService{
     rows:suppressed||x.total===0?[]:[Object.fromEntries(columns.map((c,i)=>[c.key,String(counts[i])]))],
     nextOffset:null,sourceReadAt:new Date().toISOString(),sourceAsOf:x.sourceAsOf,
     sourceCutoffKind:"OWNER_TRANSACTION_SNAPSHOT",explanation:suppressed?"Small groups are hidden to protect privacy.":
-     "Current owner-scoped status counts only; no contact, identity or address fields. Live preview only.",
-    scopeLabel:"Current permitted roster scope"};
+     "Current owner-scoped approved enrollment status counts only; dates filter original enrollment, not historical status. No contact, identity or address fields. Live preview only.",
+    scopeLabel:q.branchRef?"Selected authorized roster branch":"Current permitted roster scope"};
   }
   if(q.kind==="CSR_FUNDING_SUMMARY"){
    const x=await this.csr.misSummary(token,{...(q.fromDay?{from:q.fromDay,to:q.untilDay}:{})});
