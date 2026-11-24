@@ -26,6 +26,7 @@
     "test:cg13-db-integrity": "node --env-file=.env ../../node_modules/tsx/dist/cli.mjs --test test/cg13-db-integrity.test.ts",
     "test:cg10-all": "tsx --test test/cg10-enrollment-contract.test.ts test/cg10-attendance-contract.test.ts test/cg10-appraisal-contract.test.ts test/cg10-employment-change-contract.test.ts test/cg10-document-allowance-contract.test.ts test/cg19-migration-compatibility.test.ts",
     "test:cg10-document-allowance": "tsx --test test/cg10-document-allowance-contract.test.ts",
+    "test:cg19-newsletter-contract": "tsx --test test/cg19-newsletter-contract.test.ts",
     "test:cg19-migration-compatibility": "tsx --test test/cg19-migration-compatibility.test.ts",
     "test:cg07-donation": "tsx --test test/cg07-donation-contract.test.ts",
     "test:cg07-donation-db": "node --env-file=.env ../../node_modules/tsx/dist/cli.mjs --test test/cg07-donation-db-integrity.test.ts",
