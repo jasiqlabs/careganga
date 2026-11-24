@@ -34,3 +34,18 @@ test("US-001-QA11/12: unapproved profile cannot claim verified",()=>{
  assert.match(sql,/CREATE TRIGGER cg06_command_immutable/);
  assert.match(sql,/CREATE TRIGGER cg06_verification_immutable/);
 });
+
+test("US-001-QA13/19: CG19 beneficiary evidence SQL and protected read contract",()=>{
+ const evidence=readFileSync(join(import.meta.dirname,"../db/migrations/3603_cg19_private_beneficiary_evidence.sql"),"utf8");
+ const service=readFileSync(join(import.meta.dirname,"../src/modules/cg-19-documents-notifications/application/beneficiary-evidence.service.ts"),"utf8");
+ const source=readFileSync(join(import.meta.dirname,"../src/modules/cg-06-beneficiaries-assistance/application/beneficiaries.service.ts"),"utf8");
+ assert.match(evidence,/cg19_beneficiary_consent_guard\(\) RETURNS trigger LANGUAGE plpgsql AS \$\$/);
+ assert.doesNotMatch(evidence,/AS \$\n|END \$;/);
+ assert.match(evidence,/FOREIGN KEY\(file_ref,realm_id,beneficiary_id,source_revision\)/);
+ assert.match(evidence,/beneficiary_consent_confirmed/);
+ assert.match(service,/this\.source\.guardEvidence/);
+ assert.match(service,/CLEAN_VERIFIED/);
+ assert.match(service,/readVerifiedPrivateObject/);
+ assert.match(service,/FILE_READ/);
+ assert.match(source,/row\.consent_revoked_at\|\|row\.lifecycle_state!=="ACTIVE"/);
+});
