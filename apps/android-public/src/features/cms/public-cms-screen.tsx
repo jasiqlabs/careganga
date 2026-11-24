@@ -158,6 +158,7 @@ export function PublicCmsContent({onContact,onPartnerApplication,onMembershipApp
  const [activeSlide,setActiveSlide]=useState(0);
  const [result,setResult]=useState<Result>({state:"UNAVAILABLE",page:null});
  const [loading,setLoading]=useState(true);
+ const [loadedTarget,setLoadedTarget]=useState("");
  const latestPageRequest=useRef(0);
  const latestNavRequest=useRef(0);
  const refreshNavigation=useCallback(async()=>{
@@ -176,19 +177,19 @@ export function PublicCmsContent({onContact,onPartnerApplication,onMembershipApp
   if(target==="articles"||target==="events"){
    const feed=await publishedArticles(target==="events",cursor);
    if(request!==latestPageRequest.current)return;
-   setArticleFeed(feed);
+   setArticleFeed(feed);setLoadedTarget(target);
    setResult({state:feed.available?"PUBLISHED":"UNAVAILABLE",page:null});
    setLoading(false);return;
   }
   if(target==="notices"){
     const feed=await publishedNotices();
     if(request!==latestPageRequest.current)return;
-    setNoticeFeed(feed);setResult({state:feed.available?"PUBLISHED":"UNAVAILABLE",page:null});
+    setNoticeFeed(feed);setLoadedTarget(target);setResult({state:feed.available?"PUBLISHED":"UNAVAILABLE",page:null});
     setLoading(false);return;
    }
    const response=await published(target);
   if(request!==latestPageRequest.current)return;
-  setResult(response);setLoading(false);
+  setResult(response);setLoadedTarget(target);setLoading(false);
  },[]);
  useEffect(()=>{
   if(slug!=="campaigns")void load(slug);
@@ -314,7 +315,7 @@ export function PublicCmsContent({onContact,onPartnerApplication,onMembershipApp
      <CmsButton key={name} title={title} secondary={slug!==name}
       onPress={()=>setSlug(name)}/>)}
   </View>
-  {slug==="campaigns"?<NativePublicCampaigns/>:slug==="membership"?<NativeMembershipPlans onApply={onMembershipApply}/>:loading?<ActivityIndicator accessibilityLabel="Checking current published website content"/>:
+  {slug==="campaigns"?<NativePublicCampaigns/>:slug==="membership"?<NativeMembershipPlans onApply={onMembershipApply}/>:loading||loadedTarget!==slug?<ActivityIndicator accessibilityLabel="Checking current published website content"/>:
    (slug==="articles"||slug==="events")?<View style={styles.card}>
     <Text accessibilityRole="header" style={styles.heading}>{slug==="events"?"Foundation Events":"Approved News & Articles"}</Text>
     {!articleFeed.available?<Text accessibilityRole="alert" style={styles.muted}>
