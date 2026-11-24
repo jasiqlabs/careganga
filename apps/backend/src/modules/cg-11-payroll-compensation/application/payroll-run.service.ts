@@ -39,11 +39,13 @@ export class PayrollRunService{
   return {branches:[...(scope.all?[{value:"FOUNDATION",label:"Foundation-wide"}]:[]),...scope.branches.map(({value,label})=>({value,label}))],today,cycle:"MONTHLY"};
  });}
  async list(token:string){return this.compensation.run(token,"payroll.runs.view",async(tx,a)=>{
+  await this.identity.assertCurrent(tx,a,"payroll.compensation.view");
   const scope=await this.branches.projectBranchScope(tx,a);
   const rows=(await tx.query<Run>("SELECT "+projection+" FROM payroll_run WHERE root_realm_id=$1 AND ((branch_ref IS NULL AND $2::boolean) OR branch_ref=ANY($3::uuid[])) ORDER BY period_from DESC,run_number DESC LIMIT 100",[a.realmId,scope.all,scope.branches.map(b=>b.value)])).rows;
   await recordPayrollAudit(tx,a,"RUN","READ");return {items:rows.map(r=>this.view(r))};
  });}
  async detail(token:string,ref:string){return this.compensation.run(token,"payroll.runs.view",async(tx,a)=>{
+  await this.identity.assertCurrent(tx,a,"payroll.compensation.view");
   const scope=await this.branches.projectBranchScope(tx,a);
   const row=(await tx.query<Run>("SELECT "+projection+" FROM payroll_run WHERE root_realm_id=$1 AND id=$2 AND ((branch_ref IS NULL AND $3::boolean) OR branch_ref=ANY($4::uuid[]))",[a.realmId,id(ref),scope.all,scope.branches.map(b=>b.value)])).rows[0];
   if(!row)throw new NotFoundException("Payroll run unavailable");
@@ -132,6 +134,7 @@ export class PayrollRunService{
   return this.compensation.run(token,"payroll.runs.manage",async(tx,a)=>{
    const x=fields(raw,action==="adjust"?["requestKey","expectedRevision","employeeRef","kind","amountMinor","reason"]:["requestKey","expectedRevision"]);
    const key=id(x.requestKey),expected=Number(x.expectedRevision);if(!Number.isSafeInteger(expected)||expected<1)throw conflict();
+   await tx.query("SELECT pg_advisory_xact_lock(hashtextextended($1,0))",["CG11-RUN-WRITE:"+a.realmId]);
    const r=await this.row(tx,a,ref,true),requestDigest=digestOf([r.id,action,x]);
    const prior=(await tx.query<{run_id:string;request_digest:string}>("SELECT run_id,request_digest FROM payroll_run_command WHERE root_realm_id=$1 AND actor_ref=$2 AND request_key=$3",[a.realmId,a.accountId,key])).rows[0];
    if(prior){if(prior.run_id!==r.id||prior.request_digest!==requestDigest)throw conflict();return {...this.view(r),...await this.safeSnapshot(tx,a,r),replayed:true};}
@@ -146,10 +149,12 @@ export class PayrollRunService{
     let adjustments=prev.adjustments;
     if(action==="adjust"){
      const employeeRef=id(x.employeeRef);
-     if(!inputs.some(i=>i.employee.id===employeeRef)||!["BONUS","DEDUCTION","HOLD"].includes(String(x.kind)))throw new BadRequestException("Choose an eligible employee adjustment");
-     const kind=x.kind as Adjustment["kind"],amount=kind==="HOLD"?"0":minor(x.amountMinor);
+     if(!inputs.some(i=>i.employee.id===employeeRef)||!["BONUS","DEDUCTION","HOLD","CLEAR"].includes(String(x.kind)))throw new BadRequestException("Choose an eligible employee adjustment");
      const reason=label(x.reason);
-     adjustments=[...adjustments.filter(v=>v.employeeRef!==employeeRef||v.kind!==kind),{employeeRef,kind,minor:amount,reason}];
+     if(x.kind==="CLEAR"){adjustments=adjustments.filter(v=>v.employeeRef!==employeeRef);}else{
+      const kind=x.kind as Adjustment["kind"],amount=kind==="HOLD"?"0":minor(x.amountMinor);
+      adjustments=[...adjustments.filter(v=>v.employeeRef!==employeeRef||v.kind!==kind),{employeeRef,kind,minor:amount,reason}];
+     }
     }
     next=this.evaluate(r,inputs,adjustments,true);
    }
@@ -167,6 +172,7 @@ export class PayrollRunService{
   await recordPayrollAudit(tx,a,"RUN","READ");return {items:rows.map(x=>({revision:x.revision,at:x.created_at}))};
  });}
  async reviewSource(tx:PoolClient,a:Actor,ref:string,lock=false,verifyFresh=false){
+  if(lock)await tx.query("SELECT pg_advisory_xact_lock(hashtextextended($1,0))",["CG11-RUN-WRITE:"+a.realmId]);
   const r=await this.row(tx,a,ref,lock),s=await this.snapshot(tx,a,r);
   if(!s||!r.snapshot_digest||s.totals.pending!==0||s.totals.calculated===0)throw conflict();
   if(verifyFresh&&digestOf(await this.gather(tx,a,r))!==s.inputDigest)throw conflict();
