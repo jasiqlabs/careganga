@@ -60,13 +60,7 @@ export class VolunteerRosterService{
    [a.realmId,scope.all,branches,filter.branch,filter.department,filter.status,filter.availability,filter.q,max,offset]);
   return {items:rows.rows,branchOptions:scope.branches};
  }
- async list(token:string,raw:unknown){
-  const x=object(raw,["q","status","availability","branch","department","offset"]);
-  const filter=parse(Object.fromEntries(Object.entries(x).filter(([k])=>k!=="offset")));
-  const offset=x.offset===undefined?0:Number(x.offset);
-  if(!Number.isSafeInteger(offset)||offset<0||offset>5000)throw new BadRequestException("Choose a valid volunteer roster page.");
-  return this.run(token,"volunteers.view",async(tx,a)=>{
-   const page=await this.listRows(tx,a,filter,26,offset);
+ private async overview(tx:PoolClient,a:Actor){
    const scope=await this.branches.projectBranchScope(tx,a);
    const overview=(await tx.query<{total:string;active:string;inactive:string;suspended:string}>(`SELECT count(*)::text AS total,
      count(*) FILTER(WHERE status='ACTIVE')::text AS active,
@@ -74,10 +68,25 @@ export class VolunteerRosterService{
      count(*) FILTER(WHERE status='SUSPENDED')::text AS suspended
      FROM volunteer WHERE root_realm_id=$1 AND ($2::boolean OR branch_ref=ANY($3::uuid[]))`,
      [a.realmId,scope.all,scope.branches.map(x=>x.value)])).rows[0];
+   return {total:Number(overview?.total??0),active:Number(overview?.active??0),inactive:Number(overview?.inactive??0),suspended:Number(overview?.suspended??0)};
+ }
+ /** Same owner aggregate, without loading private roster identities. */
+ async misCounts(token:string){
+  return this.run(token,"volunteers.view",async(tx,a)=>({
+   ...await this.overview(tx,a),
+   sourceAsOf:(await tx.query<{at:Date}>("SELECT transaction_timestamp() AS at")).rows[0].at.toISOString()
+  }));
+ }
+ async list(token:string,raw:unknown){
+  const x=object(raw,["q","status","availability","branch","department","offset"]);
+  const filter=parse(Object.fromEntries(Object.entries(x).filter(([k])=>k!=="offset")));
+  const offset=x.offset===undefined?0:Number(x.offset);
+  if(!Number.isSafeInteger(offset)||offset<0||offset>5000)throw new BadRequestException("Choose a valid volunteer roster page.");
+  return this.run(token,"volunteers.view",async(tx,a)=>{
+   const page=await this.listRows(tx,a,filter,26,offset);
+   const overview=await this.overview(tx,a);
    return {items:page.items.slice(0,25),hasMore:page.items.length>25,offset,
-    branchOptions:page.branchOptions,overview:{
-     total:Number(overview?.total??0),active:Number(overview?.active??0),
-     inactive:Number(overview?.inactive??0),suspended:Number(overview?.suspended??0)}
+    branchOptions:page.branchOptions,overview
    };
   });
  }
