@@ -5,7 +5,7 @@ CREATE TABLE payroll_policy (
  branch_ref uuid, cycle text NOT NULL CHECK(cycle='MONTHLY'),
  currency text NOT NULL DEFAULT 'INR' CHECK(currency='INR'),
  period_timezone text NOT NULL DEFAULT 'Asia/Kolkata' CHECK(period_timezone='Asia/Kolkata'),
- attendance_rules jsonb NOT NULL DEFAULT '{"absence":"UNCONFIGURED","leave":{},"lateDeductionMinor":"0"}'::jsonb CHECK(jsonb_typeof(attendance_rules)='object' AND attendance_rules->>'absence' IN('UNCONFIGURED','PAID','UNPAID') AND jsonb_typeof(attendance_rules->'leave')='object' AND (attendance_rules->>'lateDeductionMinor')~'^(0|[1-9][0-9]{0,13}),
+ attendance_rules jsonb NOT NULL DEFAULT '{"absence":"UNCONFIGURED","leave":{},"lateDeductionMinor":"0"}'::jsonb CHECK((jsonb_typeof(attendance_rules)='object' AND attendance_rules->>'absence' IN('UNCONFIGURED','PAID','UNPAID') AND jsonb_typeof(attendance_rules->'leave')='object' AND (attendance_rules->>'lateDeductionMinor')~'^(0|[1-9][0-9]{0,13})$') IS TRUE),
  fiscal_year_start_month integer NOT NULL DEFAULT 4 CHECK(fiscal_year_start_month=4),
  label text NOT NULL CHECK(length(btrim(label)) BETWEEN 2 AND 100),
  effective_from date NOT NULL, effective_to date, supersedes_ref uuid,
