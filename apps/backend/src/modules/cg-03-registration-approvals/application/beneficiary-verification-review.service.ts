@@ -90,7 +90,18 @@ export class BeneficiaryVerificationReviewService{
    }
    if(original.revision!==expected||original.lifecycle!=="ACTIVE"||original.consentRevoked||
      !["DRAFT","RETURNED","REJECTED"].includes(original.verification))throw conflict();
-   await this.reviewer.requireDistinctFinalReviewer(tx,a.realmId,a.accountId);
+   // A protected final reviewer cannot be either the intake creator or
+   // the submitter, even when intake is submitted by a different operator.
+   const available=await tx.query(`
+    SELECT 1 FROM account candidate
+    JOIN account_role ar ON ar.account_id=candidate.id AND ar.realm_id=candidate.realm_id
+      AND ar.revoked_at IS NULL
+    JOIN role r ON r.id=ar.role_id AND r.realm_id=candidate.realm_id
+    WHERE candidate.realm_id=$1 AND candidate.status='ACTIVE'
+      AND candidate.id<>ALL($2::uuid[]) AND r.active AND r.is_protected LIMIT 1`,
+    [a.realmId,[a.accountId,original.creatorRef]]);
+   if(!available.rowCount)
+    throw new ConflictException("A different active protected Foundation reviewer must be available");
    const processId=await this.process(tx,a);
    const submitted=await this.source.submitVerificationSource(tx,a,target,key,expected);
    const snapshot=(await tx.query<{id:string}>(`
@@ -134,7 +145,7 @@ export class BeneficiaryVerificationReviewService{
    if(!c)return {status:"NOT_SUBMITTED",caseNumber:null,canReview:false,caseRef:null,
     sourceRevision:src.revision,sourceVerification:src.verification};
    let canReview=false;
-   if(c.proposer_id!==a.accountId&&c.beneficiary_source_revision===src.revision&&
+   if(c.proposer_id!==a.accountId&&src.creatorRef!==a.accountId&&c.beneficiary_source_revision===src.revision&&
     c.beneficiary_source_digest===src.digest&&src.verification==="SUBMITTED"&&
     src.lifecycle==="ACTIVE"&&!src.consentRevoked&&c.status==="SUBMITTED"){
     try{
@@ -180,8 +191,8 @@ export class BeneficiaryVerificationReviewService{
    const c=(await tx.query<Case>(`
     SELECT * FROM cg03_case WHERE realm_id=$1 AND id=$2
       AND case_kind='BENEFICIARY_VERIFICATION' FOR UPDATE`,[a.realmId,target])).rows[0];
-   if(!c||c.proposer_id===a.accountId)
-    throw new ForbiddenException("A different authorized reviewer must decide");
+   if(!c||c.proposer_id===a.accountId||src.creatorRef===a.accountId)
+    throw new ForbiddenException("An independent reviewer must differ from the intake creator and submitter");
    const prior=(await tx.query<{actor_id:string;request_digest:string}>(`
     SELECT actor_id,request_digest FROM cg03_case_decision
     WHERE realm_id=$1 AND case_id=$2 AND request_key=$3`,
