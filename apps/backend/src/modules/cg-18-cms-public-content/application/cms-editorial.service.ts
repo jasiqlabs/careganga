@@ -441,7 +441,7 @@ export class CmsEditorialService{
   return this.withTx(async tx=>{
    const page=await this.row(tx,a,ref);
    const rev=await this.revision(tx,a,page);
-   const [sections,assets,published,navigation,scheduled]=await Promise.all([
+   const [sections,assets,published,navigation,scheduled,history]=await Promise.all([
     tx.query<{section_kind:string;order_no:number;structured_fields:Record<string,unknown>}>(
      "SELECT section_kind,order_no,structured_fields FROM cms_section_revision "+
      "WHERE foundation_root_id=$1 AND page_revision_id=$2 ORDER BY order_no,id",
@@ -465,7 +465,8 @@ export class CmsEditorialService{
      "SELECT effective_at FROM cms_publication WHERE "+
      "foundation_root_id=$1 AND page_id=$2 AND state='SCHEDULED' "+
      "ORDER BY effective_at DESC,id DESC LIMIT 1",
-     [a.realmId,page.id])
+     [a.realmId,page.id]),
+    tx.query("SELECT 1 FROM cms_publication WHERE foundation_root_id=$1 AND page_id=$2 LIMIT 1",[a.realmId,page.id])
    ]);
    return {pageRef:page.id,kind:page.kind,slug:page.slug,version:Number(page.version),
     revisionRef:rev.id,revisionNo:rev.revision_no,status:rev.status,
@@ -479,6 +480,7 @@ export class CmsEditorialService{
      memberJoinDesired:navigation.rows[0]?.member_join_desired??false,
      volunteerJoinDesired:navigation.rows[0]?.volunteer_join_desired??false}:null,
     scheduledAt:scheduled.rows[0]?.effective_at?.toISOString()??null,
+    hasPublicationHistory:!!history.rowCount,
     publicationStatus:published.rows[0]?.state??"NOT_PUBLISHED"};
   });
  }
@@ -771,7 +773,8 @@ export class CmsEditorialService{
  }
  async publish(bearer:string,pageRef:string,raw:unknown){
   const actor=await this.sessions.requireAction(bearer,"cms.content.publish");
-  const v=input(raw,["expectedVersion","requestKey","caseRef","publishAt"]);
+  const v=input(raw,["expectedVersion","requestKey","caseRef","publishAt","firstPublicationOnly"]);
+  if(v.firstPublicationOnly!==undefined&&typeof v.firstPublicationOnly!=="boolean")throw new BadRequestException({code:"CMS_INPUT_INVALID",field:"firstPublicationOnly"});
   const key=uuid(v.requestKey,"requestKey"),caseRef=uuid(v.caseRef,"caseRef");
   let future:Date|null=null;
   if(v.publishAt!==undefined&&v.publishAt!==null&&v.publishAt!==""){
@@ -784,6 +787,7 @@ export class CmsEditorialService{
     throw new BadRequestException({code:"CMS_INPUT_INVALID",field:"publishAt"});
    future=due;
   }
+  if(v.firstPublicationOnly===true&&future)throw new BadRequestException({code:"CMS_INPUT_INVALID",field:"publishAt"});
   if(!Number.isSafeInteger(v.expectedVersion)||Number(v.expectedVersion)<1)
    throw new BadRequestException({code:"CMS_INPUT_INVALID"});
   return this.withTx(async tx=>{
@@ -804,6 +808,12 @@ export class CmsEditorialService{
     return {confirmed:true,status:old.rows[0].state==="EFFECTIVE"?
      "PUBLISHED":old.rows[0].state==="SCHEDULED"?"SCHEDULED":
      old.rows[0].state==="WITHDRAWN"?"HIDDEN":"SUPERSEDED",replayed:true};
+   }
+   // Under the same page lock used by publish and withdraw, the first-install
+   // command cannot resurrect a page with any prior publication history.
+   if(v.firstPublicationOnly===true){
+    const history=await tx.query("SELECT 1 FROM cms_publication WHERE foundation_root_id=$1 AND page_id=$2 LIMIT 1",[actor.realmId,page.id]);
+    if(history.rowCount)throw new ConflictException({code:"CMS_SOURCE_CHANGED"});
    }
    if(Number(page.version)!==v.expectedVersion)
     throw new ConflictException({code:"CMS_SOURCE_CHANGED"});
