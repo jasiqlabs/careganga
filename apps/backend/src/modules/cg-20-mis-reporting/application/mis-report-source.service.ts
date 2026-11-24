@@ -405,7 +405,7 @@ export class MisReportSourceService{
     {key:"suspended",label:"Suspended",unit:"COUNT" as const},...(member?
     [{key:"expired",label:"Expired",unit:"COUNT" as const},{key:"cancelled",label:"Cancelled",unit:"COUNT" as const}]:
     [{key:"inactive",label:"Inactive",unit:"COUNT" as const}])];
-   const counts=columns.map(c=>x[c.key as keyof typeof x]??(x as unknown as Record<string,unknown>)[c.key]);
+   const counts=columns.map(c=>(x as unknown as Record<string,unknown>)[c.key]);
    if(counts.some(v=>typeof v!=="number"||!Number.isSafeInteger(v)||Number(v)<0)||
       counts.slice(1).reduce<number>((n,v)=>n+Number(v),0)!==x.total)throw Error("Roster aggregate unavailable");
    const suppressed=counts.some(v=>Number(v)>0&&Number(v)<5);
@@ -422,10 +422,10 @@ export class MisReportSourceService{
    const columns=[{key:"period",label:"Payroll month",unit:"TEXT" as const},
     {key:"runs",label:"Runs",unit:"COUNT" as const},{key:"approvedRuns",label:"Approved runs",unit:"COUNT" as const},
     {key:"pendingApprovals",label:"Pending approvals",unit:"COUNT" as const},{key:"employees",label:"Approved payroll lines",unit:"COUNT" as const},
-    {key:"paidEmployees",label:"Verified paid lines",unit:"COUNT" as const},{key:"pendingEmployees",label:"Outstanding lines",unit:"COUNT" as const},
+    {key:"paidEmployees",label:"Verified paid lines",unit:"COUNT" as const},{key:"pendingEmployees",label:"Outstanding lines without unresolved or failed status",unit:"COUNT" as const},
     {key:"unresolvedEmployees",label:"Unresolved lines",unit:"COUNT" as const},{key:"failedEmployees",label:"Verified failed lines",unit:"COUNT" as const}];
    const row=x.selected;
-   if(row&&columns.slice(1).some(c=>!Number.isSafeInteger(row[c.key as keyof typeof row])||Number(row[c.key as keyof typeof row])<0))throw Error("Payroll aggregate unavailable");
+   if(row&&columns.slice(1).some(c=>typeof row[c.key as keyof typeof row]!=="number"||!Number.isSafeInteger(row[c.key as keyof typeof row])||Number(row[c.key as keyof typeof row])<0))throw Error("Payroll aggregate unavailable");
    return {kind:q.kind,view:q.view,label:"Payroll status",state:row?"READY":"EMPTY",columns,
     rows:row?[Object.fromEntries(columns.map(c=>[c.key,String(row[c.key as keyof typeof row])]))]:[],
     nextOffset:null,sourceReadAt:new Date().toISOString(),sourceCutoffKind:"OWNER_READ_COMPLETED_NOT_SNAPSHOT",
