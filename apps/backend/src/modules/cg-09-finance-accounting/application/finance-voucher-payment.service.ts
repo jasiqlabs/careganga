@@ -1,3 +1,4 @@
+import {matchesPayoutEvidence} from "../../cg-11-payroll-compensation/domain/payout-instruction";
 import {guardAssistanceOwner} from "../../cg-06-beneficiaries-assistance/application/assistance-owner-guard";
 import {
  BadRequestException,ConflictException,ForbiddenException,Inject,Injectable,
@@ -212,11 +213,12 @@ export class FinanceVoucherPaymentService{
   try{await client.query("BEGIN");await this.voucher(client,actor,voucherRef);
   const rows=await client.query<{paymentProofRef:string;fileRef:string;fileVersion:number;
    method:string;bankReference:string|null;amountMinor:string;status:string;
-   requestedAt:Date;verifiedAt:Date|null}>(`
+   requestedAt:Date;verifiedAt:Date|null;requiresPayrollDestination:boolean}>(`
    SELECT p.id AS "paymentProofRef",p.proof_file_id AS "fileRef",
     p.proof_file_version AS "fileVersion",p.method,
     p.bank_reference AS "bankReference",p.amount_minor::text AS "amountMinor",
-    p.status,p.created_at AS "requestedAt",p.verified_at AS "verifiedAt"
+    p.status,p.created_at AS "requestedAt",p.verified_at AS "verifiedAt",
+    EXISTS(SELECT 1 FROM payroll_payout_attempt t JOIN payroll_batch_item i ON i.root_realm_id=t.root_realm_id AND i.id=t.item_ref JOIN payroll_batch b ON b.root_realm_id=i.root_realm_id AND b.id=i.batch_ref WHERE t.root_realm_id=p.root_realm_id AND t.voucher_ref=p.voucher_id AND b.method='BANK') AS "requiresPayrollDestination"
    FROM finance_voucher_payment_verification p
    WHERE p.root_realm_id=$1 AND p.voucher_id=$2
    ORDER BY p.created_at DESC,p.id DESC LIMIT 1`,[actor.realmId,voucherRef]);
@@ -228,7 +230,7 @@ export class FinanceVoucherPaymentService{
   await this.sessions.requireAction(bearer,"finance.vouchers.view");
   await this.sessions.requireAction(bearer,"documents.files.view");
   const voucherRef=reference(refInput),proofRef=reference(proofInput);
-  const body=form(value,["requestKey","action","currentPassword"]);
+  const body=form(value,["requestKey","action","currentPassword","payrollDestinationEvidence"]);
   const key=reference(body.requestKey),action=body.action;
   if(!["VERIFY","REJECT"].includes(String(action))||
     typeof body.currentPassword!=="string"||body.currentPassword.length<8||
@@ -265,13 +267,24 @@ export class FinanceVoucherPaymentService{
     p.proof_file_id,p.proof_file_version);
    await this.sessions.requireFreshFoundationRootProof(client,actor,
     body.currentPassword);
+   const pinned=(await client.query<{employee_ref:string;destination_fingerprint:string}>(`SELECT l.employee_ref,i.destination_fingerprint FROM payroll_payout_attempt t
+     JOIN payroll_batch_item i ON i.root_realm_id=t.root_realm_id AND i.id=t.item_ref
+     JOIN payroll_batch b ON b.root_realm_id=i.root_realm_id AND b.id=i.batch_ref AND b.method='BANK'
+     JOIN payroll_line l ON l.root_realm_id=i.root_realm_id AND l.id=i.line_ref
+     WHERE t.root_realm_id=$1 AND t.voucher_ref=$2 FOR SHARE OF t,i,b,l`,[actor.realmId,voucherRef])).rows[0];
+   let matched:string|null=null;
+   if(action==="VERIFY"&&pinned){
+    if(!matchesPayoutEvidence(actor.realmId,pinned.employee_ref,pinned.destination_fingerprint,body.payrollDestinationEvidence))
+     throw new ConflictException({code:"FINANCE_VOUCHER_PAYMENT_VERIFICATION_INVALID"});
+    matched=pinned.destination_fingerprint;
+   }else if(body.payrollDestinationEvidence!==undefined)throw new BadRequestException({code:"FINANCE_VOUCHER_PAYMENT_VERIFICATION_INVALID"});
    const next=action==="VERIFY"?"VERIFIED":"REJECTED";
    await client.query(`
     UPDATE finance_voucher_payment_verification
      SET status=$4,verified_by=$5,verified_at=now(),verifier_proof_at=now(),
-      review_request_key=$6,review_digest=$7,updated_at=now()
+      review_request_key=$6,review_digest=$7,payroll_destination_fingerprint=$8,updated_at=now()
     WHERE id=$1 AND root_realm_id=$2 AND voucher_id=$3 AND status='PENDING_REVIEW'`,
-    [proofRef,actor.realmId,voucherRef,next,actor.accountId,key,decisionHash]);
+    [proofRef,actor.realmId,voucherRef,next,actor.accountId,key,decisionHash,matched]);
    if(next==="VERIFIED"){
     const changed=await client.query(`
      UPDATE finance_voucher SET status='PAID_VERIFIED',updated_at=now()

@@ -1,5 +1,5 @@
 import {BadRequestException,ServiceUnavailableException} from "@nestjs/common";
-import {createCipheriv,createHmac,randomBytes} from "node:crypto";
+import {createCipheriv,createHmac,randomBytes,timingSafeEqual} from "node:crypto";
 import {date,fields,id,label} from "./payroll-input";
 export function parsePayout(raw:unknown){
  const x=fields(raw,["requestKey","effectiveFrom","effectiveTo","supersedesRef","accountHolder","accountNumber","ifsc"]);
@@ -26,4 +26,13 @@ export function protectPayout(root:string,employee:string,instruction:string,v:R
  const fingerprint=createHmac("sha256",k).update(JSON.stringify(["CG11_FINGERPRINT_V1",root,employee,plain])).digest("hex");
  const requestDigest=createHmac("sha256",k).update(JSON.stringify(["CG11_REQUEST_V1",root,employee,v])).digest("hex");
  return {ciphertext:encrypted.toString("base64url"),nonce:nonce.toString("base64url"),tag:cipher.getAuthTag().toString("base64url"),fingerprint,requestDigest,maskedDigits:v.account.slice(-4),maskedIfsc:v.ifsc.slice(0,4)+"*******"};
+}
+
+/** Compare independent transfer advice to the approved destination without decrypting stored details. */
+export function matchesPayoutEvidence(root:string,employee:string,pinned:string,raw:unknown):boolean{
+ const x=fields(raw,["accountHolder","accountNumber","ifsc"]),holder=label(x.accountHolder);
+ const account=x.accountNumber,ifsc=typeof x.ifsc==="string"?x.ifsc.trim().toUpperCase():"";
+ if(typeof account!=="string"||!/^[0-9]{6,22}$/.test(account)||!/^[A-Z]{4}0[A-Z0-9]{6}$/.test(ifsc)||! /^[a-f0-9]{64}$/.test(pinned))return false;
+ const actual=createHmac("sha256",encryptionKey()).update(JSON.stringify(["CG11_FINGERPRINT_V1",root,employee,JSON.stringify({holder,account,ifsc})])).digest();
+ return timingSafeEqual(actual,Buffer.from(pinned,"hex"));
 }
