@@ -217,8 +217,7 @@ export function NativeAppointmentDocuments({
  );
  return <View style={styles.panel}>
   <Text style={styles.label}>Original consultation documents</Text>
-  <Text style={styles.note}>A real CG-19 patient-only PDF and status-only QR can
-   be viewed with a device PDF viewer. It is not a payment receipt.</Text>
+  <Text style={styles.note}>Open your private appointment PDF. Its QR code confirms booking status only; it is not a payment receipt.</Text>
   {!!message&&<Text accessibilityRole="alert" style={styles.note}>{message}</Text>}
   {unknown?action("Check original slip status",()=>void recover()):
    action("Open / issue my private PDF & QR",()=>void viewSlip(),
