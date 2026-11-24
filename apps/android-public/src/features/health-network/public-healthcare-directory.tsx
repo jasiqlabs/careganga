@@ -15,7 +15,7 @@ type Mode="centers"|"doctors";
 type Fee={currency:string;amountMinor:number;kind:string;mode:string};
 type Center={slug:string;centerName:string;providerName:string;type:string;
  address:string;pinCode:string;publicPhone:string|null;
- latitude:number|null;longitude:number|null};
+ latitude:number|null;longitude:number|null;declaredServices:string[];photo:{fileRef:string;altText:string}|null};
 type Doctor={doctorRef:string;doctorName:string;centerSlug:string;
  centerName:string;address:string;pinCode:string;fee:Fee|null;
  specialties:string[];qualifications:string[];experienceYears:number};
@@ -45,7 +45,8 @@ function validListing(x:unknown,mode:Mode):boolean{
  if(!x||typeof x!=="object")return false;
  const v=x as Partial<Center & Doctor>;
  if(typeof v.centerName!=="string"||typeof v.address!=="string"||typeof v.pinCode!=="string")return false;
- if(mode==="centers")return typeof v.slug==="string"&&typeof v.providerName==="string"&&typeof v.type==="string";
+ if(mode==="centers")return typeof v.slug==="string"&&/^[a-z0-9][a-z0-9-]{2,79}$/.test(v.slug)&&typeof v.providerName==="string"&&typeof v.type==="string"&&stringList(v.declaredServices)&&
+  (v.photo===null||!!v.photo&&typeof v.photo.fileRef==="string"&&/^[a-f0-9]{8}-(?:[a-f0-9]{4}-){3}[a-f0-9]{12}$/i.test(v.photo.fileRef)&&typeof v.photo.altText==="string");
  return typeof v.doctorRef==="string"&&typeof v.doctorName==="string"&&typeof v.centerSlug==="string"&&
   stringList(v.specialties)&&stringList(v.qualifications)&&Number.isInteger(v.experienceYears)&&
   (v.fee===null||!!v.fee&&Number.isSafeInteger(v.fee.amountMinor)&&v.fee.amountMinor>=0);
@@ -330,9 +331,11 @@ export function PublicHealthcareDirectory({onExit,reschedule}:{onExit:()=>void;
      <Text accessibilityLiveRegion="polite">No currently verified listings match the filters.</Text>}
     {state.status==="READY"&&state.items.map((item,i)=>mode==="centers"?
      <View key={"c-"+(item as Center).slug+"-"+i} style={styles.card}>
-      <Text accessibilityRole="header" style={styles.cardTitle}>{item.centerName}</Text>
+      {!!base&&(item as Center).photo&&<Image accessibilityLabel={(item as Center).photo!.altText} style={styles.listPhoto} source={{uri:new URL("/api/documents/health-center-content/public/"+encodeURIComponent((item as Center).slug)+"/"+encodeURIComponent((item as Center).photo!.fileRef),base).toString()}}/>}
+       <Text accessibilityRole="header" style={styles.cardTitle}>{item.centerName}</Text>
       <Text style={styles.helper}>Verified center · {nice((item as Center).type)}</Text>
-      <Text>{(item as Center).providerName}</Text>
+      <Text style={styles.label}>{(item as Center).providerName}</Text>
+       {!!(item as Center).declaredServices.length&&<View style={styles.row}>{(item as Center).declaredServices.map(s=><Text key={s} style={styles.tag}>{nice(s)}</Text>)}</View>
       <Text>{item.address}, {item.pinCode}</Text>
       <View style={styles.row}>
        {label("View center details",()=>void show({kind:"center",slug:(item as Center).slug}))}
@@ -456,5 +459,7 @@ const styles=StyleSheet.create({
   borderColor:theme.border,padding:18,gap:12},
  subcard:{borderTopWidth:1,borderColor:theme.border,paddingTop:12,gap:6},
  cardTitle:{fontSize:18,fontWeight:"700",color:theme.text},
+ listPhoto:{width:"100%",height:150,borderRadius:10,backgroundColor:theme.selectedSurface},
+ tag:{paddingHorizontal:9,paddingVertical:5,borderRadius:8,backgroundColor:theme.selectedSurface,color:theme.text,fontSize:12},
  photo:{width:"100%",height:220,borderRadius:10}
 });
