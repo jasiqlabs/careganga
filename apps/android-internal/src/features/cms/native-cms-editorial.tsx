@@ -454,6 +454,7 @@ export function NativeCmsEditorial({token,canManage,canPublish,canReview,onExit,
     {newPage.kind==="ARTICLE"&&<EventSelection sections={newPage.sections} choices={eventChoices} error={eventError} locked={locked} refresh={refreshEvents} onSelect={v=>changeNew({slug:v.slug.slice(0,70),title:v.title,seoTitle:(v.title+" | CareGanga Foundation").slice(0,180),seoDescription:v.summary.slice(0,300),assets:[],sections:eventFields(v)})}/>}
     {newPage.sections.filter(sec=>sec.kind!=="PROJECT_TEASER"&&sec.kind!=="CAMPAIGN_TEASER").map((sec,i)=><View key={sec.kind+"-"+i} style={styles.panel}>
      <Text style={styles.heading}>{title(sec.kind)}</Text>
+     {sec.kind==="IMPACT_GROUP"&&sec.fields.group==="STATS"&&canManage&&button("Use verified beneficiary impact",()=>void api<{fields:Record<string,unknown>|null}>(token,"beneficiary-impact-source").then(v=>{if(!v.fields){setError("No publishable beneficiary aggregate for the last completed year.");return;}setNewPage(old=>old?{...old,sections:old.sections.map(x=>x.order===sec.order&&x.kind===sec.kind?{...x,fields:v.fields!}:x)}:null);}).catch(()=>setError("Current role or source cannot provide beneficiary impact.")),locked)}
      {typeof sec.fields.sourceEventRef==="string"?<><Text>{String(sec.fields.heading)} · {String(sec.fields.category)}</Text><Text>{String(sec.fields.body)}</Text></>:<EditField name="Source content" value={sec.fields} locked={locked}
       sectionKind={sec.kind}
       impactGroup={typeof sec.fields.group==="string"?sec.fields.group:""}
@@ -488,6 +489,7 @@ export function NativeCmsEditorial({token,canManage,canPublish,canReview,onExit,
     {draft.sections.map((section,i)=>["PROJECT_TEASER","CAMPAIGN_TEASER"].includes(section.kind)?null:<View key={section.kind+"-"+section.order}
      style={styles.panel}>
       <Text style={styles.heading}>{title(section.kind)} · Section {i+1}</Text>
+      {section.kind==="IMPACT_GROUP"&&section.fields.group==="STATS"&&canManage&&button("Use verified beneficiary impact",()=>void api<{fields:Record<string,unknown>|null}>(token,"beneficiary-impact-source").then(v=>{if(!v.fields){setError("No publishable beneficiary aggregate for the last completed year.");return;}replaceSection(i,v.fields);}).catch(()=>setError("Current role or source cannot provide beneficiary impact.")),locked)}
       {typeof section.fields.sourceEventRef==="string"?<><Text>{String(section.fields.heading)} · {String(section.fields.category)}</Text><Text>{String(section.fields.body)}</Text></>:<EditField name="Original section fields" value={section.fields}
        sectionKind={section.kind}
        impactGroup={typeof section.fields.group==="string"?section.fields.group:""}
