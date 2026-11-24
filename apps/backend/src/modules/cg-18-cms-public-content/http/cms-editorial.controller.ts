@@ -5,6 +5,8 @@ import {CmsEditorialService} from "../application/cms-editorial.service";
 @Controller("api/cms")
 export class CmsEditorialController{
  constructor(private readonly cms:CmsEditorialService){}
+ @Get("beneficiary-impact-source") @Header("Cache-Control","private, no-store")
+ beneficiaryImpact(@Headers("authorization")auth:string){return this.cms.beneficiaryImpact(auth);}
  @Get("event-sources") @Header("Cache-Control","private, no-store")
  eventSources(@Headers("authorization")auth:string){return this.cms.eventSources(auth);}
  @Get("campaign-sources") @Header("Cache-Control","private, no-store")
