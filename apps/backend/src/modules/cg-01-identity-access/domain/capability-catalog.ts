@@ -11,7 +11,6 @@ const capabilities:readonly Capability[]=Object.freeze([
   {key:"beneficiaries.view",businessLabel:"View currently authorized private beneficiary profiles",group:"Beneficiaries",assignable:true,sensitive:true},
   {key:"beneficiaries.manage",businessLabel:"Register and correct permitted beneficiary profiles",group:"Beneficiaries",assignable:true,sensitive:true},
   {key:"beneficiaries.projects.manage",businessLabel:"Link eligible real projects to permitted beneficiaries",group:"Beneficiaries",assignable:true,sensitive:true},
-  {key:"beneficiaries.verification.submit",businessLabel:"Submit current beneficiary source for independent review",group:"Beneficiaries",assignable:true,sensitive:true},
   {key:"beneficiaries.lifecycle.manage",businessLabel:"Change permitted beneficiary active or inactive state",group:"Beneficiaries",assignable:true,sensitive:true},
   {key:"beneficiaries.consent.revoke",businessLabel:"Record a beneficiary consent withdrawal",group:"Beneficiaries",assignable:true,sensitive:true},
   // CG-13 US-001: Foundation programme policy and genuine reward catalog.
