@@ -5,6 +5,7 @@ export class PayrollCompensationController{
  constructor(private readonly source:PayrollCompensationService){}
  @Get("me") @Header("Cache-Control","private, no-store") ownPay(@Headers("authorization")token:string){return this.source.ownPay(token);}
  @Get("employee-options") @Header("Cache-Control","private, no-store") options(@Headers("authorization")token:string,@Query("branchRef")branch?:string,@Query("q")q?:string,@Query("offset")offset?:string,@Query("department")department?:string,@Query("employmentType")employmentType?:string,@Query("employmentStatus")employmentStatus?:string,@Query("salaryStatus")salaryStatus?:string){return this.source.options(token,branch,q,offset??0,{department,employmentType,employmentStatus,salaryStatus});}
+ @Get("leave-rule-options") @Header("Cache-Control","private, no-store") leaveRules(@Headers("authorization")token:string,@Query("branchRef")branch:string){return this.source.leaveRuleOptions(token,branch);}
  @Get("bank-options") @Header("Cache-Control","private, no-store") banks(@Headers("authorization")token:string,@Query("branchRef")branch:string){return this.source.bankOptions(token,branch);}
  @Get("policies") @Header("Cache-Control","private, no-store") policies(@Headers("authorization")token:string,@Query("branchRef")branch:string){return this.source.policies(token,branch);}
  @Post("policies") @Header("Cache-Control","private, no-store") createPolicy(@Headers("authorization")token:string,@Body()raw:unknown){return this.source.createPolicy(token,raw);}
