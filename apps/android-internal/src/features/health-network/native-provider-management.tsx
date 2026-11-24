@@ -168,24 +168,25 @@ export function NativeProviderManagement({token,onExpired,onExit,canManage,
    <Text style={styles.heading}>{editing==="create"?
     "Initial pending center":"Pending center details"}</Text>
    {centers.map((item,i)=><View key={i} style={styles.panel}>
-    <Text style={styles.note}>New center {i+1}</Text>
+    <Text accessibilityRole="header" style={styles.heading}>{i+1}. {item.displayName.trim()||"New operating center"}</Text>
     <NativeHealthCenterEditor token={token} value={item}
      disabled={busy||uncertain} onChange={x=>setCenters(old=>
       old.map((v,j)=>j===i?x:v))}/>
-    {centers.length>1&&button("Remove this pending center",()=>
-     setCenters(old=>old.filter((_,j)=>j!==i)),busy||uncertain)}
+    {centers.length>1&&button("Remove this pending center",()=>Alert.alert("Remove this unsaved center?","Other centers will be kept.",[{text:"Keep",style:"cancel"},{text:"Remove",style:"destructive",onPress:()=>setCenters(old=>old.filter((_,j)=>j!==i))}]),busy||uncertain)}
    </View>)}
    {centers.length<10&&button("Add another pending center",()=>
     setCenters(old=>[...old,blankCenter()]),busy||uncertain)}
   </View>;
  }
  const fields=()=><View style={styles.panel}>
+  <Text accessibilityRole="header" style={styles.heading}>Organization details</Text>
   {input("Provider code",provider.providerCode,x=>
    setProvider(old=>({...old,providerCode:x.toUpperCase()})),24)}
   {input("Legal organization name",provider.legalName,x=>
    setProvider(old=>({...old,legalName:x})))}
   {choice("Organization type",types,provider.providerType,x=>
    setProvider(old=>({...old,providerType:x})))}
+  <Text accessibilityRole="header" style={styles.heading}>Contact details</Text>
   {input("Contact person",provider.contactName,x=>
    setProvider(old=>({...old,contactName:x})),120)}
   {input("Registered contact number",provider.contactPhone,x=>
@@ -354,14 +355,16 @@ export function NativeProviderManagement({token,onExpired,onExit,canManage,
     },busy)}
    </View>}
    {editing==="create"&&canManage&&<>
-    <Text style={styles.heading}>New pending provider</Text>
+    <Text accessibilityRole="header" style={styles.heading}>Register healthcare provider</Text>
+    <Text style={styles.note}>Enter organization details, then add each operating center. Verification comes after saving.</Text>
     {fields()}
+    <Text accessibilityRole="header" style={styles.heading}>Operating centers ({centers.length})</Text>
     {editor()}
     {button("Save original pending provider and centers",()=>
      Alert.alert("Save pending provider?", "Approval and activation remain separate.",[
       {text:"Cancel",style:"cancel"},{text:"Save",onPress:()=>void saveProvider()}
      ]),busy||uncertain)}
-    {button("Cancel registration",()=>{setEditing("none");command.current=null;})}
+    {button("Cancel registration",()=>Alert.alert("Discard unsaved registration?","Saved records will not change.",[{text:"Keep editing",style:"cancel"},{text:"Discard",style:"destructive",onPress:()=>{setEditing("none");command.current=null;}}]),busy||uncertain)}
    </>}
    {selectedProvider&&editing!=="create"&&<View style={styles.panel}>
     <Text style={styles.heading}>{selectedProvider.name}</Text>
