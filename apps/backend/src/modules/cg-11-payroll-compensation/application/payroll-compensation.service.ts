@@ -1,4 +1,4 @@
-import {BadRequestException,ConflictException,Inject,Injectable,NotFoundException} from "@nestjs/common";
+import {BadRequestException,ConflictException,ForbiddenException,Inject,Injectable,NotFoundException} from "@nestjs/common";
 import {createHash,randomUUID} from "node:crypto";
 import type {Pool,PoolClient} from "pg";
 import {DATABASE} from "../../../core/infrastructure/database.module";
@@ -9,6 +9,7 @@ import {BranchSourceFacade} from "../../cg-02-foundation-structure/application/b
 import {FinanceVoucherDraftService} from "../../cg-09-finance-accounting/application/finance-voucher-draft.service";
 import {HrEmploymentChangeSourceFacade} from "../../cg-10-human-resources/application/hr-employment-change-source.facade";
 import {HrPayrollEmployeeSourceFacade,payrollEmployeeDirectorySql} from "../../cg-10-human-resources/application/hr-payroll-employee-source.facade";
+import {recordPayrollAudit} from "../../cg-21-platform-configuration-audit/application/payroll-audit-source";
 import {parsePayout,protectPayout} from "../domain/payout-instruction";
 import {id,parsePolicy,parseSalary,componentMinor,fiscalYearFor} from "../domain/payroll-input";
 const hash=(x:unknown)=>createHash("sha256").update(JSON.stringify(x)).digest("hex");
@@ -18,13 +19,22 @@ type Salary={id:string;employee_ref:string;branch_ref:string;policy_id:string;ef
 @Injectable()
 export class PayrollCompensationService{
  constructor(@Inject(DATABASE)private readonly db:Pool,private readonly sessions:SessionService,private readonly identity:FoundationStructureIdentityFacade,private readonly branches:BranchSourceFacade,private readonly hr:HrPayrollEmployeeSourceFacade,private readonly hrChange:HrEmploymentChangeSourceFacade,private readonly finance:FinanceVoucherDraftService){}
- async run<T>(token:string,action:string,fn:(tx:PoolClient,a:Actor)=>Promise<T>):Promise<T>{
-  const a=await this.sessions.requireAction(token,action),tx=await this.db.connect();
-  try{await tx.query("BEGIN");await this.identity.assertCurrent(tx,a,action);const v=await fn(tx,a);await tx.query("COMMIT");return v;}
-  catch(e){try{await tx.query("ROLLBACK");}catch{}const code=e&&typeof e==="object"&&"code" in e?String(e.code):"";if(["23503","23505","23514","23P01","40001","40P01","55P03"].includes(code))throw conflict();throw e;}finally{tx.release();}
+ private async auditFailure(a:Actor,e:unknown){
+  const code=e&&typeof e==="object"&&"code" in e?String(e.code):"";
+  const result=e instanceof ForbiddenException||e instanceof NotFoundException?"DENIED":e instanceof BadRequestException?"INVALID":e instanceof ConflictException||["23503","23505","23514","23P01","40001","40P01","55P03"].includes(code)?"CONFLICT":null;
+  if(result)await recordPayrollAudit(this.db,a,"ACCESS",result);
  }
- async audit(tx:PoolClient,a:Actor,kind:"POLICY"|"COMPENSATION"|"PAYOUT",ref:string,result:string){
-  await tx.query("INSERT INTO payroll_source_audit(root_realm_id,actor_ref,source_kind,source_ref,event_key,result_class) VALUES($1,$2,$3,$4,$5,$6)",[a.realmId,a.accountId,kind,ref,randomUUID(),result]);
+ async run<T>(token:string,action:string,fn:(tx:PoolClient,a:Actor)=>Promise<T>):Promise<T>{
+  const verified=await this.sessions.verifySession(token);let a:Actor;
+  try{a=await this.sessions.requireAction(token,action);}catch(e){await this.auditFailure(verified,e);throw e;}
+  const tx=await this.db.connect();let released=false;
+  try{await tx.query("BEGIN");await this.identity.assertCurrent(tx,a,action);const v=await fn(tx,a);await tx.query("COMMIT");return v;}
+  catch(e){try{await tx.query("ROLLBACK");}finally{tx.release();released=true;}await this.auditFailure(a,e);const code=e&&typeof e==="object"&&"code" in e?String(e.code):"";if(["23503","23505","23514","23P01","40001","40P01","55P03"].includes(code))throw conflict();throw e;}finally{if(!released)tx.release();}
+ }
+ async audit(tx:PoolClient,a:Actor,kind:"POLICY"|"COMPENSATION"|"PAYOUT",ref:string,result:"DRAFT_CREATED"|"SUBMITTED"|"APPROVED"|"RETURNED"|"REJECTED"|"READ"){
+  const correlation=randomUUID();
+  await tx.query("INSERT INTO payroll_source_audit(root_realm_id,actor_ref,source_kind,source_ref,event_key,result_class) VALUES($1,$2,$3,$4,$5,$6)",[a.realmId,a.accountId,kind,ref,correlation,result]);
+  await recordPayrollAudit(tx,a,kind,result,correlation);
  }
  private policyView(p:Policy){return {ref:p.id,branchRef:p.branch_ref,label:p.label,fiscalYear:fiscalYearFor(p.effective_from).label,effectiveFrom:p.effective_from,effectiveTo:p.effective_to,supersedesRef:p.supersedes_ref,status:p.status,revision:p.revision};}
  private salaryView(p:Salary){return {ref:p.id,employeeRef:p.employee_ref,branchRef:p.branch_ref,policyRef:p.policy_id,effectiveFrom:p.effective_from,effectiveTo:p.effective_to,supersedesRef:p.supersedes_ref,baseMinor:p.base_salary_minor,status:p.status,revision:p.revision};}
@@ -55,6 +65,7 @@ export class PayrollCompensationService{
     count(*)::int AS total,count(*) FILTER(WHERE status IN('ACTIVE','PROBATION'))::int AS active,
     count(*) FILTER(WHERE salary IS NOT NULL)::int AS configured,COALESCE(sum((salary->>'gross')::numeric),0)::text AS gross,COALESCE(sum(pending),0)::int AS pending FROM filtered`,[...scope.params,salaryStatus,offset])).rows[0];
    const {params,...options}=scope;
+   await recordPayrollAudit(tx,a,"COMPENSATION","READ");
    return {...options,items:result.items,hasMore:offset+30<result.total,offset,summary:{total:result.total,active:result.active,configured:result.configured,gross:result.gross,pending:result.pending,documentsPending:null}};
   });}
  async bankOptions(token:string,branchInput:unknown){
@@ -70,12 +81,13 @@ export class PayrollCompensationService{
    await this.branches.projectBranch(tx,a,branch);
    const rows=(await tx.query<Policy>("SELECT id,branch_ref,label,effective_from::text,effective_until::text AS effective_to,supersedes_ref,status,revision,request_digest FROM payroll_policy_effective WHERE root_realm_id=$1 AND (branch_ref IS NOT DISTINCT FROM $2::uuid OR ($2::uuid IS NOT NULL AND branch_ref IS NULL AND status='APPROVED')) ORDER BY effective_from DESC,id DESC LIMIT 100",[a.realmId,branch])).rows;
    const components=(await tx.query("SELECT policy_id,code,label,kind,calc_mode,amount_minor::text,rate_bp,tax_class FROM payroll_component WHERE root_realm_id=$1 AND policy_id=ANY($2::uuid[]) ORDER BY code",[a.realmId,rows.map(r=>r.id)])).rows;
+   await recordPayrollAudit(tx,a,"POLICY","READ");
    return {items:rows.map(p=>({...this.policyView(p),components:components.filter(c=>c.policy_id===p.id).map(({policy_id,...c})=>c)})),statutoryStatus:"NOT_CONFIGURED"};
   });
  }
  async createPolicy(token:string,raw:unknown){
-  const v=parsePolicy(raw),digest=hash(v);
   return this.run(token,"payroll.policy.manage",async(tx,a)=>{
+   const v=parsePolicy(raw),digest=hash(v);
    await this.identity.assertCurrent(tx,a,"payroll.compensation.view");await this.branches.projectBranch(tx,a,v.branch);
    await tx.query("SELECT pg_advisory_xact_lock(hashtextextended($1,0))",["CG11-POLICY:"+a.realmId+":"+a.accountId+":"+v.key]);
    const previous=(await tx.query<Policy>("SELECT *,effective_from::text,effective_to::text FROM payroll_policy WHERE root_realm_id=$1 AND created_by=$2 AND request_key=$3",[a.realmId,a.accountId,v.key])).rows[0];
@@ -100,8 +112,8 @@ export class PayrollCompensationService{
   });
  }
  async createSalary(token:string,employee:string,raw:unknown){
-  const v=parseSalary(raw),digest=hash([id(employee),v]);
   return this.run(token,"payroll.compensation.edit",async(tx,a)=>{
+   const v=parseSalary(raw),digest=hash([id(employee),v]);
    await this.identity.assertCurrent(tx,a,"payroll.compensation.view");const current=await this.employee(tx,a,employee),e=await this.employee(tx,a,employee,v.from);
    if(!["ACTIVE","PROBATION"].includes(e.status)||current.branch_ref!==e.branch_ref)throw conflict();
    await tx.query("SELECT pg_advisory_xact_lock(hashtextextended($1,0))",["CG11-SALARY:"+a.realmId+":"+a.accountId+":"+v.key]);
@@ -128,8 +140,8 @@ export class PayrollCompensationService{
   });
  }
  async createPayout(token:string,employee:string,raw:unknown){
-  const v=parsePayout(raw);
   return this.run(token,"payroll.bank.edit",async(tx,a)=>{
+   const v=parsePayout(raw);
    const e=await this.employee(tx,a,employee),effective=await this.employee(tx,a,employee,v.from);
    if(e.branch_ref!==effective.branch_ref||!["ACTIVE","PROBATION"].includes(e.status))throw conflict();
    const ref=randomUUID(),enc=protectPayout(a.realmId,e.id,ref,v);
