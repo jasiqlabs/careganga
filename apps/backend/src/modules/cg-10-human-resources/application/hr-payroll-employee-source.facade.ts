@@ -22,6 +22,18 @@ export class HrPayrollEmployeeSourceFacade{
   await this.branches.projectBranch(tx,a,e[0].branch_ref);
   return e[0];
  }
+ /** Historical read: current/last real assignment only, same authorized active branch. */
+ async employeeForHistory(tx:PoolClient,a:Actor,employee:string){
+  await this.identity.assertCurrent(tx,a,"payroll.compensation.view");
+  const row=(await tx.query<Employee>(`SELECT e.id,e.employee_code,app.legal_name AS name,h.designation,h.branch_ref,h.id AS assignment_ref,h.assignment_version,e.status_version,e.status
+    FROM hr_employee e JOIN hr_employee_application app ON app.root_realm_id=e.root_realm_id AND app.id=e.application_id
+    JOIN LATERAL (SELECT h.* FROM hr_employment_assignment h WHERE h.root_realm_id=e.root_realm_id AND h.employee_id=e.id AND h.valid_from<=(now() AT TIME ZONE 'Asia/Kolkata')::date ORDER BY h.valid_from DESC,h.id DESC LIMIT 1) h ON true
+    WHERE e.root_realm_id=$1 AND e.id=$2 AND (e.status='EXITED' OR h.valid_to IS NULL OR h.valid_to>(now() AT TIME ZONE 'Asia/Kolkata')::date) FOR SHARE OF e`,[a.realmId,id(employee)])).rows[0];
+  if(!row)throw new NotFoundException("Employee not available");
+  const scope=await this.branches.projectBranchScope(tx,a);
+  if(!scope.branches.some(b=>b.value===row.branch_ref))throw new NotFoundException("Employee not available");
+  await this.branches.projectBranch(tx,a,row.branch_ref);return row;
+ }
  /** Typed, reusable owner-side directory scope. No payroll data read by HR. */
  async directoryScope(tx:PoolClient,a:Actor,branchInput:unknown,qInput:unknown,filters:{department?:unknown;employmentType?:unknown;employmentStatus?:unknown}={}){
   const branch=branchInput?id(branchInput):null,q=typeof qInput==="string"?qInput.trim().toLowerCase().slice(0,80):"";
