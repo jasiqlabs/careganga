@@ -848,6 +848,13 @@ export function StaffAuthenticationScreen() {
             canLinkProjects={roleActions.includes("beneficiaries.projects.manage")&&roleActions.includes("projects.view")}
             canManageLifecycle={roleActions.includes("beneficiaries.lifecycle.manage")}
             canRevoke={roleActions.includes("beneficiaries.consent.revoke")}
+            canViewAssistance={roleActions.includes("beneficiaries.assistance.view")}
+            canManageAssistance={roleActions.includes("beneficiaries.assistance.manage")}
+            canReviewAssistance={roleActions.includes("beneficiaries.assistance.review")&&roleActions.includes("approvals.review")}
+            canDeliverAssistance={roleActions.includes("beneficiaries.assistance.deliver")}
+            canIssueStock={roleActions.includes("inventory.stock.issue")&&roleActions.includes("inventory.stock.view")}
+            canPreparePayment={roleActions.includes("finance.vouchers.manage")&&roleActions.includes("finance.vouchers.view")}
+            canExportReports={roleActions.includes("beneficiaries.reports.export")}
             canSubmitVerification={roleActions.includes("beneficiaries.manage")}
             canReviewVerification={roleActions.includes("beneficiaries.verification.review")&&roleActions.includes("approvals.review")}/>
         </Suspense>
