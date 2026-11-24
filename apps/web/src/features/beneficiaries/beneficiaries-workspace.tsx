@@ -7,6 +7,8 @@ type Item={ref:string;reference:string;name:string;contactMobile:string|null;rep
  consentRevoked:boolean;verification:string;lifecycle:string;revision:number;createdAt:string;
  projectLinks?:{ref:string;projectRef:string;projectName:string}[]};
 type Page={items:Item[];hasMore:boolean;nextCursor:string|null};
+type DuplicateSuggestion={reference:string;maskedName:string;beneficiaryType:string;contactMatches:boolean};
+type DuplicateResponse={advisory:boolean;items:DuplicateSuggestion[];hasMore:boolean};
 type ActionHistory={action:string;revision:number;reason:string|null;at:string};
 type VerificationHistory={decision:string;sourceRevision:number;at:string};
 type Option={value:string;label:string};
@@ -51,9 +53,11 @@ export function BeneficiariesWorkspace({canManage,canLinkProjects,canManageLifec
  const [projects,setProjects]=useState<Option[]>([]),[projectRef,setProjectRef]=useState(""),
   [linkKey,setLinkKey]=useState(""),[linking,setLinking]=useState(false);
  const [reason,setReason]=useState(""),[acting,setActing]=useState(false);
+ const [duplicates,setDuplicates]=useState<DuplicateResponse|null>(null),
+  [checkingDuplicates,setCheckingDuplicates]=useState(false);
  const [actionHistory,setActionHistory]=useState<ActionHistory[]>([]),[verificationHistory,setVerificationHistory]=useState<VerificationHistory[]>([]);
  const seq=useRef(0),drawer=useRef<HTMLElement|null>(null),focus=useRef<HTMLElement|null>(null);
- const update=(k:keyof Form,v:string|boolean)=>setForm(x=>({...x,[k]:v}));
+ const update=(k:keyof Form,v:string|boolean)=>{setForm(x=>({...x,[k]:v}));setDuplicates(null);};
  useEffect(()=>{let live=true;void api<Options>("/options").then(v=>{if(live)setOpts(v);}).catch(e=>{if(live)setError(e.message);});return()=>{live=false;};},[]);
  useEffect(()=>{const id=++seq.current;setBusyList(true);setError("");
   const params=new URLSearchParams();if(search)params.set("q",search);if(branch)params.set("branchRef",branch);
@@ -84,7 +88,7 @@ export function BeneficiariesWorkspace({canManage,canLinkProjects,canManageLifec
  },[selected?.ref,selected?.branchRef,canLinkProjects,epoch]);
  const refresh=()=>{setEpoch(x=>x+1);};
  const open= (kind:"create"|"edit")=>{
-  setMode(kind);setFormError("");setNotice("");setRequestKey(crypto.randomUUID());
+  setMode(kind);setFormError("");setNotice("");setDuplicates(null);setRequestKey(crypto.randomUUID());
   setForm(kind==="edit"&&selected?fromItem(selected):{...empty(),branchRef:opts&&!opts.canManageFoundation?opts.branches[0]?.value??"":""});
  };
  const choose=async(id:string)=>{
@@ -100,6 +104,18 @@ export function BeneficiariesWorkspace({canManage,canLinkProjects,canManageLifec
    }
   catch(e){setError(e instanceof Error?e.message:"Beneficiary unavailable");}
   finally{setDetailLoading(false);}
+ };
+ const checkDuplicates=async()=>{
+  if(checkingDuplicates)return;
+  if(form.name.trim().length<3&&!form.contactMobile.trim())return;
+  setCheckingDuplicates(true);setFormError("");
+  try{
+   const params=new URLSearchParams({branchRef:form.branchRef,name:form.name.trim(),
+    contactMobile:form.contactMobile.trim()});
+   if(mode==="edit"&&selected)params.set("excludeRef",selected.ref);
+   setDuplicates(await api<DuplicateResponse>("/duplicate-suggestions?"+params));
+  }catch(e){setFormError(e instanceof Error?e.message:"Could not check possible matches");}
+  finally{setCheckingDuplicates(false);}
  };
  const save=async(e:FormEvent)=>{
   e.preventDefault();if(!canManage||saving)return;setSaving(true);setFormError("");
@@ -265,7 +281,22 @@ export function BeneficiariesWorkspace({canManage,canLinkProjects,canManageLifec
      <label style={field}>Contact (optional, with country code)
       <input style={input} inputMode="tel" value={form.contactMobile} maxLength={16}
        placeholder="+919876543210" onChange={e=>update("contactMobile",e.target.value)}/></label>
-     <label style={field}>State<select required style={input} value={form.stateRef}
+     <div style={{...card,display:"grid",gap:8}}>
+       <strong style={{fontSize:13}}>Possible existing records (optional check)</strong>
+       <p style={{margin:0,fontSize:12,color:"var(--cg-muted)"}}>
+        A family may share a phone or name. Matches are suggestions only; two people may have separate profiles.</p>
+       <button type="button" style={secondary} disabled={checkingDuplicates}
+        onClick={()=>void checkDuplicates()}>
+        {checkingDuplicates?"Checking permitted records…":"Check possible matches"}</button>
+       {duplicates&&<div aria-live="polite" style={{fontSize:12}}>
+        {!duplicates.items.length?<span>No possible matches in this branch.</span>:
+         <div style={{display:"grid",gap:5}}>{duplicates.items.map(x=><div key={x.reference}>
+          {x.maskedName} · {x.beneficiaryType} · {x.reference}
+          {x.contactMatches?" · Same contact":""}</div>)}
+         {duplicates.hasMore&&<p>Other possible matches exist. Narrow the search.</p>}</div>}
+        <p>Do not merge or overwrite records automatically.</p></div>}
+      </div>
+      <label style={field}>State<select required style={input} value={form.stateRef}
       onChange={e=>setForm(x=>({...x,stateRef:e.target.value,districtRef:""}))}>
       <option value="">Select a current state</option>{opts?.states.map(x=><option key={x.value} value={x.value}>{x.label}</option>)}</select></label>
      <label style={field}>District (optional)<select style={input} value={form.districtRef}
