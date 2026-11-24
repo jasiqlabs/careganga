@@ -16,7 +16,7 @@ type Template={kind:Kind;label:string;views:View[];description:string};
 type Catalog={
  templates:Template[];
  payroll?:{ready:boolean;branches:Option[];month:string};
- membership?:{ready:boolean;branches:Option[]};volunteers?:{ready:boolean;branches:Option[]};
+ membership?:{ready:boolean;branches:Option[]};volunteers?:{ready:boolean;branches:Option[]};beneficiary?:{ready:boolean;branches:Option[]};
  finance:{ready:boolean;state?:"AVAILABLE"|"ACCESS_RESTRICTED"|"SOURCE_UNAVAILABLE";years:Option[];branches:Option[];areas?:AreaOption[];allBranches:boolean};
  appointments:{ready:boolean;state?:"AVAILABLE"|"ACCESS_RESTRICTED"|"SOURCE_UNAVAILABLE";centers:Option[];complete:boolean};
  capabilities:{manage:boolean;export:boolean;schedule:boolean;share?:boolean}
@@ -129,7 +129,9 @@ export function MisReportsWorkspace(){
  const grouped=kind==="FINANCE_POSTED_GROUPED";
  const geography=ledger||grouped;
  const roster=kind==="MEMBERSHIP_ROSTER_SUMMARY"?catalog?.membership:kind==="VOLUNTEER_ROSTER_SUMMARY"?catalog?.volunteers:undefined;
- const dated=ledger||grouped||health||kind==="PLATFORM_AUDIT_ACTIVITY"||kind==="CSR_FUNDING_SUMMARY"||!!roster;
+ const beneficiary=kind==="BENEFICIARY_ASSISTANCE_SUMMARY"?catalog?.beneficiary:undefined;
+ const scoped=roster??beneficiary;
+ const dated=ledger||grouped||health||kind==="PLATFORM_AUDIT_ACTIVITY"||kind==="CSR_FUNDING_SUMMARY"||!!scoped;
  function setPreset(next:Period){
   setPeriod(next);setResult(null);
   if(next==="CUSTOM"){setFrom("");setUntil("");return;}
@@ -145,7 +147,7 @@ export function MisReportsWorkspace(){
     ...(status?{status}:{}),
    }),
    ...(kind==="PAYROLL_STATUS_SUMMARY"?{...(payrollMonth?{payrollMonth}:{}),...(payrollBranch?{branchRef:payrollBranch}:{})}:{}),
-   ...(roster&&rosterBranch?{branchRef:rosterBranch}:{}),
+   ...(scoped&&rosterBranch?{branchRef:rosterBranch}:{}),
    ...(dated&&(from||until)?{fromDay:from,untilDay:until}:{}),
    ...(grouped?{groupBy,sortBy,sortDirection}:{}),
    offset};
@@ -205,7 +207,7 @@ export function MisReportsWorkspace(){
       {v==="SUMMARY"?"Summary":v==="CHART"?"Chart":v==="PIVOT"?"Pivot":"Table"}</option>)}
     </select></label>}
     <div style={{display:"flex",flexWrap:"wrap",gap:12}}>
-     {roster?.ready&&<label>Roster branch <select value={rosterBranch} onChange={e=>setRosterBranch(e.target.value)}><option value="">All permitted branches</option>{roster.branches.map(b=><option key={b.ref} value={b.ref}>{b.name}</option>)}</select></label>}
+     {scoped?.ready&&<label>{beneficiary?"Beneficiary branch":"Roster branch"} <select value={rosterBranch} onChange={e=>setRosterBranch(e.target.value)}><option value="">All permitted branches</option>{scoped.branches.map(b=><option key={b.ref} value={b.ref}>{b.name}</option>)}</select></label>}
      {kind==="PAYROLL_STATUS_SUMMARY"&&catalog.payroll?.ready&&<>
       <label>Payroll month <input type="month" min="2000-01" value={payrollMonth} onChange={e=>setPayrollMonth(e.target.value)}/></label>
       <label>Payroll branch <select value={payrollBranch} onChange={e=>setPayrollBranch(e.target.value)}><option value="">All permitted payroll branches</option>{catalog.payroll.branches.map(b=><option key={b.ref} value={b.ref}>{b.name}</option>)}</select></label>
@@ -255,6 +257,7 @@ export function MisReportsWorkspace(){
      </>}
      {dated&&<>
       {roster&&<p>Dates filter enrollment dates. Status is current, not historical.</p>}
+      {beneficiary&&<p>Dates filter deliveries only. Demographic counts are current and small groups are hidden.</p>}
       {kind==="CSR_FUNDING_SUMMARY"&&<p>Dates filter proposal updates, not bank posting dates.</p>}
       <label>Reporting period <select value={period}
        onChange={e=>setPreset(e.target.value as Period)}>
