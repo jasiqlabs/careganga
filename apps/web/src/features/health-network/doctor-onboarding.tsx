@@ -81,6 +81,7 @@ export function DoctorOnboarding({canManage,canVerify}:{canManage:boolean;canVer
     try{
       const item=await request<Detail>("/"+encodeURIComponent(ref));
       if(turn!==detailTurn.current)return;
+      if(item?.doctorRef!==ref||!item.doctor)throw Error("The doctor registration is unavailable.");
       setSelected(item);
       if(item.status==="PENDING"){
         const proof=await fetch("/api/documents/doctor-evidence/doctors/"+
