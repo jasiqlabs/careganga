@@ -25,7 +25,7 @@ const text=(v:unknown)=>typeof v==="string"?v:"";
 const safeColor=(v:unknown,fallback:string)=>/^#[a-fA-F0-9]{6}$/.test(text(v))?text(v):fallback;
 const local=(v:unknown)=>{
  const route=text(v);
- return ["/","/about","/contact","/our-impact","/ngo-information","/gallery","/videos","/publications","/healthcare","/our-work","/upcoming-projects","/collaboration"].includes(route)?route:null;
+ return ["/","/about","/contact","/our-impact","/ngo-information","/gallery","/videos","/publications","/healthcare","/our-work","/upcoming-projects","/collaboration","/membership","/volunteer"].includes(route)?route:null;
 };
 async function published(slug:string):Promise<Result>{
  if(!/^[a-z0-9][a-z0-9-]{0,69}$/.test(slug))return {state:"NOT_PUBLISHED",page:null};
@@ -160,7 +160,7 @@ export function PublicCmsContent({onContact,onPartnerApplication,onMembershipApp
  const latestNavRequest=useRef(0);
  const refreshNavigation=useCallback(async()=>{
   const request=++latestNavRequest.current;
-  onLoginVisibility(false);setVolunteerJoin(false);setMemberJoin(false);
+  onLoginVisibility(false);setVolunteerJoin(false);setMemberJoin(false);setPublishedPaths([]);
   const nav=await publishedNavigation();
   if(request===latestNavRequest.current){
    onLoginVisibility(nav.login);setPublishedPaths(nav.paths);
@@ -214,7 +214,17 @@ export function PublicCmsContent({onContact,onPartnerApplication,onMembershipApp
   });
   return()=>sub.remove();
  },[slug,articleBackTarget,ngoScope]);
+ const canNavigate=(href:unknown)=>{
+  const route=local(href);
+  if(!route)return false;
+  if(route==="/membership")return memberJoin;
+  if(route==="/volunteer")return volunteerJoin;
+  if(route==="/"||route==="/contact")return true;
+  if(route==="/videos"||route==="/publications")return publishedPaths.includes("/gallery");
+  return publishedPaths.includes(route);
+ };
  const navigate=(href:unknown)=>{
+  if(!canNavigate(href))return;
   const route=local(href);
   if(route==="/")setSlug("home");
   else if(route==="/membership"&&memberJoin)setSlug("membership");
@@ -387,9 +397,9 @@ export function PublicCmsContent({onContact,onPartnerApplication,onMembershipApp
       {tags.length>0&&<View style={styles.actions}>{tags.map((tag,j)=>
        <Text key={j} style={styles.tag}>{String(tag)}</Text>)}</View>}
       <View style={styles.actions}>
-       {!!text(fields.primaryLabel)&&local(fields.primaryPath)&&
+       {!!text(fields.primaryLabel)&&canNavigate(fields.primaryPath)&&
         <CmsButton title={text(fields.primaryLabel)} onPress={()=>navigate(fields.primaryPath)}/>}
-       {!!text(fields.secondaryLabel)&&local(fields.secondaryPath)&&
+       {!!text(fields.secondaryLabel)&&canNavigate(fields.secondaryPath)&&
         <CmsButton title={text(fields.secondaryLabel)} secondary
          onPress={()=>navigate(fields.secondaryPath)}/>}
       </View>
@@ -459,7 +469,7 @@ export function PublicCmsContent({onContact,onPartnerApplication,onMembershipApp
        accessibilityLabel={image?.altText||"Foundation volunteers"}/>}
       {text(fields.path)==="/volunteer"?volunteerJoin&&text(fields.label)?
        <CmsButton title={text(fields.label)} onPress={onVolunteerApply}/>:null:
-       local(fields.path)&&text(fields.label)&&<CmsButton title={text(fields.label)} onPress={()=>navigate(fields.path)}/>}
+       canNavigate(fields.path)&&text(fields.label)&&<CmsButton title={text(fields.label)} onPress={()=>navigate(fields.path)}/>}
      </View>;
     }
     if(section.kind==="SITE_FOOTER")return <View style={styles.card} key={i}>
