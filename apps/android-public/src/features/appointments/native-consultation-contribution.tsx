@@ -167,8 +167,7 @@ export function NativeConsultationContribution({holdRef,bookingRef,
      "Original split preserved; booking changed and needs center review.":
     value.accepted?"Original accepted split; payment remains unverified.":
      "Quote only. Not an accepted charge or patient payment."}</Text>
-   <Text style={s.note}>No tax amount has been invented. CG17 does not
-    collect the patient payment or create a Foundation liability here.</Text>
+   <Text style={s.note}>Tax is not estimated here. Payment and Foundation settlement are confirmed separately.</Text>
    {canAccept&&bookingRef&&!value.accepted&&
     !["SOURCE_CANCELLED","SERVICE_NO_SHOW_REVIEW_REQUIRED","SOURCE_CHANGED_REVIEW_REQUIRED"].includes(value.state)&&
     btn("Accept original contribution split",()=>void accept(),busy||uncertain)}
