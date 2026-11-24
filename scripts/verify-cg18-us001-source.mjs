@@ -591,6 +591,8 @@ checks.push(["First-install approved baseline uses only existing revision/approv
  firstPublication.includes("requiredRoutes")&&firstPublication.includes("publishedRoutes")&&
  baselinePublisher.includes('d.revisionRef!==e.revisionRef')&&baselinePublisher.includes('d.approvalCaseRef!==e.caseRef')&&
  baselinePublisher.includes('d.publicationStatus==="EFFECTIVE"')&&baselinePublisher.includes('"/publish"')&&
+ baselinePublisher.includes("d.hasPublicationHistory!==false")&&baselinePublisher.includes("firstPublicationOnly:true")&&
+ files.backend.includes("if(v.firstPublicationOnly===true)")&&files.backend.includes("hasPublicationHistory:!!history.rowCount")&&
  !baselinePublisher.includes("/submit")]);
 checks.push(["Empty media/impact has no synthetic records and nonempty impact retains required provenance",
  files.extended.includes('source:str(x.source??"","source",180,items.length?3:0)')&&
@@ -598,6 +600,11 @@ checks.push(["Empty media/impact has no synthetic records and nonempty impact re
  files.extended.includes('entry.visible!==false&&!assets.some')&&
  files.extended.includes('if(x.consentConfirmed!==true)')&&
  files.androidExtended.includes("No approved information has been published yet.")]);
+const partnershipPage=read("apps/web/src/app/collaboration/page.tsx");
+checks.push(["Corporate partnership general narrative uses current CMS content in both public channels",
+ initDrafts.includes('heading:"Why Partner With Us?"')&&partnershipPage.includes('approved.filter(s=>s.kind==="RICH_TEXT")')&&
+ partnershipPage.includes("narrative.map")&&!partnershipPage.includes("<h3>Community Impact</h3>")&&
+ files.android.includes('section.kind==="RICH_TEXT"')&&files.adminExtended.includes("Add partnership text section")]);
 const eventsRoute=read("apps/web/src/app/events/page.tsx");
 checks.push(["Events reuse the effective CMS article and current CG05 eligibility source",
  files.backend.includes("NOT $3::boolean OR body.structured_fields ? 'sourceEventRef'")&&
