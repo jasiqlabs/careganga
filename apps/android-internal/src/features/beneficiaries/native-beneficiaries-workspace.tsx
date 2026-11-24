@@ -53,7 +53,7 @@ export function NativeBeneficiariesWorkspace({token,onExpired,canManage,canLinkP
 }){
  const [page,setPage]=useState<Page|null>(null),[selected,setSelected]=useState<Item|null>(null);
  const [opts,setOpts]=useState<Options|null>(null),[districts,setDistricts]=useState<Option[]>([]);
- const [q,setQ]=useState(""),[search,setSearch]=useState(""),[tab,setTab]=useState("ALL");
+ const [q,setQ]=useState(""),[search,setSearch]=useState(""),[tab,setTab]=useState("ALL"),[branch,setBranch]=useState("");
  const [cursor,setCursor]=useState(""),[history,setHistory]=useState<string[]>([]);
  const [auditHistory,setAuditHistory]=useState<ActionHistory[]>([]),[verificationHistory,setVerificationHistory]=useState<VerificationHistory[]>([]);
  const [refreshKey,setRefreshKey]=useState(0),[loading,setLoading]=useState(false),[busy,setBusy]=useState(false);
@@ -83,7 +83,7 @@ export function NativeBeneficiariesWorkspace({token,onExpired,canManage,canLinkP
   return()=>{active=false;};},[draft.stateRef,api]);
  useEffect(()=>{let live=true;setLoading(true);
   const p=new URLSearchParams();
-  if(search)p.set("q",search);if(tab==="ACTIVE"||tab==="INACTIVE")p.set("lifecycle",tab);
+  if(search)p.set("q",search);if(branch)p.set("branchRef",branch);if(tab==="ACTIVE"||tab==="INACTIVE")p.set("lifecycle",tab);
   if(tab==="VERIFIED")p.set("verification","VERIFIED");
   if(tab==="PENDING")p.set("verification","PENDING");
   if(cursor)p.set("cursor",cursor);
@@ -91,7 +91,7 @@ export function NativeBeneficiariesWorkspace({token,onExpired,canManage,canLinkP
    .catch(e=>{if(live){setPage(null);setError(e.message);}})
    .finally(()=>{if(live)setLoading(false);});
   return()=>{live=false;};
- },[search,tab,cursor,refreshKey,api]);
+ },[search,tab,branch,cursor,refreshKey,api]);
  const select=async(id:string)=>{setBusy(true);setError("");
   try{
    const [x,audit,verification]=await Promise.all([
@@ -158,6 +158,9 @@ export function NativeBeneficiariesWorkspace({token,onExpired,canManage,canLinkP
     style={{backgroundColor:"white",borderWidth:1,borderColor:"#CBD5E1",padding:12,borderRadius:10}}
     placeholder="Name or beneficiary reference"/>
    <Button label="Search current scope" outline onPress={()=>{setSearch(q.trim());setCursor("");setHistory([]);}}/>
+   <Select title="Operating branch" selected={branch}
+    items={[{value:"",label:"All permitted branches"},...(opts?.branches??[])]}
+    onSelect={x=>{setBranch(x);setCursor("");setHistory([]);}}/>
    <Select title="Status" selected={tab} onSelect={x=>{setTab(x);setCursor("");setHistory([]);}}
     items={enumOptions(["ALL","ACTIVE","INACTIVE","VERIFIED","PENDING"])}/>
    {!!notice&&<Text accessibilityRole="alert" style={{color:"#166534"}}>{notice}</Text>}
@@ -209,7 +212,7 @@ export function NativeBeneficiariesWorkspace({token,onExpired,canManage,canLinkP
      <Text style={labelStyle}>Reason for status or consent change</Text>
      <TextInput value={reason} onChangeText={setReason} maxLength={300}
       style={{backgroundColor:"#F8FAFC",borderColor:"#CBD5E1",borderWidth:1,borderRadius:8,padding:12}}/>
-     {canManageLifecycle&&<Button label={selected.lifecycle==="ACTIVE"?"Mark inactive":"Reactivate"}
+     {canManageLifecycle&&!selected.consentRevoked&&<Button label={selected.lifecycle==="ACTIVE"?"Mark inactive":"Reactivate"}
       disabled={busy||reason.trim().length<3} outline onPress={()=>void lifecycle()}/>}
      {canRevoke&&!selected.consentRevoked&&<Button label="Record consent withdrawal"
       disabled={busy||reason.trim().length<3} outline onPress={()=>void revoke()}/>}
