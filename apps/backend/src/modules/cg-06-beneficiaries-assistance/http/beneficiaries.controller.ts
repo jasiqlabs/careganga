@@ -17,6 +17,13 @@ export class BeneficiariesController{
  @Post() create(@Headers("authorization")token:string,@Body()body:unknown){
   return this.beneficiaries.create(token,body);
  }
+ @Get(":ref/history") history(@Headers("authorization")token:string,@Param("ref")ref:string){
+  return this.beneficiaries.history(token,ref);
+ }
+ @Get(":ref/verification-history") verificationHistory(
+  @Headers("authorization")token:string,@Param("ref")ref:string){
+  return this.beneficiaries.verificationHistory(token,ref);
+ }
  @Get(":ref") detail(@Headers("authorization")token:string,@Param("ref")ref:string){
   return this.beneficiaries.detail(token,ref);
  }
