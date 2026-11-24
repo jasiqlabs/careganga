@@ -25,6 +25,7 @@ function Field({label,value,change,type="text",disabled=false}:{label:string;val
 function Select({label,value,change,items,disabled=false,optional=false}:{label:string;value:string;change:(v:string)=>void;items:Choice[];disabled?:boolean;optional?:boolean}){return <label style={{display:"grid",gap:4,fontSize:13}}>{label}<select style={control} value={value} disabled={disabled} onChange={e=>change(e.target.value)}><option value="">{optional?"Not selected":"Choose an option"}</option>{items.map(x=><option key={x.value} value={x.value}>{x.label}</option>)}</select></label>;}
 export function AssistancePanel({beneficiary,canManage,canReview,canDeliver,canStock,canFinance,canEvidence}:Props){
  const [cases,setCases]=useState<Case[]|null>(null),[selected,setSelected]=useState<Case|null>(null),[review,setReview]=useState<Review|null>(null),[delivery,setDelivery]=useState<Delivery|null>(null);
+ const [caseEvents,setCaseEvents]=useState<{action:string;revision:number;at:string}[]|null>(null);
  const [choices,setChoices]=useState<Choices|null>(null),[payments,setPayments]=useState<PaymentChoices|null>(null),[form,setForm]=useState(initial);
  const [showForm,setShowForm]=useState(false),[busy,setBusy]=useState(false),[error,setError]=useState(""),[notice,setNotice]=useState(""),[uncertain,setUncertain]=useState(false);
  const [remarks,setRemarks]=useState(""),[password,setPassword]=useState(""),[decision,setDecision]=useState("APPROVE");
@@ -37,14 +38,14 @@ export function AssistancePanel({beneficiary,canManage,canReview,canDeliver,canS
   const n=++sequence.current;
   try{const v=await api<{items:Case[]}>("/assistance?beneficiaryRef="+encodeURIComponent(beneficiary.ref));if(n!==sequence.current)return;setCases(v.items);
    const c=v.items.find(x=>x.ref===(focus??selected?.ref));setSelected(c??null);
-   if(!c){setReview(null);setDelivery(null);return;}
-   const [r,d]=await Promise.all([api<Review>("/assistance/"+c.ref+"/review").catch(()=>null),api<Delivery>("/assistance/"+c.ref+"/fulfillment").catch(()=>null)]);
-   if(n!==sequence.current)return;setReview(r);setDelivery(d);
-   if(!r||!d)setError("Some original source information is unavailable. Refresh before acting.");
+   if(!c){setReview(null);setDelivery(null);setCaseEvents(null);return;}
+   const [r,d,h]=await Promise.all([api<Review>("/assistance/"+c.ref+"/review").catch(()=>null),api<Delivery>("/assistance/"+c.ref+"/fulfillment").catch(()=>null),api<{events:{action:string;revision:number;at:string}[]}>("/assistance/"+c.ref+"/history").catch(()=>null)]);
+   if(n!==sequence.current)return;setReview(r);setDelivery(d);setCaseEvents(h?.events??null);
+   if(!r||!d||!h)setError("Some original source information is unavailable. Refresh before acting.");
   }catch(e){if(n===sequence.current){setCases(null);setSelected(null);setDelivery(null);setReview(null);setError(e instanceof Error?e.message:"Assistance information unavailable.");}}
  };
  useEffect(()=>{void refresh();return()=>{sequence.current++;};},[beneficiary.ref,beneficiary.revision]);
- const choose=async(c:Case)=>{setSelected(c);setReview(null);setDelivery(null);setAllocation(null);setPayments(null);setProofs([]);setProofRef("");setReturnOf("");setAttested(false);setPassword("");setRemarks("");setQty("");setAmount("");await refresh(c.ref);};
+ const choose=async(c:Case)=>{setSelected(c);setReview(null);setDelivery(null);setCaseEvents(null);setAllocation(null);setPayments(null);setProofs([]);setProofRef("");setReturnOf("");setAttested(false);setPassword("");setRemarks("");setQty("");setAmount("");await refresh(c.ref);};
  const open=async()=>{setError("");setShowForm(true);setChoices(null);setForm(initial());try{const v=await api<Choices>("/assistance/options?beneficiaryRef="+beneficiary.ref);setChoices(v);setForm(f=>({...f,responsible:v.selfRef,kind:v.stores.length&&v.items.length?"MATERIAL":"FINANCIAL"}));}catch(e){setError(e instanceof Error?e.message:"Request choices unavailable.");}};
  const submitCommand=async(next?:Command)=>{
   if(running.current)return;const c=command.current??next;if(!c)return;command.current=c;running.current=true;setBusy(true);setError("");
@@ -95,6 +96,7 @@ export function AssistancePanel({beneficiary,canManage,canReview,canDeliver,canS
   {cases===null?<p>Assistance records unavailable or loading.</p>:cases.length===0?<p>No assistance requests yet.</p>:<div style={{display:"grid",gap:6}}>{cases.map(c=><button type="button" key={c.ref} disabled={locked} onClick={()=>void choose(c)} style={{...control,textAlign:"left",borderColor:selected?.ref===c.ref?"var(--cg-accent)":"var(--cg-border)"}}><strong>{c.reference} · {c.category}</strong><div>{c.kind==="MATERIAL"?c.quantity+" "+c.unit:money(c.amountMinor)} · {pretty(c.state)}</div></button>)}</div>}
   {selected&&<div style={card}><strong>{selected.reference}</strong>
    <div>{pretty(selected.state)}{review?.caseNumber?" · "+review.caseNumber:""}</div>
+   <strong>Request history</strong>{caseEvents===null?<p>History unavailable.</p>:caseEvents.map(e=><p key={e.revision} style={{margin:0,fontSize:13}}>{pretty(e.action)} · {new Date(e.at).toLocaleString()}</p>)}
    {selected.state==="DRAFT"&&canRequest&&<Button label="Submit for independent approval" click={submit} disabled={locked}/>}
    {review?.canReview&&canReview&&eligible&&<div style={card}><Select label="Review decision" value={decision} change={setDecision} items={["APPROVE","RETURN","REJECT"].map(value=>({value,label:pretty(value)}))} disabled={locked}/><Field label="Remarks" value={remarks} change={setRemarks} disabled={locked}/><Field label="Current Foundation password" type="password" value={password} change={setPassword} disabled={locked}/><Button label="Confirm independent decision" click={decide} disabled={locked||password.length<8||(decision!=="APPROVE"&&remarks.trim().length<3)}/></div>}
    {delivery?<><strong>{pretty(delivery.totals.status)}</strong>{selected.kind==="MATERIAL"?<div>Handed over: {delivery.totals.grossQuantity} {selected.unit} · Returned: {delivery.totals.returnedQuantity} · Net: {delivery.totals.netQuantity}</div>:<div>Paid: {money(delivery.totals.paidMinor)} · Recovered: {money(delivery.totals.reversedMinor)} · Net: {money(delivery.totals.netMinor)}</div>}
