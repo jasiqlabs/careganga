@@ -61,8 +61,8 @@ export class PayrollRunService{
     SELECT r.period_key,l.net_minor,l.gross_minor,l.deduction_minor,coalesce(p.paid,0) paid,coalesce(p.invalid,false) invalid,coalesce(p.pending,false) pending,coalesce(p.failed,false) failed,coalesce(p.rejected,0) rejected
     FROM scoped r JOIN payroll_line l ON l.root_realm_id=$1 AND l.run_id=r.id AND r.status='APPROVED_FROZEN'
     LEFT JOIN payroll_batch_item i ON i.root_realm_id=l.root_realm_id AND i.line_ref=l.id
-    LEFT JOIN LATERAL(SELECT sum(o.paid_minor) paid,bool_or(o.reversed OR (o.voucher_status='POSTED' AND o.paid_minor<>o.amount_minor)) invalid,
-     bool_or(o.attempt_status NOT IN('POSTED','REJECTED','FAILED_VERIFIED')) pending,bool_or(o.attempt_status='FAILED_VERIFIED') failed,count(*) FILTER(WHERE o.attempt_status='REJECTED') rejected
+    LEFT JOIN LATERAL(SELECT sum(o.paid_minor) paid,bool_or(o.reversed OR (o.attempt_status='POSTED' AND o.paid_minor<>o.amount_minor)) invalid,
+     bool_or(o.attempt_status NOT IN('POSTED','REJECTED','FAILED_VERIFIED','RETURNED_VERIFIED')) pending,bool_or(o.attempt_status IN('FAILED_VERIFIED','RETURNED_VERIFIED')) failed,count(*) FILTER(WHERE o.attempt_status='REJECTED') rejected
      FROM payroll_attempt_outcome o WHERE o.root_realm_id=i.root_realm_id AND o.item_ref=i.id)p ON true
    ), money AS (
     SELECT period_key,count(*)::int employees,sum(gross_minor)::text gross,sum(deduction_minor)::text deductions,sum(net_minor)::text net,sum(paid)::text paid,
@@ -91,8 +91,8 @@ export class PayrollRunService{
     SELECT l.run_id run,sum(l.net_minor)::text due,sum(coalesce(p.paid,0))::text paid,
       bool_or(coalesce(p.invalid,false)) invalid,bool_or(coalesce(p.pending,false)) pending,bool_or(coalesce(p.failed,false) AND coalesce(p.paid,0)<l.net_minor) failed
     FROM payroll_line l LEFT JOIN payroll_batch_item i ON i.root_realm_id=l.root_realm_id AND i.line_ref=l.id
-    LEFT JOIN LATERAL (SELECT sum(o.paid_minor) paid,bool_or(o.reversed OR (o.voucher_status='POSTED' AND o.paid_minor<>o.amount_minor)) invalid,
-      bool_or(o.attempt_status NOT IN('POSTED','REJECTED','FAILED_VERIFIED')) pending,bool_or(o.attempt_status='FAILED_VERIFIED') failed FROM payroll_attempt_outcome o WHERE o.root_realm_id=i.root_realm_id AND o.item_ref=i.id)p ON true
+    LEFT JOIN LATERAL (SELECT sum(o.paid_minor) paid,bool_or(o.reversed OR (o.attempt_status='POSTED' AND o.paid_minor<>o.amount_minor)) invalid,
+      bool_or(o.attempt_status NOT IN('POSTED','REJECTED','FAILED_VERIFIED','RETURNED_VERIFIED')) pending,bool_or(o.attempt_status IN('FAILED_VERIFIED','RETURNED_VERIFIED')) failed FROM payroll_attempt_outcome o WHERE o.root_realm_id=i.root_realm_id AND o.item_ref=i.id)p ON true
     WHERE l.root_realm_id=$1 AND l.run_id=ANY($2::uuid[]) GROUP BY l.run_id`,[realm,ids])).rows;
   const result=new Map<string,string>();
   for(const x of totals){const due=BigInt(x.due),paid=BigInt(x.paid);result.set(x.run,x.invalid||paid>due?"RECONCILIATION_REQUIRED":due===0n?"NO_PAYMENT_DUE":paid===due?"PAID_VERIFIED":paid>0n?"PARTIALLY_PAID":x.pending?"PAYMENT_PENDING":x.failed?"FAILED_TRANSFER_DUE":"APPROVED_NOT_PAID");}

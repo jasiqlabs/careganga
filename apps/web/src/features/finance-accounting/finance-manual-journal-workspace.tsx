@@ -5,7 +5,7 @@ type Year={yearRef:string;name:string;startOn:string;endOn:string;status:string}
 type Option={accountRef:string;name:string;code:string;branchRef:string|null;
  branchName:string|null;branchVersion:number|null};
 type LedgerRow={journalRef:string;description:string;postingDate:string;yearName:string;
- debitMinor:string;reversed:boolean;differentCreator:boolean};
+ debitMinor:string;reversed:boolean;differentCreator:boolean;payrollBankReturn?:boolean};
 type DraftLine={accountRef:string;debit:string;credit:string};
 type Pending={requestKey:string;body:Record<string,unknown>};
 type Problem={message:string;field:string|null};
@@ -59,6 +59,8 @@ export function FinanceManualJournalWorkspace({years,canPost,canReverse,onUpdate
  const [correctionDate,setCorrectionDate]=useState("");
  const [correctionReason,setCorrectionReason]=useState("");
  const [correctionPassword,setCorrectionPassword]=useState("");
+ const [returnBankReference,setReturnBankReference]=useState("");
+ const [returningPayroll,setReturningPayroll]=useState(false);
  const [correctionPending,setCorrectionPending]=useState<{
   journalRef:string;requestKey:string;body:Record<string,unknown>}|null>(null);
  useEffect(()=>{
@@ -238,8 +240,8 @@ export function FinanceManualJournalWorkspace({years,canPost,canReverse,onUpdate
       "Reversed — historical entry":"Posted (not paid)"}</span></td>
      {canCorrect&&<td>{j.differentCreator&&!j.reversed&&
       <button type="button" disabled={busy||Boolean(correctionPending)} onClick={()=>{
-       setCorrection(j.journalRef);setCorrectionYear("");setCorrectionDate("");
-       setCorrectionReason("");setCorrectionPassword("");setError("");}}>Correct posted journal</button>}</td>}</tr>)}
+       setCorrection(j.journalRef);setReturningPayroll(!!j.payrollBankReturn);setReturnBankReference("");setCorrectionYear("");setCorrectionDate("");
+       setCorrectionReason("");setCorrectionPassword("");setError("");}}>{j.payrollBankReturn?"Record payroll bank return":"Correct posted journal"}</button>}</td>}</tr>)}
    </tbody></table>
    {!items.length&&<p className="cg-fin-empty">No manual journals have been posted.
     {canPost?" Choose New Journal to record a balanced entry.":""}</p>}
@@ -249,12 +251,12 @@ export function FinanceManualJournalWorkspace({years,canPost,canReverse,onUpdate
     className="role-drawer cg-fin-drawer">
     <div className="cg-fin-drawer-header"><div>
      <p>Finance Management / Protected Correction</p>
-     <h2 id="cg-journal-correction-title">Reverse original manual journal</h2>
+     <h2 id="cg-journal-correction-title">{returningPayroll?"Record actual payroll bank return":"Reverse original manual journal"}</h2>
     </div><button type="button" disabled={busy||Boolean(correctionPending)}
      onClick={()=>setCorrection("")}>Close</button></div>
     <p className="cg-fin-description">The original entry stays immutable. A different authorized
      reviewer posts one exact balancing reversal in an open financial year.
-     This does not reverse an issued invoice or settle a payment.</p>
+     {returningPayroll?"Use only when the original bank transfer has actually been returned. Reconcile the matching bank credit independently before another payroll payout is allowed.":"This does not reverse an issued invoice or settle a payment."}</p>
     <label className="cg-fin-field">Open correction year
      <select value={correctionYear} onChange={e=>setCorrectionYear(e.target.value)}>
       <option value="">Choose year</option>
@@ -264,6 +266,7 @@ export function FinanceManualJournalWorkspace({years,canPost,canReverse,onUpdate
     <label className="cg-fin-field">Correction posting date
      <input type="date" value={correctionDate}
       onChange={e=>setCorrectionDate(e.target.value)}/></label>
+    {returningPayroll&&<label className="cg-fin-field">Actual return bank transaction reference<input value={returnBankReference} maxLength={64} onChange={e=>setReturnBankReference(e.target.value)} /></label>}
     <label className="cg-fin-field">Business reason for correction
      <textarea rows={3} minLength={12} maxLength={300} value={correctionReason}
       onChange={e=>setCorrectionReason(e.target.value)}/></label>
@@ -273,10 +276,10 @@ export function FinanceManualJournalWorkspace({years,canPost,canReverse,onUpdate
     <div className="cg-fin-toolbar-actions">
      <button type="button" disabled={busy||Boolean(correctionPending)||
       !correctionYear||!correctionDate||correctionReason.trim().length<12||
-      correctionPassword.length<8} onClick={()=>void applyCorrection({
+      correctionPassword.length<8||(returningPayroll&&!/^[A-Z0-9 /._-]{6,64}$/.test(returnBankReference.trim().toUpperCase()))} onClick={()=>void applyCorrection({
        journalRef:correction,requestKey:crypto.randomUUID(),body:{
         financialYearRef:correctionYear,postingDate:correctionDate,
-        reason:correctionReason,currentPassword:correctionPassword}})}>
+        reason:correctionReason,currentPassword:correctionPassword,...(returningPayroll?{returnBankReference:returnBankReference.trim().toUpperCase()}:{})}})}>
       Post exact protected reversal</button>
     </div>
     {correctionPending&&<div className="cg-fin-pending" role="status">

@@ -21,7 +21,7 @@ const date=(v:unknown)=>{
 };
 const digest=(x:unknown)=>createHash("sha256").update(JSON.stringify(x)).digest("hex");
 /** Restricted correction of manually posted GENERAL journals only.
- * Original source never edited. Does NOT reverse issued invoices or payouts.
+ * Original source never edited. Only settled payroll bank vouchers may use the explicit return correction path; other payouts and invoices are excluded.
  */
 @Injectable()
 export class FinanceJournalReversalService{
@@ -62,7 +62,7 @@ export class FinanceJournalReversalService{
   if(!raw||typeof raw!=="object"||Array.isArray(raw))
    throw new BadRequestException({code:"FINANCE_JOURNAL_REVERSAL_INVALID"});
   const v=raw as Record<string,unknown>;
-  if(Object.keys(v).some(k=>!["requestKey","financialYearRef","postingDate","reason","currentPassword"].includes(k))||
+  if(Object.keys(v).some(k=>!["requestKey","financialYearRef","postingDate","reason","currentPassword","returnBankReference"].includes(k))||
    typeof v.reason!=="string"||v.reason.trim().length<12||v.reason.trim().length>300||
    typeof v.currentPassword!=="string"||v.currentPassword.length<8||
    Buffer.byteLength(v.currentPassword,"utf8")>1024)
@@ -70,7 +70,9 @@ export class FinanceJournalReversalService{
   const originalRef=id(originalInput),key=id(v.requestKey),
    year=id(v.financialYearRef),postingDate=date(v.postingDate);
   const reason=v.reason.trim().replace(/\s+/g," ");
-  const payloadDigest=digest(["CG09_MANUAL_REVERSAL_V1",originalRef,year,postingDate,reason]);
+  const returnBankReference=typeof v.returnBankReference==="string"?v.returnBankReference.trim().toUpperCase():null;
+  if(v.returnBankReference!==undefined&&(!returnBankReference||!/^[A-Z0-9 /._-]{6,64}$/.test(returnBankReference)))throw new BadRequestException({code:"FINANCE_JOURNAL_REVERSAL_INVALID"});
+  const payloadDigest=digest(["CG09_MANUAL_REVERSAL_V1",originalRef,year,postingDate,reason,...(returnBankReference?[returnBankReference]:[])]);
   await this.sessions.limitFoundationRootProof(actor);
   const tx=await this.db.connect();
   try{
@@ -94,15 +96,16 @@ export class FinanceJournalReversalService{
      replayed:true};
    }
    const original=await tx.query<{financial_year_id:string;created_by:string;
-    source_ref:string;immutable_source_event_key:string;immutable_payload_digest:string}>(
+    source_ref:string;immutable_source_event_key:string;immutable_payload_digest:string;posting_kind:string;payroll_return:boolean}>(
     "SELECT financial_year_id,created_by,source_ref,immutable_source_event_key,"+
-    "immutable_payload_digest FROM journal "+
+    "immutable_payload_digest,posting_kind,cg11_original_settled_bank_journal(root_realm_id,id) AS payroll_return FROM journal "+
     "WHERE id=$1 AND root_realm_id=$2 AND status='POSTED' "+
-    "AND posting_kind='GENERAL' FOR SHARE",[originalRef,actor.realmId]);
+    "AND posting_kind IN('GENERAL','VOUCHER') FOR SHARE",[originalRef,actor.realmId]);
    const source=original.rows[0];
    if(!source||source.created_by===actor.accountId||
-      source.source_ref!==source.immutable_source_event_key)
+      !((source.posting_kind==="GENERAL"&&source.source_ref===source.immutable_source_event_key&&!returnBankReference)||(source.posting_kind==="VOUCHER"&&source.payroll_return&&returnBankReference)))
     throw new ConflictException({code:"FINANCE_JOURNAL_REVERSAL_CONFLICT"});
+   if(returnBankReference){await tx.query(`SELECT i.id FROM payroll_batch_item i JOIN payroll_payout_attempt t ON t.root_realm_id=i.root_realm_id AND t.item_ref=i.id JOIN finance_voucher_posting p ON p.root_realm_id=t.root_realm_id AND p.voucher_id=t.voucher_ref WHERE p.root_realm_id=$1 AND p.journal_id=$2 FOR UPDATE OF i`,[actor.realmId,originalRef]);}
    const prior=await tx.query(
     "SELECT id FROM finance_manual_journal_reversal "+
     "WHERE root_realm_id=$1 AND original_journal_id=$2 FOR SHARE",
@@ -113,7 +116,7 @@ export class FinanceJournalReversalService{
     "SELECT account_id,branch_id,debit_minor::text,credit_minor::text "+
     "FROM journal_line WHERE root_realm_id=$1 AND journal_id=$2 ORDER BY id",
     [actor.realmId,originalRef]);
-   if(lines.rows.length<2||lines.rows.length>40)
+   if(lines.rows.length<2||lines.rows.length>(returnBankReference?2500:40))
     throw new ConflictException({code:"FINANCE_JOURNAL_REVERSAL_CONFLICT"});
    // The single posting engine enforces a current open posting year,
    // active account/branch, and balanced double entry at COMMIT.
@@ -121,7 +124,7 @@ export class FinanceJournalReversalService{
     financialYearRef:year,postingDate,sourceRef:originalRef,eventKey:key,
     immutableDigest:digest(["CG09_OFFSETTING_MANUAL_JOURNAL",payloadDigest,
      source.immutable_payload_digest]),
-    kind:"REVERSAL",description:"Manual journal correction: "+reason.slice(0,430),
+    kind:"REVERSAL",payrollAllocation:!!returnBankReference,description:(returnBankReference?"Payroll bank return correction: ":"Manual journal correction: ")+reason.slice(0,430),
     reversalOfRef:originalRef,
     lines:lines.rows.map(l=>({accountRef:l.account_id,branchRef:l.branch_id,
      debitMinor:l.credit_minor,creditMinor:l.debit_minor}))
@@ -129,9 +132,9 @@ export class FinanceJournalReversalService{
    await this.sessions.requireFreshFoundationRootProof(tx,actor,v.currentPassword);
    await tx.query(
     "INSERT INTO finance_manual_journal_reversal(root_realm_id,original_journal_id,"+
-    "reversal_journal_id,reviewer_id,request_key,request_digest,reason,password_verified_at) "+
-    "VALUES($1,$2,$3,$4,$5,$6,$7,now())",
-    [actor.realmId,originalRef,reversed,actor.accountId,key,payloadDigest,reason]);
+    "reversal_journal_id,reviewer_id,request_key,request_digest,reason,password_verified_at,payroll_return_bank_reference) "+
+    "VALUES($1,$2,$3,$4,$5,$6,$7,now(),$8)",
+    [actor.realmId,originalRef,reversed,actor.accountId,key,payloadDigest,reason,returnBankReference]);
    await tx.query(
     "INSERT INTO finance_event(root_realm_id,actor_ref,entity_kind,entity_ref,action,request_key) "+
     "VALUES($1,$2,'JOURNAL',$3,'MANUAL_JOURNAL_REVERSAL_POSTED',$4)",
