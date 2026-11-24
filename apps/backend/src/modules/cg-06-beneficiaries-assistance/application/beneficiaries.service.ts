@@ -375,6 +375,7 @@ export class BeneficiariesService{
   const q=parseListQuery(query);
   return this.run(token,"beneficiaries.view",async(tx,a)=>{
    if(q.project)await this.projects.requireCurrentProjectForFilter(tx,a,q.project);
+   if(q.state||q.district)await this.branches.projectGeography(tx,a,q.state,q.district);
    const scope=await this.scope(tx,a);
    if(q.branch&&!scope.all&&!scope.branches.some(x=>x.value===q.branch))
     throw new ForbiddenException("Branch unavailable");
@@ -393,9 +394,11 @@ export class BeneficiariesService{
     "WHERE l.root_realm_id=b.root_realm_id AND l.beneficiary_id=b.id AND l.project_ref=$11 AND l.ended_at IS NULL)) "+
     "AND ($12::timestamptz IS NULL OR (b.created_at,b.id)<($12::timestamptz,$13::uuid)) "+
     "AND ($14='' OR b.gender=$14) AND ($15='' OR b.age_group=$15) "+
+    "AND ($16::date IS NULL OR b.created_at>=($16::date::timestamp AT TIME ZONE 'Asia/Kolkata')) "+
+    "AND ($17::date IS NULL OR b.created_at<(($17::date+1)::timestamp AT TIME ZONE 'Asia/Kolkata')) "+
     "ORDER BY b.created_at DESC,b.id DESC LIMIT 31",
     [a.realmId,scope.all,allowed,q.branch,q.state,q.district,q.status,q.lifecycle,q.type,q.q,
-     q.project,q.before?.date??null,q.before?.id??null,q.gender,q.ageGroup])).rows;
+     q.project,q.before?.date??null,q.before?.id??null,q.gender,q.ageGroup,q.from,q.to])).rows;
    const items=rows.slice(0,30);
    return {items:items.map(r=>({...this.view(r),contactMobile:null,representativeName:null,representativeContact:null,consentPurpose:null})),hasMore:rows.length>30,
     nextCursor:rows.length>30&&items.length?nextCursor(items[items.length-1].created_at,items[items.length-1].id):null};
