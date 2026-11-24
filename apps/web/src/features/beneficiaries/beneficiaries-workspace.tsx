@@ -1,4 +1,5 @@
 "use client";
+import {AssistancePanel} from "./assistance-panel";
 import {ProjectCoverPanel} from "../projects/project-cover-panel";
 import {useEffect,useRef,useState,type CSSProperties,type FormEvent} from "react";
 
@@ -59,9 +60,10 @@ function fromItem(x:Item):Form{
   consentPurpose:x.consentPurpose??"",consentAcknowledged:true};
 }
 const tabs=[["ALL","All"],["ACTIVE","Active"],["INACTIVE","Inactive"],["VERIFIED","Verified"],["PENDING","Pending verification"]] as const;
-export function BeneficiariesWorkspace({canManage,canLinkProjects,canManageLifecycle,canRevoke,canSubmitVerification,canReviewVerification,canReadEvidence,canUploadEvidence}:{
+export function BeneficiariesWorkspace({canManage,canLinkProjects,canManageLifecycle,canRevoke,canSubmitVerification,canReviewVerification,canReadEvidence,canUploadEvidence,canViewAssistance,canManageAssistance,canReviewAssistance,canDeliverAssistance,canIssueStock,canPreparePayment,canExportReports}:{
  canManage:boolean;canLinkProjects:boolean;canManageLifecycle:boolean;canRevoke:boolean;
  canSubmitVerification:boolean;canReviewVerification:boolean;canReadEvidence:boolean;canUploadEvidence:boolean;
+ canViewAssistance:boolean;canManageAssistance:boolean;canReviewAssistance:boolean;canDeliverAssistance:boolean;canIssueStock:boolean;canPreparePayment:boolean;canExportReports:boolean;
 }){
  const [page,setPage]=useState<Page|null>(null),[busyList,setBusyList]=useState(true),[error,setError]=useState(""),[notice,setNotice]=useState("");
  const [q,setQ]=useState(""),[search,setSearch]=useState(""),[tab,setTab]=useState("ALL"),
@@ -305,7 +307,9 @@ export function BeneficiariesWorkspace({canManage,canLinkProjects,canManageLifec
       <div>Contact: {selected.contactMobile??"Not recorded / restricted"}</div>
       <div>Beneficiary type: {selected.beneficiaryType}</div><div>Category: {selected.beneficiaryCategory??"Not specified"}</div>
       <div>Consent: {selected.consentRevoked?"Withdrawn":nice(selected.consentKind)}</div>
-      {canReadEvidence&&!selected.consentRevoked&&selected.lifecycle==="ACTIVE"&&<ProjectCoverPanel key={selected.ref+":"+selected.revision} projectRef={selected.ref} version={selected.revision} sourceKind="beneficiary" canUpload={canUploadEvidence&&canManage}/>}
+      {canReadEvidence&&!selected.consentRevoked&&selected.lifecycle==="ACTIVE"&&<ProjectCoverPanel key={selected.ref+":"+selected.revision} projectRef={selected.ref} version={selected.revision} sourceKind="beneficiary" canUpload={canUploadEvidence&&(canManage||canDeliverAssistance)}/>}
+      {canViewAssistance&&!selected.consentRevoked&&<AssistancePanel key={selected.ref+":"+selected.revision} beneficiary={selected} canManage={canManageAssistance} canReview={canReviewAssistance} canDeliver={canDeliverAssistance} canStock={canIssueStock} canFinance={canPreparePayment} canEvidence={canReadEvidence}/>}
+
       {selected.verification!=="VERIFIED"&&<p style={{fontSize:12,color:"var(--cg-muted)"}}>
        Independent verification requires the CG-03 reviewer workflow. This screen never self-approves.</p>}
       {!review&&<div role="status">Independent verification unavailable. <button type="button" style={secondary} onClick={()=>void choose(selected.ref)}>Refresh details</button></div>}
