@@ -10,7 +10,7 @@ import {MisProtectedArtifactService}
  from "../../cg-19-documents-notifications/application/mis-protected-artifact.service";
 import type {ReportFormat}
  from "../../cg-19-documents-notifications/application/mis-report-renderer";
-import {MisReportSourceService,parseSafeReport,type SafeReportRequest}
+import {MisReportSourceService,parseSafeReport,LIVE_PREVIEW_KINDS,type SafeReportRequest}
  from "./mis-report-source.service";
 import {MisSavedReportService} from "./mis-saved-report.service";
 
@@ -124,7 +124,7 @@ export class MisReportRunService{
    const item=await this.saved.authorizedRequest(token,input.savedRef);
    request=parseSafeReport(item.request);savedRef=item.ref;revision=item.revision;
   }else request=parseSafeReport(input.request);
-  if(request.kind==="BENEFICIARY_ASSISTANCE_SUMMARY")throw new ForbiddenException({code:"MIS_LIVE_PREVIEW_ONLY",message:"This beneficiary report is available as a current live preview only."});
+  if(LIVE_PREVIEW_KINDS.includes(request.kind))throw new ForbiddenException({code:"MIS_LIVE_PREVIEW_ONLY",message:"This report is available as a current live preview only."});
   const preview=await this.sources.preview(token,request);
   if(preview.state==="PARTIAL")
    throw new BadRequestException({code:"MIS_RUN_PARTIAL",
