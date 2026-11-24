@@ -13,7 +13,7 @@ import {NativeMisFinanceTrend,NativeMisAppointmentDistribution,NativeMisAppointm
 import {NativeMisGroupedFinanceChart} from "./native-mis-grouped-finance-chart";
 type Kind="FINANCE_POSTED_LEDGER"|"FINANCE_POSTED_SUMMARY"|
  "FINANCE_POSTED_TREND"|"FINANCE_POSTED_GROUPED"|
- "APPOINTMENT_STATUS"|"APPOINTMENT_STATUS_GROUPED"|"APPOINTMENT_DOCTOR_SUMMARY"|"PLATFORM_AUDIT_ACTIVITY"|"DIAGNOSTICS_CATALOG_SUMMARY"|"BENEFICIARY_ASSISTANCE_SUMMARY";
+ "APPOINTMENT_STATUS"|"APPOINTMENT_STATUS_GROUPED"|"APPOINTMENT_DOCTOR_SUMMARY"|"PLATFORM_AUDIT_ACTIVITY"|"DIAGNOSTICS_CATALOG_SUMMARY"|"BENEFICIARY_ASSISTANCE_SUMMARY"|"MEMBERSHIP_ROSTER_SUMMARY"|"VOLUNTEER_ROSTER_SUMMARY"|"PAYROLL_STATUS_SUMMARY";
 type Template={kind:Kind;label:string;views:("TABLE"|"SUMMARY"|"CHART"|"PIVOT")[];description:string};
 type Option={ref:string;name:string};
 type AreaOption=Option&{level:string};
@@ -266,14 +266,14 @@ export function NativeMisReports({token,onExpired,onDraftChange}:{token:string;o
   {preview?.state==="PARTIAL"&&<Text style={s.hint}>
    This original source result is incomplete or has more entries. Narrow your permitted filters before export.</Text>}
   {catalog?.capabilities?.export===true&&
-   <NativeMisExports token={token} onExpired={onExpired} current={kind==="BENEFICIARY_ASSISTANCE_SUMMARY"?null:request(0)}/>}
+   <NativeMisExports token={token} onExpired={onExpired} current={(["BENEFICIARY_ASSISTANCE_SUMMARY","MEMBERSHIP_ROSTER_SUMMARY","VOLUNTEER_ROSTER_SUMMARY","PAYROLL_STATUS_SUMMARY"] as readonly string[]).includes(kind??"")?null:request(0)}/>}
   {catalog?.capabilities?.schedule===true&&
    <NativeMisSchedules token={token} onExpired={onExpired}/>}
   {catalog&&<NativeMisSaved token={token} onExpired={onExpired}
    canManage={catalog.capabilities?.manage===true}
    canShare={catalog.capabilities?.share===true}
    onDraftChange={onDraftChange}
-   current={kind==="BENEFICIARY_ASSISTANCE_SUMMARY"?null:request(0)}
+   current={(["BENEFICIARY_ASSISTANCE_SUMMARY","MEMBERSHIP_ROSTER_SUMMARY","VOLUNTEER_ROSTER_SUMMARY","PAYROLL_STATUS_SUMMARY"] as readonly string[]).includes(kind??"")?null:request(0)}
    onRestore={value=>{
     setKind(value.kind as Kind);setView(value.view as typeof view);
     setGroupBy(value.groupBy??"CATEGORY");setSortBy(value.sortBy??"NAME");
