@@ -114,6 +114,7 @@ export class MembershipRosterService{
  /** Aggregate only; original approved enrollment and consent, no private roster rows. */
  async misCounts(token:string,branch?:string,from?:string,to?:string){
   const f=read({branch,joinedFrom:from,joinedTo:to});
+  if(Boolean(f.joinedFrom)!==Boolean(f.joinedTo)||f.joinedFrom&&f.joinedTo&&Date.parse(f.joinedTo)-Date.parse(f.joinedFrom)>366*86400000)throw new BadRequestException("Choose a bounded enrollment date range.");
   return this.run(token,"membership.members.view",async(tx,a)=>{
    const scope=await this.branches.projectBranchScope(tx,a);
    if(f.branch)await this.branches.projectBranch(tx,a,f.branch);
