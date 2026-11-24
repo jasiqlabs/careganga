@@ -67,6 +67,8 @@ export function parseListQuery(v:Record<string,unknown>){
  const status=clean(v.verification,24),lifecycle=clean(v.lifecycle,24),type=clean(v.type,60),q=clean(v.q,80);
  if(status&&!["DRAFT","SUBMITTED","UNDER_REVIEW","VERIFIED","RETURNED","REJECTED","PENDING"].includes(status)
  ||lifecycle&&!["ACTIVE","INACTIVE"].includes(lifecycle))throw invalid();
+ const gender=clean(v.gender,24),ageGroup=clean(v.ageGroup,24);
+ if(gender)option(gender,genders);if(ageGroup)option(ageGroup,ageGroups);
  const cursor=clean(v.cursor,240);
  let before:{date:string;id:string}|null=null;
  if(cursor){
@@ -75,7 +77,7 @@ export function parseListQuery(v:Record<string,unknown>){
    before={date,id};
   }catch{throw invalid();}
  }
- return {branch,state,district,project,status,lifecycle,type,q,before};
+ return {branch,state,district,project,status,lifecycle,type,q,before,gender,ageGroup};
 }
 export function nextCursor(date:string|Date,id:string):string{
  return Buffer.from((date instanceof Date?date.toISOString():new Date(date).toISOString())+"|"+id).toString("base64url");
