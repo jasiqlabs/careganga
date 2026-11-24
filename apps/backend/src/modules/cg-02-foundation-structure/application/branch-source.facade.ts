@@ -246,6 +246,30 @@ export class BranchSourceFacade{
   * of CURRENT ACTIVE branch assignments without any Foundation-null money.
   * Sessionless background execution still checks CG01's current role.
   */
+ async scheduledProjectScope(root:string,account:string,client:Pool|PoolClient=this.db):
+  Promise<{all:boolean;branchRefs:string[]}>{
+  await this.sessions.requireScheduledMisAction(root,account,"projects.view");
+  await this.sessions.requireScheduledMisAction(root,account,"projects.export");
+  let all=false;
+  try{await this.sessions.requireScheduledMisAction(root,account,"foundation.branches.admin");all=true;}
+  catch(e){if(!(e instanceof ForbiddenException))throw e;}
+  const rows=all?(await client.query<{id:string}>(
+   "SELECT id FROM branch WHERE root_realm_id=$1 AND status='ACTIVE' ORDER BY id LIMIT 201 FOR SHARE",[root])).rows:
+   await this.permittedStaffBranches(client,root,account);
+  if(rows.length>200)throw new ForbiddenException("Choose a narrower branch scope");
+  return {all,branchRefs:rows.map(b=>b.id).sort()};
+ }
+ async projectReportScope(bearer:string){
+  const a=await this.sessions.requireAction(bearer,"projects.export"),tx=await this.db.connect();
+  try{
+   await tx.query("BEGIN ISOLATION LEVEL REPEATABLE READ");
+   await this.identity.assertCurrent(tx,a,"projects.export");
+   await this.identity.assertCurrent(tx,a,"projects.view");
+   const scope=await this.projectBranchScope(tx,a);
+   await tx.query("COMMIT");
+   return {all:scope.all,branchRefs:scope.branches.map(b=>b.value).sort()};
+  }catch(e){await tx.query("ROLLBACK");throw e;}finally{tx.release();}
+ }
  async scheduledFinanceScope(root:string,account:string):
   Promise<{all:boolean;branchRefs:string[]}>{
   await this.sessions.requireScheduledMisAction(root,account,"finance.reports.view");
