@@ -34,7 +34,7 @@ export function CmsImpactGroup({section,assets,navigation}:{
     <blockquote className="cg-site-impact-quote">{text(f.quote)}</blockquote>}
    {text(f.intro)&&<p>{text(f.intro)}</p>}
    {rows.length>0&&label(f.source,f.asOfDate)}
-   {!rows.length&&!["HERO","CTA"].includes(group)&&<p role="status">{text(f.intro)?"": "No approved information has been published yet."}</p>}
+   {!rows.length&&!["HERO","CTA"].includes(group)&&!text(f.intro)&&<p role="status">No approved information has been published yet.</p>}
   </div>
   {photo(pic,"cg-site-impact-photo")}
   {tabular&&rows.length>0?<div className="cg-site-table-wrap">
