@@ -416,6 +416,18 @@ export class FinanceVoucherDraftService{
  }
  /** Create a real aid PAYMENT voucher through the same validated draft owner.
   * The approved assistance source controls amount, branch and purpose; no alternate ledger. */
+ async preparePayrollPayment(client:PoolClient,actor:VerifiedFoundationActor,v:{
+  key:string;branch:string|null;year:string;date:string;debit:string;payment:string;minor:string;reference:string
+ }){
+  const minor=BigInt(v.minor);
+  if(minor<1n||minor>99999999999999n)throw new ConflictException({code:"FINANCE_VOUCHER_ACCOUNT_SIDES_INVALID"});
+  const debit=await client.query("SELECT 1 FROM finance_account a JOIN account_group g ON g.id=a.group_id AND g.root_realm_id=a.root_realm_id WHERE a.root_realm_id=$1 AND a.id=$2 AND a.status='ACTIVE' AND g.category='LIABILITY' FOR SHARE OF a,g",[actor.realmId,v.debit]);
+  if(!debit.rowCount)throw new ConflictException({code:"FINANCE_VOUCHER_ACCOUNT_SIDES_INVALID"});
+  const branchVersion=v.branch?(await client.query<{version:number}>("SELECT version FROM branch WHERE root_realm_id=$1 AND id=$2 AND status='ACTIVE' FOR SHARE",[actor.realmId,v.branch])).rows[0]?.version:null;
+  const amount=(minor/100n).toString()+"."+(minor%100n).toString().padStart(2,"0");
+  const safe=normalize({requestKey:v.key,financialYearRef:v.year,branchRef:v.branch,branchVersion,voucherType:"PAYMENT",postingDate:v.date,payeeName:"Protected payroll employee",purpose:"Approved salary payable "+v.reference,paymentAccountRef:v.payment,debitAccountRef:v.debit,creditAccountRef:v.payment,lines:[{description:"Settlement of accrued salary payable",quantity:1,unitRate:amount}],tax:"0",charges:"0"});
+  return this.commitDraft(client,actor,v.key,safe,null,null);
+ }
  async prepareAidPayment(client:PoolClient,actor:VerifiedFoundationActor,v:{
   key:string;branch:string|null;year:string;date:string;debit:string;payment:string;minor:string;reference:string
  }){
