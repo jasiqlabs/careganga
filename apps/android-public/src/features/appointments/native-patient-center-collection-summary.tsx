@@ -43,10 +43,14 @@ async function token(){
  * Never expose staff payment controls or infer payment from a pending UPI.
  */
 export function NativePatientCenterCollectionSummary({bookingRef,onExpired}:Props){
+ return <ScopedNativePatientCenterCollectionSummary key={bookingRef} bookingRef={bookingRef} onExpired={onExpired}/>;
+}
+function ScopedNativePatientCenterCollectionSummary({bookingRef,onExpired}:Props){
+ const generation=useRef(0);
  const [data,setData]=useState<Statement|null>(null);
  const [loading,setLoading]=useState(true),[message,setMessage]=useState("");
  const preview=useRef<File|null>(null);
- useEffect(()=>()=>{try{preview.current?.delete()}catch{}},[]);
+ useEffect(()=>()=>{generation.current++;try{preview.current?.delete()}catch{}},[]);
  const report=useCallback((e:unknown)=>{
   if(e&&typeof e==="object"&&"status" in e&&e.status===401)onExpired?.();
   setMessage(e instanceof Error?e.message:"The original patient amount is unavailable.");
@@ -64,12 +68,16 @@ export function NativePatientCenterCollectionSummary({bookingRef,onExpired}:Prop
   return v;
  },[bookingRef]);
  const check=useCallback(async()=>{
-  setLoading(true);setMessage("");
-  try{setData(await refresh())}catch(e){report(e)}finally{setLoading(false)}
+  const request=++generation.current;
+  setLoading(true);setData(null);setMessage("");
+  try{const value=await refresh();if(request===generation.current)setData(value)}
+  catch(e){if(request===generation.current)report(e)}
+  finally{if(request===generation.current)setLoading(false)}
  },[refresh,report]);
- useEffect(()=>{void check()},[check]);
+ useEffect(()=>{void check();return()=>{generation.current++;};},[check]);
  async function openReceipt(collectionRef:string,online=false){
   if(loading||!ID.test(collectionRef))return;
+  const request=++generation.current;
   setLoading(true);setMessage("");
   try{
    const res=await expoFetch(target("center-receipts/me/appointments/"+bookingRef+
@@ -84,14 +92,19 @@ export function NativePatientCenterCollectionSummary({bookingRef,onExpired}:Prop
    if(bytes.length<100||bytes.length>10485760||
     String.fromCharCode(...bytes.subarray(0,4))!=="%PDF")
     throw Error("The original protected receipt cannot be verified.");
+   if(request!==generation.current)return;
    try{preview.current?.delete()}catch{}
    const f=new File(Paths.cache,"careganga-patient-receipt-"+Crypto.randomUUID()+".pdf");
-   f.create();await f.write(bytes);preview.current=f;
-   if(!await File.canPreview(f,{mimeType:"application/pdf"}))
+   f.create();preview.current=f;
+   try{await f.write(bytes);}catch(e){try{f.delete()}catch{}throw e;}
+   if(request!==generation.current){try{f.delete()}catch{}return;}
+   const canPreview=await File.canPreview(f,{mimeType:"application/pdf"});
+   if(request!==generation.current){try{f.delete()}catch{}return;}
+   if(!canPreview)
     throw Error("A compatible private PDF viewer is not available.");
    await File.preview(f,{title:online?"Verified online payment confirmation":"My healthcare center cash receipt",
     mimeType:"application/pdf"});
-  }catch(e){report(e)}finally{setLoading(false)}
+  }catch(e){if(request===generation.current)report(e)}finally{if(request===generation.current)setLoading(false)}
  }
  if(!ID.test(bookingRef))return null;
  return <View style={styles.panel}>
@@ -110,7 +123,7 @@ export function NativePatientCenterCollectionSummary({bookingRef,onExpired}:Prop
     Outstanding since accepted charge {new Date(data.outstandingSince)
      .toLocaleDateString("en-IN")}. No late fee is assumed.</Text>}
    {!loading&&!message&&data.collections?.filter(x=>x.state==="VERIFIED_PROVIDER"&&["UPI","CARD","BANK"].includes(x.method)&&ID.test(x.collectionRef)).map((x,i)=><Pressable key={x.collectionRef} accessibilityRole="button" style={styles.button} onPress={()=>void openReceipt(x.collectionRef,true)}><Text style={styles.buttonText}>Open verified online payment confirmation {i+1} (two copies)</Text></Pressable>)}
-   {data.collections?.filter(x=>x.method==="CASH"&&
+   {!loading&&!message&&data.collections?.filter(x=>x.method==="CASH"&&
      x.state==="VERIFIED_CASH"&&x.receiptPdfState==="ISSUED"&&
      ID.test(x.collectionRef)).map((x,i)=>
     <Pressable key={x.collectionRef} accessibilityRole="button"
