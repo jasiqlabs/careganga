@@ -10,12 +10,12 @@ This user-requested cross-module subtracker supplements (does not replace) origi
 
 ## Summary
 
-37 subitems: 17 source-confirmed presentation gaps, 19 runtime/reproduction candidates, 1 reference evidence blocker. All OPEN; zero fixed, zero runtime passes. P0 = release visual evidence gate; P1 = primary journey or substantial usability; P2 = secondary usability. Source status and runtime status stay separate.
+37 subitems: 17 source-confirmed presentation gaps, 19 runtime/reproduction candidates, 1 reference evidence blocker. Initial baseline: all OPEN. Current progress: 7 rows IN_PROGRESS (including partial cross-cutting work); 30 rows OPEN; zero independently cleared or runtime passes. P0 = release visual evidence gate; P1 = primary journey or substantial usability; P2 = secondary usability. Source status and runtime status stay separate.
 
 | ID | Priority | Evidence | Owner/surface | Issue | State |
 |---|---|---|---|---|---|
 | HUX-01.01 | P0 | EVIDENCE | CG14–17 all | Recover separate healthcare reference originals | OPEN |
-| HUX-02.01 | P1 | SOURCE | CG14–17 all | Shared design consistency | OPEN |
+| HUX-02.01 | P1 | SOURCE | CG14–17 all | Shared design consistency | IN_PROGRESS |
 | HUX-02.02 | P1 | CHECK | CG14–17 admin/center | Role-specific healthcare navigation | OPEN |
 | HUX-03.01 | P1 | CHECK | CG14/15/17/20 admin/center | Operational dashboard journey | OPEN |
 | HUX-04.01 | P1 | SOURCE | CG14 US-001 admin | Provider registration form density | OPEN |
@@ -35,9 +35,9 @@ This user-requested cross-module subtracker supplements (does not replace) origi
 | HUX-08.02 | P1 | SOURCE | CG17 US-005/006 admin/center | Settlement screen is mostly stacked definitions | OPEN |
 | HUX-08.03 | P1 | CHECK | CG17 US-003/004 center/public | Payment and collection status | OPEN |
 | HUX-09.01 | P1 | CHECK | CG14/18 public web/app | Healthcare landing and discovery navigation | OPEN |
-| HUX-10.01 | P1 | SOURCE | CG14 US-004 public web | Doctor result cards omit key discovery information | OPEN |
-| HUX-10.02 | P1 | SOURCE | CG14 US-004 public web | Center result cards are text-only | OPEN |
-| HUX-10.03 | P1 | CHECK | CG14 US-004 public web/app | Directory advanced filter and result modes | OPEN |
+| HUX-10.01 | P1 | SOURCE | CG14 US-004 public web | Doctor result cards omit key discovery information | IN_PROGRESS |
+| HUX-10.02 | P1 | SOURCE | CG14 US-004 public web | Center result cards are text-only | IN_PROGRESS |
+| HUX-10.03 | P1 | CHECK | CG14 US-004 public web/app | Directory advanced filter and result modes | IN_PROGRESS |
 | HUX-10.04 | P1 | CHECK | CG14/15/17 public web/app | Doctor profile and center-specific choice | OPEN |
 | HUX-11.01 | P1 | SOURCE | CG15 US-004 / CG17 US-002 public web/app | Booking review text/action hierarchy | OPEN |
 | HUX-11.02 | P1 | CHECK | CG15 US-002/003 public web/app | Appointment calendar and patient verification | OPEN |
@@ -45,12 +45,19 @@ This user-requested cross-module subtracker supplements (does not replace) origi
 | HUX-12.01 | P1 | SOURCE | CG14 US-003 internal Android | Doctor management long scrolling forms | OPEN |
 | HUX-12.02 | P1 | SOURCE | CG15 US-006 internal Android | Queue summary and action readability | OPEN |
 | HUX-12.03 | P1 | CHECK | CG14/16/17 internal Android | Operational parity | OPEN |
-| HUX-13.01 | P1 | SOURCE | CG14 US-004 public Android | Public result list and filter density | OPEN |
+| HUX-13.01 | P1 | SOURCE | CG14 US-004 public Android | Public result list and filter density | IN_PROGRESS |
 | HUX-13.02 | P1 | CHECK | CG15/17 public Android | Patient home and healthcare journey | OPEN |
 | HUX-14.01 | P1 | CHECK | CG14–17 all | Responsive and accessibility acceptance | OPEN |
-| HUX-15.01 | P1 | SOURCE | CG14–17 all | Technical copy and excessive explanations | OPEN |
-| HUX-15.02 | P1 | CHECK | CG14–17 all | Loading, empty, error and uncertain state | OPEN |
+| HUX-15.01 | P1 | SOURCE | CG14–17 all | Technical copy and excessive explanations | IN_PROGRESS |
+| HUX-15.02 | P1 | CHECK | CG14–17 all | Loading, empty, error and uncertain state | IN_PROGRESS |
 | HUX-16.01 | P0 | CHECK | CG14–17 all | Integrated real-user and visual acceptance | OPEN |
+
+## Development checkpoint — public directory, 24 November 2026
+
+- HUX-10.01 / 10.02 / 13.01: Web and native doctor card credentials/experience/fee, clear profile/schedule discovery, center provider/address and coordinate-validated directions, shared scoped Web card styles. No portrait or approved-service summary in the current list projection; existing approved center detail media is preserved. Do not claim those remaining parts closed. Source commits e0a6ad7e1e1ff07acd27e781534955b5ee95d7e5, c425a9f3c3a46bdf91c56a6c6b46de68b7a4a9d6, 5004e0a74524bfd4b8ff68986dbea42b61d09574, fa4a96150a2968601689c0dc98d877b77d9aa766, 57a8986a8612491b4bee8220228db51c8362cb2c.
+- HUX-10.03 / 15.02: discovered native stale-result defect and query/pagination mismatch. Clear rows on failed lookup and non-append refresh; render only READY rows; retry first page using applied filter state; prevent old mode results and hide center tab during rescheduling; validate list fields. Source re-read confirmed intended guards and no obsolete cursor references. No executable test yet. HUX-02.01 / 15.01: directory-only shared presentation and shorter public copy, other screens pending.
+- Original CG14 US-004-QA01/03/04/05/06/09/10/11/12/16/17/18: partial source trace, no runtime or independent clearance. Staff interfaces not affected by these public presentation changes. Required QA: search/filters, edited-but-unapplied filters then load more, switching tabs during slow request, failed resume/refresh hides old records, approved vs withdrawn listings, malformed coordinates and fees, profile/schedule path, reschedule context, responsive and TalkBack. Photo projection and full visual reference acceptance remain open.
+- Harness pin checked identical to authenticated main 8922c717efb68cb5b998cf51f7c0755636616175 in prior execution; local resolver/build/device/visual QA NOT_RUN; independent review unavailable in current connector execution. Current changes are source candidates, not SOURCE_COMPLETE. Latest main comparison ahead/behind 7/1 before the new fixes; reconcile main after handoff.
 
 ## Subtracker details and expected user scenarios
 
