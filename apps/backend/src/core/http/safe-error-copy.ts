@@ -91,7 +91,7 @@ export const SAFE_MESSAGE_CATALOG:Readonly<Record<string,string>>=Object.freeze(
       MIS_REPORT_VIEW_INVALID:"This report does not support that view. Choose one of its available formats.",
       MIS_REPORT_FILTER_INVALID:"Check the report dates, status and permitted branch or healthcare center.",
       MIS_REPORT_PAGE_INVALID:"This report page is unavailable. Return to the first page or narrow the filters.",
-      MIS_LIVE_PREVIEW_ONLY:"This beneficiary report is available as a current live preview only. Open the report to refresh the latest authorized totals.",
+      MIS_LIVE_PREVIEW_ONLY:"This report is available as a current live preview only. Open the report to refresh the latest authorized totals.",
       MIS_RUN_INVALID:"Choose a current report or one of your saved reports, then try again.",
       MIS_RUN_FORMAT_INVALID:"Choose PDF, Excel or CSV for your private report.",
       MIS_RUN_NOT_FOUND:"This private report is no longer available to you. Refresh report history.",
