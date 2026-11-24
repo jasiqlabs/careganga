@@ -33,7 +33,7 @@ const safeText=(v:unknown):string=>{
    }).join("; "):"None declared";
  return "Not specified";
 };
-export function HealthReviewInbox({canManageProviders=false,canManageDoctors=false}:{canManageProviders?:boolean;canManageDoctors?:boolean}){
+export function HealthReviewInbox({canManageProviders=false,canManageDoctors=false,canVerifyProviders=false,canVerifyDoctors=false}:{canManageProviders?:boolean;canManageDoctors?:boolean;canVerifyProviders?:boolean;canVerifyDoctors?:boolean}){
  const [cases,setCases]=useState<Case[]>([]);
  const [detail,setDetail]=useState<Detail|null>(null);
  const [decision,setDecision]=useState<"APPROVE"|"RETURN"|"REJECT">("APPROVE");
@@ -94,7 +94,7 @@ export function HealthReviewInbox({canManageProviders=false,canManageDoctors=fal
   finally{if(turn===detailRequest.current)setDetailLoading(false);}
  }
  async function sendDecision(){
-  if(!detail||busy||uncertain||currentPassword.length<8)return;
+  if(!detail||busy||uncertain||currentPassword.length<8||!(detail.kind==="HEALTH_DOCTOR_VERIFICATION"?canVerifyDoctors:canVerifyProviders))return;
   setBusy(true);setError("");setNotice("");
   if(!key.current)key.current=crypto.randomUUID();
   try{
@@ -114,7 +114,7 @@ export function HealthReviewInbox({canManageProviders=false,canManageDoctors=fal
   }finally{setBusy(false);}
  }
  async function apply(){
-  if(!detail||busy||uncertain)return;
+  if(!detail||busy||uncertain||!(detail.kind==="HEALTH_DOCTOR_VERIFICATION"?canVerifyDoctors:canVerifyProviders))return;
   const ref=detail.caseRef;
   const kind=detail.kind==="HEALTH_PROVIDER_VERIFICATION"?"providers":detail.kind==="HEALTH_DOCTOR_VERIFICATION"?"doctors":"centers";
   setBusy(true);setError("");setNotice("");
@@ -227,7 +227,7 @@ export function HealthReviewInbox({canManageProviders=false,canManageDoctors=fal
       encodeURIComponent(detail.caseRef)+"/download"}>
       Download original scanned evidence for review</a>
    </>}
-   {["SUBMITTED","IN_REVIEW"].includes(detail.status)&&
+   {["SUBMITTED","IN_REVIEW"].includes(detail.status)&&(detail.kind==="HEALTH_DOCTOR_VERIFICATION"?canVerifyDoctors:canVerifyProviders)&&
     <div className="form">
      <label className="field">Review action
       <select value={decision} disabled={busy||uncertain}
@@ -252,7 +252,7 @@ export function HealthReviewInbox({canManageProviders=false,canManageDoctors=fal
        {busy?"Recording…":"Record independent review decision"}</button>
      </div>
     </div>}
-   {detail.status==="PENDING_OWNER"&&(detail.kind==="HEALTH_DOCTOR_VERIFICATION"?canManageDoctors:canManageProviders)&&<button type="button" className="primary"
+   {detail.status==="PENDING_OWNER"&&(detail.kind==="HEALTH_DOCTOR_VERIFICATION"?canVerifyDoctors:canVerifyProviders)&&<button type="button" className="primary"
       disabled={busy||uncertain} onClick={()=>void apply()}>
      Apply approved registration</button>}
    {(detail.kind==="HEALTH_DOCTOR_VERIFICATION"?canManageDoctors:canManageProviders)&&["RETURNED","REJECTED"].includes(detail.status)&&<button type="button"

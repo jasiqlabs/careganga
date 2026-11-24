@@ -151,6 +151,10 @@ Dependencies: None
 
 ## Execution progress
 
+### 24 November 2026 — healthcare hardening cross-owner re-review
+Re-review: CG01 effective UI actions suppress optional equipment and clinical actions using the same existing server flags as CG16 admission; grant catalog and backend authorization remain unchanged. CG14 reviewer action uses actual verify permission (manage only for reopening), matching original owner workflows. CG15 H07 schedule filter/roster/detail controls guard uncertain writes, stale and failed reads and selected association identity; existing metrics, weekly/leave/holiday/copy rules retained. Source regression required with ERP OFF/ON + readiness, verifier-only/manage-only grants, rapid filter changes, uncertain schedule save, original recheck and multi-center copy. No runtime pass. Original QA definitions unchanged, independent and runtime NOT_RUN. See [HUX tracker](../../HEALTHCARE_UIUX_HARDENING_TRACKER.md).
+
+
 CG16 re-review d81c2d95: exact distinct authorized export refs and stale action guard, US-001-QA03/13/14/16 source-only. Runtime NOT_RUN.
 
 

@@ -183,6 +183,10 @@ Existing CG-01 QA to reconcile client CG-EMP-007–009 with actual account flow:
 
 
 ## Execution progress
+
+### 24 November 2026 — healthcare hardening cross-owner re-review
+Re-review: CG01 effective UI actions suppress optional equipment and clinical actions using the same existing server flags as CG16 admission; grant catalog and backend authorization remain unchanged. CG14 reviewer action uses actual verify permission (manage only for reopening), matching original owner workflows. CG15 H07 schedule filter/roster/detail controls guard uncertain writes, stale and failed reads and selected association identity; existing metrics, weekly/leave/holiday/copy rules retained. Source regression required with ERP OFF/ON + readiness, verifier-only/manage-only grants, rapid filter changes, uncertain schedule save, original recheck and multi-center copy. No runtime pass. Original QA definitions unchanged, independent and runtime NOT_RUN. See [HUX tracker](../../HEALTHCARE_UIUX_HARDENING_TRACKER.md).
+
 - owner-integration CG10/US-003-QA05/06/07/08/12/13/16/17/18: HrEmploymentAccessOwnerService.snapshot/apply in CG01 checks actual scoped eligible account and nonprotected ordinary target role revision, original immutable distinct protected CG03 decision, approved effective date, exact source version; applies role/session revocation/exit deactivation and original immutable CG01 effect receipt inside caller HR transaction. 2017 migration exact same-root receipt FK, no public action; CG10 caller/effect pending. Runtime/independent review NOT_RUN.
 
 

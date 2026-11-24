@@ -264,6 +264,10 @@ Dependencies: US-003
 
 ## Execution progress
 
+### 24 November 2026 — healthcare hardening cross-owner re-review
+Re-review: CG01 effective UI actions suppress optional equipment and clinical actions using the same existing server flags as CG16 admission; grant catalog and backend authorization remain unchanged. CG14 reviewer action uses actual verify permission (manage only for reopening), matching original owner workflows. CG15 H07 schedule filter/roster/detail controls guard uncertain writes, stale and failed reads and selected association identity; existing metrics, weekly/leave/holiday/copy rules retained. Source regression required with ERP OFF/ON + readiness, verifier-only/manage-only grants, rapid filter changes, uncertain schedule save, original recheck and multi-center copy. No runtime pass. Original QA definitions unchanged, independent and runtime NOT_RUN. See [HUX tracker](../../HEALTHCARE_UIUX_HARDENING_TRACKER.md).
+
+
 ### Healthcare hardening — patient history and payment presentation
 HUX-11.03/13.02/08.03/15.02: patient Web/native appointment history clears stale rows and selected protected details on fresh query, guards pagination by list generation, differentiates failed lookup and empty state, and shows actual doctor/center and payment status; removes obsolete unconditional unpaid/receipt wording now that CG17 collection source exists. Native patient profile gives consultations earlier priority and all patient subviews use shared public palette. Time-first comparison no longer duplicates old center actions. CG15 US-007/008 original history, cancellation, slip and reschedule scenarios and CG17 US-003/004 collection scenarios require actual source-backed regression with paid, pending, cancelled, refunded, slow query and expired session. Runtime NOT_RUN.
 

@@ -161,6 +161,10 @@ Dependencies: US-002 (actual verified active CG-14 center/account, delivered bas
 
 ## Execution progress
 
+### 24 November 2026 — healthcare hardening cross-owner re-review
+Re-review: CG01 effective UI actions suppress optional equipment and clinical actions using the same existing server flags as CG16 admission; grant catalog and backend authorization remain unchanged. CG14 reviewer action uses actual verify permission (manage only for reopening), matching original owner workflows. CG15 H07 schedule filter/roster/detail controls guard uncertain writes, stale and failed reads and selected association identity; existing metrics, weekly/leave/holiday/copy rules retained. Source regression required with ERP OFF/ON + readiness, verifier-only/manage-only grants, rapid filter changes, uncertain schedule save, original recheck and multi-center copy. No runtime pass. Original QA definitions unchanged, independent and runtime NOT_RUN. See [HUX tracker](../../HEALTHCARE_UIUX_HARDENING_TRACKER.md).
+
+
 ### Healthcare hardening — protected review and assigned center
 HUX-04.04/04.05: Web review case and own-center selection now validate returned identity, prevent stale response/form/evidence callbacks, suppress switching during uncertain actions, and require original-source recheck before retry. Both Web/native center registration confirm discard; native centre editor blocks switching during unknown original result and keeps proof tied to selected version. Web apply button respects original owner-management grant. CG14 US-002/005 and applicable US-001 review/own-center scenarios source-traced; verify delayed A/B response, uncertain save, upload completion after changing selection, reviewer-only action and approved publication. Runtime/independent review NOT_RUN.
 

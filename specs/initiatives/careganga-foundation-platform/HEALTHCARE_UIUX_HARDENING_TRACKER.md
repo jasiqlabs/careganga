@@ -10,20 +10,20 @@ This user-requested cross-module subtracker supplements (does not replace) origi
 
 ## Summary
 
-37 subitems: 17 source-confirmed presentation gaps, 19 runtime/reproduction candidates, 1 reference evidence blocker. Initial baseline: all OPEN. Current progress: 26 rows IN_PROGRESS (including partial cross-cutting work); 11 rows OPEN; zero independently cleared or runtime passes. P0 = release visual evidence gate; P1 = primary journey or substantial usability; P2 = secondary usability. Source status and runtime status stay separate.
+37 subitems: 17 source-confirmed presentation gaps, 19 runtime/reproduction candidates, 1 reference evidence blocker. Initial baseline: all OPEN. Current progress: 29 rows IN_PROGRESS (including partial cross-cutting work); 8 rows OPEN; zero independently cleared or runtime passes. P0 = release visual evidence gate; P1 = primary journey or substantial usability; P2 = secondary usability. Source status and runtime status stay separate.
 
 | ID | Priority | Evidence | Owner/surface | Issue | State |
 |---|---|---|---|---|---|
 | HUX-01.01 | P0 | EVIDENCE | CG14–17 all | Recover separate healthcare reference originals | OPEN |
 | HUX-02.01 | P1 | SOURCE | CG14–17 all | Shared design consistency | IN_PROGRESS |
-| HUX-02.02 | P1 | CHECK | CG14–17 admin/center | Role-specific healthcare navigation | OPEN |
+| HUX-02.02 | P1 | CHECK | CG14–17 admin/center | Role-specific healthcare navigation | IN_PROGRESS |
 | HUX-03.01 | P1 | CHECK | CG14/15/17/20 admin/center | Operational dashboard journey | OPEN |
 | HUX-04.01 | P1 | SOURCE | CG14 US-001 admin | Provider registration form density | IN_PROGRESS |
 | HUX-04.02 | P1 | SOURCE | CG14 US-003 admin | Doctor list lacks in-screen search/filter | IN_PROGRESS |
 | HUX-04.03 | P1 | SOURCE | CG14 US-003 admin | Doctor registration/detail hierarchy | IN_PROGRESS |
 | HUX-04.04 | P1 | CHECK | CG14 US-002/003 admin/center | Verification and evidence clarity | IN_PROGRESS |
 | HUX-04.05 | P1 | CHECK | CG14 US-005 center/admin | Center profile and content editing | IN_PROGRESS |
-| HUX-05.01 | P1 | CHECK | CG15 US-001 admin/center | Scheduling calendar and availability | OPEN |
+| HUX-05.01 | P1 | CHECK | CG15 US-001 admin/center | Scheduling calendar and availability | IN_PROGRESS |
 | HUX-06.01 | P1 | CHECK | CG15 US-003/008 admin | Patient and booking management | OPEN |
 | HUX-06.02 | P1 | SOURCE | CG15 US-006 center web | Consultation queue action overload | IN_PROGRESS |
 | HUX-06.03 | P1 | CHECK | CG15 US-003/006 center | Patient intake and consent | OPEN |
@@ -44,7 +44,7 @@ This user-requested cross-module subtracker supplements (does not replace) origi
 | HUX-11.03 | P1 | CHECK | CG15 US-005/007/008 public web/app | Booking confirmation and patient history | IN_PROGRESS |
 | HUX-12.01 | P1 | SOURCE | CG14 US-003 internal Android | Doctor management long scrolling forms | IN_PROGRESS |
 | HUX-12.02 | P1 | SOURCE | CG15 US-006 internal Android | Queue summary and action readability | IN_PROGRESS |
-| HUX-12.03 | P1 | CHECK | CG14/16/17 internal Android | Operational parity | OPEN |
+| HUX-12.03 | P1 | CHECK | CG14/16/17 internal Android | Operational parity | IN_PROGRESS |
 | HUX-13.01 | P1 | SOURCE | CG14 US-004 public Android | Public result list and filter density | IN_PROGRESS |
 | HUX-13.02 | P1 | CHECK | CG15/17 public Android | Patient home and healthcare journey | IN_PROGRESS |
 | HUX-14.01 | P1 | CHECK | CG14–17 all | Responsive and accessibility acceptance | OPEN |
@@ -107,6 +107,10 @@ Main `781276ab68a29ef866ecf927f41b88d68f6753f5` is one commit ahead of the manda
 ## Protected review and assigned-center UX
 
 - HUX-04.04/04.05: Web review case and own-center selection now validate returned identity, prevent stale response/form/evidence callbacks, suppress switching during uncertain actions, and require original-source recheck before retry. Both Web/native center registration confirm discard; native centre editor blocks switching during unknown original result and keeps proof tied to selected version. Web apply button respects original owner-management grant. CG14 US-002/005 and applicable US-001 review/own-center scenarios source-traced; verify delayed A/B response, uncertain save, upload completion after changing selection, reviewer-only action and approved publication. Runtime/independent review NOT_RUN.
+
+## Role readiness and schedule re-review
+
+- Re-review: CG01 effective UI actions suppress optional equipment and clinical actions using the same existing server flags as CG16 admission; grant catalog and backend authorization remain unchanged. CG14 reviewer action uses actual verify permission (manage only for reopening), matching original owner workflows. CG15 H07 schedule filter/roster/detail controls guard uncertain writes, stale and failed reads and selected association identity; existing metrics, weekly/leave/holiday/copy rules retained. Source regression required with ERP OFF/ON + readiness, verifier-only/manage-only grants, rapid filter changes, uncertain schedule save, original recheck and multi-center copy. No runtime pass. HUX-02.02/05.01/12.03. CG16 US-002-QA02/16; CG15 US-001 scheduling, conflict and H07 visual scenarios; CG14 independent decision/apply/reopen role scenarios.
 
 ## Subtracker details and expected user scenarios
 
