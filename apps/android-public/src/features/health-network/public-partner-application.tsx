@@ -3,7 +3,7 @@ import {ActivityIndicator,BackHandler,Platform,Pressable,ScrollView,StyleSheet,
  Text,TextInput,View} from "react-native";
 import {SafeAreaView} from "react-native-safe-area-context";
 import * as Crypto from "expo-crypto";
-import {careGangaTheme as theme} from "../../../../../packages/design-tokens/src/index";
+import {careGangaPublicTheme as theme} from "../../../../../packages/design-tokens/src/index";
 
 type Kind="HOSPITAL"|"CLINIC"|"DIAGNOSTIC_LAB"|"DOCTOR"|"PHARMACY"|"NURSING"|"SURGERY_CENTER";
 type Fields={partnerType:Kind;applicantName:string;contactName:string;
@@ -254,6 +254,6 @@ const styles=StyleSheet.create({
   minHeight:46,padding:12,color:theme.text},
  receipt:{fontFamily:Platform.select({ios:"Menlo",android:"monospace"})??"monospace",
   color:theme.text,flexWrap:"wrap"},
- error:{color:"#a33434",fontWeight:"600"},
+ error:{color:theme.error,fontWeight:"600"},
  muted:{fontSize:13,color:theme.mutedText}
 });

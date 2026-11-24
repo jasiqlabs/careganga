@@ -63,7 +63,11 @@ export function ClinicalLabOrderWorkspace({canCreate,canView,canManageSamples,ca
  const [custodyUncertain,setCustodyUncertain]=useState(false);
  const [rejectSampleRef,setRejectSampleRef]=useState("");
  const [custodyBusy,setCustodyBusy]=useState(false);
- const epoch=useRef(0);
+ const epoch=useRef(0),detailEpoch=useRef(0);
+ const [orderQuery,setOrderQuery]=useState("");
+ const orderFilter=useRef({q:"",offset:0});
+ const [nextOrderOffset,setNextOrderOffset]=useState<number|null>(null);
+ const [detailLoading,setDetailLoading]=useState(false);
  const reloadCenters=useCallback(async()=>{
   const result=await api<{centers:Center[]}>("centers/eligible");
   setCenters(result.centers??[]);
@@ -76,13 +80,13 @@ export function ClinicalLabOrderWorkspace({canCreate,canView,canManageSamples,ca
     Promise.resolve({patients:[]}),
    canCreate?api<{items:Item[]}>("centers/"+ref+"/catalog/eligible"):
     Promise.resolve({items:[]}),
-   canView?api<{orders:Order[]}>("centers/"+ref+"/orders"):
-    Promise.resolve({orders:[]})
+   canView?api<{orders:Order[];nextOffset:number|null}>("centers/"+ref+"/orders?"+new URLSearchParams({q:orderFilter.current.q,offset:String(orderFilter.current.offset)})):
+    Promise.resolve({orders:[],nextOffset:null})
   ]);
   if(n===epoch.current){
    setPatients(patientsResult.patients??[]);
    setCatalog(catalogResult.items??[]);
-   setOrders(orderResult.orders??[]);
+   setOrders(orderResult.orders??[]);setNextOrderOffset(orderResult.nextOffset??null);
   }
  },[canCreate,canView]);
  useEffect(()=>{
@@ -91,9 +95,10 @@ export function ClinicalLabOrderWorkspace({canCreate,canView,canManageSamples,ca
    "Your assigned laboratory cannot be checked.");}).finally(()=>{
     if(active)setLoading(false);
    });
-  return()=>{active=false;++epoch.current;};
+  return()=>{active=false;++epoch.current;++detailEpoch.current;};
  },[reloadCenters]);
  useEffect(()=>{
+  ++detailEpoch.current;setDetailLoading(false);setOrderQuery("");orderFilter.current={q:"",offset:0};setNextOrderOffset(null);
   setPatients([]);setCatalog([]);setOrders([]);setSelected(null);
   custodyReplay.current=null;setCustodyUncertain(false);setRejectSampleRef("");
   setPatientKey("");setCart([]);setItemKey("");
@@ -102,7 +107,13 @@ export function ClinicalLabOrderWorkspace({canCreate,canView,canManageSamples,ca
   void reloadCenter(center).catch(e=>setError(e instanceof Error?e.message:
    "Current lab orders are unavailable.")).finally(()=>setLoading(false));
  },[center,reloadCenter]);
- const patientOptions=patients.map((p,i)=>({key:String(i),value:p}));
+ async function searchOrders(q:string,offset=0){
+  if(!center||busy||loading||custodyBusy||custodyUncertain||uncertain||detailLoading)return;
+  orderFilter.current={q:q.trim(),offset};setOrders([]);setNextOrderOffset(null);setSelected(null);setSelectedCenter("");++detailEpoch.current;
+  setLoading(true);setError("");
+  try{await reloadCenter(center);}catch(e){setError(e instanceof Error?e.message:"Orders could not be checked.");}finally{setLoading(false);}
+ }
+ const patientOptions=patients.map(p=>({key:p.patientRef+"|"+p.careSourceKind+"|"+p.careSourceRef,value:p}));
  const availableItems=catalog.filter(x=>!cart.some(c=>c.mappingRef===x.mappingRef));
  function addItem(){
   if(!itemKey||!Number.isSafeInteger(quantity)||quantity<1||quantity>20)return;
@@ -131,7 +142,8 @@ export function ClinicalLabOrderWorkspace({canCreate,canView,canManageSamples,ca
  }
  function submit(e:FormEvent<HTMLFormElement>){
   e.preventDefault();
-  if(!canCreate||uncertain||!center||!cart.length)return;
+  if(!canCreate||busy||loading||uncertain||!center||!cart.length)return;
+  if(cart.some(c=>!catalog.some(o=>o.mappingRef===c.mappingRef))){setError("A selected test is no longer available. Remove it and choose a current test.");return;}
   const p=patientOptions.find(x=>x.key===patientKey)?.value;
   if(!p){setError("Select a currently authorized patient and care visit.");return;}
   const payload:Submission={requestKey:crypto.randomUUID(),patientRef:p.patientRef,
@@ -140,15 +152,18 @@ export function ClinicalLabOrderWorkspace({canCreate,canView,canManageSamples,ca
   void send(payload);
  }
  async function show(orderRef:string){
-  const requestedCenter=center;
-  setError("");setSelected(null);setSelectedCenter("");
+  const requestedCenter=center,request=++detailEpoch.current;
+  setDetailLoading(true);setError("");setSelected(null);setSelectedCenter("");setRejectSampleRef("");
   try{
    const detail=await api<Detail>("centers/"+requestedCenter+"/orders/"+orderRef);
    // The UI cannot reuse a previous center's patient/clinical data after
    // the user switches the selected lab while a private request is pending.
+   if(request!==detailEpoch.current)return;
+   if(detail?.order?.orderRef!==orderRef)throw Error("The selected order is unavailable.");
    setSelectedCenter(requestedCenter);
    setSelected(detail);
-  }catch(e){setError(e instanceof Error?e.message:"This order cannot be viewed.");}
+  }catch(e){if(request===detailEpoch.current)setError(e instanceof Error?e.message:"This order cannot be viewed.");}
+  finally{if(request===detailEpoch.current)setDetailLoading(false);}
  }
  async function custodySend(original:CustodyRequest){
   if(!canManageSamples||!canView||custodyBusy||original.centerRef!==center)return;
@@ -284,19 +299,28 @@ export function ClinicalLabOrderWorkspace({canCreate,canView,canManageSamples,ca
    </form>
   </section>}
   {canView&&center&&<section className="form-section">
-   <h2>Latest Clinical Orders</h2>
-   {!orders.length?<p className="cg-module-empty">
+   <h2>Clinical Orders</h2>
+   <form className="toolbar" onSubmit={e=>{e.preventDefault();void searchOrders(orderQuery);}}>
+    <label className="field">Find orders<input maxLength={80} value={orderQuery} onChange={e=>setOrderQuery(e.target.value)} placeholder="Order number or clinical status"/></label>
+    <button type="submit" disabled={busy||loading||custodyBusy||custodyUncertain||uncertain||detailLoading}>Search</button>
+    <button type="button" disabled={busy||loading||custodyBusy||custodyUncertain||uncertain||detailLoading} onClick={()=>{setOrderQuery("");void searchOrders("");}}>Reset</button>
+   </form>
+   {detailLoading&&<p role="status">Checking order details…</p>}
+   {loading?<p role="status">Checking orders…</p>:!orders.length?<p className="cg-module-empty">
     No clinical lab orders are available for this verified center.</p>:
     <div className="table-wrap"><table className="role-table">
      <thead><tr><th>Order</th><th>Quoted total</th><th>Clinical status</th><th>Details</th></tr></thead>
      <tbody>{orders.map(o=><tr key={o.orderRef}>
       <td>{o.displayOrderRef}</td><td>{money(o.quotedTotalMinor)}</td>
       <td>{o.status.replaceAll("_"," ").toLowerCase()}</td>
-      <td><button type="button" onClick={()=>void show(o.orderRef)}>View</button></td>
+      <td><button type="button" disabled={busy||custodyBusy||custodyUncertain||uncertain} onClick={()=>void show(o.orderRef)}>View</button></td>
      </tr>)}</tbody>
     </table></div>}
-   <p className="cg-diagnostics-note">Showing at most 30 current-source orders.
-    This screen does not mark payment collected or medical reports delivered.</p>
+   <div className="toolbar">
+    <button type="button" disabled={loading||busy||custodyBusy||custodyUncertain||uncertain||detailLoading||orderFilter.current.offset===0} onClick={()=>void searchOrders(orderFilter.current.q,Math.max(0,orderFilter.current.offset-30))}>Previous page</button>
+    <button type="button" disabled={loading||busy||custodyBusy||custodyUncertain||uncertain||detailLoading||nextOrderOffset===null} onClick={()=>{if(nextOrderOffset!==null)void searchOrders(orderFilter.current.q,nextOrderOffset);}}>Next page</button>
+   </div>
+   <p className="cg-diagnostics-note">Up to 30 authorized orders per page. Payment and report delivery are verified separately.</p>
   </section>}
   {custodyUncertain&&<div className="notice" role="alert">
    The specimen action may already be saved. Avoid another action until
@@ -305,19 +329,20 @@ export function ClinicalLabOrderWorkspace({canCreate,canView,canManageSamples,ca
     <button type="button" disabled={custodyBusy||!custodyReplay.current}
      onClick={()=>{if(custodyReplay.current)void custodySend(custodyReplay.current);}}>
      Retry the same custody request</button>
-    <span>The same request key is reused, so another specimen event
-     will not be created. Refreshing alone does not prove the first
-     custody action committed.</span>
+    <span>Retrying the same request does not create another specimen event.
+     Refreshing alone cannot confirm that the first action was saved.</span>
    </div>
   </div>}
   {selected&&selectedCenter===center&&<section className="form-section">
-   <h2>{selected.order.displayOrderRef}</h2>
+   <div className="toolbar"><h2>{selected.order.displayOrderRef}</h2><button type="button" disabled={custodyBusy||custodyUncertain} onClick={()=>{++detailEpoch.current;setSelected(null);}}>Close details</button></div>
+   <p>Clinical status: {selected.order.status.replaceAll("_"," ")}</p>
    <p>Accepted lab total: {money(selected.order.quotedTotalMinor)}.
     No verified payment or report delivery has been recorded.</p>
+   <h3>1. Accepted tests</h3>
    {selected.lines.map((line,i)=><p key={i}>
     {line.name} ({line.code}) · Qty {line.quantity} ·
     {" "+money(line.quotedLineTotalMinor)}</p>)}
-   <h3>Original Sample Labels</h3>
+   <h3>2. Specimen collection & custody</h3>
    {!selected.samples.length?<p role="status">No approved specimen custody
     path exists for these tests. The order cannot be advanced until
     the required clinical handling policy has been reviewed.</p>:
@@ -343,6 +368,7 @@ export function ClinicalLabOrderWorkspace({canCreate,canView,canManageSamples,ca
    <p>Each custody action requires current assigned-center access. Rejected
     specimens need new collection labels. A collected sample does not mean
     a medical report is reviewed or released.</p>
+   <h3>3. Result entry, review & release</h3>
    {canRelease&&selected.report?.state==="RESULT_READY"&&
     <ClinicalLabReleasePanel key={"release:"+center+":"+selected.order.orderRef}
      centerRef={center} orderRef={selected.order.orderRef}/>}

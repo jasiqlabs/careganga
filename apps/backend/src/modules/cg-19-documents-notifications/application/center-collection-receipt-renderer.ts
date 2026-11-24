@@ -34,19 +34,23 @@ export async function renderCenterCashReceipt(
   pdf.setSubject("CG17-CENTER-CASH-RECEIPT:"+source.sourceDigest);
   pdf.setCreationDate(new Date(source.issuedAt));
   const page=pdf.addPage([595,842]);
-  const accent=rgb(0.14,0.3,0.67),body=rgb(0.32,0.36,0.43);
+  const accent=rgb(.075,.29,.18),body=rgb(.22,.29,.26),gold=rgb(.98,.88,.53),cream=rgb(.99,.98,.94),white=rgb(1,1,1);
   page.drawRectangle({x:0,y:816,width:595,height:26,color:accent});
-  page.drawText("CareGanga Foundation",{x:45,y:778,font,size:18,color:accent});
+  page.drawRectangle({x:28,y:736,width:539,height:73,color:accent});
+  page.drawText("CareGanga Foundation",{x:45,y:778,font,size:18,color:white});
   page.drawText("Healthcare Center — Cash Collection Receipt",{
-   x:45,y:749,font,size:12,color:body});
+   x:45,y:749,font,size:12,color:white});
   page.drawLine({start:{x:45,y:730},end:{x:550,y:730},thickness:0.8,color:body});
-  let y=693;
+  page.drawRectangle({x:28,y:675,width:539,height:48,color:gold});
+  page.drawText("Verified cash received: "+money(source.amountMinor),{x:42,y:692,font,size:15,color:accent});
+  page.drawRectangle({x:28,y:178,width:539,height:484,color:cream});
+  let y=637;
   const draw=(label:string,value:string)=>{
    const str=(label+": "+value).replace(/[\u0000-\u001f\u007f]/g," ").trim();
    let line="";
    for(const char of [...str]){
     if(font.widthOfTextAtSize(line+char,11)>485&&line){
-     if(y<130)throw Error("Receipt fields exceed printable page");
+     if(y<190)throw Error("Receipt fields exceed printable page");
      page.drawText(line,{x:46,y,font,size:11,color:body});
      y-=19;line="";
     }

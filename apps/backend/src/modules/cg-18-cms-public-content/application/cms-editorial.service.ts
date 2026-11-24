@@ -112,7 +112,8 @@ function placementFits(sections:readonly Section[],a:{role:string;order:number})
    Array.isArray(s.fields.members)&&a.order<s.fields.members.length;
   if(a.role==="FEATURE")return (s.kind==="FEATURE_CARDS"&&
    Array.isArray(s.fields.cards)&&a.order<s.fields.cards.length)||
-   (s.kind==="PARTNER_CARDS"&&Array.isArray(s.fields.partners)&&a.order<s.fields.partners.length);
+   (s.kind==="PARTNER_CARDS"&&Array.isArray(s.fields.partners)&&a.order<s.fields.partners.length)||
+   (s.kind==="HEALTHCARE_CATEGORIES"&&Array.isArray(s.fields.categories)&&a.order<s.fields.categories.length);
   if(a.role==="GALLERY")return s.kind==="GALLERY_GRID"&&
    Array.isArray(s.fields.items)&&a.order<s.fields.items.length;
   if(a.role==="ARTICLE")return s.kind==="ARTICLE_BODY"&&a.order===0;

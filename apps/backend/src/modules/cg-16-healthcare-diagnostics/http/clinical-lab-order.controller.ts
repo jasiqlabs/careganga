@@ -1,4 +1,4 @@
-import {Body,Controller,Get,Header,Headers,Param,Post,StreamableFile} from "@nestjs/common";
+import {Body,Controller,Get,Header,Headers,Param,Post,Query,StreamableFile} from "@nestjs/common";
 import {ClinicalLabOrderService} from "../application/clinical-lab-order.service";
 import {ClinicalLabOptionsService} from "../application/clinical-lab-options.service";
 import {ClinicalLabCustodyService} from "../application/clinical-lab-custody.service";
@@ -35,8 +35,8 @@ export class ClinicalLabOrderController{
  }
  @Get("centers/:centerRef/orders")
  centerOrders(@Headers("authorization")token:string,
-  @Param("centerRef")center:string){
-  return this.orders.centerOrders(token,center);
+  @Param("centerRef")center:string,@Query("q")q?:string,@Query("offset")offset?:string){
+  return this.orders.centerOrders(token,center,q,offset);
  }
  @Post("centers/:centerRef/orders")
  create(@Headers("authorization")token:string,

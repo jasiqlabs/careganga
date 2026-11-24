@@ -4,7 +4,7 @@ import {
  TextInput,View
 } from "react-native";
 import {SafeAreaView} from "react-native-safe-area-context";
-import {careGangaTheme as theme} from "../../../../../packages/design-tokens/src/index";
+import {careGangaPublicTheme as theme} from "../../../../../packages/design-tokens/src/index";
 
 /** Native equivalent of the CURRENT CG-16 published lab-offers projection.
  * It is anonymous, uses no cached private/medical state, and never performs
@@ -130,7 +130,7 @@ export function PublicLabOfferDirectory({onExit,initialCenterSlug=""}:{
    const response=await read(filters,next);
    if(n!==seq.current)return;
    setResult(old=>({state:"READY",
-    items:append?[...old.items,...response.items]:response.items,
+    items:append?[...old.items,...response.items.filter(item=>!old.items.some(existing=>existing.offerRef===item.offerRef))]:response.items,
     next:response.next}));
   }catch{
    if(n!==seq.current)return;
@@ -168,9 +168,9 @@ export function PublicLabOfferDirectory({onExit,initialCenterSlug=""}:{
  }
  function clear(){
   setSearch("");
-  setFilters(EMPTY);
+  setFilters({...EMPTY,center:slug.test(initialCenterSlug)?initialCenterSlug:""});
   setExpanded("");
-  if(filters.q===""&&filters.center===""&&filters.category==="")
+  if(filters.q===""&&filters.center===(slug.test(initialCenterSlug)?initialCenterSlug:"")&&filters.category==="")
    void fetchCurrent();
  }
  return <SafeAreaView style={styles.page}>
@@ -264,7 +264,7 @@ const styles=StyleSheet.create({
  helper:{fontSize:13,lineHeight:20,color:theme.mutedText},
  button:{minHeight:48,minWidth:68,borderWidth:1,borderColor:theme.border,
   borderRadius:10,paddingHorizontal:12,paddingVertical:10,justifyContent:"center"},
- selected:{borderColor:theme.primary,backgroundColor:theme.surface},
+ selected:{borderColor:theme.primary,backgroundColor:theme.selectedSurface},
  buttonText:{color:theme.text,fontWeight:"600"},
  card:{borderWidth:1,borderColor:theme.border,borderRadius:16,
   backgroundColor:theme.surface,padding:16,gap:10},

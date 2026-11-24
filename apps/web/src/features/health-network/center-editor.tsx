@@ -58,14 +58,16 @@ export function CenterEditor({value,onChange,disabled=false,identityLocked=false
   },[]);
   useEffect(()=>{
     let live=true;
-    if(!value.stateRef){setDistricts([]);return;}
+    setDistricts([]);
+    if(!value.stateRef)return;
     void fetchAreas("DISTRICT",value.stateRef).then(x=>{if(live)setDistricts(x);})
       .catch(e=>{if(live)setGeoError(e instanceof Error?e.message:"Districts unavailable.");});
     return()=>{live=false;};
   },[value.stateRef]);
   useEffect(()=>{
     let live=true;
-    if(!value.districtRef){setBlocks([]);return;}
+    setBlocks([]);
+    if(!value.districtRef)return;
     void fetchAreas("BLOCK",value.districtRef)
       .then(options=>{if(live)setBlocks(options);})
       .catch(e=>{if(live)setGeoError(e instanceof Error?e.message:"Blocks unavailable.");});

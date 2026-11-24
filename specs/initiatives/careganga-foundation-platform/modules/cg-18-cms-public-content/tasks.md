@@ -168,7 +168,26 @@ QA cases:
 Verification: On actual implementation source-trace US-004-QA01–QA18 UI→request→guard→DB/owner/provider→user feedback and record file:function and SOURCE_VERIFIED/SOURCE_GAP/NOT_VERIFIABLE per case. No live build/tests/screenshots.
 Dependencies: US-001
 
-## Execution progress — source-verified checkpoint, not runtime acceptance
+## Execution progress
+
+### Healthcare category media and default content
+HUX-09.01/02.01/13.02: fresh-install CMS draft now contains the reference-led nine editable healthcare categories, green/gold hero editorial copy, and no invented clinical/financial data. Existing FEATURE placement reused for indexed healthcare illustrations; server validates category existence and existing clean rights-approved media controls; Web and internal Android editors can attach image, public Web/native render same approved placement, removal shifts Web index or safely detaches native illustrations after category identity changes. First-install draft content is not automatically approved or published by this commit. Actual original/illustrative image files need approved uploads and publication; no sample screenshot portraits or patient data. Source/runtime acceptance pending.
+
+
+### Public reference parity re-review
+HUX-09.01/13.01/13.02: published native CMS healthcare categories now have working category-specific directory actions with validated existing CG14 category codes and shared public theme. Selected category survives initial native directory load, generic home entry resets it; unknown editorial labels open full directory. HUX-11.03/15.01: consultation slip measures and wraps authorized names/address before drawing, fits at readable 8.5–10pt without truncating, reserves non-overlapping financial/footer space and calculates QR quiet-zone from matrix size. Source checks only; extreme valid source lengths and scanner/printed output must be tested locally. Original approved one-copy pay-at-center slip remains separate from actual collection receipt; no fake payment or sample data.
+
+
+### Original healthcare public references — alignment checkpoint (24 Nov 2026)
+HUX-09.01/10.02/10.03/13.01/13.02/11.03/08.03: CMS category titles/descriptions remain published-source content, now include real search and canonical category links. Live approved CG17 policy cards replace screenshot sample percentages; public native adds category quick filters and verified same-center doctor actions (no fake booking). Native payable amount highlight; private Web consultation grouped detail and document actions, response identity guard; Web history earlier in profile. Source-only; no screenshot parity/runtime certification. Existing CMS category image schema is text-only; illustrated tiles/hero assets require CMS media mapping and actual approved content. Patient profile registration remains verified/consent-gated; full booking-linked navigation/preview and real online document copy contract still pending.
+Reference-led directory/profile, UI06 selected slot summary, UI08/09 payment and private document presentation on separate hardening branch. Original QA definitions retained, actual render/build/device/provider/independent acceptance NOT_RUN. See [tracker](../../HEALTHCARE_UIUX_HARDENING_TRACKER.md).
+
+
+### 24 November 2026 — protected patient intake, cancellation, lab and CMS discovery
+Commit `676e320a410cf79bb2c5ec54adf40d851d26931c`: HUX-06.01/06.03/07.04/09.01. Web H15 cancellation override is now action-permission gated like Internal Android; both prevent changing filters/selection during an uncertain cancellation and require an original-source recheck. Web provisional registration retains the exact original request and disables edits during uncertainty; clinic identity proof is bound to the selected center, patient ID, code and original request key, and a successful response must identify the original verified patient. Public Web lab listings show published sample/description where available; native pagination deduplicates offer references and clear filters retains the initial center. The native published healthcare CMS page now directly opens the existing directory/patient profile; Web offers matching discovery links. Editorial content remains CMS-owned; operational listings remain CG14/16-owned. These are source changes, not executed QA.
+
+CG18 published healthcare editorial page and native discovery navigation now link the current CG14/15/16 source actions, without adding hardcoded CMS data or new operational ownership. Verify CMS publish/withdraw and Android Back, current/empty/unavailable directory. Independent review and runtime NOT_RUN. See [dedicated healthcare tracker](../../HEALTHCARE_UIUX_HARDENING_TRACKER.md).
+ — source-verified checkpoint, not runtime acceptance
 
 ### Original public navigation acceptance gap register — 18 November 2026
 
@@ -406,3 +425,7 @@ All 47 original website screenshot images inspected across 17-Nov and 18-Nov arc
 
 ### 24 November — owner clarification, deployment publication and developer handoff
 First version must be fully populated and published before public traffic, not require client post-go-live CMS clicks. New first-release command `npm run deploy:cms:first -- --manifest /private/path/approved-baseline.json --apply` requires complete eight-page manifest, original approved exact revisions and anonymous readiness; preserves existing effective pages, fails closed and never runs on routine redeployment. Commits 64070c0b, 7bb4fd58, 05c44ceb; deployment guide 823eb48f. Executed 11/11 isolated Node tests (5 new wrapper + 6 readiness), matching committed blob hashes e9abe694b3d2ef90b34f45ce9750ebec4aab65a9 / 1bac15295c0ae842c36f102b9b263b471f18197c / b4d3214a4478f16a7f774dc61326d691d1516437 / 2b2533f218af4ddb3d94c62d5d271ae435d63fb6. Verified generated asset checksums. Actual hosting traffic promotion configuration, live media/DB publication, full build/device and independent review NOT_RUN. Developer conditional handoff c82dc7c3 at docs/qa/CAREGANGA-MANDATORY-V1-FINAL-DEVELOPER-HANDOFF-20261124.md includes existing E2E-002/006/010 OPEN, re-review of 13 CANDIDATE, full mandatory integration runtime QA and merge to remote main ONLY after acceptance. No source status promotion, no production changes, no merge.
+
+
+### 24 November — HUX-02.01 shared healthcare editorial styling
+- Public native CMS hero/nav now uses the existing public green/gold/amber tokens; shared CMS category card/heading/filter/action styles consume public semantic tokens. Original approved data, assets, navigation and publication rules unchanged. Source bd1139c73c88b7e51f9454fc666ccb6b6ef9a62d, 61fd00b863f250ec6b950465b7c9509f782dd480; CG18 US-001/002 public rendering and CG14 US-004 discovery. Recheck other CMS pages because shared styles affect them; runtime/visual/independent review NOT_RUN.

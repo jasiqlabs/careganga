@@ -29,6 +29,7 @@ const sources=[
  frontend+"center-lab-pricing-panel.tsx",
  frontend+"lab-test-master-workspace.tsx",
  frontend+"my-lab-pricing-workspace.tsx",
+ "apps/android-internal/src/features/diagnostics/native-lab-pricing-panel.tsx",
  "apps/web/src/app/api/diagnostics/[...parts]/route.ts",
  "apps/web/src/app/(admin)/center/page.tsx",
  "apps/web/src/app/(admin)/admin/health-network/diagnostics/page.tsx",
@@ -175,4 +176,13 @@ assert.match(admin,/reviewReference/,"Human-readable original case number missin
 assert.match(own,/my-centers\//,"own-center route missing");
 assert.doesNotMatch(service,/\bINSERT INTO cg09_|\bUPDATE cg09_|\bINSERT INTO cg17_/,
  "catalogue must never infer patient payment or Foundation assistance");
+// H09: filter authorized center tariffs before paging; no global price master.
+const h09Pricing=read(backend+"application/diagnostics-catalog.service.ts");
+assert.ok(h09Pricing.includes("AND ($4::text='' OR pr.status::text=$4"));
+assert.ok(h09Pricing.includes("LIMIT 101 OFFSET $5"));
+for(const path of [frontend+"lab-test-master-workspace.tsx",frontend+"center-lab-pricing-panel.tsx","apps/android-internal/src/features/diagnostics/native-lab-pricing-panel.tsx"]){
+ const surface=read(path);
+ assert.ok(surface.includes("priceStatus:filter.status"),path+" actual price status filter");
+ assert.ok(surface.includes("nextPriceOffset"),path+" price paging");
+}
 console.log("CG16 US001 SOURCE/PARSE GUARDS PASS — CG03 source contract exists; no migration, auth, review, browser or clinical runtime QA performed");

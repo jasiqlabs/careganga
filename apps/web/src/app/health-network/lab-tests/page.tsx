@@ -49,7 +49,7 @@ export default async function PublicLabTestsPage({searchParams}:Props){
      </select>
     </label>
     <div style={{display:"flex",gap:12,alignItems:"end",flexWrap:"wrap"}}>
-     <button type="submit">Find current tests</button>
+     <button type="submit" className="primary">Find current tests</button>
      <Link href={center?"/health-network/lab-tests?center="+encodeURIComponent(center):
       "/health-network/lab-tests"}>Clear filters</Link>
     </div>
@@ -66,6 +66,8 @@ export default async function PublicLabTestsPage({searchParams}:Props){
       <p className="cg-eyebrow">{offer.kind==="TEST"?offer.category:"Diagnostic package"}</p>
       <h3>{offer.name}</h3>
       <p>Test code: {offer.code}</p>
+      {offer.sampleType&&<p>Sample category: {offer.sampleType.replaceAll("_"," ")}</p>}
+      {offer.description&&<p>{offer.description}</p>}
       <p><strong>{rupees(offer.patientPriceMinor)}</strong> · Current patient price</p>
       {Number(offer.basePriceMinor)>Number(offer.patientPriceMinor)&&
        <p>Base commercial price: {rupees(offer.basePriceMinor)}

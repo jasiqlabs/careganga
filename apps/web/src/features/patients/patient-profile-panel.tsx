@@ -291,6 +291,7 @@ export function PatientProfilePanel(){
      <p>Profile: {profile.profileStatus==="PROVISIONAL"?"Contact-verified; identity verification pending":profile.profileStatus} · Patient-care consent:
       {profile.consentGranted?" Granted":" Withdrawn"}</p>
     </aside>}
+    {profile&&<MyConsultationHistory key={profile.virtualPatientId}/>}
     {profile?.profileStatus==="PROVISIONAL"&&<section
      aria-label="Verify your patient identity at a healthcare center"
      style={{border:"1px solid #d7dfdb",borderRadius:12,padding:16}}>
@@ -381,6 +382,7 @@ export function PatientProfilePanel(){
     </section>}
     <form onSubmit={e=>{e.preventDefault();void (profile?save():register());}}
      style={{display:"grid",gap:12}}>
+     <h2>Personal information</h2>
      <label>First name
       <input required value={first} maxLength={100}
        onChange={e=>setFirst(e.target.value)}/></label>
@@ -423,7 +425,6 @@ export function PatientProfilePanel(){
        Expires {new Date(secondCode.expiresAt).toLocaleTimeString("en-IN")}.
        This is not permission for another person or a family member.</p>}
      </section>}
-    {profile&&<MyConsultationHistory/>}
     {profile?.profileStatus==="VERIFIED"&&
      <PatientPrivateDetailsPanel key={profile.virtualPatientId+":details"}
       consentGranted={profile.consentGranted}/>}

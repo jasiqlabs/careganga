@@ -61,10 +61,10 @@ export class DiagnosticsCatalogController{
   @Body()body:unknown){return this.catalog.mapItem(token,center,body,true);}
  @Get("centers/:centerRef/test-prices")
  prices(@Headers("authorization")token:string,@Param("centerRef")center:string,
-  @Query("mappingRef")map?:string){return this.catalog.prices(token,center,map);}
+  @Query("mappingRef")map?:string,@Query("priceStatus")status?:string,@Query("offset")offset?:string){return this.catalog.prices(token,center,map,false,status,offset);}
  @Get("my-centers/:centerRef/test-prices")
  ownPrices(@Headers("authorization")token:string,@Param("centerRef")center:string,
-  @Query("mappingRef")map?:string){return this.catalog.prices(token,center,map,true);}
+  @Query("mappingRef")map?:string,@Query("priceStatus")status?:string,@Query("offset")offset?:string){return this.catalog.prices(token,center,map,true,status,offset);}
  @Post("centers/:centerRef/test-prices")
  propose(@Headers("authorization")token:string,@Param("centerRef")center:string,
   @Body()body:unknown){return this.catalog.proposePrice(token,center,body);}

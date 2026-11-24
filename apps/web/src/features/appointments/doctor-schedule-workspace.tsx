@@ -127,6 +127,8 @@ export function DoctorScheduleWorkspace({channel,centerRef,canManage=true}:{
  const [selected,setSelected]=useState<Detail|null>(null);
  const [tab,setTab]=useState<ScheduleTab>("WEEKLY");
  const [loading,setLoading]=useState(true),[working,setWorking]=useState(false);
+ const [detailLoading,setDetailLoading]=useState(false);
+ const selectionRef=useRef("");
  const [error,setError]=useState(""),[notice,setNotice]=useState("");
  const [uncertain,setUncertain]=useState(false),[search,setSearch]=useState("");
  const [appliedSearch,setAppliedSearch]=useState("");
@@ -145,7 +147,7 @@ export function DoctorScheduleWorkspace({channel,centerRef,canManage=true}:{
  const weekKey=useRef(""),exceptionKey=useRef(""),seq=useRef(0);
  const cancelKeys=useRef<Record<string,string>>({});
  const loadRoster=useCallback(async()=>{
-  const n=++seq.current;
+  const n=++seq.current;setLoading(true);
   try{
    const params=new URLSearchParams();
    if(channel==="foundation"){
@@ -164,14 +166,14 @@ export function DoctorScheduleWorkspace({channel,centerRef,canManage=true}:{
    setRoster(response.doctors);setMetrics(response.metrics??null);
    setPlaceChoices(response.centerChoices??[]);
    setPlacesComplete(response.geographyComplete!==false);
-   setLoading(false);setError("");setUncertain(false);
+   setLoading(false);setError("");
   }catch(e){if(n===seq.current){
-   setMetrics(null);setLoading(false);setError(e instanceof Error?e.message:
+   setRoster([]);setMetrics(null);setLoading(false);setError(e instanceof Error?e.message:
     "The approved doctor list is currently unavailable.");
   }}
  },[base,channel,stateRef,districtRef,blockRef,chosenCenter,appliedSearch,statusFilter,specialtyFilter]);
  useEffect(()=>{
-  setSelected(null);setTab("WEEKLY");setRoster([]);setMetrics(null);setWindows([]);
+  selectionRef.current="";setDetailLoading(false);setSelected(null);setTab("WEEKLY");setRoster([]);setMetrics(null);setWindows([]);
   setCopyTarget("");
   setCopyReview(null);setBulkRefs([]);setBulkPreview([]);
   setBulkAcknowledged(false);setBulkOutcomes([]);bulkKeys.current={};
@@ -180,22 +182,24 @@ export function DoctorScheduleWorkspace({channel,centerRef,canManage=true}:{
   void loadRoster();return()=>{seq.current++;};
  },[loadRoster]);
  const select=useCallback(async(ref:string)=>{
-  const n=++seq.current;setError("");setNotice("");
+  const n=++seq.current;selectionRef.current=ref;setDetailLoading(true);setSelected(null);setError("");setNotice("");
   try{
    const detail=await api<Detail>(base+"/"+encodeURIComponent(ref));
    if(n!==seq.current)return;
+   if(!detail||detail.associationRef!==ref||!Array.isArray(detail.windows))throw Error("The selected doctor and center schedule could not be verified.");
    setSelected(detail);setTab("WEEKLY");setWindows(detail.windows);
    setSlot(detail.slotMinutes>0?String(detail.slotMinutes):"");
    setCopyTarget("");setCopyReview(null);setBulkRefs([]);setBulkPreview([]);
    setBulkAcknowledged(false);setBulkOutcomes([]);bulkKeys.current={};
    setFrom(detail.effectiveFrom??"");setUntil(detail.effectiveUntil??"");
    weekKey.current="";exceptionKey.current="";setUncertain(false);
-  }catch(e){if(n===seq.current)setError(e instanceof Error?e.message:
-   "This doctor's verified schedule is unavailable.");}
+  }catch(e){if(n===seq.current){setSelected(null);setError(e instanceof Error?e.message:"This doctor's verified schedule is unavailable.");}}
+  finally{if(n===seq.current)setDetailLoading(false);}
  },[base]);
  async function refresh(){
+  const ref=selected?.associationRef||selectionRef.current;
   setError("");await loadRoster();
-  if(selected)await select(selected.associationRef);
+  if(ref)await select(ref);
  }
  function changeDay(day:number,field:"startLocal"|"endLocal",index:number,value:string){
   setWindows(old=>old.map((w,i)=>w.weekday===day&&
@@ -238,7 +242,7 @@ export function DoctorScheduleWorkspace({channel,centerRef,canManage=true}:{
     throw Error("The selected doctor-center association is no longer eligible.");
    if(destination.timeZone!==source.timeZone)
     throw Error("Centers have different time zones. Configure the target schedule directly to avoid shifting consultation times.");
-   setSelected(destination);setTab("WEEKLY");setWindows(sourceWindows);
+   selectionRef.current=destination.associationRef;setSelected(destination);setTab("WEEKLY");setWindows(sourceWindows);
    setSlot(String(source.slotMinutes));
    const today=currentCenterDay(source.timeZone);
    if(source.effectiveUntil&&source.effectiveUntil<=today)
@@ -515,7 +519,7 @@ export function DoctorScheduleWorkspace({channel,centerRef,canManage=true}:{
   {uncertain&&<p role="alert">The last change could already have been saved.
    Refresh the original schedule before submitting another change.</p>}
   <div className="toolbar">
-   <button type="button" disabled={working} onClick={()=>void refresh()}>
+   <button type="button" disabled={working||uncertain||detailLoading||loading||detailLoading} onClick={()=>void refresh()}>
     Refresh verified schedules</button>
   </div>
   <div className="form-section">
@@ -540,7 +544,7 @@ export function DoctorScheduleWorkspace({channel,centerRef,canManage=true}:{
     <label>State
      <select value={stateRef} onChange={e=>{setStateRef(e.target.value);
       setDistrictRef("");setBlockRef("");setChosenCenter("");}}
-      disabled={working}>
+      disabled={working||uncertain||detailLoading}>
       <option value="">All states</option>
       {stateOptions.map(p=><option key={p.ref} value={p.ref}>{p.name}</option>)}
      </select>
@@ -548,7 +552,7 @@ export function DoctorScheduleWorkspace({channel,centerRef,canManage=true}:{
     <label>District
      <select value={districtRef} onChange={e=>{
       setDistrictRef(e.target.value);setBlockRef("");setChosenCenter("");
-     }} disabled={working||!stateRef}>
+     }} disabled={working||uncertain||detailLoading||!stateRef}>
       <option value="">All districts</option>
       {districtOptions.map(p=><option key={p.ref} value={p.ref}>{p.name}</option>)}
      </select>
@@ -556,14 +560,14 @@ export function DoctorScheduleWorkspace({channel,centerRef,canManage=true}:{
     <label>Block
      <select value={blockRef} onChange={e=>{
       setBlockRef(e.target.value);setChosenCenter("");
-     }} disabled={working||!districtRef}>
+     }} disabled={working||uncertain||detailLoading||!districtRef}>
       <option value="">All blocks</option>
       {blockOptions.map(p=><option key={p.ref} value={p.ref}>{p.name}</option>)}
      </select>
     </label>
     <label>Healthcare center
      <select value={chosenCenter} onChange={e=>setChosenCenter(e.target.value)}
-      disabled={working||!stateRef}>
+      disabled={working||uncertain||detailLoading||!stateRef}>
       <option value="">All eligible centers</option>
       {matchingPlaces.map(p=><option key={p.centerRef} value={p.centerRef}>
        {p.centerName}</option>)}
@@ -575,7 +579,7 @@ export function DoctorScheduleWorkspace({channel,centerRef,canManage=true}:{
    {channel==="foundation"&&<div className="form-grid"
     aria-label="Filter current doctor schedule state and real medical specialization">
     <label>Schedule status
-     <select value={statusFilter} disabled={working}
+     <select value={statusFilter} disabled={working||uncertain||detailLoading}
       onChange={e=>setStatusFilter(e.target.value)}>
       <option value="">All schedule statuses</option>
       <option value="ACTIVE">Active schedules</option>
@@ -586,10 +590,10 @@ export function DoctorScheduleWorkspace({channel,centerRef,canManage=true}:{
     <label>Doctor specialization (current source)
      <input type="search" value={specialtyFilter}
       onChange={e=>setSpecialtyFilter(e.target.value)}
-      maxLength={80} disabled={working}
+      maxLength={80} disabled={working||uncertain||detailLoading}
       placeholder="Search verified specialization"/>
     </label>
-    <button type="button" disabled={working||loading||
+    <button type="button" disabled={working||uncertain||detailLoading||loading||
      !(stateRef||districtRef||blockRef||chosenCenter||statusFilter||
        specialtyFilter||search||appliedSearch)}
      onClick={()=>{setStateRef("");setDistrictRef("");setBlockRef("");
@@ -597,15 +601,15 @@ export function DoctorScheduleWorkspace({channel,centerRef,canManage=true}:{
       setSearch("");setAppliedSearch("");}}>
      Reset all H07 filters</button>
    </div>}
-   <form onSubmit={e=>{e.preventDefault();setAppliedSearch(search.trim());}}
+   <form onSubmit={e=>{e.preventDefault();if(!working&&!uncertain&&!detailLoading&&!loading)setAppliedSearch(search.trim());}}
     aria-label="Search all approved doctors">
     <label>Search approved doctors, clinics or specialties
      <input type="search" value={search} onChange={e=>setSearch(e.target.value)}
       maxLength={80} placeholder="Doctor or healthcare center"/>
     </label>
     <div className="toolbar">
-     <button type="submit" disabled={working||loading}>Search verified doctors</button>
-     <button type="button" disabled={working||loading||
+     <button type="submit" disabled={working||uncertain||detailLoading||loading}>Search verified doctors</button>
+     <button type="button" disabled={working||uncertain||detailLoading||loading||
       (!search&&!appliedSearch)}
       onClick={()=>{setSearch("");setAppliedSearch("");}}>Clear search</button>
     </div>
@@ -613,11 +617,11 @@ export function DoctorScheduleWorkspace({channel,centerRef,canManage=true}:{
    {appliedSearch&&<p role="status">Showing current server results for
     “{appliedSearch}”. Searches use the original verified doctor and center records.</p>}
    {loading&&<p role="status" className="cg-module-loading">Checking current doctor associations…</p>}
-   {!loading&&result.length===0&&
+   {!loading&&!error&&result.length===0&&
     <p className="cg-module-empty" role="status">No matching, currently approved doctor-center associations.</p>}
    <div className="cg15-h07-roster-list" role="group" aria-label="Select doctor and healthcare center">
-    {result.map(r=><button type="button" key={r.associationRef}
-     disabled={working} aria-pressed={selected?.associationRef===r.associationRef}
+    {!loading&&result.map(r=><button type="button" key={r.associationRef}
+     disabled={working||uncertain||detailLoading||loading} aria-pressed={selected?.associationRef===r.associationRef}
      onClick={()=>void select(r.associationRef)}>
       <strong>{r.doctorName}</strong> — {r.centerName} · {clean(r.status)}
       {!!r.specialties.length&&<small style={{display:"block"}}>
@@ -625,7 +629,8 @@ export function DoctorScheduleWorkspace({channel,centerRef,canManage=true}:{
      </button>)}
    </div>
   </div>
-  {selected&&<div className="form-section" key={selected.associationRef}>
+  {detailLoading&&<p role="status">Checking the selected schedule…</p>}
+  {selected&&!detailLoading&&!loading&&<div className="form-section" key={selected.associationRef}>
    <h2>{selected.doctorName} — {selected.centerName}</h2><p style={{color:"var(--cg-accent)",fontWeight:700}}>
     Verified doctor at an approved healthcare center
     {roster.find(r=>r.associationRef===selected.associationRef)?.specialties
@@ -880,7 +885,7 @@ export function DoctorScheduleWorkspace({channel,centerRef,canManage=true}:{
       windows.some(w=>!w.startLocal||!w.endLocal)}>
      {working?"Saving…":"Save verified working hours"}</button>
     <button type="button" disabled={working}
-     onClick={()=>void select(selected.associationRef)}>Discard unsaved changes</button>
+     onClick={()=>{if(window.confirm("Discard unsaved schedule changes?"))void select(selected.associationRef);}}>Discard unsaved changes</button>
    </div>}
    </section>}
    {(tab==="LEAVE"||tab==="HOLIDAY")&&<section role="tabpanel"

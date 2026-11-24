@@ -42,6 +42,13 @@ export class CenterPatientReceiptController{
   @Param("bookingRef")booking:string,@Param("collectionRef")collection:string){
   return this.receipts.patientStatus(token,booking,collection);
  }
+ @Get("me/appointments/:bookingRef/collections/:collectionRef/online-pdf")
+ @Header("Cache-Control","private, no-store")
+ @Header("X-Content-Type-Options","nosniff")
+ async onlinePdf(@Headers("authorization")token:string,@Param("bookingRef")booking:string,@Param("collectionRef")collection:string){
+  const bytes=await this.receipts.patientOnlineConfirmation(token,booking,collection);
+  return new StreamableFile(bytes,{type:"application/pdf",disposition:'attachment; filename="careganga-online-payment-confirmation.pdf"',length:bytes.length});
+ }
  @Get("me/appointments/:bookingRef/collections/:collectionRef/pdf")
  @Header("Cache-Control","private, no-store")
  @Header("X-Content-Type-Options","nosniff")

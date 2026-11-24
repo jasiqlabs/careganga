@@ -73,8 +73,12 @@ async function request(req:NextRequest,parts:string[],method:"GET"|"POST"){
   }catch{return error(400,"Check the laboratory order form.");}
  }
  try{
-  const response=await fetch(
-   new URL("/api/v1/diagnostics/clinical/"+parts.map(encodeURIComponent).join("/"),backend),{
+  const target=new URL("/api/v1/diagnostics/clinical/"+parts.map(encodeURIComponent).join("/"),backend);
+  if(method==="GET"&&parts.length===3&&parts[0]==="centers"&&parts[2]==="orders"){
+   const query=req.nextUrl.searchParams;
+   for(const key of ["q","offset"]){const values=query.getAll(key);if(values.length>1)return error(400,"Check the order search filters.");if(values.length===1)target.searchParams.set(key,values[0]);}
+  }
+  const response=await fetch(target,{
     method,body,cache:"no-store",signal:AbortSignal.timeout(14000),
     headers:{Authorization:"Bearer "+session,
      ...(body?{"Content-Type":"application/json"}:{})}

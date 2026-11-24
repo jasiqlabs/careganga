@@ -1,6 +1,7 @@
 import {HealthcarePublicChrome} from "../../../../shared/healthcare-public-chrome";
 import type {Metadata} from "next";
 import Link from "next/link";
+import styles from "../../profile.module.css";
 import {notFound} from "next/navigation";
 import {publicDoctor} from "../../../../features/health-network/public-directory-source";
 export const dynamic="force-dynamic";
@@ -24,7 +25,8 @@ export default async function VerifiedDoctor({params}:Props){
    <nav aria-label="Breadcrumb"><Link href="/">CareGanga</Link>{" / "}
     <Link href="/health-network?tab=doctors">Doctors</Link></nav>
   </header>
-  <section className="cg-public-section">
+  <div className={styles.detailGrid}><div className={styles.mainColumn}>
+  <section className={"cg-public-section "+styles.panel}>
    <p className="cg-eyebrow">Currently verified healthcare professional</p>
    <h1>{doctor.doctorName}</h1>
    {doctor.qualifications.length>0&&<p>Qualifications: {doctor.qualifications.join(", ")}</p>}
@@ -33,11 +35,12 @@ export default async function VerifiedDoctor({params}:Props){
    {doctor.bio&&<p>{doctor.bio}</p>}
    <p>{doctor.notice}</p>
   </section>
-  <section className="cg-public-section">
-   <h2>Currently approved centers</h2>
-   <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(min(100%,280px),1fr))",gap:16}}>
+  </div><div className={styles.sideColumn}>
+  <section className={"cg-public-section "+styles.panel}>
+   <h2>Center-wise consultation fees &amp; availability</h2>
+   <div className={styles.cardGrid}>
     {doctor.centers.map(c=><article key={c.centerSlug}
-      style={{border:"1px solid #d7dfdb",borderRadius:12,padding:18}}>
+      className={styles.dataCard}>
      <h3><Link href={"/healthcare/centers/"+encodeURIComponent(c.centerSlug)}>
       {c.centerName}</Link></h3>
      <p>{c.address}, {c.pinCode}</p>
@@ -45,10 +48,11 @@ export default async function VerifiedDoctor({params}:Props){
        "No current approved consultation fee displayed. Ask the center."}</p>
      <Link href={"/healthcare/centers/"+encodeURIComponent(c.centerSlug)}>
       View location and contact details</Link>
+     {c.fee&&<p><Link className="cg-health-link-action primary" href={"/health-network/doctors/"+encodeURIComponent(doctorRef)+"/schedule?center="+encodeURIComponent(c.centerSlug)}>Check appointment times here</Link></p>}
     </article>)}
    </div>
   </section>
-  <section className="cg-public-section">
+  <section className={"cg-public-section "+styles.panel}>
    <h2>Doctor working hours</h2>
    <p><Link href={"/health-network/doctors/"+encodeURIComponent(doctorRef)+"/schedule"}>
     View available times & book an in-person appointment</Link></p>
@@ -57,5 +61,6 @@ export default async function VerifiedDoctor({params}:Props){
     and approved fees are available. Payment is due at the center;
     no online payment or financial assistance approval is implied.</p>
   </section>
+ </div></div>
  </main></HealthcarePublicChrome>;
 }

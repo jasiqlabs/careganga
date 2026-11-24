@@ -75,7 +75,9 @@ export function NativeProviderManagement({token,onExpired,onExit,canManage,
  const [error,setError]=useState(""),[notice,setNotice]=useState("");
  const [uncertain,setUncertain]=useState(false);
  const command=useRef<{operation:string;key:string}|null>(null);
- const serial=useRef(0);
+ const serial=useRef(0),listTurn=useRef(0),detailTurn=useRef(0);
+ const activeProvider=useRef("");
+ const [detailLoading,setDetailLoading]=useState(false);
  const failure=useCallback((e:unknown)=>{
   if(e&&typeof e==="object"&&"status" in e&&e.status===401)onExpired();
   const code=e&&typeof e==="object"&&"status" in e&&
@@ -84,9 +86,11 @@ export function NativeProviderManagement({token,onExpired,onExit,canManage,
   setError(e instanceof Error?e.message:"Original provider state unknown.");
  },[onExpired]);
  const load=useCallback(async(offset=0)=>{
+  const request=++listTurn.current;
   const query=new URLSearchParams({offset:String(offset),status,q:appliedSearch});
   const response=await api<{providers:Row[];nextOffset:number|null}>(
    token,"providers?"+query.toString());
+  if(request!==listTurn.current)return;
   if(!response||!Array.isArray(response.providers))
    throw Error("The original verified provider list is unavailable.");
   if(offset===0)setRows(response.providers);
@@ -98,16 +102,17 @@ export function NativeProviderManagement({token,onExpired,onExit,canManage,
  },[token,status,appliedSearch]);
  const detail=useCallback(async(ref:string)=>{
   const response=await api<Detail>(token,"providers/"+encodeURIComponent(ref));
-  if(!response||!response.provider||!Array.isArray(response.centers))
+  if(response?.provider?.providerRef!==ref||!Array.isArray(response.centers))
    throw Error("The provider record has changed.");
-  setSelected(response);
+  if(activeProvider.current===ref)setSelected(response);
   return response;
  },[token]);
  useEffect(()=>{
-  const turn=++serial.current;setLoading(true);setError("");setSelected(null);
+  const turn=++serial.current;detailTurn.current++;activeProvider.current="";setDetailLoading(false);
+  setLoading(true);setError("");setSelected(null);setRows([]);setNext(null);
   void load().catch(e=>{if(turn===serial.current)failure(e)})
    .finally(()=>{if(turn===serial.current)setLoading(false)});
-  return()=>{serial.current++};
+  return()=>{serial.current++;listTurn.current++;detailTurn.current++;activeProvider.current="";};
  },[load,failure]);
  const button=(caption:string,fn:()=>void,disabled=false)=>
   <Pressable accessibilityRole="button" accessibilityState={{disabled}}
@@ -133,19 +138,23 @@ export function NativeProviderManagement({token,onExpired,onExit,canManage,
  });
  async function finance(ref:string){
   if(!canViewFinance)return;
+  const request=detailTurn.current;
   const data=await api<{reference:{fileRef:string;version:number;
    maskedLabel:string}|null}>(token,"providers/"+encodeURIComponent(ref)+"/finance-reference");
+  if(request!==detailTurn.current||activeProvider.current!==ref)return;
   setBankVersion(data.reference?.version??0);
   setExistingBankProof(data.reference?.fileRef??"");
   setMaskedBank(data.reference?.maskedLabel??"");
   setBankProof("");
  }
  async function open(ref:string){
-  setBusy(true);setError("");setNotice("");setEditing("none");
-  setProviderProof("");setCenterProofs({});setCurrentPassword("");
-  try{await detail(ref);await finance(ref);setUncertain(false);command.current=null;}
-  catch(e){failure(e)}
-  finally{setBusy(false)}
+  const request=++detailTurn.current;activeProvider.current=ref;
+  setDetailLoading(true);setSelected(null);setError("");setNotice("");setEditing("none");
+  setProviderProof("");setCenterProofs({});setCurrentPassword("");setBankProof("");setExistingBankProof("");setBankVersion(0);setMaskedBank("");
+  setRepresentatives([]);setStaffChoices([]);setRepresentativeCenter("");setRepAccount("");
+  try{await detail(ref);if(request!==detailTurn.current)return;await finance(ref);}
+  catch(e){if(request===detailTurn.current){setSelected(null);activeProvider.current="";failure(e)}}
+  finally{if(request===detailTurn.current)setDetailLoading(false)}
  }
  const key=(operation:string)=>{
   if(command.current?.operation!==operation)
@@ -168,24 +177,25 @@ export function NativeProviderManagement({token,onExpired,onExit,canManage,
    <Text style={styles.heading}>{editing==="create"?
     "Initial pending center":"Pending center details"}</Text>
    {centers.map((item,i)=><View key={i} style={styles.panel}>
-    <Text style={styles.note}>New center {i+1}</Text>
+    <Text accessibilityRole="header" style={styles.heading}>{i+1}. {item.displayName.trim()||"New operating center"}</Text>
     <NativeHealthCenterEditor token={token} value={item}
      disabled={busy||uncertain} onChange={x=>setCenters(old=>
       old.map((v,j)=>j===i?x:v))}/>
-    {centers.length>1&&button("Remove this pending center",()=>
-     setCenters(old=>old.filter((_,j)=>j!==i)),busy||uncertain)}
+    {centers.length>1&&button("Remove this pending center",()=>Alert.alert("Remove this unsaved center?","Other centers will be kept.",[{text:"Keep",style:"cancel"},{text:"Remove",style:"destructive",onPress:()=>setCenters(old=>old.filter((_,j)=>j!==i))}]),busy||uncertain)}
    </View>)}
    {centers.length<10&&button("Add another pending center",()=>
     setCenters(old=>[...old,blankCenter()]),busy||uncertain)}
   </View>;
  }
  const fields=()=><View style={styles.panel}>
+  <Text accessibilityRole="header" style={styles.heading}>Organization details</Text>
   {input("Provider code",provider.providerCode,x=>
    setProvider(old=>({...old,providerCode:x.toUpperCase()})),24)}
   {input("Legal organization name",provider.legalName,x=>
    setProvider(old=>({...old,legalName:x})))}
   {choice("Organization type",types,provider.providerType,x=>
    setProvider(old=>({...old,providerType:x})))}
+  <Text accessibilityRole="header" style={styles.heading}>Contact details</Text>
   {input("Contact person",provider.contactName,x=>
    setProvider(old=>({...old,contactName:x})),120)}
   {input("Registered contact number",provider.contactPhone,x=>
@@ -205,7 +215,7 @@ export function NativeProviderManagement({token,onExpired,onExit,canManage,
     async saved=>{
      if(!saved.providerRef)throw Error("The original provider was not confirmed.");
      setEditing("none");setProvider(blank());setCenters([blankCenter()]);
-     await load();await detail(saved.providerRef);
+     await load();await open(saved.providerRef);
      setNotice("Pending provider and centers recorded. Independent verification is required.");
     });
   }else if(editing==="provider"&&selected){
@@ -244,7 +254,7 @@ export function NativeProviderManagement({token,onExpired,onExit,canManage,
  const review=(kind:"providers"|"centers",ref:string,version:number,proof:string)=>{
   if(!canManage||!proof||busy||uncertain)return;
   Alert.alert("Submit verified proof for review?",
-   "This requests independent original CG03 verification. It does not activate or publish.",[
+   "This requests independent verification. It does not activate or publish.",[
     {text:"Cancel",style:"cancel"},
     {text:"Submit",onPress:()=>void write("submit:"+kind+ref,
      kind+"/"+encodeURIComponent(ref)+"/submit","POST",
@@ -337,33 +347,36 @@ export function NativeProviderManagement({token,onExpired,onExit,canManage,
    {editing==="none"&&<View style={styles.panel}>
     <Text style={styles.heading}>Search original providers</Text>
     {input("Search by provider name or code",search,setSearch,80)}
-    {button("Apply search",()=>setAppliedSearch(search.trim()),busy)}
-    {choice("Status",statuses,status,setStatus)}
+    {button("Apply search",()=>setAppliedSearch(search.trim()),busy||loading||detailLoading||uncertain)}
+    {choice("Status",statuses,status,x=>{if(!loading&&!detailLoading)setStatus(x)})}
     {button("Refresh original providers",()=>{
      setUncertain(false);command.current=null;setLoading(true);
      void load().catch(failure).finally(()=>setLoading(false));},busy)}
     {canManage&&button("Register a pending provider and center",()=>{
-     setSelected(null);setProvider(blank());setCenters([blankCenter()]);
-     setEditing("create");command.current=null;})}
+     detailTurn.current++;activeProvider.current="";setSelected(null);setProvider(blank());setCenters([blankCenter()]);
+     setEditing("create");command.current=null;},busy||loading||detailLoading||uncertain)}
     {rows.map(row=><View key={row.providerRef}>
      {button(row.name+" · "+row.code+" · "+label(row.status)+
-      " · "+row.centerCount+" centers",()=>void open(row.providerRef),busy)}
+      " · "+row.centerCount+" centers",()=>void open(row.providerRef),busy||loading||detailLoading||uncertain)}
     </View>)}
     {next!==null&&button("More original providers",()=>{
      setLoading(true);void load(next).catch(failure).finally(()=>setLoading(false));
     },busy)}
    </View>}
    {editing==="create"&&canManage&&<>
-    <Text style={styles.heading}>New pending provider</Text>
+    <Text accessibilityRole="header" style={styles.heading}>Register healthcare provider</Text>
+    <Text style={styles.note}>Enter organization details, then add each operating center. Verification comes after saving.</Text>
     {fields()}
+    <Text accessibilityRole="header" style={styles.heading}>Operating centers ({centers.length})</Text>
     {editor()}
     {button("Save original pending provider and centers",()=>
      Alert.alert("Save pending provider?", "Approval and activation remain separate.",[
       {text:"Cancel",style:"cancel"},{text:"Save",onPress:()=>void saveProvider()}
      ]),busy||uncertain)}
-    {button("Cancel registration",()=>{setEditing("none");command.current=null;})}
+    {button("Cancel registration",()=>Alert.alert("Discard unsaved registration?","Saved records will not change.",[{text:"Keep editing",style:"cancel"},{text:"Discard",style:"destructive",onPress:()=>{setEditing("none");command.current=null;}}]),busy||uncertain)}
    </>}
-   {selectedProvider&&editing!=="create"&&<View style={styles.panel}>
+   {detailLoading&&<ActivityIndicator accessibilityLabel="Loading provider details"/>}
+    {selectedProvider&&!detailLoading&&editing!=="create"&&<View key={selectedProvider.providerRef} style={styles.panel}>
     <Text style={styles.heading}>{selectedProvider.name}</Text>
     <Text style={styles.note}>Code: {selectedProvider.code} · Type: {
      label(selectedProvider.type)} · Status: {label(selectedProvider.status)}</Text>
@@ -381,7 +394,7 @@ export function NativeProviderManagement({token,onExpired,onExit,canManage,
       providerRef={selectedProvider.providerRef}
       sourceVersion={selectedProvider.version}
       classification="HEALTH_PROVIDER_REGISTRATION"
-      onVerified={ref=>setProviderProof(ref)} onExpired={onExpired}/>
+      onVerified={ref=>{if(activeProvider.current===selectedProvider.providerRef)setProviderProof(ref);}} onExpired={onExpired}/>
      {button("Submit provider proof for independent review",()=>
       review("providers",selectedProvider.providerRef,
        selectedProvider.version,providerProof),busy||uncertain||!providerProof)}
@@ -409,7 +422,7 @@ export function NativeProviderManagement({token,onExpired,onExit,canManage,
         providerRef={selectedProvider.providerRef}
         sourceVersion={selectedProvider.version}
         classification="HEALTH_BANK_PROOF"
-        onVerified={ref=>setBankProof(ref)} onExpired={onExpired}/>
+        onVerified={ref=>{if(activeProvider.current===selectedProvider.providerRef)setBankProof(ref);}} onExpired={onExpired}/>
        {input("Masked bank account label (e.g. Bank ****1234)",
         maskedBank,setMaskedBank,60)}
        {button("Save protected verified provider bank destination",()=>void saveBank(),
@@ -512,5 +525,5 @@ const styles=StyleSheet.create({
   color:t.text,borderRadius:9,padding:10,minHeight:45},
  button:{borderColor:t.border,borderWidth:1,borderRadius:9,
   padding:11,minHeight:46,justifyContent:"center"},
- disabled:{opacity:.4},error:{color:"#A52626",fontSize:13,lineHeight:19}
+ disabled:{opacity:.4},error:{color:t.error,fontSize:13,lineHeight:19}
 });

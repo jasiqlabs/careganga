@@ -14,6 +14,10 @@ export function PatientAppointmentDetail({bookingRef}:{bookingRef:string}){
  const [busy,setBusy]=useState(false),[unknown,setUnknown]=useState(false);
  const [downloadBusy,setDownloadBusy]=useState(false);
  const issueKey=useRef<string|null>(null);
+ const [preview,setPreview]=useState<string|null>(null);
+ const previewUrl=useRef<string|null>(null),previewGeneration=useRef(0);
+ function clearPreview(){previewGeneration.current++;if(previewUrl.current)URL.revokeObjectURL(previewUrl.current);previewUrl.current=null;setPreview(null);}
+ useEffect(()=>()=>{previewGeneration.current++;if(previewUrl.current)URL.revokeObjectURL(previewUrl.current);previewUrl.current=null;},[bookingRef]);
  const refresh=useCallback(async()=>{
   if(!ID.test(bookingRef))throw Error("This appointment link is invalid.");
   const response=await fetch("/api/consultations/me/"+bookingRef,{
@@ -21,10 +25,11 @@ export function PatientAppointmentDetail({bookingRef}:{bookingRef:string}){
   const data:unknown=await response.json().catch(()=>null);
   if(!response.ok)throw Error(data&&typeof data==="object"&&"message" in data&&
    typeof data.message==="string"?data.message:"The appointment cannot be checked.");
+  if(!data||typeof data!=="object"||!("bookingRef" in data)||data.bookingRef!==bookingRef)throw Error("The selected appointment cannot be verified.");
   setBooking(data as Booking);
   const status=await fetch("/api/appointments/slips/me/"+bookingRef+"/status",{
    cache:"no-store",credentials:"same-origin"});
-  if(status.ok)setSlip(await status.json() as {status:string;canDownload:boolean});
+  if(status.ok)setSlip(await status.json() as {status:string;canDownload:boolean});else setSlip(null);
  },[bookingRef]);
  useEffect(()=>{
   let active=true;
@@ -54,8 +59,9 @@ export function PatientAppointmentDetail({bookingRef}:{bookingRef:string}){
   }catch(e){setUnknown(true);setError(e instanceof Error?e.message:"Slip issue status is uncertain.");}
   finally{setBusy(false);}
  }
- async function downloadPrivateSlip(){
+ async function downloadPrivateSlip(mode:"download"|"preview"="download"){
   if(downloadBusy||busy||unknown||!slip?.canDownload||!ID.test(bookingRef))return;
+  clearPreview();const generation=previewGeneration.current;
   setDownloadBusy(true);setError("");
   try{
    const issued=await fetch("/api/appointments/slips/me/"+
@@ -77,7 +83,9 @@ export function PatientAppointmentDetail({bookingRef}:{bookingRef:string}){
    if(view.length<100||view.length>10485760||
     view[0]!==37||view[1]!==80||view[2]!==68||view[3]!==70)
     throw Error("The verified appointment PDF could not be read.");
+   if(generation!==previewGeneration.current)return;
    const privateUrl=URL.createObjectURL(new Blob([bytes],{type:"application/pdf"}));
+   if(mode==="preview"){previewUrl.current=privateUrl;setPreview(privateUrl);return;}
    const a=document.createElement("a");
    a.href=privateUrl;a.download="careganga-consultation.pdf";
    a.rel="noopener noreferrer";a.click();
@@ -92,7 +100,7 @@ export function PatientAppointmentDetail({bookingRef}:{bookingRef:string}){
   <h1>My consultation</h1>
   {loading&&<p role="status">Checking this appointment…</p>}
   {!!error&&<p role="alert">{error}</p>}
-  {booking&&<div style={{border:"1px solid #d7dfdb",padding:18,borderRadius:12}}>
+  {booking&&<div className="cg-health-patient-layout"><div className="cg-health-document-panel">
    <h2>Booking ID: {booking.bookingId}</h2>
    <p><strong>Status:</strong> {booking.bookingStatus.replaceAll("_"," ")}</p>
    <p><strong>Doctor:</strong> {booking.doctorName}</p>
@@ -104,30 +112,30 @@ export function PatientAppointmentDetail({bookingRef}:{bookingRef:string}){
    <p><strong>Payment status:</strong> {booking.collectionStatus.replaceAll("_"," ")}
     · {booking.paymentMode.replaceAll("_"," ")}</p>
    <ConsultationContribution bookingRef={bookingRef}/>
-   <p>CareGanga has not verified a payment for this appointment.
-    Please confirm payment directly with the healthcare center.</p>
+   <p>The healthcare center collects patient payments. Review the current collection status and any verified receipt below.</p>
    {["CONFIRMED","ARRIVED","WAITING","IN_CONSULTATION"].includes(booking.bookingStatus)&&
     <p><a href={"/api/consultations/me/"+encodeURIComponent(bookingRef)+"/calendar.ics"}>
      Add appointment to my calendar</a></p>}
-   <section aria-label="Private appointment slip">
+   </div><section className="cg-health-document-panel" aria-label="Private appointment slip">
     <h3>My appointment slip</h3>
-    <p>Original CG-19 private PDF · one patient copy for pay-at-center
-     · status-only QR, no clinical record access.</p>
+    <p>Private appointment PDF · one patient copy for pay-at-center.
+     The QR code confirms booking status only.</p>
     {slip?.status==="ISSUED"&&slip.canDownload?
-     <p><button type="button" disabled={busy||unknown||downloadBusy}
+     <div><p><button className="primary" type="button" disabled={busy||unknown||downloadBusy} onClick={()=>void downloadPrivateSlip("preview")}>Preview private appointment slip</button></p><p><button type="button" disabled={busy||unknown||downloadBusy}
        onClick={()=>void downloadPrivateSlip()}>
        {downloadBusy?"Verifying private download…":"Download my private PDF & QR slip"}
-      </button></p>:
+      </button></p></div>:
      booking.bookingStatus==="CANCELLED"?<p>A cancelled appointment has no current slip.</p>:
      <button type="button" disabled={busy||unknown} onClick={()=>void issue()}>
       {busy?"Issuing…":"Issue my secure appointment slip"}</button>}
-    {unknown&&<button type="button" disabled={busy} onClick={()=>void refresh()
-     .then(()=>setUnknown(false)).catch(e=>setError(String(e)))}>
+    {preview&&slip?.canDownload&&<div><iframe title="Private appointment slip PDF" src={preview} style={{width:"100%",height:500,border:"1px solid #bccfc6",borderRadius:8}}/><p><a href={preview} target="_blank" rel="noopener noreferrer">Open PDF in viewer to print</a></p><button type="button" onClick={clearPreview}>Close preview</button></div>}
+    {unknown&&<button type="button" disabled={busy} onClick={()=>{clearPreview();void refresh()
+     .then(()=>setUnknown(false)).catch(e=>setError(String(e)));}}>
      Check original document status</button>}
     <p>The QR reveals only whether this booking is currently valid.
      It does not identify the patient publicly.</p>
+   <p><Link href="/patients/me">Back to my consultations</Link></p>
    </section>
-   <Link href="/patients/me">Back to my consultations</Link>
   </div>}
  </section>;
 }

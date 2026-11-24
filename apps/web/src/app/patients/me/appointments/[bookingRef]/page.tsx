@@ -14,6 +14,6 @@ export default async function PrivateAppointmentPage({params}:Props){
   <header className="cg-public-header">
    <Link href="/patients/me">Back to my private patient profile</Link>
   </header>
-  <PatientAppointmentDetail bookingRef={bookingRef}/>
+  <PatientAppointmentDetail key={bookingRef} bookingRef={bookingRef}/>
  </main></HealthcarePublicChrome>;
 }

@@ -1,7 +1,7 @@
 import {useCallback,useEffect,useRef,useState} from "react";
 import {ActivityIndicator,AppState,BackHandler,Image,Pressable,
  StyleSheet,Text,TextInput,View} from "react-native";
-import {careGangaTheme as t} from "../../../../../packages/design-tokens/src/index";
+import {careGangaPublicTheme as t} from "../../../../../packages/design-tokens/src/index";
 import {CmsPublicExtendedSection} from "./cms-extended-native-screen";
 import {NativeMembershipPlans} from "../membership/native-membership-plans";
 import {NativeNewsletterForm} from "./native-newsletter-form";
@@ -162,9 +162,9 @@ function NativeTeamDirectory(){
   {loading?<ActivityIndicator/>:filtered.length?filtered.map((p,i)=><View key={i} style={styles.person}><Text style={styles.heading}>{p.name}</Text><Text style={styles.role}>{p.designation}</Text></View>):<Text>No currently approved matching profiles.</Text>}
  </View>;
 }
-export function PublicCmsContent({onContact,onPartnerApplication,onMembershipApply,onVolunteerApply,onLoginVisibility}: {
+export function PublicCmsContent({onContact,onPartnerApplication,onMembershipApply,onVolunteerApply,onLoginVisibility,onHealthcareDirectory,onPatientProfile}: {
  onContact:()=>void;onPartnerApplication:()=>void;onMembershipApply:(planCode:string)=>void;onVolunteerApply:()=>void;
- onLoginVisibility:(visible:boolean)=>void}){
+ onLoginVisibility:(visible:boolean)=>void;onHealthcareDirectory:(category?:string)=>void;onPatientProfile:()=>void}){
  const [slug,setSlug]=useState("home"),[projectCategory,setProjectCategory]=useState("All Projects");
  const [mediaScope,setMediaScope]=useState<"PHOTO"|"VIDEO"|"PUBLICATION">("PHOTO");
  const [ngoScope,setNgoScope]=useState<"80g"|"pan-details"|
@@ -553,7 +553,7 @@ export function PublicCmsContent({onContact,onPartnerApplication,onMembershipApp
     if(["IMPACT_GROUP","COMPLIANCE_FACTS","GALLERY_GRID","ARTICLE_BODY",
        "HEALTHCARE_CATEGORIES","CONTACT_INFO"].includes(section.kind))
      return <CmsPublicExtendedSection key={i} section={section} assets={page.assets}
-      mediaUrl={safeImage} onContact={onContact} onNavigate={navigate} canNavigate={canNavigate}
+      mediaUrl={safeImage} onContact={onContact} onNavigate={navigate} canNavigate={canNavigate} onHealthcareDirectory={onHealthcareDirectory}
       mediaScope={section.kind==="GALLERY_GRID"?mediaScope:undefined}
        ngoScope={section.kind==="COMPLIANCE_FACTS"?ngoScope:undefined}
       onBackToNews={()=>setSlug(articleBackTarget)}
@@ -608,6 +608,11 @@ export function PublicCmsContent({onContact,onPartnerApplication,onMembershipApp
     return null;
    })}
   </View>}
+  {slug==="healthcare"&&result.state==="PUBLISHED"&&<View style={styles.card}>
+   <Text accessibilityRole="header" style={styles.heading}>Find healthcare services</Text>
+   <CmsButton title="Find verified centers, doctors & lab prices" onPress={()=>onHealthcareDirectory()}/>
+   <CmsButton title="My patient profile & consultations" onPress={onPatientProfile} secondary/>
+  </View>}
   {effectiveFooter&&<View style={styles.card}>
    <Text accessibilityRole="header" style={styles.heading}>{currentFooterHome?.title}</Text>
    {!!text(effectiveFooter.mission)&&<Text style={styles.body}>{text(effectiveFooter.mission)}</Text>}
@@ -619,7 +624,7 @@ export function PublicCmsContent({onContact,onPartnerApplication,onMembershipApp
   </View>}
  </View>;
 }
-const publicColors={green:"#194a3a",gold:"#ecc65b",amber:"#ffa337"};
+const publicColors={green:t.primary,gold:t.gold,amber:t.amber};
 const styles=StyleSheet.create({
  container:{gap:12,width:"100%"},
  nav:{flexDirection:"row",flexWrap:"wrap",alignItems:"center",gap:7,
@@ -637,7 +642,7 @@ const styles=StyleSheet.create({
  counter:{color:publicColors.gold,fontWeight:"700"},
  highlight:{fontSize:15,color:publicColors.green,fontWeight:"700",lineHeight:25},
  featureSection:{backgroundColor:publicColors.green,borderRadius:12,padding:18,gap:12},
- featureHeading:{fontSize:27,fontWeight:"700",color:"#fff"},
+ featureHeading:{fontSize:27,fontWeight:"700",color:t.primaryText},
  muted:{color:t.mutedText,fontSize:14},
  body:{fontSize:16,lineHeight:25,color:t.text},
  image:{width:"100%",height:225,borderRadius:9},

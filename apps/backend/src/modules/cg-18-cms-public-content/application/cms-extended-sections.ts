@@ -412,7 +412,7 @@ export function validateExtendedPage(kind:string,sections:readonly EditorialSect
   return error("galleryMedia");
  if(kind==="ARTICLE"&&(types.length!==1||types[0]!=="ARTICLE_BODY"))
   return error("sections");
- if(kind==="HEALTHCARE"&&!types.includes("HEALTHCARE_CATEGORIES"))
+ if(kind==="HEALTHCARE"&&types.filter(t=>t==="HEALTHCARE_CATEGORIES").length!==1)
   return error("categories");
  if(kind==="HEALTHCARE"&&!healthcareEditorialClaimsSafe(sections))
   return error("healthcareFinancialClaims");

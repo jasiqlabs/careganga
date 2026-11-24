@@ -166,15 +166,23 @@ export function CmsArticle({section,assets}:{
    <span key={i}>{text(tag)}</span>)}</div>
  </article>;
 }
-export function CmsHealthcare({section}:{
- section:PublicCmsSection}){
- const f=section.fields;
+export function CmsHealthcare({section,assets}:{
+ section:PublicCmsSection;assets:Asset[]}){
+ const f=section.fields,categories=records(f.categories);
+ // Titles/descriptions stay CMS-owned. Known approved category labels resolve only
+ // to canonical CG14 filters; unknown editorial labels use the full directory.
+ const codes:Record<string,string>={"poly clinic":"POLYCLINIC",polyclinic:"POLYCLINIC","diagnostic centre":"DIAGNOSTIC_CENTER","diagnostic center":"DIAGNOSTIC_CENTER","dental clinic":"DENTAL_CLINIC","medical laboratories":"MEDICAL_LABORATORY","medical laboratory":"MEDICAL_LABORATORY","hospital & nursing home":"HOSPITAL","hospital and nursing home":"HOSPITAL","retail pharmacy":"PHARMACY","orthopedic centre":"ORTHOPEDIC_CLINIC","orthopedic center":"ORTHOPEDIC_CLINIC","homoeopathy centre":"HOMEOPATHY_CLINIC","homeopathy centre":"HOMEOPATHY_CLINIC","ayurvedic centre":"AYURVEDIC_CLINIC","ayurvedic center":"AYURVEDIC_CLINIC"};
+ const code=(v:Record<string,unknown>)=>codes[text(v.title).trim().toLowerCase()]??"";
  return <section className="cg-site-content cg-site-healthcare">
   <p className="cg-site-eyebrow">Healthcare Assistance</p>
   <h1>{text(f.heading)}</h1><p className="cg-site-article-lead">{text(f.intro)}</p>
-  <div className="cg-site-healthcare-grid">{records(f.categories).map((v,i)=>
+  <form className="cg-health-discovery" action="/health-network" method="get" aria-label="Find healthcare services"><input type="hidden" name="tab" value="centers"/><label>Center or provider<input type="search" name="q" maxLength={80} placeholder="Find a verified center"/></label><label>Service category<select name="category"><option value="">All centers</option>{categories.filter(v=>code(v)).map((v,i)=><option key={i} value={code(v)}>{text(v.title)}</option>)}</select></label><label>PIN code (optional)<input name="pin" inputMode="numeric" maxLength={6} pattern="[1-9][0-9]{5}" placeholder="Six-digit PIN"/></label><button className="cg-site-action" type="submit">Search centers</button></form>
+  <div className="cg-site-healthcare-grid">{categories.map((v,i)=>
    <article key={i} className="cg-site-impact-card">
+    {photo(assets.find(a=>a.role==="FEATURE"&&a.order===i),"cg-health-category-photo")}
+    {assets.find(a=>a.role==="FEATURE"&&a.order===i)?.altText.startsWith("AI-generated illustration")&&<p className="cg-site-provenance">AI-generated illustration.</p>}
     <h2>{text(v.title)}</h2><p>{text(v.description)}</p>
+    <Link className="cg-site-action" href={"/health-network?tab=centers"+(code(v)?"&category="+encodeURIComponent(code(v)):"")}>Find centers</Link>
    </article>)}</div>
   {f.ctaPath==="/contact"&&text(f.ctaLabel)&&
    <Link className="cg-site-action" href="/contact">{text(f.ctaLabel)}</Link>}

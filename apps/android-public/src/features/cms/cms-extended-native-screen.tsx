@@ -1,6 +1,6 @@
 import {useState} from "react";
 import {Image,Linking,Pressable,StyleSheet,Text,TextInput,View} from "react-native";
-import {careGangaTheme as t} from "../../../../../packages/design-tokens/src/index";
+import {careGangaPublicTheme as t} from "../../../../../packages/design-tokens/src/index";
 type Fields=Record<string,unknown>;
 type Section={kind:string;order:number;fields:Fields};
 type Asset={role:string;altText:string;src:string;order:number};
@@ -12,15 +12,17 @@ function Action({title,onPress}:{title:string;onPress:()=>void}){
   <Text style={styles.buttonText}>{title}</Text>
  </Pressable>;
 }
+const healthcareCodes:Record<string,string>={"poly clinic":"POLYCLINIC","polyclinic":"POLYCLINIC","diagnostic centre":"DIAGNOSTIC_CENTER","diagnostic center":"DIAGNOSTIC_CENTER","dental clinic":"DENTAL_CLINIC","medical laboratories":"MEDICAL_LABORATORY","medical laboratory":"MEDICAL_LABORATORY","hospital & nursing home":"HOSPITAL","hospital and nursing home":"HOSPITAL","retail pharmacy":"PHARMACY","orthopedic centre":"ORTHOPEDIC_CLINIC","orthopedic center":"ORTHOPEDIC_CLINIC","homoeopathy centre":"HOMEOPATHY_CLINIC","homeopathy centre":"HOMEOPATHY_CLINIC","homeopathy center":"HOMEOPATHY_CLINIC","ayurvedic centre":"AYURVEDIC_CLINIC","ayurvedic center":"AYURVEDIC_CLINIC"};
+const healthcareCode=(title:unknown)=>healthcareCodes[text(title).trim().toLowerCase()]??"";
 const open=(uri:string)=>void Linking.openURL(uri).catch(()=>undefined);
 /** Plain-text, screen-reader accessible rendering of the SAME published CMS
  * DTO as Next.js. No offline cache of revoked claims or private media.
  */
 export function CmsPublicExtendedSection({section,assets,mediaUrl,onContact,
- onNavigate,canNavigate,onBackToNews,mediaScope,ngoScope="80g",backLabel="Back to approved articles"}:{section:Section;assets:Asset[];
+ onNavigate,canNavigate,onBackToNews,onHealthcareDirectory,mediaScope,ngoScope="80g",backLabel="Back to approved articles"}:{section:Section;assets:Asset[];
  mediaUrl:(asset:Asset|undefined)=>string|null;
  onContact:()=>void;onNavigate:(path:unknown)=>void;canNavigate:(path:unknown)=>boolean;
- onBackToNews:()=>void;mediaScope?:"PHOTO"|"VIDEO"|"PUBLICATION";
+ onBackToNews:()=>void;onHealthcareDirectory?:(category?:string)=>void;mediaScope?:"PHOTO"|"VIDEO"|"PUBLICATION";
  ngoScope?:"80g"|"pan-details"|"registration-certificate"|"annual-reports";backLabel?:string}){
  const f=section.fields;
  const impactItems=rows(f.items);
@@ -289,9 +291,13 @@ export function CmsPublicExtendedSection({section,assets,mediaUrl,onContact,
   <Text style={styles.eyebrow}>Healthcare Assistance</Text>
   <Text accessibilityRole="header" style={styles.title}>{text(f.heading)}</Text>
   <Text style={styles.body}>{text(f.intro)}</Text>
+  {onHealthcareDirectory&&<Action title="Find verified healthcare services" onPress={()=>onHealthcareDirectory()}/>}
   {rows(f.categories).map((item,i)=><View style={styles.item} key={i}>
+   {picture("FEATURE",i)}
+   {asset("FEATURE",i)?.altText.startsWith("AI-generated illustration")&&<Text style={styles.source}>AI-generated illustration.</Text>}
    <Text style={styles.itemTitle}>{text(item.title)}</Text>
    <Text style={styles.body}>{text(item.description)}</Text>
+   {onHealthcareDirectory&&<Action title={"Find centers — "+text(item.title)} onPress={()=>onHealthcareDirectory(healthcareCode(item.title))}/>}
   </View>)}
   {f.ctaPath==="/contact"&&!!text(f.ctaLabel)&&
    <Action title={text(f.ctaLabel)} onPress={onContact}/>}
@@ -303,8 +309,8 @@ export function CmsPublicExtendedSection({section,assets,mediaUrl,onContact,
 const styles=StyleSheet.create({
  section:{backgroundColor:t.surface,borderRadius:12,borderWidth:1,
   borderColor:t.border,padding:16,gap:12},
- eyebrow:{fontSize:12,fontWeight:"700",color:"#1f6d54",letterSpacing:1.1},
- title:{fontSize:25,fontWeight:"800",color:"#1b4b38"},
+ eyebrow:{fontSize:12,fontWeight:"700",color:t.primary,letterSpacing:1.1},
+ title:{fontSize:25,fontWeight:"800",color:t.sidebar},
  body:{fontSize:16,lineHeight:24,color:t.text},
  source:{fontSize:13,lineHeight:20,color:t.mutedText},
  highlight:{fontSize:24,fontWeight:"800",color:"#20824c"},
@@ -313,19 +319,19 @@ const styles=StyleSheet.create({
  barTrack:{flexDirection:"row",height:11,backgroundColor:"#dce9db",
   borderRadius:7,overflow:"hidden"},
  barFill:{backgroundColor:"#3b8d5a",borderRadius:7},
- item:{borderRadius:10,backgroundColor:"#f2f7f0",padding:13,gap:7},
- itemTitle:{fontSize:18,fontWeight:"700",color:"#1c4a3a"},
+ item:{borderRadius:10,backgroundColor:t.selectedSurface,padding:13,gap:7},
+ itemTitle:{fontSize:18,fontWeight:"700",color:t.primary},
  value:{fontSize:21,fontWeight:"700",color:"#17694a"},
  photo:{width:"100%",height:220,borderRadius:10},
- button:{minHeight:46,borderRadius:9,alignItems:"center",justifyContent:"center",
-  backgroundColor:"#efa747",padding:12},
- buttonText:{fontSize:15,fontWeight:"700",color:"#193729"},
+ button:{minHeight:48,borderRadius:9,alignItems:"center",justifyContent:"center",
+  backgroundColor:t.amber,padding:12},
+ buttonText:{fontSize:15,fontWeight:"700",color:t.sidebar},
  filterRow:{flexDirection:"row",flexWrap:"wrap",gap:7},
- filter:{borderRadius:8,borderWidth:1,borderColor:"#7fa792",paddingVertical:9,
+ filter:{borderRadius:8,borderWidth:1,borderColor:t.border,paddingVertical:9,
   paddingHorizontal:12,minHeight:42,justifyContent:"center"},
- filterActive:{backgroundColor:"#205c42"},
- filterText:{fontWeight:"600",color:"#205c42"},
- filterActiveText:{color:"#fff"},
- search:{borderWidth:1,borderColor:"#7fa792",borderRadius:8,minHeight:46,
+ filterActive:{backgroundColor:t.primary},
+ filterText:{fontWeight:"600",color:t.primary},
+ filterActiveText:{color:t.primaryText},
+ search:{borderWidth:1,borderColor:t.border,borderRadius:8,minHeight:46,
   paddingHorizontal:12,color:t.text}
 });

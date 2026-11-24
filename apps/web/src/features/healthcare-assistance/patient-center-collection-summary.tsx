@@ -1,5 +1,5 @@
 "use client";
-import {useCallback,useEffect,useState} from "react";
+import {useCallback,useEffect,useRef,useState} from "react";
 type Actual={state:string;patientDueMinor?:string;collectedMinor?:string;
  outstandingMinor?:string;pendingElectronicMinor?:string;
  refundedOrCorrectedMinor?:string;currency?:string;
@@ -26,6 +26,10 @@ const money=(v:string)=>new Intl.NumberFormat("en-IN",{
  * collection or Foundation account source. Never implies pending=received.
  */
 export function PatientCenterCollectionSummary({bookingRef}:{bookingRef:string}){
+ return <ScopedPatientCenterCollectionSummary key={bookingRef} bookingRef={bookingRef}/>;
+}
+function ScopedPatientCenterCollectionSummary({bookingRef}:{bookingRef:string}){
+ const generation=useRef(0);
  const [data,setData]=useState<Actual|null>(null),[error,setError]=useState("");
  const [checking,setChecking]=useState(true);
  const refresh=useCallback(async()=>{
@@ -38,13 +42,14 @@ export function PatientCenterCollectionSummary({bookingRef}:{bookingRef:string})
   if(!valid(original))throw Error("Actual patient balance is unavailable.");
   return original;
  },[bookingRef]);
- useEffect(()=>{
-  let active=true;setChecking(true);setData(null);setError("");
-  void refresh().then(v=>{if(active)setData(v)}).catch(e=>{
-   if(active)setError(e instanceof Error?e.message:"Payment status unavailable");
-  }).finally(()=>{if(active)setChecking(false)});
-  return()=>{active=false};
+ const check=useCallback(async()=>{
+  const request=++generation.current;
+  setChecking(true);setData(null);setError("");
+  try{const value=await refresh();if(request===generation.current)setData(value);}
+  catch(e){if(request===generation.current)setError(e instanceof Error?e.message:"Payment status unavailable");}
+  finally{if(request===generation.current)setChecking(false);}
  },[refresh]);
+ useEffect(()=>{void check();return()=>{generation.current++;};},[check]);
  if(!/^[a-f0-9]{8}(?:-[a-f0-9]{4}){3}-[a-f0-9]{12}$/i.test(bookingRef))
   return null;
  return <section className="cg-diagnostics-card"
@@ -58,7 +63,7 @@ export function PatientCenterCollectionSummary({bookingRef}:{bookingRef:string})
    <dl className="cg-diagnostics-summary">
     <div><dt>Patient amount</dt><dd>{money(data.patientDueMinor!)}</dd></div>
     <div><dt>Verified center received</dt><dd>{money(data.collectedMinor!)}</dd></div>
-    <div><dt>Still due</dt><dd>{money(data.outstandingMinor!)}</dd></div>
+    <div className="cg-health-amount"><dt>Still due</dt><dd>{money(data.outstandingMinor!)}</dd></div>
     <div><dt>Electronic verification pending (not paid)</dt>
      <dd>{money(data.pendingElectronicMinor!)}</dd></div>
    </dl>}
@@ -72,15 +77,14 @@ export function PatientCenterCollectionSummary({bookingRef}:{bookingRef:string})
      bookingRef+"/collections/"+c.collectionRef+"/pdf"}>
      Download cash receipt {i+1}</a></p>)}
   </section>}
+  {!checking&&!error&&data?.collections?.filter(c=>c.state==="VERIFIED_PROVIDER"&&["UPI","CARD","BANK"].includes(c.method)&&/^[a-f0-9]{8}(?:-[a-f0-9]{4}){3}-[a-f0-9]{12}$/i.test(c.collectionRef)).map((c,i)=><p key={c.collectionRef}><a href={"/api/healthcare-assistance/center-receipts/me/appointments/"+bookingRef+"/collections/"+c.collectionRef+"/online-pdf"}>Download verified online payment confirmation {i+1} (two copies)</a></p>)}
   {data?.outstandingSince&&<p>Outstanding since accepted charge on {
    new Date(data.outstandingSince).toLocaleDateString("en-IN")}.
    No late charge is assumed.</p>}
   <p>Only verified center collections are counted. An entered UPI/card
    reference does not confirm payment; Foundation assistance is separate.</p>
   <button type="button" disabled={checking}
-   onClick={()=>{setChecking(true);setError("");void refresh().then(setData)
-    .catch(e=>setError(e instanceof Error?e.message:"Status unavailable."))
-    .finally(()=>setChecking(false));}}>
+   onClick={()=>void check()}>
    {checking?"Checking original…":"Refresh my payment status"}</button>
  </section>;
 }

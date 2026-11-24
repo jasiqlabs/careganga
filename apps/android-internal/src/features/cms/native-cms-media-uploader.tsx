@@ -30,13 +30,15 @@ function placementChoices(sections:CmsSection[]):Choice[]{
  };
  for(const section of sections){
   const f=section.fields;
-  if(section.kind==="HERO"){
+  if(section.kind==="HERO"&&f.textOnly!==true){
    add("HERO",section.order);add("MOBILE_HERO",section.order);
   }else if(section.kind==="RICH_TEXT"&&f.variant==="SPLIT")
    add("ABOUT",section.order);
   else if(section.kind==="CTA")add("PROMO",section.order);
   else if(section.kind==="FEATURE_CARDS"&&Array.isArray(f.cards))
    f.cards.slice(0,30).forEach((_,i)=>add("FEATURE",i));
+  else if(section.kind==="HEALTHCARE_CATEGORIES"&&Array.isArray(f.categories))
+   f.categories.slice(0,12).forEach((_,i)=>add("FEATURE",i));
   else if(section.kind==="GALLERY_GRID"&&Array.isArray(f.items))
    f.items.slice(0,30).forEach((item,i)=>{
     const type=item&&typeof item==="object"&&"mediaType" in item?

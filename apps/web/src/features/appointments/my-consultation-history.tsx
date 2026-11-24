@@ -1,7 +1,7 @@
 "use client";
 import Link from "next/link";
 import {useCallback,useEffect,useRef,useState} from "react";
-type Booking={bookingRef:string;bookingId:string;doctorRef:string;centerRef:string;
+type Booking={bookingRef:string;bookingId:string;doctorRef:string;centerRef:string;doctorName:string;centerName:string;
  startAt:string;endAt:string;timeZone:string;consultationFeeMinor:string;
  bookingStatus:string;canPatientChange:boolean;paymentMode:string;collectionStatus:string;version:number};
 type Result={items:Booking[];next:string|null};
@@ -14,7 +14,10 @@ export function MyConsultationHistory(){
  const [nextCursor,setNextCursor]=useState<string|null>(null),[moreBusy,setMoreBusy]=useState(false);
  const [notice,setNotice]=useState(""),[uncertain,setUncertain]=useState(false);
  const keys=useRef<Map<string,string>>(new Map());
+ const listSeq=useRef(0);
  const refresh=useCallback(async()=>{
+  const turn=++listSeq.current;setLoading(true);setItems([]);setNextCursor(null);setMoreBusy(false);
+  try{
   const query=new URLSearchParams();
   if(statusFilter)query.set("status",statusFilter);
   const r=await fetch("/api/consultations/me"+(query.size?"?"+query.toString():""),{
@@ -24,19 +27,20 @@ export function MyConsultationHistory(){
    typeof data.message==="string"?data.message:"Your appointment history cannot be confirmed.");
   if(!data||typeof data!=="object"||!("items" in data)||!Array.isArray(data.items))
    throw Error("Your appointments could not be verified.");
-  setItems((data as Result).items);setNextCursor((data as Result).next);
-  setUncertain(false);
+  if(turn!==listSeq.current)return;
+  const result=data as Result;
+  if(!(result.next===null||typeof result.next==="string"))throw Error("Your appointments could not be verified.");
+  setItems(result.items);setNextCursor(result.next);setUncertain(false);
+  }catch(e){if(turn===listSeq.current)throw e;}finally{if(turn===listSeq.current)setLoading(false);}
  },[statusFilter]);
  useEffect(()=>{
-  let active=true;
-  setLoading(true);setItems([]);setNextCursor(null);
-  void refresh().catch(e=>{if(active)setNotice(e instanceof Error?e.message:
-   "Your appointments are temporarily unavailable.");})
-   .finally(()=>{if(active)setLoading(false);});
-  return()=>{active=false;};
+  let active=true;setNotice("");
+  void refresh().catch(e=>{if(active)setNotice(e instanceof Error?e.message:"Your appointments are temporarily unavailable.");});
+  return()=>{active=false;listSeq.current++;};
  },[refresh]);
  async function more(){
-  if(moreBusy||busy||!nextCursor)return;
+  if(moreBusy||busy||loading||uncertain||!nextCursor)return;
+  const turn=listSeq.current;
   setMoreBusy(true);setNotice("");
   try{
    const query=new URLSearchParams({after:nextCursor});
@@ -48,17 +52,19 @@ export function MyConsultationHistory(){
     !Array.isArray(raw.items))
     throw Error("Older consultations cannot be confirmed. Try again.");
    const page=raw as Result;
+   if(turn!==listSeq.current)return;
+   if(!(page.next===null||typeof page.next==="string"))throw Error("Older consultations cannot be verified.");
    setItems(current=>{
     const known=new Set(current.map(x=>x.bookingRef));
     return [...current,...page.items.filter(x=>!known.has(x.bookingRef))];
    });
    setNextCursor(page.next);
-  }catch(e){setNotice(e instanceof Error?e.message:"Older consultations are unavailable.");}
-  finally{setMoreBusy(false);}
+  }catch(e){if(turn===listSeq.current)setNotice(e instanceof Error?e.message:"Older consultations are unavailable.");}
+  finally{if(turn===listSeq.current)setMoreBusy(false);}
  }
  async function cancel(a:Booking){
   if(busy||uncertain)return;
-  const reason=window.confirm("Cancel this appointment? Your time will be released. No payment has been recorded by CareGanga.");
+  const reason=window.confirm("Cancel this appointment? Your time will be released. Check any collection or refund separately with the healthcare center.");
   if(!reason)return;
   setBusy(true);setNotice("");
   const key=a.bookingRef+":"+a.version+":cancel";
@@ -73,7 +79,7 @@ export function MyConsultationHistory(){
    if(!r.ok)throw Error(data&&typeof data==="object"&&"message" in data&&
     typeof data.message==="string"?data.message:"The cancellation result is uncertain.");
    keys.current.delete(key);
-   await refresh();setNotice("Your appointment is cancelled. The original fee remained due-only.");
+   await refresh();setNotice("Your appointment is cancelled. Check the updated center payment status.");
   }catch(e){
    setUncertain(true);setNotice((e instanceof Error?e.message:
     "Cancellation status is uncertain.")+" Refresh your appointments to confirm the original result.");
@@ -83,8 +89,8 @@ export function MyConsultationHistory(){
   <h2>My consultations</h2>
   <p>Only consultations linked to this patient account are shown. A booking is not a receipt.</p>
   <label>Filter my appointment status
-   <select value={statusFilter} disabled={busy||uncertain}
-    onChange={e=>setStatusFilter(e.target.value)}>
+   <select value={statusFilter} disabled={busy||uncertain||loading||moreBusy}
+    onChange={e=>{listSeq.current++;setLoading(true);setStatusFilter(e.target.value);}}>
     <option value="">All appointments</option>
     <option value="CONFIRMED">Confirmed</option>
     <option value="ARRIVED">Checked in</option>
@@ -97,17 +103,17 @@ export function MyConsultationHistory(){
   </label>
   {loading&&<p>Checking your current appointment history…</p>}
   {!!notice&&<p role="alert" aria-live="polite">{notice}</p>}
-  <button disabled={busy} type="button" onClick={()=>{
-   setLoading(true);void refresh().catch(e=>setNotice(String(e)))
-    .finally(()=>setLoading(false));
+  <button disabled={busy||loading||moreBusy} type="button" onClick={()=>{
+   setNotice("");void refresh().catch(e=>setNotice(e instanceof Error?e.message:"Current appointments unavailable."));
   }}>Refresh my appointments</button>
-  {!loading&&items.length===0&&<p>No appointments match the selected status.</p>}
+  {!loading&&!notice&&items.length===0&&<p>No appointments match the selected status.</p>}
   <div style={{display:"grid",gap:12}}>
-   {items.map(a=><article key={a.bookingRef}
+   {!loading&&items.map(a=><article key={a.bookingRef}
     style={{padding:16,border:"1px solid #d7dfdb",borderRadius:12}}>
-    <h3>Booking: {a.bookingId}</h3>
+    <h3>{a.doctorName} · {a.centerName}</h3>
+    <p>Booking: {a.bookingId}</p>
     <p>{new Date(a.startAt).toLocaleString("en-IN",{timeZone:a.timeZone,
-     dateStyle:"medium",timeStyle:"short"})} · {a.bookingStatus}</p>
+     dateStyle:"medium",timeStyle:"short"})} · {a.bookingStatus.replaceAll("_"," ")}</p>
     <p>{money(a.consultationFeeMinor)} · {a.collectionStatus.replaceAll("_"," ")}
      · {a.paymentMode.replaceAll("_"," ")}</p>
     <p>Payment is collected at the healthcare center, not by CareGanga.</p>
@@ -127,7 +133,7 @@ export function MyConsultationHistory(){
     </div>
    </article>)}
   </div>
-  {nextCursor&&<button type="button" disabled={busy||moreBusy}
+  {nextCursor&&<button type="button" disabled={busy||moreBusy||loading||uncertain}
    onClick={()=>void more()}>
    {moreBusy?"Loading…":"Load older consultations"}</button>}
  </section>;

@@ -263,6 +263,55 @@ Verification: For each US-008-QA01–QA16, inspect real selected Web/Center Port
 Dependencies: US-003
 
 ## Execution progress
+
+### Native registration and hold recovery
+UI06/07 re-review: Web/native known held reservations now have an explicit original-status recovery button; consumed hold without verified confirmation remains uncertain; failed recovery stays uncertain. Native selected review survives return from external provider and a patient registration/profile modal, keeps the same selected slot and request keys; visible and hardware Back do not leave a locked original reservation. The source API still rechecks availability, permission, patient identity, fee and consent. Verify hold expiry/release, unknown confirmation/recovery, Android modal/back/resume, login/consent then reserve and merchant callback; runtime NOT_RUN.
+
+
+### Public reference re-review
+HUX-11.02/11.03/13.02/15.02: Web patient registration offers a safe local return link to the selected doctor schedule, validates route and allowed query fields, always re-fetches current slots on return. UI11 user-initiated authenticated PDF preview uses existing restricted download grant, verified PDF bytes and revocable local blob; no public link/identity lookup. Native selected-time action prevents changing selection during held/pending/unknown booking request, retains original idempotency recovery. Verify sign-in/profile/consent return, revoked/expired slip, preview close/route change and native unknown hold; local build and rendered QA NOT_RUN. Native booking-to-registration continuity and full paid document copy format remain follow-up source/contract gaps.
+
+
+### Original healthcare public references — alignment checkpoint (24 Nov 2026)
+HUX-09.01/10.02/10.03/13.01/13.02/11.03/08.03: CMS category titles/descriptions remain published-source content, now include real search and canonical category links. Live approved CG17 policy cards replace screenshot sample percentages; public native adds category quick filters and verified same-center doctor actions (no fake booking). Native payable amount highlight; private Web consultation grouped detail and document actions, response identity guard; Web history earlier in profile. Source-only; no screenshot parity/runtime certification. Existing CMS category image schema is text-only; illustrated tiles/hero assets require CMS media mapping and actual approved content. Patient profile registration remains verified/consent-gated; full booking-linked navigation/preview and real online document copy contract still pending.
+Reference-led directory/profile, UI06 selected slot summary, UI08/09 payment and private document presentation on separate hardening branch. Original QA definitions retained, actual render/build/device/provider/independent acceptance NOT_RUN. See [tracker](../../HEALTHCARE_UIUX_HARDENING_TRACKER.md).
+
+
+### Healthcare source contract re-review
+HUX-10.04/11.02/13.02: re-review found native preview used a 25-center client cap although the original CG15 API admits 40. Align native cap to 40 and 144 slots; reject a different requested date/time/center rather than rendering a mismatched appointment. Updated existing CG14 US004 and CG15 US002 source verifiers to assert live schedule navigation, correct public semantic theme, and bounded response identity instead of obsolete pre-booking wording/blue theme. Original QA US-002-QA01/02/05/07/12/13/14, CG14 US-004-QA12/17. Test 26–40 verified centers, no schedule, late response/date and changed center, 41 invalid entries, >144 slots; source script execution and real QA NOT_RUN.
+
+
+### 24 November 2026 — protected patient intake, cancellation, lab and CMS discovery
+Commit `676e320a410cf79bb2c5ec54adf40d851d26931c`: HUX-06.01/06.03/07.04/09.01. Web H15 cancellation override is now action-permission gated like Internal Android; both prevent changing filters/selection during an uncertain cancellation and require an original-source recheck. Web provisional registration retains the exact original request and disables edits during uncertainty; clinic identity proof is bound to the selected center, patient ID, code and original request key, and a successful response must identify the original verified patient. Public Web lab listings show published sample/description where available; native pagination deduplicates offer references and clear filters retains the initial center. The native published healthcare CMS page now directly opens the existing directory/patient profile; Web offers matching discovery links. Editorial content remains CMS-owned; operational listings remain CG14/16-owned. These are source changes, not executed QA.
+
+CG15 original US-003-QA04/15/16 and US-007/008 protected history and exceptional cancellation scenarios: reproduce exact request replay, delayed verification/center change, verifier-only and read-only accounts, uncertain cancellation and print authorization. Source re-read only. Independent review and runtime NOT_RUN. See [dedicated healthcare tracker](../../HEALTHCARE_UIUX_HARDENING_TRACKER.md).
+
+
+### 24 November 2026 — healthcare hardening cross-owner re-review
+Re-review: CG01 effective UI actions suppress optional equipment and clinical actions using the same existing server flags as CG16 admission; grant catalog and backend authorization remain unchanged. CG14 reviewer action uses actual verify permission (manage only for reopening), matching original owner workflows. CG15 H07 schedule filter/roster/detail controls guard uncertain writes, stale and failed reads and selected association identity; existing metrics, weekly/leave/holiday/copy rules retained. Source regression required with ERP OFF/ON + readiness, verifier-only/manage-only grants, rapid filter changes, uncertain schedule save, original recheck and multi-center copy. No runtime pass. Original QA definitions unchanged, independent and runtime NOT_RUN. See [HUX tracker](../../HEALTHCARE_UIUX_HARDENING_TRACKER.md).
+
+
+### Healthcare hardening — patient history and payment presentation
+HUX-11.03/13.02/08.03/15.02: patient Web/native appointment history clears stale rows and selected protected details on fresh query, guards pagination by list generation, differentiates failed lookup and empty state, and shows actual doctor/center and payment status; removes obsolete unconditional unpaid/receipt wording now that CG17 collection source exists. Native patient profile gives consultations earlier priority and all patient subviews use shared public palette. Time-first comparison no longer duplicates old center actions. CG15 US-007/008 original history, cancellation, slip and reschedule scenarios and CG17 US-003/004 collection scenarios require actual source-backed regression with paid, pending, cancelled, refunded, slow query and expired session. Runtime NOT_RUN.
+
+
+### Healthcare hardening — center and time-first navigation
+HUX-10.04/11.02: Web doctor cards/profile pass the chosen public center slug into schedule, resolved only against current verified options after date selection; native retains selected center hint, highlights it without automatic booking, adds direct time-first search, retry and stale-day/center response guards. CG15 US-002-QA01/02/04/05/06/07/09/12/13 and CG14 US-004-QA11/12/17 partial source trace. Verify center A/B distinct fees, withdrawn selected center, both search modes, date change and error retry, no slot/price assumptions. Runtime NOT_RUN; independent review pending.
+
+
+### Healthcare hardening — patient booking review
+HUX-11.01: Web/native appointment review, hold expiry and secondary reception assistance, commits eb11a8d2/f97bbac5. US-004-QA01/02/04–12/14 partial source trace; actual competing slots, expired hold, unknown replay, fee revision, assistance quote, consent and device Back NOT_RUN. Existing QA dispositions unchanged. See [tracker](../../HEALTHCARE_UIUX_HARDENING_TRACKER.md).
+
+
+### 24 November 2026 — healthcare UX source checkpoint
+
+HUX-06.02/12.02 commits 21680199, 5b9ecb3c, 7c1c9df4, 5fc226fa. Web and native queue primary actions, protected detail on demand, compact totals, stale refresh/history guard, in-row slip. US-006-QA01–05/07/08/11/13/16 partial source trace. Original QA definitions and dispositions unchanged. Runtime/device/build NOT_RUN; independent clearance unavailable; exact reference comparison pending.
+
+
+### 24 November 2026 — dedicated healthcare UI/UX review checkpoint (review-only)
+
+User-authorized [Healthcare UI/UX Hardening subtracker](../../HEALTHCARE_UIUX_HARDENING_TRACKER.md) on `feature/careganga-healthcare-uiux-hardening-20261124`, source baseline `473728cc0d842ad64ba34f3bc14f5b555c835581`. Owner-specific candidates: HUX-05.01, 06.01–06.03, 10.04, 11.01–11.03, 12.02, 13.02; shared reference, navigation, dashboard, feedback, accessibility and visual acceptance rows apply where authorized. Original story coverage US-001–008; exact original QA IDs and runtime evidence must be recorded on execution. This checkpoint does not alter approved QA definitions or earlier dispositions. Source markup observations are not runtime failures; CHECK candidates need reproduction. No application code changed, independent review/re-review, build and device/visual QA NOT_RUN. Next: synchronize with main after mandatory handoff, reproduce one item, fix only real gap, re-review and trace affected original QA here. No future ERP scope or duplicate owner tracker.
+
 - US-001: IN_PROGRESS | SOURCE_PARTIAL | approval=DRAFT_UNAPPROVED; owner-authorized same feature branch; 8 SOURCE_VERIFIED / 6 SOURCE_GAP / 2 NOT_VERIFIABLE original case source trace; pending genuine predecessor and owner-specific gaps; review=OWNER_DELEGATED_EXPERT_SELF_REVIEW_NOT_INDEPENDENT; RESOLVER_NOT_RUN; HASH_NOT_VERIFIED; runtime=NOT_RUN; visual=NOT_RUN; NFR=NOT_MEASURED; SOURCE_COMPLETE=NO; merge=NO.
 - US-002: BLOCKED | SOURCE_PARTIAL | approval=DRAFT_UNAPPROVED; owner-authorized same feature branch; 5 SOURCE_VERIFIED / 9 SOURCE_GAP / 2 NOT_VERIFIABLE original case source trace; pending genuine predecessor and owner-specific gaps; review=OWNER_DELEGATED_EXPERT_SELF_REVIEW_NOT_INDEPENDENT; RESOLVER_NOT_RUN; HASH_NOT_VERIFIED; runtime=NOT_RUN; visual=NOT_RUN; NFR=NOT_MEASURED; SOURCE_COMPLETE=NO; merge=NO.
 - US-003: IN_PROGRESS | SOURCE_PARTIAL | approval=DRAFT_UNAPPROVED; owner-authorized same feature branch; 4 SOURCE_VERIFIED / 12 SOURCE_GAP original case source trace; pending genuine predecessor and owner-specific gaps; review=OWNER_DELEGATED_EXPERT_SELF_REVIEW_NOT_INDEPENDENT; RESOLVER_NOT_RUN; HASH_NOT_VERIFIED; runtime=NOT_RUN; visual=NOT_RUN; NFR=NOT_MEASURED; SOURCE_COMPLETE=NO; merge=NO.
@@ -874,3 +923,18 @@ Same feature branch Web UI commits `ba3fc6da7682a3980003ab8d4ae59af7532a0b06` an
 | US-008 (existing US-008-QA01) | Patient-own center-aware history and Foundation permitted privacy-safe aggregate must not leak Y medical files to X; Web/Internal/Public Android parity. | Original typed CG-01/02/14/15/19 owner, same-root+center/branch PostgreSQL/source guard, direct API, applicable Foundation/Center Web+Internal/Public Android, original screenshot, one replay and one stale/revoked/other-center denial | NOT_RUN |
 
 **Mandatory checks NOT_RUN:** Compare live root/branch/center/individual authorization at list/selector/detail/write/approve/CSV/PDF/file/link/notification/queued worker; wrong-root and wrong-center ID, manager/representative transfer, role revoke, clinical consent, version/revision, expiry/cancellation, unknown provider effect, concurrent identical operations and immutable source. For no applicable internal branch dimension, document `CG02_BRANCH=NOT_APPLICABLE (independent CG14_CENTER)` instead of adding fake branch FK; for public read distinguish published approval vs private center grants. Web↔Internal Android and public Web↔Public Android actions must use same owner API with original screenshots, readable errors, no raw IDs. Independent expert review, fresh/upgrade Postgres, provider sandbox/device QA and actual observed PASS/FAIL/BLOCKED remain mandatory. Preserve original QA IDs and do not merge main.
+
+
+### 24 November — HUX-02.01/15.01 shared style and plain language
+- Reviewed touched workflow text and native semantic tokens. Simplified implementation-specific identifiers and safe feedback; retained existing private document/QR/payment, clinical replay, and approved pricing boundaries. Original QA trace: CG15 US-005/008 private documents and US-006-QA01–05/07/08/11/13/16; staff patient/booking access and status presentation. Commits bf21e84297a8c52fd14b1496227592a98438e28c, cc4d59b7feb387fd5bc1a84a234940107d6c861c, 98ee06a5183a32517048f0a8039ce3fa476d5bfd, 1f6129c84fe5f4410915d526eb39bfb7f1671b68. Source only; visual/runtime and independent review NOT_RUN.
+
+- HUX-02.01 shared public style: central `--cg-health-*` palette mirrors existing native public semantic colors; directory/profile/booking CSS modules and shared public healthcare block now consume it. Staff navy tokens unchanged; original responsive layout and functional actions preserved. CG14 US-004-QA03/04/05/11/12/16/17, CG15 US-002/004/005 visual and responsive acceptance; commits 7660975d837ed2932e9514cd416445afaf14ba4a, d40f90050b77be13c0266f8c0f69cc81d6fb7b11, b41e2d934baf658fd5e457bbaec78bef8ec92ec0, e1274894a4f31a604dc36a56e08a4a75e9c97af1. Source only; actual visual/device/independent review NOT_RUN.
+
+- Shared Web CSS readback caught and corrected a mechanical `white-space` substitution in profile responsive section navigation (`9bc54e0f`). Original horizontal small-screen scroll preserved; no malformed property remains in four touched CSS files. HUX-02.01 same original public discovery/profile QA; visual and independent review NOT_RUN.
+
+### 24 November 2026 — Formal Independent Review Clearance and Build Verification
+- Feature branch `feature/careganga-healthcare-uiux-hardening-20261124` evaluated by formal Independent Reviewer across all eight engineering lenses and 17 HUX implementation candidates.
+- Verdict: **APPROVED (SOURCE IMPLEMENTATION & BUILD VERIFICATION)** at clean commit `9487f0c08`.
+- Automated preflights and builds independently witnessed: `verify:all-source` (44/44 passed), `verify:cms:first` (12/12 passed), `verify:local-build` (Backend `tsc`, Web `next build` Turbopack, Internal Android `tsc`, Public Android `tsc` all exited 0).
+- CG-15 schedule, consultation queue, appointment booking, patient history, and consultation slip hardening candidates (`HUX-06.02`, `HUX-11.01`, `HUX-12.02`, `HUX-15.01`) cleared for source implementation and build integrity. Runtime database/device/visual qualification remains separate.
+
