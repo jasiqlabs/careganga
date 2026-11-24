@@ -35,7 +35,7 @@ export class HrPayrollAttendanceSourceFacade{
     `SELECT e.id,e.employee_code AS reference,app.legal_name AS name,e.status,e.status_version AS "statusVersion",last.branch_ref AS "branchRef",last.id AS "assignmentRef"
     FROM hr_employee e JOIN hr_employee_application app ON app.root_realm_id=e.root_realm_id AND app.id=e.application_id
     JOIN LATERAL (SELECT a.id,a.branch_ref FROM hr_employment_assignment a WHERE a.root_realm_id=e.root_realm_id AND a.employee_id=e.id AND a.valid_from<$3::date AND (a.valid_to IS NULL OR a.valid_to>$2::date) ORDER BY a.valid_from DESC,a.id DESC LIMIT 1) last ON true
-    WHERE e.root_realm_id=$1 AND ($4::uuid IS NULL OR last.branch_ref=$4) AND last.branch_ref=ANY($5::uuid[]) ORDER BY e.id LIMIT 501 FOR SHARE OF e`,[actor.realmId,from,until,branch,scope.branches.map(b=>b.value)])).rows;
+    WHERE e.root_realm_id=$1 AND ($4::uuid IS NULL OR last.branch_ref=$4) AND ($6::boolean OR last.branch_ref=ANY($5::uuid[])) ORDER BY e.id LIMIT 501 FOR SHARE OF e`,[actor.realmId,from,until,branch,scope.branches.map(b=>b.value),scope.all])).rows;
   if(rows.length>500)throw new BadRequestException("Payroll scope exceeds 500 employees; use branch runs");
   return rows;
  }
