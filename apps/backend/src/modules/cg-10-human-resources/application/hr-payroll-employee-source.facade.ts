@@ -34,7 +34,8 @@ export class HrPayrollEmployeeSourceFacade{
   const refs=scope.branches.map(b=>b.value);
   const departments=(await tx.query<{value:string;label:string}>(`SELECT DISTINCT d.id AS value,d.name AS label FROM hr_employment_assignment h JOIN department d ON d.root_realm_id=h.root_realm_id AND d.id=h.department_ref WHERE h.root_realm_id=$1 AND h.branch_ref=ANY($2::uuid[]) AND ($3::uuid IS NULL OR h.branch_ref=$3) ORDER BY label,value LIMIT 200`,[a.realmId,refs,branch])).rows;
   if(department&&!departments.some(d=>d.value===department))throw new ForbiddenException("Department unavailable");
-  return {branches:scope.branches.map(({value,label})=>({value,label})),departments,canManageFoundationPolicy:scope.all,params:[a.realmId,refs,branch,q,department,type,status]};
+  let canViewDocuments=false;try{await this.identity.assertCurrent(tx,a,"hr.documents.manage");canViewDocuments=true;}catch(e){if(!(e instanceof ForbiddenException))throw e;}
+  return {canViewDocuments,branches:scope.branches.map(({value,label})=>({value,label})),departments,canManageFoundationPolicy:scope.all,params:[a.realmId,refs,branch,q,department,type,status]};
  }
 }
  /** Original CG10 scoped current or last employment projection; parameters are validated by directoryScope. */
