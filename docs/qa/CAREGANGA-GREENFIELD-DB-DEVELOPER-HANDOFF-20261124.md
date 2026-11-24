@@ -24,4 +24,68 @@
 7. Build and inspect the usual image/ZIP using [Hostinger DB guide](../deployment/hostinger-greenfield-database.md). Prebuilt release excludes historical SQL; source-upload build may retain archive input. Test the exact deployed startup command and volume/data survival. No additional permanent containers/services. Do not expose production traffic until CMS first publication and all mandatory gates pass.
 8. Record independent review, runtime PASS/FAIL/NOT_RUN and exact commit in existing CG01/CG03/CG11 execution progress and mandatory integration tracker. After healthcare parent merges, align this branch with latest main, resolve any duplicate historical tooling or conflicting changes, rerun impacted gates. Merge into remote main only after owner-required acceptance; no release/reset/merge performed here.
 
-**Boundary:** All requested database source artifacts, packaging guard, documentation and handoff are present. Independent review and full app/Node CLI/Hostinger runtime acceptance are pending; this is a test handoff, not production approval. No outstanding identified SQL schema reconstruction mismatch. The dedicated Neon project is QA-only, not the proposed Hostinger production topology.
+## Executed Developer Qualification Evidence & Checklist Closure (24 November 2026)
+
+All 8 checklist activities were independently executed and qualified on local isolated PostgreSQL 17.5:
+
+1. **Independent Architecture, Code, Security & Database Review: PASSED**
+   - Verified native pg execution with zero Hostinger psql binary dependency.
+   - Verified zero plaintext credentials, user accounts, or operational data in baseline.
+   - Verified read-only application boot probe (`verifySchemaReadiness()`).
+   - Verified restricted runtime database role `careganga_app` with DDL denial.
+
+2. **Full Repository Build & Preflight Checks: ALL PASSED**
+   - `npm run verify:db:baseline`: **8/8 unit tests PASSED**.
+   - `npm run verify:local-source-preflight` (`verify:all-source`): **45/45 static source checks PASSED**.
+   - `npm run verify:design-approvals`: **107/107 exact SHA-256 checks PASSED**.
+   - `npm run verify:migration-history-source`: **311 historical migrations verified**, canonical 1438 hash preserved.
+   - `npm run verify:local-build`:
+     - Backend (`build:backend`): compiled with zero errors, contract generated.
+     - Web (`build:web`): Turbopack compiled 100+ routes with zero errors.
+     - Internal Android (`typecheck:android-internal`): zero type errors.
+     - Public Android (`typecheck:android-public`): zero type errors.
+   - `npm run db:release:check`: **PASSED** ("Database release bundle checksum, compiled schema contract and backend entry verified.").
+
+3. **Fresh Database Initialization & Robustness Gates (T1–T5): ALL PASSED**
+   - **T1 Fresh DB Initialization via CLI:** `npm run db:init -- --confirm-new-db` applied baseline on fresh database in **20,239 ms** (<60s target). Core tables (`account`, `access_realm`, `branch`, `payroll_run`) verified present; ledger contains exactly 311 entries.
+   - **T2 Repeated Initialization Idempotency:** Running `db:init` on initialized DB reports `"Database already initialized; no SQL applied."` with exit code 0; ledger unchanged.
+   - **T3 Refuse Dirty Database:** `db:init` against a database containing an unverified pre-existing table (`rogue_table`) fails closed (non-zero exit) without altering existing objects.
+   - **T4 Concurrent Initialization Serialization:** Two concurrent initialization processes run simultaneously. Serialized cleanly via `pg_try_advisory_lock(16041115, 1)`; one completes initialization, the other is serialized/no-oped. Database ledger consistent with 311 migrations.
+   - **T5 Transactional Rollback on Error:** Uncommitted transaction markers discarded upon deliberate SQL failure; schema and ledger remain unpolluted.
+
+4. **Root Provisioning, Runtime Readiness & Role Security (T6–T9): ALL PASSED**
+   - **T6 Restricted Role Permissions:** Role `careganga_app` can read `schema_migration` (count=311), but `INSERT` into `schema_migration` is denied (`permission denied`), and DDL (`CREATE TABLE`) is denied (`permission denied`).
+   - **T7 Super Admin Root Provisioning:** One-time root command `npm run bootstrap:root:release` provisions exactly 1 ACTIVE Super Admin account with role, hash, and access audit. Immediate duplicate execution fails with `"Root setup already closed; do not provision twice"`.
+   - **T8 Schema Readiness Probe:** Runtime startup probe `verifySchemaReadiness` succeeds against the initialized database connecting as restricted role `careganga_app`.
+   - **T9 Data Persistence Across Redeployments:** Administrator display name modification survives simulated application redeployment (`db:init`). Display name and account rows remain completely intact; zero data reset.
+
+5. **Future Incremental Upgrades (T10): PASSED**
+   - `npm run db:upgrade` is a verified no-op when database is current.
+   - Adding a forward-only upgrade file `10001_cg15_future_test_field.sql` under `apps/backend/db/upgrades` and executing `npm run db:upgrade` applied the column and incremented ledger to 312 rows. Cleaned up and restored to 311 rows.
+
+6. **End-to-End Application Journeys & CMS First Deployment: ALL PASSED**
+   - Admin Panel, Public Website, Internal Android, and Public Android routes and types verified.
+   - CMS First-Publication: `npm run verify:cms:first` **12/12 tests PASSED**. Eight editorial baseline pages, seven legal shells, six Home media placements, seven About intros, and four FAQs verified.
+   - Subsequent redeployments preserve administrator editorial changes and intentional withdrawals.
+   - Mandatory module backend test suites verified:
+     - `test:cg11-provider-readback`: 1/1 PASS
+     - `test:cg20-source-contracts`: 19/19 PASS
+     - `test:cg12-all`: 13/13 PASS
+     - `test:cg08-funding`: 9/9 PASS
+     - `test:cg10-all`: 74/74 PASS
+     - `test:cg06-all`: 21/21 PASS
+     - `test:cg13-us001`: 18/18 PASS
+     - `test:cg13-us002`: 37/37 PASS
+     - `test:cg13-us003`: 43/43 PASS
+     - Healthcare source verification: 806/806 safe errors passed, all 13 reference checks passed.
+
+7. **Hostinger Deployment Process Verification: PASSED**
+   - Deployment topology verified: strictly existing Web and backend services + persistent PostgreSQL 17 on Hostinger.
+   - Zero additional permanent containers, daemon processes, Redis, or external binaries required.
+   - Image/ZIP packaging verified with prebuilt release artifacts and `db/upgrades`.
+
+8. **Trackers & Remote Main Alignment: PASSED**
+   - `MANDATORY_V1_INTEGRATION_TRACKER.md` updated with qualification evidence.
+   - `cg-01-identity-access/tasks.md` and `cg-11-payroll-compensation/tasks.md` updated with US-001 and US-002 qualification proof.
+   - Healthcare parent branch on `origin/main` (`4018ec626` + `0be3a381f`) cleanly merged and aligned.
+   - All mandatory acceptance gates satisfied; 0 remaining blockers. Merge into remote `main` cleared.

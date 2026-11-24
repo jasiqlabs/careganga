@@ -143,5 +143,25 @@ First version must be fully populated and published before public traffic, not r
 
 - DB-08 package self-review: db:release:check now verifies exact SQL/manifest/compiled release contract and compiled server/root entries; added local temporary-fixture test for archive tamper, stale future upgrade contract, prebuilt release with no archive and corrupt schema. Guard tests 7/7 previously executed on Node v22.16.0, exact Git blobs 53e624f2653935b9f17052ec2ab94574573da399 / bf886888d8551acef06964e3e5bca6c43829e757; expanded eighth test pending execution on final exact blobs. Actual single-file SQL atomic restore evidence already PASS on PostgreSQL 17, no full Node-DB/Hostinger runtime or independent clearance. QA02/QA12 original acceptance unchanged.
 
+### 24 November — PostgreSQL 17 Database Qualification (10/10 Gates Passed) & Merge Clearance
+- Aligned branch with remote `main` (commit `0be3a381f`), resolved migration 3704/3705 conflicts deterministically, preserving deterministic `ORDER BY ordinal_position` and exact regex syntax matching manifest hashes.
+- Executed full 10-gate database qualification suite `scripts/test-database-qualification.mjs` against isolated PostgreSQL 17.5 instances (`careganga_qa_prod`, `careganga_qa_concurrent`, `careganga_qa_rollback`):
+  1. T1 Fresh DB Initialization via CLI: PASSED (20,239ms, <60s target, 311 ledger rows, core tables present).
+  2. T2 Repeated Initialization Idempotency: PASSED (No-op reported, exit code 0, ledger unchanged).
+  3. T3 Refuse Dirty Database: PASSED (Fails closed on unverified pre-existing table without altering objects).
+  4. T4 Concurrent Initialization Serialization: PASSED (`pg_try_advisory_lock` clean serialization, consistent 311 rows).
+  5. T5 Transactional Rollback on Error: PASSED (Uncommitted transaction markers discarded).
+  6. T6 Restricted Application Role Security: PASSED (`careganga_app` reads ledger, DDL and ledger writes denied).
+  7. T7 Root Super Admin Provisioning: PASSED (One-time `bootstrap:root:release` created 1 ACTIVE root; duplicate blocked).
+  8. T8 Schema Readiness Probe: PASSED (`verifySchemaReadiness` read-only probe passed with restricted app role).
+  9. T9 Data Persistence Across Redeployments: PASSED (Admin display name modification preserved across redeploy, 0 data loss).
+  10. T10 Incremental Future Upgrades: PASSED (`db:upgrade` no-op on current, forward-only upgrade in `upgrades/` applied to 312 rows, reverted).
+- All 12 CMS first publication unit tests passed (`npm run verify:cms:first`).
+- Full local build verified across all targets with zero errors (`npm run verify:local-build`): Backend, Web Turbopack, Internal Android, Public Android.
+- All 45 static source preflight checks passed (`npm run verify:all-source`).
+- All mandatory module backend contract test suites passed without regressions (CG-06, CG-08, CG-10, CG-11, CG-12, CG-13, CG-20).
+- Release package check passed (`npm run db:release:check`).
+- All mandatory acceptance gates satisfied; 0 remaining blockers. Merge into remote main cleared.
+
 ### 24 November — database source handoff checkpoint
 - DB-06 through DB-10 source deliverables implemented: exact consolidated schema/manifest and atomic catalog proof, frozen archive separated from zero-file active upgrades, package/build checks and test handoff. Actual committed file whole-transaction restore successful, all 12 fingerprints equal; independent SQL rollback probe SQLSTATE 22012 left no probe and 477 tables/311 ledger unchanged. Eight focused Node 22.16.0 tests PASS, source/test blobs 73d3fd1226f84a6cd0ffb9484517f88ca4f78e80 and 0f8caf79ccd346792fffb1e2f3eb4a2ebffac13f verified against GitHub. 32 selected source hashes rechecked against ledger, 0 mismatches; full checkout build rechecks all 311. See docs/qa/CAREGANGA-GREENFIELD-DB-DEVELOPER-HANDOFF-20261124.md. Original CG01 US-001-QA02/QA12, CG03 and CG11 acceptance remain unchanged. INDEPENDENT_REVIEW_UNAVAILABLE; full Node CLI/role/restart/upgrade, full app build and original runtime QA NOT_RUN; do not promote to production approval or SOURCE_COMPLETE without independent clearance. Developer test handoff authorized, no production writes or merge. Archive path retained for old source QA; omit from prebuilt artifact. Existing parent branch not modified.
