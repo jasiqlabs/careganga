@@ -11,7 +11,6 @@ import {complianceEligible} from "../application/cms-compliance-eligibility";
 import {HrPublicBioEditorialSource} from "../../cg-10-human-resources/application/hr-public-bio-editorial-source";
 import {teamSelections} from "../application/cms-editorial.service";
 import {CsrPartnerPublicSource,type CsrEditorialSelection} from "../../cg-08-csr-funding/application/csr-partner-public-source";
-import {HrPublicBioEditorialSource,type HrEditorialPerson} from "../../cg-10-human-resources/application/hr-public-bio-editorial-source";
 import {parseExtendedSection} from "../application/cms-extended-sections";
 
 type Due={id:string;foundation_root_id:string;page_publication_ref:string};
@@ -100,19 +99,6 @@ export class CmsPublicationDueWorker implements OnModuleInit,OnModuleDestroy{
    const selected=sections.partners as CsrEditorialSelection[];
    return (await this.csrPartners.currentCards(tx,root,selected)).length===selected.length;
   }catch{return false;}
- }
- private async teamRevisionEligible(tx:PoolClient,root:string,rev:string){
-  const q=await tx.query<{structured_fields:Record<string,unknown>}>(
-   "SELECT structured_fields FROM cms_section_revision WHERE foundation_root_id=$1 AND page_revision_id=$2 AND section_kind='TEAM'",[root,rev]);
-  for(const row of q.rows){
-   const selected=row.structured_fields.members;
-   if(!Array.isArray(selected)||selected.length>15||selected.some(p=>!p||typeof p!=="object"||
-    typeof p.sourceRef!=="string"||!/^[0-9a-f-]{36}$/i.test(p.sourceRef)||
-    typeof p.proof!=="string"||!/^[a-f0-9]{64}$/.test(p.proof)||typeof p.name!=="string"||typeof p.designation!=="string"))return false;
-   if(new Set(selected.map(p=>p.sourceRef)).size!==selected.length)return false;
-   if((await this.hrPublicBio.currentCards(tx,root,selected as HrEditorialPerson[],true)).length!==selected.length)return false;
-  }
-  return true;
  }
  private async apply(tx:PoolClient,due:Due){
   // Always lock the CMS page before its publication and due row. Other CMS
