@@ -132,8 +132,8 @@ Dependencies: US-001
 
 
 - US-001: IN_PROGRESS | OWNER_AUTHORIZED_SOURCE_ONLY; CG01/02/03/05/19 source, private PostgreSQL 3601–3603, responsive Web and native Internal Android AUTHORED_PENDING_INDEPENDENT_REVIEW. Latest source checkpoints: evidence and re-review b9274903081f8731fb7c79a4f9f37ab8f048982d; category/block 53ea05402504709578dd5b52a13a52d1551db09b; privacy/race hardening 443a92e358638779eb9f36631bfd866e003a56fc; scoped snapshot KPIs 4c829d5f1a81715c4286b5ef78c36520f0d23c42, 17ed6c7c216c3666fbc7d9608b68a997096a3da1, 2f3a3fc326ebd90468dace1d3c0605d7ed378630; field feedback/CG03 unavailable fallback 348a18b7fc33b16df4eaf589edb8495eb4fed8ce, 752e26df8a1887e5ccc51db6aef2829c7291377f. Original 20 QA definitions preserved; updated source disposition table below. Export-specific source gate remains US003; independent review and SQL/DB/concurrency/security/browser/native builds, exact reference visual/device QA NOT_RUN. No source-complete or runtime PASS claim.
-- US-002: NOT_STARTED | 20 original QA PLANNED / NOT_EXECUTED; source work must wait for actual US-001 and CG12/CG09 owner integration as applicable. No payment or stock effects implemented.
-- US-003: PARTIAL_FOUNDATION_SOURCE | US001 now supplies scoped, distinct profile counts and same-snapshot filtered list + Web/native KPI cards; assistance delivery reconciliation/history, permission-gated export, CG05 visit/CG18 editorial/public integration NOT_STARTED. Original 20 QA NOT_EXECUTED. No fabricated impact.
+- US-002: IN_PROGRESS | Original CG03 approval, CG12 stock allocation/issue/return, CG09 payment and linked recovery, CG19 handover, private Web/native assistance authored; source-author review and regression contracts added. Owner migrations/runtime and independent review NOT_RUN. Remaining contextual CG05 rendering and retry/correction edge-case review documented below.
+- US-003: IN_PROGRESS | Current-scope repeatable-read KPI and verified material/financial impact, project association counts, recent verified activity, protected audited register/aid-history CSV, CG05 minimal count API, CG18 coarse editorial-approved public source suppression, MIS typed aggregate authored. Remaining cross-module UI, campaign-selector, public editorial and source verification gaps documented below. No runtime PASS.
 
 
 
@@ -167,7 +167,7 @@ Dependencies: US-001
 | US-001-QA14 | SOURCE_AUTHORED_PENDING_CONCURRENCY | CG03 case row lock, current revision/digest and separate reviewer, immutable decision; real competing PG sessions NOT_RUN |
 | US-001-QA15 | SOURCE_AUTHORED_PENDING_RUNTIME | `parseListQuery/list` current project, state/district/block, category/type, date/gender/age/lifecycle/status; shared Web/native apply/reset and scoped totals |
 | US-001-QA16 | SOURCE_AUTHORED_PENDING_DEVICE | Native intake/edit/link/filter, CG03 submit/decision, CG19 evidence and real KPI cards; Android build/device/Back QA NOT_RUN |
-| US-001-QA17 | PARTIAL_SOURCE_GAP | `revokeConsent` prevents new writes/files and removes sensitive DTO fields, geography/demographics and reviewer remarks; export and transfer revocation require US003 integration |
+| US-001-QA17 | SOURCE_AUTHORED_PENDING_SECURITY_REVIEW | `revokeConsent` prevents new writes/files and removes sensitive DTO fields, geography/demographics and reviewer remarks; US003 now adds current-scope export denial and no revoked beneficiary rows; transfer/revoke concurrency and native cache checks NOT_RUN |
 | US-001-QA18 | SOURCE_AUTHORED_PENDING_SECURITY_REVIEW | `SessionService.requireAction` and `FoundationStructureIdentityFacade.assertCurrent` inside tx; revoked-session/foreground device NOT_RUN |
 | US-001-QA19 | SOURCE_AUTHORED_PENDING_SQL | `3601` unique/FK/index/history source; actual Postgres migrate/restore/races/EXPLAIN NOT_RUN |
 | US-001-QA20 | SOURCE_AUTHORED_PENDING_INDEPENDENT_REVIEW | Real CG01/02/03/05/19 source paths and Admin/native integration authored; independent source review, SQL, browser/device, denial and exact visual QA NOT_RUN |
@@ -217,3 +217,53 @@ Dependencies: US-001
 
 - US-001-QA02/15/16/17: restricted list DTO excludes contact, representative and consent-purpose fields; detail remains separately authorized. Added validated gender/age filters to existing root/branch-scoped SQL; both Web and Internal Android provide type/gender/age, Apply/Reset and distinguish failed list fetch from empty result. Contract regression authored. Commits: b9273864c584ddcd4009e61f7596d1789b0af3ee, 558b81c9f97977992eb57a963a2fdd017a6e1a23, 5be1656076410a9595303605f62e063168511d15, ace407f7ebecbaa17ee8f46cc5d4d4f0b37c2d65, 568b5ea50b16eb17725c9a8ef2772a38b094360c.
 - Original A07/A08 audit and module UIUX reopened; original PNG bytes unavailable in this session. Source author review only; tests, SQL, builds, original render comparison, device and independent review NOT_RUN. Project/state/district/category/block/date filters, CG19 proof, KPI/report and remaining original trace still pending. US-001 IN_PROGRESS; US-002/003 NOT_STARTED. No new requirements or main merge.
+
+
+### 24 November 2026 — CG06 US002 and US003 committed-source checkpoint (supersedes earlier NOT_STARTED/partial statuses)
+
+All 60 original QA definitions are retained. Author-performed source review only; no independent approval, build, live PostgreSQL migration/rollback, real provider, concurrency, device, pixel, performance, or original manual QA executed. **IN_PROGRESS, NOT SOURCE_COMPLETE, NOT RELEASE_READY.**
+
+| Existing QA ID | Source disposition | Actual source and outstanding verification |
+| --- | --- | --- |
+| US-002-QA01 | SOURCE_AUTHORED_PENDING_REVIEW_RUNTIME | AssistanceService.create/parseAssistance, verified beneficiary and original branch/context |
+| US-002-QA02 | SOURCE_AUTHORED_PENDING_REVIEW_RUNTIME | Current source permissions and scope; original CG12/09/19 owner checks; negative API/device tests not run |
+| US-002-QA03 | SOURCE_AUTHORED_PENDING_REVIEW_RUNTIME | Case and allocation transaction locks, unique source keys/digests, immutable effects |
+| US-002-QA04 | SOURCE_AUTHORED_PENDING_REVIEW_RUNTIME | Typed quantity/minor/date and live warehouse/account options; overflow/malformed SQL cases pending |
+| US-002-QA05 | SOURCE_AUTHORED_PENDING_REVIEW_RUNTIME | Web and native use same case, approval and fulfillment endpoints with revision/refresh |
+| US-002-QA06 | SOURCE_AUTHORED_PENDING_REVIEW_RUNTIME | A07/A08 assistance panels authored; exact original screenshots and interaction comparison pending |
+| US-002-QA07 | SOURCE_AUTHORED_PENDING_REVIEW_RUNTIME | Original CG12 issue operation and stock lock; actual last-unit concurrent test pending |
+| US-002-QA08 | SOURCE_AUTHORED_PENDING_REVIEW_RUNTIME | Separate material and finance owner projections; pending owner not treated as delivered |
+| US-002-QA09 | SOURCE_AUTHORED_PENDING_REVIEW_RUNTIME | Immutable request/operation replay and unique delivery-event source |
+| US-002-QA10 | SOURCE_AUTHORED_PENDING_REVIEW_RUNTIME | Exact signed movement and separate clean handover enforced by database guard |
+| US-002-QA11 | SOURCE_AUTHORED_PENDING_REVIEW_RUNTIME | Same-key replay and original outcome lookup; restart/unknown-response test pending |
+| US-002-QA12 | SOURCE_AUTHORED_PENDING_REVIEW_RUNTIME | Approved amount/quantity cap, partial actual delivery, original stock return, preserved gross/net |
+| US-002-QA13 | SOURCE_AUTHORED_PENDING_REVIEW_RUNTIME | Owner guard and root/branch links; original inventory distribution output and privacy review pending |
+| US-002-QA14 | PARTIAL_SOURCE_GAP | Backend actual completed visit/project link and minimal scoped count; A05 Web/native tab integration not verified |
+| US-002-QA15 | SOURCE_AUTHORED_PENDING_REVIEW_RUNTIME | Original CG03 assistance decision, distinct reviewer, frozen revision/digest and password check |
+| US-002-QA16 | SOURCE_AUTHORED_PENDING_REVIEW_RUNTIME | Real CG09 PAYMENT voucher with approval, verified payment proof, posting, separate recipient handover |
+| US-002-QA17 | PARTIAL_SOURCE_GAP | Exact original full-payment recovery via CG09 opposite-account GENERAL voucher, clean frozen receipt and bank reconciliation when applicable, unique recovery event; actual workflow/partial correction and rejection recovery not verified |
+| US-002-QA18 | SOURCE_AUTHORED_PENDING_REVIEW_RUNTIME | CG19 existing clean revision-bound beneficiary evidence and mandatory separate handover |
+| US-002-QA19 | SOURCE_AUTHORED_PENDING_REVIEW_RUNTIME | Separate real cases and original allocation; no confirmed effect before handover |
+| US-002-QA20 | PARTIAL_SOURCE_GAP | Web/native core actions and histories; full original integrated QA, recovery/restart and due-only reconciliation still pending |
+| US-003-QA01 | PARTIAL_SOURCE_GAP | Distinct scoped original beneficiary count and separate project association totals; project click-through not verified |
+| US-003-QA02 | SOURCE_AUTHORED_PENDING_REVIEW_RUNTIME | Independent current lifecycle/verification axes and shared scoped list/count |
+| US-003-QA03 | SOURCE_AUTHORED_PENDING_REVIEW_RUNTIME | Explicit collected demographics, unknown separate; minimal CSV excludes age/gender and precise private fields |
+| US-003-QA04 | SOURCE_AUTHORED_PENDING_REVIEW_RUNTIME | Gross/returned/reversed/net from immutable confirmed owner-backed events |
+| US-003-QA05 | SOURCE_AUTHORED_PENDING_REVIEW_RUNTIME | Exact original signed issue/return and per-item/unit report; no shadow stock |
+| US-003-QA06 | SOURCE_AUTHORED_PENDING_REVIEW_RUNTIME | Actual CG09 payment and linked full recovery events, verified posted proof; recovery runtime pending |
+| US-003-QA07 | PARTIAL_SOURCE_GAP | CG05 field-visit detail now includes minimal permitted count; A05 Web/native tab rendering not verified |
+| US-003-QA08 | PARTIAL_SOURCE_GAP | Current category/project/age/date/verification/type/branch filters; actual campaign API filter authored, report selector/export parity still open |
+| US-003-QA09 | SOURCE_AUTHORED_PENDING_REVIEW_RUNTIME | Current grant, bounded register and aid-history CSV, immutable report access audit; native preview/security execution pending |
+| US-003-QA10 | SOURCE_AUTHORED_PENDING_REVIEW_RUNTIME | Original cursor list and shared filter scope, bounded 500-row export, indexes; EXPLAIN/load not measured |
+| US-003-QA11 | PARTIAL_SOURCE_GAP | CG18 effective editorial publication, reserved source label, fixed closed year and coarse verified source count; editor selection workflow not verified |
+| US-003-QA12 | SOURCE_AUTHORED_PENDING_REVIEW_RUNTIME | Threshold 10, rounded down, no small/stale published data; withdrawal/cache/differencing tests pending |
+| US-003-QA13 | PARTIAL_SOURCE_GAP | CG18 common public output avoids beneficiary IDs, photos and private roster; exact native public rendering not verified |
+| US-003-QA14 | SOURCE_AUTHORED_PENDING_REVIEW_RUNTIME | Internal native report and aid/register CSV preview authored, same source as Web; device accessibility/back not run |
+| US-003-QA15 | PARTIAL_SOURCE_GAP | Original KPI source and report panels authored, recent/project labels; exact A07/A08 pixels and placement pending |
+| US-003-QA16 | SOURCE_AUTHORED_PENDING_REVIEW_RUNTIME | Explicit report-unavailable vs empty results, no fake owner success |
+| US-003-QA17 | SOURCE_AUTHORED_PENDING_REVIEW_RUNTIME | Repeatable-read report snapshot and immutable source effects; concurrency not run |
+| US-003-QA18 | SOURCE_AUTHORED_PENDING_REVIEW_RUNTIME | Distinct recipients, separate item/unit and INR totals, branch/root scope |
+| US-003-QA19 | SOURCE_AUTHORED_PENDING_REVIEW_RUNTIME | Typed readBeneficiaryImpactForMIS, works without CG20 dependency |
+| US-003-QA20 | PARTIAL_SOURCE_GAP | Source-author regression contract authored; complete independent source/runtime/security/device review pending |
+
+**Committed evidence:** 3604 assistance and approval source; 3605 allocation/delivery/recovery guard; 3606 report audit; original CG03/CG09/CG12/CG19 adapters; Admin and native assistance/report panels; CG05 restricted summary; CG18 current source suppression; `cg06-us002-us003-source-integrity.test.ts` authored (not executed). No CI/GitHub Actions, deployment, or merge. Source gaps are listed in the table, not hidden by provisional coverage. Financial corrections deliberately preserve the original payment and require genuine CG09 recovery, not an invented balance.
