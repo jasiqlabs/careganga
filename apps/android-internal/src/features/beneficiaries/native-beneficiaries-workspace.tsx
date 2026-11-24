@@ -268,7 +268,7 @@ export function NativeBeneficiariesWorkspace({token,onExpired,canManage,canLinkP
    <Select title="Operating branch" selected={branch}
     items={[{value:"",label:"All permitted branches"},...(opts?.branches??[])]}
     onSelect={x=>{detailSeq.current++;setBusy(false);setSelected(null);setReview(null);setBranch(x);setProjectFilter("");setFilterProjects([]);setAppliedFilters(f=>({...f,projectRef:""}));setCursor("");setHistory([]);}}/>
-   {(canViewAssistance||canExportReports)&&<NativeBeneficiaryReportPanel key={JSON.stringify([search,branch,tab,appliedFilters])} token={token} onExpired={onExpired} filters={{...appliedFilters,q:search,branchRef:branch,lifecycle:tab==="ACTIVE"||tab==="INACTIVE"?tab:"",verification:tab==="VERIFIED"||tab==="PENDING"?tab:""}} canView={canViewAssistance} canExport={canExportReports}/>}
+   {(canViewAssistance||canExportReports)&&<NativeBeneficiaryReportPanel key={JSON.stringify([search,branch,tab,appliedFilters])} token={token} onExpired={onExpired} filters={{...appliedFilters,q:search,branchRef:branch,lifecycle:tab==="ACTIVE"||tab==="INACTIVE"?tab:"",verification:tab==="VERIFIED"||tab==="PENDING"?tab:""}} canView={canViewAssistance} canExport={canExportReports} onProject={(ref,label)=>{setProjectFilter(ref);setFilterProjects(xs=>xs.some(x=>x.value===ref)?xs:[...xs,{value:ref,label}]);setAppliedFilters(f=>({...f,projectRef:ref}));setCursor("");setHistory([]);}}/>}
    <Select title="Status" selected={tab} onSelect={x=>{setTab(x);setCursor("");setHistory([]);}}
     items={enumOptions(["ALL","ACTIVE","INACTIVE","VERIFIED","PENDING"])}/>
    {!!notice&&<Text accessibilityRole="alert" style={{color:"#166534"}}>{notice}</Text>}
