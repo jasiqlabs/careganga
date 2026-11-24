@@ -49,7 +49,10 @@ BEGIN
      SELECT 1 FROM cg03_case_decision d WHERE d.realm_id=c.realm_id AND d.case_id=c.id AND d.id=NEW.approved_decision_ref AND d.actor_id<>c.proposer_id AND d.actor_id<>NEW.creator AND d.fresh_password_verified_at IS NOT NULL
      AND ((NEW.status='APPROVED_FROZEN' AND c.status='PENDING_OWNER' AND d.action='APPROVE') OR (NEW.status='RETURNED' AND c.status='RETURNED' AND d.action='RETURN') OR (NEW.status='REJECTED' AND c.status='REJECTED' AND d.action='REJECT')))))
  ) THEN RAISE EXCEPTION 'Original independent payroll run decision required' USING ERRCODE='23514'; END IF;
- IF NEW.status='APPROVED_FROZEN' AND NOT EXISTS(SELECT 1 FROM payroll_line WHERE root_realm_id=NEW.root_realm_id AND run_id=NEW.id) THEN RAISE EXCEPTION 'No frozen payroll entitlement'; END IF;
+ IF NEW.status='APPROVED_FROZEN' AND (
+ (SELECT count(*) FROM payroll_line WHERE root_realm_id=NEW.root_realm_id AND run_id=NEW.id) IS DISTINCT FROM
+ (SELECT (v.snapshot->'totals'->>'calculated')::bigint FROM payroll_run_revision v JOIN payroll_run_review_snapshot s ON s.root_realm_id=v.root_realm_id AND s.run_id=v.run_id AND s.source_revision=v.revision AND s.source_digest=v.source_digest JOIN cg03_case c ON c.realm_id=s.root_realm_id AND c.payroll_run_review_ref=s.id WHERE c.realm_id=NEW.root_realm_id AND c.id=NEW.approval_case_ref)
+ OR NOT EXISTS(SELECT 1 FROM payroll_line WHERE root_realm_id=NEW.root_realm_id AND run_id=NEW.id)) THEN RAISE EXCEPTION 'Incomplete frozen payroll entitlement'; END IF;
  RETURN NEW;
 END; $cg11$;
 CREATE TRIGGER cg11_run_original_review BEFORE UPDATE ON payroll_run FOR EACH ROW EXECUTE FUNCTION cg11_run_original_review();
@@ -63,7 +66,7 @@ BEGIN
  WHERE r.root_realm_id=NEW.root_realm_id AND r.id=NEW.run_id AND r.status='SUBMITTED' AND r.period_key=NEW.period_key
  AND l->>'employeeRef'=NEW.employee_ref::text AND l->>'branchRef'=NEW.branch_ref::text AND l->>'status'='CALCULATED'
  AND l=NEW.source_snapshot AND (l->'amounts'->>'baseMinor')::bigint=NEW.base_minor
- AND (l->'amounts'->>'allowanceMinor')::bigint+(l->'amounts'->>'bonusMinor')::bigint=NEW.allowance_minor
+ AND (l->'amounts'->>'allowanceMinor')::bigint=NEW.allowance_minor AND (l->'amounts'->>'bonusMinor')::bigint=NEW.bonus_minor AND (l->'amounts'->>'arrearsMinor')::bigint=NEW.arrears_minor
  AND (l->'amounts'->>'deductionMinor')::bigint=NEW.deduction_minor AND (l->'amounts'->>'grossMinor')::bigint=NEW.gross_minor
  AND (l->'amounts'->>'netMinor')::bigint=NEW.net_minor AND (l->'amounts'->>'employerMinor')::bigint=NEW.employer_minor AND (l->'amounts'->>'statutoryMinor')::bigint=NEW.statutory_minor
  AND EXISTS(SELECT 1 FROM cg03_case_decision d WHERE d.realm_id=c.realm_id AND d.case_id=c.id AND d.action='APPROVE' AND d.actor_id<>c.proposer_id AND d.actor_id<>r.creator AND d.fresh_password_verified_at IS NOT NULL)
