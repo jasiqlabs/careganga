@@ -56,7 +56,7 @@ export function BeneficiariesWorkspace({canManage,canLinkProjects,canManageLifec
   const params=new URLSearchParams();if(search)params.set("q",search);if(branch)params.set("branchRef",branch);
   if(tab==="ACTIVE"||tab==="INACTIVE")params.set("lifecycle",tab);
   if(tab==="VERIFIED")params.set("verification","VERIFIED");
-  if(tab==="PENDING")params.set("verification","DRAFT");
+  if(tab==="PENDING")params.set("verification","PENDING");
   if(cursor)params.set("cursor",cursor);
   void api<Page>("?"+params).then(v=>{if(seq.current===id)setPage(v);})
    .catch(e=>{if(seq.current===id){setPage(null);setError(e.message);}})
@@ -82,7 +82,7 @@ export function BeneficiariesWorkspace({canManage,canLinkProjects,canManageLifec
  const refresh=()=>{setEpoch(x=>x+1);};
  const open= (kind:"create"|"edit")=>{
   setMode(kind);setFormError("");setNotice("");setRequestKey(crypto.randomUUID());
-  setForm(kind==="edit"&&selected?fromItem(selected):empty());
+  setForm(kind==="edit"&&selected?fromItem(selected):{...empty(),branchRef:opts&&!opts.canManageFoundation?opts.branches[0]?.value??"":""});
  };
  const choose=async(id:string)=>{
   setDetailLoading(true);setSelected(null);setNotice("");
@@ -101,8 +101,8 @@ export function BeneficiariesWorkspace({canManage,canLinkProjects,canManageLifec
   try{
    const outcome=await api<{ref:string}>(
     mode==="edit"?"/"+selected?.ref:"",mode==="edit"?"PATCH":"POST",body);
-   setMode(null);setNotice("Beneficiary intake saved. Verification remains separate and pending review.");
-   refresh();await choose(outcome.ref);
+   setMode(null);refresh();await choose(outcome.ref);
+   setNotice("Beneficiary intake saved. Verification remains separate and pending review.");
   }catch(e){setFormError(e instanceof Error?e.message:"Result unknown. Refresh before retrying this request.");}
   finally{setSaving(false);}
  };
