@@ -194,3 +194,20 @@ assert.match(letterNative,/sourceRevision,requestKey:issueKey\.current/,
 
 console.log("CG19 SOURCE checks: 52 exact client texts/triggers/attachment rules; disabled drafts, scoped ticket/status/notes safeguards.");
 console.log("Not a Postgres migration, provider, PDF, Web build or Android device test.");
+
+// E2E-007 original CG19 opt-in/withdraw owner: source-only, no provider execution.
+const newsletter=read(dir+"application/newsletter-consent.service.ts");
+const newsletterMigration=read("apps/backend/db/migrations/9999_cg19_newsletter_consent.sql");
+const newsletterController=read(dir+"http/support.controller.ts");
+const newsletterProxy=read("apps/web/src/app/api/support/[...parts]/route.ts");
+for(const x of ["cg19_newsletter_subscription","cg19_newsletter_challenge","cg19_newsletter_consent_event","attempt_count BETWEEN 0 AND 5","state='WITHDRAWN' AND email_encrypted IS NULL"])assert.ok(newsletterMigration.includes(x),x);
+for(const x of ['x.consent!==true','randomInt(0,100000000)','createCipheriv("aes-256-gcm"','timingSafeEqual','this.support.newsletterThrottle','this.providers.configured("EMAIL","TRANSACTIONAL")','send.state==="ACCEPTED"?"CHECK_EMAIL"','c.attempt_count>=5','current.revision===c.confirmed_revision','DELETE FROM cg19_newsletter_challenge','state==="SUBSCRIBED"?sealEmail(email):null','FOR UPDATE SKIP LOCKED'])assert.ok(newsletter.includes(x),x);
+for(const path of ["start","confirm","withdraw"]){
+ assert.ok(newsletterController.includes('@Post("public/newsletter/'+path+'")'));
+ assert.ok(newsletterController.includes('"newsletter-'+path+'"'));
+}
+assert.ok(newsletterProxy.includes('["start","confirm","withdraw"].includes(parts[2])')&&newsletterProxy.includes('"newsletter-"+parts[2]'));
+for(const path of ["apps/web/src/features/cms-public-content/cg19-newsletter-form.tsx","apps/android-public/src/features/cms/native-newsletter-form.tsx"]){
+ const ui=read(path);for(const x of ['consent:true','/api/support/public/newsletter/','"CHECK_EMAIL"','"SUBSCRIBED":"WITHDRAWN"','Use private withdrawal key'])assert.ok(ui.includes(x),path+": "+x);
+}
+console.log("CG19 newsletter source: explicit consent, verified email, bounded attempts, encrypted contact, revision/withdrawal and shared public ingress; runtime/provider NOT_RUN.");
