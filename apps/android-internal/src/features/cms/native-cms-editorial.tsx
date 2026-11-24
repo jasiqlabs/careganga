@@ -11,6 +11,7 @@ type Page={pageRef:string;kind:string;slug:string;title:string;
  version:string;draftStatus:string;publicStatus:string|null};
 type Section={kind:string;order:number;fields:Record<string,unknown>};
 type EventSource={sourceRef:string;slug:string;title:string;category:string;summary:string;area:string;scheduledStart:string;scheduledEnd:string;status:string};
+type TeamSource={sourceRef:string;proof:string;name:string;designation:string};
 type ProjectSource={sourceRef:string;title:string;category:string;area:string};
 type CampaignSource={sourceRef:string;title:string;category:string;area:string};
 type Asset={fileRef:string;version:number;role:string;altText:string;order:number};
@@ -212,6 +213,19 @@ function EventSelection({sections,choices,error,locked,refresh,onSelect}:{sectio
  const current=sections.find(s=>s.kind==="ARTICLE_BODY")?.fields.sourceEventRef;
  return <View style={styles.panel}><Text accessibilityRole="header" style={styles.heading}>Approved Foundation event</Text><Text style={styles.note}>Only the current reviewed source may be published. Separate CMS approval remains necessary.</Text>{button("Refresh approved events",refresh,locked)}{!!error&&<Text accessibilityRole="alert">{error}</Text>}{!!current&&!choices.some(v=>v.sourceRef===current)&&<Text>Current selection — refresh to verify.</Text>}{choices.map(v=>button((v.sourceRef===current?"✓ ":"")+v.title+" · "+v.category+" · "+new Date(v.scheduledStart).toLocaleString("en-IN",{timeZone:"Asia/Kolkata"}),()=>onSelect(v),locked))}</View>;
 }
+function TeamSelection({sections,choices,error,locked,refresh,onChange}:{sections:Section[];choices:TeamSource[];error:string;locked:boolean;refresh:()=>void;onChange:(s:Section[])=>void}){
+ const current=sections.find(s=>s.kind==="TEAM");
+ const people=Array.isArray(current?.fields.members)?current.fields.members as TeamSource[]:[];
+ const set=(next:TeamSource[])=>onChange([...sections.filter(s=>s.kind!=="TEAM"),...(next.length?[{kind:"TEAM",order:70,fields:{heading:typeof current?.fields.heading==="string"?current.fields.heading:"Our team",members:next}}]:[])]);
+ return <View style={styles.panel}><Text accessibilityRole="header" style={styles.heading}>Public team directory</Text>
+ <Text style={styles.note}>Select current consented staff name and designation only. No portrait or biography; independent CMS approval is required.</Text>
+ <Pressable disabled={locked} accessibilityRole="button" onPress={refresh}><Text style={styles.heading}>Refresh consented staff</Text></Pressable>
+ {!!error&&<Text accessibilityRole="alert">{error}</Text>}{!choices.length&&!error&&<Text>No current consented staff sources.</Text>}
+ {choices.map(p=>{const checked=people.some(x=>x.sourceRef===p.sourceRef&&x.proof===p.proof);const disabled=locked||(!people.some(x=>x.sourceRef===p.sourceRef)&&people.length>=15);
+  return <Pressable key={p.sourceRef} accessibilityRole="checkbox" accessibilityState={{checked,disabled}} disabled={disabled} onPress={()=>set(checked?people.filter(x=>x.sourceRef!==p.sourceRef):[...people.filter(x=>x.sourceRef!==p.sourceRef),p])}><Text style={styles.note}>{checked?"✓ ":"○ "}{p.name} · {p.designation}</Text></Pressable>})}
+ {people.filter(p=>!choices.some(x=>x.sourceRef===p.sourceRef&&x.proof===p.proof)).map((p,i)=><Pressable key={i} disabled={locked} accessibilityRole="button" onPress={()=>set(people.filter(x=>x!==p))}><Text>Remove unavailable or historical profile</Text></Pressable>)}
+ </View>;
+}
 function ProjectSelection({sections,choices,error,locked,refresh,onChange}:{sections:Section[];choices:ProjectSource[];error:string;locked:boolean;refresh:()=>void;onChange:(s:Section[])=>void}){
  const current=sections.find(s=>s.kind==="PROJECT_TEASER"),refs=Array.isArray(current?.fields.sourceRefs)?current.fields.sourceRefs as string[]:[];
  const set=(next:string[])=>onChange([...sections.filter(s=>s.kind!=="PROJECT_TEASER"),...(next.length?[{kind:"PROJECT_TEASER",order:60,fields:{heading:typeof current?.fields.heading==="string"?current.fields.heading:"Our Projects",sourceRefs:next}}]:[])]);
@@ -248,6 +262,9 @@ function CampaignSelection({sections,choices,error,locked,refresh,onChange}:{sec
 export function NativeCmsEditorial({token,canManage,canPublish,canReview,onExit,
  onExpired}:Props){
  const [pages,setPages]=useState<Page[]>([]),[projectChoices,setProjectChoices]=useState<ProjectSource[]>([]),[projectError,setProjectError]=useState("");
+ const [teamChoices,setTeamChoices]=useState<TeamSource[]>([]),[teamError,setTeamError]=useState("");
+ const refreshTeam=()=>{setTeamError("");void api<{sources:TeamSource[]}>(token,"team-sources").then(v=>setTeamChoices(v.sources)).catch(e=>{setTeamChoices([]);setTeamError("Current consented staff sources require HR viewing permission.");if(e?.status===401)onExpired();});};
+ useEffect(()=>{if(canManage)refreshTeam();},[token,canManage]);
  const [campaignChoices,setCampaignChoices]=useState<CampaignSource[]>([]),[campaignError,setCampaignError]=useState("");
  const [eventChoices,setEventChoices]=useState<EventSource[]>([]),[eventError,setEventError]=useState("");
  const refreshEvents=()=>{setEventError("");void api<{sources:EventSource[]}>(token,"event-sources").then(v=>setEventChoices(v.sources)).catch(e=>{setEventChoices([]);setEventError("Approved event sources unavailable.");if(e?.status===401)onExpired();});};
@@ -449,10 +466,11 @@ export function NativeCmsEditorial({token,canManage,canPublish,canReview,onExit,
     {newPage.kind==="HOME"&&newPage.navigation&&
      <EditField name="Approved original navigation choices" value={newPage.navigation}
       locked={locked} onChange={v=>changeNew({navigation:v as Navigation})}/>}
+    {(newPage.kind==="HOME"||newPage.kind==="ABOUT")&&<TeamSelection sections={newPage.sections} choices={teamChoices} error={teamError} locked={locked} refresh={refreshTeam} onChange={sections=>changeNew({sections})}/>}
     {(newPage.kind==="HOME"||newPage.kind==="ABOUT")&&<ProjectSelection sections={newPage.sections} choices={projectChoices} error={projectError} locked={locked} refresh={refreshProjects} onChange={sections=>changeNew({sections})}/>}
     {(newPage.kind==="HOME"||newPage.kind==="ABOUT")&&<CampaignSelection sections={newPage.sections} choices={campaignChoices} error={campaignError} locked={locked} refresh={refreshCampaigns} onChange={sections=>changeNew({sections})}/>}
     {newPage.kind==="ARTICLE"&&<EventSelection sections={newPage.sections} choices={eventChoices} error={eventError} locked={locked} refresh={refreshEvents} onSelect={v=>changeNew({slug:v.slug.slice(0,70),title:v.title,seoTitle:(v.title+" | CareGanga Foundation").slice(0,180),seoDescription:v.summary.slice(0,300),assets:[],sections:eventFields(v)})}/>}
-    {newPage.sections.filter(sec=>sec.kind!=="PROJECT_TEASER"&&sec.kind!=="CAMPAIGN_TEASER").map((sec,i)=><View key={sec.kind+"-"+i} style={styles.panel}>
+    {newPage.sections.map((sec,i)=>["PROJECT_TEASER","CAMPAIGN_TEASER","TEAM"].includes(sec.kind)?null:<View key={sec.kind+"-"+i} style={styles.panel}>
      <Text style={styles.heading}>{title(sec.kind)}</Text>
      {sec.kind==="IMPACT_GROUP"&&sec.fields.group==="STATS"&&canManage&&button("Use verified beneficiary impact",()=>void api<{fields:Record<string,unknown>|null}>(token,"beneficiary-impact-source").then(v=>{if(!v.fields){setError("No publishable beneficiary aggregate for the last completed year.");return;}setNewPage(old=>old?{...old,sections:old.sections.map(x=>x.order===sec.order&&x.kind===sec.kind?{...x,fields:v.fields!}:x)}:null);}).catch(()=>setError("Current role or source cannot provide beneficiary impact.")),locked)}
      {typeof sec.fields.sourceEventRef==="string"?<><Text>{String(sec.fields.heading)} · {String(sec.fields.category)}</Text><Text>{String(sec.fields.body)}</Text></>:<EditField name="Source content" value={sec.fields} locked={locked}
@@ -483,10 +501,11 @@ export function NativeCmsEditorial({token,canManage,canPublish,canReview,onExit,
      <EditField name="Navigation" value={draft.navigation}
       locked={locked} onChange={v=>change("navigation",v as Navigation)}/>
     </View>}
+    {(draft.kind==="HOME"||draft.kind==="ABOUT")&&<TeamSelection sections={draft.sections} choices={teamChoices} error={teamError} locked={locked} refresh={refreshTeam} onChange={sections=>change("sections",sections)}/>}
     {(draft.kind==="HOME"||draft.kind==="ABOUT")&&<ProjectSelection sections={draft.sections} choices={projectChoices} error={projectError} locked={locked} refresh={refreshProjects} onChange={sections=>change("sections",sections)}/>}
     {(draft.kind==="HOME"||draft.kind==="ABOUT")&&<CampaignSelection sections={draft.sections} choices={campaignChoices} error={campaignError} locked={locked} refresh={refreshCampaigns} onChange={sections=>change("sections",sections)}/>}
     {draft.kind==="ARTICLE"&&<EventSelection sections={draft.sections} choices={eventChoices} error={eventError} locked={locked} refresh={refreshEvents} onSelect={v=>setDraft(x=>x?{...x,title:v.title,seoTitle:(v.title+" | CareGanga Foundation").slice(0,180),seoDescription:v.summary.slice(0,300),assets:[],sections:eventFields(v)}:null)}/>}
-    {draft.sections.map((section,i)=>["PROJECT_TEASER","CAMPAIGN_TEASER"].includes(section.kind)?null:<View key={section.kind+"-"+section.order}
+    {draft.sections.map((section,i)=>["PROJECT_TEASER","CAMPAIGN_TEASER","TEAM"].includes(section.kind)?null:<View key={section.kind+"-"+section.order}
      style={styles.panel}>
       <Text style={styles.heading}>{title(section.kind)} · Section {i+1}</Text>
       {section.kind==="IMPACT_GROUP"&&section.fields.group==="STATS"&&canManage&&button("Use verified beneficiary impact",()=>void api<{fields:Record<string,unknown>|null}>(token,"beneficiary-impact-source").then(v=>{if(!v.fields){setError("No publishable beneficiary aggregate for the last completed year.");return;}replaceSection(i,v.fields);}).catch(()=>setError("Current role or source cannot provide beneficiary impact.")),locked)}
