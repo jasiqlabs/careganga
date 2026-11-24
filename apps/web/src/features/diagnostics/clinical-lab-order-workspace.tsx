@@ -329,9 +329,8 @@ export function ClinicalLabOrderWorkspace({canCreate,canView,canManageSamples,ca
     <button type="button" disabled={custodyBusy||!custodyReplay.current}
      onClick={()=>{if(custodyReplay.current)void custodySend(custodyReplay.current);}}>
      Retry the same custody request</button>
-    <span>The same request key is reused, so another specimen event
-     will not be created. Refreshing alone does not prove the first
-     custody action committed.</span>
+    <span>Retrying the same request does not create another specimen event.
+     Refreshing alone cannot confirm that the first action was saved.</span>
    </div>
   </div>}
   {selected&&selectedCenter===center&&<section className="form-section">
