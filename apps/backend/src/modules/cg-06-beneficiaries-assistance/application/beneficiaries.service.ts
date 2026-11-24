@@ -411,6 +411,12 @@ export class BeneficiariesService{
     nextCursor:rows.length>30&&items.length?nextCursor(items[items.length-1].created_at,items[items.length-1].id):null};
   },true);
  }
+ async reportBranchOptions(tx:PoolClient,a:Actor){
+  await this.identity.assertCurrent(tx,a,"beneficiaries.view");
+  await this.identity.assertCurrent(tx,a,"beneficiaries.assistance.view");
+  const scope=await this.scope(tx,a);
+  return {branches:scope.branches.map(({value,label})=>({ref:value,name:label}))};
+ }
  async reportScope(tx:PoolClient,a:Actor,q:ReturnType<typeof parseListQuery>){
   await this.identity.assertCurrent(tx,a,"beneficiaries.view");
    if(q.project)await this.projects.requireCurrentProjectForFilter(tx,a,q.project);
