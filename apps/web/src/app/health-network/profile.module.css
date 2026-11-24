@@ -1,0 +1,14 @@
+.profileHero{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.5fr);gap:1.25rem;align-items:center}
+.profileHero>div:only-child{grid-column:1/-1}
+.heroPhoto{border-radius:12px;overflow:hidden;aspect-ratio:16/10;background:#eaf4ee}
+.heroPhoto img{width:100%;height:100%;object-fit:cover;display:block}
+.sectionNav{display:flex;flex-wrap:wrap;gap:.5rem;padding:.6rem 0}
+.sectionNav a{padding:.65rem .9rem;border:1px solid #bccfc6;border-radius:8px;color:#194a3a;background:white;min-height:44px;text-decoration:none}
+.detailGrid{display:grid;grid-template-columns:minmax(0,2fr) minmax(240px,1fr);gap:1rem;align-items:start}
+.mainColumn,.sideColumn{display:grid;gap:1rem;min-width:0}
+.panel{min-width:0;overflow-wrap:anywhere}
+.panel h2{background:#194a3a;color:#fff;padding:.65rem .8rem;border-radius:8px;font-size:1.1rem;margin-top:0}
+.cardGrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,220px),1fr));gap:.75rem}
+.dataCard{border:1px solid #bccfc6;padding:1rem;border-radius:10px;background:white}
+.dataCard p{margin:.6rem 0}
+@media(max-width:800px){.profileHero,.detailGrid{grid-template-columns:1fr}.sectionNav{flex-wrap:nowrap;overflow-x:auto}.sectionNav a{white-space:nowrap}}

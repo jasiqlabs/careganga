@@ -135,6 +135,10 @@ The user supplied the final public healthcare reference set, 13 original JPGs. A
 HUX-01.01: EVIDENCE_RECOVERED for the user-confirmed final public set; remove screenshot-access blocker for this implementation. These public references carry UI04–11 numbering distinct from the older recovered internal healthcare title map. Do not conflate the two. The earlier internal raw images remain unverified; use original Admin reference archive and authorized existing internal flows rather than halt source work. HUX-16.01: integrated rendering, actual payment/booking/database/Android execution and independent review remain NOT_RUN. Source-based comparison found material presentation differences; no exact visual match claimed. See docs/research/CAREGANGA-HEALTHCARE-PUBLIC-VISUAL-REFERENCE-REVIEW-20261124.md for 13-image mapping, source evidence and remaining acceptance. No production use of sample names/portraits, rates, QR, contact details or transactions; approved data and current module boundaries remain controlling.
 
 
+## Original public reference implementation — directory and profiles
+
+HUX-10.02/10.03/10.04/02.01: reference-led green listing banner, real category shortcuts preserving query, desktop filter/result layout, actual page counts, grid/list toggles, responsive stacked layout; center UI04 primary approved photograph, section links, doctor schedule actions, quick actions and compact panels; doctor UI05 two-column credentials/center-specific price and availability actions. No fabricated ratings, global counts, map or unapproved service actions. CG14 US-004-QA03/04/05/11/12/16/17, US-005 public publication/revocation; CG15 US-002 center selection. Source review only; actual screenshots/device comparison NOT_RUN.
+
 ## Subtracker details and expected user scenarios
 
 ### HUX-01.01 — Recover separate healthcare reference originals

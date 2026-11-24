@@ -44,7 +44,9 @@ export default async function HealthcareDirectory({searchParams}:Props){
  const result=tab==="doctors"?
   await directory<PublicDoctor>("doctors",query):
   await directory<PublicCenter>("centers",query);
- const next=new URLSearchParams(query);
+ const view=raw.view==="list"?"list":"grid";
+ const filterHref=(category:string,layout=view)=>{const p=new URLSearchParams(query);p.delete("after");p.set("tab",tab);p.set("view",layout);if(category)p.set("category",category);else p.delete("category");if(canReschedule){p.set("reschedule",rescheduleRef);p.set("version",String(rescheduleVersion));}return "/health-network?"+p.toString();};
+ const next=new URLSearchParams(query);next.set("view",view);
  if(result.next)next.set("after",result.next);
  if(canReschedule){next.set("reschedule",rescheduleRef);
   next.set("version",String(rescheduleVersion));}
@@ -55,7 +57,7 @@ export default async function HealthcareDirectory({searchParams}:Props){
     <span>Healthcare Network</span>
    </nav>
   </header>
-  <section className="cg-public-section">
+  <section className={"cg-public-section "+styles.hero}>
    <p className="cg-eyebrow">CareGanga · Healthcare Assistance</p>
    <h1>Find verified healthcare centers and doctors</h1>
    <p className="cg-lead">Find a verified doctor or healthcare center near you.
@@ -73,9 +75,12 @@ export default async function HealthcareDirectory({searchParams}:Props){
    </nav>
    <p><Link href="/patients/me">My patient profile</Link></p>
   </section>
-  <section className="cg-public-section" aria-label="Search the directory">
-   <form action="/health-network" method="get" style={{display:"grid",gap:12,maxWidth:720}}>
-    <input type="hidden" name="tab" value={tab}/>
+  {!canReschedule&&tab==="centers"&&<nav className={styles.categories} aria-label="Healthcare center categories">{[["","All centers"],["POLYCLINIC","Poly clinic"],["DIAGNOSTIC_CENTER","Diagnostic centre"],["DENTAL_CLINIC","Dental clinic"],["MEDICAL_LABORATORY","Medical laboratory"],["HOSPITAL","Hospital"],["NURSING_HOME","Nursing home"],["PHARMACY","Retail pharmacy"],["ORTHOPEDIC_CLINIC","Orthopedic centre"],["HOMEOPATHY_CLINIC","Homeopathy"],["AYURVEDIC_CLINIC","Ayurvedic centre"]].map(([code,label])=><Link key={code} href={filterHref(code)} aria-current={(query.get("category")??"")===code?"page":undefined}>{label}</Link>)}</nav>}
+  <div className={styles.directoryLayout}>
+  <section className={"cg-public-section "+styles.filterPanel} aria-label="Search the directory">
+   <h2 className={styles.panelTitle}>Filter {tab==="centers"?"centers":"doctors"}</h2>
+   <form action="/health-network" method="get" className={styles.filterForm}>
+    <input type="hidden" name="tab" value={tab}/><input type="hidden" name="view" value={view}/>
     {canReschedule&&<>
      <input type="hidden" name="reschedule" value={rescheduleRef}/>
      <input type="hidden" name="version" value={rescheduleVersion}/>
@@ -84,7 +89,7 @@ export default async function HealthcareDirectory({searchParams}:Props){
      <input name="q" defaultValue={typeof raw.q==="string"?raw.q:""}
       type="search" maxLength={80} placeholder="Search verified records"/>
     </label>
-    <details open={showAdvanced} className={styles.filters}>
+    <details open={showAdvanced||undefined} className={styles.filters}>
      <summary style={{cursor:"pointer",fontWeight:600,padding:"8px 0"}}>
       More filters — location, center type, services and fees</summary>
      <div style={{display:"grid",gap:12,marginTop:12}}>
@@ -165,19 +170,19 @@ export default async function HealthcareDirectory({searchParams}:Props){
      </div>
     </details>
     <div style={{display:"flex",flexWrap:"wrap",gap:16,alignItems:"center"}}>
-     <button type="submit">Apply filters</button>
+     <button type="submit" className="primary">Search {tab==="centers"?"centers":"doctors"}</button>
      <Link href={"/health-network?tab="+tab+
       (canReschedule?"&reschedule="+encodeURIComponent(rescheduleRef)+
        "&version="+rescheduleVersion:"")}>Reset filters</Link>
     </div>
    </form>
   </section>
-  <section className="cg-public-section" aria-live="polite">
-   <h2>{tab==="centers"?"Published healthcare centers":"Verified professionals"}</h2>
+  <section className={"cg-public-section "+styles.results} aria-live="polite">
+   <div className={styles.resultHeader}><div><h2>{tab==="centers"?"Published healthcare centers":"Verified professionals"}</h2>{result.state==="READY"&&<p>{result.items.length} results on this page{result.next?" · More available":""}</p>}</div><nav className={styles.viewModes} aria-label="Result layout"><Link aria-current={view==="grid"?"page":undefined} href={filterHref(query.get("category")??"","grid")}>Grid</Link><Link aria-current={view==="list"?"page":undefined} href={filterHref(query.get("category")??"","list")}>List</Link></nav></div>
    {result.state==="UNAVAILABLE"?<p role="alert">Current verified directory results
      could not be checked. Please try again. No outdated listing is shown.</p>:
     result.items.length===0?<p>No currently approved listings match your search.</p>:
-    <div className={styles.grid}>
+    <div className={view==="list"?styles.list:styles.grid}>
      {tab==="centers"?
       (result.items as PublicCenter[]).map(c=><article key={c.slug}
         className={styles.card}>
@@ -226,6 +231,7 @@ export default async function HealthcareDirectory({searchParams}:Props){
     <Link href={"/health-network?tab="+tab+"&"+next.toString()}>Next results</Link>
    </p>}
   </section>
+  </div>
   <section className="cg-public-section">
    <p>Listings do not imply availability, a booking, a benefit amount, or a medical recommendation.</p>
   </section>
