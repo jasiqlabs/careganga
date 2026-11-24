@@ -23,7 +23,10 @@ const files={
   "patientProfile": "apps/web/src/app/patients/me/page.tsx",
   "privateDetail": "apps/web/src/features/appointments/patient-appointment-detail.tsx",
   "slip": "apps/backend/src/modules/cg-19-documents-notifications/application/cg19-consultation-slip-renderer.ts",
-  "receipt": "apps/backend/src/modules/cg-19-documents-notifications/application/center-collection-receipt-renderer.ts"
+  "receipt": "apps/backend/src/modules/cg-19-documents-notifications/application/center-collection-receipt-renderer.ts",
+  "onlineReceipt": "apps/backend/src/modules/cg-19-documents-notifications/application/center-online-payment-confirmation-renderer.ts",
+  "receiptSource": "apps/backend/src/modules/cg-17-healthcare-assistance-settlements/application/center-patient-receipt.service.ts",
+  "cmsEditorial": "apps/backend/src/modules/cg-18-cms-public-content/application/cms-editorial.service.ts"
 };
 const s={};
 for(const [key,path] of Object.entries(files)){
@@ -33,6 +36,8 @@ for(const [key,path] of Object.entries(files)){
  assert.doesNotMatch(s[key],/^(<{7}|={7}|>{7})/m,path+" merge conflict");
 }
 const rules=[
+ ["Verified two-copy online confirmation",["receiptSource","collect.verification_state='VERIFIED_PROVIDER'"],["receiptSource","event.result='VERIFIED_CAPTURE'"],["receiptSource","const current=await this.onlineSource"],["onlineReceipt","copy(818,\"Patient copy\")"],["onlineReceipt","copy(405,\"Center copy (patient-carried)\")"]],
+ ["Healthcare CMS approved image placement",["cmsEditorial","Array.isArray(s.fields.categories)"],["webCms","cg-health-category-photo"],["nativeCms",'picture("FEATURE",i)']],
   [
     "CMS category navigation",
     [

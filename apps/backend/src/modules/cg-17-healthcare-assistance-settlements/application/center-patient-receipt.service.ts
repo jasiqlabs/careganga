@@ -267,8 +267,8 @@ export class CenterPatientReceiptService{
  private async onlineSource(token:string,booking:string,collection:string){
   const scope=await this.ownPatient(token,booking,collection);
   return this.tx(async c=>{
-   const result=await c.query<{booking_id:string;center_name:string;payment_ref:string;method:string;captured_at:Date;gross:string;support:string;due:string;captured:string;capture_refunded:string;net:string}>(
-    "SELECT a.booking_display_id AS booking_id,center.display_name AS center_name,"+
+   const result=await c.query<{booking_id:string;center_name:string;patient_name:string;doctor_name:string;start_at:Date;time_zone:string;payment_ref:string;method:string;captured_at:Date;gross:string;support:string;due:string;captured:string;capture_refunded:string;net:string}>(
+    "SELECT a.booking_display_id AS booking_id,a.center_name AS center_name,a.patient_display_name AS patient_name,a.doctor_name,a.start_at,a.time_zone,"+
     "collect.external_payment_ref AS payment_ref,collect.method,collect.created_at AS captured_at,"+
     "charge.gross_minor::text AS gross,charge.support_minor::text AS support,charge.due_minor::text AS due,"+
     "collect.amount_minor::text AS captured,"+
@@ -287,7 +287,7 @@ export class CenterPatientReceiptService{
    const row=result.rows[0];
    if(!row||!row.payment_ref||BigInt(row.captured)<=0n||BigInt(row.capture_refunded)<0n||BigInt(row.capture_refunded)>BigInt(row.captured)||BigInt(row.net)<0n||BigInt(row.net)>BigInt(row.due)||BigInt(row.gross)!==BigInt(row.support)+BigInt(row.due))
     throw new NotFoundException({code:"CENTER_ONLINE_CONFIRMATION_UNAVAILABLE"});
-   const data:Omit<VerifiedOnlineConfirmation,"checkedAt">={bookingId:row.booking_id,centerName:row.center_name,paymentReference:row.payment_ref,method:row.method,capturedAt:row.captured_at.toISOString(),grossMinor:row.gross,supportMinor:row.support,dueMinor:row.due,capturedMinor:row.captured,captureRefundMinor:row.capture_refunded,collectedMinor:row.net,outstandingMinor:(BigInt(row.due)-BigInt(row.net)).toString()};
+   const data:Omit<VerifiedOnlineConfirmation,"checkedAt">={bookingId:row.booking_id,centerName:row.center_name,patientName:row.patient_name,doctorName:row.doctor_name,appointmentAt:row.start_at.toISOString(),timeZone:row.time_zone,paymentReference:row.payment_ref,method:row.method,capturedAt:row.captured_at.toISOString(),grossMinor:row.gross,supportMinor:row.support,dueMinor:row.due,capturedMinor:row.captured,captureRefundMinor:row.capture_refunded,collectedMinor:row.net,outstandingMinor:(BigInt(row.due)-BigInt(row.net)).toString()};
    return data;
   });
  }

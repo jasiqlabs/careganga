@@ -179,6 +179,10 @@ HUX-08.03/11.03: read-only two-copy A4 online payment confirmation added for pat
 
 The 10-image original editorial asset pack is stored in private Library `/CareGanga/CareGanga-Healthcare-CMS-Editorial-Illustrations-20261124.zip`; checksums fixed in healthcare importer, archive SHA-256 `34e350d5ec1adcf32e44a0a6bcfca33e0fb220c5c73c3e9d7e2152adf275cf28`. Nine category pictograms and prior generic hero are illustrative, not provider photographs. First-publication gate now requires published nine categories and ten approved placements. Web title edits detach old illustration and text-only hero toggle controls media; native offers only valid hero placement. See [first publication assets](../../../docs/qa/CAREGANGA-HEALTHCARE-FIRST-PUBLICATION-ASSETS-20261124.md). Actual authorized upload/publication and tests NOT_RUN. No live content overwritten.
 
+## Final targeted re-review — printed online confirmation
+
+Two-copy confirmation now uses authorized patient display name, original booking doctor/center, appointment date/time and verified financial amounts in separate green-header panels with measured fit. No sample portrait, barcode, QR or contact details are copied from the reference; the separately authorized consultation-slip QR remains the status verification source. Existing cash one-copy document and historic immutable bytes remain unchanged. This is a read-only current verified online confirmation, not a stored issued online tax receipt. Actual long-name/Unicode, refunds, provider, print and device acceptance NOT_RUN.
+
 ## Subtracker details and expected user scenarios
 
 ### HUX-01.01 — Recover separate healthcare reference originals
