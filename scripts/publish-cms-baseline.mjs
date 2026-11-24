@@ -28,7 +28,7 @@ async function run(){
   const d=await response.json();
   if(d.slug!==e.slug||d.pageRef!==e.pageRef)throw Error("Page identity changed: "+e.slug);
   if(d.publicationStatus==="EFFECTIVE"){console.log("Preserved existing publication: "+e.slug);continue;}
-  if(d.publicationStatus!=="NOT_PUBLISHED"||d.scheduledAt||d.status!=="SUBMITTED"||
+  if(d.hasPublicationHistory!==false||d.publicationStatus!=="NOT_PUBLISHED"||d.scheduledAt||d.status!=="SUBMITTED"||
    d.revisionRef!==e.revisionRef||d.version!==e.expectedVersion||d.approvalCaseRef!==e.caseRef)
    throw Error("Current submitted revision differs from release manifest: "+e.slug);
   pending.push(e);
@@ -37,7 +37,7 @@ async function run(){
   // CG18 rechecks exact CG03 final decision, current roles, content digest,
   // validated media and consumed decision under its existing transaction.
   const response=await request("/api/cms/pages/"+e.pageRef+"/publish",{
-   expectedVersion:e.expectedVersion,caseRef:e.caseRef,requestKey:e.requestKey});
+   expectedVersion:e.expectedVersion,caseRef:e.caseRef,requestKey:e.requestKey,firstPublicationOnly:true});
   if(!response.ok)throw Error("Publication refused (HTTP "+response.status+"): "+e.slug+". Inspect exact current revision before retry.");
   const result=await response.json();
   if(result.confirmed!==true||result.status!=="PUBLISHED")throw Error("Publication not confirmed: "+e.slug);
