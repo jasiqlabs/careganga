@@ -131,8 +131,11 @@ export class DonationAdminService{
     SELECT v.id FROM verified v WHERE v.source_status='RECEIVED_POSTED' AND v.posted
       AND EXISTS(SELECT 1 FROM cg19_donation_receipt_document rec JOIN donation_finance_effect e
        ON e.root_realm_id=rec.root_realm_id AND e.donation_id=rec.donation_id
+       JOIN journal j ON j.root_realm_id=e.root_realm_id AND j.id=e.journal_id
        WHERE rec.root_realm_id=v.root_realm_id AND rec.donation_id=v.id AND rec.status='ISSUED'
-        AND rec.source_digest=e.immutable_digest AND e.status='POSTED')
+        AND rec.source_digest=e.immutable_digest AND e.status='POSTED'
+        AND j.status='POSTED' AND j.source_ref=v.id AND j.immutable_source_event_key=e.source_event_key
+        AND j.immutable_payload_digest=e.immutable_digest)
    ), refunds AS (
     SELECT r.id,r.amount_minor,(v.posted AND v.source_status='RECEIVED_POSTED' AND EXISTS(
      SELECT 1 FROM journal j WHERE j.root_realm_id=r.root_realm_id AND j.id=r.reversal_journal_ref
