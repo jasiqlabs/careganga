@@ -28,6 +28,10 @@ export function LabTestMasterWorkspace({canManage,canViewPricing,
  const [selectedRef,setSelectedRef]=useState("");
  const [tab,setTab]=useState("Test Information");
  const [search,setSearch]=useState("");
+ const [filterCategory,setFilterCategory]=useState(""),[filterSample,setFilterSample]=useState(""),[filterStatus,setFilterStatus]=useState("");
+ const [testOffset,setTestOffset]=useState(0),[nextTestOffset,setNextTestOffset]=useState<number|null>(null);
+ const [testLoading,setTestLoading]=useState(false);
+ const testEpoch=useRef(0),appliedTests=useRef({q:"",categoryRef:"",sampleType:"",status:"",offset:0});
  const [loading,setLoading]=useState(true),[busy,setBusy]=useState(false);
  const [error,setError]=useState(""),[notice,setNotice]=useState("");
  const [uncertain,setUncertain]=useState(false);
@@ -52,18 +56,32 @@ export function LabTestMasterWorkspace({canManage,canViewPricing,
  const [reviewPassword,setReviewPassword]=useState("");
  const [rejectReviewRef,setRejectReviewRef]=useState("");
 
+ const loadTests=useCallback(async()=>{
+  const epoch=++testEpoch.current,filter=appliedTests.current;
+  setTestLoading(true);
+  try{
+   const query=new URLSearchParams({offset:String(filter.offset)});
+   if(filter.q)query.set("q",filter.q);if(filter.categoryRef)query.set("categoryRef",filter.categoryRef);
+   if(filter.sampleType)query.set("sampleType",filter.sampleType);if(filter.status)query.set("status",filter.status);
+   const result=await diagnosticsCall<{tests:DiagnosticTest[];nextOffset:number|null}>("tests?"+query.toString());
+   if(epoch!==testEpoch.current)return;
+   if(!Array.isArray(result.tests)||result.tests.length>100)throw Error("The test list could not be verified.");
+   setTests(result.tests);setTestOffset(filter.offset);setNextTestOffset(result.nextOffset??null);
+  }catch(e){if(epoch===testEpoch.current){setTests([]);setNextTestOffset(null);}throw e;}
+  finally{if(epoch===testEpoch.current)setTestLoading(false);}
+ },[]);
  const reload=useCallback(async()=>{
-  const [overview,cat,t,p,lab]=await Promise.all([
+  const [overview,cat,,p,lab]=await Promise.all([
    diagnosticsCall<Summary>("catalog/admin"),
    diagnosticsCall<{categories:DiagnosticCategory[]}>("categories"),
-   diagnosticsCall<{tests:DiagnosticTest[]}>("tests"),
+   loadTests(),
    diagnosticsCall<{packages:DiagnosticPackage[]}>("packages"),
    diagnosticsCall<{centers:DiagnosticCenter[]}>("centers/eligible")
   ]);
   setSummary(overview);setCategories(cat.categories??[]);
-  setTests(t.tests??[]);setPackages(p.packages??[]);
+  setPackages(p.packages??[]);
   setCenters(lab.centers??[]);
- },[]);
+ },[loadTests]);
  const reloadCenter=useCallback(async(ref:string)=>{
   const epoch=++centerEpoch.current;
   if(!ref){setMappings([]);setPrices([]);return;}
@@ -83,7 +101,7 @@ export function LabTestMasterWorkspace({canManage,canViewPricing,
    "Current lab catalogue records are unavailable.");}).finally(()=>{
    if(mounted)setLoading(false);
   });
-  return()=>{mounted=false;++centerEpoch.current;};
+  return()=>{mounted=false;++centerEpoch.current;++testEpoch.current;};
  },[reload]);
  useEffect(()=>{
   if(!canViewPricing)return;
@@ -92,8 +110,13 @@ export function LabTestMasterWorkspace({canManage,canViewPricing,
    "Center test mappings cannot be confirmed."));
  },[centerRef,canViewPricing,reloadCenter]);
  const selected=tests.find(t=>t.testRef===selectedRef)??null;
- const visible=tests.filter(t=>!search||[t.name,t.code,t.category,t.sampleType]
-  .some(s=>s.toLowerCase().includes(search.toLowerCase())));
+ const visible=testLoading?[]:tests;
+ function searchTests(reset=false,offset=0,paging=false){
+  if(busy||uncertain||showForm||testLoading)return;
+  appliedTests.current=paging?{...appliedTests.current,offset}:reset?{q:"",categoryRef:"",sampleType:"",status:"",offset:0}:{q:search.trim(),categoryRef:filterCategory,sampleType:filterSample,status:filterStatus,offset:0};
+  setSelectedRef("");setTests([]);setNextTestOffset(null);setError("");
+  void loadTests().catch(e=>setError(e instanceof Error?e.message:"The test list is unavailable."));
+ }
  async function change(operation:string,path:string,method:"POST"|"PATCH",
   fields:Record<string,unknown>,success:string,refreshCenter=true){
   if(busy||uncertain)return;
@@ -144,6 +167,7 @@ export function LabTestMasterWorkspace({canManage,canViewPricing,
    if(activeToUtc&&activeFromUtc&&activeToUtc<=activeFromUtc)
     throw Error("Test availability must end after it starts.");
    const record=tests.find(x=>x.testRef===editRef);
+   if(editRef&&!record)throw Error("The test being edited is no longer in this list. Reopen the record before saving.");
    const fields={testCode,name:testName,categoryRef,sampleType,
     clinicalDescription:description,parametersDescription:parameters,
     activeFromUtc,activeToUtc};
@@ -251,11 +275,11 @@ export function LabTestMasterWorkspace({canManage,canViewPricing,
     <p>Maintain real tests, categories, packages and prices at approved laboratories.</p>
    </div>
    <div className="toolbar">
-    <button type="button" onClick={()=>void reload().catch(e=>
+    <button type="button" disabled={busy||testLoading||showForm} onClick={()=>void reload().catch(e=>
      setError(e instanceof Error?e.message:"Catalogue cannot be refreshed."))}>Refresh</button>
     <button type="button" disabled={!visible.length||busy||uncertain} onClick={()=>void exportVisible()}>
      Export shown tests ({visible.length})</button>
-    {canManage&&<button type="button" className="primary" onClick={()=>openForm()}>
+    {canManage&&<button type="button" className="primary" disabled={busy||uncertain||testLoading||showForm} onClick={()=>openForm()}>
      Add New Test</button>}
    </div>
   </header>
@@ -284,12 +308,16 @@ export function LabTestMasterWorkspace({canManage,canViewPricing,
   <div className="cg-diagnostics-layout">
    <section className="form-section">
     <h2>Lab Test Master List</h2>
-    <label className="field">Search loaded tests
-     <input type="search" value={search} maxLength={80}
-      placeholder="Test name, code, category"
-      onChange={e=>setSearch(e.target.value)}/></label>
-    <p className="cg-diagnostics-note">Showing up to 100 source records. Export includes only the visible rows; import is not enabled.</p>
-    {!loading&&!visible.length&&<p role="status" className="cg-module-empty">No matching lab tests were found.</p>}
+    <form className="form" onSubmit={e=>{e.preventDefault();searchTests();}}>
+     <label className="field">Search all tests<input type="search" value={search} maxLength={80} placeholder="Test name or code" onChange={e=>setSearch(e.target.value)}/></label>
+     <div className="form-grid"><label className="field">Category<select value={filterCategory} onChange={e=>setFilterCategory(e.target.value)}><option value="">All categories</option>{categories.map(c=><option key={c.categoryRef} value={c.categoryRef}>{c.name}</option>)}</select></label>
+     <label className="field">Sample type<select value={filterSample} onChange={e=>setFilterSample(e.target.value)}><option value="">All samples</option>{samples.map(v=><option key={v} value={v}>{label(v)}</option>)}</select></label>
+     <label className="field">Test status<select value={filterStatus} onChange={e=>setFilterStatus(e.target.value)}><option value="">All statuses</option><option value="ACTIVE">Active</option><option value="INACTIVE">Inactive</option></select></label></div>
+     <div className="toolbar"><button className="primary" type="submit" disabled={testLoading||busy||uncertain||showForm}>Search</button><button type="button" disabled={testLoading||busy||uncertain||showForm} onClick={()=>{setSearch("");setFilterCategory("");setFilterSample("");setFilterStatus("");searchTests(true);}}>Reset</button></div>
+    </form>
+    <p className="cg-diagnostics-note">Up to 100 tests per page. Export includes only the displayed page.</p>
+    {testLoading&&<p role="status">Loading tests…</p>}
+    {!loading&&!testLoading&&!visible.length&&!error&&<p role="status" className="cg-module-empty">No matching lab tests were found.</p>}
     {!!visible.length&&<div className="table-wrap"><table className="role-table">
      <thead><tr><th>Test</th><th>Category</th><th>Sample</th><th>Status</th><th>Details</th></tr></thead>
      <tbody>{visible.map(t=><tr key={t.testRef}>
@@ -299,10 +327,11 @@ export function LabTestMasterWorkspace({canManage,canViewPricing,
        new Date(t.activeFromUtc).getTime()>Date.now()?"Scheduled":
        t.activeToUtc&&new Date(t.activeToUtc).getTime()<=Date.now()?
        "Expired":"Available"}</td>
-      <td><button type="button" aria-pressed={selectedRef===t.testRef}
+      <td><button type="button" disabled={busy||uncertain||showForm} aria-pressed={selectedRef===t.testRef}
        onClick={()=>{setSelectedRef(t.testRef);setTab("Test Information");setShowForm(false);}}>
        View</button></td>
      </tr>)}</tbody></table></div>}
+    <nav className="toolbar" aria-label="Test catalogue pages"><button type="button" disabled={testLoading||busy||uncertain||showForm||testOffset===0} onClick={()=>searchTests(false,Math.max(0,testOffset-100),true)}>Previous</button><span>Page {Math.floor(testOffset/100)+1}</span><button type="button" disabled={testLoading||busy||uncertain||showForm||nextTestOffset===null} onClick={()=>{if(nextTestOffset!==null)searchTests(false,nextTestOffset,true);}}>Next</button></nav>
    </section>
    <section className="form-section cg-diagnostics-detail">
     <h2>Test Details</h2>
