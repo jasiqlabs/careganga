@@ -168,7 +168,13 @@ QA cases:
 Verification: On actual implementation source-trace US-004-QA01–QA18 UI→request→guard→DB/owner/provider→user feedback and record file:function and SOURCE_VERIFIED/SOURCE_GAP/NOT_VERIFIABLE per case. No live build/tests/screenshots.
 Dependencies: US-001
 
-## Execution progress — source-verified checkpoint, not runtime acceptance
+## Execution progress
+
+### 24 November 2026 — protected patient intake, cancellation, lab and CMS discovery
+Commit `676e320a410cf79bb2c5ec54adf40d851d26931c`: HUX-06.01/06.03/07.04/09.01. Web H15 cancellation override is now action-permission gated like Internal Android; both prevent changing filters/selection during an uncertain cancellation and require an original-source recheck. Web provisional registration retains the exact original request and disables edits during uncertainty; clinic identity proof is bound to the selected center, patient ID, code and original request key, and a successful response must identify the original verified patient. Public Web lab listings show published sample/description where available; native pagination deduplicates offer references and clear filters retains the initial center. The native published healthcare CMS page now directly opens the existing directory/patient profile; Web offers matching discovery links. Editorial content remains CMS-owned; operational listings remain CG14/16-owned. These are source changes, not executed QA.
+
+CG18 published healthcare editorial page and native discovery navigation now link the current CG14/15/16 source actions, without adding hardcoded CMS data or new operational ownership. Verify CMS publish/withdraw and Android Back, current/empty/unavailable directory. Independent review and runtime NOT_RUN. See [dedicated healthcare tracker](../../HEALTHCARE_UIUX_HARDENING_TRACKER.md).
+ — source-verified checkpoint, not runtime acceptance
 
 ### Original public navigation acceptance gap register — 18 November 2026
 

@@ -151,6 +151,12 @@ Dependencies: None
 
 ## Execution progress
 
+### 24 November 2026 — protected patient intake, cancellation, lab and CMS discovery
+Commit `676e320a410cf79bb2c5ec54adf40d851d26931c`: HUX-06.01/06.03/07.04/09.01. Web H15 cancellation override is now action-permission gated like Internal Android; both prevent changing filters/selection during an uncertain cancellation and require an original-source recheck. Web provisional registration retains the exact original request and disables edits during uncertainty; clinic identity proof is bound to the selected center, patient ID, code and original request key, and a successful response must identify the original verified patient. Public Web lab listings show published sample/description where available; native pagination deduplicates offer references and clear filters retains the initial center. The native published healthcare CMS page now directly opens the existing directory/patient profile; Web offers matching discovery links. Editorial content remains CMS-owned; operational listings remain CG14/16-owned. These are source changes, not executed QA.
+
+CG16 US-003/004 public pricing and enquiries: verify current offer, approved sample/description, distinct offers on pagination, initial center reset, contact-only actions, expired/withdrawn offer and ERP OFF. Independent review and runtime NOT_RUN. See [dedicated healthcare tracker](../../HEALTHCARE_UIUX_HARDENING_TRACKER.md).
+
+
 ### 24 November 2026 — healthcare hardening cross-owner re-review
 Re-review: CG01 effective UI actions suppress optional equipment and clinical actions using the same existing server flags as CG16 admission; grant catalog and backend authorization remain unchanged. CG14 reviewer action uses actual verify permission (manage only for reopening), matching original owner workflows. CG15 H07 schedule filter/roster/detail controls guard uncertain writes, stale and failed reads and selected association identity; existing metrics, weekly/leave/holiday/copy rules retained. Source regression required with ERP OFF/ON + readiness, verifier-only/manage-only grants, rapid filter changes, uncertain schedule save, original recheck and multi-center copy. No runtime pass. Original QA definitions unchanged, independent and runtime NOT_RUN. See [HUX tracker](../../HEALTHCARE_UIUX_HARDENING_TRACKER.md).
 
