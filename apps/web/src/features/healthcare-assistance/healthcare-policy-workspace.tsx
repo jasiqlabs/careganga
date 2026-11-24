@@ -241,6 +241,7 @@ export function HealthcarePolicyWorkspace({canView,canManage,canReview}:Props){
   {canManage&&canView&&!!center&&!uncertain&&<form className="cg-diagnostics-card"
    onSubmit={submit} aria-label="Original assistance policy">
    <h2>{revision?"Revise approved policy":"Configure healthcare support"}</h2>
+   <h3>1. Service &amp; eligibility scope</h3>
    <div className="form-grid">
     <label className="field">Service type
      <select value={service} disabled={busy||!!revision}
@@ -295,6 +296,9 @@ export function HealthcarePolicyWorkspace({canView,canManage,canReview}:Props){
       {" "}{serviceEstimate.caution}
      </p>}
     </section>}
+   </div>
+   <h3>2. Contribution &amp; maximum support</h3>
+   <div className="form-grid">
     <label className="field">Assistance type
      <select value={mode} disabled={busy} onChange={e=>
       setMode(e.target.value as "PERCENT"|"FIXED")}>
@@ -313,6 +317,9 @@ export function HealthcarePolicyWorkspace({canView,canManage,canReview}:Props){
      <input required inputMode="decimal" disabled={busy} value={cap}
       onChange={e=>setCap(e.target.value)}/>
     </label>
+   </div>
+   <h3>3. Effective dates</h3>
+   <div className="form-grid">
     <label className="field">Valid from (your local time)
      <input type="datetime-local" required disabled={busy} value={from}
       onChange={e=>setFrom(e.target.value)}/>
@@ -330,7 +337,7 @@ export function HealthcarePolicyWorkspace({canView,canManage,canReview}:Props){
     pending, not a published offer.</p>
    <div className="toolbar">
     <button className="primary" type="submit" disabled={busy}>
-     {busy?"Checking original policy…":"Save policy revision"}</button>
+     {busy?"Checking original policy…":revision?"Save policy revision":"Create policy"}</button>
     {revision&&<button type="button" disabled={busy} onClick={clear}>
      Cancel revision</button>}
    </div>
