@@ -97,6 +97,25 @@ async function migrate(): Promise<void> {
           "SELECT sha256 FROM schema_migration WHERE filename = $1", [name]
         );
         if (prior.rowCount) {
+          if (name === "0908_cg09_balanced_voucher_effect.sql" &&
+              prior.rows[0].sha256 === "bd8779a8de51c613654c1731aac8c8301ffd725cfc13386157fc57cff71f07e5") {
+            const start = sql.indexOf("CREATE FUNCTION cg09_voucher_accounting_guard");
+            const end = sql.indexOf("END; $$;", start) + "END; $$;".length;
+            const fnSql = sql.substring(start, end).replace("CREATE FUNCTION", "CREATE OR REPLACE FUNCTION");
+            await client.query("BEGIN");
+            try {
+              await client.query(fnSql);
+              await client.query(
+                "UPDATE schema_migration SET sha256 = $1 WHERE filename = $2",
+                [digest, name]
+              );
+              await client.query("COMMIT");
+            } catch (err) {
+              await client.query("ROLLBACK");
+              throw err;
+            }
+            continue;
+          }
           if (prior.rows[0].sha256 !== digest) throw new Error("Applied migration changed: " + name);
           continue;
         }
