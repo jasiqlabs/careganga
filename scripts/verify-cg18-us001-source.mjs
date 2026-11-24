@@ -576,7 +576,7 @@ checks.push(["Neutral healthcare editorial CTA still excludes unapproved operati
  files.backend.includes('kind==="HEALTHCARE"&&!["/","/about","/contact"].includes(x)')]);
 const initDrafts=read("scripts/initialize-cms-drafts.mjs");
 checks.push(["Default CMS onboarding is explicit and uses original draft creation only",
- initDrafts.includes('if(!apply)')&&initDrafts.includes('new URL("/api/cms/pages",url)')&&
+ initDrafts.includes('if(!apply)')&&initDrafts.includes('/api/cms/pages?scope=baseline')&&files.backend.includes('scope==="baseline"')&&files.backend.includes('"CONTACT_INFO","PARTNER_CARDS"]);')&&
  initDrafts.includes('if(existing.has(content.slug))')&&initDrafts.includes('if(r.status===409)')&&
  initDrafts.includes('result.status!=="DRAFT"')&&!initDrafts.includes('/api/cms/pages/submit')&&
  !initDrafts.includes('/api/cms/pages/publish')]);
