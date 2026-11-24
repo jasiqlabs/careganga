@@ -51,3 +51,19 @@
 Record a row for each originally uploaded screenshot with **the image's actual filename/asset ID, screen ID, repository or accessible source URI, canonical module owner, expected original page, captured application screenshot (Web 390/768/1440 px and Android small/large device), visual differences, exact text/field/control differences, animation/accessibility, actions verified, responsible owner, corrected source/commit, reviewer disposition**. No screenshot filename/URI/checksum may be fabricated. Update UI/UX/DLD/QA trace after comparing **actual pixels**. Keep `HEALTHCARE_SCREEN_VISUAL_PARITY=PENDING_ORIGINAL_IMAGE_AND_RUNTIME_QA` until genuine source assets and running app are compared.
 
 **Current reviewed evidence:** Prior-conversation screen titles and 20-image reference batch are recoverable; original healthcare PNG/video file bytes are **not available** in the currently accessible GitHub tree, current conversation or personal CareGanga file folder (which has only the Admin ZIP). Original image-by-image layout/pixel matching is **NOT VERIFIED**. This reference map fixes source priority and module ownership now without pretending the historical images were rendered.
+
+## 24 November 2026 — durable original-reference recovery
+
+Private ChatGPT Library folder `/CareGanga/` is the first lookup location. All six original/derived archive bytes were materialized, ZIP contents inspected, and the following SHA-256 values computed locally:
+
+| Private Library archive | SHA-256 |
+|---|---|
+| CareGanga-Original-Admin-Screenshots-Verified-20261115.zip | 8d077f8e1101ef7de73f65965730eb9058bed1b188cf075cd6968289202925fe |
+| CareGanga-UIUX-Golden-Reference-Pack-20261115.zip | 727029fe1797180fec889b29f5ccd98ef52949e13044d09c7a5ba7dbabe0cb7d |
+| CareGanga-Original-Public-Website-Visual-Reference-20261117.zip | 4a54e1b87ed82476b8a2c63cdc80e2d82900b9cf40f1cb0aab4200e05e555a4a |
+| CareGanga-Original-Public-Website-Additional-Reference-20261118-Batch01.zip | 764e141b9395b464cdb5aa1031806ba8540758fc104fbebfcdac62e4c0c7a7ea |
+| CareGanga-Original-Public-Website-Additional-Reference-20261118-Batch02.zip | e72131b80e1bbeaab84377f17bf3ef7dae1ce4807b6cc2c66dc2137825d68f2e |
+| CareGanga-Original-Public-Website-Additional-Reference-20261118-Batch03.zip | 56c4582b49444ff8bdcacfc649a2fb6ab1bd50ab4354d8fa2eee130df84c1c89 |
+
+The Golden pack manifest indexes exactly 167 source previews (A/B/C/U); U01–U10 and B34 include original critical PNGs. Four public archives contain 47 original captures. Admin/public contact sheets were visually inspected: white compact KPI/table workspaces, navy/blue navigation, drawers and public green/gold/cream brand. These are shared design evidence, not UI-06–UI-24 healthcare-specific originals. Prior 15/18 Nov history recovered the distinct healthcare titles but no accessible original file/URI; do not relabel Admin images as healthcare originals. `HEALTHCARE_SCREEN_VISUAL_PARITY=PENDING_ORIGINAL_IMAGE_AND_RUNTIME_QA`. Keep originals private, never bundle client sample information or generate fake evidence.
+

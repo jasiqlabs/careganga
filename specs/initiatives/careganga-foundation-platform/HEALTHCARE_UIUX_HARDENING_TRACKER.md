@@ -96,6 +96,10 @@ This user-requested cross-module subtracker supplements (does not replace) origi
 
 - HUX-10.04/11.02: Web doctor cards/profile pass the chosen public center slug into schedule, resolved only against current verified options after date selection; native retains selected center hint, highlights it without automatic booking, adds direct time-first search, retry and stale-day/center response guards. CG15 US-002-QA01/02/04/05/06/07/09/12/13 and CG14 US-004-QA11/12/17 partial source trace. Verify center A/B distinct fees, withdrawn selected center, both search modes, date change and error retry, no slot/price assumptions. Runtime NOT_RUN; independent review pending.
 
+## Main synchronization and reference index
+
+Main `781276ab68a29ef866ecf927f41b88d68f6753f5` is one commit ahead of the mandatory parent `473728cc0d842ad64ba34f3bc14f5b555c835581` with zero changed files relative to parent. Synchronized main into this feature branch with no content replacement and no merge into main. Archive paths/hashes now recorded in [separate reference map](../../docs/research/CAREGANGA-HEALTHCARE-SEPARATE-UI-SCREENSHOT-REFERENCE-MAP.md). Separate healthcare UI original image and live rendered comparison remain unavailable; source work continues.
+
 ## Subtracker details and expected user scenarios
 
 ### HUX-01.01 — Recover separate healthcare reference originals
