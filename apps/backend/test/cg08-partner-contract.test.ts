@@ -191,8 +191,8 @@ test("US001-QA02/12/17: assigned manager denied foreign/Foundation scope before 
  await assert.rejects(()=>svc.list("Bearer assigned",{branchRef:"FOUNDATION"}),ForbiddenException);
  assert.equal(statements.filter(x=>x.includes("FROM csr_partner p")).length,0,"No foreign/foundation data query before permission");
  const rows=await svc.list("Bearer assigned",{branchRef:branch,status:"SUBMITTED"});
- assert.deepEqual(rows,{items:[],hasMore:false});
- assert.equal(statements.filter(x=>x.includes("FROM csr_partner p")).length,1);
+ assert.deepEqual(rows,{items:[],hasMore:false,counts:{all:0,pending:0,approved:0,rejected:0}});
+ assert.equal(statements.filter(x=>x.includes("FROM csr_partner p")).length,2);
 });
 
 test("US001-QA12/17: current scope is an explicit parameter in every CSR list query",async()=>{
@@ -263,7 +263,7 @@ test("US001-QA11/16/19/20: public collaboration rejects fake brands and stale ri
  const editorial=readFileSync(join(process.cwd(),"src/modules/cg-18-cms-public-content/application/cms-editorial.service.ts"),"utf8");
  const route=readFileSync(join(process.cwd(),"../web/src/app/collaboration/page.tsx"),"utf8");
  assert.ok(service.includes("r.state=\\'AUTHORIZED\\'"));
- assert.ok(service.includes('p.status=\\'APPROVED\\''));
+ assert.ok(service.includes("p.status=\\'APPROVED\\'"));
  assert.ok(service.includes("s.evidence_file_id=r.evidence_file_id"));
  assert.ok(service.includes("x.rightsVersion===selection.rightsVersion"));
  assert.ok(editorial.includes('this.partnerRevisionCurrent(tx,actor.realmId,page.kind,rev.id)'));

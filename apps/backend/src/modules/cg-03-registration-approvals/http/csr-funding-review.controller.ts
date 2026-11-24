@@ -1,7 +1,6 @@
 import {Body,Controller,Get,Header,Headers,Param,Post,Query,StreamableFile} from "@nestjs/common";
 import {CsrFundingReviewService} from "../application/csr-funding-review.service";
 @Controller("api/v1/csr-funding-reviews")
-@Header("Cache-Control","private, no-store")
 export class CsrFundingReviewController{
  constructor(private readonly review:CsrFundingReviewService){}
  @Get()
@@ -31,7 +30,6 @@ export class CsrFundingReviewController{
  }
 }
 @Controller("api/v1/csr/funding-proposals")
-@Header("Cache-Control","private, no-store")
 export class CsrFundingSubmissionController{
  constructor(private readonly review:CsrFundingReviewService){}
  @Post(":ref/submit")

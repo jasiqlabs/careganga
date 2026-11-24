@@ -37,7 +37,7 @@ export function NativeCsrPartners({token,canManage,canReadAgreement,canUploadAgr
  const [history,setHistory]=useState<ReviewHistory|null>(null),[historyError,setHistoryError]=useState("");
  const canEditCurrent=canManage&&(!selected||["DRAFT","RETURNED"].includes(selected.status));
  const closeDetail=()=>{detailSequence.current+=1;setSelected(null);setEditing(false);};
- const refresh=()=>{closeDetail();setEpoch(n=>n+1);};
+ const refresh=()=>{setSelected(null);setEditing(false);setEpoch(n=>n+1);};
  useEffect(()=>{
   let live=true;const n=++seq.current;setLoading(true);setListError("");
   const p=new URLSearchParams({offset:String(offset)});

@@ -10,7 +10,7 @@ import {PrivateObjectStorage} from "../infrastructure/private-object-storage";
 
 /** CG19 owns only private agreement proof; the actual CSR partner and status
  * remain CG08, the approval case remains original CG03. */
-const UUID=/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const UUID=/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const MIME=["application/pdf","image/jpeg","image/png","image/webp"];
 const changed=()=>new ConflictException({code:"CG08_AGREEMENT_CHANGED",message:"This agreement or CSR draft has changed. Refresh."});
 const unavailable=()=>new ServiceUnavailableException("Secure agreement storage or verification is unavailable.");

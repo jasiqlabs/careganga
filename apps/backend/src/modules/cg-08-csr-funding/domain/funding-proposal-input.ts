@@ -1,5 +1,5 @@
 import {BadRequestException} from "@nestjs/common";
-const UUID=/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i;
+const UUID=/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i;
 export type FundingKind="FOUNDATION"|"CSR_PARTNER"|"MIXED";
 export type FundingProposalInput=Readonly<{
  requestKey:string;expectedVersion:number|null;branchRef:string|null;
@@ -9,13 +9,13 @@ export type FundingProposalInput=Readonly<{
  proposedFrom:string|null;proposedUntil:string|null;agreementSummary:string;
  csrRequestedMinor:string;foundationRequestedMinor:string;
 }>;
-const invalid=(message:string):never=>{throw new BadRequestException(message);};
-const ref=(v:unknown,required=false):string|null=>{
+function invalid(message:string):never{throw new BadRequestException(message);}
+function ref(v:unknown,required=false):string|null{
  if(v===null||v===undefined||v===""){if(required)invalid("Choose a current CSR source.");return null;}
  if(typeof v!=="string"||!UUID.test(v))invalid("Choose a valid current project, partner or request.");
  return (v as string).toLowerCase();
-};
-function safeText(value:unknown,name:string,min:number,max:number){
+}
+function safeText(value:unknown,name:string,min:number,max:number):string{
  if(typeof value!=="string"||value.trim().length<min||value.length>max||
   /[<>\u0000-\u001f\u007f]/.test(value))invalid("Check "+name+".");
  return (value as string).trim();
@@ -26,12 +26,12 @@ function isoDate(value:unknown,name:string):string|null{
  const date=new Date(value+"T00:00:00Z");
  if(!Number.isFinite(date.getTime())||date.toISOString().slice(0,10)!==value)
   invalid("Choose a real "+name+".");
- return value;
+ return value as string;
 }
 function integer(v:unknown,min:number,max:number,name:string):number{
  if(typeof v!=="number"||!Number.isSafeInteger(v)||v<min||v>max)
   invalid("Check "+name+".");
- return v;
+ return v as number;
 }
 export function parseFundingProposal(raw:unknown):FundingProposalInput{
  if(!raw||typeof raw!=="object"||Array.isArray(raw))
@@ -60,9 +60,8 @@ export function parseFundingProposal(raw:unknown):FundingProposalInput{
     fundType==="CSR_PARTNER"&&(!partnerRef||csrShareBps!==10000)||
     fundType==="MIXED"&&(!partnerRef||csrShareBps<=0||csrShareBps>=10000))
   invalid("Funding type and approved CSR sponsor shares must agree.");
- const amountMinor=v.amountMinor;
- if(typeof amountMinor!=="string"||!/^[1-9][0-9]{0,14}$/.test(amountMinor)||
-  BigInt(amountMinor)>999999999999999n)
+ const amountMinor=typeof v.amountMinor==="string"?v.amountMinor:"";
+ if(!/^[1-9][0-9]{0,14}$/.test(amountMinor)||BigInt(amountMinor)>999999999999999n)
   invalid("Enter a positive INR proposal amount in paise.");
  const proposedFrom=isoDate(v.proposedFrom,"start date"),
   proposedUntil=isoDate(v.proposedUntil,"end date");

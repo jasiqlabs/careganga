@@ -1,7 +1,6 @@
 import {Body,Controller,Get,Header,Headers,Param,Post,Query,StreamableFile} from "@nestjs/common";
 import {CsrPartnerReviewService} from "../application/csr-partner-review.service";
 @Controller("api/v1/csr-partner-reviews")
-@Header("Cache-Control","private, no-store")
 export class CsrPartnerReviewController {
  constructor(private readonly review:CsrPartnerReviewService){}
  @Get() inbox(@Headers("authorization")token:string,@Query()q:Record<string,unknown>){return this.review.inbox(token,q);}
@@ -17,7 +16,6 @@ export class CsrPartnerReviewController {
  @Post(":ref/decide") decide(@Headers("authorization")token:string,@Param("ref")ref:string,@Body()data:unknown){return this.review.decide(token,ref,data);}
 }
 @Controller("api/v1/csr/partners")
-@Header("Cache-Control","private, no-store")
 export class CsrPartnerSubmissionController {
  constructor(private readonly review:CsrPartnerReviewService){}
  @Post(":ref/submit") submit(@Headers("authorization")token:string,@Param("ref")ref:string,@Body()data:unknown){return this.review.submit(token,ref,data);}

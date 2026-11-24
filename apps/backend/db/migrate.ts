@@ -1,7 +1,7 @@
 import { createHash } from "node:crypto";
 import dns from "node:dns";
 import { readdir, readFile } from "node:fs/promises";
-import { join } from "node:path";
+import { join, resolve } from "node:path";
 import { Pool } from "pg";
 import {composeCg19HistoricalMigration} from "./cg19-migration-compatibility";
 
@@ -25,8 +25,11 @@ const legacyDuplicate1438 = {
 } as const;
 
 async function migrate(): Promise<void> {
-  const url = process.env.DATABASE_MIGRATION_URL;
-  if (!url) throw new Error("DATABASE_MIGRATION_URL is required; use a direct database connection");
+  const rawUrl = process.env.DATABASE_MIGRATION_URL || process.env.DATABASE_URL;
+  if (!rawUrl) throw new Error("DATABASE_MIGRATION_URL is required; use a direct database connection");
+  // Neon connection pooler (-pooler.) uses PgBouncer in transaction mode where session-level
+  // advisory locks can persist across pooled connections. Automatically normalize to direct host.
+  const url = rawUrl.replace("-pooler.", ".");
   const pool = new Pool({
     connectionString: url,
     max: 1,
@@ -44,15 +47,40 @@ async function migrate(): Promise<void> {
     }
   }
   if (!client) throw new Error("Failed to connect to database after bounded retries");
+  let lockAcquired = false;
   try {
-    await client.query("SELECT pg_advisory_lock(16041115, 1)");
+    // Acquire pg_advisory_lock safely via pg_try_advisory_lock with bounded retry
+    for (let i = 0; i < 15; i++) {
+      const lockRes = await client.query<{ locked: boolean }>("SELECT pg_try_advisory_lock(16041115, 1) AS locked");
+      if (lockRes.rows[0]?.locked) {
+        lockAcquired = true;
+        break;
+      }
+      await new Promise(r => setTimeout(r, 1000));
+    }
+    if (!lockAcquired) {
+      throw new Error("Could not acquire pg_advisory_lock(16041115, 1) within 15 seconds. Ensure direct database connection is used and no concurrent migration is running.");
+    }
     try {
       await client.query(`CREATE TABLE IF NOT EXISTS schema_migration (
         filename text PRIMARY KEY,
         sha256 text NOT NULL,
         applied_at timestamptz NOT NULL DEFAULT now()
       )`);
-      const directory = join(process.cwd(), "db", "migrations");
+      const localMigrations = typeof __dirname !== "undefined" ? resolve(__dirname, "migrations") : "";
+      const candidateDirs = [
+        join(process.cwd(), "db", "migrations"),
+        join(process.cwd(), "apps", "backend", "db", "migrations"),
+        ...(localMigrations ? [localMigrations] : [])
+      ];
+      let directory = candidateDirs[0];
+      for (const d of candidateDirs) {
+        try {
+          await readdir(d);
+          directory = d;
+          break;
+        } catch {}
+      }
       const files = (await readdir(directory)).filter(x => /^\d+_cg\d+_[a-z0-9_-]+\.sql$/.test(x)).sort();
       // Never accept a checkout that silently omits an already applied migration.
       // A hash match alone only detects edited files, not deleted historical files.
@@ -115,7 +143,9 @@ async function migrate(): Promise<void> {
         }
       }
     } finally {
-      await client.query("SELECT pg_advisory_unlock(16041115, 1)");
+      if (lockAcquired) {
+        await client.query("SELECT pg_advisory_unlock(16041115, 1)").catch(() => {});
+      }
     }
   } finally {
     client.release();

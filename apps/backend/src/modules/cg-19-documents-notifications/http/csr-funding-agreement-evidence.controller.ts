@@ -1,7 +1,6 @@
 import {Body,Controller,Get,Header,Headers,Param,Post,StreamableFile} from "@nestjs/common";
 import {CsrFundingAgreementEvidenceService} from "../application/csr-funding-agreement-evidence.service";
 @Controller("api/v1/csr-funding-agreements")
-@Header("Cache-Control","private, no-store")
 export class CsrFundingAgreementEvidenceController{
  constructor(private readonly proof:CsrFundingAgreementEvidenceService){}
  @Post("intents")

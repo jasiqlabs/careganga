@@ -156,3 +156,4 @@ export function CsrFundingBudgetPanel({proposalRef,version,canManage}:{
   {!!notice&&<p role="status">{notice}</p>}
   {!!error&&<p role="alert" style={{color:"#B91C1C"}}>{error}</p>}
  </section>;
+}

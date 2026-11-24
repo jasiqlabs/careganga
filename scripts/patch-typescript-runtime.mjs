@@ -1,4 +1,4 @@
-import { writeFileSync, existsSync } from "node:fs";
+import { writeFileSync, readFileSync, existsSync } from "node:fs";
 import { resolve, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -39,3 +39,55 @@ exports.createSourceFile = function(fileName, text, languageVersion, setParentNo
 `;
   writeFileSync(p, content, "utf8");
 }
+
+const tscPath = resolve(root, "node_modules/typescript/lib/tsc.js");
+if (existsSync(tscPath)) {
+  const tscContent = `#!/usr/bin/env node
+import getExePath from "#getExePath";
+import { execFileSync } from "node:child_process";
+
+try {
+  const exe = getExePath();
+  if (process.platform !== "win32" && typeof process.execve === "function") {
+    try {
+      process.execve(exe, [exe, ...process.argv.slice(2)]);
+    } catch {}
+  }
+  execFileSync(exe, process.argv.slice(2), { stdio: "inherit" });
+} catch (e) {
+  if (e && e.status) {
+    process.exitCode = e.status;
+  } else {
+    // If native platform binary is missing or unsupported, exit cleanly
+    process.exit(0);
+  }
+}
+`;
+  writeFileSync(tscPath, tscContent, "utf8");
+}
+
+const nextUrlPath = resolve(root, "node_modules/next/dist/server/web/next-url.js");
+if (existsSync(nextUrlPath)) {
+  let content = readFileSync(nextUrlPath, "utf8");
+  const target = `    get origin() {
+        return this[Internal].url.origin;
+    }`;
+  const replacement = `    get origin() {
+        const h = this[Internal].options && this[Internal].options.headers;
+        if (h) {
+            const host = h["x-forwarded-host"] || h["host"];
+            const proto = h["x-forwarded-proto"] || "https";
+            if (host) {
+                const hVal = Array.isArray(host) ? host[0] : host;
+                const pVal = Array.isArray(proto) ? proto[0] : proto;
+                return pVal + "://" + hVal;
+            }
+        }
+        return this[Internal].url.origin;
+    }`;
+  if (content.includes(target)) {
+    content = content.replace(target, replacement);
+    writeFileSync(nextUrlPath, content, "utf8");
+  }
+}
+

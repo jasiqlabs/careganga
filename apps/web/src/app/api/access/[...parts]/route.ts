@@ -1,5 +1,6 @@
 import { cookies } from "next/headers";
 import { NextRequest, NextResponse } from "next/server";
+import { isAllowedOrigin } from "../../../../shared/request-origin";
 export const dynamic="force-dynamic";
 const UUID=/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -25,7 +26,7 @@ function allowed(parts:string[],method:string):boolean{
 }
 async function proxy(request:NextRequest,parts:string[],method:string){
   if(!allowed(parts,method))return NextResponse.json({message:"This action is not available."},{status:404});
-  const sameOrigin=request.headers.get("origin")===request.nextUrl.origin;
+  const sameOrigin=isAllowedOrigin(request);
   if(method!=="GET"&&!sameOrigin)
     return NextResponse.json({message:"Please retry this action from CareGanga."},{status:403});
   const token=(await cookies()).get("cg_staff_session")?.value;

@@ -358,7 +358,7 @@ export class CmsEditorialService{
   * Current public reads additionally recheck so withdrawal is instantaneous.
   */
  private async partnerRevisionCurrent(tx:PoolClient,root:string,kind:string,revisionRef:string){
-  if(kind!=="PARTNERS")return;
+  if(kind!=="PARTNERS")return; // Enforce only when kind==="PARTNERS"
   const q=await tx.query<{structured_fields:Record<string,unknown>}>(
    "SELECT structured_fields FROM cms_section_revision WHERE foundation_root_id=$1 "+
    "AND page_revision_id=$2 AND section_kind='PARTNER_CARDS'",
