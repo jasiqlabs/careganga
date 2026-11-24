@@ -161,6 +161,11 @@ Dependencies: US-002 (actual verified active CG-14 center/account, delivered bas
 
 ## Execution progress
 
+### 24 Nov 2026 — HUX doctor directory and detail improvement
+
+Commits cc183162, 647441a1, 39145780, 7a59b73a, 098ac8c6. Existing staff doctor list permission and realm filter unchanged; parameterized bounded search/status, Web/Internal Android filtered pagination, details/form hierarchy and stale detail/proof guards. US-003-QA12/14/15/16/18 partially traced; other original scenarios unchanged; actual SQL query performance, build, device, and independent review NOT_RUN. No SOURCE_COMPLETE promotion. HUX-04.02/04.03/12.01 remain in progress pending acceptance.
+
+
 ### 24 Nov 2026 — HUX public directory partial source fix
 
 Source commits e0a6ad7, c425a9f, 5004e0a, fa4a961, 57a8986 on dedicated hardening branch. Public Web and Public Android current approved credentials, fee, provider/location and safe directions; native stale result clearing, applied query pagination/retry, reschedule mode guard and result validation. US-004-QA01/03/04/05/06/09/10/11/12/16/17/18 partially source-traced by direct readback; no change to prior canonical disposition. PUBLIC_WEB_SOURCE / PUBLIC_ANDROID_SOURCE in progress; staff channels not affected. Missing approved media/service list projection and exact visual QA pending. Build/runtime/device NOT_RUN; independent review unavailable. Next: finish affected directory QA, no invented public data.
