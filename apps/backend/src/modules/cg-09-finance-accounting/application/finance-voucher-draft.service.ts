@@ -396,6 +396,16 @@ export class FinanceVoucherDraftService{
     reference?"VOUCHER_DRAFT_REVISED":"VOUCHER_DRAFT_CREATED",key]);
   return {voucherRef,voucherNumber,version,confirmed:true as const,replayed:false};
  }
+ async aidPaymentOptions(client:PoolClient,actor:VerifiedFoundationActor,branch:string|null){
+  await this.identity.assertCurrent(client,actor,"finance.vouchers.manage");
+  await this.identity.assertCurrent(client,actor,"finance.vouchers.view");
+  if(branch)await this.branches.requireFinanceActorBranch(client,actor,branch,"finance.vouchers.manage");
+  else await this.branches.requireFinanceRootScope(client,actor,"finance.vouchers.manage");
+  const years=(await client.query<{value:string;label:string}>("SELECT id AS value,name AS label FROM financial_year WHERE root_realm_id=$1 AND status='OPEN' ORDER BY start_on DESC LIMIT 20",[actor.realmId])).rows;
+  const accounts=(await client.query<{value:string;label:string}>("SELECT a.id AS value,a.code||' · '||a.name AS label FROM finance_account a JOIN account_group g ON g.id=a.group_id AND g.root_realm_id=a.root_realm_id WHERE a.root_realm_id=$1 AND a.status='ACTIVE' AND g.category='EXPENSE' AND (a.branch_id IS NULL OR a.branch_id=$2::uuid) ORDER BY a.name,a.id LIMIT 100",[actor.realmId,branch])).rows;
+  const paymentAccounts=(await client.query<{value:string;label:string}>("SELECT a.id AS value,b.display_label AS label FROM finance_account a JOIN cash_bank_account b ON b.root_realm_id=a.root_realm_id AND b.account_id=a.id WHERE a.root_realm_id=$1 AND a.status='ACTIVE' AND b.status='ACTIVE' AND a.account_kind IN('CASH','BANK') AND (a.branch_id IS NULL OR a.branch_id=$2::uuid) ORDER BY b.display_label,a.id LIMIT 100",[actor.realmId,branch])).rows;
+  return {years,accounts,paymentAccounts};
+ }
  /** Create a real aid PAYMENT voucher through the same validated draft owner.
   * The approved assistance source controls amount, branch and purpose; no alternate ledger. */
  async prepareAidPayment(client:PoolClient,actor:VerifiedFoundationActor,v:{
