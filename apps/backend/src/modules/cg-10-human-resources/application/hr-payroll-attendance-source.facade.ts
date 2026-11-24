@@ -3,6 +3,7 @@ import {createHash} from "node:crypto";
 import type {PoolClient} from "pg";
 import {FoundationStructureIdentityFacade} from "../../cg-01-identity-access/application/foundation-structure-identity.facade";
 import type {VerifiedFoundationActor} from "../../cg-01-identity-access/public-api";
+import {BranchSourceFacade} from "../../cg-02-foundation-structure/application/branch-source.facade";
 import {leaveDate,leaveId} from "./hr-leave-source.facade";
 
 type AttendanceSnapshotRow={
@@ -21,7 +22,42 @@ type AttendanceSnapshotRow={
  */
 @Injectable()
 export class HrPayrollAttendanceSourceFacade{
- constructor(private readonly identity:FoundationStructureIdentityFacade){}
+ constructor(private readonly identity:FoundationStructureIdentityFacade,private readonly branches:BranchSourceFacade){}
+ /** Actual period assignments, including historical transfers and exit; no private HR fields. */
+ async payrollCandidates(tx:PoolClient,actor:VerifiedFoundationActor,branch:string|null,from:string,until:string){
+  await this.identity.assertCurrent(tx,actor,"payroll.runs.view");
+  await this.identity.assertCurrent(tx,actor,"hr.attendance.view");
+  await this.branches.projectBranch(tx,actor,branch);
+  const scope=await this.branches.projectBranchScope(tx,actor);
+  // One employee belongs to the last effective assignment in the period. A branch
+  // run cannot consume earlier-branch private records; Foundation scope handles transfers.
+  const rows=(await tx.query<{id:string;reference:string;name:string;status:string;statusVersion:number;branchRef:string;assignmentRef:string}>(
+    `SELECT e.id,e.employee_code AS reference,app.legal_name AS name,e.status,e.status_version AS "statusVersion",last.branch_ref AS "branchRef",last.id AS "assignmentRef"
+    FROM hr_employee e JOIN hr_employee_application app ON app.root_realm_id=e.root_realm_id AND app.id=e.application_id
+    JOIN LATERAL (SELECT a.id,a.branch_ref FROM hr_employment_assignment a WHERE a.root_realm_id=e.root_realm_id AND a.employee_id=e.id AND a.valid_from<$3::date AND (a.valid_to IS NULL OR a.valid_to>$2::date) ORDER BY a.valid_from DESC,a.id DESC LIMIT 1) last ON true
+    WHERE e.root_realm_id=$1 AND ($4::uuid IS NULL OR last.branch_ref=$4) AND last.branch_ref=ANY($5::uuid[]) ORDER BY e.id LIMIT 501 FOR SHARE OF e`,[actor.realmId,from,until,branch,scope.branches.map(b=>b.value)])).rows;
+  if(rows.length>500)throw new BadRequestException("Payroll scope exceeds 500 employees; use branch runs");
+  return rows;
+ }
+ async payrollPeriod(tx:PoolClient,actor:VerifiedFoundationActor,employee:string,from:string,until:string,runBranch:string|null){
+  await this.identity.assertCurrent(tx,actor,"payroll.runs.view");
+  await this.identity.assertCurrent(tx,actor,"hr.attendance.view");
+  await this.branches.projectBranch(tx,actor,runBranch);
+  const scope=await this.branches.projectBranchScope(tx,actor);
+  const assignments=(await tx.query<{id:string;branchRef:string;version:number;from:string;until:string|null}>(
+   `SELECT id,branch_ref AS "branchRef",assignment_version AS version,valid_from::text AS "from",valid_to::text AS until FROM hr_employment_assignment WHERE root_realm_id=$1 AND employee_id=$2 AND valid_from<$4::date AND (valid_to IS NULL OR valid_to>$3::date) ORDER BY valid_from,id FOR SHARE`,[actor.realmId,employee,from,until])).rows;
+  if(!assignments.length||assignments.some(a=>!scope.branches.some(b=>b.value===a.branchRef)||(runBranch!==null&&a.branchRef!==runBranch)))return {reason:"CROSS_BRANCH_REQUIRES_FOUNDATION_SCOPE",assignments:[],days:[]};
+  const days=(await tx.query<{date:string;status:string;ref:string;revision:number;assignmentRef:string;branchRef:string;policyRef:string;shiftRef:string;workedMinutes:number|null;checkIn:string|null;checkOut:string|null;leaveUnits:number;leaveRef:string|null;leavePolicyRef:string|null;leaveDecisionRef:string|null;correctionRef:string|null;correctionDecisionRef:string|null;pendingCorrection:boolean}>(
+    `SELECT d.local_date::text AS date,d.status,d.id AS ref,d.version AS revision,d.assignment_id AS "assignmentRef",a.branch_ref AS "branchRef",d.policy_id AS "policyRef",d.shift_id AS "shiftRef",d.worked_minutes AS "workedMinutes",d.checked_in_at::text AS "checkIn",d.checked_out_at::text AS "checkOut",COALESCE(d.leave_half_days,0) AS "leaveUnits",d.leave_request_id AS "leaveRef",l.policy_id AS "leavePolicyRef",l.decision_ref AS "leaveDecisionRef",c.id AS "correctionRef",c.decision_ref AS "correctionDecisionRef",EXISTS(SELECT 1 FROM hr_attendance_change pending WHERE pending.root_realm_id=d.root_realm_id AND pending.attendance_day_id=d.id AND pending.status='SUBMITTED') AS "pendingCorrection"
+     FROM hr_attendance_day d JOIN hr_employment_assignment a ON a.root_realm_id=d.root_realm_id AND a.id=d.assignment_id AND a.employee_id=d.employee_id
+     JOIN hr_shift_policy p ON p.root_realm_id=d.root_realm_id AND p.id=d.policy_id AND p.branch_ref=a.branch_ref
+     LEFT JOIN hr_leave_request l ON l.root_realm_id=d.root_realm_id AND l.id=d.leave_request_id AND l.employee_id=d.employee_id AND l.status='APPROVED'
+     LEFT JOIN LATERAL(SELECT c.id,c.decision_ref FROM hr_attendance_change c WHERE c.root_realm_id=d.root_realm_id AND c.attendance_day_id=d.id AND c.status='APPROVED' AND c.expected_version<d.version ORDER BY c.expected_version DESC LIMIT 1)c ON true
+     WHERE d.root_realm_id=$1 AND d.employee_id=$2 AND d.local_date>=$3::date AND d.local_date<$4::date ORDER BY d.local_date,d.id FOR SHARE OF d,a,p`,[actor.realmId,employee,from,until])).rows;
+  if(days.some(d=>!assignments.some(a=>a.id===d.assignmentRef&&a.branchRef===d.branchRef&&a.from<=d.date&&(!a.until||a.until>d.date))))return {reason:"ATTENDANCE_ASSIGNMENT_CHANGED",assignments:[],days:[]};
+  const pendingLeave=(await tx.query("SELECT 1 FROM hr_leave_request WHERE root_realm_id=$1 AND employee_id=$2 AND status='SUBMITTED' AND start_date<$4::date AND end_date>=$3::date LIMIT 1",[actor.realmId,employee,from,until])).rowCount;
+  return {reason:pendingLeave?"PENDING_LEAVE_REVIEW":null,assignments,days};
+ }
  async readEmployeePeriod(tx:PoolClient,actor:VerifiedFoundationActor,input:{
   branchRef:string;employeeReference:string;from:string;through:string;
  }){
