@@ -1,10 +1,11 @@
-import {BadRequestException,Body,Controller,ForbiddenException,Get,Headers,Param,Patch,Post,Query,Req,ServiceUnavailableException} from "@nestjs/common";
+import {BadRequestException,Body,Controller,ForbiddenException,Get,Headers,Param,Patch,Post,Query,Req,ServiceUnavailableException,Header} from "@nestjs/common";
 import {createHmac,timingSafeEqual} from "node:crypto";
+import {NewsletterConsentService} from "../application/newsletter-consent.service";
 import {SupportService} from "../application/support.service";
 
 type GuestRequest={socket?:{remoteAddress?:string};ip?:string};
 function peer(req:GuestRequest,client:unknown,ts:unknown,signature:unknown,
-  route:"contact"|"status"){
+  route:"contact"|"status"|"newsletter-start"|"newsletter-confirm"|"newsletter-withdraw"){
   const secret=Buffer.from(process.env.CG19_GUEST_PROXY_KEY??"","base64");
   // Direct/local development uses socket IP. In production the explicit
   // trusted reverse-proxy proof prevents all visitors sharing one web IP bucket.
@@ -27,7 +28,7 @@ function peer(req:GuestRequest,client:unknown,ts:unknown,signature:unknown,
 
 @Controller("api/support")
 export class SupportController{
-  constructor(private readonly support:SupportService){}
+  constructor(private readonly support:SupportService,private readonly newsletter:NewsletterConsentService){}
   @Get("centers/:centerRef/cases")
   centerCases(@Headers("authorization")token:string,@Param("centerRef")center:string){
     return this.support.centerCases(token,center);
@@ -60,6 +61,21 @@ export class SupportController{
     @Headers("x-cg19-proxy-ts")ts?:string,
     @Headers("x-cg19-proxy-proof")proof?:string){
     return this.support.receipt(peer(req,ip,ts,proof,"status"),body);
+  }
+  @Post("public/newsletter/start") @Header("Cache-Control","no-store")
+  newsletterStart(@Req()req:GuestRequest,@Body()body:unknown,
+    @Headers("x-cg19-proxy-client")ip?:string,@Headers("x-cg19-proxy-ts")ts?:string,@Headers("x-cg19-proxy-proof")proof?:string){
+    return this.newsletter.start(peer(req,ip,ts,proof,"newsletter-start"),body);
+  }
+  @Post("public/newsletter/confirm") @Header("Cache-Control","no-store")
+  newsletterConfirm(@Req()req:GuestRequest,@Body()body:unknown,
+    @Headers("x-cg19-proxy-client")ip?:string,@Headers("x-cg19-proxy-ts")ts?:string,@Headers("x-cg19-proxy-proof")proof?:string){
+    return this.newsletter.confirm(peer(req,ip,ts,proof,"newsletter-confirm"),body);
+  }
+  @Post("public/newsletter/withdraw") @Header("Cache-Control","no-store")
+  newsletterWithdraw(@Req()req:GuestRequest,@Body()body:unknown,
+    @Headers("x-cg19-proxy-client")ip?:string,@Headers("x-cg19-proxy-ts")ts?:string,@Headers("x-cg19-proxy-proof")proof?:string){
+    return this.newsletter.withdraw(peer(req,ip,ts,proof,"newsletter-withdraw"),body);
   }
   @Get("public/faqs")
   publicFaqs(){return this.support.publicFaqs();}
