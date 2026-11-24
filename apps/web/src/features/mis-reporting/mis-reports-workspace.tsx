@@ -8,7 +8,7 @@ import {MisFinanceTrend,MisAppointmentDistribution,MisAppointmentGroupBars} from
 import {MisGroupedFinanceChart} from "./mis-grouped-finance-chart";
 type Kind="FINANCE_POSTED_LEDGER"|"FINANCE_POSTED_SUMMARY"|
  "FINANCE_POSTED_TREND"|"FINANCE_POSTED_GROUPED"|
- "APPOINTMENT_STATUS"|"APPOINTMENT_STATUS_GROUPED"|"APPOINTMENT_DOCTOR_SUMMARY"|"PLATFORM_AUDIT_ACTIVITY"|"DIAGNOSTICS_CATALOG_SUMMARY"|"BENEFICIARY_ASSISTANCE_SUMMARY";
+ "APPOINTMENT_STATUS"|"APPOINTMENT_STATUS_GROUPED"|"APPOINTMENT_DOCTOR_SUMMARY"|"PLATFORM_AUDIT_ACTIVITY"|"DIAGNOSTICS_CATALOG_SUMMARY"|"BENEFICIARY_ASSISTANCE_SUMMARY"|"MEMBERSHIP_ROSTER_SUMMARY"|"VOLUNTEER_ROSTER_SUMMARY"|"PAYROLL_STATUS_SUMMARY";
 type View="TABLE"|"SUMMARY"|"CHART"|"PIVOT";
 type Option={ref:string;name:string};
 type AreaOption=Option&{level:string};
@@ -322,11 +322,11 @@ export function MisReportsWorkspace(){
     The result contains too few people to display safely.</p>}
   </div>}
   {catalog?.capabilities?.export===true&&
-   <MisReportExports allowed request={kind==="BENEFICIARY_ASSISTANCE_SUMMARY"?null:input(0)}/>}
+   <MisReportExports allowed request={(["BENEFICIARY_ASSISTANCE_SUMMARY","MEMBERSHIP_ROSTER_SUMMARY","VOLUNTEER_ROSTER_SUMMARY","PAYROLL_STATUS_SUMMARY"] as readonly string[]).includes(kind??"")?null:input(0)}/>}
   {catalog?.capabilities?.schedule===true&&<MisReportSchedules/>}
   {catalog&&<MisSavedReports canManage={catalog.capabilities?.manage===true}
     canShare={catalog.capabilities?.share===true}
-   currentRequest={kind==="BENEFICIARY_ASSISTANCE_SUMMARY"?null:input(0)}
+   currentRequest={(["BENEFICIARY_ASSISTANCE_SUMMARY","MEMBERSHIP_ROSTER_SUMMARY","VOLUNTEER_ROSTER_SUMMARY","PAYROLL_STATUS_SUMMARY"] as readonly string[]).includes(kind??"")?null:input(0)}
    onRestore={q=>{
     setKind(q.kind);setView(q.view);setYear(q.yearRef??"");setBranch(q.branchRef??"");
     setArea(q.areaRef??"");
