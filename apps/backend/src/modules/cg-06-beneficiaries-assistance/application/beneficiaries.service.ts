@@ -395,14 +395,32 @@ export class BeneficiariesService{
  async list(token:string,query:Record<string,unknown>){
   const q=parseListQuery(query);
   return this.run(token,"beneficiaries.view",async(tx,a)=>{
+   const {where,params}=await this.reportScope(tx,a,q);
+   const counts=(await tx.query<{total:number;male:number;female:number;children:number;active:number;verified:number}>(
+    "SELECT count(*)::int AS total, "+
+    "count(*) FILTER (WHERE b.consent_revoked_at IS NULL AND b.gender='MALE')::int AS male, "+
+    "count(*) FILTER (WHERE b.consent_revoked_at IS NULL AND b.gender='FEMALE')::int AS female, "+
+    "count(*) FILTER (WHERE b.consent_revoked_at IS NULL AND b.age_group='CHILD')::int AS children, "+
+    "count(*) FILTER (WHERE b.consent_revoked_at IS NULL AND b.lifecycle_state='ACTIVE')::int AS active, "+
+    "count(*) FILTER (WHERE b.consent_revoked_at IS NULL AND b.verification_state='VERIFIED')::int AS verified"+where,params)).rows[0];
+   const rows=(await tx.query<Row>("SELECT "+columns+where+
+    "AND ($18::timestamptz IS NULL OR (b.created_at,b.id)<($18::timestamptz,$19::uuid)) "+
+    "ORDER BY b.created_at DESC,b.id DESC LIMIT 31",[...params,q.before?.date??null,q.before?.id??null])).rows;
+   const items=rows.slice(0,30);
+   return {summary:counts,items:items.map(r=>({...this.view(r),contactMobile:null,representativeName:null,representativeContact:null,consentPurpose:null})),hasMore:rows.length>30,
+    nextCursor:rows.length>30&&items.length?nextCursor(items[items.length-1].created_at,items[items.length-1].id):null};
+  },true);
+ }
+ async reportScope(tx:PoolClient,a:Actor,q:ReturnType<typeof parseListQuery>){
+  await this.identity.assertCurrent(tx,a,"beneficiaries.view");
    if(q.project)await this.projects.requireCurrentProjectForFilter(tx,a,q.project);
    if(q.state||q.district||q.block)await this.branches.beneficiaryBlock(tx,a,q.state,q.district,q.block);
    const scope=await this.scope(tx,a);
-   if(q.branch&&!scope.all&&!scope.branches.some(x=>x.value===q.branch))
+   if(q.branch&&!scope.branches.some(x=>x.value===q.branch))
     throw new ForbiddenException("Branch unavailable");
    const allowed=scope.branches.map(x=>x.value);
    const where=" FROM beneficiary b WHERE b.root_realm_id=$1 "+
-    "AND ($2::boolean OR b.branch_scope_id=ANY($3::uuid[])) "+
+    "AND (($2::boolean AND b.branch_scope_id IS NULL) OR b.branch_scope_id=ANY($3::uuid[])) "+
     "AND ($4::uuid IS NULL OR b.branch_scope_id=$4) "+
     "AND ($5::uuid IS NULL OR (b.consent_revoked_at IS NULL AND b.state_ref=$5)) AND ($6::uuid IS NULL OR (b.consent_revoked_at IS NULL AND b.district_ref=$6)) "+
     "AND ($7='' OR ($7='PENDING' AND b.verification_state IN ('DRAFT','SUBMITTED','UNDER_REVIEW','RETURNED')) OR b.verification_state=$7) "+
@@ -419,19 +437,6 @@ export class BeneficiariesService{
     "AND ($17='' OR (b.consent_revoked_at IS NULL AND lower(b.beneficiary_category)=lower($17))) ";
    const params=[a.realmId,scope.all,allowed,q.branch,q.state,q.district,q.status,q.lifecycle,q.type,q.q,
     q.project,q.gender,q.ageGroup,q.from,q.to,q.block,q.category];
-   const counts=(await tx.query<{total:number;male:number;female:number;children:number;active:number;verified:number}>(
-    "SELECT count(*)::int AS total, "+
-    "count(*) FILTER (WHERE b.consent_revoked_at IS NULL AND b.gender='MALE')::int AS male, "+
-    "count(*) FILTER (WHERE b.consent_revoked_at IS NULL AND b.gender='FEMALE')::int AS female, "+
-    "count(*) FILTER (WHERE b.consent_revoked_at IS NULL AND b.age_group='CHILD')::int AS children, "+
-    "count(*) FILTER (WHERE b.consent_revoked_at IS NULL AND b.lifecycle_state='ACTIVE')::int AS active, "+
-    "count(*) FILTER (WHERE b.consent_revoked_at IS NULL AND b.verification_state='VERIFIED')::int AS verified"+where,params)).rows[0];
-   const rows=(await tx.query<Row>("SELECT "+columns+where+
-    "AND ($18::timestamptz IS NULL OR (b.created_at,b.id)<($18::timestamptz,$19::uuid)) "+
-    "ORDER BY b.created_at DESC,b.id DESC LIMIT 31",[...params,q.before?.date??null,q.before?.id??null])).rows;
-   const items=rows.slice(0,30);
-   return {summary:counts,items:items.map(r=>({...this.view(r),contactMobile:null,representativeName:null,representativeContact:null,consentPurpose:null})),hasMore:rows.length>30,
-    nextCursor:rows.length>30&&items.length?nextCursor(items[items.length-1].created_at,items[items.length-1].id):null};
-  },true);
+   return {where,params};
  }
 }
