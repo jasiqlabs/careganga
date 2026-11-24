@@ -72,7 +72,7 @@ export function BeneficiariesWorkspace({canManage,canLinkProjects,canManageLifec
  const [reviewRemarks,setReviewRemarks]=useState(""),[reviewPassword,setReviewPassword]=useState("");
  const [verificationBusy,setVerificationBusy]=useState(false);
  const submitKey=useRef(crypto.randomUUID()),decisionKey=useRef(crypto.randomUUID());
- const seq=useRef(0),drawer=useRef<HTMLElement|null>(null),focus=useRef<HTMLElement|null>(null);
+ const detailSeq=useRef(0),detailTarget=useRef(""),seq=useRef(0),drawer=useRef<HTMLElement|null>(null),focus=useRef<HTMLElement|null>(null);
  const update=(k:keyof Form,v:string|boolean)=>{setForm(x=>({...x,[k]:v}));setDuplicates(null);};
  useEffect(()=>{let live=true;void api<Options>("/options").then(v=>{if(live)setOpts(v);}).catch(e=>{if(live)setError(e.message);});return()=>{live=false;};},[]);
  useEffect(()=>{const id=++seq.current;setBusyList(true);setError("");
@@ -113,7 +113,9 @@ export function BeneficiariesWorkspace({canManage,canLinkProjects,canManageLifec
   setForm(kind==="edit"&&selected?fromItem(selected):{...empty(),branchRef:opts&&!opts.canManageFoundation?opts.branches[0]?.value??"":""});
  };
  const choose=async(id:string)=>{
-  setDetailLoading(true);setSelected(null);setNotice("");
+  const n=++detailSeq.current;
+  if(detailTarget.current!==id){detailTarget.current=id;submitKey.current=crypto.randomUUID();decisionKey.current=crypto.randomUUID();}
+  setDetailLoading(true);setSelected(null);setReview(null);setNotice("");
   try{
     const [detail,actions,verification,reviewState]=await Promise.all([
      api<Item>("/"+id),
@@ -121,12 +123,13 @@ export function BeneficiariesWorkspace({canManage,canLinkProjects,canManageLifec
      api<{items:VerificationHistory[]}>("/"+id+"/verification-history"),
       api<ReviewInfo>("/"+id+"/verification-review")
     ]);
+    if(n!==detailSeq.current)return;
     setSelected(detail);setActionHistory(actions.items);setVerificationHistory(verification.items);
      setReview(reviewState);setReviewPassword("");setReviewRemarks("");
     setProjectRef("");setLinkKey(crypto.randomUUID());
    }
-  catch(e){setError(e instanceof Error?e.message:"Beneficiary unavailable");}
-  finally{setDetailLoading(false);}
+  catch(e){if(n===detailSeq.current)setError(e instanceof Error?e.message:"Beneficiary unavailable");}
+  finally{if(n===detailSeq.current)setDetailLoading(false);}
  };
  const submitVerification=async()=>{
   if(!selected||verificationBusy||!canSubmitVerification)return;
@@ -239,7 +242,7 @@ export function BeneficiariesWorkspace({canManage,canLinkProjects,canManageLifec
    <label style={{...field,flex:"2 1 220px"}}>Advanced search (name or reference)
     <input style={input} value={q} onChange={e=>setQ(e.target.value)} maxLength={80} placeholder="Search permitted records"/></label>
    <label style={{...field,minWidth:180}}>Branch
-    <select style={input} value={branch} onChange={e=>{setBranch(e.target.value);setProjectFilter("");setFilterProjects([]);setAppliedFilters(f=>({...f,projectRef:""}));setCursor("");setSeen([]);}}>
+    <select style={input} value={branch} onChange={e=>{detailSeq.current++;setDetailLoading(false);setSelected(null);setReview(null);setBranch(e.target.value);setProjectFilter("");setFilterProjects([]);setAppliedFilters(f=>({...f,projectRef:""}));setCursor("");setSeen([]);}}>
      <option value="">Current authorized scope</option>{opts?.branches.map(x=><option key={x.value} value={x.value}>{x.label}</option>)}</select></label>
    <label style={field}>Beneficiary type<input style={input} maxLength={60} value={typeFilter} onChange={e=>setTypeFilter(e.target.value)}/></label>
     <label style={field}>Gender<select style={input} value={genderFilter} onChange={e=>setGenderFilter(e.target.value)}><option value="">All</option>{["MALE","FEMALE","OTHER","NOT_SPECIFIED"].map(x=><option key={x} value={x}>{nice(x)}</option>)}</select></label>
@@ -276,7 +279,7 @@ export function BeneficiariesWorkspace({canManage,canLinkProjects,canManageLifec
     <h2 style={{fontSize:17,marginTop:0}}>Beneficiary details &amp; verification</h2>
     {detailLoading?<p>Checking current scope…</p>:!selected?<p>Select a beneficiary to view their protected details and linked projects.</p>:
      <div style={{display:"grid",gap:9}}>
-      <strong>{selected.name}</strong><small>{selected.reference} · Revision {selected.revision}</small>
+      <strong>{selected.name}</strong><small>{selected.reference}</small>
       <div>Verification: <strong>{nice(selected.verification)}</strong></div>
       <div>Lifecycle: <strong>{nice(selected.lifecycle)}</strong></div>
       <div>Contact: {selected.contactMobile??"Not recorded / restricted"}</div>
