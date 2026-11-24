@@ -37,7 +37,7 @@ export class PayrollPayslipService{
    d=existing??(await tx.query<Document>("INSERT INTO cg19_payroll_payslip(root_realm_id,line_ref,source_digest,issued_by,object_key) VALUES($1,$2,$3,$4,$5) RETURNING *",[actor.realmId,data.lineRef,data.sourceDigest,actor.accountId,"careganga/private/cg19/"+actor.realmId+"/payslips/"+randomUUID()])).rows[0];
    await tx.query("COMMIT");
   }catch(e){await tx.query("ROLLBACK");throw e;}finally{tx.release();}
-  if(d.status==="ISSUED")return {documentRef:d.id,status:"ISSUED",confirmed:true};
+  if(d.status==="ISSUED"){const live=await this.source.source(token,line);if(live.data.sourceDigest!==data.sourceDigest)throw new ConflictException("Payroll source changed; regenerate current payslip");return {documentRef:d.id,status:"ISSUED",confirmed:true};}
   try{
    let bytes:Buffer,version:string,digest:string;
    try{
@@ -51,7 +51,8 @@ export class PayrollPayslipService{
     if(written.sha256!==digest||!written.objectVersion)throw new Error("Private write not confirmed");version=written.objectVersion;
    }
    const current=await this.source.source(token,line);if(current.data.sourceDigest!==data.sourceDigest)throw new ConflictException("Payroll source changed; regenerate current payslip");
-   await this.db.query("UPDATE cg19_payroll_payslip SET status='ISSUED',object_version=$3,content_sha256=$4,content_length=$5,issued_at=now(),updated_at=now() WHERE root_realm_id=$1 AND id=$2 AND status IN('PENDING','UNKNOWN')",[actor.realmId,d.id,version,digest,bytes.length]);
+   const done=await this.db.query("UPDATE cg19_payroll_payslip SET status='ISSUED',object_version=$3,content_sha256=$4,content_length=$5,issued_at=now(),updated_at=now() WHERE root_realm_id=$1 AND id=$2 AND status IN('PENDING','UNKNOWN') RETURNING id",[actor.realmId,d.id,version,digest,bytes.length]);
+   if(!done.rowCount){const latest=await this.db.query("SELECT id FROM cg19_payroll_payslip WHERE root_realm_id=$1 AND id=$2 AND status='ISSUED' AND content_sha256=$3 AND object_version=$4",[actor.realmId,d.id,digest,version]);if(!latest.rowCount)throw new ConflictException("Original issuance outcome unconfirmed");}
    return {documentRef:d.id,status:"ISSUED",confirmed:true};
   }catch{
    await this.db.query("UPDATE cg19_payroll_payslip SET status='UNKNOWN',updated_at=now() WHERE root_realm_id=$1 AND id=$2 AND status='PENDING'",[actor.realmId,d.id]).catch(()=>undefined);
