@@ -158,13 +158,13 @@ export function parseExtendedSection(kind:string,raw:unknown):Record<string,unkn
   const group=str(x.group,"group",32,3);
   if(!impactGroups.includes(group as typeof impactGroups[number]))
    return error("group");
-  if(!Array.isArray(x.items)||x.items.length>16||
-    (!x.items.length&&!["HERO","CTA"].includes(group)))return error("items");
+  if(!Array.isArray(x.items)||x.items.length>16)return error("items");
   const items=x.items.map((v,i)=>groupItem(v,i,group));
   const out:Record<string,unknown>={
    group,heading:str(x.heading,"heading",180,3),
    intro:str(x.intro??"","intro",1000),
-   source:str(x.source,"source",180,3),
+   // Empty collections are a legitimate published state; actual items still require provenance.
+   source:str(x.source??"","source",180,items.length?3:0),
    asOfDate:date(x.asOfDate,"asOfDate"),items
   };
   if(String(out.asOfDate)>new Date().toISOString().slice(0,10))return error("asOfDate");
@@ -209,7 +209,7 @@ export function parseExtendedSection(kind:string,raw:unknown):Record<string,unkn
    approvalNumber:str(x.approvalNumber??"","approvalNumber",100),
    validFrom:start,validUntil:end,
    verifiedAsOf:date(x.verifiedAsOf,"verifiedAsOf"),
-   source:str(x.source,"source",180,3),verification,
+   source:str(x.source??"","source",180,verification==="VERIFIED"?3:0),verification,
    disclaimer:str(x.disclaimer??"Check current official records before claiming a tax benefit.",
     "disclaimer",400,10),
    documents:(()=>{
@@ -228,13 +228,14 @@ export function parseExtendedSection(kind:string,raw:unknown):Record<string,unkn
   };
   if(out.verifiedAsOf>new Date().toISOString().slice(0,10))
    return error("verifiedAsOf");
+  if(verification==="NOT_VERIFIED"&&(out.pan||out.registrationNumber||out.approvalNumber||out.documents.length))return error("verification");
   if(verification==="VERIFIED"&&(!out.issuer||!out.approvalNumber||
      !start||!end||end<new Date().toISOString().slice(0,10)))
    return error("verification");
   return out;
  }
  if(kind==="GALLERY_GRID"){
-  if(!Array.isArray(x.items)||x.items.length<1||x.items.length>12)return error("items");
+  if(!Array.isArray(x.items)||x.items.length>12)return error("items");
   return {
    heading:str(x.heading,"heading",180,3),
    description:str(x.description??"","description",900),
