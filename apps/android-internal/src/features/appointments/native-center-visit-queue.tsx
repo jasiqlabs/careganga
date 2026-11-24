@@ -82,7 +82,8 @@ export function NativeCenterVisitQueue({token,canCancel,canClinicalManage,onExit
   const stamp=++seq.current;
   if(!c){setItems([]);setSummary(null);setSelectedSlip(null);setQueueLoading(false);return;}
   if(!day){setItems([]);setSummary(null);setQueueLoading(false);setMessage("The center local date is unavailable.");return;}
-  setSummary(null);setQueueLoading(true);setExpanded("");setSelectedSlip(null);
+  setSummary(null);setQueueLoading(true);setExpanded("");setSelectedSlip(null);setCancelPending(null);
+  auditSerial.current++;setAuditRef("");setAudit(null);setAuditError("");setAuditBusy(false);
   try{
    const data=await request<{items:Item[];next:string|null}>(token,
     "my-centers/"+encodeURIComponent(c)+"?date="+encodeURIComponent(day)+
@@ -324,13 +325,6 @@ export function NativeCenterVisitQueue({token,canCancel,canClinicalManage,onExit
     <Text style={styles.help}>No consultations were returned for this date.</Text>}
    {center&&items.length>0&&visible.length===0&&
     <Text style={styles.help}>No consultations match these filters.</Text>}
-   {selectedSlip&&items.some(row=>row.appointmentRef===selectedSlip.appointmentRef&&row.consentGranted)&&<View style={styles.card}>
-    {button("Close current consultation slip",()=>setSelectedSlip(null),busy)}
-    <Text style={styles.title}>{selectedSlip.bookingId} — current private PDF</Text>
-    <NativeCenterConsultationSlip key={selectedSlip.appointmentRef} token={token}
-     bookingRef={selectedSlip.appointmentRef}
-     bookingStatus={selectedSlip.bookingStatus} onExpired={onExpired}/>
-   </View>}
    {!queueLoading&&visible.map(a=><View key={a.appointmentRef} style={styles.card}>
     <Text style={styles.title}>{a.patientName}</Text>
     <Text style={styles.help}>Doctor: {a.doctorName}</Text>
@@ -350,6 +344,13 @@ export function NativeCenterVisitQueue({token,canCancel,canClinicalManage,onExit
     {expanded===a.appointmentRef&&<>
      {a.consentGranted&&!["CANCELLED","NO_SHOW"].includes(a.bookingStatus)&&
       button("Consultation slip",()=>setSelectedSlip(a),busy||uncertain)}
+   {selectedSlip?.appointmentRef===a.appointmentRef&&a.consentGranted&&<View style={styles.card}>
+    {button("Close current consultation slip",()=>setSelectedSlip(null),busy)}
+    <Text style={styles.title}>{selectedSlip.bookingId} — current private PDF</Text>
+    <NativeCenterConsultationSlip key={selectedSlip.appointmentRef} token={token}
+     bookingRef={selectedSlip.appointmentRef}
+     bookingStatus={selectedSlip.bookingStatus} onExpired={onExpired}/>
+   </View>}
     {button(auditRef===a.appointmentRef?"Hide booking history":"Original booking history",
      ()=>{if(auditRef===a.appointmentRef){
       auditSerial.current++;setAuditRef("");setAudit(null);setAuditError("");
@@ -400,12 +401,12 @@ export function NativeCenterVisitQueue({token,canCancel,canClinicalManage,onExit
       const prior=previousCursors.at(-1)??"";
       setPreviousCursors(p=>p.slice(0,-1));setDoctorFilter("");setStatusFilter("");
       void load(center,dateAt(offset,centerZone),prior);
-     },busy||!previousCursors.length)}
+     },busy||queueLoading||!previousCursors.length)}
      {button("Next 100",()=>{
       if(!nextCursor)return;
       setPreviousCursors(p=>[...p,cursor]);setDoctorFilter("");setStatusFilter("");
       void load(center,dateAt(offset,centerZone),nextCursor);
-     },busy||!nextCursor)}
+     },busy||queueLoading||!nextCursor)}
     </View>
    </View>}
   </ScrollView>
