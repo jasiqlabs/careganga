@@ -1,3 +1,4 @@
+import {NativeProjectCoverPanel} from "../projects/native-project-cover-panel";
 import React,{useCallback,useEffect,useState} from "react";
 import {ActivityIndicator,Modal,Pressable,ScrollView,Text,TextInput,View} from "react-native";
 import * as Crypto from "expo-crypto";
@@ -53,9 +54,9 @@ function Select({title,selected,items,onSelect}:{title:string;selected:string;it
  </View>;
 }
 const enumOptions=(items:string[]):Option[]=>items.map(x=>({value:x,label:capitalize(x)}));
-export function NativeBeneficiariesWorkspace({token,onExpired,canManage,canLinkProjects,canManageLifecycle,canRevoke,canSubmitVerification,canReviewVerification}:{
+export function NativeBeneficiariesWorkspace({token,onExpired,canManage,canLinkProjects,canManageLifecycle,canRevoke,canSubmitVerification,canReviewVerification,canReadEvidence,canUploadEvidence}:{
  token:string;onExpired:()=>void;canManage:boolean;canLinkProjects:boolean;canManageLifecycle:boolean;canRevoke:boolean;
- canSubmitVerification:boolean;canReviewVerification:boolean;
+ canSubmitVerification:boolean;canReviewVerification:boolean;canReadEvidence:boolean;canUploadEvidence:boolean;
 }){
  const [page,setPage]=useState<Page|null>(null),[selected,setSelected]=useState<Item|null>(null);
  const [opts,setOpts]=useState<Options|null>(null),[districts,setDistricts]=useState<Option[]>([]);
@@ -257,6 +258,7 @@ export function NativeBeneficiariesWorkspace({token,onExpired,canManage,canLinkP
     <Text>Contact: {selected.contactMobile??"Not recorded / restricted"}</Text>
     <Text>Category: {selected.beneficiaryType}</Text>
     <Text>Consent: {selected.consentRevoked?"Withdrawn":capitalize(selected.consentKind)}</Text>
+    {canReadEvidence&&!selected.consentRevoked&&selected.lifecycle==="ACTIVE"&&<NativeProjectCoverPanel key={selected.ref+":"+selected.revision} projectRef={selected.ref} version={selected.revision} sourceKind="beneficiary" token={token} onExpired={onExpired} canUpload={canUploadEvidence&&canManage}/>}
     <Text style={{fontSize:12,color:"#64748B"}}>Verified status requires independent CG-03 review. This screen cannot approve it.</Text>
     {review&&<View style={{borderWidth:1,borderColor:"#E0E5ED",borderRadius:10,padding:12,gap:8}}>
      <Text style={{fontWeight:"700"}}>CG-03 independent verification & approval</Text>
