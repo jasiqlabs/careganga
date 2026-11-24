@@ -10,12 +10,12 @@ This user-requested cross-module subtracker supplements (does not replace) origi
 
 ## Summary
 
-37 subitems: 17 source implementation candidates, 19 runtime/reproduction candidates, 1 reference evidence item. Latest disposition: **13 SOURCE_PRESENT_REVIEW_PENDING** (targeted source evidence of intended changes, not independent clearance), **4 SOURCE_REVIEW_REMAINS** (explicit remaining review scope below), **18 MANUAL_ACCEPTANCE_PENDING** (existing CHECK rows, actual acceptance not executed), **1 EVIDENCE_RECOVERED** (final public originals), **1 BLOCKED** (integrated runtime/visual gate). No generic IN_PROGRESS summary rows remain; zero independently cleared or runtime passes. P0 = release visual evidence gate; P1 = primary journey or substantial usability; P2 = secondary usability. Source presence does not mean source-complete. Acceptance candidates are not confirmed defects. Original QA IDs remain unchanged.
+37 subitems: 17 source implementation candidates, 19 runtime/reproduction candidates, 1 reference evidence item. Latest disposition: **17 SOURCE_PRESENT_REVIEW_PENDING** (all targeted implementation/review areas addressed at source, independent clearance not performed), **0 SOURCE_REVIEW_REMAINS** (no additional confirmed gaps in this bounded source review), **18 MANUAL_ACCEPTANCE_PENDING** (existing CHECK rows, actual acceptance not executed), **1 EVIDENCE_RECOVERED** (final public originals), **1 BLOCKED** (integrated runtime/visual gate). No generic IN_PROGRESS summary rows remain; zero independently cleared or runtime passes. P0 = release visual evidence gate; P1 = primary journey or substantial usability; P2 = secondary usability. Source presence does not mean source-complete. Acceptance candidates are not confirmed defects. Original QA IDs remain unchanged.
 
 | ID | Priority | Evidence | Owner/surface | Issue | State |
 |---|---|---|---|---|---|
 | HUX-01.01 | P0 | EVIDENCE | CG14–17 all | Recover separate healthcare reference originals | EVIDENCE_RECOVERED |
-| HUX-02.01 | P1 | SOURCE | CG14–17 all | Shared design consistency | SOURCE_REVIEW_REMAINS |
+| HUX-02.01 | P1 | SOURCE | CG14–17 all | Shared design consistency | SOURCE_PRESENT_REVIEW_PENDING |
 | HUX-02.02 | P1 | CHECK | CG14–17 admin/center | Role-specific healthcare navigation | MANUAL_ACCEPTANCE_PENDING |
 | HUX-03.01 | P1 | CHECK | CG14/15/17/20 admin/center | Operational dashboard journey | MANUAL_ACCEPTANCE_PENDING |
 | HUX-04.01 | P1 | SOURCE | CG14 US-001 admin | Provider registration form density | SOURCE_PRESENT_REVIEW_PENDING |
@@ -28,8 +28,8 @@ This user-requested cross-module subtracker supplements (does not replace) origi
 | HUX-06.02 | P1 | SOURCE | CG15 US-006 center web | Consultation queue action overload | SOURCE_PRESENT_REVIEW_PENDING |
 | HUX-06.03 | P1 | CHECK | CG15 US-003/006 center | Patient intake and consent | MANUAL_ACCEPTANCE_PENDING |
 | HUX-07.01 | P1 | SOURCE | CG16 US-001 admin | Lab catalogue search limited to loaded records | SOURCE_PRESENT_REVIEW_PENDING |
-| HUX-07.02 | P2 | SOURCE | CG16 US-001 admin/center | H09 filter coverage | SOURCE_REVIEW_REMAINS |
-| HUX-07.03 | P1 | SOURCE | CG16 US-002 lab web (ERP ON only) | Lab sample/report workflow structure | SOURCE_REVIEW_REMAINS |
+| HUX-07.02 | P2 | SOURCE | CG16 US-001 admin/center | H09 filter coverage | SOURCE_PRESENT_REVIEW_PENDING |
+| HUX-07.03 | P1 | SOURCE | CG16 US-002 lab web (ERP ON only) | Lab sample/report workflow structure | SOURCE_PRESENT_REVIEW_PENDING |
 | HUX-07.04 | P1 | CHECK | CG16 US-003/004 public | Public lab test and enquiry | MANUAL_ACCEPTANCE_PENDING |
 | HUX-08.01 | P1 | SOURCE | CG17 US-001 admin | Assistance policy form hierarchy | SOURCE_PRESENT_REVIEW_PENDING |
 | HUX-08.02 | P1 | SOURCE | CG17 US-005/006 admin/center | Settlement screen is mostly stacked definitions | SOURCE_PRESENT_REVIEW_PENDING |
@@ -48,7 +48,7 @@ This user-requested cross-module subtracker supplements (does not replace) origi
 | HUX-13.01 | P1 | SOURCE | CG14 US-004 public Android | Public result list and filter density | SOURCE_PRESENT_REVIEW_PENDING |
 | HUX-13.02 | P1 | CHECK | CG15/17 public Android | Patient home and healthcare journey | MANUAL_ACCEPTANCE_PENDING |
 | HUX-14.01 | P1 | CHECK | CG14–17 all | Responsive and accessibility acceptance | MANUAL_ACCEPTANCE_PENDING |
-| HUX-15.01 | P1 | SOURCE | CG14–17 all | Technical copy and excessive explanations | SOURCE_REVIEW_REMAINS |
+| HUX-15.01 | P1 | SOURCE | CG14–17 all | Technical copy and excessive explanations | SOURCE_PRESENT_REVIEW_PENDING |
 | HUX-15.02 | P1 | CHECK | CG14–17 all | Loading, empty, error and uncertain state | MANUAL_ACCEPTANCE_PENDING |
 | HUX-16.01 | P0 | CHECK | CG14–17 all | Integrated real-user and visual acceptance | BLOCKED |
 
@@ -202,6 +202,16 @@ Two-copy confirmation now uses authorized patient display name, original booking
 - Remaining HUX-02.01: review consistent tokens/components and all authorized staff/public screens, not just sampled healthcare surfaces; actual appearance is manual acceptance. HUX-07.02: reconcile H09 subcategory/price filters with approved category/tariff source; do not invent master-price or subcategory data. HUX-07.03: latest orders search is limited to loaded records; assess approved scoped order/status lookup contract and native workflow coverage, not speculative ERP additions. HUX-15.01: remaining cross-screen human-readable copy review; new safe error fixes already logged. These four retain explicit review scope rather than falsely declaring closure.
 - 18 CHECK rows classified MANUAL_ACCEPTANCE_PENDING: reproduction/acceptance still required, no individual source clearance asserted. If local review/QA reveals a current-owner source defect, fix on the same branch and update original owner QA + this tracker. `INDEPENDENT_REVIEW_UNAVAILABLE`: no separate reviewer invocation exists in this connector session. Actual build, PDF, CMS publication, references and integrated QA remain NOT_RUN. No merge.
 
+## 24 November — remaining four source-review areas addressed
+
+- Source baseline `3f422d7b9ae86aab7fb22e50450d0c65cf550ec0` (before this tracker-only commit); main compare 154 ahead/0 behind. No merge. The four specifically remaining HUX review areas now have concrete source evidence and fixes; 17 implementation candidates remain SOURCE_PRESENT_REVIEW_PENDING until actual independent clearance. No claim of SOURCE_COMPLETE, zero project-wide defects or visual/runtime PASS.
+- HUX-07.02: H09 approved DLD defines one real test category, not a separate subcategory master. Existing bounded test category/sample/status search remains. Added real center-specific tariff status and approved validity-window filter, bounded pages, same role/own-center backend guard, Foundation Web / assigned-center Web / shared native controls. No fictitious global test price, subcategory, Foundation subsidy or payment. CG16 US-001-QA02/03/07/08/11/13/15/16; backend ca531f9b/7f0559e2, Web f36dbb72/3777cab2, native 3c7dba55, regression 327d3a07. Exact H09 screenshot acceptance remains manual; do not label unsupported extra taxonomy implemented.
+- HUX-07.03: H10 actual scoped order-number/clinical-status lookup over prior records, bounded deterministic pages, protected existing controller/BFF and both staff clients; validated response identity. Reused verified current patient identity/consent/same-center care source guard in operational list/detail and direct custody before mutation/replay (6aa46bfc/763ba342/b379f38b); retain prior clinical review/release and historical patient report boundaries. CG16 US-002-QA02/04/06/07/08/09/10/13/15/16; controller/BFF 00ba6e28/3003031d, Web ebcf0ef8, native baf8fd7a, regression 50aa632b. Exact H10 screenshot layout and all actual workflows remain manual acceptance; no new ERP default or public booking.
+- HUX-02.01: inspected 30 changed native staff/public screens for theme use. Staff uses existing navy semantic tokens, public healthcare uses green/gold tokens. Removed local error/primary color literals; centralized Web healthcare directory/profile/booking shared CSS palette (7660975d/d40f9005/b41e2d93/e1274894, responsive CSS re-read fix 9bc54e0f) and shared native CMS hero/card/action tokens (bd1139c7/61fd00b8). Actual CSS/Android visual and accessibility acceptance remains unexecuted; shared CMS screens need regression outside healthcare too.
+- HUX-15.01: removed exposed module identifiers/technical request-key terminology from reviewed Web/native patient booking/document, policy, settlement, provider and diagnostics workflows. Preserved clinical privacy, payment/settlement distinctions and unknown-action retry safeguards. Original CG14/15/16/17/18 owner checkpoints updated. Existing safe error catalog correction retained. Full copy/readability rendered acceptance is not claimed.
+- Source read-back: 29/29 targeted H09/H10 literal checks matched; current-care SQL parentheses balanced by string check, not executed SQL. 23/23 targeted style/copy literal checks matched; no malformed white-space substitution remained. Existing local CG16 US001/US002 preflights extended. These are remote static checks only, not compilation or executable app tests.
+- Remaining handoff gate: separate actual independent reviewer unavailable in this session (INDEPENDENT_REVIEW_UNAVAILABLE); resolver, full local source preflight, build, DB/provider/device QA, live CMS first publication and original image-by-image comparison NOT_RUN. 18 manual acceptance candidates and integrated P0 remain open; if real defect is reproduced, repair in original owner on this branch. Do not invent new use cases or claim 100% readiness until evidence. Original approved QA definitions unchanged.
+
 ## Subtracker details and expected user scenarios
 
 ### HUX-01.01 — Recover separate healthcare reference originals
@@ -214,7 +224,7 @@ Two-copy confirmation now uses authorized patient display name, original booking
 
 ### HUX-02.01 — Shared design consistency
 
-- **Priority/evidence/owner:** P1 / SOURCE / CG14–17 all. SOURCE_REVIEW_REMAINS; runtime NOT_RUN.
+- **Priority/evidence/owner:** P1 / SOURCE / CG14–17 all. SOURCE_PRESENT_REVIEW_PENDING; runtime NOT_RUN.
 - **Observation:** Public directory uses inline colors/grid while registration, settlement and diagnostics use different workspace structures.
 - **Expected experience:** Reuse existing design tokens and shared components; navy admin shell, active navigation, readable labels, semantic status, consistent focus and buttons; public brand stays distinct.
 - **Manual scenario / acceptance:** Open each module and both apps; compare typography, spacing, buttons, feedback and contrast; no new theme or duplicated token system.
@@ -318,7 +328,7 @@ Two-copy confirmation now uses authorized patient display name, original booking
 
 ### HUX-07.02 — H09 filter coverage
 
-- **Priority/evidence/owner:** P2 / SOURCE / CG16 US-001 admin/center. SOURCE_REVIEW_REMAINS; runtime NOT_RUN.
+- **Priority/evidence/owner:** P2 / SOURCE / CG16 US-001 admin/center. SOURCE_PRESENT_REVIEW_PENDING; runtime NOT_RUN.
 - **Observation:** lab-test-master-workspace.tsx:284–335 shows loaded search, table, details/tabs; H09 specifies category/subcategory/sample/price/status filters.
 - **Expected experience:** Use current source-backed filters and readable effective pricing/status with responsive selected detail; retain existing master/duplicate/deactivate semantics.
 - **Manual scenario / acceptance:** Filter categories/sample/status, compare two center tariffs and effective dates; no unsupported bulk import or accreditation.
@@ -326,7 +336,7 @@ Two-copy confirmation now uses authorized patient display name, original booking
 
 ### HUX-07.03 — Lab sample/report workflow structure
 
-- **Priority/evidence/owner:** P1 / SOURCE / CG16 US-002 lab web (ERP ON only). SOURCE_REVIEW_REMAINS; runtime NOT_RUN.
+- **Priority/evidence/owner:** P1 / SOURCE / CG16 US-002 lab web (ERP ON only). SOURCE_PRESENT_REVIEW_PENDING; runtime NOT_RUN.
 - **Observation:** clinical-lab-order-workspace.tsx:225–314 inline creation, Latest Clinical Orders table then selected detail; H10 describes status filters and selected tabs.
 - **Expected experience:** Use clear specimen lifecycle/status, scoped order search, role-specific next action and selected detail tabs; private report states and reviewer separate.
 - **Manual scenario / acceptance:** ERP ON with real grant: create order, collect, process, approve, release; verify rejected scan and wrong patient; ERP OFF no clinical controls.
@@ -478,7 +488,7 @@ Two-copy confirmation now uses authorized patient display name, original booking
 
 ### HUX-15.01 — Technical copy and excessive explanations
 
-- **Priority/evidence/owner:** P1 / SOURCE / CG14–17 all. SOURCE_REVIEW_REMAINS; runtime NOT_RUN.
+- **Priority/evidence/owner:** P1 / SOURCE / CG14–17 all. SOURCE_PRESENT_REVIEW_PENDING; runtime NOT_RUN.
 - **Observation:** Examples: public directory 'Only currently approved, published...', settlement 'original posted Foundation obligations in CG-09', repeated source terminology.
 - **Expected experience:** Use plain English and short actionable errors; retain necessary privacy, eligibility and money caveats, move detailed internal explanations to appropriate help.
 - **Manual scenario / acceptance:** Normal first-time patient/receptionist understands each step; no raw UUIDs/enums/module IDs or secret errors; public booking IDs allowed.
