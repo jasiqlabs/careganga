@@ -17,7 +17,7 @@ type Kind="FINANCE_POSTED_LEDGER"|"FINANCE_POSTED_SUMMARY"|
 type Template={kind:Kind;label:string;views:("TABLE"|"SUMMARY"|"CHART"|"PIVOT")[];description:string};
 type Option={ref:string;name:string};
 type AreaOption=Option&{level:string};
-type Catalog={templates:Template[];payroll?:{ready:boolean;branches:Option[];month:string};membership?:{ready:boolean;branches:Option[]};volunteers?:{ready:boolean;branches:Option[]};finance:{ready:boolean;state?:"AVAILABLE"|"ACCESS_RESTRICTED"|"SOURCE_UNAVAILABLE";years:Option[];branches:Option[];
+type Catalog={templates:Template[];payroll?:{ready:boolean;branches:Option[];month:string};membership?:{ready:boolean;branches:Option[]};volunteers?:{ready:boolean;branches:Option[]};beneficiary?:{ready:boolean;branches:Option[]};finance:{ready:boolean;state?:"AVAILABLE"|"ACCESS_RESTRICTED"|"SOURCE_UNAVAILABLE";years:Option[];branches:Option[];
  allBranches:boolean;areas?:AreaOption[]};appointments:{ready:boolean;state?:"AVAILABLE"|"ACCESS_RESTRICTED"|"SOURCE_UNAVAILABLE";centers:Option[];complete:boolean};
  capabilities:{manage:boolean;export:boolean;schedule:boolean;share?:boolean}};
 type Preview={state:string;kind:Kind;view:"TABLE"|"SUMMARY"|"CHART"|"PIVOT";label:string;
@@ -116,7 +116,9 @@ export function NativeMisReports({token,onExpired,onDraftChange}:{token:string;o
  const grouped=kind==="FINANCE_POSTED_GROUPED";
  const geography=kind==="FINANCE_POSTED_LEDGER"||grouped;
  const roster=kind==="MEMBERSHIP_ROSTER_SUMMARY"?catalog?.membership:kind==="VOLUNTEER_ROSTER_SUMMARY"?catalog?.volunteers:undefined;
- const dated=kind==="FINANCE_POSTED_LEDGER"||grouped||health||kind==="PLATFORM_AUDIT_ACTIVITY"||kind==="CSR_FUNDING_SUMMARY"||!!roster;
+ const beneficiary=kind==="BENEFICIARY_ASSISTANCE_SUMMARY"?catalog?.beneficiary:undefined;
+ const scoped=roster??beneficiary;
+ const dated=kind==="FINANCE_POSTED_LEDGER"||grouped||health||kind==="PLATFORM_AUDIT_ACTIVITY"||kind==="CSR_FUNDING_SUMMARY"||!!scoped;
  function setPreset(next:Period){
   setPeriod(next);setPreview(null);
   if(next==="CUSTOM"){setFrom("");setUntil("");return;}
@@ -129,7 +131,7 @@ export function NativeMisReports({token,onExpired,onDraftChange}:{token:string;o
     ...(geography&&area?{areaRef:area}:{})}:{
     ...(center?{centerRef:center}:{}),...(status?{status}:{})}),
    ...(kind==="PAYROLL_STATUS_SUMMARY"?{...(payrollMonth?{payrollMonth}:{}),...(payrollBranch?{branchRef:payrollBranch}:{})}:{}),
-   ...(roster&&rosterBranch?{branchRef:rosterBranch}:{}),
+   ...(scoped&&rosterBranch?{branchRef:rosterBranch}:{}),
    ...(dated&&(from||until)?
     {fromDay:from,untilDay:until}:{}),
    ...(grouped?{groupBy,sortBy,sortDirection}:{}),offset};
@@ -174,7 +176,7 @@ export function NativeMisReports({token,onExpired,onDraftChange}:{token:string;o
     value={view} options={chosen.views.map(v=>({ref:v,label:v==="CHART"?"Chart":
      v==="SUMMARY"?"Summary":v==="PIVOT"?"Pivot":"Table"}))} onChange={v=>{setView(v as typeof view);
       setPreview(null);}}/>}
-   {roster?.ready&&<NativeFinanceOptions label="Roster branch" value={rosterBranch} options={[{ref:"",label:"All permitted branches"},...roster.branches.map(b=>({ref:b.ref,label:b.name}))]} onChange={setRosterBranch}/>}
+   {scoped?.ready&&<NativeFinanceOptions label={beneficiary?"Beneficiary branch":"Roster branch"} value={rosterBranch} options={[{ref:"",label:"All permitted branches"},...scoped.branches.map(b=>({ref:b.ref,label:b.name}))]} onChange={setRosterBranch}/>}
    {kind==="PAYROLL_STATUS_SUMMARY"&&catalog.payroll?.ready&&<>
     <NativeFinanceField label="Payroll month (YYYY-MM)" value={payrollMonth} placeholder={catalog.payroll.month} onChange={setPayrollMonth}/>
     <NativeFinanceOptions label="Payroll branch" value={payrollBranch} options={[{ref:"",label:"All permitted payroll branches"},...catalog.payroll.branches.map(b=>({ref:b.ref,label:b.name}))]} onChange={setPayrollBranch}/>
@@ -219,6 +221,7 @@ export function NativeMisReports({token,onExpired,onDraftChange}:{token:string;o
    </>}
    {dated&&<>
     {roster&&<Text style={s.hint}>Dates filter enrollment dates. Status is current, not historical.</Text>}
+    {beneficiary&&<Text style={s.hint}>Dates filter deliveries only. Demographic counts are current and small groups are hidden.</Text>}
     {kind==="CSR_FUNDING_SUMMARY"&&<Text style={s.hint}>Dates filter proposal updates, not bank posting dates.</Text>}
     <NativeFinanceOptions label="Reporting period" value={period}
      options={[{ref:"CUSTOM",label:"Custom date range"},
