@@ -56,6 +56,7 @@ CREATE INDEX ix_cg11_salary_history ON employee_compensation(root_realm_id,emplo
 -- Serialize approval on the actual employee/policy scope. Approved historical versions never mutate.
 CREATE FUNCTION cg11_policy_guard() RETURNS trigger LANGUAGE plpgsql AS $cg11$
 BEGIN
+ IF TG_OP='INSERT' AND (NEW.status<>'DRAFT' OR NEW.revision<>1 OR NEW.approval_case_ref IS NOT NULL) THEN RAISE EXCEPTION 'New payroll source must be a draft'; END IF;
  IF TG_OP='DELETE' THEN RAISE EXCEPTION 'Payroll policy history is immutable'; END IF;
  IF TG_OP='UPDATE' THEN
   IF (to_jsonb(NEW)-ARRAY['status','revision','approval_case_ref']) IS DISTINCT FROM (to_jsonb(OLD)-ARRAY['status','revision','approval_case_ref'])
@@ -69,9 +70,10 @@ BEGIN
  END IF;
  RETURN NEW;
 END; $cg11$;
-CREATE TRIGGER cg11_policy_guard BEFORE UPDATE OR DELETE ON payroll_policy FOR EACH ROW EXECUTE FUNCTION cg11_policy_guard();
+CREATE TRIGGER cg11_policy_guard BEFORE INSERT OR UPDATE OR DELETE ON payroll_policy FOR EACH ROW EXECUTE FUNCTION cg11_policy_guard();
 CREATE FUNCTION cg11_salary_guard() RETURNS trigger LANGUAGE plpgsql AS $cg11$
 BEGIN
+ IF TG_OP='INSERT' AND (NEW.status<>'DRAFT' OR NEW.revision<>1 OR NEW.approval_case_ref IS NOT NULL) THEN RAISE EXCEPTION 'New payroll source must be a draft'; END IF;
  IF TG_OP='DELETE' THEN RAISE EXCEPTION 'Salary history is immutable'; END IF;
  IF TG_OP='UPDATE' THEN
   IF (to_jsonb(NEW)-ARRAY['status','revision','approval_case_ref']) IS DISTINCT FROM (to_jsonb(OLD)-ARRAY['status','revision','approval_case_ref'])
