@@ -24,7 +24,7 @@ const legacyDuplicate1438 = {
   sha256: "4d6fdea87c43adf79248d610978512f10e2b3f2017f23912e3fad93500ac8579"
 } as const;
 
-async function migrate(): Promise<void> {
+export async function migrate(): Promise<void> {
   const rawUrl = process.env.DATABASE_MIGRATION_URL || process.env.DATABASE_URL;
   if (!rawUrl) throw new Error("DATABASE_MIGRATION_URL is required; use a direct database connection");
   // Neon connection pooler (-pooler.) uses PgBouncer in transaction mode where session-level
@@ -171,7 +171,7 @@ async function migrate(): Promise<void> {
     await pool.end();
   }
 }
-void migrate().catch((error: unknown) => {
+if (require.main === module) void migrate().catch((error: unknown) => {
   const reason = error instanceof Error ? error.message : String(error);
   process.stderr.write(`CareGanga migration failed: ${reason}\nno partial changes from failing migration committed.\n`);
   process.exitCode = 1;
