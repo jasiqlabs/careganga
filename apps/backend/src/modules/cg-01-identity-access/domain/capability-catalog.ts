@@ -117,6 +117,8 @@ const capabilities:readonly Capability[]=Object.freeze([
   {key:"payroll.compensation.edit",businessLabel:"Propose effective employee compensation",group:"Payroll",assignable:true,sensitive:true},
   {key:"payroll.bank.edit",businessLabel:"Propose and view masked employee payout instructions",group:"Payroll",assignable:true,sensitive:true},
   {key:"payroll.sensitive.approve",businessLabel:"Independently review protected payroll compensation",group:"Payroll",assignable:false,sensitive:true},
+  {key:"payroll.runs.view",businessLabel:"View permitted payroll period runs",group:"Payroll",assignable:true,sensitive:true},
+  {key:"payroll.runs.manage",businessLabel:"Prepare permitted payroll period drafts",group:"Payroll",assignable:true,sensitive:true},
   {key:"payroll.policy.manage",businessLabel:"Maintain permitted effective payroll policy drafts",group:"Payroll",assignable:true,sensitive:true},
   {key:"hr.applications.view",businessLabel:"View permitted employee applications",group:"Human resources",assignable:true,sensitive:true},
   {key:"hr.applications.manage",businessLabel:"Create and correct permitted employee drafts",group:"Human resources",assignable:true,sensitive:true},
