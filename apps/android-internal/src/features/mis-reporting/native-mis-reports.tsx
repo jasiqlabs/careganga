@@ -13,7 +13,7 @@ import {NativeMisFinanceTrend,NativeMisAppointmentDistribution,NativeMisAppointm
 import {NativeMisGroupedFinanceChart} from "./native-mis-grouped-finance-chart";
 type Kind="FINANCE_POSTED_LEDGER"|"FINANCE_POSTED_SUMMARY"|
  "FINANCE_POSTED_TREND"|"FINANCE_POSTED_GROUPED"|
- "APPOINTMENT_STATUS"|"APPOINTMENT_STATUS_GROUPED"|"APPOINTMENT_DOCTOR_SUMMARY"|"PLATFORM_AUDIT_ACTIVITY"|"DIAGNOSTICS_CATALOG_SUMMARY"|"BENEFICIARY_ASSISTANCE_SUMMARY"|"MEMBERSHIP_ROSTER_SUMMARY"|"VOLUNTEER_ROSTER_SUMMARY"|"PAYROLL_STATUS_SUMMARY"|"DONATION_RECEIPT_SUMMARY";
+ "APPOINTMENT_STATUS"|"APPOINTMENT_STATUS_GROUPED"|"APPOINTMENT_DOCTOR_SUMMARY"|"PLATFORM_AUDIT_ACTIVITY"|"DIAGNOSTICS_CATALOG_SUMMARY"|"BENEFICIARY_ASSISTANCE_SUMMARY"|"MEMBERSHIP_ROSTER_SUMMARY"|"VOLUNTEER_ROSTER_SUMMARY"|"PAYROLL_STATUS_SUMMARY"|"DONATION_RECEIPT_SUMMARY"|"CSR_FUNDING_SUMMARY";
 type Template={kind:Kind;label:string;views:("TABLE"|"SUMMARY"|"CHART"|"PIVOT")[];description:string};
 type Option={ref:string;name:string};
 type AreaOption=Option&{level:string};
@@ -113,7 +113,7 @@ export function NativeMisReports({token,onExpired,onDraftChange}:{token:string;o
  kind==="APPOINTMENT_DOCTOR_SUMMARY";
  const grouped=kind==="FINANCE_POSTED_GROUPED";
  const geography=kind==="FINANCE_POSTED_LEDGER"||grouped;
- const dated=kind==="FINANCE_POSTED_LEDGER"||grouped||health||kind==="PLATFORM_AUDIT_ACTIVITY";
+ const dated=kind==="FINANCE_POSTED_LEDGER"||grouped||health||kind==="PLATFORM_AUDIT_ACTIVITY"||kind==="CSR_FUNDING_SUMMARY";
  function setPreset(next:Period){
   setPeriod(next);setPreview(null);
   if(next==="CUSTOM"){setFrom("");setUntil("");return;}
@@ -125,7 +125,7 @@ export function NativeMisReports({token,onExpired,onDraftChange}:{token:string;o
    ...(finance?{...(year?{yearRef:year}:{}),...(branch?{branchRef:branch}:{}),
     ...(geography&&area?{areaRef:area}:{})}:{
     ...(center?{centerRef:center}:{}),...(status?{status}:{})}),
-   ...((kind==="FINANCE_POSTED_LEDGER"||grouped||health||kind==="PLATFORM_AUDIT_ACTIVITY")&&from?
+   ...(dated&&from?
     {fromDay:from,untilDay:until}:{}),
    ...(grouped?{groupBy,sortBy,sortDirection}:{}),offset};
  }
@@ -208,6 +208,7 @@ export function NativeMisReports({token,onExpired,onDraftChange}:{token:string;o
      onChange={v=>setSortDirection(v as typeof sortDirection)}/>
    </>}
    {dated&&<>
+    {kind==="CSR_FUNDING_SUMMARY"&&<Text style={s.hint}>Dates filter proposal updates, not bank posting dates.</Text>}
     <NativeFinanceOptions label="Reporting period" value={period}
      options={[{ref:"CUSTOM",label:"Custom date range"},
       {ref:"DAY",label:"Today"},
@@ -266,14 +267,14 @@ export function NativeMisReports({token,onExpired,onDraftChange}:{token:string;o
   {preview?.state==="PARTIAL"&&<Text style={s.hint}>
    This original source is incomplete or requires reconciliation. Review the source explanation before export.</Text>}
   {catalog?.capabilities?.export===true&&
-   <NativeMisExports token={token} onExpired={onExpired} current={(["BENEFICIARY_ASSISTANCE_SUMMARY","MEMBERSHIP_ROSTER_SUMMARY","VOLUNTEER_ROSTER_SUMMARY","PAYROLL_STATUS_SUMMARY","DONATION_RECEIPT_SUMMARY"] as readonly string[]).includes(kind??"")?null:request(0)}/>}
+   <NativeMisExports token={token} onExpired={onExpired} current={(["BENEFICIARY_ASSISTANCE_SUMMARY","MEMBERSHIP_ROSTER_SUMMARY","VOLUNTEER_ROSTER_SUMMARY","PAYROLL_STATUS_SUMMARY","DONATION_RECEIPT_SUMMARY","CSR_FUNDING_SUMMARY"] as readonly string[]).includes(kind??"")?null:request(0)}/>}
   {catalog?.capabilities?.schedule===true&&
    <NativeMisSchedules token={token} onExpired={onExpired}/>}
   {catalog&&<NativeMisSaved token={token} onExpired={onExpired}
    canManage={catalog.capabilities?.manage===true}
    canShare={catalog.capabilities?.share===true}
    onDraftChange={onDraftChange}
-   current={(["BENEFICIARY_ASSISTANCE_SUMMARY","MEMBERSHIP_ROSTER_SUMMARY","VOLUNTEER_ROSTER_SUMMARY","PAYROLL_STATUS_SUMMARY","DONATION_RECEIPT_SUMMARY"] as readonly string[]).includes(kind??"")?null:request(0)}
+   current={(["BENEFICIARY_ASSISTANCE_SUMMARY","MEMBERSHIP_ROSTER_SUMMARY","VOLUNTEER_ROSTER_SUMMARY","PAYROLL_STATUS_SUMMARY","DONATION_RECEIPT_SUMMARY","CSR_FUNDING_SUMMARY"] as readonly string[]).includes(kind??"")?null:request(0)}
    onRestore={value=>{
     setKind(value.kind as Kind);setView(value.view as typeof view);
     setGroupBy(value.groupBy??"CATEGORY");setSortBy(value.sortBy??"NAME");
