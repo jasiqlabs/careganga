@@ -206,6 +206,23 @@ export class HrEmploymentChangeSourceFacade{
   await tx.query("INSERT INTO hr_audit(root_realm_id,actor_ref,employee_ref,event_key,action) VALUES($1,$2,$3,$4,$5)",
    [realm,actor,employee,randomUUID(),action]);
  }
+ /** Payroll reads only an original applied, approved HR salary proposal; no HR mutation. */
+ async payrollProposal(tx:PoolClient,actor:VerifiedFoundationActor,employee:string,ref:string,branch:string,assignment:string){
+  await this.identity.assertCurrent(tx,actor,"payroll.compensation.view");
+  await this.branches.projectBranch(tx,actor,branch);
+  const exact=(await tx.query("SELECT h.id FROM hr_employment_change h JOIN cg03_case c ON c.realm_id=h.root_realm_id AND c.id=h.case_ref AND c.hr_employment_change_id=h.id AND c.hr_employment_change_digest=h.source_digest AND c.proposal_revision=h.revision AND c.case_kind='HR_TRANSFER_PROMOTION' AND c.status='OWNER_COMPLETED' JOIN cg03_case_decision d ON d.realm_id=c.realm_id AND d.case_id=c.id AND d.id=h.decision_ref AND d.action='APPROVE' WHERE h.root_realm_id=$1 AND h.id=$2 AND h.employee_id=$3 AND h.proposed_branch_ref=$4 AND h.new_assignment_ref=$5 AND h.kind IN('TRANSFER','PROMOTION','DEPUTATION') AND h.status='APPLIED' FOR SHARE OF h,c,d",[actor.realmId,ref,employee,branch,assignment])).rows[0];
+  if(!exact)throw new ConflictException("Original approved HR proposal unavailable for this assignment");
+  const row=await this.original(tx,actor.realmId,ref);
+  const value=unseal(actor.realmId,row);
+  if(value.proposedSalaryMinor===null)throw new ConflictException("Original HR change has no salary proposal");
+  await this.audit(tx,actor.realmId,actor.accountId,row.employee_id,"EMPLOYMENT_CHANGE_PRIVATE_READ");
+  return {ref:row.id,reference:row.reference,kind:row.kind,effectiveFrom:row.effective_date,baseMinor:value.proposedSalaryMinor,revision:row.revision,digest:row.source_digest};
+ }
+ async payrollProposals(tx:PoolClient,actor:VerifiedFoundationActor,employee:string,branch:string,assignment:string){
+  await this.identity.assertCurrent(tx,actor,"payroll.compensation.view");await this.branches.projectBranch(tx,actor,branch);
+  const rows=(await tx.query<{id:string}>("SELECT id FROM hr_employment_change WHERE root_realm_id=$1 AND employee_id=$2 AND proposed_branch_ref=$3 AND new_assignment_ref=$4 AND status='APPLIED' AND kind IN('TRANSFER','PROMOTION','DEPUTATION') ORDER BY effective_date DESC,id DESC LIMIT 10",[actor.realmId,employee,branch,assignment])).rows;
+  const items=[];for(const row of rows){try{items.push(await this.payrollProposal(tx,actor,employee,row.id,branch,assignment));}catch(e){if(!(e instanceof ConflictException))throw e;}}return items;
+ }
  async original(tx:PoolClient,realm:string,id:string,lock=false){
   const q=await tx.query<ChangeRow>(originalSql+" WHERE h.root_realm_id=$1 AND h.id=$2"+(lock?" FOR UPDATE OF h":""),[realm,id]);
   if(!q.rows[0])throw new NotFoundException("The original employment request is unavailable");
