@@ -9,6 +9,7 @@ import {InventoryMaterialSource,materialHash} from "./inventory-material-source"
 import {InventoryOperationSource,operationAction,type OperationKind,type OperationRow} from "./inventory-operation-source";
 import {inventoryInput,inventoryRef,inventoryText,inventoryQuantity,receiptInvalid,sourceChanged} from "./inventory-receipt-draft-source";
 import {lockStockBalances,applyStockMovements,type StockDelta} from "./inventory-stock-command";
+import {guardAssistanceOwner} from "../../cg-06-beneficiaries-assistance/application/assistance-owner-guard";
 import {recordCommittedRewardStockIssue} from "../../cg-13-referrals-rewards/application/committed-stock-issue.source";
 const opt=(v:unknown)=>v===undefined||v===null?null:inventoryRef(v);
 const shortage=()=>new ConflictException({code:"CG12_STOCK_SHORTAGE"});
@@ -96,6 +97,7 @@ export class InventoryOperationService{
   if((proof===null)!==(pv===null)||(pv!==null&&(typeof pv!=="number"||!Number.isSafeInteger(pv)||pv<1)))throw receiptInvalid();
   const proofVersion=pv as number|null;
   return this.catalog.run(token,"inventory.stock.view",async(tx,a)=>{
+   const linkedAid=await guardAssistanceOwner(tx,a.realmId,"STOCK",inventoryRef(ref));
    const {row:r,proofRequired,reviewRequired}=await this.source.guard(tx,a,ref,"CONFIRM");
    const hash=materialHash([r.digest,proof,proofVersion]);
    const old=(await tx.query<Event>("SELECT id,event_no,payload_digest FROM stock_event WHERE root_realm_id=$1 AND operation_id=$2",[a.realmId,r.id])).rows[0];
@@ -114,6 +116,7 @@ export class InventoryOperationService{
    if(r.kind!=="RETURN"&&!(await tx.query("SELECT 1 FROM inventory_item WHERE root_realm_id=$1 AND id=$2 AND status='ACTIVE' FOR SHARE",[a.realmId,r.item_id])).rowCount)throw sourceChanged();
    if(r.request_id){const req=await this.material.row(tx,a,r.request_id,false,true);if(req.version!==r.expected_request_version||req.location_id!==r.location_id||req.requester_id!==r.recipient_id||!["HELD","PARTIAL"].includes(req.status))throw sourceChanged();}
    if(r.original_movement_id){
+    if(!linkedAid&&(await tx.query("SELECT 1 FROM stock_movement m JOIN stock_event e ON e.root_realm_id=m.root_realm_id AND e.id=m.stock_event_id JOIN assistance_fulfillment f ON f.root_realm_id=e.root_realm_id AND f.stock_operation_ref=e.operation_id WHERE m.root_realm_id=$1 AND m.id=$2 AND f.action='ISSUE'",[a.realmId,r.original_movement_id])).rowCount)throw new ConflictException("Return this beneficiary aid through its original assistance case");
     const original=await tx.query("SELECT id FROM stock_movement WHERE root_realm_id=$1 AND id=$2 AND event_kind='ISSUE' AND location_id=$3 AND item_id=$4 FOR UPDATE",[a.realmId,r.original_movement_id,r.location_id,r.item_id]);if(!original.rowCount)throw sourceChanged();
     if(!(await tx.query("SELECT 1 FROM stock_movement m WHERE m.root_realm_id=$1 AND m.id=$2 AND -m.signed_qty>= $3::numeric+COALESCE((SELECT SUM(n.signed_qty) FROM stock_event e JOIN stock_movement n ON n.root_realm_id=e.root_realm_id AND n.stock_event_id=e.id WHERE e.root_realm_id=$1 AND e.original_movement_id=$2 AND e.event_kind='RETURN'),0)",[a.realmId,r.original_movement_id,r.quantity])).rowCount)throw shortage();
    }
