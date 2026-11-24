@@ -34,7 +34,7 @@ type Draft={kind:Kind;title:string;seoTitle:string;seoDescription:string;
  volunteerTitle:string;volunteerBody:string;volunteerBenefits:string;
  memberTitle:string;memberBody:string;memberBenefits:string;
  footerMission:string;footerAddress:string;footerPhone:string;footerWhatsappNumber:string;footerEmail:string;
- footerNewsletterText:string;teamHeading:string;team:Team[];assets:Asset[];projectSources:string[];projectHeading:string;campaignSources:string[];campaignHeading:string;
+ footerNewsletterText:string;teamHeading:string;team:Team[];assets:Asset[];projectSources:string[];projectHeading:string;projectEnabled:boolean;campaignSources:string[];campaignHeading:string;
  loginDesired:boolean;memberJoinDesired:boolean;volunteerJoinDesired:boolean};
 const blankSlide=():Slide=>({heading:"",subtitle:"",description:"",eyebrow:"",tags:"",visible:true,
  headingFont:"SERIF",headingWeight:"BOLD",headingSize:"LARGE",
@@ -47,7 +47,7 @@ const blank=(kind:Kind):Draft=>({kind,title:"",seoTitle:"",seoDescription:"",
  volunteerTitle:"",volunteerBody:"",volunteerBenefits:"",
  memberTitle:"",memberBody:"",memberBenefits:"",
  footerMission:"",footerAddress:"",footerPhone:"",footerWhatsappNumber:"",footerEmail:"",footerNewsletterText:"",
- teamHeading:"Our team",team:[],assets:[],projectSources:[],projectHeading:"Our Projects",campaignSources:[],campaignHeading:"Campaigns",loginDesired:true,
+ teamHeading:"Our team",team:[],assets:[],projectSources:[],projectHeading:"Our Projects",projectEnabled:false,campaignSources:[],campaignHeading:"Campaigns",loginDesired:true,
  memberJoinDesired:false,volunteerJoinDesired:false});
 function val(v:unknown):string{return typeof v==="string"?v:"";}
 function words(v:unknown){return Array.isArray(v)?v.filter(x=>typeof x==="string").join("\n"):"";}
@@ -90,7 +90,7 @@ function fromPage(p:PageDetail):Draft{
   team:Array.isArray(team.members)?team.members.filter(v=>v&&typeof v==="object")
    .map(v=>{const person=v as Record<string,unknown>;return {
     sourceRef:val(person.sourceRef),proof:val(person.proof),name:val(person.name),designation:val(person.designation)};}):[],
-  assets:p.assets,projectSources:Array.isArray(section(p,"PROJECT_TEASER").sourceRefs)?(section(p,"PROJECT_TEASER").sourceRefs as unknown[]).filter((x):x is string=>typeof x==="string"):[],projectHeading:val(section(p,"PROJECT_TEASER").heading)||"Our Projects",campaignSources:Array.isArray(section(p,"CAMPAIGN_TEASER").sourceRefs)?(section(p,"CAMPAIGN_TEASER").sourceRefs as unknown[]).filter((x):x is string=>typeof x==="string"):[],campaignHeading:val(section(p,"CAMPAIGN_TEASER").heading)||"Campaigns",loginDesired:p.navigation?.loginDesired??true,
+  assets:p.assets,projectEnabled:p.sections.some(s=>s.kind==="PROJECT_TEASER"),projectSources:Array.isArray(section(p,"PROJECT_TEASER").sourceRefs)?(section(p,"PROJECT_TEASER").sourceRefs as unknown[]).filter((x):x is string=>typeof x==="string"):[],projectHeading:val(section(p,"PROJECT_TEASER").heading)||"Our Projects",campaignSources:Array.isArray(section(p,"CAMPAIGN_TEASER").sourceRefs)?(section(p,"CAMPAIGN_TEASER").sourceRefs as unknown[]).filter((x):x is string=>typeof x==="string"):[],campaignHeading:val(section(p,"CAMPAIGN_TEASER").heading)||"Campaigns",loginDesired:p.navigation?.loginDesired??true,
   memberJoinDesired:p.navigation?.memberJoinDesired??false,
   volunteerJoinDesired:p.navigation?.volunteerJoinDesired??false};
 }
@@ -129,7 +129,7 @@ function payload(d:Draft){
    volunteerBenefits:lines(d.volunteerBenefits),
    memberTitle:d.memberTitle,memberBody:d.memberBody,
    memberBenefits:lines(d.memberBenefits)}});
- if(d.projectSources.length)sections.push({kind:"PROJECT_TEASER",order:60,fields:{heading:d.projectHeading,sourceRefs:d.projectSources}});
+ if(d.projectEnabled||d.projectSources.length)sections.push({kind:"PROJECT_TEASER",order:60,fields:{heading:d.projectHeading,sourceRefs:d.projectSources}});
  if(d.campaignSources.length)sections.push({kind:"CAMPAIGN_TEASER",order:61,fields:{heading:d.campaignHeading,sourceRefs:d.campaignSources}});
  if(d.team.length)sections.push({kind:"TEAM",order:70,
   fields:{heading:d.teamHeading||"Our team",members:d.team}});
@@ -621,6 +621,7 @@ export function CmsAdminWorkspace({canManage,canPublish,canReview}:{
        Request volunteer registration link when available</label>
      </fieldset>}
      <fieldset><legend>Approved operational projects</legend><p>Select current CG-05 reviewed sources. Saving or submitting does not publish them.</p>
+      <label className="cg-cms-consent"><input type="checkbox" disabled={!canManage||busy||!!pending||draft.projectSources.length>0} checked={draft.projectEnabled||draft.projectSources.length>0} onChange={e=>edit("projectEnabled",e.target.checked)}/>Keep project directory available, including when empty</label>
       <label>Heading<input maxLength={160} value={draft.projectHeading} disabled={!canManage||busy||!!pending} onChange={e=>edit("projectHeading",e.target.value)}/></label>
       <button type="button" disabled={!canManage||busy||!!pending} onClick={refreshProjects}>Refresh approved projects</button>
       {projectError&&<p role="alert">{projectError}</p>}{!projectChoices.length&&!projectError&&<p>No current eligible projects.</p>}
@@ -866,7 +867,7 @@ export function CmsAdminWorkspace({canManage,canPublish,canReview}:{
     {selected?.status==="DRAFT"&&unsaved&&<p role="status">
      Save your changes before sending this page for approval.</p>}
     {selected?.status==="DRAFT"&&heroPhotoMissing&&<p role="status">
-     Add and save a verified desktop image for each homepage banner before review.</p>}
+     Add a verified desktop image or explicitly select a text-only banner before review.</p>}
     <div className="cg-cms-actions">
      {!selected&&canManage&&<button disabled={busy||!okay||!!pending} type="button"
       onClick={()=>command("Draft created","pages","POST",{content:payload(draft)})}>Create draft</button>}
