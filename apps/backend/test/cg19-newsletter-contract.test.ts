@@ -12,6 +12,7 @@ test("CG19 newsletter: explicit consent, verified code, replay, provider-off wit
  const root="11111111-1111-4111-8111-111111111111";
  const email="newsletter-test@example.invalid";
  const challenges=new Map<string,Row>();let subscription:Row|undefined;
+ const currentSubscription=()=>subscription;
  const events:Row[]=[];const sent:string[]=[];
  let configured=true;
  const query=async(sql:string,params:unknown[]=[])=>{
@@ -49,7 +50,7 @@ test("CG19 newsletter: explicit consent, verified code, replay, provider-off wit
   await assert.rejects(()=>service.start("test-peer",{email,action:"SUBSCRIBE",consent:true}),ServiceUnavailableException);
   assert.equal(challenges.size,0);configured=true;
   assert.deepEqual(await service.start("test-peer",{email,action:"SUBSCRIBE",consent:true}),{state:"CHECK_EMAIL"});
-  assert.equal(subscription,undefined);assert.equal(sent.length,1);
+  assert.equal(currentSubscription(),undefined);assert.equal(sent.length,1);
   const code=sent[0].match(/code is (\d{8})/)?.[1]??"";
   const key=sent[0].match(/unsubscribe without another email: ([A-Za-z0-9_-]{43})/)?.[1]??"";
   assert.equal(code.length,8);assert.equal(key.length,43);
@@ -59,12 +60,12 @@ test("CG19 newsletter: explicit consent, verified code, replay, provider-off wit
   await assert.rejects(()=>service.confirm("test-peer",{email,action:"SUBSCRIBE",code:code==="00000000"?"11111111":"00000000"}),BadRequestException);
   assert.equal(challenges.get("SUBSCRIBE")?.attempt_count,1);
   assert.deepEqual(await service.confirm("test-peer",{email,action:"SUBSCRIBE",code}),{state:"SUBSCRIBED"});
-  assert.equal(events.length,1);assert.ok(Buffer.isBuffer(subscription?.email_encrypted));
+  assert.equal(events.length,1);assert.ok(Buffer.isBuffer(currentSubscription()?.email_encrypted));
   assert.deepEqual(await service.confirm("test-peer",{email,action:"SUBSCRIBE",code}),{state:"SUBSCRIBED"});
   assert.equal(events.length,1);
   configured=false;
   assert.deepEqual(await service.withdraw("test-peer",{email,key}),{state:"WITHDRAWN"});
-  assert.equal(subscription?.email_encrypted,null);assert.equal(events.length,2);
+  assert.equal(currentSubscription()?.email_encrypted,null);assert.equal(events.length,2);
   assert.deepEqual(await service.withdraw("test-peer",{email,key}),{state:"WITHDRAWN"});
   assert.equal(events.length,2);assert.equal(sent.length,1);
   await assert.rejects(()=>service.confirm("test-peer",{email,action:"SUBSCRIBE",code}),BadRequestException);
