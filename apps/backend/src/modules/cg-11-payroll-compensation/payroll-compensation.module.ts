@@ -1,3 +1,4 @@
+import {PayrollPaymentService} from "./application/payroll-payment.service";
 import {Module} from "@nestjs/common";
 import {IdentityAccessModule} from "../cg-01-identity-access/identity-access.module";
 import {FoundationStructureModule} from "../cg-02-foundation-structure/foundation-structure.module";
@@ -7,5 +8,5 @@ import {PayrollRunService} from "./application/payroll-run.service";
 import {PayrollRunController} from "./http/payroll-run.controller";
 import {PayrollCompensationService} from "./application/payroll-compensation.service";
 import {PayrollCompensationController} from "./http/payroll-compensation.controller";
-@Module({imports:[IdentityAccessModule,FoundationStructureModule,HrSourceModule,FinanceSourceModule],providers:[PayrollCompensationService,PayrollRunService],controllers:[PayrollCompensationController,PayrollRunController],exports:[PayrollCompensationService,PayrollRunService]})
+@Module({imports:[IdentityAccessModule,FoundationStructureModule,HrSourceModule,FinanceSourceModule],providers:[PayrollPaymentService,PayrollCompensationService,PayrollRunService],controllers:[PayrollCompensationController,PayrollRunController],exports:[PayrollCompensationService,PayrollRunService]})
 export class PayrollCompensationModule{}
