@@ -27,8 +27,7 @@ CREATE INDEX ix_cg11_run_scope ON payroll_run(root_realm_id,period_from DESC,bra
 -- Every source revision is append-only; the run row is a guarded pointer.
 CREATE TABLE payroll_run_revision(
  root_realm_id uuid NOT NULL,run_id uuid NOT NULL,revision integer NOT NULL CHECK(revision>1),
- source_digest char(64) NOT NULL CHECK(source_digest~'^[a-f0-9]{64}$'),
- snapshot jsonb NOT NULL CHECK(jsonb_typeof(snapshot)='object'),
+ source_digest char(64) NOT NULL CHECK(source_digest~'^[a-f0-9]{64}$'),snapshot jsonb NOT NULL CHECK(jsonb_typeof(snapshot)='object'),
  created_by uuid NOT NULL,created_at timestamptz NOT NULL DEFAULT now(),
  PRIMARY KEY(root_realm_id,run_id,revision),UNIQUE(root_realm_id,run_id,revision,source_digest),
  FOREIGN KEY(root_realm_id,run_id) REFERENCES payroll_run(root_realm_id,id),
@@ -36,8 +35,7 @@ CREATE TABLE payroll_run_revision(
 );
 CREATE TABLE payroll_run_command(
  root_realm_id uuid NOT NULL,actor_ref uuid NOT NULL,request_key uuid NOT NULL,run_id uuid NOT NULL,
- request_digest char(64) NOT NULL CHECK(request_digest~'^[a-f0-9]{64}$'),
- accepted_revision integer NOT NULL,
+ request_digest char(64) NOT NULL CHECK(request_digest~'^[a-f0-9]{64}$'),accepted_revision integer NOT NULL,
  PRIMARY KEY(root_realm_id,actor_ref,request_key),
  FOREIGN KEY(root_realm_id,run_id,accepted_revision) REFERENCES payroll_run_revision(root_realm_id,run_id,revision),
  FOREIGN KEY(actor_ref,root_realm_id) REFERENCES account(id,realm_id)

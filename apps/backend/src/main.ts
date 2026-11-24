@@ -7,6 +7,7 @@ import { AppModule } from "./app.module";
 import { readConfig } from "./core/config/config";
 import { SafeErrorsFilter } from "./core/http/safe-errors.filter";
 import { correlateRequest } from "./core/observability/request-correlation";
+import { verifySchemaReadiness } from "./core/infrastructure/schema-readiness";
 
 // Ensure dual-stack environments resolve IPv4 addresses first to avoid ISP IPv6 DNS ENOTFOUND
 try { dns.setDefaultResultOrder?.("ipv4first"); } catch {}
@@ -27,21 +28,20 @@ async function bootstrap(): Promise<void> {
 
   // Verify database readiness before accepting incoming network traffic
   let dbReady = false;
-  let lastDbError: unknown = null;
   for (let attempt = 1; attempt <= 3; attempt++) {
     try {
-      await pool.query("SELECT 1");
+      await verifySchemaReadiness(pool);
       dbReady = true;
       break;
-    } catch (err) {
-      lastDbError = err;
+    } catch {
       if (attempt < 3) {
         await new Promise(r => setTimeout(r, 1000 * Math.pow(2, attempt - 1) + Math.random() * 500));
       }
     }
   }
   if (!dbReady) {
-    throw new Error(`Database readiness check failed: ${lastDbError instanceof Error ? lastDbError.message : String(lastDbError)}`);
+    await app.close();
+    throw new Error("Database schema is unavailable or incompatible. Verify database setup and release version.");
   }
 
   await app.listen(cfg.port, "0.0.0.0");
