@@ -61,7 +61,10 @@ export function NativeBeneficiariesWorkspace({token,onExpired,canManage,canLinkP
  const [opts,setOpts]=useState<Options|null>(null),[districts,setDistricts]=useState<Option[]>([]);
  const [q,setQ]=useState(""),[search,setSearch]=useState(""),[tab,setTab]=useState("ALL"),[branch,setBranch]=useState("");
  const [genderFilter,setGenderFilter]=useState(""),[ageFilter,setAgeFilter]=useState(""),[typeFilter,setTypeFilter]=useState("");
- const [appliedFilters,setAppliedFilters]=useState({gender:"",ageGroup:"",type:""});
+ const [stateFilter,setStateFilter]=useState(""),[districtFilter,setDistrictFilter]=useState("");
+ const [fromFilter,setFromFilter]=useState(""),[toFilter,setToFilter]=useState("");
+ const [filterDistricts,setFilterDistricts]=useState<Option[]>([]);
+ const [appliedFilters,setAppliedFilters]=useState({gender:"",ageGroup:"",type:"",stateRef:"",districtRef:"",registeredFrom:"",registeredTo:""});
  const [cursor,setCursor]=useState(""),[history,setHistory]=useState<string[]>([]);
  const [auditHistory,setAuditHistory]=useState<ActionHistory[]>([]),[verificationHistory,setVerificationHistory]=useState<VerificationHistory[]>([]);
  const [review,setReview]=useState<ReviewInfo|null>(null),[reviewAction,setReviewAction]=useState("APPROVE");
@@ -107,6 +110,7 @@ export function NativeBeneficiariesWorkspace({token,onExpired,canManage,canLinkP
    .finally(()=>{if(live)setLoading(false);});
   return()=>{live=false;};
  },[search,tab,branch,cursor,refreshKey,api,appliedFilters]);
+ useEffect(()=>{let live=true;setFilterDistricts([]);if(stateFilter)void api<Options>("/options?"+new URLSearchParams({stateRef:stateFilter})).then(v=>{if(live)setFilterDistricts(v.districts);}).catch(e=>{if(live)setError(e.message);});return()=>{live=false;};},[stateFilter,api]);
  const select=async(id:string)=>{setBusy(true);setError("");
   try{
    const [x,audit,verification,reviewInfo]=await Promise.all([
@@ -215,8 +219,14 @@ export function NativeBeneficiariesWorkspace({token,onExpired,canManage,canLinkP
    <TextInput accessibilityLabel="Beneficiary type" value={typeFilter} maxLength={60} onChangeText={setTypeFilter} style={{backgroundColor:"white",borderWidth:1,borderColor:"#CBD5E1",padding:12,borderRadius:10}}/>
    <Select title="Gender" selected={genderFilter} items={[{value:"",label:"All"},...enumOptions(["MALE","FEMALE","OTHER","NOT_SPECIFIED"])]} onSelect={setGenderFilter}/>
    <Select title="Age group" selected={ageFilter} items={[{value:"",label:"All"},...enumOptions(["CHILD","ADULT","SENIOR","NOT_SPECIFIED"])]} onSelect={setAgeFilter}/>
-   <Button label="Apply Filters" outline onPress={()=>{setSearch(q.trim());setAppliedFilters({gender:genderFilter,ageGroup:ageFilter,type:typeFilter});setCursor("");setHistory([]);}}/>
-   <Button label="Reset filters" outline onPress={()=>{setQ("");setSearch("");setBranch("");setTab("ALL");setGenderFilter("");setAgeFilter("");setTypeFilter("");setAppliedFilters({gender:"",ageGroup:"",type:""});setCursor("");setHistory([]);}}/>
+   <Select title="State" selected={stateFilter} items={[{value:"",label:"All states"},...(opts?.states??[])]} onSelect={x=>{setStateFilter(x);setDistrictFilter("");}}/>
+   {stateFilter!==""&&<Select title="District" selected={districtFilter} items={[{value:"",label:"All districts"},...filterDistricts]} onSelect={setDistrictFilter}/>}
+   <Text style={labelStyle}>Registered from (YYYY-MM-DD)</Text>
+   <TextInput accessibilityLabel="Registered from" value={fromFilter} onChangeText={setFromFilter} maxLength={10} placeholder="YYYY-MM-DD" style={{backgroundColor:"white",borderWidth:1,borderColor:"#CBD5E1",padding:12,borderRadius:10}}/>
+   <Text style={labelStyle}>Registered to (YYYY-MM-DD)</Text>
+   <TextInput accessibilityLabel="Registered to" value={toFilter} onChangeText={setToFilter} maxLength={10} placeholder="YYYY-MM-DD" style={{backgroundColor:"white",borderWidth:1,borderColor:"#CBD5E1",padding:12,borderRadius:10}}/>
+   <Button label="Apply Filters" outline onPress={()=>{setSearch(q.trim());setAppliedFilters({gender:genderFilter,ageGroup:ageFilter,type:typeFilter,stateRef:stateFilter,districtRef:districtFilter,registeredFrom:fromFilter,registeredTo:toFilter});setCursor("");setHistory([]);}}/>
+   <Button label="Reset filters" outline onPress={()=>{setQ("");setSearch("");setBranch("");setTab("ALL");setGenderFilter("");setAgeFilter("");setTypeFilter("");setStateFilter("");setDistrictFilter("");setFromFilter("");setToFilter("");setAppliedFilters({gender:"",ageGroup:"",type:"",stateRef:"",districtRef:"",registeredFrom:"",registeredTo:""});setCursor("");setHistory([]);}}/>
    <Select title="Operating branch" selected={branch}
     items={[{value:"",label:"All permitted branches"},...(opts?.branches??[])]}
     onSelect={x=>{setBranch(x);setCursor("");setHistory([]);}}/>
