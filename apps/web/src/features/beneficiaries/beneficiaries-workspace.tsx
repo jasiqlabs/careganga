@@ -7,7 +7,9 @@ type Item={ref:string;reference:string;name:string;contactMobile:string|null;rep
  beneficiaryType:string;gender:string;ageGroup:string;consentKind:string;consentPurpose:string|null;
  consentRevoked:boolean;verification:string;lifecycle:string;revision:number;createdAt:string;
  projectLinks?:{ref:string;projectRef:string;projectName:string}[]};
-type Page={items:Item[];hasMore:boolean;nextCursor:string|null};
+type Summary={total:number;male:number;female:number;children:number;active:number;verified:number};
+const metrics:[keyof Summary,string][]=[["total","Total Beneficiaries"],["male","Male"],["female","Female"],["children","Children"],["active","Active"],["verified","Verified"]];
+type Page={summary:Summary;items:Item[];hasMore:boolean;nextCursor:string|null};
 type DuplicateSuggestion={reference:string;maskedName:string;beneficiaryType:string;contactMatches:boolean};
 type DuplicateResponse={advisory:boolean;items:DuplicateSuggestion[];hasMore:boolean};
 type ActionHistory={action:string;revision:number;reason:string|null;at:string};
@@ -230,7 +232,10 @@ export function BeneficiariesWorkspace({canManage,canLinkProjects,canManageLifec
   </header>
   <div style={{...card,marginBottom:16}}>
    <strong>Beneficiary overview</strong>
-   <p style={{fontSize:13,color:"var(--cg-muted)"}}>Only authorized records in your current Foundation/branch scope are shown. Verified counts and assistance totals require approved source-backed reporting.</p>
+   <p style={{fontSize:13,color:"var(--cg-muted)"}}>Counts reflect your current authorized scope and applied filters; withdrawn-consent records are excluded from demographic, active and verified counts.</p>
+   <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(112px,1fr))",gap:10,marginBottom:14}}>
+    {metrics.map(([key,label])=><div key={key} style={{...card,padding:12}}><div style={{fontSize:12,color:"var(--cg-muted)"}}>{label}</div><strong style={{fontSize:23}}>{busyList?"…":page?.summary?.[key]??"—"}</strong></div>)}
+   </div>
    <div style={{display:"flex",gap:7,flexWrap:"wrap"}} role="tablist" aria-label="Beneficiary status">
     {tabs.map(([key,label])=><button type="button" role="tab" aria-selected={tab===key} key={key}
      onClick={()=>{setTab(key);setCursor("");setSeen([]);}}
