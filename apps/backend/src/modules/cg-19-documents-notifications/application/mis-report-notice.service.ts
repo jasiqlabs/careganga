@@ -21,7 +21,6 @@ export class MisReportNoticeService{
  async publishReady(root:string,account:string,runRef:string){
   await this.sessions.requireScheduledMisAction(root,account,"mis.reports.view");
   await this.sessions.requireScheduledMisAction(root,account,"mis.reports.export");
-  await this.sessions.requireScheduledMisAction(root,account,"finance.reports.view");
   await this.sessions.requireScheduledMisAction(root,account,"communications.notifications.view");
   const tx=await this.db.connect();let active=false;
   try{
@@ -29,8 +28,8 @@ export class MisReportNoticeService{
    await tx.query("SET LOCAL statement_timeout='8s'");
    await tx.query("SET LOCAL lock_timeout='3s'");
    const actual=await tx.query<{id:string;expires_at:Date;safe_request:unknown;
-    original_scope_all:boolean|null;original_scope_branch_refs:string[]|null}>(
-    "SELECT r.id,r.expires_at,r.safe_request,r.original_scope_all,"+
+    source_key:string;original_project_digest:string|null;original_scope_all:boolean|null;original_scope_branch_refs:string[]|null}>(
+    "SELECT r.id,r.expires_at,r.safe_request,r.source_key,r.original_project_digest,r.original_scope_all,"+
     "r.original_scope_branch_refs FROM cg20_report_run r "+
     "JOIN cg20_report_schedule schedule ON schedule.root_realm_id=r.root_realm_id "+
     "AND schedule.id=r.schedule_ref AND schedule.owner_account_ref=r.requester_ref "+
@@ -60,15 +59,18 @@ export class MisReportNoticeService{
    if(original.original_scope_all===null||original.original_scope_branch_refs===null)
     throw new ForbiddenException("The original report scope cannot be verified");
    const chosen=typeof request?.branchRef==="string"?request.branchRef:null;
-   if(chosen)await this.branches.requireScheduledFinanceReportBranch(root,account,chosen);
+   const project=original.source_key==="PROJECT_STATUS_REPORT";
+   if(!project&&original.source_key!=="FINANCE_POSTED_SUMMARY")throw new ForbiddenException("Scheduled source unavailable");
+   if(project&&!original.original_project_digest)throw new ForbiddenException("Project report proof unavailable");
+   if(!project&&chosen)await this.branches.requireScheduledFinanceReportBranch(root,account,chosen);
    // A null selection means the originally authorized branch union for a
    // limited manager, never implicit Foundation-null financial access.
-   const current=await this.branches.scheduledFinanceScope(root,account);
+   const current=project?await this.branches.scheduledProjectScope(root,account):await this.branches.scheduledFinanceScope(root,account);
    if(original.original_scope_all&&!current.all||
      !current.all&&original.original_scope_branch_refs.some(ref=>
        !current.branchRefs.includes(ref)))
     throw new ForbiddenException("Report branch access changed before delivery");
-   if(chosen&&!current.all&&!current.branchRefs.includes(chosen))
+   if(chosen&&(project||!current.all)&&!current.branchRefs.includes(chosen))
     throw new ForbiddenException("This report branch is no longer assigned");
    const text={
     subject:"Your CareGanga Foundation report is ready",
