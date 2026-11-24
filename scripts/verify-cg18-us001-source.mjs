@@ -578,6 +578,15 @@ checks.push(["Default CMS onboarding is explicit and uses original draft creatio
  initDrafts.includes('if(existing.has(content.slug))')&&initDrafts.includes('if(r.status===409)')&&
  initDrafts.includes('result.status!=="DRAFT"')&&!initDrafts.includes('/api/cms/pages/submit')&&
  !initDrafts.includes('/api/cms/pages/publish')]);
+const eventsRoute=read("apps/web/src/app/events/page.tsx");
+checks.push(["Events reuse the effective CMS article and current CG05 eligibility source",
+ files.backend.includes("NOT $3::boolean OR body.structured_fields ? 'sourceEventRef'")&&
+ files.backend.includes("NOTICE_CURRENT_SQL+EVENT_CURRENT_SQL")&&
+ eventsRoute.includes('publishedCmsArticles("",cursor,true)')&&
+ files.header.includes('href="/events"')&&
+ files.android.includes('publishedArticles(target==="events",cursor)')&&
+ files.android.includes('loadedTarget!==slug')&&
+ files.android.includes('title="Events"')]);
 let errors=0;
 for(const [label,ok] of checks){
  console.log((ok?"SOURCE-PRESENT":"SOURCE-FAIL")+": "+label);
