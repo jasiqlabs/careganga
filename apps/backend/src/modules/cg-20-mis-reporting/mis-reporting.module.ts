@@ -1,4 +1,5 @@
 import {Module} from "@nestjs/common";
+import {ProjectsSourceModule} from "../cg-05-projects-field-operations/projects-source.module";
 import {IdentityAccessModule} from "../cg-01-identity-access/identity-access.module";
 import {FinanceAccountingModule} from "../cg-09-finance-accounting/finance-accounting.module";
 import {FoundationStructureModule} from "../cg-02-foundation-structure/foundation-structure.module";
@@ -17,7 +18,7 @@ import {MisReportScheduleWorker} from "./infrastructure/mis-report-schedule.work
 
 /** CG-20 is a read-only consumer of verified source-owned projections. */
 @Module({
- imports:[IdentityAccessModule,FoundationStructureModule,FinanceAccountingModule,DiagnosticsModule,PatientsAppointmentsModule,
+ imports:[ProjectsSourceModule,IdentityAccessModule,FoundationStructureModule,FinanceAccountingModule,DiagnosticsModule,PatientsAppointmentsModule,
   DocumentsNotificationsModule,PlatformConfigurationModule],
  providers:[MisDashboardService,MisReportSourceService,MisSavedReportService,MisReportRunService,MisReportScheduleService,MisReportScheduleWorker],
  controllers:[MisDashboardController,MisReportsController]
