@@ -49,3 +49,12 @@ test("US-001-QA13/19: CG19 beneficiary evidence SQL and protected read contract"
  assert.match(service,/FILE_READ/);
  assert.match(source,/row\.consent_revoked_at\|\|row\.lifecycle_state!=="ACTIVE"/);
 });
+
+test("US-001-QA02/07/17: revoked profile private demographics and reviewer remarks are not exposed",()=>{
+ const source=readFileSync(join(import.meta.dirname,"../src/modules/cg-06-beneficiaries-assistance/application/beneficiaries.service.ts"),"utf8");
+ const approval=readFileSync(join(import.meta.dirname,"../src/modules/cg-03-registration-approvals/application/beneficiary-verification-review.service.ts"),"utf8");
+ assert.match(source,/name\.trim\(\)\.length>=3\?/);
+ assert.match(source,/stateRef:revoked\?"":r\.state_ref/);
+ assert.match(source,/b\.consent_revoked_at IS NULL AND b\.gender=/);
+ assert.match(approval,/if\(src\.consentRevoked\)return \{status:"RESTRICTED"/);
+});
