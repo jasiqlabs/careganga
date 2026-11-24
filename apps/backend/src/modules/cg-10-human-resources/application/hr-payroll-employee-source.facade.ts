@@ -22,7 +22,8 @@ export class HrPayrollEmployeeSourceFacade{
   await this.branches.projectBranch(tx,a,e[0].branch_ref);
   return e[0];
  }
- async options(tx:PoolClient,a:Actor,branchInput:unknown,qInput:unknown){
+ async options(tx:PoolClient,a:Actor,branchInput:unknown,qInput:unknown,offsetInput:unknown=0){
+  const offset=Number(offsetInput);if(!Number.isSafeInteger(offset)||offset<0||offset>100000)throw new BadRequestException("Invalid employee page");
   const branch=branchInput?id(branchInput):null,q=typeof qInput==="string"?qInput.trim().toLowerCase().slice(0,80):"";
    await this.identity.assertCurrent(tx,a,"payroll.compensation.view");
    const scope=await this.branches.projectBranchScope(tx,a);
@@ -34,7 +35,7 @@ export class HrPayrollEmployeeSourceFacade{
     AND ($3::uuid IS NULL OR h.branch_ref=$3) AND h.valid_from<=(now() AT TIME ZONE 'Asia/Kolkata')::date
     AND (h.valid_to IS NULL OR h.valid_to>(now() AT TIME ZONE 'Asia/Kolkata')::date)
     AND ($4='' OR strpos(lower(app.legal_name),$4)>0 OR strpos(lower(e.employee_code),$4)>0)
-    ORDER BY app.legal_name,e.id LIMIT 101`,[a.realmId,scope.branches.map(b=>b.value),branch,q])).rows;
-   return {branches:scope.branches.map(({value,label})=>({value,label})),items:rows.slice(0,100),hasMore:rows.length>100};
+    ORDER BY app.legal_name,e.id LIMIT 31 OFFSET $5`,[a.realmId,scope.branches.map(b=>b.value),branch,q,offset])).rows;
+   return {branches:scope.branches.map(({value,label})=>({value,label})),items:rows.slice(0,30),hasMore:rows.length>30,offset};
  }
 }
