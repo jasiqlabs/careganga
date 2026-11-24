@@ -94,6 +94,7 @@ export interface ModuleActionHandlers {
   openBranches: () => void;
   openHr: () => void;
   openProjects: () => void;
+  openBeneficiaries: () => void;
   openCampaigns: () => void;
   openCsr: () => void;
   openTasks: () => void;
@@ -229,6 +230,7 @@ export function getAuthorizedModules(
   if(roleActions.includes("campaigns.view")||(roleActions.includes("campaigns.review")&&roleActions.includes("approvals.review")))list.push({key:"campaigns",title:"Campaigns",shortLabel:"Campaigns",description:"Original Foundation campaigns and versioned private drafts.",category:"ORGANIZATION MANAGEMENT",iconName:"building",iconBg:"#E0F2FE",iconColor:"#0369A1",onOpen:handlers.openCampaigns});
   if(roleActions.includes("csr.partners.view")||(roleActions.includes("csr.partners.review")&&roleActions.includes("approvals.review")))list.push({key:"csr",title:"CSR & Partnerships",shortLabel:"CSR",description:"Current authorized CSR partner drafts and contacts.",category:"ORGANIZATION MANAGEMENT",iconName:"building",iconBg:"#E0F2FE",iconColor:"#0369A1",onOpen:handlers.openCsr});
   if(roleActions.includes("projects.view"))list.push({key:"projects",title:"Projects",shortLabel:"Projects",description:"View and manage current permitted Foundation projects.",category:"ORGANIZATION MANAGEMENT",iconName:"building",iconBg:"#E0F2FE",iconColor:"#0369A1",onOpen:handlers.openProjects});
+  if(roleActions.includes("beneficiaries.view"))list.push({key:"beneficiaries",title:"Beneficiaries",shortLabel:"Beneficiaries",description:"Manage private beneficiary profiles in your current Foundation scope.",category:"ORGANIZATION MANAGEMENT",iconName:"users",iconBg:"#E0F2FE",iconColor:"#1E53DC",onOpen:handlers.openBeneficiaries});
   if(roleActions.includes("inventory.catalog.view"))list.push({key:"inventory",title:"Requests & Inventory",shortLabel:"Inventory",description:"View permitted inventory catalog and warehouses.",category:"ORGANIZATION MANAGEMENT",iconName:"building",iconBg:"#E0F2FE",iconColor:"#0369A1",onOpen:handlers.openInventory});
   if(roleActions.includes("rewards.catalog.view"))
    list.push({key:"rewards",title:"Referrals & Rewards",shortLabel:"Rewards",
