@@ -1,7 +1,7 @@
 import Link from "next/link";
 import type {Metadata} from "next";
 import {HealthcarePublicChrome} from "../../../shared/healthcare-public-chrome";
-import {publishedCmsPage} from "../../../features/cms-public-content/cms-public-source";
+import {publishedCmsPage,selectPublicIntro} from "../../../features/cms-public-content/cms-public-source";
 export const dynamic="force-dynamic";
 export const metadata:Metadata={title:"Team Directory | CareGanga Foundation",robots:{index:false,follow:true}};
 type Person={name:string;designation:string};
@@ -10,6 +10,7 @@ export default async function TeamPage({searchParams}:{searchParams:Promise<{nam
  const clean=(v:unknown)=>typeof v==="string"?v.trim().slice(0,120):"";
  const name=clean(params.name),designation=clean(params.designation);
  const results=await Promise.all([publishedCmsPage("about"),publishedCmsPage("home")]);
+ const intro=selectPublicIntro(results[0],"TEAM");
  const people:Person[]=[];
  for(const result of results)if(result.state==="PUBLISHED")
   for(const section of result.page.sections)if(section.kind==="TEAM"&&Array.isArray(section.fields.members))
@@ -20,7 +21,7 @@ export default async function TeamPage({searchParams}:{searchParams:Promise<{nam
  const options=[...new Set(people.map(p=>p.designation))].sort();
  const filtered=people.filter(p=>(!name||p.name.toLocaleLowerCase().includes(name.toLocaleLowerCase()))&&(!designation||p.designation===designation));
  return <HealthcarePublicChrome><main id="main-content" className="cg-site-content cg-site-team">
-  <h1>Team Directory</h1><p>Only independently published, currently consented public names and designations are displayed.</p>
+  {intro?.eyebrow&&<p className="cg-site-eyebrow">{intro.eyebrow}</p>}<h1>{intro?.heading??"Team Directory"}</h1>{intro?.body&&<p>{intro.body}</p>}{intro?.highlights.length?<ul>{intro.highlights.map((v,i)=><li key={i}>{v}</li>)}</ul>:null}<h2>Team Directory</h2><p>Only independently published, currently consented public names and designations are displayed.</p>
   <form method="get" action="/about/team"><label>Search by name <input name="name" maxLength={120} defaultValue={name}/></label>
    <label>Designation <select name="designation" defaultValue={designation}><option value="">All designations</option>{options.map(v=><option key={v}>{v}</option>)}</select></label>
    <button type="submit">Search</button> <Link href="/about/team">Reset</Link></form>
