@@ -173,6 +173,11 @@ export class SupportService{
       "VALUES($1,$2,$3,$4,$5::jsonb)",
       [realm,caseId,actor,kind,JSON.stringify(metadata)]);
   }
+  /** Same original guest throttle storage, independently keyed newsletter limits. */
+  async newsletterThrottle(address:string,emailDigest:string,phase:"start"|"confirm"){
+    await this.throttle(address,"newsletter-"+phase,phase==="start"?12:50,3600);
+    await this.throttle(emailDigest,"newsletter-email-"+phase,phase==="start"?3:20,3600);
+  }
   async contact(address:string,payload:unknown){
     await this.throttle(address,"contact",12,3600);
     const x=input(payload,["requestKey","name","contact","subject","message"]);
