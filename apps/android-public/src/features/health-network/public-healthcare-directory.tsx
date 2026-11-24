@@ -64,7 +64,7 @@ export function PublicHealthcareDirectory({onExit,reschedule}:{onExit:()=>void;
  const [service,setService]=useState(""),[day,setDay]=useState("");
  const [minExperience,setMinExperience]=useState(""),[maxExperience,setMaxExperience]=useState("");
  const [minFee,setMinFee]=useState("");
- const [maxFee,setMaxFee]=useState(""),[cursor,setCursor]=useState("");
+ const [maxFee,setMaxFee]=useState("");
  const [selection,setSelection]=useState<Selection|null>(null);
  const [areas,setAreas]=useState<Area[]>([]);
  const [areaQuery,setAreaQuery]=useState("");
@@ -75,13 +75,14 @@ export function PublicHealthcareDirectory({onExit,reschedule}:{onExit:()=>void;
  const [filtersExpanded,setFiltersExpanded]=useState(false);
  const [state,setState]=useState<State>({status:"LOADING",items:[],next:null,details:null});
  const seq=useRef(0);
+ const applied=useRef<{mode:Mode;query:string}|null>(null);
  const selectionRef=useRef<Selection|null>(null);
  const detailHistory=useRef<Selection[]>([]);
- const load=useCallback(async(nextCursor="",append=false)=>{
+ const load=useCallback(async(nextCursor="",append=false,reuseApplied=false)=>{
   const request=++seq.current;
-  setState(s=>({...s,status:"LOADING",details:null}));
+  setState(s=>({...s,status:"LOADING",items:append?s.items:[],next:null,details:null}));
   try{
-   const query=new URLSearchParams();
+   let query=new URLSearchParams();
    if(search.trim())query.set("q",search.trim().slice(0,80));
    if(pin.trim())query.set("pin",pin.trim().slice(0,6));
    if(region.state)query.set("state",region.state.value);
@@ -98,6 +99,9 @@ export function PublicHealthcareDirectory({onExit,reschedule}:{onExit:()=>void;
     if(minFee)query.set("minFee",minFee);
     if(maxFee)query.set("maxFee",maxFee);
    }
+   if((append||reuseApplied)&&applied.current?.mode===mode)
+    query=new URLSearchParams(applied.current.query);
+   else applied.current={mode,query:query.toString()};
    if(nextCursor)query.set("after",nextCursor);
    const raw=await read(mode+"?"+query.toString());
    if(!raw||typeof raw!=="object"||Array.isArray(raw))throw Error("Invalid directory response");
@@ -108,13 +112,12 @@ export function PublicHealthcareDirectory({onExit,reschedule}:{onExit:()=>void;
     !(r.next===null||typeof r.next==="string"))
     throw Error("Unable to verify the latest directory response.");
    if(request!==seq.current)return;
-   setCursor(nextCursor);
    setState(s=>({status:"READY",
     items:append?[...s.items,...r.items as (Center|Doctor)[]]:r.items as (Center|Doctor)[],
     next:r.next as string|null,details:null}));
   }catch(e){
    if(request!==seq.current)return;
-   setState(s=>({...s,status:"ERROR",next:null,details:null}));
+   setState({status:"ERROR",items:[],next:null,details:null});
   }
  },[mode,search,pin,category,facility,service,day,specialty,minFee,maxFee,
   minExperience,maxExperience,region]);
@@ -160,7 +163,7 @@ export function PublicHealthcareDirectory({onExit,reschedule}:{onExit:()=>void;
   const sub=AppState.addEventListener("change",status=>{
    if(status==="active"){
     if(selection)void show(selection,false);
-    else void load();
+    else void load("",false,true);
    }
   });
   return()=>sub.remove();
@@ -184,7 +187,7 @@ export function PublicHealthcareDirectory({onExit,reschedule}:{onExit:()=>void;
    // Refresh the previous live verified detail, not stale cached doctor fees.
    void show(previous,false);
   }else if(selection){
-   selectionRef.current=null;setSelection(null);void load();
+   selectionRef.current=null;setSelection(null);void load("",false,true);
   }else{
    selectionRef.current=null;detailHistory.current=[];onExit();
   }
@@ -214,10 +217,10 @@ export function PublicHealthcareDirectory({onExit,reschedule}:{onExit:()=>void;
    <View style={styles.headingRow}>{label("‹ Back",back)}
     <Text accessibilityRole="header" style={styles.heading}>Healthcare Network</Text></View>
    {!selection?<><Text style={styles.helper}>Search only current verified centers and doctors.
-    This directory cannot confirm appointments or financial assistance.</Text>
+    Check appointment times before booking. Assistance is confirmed separately.</Text>
     <View style={styles.row}>
-     {label("Centers",()=>{setSelection(null);setMode("centers");},mode==="centers")}
-     {label("Doctors",()=>{setSelection(null);setMode("doctors");},mode==="doctors")}
+     {!reschedule&&label("Centers",()=>{if(mode!=="centers"){seq.current++;setState({status:"LOADING",items:[],next:null,details:null});setMode("centers");}},mode==="centers")}
+     {label("Doctors",()=>{if(mode!=="doctors"){seq.current++;setState({status:"LOADING",items:[],next:null,details:null});setMode("doctors");}},mode==="doctors")}
      {!reschedule&&label("Lab tests & prices",()=>{
       setLabCenterSlug("");setLabMenu(true);})}
     </View>
@@ -303,25 +306,33 @@ export function PublicHealthcareDirectory({onExit,reschedule}:{onExit:()=>void;
     </>}
     </>}
     <View style={styles.row}>
-     {label("Apply filters",()=>{setFiltersExpanded(false);void load();})}
+     {label("Search / apply filters",()=>{setFiltersExpanded(false);void load();})}
      {label("Reset",()=>reset())}
     </View>
     {state.status==="READY"&&state.items.length===0&&
      <Text accessibilityLiveRegion="polite">No currently verified listings match the filters.</Text>}
-    {state.items.map((item,i)=>mode==="centers"?
+    {state.status==="READY"&&state.items.map((item,i)=>mode==="centers"?
      <View key={"c-"+(item as Center).slug+"-"+i} style={styles.card}>
       <Text accessibilityRole="header" style={styles.cardTitle}>{item.centerName}</Text>
-      <Text>{nice((item as Center).type)} · {(item as Center).address}, {item.pinCode}</Text>
+      <Text style={styles.helper}>Verified center · {nice((item as Center).type)}</Text>
+      <Text>{(item as Center).providerName}</Text>
+      <Text>{item.address}, {item.pinCode}</Text>
       {label("View verified center",()=>void show({
        kind:"center",slug:(item as Center).slug}))}
      </View>:
      <View key={"d-"+(item as Doctor).doctorRef+"-"+(item as Doctor).centerSlug+"-"+i}
       style={styles.card}>
       <Text accessibilityRole="header" style={styles.cardTitle}>{(item as Doctor).doctorName}</Text>
-      <Text>{item.centerName} · {(item as Doctor).specialties.join(", ")}</Text>
-      <Text>{(item as Doctor).fee?"Approved consultation: "+money((item as Doctor).fee!.amountMinor):
-        "No current consultation fee published"}</Text>
-      {label("View doctor",()=>void show({kind:"doctor",ref:(item as Doctor).doctorRef}))}
+      <Text style={styles.helper}>Verified doctor · {item.centerName}</Text>
+      <Text>{(item as Doctor).specialties.join(", ")||"Specialty not listed"}</Text>
+      {(item as Doctor).qualifications.length>0&&<Text>{(item as Doctor).qualifications.join(", ")}</Text>}
+      {Number.isInteger((item as Doctor).experienceYears)&&(item as Doctor).experienceYears>=0&&
+       <Text>{(item as Doctor).experienceYears} {(item as Doctor).experienceYears===1?"year":"years"} of experience</Text>}
+      <Text>{item.address}, {item.pinCode}</Text>
+      <Text style={styles.label}>{(item as Doctor).fee?money((item as Doctor).fee!.amountMinor)+" · In-person consultation":
+        "Fee not listed"}</Text>
+      {label(reschedule?"Choose a new time":(item as Doctor).fee?"View profile & check times":"View doctor profile",
+       ()=>void show({kind:"doctor",ref:(item as Doctor).doctorRef}))}
      </View>)}
     {state.status==="READY"&&state.next&&
      label("More verified results",()=>void load(state.next!,true))}
@@ -404,7 +415,7 @@ export function PublicHealthcareDirectory({onExit,reschedule}:{onExit:()=>void;
    {state.status==="ERROR"&&<View style={styles.card}>
     <Text accessibilityRole="alert">Current publication cannot be verified.
      Results may have changed; no saved details are shown.</Text>
-    {label("Recheck now",()=>selection?void show(selection):void load(cursor))}
+    {label("Recheck now",()=>selection?void show(selection,false):void load("",false,true))}
    </View>}
   </ScrollView>
  </SafeAreaView>;
