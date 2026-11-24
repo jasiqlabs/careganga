@@ -185,5 +185,5 @@ const styles=StyleSheet.create({
   borderRadius:12,padding:12,gap:10},
  button:{borderWidth:1,borderColor:t.border,borderRadius:10,
   padding:12,minHeight:46,justifyContent:"center"},
- disabled:{opacity:.4},error:{color:"#A52626",fontSize:13}
+ disabled:{opacity:.4},error:{color:t.error,fontSize:13}
 });
