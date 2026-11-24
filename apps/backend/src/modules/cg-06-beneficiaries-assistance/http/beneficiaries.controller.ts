@@ -7,8 +7,8 @@ export class BeneficiariesController{
  @Get() list(@Headers("authorization")token:string,@Query()query:Record<string,unknown>){
   return this.beneficiaries.list(token,query);
  }
- @Get("options") options(@Headers("authorization")token:string,@Query("stateRef")state?:string){
-  return this.beneficiaries.options(token,state);
+ @Get("options") options(@Headers("authorization")token:string,@Query("stateRef")state?:string,@Query("districtRef")district?:string){
+  return this.beneficiaries.options(token,state,district);
  }
  @Get("duplicate-suggestions") duplicates(@Headers("authorization")token:string,
   @Query("branchRef")branchRef?:string,@Query("name")name?:string,
