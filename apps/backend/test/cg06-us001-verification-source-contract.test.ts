@@ -17,7 +17,7 @@ test("US-001-QA12/14: original CG03 case and independent decisions only; no shad
  assert.match(migration,/cg03_case_kind_finance/);
  assert.match(cg03,/INSERT INTO cg03_case\(/);
  assert.match(cg03,/INSERT INTO cg03_case_decision\(/);
- assert.match(cg03,/requireDistinctFinalReviewer/);
+ assert.match(cg03,/candidate.id<>ALL\(\$2::uuid\[\]\)/);
  assert.match(cg03,/verifyReviewer\(tx,a,"approvals.review",true\)/);
  assert.match(cg03,/requireFreshFoundationRootProof\(tx,a,x.currentPassword\)/);
  assert.match(controller,/submit-verification/);
@@ -34,6 +34,8 @@ test("US-001-QA03/11/14/18: exact revised beneficiary source and consent must ma
  assert.match(source,/current.verification_state!=="SUBMITTED"/);
  assert.match(source,/current.consent_revoked_at/);
  assert.match(cg03,/c.proposer_id===a.accountId/);
+ assert.match(cg03,/src.creatorRef===a.accountId/);
+ assert.match(source,/creatorRef:row.created_by/);
  assert.match(cg03,/src.revision!==c.beneficiary_source_revision/);
  assert.match(cg03,/src.digest!==c.beneficiary_source_digest/);
 });
