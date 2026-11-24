@@ -1,4 +1,4 @@
-import {ConflictException,Inject,Injectable} from "@nestjs/common";
+import {ConflictException,Inject,Injectable,NotFoundException} from "@nestjs/common";
 import {createHash,randomUUID} from "node:crypto";
 import type {Pool,PoolClient} from "pg";
 import {DATABASE} from "../../../core/infrastructure/database.module";
@@ -73,5 +73,36 @@ export class PayrollCompensationService{
     VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14) RETURNING *,effective_from::text,effective_to::text,base_salary_minor::text`,[a.realmId,e.id,e.branch_ref,e.assignment_ref,e.assignment_version,e.status_version,p.id,v.policyRevision,v.from,v.to,v.baseMinor,a.accountId,v.key,digest])).rows[0];
    await this.audit(tx,a,"COMPENSATION",row.id,"DRAFT_CREATED");return {...this.salaryView(row),replayed:false};
   });
+ }
+ /** Re-read the exact authorized source for CG03; no private banking fields or arbitrary table input. */
+ async reviewSource(tx:PoolClient,a:Actor,kind:"POLICY"|"COMPENSATION",ref:string,write=false){
+  await this.identity.assertCurrent(tx,a,"payroll.compensation.view");
+  const table=kind==="POLICY"?"payroll_policy":"employee_compensation";
+  const initial=(await tx.query<{branch_ref:string}>("SELECT branch_ref FROM "+table+" WHERE root_realm_id=$1 AND id=$2",[a.realmId,id(ref)])).rows[0];
+  if(!initial)throw new NotFoundException("Payroll source unavailable");
+  const scope=await this.branches.projectBranchScope(tx,a);
+  if(!scope.branches.some(b=>b.value===initial.branch_ref))throw new NotFoundException("Payroll source unavailable");
+  await this.branches.projectBranch(tx,a,initial.branch_ref);
+  type Source=Policy&Salary&{created_by:string;approval_case_ref:string|null;assignment_ref:string;assignment_version:number;employee_status_version:number;policy_revision:number};
+  const row=(await tx.query<Source>("SELECT *,effective_from::text,effective_to::text"+(kind==="COMPENSATION"?",base_salary_minor::text":"")+" FROM "+table+" WHERE root_realm_id=$1 AND id=$2 "+(write?"FOR UPDATE":"FOR SHARE"),[a.realmId,ref])).rows[0];
+  if(!row||row.branch_ref!==initial.branch_ref)throw conflict();
+  let preview:Record<string,unknown>,digest:string;
+  if(kind==="POLICY"){
+   const components=(await tx.query("SELECT code,label,kind,calc_mode,amount_minor::text,rate_bp,percent_basis,tax_class FROM payroll_component WHERE root_realm_id=$1 AND policy_id=$2 ORDER BY code",[a.realmId,row.id])).rows;
+   preview={...this.policyView(row),components};digest=hash([kind,row.id,row.branch_ref,row.label,row.effective_from,row.effective_to,components,row.request_digest]);
+  }else{
+   const current=await this.employee(tx,a,row.employee_ref),effective=await this.employee(tx,a,row.employee_ref,row.effective_from);
+   if(write&&(current.branch_ref!==row.branch_ref||effective.assignment_ref!==row.assignment_ref||effective.assignment_version!==row.assignment_version||effective.status_version!==row.employee_status_version||!["ACTIVE","PROBATION"].includes(current.status)))throw conflict();
+   const policy=(await tx.query("SELECT revision,status FROM payroll_policy WHERE root_realm_id=$1 AND id=$2 AND branch_ref=$3 FOR SHARE",[a.realmId,row.policy_id,row.branch_ref])).rows[0];
+   if(write&&(!policy||policy.status!=="APPROVED"||policy.revision!==row.policy_revision))throw conflict();
+   preview={...this.salaryView(row),employeeName:current.name,employeeReference:current.employee_code};digest=hash([kind,row.id,row.employee_ref,row.branch_ref,row.assignment_ref,row.assignment_version,row.employee_status_version,row.policy_id,row.policy_revision,row.effective_from,row.effective_to,row.base_salary_minor,row.request_digest]);
+  }
+  return {row,preview,digest};
+ }
+ async applyReview(tx:PoolClient,a:Actor,kind:"POLICY"|"COMPENSATION",ref:string,status:"SUBMITTED"|"APPROVED"|"RETURNED"|"REJECTED",expected:number,caseRef:string){
+  const table=kind==="POLICY"?"payroll_policy":"employee_compensation";
+  const result=await tx.query("UPDATE "+table+" SET status=$3,revision=revision+1,approval_case_ref=$4 WHERE root_realm_id=$1 AND id=$2 AND revision=$5 RETURNING id",[a.realmId,ref,status,caseRef,expected]);
+  if(!result.rowCount)throw conflict();
+  await this.audit(tx,a,kind,ref,status);
  }
 }
