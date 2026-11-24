@@ -165,7 +165,7 @@ export class PayrollCompensationService{
      JOIN hr_employment_assignment h ON h.root_realm_id=e.root_realm_id AND h.employee_id=e.id
      JOIN branch b ON b.root_realm_id=h.root_realm_id AND b.id=h.branch_ref AND b.status='ACTIVE'
      WHERE e.root_realm_id=$1 AND e.account_ref=$2 AND e.status IN('ACTIVE','PROBATION') AND h.valid_from<=(now() AT TIME ZONE 'Asia/Kolkata')::date AND (h.valid_to IS NULL OR h.valid_to>(now() AT TIME ZONE 'Asia/Kolkata')::date) FOR SHARE OF e,h,b`,[a.realmId,a.accountId])).rows[0];
-   if(!row){await tx.query("COMMIT");return {employee:null,salary:null};}
+   if(!row){await recordPayrollAudit(tx,a,"ACCESS","READ");await tx.query("COMMIT");return {employee:null,salary:null};}
    const c=(await tx.query<Salary>("SELECT *,base_salary_minor::text,effective_from::text,effective_until::text AS effective_to FROM employee_compensation_effective WHERE root_realm_id=$1 AND employee_ref=$2 AND branch_ref=$3 AND status='APPROVED' AND effective_from<=(now() AT TIME ZONE 'Asia/Kolkata')::date AND (effective_until IS NULL OR effective_until>(now() AT TIME ZONE 'Asia/Kolkata')::date)",[a.realmId,row.id,row.branch_ref])).rows[0];
    let salary:{effectiveFrom:string;effectiveTo:string|null;baseMinor:string;grossMinor:string;deductionMinor:string;netMinor:string;status:string}|null=null;
    if(c){
@@ -174,6 +174,7 @@ export class PayrollCompensationService{
     salary={effectiveFrom:c.effective_from,effectiveTo:c.effective_to,baseMinor:c.base_salary_minor,grossMinor:gross.toString(),deductionMinor:deductions.toString(),netMinor:(gross-deductions).toString(),status:"APPROVED_STRUCTURE"};
     await this.audit(tx,a,"COMPENSATION",c.id,"READ");
    }
+   if(!c)await recordPayrollAudit(tx,a,"COMPENSATION","READ");
    await tx.query("COMMIT");return {employee:{reference:row.employee_code,name:row.name,designation:row.designation},salary};
   }catch(e){try{await tx.query("ROLLBACK");}catch{}throw e;}finally{tx.release();}
  }
@@ -201,11 +202,13 @@ export class PayrollCompensationService{
    const components=(await tx.query("SELECT code,label,kind,calc_mode,amount_minor::text,rate_bp,percent_basis,tax_class FROM payroll_component WHERE root_realm_id=$1 AND policy_id=$2 ORDER BY code",[a.realmId,row.id])).rows;
    preview={...this.policyView(row),components};digest=hash([kind,row.id,row.branch_ref,row.label,row.effective_from,row.effective_to,row.supersedes_ref,components,row.request_digest]);
   }else{
-   const current=await this.employee(tx,a,row.employee_ref),effective=await this.employee(tx,a,row.employee_ref,row.effective_from);
-   if(write&&(row.branch_ref===null||current.branch_ref!==row.branch_ref||effective.assignment_ref!==row.assignment_ref||effective.assignment_version!==row.assignment_version||effective.status_version!==row.employee_status_version||!["ACTIVE","PROBATION"].includes(current.status)))throw conflict();
+   if(row.branch_ref===null)throw conflict();
+   const current=await this.employee(tx,a,row.employee_ref),effective=write?await this.employee(tx,a,row.employee_ref,row.effective_from):null;
+   if(write&&(!effective||current.branch_ref!==row.branch_ref||effective.assignment_ref!==row.assignment_ref||effective.assignment_version!==row.assignment_version||effective.status_version!==row.employee_status_version||!["ACTIVE","PROBATION"].includes(current.status)))throw conflict();
    if(kind==="PAYOUT"){
     preview={ref:row.id,employeeName:current.name,employeeReference:current.employee_code,effectiveFrom:row.effective_from,effectiveTo:row.effective_to,status:row.status,revision:row.revision,maskedAccount:"•••• "+row.masked_digits,maskedIfsc:row.masked_ifsc};
     digest=hash([kind,row.id,row.employee_ref,row.branch_ref,row.assignment_ref,row.assignment_version,row.employee_status_version,row.effective_from,row.effective_to,row.supersedes_ref,row.destination_ciphertext,row.destination_nonce,row.destination_tag,row.destination_fingerprint,row.masked_digits,row.masked_ifsc,row.request_digest]);
+    if(!write)await recordPayrollAudit(tx,a,kind,"READ");
     return {row,preview:{...preview,previous},digest};
    }
    const policy=(await tx.query("SELECT revision,status FROM payroll_policy WHERE root_realm_id=$1 AND id=$2 AND (branch_ref=$3 OR branch_ref IS NULL) FOR SHARE",[a.realmId,row.policy_id,row.branch_ref])).rows[0];
@@ -214,8 +217,9 @@ export class PayrollCompensationService{
     const original=await this.hrChange.payrollProposal(tx,a,row.employee_ref,row.source_hr_proposal_ref,row.branch_ref!,row.assignment_ref);
     if(original.revision!==row.source_hr_proposal_revision||original.digest!==row.source_hr_proposal_digest||original.baseMinor!==row.base_salary_minor||original.effectiveFrom!==row.effective_from)throw conflict();
    }
-   preview={...this.salaryView(row),employeeName:current.name,employeeReference:current.employee_code,hasOriginalHrProposal:!!row.source_hr_proposal_ref};digest=hash([kind,row.id,row.employee_ref,row.branch_ref,row.assignment_ref,row.assignment_version,row.employee_status_version,row.policy_id,row.policy_revision,row.source_hr_proposal_ref,row.source_hr_proposal_revision,row.source_hr_proposal_digest,row.effective_from,row.effective_to,row.supersedes_ref,row.base_salary_minor,row.request_digest]);
+   preview={...this.salaryView({...row,branch_ref:row.branch_ref}),employeeName:current.name,employeeReference:current.employee_code,hasOriginalHrProposal:!!row.source_hr_proposal_ref};digest=hash([kind,row.id,row.employee_ref,row.branch_ref,row.assignment_ref,row.assignment_version,row.employee_status_version,row.policy_id,row.policy_revision,row.source_hr_proposal_ref,row.source_hr_proposal_revision,row.source_hr_proposal_digest,row.effective_from,row.effective_to,row.supersedes_ref,row.base_salary_minor,row.request_digest]);
   }
+  if(!write)await recordPayrollAudit(tx,a,kind,"READ");
   return {row,preview:{...preview,previous},digest};
  }
  async applyReview(tx:PoolClient,a:Actor,kind:"POLICY"|"COMPENSATION"|"PAYOUT",ref:string,status:"SUBMITTED"|"APPROVED"|"RETURNED"|"REJECTED",expected:number,caseRef:string){
