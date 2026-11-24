@@ -1,6 +1,7 @@
 import {
  BadRequestException,ForbiddenException,Injectable,UnauthorizedException
 } from "@nestjs/common";
+import {BeneficiaryReportService} from "../../cg-06-beneficiaries-assistance/application/beneficiary-report.service";
 import {SessionService} from "../../cg-01-identity-access/application/session.service";
 import {FinanceReportsService} from "../../cg-09-finance-accounting/application/finance-reports.service";
 import {BranchSourceFacade} from "../../cg-02-foundation-structure/application/branch-source.facade";
@@ -12,7 +13,7 @@ export const REPORT_KINDS=[
  "FINANCE_POSTED_LEDGER","FINANCE_POSTED_SUMMARY",
  "FINANCE_POSTED_TREND","FINANCE_POSTED_GROUPED",
  "APPOINTMENT_STATUS","APPOINTMENT_STATUS_GROUPED","APPOINTMENT_DOCTOR_SUMMARY",
- "PLATFORM_AUDIT_ACTIVITY","DIAGNOSTICS_CATALOG_SUMMARY"
+ "PLATFORM_AUDIT_ACTIVITY","DIAGNOSTICS_CATALOG_SUMMARY","BENEFICIARY_ASSISTANCE_SUMMARY"
 ] as const;
 export type ReportKind=typeof REPORT_KINDS[number];
 export type ReportView="TABLE"|"SUMMARY"|"CHART"|"PIVOT";
@@ -58,7 +59,8 @@ export function parseSafeReport(raw:unknown):SafeReportRequest{
   APPOINTMENT_STATUS_GROUPED:["TABLE","CHART"],
   APPOINTMENT_DOCTOR_SUMMARY:["TABLE","CHART"],
   PLATFORM_AUDIT_ACTIVITY:["TABLE"],
-  DIAGNOSTICS_CATALOG_SUMMARY:["SUMMARY"]
+  DIAGNOSTICS_CATALOG_SUMMARY:["SUMMARY"],
+  BENEFICIARY_ASSISTANCE_SUMMARY:["SUMMARY"]
  };
  if(!legalViews[kind as ReportKind].includes(view))
   throw new BadRequestException({code:"MIS_REPORT_VIEW_INVALID",
@@ -78,7 +80,7 @@ export function parseSafeReport(raw:unknown):SafeReportRequest{
  if([yearRef,branchRef,centerRef,areaRef].some(v=>v!==""&&!UUID.test(v))||
   areaRef!==""&&!["FINANCE_POSTED_LEDGER","FINANCE_POSTED_GROUPED"].includes(kind)||
   isFinance&&(centerRef!==""||status!=="")||
-  (kind==="PLATFORM_AUDIT_ACTIVITY"||kind==="DIAGNOSTICS_CATALOG_SUMMARY")&&
+  (kind==="PLATFORM_AUDIT_ACTIVITY"||kind==="DIAGNOSTICS_CATALOG_SUMMARY"||kind==="BENEFICIARY_ASSISTANCE_SUMMARY")&&
    (centerRef!==""||status!=="")||
   kind==="DIAGNOSTICS_CATALOG_SUMMARY"&&fromDay!==""||
   kind!=="FINANCE_POSTED_GROUPED"&&(groupBy!==""||sortBy!==""||sortDirection!=="")||
@@ -147,7 +149,8 @@ export class MisReportSourceService{
   private readonly patients:PatientAdminOverviewService,
   private readonly audit:PlatformAuditService,
   private readonly diagnostics:DiagnosticsCatalogService,
-  private readonly branches:BranchSourceFacade){}
+  private readonly branches:BranchSourceFacade,
+  private readonly beneficiaries:BeneficiaryReportService){}
  /** CG02 is the sole source of current permitted branch scope, never a report-provided UUID. */
  async originalFinanceScope(token:string,request:SafeReportRequest){
   if(!request.kind.startsWith("FINANCE_"))return null;
@@ -231,6 +234,8 @@ export class MisReportSourceService{
    permission("mis.reports.manage"),permission("mis.reports.export"),
    permission("mis.reports.schedule"),permission("mis.reports.share"),permission("platform.audit.view"),
    permission("diagnostics.catalog.view")]);
+  if(await permission("beneficiaries.view")&&await permission("beneficiaries.assistance.view"))templates.push({
+   kind:"BENEFICIARY_ASSISTANCE_SUMMARY",label:"Beneficiary and assistance summary",views:["SUMMARY"],description:"Current permitted consented aggregate; small groups hidden. Live preview only."});
   if(diagnosticsAccess)templates.push({
    kind:"DIAGNOSTICS_CATALOG_SUMMARY",label:"Diagnostics services summary",
    views:["SUMMARY"],description:"Current approved service catalog counts from CG-16."});
@@ -379,6 +384,22 @@ export class MisReportSourceService{
     rows:x.months,nextOffset:null,sourceReadAt,
     sourceCutoffKind:"OWNER_READ_COMPLETED_NOT_SNAPSHOT",
     explanation:x.explanation,scopeLabel:"Current permitted finance source scope"};
+  }
+  if(q.kind==="BENEFICIARY_ASSISTANCE_SUMMARY"){
+   const x=await this.beneficiaries.misSummary(token);
+   return {kind:q.kind,view:q.view,label:"Beneficiary and assistance summary",
+    state:x.state,columns:[
+     {key:"total",label:"Consented beneficiaries",unit:"COUNT"},
+     {key:"male",label:"Male",unit:"COUNT"},{key:"female",label:"Female",unit:"COUNT"},
+     {key:"other",label:"Other or not specified",unit:"COUNT"},
+     {key:"children",label:"Children",unit:"COUNT"},
+     {key:"active",label:"Active",unit:"COUNT"},{key:"verified",label:"Verified",unit:"COUNT"},
+     {key:"recipients",label:"Recipients of delivered assistance",unit:"COUNT"}
+    ],rows:x.rows,nextOffset:null,sourceReadAt:new Date().toISOString(),sourceAsOf:x.sourceAsOf,
+    sourceCutoffKind:"OWNER_TRANSACTION_SNAPSHOT",
+    explanation:x.state==="SUPPRESSED"?"Small groups or complements are hidden to protect privacy.":
+     "Current authorized consented records and delivered assistance counts. Live preview only; no personal details or amounts.",
+    scopeLabel:"Current permitted beneficiary and assistance scope"};
   }
   if(q.kind==="DIAGNOSTICS_CATALOG_SUMMARY"){
    const x=await this.diagnostics.summary(token);
