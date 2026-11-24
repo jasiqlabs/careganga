@@ -250,7 +250,11 @@ if(process.argv[1]&&resolve(process.argv[1])===fileURLToPath(import.meta.url))tr
   case "generate": await generate();break;
   case "init": await init();break;
   case "upgrade": await upgrade();break;
-  case "check": loadBundle();console.log("Database release bundle checksum and compiled schema contract verified.");break;
+  case "check":
+   loadBundle();
+   if(!existsSync(join(backend,"dist/src/main.js"))||!existsSync(join(backend,"dist/src/modules/cg-01-identity-access/infrastructure/bootstrap-root.js")))
+    throw Error("Release build schema contract or compiled backend entry missing; rebuild the backend");
+   console.log("Database release bundle checksum, compiled schema contract and backend entry verified.");break;
   default: throw Error("Use contract, generate, init, upgrade or check");
  }
 }catch(e){

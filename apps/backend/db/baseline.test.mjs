@@ -1,5 +1,11 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import {createHash} from "node:crypto";
+import {mkdtempSync,mkdirSync,writeFileSync,copyFileSync,rmSync} from "node:fs";
+import {tmpdir} from "node:os";
+import {join,dirname} from "node:path";
+import {fileURLToPath} from "node:url";
+import {spawnSync} from "node:child_process";
 import {cleanDump,requireLedger,requirePrefix,disposable,direct,order,assertAtomicUpgrade,validateUpgrades} from "./baseline.mjs";
 
 const one={filename:"0001_cg01_identity.sql",sha256:"a".repeat(64)};
@@ -56,4 +62,33 @@ test("future upgrade SQL must leave release transaction under operator control",
  assert.doesNotThrow(()=>assertAtomicUpgrade("CREATE FUNCTION test() RETURNS void LANGUAGE plpgsql AS $body$ BEGIN NULL; END; $body$;"));
  assert.doesNotThrow(()=>assertAtomicUpgrade("/* outer /* nested */ COMMIT; */ SELECT 1;"));
  for(const sql of ["BEGIN; SELECT 1;","SELECT 1; COMMIT;","ROLLBACK;","START TRANSACTION;","PREPARE TRANSACTION 'x';","SET TRANSACTION READ ONLY;","COPY x FROM STDIN;","\\connect other","SELECT 'unclosed","SELECT $$unclosed"])assert.throws(()=>assertAtomicUpgrade(sql),sql);
+});
+
+test("prebuilt release checks work without historical SQL and reject stale or corrupt artifacts",()=>{
+ const dir=mkdtempSync(join(tmpdir(),"careganga-db-release-"));
+ try{
+  const db=join(dir,"db"),history=join(db,"migrations"),baseline=join(db,"baseline"),upgrades=join(db,"upgrades");
+  for(const p of [db,history,baseline,upgrades])mkdirSync(p,{recursive:true});
+  copyFileSync(join(dirname(fileURLToPath(import.meta.url)),"baseline.mjs"),join(db,"baseline.mjs"));
+  const hash=s=>createHash("sha256").update(s).digest("hex");
+  const hsql="CREATE TABLE example (id int);",schema="CREATE TABLE example (id int);\n";
+  const filename="0001_cg01_identity.sql";
+  writeFileSync(join(history,filename),hsql);
+  const manifest={format:1,postgresMajor:17,migrations:[{filename,sha256:hash(hsql)}],sqlSha256:hash(schema)};
+  writeFileSync(join(baseline,"schema.sql"),schema);
+  writeFileSync(join(baseline,"manifest.json"),JSON.stringify(manifest));
+  const run=command=>spawnSync(process.execPath,[join(db,"baseline.mjs"),command],{encoding:"utf8"});
+  const ok=command=>{const r=run(command);assert.equal(r.status,0,r.stderr);};
+  const fail=command=>{const r=run(command);assert.notEqual(r.status,0,command+" should fail");};
+  ok("contract");fail("check"); // compiled app entries must be present
+  const main=join(dir,"dist/src/main.js"),root=join(dir,"dist/src/modules/cg-01-identity-access/infrastructure/bootstrap-root.js");
+  for(const p of [main,root]){mkdirSync(dirname(p),{recursive:true});writeFileSync(p,"// fixture");}
+  ok("check");
+  writeFileSync(join(history,filename),hsql+" -- changed");fail("contract");
+  writeFileSync(join(history,filename),hsql);
+  writeFileSync(join(upgrades,"10000_cg01_example.sql"),"ALTER TABLE example ADD COLUMN label text;");fail("check");
+  ok("contract");ok("check");
+  rmSync(history,{recursive:true,force:true});ok("check"); // prebuilt image excludes archive
+  writeFileSync(join(baseline,"schema.sql"),schema+" -- modified");fail("check");
+ }finally{rmSync(dir,{recursive:true,force:true});}
 });
