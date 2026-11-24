@@ -90,6 +90,7 @@ export function parseSafeReport(raw:unknown):SafeReportRequest{
  const isFinance=FINANCE_KINDS.includes(kind as ReportKind);
  const isPayroll=kind==="PAYROLL_STATUS_SUMMARY",payrollMonth=text(o.payrollMonth);
  const isRoster=kind==="MEMBERSHIP_ROSTER_SUMMARY"||kind==="VOLUNTEER_ROSTER_SUMMARY";
+ const isBeneficiary=kind==="BENEFICIARY_ASSISTANCE_SUMMARY";
  if(o.payrollMonth!==undefined&&(typeof o.payrollMonth!=="string"||!isPayroll||!/^\d{4}-(0[1-9]|1[0-2])$/.test(payrollMonth)||payrollMonth.slice(0,4)<"2000"))throw new BadRequestException({code:"MIS_REPORT_FILTER_INVALID",message:"Choose a valid payroll month."});
  if([yearRef,centerRef,areaRef].some(v=>v!==""&&!UUID.test(v))||
   branchRef!==""&&!UUID.test(branchRef)&&!(isPayroll&&branchRef==="FOUNDATION")||
@@ -105,7 +106,7 @@ export function parseSafeReport(raw:unknown):SafeReportRequest{
    sortDirection!==""&&!["ASC","DESC"].includes(sortDirection)
   )||
   !isFinance&&yearRef!==""||
-  !isFinance&&!isPayroll&&!isRoster&&branchRef!==""||
+  !isFinance&&!isPayroll&&!isRoster&&!isBeneficiary&&branchRef!==""||
   status!==""&&!statusSet.has(status)||
   Boolean(fromDay)!==Boolean(untilDay)||
   fromDay!==""&&(!day(fromDay)||!day(untilDay)||fromDay>untilDay||
@@ -115,7 +116,7 @@ export function parseSafeReport(raw:unknown):SafeReportRequest{
   fromDay!==""&&kind!=="FINANCE_POSTED_LEDGER"&&
    kind!=="FINANCE_POSTED_GROUPED"&&kind!=="APPOINTMENT_STATUS"&&
    kind!=="APPOINTMENT_STATUS_GROUPED"&&kind!=="APPOINTMENT_DOCTOR_SUMMARY"&&
-   kind!=="PLATFORM_AUDIT_ACTIVITY"&&kind!=="CSR_FUNDING_SUMMARY"&&!isRoster)
+   kind!=="PLATFORM_AUDIT_ACTIVITY"&&kind!=="CSR_FUNDING_SUMMARY"&&!isRoster&&!isBeneficiary)
   throw new BadRequestException({code:"MIS_REPORT_FILTER_INVALID",
    message:"Choose an allowed center, year, status and date range for this report."});
  const offset=o.offset===undefined?0:o.offset;
@@ -255,17 +256,18 @@ export class MisReportSourceService{
    permission("mis.reports.manage"),permission("mis.reports.export"),
    permission("mis.reports.schedule"),permission("mis.reports.share"),permission("platform.audit.view"),
    permission("diagnostics.catalog.view")]);
-  if(await permission("beneficiaries.view")&&await permission("beneficiaries.assistance.view"))templates.push({
-   kind:"BENEFICIARY_ASSISTANCE_SUMMARY",label:"Beneficiary and assistance summary",views:["SUMMARY"],description:"Current permitted consented aggregate; small groups hidden. Live preview only."});
+
   const rosterOptions=async(action:string,load:()=>Promise<{branches:{ref:string;name:string}[]}>)=>{
    if(!await permission(action))return {ready:false,branches:[]};
    try{return {ready:true,...await load()};}
    catch(e){if(e instanceof UnauthorizedException)throw e;return {ready:false,branches:[]};}
   };
-  const [membership,volunteers]=await Promise.all([
+  const [membership,volunteers,beneficiary]=await Promise.all([
    rosterOptions("membership.members.view",()=>this.members.misOptions(token)),
-   rosterOptions("volunteers.view",()=>this.volunteers.misOptions(token))
+   rosterOptions("volunteers.view",()=>this.volunteers.misOptions(token)),
+   rosterOptions("beneficiaries.assistance.view",()=>this.beneficiaries.misOptions(token))
   ]);
+  if(beneficiary.ready)templates.push({kind:"BENEFICIARY_ASSISTANCE_SUMMARY",label:"Beneficiary and assistance summary",views:["SUMMARY"],description:"Current permitted consented aggregate and bounded delivery dates; small groups hidden. Live preview only."});
   if(membership.ready)templates.push({kind:"MEMBERSHIP_ROSTER_SUMMARY",label:"Membership status",views:["SUMMARY"],description:"Current authorized membership counts by enrollment cohort, live preview only."});
   if(volunteers.ready)templates.push({kind:"VOLUNTEER_ROSTER_SUMMARY",label:"Volunteer status",views:["SUMMARY"],description:"Current authorized volunteer counts by enrollment cohort, live preview only."});
   const payroll=await permission("payroll.runs.view")&&await permission("payroll.compensation.view")?
@@ -280,7 +282,7 @@ export class MisReportSourceService{
   if(auditAccess)templates.push({kind:"PLATFORM_AUDIT_ACTIVITY",
    label:"Protected audit activity",views:["TABLE"],
    description:"Current original platform and access audit events; limited to 50 rows."});
-  return {templates,finance,appointments,payroll,membership,volunteers,capabilities:{
+  return {templates,finance,appointments,payroll,membership,volunteers,beneficiary,capabilities:{
    manage,export:exportAllowed,schedule,share},sourceReadAt:new Date().toISOString()};
  }
  /** Dedicated current-principal scheduled projection. Never passes a synthetic
@@ -488,7 +490,7 @@ export class MisReportSourceService{
     scopeLabel:q.branchRef?"Selected authorized payroll branch scope":"All current permitted payroll scope"};
   }
   if(q.kind==="BENEFICIARY_ASSISTANCE_SUMMARY"){
-   const x=await this.beneficiaries.misSummary(token);
+   const x=await this.beneficiaries.misSummary(token,q.branchRef,q.fromDay,q.untilDay);
    return {kind:q.kind,view:q.view,label:"Beneficiary and assistance summary",
     state:x.state,columns:[
      {key:"total",label:"Consented beneficiaries",unit:"COUNT"},
@@ -500,8 +502,8 @@ export class MisReportSourceService{
     ],rows:x.rows,nextOffset:null,sourceReadAt:new Date().toISOString(),sourceAsOf:x.sourceAsOf,
     sourceCutoffKind:"OWNER_TRANSACTION_SNAPSHOT",
     explanation:x.state==="SUPPRESSED"?"Small groups or complements are hidden to protect privacy.":
-     "Current authorized consented records and delivered assistance counts. Live preview only; no personal details or amounts.",
-    scopeLabel:"Current permitted beneficiary and assistance scope"};
+     "Current authorized consented records and recipients of delivered assistance. Dates filter deliveries only, not demographic counts. Live preview only; no personal details or amounts.",
+    scopeLabel:q.branchRef?"Selected authorized beneficiary branch":"Current permitted beneficiary and assistance scope"};
   }
   if(q.kind==="DIAGNOSTICS_CATALOG_SUMMARY"){
    const x=await this.diagnostics.summary(token);
