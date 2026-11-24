@@ -157,7 +157,7 @@ Dependencies: US-001
 | US-001-QA04 | PARTIAL_SOURCE_GAP | `parseProfile/area` validation authored; missing approval-backend error/field-level UX and executed invalid-input QA |
 | US-001-QA05 | SOURCE_AUTHORED_PENDING_DEVICE | Web/Admin and `NativeBeneficiariesWorkspace` use same original API; real two-device/denied-public QA NOT_RUN |
 | US-001-QA06 | SOURCE_AUTHORED_VISUAL_NOT_VERIFIED | Original A07/A08 pixel hierarchy, KPI/filter/sidebar/table/motion/Android screenshot comparison NOT_RUN |
-| US-001-QA07 | SOURCE_GAP | Family phone deliberately nonunique, but permitted masked duplicate-suggestion UI/source not implemented |
+| US-001-QA07 | SOURCE_AUTHORED_PENDING_REVIEW | Same-scope masked duplicate-suggestion backend plus Admin Web and native UI; repeat family phone/branch privacy/runtime NOT_RUN |
 | US-001-QA08 | SOURCE_AUTHORED_PENDING_REVIEW | `BeneficiariesService.link/unlink/detail` original CG05 project scopes; two active projects and differential permission QA NOT_RUN |
 | US-001-QA09 | SOURCE_AUTHORED_PENDING_REVIEW | `CampaignLinkSourceFacade.requireCurrent`, current link unique index/history; real branch revoke/inactive/race QA NOT_RUN |
 | US-001-QA10 | SOURCE_AUTHORED_PENDING_PRIVACY_REVIEW | Explicit purpose, age/guardian, optional name/contact and true CG02 area; qualified private PII review NOT_RUN |
@@ -173,6 +173,16 @@ Dependencies: US-001
 | US-001-QA20 | SOURCE_GAP | Complete `CG01/02/03/05/19` integrated manual trace not possible until CG03/CG19, exact visual and runtime QA |
 
 **Release/merge gate:** NOT_SOURCE_COMPLETE; NOT_INDEPENDENTLY_REVIEWED; SQL/TS/backend/Web/Internal Android builds, Postgres 17 migrations, two-branch isolation, browser/client screenshots, device/security/privileged access, actual 20-case QA and complete CG03/19 ownership NOT_RUN. Continue **US-001** and fix source gaps before advancing to US-002. Do NOT merge main or assert local QA, no CI/GH Actions.
+
+### 24 November 2026 — Follow-up US-001 review and concrete source fixes
+
+**US-001 stays IN_PROGRESS / NOT_SOURCE_COMPLETE.** Actual SQL execution, Node/Next/native builds, device/browser screenshot comparison, independent reviewer, and original 20 runtime QA cases remain **NOT_RUN**.
+
+- **Blocking migration source defect FIXED at commit `6e44c3e`:** `3601_cg06_beneficiary_private_intake.sql` had **633 lines including repeated fragments, an unterminated regex quote, missing `beneficiary_id` and `reason` command columns**, making SQL migration invalid. Replaced with a single 124-line migration, anchored PG international mobile checks, original composite FKs, current view indexes and immutable source. Regression `cg06-us001-source-integrity.test.ts` added at `dede103`; included in existing `test:cg06-us001` script at `2ee5619`. **PG migration verification still NOT_RUN**.
+- **US-001-QA07 SOURCE_AUTHORED_PENDING_REVIEW/RUNTIME:** `BeneficiariesService.duplicateSuggestions` and `GET /api/v1/beneficiaries/duplicate-suggestions` use real current CG01 view+manage grants, same-root/same-assigned-branch, consent status, bounded masked matches, no auto-merge, no uniqueness on family phone. Security follow-up `287cf28` fixed a phone-only query predicate that otherwise listed unrelated records. Current Admin Web `/api/beneficiaries` proxy, A07 intake drawer and native Internal Android modal include optional masked check. Two same-phone people and wrong branch/root/revocation need actual QA.
+- **US-001-QA02/08/09/15 SOURCE_HARDENING:** project list filtering now invokes CG05-owned `CampaignLinkSourceFacade.requireCurrentProjectForFilter` with current `projects.view`, genuine active project and branch guard before scoped beneficiary results; guessing a private project ID cannot infer an association without original CG05 authorization. See owner facade `4e26cb8`, CG06 service `3038dcb`. Actual two-branch read/revocation and SQL tests NOT_RUN.
+- **Other original QA source gaps unchanged:** CG03 actual frozen beneficiary verification, distinct final review and race-safe finalization (QA04, QA11, QA12, QA14, QA16); CG19 genuinely protected beneficiary evidence (QA02, QA13, QA17); original A07/A08 exact KPI/filters/visual native parity and manual SQL/reviewer/device QA (QA06, QA15, QA19, QA20). No verification shortcut, fake approval, public directory, future finance/stock workflow or new QA IDs.
+- **Implementation scope:** existing approved feature branch only; US-002/US-003 remain NOT_STARTED and untouched; no CI/GitHub Actions, no merge to `main`.
 
 ### 21 November 2026 — Owner-approved Web ↔ Android same-capability contract
 
