@@ -1,12 +1,13 @@
-import {Body,Controller,Delete,Get,Headers,Param,Patch,Post,Query} from "@nestjs/common";
+import {Body,Controller,Delete,Get,Header,Headers,Param,Patch,Post,Query} from "@nestjs/common";
 import {BeneficiaryReportService} from "../application/beneficiary-report.service";
 import {BeneficiariesService} from "../application/beneficiaries.service";
 
 @Controller("api/v1/beneficiaries")
 export class BeneficiariesController{
  constructor(private readonly beneficiaries:BeneficiariesService,private readonly reports:BeneficiaryReportService){}
- @Get("impact-report") report(@Headers("authorization")token:string,@Query()query:Record<string,unknown>){return this.reports.report(token,query);}
- @Post("report-export") export(@Headers("authorization")token:string,@Body()body:Record<string,unknown>){return this.reports.export(token,body);}
+ @Get("campaign-report-options") @Header("Cache-Control","private, no-store") campaignOptions(@Headers("authorization")token:string,@Query()query:Record<string,unknown>){return this.reports.campaignOptions(token,query);}
+ @Get("impact-report") @Header("Cache-Control","private, no-store") report(@Headers("authorization")token:string,@Query()query:Record<string,unknown>){return this.reports.report(token,query);}
+ @Post("report-export") @Header("Cache-Control","private, no-store") export(@Headers("authorization")token:string,@Body()body:Record<string,unknown>){return this.reports.export(token,body);}
  @Get() list(@Headers("authorization")token:string,@Query()query:Record<string,unknown>){
   return this.beneficiaries.list(token,query);
  }
