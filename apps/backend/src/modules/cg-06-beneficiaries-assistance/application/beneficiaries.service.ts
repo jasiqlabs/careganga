@@ -99,10 +99,10 @@ export class BeneficiariesService{
   await this.row(tx,a,prev.beneficiary_id);
   return {ref:prev.beneficiary_id,revision:prev.result_revision,replayed:true,status:"CONFIRMED"};
  }
- private async recorded(tx:PoolClient,a:Actor,key:string,action:string,hash:string,row:Row){
-  await tx.query("INSERT INTO beneficiary_command(root_realm_id,actor_ref,request_key,action,payload_digest,beneficiary_id,result_revision) "+
-   "VALUES($1,$2,$3,$4,$5,$6,$7)",
-   [a.realmId,a.accountId,key,action,hash,row.id,row.profile_revision]);
+ private async recorded(tx:PoolClient,a:Actor,key:string,action:string,hash:string,row:Row,reason=""){
+  await tx.query("INSERT INTO beneficiary_command(root_realm_id,actor_ref,request_key,action,payload_digest,beneficiary_id,result_revision,reason) "+
+   "VALUES($1,$2,$3,$4,$5,$6,$7,$8)",
+   [a.realmId,a.accountId,key,action,hash,row.id,row.profile_revision,reason]);
   return {ref:row.id,reference:row.display_ref,revision:row.profile_revision,replayed:false,status:"CONFIRMED"};
  }
  async options(token:string,stateInput:unknown){
@@ -170,11 +170,11 @@ export class BeneficiariesService{
   return this.run(token,"beneficiaries.lifecycle.manage",async(tx,a)=>{
    const past=await this.original(tx,a,v.key,"LIFECYCLE",hash,target);if(past)return past;
    const before=await this.row(tx,a,target,true);
-   if(before.profile_revision!==v.expected||before.lifecycle_state===v.lifecycle)throw conflict();
+   if(before.profile_revision!==v.expected||before.lifecycle_state===v.lifecycle||before.consent_revoked_at)throw conflict();
    const r=(await tx.query<Row>("UPDATE beneficiary SET lifecycle_state=$3,profile_revision=profile_revision+1,"+
     "updated_by=$4,updated_at=clock_timestamp() WHERE root_realm_id=$1 AND id=$2 "+
     "RETURNING "+columns,[a.realmId,target,v.lifecycle,a.accountId])).rows[0];
-   return this.recorded(tx,a,v.key,"LIFECYCLE",hash,r);
+   return this.recorded(tx,a,v.key,"LIFECYCLE",hash,r,v.reason);
   });
  }
  async revokeConsent(token:string,id:string,raw:unknown){
@@ -187,7 +187,7 @@ export class BeneficiariesService{
     "verification_state='DRAFT',verification_case_ref=NULL,profile_revision=profile_revision+1,"+
     "updated_by=$3,updated_at=clock_timestamp() WHERE root_realm_id=$1 AND id=$2 RETURNING "+columns,
     [a.realmId,target,a.accountId])).rows[0];
-   return this.recorded(tx,a,v.key,"REVOKE_CONSENT",hash,r);
+   return this.recorded(tx,a,v.key,"REVOKE_CONSENT",hash,r,v.reason);
   });
  }
  async link(token:string,id:string,raw:unknown){
@@ -250,6 +250,29 @@ export class BeneficiariesService{
      [a.realmId,r.id,r.branch_scope_id])).rows;
    }catch(e){if(!(e instanceof ForbiddenException))throw e;}
    return {...this.view(r),projectLinks:links};
+  });
+ }
+ async history(token:string,id:string){
+  return this.run(token,"beneficiaries.view",async(tx,a)=>{
+   const b=await this.row(tx,a,id);
+   const q=await tx.query<{action:string;result_revision:number;reason:string;occurred_at:Date}>(
+    "SELECT action,result_revision,reason,occurred_at FROM beneficiary_command "+
+    "WHERE root_realm_id=$1 AND beneficiary_id=$2 ORDER BY occurred_at DESC,id DESC LIMIT 100",
+    [a.realmId,b.id]);
+   // Consent withdrawal makes original sensitive notes unavailable to normal readers.
+   return {items:q.rows.map(x=>({action:x.action,revision:x.result_revision,
+    reason:b.consent_revoked_at?null:x.reason,at:x.occurred_at}))};
+  });
+ }
+ async verificationHistory(token:string,id:string){
+  return this.run(token,"beneficiaries.view",async(tx,a)=>{
+   const b=await this.row(tx,a,id);
+   const q=await tx.query<{source_revision:number;decision:string;at:Date}>(
+    "SELECT source_revision,decision,at FROM beneficiary_verification_event "+
+    "WHERE root_realm_id=$1 AND beneficiary_id=$2 ORDER BY at DESC,id DESC LIMIT 100",
+    [a.realmId,b.id]);
+   return {items:q.rows.map(x=>({sourceRevision:x.source_revision,
+    decision:x.decision,at:x.at}))};
   });
  }
  async list(token:string,query:Record<string,unknown>){
