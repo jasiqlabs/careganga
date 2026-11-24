@@ -27,6 +27,10 @@ export function NativeLabTestMasterScreen({token,canManage,canViewPricing,
  const [tab,setTab]=useState<Tab>("TESTS"),[busy,setBusy]=useState(false);
  const [loading,setLoading]=useState(true),[uncertain,setUncertain]=useState(false);
  const [message,setMessage]=useState(""),[search,setSearch]=useState("");
+ const [filterCategory,setFilterCategory]=useState(""),[filterSample,setFilterSample]=useState(""),[filterStatus,setFilterStatus]=useState("");
+ const [testOffset,setTestOffset]=useState(0),[nextTestOffset,setNextTestOffset]=useState<number|null>(null);
+ const [testLoading,setTestLoading]=useState(false),[filtersOpen,setFiltersOpen]=useState(false);
+ const testEpoch=useRef(0),appliedTests=useRef({q:"",categoryRef:"",sampleType:"",status:"",offset:0});
  const [categories,setCategories]=useState<Category[]>([]);
  const [tests,setTests]=useState<Test[]>([]),[packages,setPackages]=useState<Package[]>([]);
  const [centers,setCenters]=useState<Center[]>([]);
@@ -47,29 +51,42 @@ export function NativeLabTestMasterScreen({token,canManage,canViewPricing,
   if(e&&typeof e==="object"&&"status" in e&&e.status===401)onExpired();
   setMessage(e instanceof Error?e.message:"Original diagnostics source could not be confirmed.");
  },[onExpired]);
+ const loadTests=useCallback(async()=>{
+  const version=++testEpoch.current,filter=appliedTests.current;setTestLoading(true);
+  try{
+   const query=new URLSearchParams({offset:String(filter.offset)});
+   if(filter.q)query.set("q",filter.q);if(filter.categoryRef)query.set("categoryRef",filter.categoryRef);
+   if(filter.sampleType)query.set("sampleType",filter.sampleType);if(filter.status)query.set("status",filter.status);
+   const result=await diagnosticRequest<{tests:Test[];nextOffset:number|null}>(token,"tests?"+query.toString());
+   if(version!==testEpoch.current)return;
+   if(!Array.isArray(result.tests)||result.tests.length>100)throw Error("The test list could not be verified.");
+   setTests(result.tests);setTestOffset(filter.offset);setNextTestOffset(result.nextOffset??null);
+   setSelected(v=>v?result.tests.find(k=>k.testRef===v.testRef)??null:null);
+  }catch(e){if(version===testEpoch.current){setTests([]);setNextTestOffset(null);setSelected(null);}throw e;}
+  finally{if(version===testEpoch.current)setTestLoading(false);}
+ },[token]);
  const refresh=useCallback(async()=>{
   const version=++epoch.current;
-  const [a,b,c,d,e]=await Promise.all([
+  const [a,b,,d,e]=await Promise.all([
    diagnosticRequest<Summary>(token,"catalog/admin"),
    diagnosticRequest<{categories:Category[]}>(token,"categories"),
-   diagnosticRequest<{tests:Test[]}>(token,"tests"),
+   loadTests(),
    diagnosticRequest<{packages:Package[]}>(token,"packages"),
    canViewPricing?diagnosticRequest<{centers:Center[]}>(token,"centers/eligible"):
     Promise.resolve({centers:[]})
   ]);
   if(version!==epoch.current)return;
-  if(!Array.isArray(b.categories)||!Array.isArray(c.tests)||
+  if(!Array.isArray(b.categories)||
     !Array.isArray(d.packages)||!Array.isArray(e.centers)||
-    c.tests.length>100||b.categories.length>100||d.packages.length>100||
+    b.categories.length>100||d.packages.length>100||
     e.centers.length>100)throw Error("Diagnostic list bounds could not be confirmed.");
-  setSummary(a);setCategories(b.categories);setTests(c.tests);
+  setSummary(a);setCategories(b.categories);
   setPackages(d.packages);setCenters(e.centers);
-  setSelected(v=>v?c.tests.find(k=>k.testRef===v.testRef)??null:null);
- },[token,canViewPricing]);
+ },[token,canViewPricing,loadTests]);
  useEffect(()=>{
   let active=true;
   void refresh().catch(e=>{if(active)error(e);}).finally(()=>{if(active)setLoading(false)});
-  return()=>{active=false;++epoch.current;};
+  return()=>{active=false;++epoch.current;++testEpoch.current;};
  },[refresh,error]);
  useEffect(()=>{
   const back=BackHandler.addEventListener("hardwareBackPress",()=>{
@@ -169,8 +186,7 @@ export function NativeLabTestMasterScreen({token,canManage,canViewPricing,
   }catch(e){error(e);}
  }
  async function exportRows(){
-  const visible=tests.filter(v=>[v.name,v.code,v.category,v.sampleType]
-   .some(x=>x.toLowerCase().includes(search.trim().toLowerCase())));
+  const visible=testLoading?[]:tests;
   if(!visible.length||busy||uncertain)return;
   setBusy(true);setMessage("");
   let local:File|null=null;
@@ -193,8 +209,13 @@ export function NativeLabTestMasterScreen({token,canManage,canViewPricing,
   }catch(e){error(e);}
   finally{try{local?.delete()}catch{}setBusy(false);}
  }
- const visible=tests.filter(v=>[v.name,v.code,v.category,v.sampleType]
-  .some(x=>x.toLowerCase().includes(search.trim().toLowerCase())));
+ const visible=testLoading?[]:tests;
+ function searchTests(reset=false,offset=0,paging=false){
+  if(busy||uncertain||editing||testLoading)return;
+  appliedTests.current=paging?{...appliedTests.current,offset}:reset?{q:"",categoryRef:"",sampleType:"",status:"",offset:0}:{q:search.trim(),categoryRef:filterCategory,sampleType:filterSample,status:filterStatus,offset:0};
+  setSelected(null);setTests([]);setNextTestOffset(null);setMessage("");
+  void loadTests().catch(error);
+ }
  return <SafeAreaView style={s.page} edges={["left","right"]}>
   <ScrollView contentContainerStyle={s.content} keyboardShouldPersistTaps="handled">
    {button("Back to Foundation home",onExit,busy||uncertain)}
@@ -228,19 +249,28 @@ export function NativeLabTestMasterScreen({token,canManage,canViewPricing,
    </View>}
    {tab==="TESTS"&&<View style={s.card}>
     <Text style={s.heading}>Diagnostic tests</Text>
-    {field("Search loaded tests",search,setSearch,"Test, code, category or sample",80)}
-    {button("Refresh list",()=>void refresh().catch(error),busy||uncertain)}
+    {field("Search all tests",search,setSearch,"Test name or code",80)}
+    {button(filtersOpen?"Hide filters":"More filters",()=>setFiltersOpen(v=>!v),busy||uncertain||editing,filtersOpen)}
+    {filtersOpen&&<>
+     <Text style={s.label}>Category</Text><View style={s.row}>{button("All categories",()=>setFilterCategory(""),busy||editing,!filterCategory)}{categories.map(c=><View key={c.categoryRef}>{button(c.name,()=>setFilterCategory(c.categoryRef),busy||editing,filterCategory===c.categoryRef)}</View>)}</View>
+     <Text style={s.label}>Sample type</Text><View style={s.row}>{["",...SAMPLE_TYPES].map(v=><View key={v||"all"}>{button(v?label(v):"All samples",()=>setFilterSample(v),busy||editing,v===filterSample)}</View>)}</View>
+     <Text style={s.label}>Status</Text><View style={s.row}>{["","ACTIVE","INACTIVE"].map(v=><View key={v||"all"}>{button(v?label(v):"All statuses",()=>setFilterStatus(v),busy||editing,v===filterStatus)}</View>)}</View>
+    </>}
+    <View style={s.row}>{button("Search / apply filters",()=>{setFiltersOpen(false);searchTests();},busy||uncertain||editing||testLoading)}{button("Reset",()=>{setSearch("");setFilterCategory("");setFilterSample("");setFilterStatus("");searchTests(true);},busy||uncertain||editing||testLoading)}</View>
+    {button("Refresh list",()=>void refresh().catch(error),busy||uncertain||editing||testLoading)}
     {button("Export currently visible tests",()=>void exportRows(),
      busy||uncertain||visible.length===0)}
-    <Text style={s.note}>At most 100 source records. Import is disabled by default.</Text>
-    {visible.length===0&&!loading&&<Text style={s.note}>No matching tests.</Text>}
+    <Text style={s.note}>Up to 100 tests per page. Export includes this page only.</Text>
+    {testLoading&&<ActivityIndicator accessibilityLabel="Loading matching tests"/>}
+    {visible.length===0&&!loading&&!testLoading&&!message&&<Text style={s.note}>No matching tests.</Text>}
     {visible.map(v=><View key={v.testRef} style={s.item}>
      <Text style={s.heading}>{v.name} · {v.code}</Text>
      <Text style={s.note}>{v.category} · {label(v.sampleType)} ·
-      {v.status} · revision {v.revision}</Text>
+      {label(v.status)}</Text>
      {button("View source details",()=>{setSelected(v);setEditing(false)},
-      busy||uncertain,selected?.testRef===v.testRef)}
+      busy||uncertain||editing,selected?.testRef===v.testRef)}
     </View>)}
+    <View style={s.row}>{button("Previous",()=>searchTests(false,Math.max(0,testOffset-100),true),busy||uncertain||editing||testLoading||testOffset===0)}<Text style={s.note}>Page {Math.floor(testOffset/100)+1}</Text>{button("Next",()=>{if(nextTestOffset!==null)searchTests(false,nextTestOffset,true);},busy||uncertain||editing||testLoading||nextTestOffset===null)}</View>
     {selected&&!editing&&<View style={s.item}>
      <Text style={s.heading}>{selected.name}</Text>
      <Text style={s.note}>Category {selected.category} ·
@@ -276,7 +306,7 @@ export function NativeLabTestMasterScreen({token,canManage,canViewPricing,
      {field("Clinical description",description,setDescription,"Informational only",2000)}
      {field("Test parameters",parameters,setParameters,"Not an analyzer result",2000)}
      {button("Save test",saveTest,busy||uncertain||!testCode||!testName||!categoryRef)}
-     {button("Cancel form",()=>setEditing(false),busy)}
+     {button("Cancel form",()=>Alert.alert("Discard unsaved test changes?","The saved test will not change.",[{text:"Keep editing",style:"cancel"},{text:"Discard",style:"destructive",onPress:()=>setEditing(false)}]),busy||uncertain)}
     </View>}
    </View>}
    {tab==="CATEGORIES"&&<View style={s.card}>
