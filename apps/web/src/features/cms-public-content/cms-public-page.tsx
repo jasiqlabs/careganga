@@ -1,3 +1,4 @@
+import {Cg19NewsletterForm} from "./cg19-newsletter-form";
 import Link from "next/link";
 import type {ReactNode} from "react";
 import type {PublicCmsNavigation} from "./cms-public-source";
@@ -147,14 +148,7 @@ export function SiteFooter({data,navigation}:{data:Record<string,unknown>;
      {isPublished("/ngo-information")&&<Link href="/ngo-information">NGO Information &amp; 80G</Link>}</div>
     <div><h3>SUBSCRIBE TO NEWSLETTER</h3>
      {!!text(data.newsletterText)&&<p>{text(data.newsletterText)}</p>}
-     <label className="cg-site-newsletter-field">
-      <span className="cg-site-sr-only">Email address for Foundation newsletter</span>
-      <input type="email" autoComplete="email" placeholder="Enter your email" disabled
-       aria-label="Newsletter subscription is not available yet"/>
-     </label>
-     <button type="button" disabled className="cg-site-newsletter-button">
-      Subscribe</button>
-     <p className="cg-site-muted">Newsletter registration is not yet available.</p>
+     <Cg19NewsletterForm/>
     </div>
    </div>
    <div className="cg-site-footer-bottom"><span>© CareGanga Foundation. All rights reserved.</span>
