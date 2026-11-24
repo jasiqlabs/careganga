@@ -241,7 +241,7 @@ export function NativeHealthcarePolicyScreen({token,canView,canManage,canReview,
   <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={s.container}>
    {button("Back to Foundation home",onExit,busy||uncertain)}
    <Text accessibilityRole="header" style={s.title}>Foundation Contribution Policies</Text>
-   <Text style={s.note}>Only current CG14 verified centers and doctors. The 50%
+   <Text style={s.note}>Only currently verified centers and doctors. The 50%
     standard is eligible-policy dependent, not an unconditional patient discount.
     No funds are collected here.</Text>
    {!!message&&<Text accessibilityRole="alert" style={s.notice}>{message}</Text>}
@@ -273,8 +273,7 @@ export function NativeHealthcarePolicyScreen({token,canView,canManage,canReview,
       busy||!!revision,doctor===d.doctorRef)}</View>)}
     {!!doctor&&<View style={s.panel}>
      <Text style={s.heading}>Current approved fee estimate</Text>
-     <Text style={s.note}>Read-only amount from original CG14 approved
-      consultation fee plus current effective policy. Not a patient award
+     <Text style={s.note}>Estimate based on the approved consultation fee and current policy. Not a patient award
       or accepted payment.</Text>
      {button("Check real fee and capped support",
       ()=>void preview(),busy||uncertain)}
@@ -322,9 +321,8 @@ export function NativeHealthcarePolicyScreen({token,canView,canManage,canReview,
     <Text style={s.note}>Dates in your local time (YYYY-MM-DDTHH:mm), end exclusive.</Text>
     {input("Valid from (local)",from,setFrom)}
     {input("Valid until (local)",until,setUntil)}
-    <Text style={s.note}>Patient-care consent/identity are checked by CG15
-     when a service is accepted. All pharmacy, nursing, OT and 100% consultation policies need a
-     genuine independent CG03 review and Foundation finalization.
+    <Text style={s.note}>Patient identity and care consent are checked when a service is accepted. All pharmacy, nursing, OT and 100% consultation policies need a
+     independent review and Foundation approval.
      No unverified service discount
      becomes active from this screen.</Text>
     {button(busy?"Checking original…":revision?"Save policy revision":"Create policy",submit,busy)}
