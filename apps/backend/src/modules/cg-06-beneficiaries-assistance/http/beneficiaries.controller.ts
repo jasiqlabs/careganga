@@ -10,6 +10,10 @@ export class BeneficiariesController{
  @Get("options") options(@Headers("authorization")token:string,@Query("stateRef")state?:string){
   return this.beneficiaries.options(token,state);
  }
+ @Get("eligible-projects") projects(@Headers("authorization")token:string,
+  @Query("branchRef")branch?:string,@Query("q")q?:string){
+  return this.beneficiaries.projectOptions(token,branch,q);
+ }
  @Post() create(@Headers("authorization")token:string,@Body()body:unknown){
   return this.beneficiaries.create(token,body);
  }
