@@ -7,9 +7,9 @@ import {inventoryQuantity,inventoryDate} from "../../cg-12-inventory-suppliers/a
 import {prepareAssistanceStock} from "../../cg-12-inventory-suppliers/application/assistance-stock-source";
 import {FinanceVoucherDraftService} from "../../cg-09-finance-accounting/application/finance-voucher-draft.service";
 import {BeneficiaryEvidenceService} from "../../cg-19-documents-notifications/application/beneficiary-evidence.service";
-import {AssistanceService,aidDigest,type Aid} from "./assistance.service";
+import {AssistanceService,aidDigest} from "./assistance.service";
 import {moneyMinor} from "../domain/assistance-input";
-import {conflict,fields,ref,revision,option} from "../domain/beneficiary-input";
+import {conflict,fields,ref,revision} from "../domain/beneficiary-input";
 type Allocation={id:string;assistance_id:string;action:"ISSUE"|"RETURN"|"PAYMENT";quantity:string|null;amount_minor:string|null;stock_operation_ref:string|null;voucher_ref:string|null;voucher_revision:number|null;return_of_ref:string|null;actor_ref:string;request_digest:string;created_at:Date};
 @Injectable()
 export class AssistanceFulfillmentService{
@@ -26,7 +26,7 @@ export class AssistanceFulfillmentService{
   if(row&&(row.request_digest!==hash||row.assistance_id!==aid))throw conflict();return row;
  }
  private async stockProof(tx:PoolClient,a:Actor,row:Allocation){
-  const s=(await tx.query<{id:string;event_no:string;movement_id:string}>("SELECT e.id,e.event_no,m.id AS movement_id FROM stock_operation_draft o JOIN stock_event e ON e.root_realm_id=o.root_realm_id AND e.operation_id=o.id JOIN stock_movement m ON m.root_realm_id=e.root_realm_id AND m.stock_event_id=e.id AND m.item_id=o.item_id AND m.location_id=o.location_id AND abs(m.signed_qty)=o.quantity WHERE o.root_realm_id=$1 AND o.id=$2 AND o.status='CONFIRMED' AND e.event_kind=$3 AND m.event_kind=$3 AND o.quantity=$4::numeric",[a.realmId,row.stock_operation_ref,row.action,row.quantity])).rows[0];
+  const s=(await tx.query<{id:string;event_no:string;movement_id:string}>("SELECT e.id,e.event_no,m.id AS movement_id FROM stock_operation_draft o JOIN stock_event e ON e.root_realm_id=o.root_realm_id AND e.operation_id=o.id JOIN stock_movement m ON m.root_realm_id=e.root_realm_id AND m.stock_event_id=e.id AND m.item_id=o.item_id AND m.location_id=o.location_id AND m.signed_qty=CASE WHEN o.kind='ISSUE' THEN -o.quantity ELSE o.quantity END WHERE o.root_realm_id=$1 AND o.id=$2 AND o.status='CONFIRMED' AND e.event_kind=$3 AND m.event_kind=$3 AND o.quantity=$4::numeric",[a.realmId,row.stock_operation_ref,row.action,row.quantity])).rows[0];
   return s??null;
  }
  private async moneyProof(tx:PoolClient,a:Actor,row:Allocation){
@@ -86,7 +86,7 @@ export class AssistanceFulfillmentService{
     WHEN v.status='POSTED' AND j.id IS NOT NULL AND pay.id IS NOT NULL THEN 'PAID_AWAITING_HANDOVER' WHEN f.action='PAYMENT' THEN 'PENDING_PAYMENT' ELSE 'PENDING_STOCK' END AS status
     FROM assistance_fulfillment f LEFT JOIN stock_operation_draft o ON o.root_realm_id=f.root_realm_id AND o.id=f.stock_operation_ref
     LEFT JOIN inventory_location l ON l.root_realm_id=o.root_realm_id AND l.id=o.location_id
-    LEFT JOIN stock_event e ON e.root_realm_id=o.root_realm_id AND e.operation_id=o.id AND e.event_kind=f.action AND o.status='CONFIRMED'
+    LEFT JOIN stock_event e ON e.root_realm_id=o.root_realm_id AND e.operation_id=o.id AND e.event_kind=f.action AND o.status='CONFIRMED' AND EXISTS(SELECT 1 FROM stock_movement m WHERE m.root_realm_id=e.root_realm_id AND m.stock_event_id=e.id AND m.item_id=o.item_id AND m.location_id=o.location_id AND m.event_kind=f.action AND m.signed_qty=CASE WHEN f.action='ISSUE' THEN -f.quantity ELSE f.quantity END)
     LEFT JOIN finance_voucher v ON v.root_realm_id=f.root_realm_id AND v.id=f.voucher_ref AND v.version=f.voucher_revision
     LEFT JOIN finance_voucher_posting p ON p.root_realm_id=v.root_realm_id AND p.voucher_id=v.id AND p.voucher_revision=v.version
     LEFT JOIN journal j ON j.root_realm_id=p.root_realm_id AND j.id=p.journal_id AND j.status='POSTED' AND j.posting_kind='VOUCHER'
