@@ -115,3 +115,14 @@ export async function publishedCmsNotices():Promise<{available:boolean;notices:C
   return {available:true,notices:source.notices};
  }catch{return {available:false,notices:[]};}
 }
+
+/** Public editorial intros read the same effective About revision. No owner availability or private record is inferred. */
+export type PublicIntroPlacement="TEAM"|"MEMBERSHIP"|"VOLUNTEER"|"NOTICES"|"UPCOMING_PROJECTS"|"ANNUAL_REPORTS";
+export type PublicIntro={heading:string;body:string;eyebrow:string;highlights:string[]};
+export function selectPublicIntro(result:CmsPageResult,placement:PublicIntroPlacement):PublicIntro|null{
+ if(result.state!=="PUBLISHED")return null;
+ const fields=result.page.sections.find(s=>s.kind==="RICH_TEXT"&&s.fields.placement===placement)?.fields;
+ if(!fields||typeof fields.heading!=="string"||typeof fields.body!=="string")return null;
+ return {heading:fields.heading,body:fields.body,eyebrow:typeof fields.eyebrow==="string"?fields.eyebrow:"",highlights:Array.isArray(fields.highlights)?fields.highlights.filter((x):x is string=>typeof x==="string").slice(0,4):[]};
+}
+export async function publishedPublicIntro(placement:PublicIntroPlacement){return selectPublicIntro(await publishedCmsPage("about"),placement);}
