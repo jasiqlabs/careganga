@@ -1,11 +1,12 @@
 "use client";
-import {useEffect,useState} from "react";
+import {useEffect,useRef,useState} from "react";
 import type {VoucherWorkflowRow} from "./finance-voucher-submission-tools";
 
 type ProofFile={fileRef:string;fileVersion:number;mime:string;sizeBytes:string};
 type Payment={paymentProofRef:string;fileRef:string;fileVersion:number;
  method:"BANK_STATEMENT"|"CASH_RECEIPT";bankReference:string|null;requiresPayrollDestination?:boolean;failedTransfer?:boolean;
  amountMinor:string;status:"PENDING_REVIEW"|"VERIFIED"|"REJECTED"};
+type ProviderReadback={externalReference:string;providerState:string;automated:boolean};
 type Uncertain={path:string;body:Record<string,unknown>;key:string;
  kind:"REQUEST"|"PROOF"|"VERIFY"|"POST"};
 const UUID=/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -38,6 +39,8 @@ export function FinanceVoucherPaymentTools({voucher,canManage,canUploadProof,can
  const [busy,setBusy]=useState(false);
  const [notice,setNotice]=useState("");
  const [payment,setPayment]=useState<Payment|null>(null);
+ const [provider,setProvider]=useState<ProviderReadback|null>(null),[dispatchAvailable,setDispatchAvailable]=useState(false);
+ const generation=useRef(0);
  const [files,setFiles]=useState<ProofFile[]>([]);
  const [chosen,setChosen]=useState("");
  const [picked,setPicked]=useState<File|null>(null);
@@ -51,17 +54,22 @@ export function FinanceVoucherPaymentTools({voucher,canManage,canUploadProof,can
  const [reviewAction,setReviewAction]=useState<"VERIFY"|"REJECT"|"CONFIRM_FAILED_TRANSFER">("VERIFY");
  const [pending,setPending]=useState<Uncertain|null>(null);
  const [retryReady,setRetryReady]=useState(false);
- useEffect(()=>{setPayment(null);setFiles([]);setChosen("");setPicked(null);
+ useEffect(()=>{generation.current++;setPayment(null);setProvider(null);setDispatchAvailable(false);setFiles([]);setChosen("");setPicked(null);
   setUploadKey("");setIntentRef("");setReference("");setCurrentPassword("");clearEvidence();
-  setPending(null);setRetryReady(false);setNotice("");},
+  setPending(null);setRetryReady(false);setNotice("");return()=>{generation.current++;};},
   [voucher.voucherRef,voucher.version,voucher.status]);
  const base="/api/finance/vouchers/"+voucher.voucherRef;
  const readPayment=async()=>{
+  const current=generation.current;
   const response=await fetch(base+"/payment-proofs",{cache:"no-store"});
   if(!response.ok)throw Error(await explanation(response));
   const raw:unknown=await response.json();
   if(!raw||typeof raw!=="object"||!("payment" in raw))
    throw Error("The original payment verification cannot be read.");
+  if(current!==generation.current)return null;
+  const v="providerReadback" in raw?raw.providerReadback:null;
+  setProvider(v&&typeof v==="object"&&"externalReference" in v&&typeof v.externalReference==="string"&&UUID.test(v.externalReference)&&"providerState" in v&&typeof v.providerState==="string"&&"automated" in v&&typeof v.automated==="boolean"?v as ProviderReadback:null);
+  setDispatchAvailable("dispatchAvailable" in raw&&raw.dispatchAvailable===true);
   const p=raw.payment;
   if(p===null){setPayment(null);return null;}
   if(typeof p!=="object"||p===null||!("paymentProofRef" in p)||
@@ -71,7 +79,7 @@ export function FinanceVoucherPaymentTools({voucher,canManage,canUploadProof,can
  };
  async function refresh(){
   if(busy)return;setBusy(true);setNotice("");
-  try{await readPayment();}catch(e){setPayment(null);setNotice(e instanceof Error?e.message:
+  try{await readPayment();}catch(e){setPayment(null);setProvider(null);setDispatchAvailable(false);setNotice(e instanceof Error?e.message:
    "Payment verification records cannot be checked.");}
   finally{setBusy(false);}
  }
@@ -149,18 +157,22 @@ export function FinanceVoucherPaymentTools({voucher,canManage,canUploadProof,can
  }
  async function execute(request:Uncertain){
   if(busy)return;setBusy(true);setNotice("");setRetryReady(false);
+  const {currentPassword:initialPassword,...retryBody}=request.body;
+  const protectedAction=request.kind==="VERIFY"||retryBody.dispatchPayroll===true;
+  const password=typeof initialPassword==="string"?initialPassword:currentPassword;
+  if(protectedAction)setCurrentPassword("");
   try{
    const destination=request.kind==="VERIFY"&&request.body.action!=="REJECT"&&payment?.requiresPayrollDestination?{payrollDestinationEvidence:{accountHolder:evidenceHolder,accountNumber:evidenceAccount,ifsc:evidenceIfsc}}:{};
-   const result=await jsonPost(request.path,{...request.body,...destination,requestKey:request.key});
+   const result=await jsonPost(request.path,{...retryBody,...(protectedAction?{currentPassword:password}:{}),...destination,requestKey:request.key});
    if(result.confirmed!==true||typeof result.status!=="string")
     throw Error("Original result is uncertain");
    setPending(null);setCurrentPassword("");
-   setNotice(request.kind==="REQUEST"?"Payment verification can now be initiated. Nothing has been paid.":
+   setNotice(request.kind==="REQUEST"?(retryBody.dispatchPayroll===true?"Original bank payout requested. Its transfer result must be verified; do not send a separate payment.":"Payment verification can now be initiated. Nothing has been paid."):
     request.kind==="PROOF"?"Original bank/cash proof recorded. An independent authorized reviewer must verify it.":
     request.kind==="VERIFY"?"Independent reviewer outcome: "+result.status:
     "Approved balanced voucher posted once. This is not proof of an unverified transfer.");
    onUpdated();
-  }catch(e){setPending(request);
+  }catch(e){setPending({...request,body:retryBody});
    setNotice(e instanceof Error?e.message:"Original outcome uncertain. Check status before retrying.");}
   finally{if(request.kind==="VERIFY")clearEvidence();setBusy(false);}
  }
@@ -204,8 +216,21 @@ export function FinanceVoucherPaymentTools({voucher,canManage,canUploadProof,can
    path:base+"/request-payment",key:crypto.randomUUID(),kind:"REQUEST",
    body:{expectedVersion:voucher.version}
   })}>Request payment verification</button>}
+  {paymentStage&&canManage&&method==="BANK_STATEMENT"&&<button type="button" disabled={busy||!!pending} onClick={()=>void refresh()}>Check configured payroll bank payout</button>}
+  {paymentStage&&canManage&&dispatchAvailable&&<div className="cg-fin-review-summary">
+   <p><strong>Send approved salary through the configured bank</strong></p>
+   <p>This action initiates a real bank transfer when live payout credentials are enabled. Use only after verifying the approved salary and selected account. Do not also transfer manually.</p>
+   <label className="cg-fin-voucher-attach">Confirm your current password<input type="password" autoComplete="current-password" value={currentPassword} onChange={e=>setCurrentPassword(e.target.value)}/></label>
+   <button type="button" disabled={busy||!!pending||currentPassword.length<8} onClick={()=>void execute({path:base+"/request-payment",kind:"REQUEST",key:crypto.randomUUID(),body:{expectedVersion:voucher.version,dispatchPayroll:true}})}>Authorize and send original payroll payout</button>
+  </div>}
   {readyForProof&&<button type="button" disabled={busy} onClick={()=>void refresh()}>
-   Check independent payment review</button>}
+   Check original bank status and independent payment review</button>}
+  {provider&&<div className="cg-fin-review-summary">
+   <p><strong>Original bank status:</strong> {provider.providerState.replaceAll("_"," ").toLowerCase()}</p>
+   <p>{provider.automated?"The original protected payout was requested through the configured bank. Do not make a separate transfer.":"Use only the original bank reference for this payment; do not create a second payout after an uncertain response."} An acknowledgement or provider status is not final salary settlement.</p>
+   {!provider.automated&&canManage&&<p><strong>Bank payout reference:</strong> <code>{provider.externalReference}</code> <button type="button" onClick={()=>void navigator.clipboard.writeText(provider.externalReference).catch(()=>setNotice("Select and copy the original bank reference."))}>Copy reference</button></p>}
+   {["EXHAUSTED","REVIEW_REQUIRED"].includes(provider.providerState)&&<p role="alert">Bank outcome requires independent Finance reconciliation. Do not retry as a new transfer.</p>}
+  </div>}
   {readyForProof&&canManage&&canUploadProof&&!payment?.failedTransfer&&<>
    <label className="cg-fin-voucher-attach">Original {method==="BANK_STATEMENT"?
     "bank statement":"cash receipt"} (privately scanned)
@@ -275,7 +300,8 @@ export function FinanceVoucherPaymentTools({voucher,canManage,canUploadProof,can
    <p>The original action result is uncertain. Check it before attempting again.</p>
    <button type="button" disabled={busy} onClick={()=>void checkOriginal()}>
     Check original action</button>
-   {retryReady&&<button type="button" disabled={busy||Boolean(pending.kind==="VERIFY"&&pending.body.action!=="REJECT"&&payment?.requiresPayrollDestination&&!evidenceReady())}
+   {retryReady&&(pending.kind==="VERIFY"||pending.body.dispatchPayroll===true)&&<label className="cg-fin-voucher-attach">Re-enter current password for the same request<input type="password" autoComplete="current-password" value={currentPassword} onChange={e=>setCurrentPassword(e.target.value)}/></label>}
+   {retryReady&&<button type="button" disabled={busy||((pending.kind==="VERIFY"||pending.body.dispatchPayroll===true)&&currentPassword.length<8)||Boolean(pending.kind==="VERIFY"&&pending.body.action!=="REJECT"&&payment?.requiresPayrollDestination&&!evidenceReady())}
     onClick={()=>void execute(pending)}>Retry exact original request</button>}
   </div>}
   {notice&&<p role="status" className="cg-fin-help">{notice}</p>}
