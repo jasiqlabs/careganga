@@ -55,9 +55,17 @@ describe("CG-20 — guarded server report request contracts",()=>{
    assert.throws(()=>parseSafeReport({kind,view:"SUMMARY",...filter}),BadRequestException);
  });
  test("CG04, CG07 and CG11 live reports accept only current summary scope",()=>{
-  for(const kind of ["MEMBERSHIP_ROSTER_SUMMARY","VOLUNTEER_ROSTER_SUMMARY","DONATION_RECEIPT_SUMMARY"]){
+  for(const kind of ["DONATION_RECEIPT_SUMMARY"]){
    assert.equal(parseSafeReport({kind,view:"SUMMARY"}).kind,kind);
    for(const filter of [{branchRef:"22222222-2222-4222-8222-222222222222"},{centerRef:"22222222-2222-4222-8222-222222222222"},{fromDay:"2026-10-01",untilDay:"2026-10-31"},{status:"COMPLETED"},{view:"TABLE"},{offset:50}])
+    assert.throws(()=>parseSafeReport({kind,view:"SUMMARY",...filter}),BadRequestException);
+  }
+ });
+ test("CG04 consented roster allows owner branch and bounded enrollment dates only",()=>{
+  for(const kind of ["MEMBERSHIP_ROSTER_SUMMARY","VOLUNTEER_ROSTER_SUMMARY"]){
+   const branchRef="22222222-2222-4222-8222-222222222222";
+   assert.equal(parseSafeReport({kind,view:"SUMMARY",branchRef,fromDay:"2026-10-01",untilDay:"2026-10-31"}).branchRef,branchRef);
+   for(const filter of [{branchRef:"FOUNDATION"},{branchRef:"wrong"},{centerRef:branchRef},{fromDay:"2026-10-01"},{fromDay:"2025-01-01",untilDay:"2026-10-31"},{status:"COMPLETED"},{view:"TABLE"},{offset:50}])
     assert.throws(()=>parseSafeReport({kind,view:"SUMMARY",...filter}),BadRequestException);
   }
  });
