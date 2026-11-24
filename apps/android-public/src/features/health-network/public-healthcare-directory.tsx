@@ -1,6 +1,6 @@
 import {useCallback,useEffect,useRef,useState} from "react";
 import {
- ActivityIndicator,AppState,BackHandler,Image,Linking,Pressable,ScrollView,StyleSheet,
+ ActivityIndicator,AppState,BackHandler,Image,Linking,Platform,Pressable,ScrollView,StyleSheet,
  Text,TextInput,View
 } from "react-native";
 import {SafeAreaView} from "react-native-safe-area-context";
@@ -190,6 +190,7 @@ export function PublicHealthcareDirectory({onExit,reschedule}:{onExit:()=>void;
   }
  }
  useEffect(()=>{
+  if(Platform.OS!=="android")return;
   const listener=BackHandler.addEventListener("hardwareBackPress",()=>{
    back();return true;
   });

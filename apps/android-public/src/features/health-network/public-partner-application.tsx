@@ -80,6 +80,7 @@ export function PublicPartnerApplication({onExit,onContact}:{
  const [tracking,setTracking]=useState(""),[checked,setChecked]=useState<Result|null>(null);
  // Keep Android hardware Back inside the same Partnerships flow as Web Back.
  useEffect(()=>{
+  if(Platform.OS!=="android")return;
   const subscription=BackHandler.addEventListener("hardwareBackPress",()=>{
    if(started)setStarted(false);
    else onExit();

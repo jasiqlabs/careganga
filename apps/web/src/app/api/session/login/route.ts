@@ -26,7 +26,7 @@ export async function POST(request: NextRequest) {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ ...body, deviceLabel: "Foundation Admin Web" }),
       cache: "no-store",
-      signal: AbortSignal.timeout(10000)
+      signal: AbortSignal.timeout(45000)
     });
     if (!result.ok) {
       const data: unknown = await result.json().catch(() => null);

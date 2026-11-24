@@ -23,7 +23,46 @@ async function bootstrap(): Promise<void> {
   app.use(correlateRequest);
   const pool = app.get<Pool>(DATABASE);
   app.useGlobalFilters(new SafeErrorsFilter(pool));
-  app.enableCors({ origin: cfg.webOrigin, credentials: false, methods: ["GET","POST","PATCH","DELETE"] });
+  const isAllowedOrigin = (origin: string | undefined): boolean => {
+    if (!origin) return true;
+    if (origin === cfg.webOrigin) return true;
+    if (process.env.NODE_ENV !== "production") {
+      try {
+        const u = new URL(origin);
+        if (u.hostname === "localhost" || u.hostname === "127.0.0.1") return true;
+      } catch {}
+    }
+    const extra = (process.env.CORS_ALLOWED_ORIGINS ?? "")
+      .split(",")
+      .map(s => s.trim())
+      .filter(Boolean);
+    return extra.includes(origin);
+  };
+
+  app.enableCors({
+    origin: (origin: string | undefined, callback: (err: Error | null, allow?: boolean) => void) => {
+      if (isAllowedOrigin(origin)) {
+        callback(null, true);
+      } else {
+        callback(new Error("Not allowed by CORS"), false);
+      }
+    },
+    credentials: true,
+    methods: ["GET", "HEAD", "PUT", "PATCH", "POST", "DELETE", "OPTIONS"],
+    allowedHeaders: [
+      "Origin",
+      "X-Requested-With",
+      "Content-Type",
+      "Accept",
+      "Authorization",
+      "x-request-id",
+      "x-client-platform",
+      "x-client-version",
+      "x-idempotency-key",
+      "Cache-Control",
+      "Pragma"
+    ]
+  });
 
   // Verify database readiness before accepting incoming network traffic
   let dbReady = false;

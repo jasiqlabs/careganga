@@ -1,5 +1,5 @@
 import {useCallback,useEffect,useRef,useState} from "react";
-import {Alert,Pressable,StyleSheet,Text,View,BackHandler} from "react-native";
+import {Alert,BackHandler,Platform,Pressable,StyleSheet,Text,View} from "react-native";
 import * as SecureStore from "expo-secure-store";
 import * as Crypto from "expo-crypto";
 import {careGangaTheme as theme} from "../../../../../packages/design-tokens/src/index";
@@ -56,7 +56,7 @@ export function NativeConsultationHistory(){
   return()=>{alive=false;};
  },[refresh]);
  useEffect(()=>{
-  if(!reschedule&&!selectedRef)return;
+  if(Platform.OS!=="android"||(!reschedule&&!selectedRef))return;
   const sub=BackHandler.addEventListener("hardwareBackPress",()=>{
    if(reschedule){setReschedule(null);void refresh();return true;}
    detailSeq.current++;setSelectedRef(null);setDetail(null);

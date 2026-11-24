@@ -1,5 +1,5 @@
 import {useEffect,useRef,useState} from "react";
-import {BackHandler,Pressable,StyleSheet,Text,TextInput,View} from "react-native";
+import {BackHandler,Platform,Pressable,StyleSheet,Text,TextInput,View} from "react-native";
 import * as SecureStore from "expo-secure-store";
 import * as Crypto from "expo-crypto";
 import {NativeConsultationContribution} from "./native-consultation-contribution";
@@ -59,6 +59,7 @@ export function NativeConsultationAction(p:Props){
  // While a remote write is pending or uncertain, never silently leave and
  // invite a second reservation with a different idempotency key.
  useEffect(()=>{
+  if(Platform.OS!=="android")return;
   const sub=BackHandler.addEventListener("hardwareBackPress",()=>{
    if(busy||uncertain)return true;
    if(review){setReview(false);return true;}

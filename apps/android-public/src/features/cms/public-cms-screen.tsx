@@ -1,5 +1,5 @@
 import {useCallback,useEffect,useRef,useState} from "react";
-import {ActivityIndicator,AppState,BackHandler,Image,Pressable,
+import {ActivityIndicator,AppState,BackHandler,Image,Platform,Pressable,
  StyleSheet,Text,TextInput,View} from "react-native";
 import {careGangaTheme as t} from "../../../../../packages/design-tokens/src/index";
 import {CmsPublicExtendedSection} from "./cms-extended-native-screen";
@@ -203,6 +203,7 @@ export function PublicCmsContent({onContact,onPartnerApplication,onMembershipApp
   return()=>sub.remove();
  },[slug,load,refreshNavigation]);
  useEffect(()=>{
+  if(Platform.OS!=="android")return;
   const sub=BackHandler.addEventListener("hardwareBackPress",()=>{
    if(slug==="80g"&&ngoScope!=="80g"){setNgoScope("80g");return true;}
    if(slug!=="home"){
@@ -288,7 +289,7 @@ export function PublicCmsContent({onContact,onPartnerApplication,onMembershipApp
     <CmsButton title="News" secondary={slug!=="articles"}
      onPress={()=>setSlug("articles")}/>}
    <CmsButton title="Membership Plans" secondary={slug!=="membership"} onPress={()=>setSlug("membership")}/>
-   {publishedPaths.includes("/collaboration")&&<CmsButton title="Corporate Partners"
+   {publishedPaths.includes("/collaboration")&&<CmsButton title="Partnerships"
     secondary={slug!=="collaboration"} onPress={()=>setSlug("collaboration")}/>}
    <CmsButton title="Healthcare Partner Application" secondary onPress={onPartnerApplication}/>
    <CmsButton title="Contact" onPress={()=>navigate("/contact")}

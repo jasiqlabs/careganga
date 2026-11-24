@@ -1,5 +1,5 @@
 import {useCallback,useEffect,useRef,useState} from "react";
-import {ActivityIndicator,AppState,BackHandler,Image,Pressable,StyleSheet,Text,View} from "react-native";
+import {ActivityIndicator,AppState,BackHandler,Image,Platform,Pressable,StyleSheet,Text,View} from "react-native";
 import {NativePublicDonation} from "./native-public-donation";
 import {careGangaTheme as t} from "../../../../../packages/design-tokens/src/index";
 type Campaign={slug:string;title:string;category:string;summary:string;description:string;
@@ -66,6 +66,7 @@ export function NativePublicCampaigns(){
   return()=>sub.remove();
  },[load]);
  useEffect(()=>{
+  if(Platform.OS!=="android")return;
   const sub=BackHandler.addEventListener("hardwareBackPress",()=>{
    if(selected){setSelected(null);return true;}return false;
   });

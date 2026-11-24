@@ -1,5 +1,5 @@
 import {useCallback,useEffect,useRef,useState} from "react";
-import {ActivityIndicator,AppState,BackHandler,Pressable,ScrollView,StyleSheet,Text,TextInput,View} from "react-native";
+import {ActivityIndicator,AppState,BackHandler,Platform,Pressable,ScrollView,StyleSheet,Text,TextInput,View} from "react-native";
 import {SafeAreaView} from "react-native-safe-area-context";
 import * as SecureStore from "expo-secure-store";
 import * as Crypto from "expo-crypto";
@@ -39,7 +39,7 @@ export function NativeMemberSelf({onExit,initialPlan}:{onExit:()=>void;initialPl
   catch(e){if(active)setMessage(e instanceof Error?e.message:"Membership status unavailable. Retry.");}
   finally{if(active)setLoading(false);}
  })();return()=>{active=false;sequence.current++;};},[refresh]);
- useEffect(()=>{const sub=BackHandler.addEventListener("hardwareBackPress",()=>{onExit();return true;});return()=>sub.remove();},[onExit]);
+ useEffect(()=>{if(Platform.OS!=="android")return;const sub=BackHandler.addEventListener("hardwareBackPress",()=>{onExit();return true;});return()=>sub.remove();},[onExit]);
  useEffect(()=>{const sub=AppState.addEventListener("change",state=>{
   foreground.current=state==="active";
   if(state!=="active"){sequence.current++;setApps([]);setSelected(null);setMember(null);setHistory(null);setIssued(null);setFee(null);setVerified(false);setOtp("");return;}

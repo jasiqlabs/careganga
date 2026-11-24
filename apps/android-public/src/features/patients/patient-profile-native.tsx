@@ -1,6 +1,6 @@
 import {useCallback,useEffect,useRef,useState} from "react";
 import {
- ActivityIndicator,AppState,BackHandler,Pressable,ScrollView,StyleSheet,
+ ActivityIndicator,AppState,BackHandler,Platform,Pressable,ScrollView,StyleSheet,
  Text,TextInput,View
 } from "react-native";
 import {SafeAreaView} from "react-native-safe-area-context";
@@ -110,6 +110,7 @@ export function PatientProfileNative({onExit}:{onExit:()=>void}){
   return()=>{active=false;};
  },[clear,load]);
  useEffect(()=>{
+  if(Platform.OS!=="android")return;
   const sub=BackHandler.addEventListener("hardwareBackPress",()=>{onExit();return true;});
   return()=>sub.remove();
  },[onExit]);

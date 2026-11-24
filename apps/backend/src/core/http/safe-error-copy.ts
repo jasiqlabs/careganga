@@ -310,6 +310,7 @@ export const SAFE_MESSAGE_CATALOG:Readonly<Record<string,string>>=Object.freeze(
       CMS_TEAM_SOURCE_NOT_READY:"Public team profiles need a currently approved employee or volunteer record and permission. Save this page without team profiles for now.",
       CMS_COMPLIANCE_EVIDENCE_EXPIRED:"The supporting 80G document is expired, withdrawn or not verified. Confirm the current official proof before publishing.",
       CMS_ORIGINAL_NOTICE_UNAVAILABLE:"The selected Foundation notice was changed, withdrawn or expired. Choose the current approved original before publishing.",
+      CMS_PARTNER_SOURCE_UNAVAILABLE:"The original partner is no longer eligible or available for public release. Refresh the partner source.",
       FINANCE_RECONCILIATION_EVIDENCE_CONFLICT:"The private bank statement changed, was revoked or could not be verified. Refresh the original file status.",
       HEALTH_FIELD_INVALID:"Check the highlighted healthcare registration field and enter a valid value.",
       HEALTH_VERSION_INVALID:"This healthcare draft version is invalid. Refresh the record before saving.",

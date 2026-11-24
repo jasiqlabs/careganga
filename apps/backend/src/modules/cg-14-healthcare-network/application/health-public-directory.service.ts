@@ -234,6 +234,12 @@ export class HealthPublicDirectoryService{
       f.common+"AND ($1::text IS NULL OR c.display_name ILIKE $1 ESCAPE '\\' "+
       "OR p.legal_name ILIKE $1 ESCAPE '\\') "+
       "AND ($6::text IS NULL OR c.public_slug>$6) "+
+      "AND ($7::text IS NULL OR TRUE) "+
+      "AND ($8::bigint IS NULL OR TRUE) "+
+      "AND ($9::bigint IS NULL OR TRUE) "+
+      "AND ($10::text IS NULL OR TRUE) "+
+      "AND ($11::smallint IS NULL OR TRUE) "+
+      "AND ($12::smallint IS NULL OR TRUE) "+
       "ORDER BY c.public_slug ASC LIMIT 21",
       f.params);
     return {items:found.rows.slice(0,20).map(c=>({

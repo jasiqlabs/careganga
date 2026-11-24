@@ -40,6 +40,10 @@ body {
   color: var(--cg-text);
   font-family: system-ui, sans-serif;
   line-height: 1.5;
+
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
 }
 
 a {
