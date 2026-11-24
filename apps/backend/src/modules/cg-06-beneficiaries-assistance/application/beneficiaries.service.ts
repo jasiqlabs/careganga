@@ -308,6 +308,7 @@ export class BeneficiariesService{
  async list(token:string,query:Record<string,unknown>){
   const q=parseListQuery(query);
   return this.run(token,"beneficiaries.view",async(tx,a)=>{
+   if(q.project)await this.projects.requireCurrentProjectForFilter(tx,a,q.project);
    const scope=await this.scope(tx,a);
    if(q.branch&&!scope.all&&!scope.branches.some(x=>x.value===q.branch))
     throw new ForbiddenException("Branch unavailable");
