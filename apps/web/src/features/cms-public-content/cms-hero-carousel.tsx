@@ -38,6 +38,7 @@ export function CmsHeroCarousel({slides,navigation}:{slides:Slide[];navigation?:
    {!!text(v.description)&&<p className="cg-site-hero-description">{text(v.description)}</p>}
    {chips.length>0&&<div className="cg-site-hero-chips">{chips.map((chip,i)=>
     <span key={i}>{chip as string}</span>)}</div>}
+   {[slide.hero,slide.mobile].some(a=>a?.altText.startsWith("AI-generated illustration"))&&<p className="cg-site-hero-description">AI-generated illustration; not a photograph of Foundation activities.</p>}
    <div className="cg-site-hero-actions">
     <Button label={v.primaryLabel} href={v.primaryPath} navigation={navigation}/>
     <Button label={v.secondaryLabel} href={v.secondaryPath} navigation={navigation} secondary/>
