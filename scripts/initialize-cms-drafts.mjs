@@ -14,7 +14,7 @@ if((manifestIndex>=0&&(!external||external.startsWith("--")))||args.some((a,i)=>
 const section=(kind,order,fields)=>({kind,order,fields});
 const rich=(heading,body="")=>section("RICH_TEXT",20,{heading,body,eyebrow:"",variant:"STANDARD",highlights:[]});
 const hero=(heading)=>section("HERO",0,{heading,visible:true,tags:[]});
-const page=(kind,slug,title,sections,canonicalPath="/"+slug)=>({kind,slug,title,seoTitle:title+" | CareGanga Foundation",seoDescription:"",canonicalPath,sections,assets:[]});
+const page=(kind,slug,title,sections,canonicalPath="/"+slug)=>({kind,slug,title,seoTitle:title+" | CareGanga Foundation",seoDescription:kind==="POLICY"?"":title+" — information from CareGanga Foundation.",canonicalPath,sections,assets:[]});
 const policies=[["terms-and-conditions","Terms & Conditions"],["privacy-policy","Privacy Policy"],["cookie-policy","Cookie Policy"],["disclaimer","Disclaimer"],["refund-and-cancellation","Refund & Cancellation"],["grievance-redressal","Grievance Redressal"],["copyright-and-intellectual-property","Copyright & Intellectual Property"]];
 const day=new Date().toISOString().slice(0,10);
 const mission="We believe every person deserves access to healthcare, quality education, basic necessities, and the opportunity to live with dignity.";
@@ -22,6 +22,8 @@ const about=mission+" CareGanga Foundation is dedicated to uplifting underserved
 const homeBody=section("RICH_TEXT",20,{heading:"Standing With Communities. Building Brighter Futures.",body:about,eyebrow:"About CareGanga Foundation",variant:"STANDARD",highlights:["Turning Compassion Into Meaningful Change.","Every Day, One Step Closer to a Better Society."]});
 // Text-only editorial scaffolds: reference-derived headings, no original photos,
 // legal wording, asserted registration, sample statistics, actual people or prices.
+// Footer organization address/phone/email are transcribed from the existing client
+// screenshot reference and must be confirmed by the actual reviewer before publishing.
 // General copy adapted from client public references 20261118 Batches 01–03
 // (impact 020524/020538; partnership 021242/021258; media 021422/021443/021502;
 // contact 021809/021939/022004). No screenshot-derived operational claims.
@@ -31,7 +33,7 @@ const defaults=[
   section("FEATURE_CARDS",30,{heading:"Delivering Solutions",eyebrow:"HOW WE HELP",body:"Our focus is on health, education, social welfare and community development.",cards:[{label:"EMERGENCY AID",title:"Flood Relief & Disaster Response",body:"Support communities facing displacement and hardship."},{label:"EDUCATION",title:"Education for River-Belt Children",body:"Promote learning opportunities for children in underserved communities."},{label:"HEALTHCARE",title:"Community Health & Sanitation",body:"Promote access to healthcare and hygiene awareness."}]}),
   section("JOIN_CARDS",50,{volunteerTitle:"Join as Volunteer",volunteerBody:"Make a difference in your community by volunteering with us.",volunteerBenefits:["Help in education and skill development programs","Assist in healthcare and awareness campaigns","Support social welfare initiatives"],memberTitle:"Become a Member",memberBody:"Join our community as a member.",memberBenefits:["Participate in community initiatives","Receive updates about the Foundation’s work"]}),
   section("PROJECT_TEASER",60,{heading:"Our Projects",sourceRefs:[]}),
-  section("SITE_FOOTER",90,{mission,address:"",phone:"",email:"",whatsappNumber:"",newsletterText:"Get the latest updates on campaigns, field relief progress, and our community impact."})
+  section("SITE_FOOTER",90,{mission:"Connecting riverbank communities, promoting sustainability, and enabling direct transparent change along the Ganges.",address:"SHYAMPURNATUN PARA, BHAGWANGOLA, MURSHIDABAD, 742135",phone:"+91 97325 20058",email:"info@careganga.com",whatsappNumber:"",newsletterText:"Get the latest updates on campaigns, field relief progress, and our community impact."})
  ],"/"),navigation:{loginDesired:true,memberJoinDesired:true,volunteerJoinDesired:true}},
  page("ABOUT","about","About Us",[rich("About CareGanga Foundation",about),section("CTA",40,{heading:"Join your hand with us for a better life and future",body:"Explore ways to participate in the Foundation’s work.",label:"Contact Us",path:"/contact"})]),
  page("HEALTHCARE","healthcare","Healthcare Assistance",[hero("Healthcare Assistance"),section("HEALTHCARE_CATEGORIES",10,{heading:"Healthcare Assistance",intro:"Explore healthcare information and contact the Foundation for guidance.",categories:[{title:"Consultation",description:"Contact the Foundation for information about healthcare services."}],ctaLabel:"Contact Us",ctaPath:"/contact"})]),
