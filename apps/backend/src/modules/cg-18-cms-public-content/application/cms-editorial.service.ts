@@ -236,7 +236,7 @@ function parseContent(raw:unknown):Content{
    // Approved About revision can also own neutral introductory text for existing public owner routes.
    // No new operational master, URLs, personal information or permission/availability override.
    if(fields.placement!==undefined){
-    if(kind!=="ABOUT"||typeof fields.placement!=="string"||!["TEAM","MEMBERSHIP","VOLUNTEER","NOTICES","UPCOMING_PROJECTS","ANNUAL_REPORTS"].includes(fields.placement)||fields.variant==="SPLIT")
+    if(kind!=="ABOUT"||typeof fields.placement!=="string"||!["TEAM","MEMBERSHIP","VOLUNTEER","NOTICES","UPCOMING_PROJECTS","ANNUAL_REPORTS","FINANCIAL_REPORTS"].includes(fields.placement)||fields.variant==="SPLIT")
      throw new BadRequestException({code:"CMS_INPUT_INVALID",field:"placement"});
     out.placement=fields.placement;
    }
