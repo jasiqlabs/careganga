@@ -1,7 +1,7 @@
 import Link from "next/link";
 import type {Metadata} from "next";
-import {CmsSiteHeader} from "../../features/cms-public-content/cms-site-header";
-import {publishedCmsArticles,publishedCmsNavigation} from "../../features/cms-public-content/cms-public-source";
+import {HealthcarePublicChrome} from "../../shared/healthcare-public-chrome";
+import {publishedCmsArticles} from "../../features/cms-public-content/cms-public-source";
 export const dynamic="force-dynamic";
 export const metadata:Metadata={title:"CareGanga Foundation — News & Articles",
  robots:{index:false,follow:true}};
@@ -10,10 +10,8 @@ export default async function FoundationArticles({searchParams}:Query){
  const {category="",cursor=""}=await searchParams;
  const safeCategory=category.length<=80?category:"";
  const safeCursor=cursor.length<=70?cursor:"";
- const [content,nav]=await Promise.all([
-  publishedCmsArticles(safeCategory,safeCursor),publishedCmsNavigation()]);
- return <main className="cg-site">
-  <CmsSiteHeader navigation={nav}/>
+ const content=await publishedCmsArticles(safeCategory,safeCursor);
+ return <HealthcarePublicChrome><main id="main-content" className="cg-site">
   <section className="cg-site-content cg-site-article-body">
    <p className="cg-site-eyebrow">Media &amp; Resources</p>
    <h1>News &amp; Articles</h1>
@@ -40,5 +38,5 @@ export default async function FoundationArticles({searchParams}:Query){
     cursor:content.nextCursor}).toString()}>More approved articles</Link>}
    <p><Link href="/">Back to the Foundation homepage</Link></p>
   </section>
- </main>;
+ </main></HealthcarePublicChrome>;
 }
