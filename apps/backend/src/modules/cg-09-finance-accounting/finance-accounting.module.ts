@@ -1,3 +1,4 @@
+import {PayrollProviderReadbackService} from "./application/payroll-provider-readback.service";
 import {MembershipFeesController} from "./http/membership-fees.controller";
 import {Module} from "@nestjs/common";
 import {IdentityAccessModule} from "../cg-01-identity-access/identity-access.module";
@@ -34,7 +35,7 @@ import {FinanceExpenseClaimController} from "./http/finance-expense-claim.contro
 /** CG-09 owns a single ledger and finance setup; never duplicates CG-01/02 masters. */
 @Module({
  imports:[IdentityAccessModule,FoundationStructureModule,RegistrationApprovalsModule,DocumentsNotificationsModule,FinanceSourceModule,FinanceEvidenceSourceModule],
- providers:[FinanceAccountsService,FinanceJournalPostingService,FinanceJournalReversalService,FinanceVoucherWorkflowService,FinanceVoucherPaymentService,FinanceVoucherDashboardService,FinanceExpenseClaimService,FinanceInvoiceDraftService,FinanceInvoiceWorkflowService,FinanceInvoiceCancellationService,FinanceInvoiceAdjustmentService,FinanceBudgetService,FinanceReportsService],
+ providers:[PayrollProviderReadbackService,FinanceAccountsService,FinanceJournalPostingService,FinanceJournalReversalService,FinanceVoucherWorkflowService,FinanceVoucherPaymentService,FinanceVoucherDashboardService,FinanceExpenseClaimService,FinanceInvoiceDraftService,FinanceInvoiceWorkflowService,FinanceInvoiceCancellationService,FinanceInvoiceAdjustmentService,FinanceBudgetService,FinanceReportsService],
  controllers:[MembershipFeesController,FinanceAccountsController,FinanceVoucherDraftController,FinanceVoucherWorkflowController,FinanceVoucherPaymentController,FinanceVoucherDashboardController,FinanceExpenseClaimController,FinanceInvoiceDraftController,FinanceInvoiceWorkflowController,FinanceBudgetController,FinanceReportsController],
  exports:[FinanceAccountsService,FinanceReportsService]
 })

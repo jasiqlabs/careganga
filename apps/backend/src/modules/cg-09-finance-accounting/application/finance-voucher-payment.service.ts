@@ -1,3 +1,4 @@
+import {PayrollProviderReadbackService} from "./payroll-provider-readback.service";
 import {matchesPayoutEvidence} from "../../cg-11-payroll-compensation/domain/payout-instruction";
 import {guardAssistanceOwner} from "../../cg-06-beneficiaries-assistance/application/assistance-owner-guard";
 import {
@@ -71,7 +72,7 @@ export class FinanceVoucherPaymentService{
   private readonly posting:FinanceJournalPostingService,
   private readonly source:FinanceVoucherSourceFacade,
   private readonly approvals:FinanceVoucherApprovalService,
-  private readonly evidence:FinanceVoucherEvidenceService){}
+  private readonly evidence:FinanceVoucherEvidenceService,private readonly payrollReadback:PayrollProviderReadbackService){}
  private async operator(bearer:string,posting=false){
   const actor=await this.sessions.requireAction(bearer,"finance.vouchers.manage");
   await this.sessions.requireAction(bearer,"finance.vouchers.view");
@@ -130,8 +131,9 @@ export class FinanceVoucherPaymentService{
     if(earlier.action!=="PAYMENT_REQUEST"||earlier.request_digest!==hash||
      earlier.voucher_version!==expected)
      throw new ConflictException({code:"FINANCE_VOUCHER_REPLAY_CONFLICT"});
+    const original=(await client.query<{provider_state:string;id:string}>(`SELECT id,provider_state FROM payroll_payout_attempt WHERE root_realm_id=$1 AND voucher_ref=$2 AND provider_state<>'NOT_ENABLED'`,[actor.realmId,voucherRef])).rows[0];
     await client.query("COMMIT");
-    return {confirmed:true,status:earlier.result_status,replayed:true};
+    return {confirmed:true,status:earlier.result_status,externalReference:original?.id??null,providerState:original?.provider_state??null,replayed:true};
    }
    await guardAssistanceOwner(client,actor.realmId,"PAYMENT",voucherRef);
    if(v.version!==expected||v.status!=="APPROVED"||
@@ -146,8 +148,10 @@ export class FinanceVoucherPaymentService{
    if(!updated.rowCount)throw new ConflictException({code:"FINANCE_VOUCHER_STALE"});
    await this.register(client,actor,v,{action:"PAYMENT_REQUEST",key,digest:hash,
     status:"PAYMENT_REQUESTED"});
+   const externalReference=await this.payrollReadback.enqueue(client,actor.realmId,voucherRef);
    await client.query("COMMIT");
-   return {confirmed:true,status:"PAYMENT_REQUESTED",replayed:false};
+   if(externalReference)void this.payrollReadback.tick();
+   return {confirmed:true,status:"PAYMENT_REQUESTED",externalReference,replayed:false};
   }catch(e){await client.query("ROLLBACK");safePaymentFailure(e);}finally{client.release();}
  }
  async submitProof(bearer:string,refInput:string,value:unknown){
@@ -226,7 +230,8 @@ export class FinanceVoucherPaymentService{
    FROM finance_voucher_payment_verification p
    WHERE p.root_realm_id=$1 AND p.voucher_id=$2
    ORDER BY p.created_at DESC,p.id DESC LIMIT 1`,[actor.realmId,voucherRef]);
-  await client.query("COMMIT");return {payment:rows.rows[0]??null};
+  const original=(await client.query<{externalReference:string;providerState:string}>(`SELECT id AS "externalReference",provider_state AS "providerState" FROM payroll_payout_attempt WHERE root_realm_id=$1 AND voucher_ref=$2 AND provider_state<>'NOT_ENABLED'`,[actor.realmId,voucherRef])).rows[0];
+  await client.query("COMMIT");return {payment:rows.rows[0]??null,providerReadback:original??null};
   }catch(e){await client.query("ROLLBACK");throw e;}finally{client.release();}
  }
  async verifyProof(bearer:string,refInput:string,proofInput:string,value:unknown){
