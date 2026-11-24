@@ -1,0 +1,50 @@
+# Mandatory V1 integration and stabilization — execution index
+**Owner authorization:** 24 Nov 2026, same CG11 branch; initial baseline `e8ef4d74e9a294eab2fec9dae310a7a8a68219d7`; main `f70791d2abf004e36445abbba4edf3b2cfa452c7`. Backend registers CG01–CG21; optional CG22–24 remain deferred/OFF. Harness main verified `8922c717efb68cb5b998cf51f7c0755636616175`; local resolver NOT_RUN. This is a cross-owner execution index requested by product owner, not a new business module or parallel canonical story/QA registry. Original module tasks.md Execution progress remains authoritative; preserve original QA definitions/IDs. No merge, CI, live money or production data writes. Source inspection does not equal executed test or independent clearance.
+
+## Task queue
+Status OPEN = confirmed source observation requiring owner acceptance reconciliation or fix; INVESTIGATE = verify transferred contract before deciding gap; CANDIDATE = source change read back, independent/runtime pending; CLOSED only after required independent source review, actual original acceptance trace and no actionable source gap. Actual runtime PASS/FAIL separately. P0 first-use/discovery/security; P1 other required usability/integration. Fix one finite task, review/re-read, add regression, update owner and index, then next.
+
+| ID | Priority | Owner / original QA mapping | Source finding and finite task | State |
+|---|---|---|---|---|
+| E2E-001 | P0 | CG18 US001 QA01/03/05/09/11/17 | Home SSR returns unpublished fallback. Implement safe first-install approved baseline content onboarding, idempotent, non-destructive, no auto-approval bypass. | OPEN |
+| E2E-002 | P0 | CG18 US001 QA01/06/13; US002–004 existing publication QA | Screenshot reference only editor draft, incomplete default page manifest; populate client-approved copy/assets through original CMS, explicit approval/publish; no invented legal/impact/identity facts. | OPEN |
+| E2E-003 | P1 | CG18 US001 QA04/05/07/08/15 | Backend path(), Admin editor and Web CTA allowlist only Home/About/Contact; reconcile approved real public destinations across editors/readers, guard all against private/open redirect/withdrawn targets. | OPEN |
+| E2E-004 | P0 | CG18 US004 QA05/09/10/15; CG14 US004; CG15 US002/004 | Header gates healthcare on editorial publication although /health-network independently exists. Connect safe standalone directory as fallback, preserve published editorial route and no fabricated availability. | OPEN |
+| E2E-005 | P1 | CG18 US003 QA19/20; CG05 US003 | Events label disabled; connect actual eligible operational event editorial projection and original route after validating contract; never expose attendance/private fields. | OPEN |
+| E2E-006 | P1 | CG18 US001 QA01/06/13; CG04/10 public profile owner | Team members rejected/stripped; source-backed consented profile projection and /about/team, with revocation and CG19 media guard. | OPEN |
+| E2E-007 | P1 | CG18 US003; CG19 US002/003 | Newsletter disabled; reconcile approved opt-in/receipt/withdrawal requirement with original source, no fake success or uncontrolled mailing. | OPEN |
+| E2E-008 | P1 | CG18 US001 QA05/07/08/15; CG04 US002 QA11 | Native local() excludes membership/volunteer despite navigate branches; align allowlist + render guards with current flags, no clickable no-op. | OPEN |
+| E2E-009 | P1 | CG18 US003; CG08 US001 | Web collaboration fallback accessible, native hides absent publication; align genuine enquiry and approved partner visibility, don't show unverified logos. | OPEN |
+| E2E-010 | P1 | CG18 US001 QA06/13/15; CG04/07/14 applicable original UI QA | Donation/membership/health pages use differing shared chrome; align original public shell without disrupting private/session/payment routes. | OPEN |
+| E2E-011 | P1 | CG20 US001 QA03; US002 QA03; US003 QA01; US004 QA02 → CG05 US005 | Reconcile project reporting transfers; central catalogue lacks project kind; reuse actual source if original contract requires central access. | INVESTIGATE |
+| E2E-012 | P1 | CG20 US001 QA07; US002 QA02 → CG07 US002/003 | Reconcile pending/posted campaign amounts and authorized donor reporting; no duplicate ledger. | INVESTIGATE |
+| E2E-013 | P1 | CG20 US002 QA04 → CG04 US002 | Member/volunteer reporting source and central report contract; suppress private fields. | INVESTIGATE |
+| E2E-014 | P1 | CG20 US002 QA05 → CG06 US003 | Beneficiary/aid purpose, authorized aggregate and small-cell suppression; no patient matching by phone. | INVESTIGATE |
+| E2E-015 | P1 | CG20 US002 QA06 → CG08 US003 | CSR approved funding/allocation/utilization source; reconcile transferred reporting. | INVESTIGATE |
+| E2E-016 | P1 | CG20 US002 QA08 → CG11 US003 | Salary report currently in payroll workspace; reconcile central permissioned report contract and forbid generic MIS grants from exposing salary/bank fields. | INVESTIGATE |
+
+## Integrated QA scenarios (subchecks of existing owner QA; not extra canonical cases)
+For each: use synthetic test data in disposable DB only; record exact candidate SHA, actors, branch/center, request/result, source file:function, screenshot/reference, actual PASS/FAIL or NOT_RUN; no PII in evidence. For every write check duplicate request, lost response/re-read, forbidden direct API, wrong branch/center, revoked session, mobile/web consistency, human errors; only applicable channels. Original 167 admin and 47 public screenshot packs must be compared on actual devices/browser, not inferred from code.
+
+| Journey | Steps / expected result | Channels / source owners |
+|---|---|---|
+| J01 Fresh setup | Clean and upgrade DB; bootstrap root once, create branches A/B, departments, staff/reviewer, scoped role, login/recover password; repeat bootstrap no duplicates; wrong scope denied. | Admin/Internal, CG01/02/03/21 |
+| J02 CMS | Fresh default onboarding, approve exact revision, publish home/about/healthcare/gallery, load Web/native, edit and withdraw, check routes, cache, media revoke; rerun initializer preserves edits. | All four, CG18/03/19 |
+| J03 Join | Create current tier; publish flags; tap member/volunteer, submit, review, applicable fee and document, referral points once; disable tier/CTA, direct endpoint guards. | All four, CG04/13/03/09/19 |
+| J04 Projects | Create project, assign worker, record visit/event/stock, publish safe approved teaser/event, close and verify disappearance; no private GPS/contact. | All applicable, CG05/10/12/18/20 |
+| J05 Aid | Create beneficiary, verify, approve goods or payment, issue/reconcile once; no duplicate beneficiary or cross-branch access. | Staff, CG06/03/12/09/20 |
+| J06 Donations | Publish campaign, real sandbox payment or authorized manual path, pending versus verified receipt, refund/reversal where approved, ledger and report agree. | All applicable, CG07/18/09/19 |
+| J07 CSR | Approve partner, verify funding, allocate to project, reconcile report, approved public card only; revoke and remove. | Staff/public, CG08/05/09/18/20 |
+| J08 HR/payroll | Enroll employee, attendance/leave, calculate/approve frozen run, original CG09 accrual, verified settlement or failure, own payslip, exit dues; salary isolated. | Staff, CG10/11/03/09/19 |
+| J09 Partner | Public apply, pending login denied, verify and activate representative, publish approved center/service/discount, suspend; public visibility matches; ERP OFF. | All four, CG14/03/19/18 |
+| J10 Consultation | Search doctor/center, shared-phone patient identity and consent, slot across two centers, book, arrive/complete, verified benefit and collection, cancel/reschedule; no duplicate slot. | All four, CG14/15/17/19 |
+| J11 Diagnostics | Current lab price, ERP-off enquiry/claim; authorized ERP-on lab only where allowed, sample/report release, consent/private file revocation. | All applicable, CG14/16/17/19 |
+| J12 Settlement | Eligible completed service/manual verified claim, approve monthly statement, CG09 reconciled payout, corrections/return, partner own scope and totals. | Staff, CG14/17/09 |
+| J13 Inventory | Supplier purchase/receipt/issue/return, project and beneficiary stock/ledger reconciliation, wrong branch/negative stock denied. | Staff, CG12/05/06/09 |
+| J14 MIS/security | Actual owner metrics, filtered branch manager A/B/root, denied branch C, report/export parity, revoked permissions, audit, no private/false KPI, provider outage/worker bounds. | Staff, CG20/21/all owners |
+
+## Release gates
+Independent impact-selected architecture/code/security/NFR/source-QA and Web/native/UIUX/DB/finance specialists pending; authenticated resolver NOT_RUN; npm ci, verify:all-source, verify:local-build, fresh/upgrade/restore PostgreSQL, Web/browser/mobile Android devices, original visuals, sandbox SMS/email/storage/payment, performance and all original applicable QA NOT_RUN. No production release or developer final handoff until source queue reconciled and independent review disposition recorded. Developer performs actual runtime testing; no live bank or patient activity.
+
+## Execution progress
+- Initial inventory: 10 OPEN observations + 6 INVESTIGATE transferred reporting contracts. 14 integrated QA journey outlines, all NOT_RUN. Start with bounded public navigation regression E2E-008 (existing source defect), then E2E-004; default content follows after verified original content/approval source review. No source code changed by this index commit.
