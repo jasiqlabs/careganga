@@ -328,8 +328,10 @@ const checks=[
 
  ["CG21 administrator can edit original team-consent failure copy",
   files.cg21Copy.includes("CMS_TEAM_CONSENT_REQUIRED:")],
- ["Original newsletter cannot fake subscriber success before CG19 opt-in",
-  files.web.includes('disabled className="cg-site-newsletter-button"')&&
+ ["Original newsletter uses real CG19 verification and withdrawal, not a fake success",
+  files.web.includes('<Cg19NewsletterForm/>')&&
+  files.android.includes('<NativeNewsletterForm/>')&&
+  files.android.includes('slug==="@newsletter"?<View')&&
   files.originalNav.includes("CG-19 owns any real opt-in receipt")]
 ];
 // Same original editorial business source; public mobile CMS viewer does not
