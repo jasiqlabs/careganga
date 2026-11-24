@@ -311,8 +311,8 @@ export class BeneficiariesService{
  /** Original CG06 access check for CG19, including fresh consent and active branch. */
  async guardEvidence(tx:PoolClient,a:Actor,id:string,expected:number|null,write:boolean){
   await this.identity.assertCurrent(tx,a,"beneficiaries.view");
-  if(write)await this.identity.assertCurrent(tx,a,"beneficiaries.manage");
   const row=await this.row(tx,a,id,write);
+  if(write){try{await this.identity.assertCurrent(tx,a,"beneficiaries.manage");}catch(e){if(!(e instanceof ForbiddenException))throw e;await this.identity.assertCurrent(tx,a,"beneficiaries.assistance.deliver");if(row.verification_state!=="VERIFIED"||!(await tx.query("SELECT 1 FROM assistance_case WHERE root_realm_id=$1 AND beneficiary_id=$2 AND state='APPROVED' AND branch_ref IS NOT DISTINCT FROM $3::uuid LIMIT 1",[a.realmId,row.id,row.branch_scope_id])).rowCount)throw new ForbiddenException("Approved assistance evidence required");}}
   await this.branches.projectBranch(tx,a,row.branch_scope_id);
   if(row.consent_revoked_at||row.lifecycle_state!=="ACTIVE")throw new NotFoundException("Beneficiary evidence unavailable");
   if(expected!==null&&expected!==row.profile_revision)throw conflict();
