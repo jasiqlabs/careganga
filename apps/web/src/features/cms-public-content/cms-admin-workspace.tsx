@@ -6,7 +6,7 @@ import {clientScreenshotHome} from "./cms-client-screenshot-reference";
 type Kind="HOME"|"ABOUT";
 type ProjectSource={sourceRef:string;title:string;category:string;summary:string;area:string;launch:string|null;status:string};
 type CampaignSource={sourceRef:string;title:string;category:string;summary:string;area:string;status?:string};
-type Team={name:string;designation:string;bio:string;consentConfirmed:boolean};
+type Team={sourceRef:string;proof:string;name:string;designation:string};
 type Asset={fileRef:string;version:number;role:"HERO"|"MOBILE_HERO"|"TEAM"|"ABOUT"|"PROMO"|"FEATURE";altText:string;order:number};
 type NavDesired={loginDesired:boolean;memberJoinDesired:boolean;volunteerJoinDesired:boolean};
 type PageItem={pageRef:string;kind:Kind;slug:string;title:string;version:string;draftStatus:string;publicStatus:string|null};
@@ -89,8 +89,7 @@ function fromPage(p:PageDetail):Draft{
   teamHeading:val(team.heading)||"Our team",
   team:Array.isArray(team.members)?team.members.filter(v=>v&&typeof v==="object")
    .map(v=>{const person=v as Record<string,unknown>;return {
-    name:val(person.name),designation:val(person.designation),bio:val(person.bio),
-    consentConfirmed:person.consentConfirmed===true};}):[],
+    sourceRef:val(person.sourceRef),proof:val(person.proof),name:val(person.name),designation:val(person.designation)};}):[],
   assets:p.assets,projectSources:Array.isArray(section(p,"PROJECT_TEASER").sourceRefs)?(section(p,"PROJECT_TEASER").sourceRefs as unknown[]).filter((x):x is string=>typeof x==="string"):[],projectHeading:val(section(p,"PROJECT_TEASER").heading)||"Our Projects",campaignSources:Array.isArray(section(p,"CAMPAIGN_TEASER").sourceRefs)?(section(p,"CAMPAIGN_TEASER").sourceRefs as unknown[]).filter((x):x is string=>typeof x==="string"):[],campaignHeading:val(section(p,"CAMPAIGN_TEASER").heading)||"Campaigns",loginDesired:p.navigation?.loginDesired??true,
   memberJoinDesired:p.navigation?.memberJoinDesired??false,
   volunteerJoinDesired:p.navigation?.volunteerJoinDesired??false};
@@ -216,7 +215,9 @@ export function CmsAdminWorkspace({canManage,canPublish,canReview}:{
  const [publishWhen,setPublishWhen]=useState("");
  const [heroEditorTab,setHeroEditorTab]=useState<"BASIC"|"IMAGES"|"BUTTONS"|"PREVIEW">("BASIC");
  const [activeHeroIndex,setActiveHeroIndex]=useState(0);
- const [teamEditorTab,setTeamEditorTab]=useState<"BASIC"|"DETAILS"|"PREVIEW">("BASIC");
+ const [teamChoices,setTeamChoices]=useState<Team[]>([]),[teamError,setTeamError]=useState("");
+ const refreshTeam=()=>{setTeamError("");void read<{sources:Team[]}>("team-sources").then(v=>setTeamChoices(v.sources)).catch(()=>{setTeamChoices([]);setTeamError("Current consented staff sources require HR viewing permission.");});};
+ useEffect(()=>{if(canManage)refreshTeam();},[canManage]);
  const [uploadRole,setUploadRole]=useState<Asset["role"]>("HERO");
  const [uploadOrder,setUploadOrder]=useState(0);
  const [uploadAlt,setUploadAlt]=useState(""),[rights,setRights]=useState(false);
@@ -300,7 +301,7 @@ export function CmsAdminWorkspace({canManage,canPublish,canReview}:{
     [draft.volunteerTitle,draft.volunteerBody,draft.memberTitle,
      draft.memberBody].every(x=>x.trim().length>=3))&&
   draft.body.trim().length>=5&&
-  draft.team.length===0;
+  draft.team.every(p=>!!p.sourceRef&&/^[a-f0-9]{64}$/.test(p.proof))&&!draft.assets.some(a=>a.role==="TEAM");
  const draftIssue=draft.title.trim().length<3?
   "Enter a website page title of at least 3 characters.":
   draft.body.trim().length<5?
@@ -322,8 +323,8 @@ export function CmsAdminWorkspace({canManage,canPublish,canReview}:{
   draft.featureCards.some(card=>card.label.trim().length<2||
     card.title.trim().length<3||card.body.trim().length<5)?
   "Complete each solution card's category, title and description.":
-  draft.team.length>0?
-  "Remove manually entered team profiles. Public profiles need verified CG-10/CG-04 source and revocable consent before publication.":
+  draft.team.some(p=>!p.sourceRef||!/^[a-f0-9]{64}$/.test(p.proof))||draft.assets.some(a=>a.role==="TEAM")?
+  "Remove historical manual profiles and portrait assets; select current consented staff.":
   !okay?"Complete the remaining website content before saving.":null;
  async function send(c:Command){
   if(busy)return;
@@ -848,49 +849,19 @@ export function CmsAdminWorkspace({canManage,canPublish,canReview}:{
        onChange={e=>edit("footerNewsletterText",e.target.value)}/></label>
      </fieldset>
     </>}
-    <fieldset><legend>Public team directory — pending verified people source</legend>
-      <p role="status">Team names, photos and biographies will become publishable only through approved CG-10 staff or CG-04 volunteer/member records with revocable display consent. Existing manually entered profiles can be removed; a checkbox alone does not grant publication permission.</p>
-      <label>Section heading<input disabled={!canManage} value={draft.teamHeading}
-       onChange={e=>edit("teamHeading",e.target.value)}/></label>
-      <p>{draft.team.length} public profile{draft.team.length===1?"":"s"} in this draft</p>
-      <div className="cg-cms-tabs" role="tablist" aria-label="Team profile editor">
-       {([["BASIC","Basic Information"],["DETAILS","Additional Details"],
-         ["PREVIEW","Preview"]] as const).map(([value,label])=>
-        <button type="button" key={value} role="tab"
-         className={teamEditorTab===value?"is-active":""}
-         aria-selected={teamEditorTab===value}
-         onClick={()=>setTeamEditorTab(value)}>{label}</button>)}
-      </div>
-      {draft.team.map((member,index)=><div className="cg-cms-team" key={index}>
-       <h4>{member.name||"Team profile "+(index+1)}</h4>
-       {teamEditorTab==="BASIC"&&<>
-        <label>Public name<input disabled={!canManage} maxLength={100} value={member.name}
-         onChange={e=>edit("team",draft.team.map((v,i)=>i===index?{...v,name:e.target.value}:v))}/></label>
-        <label>Designation<input disabled={!canManage} maxLength={100} value={member.designation}
-         onChange={e=>edit("team",draft.team.map((v,i)=>i===index?{...v,designation:e.target.value}:v))}/></label>
-       </>}
-       {teamEditorTab==="DETAILS"&&<>
-        <label>Public biography<textarea disabled={!canManage} maxLength={600} value={member.bio}
-         onChange={e=>edit("team",draft.team.map((v,i)=>i===index?{...v,bio:e.target.value}:v))}/></label>
-        <label className="cg-cms-consent"><input type="checkbox" disabled={!canManage}
-         checked={member.consentConfirmed} onChange={e=>
-          edit("team",draft.team.map((v,i)=>i===index?{...v,consentConfirmed:e.target.checked}:v))}/>
-         The Foundation confirms this person's permission for public display</label>
-       </>}
-       {teamEditorTab==="PREVIEW"&&<div className="cg-cms-team-preview">
-        {draft.assets.filter(asset=>asset.role==="TEAM"&&asset.order===index)
-         .map(asset=><img key={asset.fileRef} className="cg-cms-review-image"
-          alt={asset.altText} src={"/api/cms-image-preview/"+asset.fileRef} loading="lazy"/>)}
-        <strong>{member.name||"Name not entered"}</strong>
-        <span>{member.designation||"Designation not entered"}</span>
-        {!!member.bio&&<p>{member.bio}</p>}
-        <small>{member.consentConfirmed?"Editor consent claim (not source-verified)":
-         "Permission required before publication"}</small>
-       </div>}
-       {canManage&&<button type="button" onClick={()=>removeIndexedContent("TEAM",index)}>
-        Remove profile</button>}
-      </div>)}
-     </fieldset>
+    <fieldset><legend>Public team directory</legend>
+      <p>Only currently consented CG-10 name and designation may be selected. Portraits and biographies remain unavailable. Independent CMS approval is required.</p>
+      <label>Section heading<input disabled={!canManage} value={draft.teamHeading} onChange={e=>edit("teamHeading",e.target.value)}/></label>
+      {canManage&&<button type="button" onClick={refreshTeam} disabled={busy}>Refresh consented staff</button>}
+      {teamError&&<p role="alert">{teamError}</p>}
+      {!teamChoices.length&&!teamError&&<p>No current consented staff sources.</p>}
+      {teamChoices.map(person=><label key={person.sourceRef} className="cg-cms-consent">
+       <input type="checkbox" checked={draft.team.some(x=>x.sourceRef===person.sourceRef&&x.proof===person.proof)} disabled={!canManage||busy||(!draft.team.some(x=>x.sourceRef===person.sourceRef)&&draft.team.length>=15)}
+        onChange={e=>edit("team",e.target.checked?[...draft.team.filter(x=>x.sourceRef!==person.sourceRef),person]:draft.team.filter(x=>x.sourceRef!==person.sourceRef))}/>
+       {person.name} · {person.designation}</label>)}
+      {draft.team.filter(x=>!teamChoices.some(y=>y.sourceRef===x.sourceRef&&y.proof===x.proof)).map((x,i)=><div key={i}><p>Unavailable or historical profile selection. Remove or reselect the current source.</p>
+       {canManage&&<button type="button" disabled={busy} onClick={()=>{edit("team",draft.team.filter(y=>y!==x));edit("assets",draft.assets.filter(a=>a.role!=="TEAM"));}}>Remove unavailable profile</button>}</div>)}
+    </fieldset>
      {!!selected&&selected.status==="DRAFT"&&canManage&&<fieldset>
       <legend>Page photographs</legend>
       <p>Upload only an original image the Foundation is authorized to publish.
@@ -919,7 +890,7 @@ export function CmsAdminWorkspace({canManage,canPublish,canReview}:{
        onChange={e=>setRights(e.target.checked)}/>I confirm public image rights and consent</label>
       <label>Select original image<input type="file" accept="image/png,image/jpeg,image/webp"
        disabled={busy||!rights||uploadAlt.trim().length<3||
-         (uploadRole==="TEAM"&&draft.team.length===0)||
+         uploadRole==="TEAM"||
          (uploadRole==="FEATURE"&&draft.featureCards.length===0)||
          (["HERO","MOBILE_HERO"].includes(uploadRole)&&draft.slides.length===0)}
        onChange={e=>{const file=e.target.files?.[0];if(file)void upload(file);e.currentTarget.value="";}}/></label>
