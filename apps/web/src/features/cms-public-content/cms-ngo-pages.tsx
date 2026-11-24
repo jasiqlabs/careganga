@@ -3,7 +3,7 @@ import {notFound} from "next/navigation";
 import type {Metadata} from "next";
 import type {PublicCmsPage} from "./cms-public-page";
 import {CmsPublicShell} from "./cms-public-page";
-import {publishedCmsNavigation,publishedCmsPage} from "./cms-public-source";
+import {publishedCmsNavigation,publishedCmsPage,publishedPublicIntro} from "./cms-public-source";
 import {CmsNgoAnnualReports,type ApprovedAnnualReport} from "./cms-ngo-annual-client";
 import {UnavailablePage} from "../../shared/unavailable-page";
 
@@ -32,8 +32,9 @@ const reports=(page:PublicCmsPage,type:"REGISTRATION"|"ANNUAL_REPORT")=>
  scope(page).docs.filter(d=>d.type===type&&d.file?.src);
 const canShow=(page:PublicCmsPage,key:Child)=>{
  const {fact}=scope(page);
+ if(key==="annual-reports")return true; // an approved disclosure page may legitimately contain zero reports
  return key==="pan-details"?/^[A-Z]{5}[0-9]{4}[A-Z]$/.test(words(fact.pan)):
-  reports(page,key==="annual-reports"?"ANNUAL_REPORT":"REGISTRATION").length>0;
+  reports(page,"REGISTRATION").length>0;
 };
 /** All three original visitor views are strictly read-only subsets of the
  * single independently approved/current CG18 COMPLIANCE revision. Their
@@ -87,8 +88,8 @@ export async function cmsNgoChildMetadata(section:string):Promise<Metadata>{
 export async function CmsNgoChildRoute({section}:{section:string}){
  if(!allowed.has(section as Child))notFound();
  const key=section as Child;
- const [result,navigation,home]=await Promise.all([
-  publishedCmsPage("80g"),publishedCmsNavigation(),publishedCmsPage("home")]);
+ const [result,navigation,home,intro]=await Promise.all([
+  publishedCmsPage("80g"),publishedCmsNavigation(),publishedCmsPage("home"),key==="annual-reports"?publishedPublicIntro("ANNUAL_REPORTS"):Promise.resolve(null)]);
  if(result.state==="NOT_PUBLISHED")notFound();
  if(result.state!=="PUBLISHED"||result.page.kind!=="COMPLIANCE")
   return <UnavailablePage title="Foundation disclosure unavailable" description="The current approved information cannot be verified." linkHref="/ngo-information" linkLabel="NGO Information" />;
@@ -101,7 +102,8 @@ export async function CmsNgoChildRoute({section}:{section:string}){
  }));
  const info=<section className="cg-site-content cg-site-legal cg-site-ngo-child">
   <p className="cg-site-eyebrow">Foundation official information</p>
-  <h1>{chapter[key]}</h1>
+  <h1>{intro?.heading??chapter[key]}</h1>
+  {intro?.body&&<p>{intro.body}</p>}
   <p className="cg-site-provenance">Current Foundation-published records only.
    Check the relevant issuing authority for legal or tax applicability.</p>
   {key==="pan-details"&&<dl className="cg-site-legal-data">
@@ -119,7 +121,7 @@ export async function CmsNgoChildRoute({section}:{section:string}){
     <a href={d.file!.src} download>View current approved certificate</a>
    </article>)}
   </div>}
-  {key==="annual-reports"&&<CmsNgoAnnualReports reports={annual}/>}
+  {key==="annual-reports"&&<><CmsNgoAnnualReports reports={annual}/>{intro?.eyebrow&&<h2>{intro.eyebrow}</h2>}</>}
   <p className="cg-site-legal-notice">{words(fact.disclaimer)||
    "Confirm current official information with the Foundation."}</p>
  </section>;
