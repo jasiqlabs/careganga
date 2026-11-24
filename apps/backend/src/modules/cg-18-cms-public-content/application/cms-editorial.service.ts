@@ -178,7 +178,7 @@ function parseContent(raw:unknown):Content{
    sec.kind==="JOIN_CARDS"?["volunteerTitle","volunteerBody","volunteerBenefits",
     "memberTitle","memberBody","memberBenefits"]:
    sec.kind==="SITE_FOOTER"?["mission","address","email","phone","whatsappNumber","newsletterText"]:
-   sec.kind==="RICH_TEXT"?["heading","body","eyebrow","variant","highlights"]:
+   sec.kind==="RICH_TEXT"?["heading","body","eyebrow","variant","highlights","placement"]:
    sec.kind==="PROJECT_TEASER"||sec.kind==="CAMPAIGN_TEASER"?["heading","sourceRefs"]:["heading"]);
   const out:Record<string,unknown>={};
   const array=(raw:unknown,field:string,limit:number,max:number)=>{
@@ -233,6 +233,13 @@ function parseContent(raw:unknown):Content{
     out.variant=fields.variant;
    }
    out.highlights=array(fields.highlights??[],"highlights",4,200);
+   // Approved About revision can also own neutral introductory text for existing public owner routes.
+   // No new operational master, URLs, personal information or permission/availability override.
+   if(fields.placement!==undefined){
+    if(kind!=="ABOUT"||typeof fields.placement!=="string"||!["TEAM","MEMBERSHIP","VOLUNTEER","NOTICES","UPCOMING_PROJECTS","ANNUAL_REPORTS"].includes(fields.placement)||fields.variant==="SPLIT")
+     throw new BadRequestException({code:"CMS_INPUT_INVALID",field:"placement"});
+    out.placement=fields.placement;
+   }
   }else if(sec.kind==="CTA"){
    out.heading=text(fields.heading??"","heading",160);
    out.eyebrow=text(fields.eyebrow??"","eyebrow",80);
@@ -286,6 +293,9 @@ function parseContent(raw:unknown):Content{
    throw new BadRequestException({code:"CMS_INPUT_INVALID",field:"sections"});
   return {kind:sec.kind as Section["kind"],order:Number(sec.order),fields:out};
  });
+ const placed=sections.filter(s=>s.kind==="RICH_TEXT"&&typeof s.fields.placement==="string");
+ if(new Set(placed.map(s=>s.fields.placement)).size!==placed.length)
+  throw new BadRequestException({code:"CMS_INPUT_INVALID",field:"placement"});
  if(new Set(sections.map(s=>s.kind+":"+s.order)).size!==sections.length)
   throw new BadRequestException({code:"CMS_INPUT_INVALID",field:"sections"});
  if(sections.filter(s=>s.kind==="HERO").length>6)
