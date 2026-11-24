@@ -12,6 +12,8 @@ export function parsePolicy(raw:unknown){
  if(!Array.isArray(x.components)||x.components.length>40)throw invalid("Choose up to 40 salary components");
  const components=x.components.map(raw=>{const c=fields(raw,["code","label","kind","mode","minor","basisPoints","taxClass"]);
   if(typeof c.code!=="string"||!/^[A-Z][A-Z0-9_]{1,29}$/.test(c.code))throw invalid("Enter a valid component code");
+  const normalized=label(c.label).toUpperCase().replace(/[^A-Z0-9]/g,"");
+  if(/^(PF|EPF|ESI|ESIC|PT|TDS)(_|$)/.test(c.code)||/^(PF|EPF|ESI|ESIC|PT|TDS|PROVIDENTFUND|EMPLOYEE(S)?STATEINSURANCE|PROFESSIONALTAX|INCOMETAX|GRATUITY)$/.test(normalized)||c.code==="BASIC")throw invalid("Statutory configuration requires an approved rule; basic salary is entered separately");
   const mode=option(c.mode,["FIXED","PERCENT"] as const),kind=option(c.kind,["ALLOWANCE","DEDUCTION","EMPLOYER_CONTRIBUTION"] as const);
   if(mode==="FIXED"?c.basisPoints!=null:c.minor!=null||!Number.isInteger(c.basisPoints)||Number(c.basisPoints)<0||Number(c.basisPoints)>10000)throw invalid("Check amount or percentage");
   return {code:c.code,label:label(c.label),kind,mode,minor:mode==="FIXED"?minor(c.minor,true):null,bp:mode==="PERCENT"?Number(c.basisPoints):null,taxClass:option(c.taxClass,["TAXABLE","NON_TAXABLE","NOT_CONFIGURED"] as const)};
@@ -22,5 +24,7 @@ export function parsePolicy(raw:unknown){
 export function parseSalary(raw:unknown){const x=fields(raw,["requestKey","policyRef","policyRevision","effectiveFrom","effectiveTo","supersedesRef","hrProposalRef","baseMinor"]);if(!Number.isSafeInteger(x.policyRevision)||Number(x.policyRevision)<1)throw invalid("Refresh the policy");return {key:id(x.requestKey),policy:id(x.policyRef),policyRevision:Number(x.policyRevision),hrProposal:x.hrProposalRef==null||x.hrProposalRef===""?null:id(x.hrProposalRef),supersedes:x.supersedesRef==null||x.supersedesRef===""?null:id(x.supersedesRef),...range(x),baseMinor:minor(x.baseMinor)};}
 /** Round half-up once per component, with integer arithmetic only. */
 export function componentMinor(base:string,c:{mode:"FIXED"|"PERCENT";minor:string|null;bp:number|null}):bigint{
- return c.mode==="FIXED"?BigInt(minor(c.minor,true)):(BigInt(minor(base))*BigInt(c.bp??0)+5000n)/10000n;
+ if(c.mode==="FIXED")return BigInt(minor(c.minor,true));
+ if(c.mode!=="PERCENT"||!Number.isInteger(c.bp)||Number(c.bp)<0||Number(c.bp)>10000)throw invalid("Invalid component rate");
+ return (BigInt(minor(base))*BigInt(c.bp!)+5000n)/10000n;
 }
