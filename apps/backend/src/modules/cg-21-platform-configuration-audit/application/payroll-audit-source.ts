@@ -2,7 +2,7 @@ import {randomUUID} from "node:crypto";
 import type {Pool,PoolClient} from "pg";
 import type {VerifiedFoundationActor as Actor} from "../../cg-01-identity-access/public-api";
 type Kind="POLICY"|"COMPENSATION"|"PAYOUT"|"RUN"|"ACCESS";
-type Result="DRAFT_CREATED"|"SUBMITTED"|"APPROVED"|"RETURNED"|"REJECTED"|"READ"|"DENIED"|"CONFLICT"|"INVALID";
+type Result="DRAFT_CREATED"|"IMPORTED"|"CALCULATED"|"SUBMITTED"|"APPROVED"|"RETURNED"|"REJECTED"|"READ"|"DENIED"|"CONFLICT"|"INVALID";
 /** CG21-owned original append-only transport. Only enumerated labels; never source fields. */
 export async function recordPayrollAudit(db:Pool|PoolClient,a:Actor,kind:Kind,result:Result,correlation=randomUUID()){
  await db.query(`INSERT INTO platform_operation_audit(foundation_realm_id,actor_account_id,action_key,resource_ref,outcome,safe_context,correlation_ref)
