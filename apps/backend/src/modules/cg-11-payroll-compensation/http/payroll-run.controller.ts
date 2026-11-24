@@ -9,6 +9,8 @@ export class PayrollRunController{
  @Post(":ref/import-current-attendance") @Header("Cache-Control","private, no-store") import(@Headers("authorization")token:string,@Param("ref")ref:string,@Body()raw:unknown){return this.runs.command(token,ref,"import-current-attendance",raw);}
  @Post(":ref/calculate") @Header("Cache-Control","private, no-store") calculate(@Headers("authorization")token:string,@Param("ref")ref:string,@Body()raw:unknown){return this.runs.command(token,ref,"calculate",raw);}
  @Post(":ref/adjust") @Header("Cache-Control","private, no-store") adjust(@Headers("authorization")token:string,@Param("ref")ref:string,@Body()raw:unknown){return this.runs.command(token,ref,"adjust",raw);}
+ @Get(":ref/late-options") @Header("Cache-Control","private, no-store") lateOptions(@Headers("authorization")token:string,@Param("ref")ref:string){return this.runs.lateOptions(token,ref);}
+ @Post(":ref/late-adjustment") @Header("Cache-Control","private, no-store") lateAdjustment(@Headers("authorization")token:string,@Param("ref")ref:string,@Body()raw:unknown){return this.runs.command(token,ref,"late-adjustment",raw);}
  @Get(":ref/validation") @Header("Cache-Control","private, no-store") validation(@Headers("authorization")token:string,@Param("ref")ref:string){return this.runs.detail(token,ref);}
  @Get(":ref/history") @Header("Cache-Control","private, no-store") history(@Headers("authorization")token:string,@Param("ref")ref:string){return this.runs.history(token,ref);}
  @Get(":ref") @Header("Cache-Control","private, no-store") detail(@Headers("authorization")token:string,@Param("ref")ref:string){return this.runs.detail(token,ref);}
