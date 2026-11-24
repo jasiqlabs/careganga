@@ -29,7 +29,8 @@ const publicIntros=[
  intro(73,"VOLUNTEER","Serve With Your Heart","Join CareGanga Foundation's growing family of changemakers. Your time, compassion, and energy can transform lives across riverbank communities.","BECOME A VOLUNTEER",["Share your details","Upload documents","Pick how you'd like to help","Review & submit"]),
  intro(74,"NOTICES","Notice & Announcement Board","Stay updated with official announcements, upcoming NGO events, community drives, and policy notices.","Official Public Bulletins"),
  intro(75,"UPCOMING_PROJECTS","Upcoming Projects","Planned humanitarian, environmental and community welfare initiatives for the coming months."),
- intro(76,"ANNUAL_REPORTS","Annual Reports","CareGanga Foundation is committed to transparency and accountability. Explore our annual reports to know more about our activities, impact, and financial performance.","Our Commitment to Transparency")
+ intro(76,"ANNUAL_REPORTS","Annual Reports","CareGanga Foundation is committed to transparency and accountability. Explore our annual reports to know more about our activities, impact, and financial performance.","Our Commitment to Transparency"),
+ intro(77,"FINANCIAL_REPORTS","Financial Reports","Explore our financial reports to know how we collect, utilize and manage funds responsibly for a better tomorrow.","Our Commitment to Accountability")
 ];
 // Text-only editorial scaffolds: reference-derived headings, no original photos,
 // legal wording, asserted registration, sample statistics, actual people or prices.
