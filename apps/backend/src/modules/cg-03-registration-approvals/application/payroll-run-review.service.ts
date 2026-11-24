@@ -29,6 +29,7 @@ export class PayrollRunReviewService{
  }
  async submit(token:string,ref:string,raw:unknown){return this.compensation.run(token,"payroll.runs.manage",async(tx,a)=>{
   const x=fields(raw,["requestKey","expectedRevision"]),key=id(x.requestKey),expected=version(x.expectedRevision),requestDigest=hash([id(ref),expected]);
+  await tx.query("SELECT pg_advisory_xact_lock(hashtextextended($1,0))",["CG11-RUN-WRITE:"+a.realmId]);
   await tx.query("SELECT id FROM access_realm WHERE id=$1 AND realm_key='FOUNDATION_ROOT' FOR UPDATE",[a.realmId]);
   const r=await this.runs.row(tx,a,ref,true);
   const prior=(await tx.query<{id:string;request_digest:string;case_number:string}>("SELECT id,request_digest,case_number FROM cg03_case WHERE realm_id=$1 AND proposer_id=$2 AND request_key=$3 AND case_kind='PAYROLL_RUN_RELEASE'",[a.realmId,a.accountId,key])).rows[0];
@@ -62,6 +63,7 @@ export class PayrollRunReviewService{
   const x=fields(raw,["requestKey","expectedRevision","action","currentPassword"]),key=id(x.requestKey),expected=version(x.expectedRevision),action=option(x.action,["APPROVE","RETURN","REJECT"] as const);
   if(typeof x.currentPassword!=="string"||x.currentPassword.length<8||Buffer.byteLength(x.currentPassword,"utf8")>1024)throw new BadRequestException("Enter the current Foundation password");
   await this.identity.assertCurrent(tx,a,"approvals.review");await this.protectedOwner.verifyReviewer(tx,a,"approvals.review",true);
+  await tx.query("SELECT pg_advisory_xact_lock(hashtextextended($1,0))",["CG11-RUN-WRITE:"+a.realmId]);
   const c=await this.original(tx,a,ref,true),r=await this.runs.row(tx,a,c.run_id,true);
   if(c.proposer_id===a.accountId||r.creator===a.accountId)throw new ForbiddenException("Independent payroll reviewer required");
   await this.sessions.requireFreshFoundationRootProof(tx,a,x.currentPassword);
