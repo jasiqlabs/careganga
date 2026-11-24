@@ -396,6 +396,38 @@ export class FinanceVoucherDraftService{
     reference?"VOUCHER_DRAFT_REVISED":"VOUCHER_DRAFT_CREATED",key]);
   return {voucherRef,voucherNumber,version,confirmed:true as const,replayed:false};
  }
+ async aidPaymentOptions(client:PoolClient,actor:VerifiedFoundationActor,branch:string|null){
+  await this.identity.assertCurrent(client,actor,"finance.vouchers.manage");
+  await this.identity.assertCurrent(client,actor,"finance.vouchers.view");
+  if(branch)await this.branches.requireFinanceActorBranch(client,actor,branch,"finance.vouchers.manage");
+  else await this.branches.requireFinanceRootScope(client,actor,"finance.vouchers.manage");
+  const years=(await client.query<{value:string;label:string}>("SELECT id AS value,name AS label FROM financial_year WHERE root_realm_id=$1 AND status='OPEN' ORDER BY start_on DESC LIMIT 20",[actor.realmId])).rows;
+  const accounts=(await client.query<{value:string;label:string}>("SELECT a.id AS value,a.code||' · '||a.name AS label FROM finance_account a JOIN account_group g ON g.id=a.group_id AND g.root_realm_id=a.root_realm_id WHERE a.root_realm_id=$1 AND a.status='ACTIVE' AND g.category='EXPENSE' AND (a.branch_id IS NULL OR a.branch_id=$2::uuid) ORDER BY a.name,a.id LIMIT 100",[actor.realmId,branch])).rows;
+  const paymentAccounts=(await client.query<{value:string;label:string}>("SELECT a.id AS value,b.display_label AS label FROM finance_account a JOIN cash_bank_account b ON b.root_realm_id=a.root_realm_id AND b.account_id=a.id WHERE a.root_realm_id=$1 AND a.status='ACTIVE' AND b.status='ACTIVE' AND a.account_kind IN('CASH','BANK') AND (a.branch_id IS NULL OR a.branch_id=$2::uuid) ORDER BY b.display_label,a.id LIMIT 100",[actor.realmId,branch])).rows;
+  return {years,accounts,paymentAccounts};
+ }
+ /** Create a real aid PAYMENT voucher through the same validated draft owner.
+  * The approved assistance source controls amount, branch and purpose; no alternate ledger. */
+ async prepareAidPayment(client:PoolClient,actor:VerifiedFoundationActor,v:{
+  key:string;branch:string|null;year:string;date:string;debit:string;payment:string;minor:string;reference:string
+ }){
+  const minor=BigInt(v.minor);
+  if(minor<1n||minor>99999999999999n)throw new ConflictException({code:"CG06_INVALID_INPUT"});
+  const debit=await client.query("SELECT 1 FROM finance_account a JOIN account_group g ON g.id=a.group_id AND g.root_realm_id=a.root_realm_id WHERE a.root_realm_id=$1 AND a.id=$2 AND a.status='ACTIVE' AND g.category='EXPENSE' FOR SHARE OF a,g",[actor.realmId,v.debit]);
+  if(!debit.rowCount)throw new ConflictException({code:"FINANCE_VOUCHER_ACCOUNT_SIDES_INVALID"});
+  const branchVersion=v.branch?(await client.query<{version:number}>("SELECT version FROM branch WHERE root_realm_id=$1 AND id=$2 AND status='ACTIVE' FOR SHARE",[actor.realmId,v.branch])).rows[0]?.version:null;
+  const amount=(minor/100n).toString()+"."+(minor%100n).toString().padStart(2,"0");
+  const safe=normalize({requestKey:v.key,financialYearRef:v.year,branchRef:v.branch,branchVersion,voucherType:"PAYMENT",postingDate:v.date,payeeName:"Protected Foundation beneficiary",purpose:"Approved assistance "+v.reference,paymentAccountRef:v.payment,debitAccountRef:v.debit,creditAccountRef:v.payment,lines:[{description:"Approved beneficiary assistance",quantity:1,unitRate:amount}],tax:"0",charges:"0"});
+  return this.commitDraft(client,actor,v.key,safe,null,null);
+ }
+ async prepareAidRecovery(client:PoolClient,actor:VerifiedFoundationActor,v:{key:string;originalVoucher:string;branch:string|null;year:string;date:string;minor:string;reference:string}){
+  const original=(await client.query<{debit_account_id:string;credit_account_id:string;total_minor:string}>("SELECT debit_account_id,credit_account_id,total_minor::text FROM finance_voucher WHERE root_realm_id=$1 AND id=$2 AND voucher_type='PAYMENT' AND status='POSTED' AND branch_id IS NOT DISTINCT FROM $3::uuid FOR SHARE",[actor.realmId,v.originalVoucher,v.branch])).rows[0];
+  if(!original||original.total_minor!==v.minor)throw new ConflictException({code:"CG06_SOURCE_STALE"});
+  const minor=BigInt(v.minor),amount=(minor/100n).toString()+"."+(minor%100n).toString().padStart(2,"0");
+  const branchVersion=v.branch?(await client.query<{version:number}>("SELECT version FROM branch WHERE root_realm_id=$1 AND id=$2 AND status='ACTIVE' FOR SHARE",[actor.realmId,v.branch])).rows[0]?.version:null;
+  const safe=normalize({requestKey:v.key,financialYearRef:v.year,branchRef:v.branch,branchVersion,voucherType:"GENERAL",postingDate:v.date,payeeName:"Protected Foundation beneficiary",purpose:"Actual recovery of approved assistance "+v.reference,debitAccountRef:original.credit_account_id,creditAccountRef:original.debit_account_id,lines:[{description:"Documented return of beneficiary assistance",quantity:1,unitRate:amount}],tax:"0",charges:"0"});
+  return this.commitDraft(client,actor,v.key,safe,null,null);
+ }
  async save(bearer:string,payload:unknown,voucherInput?:string){
   const capability="finance.vouchers.manage" as const;
   const actor=await this.actor(bearer,capability);

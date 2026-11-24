@@ -11,6 +11,30 @@ type Choice={value:string;label:string;projectRef?:string|null};
 export class CampaignLinkSourceFacade{
  constructor(private readonly branches:BranchSourceFacade,
   private readonly identity:FoundationStructureIdentityFacade){}
+ /** Current CG05 owner project filter guard; a CG06 list filter never makes
+  * project membership enumerable to a staff user without projects.view. */
+ async requireCurrentProjectForFilter(tx:PoolClient,a:Actor,projectRef:string){
+  await this.identity.assertCurrent(tx,a,"projects.view");
+  const source=(await tx.query<{branch_ref:string|null;status:string}>(
+   "SELECT branch_ref,status FROM project WHERE root_realm_id=$1 AND id=$2 FOR SHARE",
+   [a.realmId,projectRef])).rows[0];
+  if(!source||source.status!=="ACTIVE")
+   throw new ForbiddenException("Choose a current permitted Foundation project");
+  await this.branches.projectBranch(tx,a,source.branch_ref);
+ }
+ /** Read-only selector; never grants project or beneficiary mutation authority. */
+ async beneficiaryProjectFilterOptions(tx:PoolClient,a:Actor,branch:string|null,q:string){
+  await this.identity.assertCurrent(tx,a,"projects.view");
+  const scope=await this.branches.projectBranchScope(tx,a);
+  if(branch)await this.branches.projectBranch(tx,a,branch);
+  return (await tx.query<{value:string;label:string}>(`
+   SELECT p.id AS value,p.code_norm||' · '||p.title AS label
+   FROM project p WHERE p.root_realm_id=$1 AND p.status='ACTIVE'
+   AND ((p.branch_ref IS NULL AND $2::boolean) OR p.branch_ref=ANY($3::uuid[]))
+   AND ($4::uuid IS NULL OR p.branch_ref=$4)
+   AND ($5='' OR strpos(lower(p.title),$5)>0 OR strpos(lower(p.code_norm),$5)>0)
+   ORDER BY p.title,p.id LIMIT 80`,[a.realmId,scope.all,scope.branches.map(x=>x.value),branch,q.toLowerCase()])).rows;
+ }
  /** CG05-owned original projects/events are eligibility references, not CG07 replicas. */
  async requireCurrent(tx:PoolClient,a:Actor,branch:string|null,project:string|null,event:string|null){
   await this.branches.projectBranch(tx,a,branch);

@@ -236,3 +236,7 @@ For original US-001/003/005 QA, validate **true status and category filters, rea
 Project list, branch/owner selector, CRUD, task/visit and project_branch_history: protected Foundation root can manage Foundation+branches; ALL_BRANCHES high manager can operate A/B/C only if corresponding CG01 domain action, never root-only project. AREA/district delegates only descendants, A+B delegates only A/B, A-only actor A only; original project transfer and reassign history must not grant future B visibility.
 
 **Evidence state NOT_RUN:** original QA IDs unchanged. Test protected root (Foundation-null plus A/B/C), organization-wide non-protected `ALL_BRANCHES` (active A/B/C only), state/district AREA (descendant active branches only), explicit A+B BRANCH grants, A-only manager, ordinary restricted operator, revoked actor, cross-root guess and CG14 Center X/Y independence. Each selected story must verify current CG01 action + CG02 scope, database, backend API, Web and Internal Android, CSV/PDF and queued recipient; no BWC (greenfield), no runtime PASS, no main merge.
+
+
+### 24 November 2026 — CG06 integration source readback (existing owner)
+CG06 integration: A05 Beneficiaries contextual tab now renders real permitted distinct count in Web/Internal Android, typed summary, unavailable state; CG05 US004-QA13 / US005-QA07. 379e8de, 2ccf5d7, f0a77c3. Author source trace only, runtime and independent review NOT_RUN.

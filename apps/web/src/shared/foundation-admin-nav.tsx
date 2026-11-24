@@ -24,6 +24,7 @@ export type FoundationAdminNavProps = {
     | "branches"
     | "hr"
     | "projects"
+    | "beneficiaries"
     | "campaigns"
     | "csr"
     | "referrals"
@@ -183,6 +184,7 @@ function getNavIcon(key: string) {
     case "referrals":
     case "csr":
     case "campaigns":
+    case "beneficiaries":
     case "projects":
       return <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true"><path d="M3 6h18v15H3zM8 6V3h8v3M3 11h18"/></svg>;
     case "volunteers":
@@ -760,6 +762,7 @@ export function FoundationAdminNav({
     ...((allowed("csr.partners.view",false)||(allowed("csr.partners.review",false)&&allowed("approvals.review",false)))?[{key:"csr" as const,label:"CSR & Partnerships",href:"/admin/csr"}]:[]),
     ...((allowed("referrals.programmes.view",false)||allowed("rewards.catalog.view",false))?[{key:"referrals" as const,label:"Referral Programme & Rewards",href:"/admin/referrals"}]:[]),
     ...(allowed("projects.view",false)?[{key:"projects" as const,label:"Projects",href:"/admin/projects"}]:[]),
+    ...(allowed("beneficiaries.view",false)?[{key:"beneficiaries" as const,label:"Beneficiaries",href:"/admin/beneficiaries"}]:[]),
     ...(allowed("projects.visits.view",false)?[{key:"fieldVisits" as const,label:"Field Visits",href:"/admin/field-visits"}]:[]),
     ...(allowed("projects.activities.view",false)?[{key:"activities" as const,label:"Activities & Events",href:"/admin/activities"}]:[]),
     ...(allowed("projects.tasks.view",false)?[{key:"tasks" as const,label:"Tasks & Assignments",href:"/admin/tasks"}]:[]),
@@ -854,6 +857,7 @@ export function FoundationAdminNav({
     campaigns: "Campaigns",
     csr: "CSR & Partnerships",
     projects: "Projects",
+    beneficiaries: "Beneficiaries",
     fieldVisits: "Field Visits",
     activities: "Activities & Events",
     tasks: "Tasks & Assignments",
@@ -1006,7 +1010,7 @@ export function FoundationAdminNav({
             { name: "USER & ACCESS MANAGEMENT", keys: ["accounts", "roles", "approvals", "policy"] },
             { name: "ORGANIZATION MANAGEMENT", keys: ["branches", "foundation", "hr", "cms"] },
             { name: "MEMBERSHIP & VOLUNTEERS", keys: ["membership", "volunteers"] },
-            { name: "PROJECT & FIELD OPERATIONS", keys: ["projects", "fieldVisits", "tasks", "activities", "inventory"] },
+            { name: "PROJECT & FIELD OPERATIONS", keys: ["projects", "beneficiaries", "fieldVisits", "tasks", "activities", "inventory"] },
             { name: "CAMPAIGNS & FUNDRAISING", keys: ["campaigns", "csr", "referrals"] },
             { name: "HEALTHCARE", keys: [
               "healthNetwork", "healthCenter", "healthDoctors", "healthDiagnostics", "healthLabPricing", "healthLabOrders", "healthLabEquipment", "healthAssistancePolicies", "healthLiabilities", "healthSettlements", "healthSchedules", "healthPatientIntake",

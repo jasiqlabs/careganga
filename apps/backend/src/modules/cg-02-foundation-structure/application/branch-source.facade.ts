@@ -589,6 +589,18 @@ export class BranchSourceFacade{
   if(state&&!(await tx.query("SELECT 1 FROM geography_area WHERE id=$1 AND root_realm_id=$2 AND status='ACTIVE' AND level='STATE' FOR SHARE",[ensureId(state),a.realmId])).rowCount)throw new BadRequestException("Choose a current state");
   if(district&&!(await tx.query("SELECT 1 FROM geography_area WHERE id=$1 AND parent_area_id=$2 AND root_realm_id=$3 AND status='ACTIVE' AND level='DISTRICT' FOR SHARE",[ensureId(district),state,a.realmId])).rowCount)throw new BadRequestException("Choose a district in the selected state");
  }
+ /** CG06 uses the original active CG02 geography hierarchy. No local block master. */
+ async beneficiaryBlock(tx:PoolClient,a:VerifiedFoundationActor,state:string|null,district:string|null,block:string|null){
+  await this.projectGeography(tx,a,state,district);
+  if(!block)return;
+  if(!district||!(await tx.query("SELECT 1 FROM geography_area WHERE id=$1 AND root_realm_id=$2 AND parent_area_id=$3 AND status='ACTIVE' AND level='BLOCK' FOR SHARE",[ensureId(block),a.realmId,district])).rowCount)
+   throw new BadRequestException("Choose a block in the selected district");
+ }
+ async beneficiaryBlockOptions(tx:PoolClient,a:VerifiedFoundationActor,state:string|null,district:string|null){
+  await this.projectGeography(tx,a,state,district);
+  if(!district)return [];
+  return (await tx.query<{value:string;label:string}>("SELECT id AS value,display_name AS label FROM geography_area WHERE root_realm_id=$1 AND parent_area_id=$2 AND level='BLOCK' AND status='ACTIVE' ORDER BY display_name,id LIMIT 200",[a.realmId,district])).rows;
+ }
  /** A verified self applicant chooses an actual public branch preference;
   * this is not a Foundation operator grant or branch management access. */
  async membershipApplicantBranch(tx:PoolClient,a:VerifiedFoundationActor,ref:string|null){

@@ -574,6 +574,7 @@ export function CmsExtendedWorkspace({canManage,canPublish,canViewNoticeSources}
          onChange={v=>change("quote",v)}/>
        </>}
        <Field name="Explanation" value={f.intro} large onChange={v=>change("intro",v)}/>
+       {groupName==="STATS"&&canManage&&<button type="button" disabled={busy||!!pending} onClick={()=>void api<{fields:Record<string,unknown>|null}>("beneficiary-impact-source").then(v=>{if(!v.fields){setError("No publishable beneficiary aggregate for the last completed year.");return;}edit(index,v.fields);}).catch(()=>setError("Current role or source cannot provide beneficiary impact."))}>Use verified beneficiary impact</button>}
        <Field name="Data or editorial source" value={f.source} onChange={v=>change("source",v)}/>
        <Field name="Source date" type="date" value={f.asOfDate}
         onChange={v=>change("asOfDate",v)}/>

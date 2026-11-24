@@ -25,18 +25,18 @@ BEGIN
    RAISE EXCEPTION 'Approved voucher accounts cannot change' USING ERRCODE='P0907';
  END IF;
  IF NEW.status IN('DRAFT','SUBMITTED') THEN
-  SELECT a.status,a.account_kind,a.branch_id,g.category INTO a
-  FROM finance_account a JOIN account_group g ON g.id=a.group_id
-    AND g.root_realm_id=a.root_realm_id
-  WHERE a.id=NEW.debit_account_id AND a.root_realm_id=NEW.root_realm_id FOR SHARE OF a,g;
+  SELECT fa.status,fa.account_kind,fa.branch_id,g.category INTO a
+  FROM finance_account fa JOIN account_group g ON g.id=fa.group_id
+    AND g.root_realm_id=fa.root_realm_id
+  WHERE fa.id=NEW.debit_account_id AND fa.root_realm_id=NEW.root_realm_id FOR SHARE OF fa,g;
   IF NOT FOUND OR a.status<>'ACTIVE' OR
      (a.branch_id IS NOT NULL AND a.branch_id IS DISTINCT FROM NEW.branch_id) THEN
    RAISE EXCEPTION 'Selected debit account is not available' USING ERRCODE='P0916';
   END IF;
-  SELECT a.status,a.account_kind,a.branch_id,g.category INTO b
-  FROM finance_account a JOIN account_group g ON g.id=a.group_id
-    AND g.root_realm_id=a.root_realm_id
-  WHERE a.id=NEW.credit_account_id AND a.root_realm_id=NEW.root_realm_id FOR SHARE OF a,g;
+  SELECT fb.status,fb.account_kind,fb.branch_id,g.category INTO b
+  FROM finance_account fb JOIN account_group g ON g.id=fb.group_id
+    AND g.root_realm_id=fb.root_realm_id
+  WHERE fb.id=NEW.credit_account_id AND fb.root_realm_id=NEW.root_realm_id FOR SHARE OF fb,g;
   IF NOT FOUND OR b.status<>'ACTIVE' OR
      (b.branch_id IS NOT NULL AND b.branch_id IS DISTINCT FROM NEW.branch_id) THEN
    RAISE EXCEPTION 'Selected credit account is not available' USING ERRCODE='P0916';
