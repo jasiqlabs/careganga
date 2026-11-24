@@ -572,6 +572,12 @@ checks.push(["CMS effective CTA gating preserves join flags, media scope and app
  files.android.includes('canNavigate={canNavigate}')&&nativeExtendedCta.includes('canNavigate(f.ctaPath)&&')]);
 checks.push(["Neutral healthcare editorial CTA still excludes unapproved operational routes",
  files.backend.includes('kind==="HEALTHCARE"&&!["/","/about","/contact"].includes(x)')]);
+const initDrafts=read("scripts/initialize-cms-drafts.mjs");
+checks.push(["Default CMS onboarding is explicit and uses original draft creation only",
+ initDrafts.includes('if(!apply)')&&initDrafts.includes('new URL("/api/cms/pages",url)')&&
+ initDrafts.includes('if(existing.has(content.slug))')&&initDrafts.includes('if(r.status===409)')&&
+ initDrafts.includes('result.status!=="DRAFT"')&&!initDrafts.includes('/api/cms/pages/submit')&&
+ !initDrafts.includes('/api/cms/pages/publish')]);
 let errors=0;
 for(const [label,ok] of checks){
  console.log((ok?"SOURCE-PRESENT":"SOURCE-FAIL")+": "+label);
