@@ -20,7 +20,7 @@ export async function readiness(base,request=fetch){
   return response.json();
  };
  const failures=[];
- const requiredIntroPlacements=["TEAM","MEMBERSHIP","VOLUNTEER","NOTICES","UPCOMING_PROJECTS","ANNUAL_REPORTS"];
+ const requiredIntroPlacements=["TEAM","MEMBERSHIP","VOLUNTEER","NOTICES","UPCOMING_PROJECTS","ANNUAL_REPORTS","FINANCIAL_REPORTS"];
  const requiredRoutes=[...baseline,["our-work","PROJECTS","/our-work"],["upcoming-projects","PROJECTS","/upcoming-projects"]];
  for(const [slug,kind,path] of requiredRoutes){
   try{
