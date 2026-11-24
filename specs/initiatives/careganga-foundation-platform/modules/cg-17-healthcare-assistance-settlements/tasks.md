@@ -156,6 +156,10 @@ Dependencies: US-001
 
 ## Execution progress
 
+### Healthcare hardening — patient history and payment presentation
+HUX-11.03/13.02/08.03/15.02: patient Web/native appointment history clears stale rows and selected protected details on fresh query, guards pagination by list generation, differentiates failed lookup and empty state, and shows actual doctor/center and payment status; removes obsolete unconditional unpaid/receipt wording now that CG17 collection source exists. Native patient profile gives consultations earlier priority and all patient subviews use shared public palette. Time-first comparison no longer duplicates old center actions. CG15 US-007/008 original history, cancellation, slip and reschedule scenarios and CG17 US-003/004 collection scenarios require actual source-backed regression with paid, pending, cancelled, refunded, slow query and expired session. Runtime NOT_RUN.
+
+
 CG17 re-review 1ec0ed98/c58221de: center-scoped doctor lookup generation and loading gate, US-001-QA02/04/05 source-only. Runtime NOT_RUN.
 
 

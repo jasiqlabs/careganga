@@ -83,7 +83,7 @@ export function DoctorSchedulePreview({doctorRef,reschedule,preferredCenterSlug}
  },[doctorRef,day]);
  const compare=useCallback(async(time:string)=>{
   if(!/^([01]\d|2[0-3]):[0-5]\d$/.test(time))return;
-  const id=++sequence.current;setSearchTime(time);setChoices(null);
+  const id=++sequence.current;setSearchTime(time);setChoices(null);setDetail(null);setCenter(null);
   setError("");setLoading(true);
   try{
    const result=await get<Choices>("slot-first?doctorRef="+

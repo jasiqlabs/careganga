@@ -42,23 +42,27 @@ export function NativeConsultationHistory(){
  const [detailError,setDetailError]=useState("");
  const detailSeq=useRef(0);
  const keys=useRef<Map<string,string>>(new Map());
+ const listSeq=useRef(0);
  const refresh=useCallback(async()=>{
+  const turn=++listSeq.current;setLoading(true);setItems([]);setNextCursor(null);setMoreBusy(false);
+  detailSeq.current++;setSelectedRef(null);setDetail(null);setDetailBusy(false);setDetailError("");
+  try{
   const result=await api<{items:Booking[];next:string|null}>(
    "me?limit=20"+(statusFilter?"&status="+encodeURIComponent(statusFilter):""));
+  if(turn!==listSeq.current)return;
+  if(!result||!Array.isArray(result.items)||!(result.next===null||typeof result.next==="string"))throw Error("Current appointments cannot be verified.");
   setItems(result.items);setNextCursor(result.next);setUncertain(false);
+  }catch(e){if(turn===listSeq.current)throw e;}finally{if(turn===listSeq.current)setLoading(false);}
  },[statusFilter]);
  useEffect(()=>{
-  let alive=true;
-  setLoading(true);setItems([]);setNextCursor(null);
-  void refresh().catch(e=>{if(alive)setError(e instanceof Error?e.message:
-   "Current patient appointments cannot be confirmed.");})
-   .finally(()=>{if(alive)setLoading(false);});
-  return()=>{alive=false;};
+  let alive=true;setError("");
+  void refresh().catch(e=>{if(alive)setError(e instanceof Error?e.message:"Current patient appointments cannot be confirmed.");});
+  return()=>{alive=false;listSeq.current++;detailSeq.current++;};
  },[refresh]);
  useEffect(()=>{
   if(!reschedule&&!selectedRef)return;
   const sub=BackHandler.addEventListener("hardwareBackPress",()=>{
-   if(reschedule){setReschedule(null);void refresh();return true;}
+   if(reschedule){setReschedule(null);void refresh().catch(e=>setError(e instanceof Error?e.message:"Current appointments unavailable."));return true;}
    detailSeq.current++;setSelectedRef(null);setDetail(null);
    setDetailError("");return true;
   });
@@ -83,19 +87,22 @@ export function NativeConsultationHistory(){
   finally{if(seq===detailSeq.current)setDetailBusy(false);}
  }
  async function more(){
-  if(busy||moreBusy||!nextCursor)return;
+  if(busy||moreBusy||loading||uncertain||!nextCursor)return;
+  const turn=listSeq.current;
   setMoreBusy(true);setError("");
   try{
    const page=await api<{items:Booking[];next:string|null}>(
     "me?limit=20&after="+encodeURIComponent(nextCursor)+
     (statusFilter?"&status="+encodeURIComponent(statusFilter):""));
+   if(turn!==listSeq.current)return;
+   if(!Array.isArray(page.items)||!(page.next===null||typeof page.next==="string"))throw Error("Older consultations cannot be verified.");
    setItems(current=>{
     const known=new Set(current.map(x=>x.bookingRef));
     return [...current,...page.items.filter(x=>!known.has(x.bookingRef))];
    });
    setNextCursor(page.next);
-  }catch(e){setError(e instanceof Error?e.message:"Older consultations are unavailable.");}
-  finally{setMoreBusy(false);}
+  }catch(e){if(turn===listSeq.current)setError(e instanceof Error?e.message:"Older consultations are unavailable.");}
+  finally{if(turn===listSeq.current)setMoreBusy(false);}
  }
  async function cancel(book:Booking){
   if(busy||uncertain)return;
@@ -108,7 +115,7 @@ export function NativeConsultationHistory(){
     expectedVersion:book.version,reason:"PATIENT_REQUEST"
    });
    keys.current.delete(reference);await refresh();
-   setError("Appointment cancelled. No CareGanga payment is recorded.");
+   setError("Appointment cancelled. Check the updated center payment status.");
   }catch(e){
    setUncertain(true);setError((e instanceof Error?e.message:
     "The cancellation status is uncertain.")+" Check original booking before retrying.");
@@ -127,16 +134,15 @@ export function NativeConsultationHistory(){
    <Text style={styles.buttonText}>{text}</Text></Pressable>;
  if(reschedule)return <View style={styles.page}>
   {button("Back to my appointments",()=>{setReschedule(null);setSelectedRef(null);
-   setDetail(null);void refresh();})}
+   setDetail(null);void refresh().catch(e=>setError(e instanceof Error?e.message:"Current appointments unavailable."));})}
   <Text style={styles.heading}>Choose a new consultation</Text>
   <PublicHealthcareDirectory onExit={()=>{setReschedule(null);
-   setSelectedRef(null);setDetail(null);void refresh();}}
+   setSelectedRef(null);setDetail(null);void refresh().catch(e=>setError(e instanceof Error?e.message:"Current appointments unavailable."));}}
    reschedule={{bookingRef:reschedule.bookingRef,expectedVersion:reschedule.version}}/>
  </View>;
  return <View style={styles.page}>
   <Text accessibilityRole="header" style={styles.heading}>My Consultations</Text>
-  <Text style={styles.note}>Only appointments linked to this signed-in patient are shown.
-   Pay at the healthcare center; no online payment is recorded here.</Text>
+  <Text style={styles.note}>Only your appointments are shown. The healthcare center collects payments.</Text>
   <Text style={styles.note}>Filter appointments by current status</Text>
   <View style={styles.filters} accessibilityLabel="Patient appointment status filters">
    {([
@@ -147,8 +153,8 @@ export function NativeConsultationHistory(){
    ] as const).map(([value,label])=>
     <Pressable key={value} accessibilityRole="button"
      accessibilityLabel={"Show "+label+" appointments"}
-     accessibilityState={{selected:statusFilter===value,disabled:busy||uncertain}}
-     disabled={busy||uncertain} onPress={()=>{if(value!==statusFilter)setStatusFilter(value);}}
+     accessibilityState={{selected:statusFilter===value,disabled:busy||uncertain||loading||moreBusy}}
+     disabled={busy||uncertain||loading||moreBusy} onPress={()=>{if(value!==statusFilter){listSeq.current++;setLoading(true);setStatusFilter(value);}}}
      style={[styles.filterChip,statusFilter===value&&styles.filterSelected]}>
      <Text style={styles.filterText}>{label}</Text>
     </Pressable>)}
@@ -156,11 +162,10 @@ export function NativeConsultationHistory(){
   {loading&&<Text>Checking current appointments…</Text>}
   {!!error&&<Text accessibilityRole="alert" style={styles.error}>{error}</Text>}
   {button("Refresh my consultations",()=>{
-   setLoading(true);void refresh().catch(e=>setError(String(e)))
-    .finally(()=>setLoading(false));
-  },busy)}
-  {!loading&&items.length===0&&<Text>No appointments match the selected status.</Text>}
-  {items.map(x=><View key={x.bookingRef} style={styles.card}>
+   setError("");void refresh().catch(e=>setError(e instanceof Error?e.message:"Current appointments unavailable."));
+  },busy||loading||moreBusy)}
+  {!loading&&!error&&items.length===0&&<Text>No appointments match the selected status.</Text>}
+  {!loading&&items.map(x=><View key={x.bookingRef} style={styles.card}>
    <Text style={styles.heading}>Booking: {x.bookingId}</Text>
    <Text>{x.doctorName} · {x.centerName}</Text>
    <Text>{new Date(x.startAt).toLocaleString("en-IN",{
@@ -186,8 +191,7 @@ export function NativeConsultationHistory(){
      <Text>Full consultation: ₹{(Number(detail.consultationFeeMinor)/100).toFixed(2)}</Text>
      <Text>Payment: {detail.collectionStatus.replaceAll("_"," ")}
       {" · "+detail.paymentMode.replaceAll("_"," ")}</Text>
-     <Text>CareGanga has not verified a payment or issued a receipt for
-      this pay-at-center consultation.</Text>
+     <Text>The center collects payments. Review the current payment and receipt status below.</Text>
      <NativeConsultationContribution bookingRef={detail.bookingRef}/>
      <NativeAppointmentDocuments bookingRef={detail.bookingRef}
       bookingStatus={detail.bookingStatus}/>
@@ -199,7 +203,7 @@ export function NativeConsultationHistory(){
    </>}
   </View>)}
   {nextCursor&&button(moreBusy?"Loading older consultations…":"Load older consultations",
-   ()=>void more(),busy||moreBusy)}
+   ()=>void more(),busy||moreBusy||loading||uncertain)}
   {uncertain&&<Text style={styles.note}>
    The original write may have completed. Refresh the source before another action.
   </Text>}
@@ -215,7 +219,7 @@ const styles=StyleSheet.create({
  details:{gap:10,padding:12,borderWidth:1,borderRadius:10,
   borderColor:theme.border,backgroundColor:theme.background},
  filters:{flexDirection:"row",flexWrap:"wrap",gap:8},
- filterChip:{paddingHorizontal:12,paddingVertical:9,borderRadius:9,
+ filterChip:{paddingHorizontal:12,paddingVertical:9,minHeight:48,justifyContent:"center",borderRadius:9,
   borderWidth:1,borderColor:theme.border,backgroundColor:theme.surface},
  filterSelected:{borderColor:theme.primary,borderWidth:2},
  filterText:{fontSize:13,color:theme.text},

@@ -104,8 +104,7 @@ export function PatientAppointmentDetail({bookingRef}:{bookingRef:string}){
    <p><strong>Payment status:</strong> {booking.collectionStatus.replaceAll("_"," ")}
     · {booking.paymentMode.replaceAll("_"," ")}</p>
    <ConsultationContribution bookingRef={bookingRef}/>
-   <p>CareGanga has not verified a payment for this appointment.
-    Please confirm payment directly with the healthcare center.</p>
+   <p>The healthcare center collects patient payments. Review the current collection status and any verified receipt below.</p>
    {["CONFIRMED","ARRIVED","WAITING","IN_CONSULTATION"].includes(booking.bookingStatus)&&
     <p><a href={"/api/consultations/me/"+encodeURIComponent(bookingRef)+"/calendar.ics"}>
      Add appointment to my calendar</a></p>}

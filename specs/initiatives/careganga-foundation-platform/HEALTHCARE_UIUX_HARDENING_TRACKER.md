@@ -10,7 +10,7 @@ This user-requested cross-module subtracker supplements (does not replace) origi
 
 ## Summary
 
-37 subitems: 17 source-confirmed presentation gaps, 19 runtime/reproduction candidates, 1 reference evidence blocker. Initial baseline: all OPEN. Current progress: 21 rows IN_PROGRESS (including partial cross-cutting work); 16 rows OPEN; zero independently cleared or runtime passes. P0 = release visual evidence gate; P1 = primary journey or substantial usability; P2 = secondary usability. Source status and runtime status stay separate.
+37 subitems: 17 source-confirmed presentation gaps, 19 runtime/reproduction candidates, 1 reference evidence blocker. Initial baseline: all OPEN. Current progress: 24 rows IN_PROGRESS (including partial cross-cutting work); 13 rows OPEN; zero independently cleared or runtime passes. P0 = release visual evidence gate; P1 = primary journey or substantial usability; P2 = secondary usability. Source status and runtime status stay separate.
 
 | ID | Priority | Evidence | Owner/surface | Issue | State |
 |---|---|---|---|---|---|
@@ -33,7 +33,7 @@ This user-requested cross-module subtracker supplements (does not replace) origi
 | HUX-07.04 | P1 | CHECK | CG16 US-003/004 public | Public lab test and enquiry | OPEN |
 | HUX-08.01 | P1 | SOURCE | CG17 US-001 admin | Assistance policy form hierarchy | IN_PROGRESS |
 | HUX-08.02 | P1 | SOURCE | CG17 US-005/006 admin/center | Settlement screen is mostly stacked definitions | IN_PROGRESS |
-| HUX-08.03 | P1 | CHECK | CG17 US-003/004 center/public | Payment and collection status | OPEN |
+| HUX-08.03 | P1 | CHECK | CG17 US-003/004 center/public | Payment and collection status | IN_PROGRESS |
 | HUX-09.01 | P1 | CHECK | CG14/18 public web/app | Healthcare landing and discovery navigation | OPEN |
 | HUX-10.01 | P1 | SOURCE | CG14 US-004 public web | Doctor result cards omit key discovery information | IN_PROGRESS |
 | HUX-10.02 | P1 | SOURCE | CG14 US-004 public web | Center result cards are text-only | IN_PROGRESS |
@@ -41,12 +41,12 @@ This user-requested cross-module subtracker supplements (does not replace) origi
 | HUX-10.04 | P1 | CHECK | CG14/15/17 public web/app | Doctor profile and center-specific choice | IN_PROGRESS |
 | HUX-11.01 | P1 | SOURCE | CG15 US-004 / CG17 US-002 public web/app | Booking review text/action hierarchy | IN_PROGRESS |
 | HUX-11.02 | P1 | CHECK | CG15 US-002/003 public web/app | Appointment calendar and patient verification | IN_PROGRESS |
-| HUX-11.03 | P1 | CHECK | CG15 US-005/007/008 public web/app | Booking confirmation and patient history | OPEN |
+| HUX-11.03 | P1 | CHECK | CG15 US-005/007/008 public web/app | Booking confirmation and patient history | IN_PROGRESS |
 | HUX-12.01 | P1 | SOURCE | CG14 US-003 internal Android | Doctor management long scrolling forms | IN_PROGRESS |
 | HUX-12.02 | P1 | SOURCE | CG15 US-006 internal Android | Queue summary and action readability | IN_PROGRESS |
 | HUX-12.03 | P1 | CHECK | CG14/16/17 internal Android | Operational parity | OPEN |
 | HUX-13.01 | P1 | SOURCE | CG14 US-004 public Android | Public result list and filter density | IN_PROGRESS |
-| HUX-13.02 | P1 | CHECK | CG15/17 public Android | Patient home and healthcare journey | OPEN |
+| HUX-13.02 | P1 | CHECK | CG15/17 public Android | Patient home and healthcare journey | IN_PROGRESS |
 | HUX-14.01 | P1 | CHECK | CG14–17 all | Responsive and accessibility acceptance | OPEN |
 | HUX-15.01 | P1 | SOURCE | CG14–17 all | Technical copy and excessive explanations | IN_PROGRESS |
 | HUX-15.02 | P1 | CHECK | CG14–17 all | Loading, empty, error and uncertain state | IN_PROGRESS |
@@ -99,6 +99,10 @@ This user-requested cross-module subtracker supplements (does not replace) origi
 ## Main synchronization and reference index
 
 Main `781276ab68a29ef866ecf927f41b88d68f6753f5` is one commit ahead of the mandatory parent `473728cc0d842ad64ba34f3bc14f5b555c835581` with zero changed files relative to parent. Synchronized main into this feature branch with no content replacement and no merge into main. Archive paths/hashes now recorded in [separate reference map](../../docs/research/CAREGANGA-HEALTHCARE-SEPARATE-UI-SCREENSHOT-REFERENCE-MAP.md). Separate healthcare UI original image and live rendered comparison remain unavailable; source work continues.
+
+## Patient history, payment truth and native theme parity
+
+- HUX-11.03/13.02/08.03/15.02: patient Web/native appointment history clears stale rows and selected protected details on fresh query, guards pagination by list generation, differentiates failed lookup and empty state, and shows actual doctor/center and payment status; removes obsolete unconditional unpaid/receipt wording now that CG17 collection source exists. Native patient profile gives consultations earlier priority and all patient subviews use shared public palette. Time-first comparison no longer duplicates old center actions. CG15 US-007/008 original history, cancellation, slip and reschedule scenarios and CG17 US-003/004 collection scenarios require actual source-backed regression with paid, pending, cancelled, refunded, slow query and expired session. Runtime NOT_RUN.
 
 ## Subtracker details and expected user scenarios
 

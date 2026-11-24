@@ -3,7 +3,7 @@ import {AppState,Pressable,StyleSheet,Text,View} from "react-native";
 import {File,Paths} from "expo-file-system";
 import {fetch as expoFetch} from "expo/fetch";
 import * as Crypto from "expo-crypto";
-import {careGangaTheme as t} from "../../../../../packages/design-tokens/src/index";
+import {careGangaPublicTheme as t} from "../../../../../packages/design-tokens/src/index";
 import {NativePatientClinicalFileShares} from "./native-patient-clinical-file-shares";
 
 type Kind="PATIENT_PHOTO"|"PATIENT_UPLOADED_PRESCRIPTION"|"PATIENT_MEDICAL_REPORT"|"PATIENT_PARTNER_INVOICE"|"PATIENT_PARTNER_SERVICE_PROOF"|"PATIENT_PARTNER_PAYMENT_PROOF";

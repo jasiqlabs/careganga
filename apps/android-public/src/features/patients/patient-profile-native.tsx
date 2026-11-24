@@ -12,7 +12,7 @@ import {NativePatientDatePicker} from "./native-patient-date-picker";
 import {NativePatientPrivateFiles} from "./native-patient-private-files";
 import {NativePatientPartnerClaims} from "./native-patient-partner-claims";
 import {NativeMyLabReports} from "./native-my-lab-reports";
-import {careGangaTheme as theme} from "../../../../../packages/design-tokens/src/index";
+import {careGangaPublicTheme as theme} from "../../../../../packages/design-tokens/src/index";
 
 const KEY="cg_public_patient_only_session";
 const base=process.env.EXPO_PUBLIC_API_URL;
@@ -362,6 +362,7 @@ export function PatientProfileNative({onExit}:{onExit:()=>void}){
       <Text>Patient-care consent: {profile.consentGranted?"Granted":"Withdrawn"}</Text>
      </View>:<Text>No patient profile is linked yet. A verified account
        contact and approved patient-care consent are required.</Text>}
+     {profile&&<NativeConsultationHistory key={profile.virtualPatientId}/>}
      {profile?.profileStatus==="PROVISIONAL"&&<View style={styles.field}>
       <Text style={styles.subtitle}>Verify patient identity at a healthcare center</Text>
       <Text>Mobile verification confirms the account, not clinical identity.
@@ -454,7 +455,6 @@ export function PatientProfileNative({onExit}:{onExit:()=>void}){
        consentGranted={profile.consentGranted} onExpired={clear}/>}
      {profile?.profileStatus==="VERIFIED"&&token&&profile.consentGranted&&
       <NativeMyLabReports token={token} onExpired={clear}/>}
-     {profile&&<NativeConsultationHistory/>}
      {profile?.profileStatus==="VERIFIED"&&token&&
       <NativePatientPrivateFiles token={token}
        consentGranted={profile.consentGranted} onExpired={clear}/>}
