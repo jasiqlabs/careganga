@@ -54,12 +54,19 @@ describe("CG-20 — guarded server report request contracts",()=>{
   for(const filter of [{branchRef:"FOUNDATION"},{branchRef:"wrong"},{centerRef:branchRef},{fromDay:"2026-10-01"},{fromDay:"2025-01-01",untilDay:"2026-10-31"},{status:"COMPLETED"},{view:"TABLE"},{offset:50}])
    assert.throws(()=>parseSafeReport({kind,view,...filter}),BadRequestException);
  });
- test("CG04, CG07 and CG11 live reports accept only current summary scope",()=>{
-  for(const kind of ["DONATION_RECEIPT_SUMMARY"]){
-   assert.equal(parseSafeReport({kind,view:"SUMMARY"}).kind,kind);
-   for(const filter of [{branchRef:"22222222-2222-4222-8222-222222222222"},{centerRef:"22222222-2222-4222-8222-222222222222"},{fromDay:"2026-10-01",untilDay:"2026-10-31"},{status:"COMPLETED"},{view:"TABLE"},{offset:50}])
-    assert.throws(()=>parseSafeReport({kind,view:"SUMMARY",...filter}),BadRequestException);
+ test("CG07 donation summary and ledger accept only bounded owner filters",()=>{
+  for(const kind of ["DONATION_RECEIPT_SUMMARY","DONATION_RECEIPT_LEDGER"]){
+   const view=kind==="DONATION_RECEIPT_SUMMARY"?"SUMMARY":"TABLE";
+   assert.equal(parseSafeReport({kind,view,branchRef:"FOUNDATION",campaignCode:"cg-camp-00000001",fromDay:"2026-10-01",untilDay:"2026-10-31"}).campaignCode,"cg-camp-00000001");
+   for(const filter of [{campaignCode:"arbitrary"},{centerRef:"22222222-2222-4222-8222-222222222222"},{fromDay:"2026-10-01"},{status:"COMPLETED"},{view:"CHART"},{offset:50}])assert.throws(()=>parseSafeReport({kind,view,...filter}),BadRequestException);
   }
+ });
+ test("CG05 project status and budget use typed filters, not arbitrary finance or patient joins",()=>{
+  const projectRef="22222222-2222-4222-8222-222222222222";
+  assert.equal(parseSafeReport({kind:"PROJECT_STATUS_REPORT",view:"TABLE",projectRef,fromDay:"2026-10-01",untilDay:"2026-10-31"}).projectRef,projectRef);
+  assert.equal(parseSafeReport({kind:"PROJECT_BUDGET_SUMMARY",view:"SUMMARY",projectRef}).projectRef,projectRef);
+  assert.throws(()=>parseSafeReport({kind:"PROJECT_BUDGET_SUMMARY",view:"SUMMARY"}),BadRequestException);
+  for(const filter of [{projectRef:"wrong"},{centerRef:projectRef},{campaignCode:"cg-camp-00000001"},{status:"COMPLETED"},{offset:50}])assert.throws(()=>parseSafeReport({kind:"PROJECT_STATUS_REPORT",view:"TABLE",...filter}),BadRequestException);
  });
  test("CG04 consented roster allows owner branch and bounded enrollment dates only",()=>{
   for(const kind of ["MEMBERSHIP_ROSTER_SUMMARY","VOLUNTEER_ROSTER_SUMMARY"]){
