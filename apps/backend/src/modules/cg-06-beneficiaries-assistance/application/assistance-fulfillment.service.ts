@@ -78,11 +78,30 @@ export class AssistanceFulfillmentService{
  async list(token:string,id:string){
   return this.source.run(token,"beneficiaries.assistance.view",async(tx,a)=>{
    const row=await this.source.guard(tx,a,id);
-   const allocations=(await tx.query<Allocation>("SELECT * FROM assistance_fulfillment WHERE root_realm_id=$1 AND assistance_id=$2 ORDER BY created_at DESC,id DESC LIMIT 101",[a.realmId,row.id])).rows;
-   const items=[];for(const allocation of allocations.slice(0,100))items.push(await this.allocationView(tx,a,allocation));
-   const totals=(await tx.query<{grossQuantity:string;returnedQuantity:string;paidMinor:string;reversedMinor:string}>("SELECT COALESCE(sum(f.quantity) FILTER(WHERE d.action='DELIVERED'),0)::text AS \"grossQuantity\",COALESCE(sum(f.quantity) FILTER(WHERE d.action='RETURNED'),0)::text AS \"returnedQuantity\",COALESCE(sum(f.amount_minor) FILTER(WHERE d.action='PAID'),0)::text AS \"paidMinor\",COALESCE(sum(f.amount_minor) FILTER(WHERE d.action='REVERSED'),0)::text AS \"reversedMinor\" FROM assistance_delivery_event d JOIN assistance_fulfillment f ON f.root_realm_id=d.root_realm_id AND f.id=d.fulfillment_id WHERE d.root_realm_id=$1 AND d.assistance_id=$2",[a.realmId,row.id])).rows[0];
-   return {items,totals,hasMore:allocations.length>100};
-  });
+   // One bounded owner-backed projection instead of per-allocation queries.
+   const allocations=(await tx.query(`SELECT f.id AS ref,f.action,f.quantity::text,f.amount_minor::text AS "amountMinor",
+    f.stock_operation_ref AS "stockOperationRef",f.voucher_ref AS "voucherRef",f.created_at AS "createdAt",f.actor_ref=$3 AS own,
+    l.delivery_proof_required AS "proofRequired",COALESCE(e.event_no,v.voucher_number) AS "ownerReference",
+    d.at AS "confirmedAt",CASE WHEN d.action IS NOT NULL THEN d.action WHEN e.id IS NOT NULL THEN CASE WHEN f.action='ISSUE' THEN 'ISSUED_AWAITING_HANDOVER' ELSE 'RETURN_AWAITING_CONFIRMATION' END
+    WHEN v.status='POSTED' AND j.id IS NOT NULL AND pay.id IS NOT NULL THEN 'PAID_AWAITING_HANDOVER' WHEN f.action='PAYMENT' THEN 'PENDING_PAYMENT' ELSE 'PENDING_STOCK' END AS status
+    FROM assistance_fulfillment f LEFT JOIN stock_operation_draft o ON o.root_realm_id=f.root_realm_id AND o.id=f.stock_operation_ref
+    LEFT JOIN inventory_location l ON l.root_realm_id=o.root_realm_id AND l.id=o.location_id
+    LEFT JOIN stock_event e ON e.root_realm_id=o.root_realm_id AND e.operation_id=o.id AND e.event_kind=f.action AND o.status='CONFIRMED'
+    LEFT JOIN finance_voucher v ON v.root_realm_id=f.root_realm_id AND v.id=f.voucher_ref AND v.version=f.voucher_revision
+    LEFT JOIN finance_voucher_posting p ON p.root_realm_id=v.root_realm_id AND p.voucher_id=v.id AND p.voucher_revision=v.version
+    LEFT JOIN journal j ON j.root_realm_id=p.root_realm_id AND j.id=p.journal_id AND j.status='POSTED' AND j.posting_kind='VOUCHER'
+    LEFT JOIN finance_voucher_payment_verification pay ON pay.root_realm_id=v.root_realm_id AND pay.voucher_id=v.id AND pay.voucher_revision=v.version AND pay.status='VERIFIED' AND pay.amount_minor=f.amount_minor
+    LEFT JOIN LATERAL(SELECT action,at FROM assistance_delivery_event d WHERE d.root_realm_id=f.root_realm_id AND d.fulfillment_id=f.id ORDER BY at DESC,id DESC LIMIT 1)d ON true
+    WHERE f.root_realm_id=$1 AND f.assistance_id=$2 ORDER BY f.created_at DESC,f.id DESC LIMIT 101`,[a.realmId,row.id,a.accountId])).rows;
+   const totals=(await tx.query<{grossQuantity:string;returnedQuantity:string;paidMinor:string;reversedMinor:string;netQuantity:string;netMinor:string;status:string}>(`WITH totals AS (
+    SELECT COALESCE(sum(f.quantity) FILTER(WHERE d.action='DELIVERED'),0) AS gross,COALESCE(sum(f.quantity) FILTER(WHERE d.action='RETURNED'),0) AS returned,
+    COALESCE(sum(f.amount_minor) FILTER(WHERE d.action='PAID'),0) AS paid,COALESCE(sum(f.amount_minor) FILTER(WHERE d.action='REVERSED'),0) AS reversed
+    FROM assistance_delivery_event d JOIN assistance_fulfillment f ON f.root_realm_id=d.root_realm_id AND f.id=d.fulfillment_id WHERE d.root_realm_id=$1 AND d.assistance_id=$2)
+    SELECT gross::text AS "grossQuantity",returned::text AS "returnedQuantity",paid::text AS "paidMinor",reversed::text AS "reversedMinor",(gross-returned)::text AS "netQuantity",(paid-reversed)::text AS "netMinor",
+    CASE WHEN $3='MATERIAL' AND gross>0 THEN CASE WHEN gross=returned THEN 'RETURNED' WHEN gross-returned=$4::numeric THEN 'DELIVERED' ELSE 'PARTIALLY_DELIVERED' END
+    WHEN $3='FINANCIAL' AND paid>0 THEN CASE WHEN paid=reversed THEN 'REVERSED' WHEN paid-reversed=$5::bigint THEN 'PAID' ELSE 'PARTIALLY_PAID' END ELSE $6 END AS status FROM totals`,[a.realmId,row.id,row.kind,row.requested_qty,row.requested_minor,row.state])).rows[0];
+   return {items:allocations.slice(0,100),totals,hasMore:allocations.length>100};
+  },true);
  }
  async confirm(token:string,id:string,raw:unknown){
   const x=fields(raw,["requestKey","expectedRevision","fulfillmentRef","proofRef","proofVersion","handoverConfirmed"]),key=ref(x.requestKey),expected=revision(x.expectedRevision),allocation=ref(x.fulfillmentRef),proof=ref(x.proofRef),pv=revision(x.proofVersion),target=ref(id);
