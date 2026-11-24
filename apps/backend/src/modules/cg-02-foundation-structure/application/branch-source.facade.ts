@@ -110,7 +110,7 @@ export class BranchSourceFacade{
  }
  /** Used for finance account reactivation, without CG-09 reading CG-02 tables. */
  async requireFinanceActiveBranch(client:PoolClient,actor:VerifiedFoundationActor,
-  branchRef:string,action:"finance.accounts.manage"|"finance.journals.post"|
+  branchRef:string,action:"finance.accounts.manage"|"finance.accounts.view"|"finance.journals.post"|
    "finance.reconciliation.manage"|"finance.reports.view"|"finance.vouchers.manage"|"finance.vouchers.view"|
    "finance.budgets.manage"|"finance.invoices.manage"|"finance.invoices.issue"|"finance.invoices.review"):Promise<void>{
   await this.identity.assertCurrent(client,actor,action);
@@ -126,7 +126,7 @@ export class BranchSourceFacade{
  async requireFinanceActorBranch(client:PoolClient,actor:VerifiedFoundationActor,
   branchInput:string,action:"finance.invoices.manage"|"finance.invoices.issue"|
    "finance.invoices.review"|"finance.budgets.manage"|"finance.accounts.manage"|
-  "finance.journals.post"|"finance.vouchers.manage"|"finance.vouchers.view"|
+  "finance.accounts.view"|"finance.journals.post"|"finance.vouchers.manage"|"finance.vouchers.view"|
   "finance.reconciliation.manage"|"finance.reports.view"):Promise<void>{
   await this.identity.assertCurrent(client,actor,action);
   const branchRef=ensureId(branchInput);
