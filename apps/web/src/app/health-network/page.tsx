@@ -57,10 +57,9 @@ export default async function HealthcareDirectory({searchParams}:Props){
   <section className="cg-public-section">
    <p className="cg-eyebrow">CareGanga · Healthcare Assistance</p>
    <h1>Find verified healthcare centers and doctors</h1>
-   <p className="cg-lead">Only currently approved, published partners appear here.
-    Consult current doctor schedules to request a pay-at-center appointment.
-    Online appointments require a verified doctor schedule and registered patient consent.
-    No appointment, payment or financial assistance is guaranteed by a directory listing alone.</p>
+   <p className="cg-lead">Find a verified doctor or healthcare center near you.
+    Check available consultation times before booking. Payment is due at the center
+    unless an approved online payment option is offered.</p>
    {canReschedule&&<p role="status">Choose another verified doctor and an available time.
     Your existing appointment remains confirmed until the change succeeds.</p>}
    <nav aria-label="Directory type" style={{display:"flex",flexWrap:"wrap",gap:16}}>
@@ -194,11 +193,19 @@ export default async function HealthcareDirectory({searchParams}:Props){
        <h3><Link href={"/health-network/doctors/"+encodeURIComponent(d.doctorRef)}>
         {d.doctorName}</Link></h3>
        <p>{d.specialties.join(", ")||"Specialty not listed"}</p>
+       {d.qualifications.length>0&&<p>{d.qualifications.join(", ")}</p>}
+       {Number.isInteger(d.experienceYears)&&d.experienceYears>=0&&
+        <p>{d.experienceYears} {d.experienceYears===1?"year":"years"} of experience</p>}
        <p>{d.address}, {d.pinCode}</p>
-       <p>{d.fee?("Current in-person consultation: "+rupee(d.fee.amountMinor)):
-         "Consultation fee not currently published"}</p>
-       <Link href={"/health-network/doctors/"+encodeURIComponent(d.doctorRef)}>
-        View verified doctor</Link>
+       <p><strong>{d.fee?rupee(d.fee.amountMinor):"Fee not listed"}</strong>
+        {d.fee?" · In-person consultation":""}</p>
+       <div className="cg-health-directory-actions">
+        <Link href={"/health-network/doctors/"+encodeURIComponent(d.doctorRef)}>
+         View doctor profile</Link>
+        {!canReschedule&&d.fee&&<Link className="cg-health-link-action primary"
+         href={"/health-network/doctors/"+encodeURIComponent(d.doctorRef)+"/schedule"}>
+         Check appointment times</Link>}
+       </div>
        {canReschedule&&<p><Link href={"/health-network/doctors/"+
         encodeURIComponent(d.doctorRef)+"/schedule?reschedule="+
         encodeURIComponent(rescheduleRef)+"&version="+rescheduleVersion}>
