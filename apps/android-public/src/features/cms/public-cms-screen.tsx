@@ -137,6 +137,31 @@ function CmsButton({title,onPress,secondary=false}:{
 /** Public Android receives the same original immutable public DTO as Next.js.
  * Revalidate on foreground; neither old cache nor a guessed CG04 Join is shown.
  */
+function NativeTeamDirectory(){
+ const [people,setPeople]=useState<{name:string;designation:string}[]>([]),[name,setName]=useState(""),[designation,setDesignation]=useState("");
+ const [loading,setLoading]=useState(true),[unavailable,setUnavailable]=useState(false);
+ const request=useRef(0);
+ const refresh=useCallback(async()=>{
+  const key=++request.current;setLoading(true);setPeople([]);setUnavailable(false);
+  const results=await Promise.all([published("about"),published("home")]);
+  if(key!==request.current)return;
+  const out:{name:string;designation:string}[]=[];
+  for(const r of results)if(r.state==="PUBLISHED"&&r.page)
+   for(const sec of r.page.sections)if(sec.kind==="TEAM"&&Array.isArray(sec.fields.members))
+    for(const p of sec.fields.members)if(p&&p.consentConfirmed===true&&typeof p.name==="string"&&typeof p.designation==="string"&&!out.some(x=>x.name===p.name&&x.designation===p.designation))out.push({name:p.name,designation:p.designation});
+  setPeople(out);setUnavailable(results.some(r=>r.state==="UNAVAILABLE"));setLoading(false);
+ },[]);
+ useEffect(()=>{void refresh();const sub=AppState.addEventListener("change",state=>{if(state==="active")void refresh();});return()=>{request.current++;sub.remove();};},[refresh]);
+ const filtered=people.filter(p=>(!name.trim()||p.name.toLowerCase().includes(name.trim().toLowerCase()))&&(!designation||p.designation===designation));
+ return <View style={styles.card}><Text accessibilityRole="header" style={styles.heading}>Team Directory</Text>
+  <Text style={styles.body}>Only independently published, currently consented names and designations are displayed.</Text>
+  <TextInput accessibilityLabel="Search by name" placeholder="Search by name" maxLength={120} value={name} onChangeText={setName} style={{borderWidth:1,borderRadius:8,padding:10}}/>
+  <View style={styles.nav}>{["",...new Set(people.map(p=>p.designation))].map(v=><CmsButton key={v} title={v||"All designations"} secondary={designation!==v} onPress={()=>setDesignation(v)}/>)}</View>
+  <CmsButton title="Reset filters" secondary onPress={()=>{setName("");setDesignation("");}}/><CmsButton title="Refresh current profiles" secondary onPress={()=>void refresh()}/>
+  {unavailable&&<Text accessibilityRole="alert">Some approved team information could not be verified.</Text>}
+  {loading?<ActivityIndicator/>:filtered.length?filtered.map((p,i)=><View key={i} style={styles.person}><Text style={styles.heading}>{p.name}</Text><Text style={styles.role}>{p.designation}</Text></View>):<Text>No currently approved matching profiles.</Text>}
+ </View>;
+}
 export function PublicCmsContent({onContact,onPartnerApplication,onMembershipApply,onVolunteerApply,onLoginVisibility}: {
  onContact:()=>void;onPartnerApplication:()=>void;onMembershipApply:(planCode:string)=>void;onVolunteerApply:()=>void;
  onLoginVisibility:(visible:boolean)=>void}){
@@ -193,7 +218,7 @@ export function PublicCmsContent({onContact,onPartnerApplication,onMembershipApp
   setResult(response);setLoadedTarget(target);setLoading(false);
  },[]);
  useEffect(()=>{
-  if(slug!=="campaigns"&&slug!=="@newsletter")void load(slug);
+  if(slug!=="campaigns"&&slug!=="@newsletter"&&slug!=="@team")void load(slug);
   return()=>{latestPageRequest.current++};
  },[slug,load]);
  useEffect(()=>{
@@ -202,7 +227,7 @@ export function PublicCmsContent({onContact,onPartnerApplication,onMembershipApp
  },[refreshNavigation]);
  useEffect(()=>{
   const sub=AppState.addEventListener("change",state=>{
-   if(state==="active"){if(slug!=="campaigns"&&slug!=="@newsletter")void load(slug);void refreshNavigation();}
+   if(state==="active"){if(slug!=="campaigns"&&slug!=="@newsletter"&&slug!=="@team")void load(slug);void refreshNavigation();}
   });
   return()=>sub.remove();
  },[slug,load,refreshNavigation]);
@@ -212,7 +237,7 @@ export function PublicCmsContent({onContact,onPartnerApplication,onMembershipApp
    if(slug!=="home"){
     // Article detail returns to News. A published legal policy must
     // return to Home; it is not part of the article reader.
-    setSlug(!["about","our-impact","80g","gallery","contact","healthcare","articles","notices","@events","@newsletter","our-work","upcoming-projects","collaboration","membership","campaigns"].includes(slug)&&
+    setSlug(!["about","our-impact","80g","gallery","contact","healthcare","articles","notices","@events","@newsletter","@team","our-work","upcoming-projects","collaboration","membership","campaigns"].includes(slug)&&
      !isPolicySlug(slug)?articleBackTarget:"home");return true;
    }return false;
   });
@@ -306,6 +331,7 @@ export function PublicCmsContent({onContact,onPartnerApplication,onMembershipApp
    <CmsButton title="Membership Plans" secondary={slug!=="membership"} onPress={()=>setSlug("membership")}/>
    <CmsButton title="Corporate Partners" secondary={slug!=="collaboration"} onPress={()=>setSlug("collaboration")}/>
    <CmsButton title="Healthcare Partner Application" secondary onPress={onPartnerApplication}/>
+   <CmsButton title="Team Directory" secondary={slug!=="@team"} onPress={()=>setSlug("@team")}/>
    <CmsButton title="Newsletter" secondary={slug!=="@newsletter"} onPress={()=>setSlug("@newsletter")}/>
    <CmsButton title="Contact" onPress={()=>navigate("/contact")}
     secondary={slug!=="contact"}/>
@@ -317,7 +343,7 @@ export function PublicCmsContent({onContact,onPartnerApplication,onMembershipApp
      <CmsButton key={name} title={title} secondary={slug!==name}
       onPress={()=>setSlug(name)}/>)}
   </View>
-  {slug==="@newsletter"?<View style={styles.card}><NativeNewsletterForm/></View>:slug==="campaigns"?<NativePublicCampaigns/>:slug==="membership"?<NativeMembershipPlans onApply={onMembershipApply}/>:loading||loadedTarget!==slug?<ActivityIndicator accessibilityLabel="Checking current published website content"/>:
+  {slug==="@team"?<NativeTeamDirectory/>:slug==="@newsletter"?<View style={styles.card}><NativeNewsletterForm/></View>:slug==="campaigns"?<NativePublicCampaigns/>:slug==="membership"?<NativeMembershipPlans onApply={onMembershipApply}/>:loading||loadedTarget!==slug?<ActivityIndicator accessibilityLabel="Checking current published website content"/>:
    (slug==="articles"||slug==="@events")?<View style={styles.card}>
     <Text accessibilityRole="header" style={styles.heading}>{slug==="@events"?"Foundation Events":"Approved News & Articles"}</Text>
     {!articleFeed.available?<Text accessibilityRole="alert" style={styles.muted}>
