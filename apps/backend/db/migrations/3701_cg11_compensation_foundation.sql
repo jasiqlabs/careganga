@@ -80,11 +80,13 @@ BEGIN
    OR NEW.revision<>OLD.revision+1 OR NOT ((OLD.status='DRAFT' AND NEW.status='SUBMITTED') OR (OLD.status='SUBMITTED' AND NEW.status IN('APPROVED','RETURNED','REJECTED') AND NEW.approval_case_ref=OLD.approval_case_ref)) THEN
    RAISE EXCEPTION 'Salary version is immutable'; END IF;
  END IF;
+ IF NEW.status IN('DRAFT','SUBMITTED','APPROVED') THEN
  PERFORM 1 FROM hr_employee WHERE root_realm_id=NEW.root_realm_id AND id=NEW.employee_ref FOR UPDATE;
  IF NOT EXISTS(SELECT 1 FROM hr_employment_assignment a JOIN hr_employee e ON e.root_realm_id=a.root_realm_id AND e.id=a.employee_id WHERE a.root_realm_id=NEW.root_realm_id AND a.id=NEW.assignment_ref AND a.employee_id=NEW.employee_ref AND a.branch_ref=NEW.branch_ref AND a.assignment_version=NEW.assignment_version AND e.status_version=NEW.employee_status_version AND e.status IN('ACTIVE','PROBATION') AND a.valid_from<=NEW.effective_from AND (a.valid_to IS NULL OR a.valid_to>NEW.effective_from)) THEN
   RAISE EXCEPTION 'Original HR eligibility changed' USING ERRCODE='23514'; END IF;
  IF NOT EXISTS(SELECT 1 FROM payroll_policy p WHERE p.root_realm_id=NEW.root_realm_id AND p.id=NEW.policy_id AND p.branch_ref=NEW.branch_ref AND p.revision=NEW.policy_revision AND p.status='APPROVED' AND p.effective_from<=NEW.effective_from AND (p.effective_to IS NULL OR (NEW.effective_to IS NOT NULL AND NEW.effective_to<=p.effective_to))) THEN
   RAISE EXCEPTION 'Approved policy required' USING ERRCODE='23514'; END IF;
+ END IF;
  IF NEW.status='APPROVED' AND EXISTS(SELECT 1 FROM employee_compensation c WHERE c.root_realm_id=NEW.root_realm_id AND c.employee_ref=NEW.employee_ref AND c.status='APPROVED' AND c.id<>NEW.id AND daterange(c.effective_from,c.effective_to,'[)') && daterange(NEW.effective_from,NEW.effective_to,'[)')) THEN
   RAISE EXCEPTION 'Overlapping approved salary' USING ERRCODE='23514'; END IF;
  RETURN NEW;
