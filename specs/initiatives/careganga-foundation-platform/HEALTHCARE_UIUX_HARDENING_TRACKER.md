@@ -84,6 +84,8 @@ This user-requested cross-module subtracker supplements (does not replace) origi
 - HUX-11.01: Public Web and Android appointment review emphasizes doctor, center, fee, verified assistance, hold expiry and primary confirmation; reception authorization remains a secondary disclosure before reservation. Commits eb11a8d2, f97bbac5. CG15 US-004-QA01/02/04–12/14 and CG17 US-002-QA01–08 partial source trace. Existing hold/replay, private reason, fee revision, slip issuance and pay-at-center boundary remain. Verify expired hold, unknown response, competing slots, real contribution/no policy, code expiry and Back.
 - No independently cleared source closure, executable build or runtime/device/visual pass. Remaining CHECK items require reproduction; approved media/list projections and raw healthcare reference originals remain unresolved. No merge.
 
+- Additional source re-review: CG17 Web/native center doctor lookup now rejects late center responses and hides the policy form while new scope loads (1ec0ed98/c58221de). CG16 Web verifies exact distinct exported test references and blocks old detail actions while refreshing/editing (d81c2d95). Regress rapid X→Y center switch, response reorder, mismatched/duplicate export refs and refresh during edit; runtime NOT_RUN.
+
 ## Subtracker details and expected user scenarios
 
 ### HUX-01.01 — Recover separate healthcare reference originals
