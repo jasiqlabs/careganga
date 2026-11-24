@@ -3,7 +3,8 @@ import {useEffect,useRef,useState} from "react";
 import type {CG04PublicTier,CG04PublicTierPage} from "@careganga/api-contracts";
 import {categoryLabels,priceText,durationLabel,colorValues,iconValues} from "./tier-display";
 import {PublicMemberVerification} from "./public-member-verification";
-export function PublicMembershipPlans(){
+import type {PublicIntro} from "../cms-public-content/cms-public-source";
+export function PublicMembershipPlans({intro}:{intro?:PublicIntro|null}={}){
  const [q,setQ]=useState(""),[category,setCategory]=useState("ALL"),[filters,setFilters]=useState({q:"",category:"ALL"}),[data,setData]=useState<CG04PublicTierPage|null>(null),[more,setMore]=useState<CG04PublicTier[]>([]),[cursor,setCursor]=useState(""),[epoch,setEpoch]=useState(0),[loading,setLoading]=useState(true),[error,setError]=useState(""),[detail,setDetail]=useState<string|null>(null);
  const [view,setView]=useState<"CARDS"|"VERIFY">("CARDS");
  const seq=useRef(0);
@@ -11,7 +12,7 @@ export function PublicMembershipPlans(){
  useEffect(()=>{const refresh=()=>{if(document.visibilityState==="visible"){setMore([]);setCursor("");setDetail(null);setEpoch(x=>x+1);}};document.addEventListener("visibilitychange",refresh);window.addEventListener("pageshow",refresh);window.addEventListener("online",refresh);return()=>{document.removeEventListener("visibilitychange",refresh);window.removeEventListener("pageshow",refresh);window.removeEventListener("online",refresh);};},[]);
  const apply=(c:string=category)=>{setCategory(c);setFilters({q:q.trim(),category:c});setMore([]);setDetail(null);setCursor("");};
  const plans=[...more,...(data?.items??[])].filter((p,i,a)=>a.findIndex(v=>v.planCode===p.planCode)===i);
- return <><section className="cg04-hero"><div><small>JOIN US</small><h1>CareGanga<br/>Foundation</h1><p>Become a member and be part of a movement dedicated to empowering communities.</p><a href="#membership-plans" className="cg04-hero-cta">Explore Membership Plans →</a></div></section>
+ return <><section className="cg04-hero"><div>{intro?.eyebrow&&<small>{intro.eyebrow}</small>}<h1>{intro?.heading??"Membership"}</h1>{intro?.body&&<p>{intro.body}</p>}{intro?.highlights.map((line,i)=><p key={i}>{line}</p>)}<a href="#membership-plans" className="cg04-hero-cta">Explore Membership Plans →</a></div></section>
  <section id="membership-plans" className="cg04-public">
  <div className="cg04-public-tabs" role="tablist" aria-label="Membership cards and verification"><button type="button" role="tab" aria-selected={view==="CARDS"} onClick={()=>setView("CARDS")}><strong>Membership Cards</strong><small>Browse &amp; select a membership tier</small></button><button type="button" role="tab" aria-selected={view==="VERIFY"} onClick={()=>setView("VERIFY")}><strong>Verify Membership</strong><small>Check an original issued membership code</small></button></div>
  {view==="VERIFY"?<PublicMemberVerification/>:<div role="tabpanel" aria-label="Membership cards">
