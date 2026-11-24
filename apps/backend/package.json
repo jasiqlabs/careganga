@@ -8,6 +8,7 @@
     "build": "tsc -p tsconfig.json",
     "db:migrate": "node --env-file=.env ../../node_modules/tsx/dist/cli.mjs db/migrate.ts",
     "bootstrap:root": "node --env-file=.env ../../node_modules/tsx/dist/cli.mjs src/modules/cg-01-identity-access/infrastructure/bootstrap-root.ts",
+    "test:cg11-provider-readback": "tsx --test test/cg11-provider-readback.test.ts",
     "test:cg20-source-contracts": "tsx --test test/cg20-source-contract.test.ts",
     "test:cg10-enrollment": "tsx --test test/cg10-enrollment-contract.test.ts",
     "test:cg10-attendance": "tsx --test test/cg10-attendance-contract.test.ts",

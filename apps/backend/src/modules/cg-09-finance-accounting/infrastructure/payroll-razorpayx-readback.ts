@@ -14,7 +14,7 @@ export function payrollReadbackConfig():Config|null{
 const record=(v:unknown):Record<string,unknown>|null=>v!==null&&typeof v==="object"&&!Array.isArray(v)?v as Record<string,unknown>:null;
 async function get(c:Config,path:string):Promise<Record<string,unknown>>{
  const res=await fetch("https://api.razorpay.com/v1/"+path,{method:"GET",headers:{Authorization:c.authorization},cache:"no-store",redirect:"error",signal:AbortSignal.timeout(8000)});
- if(!res.ok)throw Error("Payout status unavailable");
+ if(!res.ok){await res.body?.cancel().catch(()=>undefined);throw Error("Payout status unavailable");}
  const reader=res.body?.getReader();if(!reader)throw Error("Payout status unavailable");
  const chunks:Uint8Array[]=[];let bytes=0;
  try{for(;;){const item=await reader.read();if(item.done)break;bytes+=item.value.byteLength;if(bytes>262144){await reader.cancel();throw Error("Payout status unavailable");}chunks.push(item.value);}}finally{reader.releaseLock();}
