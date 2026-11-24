@@ -12,7 +12,7 @@ type Search={q:string;after:string;category:string;center:string;specialty:strin
   minFee:number|null;maxFee:number|null;minExperience:number|null;maxExperience:number|null};
 type CenterRow={public_slug:string;center_name:string;provider_name:string;
   center_type:string;address:string;pin_code:string;public_phone:string|null;
-  latitude:string|null;longitude:string|null};
+  latitude:string|null;longitude:string|null;declared_services:string[];photo_ref:string|null;photo_alt:string|null};
 type DoctorRow={doctor_ref:string;full_name:string;qualifications:string[];
   specialties:string[];experience_years:number;public_bio:string;
   center_slug:string;center_name:string;address:string;pin_code:string;
@@ -230,17 +230,45 @@ export class HealthPublicDirectoryService{
     const found=await this.db.query<CenterRow>(
       "SELECT c.public_slug,c.display_name AS center_name,p.legal_name AS provider_name,"+
       "c.center_type,c.address_line AS address,c.pin_code,c.public_phone,"+
-      "c.latitude,c.longitude "+this.eligibleCenter+this.predicates+
-      f.common+"AND ($1::text IS NULL OR c.display_name ILIKE $1 ESCAPE '\\' "+
+      "c.latitude,c.longitude,"+
+      "ARRAY(SELECT cap.capability_code::text FROM health_center_capability cap "+
+      "WHERE cap.root_realm_id=c.root_realm_id AND cap.center_id=c.id ORDER BY cap.capability_code LIMIT 6) AS declared_services,"+
+      "photo.file_ref AS photo_ref,photo.alt_text AS photo_alt "+
+      this.eligibleCenter+
+      "LEFT JOIN LATERAL (SELECT f.id::text AS file_ref,rights.alt_text "+
+      "FROM health_center_content_publication cp "+
+      "JOIN health_center_content_revision cr ON cr.id=cp.approved_revision_id "+
+      "AND cr.root_realm_id=cp.root_realm_id AND cr.center_id=cp.center_id "+
+      "JOIN cg03_case review ON review.id=cr.approval_case_ref AND review.realm_id=cr.root_realm_id "+
+      "AND review.case_kind='HEALTH_CENTER_CONTENT_REVIEW' AND review.health_center_id=cr.center_id "+
+      "AND review.health_content_revision_id=cr.id AND review.health_revision_no=cr.revision_no "+
+      "AND review.health_source_digest=cr.source_digest AND review.status='OWNER_COMPLETED' "+
+      "JOIN cg03_case_decision decision ON decision.id=cp.original_decision_ref "+
+      "AND decision.realm_id=review.realm_id AND decision.case_id=review.id AND decision.action='APPROVE' "+
+      "AND decision.fresh_password_verified_at IS NOT NULL AND decision.actor_id<>review.proposer_id "+
+      "JOIN LATERAL jsonb_array_elements_text(COALESCE(cr.source_snapshot->'media','[]'::jsonb)) m(file_ref) ON TRUE "+
+      "JOIN cg19_stored_file f ON f.id::text=m.file_ref AND f.realm_id=cp.root_realm_id "+
+      "AND f.health_center_id=cp.center_id AND f.owner_kind='CG14_CENTER_CONTENT' "+
+      "AND f.revoked_at IS NULL AND f.scan_status='CLEAN_VERIFIED' "+
+      "JOIN cg19_upload_intent ui ON ui.id=f.upload_intent_id AND ui.realm_id=f.realm_id "+
+      "AND ui.status='VALIDATED' AND ui.classification IN('HEALTH_CENTER_PHOTO','HEALTH_CENTER_LOGO') "+
+      "JOIN cg19_center_content_media_rights rights ON rights.file_ref=f.id "+
+      "AND rights.root_realm_id=cp.root_realm_id AND rights.center_id=cp.center_id AND rights.revoked_at IS NULL "+
+      "WHERE cp.root_realm_id=c.root_realm_id AND cp.center_id=c.id AND cp.withdrawn_at IS NULL "+
+      "ORDER BY CASE WHEN ui.classification='HEALTH_CENTER_PHOTO' THEN 0 ELSE 1 END,f.id LIMIT 1) photo ON TRUE "+
+      this.predicates+
+      f.common.replace(/\$(13|14|15|16)\b/g,(_,n)=>"$"+(Number(n)-6))+"AND ($1::text IS NULL OR c.display_name ILIKE $1 ESCAPE '\\' "+
       "OR p.legal_name ILIKE $1 ESCAPE '\\') "+
       "AND ($6::text IS NULL OR c.public_slug>$6) "+
       "ORDER BY c.public_slug ASC LIMIT 21",
-      f.params);
+      [...f.params.slice(0,6),...f.params.slice(12)]);
     return {items:found.rows.slice(0,20).map(c=>({
       slug:c.public_slug,centerName:c.center_name,providerName:c.provider_name,
       type:c.center_type,address:c.address,pinCode:c.pin_code,publicPhone:c.public_phone,
       latitude:c.latitude===null?null:Number(c.latitude),
-      longitude:c.longitude===null?null:Number(c.longitude)})),
+      longitude:c.longitude===null?null:Number(c.longitude),
+      declaredServices:c.declared_services,
+      photo:c.photo_ref&&c.photo_alt?{fileRef:c.photo_ref,altText:c.photo_alt}:null})),
       next:found.rows.length>20?found.rows[19].public_slug:null};
   }
   async doctors(input:unknown){
