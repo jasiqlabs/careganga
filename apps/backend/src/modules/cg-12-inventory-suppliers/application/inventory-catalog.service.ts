@@ -88,6 +88,29 @@ export class InventoryCatalogService {
   if(!row||(active&&row.status!=="ACTIVE"))throw new NotFoundException("Store unavailable");
   await this.requireScope(tx,a,row.branch_ref);return row;
  }
+ /** Current CG12 authority for cross-module, read-only stock location selectors.
+  * The caller must first check inventory.catalog.view in this SAME transaction.
+  * Never return other-branch or Foundation-wide stores to ordinary staff.
+  */
+ async rewardStoreScope(tx:PoolClient,a:VerifiedFoundationActor){
+  const full=await this.rootAdmin(tx,a);
+  const branches=full?[]:await this.branches.currentStaffBranchRefs(tx,a.realmId,a.accountId);
+  return {full,branches};
+ }
+ async permittedRewardStores(tx:PoolClient,a:VerifiedFoundationActor){
+  const {full,branches:assigned}=await this.rewardStoreScope(tx,a);
+  const rows=await tx.query<{ref:string;name:string;branchRef:string|null}>(
+   "SELECT l.id AS ref,l.label AS name,l.branch_ref AS \"branchRef\" "+
+   "FROM inventory_location l LEFT JOIN branch b ON b.id=l.branch_ref "+
+   "AND b.root_realm_id=l.root_realm_id "+
+   "WHERE l.root_realm_id=$1 AND l.status='ACTIVE' "+
+   "AND (l.scope_kind='FOUNDATION' AND $2::boolean OR "+
+   "l.scope_kind='BRANCH' AND b.status='ACTIVE' AND "+
+   "($2::boolean OR b.id=ANY($3::uuid[]))) "+
+   "ORDER BY l.label,l.id LIMIT 100",
+   [a.realmId,full,assigned]);
+  return rows.rows;
+ }
  async detail(token:string,kind:Kind,refInput:unknown){
   const ref=uuid(refInput);
   return this.run(token,"inventory.catalog.manage",async(tx,a)=>{

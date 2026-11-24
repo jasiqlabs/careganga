@@ -1,0 +1,277 @@
+import {describe,test} from "node:test";
+import assert from "node:assert/strict";
+import {BadRequestException,ForbiddenException} from "@nestjs/common";
+import {readFileSync} from "node:fs";
+import {ReferralCatalogService} from "../src/modules/cg-13-referrals-rewards/application/referral-catalog.service";
+
+const ROOT="11111111-1111-4111-8111-111111111111";
+const OTHER_ROOT="22222222-2222-4222-8222-222222222222";
+const PROGRAMME="33333333-3333-4333-8333-333333333333";
+const BRANCH_A="44444444-4444-4444-8444-444444444444";
+const STORE_A="55555555-5555-4555-8555-555555555555";
+const ITEM="66666666-6666-4666-8666-666666666666";
+const MEDIA="99999999-9999-4999-8999-999999999999";
+const MEDIA_URL="https://foundation.careganga.example/api/public/content/media/"+MEDIA;
+const actor={realmId:ROOT,accountId:"77777777-7777-4777-8777-777777777777",
+ activeSessionId:"88888888-8888-4888-8888-888888888888"};
+type Seen={sql:string;params:unknown[]};
+function fixture(block=false,media:"ABSENT"|"APPROVED"|"WITHDRAWN"="ABSENT",
+ eligible=true,scheduled=false){
+ const seen:Seen[]=[],actions:string[]=[],scopeCalls:string[]=[];
+ let connections=0,released=0,storeCalls=0;
+ const tx={
+  query:async(sql:string,params:unknown[]=[])=>{
+   seen.push({sql,params});
+   if(sql.includes("SELECT p.id AS ref,p.programme_code AS code"))
+    return {rows:[{ref:PROGRAMME,status:"ACTIVE",policyVersion:scheduled?2:1,
+     effectiveFrom:scheduled?"2026-12-01":"2026-11-23",ranks:[]}],rowCount:1};
+   if(sql.includes("SELECT version_no FROM referral_policy_version"))
+    return {rows:[{version_no:1}],rowCount:1};
+   if(sql.includes("FROM referral_rank_rule"))
+    return {rows:[{name:params[2]===1?"Current rank":"Scheduled rank",
+     verifiedReferrals:params[2]===1?0:2,minimumPoints:"0"}],rowCount:1};
+   if(sql.includes("FROM referral_program")&&sql.includes("active_policy_version"))
+    return {rows:[{id:PROGRAMME,status:"ACTIVE",audience:"BOTH",active_policy_version:1}],rowCount:1};
+   if(sql.includes("SELECT 'MEMBER' AS kind"))
+    return {rows:eligible?[{kind:"MEMBER"}]:[],rowCount:eligible?1:0};
+   if(sql.includes("FROM reward_product p JOIN referral_program pr")&&
+    sql.includes("LEFT JOIN stock_balance"))
+    return {rows:[],rowCount:0};
+   if(sql.includes('AS "activeTotal"'))return {rows:[{activeTotal:"85"}],rowCount:1};
+   if(sql.includes("SELECT DISTINCT p.category")){
+    const categories=sql.includes("FROM reward_product p")&&!eligible?[]:[{category:"Recognition"}];
+    return {rows:categories,rowCount:categories.length};
+   }
+   if(sql.includes("FROM reward_product p LEFT JOIN inventory_location"))
+    return {rows:media==="ABSENT"?[]:[{ref:ITEM,programmeRef:PROGRAMME,
+     name:"Recognition",type:"DIGITAL",imageUrl:MEDIA_URL}],rowCount:media==="ABSENT"?0:1};
+   if(sql.includes("SELECT f.id FROM cg19_cms_media_file"))
+    return {rows:media==="APPROVED"?[{id:MEDIA}]:[],rowCount:media==="APPROVED"?1:0};
+   if(sql.includes("FROM stock_balance"))
+    return {rows:[{available:"7",onHand:"10",reserved:"3"}],rowCount:1};
+   if(sql.includes("FROM inventory_item")&&sql.includes("FOR SHARE"))
+    return {rows:[{name:"Eligible boxed items",unit_code:"PIECE"}],rowCount:1};
+   if(sql.includes("FROM inventory_item"))
+    return {rows:[{ref:ITEM,name:"Eligible boxed items"}],rowCount:1};
+   return {rows:[],rowCount:0};
+  },
+  release:()=>{released++;}
+ };
+ const db={connect:async()=>{connections++;return tx;}};
+ const sessions={
+  verifySession:async()=>actor,
+  requireAction:async(_bearer:string,action:string)=>{
+  actions.push(action);
+  if(block)throw new ForbiddenException("Denied");
+  return actor;
+ }};
+ const identity={
+  assertCurrent:async(_tx:unknown,_actor:unknown,action:string)=>{scopeCalls.push(action);},
+  assertRootSelfSessionCurrent:async()=>{scopeCalls.push("current-root-self");}
+ };
+ const inventory={
+  rewardStoreScope:async()=>({full:false,branches:[BRANCH_A]}),
+  permittedRewardStores:async()=>[{ref:STORE_A,name:"Branch A Store",branchRef:BRANCH_A}],
+  store:async()=>{storeCalls++;return {branch_ref:BRANCH_A,status:"ACTIVE"};}
+ };
+ const service=new ReferralCatalogService(db as never,sessions as never,
+  identity as never,inventory as never);
+ return {service,seen,actions,scopeCalls,
+  stats:()=>({connections,released,storeCalls})};
+}
+/** Source contracts only. Actual SQL, current CG02 assignment and role-revocation
+ * are separately verified in disposable Postgres + device QA; these mocks do not
+ * assert a real database or successful end-to-end authorization.
+ */
+describe("CG13 US001 branch/permission owner boundary",()=>{
+ test("reward product queries bind exact realm, programme, assigned branch and global filters",async()=>{
+  const f=fixture();
+  const result=await f.service.listProducts("actor",PROGRAMME,"2","  RECOGNITION  ","Recognition");
+  const read=f.seen.find(x=>x.sql.includes("FROM reward_product p LEFT JOIN inventory_location"));
+  assert.ok(read);
+  assert.deepEqual(read.params,
+   [ROOT,PROGRAMME,41,40,false,[BRANCH_A],"recognition","Recognition"]);
+  assert.match(read.sql,/loc\.scope_kind='BRANCH'/);
+  assert.match(read.sql,/branc[h]\.status='ACTIVE'/);
+  assert.match(read.sql,/p\.category=\$8/);
+  assert.ok(!read.params.includes(OTHER_ROOT));
+  assert.equal(result.page,2);
+  assert.deepEqual(f.actions,["rewards.catalog.view"]);
+  assert.deepEqual(f.stats(),{connections:1,released:1,storeCalls:0});
+ });
+ test("B14 ACTIVE PRODUCTS counts all genuinely permitted active items, not one filtered page",async()=>{
+  const f=fixture();
+  const result=await f.service.listProducts("actor",PROGRAMME,"2","recognition","Recognition");
+  assert.equal(result.activeTotal,"85");
+  assert.equal(result.items.length,0);
+  const total=f.seen.find(x=>x.sql.includes('AS "activeTotal"'));
+  assert.ok(total);
+  assert.deepEqual(total.params,[ROOT,PROGRAMME,false,[BRANCH_A]]);
+  assert.match(total.sql,/p\.status='ACTIVE'/);
+  assert.match(total.sql,/p\.root_realm_id=\$1 AND p\.programme_id=\$2/);
+  assert.match(total.sql,/loc\.scope_kind='BRANCH'/);
+  assert.match(total.sql,/branch\.status='ACTIVE'/);
+  assert.ok(!total.sql.includes("LIMIT"));
+  assert.ok(!total.sql.includes("p.category="));
+  assert.ok(!total.sql.includes("strpos"));
+  assert.deepEqual(f.actions,["rewards.catalog.view"]);
+ });
+ test("category chips use same current permitted physical-product source",async()=>{
+  const f=fixture();
+  const result=await f.service.productCategories("actor",PROGRAMME);
+  const sql=f.seen.find(x=>x.sql.includes("SELECT DISTINCT p.category"));
+  assert.ok(sql);
+  assert.deepEqual(sql.params,[ROOT,PROGRAMME,false,[BRANCH_A]]);
+  assert.deepEqual(result.items,["Recognition"]);
+  assert.equal(result.hasMore,false);
+ });
+ test("stock selector does not enumerate all Foundation warehouse locations",async()=>{
+  const f=fixture();
+  const result=await f.service.stockOptions("actor");
+  assert.deepEqual(result.stores,
+   [{ref:STORE_A,name:"Branch A Store",branchRef:BRANCH_A}]);
+  assert.ok(f.scopeCalls.includes("inventory.catalog.view"));
+  assert.ok(!f.seen.some(x=>x.sql.includes("FROM inventory_location")));
+ });
+ test("direct stock preview needs the exact reward view action and CG12 store proof",async()=>{
+  const f=fixture();
+  const result=await f.service.stockPreview("actor",ITEM,STORE_A);
+  assert.equal(result.availableQuantity,"7");
+  assert.equal(result.onHandQuantity,"10");
+  assert.equal(result.reservedQuantity,"3");
+  assert.deepEqual(f.actions,["rewards.catalog.view"]);
+  assert.ok(f.scopeCalls.includes("inventory.catalog.view"));
+  assert.equal(f.stats().storeCalls,1);
+ });
+ test("published CG19 photo passes only when same-root current rights/scan proof exists",async()=>{
+  const original=process.env.CG13_PUBLIC_MEDIA_ORIGIN;
+  process.env.CG13_PUBLIC_MEDIA_ORIGIN="https://foundation.careganga.example";
+  try{
+   const approved=fixture(false,"APPROVED");
+   const page=await approved.service.listProducts("actor",PROGRAMME);
+   assert.equal(page.items[0]?.imageUrl,MEDIA_URL);
+   const proof=approved.seen.find(x=>x.sql.includes("SELECT f.id FROM cg19_cms_media_file"));
+   assert.ok(proof);
+   assert.deepEqual(proof.params,[ROOT,[MEDIA]]);
+   assert.match(proof.sql,/f\.realm_id=\$1/);
+   assert.match(proof.sql,/f\.revoked_at IS NULL/);
+   assert.match(proof.sql,/scan_status='CLEAN_VERIFIED'/);
+   assert.match(proof.sql,/cms_page_effective/);
+   assert.match(proof.sql,/public_rights_confirmed=true/);
+   assert.match(proof.sql,/f\.original_mime IN\('image\/png','image\/jpeg','image\/webp'\)/);
+   const revoked=fixture(false,"WITHDRAWN");
+   const hidden=await revoked.service.listProducts("actor",PROGRAMME);
+   assert.equal(hidden.items[0]?.imageUrl,null);
+   assert.equal(hidden.items[0]?.name,"Recognition");
+  }finally{
+   if(original===undefined)delete process.env.CG13_PUBLIC_MEDIA_ORIGIN;
+   else process.env.CG13_PUBLIC_MEDIA_ORIGIN=original;
+  }
+ });
+ test("member-only public catalogue filters search and category inside current root eligibility SQL",async()=>{
+  const f=fixture();
+  const page=await f.service.publicEligibleCatalog("own-token","2","  RECOGNITION ","Recognition");
+  assert.deepEqual(page.eligibleRelationships,["MEMBER"]);
+  assert.deepEqual(page.categories,["Recognition"]);
+  assert.equal(page.categoriesTruncated,false);
+  const read=f.seen.find(x=>x.sql.includes("LEFT JOIN stock_balance")&&
+   x.sql.includes("FROM reward_product p JOIN referral_program pr"));
+  assert.ok(read);
+  assert.deepEqual(read.params,[ROOT,["MEMBER"],41,40,"recognition","Recognition"]);
+  assert.match(read.sql,/p\.eligible_audience=ANY\(\$2::text\[\]\)/);
+  assert.match(read.sql,/p\.category=\$6/);
+  const category=f.seen.find(x=>x.sql.includes("SELECT DISTINCT p.category FROM reward_product p"));
+  assert.ok(category);
+  assert.deepEqual(category.params,[ROOT,["MEMBER"]]);
+  assert.match(category.sql,/pr\.status='ACTIVE'/);
+  assert.match(category.sql,/policy\.effective_from<=now\(\)/);
+  assert.equal(f.stats().connections,1);
+  assert.equal(f.stats().released,1);
+ });
+ test("public catalogue with no active CG04 relationship cannot select public rewards",async()=>{
+  const f=fixture(false,"ABSENT",false);
+  const result=await f.service.publicEligibleCatalog("inactive-relationship","1");
+  assert.deepEqual(result.eligibleRelationships,[]);
+  assert.deepEqual(result.items,[]);
+  assert.deepEqual(result.categories,[]);
+  const read=f.seen.find(x=>x.sql.includes("LEFT JOIN stock_balance")&&
+   x.sql.includes("FROM reward_product p JOIN referral_program pr"));
+  assert.ok(read);
+  assert.deepEqual(read.params,[ROOT,[],41,0,"",""]);
+  assert.match(read.sql,/cardinality\(\$2::text\[\]\)>0/);
+  assert.match(read.sql,/pr\.status='ACTIVE'/);
+  assert.match(read.sql,/p\.status='ACTIVE'/);
+  assert.equal(f.stats().released,1);
+ });
+ test("scheduled policy amendments do not replace currently effective public rewards or ranks",async()=>{
+  const f=fixture(false,"ABSENT",true,true);
+  const detail=await f.service.programmeDetail("admin",PROGRAMME);
+  assert.equal(detail.policyVersion,2);
+  assert.equal(detail.effectivePolicyVersion,1);
+  assert.equal(detail.effectiveFrom,"2026-12-01");
+  assert.deepEqual(detail.ranks.map((x:{name:string})=>x.name),["Scheduled rank"]);
+  assert.deepEqual(detail.effectiveRanks.map((x:{name:string})=>x.name),["Current rank"]);
+  const adminQuery=f.seen.find(x=>x.sql.includes("SELECT p.id AS ref,p.programme_code AS code"));
+  assert.ok(adminQuery);
+  assert.match(adminQuery.sql,/AT TIME ZONE 'Asia\/Kolkata'/);
+  const publicPage=await f.service.publicEligibleCatalog("member");
+  assert.equal(publicPage.eligibleRelationships[0],"MEMBER");
+  const publicSelect=f.seen.find(x=>x.sql.includes("LEFT JOIN stock_balance")&&
+   x.sql.includes("JOIN LATERAL"));
+  assert.ok(publicSelect);
+  assert.match(publicSelect.sql,/pv\.effective_from<=now\(\)/);
+  assert.match(publicSelect.sql,/ORDER BY pv\.effective_from DESC,pv\.version_no DESC LIMIT 1/);
+  const categories=f.seen.find(x=>x.sql.includes("SELECT DISTINCT p.category FROM reward_product p"));
+  assert.ok(categories);
+  assert.match(categories.sql,/JOIN LATERAL/);
+ });
+ test("rejected protected action stops before connecting to the database",async()=>{
+  const f=fixture(true);
+  await assert.rejects(()=>f.service.listProducts("revoked",PROGRAMME),ForbiddenException);
+  assert.equal(f.stats().connections,0);
+ });
+});
+
+describe("CG13 original US001/US003 usable DIGITAL source boundary (source, NOT runtime)",()=>{
+ test("ACTIVE DIGITAL cannot claim an unimplemented future external delivery provider",async()=>{
+  const f=fixture();
+  const request={
+   requestKey:OTHER_ROOT,programmeRef:PROGRAMME,type:"DIGITAL",
+   name:"Not-yet-deliverable digital voucher",category:"Recognition",
+   description:"Future provider only",pointsPrice:100,
+   eligibleAudience:"BOTH",status:"ACTIVE",highlighted:false,publicVisible:true,
+   imageUrl:null,itemRef:null,storeRef:null,
+   digitalFulfillmentMethod:"PENDING_EXTERNAL_PROOF"
+  };
+  await assert.rejects(()=>f.service.createProduct("staff",request),BadRequestException);
+  assert.equal(f.stats().connections,0);
+ });
+ test("eligible catalogue distinguishes genuine CG19 recognition from undeliverable future provider",async()=>{
+  const f=fixture();
+  await f.service.publicEligibleCatalog("own");
+  const query=f.seen.find(v=>v.sql.includes("CASE WHEN p.product_type='DIGITAL'"));
+  assert.ok(query);
+  assert.match(query.sql,/p.digital_fulfillment_method='ON_PLATFORM_RECOGNITION'/);
+  assert.match(query.sql,/THEN 'NO_STOCK_REQUIRED'/);
+  assert.match(query.sql,/THEN 'DELIVERY_UNAVAILABLE'/);
+  assert.deepEqual(query.params[0],ROOT);
+ });
+ test("both public channels and recipient forms hide unsupported redeem actions",()=>{
+  const files=[
+   "../web/src/features/referrals/public-rewards-catalogue.tsx",
+   "../android-public/src/features/referrals/native-eligible-rewards-catalogue.tsx",
+   "../web/src/features/referrals/public-digital-redemption.tsx",
+   "../android-public/src/features/referrals/native-digital-redemption.tsx"
+  ];
+  for(const path of files){
+   const src=readFileSync(path,"utf8");
+   assert.match(src,/DELIVERY_UNAVAILABLE/);
+   assert.match(src,/NO_STOCK_REQUIRED/);
+  }
+  for(const path of files.slice(2)){
+   const src=readFileSync(path,"utf8");
+   assert.match(src,/reservationReady/);
+   assert.match(src,/ON_PLATFORM_RECOGNITION/);
+  }
+ });
+});

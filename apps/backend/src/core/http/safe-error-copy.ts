@@ -1,6 +1,17 @@
 /** Server-controlled allow-list: authorized overrides can change safe wording only,
  * never rules, status, field binding, redaction, or authentication behavior. */
 export const SAFE_MESSAGE_CATALOG:Readonly<Record<string,string>>=Object.freeze({
+      CG13_INVALID_INPUT:"Check the selected programme, ranking or reward field and try again.",
+      CG13_SOURCE_ALREADY_EXISTS:"This programme or reward already exists. Refresh the catalogue before continuing.",
+      CG13_CURRENT_SOURCE_UNAVAILABLE:"The current programme, warehouse item or required source has changed. Refresh and try again.",
+      CG13_REQUEST_KEY_CONFLICT:"This save request was already used for different changes. Refresh before submitting another request.",
+      CG13_POLICY_STALE:"The referral settings changed or are no longer active. Refresh the current policy.",
+      CG13_PROGRAMME_STALE:"This programme changed since you opened it. Refresh before changing its status.",
+      CG13_PHYSICAL_ITEM_UNAVAILABLE:"Choose an active whole-piece warehouse item that is available to your role.",
+      CG13_PROGRAMME_INACTIVE:"This programme is inactive. Choose an active programme before adding rewards.",
+      CG13_PRODUCT_STALE:"This reward product has changed. Refresh its latest details before saving.",
+      CG13_MEDIA_UNAVAILABLE:"Choose a currently published, rights-approved CareGanga image, or leave the image blank.",
+
       CG05_INVALID:"Check the project or activity details and try again.",
       CG05_SOURCE_CHANGED:"The original record changed. Refresh its current version before continuing.",
       CG05_DUPLICATE:"This code or request already exists. Refresh the original record.",

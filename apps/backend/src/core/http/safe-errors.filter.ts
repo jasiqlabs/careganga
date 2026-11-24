@@ -69,7 +69,11 @@ export class SafeErrorsFilter implements ExceptionFilter {
        "partnerType","applicantName","contactEmail","contactPhone","registrationNumber",
        "addressLine","districtName","stateName","pinCode","receipt","applicationRef","savedRef","reportRef","runRef","scheduleRef",
        "format","view","status","fromDay","untilDay","cadence","timezone",
-       "localTime","firstDate","activityType","ownerRef","projectRef","venue","scheduledStart","scheduledEnd","sourceEventRef","sourceRefs","program","reason","outcome","publicSummary","taskRef","actorRef","visitType","location","plannedAt","report","locationProvenance","consentState","accuracyM","deviceRecordedAt","comment"].includes(rawField)?rawField:null;
+       "localTime","firstDate","activityType","ownerRef","programmeCode","audience","qualifyingEvent","awardPoints","minimumClaimPoints",
+       "displayInrRatio","autoRankUpgrade","ranks","programmeRef","productRef",
+       "pointsPrice","eligibleAudience","highlighted","publicVisible","imageUrl",
+       "storeRef","physicalStock","page","request",
+       "projectRef","venue","scheduledStart","scheduledEnd","sourceEventRef","sourceRefs","program","reason","outcome","publicSummary","taskRef","actorRef","visitType","location","plannedAt","report","locationProvenance","consentState","accuracyM","deviceRecordedAt","comment"].includes(rawField)?rawField:null;
     if(status>=500){
       // Correlate unexpected failures without echoing request data, SQL parameters, paths,
       // raw driver/provider messages, contact details, or private payloads into logs.

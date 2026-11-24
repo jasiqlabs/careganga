@@ -6,6 +6,7 @@ import {FoundationStructureIdentityFacade} from "../../cg-01-identity-access/app
 import type {VerifiedFoundationActor as Actor} from "../../cg-01-identity-access/public-api";
 import {MembershipApprovalService} from "../../cg-03-registration-approvals/application/membership-approval.service";
 import {MembershipFeesService} from "../../cg-09-finance-accounting/application/membership-fees.service";
+import {creditVerifiedCG04Qualification} from "../../cg-13-referrals-rewards/application/verified-qualification.source";
 import {object,uuid} from "../domain/tier-input";
 const changed=()=>new ConflictException("Membership is not ready for activation. Check the latest approval and payment status.");
 @Injectable()
@@ -89,7 +90,12 @@ export class MembershipActivationService{
    if(!existing)await tx.query("INSERT INTO member_branch_history(root_realm_id,member_id,branch_ref,reason,actor_ref) VALUES($1,$2,$3,'Initial approved membership',$4)",[a.realmId,m.id,app.branch_ref,a.accountId]);
    await tx.query("INSERT INTO membership_application_effect(root_realm_id,application_id,case_id,decision_id,member_id,term_id,pinned_review_revision,source_digest,fee_journal_id,request_key,actor_ref,effect_kind) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)",[a.realmId,id,review.caseRef,review.decisionRef,m.id,t.id,app.version,app.submitted_digest,journal,key,a.accountId,effectKind]);
    const updated=await tx.query("UPDATE membership_application SET status='APPROVED',version=version+1,updated_at=now() WHERE root_realm_id=$1 AND id=$2 AND status='SUBMITTED' AND version=$3 RETURNING id",[a.realmId,id,app.version]);
-   if(!updated.rowCount)throw changed();await this.approvals.completeMembership(tx,a,review.caseRef,id);const member=await this.ownMember(tx,a);if(!member)throw changed();return {member,replayed:false};
+   if(!updated.rowCount)throw changed();await this.approvals.completeMembership(tx,a,review.caseRef,id);const member=await this.ownMember(tx,a);if(!member)throw changed();
+    // CG13: only AFTER original CG03/CG09/CG04 verified activation and final
+    // current source check. Same database TX: never award from a public flag.
+    await creditVerifiedCG04Qualification(tx,{root:a.realmId,applicantKind:"MEMBER",
+     application:id,applicantAccount:a.accountId});
+    return {member,replayed:false};
   });
  }
 }

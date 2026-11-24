@@ -6,7 +6,7 @@ import {InventoryCatalogService} from "./inventory-catalog.service";
 import {inventoryRef,sourceChanged} from "./inventory-receipt-draft-source";
 export type OperationKind="ISSUE"|"RETURN"|"TRANSFER"|"ADJUSTMENT";
 export const operationAction=(kind:OperationKind)=>kind==="ISSUE"||kind==="RETURN"?"inventory.stock.issue":kind==="TRANSFER"?"inventory.stock.transfer":"inventory.stock.adjust";
-export type OperationRow={id:string;root_realm_id:string;request_key:string;actor_ref:string;kind:OperationKind;location_id:string;destination_id:string|null;request_id:string|null;recipient_id:string|null;original_movement_id:string|null;request_line_id:string|null;item_id:string;unit_code:string;qty_scale:number;quantity:string;system_quantity:string|null;balance_version:number|null;expected_request_version:number|null;reason:string;digest:string;source_version:number;status:string};
+export type OperationRow={id:string;root_realm_id:string;request_key:string;actor_ref:string;kind:OperationKind;location_id:string;destination_id:string|null;request_id:string|null;recipient_id:string|null;original_movement_id:string|null;request_line_id:string|null;reward_hold_id:string|null;item_id:string;unit_code:string;qty_scale:number;quantity:string;system_quantity:string|null;balance_version:number|null;expected_request_version:number|null;reason:string;digest:string;source_version:number;status:string};
 @Injectable()
 export class InventoryOperationSource{
  constructor(private readonly catalog:InventoryCatalogService,private readonly identity:FoundationStructureIdentityFacade){}

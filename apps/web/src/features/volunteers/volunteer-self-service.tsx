@@ -2,6 +2,9 @@
 import {useCallback,useEffect,useRef,useState} from "react";
 import type {CG04VolunteerApplication,CG04VolunteerOptions,CG04VolunteerProfile} from "@careganga/api-contracts";
 import {CommunityAuth} from "../membership/community-auth";
+import {PublicRewardsCatalogue} from "../referrals/public-rewards-catalogue";
+import {PublicReferralCode} from "../referrals/public-referral-code";
+import {ReferralCodeCheck} from "../referrals/referral-code-check";
 import {VolunteerEvidencePanel} from "./volunteer-evidence-panel";
 import {PublicVolunteerVerification} from "./public-volunteer-verification";
 import {VolunteerOwnCard} from "./volunteer-own-card";
@@ -56,6 +59,11 @@ export function VolunteerSelfService(){
   }}finally{if(current===seq.current)setLoading(false);}
  },[]);
  useEffect(()=>{void refresh();return()=>{seq.current++;};},[refresh]);
+ useEffect(()=>{
+  const incoming=new URLSearchParams(window.location.search).get("ref")??"";
+  if(/^[A-Za-z0-9_-]{32}$/.test(incoming))
+   setForm(current=>({...current,referral:current.referral||incoming}));
+ },[]);
  useEffect(()=>{
   const onHide=()=>{if(document.visibilityState!=="visible"){seq.current++;setApps([]);setSelected(null);setProfile(null);setOptions(null);setForm(blank());setError("");setLoading(true);}
     else void refresh();};
@@ -142,6 +150,8 @@ export function VolunteerSelfService(){
     {selected&&<p>Current application: <strong>{selected.applicationNumber} · {display(selected.status)}</strong>{selected.reviewReference?" · Foundation review "+selected.reviewReference:""}{selected.reviewRemarks?" · Reviewer feedback: "+selected.reviewRemarks:""}</p>}
    </div>
    {profile?.volunteer&&<VolunteerOwnCard current={profile.volunteer.volunteerNumber}/>}
+    <PublicRewardsCatalogue/>
+ <PublicReferralCode/>
    {canEdit&&<section className="cg04-panel">
     <h2>Volunteer application</h2><nav className="cg04-volunteer-steps" aria-label="Four application steps">
      {steps.map((title,i)=><button type="button" aria-current={step===i?"step":undefined} key={title} disabled={busy} onClick={()=>setStep(i)}>{i+1}. {title}</button>)}
@@ -166,6 +176,7 @@ export function VolunteerSelfService(){
      {field("Skills and interests (comma-separated)","skills","text",1500)}
      <label className="cg04-volunteer-span">Relevant experience<textarea maxLength={1000} value={form.experience} onChange={e=>fill("experience",e.target.value)}/></label></div>}
     {step===3&&<div className="cg04-document-grid">{field("Referral (optional)","referral","text",100)}
+  <ReferralCodeCheck code={form.referral}/>
      <label className="cg04-volunteer-span"><input type="checkbox" checked={form.consent} onChange={e=>fill("consent",e.target.checked)}/>
       I consent to the Foundation processing my submitted volunteer application and secure identity evidence for enrollment review.</label>
      <p className="cg04-muted cg04-volunteer-span">Check your original application details, save the draft, then verify an identity document. A reviewer must approve the submitted version before any volunteer number is created.</p></div>}

@@ -9,6 +9,7 @@ import {InventoryMaterialSource,materialHash} from "./inventory-material-source"
 import {InventoryOperationSource,operationAction,type OperationKind,type OperationRow} from "./inventory-operation-source";
 import {inventoryInput,inventoryRef,inventoryText,inventoryQuantity,receiptInvalid,sourceChanged} from "./inventory-receipt-draft-source";
 import {lockStockBalances,applyStockMovements,type StockDelta} from "./inventory-stock-command";
+import {recordCommittedRewardStockIssue} from "../../cg-13-referrals-rewards/application/committed-stock-issue.source";
 const opt=(v:unknown)=>v===undefined||v===null?null:inventoryRef(v);
 const shortage=()=>new ConflictException({code:"CG12_STOCK_SHORTAGE"});
 export function parseOperation(raw:unknown){
@@ -116,9 +117,39 @@ export class InventoryOperationService{
     const original=await tx.query("SELECT id FROM stock_movement WHERE root_realm_id=$1 AND id=$2 AND event_kind='ISSUE' AND location_id=$3 AND item_id=$4 FOR UPDATE",[a.realmId,r.original_movement_id,r.location_id,r.item_id]);if(!original.rowCount)throw sourceChanged();
     if(!(await tx.query("SELECT 1 FROM stock_movement m WHERE m.root_realm_id=$1 AND m.id=$2 AND -m.signed_qty>= $3::numeric+COALESCE((SELECT SUM(n.signed_qty) FROM stock_event e JOIN stock_movement n ON n.root_realm_id=e.root_realm_id AND n.stock_event_id=e.id WHERE e.root_realm_id=$1 AND e.original_movement_id=$2 AND e.event_kind='RETURN'),0)",[a.realmId,r.original_movement_id,r.quantity])).rowCount)throw shortage();
    }
+   // Both cancellation and warehouse issue lock the original redemption
+   // BEFORE shared stock balance. No staff issue may overtake a committed cancel.
+   let rewardRedemption:string|null=null;
+   if(r.reward_hold_id){
+    if(r.kind!=="ISSUE"||r.request_id||r.request_line_id||r.recipient_id!==a.accountId)
+     throw sourceChanged();
+    const prior=await tx.query<{id:string}>(
+     "SELECT red.id FROM redemption red JOIN stock_reward_hold h "+
+     "ON h.root_realm_id=red.root_realm_id AND h.redemption_id=red.id "+
+     "WHERE red.root_realm_id=$1 AND h.id=$2 AND h.state='HELD' "+
+     "AND red.product_type='PHYSICAL' AND red.state='HELD' FOR UPDATE OF red",
+     [a.realmId,r.reward_hold_id]);
+    if(!prior.rows[0])throw sourceChanged();
+    rewardRedemption=prior.rows[0].id;
+   }
    const delta:StockDelta={itemRef:r.item_id,locationRef:r.location_id,unit:r.unit_code,scale:r.qty_scale,delta:r.kind==="RETURN"?r.quantity:"-"+r.quantity,lineNo:1};
    const deltas=[delta,...(r.destination_id?[{...delta,locationRef:r.destination_id,delta:r.quantity,lineNo:2}]:[])];
    await lockStockBalances(tx,a.realmId,deltas);
+   let confirmedRewardHold:string|null=null;
+   if(r.reward_hold_id){
+    const h=await tx.query<{id:string;state:string;issueKey:string}>(
+     "SELECT id,state,issue_key AS \"issueKey\" FROM stock_reward_hold "+
+     "WHERE root_realm_id=$1 AND id=$2 AND item_id=$3 AND location_id=$4 "+
+     "AND recipient_account_ref<>$5 FOR UPDATE",
+     [a.realmId,r.reward_hold_id,r.item_id,r.location_id,a.accountId]);
+    if(!h.rows[0]||h.rows[0].state!=="HELD"||
+     h.rows[0].issueKey!==r.request_key||Number(r.quantity)!==1||
+     r.unit_code!=="PIECE"||r.qty_scale!==0)throw sourceChanged();
+    confirmedRewardHold=h.rows[0].id;
+    // The ORIGINAL stock_movement ISSUE consumes one held item; both original
+    // on_hand_qty and reserved_qty move -1 in the same locked balance.
+    delta.reservedDelta="-1";
+   }
    if(r.kind==="ADJUSTMENT"){const s=(await tx.query<{delta:string}>("SELECT ($4::numeric-on_hand_qty)::text AS delta FROM stock_balance WHERE root_realm_id=$1 AND item_id=$2 AND location_id=$3 AND version=$5 AND on_hand_qty=$6::numeric AND $4::numeric>=reserved_qty",[a.realmId,r.item_id,r.location_id,r.quantity,r.balance_version,r.system_quantity])).rows[0];if(!s)throw sourceChanged();delta.delta=s.delta;}
    if(r.request_line_id){
     if(!(await tx.query("UPDATE stock_hold SET quantity=quantity-$3::numeric WHERE root_realm_id=$1 AND request_line_id=$2 AND quantity>=$3::numeric RETURNING request_line_id",[a.realmId,r.request_line_id,r.quantity])).rowCount)throw shortage();
@@ -131,6 +162,22 @@ export class InventoryOperationService{
    await applyStockMovements(tx,a.realmId,e.id,r.kind,deltas);
    await tx.query("INSERT INTO inventory_audit(root_realm_id,actor_ref,source_kind,source_ref,event_key,payload_digest,result_version) VALUES($1,$2,$3,$4,$5,$6,1)",[a.realmId,a.accountId,r.kind,e.id,r.request_key,hash]);
    await tx.query("UPDATE stock_operation_draft SET status='CONFIRMED' WHERE root_realm_id=$1 AND id=$2",[a.realmId,r.id]);
+   if(confirmedRewardHold&&rewardRedemption){
+    const updated=await tx.query(
+     "UPDATE stock_reward_hold SET state='ISSUED',revision=revision+1,updated_at=now() "+
+     "WHERE root_realm_id=$1 AND id=$2 AND state='HELD'",
+     [a.realmId,confirmedRewardHold]);
+    if(updated.rowCount!==1)throw sourceChanged();
+    await tx.query(
+     "INSERT INTO stock_reward_hold_event(root_realm_id,hold_id,event_kind,"+
+     "source_key,actor_account_ref,original_stock_event_id) "+
+     "VALUES($1,$2,'ISSUED',$3,$4,$5)",
+     [a.realmId,confirmedRewardHold,r.request_key,a.accountId,e.id]);
+    await recordCommittedRewardStockIssue(tx,{
+     root:a.realmId,redemption:rewardRedemption,
+     stockEvent:e.id,hold:confirmedRewardHold
+    });
+   }
    if(approvedCase)await this.approval.finish(tx,a,approvedCase);
    return {ref:e.id,reference:e.event_no,status:"CONFIRMED",replayed:false};
   });

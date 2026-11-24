@@ -20,5 +20,6 @@ import { InventorySuppliersModule } from "./modules/cg-12-inventory-suppliers/in
 import { MembershipVolunteersModule } from "./modules/cg-04-membership-volunteers/membership-volunteers.module";
 import {CsrFundingModule} from "./modules/cg-08-csr-funding/csr-funding.module";
 import {CampaignsDonationsModule} from "./modules/cg-07-campaigns-donations/campaigns-donations.module";
-@Module({ imports: [DatabaseModule, IdentityAccessModule, PlatformConfigurationModule, RegistrationApprovalsModule, DocumentsNotificationsModule, FoundationStructureModule, FinanceAccountingModule, CmsPublicContentModule, HealthNetworkModule, PatientsAppointmentsModule, DiagnosticsModule, HealthcareAssistanceModule, MisReportingModule, HrEnrollmentModule, InventorySuppliersModule, ProjectsFieldOperationsModule, MembershipVolunteersModule, CampaignsDonationsModule, CsrFundingModule], controllers: [HealthController] })
+import {ReferralsRewardsModule} from "./modules/cg-13-referrals-rewards/referrals-rewards.module";
+@Module({ imports: [DatabaseModule, IdentityAccessModule, PlatformConfigurationModule, RegistrationApprovalsModule, DocumentsNotificationsModule, FoundationStructureModule, FinanceAccountingModule, CmsPublicContentModule, HealthNetworkModule, PatientsAppointmentsModule, DiagnosticsModule, HealthcareAssistanceModule, MisReportingModule, HrEnrollmentModule, InventorySuppliersModule, ProjectsFieldOperationsModule, MembershipVolunteersModule, CampaignsDonationsModule, CsrFundingModule, ReferralsRewardsModule], controllers: [HealthController] })
 export class AppModule {}

@@ -7,6 +7,9 @@ import type {CG04VolunteerApplication,CG04VolunteerOptions,CG04VolunteerProfile}
 import {careGangaTheme as t} from "../../../../../packages/design-tokens/src/index";
 import {NativeCommunityAuth} from "../membership/native-community-auth";
 import {memberInvoke} from "../membership/member-native-api";
+import {NativeEligibleRewardsCatalogue} from "../referrals/native-eligible-rewards-catalogue";
+import {NativeReferralCodeCheck} from "../referrals/native-referral-code-check";
+import {NativeReferralCode} from "../referrals/native-referral-code";
 import {NativeVolunteerProof} from "./native-volunteer-proof";
 import {NativeVolunteerCard} from "./native-volunteer-card";
 const KEY="cg_public_community_membership_session";
@@ -159,6 +162,8 @@ export function NativeVolunteerSelf({onExit}:{onExit:()=>void}){
    {selected&&<Text>Current status: {readable(selected.status)} · {selected.applicationNumber}{selected.reviewStatus?" · "+readable(selected.reviewStatus):""}{selected.reviewRemarks?" · "+selected.reviewRemarks:""}</Text>}
   </View>
   {profile?.volunteer&&token&&<NativeVolunteerCard token={token} onExpired={clear}/>}
+  <NativeEligibleRewardsCatalogue token={token} onExpired={clear}/>
+  <NativeReferralCode token={token} onExpired={clear}/>
   {editable&&<View style={s.card}>
    <Text accessibilityRole="header" style={s.title}>Volunteer Application</Text>
    <View style={s.row}>{steps.map((label,index)=><View key={label}>{button((index+1)+". "+label,()=>setStep(index),false,step===index)}</View>)}</View>
@@ -178,6 +183,7 @@ export function NativeVolunteerSelf({onExit}:{onExit:()=>void}){
     {field("Skills and interests (comma-separated)","skills")}{field("Relevant experience","experience")}
    </>}
    {step===3&&<>{field("Referral (optional)","referral")}
+  <NativeReferralCodeCheck code={draft.referral}/>
     {button(draft.consent?"Consent confirmed":"Confirm original volunteer application consent",()=>change("consent",!draft.consent),false,draft.consent)}
     <Text style={s.muted}>Application and private verified ID proof are required for independent CG03 review. No automatic member, paid benefit, task or staff access is granted.</Text>
    </>}

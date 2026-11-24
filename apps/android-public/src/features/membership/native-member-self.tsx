@@ -8,6 +8,8 @@ import * as Sharing from "expo-sharing";
 import {fetch as expoFetch} from "expo/fetch";
 import type {CG04Application,CG04Member,CG04MemberHistory,CG19OwnMemberPacks,CG04MembershipFee,CG04PublicTier,CG04PublicTierPage} from "@careganga/api-contracts";
 import {memberInvoke,memberEndpoint} from "./member-native-api";
+import {NativeEligibleRewardsCatalogue} from "../referrals/native-eligible-rewards-catalogue";
+import {NativeReferralCode} from "../referrals/native-referral-code";
 import {NativeCommunityAuth} from "./native-community-auth";
 import {NativeMemberApplication} from "./native-member-application";
 import {NativeMemberProof} from "./native-member-proof";
@@ -137,6 +139,8 @@ export function NativeMemberSelf({onExit,initialPlan}:{onExit:()=>void;initialPl
  {selected.status==="SUBMITTED"&&selected.reviewStatus==="PENDING_OWNER"&&fee&&["NOT_DUE","VERIFIED"].includes(fee.paymentStatus)&&button("Complete approved membership",()=>action("activate"))}
  </View>}
  {pending.current&&<View style={s.card}><Text>Outcome uncertain. Refresh, then retry the exact same request if needed.</Text>{button("Refresh original status",()=>void act(()=>refresh(token)))}{button("Retry original request",()=>command(pending.current!))}</View>}
+ <NativeEligibleRewardsCatalogue token={token} onExpired={clear}/>
+  <NativeReferralCode token={token} onExpired={clear}/>
  {button("Refresh membership",()=>void act(()=>refresh(token)))}
  </>}
  </>}
