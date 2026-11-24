@@ -7,7 +7,7 @@ import {FoundationStructureIdentityFacade} from "../../cg-01-identity-access/app
 import type {VerifiedFoundationActor as Actor} from "../../cg-01-identity-access/public-api";
 import {BranchSourceFacade} from "../../cg-02-foundation-structure/application/branch-source.facade";
 import {CampaignLinkSourceFacade} from "../../cg-05-projects-field-operations/application/campaign-link-source.facade";
-import {conflict,nextCursor,optionalRef,parseChange,parseLink,parseListQuery,parseProfile,parseRevoke,parseUnlink,ref,type Profile} from "../domain/beneficiary-input";
+import {conflict,nextCursor,optionalRef,parseChange,parseLink,parseListQuery,parseProfile,parseRevoke,parseUnlink,ref} from "../domain/beneficiary-input";
 
 type Row={
  id:string;root_realm_id:string;branch_scope_id:string|null;display_ref:string;
@@ -216,9 +216,16 @@ export class BeneficiariesService{
   const target=ref(id),v=parseUnlink(raw),hash=digest([target,v]);
   return this.run(token,"beneficiaries.projects.manage",async(tx,a)=>{
    await this.identity.assertCurrent(tx,a,"beneficiaries.view");
+   await this.identity.assertCurrent(tx,a,"projects.view");
    const past=await this.original(tx,a,v.key,"UNLINK_PROJECT",hash,target);if(past)return past;
    const b=await this.row(tx,a,target,true);
    if(b.profile_revision!==v.expected||b.consent_revoked_at)throw conflict();
+   const permitted=await tx.query(
+    "SELECT l.id FROM beneficiary_project_link l JOIN project p ON p.id=l.project_ref AND p.root_realm_id=l.root_realm_id "+
+    "WHERE l.root_realm_id=$1 AND l.beneficiary_id=$2 AND l.id=$3 AND l.ended_at IS NULL "+
+    "AND p.branch_ref IS NOT DISTINCT FROM $4::uuid FOR SHARE OF l,p",
+    [a.realmId,b.id,v.link,b.branch_scope_id]);
+   if(!permitted.rowCount)throw new NotFoundException("Active project link unavailable");
    const link=await tx.query("UPDATE beneficiary_project_link SET ended_at=clock_timestamp(),ended_by=$4 "+
     "WHERE root_realm_id=$1 AND beneficiary_id=$2 AND id=$3 AND ended_at IS NULL RETURNING id",
     [a.realmId,b.id,v.link,a.accountId]);
@@ -257,10 +264,11 @@ export class BeneficiariesService{
     "AND ($2::boolean OR b.branch_scope_id=ANY($3::uuid[])) "+
     "AND ($4::uuid IS NULL OR b.branch_scope_id=$4) "+
     "AND ($5::uuid IS NULL OR b.state_ref=$5) AND ($6::uuid IS NULL OR b.district_ref=$6) "+
-    "AND ($7='' OR b.verification_state=$7) AND ($8='' OR b.lifecycle_state=$8) "+
+    "AND ($7='' OR ($7='PENDING' AND b.verification_state IN ('DRAFT','SUBMITTED','UNDER_REVIEW','RETURNED')) OR b.verification_state=$7) "+
+     "AND ($8='' OR b.lifecycle_state=$8) "+
     "AND ($9='' OR b.beneficiary_type=$9) "+
-    "AND ($10='' OR strpos(lower(b.private_name),lower($10))>0 OR "+
-    "strpos(lower(b.display_ref),lower($10))>0 OR b.contact_mobile=$10) "+
+    "AND ($10='' OR strpos(lower(b.display_ref),lower($10))>0 OR "+
+    "(b.consent_revoked_at IS NULL AND (strpos(lower(b.private_name),lower($10))>0 OR b.contact_mobile=$10))) "+
     "AND ($11::uuid IS NULL OR EXISTS (SELECT 1 FROM beneficiary_project_link l "+
     "WHERE l.root_realm_id=b.root_realm_id AND l.beneficiary_id=b.id AND l.project_ref=$11 AND l.ended_at IS NULL)) "+
     "AND ($12::timestamptz IS NULL OR (b.created_at,b.id)<($12::timestamptz,$13::uuid)) "+
