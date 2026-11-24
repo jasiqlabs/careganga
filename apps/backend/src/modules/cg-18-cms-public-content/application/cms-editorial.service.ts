@@ -15,6 +15,7 @@ import {eligibleEventSources,validateEventArticle,eventArticleRevisionEligible,p
 import {approvedBeneficiaryImpact,beneficiaryImpactFields,beneficiaryImpactSource} from "../../cg-06-beneficiaries-assistance/application/beneficiary-impact-public-source";
 import {complianceEligible} from "./cms-compliance-eligibility";
 import {eligibleCampaignSources,campaignTeaserRefs,validateCampaignTeaser,publicCampaignSources,onlineDonationReady} from "../../cg-07-campaigns-donations/application/campaign-public-source";
+import {HrPublicBioEditorialSource,type HrEditorialPerson} from "../../cg-10-human-resources/application/hr-public-bio-editorial-source";
 import {CsrPartnerPublicSource,type CsrEditorialSelection} from "../../cg-08-csr-funding/application/csr-partner-public-source";
 const UUID=/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i;
 const HASH=/^[a-f0-9]{64}$/;
@@ -59,6 +60,16 @@ function input(v:unknown,keys:string[]){
    Object.keys(v).some(k=>!keys.includes(k)))
   throw new BadRequestException({code:"CMS_INPUT_INVALID"});
  return v as Record<string,unknown>;
+}
+function teamSelections(raw:unknown):HrEditorialPerson[]{
+ if(!Array.isArray(raw)||raw.length>15)throw new BadRequestException({code:"CMS_TEAM_SOURCE_NOT_READY",field:"members"});
+ const people=raw.map(v=>{
+  const x=input(v,["sourceRef","proof","name","designation"]);
+  if(typeof x.proof!=="string"||!HASH.test(x.proof))throw new BadRequestException({code:"CMS_TEAM_SOURCE_NOT_READY",field:"members"});
+  return {sourceRef:uuid(x.sourceRef,"sourceRef"),proof:x.proof,name:text(x.name,"name",160,1),designation:text(x.designation,"designation",120,1)};
+ });
+ if(new Set(people.map(p=>p.sourceRef)).size!==people.length)throw new BadRequestException({code:"CMS_TEAM_SOURCE_NOT_READY",field:"members"});
+ return people;
 }
 function path(v:unknown,field:string,kind?:string){
  const x=text(v,field,140,1);
@@ -232,12 +243,8 @@ function parseContent(raw:unknown):Content{
    out.heading=text(fields.heading??"Our team","heading",160,3);
    if(!Array.isArray(fields.members)||fields.members.length>15)
     throw new BadRequestException({code:"CMS_INPUT_INVALID",field:"members"});
-   // CG-18 owns page layout, not permission to release a person's HR/member
-   // identity. CG-10/CG-04 verified active status and revocable consent do not
-   // yet have a delivered public projection. A CMS checkbox is not that source.
-   if(fields.members.length>0)
-    throw new BadRequestException({code:"CMS_TEAM_SOURCE_NOT_READY",field:"members"});
-   out.members=[];
+   if(kind!=="HOME"&&kind!=="ABOUT")throw new BadRequestException({code:"CMS_TEAM_SOURCE_NOT_READY",field:"members"});
+   out.members=teamSelections(fields.members);
   }else if(sec.kind==="FEATURE_CARDS"){
    out.eyebrow=text(fields.eyebrow??"","eyebrow",80);
    out.heading=text(fields.heading,"heading",160,3);
@@ -312,7 +319,7 @@ function parseContent(raw:unknown):Content{
  // authorized but unused media could be exposed in the public page payload.
  for(let i=0;i<assets.length;i++){
   const a=assets[i];
-  if(!placementFits(sections,a))throw new BadRequestException({code:"CMS_INPUT_INVALID",field:"assets["+i+"].role"});
+  if(a.role==="TEAM"||!placementFits(sections,a))throw new BadRequestException({code:"CMS_INPUT_INVALID",field:"assets["+i+"].role"});
  }
  if(kind!=="HOME"&&kind!=="ABOUT")validateExtendedPage(kind,sections,assets);
  if(kind==="HEALTHCARE"&&!healthcareEditorialClaimsSafe(sections,[title,seoTitle,seoDescription]))
@@ -332,7 +339,8 @@ export class CmsEditorialService{
   private readonly approvals:CmsPublicationApprovalService,
   private readonly media:CmsDraftMediaService,
   private readonly notices:CmsPublicNoticeSource,
-  private readonly csrPartners:CsrPartnerPublicSource){}
+  private readonly csrPartners:CsrPartnerPublicSource,
+  private readonly hrPublicBio:HrPublicBioEditorialSource){}
  private async withTx<T>(cb:(tx:PoolClient)=>Promise<T>):Promise<T>{
   const tx=await this.db.connect();
   try{await tx.query("BEGIN");const result=await cb(tx);await tx.query("COMMIT");return result;}
@@ -371,6 +379,22 @@ export class CmsEditorialService{
   const eligible=await this.csrPartners.currentCards(tx,root,chosen);
   if(eligible.length!==chosen.length)
    throw new ConflictException({code:"CMS_PARTNER_SOURCE_UNAVAILABLE"});
+ }
+ async teamSources(bearer:string){
+  const actor=await this.sessions.requireAction(bearer,"cms.content.manage");
+  return this.withTx(async tx=>{
+   await this.identity.assertCurrent(tx,actor,"cms.content.manage");
+   return {sources:await this.hrPublicBio.choices(tx,actor)};
+  });
+ }
+ private async teamRevisionCurrent(tx:PoolClient,root:string,revisionRef:string){
+  const sections=await tx.query<{structured_fields:Record<string,unknown>}>(
+   "SELECT structured_fields FROM cms_section_revision WHERE foundation_root_id=$1 AND page_revision_id=$2 AND section_kind='TEAM'",[root,revisionRef]);
+  for(const row of sections.rows){
+   const chosen=teamSelections(row.structured_fields.members);
+   if((await this.hrPublicBio.currentCards(tx,root,chosen,true)).length!==chosen.length)
+    throw new ConflictException({code:"CMS_TEAM_SOURCE_NOT_READY"});
+  }
  }
  async beneficiaryImpact(bearer:string){
   const a=await this.sessions.requireAction(bearer,"cms.content.manage");
@@ -468,6 +492,14 @@ export class CmsEditorialService{
    }
    if(sec.kind==="PROJECT_TEASER")await validateProjectTeaser(tx,actor.realmId,sec.fields);
    if(sec.kind==="CAMPAIGN_TEASER")await validateCampaignTeaser(tx,actor.realmId,sec.fields);
+   if(sec.kind==="TEAM"){
+    const chosen=teamSelections(sec.fields.members);
+    if(chosen.length){
+     const current=await this.hrPublicBio.choices(tx,actor,chosen.map(p=>p.sourceRef));
+     if(chosen.some(p=>!current.some(c=>c.sourceRef===p.sourceRef&&c.proof===p.proof&&c.name===p.name&&c.designation===p.designation)))
+      throw new ConflictException({code:"CMS_TEAM_SOURCE_NOT_READY"});
+    }
+   }
    await tx.query("INSERT INTO cms_section_revision(foundation_root_id,page_revision_id,"+
     "section_kind,order_no,structured_fields) VALUES($1,$2,$3,$4,$5::jsonb)",
     [actor.realmId,rev,sec.kind,sec.order,JSON.stringify(sec.fields)]);
@@ -705,6 +737,7 @@ export class CmsEditorialService{
    if(!(await this.notices.revisionEligible(tx,actor.realmId,rev.id)))
     throw new ConflictException({code:"CMS_ORIGINAL_NOTICE_UNAVAILABLE"});
    await this.partnerRevisionCurrent(tx,actor.realmId,page.kind,rev.id);
+   await this.teamRevisionCurrent(tx,actor.realmId,rev.id);
    for(const asset of assets.rows)
     await this.media.validatePlacement(tx,actor,rev.id,asset.file_ref,asset.version);
    const original=await this.approvals.createCase(tx,actor,{
@@ -779,6 +812,7 @@ export class CmsEditorialService{
    if(!(await this.notices.revisionEligible(tx,actor.realmId,rev.id)))
     throw new ConflictException({code:"CMS_ORIGINAL_NOTICE_UNAVAILABLE"});
    await this.partnerRevisionCurrent(tx,actor.realmId,page.kind,rev.id);
+   await this.teamRevisionCurrent(tx,actor.realmId,rev.id);
    const final=await this.approvals.approved(tx,actor,{
     caseRef,pageRef:page.id,revisionRef:rev.id,
     revisionNo:rev.revision_no,digest:rev.content_digest});
@@ -1213,6 +1247,14 @@ export class CmsEditorialService{
    cards
   });
  }
+ const teamCards=new Map<number,Record<string,unknown>>();
+ for(const section of sections.rows)if(section.section_kind==="TEAM"){
+  let chosen:HrEditorialPerson[]=[];
+  try{chosen=teamSelections(section.structured_fields.members);}catch{/* historical manually entered identity is not a valid selection */}
+  const cards=await this.hrPublicBio.currentCards(this.db,x.foundation_root_id,chosen);
+  teamCards.set(section.order_no,{heading:section.structured_fields.heading,
+   members:cards.map(({name,designation})=>({name,designation,consentConfirmed:true}))});
+ }
  const hiddenHeroOrders=new Set(sections.rows.filter(sec=>
    sec.section_kind==="HERO"&&sec.structured_fields?.visible===false)
    .map(sec=>sec.order_no));
@@ -1225,7 +1267,7 @@ export class CmsEditorialService{
     fields:v.section_kind==="PARTNER_CARDS"?(currentPartnerCards.get(v.order_no)??{heading:"Partners",cards:[]}):v.section_kind==="PROJECT_TEASER"?(projectCards.get(v.order_no)??{heading:"Projects",cards:[]}):v.section_kind==="CAMPAIGN_TEASER"?(campaignCards.get(v.order_no)??{heading:"Campaigns",cards:[]}):v.section_kind==="ARTICLE_BODY"?
       (eventCards.get(v.order_no)??Object.fromEntries(Object.entries(v.structured_fields).filter(([k])=>
        !["sourceNoticeRef","sourceEventRef","publicReleaseConfirmed"].includes(k)))):
-     v.section_kind==="TEAM"?{heading:v.structured_fields.heading,members:[]}:
+     v.section_kind==="TEAM"?(teamCards.get(v.order_no)??{heading:v.structured_fields.heading,members:[]}):
      v.section_kind==="GALLERY_GRID"?{...v.structured_fields,
       items:Array.isArray(v.structured_fields.items)?
        (v.structured_fields.items as Record<string,unknown>[]).flatMap((item,index)=>
