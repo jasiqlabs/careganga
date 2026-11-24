@@ -1,3 +1,8 @@
 # CareGanga database release lifecycle
 
-Use the single [Hostinger deployment guide](../../../docs/deployment/hostinger-greenfield-database.md) and [baseline generation instructions](baseline/README.md). This child branch supersedes the parent branch's alternative draft psql script; there is only one implementation, `db/baseline.mjs`. Hostinger does not require pg_dump or psql for installation; the normal backend image/ZIP and existing persistent PostgreSQL are sufficient. Normal startup is read-only. First-release baseline artifact and live PostgreSQL qualification remain pending.
+- `baseline/schema.sql`: one complete verified initial PostgreSQL 17 schema; `baseline/manifest.json`: immutable checksums/history.
+- `upgrades/`: future actual schema changes only; zero active SQL files in V1.
+- `migrations/`: frozen historical source archive retained for existing QA/build validation only; not required in a prebuilt deployment.
+- `baseline.mjs`: explicit db:init, db:upgrade, db:release:check and build contract. Normal startup is read-only.
+
+Read [Hostinger deployment guide](../../../docs/deployment/hostinger-greenfield-database.md) and [developer test handoff](../../../docs/qa/CAREGANGA-GREENFIELD-DB-DEVELOPER-HANDOFF-20261124.md). No extra service/container or PostgreSQL client binary is needed on Hostinger. Exact single SQL atomic restore and catalog comparison verified on isolated PostgreSQL 17; actual Node CLI, build, role and hosting/runtime acceptance remain separate.

@@ -1,44 +1,68 @@
-# CareGanga: simple Hostinger database setup
+# CareGanga — one database, simple Hostinger deployment
 
-Owner-authorized greenfield deployment simplification, no business-schema or UI contract change. Branch `feature/careganga-greenfield-db-baseline-20261124`. Current implementation status: source candidate; real baseline generation and PostgreSQL qualification **PENDING**. Do not deploy an empty or unverified schema.
+**Current child branch:** `feature/careganga-greenfield-db-baseline-20261124`. Keep the existing frontend, backend and one persistent PostgreSQL 17 database; no additional permanent container or service. Application restarts and ordinary redeployments execute no DDL, initialization, seeds or CMS publication.
 
-## Architecture
+## 1. Developer release preparation (already-generated baseline)
 
-Keep existing Web and backend services and one persistent PostgreSQL database. The database is either managed PostgreSQL or the existing PostgreSQL service on Hostinger with a named persistent data volume, separate from application containers. No additional permanent service, Docker container, orchestration platform, or ORM. Do not put PGDATA in the uploaded application directory or a replaceable container layer. Preserve backups and storage on upgrades. Never use docker compose down -v or delete/recreate the database volume as part of app deployment.
+The committed `apps/backend/db/baseline/schema.sql` (2,161,863 bytes) is the complete V1 logical schema. Its SHA-256 is `09ff3722aef357748231fa63c2c6560d55db6d62e5726b325352dbe255297dd1`. Do **not** generate it again. It came from actual PostgreSQL 17 replay after correcting three unapplied payroll/approval migration files. A second empty DB was recreated from catalog statements and the exact final Git blob was restored in one transaction on a third empty DB. All 12 normalized logical catalog fingerprints match, with zero non-ledger populated tables. See baseline/catalog-atomic-verification.json. Environment-specific roles and ownership/ACL/physical metadata are not copied. Eight source guard/package tests passed on Node 22.16.0 (exact committed blobs); actual Node-to-DB and Hostinger deployment qualification remain the developer's acceptance.
 
-## Developer release preparation (before uploading)
+From the normal repository checkout:
 
-1. Select the PostgreSQL major version used by Hostinger (17 recommended). Install matching pg_dump on the **developer** machine. Create two completely empty isolated local databases named careganga_baseline_source and careganga_baseline_verify. No application connections, no root account, no sample or real data.
-2. From the checked-out release root, run npm ci and the normal manual build. Inject CAREGANGA_BASELINE_SOURCE_URL and CAREGANGA_BASELINE_VERIFY_URL into the local process environment, using protected direct localhost PostgreSQL URLs. Run `npm run db:baseline:generate`. It builds the backend, checks both DBs are empty, replays the 311 historical migration files on source, creates the final consolidated SQL with migration-produced defaults and ledger, restores it on verify, compares both full and schema-only dumps, and records the SQL hash and source checksums. Any failure blocks artifact generation. No existing DB is cleared automatically.
-3. Inspect resulting apps/backend/db/baseline/schema.sql and manifest.json, run schema/ACL/default-data/business integrity and all existing QA; verify no personal/operational data, credentials or unapproved content was exported. Ownership/ACL are deliberately environment-specific in pg_dump (--no-owner --no-privileges); compare security predicates and provision reviewed runtime grants explicitly. Commit both files after independent review and run `npm run db:release:check`. Never replace the published baseline. Historical SQL files remain in source for old QA and ledger compatibility; fresh installation does not replay them.
-4. Build the normal backend and Web packages. Include apps/backend/db (baseline files, .mjs and SQL source history), apps/backend/dist (compiled server and schema-contract.json), workspace package manifests, runtime node_modules or normal dependency-install method, CMS scripts/assets and existing Web artifacts in the usual Docker image or ZIP. The first-release package must pass db:release:check. No PostgreSQL client binary is needed on Hostinger for db:init; native pg executes the prepared SQL.
+```sh
+npm ci
+npm run verify:db:baseline
+npm run verify:local-source-preflight
+npm run verify:local-build
+npm run db:release:check
+```
 
-## First Hostinger deployment only
+The backend build validates the frozen 311 source files against the real baseline ledger and writes dist/db/schema-contract.json. Use the normal existing image/ZIP process; there is no new build service or required PostgreSQL client on Hostinger. Package the root/backend npm manifests and required workspace/runtime dependencies, existing Web artifacts and CMS scripts/assets, and the following backend paths:
 
-Use the same existing upload/deploy process and database service. Configure DATABASE_URL with a restricted application role. Configure DATABASE_MIGRATION_URL with the schema-owner/direct connection **only in the release shell or one-time deployment command**, never permanently in normal backend environment. Ensure privileges and search_path are correct: runtime needs read-only schema_migration, business DML/sequence/function access as authorized, no schema ownership, CREATE/ALTER/DROP or ledger write access. Review exact grants and test them in local QA (do not blindly grant all tables/functions).
+- apps/backend/dist (including dist/db/schema-contract.json and compiled main/root entry files)
+- apps/backend/db/baseline.mjs
+- apps/backend/db/baseline/schema.sql and manifest.json
+- apps/backend/db/upgrades/ (currently README only; keep directory in artifact)
 
-From the normal deployed workspace, before enabling application traffic, run:
+The 311 original SQL files stay at db/migrations/ solely as a **frozen source archive** for existing QA and build-time checks. Exclude them and historical replay tooling from a prebuilt release. If the existing Hostinger workflow builds a source ZIP on host, keep them in that build input only; no historical SQL is executed. Do not add db:migrate/db:init/db:upgrade or CMS publication to Docker CMD, application start or restart policies. No automatic DB creation/reset. Do not omit the baseline from the uploaded release.
 
-```bash
+## 2. First deployment only
+
+Use the existing PostgreSQL 17 instance/service on persistent storage. Explicitly provision one new empty database (never reset an existing client database). Set the existing DATABASE_URL to the restricted runtime login and the existing DATABASE_MIGRATION_URL to the direct schema-owner login in the protected release shell only. These are connections to the same dedicated database; no new permanent environment variables. Use a protected secret manager/environment; do not put credentials in ZIP, image, git or logs.
+
+```sh
 npm run db:release:check
 npm run db:init -- --confirm-new-db
 ```
 
-The root command explicitly forwards the confirmation flag to the backend workspace; alternatively run `cd apps/backend && npm run db:init -- --confirm-new-db`. Initialization locks, verifies empty state and checksums, restores schema and mandatory defaults transactionally; rerun on known initialized history is a no-op. Refuses unknown/partial history or unexpected objects. It does not drop tables or create admin credentials. Do not point it at an old partially migrated development DB; provision an explicitly authorized new DB instead. Back up and preserve any existing data.
+Run from repository/release root; equivalent command from apps/backend is npm run db:init -- --confirm-new-db. Initialization verifies manifest, SQL checksum, compiled contract and PostgreSQL major, locks the target, rejects any unexpected existing objects/history, applies the single baseline in one transaction and verifies the ledger. There are **zero** V1 active upgrade SQL files. On a later release first-install includes its pending forward upgrades in that same transaction. Repeating init on exactly current history is a no-op; older known history asks for explicit upgrade, unknown/partial history fails closed. Baseline ledger timestamps are provenance from the historical QA replay, not claims of 311 production migration executions.
 
-Securely run the compiled one-time root provisioning command `npm run bootstrap:root:release -w apps/backend -- --confirm-one-time-root` using operator secrets and existing confirmation. Remove operator secrets afterward. Start the backend as usual (npm run start -w apps/backend or node dist/src/main.js from apps/backend), with DATABASE_URL only. Existing CMS first-release preparation and authorized publication remain mandatory before public traffic; use the existing CMS deployment guide and `npm run deploy:cms:first -- --manifest /private/path/approved-baseline.json --apply`. No fake approvals or direct publication table writes. Verify /health/ready, Web and public Android acceptance. Initial schema installation target under 60 seconds, not yet measured; CMS media, approval and builds are separate.
+### One-time restricted runtime access
 
-## Normal restart or update without schema change
+Reuse the existing restricted application role, not the schema owner. The DBA provisions the role/password outside the app and confirms no membership of owner/superuser, no CREATE DATABASE/ROLE, no bypass RLS, no schema CREATE and no object ownership. As DB owner grant CONNECT and schema USAGE, SELECT on authorized application tables/views and ledger, necessary INSERT/UPDATE/DELETE on application-owned regular tables (excluding schema_migration), USAGE/SELECT on sequences, and required routine EXECUTE. Do not grant TRUNCATE, schema CREATE, DDL ownership, ledger writes or broad administrative rights. Application service uses one DB role; end-user permissions remain enforced by existing backend/constraints. Verify actual role grants against all existing module runtime tests; renew grants only for new objects in a future upgrade. On PostgreSQL 17 the default public schema does not give CREATE to an unrelated user; verify existing configured role rather than assuming. No provider-specific grants or role credentials are included in schema.sql.
 
-Upload/deploy the image or ZIP as before. Start the usual backend command. It runs **read-only** connectivity/schema ledger checks and does not invoke db:init, db:upgrade, seeds or CMS publication. Backend/container/VPS restarts preserve PostgreSQL records and admin modifications if persistent storage survives. Missing/incompatible DB is unready, never silently initialized.
+Provision root exactly once using existing protected credentials:
 
-## Future release with a schema change
+```sh
+npm run bootstrap:root:release -w apps/backend -- --confirm-one-time-root
+npm run start -w apps/backend
+```
 
-Use an increasing unique numeric prefix above the baseline maximum; never edit an already applied SQL file. Back up database and plan compatible upgrade/downtime. Run `npm run db:upgrade` once in the existing release shell using DATABASE_MIGRATION_URL. It rejects an uninitialized/incompatible ledger; the existing transactional locked runner executes only unapplied changes. Start the new backend with restricted DATABASE_URL. New release startup requires the exact compiled schema history; for single-server upgrades stop the old backend before incompatible upgrades. Do not add the database commands to normal Docker CMD, npm start, restart policies or frontend build. Keep credentials out of ZIP/images/logs.
+Remove DDL/bootstrap secrets from the long-running backend environment; keep existing runtime/provider configuration. The root command uses the original secured root bootstrap and must refuse a second root. The backend performs a read-only full-history readiness check before listen. Start the existing Web service normally. Complete the existing authorized CMS first-publication process before enabling public traffic: [CMS guide](careganga-public-cms-first-deployment-check-20261123.md), `npm run deploy:cms:first -- --manifest /private/path/approved-baseline.json --apply`. No fabricated operational data, legal text, approval, or automatic overwrite of CMS revisions.
 
-## Release acceptance / known limits
+## 3. Routine deployment or restart
 
-The source includes five focused baseline guard tests (`npm run verify:db:baseline`), authored but not executed here. No database artifact exists yet; generator, SQL restore, PostgreSQL roles/privileges, migration order, baseline schema/data equivalence, startup/restart, concurrent setup, rollback, backups, CMS first publication, complete builds and independent review are **NOT_RUN** at this source checkpoint. A checksum ledger proves applied history, not arbitrary out-of-band schema drift; actual catalog comparison and module integrity tests are required in release qualification. Direct connection and correct persistent volume are hosting configuration, not inferred from source. No production reset or merge authorized.
+Upload/deploy the new image or ZIP and start the app as usual. Reuse the same database connection and persistent volume. No DB setup or migration commands for an unchanged schema. Never delete the database volume or mount PGDATA in an ephemeral app layer. Backend missing/incompatible history fails closed with a safe error. Persistent data survives app/container/VPS restarts if storage survives; backups are required for storage loss. No automatic empty-database repair.
 
-## Parent branch reconciliation
-The handoff parent gained an alternate draft psql implementation at 082dd00c2923c956e846f3ac6b25ff7095a3a2bd. The child integrates that parent and deliberately retains the native-pg deployment implementation and this guide as the single path, not two conflicting scripts. The parent itself was not modified by this child merge. Added explicit direct-URL parameter allowlist, stronger empty-object checks and zero-account verification on scratch before export. Actual schema generation/restore, role/security and independent review remain pending.
+## 4. A future actual schema change only
+
+Add a reviewed SQL file under db/upgrades/ with unique increasing numeric prefix above 9999. Preserve released baseline/archive and all applied checksums. Backup before upgrade and stop old app for incompatible schema transitions (prefer expand/contract where appropriate). Build the release, and explicitly run once with the owner URL:
+
+```sh
+npm run db:upgrade
+```
+
+Only pending new upgrades are applied, under the same advisory lock and one transaction, with a full final ledger check. Current release is a no-op; no historical replay. The existing db:migrate / db:baseline:generate commands are historical/offline reference tooling, not part of deployment. Do not invoke them against existing production data or remove a published baseline.
+
+## 5. Developer acceptance gate
+
+Read [database developer handoff](../qa/CAREGANGA-GREENFIELD-DB-DEVELOPER-HANDOFF-20261124.md). Actual full repo build, Node CLI using a real driver/role, upgrade/repeat/restart and full Web/Android original business QA remain pending. No production deployment or merge until required independent review and runtime gates pass. Initial install target under 60 seconds must be measured locally/Hostinger, not inferred from connector elapsed time.
