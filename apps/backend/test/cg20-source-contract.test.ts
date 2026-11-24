@@ -61,6 +61,13 @@ describe("CG-20 — guarded server report request contracts",()=>{
     assert.throws(()=>parseSafeReport({kind,view:"SUMMARY",...filter}),BadRequestException);
   }
  });
+ test("CG08 CSR summary accepts bounded proposal update dates only",()=>{
+  const kind="CSR_FUNDING_SUMMARY",view="SUMMARY";
+  const q=parseSafeReport({kind,view,fromDay:"2026-10-01",untilDay:"2026-10-31"});
+  assert.equal(q.fromDay,"2026-10-01");assert.equal(q.untilDay,"2026-10-31");
+  for(const filter of [{branchRef:"22222222-2222-4222-8222-222222222222"},{centerRef:"22222222-2222-4222-8222-222222222222"},{fromDay:"2026-10-01"},{fromDay:"2025-01-01",untilDay:"2026-10-31"},{status:"COMPLETED"},{view:"TABLE"},{offset:50}])
+   assert.throws(()=>parseSafeReport({kind,view,...filter}),BadRequestException);
+ });
  test("CG21 original audit accepts 90-day bounded original safe window only",()=>{
   const value=parseSafeReport({
    kind:"PLATFORM_AUDIT_ACTIVITY",view:"TABLE",
