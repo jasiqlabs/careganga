@@ -27,7 +27,7 @@ const consentKinds=["SELF","GUARDIAN","REPRESENTATIVE"] as const;
 const lifecycles=["ACTIVE","INACTIVE"] as const;
 export type Profile=ReturnType<typeof parseProfile>;
 export function parseProfile(raw:unknown,create:boolean){
- const x=fields(raw,["requestKey","expectedRevision","branchRef","name","contactMobile","representativeName","representativeContact","stateRef","districtRef","beneficiaryType","gender","ageGroup","consentKind","consentPurpose","consentAcknowledged"]);
+ const x=fields(raw,["requestKey","expectedRevision","branchRef","name","contactMobile","representativeName","representativeContact","stateRef","districtRef","blockRef","beneficiaryCategory","beneficiaryType","gender","ageGroup","consentKind","consentPurpose","consentAcknowledged"]);
  if(!create&&x.branchRef!==undefined)throw invalid(); // Scope transfer is never a silent profile edit.
  if(x.consentAcknowledged!==true)throw invalid();
  const contact=x.contactMobile===null||x.contactMobile===undefined||x.contactMobile===""?null:text(x.contactMobile,8,16);
@@ -36,11 +36,12 @@ export function parseProfile(raw:unknown,create:boolean){
  if(contact&&!/^\+[1-9][0-9]{7,14}$/.test(contact)||representativeContact&&!/^\+[1-9][0-9]{7,14}$/.test(representativeContact))throw invalid();
  const ageGroup=option(x.ageGroup??"NOT_SPECIFIED",ageGroups),consentKind=option(x.consentKind,consentKinds);
  if(ageGroup==="CHILD"&&consentKind!=="GUARDIAN"||consentKind!=="SELF"&&!representative)throw invalid();
- const state=ref(x.stateRef),district=optionalRef(x.districtRef);
+ const state=ref(x.stateRef),district=optionalRef(x.districtRef),block=optionalRef(x.blockRef);
+ if(block&&!district)throw invalid();
  return {key:ref(x.requestKey),expected:create?null:revision(x.expectedRevision),
    branch:create?optionalRef(x.branchRef):null,
    name:text(x.name,2,160),contact,representative,representativeContact,
-   state,district,beneficiaryType:text(x.beneficiaryType,2,60),
+   state,district,block,category:optionalText(x.beneficiaryCategory,60),beneficiaryType:text(x.beneficiaryType,2,60),
    gender:option(x.gender??"NOT_SPECIFIED",genders),ageGroup,consentKind,
    purpose:text(x.consentPurpose,5,240)};
 }
@@ -63,8 +64,8 @@ export function parseRevoke(raw:unknown){
 }
 export function parseListQuery(v:Record<string,unknown>){
  const clean=(x:unknown,max:number)=>x===undefined||x===null||x===""?"":text(x,1,max);
- const branch=optionalRef(v.branchRef),state=optionalRef(v.stateRef),district=optionalRef(v.districtRef),project=optionalRef(v.projectRef);
- const status=clean(v.verification,24),lifecycle=clean(v.lifecycle,24),type=clean(v.type,60),q=clean(v.q,80);
+ const branch=optionalRef(v.branchRef),state=optionalRef(v.stateRef),district=optionalRef(v.districtRef),block=optionalRef(v.blockRef),project=optionalRef(v.projectRef);
+ const status=clean(v.verification,24),lifecycle=clean(v.lifecycle,24),type=clean(v.type,60),category=clean(v.category,60),q=clean(v.q,80);
  if(status&&!["DRAFT","SUBMITTED","UNDER_REVIEW","VERIFIED","RETURNED","REJECTED","PENDING"].includes(status)
  ||lifecycle&&!["ACTIVE","INACTIVE"].includes(lifecycle))throw invalid();
  const gender=clean(v.gender,24),ageGroup=clean(v.ageGroup,24);
@@ -73,7 +74,7 @@ export function parseListQuery(v:Record<string,unknown>){
   if(!/^\d{4}-\d{2}-\d{2}$/.test(s)||s.startsWith("0000"))throw invalid();
   const d=new Date(s+"T00:00:00.000Z");if(!Number.isFinite(d.getTime())||d.toISOString().slice(0,10)!==s)throw invalid();return s;};
  const from=date(v.registeredFrom),to=date(v.registeredTo);
- if(from&&to&&from>to||district&&!state)throw invalid();
+ if(from&&to&&from>to||district&&!state||block&&!district)throw invalid();
  const cursor=clean(v.cursor,240);
  let before:{date:string;id:string}|null=null;
  if(cursor){
@@ -82,7 +83,7 @@ export function parseListQuery(v:Record<string,unknown>){
    before={date,id};
   }catch{throw invalid();}
  }
- return {branch,state,district,project,status,lifecycle,type,q,before,gender,ageGroup,from,to};
+ return {branch,state,district,block,project,status,lifecycle,type,category,q,before,gender,ageGroup,from,to};
 }
 export function nextCursor(date:string|Date,id:string):string{
  return Buffer.from((date instanceof Date?date.toISOString():new Date(date).toISOString())+"|"+id).toString("base64url");
