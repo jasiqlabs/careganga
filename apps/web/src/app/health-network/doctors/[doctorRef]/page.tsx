@@ -45,6 +45,7 @@ export default async function VerifiedDoctor({params}:Props){
        "No current approved consultation fee displayed. Ask the center."}</p>
      <Link href={"/healthcare/centers/"+encodeURIComponent(c.centerSlug)}>
       View location and contact details</Link>
+     {c.fee&&<p><Link className="cg-health-link-action primary" href={"/health-network/doctors/"+encodeURIComponent(doctorRef)+"/schedule?center="+encodeURIComponent(c.centerSlug)}>Check appointment times here</Link></p>}
     </article>)}
    </div>
   </section>

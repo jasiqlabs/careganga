@@ -264,6 +264,10 @@ Dependencies: US-003
 
 ## Execution progress
 
+### Healthcare hardening — center and time-first navigation
+HUX-10.04/11.02: Web doctor cards/profile pass the chosen public center slug into schedule, resolved only against current verified options after date selection; native retains selected center hint, highlights it without automatic booking, adds direct time-first search, retry and stale-day/center response guards. CG15 US-002-QA01/02/04/05/06/07/09/12/13 and CG14 US-004-QA11/12/17 partial source trace. Verify center A/B distinct fees, withdrawn selected center, both search modes, date change and error retry, no slot/price assumptions. Runtime NOT_RUN; independent review pending.
+
+
 ### Healthcare hardening — patient booking review
 HUX-11.01: Web/native appointment review, hold expiry and secondary reception assistance, commits eb11a8d2/f97bbac5. US-004-QA01/02/04–12/14 partial source trace; actual competing slots, expired hold, unknown replay, fee revision, assistance quote, consent and device Back NOT_RUN. Existing QA dispositions unchanged. See [tracker](../../HEALTHCARE_UIUX_HARDENING_TRACKER.md).
 

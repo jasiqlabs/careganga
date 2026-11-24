@@ -44,8 +44,8 @@ export default async function DoctorSchedulePreview({params,searchParams}:Props)
  const query=await searchParams;
  const date=typeof query.date==="string"&&/^\d{4}-\d{2}-\d{2}$/.test(query.date)?
   query.date:"";
- const centerRef=typeof query.centerRef==="string"&&ID.test(query.centerRef)?
-  query.centerRef:"";
+ const requestedCenterRef=typeof query.centerRef==="string"&&ID.test(query.centerRef)?query.centerRef:"";
+ const preferredCenter=typeof query.center==="string"?doctor.centers.find(c=>c.centerSlug===query.center):undefined;
  const time=typeof query.time==="string"&&/^([01]\d|2[0-3]):[0-5]\d$/.test(query.time)?
   query.time:"";
  const mode=query.mode==="time"?"time":"center";
@@ -55,6 +55,7 @@ export default async function DoctorSchedulePreview({params,searchParams}:Props)
  const validReschedule=!!rescheduleRef&&Number.isSafeInteger(version)&&version>0;
  const options=date?await source<Options>("doctor/"+
   encodeURIComponent(doctorRef)+"/center-options?date="+encodeURIComponent(date)):null;
+ const centerRef=requestedCenterRef||(query.centerRef===undefined&&preferredCenter?options?.centers.find(c=>c.centerSlug===preferredCenter.centerSlug)?.centerRef??"":"");
  const validCenter=!!options?.centers.some(x=>x.centerRef===centerRef);
  const selected=mode==="center"&&date&&validCenter?
   await source<Daily>("center-first?doctorRef="+encodeURIComponent(doctorRef)+
@@ -78,6 +79,8 @@ export default async function DoctorSchedulePreview({params,searchParams}:Props)
    <form method="get" style={{display:"grid",gap:16,maxWidth:680}}>
     {validReschedule&&<><input type="hidden" name="reschedule" value={rescheduleRef}/>
      <input type="hidden" name="version" value={version}/></>}
+    {preferredCenter&&<input type="hidden" name="center" value={preferredCenter.centerSlug}/>}
+    {preferredCenter&&!date&&<p>Selected center: <strong>{preferredCenter.centerName}</strong></p>}
     <fieldset style={{border:"1px solid #d7dfdb",borderRadius:12,padding:14}}>
      <legend>How would you like to search?</legend>
      <label style={{display:"inline-flex",gap:8,marginRight:18}}>
@@ -93,7 +96,7 @@ export default async function DoctorSchedulePreview({params,searchParams}:Props)
      <input type="date" name="date" required defaultValue={date}/>
     </label>
     <label>Doctor's center (optional for time-first search)
-     <select name="centerRef" defaultValue={validCenter?centerRef:""}>
+     <select name="centerRef" disabled={!options} defaultValue={validCenter?centerRef:""}>
       <option value="">Choose center after entering a date</option>
       {options?.centers.map(c=><option key={c.centerRef} value={c.centerRef}>
        {c.centerName}</option>)}
@@ -102,7 +105,7 @@ export default async function DoctorSchedulePreview({params,searchParams}:Props)
     <label>Local starting time (only used for time-first search)
      <input type="time" name="time" defaultValue={time} step={300}/>
     </label>
-    <button type="submit" style={{maxWidth:260}}>View current consultation times</button>
+    <button type="submit" className="primary" style={{maxWidth:260}}>View current consultation times</button>
    </form>
   </section>
   <section className="cg-public-section" aria-live="polite">
@@ -120,6 +123,9 @@ export default async function DoctorSchedulePreview({params,searchParams}:Props)
      <p>Approved consultation fee: {displayFee(c.consultationFeeMinor)}</p>
     </article>)}
    </>}
+   {mode==="center"&&date&&options&&requestedCenterRef&&!validCenter&&<p role="alert">This center is no longer available for the chosen day. Select a current center.</p>}
+   {mode==="center"&&validCenter&&!selected&&<p role="alert">The selected center schedule could not be checked. Try again.</p>}
+   {mode==="time"&&date&&time&&!alternatives&&<p role="alert">Center choices could not be checked. Try again.</p>}
    {mode==="center"&&validCenter&&selected&&<>
     <h2>{selected.centerName} — {date}</h2>
     <p>All times shown in {selected.timeZone}. A visible time is not reserved until you receive confirmation.</p>

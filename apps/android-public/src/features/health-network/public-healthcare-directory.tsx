@@ -28,7 +28,7 @@ type Details={centerName:string;providerName:string;type:string;address:string;
  timeZone:string;notice:string};
 type DoctorDetails={doctorName:string;specialties:string[];qualifications:string[];
  experienceYears:number;bio:string;centers:Doctor[];notice:string};
-type Selection={kind:"center";slug:string}|{kind:"doctor";ref:string};
+type Selection={kind:"center";slug:string}|{kind:"doctor";ref:string;centerSlug?:string};
 type Area={value:string;label:string;level:"STATE"|"DISTRICT"|"BLOCK";
  parentRef:string|null};
 type State={status:"LOADING"|"READY"|"ERROR";items:(Center|Doctor)[];
@@ -138,7 +138,7 @@ export function PublicHealthcareDirectory({onExit,reschedule}:{onExit:()=>void;
   if(pushHistory&&previous&&
      (previous.kind!==item.kind||
       (previous.kind==="center"?previous.slug:
-        previous.ref)!==(item.kind==="center"?item.slug:item.ref)))
+        previous.ref+":"+(previous.centerSlug??""))!==(item.kind==="center"?item.slug:item.ref+":"+(item.centerSlug??""))))
    detailHistory.current.push(previous);
   selectionRef.current=item;
   const request=++seq.current;
@@ -355,7 +355,7 @@ export function PublicHealthcareDirectory({onExit,reschedule}:{onExit:()=>void;
       <Text style={styles.label}>{(item as Doctor).fee?money((item as Doctor).fee!.amountMinor)+" · In-person consultation":
         "Fee not listed"}</Text>
       {label(reschedule?"Choose a new time":(item as Doctor).fee?"View profile & check times":"View doctor profile",
-       ()=>void show({kind:"doctor",ref:(item as Doctor).doctorRef}))}
+       ()=>void show({kind:"doctor",ref:(item as Doctor).doctorRef,centerSlug:(item as Doctor).centerSlug}))}
      </View>)}
     {state.status==="READY"&&state.next&&
      label("More verified results",()=>void load(state.next!,true))}
@@ -429,8 +429,8 @@ export function PublicHealthcareDirectory({onExit,reschedule}:{onExit:()=>void;
      <NativeApprovedConsultationBenefits key={"benefit:"+selection.ref}
       doctorRef={selection.ref}/>}
     {selection?.kind==="doctor"&&
-     <DoctorSchedulePreview key={selection.ref} doctorRef={selection.ref}
-      reschedule={reschedule}/>}
+     <DoctorSchedulePreview key={selection.ref+":"+(selection.centerSlug??"")} doctorRef={selection.ref}
+      preferredCenterSlug={selection.centerSlug} reschedule={reschedule}/>}
    </View>:null}
    {state.status==="LOADING"&&<ActivityIndicator accessibilityLabel="Checking current verified listings"/>}
    {state.status==="ERROR"&&<View style={styles.card}>

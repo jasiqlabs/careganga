@@ -10,7 +10,7 @@ This user-requested cross-module subtracker supplements (does not replace) origi
 
 ## Summary
 
-37 subitems: 17 source-confirmed presentation gaps, 19 runtime/reproduction candidates, 1 reference evidence blocker. Initial baseline: all OPEN. Current progress: 19 rows IN_PROGRESS (including partial cross-cutting work); 18 rows OPEN; zero independently cleared or runtime passes. P0 = release visual evidence gate; P1 = primary journey or substantial usability; P2 = secondary usability. Source status and runtime status stay separate.
+37 subitems: 17 source-confirmed presentation gaps, 19 runtime/reproduction candidates, 1 reference evidence blocker. Initial baseline: all OPEN. Current progress: 21 rows IN_PROGRESS (including partial cross-cutting work); 16 rows OPEN; zero independently cleared or runtime passes. P0 = release visual evidence gate; P1 = primary journey or substantial usability; P2 = secondary usability. Source status and runtime status stay separate.
 
 | ID | Priority | Evidence | Owner/surface | Issue | State |
 |---|---|---|---|---|---|
@@ -38,9 +38,9 @@ This user-requested cross-module subtracker supplements (does not replace) origi
 | HUX-10.01 | P1 | SOURCE | CG14 US-004 public web | Doctor result cards omit key discovery information | IN_PROGRESS |
 | HUX-10.02 | P1 | SOURCE | CG14 US-004 public web | Center result cards are text-only | IN_PROGRESS |
 | HUX-10.03 | P1 | CHECK | CG14 US-004 public web/app | Directory advanced filter and result modes | IN_PROGRESS |
-| HUX-10.04 | P1 | CHECK | CG14/15/17 public web/app | Doctor profile and center-specific choice | OPEN |
+| HUX-10.04 | P1 | CHECK | CG14/15/17 public web/app | Doctor profile and center-specific choice | IN_PROGRESS |
 | HUX-11.01 | P1 | SOURCE | CG15 US-004 / CG17 US-002 public web/app | Booking review text/action hierarchy | IN_PROGRESS |
-| HUX-11.02 | P1 | CHECK | CG15 US-002/003 public web/app | Appointment calendar and patient verification | OPEN |
+| HUX-11.02 | P1 | CHECK | CG15 US-002/003 public web/app | Appointment calendar and patient verification | IN_PROGRESS |
 | HUX-11.03 | P1 | CHECK | CG15 US-005/007/008 public web/app | Booking confirmation and patient history | OPEN |
 | HUX-12.01 | P1 | SOURCE | CG14 US-003 internal Android | Doctor management long scrolling forms | IN_PROGRESS |
 | HUX-12.02 | P1 | SOURCE | CG15 US-006 internal Android | Queue summary and action readability | IN_PROGRESS |
@@ -91,6 +91,10 @@ This user-requested cross-module subtracker supplements (does not replace) origi
 - HUX-01.01 / HUX-16.01: verified private ChatGPT Library folder `/CareGanga/`, original Admin 167-screen ZIP and Golden Reference Pack manifest (A01–A19, B01–B51, C01–C55, U01–U42), and four public archives (10+12+18+7 = 47). Opened Admin contact sheet and public contact sheet; navy/blue/white staff shell and green/gold/cream public brand confirmed. Golden pack is a preview index, not the separate healthcare UI-06–24 batch. Prior Nov 15 and Nov 18 conversation recovered titles but no original filenames/bytes for that separate batch. Exact healthcare screen comparison remains BLOCKED; no generated replacements used.
 - HUX-10.02 / 13.01: center card service capabilities and one currently published, rights-approved, clean verified center photo now projected from original CG14/03/19 sources and rendered on Web/native using existing protected public media endpoint. Commits b6de5d2e, 9c8a1c65, 4204231f, 87840ad5, 1e231f8e. Doctor portrait upload/publication is not supported by existing doctor source (NONE/CONSENT_PENDING only); keep neutral fallback rather than fabricate identity/media. Original CG14 US-004-QA04/05/06/09/10/14/15/17/18 source trace only. Verify SQL bind count, current rights/revocation, no private photo or service claims.
 - HUX-02.01 / 13.01 / 13.02: public native healthcare, booking, assistance and root shell now consume one shared public semantic theme derived from existing public Web and CMS colors; internal staff retains original Admin tokens. No business behavior changes; visual/contrast/touch QA still NOT_RUN.
+
+## Center-specific booking navigation and parity
+
+- HUX-10.04/11.02: Web doctor cards/profile pass the chosen public center slug into schedule, resolved only against current verified options after date selection; native retains selected center hint, highlights it without automatic booking, adds direct time-first search, retry and stale-day/center response guards. CG15 US-002-QA01/02/04/05/06/07/09/12/13 and CG14 US-004-QA11/12/17 partial source trace. Verify center A/B distinct fees, withdrawn selected center, both search modes, date change and error retry, no slot/price assumptions. Runtime NOT_RUN; independent review pending.
 
 ## Subtracker details and expected user scenarios
 

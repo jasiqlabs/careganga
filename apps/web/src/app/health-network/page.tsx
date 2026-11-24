@@ -213,11 +213,11 @@ export default async function HealthcareDirectory({searchParams}:Props){
         <Link href={"/health-network/doctors/"+encodeURIComponent(d.doctorRef)}>
          View doctor profile</Link>
         {!canReschedule&&d.fee&&<Link className="cg-health-link-action primary"
-         href={"/health-network/doctors/"+encodeURIComponent(d.doctorRef)+"/schedule"}>
+         href={"/health-network/doctors/"+encodeURIComponent(d.doctorRef)+"/schedule?center="+encodeURIComponent(d.centerSlug)}>
          Check appointment times</Link>}
        </div>
        {canReschedule&&<p><Link href={"/health-network/doctors/"+
-        encodeURIComponent(d.doctorRef)+"/schedule?reschedule="+
+        encodeURIComponent(d.doctorRef)+"/schedule?center="+encodeURIComponent(d.centerSlug)+"&reschedule="+
         encodeURIComponent(rescheduleRef)+"&version="+rescheduleVersion}>
         Choose a time with this doctor</Link></p>}
       </article>)}

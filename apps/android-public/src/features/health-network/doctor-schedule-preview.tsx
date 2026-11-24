@@ -1,5 +1,5 @@
 import {useCallback,useEffect,useMemo,useRef,useState} from "react";
-import {ActivityIndicator,Pressable,StyleSheet,Text,View} from "react-native";
+import {ActivityIndicator,Pressable,StyleSheet,Text,TextInput,View} from "react-native";
 import {careGangaPublicTheme as theme} from "../../../../../packages/design-tokens/src/index";
 import {NativeConsultationAction} from "../appointments/native-consultation-action";
 
@@ -39,14 +39,15 @@ async function get<T>(path:string):Promise<T>{
 const money=(minor:string|null)=>minor!==null&&/^\d+$/.test(minor)?
  "₹"+(Number(minor)/100).toLocaleString("en-IN",{maximumFractionDigits:2}):
  "Fee not confirmed";
-export function DoctorSchedulePreview({doctorRef,reschedule}:{doctorRef:string;
+export function DoctorSchedulePreview({doctorRef,reschedule,preferredCenterSlug}:{doctorRef:string;preferredCenterSlug?:string;
  reschedule?:{bookingRef:string;expectedVersion:number}}){
  const [week,setWeek]=useState(0),[day,setDay]=useState(dateAt(0));
  const [options,setOptions]=useState<Options|null>(null);
  const [center,setCenter]=useState<Center|null>(null);
  const [detail,setDetail]=useState<Detail|null>(null);
  const [choices,setChoices]=useState<Choices|null>(null);
- const [searchTime,setSearchTime]=useState("");
+ const [searchTime,setSearchTime]=useState(""),[timeInput,setTimeInput]=useState("");
+ const [refresh,setRefresh]=useState(0);
  const [loading,setLoading]=useState(false);
  const [error,setError]=useState("");
  const sequence=useRef(0);
@@ -59,12 +60,13 @@ export function DoctorSchedulePreview({doctorRef,reschedule}:{doctorRef:string;
   void get<Options>("doctor/"+encodeURIComponent(doctorRef)+
    "/center-options?date="+encodeURIComponent(day))
    .then(result=>{if(id===sequence.current){
+    if(result.day!==day||!Array.isArray(result.centers)||result.centers.length>25)throw Error("The current center list could not be verified.");
     setOptions(result);setLoading(false);
    }})
    .catch(e=>{if(id===sequence.current){setError(e instanceof Error?
      e.message:"Working hours could not be checked.");setLoading(false);}});
   return()=>{sequence.current++;};
- },[doctorRef,day]);
+ },[doctorRef,day,refresh]);
  const chooseCenter=useCallback(async(value:Center)=>{
   const id=++sequence.current;
   setCenter(value);setDetail(null);setChoices(null);setSearchTime("");
@@ -73,31 +75,33 @@ export function DoctorSchedulePreview({doctorRef,reschedule}:{doctorRef:string;
    const result=await get<Detail>("center-first?doctorRef="+
     encodeURIComponent(doctorRef)+"&centerRef="+
     encodeURIComponent(value.centerRef)+"&date="+encodeURIComponent(day));
-   if(id===sequence.current){setDetail(result);setLoading(false);}
+   if(id===sequence.current){if(result.centerRef!==value.centerRef||!Array.isArray(result.slots))throw Error("The current center schedule could not be verified.");setDetail(result);setLoading(false);}
   }catch(e){if(id===sequence.current){
    setError(e instanceof Error?e.message:"Working hours could not be checked.");
    setLoading(false);
   }}
  },[doctorRef,day]);
  const compare=useCallback(async(time:string)=>{
+  if(!/^([01]\d|2[0-3]):[0-5]\d$/.test(time))return;
   const id=++sequence.current;setSearchTime(time);setChoices(null);
   setError("");setLoading(true);
   try{
    const result=await get<Choices>("slot-first?doctorRef="+
     encodeURIComponent(doctorRef)+"&date="+encodeURIComponent(day)+
     "&time="+encodeURIComponent(time));
-   if(id===sequence.current){setChoices(result);setLoading(false);}
+   if(id===sequence.current){if(!Array.isArray(result.centerChoices)||result.centerChoices.length>25)throw Error("The current center choices could not be verified.");setChoices(result);setLoading(false);}
   }catch(e){if(id===sequence.current){
    setError(e instanceof Error?e.message:"Center choices could not be checked.");
    setLoading(false);
   }}
  },[doctorRef,day]);
+ const changeDay=(value:string)=>{if(value===day)return;sequence.current++;setOptions(null);setDetail(null);setChoices(null);setCenter(null);setError("");setLoading(true);setDay(value);};
  const changeWeek=(delta:number)=>{
   const target=Math.max(0,Math.min(4,week+delta));
   setWeek(target);
   // Changing the displayed week also changes the queried day; never
   // show stale old-week sessions under a new date heading.
-  setDay(dateAt(target*7));
+  changeDay(dateAt(target*7));
  };
  const button=(text:string,action:()=>void,active=false,disabled=false)=>(
   <Pressable accessibilityRole="button" accessibilityState={{selected:active,disabled}}
@@ -119,17 +123,18 @@ export function DoctorSchedulePreview({doctorRef,reschedule}:{doctorRef:string;
    {days.map(item=>button(
     new Date(item.date+"T12:00:00Z").toLocaleDateString("en-IN",{
      day:"numeric",month:"short",weekday:"short"}),
-    ()=>setDay(item.date),day===item.date))}
+    ()=>changeDay(item.date),day===item.date))}
   </View>
   {loading&&<ActivityIndicator accessibilityLabel="Checking verified working hours"/>}
-  {!!error&&<Text style={style.error} accessibilityRole="alert">{error}</Text>}
+  {!!error&&<View><Text style={style.error} accessibilityRole="alert">{error}</Text>{button("Check again",()=>setRefresh(v=>v+1),false,loading)}</View>}
   {options&&!loading&&options.centers.length===0&&
    <Text style={style.help}>No verified current center schedule is available.</Text>}
-  {options&&<View>
+  {options&&!loading&&<View>
    <Text style={style.subheading}>Choose a verified center</Text>
    <View style={style.actions}>
-    {options.centers.map(c=><View key={c.centerRef} style={style.center}>
+    {[...options.centers].sort((a,b)=>Number(b.centerSlug===preferredCenterSlug)-Number(a.centerSlug===preferredCenterSlug)).map(c=><View key={c.centerRef} style={[style.center,c.centerSlug===preferredCenterSlug&&style.selected]}>
      <Text style={style.centerName}>{c.centerName}</Text>
+     {c.centerSlug===preferredCenterSlug&&<Text style={style.help}>Center selected from your search</Text>}
      <Text style={style.help}>{money(c.consultationFeeMinor)}.
       {c.hasWorkingSchedule?" Published weekly hours.":" No current weekly hours."}</Text>
      {button("View working hours",()=>void chooseCenter(c),
@@ -137,7 +142,12 @@ export function DoctorSchedulePreview({doctorRef,reschedule}:{doctorRef:string;
     </View>)}
    </View>
   </View>}
-  {detail&&center&&<View>
+  {options&&!loading&&<View style={style.center}>
+   <Text accessibilityRole="header" style={style.subheading}>Find a time across centers</Text>
+   <TextInput accessibilityLabel="Local appointment time, 24-hour HH:MM" value={timeInput} onChangeText={setTimeInput} maxLength={5} placeholder="09:30" style={style.input}/>
+   {button("Find centers at this time",()=>void compare(timeInput),false,!/^([01]\d|2[0-3]):[0-5]\d$/.test(timeInput))}
+  </View>}
+  {detail&&center&&!loading&&<View>
    <Text accessibilityRole="header" style={style.subheading}>
     {center.centerName} · {day}</Text>
    <Text style={style.help}>Times in {detail.timeZone}. A time is confirmed only after final review.</Text>
@@ -159,10 +169,10 @@ export function DoctorSchedulePreview({doctorRef,reschedule}:{doctorRef:string;
         feeVersion={detail.consultationFeeVersion} reschedule={reschedule}/>}
      </View>)}</View>}
   </View>}
-  {choices&&<View>
-   <Text style={style.subheading}>Other verified centers at {searchTime}</Text>
+  {choices&&!loading&&<View>
+   <Text style={style.subheading}>Verified centers at {searchTime}</Text>
    {choices.centerChoices.length===0?
-    <Text style={style.help}>No matching working time in another center.</Text>:
+    <Text style={style.help}>No matching working time was found.</Text>:
     choices.centerChoices.map(c=><View key={c.centerRef} style={style.center}>
      <Text style={style.help}>{c.centerName}, {c.address}, {c.pinCode}.
       {money(c.consultationFeeMinor)}. {c.timeZone}.</Text>
@@ -187,13 +197,14 @@ const style=StyleSheet.create({
  help:{fontSize:13,lineHeight:19,color:theme.mutedText,flexShrink:1},
  actions:{flexDirection:"row",gap:8,flexWrap:"wrap"},
  button:{borderWidth:1,borderColor:theme.border,paddingHorizontal:10,
-  paddingVertical:10,borderRadius:10,minHeight:42,justifyContent:"center"},
- selected:{borderColor:theme.primary,backgroundColor:theme.surface},
+  paddingVertical:10,borderRadius:10,minHeight:48,justifyContent:"center"},
+ selected:{borderColor:theme.primary,backgroundColor:theme.selectedSurface},
  disabled:{opacity:0.45},
  buttonText:{fontSize:13,fontWeight:"600",color:theme.text},
  center:{borderWidth:1,borderColor:theme.border,borderRadius:10,padding:12,gap:5,
   minWidth:180,maxWidth:330,flexGrow:1},
  centerName:{fontSize:15,fontWeight:"700",color:theme.text},
- window:{minWidth:140},
+ input:{borderWidth:1,borderColor:theme.border,borderRadius:8,padding:12,minHeight:48,color:theme.text},
+ window:{minWidth:140,maxWidth:"100%"},
  error:{color:theme.error,fontSize:13}
 });
