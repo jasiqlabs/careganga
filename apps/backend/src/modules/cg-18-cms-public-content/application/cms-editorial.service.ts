@@ -1140,7 +1140,19 @@ export class CmsEditorialService{
    [x.foundation_root_id,x.revision_id]);
   if(Number(inventory.rows[0]?.count??0)!==assets.rows.length)
    throw new NotFoundException({code:"CMS_NOT_PUBLISHED"});
-  const authoredSections:Section[]=sections.rows.map(sec=>({
+  // CG06 is never a public directory. An explicitly editorial-approved STATS
+ // item with the reserved source label may expose only a coarse foundation-wide
+ // recipient count for the approved calendar year. Stale/small results disappear.
+ for(const sec of sections.rows){
+  if(sec.section_kind!=="IMPACT_GROUP"||sec.structured_fields.source!=="CG06 verified beneficiary impact")continue;
+  const fields=sec.structured_fields,year=typeof fields.asOfDate==="string"?fields.asOfDate.slice(0,4):"";
+  const item=Array.isArray(fields.items)&&fields.items.length===1?fields.items[0] as Record<string,unknown>:null;
+  const safe=fields.group==="STATS"&&/^\d{4}$/.test(year)&&fields.asOfDate===year+"-12-31"&&Number(year)<new Date().getUTCFullYear()&&item?.title==="Beneficiaries supported"&&typeof item.value==="number"&&Number.isInteger(item.value)&&item.value>=10&&item.value%10===0;
+  let count=0;
+  if(safe){const q=await this.db.query<{n:number}>("SELECT count(DISTINCT b.id)::int AS n FROM assistance_delivery_event d JOIN assistance_case a ON a.root_realm_id=d.root_realm_id AND a.id=d.assistance_id JOIN beneficiary b ON b.root_realm_id=a.root_realm_id AND b.id=a.beneficiary_id AND b.branch_scope_id IS NOT DISTINCT FROM a.branch_ref WHERE d.root_realm_id=$1 AND b.consent_revoked_at IS NULL AND b.lifecycle_state='ACTIVE' AND d.action IN('DELIVERED','PAID') AND d.at>=($2::date::timestamp AT TIME ZONE 'Asia/Kolkata') AND d.at<(($3::date+1)::timestamp AT TIME ZONE 'Asia/Kolkata')",[x.foundation_root_id,year+"-01-01",year+"-12-31"]);count=Math.floor(q.rows[0].n/10)*10;}
+  sec.structured_fields={group:"STATS",heading:"Beneficiary impact",intro:safe&&count>=10&&count===item?.value?"Approved aggregate, rounded down to tens.":"Verified beneficiary impact is currently unavailable.",source:"CG06 verified beneficiary impact",asOfDate:fields.asOfDate,items:safe&&count>=10&&count===item?.value?[{title:"Beneficiaries supported",value:count,description:"Foundation-wide, rounded down to tens",unit:"people"}]:[]};
+ }
+ const authoredSections:Section[]=sections.rows.map(sec=>({
   kind:sec.section_kind as Section["kind"],order:sec.order_no,
   fields:sec.structured_fields}));
  if(x.kind==="HEALTHCARE"&&!healthcareEditorialClaimsSafe(authoredSections,[x.title,x.seo_title,x.seo_description]))
