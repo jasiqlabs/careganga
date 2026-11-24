@@ -20,5 +20,6 @@ export class PayrollRunController{
  @Post(":ref/prepare-batch") @Header("Cache-Control","private, no-store") prepareBatch(@Headers("authorization")token:string,@Param("ref")ref:string,@Body()raw:unknown){return this.payments.prepare(token,ref,raw);}
  @Post(":ref/request-payout") @Header("Cache-Control","private, no-store") requestPayout(@Headers("authorization")token:string,@Param("ref")ref:string,@Body()raw:unknown){return this.payments.requestAttempt(token,ref,raw);}
  @Get(":ref/payment-outcomes") @Header("Cache-Control","private, no-store") paymentOutcomes(@Headers("authorization")token:string,@Param("ref")ref:string){return this.payments.outcomes(token,ref);}
+ @Get(":ref/payment-report") @Header("Cache-Control","private, no-store") paymentReport(@Headers("authorization")token:string,@Param("ref")ref:string,@Query("q")q?:string,@Query("state")state?:string){return this.payments.report(token,ref,q,state);}
  @Get(":ref") @Header("Cache-Control","private, no-store") detail(@Headers("authorization")token:string,@Param("ref")ref:string){return this.runs.detail(token,ref);}
 }

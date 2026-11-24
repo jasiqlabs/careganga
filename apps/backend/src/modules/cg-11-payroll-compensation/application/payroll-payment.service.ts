@@ -67,7 +67,7 @@ export class PayrollPaymentService{
   await recordPayrollAudit(tx,a,"RUN","DRAFT_CREATED",key);
   return {batchRef:batch.id,replayed:false};
  });}
- async outcomes(token:string,ref:string){return this.comp.run(token,"payroll.runs.view",async(tx,a)=>{
+ async outcomes(token:string,ref:string,forReport=false){return this.comp.run(token,forReport?"mis.reports.export":"payroll.runs.view",async(tx,a)=>{
   const r=await this.approved(tx,a,ref);
   const batch=(await tx.query<{id:string;method:string}>(`SELECT id,method FROM payroll_batch WHERE root_realm_id=$1 AND run_id=$2`,[a.realmId,r.id])).rows[0];
   const items=(await tx.query<{lineRef:string;itemRef:string|null;employeeRef:string;name:string;employeeCode:string;department:string|null;designation:string|null;grossMinor:string;deductionMinor:string;dueMinor:string;paidMinor:string;entitlement:string;attempts:{voucherRef:string;voucherNumber:string;amountMinor:string;paidMinor:string;state:string;reversed:boolean}[]}>(`
@@ -77,8 +77,19 @@ export class PayrollPaymentService{
    WHERE l.root_realm_id=$1 AND l.run_id=$2 ORDER BY l.employee_ref`,[a.realmId,r.id])).rows;
   const due=items.reduce((n,x)=>n+BigInt(x.dueMinor),0n),paid=items.reduce((n,x)=>n+BigInt(x.paidMinor),0n);
   await recordPayrollAudit(tx,a,"RUN","READ");
-  return {batchRef:batch?.id??null,method:batch?.method??null,dueMinor:String(due),paidMinor:String(paid),status:items.some(x=>x.attempts.some(t=>t.reversed||(t.state==="POSTED"&&t.paidMinor!==t.amountMinor)))?"RECONCILIATION_REQUIRED":due>0n&&due===paid?"PAID_VERIFIED":paid>0n?"PARTIALLY_PAID":items.some(x=>x.attempts.some(t=>!["POSTED","REJECTED"].includes(t.state)))?"PAYMENT_PENDING":"APPROVED_NOT_PAID",items:items.map(x=>({...x,status:x.attempts.some(t=>t.reversed||(t.state==="POSTED"&&t.paidMinor!==t.amountMinor))?"RECONCILIATION_REQUIRED":BigInt(x.dueMinor)===0n?"NO_PAYMENT_DUE":x.paidMinor===x.dueMinor?"PAID_VERIFIED":BigInt(x.paidMinor)>0n?"PARTIALLY_PAID":x.entitlement==="HELD"?"HELD":x.attempts.some(t=>!["REJECTED","POSTED"].includes(t.state))?"PAYMENT_PENDING":!x.itemRef?"DESTINATION_OR_BATCH_PENDING":"DUE"}))};
+  return {batchRef:batch?.id??null,method:batch?.method??null,dueMinor:String(due),paidMinor:String(paid),status:paid>due||items.some(x=>BigInt(x.paidMinor)>BigInt(x.dueMinor)||x.attempts.some(t=>t.reversed||(t.state==="POSTED"&&t.paidMinor!==t.amountMinor)))?"RECONCILIATION_REQUIRED":due===0n?"NO_PAYMENT_DUE":due===paid?"PAID_VERIFIED":paid>0n?"PARTIALLY_PAID":items.some(x=>x.attempts.some(t=>!["POSTED","REJECTED"].includes(t.state)))?"PAYMENT_PENDING":"APPROVED_NOT_PAID",items:items.map(x=>({...x,status:BigInt(x.paidMinor)>BigInt(x.dueMinor)||x.attempts.some(t=>t.reversed||(t.state==="POSTED"&&t.paidMinor!==t.amountMinor))?"RECONCILIATION_REQUIRED":BigInt(x.dueMinor)===0n?"NO_PAYMENT_DUE":x.paidMinor===x.dueMinor?"PAID_VERIFIED":BigInt(x.paidMinor)>0n?"PARTIALLY_PAID":x.entitlement==="HELD"?"HELD":x.attempts.some(t=>!["REJECTED","POSTED"].includes(t.state))?"PAYMENT_PENDING":!x.itemRef?"DESTINATION_OR_BATCH_PENDING":"DUE"}))};
  });}
+ async report(token:string,ref:string,q="",state=""){
+  if(typeof q!=="string"||q.length>100||typeof state!=="string"||state.length>100)throw new ConflictException("Invalid report filters");
+  const result=await this.outcomes(token,ref,true),needle=q.toLowerCase();
+  const rows=result.items.filter(x=>(!state||x.status===state)&&[x.name,x.employeeCode,x.department??""].some(v=>v.toLowerCase().includes(needle)));
+  if(rows.length>5000)throw new ConflictException("Narrow report filters");
+  const cell=(value:string)=>'"'+(/^[\s]*[=+@-]|^[\t\r\n]/.test(value)?"'"+value:value).replaceAll('"','""')+'"';
+  const rupees=(value:string)=>{const n=BigInt(value);return (n/100n).toString()+"."+(n%100n).toString().padStart(2,"0");};
+  const csv=[["Employee reference","Employee","Department","Designation","Gross INR","Deductions INR","Net INR","Verified paid INR","Payment status"],...rows.map(x=>[x.employeeCode,x.name,x.department??"",x.designation??"",rupees(x.grossMinor),rupees(x.deductionMinor),rupees(x.dueMinor),rupees(x.paidMinor),x.status])].map(row=>row.map(cell).join(",")).join("\r\n");
+  if(Buffer.byteLength(csv,"utf8")>2097152)throw new ConflictException("Narrow report filters");
+  return {csv,filename:"CareGanga-Payroll-History.csv"};
+ }
  async requestAttempt(token:string,ref:string,raw:unknown){return this.comp.run(token,"payroll.runs.manage",async(tx,a)=>{
   const x=fields(raw,["requestKey","itemRef","amountMinor"]),key=id(x.requestKey),item=id(x.itemRef),amount=minor(x.amountMinor);
   const r=await this.approved(tx,a,ref,true);await this.financeScope(tx,a,r.branch_ref,"finance.vouchers.manage");
