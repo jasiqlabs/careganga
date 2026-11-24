@@ -3,11 +3,11 @@
   "private": true,
   "version": "0.1.0",
   "scripts": {
-    "dev": "tsc -p tsconfig.json && node --watch --env-file=.env dist/src/main.js",
+    "dev": "npm run build && node --watch --env-file-if-exists=.env dist/src/main.js",
     "start": "node dist/src/main.js",
-    "build": "tsc -p tsconfig.json",
-    "db:migrate": "node --env-file=.env ../../node_modules/tsx/dist/cli.mjs db/migrate.ts",
-    "bootstrap:root": "node --env-file=.env ../../node_modules/tsx/dist/cli.mjs src/modules/cg-01-identity-access/infrastructure/bootstrap-root.ts",
+    "build": "tsc -p tsconfig.json && node db/baseline.mjs contract",
+    "db:migrate": "node --env-file-if-exists=.env ../../node_modules/tsx/dist/cli.mjs db/migrate.ts",
+    "bootstrap:root": "node --env-file-if-exists=.env ../../node_modules/tsx/dist/cli.mjs src/modules/cg-01-identity-access/infrastructure/bootstrap-root.ts",
     "test:cg11-provider-readback": "tsx --test test/cg11-provider-readback.test.ts",
     "test:cg20-source-contracts": "tsx --test test/cg20-source-contract.test.ts",
     "test:cg10-enrollment": "tsx --test test/cg10-enrollment-contract.test.ts",
@@ -46,7 +46,11 @@
     "test:cg06-us001": "tsx --test test/cg06-us001-beneficiary-contract.test.ts test/cg06-us001-source-integrity.test.ts test/cg06-us001-verification-source-contract.test.ts",
     "test:cg06-all": "tsx --test test/cg06-us001-beneficiary-contract.test.ts test/cg06-us001-source-integrity.test.ts test/cg06-us001-verification-source-contract.test.ts test/cg06-us002-us003-source-integrity.test.ts",
     "test:cg06-db-integrity": "node --env-file=.env ../../node_modules/tsx/dist/cli.mjs --test test/cg06-db-integrity.test.ts",
-    "test:cg06-all-60-qa": "node --env-file=.env ../../node_modules/tsx/dist/cli.mjs --test test/cg06-all-60-qa-scenarios.test.ts"
+    "test:cg06-all-60-qa": "node --env-file=.env ../../node_modules/tsx/dist/cli.mjs --test test/cg06-all-60-qa-scenarios.test.ts",
+    "db:baseline:generate": "npm run build && node db/baseline.mjs generate --confirm-disposable",
+    "db:init": "node --env-file-if-exists=.env db/baseline.mjs init",
+    "db:upgrade": "node --env-file-if-exists=.env db/baseline.mjs upgrade",
+    "db:release:check": "node db/baseline.mjs check"
   },
   "dependencies": {
     "@nestjs/common": "12.5.0",

@@ -25,7 +25,7 @@ const legacyDuplicate1438 = {
 } as const;
 
 async function migrate(): Promise<void> {
-  const rawUrl = process.env.DATABASE_MIGRATION_URL || process.env.DATABASE_URL;
+  const rawUrl = process.env.DATABASE_MIGRATION_URL;
   if (!rawUrl) throw new Error("DATABASE_MIGRATION_URL is required; use a direct database connection");
   // Neon connection pooler (-pooler.) uses PgBouncer in transaction mode where session-level
   // advisory locks can persist across pooled connections. Automatically normalize to direct host.
@@ -62,7 +62,10 @@ async function migrate(): Promise<void> {
       throw new Error("Could not acquire pg_advisory_lock(16041115, 1) within 15 seconds. Ensure direct database connection is used and no concurrent migration is running.");
     }
     try {
-      await client.query(`CREATE TABLE IF NOT EXISTS schema_migration (
+      if (process.argv.includes("--existing-only")) {
+        const found = await client.query("SELECT to_regclass('public.schema_migration') AS ledger");
+        if (!found.rows[0]?.ledger) throw new Error("Database initialization required; upgrades never initialize a database.");
+      } else await client.query(`CREATE TABLE IF NOT EXISTS schema_migration (
         filename text PRIMARY KEY,
         sha256 text NOT NULL,
         applied_at timestamptz NOT NULL DEFAULT now()
@@ -81,7 +84,8 @@ async function migrate(): Promise<void> {
           break;
         } catch {}
       }
-      const files = (await readdir(directory)).filter(x => /^\d+_cg\d+_[a-z0-9_-]+\.sql$/.test(x)).sort();
+      const files = (await readdir(directory)).filter(x => /^\d+_cg\d+_[a-z0-9_-]+\.sql$/.test(x))
+        .sort((a,b) => Number(a.split("_")[0])-Number(b.split("_")[0]) || a.localeCompare(b,"en"));
       // Never accept a checkout that silently omits an already applied migration.
       // A hash match alone only detects edited files, not deleted historical files.
       const applied = await client.query<{ filename:string }>(

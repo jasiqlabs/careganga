@@ -49,3 +49,6 @@ Zero unresolved blocking source/build/test/security/integration defects. Genuine
 
 ## Executed evidence before handoff
 11/11 deterministic tests passed on Node 22.16.0: six readiness mock API cases plus five first-release wrapper command cases, exact committed Git blobs verified. Generated pack file SHA-256 values were rechecked. No real application build, deployment, CG19 storage upload, DB integration, independent reviewer signoff, live public website publication or device acceptance claimed. First-release command and hosting wiring requirements committed; actual provider promotion has not been configured here.
+
+## Child branch only — greenfield DB release simplification
+On `feature/careganga-greenfield-db-baseline-20261124`, follow [Hostinger DB deployment guide](../deployment/hostinger-greenfield-database.md). This child branch preserves the current healthcare handoff base and must not be merged until baseline.sql-equivalent schema.sql plus manifest.json have been generated, reviewed and accepted on disposable PostgreSQL. First-install and restart regression pending; do not use old db:migrate as the production startup command. No runtime or independent review claimed for this change. Existing developer handoff branch remains untouched.
