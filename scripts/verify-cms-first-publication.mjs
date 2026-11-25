@@ -20,6 +20,8 @@ export async function readiness(base,request=fetch){
   return response.json();
  };
  const failures=[];
+ const mediaPaths=new Set();
+ const mediaSource=src=>typeof src==="string"&&(/^\/api\/public\/content\/media\/[a-f0-9-]{36}$/i.test(src)||/^\/api\/public\/content\/release-media\/[a-z-]{1,45}$/.test(src));
  const requiredIntroPlacements=["TEAM","MEMBERSHIP","VOLUNTEER","NOTICES","UPCOMING_PROJECTS","ANNUAL_REPORTS","FINANCIAL_REPORTS"];
  const requiredRoutes=[...baseline,["our-work","PROJECTS","/our-work"],["upcoming-projects","PROJECTS","/upcoming-projects"]];
  for(const [slug,kind,path] of requiredRoutes){
@@ -31,12 +33,13 @@ export async function readiness(base,request=fetch){
     !Array.isArray(p.assets)){failures.push(slug);continue;}
    if(slug==="about"&&requiredIntroPlacements.some(placement=>!p.sections.some(s=>s.kind==="RICH_TEXT"&&s.fields?.placement===placement&&typeof s.fields.heading==="string"&&s.fields.heading.trim()&&typeof s.fields.body==="string"&&s.fields.body.trim())))failures.push("about-editorial-intros");
    if(slug==="home"&&(!["HERO","RICH_TEXT","CTA","FEATURE_CARDS","JOIN_CARDS","PROJECT_TEASER","SITE_FOOTER"].every(kind=>p.sections.some(s=>s.kind===kind))||!p.sections.some(s=>s.kind==="HERO"&&s.fields?.visible!==false)))failures.push("home-editorial-sections");
-   if(slug==="home"&&[["HERO",0],["ABOUT",20],["PROMO",30],["FEATURE",0],["FEATURE",1],["FEATURE",2]].some(([role,order])=>!p.assets.some(a=>a.role===role&&a.order===order&&typeof a.altText==="string"&&a.altText.trim()&&typeof a.src==="string"&&(/^\/api\/public\/content\/media\/[a-f0-9-]{36}$/i.test(a.src)||/^\/api\/public\/content\/release-media\/[a-z-]{1,45}$/.test(a.src)))))failures.push("home-editorial-media");
+   if(slug==="home"&&[["HERO",0],["ABOUT",20],["PROMO",30],["FEATURE",0],["FEATURE",1],["FEATURE",2]].some(([role,order])=>!p.assets.some(a=>a.role===role&&a.order===order&&typeof a.altText==="string"&&a.altText.trim()&&mediaSource(a.src))))failures.push("home-editorial-media");
    if(slug==="healthcare"){
     const category=p.sections.find(s=>s.kind==="HEALTHCARE_CATEGORIES");
     if(!p.sections.some(s=>s.kind==="HERO"&&s.fields?.visible!==false&&typeof s.fields?.heading==="string"&&s.fields.heading.trim())||JSON.stringify(category?.fields?.categories?.map(v=>v.title))!==JSON.stringify(["Poly Clinic","Diagnostic Centre","Dental Clinic","Medical Laboratory","Hospital & Nursing Home","Retail Pharmacy","Orthopedic Centre","Homoeopathy Centre","Ayurvedic Centre"])||!category.fields.categories.every(v=>typeof v.description==="string"&&v.description.trim()))failures.push("healthcare-editorial-sections");
-    if([["HERO",0],...Array.from({length:9},(_,i)=>["FEATURE",i])].some(([role,order])=>!p.assets.some(a=>a.role===role&&a.order===order&&typeof a.altText==="string"&&a.altText.trim()&&typeof a.src==="string"&&/^\/api\/public\/content\/media\/[a-f0-9-]{36}$/i.test(a.src))))failures.push("healthcare-editorial-media");
+    if([["HERO",0],...Array.from({length:9},(_,i)=>["FEATURE",i])].some(([role,order])=>!p.assets.some(a=>a.role===role&&a.order===order&&typeof a.altText==="string"&&a.altText.trim()&&mediaSource(a.src))))failures.push("healthcare-editorial-media");
    }
+   if(slug==="home"||slug==="healthcare")for(const asset of p.assets)if(mediaSource(asset.src))mediaPaths.add(asset.src);
    if(slug==="contact"&&!p.sections.some(s=>s.kind==="CONTACT_INFO"&&Array.isArray(s.fields?.faqs)&&s.fields.faqs.length>=4))failures.push("contact-faqs");
   }catch{failures.push(slug);}
  }
@@ -47,6 +50,17 @@ export async function readiness(base,request=fetch){
    requiredRoutes.filter(([slug])=>slug!=="home").some(([slug,kind,path])=>!n.publishedRoutes.some(p=>p.slug===slug&&p.kind===kind&&p.path===path)))
    failures.push("navigation");
  }catch{failures.push("navigation");}
+ // Verify actual returned bytes, not just URL-shaped strings.
+ for(const path of mediaPaths)try{
+  const res=await request(new URL(path,u),{redirect:"error",cache:"no-store",signal:AbortSignal.timeout(15000)});
+  if(!res.ok)throw Error("media unavailable");
+  const mime=res.headers.get("content-type")?.split(";")[0];
+  const bytes=new Uint8Array(await res.arrayBuffer());
+  if(bytes.length<100||bytes.length>10*1024*1024||
+    !(mime==="image/webp"&&String.fromCharCode(...bytes.slice(0,4))==="RIFF"&&String.fromCharCode(...bytes.slice(8,12))==="WEBP"||
+      mime==="image/png"&&bytes[0]===137&&String.fromCharCode(...bytes.slice(1,4))==="PNG"||
+      mime==="image/jpeg"&&bytes[0]===255&&bytes[1]===216))throw Error("invalid media");
+ }catch{failures.push("image-unavailable:"+path.split("/").at(-1));}
  return failures;
 }
 if(process.argv[1]&&import.meta.url===pathToFileURL(process.argv[1]).href){
