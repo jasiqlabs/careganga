@@ -64,7 +64,6 @@ async function bootstrap(): Promise<void> {
   try {
     const root=await provisionInitialRoot(pool,"startup");
     if(root==="created")console.log("Protected initial administrator provisioned.");
-    if(root==="not-configured")console.log("No initial administrator credentials supplied; public CMS can start.");
     await app.get(CmsEditorialService).initializeReleaseBaseline();
   }
   catch { await app.close(); throw new Error("Initial application setup failed. Verify protected administrator configuration, bundled assets and database permissions."); }
