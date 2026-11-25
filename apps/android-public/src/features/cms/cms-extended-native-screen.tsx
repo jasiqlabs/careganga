@@ -5,7 +5,7 @@ type Fields=Record<string,unknown>;
 type Section={kind:string;order:number;fields:Fields};
 type Asset={role:string;altText:string;src:string;order:number};
 const text=(v:unknown)=>typeof v==="string"?v:"";
-const rows=(v:unknown)=>Array.isArray(v)?v.filter(x=>x&&typeof x==="object")
+const rows=(v:unknown)=>Array.isArray(v)?v.filter(x=>x&&typeof x==="object"&&!Array.isArray(x))
  .slice(0,16) as Fields[]:[];
 function Action({title,onPress}:{title:string;onPress:()=>void}){
  return <Pressable style={styles.button} accessibilityRole="button" onPress={onPress}>
@@ -26,8 +26,9 @@ export function CmsPublicExtendedSection({section,assets,mediaUrl,onContact,
  ngoScope?:"80g"|"pan-details"|"registration-certificate"|"annual-reports";backLabel?:string}){
  const f=section.fields;
  const impactItems=rows(f.items);
- const impactPeak=Math.max(0,...impactItems.map(v=>typeof v.value==="number"&&
-  Number.isFinite(v.value)?v.value:0));
+ const finite=(v:unknown):v is number=>typeof v==="number"&&Number.isFinite(v);
+ const validPercentage=(v:unknown):v is number=>finite(v)&&v>=0&&v<=100;
+ const impactPeak=Math.max(0,...impactItems.map(v=>finite(v.value)?v.value:0));
  const [mediaFilter,setMediaFilter]=useState("PHOTO");
  const actualMedia=mediaScope??mediaFilter;
  const [categoryFilter,setCategoryFilter]=useState("ALL");
@@ -38,7 +39,7 @@ export function CmsPublicExtendedSection({section,assets,mediaUrl,onContact,
  const galleryItems=rows(f.items);
  const asset=(role:string,order=section.order)=>assets.find(a=>a.role===role&&a.order===order);
  const available=galleryItems.map((item,index)=>({item,i:typeof item.originalIndex==="number"&&Number.isSafeInteger(item.originalIndex)?item.originalIndex:index}))
-  .filter(({item,i})=>item.mediaType===actualMedia&&!!mediaUrl(asset("GALLERY",i)));
+  .filter(({item,i})=>item.visible!==false&&item.mediaType===actualMedia&&!!mediaUrl(asset("GALLERY",i)));
  const categories=Array.from(new Set(available.map(({item})=>text(item.category)).filter(Boolean))).sort();
  const mediaYears=Array.from(new Set(available.map(({item})=>text(item.asOfDate).slice(0,4)).filter(y=>/^\d{4}$/.test(y)))).sort((a,b)=>b.localeCompare(a));
  const resetMedia=()=>{setCategoryFilter("ALL");setSearch("");setMediaYear("ALL");};
@@ -69,9 +70,9 @@ export function CmsPublicExtendedSection({section,assets,mediaUrl,onContact,
     {typeof v.year==="number"?" ("+v.year+")":""}</Text>
    {f.group==="GEOGRAPHY"&&["HIGH","MEDIUM","EXPANDING"].includes(text(v.level))&&
     <Text style={styles.source}>Source-reported reach: {text(v.level).toLowerCase()}</Text>}
-   {typeof v.value==="number"&&<Text style={styles.value}>{v.value} {text(v.unit)}</Text>}
-   {typeof v.percentage==="number"&&<Text style={styles.value}>{v.percentage}%</Text>}
-   {["GROWTH","BREAKDOWN"].includes(text(f.group))&&(()=>{
+   {finite(v.value)&&<Text style={styles.value}>{v.value} {text(v.unit)}</Text>}
+   {validPercentage(v.percentage)&&<Text style={styles.value}>{v.percentage}%</Text>}
+   {((f.group==="GROWTH"&&finite(v.value)&&v.value>=0)||(f.group==="BREAKDOWN"&&validPercentage(v.percentage)))&&(()=>{
     const value=f.group==="BREAKDOWN"?
      (typeof v.percentage==="number"?v.percentage:0):
      (typeof v.value==="number"?v.value:0);
@@ -173,11 +174,11 @@ export function CmsPublicExtendedSection({section,assets,mediaUrl,onContact,
  if(section.kind==="GALLERY_GRID")return <View style={styles.section}>
   <Text style={styles.eyebrow}>Media &amp; Resources</Text>
   <Text accessibilityRole="header" style={styles.title}>
-   {mediaScope==="VIDEO"?text(f.videosHeading)||text(f.heading):
-    mediaScope==="PUBLICATION"?text(f.publicationsHeading)||text(f.heading):text(f.heading)}
+   {actualMedia==="VIDEO"?text(f.videosHeading)||text(f.heading):
+    actualMedia==="PUBLICATION"?text(f.publicationsHeading)||text(f.heading):text(f.heading)}
   </Text>
-  <Text style={styles.body}>{mediaScope==="VIDEO"?text(f.videosDescription):
-   mediaScope==="PUBLICATION"?text(f.publicationsDescription):text(f.description)}</Text>
+  <Text style={styles.body}>{actualMedia==="VIDEO"?text(f.videosDescription):
+   actualMedia==="PUBLICATION"?text(f.publicationsDescription):text(f.description)}</Text>
   {!mediaScope&&<View style={styles.filterRow} accessibilityLabel="Approved media type filters">
    {([["PHOTO","Photos"],["VIDEO","Videos"],
      ["PUBLICATION","Publications"]] as const).map(([value,label])=>
@@ -334,9 +335,9 @@ const styles=StyleSheet.create({
  buttonText:{fontSize:15,fontWeight:"700",color:t.sidebar,textAlign:"center",flexShrink:1},
  filterRow:{flexDirection:"row",flexWrap:"wrap",gap:7},
  filter:{borderRadius:8,borderWidth:1,borderColor:t.border,paddingVertical:9,
-  paddingHorizontal:12,minHeight:42,justifyContent:"center"},
+  paddingHorizontal:12,minHeight:48,justifyContent:"center",maxWidth:"100%"},
  filterActive:{backgroundColor:t.primary},
- filterText:{fontWeight:"600",color:t.primary},
+ filterText:{fontWeight:"600",color:t.primary,flexShrink:1},
  filterActiveText:{color:t.primaryText},
  search:{borderWidth:1,borderColor:t.border,borderRadius:8,minHeight:46,
   paddingHorizontal:12,color:t.text}
