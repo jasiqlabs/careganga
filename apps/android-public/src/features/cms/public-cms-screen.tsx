@@ -67,9 +67,20 @@ async function publishedArticles(eventsOnly=false,cursor=""):Promise<{available:
   if(!r.ok)throw Error();
   const v:unknown=await r.json();
   if(!v||typeof v!=="object"||!("posts" in v)||!Array.isArray(v.posts))throw Error();
-  return {available:true,posts:(v.posts as Article[]).filter(a=>a&&
-   typeof a.slug==="string"&&/^[a-z0-9][a-z0-9-]{0,69}$/.test(a.slug)&&
-   a.path==="/blog/"+a.slug).slice(0,20),nextCursor:"nextCursor" in v&&typeof v.nextCursor==="string"&&/^[a-z0-9][a-z0-9-]{0,69}$/.test(v.nextCursor)?v.nextCursor:null};
+  const x=v as {schemaVersion?:unknown;posts:unknown[];nextCursor?:unknown};
+  const valid=(raw:unknown):raw is Article=>{
+   if(!raw||typeof raw!=="object"||Array.isArray(raw))return false;
+   const p=raw as Record<string,unknown>;
+   return typeof p.slug==="string"&&/^[a-z0-9][a-z0-9-]{0,69}$/.test(p.slug)&&
+    p.path==="/blog/"+p.slug&&typeof p.title==="string"&&
+    typeof p.category==="string"&&p.category.length<=80&&
+    typeof p.excerpt==="string"&&p.excerpt.length<=400&&
+    typeof p.asOfDate==="string"&&/^\d{4}-\d{2}-\d{2}$/.test(p.asOfDate);
+  };
+  if(x.schemaVersion!==1||x.posts.length>20||!x.posts.every(valid)||
+    new Set(x.posts.map(p=>p.slug)).size!==x.posts.length||
+    (x.nextCursor!==null&&(typeof x.nextCursor!=="string"||!/^[a-z0-9][a-z0-9-]{0,69}$/.test(x.nextCursor))))throw Error();
+  return {posts:x.posts,nextCursor:x.nextCursor,available:true};
  }catch{return {available:false,posts:[],nextCursor:null};}
 }
 type Notice={title:string;body:string;category:string;
