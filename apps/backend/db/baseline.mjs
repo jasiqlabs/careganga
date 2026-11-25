@@ -1,5 +1,7 @@
 // Explicit operator commands and guarded deployment preparation share one release engine.
 import {createHash,randomBytes} from "node:crypto";
+import dns from "node:dns";
+try{dns.setDefaultResultOrder?.("ipv4first");}catch{}
 import {readFileSync,readdirSync,mkdirSync,writeFileSync,existsSync,renameSync} from "node:fs";
 import {spawnSync} from "node:child_process";
 import {dirname,join,resolve} from "node:path";
@@ -92,7 +94,14 @@ function disposable(value){
 async function withDb(url,fn){
  const {Pool}=await import("pg");
  const p=new Pool({connectionString:url.toString(),max:1,connectionTimeoutMillis:15000,application_name:"careganga-db-release"});
- try{const c=await p.connect();try{return await fn(c);}finally{c.release();}}finally{await p.end();}
+ try{
+  let c;
+  for(let attempt=1;attempt<=3;attempt++){
+   try{c=await p.connect();break;}catch(e){if(attempt===3)throw e;await new Promise(r=>setTimeout(r,1000*attempt));}
+  }
+  if(!c)throw Error("Database connection unavailable");
+  try{return await fn(c);}finally{c.release();}
+ }finally{await p.end();}
 }
 async function ledger(c){
  const r=await c.query("SELECT to_regclass('public.schema_migration') AS present");
@@ -253,7 +262,7 @@ async function grantFreshRuntime(c,role){
  for(const x of tables.rows){
   const name="public."+ident(x.relname);
   if(x.relkind==="S"){await c.query("GRANT USAGE,SELECT ON SEQUENCE "+name+" TO "+q);continue;}
-  const access=x.relname==="schema_migration"||x.relname==="cms_release_install"||x.relkind==="v"||x.relkind==="m"?"SELECT":"SELECT,INSERT,UPDATE,DELETE";
+  const access=x.relname==="schema_migration"||x.relname==="cms_release_install"||x.relkind==="v"||x.relkind==="m"?"SELECT":x.relname==="cms_release_asset"?"SELECT,INSERT,DELETE":"SELECT,INSERT,UPDATE,DELETE";
   await c.query("GRANT "+access+" ON TABLE "+name+" TO "+q);
  }
  // The install marker is insert-once with an immutable database trigger.
@@ -273,6 +282,7 @@ async function prepareDeployment(){
  if(!runtimeUrl)throw Error("Missing DATABASE_URL");
  await withDb(new URL(runtimeUrl),async runtime=>{
   // Healthy restarts need no DDL connection or write privileges.
+  if(await major(runtime)!==release.manifest.postgresMajor)throw Error("Target PostgreSQL major version differs from baseline");
   const initial=await ledger(runtime);
   if(deploymentPlan(initial,release)==="current"){
    const proof=await runtime.query("SELECT to_regclass('public.account') IS NOT NULL AS present");
