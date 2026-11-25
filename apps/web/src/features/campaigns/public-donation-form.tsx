@@ -1,6 +1,6 @@
 "use client";
 import {useRef,useState,type FormEvent} from "react";
-type Outcome={status:string;amountMinor:string;statusToken:string;expiresAt:string;replayed:boolean};
+type Outcome={status:string;amountMinor:string;currency:string;statusToken:string;expiresAt:string;replayed:boolean};
 type Payment={status:string;checkoutUrl:string|null;message?:string};
 type CorrectionRow={correctionNumber:string;originalNumber:string;amountMinor:string;issuedAt:string};
 type HistoricalDonation={donationNumber:string;proofIndex:number;createdAt:string;
@@ -11,6 +11,13 @@ const input={display:"block",width:"100%",minHeight:48,borderRadius:9,padding:12
 const label={display:"grid",gap:6,fontSize:14,fontWeight:600} as const;
 const button={background:"#194a3a",color:"white",padding:"12px 18px",minHeight:48,
  border:0,borderRadius:9,cursor:"pointer"} as const;
+const sourceStatuses=["REQUESTED","LINK_READY","PAYMENT_PENDING","VERIFIED_EXTERNAL","RECONCILIATION_PENDING","RECEIVED_POSTED","FAILED","EXPIRED"];
+const postedStatuses=["RECEIVED_POSTED","REFUNDED_FULL","REFUNDED_PARTIAL"];
+function amountInMinor(value:string):string|null{
+ if(!/^(0|[1-9][0-9]{0,11})(\.[0-9]{1,2})?$/.test(value))return null;
+ const [units,fraction=""]=value.split(".");const minor=BigInt(units)*100n+BigInt(fraction.padEnd(2,"0"));
+ return minor>=100n&&minor<=99999999999999n?minor.toString():null;
+}
 const validMinor=(value:unknown):value is string=>typeof value==="string"&&/^\d+$/.test(value)&&value.length<=30;
 function formatMinor(value:unknown){
  if(!validMinor(value))return "Unavailable";
@@ -47,13 +54,14 @@ export function PublicDonationForm({campaignSlug=null}:{campaignSlug?:string|nul
  const receiptMessageKeys=useRef<{EMAIL:string|null;WHATSAPP:string|null}>({EMAIL:null,WHATSAPP:null});
  const [receiptMessage,setReceiptMessage]=useState("");
  const create=async(event:FormEvent)=>{
-  event.preventDefault();if(busy||!consent||!amount.trim())return;
+  event.preventDefault();if(busy||!consent||proof)return;
+  const expectedMinor=amountInMinor(amount);if(expectedMinor===null){setError("Enter a donation of at least ₹1, with no more than two decimal places.");return;}
   if(!intentKey.current)intentKey.current=crypto.randomUUID();
   setBusy(true);setError("");
   try{
    const out=await api<Outcome>("",{requestKey:intentKey.current,campaignSlug,amount,consent:true,
     donor:{name,mobile,email,pan,address,geography,remarks,recurringIntent,paymentReferenceNote}});
-   if(typeof out.statusToken!=="string"||!out.statusToken||typeof out.status!=="string")throw Error("Donation request cannot be confirmed.");
+   if(typeof out.statusToken!=="string"||!/^[A-Za-z0-9_-]{43}$/.test(out.statusToken)||!sourceStatuses.includes(out.status)||out.amountMinor!==expectedMinor||out.currency!=="INR"||typeof out.replayed!=="boolean"||!Number.isFinite(Date.parse(out.expiresAt))||Date.parse(out.expiresAt)<=Date.now())throw Error("Donation request cannot be confirmed.");
    setProof(out.statusToken);setStatus(out.status);setReceived(false);
    if(!linkKey.current)linkKey.current=crypto.randomUUID();
   }catch(e){setError((e instanceof Error?e.message:"Donation result uncertain.")+
@@ -79,9 +87,12 @@ export function PublicDonationForm({campaignSlug=null}:{campaignSlug?:string|nul
   if(!proof||busy)return;
   setBusy(true);setError("");
   try{const x=await api<{status:string;received:boolean;receiptStatus:string;
-    netReceivedMinor:string;refundedMinor:string;refundPending:boolean;refundStatus:string}>("/status",{statusToken:proof});
-   if(typeof x.status!=="string"||typeof x.received!=="boolean"||typeof x.receiptStatus!=="string"||!validMinor(x.netReceivedMinor)||!validMinor(x.refundedMinor)||typeof x.refundPending!=="boolean"||typeof x.refundStatus!=="string")throw Error("Donation status cannot be confirmed.");
+    netReceivedMinor:string;refundedMinor:string;refundPending:boolean;refundStatus:string;amountMinor:string;currency:string}>("/status",{statusToken:proof});
+   if(typeof x.status!=="string"||typeof x.received!=="boolean"||typeof x.receiptStatus!=="string"||!validMinor(x.netReceivedMinor)||!validMinor(x.refundedMinor)||typeof x.refundPending!=="boolean"||typeof x.refundStatus!=="string"||x.currency!=="INR"||!validMinor(x.amountMinor)||x.amountMinor!==amountInMinor(amount)||
+    ![...sourceStatuses,...postedStatuses].includes(x.status)||x.received!==postedStatuses.includes(x.status)||
+    (x.received?BigInt(x.netReceivedMinor)+BigInt(x.refundedMinor)!==BigInt(x.amountMinor):BigInt(x.netReceivedMinor)!==0n||BigInt(x.refundedMinor)!==0n))throw Error("Donation status cannot be confirmed.");
    if(x.received||!["REQUESTED","LINK_READY"].includes(x.status))setCheckout("");
+   if(!x.received||x.receiptStatus!=="ISSUED"){setReceiptMessage("");setCorrections([]);setCorrectionProof("");}
    setStatus(x.status);setReceived(x.received);setReceiptStatus(x.received?x.receiptStatus:"NOT_ISSUED");
    setNetMinor(x.netReceivedMinor);setRefundMinor(x.refundedMinor);
    setRefundPending(x.refundPending);setRefundStatus(x.refundStatus);
