@@ -287,7 +287,7 @@ const checks=[
   files.publicExtended.includes("export function CmsContactInfo")&&
   files.publicExtended.includes("const secure=(value:unknown,hosts:string[])")&&
   files.web.includes('section.kind==="CONTACT_INFO"')&&
-  files.contactRoute.includes("<Cg19PublicContactForm/>")&&
+  files.contactRoute.includes("<Cg19PublicContactForm contact=")&&files.contactRoute.includes("!embedded&&form")&&files.web.includes("contactForm:undefined")&&
   files.cg21Copy.includes("CMS_INPUT_INVALID:")],
 
  ["Original PAN registration and annual child routes reuse current CG18/19 source",
@@ -324,7 +324,7 @@ const checks=[
 
  ["Native original NGO PAN/certificate/year tabs use approved CG18/CG19 assets",
   files.android.includes('setNgoScope("80g")')&&
-  files.android.includes('hasOfficialDocument(scope==="annual-reports"')&&
+  files.android.includes('scope==="annual-reports"||scope==="financial-reports"')&&files.android.includes('hasOfficialDocument("REGISTRATION")')&&files.android.includes('function NativeFinancialReports')&&
   files.androidExtended.includes('ngoScope!=="80g"')&&
   files.androidExtended.includes('mediaUrl(asset("DOCUMENT",index))')&&
   files.androidExtended.includes('annualYear')&&
@@ -624,7 +624,7 @@ checks.push(["Generated artwork uses only authorized original CG19 uploads and i
  illustrationImporter.includes('hash(bytes)!==digest')&&illustrationImporter.includes('/api/cms/media/initiate')&&
  illustrationImporter.includes('proof.cleanVerified')&&illustrationImporter.includes('pagePath+"/draft"')&&
  !illustrationImporter.includes('"/publish"')&&firstPublication.includes('home-editorial-media')&&
- files.carousel.includes("AI-generated illustration; not a photograph")&&files.android.includes("AI-generated illustration; not a photograph")]);
+ files.carousel.includes("AI-generated illustration|Editorial illustration")&&files.carousel.includes("not a photograph of Foundation activities")&&files.android.includes("AI-generated illustration|Editorial illustration")&&files.android.includes("not a photograph of Foundation activities")]);
 const partnershipPage=read("apps/web/src/app/collaboration/page.tsx");
 checks.push(["Corporate partnership general narrative uses current CMS content in both public channels",
  initDrafts.includes('heading:"Why Partner With Us?"')&&partnershipPage.includes('approved.filter(s=>s.kind==="RICH_TEXT")')&&
@@ -660,6 +660,12 @@ checks.push(["E2E-006 team source and publication revalidation",
  teamRoute.includes('p.consentConfirmed!==true')&&teamRoute.includes('publishedCmsPage("about")')&&
  files.header.includes('href:"/about/team"')&&files.android.includes('slug==="@team"?<NativeTeamDirectory/>')&&
  (files.backend.includes('assets:visibleAssets.filter(v=>v.role!=="TEAM")')||files.backend.includes('visibleAssets.filter(v=>v.role!=="TEAM")'))]);
+checks.push(["Public catalogue filters count only current visible asset placements; Android year and reset parity",
+ files.galleryClient.includes('entries.length===0?')&&files.androidExtended.includes('mediaUrl(asset("GALLERY",i))')&&files.androidExtended.includes('const [mediaYear,setMediaYear]')&&files.androidExtended.includes('onPress={resetMedia}')]);
+checks.push(["Private support form is positioned once and fallback remains independent",
+ files.contactRoute.includes('contactForm={embedded?form:undefined}')&&files.contactRoute.includes('!embedded&&form')&&files.publicExtended.includes('{form}')]);
+checks.push(["Donation enquiry does not activate unverified payment",
+ files.web.includes('isPublished("/donate")?')&&files.web.includes('cg-site-float-enquiry')&&files.web.includes('aria-label="Contact CareGanga about donations"')]);
 let errors=0;
 for(const [label,ok] of checks){
  console.log((ok?"SOURCE-PRESENT":"SOURCE-FAIL")+": "+label);
