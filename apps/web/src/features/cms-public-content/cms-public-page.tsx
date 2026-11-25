@@ -34,7 +34,7 @@ function RichText({fields,asset}:{fields:Record<string,unknown>;asset?:Asset}){
   <div className="cg-site-copy">
    {text(fields.eyebrow)&&<p className="cg-site-eyebrow">{text(fields.eyebrow)}</p>}
    <h2>{text(fields.heading)}</h2>
-   {asset?.altText.startsWith("AI-generated illustration")&&<p className="cg-site-provenance">AI-generated illustration.</p>}
+   {split&&asset?.altText.match(/^(AI-generated illustration|Editorial illustration)/)&&<p className="cg-site-provenance">Illustration; not a photograph of Foundation activities.</p>}
    {text(fields.body)&&<p className="cg-site-body">{text(fields.body)}</p>}
    {highlights.length>0&&<ul className="cg-site-highlights">
     {highlights.map((line,i)=><li key={i}>{line}</li>)}
@@ -49,7 +49,7 @@ function Promo({fields,asset,navigation}:{fields:Record<string,unknown>;asset?:A
    {!!text(fields.eyebrow)&&<p className="cg-site-eyebrow">{text(fields.eyebrow)}</p>}
    {!!text(fields.heading)&&<h2>{text(fields.heading)}</h2>}
    {!!text(fields.body)&&<p>{text(fields.body)}</p>}
-   {asset?.altText.startsWith("AI-generated illustration")&&<p>AI-generated illustration.</p>}
+   {asset?.altText.match(/^(AI-generated illustration|Editorial illustration)/)&&<p>Illustration; not a photograph of Foundation activities.</p>}
    <CmsAction label={fields.label} href={fields.path} navigation={navigation}/>
   </div>
  </section>;
@@ -70,7 +70,7 @@ function Features({fields,assets}:{fields:Record<string,unknown>;assets:Asset[]}
      {!!text(card.label)&&<span className="cg-site-card-tag">{text(card.label)}</span>}
     </div>:!!text(card.label)&&<p className="cg-site-eyebrow">{text(card.label)}</p>}
     <h3>{text(card.title)}</h3><p>{text(card.body)}</p>
-    {assets.find(x=>x.role==="FEATURE"&&x.order===i)?.altText.startsWith("AI-generated illustration")&&<p className="cg-site-provenance">AI-generated illustration.</p>}
+    {image?.altText.match(/^(AI-generated illustration|Editorial illustration)/)&&<p className="cg-site-provenance">Illustration; not a photograph of Foundation activities.</p>}
    </article>;
   })}</div>
  </section>;
