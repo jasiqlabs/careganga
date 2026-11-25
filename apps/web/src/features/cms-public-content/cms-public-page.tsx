@@ -27,22 +27,23 @@ function Photo({asset,className}:{asset?:Asset;className:string}){
  return asset?<img className={className} src={asset.src} alt={asset.altText} loading="lazy"/>:null;
 }
 function RichText({fields,asset}:{fields:Record<string,unknown>;asset?:Asset}){
- const split=fields.variant==="SPLIT";
- return <section className={split?"cg-site-about cg-site-content":"cg-site-content cg-site-article"}>
+ const split=fields.variant==="SPLIT"&&!!asset;
+ const highlights=list(fields.highlights);
+ return <section className={split?"cg-site-about cg-site-content":"cg-site-content cg-site-article"+(highlights.length?" cg-site-article-highlights":"")}>
   {split&&<div className="cg-site-about-photo"><Photo asset={asset} className="cg-site-about-img"/></div>}
   <div className="cg-site-copy">
    {text(fields.eyebrow)&&<p className="cg-site-eyebrow">{text(fields.eyebrow)}</p>}
    <h2>{text(fields.heading)}</h2>
    {asset?.altText.startsWith("AI-generated illustration")&&<p className="cg-site-provenance">AI-generated illustration.</p>}
    {text(fields.body)&&<p className="cg-site-body">{text(fields.body)}</p>}
-   {list(fields.highlights).length>0&&<ul className="cg-site-highlights">
-    {list(fields.highlights).map((line,i)=><li key={i}>{line}</li>)}
+   {highlights.length>0&&<ul className="cg-site-highlights">
+    {highlights.map((line,i)=><li key={i}>{line}</li>)}
    </ul>}
   </div>
  </section>;
 }
 function Promo({fields,asset,navigation}:{fields:Record<string,unknown>;asset?:Asset;navigation?:PublicCmsNavigation|null}){
- return <section className="cg-site-promo">
+ return <section className={"cg-site-promo"+(asset?"":" cg-site-promo-text")}>
   <Photo asset={asset} className="cg-site-promo-img"/>
   <div className="cg-site-promo-inner">
    {!!text(fields.eyebrow)&&<p className="cg-site-eyebrow">{text(fields.eyebrow)}</p>}
@@ -62,11 +63,12 @@ function Features({fields,assets}:{fields:Record<string,unknown>;assets:Asset[]}
   <div className="cg-site-feature-grid">{cards.map((value,i)=>{
    if(!value||typeof value!=="object"||Array.isArray(value))return null;
    const card=value as Record<string,unknown>;
+   const image=assets.find(x=>x.role==="FEATURE"&&x.order===i);
    return <article className="cg-site-feature-card" key={i}>
-    <div className="cg-site-feature-image">
-     <Photo asset={assets.find(x=>x.role==="FEATURE"&&x.order===i)} className="cg-site-card-img"/>
+    {image?<div className="cg-site-feature-image">
+     <Photo asset={image} className="cg-site-card-img"/>
      {!!text(card.label)&&<span className="cg-site-card-tag">{text(card.label)}</span>}
-    </div>
+    </div>:!!text(card.label)&&<p className="cg-site-eyebrow">{text(card.label)}</p>}
     <h3>{text(card.title)}</h3><p>{text(card.body)}</p>
     {assets.find(x=>x.role==="FEATURE"&&x.order===i)?.altText.startsWith("AI-generated illustration")&&<p className="cg-site-provenance">AI-generated illustration.</p>}
    </article>;
@@ -204,7 +206,8 @@ export function CmsPublicPage({page,navigation,siteFooter,children,mediaScope,si
    address:text(footer.address),phone:text(footer.phone),email:text(footer.email)}}/>
   <div className={sidebar?"cg-site-ngo-layout":undefined}>
    {sidebar&&<aside className="cg-site-ngo-sidebar">{sidebar}</aside>}
-   <div className="cg-site-sections">
+   <div className={"cg-site-sections cg-site-page-"+page.kind.toLowerCase()}>
+   {!heroes.length&&!["POLICY","IMPACT","COMPLIANCE","GALLERY","CONTACT","ARTICLE"].includes(page.kind)&&<header className="cg-site-content cg-site-page-heading"><p className="cg-site-eyebrow">CareGanga Foundation</p><h1>{page.title}</h1></header>}
    {page.kind==="POLICY"&&<header className="cg-site-content cg-site-policy-title">
     <p className="cg-site-eyebrow">Policies &amp; Legal</p><h1>{page.title}</h1>
    </header>}
@@ -239,10 +242,10 @@ export function CmsPublicPage({page,navigation,siteFooter,children,mediaScope,si
        if(typeof x.name!=="string"||typeof x.summary!=="string"||!Number.isSafeInteger(x.originalIndex))return [];
        return [{name:x.name,summary:x.summary,originalIndex:x.originalIndex as number,index}];
       }):[];
-      return <section key={key} className="cg-site-content" aria-label="Original approved partner selections">
+      return <section key={key} className="cg-site-content cg-site-partners" aria-label="Published Foundation partners">
        <h2>{text(section.fields.heading)||"Corporate Partners"}</h2>
        {text(section.fields.intro)&&<p>{text(section.fields.intro)}</p>}
-       {cards.length===0?<p>No currently verified partner names to preview or publish.</p>:
+       {cards.length===0?<p>Partner information will appear here when it is verified and published.</p>:
         <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(230px,1fr))",gap:16}}>
          {cards.map(card=>{
           const logo=assets.find(v=>v.role==="FEATURE"&&v.order===card.originalIndex);
@@ -262,7 +265,7 @@ export function CmsPublicPage({page,navigation,siteFooter,children,mediaScope,si
         /^cg-camp-[0-9]{8}$/.test(String((x as Record<string,unknown>).slug))) as PublicCampaign[]:[];
       return <CampaignPublicCards key={key} heading={text(section.fields.heading)||"Campaigns"} cards={cards}/>;
      }
-     if(section.kind==="PROJECT_TEASER"){const cards=Array.isArray(section.fields.cards)?section.fields.cards:[];return <section key={key} className="cg-site-content"><h2>{text(section.fields.heading)||"Projects"}</h2>{!cards.length?<p>No currently approved projects to display.</p>:cards.map((item,j)=>{if(!item||typeof item!=="object")return null;const p=item as Record<string,unknown>;return <article key={j} style={{background:"#fffaf0",border:"1px solid #e5ddc9",borderRadius:16,padding:24,margin:"16px 0"}}>{/^\/api\/public\/content\/media\/[a-f0-9-]{36}$/i.test(text(p.coverSrc))&&<img src={text(p.coverSrc)} alt={text(p.title)} loading="lazy" style={{width:"100%",maxHeight:320,objectFit:"cover",borderRadius:12}}/>}<p className="cg-site-eyebrow">{text(p.category)} · {text(p.status)==="PLANNED"?"Planned":"Active"}</p><h3>{text(p.title)}</h3><p>{text(p.area)}</p><p>{text(p.summary)}</p>{text(p.launch)&&<p>Planned start: {text(p.launch)}</p>}</article>;})}</section>;}
+     if(section.kind==="PROJECT_TEASER"){const cards=Array.isArray(section.fields.cards)?section.fields.cards:[];return <section key={key} className="cg-site-content cg-site-project-section"><h2>{text(section.fields.heading)||"Projects"}</h2>{!cards.length?<div className="cg-site-empty" role="status"><strong>No projects to display yet</strong><p>Published project updates will appear here.</p>{page.slug==="home"&&navigation?.publishedRoutes?.some(v=>v.path==="/our-work")&&<Link href="/our-work" className="cg-site-action">Explore our work</Link>}</div>:cards.map((item,j)=>{if(!item||typeof item!=="object")return null;const p=item as Record<string,unknown>;return <article key={j} style={{background:"#fffaf0",border:"1px solid #e5ddc9",borderRadius:16,padding:24,margin:"16px 0"}}>{/^\/api\/public\/content\/media\/[a-f0-9-]{36}$/i.test(text(p.coverSrc))&&<img src={text(p.coverSrc)} alt={text(p.title)} loading="lazy" style={{width:"100%",maxHeight:320,objectFit:"cover",borderRadius:12}}/>}<p className="cg-site-eyebrow">{text(p.category)} · {text(p.status)==="PLANNED"?"Planned":"Active"}</p><h3>{text(p.title)}</h3><p>{text(p.area)}</p><p>{text(p.summary)}</p>{text(p.launch)&&<p>Planned start: {text(p.launch)}</p>}</article>;})}</section>;}
      // Never infer operational projects from CMS-only teaser text.
      return null;
     })}
