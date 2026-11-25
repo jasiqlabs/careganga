@@ -48,6 +48,42 @@ export async function publishedCmsPage(slug:string):Promise<CmsPageResult>{
   if(page.canonicalPath!==canonical)throw Error();
   if(page.kind==="ARTICLE"&&(page.canonicalPath!=="/blog/"+slug||page.sections.length!==1||page.sections[0].kind!=="ARTICLE_BODY"))throw Error();
   if(page.kind==="POLICY"&&(page.canonicalPath!=="/policies/"+slug||page.sections.length<1||page.sections.length>12||page.sections.some(section=>section.kind!=="RICH_TEXT")||page.assets.length>0))throw Error();
+  if(!page.title.trim()||!page.seoTitle.trim()||page.sections.length<1||page.sections.length>24||new Set(page.sections.map(s=>s.kind+":"+s.order)).size!==page.sections.length)throw Error();
+  const count=(kind:string)=>page.sections.filter(s=>s.kind===kind).length;
+  const calendarDay=(value:unknown):value is string=>{
+   if(typeof value!=="string"||!/^\d{4}-\d{2}-\d{2}$/.test(value))return false;
+   const parsed=new Date(value+"T00:00:00Z");
+   return Number.isFinite(parsed.getTime())&&parsed.toISOString().slice(0,10)===value;
+  };
+  const today=new Date().toISOString().slice(0,10);
+  if(page.kind==="HOME"&&(count("HERO")<1||count("HERO")>6))throw Error();
+  if(page.kind==="HEALTHCARE"&&(count("HEALTHCARE_CATEGORIES")!==1||page.sections.some(s=>!["HERO","RICH_TEXT","HEALTHCARE_CATEGORIES","CTA"].includes(s.kind))))throw Error();
+  if(page.kind==="IMPACT"){
+   const groups=["HERO","PILLARS","STATS","GROWTH","GEOGRAPHY","BREAKDOWN","FOCUS","STORIES","UPDATES","CTA"];
+   if(page.sections.length!==groups.length||page.sections.some(s=>s.kind!=="IMPACT_GROUP")||groups.some(g=>page.sections.filter(s=>s.fields.group===g).length!==1))throw Error();
+   for(const s of page.sections){
+    const f=s.fields,group=f.group;
+    if(typeof f.heading!=="string"||!f.heading.trim()||!Array.isArray(f.items)||f.items.length>16)throw Error();
+    if(f.items.length&&(!calendarDay(f.asOfDate)||f.asOfDate>today||typeof f.source!=="string"||!f.source.trim()))throw Error();
+    for(const raw of f.items){
+     if(!raw||typeof raw!=="object"||Array.isArray(raw)||typeof raw.title!=="string"||!raw.title.trim())throw Error();
+     if(raw.value!==undefined&&(typeof raw.value!=="number"||!Number.isFinite(raw.value)||raw.value<0||raw.value>1e12))throw Error();
+     if(raw.percentage!==undefined&&(typeof raw.percentage!=="number"||!Number.isFinite(raw.percentage)||raw.percentage<0||raw.percentage>100))throw Error();
+     if((group==="STATS"||group==="GROWTH")&&typeof raw.value!=="number")throw Error();
+     if(group==="BREAKDOWN"&&typeof raw.percentage!=="number")throw Error();
+     if(group==="STORIES"&&raw.consentConfirmed!==true)throw Error();
+    }
+    if(group==="BREAKDOWN"&&f.claimsFullBreakdown===true&&Math.abs(f.items.reduce((n,r)=>n+r.percentage,0)-100)>0.001)throw Error();
+   }
+  }
+  if(page.kind==="COMPLIANCE"){
+   if(page.sections.length!==1||count("COMPLIANCE_FACTS")!==1)throw Error();
+   const f=page.sections[0].fields;
+   if(typeof f.heading!=="string"||!f.heading.trim()||!["VERIFIED","NOT_VERIFIED"].includes(String(f.verification))||!calendarDay(f.verifiedAsOf)||f.verifiedAsOf>today)throw Error();
+   if(f.pan!==undefined&&f.pan!==""&&(typeof f.pan!=="string"||!/^[A-Z]{5}[0-9]{4}[A-Z]$/.test(f.pan)))throw Error();
+   if(f.documents!==undefined&&(!Array.isArray(f.documents)||f.documents.length>6||f.documents.some(d=>!d||typeof d!=="object"||Array.isArray(d)||!["80G","REGISTRATION","ANNUAL_REPORT","OTHER"].includes(String(d.type))||typeof d.title!=="string"||!d.title.trim()||!calendarDay(d.asOfDate)||d.asOfDate>today)))throw Error();
+   if(f.verification==="VERIFIED"&&(!calendarDay(f.validFrom)||!calendarDay(f.validUntil)||f.validFrom>today||f.validUntil<today||typeof f.issuer!=="string"||!f.issuer.trim()||typeof f.approvalNumber!=="string"||!f.approvalNumber.trim()||typeof f.source!=="string"||!f.source.trim()||!Array.isArray(f.documents)||f.documents[0]?.type!=="80G"||!page.assets.some(a=>a.role==="DOCUMENT"&&a.order===0&&/^\/api\/public\/content\/media\//.test(a.src))))throw Error();
+  }
   return {state:"PUBLISHED",page};
  }catch{return {state:"UNAVAILABLE",page:null};}
 }
