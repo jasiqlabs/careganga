@@ -15567,3 +15567,22 @@ button:disabled {
 .cg-lab-card>p:nth-last-child(1){margin-top:auto;border-top:1px solid #e3e9e6;padding-top:.7rem;color:#4d6072}
 .cg-lab-card p strong{color:#194a3a}
 .cg-lab-empty{padding:1.5rem;text-align:center;background:#f5faf6;border:1px solid #d8e7dc;border-radius:.8rem}
+
+/* Public partner application responsive form. */
+.cg-partner-application{display:grid;gap:1.25rem;width:100%;max-width:900px;margin-inline:auto;min-width:0;overflow-wrap:anywhere}
+.cg-partner-tabs{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:.75rem}
+.cg-health-public-chrome .cg-partner-tabs button{min-height:64px;background:#f4f8f4;color:#194a3a;border:1px solid #c8ddce;white-space:normal;overflow-wrap:anywhere}
+.cg-health-public-chrome .cg-partner-tabs button[aria-current="page"]{background:#194a3a;border-color:#194a3a;color:#fff}
+.cg-partner-form,.cg-partner-received{display:grid;gap:1rem;min-width:0;background:#fff;border:1px solid #dce4ed;border-radius:1rem;padding:clamp(.85rem,2.5vw,1.5rem)}
+.cg-partner-form h2,.cg-partner-received h2{margin:0;color:#112039;font-family:Georgia,"Times New Roman",serif;font-size:1.5rem}
+.cg-partner-form label{min-width:0;font-weight:650;color:#243349}
+.cg-partner-form :is(input:not([type="checkbox"]),select){width:100%;min-width:0;min-height:44px}
+.cg-partner-fields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:.75rem}
+.cg-partner-address{grid-template-columns:repeat(3,minmax(0,1fr))}
+.cg-partner-consent{display:flex;gap:.65rem;align-items:flex-start;padding:.85rem;background:#f0f7f2;border:1px solid #d0e4d5;border-radius:.65rem;font-weight:400!important;min-height:44px}
+.cg-partner-consent input{width:20px;height:20px;flex:0 0 20px;accent-color:#194a3a}
+.cg-health-public-chrome .cg-partner-form button,.cg-health-public-chrome .cg-partner-received button{min-height:44px;background:#194a3a;color:#fff;border-color:#194a3a;font-weight:750;white-space:normal}
+.cg-health-public-chrome .cg-partner-application button:disabled{opacity:.65;cursor:not-allowed}
+.cg-partner-application :is(input,select,button):focus-visible{outline:3px solid #194a3a;outline-offset:2px}
+.cg-partner-received{background:#f0f7f2}
+@media(max-width:600px){.cg-partner-fields,.cg-partner-address{grid-template-columns:minmax(0,1fr)}.cg-partner-tabs button{padding:.55rem!important;font-size:.85rem}}
