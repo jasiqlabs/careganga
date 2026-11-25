@@ -831,3 +831,38 @@
 .cg-site-page-impact .cg-site-evidence-table :is(th,td){padding:.65rem .5rem;overflow-wrap:anywhere}
 .cg-site-page-impact .cg-site-evidence-table :is(th,td):nth-child(2){width:25%}
 .cg-site-page-impact .cg-site-evidence-table caption{overflow-wrap:anywhere;padding:.75rem .5rem}
+
+/* Client notice board and disclosure report catalogue. */
+.cg-site-notices{max-width:1280px;background:#f9f6ed;padding:clamp(1rem,2vw,2rem);border-radius:1rem}
+.cg-site-notice-hero{background:transparent;color:#194a3a;padding:0 0 1.5rem;margin:0}
+.cg-site-notice-hero h1{max-width:100%;overflow-wrap:anywhere}
+.cg-site-notice-hero p{color:#42556c;max-width:68ch}
+.cg-site-notice-hero .cg-site-eyebrow{display:inline-block;color:#194a3a;background:#e3eae0;padding:.3rem .75rem;border-radius:999px}
+.cg-site-notice-discovery,.cg-site-report-panel{background:white;border:1px solid #dce4ed;border-radius:1rem;padding:clamp(.85rem,2vw,1.4rem);box-shadow:0 2px 5px #11203910;min-width:0}
+.cg-site-notice-discovery .cg-site-gallery-filters,.cg-site-report-panel .cg-site-gallery-filters{margin:0;border:0;background:transparent;padding:0;gap:.75rem}
+.cg-site-notice-discovery .cg-site-gallery-filters label{min-width:0;max-width:100%;flex:1 1 14rem}
+.cg-site-notice-discovery .cg-site-gallery-filters label:has(select){flex:0 1 10rem}
+.cg-site-notice-discovery .cg-site-gallery-filters :is(input,select),.cg-site-report-panel select{width:100%;min-height:44px;font:inherit;border-color:#cad6e3;background:#f7f9fb;border-radius:.65rem}
+.cg-site-notice-discovery .cg-site-gallery-tabs{border-top:1px solid #e6ebf1;margin:1rem 0 0;padding-top:.65rem;justify-content:flex-start}
+.cg-site-notice-discovery .cg-site-gallery-tabs button{min-height:44px;border-radius:.6rem;border-color:transparent;background:#eef2f6;color:#364d65}
+.cg-site-notice-discovery .cg-site-gallery-tabs button[aria-pressed=true]{background:#194a3a;color:#fff}
+.cg-site-notice-card{display:flex;flex-direction:column;background:white;border-color:#dce4ed;gap:.35rem}
+.cg-site-notice-card h2{color:#112039;overflow-wrap:anywhere;margin:.65rem 0 .2rem}
+.cg-site-notice-card p{margin:.15rem 0 .8rem}
+.cg-site-notice-meta{justify-content:space-between}
+.cg-site-notice-meta span[data-priority=IMPORTANT]{background:#fff1d8;color:#854c0c}
+.cg-site-notice-card-footer{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:.5rem;margin-top:auto;border-top:1px solid #e6ebf1;padding-top:.55rem;font-size:.85rem;color:#52657a}
+.cg-site-notice-link{min-height:44px}
+.cg-site-notices .cg-site-gallery-empty{background:white;border:1px solid #dce4ed}
+.cg-site-notices .cg-site-gallery-empty h2{margin:0;font-size:1.2rem;color:#112039}
+@media(min-width:1100px){.cg-site-notice-list{grid-template-columns:repeat(3,minmax(0,1fr))}}
+.cg-site-report-panel{margin:1.5rem 0}
+.cg-site-report-panel .cg-site-gallery-filters{align-items:end;justify-content:flex-end}
+.cg-site-report-panel .cg-site-gallery-filters h2{margin:0 auto 0 0;align-self:center;font-size:1.2rem;color:#112039;flex:1 1 12rem}
+.cg-site-report-panel .cg-site-gallery-filters label{flex:0 1 9rem;min-width:0;max-width:100%}
+.cg-site-report-panel .cg-site-evidence-table{min-width:0;table-layout:fixed;font-size:.9rem}
+.cg-site-report-panel .cg-site-evidence-table :is(td,th){overflow-wrap:anywhere;padding:.7rem .55rem}
+.cg-site-report-panel .cg-site-evidence-table thead{background:#f6f8fb;color:#40536b}
+.cg-site-report-panel .cg-site-report-empty{text-align:center;padding:2.5rem 1rem!important;color:#52657a}
+.cg-site-report-panel .cg-site-table-wrap:focus-visible{outline:2px solid #194a3a;outline-offset:2px}
+@media(max-width:540px){.cg-site-notice-discovery .cg-site-gallery-filters label,.cg-site-report-panel .cg-site-gallery-filters label{flex:0 1 auto;width:100%}.cg-site-report-panel .cg-site-gallery-filters h2{flex:0 1 auto}.cg-site-report-panel .cg-site-evidence-table{font-size:.82rem}.cg-site-report-panel .cg-site-evidence-table :is(td,th){padding:.45rem .25rem}}
