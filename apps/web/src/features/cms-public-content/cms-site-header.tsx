@@ -8,9 +8,11 @@ type Contact={address?:string;email?:string;phone?:string};
 const work=["All Projects","Education","Healthcare","Livelihood",
  "Social Welfare","Community Development"];
 const media=["News & Updates","Gallery","Videos","Publications / Reports","Blog"];
+const inSection=(pathname:string,href?:string)=>!!href&&!href.includes("?")&&
+ (pathname===href||href!=="/"&&pathname.startsWith(href+"/"));
 function Menu({label,items,pathname}:{label:string;items:{text:string;href?:string}[];pathname:string}){
  return <details className="cg-site-menu" name="cg-public-navigation">
-  <summary>{label}<span aria-hidden="true">⌄</span></summary>
+  <summary className={items.some(item=>inSection(pathname,item.href))?"cg-site-active":undefined}>{label}<span aria-hidden="true">⌄</span></summary>
   <div className="cg-site-dropdown">{items.map(item=>item.href?
    <Link href={item.href} key={item.text} aria-current={pathname===item.href?"page":undefined}>{item.text}</Link>:
    <span key={item.text} className="cg-site-unavailable" aria-disabled="true">{item.text}<small>Not available yet</small></span>)}</div>
@@ -71,20 +73,20 @@ export function CmsSiteHeader({navigation,contact}:{
     className={expanded?"cg-site-nav cg-site-nav-open":"cg-site-nav"} onClick={event=>{
      if(event.target instanceof Element&&event.target.closest("a[href]"))closeNavigation();
     }}>
-    <Link href="/" className={pathname==="/"? "cg-site-active":undefined}>Home</Link>
+    <Link href="/" className={pathname==="/"? "cg-site-active":undefined} aria-current={pathname==="/"?"page":undefined}>Home</Link>
     <Menu pathname={pathname} label="About Us" items={[{text:"About the Foundation",href:isPublished("/about")?"/about":undefined},{text:"Team Directory",href:"/about/team"}]}/>
     <Menu pathname={pathname} label="Our Work" items={work.map(text=>({text,href:isPublished("/our-work")?"/our-work"+(text==="All Projects"?"":"?category="+encodeURIComponent(text)):undefined}))}/>
     {isPublished("/ngo-information")?<Link href="/ngo-information"
-     className={pathname==="/ngo-information"?"cg-site-active":undefined}>NGO Information</Link>:
+     className={inSection(pathname,"/ngo-information")?"cg-site-active":undefined} aria-current={pathname==="/ngo-information"?"page":undefined}>NGO Information</Link>:
      <span className="cg-site-unavailable" aria-disabled="true">NGO Information<small>Not available yet</small></span>}
-    {isPublished("/donate")&&<Link href="/donate">Donate Now</Link>}
+    {isPublished("/donate")&&<Link href="/donate" className={inSection(pathname,"/donate")?"cg-site-active":undefined} aria-current={pathname==="/donate"?"page":undefined}>Donate Now</Link>}
     {/* The catalogue is a safe public information route even when no campaigns are published.
         The catalogue and payment owner still enforce actual publication and merchant readiness. */}
-    <Link href="/campaigns" className={pathname.startsWith("/campaigns")?"cg-site-active":undefined}
+    <Link href="/campaigns" className={inSection(pathname,"/campaigns")?"cg-site-active":undefined}
      aria-current={pathname==="/campaigns"?"page":undefined}>Campaigns</Link>
-    {isPublished("/upcoming-projects")?<Link href="/upcoming-projects" className={pathname==="/upcoming-projects"?"cg-site-active":undefined}>Upcoming Projects</Link>:<span className="cg-site-unavailable" aria-disabled="true">Upcoming Projects<small>Not available yet</small></span>}
-    <Link href="/collaboration" className={pathname.startsWith("/collaboration")?"cg-site-active":undefined}>Partnerships</Link>
-    <Link href="/events" className={pathname==="/events"?"cg-site-active":undefined}>Events</Link>
+    {isPublished("/upcoming-projects")?<Link href="/upcoming-projects" className={inSection(pathname,"/upcoming-projects")?"cg-site-active":undefined} aria-current={pathname==="/upcoming-projects"?"page":undefined}>Upcoming Projects</Link>:<span className="cg-site-unavailable" aria-disabled="true">Upcoming Projects<small>Not available yet</small></span>}
+    <Link href="/collaboration" className={inSection(pathname,"/collaboration")?"cg-site-active":undefined} aria-current={pathname==="/collaboration"?"page":undefined}>Partnerships</Link>
+    <Link href="/events" className={inSection(pathname,"/events")?"cg-site-active":undefined} aria-current={pathname==="/events"?"page":undefined}>Events</Link>
     <Menu pathname={pathname} label="Media & Resources" items={media.map(text=>({text,
      href:text==="Gallery"&&isPublished("/gallery")?"/gallery":
       text==="Videos"&&isPublished("/gallery")?"/videos":
@@ -95,11 +97,12 @@ export function CmsSiteHeader({navigation,contact}:{
     <Menu pathname={pathname} label="Join Now" items={[{text:"Become a Member",href:member},
      {text:"Become a Volunteer",href:volunteer}]}/>
     <Link href={isPublished("/healthcare")?"/healthcare":"/health-network"}
-     className={pathname==="/healthcare"||pathname.startsWith("/health-network")?"cg-site-active":undefined}>
+     className={inSection(pathname,"/healthcare")||inSection(pathname,"/health-network")||inSection(pathname,"/patients/me")||pathname==="/verify-appointment"?"cg-site-active":undefined}
+     aria-current={pathname===(isPublished("/healthcare")?"/healthcare":"/health-network")?"page":undefined}>
      Healthcare Assistance</Link>
-    <Link href="/contact">Contact Us</Link>
+    <Link href="/contact" className={inSection(pathname,"/contact")?"cg-site-active":undefined} aria-current={pathname==="/contact"?"page":undefined}>Contact Us</Link>
     {navigation?.login?.visible&&navigation.login.path==="/admin/login"&&
-     <Link className="cg-site-staff" href="/admin/login">Staff login</Link>}
+     <Link className="cg-site-staff" href="/admin/login" aria-current={pathname==="/admin/login"?"page":undefined}>Staff login</Link>}
    </nav>
   </div>
  </header>;
