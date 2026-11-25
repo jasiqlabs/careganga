@@ -1,5 +1,5 @@
 "use client";
-import { useCallback, useEffect, useState, useMemo } from "react";
+import { useCallback, useEffect, useState, useMemo, useRef } from "react";
 import {
   MessageSquare,
   MessageCircle,
@@ -240,7 +240,9 @@ export function FoundationSupportWorkspace({
     return "ALL";
   }, [activeTabFilter, statusFilter]);
 
+  const loadVersion = useRef(0);
   const load = useCallback(async () => {
+    const version = ++loadVersion.current;
     setLoading(true);
     try {
       const [cases, faqList] = await Promise.all([
@@ -253,20 +255,23 @@ export function FoundationSupportWorkspace({
           : Promise.resolve({ items: [], counts: null, nextCursor: null }),
         mayEditFaq ? request<{ faqs: Faq[] }>("faqs") : Promise.resolve({ faqs: [] }),
       ]);
+      if (version !== loadVersion.current) return;
       setItems(cases.items);
       setCounts(cases.counts);
       setNextCursor("nextCursor" in cases ? cases.nextCursor : null);
       setFaqs(faqList.faqs);
     } catch (e) {
-      setItems([]); setCounts(null); setNextCursor(null);
+      if (version !== loadVersion.current) return;
+      setItems([]); setCounts(null); setNextCursor(null); setFaqs([]);
       setAlert(failure(e));
     } finally {
-      setLoading(false);
+      if (version === loadVersion.current) setLoading(false);
     }
   }, [backendFilter, cursor, appliedSearch, appliedDates, pageSize, mayView, mayEditFaq]);
 
   useEffect(() => {
     void load();
+    return () => { ++loadVersion.current; };
   }, [load]);
 
   useEffect(() => {
@@ -424,12 +429,12 @@ export function FoundationSupportWorkspace({
       setAlert("Enter at least three characters to search all Foundation cases.");
       return;
     }
-    setCursor(null);
-    setPriorCursors([]);
-    setNextCursor(null);
     if (startedFrom && startedTo && startedFrom > startedTo) {
       setAlert("Choose a start date on or before the end date."); return;
     }
+    setCursor(null);
+    setPriorCursors([]);
+    setNextCursor(null);
     setAppliedDates({ lastActivity: dateFilter, startedFrom, startedTo });
     setAppliedSearch(search.trim());
     setAlert("");
@@ -547,6 +552,7 @@ export function FoundationSupportWorkspace({
       {tab === "CASES" && mayView && (
         <>
           {/* Top 6 KPI Metric Cards matching Client Screenshot 3 */}
+          <p style={{ fontSize: "0.8rem", color: "#64748b" }}>Foundation totals (not restricted by list filters)</p>
           <div className="cg19-kpi-row" aria-label="Foundation support totals, independent of list filters">
             {/* 1. Total Chats */}
             <article className="cg19-kpi-card">
@@ -669,7 +675,7 @@ export function FoundationSupportWorkspace({
 
                 <div style={{ flex: "1", minWidth: 0 }}>
                   <CustomDropdown
-                    label="Last Activity"
+                    label="Last Activity (UTC)"
                     value={dateFilter}
                     onChange={setDateFilter}
                     options={[
@@ -785,14 +791,14 @@ export function FoundationSupportWorkspace({
                     className={`cg19-nav-tab ${activeTabFilter === "OPEN" ? "is-active" : ""}`}
                     onClick={() => { setActiveTabFilter("OPEN"); setStatusFilter("ALL"); setCursor(null); setPriorCursors([]); setNextCursor(null); }}
                   >
-                    Open ({openChatsCount})
+                    Open
                   </button>
                   <button
                     type="button"
                     className={`cg19-nav-tab ${activeTabFilter === "CLOSED" ? "is-active" : ""}`}
                     onClick={() => { setActiveTabFilter("CLOSED"); setStatusFilter("ALL"); setCursor(null); setPriorCursors([]); setNextCursor(null); }}
                   >
-                    Closed ({closedChatsCount})
+                    Closed
                   </button>
                 </div>
 
@@ -977,7 +983,7 @@ export function FoundationSupportWorkspace({
                 <div style={{ display: "flex", alignItems: "center", gap: "0.35rem" }}>
                   <button
                     type="button"
-                    disabled={busy || priorCursors.length === 0}
+                    disabled={busy || loading || priorCursors.length === 0}
                     style={{
                       border: "1px solid #cbd5e1",
                       background: "#fff",
@@ -1008,7 +1014,7 @@ export function FoundationSupportWorkspace({
                   </span>
                   <button
                     type="button"
-                    disabled={busy || !nextCursor}
+                    disabled={busy || loading || !nextCursor}
                     style={{
                       border: "1px solid #cbd5e1",
                       background: "#fff",

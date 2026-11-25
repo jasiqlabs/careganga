@@ -793,19 +793,17 @@ export function PrivateLetterPanel({
                           background: "#fafafa",
                         }}
                       >
-                        Official
+                        Seal position
                         <br />
-                        CareGanga
-                        <br />
-                        Seal
+                        Not applied
                       </div>
 
                       <div className="cg19-letter-signatory" style={{ textAlign: "right", fontSize: "0.8rem", color: "#475569" }}>
                         <strong style={{ display: "block", color: "#0f172a", fontSize: "0.88rem" }}>
-                          Super Admin / Operations
+                          Signatory position (illustrative)
                         </strong>
                         <span>CareGanga Foundation</span>
-                        <small style={{ display: "block", color: "#16a34a", fontWeight: 600, marginTop: "0.2rem" }}>
+                        <small style={{ display: "block", color: "#92400e", fontWeight: 600, marginTop: "0.2rem" }}>
                           Draft preview — not verified
                         </small>
                       </div>

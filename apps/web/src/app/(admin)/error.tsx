@@ -14,7 +14,15 @@ export default function AdminErrorBoundary({
     if (error.digest?.startsWith("NEXT_REDIRECT")) {
       const match = error.digest.split(";");
       const target = match.length > 2 && match[2] ? match[2] : "/admin/login";
-      window.location.href = target;
+      // Only follow an internal administration path, never an arbitrary digest URL.
+      let safeTarget = "/admin/login";
+      try {
+        const url = new URL(target, window.location.origin);
+        if (url.origin === window.location.origin &&
+          (url.pathname === "/admin" || url.pathname.startsWith("/admin/")))
+          safeTarget = url.pathname + url.search + url.hash;
+      } catch { /* retain safe login destination */ }
+      window.location.replace(safeTarget);
       return;
     }
 
