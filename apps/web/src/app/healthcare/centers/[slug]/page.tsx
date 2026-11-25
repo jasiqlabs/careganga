@@ -32,13 +32,24 @@ async function current(slug:string):Promise<Center|null>{
   });
   if(!r.ok)return null;
   const value:unknown=await r.json();
-  if(!value||typeof value!=="object"||
-    !("centerName" in value)||typeof value.centerName!=="string"||
-    !("providerName" in value)||typeof value.providerName!=="string"||
-    !("address" in value)||typeof value.address!=="string"||
-    !("hours" in value)||!Array.isArray(value.hours)||
-    !("declaredServices" in value)||!Array.isArray(value.declaredServices))
-    return null;
+  if(!value||typeof value!=="object"||Array.isArray(value))return null;
+  const v=value as Record<string,unknown>;
+  const record=(x:unknown):x is Record<string,unknown>=>!!x&&typeof x==="object"&&!Array.isArray(x);
+  const strings=(x:unknown)=>Array.isArray(x)&&x.every(y=>typeof y==="string");
+  const clock=(x:unknown)=>typeof x==="string"&&/^(?:[01]\d|2[0-3]):[0-5]\d$/.test(x);
+  const validMedia=(x:unknown)=>record(x)&&typeof x.fileRef==="string"&&
+   /^[a-f0-9]{8}-(?:[a-f0-9]{4}-){3}[a-f0-9]{12}$/i.test(x.fileRef)&&typeof x.altText==="string";
+  if(!["centerName","providerName","type","address","pinCode","timeZone","notice"].every(k=>typeof v[k]==="string")||
+   !(v.publicPhone===null||typeof v.publicPhone==="string"&&/^[+0-9 ()-]{7,24}$/.test(v.publicPhone))||
+   !Array.isArray(v.hours)||!v.hours.every(h=>record(h)&&typeof h.weekday==="number"&&
+    Number.isInteger(h.weekday)&&h.weekday>=0&&h.weekday<=6&&clock(h.opens)&&clock(h.closes)&&typeof h.service==="string")||
+   !strings(v.declaredServices))return null;
+  const p=v.approvedPresentation;
+  if(p!==null&&(!record(p)||typeof p.description!=="string"||
+   !strings(p.services)||!strings(p.facilities)||typeof p.hoursNote!=="string"||
+   typeof p.publicEmail!=="string"||!!p.publicEmail&&!/^[^\s@<>]+@[^\s@<>]+\.[^\s@<>]+$/.test(p.publicEmail)||
+   !Array.isArray(p.faqs)||!p.faqs.every(q=>record(q)&&typeof q.question==="string"&&typeof q.answer==="string")||
+   !Array.isArray(p.media)||!p.media.every(validMedia)))return null;
   return value as Center;
  }catch{return null;}
 }
@@ -89,7 +100,7 @@ export default async function VerifiedCenterPage({params}:Params){
    {c.approvedPresentation&&<section id="overview" className={"cg-public-section "+styles.panel}>
      <h2>About this healthcare center</h2>
      <p>{c.approvedPresentation.description}</p>
-     {c.approvedPresentation.media.length>0&&<div
+     {c.approvedPresentation.media.length>1&&<div
        style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(min(100%,250px),1fr))",gap:16}}>
        {c.approvedPresentation.media.slice(1).map(media=><figure key={media.fileRef}>
          {/* eslint-disable-next-line @next/next/no-img-element */}
