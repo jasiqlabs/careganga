@@ -15553,3 +15553,17 @@ button:disabled {
 .cg04-volunteer .cg04-document-grid input,.cg04-volunteer .cg04-document-grid select{border-color:#c7d4e0;min-height:46px}
 @media(max-width:700px){.cg04-volunteer .cg04-volunteer-steps{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:570px){.cg04-public .cg04-public-tabs>button{min-height:72px;padding:14px 16px}.cg04-public .cg04-search-row input{flex:1 1 100%}.cg04-public .cg04-search-row button{flex:1 1 100px}}
+
+/* Healthcare test catalogue — shared green clinical directory language. */
+.cg-health-public-chrome .cg-lab-directory .cg-public-section:first-of-type{background:#f0f7f2;border-color:#d8e7dc}
+.cg-lab-filters{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,220px),1fr));align-items:end;gap:1rem;margin-top:1.25rem}
+.cg-lab-filters label{display:flex;flex-direction:column;gap:.4rem;min-width:0;color:#194a3a;font-weight:700}
+.cg-lab-filters :is(input,select){width:100%}
+.cg-lab-actions{display:flex;flex-wrap:wrap;align-items:center;gap:.6rem}
+.cg-health-public-chrome .cg-lab-directory .cg-public-section a{display:inline-flex;align-items:center;min-height:44px;max-width:100%;overflow-wrap:anywhere;color:#194a3a;font-weight:700;text-underline-offset:.2rem}
+.cg-lab-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,290px),1fr));gap:1rem;align-items:stretch}
+.cg-lab-card{display:flex;flex-direction:column;gap:.5rem;min-width:0;overflow-wrap:anywhere;background:#fff;border:1px solid #d8e7dc;border-radius:.9rem;padding:clamp(.9rem,2vw,1.3rem);box-shadow:0 2px 8px #1120390d}
+.cg-lab-card h3,.cg-lab-card p{margin:0}
+.cg-lab-card>p:nth-last-child(1){margin-top:auto;border-top:1px solid #e3e9e6;padding-top:.7rem;color:#4d6072}
+.cg-lab-card p strong{color:#194a3a}
+.cg-lab-empty{padding:1.5rem;text-align:center;background:#f5faf6;border:1px solid #d8e7dc;border-radius:.8rem}
