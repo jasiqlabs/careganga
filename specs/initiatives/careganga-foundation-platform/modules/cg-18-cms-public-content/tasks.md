@@ -731,7 +731,7 @@ Baseline from current Web route inventory and earlier local QA evidence. This is
 | # | Route template | Second-pass page execution status |
 |---|---|---|
 | 1 | `/` | PENDING — second-pass assembled page manual inspection |
-| 2 | `/80g` | REDIRECT — execution pending; destination visual separate |
+| 2 | `/80g` | REDIRECT_OFFLINE_3_OF_3 — actual Next permanentRedirect 308 to /ngo-information; HTTP and destination visual pending |
 | 3 | `/about` | PENDING — second-pass assembled page manual inspection |
 | 4 | `/about/team` | ASSEMBLED_OFFLINE_156_OF_156 — manual 390/1440 visual inspection; full Next/backend pending |
 | 5 | `/blog` | ASSEMBLED_OFFLINE_168_OF_168 — visual inspected; full Next/backend and original page assets pending |
@@ -750,7 +750,7 @@ Baseline from current Web route inventory and earlier local QA evidence. This is
 | 18 | `/health-network/lab-tests` | ASSEMBLED_OFFLINE_132_OF_132 — visual inspected; full Next/backend pending |
 | 19 | `/healthcare` | PENDING — second-pass assembled page manual inspection |
 | 20 | `/healthcare/centers/[slug]` | ASSEMBLED_OFFLINE_126_OF_126 — visual inspected; full Next/backend pending |
-| 21 | `/impact` | REDIRECT — execution pending; destination visual separate |
+| 21 | `/impact` | REDIRECT_OFFLINE_3_OF_3 — actual Next permanentRedirect 308 to /our-impact; HTTP and destination visual pending |
 | 22 | `/membership` | PENDING — second-pass assembled page manual inspection |
 | 23 | `/membership/apply` | PENDING — second-pass assembled page manual inspection |
 | 24 | `/ngo-information` | PENDING — second-pass assembled page manual inspection |
@@ -802,3 +802,6 @@ Baseline from current Web route inventory and earlier local QA evidence. This is
 
 ### 2026-11-25 — Second-pass corporate partnerships
 - Exact page and CSS module (local after hashes match committed blobs), extracted CMS functions, shared chrome and synthetic authorized data; baseline 130/174, final expanded 180/180 across six widths. Manual 390/1440 inspections found and corrected final CTA contrast; ambiguous card indices excluded, invalid/null logo placements handled, UUID path validated, blank headings/narrative corrected, balanced 1/2-card grids and CTA moved below footer. Source 3fb3c958d24b5a208f30bb1996bdf5b388f63f74 and b20bcc79907b7507a6fbdcf4c6a6e89d3a3bbda2. Evidence `/mnt/data/cg-recheck/collaboration-page/after-results.json`, `after-390.png`, `after-1440.png`. Actual approved assets/partner records, dedicated original reference, full Next/backend and independent review remain pending; no canonical acceptance promotion.
+
+### 2026-11-25 — Legacy redirect execution
+- Exact source hashes 42d58c8f7478313ca787cae506c580ca6577499c (/80g), fddf184644f8ec838e1960be2d407bafdafcb1f9 (/impact) verified locally. Executed original route functions using installed Next.js permanentRedirect, not an adapter: actual redirect-error recognition, destination and 308 code passed 3/3 per route, 6/6 total. Evidence `/mnt/data/cg-recheck/redirects/test.cjs` and `results.json`. No HTTP server response, browser navigation or destination visual acceptance inferred. These nonvisual routes are separate from 34 visual templates; no source defect reproduced, no production changes.
