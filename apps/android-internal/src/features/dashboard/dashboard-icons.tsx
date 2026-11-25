@@ -877,6 +877,69 @@ export function IconChevronDown({ size = 18, color = "#64748B" }: IconProps) {
   );
 }
 
+export function IconArrowLeft({ size = 20, color = "#334155" }: IconProps) {
+  const stemW = Math.round(size * 0.55);
+  const headS = Math.round(size * 0.32);
+  return (
+    <View style={[styles.iconBox, { width: size, height: size, flexDirection: "row", alignItems: "center" }]} accessibilityElementsHidden importantForAccessibility="no">
+      {/* Arrow head */}
+      <View
+        style={{
+          width: headS,
+          height: headS,
+          borderLeftWidth: 2,
+          borderTopWidth: 2,
+          borderColor: color,
+          transform: [{ rotate: "-45deg" }],
+          marginLeft: 2
+        }}
+      />
+      {/* Stem */}
+      <View
+        style={{
+          width: stemW,
+          height: 2,
+          backgroundColor: color,
+          borderRadius: 1,
+          marginLeft: -headS * 0.5
+        }}
+      />
+    </View>
+  );
+}
+
+export function IconFolder({ size = 20, color = "#64748B" }: IconProps) {
+  const w = Math.round(size * 0.8);
+  const h = Math.round(size * 0.6);
+  return (
+    <View style={[styles.iconBox, { width: size, height: size }]} accessibilityElementsHidden importantForAccessibility="no">
+      {/* Folder tab */}
+      <View
+        style={{
+          width: w * 0.45,
+          height: 3,
+          backgroundColor: color,
+          borderTopLeftRadius: 2,
+          borderTopRightRadius: 2,
+          alignSelf: "flex-start",
+          marginLeft: Math.round(size * 0.1),
+          marginBottom: -1
+        }}
+      />
+      {/* Folder body */}
+      <View
+        style={{
+          width: w,
+          height: h,
+          borderWidth: 1.8,
+          borderColor: color,
+          borderRadius: 3.5
+        }}
+      />
+    </View>
+  );
+}
+
 const styles = StyleSheet.create({
   iconBox: {
     alignItems: "center",

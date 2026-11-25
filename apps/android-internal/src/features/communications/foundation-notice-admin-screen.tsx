@@ -22,7 +22,8 @@ import {
   IconShieldCheck,
   IconMegaphone,
   IconFileText,
-  IconRefresh
+  IconRefresh,
+  IconArrowLeft
 } from "../dashboard/dashboard-icons";
 
 type Channel = "IN_APP" | "EMAIL" | "SMS";
@@ -266,11 +267,12 @@ export function FoundationNoticeAdminScreen({
         <View style={styles.headerRow}>
           <Pressable
             accessibilityRole="button"
+            accessibilityLabel="Back"
             onPress={onExit}
             disabled={busy}
             style={styles.backBtn}
           >
-            <Text style={styles.backBtnText}>← Back</Text>
+            <IconArrowLeft size={18} color="#334155" />
           </Pressable>
 
           <View style={styles.headerInfo}>
@@ -706,17 +708,14 @@ const styles = StyleSheet.create({
     gap: 12
   },
   backBtn: {
-    paddingVertical: 8,
-    paddingHorizontal: 12,
+    width: 36,
+    height: 36,
     backgroundColor: "#FFFFFF",
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: "#CBD5E1"
-  },
-  backBtnText: {
-    fontSize: 13,
-    fontWeight: "700",
-    color: "#334155"
+    borderColor: "#CBD5E1",
+    alignItems: "center",
+    justifyContent: "center"
   },
   headerInfo: {
     flex: 1

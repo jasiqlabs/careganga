@@ -11,7 +11,16 @@ import {
 } from "react-native";
 import * as Crypto from "expo-crypto";
 import { identityRequest } from "../identity-access/http-client";
-import { IconFileText, IconLock, IconShieldCheck, IconClose } from "../dashboard/dashboard-icons";
+import {
+  IconFileText,
+  IconLock,
+  IconShieldCheck,
+  IconClose,
+  IconRefresh,
+  IconSend,
+  IconSliders,
+  IconXCircle
+} from "../dashboard/dashboard-icons";
 
 type Template = {
   configured: boolean;
@@ -298,18 +307,20 @@ export function NativePrivateLetterPanel({
         <View style={styles.letterActionRow}>
           <Pressable
             accessibilityRole="button"
-            style={styles.outlineBtn}
+            style={[styles.outlineBtn, { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6 }]}
             onPress={() => setReview("TEMPLATE")}
           >
+            <IconSliders size={13} color="#334155" />
             <Text style={styles.outlineBtnText}>Edit Letterhead Template</Text>
           </Pressable>
 
           {canIssue && (
             <Pressable
               accessibilityRole="button"
-              style={styles.primaryIssueBtn}
+              style={[styles.primaryIssueBtn, { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6 }]}
               onPress={() => setReview("ISSUE")}
             >
+              <IconSend size={13} color="#FFFFFF" />
               <Text style={styles.primaryIssueBtnText}>Issue Official Letter</Text>
             </Pressable>
           )}
@@ -322,11 +333,12 @@ export function NativePrivateLetterPanel({
           <Text style={styles.cardHeading}>Issued Official Letters History</Text>
           <Pressable
             accessibilityRole="button"
-            style={styles.refreshIconBtn}
+            style={[styles.refreshIconBtn, { flexDirection: "row", alignItems: "center", gap: 4 }]}
             disabled={loading || busy}
             onPress={() => void refresh()}
           >
-            <Text style={styles.refreshIconText}>↻ Refresh</Text>
+            <IconRefresh size={12} color="#475569" />
+            <Text style={styles.refreshIconText}>Refresh</Text>
           </Pressable>
         </View>
 
@@ -374,10 +386,11 @@ export function NativePrivateLetterPanel({
                 {l.canDownload && (
                   <Pressable
                     accessibilityRole="button"
-                    style={styles.actionPreviewBtn}
+                    style={[styles.actionPreviewBtn, { flexDirection: "row", alignItems: "center", gap: 4 }]}
                     disabled={busy}
                     onPress={() => void onPreview(l.documentRef)}
                   >
+                    <IconFileText size={12} color="#1D4ED8" />
                     <Text style={styles.actionPreviewText}>Download / Preview</Text>
                   </Pressable>
                 )}
@@ -385,13 +398,14 @@ export function NativePrivateLetterPanel({
                 {canRevoke && l.state !== "REVOKED" && (
                   <Pressable
                     accessibilityRole="button"
-                    style={styles.actionRevokeBtn}
+                    style={[styles.actionRevokeBtn, { flexDirection: "row", alignItems: "center", gap: 4 }]}
                     disabled={busy}
                     onPress={() => {
                       setRevokeRef(l.documentRef);
                       setReview("REVOKE");
                     }}
                   >
+                    <IconXCircle size={12} color="#DC2626" />
                     <Text style={styles.actionRevokeText}>Revoke Letter</Text>
                   </Pressable>
                 )}

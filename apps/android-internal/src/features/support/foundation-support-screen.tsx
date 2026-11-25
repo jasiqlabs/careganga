@@ -18,7 +18,10 @@ import {
   IconHelpCircle,
   IconSearch,
   IconSend,
-  IconUser
+  IconUser,
+  IconArrowLeft,
+  IconRefresh,
+  IconChevronRight
 } from "../dashboard/dashboard-icons";
 
 type CaseView = {
@@ -277,8 +280,8 @@ export function FoundationSupportScreen({
       <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={styles.content}>
         {/* Top Header */}
         <View style={styles.headerRow}>
-          <Pressable accessibilityRole="button" onPress={onExit} disabled={busy} style={styles.backBtn}>
-            <Text style={styles.backBtnText}>← Back</Text>
+          <Pressable accessibilityRole="button" onPress={onExit} disabled={busy} style={styles.backBtn} accessibilityLabel="Back">
+            <IconArrowLeft size={18} color="#334155" />
           </Pressable>
 
           <View style={styles.headerInfo}>
@@ -374,8 +377,13 @@ export function FoundationSupportScreen({
         <View style={styles.card}>
           <View style={styles.cardHeaderRow}>
             <Text style={styles.cardHeading}>Support Tickets & Inquiries</Text>
-            <Pressable style={styles.refreshBtn} disabled={loading} onPress={() => void load()}>
-              <Text style={styles.refreshBtnText}>↻ Refresh</Text>
+            <Pressable
+              style={[styles.refreshBtn, { flexDirection: "row", alignItems: "center", gap: 4 }]}
+              disabled={loading}
+              onPress={() => void load()}
+            >
+              <IconRefresh size={12} color="#475569" />
+              <Text style={styles.refreshBtnText}>Refresh</Text>
             </Pressable>
           </View>
 
@@ -437,7 +445,10 @@ export function FoundationSupportScreen({
                       minute: "2-digit"
                     })}
                   </Text>
-                  <Text style={styles.viewDetailLink}>View Discussion →</Text>
+                  <View style={{ flexDirection: "row", alignItems: "center", gap: 3 }}>
+                    <Text style={styles.viewDetailLink}>View Discussion</Text>
+                    <IconChevronRight size={13} color="#2563EB" />
+                  </View>
                 </View>
               </Pressable>
             ))
@@ -627,17 +638,14 @@ const styles = StyleSheet.create({
     gap: 12
   },
   backBtn: {
-    paddingVertical: 8,
-    paddingHorizontal: 12,
+    width: 36,
+    height: 36,
     backgroundColor: "#FFFFFF",
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: "#CBD5E1"
-  },
-  backBtnText: {
-    fontSize: 13,
-    fontWeight: "700",
-    color: "#334155"
+    borderColor: "#CBD5E1",
+    alignItems: "center",
+    justifyContent: "center"
   },
   headerInfo: {
     flex: 1

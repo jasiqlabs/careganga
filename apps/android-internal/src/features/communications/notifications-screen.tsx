@@ -31,7 +31,8 @@ import {
   IconXCircle,
   IconBarChart2,
   IconCheck,
-  IconUsers
+  IconUsers,
+  IconArrowLeft
 } from "../dashboard/dashboard-icons";
 
 type Channel = "IN_APP" | "EMAIL" | "SMS";
@@ -421,8 +422,8 @@ export function NotificationsScreen({ token, onExit, onExpired }: Props) {
       <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
         {/* Top Header Row with Actions */}
         <View style={styles.headerRow}>
-          <Pressable accessibilityRole="button" onPress={onExit} style={styles.backBtn}>
-            <Text style={styles.backBtnText}>Back</Text>
+          <Pressable accessibilityRole="button" onPress={onExit} style={styles.backBtn} accessibilityLabel="Back">
+            <IconArrowLeft size={18} color="#334155" />
           </Pressable>
 
           <View style={styles.headerInfo}>
@@ -1519,17 +1520,14 @@ const styles = StyleSheet.create({
     flexWrap: "wrap"
   },
   backBtn: {
-    paddingVertical: 7,
-    paddingHorizontal: 12,
+    width: 36,
+    height: 36,
     backgroundColor: "#FFFFFF",
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: "#CBD5E1"
-  },
-  backBtnText: {
-    fontSize: 13,
-    fontWeight: "700",
-    color: "#334155"
+    borderColor: "#CBD5E1",
+    alignItems: "center",
+    justifyContent: "center"
   },
   headerInfo: {
     flex: 1,

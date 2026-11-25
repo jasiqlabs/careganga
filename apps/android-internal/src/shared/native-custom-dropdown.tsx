@@ -8,7 +8,7 @@ import {
   TextInput,
   View
 } from "react-native";
-import { IconChevronRight, IconClose, IconSearch } from "../features/dashboard/dashboard-icons";
+import { IconChevronRight, IconClose, IconSearch, IconCheck } from "../features/dashboard/dashboard-icons";
 
 export interface NativeDropdownOption {
   value: string;
@@ -217,7 +217,7 @@ export function NativeCustomDropdown({
 
                       {isSelected && (
                         <View style={styles.checkIcon}>
-                          <Text style={styles.checkText}>✓</Text>
+                          <IconCheck size={14} color="#2563EB" />
                         </View>
                       )}
                     </Pressable>

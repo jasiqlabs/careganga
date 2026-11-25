@@ -25,7 +25,9 @@ import { NativeCustomDropdown } from "../../shared/native-custom-dropdown";
 import {
   IconFileText,
   IconChevronRight,
-  IconShieldCheck
+  IconShieldCheck,
+  IconArrowLeft,
+  IconFolder
 } from "../dashboard/dashboard-icons";
 
 type Props = {
@@ -374,12 +376,12 @@ export function PrivateCaseEvidenceScreen({
           <View style={styles.headerRow}>
             <Pressable
               accessibilityRole="button"
-              accessibilityLabel="Back to Dashboard"
+              accessibilityLabel="Back"
               onPress={onExit}
               disabled={busy || uncertain}
               style={styles.backButton}
             >
-              <Text style={styles.backButtonText}>← Back</Text>
+              <IconArrowLeft size={18} color="#334155" />
             </Pressable>
 
             <View style={styles.headerInfo}>
@@ -403,10 +405,11 @@ export function PrivateCaseEvidenceScreen({
               onPress={() => setActiveTab("EVIDENCE")}
               style={[styles.tabButton, activeTab === "EVIDENCE" && styles.tabButtonActive]}
             >
+              <IconFolder size={15} color={activeTab === "EVIDENCE" ? "#1D4ED8" : "#64748B"} />
               <Text
                 style={[styles.tabButtonText, activeTab === "EVIDENCE" && styles.tabButtonTextActive]}
               >
-                📁 Case Evidence Files
+                Case Evidence Files
               </Text>
             </Pressable>
 
@@ -417,10 +420,11 @@ export function PrivateCaseEvidenceScreen({
                 onPress={() => setActiveTab("LETTERS")}
                 style={[styles.tabButton, activeTab === "LETTERS" && styles.tabButtonActive]}
               >
+                <IconFileText size={15} color={activeTab === "LETTERS" ? "#1D4ED8" : "#64748B"} />
                 <Text
                   style={[styles.tabButtonText, activeTab === "LETTERS" && styles.tabButtonTextActive]}
                 >
-                  📜 Official Letters & Certs
+                  Official Letters & Certs
                 </Text>
               </Pressable>
             )}
@@ -687,17 +691,14 @@ const styles = StyleSheet.create({
     paddingBottom: 4
   },
   backButton: {
-    paddingVertical: 8,
-    paddingHorizontal: 12,
+    width: 36,
+    height: 36,
     backgroundColor: "#FFFFFF",
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: "#CBD5E1"
-  },
-  backButtonText: {
-    fontSize: 13,
-    fontWeight: "700",
-    color: "#334155"
+    borderColor: "#CBD5E1",
+    alignItems: "center",
+    justifyContent: "center"
   },
   headerInfo: {
     flex: 1
@@ -735,6 +736,8 @@ const styles = StyleSheet.create({
   },
   tabButton: {
     flex: 1,
+    flexDirection: "row",
+    gap: 6,
     paddingVertical: 9,
     borderRadius: 7,
     alignItems: "center",
