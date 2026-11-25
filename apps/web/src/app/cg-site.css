@@ -1019,3 +1019,10 @@
 .cg-site-notices~.cg-site-floating{position:static;justify-content:center;padding:1rem;background:#0b1118}
 @media(min-width:681px){.cg-site-notice-list:has(>.cg-site-notice-card:nth-child(2):last-child){grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:540px){.cg-site-notice-discovery .cg-site-gallery-filters label:has(select){flex:0 1 auto}}
+
+/* Keep the donation form readable and prevent a floating CTA covering inputs. */
+.cg-public-donate~.cg-site-floating{position:static;justify-content:center;padding:1rem;background:#0b1118}
+.cg-public-donate-panel{padding:0;border:0;background:transparent}
+.cg-public-donation-form{width:100%;min-width:0;overflow-wrap:anywhere}
+.cg-public-donation-form button:disabled{opacity:.6;cursor:not-allowed!important}
+.cg-public-donation-form input:not([type=checkbox]):read-only,.cg-public-donation-form textarea:read-only{background:#f4f7f5!important}
