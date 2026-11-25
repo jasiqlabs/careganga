@@ -42,6 +42,10 @@ export async function publishedCmsPage(slug:string):Promise<CmsPageResult>{
       "copyright-and-intellectual-property"].includes(slug)))
    throw Error();
   const page=p as PublicCmsPage;
+  const reservedArticleSlugs=new Set(["home","about","our-impact","80g","gallery","contact","healthcare","collaboration","our-work","upcoming-projects","terms-and-conditions","privacy-policy","cookie-policy","disclaimer","refund-and-cancellation","grievance-redressal","copyright-and-intellectual-property","admin","api","login","join","volunteer","auth","internal","_next"]);
+  if(page.kind==="ARTICLE"&&reservedArticleSlugs.has(slug))throw Error();
+  const canonical=page.kind==="HOME"?"/":page.kind==="COMPLIANCE"?"/ngo-information":page.kind==="ARTICLE"?"/blog/"+slug:page.kind==="POLICY"?"/policies/"+slug:"/"+slug;
+  if(page.canonicalPath!==canonical)throw Error();
   if(page.kind==="ARTICLE"&&(page.canonicalPath!=="/blog/"+slug||page.sections.length!==1||page.sections[0].kind!=="ARTICLE_BODY"))throw Error();
   if(page.kind==="POLICY"&&(page.canonicalPath!=="/policies/"+slug||page.sections.length<1||page.sections.length>12||page.sections.some(section=>section.kind!=="RICH_TEXT")||page.assets.length>0))throw Error();
   return {state:"PUBLISHED",page};
