@@ -167,13 +167,14 @@ export function CmsArticle({section,assets}:{
  const stamp=(v:unknown)=>typeof v==="string"&&Number.isFinite(Date.parse(v))?new Date(v).toLocaleString("en-IN",{timeZone:"Asia/Kolkata"}):"";
  const eventStatus=event?({SCHEDULED:"Scheduled",ONGOING:"Ongoing",COMPLETED:"Completed"} as Record<string,string>)[text(event.status)]:undefined;
  const start=stamp(event?.scheduledStart),end=stamp(event?.scheduledEnd);
+ const validSchedule=!!start&&!!end&&Date.parse(text(event?.scheduledEnd))>Date.parse(text(event?.scheduledStart));
  const tags=Array.isArray(f.tags)?f.tags.map(text).filter(t=>t.trim()):[];
  return <article className="cg-site-content cg-site-article-body cg-site-editorial-detail">
   <Link className="cg-site-editorial-back" href={event?"/events":"/blog"}>{event?"Back to events":"Back to news"}</Link>
   <p className="cg-site-eyebrow">{text(f.category)}</p>
   <h1>{text(f.heading)}</h1>
   {!!text(f.excerpt)&&<p className="cg-site-article-lead">{text(f.excerpt)}</p>}
-  {event&&<div className="cg-site-event-facts"><p>{eventStatus||"Current event status unavailable"}{text(event.area)?" · "+text(event.area):""}</p>{start&&end&&<p>{start} – {end} IST</p>}</div>}
+  {event&&<div className="cg-site-event-facts"><p>{eventStatus||"Current event status unavailable"}{text(event.area)?" · "+text(event.area):""}</p>{validSchedule?<p>{start} – {end} IST</p>:<p>Current event timing unavailable</p>}</div>}
   {(text(f.source)||text(f.asOfDate)||text(f.authorLabel))&&<div className="cg-site-editorial-meta">{text(f.source)&&<span>Source: {text(f.source)}</span>}{text(f.asOfDate)&&<span>As of {text(f.asOfDate)}</span>}{text(f.authorLabel)&&<span>Editorial credit: {text(f.authorLabel)}</span>}</div>}
   {photo(cover,"cg-site-article-cover")}
   {text(f.body).split(/\n{2,}/).filter(Boolean).map((paragraph,i)=>
