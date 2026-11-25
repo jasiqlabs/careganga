@@ -623,3 +623,20 @@
 .cg-site-contact-faq-grid summary{padding-block:.3rem;min-height:44px}
 .cg-site-ngo-sidebar .cg-site-unavailable small{display:block}
 @media(max-width:800px){.cg-site-contact-original>.cg-site-contact-layout{margin-block:1rem}}
+
+/* Reference project rows; real media only, no reserved image when absent. */
+.cg-site-project-card{display:grid;grid-template-columns:1fr;gap:1.25rem;margin:1.25rem 0;padding:clamp(1rem,2.4vw,1.75rem);background:#fff;border:1px solid #e1e8dd;border-radius:1.1rem;box-shadow:0 .4rem 1.5rem #153b2809;align-items:center}
+.cg-site-project-card:has(.cg-site-project-cover){grid-template-columns:minmax(0,2fr) minmax(0,3fr)}
+.cg-site-project-cover{width:100%;aspect-ratio:16/10;object-fit:cover;border-radius:.75rem}
+.cg-site-project-copy{min-width:0;overflow-wrap:anywhere}
+.cg-site-project-copy h3{color:#194a3a;font-family:Georgia,serif;font-size:clamp(1.4rem,2.3vw,2rem);margin:.4rem 0}
+.cg-site-project-copy p{margin:.4rem 0}
+.cg-site-float-donate{cursor:pointer;text-decoration:none}
+.cg-site-float-enquiry{background:#ffb74c;color:#173a28!important}
+.cg-site-footer .cg-site-unavailable small{color:#bdc9d6;display:block;font-size:.7rem}
+.cg-site-footer{padding-bottom:clamp(5rem,7vw,6rem)}
+.cg-site-healthcare-grid .cg-site-impact-card{display:flex;flex-direction:column;align-items:flex-start}
+.cg-site-healthcare-grid .cg-site-action{margin-top:auto;min-width:0;width:100%}
+.cg-site-healthcare-grid .cg-health-category-photo{width:100%;aspect-ratio:16/10;object-fit:cover;border-radius:.8rem}
+.cg-site-healthcare-grid h3{font-family:Georgia,serif;font-size:1.35rem;color:#1a4032}
+@media(max-width:760px){.cg-site-project-card:has(.cg-site-project-cover){grid-template-columns:1fr}.cg-site-floating{inset:auto .75rem max(.75rem,env(safe-area-inset-bottom))}.cg-site-float-donate{max-width:65vw;white-space:normal}}
