@@ -25,10 +25,12 @@ export default async function FoundationContactPage(){
  const page=contact.state==="PUBLISHED"?contact.page:neutral;
  const footer=home.state==="PUBLISHED"?
   home.page.sections.find(s=>s.kind==="SITE_FOOTER")?.fields:null;
- return <CmsPublicPage page={page} navigation={navigation} siteFooter={footer}>
+ const form=<Cg19PublicContactForm contact={footer??{}}/>;
+ const embedded=page.sections.some(s=>s.kind==="CONTACT_INFO");
+ return <CmsPublicPage page={page} navigation={navigation} siteFooter={footer} contactForm={embedded?form:undefined}>
   {contact.state==="UNAVAILABLE"&&<p className="cg-site-content cg-site-provenance"
    role="status">Approved Contact page information cannot be verified.
    The Foundation's private support form remains available independently.</p>}
-  <Cg19PublicContactForm/>
+  {!embedded&&form}
  </CmsPublicPage>;
 }
