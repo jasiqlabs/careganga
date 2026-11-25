@@ -95,10 +95,10 @@ export class SupportController{
     if(!body||typeof body!=="object"||Array.isArray(body))
       throw new BadRequestException("Check support search");
     const x=body as Record<string,unknown>;
-    if(Object.keys(x).some(k=>!["limit","filter","cursor","search"].includes(k)))
+    if(Object.keys(x).some(k=>!["limit","filter","cursor","search","lastActivity","startedFrom","startedTo"].includes(k)))
       throw new BadRequestException("Unsupported search information");
     return this.support.cases(token,x.limit??30,x.filter??"ALL",x.cursor??null,
-      x.search??"");
+      x.search??"",x.lastActivity??"ALL",x.startedFrom??"",x.startedTo??"");
   }
   @Get("cases/:caseRef")
   detail(@Headers("authorization")token:string,
