@@ -347,5 +347,6 @@ CG19 currently supplies original validated/scan-clean rights-safe media and CG12
   - Rebuilt Support desk table with circular guest initial avatars, bold subject snippets, status pill badges, relative time labels, and pagination.
   - Added Recent Conversations sidebar for one-click access.
   - Upgraded C42/C43 Help & Support drawer with guest profile card, inquiry bubble, reply history, status resolution note with live `(X / 8 required)` validation, and operator assignment.
+  - Eliminated horizontal screen overflow by decoupling filter actions into dedicated bottom-right toolbar, styled custom SVG chevron dropdowns (`.cg19-select`), added authentic `STARTED ON` timestamp column, and eye icon action button.
   - `npm run test:cg19-migration-compatibility -w apps/backend`: PASSED (6/6 tests passed).
 - **Gate:** SOURCE_VERIFIED_RUNTIME_PENDING. No runtime PostgreSQL, live mail/SMS provider dispatch, Android emulator/device or production deployment implied. Original QA criteria and counts unchanged.
