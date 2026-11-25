@@ -23,6 +23,9 @@ import {
   HelpCircle,
   AlertCircle,
   Eye,
+  Pencil,
+  Globe,
+  EyeOff,
 } from "lucide-react";
 import { FoundationSupportAttachments } from "./foundation-support-attachments";
 import { CustomDropdown } from "../../shared/custom-dropdown";
@@ -461,7 +464,7 @@ export function FoundationSupportWorkspace({
             Contact Messages &amp; Help
           </h1>
           <p style={{ color: "#64748b", fontSize: "0.85rem", margin: "0.2rem 0 0 0" }}>
-            Foundation support intake, private replies, assignments and help questions (C39–C43)
+            Foundation support intake, private replies, assignments and help questions 
           </p>
         </div>
         <div className="toolbar" style={{ display: "flex", gap: "0.5rem" }}>
@@ -1617,16 +1620,18 @@ export function FoundationSupportWorkspace({
                   disabled={busy || !question.trim() || !answer.trim()}
                   onClick={() => void saveFaq()}
                 >
+                  <CheckCircle className="w-4 h-4" />
                   Save draft/revision
                 </button>
                 {editing && editing.state !== "PUBLISHED" && (
                   <button
                     type="button"
-                    className="cg19-btn-reset"
+                    className="cg19-btn-faq-publish"
                     disabled={busy}
                     onClick={() => void saveFaq(true)}
                   >
-                    Publish
+                    <Globe className="w-4 h-4" />
+                    Publish live
                   </button>
                 )}
                 {editing && (
@@ -1639,6 +1644,7 @@ export function FoundationSupportWorkspace({
                       setAnswer("");
                     }}
                   >
+                    <X className="w-4 h-4" />
                     Cancel edit
                   </button>
                 )}
@@ -1680,34 +1686,40 @@ export function FoundationSupportWorkspace({
                       <div style={{ display: "flex", gap: "0.4rem" }}>
                         <button
                           type="button"
-                          className="cg19-btn-open"
+                          className="cg19-btn-faq-edit"
                           disabled={busy}
+                          title="Edit question and answer"
                           onClick={() => {
                             setEditing(f);
                             setQuestion(f.question);
                             setAnswer(f.answer);
                           }}
                         >
-                          Edit
+                          <Pencil className="w-3.5 h-3.5 text-slate-500" />
+                          <span>Edit</span>
                         </button>
                         {f.state === "DRAFT" && (
                           <button
                             type="button"
-                            className="cg19-btn-open"
+                            className="cg19-btn-faq-publish"
                             disabled={busy}
+                            title="Publish to public contact page"
                             onClick={() => void faqState(f, "PUBLISHED")}
                           >
-                            Publish
+                            <Globe className="w-3.5 h-3.5" />
+                            <span>Publish</span>
                           </button>
                         )}
                         {f.state === "PUBLISHED" && (
                           <button
                             type="button"
-                            className="cg19-btn-open"
+                            className="cg19-btn-faq-withdraw"
                             disabled={busy}
+                            title="Withdraw from public display"
                             onClick={() => void faqState(f, "WITHDRAWN")}
                           >
-                            Withdraw
+                            <EyeOff className="w-3.5 h-3.5" />
+                            <span>Withdraw</span>
                           </button>
                         )}
                       </div>
