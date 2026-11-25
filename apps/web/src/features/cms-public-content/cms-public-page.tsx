@@ -99,10 +99,10 @@ function JoinCards({fields,navigation}:{fields:Record<string,unknown>;navigation
  </section>;
 }
 function Team({fields,assets}:{fields:Record<string,unknown>;assets:Asset[]}){
- const members=Array.isArray(fields.members)?fields.members:[];
+ const members=Array.isArray(fields.members)?fields.members.map((person,index)=>({person,index})).filter(({person})=>person&&typeof person==="object"&&!Array.isArray(person)&&person.consentConfirmed===true&&text(person.name).trim()&&text(person.designation).trim()):[];
  return <section className="cg-site-team cg-site-content">
   <h2>{text(fields.heading)||"Our team"}</h2>
-  <div className="cg-site-team-grid">{members.map((person,i)=>{
+  {!members.length?<div className="cg-site-empty" role="status"><strong>No public profiles yet</strong><p>Consented team profiles will appear here once published.</p></div>:<div className="cg-site-team-grid">{members.map(({person,index:i})=>{
    if(!person||typeof person!=="object"||Array.isArray(person)||
       person.consentConfirmed!==true)return null;
    const p=person as Record<string,unknown>;
@@ -111,7 +111,7 @@ function Team({fields,assets}:{fields:Record<string,unknown>;assets:Asset[]}){
     <h3>{text(p.name)}</h3><strong>{text(p.designation)}</strong>
     {!!text(p.bio)&&<p>{text(p.bio)}</p>}
    </article>;
-  })}</div>
+  })}</div>}
  </section>;
 }
 export function SiteFooter({data,navigation}:{data:Record<string,unknown>;
@@ -229,7 +229,7 @@ export function CmsPublicPage({page,navigation,siteFooter,children,mediaScope,si
      if(section.kind==="COMPLIANCE_FACTS")return <CmsCompliance key={key}
       section={section} assets={assets}/>;
      if(section.kind==="GALLERY_GRID")return <CmsGallery key={key}
-      section={section} assets={assets} mediaScope={mediaScope}/>;
+      section={section} assets={assets} mediaScope={mediaScope} embedded={page.kind!=="GALLERY"}/>;
      if(section.kind==="ARTICLE_BODY")return <CmsArticle key={key}
       section={section} assets={assets}/>;
      if(section.kind==="HEALTHCARE_CATEGORIES")return <CmsHealthcare key={key}
