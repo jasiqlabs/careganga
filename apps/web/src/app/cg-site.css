@@ -542,7 +542,8 @@
  .cg-site-brand strong{font-size:clamp(1.55rem,1.8vw,2.1rem)}
 }
 @media(max-width:1440px){
- .cg-site-nav{max-height:min(75vh,calc(100dvh - 120px));overscroll-behavior:contain}
+ .cg-site-nav{justify-content:flex-start;max-height:min(75vh,calc(100dvh - 120px));overscroll-behavior:contain}
+ .cg-site-nav>*{flex-shrink:0}
  .cg-site-nav>span,.cg-site-nav>a,.cg-site-menu>summary,.cg-site-dropdown>a{min-height:44px}
  .cg-site-menu>summary{justify-content:space-between;padding-inline:.65rem}
  .cg-site-nav>a,.cg-site-nav>span{padding-inline:.65rem}
