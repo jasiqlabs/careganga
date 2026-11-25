@@ -1034,3 +1034,13 @@
 .cg-site:has(.cg-site-page-gallery)>.cg-site-floating{position:static;justify-content:center;padding:1rem;background:#0b1118}
 .cg-site-gallery .cg-site-gallery-card>a.cg-site-action{background:#194a3a;color:#fff;border:1px solid #194a3a;border-radius:.65rem;padding:.65rem 1rem;font-weight:750;text-decoration:none}
 .cg-site-gallery .cg-site-gallery-card>a.cg-site-action:focus-visible{outline:3px solid #194a3a;outline-offset:3px}
+
+/* Project catalogue: accessible category navigation and unobstructed results. */
+.cg-site-ngo-sidebar .cg-site-project-sidebar{display:grid;gap:.4rem}
+.cg-site-project-sidebar p{margin:0;min-width:0}
+.cg-site-project-sidebar a{display:flex;align-items:center;min-height:44px;overflow-wrap:anywhere}
+.cg-site-project-sidebar a[aria-current="page"]{background:#194a3a;color:white;font-weight:750}
+.cg-site-page-projects{gap:clamp(1rem,2vw,2rem)}
+.cg-site-page-projects .cg-site-article{padding-block:1rem}
+.cg-site-page-projects .cg-site-copy h2{font-size:clamp(1.5rem,2.8vw,2.4rem);margin:.35rem 0 .7rem;letter-spacing:-.025em}
+.cg-site:has(.cg-site-page-projects)>.cg-site-floating{position:static;justify-content:center;padding:1rem;background:#0b1118}
