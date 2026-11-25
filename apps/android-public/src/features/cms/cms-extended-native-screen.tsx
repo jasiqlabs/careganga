@@ -331,7 +331,7 @@ const styles=StyleSheet.create({
  photo:{width:"100%",height:220,borderRadius:10},
  button:{minHeight:48,borderRadius:9,alignItems:"center",justifyContent:"center",
   backgroundColor:t.amber,padding:12},
- buttonText:{fontSize:15,fontWeight:"700",color:t.sidebar},
+ buttonText:{fontSize:15,fontWeight:"700",color:t.sidebar,textAlign:"center",flexShrink:1},
  filterRow:{flexDirection:"row",flexWrap:"wrap",gap:7},
  filter:{borderRadius:8,borderWidth:1,borderColor:t.border,paddingVertical:9,
   paddingHorizontal:12,minHeight:42,justifyContent:"center"},
