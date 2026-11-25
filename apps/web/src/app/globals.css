@@ -15665,3 +15665,13 @@ button:disabled {
 .cg-health-appointment-detail .cg-health-document-panel p{margin:.25rem 0}
 .cg-health-appointment-detail .cg-health-document-panel button{width:100%}
 .cg-health-appointment-detail .cg-health-document-panel h2{padding-bottom:.6rem;border-bottom:1px solid #dce7dc;margin:0 0 .25rem}
+
+
+/* Healthcare application: one clear introduction and unobstructed form. */
+.cg-health-public-chrome .cg-health-partner-page>.cg-public-header{display:grid;justify-content:stretch;gap:.65rem;padding:clamp(1rem,3vw,2rem);background:#f0f7f2;border:1px solid #d0e4d5;border-radius:1rem;align-items:start}
+.cg-health-partner-page>.cg-public-header .cg-eyebrow{font-size:.76rem;font-weight:750;text-transform:uppercase;letter-spacing:.07em;color:#194a3a;margin:.5rem 0 0}
+.cg-health-partner-page>.cg-public-header h1{font:700 clamp(1.8rem,3.2vw,3rem)/1.15 Georgia,"Times New Roman",serif;color:#112f2a;margin:0;overflow-wrap:anywhere}
+.cg-health-partner-page>.cg-public-header .cg-lead{max-width:76ch;font-size:1rem;line-height:1.65;color:#42586a;margin:0}
+.cg-health-partner-page>.cg-public-section{max-width:960px;width:100%;margin-inline:auto}
+.cg-health-partner-page~.cg-site-floating{position:static;justify-content:center;padding:1rem;background:#0b1118}
+.cg-health-public-chrome .cg-health-partner-page .cg-partner-form button,.cg-health-public-chrome .cg-health-partner-page .cg-partner-received button{min-height:48px}
