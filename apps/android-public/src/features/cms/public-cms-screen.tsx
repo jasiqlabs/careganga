@@ -322,8 +322,9 @@ export function PublicCmsContent({onContact,onPartnerApplication,onMembershipApp
  };
  const noticeCategories=Array.from(new Set(noticeFeed.notices.map(n=>n.category)
   .filter(Boolean))).sort((a,b)=>a.localeCompare(b));
+ const effectiveNoticeCategory=noticeCategories.includes(noticeCategory)?noticeCategory:"ALL";
  const visibleNotices=noticeFeed.notices.filter(n=>
-  (noticeCategory==="ALL"||n.category===noticeCategory)&&
+  (effectiveNoticeCategory==="ALL"||n.category===effectiveNoticeCategory)&&
   (noticePriority==="ALL"||n.priority===noticePriority)&&
   (!noticeSearch.trim()||[n.title,n.body,n.category].some(v=>
    v.toLocaleLowerCase().includes(noticeSearch.trim().toLocaleLowerCase()))));
@@ -415,14 +416,14 @@ export function PublicCmsContent({onContact,onPartnerApplication,onMembershipApp
         <CmsButton key={priority}
          title={priority==="ALL"?"All priorities":
           priority==="IMPORTANT"?"Important":"Normal"}
-         secondary={noticePriority!==priority}
+         secondary={noticePriority!==priority} selected={noticePriority===priority}
          onPress={()=>setNoticePriority(priority)}/>)}
       </View>
       <View style={styles.actions} accessibilityLabel="Notice category filters">
-       <CmsButton title="All categories" secondary={noticeCategory!=="ALL"}
+       <CmsButton title="All categories" secondary={effectiveNoticeCategory!=="ALL"} selected={effectiveNoticeCategory==="ALL"}
         onPress={()=>setNoticeCategory("ALL")}/>
        {noticeCategories.map(category=><CmsButton key={category} title={category}
-         secondary={noticeCategory!==category}
+         secondary={effectiveNoticeCategory!==category} selected={effectiveNoticeCategory===category}
          onPress={()=>setNoticeCategory(category)}/>)}
       </View>
       <CmsButton title="Reset Filters" secondary onPress={()=>{
@@ -430,9 +431,9 @@ export function PublicCmsContent({onContact,onPartnerApplication,onMembershipApp
       <Text style={styles.muted} accessibilityLiveRegion="polite">
        {visibleNotices.length} current approved notices match</Text>
       {visibleNotices.length===0&&
-       <Text style={styles.muted}>No current notices match the selected filters.</Text>}
+       <Text style={styles.muted}>{noticeFeed.notices.length?"No matching notices. Try another category, priority or search term.":"No notices published yet."}</Text>}
       {visibleNotices.map(n=><View style={styles.person} key={n.path}>
-       <Text style={styles.eyebrow}>{n.category} · {n.priority}</Text>
+       <Text style={[styles.eyebrow,{color:n.priority==="IMPORTANT"?"#854c0c":t.primary}]}>{n.category} · {n.priority==="IMPORTANT"?"Important":"Normal"}</Text>
        <Text accessibilityRole="header" style={styles.heading}>{n.title}</Text>
        <Text style={styles.body}>{n.body}</Text>
        <Text style={styles.muted}>Published {n.publishedOn}</Text>
