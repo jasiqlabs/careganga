@@ -11,6 +11,21 @@ export default function AdminErrorBoundary({
   reset: () => void;
 }) {
   useEffect(() => {
+    if (error.digest?.startsWith("NEXT_REDIRECT")) {
+      const match = error.digest.split(";");
+      const target = match.length > 2 && match[2] ? match[2] : "/admin/login";
+      // Only follow an internal administration path, never an arbitrary digest URL.
+      let safeTarget = "/admin/login";
+      try {
+        const url = new URL(target, window.location.origin);
+        if (url.origin === window.location.origin &&
+          (url.pathname === "/admin" || url.pathname.startsWith("/admin/")))
+          safeTarget = url.pathname + url.search + url.hash;
+      } catch { /* retain safe login destination */ }
+      window.location.replace(safeTarget);
+      return;
+    }
+
     // Log sanitized error diagnostic without exposing internal secrets or stack traces to end users
     const failureName = error instanceof Error && /^[A-Za-z][A-Za-z0-9_]{0,63}$/.test(error.name)
       ? error.name
