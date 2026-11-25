@@ -63,7 +63,7 @@ export function CmsPublicExtendedSection({section,assets,mediaUrl,onContact,
   {picture("IMPACT")}
   {impactItems.length>0&&<Text style={styles.source}>Source: {text(f.source)} · {text(f.asOfDate)}
    {"\n"}Editorial information; not independently audited</Text>}
-  {!impactItems.length&&!["HERO","CTA"].includes(text(f.group))&&!text(f.intro)&&<Text style={styles.source}>No approved information has been published yet.</Text>}
+  {!impactItems.length&&!["HERO","CTA","PILLARS"].includes(text(f.group))&&<View style={styles.item}><Text style={styles.source}>No approved information has been published yet.</Text></View>}
   {impactItems.map((v,i)=><View key={i} style={styles.item}>
    <Text style={styles.itemTitle}>{text(v.title)}
     {typeof v.year==="number"?" ("+v.year+")":""}</Text>
@@ -263,7 +263,7 @@ export function CmsPublicExtendedSection({section,assets,mediaUrl,onContact,
     <Text style={styles.body}>{text(item.description)}</Text>
    </View>)}
    <Action title="Send a private message" onPress={onContact}/>
-   <Text style={styles.source}>Private messages use the Foundation\'s existing contact-support service.</Text>
+   <Text style={styles.source}>Private messages use the Foundation’s existing contact-support service.</Text>
    {[0,1,2].map(i=>mediaUrl(asset("CONTACT",i))?<View key={i}>{picture("CONTACT",i)}</View>:null)}
    {!!text(f.officeHours)&&<Text style={styles.source}>
     Foundation hours: {text(f.officeHours)}</Text>}
