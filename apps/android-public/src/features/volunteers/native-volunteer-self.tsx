@@ -31,9 +31,10 @@ export function NativeVolunteerSelf({onExit}:{onExit:()=>void}){
  const [profile,setProfile]=useState<CG04VolunteerProfile|null>(null),[options,setOptions]=useState<CG04VolunteerOptions|null>(null);
  const [draft,setDraft]=useState<Draft>(empty),[step,setStep]=useState(0);
  const seq=useRef(0),verifySeq=useRef(0),foreground=useRef(true),pending=useRef<Pending|null>(null);
+ const reviewAfterSave=useRef<{ref:string;version:number}|null>(null);
  const change=(key:keyof Draft,value:string|boolean)=>setDraft(v=>({...v,[key]:value}));
  const clear=useCallback(()=>{
-  seq.current++;verifySeq.current++;setVerifyCode("");setVerifyStatus("IDLE");setToken(null);setVerified(false);setApps([]);setSelected(null);setProfile(null);setOptions(null);setDraft(empty());setStep(0);pending.current=null;
+  reviewAfterSave.current=null;seq.current++;verifySeq.current++;setVerifyCode("");setVerifyStatus("IDLE");setToken(null);setVerified(false);setApps([]);setSelected(null);setProfile(null);setOptions(null);setDraft(empty());setStep(0);pending.current=null;
   void SecureStore.deleteItemAsync(KEY).catch(()=>undefined);
  },[]);
  const refresh=useCallback(async(session:string)=>{
@@ -63,7 +64,8 @@ export function NativeVolunteerSelf({onExit}:{onExit:()=>void}){
  });return()=>sub.remove();},[token,refresh]);
  useEffect(()=>{
   if(!selected)return;
-  setDraft(from(selected));setStep(0);
+  const saved=reviewAfterSave.current;reviewAfterSave.current=null;
+  setDraft(from(selected));setStep(saved?.ref===selected.ref&&saved?.version===selected.version?3:0);
  },[selected?.ref,selected?.version]);
  useEffect(()=>{
   if(!token||!verified)return;
@@ -118,7 +120,7 @@ export function NativeVolunteerSelf({onExit}:{onExit:()=>void}){
   pending.current=null;
   if(kind==="SAVE"&&result&&typeof result==="object"&&"record" in result){
    const next=(result as {record:CG04VolunteerApplication}).record;
-   setApps(old=>[next,...old.filter(v=>v.ref!==next.ref)]);setSelected(next);setStep(3);
+   setApps(old=>[next,...old.filter(v=>v.ref!==next.ref)]);reviewAfterSave.current={ref:next.ref,version:next.version};setSelected(next);setStep(3);
   }else await refresh(token);
   setMessage(kind==="SAVE"?"Draft saved. Verify your original identity document next.":kind==="SUBMIT"?"Original volunteer application sent for independent review.":"Approved volunteer identity confirmed, without a staff role.");
  });
@@ -132,12 +134,12 @@ export function NativeVolunteerSelf({onExit}:{onExit:()=>void}){
    if(id===verifySeq.current&&foreground.current)setVerifyStatus(status.valid&&status.status==="ACTIVE"?"ACTIVE":"NOT_VALID");
   }catch{if(id===verifySeq.current&&foreground.current)setVerifyStatus("UNAVAILABLE");}
  };
- const choose=(app:CG04VolunteerApplication|null)=>{pending.current=null;setSelected(app);setDraft(app?from(app):empty());setStep(0);};
+ const choose=(app:CG04VolunteerApplication|null)=>{reviewAfterSave.current=null;pending.current=null;setSelected(app);setDraft(app?from(app):empty());setStep(0);};
  const editable=!selected||["DRAFT","RETURNED"].includes(selected.status);
  return <SafeAreaView style={s.page}><ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={s.content}>
   {button("Back to CareGanga Foundation",onExit)}
   <View style={s.hero}>{!!intro?.eyebrow&&<Text style={s.heroOverline}>{intro.eyebrow}</Text>}<Text accessibilityRole="header" style={s.heroTitle}>{intro?.heading??"Volunteer registration"}</Text>{!!intro?.body&&<Text style={s.heroText}>{intro.body}</Text>}{intro?.highlights.map((line,i)=><Text key={i} style={s.heroText}>{line}</Text>)}<Text style={s.heroText}>Your application and evidence remain private until independently reviewed.</Text></View>
-  <View style={s.row}>{button("Application Form",()=>setTab("APPLICATION"),false,tab==="APPLICATION")}
+  <View style={s.row}>{button("Application Form",()=>{verifySeq.current++;setVerifyCode("");setVerifyStatus("IDLE");setTab("APPLICATION");},false,tab==="APPLICATION")}
    {button("Verify Volunteer",()=>setTab("VERIFY"),false,tab==="VERIFY")}</View>
   {tab==="VERIFY"?<View style={s.card}>
     <Text style={s.title}>Verify Volunteer</Text><Text style={s.muted}>Enter the opaque code on a genuinely issued CareGanga volunteer card. Only current eligibility is returned.</Text>
@@ -211,9 +213,9 @@ const s=StyleSheet.create({
  heroText:{color:"#fff",lineHeight:21},
  card:{backgroundColor:t.surface,borderWidth:1,borderColor:t.border,borderRadius:12,padding:14,gap:12},
  title:{fontSize:17,fontWeight:"700",color:t.text},muted:{fontSize:13,color:t.mutedText},message:{padding:10,color:t.text},
- field:{gap:6},label:{fontSize:13,fontWeight:"600",color:t.text},input:{minHeight:47,borderRadius:9,padding:11,borderWidth:1,borderColor:t.border,color:t.text},
+ field:{gap:6},label:{fontSize:13,fontWeight:"600",color:t.text},input:{minHeight:48,borderRadius:9,padding:11,borderWidth:1,borderColor:t.border,color:t.text},
  row:{flexDirection:"row",flexWrap:"wrap",gap:8},
- button:{minHeight:44,padding:10,borderWidth:1,borderColor:t.border,borderRadius:9,justifyContent:"center",backgroundColor:t.surface},
+ button:{minHeight:48,padding:10,borderWidth:1,borderColor:t.border,borderRadius:9,justifyContent:"center",backgroundColor:t.surface,maxWidth:"100%"},
  chosen:{backgroundColor:t.primary,borderColor:t.primary},disabled:{opacity:.45},
- buttonText:{color:t.text,fontSize:13,fontWeight:"600"},selectedText:{color:t.primaryText}
+ buttonText:{color:t.text,fontSize:14,fontWeight:"600",textAlign:"center",flexShrink:1},selectedText:{color:t.primaryText}
 });
