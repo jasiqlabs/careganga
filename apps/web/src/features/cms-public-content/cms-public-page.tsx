@@ -140,7 +140,7 @@ export function SiteFooter({data,navigation}:{data:Record<string,unknown>;
      {isPublished("/about")?<Link href="/about">About Us</Link>:<span>About Us</span>}
      <Link href="/campaigns">Campaigns</Link>
      {isPublished("/donate")?<Link href="/donate">Donate</Link>:
-      <span aria-disabled="true" className="cg-site-unavailable">Donate</span>}
+      <span aria-disabled="true" className="cg-site-unavailable">Donate <small>Online donations not available yet</small></span>}
      {isPublished("/our-impact")&&<Link href="/our-impact">Our Impact</Link>}
      {isPublished("/gallery")&&<Link href="/gallery">Media Gallery</Link>}
      <Link href={isPublished("/healthcare")?"/healthcare":"/health-network"}>Healthcare Assistance</Link>
@@ -148,7 +148,7 @@ export function SiteFooter({data,navigation}:{data:Record<string,unknown>;
     <div><h3>POLICIES & LEGAL</h3>
      {legal.map(([label,slug])=>isPublished("/policies/"+slug)?
       <Link key={slug} href={"/policies/"+slug}>{label}</Link>:
-      <span key={slug} aria-disabled="true">{label}</span>)}
+      <span key={slug} className="cg-site-unavailable" aria-disabled="true">{label}<small>Not published yet</small></span>)}
      {isPublished("/ngo-information")&&<Link href="/ngo-information">NGO Information &amp; 80G</Link>}</div>
     <div><h3>SUBSCRIBE TO NEWSLETTER</h3>
      {!!text(data.newsletterText)&&<p>{text(data.newsletterText)}</p>}
@@ -162,9 +162,8 @@ export function SiteFooter({data,navigation}:{data:Record<string,unknown>;
    {isPublished("/donate")?
     <Link className="cg-site-float-donate" href="/donate"
      aria-label="Donate to CareGanga Foundation">♥ &nbsp; DONATE NOW</Link>:
-    <span className="cg-site-float-donate" aria-disabled="true"
-     aria-label="Donation service is not available yet"
-     title="Donation service will be available when verified">♥ &nbsp; DONATE NOW</span>}
+    <Link className="cg-site-float-donate cg-site-float-enquiry" href="/contact"
+     aria-label="Contact CareGanga about donations">Donation enquiries</Link>}
    {number.length>=10&&number.length<=15&&
     <a className="cg-site-float-whatsapp" href={"https://wa.me/"+number}
      target="_blank" rel="noopener noreferrer" aria-label="Contact CareGanga on WhatsApp">
@@ -265,7 +264,7 @@ export function CmsPublicPage({page,navigation,siteFooter,children,mediaScope,si
         /^cg-camp-[0-9]{8}$/.test(String((x as Record<string,unknown>).slug))) as PublicCampaign[]:[];
       return <CampaignPublicCards key={key} heading={text(section.fields.heading)||"Campaigns"} cards={cards}/>;
      }
-     if(section.kind==="PROJECT_TEASER"){const cards=Array.isArray(section.fields.cards)?section.fields.cards:[];return <section key={key} className="cg-site-content cg-site-project-section"><h2>{text(section.fields.heading)||"Projects"}</h2>{!cards.length?<div className="cg-site-empty" role="status"><strong>No projects to display yet</strong><p>Published project updates will appear here.</p>{page.slug==="home"&&navigation?.publishedRoutes?.some(v=>v.path==="/our-work")&&<Link href="/our-work" className="cg-site-action">Explore our work</Link>}</div>:cards.map((item,j)=>{if(!item||typeof item!=="object")return null;const p=item as Record<string,unknown>;return <article key={j} style={{background:"#fffaf0",border:"1px solid #e5ddc9",borderRadius:16,padding:24,margin:"16px 0"}}>{/^\/api\/public\/content\/media\/[a-f0-9-]{36}$/i.test(text(p.coverSrc))&&<img src={text(p.coverSrc)} alt={text(p.title)} loading="lazy" style={{width:"100%",maxHeight:320,objectFit:"cover",borderRadius:12}}/>}<p className="cg-site-eyebrow">{text(p.category)} · {text(p.status)==="PLANNED"?"Planned":"Active"}</p><h3>{text(p.title)}</h3><p>{text(p.area)}</p><p>{text(p.summary)}</p>{text(p.launch)&&<p>Planned start: {text(p.launch)}</p>}</article>;})}</section>;}
+     if(section.kind==="PROJECT_TEASER"){const cards=Array.isArray(section.fields.cards)?section.fields.cards:[];return <section key={key} className="cg-site-content cg-site-project-section"><h2>{text(section.fields.heading)||"Projects"}</h2>{!cards.length?<div className="cg-site-empty" role="status"><strong>No projects to display yet</strong><p>Published project updates will appear here.</p>{page.slug==="home"&&navigation?.publishedRoutes?.some(v=>v.path==="/our-work")&&<Link href="/our-work" className="cg-site-action">Explore our work</Link>}</div>:cards.map((item,j)=>{if(!item||typeof item!=="object")return null;const p=item as Record<string,unknown>;return <article key={j} className="cg-site-project-card">{/^\/api\/public\/content\/media\/[a-f0-9-]{36}$/i.test(text(p.coverSrc))&&<img src={text(p.coverSrc)} alt={text(p.title)} loading="lazy" className="cg-site-project-cover"/>}<div className="cg-site-project-copy"><p className="cg-site-eyebrow">{text(p.category)} · {text(p.status)==="PLANNED"?"Planned":"Active"}</p><h3>{text(p.title)}</h3><p>{text(p.area)}</p><p>{text(p.summary)}</p>{text(p.launch)&&<p>Planned start: {text(p.launch)}</p>}</div></article>;})}</section>;}
      // Never infer operational projects from CMS-only teaser text.
      return null;
     })}
