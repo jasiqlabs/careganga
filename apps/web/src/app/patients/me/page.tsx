@@ -17,7 +17,7 @@ function safeReturn(raw:unknown):string|null{
 }
 export default async function MyPatient({searchParams}:Props){
  const query=await searchParams,returnTo=safeReturn(query.returnTo);
- return <HealthcarePublicChrome><main className="cg-public-shell">
+ return <HealthcarePublicChrome><main id="main-content" className="cg-public-shell cg-patient-account-page">
   <header className="cg-public-header">
    <nav aria-label="Breadcrumb"><Link href="/">CareGanga</Link>{" / "}
     <Link href="/health-network">Healthcare Network</Link>{" / "} My patient profile

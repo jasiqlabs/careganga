@@ -6,5 +6,5 @@ export const metadata={title:"Become a Volunteer | CareGanga Foundation",descrip
 export default async function VolunteerPage(){
  const intro=await publishedPublicIntro("VOLUNTEER");
  
- return <HealthcarePublicChrome><main id="main-content" className="cg-site"><VolunteerSelfService intro={intro}/></main></HealthcarePublicChrome>;
+ return <HealthcarePublicChrome><main id="main-content" className="cg-volunteer-page"><VolunteerSelfService intro={intro}/></main></HealthcarePublicChrome>;
 }

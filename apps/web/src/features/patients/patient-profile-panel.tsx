@@ -296,7 +296,7 @@ export function PatientProfilePanel(){
       value={password} onChange={e=>setPassword(e.target.value)}/></label>
     <button disabled={busy||!identifier.trim()||!password} type="submit">
      {busy?"Checking…":"Sign in"}</button>
-    <button type="button" disabled={busy} onClick={()=>setSignupMode(true)}>
+    <button type="button" disabled={busy} onClick={()=>{setPassword("");setSignupMode(true);}}>
      New patient? Create a CareGanga account</button>
    </form>:
    <div style={{display:"grid",gap:16,maxWidth:700}}>

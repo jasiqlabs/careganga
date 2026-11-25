@@ -15685,3 +15685,17 @@ button:disabled {
 .cg-private-lab-reports article button{background:#194a3a;color:#fff}
 .cg-private-lab-reports button:disabled{opacity:.55}
 @media(max-width:600px){.cg-private-lab-reports article{grid-template-columns:minmax(0,1fr)}.cg-private-lab-reports button{width:100%}}
+
+/* Public account and enrolment: keep private actions unobstructed. */
+.cg-volunteer-page~.cg-site-floating,.cg-patient-account-page~.cg-site-floating{position:static;justify-content:center;padding:1rem;background:#0b1118}
+.cg-account-breadcrumb{width:min(calc(100% - 2rem),1200px);margin-inline:auto;padding:.6rem 0}
+.cg-account-breadcrumb a{display:inline-flex;align-items:center;min-height:44px;font-weight:750;color:#194a3a}
+.cg-membership-page .cg04-auth,.cg-volunteer-page .cg04-auth{width:min(100%,640px);margin-inline:auto;display:grid;gap:1rem}
+.cg-membership-page .cg04-auth form,.cg-volunteer-page .cg04-auth form{max-width:none}
+.cg-volunteer-page .cg04-volunteer [role=tabpanel]{display:grid;gap:1rem;min-width:0}
+.cg-volunteer-page .cg04-volunteer [role=tabpanel]>.cg04-panel>label{display:grid;gap:.4rem;min-width:0;font-weight:650}
+.cg-volunteer-page .cg04-volunteer .cg04-volunteer-span:has(input[type=checkbox]){display:flex;align-items:flex-start;gap:.5rem}
+.cg-volunteer-page .cg04-volunteer .cg04-volunteer-span input[type=checkbox]{flex:none}
+.cg-patient-account-page .cg-health-patient-profile>form{margin-inline:auto;padding:clamp(.75rem,2vw,1.25rem);border:1px solid #dce7df;border-radius:.9rem;background:#f8fbf8}
+.cg-patient-account-page .cg-health-patient-profile>div{margin-inline:auto;width:100%;min-width:0}
+.cg-patient-account-page .cg-health-link-action{display:inline-flex;align-items:center;justify-content:center;padding:.65rem 1rem;text-decoration:none;max-width:100%;overflow-wrap:anywhere}

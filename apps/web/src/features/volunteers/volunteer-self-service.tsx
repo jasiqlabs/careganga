@@ -41,10 +41,11 @@ export function VolunteerSelfService({intro}:{intro?:PublicIntro|null}={}){
  const [apps,setApps]=useState<CG04VolunteerApplication[]>([]),[selected,setSelected]=useState<CG04VolunteerApplication|null>(null);
  const [profile,setProfile]=useState<CG04VolunteerProfile|null>(null),[options,setOptions]=useState<CG04VolunteerOptions|null>(null);
  const [form,setForm]=useState<Form>(blank),[step,setStep]=useState(0),[busy,setBusy]=useState(false),[error,setError]=useState(""),[note,setNote]=useState("");
+ const [verificationCode,setVerificationCode]=useState("");
  const seq=useRef(0),pending=useRef<Pending|null>(null),previousRef=useRef<string|null>(null);
  const fill=(key:keyof Form,value:string|boolean)=>setForm(f=>({...f,[key]:value}));
  const refresh=useCallback(async()=>{
-  const current=++seq.current;setLoading(true);
+  const current=++seq.current;setLoading(true);setError("");
   try{
    const status=await api<{verified:boolean}>("/api/community/mobile/status");
    if(current!==seq.current)return;
@@ -55,8 +56,8 @@ export function VolunteerSelfService({intro}:{intro?:PublicIntro|null}={}){
    setApps(listed.items);setProfile(own);
    setSelected(old=>listed.items.find(x=>x.ref===old?.ref)??listed.items.find(x=>["DRAFT","RETURNED","SUBMITTED"].includes(x.status))??listed.items[0]??null);
   }catch(e){if(current===seq.current){const code=e&&typeof e==="object"&&"status" in e?Number(e.status):0;
-   if(code===401){setSigned(false);setVerified(false);setApps([]);setSelected(null);setProfile(null);}
-   else setError(e instanceof Error?e.message:"Volunteer status could not be verified.");
+   setSigned(code===401?false:null);setVerified(false);setApps([]);setSelected(null);setProfile(null);setOptions(null);setForm(blank());setVerificationCode("");
+   if(code!==401)setError(e instanceof Error?e.message:"Volunteer status could not be verified.");
   }}finally{if(current===seq.current)setLoading(false);}
  },[]);
  useEffect(()=>{void refresh();return()=>{seq.current++;};},[refresh]);
@@ -66,7 +67,7 @@ export function VolunteerSelfService({intro}:{intro?:PublicIntro|null}={}){
    setForm(current=>({...current,referral:current.referral||incoming}));
  },[]);
  useEffect(()=>{
-  const onHide=()=>{if(document.visibilityState!=="visible"){seq.current++;setApps([]);setSelected(null);setProfile(null);setOptions(null);setForm(blank());setError("");setLoading(true);}
+  const onHide=()=>{if(document.visibilityState!=="visible"){seq.current++;setSigned(null);setVerified(false);setApps([]);setSelected(null);setProfile(null);setOptions(null);setForm(blank());setVerificationCode("");setError("");setLoading(true);}
     else void refresh();};
   document.addEventListener("visibilitychange",onHide);
   return()=>document.removeEventListener("visibilitychange",onHide);
@@ -88,6 +89,9 @@ export function VolunteerSelfService({intro}:{intro?:PublicIntro|null}={}){
   try{await work();}catch(e){setError(e instanceof Error?e.message:"This result cannot be verified. Refresh and retry the original command.");}
   finally{setBusy(false);}
  };
+ const logout=()=>void action(async()=>{await api("/api/community/logout","POST",{});seq.current++;pending.current=null;setSigned(false);setVerified(false);setApps([]);setSelected(null);setProfile(null);setOptions(null);setForm(blank());setVerificationCode("");});
+ const verify=()=>void action(async()=>{await api("/api/community/mobile/start","POST",{});setNote("Verification code requested. Delivery is not guaranteed.");});
+ const confirm=()=>void action(async()=>{if(!/^\d{4,10}$/.test(verificationCode))throw Error("Enter the verification code received on your phone.");const r=await api<{status:string}>("/api/community/mobile/confirm","POST",{code:verificationCode});if(r.status!=="VERIFIED")throw Error("Mobile verification was not confirmed.");setVerificationCode("");await refresh();});
  const save=()=>void action(async()=>{
   if(!verified)throw Error("Verify your actual mobile number before saving the volunteer application.");
   const fields={firstName:form.firstName.trim(),lastName:form.lastName.trim(),dateOfBirth:form.dateOfBirth,
@@ -133,19 +137,20 @@ export function VolunteerSelfService({intro}:{intro?:PublicIntro|null}={}){
   <div className="cg04-volunteer-hero">{intro?.eyebrow&&<small>{intro.eyebrow}</small>}<h1>{intro?.heading??"Volunteer registration"}</h1>
    {intro?.body&&<p>{intro.body}</p>}{intro?.highlights.length? <ol>{intro.highlights.map((line,i)=><li key={i}>{line}</li>)}</ol>:null}<p>Your application and evidence remain private until independently reviewed.</p></div>
   <div className="cg04-public-tabs" role="tablist" aria-label="Volunteer application and original issued-card verification">
-   <button type="button" role="tab" aria-selected={tab==="APPLICATION"} onClick={()=>setTab("APPLICATION")}>Application Form</button>
-   <button type="button" role="tab" aria-selected={tab==="VERIFY"} onClick={()=>setTab("VERIFY")}>Verify Volunteer</button>
+   <button type="button" role="tab" id="volunteer-application-tab" aria-controls="volunteer-application-panel" aria-selected={tab==="APPLICATION"} onClick={()=>setTab("APPLICATION")}>Application Form</button>
+   <button type="button" role="tab" id="volunteer-verify-tab" aria-controls="volunteer-verify-panel" aria-selected={tab==="VERIFY"} onClick={()=>setTab("VERIFY")}>Verify Volunteer</button>
   </div>
-  {tab==="VERIFY"?<PublicVolunteerVerification/>:<div role="tabpanel" aria-label="Volunteer application">
+  {tab==="VERIFY"?<div role="tabpanel" id="volunteer-verify-panel" aria-labelledby="volunteer-verify-tab"><PublicVolunteerVerification/></div>:<div role="tabpanel" id="volunteer-application-panel" aria-labelledby="volunteer-application-tab">
   {error&&<p role="alert" className="cg04-error">{error}</p>}{note&&<p role="status">{note}</p>}
   {loading&&<p role="status">Confirming your original volunteer account…</p>}
-  {!loading&&signed===false&&<CommunityAuth onSignedIn={async()=>{await refresh();}}/>}
-  {signed&&(!verified?<p className="cg04-panel">Verify your current mobile contact to access a volunteer application. Your existing CareGanga account is reused.</p>:<>
+  {!loading&&signed===false&&<CommunityAuth heading="Volunteer account" onSignedIn={async()=>{await refresh();}}/>}
+  {!loading&&signed===null&&<button type="button" onClick={()=>void refresh()}>Retry account status</button>}
+  {!loading&&signed&&(!verified?<section className="cg04-panel"><h2>Verify contact</h2><p>Verify your current mobile contact to access a volunteer application. Your existing CareGanga account is reused.</p><button type="button" disabled={busy} onClick={verify}>Request verification code</button><label>Received code<input inputMode="numeric" autoComplete="one-time-code" value={verificationCode} onChange={e=>setVerificationCode(e.target.value)} maxLength={10}/></label><div className="cg04-buttons"><button type="button" disabled={busy||!/^\d{4,10}$/.test(verificationCode)} onClick={confirm}>Verify code</button><button type="button" disabled={busy} onClick={logout}>Sign out</button></div></section>:<>
    <div className="cg04-panel"><h2>Your volunteer applications</h2>
     <div className="cg04-buttons"><button type="button" disabled={busy} onClick={()=>changeApplication("")}>New volunteer application</button>
      {apps.map(a=><button key={a.ref} type="button" aria-pressed={selected?.ref===a.ref} onClick={()=>changeApplication(a.ref)}>{a.applicationNumber} · {display(a.status)}</button>)}
      <button type="button" disabled={busy} onClick={()=>void refresh()}>Refresh current status</button>
-     <button type="button" disabled={busy} onClick={()=>void action(async()=>{await api("/api/community/logout","POST",{});seq.current++;setSigned(false);setApps([]);setSelected(null);setProfile(null);})}>Sign out</button>
+     <button type="button" disabled={busy} onClick={logout}>Sign out</button>
     </div>
     {profile?.volunteer&&<p role="status"><strong>Approved volunteer:</strong> {profile.volunteer.volunteerNumber} · {profile.volunteer.name} · {display(profile.volunteer.status)} · {profile.volunteer.department}</p>}
     {selected&&<p>Current application: <strong>{selected.applicationNumber} · {display(selected.status)}</strong>{selected.reviewReference?" · Foundation review "+selected.reviewReference:""}{selected.reviewRemarks?" · Reviewer feedback: "+selected.reviewRemarks:""}</p>}
