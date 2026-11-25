@@ -33,14 +33,14 @@ function fixture(existing:string[]=[]){
 }
 test("bundled source-controlled artwork is exact and valid",async()=>{
  await verifyReleaseIllustrations();
- assert.equal(releaseIllustrations.length,6);
+ assert.equal(releaseIllustrations.length,16);
 });
 test("first installation publishes eight editorial pages and leaves seven policies unpublished",async()=>{
  const x=fixture();
  await x.cms.initializeReleaseBaseline();
  assert.equal(x.pages.size,15);
  assert.deepEqual(x.published.sort(),["80g","about","collaboration","contact","gallery","healthcare","home","our-impact"]);
- assert.equal(x.assets.length,6);
+ assert.equal(x.assets.length,16);
  const count=x.writes.length;
  await x.cms.initializeReleaseBaseline();
  assert.equal(x.writes.length,count,"redeploy must not write CMS content");
@@ -52,5 +52,5 @@ test("existing CMS pages are preserved, including intentionally unpublished page
  assert.equal(x.published.length,6);
  assert.ok(!x.published.includes("home"));
  assert.ok(!x.published.includes("about"));
- assert.equal(x.assets.length,0,"do not attach default images to existing editorial pages");
+ assert.equal(x.assets.length,10,"do not attach default images to existing Home; initialize missing Healthcare");
 });
