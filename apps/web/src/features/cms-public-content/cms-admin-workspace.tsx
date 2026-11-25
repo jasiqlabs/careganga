@@ -19,7 +19,7 @@ type Review={caseRef:string;number:string;title:string;status:string;revision:nu
 type ReviewDetail={caseNumber:string;caseRef:string;status:string;revision:number;
  source:{title:string;slug:string;kind:string;seoTitle:string;
  seoDescription:string;navigation:NavDesired|null;sections:{kind:string;order:number;fields:Record<string,unknown>}[];
- assets:{fileRef:string;role:string;altText:string;order:number;current:boolean;mime:string|null}[]}};
+ assets:{fileRef:string;role:string;altText:string;order:number;current:boolean;mime:string|null;bundled?:boolean}[]}};
 type Command={label:string;path:string;method:"POST"|"PUT";body:Record<string,unknown>};
 type Slide={heading:string;subtitle:string;description:string;eyebrow:string;tags:string;visible:boolean;textOnly?:boolean;
  headingFont:"SERIF"|"SANS";headingWeight:"REGULAR"|"BOLD";headingSize:"STANDARD"|"LARGE";
@@ -499,7 +499,7 @@ export function CmsAdminWorkspace({canManage,canPublish,canReview}:{
   kind:draft.kind,slug:previewData.slug,title:draft.title,
   seoTitle:draft.seoTitle||draft.title,seoDescription:draft.seoDescription,
   canonicalPath:previewData.canonicalPath,lastPublishedAt:"",
-  sections:previewData.sections,assets:selected?[...draft.assets.map(a=>({role:a.role,order:a.order,altText:a.altText,src:"/api/cms-image-preview/"+a.fileRef})),...(selected.bundledAssets??[]).filter(a=>!draft.assets.some(x=>x.role===a.role&&x.order===a.order)&&!(a.role==="HERO"&&draft.slides[a.order]?.textOnly)&&!(a.role==="ABOUT"&&draft.bodyVariant!=="SPLIT")).map(a=>({role:a.role,order:a.order,altText:a.altText,src:"/api/public/content/release-media/"+a.key}))]:[]};
+  sections:previewData.sections,assets:selected?[...draft.assets.map(a=>({role:a.role,order:a.order,altText:a.altText,src:"/api/cms-image-preview/"+a.fileRef})),...(selected.bundledAssets??[]).filter(a=>!draft.assets.some(x=>x.role===a.role&&x.order===a.order)&&!(a.role==="HERO"&&draft.slides[a.order]?.textOnly)&&!(a.role==="ABOUT"&&draft.bodyVariant!=="SPLIT")).map(a=>({role:a.role,order:a.order,altText:a.altText,src:"/api/cms-image-preview/release-"+a.key}))]:[]};
  return <div className="cg-cms-workspace">
   <header className="cg-cms-toolbar"><div>
    <h1>Website content</h1><p>Draft → independent approval → publish. Public visitors see only approved pages.</p>
@@ -550,7 +550,7 @@ export function CmsAdminWorkspace({canManage,canPublish,canReview}:{
      {!review.source.assets.length?<p>No images attached.</p>:
       <ul>{review.source.assets.map((asset,i)=><li key={i}>
        {asset.role.replaceAll("_"," ")}: {asset.altText} (position {asset.order+1})
-       {asset.current?" — verified":" — source no longer verified; do not approve"}
+       {asset.current?(asset.bundled?" — verified bundled illustration":" — verified"):" — source no longer verified; do not approve"}
        {asset.current&&asset.mime?.startsWith("image/")&&
         <img src={"/api/cms-image-preview/"+asset.fileRef}
          alt={asset.altText} loading="lazy" className="cg-cms-review-image"/>}
