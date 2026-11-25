@@ -6,6 +6,7 @@ import type {Pool} from "pg";
 import {DATABASE} from "./core/infrastructure/database.module";
 import { NestFactory } from "@nestjs/core";
 import { AppModule } from "./app.module";
+import {provisionInitialRoot} from "./modules/cg-01-identity-access/infrastructure/bootstrap-root";
 import {CmsEditorialService} from "./modules/cg-18-cms-public-content/application/cms-editorial.service";
 import { readConfig } from "./core/config/config";
 import { SafeErrorsFilter } from "./core/http/safe-errors.filter";
@@ -58,9 +59,15 @@ async function bootstrap(): Promise<void> {
     throw new Error("Database schema is unavailable or incompatible. Verify database setup and release version.");
   }
 
-  // Schema and pending upgrades are ready; install editorial release once.
-  try { await app.get(CmsEditorialService).initializeReleaseBaseline(); }
-  catch { await app.close(); throw new Error("Initial CMS release could not be initialized. Verify bundled assets and protected database configuration."); }
+  // Existing protected root credentials are used only for the first account.
+  // Never fabricate a password or reset an existing account.
+  try {
+    const root=await provisionInitialRoot(pool,"startup");
+    if(root==="created")console.log("Protected initial administrator provisioned.");
+    if(root==="not-configured")console.log("No initial administrator credentials supplied; public CMS can start.");
+    await app.get(CmsEditorialService).initializeReleaseBaseline();
+  }
+  catch { await app.close(); throw new Error("Initial application setup failed. Verify protected administrator configuration, bundled assets and database permissions."); }
   await app.listen(cfg.port, "0.0.0.0");
 }
 void bootstrap().catch((error: unknown) => {
