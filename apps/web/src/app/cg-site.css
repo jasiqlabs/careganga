@@ -983,3 +983,10 @@
 .cg-site-page-policy .cg-site-article h2{font:700 clamp(1.25rem,2.2vw,1.7rem)/1.35 Georgia,"Times New Roman",serif;letter-spacing:normal;color:#112039;margin:0 0 .75rem;overflow-wrap:anywhere}
 .cg-site-page-policy .cg-site-body{font-size:1rem;line-height:1.8;color:#34465b;margin:0}
 .cg-site-page-policy .cg-site-highlights{margin:1rem 0 0}
+
+/* Editorial listings: balanced single result and unobstructed navigation. */
+.cg-site-editorial-list .cg-site-impact-grid:has(>.cg-site-impact-card:only-child){grid-template-columns:minmax(0,680px);justify-content:center}
+.cg-site-editorial-list .cg-site-impact-card>.cg-site-eyebrow{align-self:flex-start;background:#e8f5eb;color:#194a3a;border-radius:999px;padding:.25rem .65rem;font-size:.75rem;letter-spacing:.04em}
+.cg-site-editorial-list~.cg-site-floating{position:static;padding:.75rem clamp(1rem,6vw,7rem) max(.75rem,env(safe-area-inset-bottom));background:#080d14;align-items:center}
+.cg-site-editorial-list~.cg-site-footer{padding-bottom:2rem}
+@media(max-width:540px){.cg-site-editorial-list .cg-site-article-filter button{width:100%;justify-content:center}}
