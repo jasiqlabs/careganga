@@ -14603,7 +14603,7 @@ button:disabled {
   background: #FFFFFF;
 }
 
-.cg-health-public-chrome :is(input:not([type="checkbox"]):not([type="radio"]), select, textarea) {
+.cg-health-public-chrome :where(.cg-public-shell) :is(input:not([type="checkbox"]):not([type="radio"]), select, textarea) {
   min-height: 2.8rem;
   max-width: 100%;
   padding: .65rem .75rem;
@@ -14615,39 +14615,39 @@ button:disabled {
   font-size: .9rem;
 }
 
-.cg-health-public-chrome :is(input, select, textarea):focus-visible {
+.cg-health-public-chrome :where(.cg-public-shell) :is(input, select, textarea):focus-visible {
   outline: 2px solid #167763;
   border-color: #167763;
   outline-offset: 2px;
 }
 
-.cg-health-public-chrome :is(button, .cg-health-link-action) {
+.cg-health-public-chrome :where(.cg-public-shell) :is(button, .cg-health-link-action) {
   min-height: 2.8rem;
   border-radius: .7rem;
   font-family: inherit;
   font-weight: 700;
 }
 
-.cg-health-public-chrome button {
+.cg-health-public-chrome :where(.cg-public-shell) button {
   border: 1px solid #B8CFC5;
   background: #F9FDF9;
   color: #184A3A;
   padding: .65rem 1rem;
 }
 
-.cg-health-public-chrome button.primary,
-.cg-health-public-chrome .primary {
+.cg-health-public-chrome :where(.cg-public-shell) button.primary,
+.cg-health-public-chrome :where(.cg-public-shell) .primary {
   background: #194A3A;
   color: #FFFFFF;
   border-color: #194A3A;
 }
 
-.cg-health-public-chrome :is(button, a):focus-visible {
+.cg-health-public-chrome :where(.cg-public-shell) :is(button, a):focus-visible {
   outline: 2px solid #167763;
   outline-offset: 3px;
 }
 
-.cg-health-public-chrome button:disabled {
+.cg-health-public-chrome :where(.cg-public-shell) button:disabled {
   opacity: .6;
   cursor: not-allowed;
 }
