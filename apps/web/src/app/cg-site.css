@@ -879,3 +879,20 @@
 .cg-site-campaign-actions a{display:inline-flex;align-items:center;justify-content:center;text-align:center;min-height:44px;flex:1 1 10rem;max-width:100%;padding:.55rem .85rem;border:1px solid #194a3a;border-radius:.65rem;text-decoration:none;color:#194a3a;font-weight:750}
 .cg-site-campaign-actions a[href^="/donate?"]{background:#194a3a;color:white}
 .cg-site-campaign-actions a:focus-visible{outline:3px solid #194a3a;outline-offset:3px}
+
+/* Public news and events use the shared reference media language. */
+.cg-site-editorial-list{background:#f9f6ed;border-radius:1rem;padding:clamp(1rem,3vw,2.5rem);margin-block:1.5rem;overflow-wrap:anywhere}
+.cg-site-editorial-list h1{font-family:Georgia,"Times New Roman",serif;font-size:clamp(2rem,4vw,3.25rem);line-height:1.2;color:#194a3a;text-align:center;margin:.5rem 0}
+.cg-site-editorial-list>.cg-site-editorial-inner>.cg-site-eyebrow,.cg-site-editorial-list>.cg-site-editorial-inner>h1+p,.cg-site-editorial-list>h1+p{text-align:center}
+.cg-site-editorial-list .cg-site-article-filter{display:flex;flex-wrap:wrap;align-items:end;gap:.65rem;padding:clamp(.85rem,2vw,1.4rem);background:white;border:1px solid #dce4ed;border-radius:1rem;margin:1.5rem 0}
+.cg-site-editorial-list .cg-site-article-filter label{display:flex;flex-direction:column;flex:1 1 14rem;gap:.4rem;min-width:0;font-weight:700;color:#194a3a}
+.cg-site-editorial-list .cg-site-article-filter input{min-height:44px;max-width:100%;width:100%;font:inherit;padding:.55rem .8rem;border:1px solid #cad6e3;border-radius:.65rem}
+.cg-site-editorial-list .cg-site-article-filter button,.cg-site-editorial-list a{display:inline-flex;align-items:center;min-height:44px;font:inherit;font-weight:700;color:#194a3a;overflow-wrap:anywhere;text-underline-offset:.2rem}
+.cg-site-editorial-list .cg-site-article-filter button{background:#194a3a;color:white;border:0;border-radius:.65rem;padding:.55rem .9rem;cursor:pointer;max-width:100%;white-space:normal}
+.cg-site-editorial-list :is(a,button,input):focus-visible{outline:3px solid #194a3a;outline-offset:3px}
+.cg-site-editorial-list .cg-site-impact-card{display:flex;flex-direction:column;gap:.45rem;border-color:#dce4ed;padding:clamp(1rem,2vw,1.5rem);overflow-wrap:anywhere}
+.cg-site-editorial-list .cg-site-impact-card h2{font:700 clamp(1.2rem,2vw,1.6rem)/1.3 Georgia,"Times New Roman",serif;color:#112039;margin:.25rem 0}
+.cg-site-editorial-list .cg-site-impact-card p{margin:.1rem 0 .5rem}
+.cg-site-editorial-list .cg-site-impact-card a{margin-top:auto}
+.cg-site-editorial-list .cg-site-empty{padding:1.5rem;background:white;border-radius:.85rem;border:1px solid #dce4ed;text-align:center}
+@media(max-width:540px){.cg-site-editorial-list .cg-site-article-filter label{flex-basis:100%}}
