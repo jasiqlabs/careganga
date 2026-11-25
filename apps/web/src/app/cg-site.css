@@ -896,3 +896,13 @@
 .cg-site-editorial-list .cg-site-impact-card a{margin-top:auto}
 .cg-site-editorial-list .cg-site-empty{padding:1.5rem;background:white;border-radius:.85rem;border:1px solid #dce4ed;text-align:center}
 @media(max-width:540px){.cg-site-editorial-list .cg-site-article-filter label{flex-basis:100%}}
+
+/* Keep embedded media under the existing page heading and match the Home reference. */
+.cg-site-page-home .cg-site-partners{text-align:center}
+.cg-site-page-home .cg-site-partners h2{font-size:clamp(1.9rem,3vw,3rem);color:#112039;overflow-wrap:anywhere}
+.cg-site-gallery .cg-site-resource-hero h2{font-family:Georgia,"Times New Roman",serif;font-size:clamp(2rem,4vw,3.5rem);color:#112039;line-height:1.12;margin:.5rem auto 1rem;overflow-wrap:anywhere}
+.cg-site-page-home .cg-site-gallery .cg-site-resource-hero{background:linear-gradient(115deg,#063d30,#07503e);color:#fff}
+.cg-site-page-home .cg-site-gallery .cg-site-resource-hero h2{color:#fff}
+.cg-site-page-home .cg-site-gallery .cg-site-resource-hero .cg-site-eyebrow{color:#e5c65b}
+.cg-site-page-home .cg-site-gallery .cg-site-resource-hero>p:not(.cg-site-eyebrow){color:#eaf5ee}
+@media(max-width:760px){.cg-site-contact-strip{background:#194b39}.cg-site .cg-site-connect{color:#fff}}
