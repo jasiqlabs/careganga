@@ -693,3 +693,10 @@
 .cg-site-contact-support-faq summary{min-height:44px;cursor:pointer;padding-block:.45rem;color:#24533c;font-weight:700}
 .cg-site-contact-support-faq summary:focus-visible{outline:3px solid #9e6d13;outline-offset:2px;border-radius:.25rem}
 .cg-site-contact-button{font:inherit;font-weight:750;min-height:44px;white-space:normal;overflow-wrap:anywhere}
+
+/* Healthcare discovery: readable inputs and balanced intermediate-width layout. */
+.cg-site-healthcare .cg-health-discovery :is(input:not([type="hidden"]),select){font:inherit;border:1px solid #9db7a5;border-radius:.5rem;padding:.55rem .7rem;background:#fff;color:#194a3a}
+.cg-site-healthcare .cg-health-discovery button{border:0;font:inherit;font-weight:750;min-width:0;white-space:normal;cursor:pointer}
+.cg-site-healthcare .cg-health-discovery :is(input,select,button):focus-visible,.cg-site-healthcare a:focus-visible{outline:2px solid #24604b;outline-offset:3px}
+.cg-site-healthcare>.cg-site-action{margin-top:1.5rem;max-width:100%;min-width:0;text-align:center;overflow-wrap:anywhere}
+@media(min-width:801px) and (max-width:1100px){.cg-site-healthcare .cg-health-discovery{grid-template-columns:repeat(2,minmax(0,1fr))}}
