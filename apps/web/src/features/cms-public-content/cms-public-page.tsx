@@ -136,8 +136,7 @@ export function SiteFooter({data,navigation}:{data:Record<string,unknown>;
     </div>
     <div><h3>QUICK LINKS</h3>
      {isPublished("/about")?<Link href="/about">About Us</Link>:<span>About Us</span>}
-     {isPublished("/campaigns")?<Link href="/campaigns">Campaigns</Link>:
-      <span aria-disabled="true" className="cg-site-unavailable">Campaigns</span>}
+     <Link href="/campaigns">Campaigns</Link>
      {isPublished("/donate")?<Link href="/donate">Donate</Link>:
       <span aria-disabled="true" className="cg-site-unavailable">Donate</span>}
      {isPublished("/our-impact")&&<Link href="/our-impact">Our Impact</Link>}
