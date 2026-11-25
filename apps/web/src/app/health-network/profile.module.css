@@ -12,3 +12,24 @@
 .dataCard{border:1px solid var(--cg-health-border);padding:1rem;border-radius:10px;background:var(--cg-health-surface)}
 .dataCard p{margin:.6rem 0}
 @media(max-width:800px){.profileHero,.detailGrid{grid-template-columns:1fr}.sectionNav{flex-wrap:nowrap;overflow-x:auto}.sectionNav a{white-space:nowrap}}
+
+/* Responsive healthcare profile hierarchy and accessible actions. */
+:global(.cg-health-public-chrome) .panel h2{background:#194a3a;color:#fff;font-size:1.1rem;padding:.7rem .85rem;line-height:1.4}
+:global(.cg-health-public-chrome) .doctorIntro:global(.cg-public-section),:global(.cg-health-public-chrome) .profileHero:global(.cg-public-section){background:#f0f7f2;border-color:#d0e4d5}
+.doctorIntro h1,.profileHero h1{overflow-wrap:anywhere;line-height:1.2}
+.profileHero>div{min-width:0;overflow-wrap:anywhere}
+.sectionNav a{display:inline-flex;align-items:center;max-width:100%;overflow-wrap:anywhere;font-weight:650}
+.panel :is(a[href],summary),.profileHero a[href]{display:inline-flex;align-items:center;min-height:44px;max-width:100%;overflow-wrap:anywhere;font-weight:650;text-underline-offset:.2rem}
+.panel a:global(.primary){background:#194a3a;color:#fff;padding:.65rem .85rem;border-radius:.65rem;text-decoration:none;justify-content:center;text-align:center}
+.dataCard{min-width:0;display:flex;flex-direction:column;gap:.35rem;box-shadow:0 2px 8px #1120390d;overflow-wrap:anywhere}
+.dataCard h3{margin:0;color:#112039}
+.dataCard>p:last-child{margin-top:auto}
+.feeLine{background:#fff8df;border-radius:.6rem;padding:.65rem;color:#194a3a;font-weight:700}
+.panel figure{margin:0;min-width:0}
+.panel figcaption{font-size:.85rem;color:#52657a;overflow-wrap:anywhere}
+.panel dd{margin:.25rem 0 1rem;overflow-wrap:anywhere}
+.panel li{margin:.4rem 0}
+.panel a:focus-visible,.sectionNav a:focus-visible,.profileHero a:focus-visible{outline:3px solid #194a3a;outline-offset:2px}
+@media(max-width:800px){.sectionNav{flex-wrap:wrap;overflow:visible}.sectionNav a{white-space:normal}.panel .cardGrid{grid-template-columns:minmax(0,1fr)}}
+.panel a:not(:global(.primary)),.profileHero a{color:#194a3a}
+.doctorLayout .cardGrid{grid-template-columns:repeat(auto-fit,minmax(min(100%,240px),1fr))}
