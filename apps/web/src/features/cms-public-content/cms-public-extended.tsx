@@ -130,17 +130,18 @@ export function CmsCompliance({section,assets}:{
    Confirm tax applicability with the issuing authority.</p>
  </section>;
 }
-export function CmsGallery({section,assets,mediaScope="PHOTO"}:{
- section:PublicCmsSection;assets:Asset[];mediaScope?:CmsMediaType}){
+export function CmsGallery({section,assets,mediaScope="PHOTO",embedded=false}:{
+ section:PublicCmsSection;assets:Asset[];mediaScope?:CmsMediaType;embedded?:boolean}){
  const fields=section.fields;
  const heading=mediaScope==="VIDEO"?fields.videosHeading:
   mediaScope==="PUBLICATION"?fields.publicationsHeading:fields.heading;
  const intro=mediaScope==="VIDEO"?fields.videosDescription:
   mediaScope==="PUBLICATION"?fields.publicationsDescription:fields.description;
+ const Heading=embedded?"h2":"h1";
  return <section className="cg-site-content cg-site-gallery">
   <header className="cg-site-resource-hero">
    <p className="cg-site-eyebrow">Media &amp; Resources</p>
-   <h1>{text(heading)||text(fields.heading)}</h1>
+   <Heading>{text(heading)||text(fields.heading)}</Heading>
    {text(intro)&&<p>{text(intro)}</p>}
   </header>
   <Suspense fallback={<p role="status">Loading approved media filters…</p>}>
