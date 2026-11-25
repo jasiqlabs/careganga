@@ -15865,6 +15865,42 @@ button:disabled {
 }
 
 /* Advanced Filters Card */
+@keyframes cg-dropdown-fade {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.cg19-filter-grid-top {
+  display: flex;
+  gap: 0.75rem;
+  width: 100%;
+  box-sizing: border-box;
+}
+@media (max-width: 768px) {
+  .cg19-filter-grid-top {
+    flex-direction: column;
+  }
+}
+
+.cg19-filter-row-bottom {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: 1rem;
+  margin-top: 0.85rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid #f1f5f9;
+  flex-wrap: wrap;
+  width: 100%;
+  box-sizing: border-box;
+}
+
 .cg19-filter-panel {
   background: #ffffff;
   border: 1px solid #e2e8f0;

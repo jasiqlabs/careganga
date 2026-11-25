@@ -348,5 +348,7 @@ CG19 currently supplies original validated/scan-clean rights-safe media and CG12
   - Added Recent Conversations sidebar for one-click access.
   - Upgraded C42/C43 Help & Support drawer with guest profile card, inquiry bubble, reply history, status resolution note with live `(X / 8 required)` validation, and operator assignment.
   - Eliminated horizontal screen overflow by decoupling filter actions into dedicated bottom-right toolbar, styled custom SVG chevron dropdowns (`.cg19-select`), added authentic `STARTED ON` timestamp column, and eye icon action button.
+  - Implemented reusable modern `CustomDropdown` component (`apps/web/src/shared/custom-dropdown.tsx`) featuring animated popover menus, active selection checkmarks, click-outside dismissal, and hover states, replacing ugly OS native `<select>` menus across Support Desk filters and Case Resolution Drawer.
+  - Restructured Advanced Filters into a balanced two-row grid preventing date-picker overflow and ensuring 100% responsive fit across all desktop and laptop resolutions.
   - `npm run test:cg19-migration-compatibility -w apps/backend`: PASSED (6/6 tests passed).
 - **Gate:** SOURCE_VERIFIED_RUNTIME_PENDING. No runtime PostgreSQL, live mail/SMS provider dispatch, Android emulator/device or production deployment implied. Original QA criteria and counts unchanged.

@@ -25,6 +25,7 @@ import {
   Eye,
 } from "lucide-react";
 import { FoundationSupportAttachments } from "./foundation-support-attachments";
+import { CustomDropdown } from "../../shared/custom-dropdown";
 
 type CaseItem = {
   caseRef: string;
@@ -621,8 +622,8 @@ export function FoundationSupportWorkspace({
                 <span>Advanced Filters</span>
               </div>
 
-              <div className="cg19-filter-grid">
-                <div className="cg19-input-group">
+              <div className="cg19-filter-grid-top">
+                <div className="cg19-input-group" style={{ flex: "1.3", minWidth: 0 }}>
                   <label htmlFor="filter-search">Search</label>
                   <input
                     id="filter-search"
@@ -637,73 +638,73 @@ export function FoundationSupportWorkspace({
                   />
                 </div>
 
-                <div className="cg19-input-group">
-                  <label htmlFor="filter-status">Status</label>
-                  <select
-                    id="filter-status"
-                    className="cg19-select"
+                <div style={{ flex: "1", minWidth: 0 }}>
+                  <CustomDropdown
+                    label="Status"
                     value={statusFilter}
-                    onChange={(e) => setStatusFilter(e.target.value)}
-                  >
-                    <option value="ALL">All Statuses</option>
-                    <option value="OPEN">Open</option>
-                    <option value="IN_PROGRESS">In Progress</option>
-                    <option value="WAITING_FOR_USER">Waiting for user</option>
-                    <option value="RESOLVED">Resolved</option>
-                    <option value="CLOSED">Closed</option>
-                  </select>
+                    onChange={setStatusFilter}
+                    options={[
+                      { value: "ALL", label: "All Statuses" },
+                      { value: "OPEN", label: "Open" },
+                      { value: "IN_PROGRESS", label: "In Progress" },
+                      { value: "WAITING_FOR_USER", label: "Waiting for user" },
+                      { value: "RESOLVED", label: "Resolved" },
+                      { value: "CLOSED", label: "Closed" },
+                    ]}
+                  />
                 </div>
 
-                <div className="cg19-input-group">
-                  <label htmlFor="filter-activity">Last Activity</label>
-                  <select
-                    id="filter-activity"
-                    className="cg19-select"
+                <div style={{ flex: "1", minWidth: 0 }}>
+                  <CustomDropdown
+                    label="Last Activity"
                     value={dateFilter}
-                    onChange={(e) => setDateFilter(e.target.value)}
-                  >
-                    <option value="ALL">Any Time</option>
-                    <option value="TODAY">Today</option>
-                    <option value="WEEK">Last 7 Days</option>
-                    <option value="MONTH">Last 30 Days</option>
-                  </select>
+                    onChange={setDateFilter}
+                    options={[
+                      { value: "ALL", label: "Any Time" },
+                      { value: "TODAY", label: "Today" },
+                      { value: "WEEK", label: "Last 7 Days" },
+                      { value: "MONTH", label: "Last 30 Days" },
+                    ]}
+                  />
                 </div>
+              </div>
 
-                <div className="cg19-input-group">
+              <div className="cg19-filter-row-bottom">
+                <div className="cg19-input-group" style={{ maxWidth: "340px", minWidth: "260px" }}>
                   <label htmlFor="filter-date">Started Between</label>
-                  <div style={{ display: "flex", gap: "0.35rem", alignItems: "center" }}>
+                  <div style={{ display: "flex", gap: "0.4rem", alignItems: "center" }}>
                     <input
                       id="filter-date"
                       className="cg19-input"
                       type="date"
-                      style={{ padding: "0.45rem" }}
+                      style={{ padding: "0.45rem", minWidth: "120px" }}
                     />
                     <span style={{ color: "#94a3b8" }}>-</span>
                     <input
                       className="cg19-input"
                       type="date"
-                      style={{ padding: "0.45rem" }}
+                      style={{ padding: "0.45rem", minWidth: "120px" }}
                     />
                   </div>
                 </div>
-              </div>
 
-              <div className="cg19-filter-actions">
-                <button
-                  type="button"
-                  className="cg19-btn-reset"
-                  onClick={handleResetFilters}
-                >
-                  Reset
-                </button>
-                <button
-                  type="button"
-                  className="cg19-btn-apply"
-                  disabled={busy}
-                  onClick={applySearch}
-                >
-                  Apply Filters
-                </button>
+                <div style={{ display: "flex", gap: "0.5rem", alignItems: "center" }}>
+                  <button
+                    type="button"
+                    className="cg19-btn-reset"
+                    onClick={handleResetFilters}
+                  >
+                    Reset
+                  </button>
+                  <button
+                    type="button"
+                    className="cg19-btn-apply"
+                    disabled={busy}
+                    onClick={applySearch}
+                  >
+                    Apply Filters
+                  </button>
+                </div>
               </div>
             </div>
 
@@ -1438,43 +1439,27 @@ export function FoundationSupportWorkspace({
 
                       <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem" }}>
                         <div>
-                          <label
-                            htmlFor="support-status"
-                            style={{ display: "block", fontSize: "0.78rem", fontWeight: 600, color: "#64748b", marginBottom: "0.3rem" }}
-                          >
-                            Update status
-                          </label>
-                          <select
-                            id="support-status"
-                            className="cg19-select"
-                            style={{ width: "100%" }}
-                            value={nextStatus}
-                            onChange={(e) => setNextStatus(e.target.value)}
-                          >
-                            {[
-                              "OPEN",
-                              "ASSIGNED",
-                              "IN_PROGRESS",
-                              "WAITING_FOR_USER",
-                              "ESCALATED",
-                              "RESOLVED",
-                              "CLOSED",
-                              "REPLIED",
-                            ].map((value) => (
-                              <option
-                                key={value}
-                                value={value}
-                                disabled={
-                                  value === "REPLIED" ||
-                                  (selected.status === "CLOSED" && value !== "OPEN") ||
-                                  (selected.status === "RESOLVED" && !["OPEN", "CLOSED"].includes(value)) ||
-                                  (value === "ASSIGNED" && !selected.assignedAccountRef)
-                                }
-                              >
-                                {value.replaceAll("_", " ")}
-                              </option>
-                            ))}
-                          </select>
+                        <CustomDropdown
+                          label="Update status"
+                          value={nextStatus}
+                          onChange={setNextStatus}
+                          options={[
+                            "OPEN",
+                            "ASSIGNED",
+                            "IN_PROGRESS",
+                            "WAITING_FOR_USER",
+                            "ESCALATED",
+                            "RESOLVED",
+                            "CLOSED",
+                          ].map((val) => ({
+                            value: val,
+                            label: val.replaceAll("_", " "),
+                            disabled:
+                              (selected.status === "CLOSED" && val !== "OPEN") ||
+                              (selected.status === "RESOLVED" && !["OPEN", "CLOSED"].includes(val)) ||
+                              (val === "ASSIGNED" && !selected.assignedAccountRef),
+                          }))}
+                        />
                         </div>
 
                         <div>
