@@ -56,3 +56,14 @@ export const semanticTokenKeys = {
   motionReduced:"cg.motion.reduce"
 } as const;
 export type SemanticTokenKey = typeof semanticTokenKeys[keyof typeof semanticTokenKeys];
+
+/** Public patient-facing palette, aligned with the existing CareGanga public Web chrome and CMS. Not an Admin palette or a claim of exact original CSS. */
+export const careGangaPublicTheme = {
+  ...careGangaTheme,
+  sidebar:"#112F2A", sidebarText:"#FFFFFF", sidebarMuted:"#D4E5DD",
+  selectedNavigation:"#194A3A", selectedNavigationText:"#FFFFFF",
+  selectedSurface:"#EAF4EE", primary:"#194A3A", primaryPressed:"#14362A",
+  primaryText:"#FFFFFF", background:"#FFFCF5", surface:"#FFFFFF",
+  text:"#14233A", mutedText:"#4D6072", border:"#BCCFC6", focus:"#167763",
+  gold:"#ECC65B", amber:"#FFA337"
+} as const;

@@ -9,6 +9,8 @@ export function CenterLabPricingPanel({centerRef,canManage}:Props){
  const [items,setItems]=useState<DiagnosticItem[]>([]);
  const [mappings,setMappings]=useState<DiagnosticMapping[]>([]);
  const [prices,setPrices]=useState<DiagnosticPrice[]>([]);
+ const priceFilter=useRef({status:"",offset:0});
+ const [nextPriceOffset,setNextPriceOffset]=useState<number|null>(null),[priceLoading,setPriceLoading]=useState(false);
  const [kind,setKind]=useState<"TEST"|"PACKAGE">("TEST");
  const [itemRef,setItemRef]=useState(""),[mappingRef,setMappingRef]=useState("");
  const [base,setBase]=useState(""),[patient,setPatient]=useState("");
@@ -21,20 +23,21 @@ export function CenterLabPricingPanel({centerRef,canManage}:Props){
  const prefix="my-centers/"+encodeURIComponent(centerRef);
  const epoch=useRef(0);
  const reload=useCallback(async()=>{
-  const n=++epoch.current;
-  const [options,current,rates]=await Promise.all([
+  const n=++epoch.current,filter=priceFilter.current;
+  setPrices([]);setNextPriceOffset(null);setPriceLoading(true);
+  try{const [options,current,rates]=await Promise.all([
    diagnosticsCall<{items:DiagnosticItem[]}>(prefix+"/eligible-items"),
    diagnosticsCall<{mappings:DiagnosticMapping[]}>(prefix+"/tests"),
-   diagnosticsCall<{prices:DiagnosticPrice[]}>(prefix+"/test-prices")
+   diagnosticsCall<{prices:DiagnosticPrice[];nextOffset:number|null}>(prefix+"/test-prices?"+new URLSearchParams({priceStatus:filter.status,offset:String(filter.offset)}).toString())
   ]);
   if(n===epoch.current){
    setItems(options.items??[]);setMappings(current.mappings??[]);
-   setPrices(rates.prices??[]);
-  }
+   setPrices(rates.prices??[]);setNextPriceOffset(rates.nextOffset??null);
+  }}finally{if(n===epoch.current)setPriceLoading(false);}
  },[prefix]);
  useEffect(()=>{
   let alive=true;setLoading(true);
-  setItems([]);setMappings([]);setPrices([]);
+  priceFilter.current={status:"",offset:0};setNextPriceOffset(null);setItems([]);setMappings([]);setPrices([]);
   setError("");setNotice("");setUncertain(false);
   keys.current={};
   void reload().catch(e=>{if(alive)setError(e instanceof Error?e.message:
@@ -43,6 +46,10 @@ export function CenterLabPricingPanel({centerRef,canManage}:Props){
    });
   return()=>{alive=false;++epoch.current;};
  },[reload]);
+ function filterPrices(status:string,offset=0){
+  if(busy||uncertain||loading||priceLoading)return;
+  priceFilter.current={status,offset};setError("");void reload().catch(e=>setError(e instanceof Error?e.message:"Current lab prices unavailable."));
+ }
  async function save(operation:string,path:string,fields:Record<string,unknown>,message:string){
   if(busy||uncertain)return;
   const key=keys.current[operation]??crypto.randomUUID();
@@ -129,16 +136,18 @@ export function CenterLabPricingPanel({centerRef,canManage}:Props){
     </form>}
    </div>
    <div><h4>Price proposals and approved offers</h4>
-    {!loading&&!prices.length&&<p className="cg-module-empty">
-     No commercial price has been proposed for this lab.</p>}
+    <label className="field">Price status<select value={priceFilter.current.status} disabled={busy||uncertain||loading||priceLoading} onChange={e=>filterPrices(e.target.value)}><option value="">All statuses</option><option value="PROPOSED">Pending review</option><option value="APPROVED">Approved (all dates)</option><option value="CURRENT">Approved, currently effective</option><option value="UPCOMING">Approved, upcoming</option><option value="EXPIRED">Approved, expired</option><option value="REJECTED">Rejected</option></select></label>
+    {priceLoading&&<p role="status">Checking prices…</p>}
+    {!loading&&!priceLoading&&!prices.length&&<p className="cg-module-empty">No prices match the current filter.</p>}
     {!!prices.length&&<div className="table-wrap"><table>
      <thead><tr><th>Test</th><th>Patient price</th><th>Status</th></tr></thead>
      <tbody>{prices.map(p=><tr key={p.priceRef}>
       <td>{mappings.find(m=>m.mappingRef===p.mappingRef)?.name??"Mapped test"}</td>
       <td>{formatRupees(p.patientPriceMinor)}<div>
        Base {formatRupees(p.basePriceMinor)}</div></td>
-      <td>{p.status==="APPROVED"?"Approved":p.status==="REJECTED"?"Rejected":"Pending review"}</td>
+      <td>{p.status==="APPROVED"?"Approved":p.status==="REJECTED"?"Rejected":p.status==="PROPOSED"?"Pending review":p.status.replaceAll("_"," ")}<div>{new Date(p.effectiveFromUtc).toLocaleDateString("en-IN")}{p.effectiveToUtc?" – "+new Date(p.effectiveToUtc).toLocaleDateString("en-IN"):" onward"}</div></td>
      </tr>)}</tbody></table></div>}
+    <div className="toolbar"><button type="button" disabled={busy||uncertain||loading||priceLoading||priceFilter.current.offset===0} onClick={()=>filterPrices(priceFilter.current.status,Math.max(0,priceFilter.current.offset-100))}>Previous prices</button><button type="button" disabled={busy||uncertain||loading||priceLoading||nextPriceOffset===null} onClick={()=>{if(nextPriceOffset!==null)filterPrices(priceFilter.current.status,nextPriceOffset);}}>Next prices</button></div>
     {canManage&&<form onSubmit={propose}>
      <h4>Propose a commercial price</h4>
      <div className="form-grid">

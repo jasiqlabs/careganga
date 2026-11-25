@@ -477,6 +477,8 @@ export const SAFE_MESSAGE_CATALOG:Readonly<Record<string,string>>=Object.freeze(
       CENTER_CASH_RECEIPT_ISSUE_UNCERTAIN:"The center receipt could not be confirmed for this action. Refresh the original record and review its status.",
       CENTER_CASH_RECEIPT_SOURCE_CHANGED:"The original center receipt has changed or conflicts with an existing record. Refresh before retrying.",
       CENTER_CASH_RECEIPT_UNAVAILABLE:"The selected center receipt is unavailable. Refresh the permitted list and try again.",
+      CENTER_ONLINE_CONFIRMATION_UNAVAILABLE:"Your verified online payment confirmation is unavailable. Refresh your payment status and try again.",
+      CENTER_ONLINE_CONFIRMATION_SOURCE_CHANGED:"Your payment status changed. Refresh your current balance before downloading the confirmation again.",
       CENTER_COLLECTION_AMOUNT_INVALID:"Enter an amount within the current verified payable balance, in rupees and paise.",
       CENTER_COLLECTION_CASH_ATTESTATION_REQUIRED:"Complete the required center collection verification before continuing.",
       CENTER_COLLECTION_CHARGE_UNAVAILABLE:"The selected center collection is unavailable. Refresh the permitted list and try again.",

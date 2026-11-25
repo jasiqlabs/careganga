@@ -1,6 +1,7 @@
 "use client";
 import {useCallback,useEffect,useRef,useState} from "react";
 import {MyConsultationHistory} from "../appointments/my-consultation-history";
+import {MyLabReports} from "../diagnostics/my-lab-reports";
 import {PatientPrivateFilesPanel} from "./patient-private-files-panel";
 import {PatientPartnerClaims} from "./patient-partner-claims";
 import {PatientPrivateDetailsPanel} from "./patient-private-details-panel";
@@ -15,7 +16,7 @@ type ApiError={message?:string};
 async function request<T>(path:string,method="GET",body?:Record<string,unknown>):Promise<T>{
  const response=await fetch("/api/patients/"+path,{method,cache:"no-store",
   headers:body?{"Content-Type":"application/json"}:undefined,
-  body:body?JSON.stringify(body):undefined});
+  body:body?JSON.stringify(body):undefined,signal:AbortSignal.timeout(15000)});
  const data:unknown=await response.json().catch(()=>null);
  if(!response.ok){
   const msg=data&&typeof data==="object"&&"message" in data?
@@ -50,19 +51,34 @@ export function PatientProfilePanel(){
  const [secondConfirmed,setSecondConfirmed]=useState(false);
  const pendingRegistration=useRef<{digest:string;key:string}|null>(null);
  const signupCommand=useRef<{digest:string;key:string}|null>(null);
- const refresh=useCallback(async()=>{
-  const response=await fetch("/api/patients/me",{cache:"no-store"});
-  if(response.status===401){setSignedIn(false);setProfile(null);setContact(null);return;}
-  const status=await request<Contact>("mobile/status");
-  setContact(status);
-  setSignedIn(true);
-  if(response.status===404){setProfile(null);return;}
-  if(!response.ok)throw Error("Your patient profile could not be checked. Try again.");
-  const current=await response.json() as Profile;
-  setProfile(current);if(current.profileStatus!=="PROVISIONAL")setIdentityProof(null);
-  setFirst(current.firstName);setLast(current.lastName);
-  setDob(current.dateOfBirth??"");
+ const clearPrivate=useCallback(()=>{
+  setSignedIn(false);setProfile(null);setContact(null);setIdentityProof(null);
+  setFirst("");setLast("");setDob("");setAgree(false);setPassword("");
+  setVerificationCode("");setClaimDisplay("");setClaimCode("");setClaimAgree(false);
+  setSecondLogin("");setSecondCode(null);setSecondAcceptCode("");setSecondConfirmed(false);
+  pendingRegistration.current=null;
  },[]);
+ const refresh=useCallback(async()=>{
+  try{
+   const response=await fetch("/api/patients/me",{cache:"no-store",signal:AbortSignal.timeout(15000)});
+   if(response.status===401){clearPrivate();return false;}
+   if(!response.ok&&response.status!==404)throw Error("Your patient profile could not be checked. Try again.");
+   const status=await request<Contact>("mobile/status");
+   if(!status||typeof status.verified!=="boolean"||typeof status.hasNumber!=="boolean"||typeof status.providerConfigured!=="boolean")
+    throw Error("Your account contact status could not be confirmed.");
+   if(response.status===404){clearPrivate();setContact(status);setSignedIn(true);return true;}
+   const current=await response.json() as Profile;
+   if(!current||typeof current.virtualPatientId!=="string"||!current.virtualPatientId||
+    typeof current.firstName!=="string"||typeof current.lastName!=="string"||
+    !["PROVISIONAL","VERIFIED"].includes(current.profileStatus)||
+    !Number.isSafeInteger(current.version)||typeof current.consentGranted!=="boolean")
+    throw Error("Your patient profile could not be confirmed.");
+   setContact(status);setSignedIn(true);setProfile(current);
+   if(current.profileStatus!=="PROVISIONAL")setIdentityProof(null);
+   setFirst(current.firstName);setLast(current.lastName);setDob(current.dateOfBirth??"");
+   return true;
+  }catch(e){clearPrivate();throw e;}
+ },[clearPrivate]);
  useEffect(()=>{
   let active=true;
   void Promise.all([request<Consent>("policy"),refresh()])
@@ -111,17 +127,18 @@ export function PatientProfilePanel(){
  }
  async function login(){
   await act(async()=>{
-   await request<{signedIn:boolean}>("login","POST",{identifier,password});
-   setPassword("");pendingRegistration.current=null;await refresh();
+   const result=await request<{signedIn:boolean}>("login","POST",{identifier,password});
+   setPassword("");pendingRegistration.current=null;
+   if(result?.signedIn!==true||!await refresh())throw Error("Sign-in could not be confirmed. Please try again.");
    setMessage("Signed in. Your private patient information is available.");
   });
  }
  async function logout(){
   await act(async()=>{
-   await request<{signedOut:boolean}>("logout","POST");
-   setSignedIn(false);setProfile(null);setContact(null);setIdentityProof(null);setPassword("");setAgree(false);
-   setSecondCode(null);setSecondAcceptCode("");setSecondConfirmed(false);
-   pendingRegistration.current=null;
+   try{
+    const result=await request<{signedOut:boolean}>("logout","POST");
+    if(result?.signedOut!==true)throw Error("Sign-out could not be confirmed. Close this page if using a shared device.");
+   }finally{clearPrivate();}
    setMessage("Signed out of your patient profile.");
   });
  }
@@ -146,7 +163,7 @@ export function PatientProfilePanel(){
      "Verification status is uncertain. Check current contact status before retrying.");
     return;
    }
-   setVerificationCode("");await refresh();
+   setVerificationCode("");if(!await refresh())throw Error("Sign in again to check your contact status.");
    setMessage("Your account mobile contact is verified.");
   });
  }
@@ -227,7 +244,7 @@ export function PatientProfilePanel(){
    setMessage("Show this one-time code with a valid identity document to assigned healthcare-center staff. The code expires in 15 minutes.");
   });
  }
- return <section className="cg-public-section">
+ return <section className="cg-public-section cg-health-patient-profile">
   <p className="cg-eyebrow">CareGanga · Private patient information</p>
   <h1>My patient profile</h1>
   <p>Create a patient account or use your registered CareGanga password account. Your Virtual Patient ID is
@@ -256,7 +273,7 @@ export function PatientProfilePanel(){
     <button type="button" disabled={busy||!/^[6-9][0-9]{9}$/.test(signupMobile)}
      onClick={()=>void requestSignupCode()}>
      {busy?"Checking…":"Send mobile verification code"}</button>
-    {signupRequestedMobile===signupMobile.trim()&&<label>Verification code received
+    {!!signupRequestedMobile&&signupRequestedMobile===signupMobile.trim()&&<label>Verification code received
      <input type="text" required inputMode="numeric" pattern="[0-9]{4,10}"
       maxLength={10} autoComplete="one-time-code" value={signupCode}
       onChange={e=>setSignupCode(e.target.value)}/></label>}
@@ -266,7 +283,7 @@ export function PatientProfilePanel(){
      !/^[6-9][0-9]{9}$/.test(signupMobile)||signupPassword.length<8||
       signupRequestedMobile!==signupMobile.trim()||!/^[0-9]{4,10}$/.test(signupCode)}>
      {busy?"Checking…":"Create patient account"}</button>
-    <button type="button" disabled={busy} onClick={()=>setSignupMode(false)}>
+    <button type="button" disabled={busy} onClick={()=>{setSignupPassword("");setSignupCode("");setSignupMode(false);}}>
      Already registered? Sign in</button>
    </form>:
    <form onSubmit={e=>{e.preventDefault();void login();}}
@@ -279,7 +296,7 @@ export function PatientProfilePanel(){
       value={password} onChange={e=>setPassword(e.target.value)}/></label>
     <button disabled={busy||!identifier.trim()||!password} type="submit">
      {busy?"Checking…":"Sign in"}</button>
-    <button type="button" disabled={busy} onClick={()=>setSignupMode(true)}>
+    <button type="button" disabled={busy} onClick={()=>{setPassword("");setSignupMode(true);}}>
      New patient? Create a CareGanga account</button>
    </form>:
    <div style={{display:"grid",gap:16,maxWidth:700}}>
@@ -291,6 +308,7 @@ export function PatientProfilePanel(){
      <p>Profile: {profile.profileStatus==="PROVISIONAL"?"Contact-verified; identity verification pending":profile.profileStatus} · Patient-care consent:
       {profile.consentGranted?" Granted":" Withdrawn"}</p>
     </aside>}
+    {profile&&<MyConsultationHistory key={profile.virtualPatientId}/>}
     {profile?.profileStatus==="PROVISIONAL"&&<section
      aria-label="Verify your patient identity at a healthcare center"
      style={{border:"1px solid #d7dfdb",borderRadius:12,padding:16}}>
@@ -307,7 +325,7 @@ export function PatientProfilePanel(){
       <span> · Expires {new Date(identityProof.expiresAt).toLocaleTimeString("en-IN")}</span>
      </p>}
      <button type="button" disabled={busy}
-      onClick={()=>void act(async()=>{await refresh();setMessage("Current identity status refreshed.");})}>
+      onClick={()=>void act(async()=>{if(!await refresh())throw Error("Sign in again to check your patient profile.");setMessage("Current identity status refreshed.");})}>
       Check current verification status</button>
     </section>}
     {!profile&&<p>You do not yet have a CareGanga patient profile.
@@ -381,6 +399,7 @@ export function PatientProfilePanel(){
     </section>}
     <form onSubmit={e=>{e.preventDefault();void (profile?save():register());}}
      style={{display:"grid",gap:12}}>
+     <h2>Personal information</h2>
      <label>First name
       <input required value={first} maxLength={100}
        onChange={e=>setFirst(e.target.value)}/></label>
@@ -423,7 +442,6 @@ export function PatientProfilePanel(){
        Expires {new Date(secondCode.expiresAt).toLocaleTimeString("en-IN")}.
        This is not permission for another person or a family member.</p>}
      </section>}
-    {profile&&<MyConsultationHistory/>}
     {profile?.profileStatus==="VERIFIED"&&
      <PatientPrivateDetailsPanel key={profile.virtualPatientId+":details"}
       consentGranted={profile.consentGranted}/>}
@@ -433,6 +451,7 @@ export function PatientProfilePanel(){
     {profile?.profileStatus==="VERIFIED"&&
      <PatientPartnerClaims key={profile.virtualPatientId+":claims"}
       consentGranted={profile.consentGranted}/>}
+    {profile?.profileStatus==="VERIFIED"&&profile.consentGranted&&<MyLabReports key={profile.virtualPatientId+":reports"}/>}
     {profile&&<section aria-label="Manage patient-care consent">
      <h2>My consent</h2>
      <p>You can withdraw your permission for new patient-care information sharing.

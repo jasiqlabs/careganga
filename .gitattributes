@@ -1,0 +1,3 @@
+# Preserve byte-level SQL and manifest checksums across operating systems.
+apps/backend/db/**/*.sql text eol=lf
+apps/backend/db/baseline/manifest.json text eol=lf

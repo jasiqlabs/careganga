@@ -48,7 +48,7 @@ export default async function ProtectedH15PatientManagement(){
         Open patient intake
        </Link>
       </section>}
-    <FoundationPatientBookings/>
+    <FoundationPatientBookings canOverride={rightsSet.has("health.appointments.override")}/>
    
   </HealthcareAdminShell>;
  }catch(error){

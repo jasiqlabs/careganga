@@ -60,12 +60,16 @@ function rupees(v:string){
 const money=(v:string|null)=>v&&/^\d{1,11}$/.test(v)?
  "₹"+(Number(v)/100).toLocaleString("en-IN",{
   minimumFractionDigits:2,maximumFractionDigits:2}):"—";
+const dateInput=(value:string)=>{
+ const d=new Date(value);if(!Number.isFinite(d.getTime()))return "";
+ const two=(n:number)=>String(n).padStart(2,"0");
+ return String(d.getFullYear())+"-"+two(d.getMonth()+1)+"-"+two(d.getDate())+"T"+two(d.getHours())+":"+two(d.getMinutes());
+};
 const when=(value:string)=>{
- const d=new Date(value);if(!value||!Number.isFinite(d.getTime()))
-  throw Error("Select valid starting and ending dates.");
+ const d=new Date(value);if(!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(value)||!Number.isFinite(d.getTime())||dateInput(d.toISOString())!==value)
+  throw Error("Select valid starting and ending local dates.");
  return d.toISOString();
 };
-const dateInput=(v:string)=>new Date(v).toISOString().slice(0,16);
 const pct=(value:string)=>{
  if(!/^(?:[0-9]{1,2}(?:\.[0-9]{1,2})?|100(?:\.0{1,2})?)$/.test(value))
   throw Error("Percentage must be between 0.01 and 100 with two decimals.");
@@ -93,7 +97,7 @@ export function HealthcarePolicyWorkspace({canView,canManage,canReview}:Props){
  const last=useRef<{parts:string;body:Payload;label:string}|null>(null);
  useEffect(()=>setEstimate(null),[center,doctor]);
  useEffect(()=>setServiceEstimate(null),[center,service,quotedGross]);
- const request=useRef(0);
+ const request=useRef(0),centerSeq=useRef(0);
  const refresh=useCallback(async(c:string)=>{
   const id=++request.current;
   const result=await api<{policies:Policy[]}>("centers/"+c);
@@ -109,18 +113,19 @@ export function HealthcarePolicyWorkspace({canView,canManage,canReview}:Props){
   }).catch(e=>{if(active)setError(e instanceof Error?e.message:
    "Approved healthcare centers are unavailable.");})
    .finally(()=>{if(active)setLoading(false)});
-  return()=>{active=false;++request.current};
+  return()=>{active=false;++request.current;++centerSeq.current};
  },[canView]);
  useEffect(()=>{
-  ++request.current;setPolicies([]);setDoctors([]);setDoctor("");
+  const scope=++centerSeq.current;++request.current;setPolicies([]);setDoctors([]);setDoctor("");
   setRevision(null);setUncertain(false);last.current=null;
-  if(!center)return;
+  if(!center){setLoading(false);return;}
   setLoading(true);setError("");
   void Promise.all([
    refresh(center),
-   api<{doctors:Doctor[]}>("centers/"+center+"/doctors").then(x=>setDoctors(x.doctors))
-  ]).catch(e=>setError(e instanceof Error?e.message:"Current center policy unavailable."))
-   .finally(()=>setLoading(false));
+   api<{doctors:Doctor[]}>("centers/"+center+"/doctors").then(x=>{if(scope===centerSeq.current)setDoctors(x.doctors);})
+  ]).catch(e=>{if(scope===centerSeq.current)setError(e instanceof Error?e.message:"Current center policy unavailable.");})
+   .finally(()=>{if(scope===centerSeq.current)setLoading(false);});
+  return()=>{++centerSeq.current;++request.current;};
  },[center,refresh]);
  async function preview(){
   if(!center||!doctor||busy||uncertain)return;
@@ -238,9 +243,10 @@ export function HealthcarePolicyWorkspace({canView,canManage,canReview}:Props){
       "Cannot check original policy state."))}>Check existing policy history</button>
    </div>
   </section>}
-  {canManage&&canView&&!!center&&!uncertain&&<form className="cg-diagnostics-card"
+  {canManage&&canView&&!!center&&!uncertain&&!loading&&<form className="cg-diagnostics-card"
    onSubmit={submit} aria-label="Original assistance policy">
    <h2>{revision?"Revise approved policy":"Configure healthcare support"}</h2>
+   <h3>1. Service &amp; eligibility scope</h3>
    <div className="form-grid">
     <label className="field">Service type
      <select value={service} disabled={busy||!!revision}
@@ -295,6 +301,9 @@ export function HealthcarePolicyWorkspace({canView,canManage,canReview}:Props){
       {" "}{serviceEstimate.caution}
      </p>}
     </section>}
+   </div>
+   <h3>2. Contribution &amp; maximum support</h3>
+   <div className="form-grid">
     <label className="field">Assistance type
      <select value={mode} disabled={busy} onChange={e=>
       setMode(e.target.value as "PERCENT"|"FIXED")}>
@@ -313,6 +322,9 @@ export function HealthcarePolicyWorkspace({canView,canManage,canReview}:Props){
      <input required inputMode="decimal" disabled={busy} value={cap}
       onChange={e=>setCap(e.target.value)}/>
     </label>
+   </div>
+   <h3>3. Effective dates</h3>
+   <div className="form-grid">
     <label className="field">Valid from (your local time)
      <input type="datetime-local" required disabled={busy} value={from}
       onChange={e=>setFrom(e.target.value)}/>
@@ -330,14 +342,14 @@ export function HealthcarePolicyWorkspace({canView,canManage,canReview}:Props){
     pending, not a published offer.</p>
    <div className="toolbar">
     <button className="primary" type="submit" disabled={busy}>
-     {busy?"Checking original policy…":"Save policy revision"}</button>
+     {busy?"Checking original policy…":revision?"Save policy revision":"Create policy"}</button>
     {revision&&<button type="button" disabled={busy} onClick={clear}>
      Cancel revision</button>}
    </div>
   </form>}
   {canView&&!!center&&<section className="form-section">
    <h2>Actual policy revisions</h2>
-   <button type="button" disabled={busy||uncertain} onClick={()=>
+   <button type="button" disabled={busy||uncertain||loading} onClick={()=>
     void refresh(center).catch(e=>setError(e instanceof Error?e.message:
      "Original policy history is unavailable."))}>Refresh history</button>
    {policies.length===0&&!loading?<p className="cg-module-empty">

@@ -3,7 +3,7 @@ import {ActivityIndicator,Platform,Pressable,ScrollView,StyleSheet,
   Text,TextInput,View} from "react-native";
 import {SafeAreaView} from "react-native-safe-area-context";
 import * as Crypto from "expo-crypto";
-import {careGangaTheme as theme} from "../../../../../packages/design-tokens/src/index";
+import {careGangaPublicTheme as theme} from "../../../../../packages/design-tokens/src/index";
 type Faq={faqRef:string;question:string;answer:string};
 type Receipt={receipt:string;ticketNumber:string;expiresAt:string;status:string;result:string};
 const web=process.env.EXPO_PUBLIC_CONTACT_WEB_ORIGIN;
@@ -51,6 +51,7 @@ export function FoundationContactScreen({onExit}:{onExit:()=>void}){
   const [faq,setFaq]=useState<Faq[]>([]);
   const [busy,setBusy]=useState(false),[loadingFaq,setLoadingFaq]=useState(true);
   const [feedback,setFeedback]=useState("");
+  const [feedbackArea,setFeedbackArea]=useState<"message"|"receipt">("message");
   useEffect(()=>{
     let live=true;
     void contactApi<{faqs:Faq[]}>("public/faqs").then(x=>{
@@ -60,6 +61,7 @@ export function FoundationContactScreen({onExit}:{onExit:()=>void}){
   },[]);
   async function send(){
     if(busy||receipt)return;
+    setFeedbackArea("message");
     if(name.trim().length<2||contact.trim().length<5||subject.trim().length<5||
       message.trim().length<10){
       setFeedback("Enter your name, contact, subject and a message of at least ten characters.");
@@ -74,12 +76,15 @@ export function FoundationContactScreen({onExit}:{onExit:()=>void}){
       if(!result.receipt||!result.expiresAt)throw Error("UNKNOWN");
       setReceipt(result);setProof(result.receipt);setRequestKey("");setMessage("");
       setFeedback("The request is saved in Foundation support. No email or SMS delivery is claimed.");
-    }catch(e){setFeedback(explain(e))}
+    }catch(e){
+      if(!requestKey&&e instanceof Error&&(e.message==="INVALID"||e.message==="UNAVAILABLE"))setRequestKey("");
+      setFeedback(explain(e));
+    }
     finally{setBusy(false)}
   }
   async function check(){
-    if(busy||!proof)return;
-    setBusy(true);setFeedback("");
+    if(busy||!/^[A-Za-z0-9_-]{43}$/.test(proof.trim()))return;
+    setFeedbackArea("receipt");setBusy(true);setFeedback("");setProofStatus("");
     try{
       const result=await contactApi<{status:string;ticketNumber:string}>(
         "receipt/status","POST",{receipt:proof.trim()});
@@ -94,7 +99,6 @@ export function FoundationContactScreen({onExit}:{onExit:()=>void}){
       <Text accessibilityRole="header" style={s.heading}>Contact the Foundation</Text></View>
     <Text style={s.muted}>You do not need a staff account. Your request is private
       and is sent to the same CareGanga Foundation support source as the website.</Text>
-    {feedback?<Text accessibilityRole="alert" style={s.warning}>{feedback}</Text>:null}
     <View style={s.card}>
       {receipt?<View style={s.card}>
         <Text style={s.heading}>Your request was recorded</Text>
@@ -108,32 +112,35 @@ export function FoundationContactScreen({onExit}:{onExit:()=>void}){
       </View>:<>
         <Text style={s.heading}>Send a private contact request</Text>
         <Text>Name</Text>
-        <TextInput style={s.input} accessibilityLabel="Your name" value={name}
+        <TextInput style={[s.input,(busy||requestKey)&&s.readOnly]} accessibilityLabel="Your name" value={name} editable={!busy&&!requestKey}
           onChangeText={setName} maxLength={90} autoComplete="name"/>
         <Text>Email or phone number</Text>
-        <TextInput style={s.input} accessibilityLabel="Email or phone" value={contact}
+        <TextInput style={[s.input,(busy||requestKey)&&s.readOnly]} accessibilityLabel="Email or phone" value={contact} editable={!busy&&!requestKey}
           onChangeText={setContact} maxLength={120} autoCapitalize="none"/>
         <Text>Subject</Text>
-        <TextInput style={s.input} accessibilityLabel="Subject" value={subject}
+        <TextInput style={[s.input,(busy||requestKey)&&s.readOnly]} accessibilityLabel="Subject" value={subject} editable={!busy&&!requestKey}
           onChangeText={setSubject} maxLength={140}/>
         <Text>How can we help?</Text>
-        <TextInput style={[s.input,s.long]} accessibilityLabel="Contact message"
-          multiline value={message} onChangeText={setMessage} maxLength={2000}/>
-        <Pressable style={s.primary} accessibilityRole="button" disabled={busy}
+        <TextInput style={[s.input,s.long,(busy||requestKey)&&s.readOnly]} accessibilityLabel="Contact message"
+          multiline editable={!busy&&!requestKey} value={message} onChangeText={setMessage} maxLength={2000}/>
+        {requestKey&&!busy?<Text style={s.muted}>Retry the original request without changing its details to avoid a duplicate submission.</Text>:null}
+        <Pressable style={[s.primary,busy&&s.disabled]} accessibilityRole="button" disabled={busy}
           onPress={()=>void send()}><Text style={s.primaryText}>
-            {busy?"Checking original request…":"Send private request"}</Text>
+            {busy?"Checking original request…":requestKey?"Retry private request":"Send private request"}</Text>
         </Pressable>
       </>}
+      {feedback&&feedbackArea==="message"?<Text accessibilityRole={receipt?"text":"alert"} style={receipt?s.muted:s.warning}>{feedback}</Text>:null}
     </View>
     <View style={s.card}>
       <Text style={s.heading}>Check a private receipt</Text>
-      <TextInput value={proof} onChangeText={setProof} style={s.input}
-        accessibilityLabel="Private receipt code" maxLength={43}
+      <TextInput value={proof} editable={!busy} onChangeText={v=>{setProof(v.trim());setProofStatus("");if(feedbackArea==="receipt")setFeedback("");}} style={s.input}
+        accessibilityLabel="Private receipt code" maxLength={64}
         autoCapitalize="none" autoCorrect={false}/>
-      <Pressable style={s.button} accessibilityRole="button"
-        disabled={busy||!proof.trim()} onPress={()=>void check()}>
+      <Pressable style={[s.button,(busy||!/^[A-Za-z0-9_-]{43}$/.test(proof.trim()))&&s.disabled]} accessibilityRole="button"
+        disabled={busy||!/^[A-Za-z0-9_-]{43}$/.test(proof.trim())} onPress={()=>void check()}>
         <Text>Check request status</Text></Pressable>
       {proofStatus?<Text>Current status: {proofStatus}</Text>:null}
+      {feedback&&feedbackArea==="receipt"?<Text accessibilityRole="alert" style={s.warning}>{feedback}</Text>:null}
     </View>
     <View style={s.card}>
       <Text style={s.heading}>Foundation help questions</Text>
@@ -156,12 +163,14 @@ const s=StyleSheet.create({
   item:{padding:10,borderColor:theme.border,borderWidth:1,borderRadius:8,gap:7},
   input:{minHeight:48,borderWidth:1,borderColor:theme.border,borderRadius:8,
     padding:10,color:theme.text,backgroundColor:theme.surface},
+  readOnly:{backgroundColor:theme.background},
+  disabled:{opacity:.55},
   long:{minHeight:110,textAlignVertical:"top"},
   code:{fontSize:12,color:theme.text},
   warning:{padding:11,color:theme.error,backgroundColor:theme.surface},
   button:{minHeight:48,padding:10,borderWidth:1,borderColor:theme.border,
-    borderRadius:8,justifyContent:"center"},
+    borderRadius:8,justifyContent:"center",alignItems:"center"},
   primary:{padding:13,minHeight:48,backgroundColor:theme.primary,
-    borderRadius:8,justifyContent:"center"},
-  primaryText:{fontWeight:"700",color:theme.primaryText}
+    borderRadius:8,justifyContent:"center",alignItems:"center"},
+  primaryText:{fontWeight:"700",color:theme.primaryText,textAlign:"center"}
 });

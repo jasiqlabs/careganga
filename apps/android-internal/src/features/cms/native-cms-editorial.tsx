@@ -20,7 +20,7 @@ type Navigation={loginDesired:boolean;memberJoinDesired:boolean;
 type Detail={pageRef:string;kind:string;slug:string;version:number;
  revisionRef:string;status:string;approvalCaseRef:string|null;
  title:string;seoTitle:string;seoDescription:string;canonicalPath:string;
- sections:Section[];assets:Asset[];navigation:Navigation|null;
+ sections:Section[];assets:Asset[];bundledAssets?:{key:string;role:string;order:number;altText:string}[];navigation:Navigation|null;
  publicationStatus:string;scheduledAt:string|null};
 // Same existing CMS editorial page types, slugs and initial section shapes as
 // the original Web CmsExtendedWorkspace. These are draft defaults, not a
@@ -392,9 +392,14 @@ export function NativeCmsEditorial({token,canManage,canPublish,canReview,onExit,
  const changeNew=(patch:Partial<NewPage>)=>setNewPage(old=>old?{...old,...patch}:null);
  const change=<K extends keyof Detail,>(k:K,v:Detail[K])=>
   setDraft(current=>current?{...current,[k]:v}:null);
- const replaceSection=(i:number,fields:Record<string,unknown>)=>
+ const replaceSection=(i:number,fields:Record<string,unknown>)=>{
+  const old=draft?.sections[i];
+  const titles=(value:unknown)=>Array.isArray(value)?value.map(v=>v&&typeof v==="object"&&"title" in v?v.title:null):[];
+  const changed=old?.kind==="HEALTHCARE_CATEGORIES"&&JSON.stringify(titles(old.fields.categories))!==JSON.stringify(titles(fields.categories));
+  if(changed&&draft?.assets.some(a=>a.role==="FEATURE"))setNotice("Category labels or positions changed. Reattach the matching approved category illustrations before publishing.");
   setDraft(current=>current?{...current,sections:current.sections.map(
-   (x,j)=>j===i?{...x,fields}:x)}:null);
+   (x,j)=>j===i?{...x,fields}:x),assets:changed?current.assets.filter(a=>a.role!=="FEATURE"):current.assets}:null);
+ };
  const locked=!canManage||busy||uncertain;
  const original=selected?.pageRef??"";
  return <SafeAreaView style={styles.page}>
@@ -509,6 +514,11 @@ export function NativeCmsEditorial({token,canManage,canPublish,canReview,onExit,
     {draft.sections.map((section,i)=>["PROJECT_TEASER","CAMPAIGN_TEASER","TEAM"].includes(section.kind)?null:<View key={section.kind+"-"+section.order}
      style={styles.panel}>
       <Text style={styles.heading}>{title(section.kind)} · Section {i+1}</Text>
+      {canManage&&selected.kind==="HOME"&&section.kind==="RICH_TEXT"&&section.order>20&&section.order<30&&section.fields.variant==="STANDARD"&&!section.fields.placement&&
+       !draft.assets.some(a=>a.role==="ABOUT"&&a.order===section.order)&&!selected.bundledAssets?.some(a=>a.role==="ABOUT"&&a.order===section.order)&&
+       [35,31,32,33,34,36,37,38,39].some(n=>!draft.sections.some(x=>x.order===n))&&
+       button("Move after volunteer banner",()=>{const order=[35,31,32,33,34,36,37,38,39].find(n=>!draft.sections.some(x=>x.order===n));if(order!==undefined)change("sections",draft.sections.map((x,j)=>j===i?{...x,order}:x));},locked)}
+
       {section.kind==="IMPACT_GROUP"&&section.fields.group==="STATS"&&canManage&&button("Use verified beneficiary impact",()=>void api<{fields:Record<string,unknown>|null}>(token,"beneficiary-impact-source").then(v=>{if(!v.fields){setError("No publishable beneficiary aggregate for the last completed year.");return;}replaceSection(i,v.fields);}).catch(()=>setError("Current role or source cannot provide beneficiary impact.")),locked)}
       {typeof section.fields.sourceEventRef==="string"?<><Text>{String(section.fields.heading)} · {String(section.fields.category)}</Text><Text>{String(section.fields.body)}</Text></>:<EditField name="Original section fields" value={section.fields}
        sectionKind={section.kind}
@@ -517,6 +527,7 @@ export function NativeCmsEditorial({token,canManage,canPublish,canReview,onExit,
        locked={locked}/>}
     </View>)}
     <Text style={styles.note}>Original scanner-verified placements: {draft.assets.length}</Text>
+    {!!selected.bundledAssets?.length&&<Text style={styles.note}>Default release illustrations: {selected.bundledAssets.length}. Editing text preserves them; upload a replacement in a new draft.</Text>}
     {canManage&&selected.status==="DRAFT"&&!draft.sections.some(s=>typeof s.fields.sourceEventRef==="string")&&
      <NativeCmsMediaUploader token={token} kind={selected.kind}
       onAttemptChange={setMediaActive}

@@ -15,6 +15,7 @@ const native="apps/android-internal/src/features/diagnostics/";
 const files=[
  d+"application/clinical-lab-admission.service.ts",
  d+"application/clinical-lab-order.service.ts",
+ d+"application/clinical-lab-custody.service.ts",
  d+"application/clinical-lab-result-evidence.service.ts",
  d+"application/clinical-lab-generated-result.service.ts",
  "apps/backend/db/migrations/1614_cg16_released_report_correction_source.sql",
@@ -334,5 +335,23 @@ must(generated,/WHERE root_realm_id=\$1 AND id=\$2 AND order_ref=\$3 AND center_
  "Generated PDF uncertain-state recovery must be scoped to original Foundation realm/order");
 must(generated,/AND result_revision_ref=\$5 AND status=\x27INITIATED\x27/,
  "Unknown generated PDF recovery updates only its exact original result");
+// H10: current assigned-center care scope and actual server-backed order lookup.
+const h10Order=read(d+"application/clinical-lab-order.service.ts");
+const h10Admission=read(d+"application/clinical-lab-admission.service.ts");
+const h10Custody=read(d+"application/clinical-lab-custody.service.ts");
+assert.ok(h10Admission.includes("consent.revision_no=(SELECT MAX(latest.revision_no)"));
+assert.ok(h10Admission.includes("i.id=o.center_intake_ref"));
+assert.ok(h10Admission.includes("a.id=o.consultation_ref"));
+assert.equal(h10Order.split("CURRENT_LAB_ORDER_CARE_PREDICATE").length-1,3);
+assert.ok(h10Custody.includes('"+CURRENT_LAB_ORDER_CARE_PREDICATE+"FOR UPDATE OF s,o"'));
+assert.ok(h10Order.includes("LIMIT 31 OFFSET $4"));
+assert.ok(h10Order.includes("Number(offsetRaw)%30!==0"));
+assert.ok(read(d+"http/clinical-lab-order.controller.ts").includes("centerOrders(token,center,q,offset)"));
+assert.ok(read("apps/web/src/app/api/lab-clinical/[...parts]/route.ts").includes("target.searchParams.set(key,values[0])"));
+for(const path of [web+"clinical-lab-order-workspace.tsx",native+"native-clinical-lab-screen.tsx"]){
+ const surface=read(path);
+ assert.ok(surface.includes("q:orderFilter.current.q"),path+" actual server search");
+ assert.ok(surface.includes("nextOrderOffset"),path+" page navigation");
+}
 console.log("CG16 US002 source/parse preflight authored for clinical review and simple release. "+
  "PostgreSQL, browser, Android, independent clinical and security QA NOT_RUN.");

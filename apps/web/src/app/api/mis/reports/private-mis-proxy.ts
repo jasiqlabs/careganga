@@ -1,6 +1,7 @@
 import {cookies} from "next/headers";
 import {NextRequest,NextResponse} from "next/server";
 import {safeMisBffError} from "./safe-mis-bff-error";
+import {isAllowedOrigin} from "../../../../shared/request-origin";
 const noStore={"Cache-Control":"private, no-store"};
 const ID=/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 export const validMisRef=(v:string)=>ID.test(v);
@@ -13,8 +14,7 @@ export async function privateMisProxy(request:NextRequest,path:string,
  if(!token)return NextResponse.json({message:"Sign in to manage reports."},
   {status:401,headers:noStore});
  if(method!=="GET"){
-  const origin=request.headers.get("origin");
-  if(origin&&origin!==request.nextUrl.origin)
+  if(!isAllowedOrigin(request))
    return NextResponse.json({message:"Open this report from the secure staff dashboard."},
     {status:403,headers:noStore});
   if(request.headers.get("sec-fetch-site")==="cross-site")

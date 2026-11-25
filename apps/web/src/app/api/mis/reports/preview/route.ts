@@ -1,8 +1,12 @@
 import {cookies} from "next/headers";
 import {NextRequest,NextResponse} from "next/server";
 import {safeMisBffError} from "../safe-mis-bff-error";
+import {isAllowedOrigin} from "../../../../../shared/request-origin";
 export const dynamic="force-dynamic";
 export async function POST(request:NextRequest){
+ if(!isAllowedOrigin(request)||request.headers.get("sec-fetch-site")==="cross-site")
+  return NextResponse.json({message:"Open this report from the secure staff dashboard."},{
+   status:403,headers:{"Cache-Control":"private, no-store"}});
  const session=(await cookies()).get("cg_staff_session")?.value;
  if(!session)return NextResponse.json({message:"Sign in to run reports."},{
   status:401,headers:{"Cache-Control":"private, no-store"}});

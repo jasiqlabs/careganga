@@ -13,12 +13,11 @@ export async function generateMetadata():Promise<Metadata>{
 }
 export default async function CampaignsPage(){
  const r=await publishedCampaigns();
- return <HealthcarePublicChrome><main className="page main" id="main-content">
-
-  <h1>Our Campaigns</h1>
+ return <HealthcarePublicChrome><main className="cg-site-content cg-public-campaign-list" id="main-content">
+  <header className="cg-public-campaign-heading"><p className="cg-site-eyebrow">CareGanga Foundation</p><h1>Our Campaigns</h1><p className="cg-public-campaign-summary">Explore independently published Foundation campaigns and verified contributions.</p></header>
   {r.state==="UNAVAILABLE"?<p role="alert">Campaign information is temporarily unavailable. Please check again.</p>:
-   <CampaignPublicCards cards={r.cards} donationsEnabled={r.donationsEnabled}/>}
-  {r.donationsEnabled?<p><Link href="/donate">Make a general donation</Link></p>:<p>Online donations are unavailable until Foundation payment verification is enabled.</p>}
-  <Link href="/">Back to CareGanga</Link>
+   <CampaignPublicCards heading="Published campaigns" cards={r.cards} donationsEnabled={r.donationsEnabled}/>}
+  <div className="cg-public-campaign-list-actions">{r.donationsEnabled?<Link className="cg-public-campaign-primary" href="/donate">Make a general donation</Link>:<p role="status">Online donations are unavailable until Foundation payment verification is enabled.</p>}
+  <Link className="cg-public-campaign-secondary" href="/">Back to CareGanga</Link></div>
  </main></HealthcarePublicChrome>;
 }

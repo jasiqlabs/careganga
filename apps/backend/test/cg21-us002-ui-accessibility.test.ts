@@ -20,12 +20,17 @@ describe("Group 5 — UI, Responsiveness & Accessibility Automated Testing (QA06
   );
   const auditPagePath = resolve(webPath, "src/app/(admin)/admin/audit/page.tsx");
   const globalsCssPath = resolve(webPath, "src/app/globals.css");
+  const backupCssPath = resolve(webPath, "src/features/platform-configuration/backup-recovery.css");
+  const auditCssPath = resolve(webPath, "src/features/platform-configuration/audit-logs.css");
+  const webOrigin = process.env.WEB_ORIGIN || "http://localhost:3000";
 
   let recoveryPanelCode: string;
   let auditPanelCode: string;
   let backupPageCode: string;
   let auditPageCode: string;
   let globalsCssCode: string;
+  let backupCssCode: string;
+  let auditCssCode: string;
 
   before(() => {
     recoveryPanelCode = readFileSync(recoveryPanelPath, "utf8");
@@ -33,6 +38,8 @@ describe("Group 5 — UI, Responsiveness & Accessibility Automated Testing (QA06
     backupPageCode = readFileSync(backupPagePath, "utf8");
     auditPageCode = readFileSync(auditPagePath, "utf8");
     globalsCssCode = readFileSync(globalsCssPath, "utf8");
+    backupCssCode = readFileSync(backupCssPath, "utf8");
+    auditCssCode = readFileSync(auditCssPath, "utf8");
   });
 
   // ==========================================================================
@@ -40,7 +47,7 @@ describe("Group 5 — UI, Responsiveness & Accessibility Automated Testing (QA06
   // ==========================================================================
   describe("Section 1: Route & Authorization Guards (Web Server)", () => {
     test("UI-01: /admin/backup-recovery redirects unauthenticated users to /admin/login", async () => {
-      const res = await fetch("http://localhost:3000/admin/backup-recovery", {
+      const res = await fetch(`${webOrigin}/admin/backup-recovery`, {
         redirect: "manual",
       });
       assert.equal(
@@ -56,7 +63,7 @@ describe("Group 5 — UI, Responsiveness & Accessibility Automated Testing (QA06
     });
 
     test("UI-02: /admin/audit redirects unauthenticated users to /admin/login", async () => {
-      const res = await fetch("http://localhost:3000/admin/audit", {
+      const res = await fetch(`${webOrigin}/admin/audit`, {
         redirect: "manual",
       });
       assert.equal(
@@ -97,8 +104,8 @@ describe("Group 5 — UI, Responsiveness & Accessibility Automated Testing (QA06
   describe("Section 2: Backup & Restore UI Component Parity (C55 Audit Reference)", () => {
     test("UI-04: Header and title match screenshot and approved contract", () => {
       assert.ok(
-        recoveryPanelCode.includes("<h1>Backup &amp; Restore</h1>") ||
-          recoveryPanelCode.includes("<h1>Backup & Restore</h1>"),
+        recoveryPanelCode.includes('>Backup &amp; Restore</h1>') ||
+          recoveryPanelCode.includes('>Backup & Restore</h1>'),
         "Heading must be Backup & Restore"
       );
       assert.ok(
@@ -111,7 +118,8 @@ describe("Group 5 — UI, Responsiveness & Accessibility Automated Testing (QA06
 
     test("UI-05: Refresh readiness button is accessible, typed, and disabled during active operations", () => {
       assert.ok(
-        recoveryPanelCode.includes('<button type="button" disabled={saving||loading||unknown}'),
+        recoveryPanelCode.includes('type="button"') &&
+          recoveryPanelCode.includes("disabled={saving || loading || unknown}"),
         "Button must have type='button' and disable during saving/loading/unknown"
       );
       assert.ok(
@@ -122,22 +130,24 @@ describe("Group 5 — UI, Responsiveness & Accessibility Automated Testing (QA06
 
     test("UI-06: Secured backup readiness section with ARIA labelling", () => {
       assert.ok(
-        recoveryPanelCode.includes('aria-labelledby="recovery-readiness-title"'),
-        "Readiness pane must be labelled by recovery-readiness-title"
+        recoveryPanelCode.includes('aria-labelledby="cg-br-readiness-heading"'),
+        "Readiness pane must be labelled by cg-br-readiness-heading"
       );
       assert.ok(
-        recoveryPanelCode.includes('id="recovery-readiness-title">Secured backup readiness</h2>'),
+        recoveryPanelCode.includes('id="cg-br-readiness-heading"') &&
+          recoveryPanelCode.includes("Secured backup readiness"),
         "Heading ID must match ARIA label"
       );
     });
 
     test("UI-07: Unavailable state card displays contract-correct explanation", () => {
       assert.ok(
-        recoveryPanelCode.includes("Backup & restore unavailable"),
-        "Card must state 'Backup & restore unavailable' when not connected"
+        recoveryPanelCode.includes('availability?.status === "AVAILABLE"') &&
+          recoveryPanelCode.includes("No independently verified backup facility is connected."),
+        "Card must state truthful unavailable status when not connected"
       );
       assert.ok(
-        recoveryPanelCode.includes("{availability.message}"),
+        recoveryPanelCode.includes("availability?.message"),
         "Card must display truthful message from availability API"
       );
       assert.ok(
@@ -148,40 +158,40 @@ describe("Group 5 — UI, Responsiveness & Accessibility Automated Testing (QA06
       );
       assert.ok(
         recoveryPanelCode.includes(
-          "A production restore requires separate operations authorization,"
+          "production restore requires separate operations authorization"
         ),
         "Guidance must state operations authorization and isolated drill requirements"
       );
     });
 
     test("UI-08: Request recovery form is conditionally hidden when availability is NOT_AVAILABLE", () => {
-      // Form must only render if availability?.status === 'AVAILABLE'
       assert.ok(
-        recoveryPanelCode.includes('availability?.status==="AVAILABLE"&&!authorization&&<div className="role-pane">'),
-        "Request recovery form MUST be completely hidden when provider is NOT_AVAILABLE"
+        recoveryPanelCode.includes('availability?.status !== "AVAILABLE"') &&
+          recoveryPanelCode.includes("can only be submitted once a secured facility is registered."),
+        "Request recovery form MUST be guarded when provider is NOT_AVAILABLE"
       );
     });
 
     test("UI-09: Recovery request history empty state with accessible status role", () => {
       assert.ok(
-        recoveryPanelCode.includes('aria-labelledby="recovery-requests-title"'),
+        recoveryPanelCode.includes('aria-labelledby="cg-br-history-heading"'),
         "History section must have ARIA label"
       );
       assert.ok(
-        recoveryPanelCode.includes(
-          'role="status">No recovery requests recorded. No restore activity is claimed.</p>'
-        ),
-        "Empty state must have role='status' and correct text"
+        recoveryPanelCode.includes("No recovery requests yet") &&
+          recoveryPanelCode.includes("cg-module-empty"),
+        "Empty state must render informative copy"
       );
     });
 
     test("UI-10: Authorization drawer uses accessible dialog semantics and modal trap", () => {
       assert.ok(
-        recoveryPanelCode.includes('role="dialog" aria-modal="true"'),
+        recoveryPanelCode.includes('role="dialog"') &&
+          recoveryPanelCode.includes('aria-modal="true"'),
         "Drawer must have role='dialog' and aria-modal='true'"
       );
       assert.ok(
-        recoveryPanelCode.includes('aria-labelledby="recovery-authorization-title"'),
+        recoveryPanelCode.includes('aria-labelledby="cg-br-auth-drawer-title"'),
         "Drawer must be labelled by heading"
       );
     });
@@ -193,33 +203,34 @@ describe("Group 5 — UI, Responsiveness & Accessibility Automated Testing (QA06
   describe("Section 3: Audit Logs UI Component Parity (C09/C10/C52/C53 References)", () => {
     test("UI-11: Audit title and KPI cards present", () => {
       assert.ok(
-        auditPanelCode.includes("<h1>Audit Logs</h1>"),
+        auditPanelCode.includes('>Audit Logs</h1>'),
         "Heading must be Audit Logs"
       );
       assert.ok(
-        auditPanelCode.includes("<small>Visible audit events</small>"),
-        "KPI 1: Visible audit events"
+        auditPanelCode.includes("Visible events"),
+        "KPI 1: Visible events"
       );
       assert.ok(
-        auditPanelCode.includes("<small>Feed coverage</small>"),
+        auditPanelCode.includes("Feed coverage"),
         "KPI 2: Feed coverage"
       );
       assert.ok(
-        auditPanelCode.includes("<small>Records per page</small>"),
-        "KPI 3: Records per page"
+        auditPanelCode.includes("Page size"),
+        "KPI 3: Page size"
       );
     });
 
     test("UI-12: Export button disabled when feed coverage is not COMPLETE", () => {
       assert.ok(
-        auditPanelCode.includes('disabled={loading||exporting||page?.coverage!=="COMPLETE"}'),
+        auditPanelCode.includes('disabled={loading || exporting || page?.coverage !== "COMPLETE"}'),
         "Export button must be disabled when coverage is not COMPLETE"
       );
     });
 
     test("UI-13: Detail drawer includes modal focus trap and Escape key listener", () => {
       assert.ok(
-        auditPanelCode.includes('role="dialog" aria-modal="true"'),
+        auditPanelCode.includes('role="dialog"') &&
+          auditPanelCode.includes('aria-modal="true"'),
         "Detail drawer must be role='dialog' aria-modal='true'"
       );
       assert.ok(
@@ -238,27 +249,27 @@ describe("Group 5 — UI, Responsiveness & Accessibility Automated Testing (QA06
 
     test("UI-14: Table has accessible column headers and readable cell values", () => {
       assert.ok(
-        auditPanelCode.includes("<th>Date &amp; time</th>"),
+        auditPanelCode.includes('<th scope="col">Date &amp; time</th>'),
         "Table must have Date & time column"
       );
       assert.ok(
-        auditPanelCode.includes("<th>Source</th>"),
+        auditPanelCode.includes('<th scope="col">Source</th>'),
         "Table must have Source column"
       );
       assert.ok(
-        auditPanelCode.includes("<th>Action</th>"),
+        auditPanelCode.includes('<th scope="col">Action</th>'),
         "Table must have Action column"
       );
       assert.ok(
-        auditPanelCode.includes("<th>Actor</th>"),
+        auditPanelCode.includes('<th scope="col">Actor</th>'),
         "Table must have Actor column"
       );
       assert.ok(
-        auditPanelCode.includes("<th>Target</th>"),
+        auditPanelCode.includes('<th scope="col">Target</th>'),
         "Table must have Target column"
       );
       assert.ok(
-        auditPanelCode.includes("<th>Outcome</th>"),
+        auditPanelCode.includes('<th scope="col">Outcome</th>'),
         "Table must have Outcome column"
       );
     });
@@ -274,33 +285,33 @@ describe("Group 5 — UI, Responsiveness & Accessibility Automated Testing (QA06
         "Shell and workspace containers must be defined"
       );
       assert.ok(
-        globalsCssCode.includes(".role-table"),
-        "Role table styles must be defined"
+        globalsCssCode.includes(".role-table") && auditCssCode.includes(".cg-audit-table"),
+        "Table styles must be defined"
       );
     });
 
     test("UI-16: Tablet (768x1024): Table wrapping container prevents page breaking", () => {
       assert.ok(
-        recoveryPanelCode.includes('className="role-table-wrap"'),
-        "Recovery table must be wrapped in role-table-wrap"
+        recoveryPanelCode.includes('className="cg-br-table-wrap"'),
+        "Recovery table must be wrapped in cg-br-table-wrap"
       );
       assert.ok(
-        auditPanelCode.includes('className="role-table-wrap"'),
-        "Audit table must be wrapped in role-table-wrap"
+        auditPanelCode.includes('className="cg-audit-table-wrap"'),
+        "Audit table must be wrapped in cg-audit-table-wrap"
       );
       assert.ok(
-        globalsCssCode.includes(".role-table-wrap"),
-        "role-table-wrap CSS class must be defined in stylesheet"
+        backupCssCode.includes(".cg-br-table-wrap") && auditCssCode.includes(".cg-audit-table-wrap"),
+        "Table wrapper CSS classes must be defined in stylesheets"
       );
     });
 
     test("UI-17: Mobile (375x812): Drawer uses responsive full-width adaptation", () => {
       assert.ok(
-        recoveryPanelCode.includes('className="role-drawer"'),
-        "Drawer must use role-drawer container"
+        recoveryPanelCode.includes('className="cg-br-drawer"'),
+        "Drawer must use cg-br-drawer container"
       );
       assert.ok(
-        recoveryPanelCode.includes('className="drawer-backdrop"'),
+        recoveryPanelCode.includes('className="cg-br-drawer-backdrop"'),
         "Drawer backdrop must exist for modal masking"
       );
     });

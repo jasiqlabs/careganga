@@ -1,6 +1,6 @@
 import {useEffect,useState} from "react";
 import {Pressable,StyleSheet,Text,TextInput,View} from "react-native";
-import {careGangaTheme as t} from "../../../../../packages/design-tokens/src/index";
+import {careGangaPublicTheme as t} from "../../../../../packages/design-tokens/src/index";
 
 type Details={version:number;bloodGroup:string|null;emergencyName:string|null;
  emergencyMobile:string|null;medicalInfo:string|null};

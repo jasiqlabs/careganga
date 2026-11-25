@@ -1,4 +1,4 @@
-import {Body,Controller,Get,Header,Headers,NotFoundException,Param,Post,Put,Query,Res} from "@nestjs/common";
+import {Body,Controller,Get,Header,Headers,NotFoundException,Param,Post,Put,Query,Res,StreamableFile} from "@nestjs/common";
 import type {Response} from "express";
 import {createHash} from "node:crypto";
 import {CmsEditorialService} from "../application/cms-editorial.service";
@@ -17,6 +17,9 @@ export class CmsEditorialController{
  partnerSources(@Headers("authorization")auth:string){return this.cms.partnerSources(auth);}
  @Get("project-sources") @Header("Cache-Control","private, no-store")
  projectSources(@Headers("authorization")auth:string){return this.cms.projectSources(auth);}
+ @Get("release-media/preview/:key")
+ @Header("Cache-Control","private, no-store") @Header("X-Content-Type-Options","nosniff") @Header("X-Robots-Tag","noindex")
+ async releaseMediaPreview(@Headers("authorization")auth:string,@Param("key")key:string){const bytes=await this.cms.releaseMediaPreview(auth,key);return new StreamableFile(bytes,{type:"image/webp",length:bytes.length,disposition:"inline"});}
  @Get("pages")
  @Header("Cache-Control","private, no-store")
  pages(@Headers("authorization")auth:string,@Query("scope")scope?:string){return this.cms.list(auth,scope);}
@@ -76,6 +79,8 @@ export class CmsPublicPagesController{
   if(result.cards.length!==1)throw new NotFoundException("Campaign is not currently available.");
   return result.cards[0];
  }
+ @Get("release-media/:key") @Header("Cache-Control","no-store") @Header("X-Content-Type-Options","nosniff")
+ async releaseMedia(@Param("key")key:string){const bytes=await this.cms.releaseMedia(key);return new StreamableFile(bytes,{type:"image/webp",length:bytes.length,disposition:"inline"});}
  @Get("pages/:slug")
  @Header("Cache-Control","no-store")
  async publicPage(@Param("slug")slug:string,

@@ -27,7 +27,7 @@ export default async function Partnerships(){
  const result=await publishedCmsPage("collaboration");
  const section=result.state==="PUBLISHED"&&result.page.kind==="PARTNERS"?
   result.page.sections.find(s=>s.kind==="PARTNER_CARDS"):undefined;
- const safeCards=Array.isArray(section?.fields.cards)?section.fields.cards.flatMap(raw=>{
+ const candidateCards=Array.isArray(section?.fields.cards)?section.fields.cards.flatMap(raw=>{
   if(!raw||typeof raw!=="object"||Array.isArray(raw))return [];
   const x=raw as Record<string,unknown>;
   if(typeof x.name!=="string"||x.name.trim().length<2||x.name.length>200||
@@ -35,16 +35,18 @@ export default async function Partnerships(){
    !Number.isSafeInteger(x.originalIndex)||Number(x.originalIndex)<0||Number(x.originalIndex)>11)return [];
   return [{name:x.name,summary:x.summary,originalIndex:x.originalIndex as number}];
  }):[];
+ const safeCards=candidateCards.filter(card=>candidateCards.filter(v=>v.originalIndex===card.originalIndex).length===1);
  const approvedAssets=result.state==="PUBLISHED"&&result.page.kind==="PARTNERS"?result.page.assets:[];
- const logoFor=(index:number)=>approvedAssets.find(a=>a.role==="FEATURE"&&a.order===index&&
-  /^\/api\/public\/content\/media\/[a-f0-9-]{36}$/i.test(a.src));
+ const logoFor=(index:number)=>approvedAssets.find(a=>a&&a.role==="FEATURE"&&a.order===index&&
+  typeof a.src==="string"&&typeof a.altText==="string"&&
+  /^\/api\/public\/content\/media\/[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i.test(a.src));
  const approved=result.state==="PUBLISHED"&&result.page.kind==="PARTNERS"?result.page.sections:[];
  const hero=approved.find(s=>s.kind==="HERO")?.fields;
  const final=approved.find(s=>s.kind==="CTA")?.fields;
  const copy=(value:unknown,fallback:string,max=700)=>
   typeof value==="string"&&value.trim().length>0&&value.length<=max?value:fallback;
  const published=result.state==="PUBLISHED"&&result.page.kind==="PARTNERS";
- const narrative=approved.filter(s=>s.kind==="RICH_TEXT").sort((a,b)=>a.order-b.order);
+ const narrative=approved.filter(s=>s.kind==="RICH_TEXT"&&copy(s.fields.heading,"",160)).sort((a,b)=>a.order-b.order);
  const heroTitle=copy(hero?.heading,"Corporate Partners",180);
  const heroEyebrow=copy(hero?.eyebrow,"",100);
  const heroSubtitle=copy(hero?.subtitle,"",700);
@@ -54,17 +56,17 @@ export default async function Partnerships(){
  const finalEyebrow=copy(final?.eyebrow,"",80);
  const finalBody=copy(final?.body,"",400);
  const finalLabel=final?.path==="/contact"?copy(final.label,"",80):"";
- const partnerHeading=typeof section?.fields.heading==="string"?section.fields.heading:"Meet Our Partners";
+ const partnerHeading=copy(section?.fields.heading,"Meet Our Partners",160);
  const partnerIntro=typeof section?.fields.intro==="string"&&section.fields.intro.trim()?section.fields.intro:
   "Only organizations with verified Foundation approval and current permission for public attribution appear here.";
  return <HealthcarePublicChrome>
   <main className={styles.shell}>
    <section className={styles.hero} aria-labelledby="corporate-heading">
     <div className={styles.heroInner}>
-     <p className={styles.eyebrow}>{heroEyebrow}</p>
+     {heroEyebrow&&<p className={styles.eyebrow}>{heroEyebrow}</p>}
      <h1 id="corporate-heading">{heroTitle}</h1>
-     <p className={styles.lead}>{heroSubtitle}</p>
-     <p className={styles.intro}>{heroIntro}</p>
+     {heroSubtitle&&<p className={styles.lead}>{heroSubtitle}</p>}
+     {heroIntro&&<p className={styles.intro}>{heroIntro}</p>}
      <div className={styles.heroActions}>
       {heroCta&&<Link className={styles.primary} href="/contact">{heroCta}</Link>}
       {!published&&<Link className={styles.primary} href="/contact">Partner With Us</Link>}

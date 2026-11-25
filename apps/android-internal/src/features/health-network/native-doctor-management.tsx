@@ -39,6 +39,9 @@ const title=(s:string)=>s.replaceAll("_"," ").toLowerCase()
 export function NativeDoctorManagement({token,onExit,onExpired,canManage,
  canVerify}:Props){
  const [rows,setRows]=useState<Row[]>([]);
+ const [search,setSearch]=useState(""),[statusFilter,setStatusFilter]=useState("");
+ const applied=useRef({q:"",status:""}),listTurn=useRef(0),detailTurn=useRef(0);
+ const [detailLoading,setDetailLoading]=useState(false);
  const [selected,setSelected]=useState<Detail|null>(null);
  const [form,setForm]=useState<Form>(empty);
  const [qualifications,setQualifications]=useState("");
@@ -59,8 +62,10 @@ export function NativeDoctorManagement({token,onExit,onExpired,canManage,
   setError(e instanceof Error?e.message:"Original doctor status is uncertain.");
  },[onExpired]);
  const list=useCallback(async(offset=0)=>{
-  const response=await api<{doctors:Row[];nextOffset:number|null}>(token,
-   "?offset="+offset);
+  const request=++listTurn.current;
+  const query=new URLSearchParams({offset:String(offset),q:applied.current.q,status:applied.current.status});
+  const response=await api<{doctors:Row[];nextOffset:number|null}>(token,"?"+query.toString());
+  if(request!==listTurn.current)return;
   if(!response||!Array.isArray(response.doctors))
    throw Error("Original verified doctor list unavailable.");
   if(offset===0)setRows(response.doctors);
@@ -71,18 +76,21 @@ export function NativeDoctorManagement({token,onExit,onExpired,canManage,
   setNext(Number.isInteger(response.nextOffset)?response.nextOffset:null);
  },[token]);
  const show=useCallback(async(ref:string)=>{
-  const response=await api<Detail>(token,"/"+encodeURIComponent(ref));
-  if(!response?.doctor||response.doctorRef!==ref)
-   throw Error("The original doctor record is unavailable.");
-  setSelected(response);setEditing("none");
-  setPassword("");setProof("");
-  return response;
+  const request=++detailTurn.current;
+  setSelected(null);setPassword("");setProof("");setDetailLoading(true);
+  try{
+   const response=await api<Detail>(token,"/"+encodeURIComponent(ref));
+   if(!response?.doctor||response.doctorRef!==ref)
+    throw Error("The doctor record is unavailable.");
+   if(request===detailTurn.current){setSelected(response);setEditing("none");}
+   return response;
+  }finally{if(request===detailTurn.current)setDetailLoading(false);}
  },[token]);
  useEffect(()=>{
   const current=++turn.current;setLoading(true);
   void list().catch(e=>{if(current===turn.current)fail(e)})
    .finally(()=>{if(current===turn.current)setLoading(false)});
-  return()=>{turn.current++};
+  return()=>{turn.current++;listTurn.current++;detailTurn.current++;};
  },[list,fail]);
  const button=(text:string,run:()=>void,disabled=false)=>
   <Pressable accessibilityRole="button" accessibilityState={{disabled}}
@@ -115,6 +123,7 @@ export function NativeDoctorManagement({token,onExit,onExpired,canManage,
   }catch(e){fail(e)}finally{setBusy(false)}
  }
  function openForm(original?:Detail){
+  detailTurn.current++;setDetailLoading(false);
   command.current=null;setUncertain(false);
   setSelected(original??null);
   const v=original?.doctor??empty();
@@ -160,7 +169,12 @@ export function NativeDoctorManagement({token,onExit,onExpired,canManage,
     setNotice("Current professional suspended across its original centers.");
    });
  }
+ function applySearch(q:string,status:string){
+  applied.current={q:q.trim(),status};setRows([]);setNext(null);setLoading(true);setError("");
+  void list().catch(fail).finally(()=>setLoading(false));
+ }
  const selectedRef=selected?.doctorRef;
+ const displayedTurn=detailTurn.current;
  return <SafeAreaView style={styles.page}>
   <ScrollView contentContainerStyle={styles.content}
    keyboardShouldPersistTaps="handled">
@@ -179,23 +193,31 @@ export function NativeDoctorManagement({token,onExit,onExpired,canManage,
      setUncertain(false);command.current=null;setLoading(true);
      void list().catch(fail).finally(()=>setLoading(false));
     },busy)}
-    {canManage&&button("Register doctor",()=>openForm(),busy||uncertain)}
+    {canManage&&button("Register doctor",()=>openForm(),busy||uncertain||detailLoading)}
+    <Text accessibilityRole="header" style={styles.heading}>Find a doctor</Text>
+    {field("Name, registration number or specialty",search,setSearch,80)}
+    <Text style={styles.note}>Verification status: {statusFilter?title(statusFilter):"All statuses"}</Text>
+    <View style={styles.row}>{["","PENDING","VERIFIED","SUSPENDED"].map(v=><Pressable key={v||"all"} accessibilityRole="button" accessibilityState={{selected:v===statusFilter,disabled:busy||loading||uncertain}} disabled={busy||loading||uncertain} onPress={()=>setStatusFilter(v)} style={[styles.button,v===statusFilter&&styles.active]}><Text style={styles.text}>{v?title(v):"All"}</Text></Pressable>)}</View>
+    <View style={styles.row}>{button("Search",()=>applySearch(search,statusFilter),loading||busy||uncertain)}{button("Reset",()=>{setSearch("");setStatusFilter("");applySearch("","");},loading||busy||uncertain)}</View>
+    {!loading&&!rows.length&&!error&&<Text style={styles.note}>No matching doctor registrations.</Text>}
     {rows.map(x=><View key={x.doctorRef}>
      {button(x.name+" · "+title(x.status)+" · "+
-      x.specialties.join(", "),()=>void show(x.doctorRef).catch(fail),busy||uncertain)}
+      x.specialties.join(", "),()=>void show(x.doctorRef).catch(fail),busy||uncertain||detailLoading)}
     </View>)}
     {next!==null&&button("More verified doctor records",()=>{
      setLoading(true);void list(next).catch(fail).finally(()=>setLoading(false));
-    },busy)}
+    },busy||loading||uncertain)}
    </View>}
    {editing!=="none"&&canManage&&<View style={styles.panel}>
     <Text style={styles.heading}>{editing==="create"?
      "New pending professional":"Correct pending doctor"}</Text>
+    <Text accessibilityRole="header" style={styles.heading}>Professional identity</Text>
     {field("Doctor's full name",form.fullName,x=>set("fullName",x),180)}
     {field("Registration jurisdiction",form.registrationJurisdiction,
      x=>set("registrationJurisdiction",x),120)}
     {field("Registration number",form.registrationNumber,
      x=>set("registrationNumber",x),100)}
+    <Text accessibilityRole="header" style={styles.heading}>Qualifications and experience</Text>
     {field("Qualifications (comma separated)",qualifications,
      setQualifications,400)}
     {field("Specialties (comma separated)",specialties,setSpecialties,400)}
@@ -203,6 +225,7 @@ export function NativeDoctorManagement({token,onExit,onExpired,canManage,
      set("experienceYears",Number(x)||0),3)}
     {field("Public professional biography",form.publicBio,
      x=>set("publicBio",x),1500)}
+    <Text accessibilityRole="header" style={styles.heading}>Licence and portrait permission</Text>
     {field("Current professional licence valid through (YYYY-MM-DD)",
      form.professionalLicenseValidThrough??"",
      x=>set("professionalLicenseValidThrough",x||null),10)}
@@ -210,13 +233,12 @@ export function NativeDoctorManagement({token,onExit,onExpired,canManage,
      "Portrait rights confirmation pending",()=>set("portraitRightsStatus",
       form.portraitRightsStatus==="NONE"?"CONSENT_PENDING":"NONE"),busy||uncertain)}
     {button("Save original pending doctor",()=>Alert.alert(
-     "Save original doctor draft?","Independent private licence review remains required.",[
+     "Save doctor draft?","The licence still needs independent verification.",[
       {text:"Cancel",style:"cancel"},{text:"Save",onPress:()=>void save()}
      ]),busy||uncertain)}
-    {button("Cancel draft edits",()=>{
-     setEditing("none");command.current=null;setSelected(null);
-    })}
+    {button("Cancel draft edits",()=>Alert.alert("Discard unsaved changes?","Your saved registration will not be changed.",[{text:"Keep editing",style:"cancel"},{text:"Discard",style:"destructive",onPress:()=>{setEditing("none");command.current=null;setSelected(null);}}]),busy||uncertain)}
    </View>}
+   {detailLoading&&<ActivityIndicator accessibilityLabel="Loading doctor profile"/>}
    {selected&&editing==="none"&&<View style={styles.panel}>
     <Text style={styles.heading}>{selected.doctor.fullName}</Text>
     <Text style={styles.note}>Status: {title(selected.status)}</Text>
@@ -233,7 +255,7 @@ export function NativeDoctorManagement({token,onExit,onExpired,canManage,
      <NativeDoctorEvidenceUploader key={selectedRef+"-"+selected.version}
       token={token} doctorRef={selected.doctorRef} version={selected.version}
       classification="HEALTH_DOCTOR_LICENSE"
-      onVerified={ref=>setProof(ref)} onExpired={onExpired}/>
+      onVerified={ref=>{if(displayedTurn===detailTurn.current)setProof(ref);}} onExpired={onExpired}/>
      {selected.doctor.portraitRightsStatus==="CONSENT_PENDING"&&
       <NativeDoctorEvidenceUploader key={selectedRef+"-portrait-"+selected.version}
        token={token} doctorRef={selected.doctorRef} version={selected.version}
@@ -272,11 +294,12 @@ const styles=StyleSheet.create({
  heading:{fontSize:16,fontWeight:"700",color:t.text},
  note:{fontSize:13,color:t.mutedText,lineHeight:19},
  text:{fontSize:13,fontWeight:"600",color:t.text},
+ row:{flexDirection:"row",flexWrap:"wrap",gap:8},active:{borderColor:t.primary},
  field:{gap:5},panel:{backgroundColor:t.surface,borderWidth:1,
   borderColor:t.border,borderRadius:12,padding:12,gap:10},
  input:{backgroundColor:t.surface,borderColor:t.border,color:t.text,
   borderWidth:1,borderRadius:9,minHeight:45,padding:10},
  button:{borderColor:t.border,borderWidth:1,borderRadius:9,
   minHeight:45,padding:11,justifyContent:"center"},
- disabled:{opacity:.4},error:{color:"#A52626",fontSize:13}
+ disabled:{opacity:.4},error:{color:t.error,fontSize:13}
 });

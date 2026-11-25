@@ -9,6 +9,7 @@ export type CmsMediaType="PHOTO"|"VIDEO"|"PUBLICATION";
 const text=(v:unknown)=>typeof v==="string"?v:"";
 const records=(v:unknown):RecordFields[]=>Array.isArray(v)?
  v.filter(x=>x&&typeof x==="object"&&!Array.isArray(x)).slice(0,12):[];
+const singular:Record<CmsMediaType,string>={PHOTO:"photo",VIDEO:"video",PUBLICATION:"publication"};
 const labels:Record<CmsMediaType,string>={
  PHOTO:"photos",VIDEO:"videos",PUBLICATION:"publications"
 };
@@ -22,12 +23,22 @@ export function CmsGalleryGridClient({fields,assets,mediaType="PHOTO"}:{
  const [category,setCategory]=useState("ALL");
  const [year,setYear]=useState("ALL");
  const [search,setSearch]=useState("");
- const entries=useMemo(()=>records(fields.items).map((item,index)=>{
-  const mediaOrder=Number.isSafeInteger(item.originalIndex)&&Number(item.originalIndex)>=0?
-   Number(item.originalIndex):index;
-  return {item,index,asset:assets.find(a=>a.role==="GALLERY"&&a.order===mediaOrder)};
- }).filter(({item,asset})=>item.mediaType===mediaType&&Boolean(asset?.src)),
- [fields.items,assets,mediaType]);
+ const entries=useMemo(()=>{
+  const candidates=records(fields.items);
+  return candidates.flatMap((item,index)=>{
+   if(item.mediaType!==mediaType||!Number.isSafeInteger(item.originalIndex)||Number(item.originalIndex)<0||
+    Number(item.originalIndex)>100||candidates.filter(v=>v.originalIndex===item.originalIndex).length!==1||
+    !text(item.title).trim()||!text(item.source).trim())return [];
+   const day=text(item.asOfDate),stamp=new Date(day+"T00:00:00Z");
+   if(!/^\d{4}-\d{2}-\d{2}$/.test(day)||!Number.isFinite(stamp.getTime())||stamp.toISOString().slice(0,10)!==day||day>new Date().toISOString().slice(0,10))return [];
+   const placements=assets.filter(a=>a&&a.role==="GALLERY"&&a.order===item.originalIndex);
+   if(placements.length!==1)return [];
+   const asset=placements[0];
+   if(typeof asset.altText!=="string"||!asset.altText.trim()||typeof asset.src!=="string"||
+    !/^\/api\/public\/content\/media\/[a-f0-9]{8}-(?:[a-f0-9]{4}-){3}[a-f0-9]{12}$/i.test(asset.src))return [];
+   return [{item,index,asset}];
+  });
+ },[fields.items,assets,mediaType]);
  const categories=useMemo(()=>Array.from(new Set(entries.map(({item})=>
   text(item.category)).filter(Boolean))).sort((a,b)=>a.localeCompare(b)),[entries]);
  const years=useMemo(()=>Array.from(new Set(entries.map(({item})=>
@@ -42,9 +53,9 @@ export function CmsGalleryGridClient({fields,assets,mediaType="PHOTO"}:{
  const reset=()=>{setCategory("ALL");setYear("ALL");setSearch("");};
  const emptyKey=mediaType==="VIDEO"?"videosEmptyText":
   mediaType==="PUBLICATION"?"publicationsEmptyText":"photosEmptyText";
- const empty=text(fields[emptyKey])||
+ const empty=entries.length===0?(text(fields[emptyKey])||"No approved "+labels[mediaType]+" published yet."):
   "No approved "+labels[mediaType]+" match these filters.";
- return <div className="cg-site-gallery-browser">
+ return <div className="cg-site-gallery-browser" data-media-type={mediaType.toLowerCase()}>
   <div className="cg-site-gallery-filters" aria-label={"Filter approved "+labels[mediaType]}>
    <label>Search {labels[mediaType]}
     <input type="search" value={search} maxLength={80}
@@ -71,9 +82,15 @@ export function CmsGalleryGridClient({fields,assets,mediaType="PHOTO"}:{
   </div>}
   <p className="cg-site-provenance" role="status" aria-live="polite">
    {matches.length} approved {matches.length===1?
-    labels[mediaType].slice(0,-1):labels[mediaType]} match
+    singular[mediaType]:labels[mediaType]} match
   </p>
   {matches.length===0?<div className="cg-site-gallery-empty">
+   <span className="cg-site-gallery-empty-icon" aria-hidden="true">
+    {mediaType==="VIDEO"?<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7"><rect x="3" y="6" width="12" height="12" rx="2"/><path d="m15 10 6-4v12l-6-4"/></svg>:
+     mediaType==="PUBLICATION"?<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7"><path d="M6 3h8l4 4v14H6zM14 3v5h4M9 12h6M9 16h6"/></svg>:
+     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7"><rect x="3" y="3" width="18" height="18" rx="3"/><circle cx="8" cy="8" r="1.5"/><path d="m3 17 5-5 4 4 4-6 5 7"/></svg>}
+   </span>
+   <h2>{mediaType==="VIDEO"?"No Videos Found":mediaType==="PUBLICATION"?"No Publications Found":"No Photos Found"}</h2>
    <p>{empty}</p>
    <button type="button" onClick={reset}>Reset Filters</button>
   </div>:<div className="cg-site-gallery-grid">{matches.map(({item,index,asset})=>

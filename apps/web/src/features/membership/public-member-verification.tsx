@@ -26,8 +26,8 @@ export function PublicMemberVerification(){
   <p>Enter the verification code printed on an officially issued Foundation membership card or certificate. This checks the current recorded eligibility, not the applicant’s private identity.</p>
   <form onSubmit={submit}>
    <label htmlFor="cg04-member-verify-code">Official member verification code</label>
-   <div className="cg04-search-row"><input id="cg04-member-verify-code" type="text" inputMode="text" autoCapitalize="characters" autoComplete="off" spellCheck={false} maxLength={28}
-    placeholder="CGV-…" value={code} onChange={e=>{active.current++;setCode(e.target.value.toUpperCase());setState("IDLE");}} required/>
+   <div className="cg04-search-row"><input id="cg04-member-verify-code" type="text" inputMode="text" autoCapitalize="characters" autoComplete="off" spellCheck={false} maxLength={64}
+    placeholder="CGV-…" value={code} onChange={e=>{active.current++;setCode(e.target.value.trim().toUpperCase());setState("IDLE");}} required/>
     <button type="submit" className="cg04-primary" disabled={state==="VERIFYING"}>{state==="VERIFYING"?"Checking…":"Verify current status"}</button>
    </div>
   </form>

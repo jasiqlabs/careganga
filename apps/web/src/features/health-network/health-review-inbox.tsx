@@ -33,7 +33,7 @@ const safeText=(v:unknown):string=>{
    }).join("; "):"None declared";
  return "Not specified";
 };
-export function HealthReviewInbox({canManageProviders=false,canManageDoctors=false}:{canManageProviders?:boolean;canManageDoctors?:boolean}){
+export function HealthReviewInbox({canManageProviders=false,canManageDoctors=false,canVerifyProviders=false,canVerifyDoctors=false}:{canManageProviders?:boolean;canManageDoctors?:boolean;canVerifyProviders?:boolean;canVerifyDoctors?:boolean}){
  const [cases,setCases]=useState<Case[]>([]);
  const [detail,setDetail]=useState<Detail|null>(null);
  const [decision,setDecision]=useState<"APPROVE"|"RETURN"|"REJECT">("APPROVE");
@@ -48,7 +48,8 @@ export function HealthReviewInbox({canManageProviders=false,canManageDoctors=fal
  const [appliedSearch,setAppliedSearch]=useState("");
  const [nextOffset,setNextOffset]=useState<number|null>(null);
  const [pageLoading,setPageLoading]=useState(false);
- const currentRequest=useRef(0);
+ const currentRequest=useRef(0),detailRequest=useRef(0),selectedCase=useRef("");
+ const [detailLoading,setDetailLoading]=useState(false),[refreshVersion,setRefreshVersion]=useState(0);
  const key=useRef("");
  const load=useCallback(async(offset=0)=>{
   const thisRequest=++currentRequest.current;
@@ -68,27 +69,32 @@ export function HealthReviewInbox({canManageProviders=false,canManageDoctors=fal
   setNextOffset(Number.isSafeInteger(out.nextOffset)?out.nextOffset:null);
  },[statusFilter,kindFilter,appliedSearch]);
  useEffect(()=>{
-  setLoading(true);setError("");setDetail(null);
-  void load(0).catch(e=>setError(e instanceof Error?e.message:"Healthcare reviews unavailable"))
-    .finally(()=>setLoading(false));
- },[load]);
+  let active=true;detailRequest.current++;selectedCase.current="";setDetailLoading(false);
+  setLoading(true);setError("");setDetail(null);setCases([]);setNextOffset(null);
+  void load(0).catch(e=>{if(active)setError(e instanceof Error?e.message:"Healthcare reviews unavailable");})
+    .finally(()=>{if(active)setLoading(false);});
+  return()=>{active=false;currentRequest.current++;detailRequest.current++;};
+ },[load,refreshVersion]);
  async function loadMore(){
-  if(nextOffset===null||pageLoading||loading)return;
+  if(nextOffset===null||pageLoading||loading||busy||uncertain)return;
   setPageLoading(true);
   try{await load(nextOffset);}
   catch(e){setError(e instanceof Error?e.message:"Additional reviews unavailable.");}
   finally{setPageLoading(false);}
  }
  async function open(ref:string){
-  setError("");setNotice("");setDetail(null);setCurrentPassword("");
-  setRemarks("");setUncertain(false);key.current="";
+  const turn=++detailRequest.current;selectedCase.current=ref;setDetailLoading(true);
+  setError("");setNotice("");setDetail(null);setCurrentPassword("");setRemarks("");setDecision("APPROVE");
   try{
    const found=await data<Detail>("/api/health/reviews/"+encodeURIComponent(ref));
-   setDetail(found);
-  }catch(e){setError(e instanceof Error?e.message:"Review not available.");}
+   if(turn!==detailRequest.current)return;
+   if(!found||found.caseRef!==ref)throw Error("The selected review cannot be verified.");
+   setDetail(found);setUncertain(false);key.current="";
+  }catch(e){if(turn===detailRequest.current)setError(e instanceof Error?e.message:"Review not available.");}
+  finally{if(turn===detailRequest.current)setDetailLoading(false);}
  }
  async function sendDecision(){
-  if(!detail||busy||uncertain||currentPassword.length<8)return;
+  if(!detail||busy||uncertain||currentPassword.length<8||!(detail.kind==="HEALTH_DOCTOR_VERIFICATION"?canVerifyDoctors:canVerifyProviders))return;
   setBusy(true);setError("");setNotice("");
   if(!key.current)key.current=crypto.randomUUID();
   try{
@@ -108,7 +114,7 @@ export function HealthReviewInbox({canManageProviders=false,canManageDoctors=fal
   }finally{setBusy(false);}
  }
  async function apply(){
-  if(!detail||busy||uncertain)return;
+  if(!detail||busy||uncertain||!(detail.kind==="HEALTH_DOCTOR_VERIFICATION"?canVerifyDoctors:canVerifyProviders))return;
   const ref=detail.caseRef;
   const kind=detail.kind==="HEALTH_PROVIDER_VERIFICATION"?"providers":detail.kind==="HEALTH_DOCTOR_VERIFICATION"?"doctors":"centers";
   setBusy(true);setError("");setNotice("");
@@ -134,14 +140,14 @@ export function HealthReviewInbox({canManageProviders=false,canManageDoctors=fal
      encodeURIComponent(ref)+"/return-to-draft","POST",{});
    await open(ref);await load();
    setNotice("Returned application is ready for corrections and new current evidence.");
-  }catch(e){setError(e instanceof Error?e.message:"Return could not be confirmed.");}
+  }catch(e){setError(e instanceof Error?e.message:"Return could not be confirmed.");if(!(e&&typeof e==="object"&&"status" in e&&typeof e.status==="number"&&e.status<500))setUncertain(true);}
   finally{setBusy(false);}
  }
  return <div className="role-workspace">
   <header className="topbar"><div><h1>Healthcare verification queue</h1>
    <p>Each registration requires an independent authorized reviewer and verified private evidence.</p>
-  </div><button type="button" onClick={()=>{void load(0);}}>Refresh queue</button></header>
-  <form className="form-section" onSubmit={e=>{e.preventDefault();setAppliedSearch(searchText.trim());}}>
+  </div><button type="button" disabled={loading||busy||uncertain||pageLoading||detailLoading} onClick={()=>setRefreshVersion(v=>v+1)}>Refresh queue</button></header>
+  <form className="form-section" onSubmit={e=>{e.preventDefault();if(!busy&&!uncertain&&!detailLoading&&!pageLoading)setAppliedSearch(searchText.trim());}}>
     <h2>Find registrations</h2>
     <div className="form-grid">
       <label className="field">Search case number or organization
@@ -149,7 +155,7 @@ export function HealthReviewInbox({canManageProviders=false,canManageDoctors=fal
           onChange={e=>setSearchText(e.target.value)} placeholder="Search current registrations"/>
       </label>
       <label className="field">Approval status
-        <select value={statusFilter} onChange={e=>setStatusFilter(e.target.value)}>
+        <select value={statusFilter} disabled={busy||uncertain||loading||detailLoading||pageLoading} onChange={e=>setStatusFilter(e.target.value)}>
           <option value="ALL">All statuses</option>
           <option value="SUBMITTED">Submitted</option>
           <option value="IN_REVIEW">In review</option>
@@ -160,7 +166,7 @@ export function HealthReviewInbox({canManageProviders=false,canManageDoctors=fal
         </select>
       </label>
       <label className="field">Registration type
-        <select value={kindFilter} onChange={e=>setKindFilter(e.target.value)}>
+        <select value={kindFilter} disabled={busy||uncertain||loading||detailLoading||pageLoading} onChange={e=>setKindFilter(e.target.value)}>
           <option value="ALL">All healthcare registrations</option>
           <option value="HEALTH_PROVIDER_VERIFICATION">Provider</option>
           <option value="HEALTH_CENTER_VERIFICATION">Center</option>
@@ -169,8 +175,8 @@ export function HealthReviewInbox({canManageProviders=false,canManageDoctors=fal
       </label>
     </div>
     <div className="toolbar">
-      <button type="submit" className="primary">Apply search</button>
-      <button type="button" onClick={()=>{
+      <button type="submit" className="primary" disabled={busy||uncertain||loading||detailLoading||pageLoading}>Apply search</button>
+      <button type="button" disabled={busy||uncertain||loading||detailLoading||pageLoading} onClick={()=>{
         setStatusFilter("ALL");setKindFilter("ALL");setSearchText("");setAppliedSearch("");
       }}>Reset filters</button>
     </div>
@@ -183,24 +189,24 @@ export function HealthReviewInbox({canManageProviders=false,canManageDoctors=fal
   {!!notice&&<p className="notice" role="status">{notice}</p>}
   {uncertain&&<div role="alert" className="notice">
     The last review action may have succeeded. Refresh the original case before doing anything else.
-    <button type="button" onClick={()=>{setUncertain(false);
-      if(detail)void open(detail.caseRef);}}>Check current case</button>
+    <button type="button" disabled={busy||detailLoading||!selectedCase.current} onClick={()=>{if(selectedCase.current)void open(selectedCase.current);}}>Check current case</button>
   </div>}
-  {!loading&&cases.length===0&&<p>No healthcare registrations are awaiting review.</p>}
+  {!loading&&!error&&cases.length===0&&<p>No healthcare registrations are awaiting review.</p>}
   <div className="table-wrap"><table><thead><tr><th>Case</th>
    <th>Registration</th><th>Kind</th><th>Status</th><th>Action</th></tr></thead><tbody>
-   {cases.map(c=><tr key={c.caseRef}>
+   {!loading&&cases.map(c=><tr key={c.caseRef}>
     <td>{c.reference}</td><td>{c.title}</td>
     <td>{c.kind==="HEALTH_PROVIDER_VERIFICATION"?"Provider":c.kind==="HEALTH_DOCTOR_VERIFICATION"?"Doctor":"Center"}</td>
     <td>{statusText(c.status)}</td><td><button type="button"
-     onClick={()=>void open(c.caseRef)}>Review</button></td>
+     disabled={busy||uncertain||detailLoading||pageLoading} aria-pressed={detail?.caseRef===c.caseRef} onClick={()=>void open(c.caseRef)}>Review</button></td>
    </tr>)}
   </tbody></table></div>
   {nextOffset!==null&&<div className="toolbar">
-    <button type="button" disabled={pageLoading||loading} onClick={()=>void loadMore()}>
+    <button type="button" disabled={pageLoading||loading||busy||uncertain||detailLoading} onClick={()=>void loadMore()}>
       {pageLoading?"Loading more…":"Load more matching reviews"}</button>
   </div>}
-  {detail&&<section className="form-section">
+  {detailLoading&&<p role="status">Checking selected registration…</p>}
+  {detail&&!detailLoading&&<section className="form-section">
    <h2>{detail.reference}</h2><p>{statusText(detail.kind)} · {statusText(detail.status)}</p>
    {detail.source&&<>
     <h3>Original submitted details</h3>
@@ -221,7 +227,7 @@ export function HealthReviewInbox({canManageProviders=false,canManageDoctors=fal
       encodeURIComponent(detail.caseRef)+"/download"}>
       Download original scanned evidence for review</a>
    </>}
-   {["SUBMITTED","IN_REVIEW"].includes(detail.status)&&
+   {["SUBMITTED","IN_REVIEW"].includes(detail.status)&&(detail.kind==="HEALTH_DOCTOR_VERIFICATION"?canVerifyDoctors:canVerifyProviders)&&
     <div className="form">
      <label className="field">Review action
       <select value={decision} disabled={busy||uncertain}
@@ -246,7 +252,7 @@ export function HealthReviewInbox({canManageProviders=false,canManageDoctors=fal
        {busy?"Recording…":"Record independent review decision"}</button>
      </div>
     </div>}
-   {detail.status==="PENDING_OWNER"&&<button type="button" className="primary"
+   {detail.status==="PENDING_OWNER"&&(detail.kind==="HEALTH_DOCTOR_VERIFICATION"?canVerifyDoctors:canVerifyProviders)&&<button type="button" className="primary"
       disabled={busy||uncertain} onClick={()=>void apply()}>
      Apply approved registration</button>}
    {(detail.kind==="HEALTH_DOCTOR_VERIFICATION"?canManageDoctors:canManageProviders)&&["RETURNED","REJECTED"].includes(detail.status)&&<button type="button"

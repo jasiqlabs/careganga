@@ -14,12 +14,12 @@ type PageDetail={pageRef:string;kind:Kind;slug:string;version:number;revisionRef
  revisionNo:number;status:string;approvalCaseRef:string|null;
  title:string;seoTitle:string;seoDescription:string;canonicalPath:string;
  sections:{kind:string;order:number;fields:Record<string,unknown>}[];
- assets:Asset[];navigation:NavDesired|null;publicationStatus:string;scheduledAt:string|null};
+ assets:Asset[];bundledAssets?:{key:string;role:string;order:number;altText:string}[];navigation:NavDesired|null;publicationStatus:string;scheduledAt:string|null};
 type Review={caseRef:string;number:string;title:string;status:string;revision:number};
 type ReviewDetail={caseNumber:string;caseRef:string;status:string;revision:number;
  source:{title:string;slug:string;kind:string;seoTitle:string;
  seoDescription:string;navigation:NavDesired|null;sections:{kind:string;order:number;fields:Record<string,unknown>}[];
- assets:{fileRef:string;role:string;altText:string;order:number;current:boolean;mime:string|null}[]}};
+ assets:{fileRef:string;role:string;altText:string;order:number;current:boolean;mime:string|null;bundled?:boolean}[]}};
 type Command={label:string;path:string;method:"POST"|"PUT";body:Record<string,unknown>};
 type Slide={heading:string;subtitle:string;description:string;eyebrow:string;tags:string;visible:boolean;textOnly?:boolean;
  headingFont:"SERIF"|"SANS";headingWeight:"REGULAR"|"BOLD";headingSize:"STANDARD"|"LARGE";
@@ -286,7 +286,7 @@ export function CmsAdminWorkspace({canManage,canPublish,canReview}:{
  const heroPhotoMissing=draft.kind==="HOME"&&(
   !draft.slides.some(slide=>slide.visible)||draft.slides.some((slide,index)=>
   slide.visible&&!slide.textOnly&&
-  !draft.assets.some(asset=>asset.role==="HERO"&&asset.order===index)));
+  !draft.assets.some(asset=>asset.role==="HERO"&&asset.order===index)&&!selected?.bundledAssets?.some(asset=>asset.role==="HERO"&&asset.order===index)));
  const okay=draft.title.trim().length>=3&&
   (draft.kind!=="HOME"||draft.slides.length>0)&&
   draft.slides.length<=6&&draft.slides.every(x=>x.heading.trim().length>=3)&&
@@ -499,9 +499,7 @@ export function CmsAdminWorkspace({canManage,canPublish,canReview}:{
   kind:draft.kind,slug:previewData.slug,title:draft.title,
   seoTitle:draft.seoTitle||draft.title,seoDescription:draft.seoDescription,
   canonicalPath:previewData.canonicalPath,lastPublishedAt:"",
-  sections:previewData.sections,assets:selected?draft.assets.map(a=>({
-   role:a.role,order:a.order,altText:a.altText,
-   src:"/api/cms-image-preview/"+a.fileRef})):[]};
+  sections:previewData.sections,assets:selected?[...draft.assets.map(a=>({role:a.role,order:a.order,altText:a.altText,src:"/api/cms-image-preview/"+a.fileRef})),...(selected.bundledAssets??[]).filter(a=>!draft.assets.some(x=>x.role===a.role&&x.order===a.order)&&!(a.role==="HERO"&&draft.slides[a.order]?.textOnly)&&!(a.role==="ABOUT"&&draft.bodyVariant!=="SPLIT")).map(a=>({role:a.role,order:a.order,altText:a.altText,src:"/api/cms-image-preview/release-"+a.key}))]:[]};
  return <div className="cg-cms-workspace">
   <header className="cg-cms-toolbar"><div>
    <h1>Website content</h1><p>Draft → independent approval → publish. Public visitors see only approved pages.</p>
@@ -552,7 +550,7 @@ export function CmsAdminWorkspace({canManage,canPublish,canReview}:{
      {!review.source.assets.length?<p>No images attached.</p>:
       <ul>{review.source.assets.map((asset,i)=><li key={i}>
        {asset.role.replaceAll("_"," ")}: {asset.altText} (position {asset.order+1})
-       {asset.current?" — verified":" — source no longer verified; do not approve"}
+       {asset.current?(asset.bundled?" — verified bundled illustration":" — verified"):" — source no longer verified; do not approve"}
        {asset.current&&asset.mime?.startsWith("image/")&&
         <img src={"/api/cms-image-preview/"+asset.fileRef}
          alt={asset.altText} loading="lazy" className="cg-cms-review-image"/>}
@@ -786,6 +784,10 @@ export function CmsAdminWorkspace({canManage,canPublish,canReview}:{
         <label>Heading<input value={block.heading} maxLength={160} disabled={!canManage} onChange={e=>edit("extraText",draft.extraText.map((x,j)=>i===j?{...x,heading:e.target.value}:x))}/></label>
         <label>Body<textarea value={block.body} maxLength={4000} disabled={!canManage} onChange={e=>edit("extraText",draft.extraText.map((x,j)=>i===j?{...x,body:e.target.value}:x))}/></label>
         <label>Highlights (up to four, one per line)<textarea value={block.highlights} maxLength={800} disabled={!canManage} onChange={e=>edit("extraText",draft.extraText.map((x,j)=>i===j?{...x,highlights:e.target.value}:x))}/></label>
+        {canManage&&draft.kind==="HOME"&&block.order>20&&block.order<30&&block.variant==="STANDARD"&&!block.placement&&
+         !draft.assets.some(a=>a.role==="ABOUT"&&a.order===block.order)&&!selected?.bundledAssets?.some(a=>a.role==="ABOUT"&&a.order===block.order)&&
+         [35,31,32,33,34,36,37,38,39].some(order=>!draft.extraText.some(x=>x.order===order))&&
+         <button type="button" disabled={busy||!!pending} onClick={()=>{const order=[35,31,32,33,34,36,37,38,39].find(n=>!draft.extraText.some(x=>x.order===n));if(order!==undefined)edit("extraText",draft.extraText.map((x,j)=>j===i?{...x,order}:x));}}>Move after volunteer banner</button>}
         {canManage&&!draft.assets.some(a=>a.role==="ABOUT"&&a.order===block.order)&&<button type="button" disabled={busy||!!pending} onClick={()=>edit("extraText",draft.extraText.filter((_,j)=>i!==j))}>Remove section</button>}
        </fieldset>)}
        {canManage&&draft.extraText.length<10&&<button type="button" disabled={busy||!!pending} onClick={()=>{const order=Array.from({length:80},(_,i)=>i+21).find(n=>!draft.extraText.some(x=>x.order===n));if(order!==undefined)edit("extraText",[...draft.extraText,{order,heading:"",body:"",eyebrow:"",highlights:"",placement:"",variant:"STANDARD"}]);}}>Add editorial section</button>}
@@ -921,6 +923,7 @@ export function CmsAdminWorkspace({canManage,canPublish,canReview}:{
        {selected.scheduledAt?"Cancel scheduled publication / hide page":"Hide from public website"}</button>
      </>}
     </div>
+    {selected?.bundledAssets?.length? <p className="cg-cms-muted">Default release illustrations are preserved when you edit text. Upload a replacement in a new draft to override a placement.</p>:null}
     {selected&&<p className="cg-cms-muted">Current draft: {selected.status.replaceAll("_"," ")}.
      Public page: {selected.publicationStatus.replaceAll("_"," ")}.
      {selected.scheduledAt&&" Scheduled for "+new Date(selected.scheduledAt).toLocaleString()+"."}

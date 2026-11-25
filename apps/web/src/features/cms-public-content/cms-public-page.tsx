@@ -27,28 +27,29 @@ function Photo({asset,className}:{asset?:Asset;className:string}){
  return asset?<img className={className} src={asset.src} alt={asset.altText} loading="lazy"/>:null;
 }
 function RichText({fields,asset}:{fields:Record<string,unknown>;asset?:Asset}){
- const split=fields.variant==="SPLIT";
- return <section className={split?"cg-site-about cg-site-content":"cg-site-content cg-site-article"}>
+ const split=fields.variant==="SPLIT"&&!!asset;
+ const highlights=list(fields.highlights);
+ return <section className={split?"cg-site-about cg-site-content":"cg-site-content cg-site-article"+(highlights.length?" cg-site-article-highlights":"")}>
   {split&&<div className="cg-site-about-photo"><Photo asset={asset} className="cg-site-about-img"/></div>}
   <div className="cg-site-copy">
    {text(fields.eyebrow)&&<p className="cg-site-eyebrow">{text(fields.eyebrow)}</p>}
    <h2>{text(fields.heading)}</h2>
-   {asset?.altText.startsWith("AI-generated illustration")&&<p className="cg-site-provenance">AI-generated illustration.</p>}
+   {split&&asset?.altText.match(/^(AI-generated illustration|Editorial illustration)/)&&<p className="cg-site-provenance">Illustration; not a photograph of Foundation activities.</p>}
    {text(fields.body)&&<p className="cg-site-body">{text(fields.body)}</p>}
-   {list(fields.highlights).length>0&&<ul className="cg-site-highlights">
-    {list(fields.highlights).map((line,i)=><li key={i}>{line}</li>)}
+   {highlights.length>0&&<ul className="cg-site-highlights">
+    {highlights.map((line,i)=><li key={i}>{line}</li>)}
    </ul>}
   </div>
  </section>;
 }
 function Promo({fields,asset,navigation}:{fields:Record<string,unknown>;asset?:Asset;navigation?:PublicCmsNavigation|null}){
- return <section className="cg-site-promo">
+ return <section className={"cg-site-promo"+(asset?"":" cg-site-promo-text")}>
   <Photo asset={asset} className="cg-site-promo-img"/>
   <div className="cg-site-promo-inner">
    {!!text(fields.eyebrow)&&<p className="cg-site-eyebrow">{text(fields.eyebrow)}</p>}
    {!!text(fields.heading)&&<h2>{text(fields.heading)}</h2>}
    {!!text(fields.body)&&<p>{text(fields.body)}</p>}
-   {asset?.altText.startsWith("AI-generated illustration")&&<p>AI-generated illustration.</p>}
+   {asset?.altText.match(/^(AI-generated illustration|Editorial illustration)/)&&<p>Illustration; not a photograph of Foundation activities.</p>}
    <CmsAction label={fields.label} href={fields.path} navigation={navigation}/>
   </div>
  </section>;
@@ -62,13 +63,14 @@ function Features({fields,assets}:{fields:Record<string,unknown>;assets:Asset[]}
   <div className="cg-site-feature-grid">{cards.map((value,i)=>{
    if(!value||typeof value!=="object"||Array.isArray(value))return null;
    const card=value as Record<string,unknown>;
+   const image=assets.find(x=>x.role==="FEATURE"&&x.order===i);
    return <article className="cg-site-feature-card" key={i}>
-    <div className="cg-site-feature-image">
-     <Photo asset={assets.find(x=>x.role==="FEATURE"&&x.order===i)} className="cg-site-card-img"/>
+    {image?<div className="cg-site-feature-image">
+     <Photo asset={image} className="cg-site-card-img"/>
      {!!text(card.label)&&<span className="cg-site-card-tag">{text(card.label)}</span>}
-    </div>
+    </div>:!!text(card.label)&&<p className="cg-site-eyebrow">{text(card.label)}</p>}
     <h3>{text(card.title)}</h3><p>{text(card.body)}</p>
-    {assets.find(x=>x.role==="FEATURE"&&x.order===i)?.altText.startsWith("AI-generated illustration")&&<p className="cg-site-provenance">AI-generated illustration.</p>}
+    {image?.altText.match(/^(AI-generated illustration|Editorial illustration)/)&&<p className="cg-site-provenance">Illustration; not a photograph of Foundation activities.</p>}
    </article>;
   })}</div>
  </section>;
@@ -97,10 +99,10 @@ function JoinCards({fields,navigation}:{fields:Record<string,unknown>;navigation
  </section>;
 }
 function Team({fields,assets}:{fields:Record<string,unknown>;assets:Asset[]}){
- const members=Array.isArray(fields.members)?fields.members:[];
+ const members=Array.isArray(fields.members)?fields.members.map((person,index)=>({person,index})).filter(({person})=>person&&typeof person==="object"&&!Array.isArray(person)&&person.consentConfirmed===true&&text(person.name).trim()&&text(person.designation).trim()):[];
  return <section className="cg-site-team cg-site-content">
   <h2>{text(fields.heading)||"Our team"}</h2>
-  <div className="cg-site-team-grid">{members.map((person,i)=>{
+  {!members.length?<div className="cg-site-empty" role="status"><strong>No public profiles yet</strong><p>Consented team profiles will appear here once published.</p></div>:<div className="cg-site-team-grid">{members.map(({person,index:i})=>{
    if(!person||typeof person!=="object"||Array.isArray(person)||
       person.consentConfirmed!==true)return null;
    const p=person as Record<string,unknown>;
@@ -109,7 +111,7 @@ function Team({fields,assets}:{fields:Record<string,unknown>;assets:Asset[]}){
     <h3>{text(p.name)}</h3><strong>{text(p.designation)}</strong>
     {!!text(p.bio)&&<p>{text(p.bio)}</p>}
    </article>;
-  })}</div>
+  })}</div>}
  </section>;
 }
 export function SiteFooter({data,navigation}:{data:Record<string,unknown>;
@@ -135,11 +137,10 @@ export function SiteFooter({data,navigation}:{data:Record<string,unknown>;
       {email&&<a href={"mailto:"+email}>{email}</a>}</address>
     </div>
     <div><h3>QUICK LINKS</h3>
-     {isPublished("/about")?<Link href="/about">About Us</Link>:<span>About Us</span>}
-     {isPublished("/campaigns")?<Link href="/campaigns">Campaigns</Link>:
-      <span aria-disabled="true" className="cg-site-unavailable">Campaigns</span>}
+     {isPublished("/about")?<Link href="/about">About Us</Link>:<span aria-disabled="true" className="cg-site-unavailable">About Us <small>Not published yet</small></span>}
+     <Link href="/campaigns">Campaigns</Link>
      {isPublished("/donate")?<Link href="/donate">Donate</Link>:
-      <span aria-disabled="true" className="cg-site-unavailable">Donate</span>}
+      <span aria-disabled="true" className="cg-site-unavailable">Donate <small>Online donations not available yet</small></span>}
      {isPublished("/our-impact")&&<Link href="/our-impact">Our Impact</Link>}
      {isPublished("/gallery")&&<Link href="/gallery">Media Gallery</Link>}
      <Link href={isPublished("/healthcare")?"/healthcare":"/health-network"}>Healthcare Assistance</Link>
@@ -147,7 +148,7 @@ export function SiteFooter({data,navigation}:{data:Record<string,unknown>;
     <div><h3>POLICIES & LEGAL</h3>
      {legal.map(([label,slug])=>isPublished("/policies/"+slug)?
       <Link key={slug} href={"/policies/"+slug}>{label}</Link>:
-      <span key={slug} aria-disabled="true">{label}</span>)}
+      <span key={slug} className="cg-site-unavailable" aria-disabled="true">{label}<small>Not published yet</small></span>)}
      {isPublished("/ngo-information")&&<Link href="/ngo-information">NGO Information &amp; 80G</Link>}</div>
     <div><h3>SUBSCRIBE TO NEWSLETTER</h3>
      {!!text(data.newsletterText)&&<p>{text(data.newsletterText)}</p>}
@@ -161,13 +162,12 @@ export function SiteFooter({data,navigation}:{data:Record<string,unknown>;
    {isPublished("/donate")?
     <Link className="cg-site-float-donate" href="/donate"
      aria-label="Donate to CareGanga Foundation">♥ &nbsp; DONATE NOW</Link>:
-    <span className="cg-site-float-donate" aria-disabled="true"
-     aria-label="Donation service is not available yet"
-     title="Donation service will be available when verified">♥ &nbsp; DONATE NOW</span>}
+    <Link className="cg-site-float-donate cg-site-float-enquiry" href="/contact"
+     aria-label="Contact CareGanga about donations">Donation enquiries</Link>}
    {number.length>=10&&number.length<=15&&
     <a className="cg-site-float-whatsapp" href={"https://wa.me/"+number}
      target="_blank" rel="noopener noreferrer" aria-label="Contact CareGanga on WhatsApp">
-     <span aria-hidden="true">◉</span></a>}
+     <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d="M20 11.5a8 8 0 0 1-8 8 8 8 0 0 1-3.3-.7L4 20l1.2-4.5A8 8 0 1 1 20 11.5Z"/><path d="M8.8 8.1c.6 3 2.1 4.5 5.1 5.7l1.2-1.2 1.7 1.2c-.4 1.4-1.2 2-2.4 1.8-3.4-.7-6.5-3.7-7.2-7.1-.2-1.1.3-2 1.7-2.4l1.2 1.7-1.3 1.3"/></svg></a>}
   </div>
  </>;
 }
@@ -188,10 +188,10 @@ export function CmsPublicShell({children,navigation,siteFooter}:{children:ReactN
  * Only vetted CG-18 published DTO reaches this view; no private author data.
  * Admin blue design tokens are intentionally not used for public appearance.
  */
-export function CmsPublicPage({page,navigation,siteFooter,children,mediaScope,sidebar}:{
+export function CmsPublicPage({page,navigation,siteFooter,children,mediaScope,sidebar,contactForm,projectFilters,projectCategory}:{
  page:PublicCmsPage;navigation?:PublicCmsNavigation|null;
  siteFooter?:Record<string,unknown>|null;children?:ReactNode;
- mediaScope?:CmsMediaType;sidebar?:ReactNode}){
+ mediaScope?:CmsMediaType;sidebar?:ReactNode;contactForm?:ReactNode;projectFilters?:ReactNode;projectCategory?:string}){
  const sections=[...page.sections].sort((a,b)=>a.order-b.order);
  const assets=page.assets??[];
  const ownFooter=sections.find(x=>x.kind==="SITE_FOOTER")?.fields;
@@ -205,8 +205,10 @@ export function CmsPublicPage({page,navigation,siteFooter,children,mediaScope,si
    address:text(footer.address),phone:text(footer.phone),email:text(footer.email)}}/>
   <div className={sidebar?"cg-site-ngo-layout":undefined}>
    {sidebar&&<aside className="cg-site-ngo-sidebar">{sidebar}</aside>}
-   <div className="cg-site-sections">
+   <div className={"cg-site-sections cg-site-page-"+page.kind.toLowerCase()}>
+   {!heroes.length&&!["POLICY","IMPACT","COMPLIANCE","GALLERY","CONTACT","ARTICLE"].includes(page.kind)&&<header className="cg-site-content cg-site-page-heading"><p className="cg-site-eyebrow">CareGanga Foundation</p><h1>{page.title}</h1></header>}
    {page.kind==="POLICY"&&<header className="cg-site-content cg-site-policy-title">
+    <Link href="/" className="cg-site-editorial-back">Return to homepage</Link>
     <p className="cg-site-eyebrow">Policies &amp; Legal</p><h1>{page.title}</h1>
    </header>}
    {heroes.length>0&&<CmsHeroCarousel slides={heroes} navigation={navigation}/>}
@@ -228,11 +230,11 @@ export function CmsPublicPage({page,navigation,siteFooter,children,mediaScope,si
      if(section.kind==="COMPLIANCE_FACTS")return <CmsCompliance key={key}
       section={section} assets={assets}/>;
      if(section.kind==="GALLERY_GRID")return <CmsGallery key={key}
-      section={section} assets={assets} mediaScope={mediaScope}/>;
+      section={section} assets={assets} mediaScope={mediaScope} embedded={page.kind!=="GALLERY"}/>;
      if(section.kind==="ARTICLE_BODY")return <CmsArticle key={key}
       section={section} assets={assets}/>;
      if(section.kind==="HEALTHCARE_CATEGORIES")return <CmsHealthcare key={key}
-      section={section}/>;
+      section={section} assets={assets}/>;
      if(section.kind==="PARTNER_CARDS"){
       const cards=Array.isArray(section.fields.cards)?section.fields.cards.flatMap((value,index)=>{
        if(!value||typeof value!=="object"||Array.isArray(value))return [];
@@ -240,10 +242,10 @@ export function CmsPublicPage({page,navigation,siteFooter,children,mediaScope,si
        if(typeof x.name!=="string"||typeof x.summary!=="string"||!Number.isSafeInteger(x.originalIndex))return [];
        return [{name:x.name,summary:x.summary,originalIndex:x.originalIndex as number,index}];
       }):[];
-      return <section key={key} className="cg-site-content" aria-label="Original approved partner selections">
+      return <section key={key} className="cg-site-content cg-site-partners" aria-label="Published Foundation partners">
        <h2>{text(section.fields.heading)||"Corporate Partners"}</h2>
        {text(section.fields.intro)&&<p>{text(section.fields.intro)}</p>}
-       {cards.length===0?<p>No currently verified partner names to preview or publish.</p>:
+       {cards.length===0?<p>Partner information will appear here when it is verified and published.</p>:
         <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(230px,1fr))",gap:16}}>
          {cards.map(card=>{
           const logo=assets.find(v=>v.role==="FEATURE"&&v.order===card.originalIndex);
@@ -255,7 +257,7 @@ export function CmsPublicPage({page,navigation,siteFooter,children,mediaScope,si
         </div>}
       </section>;
      }
-     if(section.kind==="CONTACT_INFO")return <CmsContactInfo key={key} section={section} assets={assets}/>;
+     if(section.kind==="CONTACT_INFO")return <CmsContactInfo key={key} section={section} assets={assets} form={section===sections.find(s=>s.kind==="CONTACT_INFO")?contactForm:undefined}/>;
      if(section.kind==="CAMPAIGN_TEASER"){
       const cards=Array.isArray(section.fields.cards)?
        section.fields.cards.filter(x=>x&&typeof x==="object"&&
@@ -263,7 +265,7 @@ export function CmsPublicPage({page,navigation,siteFooter,children,mediaScope,si
         /^cg-camp-[0-9]{8}$/.test(String((x as Record<string,unknown>).slug))) as PublicCampaign[]:[];
       return <CampaignPublicCards key={key} heading={text(section.fields.heading)||"Campaigns"} cards={cards}/>;
      }
-     if(section.kind==="PROJECT_TEASER"){const cards=Array.isArray(section.fields.cards)?section.fields.cards:[];return <section key={key} className="cg-site-content"><h2>{text(section.fields.heading)||"Projects"}</h2>{!cards.length?<p>No currently approved projects to display.</p>:cards.map((item,j)=>{if(!item||typeof item!=="object")return null;const p=item as Record<string,unknown>;return <article key={j} style={{background:"#fffaf0",border:"1px solid #e5ddc9",borderRadius:16,padding:24,margin:"16px 0"}}>{/^\/api\/public\/content\/media\/[a-f0-9-]{36}$/i.test(text(p.coverSrc))&&<img src={text(p.coverSrc)} alt={text(p.title)} loading="lazy" style={{width:"100%",maxHeight:320,objectFit:"cover",borderRadius:12}}/>}<p className="cg-site-eyebrow">{text(p.category)} · {text(p.status)==="PLANNED"?"Planned":"Active"}</p><h3>{text(p.title)}</h3><p>{text(p.area)}</p><p>{text(p.summary)}</p>{text(p.launch)&&<p>Planned start: {text(p.launch)}</p>}</article>;})}</section>;}
+     if(section.kind==="PROJECT_TEASER"){const cards=Array.isArray(section.fields.cards)?section.fields.cards:[];return <section key={key} className="cg-site-content cg-site-project-section">{(heroes.length>0||page.kind!=="PROJECTS"||(text(section.fields.heading)||"Projects").trim().toLowerCase()!==page.title.trim().toLowerCase())&&<h2>{text(section.fields.heading)||"Projects"}</h2>}{section===sections.find(s=>s.kind==="PROJECT_TEASER")&&projectFilters}{!cards.length?<div className="cg-site-empty" role="status"><strong>{projectCategory?"No projects match this category":"No projects to display yet"}</strong><p>{projectCategory?"Select another category to explore published projects.":"Published project updates will appear here."}</p>{projectCategory&&(page.slug==="our-work"||page.slug==="upcoming-projects")&&<Link href={"/"+page.slug} className="cg-site-project-reset">Show all projects</Link>}{page.slug==="home"&&navigation?.publishedRoutes?.some(v=>v.path==="/our-work")&&<Link href="/our-work" className="cg-site-action">Explore our work</Link>}</div>:cards.map((item,j)=>{if(!item||typeof item!=="object")return null;const p=item as Record<string,unknown>;return <article key={j} className="cg-site-project-card">{/^\/api\/public\/content\/media\/[a-f0-9-]{36}$/i.test(text(p.coverSrc))&&<img src={text(p.coverSrc)} alt={text(p.title)} loading="lazy" className="cg-site-project-cover"/>}<div className="cg-site-project-copy"><p className="cg-site-eyebrow">{text(p.category)} · {text(p.status)==="PLANNED"?"Planned":"Active"}</p><h3>{text(p.title)}</h3><p>{text(p.area)}</p><p>{text(p.summary)}</p>{text(p.launch)&&<p>Planned start: {text(p.launch)}</p>}</div></article>;})}</section>;}
      // Never infer operational projects from CMS-only teaser text.
      return null;
     })}

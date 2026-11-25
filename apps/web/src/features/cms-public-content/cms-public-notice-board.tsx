@@ -15,11 +15,12 @@ export function CmsPublicNoticeBoard({notices,available,intro}:{
  const [search,setSearch]=useState("");
  const [category,setCategory]=useState("All");
  const [priority,setPriority]=useState("ALL");
- const categories=useMemo(()=>Array.from(new Set(notices
-  .map(n=>n.category).filter(Boolean))).sort((a,b)=>a.localeCompare(b)),[notices]);
+ const approved=available?notices:[];
+ const categories=useMemo(()=>Array.from(new Set(approved
+  .map(n=>n.category).filter(Boolean))).sort((a,b)=>a.localeCompare(b)),[notices,available]);
  const chipCategories=types.slice(1).filter(v=>categories.includes(v));
  const other=categories.filter(v=>!types.includes(v));
- const matches=notices.filter(n=>
+ const matches=approved.filter(n=>
   (category==="All"||n.category===category)&&
   (priority==="ALL"||n.priority===priority)&&
   (!search.trim()||[n.title,n.body,n.category].some(v=>
@@ -31,6 +32,7 @@ export function CmsPublicNoticeBoard({notices,available,intro}:{
    <h1 id="notices-title">{intro?.heading??"Notice & Announcement Board"}</h1>
    {intro?.body&&<p>{intro.body}</p>}
   </div>
+  <div className="cg-site-notice-discovery">
   <div className="cg-site-gallery-filters">
    <label>Search notices
     <input type="search" value={search} maxLength={80}
@@ -50,9 +52,10 @@ export function CmsPublicNoticeBoard({notices,available,intro}:{
   </div>
   <div className="cg-site-gallery-tabs" role="group" aria-label="Notice categories">
    <button type="button" aria-pressed={category==="All"} onClick={()=>setCategory("All")}>
-    All notices</button>
+    All categories</button>
    {[...chipCategories,...other].map(v=><button type="button" key={v}
     aria-pressed={category===v} onClick={()=>setCategory(v)}>{v}</button>)}
+  </div>
   </div>
   {!available?<p role="alert" className="cg-site-gallery-empty">
    Current approved notices cannot be verified. Please try again later.</p>:
@@ -61,17 +64,18 @@ export function CmsPublicNoticeBoard({notices,available,intro}:{
     {matches.length} currently approved {matches.length===1?"notice":"notices"} match
    </p>
    {!matches.length?<div className="cg-site-gallery-empty">
-    <p>There are no current approved notices matching these filters.</p>
-    <button type="button" onClick={reset}>Reset Filters</button></div>:
+    <h2>{approved.length?"No matching notices":"No notices published yet"}</h2>
+    <p>{approved.length?"Try another category, priority or search term.":"Current approved announcements will appear here."}</p>
+    {approved.length>0&&<button type="button" onClick={reset}>Reset Filters</button>}</div>:
    <div className="cg-site-notice-list">{matches.map(item=>
     <article key={item.path} className="cg-site-notice-card">
      <div className="cg-site-notice-meta">
-      <span>{item.category}</span><span>{item.priority==="IMPORTANT"?"Important":"Normal"}</span>
-      <time dateTime={item.publishedOn}>Published {item.publishedOn}</time>
+      <span data-priority={item.priority}>{item.priority==="IMPORTANT"?"Important":"Normal"}</span><span>{item.category}</span>
      </div>
      <h2>{item.title}</h2>
      <p>{item.body}</p>
-     <Link href={item.path} className="cg-site-notice-link">Read Details</Link>
+     <div className="cg-site-notice-card-footer"><time dateTime={item.publishedOn}>Published {item.publishedOn}</time>
+      <Link href={item.path} className="cg-site-notice-link">Read Details</Link></div>
     </article>)}</div>}
   </>}
  </section>;

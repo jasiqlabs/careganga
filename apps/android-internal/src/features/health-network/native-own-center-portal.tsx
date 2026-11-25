@@ -39,6 +39,7 @@ export function NativeOwnCenterPortal({token,onExit,onExpired,canViewSettlements
  const [uncertain,setUncertain]=useState(false);
  const [error,setError]=useState(""),[notice,setNotice]=useState("");
  const saveKey=useRef(""),submitKey=useRef("");
+ const selectionSeq=useRef(0),selectedRef=useRef("");
  const fail=useCallback((e:unknown)=>{
   if(e&&typeof e==="object"&&"status" in e&&e.status===401)onExpired();
   if(!e||typeof e!=="object"||!("status" in e)||
@@ -52,7 +53,10 @@ export function NativeOwnCenterPortal({token,onExit,onExpired,canViewSettlements
   setCenters(response.centers);
  },[token]);
  const choose=useCallback(async(ref:string)=>{
+  const turn=++selectionSeq.current;selectedRef.current=ref;
+  setActive(null);setDraft(null);setProof("");
   const current=await request<Detail>(token,"/"+encodeURIComponent(ref));
+  if(turn!==selectionSeq.current)return;
   if(!current?.center||current.centerRef!==ref)
    throw Error("Original assigned center changed.");
   setActive(current);setDraft(current.center);setProof("");
@@ -63,14 +67,14 @@ export function NativeOwnCenterPortal({token,onExit,onExpired,canViewSettlements
   let live=true;setLoading(true);
   void list().catch(e=>{if(live)fail(e)})
    .finally(()=>{if(live)setLoading(false)});
-  return()=>{live=false};
+  return()=>{live=false;selectionSeq.current++;};
  },[list,fail]);
  const button=(label:string,go:()=>void,disabled=false)=>
   <Pressable accessibilityRole="button" disabled={disabled}
    accessibilityState={{disabled}} style={[styles.button,disabled&&styles.disabled]}
    onPress={go}><Text style={styles.text}>{label}</Text></Pressable>;
  async function open(ref:string){
-  if(busy)return;
+  if(busy||uncertain&&selectedRef.current!==ref)return;
   setBusy(true);setError("");setNotice("");
   try{await choose(ref)}catch(e){fail(e)}
   finally{setBusy(false)}
@@ -100,6 +104,14 @@ export function NativeOwnCenterPortal({token,onExit,onExpired,canViewSettlements
    setNotice("Original verified licence submitted. Foundation approval is required.");
   }catch(e){fail(e)}finally{setBusy(false)}
  }
+ const renderedSelection=selectionSeq.current;
+ function selectCenter(ref:string){
+  if(busy||uncertain)return;
+  if(active&&draft&&JSON.stringify(active.center)!==JSON.stringify(draft)){
+   Alert.alert("Discard unsaved center changes?","Saved details will not change.",[{text:"Keep editing",style:"cancel"},{text:"Discard",style:"destructive",onPress:()=>void open(ref)}]);return;
+  }
+  void open(ref);
+ }
  return <SafeAreaView style={styles.page}>
   <ScrollView contentContainerStyle={styles.content}>
    <Text accessibilityRole="header" style={styles.title}>My healthcare center</Text>
@@ -114,8 +126,8 @@ export function NativeOwnCenterPortal({token,onExit,onExpired,canViewSettlements
    {!loading&&!centers.length&&<Text style={styles.note}>
     No currently assigned center is available.</Text>}
    {centers.map(c=><View key={c.centerRef}>
-    {button(c.name+" · "+c.providerName+" · "+c.status,()=>void open(c.centerRef),
-     busy)}
+    {button(c.name+" · "+c.providerName+" · "+c.status.replaceAll("_"," "),()=>selectCenter(c.centerRef),
+     busy||uncertain)}
    </View>)}
    {active&&draft&&<View style={styles.panel}>
     {canViewSettlements&&active.status==="VERIFIED"&&active.accessState==="ENABLED"&&
@@ -130,10 +142,10 @@ export function NativeOwnCenterPortal({token,onExit,onExpired,canViewSettlements
       identityLocked disabled={busy||uncertain}
       onChange={setDraft}/>
      {button("Save original pending center",()=>void save(),busy||uncertain)}
-     <NativeHealthEvidenceUploader token={token}
+     <NativeHealthEvidenceUploader key={active.centerRef+":"+active.version} token={token}
       providerRef={active.providerRef} centerRef={active.centerRef}
       sourceVersion={active.version} classification="HEALTH_CENTER_LICENSE"
-      onVerified={fileRef=>setProof(fileRef)}
+      onVerified={fileRef=>{if(renderedSelection===selectionSeq.current)setProof(fileRef);}}
       onExpired={onExpired} disabled={busy||uncertain}/>
      {active.providerStatus==="VERIFIED"&&
       button("Submit verified center licence for independent review",()=>
@@ -154,12 +166,11 @@ export function NativeOwnCenterPortal({token,onExit,onExpired,canViewSettlements
     {active.status!=="PENDING"&&<Text style={styles.note}>
      This center is not an editable pending draft. Current confirmed information
      remains read-only; contact the Foundation for a new approved change.</Text>}
-    {uncertain&&button("Recheck current center",()=>{setUncertain(false);
-     void open(active.centerRef);})}
    </View>}
+   {uncertain&&selectedRef.current&&button("Recheck current center",()=>void open(selectedRef.current),busy)}
    {button("Refresh assigned centers",()=>{
     setLoading(true);void list().catch(fail).finally(()=>setLoading(false));
-   },busy)}
+   },busy||uncertain&&!!selectedRef.current)}
   </ScrollView>
  </SafeAreaView>;
 }
@@ -174,5 +185,5 @@ const styles=StyleSheet.create({
   borderRadius:12,padding:12,gap:10},
  button:{borderWidth:1,borderColor:t.border,borderRadius:10,
   padding:12,minHeight:46,justifyContent:"center"},
- disabled:{opacity:.4},error:{color:"#A52626",fontSize:13}
+ disabled:{opacity:.4},error:{color:t.error,fontSize:13}
 });

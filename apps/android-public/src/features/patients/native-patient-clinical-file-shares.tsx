@@ -1,7 +1,7 @@
 import {useEffect,useRef,useState} from "react";
 import {Pressable,ScrollView,StyleSheet,Text,View} from "react-native";
 import * as Crypto from "expo-crypto";
-import {careGangaTheme as t} from "../../../../../packages/design-tokens/src/index";
+import {careGangaPublicTheme as t} from "../../../../../packages/design-tokens/src/index";
 
 type Booking={bookingRef:string;bookingId:string;bookingStatus:string};
 type Share={grantRef:string;status:string;version:number;currentlyAuthorized:boolean;bookingId:string;

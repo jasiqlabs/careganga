@@ -17,7 +17,7 @@ export function CenterPatientIntakeWorkspace(){
  const [identityDisplay,setIdentityDisplay]=useState("");
  const [identityToken,setIdentityToken]=useState("");
  const [identityChecked,setIdentityChecked]=useState(false);
- const [verificationBusy,setVerificationBusy]=useState(false);
+ const [verificationBusy,setVerificationBusy]=useState(false),[verificationUncertain,setVerificationUncertain]=useState(false);
  const [verificationMessage,setVerificationMessage]=useState("");
  const verificationKey=useRef<{signature:string;requestKey:string}|null>(null);
  async function verifyPatient(){
@@ -26,6 +26,7 @@ export function CenterPatientIntakeWorkspace(){
     !/^CGI-[A-F0-9]{24}$/.test(identityToken))return;
   setVerificationBusy(true);setVerificationMessage("");
   const signature=chosen+"|"+identityDisplay+"|"+identityToken;
+  if(verificationUncertain&&verificationKey.current?.signature!==signature){setVerificationBusy(false);setVerificationMessage("Retry the original identity check without changing its details.");return;}
   if(verificationKey.current?.signature!==signature)
    verificationKey.current={signature,requestKey:crypto.randomUUID()};
   try{
@@ -35,11 +36,13 @@ export function CenterPatientIntakeWorkspace(){
     headers:{"Content-Type":"application/json"},
     body:JSON.stringify({requestKey:verificationKey.current.requestKey,
      virtualPatientId:identityDisplay,verificationCode:identityToken,
-     identityCheckedInPerson:true})});
+     identityCheckedInPerson:true})}).catch(e=>{setVerificationUncertain(true);throw e;});
    const raw:unknown=await response.json().catch(()=>null);
-   if(!response.ok)throw Error(raw&&typeof raw==="object"&&"message" in raw&&
+   if(!response.ok){setVerificationUncertain(response.status>=500);throw Error(raw&&typeof raw==="object"&&"message" in raw&&
     typeof raw.message==="string"?raw.message:
-    "Identity check cannot be confirmed. Retry the original request key.");
+    "Identity check cannot be confirmed. Retry the original request key.");}
+   if(!raw||typeof raw!=="object"||!("virtualPatientId" in raw)||raw.virtualPatientId!==identityDisplay||!("profileStatus" in raw)||raw.profileStatus!=="VERIFIED"){setVerificationUncertain(true);throw Error("The original identity check could not be verified. Retry the same request.");}
+   setVerificationUncertain(false);
    setVerificationMessage("Identity verification recorded. The patient can refresh their profile and book a consultation.");
    setIdentityToken("");setIdentityChecked(false);verificationKey.current=null;
   }catch(e){setVerificationMessage(e instanceof Error?e.message:
@@ -87,7 +90,7 @@ export function CenterPatientIntakeWorkspace(){
     Ask a Foundation administrator to check your current center assignment.</p>}
   {!loading&&centers.length>0&&<div className="form-section">
    <label>Register at healthcare center
-    <select value={chosen} onChange={e=>setChosen(e.target.value)}>
+    <select value={chosen} disabled={verificationBusy||verificationUncertain} onChange={e=>{setChosen(e.target.value);setIdentityDisplay("");setIdentityToken("");setIdentityChecked(false);setVerificationMessage("");verificationKey.current=null;}}>
      <option value="">Select your assigned center</option>
      {centers.map(x=><option value={x.centerRef} key={x.centerRef}>
       {x.centerName} — {x.providerName}</option>)}
@@ -103,22 +106,22 @@ export function CenterPatientIntakeWorkspace(){
     <form onSubmit={e=>{e.preventDefault();void verifyPatient();}}
      style={{display:"grid",gap:10,maxWidth:520}}>
      <label>Patient's Virtual Patient ID
-      <input type="text" required maxLength={20} value={identityDisplay}
+      <input type="text" required maxLength={20} value={identityDisplay} disabled={verificationBusy||verificationUncertain}
        onChange={e=>{setIdentityDisplay(e.target.value.trim().toUpperCase());
         verificationKey.current=null;}} placeholder="CGP-XXXXXXXXXXXXXXXX"/>
      </label>
      <label>Current one-time clinic code
-      <input type="text" required maxLength={28} value={identityToken}
+      <input type="text" required maxLength={28} value={identityToken} disabled={verificationBusy||verificationUncertain}
        onChange={e=>{setIdentityToken(e.target.value.trim().toUpperCase());
         verificationKey.current=null;}} placeholder="CGI-XXXXXXXXXXXXXXXXXXXXXXXX"/>
      </label>
-     <label><input type="checkbox" checked={identityChecked}
+     <label><input type="checkbox" checked={identityChecked} disabled={verificationBusy||verificationUncertain}
       onChange={e=>setIdentityChecked(e.target.checked)}/>
       {" "}I checked the patient's identity document in person and it matches the
       patient presenting their signed-in CareGanga profile.</label>
      <button type="submit" disabled={verificationBusy||!identityChecked||
       !/^CGP-[A-F0-9]{16}$/.test(identityDisplay)||!/^CGI-[A-F0-9]{24}$/.test(identityToken)}>
-      {verificationBusy?"Verifying…":"Record verified identity"}</button>
+      {verificationBusy?"Verifying…":verificationUncertain?"Retry original identity check":"Record verified identity"}</button>
      {!!verificationMessage&&<p role="status" aria-live="polite">{verificationMessage}</p>}
     </form>
    </section>

@@ -1,5 +1,6 @@
 import {cookies} from "next/headers";
 import {NextRequest,NextResponse} from "next/server";
+import {isAllowedOrigin} from "../../../../shared/request-origin";
 export const dynamic="force-dynamic";
 type Context={params:Promise<{parts:string[]}>};
 async function proxy(req:NextRequest,ctx:Context,method:"GET"|"POST"|"PATCH"){
@@ -15,6 +16,7 @@ async function proxy(req:NextRequest,ctx:Context,method:"GET"|"POST"|"PATCH"){
  if(!valid)return NextResponse.json({message:"This inventory action is unavailable."},{status:404});
  const token=(await cookies()).get("cg_staff_session")?.value;
  const reply=(body:unknown,status=200)=>NextResponse.json(body,{status,headers:{"Cache-Control":"private, no-store"}});
+ if(method!=="GET"&&(!isAllowedOrigin(req)||req.headers.get("sec-fetch-site")==="cross-site"))return reply({message:"Open this inventory action from the secure staff dashboard."},403);
  if(!token)return reply({message:"Sign in again."},401);
  const base=process.env.BACKEND_URL;if(!base)return reply({message:"Inventory is unavailable."},503);
  try{

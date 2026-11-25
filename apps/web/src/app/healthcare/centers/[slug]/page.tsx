@@ -1,6 +1,7 @@
 import {HealthcarePublicChrome} from "../../../../shared/healthcare-public-chrome";
 import type {Metadata} from "next";
 import Link from "next/link";
+import styles from "../../../health-network/profile.module.css";
 import {notFound} from "next/navigation";
 import {directory,publicPartnerOffers,type PublicDoctor} from "../../../../features/health-network/public-directory-source";
 import {publicLabOffers,rupees} from "../../../../features/diagnostics/public-lab-offers";
@@ -31,13 +32,24 @@ async function current(slug:string):Promise<Center|null>{
   });
   if(!r.ok)return null;
   const value:unknown=await r.json();
-  if(!value||typeof value!=="object"||
-    !("centerName" in value)||typeof value.centerName!=="string"||
-    !("providerName" in value)||typeof value.providerName!=="string"||
-    !("address" in value)||typeof value.address!=="string"||
-    !("hours" in value)||!Array.isArray(value.hours)||
-    !("declaredServices" in value)||!Array.isArray(value.declaredServices))
-    return null;
+  if(!value||typeof value!=="object"||Array.isArray(value))return null;
+  const v=value as Record<string,unknown>;
+  const record=(x:unknown):x is Record<string,unknown>=>!!x&&typeof x==="object"&&!Array.isArray(x);
+  const strings=(x:unknown)=>Array.isArray(x)&&x.every(y=>typeof y==="string");
+  const clock=(x:unknown)=>typeof x==="string"&&/^(?:[01]\d|2[0-3]):[0-5]\d$/.test(x);
+  const validMedia=(x:unknown)=>record(x)&&typeof x.fileRef==="string"&&
+   /^[a-f0-9]{8}-(?:[a-f0-9]{4}-){3}[a-f0-9]{12}$/i.test(x.fileRef)&&typeof x.altText==="string";
+  if(!["centerName","providerName","type","address","pinCode","timeZone","notice"].every(k=>typeof v[k]==="string")||
+   !(v.publicPhone===null||typeof v.publicPhone==="string"&&/^[+0-9 ()-]{7,24}$/.test(v.publicPhone))||
+   !Array.isArray(v.hours)||!v.hours.every(h=>record(h)&&typeof h.weekday==="number"&&
+    Number.isInteger(h.weekday)&&h.weekday>=0&&h.weekday<=6&&clock(h.opens)&&clock(h.closes)&&typeof h.service==="string")||
+   !strings(v.declaredServices))return null;
+  const p=v.approvedPresentation;
+  if(p!==null&&(!record(p)||typeof p.description!=="string"||
+   !strings(p.services)||!strings(p.facilities)||typeof p.hoursNote!=="string"||
+   typeof p.publicEmail!=="string"||!!p.publicEmail&&!/^[^\s@<>]+@[^\s@<>]+\.[^\s@<>]+$/.test(p.publicEmail)||
+   !Array.isArray(p.faqs)||!p.faqs.every(q=>record(q)&&typeof q.question==="string"&&typeof q.answer==="string")||
+   !Array.isArray(p.media)||!p.media.every(validMedia)))return null;
   return value as Center;
  }catch{return null;}
 }
@@ -61,31 +73,36 @@ export default async function VerifiedCenterPage({params}:Params){
   currentConsultationBenefits({centerSlug:slug}),
   publicPartnerOffers(slug)
  ]);
- return <HealthcarePublicChrome><main className="cg-public-shell">
+ return <HealthcarePublicChrome><main className={"cg-public-shell "+styles.profilePage}>
    <header className="cg-public-header">
      <nav aria-label="Healthcare navigation">
        <Link href="/">CareGanga</Link><span aria-hidden="true"> / </span>
        <Link href="/healthcare">Healthcare Assistance</Link>
      </nav>
    </header>
-   <section className="cg-public-section" aria-labelledby="center-title">
-     <p className="cg-eyebrow">Verified healthcare center</p>
+   <section className={"cg-public-section "+styles.profileHero} aria-labelledby="center-title">
+     {c.approvedPresentation?.media[0]&&<div className={styles.heroPhoto}>{/* eslint-disable-next-line @next/next/no-img-element */}<img alt={c.approvedPresentation.media[0].altText} src={"/healthcare/centers/"+encodeURIComponent(slug)+"/photos/"+encodeURIComponent(c.approvedPresentation.media[0].fileRef)}/></div>}
+     <div>
+     <p className={"cg-eyebrow "+styles.centerBadge}>Verified healthcare center</p>
      <h1 id="center-title">{c.centerName}</h1>
      <p className="cg-lead">{c.providerName}</p>
      <p>{format(c.type)} · {c.address}, {c.pinCode}</p>
      <p>{c.notice}</p>
      {c.publicPhone&&<p>Contact: <a href={"tel:"+c.publicPhone}>{c.publicPhone}</a></p>}
-     {c.latitude!==null&&c.longitude!==null&&
+     {typeof c.latitude==="number"&&Number.isFinite(c.latitude)&&Math.abs(c.latitude)<=90&&typeof c.longitude==="number"&&Number.isFinite(c.longitude)&&Math.abs(c.longitude)<=180&&
        <p><a href={"https://www.google.com/maps/search/?api=1&query="+
           encodeURIComponent(c.latitude+","+c.longitude)}
          target="_blank" rel="noopener noreferrer">View location on maps</a></p>}
+     </div>
    </section>
-   {c.approvedPresentation&&<section className="cg-public-section">
+   <nav className={styles.sectionNav} aria-label="Center sections">{c.approvedPresentation&&<a href="#overview">Overview</a>}{doctors.state==="READY"&&doctors.items.length>0&&<a href="#doctors">Doctors</a>}{benefits.state==="READY"&&benefits.items.length>0&&<a href="#pricing">Consultation support</a>}{labs.state==="READY"&&labs.items.length>0&&<a href="#tests">Tests & prices</a>}{serviceNames.length>0&&<a href="#services">Services</a>}{c.hours.length>0&&<a href="#hours">Operating hours</a>}<a href="#contact">Contact</a></nav>
+   <div className={styles.detailGrid}><div className={styles.mainColumn}>
+   {c.approvedPresentation&&<section id="overview" className={"cg-public-section "+styles.panel}>
      <h2>About this healthcare center</h2>
      <p>{c.approvedPresentation.description}</p>
-     {c.approvedPresentation.media.length>0&&<div
+     {c.approvedPresentation.media.length>1&&<div
        style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(min(100%,250px),1fr))",gap:16}}>
-       {c.approvedPresentation.media.map(media=><figure key={media.fileRef}>
+       {c.approvedPresentation.media.slice(1).map(media=><figure key={media.fileRef}>
          {/* eslint-disable-next-line @next/next/no-img-element */}
          <img loading="lazy" decoding="async" width="480" height="300"
           style={{maxWidth:"100%",height:"auto",borderRadius:12}}
@@ -114,16 +131,17 @@ export default async function VerifiedCenterPage({params}:Params){
          <div key={i}><dt><strong>{f.question}</strong></dt><dd>{f.answer}</dd></div>)}</dl>
      </>}
    </section>}
-   {doctors.state==="READY"&&doctors.items.length>0&&<section className="cg-public-section">
+   {doctors.state==="READY"&&doctors.items.length>0&&<section id="doctors" className={"cg-public-section "+styles.panel}>
      <h2>Currently verified doctors at this center</h2>
-     <ul>{doctors.items.map(d=><li key={d.doctorRef}>
+     <div className={styles.cardGrid}>{doctors.items.map(d=><article className={styles.dataCard} key={d.doctorRef}>
        <Link href={"/health-network/doctors/"+encodeURIComponent(d.doctorRef)}>{d.doctorName}</Link>
        {d.specialties.length>0?" · "+d.specialties.join(", "):""}
        {d.fee?" · Current in-person consultation ₹"+(d.fee.amountMinor/100).toLocaleString("en-IN"):" · Fee not currently approved"}
-     </li>)}</ul>
+       {d.fee&&<p><Link className="cg-health-link-action primary" href={"/health-network/doctors/"+encodeURIComponent(d.doctorRef)+"/schedule?center="+encodeURIComponent(slug)}>Check appointment times</Link></p>}
+     </article>)}</div>
    </section>}
    {benefits.state==="READY"&&benefits.items.length>0&&
-    <section className="cg-public-section"
+    <section id="pricing" className={"cg-public-section "+styles.panel}
      aria-label="Currently approved Foundation consultation assistance at this center">
      <h2>Approved consultation support at this center</h2>
      <p>These are conditional, currently active policies; not a patient
@@ -143,7 +161,7 @@ export default async function VerifiedCenterPage({params}:Params){
       an appointment, or support for lab, pharmacy, nursing or procedures.</p>
     </section>}
    {labs.state==="READY"&&labs.items.length>0&&
-    <section className="cg-public-section" aria-label="Approved laboratory tests at this center">
+    <section id="tests" className={"cg-public-section "+styles.panel} aria-label="Approved laboratory tests at this center">
      <h2>Approved laboratory tests at this center</h2>
      <p>Only current partner-approved commercial test prices are shown;
       no online lab booking, Foundation benefit or payment is available.</p>
@@ -159,7 +177,7 @@ export default async function VerifiedCenterPage({params}:Params){
       Contacting the lab does not create an order or confirm a booking.</p>}
     </section>}
    {partnerOffers.state==="READY"&&partnerOffers.items.length>0&&
-    <section className="cg-public-section" aria-label="Approved partner medicine and service information">
+    <section className={"cg-public-section "+styles.panel} aria-label="Approved partner medicine and service information">
      <h2>Listed partner medicines, nursing services and procedures</h2>
      <p>Foundation-reviewed indicative information only. The actual bill, performed
       care and any CareGanga contribution require separate verification.</p>
@@ -172,21 +190,25 @@ export default async function VerifiedCenterPage({params}:Params){
      </li>)}</ul>
      <p>{partnerOffers.caution}</p>
     </section>}
-   {serviceNames.length>0&&<section className="cg-public-section">
+   {serviceNames.length>0&&<section id="services" className={"cg-public-section "+styles.panel}>
      <h2>Services declared by the center</h2>
      <p>Service information does not confirm individual appointment availability.</p>
      <ul>{serviceNames.map(s=><li key={s}>{s}</li>)}</ul>
    </section>}
-   {c.hours.length>0&&<section className="cg-public-section">
+   </div><aside className={styles.sideColumn}>
+   <section className={"cg-public-section "+styles.panel}><h2>Quick actions</h2>{doctors.state==="READY"&&doctors.items.length>0&&<p><a className="cg-health-link-action primary" href="#doctors">Find a doctor at this center</a></p>}{labs.state==="READY"&&labs.items.length>0&&<p><Link href={"/health-network/lab-tests?center="+encodeURIComponent(slug)}>View tests &amp; prices</Link></p>}{c.publicPhone&&<p><a href={"tel:"+c.publicPhone}>Call center</a></p>}<p><Link href="/contact">CareGanga support</Link></p></section>
+   {c.hours.length>0&&<section id="hours" className={"cg-public-section "+styles.panel}>
      <h2>Operating hours</h2>
      <ul>{c.hours.map((h,i)=><li key={i}>{days[h.weekday]??"Day"} — {h.opens} to {h.closes}
        {h.service!=="GENERAL"?" · "+format(h.service):""}</li>)}</ul>
      <p>Times are shown in the center’s local time zone ({c.timeZone}). Confirm before visiting.</p>
    </section>}
-   <section className="cg-public-section">
-     <p>Online booking, clinical advice and online payment are not offered on this page.</p>
+   <section id="contact" className={"cg-public-section "+styles.panel}>
+     <h2>Location &amp; contact</h2><p>{c.address}, {c.pinCode}</p>{c.publicPhone&&<p><a href={"tel:"+c.publicPhone}>{c.publicPhone}</a></p>}
+     <p>Use the available doctor links to check appointment times. This profile does not confirm a booking, payment or medical advice. Confirm services and fees before visiting.</p>
      <Link href="/health-network">Browse verified centers and doctors</Link>
      <p><Link href="/contact">Contact CareGanga</Link></p>
    </section>
+ </aside></div>
  </main></HealthcarePublicChrome>;
 }

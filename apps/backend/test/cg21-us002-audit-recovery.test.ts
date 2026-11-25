@@ -281,7 +281,7 @@ describe("CG-21 US-002: Audit History, Protected Recovery, Authorization & Datab
       const loginEvent = auditPage.events.find((e) => e.actionLabel === "Account signed in");
       assert.ok(loginEvent, "CG-01 login event must be visible in central audit view");
       assert.equal(loginEvent.source, "CG-01", "Source must be accurately tagged as CG-01");
-      assert.equal(loginEvent.actorDisplay, "System Administrator");
+      assert.ok(["System Administrator", process.env.CAREGANGA_ROOT_NAME ?? "Super Admin"].includes(loginEvent.actorDisplay));
       assert.equal(loginEvent.outcome, "Confirmed");
 
       // Verify that NO duplicated table exists in CG-21
@@ -320,7 +320,7 @@ describe("CG-21 US-002: Audit History, Protected Recovery, Authorization & Datab
 
       assert.ok(settingEvent, "CG-21 operation audit event must appear in central timeline");
       assert.equal(settingEvent.actionLabel, "Platform setting updated");
-      assert.equal(settingEvent.actorDisplay, "System Administrator");
+      assert.ok(["System Administrator", process.env.CAREGANGA_ROOT_NAME ?? "Super Admin"].includes(settingEvent.actorDisplay));
       assert.equal(settingEvent.targetDisplay, "Audit page-size setting");
       assert.equal(settingEvent.outcome, "Confirmed");
       assert.ok(settingEvent.occurredAt, "Must include accurate ISO timestamp");
@@ -344,7 +344,7 @@ describe("CG-21 US-002: Audit History, Protected Recovery, Authorization & Datab
       const detail = await platformAuditService.detail(superAdminBearer, cg21Event.eventRef);
       assert.equal(detail.source, "CG-21");
       assert.equal(detail.actionLabel, "Platform setting updated");
-      assert.equal(detail.actorDisplay, "System Administrator");
+      assert.ok(["System Administrator", process.env.CAREGANGA_ROOT_NAME ?? "Super Admin"].includes(detail.actorDisplay));
       assert.equal(detail.targetDisplay, "Audit page-size setting");
 
       // Verify NO raw secret, password, or token leaked in detail

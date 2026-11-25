@@ -41,6 +41,7 @@
     "verify:cg16-us001-source": "node scripts/verify-cg16-us001-source.mjs",
     "verify:cg16-us002-source": "node scripts/verify-cg16-us002-source.mjs",
     "verify:healthcare-journeys-source": "node scripts/verify-healthcare-journeys-source.mjs",
+    "verify:healthcare-public-reference-source": "node scripts/verify-healthcare-public-reference-source.mjs",
     "verify:cg16-us005-source": "node scripts/verify-cg16-us005-source.mjs",
     "verify:cg17-us007-source": "node scripts/verify-cg17-us007-source.mjs",
     "verify:cg17-us003-source": "node scripts/verify-cg17-us003-source.mjs",
@@ -66,7 +67,12 @@
     "verify:cg17-erp-off-policy-source": "node scripts/verify-cg17-erp-off-policy-source.mjs",
     "verify:cg17-erp-off-claim-source": "node scripts/verify-cg17-erp-off-claim-source.mjs",
     "verify:cg17-verified-partner-finance-source": "node scripts/verify-cg17-verified-partner-finance-source.mjs",
-    "verify:cg14-erp-off-partner-catalog-source": "node scripts/verify-cg14-erp-off-partner-catalog-source.mjs"
+    "verify:cg14-erp-off-partner-catalog-source": "node scripts/verify-cg14-erp-off-partner-catalog-source.mjs",
+    "db:baseline:generate": "npm run db:baseline:generate -w apps/backend",
+    "db:init": "npm run db:init -w apps/backend --",
+    "db:upgrade": "npm run db:upgrade -w apps/backend",
+    "db:release:check": "npm run db:release:check -w apps/backend",
+    "verify:db:baseline": "npm run test:db:baseline -w apps/backend"
   },
   "devDependencies": {
     "typescript": "7.0.2",

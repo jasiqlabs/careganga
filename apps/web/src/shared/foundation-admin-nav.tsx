@@ -503,15 +503,22 @@ export function FoundationAdminNav({
     }
   }, [sidebarWidth, isCollapsed]);
 
-  // Lock body scroll on mobile when drawer is open
+  // Lock body scroll and support Escape close on mobile when drawer is open
   useEffect(() => {
+    const onEscape = (e: KeyboardEvent) => {
+      if (e.key === "Escape" && isMobileDrawerOpen) {
+        setIsMobileDrawerOpen(false);
+      }
+    };
     if (isMobileDrawerOpen) {
       document.body.style.overflow = "hidden";
+      document.addEventListener("keydown", onEscape);
     } else {
       document.body.style.overflow = "";
     }
     return () => {
       document.body.style.overflow = "";
+      document.removeEventListener("keydown", onEscape);
     };
   }, [isMobileDrawerOpen]);
 
@@ -859,6 +866,7 @@ export function FoundationAdminNav({
     financeReviews: "Finance Voucher Reviews",
     campaigns: "Campaigns",
     csr: "CSR & Partnerships",
+    referrals: "Referrals & Rewards",
     projects: "Projects",
     payroll: "Payroll & Salary",
     beneficiaries: "Beneficiaries",

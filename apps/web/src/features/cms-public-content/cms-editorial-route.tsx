@@ -7,38 +7,43 @@ import {CmsPublicPage} from "./cms-public-page";
 import {CmsNgoSidebar} from "./cms-ngo-pages";
 import {publishedCmsPage,publishedCmsNavigation} from "./cms-public-source";
 import {publicLabOffers,rupees} from "../diagnostics/public-lab-offers";
+import {currentConsultationBenefits} from "../healthcare-assistance/public-consultation-benefits";
+import {ConsultationBenefitCards} from "../healthcare-assistance/approved-consultation-benefits";
 
 /** One SSR source for each approved Foundation editorial route.
  * The Home publication supplies only shared original CMS footer content.
  */
-export async function editorialMetadata(slug:string):Promise<Metadata>{
+export async function editorialMetadata(slug:string,expectedKind?:"ARTICLE"|"POLICY"):Promise<Metadata>{
  const r=await publishedCmsPage(slug);
- if(r.state!=="PUBLISHED")return {title:"CareGanga Foundation",robots:{index:false,follow:false}};
+ if(r.state!=="PUBLISHED"||(expectedKind&&r.page.kind!==expectedKind))return {title:"CareGanga Foundation",robots:{index:false,follow:false}};
  return {title:r.page.seoTitle,description:r.page.seoDescription,
   alternates:{canonical:r.page.canonicalPath},
   robots:{index:true,follow:true}};
 }
-export async function CmsEditorialRoute({slug,extra}:{slug:string;extra?:ReactNode}){
- const [page,navigation,home,labOffers]=await Promise.all([
+export async function CmsEditorialRoute({slug,extra,expectedKind}:{slug:string;extra?:ReactNode;expectedKind?:"ARTICLE"|"POLICY"}){
+ const [page,navigation,home,labOffers,benefits]=await Promise.all([
   publishedCmsPage(slug),publishedCmsNavigation(),publishedCmsPage("home"),
-  slug==="healthcare"?publicLabOffers(new URLSearchParams()):Promise.resolve(null)]);
- if(page.state==="NOT_PUBLISHED")notFound();
+  slug==="healthcare"?publicLabOffers(new URLSearchParams()):Promise.resolve(null),
+  slug==="healthcare"?currentConsultationBenefits():Promise.resolve(null)]);
+ if(page.state==="NOT_PUBLISHED"||(page.state==="PUBLISHED"&&expectedKind&&page.page.kind!==expectedKind))notFound();
  if(page.state!=="PUBLISHED")return <UnavailablePage title="Foundation content temporarily unavailable" description="We could not verify the currently approved public information." linkHref="/" linkLabel="Return to the homepage" />;
  return <CmsPublicPage page={page.page} navigation={navigation}
   siteFooter={home.state==="PUBLISHED"?
    home.page.sections.find(section=>section.kind==="SITE_FOOTER")?.fields:null}>
   {slug==="healthcare"&&<section className="cg-site-content"
    aria-label="Verified healthcare consultation booking">
-   <h2>Find an approved doctor and request a consultation</h2>
+   <h2>Find &amp; book healthcare services</h2>
+
    <p>CareGanga lists only currently verified healthcare providers and doctors.
     Where live working hours and consultation fees are available, an eligible
-    patient can request an in-person appointment. Payment is due at the
-    healthcare center, not through an online checkout.</p>
+    patient can request an in-person appointment. Center payment methods and assistance are checked against the actual booking.</p>
    <Link className="cg-site-action" href="/health-network?tab=doctors">
     View verified doctors &amp; book an appointment</Link>
+   <p><Link href="/health-network?tab=centers">Find verified healthcare centers</Link>{" · "}<Link href="/health-network/lab-tests">Browse current lab prices</Link>{" · "}<Link href="/patients/me">My patient profile &amp; consultations</Link></p>
    <p>Bookings depend on a current available slot and final confirmation.
     This is not an approval for financial assistance.</p>
   </section>}
+  {benefits&&<ConsultationBenefitCards response={benefits}/>}
   {extra??null}
   {slug==="healthcare"&&labOffers?.state==="READY"&&labOffers.items.length>0&&
    <section className="cg-site-content" aria-label="Currently approved partner laboratory tests">

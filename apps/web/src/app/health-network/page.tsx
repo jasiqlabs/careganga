@@ -1,6 +1,7 @@
 import {HealthcarePublicChrome} from "../../shared/healthcare-public-chrome";
 import type {Metadata} from "next";
 import Link from "next/link";
+import styles from "./directory.module.css";
 import {
   directory,directorySearch,publicAreas,type PublicCenter,type PublicDoctor
 } from "../../features/health-network/public-directory-source";
@@ -15,7 +16,7 @@ const nice=(value:string)=>value.toLowerCase().replaceAll("_"," ")
 const rupee=(amount:number)=>new Intl.NumberFormat("en-IN",{
  style:"currency",currency:"INR",maximumFractionDigits:2}).format(amount/100);
 export default async function HealthcareDirectory({searchParams}:Props){
- const raw=await searchParams,tab=raw.tab==="doctors"?"doctors":"centers";
+ const raw=await searchParams;
  const ID=/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i;
  const rescheduleRef=typeof raw.reschedule==="string"&&ID.test(raw.reschedule)?
   raw.reschedule:"";
@@ -23,6 +24,7 @@ export default async function HealthcareDirectory({searchParams}:Props){
   Number(raw.version):NaN;
  const canReschedule=!!rescheduleRef&&Number.isSafeInteger(rescheduleVersion)&&
   rescheduleVersion>0;
+ const tab=canReschedule||raw.tab==="doctors"?"doctors":"centers";
  const areas=await publicAreas();
  const states=areas.filter(x=>x.level==="STATE"),districts=areas.filter(x=>x.level==="DISTRICT"),
   blocks=areas.filter(x=>x.level==="BLOCK");
@@ -43,24 +45,25 @@ export default async function HealthcareDirectory({searchParams}:Props){
  const result=tab==="doctors"?
   await directory<PublicDoctor>("doctors",query):
   await directory<PublicCenter>("centers",query);
- const next=new URLSearchParams(query);
+ const view=raw.view==="list"?"list":"grid";
+ const filterHref=(category:string,layout=view)=>{const p=new URLSearchParams(query);p.delete("after");p.set("tab",tab);p.set("view",layout);if(category)p.set("category",category);else p.delete("category");if(canReschedule){p.set("reschedule",rescheduleRef);p.set("version",String(rescheduleVersion));}return "/health-network?"+p.toString();};
+ const next=new URLSearchParams(query);next.set("view",view);
  if(result.next)next.set("after",result.next);
  if(canReschedule){next.set("reschedule",rescheduleRef);
   next.set("version",String(rescheduleVersion));}
- return <HealthcarePublicChrome><main className="cg-public-shell">
+ return <HealthcarePublicChrome><main className={"cg-public-shell "+styles.directoryPage}>
   <header className="cg-public-header">
    <nav aria-label="Breadcrumb">
     <Link href="/">CareGanga</Link><span aria-hidden="true"> / </span>
     <span>Healthcare Network</span>
    </nav>
   </header>
-  <section className="cg-public-section">
+  <section className={"cg-public-section "+styles.hero}>
    <p className="cg-eyebrow">CareGanga · Healthcare Assistance</p>
    <h1>Find verified healthcare centers and doctors</h1>
-   <p className="cg-lead">Only currently approved, published partners appear here.
-    Consult current doctor schedules to request a pay-at-center appointment.
-    Online appointments require a verified doctor schedule and registered patient consent.
-    No appointment, payment or financial assistance is guaranteed by a directory listing alone.</p>
+   <p className="cg-lead">Find a verified doctor or healthcare center near you.
+    Check available consultation times before booking. Payment is due at the center
+    unless an approved online payment option is offered.</p>
    {canReschedule&&<p role="status">Choose another verified doctor and an available time.
     Your existing appointment remains confirmed until the change succeeds.</p>}
    <nav aria-label="Directory type" style={{display:"flex",flexWrap:"wrap",gap:16}}>
@@ -71,11 +74,14 @@ export default async function HealthcareDirectory({searchParams}:Props){
      (canReschedule?"&reschedule="+encodeURIComponent(rescheduleRef)+
       "&version="+rescheduleVersion:"")} aria-current={tab==="doctors"?"page":undefined}>Doctors</Link>
    </nav>
-   <p><Link href="/patients/me">My private patient profile and consent</Link></p>
+   <p><Link href="/patients/me">My patient profile</Link></p>
   </section>
-  <section className="cg-public-section" aria-label="Search the directory">
-   <form action="/health-network" method="get" style={{display:"grid",gap:12,maxWidth:720}}>
-    <input type="hidden" name="tab" value={tab}/>
+  {!canReschedule&&tab==="centers"&&<nav className={styles.categories} aria-label="Healthcare center categories">{[["","All centers"],["POLYCLINIC","Poly clinic"],["DIAGNOSTIC_CENTER","Diagnostic centre"],["DENTAL_CLINIC","Dental clinic"],["MEDICAL_LABORATORY","Medical laboratory"],["HOSPITAL","Hospital"],["NURSING_HOME","Nursing home"],["PHARMACY","Retail pharmacy"],["ORTHOPEDIC_CLINIC","Orthopedic centre"],["HOMEOPATHY_CLINIC","Homeopathy"],["AYURVEDIC_CLINIC","Ayurvedic centre"]].map(([code,label])=><Link key={code} href={filterHref(code)} aria-current={(query.get("category")??"")===code?"page":undefined}>{label}</Link>)}</nav>}
+  <div className={styles.directoryLayout}>
+  <section className={"cg-public-section "+styles.filterPanel} aria-label="Search the directory">
+   <h2 className={styles.panelTitle}>Filter {tab==="centers"?"centers":"doctors"}</h2>
+   <form action="/health-network" method="get" className={styles.filterForm}>
+    <input type="hidden" name="tab" value={tab}/><input type="hidden" name="view" value={view}/>
     {canReschedule&&<>
      <input type="hidden" name="reschedule" value={rescheduleRef}/>
      <input type="hidden" name="version" value={rescheduleVersion}/>
@@ -84,8 +90,7 @@ export default async function HealthcareDirectory({searchParams}:Props){
      <input name="q" defaultValue={typeof raw.q==="string"?raw.q:""}
       type="search" maxLength={80} placeholder="Search verified records"/>
     </label>
-    <details open={showAdvanced} style={{border:"1px solid #d7dfdb",
-       borderRadius:12,padding:12}}>
+    <details open={showAdvanced} className={styles.filters}>
      <summary style={{cursor:"pointer",fontWeight:600,padding:"8px 0"}}>
       More filters — location, center type, services and fees</summary>
      <div style={{display:"grid",gap:12,marginTop:12}}>
@@ -166,41 +171,59 @@ export default async function HealthcareDirectory({searchParams}:Props){
      </div>
     </details>
     <div style={{display:"flex",flexWrap:"wrap",gap:16,alignItems:"center"}}>
-     <button type="submit">Apply filters</button>
+     <button type="submit" className="primary">Search {tab==="centers"?"centers":"doctors"}</button>
      <Link href={"/health-network?tab="+tab+
       (canReschedule?"&reschedule="+encodeURIComponent(rescheduleRef)+
        "&version="+rescheduleVersion:"")}>Reset filters</Link>
     </div>
    </form>
   </section>
-  <section className="cg-public-section" aria-live="polite">
-   <h2>{tab==="centers"?"Published healthcare centers":"Verified professionals"}</h2>
+  <section className={"cg-public-section "+styles.results} aria-live="polite">
+   <div className={styles.resultHeader}><div><h2>{tab==="centers"?"Published healthcare centers":"Verified professionals"}</h2>{result.state==="READY"&&<p>{result.items.length} results on this page{result.next?" · More available":""}</p>}</div><nav className={styles.viewModes} aria-label="Result layout"><Link aria-current={view==="grid"?"page":undefined} href={filterHref(query.get("category")??"","grid")}>Grid</Link><Link aria-current={view==="list"?"page":undefined} href={filterHref(query.get("category")??"","list")}>List</Link></nav></div>
    {result.state==="UNAVAILABLE"?<p role="alert">Current verified directory results
      could not be checked. Please try again. No outdated listing is shown.</p>:
     result.items.length===0?<p>No currently approved listings match your search.</p>:
-    <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(min(100%,280px),1fr))",gap:16}}>
+    <div className={view==="list"?styles.list:styles.grid}>
      {tab==="centers"?
       (result.items as PublicCenter[]).map(c=><article key={c.slug}
-        style={{border:"1px solid #d7dfdb",borderRadius:12,padding:18}}>
-       <p className="cg-eyebrow">{nice(c.type)} · Verified center</p>
+        className={styles.card}>
+       {c.photo&&<div className={styles.photoFrame}>{/* eslint-disable-next-line @next/next/no-img-element */}<img className={styles.photo} loading="lazy" decoding="async" alt={c.photo.altText} src={"/healthcare/centers/"+encodeURIComponent(c.slug)+"/photos/"+encodeURIComponent(c.photo.fileRef)}/></div>}
+        <div className={styles.identity}>{!c.photo&&<span className={styles.avatar} aria-hidden="true">+</span>}
+        <p className="cg-eyebrow">{nice(c.type)} · Verified center</p></div>
        <h3><Link href={"/healthcare/centers/"+encodeURIComponent(c.slug)}>{c.centerName}</Link></h3>
        <p>{c.providerName}</p><p>{c.address}, {c.pinCode}</p>
-       <Link href={"/healthcare/centers/"+encodeURIComponent(c.slug)}>View center details</Link>
+        {!!c.declaredServices.length&&<div className={styles.tags} aria-label="Declared center services">{c.declaredServices.map(s=><span key={s}>{s.replaceAll("_"," ").toLowerCase()}</span>)}</div>}
+       <div className={styles.actions}>
+        <Link className="cg-health-link-action primary" href={"/healthcare/centers/"+encodeURIComponent(c.slug)}>View center details</Link>
+        {typeof c.latitude==="number"&&Number.isFinite(c.latitude)&&Math.abs(c.latitude)<=90&&
+         typeof c.longitude==="number"&&Number.isFinite(c.longitude)&&Math.abs(c.longitude)<=180&&
+         <a href={"https://www.google.com/maps/search/?api=1&query="+encodeURIComponent(c.latitude+","+c.longitude)}
+          target="_blank" rel="noopener noreferrer">Directions</a>}
+       </div>
       </article>):
       (result.items as PublicDoctor[]).map(d=><article
         key={d.doctorRef+":"+d.centerSlug}
-        style={{border:"1px solid #d7dfdb",borderRadius:12,padding:18}}>
-       <p className="cg-eyebrow">Verified doctor · {d.centerName}</p>
+        className={styles.card}>
+       <div className={styles.identity}><span className={styles.avatar} aria-hidden="true">+</span>
+        <p className="cg-eyebrow">Verified doctor · {d.centerName}</p></div>
        <h3><Link href={"/health-network/doctors/"+encodeURIComponent(d.doctorRef)}>
         {d.doctorName}</Link></h3>
        <p>{d.specialties.join(", ")||"Specialty not listed"}</p>
+       {d.qualifications.length>0&&<p>{d.qualifications.join(", ")}</p>}
+       {Number.isInteger(d.experienceYears)&&d.experienceYears>=0&&
+        <p>{d.experienceYears} {d.experienceYears===1?"year":"years"} of experience</p>}
        <p>{d.address}, {d.pinCode}</p>
-       <p>{d.fee?("Current in-person consultation: "+rupee(d.fee.amountMinor)):
-         "Consultation fee not currently published"}</p>
-       <Link href={"/health-network/doctors/"+encodeURIComponent(d.doctorRef)}>
-        View verified doctor</Link>
-       {canReschedule&&<p><Link href={"/health-network/doctors/"+
-        encodeURIComponent(d.doctorRef)+"/schedule?reschedule="+
+       <p className={styles.fee}><strong>{d.fee?rupee(d.fee.amountMinor):"Fee not listed"}</strong>
+        {d.fee?" · In-person consultation":""}</p>
+       <div className={styles.actions}>
+        <Link href={"/health-network/doctors/"+encodeURIComponent(d.doctorRef)}>
+         View doctor profile</Link>
+        {!canReschedule&&d.fee&&<Link className="cg-health-link-action primary"
+         href={"/health-network/doctors/"+encodeURIComponent(d.doctorRef)+"/schedule?center="+encodeURIComponent(d.centerSlug)}>
+         Check appointment times</Link>}
+       </div>
+       {canReschedule&&d.fee&&<p><Link href={"/health-network/doctors/"+
+        encodeURIComponent(d.doctorRef)+"/schedule?center="+encodeURIComponent(d.centerSlug)+"&reschedule="+
         encodeURIComponent(rescheduleRef)+"&version="+rescheduleVersion}>
         Choose a time with this doctor</Link></p>}
       </article>)}
@@ -209,6 +232,7 @@ export default async function HealthcareDirectory({searchParams}:Props){
     <Link href={"/health-network?tab="+tab+"&"+next.toString()}>Next results</Link>
    </p>}
   </section>
+  </div>
   <section className="cg-public-section">
    <p>Listings do not imply availability, a booking, a benefit amount, or a medical recommendation.</p>
   </section>

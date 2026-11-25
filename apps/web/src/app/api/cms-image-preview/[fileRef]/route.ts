@@ -5,12 +5,13 @@ type Ctx={params:Promise<{fileRef:string}>};
 const missing=()=>new Response(null,{status:404,headers:{"Cache-Control":"private, no-store"}});
 export async function GET(_req:Request,ctx:Ctx){
  const {fileRef}=await ctx.params;
- if(!UUID.test(fileRef))return missing();
+ const release=/^release-([a-z-]{1,45})$/.exec(fileRef);
+ if(!UUID.test(fileRef)&&!release)return missing();
  const session=(await cookies()).get("cg_staff_session")?.value;
  const backend=process.env.BACKEND_URL;
  if(!session||!backend)return missing();
  try{
-  const res=await fetch(new URL("/api/cms/media/preview/"+fileRef,backend),{
+  const res=await fetch(new URL(release?"/api/cms/release-media/preview/"+release[1]:"/api/cms/media/preview/"+fileRef,backend),{
    method:"GET",cache:"no-store",headers:{Authorization:"Bearer "+session},
    signal:AbortSignal.timeout(12000)});
   if(!res.ok)return missing();

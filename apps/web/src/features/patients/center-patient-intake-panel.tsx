@@ -50,7 +50,7 @@ export function CenterPatientIntakePanel({centerRef}:{centerRef:string}){
  },[]);
  useEffect(()=>{
   let alive=true;
-  reset();setReady(false);setAllowed(false);
+  reset();setReady(false);setAllowed(false);setPolicy({available:false,version:null,text:null});
   if(!UUID.test(centerRef))return()=>{alive=false;};
   void Promise.all([
    request<Permission>("/api/access/effective"),
@@ -75,6 +75,7 @@ export function CenterPatientIntakePanel({centerRef}:{centerRef:string}){
   if(busy||(uncertain&&!retrying)||!allowed||!policy.available||!attested||!first.trim()||
    !last.trim()||(dependentCare&&(!guardianIdentity||!guardianAuthority||!guardianConsent)))return;
   const input=payload(),digest=JSON.stringify(input);
+  if(uncertain&&pending.current?.digest!==digest){setMessage("Retry the original intake without changing its details.");return;}
   if(pending.current?.digest!==digest)
    pending.current={digest,requestKey:crypto.randomUUID()};
   setBusy(true);setMessage("");
@@ -165,7 +166,7 @@ export function CenterPatientIntakePanel({centerRef}:{centerRef:string}){
     <button type="button" disabled={claimBusy||!claimChecked}
      onClick={()=>void issueClaim(true)}>Replace lost/expired claim code</button>
    </section>
-   <button type="button" onClick={reset}>Register another person</button>
+   <button type="button" disabled={claimBusy} onClick={reset}>Register another person</button>
   </div>:
   <div style={{display:"grid",gap:12,maxWidth:650}}>
    {!policy.available?<p role="alert">Foundation-approved consent is not configured.

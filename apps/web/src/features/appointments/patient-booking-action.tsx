@@ -180,7 +180,7 @@ export function PatientBookingAction(p:Props){
      return;
     }
     if(original?.status==="CONSUMED"){
-     setMessage("This hold was used but its booking was not confirmed by the request lookup. Recheck the same request or contact the center.");
+     setUncertain(true);setMessage("This hold was used but its booking was not confirmed by the request lookup. Recheck the same request or contact the center.");
      return;
     }
     if(original?.status==="EXPIRED"||original?.status==="CANCELLED"){
@@ -196,15 +196,15 @@ export function PatientBookingAction(p:Props){
    }
    setMessage("No original request key is available. Refresh your selected time.");
   }catch(e){
-   setMessage(e instanceof Error?e.message:"The original booking request is still uncertain.");
+   setUncertain(true);setMessage(e instanceof Error?e.message:"The original booking request is still uncertain.");
   }finally{setBusy(false);}
  }
- return <div style={{border:"1px solid #d7dfdb",padding:12,borderRadius:12,marginTop:8}}>
-  <p style={{margin:"0 0 8px"}}><strong>{p.doctorName}</strong> · {p.centerName}</p>
+ return <div className="cg-health-booking-summary">
+  <h3 style={{margin:"0 0 8px"}}>{p.doctorName}</h3>
+  <p style={{margin:"0 0 8px"}}>{p.centerName}</p>
   <p style={{margin:"0 0 8px"}}>{new Date(p.startAt).toLocaleString("en-IN",{
    timeZone:p.timeZone,dateStyle:"medium",timeStyle:"short"})} ({p.timeZone})</p>
-  <p style={{margin:"0 0 8px"}}>Approved consultation fee: {currency(p.feeMinor)} ·
-   <strong> Pay at center</strong>. An actual Foundation contribution quote is shown before confirmation. No payment is collected online.</p>
+  <div className="cg-health-amount">Consultation fee <strong>{currency(p.feeMinor)}</strong></div><p>Pay at center. Online payment is checked after the original booking and contribution are accepted.</p>
   {!!message&&<p role="status" aria-live="polite">{message}</p>}
    {!confirmed&&!uncertain&&!review&&<label style={{display:"grid",gap:4,marginBlock:8}}>
     Reason for consultation (optional, private)
@@ -227,29 +227,32 @@ export function PatientBookingAction(p:Props){
     <Link href="/patients/me">My patient profile</Link>
    </div>:hold?(review?
     <div className="form-section" aria-label="Review actual consultation before confirming">
-     <h3>Review consultation before booking</h3>
+     <h3>Booking summary &amp; payment</h3>
      <p>Doctor: <strong>{p.doctorName}</strong></p>
      <p>Healthcare center: <strong>{p.centerName}</strong></p>
      <p>Consultation time: {new Date(p.startAt).toLocaleString("en-IN",{
       timeZone:p.timeZone,dateStyle:"medium",timeStyle:"short"})}</p>
-     <p>Approved consultation fee: <strong>{currency(hold.consultationFeeMinor)}</strong>.
-      Your applicable Foundation support and patient amount are verified separately below.</p>
+     <p>Consultation fee: <strong>{currency(hold.consultationFeeMinor)}</strong></p>
+     <p role="status">Reserved until {new Date(hold.expiresAt).toLocaleString("en-IN")} — not yet booked.</p>
+     <h4>Foundation assistance &amp; patient amount</h4>
      <ConsultationContribution holdRef={hold.holdRef}/>
      <p>Optional private consultation reason: {reasonForVisit.trim()?
       "Included in the private booking":"Not provided"}.</p>
      <button type="button" className="primary" disabled={busy}
       onClick={()=>void confirm()}>
-      Confirm reviewed appointment — pay at center</button>
+      Confirm appointment — pay at center</button>
      <button type="button" disabled={busy}
       onClick={()=>setReview(false)}>Back to edit private reason</button>
-     <p>This hold expires at {new Date(hold.expiresAt).toLocaleString("en-IN")}.
-      You are not booked until confirmation succeeds.</p>
+
     </div>:
-    <button type="button" disabled={busy}
-     onClick={()=>setReview(true)}>Review doctor, center, time and fee</button>):
-   <button type="button" disabled={busy} onClick={()=>void makeHold()}>
+    <button type="button" className="primary" disabled={busy}
+     onClick={()=>setReview(true)}>Review appointment &amp; fee</button>):
+   <button type="button" className="primary" disabled={busy} onClick={()=>void makeHold()}>
     {busy?"Checking…":"Reserve this appointment time"}</button>}
-  <section aria-label="Authorize reception staff to book">
+  {hold&&!confirmed&&!uncertain&&<button type="button" disabled={busy} onClick={()=>void checkOriginal()}>Check current reservation status</button>}
+  {!confirmed&&!uncertain&&!hold&&<details>
+   <summary>Need help booking at reception?</summary>
+   <section aria-label="Authorize reception staff to book">
    <p>If you are booking in person at this center, you can authorize the assigned
     receptionist to make one reservation. Your account must already be identity-verified.</p>
    <button type="button" disabled={staffBusy}
@@ -263,5 +266,6 @@ export function PatientBookingAction(p:Props){
     Expires {new Date(staffCode.expiresAt).toLocaleTimeString("en-IN")}.
     One appointment hold only.</p>}
   </section>
+  </details>}
  </div>;
 }
