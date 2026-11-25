@@ -12,19 +12,19 @@ import {currentConsultationBenefits,formatRupees} from "../healthcare-assistance
 /** One SSR source for each approved Foundation editorial route.
  * The Home publication supplies only shared original CMS footer content.
  */
-export async function editorialMetadata(slug:string):Promise<Metadata>{
+export async function editorialMetadata(slug:string,expectedKind?:"ARTICLE"|"POLICY"):Promise<Metadata>{
  const r=await publishedCmsPage(slug);
- if(r.state!=="PUBLISHED")return {title:"CareGanga Foundation",robots:{index:false,follow:false}};
+ if(r.state!=="PUBLISHED"||(expectedKind&&r.page.kind!==expectedKind))return {title:"CareGanga Foundation",robots:{index:false,follow:false}};
  return {title:r.page.seoTitle,description:r.page.seoDescription,
   alternates:{canonical:r.page.canonicalPath},
   robots:{index:true,follow:true}};
 }
-export async function CmsEditorialRoute({slug,extra}:{slug:string;extra?:ReactNode}){
+export async function CmsEditorialRoute({slug,extra,expectedKind}:{slug:string;extra?:ReactNode;expectedKind?:"ARTICLE"|"POLICY"}){
  const [page,navigation,home,labOffers,benefits]=await Promise.all([
   publishedCmsPage(slug),publishedCmsNavigation(),publishedCmsPage("home"),
   slug==="healthcare"?publicLabOffers(new URLSearchParams()):Promise.resolve(null),
   slug==="healthcare"?currentConsultationBenefits():Promise.resolve(null)]);
- if(page.state==="NOT_PUBLISHED")notFound();
+ if(page.state==="NOT_PUBLISHED"||(page.state==="PUBLISHED"&&expectedKind&&page.page.kind!==expectedKind))notFound();
  if(page.state!=="PUBLISHED")return <UnavailablePage title="Foundation content temporarily unavailable" description="We could not verify the currently approved public information." linkHref="/" linkLabel="Return to the homepage" />;
  return <CmsPublicPage page={page.page} navigation={navigation}
   siteFooter={home.state==="PUBLISHED"?
