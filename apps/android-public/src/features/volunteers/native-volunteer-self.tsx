@@ -1,3 +1,4 @@
+import {usePublicIntro} from "../cms/use-public-intro";
 import {useCallback,useEffect,useRef,useState} from "react";
 import {ActivityIndicator,AppState,Pressable,ScrollView,StyleSheet,Text,TextInput,View} from "react-native";
 import {SafeAreaView} from "react-native-safe-area-context";
@@ -23,6 +24,7 @@ const from=(a:CG04VolunteerApplication):Draft=>({firstName:a.firstName,lastName:
 const readable=(v:string)=>v.replaceAll("_"," ").toLowerCase().replace(/\b[a-z]/g,c=>c.toUpperCase());
 const steps=["Personal","Contact & location","Interests & availability","Review & submit"] as const;
 export function NativeVolunteerSelf({onExit}:{onExit:()=>void}){
+ const intro=usePublicIntro("VOLUNTEER");
  const [tab,setTab]=useState<"APPLICATION"|"VERIFY">("APPLICATION"),[verifyCode,setVerifyCode]=useState(""),[verifyStatus,setVerifyStatus]=useState<"IDLE"|"CHECKING"|"ACTIVE"|"NOT_VALID"|"UNAVAILABLE">("IDLE");
  const [token,setToken]=useState<string|null>(null),[verified,setVerified]=useState(false),[loading,setLoading]=useState(true),[busy,setBusy]=useState(false);
  const [message,setMessage]=useState(""),[apps,setApps]=useState<CG04VolunteerApplication[]>([]),[selected,setSelected]=useState<CG04VolunteerApplication|null>(null);
@@ -134,8 +136,7 @@ export function NativeVolunteerSelf({onExit}:{onExit:()=>void}){
  const editable=!selected||["DRAFT","RETURNED"].includes(selected.status);
  return <SafeAreaView style={s.page}><ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={s.content}>
   {button("Back to CareGanga Foundation",onExit)}
-  <View style={s.hero}><Text style={s.heroOverline}>VOLUNTEER WITH US</Text><Text accessibilityRole="header" style={s.heroTitle}>Make a difference with CareGanga</Text>
-   <Text style={s.heroText}>Four original application steps. Actual verified documents and a distinct Foundation approval are required.</Text></View>
+  <View style={s.hero}>{!!intro?.eyebrow&&<Text style={s.heroOverline}>{intro.eyebrow}</Text>}<Text accessibilityRole="header" style={s.heroTitle}>{intro?.heading??"Volunteer registration"}</Text>{!!intro?.body&&<Text style={s.heroText}>{intro.body}</Text>}{intro?.highlights.map((line,i)=><Text key={i} style={s.heroText}>{line}</Text>)}<Text style={s.heroText}>Your application and evidence remain private until independently reviewed.</Text></View>
   <View style={s.row}>{button("Application Form",()=>setTab("APPLICATION"),false,tab==="APPLICATION")}
    {button("Verify Volunteer",()=>setTab("VERIFY"),false,tab==="VERIFY")}</View>
   {tab==="VERIFY"?<View style={s.card}>
