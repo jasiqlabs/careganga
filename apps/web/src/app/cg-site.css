@@ -662,3 +662,15 @@
 .cg-site-resource-hero>p:last-child{max-width:68ch;margin-inline:auto;color:#4a6258}
 @media(max-width:900px){.cg-site-page-impact{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:600px){.cg-site-page-impact{width:calc(100% - 1.5rem);grid-template-columns:1fr}}
+
+/* Keep slide indicators compact visually while making their hit areas usable. */
+.cg-site-hero:has(.cg-site-slide-controls){flex-wrap:wrap;align-content:flex-end;justify-content:space-between;column-gap:1rem;row-gap:.75rem}
+.cg-site-hero:has(.cg-site-slide-controls) .cg-site-hero-content{padding-bottom:0}
+.cg-site-slide-controls{position:relative;inset:auto;margin-left:auto;max-width:100%;min-width:0;gap:.25rem}
+.cg-site-slide-dots{flex-wrap:wrap;justify-content:center;gap:0;min-width:0}
+.cg-site-slide-dots button,.cg-site-slide-dots button[aria-pressed="true"]{display:grid;place-items:center;flex:0 0 2.75rem;width:2.75rem;height:2.75rem;background:transparent;border-radius:.4rem}
+.cg-site-slide-dots button::before{content:"";display:block;width:.65rem;height:.65rem;border-radius:999px;background:#fff9}
+.cg-site-slide-dots button[aria-pressed="true"]::before{width:1.6rem;background:#f04447}
+.cg-site-slide-controls button:focus-visible,.cg-site-hero-cta:focus-visible{outline:2px solid white;outline-offset:2px;box-shadow:0 0 0 4px #194a3a}
+.cg-site-slide-controls>button{flex-shrink:0}
+@media(max-width:760px){.cg-site-hero:has(.cg-site-slide-controls){align-content:center}.cg-site-slide-controls{margin-inline:auto}}
