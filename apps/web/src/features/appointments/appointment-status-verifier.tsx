@@ -21,14 +21,13 @@ export function AppointmentStatusVerifier(){
   }catch{setResultType("unavailable");setStatus("This code could not be checked. Try again later.");}
   finally{setBusy(false);}
  }
- return <div className="cg-slip-verifier">
+ return <form className="cg-slip-verifier" onSubmit={e=>{e.preventDefault();void verify();}}>
   <label>QR status code
-   <input value={token} autoCapitalize="characters" autoComplete="off" spellCheck={false} disabled={busy} maxLength={28}
-    onChange={e=>{setToken(e.target.value.toUpperCase());setStatus("");setResultType(null);}}
+   <input value={token} autoCapitalize="characters" autoComplete="off" spellCheck={false} disabled={busy} maxLength={64}
+    onChange={e=>{setToken(e.target.value.trim().toUpperCase());setStatus("");setResultType(null);}}
     placeholder="CGV-XXXXXXXXXXXXXXXXXXXXXXXX"/></label>
-  <button className="primary" type="button" disabled={busy||!/^CGV-[A-F0-9]{24}$/.test(token.trim())}
-   onClick={()=>void verify()}>{busy?"Checking…":"Check slip validity"}</button>
+  <button className="primary" type="submit" disabled={busy||!/^CGV-[A-F0-9]{24}$/.test(token.trim())}>{busy?"Checking…":"Check slip validity"}</button>
   {status&&<p className="cg-slip-result" data-result={resultType} role="status" aria-live="polite">{status}</p>}
   <p>Do not use this checker as proof of patient identity or as a payment receipt.</p>
- </div>;
+ </form>;
 }
