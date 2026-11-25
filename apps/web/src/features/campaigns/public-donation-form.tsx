@@ -6,11 +6,17 @@ type CorrectionRow={correctionNumber:string;originalNumber:string;amountMinor:st
 type HistoricalDonation={donationNumber:string;proofIndex:number;createdAt:string;
  grossMinor:string;refundedMinor:string;netReceivedMinor:string;currency:string;
  status:string;receiptStatus:string;receiptNumber:string|null};
-const input={display:"block",width:"100%",minHeight:44,borderRadius:9,padding:12,
+const input={display:"block",width:"100%",minHeight:48,borderRadius:9,padding:12,
  border:"1px solid #d4d9e1",background:"white",color:"#243349"} as const;
 const label={display:"grid",gap:6,fontSize:14,fontWeight:600} as const;
-const button={background:"#0a9f69",color:"white",padding:"12px 18px",minHeight:44,
+const button={background:"#194a3a",color:"white",padding:"12px 18px",minHeight:48,
  border:0,borderRadius:9,cursor:"pointer"} as const;
+const validMinor=(value:unknown):value is string=>typeof value==="string"&&/^\d+$/.test(value)&&value.length<=30;
+function formatMinor(value:unknown){
+ if(!validMinor(value))return "Unavailable";
+ const minor=BigInt(value);
+ return (minor/100n).toString()+"."+(minor%100n).toString().padStart(2,"0");
+}
 async function api<T>(route:string,value:object):Promise<T>{
  const res=await fetch("/api/public/donations"+route,{method:"POST",cache:"no-store",
   headers:{"Content-Type":"application/json"},body:JSON.stringify(value),signal:AbortSignal.timeout(18000)});
@@ -47,7 +53,8 @@ export function PublicDonationForm({campaignSlug=null}:{campaignSlug?:string|nul
   try{
    const out=await api<Outcome>("",{requestKey:intentKey.current,campaignSlug,amount,consent:true,
     donor:{name,mobile,email,pan,address,geography,remarks,recurringIntent,paymentReferenceNote}});
-   setProof(out.statusToken);setStatus(out.status);setReceived(out.status==="RECEIVED_POSTED");
+   if(typeof out.statusToken!=="string"||!out.statusToken||typeof out.status!=="string")throw Error("Donation request cannot be confirmed.");
+   setProof(out.statusToken);setStatus(out.status);setReceived(false);
    if(!linkKey.current)linkKey.current=crypto.randomUUID();
   }catch(e){setError((e instanceof Error?e.message:"Donation result uncertain.")+
    " Keep the same details and retry; do not make another payment.");}
@@ -59,10 +66,10 @@ export function PublicDonationForm({campaignSlug=null}:{campaignSlug?:string|nul
   setBusy(true);setError("");
   try{
    const out=await api<Payment>("/payment-link",{statusToken:proof,requestKey:linkKey.current});
-   setLinkState(out.status);
+   setCheckout("");setLinkState(out.status);
    if(out.status==="LINK_READY"&&out.checkoutUrl){
     const u=new URL(out.checkoutUrl);
-    if(u.protocol!=="https:"||u.hostname!=="rzp.io")throw Error("The secure payment link could not be verified.");
+    if(u.protocol!=="https:"||u.hostname!=="rzp.io"||u.username||u.password||u.port)throw Error("The secure payment link could not be verified.");
     setCheckout(u.toString());
    }else setError(out.message??"Payment link is not confirmed. Check status before trying again.");
   }catch(e){setError(e instanceof Error?e.message:"Payment outcome uncertain.");}
@@ -73,10 +80,12 @@ export function PublicDonationForm({campaignSlug=null}:{campaignSlug?:string|nul
   setBusy(true);setError("");
   try{const x=await api<{status:string;received:boolean;receiptStatus:string;
     netReceivedMinor:string;refundedMinor:string;refundPending:boolean;refundStatus:string}>("/status",{statusToken:proof});
-   setStatus(x.status);setReceived(x.received);setReceiptStatus(x.receiptStatus);
+   if(typeof x.status!=="string"||typeof x.received!=="boolean"||typeof x.receiptStatus!=="string"||!validMinor(x.netReceivedMinor)||!validMinor(x.refundedMinor)||typeof x.refundPending!=="boolean"||typeof x.refundStatus!=="string")throw Error("Donation status cannot be confirmed.");
+   if(x.received||!["REQUESTED","LINK_READY"].includes(x.status))setCheckout("");
+   setStatus(x.status);setReceived(x.received);setReceiptStatus(x.received?x.receiptStatus:"NOT_ISSUED");
    setNetMinor(x.netReceivedMinor);setRefundMinor(x.refundedMinor);
    setRefundPending(x.refundPending);setRefundStatus(x.refundStatus);
-  }catch(e){setError(e instanceof Error?e.message:"Donation status currently unavailable.");}
+  }catch(e){setCheckout("");setStatus("STATUS_UNAVAILABLE");setReceived(false);setReceiptStatus("NOT_ISSUED");setReceiptMessage("");setCorrections([]);setCorrectionProof("");setHistory([]);setHistoryTokens([]);setError(e instanceof Error?e.message:"Donation status currently unavailable.");}
   finally{setBusy(false);}
  };
  const loadHistory=async()=>{
@@ -87,8 +96,9 @@ export function PublicDonationForm({campaignSlug=null}:{campaignSlug?:string|nul
    if(tokens.length>20||new Set(tokens).size!==tokens.length)
     throw new Error("Enter up to 20 distinct original private donation proofs.");
    const result=await api<{items:HistoricalDonation[]}>("/history",{statusTokens:tokens});
+   if(!Array.isArray(result.items)||result.items.some(item=>!item||typeof item.donationNumber!=="string"||typeof item.status!=="string"||typeof item.receiptStatus!=="string"||!validMinor(item.netReceivedMinor)||!Number.isInteger(item.proofIndex)||item.proofIndex<0||item.proofIndex>=tokens.length))throw Error("Private donation history cannot be confirmed.");
    setHistoryTokens(tokens);setHistory(result.items);
-  }catch(e){setError(e instanceof Error?e.message:"Private history unavailable.");}
+  }catch(e){setHistory([]);setHistoryTokens([]);setError(e instanceof Error?e.message:"Private history unavailable.");}
   finally{setBusy(false);}
  };
  const requestReceiptMessage=async(channel:"EMAIL"|"WHATSAPP")=>{
@@ -122,8 +132,9 @@ export function PublicDonationForm({campaignSlug=null}:{campaignSlug?:string|nul
   try{
    const result=await api<{items:CorrectionRow[]}>("/receipt/corrections",
     {statusToken:historyToken});
+   if(!Array.isArray(result.items)||result.items.some(item=>!item||typeof item.correctionNumber!=="string"||typeof item.originalNumber!=="string"||!validMinor(item.amountMinor)))throw Error("Refund corrections cannot be confirmed.");
    setCorrections(result.items);setCorrectionProof(historyToken);
-  }catch(e){setError(e instanceof Error?e.message:"Protected corrections unavailable.");}
+  }catch(e){setCorrections([]);setCorrectionProof("");setError(e instanceof Error?e.message:"Protected corrections unavailable.");}
   finally{setBusy(false);}
  };
  const downloadCorrection=async(number:string)=>{
@@ -161,34 +172,34 @@ export function PublicDonationForm({campaignSlug=null}:{campaignSlug?:string|nul
   }catch(e){setError(e instanceof Error?e.message:"Receipt download unavailable.");}
   finally{setBusy(false);}
  };
- return <section style={{border:"1px solid #e0e5e9",borderRadius:16,padding:20,
+ return <section className="cg-public-donation-form" style={{border:"1px solid #e0e5e9",borderRadius:16,padding:20,
   display:"grid",gap:15,maxWidth:640,background:"#fffefb"}} aria-label="CareGanga donation">
   <h2 style={{margin:0}}>Support CareGanga Foundation</h2>
   <p style={{margin:0,fontSize:14}}>Payment links and pending requests are not receipts.
    The Foundation records money as received only after verified finance posting.</p>
   <form onSubmit={e=>void create(e)} style={{display:"grid",gap:12}}>
-   <label style={label}>Donation amount in rupees<input style={input} value={amount} required
+   <label style={label}>Donation amount in rupees<input style={input} value={amount} readOnly={!!intentKey.current} required
     inputMode="decimal" placeholder="500.00" maxLength={16}
     onChange={e=>{if(!intentKey.current)setAmount(e.target.value);}}/></label>
-   <label style={label}>Name (optional)<input style={input} value={name} maxLength={120}
+   <label style={label}>Name (optional)<input style={input} readOnly={!!intentKey.current} value={name} maxLength={120}
     onChange={e=>{if(!intentKey.current)setName(e.target.value);}}/></label>
-   <label style={label}>Mobile (optional)<input style={input} value={mobile} maxLength={20}
+   <label style={label}>Mobile (optional)<input style={input} readOnly={!!intentKey.current} value={mobile} maxLength={20}
     onChange={e=>{if(!intentKey.current)setMobile(e.target.value);}}/></label>
-   <label style={label}>Email (optional)<input style={input} type="email" value={email} maxLength={254}
+   <label style={label}>Email (optional)<input style={input} readOnly={!!intentKey.current} type="email" value={email} maxLength={254}
     onChange={e=>{if(!intentKey.current)setEmail(e.target.value);}}/></label>
    <label style={label}>Address (optional)<textarea style={{...input,minHeight:70}}
-    value={address} maxLength={300} onChange={e=>{if(!intentKey.current)setAddress(e.target.value);}}/></label>
+    readOnly={!!intentKey.current} value={address} maxLength={300} onChange={e=>{if(!intentKey.current)setAddress(e.target.value);}}/></label>
    <label style={label}>PAN (optional, private Foundation records)
-    <input style={input} value={pan} maxLength={10} autoCapitalize="characters"
+    <input style={input} readOnly={!!intentKey.current} value={pan} maxLength={10} autoCapitalize="characters"
      onChange={e=>{if(!intentKey.current)setPan(e.target.value.toUpperCase());}}/></label>
    <label style={label}>City / area (optional)
-    <input style={input} value={geography} maxLength={100}
+    <input style={input} readOnly={!!intentKey.current} value={geography} maxLength={100}
      onChange={e=>{if(!intentKey.current)setGeography(e.target.value);}}/></label>
    <label style={label}>Donation remarks (optional)
-    <textarea style={{...input,minHeight:64}} value={remarks} maxLength={300}
+    <textarea style={{...input,minHeight:64}} readOnly={!!intentKey.current} value={remarks} maxLength={300}
      onChange={e=>{if(!intentKey.current)setRemarks(e.target.value);}}/></label>
    <label style={label}>Payment reference note (optional, unverified)
-    <input style={input} value={paymentReferenceNote} maxLength={100}
+    <input style={input} readOnly={!!intentKey.current} value={paymentReferenceNote} maxLength={100}
      onChange={e=>{if(!intentKey.current)setPaymentReferenceNote(e.target.value);}}/>
    </label>
    <label style={{display:"flex",alignItems:"center",gap:9}}>
@@ -208,17 +219,17 @@ export function PublicDonationForm({campaignSlug=null}:{campaignSlug?:string|nul
   {error&&<p role="alert" style={{color:"#9e3030"}}>{error}</p>}
   {proof&&<div style={{display:"grid",gap:12}}>
    <p role="status">Donation status: <strong>{status.replaceAll("_"," ").toLowerCase()}</strong>.
-    {received?" Verified received.":" Payment is not yet confirmed."}</p>
+    {received?" Verified received.":status==="RECEIVED_POSTED"?" Check current status to confirm the received amount and receipt.":" Payment is not yet confirmed."}</p>
    <p style={{fontSize:13}}>Save this private status proof somewhere safe. Do not post it publicly.</p>
    <textarea aria-label="Private donation status proof" rows={2} style={{...input,fontFamily:"monospace",fontSize:12}}
     readOnly value={proof}/>
    {!received&&!checkout&&["REQUESTED","LINK_READY"].includes(status)&&<button type="button" style={button} disabled={busy} onClick={()=>void payment()}>
     Generate verified payment link</button>}
-   {checkout&&<a href={checkout} target="_blank" rel="noopener noreferrer"
+   {checkout&&!received&&["REQUESTED","LINK_READY"].includes(status)&&<a href={checkout} target="_blank" rel="noopener noreferrer"
     referrerPolicy="no-referrer">Open secure payment page</a>}
    {status==="PAYMENT_PENDING"&&<p role="status">Your bank or other payment is awaiting original finance verification. Do not create another payment link.</p>}
    {linkState==="OUTCOME_UNKNOWN"&&<p role="alert">Payment-link outcome is uncertain. Do not create another request.</p>}
-   {received&&<p>Verified net received: ₹{(BigInt(netMinor)/100n).toString()}.
+   {received&&<p>Verified net received: ₹{formatMinor(netMinor)}.
     {refundMinor!=="0"?" Confirmed refund(s) have been applied.":""}
     {refundPending?" Refund requested — payout not yet verified.":""}
     {" "}Receipt: {receiptStatus.replaceAll("_"," ").toLowerCase()}.</p>}
@@ -244,7 +255,7 @@ export function PublicDonationForm({campaignSlug=null}:{campaignSlug?:string|nul
    {corrections.map(item=><div key={item.correctionNumber} style={{display:"grid",gap:6,
     border:"1px solid #d4d9e1",borderRadius:8,padding:10}}>
     <strong>{item.correctionNumber} — linked to original receipt {item.originalNumber}</strong>
-    <span>Verified refund: ₹{(BigInt(item.amountMinor)/100n).toString()}</span>
+    <span>Verified refund: ₹{formatMinor(item.amountMinor)}</span>
     <button type="button" style={button} disabled={busy}
      onClick={()=>void downloadCorrection(item.correctionNumber)}>
      Download separate verified correction</button>
@@ -261,7 +272,7 @@ export function PublicDonationForm({campaignSlug=null}:{campaignSlug?:string|nul
     {history.map(item=><div key={item.donationNumber}
       style={{display:"grid",gap:5,padding:10,border:"1px solid #d4d9e1",borderRadius:8}}>
       <strong>{item.donationNumber}</strong>
-      <span>{item.status.replaceAll("_"," ").toLowerCase()} · {item.currency} · verified net {(BigInt(item.netReceivedMinor)/100n).toString()}</span>
+      <span>{item.status.replaceAll("_"," ").toLowerCase()} · {item.currency} · verified net {formatMinor(item.netReceivedMinor)}</span>
       <span>Receipt: {item.receiptNumber??item.receiptStatus.replaceAll("_"," ").toLowerCase()}</span>
       {item.receiptStatus==="ISSUED"&&historyTokens[item.proofIndex]&&
        <button type="button" style={button} disabled={busy}
