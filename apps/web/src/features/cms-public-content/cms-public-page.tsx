@@ -188,10 +188,10 @@ export function CmsPublicShell({children,navigation,siteFooter}:{children:ReactN
  * Only vetted CG-18 published DTO reaches this view; no private author data.
  * Admin blue design tokens are intentionally not used for public appearance.
  */
-export function CmsPublicPage({page,navigation,siteFooter,children,mediaScope,sidebar,contactForm}:{
+export function CmsPublicPage({page,navigation,siteFooter,children,mediaScope,sidebar,contactForm,projectFilters,projectCategory}:{
  page:PublicCmsPage;navigation?:PublicCmsNavigation|null;
  siteFooter?:Record<string,unknown>|null;children?:ReactNode;
- mediaScope?:CmsMediaType;sidebar?:ReactNode;contactForm?:ReactNode}){
+ mediaScope?:CmsMediaType;sidebar?:ReactNode;contactForm?:ReactNode;projectFilters?:ReactNode;projectCategory?:string}){
  const sections=[...page.sections].sort((a,b)=>a.order-b.order);
  const assets=page.assets??[];
  const ownFooter=sections.find(x=>x.kind==="SITE_FOOTER")?.fields;
@@ -264,7 +264,7 @@ export function CmsPublicPage({page,navigation,siteFooter,children,mediaScope,si
         /^cg-camp-[0-9]{8}$/.test(String((x as Record<string,unknown>).slug))) as PublicCampaign[]:[];
       return <CampaignPublicCards key={key} heading={text(section.fields.heading)||"Campaigns"} cards={cards}/>;
      }
-     if(section.kind==="PROJECT_TEASER"){const cards=Array.isArray(section.fields.cards)?section.fields.cards:[];return <section key={key} className="cg-site-content cg-site-project-section"><h2>{text(section.fields.heading)||"Projects"}</h2>{!cards.length?<div className="cg-site-empty" role="status"><strong>No projects to display yet</strong><p>Published project updates will appear here.</p>{page.slug==="home"&&navigation?.publishedRoutes?.some(v=>v.path==="/our-work")&&<Link href="/our-work" className="cg-site-action">Explore our work</Link>}</div>:cards.map((item,j)=>{if(!item||typeof item!=="object")return null;const p=item as Record<string,unknown>;return <article key={j} className="cg-site-project-card">{/^\/api\/public\/content\/media\/[a-f0-9-]{36}$/i.test(text(p.coverSrc))&&<img src={text(p.coverSrc)} alt={text(p.title)} loading="lazy" className="cg-site-project-cover"/>}<div className="cg-site-project-copy"><p className="cg-site-eyebrow">{text(p.category)} · {text(p.status)==="PLANNED"?"Planned":"Active"}</p><h3>{text(p.title)}</h3><p>{text(p.area)}</p><p>{text(p.summary)}</p>{text(p.launch)&&<p>Planned start: {text(p.launch)}</p>}</div></article>;})}</section>;}
+     if(section.kind==="PROJECT_TEASER"){const cards=Array.isArray(section.fields.cards)?section.fields.cards:[];return <section key={key} className="cg-site-content cg-site-project-section">{(heroes.length>0||page.kind!=="PROJECTS"||(text(section.fields.heading)||"Projects").trim().toLowerCase()!==page.title.trim().toLowerCase())&&<h2>{text(section.fields.heading)||"Projects"}</h2>}{section===sections.find(s=>s.kind==="PROJECT_TEASER")&&projectFilters}{!cards.length?<div className="cg-site-empty" role="status"><strong>{projectCategory?"No projects match this category":"No projects to display yet"}</strong><p>{projectCategory?"Select another category to explore published projects.":"Published project updates will appear here."}</p>{projectCategory&&(page.slug==="our-work"||page.slug==="upcoming-projects")&&<Link href={"/"+page.slug} className="cg-site-project-reset">Show all projects</Link>}{page.slug==="home"&&navigation?.publishedRoutes?.some(v=>v.path==="/our-work")&&<Link href="/our-work" className="cg-site-action">Explore our work</Link>}</div>:cards.map((item,j)=>{if(!item||typeof item!=="object")return null;const p=item as Record<string,unknown>;return <article key={j} className="cg-site-project-card">{/^\/api\/public\/content\/media\/[a-f0-9-]{36}$/i.test(text(p.coverSrc))&&<img src={text(p.coverSrc)} alt={text(p.title)} loading="lazy" className="cg-site-project-cover"/>}<div className="cg-site-project-copy"><p className="cg-site-eyebrow">{text(p.category)} · {text(p.status)==="PLANNED"?"Planned":"Active"}</p><h3>{text(p.title)}</h3><p>{text(p.area)}</p><p>{text(p.summary)}</p>{text(p.launch)&&<p>Planned start: {text(p.launch)}</p>}</div></article>;})}</section>;}
      // Never infer operational projects from CMS-only teaser text.
      return null;
     })}
