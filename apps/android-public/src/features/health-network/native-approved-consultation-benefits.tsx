@@ -1,4 +1,4 @@
-import {useCallback,useEffect,useState} from "react";
+import {useCallback,useEffect,useRef,useState} from "react";
 import {ActivityIndicator,AppState,Pressable,StyleSheet,Text,View} from "react-native";
 import {careGangaPublicTheme as theme}
  from "../../../../../packages/design-tokens/src/index";
@@ -42,8 +42,11 @@ function valid(v:unknown):v is Benefit{
 export function NativeApprovedConsultationBenefits({doctorRef}:Props){
  const [items,setItems]=useState<Benefit[]>([]),[loading,setLoading]=useState(true);
  const [status,setStatus]=useState<"READY"|"EMPTY"|"UNAVAILABLE">("EMPTY");
+ const sequence=useRef(0);
+ const [viewFor,setViewFor]=useState(doctorRef);
  const reload=useCallback(async()=>{
-  setLoading(true);setItems([]);setStatus("EMPTY");
+  const request=++sequence.current;
+  setViewFor(doctorRef);setLoading(true);setItems([]);setStatus("EMPTY");
   try{
    if(!ID.test(doctorRef)||!url||!/^https?:\/\//.test(url)||
     (process.env.NODE_ENV==="production"&&!url.startsWith("https://")))
@@ -55,20 +58,21 @@ export function NativeApprovedConsultationBenefits({doctorRef}:Props){
    const obj:unknown=await reply.json();
    if(!obj||typeof obj!=="object"||Array.isArray(obj)||
      !("items" in obj)||!Array.isArray(obj.items)||obj.items.length>12||
-     !obj.items.every(valid)||!("state" in obj)||
-     !["READY","NO_APPROVED_CURRENT_BENEFITS"].includes(String(obj.state)))
+     !obj.items.every(x=>valid(x)&&(x.doctorRef===null||x.doctorRef.toLowerCase()===doctorRef.toLowerCase()))||!("state" in obj)||
+     !["READY","NO_APPROVED_CURRENT_BENEFITS"].includes(String(obj.state))||
+     (obj.state==="NO_APPROVED_CURRENT_BENEFITS"&&obj.items.length!==0))
     throw Error("Invalid source");
-   setItems(obj.items);setStatus(obj.items.length?"READY":"EMPTY");
-  }catch{setStatus("UNAVAILABLE");setItems([])}
-  finally{setLoading(false)}
+   if(request===sequence.current){setItems(obj.items);setStatus(obj.items.length?"READY":"EMPTY");}
+  }catch{if(request===sequence.current){setStatus("UNAVAILABLE");setItems([])}}
+  finally{if(request===sequence.current)setLoading(false)}
  },[doctorRef]);
  useEffect(()=>{
   void reload();
   const listener=AppState.addEventListener("change",next=>{
    if(next==="active")void reload();
-   else{setItems([]);setStatus("EMPTY");}
+   else{sequence.current++;setItems([]);setStatus("EMPTY");setLoading(false);}
   });
-  return()=>listener.remove();
+  return()=>{sequence.current++;listener.remove();};
  },[reload]);
  // Time-based removal is not polling. Nothing is displayed past expiration.
  useEffect(()=>{
@@ -80,11 +84,12 @@ export function NativeApprovedConsultationBenefits({doctorRef}:Props){
   },delay);
   return()=>clearTimeout(timer);
  },[items]);
- if(!loading&&status==="EMPTY")return null;
+ const checking=loading||viewFor!==doctorRef;
+ if(!checking&&(status==="EMPTY"||status==="READY"&&!items.length))return null;
  return <View style={styles.panel}
   accessibilityLabel="Verified Foundation consultation assistance">
-  <Text style={styles.title}>Current consultation support</Text>
-  {loading?<ActivityIndicator accessibilityLabel="Checking actual assistance policy"/>:
+  <Text accessibilityRole="header" style={styles.title}>Current consultation support</Text>
+  {checking?<ActivityIndicator accessibilityLabel="Checking actual assistance policy"/>:
    status==="UNAVAILABLE"?<Text style={styles.note}>
     Current assistance status cannot be verified; no old rates are shown.
    </Text>:items.map((v,i)=><View key={v.centerSlug+":"+i} style={styles.row}>
@@ -103,7 +108,7 @@ export function NativeApprovedConsultationBenefits({doctorRef}:Props){
      a guaranteed discount or a payment confirmation.</Text>
    </View>)}
   <Pressable accessibilityRole="button" onPress={()=>void reload()}
-   style={styles.button} disabled={loading}>
+   style={[styles.button,checking&&styles.disabled]} disabled={checking}>
    <Text style={styles.buttonLabel}>Check current policy again</Text>
   </Pressable>
  </View>;
@@ -111,12 +116,15 @@ export function NativeApprovedConsultationBenefits({doctorRef}:Props){
 const styles=StyleSheet.create({
  panel:{padding:14,gap:12,backgroundColor:theme.surface,
   borderColor:theme.border,borderWidth:1,borderRadius:16},
- title:{fontWeight:"700",fontSize:17,color:theme.sidebar},
+ title:{fontWeight:"700",fontSize:17,color:theme.primaryText,backgroundColor:theme.primary,
+  padding:12,borderRadius:10},
  center:{fontWeight:"700",fontSize:15,color:theme.text},
- amount:{fontWeight:"700",fontSize:14,color:theme.text},
- row:{paddingTop:10,borderTopWidth:1,borderColor:theme.border,gap:6},
+ amount:{fontWeight:"700",fontSize:16,lineHeight:23,color:theme.primary},
+ row:{padding:12,borderWidth:1,borderRadius:10,borderColor:theme.border,
+  backgroundColor:theme.background,gap:8},
  note:{fontSize:13,lineHeight:20,color:theme.mutedText},
  button:{minHeight:48,padding:12,borderWidth:1,borderColor:theme.border,
-  borderRadius:10,justifyContent:"center"},
- buttonLabel:{fontSize:14,fontWeight:"600",color:theme.text}
+  borderRadius:10,justifyContent:"center",alignItems:"center"},
+ disabled:{opacity:.55},
+ buttonLabel:{fontSize:14,fontWeight:"600",color:theme.primary,textAlign:"center"}
 });
