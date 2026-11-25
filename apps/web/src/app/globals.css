@@ -15637,3 +15637,16 @@ button:disabled {
 .cg-health-patient-profile [role=alert]{padding:.75rem 1rem;border-left:4px solid #194a3a;background:#f4f8f4;border-radius:.4rem}
 .cg-health-patient-profile section>button{margin:.25rem .5rem .25rem 0}
 @media(max-width:480px){.cg-health-patient-profile section>button{width:100%;margin:.25rem 0}}
+
+/* Clear commercial price hierarchy, without implying Foundation support. */
+.cg-lab-grid{grid-template-columns:repeat(auto-fill,minmax(min(100%,320px),1fr))}
+.cg-lab-card>.cg-eyebrow{align-self:flex-start;background:#eaf4ee;color:#194a3a;border-radius:999px;padding:.25rem .65rem;font-size:.75rem;font-weight:750;overflow-wrap:anywhere;max-width:100%}
+.cg-lab-card h3{font-size:1.12rem;line-height:1.3;color:#112f2a}
+.cg-lab-card .cg-lab-price{display:flex;flex-wrap:wrap;align-items:baseline;justify-content:space-between;gap:.35rem .75rem;padding:.75rem;background:#f5f8ef;border:1px solid #d8e7dc;border-radius:.65rem}
+.cg-lab-price span{font-size:.82rem;font-weight:700;color:#4d6072}
+.cg-lab-card .cg-lab-price strong{font-size:1.4rem;color:#194a3a;font-variant-numeric:tabular-nums}
+.cg-lab-card .cg-lab-saving{font-size:.86rem;color:#4d6072}
+.cg-lab-actions .primary{min-height:48px}
+.cg-lab-grid:has(>.cg-lab-card:only-child){grid-template-columns:minmax(0,680px);justify-content:center}
+.cg-health-public-chrome>.cg-lab-directory~.cg-site-floating{position:static;padding:.75rem clamp(1rem,6vw,7rem) max(.75rem,env(safe-area-inset-bottom));background:#080d14;align-items:center}
+.cg-health-public-chrome>.cg-lab-directory~.cg-site-footer{padding-bottom:2rem}
