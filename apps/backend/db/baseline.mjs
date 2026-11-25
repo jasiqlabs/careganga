@@ -1,5 +1,5 @@
-// Explicit operator commands only. Never imported from application startup.
-import {createHash} from "node:crypto";
+// Explicit operator commands and guarded deployment preparation share one release engine.
+import {createHash,randomBytes} from "node:crypto";
 import {readFileSync,readdirSync,mkdirSync,writeFileSync,existsSync,renameSync} from "node:fs";
 import {spawnSync} from "node:child_process";
 import {dirname,join,resolve} from "node:path";
@@ -104,9 +104,14 @@ async function blank(c){
  if(r.rows[0]?.occupied!==false)throw Error("Database is not empty; refusing initialization");
 }
 async function major(c){return Math.floor(Number((await c.query("SHOW server_version_num")).rows[0].server_version_num)/10000);}
-async function locked(c,fn){
- const r=await c.query("SELECT pg_try_advisory_lock(16041115,1) AS locked");
- if(!r.rows[0]?.locked)throw Error("Another database release is running; retry after it completes");
+async function locked(c,fn,{wait=false}={}){
+ let acquired=false;
+ for(let attempt=0;attempt<(wait?120:1);attempt++){
+  const r=await c.query("SELECT pg_try_advisory_lock(16041115,1) AS locked");
+  if(r.rows[0]?.locked){acquired=true;break;}
+  if(wait&&attempt<119)await new Promise(r=>setTimeout(r,1000));
+ }
+ if(!acquired)throw Error("Another database release is running; retry after it completes");
  try{return await fn();}finally{await c.query("SELECT pg_advisory_unlock(16041115,1)").catch(()=>{});}
 }
 function runHistoricalReplay(u){
@@ -217,6 +222,95 @@ async function generate(){
  renameSync(join(baseline,"manifest.json.tmp"),join(baseline,"manifest.json"));
  console.log("Baseline generated and round-trip verified. Review mandatory defaults, database privileges and original runtime QA before committing.");
 }
+// Decide from the actual ledger, not environment flags, file existence or row counts.
+function deploymentPlan(rows,release){
+ if(rows===null)return "initialize";
+ return requirePrefix(rows,release.current,release.manifest.migrations)?"current":"upgrade";
+}
+// A random advisory-lock challenge proves both URLs refer to the SAME database
+// on the SAME PostgreSQL cluster, including direct/pooler aliases. It is held
+// on the direct connection, never as a session lock on the pooled connection.
+async function assertSameDatabase(owner,runtime){
+ const {rows:[db]}=await owner.query("SELECT current_database() AS name,current_user AS role");
+ const key=randomBytes(8),a=key.readInt32BE(0),b=key.readInt32BE(4);
+ await owner.query("SELECT pg_advisory_lock($1::int,$2::int)",[a,b]);
+ try{
+  const result=await runtime.query("SELECT current_database() AS name,current_user AS role,pg_try_advisory_xact_lock($1::int,$2::int) AS acquired",[a,b]);
+  const live=result.rows[0];
+  if(!live||live.name!==db.name||live.acquired!==false)
+   throw Error("Database connections do not target the same database");
+  return {ownerRole:db.role,runtimeRole:live.role};
+ }finally{await owner.query("SELECT pg_advisory_unlock($1::int,$2::int)",[a,b]);}
+}
+const ident=s=>'"'+String(s).replaceAll('"','""')+'"';
+// Only installation-created application objects receive runtime grants. Existing
+// business-table permissions are not widened during an upgrade. Never give the
+// runtime role ledger writes, schema CREATE, ownership or administrative rights.
+async function grantFreshRuntime(c,role){
+ const q=ident(role);
+ await c.query("GRANT USAGE ON SCHEMA public TO "+q);
+ const tables=await c.query("SELECT relname,relkind FROM pg_class JOIN pg_namespace n ON n.oid=relnamespace WHERE n.nspname='public' AND relkind IN ('r','p','v','m','S') ORDER BY relname");
+ for(const x of tables.rows){
+  const name="public."+ident(x.relname);
+  if(x.relkind==="S"){await c.query("GRANT USAGE,SELECT ON SEQUENCE "+name+" TO "+q);continue;}
+  const access=x.relname==="schema_migration"||x.relname==="cms_release_install"||x.relkind==="v"||x.relkind==="m"?"SELECT":"SELECT,INSERT,UPDATE,DELETE";
+  await c.query("GRANT "+access+" ON TABLE "+name+" TO "+q);
+ }
+ // The install marker is insert-once with an immutable database trigger.
+ await c.query("GRANT INSERT ON TABLE public.cms_release_install TO "+q);
+}
+async function grantCmsUpgradeRuntime(c,role){
+ const q=ident(role);
+ await c.query("GRANT SELECT,INSERT ON TABLE public.cms_release_install TO "+q);
+ await c.query("GRANT SELECT,INSERT,DELETE ON TABLE public.cms_release_asset TO "+q);
+}
+// The only normal startup DDL path. The build contract, database major, exact
+// historical checksums, blank check and release lock are mandatory. No reset,
+// guessed repair, historical replay, credential provisioning or destructive DDL.
+async function prepareDeployment(){
+ const release=loadBundle();
+ const runtimeUrl=process.env.DATABASE_URL;
+ if(!runtimeUrl)throw Error("Missing DATABASE_URL");
+ await withDb(new URL(runtimeUrl),async runtime=>{
+  // Healthy restarts need no DDL connection or write privileges.
+  const initial=await ledger(runtime);
+  if(deploymentPlan(initial,release)==="current"){
+   const proof=await runtime.query("SELECT to_regclass('public.account') IS NOT NULL AS present");
+   if(!proof.rows[0]?.present)throw Error("Database release objects are unavailable");
+   console.log("Database release already current; no SQL applied.");return;
+  }
+  const ownerUrl=direct(process.env.DATABASE_MIGRATION_URL||runtimeUrl);
+  await withDb(ownerUrl,async owner=>locked(owner,async()=>{
+   const roles=await assertSameDatabase(owner,runtime);
+   if(await major(owner)!==release.manifest.postgresMajor)throw Error("Target PostgreSQL major version differs from baseline");
+   const rows=await ledger(owner),plan=deploymentPlan(rows,release);
+   if(plan==="current"){console.log("Database release already current; no SQL applied.");return;}
+   if(plan==="initialize"){
+    await blank(owner);
+    await transaction(owner,async()=>{
+     await owner.query(release.sql);
+     requireLedger(await ledger(owner),release.manifest.migrations);
+     await applyUpgrades(owner,release.upgrades);
+     requireLedger(await ledger(owner),release.current);
+     if(roles.ownerRole!==roles.runtimeRole)await grantFreshRuntime(owner,roles.runtimeRole);
+    });
+    console.log("CareGanga database initialized from verified baseline and current upgrades.");
+   }else{
+    const pending=release.upgrades.slice(rows.length-release.manifest.migrations.length);
+    await transaction(owner,async()=>{
+     await applyUpgrades(owner,pending);
+     if(roles.ownerRole!==roles.runtimeRole&&pending.some(x=>x.filename==="10000_cg18_release_baseline_install.sql"))
+      await grantCmsUpgradeRuntime(owner,roles.runtimeRole);
+     requireLedger(await ledger(owner),release.current);
+    });
+    console.log("CareGanga database upgraded and verified.");
+   }
+  },{wait:true}));
+  const final=await ledger(runtime);
+  if(!final)throw Error("Database release objects are unavailable");
+  requireLedger(final,release.current);
+ });
+}
 async function init(){
  if(!process.argv.includes("--confirm-new-db"))throw Error("Explicit --confirm-new-db required");
  const {sql,manifest,current,upgrades}=loadBundle(),u=direct(process.env.DATABASE_MIGRATION_URL);
@@ -243,22 +337,23 @@ async function upgrade(){
   console.log("Database release upgraded and verified.");
  }));
 }
-export {cleanDump,requireLedger,requirePrefix,disposable,direct,order,assertAtomicUpgrade,validateUpgrades,readRelease,loadBundle};
+export {cleanDump,requireLedger,requirePrefix,disposable,direct,order,assertAtomicUpgrade,validateUpgrades,readRelease,loadBundle,deploymentPlan,assertSameDatabase,prepareDeployment};
 if(process.argv[1]&&resolve(process.argv[1])===fileURLToPath(import.meta.url))try{
  switch(process.argv[2]){
   case "contract": {const {current}=readRelease({verifyArchive:true});mkdirSync(dirname(contractFile),{recursive:true});writeFileSync(contractFile,JSON.stringify(current)+"\n");break;}
   case "generate": await generate();break;
   case "init": await init();break;
   case "upgrade": await upgrade();break;
+  case "prepare": await prepareDeployment();break;
   case "check":
    loadBundle();
    if(!existsSync(join(backend,"dist/src/main.js"))||!existsSync(join(backend,"dist/src/modules/cg-01-identity-access/infrastructure/bootstrap-root.js")))
     throw Error("Release build schema contract or compiled backend entry missing; rebuild the backend");
    console.log("Database release bundle checksum, compiled schema contract and backend entry verified.");break;
-  default: throw Error("Use contract, generate, init, upgrade or check");
+  default: throw Error("Use contract, generate, init, upgrade, prepare or check");
  }
 }catch(e){
  // Only allow reviewed operator messages, never connection strings or SQL errors.
- const message=e instanceof Error&&/^(?:A direct|Invalid database|Invalid migration|Database migration history|Baseline generation|Database is not empty|Another database|Migration execution|Unexpected PostgreSQL|Unsupported PostgreSQL|Matching PostgreSQL|PostgreSQL baseline export|Verified database baseline|Database baseline checksum|Baseline source history|New upgrades|Baseline restore|Explicit|Baseline already|Use two|PostgreSQL major|pg_dump major|Migration history|Migration sources|Target PostgreSQL|Existing database|Run explicit|Upgrade history|Release build schema contract|Scratch database contains accounts|Unsupported PostgreSQL connection option|Use contract)/.test(e.message)?e.message:"Database release operation failed. Inspect protected local diagnostics.";
+ const message=e instanceof Error&&/^(?:A direct|Missing DATABASE_URL|Database connections do not target|Database release objects|Invalid database|Invalid migration|Database migration history|Baseline generation|Database is not empty|Another database|Migration execution|Unexpected PostgreSQL|Unsupported PostgreSQL|Matching PostgreSQL|PostgreSQL baseline export|Verified database baseline|Database baseline checksum|Baseline source history|New upgrades|Baseline restore|Explicit|Baseline already|Use two|PostgreSQL major|pg_dump major|Migration history|Migration sources|Target PostgreSQL|Existing database|Run explicit|Upgrade history|Release build schema contract|Scratch database contains accounts|Unsupported PostgreSQL connection option|Use contract)/.test(e.message)?e.message:"Database release operation failed. Inspect protected local diagnostics.";
  console.error(message);process.exitCode=1;
 }
