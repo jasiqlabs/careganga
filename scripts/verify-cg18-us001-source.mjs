@@ -76,6 +76,15 @@ const checks=[
  ["No public page HTML injection",!files.web.includes("dangerouslySetInnerHTML")],
  ["Public header uses Healthcare Assistance, not old Blood Donation slot",
   files.header.includes("Healthcare Assistance")&&!files.header.includes("Blood Donation")],
+ ["Public menu closes on selection, route changes and outside pointer; Escape restores focus",
+  files.header.includes('name="cg-public-navigation"')&&files.header.includes('event.key!=="Escape"')&&
+  files.header.includes('useEffect(()=>{closeNavigation();},[pathname])')&&
+  files.header.includes('event.target.closest("a[href]")')&&
+  files.header.includes('document.removeEventListener("pointerdown",outside)')],
+ ["Compact public navigation scrolls from the top with accessible tap targets",
+  read("apps/web/src/app/cg-site.css").includes(".cg-site-nav{justify-content:flex-start;max-height:min(75vh,calc(100dvh - 120px))")&&
+  read("apps/web/src/app/cg-site.css").includes(".cg-site-nav>*{flex-shrink:0}")&&
+  read("apps/web/src/app/cg-site.css").includes(".cg-site-dropdown>a{min-height:44px}")],
  ["Public carousel permits deliberate controls",files.carousel.includes("aria-pressed")],
  ["Admin owns real image placement upload",files.admin.includes("media/initiate")],
  ["No public draft media preview leak",files.media.includes('requireAction(bearer,"cms.content.view")')
