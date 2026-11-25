@@ -451,9 +451,9 @@ Branch `feature/careganga-public-website-live-uiux-hardening-20261125`, base mai
 | PUB-03 Shared header/menu | US001, 17-Nov shell + all batch headers | 320/390/768/1280/1440/1920 widths, no horizontal overflow, one open menu, keyboard/escape/focus/back, tap target, active route, genuine destinations, sticky header | COMPONENT_QA_PASSED / LIVE_PENDING |
 | PUB-04 Home composition | US001, 17-Nov home captures | hero proportion/approved media, About→volunteer CTA→accountability→solutions→join→partners/gallery/footer; preserve editable revision order, don't overwrite admin/withdrawn pages; mobile no overlap | IN_PROGRESS — layout source candidate |
 | PUB-05 About/team/impact | US001/002, Batch01 020435–020554 | readable typography, team search/reset/consent only, true metric empty states, source-backed chart/map, keyboard and native parity | IN_PROGRESS — directory/impact layout source |
-| PUB-06 NGO information | US002, Batch01 020634–021040 | sidebar child routes/active state, reports filters, valid proof/download only, responsive cards, unverified legal facts absent | OPEN |
+| PUB-06 NGO information | US002, Batch01 020634–021040 | sidebar child routes/active state, reports filters, valid proof/download only, responsive cards, unverified legal facts absent | IN_PROGRESS — sidebar source fix |
 | PUB-07 Projects/campaigns/partners | US001/003, Batch02 | filter category, project details/empty states, genuine payment gating and partner enquiry, no mock operational cards | OPEN |
-| PUB-08 Media/resources | US003, Batch02 | gallery/video/publication distinct routes, filters/reset, approved assets, rights/expiry, news/blog/event states, accessible viewer/download | OPEN |
+| PUB-08 Media/resources | US003, Batch02 | gallery/video/publication distinct routes, filters/reset, approved assets, rights/expiry, news/blog/event states, accessible viewer/download | IN_PROGRESS — filtering parity source fix |
 | PUB-09 Membership/volunteer | US001, Batch02 | real plan filter/verify and application steps, error/consent/submit/recovery, no fake plans or fees | OPEN |
 | PUB-10 Healthcare journey | US004, latest healthcare reference + approved replacement | categories, center/doctor/lab links, loading/empty, booking continuity, confirmed prices/benefits, Android parity | OPEN |
 | PUB-11 Contact | US003, Batch03 | hero, contact blocks, two-column form, FAQ, validation, real receipt/anti-spam, small screen | OPEN |
@@ -481,3 +481,6 @@ Local lab from 24-Nov: exact component source + TypeScript/React UMD + Chromium/
 
 #### PUB-05 checkpoint — team and impact
 Original Batch01 contact sheet re-opened. Web team hero/search and honest empty states 792a37c; responsive team filter, impact card hierarchy and compliance sidebar overflow 6cd5e7c; native team CMS intro and equivalent empty state 43d181b. US001-QA06/15 and US002 impact presentation. No consent expansion or fabricated metrics/maps. Device, visual render, independent QA pending; geography/portrait consent and exact approved artwork still open. No production writes.
+
+#### PUB-06/08 checkpoint
+NGO sidebar 7cf56ce makes Campaigns and contact enquiry actionable without publishing unverified legal sections; clear unavailable status for pending documents. Native media 83e758a counts only current cleared assets, narrows category to actual media type, adds year/reset and approved empty copy; Web 3799ce6 distinguishes filtered vs unpublished. US002/003 original QA retained. Financial report dedicated native receiving surface, legal proof, actual links and visual/device checks remain open; no fabricated financial records. No production writes.
