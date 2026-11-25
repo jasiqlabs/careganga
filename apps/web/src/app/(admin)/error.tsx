@@ -11,6 +11,13 @@ export default function AdminErrorBoundary({
   reset: () => void;
 }) {
   useEffect(() => {
+    if (error.digest?.startsWith("NEXT_REDIRECT")) {
+      const match = error.digest.split(";");
+      const target = match.length > 2 && match[2] ? match[2] : "/admin/login";
+      window.location.href = target;
+      return;
+    }
+
     // Log sanitized error diagnostic without exposing internal secrets or stack traces to end users
     const failureName = error instanceof Error && /^[A-Za-z][A-Za-z0-9_]{0,63}$/.test(error.name)
       ? error.name

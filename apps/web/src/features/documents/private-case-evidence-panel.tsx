@@ -7,6 +7,7 @@ const MIME=new Set(["application/pdf","image/jpeg","image/png","image/webp"]);
 type Notice={kind:"error"|"info"|"success";text:string};
 type MediaRecord={fileRef:string;revision:number;mime:string;sizeBytes:number;
   createdAt:string;revoked:boolean};
+
 async function json<T>(url:string,method:"GET"|"POST"="GET",body?:unknown):Promise<T>{
   let response:Response;
   try{
@@ -23,6 +24,7 @@ async function json<T>(url:string,method:"GET"|"POST"="GET",body?:unknown):Promi
   try{return await response.json() as T;}
   catch{throw Error(method==="POST"?"UNCERTAIN":"OFFLINE");}
 }
+
 function safeMessage(error:unknown){
   const code=error instanceof Error?error.message:"UNCERTAIN";
   return code==="EXPIRED"?"Your session expired. Sign in again.":
@@ -31,6 +33,7 @@ function safeMessage(error:unknown){
     code==="INVALID"?"Select a supported file smaller than 10 MB.":
     "The file operation is unconfirmed. Check its original status before retrying.";
 }
+
 function label(status:string){
   return ({
     UPLOAD_READY:"Upload permission ready (not yet uploaded)",
@@ -45,6 +48,23 @@ function label(status:string){
     EXPIRED_OR_REJECTED:"Upload expired or rejected"
   } as Record<string,string>)[status]??"Unverified private file";
 }
+
+function statusBadgeClass(status:string){
+  switch(status){
+    case "VALIDATED": return "cg19-badge cg19-badge-success";
+    case "VERIFYING": return "cg19-badge cg19-badge-info";
+    case "INITIATED":
+    case "UPLOAD_READY": return "cg19-badge cg19-badge-warning";
+    case "UNKNOWN": return "cg19-badge cg19-badge-warning";
+    case "REJECTED":
+    case "EXPIRED":
+    case "STORAGE_UNAVAILABLE":
+    case "VERIFICATION_UNAVAILABLE":
+    case "EXPIRED_OR_REJECTED": return "cg19-badge cg19-badge-danger";
+    default: return "cg19-badge cg19-badge-neutral";
+  }
+}
+
 export function PrivateCaseEvidencePanel({canIssue=false,canRevoke=false}:{canIssue?:boolean;canRevoke?:boolean}){
   const [cases,setCases]=useState<CG03CaseView[]>([]);
   const [selected,setSelected]=useState("");
@@ -55,12 +75,14 @@ export function PrivateCaseEvidencePanel({canIssue=false,canRevoke=false}:{canIs
   const [media,setMedia]=useState<MediaRecord[]>([]);
   const [mediaLoading,setMediaLoading]=useState(false);
   const [revokeReview,setRevokeReview]=useState<MediaRecord|null>(null);
+  const [previewMedia,setPreviewMedia]=useState<MediaRecord|null>(null);
   const [notice,setNotice]=useState<Notice|null>(null);
   const [uncertain,setUncertain]=useState(false);
   const [requestKey,setRequestKey]=useState("");
   const [uploadRef,setUploadRef]=useState("");
   const generation=useRef(0);
   const mediaGeneration=useRef(0);
+
   const refresh=useCallback(async()=>{
     const gen=++generation.current;setLoading(true);
     try{
@@ -77,7 +99,9 @@ export function PrivateCaseEvidencePanel({canIssue=false,canRevoke=false}:{canIs
       kind:"error",text:safeMessage(e)})}}
     finally{if(gen===generation.current)setLoading(false)}
   },[]);
+
   useEffect(()=>{void refresh();return()=>{++generation.current}},[refresh]);
+
   const loadMedia=useCallback(async()=>{
     const request=++mediaGeneration.current;
     if(!selected){setMedia([]);return;}
@@ -99,7 +123,9 @@ export function PrivateCaseEvidencePanel({canIssue=false,canRevoke=false}:{canIs
       if(request===mediaGeneration.current)setMediaLoading(false);
     }
   },[selected]);
+
   useEffect(()=>{void loadMedia();return()=>{++mediaGeneration.current};},[loadMedia]);
+
   async function revokeMedia(item:MediaRecord){
     if(busy||uncertain||item.revoked)return;
     if(revokeReview?.fileRef!==item.fileRef){setRevokeReview(item);return;}
@@ -116,15 +142,18 @@ export function PrivateCaseEvidencePanel({canIssue=false,canRevoke=false}:{canIs
     }catch(e){setNotice({kind:"error",text:safeMessage(e)})}
     finally{setBusy(false);}
   }
+
   function chooseFile(f:File|null){
     if(busy||uncertain)return;
     setFile(f);setRequestKey("");setUploadRef("");setStatus(null);setNotice(null);
   }
+
   function chooseCase(caseRef:string){
     if(busy||uncertain)return;
     setSelected(caseRef);setFile(null);setRequestKey("");
     setUploadRef("");setStatus(null);setNotice(null);
   }
+
   async function checkStatus(){
     if(!uploadRef||busy)return;
     setBusy(true);setNotice(null);
@@ -143,6 +172,7 @@ export function PrivateCaseEvidencePanel({canIssue=false,canRevoke=false}:{canIs
     }catch(e){setUncertain(true);setNotice({kind:"error",text:safeMessage(e)})}
     finally{setBusy(false);}
   }
+
   async function submit(){
     if(busy||uncertain||!file||!selected)return;
     const caseItem=cases.find(c=>c.caseRef===selected);
@@ -154,8 +184,6 @@ export function PrivateCaseEvidencePanel({canIssue=false,canRevoke=false}:{canIs
     const key=requestKey||crypto.randomUUID();
     setRequestKey(key);
     try{
-      // Hash actual user-selected bytes; never rely on a filename or a supplied
-      // metadata digest. The server validates against real stored bytes again.
       const hash=Array.from(new Uint8Array(await crypto.subtle.digest(
         "SHA-256",await file.arrayBuffer()))).map(x=>x.toString(16).padStart(2,"0")).join("");
       const created=await json<CG19UploadStart>("/api/documents/files/initiate","POST",{
@@ -172,8 +200,6 @@ export function PrivateCaseEvidencePanel({canIssue=false,canRevoke=false}:{canIs
       const destination=new URL(created.uploadUrl);
       if(destination.protocol!=="https:"||!created.uploadHeaders||
         created.uploadHeaders["Content-Type"]!==file.type)throw Error("UNCERTAIN");
-      // The signed PUT is allowed only for the object specified by the
-      // server reservation. A PUT response is NOT scan or file acceptance.
       let placed:Response;
       try{
         placed=await fetch(created.uploadUrl,{method:"PUT",
@@ -191,20 +217,24 @@ export function PrivateCaseEvidencePanel({canIssue=false,canRevoke=false}:{canIs
           "Your private evidence is verified and stored for this application.":
           "Upload complete, but the original verification remains unconfirmed. Check status."});
       setUncertain(!confirmed.cleanVerified);
+      await loadMedia();
     }catch(e){
       setUncertain(true);setNotice({kind:"error",text:safeMessage(e)});
     }finally{setBusy(false)}
   }
+
   function reset(){
     if(busy||uncertain)return;
     setFile(null);setRequestKey("");setUploadRef("");setStatus(null);setNotice(null);
   }
+
   const selectedCase=cases.find(c=>c.caseRef===selected);
   const validated=status&&"cleanVerified" in status&&status.cleanVerified;
+
   return <section className="role-workspace">
     <header className="topbar"><div>
       <h1>Private case documents</h1>
-      <p>Protected application evidence and verified file status</p></div>
+      <p>Protected application evidence and verified file status (C35–C36, B38)</p></div>
       <button type="button" onClick={()=>void refresh()} disabled={busy||loading}>
         Refresh applications</button></header>
     <div className="kpi-grid">
@@ -220,7 +250,7 @@ export function PrivateCaseEvidencePanel({canIssue=false,canRevoke=false}:{canIs
     {notice&&<p role={notice.kind==="success"?"status":"alert"}
       className={"notice "+notice.kind}>{notice.text}</p>}
     {selected&&<section className="role-pane">
-      <div className="role-pane-heading"><h2>Verified case media</h2></div>
+      <div className="role-pane-heading"><h2>Verified case media (C35/C36)</h2></div>
       <div className="role-detail-content">
         {mediaLoading?<p role="status" className="cg-module-loading">Verifying private case files…</p>:
           !media.length?<p className="cg-module-empty" role="status">No verified media files for this application.</p>:
@@ -229,9 +259,16 @@ export function PrivateCaseEvidencePanel({canIssue=false,canRevoke=false}:{canIs
               <th>Status</th><th>Action</th></tr></thead>
             <tbody>{media.map(item=><tr key={item.fileRef}>
               <td>{new Date(item.createdAt).toLocaleString()}</td>
-              <td>{item.mime}</td><td>{(item.sizeBytes/1024).toFixed(0)} KB</td>
-              <td>{item.revoked?"Revoked":"Verified private file"}</td>
+              <td><code>{item.mime}</code></td>
+              <td>{(item.sizeBytes/1024).toFixed(0)} KB</td>
+              <td>
+                <span className={item.revoked?"cg19-badge cg19-badge-danger":"cg19-badge cg19-badge-success"}>
+                  {item.revoked?"Revoked":"Verified private file"}
+                </span>
+              </td>
               <td><div className="toolbar">
+                {!item.revoked&&item.mime.startsWith("image/")&&
+                  <button type="button" onClick={()=>setPreviewMedia(item)}>Preview</button>}
                 {!item.revoked&&<a href={"/api/documents/files/"+
                   encodeURIComponent(item.fileRef)+"/download"}>Download</a>}
                 {!item.revoked&&<button type="button" disabled={busy||uncertain}
@@ -241,16 +278,51 @@ export function PrivateCaseEvidencePanel({canIssue=false,canRevoke=false}:{canIs
               </div></td>
             </tr>)}</tbody>
           </table></div>}
-        <button type="button" disabled={busy||mediaLoading}
-          onClick={()=>void loadMedia()}>Refresh verified media</button>
-        {revokeReview&&<p role="status">
-          Confirm revocation of the selected file. This permanently blocks
-          further authorized downloads, without deleting the audit history.
-        </p>}
+        <div className="toolbar" style={{marginTop:"0.75rem"}}>
+          <button type="button" disabled={busy||mediaLoading}
+            onClick={()=>void loadMedia()}>Refresh verified media</button>
+        </div>
+        {revokeReview&&<aside className="permission-group" style={{marginTop:"0.75rem"}} role="alert">
+          <strong>Confirm Revocation</strong>
+          <p>
+            Revoking permanently blocks further authorized downloads of this evidence file.
+            The audit trail and prior case history remain immutable.
+          </p>
+          <div className="toolbar">
+            <button type="button" className="primary" disabled={busy||uncertain}
+              onClick={()=>void revokeMedia(revokeReview)}>Confirm permanent revoke</button>
+            <button type="button" disabled={busy}
+              onClick={()=>setRevokeReview(null)}>Cancel</button>
+          </div>
+        </aside>}
       </div>
     </section>}
+
+    {/* Image preview modal */}
+    {previewMedia&&<div className="cg19-preview-modal-backdrop" role="presentation"
+      onClick={()=>setPreviewMedia(null)}>
+      <div className="cg19-preview-modal" role="dialog" aria-modal="true"
+        aria-label="Private evidence preview" onClick={e=>e.stopPropagation()}>
+        <div className="cg19-preview-header">
+          <strong>Private Evidence Preview ({previewMedia.mime})</strong>
+          <button type="button" onClick={()=>setPreviewMedia(null)}>Close</button>
+        </div>
+        <div className="cg19-preview-body">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={"/api/documents/files/"+encodeURIComponent(previewMedia.fileRef)+"/download"}
+            alt="Private Case Evidence Preview" />
+        </div>
+        <div className="toolbar" style={{padding:"0.75rem 1.25rem",borderTop:"1px solid #E2E8F0",justifyContent:"flex-end"}}>
+          <a href={"/api/documents/files/"+encodeURIComponent(previewMedia.fileRef)+"/download"}>
+            Download full resolution
+          </a>
+          <button type="button" onClick={()=>setPreviewMedia(null)}>Close preview</button>
+        </div>
+      </div>
+    </div>}
+
     <section className="role-pane"><div className="role-pane-heading">
-      <h2>Attach case evidence</h2></div>
+      <h2>Attach case evidence (C36)</h2></div>
       <div className="role-detail-content">
         <p>Only documents for a real protected application may be attached.
           Files attached after a final decision are archival only and do not
@@ -271,11 +343,14 @@ export function PrivateCaseEvidencePanel({canIssue=false,canRevoke=false}:{canIs
             disabled={!selected||busy||uncertain}
             onChange={e=>chooseFile(e.currentTarget.files?.[0]??null)}/>
         </label>
-        {file&&<p>{file.name} · {(file.size/1024/1024).toFixed(2)} MB</p>}
-        {status&&<p role="status">Original file status: {label(status.status)}</p>}
+        {file&&<p><strong>{file.name}</strong> · {(file.size/1024/1024).toFixed(2)} MB</p>}
+        {status&&<p role="status">
+          Original file status:{" "}
+          <span className={statusBadgeClass(status.status)}>{label(status.status)}</span>
+        </p>}
         {validated&&"fileRef" in status&&status.fileRef&&
-          <a href={"/api/documents/files/"+encodeURIComponent(status.fileRef)+"/download"}>
-            Download verified private evidence</a>}
+          <p><a href={"/api/documents/files/"+encodeURIComponent(status.fileRef)+"/download"}>
+            Download verified private evidence</a></p>}
         {uncertain&&<div className="permission-group">
           <strong>Previous write outcome uncertain</strong>
           <p>Do not upload again. Check the original request before any retry.</p>
@@ -285,7 +360,7 @@ export function PrivateCaseEvidencePanel({canIssue=false,canRevoke=false}:{canIs
             Contact Foundation support before attempting a second upload.</p>}
         </div>}
         <div className="toolbar">
-          <button type="button" disabled={!file||!selected||busy||uncertain}
+          <button type="button" className="primary" disabled={!file||!selected||busy||uncertain}
             onClick={()=>void submit()}>{busy?"Verifying…":"Upload & verify file"}</button>
           <button type="button" disabled={busy||uncertain} onClick={reset}>Clear</button>
           {uploadRef&&!uncertain&&<button type="button" disabled={busy}
@@ -293,12 +368,14 @@ export function PrivateCaseEvidencePanel({canIssue=false,canRevoke=false}:{canIs
         </div>
       </div>
     </section>
-    {selectedCase&&canIssue&&
+
+    {/* Render PrivateLetterPanel whenever an application is selected, not only when canIssue is true! */}
+    {selectedCase&&
       <PrivateLetterPanel key={selectedCase.caseRef}
         caseRef={selectedCase.caseRef} sourceRevision={selectedCase.proposalRevision}
         canIssue={canIssue} canRevoke={canRevoke}/>}
     {!selectedCase&&<section className="role-pane"><div className="role-pane-heading">
-      <h2>Approved access letters</h2></div>
+      <h2>Approved access letters (B38)</h2></div>
       <div className="role-detail-content">
         <p>Choose an authorized application to see its verified private letters.</p>
       </div>

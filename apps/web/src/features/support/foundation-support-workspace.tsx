@@ -1,6 +1,7 @@
 "use client";
 import {useCallback,useEffect,useState} from "react";
 import {FoundationSupportAttachments} from "./foundation-support-attachments";
+
 type CaseItem={caseRef:string;ticketNumber:string;subject:string;name:string;contact:string;
   status:string;revision:number;assignedAccountRef:string|null;
   createdAt:string;updatedAt:string;unread:boolean;archived:boolean};
@@ -12,6 +13,7 @@ type Counts={total:number;open:number;replied:number;closed:number;
   unread:number;archived:number;received_today:number};
 type Faq={faqRef:string;question:string;answer:string;state:string;revision:number};
 type Option={value:string;label:string};
+
 async function request<T>(path:string,method:"GET"|"POST"|"PATCH"="GET",
   payload?:object):Promise<T>{
   let response:Response;
@@ -24,6 +26,7 @@ async function request<T>(path:string,method:"GET"|"POST"|"PATCH"="GET",
     response.status===400?"INVALID":"UNKNOWN");
   try{return await response.json() as T;}catch{throw Error("UNKNOWN")}
 }
+
 function failure(error:unknown){
   const reason=error instanceof Error?error.message:"UNKNOWN";
   return reason==="DENIED"?"Your current role no longer permits this action.":
@@ -32,6 +35,31 @@ function failure(error:unknown){
     reason==="INVALID"?"Check the entered content and revision.":
     "The action outcome is unconfirmed. Verify the original record before retrying.";
 }
+
+function statusBadgeClass(status:string){
+  switch(status){
+    case "OPEN": return "cg19-badge cg19-badge-info";
+    case "ASSIGNED": return "cg19-badge cg19-badge-purple";
+    case "IN_PROGRESS": return "cg19-badge cg19-badge-info";
+    case "WAITING_FOR_USER": return "cg19-badge cg19-badge-warning";
+    case "ESCALATED": return "cg19-badge cg19-badge-danger";
+    case "REPLIED": return "cg19-badge cg19-badge-teal";
+    case "RESOLVED": return "cg19-badge cg19-badge-success";
+    case "CLOSED": return "cg19-badge cg19-badge-neutral";
+    case "ARCHIVED": return "cg19-badge cg19-badge-neutral";
+    default: return "cg19-badge cg19-badge-neutral";
+  }
+}
+
+function faqBadgeClass(state:string){
+  switch(state){
+    case "PUBLISHED": return "cg19-badge cg19-badge-success";
+    case "DRAFT": return "cg19-badge cg19-badge-warning";
+    case "WITHDRAWN": return "cg19-badge cg19-badge-danger";
+    default: return "cg19-badge cg19-badge-neutral";
+  }
+}
+
 export function FoundationSupportWorkspace({mayView,mayManage,mayReply,
   mayEditFaq,mayChooseAccounts}:{mayView:boolean;mayManage:boolean;mayReply:boolean;
     mayEditFaq:boolean;mayChooseAccounts:boolean}){
@@ -55,13 +83,14 @@ export function FoundationSupportWorkspace({mayView,mayManage,mayReply,
   const [faqs,setFaqs]=useState<Faq[]>([]);
   const [question,setQuestion]=useState(""),[answer,setAnswer]=useState("");
   const [editing,setEditing]=useState<Faq|null>(null);
+
   const load=useCallback(async()=>{
     setLoading(true);
     try{
       const [cases,faqList]=await Promise.all([
         mayView?request<{items:CaseItem[];counts:Counts;nextCursor:string|null}>(
           "cases/search","POST",{limit:30,filter,cursor,search:appliedSearch}):
-          Promise.resolve({items:[],counts:null}),
+          Promise.resolve({items:[],counts:null,nextCursor:null}),
         mayEditFaq?request<{faqs:Faq[]}>("faqs"):Promise.resolve({faqs:[]})
       ]);
       setItems(cases.items);setCounts(cases.counts);
@@ -70,7 +99,9 @@ export function FoundationSupportWorkspace({mayView,mayManage,mayReply,
     }catch(e){setAlert(failure(e))}
     finally{setLoading(false)}
   },[filter,cursor,appliedSearch,mayView,mayEditFaq]);
+
   useEffect(()=>{void load()},[load]);
+
   useEffect(()=>{
     if(!mayManage||!mayChooseAccounts)return;
     const controller=new AbortController();
@@ -84,6 +115,7 @@ export function FoundationSupportWorkspace({mayView,mayManage,mayReply,
       }).catch(()=>{});
     return()=>controller.abort();
   },[mayManage,mayChooseAccounts,agentSearch]);
+
   async function detail(ref:string){
     setBusy(true);setAlert("");
     try{
@@ -96,6 +128,7 @@ export function FoundationSupportWorkspace({mayView,mayManage,mayReply,
     }catch(e){setAlert(failure(e))}
     finally{setBusy(false)}
   }
+
   async function act(kind:"REPLY"|"ASSIGN"|"CLOSE"|"REOPEN"|"CHANGE_STATUS"|"ARCHIVE"){
     if(!selected||busy)return;
     if(kind==="REPLY"&&!mayReply||["ASSIGN","CLOSE","REOPEN","CHANGE_STATUS"].includes(kind)&&!mayManage)
@@ -134,6 +167,7 @@ export function FoundationSupportWorkspace({mayView,mayManage,mayReply,
     }catch(e){setAlert(failure(e))}
     finally{setBusy(false)}
   }
+
   async function saveFaq(publish=false){
     if(!mayEditFaq||busy)return;
     setBusy(true);setAlert("");
@@ -152,6 +186,7 @@ export function FoundationSupportWorkspace({mayView,mayManage,mayReply,
     }catch(e){setAlert(failure(e))}
     finally{setBusy(false)}
   }
+
   async function faqState(f:Faq,state:"PUBLISHED"|"WITHDRAWN"){
     if(!mayEditFaq||busy)return;setBusy(true);setAlert("");
     try{
@@ -161,7 +196,8 @@ export function FoundationSupportWorkspace({mayView,mayManage,mayReply,
     }catch(e){setAlert(failure(e))}
     finally{setBusy(false)}
   }
-  const visible=items; // already filtered using the original server-side blind index
+
+  const visible=items;
   const applySearch=()=>{
     if(search.trim().length>0&&search.trim().length<3){
       setAlert("Enter at least three characters to search all Foundation cases.");
@@ -170,55 +206,95 @@ export function FoundationSupportWorkspace({mayView,mayManage,mayReply,
     setCursor(null);setPriorCursors([]);setNextCursor(null);
     setAppliedSearch(search.trim());setAlert("");
   };
+
+  const statusNoteNeedsLength=["WAITING_FOR_USER","RESOLVED","CLOSED"].includes(nextStatus);
+  const statusNoteValid=!statusNoteNeedsLength||statusNote.trim().length>=8;
+
   return <section className="role-workspace">
-    <header className="topbar"><div><h1>Contact Messages & Help</h1>
-      <p>Foundation support intake, private replies, assignments and help questions</p>
+    <header className="topbar"><div><h1>Contact Messages &amp; Help</h1>
+      <p>Foundation support intake, private replies, assignments and help questions (C39–C43)</p>
     </div><div className="toolbar">
       {mayView&&<button type="button" aria-pressed={tab==="CASES"}
-        onClick={()=>setTab("CASES")}>Contact Messages</button>}
+        onClick={()=>setTab("CASES")}>Contact Messages (C39)</button>}
       {mayEditFaq&&<button type="button" aria-pressed={tab==="FAQ"}
-        onClick={()=>setTab("FAQ")}>Help questions</button>}
+        onClick={()=>setTab("FAQ")}>Help questions &amp; FAQ</button>}
       <button type="button" disabled={busy} onClick={()=>void load()}>Refresh</button>
     </div></header>
-    {alert&&<p role="status" className="notice">{alert}</p>}
+
+    {alert&&<p role="status" className="notice info">{alert}</p>}
+
     {tab==="CASES"&&mayView&&<>
-      {counts&&<div className="kpi-grid" aria-label="Actual Contact Messages counts">
+      {/* C39 Contact Messages KPI Dashboard */}
+      {counts&&<div className="kpi-grid" aria-label="Actual Contact Messages counts (C39)">
         {([
-          {key:"total",label:"Total Inquiries",hint:"All received"},
-          {key:"unread",label:"Unread Inquiries",hint:"Awaiting your review"},
-          {key:"closed",label:"Resolved or Closed",hint:"Finalized cases"},
-          {key:"received_today",label:"Received Today",hint:"Based on server date"}
-        ] as const).map(({key,label,hint})=>
-          <div className="kpi" key={key}><span>{label}</span>
-            <strong>{counts[key]}</strong><small>{hint}</small></div>)}
+          {key:"total",label:"Total Inquiries",count:counts.total,hint:"All received in Foundation"},
+          {key:"unread",label:"Unread Inquiries",count:counts.unread,hint:"Awaiting your operator review"},
+          {key:"replied",label:"Replied Inquiries",count:counts.replied,hint:"Responded by staff"},
+          {key:"closed",label:"Resolved or Closed",count:counts.closed,hint:"Finalized cases"},
+          {key:"received_today",label:"Received Today",count:counts.received_today,hint:"Based on server date"}
+        ] as const).map(({key,label,count,hint})=>
+          <article className="kpi" key={key}>
+            <small>{label}</small>
+            <strong>{count}</strong>
+            <span>{hint}</span>
+          </article>)}
       </div>}
+
+      {/* C39 Status Filter Tabs / Pills */}
+      <div className="cg19-filter-tabs" role="tablist" aria-label="Support status filter tabs (C39)">
+        {([
+          "ALL","UNREAD","OPEN","ASSIGNED","IN_PROGRESS",
+          "WAITING_FOR_USER","ESCALATED","REPLIED","RESOLVED","CLOSED","ARCHIVED"
+        ] as const).map(pillKey=>
+          <button key={pillKey} type="button"
+            className={`cg19-tab-btn ${filter===pillKey?"is-active":""}`}
+            aria-pressed={filter===pillKey}
+            onClick={()=>{
+              setFilter(pillKey);setCursor(null);setPriorCursors([]);setNextCursor(null);
+            }}>
+            <span>{pillKey.replaceAll("_"," ")}</span>
+            {pillKey==="UNREAD"&&counts&&counts.unread>0&&
+              <span className="cg19-tab-count">{counts.unread}</span>}
+          </button>)}
+      </div>
+
+      {/* Search and Filter Row */}
       <div className="search-row">
-        <label htmlFor="support-filter">Status</label>
-        <select id="support-filter" value={filter} onChange={e=>{setFilter(e.target.value);setCursor(null);
-          setPriorCursors([]);setNextCursor(null);}}>
-          {["ALL","OPEN","ASSIGNED","IN_PROGRESS","WAITING_FOR_USER","ESCALATED",
-            "REPLIED","RESOLVED","CLOSED","UNREAD","ARCHIVED"].map(x=>
-            <option key={x} value={x}>{x.replaceAll("_"," ")}</option>)}
-        </select>
-        <label htmlFor="support-search">Search all permitted messages</label>
+        <label htmlFor="support-search" className="sr-only">Search all permitted messages</label>
         <input id="support-search" type="search" value={search} maxLength={100}
           onChange={e=>setSearch(e.target.value)}
           onKeyDown={e=>{if(e.key==="Enter")applySearch()}}
-          placeholder="Name, contact or subject (3+ characters)"/>
-        <button type="button" disabled={busy} onClick={applySearch}>Search</button>
+          placeholder="Search by name, contact or subject (3+ characters)"/>
+        <button type="button" className="primary" disabled={busy} onClick={applySearch}>Search</button>
         {appliedSearch&&<button type="button" onClick={()=>{
           setSearch("");setAppliedSearch("");setCursor(null);setPriorCursors([]);setNextCursor(null);
         }}>Clear search</button>}
       </div>
+
+      {/* C40/C41 Inquiries Table */}
       <div className="role-table-wrap"><table className="role-table">
         <thead><tr><th>Ticket</th><th>Contact</th><th>Subject</th><th>Status</th>
           <th>Received</th><th>Action</th></tr></thead>
         <tbody>{visible.map(x=><tr key={x.caseRef}>
-          <td><strong>{x.ticketNumber}</strong></td>
-          <td><strong>{x.name}</strong><p>{x.contact}</p></td>
-          <td>{x.subject}{x.unread&&!x.archived&&<strong> · Unread</strong>}
-            {x.archived&&<span> · Archived</span>}</td>
-          <td>{x.status.replaceAll("_"," ")}</td>
+          <td>
+            <code style={{fontWeight:700,color:"var(--cg-sidebar)",fontSize:"0.85rem"}}>
+              {x.ticketNumber}
+            </code>
+          </td>
+          <td>
+            <strong>{x.name}</strong>
+            <p style={{fontSize:"0.825rem",color:"var(--cg-muted)"}}>{x.contact}</p>
+          </td>
+          <td>
+            {x.subject}
+            {x.unread&&!x.archived&&<span style={{marginLeft:"0.5rem"}} className="cg19-badge cg19-badge-warning">Unread</span>}
+            {x.archived&&<span style={{marginLeft:"0.5rem"}} className="cg19-badge cg19-badge-neutral">Archived</span>}
+          </td>
+          <td>
+            <span className={statusBadgeClass(x.status)}>
+              {x.status.replaceAll("_"," ")}
+            </span>
+          </td>
           <td>{new Date(x.createdAt).toLocaleString()}</td>
           <td><button type="button" disabled={busy}
             onClick={()=>void detail(x.caseRef)}>Open</button></td>
@@ -226,6 +302,7 @@ export function FoundationSupportWorkspace({mayView,mayManage,mayReply,
       </table>{!loading&&visible.length===0&&<p className="cg-module-empty" role="status">
         No permitted messages in this page or filter.</p>}
       </div>
+
       <div className="toolbar" aria-label="Support message pages">
         <button type="button" disabled={busy||priorCursors.length===0}
           onClick={()=>{const previous=priorCursors.at(-1)??"";
@@ -235,111 +312,185 @@ export function FoundationSupportWorkspace({mayView,mayManage,mayReply,
           onClick={()=>{if(!nextCursor)return;
             setPriorCursors(old=>[...old,cursor??""]);setCursor(nextCursor);}}>
           Next page</button>
+        <small style={{color:"var(--cg-muted)"}}>
+          Up to 30 current authorized cases per page. Search uses protected,
+          server-side word/prefix matching without exposing contact details in URLs.
+        </small>
       </div>
-      <p>Up to 30 current authorized cases per page. Search uses protected,
-        server-side word/prefix matching without exposing contact details in URLs.</p>
-      {selected&&<div className="drawer-backdrop" role="presentation">
+
+      {/* C42/C43 Help & Support Drawer */}
+      {selected&&<div className="drawer-backdrop" role="presentation" onClick={()=>setSelected(null)}>
         <section className="role-drawer" role="dialog" aria-modal="true"
-          aria-label="Private Foundation support case">
-          <div className="topbar"><h2>{selected.ticketNumber} · {selected.subject}</h2>
-            <button type="button" onClick={()=>setSelected(null)}>Close panel</button></div>
-          <p><strong>{selected.name}</strong> · {selected.contact}</p>
-          <p>Status: {selected.status.replaceAll("_"," ")} · Revision {selected.revision}</p>
-          <p style={{whiteSpace:"pre-wrap"}}>{selected.message}</p>
+          aria-label="Private Foundation support case" onClick={e=>e.stopPropagation()}>
+          <div className="topbar">
+            <div>
+              <h2 style={{margin:0}}>
+                <span className="cg19-badge cg19-badge-info" style={{marginRight:"0.5rem"}}>
+                  {selected.ticketNumber}
+                </span>
+                {selected.subject}
+              </h2>
+            </div>
+            <button type="button" onClick={()=>setSelected(null)}>Close panel</button>
+          </div>
+
+          <aside className="permission-group" style={{marginTop:"1rem"}}>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",flexWrap:"wrap",gap:"0.5rem"}}>
+              <div>
+                <strong>{selected.name}</strong>
+                <p style={{margin:"0.25rem 0",color:"var(--cg-muted)"}}>{selected.contact}</p>
+              </div>
+              <div style={{display:"flex",gap:"0.35rem",flexWrap:"wrap"}}>
+                <span className={statusBadgeClass(selected.status)}>{selected.status.replaceAll("_"," ")}</span>
+                <span className="cg19-badge cg19-badge-neutral">{selected.sourceChannel.replaceAll("_"," ")}</span>
+                <span className="cg19-badge cg19-badge-neutral">Rev {selected.revision}</span>
+              </div>
+            </div>
+          </aside>
+
+          <div className="permission-group" style={{marginTop:"0.75rem"}}>
+            <strong>Original inquiry:</strong>
+            <p style={{whiteSpace:"pre-wrap",lineHeight:1.6,margin:0}}>{selected.message}</p>
+            <small style={{color:"var(--cg-muted)"}}>Received on {new Date(selected.createdAt).toLocaleString()}</small>
+          </div>
+
           {selected.sourceChannel==="CENTER_PORTAL"&&
            <FoundationSupportAttachments key={selected.caseRef} caseRef={selected.caseRef}/>}
-          <h3>Private reply history</h3>
+
+          <h3 style={{marginTop:"1.25rem",marginBottom:"0.5rem"}}>Private reply history</h3>
           {selected.replies.length===0&&<p className="cg-module-empty" role="status">No operator replies yet.</p>}
-          {selected.replies.map(r=><article key={r.replyRef} className="permission-group">
-            <p style={{whiteSpace:"pre-wrap"}}>{r.body}</p>
-            <small>{new Date(r.createdAt).toLocaleString()}</small>
+          {selected.replies.map(r=><article key={r.replyRef} className="permission-group" style={{background:"#F8FAFC"}}>
+            <p style={{whiteSpace:"pre-wrap",margin:0}}>{r.body}</p>
+            <small style={{color:"var(--cg-muted)",display:"block",marginTop:"0.5rem"}}>
+              {new Date(r.createdAt).toLocaleString()}
+            </small>
           </article>)}
-          <h3>Private status and resolution notes</h3>
-          {(selected.statusNotes?.length??0)===0&&
+
+          <h3 style={{marginTop:"1.25rem",marginBottom:"0.5rem"}}>Private status and resolution notes</h3>
+          {((selected.statusNotes?.length??0)===0)&&
             <p className="cg-module-empty">No resolution notes have been recorded.</p>}
           {(selected.statusNotes??[]).map(n=>
-            <article key={n.revision} className="permission-group">
-              <strong>{n.status.replaceAll("_"," ")} · revision {n.revision}</strong>
-              <p style={{whiteSpace:"pre-wrap"}}>{n.summary}</p>
-              <small>{new Date(n.recordedAt).toLocaleString()}</small>
+            <article key={n.revision} className="permission-group" style={{borderLeft:"3px solid var(--cg-accent)"}}>
+              <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+                <span className={statusBadgeClass(n.status)}>{n.status.replaceAll("_"," ")}</span>
+                <small style={{color:"var(--cg-muted)"}}>Rev {n.revision} · {new Date(n.recordedAt).toLocaleString()}</small>
+              </div>
+              <p style={{whiteSpace:"pre-wrap",margin:"0.5rem 0 0 0"}}>{n.summary}</p>
             </article>)}
-          <h3>Activity</h3>
-          <ul>{selected.history.map((h,i)=><li key={i}>
-            {h.kind.replaceAll("_"," ")} · {new Date(h.at).toLocaleString()}</li>)}</ul>
-          {mayManage&&<div className="permission-group">
-            <label htmlFor="support-assign">Assigned operator</label>
-            {mayChooseAccounts?<><label htmlFor="support-agent-search">Find eligible support operator</label>
+
+          <h3 style={{marginTop:"1.25rem",marginBottom:"0.5rem"}}>Activity audit</h3>
+          <ul style={{fontSize:"0.825rem",color:"var(--cg-muted)",paddingLeft:"1.25rem",margin:0}}>
+            {selected.history.map((h,i)=><li key={i}>
+              {h.kind.replaceAll("_"," ")} · {new Date(h.at).toLocaleString()}
+            </li>)}
+          </ul>
+
+          {mayManage&&<div className="permission-group" style={{marginTop:"1.25rem"}}>
+            <strong>Operator Assignment</strong>
+            {mayChooseAccounts?<div className="form">
+              <label htmlFor="support-agent-search">Search eligible support operator</label>
               <input id="support-agent-search" type="search" maxLength={70}
                 value={agentSearch} onChange={e=>setAgentSearch(e.target.value)}
-                placeholder="Search eligible names"/>
+                placeholder="Search staff names"/>
               <select id="support-assign" value={assignee}
-              onChange={e=>setAssignee(e.target.value)}>
-              <option value="">Unassigned</option>
-              {assignee&&!agents.some(a=>a.value===assignee)&&
-                <option value={assignee}>Current assigned operator (not in search results)</option>}
-              {agents.map(a=><option key={a.value} value={a.value}>{a.label}</option>)}
-            </select></>:<p>Account selector unavailable for this role.</p>}
-            <button type="button" disabled={busy||!mayChooseAccounts}
-              onClick={()=>void act("ASSIGN")}>Save assignment</button>
-            <label htmlFor="support-status">Current case status</label>
-            <select id="support-status" value={nextStatus}
-              onChange={e=>setNextStatus(e.target.value)}>
-              {["OPEN","ASSIGNED","IN_PROGRESS","WAITING_FOR_USER",
-                "ESCALATED","RESOLVED","CLOSED","REPLIED"].map(value=>
-                <option key={value} value={value}
-                  disabled={value==="REPLIED"||
-                    selected.status==="CLOSED"&&value!=="OPEN"||
-                    selected.status==="RESOLVED"&&!["OPEN","CLOSED"].includes(value)||
-                    value==="ASSIGNED"&&!selected.assignedAccountRef}>
-                  {value.replaceAll("_"," ")}
-                </option>)}
-            </select>
-            <label htmlFor="support-status-note">
-              Private status or resolution summary
-              <textarea id="support-status-note" rows={3} maxLength={1200}
-                value={statusNote} onChange={e=>setStatusNote(e.target.value)}
-                placeholder="Required for Waiting for User, Resolved and Closed"/>
-            </label>
-            <p>Required for waiting, resolved and closed cases; visible only to
-              authorized Foundation staff. It is not emailed automatically.</p>
-            <button type="button" disabled={busy||nextStatus===selected.status||
-              ["WAITING_FOR_USER","RESOLVED","CLOSED"].includes(nextStatus)&&
-              statusNote.trim().length<8}
-              onClick={()=>void act("CHANGE_STATUS")}>Save status</button>
-            <div className="toolbar">
-              <button type="button" disabled={busy||selected.status==="CLOSED"||statusNote.trim().length<8}
-                onClick={()=>void act("CLOSE")}>Close case</button>
-              <button type="button" disabled={busy||selected.status==="OPEN"}
-                onClick={()=>void act("REOPEN")}>Reopen case</button>
+                onChange={e=>setAssignee(e.target.value)}>
+                <option value="">Unassigned</option>
+                {assignee&&!agents.some(a=>a.value===assignee)&&
+                  <option value={assignee}>Current assigned operator (not in search results)</option>}
+                {agents.map(a=><option key={a.value} value={a.value}>{a.label}</option>)}
+              </select>
+              <button type="button" disabled={busy||!mayChooseAccounts}
+                onClick={()=>void act("ASSIGN")}>Save assignment</button>
+            </div>:<p>Account selector unavailable for this role.</p>}
+
+            <hr style={{margin:"1rem 0",borderColor:"var(--cg-border)"}} />
+
+            <strong>Case Status &amp; Resolution (C42)</strong>
+            <div className="form">
+              <label htmlFor="support-status">Update status</label>
+              <select id="support-status" value={nextStatus}
+                onChange={e=>setNextStatus(e.target.value)}>
+                {["OPEN","ASSIGNED","IN_PROGRESS","WAITING_FOR_USER",
+                  "ESCALATED","RESOLVED","CLOSED","REPLIED"].map(value=>
+                  <option key={value} value={value}
+                    disabled={value==="REPLIED"||
+                      (selected.status==="CLOSED"&&value!=="OPEN")||
+                      (selected.status==="RESOLVED"&&!["OPEN","CLOSED"].includes(value))||
+                      (value==="ASSIGNED"&&!selected.assignedAccountRef)}>
+                    {value.replaceAll("_"," ")}
+                  </option>)}
+              </select>
+
+              <label htmlFor="support-status-note">
+                Private status or resolution summary ({statusNote.length}/1200)
+                <textarea id="support-status-note" rows={3} maxLength={1200}
+                  value={statusNote} onChange={e=>setStatusNote(e.target.value)}
+                  placeholder="Required for Waiting for User, Resolved and Closed (minimum 8 characters)"/>
+              </label>
+
+              {statusNoteNeedsLength&&<small style={{color:statusNoteValid?"var(--cg-muted)":"#DC2626"}}>
+                {statusNoteValid?
+                  `Valid note length: ${statusNote.trim().length} characters`:
+                  `Enter at least 8 characters (${statusNote.trim().length}/8 entered)`}
+              </small>}
+
+              <button type="button" className="primary"
+                disabled={busy||nextStatus===selected.status||!statusNoteValid}
+                onClick={()=>void act("CHANGE_STATUS")}>Save status</button>
+
+              <div className="toolbar" style={{marginTop:"0.5rem"}}>
+                <button type="button"
+                  disabled={busy||selected.status==="CLOSED"||statusNote.trim().length<8}
+                  onClick={()=>void act("CLOSE")}>Close case</button>
+                <button type="button"
+                  disabled={busy||selected.status==="OPEN"}
+                  onClick={()=>void act("REOPEN")}>Reopen case</button>
+              </div>
+              {selected.status==="CLOSED"&&
+                <small style={{color:"var(--cg-muted)"}}>
+                  This case is closed. Click &quot;Reopen case&quot; to resume work on it.
+                </small>}
+              {selected.status!=="CLOSED"&&statusNote.trim().length<8&&
+                <small style={{color:"var(--cg-muted)"}}>
+                  Enter at least 8 characters in the status note above to close this case.
+                </small>}
             </div>
           </div>}
-          {mayReply&&!["CLOSED","RESOLVED"].includes(selected.status)&&<div className="field">
-            <label htmlFor="support-reply">Private Foundation reply</label>
+
+          {mayReply&&!["CLOSED","RESOLVED"].includes(selected.status)&&<div className="field" style={{marginTop:"1.25rem"}}>
+            <label htmlFor="support-reply"><strong>Private Foundation reply</strong></label>
             <textarea id="support-reply" rows={5} minLength={2} maxLength={2400}
-              value={reply} onChange={e=>setReply(e.target.value)}/>
+              value={reply} onChange={e=>setReply(e.target.value)}
+              placeholder="Type official private response (min 2 characters)"/>
             <button className="primary" type="button" disabled={busy||reply.trim().length<2}
               onClick={()=>void act("REPLY")}>Save original reply</button>
-            <small>Saving here does not claim that a message was delivered externally.</small>
+            <small style={{color:"var(--cg-muted)"}}>Saving here does not claim that a message was delivered externally.</small>
           </div>}
-          <div className="toolbar"><button type="button" disabled={busy}
-            onClick={()=>void act("ARCHIVE")}>
-            {selected.archived?"Restore from archive":"Archive for my account"}
-          </button></div>
+
+          <div className="toolbar" style={{marginTop:"1.25rem",paddingTop:"1rem",borderTop:"1px solid var(--cg-border)"}}>
+            <button type="button" disabled={busy}
+              onClick={()=>void act("ARCHIVE")}>
+              {selected.archived?"Restore from archive":"Archive for my account"}
+            </button>
+          </div>
         </section>
       </div>}
     </>}
+
     {tab==="FAQ"&&mayEditFaq&&<>
       <div className="role-pane" style={{padding:"1.25rem"}}>
         <h2>{editing?"Edit help question":"New Foundation help question"}</h2>
         <div className="form">
           <div className="field"><label htmlFor="faq-question">Question</label>
             <input id="faq-question" value={question} maxLength={200}
-              onChange={e=>setQuestion(e.target.value)}/></div>
+              onChange={e=>setQuestion(e.target.value)}
+              placeholder="e.g. How can I verify my membership certificate?"/></div>
           <div className="field"><label htmlFor="faq-answer">Answer</label>
             <textarea id="faq-answer" value={answer} maxLength={1600} rows={4}
-              onChange={e=>setAnswer(e.target.value)}/></div>
+              onChange={e=>setAnswer(e.target.value)}
+              placeholder="Official sanitized answer visible to visitors"/></div>
           <div className="toolbar">
-            <button type="button" className="primary" disabled={busy}
+            <button type="button" className="primary" disabled={busy||!question.trim()||!answer.trim()}
               onClick={()=>void saveFaq()}>Save draft/revision</button>
             {editing&&editing.state!=="PUBLISHED"&&
               <button type="button" disabled={busy}
@@ -349,10 +500,12 @@ export function FoundationSupportWorkspace({mayView,mayManage,mayReply,
           </div>
         </div>
       </div>
-      <div className="role-table-wrap"><table className="role-table">
+      <div className="role-table-wrap" style={{marginTop:"1rem"}}><table className="role-table">
         <thead><tr><th>Question</th><th>Status</th><th>Revision</th><th>Actions</th></tr></thead>
         <tbody>{faqs.map(f=><tr key={f.faqRef}>
-          <td>{f.question}</td><td>{f.state}</td><td>{f.revision}</td>
+          <td><strong>{f.question}</strong><p style={{fontSize:"0.85rem",color:"var(--cg-muted)"}}>{f.answer}</p></td>
+          <td><span className={faqBadgeClass(f.state)}>{f.state}</span></td>
+          <td>Rev {f.revision}</td>
           <td><div className="toolbar">
             <button type="button" disabled={busy} onClick={()=>{
               setEditing(f);setQuestion(f.question);setAnswer(f.answer)}}>Edit</button>

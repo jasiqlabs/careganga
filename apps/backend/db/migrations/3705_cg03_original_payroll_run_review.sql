@@ -15,11 +15,11 @@ CREATE UNIQUE INDEX ux_cg03_payroll_run_review ON cg03_case(realm_id,payroll_run
 DO $cg11$
 DECLARE rec record; original text; source_guard text; other_cols text;
 BEGIN
- SELECT string_agg(format('%I',column_name),',') INTO other_cols FROM information_schema.columns
+ SELECT string_agg(format('%I IS NULL',column_name),' AND ') INTO other_cols FROM information_schema.columns
  WHERE table_schema=current_schema() AND table_name='cg03_case'
  AND column_name NOT IN('id','realm_id','case_number','process_id','process_version','proposer_id','target_account_id','target_role_id','account_name_snapshot','role_name_snapshot','expected_access_version','expected_role_revision','proposal_revision','proposal_digest','request_digest','request_key','previous_case_id','status','current_step','revision','submitted_at','updated_at','case_kind','payroll_run_review_ref','payroll_run_revision','payroll_run_digest');
  source_guard:='case_kind=''PAYROLL_RUN_RELEASE'' AND num_nonnulls(payroll_run_review_ref,payroll_run_revision,payroll_run_digest)=3 AND payroll_run_revision=proposal_revision AND payroll_run_digest=proposal_digest AND target_account_id IS NULL AND target_role_id IS NULL AND expected_access_version IS NULL AND expected_role_revision IS NULL';
- IF other_cols IS NOT NULL THEN source_guard:=source_guard||' AND num_nonnulls('||other_cols||')=0'; END IF;
+ IF other_cols IS NOT NULL THEN source_guard:=source_guard||' AND '||other_cols; END IF;
  FOR rec IN SELECT * FROM (VALUES
  ('cg03_process','cg03_process_kind_finance','process_kind=''PAYROLL_RUN_RELEASE'''),
  ('cg03_case','cg03_case_kind_finance','case_kind=''PAYROLL_RUN_RELEASE'''),
