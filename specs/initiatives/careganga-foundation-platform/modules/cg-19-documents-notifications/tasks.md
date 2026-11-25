@@ -339,6 +339,6 @@ CG19 currently supplies original validated/scan-clean rights-safe media and CG12
 - **Defect Resolution & Local Ingress Proxy Fix:** In `apps/web/src/app/api/support/[...parts]/route.ts`, normalized `BACKEND_URL` (`localhost` -> `127.0.0.1`) preventing Windows dual-stack IPv6 socket connection drop, added non-production loopback fallback for `trustedHeader` when client runs in local browser without upstream reverse proxy, and instrumented diagnostic error reporting.
 - **Executed Live Browser QA Evidence (US-003):**
   - Public contact form submission at `http://localhost:3000/contact` with user input (Name: `Amit Kumar`, Subject: `Need medical assistance`): PASSED. Ticket number `CGF-SUP-000000002` generated with opaque private receipt `gMaW6mep8Zzvf-bfckBGfUmmynDVC0daMuaPkaAywSM` (expires 2026-12-25).
-  - Private receipt status check endpoint (`POST /api/support/receipt/status`): PASSED with status `SUBMITTED`.
+  - Private receipt status check in browser (`POST /api/support/receipt/status`): PASSED. User entered receipt code into "Check a private receipt" form and clicked "Check request status"; UI rendered `Current status: CGF-SUP-000000002 · SUBMITTED` (verified via user screenshot at 10:46 AM).
   - `npm run test:cg19-migration-compatibility -w apps/backend`: PASSED (6/6 tests passed).
 - **Gate:** SOURCE_VERIFIED_RUNTIME_PENDING. No runtime PostgreSQL, live mail/SMS provider dispatch, Android emulator/device or production deployment implied. Original QA criteria and counts unchanged.
