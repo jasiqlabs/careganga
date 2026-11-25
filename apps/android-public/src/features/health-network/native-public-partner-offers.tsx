@@ -1,4 +1,4 @@
-import {useCallback,useEffect,useState} from "react";
+import {useCallback,useEffect,useRef,useState} from "react";
 import {ActivityIndicator,Pressable,StyleSheet,Text,View} from "react-native";
 import {careGangaPublicTheme as t} from "../../../../../packages/design-tokens/src/index";
 type Offer={serviceKind:"PHARMACY"|"NURSING"|"OT";name:string;
@@ -28,22 +28,26 @@ export function NativePublicPartnerOffers({centerSlug}:{centerSlug:string}){
    throw Error("Current published partner information is unavailable.");
   const list=raw.items as Offer[];
   if(!list.every(o=>o&&["PHARMACY","NURSING","OT"].includes(o.serviceKind)&&
-    typeof o.name==="string"&&typeof o.description==="string"&&
+    typeof o.name==="string"&&typeof o.description==="string"&&o.currency==="INR"&&
     (o.indicativePriceMinor===null||
      typeof o.indicativePriceMinor==="string"&&
      /^[1-9][0-9]{0,10}$/.test(o.indicativePriceMinor))))
    throw Error("Current approved listing could not be verified.");
   return list;
  },[centerSlug]);
- useEffect(()=>{let active=true;setOffers([]);setState("LOADING");
-  void load().then(items=>{if(active){setOffers(items);setState("READY");}})
-   .catch(()=>{if(active)setState("UNAVAILABLE");});
-  return()=>{active=false;};
- },[load]);
- if(state==="LOADING")return <ActivityIndicator accessibilityLabel="Checking published partner services"/>;
+ const sequence=useRef(0);
+ const [viewFor,setViewFor]=useState(centerSlug);
+ const refresh=useCallback(async()=>{
+  const request=++sequence.current;
+  setViewFor(centerSlug);setOffers([]);setState("LOADING");
+  try{const items=await load();if(request===sequence.current){setOffers(items);setState("READY");}}
+  catch{if(request===sequence.current){setOffers([]);setState("UNAVAILABLE");}}
+ },[load,centerSlug]);
+ useEffect(()=>{void refresh();return()=>{sequence.current++;};},[refresh]);
+ if(state==="LOADING"||viewFor!==centerSlug)return <ActivityIndicator accessibilityLabel="Checking published partner services"/>;
  if(state==="READY"&&offers.length===0)return null;
  return <View style={styles.panel}>
-  <Text style={styles.title}>Approved partner medicine and services</Text>
+  <Text accessibilityRole="header" style={styles.title}>Approved partner medicine and services</Text>
   <Text style={styles.note}>Indicative medicine, nursing and procedure information
    only. Original invoice, performed service and CareGanga benefit eligibility
    are independently verified. No prescription or guaranteed discount.</Text>
@@ -51,15 +55,14 @@ export function NativePublicPartnerOffers({centerSlug}:{centerSlug:string}){
    <Text accessibilityRole="alert" style={styles.note}>
     Current verified partner offers are unavailable.</Text>
    <Pressable accessibilityRole="button" style={styles.button}
-    onPress={()=>{setState("LOADING");void load().then(x=>{setOffers(x);setState("READY");})
-     .catch(()=>setState("UNAVAILABLE"));}}>
-    <Text style={styles.note}>Refresh approved service listing</Text>
+    onPress={()=>void refresh()}>
+    <Text style={styles.buttonLabel}>Refresh approved service listing</Text>
    </Pressable>
   </View>:offers.map((x,i)=><View style={styles.item}
    key={x.serviceKind+":"+x.name+":"+i}>
    <Text style={styles.label}>{x.name} · {
     x.serviceKind==="OT"?"Procedure":x.serviceKind==="PHARMACY"?"Pharmacy":"Nursing"}</Text>
-   <Text style={styles.note}>{x.indicativePriceMinor?
+   <Text style={styles.price}>{x.indicativePriceMinor?
     "Indicative price "+money(x.indicativePriceMinor):"Price on enquiry"}</Text>
    {!!x.description&&<Text style={styles.note}>{x.description}</Text>}
   </View>)}
@@ -68,10 +71,13 @@ export function NativePublicPartnerOffers({centerSlug}:{centerSlug:string}){
 const styles=StyleSheet.create({
  panel:{padding:12,borderWidth:1,borderColor:t.border,borderRadius:12,
   backgroundColor:t.surface,gap:10},
- title:{fontSize:15,fontWeight:"700",color:t.text},
- note:{fontSize:12,lineHeight:19,color:t.mutedText},
- label:{fontSize:13,fontWeight:"600",color:t.text},
- item:{borderTopWidth:1,borderColor:t.border,paddingTop:8,gap:5},
- button:{padding:10,minHeight:44,justifyContent:"center",
-  borderWidth:1,borderColor:t.border,borderRadius:8}
+ title:{fontSize:17,fontWeight:"700",color:t.primaryText,backgroundColor:t.primary,
+  padding:12,borderRadius:10},
+ note:{fontSize:13,lineHeight:20,color:t.mutedText},
+ label:{fontSize:15,fontWeight:"700",color:t.text},
+ price:{fontSize:15,fontWeight:"700",color:t.primary},
+ item:{borderWidth:1,borderColor:t.border,padding:12,borderRadius:10,backgroundColor:t.background,gap:7},
+ button:{padding:12,minHeight:48,justifyContent:"center",alignItems:"center",
+  borderWidth:1,borderColor:t.border,borderRadius:8},
+ buttonLabel:{fontSize:14,fontWeight:"600",color:t.primary,textAlign:"center"}
 });

@@ -7,24 +7,25 @@ import {CmsPublicPage} from "./cms-public-page";
 import {CmsNgoSidebar} from "./cms-ngo-pages";
 import {publishedCmsPage,publishedCmsNavigation} from "./cms-public-source";
 import {publicLabOffers,rupees} from "../diagnostics/public-lab-offers";
-import {currentConsultationBenefits,formatRupees} from "../healthcare-assistance/public-consultation-benefits";
+import {currentConsultationBenefits} from "../healthcare-assistance/public-consultation-benefits";
+import {ConsultationBenefitCards} from "../healthcare-assistance/approved-consultation-benefits";
 
 /** One SSR source for each approved Foundation editorial route.
  * The Home publication supplies only shared original CMS footer content.
  */
-export async function editorialMetadata(slug:string):Promise<Metadata>{
+export async function editorialMetadata(slug:string,expectedKind?:"ARTICLE"|"POLICY"):Promise<Metadata>{
  const r=await publishedCmsPage(slug);
- if(r.state!=="PUBLISHED")return {title:"CareGanga Foundation",robots:{index:false,follow:false}};
+ if(r.state!=="PUBLISHED"||(expectedKind&&r.page.kind!==expectedKind))return {title:"CareGanga Foundation",robots:{index:false,follow:false}};
  return {title:r.page.seoTitle,description:r.page.seoDescription,
   alternates:{canonical:r.page.canonicalPath},
   robots:{index:true,follow:true}};
 }
-export async function CmsEditorialRoute({slug,extra}:{slug:string;extra?:ReactNode}){
+export async function CmsEditorialRoute({slug,extra,expectedKind}:{slug:string;extra?:ReactNode;expectedKind?:"ARTICLE"|"POLICY"}){
  const [page,navigation,home,labOffers,benefits]=await Promise.all([
   publishedCmsPage(slug),publishedCmsNavigation(),publishedCmsPage("home"),
   slug==="healthcare"?publicLabOffers(new URLSearchParams()):Promise.resolve(null),
   slug==="healthcare"?currentConsultationBenefits():Promise.resolve(null)]);
- if(page.state==="NOT_PUBLISHED")notFound();
+ if(page.state==="NOT_PUBLISHED"||(page.state==="PUBLISHED"&&expectedKind&&page.page.kind!==expectedKind))notFound();
  if(page.state!=="PUBLISHED")return <UnavailablePage title="Foundation content temporarily unavailable" description="We could not verify the currently approved public information." linkHref="/" linkLabel="Return to the homepage" />;
  return <CmsPublicPage page={page.page} navigation={navigation}
   siteFooter={home.state==="PUBLISHED"?
@@ -32,7 +33,7 @@ export async function CmsEditorialRoute({slug,extra}:{slug:string;extra?:ReactNo
   {slug==="healthcare"&&<section className="cg-site-content"
    aria-label="Verified healthcare consultation booking">
    <h2>Find &amp; book healthcare services</h2>
-   {benefits?.state==="READY"&&benefits.items.length>0&&<div className="cg-health-benefit-strip"><h3>Current Foundation consultation support</h3><p>{benefits.disclaimer}</p><div>{benefits.items.slice(0,4).map((item,i)=><article key={item.centerSlug+":"+i}><strong>{item.centerName}</strong><p>{item.doctorName||"Approved center policy"}</p><b>{item.mode==="PERCENT"&&item.percentBasisPoints!==null?(item.percentBasisPoints/100)+"% possible support":formatRupees(item.fixedSupportMinor??"0")+" possible support"}</b><p>Maximum {formatRupees(item.maximumSupportMinor)}</p><Link href={"/healthcare/centers/"+encodeURIComponent(item.centerSlug)}>View center</Link></article>)}</div></div>}
+
    <p>CareGanga lists only currently verified healthcare providers and doctors.
     Where live working hours and consultation fees are available, an eligible
     patient can request an in-person appointment. Center payment methods and assistance are checked against the actual booking.</p>
@@ -42,6 +43,7 @@ export async function CmsEditorialRoute({slug,extra}:{slug:string;extra?:ReactNo
    <p>Bookings depend on a current available slot and final confirmation.
     This is not an approval for financial assistance.</p>
   </section>}
+  {benefits&&<ConsultationBenefitCards response={benefits}/>}
   {extra??null}
   {slug==="healthcare"&&labOffers?.state==="READY"&&labOffers.items.length>0&&
    <section className="cg-site-content" aria-label="Currently approved partner laboratory tests">

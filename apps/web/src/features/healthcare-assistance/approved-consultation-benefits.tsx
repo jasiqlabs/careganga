@@ -5,9 +5,11 @@ import {currentConsultationBenefits,formatRupees}
  * without any patient detail or implying a confirmed award.
  */
 export async function ApprovedConsultationBenefits(){
- const response=await currentConsultationBenefits();
+ return <ConsultationBenefitCards response={await currentConsultationBenefits()}/>;
+}
+export function ConsultationBenefitCards({response}:{response:Awaited<ReturnType<typeof currentConsultationBenefits>>}){
  if(response.state!=="READY"||response.items.length===0)return null;
- return <section className="cg-site-content"
+ return <section className="cg-site-content cg-health-benefit-strip"
   aria-label="Currently approved consultation contribution policies">
   <h2>Currently approved consultation support</h2>
   <p>Where applicable, the Foundation may contribute toward an eligible
@@ -15,7 +17,7 @@ export async function ApprovedConsultationBenefits(){
    doctor's fee, verified patient-care eligibility and policy cap.
    This is not a guaranteed discount or a payment confirmation.</p>
   <ul>
-   {response.items.slice(0,3).map((item,i)=><li key={item.centerSlug+":"+(item.doctorRef??"center")+":"+i}>
+   {response.items.slice(0,4).map((item,i)=><li key={item.centerSlug+":"+(item.doctorRef??"center")+":"+i}>
     <strong>{item.centerName}</strong>
     {item.doctorName?<> · {item.doctorName}</>:null}:{" "}
     {item.mode==="PERCENT"&&item.percentBasisPoints!==null?
@@ -25,6 +27,7 @@ export async function ApprovedConsultationBenefits(){
     {item.feeMinor!==null?
      " · currently approved consultation fee "+formatRupees(item.feeMinor):""}
     {" · subject to eligibility and available appointments."}
+    {" "}<Link href={"/healthcare/centers/"+encodeURIComponent(item.centerSlug)}>View center</Link>
    </li>)}
   </ul>
   <p>Policies may change or expire. Check the current rate when choosing

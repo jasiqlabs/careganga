@@ -1,5 +1,5 @@
 import Link from "next/link";
-import {Suspense} from "react";
+import {Suspense,type ReactNode} from "react";
 import type {PublicCmsPage,PublicCmsSection} from "./cms-public-page";
 import type {PublicCmsNavigation} from "./cms-public-source";
 import {CmsGalleryGridClient,type CmsMediaType} from "./cms-gallery-grid-client";
@@ -22,22 +22,24 @@ export function CmsImpactGroup({section,assets,navigation}:{
  const pic=assets.find(a=>a.role==="IMPACT"&&a.order===section.order);
  const tabular=["STATS","GROWTH","BREAKDOWN"].includes(group);
  const heading=text(f.heading);
- const peak=Math.max(0,...rows.map(v=>typeof v.value==="number"&&
-  Number.isFinite(v.value)?v.value:0));
+ const finite=(v:unknown):v is number=>typeof v==="number"&&Number.isFinite(v);
+ const validPercentage=(v:unknown):v is number=>finite(v)&&v>=0&&v<=100;
+ const chartRows=rows.filter(v=>group==="BREAKDOWN"?validPercentage(v.percentage):finite(v.value)&&v.value>=0);
+ const peak=Math.max(0,...chartRows.map(v=>finite(v.value)?v.value:0));
  return <section className={"cg-site-content cg-site-impact-group cg-site-impact-"+group.toLowerCase()}>
   <div className="cg-site-impact-heading">
    <p className="cg-site-eyebrow">{group==="HERO"&&text(f.eyebrow)?
     text(f.eyebrow):group.replaceAll("_"," ")}</p>
-   <h2>{heading}{group==="HERO"&&!!text(f.highlight)&&<>
-    {" "}<span className="cg-site-impact-highlight">{text(f.highlight)}</span></>}</h2>
+   {group==="HERO"?<h1>{heading}{!!text(f.highlight)&&<>
+    {" "}<span className="cg-site-impact-highlight">{text(f.highlight)}</span></>}</h1>:<h2>{heading}</h2>}
    {group==="HERO"&&!!text(f.quote)&&
     <blockquote className="cg-site-impact-quote">{text(f.quote)}</blockquote>}
    {text(f.intro)&&<p>{text(f.intro)}</p>}
    {rows.length>0&&label(f.source,f.asOfDate)}
-   {!rows.length&&!["HERO","CTA"].includes(group)&&!text(f.intro)&&<p role="status">No approved information has been published yet.</p>}
+   {!rows.length&&!["HERO","CTA","PILLARS"].includes(group)&&<div className="cg-site-empty" role="status">No approved information has been published yet.</div>}
   </div>
   {photo(pic,"cg-site-impact-photo")}
-  {tabular&&rows.length>0?<div className="cg-site-table-wrap">
+  {tabular&&rows.length>0?<div className="cg-site-table-wrap" role="region" aria-label={heading+" — scrollable data table"} tabIndex={0}>
    <table className="cg-site-evidence-table">
     <caption>{heading} — source-reported information</caption>
     <thead><tr><th scope="col">Description</th><th scope="col">Value</th>
@@ -45,14 +47,14 @@ export function CmsImpactGroup({section,assets,navigation}:{
     <tbody>{rows.map((item,i)=><tr key={i}>
      <th scope="row">{text(item.title)}
       {typeof item.year==="number"?" ("+item.year+")":""}</th>
-     <td>{typeof item.percentage==="number"?item.percentage+"%":
-      typeof item.value==="number"?String(item.value)+" "+text(item.unit):"—"}</td>
+     <td>{validPercentage(item.percentage)?item.percentage+"%":
+      finite(item.value)?String(item.value)+" "+text(item.unit):"—"}</td>
      <td>{text(item.description)}</td>
     </tr>)}</tbody>
    </table>
-   {["GROWTH","BREAKDOWN"].includes(group)&&
+   {["GROWTH","BREAKDOWN"].includes(group)&&chartRows.length>0&&
     <div className="cg-site-source-bars" aria-hidden="true">
-     {rows.map((item,i)=>{
+     {chartRows.map((item,i)=>{
       const numeric=group==="BREAKDOWN"?
        (typeof item.percentage==="number"?item.percentage:0):
        (typeof item.value==="number"?item.value:0);
@@ -74,8 +76,8 @@ export function CmsImpactGroup({section,assets,navigation}:{
      <span className="cg-site-impact-reach">
       {text(v.level).charAt(0)+text(v.level).slice(1).toLowerCase()} reach
      </span>}
-    {typeof v.percentage==="number"&&<strong>{v.percentage}%</strong>}
-    {typeof v.value==="number"&&<strong>{v.value} {text(v.unit)}</strong>}
+    {validPercentage(v.percentage)&&<strong>{v.percentage}%</strong>}
+    {finite(v.value)&&<strong>{v.value} {text(v.unit)}</strong>}
    </article>)}</div>:null}
   {["CTA","HERO"].includes(group)&&text(f.ctaPath)&&text(f.ctaLabel)&&
    (["/","/contact"].includes(text(f.ctaPath))||
@@ -86,7 +88,15 @@ export function CmsImpactGroup({section,assets,navigation}:{
 export function CmsCompliance({section,assets}:{
  section:PublicCmsSection;assets:Asset[]}){
  const f=section.fields;
- const supported=f.verification==="VERIFIED",proof=assets.find(a=>a.role==="DOCUMENT");
+ const safeDocument=(a:Asset)=>a.role==="DOCUMENT"&&/^\/api\/public\/content\/media\/[a-f0-9]{8}-(?:[a-f0-9]{4}-){3}[a-f0-9]{12}$/i.test(a.src);
+ const supported=f.verification==="VERIFIED",proof=assets.find(safeDocument);
+ const documents=Array.isArray(f.documents)?f.documents.slice(0,6).flatMap((raw,i)=>{
+  if(!raw||typeof raw!=="object"||Array.isArray(raw))return [];
+  const record=raw as Record<string,unknown>;
+  if(!text(record.title).trim()||!/^\d{4}-\d{2}-\d{2}$/.test(text(record.asOfDate)))return [];
+  const document=assets.find(a=>a.order===i&&safeDocument(a));
+  return document?[{record,document}]:[];
+ }):[];
  return <section className="cg-site-content cg-site-legal">
   <p className="cg-site-eyebrow">Registration &amp; public disclosures</p>
   <h1>{text(f.heading)}</h1>
@@ -96,18 +106,17 @@ export function CmsCompliance({section,assets}:{
   <p>{text(f.summary)}</p>
   <p className="cg-site-legal-status">{supported?
    "Document-supported Foundation declaration":"Not currently verified — no tax eligibility is promised"}</p>
-  <dl className="cg-site-legal-data">
+  {([f.issuer,f.pan,f.registrationNumber,f.approvalNumber,f.validFrom,f.validUntil,f.source].some(v=>!!text(v)))&&<dl className="cg-site-legal-data">
    {([["Issuing authority",f.issuer],["PAN",f.pan],["Registration",f.registrationNumber],
     ["Approval reference",f.approvalNumber],["Valid from",f.validFrom],
     ["Valid until",f.validUntil],["Source",f.source],
     ["Reviewed on",text(f.source)?f.verifiedAsOf:""]] as [string,unknown][])
     .filter(([,v])=>!!text(v)).map(([key,value])=><div key={key}>
      <dt>{key}</dt><dd>{text(value)}</dd></div>)}
-  </dl>
-  {records(f.documents).length>0&&<section aria-label="Published original reports">
-   <h2>Verified source documents and annual reports</h2>
-   <div className="cg-site-impact-grid">{records(f.documents).map((record,i)=>{
-    const document=assets.find(a=>a.role==="DOCUMENT"&&a.order===i);
+  </dl>}
+  {documents.length>0&&<section aria-label="Published original reports">
+   <h2>{supported?"Verified source documents and annual reports":"Published disclosures and annual reports"}</h2>
+   <div className="cg-site-impact-grid">{documents.map(({record,document},i)=>{
     if(!document)return null;
     return <article key={i} className="cg-site-impact-card">
      <p className="cg-site-eyebrow">{text(record.type).replaceAll("_"," ")}</p>
@@ -116,30 +125,33 @@ export function CmsCompliance({section,assets}:{
     </article>;
    })}</div>
   </section>}
-  {supported&&proof?.src&&records(f.documents).length===0&&
+  {supported&&proof?.src&&(f.documents===undefined||Array.isArray(f.documents)&&f.documents.length===0)&&
    <a className="cg-site-action" href={proof.src} download>
     View approved supporting document</a>}
   {text(f.importantNote)&&<aside className="cg-site-legal-important">
    <strong>Important</strong><p>{text(f.importantNote)}</p>
   </aside>}
-  <p className="cg-site-legal-notice">{text(f.disclaimer)}</p>
+  {text(f.disclaimer)&&<p className="cg-site-legal-notice">{text(f.disclaimer)}</p>}
   <p className="cg-site-provenance">Only the current Foundation-published information is shown.
    Confirm tax applicability with the issuing authority.</p>
  </section>;
 }
-export function CmsGallery({section,assets,mediaScope="PHOTO"}:{
- section:PublicCmsSection;assets:Asset[];mediaScope?:CmsMediaType}){
+export function CmsGallery({section,assets,mediaScope="PHOTO",embedded=false}:{
+ section:PublicCmsSection;assets:Asset[];mediaScope?:CmsMediaType;embedded?:boolean}){
  const fields=section.fields;
  const heading=mediaScope==="VIDEO"?fields.videosHeading:
   mediaScope==="PUBLICATION"?fields.publicationsHeading:fields.heading;
  const intro=mediaScope==="VIDEO"?fields.videosDescription:
   mediaScope==="PUBLICATION"?fields.publicationsDescription:fields.description;
+ const Heading=embedded?"h2":"h1";
  return <section className="cg-site-content cg-site-gallery">
-  <p className="cg-site-eyebrow">Media &amp; Resources</p>
-  <h1>{text(heading)||text(fields.heading)}</h1>
-  {text(intro)&&<p>{text(intro)}</p>}
+  <header className="cg-site-resource-hero">
+   <p className="cg-site-eyebrow">Media &amp; Resources</p>
+   <Heading>{text(heading)||text(fields.heading)}</Heading>
+   {text(intro)&&<p>{text(intro)}</p>}
+  </header>
   <Suspense fallback={<p role="status">Loading approved media filters…</p>}>
-   <CmsGalleryGridClient fields={{
+   <CmsGalleryGridClient key={mediaScope} fields={{
     heading:fields.heading,description:fields.description,items:fields.items,
     photosEmptyText:fields.photosEmptyText,videosEmptyText:fields.videosEmptyText,
     publicationsEmptyText:fields.publicationsEmptyText}}
@@ -149,21 +161,26 @@ export function CmsGallery({section,assets,mediaScope="PHOTO"}:{
 }
 export function CmsArticle({section,assets}:{
  section:PublicCmsSection;assets:Asset[]}){
- const f=section.fields,event=f.event&&typeof f.event==="object"?f.event as Record<string,unknown>:null;
- const cover=event&&/^\/api\/public\/content\/media\/[a-f0-9-]{36}$/i.test(text(event.coverSrc))?{role:"ARTICLE",order:0,altText:text(f.heading),src:text(event.coverSrc)}:assets.find(a=>a.role==="ARTICLE"&&a.order===0);
+ const f=section.fields,event=f.event&&typeof f.event==="object"&&!Array.isArray(f.event)?f.event as Record<string,unknown>:null;
+ const safeMedia=(v:unknown)=>/^\/api\/public\/content\/media\/[a-f0-9]{8}-(?:[a-f0-9]{4}-){3}[a-f0-9]{12}$/i.test(text(v));
+ const cover=event?(safeMedia(event.coverSrc)?{role:"ARTICLE",order:0,altText:text(f.heading),src:text(event.coverSrc)}:undefined):assets.find(a=>a.role==="ARTICLE"&&a.order===0&&safeMedia(a.src));
  const stamp=(v:unknown)=>typeof v==="string"&&Number.isFinite(Date.parse(v))?new Date(v).toLocaleString("en-IN",{timeZone:"Asia/Kolkata"}):"";
- return <article className="cg-site-content cg-site-article-body">
+ const eventStatus=event?({SCHEDULED:"Scheduled",ONGOING:"Ongoing",COMPLETED:"Completed"} as Record<string,string>)[text(event.status)]:undefined;
+ const start=stamp(event?.scheduledStart),end=stamp(event?.scheduledEnd);
+ const validSchedule=!!start&&!!end&&Date.parse(text(event?.scheduledEnd))>Date.parse(text(event?.scheduledStart));
+ const tags=Array.isArray(f.tags)?f.tags.map(text).filter(t=>t.trim()):[];
+ return <article className="cg-site-content cg-site-article-body cg-site-editorial-detail">
+  <Link className="cg-site-editorial-back" href={event?"/events":"/blog"}>{event?"Back to events":"Back to news"}</Link>
   <p className="cg-site-eyebrow">{text(f.category)}</p>
   <h1>{text(f.heading)}</h1>
-  <p className="cg-site-article-lead">{text(f.excerpt)}</p>
-  {event&&<div className="cg-site-article-lead"><p>{text(event.status)==="SCHEDULED"?"Scheduled":text(event.status)==="ONGOING"?"Ongoing":"Completed"} · {text(event.area)}</p><p>{stamp(event.scheduledStart)} – {stamp(event.scheduledEnd)} IST</p></div>}
-  {label(f.source,f.asOfDate)}
-  <p className="cg-site-provenance">Editorial credit: {text(f.authorLabel)}</p>
+  {!!text(f.excerpt)&&<p className="cg-site-article-lead">{text(f.excerpt)}</p>}
+  {event&&<div className="cg-site-event-facts"><p>{eventStatus||"Current event status unavailable"}{text(event.area)?" · "+text(event.area):""}</p>{validSchedule?<p>{start} – {end} IST</p>:<p>Current event timing unavailable</p>}</div>}
+  {(text(f.source)||text(f.asOfDate)||text(f.authorLabel))&&<div className="cg-site-editorial-meta">{text(f.source)&&<span>Source: {text(f.source)}</span>}{text(f.asOfDate)&&<span>As of {text(f.asOfDate)}</span>}{text(f.authorLabel)&&<span>Editorial credit: {text(f.authorLabel)}</span>}</div>}
   {photo(cover,"cg-site-article-cover")}
   {text(f.body).split(/\n{2,}/).filter(Boolean).map((paragraph,i)=>
    <p key={i}>{paragraph}</p>)}
-  <div className="cg-site-tags">{Array.isArray(f.tags)&&f.tags.map((tag,i)=>
-   <span key={i}>{text(tag)}</span>)}</div>
+  {tags.length>0&&<div className="cg-site-tags">{tags.map((tag,i)=>
+   <span key={i}>{tag}</span>)}</div>}
  </article>;
 }
 export function CmsHealthcare({section,assets}:{
@@ -175,14 +192,14 @@ export function CmsHealthcare({section,assets}:{
  const code=(v:Record<string,unknown>)=>codes[text(v.title).trim().toLowerCase()]??"";
  return <section className="cg-site-content cg-site-healthcare">
   <p className="cg-site-eyebrow">Healthcare Assistance</p>
-  <h1>{text(f.heading)}</h1><p className="cg-site-article-lead">{text(f.intro)}</p>
+  <h2 className="cg-site-healthcare-heading">{text(f.heading)}</h2><p className="cg-site-article-lead">{text(f.intro)}</p>
   <form className="cg-health-discovery" action="/health-network" method="get" aria-label="Find healthcare services"><input type="hidden" name="tab" value="centers"/><label>Center or provider<input type="search" name="q" maxLength={80} placeholder="Find a verified center"/></label><label>Service category<select name="category"><option value="">All centers</option>{categories.filter(v=>code(v)).map((v,i)=><option key={i} value={code(v)}>{text(v.title)}</option>)}</select></label><label>PIN code (optional)<input name="pin" inputMode="numeric" maxLength={6} pattern="[1-9][0-9]{5}" placeholder="Six-digit PIN"/></label><button className="cg-site-action" type="submit">Search centers</button></form>
   <div className="cg-site-healthcare-grid">{categories.map((v,i)=>
    <article key={i} className="cg-site-impact-card">
     {photo(assets.find(a=>a.role==="FEATURE"&&a.order===i),"cg-health-category-photo")}
-    {assets.find(a=>a.role==="FEATURE"&&a.order===i)?.altText.startsWith("AI-generated illustration")&&<p className="cg-site-provenance">AI-generated illustration.</p>}
-    <h2>{text(v.title)}</h2><p>{text(v.description)}</p>
-    <Link className="cg-site-action" href={"/health-network?tab=centers"+(code(v)?"&category="+encodeURIComponent(code(v)):"")}>Find centers</Link>
+    {assets.find(a=>a.role==="FEATURE"&&a.order===i)?.altText.match(/^(AI-generated illustration|Editorial illustration)/)&&<p className="cg-site-provenance">Illustration; not a photograph of a verified facility.</p>}
+    <h3>{text(v.title)}</h3><p>{text(v.description)}</p>
+    <Link className="cg-site-action" href={"/health-network?tab=centers"+(code(v)?"&category="+encodeURIComponent(code(v)):"")} aria-label={"Find centers — "+text(v.title)}>Find centers</Link>
    </article>)}</div>
   {f.ctaPath==="/contact"&&text(f.ctaLabel)&&
    <Link className="cg-site-action" href="/contact">{text(f.ctaLabel)}</Link>}
@@ -195,7 +212,7 @@ export function CmsHealthcare({section,assets}:{
  * external destinations are strictly authorized CMS fields; actual support
  * submission remains CG19, CSR remains CG08 and membership remains CG04.
  */
-export function CmsContactInfo({section,assets}:{section:PublicCmsSection;assets:Asset[]}){
+export function CmsContactInfo({section,assets,form}:{section:PublicCmsSection;assets:Asset[];form?:ReactNode}){
  const f=section.fields,faq=records(f.faqs),inquiries=records(f.inquiries);
  const social=records(f.socialLinks);
  const secure=(value:unknown,hosts:string[])=>{
@@ -222,10 +239,11 @@ export function CmsContactInfo({section,assets}:{section:PublicCmsSection;assets
   Instagram:["instagram.com","www.instagram.com"],
   YouTube:["youtube.com","www.youtube.com"]
  };
+ const safeSocial=social.filter(link=>allowedSocial[text(link.network)]&&secure(link.url,allowedSocial[text(link.network)]));
  return <section className="cg-site-contact-original cg-site-content">
   <header className="cg-site-contact-hero">
    <p className="cg-site-eyebrow">Contact the Foundation</p>
-   <h1>{text(f.heroTitle)}</h1>
+   <h1>{text(f.heroTitle).trim()||"Contact the Foundation"}</h1>
    {text(f.heroIntro)&&<p>{text(f.heroIntro)}</p>}
   </header>
   {inquiries.length>0&&<div className="cg-site-contact-inquiries">
@@ -233,6 +251,7 @@ export function CmsContactInfo({section,assets}:{section:PublicCmsSection;assets
     <h2>{text(item.title)}</h2><p>{text(item.description)}</p>
    </article>)}
   </div>}
+  {form}
   {assets.some(a=>a.role==="CONTACT"&&a.order>=0&&a.order<3&&
    /^\/api\/public\/content\/media\/[0-9a-f-]{36}$/i.test(a.src))&&
    <div className="cg-site-contact-photo-strip" aria-label="Approved Foundation photographs">
@@ -260,10 +279,9 @@ export function CmsContactInfo({section,assets}:{section:PublicCmsSection;assets
     </details>)}
    </div>
   </section>}
-  {social.length>0&&<section className="cg-site-contact-social">
+  {safeSocial.length>0&&<section className="cg-site-contact-social">
    <h2>Follow the Foundation</h2>
-   <div>{social.filter(link=>allowedSocial[text(link.network)]&&
-     secure(link.url,allowedSocial[text(link.network)]))
+   <div>{safeSocial
     .map((link,i)=><a key={i}
      href={secure(link.url,allowedSocial[text(link.network)])}
      target="_blank" rel="noopener noreferrer">{text(link.network)}</a>)}</div>

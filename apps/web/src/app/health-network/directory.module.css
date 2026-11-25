@@ -52,3 +52,40 @@
 .list .actions { grid-column:2; grid-row:1 / span 5; align-self:center; flex-direction:column; }
 .list .photoFrame { max-width:250px; }
 @media(max-width:850px){.directoryLayout{grid-template-columns:1fr;}.list .card{display:flex;}.list .actions{flex-direction:row;}.categories{flex-wrap:nowrap;overflow-x:auto;padding-bottom:4px;}.categories a{flex-shrink:0;}}
+
+/* Accessible responsive public directory hierarchy. */
+:global(.cg-health-public-chrome) .hero:global(.cg-public-section){background:linear-gradient(110deg,#143c2f,#194a3a);color:white;padding:clamp(1rem,3vw,2rem)}
+:global(.cg-health-public-chrome) .hero :is(h1,p,a),:global(.cg-health-public-chrome) .hero :global(.cg-lead){color:#fff}
+:global(.cg-health-public-chrome) .hero :global(.cg-eyebrow){color:#f5d97a}
+.hero h1{max-width:32ch}
+.hero nav{gap:.6rem!important}
+.hero nav a{display:inline-flex;align-items:center;justify-content:center;min-height:44px;padding:.55rem .85rem;border:1px solid #ffffff70;border-radius:.6rem;text-align:center;text-decoration:none;max-width:100%}
+:global(.cg-health-public-chrome) .hero nav a[aria-current="page"]{background:var(--cg-health-gold);color:var(--cg-health-pressed);border-color:var(--cg-health-gold)}
+.hero>p:last-child{margin:.65rem 0 0}
+.hero>p:last-child a{display:inline-flex;align-items:center;min-height:44px}
+:global(.cg-health-public-chrome) .filterPanel .panelTitle{color:white;font-size:1rem}
+.filterForm label{display:grid;gap:.35rem;font-size:.88rem;font-weight:650;min-width:0;color:#243349}
+.filterForm summary{min-height:44px;line-height:1.5}
+.filterForm a,.results>p>a,.card>p>a{display:inline-flex;align-items:center;min-height:44px;color:#194a3a;font-weight:700;text-underline-offset:.2rem}
+.card{box-shadow:0 2px 8px #1120390d;gap:.55rem}
+.card h3 a{color:#112039;text-decoration:none;overflow-wrap:anywhere}
+.card .identity{min-width:0;align-items:flex-start}
+.card .identity p{min-width:0;overflow-wrap:anywhere}
+.avatar{background:#eef7f0;color:#194a3a;border-color:#d0e4d5}
+.tags span{background:#f0f7f2;color:#194a3a}
+.actions a{max-width:100%;overflow-wrap:anywhere;flex:1 1 130px;border:1px solid #bccfc6;border-radius:.65rem;color:#194a3a;text-decoration:none;font-weight:700}
+.actions a:global(.primary){background:#194a3a;color:#fff;border-color:#194a3a}
+.hero a:focus-visible{outline:2px solid #ffe074;outline-offset:3px}
+.categories a:focus-visible,.viewModes a:focus-visible,.filterForm :is(a,button,input,select,summary):focus-visible,.card a:focus-visible{outline:2px solid #194a3a;outline-offset:3px}
+@media(max-width:850px){.categories{flex-wrap:wrap;overflow-x:visible}.categories a{flex:0 1 auto;max-width:100%;overflow-wrap:anywhere}.list .actions a{flex:1 1 130px}}
+@media(max-width:480px){.hero nav a{flex:1 1 120px}.actions a{flex:1 1 100%}.categories a{font-size:.82rem;padding:.45rem .65rem}}
+@media(min-width:851px){.list .actions a{flex:0 0 auto}}
+
+/* Keep clinical listings and their filters clear of floating donation actions. */
+.directoryPage~:global(.cg-site-floating){position:static;padding:.75rem clamp(1rem,6vw,7rem) max(.75rem,env(safe-area-inset-bottom));background:#080d14;align-items:center}
+.directoryPage~:global(.cg-site-footer){padding-bottom:2rem}
+.grid:has(>.card:only-child){grid-template-columns:minmax(0,640px)}
+.card .fee{display:flex;flex-wrap:wrap;gap:.35rem;align-items:baseline;padding:.65rem .75rem;background:#f5f8ef;border:1px solid #d8e7dc;border-radius:.65rem;color:#4d6072;font-size:.88rem}
+.fee strong{font-size:1.2rem;color:#194a3a;font-variant-numeric:tabular-nums}
+.filterForm button{min-height:48px}
+@media(max-width:480px){.filterForm button{width:100%}.filterForm a{justify-content:center;width:100%}}

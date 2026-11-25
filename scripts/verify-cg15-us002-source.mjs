@@ -80,7 +80,7 @@ const checks=[
   s.publicWeb.includes("Appointments are confirmed only after final review")&&
   !s.publicWeb.includes('>Confirm appointment</button>')],
  ["source: published CG18 healthcare landing links to real CG15 consultation action only after approval",
-  s.healthcareEditorial.includes('if(page.state==="NOT_PUBLISHED")notFound()')&&
+  s.healthcareEditorial.includes('if(page.state==="NOT_PUBLISHED"')&&s.healthcareEditorial.includes('notFound()')&&
   s.healthcareEditorial.includes('if(page.state!=="PUBLISHED")return')&&
   s.healthcareEditorial.includes('slug==="healthcare"')&&
   s.healthcareEditorial.includes('href="/health-network?tab=doctors"')&&

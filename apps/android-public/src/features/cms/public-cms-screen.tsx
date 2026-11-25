@@ -1,5 +1,5 @@
 import {useCallback,useEffect,useRef,useState} from "react";
-import {ActivityIndicator,AppState,BackHandler,Image,Pressable,
+import {ActivityIndicator,AppState,BackHandler,Image,Linking,Pressable,
  StyleSheet,Text,TextInput,View} from "react-native";
 import {careGangaPublicTheme as t} from "../../../../../packages/design-tokens/src/index";
 import {CmsPublicExtendedSection} from "./cms-extended-native-screen";
@@ -67,9 +67,25 @@ async function publishedArticles(eventsOnly=false,cursor=""):Promise<{available:
   if(!r.ok)throw Error();
   const v:unknown=await r.json();
   if(!v||typeof v!=="object"||!("posts" in v)||!Array.isArray(v.posts))throw Error();
-  return {available:true,posts:(v.posts as Article[]).filter(a=>a&&
-   typeof a.slug==="string"&&/^[a-z0-9][a-z0-9-]{0,69}$/.test(a.slug)&&
-   a.path==="/blog/"+a.slug).slice(0,20),nextCursor:"nextCursor" in v&&typeof v.nextCursor==="string"&&/^[a-z0-9][a-z0-9-]{0,69}$/.test(v.nextCursor)?v.nextCursor:null};
+  const x=v as {schemaVersion?:unknown;posts:unknown[];nextCursor?:unknown};
+  const validDate=(value:unknown)=>{
+   if(typeof value!=="string"||!/^\d{4}-\d{2}-\d{2}$/.test(value))return false;
+   const parsed=new Date(value+"T00:00:00.000Z");
+   return Number.isFinite(parsed.getTime())&&parsed.toISOString().slice(0,10)===value;
+  };
+  const valid=(raw:unknown):raw is Article=>{
+   if(!raw||typeof raw!=="object"||Array.isArray(raw))return false;
+   const p=raw as Record<string,unknown>;
+   return typeof p.slug==="string"&&/^[a-z0-9][a-z0-9-]{0,69}$/.test(p.slug)&&
+    p.path==="/blog/"+p.slug&&typeof p.title==="string"&&
+    typeof p.category==="string"&&p.category.length<=80&&
+    typeof p.excerpt==="string"&&p.excerpt.length<=400&&
+    validDate(p.asOfDate);
+  };
+  if(x.schemaVersion!==1||x.posts.length>20||!x.posts.every(valid)||
+    new Set(x.posts.map(p=>p.slug)).size!==x.posts.length||
+    (x.nextCursor!==null&&(typeof x.nextCursor!=="string"||!/^[a-z0-9][a-z0-9-]{0,69}$/.test(x.nextCursor)||x.nextCursor===cursor)))throw Error();
+  return {posts:x.posts,nextCursor:x.nextCursor,available:true};
  }catch{return {available:false,posts:[],nextCursor:null};}
 }
 type Notice={title:string;body:string;category:string;
@@ -87,6 +103,12 @@ async function publishedNotices():Promise<{available:boolean;notices:Notice[]}>{
   const data=raw as Record<string,unknown>;
   if(data.schemaVersion!==1||!Array.isArray(data.notices)||data.notices.length>60)
    throw Error();
+  const today=new Date().toISOString().slice(0,10);
+  const validDay=(value:unknown)=>{
+   if(typeof value!=="string"||!/^\d{4}-\d{2}-\d{2}$/.test(value))return false;
+   const parsed=new Date(value+"T00:00:00.000Z");
+   return Number.isFinite(parsed.getTime())&&parsed.toISOString().slice(0,10)===value;
+  };
   const valid=(n:unknown):n is Notice=>{
    if(!n||typeof n!=="object"||Array.isArray(n))return false;
    const item=n as Record<string,unknown>;
@@ -94,14 +116,15 @@ async function publishedNotices():Promise<{available:boolean;notices:Notice[]}>{
     typeof item.body==="string"&&item.body.length<=480&&
     typeof item.category==="string"&&item.category.length<=80&&
     (item.priority==="IMPORTANT"||item.priority==="NORMAL")&&
-    typeof item.publishedOn==="string"&&
-    /^\d{4}-\d{2}-\d{2}$/.test(item.publishedOn)&&
-    typeof item.expiresOn==="string"&&
-    /^\d{4}-\d{2}-\d{2}$/.test(item.expiresOn)&&
+    validDay(item.publishedOn)&&
+    validDay(item.expiresOn)&&
+    String(item.publishedOn)<=today&&
+    String(item.expiresOn)>=today&&
+    String(item.publishedOn)<=String(item.expiresOn)&&
     typeof item.path==="string"&&
     /^\/blog\/[a-z0-9-]{1,70}$/.test(item.path);
   };
-  if(!data.notices.every(valid))throw Error();
+  if(!data.notices.every(valid)||new Set(data.notices.map(n=>n.path)).size!==data.notices.length)throw Error();
   return {available:true,notices:data.notices};
  }catch{return {available:false,notices:[]};}
 }
@@ -127,11 +150,11 @@ async function publishedNavigation():Promise<{login:boolean;paths:string[];membe
    volunteer:data.volunteerJoin?.visible===true&&data.volunteerJoin?.path==="/volunteer",paths};
  }catch{return {login:false,paths:[],member:false,volunteer:false};}
 }
-function CmsButton({title,onPress,secondary=false}:{
- title:string;onPress:()=>void;secondary?:boolean}){
- return <Pressable accessibilityRole="button" onPress={onPress}
-  style={[styles.action,secondary&&styles.secondary]}>
-  <Text style={[styles.actionText,secondary&&styles.secondaryText]}>{title}</Text>
+function CmsButton({title,onPress,secondary=false,selected}:{
+ title:string;onPress:()=>void;secondary?:boolean;selected?:boolean}){
+ return <Pressable accessibilityRole="button" accessibilityState={selected===undefined?undefined:{selected}} onPress={onPress}
+  style={[styles.action,secondary&&styles.secondary,selected===true&&styles.filterSelected]}>
+  <Text style={[styles.actionText,secondary&&styles.secondaryText,selected===true&&styles.filterSelectedText]}>{title}</Text>
  </Pressable>;
 }
 /** Public Android receives the same original immutable public DTO as Next.js.
@@ -140,26 +163,63 @@ function CmsButton({title,onPress,secondary=false}:{
 function NativeTeamDirectory(){
  const [people,setPeople]=useState<{name:string;designation:string}[]>([]),[name,setName]=useState(""),[designation,setDesignation]=useState("");
  const [loading,setLoading]=useState(true),[unavailable,setUnavailable]=useState(false);
+ const [intro,setIntro]=useState<Fields|null>(null);
  const request=useRef(0);
  const refresh=useCallback(async()=>{
-  const key=++request.current;setLoading(true);setPeople([]);setUnavailable(false);
+  const key=++request.current;setLoading(true);setPeople([]);setUnavailable(false);setIntro(null);
   const results=await Promise.all([published("about"),published("home")]);
   if(key!==request.current)return;
   const out:{name:string;designation:string}[]=[];
   for(const r of results)if(r.state==="PUBLISHED"&&r.page)
    for(const sec of r.page.sections)if(sec.kind==="TEAM"&&Array.isArray(sec.fields.members))
     for(const p of sec.fields.members)if(p&&p.consentConfirmed===true&&typeof p.name==="string"&&typeof p.designation==="string"&&!out.some(x=>x.name===p.name&&x.designation===p.designation))out.push({name:p.name,designation:p.designation});
+  const about=results[0];setIntro(about.state==="PUBLISHED"&&about.page?about.page.sections.find(s=>s.kind==="RICH_TEXT"&&s.fields.placement==="TEAM")?.fields??null:null);
   setPeople(out);setUnavailable(results.some(r=>r.state==="UNAVAILABLE"));setLoading(false);
  },[]);
  useEffect(()=>{void refresh();const sub=AppState.addEventListener("change",state=>{if(state==="active")void refresh();});return()=>{request.current++;sub.remove();};},[refresh]);
- const filtered=people.filter(p=>(!name.trim()||p.name.toLowerCase().includes(name.trim().toLowerCase()))&&(!designation||p.designation===designation));
- return <View style={styles.card}><Text accessibilityRole="header" style={styles.heading}>Team Directory</Text>
+ const selectedDesignation=people.some(p=>p.designation===designation)?designation:"";
+ const filtered=people.filter(p=>(!name.trim()||p.name.toLowerCase().includes(name.trim().toLowerCase()))&&(!selectedDesignation||p.designation===selectedDesignation));
+ return <View style={styles.sections}><View style={[styles.hero,styles.directoryHero]}>{!!text(intro?.eyebrow)&&<Text style={[styles.eyebrow,styles.directoryHeroText]}>{text(intro?.eyebrow)}</Text>}<Text accessibilityRole="header" style={[styles.bigHeading,styles.directoryHeroText]}>{text(intro?.heading)||"Team Directory"}</Text>{!!text(intro?.body)&&<Text style={[styles.heroBody,styles.directoryHeroText]}>{text(intro?.body)}</Text>}</View><View style={styles.card}><Text accessibilityRole="header" style={styles.heading}>Team Directory</Text>
   <Text style={styles.body}>Only independently published, currently consented names and designations are displayed.</Text>
-  <TextInput accessibilityLabel="Search by name" placeholder="Search by name" maxLength={120} value={name} onChangeText={setName} style={{borderWidth:1,borderRadius:8,padding:10}}/>
-  <View style={styles.nav}>{["",...new Set(people.map(p=>p.designation))].map(v=><CmsButton key={v} title={v||"All designations"} secondary={designation!==v} onPress={()=>setDesignation(v)}/>)}</View>
+  <TextInput accessibilityLabel="Search by name" placeholder="Search by name" maxLength={120} value={name} onChangeText={setName} style={styles.search}/>
+  <View style={styles.actions}>{["",...new Set(people.map(p=>p.designation))].map(v=><CmsButton key={v} title={v||"All designations"} secondary={selectedDesignation!==v} selected={selectedDesignation===v} onPress={()=>setDesignation(v)}/>)}</View>
   <CmsButton title="Reset filters" secondary onPress={()=>{setName("");setDesignation("");}}/><CmsButton title="Refresh current profiles" secondary onPress={()=>void refresh()}/>
   {unavailable&&<Text accessibilityRole="alert">Some approved team information could not be verified.</Text>}
-  {loading?<ActivityIndicator/>:filtered.length?filtered.map((p,i)=><View key={i} style={styles.person}><Text style={styles.heading}>{p.name}</Text><Text style={styles.role}>{p.designation}</Text></View>):<Text>No currently approved matching profiles.</Text>}
+  {loading?<ActivityIndicator/>:filtered.length?filtered.map((p,i)=><View key={i} style={styles.person}><Text style={styles.heading}>{p.name}</Text><Text style={styles.role}>{p.designation}</Text></View>):<View style={styles.person}><Text style={styles.heading}>{unavailable?"No current matching profiles could be confirmed":name.trim()||designation?"No matching profiles":"No public profiles yet"}</Text><Text style={styles.muted}>{unavailable?"Try again later before relying on the directory.":name.trim()||designation?"Try another name or designation.":"Consented team profiles will appear here once published."}</Text></View>}
+ </View></View>;
+}
+/** Same current public Gallery projection as the Web financial report route.
+ * No private finance or report-owner data is queried. */
+function NativeFinancialReports(){
+ const [result,setResult]=useState<Result>({state:"UNAVAILABLE",page:null});
+ const [loading,setLoading]=useState(true),[year,setYear]=useState("ALL"),[openError,setOpenError]=useState("");
+ const request=useRef(0);
+ const refresh=useCallback(async()=>{
+  const id=++request.current;setLoading(true);setResult({state:"UNAVAILABLE",page:null});setOpenError("");
+  const next=await published("gallery");if(id!==request.current)return;
+  setResult(next);setLoading(false);
+ },[]);
+ useEffect(()=>{void refresh();const sub=AppState.addEventListener("change",v=>{if(v==="active")void refresh();});return()=>{request.current++;sub.remove();};},[refresh]);
+ const records=result.state==="PUBLISHED"&&result.page?result.page.sections.filter(s=>s.kind==="GALLERY_GRID").flatMap(s=>
+  (Array.isArray(s.fields.items)?s.fields.items.slice(0,12):[]).flatMap(item=>{
+   if(!item||typeof item!=="object"||Array.isArray(item)||item.mediaType!=="PUBLICATION"||text(item.category).toLowerCase()!=="financial reports"||item.visible===false||!Number.isSafeInteger(item.originalIndex))return [];
+   const a=result.page?.assets.find(v=>v.role==="GALLERY"&&v.order===item.originalIndex&&/^\/api\/public\/content\/media\/[a-f0-9-]{36}$/i.test(v.src));
+   return a&&base&&text(item.title)&&text(item.asOfDate)?[{title:text(item.title),date:text(item.asOfDate),href:new URL(a.src,base).toString()}]:[];
+  })): [];
+ const years=Array.from(new Set(records.map(v=>v.date.slice(0,4)).filter(v=>/^\d{4}$/.test(v)))).sort((a,b)=>b.localeCompare(a));
+ const selectedYear=years.includes(year)?year:"ALL";
+ const matching=records.filter(v=>selectedYear==="ALL"||v.date.startsWith(selectedYear+"-"));
+ return <View style={styles.card}>
+  <Text accessibilityRole="header" style={styles.heading}>Financial Reports</Text>
+  <Text style={styles.body}>Current Foundation-published financial reports only.</Text>
+  {loading?<ActivityIndicator accessibilityLabel="Checking current financial reports"/>:result.state==="UNAVAILABLE"?<Text accessibilityRole="alert">Published financial reports cannot currently be verified.</Text>:<>
+   <Text style={styles.body}>Document year</Text>
+   <View style={styles.actions}>{["ALL",...years].map(v=><CmsButton key={v} title={v==="ALL"?"All years":v} secondary={selectedYear!==v} selected={selectedYear===v} onPress={()=>setYear(v)}/>)}</View>
+   <CmsButton title="Reset filters" secondary onPress={()=>setYear("ALL")}/>
+   {!matching.length?<Text style={styles.muted}>{records.length?"No approved financial report is available for the selected year.":"No reports published yet."}</Text>:matching.map((v,i)=><View key={v.href+"-"+i} style={styles.person}><Text style={styles.heading}>{v.title}</Text><Text>{v.date}</Text><CmsButton title="View document" onPress={()=>{setOpenError("");void Linking.openURL(v.href).catch(()=>setOpenError("This document could not be opened. Please try again."));}}/></View>)}
+  </>}
+  {!!openError&&<Text accessibilityRole="alert">{openError}</Text>}
+  <CmsButton title="Refresh reports" secondary onPress={()=>void refresh()}/>
  </View>;
 }
 export function PublicCmsContent({onContact,onPartnerApplication,onMembershipApply,onVolunteerApply,onLoginVisibility,onHealthcareDirectory,onPatientProfile}: {
@@ -168,7 +228,7 @@ export function PublicCmsContent({onContact,onPartnerApplication,onMembershipApp
  const [slug,setSlug]=useState("home"),[projectCategory,setProjectCategory]=useState("All Projects");
  const [mediaScope,setMediaScope]=useState<"PHOTO"|"VIDEO"|"PUBLICATION">("PHOTO");
  const [ngoScope,setNgoScope]=useState<"80g"|"pan-details"|
-  "registration-certificate"|"annual-reports">("80g");
+  "registration-certificate"|"annual-reports"|"financial-reports">("80g");
  const [policiesExpanded,setPoliciesExpanded]=useState(false);
  const [publishedPaths,setPublishedPaths]=useState<string[]>([]);
  const [volunteerJoin,setVolunteerJoin]=useState(false);
@@ -258,7 +318,7 @@ export function PublicCmsContent({onContact,onPartnerApplication,onMembershipApp
   if(!route)return false;
   if(route==="/membership")return memberJoin;
   if(route==="/volunteer")return volunteerJoin;
-  if(route==="/"||route==="/contact"||route==="/collaboration"||publishedPaths.includes("/collaboration"))return true;
+  if(route==="/"||route==="/contact"||route==="/collaboration")return true;
   if(route==="/videos"||route==="/publications")return publishedPaths.includes("/gallery");
   return publishedPaths.includes(route);
  };
@@ -285,8 +345,9 @@ export function PublicCmsContent({onContact,onPartnerApplication,onMembershipApp
  };
  const noticeCategories=Array.from(new Set(noticeFeed.notices.map(n=>n.category)
   .filter(Boolean))).sort((a,b)=>a.localeCompare(b));
+ const effectiveNoticeCategory=noticeCategories.includes(noticeCategory)?noticeCategory:"ALL";
  const visibleNotices=noticeFeed.notices.filter(n=>
-  (noticeCategory==="ALL"||n.category===noticeCategory)&&
+  (effectiveNoticeCategory==="ALL"||n.category===effectiveNoticeCategory)&&
   (noticePriority==="ALL"||n.priority===noticePriority)&&
   (!noticeSearch.trim()||[n.title,n.body,n.category].some(v=>
    v.toLocaleLowerCase().includes(noticeSearch.trim().toLocaleLowerCase()))));
@@ -322,10 +383,9 @@ export function PublicCmsContent({onContact,onPartnerApplication,onMembershipApp
      ["80g","80G Registration"],
      ["pan-details","PAN Details"],
      ["registration-certificate","Registration Certificate"],
-     ["annual-reports","Annual Reports"]
-    ] as const).filter(([scope])=>scope==="80g"||
-      (scope==="pan-details"?ngoHasPan:
-       hasOfficialDocument(scope==="annual-reports"?"ANNUAL_REPORT":"REGISTRATION")))
+     ["annual-reports","Annual Reports"],["financial-reports","Financial Reports"]
+    ] as const).filter(([scope])=>scope==="80g"||scope==="annual-reports"||scope==="financial-reports"||
+      (scope==="pan-details"?ngoHasPan:hasOfficialDocument("REGISTRATION")))
      .map(([scope,label])=><CmsButton key={scope} title={label}
       secondary={ngoScope!==scope} onPress={()=>setNgoScope(scope)}/>)}
     {publishedPaths.includes("/gallery")&&([
@@ -333,12 +393,10 @@ export function PublicCmsContent({onContact,onPartnerApplication,onMembershipApp
    ] as const).map(([scope,label])=><CmsButton key={scope} title={label}
     secondary={slug!=="gallery"||mediaScope!==scope}
     onPress={()=>{setMediaScope(scope);setSlug("gallery");}}/>)}
-   {publishedPaths.includes("/campaigns")&&<CmsButton title="Campaigns" secondary={slug!=="campaigns"} onPress={()=>setSlug("campaigns")}/>}
+   <CmsButton title="Campaigns" secondary={slug!=="campaigns"} onPress={()=>setSlug("campaigns")}/>
    <CmsButton title="Events" secondary={slug!=="@events"} onPress={()=>setSlug("@events")}/>
    <CmsButton title="Notices" secondary={slug!=="notices"} onPress={()=>setSlug("notices")}/>
-   {publishedPaths.some(p=>p.startsWith("/blog/"))&&
-    <CmsButton title="News" secondary={slug!=="articles"}
-     onPress={()=>setSlug("articles")}/>}
+   <CmsButton title="News & Articles" secondary={slug!=="articles"} onPress={()=>setSlug("articles")}/>
    <CmsButton title="Membership Plans" secondary={slug!=="membership"} onPress={()=>setSlug("membership")}/>
    <CmsButton title="Partnerships" secondary={slug!=="collaboration"} onPress={()=>setSlug("collaboration")}/>
    <CmsButton title="Healthcare Partner Application" secondary onPress={onPartnerApplication}/>
@@ -381,14 +439,14 @@ export function PublicCmsContent({onContact,onPartnerApplication,onMembershipApp
         <CmsButton key={priority}
          title={priority==="ALL"?"All priorities":
           priority==="IMPORTANT"?"Important":"Normal"}
-         secondary={noticePriority!==priority}
+         secondary={noticePriority!==priority} selected={noticePriority===priority}
          onPress={()=>setNoticePriority(priority)}/>)}
       </View>
       <View style={styles.actions} accessibilityLabel="Notice category filters">
-       <CmsButton title="All categories" secondary={noticeCategory!=="ALL"}
+       <CmsButton title="All categories" secondary={effectiveNoticeCategory!=="ALL"} selected={effectiveNoticeCategory==="ALL"}
         onPress={()=>setNoticeCategory("ALL")}/>
        {noticeCategories.map(category=><CmsButton key={category} title={category}
-         secondary={noticeCategory!==category}
+         secondary={effectiveNoticeCategory!==category} selected={effectiveNoticeCategory===category}
          onPress={()=>setNoticeCategory(category)}/>)}
       </View>
       <CmsButton title="Reset Filters" secondary onPress={()=>{
@@ -396,9 +454,9 @@ export function PublicCmsContent({onContact,onPartnerApplication,onMembershipApp
       <Text style={styles.muted} accessibilityLiveRegion="polite">
        {visibleNotices.length} current approved notices match</Text>
       {visibleNotices.length===0&&
-       <Text style={styles.muted}>No current notices match the selected filters.</Text>}
+       <Text style={styles.muted}>{noticeFeed.notices.length?"No matching notices. Try another category, priority or search term.":"No notices published yet."}</Text>}
       {visibleNotices.map(n=><View style={styles.person} key={n.path}>
-       <Text style={styles.eyebrow}>{n.category} · {n.priority}</Text>
+       <Text style={[styles.eyebrow,{color:n.priority==="IMPORTANT"?"#854c0c":t.primary}]}>{n.category} · {n.priority==="IMPORTANT"?"Important":"Normal"}</Text>
        <Text accessibilityRole="header" style={styles.heading}>{n.title}</Text>
        <Text style={styles.body}>{n.body}</Text>
        <Text style={styles.muted}>Published {n.publishedOn}</Text>
@@ -411,13 +469,14 @@ export function PublicCmsContent({onContact,onPartnerApplication,onMembershipApp
     </View>:slug==="collaboration"&&result.state!=="PUBLISHED"?<View style={styles.card}>
     <Text accessibilityRole="header" style={styles.heading}>Corporate Partners</Text>
     <Text style={styles.body}>Contact the Foundation to discuss corporate social responsibility and service collaborations.</Text>
-    <Text style={styles.muted}>{result.state==="UNAVAILABLE"?"Current partner announcements cannot be verified.":"No partner identities are currently approved for public display."}</Text>
+    <Text style={styles.muted}>{result.state==="UNAVAILABLE"?"Current partner announcements cannot be verified.":"Partner information will appear here when it is verified and published."}</Text>
     <CmsButton title="Get in touch" onPress={onContact}/>
     <CmsButton title="Apply as a healthcare partner" onPress={onPartnerApplication} secondary/>
     <CmsButton title="Refresh partner announcements" onPress={()=>void load("collaboration")} secondary/>
    </View>:result.state==="NOT_PUBLISHED"?<View style={styles.card}>
-    <Text style={styles.heading}>{slug==="home"?"Foundation homepage":"About the Foundation"}</Text>
+    <Text style={styles.heading}>{({home:"Foundation homepage",about:"About the Foundation","our-impact":"Our Impact","80g":"NGO Information",gallery:"Gallery & Resources",contact:"Contact the Foundation",healthcare:"Healthcare Assistance","our-work":"Our Work","upcoming-projects":"Upcoming Projects"} as Record<string,string>)[slug]??(isPolicySlug(slug)?"Legal Policy":"CareGanga Page")}</Text>
     <Text style={styles.muted}>This page has not yet been published.</Text>
+    <CmsButton title="Refresh" onPress={()=>void load(slug)} secondary/>
    </View>:result.state==="UNAVAILABLE"?<View style={styles.card}>
     <Text accessibilityRole="alert" style={styles.heading}>Website content is temporarily unavailable</Text>
     <Text style={styles.muted}>We could not verify the current approved content.</Text>
@@ -445,7 +504,7 @@ export function PublicCmsContent({onContact,onPartnerApplication,onMembershipApp
       {!!text(fields.description)&&<Text style={styles.heroBody}>{text(fields.description)}</Text>}
       {!!src&&<Image source={{uri:src}} accessibilityLabel={media?.altText||"Foundation initiative"}
        resizeMode="cover" style={styles.image}/>}
-      {src&&media?.altText.startsWith("AI-generated illustration")&&<Text style={styles.heroBody}>AI-generated illustration; not a photograph of Foundation activities.</Text>}
+      {src&&media?.altText.match(/^(AI-generated illustration|Editorial illustration)/)&&<Text style={styles.heroBody}>Illustration; not a photograph of Foundation activities.</Text>}
       {tags.length>0&&<View style={styles.actions}>{tags.map((tag,j)=>
        <Text key={j} style={styles.tag}>{String(tag)}</Text>)}</View>}
       <View style={styles.actions}>
@@ -468,7 +527,7 @@ export function PublicCmsContent({onContact,onPartnerApplication,onMembershipApp
      if(fields.placement)return null;
      const aboutImage=page.assets.find(v=>v.role==="ABOUT"&&v.order===section.order);
      const aboutSrc=safeImage(aboutImage);
-     const highlights=Array.isArray(fields.highlights)?fields.highlights.slice(0,4):[];
+     const highlights=Array.isArray(fields.highlights)?fields.highlights.slice(0,5):[];
      return <View style={styles.card} key={i}>
       {!!text(fields.eyebrow)&&<Text style={styles.eyebrow}>{text(fields.eyebrow)}</Text>}
       <Text accessibilityRole="header" style={styles.heading}>{text(fields.heading)}</Text>
@@ -501,18 +560,19 @@ export function PublicCmsContent({onContact,onPartnerApplication,onMembershipApp
       })}
      </View>;
     }
-    if(section.kind==="JOIN_CARDS")return <View key={i} style={styles.card}>
+    if(section.kind==="JOIN_CARDS")return <View key={i} style={styles.sections}><View style={styles.card}>
      <Text accessibilityRole="header" style={styles.heading}>{text(fields.volunteerTitle)}</Text>
      <Text style={styles.body}>{text(fields.volunteerBody)}</Text>
      {(Array.isArray(fields.volunteerBenefits)?fields.volunteerBenefits:[]).map((v,j)=>
       <Text style={styles.highlight} key={j}>✓ {text(v)}</Text>)}
      {volunteerJoin&&<CmsButton title="Become a Volunteer" onPress={onVolunteerApply}/>}
+     </View><View style={styles.card}>
      <Text accessibilityRole="header" style={styles.heading}>{text(fields.memberTitle)}</Text>
      <Text style={styles.body}>{text(fields.memberBody)}</Text>
      {(Array.isArray(fields.memberBenefits)?fields.memberBenefits:[]).map((v,j)=>
       <Text style={styles.highlight} key={j}>✓ {text(v)}</Text>)}
      {memberJoin&&<CmsButton title="Become a Member" onPress={()=>setSlug("membership")}/>}
-    </View>;
+    </View></View>;
     if(section.kind==="CTA"){
      const image=page.assets.find(x=>x.role==="PROMO"&&x.order===section.order);
      const uri=safeImage(image);
@@ -549,12 +609,13 @@ export function PublicCmsContent({onContact,onPartnerApplication,onMembershipApp
       })}
      </View>;
     }
+    if(section.kind==="COMPLIANCE_FACTS"&&ngoScope==="financial-reports")return <NativeFinancialReports key={i}/>;
     if(["IMPACT_GROUP","COMPLIANCE_FACTS","GALLERY_GRID","ARTICLE_BODY",
        "HEALTHCARE_CATEGORIES","CONTACT_INFO"].includes(section.kind))
-     return <CmsPublicExtendedSection key={i} section={section} assets={page.assets}
+     return <CmsPublicExtendedSection key={section.kind==="GALLERY_GRID"?i+":"+mediaScope:i} section={section} assets={page.assets}
       mediaUrl={safeImage} onContact={onContact} onNavigate={navigate} canNavigate={canNavigate} onHealthcareDirectory={onHealthcareDirectory}
       mediaScope={section.kind==="GALLERY_GRID"?mediaScope:undefined}
-       ngoScope={section.kind==="COMPLIANCE_FACTS"?ngoScope:undefined}
+       ngoScope={section.kind==="COMPLIANCE_FACTS"&&ngoScope!=="financial-reports"?ngoScope:undefined}
       onBackToNews={()=>setSlug(articleBackTarget)}
        backLabel={articleBackTarget==="notices"?"Back to notices":articleBackTarget==="@events"?"Back to events":"Back to approved articles"}/>;
     if(section.kind==="CAMPAIGN_TEASER"){
@@ -602,7 +663,7 @@ export function PublicCmsContent({onContact,onPartnerApplication,onMembershipApp
       <CmsButton title="Apply as a healthcare partner" onPress={onPartnerApplication} secondary/>
      </View>;
     }
-    if(section.kind==="PROJECT_TEASER"){const categories=["All Projects","Education","Healthcare","Livelihood","Social Welfare","Community Development"];const cards=(Array.isArray(fields.cards)?fields.cards:[]).filter(p=>page.kind!=="PROJECTS"||projectCategory==="All Projects"||p&&typeof p==="object"&&text(p.category).toLowerCase()===projectCategory.toLowerCase());return <View key={i} style={styles.card}><Text accessibilityRole="header" style={styles.heading}>{text(fields.heading)||"Projects"}</Text>{page.kind==="PROJECTS"&&<View style={styles.nav}>{categories.map(c=><CmsButton key={c} title={c} secondary={c!==projectCategory} onPress={()=>setProjectCategory(c)}/>)}</View>}{!cards.length?<Text>No currently approved projects to display.</Text>:cards.map((item,j)=>{if(!item||typeof item!=="object")return null;const p=item as Fields;const cover=/^\/api\/public\/content\/media\/[a-f0-9-]{36}$/i.test(text(p.coverSrc))?safeImage({src:text(p.coverSrc),role:"PROJECT",altText:text(p.title),order:0}):null;return <View key={j} style={styles.card}>{!!cover&&<Image source={{uri:cover}} accessibilityLabel={text(p.title)} style={styles.image} resizeMode="cover"/>}<Text style={styles.eyebrow}>{text(p.category)} · {text(p.status)==="PLANNED"?"Planned":"Active"}</Text><Text style={styles.heading}>{text(p.title)}</Text><Text>{text(p.area)}</Text><Text style={styles.body}>{text(p.summary)}</Text>{!!text(p.launch)&&<Text>Planned start: {text(p.launch)}</Text>}</View>;})}</View>;}
+    if(section.kind==="PROJECT_TEASER"){const categories=["All Projects","Education","Healthcare","Livelihood","Social Welfare","Community Development"];const cards=(Array.isArray(fields.cards)?fields.cards:[]).filter(p=>page.kind!=="PROJECTS"||projectCategory==="All Projects"||p&&typeof p==="object"&&text(p.category).toLowerCase()===projectCategory.toLowerCase());return <View key={i} style={styles.card}><Text accessibilityRole="header" style={styles.heading}>{text(fields.heading)||"Projects"}</Text>{page.kind==="PROJECTS"&&<View style={styles.nav}>{categories.map(c=><CmsButton key={c} title={c} secondary={c!==projectCategory} onPress={()=>setProjectCategory(c)}/>)}</View>}{!cards.length?<View style={styles.person}><Text style={styles.heading}>No projects to display yet</Text><Text style={styles.muted}>Published project updates will appear here.</Text>{page.slug==="home"&&publishedPaths.includes("/our-work")&&<CmsButton title="Explore our work" onPress={()=>setSlug("our-work")}/>}</View>:cards.map((item,j)=>{if(!item||typeof item!=="object")return null;const p=item as Fields;const cover=/^\/api\/public\/content\/media\/[a-f0-9-]{36}$/i.test(text(p.coverSrc))?safeImage({src:text(p.coverSrc),role:"PROJECT",altText:text(p.title),order:0}):null;return <View key={j} style={styles.card}>{!!cover&&<Image source={{uri:cover}} accessibilityLabel={text(p.title)} style={styles.image} resizeMode="cover"/>}<Text style={styles.eyebrow}>{text(p.category)} · {text(p.status)==="PLANNED"?"Planned":"Active"}</Text><Text style={styles.heading}>{text(p.title)}</Text><Text>{text(p.area)}</Text><Text style={styles.body}>{text(p.summary)}</Text>{!!text(p.launch)&&<Text>Planned start: {text(p.launch)}</Text>}</View>;})}</View>;}
     // Never infer operational projects from CMS-only text.
     return null;
    })}
@@ -647,14 +708,16 @@ const styles=StyleSheet.create({
  image:{width:"100%",height:225,borderRadius:9},
  actions:{flexDirection:"row",flexWrap:"wrap",gap:8},
  action:{backgroundColor:publicColors.amber,borderRadius:8,alignItems:"center",
-  justifyContent:"center",minHeight:48,paddingVertical:10,paddingHorizontal:16},
- actionText:{color:"#17263c",fontWeight:"700",fontSize:15},
+  justifyContent:"center",minHeight:48,paddingVertical:10,paddingHorizontal:16,maxWidth:"100%"},
+ actionText:{color:"#17263c",fontWeight:"700",fontSize:15,textAlign:"center",flexShrink:1},
+ filterSelected:{backgroundColor:t.primary,borderColor:t.primary},filterSelectedText:{color:t.primaryText},
+ directoryHero:{backgroundColor:t.selectedSurface,borderWidth:1,borderColor:t.border},directoryHeroText:{color:t.sidebar},
  secondary:{backgroundColor:t.surface,borderWidth:1,borderColor:t.border},
  secondaryText:{color:t.text},
  person:{borderWidth:1,borderColor:t.border,borderRadius:8,
   padding:12,gap:5,backgroundColor:"#f8fafc"},
  teamPhoto:{width:"100%",height:180,borderRadius:8},
  role:{fontWeight:"700",color:t.primary,fontSize:14},
- search:{borderWidth:1,borderColor:"#7fa792",borderRadius:8,minHeight:46,
+ search:{borderWidth:1,borderColor:"#7fa792",borderRadius:8,minHeight:48,
   paddingHorizontal:12,color:t.text}
 });

@@ -1,6 +1,6 @@
 "use client";
 import Link from "next/link";
-import {useState} from "react";
+import {useEffect,useRef,useState} from "react";
 import {usePathname} from "next/navigation";
 import type {PublicCmsNavigation} from "./cms-public-source";
 
@@ -8,12 +8,14 @@ type Contact={address?:string;email?:string;phone?:string};
 const work=["All Projects","Education","Healthcare","Livelihood",
  "Social Welfare","Community Development"];
 const media=["News & Updates","Gallery","Videos","Publications / Reports","Blog"];
-function Menu({label,items}:{label:string;items:{text:string;href?:string}[]}){
- return <details className="cg-site-menu">
-  <summary>{label}<span aria-hidden="true">⌄</span></summary>
+const inSection=(pathname:string,href?:string)=>!!href&&!href.includes("?")&&
+ (pathname===href||href!=="/"&&pathname.startsWith(href+"/"));
+function Menu({label,items,pathname}:{label:string;items:{text:string;href?:string}[];pathname:string}){
+ return <details className="cg-site-menu" name="cg-public-navigation">
+  <summary className={items.some(item=>inSection(pathname,item.href))?"cg-site-active":undefined}>{label}<span aria-hidden="true">⌄</span></summary>
   <div className="cg-site-dropdown">{items.map(item=>item.href?
-   <Link href={item.href} key={item.text}>{item.text}</Link>:
-   <span key={item.text} className="cg-site-unavailable" aria-disabled="true">{item.text}</span>)}</div>
+   <Link href={item.href} key={item.text} aria-current={pathname===item.href?"page":undefined}>{item.text}</Link>:
+   <span key={item.text} className="cg-site-unavailable" aria-disabled="true">{item.text}<small>Not available yet</small></span>)}</div>
  </details>;
 }
 /** Desktop names and ordering derive from owner's original public-site screenshots.
@@ -23,6 +25,16 @@ export function CmsSiteHeader({navigation,contact}:{
  navigation?:PublicCmsNavigation|null;contact?:Contact}){
  const [expanded,setExpanded]=useState(false);
  const pathname=usePathname();
+ const header=useRef<HTMLElement>(null);
+ const toggle=useRef<HTMLButtonElement>(null);
+ function closeDropdowns(){header.current?.querySelectorAll<HTMLDetailsElement>("details[open]").forEach(menu=>{menu.open=false;});}
+ function closeNavigation(){closeDropdowns();setExpanded(false);}
+ useEffect(()=>{closeNavigation();},[pathname]);
+ useEffect(()=>{
+  const outside=(event:PointerEvent)=>{if(header.current&&!header.current.contains(event.target as Node))closeNavigation();};
+  document.addEventListener("pointerdown",outside);
+  return ()=>document.removeEventListener("pointerdown",outside);
+ },[]);
  const member=navigation?.memberJoin?.visible===true&&navigation.memberJoin.path==="/membership"?
   "/membership":undefined;
  // The same exact original route check as Public Android; never render a guessed CMS CTA.
@@ -30,11 +42,17 @@ export function CmsSiteHeader({navigation,contact}:{
   "/volunteer":undefined;
  const routes=navigation?.publishedRoutes??[];
  const isPublished=(path:string)=>routes.some(x=>x.path===path);
- const anyArticles=routes.some(x=>x.kind==="ARTICLE"&&/^\/blog\/[a-z0-9-]+$/.test(x.path));
- return <header className="cg-site-header">
+ return <header ref={header} className="cg-site-header" onKeyDown={event=>{
+  if(event.key!=="Escape")return;
+  const open=header.current?.querySelector<HTMLDetailsElement>("details[open]");
+  if(open){open.open=false;open.querySelector("summary")?.focus();}
+  else if(expanded){setExpanded(false);toggle.current?.focus();}
+  else return;
+  event.preventDefault();event.stopPropagation();
+ }}>
   <div className="cg-site-contact-strip">
    <div className="cg-site-strip-inner">
-    <span className="cg-site-connect">CONNECT: <span aria-label="Social channels">f · ▶ · ◉</span></span>
+    <Link className="cg-site-connect" href="/contact">Connect with CareGanga</Link>
     <div className="cg-site-contact-details">
      {contact?.address&&<span>{contact.address}</span>}
      {contact?.email&&<a href={"mailto:"+contact.email}>{contact.email}</a>}
@@ -47,40 +65,44 @@ export function CmsSiteHeader({navigation,contact}:{
     <img src="/careganga-mark.png" alt="" width={64} height={64}/>
     <span><strong>CareGanga</strong><small>FOUNDATION</small></span>
    </Link>
-   <button className="cg-site-menu-toggle" type="button"
+   <button ref={toggle} className="cg-site-menu-toggle" type="button"
     aria-label={expanded?"Close website navigation":"Open website navigation"}
     aria-expanded={expanded} aria-controls="cg-site-navigation"
-    onClick={()=>setExpanded(x=>!x)}>{expanded?"Close":"Menu"} <span aria-hidden="true">☰</span></button>
+    onClick={()=>{closeDropdowns();setExpanded(x=>!x);}}>{expanded?"Close":"Menu"} <span aria-hidden="true">☰</span></button>
    <nav id="cg-site-navigation" aria-label="CareGanga public website"
-    className={expanded?"cg-site-nav cg-site-nav-open":"cg-site-nav"}>
-    <Link href="/" className={pathname==="/"? "cg-site-active":undefined}>Home</Link>
-    <Menu label="About Us" items={[{text:"About the Foundation",href:isPublished("/about")?"/about":undefined},{text:"Team Directory",href:"/about/team"}]}/>
-    <Menu label="Our Work" items={work.map(text=>({text,href:isPublished("/our-work")?"/our-work"+(text==="All Projects"?"":"?category="+encodeURIComponent(text)):undefined}))}/>
+    className={expanded?"cg-site-nav cg-site-nav-open":"cg-site-nav"} onClick={event=>{
+     if(event.target instanceof Element&&event.target.closest("a[href]"))closeNavigation();
+    }}>
+    <Link href="/" className={pathname==="/"? "cg-site-active":undefined} aria-current={pathname==="/"?"page":undefined}>Home</Link>
+    <Menu pathname={pathname} label="About Us" items={[{text:"About the Foundation",href:isPublished("/about")?"/about":undefined},{text:"Team Directory",href:"/about/team"}]}/>
+    <Menu pathname={pathname} label="Our Work" items={work.map(text=>({text,href:isPublished("/our-work")?"/our-work"+(text==="All Projects"?"":"?category="+encodeURIComponent(text)):undefined}))}/>
     {isPublished("/ngo-information")?<Link href="/ngo-information"
-     className={pathname==="/ngo-information"?"cg-site-active":undefined}>NGO Information</Link>:
-     <span className="cg-site-unavailable" aria-disabled="true">NGO Information</span>}
-    {isPublished("/donate")&&<Link href="/donate">Donate Now</Link>}
-    {isPublished("/campaigns")?<Link href="/campaigns"
-     className={pathname.startsWith("/campaigns")?"cg-site-active":undefined}>Campaigns</Link>:
-     <span className="cg-site-unavailable" aria-disabled="true">Campaigns</span>}
-    {isPublished("/upcoming-projects")?<Link href="/upcoming-projects" className={pathname==="/upcoming-projects"?"cg-site-active":undefined}>Upcoming Projects</Link>:<span className="cg-site-unavailable">Upcoming Projects</span>}
-    <Link href="/collaboration" className={pathname.startsWith("/collaboration")?"cg-site-active":undefined}>Partnerships</Link>
-    <Link href="/events" className={pathname==="/events"?"cg-site-active":undefined}>Events</Link>
-    <Menu label="Media & Resources" items={media.map(text=>({text,
+     className={inSection(pathname,"/ngo-information")?"cg-site-active":undefined} aria-current={pathname==="/ngo-information"?"page":undefined}>NGO Information</Link>:
+     <span className="cg-site-unavailable" aria-disabled="true">NGO Information<small>Not available yet</small></span>}
+    {isPublished("/donate")&&<Link href="/donate" className={inSection(pathname,"/donate")?"cg-site-active":undefined} aria-current={pathname==="/donate"?"page":undefined}>Donate Now</Link>}
+    {/* The catalogue is a safe public information route even when no campaigns are published.
+        The catalogue and payment owner still enforce actual publication and merchant readiness. */}
+    <Link href="/campaigns" className={inSection(pathname,"/campaigns")?"cg-site-active":undefined}
+     aria-current={pathname==="/campaigns"?"page":undefined}>Campaigns</Link>
+    {isPublished("/upcoming-projects")?<Link href="/upcoming-projects" className={inSection(pathname,"/upcoming-projects")?"cg-site-active":undefined} aria-current={pathname==="/upcoming-projects"?"page":undefined}>Upcoming Projects</Link>:<span className="cg-site-unavailable" aria-disabled="true">Upcoming Projects<small>Not available yet</small></span>}
+    <Link href="/collaboration" className={inSection(pathname,"/collaboration")?"cg-site-active":undefined} aria-current={pathname==="/collaboration"?"page":undefined}>Partnerships</Link>
+    <Link href="/events" className={inSection(pathname,"/events")?"cg-site-active":undefined} aria-current={pathname==="/events"?"page":undefined}>Events</Link>
+    <Menu pathname={pathname} label="Media & Resources" items={media.map(text=>({text,
      href:text==="Gallery"&&isPublished("/gallery")?"/gallery":
       text==="Videos"&&isPublished("/gallery")?"/videos":
       text==="Publications / Reports"&&isPublished("/gallery")?
        "/publications":
       text==="News & Updates"?"/notices":
-      text==="Blog"&&anyArticles?"/blog":undefined}))}/>
-    <Menu label="Join Now" items={[{text:"Become a Member",href:member},
+      text==="Blog"?"/blog":undefined}))}/>
+    <Menu pathname={pathname} label="Join Now" items={[{text:"Become a Member",href:member},
      {text:"Become a Volunteer",href:volunteer}]}/>
     <Link href={isPublished("/healthcare")?"/healthcare":"/health-network"}
-     className={pathname==="/healthcare"||pathname.startsWith("/health-network")?"cg-site-active":undefined}>
+     className={inSection(pathname,"/healthcare")||inSection(pathname,"/health-network")||inSection(pathname,"/patients/me")||pathname==="/verify-appointment"?"cg-site-active":undefined}
+     aria-current={pathname===(isPublished("/healthcare")?"/healthcare":"/health-network")?"page":undefined}>
      Healthcare Assistance</Link>
-    <Link href="/contact">Contact Us</Link>
+    <Link href="/contact" className={inSection(pathname,"/contact")?"cg-site-active":undefined} aria-current={pathname==="/contact"?"page":undefined}>Contact Us</Link>
     {navigation?.login?.visible&&navigation.login.path==="/admin/login"&&
-     <Link className="cg-site-staff" href="/admin/login">Staff login</Link>}
+     <Link className="cg-site-staff" href="/admin/login" aria-current={pathname==="/admin/login"?"page":undefined}>Staff login</Link>}
    </nav>
   </div>
  </header>;

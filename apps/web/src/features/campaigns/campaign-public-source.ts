@@ -4,6 +4,11 @@ export type PublicCampaign={slug:string;title:string;category:string;summary:str
 type Result={state:"PUBLISHED"|"NOT_PUBLISHED"|"UNAVAILABLE";cards:PublicCampaign[];donationsEnabled:boolean};
 const slug=/^cg-camp-[0-9]{8}$/;
 const media=/^\/api\/public\/campaigns\/media\/[0-9a-f-]{36}$/i;
+function validDate(value:unknown){
+ if(typeof value!=="string"||!/^20[0-9]{2}-[0-9]{2}-[0-9]{2}$/.test(value))return false;
+ const date=new Date(value+"T00:00:00.000Z");
+ return Number.isFinite(date.getTime())&&date.toISOString().slice(0,10)===value;
+}
 function valid(raw:unknown):raw is PublicCampaign{
  if(!raw||typeof raw!=="object"||Array.isArray(raw))return false;
  const x=raw as Record<string,unknown>;
@@ -18,8 +23,9 @@ function valid(raw:unknown):raw is PublicCampaign{
   typeof x.raisedMinor==="string"&&/^(0|[1-9][0-9]{0,27})$/.test(x.raisedMinor)&&
   (x.coverSrc===null||typeof x.coverSrc==="string"&&media.test(x.coverSrc))&&
   (x.heroSrc===null||typeof x.heroSrc==="string"&&media.test(x.heroSrc))&&
-  (x.startAt===null||typeof x.startAt==="string"&&/^20[0-9]{2}-[0-9]{2}-[0-9]{2}$/.test(x.startAt))&&
-  (x.endAt===null||typeof x.endAt==="string"&&/^20[0-9]{2}-[0-9]{2}-[0-9]{2}$/.test(x.endAt));
+  (x.startAt===null||validDate(x.startAt))&&
+  (x.endAt===null||validDate(x.endAt))&&
+  (typeof x.startAt!=="string"||typeof x.endAt!=="string"||x.startAt<=x.endAt);
 }
 export async function publishedCampaigns(one?:string):Promise<Result>{
  if(one!==undefined&&!slug.test(one))return {state:"NOT_PUBLISHED",cards:[],donationsEnabled:false};
@@ -31,8 +37,10 @@ export async function publishedCampaigns(one?:string):Promise<Result>{
   if(response.status===404)return {state:"NOT_PUBLISHED",cards:[],donationsEnabled:false};
   if(!response.ok)return {state:"UNAVAILABLE",cards:[],donationsEnabled:false};
   const value:unknown=await response.json();
-  const cards=one?[value]:(value&&typeof value==="object"&&"cards" in value&&Array.isArray(value.cards)?value.cards:[]);
-  if(cards.length>100||cards.some(x=>!valid(x)))throw Error("Invalid original public campaign response");
+  if(!one&&(!value||typeof value!=="object"||Array.isArray(value)||!("cards" in value)||!Array.isArray(value.cards)))throw Error("Invalid original public campaign list");
+  const cards:unknown[]=one?[value]:(value as {cards:unknown[]}).cards;
+  if(cards.length>100||!cards.every(valid)||new Set(cards.map(x=>x.slug)).size!==cards.length||
+    (one&&cards[0]?.slug!==one))throw Error("Invalid original public campaign response");
   return {state:cards.length?"PUBLISHED":"NOT_PUBLISHED",cards:cards as PublicCampaign[],
     donationsEnabled:one===undefined&&!!value&&typeof value==="object"&&"donationsEnabled" in value&&value.donationsEnabled===true};
  }catch{return {state:"UNAVAILABLE",cards:[],donationsEnabled:false};}

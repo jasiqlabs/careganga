@@ -15,13 +15,8 @@ export function isAllowedOrigin(request: NextRequest): boolean {
     ) {
       return true;
     }
-    const hostWithoutPort = host.split(":")[0];
-    try {
-      const originHost = new URL(origin).host.split(":")[0];
-      if (originHost === hostWithoutPort) return true;
-    } catch {}
   }
   const publicOrigin = process.env.PUBLIC_SITE_ORIGIN?.replace(/\/$/, "");
-  if (publicOrigin && (origin === publicOrigin || origin.startsWith(publicOrigin))) return true;
+  if (publicOrigin && origin === publicOrigin) return true;
   return false;
 }
