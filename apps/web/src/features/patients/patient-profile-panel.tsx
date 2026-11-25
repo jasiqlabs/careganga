@@ -1,6 +1,7 @@
 "use client";
 import {useCallback,useEffect,useRef,useState} from "react";
 import {MyConsultationHistory} from "../appointments/my-consultation-history";
+import {MyLabReports} from "../diagnostics/my-lab-reports";
 import {PatientPrivateFilesPanel} from "./patient-private-files-panel";
 import {PatientPartnerClaims} from "./patient-partner-claims";
 import {PatientPrivateDetailsPanel} from "./patient-private-details-panel";
@@ -450,6 +451,7 @@ export function PatientProfilePanel(){
     {profile?.profileStatus==="VERIFIED"&&
      <PatientPartnerClaims key={profile.virtualPatientId+":claims"}
       consentGranted={profile.consentGranted}/>}
+    {profile?.profileStatus==="VERIFIED"&&profile.consentGranted&&<MyLabReports key={profile.virtualPatientId+":reports"}/>}
     {profile&&<section aria-label="Manage patient-care consent">
      <h2>My consent</h2>
      <p>You can withdraw your permission for new patient-care information sharing.
