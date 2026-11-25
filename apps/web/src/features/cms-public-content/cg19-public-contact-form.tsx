@@ -64,12 +64,13 @@ export function Cg19PublicContactForm({contact:publishedContact={}}:{contact?:Re
       setReceipt(response);setProof(response.receipt);setRequestKey("");
       setMessage("");setError("");
     }catch(e){
+      if(!requestKey&&e instanceof SupportActionError&&e.category==="INVALID")setRequestKey("");
       setError(e instanceof SupportActionError?e.message:
         "Submission could not be confirmed. Retry the same message to recover its original receipt without creating another request.");
     }finally{setBusy(false)}
   }
   async function check(){
-    if(busy||!proof)return;
+    if(busy||!/^[A-Za-z0-9_-]{43}$/.test(proof.trim()))return;
     setErrorArea("receipt");setBusy(true);setError("");setProofState("");
     try{
       const result=await call<{status:string;ticketNumber:string}>("receipt/status",{receipt:proof.trim()});
@@ -99,20 +100,21 @@ export function Cg19PublicContactForm({contact:publishedContact={}}:{contact?:Re
           {copyState&&<p role="status">{copyState}</p>}
         </section>:<form className="cg-site-contact-fields" onSubmit={send}>
           <div className="cg-site-contact-field"><label htmlFor="c-name">Your name</label>
-            <input id="c-name" disabled={busy} required minLength={2} maxLength={90}
+            <input id="c-name" disabled={busy} readOnly={!!requestKey} required minLength={2} maxLength={90}
               autoComplete="name" value={name} onChange={e=>setName(e.target.value)}/></div>
           <div className="cg-site-contact-field"><label htmlFor="c-contact">Email or phone</label>
-            <input id="c-contact" disabled={busy} required minLength={5} maxLength={120}
+            <input id="c-contact" disabled={busy} readOnly={!!requestKey} required minLength={5} maxLength={120}
               autoComplete="email" value={contact} onChange={e=>setContact(e.target.value)}/></div>
           <div className="cg-site-contact-field"><label htmlFor="c-subject">Subject</label>
-            <input id="c-subject" disabled={busy} required minLength={5} maxLength={140}
+            <input id="c-subject" disabled={busy} readOnly={!!requestKey} required minLength={5} maxLength={140}
               value={subject} onChange={e=>setSubject(e.target.value)}/></div>
           <div className="cg-site-contact-field"><label htmlFor="c-message">How can we help?</label>
-            <textarea id="c-message" disabled={busy} required minLength={10} maxLength={2000}
+            <textarea id="c-message" disabled={busy} readOnly={!!requestKey} required minLength={10} maxLength={2000}
               rows={5} value={message} onChange={e=>setMessage(e.target.value)}/></div>
           <p>Your details are visible only to authorized Foundation support staff.</p>
+          {requestKey&&!busy&&<p role="status">Retry the original request without changing its details to avoid a duplicate submission.</p>}
           <button className="cg-site-contact-button" disabled={busy} type="submit">
-            {busy&&errorArea==="message"?"Sending private request…":"Send private request"}
+            {busy&&errorArea==="message"?"Sending private request…":requestKey?"Retry private request":"Send private request"}
           </button>
         </form>}
         {error&&errorArea==="message"&&<p className="cg-cms-error" role="alert">{error}</p>}
@@ -123,9 +125,9 @@ export function Cg19PublicContactForm({contact:publishedContact={}}:{contact?:Re
         <h2>Check a private receipt</h2>
         <p>Enter the receipt supplied when you submitted. Only the current status is shown; private messages are never exposed here.</p>
         <div className="cg-site-contact-field"><label htmlFor="c-receipt">Private receipt code</label>
-          <input id="c-receipt" disabled={busy} value={proof} onChange={e=>{setProof(e.target.value);setProofState("");if(errorArea==="receipt")setError("");}}
-            maxLength={43} autoComplete="off" spellCheck={false}/></div>
-        <button type="button" className="cg-site-contact-button" disabled={busy||!proof}
+          <input id="c-receipt" disabled={busy} value={proof} onChange={e=>{setProof(e.target.value.trim());setProofState("");if(errorArea==="receipt")setError("");}}
+            maxLength={64} autoComplete="off" spellCheck={false}/></div>
+        <button type="button" className="cg-site-contact-button" disabled={busy||!/^[A-Za-z0-9_-]{43}$/.test(proof.trim())}
           onClick={()=>void check()}>{busy&&errorArea==="receipt"?"Checking request status…":"Check request status"}</button>
         {proofState&&<p role="status">Current status: {proofState}</p>}
         {error&&errorArea==="receipt"&&<p className="cg-cms-error" role="alert">{error}</p>}
