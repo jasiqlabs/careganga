@@ -610,3 +610,16 @@
 .cg-site-ngo-sidebar{max-height:calc(100dvh - 9.5rem);overflow:auto}
 @media(max-width:810px){.cg-site-ngo-sidebar{max-height:none;overflow:visible}.cg-site-directory-filter{grid-template-columns:1fr 1fr}}
 @media(max-width:480px){.cg-site-directory-filter{grid-template-columns:1fr}.cg-site-team-hero{padding:1.25rem}}
+
+/* Contact route: original enquiry-first structure, no duplicate support owner. */
+.cg-site-contact-original>.cg-site-contact-layout{width:100%;margin:1.75rem 0 2rem;align-items:start}
+.cg-site-contact-side{display:grid;gap:1rem;min-width:0}
+.cg-site-contact-side>.cg-site-contact-panel{padding:1.4rem}
+.cg-site-contact-side address{font-style:normal;overflow-wrap:anywhere}
+.cg-site-contact-side address p{margin:.5rem 0}
+.cg-site-contact-layout>.cg-site-contact-panel{min-width:0}
+.cg-site-contact-inquiries{margin-block:1.5rem}
+.cg-site-contact-faq-grid{grid-template-columns:1fr;max-width:960px;margin-inline:auto}
+.cg-site-contact-faq-grid summary{padding-block:.3rem;min-height:44px}
+.cg-site-ngo-sidebar .cg-site-unavailable small{display:block}
+@media(max-width:800px){.cg-site-contact-original>.cg-site-contact-layout{margin-block:1rem}}
