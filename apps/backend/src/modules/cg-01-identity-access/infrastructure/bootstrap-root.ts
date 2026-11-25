@@ -2,10 +2,6 @@ import { randomUUID } from "node:crypto";
 import { Pool } from "pg";
 import { hashPassword } from "../domain/secret-crypto";
 
-// Safely load environment files if present in cwd or workspace root
-try { (process as { loadEnvFile?: (path?: string) => void }).loadEnvFile?.(); } catch {}
-try { (process as { loadEnvFile?: (path?: string) => void }).loadEnvFile?.("../../../../../../.env"); } catch {}
-
 // No default credentials or public bootstrap endpoint. Startup may provision
 // the first account only when the existing protected root configuration is supplied.
 export async function provisionInitialRoot(pool:Pool,mode:"startup"|"operator"):Promise<"created"|"existing"|"not-configured">{
@@ -19,7 +15,7 @@ export async function provisionInitialRoot(pool:Pool,mode:"startup"|"operator"):
   const name = process.env.CAREGANGA_ROOT_NAME?.trim() ?? "";
   const password = process.env.CAREGANGA_ROOT_PASSWORD ?? "";
   if(mode==="startup"&&!mobile&&!email&&!name&&!password)return "not-configured";
-  if (!/^[6-9][0-9]{9}$/.test(mobile) ||
+  if (!password || !/^[6-9][0-9]{9}$/.test(mobile) ||
       (email !== null && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) ||
       name.length < 2 || name.length > 160)
     throw new Error("Root setup requires name, 10-digit mobile, password and optional valid email");
@@ -65,6 +61,9 @@ export async function provisionInitialRoot(pool:Pool,mode:"startup"|"operator"):
   } finally { client.release(); }
 }
 async function bootstrapRoot():Promise<void>{
+  // Safely load environment files if present in cwd or workspace root
+  try { (process as { loadEnvFile?: (path?: string) => void }).loadEnvFile?.(); } catch {}
+  try { (process as { loadEnvFile?: (path?: string) => void }).loadEnvFile?.("../../../../../../.env"); } catch {}
   if(!process.argv.includes("--confirm-one-time-root"))throw Error("Explicit --confirm-one-time-root is required");
   const url=process.env.DATABASE_MIGRATION_URL;
   if(!url)throw Error("Root setup requires direct migration DB URL");
