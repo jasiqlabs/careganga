@@ -584,7 +584,7 @@ export function PublicCmsContent({onContact,onPartnerApplication,onMembershipApp
     if(section.kind==="COMPLIANCE_FACTS"&&ngoScope==="financial-reports")return <NativeFinancialReports key={i}/>;
     if(["IMPACT_GROUP","COMPLIANCE_FACTS","GALLERY_GRID","ARTICLE_BODY",
        "HEALTHCARE_CATEGORIES","CONTACT_INFO"].includes(section.kind))
-     return <CmsPublicExtendedSection key={i} section={section} assets={page.assets}
+     return <CmsPublicExtendedSection key={section.kind==="GALLERY_GRID"?i+":"+mediaScope:i} section={section} assets={page.assets}
       mediaUrl={safeImage} onContact={onContact} onNavigate={navigate} canNavigate={canNavigate} onHealthcareDirectory={onHealthcareDirectory}
       mediaScope={section.kind==="GALLERY_GRID"?mediaScope:undefined}
        ngoScope={section.kind==="COMPLIANCE_FACTS"&&ngoScope!=="financial-reports"?ngoScope:undefined}
