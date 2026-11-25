@@ -21,6 +21,7 @@ import {
   CheckCircle,
   FileQuestion,
   HelpCircle,
+  AlertCircle,
 } from "lucide-react";
 import { FoundationSupportAttachments } from "./foundation-support-attachments";
 
