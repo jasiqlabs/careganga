@@ -1049,3 +1049,10 @@
 .cg-site-page-policy{gap:.75rem;padding-top:clamp(1rem,3vw,2rem);padding-bottom:2rem}
 .cg-site-page-policy .cg-site-policy-title,.cg-site-page-policy .cg-site-article{margin-block:0}
 .cg-site:has(.cg-site-page-policy,.cg-site-page-article)>.cg-site-floating{position:static;justify-content:center;padding:1rem;background:#0b1118}
+
+/* Contact and support: keep enquiry content clear of floating actions. */
+.cg-site-page-contact{gap:clamp(1rem,2vw,2rem);padding-bottom:1rem}
+.cg-site-contact-original{padding-block:clamp(1rem,3vw,2rem)}
+.cg-site-contact-social a{display:inline-flex;align-items:center;min-height:44px}
+.cg-site-contact-fallback{margin-block:1rem}
+.cg-site:has(.cg-site-page-contact)>.cg-site-floating{position:static;justify-content:center;padding:1rem;background:#0b1118}
