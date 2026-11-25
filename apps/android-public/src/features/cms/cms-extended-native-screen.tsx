@@ -262,7 +262,9 @@ export function CmsPublicExtendedSection({section,assets,mediaUrl,onContact,
     <Text style={styles.itemTitle}>{text(item.title)}</Text>
     <Text style={styles.body}>{text(item.description)}</Text>
    </View>)}
-   {[0,1,2].map(i=><View key={i}>{picture("CONTACT",i)}</View>)}
+   <Action title="Send a private message" onPress={onContact}/>
+   <Text style={styles.source}>Private messages use the Foundation\'s existing contact-support service.</Text>
+   {[0,1,2].map(i=>mediaUrl(asset("CONTACT",i))?<View key={i}>{picture("CONTACT",i)}</View>:null)}
    {!!text(f.officeHours)&&<Text style={styles.source}>
     Foundation hours: {text(f.officeHours)}</Text>}
    {map&&<Action title="View verified Foundation map"
