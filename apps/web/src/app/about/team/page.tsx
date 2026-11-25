@@ -15,8 +15,9 @@ export default async function TeamPage({searchParams}:{searchParams:Promise<{nam
  for(const result of results)if(result.state==="PUBLISHED")
   for(const section of result.page.sections)if(section.kind==="TEAM"&&Array.isArray(section.fields.members))
    for(const p of section.fields.members){
-    if(!p||p.consentConfirmed!==true||typeof p.name!=="string"||typeof p.designation!=="string")continue;
-    if(!people.some(x=>x.name===p.name&&x.designation===p.designation))people.push({name:p.name,designation:p.designation});
+    if(!p||p.consentConfirmed!==true||typeof p.name!=="string"||typeof p.designation!=="string"||!p.name.trim()||!p.designation.trim())continue;
+    const person={name:p.name.trim(),designation:p.designation.trim()};
+    if(!people.some(x=>x.name===person.name&&x.designation===person.designation))people.push(person);
    }
  const options=[...new Set(people.map(p=>p.designation))].sort();
  const incomplete=results.some(r=>r.state==="UNAVAILABLE");
