@@ -22,8 +22,10 @@ export function CmsImpactGroup({section,assets,navigation}:{
  const pic=assets.find(a=>a.role==="IMPACT"&&a.order===section.order);
  const tabular=["STATS","GROWTH","BREAKDOWN"].includes(group);
  const heading=text(f.heading);
- const peak=Math.max(0,...rows.map(v=>typeof v.value==="number"&&
-  Number.isFinite(v.value)?v.value:0));
+ const finite=(v:unknown):v is number=>typeof v==="number"&&Number.isFinite(v);
+ const validPercentage=(v:unknown):v is number=>finite(v)&&v>=0&&v<=100;
+ const chartRows=rows.filter(v=>group==="BREAKDOWN"?validPercentage(v.percentage):finite(v.value)&&v.value>=0);
+ const peak=Math.max(0,...chartRows.map(v=>finite(v.value)?v.value:0));
  return <section className={"cg-site-content cg-site-impact-group cg-site-impact-"+group.toLowerCase()}>
   <div className="cg-site-impact-heading">
    <p className="cg-site-eyebrow">{group==="HERO"&&text(f.eyebrow)?
@@ -37,7 +39,7 @@ export function CmsImpactGroup({section,assets,navigation}:{
    {!rows.length&&!["HERO","CTA","PILLARS"].includes(group)&&<div className="cg-site-empty" role="status">No approved information has been published yet.</div>}
   </div>
   {photo(pic,"cg-site-impact-photo")}
-  {tabular&&rows.length>0?<div className="cg-site-table-wrap">
+  {tabular&&rows.length>0?<div className="cg-site-table-wrap" role="region" aria-label={heading+" — scrollable data table"} tabIndex={0}>
    <table className="cg-site-evidence-table">
     <caption>{heading} — source-reported information</caption>
     <thead><tr><th scope="col">Description</th><th scope="col">Value</th>
@@ -45,14 +47,14 @@ export function CmsImpactGroup({section,assets,navigation}:{
     <tbody>{rows.map((item,i)=><tr key={i}>
      <th scope="row">{text(item.title)}
       {typeof item.year==="number"?" ("+item.year+")":""}</th>
-     <td>{typeof item.percentage==="number"?item.percentage+"%":
-      typeof item.value==="number"?String(item.value)+" "+text(item.unit):"—"}</td>
+     <td>{validPercentage(item.percentage)?item.percentage+"%":
+      finite(item.value)?String(item.value)+" "+text(item.unit):"—"}</td>
      <td>{text(item.description)}</td>
     </tr>)}</tbody>
    </table>
-   {["GROWTH","BREAKDOWN"].includes(group)&&
+   {["GROWTH","BREAKDOWN"].includes(group)&&chartRows.length>0&&
     <div className="cg-site-source-bars" aria-hidden="true">
-     {rows.map((item,i)=>{
+     {chartRows.map((item,i)=>{
       const numeric=group==="BREAKDOWN"?
        (typeof item.percentage==="number"?item.percentage:0):
        (typeof item.value==="number"?item.value:0);
@@ -74,8 +76,8 @@ export function CmsImpactGroup({section,assets,navigation}:{
      <span className="cg-site-impact-reach">
       {text(v.level).charAt(0)+text(v.level).slice(1).toLowerCase()} reach
      </span>}
-    {typeof v.percentage==="number"&&<strong>{v.percentage}%</strong>}
-    {typeof v.value==="number"&&<strong>{v.value} {text(v.unit)}</strong>}
+    {validPercentage(v.percentage)&&<strong>{v.percentage}%</strong>}
+    {finite(v.value)&&<strong>{v.value} {text(v.unit)}</strong>}
    </article>)}</div>:null}
   {["CTA","HERO"].includes(group)&&text(f.ctaPath)&&text(f.ctaLabel)&&
    (["/","/contact"].includes(text(f.ctaPath))||
@@ -86,7 +88,9 @@ export function CmsImpactGroup({section,assets,navigation}:{
 export function CmsCompliance({section,assets}:{
  section:PublicCmsSection;assets:Asset[]}){
  const f=section.fields;
- const supported=f.verification==="VERIFIED",proof=assets.find(a=>a.role==="DOCUMENT");
+ const safeDocument=(a:Asset)=>a.role==="DOCUMENT"&&/^\/api\/public\/content\/media\/[a-f0-9-]{36}$/i.test(a.src);
+ const supported=f.verification==="VERIFIED",proof=assets.find(safeDocument);
+ const documents=records(f.documents).map((record,i)=>({record,document:assets.find(a=>a.order===i&&safeDocument(a))})).filter(entry=>entry.document);
  return <section className="cg-site-content cg-site-legal">
   <p className="cg-site-eyebrow">Registration &amp; public disclosures</p>
   <h1>{text(f.heading)}</h1>
@@ -96,18 +100,17 @@ export function CmsCompliance({section,assets}:{
   <p>{text(f.summary)}</p>
   <p className="cg-site-legal-status">{supported?
    "Document-supported Foundation declaration":"Not currently verified — no tax eligibility is promised"}</p>
-  <dl className="cg-site-legal-data">
+  {([f.issuer,f.pan,f.registrationNumber,f.approvalNumber,f.validFrom,f.validUntil,f.source].some(v=>!!text(v)))&&<dl className="cg-site-legal-data">
    {([["Issuing authority",f.issuer],["PAN",f.pan],["Registration",f.registrationNumber],
     ["Approval reference",f.approvalNumber],["Valid from",f.validFrom],
     ["Valid until",f.validUntil],["Source",f.source],
     ["Reviewed on",text(f.source)?f.verifiedAsOf:""]] as [string,unknown][])
     .filter(([,v])=>!!text(v)).map(([key,value])=><div key={key}>
      <dt>{key}</dt><dd>{text(value)}</dd></div>)}
-  </dl>
-  {records(f.documents).length>0&&<section aria-label="Published original reports">
+  </dl>}
+  {documents.length>0&&<section aria-label="Published original reports">
    <h2>Verified source documents and annual reports</h2>
-   <div className="cg-site-impact-grid">{records(f.documents).map((record,i)=>{
-    const document=assets.find(a=>a.role==="DOCUMENT"&&a.order===i);
+   <div className="cg-site-impact-grid">{documents.map(({record,document},i)=>{
     if(!document)return null;
     return <article key={i} className="cg-site-impact-card">
      <p className="cg-site-eyebrow">{text(record.type).replaceAll("_"," ")}</p>
@@ -122,7 +125,7 @@ export function CmsCompliance({section,assets}:{
   {text(f.importantNote)&&<aside className="cg-site-legal-important">
    <strong>Important</strong><p>{text(f.importantNote)}</p>
   </aside>}
-  <p className="cg-site-legal-notice">{text(f.disclaimer)}</p>
+  {text(f.disclaimer)&&<p className="cg-site-legal-notice">{text(f.disclaimer)}</p>}
   <p className="cg-site-provenance">Only the current Foundation-published information is shown.
    Confirm tax applicability with the issuing authority.</p>
  </section>;
