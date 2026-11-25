@@ -15601,3 +15601,14 @@ button:disabled {
 .cg-slip-verifier :is(input,button):focus-visible{outline:3px solid #194a3a;outline-offset:2px}
 .cg-health-public-chrome .cg-slip-verifier :is(input,button){min-height:48px}
 .cg-health-public-chrome .cg-slip-verifier input:not([type="checkbox"]):not([type="radio"]){min-height:48px}
+
+/* Membership application safe pending state. */
+.cg04-enroll-fields{border:0;padding:0;margin:0;display:grid;gap:1rem;min-width:0}
+.cg04-self-service .cg04-enroll-form{max-width:880px;margin-inline:auto}
+.cg04-enroll-fields label:has(input[type=checkbox]){background:#f0f7f2;border:1px solid #d0e4d5;border-radius:.65rem;padding:.85rem;min-height:44px}
+.cg04-enroll-form button{min-height:48px;border-radius:9px;white-space:normal;font-weight:650;cursor:pointer;padding:.65rem 1rem}
+.cg04-enroll-form :is(input,select,textarea){min-width:0;max-width:100%}
+.cg04-enroll-form fieldset:disabled{opacity:.75}
+.cg04-enroll-form button:disabled{opacity:.65;cursor:not-allowed}
+.cg04-enroll-retry{padding:1rem;background:#fff8e5;border:1px solid #d8b56a;border-radius:.7rem;display:flex;flex-wrap:wrap;gap:.6rem}
+.cg04-enroll-retry p{flex:1 1 100%;margin:0}
