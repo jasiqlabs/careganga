@@ -20,7 +20,7 @@ const empty:Fields={partnerType:"HOSPITAL",applicantName:"",
 async function call(action:"apply"|"status",body:unknown){
  const response=await fetch("/api/public/healthcare-partners/"+action,{
   method:"POST",headers:{"Content-Type":"application/json"},cache:"no-store",
-  body:JSON.stringify(body)});
+  body:JSON.stringify(body),signal:AbortSignal.timeout(18000)});
  const data:unknown=await response.json().catch(()=>null);
  if(!response.ok){
   const message=data&&typeof data==="object"&&"message" in data&&
@@ -66,7 +66,9 @@ export function HealthcarePartnerApplication(){
  async function check(event:FormEvent<HTMLFormElement>){
   event.preventDefault();
   if(busy)return;
-  setError("");setChecked(null);setBusy(true);
+  setError("");setChecked(null);
+  if(!/^[A-Za-z0-9_-]{43}$/.test(tracking.trim())){setError("Enter the complete 43-character private tracking code.");return;}
+  setBusy(true);
   try{
    const data=await call("status",{receipt:tracking.trim()});
    setChecked(data);
@@ -82,17 +84,17 @@ export function HealthcarePartnerApplication(){
     placeholder={extra.placeholder} required={required}
     disabled={busy||!!sent||!!result}
     onChange={e=>update(key,e.target.value)} /></label>;
- return <div style={{maxWidth:760,display:"grid",gap:16}}>
-  <nav aria-label="Application actions" style={{display:"flex",flexWrap:"wrap",gap:12}}>
+ return <div className="cg-partner-application">
+  <nav aria-label="Application actions" className="cg-partner-tabs">
    <button type="button" disabled={busy||!!sent}
     aria-current={mode==="apply"?"page":undefined}
     onClick={()=>{setMode("apply");setError("");}}>Apply as partner</button>
    <button type="button" disabled={busy||!!sent}
     aria-current={mode==="check"?"page":undefined}
-    onClick={()=>{setMode("check");setError("");}}>Check application status</button>
+    onClick={()=>{setMode("check");setChecked(null);setError("");}}>Check application status</button>
   </nav>
   {mode==="apply"&&result?<section aria-live="polite"
-    style={{border:"1px solid #d7dfdb",borderRadius:14,padding:20}}>
+    className="cg-partner-received">
    <h2>Application received</h2>
    <p>Your reference: <strong>{result.reference}</strong></p>
    <p>Status: <strong>Pending Foundation review</strong>.
@@ -100,12 +102,12 @@ export function HealthcarePartnerApplication(){
    <p>Save your private tracking code. It is needed to check the application status.
     Do not share it publicly.</p>
    <p style={{overflowWrap:"anywhere",fontFamily:"monospace"}}>{result.receipt}</p>
-   <button type="button" onClick={()=>{setTracking(result.receipt);setMode("check");}}>
+   <button type="button" onClick={()=>{setTracking(result.receipt);setChecked(null);setError("");setMode("check");}}>
     Check my status</button>
    <p>Verification, partnership publication and any Foundation-funded discount
     require separate approval.</p>
   </section>:mode==="apply"?<form onSubmit={submit}
-   style={{display:"grid",gap:15}}>
+   className="cg-partner-form">
    <h2>Partner details</h2>
    <label style={{display:"grid",gap:5}}>What kind of partner are you?
     <select value={fields.partnerType} disabled={busy||!!sent}
@@ -115,7 +117,7 @@ export function HealthcarePartnerApplication(){
    </label>
    {txt("applicantName",label(fields.partnerType),true,{maxLength:180,minLength:2})}
    {txt("contactName","Contact person's full name",true,{minLength:2})}
-   <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(230px,1fr))",gap:12}}>
+   <div className="cg-partner-fields">
     {txt("contactPhone","Contact phone number",true,{type:"tel",maxLength:16,minLength:10,pattern:"[+]?[0-9]{10,15}"})}
     {txt("contactEmail","Contact email (optional)",false,{type:"email",maxLength:180})}
    </div>
@@ -123,12 +125,12 @@ export function HealthcarePartnerApplication(){
      (fields.partnerType==="DOCTOR"?"":" (if available)"),
      fields.partnerType==="DOCTOR",{maxLength:120})}
    {txt("addressLine","Practice or facility address",true,{maxLength:300,minLength:5})}
-   <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(160px,1fr))",gap:12}}>
+   <div className="cg-partner-fields cg-partner-address">
     {txt("districtName","District",true,{maxLength:100,minLength:2})}
     {txt("stateName","State",true,{maxLength:100,minLength:2})}
     {txt("pinCode","Six-digit PIN",true,{maxLength:6,pattern:"[1-9][0-9]{5}"})}
    </div>
-   <label style={{display:"flex",gap:10,alignItems:"start"}}>
+   <label className="cg-partner-consent">
     <input type="checkbox" checked={fields.consentAccepted} required
      disabled={busy||!!sent}
      onChange={e=>update("consentAccepted",e.target.checked)}/>
@@ -136,20 +138,20 @@ export function HealthcarePartnerApplication(){
      registration information for partner verification. This application does
      not create a verified partner account or guarantee a discount.</span>
    </label>
-   {sent&&<p role="status">The submission result is uncertain.
+   {sent&&!busy&&<p role="status">The submission result is uncertain.
     Do not change these details. Retry the <strong>same application</strong>
     to avoid a duplicate.</p>}
    {sent?<button type="button" disabled={busy} onClick={()=>void send(sent)}>
      {busy?"Checking original submission…":"Retry the same application"}</button>:
     <button className="cg-site-action" type="submit" disabled={busy}>
      {busy?"Submitting…":"Submit for Foundation review"}</button>}
-  </form>:<form onSubmit={check} style={{display:"grid",gap:12}}>
+  </form>:<form onSubmit={check} className="cg-partner-form">
    <h2>Check application status</h2>
    <p>Enter the private tracking code given when you submitted the application.
     The reference number alone cannot reveal your information.</p>
    <label style={{display:"grid",gap:5}}>Private tracking code
     <input value={tracking} required maxLength={43} autoComplete="off"
-     disabled={busy} onChange={e=>setTracking(e.target.value)}/></label>
+     disabled={busy} onChange={e=>{setTracking(e.target.value);setChecked(null);setError("");}}/></label>
    <button type="submit" disabled={busy}>{busy?"Checking…":"Check status"}</button>
    {checked&&<p role="status">Application <strong>{checked.reference}</strong>:
     <strong> {checked.statusLabel??"Under Foundation review"}</strong>.
