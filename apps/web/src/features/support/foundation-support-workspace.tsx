@@ -22,6 +22,7 @@ import {
   FileQuestion,
   HelpCircle,
   AlertCircle,
+  Eye,
 } from "lucide-react";
 import { FoundationSupportAttachments } from "./foundation-support-attachments";
 
@@ -620,7 +621,7 @@ export function FoundationSupportWorkspace({
                 <span>Advanced Filters</span>
               </div>
 
-              <div className="cg19-filter-row">
+              <div className="cg19-filter-grid">
                 <div className="cg19-input-group">
                   <label htmlFor="filter-search">Search</label>
                   <input
@@ -640,7 +641,7 @@ export function FoundationSupportWorkspace({
                   <label htmlFor="filter-status">Status</label>
                   <select
                     id="filter-status"
-                    className="cg19-input"
+                    className="cg19-select"
                     value={statusFilter}
                     onChange={(e) => setStatusFilter(e.target.value)}
                   >
@@ -657,7 +658,7 @@ export function FoundationSupportWorkspace({
                   <label htmlFor="filter-activity">Last Activity</label>
                   <select
                     id="filter-activity"
-                    className="cg19-input"
+                    className="cg19-select"
                     value={dateFilter}
                     onChange={(e) => setDateFilter(e.target.value)}
                   >
@@ -685,24 +686,24 @@ export function FoundationSupportWorkspace({
                     />
                   </div>
                 </div>
+              </div>
 
-                <div style={{ display: "flex", gap: "0.5rem" }}>
-                  <button
-                    type="button"
-                    className="cg19-btn-reset"
-                    onClick={handleResetFilters}
-                  >
-                    Reset
-                  </button>
-                  <button
-                    type="button"
-                    className="cg19-btn-apply"
-                    disabled={busy}
-                    onClick={applySearch}
-                  >
-                    Apply Filters
-                  </button>
-                </div>
+              <div className="cg19-filter-actions">
+                <button
+                  type="button"
+                  className="cg19-btn-reset"
+                  onClick={handleResetFilters}
+                >
+                  Reset
+                </button>
+                <button
+                  type="button"
+                  className="cg19-btn-apply"
+                  disabled={busy}
+                  onClick={applySearch}
+                >
+                  Apply Filters
+                </button>
               </div>
             </div>
 
@@ -800,11 +801,12 @@ export function FoundationSupportWorkspace({
                   <thead>
                     <tr>
                       <th>Guest</th>
-                      <th>Last Message / Subject</th>
+                      <th>Last Message</th>
                       <th>Status</th>
                       <th>Messages</th>
                       <th>Last Activity</th>
-                      <th>Action</th>
+                      <th>Started On</th>
+                      <th>Actions</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -829,12 +831,12 @@ export function FoundationSupportWorkspace({
                         </td>
 
                         <td>
-                          <div style={{ maxWidth: "340px" }}>
+                          <div style={{ maxWidth: "300px" }}>
                             <strong
                               style={{
                                 color: "#1e293b",
                                 display: "block",
-                                fontSize: "0.85rem",
+                                fontSize: "0.825rem",
                               }}
                             >
                               {x.subject}
@@ -842,14 +844,14 @@ export function FoundationSupportWorkspace({
                             <span
                               style={{
                                 color: "#64748b",
-                                fontSize: "0.8rem",
+                                fontSize: "0.78rem",
                                 whiteSpace: "nowrap",
                                 overflow: "hidden",
                                 textOverflow: "ellipsis",
                                 display: "block",
                               }}
                             >
-                              {x.ticketNumber} · {x.unread ? "Unread by staff" : "Viewed"}
+                              {x.ticketNumber} · {x.unread ? "Unread" : "Viewed"}
                             </span>
                           </div>
                         </td>
@@ -881,20 +883,32 @@ export function FoundationSupportWorkspace({
                         </td>
 
                         <td>
-                          <span style={{ color: "#64748b", fontSize: "0.825rem" }}>
+                          <span style={{ color: "#64748b", fontSize: "0.8rem", whiteSpace: "nowrap" }}>
                             {formatRelativeTime(x.createdAt)}
+                          </span>
+                        </td>
+
+                        <td>
+                          <span style={{ color: "#64748b", fontSize: "0.78rem", whiteSpace: "nowrap" }}>
+                            {new Date(x.createdAt).toLocaleDateString("en-GB", {
+                              day: "2-digit",
+                              month: "short",
+                              year: "numeric",
+                              hour: "2-digit",
+                              minute: "2-digit",
+                            })}
                           </span>
                         </td>
 
                         <td>
                           <button
                             type="button"
-                            className="cg19-btn-open"
+                            className="cg19-action-btn"
+                            title="View Conversation"
                             disabled={busy}
                             onClick={() => void detail(x.caseRef)}
                           >
-                            Open
-                            <ChevronRight className="w-3.5 h-3.5" />
+                            <Eye className="w-4 h-4" />
                           </button>
                         </td>
                       </tr>
@@ -923,17 +937,19 @@ export function FoundationSupportWorkspace({
                 )}
               </div>
 
-              {/* Pagination footer matching client Screenshot 4 */}
+              {/* Pagination footer matching client Screenshot 3 & 4 */}
               <div
                 style={{
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "space-between",
-                  padding: "0.85rem 1.25rem",
+                  padding: "0.75rem 1.15rem",
                   borderTop: "1px solid #f1f5f9",
                   background: "#fafbfc",
                   fontSize: "0.8rem",
                   color: "#64748b",
+                  flexWrap: "wrap",
+                  gap: "0.5rem",
                 }}
               >
                 <span>
@@ -947,8 +963,9 @@ export function FoundationSupportWorkspace({
                       border: "1px solid #cbd5e1",
                       background: "#fff",
                       borderRadius: "6px",
-                      padding: "0.3rem 0.6rem",
+                      padding: "0.25rem 0.55rem",
                       cursor: "pointer",
+                      fontSize: "0.8rem",
                     }}
                     onClick={() => {
                       const previous = priorCursors.at(-1) ?? "";
@@ -963,8 +980,9 @@ export function FoundationSupportWorkspace({
                       background: "#4f46e5",
                       color: "#fff",
                       borderRadius: "6px",
-                      padding: "0.3rem 0.65rem",
+                      padding: "0.25rem 0.6rem",
                       fontWeight: 700,
+                      fontSize: "0.8rem",
                     }}
                   >
                     1
@@ -976,8 +994,9 @@ export function FoundationSupportWorkspace({
                       border: "1px solid #cbd5e1",
                       background: "#fff",
                       borderRadius: "6px",
-                      padding: "0.3rem 0.6rem",
+                      padding: "0.25rem 0.55rem",
                       cursor: "pointer",
+                      fontSize: "0.8rem",
                     }}
                     onClick={() => {
                       if (!nextCursor) return;
@@ -987,6 +1006,17 @@ export function FoundationSupportWorkspace({
                   >
                     &gt;
                   </button>
+                </div>
+                <div>
+                  <select
+                    className="cg19-select"
+                    style={{ padding: "0.25rem 1.8rem 0.25rem 0.5rem", fontSize: "0.78rem" }}
+                    defaultValue="10"
+                  >
+                    <option value="10">10 / page</option>
+                    <option value="25">25 / page</option>
+                    <option value="50">50 / page</option>
+                  </select>
                 </div>
               </div>
             </div>
@@ -1367,7 +1397,7 @@ export function FoundationSupportWorkspace({
                             placeholder="Search staff names..."
                           />
                           <select
-                            className="cg19-input"
+                            className="cg19-select"
                             value={assignee}
                             onChange={(e) => setAssignee(e.target.value)}
                           >
@@ -1416,7 +1446,7 @@ export function FoundationSupportWorkspace({
                           </label>
                           <select
                             id="support-status"
-                            className="cg19-input"
+                            className="cg19-select"
                             style={{ width: "100%" }}
                             value={nextStatus}
                             onChange={(e) => setNextStatus(e.target.value)}
