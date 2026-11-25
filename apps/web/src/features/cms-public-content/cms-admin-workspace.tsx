@@ -784,6 +784,10 @@ export function CmsAdminWorkspace({canManage,canPublish,canReview}:{
         <label>Heading<input value={block.heading} maxLength={160} disabled={!canManage} onChange={e=>edit("extraText",draft.extraText.map((x,j)=>i===j?{...x,heading:e.target.value}:x))}/></label>
         <label>Body<textarea value={block.body} maxLength={4000} disabled={!canManage} onChange={e=>edit("extraText",draft.extraText.map((x,j)=>i===j?{...x,body:e.target.value}:x))}/></label>
         <label>Highlights (up to four, one per line)<textarea value={block.highlights} maxLength={800} disabled={!canManage} onChange={e=>edit("extraText",draft.extraText.map((x,j)=>i===j?{...x,highlights:e.target.value}:x))}/></label>
+        {canManage&&draft.kind==="HOME"&&block.order>20&&block.order<30&&block.variant==="STANDARD"&&!block.placement&&
+         !draft.assets.some(a=>a.role==="ABOUT"&&a.order===block.order)&&!selected?.bundledAssets?.some(a=>a.role==="ABOUT"&&a.order===block.order)&&
+         [35,31,32,33,34,36,37,38,39].some(order=>!draft.extraText.some(x=>x.order===order))&&
+         <button type="button" disabled={busy||!!pending} onClick={()=>{const order=[35,31,32,33,34,36,37,38,39].find(n=>!draft.extraText.some(x=>x.order===n));if(order!==undefined)edit("extraText",draft.extraText.map((x,j)=>j===i?{...x,order}:x));}}>Move after volunteer banner</button>}
         {canManage&&!draft.assets.some(a=>a.role==="ABOUT"&&a.order===block.order)&&<button type="button" disabled={busy||!!pending} onClick={()=>edit("extraText",draft.extraText.filter((_,j)=>i!==j))}>Remove section</button>}
        </fieldset>)}
        {canManage&&draft.extraText.length<10&&<button type="button" disabled={busy||!!pending} onClick={()=>{const order=Array.from({length:80},(_,i)=>i+21).find(n=>!draft.extraText.some(x=>x.order===n));if(order!==undefined)edit("extraText",[...draft.extraText,{order,heading:"",body:"",eyebrow:"",highlights:"",placement:"",variant:"STANDARD"}]);}}>Add editorial section</button>}
