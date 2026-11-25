@@ -6,33 +6,39 @@ import { hashPassword } from "../domain/secret-crypto";
 try { (process as { loadEnvFile?: (path?: string) => void }).loadEnvFile?.(); } catch {}
 try { (process as { loadEnvFile?: (path?: string) => void }).loadEnvFile?.("../../../../../../.env"); } catch {}
 
-// One-time secure local operator action, run only after applying greenfield PostgreSQL migrations.
-// NEVER add a public bootstrap endpoint or print the password, mobile or credentials.
-async function bootstrapRoot(): Promise<void> {
-  if (!process.argv.includes("--confirm-one-time-root"))
-    throw new Error("Explicit --confirm-one-time-root is required");
-  const url = process.env.DATABASE_MIGRATION_URL;
+// No default credentials or public bootstrap endpoint. Startup may provision
+// the first account only when the existing protected root configuration is supplied.
+export async function provisionInitialRoot(pool:Pool,mode:"startup"|"operator"):Promise<"created"|"existing"|"not-configured">{
+  const existing=await pool.query("SELECT 1 FROM account LIMIT 1");
+  if(existing.rowCount){
+    if(mode==="operator")throw new Error("Root setup already closed; do not provision twice");
+    return "existing";
+  }
   const mobile = process.env.CAREGANGA_ROOT_MOBILE?.trim() ?? "";
   const email = process.env.CAREGANGA_ROOT_EMAIL?.trim().toLowerCase() || null;
   const name = process.env.CAREGANGA_ROOT_NAME?.trim() ?? "";
   const password = process.env.CAREGANGA_ROOT_PASSWORD ?? "";
-  if (!url || !/^[6-9][0-9]{9}$/.test(mobile) ||
+  if(mode==="startup"&&!mobile&&!email&&!name&&!password)return "not-configured";
+  if (!/^[6-9][0-9]{9}$/.test(mobile) ||
       (email !== null && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) ||
       name.length < 2 || name.length > 160)
-    throw new Error("Root setup requires migration DB URL, name, 10-digit mobile and optional valid email");
+    throw new Error("Root setup requires name, 10-digit mobile, password and optional valid email");
   const passwordHash = await hashPassword(password);
-  const pool = new Pool({ connectionString: url, max: 1, application_name: "careganga-root-provision" });
   const client = await pool.connect();
   try {
     await client.query("BEGIN");
     try {
-      const realm = await client.query<{id:string}>(
-        "INSERT INTO access_realm(realm_key) VALUES('FOUNDATION_ROOT') ON CONFLICT(realm_key) DO UPDATE SET realm_key=EXCLUDED.realm_key RETURNING id"
+      await client.query(
+        "INSERT INTO access_realm(realm_key) VALUES('FOUNDATION_ROOT') ON CONFLICT(realm_key) DO NOTHING"
       );
-      const realmId = realm.rows[0].id;
-      await client.query("SELECT id FROM access_realm WHERE id=$1 FOR UPDATE", [realmId]);
+      const locked=await client.query<{id:string}>("SELECT id FROM access_realm WHERE realm_key=\'FOUNDATION_ROOT\' FOR UPDATE");
+      const realmId=locked.rows[0]?.id;
+      if(!realmId)throw Error("Foundation root unavailable");
       const existing = await client.query("SELECT id FROM account LIMIT 1");
-      if (existing.rowCount) throw new Error("Root setup already closed; do not provision twice");
+      if(existing.rowCount){
+        if(mode==="operator")throw Error("Root setup already closed; do not provision twice");
+        await client.query("COMMIT");return "existing";
+      }
       const created = await client.query<{id:string}>(
         "INSERT INTO account(realm_id,display_name,normalized_mobile,normalized_email,contact_phone,status) "+
         "VALUES($1,$2,$3,$4,$5,'ACTIVE') RETURNING id",
@@ -54,11 +60,19 @@ async function bootstrapRoot(): Promise<void> {
         [realmId,accountId,randomUUID()]
       );
       await client.query("COMMIT");
-      process.stdout.write("Protected CareGanga Super Admin provisioned. Unset operator secrets.\n");
+      return "created";
     } catch (e) { await client.query("ROLLBACK"); throw e; }
-  } finally { client.release(); await pool.end(); }
+  } finally { client.release(); }
 }
-void bootstrapRoot().catch(() => {
+async function bootstrapRoot():Promise<void>{
+  if(!process.argv.includes("--confirm-one-time-root"))throw Error("Explicit --confirm-one-time-root is required");
+  const url=process.env.DATABASE_MIGRATION_URL;
+  if(!url)throw Error("Root setup requires direct migration DB URL");
+  const pool=new Pool({connectionString:url,max:1,application_name:"careganga-root-provision"});
+  try{await provisionInitialRoot(pool,"operator");process.stdout.write("Protected CareGanga Super Admin provisioned. Unset operator secrets.\n");}
+  finally{await pool.end();}
+}
+if(require.main===module)void bootstrapRoot().catch(() => {
   process.stderr.write("One-time root provisioning failed. Review protected setup logs privately.\n");
   process.exitCode = 1;
 });
