@@ -47,10 +47,10 @@ const NativeMonthlyProviderSettlement = lazy(() => import("../healthcare-assista
 const NativePartnerSettlementSummary = lazy(() => import("../healthcare-assistance/native-partner-settlement-summary").then(m => ({ default: m.NativePartnerSettlementSummary })));
 const NativeLabTestMasterScreen = lazy(() => import("../diagnostics/native-lab-test-master-screen").then(m => ({ default: m.NativeLabTestMasterScreen })));
 const NativeMyLabPricingScreen = lazy(() => import("../diagnostics/native-my-lab-pricing-screen").then(m => ({ default: m.NativeMyLabPricingScreen })));
-import { PrivateCaseEvidenceScreen } from "../documents/private-case-evidence-screen";
-import { NotificationsScreen } from "../communications/notifications-screen";
-import { FoundationNoticeAdminScreen } from "../communications/foundation-notice-admin-screen";
-import { FoundationSupportScreen } from "../support/foundation-support-screen";
+const PrivateCaseEvidenceScreen = lazy(() => import("../documents/private-case-evidence-screen").then(m => ({ default: m.PrivateCaseEvidenceScreen })));
+const NotificationsScreen = lazy(() => import("../communications/notifications-screen").then(m => ({ default: m.NotificationsScreen })));
+const FoundationNoticeAdminScreen = lazy(() => import("../communications/foundation-notice-admin-screen").then(m => ({ default: m.FoundationNoticeAdminScreen })));
+const FoundationSupportScreen = lazy(() => import("../support/foundation-support-screen").then(m => ({ default: m.FoundationSupportScreen })));
 const BranchRegistrationScreen = lazy(() => import("../foundation-structure/branch-registration-screen").then(m => ({ default: m.BranchRegistrationScreen })));
 const RecipientNotifications = lazy(() => import("../../../../../packages/native-communications/src/recipient-notifications").then(m => ({ default: m.RecipientNotifications })));
 
