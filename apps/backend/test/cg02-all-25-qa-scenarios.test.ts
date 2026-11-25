@@ -302,6 +302,6 @@ test("US-002-QA16: Approved-branch operational updates and immutable approval re
   assert.match(opsService, /async changeStatus\(/);
   assert.match(opsService, /expectedVersion/);
   assert.match(webOps, /mutate\(/);
-  assert.match(webOps, /expectedVersion:selected\.version/);
+  assert.match(webOps, /expectedVersion:\s*selected\.version/);
   assert.match(nativeStaff, /BranchStaffAccessNative/);
 });
