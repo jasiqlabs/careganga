@@ -771,7 +771,7 @@ export function PlatformAuditPanel({ canManageSettings = false, initialPayroll=f
 
     {/* Desktop Table View */}
     <div className="cg-audit-table-card cg-audit-desktop-table" aria-busy={loading}>
-      <div className="cg-audit-table-wrap">
+      <div className="cg-audit-table-wrap" role="region" aria-label="Audit logs table" tabIndex={0}>
         <table className="cg-audit-table">
           <thead>
             <tr>

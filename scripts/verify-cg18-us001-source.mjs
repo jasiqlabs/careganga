@@ -217,7 +217,7 @@ const checks=[
   files.backend.includes('if(page.kind==="POLICY")')&&
   files.backend.includes("POLICY_SLUGS")&&
   files.adminExtended.includes('kind==="POLICY"')&&
-  files.policyRoute.includes('source.page.kind!=="POLICY"')],
+  files.policyRoute.includes('<CmsEditorialRoute slug={slug} expectedKind="POLICY"/>')&&files.mediaRenderer.includes('expectedKind&&page.page.kind!==expectedKind')],
  ["Original footer legal links and native legal buttons only after effective publish",
   files.web.includes('isPublished("/policies/"+slug)')&&
   files.android.includes('publishedPaths.includes("/policies/"+name)')&&
@@ -236,7 +236,7 @@ const checks=[
   files.backend.includes("item&&item.visible!==false?[{...item,originalIndex:index}]")&&
   files.backend.includes('asset.role!=="GALLERY"||authoredGallery[asset.sort_order]?.visible!==false')&&
   files.media.includes("->>'visible') IS DISTINCT FROM 'false'")&&
-  files.galleryClient.includes("mediaOrder=Number.isSafeInteger(item.originalIndex)")&&
+  files.galleryClient.includes("Number.isSafeInteger(item.originalIndex)")&&files.galleryClient.includes("a.order===item.originalIndex")&&
   files.androidExtended.includes('typeof item.originalIndex==="number"')&&
   files.adminExtended.includes("Show this item on the public site after independent approval")],
  ["Original Notices listing reads ONLY independent currently published CG19 source",
@@ -627,7 +627,7 @@ checks.push(["Generated artwork uses only authorized original CG19 uploads and i
  files.carousel.includes("AI-generated illustration|Editorial illustration")&&files.carousel.includes("not a photograph of Foundation activities")&&files.android.includes("AI-generated illustration|Editorial illustration")&&files.android.includes("not a photograph of Foundation activities")]);
 const partnershipPage=read("apps/web/src/app/collaboration/page.tsx");
 checks.push(["Corporate partnership general narrative uses current CMS content in both public channels",
- initDrafts.includes('heading:"Why Partner With Us?"')&&partnershipPage.includes('approved.filter(s=>s.kind==="RICH_TEXT")')&&
+ initDrafts.includes('heading:"Why Partner With Us?"')&&partnershipPage.includes('approved.filter(s=>s.kind==="RICH_TEXT"')&&
  partnershipPage.includes("narrative.map")&&!partnershipPage.includes("<h3>Community Impact</h3>")&&
  files.android.includes('section.kind==="RICH_TEXT"')&&files.adminExtended.includes("Add partnership text section")]);
 const eventsRoute=read("apps/web/src/app/events/page.tsx");

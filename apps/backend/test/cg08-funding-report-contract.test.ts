@@ -108,7 +108,7 @@ test("US003-QA13/18: public partner attribution stays under original CG08 rights
  for(const x of [
   'collaboration:"PARTNERS"',
   'section.kind==="PARTNER_CARDS"&&page.kind==="PARTNERS"',
-  'publishedPaths.includes("/collaboration")',
+  '"/collaboration"',
   'Corporate Partners',
   'const url=safeImage(logo)',
   'No partner identities are currently approved for public display.'

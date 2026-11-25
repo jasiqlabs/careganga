@@ -89,14 +89,30 @@ async function migrate(): Promise<void> {
       }
       const files = (await readdir(directory)).filter(x => /^\d+_cg\d+_[a-z0-9_-]+\.sql$/.test(x))
         .sort((a,b) => Number(a.split("_")[0])-Number(b.split("_")[0]) || (a<b?-1:a>b?1:0));
+      const upgradesDir = resolve(directory, "..", "upgrades");
+      const upgradeFiles = new Map<string, string>();
+      try {
+        for (const u of await readdir(upgradesDir)) {
+          if (/^\d+_cg\d+_[a-z0-9_-]+\.sql$/.test(u)) {
+            const sql = await readFile(join(upgradesDir, u), "utf8");
+            upgradeFiles.set(u, createHash("sha256").update(sql).digest("hex"));
+          }
+        }
+      } catch {}
       // Never accept a checkout that silently omits an already applied migration.
       // A hash match alone only detects edited files, not deleted historical files.
-      const applied = await client.query<{ filename:string }>(
-        "SELECT filename FROM schema_migration"
+      const applied = await client.query<{ filename:string; sha256:string }>(
+        "SELECT filename, sha256 FROM schema_migration"
       );
       const present = new Set(files);
-      if (applied.rows.some(row => !present.has(row.filename)))
-        throw new Error("An applied migration file is missing from this checkout");
+      for (const row of applied.rows) {
+        if (present.has(row.filename)) continue;
+        const upgradeDigest = upgradeFiles.get(row.filename);
+        if (!upgradeDigest)
+          throw new Error("An applied migration file is missing from this checkout");
+        if (row.sha256 !== upgradeDigest)
+          throw new Error("Applied migration changed: " + row.filename);
+      }
       for (const name of files) {
         const sql = await readFile(join(directory, name), "utf8");
         const digest = createHash("sha256").update(sql).digest("hex");

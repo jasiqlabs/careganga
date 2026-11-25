@@ -136,7 +136,7 @@ const checks=[
 
  ["Public checks real approval and evidence",s.public.includes("health_center_publication")&&s.public.includes("cg03_case_decision")&&s.public.includes("CLEAN_VERIFIED")],
  ["Public eligibility recheck after fields",s.public.includes("const fresh=await tx.query(")&&s.public.includes("c.publication_generation=$3")],
- ["Public does not claim booking or payment",s.publicWeb.includes("Online booking, clinical advice and online payment are not offered")],
+ ["Public does not claim booking or payment",s.publicWeb.includes("no online lab booking, Foundation benefit or payment is available")&&s.publicWeb.includes("{c.notice}")],
  ["Same-origin guarded Web BFF",s.bff.includes('request.headers.get("origin")')&&s.bff.includes('"publication","suspend"')],
  ["Visible Admin verified actions",s.admin.includes("changeAccess(center.centerRef")&&s.admin.includes("changePublication(center.centerRef")],
  ["Visible Admin suspension",s.admin.includes('suspendOriginal("providers"')&&s.admin.includes('suspendOriginal("centers"')],

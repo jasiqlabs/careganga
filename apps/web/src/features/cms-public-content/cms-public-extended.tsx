@@ -115,7 +115,7 @@ export function CmsCompliance({section,assets}:{
      <dt>{key}</dt><dd>{text(value)}</dd></div>)}
   </dl>}
   {documents.length>0&&<section aria-label="Published original reports">
-   <h2>Verified source documents and annual reports</h2>
+   <h2>{supported?"Verified source documents and annual reports":"Published disclosures and annual reports"}</h2>
    <div className="cg-site-impact-grid">{documents.map(({record,document},i)=>{
     if(!document)return null;
     return <article key={i} className="cg-site-impact-card">

@@ -113,7 +113,7 @@ export async function CmsNgoChildRoute({section}:{section:string}){
  const hasTaxDetails=[fact.registrationNumber,fact.issuer,fact.verifiedAsOf].some(v=>words(v).trim());
  const info=<section className="cg-site-content cg-site-legal cg-site-ngo-child" data-ngo-section={key}>
   <nav className="cg-site-ngo-child-breadcrumb" aria-label="Breadcrumb"><Link href="/">Home</Link><span aria-hidden="true"> / </span><Link href="/ngo-information">NGO Information</Link><span aria-hidden="true"> / </span><span aria-current="page">{chapter[key]}</span></nav>
-  <p className="cg-site-eyebrow">Foundation official information</p>
+  <p className="cg-site-eyebrow">{intro?.eyebrow||"Foundation official information"}</p>
   <h1>{intro?.heading??chapter[key]}</h1>
   {intro?.body&&<p>{intro.body}</p>}
   <p className="cg-site-provenance">Current Foundation-published records only.
@@ -135,8 +135,8 @@ export async function CmsNgoChildRoute({section}:{section:string}){
     <a href={d.file!.src} download>View current approved certificate</a>
    </article>)}
   </div>}
-  {key==="annual-reports"&&<><CmsNgoAnnualReports reports={annual}/>{intro?.eyebrow&&<h2>{intro.eyebrow}</h2>}</>}
-  {key==="financial-reports"&&<>{(publications?.state==="UNAVAILABLE"||(publications?.state==="PUBLISHED"&&publications.page.kind!=="GALLERY"))?<p role="alert">Published financial reports cannot currently be verified.</p>:<CmsNgoAnnualReports reports={financial} kind="financial"/>}{intro?.eyebrow&&<h2>{intro.eyebrow}</h2>}</>}
+  {key==="annual-reports"&&<CmsNgoAnnualReports reports={annual}/>}
+  {key==="financial-reports"&&((publications?.state==="UNAVAILABLE"||(publications?.state==="PUBLISHED"&&publications.page.kind!=="GALLERY"))?<p role="alert">Published financial reports cannot currently be verified.</p>:<CmsNgoAnnualReports reports={financial} kind="financial"/>)}
   <p className="cg-site-legal-notice">{words(fact.disclaimer)||
    "Confirm current official information with the Foundation."}</p>
  </section>;

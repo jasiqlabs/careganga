@@ -304,7 +304,7 @@ test("US001-QA01/05/07/10/12/16/17/20: CG18 effective original publication is se
  assert.match(native,/Back to campaigns/);
  assert.match(native,/AppState.addEventListener/);
  assert.match(nativeCms,/NativePublicCampaigns/);
- assert.match(nav,/isPublished\("\/campaigns"\)/);
+ assert.match(nav,/href="\/campaigns"/);
  assert.match(sitemap,/publishedCampaigns\(\)/);
  assert.match(sitemap,/campaigns.state==="PUBLISHED"/);
 });

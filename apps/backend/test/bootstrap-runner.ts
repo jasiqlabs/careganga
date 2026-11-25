@@ -50,7 +50,7 @@ export async function runBootstrapSubprocess(
   if (options.databaseUrl !== undefined) {
     env.DATABASE_MIGRATION_URL = options.databaseUrl;
   } else {
-    delete env.DATABASE_MIGRATION_URL;
+    env.DATABASE_MIGRATION_URL = "";
   }
 
   if (options.name !== undefined) {

@@ -68,6 +68,11 @@ async function publishedArticles(eventsOnly=false,cursor=""):Promise<{available:
   const v:unknown=await r.json();
   if(!v||typeof v!=="object"||!("posts" in v)||!Array.isArray(v.posts))throw Error();
   const x=v as {schemaVersion?:unknown;posts:unknown[];nextCursor?:unknown};
+  const validDate=(value:unknown)=>{
+   if(typeof value!=="string"||!/^\d{4}-\d{2}-\d{2}$/.test(value))return false;
+   const parsed=new Date(value+"T00:00:00.000Z");
+   return Number.isFinite(parsed.getTime())&&parsed.toISOString().slice(0,10)===value;
+  };
   const valid=(raw:unknown):raw is Article=>{
    if(!raw||typeof raw!=="object"||Array.isArray(raw))return false;
    const p=raw as Record<string,unknown>;
@@ -75,11 +80,11 @@ async function publishedArticles(eventsOnly=false,cursor=""):Promise<{available:
     p.path==="/blog/"+p.slug&&typeof p.title==="string"&&
     typeof p.category==="string"&&p.category.length<=80&&
     typeof p.excerpt==="string"&&p.excerpt.length<=400&&
-    typeof p.asOfDate==="string"&&/^\d{4}-\d{2}-\d{2}$/.test(p.asOfDate);
+    validDate(p.asOfDate);
   };
   if(x.schemaVersion!==1||x.posts.length>20||!x.posts.every(valid)||
     new Set(x.posts.map(p=>p.slug)).size!==x.posts.length||
-    (x.nextCursor!==null&&(typeof x.nextCursor!=="string"||!/^[a-z0-9][a-z0-9-]{0,69}$/.test(x.nextCursor))))throw Error();
+    (x.nextCursor!==null&&(typeof x.nextCursor!=="string"||!/^[a-z0-9][a-z0-9-]{0,69}$/.test(x.nextCursor)||x.nextCursor===cursor)))throw Error();
   return {posts:x.posts,nextCursor:x.nextCursor,available:true};
  }catch{return {available:false,posts:[],nextCursor:null};}
 }
@@ -98,6 +103,12 @@ async function publishedNotices():Promise<{available:boolean;notices:Notice[]}>{
   const data=raw as Record<string,unknown>;
   if(data.schemaVersion!==1||!Array.isArray(data.notices)||data.notices.length>60)
    throw Error();
+  const today=new Date().toISOString().slice(0,10);
+  const validDay=(value:unknown)=>{
+   if(typeof value!=="string"||!/^\d{4}-\d{2}-\d{2}$/.test(value))return false;
+   const parsed=new Date(value+"T00:00:00.000Z");
+   return Number.isFinite(parsed.getTime())&&parsed.toISOString().slice(0,10)===value;
+  };
   const valid=(n:unknown):n is Notice=>{
    if(!n||typeof n!=="object"||Array.isArray(n))return false;
    const item=n as Record<string,unknown>;
@@ -105,14 +116,15 @@ async function publishedNotices():Promise<{available:boolean;notices:Notice[]}>{
     typeof item.body==="string"&&item.body.length<=480&&
     typeof item.category==="string"&&item.category.length<=80&&
     (item.priority==="IMPORTANT"||item.priority==="NORMAL")&&
-    typeof item.publishedOn==="string"&&
-    /^\d{4}-\d{2}-\d{2}$/.test(item.publishedOn)&&
-    typeof item.expiresOn==="string"&&
-    /^\d{4}-\d{2}-\d{2}$/.test(item.expiresOn)&&
+    validDay(item.publishedOn)&&
+    validDay(item.expiresOn)&&
+    String(item.publishedOn)<=today&&
+    String(item.expiresOn)>=today&&
+    String(item.publishedOn)<=String(item.expiresOn)&&
     typeof item.path==="string"&&
     /^\/blog\/[a-z0-9-]{1,70}$/.test(item.path);
   };
-  if(!data.notices.every(valid))throw Error();
+  if(!data.notices.every(valid)||new Set(data.notices.map(n=>n.path)).size!==data.notices.length)throw Error();
   return {available:true,notices:data.notices};
  }catch{return {available:false,notices:[]};}
 }
@@ -462,8 +474,9 @@ export function PublicCmsContent({onContact,onPartnerApplication,onMembershipApp
     <CmsButton title="Apply as a healthcare partner" onPress={onPartnerApplication} secondary/>
     <CmsButton title="Refresh partner announcements" onPress={()=>void load("collaboration")} secondary/>
    </View>:result.state==="NOT_PUBLISHED"?<View style={styles.card}>
-    <Text style={styles.heading}>{slug==="home"?"Foundation homepage":"About the Foundation"}</Text>
+    <Text style={styles.heading}>{({home:"Foundation homepage",about:"About the Foundation","our-impact":"Our Impact","80g":"NGO Information",gallery:"Gallery & Resources",contact:"Contact the Foundation",healthcare:"Healthcare Assistance","our-work":"Our Work","upcoming-projects":"Upcoming Projects"} as Record<string,string>)[slug]??(isPolicySlug(slug)?"Legal Policy":"CareGanga Page")}</Text>
     <Text style={styles.muted}>This page has not yet been published.</Text>
+    <CmsButton title="Refresh" onPress={()=>void load(slug)} secondary/>
    </View>:result.state==="UNAVAILABLE"?<View style={styles.card}>
     <Text accessibilityRole="alert" style={styles.heading}>Website content is temporarily unavailable</Text>
     <Text style={styles.muted}>We could not verify the current approved content.</Text>

@@ -65,7 +65,7 @@ export function CmsPublicExtendedSection({section,assets,mediaUrl,onContact,
   {impactItems.length>0&&<Text style={styles.source}>Source: {text(f.source)} · {text(f.asOfDate)}
    {"\n"}Editorial information; not independently audited</Text>}
   {!impactItems.length&&!["HERO","CTA","PILLARS"].includes(text(f.group))&&<View style={styles.item}><Text style={styles.source}>No approved information has been published yet.</Text></View>}
-  {impactItems.map((v,i)=><View key={i} style={styles.item}>
+  {impactItems.filter(v=>f.group!=="STORIES"||v.consentConfirmed===true).map((v,i)=><View key={i} style={styles.item}>
    <Text style={styles.itemTitle}>{text(v.title)}
     {typeof v.year==="number"?" ("+v.year+")":""}</Text>
    {f.group==="GEOGRAPHY"&&["HIGH","MEDIUM","EXPANDING"].includes(text(v.level))&&

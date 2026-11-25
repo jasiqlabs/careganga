@@ -39,7 +39,7 @@ export class VolunteerRosterService{
   if(filter.branch&&!scope.all&&!branches.includes(filter.branch))
    throw new ForbiddenException("The selected volunteer branch is outside your permitted scope.");
   const rows=await tx.query<Row>(`SELECT v.id AS ref,v.volunteer_no AS "volunteerNumber",v.display_name AS name,
-    applicant.contact_mobile AS mobile,applicant.contact_email AS email,b.name AS branch,
+    applicant.contact_phone AS mobile,applicant.normalized_email AS email,b.name AS branch,
     d.name AS department,v.availability,v.status,v.skills,
     (v.created_at AT TIME ZONE 'Asia/Kolkata')::date::text AS "joinedOn",
     app.city,area.display_name AS district
@@ -55,7 +55,7 @@ export class VolunteerRosterService{
     AND ($6='ALL' OR v.status=$6)
     AND ($7='ALL' OR v.availability=$7)
     AND ($8='' OR strpos(lower(v.volunteer_no),$8)>0 OR strpos(lower(v.display_name),$8)>0
-      OR strpos(lower(applicant.contact_mobile),$8)>0 OR strpos(lower(coalesce(applicant.contact_email,'')),$8)>0)
+      OR strpos(lower(applicant.contact_phone),$8)>0 OR strpos(lower(coalesce(applicant.normalized_email,'')),$8)>0)
    ORDER BY v.created_at DESC,v.id DESC LIMIT $9 OFFSET $10`,
    [a.realmId,scope.all,branches,filter.branch,filter.department,filter.status,filter.availability,filter.q,max,offset]);
   return {items:rows.rows,branchOptions:scope.branches};
