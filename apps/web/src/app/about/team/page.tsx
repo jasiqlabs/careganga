@@ -19,6 +19,7 @@ export default async function TeamPage({searchParams}:{searchParams:Promise<{nam
     if(!people.some(x=>x.name===p.name&&x.designation===p.designation))people.push({name:p.name,designation:p.designation});
    }
  const options=[...new Set(people.map(p=>p.designation))].sort();
+ const incomplete=results.some(r=>r.state==="UNAVAILABLE");
  const filtered=people.filter(p=>(!name||p.name.toLocaleLowerCase().includes(name.toLocaleLowerCase()))&&(!designation||p.designation===designation));
  return <HealthcarePublicChrome><main id="main-content" className="cg-site-content cg-site-team">
   <header className="cg-site-team-hero">
@@ -30,10 +31,10 @@ export default async function TeamPage({searchParams}:{searchParams:Promise<{nam
   <section className="cg-site-team-search" aria-label="Search published team profiles">
    <h2>Team Directory</h2><p>Only independently published, currently consented public names and designations are displayed.</p>
    <form method="get" action="/about/team" className="cg-site-directory-filter"><label>Search by name <input name="name" maxLength={120} defaultValue={name}/></label>
-    <label>Designation <select name="designation" defaultValue={designation}><option value="">All designations</option>{options.map(v=><option key={v}>{v}</option>)}</select></label>
+    <label>Designation <select name="designation" defaultValue={designation}><option value="">All designations</option>{designation&&!options.includes(designation)&&<option value={designation}>Requested designation (not available)</option>}{options.map(v=><option key={v}>{v}</option>)}</select></label>
     <button type="submit">Search</button><Link href="/about/team">Reset</Link></form>
   </section>
-  {results.some(r=>r.state==="UNAVAILABLE")&&<p role="status">Some approved team information could not be verified. Only currently available approved profiles are shown.</p>}
-  {!filtered.length?<div className="cg-site-empty" role="status"><strong>{name||designation?"No matching profiles":"No public profiles yet"}</strong><p>{name||designation?"Try another name or designation.":"Consented team profiles will appear here once published."}</p>{(name||designation)&&<Link href="/about/team">Clear filters</Link>}</div>:<div className="cg-site-team-grid">{filtered.map((p,i)=><article key={i} className="cg-site-person"><h2>{p.name}</h2><strong>{p.designation}</strong></article>)}</div>}
+  {incomplete&&<p role="status">Some approved team information could not be verified. Only currently available approved profiles are shown.</p>}
+  {!filtered.length?<div className="cg-site-empty" role="status"><strong>{incomplete?"No current matching profiles could be confirmed":name||designation?"No matching profiles":"No public profiles yet"}</strong><p>{incomplete?"Try again later before relying on the directory.":name||designation?"Try another name or designation.":"Consented team profiles will appear here once published."}</p>{(name||designation)&&<Link href="/about/team">Clear filters</Link>}</div>:<div className="cg-site-team-grid">{filtered.map((p,i)=><article key={i} className="cg-site-person"><h2>{p.name}</h2><strong>{p.designation}</strong></article>)}</div>}
  </main></HealthcarePublicChrome>;
 }
