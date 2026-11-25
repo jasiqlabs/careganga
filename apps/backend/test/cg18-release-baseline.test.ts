@@ -27,7 +27,7 @@ function fixture(existing:string[]=[]){
   },
   release(){}
  };
- const db={connect:async()=>tx} as unknown as Pool;
+ const db={connect:async()=>tx,query:tx.query.bind(tx)} as unknown as Pool;
  const cms=new CmsEditorialService(db,null as never,null as never,null as never,null as never,null as never,null as never,null as never);
  return {cms,pages,writes,published,assets};
 }
