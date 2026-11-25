@@ -3,7 +3,7 @@ import {ActivityIndicator,Platform,Pressable,ScrollView,StyleSheet,
   Text,TextInput,View} from "react-native";
 import {SafeAreaView} from "react-native-safe-area-context";
 import * as Crypto from "expo-crypto";
-import {careGangaTheme as theme} from "../../../../../packages/design-tokens/src/index";
+import {careGangaPublicTheme as theme} from "../../../../../packages/design-tokens/src/index";
 type Faq={faqRef:string;question:string;answer:string};
 type Receipt={receipt:string;ticketNumber:string;expiresAt:string;status:string;result:string};
 const web=process.env.EXPO_PUBLIC_CONTACT_WEB_ORIGIN;
