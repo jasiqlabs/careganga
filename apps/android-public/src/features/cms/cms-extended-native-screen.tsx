@@ -91,17 +91,31 @@ export function CmsPublicExtendedSection({section,assets,mediaUrl,onContact,
    canNavigate(f.ctaPath)&&
    <Action title={text(f.ctaLabel)} onPress={()=>onNavigate(f.ctaPath)}/>}
  </View>;
+ const documentUrl=(index:number)=>{
+  const original=asset("DOCUMENT",index);
+  return original&&/^\/api\/public\/content\/media\/[a-f0-9]{8}-(?:[a-f0-9]{4}-){3}[a-f0-9]{12}$/i.test(original.src)?mediaUrl(asset("DOCUMENT",index)):null;
+ };
+ const verified=Array.isArray(f.documents)?f.documents.slice(0,6).flatMap((raw,index)=>{
+  if(!raw||typeof raw!=="object"||Array.isArray(raw))return [];
+  const record=raw as Record<string,unknown>;
+  if(!text(record.title).trim()||!/^\d{4}-\d{2}-\d{2}$/.test(text(record.asOfDate)))return [];
+  const url=documentUrl(index);
+  return url?[{record,index,url}]:[];
+ }):[];
  if(section.kind==="COMPLIANCE_FACTS"&&ngoScope!=="80g"){
-  const verified=rows(f.documents).map((record,index)=>({
-   record,index,url:mediaUrl(asset("DOCUMENT",index))
-  })).filter(v=>!!v.url);
   if(ngoScope==="pan-details"){
    const publishedPan=text(f.pan);
    return <View style={styles.section}>
     <Text accessibilityRole="header" style={styles.title}>PAN Details</Text>
     {/^[A-Z]{5}[0-9]{4}[A-Z]$/.test(publishedPan)?
-     <Text style={styles.value}>{publishedPan}</Text>:
+     <View style={styles.panCard}>
+      <Text style={styles.panLabel}>CareGanga Foundation</Text>
+      <Text style={styles.panLabel}>Published Permanent Account Number</Text>
+      <Text style={styles.panNumber}>{publishedPan}</Text>
+      {!!text(f.source)&&<Text style={styles.panLabel}>Source: {text(f.source)}</Text>}
+     </View>:
      <Text style={styles.source}>No current approved PAN is published.</Text>}
+    {!!text(f.registrationNumber)&&<Text style={styles.body}>Foundation registration: {text(f.registrationNumber)}</Text>}
     {!!text(f.issuer)&&<Text style={styles.body}>Issuer: {text(f.issuer)}</Text>}
     {!!text(f.source)&&!!text(f.verifiedAsOf)&&<Text style={styles.source}>
      Source reviewed: {text(f.verifiedAsOf)}</Text>}
@@ -139,7 +153,7 @@ export function CmsPublicExtendedSection({section,assets,mediaUrl,onContact,
   </View>;
  }
  if(section.kind==="COMPLIANCE_FACTS"){
-  const proof=asset("DOCUMENT",0),url=mediaUrl(proof);
+  const url=documentUrl(0);
   return <View style={styles.section}>
    <Text style={styles.eyebrow}>Registration &amp; disclosures</Text>
    <Text accessibilityRole="header" style={styles.title}>{text(f.heading)}</Text>
@@ -153,9 +167,7 @@ export function CmsPublicExtendedSection({section,assets,mediaUrl,onContact,
    {(["issuer","pan","registrationNumber","approvalNumber","validFrom","validUntil",
      "source","verifiedAsOf"] as const).map(key=>text(f[key])?<Text key={key} style={styles.source}>
       {key.replace(/([A-Z])/g," $1")}: {text(f[key])}</Text>:null)}
-   {rows(f.documents).map((document,i)=>{
-    const original=asset("DOCUMENT",i),link=mediaUrl(original);
-    if(!link)return null;
+   {verified.map(({record:document,index:i,url:link})=>{
     return <View style={styles.item} key={i}>
      <Text style={styles.eyebrow}>{text(document.type).replaceAll("_"," ")}</Text>
      <Text style={styles.itemTitle}>{text(document.title)}</Text>
@@ -163,7 +175,7 @@ export function CmsPublicExtendedSection({section,assets,mediaUrl,onContact,
      <Action title="Open approved source document" onPress={()=>open(link)}/>
     </View>;
    })}
-   {f.verification==="VERIFIED"&&url&&!rows(f.documents).length&&
+   {f.verification==="VERIFIED"&&url&&(f.documents===undefined||Array.isArray(f.documents)&&f.documents.length===0)&&
     <Action title="Open approved proof" onPress={()=>open(url)}/>}
    {!!text(f.importantNote)&&<View style={styles.item}>
     <Text style={styles.itemTitle}>Important</Text>
@@ -312,6 +324,9 @@ export function CmsPublicExtendedSection({section,assets,mediaUrl,onContact,
  return null;
 }
 const styles=StyleSheet.create({
+ panCard:{backgroundColor:"#102D40",borderRadius:12,padding:18,gap:12},
+ panLabel:{color:"#C3D6E2",fontSize:13,lineHeight:20},
+ panNumber:{color:"#FFE074",fontSize:24,fontWeight:"800",flexShrink:1},
  section:{backgroundColor:t.surface,borderRadius:12,borderWidth:1,
   borderColor:t.border,padding:16,gap:12},
  eyebrow:{fontSize:12,fontWeight:"700",color:t.primary,letterSpacing:1.1},
