@@ -738,3 +738,18 @@
 @media(min-width:1200px){.cg-site-gallery-browser[data-media-type="photo"] .cg-site-gallery-grid{grid-template-columns:repeat(4,minmax(0,1fr))}}
 @media(max-width:540px){.cg-site-gallery .cg-site-gallery-filters label{flex:0 1 auto;width:100%}.cg-site-gallery .cg-site-gallery-grid{padding-inline:.75rem}.cg-site-gallery .cg-site-gallery-tabs{justify-content:center}}
 @media(max-width:540px){.cg-site-gallery .cg-site-gallery-filters label:has(select){flex-basis:auto}}
+
+/* Upcoming projects: preserve the original full-width catalogue and retain category navigation. */
+.cg-site-page-projects:has(.cg-site-project-filters){background:#fbf8ef;gap:clamp(1.25rem,3vw,2.5rem)}
+.cg-site-page-projects:has(.cg-site-project-filters) .cg-site-page-heading{text-align:center;background:transparent;margin-top:0;padding-bottom:0}
+.cg-site-project-section:has(.cg-site-project-filters)>h2{text-align:center;font-family:Georgia,"Times New Roman",serif;font-size:clamp(1.7rem,3.2vw,2.65rem);color:#112039;margin:.5rem auto 1.25rem}
+.cg-site-project-filters{display:flex;flex-wrap:wrap;justify-content:center;align-items:center;gap:.5rem;margin:0 auto 1.5rem;min-width:0}
+.cg-site-project-filters h2{font-size:.9rem;margin:0 .35rem 0 0;color:#365746}
+.cg-site-project-filters p{margin:0;min-width:0;max-width:100%}
+.cg-site-project-filters a,.cg-site-project-reset{display:inline-flex;align-items:center;justify-content:center;min-height:44px;padding:.45rem .95rem;border:1px solid #b8cec0;border-radius:999px;color:#194a3a;background:white;font-weight:700;font-size:.85rem;text-decoration:none;text-align:center;overflow-wrap:anywhere;max-width:100%}
+.cg-site-project-filters a[aria-current="page"]{background:#194a3a;color:white;border-color:#194a3a}
+.cg-site-project-filters a:focus-visible,.cg-site-project-reset:focus-visible{outline:3px solid #194a3a;outline-offset:3px}
+.cg-site-project-section .cg-site-project-card{align-items:start;box-shadow:0 6px 14px #11203912}
+.cg-site-project-section .cg-site-project-copy .cg-site-eyebrow{display:inline-flex;max-width:100%;padding:.2rem .65rem;border-radius:999px;color:#226448;background:#e8f5eb;letter-spacing:.04em}
+.cg-site-project-section .cg-site-project-copy h3{overflow-wrap:anywhere}
+.cg-site-project-section .cg-site-project-copy p:last-child:not(:first-child){margin-bottom:0}
