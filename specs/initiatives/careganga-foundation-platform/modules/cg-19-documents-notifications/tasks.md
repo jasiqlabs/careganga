@@ -415,3 +415,6 @@ CG19 currently supplies original validated/scan-clean rights-safe media and CG12
 
 ### 25 November 2026 — Integration with main
 - Conflict resolution preserves both public-site and CG19 stylesheet additions, both branches' canonical tracker evidence, and main's deterministic payroll guard SQL for migration 3705. Source remediation remains source-verified/runtime-pending; no independent production acceptance is implied.
+
+### Internal Android UI reference retention (25 November 2026)
+- Owner requests retaining Nakul's Android visual reference only. See [ANDROID_UI_REFERENCE.md](./ANDROID_UI_REFERENCE.md) for the five original screen references pinned to `21fbca6`. Do not restore historical workflow logic. Current merged Android implementation remains the functional authority; visual-only modernization and actual device/runtime QA remain pending. Documentation-only checkpoint; no source behavior or QA status changed.
