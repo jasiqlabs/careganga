@@ -45,7 +45,7 @@ export function CmsGalleryGridClient({fields,assets,mediaType="PHOTO"}:{
   mediaType==="PUBLICATION"?"publicationsEmptyText":"photosEmptyText";
  const empty=entries.length===0?(text(fields[emptyKey])||"No approved "+labels[mediaType]+" published yet."):
   "No approved "+labels[mediaType]+" match these filters.";
- return <div className="cg-site-gallery-browser">
+ return <div className="cg-site-gallery-browser" data-media-type={mediaType.toLowerCase()}>
   <div className="cg-site-gallery-filters" aria-label={"Filter approved "+labels[mediaType]}>
    <label>Search {labels[mediaType]}
     <input type="search" value={search} maxLength={80}
@@ -75,6 +75,12 @@ export function CmsGalleryGridClient({fields,assets,mediaType="PHOTO"}:{
     singular[mediaType]:labels[mediaType]} match
   </p>
   {matches.length===0?<div className="cg-site-gallery-empty">
+   <span className="cg-site-gallery-empty-icon" aria-hidden="true">
+    {mediaType==="VIDEO"?<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7"><rect x="3" y="6" width="12" height="12" rx="2"/><path d="m15 10 6-4v12l-6-4"/></svg>:
+     mediaType==="PUBLICATION"?<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7"><path d="M6 3h8l4 4v14H6zM14 3v5h4M9 12h6M9 16h6"/></svg>:
+     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7"><rect x="3" y="3" width="18" height="18" rx="3"/><circle cx="8" cy="8" r="1.5"/><path d="m3 17 5-5 4 4 4-6 5 7"/></svg>}
+   </span>
+   <h2>{mediaType==="VIDEO"?"No Videos Found":mediaType==="PUBLICATION"?"No Publications Found":"No Photos Found"}</h2>
    <p>{empty}</p>
    <button type="button" onClick={reset}>Reset Filters</button>
   </div>:<div className="cg-site-gallery-grid">{matches.map(({item,index,asset})=>
