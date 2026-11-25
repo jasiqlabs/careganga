@@ -32,6 +32,10 @@ export function PatientAppointmentDetail({bookingRef}:{bookingRef:string}){
    if(!data||typeof data!=="object"||Array.isArray(data))throw Error("The selected appointment cannot be verified.");
    const value=data as Record<string,unknown>;
    if(value.bookingRef!==bookingRef||!["bookingId","doctorName","centerName","centerAddress","startAt","endAt","timeZone","bookingStatus","collectionStatus","paymentMode","consultationFeeMinor"].every(k=>typeof value[k]==="string")||
+    !["CONFIRMED","ARRIVED","WAITING","IN_CONSULTATION","COMPLETED","NO_SHOW","CANCELLED"].includes(String(value.bookingStatus))||
+    value.paymentMode!=="PAY_AT_CENTER"||
+    value.collectionStatus!==(value.bookingStatus==="CANCELLED"?"NOT_COLLECTIBLE":"DUE_AT_CENTER")||
+    typeof value.version!=="number"||!Number.isSafeInteger(value.version)||value.version<1||
     !Number.isFinite(Date.parse(String(value.startAt)))||!Number.isFinite(Date.parse(String(value.endAt)))||Date.parse(String(value.endAt))<=Date.parse(String(value.startAt))||
     !/^[0-9]+$/.test(String(value.consultationFeeMinor))||!Number.isSafeInteger(Number(value.consultationFeeMinor)))throw Error("The selected appointment cannot be verified.");
    new Intl.DateTimeFormat("en-IN",{timeZone:String(value.timeZone)});
@@ -93,7 +97,7 @@ export function PatientAppointmentDetail({bookingRef}:{bookingRef:string}){
    const url="/api/appointments/slips/me/"+encodeURIComponent(bookingRef)+
     "/restricted-file?grant="+encodeURIComponent(raw.grant);
    const response=await fetch(url,{cache:"no-store",credentials:"same-origin"});
-   if(!response.ok||!response.headers.get("Content-Type")?.includes("application/pdf"))
+   if(!response.ok||response.headers.get("Content-Type")?.split(";")[0].trim().toLowerCase()!=="application/pdf")
     throw Error("The current secure slip is no longer available. Refresh its status.");
    const bytes=await response.arrayBuffer();
    const view=new Uint8Array(bytes);
