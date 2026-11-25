@@ -239,10 +239,11 @@ export function CmsContactInfo({section,assets,form}:{section:PublicCmsSection;a
   Instagram:["instagram.com","www.instagram.com"],
   YouTube:["youtube.com","www.youtube.com"]
  };
+ const safeSocial=social.filter(link=>allowedSocial[text(link.network)]&&secure(link.url,allowedSocial[text(link.network)]));
  return <section className="cg-site-contact-original cg-site-content">
   <header className="cg-site-contact-hero">
    <p className="cg-site-eyebrow">Contact the Foundation</p>
-   <h1>{text(f.heroTitle)}</h1>
+   <h1>{text(f.heroTitle).trim()||"Contact the Foundation"}</h1>
    {text(f.heroIntro)&&<p>{text(f.heroIntro)}</p>}
   </header>
   {inquiries.length>0&&<div className="cg-site-contact-inquiries">
@@ -278,10 +279,9 @@ export function CmsContactInfo({section,assets,form}:{section:PublicCmsSection;a
     </details>)}
    </div>
   </section>}
-  {social.length>0&&<section className="cg-site-contact-social">
+  {safeSocial.length>0&&<section className="cg-site-contact-social">
    <h2>Follow the Foundation</h2>
-   <div>{social.filter(link=>allowedSocial[text(link.network)]&&
-     secure(link.url,allowedSocial[text(link.network)]))
+   <div>{safeSocial
     .map((link,i)=><a key={i}
      href={secure(link.url,allowedSocial[text(link.network)])}
      target="_blank" rel="noopener noreferrer">{text(link.network)}</a>)}</div>
